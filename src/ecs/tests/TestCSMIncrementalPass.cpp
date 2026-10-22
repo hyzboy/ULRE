@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/core/RenderPassRequest.h>
+#include <hgl/ecs/core/RenderPassRequest.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/ScenePipelineMode.h>
@@ -1825,7 +1825,7 @@ int main(int argc, char** argv)
               "GetMaterialRowID",
               "MaterialData::GetMaterialRowID 已于 2026-10-11 F-2 删除（0 调用）：组件行号即 material_row_id 字段（内部使用）",
               true },
-            { "ShaderArtifactStore.cpp", OS_TEXT("src/ShaderGen/compile/ShaderArtifactStore.cpp"),
+            { "ShaderArtifactStore.cpp", OS_TEXT("src/ShaderMaterialData/ShaderArtifactStore.cpp"),
               "ToOSString(ShaderArtifactSPVExtension)",
               "artifact 扩展名单一真源 = inc/hgl/mtl/ShaderArtifactContract.h：SPV 文件名必须由常量拼出，不得再硬编码字面量（2026-10-11 F-3 修正）",
               false },
@@ -1888,7 +1888,7 @@ int main(int argc, char** argv)
               "Vk 枚举文本名单一真源 = inc/hgl/mtl/VkEnumText.h（S3a 收敛，2026-10-11）："
               "解析文件里不得再出现枚举名字面量，也不得再手写 name<->value 表",
               true },
-            { "SamplerPreset.cpp", OS_TEXT("src/ShaderGen/glsl_module/SamplerPreset.cpp"),
+            { "SamplerPreset.cpp", OS_TEXT("src/ShaderMaterialData/SamplerPreset.cpp"),
               "ClampToEdge",
               "同上：sampler.toml 的 filter/mipmap_mode/address_mode/compare_op 一律走 VkEnumText.h",
               true },
@@ -4513,7 +4513,7 @@ int main(int argc, char** argv)
             // ⑪ 材质错误口径（2026-10-14 用户）：材质未知/写错 ⇒ **直接报错**，运行时走错误材质 = 棋盘格。
             //    加载期（单份定义写错）与运行期（配方引用的定义 ID 无法解析）两条路径都要出声；
             //    后者曾长期静默（mtl 侧换成保底材质 + ECS 侧当"构建成功"）。
-            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp"),
+            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionRegistry.cpp"),
               "u8\"[MaterialFallback] %s: \\\"%s\\\" => 回退错误材质 %s\"",
               "未知材质定义 ID 的唯一报错点丢失（该路径曾静默：mtl 侧替换 + ECS 侧当成功）" },
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
@@ -4624,7 +4624,7 @@ int main(int argc, char** argv)
             { "MaterialDefinitionRegistry.h", OS_TEXT("inc/hgl/mtl/MaterialDefinitionRegistry.h"),
               "BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe",
               "回退配方合成 API 缺失（回退材质无权威出处）" },
-            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionRegistry.cpp"),
+            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionRegistry.cpp"),
               "MaterialErrorKind::UnknownMaterialDefinition",
               "定义 ID 不可解析不再被分类（该类错误丢失种类与颜色）" },
 

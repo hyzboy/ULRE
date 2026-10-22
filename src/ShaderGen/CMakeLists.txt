@@ -35,7 +35,6 @@ set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ResolvedRenderTemplate.h
     ${SHADERGEN_INCLUDE_PATH}/SceneRenderTemplateResolver.h
     template/RenderTemplate.cpp
-    template/SceneRenderTemplateResolver.cpp
     ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
     template/FragmentTemplateComposer.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
@@ -46,18 +45,21 @@ set(SSBO_STRUCT_FILES
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
 # ── compile/ ─────────────────────────────────────────────────────────────────
+# ShaderCreateInfo.cpp / ShaderArtifactStore.cpp / SamplerPreset.cpp /
+# MaterialDefinitionRegistry.cpp / SceneRenderTemplateResolver.cpp 已迁入
+# ULRE.ShaderMaterialData（数据面，运行时也要）。
 set(COMPILE_FILES
     compile/GLSLCompiler.h
     compile/GLSLCompiler.cpp
+    compile/ShaderCreateInfoCompile.cpp
+    material_definition/ShaderGenProgramBuildBackend.cpp
     compile/TBuiltInResourceCompat.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderBuildContext.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
-    compile/ShaderCreateInfo.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
     # ShaderArtifactContract / ShaderStageKey / ShaderKeyUtility / ShaderProgramKey /
     # ShaderLinkSpec 已迁入 ULRE.ShaderRuntimeContract（运行时也要的那部分）。
     ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
-    compile/ShaderArtifactStore.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
     compile/ShaderProgramArtifactBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderStructureDump.h
@@ -79,14 +81,12 @@ set(GLSL_MODULE_FILES
     glsl_module/ShaderCodeModule.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
     glsl_module/ShaderCodeResourceManifest.cpp
-    ${SHADERGEN_INCLUDE_PATH}/SamplerPreset.h
-    glsl_module/SamplerPreset.cpp)
+    ${SHADERGEN_INCLUDE_PATH}/SamplerPreset.h)
 SOURCE_GROUP("GLSL Module" FILES ${GLSL_MODULE_FILES})
 
 # ── material_definition/ ─────────────────────────────────────────────────────
 set(MATERIAL_DEFINITION_FILES
     ${SHADERGEN_INCLUDE_PATH}/MaterialDefinitionRegistry.h
-    material_definition/MaterialDefinitionRegistry.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialDefinitionFile.h
     material_definition/MaterialDefinitionFile.cpp)
 SOURCE_GROUP("Material Definition" FILES ${MATERIAL_DEFINITION_FILES})
@@ -173,4 +173,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
 
 # 契约层独立成目标，ShaderGen 只是它的消费者之一。PUBLIC：吃掉 ShaderGen 的
 # 目标必须同时拿到契约类型，否则发行版无法只保留契约。
-target_link_libraries(ULRE.ShaderGen PUBLIC ULRE.ShaderRuntimeContract)
+# 数据面（材质定义/模板解析/SPV 产物库/ShaderCreateInfo）同理：ShaderGen 现在是它
+# 的上层，生成期所有「读写定义与产物」的能力都由它提供。
+target_link_libraries(ULRE.ShaderGen PUBLIC ULRE.ShaderRuntimeContract
+                                            ULRE.ShaderMaterialData)

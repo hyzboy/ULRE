@@ -1,4 +1,5 @@
 #include <hgl/framework/AppFramework.h>
+#include <hgl/common/RenderOptions.h>
 #include <hgl/vk/VKInstance.h>
 #include <hgl/vk/VKDeviceCreater.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -23,8 +24,10 @@ namespace hgl
 {
     namespace graph
     {
+#if ULRE_ENABLE_SHADERGEN
         bool InitShaderCompiler();
         void CloseShaderCompiler();
+#endif
     }
 
     namespace
@@ -116,7 +119,9 @@ namespace hgl
 
         if (APP_FRAMEWORK_COUNT == 0)
         {
+#if ULRE_ENABLE_SHADERGEN
             graph::CloseShaderCompiler();
+#endif
         }
     }
 
@@ -152,8 +157,12 @@ namespace hgl
 
         if (APP_FRAMEWORK_COUNT == 0)
         {
+            // 发行形态（ULRE_ENABLE_SHADERGEN=0）不带 GLSL→SPIR-V 编译器：
+            // 此时 SPV 全部来自预烘焙资产，生成器初始化必须整段消失，否则会拉入 glslang。
+#if ULRE_ENABLE_SHADERGEN
             if (!graph::InitShaderCompiler())
                 return false;
+#endif
 
             logger::InitLogger(app_name);
 

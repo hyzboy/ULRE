@@ -1,5 +1,4 @@
-﻿#include<hgl/mtl/MaterialDefinitionRegistry.h>
-#include "builder/GenericMaterialBuilder.h"
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -339,25 +338,6 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         loaded = true;
     }
     return registry;
-}
-
-mtl::ShaderBuildContext *CreateMaterialFromDefinition(
-    const mtl::contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request)
-{
-    // BuildGenericMaterial 不修改 definition（const&）——直接透传，
-    // 薄包装只承担 API 语义（名字即文档）
-    return BuildGenericMaterial(profile, request, definition, nullptr);
-}
-
-mtl::ShaderBuildContext *CreateMaterialFromDefinition(
-    const mtl::contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
-    mtl::MaterialShaderDocumentCapture *document_capture)
-{
-    return BuildGenericMaterial(profile, request, definition, document_capture);
 }
 
 bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,

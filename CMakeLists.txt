@@ -55,7 +55,21 @@ if(ULRE_ENABLE_QT)
     set(ULRE_QT_MODULE CMQT)
 endif()
 
-SET(ULRE    CMCoreType
+# ── 发行形态：是否把 Shader 生成器（GLSL 文本生成 + GLSL→SPIR-V 编译）编进引擎 ──────
+# ON（默认，开发形态）：构建 src/ShaderGen 与用它的工具/示例，ULRE::Engine 含 ULRE.ShaderGen。
+# OFF（发行形态）：产品只打包预烘焙的 SPV；运行时不链接生成器、不调 InitShaderCompiler()，
+#   src/ShaderGen、src/Tools/ShaderGen、example/ 一并退出构建（它们都直接调生成器 API）。
+# C++ 侧同名宏登记在 inc/hgl/common/RenderOptions.h §2b，值域只有 0/1，判断写 `#if`。
+option(ULRE_ENABLE_SHADERGEN "Build and link the shader generator (GLSL -> SPIR-V)" ON)
+
+if(NOT ULRE_ENABLE_SHADERGEN)
+    # 全工程统一下发 0（不按配置区分），避免同一头在不同 TU 看到不同值。
+    add_compile_definitions(ULRE_ENABLE_SHADERGEN=0)
+endif()
+
+# ULRE_RUNTIME：运行时真正需要的一切，**不含** ULRE.ShaderGen。
+SET(ULRE_RUNTIME
+            CMCoreType
             CMMath
             CMCore
             CMAssetsManage
@@ -68,7 +82,7 @@ SET(ULRE    CMCoreType
             ULRE.ECS
             ULRE.Vulkan
             ULRE.ShaderRuntimeContract
-            ULRE.ShaderGen
+            ULRE.ShaderMaterialData
             ULRE.SceneGraph
             ULRE.InlineGeometry
             # HGL_MATH_LIB(glm::glm) 与 RENDER_LIBRARY(xcb, 仅 UNIX) 看似"与 ULRE 无关"，
@@ -77,6 +91,17 @@ SET(ULRE    CMCoreType
             ${HGL_MATH_LIB}
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES}
+)
+
+# ULRE_SHADERGEN：生成器侧，只在 ULRE_ENABLE_SHADERGEN=ON 时存在。
+IF(ULRE_ENABLE_SHADERGEN)
+    SET(ULRE_SHADERGEN ULRE.ShaderGen)
+ELSE()
+    SET(ULRE_SHADERGEN "")
+ENDIF()
+
+SET(ULRE    ${ULRE_RUNTIME}
+            ${ULRE_SHADERGEN}
 )
 
 use_cm_module(CoreType)
@@ -94,20 +119,31 @@ if(ULRE_ENABLE_QT)
     use_cm_module(QT)
 endif()
 
-# ── ULRE::Engine：把上面的平铺链接列表收敛成一个具名聚合目标（CMake 阶段 3）──────────
+# ── ULRE::Engine / ULRE::Runtime：把上面的平铺链接列表收敛成具名聚合目标（CMake 阶段 3）──
 # 消费方只写 `target_link_libraries(<t> PRIVATE ULRE::Engine)`，不必再展开 ${ULRE}。
+#
+# **ULRE::Runtime 是发行版的唯一入口**：与 ULRE::Engine 完全相同，只是**永不含**
+# ULRE.ShaderGen。开发机上的工具/示例仍可继续用 ULRE::Engine。
 #
 # 这里只做「等价聚合」，不拆逐模块依赖。原因：ULRE.Vulkan / ULRE.ShaderGen /
 # ULRE.SceneGraph / ULRE.ECS 四者两两互相 include 对方头文件，构成一个强连通分量，
 # 不存在可声明的有向依赖图；要拆必须先做架构级解环，不属于构建系统改造范围。
 # 证据见 doc/build-and-module-structure-audit-2026-10.md「ULRE 模块依赖是强连通分量」。
+add_library(ULRE_Runtime INTERFACE)
+target_link_libraries(ULRE_Runtime INTERFACE ${ULRE_RUNTIME})
+add_library(ULRE::Runtime ALIAS ULRE_Runtime)
+
 add_library(ULRE_Engine INTERFACE)
 target_link_libraries(ULRE_Engine INTERFACE ${ULRE})
 add_library(ULRE::Engine ALIAS ULRE_Engine)
 
 add_subdirectory(src)
 
-add_subdirectory(example)
+# example/ 全部示例直接调 ShaderGen API（MaterialDefinitionRegistry / 模板解析等），
+# 发行形态（ULRE_ENABLE_SHADERGEN=OFF）下没有它们可链接的目标，故一并退出构建。
+IF(ULRE_ENABLE_SHADERGEN)
+    add_subdirectory(example)
+ENDIF()
 
 # Qt + ULRE 集成示例（依赖 ULRE 主树 target 与 ${ULRE} 链接列表，
 # 故须在 add_subdirectory(src)/example 之后引入；源码位于 CMQT/examples）

@@ -14,6 +14,7 @@
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/ShaderProgramBuildBackend.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/mtl/MaterialOutputContract.h>
 #include<hgl/mtl/SceneRenderTemplateResolver.h>
@@ -605,6 +606,18 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const mtl::contract::PhysicalDeviceProfileLite *profile =
         GetPhysicalDeviceProfile();
 
+    mtl::ShaderProgramBuildBackend *build_backend = mtl::GetShaderProgramBuildBackend();
+    if (!build_backend)
+    {
+        // 发行形态且尚未装 Manifest 后端时走到这里：明确报错，不能静默降级，
+        // 否则会让「换个设备就少一批材质」变成难以定位的现象。
+        GLogError("[ShaderProgramManager] No shader program build backend installed; "
+                  "cannot build program for material id=%s name=%s",
+                  definition.definition_id.c_str(),
+                  definition.definition_name.c_str());
+        return nullptr;
+    }
+
     // ── Phase 3.5 纯算键早退 ──
     //
     // 同一材质变体在热路径上会被反复取用，而每个不同变体在首次编译后都已经
@@ -614,7 +627,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     //
     // 算不出键（声明闭包读不到磁盘）就静默落到全量路径，绝不自己造键。
     mtl::ShaderProgramKey pre_emit_key{};
-    if (mtl::ComputeMaterialProgramKey(
+    if (build_backend->ComputeProgramKey(
             profile, resolved_request, definition, pre_emit_key))
     {
         if (ShaderProgram *cached = TryGetCachedShaderProgram(pre_emit_key))
@@ -622,7 +635,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     }
 
     AutoDelete<mtl::ShaderBuildContext> ctx =
-        mtl::CreateMaterialFromDefinition(profile, definition, resolved_request);
+        build_backend->CreateBuildContext(profile, definition, resolved_request);
     if (!ctx)
     {
         GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
@@ -643,7 +656,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     if (ShaderProgram *cached = TryGetCachedShaderProgram(program_key))
         return cached;
 
-    if (!mtl::FinalizeShaderBuildContext(ctx))
+    if (!build_backend->FinalizeBuildContext(ctx))
     {
         GLogError(
             "[ShaderProgramManager] Material build finalization failed: id=%s",

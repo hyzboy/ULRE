@@ -18,6 +18,17 @@ class ShaderCreateInfo
 {
     OBJECT_LOGGER
 
+public:
+
+    /** 释放 `SPVData` 的回调。SPV 内存归编译器插件所有，所以释放必须由生成器提供；
+     *  发行形态（ULRE_ENABLE_SHADERGEN=0）没有生成器 ⇒ 该指针为 null，
+     *  此时 `spv_data` 恒为 null（只走 `cached_spv_data` 路径）。 */
+    using SPVReleaser = void (*)(SPVData *);
+
+private:
+
+    static SPVReleaser spv_releaser;
+
 protected:
 
     ShaderStage shader_stage;                      ///<着色器阶段
@@ -39,6 +50,9 @@ public:
 
     explicit ShaderCreateInfo(ShaderStage stage);
     virtual ~ShaderCreateInfo();
+
+    /** 由生成器在安装接缝时装上；传 nullptr 即卸载。 */
+    static void SetSPVReleaser(SPVReleaser releaser){spv_releaser=releaser;}
 
     const std::string &GetFinalGLSL()const{return final_shader;}
     void SetFinalGLSL(const std::string &glsl){final_shader=glsl;}

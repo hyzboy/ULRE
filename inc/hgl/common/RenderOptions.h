@@ -133,6 +133,32 @@
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════════
+ * §2b 发行形态开关（不是校验面，是**功能面的物理切割**）
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * 是否把 **Shader 生成器**（GLSL 文本生成 + GLSL→SPIR-V 编译）编进引擎。
+ *
+ * **发行版是 0**：产品只打包预烘焙的 SPV，运行时不需要生成器，也不需要 glslang。
+ * 开发形态是 1：一切按需现编，改 GLSL 立刻生效。
+ *
+ * 打开/关闭：`cmake -DULRE_ENABLE_SHADERGEN=OFF`（根 `CMakeLists.txt` 的 option；OFF 时
+ * 该 option 会 `add_compile_definitions(ULRE_ENABLE_SHADERGEN=0)`，全工程一致，不按配置区分）。
+ *
+ * 本开关管**三件事**：
+ *  1) 链接图：`ULRE::Engine` 里是否含 `ULRE.ShaderGen`；`ULRE::Runtime` 永不含它。
+ *  2) 构建图：`src/ShaderGen`、`src/Tools/ShaderGen`（回归门）、`example/` 是否参与构建。
+ *  3) 运行期：`AppFramework` 是否调用 `graph::InitShaderCompiler()` / `CloseShaderCompiler()`。
+ *
+ * ⚠ 值为 0 时**运行时仍然会算 ShaderProgramKey**（那是找 SPV 的身份，不是编译）——
+ *   「不算键」是另一件事，见 §4 处置记录与 shadergen-decoupling 设计文档。
+ */
+#ifndef ULRE_ENABLE_SHADERGEN
+#define ULRE_ENABLE_SHADERGEN 1
+#endif
+
+/* ══════════════════════════════════════════════════════════════════════════════
  * §3 只用 CMake、无 C++ 消费者（备查；别去代码里找它们）
  * ══════════════════════════════════════════════════════════════════════════════
  * · `ULRE_ENABLE_QT`（根 `CMakeLists.txt:30`）—— 是否构建 CMQT/Qt6 模块；只影响构建图。

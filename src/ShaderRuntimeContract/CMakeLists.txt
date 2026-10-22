@@ -25,6 +25,8 @@ set(SHADERRUNTIMECONTRACT_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenProfileTargetVersion.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenPhysicalDeviceProfileAdapter.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenPhysicalDeviceProfileJson.h
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderProgramBuildBackend.h
+    ShaderProgramBuildBackend.cpp
     ShaderRuntimeContract.cpp)
 SOURCE_GROUP("Contract Types" FILES ${SHADERRUNTIMECONTRACT_FILES})
 

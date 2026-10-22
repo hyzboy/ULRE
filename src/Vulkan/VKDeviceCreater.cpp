@@ -996,7 +996,11 @@ VulkanDevice *VulkanDeviceCreater::Create()
         OutputPhysicalDeviceCaps(physical_device);
     #endif//_DEBUG
 
+    // 把设备极限推给 GLSL 编译器做校验门槛。发行形态（ULRE_ENABLE_SHADERGEN=0）没有
+    // 编译器可推，整段消失；设备极限本身仍留在 PhysicalDeviceProfile 里给能力门槛用。
+#if ULRE_ENABLE_SHADERGEN
     mtl::SetShaderCompilerPhysicalDeviceProfile(physical_device->GetPhysicalDeviceProfile());
+#endif
 
     if(!RequirementCheck())
         return(nullptr);

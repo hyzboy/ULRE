@@ -1,8 +1,10 @@
-﻿#include<hgl/mtl/ShaderCreateInfo.h>
-#include"GLSLCompiler.h"
+#include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/ShaderArtifactContract.h>
+#include<hgl/mtl/ShaderCompilerSPVData.h>
 #include<cstring>
 namespace hgl{namespace graph::mtl{
+ShaderCreateInfo::SPVReleaser ShaderCreateInfo::spv_releaser=nullptr;
+
 ShaderCreateInfo::ShaderCreateInfo(const ShaderStage stage)
 {
     shader_stage=stage;
@@ -11,36 +13,10 @@ ShaderCreateInfo::ShaderCreateInfo(const ShaderStage stage)
 
 ShaderCreateInfo::~ShaderCreateInfo()
 {
-    if(spv_data)
-        FreeSPVData(spv_data);
-}
-
-bool ShaderCreateInfo::CompileFinalGLSLToSPV()
-{
-    if(final_shader.empty())
-        return(false);
-
-    if(!CompileToSPV())
-        return(false);
-
-    return(true);
-}
-
-bool ShaderCreateInfo::CompileToSPV()
-{
-    cached_spv_data.Clear();
-    if(spv_data)
-    {
-        FreeSPVData(spv_data);
-        spv_data=nullptr;
-    }
-
-    spv_data=CompileShader(uint32_t(shader_stage),final_shader.c_str());
-
-    if(!spv_data)
-        return(false);
-
-    return(true);
+    // 走回调而不是直连 FreeSPVData：SPV 内存归编译器插件，发行形态没有插件
+    // 也就没有可释放的对象（此路径下 spv_data 恒为 null）。
+    if(spv_data&&spv_releaser)
+        spv_releaser(spv_data);
 }
 
 bool ShaderCreateInfo::SetCachedSPVData(const void *data,const size_t byte_size)
@@ -54,9 +30,9 @@ bool ShaderCreateInfo::SetCachedSPVData(const void *data,const size_t byte_size)
      ||magic!=mtl::ShaderArtifactSPVMagic)
         return(false);
 
-    if(spv_data)
+    if(spv_data&&spv_releaser)
     {
-        FreeSPVData(spv_data);
+        spv_releaser(spv_data);
         spv_data=nullptr;
     }
 

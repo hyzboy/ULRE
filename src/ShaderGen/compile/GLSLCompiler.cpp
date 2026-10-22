@@ -276,6 +276,9 @@ namespace hgl
                             return false;
                         }
 
+                        // 生成器就绪 ⇒ 立刻接管运行时构建入口
+                        // （接缝见 inc/hgl/mtl/ShaderProgramBuildBackend.h）
+                        mtl::InstallShaderGenProgramBuildBackend();
                         return(true);
                     }
 
@@ -299,6 +302,9 @@ namespace hgl
 
         void CloseShaderCompiler()
         {
+            // 先摘接缝，避免关闭窗口期还有 TU 拿旧指针乱转
+            mtl::UninstallShaderGenProgramBuildBackend();
+
             g_include_root.Clear();
             g_include_root_utf8.Clear();
             g_include_root_ptr=nullptr;
