@@ -51,39 +51,13 @@ namespace hgl::graph::mtl::contract
     //    这里换代作废旧缓存。
     constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 8;
 
-    // 设备能力哈希（vendor/device/limits/features）。
+    // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
+    // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，
+    // 不改变发射出的指令；唯一真正进 GLSL 文本的设备量是 mesh invocation 上限，
+    // 它由 ClampMeshInvocationsByDevice 折进 definition_hash / interface_hash。
+    // 设备量一旦进键，一个 SPV 就得按显卡型号各存一份，发行版无法「只打包一套」。
     //
-    // ⚠️ 仅用于**诊断与能力门槛**（辨认目标机、判断某能力是否具备），
-    // **不得**再折进任何 SPV 缓存键：SPIR-V 跨设备通用，设备量一旦进键，
-    // 发行版的 SPV 资产就无法跨机型共享。缓存键统一用
-    // GetShaderCompilerProfileHash（见下）。
-    inline uint64 GetPhysicalDeviceProfileHash(
-        const PhysicalDeviceProfileLite *profile) noexcept
-    {
-        hgl::hash::FNV1aHasher64 h;
-
-        if (!profile)
-        {
-            h << uint32(0);
-            return h;
-        }
-
-        h << profile->vendor_id
-          << profile->device_id
-          << profile->api_version
-          << profile->limits.max_image_dimension_2d
-          << profile->limits.max_push_constants_size
-          << profile->limits.max_vertex_input_attributes
-          << profile->limits.max_bound_descriptor_sets
-          << profile->limits.max_uniform_buffer_range
-          << profile->limits.max_storage_buffer_range
-          << profile->features.geometry_shader
-          << profile->features.tessellation_shader
-          << profile->features.wide_lines
-          << profile->features.sampler_anisotropy;
-
-        return h;
-    }
+    // 缓存键统一用 GetShaderCompilerProfileHash（见下）。
 
     // 编译目标哈希 —— **全部** SPV 缓存键（stage key / program key / artifact
     // metadata）唯一允许使用的编译器身份维度。

@@ -46,8 +46,7 @@ namespace hgl::graph::mtl
             ShaderProgramArtifactMetadata program_metadata{};
             bool has_program_metadata = false;
 
-            /// 两个 stage 都实际采纳缓存 SPV 时为 true；部分命中由 stage 标志分别表示。
-            bool used_cached_program = false;
+            /// 两个 stage 是否各自实际采纳了缓存 SPV。
             bool used_cached_mesh_stage = false;
             bool used_cached_fragment_stage = false;
 
@@ -125,15 +124,11 @@ namespace hgl::graph::mtl
             {
                 return has_program_metadata;
             }
-            /// 兼容的 program 级汇总标志；独立缓存路径优先设置 stage 标志。
-            void SetUsedCachedProgram(const bool v) noexcept { used_cached_program = v; }
             void SetUsedCachedStages(const bool mesh, const bool fragment) noexcept
             {
                 used_cached_mesh_stage = mesh;
                 used_cached_fragment_stage = fragment;
-                used_cached_program = mesh && fragment;
             }
-            bool UsedCachedProgram() const noexcept { return used_cached_program; }
             bool UsedCachedMeshStage() const noexcept { return used_cached_mesh_stage; }
             bool UsedCachedFragmentStage() const noexcept { return used_cached_fragment_stage; }
             const ShaderProgramArtifactMetadata &
