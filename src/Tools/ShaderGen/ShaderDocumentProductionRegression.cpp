@@ -13,6 +13,7 @@
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
+#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/ShaderCompilerAPI.h>
@@ -572,12 +573,11 @@ namespace
     ///
     /// 其余 fixture 都跑 defer_finalize=true（只验文档，不碰 SPV），因此
     /// FinalizeShaderBuildContext 的命中分支在测试进程内根本不可达，
-    /// VerifyGeneratedSourceDigest 也就从未被执行过。这里用真实
-    /// ShaderArtifactStore 连做三次构建把那条路径跑通：
+    /// stage 缓存命中路径需要真实 GLSL 与 SPV。这里用真实
+    /// ShaderArtifactStore 连做三次构建验证独立命中：
     ///   1) 首次：未命中，落盘
     ///   2) 再次：命中（声明键与文本都没变）
-    ///   3) 篡改落盘摘要后再建：仍「命中」判定成立，但命中后校验必须
-    ///      拒绝它并重编译——这正是声明键欠近似时的兜底行为
+    ///   3) 篡改 Mesh 源摘要：Mesh miss 并重新编译，Fragment 仍命中
     bool VerifyCacheHitPostCheck()
     {
         MaterialDefinition definition{};
@@ -595,10 +595,10 @@ namespace
 
         const hgl::filesystem::Path cache_root =
             hgl::filesystem::Path(OS_TEXT("build"))
-            / OSString(OS_TEXT("cache-hit-post-check-probe"));
+            / OSString(OS_TEXT("cache-stage-independence-probe"));
 
         // 探针不要求空缓存：上一轮留下的产物只会让首个构建直接命中，
-        // 而「第二个构建必须命中」「篡改摘要后必须被拒」两条断言
+        // 而后续独立命中断言在冷/热缓存下语义一致。
         // 在冷/热缓存下语义一致，因此可重复运行。
         ShaderArtifactStore store(
             cache_root.ToOSString(), ShaderCacheMode::BuildIfMissing);
@@ -647,24 +647,28 @@ namespace
                 "build failed");
             return false;
         }
-        if (!second->UsedCachedProgram())
+        if (!second->UsedCachedMeshStage()
+         || !second->UsedCachedFragmentStage())
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] cache-hit probe: second "
-                "build must hit the artifact cache (identical declaration and "
-                "text)");
+                "build must independently hit both stage artifacts");
             return false;
         }
 
-        // 篡改落盘摘要：命中判定不看它（operator== 已排除），所以仍会「命中」，
-        // 命中后校验必须发现文本摘要对不上并拒绝。
-        ShaderProgramArtifactMetadata tampered = second_metadata;
-        tampered.generated_source_digest ^= 0x5A5A5A5Aull;
-        if (!store.SaveProgramMetadata(second->GetProgramLink(), tampered))
+        const ShaderCreateInfo *mesh =
+            second->GetStageShader(ShaderStage::Mesh);
+        const uint64 mesh_source_digest = ComputeGeneratedStageSourceDigest(
+            mesh->GetFinalGLSL().data(), mesh->GetFinalGLSL().size());
+        if (!store.SaveStageSPV(
+                second->GetProgramLink().mesh_stage,
+                mesh->GetSPVData(),
+                mesh->GetSPVSize(),
+                mesh_source_digest ^ 0x5A5A5A5Aull))
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] cache-hit probe: cannot "
-                "tamper stored metadata");
+                "tamper Mesh stage source digest");
             return false;
         }
 
@@ -677,14 +681,18 @@ namespace
                 "build failed");
             return false;
         }
-        if (third->UsedCachedProgram())
+        if (third->UsedCachedMeshStage()
+         || !third->UsedCachedFragmentStage())
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] cache-hit probe: "
-                "post-hit digest verification did not reject a tampered "
-                "stored digest");
+                "tampered Mesh digest must miss without invalidating the "
+                "Fragment stage artifact");
             return false;
         }
+        (void)first_metadata;
+        (void)second_metadata;
+        (void)third_metadata;
         return true;
     }
 
@@ -1309,8 +1317,8 @@ int main(const int argc, char **argv)
     if (!VerifyPayloadModuleIdentity())
         return 5;
 
-    // 缓存命中 + 命中后校验：其余 fixture 走 defer_finalize=true，
-    // 永不进入 FinalizeShaderBuildContext 的命中分支，必须单独探针。
+    // 独立 stage 缓存命中：其余 fixture 走 defer_finalize=true，
+    // 不进入 FinalizeShaderBuildContext，必须单独探针。
     // 探针会真正编译 SPV，因此需要 GLSLCompiler 插件。
     // dump-keys 只取声明键（不编译 SPV），跳过探针以保持与编译器版本无关。
     if (!options.dump_keys_path)

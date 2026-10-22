@@ -66,6 +66,11 @@ bool ShaderCreateInfo::SetCachedSPVData(const void *data,const size_t byte_size)
     return(true);
 }
 
+bool ShaderCreateInfo::HasSPVData() const
+{
+    return spv_data || !cached_spv_data.IsEmpty();
+}
+
 const uint32 *ShaderCreateInfo::GetSPVData()const
 {
     if(spv_data)

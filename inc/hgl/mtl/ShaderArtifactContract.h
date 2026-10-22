@@ -40,7 +40,7 @@ namespace hgl::graph::mtl
                 return row.extension;
         return "";
     }
-    constexpr uint32 ShaderArtifactFileHeaderSize = 40;
+    constexpr uint32 ShaderArtifactFileHeaderSize = 48;
     constexpr uint32 ShaderProgramMetadataPayloadSize =
         sizeof(uint64) * 9;
 
@@ -67,6 +67,8 @@ namespace hgl::graph::mtl
         uint64 key_digest = 0;
         uint64 payload_size = 0;
         uint64 payload_hash = 0;
+        // StageSPV source identity is recorded per artifact; ProgramMetadata leaves this zero.
+        uint64 source_digest = 0;
     };
 
     struct ShaderProgramArtifactMetadata
@@ -84,12 +86,8 @@ namespace hgl::graph::mtl
 
     /// 缓存命中判定：只比较"能由声明源算出"的字段。
     ///
-    /// generated_source_digest 刻意不参与：它是 emit 之后的 GLSL 文本产物，
-    /// 一旦参与判定，命中之前就必须先跑完 GLSL 生成——那正是解耦要消除的
-    /// 耦合。它的新职责是**命中后校验**：见
-    /// ComputeGeneratedSourceDigest() / VerifyGeneratedSourceDigest()，
-    /// 命中后拿落盘时的文本摘要与本轮实际生成的文本比对，用来发现
-    /// "声明键欠近似"（文本变了但声明键没变）。
+    /// generated_source_digest 刻意不参与 program metadata 判定；stage
+    /// source identity is checked against the independent stage artifact header.
     inline bool operator==(
         const ShaderProgramArtifactMetadata &lhs,
         const ShaderProgramArtifactMetadata &rhs) noexcept

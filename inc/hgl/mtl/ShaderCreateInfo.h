@@ -46,6 +46,7 @@ public:
 
     bool CompileFinalGLSLToSPV();                ///< 直接编译 final_shader 到 SPV
     bool SetCachedSPVData(const void *data, size_t byte_size);
+    bool HasSPVData() const;
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;
 };//class ShaderCreateInfo

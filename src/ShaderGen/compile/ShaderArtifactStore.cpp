@@ -179,9 +179,14 @@ namespace hgl::graph::mtl
         return path.ToOSString();
     }
 
-    bool ShaderArtifactStore::LoadStageSPV(const ShaderStageKey &key, ValueArray<uint8> &out_spv) const
+    bool ShaderArtifactStore::LoadStageSPV(
+        const ShaderStageKey &key,
+        ValueArray<uint8> &out_spv,
+        uint64 *out_source_digest) const
     {
         out_spv.Clear();
+        if (out_source_digest)
+            *out_source_digest = 0;
 
         int64 file_size = 0;
         void *file_data = filesystem::LoadFileToMemory(GetStagePath(key), file_size);
@@ -219,6 +224,8 @@ namespace hgl::graph::mtl
 
             out_spv.Resize(static_cast<int>(header.payload_size));
             std::memcpy(out_spv.GetData(), payload, static_cast<size_t>(header.payload_size));
+            if (out_source_digest)
+                *out_source_digest = header.source_digest;
             success = true;
         }
         while (false);
@@ -232,7 +239,8 @@ namespace hgl::graph::mtl
 
     bool ShaderArtifactStore::SaveStageSPV(const ShaderStageKey &key,
                                            const void *spv_data,
-                                           const uint64 spv_size)
+                                           const uint64 spv_size,
+                                           const uint64 source_digest)
     {
         if (cache_mode == ShaderCacheMode::ReadOnly
          || !IsValidSPVPayload(spv_data, spv_size))
@@ -251,6 +259,7 @@ namespace hgl::graph::mtl
         header.stage = static_cast<uint32>(key.stage);
         header.key_digest = key.GetDigest();
         header.payload_size = spv_size;
+        header.source_digest = source_digest;
         hgl::hash::FNV1aHasher64 hasher;
         hasher.AppendBytes(spv_data, static_cast<size_t>(spv_size));
         header.payload_hash = hasher;

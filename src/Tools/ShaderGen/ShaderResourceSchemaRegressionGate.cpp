@@ -740,18 +740,24 @@ namespace
 
         ShaderArtifactStore store(RepoRootOSPath("build"), ShaderCacheMode::BuildIfMissing);
         const uint32_t payload[] = {0x07230203u, 1u, 2u, 3u};
-        if (!store.SaveStageSPV(stage_key, payload, sizeof(payload)))
+        constexpr hgl::uint64 stage_source_digest = 0x534F55524345ull;
+        if (!store.SaveStageSPV(
+                stage_key, payload, sizeof(payload), stage_source_digest))
         {
             result.diagnostics.emplace_back("stage SPV cache save failed");
         }
         else
         {
             hgl::ValueArray<hgl::uint8> loaded;
-            if (!store.LoadStageSPV(stage_key, loaded)
+            hgl::uint64 loaded_source_digest = 0;
+            if (!store.LoadStageSPV(
+                    stage_key, loaded, &loaded_source_digest)
              || loaded.GetCount() != static_cast<int>(sizeof(payload))
-             || std::memcmp(loaded.GetData(), payload, sizeof(payload)) != 0)
+             || std::memcmp(loaded.GetData(), payload, sizeof(payload)) != 0
+             || loaded_source_digest != stage_source_digest)
             {
-                result.diagnostics.emplace_back("stage SPV cache round-trip failed");
+                result.diagnostics.emplace_back(
+                    "stage SPV/source digest cache round-trip failed");
             }
 
             ShaderStageKey wrong_key = stage_key;
@@ -1204,14 +1210,24 @@ namespace
                 {ShaderArtifactSPVMagic, 0x3101u, 0x3102u, 0x3103u};
             const uint32_t cached_fragment_spv[] =
                 {ShaderArtifactSPVMagic, 0x3201u, 0x3202u, 0x3203u};
+            const ShaderCreateInfo *lit_mesh =
+                lit_a->GetStageShader(ShaderStage::Mesh);
+            const ShaderCreateInfo *lit_fragment =
+                lit_a->GetStageShader(ShaderStage::Fragment);
             if (!hot_store.SaveStageSPV(
                     a.mesh_stage,
                     cached_vertex_spv,
-                    sizeof(cached_vertex_spv))
+                    sizeof(cached_vertex_spv),
+                    ComputeGeneratedStageSourceDigest(
+                        lit_mesh->GetFinalGLSL().data(),
+                        lit_mesh->GetFinalGLSL().size()))
              || !hot_store.SaveStageSPV(
                     a.fragment_stage,
                     cached_fragment_spv,
-                    sizeof(cached_fragment_spv))
+                    sizeof(cached_fragment_spv),
+                    ComputeGeneratedStageSourceDigest(
+                        lit_fragment->GetFinalGLSL().data(),
+                        lit_fragment->GetFinalGLSL().size()))
              || !hot_store.SaveProgramMetadata(
                     a,
                     lit_a->GetProgramArtifactMetadata()))
@@ -1223,6 +1239,8 @@ namespace
             {
                 lit_a->SetArtifactStore(&hot_store);
                 if (!FinalizeShaderBuildContext(lit_a.get())
+                 || !lit_a->UsedCachedMeshStage()
+                 || !lit_a->UsedCachedFragmentStage()
                  || !lit_a->GetStageShader(ShaderStage::Mesh)
                  || !lit_a->GetStageShader(ShaderStage::Fragment)
                  || lit_a->GetStageShader(
@@ -1251,7 +1269,7 @@ namespace
                 RepoRootOSPath("build/cache-read-only-miss"),
                 ShaderCacheMode::ReadOnly);
             lit_b->SetArtifactStore(&read_only_miss_store);
-            // read-only miss：不应命中元数据、不应编译（Finalize 返回 false）、
+            // read-only miss：任一 stage artifact 缺失都应失败、
             // 不应产生 SPV 数据（stage 对象存在但 SPV 为空）
             if (read_only_miss_store.HasProgramMetadata(
                     lit_b->GetProgramLink())

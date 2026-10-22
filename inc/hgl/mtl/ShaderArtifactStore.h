@@ -30,8 +30,16 @@ namespace hgl::graph::mtl
 
         ShaderCacheMode GetCacheMode() const noexcept { return cache_mode; }
 
-        bool LoadStageSPV(const ShaderStageKey &key, ValueArray<uint8> &out_spv) const;
-        bool SaveStageSPV(const ShaderStageKey &key, const void *spv_data, const uint64 spv_size);
+        /// Each stage SPV carries its own source digest and can be loaded independently.
+        bool LoadStageSPV(
+            const ShaderStageKey &key,
+            ValueArray<uint8> &out_spv,
+            uint64 *out_source_digest = nullptr) const;
+        bool SaveStageSPV(
+            const ShaderStageKey &key,
+            const void *spv_data,
+            const uint64 spv_size,
+            const uint64 source_digest = 0);
 
         /// 把生成该 stage SPV 的最终 GLSL 源以纯文本落盘：
         /// 与 stage SPV 缓存文件同样的主文件名（同目录，扩展名按 stage 定
@@ -48,6 +56,7 @@ namespace hgl::graph::mtl
             const ShaderLinkSpec &link,
             const ShaderProgramArtifactMetadata &metadata);
 
+        /// Compatibility helper for callers that still require an all-stage program load.
         bool LoadProgramArtifacts(
             const ShaderLinkSpec &link,
             const ShaderProgramArtifactMetadata &expected_metadata,

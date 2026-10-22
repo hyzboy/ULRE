@@ -24,6 +24,16 @@ namespace hgl::graph::mtl
         return source_hasher;
     }
 
+    uint64 ComputeGeneratedStageSourceDigest(
+        const char *glsl,
+        const size_t glsl_size) noexcept
+    {
+        if (!glsl || glsl_size == 0)
+            return 0;
+
+        return HashFinalShaderSource(glsl, glsl_size);
+    }
+
     bool MatchesGeneratedSourceDigest(
         const char *mesh_glsl,
         const size_t mesh_size,

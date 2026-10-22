@@ -2,7 +2,7 @@
 ///
 /// 流程（BDA 终态，描述符分配器已退役）：
 ///   1. 求解层构建契约/schema（数据槽信号经 requires_runtime_data_rows 直判）
-///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
+///   2. 使用 SetFinalGLSL；Finalize 时独立读取 stage 缓存并只编译 miss
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
@@ -26,33 +26,30 @@
 namespace hgl::graph::mtl {
 namespace
 {
-/// 命中后校验：落盘的 generated_source_digest 必须与本轮实际生成的
-/// GLSL 文本一致。
-///
-/// 不一致说明「声明键欠近似」——文本变了，但由声明源算出的 6 字段
-/// stage key 没变，缓存键因此把两份不同的 GLSL 混成了同一个。
-/// 这种情况下缓存的 SPV 不可信，必须当作未命中重编译；同时这条日志
-/// 是声明键忠实度的**运行时**证据，比构建期的对齐诊断更接近真实输入。
-bool VerifyGeneratedSourceDigest(
-    const ShaderCreateInfo &mesh,
-    const ShaderCreateInfo &fragment,
-    const uint64 stored_source_digest,
-    const ShaderLinkSpec &link)
+bool LoadCachedStage(
+    ShaderArtifactStore *store,
+    const ShaderStageKey &key,
+    const ShaderCreateInfo *shader,
+    ValueArray<hgl::uint8> &cached_spv)
 {
-    const std::string &mesh_glsl = mesh.GetFinalGLSL();
-    const std::string &fragment_glsl = fragment.GetFinalGLSL();
+    if (!store || !shader)
+        return false;
 
-    if (MatchesGeneratedSourceDigest(
-            mesh_glsl.data(), mesh_glsl.size(),
-            fragment_glsl.data(), fragment_glsl.size(),
-            stored_source_digest))
+    const std::string &glsl = shader->GetFinalGLSL();
+    const uint64 expected_digest =
+        ComputeGeneratedStageSourceDigest(glsl.data(), glsl.size());
+    uint64 stored_digest = 0;
+    if (expected_digest != 0
+     && store->LoadStageSPV(key, cached_spv, &stored_digest)
+     && stored_digest == expected_digest)
         return true;
 
-    GLogWarning(u8"[ShaderArtifactStore] program %s 命中后校验失败："
-                u8"落盘文本摘要=%llu —— 声明键欠近似，"
-                u8"丢弃缓存重编译",
-                ToU8String(link.BuildKey().ToString()).c_str(),
-                static_cast<unsigned long long>(stored_source_digest));
+    if (stored_digest != 0 && stored_digest != expected_digest)
+        GLogWarning(
+            u8"[ShaderArtifactStore] stage %s 命中后校验失败："
+            u8"source digest 不匹配，按 miss 重新编译",
+            ToU8String(key.ToString()).c_str());
+    cached_spv.Clear();
     return false;
 }
 } // namespace
@@ -70,41 +67,30 @@ bool FinalizeShaderBuildContext(
       || !build_spec->HasProgramArtifactMetadata()))
         return false;
 
-    bool cache_hit = false;
+    bool mesh_cache_hit = false;
+    bool fragment_cache_hit = false;
+    ShaderCreateInfo *mesh =
+        build_spec->GetStageShader(ShaderStage::Mesh);
+    ShaderCreateInfo *fragment =
+        build_spec->GetStageShader(ShaderStage::Fragment);
+    if (!mesh || !fragment)
+        return false;
+
     if (artifact_store)
     {
         const auto &link = build_spec->GetProgramLink();
         ValueArray<hgl::uint8> cached_vertex;
         ValueArray<hgl::uint8> cached_fragment;
-        uint64 stored_source_digest = 0;
-        cache_hit = artifact_store->LoadProgramArtifacts(
-            link,
-            build_spec->GetProgramArtifactMetadata(),
-            cached_vertex,
-            cached_fragment,
-            &stored_source_digest);
-        if (cache_hit)
-        {
-            // mesh shader 材质：顶点处理 stage 是 Mesh
-            ShaderCreateInfo *vertex =
-                build_spec->GetStageShader(ShaderStage::Mesh);
-            ShaderCreateInfo *fragment =
-                build_spec->GetStageShader(ShaderStage::Fragment);
-            // 命中后校验必须在 SetCachedSPVData 之前：文本摘要来自本轮
-            // 生成的 GLSL，校验不过就不能让缓存 SPV 顶替掉它。
-            cache_hit = vertex
-                    && fragment
-                    && VerifyGeneratedSourceDigest(
-                           *vertex, *fragment, stored_source_digest, link)
-                    && vertex->SetCachedSPVData(
-                           cached_vertex.GetData(),
-                           cached_vertex.GetCount())
-                    && fragment->SetCachedSPVData(
-                           cached_fragment.GetData(),
-                           cached_fragment.GetCount());
-        }
-        build_spec->SetUsedCachedProgram(cache_hit);
+        mesh_cache_hit = LoadCachedStage(
+            artifact_store, link.mesh_stage, mesh, cached_vertex)
+            && mesh->SetCachedSPVData(
+                cached_vertex.GetData(), cached_vertex.GetCount());
+        fragment_cache_hit = LoadCachedStage(
+            artifact_store, link.fragment_stage, fragment, cached_fragment)
+            && fragment->SetCachedSPVData(
+                cached_fragment.GetData(), cached_fragment.GetCount());
     }
+    build_spec->SetUsedCachedStages(mesh_cache_hit, fragment_cache_hit);
 
 #ifdef _DEBUG
     // ULRE_DUMP_GLSL=1: dump final GLSL of every material build (mesh+fragment).
@@ -117,51 +103,57 @@ bool FinalizeShaderBuildContext(
             build_spec->GetStageShader(ShaderStage::Fragment))
         DumpShaderGenGLSL("fs", frag_si->GetFinalGLSL());
 #endif
-    if (!cache_hit
+    if ((!mesh_cache_hit || !fragment_cache_hit)
      && artifact_store
      && artifact_store->GetCacheMode() == ShaderCacheMode::ReadOnly)
         return false;
 
-    if (!cache_hit && !build_spec->CreateShaderDirect())
+    if (!build_spec->CreateShaderDirect())
         return false;
 
-    if (!cache_hit && artifact_store)
+    if (artifact_store)
     {
         const auto &link = build_spec->GetProgramLink();
-        // mesh shader 材质：顶点处理 stage 是 Mesh
-        const ShaderCreateInfo *vertex =
-            build_spec->GetStageShader(ShaderStage::Mesh);
-        const ShaderCreateInfo *fragment =
-            build_spec->GetStageShader(ShaderStage::Fragment);
-        if (!vertex || !fragment
-         || !artifact_store->SaveStageSPV(
+        const uint64 mesh_source_digest =
+            ComputeGeneratedStageSourceDigest(
+                mesh->GetFinalGLSL().data(), mesh->GetFinalGLSL().size());
+        const uint64 fragment_source_digest =
+            ComputeGeneratedStageSourceDigest(
+                fragment->GetFinalGLSL().data(),
+                fragment->GetFinalGLSL().size());
+        if ((!mesh_cache_hit && !artifact_store->SaveStageSPV(
                 link.mesh_stage,
-                vertex->GetSPVData(),
-                vertex->GetSPVSize())
-         || !artifact_store->SaveStageSPV(
+                mesh->GetSPVData(),
+                mesh->GetSPVSize(),
+                mesh_source_digest))
+         || (!fragment_cache_hit && !artifact_store->SaveStageSPV(
                 link.fragment_stage,
                 fragment->GetSPVData(),
-                fragment->GetSPVSize()))
+                fragment->GetSPVSize(),
+                fragment_source_digest)))
             return false;
 
         if (!artifact_store->SaveProgramMetadata(
                 link,
                 build_spec->GetProgramArtifactMetadata()))
-            return false;
+            GLogWarning(
+                u8"[ShaderArtifactStore] failed to save program link metadata: %s",
+                ToU8String(link.BuildKey().ToString()).c_str());
 
         // 生成的最终 GLSL 源随 SPV 一起落盘：与 stage SPV 缓存文件
         // 同样的主文件名（同目录，扩展名按 stage 定——.mesh/.frag），
         // 便于日后对照分析。Best-effort：失败只记日志，不阻断 shader 缓存。
-        const std::string &mesh_glsl = vertex->GetFinalGLSL();
+        const std::string &mesh_glsl = mesh->GetFinalGLSL();
         if (!mesh_glsl.empty())
             artifact_store->SaveStageGLSL(link.mesh_stage,
                                           mesh_glsl.data(),
                                           mesh_glsl.size());
         const std::string &fragment_glsl = fragment->GetFinalGLSL();
         if (!fragment_glsl.empty())
-            artifact_store->SaveStageGLSL(link.fragment_stage,
-                                          fragment_glsl.data(),
-                                          fragment_glsl.size());
+            artifact_store->SaveStageGLSL(
+                link.fragment_stage,
+                fragment_glsl.data(),
+                fragment_glsl.size());
     }
 
     return true;
