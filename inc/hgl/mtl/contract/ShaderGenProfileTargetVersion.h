@@ -42,10 +42,21 @@ namespace hgl::graph::mtl::contract
     // 7：Sky 模板整删纯校验用的 OutputPolicy slot（sky.glsl.tmpl 没有对应占位符，
     //    该模块从不发射）。resolved_template_hash 随 module_root_count 变化，
     //    sky 程序缓存自然失效；这里一并换代，避免新旧声明闭包混用。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 7;
+    // 8：编译目标哈希不再折叠物理设备身份（vendor_id / device_id / api_version /
+    //    limits / features）。SPIR-V 是平台中立字节码，这些字段只影响 glslang 的
+    //    校验门槛，不改变发射出的指令；唯一真正进 GLSL 文本的设备量是 mesh
+    //    invocation 上限，它早已由 ClampMeshInvocationsByDevice 折进
+    //    definition_hash / interface_hash。此前把它们塞进 compiler_hash，等于同一份
+    //    SPV 按显卡型号各存一份 —— 发行版无法「只打包一套 SPV」。键值整体变化，
+    //    这里换代作废旧缓存。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 8;
 
-    // 设备能力哈希（vendor/device/limits/features）——编译目标哈希的超集包含它；
-    // 所有 key 维度统一用 GetShaderCompilerProfileHash（目标版本为常量，见上）
+    // 设备能力哈希（vendor/device/limits/features）。
+    //
+    // ⚠️ 仅用于**诊断与能力门槛**（辨认目标机、判断某能力是否具备），
+    // **不得**再折进任何 SPV 缓存键：SPIR-V 跨设备通用，设备量一旦进键，
+    // 发行版的 SPV 资产就无法跨机型共享。缓存键统一用
+    // GetShaderCompilerProfileHash（见下）。
     inline uint64 GetPhysicalDeviceProfileHash(
         const PhysicalDeviceProfileLite *profile) noexcept
     {
@@ -74,16 +85,25 @@ namespace hgl::graph::mtl::contract
         return h;
     }
 
+    // 编译目标哈希 —— **全部** SPV 缓存键（stage key / program key / artifact
+    // metadata）唯一允许使用的编译器身份维度。
+    //
+    // 只吃三样常量：Vulkan 目标版本、SPIR-V 目标版本、代码生成代数。这三者才是
+    // 真正决定 SPV 字节内容的因素；物理设备量一个都不进（理由见上一段）。
+    //
+    // `profile` 参数保留，一是守住调用点形状，二是未来若真出现「某设备必须换
+    // 产物」的需求时有落点；当前实现刻意不读它。
     inline uint64 GetShaderCompilerProfileHash(
         const PhysicalDeviceProfileLite *profile) noexcept
     {
+        (void)profile;
+
         uint32 vulkan_version = TARGET_VULKAN_VERSION;
         uint32 spv_version = TARGET_SPV_VERSION;
 
         hgl::hash::FNV1aHasher64 h;
 
-        h << GetPhysicalDeviceProfileHash(profile)
-          << vulkan_version
+        h << vulkan_version
           << spv_version
           << SHADERGEN_CODEGEN_GENERATION;
 

@@ -1318,14 +1318,23 @@ namespace
                     "different geometry formats must not share authoritative keys");
             }
 
+            // 编译目标哈希只由「目标 Vulkan 版本 + 目标 SPIR-V 版本 + 代码生成代数」
+            // 决定。物理设备量（vendor / device / api_version / limits / features）
+            // **不得**再进任何 SPV 缓存键 —— SPIR-V 是平台中立字节码，设备量只影响
+            // glslang 的校验门槛，不改变发射出的指令；一旦进键，发行版就得按显卡型号
+            // 各烧一份产物，"只打包一套 SPV"这条产品要求直接不成立。
+            //
+            // 唯一真正进 GLSL 文本的设备量是 mesh invocation 上限，它走的是
+            // ClampMeshInvocationsByDevice → definition_hash / interface_hash，
+            // 与本断言关心的一般性设备身份无关。
             if (a.mesh_stage.compiler_hash
-                    == targeted.mesh_stage.compiler_hash
+                    != targeted.mesh_stage.compiler_hash
              || a.fragment_stage.compiler_hash
-                    == targeted.fragment_stage.compiler_hash
-             || a.BuildKey() == targeted.BuildKey())
+                    != targeted.fragment_stage.compiler_hash
+             || !(a.BuildKey() == targeted.BuildKey()))
             {
                 result.diagnostics.emplace_back(
-                    "compiler profile changes must invalidate authoritative keys");
+                    "physical device profile must NOT change authoritative keys");
             }
 
             const char *const shared_definition_ids[] =
@@ -1391,10 +1400,10 @@ namespace
                     &profile);
             if (context_a == 0
              || context_a == context_b
-             || context_a == context_targeted)
+             || context_a != context_targeted)
             {
                 result.diagnostics.emplace_back(
-                    "program build context must include geometry and device");
+                    "program build context must include geometry but not physical device");
             }
 
             // ambient provider 是**前向着色**的 program 身份维度（环境层选模块，
@@ -5833,8 +5842,10 @@ namespace
             const contract::PhysicalDeviceProfileLite *profile;
         };
 
-        // 两台设备的 compiler / resource 维度都必须逐位一致：两条路径共用同一份
-        // 维度计算，任何一侧漏吃 profile 都会在这里被抓出来。
+        // 两条路径（纯算键 / 全量构建）必须吃同一份 profile，且**设备身份本身
+        // 不再是键维度**：`targeted` 与 `default` 现在应当算出逐位相同的键。
+        // 保留两个变体是为了守住"profile 参数仍在链路上、且两侧对称消费它"，
+        // 任何一侧偷偷把设备量塞回键里都会在这里被判为分叉。
         const ProfileVariant profile_variants[] =
         {
             { "default",  nullptr },
