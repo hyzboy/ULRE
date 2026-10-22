@@ -357,6 +357,7 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
     if(ShaderModule *cached=shader_module_cache.FindName(ShaderStage::Compute,shader_module_name))
         return(cached);
 
+#if ULRE_ENABLE_SHADERGEN
     mtl::ShaderCreateInfo sci(ShaderStage::Compute);
 
     sci.SetFinalGLSL(glsl_source.c_str());
@@ -365,6 +366,13 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
         return(nullptr);
 
     return(CreateShaderModule(shader_module_name,&sci));
+#else
+    // 发行形态没有 GLSL→SPV 编译器：compute 也必须走预编译 SPV（后续阶段补齐
+    // compute 的 manifest 装载）。此处硬失败而不是悄悄回落。
+    GLogError(u8"[ShaderProgramManager] 生成器已编译出构建（ULRE_ENABLE_SHADERGEN=0），"
+                u8"无法在运行时编译 compute GLSL：%s",shader_module_name.c_str());
+    return(nullptr);
+#endif
 }
 
 ComputePipeline *ShaderProgramManager::CreateComputePipeline(const AnsiString &name,

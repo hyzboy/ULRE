@@ -1852,11 +1852,11 @@ int main(int argc, char** argv)
               "材质侧的 6 项采样器类型枚举已于 2026-10-11 S3b 收敛掉：类型与名字表唯一真源 = "
               "inc/hgl/common/TextureSamplerTypeDef.h 的 SamplerType（两套枚举数值不同，会让哈希与名字映射各说一套）",
               true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "static_cast<GLSLSamplerType>",
               "按索引序把名字映射成枚举值的解析器已删（枚举一改即静默错位）：改走 ParseSamplerType（大小写不敏感、未知名 ⇒ Error）",
               true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParsePolicy(", "MaterialVertexProviderPolicy 的名字表已归位到枚举定义处（MaterialRecipe.h，2026-10-11 S3b-2）："
               "解析文件里不得再有本地单向解析器", true },
             { "ShaderCodeModuleFile.cpp", OS_TEXT("src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp"),
@@ -1874,7 +1874,7 @@ int main(int argc, char** argv)
               "double_sided 全链已删，不得复活", true },
             { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
               "double_sided", "同上（S4b/D2）：overrides / 取用口 / 哈希输入里都不得再有它", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "double_sided", "同上（S4b/D2）：render_state 段不再解析该键（写入 ⇒ 未知键报错）", true },
             { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
               "double_sided", "同上（S4b/D2）：管线创建侧不再有该值的 cull NONE 覆盖分支", true },
@@ -1883,7 +1883,7 @@ int main(int argc, char** argv)
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"
               "（全仓 0 消费者）：Vk 枚举文本名的唯一真源 = inc/hgl/mtl/VkEnumText.h，不得再引入第二套注册表",
               true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "LessOrEqual",
               "Vk 枚举文本名单一真源 = inc/hgl/mtl/VkEnumText.h（S3a 收敛，2026-10-11）："
               "解析文件里不得再出现枚举名字面量，也不得再手写 name<->value 表",
@@ -1893,7 +1893,7 @@ int main(int argc, char** argv)
               "同上：sampler.toml 的 filter/mipmap_mode/address_mode/compare_op 一律走 VkEnumText.h",
               true },
             { "MaterialDefinitionFile.cpp",
-              OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+              OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "key != \"swizzle\"",
               "材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）已于 2026-10-11 S2 整删："
               "双端空转（0 材质授权 + 0 消费者），运行期采样器真源 = ShaderLibrary/sampler.toml 预设表；"
@@ -4498,17 +4498,17 @@ int main(int argc, char** argv)
               "inline const char *GetMaterialVertexNormalModeName(", 
               "顶点法线模式的名字表未归位（S3b-3 与 S3b-2 同址口径）" },
             // 禁复活：名字↔值不得再出现第二处（本地单向解析器）
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseVertexInput(", "本地单向顶点输入解析器复活（名字表已归位到 VertexShaderNodeConfig.h）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseMapping(", "本地单向位置映射解析器复活（应走 ParsePositionMappingMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseOrientation(", "本地单向朝向解析器复活（应走 ParseOrientationMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseScale(", "本地单向缩放解析器复活（应走 ParseScaleMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseProjection(", "本地单向投影解析器复活（应走 ParseProjectionMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseVertexNormalMode(", "本地单向法线模式解析器复活（应走 ParseMaterialVertexNormalMode）", true },
             // ⑪ 材质错误口径（2026-10-14 用户）：材质未知/写错 ⇒ **直接报错**，运行时走错误材质 = 棋盘格。
             //    加载期（单份定义写错）与运行期（配方引用的定义 ID 无法解析）两条路径都要出声；
@@ -4522,16 +4522,16 @@ int main(int argc, char** argv)
             // ⑫ B2（2026-10-14）：材质定义解析失败的诊断必须带**全路径**（render_state.pipeline.cull_mode）。
             //    机制 = 表路径栈 + RAII 作用域（ParseTableScope）；原「粘性单值 SetParseTable」只被键校验器
             //    调用 ⇒ 值解析失败时路径为空、或继承陈旧表名（指错位置）⇒ 禁复活。
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseTableScope render_state_table(\"render_state\");",
               "解析失败的诊断表路径栈丢失（值解析失败会报不出 render_state 层）" },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseTableScope pipeline_table(\"pipeline\");",
               "pipeline 子层未压栈（cull_mode 一类失败会丢掉 render_state.pipeline 前缀）" },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParseTableScope texture_item_table(\"textures\", texture_index);",
               "数组元素的索引路径丢失（纹理声明出错应报 resources.textures[i].<key>）" },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderGen/material_definition/MaterialDefinitionFile.cpp"),
+            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "SetParseTable(", "粘性单值表名 setter 复活（路径会变成陈旧值/空 ⇒ 指错位置）", true },
         };
 

@@ -34,7 +34,7 @@ set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/RenderTemplate.h
     ${SHADERGEN_INCLUDE_PATH}/ResolvedRenderTemplate.h
     ${SHADERGEN_INCLUDE_PATH}/SceneRenderTemplateResolver.h
-    template/RenderTemplate.cpp
+    template/RenderTemplateResolve.cpp
     ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
     template/FragmentTemplateComposer.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
@@ -85,10 +85,11 @@ set(GLSL_MODULE_FILES
 SOURCE_GROUP("GLSL Module" FILES ${GLSL_MODULE_FILES})
 
 # ── material_definition/ ─────────────────────────────────────────────────────
+# MaterialDefinitionFile.cpp（TOML 装载 + 定义注册表）已迁入
+# ULRE.ShaderMaterialData：发行形态照样要读 .material.toml 才能算程序键。
 set(MATERIAL_DEFINITION_FILES
     ${SHADERGEN_INCLUDE_PATH}/MaterialDefinitionRegistry.h
-    ${SHADERGEN_INCLUDE_PATH}/MaterialDefinitionFile.h
-    material_definition/MaterialDefinitionFile.cpp)
+    ${SHADERGEN_INCLUDE_PATH}/MaterialDefinitionFile.h)
 SOURCE_GROUP("Material Definition" FILES ${MATERIAL_DEFINITION_FILES})
 
 # ── contract/ ────────────────────────────────────────────────────────────────

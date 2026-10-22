@@ -8,7 +8,9 @@
 # ShaderGen，跨界的唯一通道是 inc/hgl/mtl/ShaderProgramBuildBackend.h。
 
 set(SHADERMATERIALDATA_FILES
+    MaterialDefinitionFile.cpp
     MaterialDefinitionRegistry.cpp
+    RenderTemplate.cpp
     ShaderArtifactStore.cpp
     ShaderCreateInfo.cpp
     SamplerPreset.cpp
