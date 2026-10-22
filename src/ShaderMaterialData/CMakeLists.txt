@@ -12,7 +12,10 @@ set(SHADERMATERIALDATA_FILES
     ShaderArtifactStore.cpp
     ShaderCreateInfo.cpp
     SamplerPreset.cpp
-    SceneRenderTemplateResolver.cpp)
+    SceneRenderTemplateResolver.cpp
+    ShaderProgramManifest.cpp
+    ShaderProgramManifestKey.cpp
+    ShaderProgramManifestBackend.cpp)
 
 add_cm_library(ULRE.ShaderMaterialData "ULRE"
     ${ROOT_INCLUDE_PATH}/hgl/mtl

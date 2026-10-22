@@ -15,6 +15,8 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/ShaderProgramBuildBackend.h>
+#include<hgl/mtl/ShaderProgramManifestBackend.h>
+#include<hgl/mtl/ShaderProgramManifestKey.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/mtl/MaterialOutputContract.h>
 #include<hgl/mtl/SceneRenderTemplateResolver.h>
@@ -607,6 +609,10 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         GetPhysicalDeviceProfile();
 
     mtl::ShaderProgramBuildBackend *build_backend = mtl::GetShaderProgramBuildBackend();
+    if (!build_backend
+     && mtl::EnsureShaderProgramManifestBackend(normalized_request.shader_artifact_store))
+        build_backend = mtl::GetShaderProgramBuildBackend();
+
     if (!build_backend)
     {
         // 发行形态且尚未装 Manifest 后端时走到这里：明确报错，不能静默降级，
@@ -662,6 +668,28 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
             "[ShaderProgramManager] Material build finalization failed: id=%s",
             definition.definition_id.c_str());
         return nullptr;
+    }
+
+    // ── 烘焙清单 ──
+    //
+    // 生成器形态在这里把「语义键 → program link」写进 program_manifest.pmf，发行
+    // 形态（无生成器）就是靠它查表。只在产物确实已经落进 store 时才写，避免清单
+    // 指向不存在的 SPV。Manifest 后端自己记录下来的是同一份数据，`Upsert` 幂等。
+    {
+        mtl::ShaderArtifactStore *artifact_store = normalized_request.shader_artifact_store;
+        mtl::ShaderProgramArtifactMetadata baked_metadata{};
+        if (artifact_store
+         && artifact_store->LoadProgramMetadata(ctx->GetProgramLink(), baked_metadata))
+        {
+            mtl::ShaderProgramManifestEntry baked_entry{};
+            baked_entry.lookup_key =
+                mtl::ComputeMaterialProgramManifestKey(definition, resolved_request, profile);
+            baked_entry.program_link = ctx->GetProgramLink();
+            baked_entry.requires_recipe_runtime_rows = ctx->RequiresRecipeRuntimeRows();
+
+            mtl::RecordShaderProgramManifestEntry(
+                artifact_store, profile, baked_entry);
+        }
     }
 
     return this->AcquireShaderProgram(program_key, ctx);

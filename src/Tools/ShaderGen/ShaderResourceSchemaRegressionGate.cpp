@@ -11,6 +11,10 @@
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
+#include <hgl/mtl/ShaderProgramManifest.h>
+#include <hgl/mtl/ShaderProgramManifestKey.h>
+#include <hgl/mtl/ShaderProgramManifestBackend.h>
+#include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/ShaderCodeModule.h>
@@ -6226,6 +6230,437 @@ namespace
         return result;
     }
 
+    /// 发行形态清单门
+    ///
+    /// 发行版没有生成器、没有 GLSL 源码，只能靠 `program_manifest.pmf` 把「运行时
+    /// 自算的语义键」映射到 program link。本门守三件事：
+    ///   1) 磁盘往返逐字段等值（序列化/反序列化不许丢字段、不许张冠李戴）；
+    ///   2) `ComputeMaterialProgramManifestKey` 对每个决定 SPV 内容的维度都敏感
+    ///      —— 任一维度漏折，发行形态就会取到别人的 SPV，而且是**静默**的；
+    ///   3) 损坏的清单必须整体拒绝，绝不"尽力装载半份"。
+    static GateResult RunProgramManifestCase()
+    {
+        GateResult result;
+        result.name = "PM.program-manifest-roundtrip";
+
+        // ── 1. 磁盘往返 ──
+        ShaderProgramManifest source;
+        constexpr hgl::uint64 kProfileHash = 0x1234'5678'9ABC'DEF0ull;
+        source.SetStamps(kProfileHash, contract::SHADERGEN_CODEGEN_GENERATION);
+
+        for (hgl::uint32 i = 1; i <= 4; ++i)
+        {
+            ShaderProgramManifestEntry entry{};
+            entry.lookup_key = 0x1000'0000ull + i;
+            entry.program_link.mesh_stage.stage = ShaderStage::Mesh;
+            entry.program_link.mesh_stage.definition_hash = 0x11ull * i;
+            entry.program_link.mesh_stage.glsl_module_graph_hash = 0x22ull * i;
+            entry.program_link.mesh_stage.interface_hash = 0x33ull * i;
+            entry.program_link.mesh_stage.resource_hash = 0x44ull * i;
+            entry.program_link.mesh_stage.compiler_hash = 0x55ull * i;
+            entry.program_link.fragment_stage.stage = ShaderStage::Fragment;
+            entry.program_link.fragment_stage.definition_hash = 0x66ull * i;
+            entry.program_link.fragment_stage.glsl_module_graph_hash = 0x77ull * i;
+            entry.program_link.fragment_stage.interface_hash = 0x88ull * i;
+            entry.program_link.fragment_stage.resource_hash = 0x99ull * i;
+            entry.program_link.fragment_stage.compiler_hash = 0xAAull * i;
+            entry.program_link.resource_layout_hash = 0xBBull * i;
+            entry.program_link.vertex_input_hash = 0xCCull * i;
+            entry.program_link.render_target_hash = 0xDDull * i;
+            entry.program_link.compiler_hash = 0xEEull * i;
+            entry.requires_recipe_runtime_rows = (i % 2) == 1;
+
+            if (!source.Upsert(entry))
+            {
+                result.diagnostics.emplace_back(
+                    "Upsert rejected a valid manifest entry");
+                break;
+            }
+
+            // 幂等：同一份内容重复写入不得报"有变化"。
+            if (source.Upsert(entry))
+                result.diagnostics.emplace_back(
+                    "Upsert reported a change for identical content");
+        }
+
+        if (source.GetEntryCount() != 4)
+            result.diagnostics.emplace_back(
+                "manifest entry count mismatch after upsert");
+
+        const std::filesystem::path temp_root =
+            std::filesystem::temp_directory_path() / "ulre-program-manifest-gate";
+        std::error_code ec;
+        std::filesystem::remove_all(temp_root, ec);
+
+        const hgl::OSString manifest_path =
+            MakeShaderProgramManifestPath(hgl::OSString(temp_root.wstring().c_str()));
+
+        if (!source.Save(manifest_path))
+        {
+            result.diagnostics.emplace_back("manifest Save failed");
+            result.passed = false;
+            return result;
+        }
+
+        ShaderProgramManifest loaded;
+        if (!loaded.Load(manifest_path))
+        {
+            result.diagnostics.emplace_back("manifest Load failed on freshly saved file");
+            result.passed = false;
+            return result;
+        }
+
+        if (loaded.GetCompilerProfileHash() != kProfileHash
+         || loaded.GetCodegenGeneration() != contract::SHADERGEN_CODEGEN_GENERATION
+         || loaded.GetEntryCount() != source.GetEntryCount())
+            result.diagnostics.emplace_back("manifest stamps/entry count lost in roundtrip");
+
+        for (hgl::uint32 i = 1; i <= 4; ++i)
+        {
+            const ShaderProgramManifestEntry *original =
+                source.Find(0x1000'0000ull + i);
+            const ShaderProgramManifestEntry *restored =
+                loaded.Find(0x1000'0000ull + i);
+
+            if (!original || !restored)
+            {
+                result.diagnostics.emplace_back(
+                    "manifest entry vanished in roundtrip");
+                continue;
+            }
+
+            if (*original != *restored)
+                result.diagnostics.emplace_back(
+                    "manifest entry differs after roundtrip");
+        }
+
+        // ── 2. 语义键敏感性 ──
+        //
+        // 每个维度都必须独立地把键推开；反之（两个不同变体算出同一个键）就会让
+        // 发行形态取到不匹配的 SPV —— 这种错误在运行时完全不报错。
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID("Lit", definition))
+                result.diagnostics.emplace_back(
+                    "material definition unavailable: Lit");
+            else
+            {
+                const GeometryVertexFormat geometry{
+                    {VertexSemantic::Position, VF_V3F},
+                    {VertexSemantic::TexCoord, VF_V2F},
+                    {VertexSemantic::Normal,   VF_V3F}
+                };
+                const GeometryVertexFormat other_geometry{
+                    {VertexSemantic::Position, VF_V3F},
+                    {VertexSemantic::TexCoord, VF_V2F}
+                };
+
+                MaterialDefinitionBuildRequest base{};
+                base.recipe.mtl_def_id = definition.definition_id;
+                NormalizeRecipe(base.recipe);
+                base.geometry_vertex_format = &geometry;
+                base.defer_finalize = true;
+                base.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
+
+                const hgl::uint64 base_key =
+                    ComputeMaterialProgramManifestKey(definition, base, nullptr);
+
+                if (base_key == 0)
+                    result.diagnostics.emplace_back(
+                        "manifest key is zero for a valid request");
+
+                if (ComputeMaterialProgramManifestKey(definition, base, nullptr)
+                    != base_key)
+                    result.diagnostics.emplace_back(
+                        "manifest key is not deterministic across calls");
+
+                MaterialDefinitionBuildRequest purpose = base;
+                purpose.shader_program_purpose = ShaderProgramPurpose::DepthOnly;
+                if (ComputeMaterialProgramManifestKey(definition, purpose, nullptr)
+                    == base_key)
+                    result.diagnostics.emplace_back(
+                        "manifest key ignores shader_program_purpose");
+
+                MaterialDefinitionBuildRequest ambient = base;
+                ambient.ambient_module_name = "AmbientVertexGlobalColor";
+                if (ComputeMaterialProgramManifestKey(definition, ambient, nullptr)
+                    == base_key)
+                    result.diagnostics.emplace_back(
+                        "manifest key ignores ambient_module_name");
+
+                MaterialDefinitionBuildRequest vertex_format = base;
+                vertex_format.geometry_vertex_format = &other_geometry;
+                if (ComputeMaterialProgramManifestKey(definition, vertex_format, nullptr)
+                    == base_key)
+                    result.diagnostics.emplace_back(
+                        "manifest key ignores geometry_vertex_format");
+
+                MaterialDefinitionBuildRequest recipe = base;
+                recipe.recipe.recipe_name = "gate-variant";
+                if (ComputeMaterialProgramManifestKey(definition, recipe, nullptr)
+                    == base_key)
+                    result.diagnostics.emplace_back(
+                        "manifest key ignores material recipe");
+
+                MaterialDefinitionBuildRequest primitive = base;
+                primitive.primitive_type =
+                    primitive.primitive_type == PrimitiveType::Triangles
+                        ? PrimitiveType::Lines
+                        : PrimitiveType::Triangles;
+                if (ComputeMaterialProgramManifestKey(definition, primitive, nullptr)
+                    == base_key)
+                    result.diagnostics.emplace_back(
+                        "manifest key ignores primitive_type");
+            }
+        }
+
+        // ── 3. 损坏清单必须整体拒绝 ──
+        {
+            const std::wstring manifest_file = manifest_path.c_str();
+
+            std::string bytes;
+            if (!ReadGoldenFile(
+                    std::filesystem::path(manifest_file).string(), bytes))
+                result.diagnostics.emplace_back(
+                    "cannot re-read saved manifest for corruption test");
+            else
+            {
+                // 改最后一个字节：落在最后一条 payload 里，应被校验和发现。
+                bytes.back() = static_cast<char>(bytes.back() ^ 0x5A);
+
+                const std::wstring corrupt_root =
+                    (temp_root / "corrupt").wstring();
+                const hgl::OSString corrupt_path =
+                    MakeShaderProgramManifestPath(
+                        hgl::OSString(corrupt_root.c_str()));
+
+                if (!WriteTextFile(
+                        std::filesystem::path(corrupt_root).string(), bytes))
+                    result.diagnostics.emplace_back(
+                        "cannot write corrupted manifest");
+                else
+                {
+                    ShaderProgramManifest corrupt;
+                    if (corrupt.Load(corrupt_path) || !corrupt.IsEmpty())
+                        result.diagnostics.emplace_back(
+                            "corrupted manifest was accepted");
+                }
+            }
+        }
+
+        std::filesystem::remove_all(temp_root, ec);
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    /// 发行形态**查表**链路端到端门
+    ///
+    /// 上一个门只验数据容器；这个门验的是运行时真正会走的那条路：装 Manifest 后端
+    /// → 用语义键查表 → 装载 program metadata 与两个 stage 的 SPV → 拼出可直接
+    /// 提交给 Vulkan 的 `ShaderBuildContext`。全过程不碰 GLSL、不碰编译器。
+    ///
+    /// 同时断言「查不到就硬失败」：`ambient_module_name` 一变，键就变，后端必须
+    /// 返回 nullptr 而不是凑一份近似产物。
+    static GateResult RunProgramManifestLookupCase()
+    {
+        GateResult result;
+        result.name = "PM.release-manifest-lookup";
+
+        MaterialDefinition definition{};
+        if (!TryGetMaterialDefinitionByID("Lit", definition))
+        {
+            result.diagnostics.emplace_back(
+                "material definition unavailable: Lit");
+            result.passed = false;
+            return result;
+        }
+
+        const GeometryVertexFormat geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal,   VF_V3F}
+        };
+
+        MaterialDefinitionBuildRequest request{};
+        request.recipe.mtl_def_id = definition.definition_id;
+        NormalizeRecipe(request.recipe);
+        request.geometry_vertex_format = &geometry;
+        request.defer_finalize = true;
+        request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
+        RenderTemplateValidationDiagnostic template_diagnostic{};
+        if (!ResolveSceneRenderTemplateRequest(
+                RenderTemplateID::ForwardLitShadowedAO,
+                hgl::graph::ShaderStage::Fragment,
+                MakeIdentityForwardLitProfile(),
+                request.render_template_request, template_diagnostic)
+         || !AppendMaterialRenderTemplateRoots(
+                definition, request.render_template_request))
+        {
+            result.diagnostics.emplace_back(
+                "render template resolution failed for Lit");
+            result.passed = false;
+            return result;
+        }
+
+        std::unique_ptr<ShaderBuildContext> baked(
+            CreateMaterialFromDefinition(nullptr, definition, request));
+        if (!baked || !baked->HasProgramLink() || !baked->HasProgramArtifactMetadata())
+        {
+            result.diagnostics.emplace_back(
+                "generator-side build failed to produce a program identity");
+            result.passed = false;
+            return result;
+        }
+
+        const std::filesystem::path store_root =
+            std::filesystem::path(RepoRootOSPath("build/cache-manifest-lookup").c_str());
+        std::error_code ec;
+        std::filesystem::remove_all(store_root, ec);
+
+        ShaderArtifactStore store(
+            hgl::OSString(store_root.wstring().c_str()),
+            ShaderCacheMode::BuildIfMissing);
+
+        // 参数化成对的假 SPIR-V：只要魔数正确、长度 4 字节对齐，装载侧就应当收下。
+        const uint32_t fake_mesh_spv[] =
+            {ShaderArtifactSPVMagic, 0x4101u, 0x4102u, 0x4103u};
+        const uint32_t fake_fragment_spv[] =
+            {ShaderArtifactSPVMagic, 0x4201u, 0x4202u, 0x4203u};
+
+        const ShaderLinkSpec &link = baked->GetProgramLink();
+        const ShaderProgramArtifactMetadata metadata =
+            baked->GetProgramArtifactMetadata();
+
+        if (!store.SaveStageSPV(
+                link.mesh_stage, fake_mesh_spv, sizeof(fake_mesh_spv), 0)
+         || !store.SaveStageSPV(
+                link.fragment_stage, fake_fragment_spv,
+                sizeof(fake_fragment_spv), 0)
+         || !store.SaveProgramMetadata(link, metadata))
+        {
+            result.diagnostics.emplace_back(
+                "failed to write program artifacts into the baking store");
+            result.passed = false;
+            return result;
+        }
+
+        ShaderProgramManifestEntry entry{};
+        entry.lookup_key =
+            ComputeMaterialProgramManifestKey(definition, request, nullptr);
+        entry.program_link = link;
+        entry.requires_recipe_runtime_rows = baked->RequiresRecipeRuntimeRows();
+
+        ShaderProgramBuildBackend *previous_backend =
+            GetShaderProgramBuildBackend();
+        SetShaderProgramBuildBackend(nullptr);
+
+        if (!EnsureShaderProgramManifestBackend(&store))
+        {
+            result.diagnostics.emplace_back(
+                "manifest backend installation failed");
+        }
+        else if (!RecordShaderProgramManifestEntry(&store, nullptr, entry))
+        {
+            result.diagnostics.emplace_back(
+                "manifest entry recording failed");
+        }
+        else
+        {
+            // 关键：把内存态丢掉，逼后端从磁盘重新装载，证明查表不依赖任何
+            // 同进程残留状态（发行形态开机就是这样冷的）。
+            UninstallShaderProgramManifestBackend();
+            if (!EnsureShaderProgramManifestBackend(&store))
+            {
+                result.diagnostics.emplace_back(
+                    "manifest backend reinstallation failed");
+            }
+            else if (GetShaderProgramManifestEntryCount() != 1)
+            {
+                result.diagnostics.emplace_back(
+                    "manifest reloaded from disk with unexpected entry count");
+            }
+            else
+            {
+                ShaderProgramBuildBackend *backend =
+                    GetShaderProgramBuildBackend();
+
+                ShaderProgramKey looked_up_key{};
+                if (!backend->ComputeProgramKey(
+                        nullptr, request, definition, looked_up_key)
+                 || looked_up_key.GetDigest() != link.BuildKey().GetDigest())
+                {
+                    result.diagnostics.emplace_back(
+                        "manifest lookup key does not match the baked program key");
+                }
+
+                std::unique_ptr<ShaderBuildContext> loaded(
+                    backend->CreateBuildContext(nullptr, definition, request));
+                if (!loaded)
+                {
+                    result.diagnostics.emplace_back(
+                        "manifest backend failed to assemble a build context");
+                }
+                else if (!loaded->HasProgramLink()
+                      || loaded->GetProgramLink().BuildKey().GetDigest()
+                            != link.BuildKey().GetDigest()
+                      || !loaded->UsedCachedMeshStage()
+                      || !loaded->UsedCachedFragmentStage()
+                      || loaded->RequiresRecipeRuntimeRows()
+                            != entry.requires_recipe_runtime_rows
+                      || !backend->FinalizeBuildContext(loaded.get()))
+                {
+                    result.diagnostics.emplace_back(
+                        "manifest-assembled build context is inconsistent");
+                }
+                else
+                {
+                    const ShaderCreateInfo *mesh =
+                        loaded->GetStageShader(ShaderStage::Mesh);
+                    const ShaderCreateInfo *fragment =
+                        loaded->GetStageShader(ShaderStage::Fragment);
+                    if (!mesh || !fragment
+                     || mesh->GetSPVSize() != sizeof(fake_mesh_spv)
+                     || fragment->GetSPVSize() != sizeof(fake_fragment_spv)
+                     || std::memcmp(
+                            mesh->GetSPVData(), fake_mesh_spv,
+                            sizeof(fake_mesh_spv)) != 0
+                     || std::memcmp(
+                            fragment->GetSPVData(), fake_fragment_spv,
+                            sizeof(fake_fragment_spv)) != 0)
+                    {
+                        result.diagnostics.emplace_back(
+                            "manifest-lookup SPV bytes do not match the baked artifacts");
+                    }
+                }
+
+                // 查不到必须硬失败：发行形态没有编译器可回落。
+                MaterialDefinitionBuildRequest ambient_miss = request;
+                ambient_miss.ambient_module_name = "AmbientVertexGlobalColor";
+                std::unique_ptr<ShaderBuildContext> miss(
+                    backend->CreateBuildContext(nullptr, definition, ambient_miss));
+                if (miss)
+                    result.diagnostics.emplace_back(
+                        "manifest backend must hard-fail on an unknown key");
+
+                ShaderProgramKey miss_key{};
+                if (backend->ComputeProgramKey(
+                        nullptr, ambient_miss, definition, miss_key))
+                    result.diagnostics.emplace_back(
+                        "manifest backend must not compute a key it cannot resolve");
+            }
+        }
+
+        // 无论成败都要把后端槽位还原，避免污染同进程里的其它门。
+        UninstallShaderProgramManifestBackend();
+        SetShaderProgramBuildBackend(previous_backend);
+
+        std::filesystem::remove_all(store_root, ec);
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderStructureDumpPilotCase()
     {
         GateResult result;
@@ -6463,6 +6898,8 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_cache) results.push_back(RunPreEmitProgramKeyParityCase());
     if (run_cache) results.push_back(RunPreEmitProgramKeyBenchmarkCase());
+    if (run_cache) results.push_back(RunProgramManifestCase());
+    if (run_cache) results.push_back(RunProgramManifestLookupCase());
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());

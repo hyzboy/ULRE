@@ -17,6 +17,13 @@ namespace hgl::graph::mtl
     constexpr const char ShaderArtifactSPVExtension[] = ".spv";
     constexpr const char ShaderArtifactMetadataExtension[] = ".meta";
 
+    // ── Shader program manifest（发行形态的查表入口）──
+    // 发行形态不带生成器 ⇒ 算不出 ShaderProgramKey（它由 GLSL 声明闭包派生）。
+    // Manifest 记录「轻量语义键 → program link」，让运行时用纯数据维度查表拿到
+    // 键与各 stage SPV，全程不碰 GLSL。文件直接放在缓存根目录下、与 stage/
+    // program 目录平级。
+    constexpr const char ShaderArtifactManifestFilename[] = "program_manifest.pmf";
+
     // ── 生成源（最终 GLSL）落盘扩展名按 shader stage 定（GLSL 命名惯例）──
     // mesh shader → .mesh；fragment shader → .frag；未来的 compute shader → .comp。
     // 源文件与对应 stage SPV 缓存文件共用同一主文件名（同目录，仅扩展名不同）。
@@ -47,8 +54,34 @@ namespace hgl::graph::mtl
     enum class ShaderArtifactKind : uint8
     {
         StageSPV = 0,
-        ProgramMetadata
+        ProgramMetadata,
+        /// 语义键 → program link 的查表清单（整个文件一个 artifact）。
+        /// header.key_digest = compiler_profile_hash，header.source_digest =
+        /// codegen generation —— 用既有 header 字段承载这两枚章，避免 payload 里重复。
+        ProgramManifest
     };
+
+    /// manifest payload 布局（小端，逐字段手写序列化，不 memcpy 结构体）：
+    ///   uint32 format_version
+    ///   uint32 entry_count
+    ///   entry[entry_count]
+    /// entry 布局（132 字节）：
+    ///   uint64 lookup_key
+    ///   stage  mesh     : uint32 stage + uint64[5]
+    ///   stage  fragment : uint32 stage + uint64[5]
+    ///   uint64 resource_layout_hash
+    ///   uint64 vertex_input_hash
+    ///   uint64 render_target_hash
+    ///   uint64 compiler_hash
+    ///   uint32 flags（bit0 = requires_recipe_runtime_rows）
+    constexpr uint32 ShaderProgramManifestFormatVersion = 1;
+    constexpr uint32 ShaderProgramManifestEntryPayloadSize =
+        sizeof(uint64)
+      + (sizeof(uint32) + sizeof(uint64) * 5)
+      + (sizeof(uint32) + sizeof(uint64) * 5)
+      + sizeof(uint64) * 4
+      + sizeof(uint32);
+    constexpr uint32 ShaderProgramManifestFlagRequiresRecipeRows = 0x1u;
 
     enum class ShaderCacheMode : uint8
     {

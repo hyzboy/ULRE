@@ -30,6 +30,9 @@ namespace hgl::graph::mtl
 
         ShaderCacheMode GetCacheMode() const noexcept { return cache_mode; }
 
+        /// 缓存根目录（`program_manifest.pmf` 等顶文件放在 `<root>/shader-cache/` 下）。
+        const OSString &GetRootPath() const noexcept { return root_path; }
+
         /// Each stage SPV carries its own source digest and can be loaded independently.
         bool LoadStageSPV(
             const ShaderStageKey &key,
