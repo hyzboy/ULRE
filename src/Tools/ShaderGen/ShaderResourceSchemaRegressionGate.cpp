@@ -27,6 +27,7 @@
 #include <hgl/log/Log.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
+#include <hgl/time/Time.h>
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <fstream>
 #include <filesystem>
@@ -5844,6 +5845,93 @@ namespace
         int incompatible = 0;
         int build_failed = 0;
 
+        // 单条变体的比对：两侧算键 → 逐字段比对。
+        // 抽成 lambda 是因为下面两遍扫描（显式模板 / 真实路由）必须走**完全相同**的
+        // 比对规则，否则"哪一遍更严"会随修改悄悄漂移。
+        const auto compare_variant =
+            [&](const std::string &label,
+                const contract::PhysicalDeviceProfileLite *device_profile,
+                const MaterialDefinition &definition,
+                const MaterialDefinitionBuildRequest &request)
+        {
+            ShaderProgramKey pre_emit_key{};
+            const bool pre_emit_ok = ComputeMaterialProgramKey(
+                device_profile, request, definition, pre_emit_key);
+
+            std::unique_ptr<ShaderBuildContext> ctx(
+                CreateMaterialFromDefinition(device_profile, definition, request));
+            if (!ctx || !ctx->HasProgramLink())
+            {
+                // 全量构建失败的组合由其它门负责报错；这里只是没有可比对象。
+                ++build_failed;
+                return;
+            }
+
+            const ShaderProgramKey full_key = ctx->GetProgramLink().BuildKey();
+
+            if (!pre_emit_ok)
+            {
+                // 早退路径算不出键而全量路径算得出 ⇒ 早退在此变体上永不生效。
+                result.diagnostics.emplace_back(
+                    label + ": pre-emit key unavailable while the full "
+                            "build succeeded (early-out path is dead)");
+                return;
+            }
+
+            struct KeyField
+            {
+                const char *name;
+                hgl::uint64 pre_emit;
+                hgl::uint64 full;
+            };
+
+            const KeyField fields[] =
+            {
+                { "mesh_stage",
+                  pre_emit_key.mesh_stage_digest,
+                  full_key.mesh_stage_digest },
+                { "fragment_stage",
+                  pre_emit_key.fragment_stage_digest,
+                  full_key.fragment_stage_digest },
+                { "resource_layout",
+                  pre_emit_key.resource_layout_hash,
+                  full_key.resource_layout_hash },
+                { "vertex_input",
+                  pre_emit_key.vertex_input_hash,
+                  full_key.vertex_input_hash },
+                { "render_target",
+                  pre_emit_key.render_target_hash,
+                  full_key.render_target_hash },
+                { "compiler",
+                  pre_emit_key.compiler_hash,
+                  full_key.compiler_hash }
+            };
+
+            std::string mismatched;
+            for (const KeyField &field : fields)
+            {
+                if (field.pre_emit == field.full)
+                    continue;
+                if (!mismatched.empty())
+                    mismatched += ",";
+                mismatched += field.name;
+                mismatched += "(";
+                mismatched += std::to_string(field.pre_emit);
+                mismatched += "!=";
+                mismatched += std::to_string(field.full);
+                mismatched += ")";
+            }
+
+            if (!mismatched.empty())
+            {
+                result.diagnostics.emplace_back(
+                    label + ": pre-emit key diverges on " + mismatched);
+                return;
+            }
+
+            ++compared;
+        };
+
         for (const char *definition_id : definition_ids)
         {
             MaterialDefinition definition{};
@@ -5879,87 +5967,73 @@ namespace
                         continue;
                     }
 
-                    const std::string label =
-                        std::string(definition_id) + "/" +
-                        template_variant.name + "/" + profile_variant.name;
+                    compare_variant(
+                        std::string(definition_id) + "/" + template_variant.name
+                            + "/" + profile_variant.name,
+                        profile_variant.profile, definition, request);
+                }
+            }
 
-                    ShaderProgramKey pre_emit_key{};
-                    const bool pre_emit_ok = ComputeMaterialProgramKey(
-                        profile_variant.profile, request, definition, pre_emit_key);
+            // ── 第二遍：走**真实路由入口** SelectSceneRenderTemplateRequest ──
+            // 第一遍刻意手挑模板 + 手挑场景 profile，覆盖的是"键的六个维度"；
+            // 它却绕过了运行时的两件事：路由决策与 ambient provider 覆盖。
+            // ambient 模块名是 program 身份的**源码维度**（换 ambient 算法 ⇒ 换
+            // fragment 源码 ⇒ 换 fragment_stage_digest），也是历史上最容易在
+            // 探针与全量之间分叉的地方，必须单独覆盖。
+            // 这里照抄运行时链路：NormalizeRecipe → SelectSceneRenderTemplateRequest
+            // → AppendMaterialRenderTemplateRoots → 两条路径各自算键。
+            struct AmbientVariant
+            {
+                const char *name;
+                const char *ambient_module_name;
+            };
 
-                    std::unique_ptr<ShaderBuildContext> ctx(
-                        CreateMaterialFromDefinition(
-                            profile_variant.profile, definition, request));
-                    if (!ctx || !ctx->HasProgramLink())
+            static const AmbientVariant ambient_variants[] =
+            {
+                { "ambient-default", nullptr },
+                { "ambient-ibl",     "indirect_ibl" }
+            };
+
+            static const ShaderProgramPurpose routed_purposes[] =
+            {
+                ShaderProgramPurpose::ForwardColor,
+                ShaderProgramPurpose::DepthOnly
+            };
+
+            for (const AmbientVariant &ambient_variant : ambient_variants)
+            {
+                for (const ShaderProgramPurpose routed_purpose : routed_purposes)
+                {
+                    MaterialDefinitionBuildRequest request{};
+                    request.recipe.mtl_def_id = definition.definition_id;
+                    NormalizeRecipe(request.recipe);
+                    request.geometry_vertex_format = &geometry;
+                    request.defer_finalize = true;
+                    request.shader_program_purpose = routed_purpose;
+                    request.ambient_module_name = ambient_variant.ambient_module_name;
+
+                    if (!SelectSceneRenderTemplateRequest(
+                            definition, routed_purpose, request.recipe,
+                            request.render_template_request,
+                            ambient_variant.ambient_module_name)
+                     || !AppendMaterialRenderTemplateRoots(
+                            definition, request.render_template_request))
                     {
-                        // 全量构建失败的组合由其它门负责报错；这里只是没有可比对象。
-                        ++build_failed;
+                        // 该定义在当前路由下没有可用模板 —— 不是本门的职责范围。
+                        ++incompatible;
                         continue;
                     }
 
-                    const ShaderProgramKey full_key =
-                        ctx->GetProgramLink().BuildKey();
-
-                    if (!pre_emit_ok)
+                    for (const ProfileVariant &profile_variant : profile_variants)
                     {
-                        result.diagnostics.emplace_back(
-                            label + ": pre-emit key unavailable while the full "
-                                    "build succeeded (early-out path is dead)");
-                        continue;
+                        compare_variant(
+                            std::string(definition_id) + "/routed:"
+                                + (routed_purpose == ShaderProgramPurpose::DepthOnly
+                                       ? "depth" : "forward")
+                                + "/" + ambient_variant.name + "/"
+                                + profile_variant.name,
+                            profile_variant.profile, definition, request);
                     }
-
-                    struct KeyField
-                    {
-                        const char *name;
-                        hgl::uint64 pre_emit;
-                        hgl::uint64 full;
-                    };
-
-                    const KeyField fields[] =
-                    {
-                        { "mesh_stage",
-                          pre_emit_key.mesh_stage_digest,
-                          full_key.mesh_stage_digest },
-                        { "fragment_stage",
-                          pre_emit_key.fragment_stage_digest,
-                          full_key.fragment_stage_digest },
-                        { "resource_layout",
-                          pre_emit_key.resource_layout_hash,
-                          full_key.resource_layout_hash },
-                        { "vertex_input",
-                          pre_emit_key.vertex_input_hash,
-                          full_key.vertex_input_hash },
-                        { "render_target",
-                          pre_emit_key.render_target_hash,
-                          full_key.render_target_hash },
-                        { "compiler",
-                          pre_emit_key.compiler_hash,
-                          full_key.compiler_hash }
-                    };
-
-                    std::string mismatched;
-                    for (const KeyField &field : fields)
-                    {
-                        if (field.pre_emit == field.full)
-                            continue;
-                        if (!mismatched.empty())
-                            mismatched += ",";
-                        mismatched += field.name;
-                        mismatched += "(";
-                        mismatched += std::to_string(field.pre_emit);
-                        mismatched += "!=";
-                        mismatched += std::to_string(field.full);
-                        mismatched += ")";
-                    }
-
-                    if (!mismatched.empty())
-                    {
-                        result.diagnostics.emplace_back(
-                            label + ": pre-emit key diverges on " + mismatched);
-                        continue;
-                    }
-
-                    ++compared;
                 }
             }
         }
@@ -5971,6 +6045,171 @@ namespace
         std::printf("[Q4] pre-emit program key parity: compared=%d "
                     "incompatible_template=%d full_build_failed=%d\n",
                     compared, incompatible, build_failed);
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    // 纯算键早退的**收益实测**。
+    //
+    // 这个门只做两件事：跑、报数。它断言的是**结构性**事实（同一变体上早退
+    // 必然比全量便宜），而不是绝对耗时阈值 —— 后者在 CI 抖动下只会变成假警报。
+    // 真正的价值在 [Q5] 那行输出：它把"早退到底省了多少"变成可对比的数字，
+    // 性能回退在前后两次跑之间一眼可见。
+    static GateResult RunPreEmitProgramKeyBenchmarkCase()
+    {
+        GateResult result;
+        result.name = "Q5.pre-emit-program-key-benchmark";
+
+        // 覆盖面刻意收窄：这里要的是"有代表性的数字"，不是"全变体普查"。
+        // 普查由 Q4 负责（它比的是键，不花计时预算）。
+        static const char *const definition_ids[] =
+        {
+            "Lit",
+            "UnlitTexture",
+            "VertexColor",
+            "VertexPaletteColor",
+            "DebugNormalColor",
+            "SkyCube",
+            "builtin/pure_color",
+            "builtin/text_gpu"
+        };
+
+        const GeometryVertexFormat geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal,   VF_V3F},
+            {VertexSemantic::Color,    VF_V4UN8}
+        };
+
+        // 重复次数只求"单变体的测量时长进入毫秒级、计时噪声占比可忽略"，
+        // 不求统计精度 —— 这是回归观察窗，不是基准测试框架。
+        constexpr int k_reps = 10;
+        constexpr int k_warmups = 2;
+
+        hgl::uint64 total_pre_emit_us = 0;
+        hgl::uint64 total_full_us = 0;
+        int measured = 0;
+
+        for (const char *definition_id : definition_ids)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(definition_id, definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("material definition unavailable: ") + definition_id);
+                continue;
+            }
+
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = definition.definition_id;
+            NormalizeRecipe(request.recipe);
+            request.geometry_vertex_format = &geometry;
+            request.defer_finalize = true;
+            request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
+
+            if (!SelectSceneRenderTemplateRequest(
+                    definition, request.shader_program_purpose, request.recipe,
+                    request.render_template_request, nullptr)
+             || !AppendMaterialRenderTemplateRoots(
+                    definition, request.render_template_request))
+            {
+                // 该定义没有可用的前向模板 —— 不参与计时。
+                continue;
+            }
+
+            // 预热：把 ShaderLibrary 的 GLSL 拉进 OS 文件缓存，并让各注册表的
+            // 惰性初始化（模块表 / 模板表）落在计时窗口之外。缺了这步，第一次
+            // 迭代会把冷启动 I/O 摊进结果，数字就没有可比性了。
+            bool warm_ok = false;
+            for (int i = 0; i < k_warmups; ++i)
+            {
+                ShaderProgramKey warm_key{};
+                const bool warm_pre_ok = ComputeMaterialProgramKey(
+                    nullptr, request, definition, warm_key);
+                std::unique_ptr<ShaderBuildContext> warm_ctx(
+                    CreateMaterialFromDefinition(nullptr, definition, request));
+                warm_ok = warm_pre_ok
+                       && warm_ctx && warm_ctx->HasProgramLink();
+            }
+            if (!warm_ok)
+            {
+                result.diagnostics.emplace_back(
+                    std::string(definition_id)
+                        + ": warm-up did not produce both keys (cannot measure)");
+                continue;
+            }
+
+            ShaderProgramKey pre_emit_key{};
+            bool pre_emit_ok = true;
+            const hgl::uint64 pre_emit_begin = hgl::GetUptimeUs();
+            for (int i = 0; i < k_reps; ++i)
+            {
+                pre_emit_ok = ComputeMaterialProgramKey(
+                    nullptr, request, definition, pre_emit_key) && pre_emit_ok;
+            }
+            const hgl::uint64 pre_emit_us = hgl::GetUptimeUs() - pre_emit_begin;
+
+            bool full_ok = true;
+            const hgl::uint64 full_begin = hgl::GetUptimeUs();
+            for (int i = 0; i < k_reps; ++i)
+            {
+                std::unique_ptr<ShaderBuildContext> ctx(
+                    CreateMaterialFromDefinition(nullptr, definition, request));
+                full_ok = (ctx && ctx->HasProgramLink()) && full_ok;
+            }
+            const hgl::uint64 full_us = hgl::GetUptimeUs() - full_begin;
+
+            if (!pre_emit_ok || !full_ok)
+            {
+                result.diagnostics.emplace_back(
+                    std::string(definition_id)
+                        + ": measured path stopped producing keys mid-run");
+                continue;
+            }
+
+            total_pre_emit_us += pre_emit_us;
+            total_full_us += full_us;
+            ++measured;
+
+            const double pre_emit_per_key =
+                double(pre_emit_us) / double(k_reps);
+            const double full_per_key = double(full_us) / double(k_reps);
+
+            std::printf("[Q5] %-26s pre_emit=%7.1f us/key  full=%7.1f us/key  "
+                        "ratio=%5.2fx  saving=%7.1f us/key\n",
+                        definition_id, pre_emit_per_key, full_per_key,
+                        pre_emit_per_key > 0.0
+                            ? full_per_key / pre_emit_per_key : 0.0,
+                        full_per_key - pre_emit_per_key);
+        }
+
+        if (measured == 0)
+        {
+            result.diagnostics.emplace_back(
+                "benchmark produced no measurable variant");
+            result.passed = false;
+            return result;
+        }
+
+        const double avg_pre_emit_us =
+            double(total_pre_emit_us) / double(measured * k_reps);
+        const double avg_full_us =
+            double(total_full_us) / double(measured * k_reps);
+
+        std::printf("[Q5] pre-emit program key benchmark: variants=%d reps=%d "
+                    "pre_emit=%.1f us/key  full=%.1f us/key  ratio=%.2fx  "
+                    "saving=%.1f us/key\n",
+                    measured, k_reps, avg_pre_emit_us, avg_full_us,
+                    avg_pre_emit_us > 0.0
+                        ? avg_full_us / avg_pre_emit_us : 0.0,
+                    avg_full_us - avg_pre_emit_us);
+
+        // 只断言结构性事实：早退不发射 GLSL 文本也不装配编译配置，聚合起来
+        // 必然比全量便宜。用聚合值而非逐变体值，避免单次抖动的假警报。
+        if (!(avg_pre_emit_us < avg_full_us))
+            result.diagnostics.emplace_back(
+                "aggregate pre-emit cost is not lower than the full build cost");
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -6212,6 +6451,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_cache) results.push_back(RunPreEmitProgramKeyParityCase());
+    if (run_cache) results.push_back(RunPreEmitProgramKeyBenchmarkCase());
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
