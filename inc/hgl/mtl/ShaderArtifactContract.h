@@ -24,6 +24,13 @@ namespace hgl::graph::mtl
     // program 目录平级。
     constexpr const char ShaderArtifactManifestFilename[] = "program_manifest.pmf";
 
+    // ── Compute program manifest ──
+    // compute 程序（如 GPU cull）没有材质定义，也没有 mesh/fragment 两段 link，
+    // 塞不进上面那份清单的定长记录里。它只有「程序名 → 一段 compute SPV」一条关系，
+    // 因此单独一份文件，格式机制完全相同（同一套 header / stamp / 校验和），
+    // 但记录只有 60 字节，且与材质清单互不影响 —— 一份损坏不会污染另一份。
+    constexpr const char ShaderArtifactComputeManifestFilename[] = "compute_manifest.pmf";
+
     // ── 生成源（最终 GLSL）落盘扩展名按 shader stage 定（GLSL 命名惯例）──
     // mesh shader → .mesh；fragment shader → .frag；未来的 compute shader → .comp。
     // 源文件与对应 stage SPV 缓存文件共用同一主文件名（同目录，仅扩展名不同）。
@@ -58,7 +65,10 @@ namespace hgl::graph::mtl
         /// 语义键 → program link 的查表清单（整个文件一个 artifact）。
         /// header.key_digest = compiler_profile_hash，header.source_digest =
         /// codegen generation —— 用既有 header 字段承载这两枚章，避免 payload 里重复。
-        ProgramManifest
+        ProgramManifest,
+        /// 程序名 → compute stage 的查表清单（整个文件一个 artifact）。
+        /// stamp 语义与 ProgramManifest 相同。
+        ComputeProgramManifest
     };
 
     /// manifest payload 布局（小端，逐字段手写序列化，不 memcpy 结构体）：
@@ -82,6 +92,22 @@ namespace hgl::graph::mtl
       + sizeof(uint64) * 4
       + sizeof(uint32);
     constexpr uint32 ShaderProgramManifestFlagRequiresRecipeRows = 0x1u;
+
+    /// compute manifest payload 布局（小端，逐字段手写序列化）：
+    ///   uint32 format_version
+    ///   uint32 entry_count
+    /// entry[entry_count]
+    /// entry 布局（60 字节）：
+    ///   uint64 program_key          （程序名 digest，运行时可算）
+    ///   stage  compute              : uint32 stage + uint64[5]
+    ///   uint32 push_constant_size   （布局与 SPV 的一致性契约）
+    ///   uint32 flags                （保留，当前恒 0）
+    constexpr uint32 ShaderComputeProgramManifestFormatVersion = 1;
+    constexpr uint32 ShaderComputeProgramManifestEntryPayloadSize =
+        sizeof(uint64)
+      + (sizeof(uint32) + sizeof(uint64) * 5)
+      + sizeof(uint32)
+      + sizeof(uint32);
 
     enum class ShaderCacheMode : uint8
     {
