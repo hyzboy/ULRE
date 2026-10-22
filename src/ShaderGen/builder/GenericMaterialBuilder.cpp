@@ -1464,58 +1464,136 @@ namespace hgl::graph::mtl
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // Phase 5 — compiler input / link spec
-        // (originally MaterialDefinitionRegistry.cpp:533-596)
+        // definition 预处理（Phase 0）
+        //
+        // BuildGenericMaterial 与 ComputeMaterialProgramKey 两条路径必须吃**同一份**
+        // 预处理结果，否则纯算键与全量键会在 OptionalFaceFallback 变体上分叉。
         // ═══════════════════════════════════════════════════════════════════
-        bool FinalizeProgramLink(
-            const contract::PhysicalDeviceProfileLite *profile,
+        bool PrepareResolvedDefinition(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
-            GenericMaterialBuildPlan &plan,
-            MaterialShaderCompilerInput &out_compiler_input,
-            MaterialCompileConfig &out_config)
+            MaterialDefinition &out_resolved_definition)
         {
-            out_compiler_input = MaterialShaderCompilerInput{
-                definition.definition_name.c_str(),
-                request.primitive_type
-            };
-            MaterialCompileConfig &config = out_config;
-            config.primitive_type = request.primitive_type;
-            config.shader_stage_flag_bits =
-                uint32(ShaderStage::MeshFragment);
-            plan.contract_definition = definition;
-            plan.contract_definition.vertex_varying =
-                plan.effective_vertex_varying;
-            config.material_definition = &plan.contract_definition;
-            config.resource_manifest = plan.manifest.IsValid() ? &plan.manifest : nullptr;
-            config.artifact_store = request.shader_artifact_store;
+            out_resolved_definition = definition;
+            if (definition.vertex_normal_mode
+                    == MaterialVertexNormalMode::OptionalFaceFallback
+             && request.geometry_vertex_format
+             && request.geometry_vertex_format->Find(VertexSemantic::Normal))
+            {
+                out_resolved_definition.vertex_varying.emit_world_normal = true;
+                if (!HasVertexSemanticRequirement(
+                        out_resolved_definition, VertexSemantic::Normal))
+                {
+                    out_resolved_definition.vertex_semantic_requirements.Add(
+                        MakeMaterialVertexSemanticRequirement(
+                            VertexSemantic::Normal));
+                }
+                out_resolved_definition.compile_defines.push_back(
+                    "HGL_MATERIAL_HAS_VERTEX_NORMAL");
+            }
+
+            return !out_resolved_definition.vertex_semantic_requirements.IsEmpty();
+        }
+
+        // program link 的三个独立哈希维度（不含 stage 声明键）
+        struct ProgramLinkHashes
+        {
+            uint64 resource_contract_hash = 0;
+            uint64 vertex_input_hash = 0;
+            uint64 compiler_hash = 0;
+        };
+
+        ProgramLinkHashes ComputeProgramLinkHashes(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MaterialDefinitionBuildRequest &request,
+            const GenericMaterialBuildPlan &plan)
+        {
+            ProgramLinkHashes hashes;
             // 资源布局身份 = manifest 内容哈希（2026-10-11 S1：描述符契约层删除）。
             // 等价式保留：原「契约哈希(空契约, manifest_hash)」= FNV1a(manifest_hash, FNV1a(uint32(0)))
             // —— 空契约的条目哈希是常量 ⇒ 逐位同值，stage key / resource_layout_hash 不变、
             // 不触发 SPV 与管线缓存整体失效。
-            const uint64 resource_contract_hash =
-                ComputeResourceLayoutHash(
-                    plan.depth_purpose, plan.manifest.stable_hash);
-            const uint64 vertex_input_hash = request.geometry_vertex_format
+            hashes.resource_contract_hash = ComputeResourceLayoutHash(
+                plan.depth_purpose, plan.manifest.stable_hash);
+            hashes.vertex_input_hash = request.geometry_vertex_format
                 ? request.geometry_vertex_format->GetVertexInputHash() : 0;
-            const uint64 compiler_hash =
-                contract::GetShaderCompilerProfileHash(profile);
+            hashes.compiler_hash = contract::GetShaderCompilerProfileHash(profile);
+            return hashes;
+        }
 
-            // ── stage key：优先声明键，读不到时回退文本派生 ──
-            //
-            // 声明键是权威路径：它只依赖声明输入，运行时不必跑一遍代码生成就能
-            // 得到同一组键。回退路径保留是因为声明闭包读取依赖 ShaderLibrary 的
-            // 磁盘状态——读不到时宁可算贵一点，也不能让材质编译失败。
+        // ═══════════════════════════════════════════════════════════════════
+        // program link 装配 —— 纯声明路径
+        //
+        // **只**吃 Phase ≤3.5 的产物：不读 plan.ms / plan.fs，因此可以在发射任何
+        // GLSL 文本之前算出与全量路径逐位相同的 program key。
+        // 声明键任一未就绪（磁盘闭包读不到）⇒ 返回 false，调用方回退文本派生。
+        // ═══════════════════════════════════════════════════════════════════
+        bool AssembleProgramLinkFromDeclaration(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MaterialDefinitionBuildRequest &request,
+            GenericMaterialBuildPlan &plan)
+        {
+            if (!plan.declaration_mesh.ready || !plan.declaration_fragment.ready)
+                return false;
+
+            const ProgramLinkHashes hashes =
+                ComputeProgramLinkHashes(profile, request, plan);
+
+            // 顶点输入格式是 program_link 的独立维度，但与 mesh stage 的
+            // varying 输出声明强耦合，仍然折进 interface_hash（两条路径一致）。
+            uint64 mesh_interface_hash = plan.declaration_mesh.interface_hash;
+            {
+                hgl::hash::FNV1aHasher64 interface_hasher;
+                interface_hasher << mesh_interface_hash << hashes.vertex_input_hash;
+                mesh_interface_hash = interface_hasher;
+            }
+
+            plan.program_link.mesh_stage = BuildDeclarationShaderStageKey(
+                ShaderStage::Mesh,
+                plan.declaration_mesh.definition_hash,
+                plan.declaration_mesh.module_graph_hash,
+                mesh_interface_hash,
+                hashes.resource_contract_hash,
+                hashes.compiler_hash);
+
+            plan.program_link.fragment_stage = BuildDeclarationShaderStageKey(
+                ShaderStage::Fragment,
+                plan.declaration_fragment.definition_hash,
+                plan.declaration_fragment.module_graph_hash,
+                plan.declaration_fragment.interface_hash,
+                hashes.resource_contract_hash,
+                hashes.compiler_hash);
+
+            plan.program_link.resource_layout_hash = hashes.resource_contract_hash;
+            plan.program_link.vertex_input_hash = hashes.vertex_input_hash;
+            plan.program_link.render_target_hash =
+                GetOutputContractHash(plan.output_contract);
+            plan.program_link.compiler_hash = hashes.compiler_hash;
+            return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // program link 装配 —— 文本派生回退路径
+        //
+        // 只在声明键不可用（磁盘闭包读不到）时走：直接用已发射的 GLSL 文本算
+        // 摘要。算得贵，但绝不让材质编译失败。mesh / fragment 两侧可独立回退。
+        // ═══════════════════════════════════════════════════════════════════
+        void AssembleProgramLinkFromText(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MaterialDefinitionBuildRequest &request,
+            GenericMaterialBuildPlan &plan)
+        {
+            const ProgramLinkHashes hashes =
+                ComputeProgramLinkHashes(profile, request, plan);
+            const uint64 resource_contract_hash = hashes.resource_contract_hash;
+            const uint64 vertex_input_hash = hashes.vertex_input_hash;
+            const uint64 compiler_hash = hashes.compiler_hash;
+
             const GenericMaterialBuildPlan::DeclarationKey *mesh_key =
                 plan.declaration_mesh.ready ? &plan.declaration_mesh : nullptr;
             const GenericMaterialBuildPlan::DeclarationKey *fragment_key =
                 plan.declaration_fragment.ready
                     ? &plan.declaration_fragment : nullptr;
-
-#ifdef _DEBUG
-            DumpShaderGenGLSL("mesh", plan.ms);
-            DumpShaderGenGLSL("fs", plan.fs);
-#endif
 
             uint64 mesh_definition_hash = 0;
             uint64 mesh_module_graph_hash = 0;
@@ -1591,12 +1669,53 @@ namespace hgl::graph::mtl
                 resource_contract_hash,
                 compiler_hash);
 
-            plan.program_link.resource_layout_hash =
-                resource_contract_hash;
+            plan.program_link.resource_layout_hash = resource_contract_hash;
             plan.program_link.vertex_input_hash = vertex_input_hash;
             plan.program_link.render_target_hash =
                 GetOutputContractHash(plan.output_contract);
             plan.program_link.compiler_hash = compiler_hash;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Phase 5 — compiler input / link spec
+        // (originally MaterialDefinitionRegistry.cpp:533-596)
+        // ═══════════════════════════════════════════════════════════════════
+        bool FinalizeProgramLink(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MaterialDefinition &definition,
+            const MaterialDefinitionBuildRequest &request,
+            GenericMaterialBuildPlan &plan,
+            MaterialShaderCompilerInput &out_compiler_input,
+            MaterialCompileConfig &out_config)
+        {
+            out_compiler_input = MaterialShaderCompilerInput{
+                definition.definition_name.c_str(),
+                request.primitive_type
+            };
+            MaterialCompileConfig &config = out_config;
+            config.primitive_type = request.primitive_type;
+            config.shader_stage_flag_bits =
+                uint32(ShaderStage::MeshFragment);
+            plan.contract_definition = definition;
+            plan.contract_definition.vertex_varying =
+                plan.effective_vertex_varying;
+            config.material_definition = &plan.contract_definition;
+            config.resource_manifest = plan.manifest.IsValid() ? &plan.manifest : nullptr;
+            config.artifact_store = request.shader_artifact_store;
+
+#ifdef _DEBUG
+            DumpShaderGenGLSL("mesh", plan.ms);
+            DumpShaderGenGLSL("fs", plan.fs);
+#endif
+
+            // ── stage key：优先纯声明装配（不读文本），读不到时回退文本派生 ──
+            //
+            // 声明键是权威路径：它只依赖声明输入，运行时不必跑一遍代码生成就能
+            // 得到同一组键 —— ComputeMaterialProgramKey 走的正是这条纯路径。
+            // 回退路径保留是因为声明闭包读取依赖 ShaderLibrary 的磁盘状态——
+            // 读不到时宁可算贵一点，也不能让材质编译失败。
+            if (!AssembleProgramLinkFromDeclaration(profile, request, plan))
+                AssembleProgramLinkFromText(profile, request, plan);
 
             {
                 std::vector<AnsiString> text_include_paths;
@@ -1627,6 +1746,54 @@ namespace hgl::graph::mtl
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // ComputeMaterialProgramKey — Phase 3.5 纯算键（不发射 GLSL 文本）
+    //
+    // 与 BuildGenericMaterial 的相位 1~3.5b 完全同源，只是到此为止：
+    // 不跑 GenerateStageSources（Phase 4），不建 ShaderBuildContext。
+    // 因此 `out_program_key` 与全量路径 `GetProgramLink().BuildKey()` 必须逐位
+    // 相同 —— 这条等价性由回归门 cache.pre-emit-program-key-parity 全变体校验。
+    //
+    // 探针语义：任何一步失败都只表示"本次算不出键"，不改动全局错误串 ——
+    // 调用方随后会走全量路径，由那条路径给出真正的错误诊断。
+    // ═══════════════════════════════════════════════════════════════════════
+    bool ComputeMaterialProgramKey(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialDefinitionBuildRequest &request,
+        const MaterialDefinition &definition,
+        ShaderProgramKey &out_program_key)
+    {
+        out_program_key = ShaderProgramKey{};
+
+        MaterialDefinition resolved_definition;
+        if (!PrepareResolvedDefinition(definition, request, resolved_definition))
+            return false;
+
+        const AnsiString saved_error = s_last_build_generic_material_error;
+
+        GenericMaterialBuildPlan plan{};
+        plan.primitive_type = request.primitive_type;
+
+        if (ResolvePurposeAndCoverage(resolved_definition, request, plan)
+         && ResolveVertexABI(resolved_definition, request, plan))
+        {
+            ResolveMeshStageMode(profile, resolved_definition, plan);
+
+            if (BuildResourceContract(resolved_definition, plan)
+             && BuildFragmentEmissionInput(resolved_definition, plan)
+             && BuildDeclarationKey(resolved_definition, plan)
+             && BuildMeshDeclarationKey(resolved_definition, plan)
+             && AssembleProgramLinkFromDeclaration(profile, request, plan))
+            {
+                out_program_key = plan.program_link.BuildKey();
+                return true;
+            }
+        }
+
+        s_last_build_generic_material_error = saved_error;
+        return false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // BuildGenericMaterial — orchestration
     // (originally MaterialDefinitionRegistry.cpp:218-603)
     // ═══════════════════════════════════════════════════════════════════════
@@ -1637,27 +1804,8 @@ namespace hgl::graph::mtl
         MaterialShaderDocumentCapture *document_capture)
     {
         s_last_build_generic_material_error.Clear();
-        MaterialDefinition resolved_definition = definition;
-        if (definition.vertex_normal_mode
-                == MaterialVertexNormalMode::OptionalFaceFallback
-         && request.geometry_vertex_format
-         && request.geometry_vertex_format->Find(VertexSemantic::Normal))
-        {
-            resolved_definition.vertex_varying.emit_world_normal = true;
-            if (!HasVertexSemanticRequirement(
-                    resolved_definition, VertexSemantic::Normal))
-            {
-                resolved_definition.vertex_semantic_requirements.Add(
-                    MakeMaterialVertexSemanticRequirement(
-                        VertexSemantic::Normal));
-            }
-            resolved_definition.compile_defines.push_back(
-                "HGL_MATERIAL_HAS_VERTEX_NORMAL");
-        }
-
-        const bool semantic_contract =
-            !resolved_definition.vertex_semantic_requirements.IsEmpty();
-        if (!semantic_contract)
+        MaterialDefinition resolved_definition;
+        if (!PrepareResolvedDefinition(definition, request, resolved_definition))
         {
             s_last_build_generic_material_error = "semantic_contract invalid";
             GLogError("[ShaderGen] Generic material contract invalid: name=%s semantic_requirements=%d",

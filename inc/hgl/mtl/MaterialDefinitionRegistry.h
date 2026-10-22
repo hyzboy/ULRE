@@ -7,6 +7,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include<hgl/mtl/ShaderCodeModuleRegistry.h>
+#include<hgl/mtl/ShaderProgramKey.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
@@ -133,6 +134,27 @@ bool BuildResolvedMaterialVertexABI(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request,
     MaterialResolvedVertexABI &out_abi);
+
+/**
+ * Phase 3.5 纯算键：跑到声明键为止，**不发射任何 GLSL 文本**。
+ *
+ * 热路径早退用：调用方拿到 program key 后可直接查内存缓存，命中即完全跳过
+ * Phase 4（数千行 GLSL 拼接）与整个 ShaderBuildContext 分配。
+ *
+ * 返回 false = 本次无法纯算出键（声明闭包读不到磁盘 / 声明输入不完整）——
+ * 调用方**必须**退回 CreateMaterialFromDefinition 全量路径，绝不能自己造键。
+ * 成功时 out_program_key 与全量路径 GetProgramLink().BuildKey() 逐位相同
+ * （回归门 cache.pre-emit-program-key-parity 全变体断言）。
+ *
+ * 注意：`request.render_template_request` 必须**已经**被解析好（含
+ * ResolveRuntimeRenderTemplateRequest 补入的 material provider roots）——
+ * 两条路径必须吃同一份 request，否则声明闭包不同 ⇒ 键必然分叉。
+ */
+bool ComputeMaterialProgramKey(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinitionBuildRequest &request,
+    const MaterialDefinition &definition,
+    ShaderProgramKey &out_program_key);
 
 VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format);
 inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, VkFormat fallback_format)
