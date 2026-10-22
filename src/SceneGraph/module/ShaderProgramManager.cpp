@@ -561,32 +561,22 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 namespace
 {
     // AcquireShaderProgram(request) 的公共前半段：
-    // 解析 definition → 创建构建上下文。失败返回 nullptr 并写日志。
-    mtl::ShaderBuildContext *BuildContextFromRequest(
-        const mtl::contract::PhysicalDeviceProfileLite *profile,
+    // 解析 definition + 补齐 render template request。
+    //
+    // 纯算键早退与全量构建**必须**吃同一份解析结果，否则两条路径会在
+    // render template roots 上分叉，算出不同的 program key。
+    bool ResolveBuildRequest(
         const mtl::MaterialDefinitionBuildRequest &request,
-        mtl::MaterialDefinition &out_definition)
+        mtl::MaterialDefinition &out_definition,
+        mtl::MaterialDefinitionBuildRequest &out_resolved_request)
     {
         if (!ResolveMaterialDefinitionForRequest(request, out_definition))
-            return nullptr;
+            return false;
 
-        mtl::MaterialDefinitionBuildRequest resolved_request = request;
-        if (!ResolveRuntimeRenderTemplateRequest(
-                out_definition, resolved_request,
-                resolved_request.render_template_request))
-            return nullptr;
-
-        AutoDelete<mtl::ShaderBuildContext> ctx =
-            mtl::CreateMaterialFromDefinition(
-                profile, out_definition, resolved_request);
-        if (!ctx)
-        {
-            GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
-                      out_definition.definition_id.c_str(),
-                      out_definition.definition_name.c_str());
-            return nullptr;
-        }
-        return ctx.Finish();
+        out_resolved_request = request;
+        return ResolveRuntimeRenderTemplateRequest(
+            out_definition, out_resolved_request,
+            out_resolved_request.render_template_request);
     }
 }//namespace
 
@@ -608,10 +598,38 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     normalized_request.shader_artifact_store = GetRuntimeShaderArtifactStore();
 
     mtl::MaterialDefinition definition{};
-    AutoDelete<mtl::ShaderBuildContext> ctx =
-        BuildContextFromRequest(GetPhysicalDeviceProfile(), normalized_request, definition);
-    if (!ctx)
+    mtl::MaterialDefinitionBuildRequest resolved_request{};
+    if (!ResolveBuildRequest(normalized_request, definition, resolved_request))
         return nullptr;
+
+    const mtl::contract::PhysicalDeviceProfileLite *profile =
+        GetPhysicalDeviceProfile();
+
+    // ── Phase 3.5 纯算键早退 ──
+    //
+    // 同一材质变体在热路径上会被反复取用，而每个不同变体在首次编译后都已经
+    // 在内存缓存里。此前无论命中与否都要先跑一遍全量构建（含 Phase 4 的数千
+    // 行 GLSL 拼接 + 整个 ShaderBuildContext 分配）才发现缓存里就有 —— 这里
+    // 的纯算键只跑到声明键为止，命中即零文本发射直接返回。
+    //
+    // 算不出键（声明闭包读不到磁盘）就静默落到全量路径，绝不自己造键。
+    mtl::ShaderProgramKey pre_emit_key{};
+    if (mtl::ComputeMaterialProgramKey(
+            profile, resolved_request, definition, pre_emit_key))
+    {
+        if (ShaderProgram *cached = TryGetCachedShaderProgram(pre_emit_key))
+            return cached;
+    }
+
+    AutoDelete<mtl::ShaderBuildContext> ctx =
+        mtl::CreateMaterialFromDefinition(profile, definition, resolved_request);
+    if (!ctx)
+    {
+        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
+                  definition.definition_id.c_str(),
+                  definition.definition_name.c_str());
+        return nullptr;
+    }
 
     if (!ctx->HasProgramLink())
     {
