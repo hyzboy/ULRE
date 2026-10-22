@@ -146,8 +146,9 @@ bool BuildResolvedMaterialVertexABI(
  * 成功时 out_program_key 与全量路径 GetProgramLink().BuildKey() 逐位相同
  * （回归门 cache.pre-emit-program-key-parity 全变体断言）。
  *
- * 注意：`request.render_template_request` 必须**已经**被解析好（含
- * ResolveRuntimeRenderTemplateRequest 补入的 material provider roots）——
+ * 注意：`request.render_template_request` 必须**已经**被解析好（先由
+ * SelectSceneRenderTemplateRequest 选定路由与 ambient provider，再由
+ * AppendMaterialRenderTemplateRoots 补入 material provider roots）——
  * 两条路径必须吃同一份 request，否则声明闭包不同 ⇒ 键必然分叉。
  */
 bool ComputeMaterialProgramKey(
