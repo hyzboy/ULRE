@@ -6462,10 +6462,72 @@ namespace
     ///
     /// 同时断言「查不到就硬失败」：`ambient_module_name` 一变，键就变，后端必须
     /// 返回 nullptr 而不是凑一份近似产物。
-    static GateResult RunProgramManifestLookupCase()
+    /// 把一次烘焙的「正确答案」写成文本，供另一进程（发行形态探针）对照。
+    /// 放在清单同目录下，探针只认「含 program_manifest.pmf 的那个目录」这一个路径。
+    /// 字段名与 RuntimeFormProbe.cpp 的 LoadExpectation() 严格对应，改一处必须同步另一处。
+    static bool WriteManifestExpectation(
+        const ShaderArtifactStore &store,
+        const MaterialDefinition &definition,
+        const ShaderProgramManifestEntry &entry)
+    {
+        const hgl::OSString manifest_os =
+            MakeShaderProgramManifestPath(store.GetRootPath());
+        const std::filesystem::path manifest_path(manifest_os.c_str());
+
+        std::ofstream out(
+            manifest_path.parent_path() / "expectation.txt", std::ios::binary);
+        if (!out)
+            return false;
+
+        const ShaderProgramKey program_key = entry.program_link.BuildKey();
+        out << "definition_id=" << definition.definition_id.c_str() << "\n"
+            << "program_digest=" << program_key.GetDigest() << "\n"
+            << "lookup_key=" << entry.lookup_key << "\n"
+            << "mesh_stage_digest=" << program_key.mesh_stage_digest << "\n"
+            << "fragment_stage_digest=" << program_key.fragment_stage_digest << "\n"
+            << "mesh_spv_bytes=" << sizeof(uint32_t) * 4 << "\n"
+            << "fragment_spv_bytes=" << sizeof(uint32_t) * 4 << "\n"
+            << "requires_recipe_runtime_rows="
+            << (entry.requires_recipe_runtime_rows ? 1 : 0) << "\n";
+        return out.good();
+    }
+
+    /// 把命令行给的目录解析成「真正含 program_manifest.pmf 的目录」。
+    /// ShaderArtifactStore 会在传入根下面再建一层 `shader-cache/`，这里把这一跳
+    /// 藏掉，避免命令行与探针必须知道这个内部布局。
+    static bool ResolveEmittedCacheDir(
+        const std::filesystem::path &root, hgl::OSString &out)
+    {
+        std::error_code ec;
+
+        if (std::filesystem::exists(root / "program_manifest.pmf", ec))
+        {
+            out = hgl::OSString(root.wstring().c_str());
+            return true;
+        }
+
+        const std::filesystem::path nested = root / "shader-cache";
+        if (std::filesystem::exists(nested / "program_manifest.pmf", ec))
+        {
+            out = hgl::OSString(nested.wstring().c_str());
+            return true;
+        }
+
+        return false;
+    }
+
+    /// keep_artifacts=true 时不清空 store_root，并把本次烘焙的期望值（含清单与两
+    /// stage SPV 的完整校验值）留在磁盘上 —— 供发行形态探针（RuntimeFormProbe，
+    /// ULRE_ENABLE_SHADERGEN=0 构建）跨进程消费，证明「生成器烘焙 → 无生成器运行时
+    /// 查表」这条链路成立。
+    static GateResult RunProgramManifestLookupCase(
+        const std::filesystem::path &store_root,
+        const bool keep_artifacts = false)
     {
         GateResult result;
-        result.name = "PM.release-manifest-lookup";
+        result.name = keep_artifacts
+            ? "PM.emit-release-cache"
+            : "PM.release-manifest-lookup";
 
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID("Lit", definition))
@@ -6513,10 +6575,9 @@ namespace
             return result;
         }
 
-        const std::filesystem::path store_root =
-            std::filesystem::path(RepoRootOSPath("build/cache-manifest-lookup").c_str());
         std::error_code ec;
-        std::filesystem::remove_all(store_root, ec);
+        if (!keep_artifacts)
+            std::filesystem::remove_all(store_root, ec);
 
         ShaderArtifactStore store(
             hgl::OSString(store_root.wstring().c_str()),
@@ -6655,7 +6716,19 @@ namespace
         UninstallShaderProgramManifestBackend();
         SetShaderProgramBuildBackend(previous_backend);
 
-        std::filesystem::remove_all(store_root, ec);
+        result.passed = result.diagnostics.empty();
+
+        if (!keep_artifacts)
+        {
+            std::filesystem::remove_all(store_root, ec);
+            return result;
+        }
+
+        // 发行形态探针要对着「已知正确值」比对，故把本次烘焙的结果固化成文本。
+        if (result.passed && !WriteManifestExpectation(
+                store, definition, entry))
+            result.diagnostics.emplace_back(
+                "failed to write manifest expectation file");
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -6819,6 +6892,52 @@ namespace
 
 int main(const int argc, char **argv)
 {
+    // 发行形态夹具烘焙模式：argc==3 且 argv[1]=="emit-release-cache"。
+    // 产物（manifest + 两 stage SPV + expectation.txt）留给 RuntimeFormProbe
+    // 在 ULRE_ENABLE_SHADERGEN=0 构建里消费。
+    if (argc == 3)
+    {
+        if (std::strcmp(argv[1], "emit-release-cache") != 0)
+        {
+            GLogError(
+                "[ShaderResourceSchemaRegressionGate] Unknown command: %s", argv[1]);
+            return 2;
+        }
+
+        if (!InitShaderCompiler())
+        {
+            GLogError(
+                "[ShaderResourceSchemaRegressionGate] Failed to initialize GLSL compiler.");
+            return 3;
+        }
+
+        const std::filesystem::path cache_root =
+            std::filesystem::absolute(std::filesystem::path(argv[2]));
+        const GateResult result = RunProgramManifestLookupCase(cache_root, true);
+
+        std::fprintf(result.passed ? stdout : stderr,
+                     "[%s] %s\n",
+                     result.passed ? "PASS" : "FAIL",
+                     result.name.c_str());
+
+        for (const auto &diag : result.diagnostics)
+            std::fprintf(stderr, "  - %s\n", diag.c_str());
+
+        if (result.passed)
+        {
+            hgl::OSString cache_dir;
+            if (ResolveEmittedCacheDir(cache_root, cache_dir))
+                std::fprintf(stdout, "[INFO] release cache emitted to %s\n",
+                             std::filesystem::path(cache_dir.c_str())
+                                 .string().c_str());
+            else
+                std::fprintf(stdout, "[INFO] release cache emitted under %s\n",
+                             cache_root.string().c_str());
+        }
+
+        return result.passed ? 0 : 1;
+    }
+
     if (argc > 2)
     {
         GLogError(
@@ -6899,7 +7018,9 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunPreEmitProgramKeyParityCase());
     if (run_cache) results.push_back(RunPreEmitProgramKeyBenchmarkCase());
     if (run_cache) results.push_back(RunProgramManifestCase());
-    if (run_cache) results.push_back(RunProgramManifestLookupCase());
+    if (run_cache) results.push_back(
+        RunProgramManifestLookupCase(
+            std::filesystem::path(RepoRootOSPath("build/cache-manifest-lookup").c_str())));
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
