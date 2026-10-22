@@ -5760,6 +5760,222 @@ namespace
         return out;
     }
 
+    /// Phase 3.5 纯算键一致性门
+    ///
+    /// 运行时 `ShaderProgramManager::AcquireShaderProgram` 会先只用声明路径算出
+    /// program key（`ComputeMaterialProgramKey`，全程不发射一个字节的 GLSL）去查内存缓存。
+    /// 只要纯算键与全量构建出的键有任何一位差异，缓存就会系统性漏命中；更糟的情况是
+    /// 命中**错误的** program。本门逐变体断言两条路径的键逐位相同。
+    ///
+    /// 同时断言"全量构建能成 ⇒ 纯算键必须也能成"。纯算键失败意味着早退整条失效、
+    /// 悄悄退化回全量路径（性能回退且无任何报错），所以这里把它当硬失败。
+    static GateResult RunPreEmitProgramKeyParityCase()
+    {
+        GateResult result;
+        result.name = "Q4.pre-emit-program-key-parity";
+
+        // 数据来源：ShaderLibrary/material/*.material.toml 的 id。
+        // 刻意硬编码而**不**扫目录 —— 门要能发现"某份定义被删除/改名"。
+        static const char *const definition_ids[] =
+        {
+            "Lit",
+            "UnlitTexture",
+            "VertexColor",
+            "VertexLuminance",
+            "VertexPaletteColor",
+            "DebugNormalColor",
+            "SkyCube",
+            "SkyMinimal",
+            "builtin/pure_color",
+            "builtin/checkerboard_2d",
+            "builtin/checkerboard_3d",
+            "builtin/text_gpu",
+            "builtin/text_gpu_bitmap"
+        };
+
+        const GeometryVertexFormat geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal,   VF_V3F},
+            {VertexSemantic::Color,    VF_V4UN8}
+        };
+
+        struct TemplateVariant
+        {
+            const char *name;
+            RenderTemplateID template_id;
+            ShaderProgramPurpose purpose;
+            SceneRenderTemplateProfile (*make_profile)() noexcept;
+        };
+
+        static const TemplateVariant template_variants[] =
+        {
+            { "forward-lit",   RenderTemplateID::ForwardLitShadowedAO,
+              ShaderProgramPurpose::ForwardColor,
+              &MakeIdentityForwardLitProfile },
+            { "forward-unlit", RenderTemplateID::ForwardUnlit,
+              ShaderProgramPurpose::ForwardColor,
+              &MakeForwardUnlitProfile },
+            { "shadow-opaque", RenderTemplateID::ShadowCasterOpaque,
+              ShaderProgramPurpose::DepthOnly,
+              &MakeShadowCasterProfile }
+        };
+
+        contract::PhysicalDeviceProfileLite targeted_profile{};
+        targeted_profile.api_version = contract::MakeVkVersion(1, 4);
+        targeted_profile.limits.max_uniform_buffer_range = 65536;
+        targeted_profile.limits.max_storage_buffer_range = 1ull << 30;
+
+        struct ProfileVariant
+        {
+            const char *name;
+            const contract::PhysicalDeviceProfileLite *profile;
+        };
+
+        // 两台设备的 compiler / resource 维度都必须逐位一致：两条路径共用同一份
+        // 维度计算，任何一侧漏吃 profile 都会在这里被抓出来。
+        const ProfileVariant profile_variants[] =
+        {
+            { "default",  nullptr },
+            { "targeted", &targeted_profile }
+        };
+
+        int compared = 0;
+        int incompatible = 0;
+        int build_failed = 0;
+
+        for (const char *definition_id : definition_ids)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(definition_id, definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("material definition unavailable: ") + definition_id);
+                continue;
+            }
+
+            for (const TemplateVariant &template_variant : template_variants)
+            {
+                for (const ProfileVariant &profile_variant : profile_variants)
+                {
+                    MaterialDefinitionBuildRequest request{};
+                    request.recipe.mtl_def_id = definition.definition_id;
+                    request.geometry_vertex_format = &geometry;
+                    request.defer_finalize = true;
+                    request.shader_program_purpose = template_variant.purpose;
+
+                    RenderTemplateValidationDiagnostic template_diagnostic{};
+                    if (!ResolveSceneRenderTemplateRequest(
+                            template_variant.template_id,
+                            hgl::graph::ShaderStage::Fragment,
+                            template_variant.make_profile(),
+                            request.render_template_request,
+                            template_diagnostic)
+                     || !AppendMaterialRenderTemplateRoots(
+                            definition, request.render_template_request))
+                    {
+                        // 模板与该定义本就不兼容 —— 不是本门的职责范围。
+                        ++incompatible;
+                        continue;
+                    }
+
+                    const std::string label =
+                        std::string(definition_id) + "/" +
+                        template_variant.name + "/" + profile_variant.name;
+
+                    ShaderProgramKey pre_emit_key{};
+                    const bool pre_emit_ok = ComputeMaterialProgramKey(
+                        profile_variant.profile, request, definition, pre_emit_key);
+
+                    std::unique_ptr<ShaderBuildContext> ctx(
+                        CreateMaterialFromDefinition(
+                            profile_variant.profile, definition, request));
+                    if (!ctx || !ctx->HasProgramLink())
+                    {
+                        // 全量构建失败的组合由其它门负责报错；这里只是没有可比对象。
+                        ++build_failed;
+                        continue;
+                    }
+
+                    const ShaderProgramKey full_key =
+                        ctx->GetProgramLink().BuildKey();
+
+                    if (!pre_emit_ok)
+                    {
+                        result.diagnostics.emplace_back(
+                            label + ": pre-emit key unavailable while the full "
+                                    "build succeeded (early-out path is dead)");
+                        continue;
+                    }
+
+                    struct KeyField
+                    {
+                        const char *name;
+                        hgl::uint64 pre_emit;
+                        hgl::uint64 full;
+                    };
+
+                    const KeyField fields[] =
+                    {
+                        { "mesh_stage",
+                          pre_emit_key.mesh_stage_digest,
+                          full_key.mesh_stage_digest },
+                        { "fragment_stage",
+                          pre_emit_key.fragment_stage_digest,
+                          full_key.fragment_stage_digest },
+                        { "resource_layout",
+                          pre_emit_key.resource_layout_hash,
+                          full_key.resource_layout_hash },
+                        { "vertex_input",
+                          pre_emit_key.vertex_input_hash,
+                          full_key.vertex_input_hash },
+                        { "render_target",
+                          pre_emit_key.render_target_hash,
+                          full_key.render_target_hash },
+                        { "compiler",
+                          pre_emit_key.compiler_hash,
+                          full_key.compiler_hash }
+                    };
+
+                    std::string mismatched;
+                    for (const KeyField &field : fields)
+                    {
+                        if (field.pre_emit == field.full)
+                            continue;
+                        if (!mismatched.empty())
+                            mismatched += ",";
+                        mismatched += field.name;
+                        mismatched += "(";
+                        mismatched += std::to_string(field.pre_emit);
+                        mismatched += "!=";
+                        mismatched += std::to_string(field.full);
+                        mismatched += ")";
+                    }
+
+                    if (!mismatched.empty())
+                    {
+                        result.diagnostics.emplace_back(
+                            label + ": pre-emit key diverges on " + mismatched);
+                        continue;
+                    }
+
+                    ++compared;
+                }
+            }
+        }
+
+        if (result.diagnostics.empty() && compared == 0)
+            result.diagnostics.emplace_back(
+                "no variant produced a comparable pre-emit program key");
+
+        std::printf("[Q4] pre-emit program key parity: compared=%d "
+                    "incompatible_template=%d full_build_failed=%d\n",
+                    compared, incompatible, build_failed);
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderStructureDumpPilotCase()
     {
         GateResult result;
@@ -5995,6 +6211,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunComposedStageInterfaceCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
+    if (run_cache) results.push_back(RunPreEmitProgramKeyParityCase());
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
