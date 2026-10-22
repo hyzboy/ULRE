@@ -5,6 +5,10 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/common/ShaderStageDef.h>
+// 生成器开关（`#if ULRE_ENABLE_SHADERGEN`）的唯一定义处：ON 时头内默认 1，
+// OFF 时 CMake 全局下发 0。必须显式包含，不能靠间接包含 —— 否则开发形态会
+// 误判为 0，把 compute 的现编路径整条摘掉。
+#include<hgl/common/RenderOptions.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
