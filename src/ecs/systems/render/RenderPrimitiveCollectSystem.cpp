@@ -620,6 +620,46 @@ namespace hgl::ecs
                 }
             }
 
+            // ── 材质私有数据 SSBO 行绑定 ────────────────────────────────────────
+            // 程序一旦声明需要 per-instance 运行时数据行（材质私有字段 或 纹理引用索引），
+            // 渲染准备阶段就必须能拿到一行真实存在的 SSBO 行地址。
+            //
+            // 这里原本没有任何校验：绑定位无效时 MaterializeRecipeRowsForPrimitive 只会把
+            // material_row_gpu 留在 0，然后把 BDA 地址 0 直接发给 shader —— 着色器不会
+            // 报错也不会崩，只是从此读到「第一行」别人的材质数据（黑块/错色/随机闪烁），
+            // 排查成本极高。所以在解析期就拒绝，让图元回退到错误材质，问题当场可见。
+            if (material_program->RequiresRecipeRuntimeRows())
+            {
+                const auto &private_binding = recipe.material_ssbo_binding;
+                if (!private_binding.IsValid())
+                {
+                    GLogError(
+                        "[MaterialBinding] Program requires runtime rows but material SSBO binding is invalid owner=%s definition=%s ssbo_id=%u data_index=%u",
+                        owner_name ? owner_name : "<null>",
+                        definition.definition_id.c_str(),
+                        private_binding.ssbo_id,
+                        private_binding.data_index);
+                    return false;
+                }
+
+                // ssbo_type 决定行的**布局**（字段宽度/顺序由该类型的结构版本给出）。
+                // 类型错配会让 shader 按 A 结构读 B 结构的字节，同样不会报错，
+                // 只会读到一堆看似合理的垃圾值。
+                if (private_binding.ssbo_type
+                        != definition.material_private_data)
+                {
+                    GLogError(
+                        "[MaterialBinding] Material SSBO type mismatch owner=%s definition=%s expected=%s actual=%s",
+                        owner_name ? owner_name : "<null>",
+                        definition.definition_id.c_str(),
+                        graph::GetGlobalSSBOTypeName(
+                            definition.material_private_data),
+                        graph::GetGlobalSSBOTypeName(
+                            private_binding.ssbo_type));
+                    return false;
+                }
+            }
+
             return true;
         }
 

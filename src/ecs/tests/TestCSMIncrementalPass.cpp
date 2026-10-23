@@ -4606,6 +4606,16 @@ int main(int argc, char** argv)
               "material_ssbo_binding = binding",
               "回退配方没有材质 SSBO 绑定（着色器读不到根颜色）" },
 
+            // ③-b 材质私有数据行校验：程序要行就必须有行，且类型必须与定义声明一致
+            //     （原本缺校验：绑定位无效时 material_row_gpu 留在 0，BDA 地址 0 直接
+            //      发给 shader —— 不报错、不崩，只是读到第一行别人的材质数据）
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "Program requires runtime rows but material SSBO binding is invalid",
+              "缺「程序要运行时行但绑定位无效」的拒绝（图元会带着 BDA 地址 0 渲染）" },
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "Material SSBO type mismatch",
+              "缺「材质 SSBO 类型与定义声明不符」的拒绝（shader 按 A 结构读 B 结构的字节）" },
+
             // ④ 反向守卫按新语义改（新语义守卫在位，不是静默放水）
             { "RenderStrategyParity.h", OS_TEXT("inc/hgl/ecs/support/RenderStrategyParity.h"),
               "ParityCheckFallbackMaterial(",
