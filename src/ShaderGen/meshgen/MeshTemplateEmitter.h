@@ -87,6 +87,35 @@ namespace hgl::graph::mtl
             resolved_stage_interface = &adapted_stage_interface;
         }
 
+        // ── 世界空间能力门 ───────────────────────────────────────────────
+        // 材质要求 WorldPosition/WorldNormal，但选中的 s3 模块不建立世界空间时
+        // 必须硬失败：C++ 侧不存在可信兜底（硬编码 `l2w * pos` 在广告牌和
+        // 像素正交下直接算错），静默产出错值的代价远高于生成期报错。
+        // 仅 VertexPassthrough 走 per-vertex 世界空间写入；LineQuad/CharQuad
+        // 的可写语义由各自的 varying 契约单独约束。
+        if (mode == MeshShaderMode::VertexPassthrough)
+        {
+            const bool needs_world_pos = FindMaterialStageInterfaceEntry(
+                *resolved_stage_interface,
+                InterStageSemantic::WorldPosition) != nullptr;
+            const bool needs_world_normal = FindMaterialStageInterfaceEntry(
+                *resolved_stage_interface,
+                InterStageSemantic::WorldNormal) != nullptr;
+
+            if ((needs_world_pos || needs_world_normal)
+             && !VertexNodeConfigResolver::HasWorldSpace(node_cfg))
+            {
+                GLogError("[ShaderGen] MeshShaderMode(%u) 需要世界空间语义"
+                          "（WorldPosition=%d, WorldNormal=%d），"
+                          "但 s3 模块 %s 不提供 GetWorldPos/GetWorldNormal",
+                          static_cast<uint32>(mode),
+                          needs_world_pos ? 1 : 0,
+                          needs_world_normal ? 1 : 0,
+                          VertexNodeConfigResolver::GetStage3ModulePath(node_cfg));
+                return false;
+            }
+        }
+
         // ── Stage 2 (Mapping) 模块解析（独立于 Stage 3）────────────────────
         const char *stage2_module = nullptr;
         if (desc->resolve_stage2_mapping)

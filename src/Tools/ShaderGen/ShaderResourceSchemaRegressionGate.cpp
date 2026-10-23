@@ -4913,14 +4913,14 @@ namespace
         else
         {
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
-            if (file_count != 70)
-                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
+            if (file_count != 71)
+                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 70;
+            const int expected_count = 71;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

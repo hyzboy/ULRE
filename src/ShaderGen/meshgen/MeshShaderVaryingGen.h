@@ -126,20 +126,18 @@ namespace hgl::graph::mtl
             if (FindMaterialStageInterfaceEntry(stage_interface, InterStageSemantic::FragDirection))
                 ms += "    fragDirection[vid] = normalize(Position);\n";
 
-            if (emit_world_pos || emit_world_normal)
-            {
-                ms += "    mat4 _l2w = GetL2W();\n";
-                ms += "    vec4 _world_pos = _l2w * GetLocalPos();\n";
-                if (emit_world_pos)
-                    ms += "    fragWorldPos[vid] = _world_pos.xyz;\n";
-                if (emit_world_normal)
-                    ms += "    fragWorldNormal[vid] = normalize(mat3(_l2w) * Normal);\n";
-                ms += "    gl_MeshVerticesEXT[vid].gl_Position = camera.vp * _world_pos;\n";
-            }
-            else
-            {
-                ms += "    gl_MeshVerticesEXT[vid].gl_Position = GetClipPos(GetLocalPos());\n";
-            }
+            // 世界位置/法线一律走 s3 模块的接口，绝不在 C++ 里重算
+            // `l2w * pos` / `mat3(l2w) * n`：
+            //  - 广告牌与 2D 正交的世界位置不经过 l2w，硬编码会算错（#10）
+            //  - mat3(l2w) 在非均匀缩放下不保持法线垂直（#11）
+            // 模块能力门已在生成期校验，需要时接口必然存在。
+            if (emit_world_pos)
+                ms += "    fragWorldPos[vid] = GetWorldPos(GetLocalPos());\n";
+            if (emit_world_normal)
+                ms += "    fragWorldNormal[vid] = GetWorldNormal(Normal);\n";
+
+            // gl_Position 只有一条路径：由 s3 模块的 GetClipPos 决定。
+            ms += "    gl_MeshVerticesEXT[vid].gl_Position = GetClipPos(GetLocalPos());\n";
             break;
 
         case MeshVaryingIndexModel::LineQuad:
