@@ -170,7 +170,7 @@ static bool MaterialSourceRequiresMaterialDataRow(
     return true;
 }
 
-static bool MaterialDefinitionRequiresPayloadRow(
+bool MaterialDefinitionRequiresPayloadRow(
     const GlobalSSBOType material_private_data,
     const MaterialDefinition *material_definition,
     bool &out_required) noexcept

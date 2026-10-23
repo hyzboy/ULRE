@@ -83,7 +83,8 @@ namespace hgl::graph::mtl
     ///   uint64 vertex_input_hash
     ///   uint64 render_target_hash
     ///   uint64 compiler_hash
-    ///   uint32 flags（bit0 = requires_recipe_runtime_rows）
+    ///   uint32 flags（bit0 = requires_recipe_runtime_rows，
+    ///                bit1 = requires_recipe_payload_row）
     constexpr uint32 ShaderProgramManifestFormatVersion = 1;
     constexpr uint32 ShaderProgramManifestEntryPayloadSize =
         sizeof(uint64)
@@ -92,6 +93,9 @@ namespace hgl::graph::mtl
       + sizeof(uint64) * 4
       + sizeof(uint32);
     constexpr uint32 ShaderProgramManifestFlagRequiresRecipeRows = 0x1u;
+    /// 程序是否读 payload 行（`MTL_ROW`）。与上一位不同：纯纹理材质的
+    /// `RequiresRecipeRuntimeRows` 为真而本位为假（只需要纹理引用行表）。
+    constexpr uint32 ShaderProgramManifestFlagRequiresRecipePayloadRow = 0x2u;
 
     /// compute manifest payload 布局（小端，逐字段手写序列化）：
     ///   uint32 format_version

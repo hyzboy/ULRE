@@ -4615,6 +4615,13 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "Material SSBO type mismatch",
               "缺「材质 SSBO 类型与定义声明不符」的拒绝（shader 按 A 结构读 B 结构的字节）" },
+            // ③-c 判据必须是「程序读 payload 行」，不是合并信号「需要运行时行」：
+            //     `RequiresRecipeRuntimeRows()` 还包含纯纹理引用行需求（MTL_TEX），
+            //     那一类不需要 material_ssbo_binding。混用会把 UnlitTexture 一类
+            //     纯纹理材质误判为缺绑定（图元被整批跳过）。
+            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
+              "RequiresRecipePayloadRow()",
+              "SSBO 绑定校验改回了合并信号 RequiresRecipeRuntimeRows（纯纹理材质被误杀）" },
 
             // ④ 反向守卫按新语义改（新语义守卫在位，不是静默放水）
             { "RenderStrategyParity.h", OS_TEXT("inc/hgl/ecs/support/RenderStrategyParity.h"),

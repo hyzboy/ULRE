@@ -38,6 +38,21 @@ namespace hgl::graph::mtl
             /// 此处只留这一个活字段。
             bool requires_recipe_runtime_rows = false;
 
+            /// 程序是否**读 payload 行**（Fragment 里是否发射了 `MTL_ROW`）。
+            ///
+            /// `requires_recipe_runtime_rows` 是一个合并信号，包含两类互不相交的需求：
+            ///   1. payload 行需求（`MTL_ROW` 的 `payload_index`）—— 必须有一行真实存在的
+            ///      材质私有数据 SSBO 行，即 recipe 必须给出 `material_ssbo_binding`；
+            ///   2. 纹理引用行需求（`MTL_TEX` 的 `texture_reference_index`）—— 只需要
+            ///      `MaterialInstanceAddresses` 行表 + 纹理引用池行，行号来自 4-ID 表的
+            ///      `texture_id`，**不需要** payload 绑定。
+            ///
+            /// 纯纹理材质（如 `UnlitTexture`）只命中第 2 类：合并信号为真但 payload 为假。
+            /// 运行期校验若只读合并信号，就会把这类材质当成「缺绑定」错杀，因此本字段把
+            /// 第 1 类单独记下来（编译期判定，见 MaterialShaderEmitter 的
+            /// `MaterialDefinitionRequiresPayloadRow`），运行期不再反推。
+            bool requires_recipe_payload_row = false;
+
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
             ShaderLinkSpec program_link;
@@ -80,6 +95,13 @@ namespace hgl::graph::mtl
             const bool RequiresRecipeRuntimeRows()const{return requires_recipe_runtime_rows;}
 
             void SetRequiresRecipeRuntimeRows(const bool v){requires_recipe_runtime_rows=v;}
+
+            /// 程序是否读 payload 行（`MTL_ROW`）——决定 recipe 是否必须给出
+            /// `material_ssbo_binding`。与合并信号 `RequiresRecipeRuntimeRows()` 的差别
+            /// 见同名字段注释。
+            const bool RequiresRecipePayloadRow()const{return requires_recipe_payload_row;}
+
+            void SetRequiresRecipePayloadRow(const bool v){requires_recipe_payload_row=v;}
 
             void SetProgramLink(const ShaderLinkSpec &link)
             {

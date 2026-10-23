@@ -461,6 +461,24 @@ ShaderBuildContext *BuildMaterialStageDocuments(
 
     ctx->SetRequiresRecipeRuntimeRows(requires_recipe_runtime_rows);
 
+    // ── payload 行需求（合并信号里的一类，单独留痕给运行期）──
+    // `requires_recipe_runtime_rows` 为真不代表需要 payload 行：纯纹理材质只需要
+    // `MaterialInstanceAddresses` 行表 + 纹理引用行，payload_index 从不被读取。
+    // 运行期 `material_ssbo_binding` 校验若读合并信号，会把这类材质误判为缺绑定。
+    // 判据与发射层同源（模块元数据 `require Resource MaterialData`），在此折成
+    // 程序级信号，运行期不再按定义反推。
+    bool requires_recipe_payload_row = false;
+    if (!MaterialDefinitionRequiresPayloadRow(
+            effective_material_private_data,
+            config.material_definition,
+            requires_recipe_payload_row))
+    {
+        c.Fail("Material payload row requirement query failed");
+        return FailCompile(c);
+    }
+
+    ctx->SetRequiresRecipePayloadRow(requires_recipe_payload_row);
+
     // ── 结构快照观察字段（不参与 shader 生成语义，仅 ShaderStructureDump 用）──
     // 把求解层产出的模块列表与有效 varying 存到 ctx，回归门/快照无需持有 plan。
     if (config.resource_manifest && config.resource_manifest->IsValid())

@@ -31,11 +31,16 @@ namespace hgl::graph::mtl
         ShaderLinkSpec program_link;
         /// 材质是否需要 per-instance 运行时数据行；消费者是渲染准备阶段。
         bool requires_recipe_runtime_rows = false;
+        /// 程序是否读 payload 行（`MTL_ROW`）——即 recipe 是否必须给出
+        /// `material_ssbo_binding`。纯纹理材质为 false。消费者 = 渲染准备阶段的
+        /// 材质私有数据 SSBO 绑定校验。
+        bool requires_recipe_payload_row = false;
 
         bool operator==(const ShaderProgramManifestEntry &rhs) const noexcept
         {
             return lookup_key == rhs.lookup_key
                 && requires_recipe_runtime_rows == rhs.requires_recipe_runtime_rows
+                && requires_recipe_payload_row == rhs.requires_recipe_payload_row
                 && program_link.mesh_stage == rhs.program_link.mesh_stage
                 && program_link.fragment_stage == rhs.program_link.fragment_stage
                 && program_link.resource_layout_hash == rhs.program_link.resource_layout_hash

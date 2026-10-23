@@ -29,6 +29,20 @@ namespace hgl::graph::mtl
     //    BuildCompileDefineDocument / BuildMeshIndexTableDecls /
     //    BuildFSIndexTableDecls —— 仅被 BuildMaterialStageDocument 消费。──
 
+    /// 材质源是否会发射 `MTL_ROW`，即**程序真的读 payload 行**。
+    ///
+    /// 判据 = 材质源模块的 `@ulre require Resource MaterialData`（模块元数据），
+    /// 与 `BuildMaterialSSBODeclarations` 内的判定同源：不靠模块名、不靠纹理声明
+    /// 有无来猜。返回 false 表示模块注册表查询失败。
+    ///
+    /// 调用者：MaterialShaderCompiler 把它折成
+    /// `ShaderBuildContext::RequiresRecipePayloadRow()`，让运行期能区分
+    /// 「payload 行需求」与「纯纹理引用行需求」（见 ShaderBuildContext 同名字段注释）。
+    bool MaterialDefinitionRequiresPayloadRow(
+        GlobalSSBOType material_private_data,
+        const MaterialDefinition *material_definition,
+        bool &out_required) noexcept;
+
     /// 诊断用：把最终 GLSL 文本落盘，供人工比对（原本散落在两处且路径硬编码）。
     ///
     /// 仅在 _DEBUG 构建且环境变量 ULRE_DUMP_GLSL 非空时生效，其余情况为空操作。

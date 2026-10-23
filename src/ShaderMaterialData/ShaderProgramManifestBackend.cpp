@@ -185,6 +185,7 @@ namespace hgl::graph::mtl
                 ctx->SetArtifactStore(store);
                 ctx->SetUsedCachedStages(true, true);
                 ctx->SetRequiresRecipeRuntimeRows(entry->requires_recipe_runtime_rows);
+                ctx->SetRequiresRecipePayloadRow(entry->requires_recipe_payload_row);
                 return ctx;
             }
 

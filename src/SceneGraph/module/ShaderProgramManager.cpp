@@ -711,6 +711,7 @@ namespace
             mtl::ComputeMaterialProgramManifestKey(definition, resolved_request, profile);
         baked_entry.program_link = ctx->GetProgramLink();
         baked_entry.requires_recipe_runtime_rows = ctx->RequiresRecipeRuntimeRows();
+        baked_entry.requires_recipe_payload_row = ctx->RequiresRecipePayloadRow();
 
         if (!mtl::RecordShaderProgramManifestEntry(artifact_store, profile, baked_entry))
         {

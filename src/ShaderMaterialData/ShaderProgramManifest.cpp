@@ -86,7 +86,8 @@ namespace hgl::graph::mtl
                 && lhs.program_link.vertex_input_hash == rhs.program_link.vertex_input_hash
                 && lhs.program_link.render_target_hash == rhs.program_link.render_target_hash
                 && lhs.program_link.compiler_hash == rhs.program_link.compiler_hash
-                && lhs.requires_recipe_runtime_rows == rhs.requires_recipe_runtime_rows;
+                && lhs.requires_recipe_runtime_rows == rhs.requires_recipe_runtime_rows
+                && lhs.requires_recipe_payload_row == rhs.requires_recipe_payload_row;
         }
     }//namespace
 
@@ -163,8 +164,10 @@ namespace hgl::graph::mtl
             AppendU64(payload, entry.program_link.vertex_input_hash);
             AppendU64(payload, entry.program_link.render_target_hash);
             AppendU64(payload, entry.program_link.compiler_hash);
-            AppendU32(payload, entry.requires_recipe_runtime_rows
-                ? ShaderProgramManifestFlagRequiresRecipeRows : 0u);
+            AppendU32(payload, (entry.requires_recipe_runtime_rows
+                ? ShaderProgramManifestFlagRequiresRecipeRows : 0u)
+              | (entry.requires_recipe_payload_row
+                ? ShaderProgramManifestFlagRequiresRecipePayloadRow : 0u));
         }
 
         ShaderArtifactFileHeader header{};
@@ -266,6 +269,8 @@ namespace hgl::graph::mtl
 
                 entry.requires_recipe_runtime_rows =
                     (flags & ShaderProgramManifestFlagRequiresRecipeRows) != 0;
+                entry.requires_recipe_payload_row =
+                    (flags & ShaderProgramManifestFlagRequiresRecipePayloadRow) != 0;
 
                 if (entry.lookup_key == 0 || !entry.program_link.IsValid())
                 {

@@ -53,7 +53,11 @@ namespace hgl::graph::mtl::contract
     //    并删掉了与之重复的 ntb_derivative_normalmap。模块图与模块文本都变了，
     //    虽然 definition_hash 本来就会跟着变，但这里换代是为了把 Stage 1~4 期间
     //    累积的旧产物一次性清空，避免新旧声明闭包混用。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 9;
+    // 10：烘焙清单 entry 的 flags 新增 bit1（requires_recipe_payload_row）——运行期
+    //     材质私有数据 SSBO 绑定校验改读该位，不再拿合并信号
+    //     `RequiresRecipeRuntimeRows()` 当 payload 需求。清单 payload 里这一位的
+    //     语义变了（旧产物恒 0），必须换代，否则旧清单会让纯纹理材质再次被误杀。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 10;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，

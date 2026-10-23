@@ -5180,6 +5180,12 @@ namespace
             if (source.find(expected_alias) == std::string::npos)
                 result.diagnostics.emplace_back("arena row alias was not injected");
 
+            // payload 行需求必须与 MTL_ROW 一起出现：运行期的材质私有数据 SSBO
+            // 绑定校验只认这一位。
+            if (!build_spec->RequiresRecipePayloadRow())
+                result.diagnostics.emplace_back(
+                    "payload material did not report a payload row requirement");
+
             if (source.find("struct MaterialInstanceAddresses") == std::string::npos
              || source.find("MaterialInstanceAddresses values[]") == std::string::npos)
                 result.diagnostics.emplace_back(
@@ -5250,6 +5256,14 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "pure texture material did not require runtime address rows");
+            }
+
+            // 合并信号为真，但 payload 行需求必须是假 —— 运行期靠这一位决定
+            // 「recipe 是否必须给 material_ssbo_binding」，两者混淆会误杀纯纹理材质。
+            if (texture_build_spec->RequiresRecipePayloadRow())
+            {
+                result.diagnostics.emplace_back(
+                    "pure texture material reported a payload row requirement");
             }
 
             const ShaderCreateInfo *texture_fragment =
@@ -6314,6 +6328,9 @@ namespace
             entry.program_link.render_target_hash = 0xDDull * i;
             entry.program_link.compiler_hash = 0xEEull * i;
             entry.requires_recipe_runtime_rows = (i % 2) == 1;
+            // payload 行需求与合并信号必须能各自独立往返（纯纹理材质 = 行需求真、
+            // payload 需求假），否则发行形态会把两类需求混回一起。
+            entry.requires_recipe_payload_row = (i % 4) >= 2;
 
             if (!source.Upsert(entry))
             {

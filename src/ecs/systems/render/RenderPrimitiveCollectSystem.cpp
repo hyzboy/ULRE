@@ -621,14 +621,22 @@ namespace hgl::ecs
             }
 
             // ── 材质私有数据 SSBO 行绑定 ────────────────────────────────────────
-            // 程序一旦声明需要 per-instance 运行时数据行（材质私有字段 或 纹理引用索引），
-            // 渲染准备阶段就必须能拿到一行真实存在的 SSBO 行地址。
+            // 程序**真的读 payload 行**（Fragment 里有 `MTL_ROW`）时，渲染准备阶段必须
+            // 能拿到一行真实存在的 SSBO 行地址。
             //
             // 这里原本没有任何校验：绑定位无效时 MaterializeRecipeRowsForPrimitive 只会把
             // material_row_gpu 留在 0，然后把 BDA 地址 0 直接发给 shader —— 着色器不会
             // 报错也不会崩，只是从此读到「第一行」别人的材质数据（黑块/错色/随机闪烁），
             // 排查成本极高。所以在解析期就拒绝，让图元回退到错误材质，问题当场可见。
-            if (material_program->RequiresRecipeRuntimeRows())
+            //
+            // 判据必须用 `RequiresRecipePayloadRow()` 而不是合并信号
+            // `RequiresRecipeRuntimeRows()`：后者还包含「纹理引用行需求」
+            // （`MTL_TEX` 的 `texture_reference_index`），那一类只经
+            // `MaterialInstanceAddresses` 行表 + 4-ID 表的 `texture_id` 寻址，
+            // 行号由 `material_texture_configuration.row_index` 独立取得，**从不读
+            // payload_index**。纯纹理材质（`UnlitTexture` 等：无 payload、只用
+            // `MTL_TEX`）如果按合并信号判定，就会被当成「缺绑定」错杀。
+            if (material_program->RequiresRecipePayloadRow())
             {
                 const auto &private_binding = recipe.material_ssbo_binding;
                 if (!private_binding.IsValid())

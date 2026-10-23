@@ -35,6 +35,11 @@ class ShaderProgram
 
     /// 材质是否需要 per-instance 运行时数据行（见 ShaderBuildContext 同名字段）
     bool requires_recipe_runtime_rows = false;
+
+    /// 程序是否读 payload 行（`MTL_ROW`）——决定 recipe 是否必须有
+    /// `material_ssbo_binding`。纯纹理材质为 false（只走 `MTL_TEX`）。
+    /// 见 ShaderBuildContext 同名字段注释。
+    bool requires_recipe_payload_row = false;
     mtl::ShaderProgramKey program_key;
 
     ShaderStageCreateInfoList shader_stage_list;
@@ -53,6 +58,8 @@ public:
 
     const   AnsiString &                        GetName                 ()const{return name;}
     const   bool                                    RequiresRecipeRuntimeRows    ()const{return requires_recipe_runtime_rows;}
+
+    const   bool                                    RequiresRecipePayloadRow     ()const{return requires_recipe_payload_row;}
     const   mtl::ShaderProgramKey &             GetProgramKey          ()const{return program_key;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
