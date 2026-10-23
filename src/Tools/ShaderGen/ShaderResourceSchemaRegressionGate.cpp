@@ -5301,6 +5301,105 @@ namespace
             delete texture_build_spec;
         }
 
+        // 无纹理材质（VertexColor / Checkerboard 类）不一定需要 payload 行：
+        // 判据是材质提供的 GLSL 模块有没有 `require Resource MaterialData`。
+        // 这类材质既不读 MTL_ROW 也不该向 recipe 索要 material_ssbo_binding，
+        // 按「有没有纹理声明」反推会把它们全部误杀。
+        MaterialDefinition vertex_color_definition{};
+        vertex_color_definition.definition_id = "MaterialPayloadFreeVertexColor";
+        vertex_color_definition.material_source_module_name = "vertex_color_source";
+        vertex_color_definition.vertex_varying.emit_data_index_id = false;
+
+        MaterialShaderCompilerInput vertex_color_compiler_input{
+            "MaterialPayloadFreeVertexColor",
+            PrimitiveType::Triangles};
+        MaterialCompileConfig vertex_color_config{};
+        vertex_color_config.material_private_data = GlobalSSBOType::PBRSurface;
+        vertex_color_config.material_definition = &vertex_color_definition;
+        vertex_color_config.defer_finalize = true;
+        vertex_color_config.shader_stage_flag_bits =
+            uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
+
+        ShaderBuildContext *vertex_color_build_spec = BuildMaterialStageDocuments(
+            nullptr,
+            vertex_color_compiler_input,
+            mesh_document,
+            fragment_document,
+            vertex_color_config);
+        if (!vertex_color_build_spec)
+        {
+            result.diagnostics.emplace_back(
+                "no-texture vertex-color compiler did not produce a build spec");
+        }
+        else
+        {
+            if (vertex_color_build_spec->RequiresRecipePayloadRow())
+                result.diagnostics.emplace_back(
+                    "no-texture vertex-color material reported a payload row requirement");
+
+            const ShaderCreateInfo *vertex_color_fragment =
+                vertex_color_build_spec->GetStageShader(ShaderStage::Fragment);
+            if (!vertex_color_fragment)
+            {
+                result.diagnostics.emplace_back(
+                    "no-texture vertex-color compiler did not produce a fragment stage");
+            }
+            else
+            {
+                const std::string &source =
+                    vertex_color_fragment->GetFinalGLSL();
+                if (source.find("#define MTL_ROW(i)") != std::string::npos)
+                    result.diagnostics.emplace_back(
+                        "payload row alias emitted for a payload-free material");
+                if (source.find("#define MTL_TEX(i)") != std::string::npos)
+                    result.diagnostics.emplace_back(
+                        "texture reference alias emitted for a texture-free material");
+                if (source.find("struct MaterialInstanceAddresses")
+                        == std::string::npos)
+                    result.diagnostics.emplace_back(
+                        "material instance address rows missing for a payload-free material");
+            }
+
+            delete vertex_color_build_spec;
+        }
+
+        // 反向守卫：同样没有纹理声明，但材质源显式声明了 MaterialData
+        // （pbr_surface_source）⇒ payload 行需求必须为真，别把判据放宽成恒假。
+        MaterialDefinition pbr_definition{};
+        pbr_definition.definition_id = "MaterialPayloadDeclaredNoTexture";
+        pbr_definition.material_source_module_name = "pbr_surface_source";
+        pbr_definition.vertex_varying.emit_data_index_id = true;
+
+        MaterialShaderCompilerInput pbr_compiler_input{
+            "MaterialPayloadDeclaredNoTexture",
+            PrimitiveType::Triangles};
+        MaterialCompileConfig pbr_config{};
+        pbr_config.material_private_data = GlobalSSBOType::PBRSurface;
+        pbr_config.material_definition = &pbr_definition;
+        pbr_config.defer_finalize = true;
+        pbr_config.shader_stage_flag_bits =
+            uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
+
+        ShaderBuildContext *pbr_build_spec = BuildMaterialStageDocuments(
+            nullptr,
+            pbr_compiler_input,
+            mesh_document,
+            fragment_document,
+            pbr_config);
+        if (!pbr_build_spec)
+        {
+            result.diagnostics.emplace_back(
+                "payload-declared compiler did not produce a build spec");
+        }
+        else
+        {
+            if (!pbr_build_spec->RequiresRecipePayloadRow())
+                result.diagnostics.emplace_back(
+                    "texture-free material with a MaterialData source lost its payload row requirement");
+
+            delete pbr_build_spec;
+        }
+
         result.passed = result.diagnostics.empty();
         return result;
     }

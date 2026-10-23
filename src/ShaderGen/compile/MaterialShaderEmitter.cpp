@@ -170,6 +170,19 @@ static bool MaterialSourceRequiresMaterialDataRow(
     return true;
 }
 
+// 单个 provider 槽位的 payload 行需求。
+// 模块名缺省（nullptr/空串）= 该槽位没有模块，自然不读 payload 行；
+// 只有「模块名存在但注册表查不到」才算查询失败。
+static bool MaterialProviderRequiresPayloadRow(
+    const char *module_name, bool &out_required) noexcept
+{
+    out_required = false;
+    if (!module_name || !module_name[0])
+        return true;
+
+    return MaterialSourceRequiresMaterialDataRow(module_name, out_required);
+}
+
 bool MaterialDefinitionRequiresPayloadRow(
     const GlobalSSBOType material_private_data,
     const MaterialDefinition *material_definition,
@@ -181,23 +194,32 @@ bool MaterialDefinitionRequiresPayloadRow(
 
     if (!material_definition)
     {
+        // 连定义都没有 ⇒ 无从判定，保守按「需要 payload 行」处理。
         out_required = true;
         return true;
     }
 
-    const bool has_texture_refs =
-        material_definition->texture_declarations.size() > 0;
-    if (!has_texture_refs)
-    {
-        out_required = true;
-        return true;
-    }
+    // 判据只有一条：材质提供的 GLSL 模块里是否声明了
+    // `@ulre require Resource MaterialData`（= 真的会读 payload 行/MTL_ROW）。
+    // 与「有没有纹理声明」无关 —— 纹理引用行（MTL_TEX）与 payload 行（MTL_ROW）
+    // 是两类互不相交的需求，无纹理材质（VertexColor / Checkerboard / 纯 Surface
+    // 天空）同样不读 payload 行，因而也不该向 recipe 索要 material_ssbo_binding。
+    // （旧实现在无纹理声明时直接返回 true，把「无纹理」当成「一定读 payload」，
+    //  误杀了 VertexColor / VertexPaletteColor / Checkerboard2D/3D 一类材质。）
+    bool source_requires = false;
+    if (!MaterialProviderRequiresPayloadRow(
+            material_definition->material_source_module_name,
+            source_requires))
+        return false;
 
-    const char *source_module = material_definition->material_source_module_name;
-    if (!source_module || !source_module[0])
-        return true;
+    bool surface_requires = false;
+    if (!MaterialProviderRequiresPayloadRow(
+            material_definition->surface_module_name,
+            surface_requires))
+        return false;
 
-    return MaterialSourceRequiresMaterialDataRow(source_module, out_required);
+    out_required = source_requires || surface_requires;
+    return true;
 }
 
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────

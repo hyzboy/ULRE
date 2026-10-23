@@ -29,11 +29,14 @@ namespace hgl::graph::mtl
     //    BuildCompileDefineDocument / BuildMeshIndexTableDecls /
     //    BuildFSIndexTableDecls —— 仅被 BuildMaterialStageDocument 消费。──
 
-    /// 材质源是否会发射 `MTL_ROW`，即**程序真的读 payload 行**。
+    /// 材质是否会发射 `MTL_ROW`，即**程序真的读 payload 行**。
     ///
-    /// 判据 = 材质源模块的 `@ulre require Resource MaterialData`（模块元数据），
-    /// 与 `BuildMaterialSSBODeclarations` 内的判定同源：不靠模块名、不靠纹理声明
-    /// 有无来猜。返回 false 表示模块注册表查询失败。
+    /// 判据 = 材质提供的 GLSL 模块（`material_source_module_name` 与
+    /// `surface_module_name` 两个槽位）是否声明 `@ulre require Resource MaterialData`
+    /// （模块元数据）。不靠模块名猜、不靠纹理声明有无来猜 —— 无纹理材质
+    /// （VertexColor / Checkerboard / 纯 Surface 天空）同样不读 payload 行。
+    /// 仅当材质没有定义、或模块名存在但注册表查不到时才返回 false
+    /// （= 查询失败，调用方必须报错）。
     ///
     /// 调用者：MaterialShaderCompiler 把它折成
     /// `ShaderBuildContext::RequiresRecipePayloadRow()`，让运行期能区分

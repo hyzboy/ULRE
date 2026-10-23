@@ -57,7 +57,12 @@ namespace hgl::graph::mtl::contract
     //     材质私有数据 SSBO 绑定校验改读该位，不再拿合并信号
     //     `RequiresRecipeRuntimeRows()` 当 payload 需求。清单 payload 里这一位的
     //     语义变了（旧产物恒 0），必须换代，否则旧清单会让纯纹理材质再次被误杀。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 10;
+    // 11：payload 行需求的判据从「有纹理声明」改为「材质提供的 GLSL 模块声明了
+    //     `require Resource MaterialData`」（material_source 与 surface 两个槽位）。
+    //     无纹理材质（VertexColor / VertexPaletteColor / Checkerboard2D/3D /
+    //     纯 Surface 天空）不再需要 material_ssbo_binding，bit1 的取值随之改变；
+    //     第 10 代产物里这些材质的 bit1 可能是错的，必须换代重烘。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 11;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，
