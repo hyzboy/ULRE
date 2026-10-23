@@ -5645,6 +5645,180 @@ namespace
         return result;
     }
 
+        // ══════════════════════════════════════════════════════════════════════
+    // MV.mesh-varying-writability
+    //
+    // 「声明即必须可写」。mesh 侧声明了却写不出来的 varying 不报任何错 ——
+    // GLSL 允许 out 数组元素未写入，FS 侧静默读到未定义值（#9：LineQuad
+    // 曾漏写 UV0/WorldPosition/WorldNormal/StyleID/FragDirection）。
+    // 本用例把「可写性」钉成双向等式：
+    //   ① 描述符声明的 writable_semantics 必须真的被 EmitVaryingWrites 写出
+    //      （声明可写但发射器没写 ⇒ 硬门会放行一份坏 shader）；
+    //   ② 发射器写了但表里没登记同样失败（表比实际窄会误拒合法材质）。
+    // 两侧用的都是生产代码（同一张白名单 + 同一个发射器），不是手抄副本。
+    static GateResult RunMeshVaryingWritabilityCase()
+    {
+        GateResult result;
+        result.name = "MV.mesh-varying-writability";
+
+        struct ModeProbe
+        {
+            MeshShaderMode mode;
+            MeshVaryingIndexModel index_model;
+        };
+        static const ModeProbe kProbes[] = {
+            { MeshShaderMode::VertexPassthrough, MeshVaryingIndexModel::PerVertex },
+            { MeshShaderMode::LineQuad,          MeshVaryingIndexModel::LineQuad  },
+            { MeshShaderMode::CharQuad,          MeshVaryingIndexModel::CharQuad  },
+        };
+
+        for (const ModeProbe &probe : kProbes)
+        {
+            const MeshModeDescriptor *desc = GetMeshModeDescriptor(probe.mode);
+            if (!desc)
+            {
+                result.diagnostics.emplace_back(
+                    "mesh mode descriptor missing for probe");
+                continue;
+            }
+
+            // 用全部白名单语义构造 stage interface ⇒ 声明侧会全部声明，
+            // 于是「可写性」是唯一的过滤条件。
+            hgl::ValueArray<InterStageSemanticContractEntry> stage_interface;
+            for (const InterStageSemantic semantic : kMeshEmittedVaryingSemantics)
+            {
+                const InterStageSemanticInfo *info =
+                    GetInterStageSemanticInfo(semantic);
+                InterStageSemanticContractEntry entry{};
+                entry.semantic = semantic;
+                if (info)
+                {
+                    entry.scalar_type = info->value_shape.scalar_type;
+                    entry.component_count = info->value_shape.component_count;
+                    entry.interpolation = info->interpolation;
+                    entry.location_width = info->location_width;
+                }
+                entry.location = static_cast<hgl::uint32>(stage_interface.GetCount());
+                stage_interface.Add(entry);
+            }
+
+            MaterialVertexVaryingConfig varying_cfg{};
+            std::string emitted;
+            EmitVaryingWrites(emitted, stage_interface, varying_cfg,
+                              probe.index_model, true, true);
+
+            for (const InterStageSemantic semantic : kMeshEmittedVaryingSemantics)
+            {
+                const InterStageSemanticInfo *info =
+                    GetInterStageSemanticInfo(semantic);
+                if (!info || !info->shader_symbol || !info->shader_symbol[0])
+                    continue;
+
+                bool declared_writable = false;
+                for (int w = 0; w < desc->writable_semantic_count; ++w)
+                {
+                    if (desc->writable_semantics[w] == semantic)
+                    {
+                        declared_writable = true;
+                        break;
+                    }
+                }
+
+                // 发射文本里是否出现 `<symbol>[...] ... = `（同一行内有等号）
+                const std::string needle =
+                    std::string(info->shader_symbol) + "[";
+                bool actually_written = false;
+                for (size_t at = emitted.find(needle);
+                     at != std::string::npos;
+                     at = emitted.find(needle, at + needle.size()))
+                {
+                    const size_t eq = emitted.find('=', at);
+                    const size_t nl = emitted.find('\n', at);
+                    if (eq != std::string::npos
+                     && (nl == std::string::npos || eq < nl))
+                    {
+                        actually_written = true;
+                        break;
+                    }
+                }
+
+                if (declared_writable != actually_written)
+                {
+                    result.diagnostics.emplace_back(
+                        std::string(desc->name) + ": " + info->shader_symbol
+                        + (declared_writable
+                            ? " 登记为可写，但 EmitVaryingWrites 没有写它"
+                            : " EmitVaryingWrites 会写它，但未登记为可写"));
+                }
+            }
+        }
+
+        // 反向锁：#9 的具体组合必须被拒（写不出来就不许声明）。
+        struct RejectProbe
+        {
+            MeshShaderMode mode;
+            InterStageSemantic semantic;
+        };
+        static const RejectProbe kRejects[] = {
+            { MeshShaderMode::LineQuad, InterStageSemantic::WorldNormal },
+            { MeshShaderMode::LineQuad, InterStageSemantic::UV0 },
+            { MeshShaderMode::LineQuad, InterStageSemantic::FragDirection },
+            { MeshShaderMode::LineQuad, InterStageSemantic::StyleID },
+            { MeshShaderMode::VertexPassthrough, InterStageSemantic::StyleID },
+            { MeshShaderMode::CharQuad, InterStageSemantic::WorldPosition },
+            { MeshShaderMode::CharQuad, InterStageSemantic::WorldNormal },
+            { MeshShaderMode::CharQuad, InterStageSemantic::Luminance },
+            { MeshShaderMode::CharQuad, InterStageSemantic::FragDirection },
+        };
+
+        for (const RejectProbe &reject : kRejects)
+        {
+            const MeshModeDescriptor *desc =
+                GetMeshModeDescriptor(reject.mode);
+            if (!desc)
+                continue;
+
+            hgl::ValueArray<InterStageSemanticContractEntry> one;
+            InterStageSemanticContractEntry entry{};
+            entry.semantic = reject.semantic;
+            one.Add(entry);
+
+            InterStageSemantic found = InterStageSemantic::Unknown;
+            if (!FindUnwritableMeshVarying(*desc, one, found)
+             || found != reject.semantic)
+            {
+                const InterStageSemanticInfo *info =
+                    GetInterStageSemanticInfo(reject.semantic);
+                result.diagnostics.emplace_back(
+                    std::string(desc->name) + " 本应拒绝 varying "
+                    + ((info && info->shader_symbol)
+                        ? info->shader_symbol : "<unknown>")
+                    + "，但可写性门放行了");
+            }
+        }
+
+        // 正向锁：LineQuad 的世界位置必须可写（#9 的补齐写）。
+        const MeshModeDescriptor *line_quad =
+            GetMeshModeDescriptor(MeshShaderMode::LineQuad);
+        if (line_quad)
+        {
+            hgl::ValueArray<InterStageSemanticContractEntry> one;
+            InterStageSemanticContractEntry entry{};
+            entry.semantic = InterStageSemantic::WorldPosition;
+            one.Add(entry);
+
+            InterStageSemantic found = InterStageSemantic::Unknown;
+            if (FindUnwritableMeshVarying(*line_quad, one, found))
+            {
+                result.diagnostics.emplace_back(
+                    "LineQuad 必须能写 WorldPosition（from_world/to_world 已知）");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunModuleInvariantsCase()
     {
         GateResult result;
@@ -7255,6 +7429,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
+    if (run_interface) results.push_back(RunMeshVaryingWritabilityCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
     if (run_module_invariants) results.push_back(RunSamplerReferenceContractCase());
     if (run_module_invariants) results.push_back(RunModuleIncludeDeclarationContractCase());

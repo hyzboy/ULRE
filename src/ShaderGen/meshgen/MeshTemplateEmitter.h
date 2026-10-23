@@ -87,6 +87,28 @@ namespace hgl::graph::mtl
             resolved_stage_interface = &adapted_stage_interface;
         }
 
+        // ── varying 可写性门（#9）────────────────────────────────────────
+        // 「声明即必须可写」：mesh 侧声明了却写不出来的 varying 不会报任何
+        // 错误（GLSL 允许 out 数组元素未写入），FS 侧静默读到未定义值。
+        // 因此把每个模式的可写语义做成硬门 —— 组合不成立就让材质构建失败，
+        // 而不是发一份能编译、渲染错、且无从追查的 shader。
+        InterStageSemantic unwritable_semantic = InterStageSemantic::Unknown;
+        if (FindUnwritableMeshVarying(*desc,
+                                      *resolved_stage_interface,
+                                      unwritable_semantic))
+        {
+            const InterStageSemanticInfo *unwritable_info =
+                GetInterStageSemanticInfo(unwritable_semantic);
+            GLogError("[ShaderGen] MeshShaderMode %s 无法写出 varying %s"
+                      "（材质要求了该语义，但该模式的顶点生成路径没有对应数据源）。"
+                      "请改用支持该语义的图元/模式，或从材质 varyings 里去掉它。",
+                      desc->name,
+                      (unwritable_info && unwritable_info->shader_symbol)
+                          ? unwritable_info->shader_symbol
+                          : "<unknown>");
+            return false;
+        }
+
         // ── 世界空间能力门 ───────────────────────────────────────────────
         // 材质要求 WorldPosition/WorldNormal，但选中的 s3 模块不建立世界空间时
         // 必须硬失败：C++ 侧不存在可信兜底（硬编码 `l2w * pos` 在广告牌和

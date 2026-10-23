@@ -17,40 +17,45 @@ namespace hgl::graph::mtl
     //
     // 名字（shader_symbol）与形状（value_shape）一律查 ShaderSemanticRegistry
     // （GetInterStageSemanticInfo / GetGLSLTypeName）——不在此手写第二份映射，
-    // 漂移即 mesh/FS link 错误。发射白名单显式列出（WorldTangent/WorldBinormal
-    // 不进 mesh 数组 varying，保持既有行为）。
+    // 漂移即 mesh/FS link 错误。
+    //
+    // 发射白名单 = kMeshEmittedVaryingSemantics（下）。WorldTangent/WorldBinormal
+    // 不进 mesh 数组 varying，保持既有行为。
+    // mesh shader 能够声明成数组 varying 的语义白名单（8 项）。
+    // 声明侧与「模式可写性」校验共用这一份，避免两处白名单漂移。
+    inline constexpr InterStageSemantic kMeshEmittedVaryingSemantics[] =
+    {
+        InterStageSemantic::DataIndexID,
+        InterStageSemantic::Color,
+        InterStageSemantic::UV0,
+        InterStageSemantic::WorldPosition,
+        InterStageSemantic::WorldNormal,
+        InterStageSemantic::Luminance,
+        InterStageSemantic::FragDirection,
+        InterStageSemantic::StyleID,
+    };
+
+    inline bool IsMeshEmittedVaryingSemantic(InterStageSemantic semantic) noexcept
+    {
+        for (const InterStageSemantic whitelisted : kMeshEmittedVaryingSemantics)
+        {
+            if (semantic == whitelisted)
+                return true;
+        }
+        return false;
+    }
+
     inline void EmitVaryingDeclarations(
         std::string &ms,
         const ValueArray<InterStageSemanticContractEntry> &stage_interface,
         uint32_t max_vertices,
         uint32_t max_primitives)
     {
-        static constexpr InterStageSemantic kEmittedSemantics[] =
-        {
-            InterStageSemantic::DataIndexID,
-            InterStageSemantic::Color,
-            InterStageSemantic::UV0,
-            InterStageSemantic::WorldPosition,
-            InterStageSemantic::WorldNormal,
-            InterStageSemantic::Luminance,
-            InterStageSemantic::FragDirection,
-            InterStageSemantic::StyleID,
-        };
-
         for (int i = 0; i < stage_interface.GetCount(); ++i)
         {
             const auto &entry = stage_interface[i];
 
-            bool in_whitelist = false;
-            for (const InterStageSemantic whitelisted : kEmittedSemantics)
-            {
-                if (entry.semantic == whitelisted)
-                {
-                    in_whitelist = true;
-                    break;
-                }
-            }
-            if (!in_whitelist)
+            if (!IsMeshEmittedVaryingSemantic(entry.semantic))
                 continue;
 
             const InterStageSemanticInfo *info =
@@ -175,6 +180,15 @@ namespace hgl::graph::mtl
                 ms += "    fragLuminance[vid + 2u] = lum;\n";
                 ms += "    fragLuminance[vid + 3u] = lum;\n";
                 ms += "#endif\n";
+            }
+            if (emit_world_pos)
+            {
+                // quad 顶点顺序固定：0/1 = from 端两个偏移，2/3 = to 端两个偏移
+                // （见 ShaderLibrary/mesh/line_quad.glsl.tmpl 的 c0..c3 排布）。
+                ms += "    fragWorldPos[vid + 0u] = from_world;\n";
+                ms += "    fragWorldPos[vid + 1u] = from_world;\n";
+                ms += "    fragWorldPos[vid + 2u] = to_world;\n";
+                ms += "    fragWorldPos[vid + 3u] = to_world;\n";
             }
             break;
 

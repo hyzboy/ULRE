@@ -53,6 +53,7 @@ namespace hgl::graph::mtl
             ms,
             resolved_stage_interface,
             varying_cfg,
-            MeshVaryingIndexModel::LineQuad);
+            MeshVaryingIndexModel::LineQuad,
+            ctx.emit_world_pos);
     }
 }
