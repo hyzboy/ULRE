@@ -11,8 +11,15 @@
  * 所以运行时只认这个抽象接口，不认识生成器：
  *   · 开发形态（`ULRE_ENABLE_SHADERGEN=1`）：`InitShaderCompiler()` 时装入
  *     `ShaderGenProgramBuildBackend`，行为与切割前**完全一致**。
- *   · 发行形态（`ULRE_ENABLE_SHADERGEN=0`）：没人装 ⇒ 取到 nullptr，
- *     `ShaderProgramManager` 明确报错（Manifest 后端在后续阶段补上）。
+ *   · 发行形态（`ULRE_ENABLE_SHADERGEN=0`）：`EnsureShaderProgramManifestBackend()`
+ *     装入 `ShaderProgramManifestBackend`，全部 SPV 来自预烘焙清单，不碰 GLSL。
+ *   · 两者都没装 ⇒ 取到 nullptr，`ShaderProgramManager` 明确报错。
+ *   两套实现**先到先得**，后装的不覆盖先装的。
+ *
+ * 归属（为什么在数据面而不是契约层）：
+ *   接口签名吃 `MaterialDefinitionBuildRequest` / `MaterialDefinition` / `ShaderBuildContext`，
+ *   这些类型都属于本层（ULRE.ShaderMaterialData）。放在契约层会逼着 Contract 反向依赖
+ *   材质定义与生成期请求，与「契约层零运行时依赖」相冲突。
  *
  * 硬约束：
  *   · 本头只描述接缝，不含 GLSL / 不含编译器插件 / 不含 IO；
@@ -26,6 +33,8 @@
 
 namespace hgl::graph::mtl
 {
+    class ShaderBuildContext;
+
     struct ShaderProgramBuildBackend
     {
         virtual ~ShaderProgramBuildBackend() = default;

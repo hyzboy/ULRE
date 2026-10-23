@@ -5,7 +5,9 @@
 # 因此发行形态（ULRE_ENABLE_SHADERGEN=0）也照常链接。
 #
 # 与 ULRE.ShaderGen 的分界线：任何需要「把定义拼成 GLSL 再编译」的东西都留在
-# ShaderGen，跨界的唯一**行为**通道是 inc/hgl/mtl/ShaderProgramBuildBackend.h。
+# ShaderGen。跨界的唯一**行为**通道是 inc/hgl/mtl/ShaderProgramBuildBackend.h ——
+# 这个接缝头的接口吃本层的材质定义 / 构建请求，所以它连同槽位 .cpp 都归本层，
+# 契约层保持零运行时依赖。
 #
 # 头清单归属判据：本层有对应 .cpp，或本层源文件直接包含该头。
 #
@@ -36,6 +38,9 @@ set(SHADERMATERIALDATA_FILES
     ShaderCreateInfo.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCreateInfoMap.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderBuildContext.h
+    # ── 运行时 → 生成器接缝（槽位；两套实现先到先得）──
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderProgramBuildBackend.h
+    ShaderProgramBuildBackend.cpp
     # ── 采样器预设 / 着色器库与缓存根路径 / 枚举文本 ──
     ${ROOT_INCLUDE_PATH}/hgl/mtl/SamplerPreset.h
     SamplerPreset.cpp
@@ -50,7 +55,14 @@ set(SHADERMATERIALDATA_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderProgramManifestBackend.h
     ShaderProgramManifestBackend.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderComputeProgramManifest.h
-    ShaderComputeProgramManifest.cpp)
+    ShaderComputeProgramManifest.cpp
+    # ── 管线状态与顶点模式枚举（下层/运行时强依赖，ShaderGen 零引用或仅作为上层引用）──
+    # 归属判据：MaterialRecipe.h / MaterialDefinitionFile.cpp 直接用它们，而
+    # VKPipeline.h（Vulkan 层）持有 MaterialPipelineConfig 成员 —— 这些消费者都在
+    # 本层或本层之下，ShaderGen 只是上层的顺带使用者。
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/PipelineConfig.h
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/MeshShaderMode.h
+    ${ROOT_INCLUDE_PATH}/hgl/common/RenderTargetOutputConfig.h)
 
 add_cm_library(ULRE.ShaderMaterialData "ULRE"
     ${ROOT_INCLUDE_PATH}/hgl/mtl
