@@ -52,7 +52,10 @@ namespace hgl
         /// 写歪，都会立刻报不一致（不是恒真比较）。
         void ParityCheckFallbackMaterial(bool table_verdict,bool existing_verdict,const char *context);
 
-        /// 打印汇总（出现首个不一致时自动打印；此外每 N 次检查打印一次）
+        /// 打印汇总。默认只在**已经出现不一致**时输出（`force=false`）：
+        /// 首个不一致立即强制打印一次完整快照，之后每 N 次检查打印一次。
+        /// 全程不一致数恒 0 时不输出任何汇总行（避免"一切正常"的周期性噪声）。
+        /// `force=true` 忽略上述抑制，无条件打印（供测试/收尾调用）。
         void LogRenderStrategyParityStats(bool force);
 
 #else
