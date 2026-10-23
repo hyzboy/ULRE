@@ -1,12 +1,20 @@
 #pragma once
 
+// MaterialDefinitionRegistry.h —— 材质定义的**数据面**入口（装载/查询/规范化）。
+//
+// 本头只描述「读材质定义 + 组装构建请求」这些运行时也要做的事，因此它可以被
+// 发行形态（ULRE_ENABLE_SHADERGEN=0）单独编译。
+//
+// 生成期入口（CreateMaterialFromDefinition / ComputeMaterialProgramKey /
+// BuildResolvedMaterialVertexABI）**不在这里**：它们要么发射 GLSL，要么要读
+// ShaderLibrary/*.glsl 的声明闭包，只有生成器才知道怎么做。声明在
+// inc/hgl/mtl/MaterialShaderCompiler.h（ShaderGen 专属头）。
+
 #include<hgl/vk/VK.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/CanonicalShaderContract.h>
-#include<hgl/mtl/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/RenderTemplate.h>
-#include<hgl/mtl/ShaderCodeModuleRegistry.h>
 #include<hgl/mtl/ShaderProgramKey.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
@@ -20,13 +28,13 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl
 {
-class ShaderBuildContext;
 class ShaderArtifactStore;
-struct MaterialShaderDocumentCapture;
 namespace contract
 {
     struct PhysicalDeviceProfileLite;
 }
+
+struct MaterialCoverageContract;
 }
 
 namespace hgl::graph::mtl{
@@ -112,50 +120,6 @@ uint64 HashMaterialProgramBuildContext(
     // depth purpose 不消费它（模板无该槽）⇒ 直接忽略，不白白分裂阴影变体。
     // nullptr / 空串 = 模板默认 provider，哈希取值与引入本维度之前**逐位相同**。
     const char *ambient_module_name = nullptr) noexcept;
-
-mtl::ShaderBuildContext *CreateMaterialFromDefinition(
-    const mtl::contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request);
-
-// Document capture is diagnostic-only. Keep it out of the frequently passed
-// build request so adding observability does not change that request's ABI.
-mtl::ShaderBuildContext *CreateMaterialFromDefinition(
-    const mtl::contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
-    mtl::MaterialShaderDocumentCapture *document_capture);
-
-/**
- * Build the resolver-derived vertex ABI without compiling shaders or mutating
- * a program/cache. This is the explicit Phase 4.4 switched-path payload.
- */
-bool BuildResolvedMaterialVertexABI(
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
-    MaterialResolvedVertexABI &out_abi);
-
-/**
- * Phase 3.5 纯算键：跑到声明键为止，**不发射任何 GLSL 文本**。
- *
- * 热路径早退用：调用方拿到 program key 后可直接查内存缓存，命中即完全跳过
- * Phase 4（数千行 GLSL 拼接）与整个 ShaderBuildContext 分配。
- *
- * 返回 false = 本次无法纯算出键（声明闭包读不到磁盘 / 声明输入不完整）——
- * 调用方**必须**退回 CreateMaterialFromDefinition 全量路径，绝不能自己造键。
- * 成功时 out_program_key 与全量路径 GetProgramLink().BuildKey() 逐位相同
- * （回归门 cache.pre-emit-program-key-parity 全变体断言）。
- *
- * 注意：`request.render_template_request` 必须**已经**被解析好（先由
- * SelectSceneRenderTemplateRequest 选定路由与 ambient provider，再由
- * AppendMaterialRenderTemplateRoots 补入 material provider roots）——
- * 两条路径必须吃同一份 request，否则声明闭包不同 ⇒ 键必然分叉。
- */
-bool ComputeMaterialProgramKey(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinitionBuildRequest &request,
-    const MaterialDefinition &definition,
-    ShaderProgramKey &out_program_key);
 
 VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format);
 inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, VkFormat fallback_format)

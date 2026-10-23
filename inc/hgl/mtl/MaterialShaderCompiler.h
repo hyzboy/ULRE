@@ -13,6 +13,7 @@ namespace hgl::graph::mtl {}
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/ShaderCodeResourceManifest.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/ShaderDocument.h>
@@ -88,6 +89,57 @@ class ShaderBuildContext;
 
 bool FinalizeShaderBuildContext(
     ShaderBuildContext *build_spec);
+
+// ── 生成期入口（定义 → 构建上下文 / 声明键 / 顶点 ABI）────────────────────────
+// 这些函数**只属于生成器**：要么发射 GLSL，要么读 ShaderLibrary/*.glsl 的声明闭包。
+// 它们原先声明在 MaterialDefinitionRegistry.h（数据面）里，会把「发行形态用不到的
+// 生成期能力」挂在数据面的头文件上；现在收到本头，数据面只留纯数据能力。
+// 实现位置：ShaderGenProgramBuildBackend.cpp / GenericMaterialBuilder.cpp /
+// VertexABIBuilder.cpp。
+
+mtl::ShaderBuildContext *CreateMaterialFromDefinition(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request);
+
+// Document capture is diagnostic-only. Keep it out of the frequently passed
+// build request so adding observability does not change that request's ABI.
+mtl::ShaderBuildContext *CreateMaterialFromDefinition(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    MaterialShaderDocumentCapture *document_capture);
+
+/**
+ * Build the resolver-derived vertex ABI without compiling shaders or mutating
+ * a program/cache. This is the explicit Phase 4.4 switched-path payload.
+ */
+bool BuildResolvedMaterialVertexABI(
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    MaterialResolvedVertexABI &out_abi);
+
+/**
+ * Phase 3.5 纯算键：跑到声明键为止，**不发射任何 GLSL 文本**。
+ *
+ * 热路径早退用：调用方拿到 program key 后可直接查内存缓存，命中即完全跳过
+ * Phase 4（数千行 GLSL 拼接）与整个 ShaderBuildContext 分配。
+ *
+ * 返回 false = 本次无法纯算出键（声明闭包读不到磁盘 / 声明输入不完整）——
+ * 调用方**必须**退回 CreateMaterialFromDefinition 全量路径，绝不能自己造键。
+ * 成功时 out_program_key 与全量路径 GetProgramLink().BuildKey() 逐位相同
+ * （回归门 cache.pre-emit-program-key-parity 全变体断言）。
+ *
+ * 注意：`request.render_template_request` 必须**已经**被解析好（先由
+ * SelectSceneRenderTemplateRequest 选定路由与 ambient provider，再由
+ * AppendMaterialRenderTemplateRoots 补入 material provider roots）——
+ * 两条路径必须吃同一份 request，否则声明闭包不同 ⇒ 键必然分叉。
+ */
+bool ComputeMaterialProgramKey(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinitionBuildRequest &request,
+    const MaterialDefinition &definition,
+    ShaderProgramKey &out_program_key);
 
 /**
  * 生成 sampler 预设宏字符串（统一注册机制）。

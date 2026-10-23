@@ -1,9 +1,10 @@
 // VertexABIBuilder.cpp — 顶点 ABI 求解（s1_* 模块选择 + VkFormat→GLSL 类型映射）
 //
 // 从 MaterialDefinitionRegistry.cpp 拆分（5 职责之一：vertex_abi）。
-// 公开声明仍在 MaterialDefinitionRegistry.h（调用者零改动）。
+// 公开声明已随生成期入口一并收进 MaterialShaderCompiler.h（数据面头不再挂生成期能力）。
 
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialShaderCompiler.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/ShaderCodeModuleRegistry.h>

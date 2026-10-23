@@ -8,6 +8,7 @@
 
 #include <hgl/mtl/contract/ShaderGenContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/graph/font/CharQuadConfig.h>
