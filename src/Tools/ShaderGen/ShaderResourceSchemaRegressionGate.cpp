@@ -6398,10 +6398,105 @@ namespace
 
                 MaterialDefinitionBuildRequest recipe = base;
                 recipe.recipe.recipe_name = "gate-variant";
-                if (ComputeMaterialProgramManifestKey(definition, recipe, nullptr)
-                    == base_key)
-                    result.diagnostics.emplace_back(
-                        "manifest key ignores material recipe");
+
+                // ── 变体维度：必须把键推开 ──
+                //
+                // 只保留**真正改变 GLSL** 的字段。反过来（两个不同变体算出同一个
+                // 键）会让发行形态取到不匹配的 SPV，且运行时完全不报错。
+                //
+                // 旧的断言用 `recipe_name` 当「配方」的代表 —— 那是把**实例**
+                // 身份当变体身份，正是缺陷 #1/#3 本身：recipe_name 变了不会重新
+                // 发射 GLSL，键却变了 ⇒ 烘焙期只填一条、发行期查另一条即 miss。
+                // 现在拆成下面两组正/负断言。
+                {
+                    MaterialDefinitionBuildRequest alpha_test = base;
+                    alpha_test.recipe.render_state_overrides.has_alpha_test = true;
+                    alpha_test.recipe.render_state_overrides.alpha_test = true;
+                    if (ComputeMaterialProgramManifestKey(definition, alpha_test, nullptr)
+                        == base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key ignores alpha_test coverage");
+
+                    MaterialDefinitionBuildRequest dither = base;
+                    dither.recipe.render_state_overrides.has_dither = true;
+                    dither.recipe.render_state_overrides.dither = true;
+                    if (ComputeMaterialProgramManifestKey(definition, dither, nullptr)
+                        == base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key ignores dither coverage");
+
+                    MaterialDefinitionBuildRequest alpha_cutoff = base;
+                    alpha_cutoff.recipe.render_state_overrides.has_alpha_cutoff = true;
+                    alpha_cutoff.recipe.render_state_overrides.alpha_cutoff =
+                        base.recipe.render_state_overrides.alpha_cutoff + 0.125f;
+                    if (ComputeMaterialProgramManifestKey(
+                            definition, alpha_cutoff, nullptr) == base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key ignores alpha_cutoff (baked as a GLSL literal)");
+
+                    MaterialDefinitionBuildRequest alpha_blend = base;
+                    alpha_blend.recipe.render_state_overrides.has_pipeline_config = true;
+                    alpha_blend.recipe.render_state_overrides.pipeline_config.alpha_blend = true;
+                    if (ComputeMaterialProgramManifestKey(
+                            definition, alpha_blend, nullptr) == base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key ignores alpha_blend (changes fragment output)");
+
+                    MaterialDefinitionBuildRequest vertex_nodes = base;
+                    vertex_nodes.recipe.vertex_node_config =
+                        Make2DNodeConfigNDC(true);
+                    if (ComputeMaterialProgramManifestKey(
+                            definition, vertex_nodes, nullptr) == base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key ignores vertex_node_config");
+                }
+
+                // ── 实例维度：必须**不**改变键 ──
+                //
+                // 这些字段改的是描述符绑定、运行时材质行或 VkPipeline，不是 SPV。
+                // 若被折进变体键，同一条 program link 会在烘焙清单里分裂成多条
+                // lookup_key，烘焙期触碰到哪条由遍历顺序决定 ⇒ 发行期查另一条
+                // 必然 miss（缺陷 #1/#3 的根因）。
+                {
+                    if (ComputeMaterialProgramManifestKey(definition, recipe, nullptr)
+                        != base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key must not depend on recipe_name (instance identity)");
+
+                    MaterialDefinitionBuildRequest texture = base;
+                    UpsertRecipeTextureBinding(
+                        texture.recipe, "base_color", "gate/texture-a", true);
+                    if (ComputeMaterialProgramManifestKey(definition, texture, nullptr)
+                        != base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key must not depend on texture bindings (instance identity)");
+
+                    MaterialDefinitionBuildRequest ssbo = base;
+                    ssbo.recipe.material_ssbo_binding.ssbo_type = GlobalSSBOType::PBRSurface;
+                    ssbo.recipe.material_ssbo_binding.ssbo_id = 7;
+                    ssbo.recipe.material_ssbo_binding.data_index = 3;
+                    if (ComputeMaterialProgramManifestKey(definition, ssbo, nullptr)
+                        != base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key must not depend on material_ssbo_binding (instance identity)");
+
+                    MaterialDefinitionBuildRequest cull = base;
+                    cull.recipe.render_state_overrides.has_pipeline_config = true;
+                    cull.recipe.render_state_overrides.pipeline_config.cull_mode =
+                        VK_CULL_MODE_NONE;
+                    if (ComputeMaterialProgramManifestKey(definition, cull, nullptr)
+                        != base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key must not depend on pipeline-only state (cull_mode)");
+
+                    MaterialDefinitionBuildRequest fallback_color = base;
+                    fallback_color.recipe.fallback_marker_color[0] = 0.25f;
+                    if (ComputeMaterialProgramManifestKey(
+                            definition, fallback_color, nullptr) != base_key)
+                        result.diagnostics.emplace_back(
+                            "manifest key must not depend on fallback_marker_color "
+                            "(delivered through the material data row)");
+                }
 
                 MaterialDefinitionBuildRequest primitive = base;
                 primitive.primitive_type =
@@ -6710,6 +6805,36 @@ namespace
                         nullptr, ambient_miss, definition, miss_key))
                     result.diagnostics.emplace_back(
                         "manifest backend must not compute a key it cannot resolve");
+
+                // ── 多实例共享同一变体（缺陷 #1/#3 的回归）──
+                //
+                // 同一变体的多个实例只在**实例维度**上不同（配方名、贴图绑定、
+                // SSBO 行）。它们发射出的 GLSL 逐字节相同 ⇒ 同一条 program link。
+                // 若清单键折进实例维度，烘焙期只填了第一个实例的那条键，发行期
+                // 用第二个实例查表就必然 miss —— 现象是「换张贴图材质就没了」。
+                MaterialDefinitionBuildRequest second_instance = request;
+                second_instance.recipe.recipe_name = "gate-secondary-instance";
+                UpsertRecipeTextureBinding(
+                    second_instance.recipe, "base_color",
+                    "gate/secondary-texture", true);
+                second_instance.recipe.material_ssbo_binding.ssbo_type =
+                    GlobalSSBOType::PBRSurface;
+                second_instance.recipe.material_ssbo_binding.ssbo_id = 11;
+                second_instance.recipe.material_ssbo_binding.data_index = 5;
+
+                if (ComputeMaterialProgramManifestKey(
+                        definition, second_instance, nullptr)
+                    != entry.lookup_key)
+                    result.diagnostics.emplace_back(
+                        "manifest key splits on instance-only recipe data");
+
+                ShaderProgramKey second_instance_key{};
+                if (!backend->ComputeProgramKey(
+                        nullptr, second_instance, definition, second_instance_key)
+                 || second_instance_key.GetDigest()
+                        != link.BuildKey().GetDigest())
+                    result.diagnostics.emplace_back(
+                        "second instance of the same variant misses the baked manifest");
             }
         }
 
