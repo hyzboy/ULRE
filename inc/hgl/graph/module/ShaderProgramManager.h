@@ -43,6 +43,16 @@ private:
     ShaderStageModuleCache shader_module_cache;
     ShaderProgramLinkCache shader_program_cache;
 
+    /// L1：变体键 → program link 键。
+    ///
+    /// 变体键（`mtl::ComputeMaterialProgramManifestKey`：材质定义 + 已解析构建请求
+    /// + 设备 profile 的纯内存哈希）**完整决定** program link —— 发行形态本来就
+    /// 靠这条不变量查表取 SPV，这里只是同一不变量在内存里的复用。
+    ///
+    /// 存键而不是存指针：program 销毁走 `Destroy()`，那样会留下悬垂指针；存键则
+    /// 由 `shader_program_cache` 的删除自然失效（查不到即当 miss）。
+    UnorderedMap<uint64, mtl::ShaderProgramKey> variant_program_cache;
+
     AutoIdObjectManager<ShaderProgramID, ShaderProgram> rm_material;  ///<材质合集
 
 private:
@@ -60,6 +70,11 @@ private: // Helper methods with integrated DebugUtils
     ShaderProgram *AcquireShaderProgram(const mtl::ShaderProgramKey &, const mtl::ShaderBuildContext *);
     ShaderProgram *TryGetCachedShaderProgram(
         const mtl::ShaderProgramKey &key);
+    /// L1 变体键命中：变体键 → program link 键 → 内存缓存里的 ShaderProgram。
+    ShaderProgram *TryGetCachedByVariantKey(const uint64 variant_key) const;
+    /// 登记变体键 → program link 键（幂等；同键重复登记直接覆盖）。
+    void RecordVariantProgramKey(const uint64 variant_key,
+                                 const mtl::ShaderProgramKey &program_key);
     VkPipelineLayout GetOrCreateGlobalPipelineLayout();
     /// 装配 ShaderProgram：ShaderModule + stage 列表 + 共享 pipeline layout。
     /// **不创建 VkPipeline**（那是渲染侧 RenderPass::CreatePipeline 的职责）。

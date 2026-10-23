@@ -240,6 +240,7 @@ void ShaderProgramManager::Release()
         rm_material.Clear();
 
     shader_program_cache.Clear();
+    variant_program_cache.Clear();
 
     ValueArray<ShaderModule *> shader_modules;
     shader_module_cache.GetValues(shader_modules);
@@ -515,6 +516,35 @@ ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(
     return shader_program_cache.Find(key);
 }
 
+ShaderProgram *ShaderProgramManager::TryGetCachedByVariantKey(
+    const uint64 variant_key) const
+{
+    mtl::ShaderProgramKey program_key{};
+    if (!variant_program_cache.Get(variant_key, program_key))
+        return nullptr;
+
+    // 变体键命中后再走一次 program link 查表：program 被 Destroy 时只从
+    // shader_program_cache 摘除，这里自然 miss，无需维护反向索引。
+    return shader_program_cache.Find(program_key);
+}
+
+void ShaderProgramManager::RecordVariantProgramKey(
+    const uint64 variant_key, const mtl::ShaderProgramKey &program_key)
+{
+    if (variant_key == 0)
+        return;
+
+    // 同一变体键恒对应同一 program link（发行形态查表依赖的就是这条不变量），
+    // 因此已存在时覆盖与否等价；这里仍覆盖，避免将来键语义变动后留下旧值。
+    if (!variant_program_cache.Add(variant_key, program_key))
+    {
+        mtl::ShaderProgramKey *slot =
+            variant_program_cache.GetValuePointer(variant_key);
+        if (slot)
+            *slot = program_key;
+    }
+}
+
 // 把编译好的 ShaderBuildContext 装配成可用的 ShaderProgram。
 //
 // 命名口径：**不叫 ...BuildPipeline** —— 本函数不创建 VkPipeline。VkPipeline 由渲染侧
@@ -717,6 +747,17 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const mtl::contract::PhysicalDeviceProfileLite *profile =
         GetPhysicalDeviceProfile();
 
+    // ── L1 变体键命中 ──
+    //
+    // 变体键是纯内存哈希（材质定义 + 已解析构建请求 + 设备 profile），零磁盘
+    // 读、零 GLSL 发射。命中即直接返回，热路径上不再进入生成器。
+    // 键为 0 表示算不出（极端退化），一律当 miss 落到下面全量路径。
+    const uint64 variant_key = mtl::ComputeMaterialProgramManifestKey(
+        definition, resolved_request, profile);
+
+    if (ShaderProgram *cached = TryGetCachedByVariantKey(variant_key))
+        return cached;
+
     mtl::ShaderProgramBuildBackend *build_backend = mtl::GetShaderProgramBuildBackend();
     if (!build_backend
      && mtl::EnsureShaderProgramManifestBackend(normalized_request.shader_artifact_store))
@@ -746,7 +787,10 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
             profile, resolved_request, definition, pre_emit_key))
     {
         if (ShaderProgram *cached = TryGetCachedShaderProgram(pre_emit_key))
+        {
+            RecordVariantProgramKey(variant_key, pre_emit_key);
             return cached;
+        }
     }
 
     AutoDelete<mtl::ShaderBuildContext> ctx =
@@ -779,6 +823,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         RecordBakedProgramManifestEntry(
             normalized_request.shader_artifact_store, profile,
             definition, resolved_request, ctx);
+        RecordVariantProgramKey(variant_key, program_key);
         return cached;
     }
 
@@ -799,7 +844,11 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         normalized_request.shader_artifact_store, profile,
         definition, resolved_request, ctx);
 
-    return this->AcquireShaderProgram(program_key, ctx);
+    ShaderProgram *program = this->AcquireShaderProgram(program_key, ctx);
+    if (program)
+        RecordVariantProgramKey(variant_key, program_key);
+
+    return program;
 }
 
 }//namespace hgl::graph
