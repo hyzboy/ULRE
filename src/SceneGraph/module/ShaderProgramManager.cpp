@@ -653,6 +653,43 @@ namespace
             out_definition, out_resolved_request,
             out_resolved_request.render_template_request);
     }
+
+    /// 把「变体键 → program link」幂等写进烘焙清单。
+    ///
+    /// 只在产物确实已落进 store 时才写（`LoadProgramMetadata` 成功），避免清单
+    /// 指向不存在的 SPV。`RecordShaderProgramManifestEntry` 内部 `Upsert` 幂等：
+    /// 条目已存在且内容相同则直接成功返回，不重写磁盘。
+    ///
+    /// 落盘失败要报出来 —— 这是「烘焙产物不完整」的直接症状，静默会让问题漂到
+    /// 发行期才以「少一批材质」的形式出现。
+    void RecordBakedProgramManifestEntry(
+        mtl::ShaderArtifactStore *artifact_store,
+        const mtl::contract::PhysicalDeviceProfileLite *profile,
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialDefinitionBuildRequest &resolved_request,
+        const mtl::ShaderBuildContext *ctx)
+    {
+        if (!artifact_store || !ctx || !ctx->HasProgramLink())
+            return;
+
+        mtl::ShaderProgramArtifactMetadata baked_metadata{};
+        if (!artifact_store->LoadProgramMetadata(ctx->GetProgramLink(), baked_metadata))
+            return;
+
+        mtl::ShaderProgramManifestEntry baked_entry{};
+        baked_entry.lookup_key =
+            mtl::ComputeMaterialProgramManifestKey(definition, resolved_request, profile);
+        baked_entry.program_link = ctx->GetProgramLink();
+        baked_entry.requires_recipe_runtime_rows = ctx->RequiresRecipeRuntimeRows();
+
+        if (!mtl::RecordShaderProgramManifestEntry(artifact_store, profile, baked_entry))
+        {
+            GLogWarning("[ShaderProgramManager] failed to record shader program manifest entry: "
+                        "id=%s key=0x%llx",
+                        definition.definition_id.c_str(),
+                        static_cast<unsigned long long>(baked_entry.lookup_key));
+        }
+    }
 }//namespace
 
 ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
@@ -732,7 +769,18 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const mtl::ShaderProgramKey program_key =
         ctx->GetProgramLink().BuildKey();
     if (ShaderProgram *cached = TryGetCachedShaderProgram(program_key))
+    {
+        // 内容键（program link）命中时也必须回填清单：清单键是**变体**键，与
+        // 内容键不是一一对应 —— 两个变体只要发射出的 GLSL 相同就共用一条
+        // program link。此前只在「本次真的建出来」的分支写清单，于是这些
+        // 共享变体在烘焙期永远拿不到 lookup_key 条目，发行期查表直接 miss
+        //（Stage 1 缺陷 #1/#3）。
+        // Upsert 幂等：条目已存在且内容相同时不会重写磁盘。
+        RecordBakedProgramManifestEntry(
+            normalized_request.shader_artifact_store, profile,
+            definition, resolved_request, ctx);
         return cached;
+    }
 
     if (!build_backend->FinalizeBuildContext(ctx))
     {
@@ -747,22 +795,9 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     // 生成器形态在这里把「语义键 → program link」写进 program_manifest.pmf，发行
     // 形态（无生成器）就是靠它查表。只在产物确实已经落进 store 时才写，避免清单
     // 指向不存在的 SPV。Manifest 后端自己记录下来的是同一份数据，`Upsert` 幂等。
-    {
-        mtl::ShaderArtifactStore *artifact_store = normalized_request.shader_artifact_store;
-        mtl::ShaderProgramArtifactMetadata baked_metadata{};
-        if (artifact_store
-         && artifact_store->LoadProgramMetadata(ctx->GetProgramLink(), baked_metadata))
-        {
-            mtl::ShaderProgramManifestEntry baked_entry{};
-            baked_entry.lookup_key =
-                mtl::ComputeMaterialProgramManifestKey(definition, resolved_request, profile);
-            baked_entry.program_link = ctx->GetProgramLink();
-            baked_entry.requires_recipe_runtime_rows = ctx->RequiresRecipeRuntimeRows();
-
-            mtl::RecordShaderProgramManifestEntry(
-                artifact_store, profile, baked_entry);
-        }
-    }
+    RecordBakedProgramManifestEntry(
+        normalized_request.shader_artifact_store, profile,
+        definition, resolved_request, ctx);
 
     return this->AcquireShaderProgram(program_key, ctx);
 }
