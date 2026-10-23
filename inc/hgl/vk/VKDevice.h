@@ -11,6 +11,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/graph/ShaderBufferSource.h>   // ShaderBufferDesc：LogCreateBufferBegin 的参数类型
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKShaderModuleMap.h>

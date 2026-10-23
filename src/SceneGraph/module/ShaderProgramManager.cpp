@@ -14,16 +14,13 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
-#include<hgl/mtl/MaterialShaderCompiler.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include<hgl/mtl/ShaderComputeProgramManifest.h>
-#include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/ShaderProgramBuildBackend.h>
 #include<hgl/mtl/ShaderProgramManifestBackend.h>
 #include<hgl/mtl/ShaderProgramManifestKey.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
-#include<hgl/mtl/MaterialOutputContract.h>
 #include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/mtl/ShaderCacheRoot.h>
 #include<hgl/object/ObjectTracker.h>

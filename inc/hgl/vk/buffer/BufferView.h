@@ -1,7 +1,6 @@
 #pragma once
 
 #include<hgl/vk/buffer/BufferOwner.h>
-#include<hgl/graph/ShaderBufferSource.h>
 
 namespace hgl::graph{
 

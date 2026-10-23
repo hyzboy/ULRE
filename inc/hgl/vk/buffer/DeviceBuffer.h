@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/vk/buffer/BufferOwner.h>          // defines BufferOwner + DeviceBufferData
-#include<hgl/graph/ShaderBufferSource.h>
 
 #include<string>
 
