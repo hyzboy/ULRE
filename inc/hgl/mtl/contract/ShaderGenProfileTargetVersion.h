@@ -49,7 +49,11 @@ namespace hgl::graph::mtl::contract
     //    definition_hash / interface_hash。此前把它们塞进 compiler_hash，等于同一份
     //    SPV 按显卡型号各存一份 —— 发行版无法「只打包一套 SPV」。键值整体变化，
     //    这里换代作废旧缓存。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 8;
+    // 9：法线贴图 provider 从「世界轴任意正交基」改为 dFdx/dFdy 余切标架（#12），
+    //    并删掉了与之重复的 ntb_derivative_normalmap。模块图与模块文本都变了，
+    //    虽然 definition_hash 本来就会跟着变，但这里换代是为了把 Stage 1~4 期间
+    //    累积的旧产物一次性清空，避免新旧声明闭包混用。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 9;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，
