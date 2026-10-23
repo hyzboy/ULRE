@@ -349,13 +349,22 @@ int main(int argc, char** argv)
             return 15;
         }
 
+        // 2026-10-24：错误棋盘格另立一份**读标记色**的定义（两色由 marker_color 派生）；
+        // 标记行不可得时降级到零依赖的灰度版 kMarkerlessFallbackMaterialDefinitionID。
         if (std::strcmp(GetFallbackMaterialDefinitionID(MaterialErrorKind::MissingMaterialSource),
-                        "builtin/checkerboard_3d") != 0
+                        "builtin/error_checkerboard_3d") != 0
          || std::strcmp(GetFallbackMaterialDefinitionID(MaterialErrorKind::UnknownMaterialDefinition),
+                        "builtin/error_checkerboard_3d") != 0)
+        {
+            GLogError(u8"Test 6 Failed: 材质错误必须走错误棋盘格 builtin/error_checkerboard_3d"
+                      u8"（配置写错 ⇒ LOG + 棋盘格错误材质路径，两色由 marker_color 派生）");
+            return 15;
+        }
+
+        if (std::strcmp(kMarkerlessFallbackMaterialDefinitionID,
                         "builtin/checkerboard_3d") != 0)
         {
-            GLogError(u8"Test 6 Failed: 材质错误必须走棋盘格保底材质 builtin/checkerboard_3d"
-                      u8"（配置写错 ⇒ LOG + 棋盘格错误材质路径）");
+            GLogError(u8"Test 6 Failed: 标记行不可得时的降级材质必须是零依赖的 builtin/checkerboard_3d");
             return 15;
         }
 
@@ -429,9 +438,10 @@ int main(int argc, char** argv)
                 return 15;
             }
 
-            if (std::strcmp(bogus_recipe.mtl_def_id.c_str(), "builtin/checkerboard_3d") != 0)
+            if (std::strcmp(bogus_recipe.mtl_def_id.c_str(),
+                            "builtin/error_checkerboard_3d") != 0)
             {
-                GLogError(u8"Test 6 Failed: 未知材质定义 ID 未回退到棋盘格（实际 %s）",
+                GLogError(u8"Test 6 Failed: 未知材质定义 ID 未回退到错误棋盘格（实际 %s）",
                           bogus_recipe.mtl_def_id.c_str());
                 return 15;
             }
@@ -439,7 +449,8 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 6 Passed: 回退材质规则表 %u 行（定义 ID + 根颜色两两不同 + 稳定名），"
                  u8"分类表：无来源 ⇒ MissingMaterialSource、有来源 ⇒ None；"
-                 u8"未知定义 ID ⇒ 配方被换成 builtin/checkerboard_3d（行为断言）。",
+                 u8"未知定义 ID ⇒ 配方被换成 builtin/error_checkerboard_3d（行为断言），"
+                 u8"标记行不可得时降级 builtin/checkerboard_3d。",
                  static_cast<uint32_t>(MATERIAL_ERROR_KIND_COUNT));
     }
 

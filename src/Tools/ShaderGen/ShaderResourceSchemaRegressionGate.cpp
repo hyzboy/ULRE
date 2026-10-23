@@ -425,6 +425,7 @@ namespace
             "builtin/pure_color",
             "builtin/checkerboard_2d",
             "builtin/checkerboard_3d",
+            "builtin/error_checkerboard_3d",
             "builtin/text_gpu",
             "builtin/text_gpu_bitmap"
         };
@@ -456,7 +457,8 @@ namespace
             "builtin/text_gpu",
             "builtin/text_gpu_bitmap",
             "builtin/checkerboard_2d",
-            "builtin/checkerboard_3d"
+            "builtin/checkerboard_3d",
+            "builtin/error_checkerboard_3d"
         };
 
         for (const char *id : definition_ids)
@@ -1882,7 +1884,8 @@ namespace
             { "builtin/text_gpu" },
             { "builtin/text_gpu_bitmap" },
             { "builtin/checkerboard_2d" },
-            { "builtin/checkerboard_3d" }
+            { "builtin/checkerboard_3d" },
+            { "builtin/error_checkerboard_3d" }
         };
 
         for (const auto &entry : expected)
@@ -1902,32 +1905,31 @@ namespace
         return result;
     }
 
-    /// 回退材质必须"任何几何都能画"（数据驱动：遍历整张回退规则表，新增种类自动纳入）：
+    /// 回退材质必须"任何几何都能画"（数据驱动：遍历整张回退规则表 + 标记行不可得时的
+    /// 降级材质，新增种类自动纳入）：
     ///   ① 定义 ID 必须能在材质库里解析（打字错 = 兜底路径整条失效）；
     ///   ② 顶点需求只允许 GeometryAttribute/Position（不得依赖 UV/法线/颜色等可选属性）；
+    ///      `Resource` 源需求（要材质数据行）不在本条约束内 —— 回退路径由
+    ///      AttachFallbackMarkerColor 提供该行；
     ///   ③ provider_policy 必须是 GeometryOnly（不得靠 code module 反推属性）。
     static GateResult RunMaterialFallbackDefinitionCase()
     {
         GateResult result;
         result.name = "S.material-fallback-definitions-exist";
 
-        for (uint32_t index = 0; index < MATERIAL_ERROR_KIND_COUNT; ++index)
+        const auto check_definition = [&result](const char *label, const char *definition_id)
         {
-            const MaterialErrorKind kind = static_cast<MaterialErrorKind>(index);
-            const FallbackMaterialRule &rule = GetFallbackMaterialRule(kind);
-
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(rule.definition_id, definition))
+            if (!TryGetMaterialDefinitionByID(definition_id, definition))
             {
-                result.diagnostics.emplace_back(std::string("fallback definition for kind '")
-                    + rule.marker_name + "' is not registered: " + rule.definition_id);
-                continue;
+                result.diagnostics.emplace_back(std::string("fallback definition for ") + label
+                    + " is not registered: " + definition_id);
+                return;
             }
 
             if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
-                result.diagnostics.emplace_back(std::string("fallback definition for kind '")
-                    + rule.marker_name + "' must use GeometryOnly provider policy: "
-                    + rule.definition_id);
+                result.diagnostics.emplace_back(std::string("fallback definition for ") + label
+                    + " must use GeometryOnly provider policy: " + definition_id);
 
             for (uint32_t i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
@@ -1938,11 +1940,23 @@ namespace
                 // 产出（例如 WorldPosition），不依赖顶点数据，任何几何都满足。
                 if (requirement.source == ShaderCodeModuleCapabilitySource::GeometryAttribute
                  && requirement.semantic != ShaderCodeModuleSemantic::Position)
-                    result.diagnostics.emplace_back(std::string("fallback definition for kind '")
-                        + rule.marker_name + "' must not require vertex attributes beyond Position: "
-                        + rule.definition_id);
+                    result.diagnostics.emplace_back(std::string("fallback definition for ") + label
+                        + " must not require vertex attributes beyond Position: " + definition_id);
             }
+        };
+
+        for (uint32_t index = 0; index < MATERIAL_ERROR_KIND_COUNT; ++index)
+        {
+            const MaterialErrorKind kind = static_cast<MaterialErrorKind>(index);
+            const FallbackMaterialRule &rule = GetFallbackMaterialRule(kind);
+
+            check_definition((std::string("kind '") + rule.marker_name + "'").c_str(),
+                             rule.definition_id);
         }
+
+        // 标记行不可得时的降级材质：与规则表同样的约束（它是最后一道兜底）。
+        check_definition("markerless degrade",
+                         kMarkerlessFallbackMaterialDefinitionID);
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -4406,7 +4420,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 13
+         || file_count != 14
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -4421,6 +4435,7 @@ namespace
                 "builtin/pure_color",
                 "builtin/checkerboard_2d",
                 "builtin/checkerboard_3d",
+                "builtin/error_checkerboard_3d",
                 "builtin/text_gpu", "builtin/text_gpu_bitmap"
             };
             for (const char *id : expected_file_ids)
@@ -4439,6 +4454,7 @@ namespace
             "builtin/pure_color",
             "builtin/checkerboard_2d",
             "builtin/checkerboard_3d",
+            "builtin/error_checkerboard_3d",
             "builtin/text_gpu", "builtin/text_gpu_bitmap"
         };
         for (const char *id : bulk_ids)
@@ -4913,14 +4929,15 @@ namespace
         {
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
             // Stage 5 removed the duplicate ntb_derivative_normalmap provider (71 → 70).
-            if (file_count != 70)
-                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
+            // 回退标记色：新增 error_checkerboard_3d_source（70 → 71）。
+            if (file_count != 71)
+                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 70;
+            const int expected_count = 71;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

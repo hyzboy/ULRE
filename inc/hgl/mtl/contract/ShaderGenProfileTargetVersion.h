@@ -62,7 +62,12 @@ namespace hgl::graph::mtl::contract
     //     无纹理材质（VertexColor / VertexPaletteColor / Checkerboard2D/3D /
     //     纯 Surface 天空）不再需要 material_ssbo_binding，bit1 的取值随之改变；
     //     第 10 代产物里这些材质的 bit1 可能是错的，必须换代重烘。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 11;
+    // 12：新增回退（错误）材质 `builtin/error_checkerboard_3d` + 其 fragment 模块
+    //     `error_checkerboard_3d_source`（读 EmissiveSurface 标记色作棋盘格两色基色），
+    //     回退规则表的两个错误种类从 `builtin/checkerboard_3d` 改指到它 ⇒ 该材质的
+    //     bit1 从 0 变 1，并且材质库多出一份定义。第 11 代产物里没有这份材质，
+    //     必须换代重烘。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 12;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，

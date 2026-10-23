@@ -359,7 +359,17 @@ namespace hgl::ecs
 
             if (row == graph::ActiveRowPool::InvalidRowID)
             {
-                GLogWarning(u8"[MaterialFallback] marker row unavailable (no graphics device or pool not ready); fallback material %s keeps rendering without marker color: %s",
+                // 标记色行拿不到 ⇒ **必须降级到零依赖的灰度棋盘格**：规则表里的
+                // `builtin/error_checkerboard_3d` 声明了 `require Resource MaterialData`，
+                // 没有 binding 会被 ValidateMaterialRecipeForRuntime 判定失败并剔除图元
+                // （退化成第一起回归的报错形态）。降级后配方不需要 payload 行，
+                // program 也会按新 ID 重新解析（三次 BuildResolvedRecipe 走同一条路 ⇒ 一致）。
+                out_recipe.mtl_def_id =
+                    graph::mtl::kMarkerlessFallbackMaterialDefinitionID;
+                out_recipe.recipe_name = "fallback_without_marker";
+                out_recipe.material_ssbo_binding = graph::GlobalSSBOBinding{};
+
+                GLogWarning(u8"[MaterialFallback] marker row unavailable (no graphics device or pool not ready); degrade to markerless material %s: owner=%s",
                             out_recipe.mtl_def_id.c_str(), GetOwnerName(primitive_comp));
                 return true;
             }

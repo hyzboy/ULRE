@@ -443,28 +443,31 @@ namespace hgl::graph::mtl
     // 不新建并行机制。新增错误种类 = 加一行；下面的 static_assert 自动纳入检查。
     //
     // 保底外观（2026-10-12 用户拍板）：**材质错误**（`MissingMaterialSource` /
-    //   `UnknownMaterialDefinition`）走**棋盘格** `builtin/checkerboard_3d` —— 它只
+    //   `UnknownMaterialDefinition`）走**棋盘格** `builtin/error_checkerboard_3d` —— 它只
     //   依赖 Position 且 `provider_policy = GeometryOnly`（`normal_mode =
     //   OptionalFaceFallback`）⇒ 任意几何都画得出来；**非错误默认**（`None`）仍是
     //   纯色 `builtin/pure_color`（门 F.fallback-dimension-neutral 钉住）。
     //   口径来源（用户原话）：发售用全预编译 SPV、不再有 shader 合成器 ⇒ 材质配置
     //   写错只 LOG 报错 + 材质侧走错误材质处理路径（即棋盘格渲染）。
     //
-    // TODO(未来·标记色 + 2D/3D 分派)：**棋盘格现在看不到错误色** ——
-    //   `checkerboard_{2d,3d}_source.glsl` 没有 `@ulre require Resource MaterialData`，
-    //   棋盘格两色写死灰度（`vec3(0.0)` / `vec3(0.35)`），所以本表的 `marker_color`
-    //   虽然照旧下发到材质数据行（`EmissiveSurface.color`）却无人读。未来要做的：
-    //     ① 让两套 checkerboard 源同样读 EmissiveSurface 标记色作为棋盘格两色基色
-    //        （那时 `marker_color` / `fallback_marker_color` 才真正可见）；
-    //     ② **2D/3D 必须区分**：2D 走 NDC/UV、3D 走面空间/三平面（沿用两者现有采样
-    //        差异）⇒ 标记色要分别落到两套着色器，不能共用一套；届时回退 ID 还需按
-    //        绘制维度分派（现在两条错误种类共用 3D 版 ⇒ 仍是维度无关的单一 ID）；
-    //     ③ 门/契约：门 F 仍断言无参回退 ID == `builtin/pure_color`（本次未动）；
+    // 标记色（2026-10-24 完成，原 TODO ①）：本表的 `marker_color` 经材质数据行
+    //   （`EmissiveSurface.color`）下发，由 `error_checkerboard_3d_source.glsl` 读回，
+    //   作为棋盘格**两色的基色**（暗格 12% / 亮格 90%）⇒ 洋红 = 无材质来源、
+    //   橙 = 材质定义 ID 无法解析，肉眼可直接分辨错误种类。
+    //   为什么另立一个材质而不是改 `builtin/checkerboard_3d`：那个定义必须保持
+    //   **零资源依赖**（不读 payload 行 ⇒ 不需要 `material_ssbo_binding`），它是回退链
+    //   的最后一环。带标记色的版本声明 `require Resource MaterialData`，只有在回退路径
+    //   拿到 marker 行时才成立；拿不到时 `AttachFallbackMarkerColor` 会把配方降级回
+    //   `builtin/checkerboard_3d`（灰度、零依赖）⇒ 兜底永不失效。
+    //
+    // TODO(未来·2D/3D 分派)：② **2D/3D 必须区分**：2D 走 NDC/UV、3D 走面空间/三平面
+    //   （沿用两者现有采样差异）⇒ 标记色要分别落到两套着色器，不能共用一套；届时回退
+    //   规则表还需按绘制维度分派（现在两条错误种类共用 3D 版 ⇒ 仍是维度无关的单一 ID）。
+    //     ③ 门/契约：门 F 仍断言无参回退 ID == `builtin/pure_color`（未动）；
     //        门 case `S.material-fallback-definitions-exist` 自动遍历本表校验
     //        "定义已注册 + 只依赖 Position + GeometryOnly"（换 ID 写错它会兜底报红）。
-    //   触发前提（用户 2026-10-01 实测）：**跑遍全部示例均正常触发 0 次**，现有示例
-    //   不存在"有几何、无材质来源"的实体 ⇒ 该错误路径目前只有契约测试覆盖，
-    //   无肉眼可验场景。
+    //   可肉眼验证的触发场景：`example/Material/MaterialErrorFallback.cpp`
+    //   （2026-10-24 新增；此前跑遍全部示例触发 0 次，该路径只有契约测试覆盖）。
     // ─────────────────────────────────────────────────────────────
     enum class MaterialErrorKind : uint32_t
     {
@@ -494,18 +497,26 @@ namespace hgl::graph::mtl
           { 1.0f, 1.0f, 1.0f, 1.0f },
           "none" },
 
-        // 有几何、无材质来源：棋盘格保底材质（标记色洋红；**暂未下发到棋盘格**，见上面 TODO）
+        // 有几何、无材质来源：错误棋盘格（标记色洋红 → 棋盘格两色基色）
         { MaterialErrorKind::MissingMaterialSource,
-          "builtin/checkerboard_3d",
+          "builtin/error_checkerboard_3d",
           { 1.0f, 0.0f, 1.0f, 1.0f },
           "missing_material_source" },
 
-        // 材质定义 ID 不可解析（含配置写错）：棋盘格保底材质（标记色橙；**暂未下发**，见上面 TODO）
+        // 材质定义 ID 不可解析（含配置写错）：错误棋盘格（标记色橙 → 棋盘格两色基色）
         { MaterialErrorKind::UnknownMaterialDefinition,
-          "builtin/checkerboard_3d",
+          "builtin/error_checkerboard_3d",
           { 1.0f, 0.5f, 0.0f, 1.0f },
           "unknown_material_definition" },
     };
+
+    /// 标记色行**不可得**时的降级保底材质：零资源依赖的灰度棋盘格。
+    /// 与规则表的 `definition_id` 只差 fragment 模块（那份读标记色行，从而声明了
+    /// `require Resource MaterialData`）⇒ 回退路径一旦拿不到 marker 行就必须退回这里，
+    /// 否则"声明要 payload 行却没有 binding"会让图元被运行期校验剔除。
+    /// 场景：无图形设备（单元测试）、SSBO 池未就绪或已满。
+    inline constexpr const char *kMarkerlessFallbackMaterialDefinitionID =
+        "builtin/checkerboard_3d";
 
     namespace detail
     {

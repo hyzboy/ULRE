@@ -1340,6 +1340,10 @@ int main(const int argc, char **argv)
           ShaderProgramPurpose::ForwardColor, true, false, true, false },
         { "checkerboard-3d-normal-depth", "builtin/checkerboard_3d",
           ShaderProgramPurpose::DepthOnly, true, false, true, false },
+        // 错误棋盘格（读标记色行）：验证带 `require Resource MaterialData` 的
+        // 回退材质能正常出 SPV（它是所有材质错误的兜底渲染路径）。
+        { "error-checkerboard-3d-forward", "builtin/error_checkerboard_3d",
+          ShaderProgramPurpose::ForwardColor, true, false, false, false },
         { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,

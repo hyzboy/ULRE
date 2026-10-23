@@ -1,0 +1,22 @@
+schema = 4
+id = "builtin/error_checkerboard_3d"
+name = "builtin/error_checkerboard_3d"
+provider_policy = "GeometryOnly"
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"
+
+[fragment]
+material_source_module_name = "error_checkerboard_3d_source"
+
+[vertex]
+requirements = ["Position"]
+normal_mode = "OptionalFaceFallback"
+varyings = ["emit_data_index_id", "emit_world_pos"]
+
+[resources]
+material_data = { type = "EmissiveSurface" }
