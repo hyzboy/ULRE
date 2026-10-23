@@ -37,6 +37,7 @@ RenderPass::~RenderPass()
     }
 
     LogDebug("[RenderPass::~RenderPass] Clearing pipeline_list...");
+    pipeline_memo.Clear();
     pipeline_list.Clear();
     LogDebug("[RenderPass::~RenderPass] Pipelines cleared, now destroying VkRenderPass");
 
@@ -121,6 +122,55 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     return pipeline;
 }
 
+Pipeline *RenderPass::CreatePipelineForProgram(ShaderProgram *mtl,
+                                               const mtl::MaterialPipelineConfig &config,
+                                               bool keep_fragment_shader)
+{
+    if(!mtl)
+        return(nullptr);
+
+    // 本通道形态（是否剥片元阶段）判据与 CreatePipeline 内部完全同源：
+    // depth-only 通道 + 非 alpha 混合 + 不需要片元 discard 时才剥。
+    const bool strip_fragment_shader = color_formats.GetCount()==0
+                                    &&!config.alpha_blend
+                                    &&!keep_fragment_shader;
+
+    const uint64 program_digest = mtl->GetProgramKey().GetDigest();
+
+    // 上层早退：同程序 + 同通道形态 ⇒ 已解析过，直接返回同一包装对象。
+    // 渲染状态没动就不存在重新 CreatePipeline（既不重复解析，也不重复建 VkPipeline）。
+    const int memo_count = pipeline_memo.GetCount();
+    for(int i = 0; i < memo_count; ++i)
+    {
+        const PipelineMemoEntry &entry = pipeline_memo[i];
+
+        if(entry.pipeline
+         &&entry.program_digest == program_digest
+         &&entry.strip_fragment_shader == strip_fragment_shader)
+            return entry.pipeline;
+    }
+
+    Pipeline *p = CreatePipeline(mtl->GetName(),
+                                 mtl->GetStageList(),
+                                 mtl->GetPipelineLayout(),
+                                 config,
+                                 keep_fragment_shader);
+
+    if(p)
+    {
+        if(!pipeline_list.Contains(p))
+            pipeline_list.Add(p);
+
+        PipelineMemoEntry entry;
+        entry.program_digest = program_digest;
+        entry.strip_fragment_shader = strip_fragment_shader;
+        entry.pipeline = p;
+        pipeline_memo.Add(entry);
+    }
+
+    return p;
+}
+
 Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipelineConfig &config)
 {
     if(!mtl)
@@ -129,16 +179,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipel
     // 颜色通道专用重载（line/text）：keep_fragment_shader = false——depth-only
     // 通道的 FS 保留判据需要 recipe 语义，本重载无法表达（MaterialPipelineConfig
     // 无 alpha_test/dither 字段），有 depth-only 需求的材质请走 recipe 重载。
-    Pipeline *p = CreatePipeline(mtl->GetName(),
-                                  mtl->GetStageList(),
-                                  mtl->GetPipelineLayout(),
-                                  config,
-                                  false);
-
-    if(p && !pipeline_list.Contains(p))
-        pipeline_list.Add(p);
-
-    return p;
+    return CreatePipelineForProgram(mtl, config, false);
 }
 
 Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe)
@@ -175,15 +216,6 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
         render_state.alpha_test
      || render_state.dither;
 
-    Pipeline *p = CreatePipeline(mtl->GetName(),
-                                  mtl->GetStageList(),
-                                  mtl->GetPipelineLayout(),
-                                  render_state.pipeline_config,
-                                  keep_fragment_shader);
-
-    if(p && !pipeline_list.Contains(p))
-        pipeline_list.Add(p);
-
-    return p;
+    return CreatePipelineForProgram(mtl, render_state.pipeline_config, keep_fragment_shader);
 }
 }//namespace hgl::graph
