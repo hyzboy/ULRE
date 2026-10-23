@@ -131,20 +131,23 @@ if (-not $SkipBuild) {
     # .lib/.dll（表现为大片假的 LNK1104），必须用独立节点构建。
     # 并行：本仓输出目录把 exe/dll/lib 全平铺在一个目录，vcpkg applocal 会并发往同一目录
     # 拷同一批 DLL。实测 354 个 exe 全量重链 /m:8 零失败，故竞态不是系统性的；偶发的
-    # MSB3073(exit 32) 由下面的「串行补跑」兜底，不构成把 /m 降回 1 的理由。
+    # MSB3073(exit 32) / MSB3075(exit 5) 由下面的「串行补跑」兜底，不构成把 /m 降回 1 的理由。
     cmake --build $buildPath --config $Config -- /m:$Jobs /nodeReuse:false /nologo 2>&1 |
         Tee-Object -FilePath $buildLog | Out-Null
     $buildRc = $LASTEXITCODE
     Write-Host "  build rc=$buildRc"
 
-    # vcpkg applocal 的 POST_BUILD 偶发 MSB3073（exit 32），成因是并发拷贝时的共享冲突。
+    # vcpkg applocal 的 POST_BUILD 偶发失败，成因是并发拷贝时的共享冲突。实测两种表现形式：
+    #   MSB3073 / exit 32 —— z-applocal 自身返回 32（共享冲突）
+    #   MSB3075 / exit 5  —— 同一冲突的另一条路径（ERROR_ACCESS_DENIED，目标 exe 仍被占用）
+    # 两者性质相同，故一并纳入重放判据。
     # z-applocal 本身幂等，把日志里记录的那几条命令串行重放一遍即可修复 —— 这样既保留了
     # 并行构建的速度，又不让基线因一次偶发而误判。
-    # 只在确实出现 MSB3073 时触发：日志里出现 z-applocal 行本身是正常现象（有 target 重链
+    # 只在确实出现上述错误时触发：日志里出现 z-applocal 行本身是正常现象（有 target 重链
     # 就会有），无条件重放等于给每次增量构建平白加上几十次进程启动。
     $appLocalRepaired = 0
     if ((Test-Path $buildLog) -and
-        (Select-String -Path $buildLog -Pattern 'MSB3073.*exited with code 32' -Quiet)) {
+        (Select-String -Path $buildLog -Pattern 'MSB307[35].*exited with code (32|5)\b' -Quiet)) {
         $replay = Select-String -Path $buildLog `
             -Pattern 'z-applocal\s+--target-binary=(\S+)\s+--installed-bin-dir=(\S+)' |
             ForEach-Object { "$($_.Matches[0].Groups[1].Value)|$($_.Matches[0].Groups[2].Value)" } |
@@ -212,12 +215,12 @@ if (Test-Path $buildLog) {
             default { [void]$uErrors.Add($l) }
         }
     }
-    # 已被 [3/5] 串行重放修复的 applocal MSB3073 不再计入 B 层错误
+    # 已被 [3/5] 串行重放修复的 applocal 错误不再计入 B 层错误
     if ($appLocalRepaired -gt 0) {
-        $fixed = @($bErrors | Where-Object { $_ -match 'MSB3073' })
+        $fixed = @($bErrors | Where-Object { $_ -match 'MSB307[35]' })
         if ($fixed.Count -gt 0) {
             foreach ($x in $fixed) { [void]$bErrors.Remove($x) }
-            Write-Host ("  其中 {0} 条 applocal MSB3073 已由串行重放修复，不计入" -f $fixed.Count)
+            Write-Host ("  其中 {0} 条 applocal MSB3073/MSB3075 已由串行重放修复，不计入" -f $fixed.Count)
         }
     }
     Write-Host ("  A 层错误 = {0}   B 层错误 = {1}   未归类 = {2}" -f $aErrors.Count, $bErrors.Count, $uErrors.Count)
