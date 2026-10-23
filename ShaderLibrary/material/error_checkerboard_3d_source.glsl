@@ -11,6 +11,11 @@
 // 错误兜底棋盘格（3D）：与 builtin/checkerboard_3d 的唯一差别是**读材质数据行的
 // 标记色**（EmissiveSurface.color），棋盘格两色都由它派生 ⇒ 不同错误种类一望即辨。
 //
+// 标记色种类（`MaterialRecipe.h::kFallbackMaterialRules`，唯一权威表）：
+//   洋红 = 无材质来源 / 橙 = 材质定义无法解析 / 青 = 声明 required 却没给纹理
+//   黄   = 几何缺顶点法线 / 蓝 = 几何缺纹理 UV
+// 本模块是**维度无关**的单一实现，颜色由数据决定 —— 新增错误种类不需要动这里。
+//
 // 为什么单独一份模块而不是改 checkerboard_3d_source：
 //   · checkerboard_3d_source 必须保持**零资源依赖**（任何几何、任何绑定条件下都画得
 //     出来），它是回退链的最后一环；
