@@ -125,20 +125,13 @@ namespace hgl::graph::mtl
             return false;
         }
 
+        /// 委托 mtl 层单一口径（`MaterialRecipe.h::HasMaterialVertexSemanticRequirement`）：
+        /// 同一个判据还被 ECS 渲染层（几何错配判定）与契约测试使用，不能各写一份。
         bool HasVertexSemanticRequirement(
             const MaterialDefinition &definition,
             const VertexSemantic semantic) noexcept
         {
-            for (int i = 0;
-                 i < definition.vertex_semantic_requirements.GetCount();
-                 ++i)
-            {
-                if (GetVertexSemanticFromShaderCodeModuleSemantic(
-                        definition.vertex_semantic_requirements[i].semantic)
-                    == semantic)
-                    return true;
-            }
-            return false;
+            return HasMaterialVertexSemanticRequirement(definition, semantic);
         }
 
         // Phase 1 — purpose / coverage / varying / stage interface
@@ -853,20 +846,9 @@ namespace hgl::graph::mtl
         // 法线来源的归一化只在这里做一次：预处理结果参与 vertex ABI / resource
         // manifest / 最终发射，多处各自归一化必然分叉。
         // ═══════════════════════════════════════════════════════════════════
-        /// 定义是否**要法线光照**：显式面法线回退模式，或声明了 Normal 语义/法线贴图模块。
-        bool MaterialWantsNormalLighting(const MaterialDefinition &definition) noexcept
-        {
-            if (definition.vertex_normal_mode
-                    == MaterialVertexNormalMode::OptionalFaceFallback)
-                return true;
-
-            if (definition.ntb_module_name && *definition.ntb_module_name)
-                return true;
-
-            return HasVertexSemanticRequirement(definition, VertexSemantic::Normal)
-                || HasVertexSemanticRequirement(definition, VertexSemantic::Tangent)
-                || HasVertexSemanticRequirement(definition, VertexSemantic::Bitangent);
-        }
+        // 法线需求的判据在 mtl 层单一口径（`MaterialRecipe.h::MaterialWantsNormalLighting` /
+        // `MaterialRequiresVertexNormal` / `MaterialToleratesFaceNormalFallback`）—— 同一个
+        // 判据还要被 ECS 渲染层用来判定几何顶点格式错配并回退错误棋盘格，两处口径必须同源。
 
         /// 归一化「法线从哪来」，两条路：
         ///   · 顶点格式有 Normal ⇒ 走顶点法线（补齐 Normal 需求 + `HGL_MATERIAL_HAS_VERTEX_NORMAL`）；
@@ -907,11 +889,15 @@ namespace hgl::graph::mtl
             //（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`，装配处见
             //  contract::BuildGLSLMaterialSurfaceInput）。
             //
-            // 语义定稿（用户）：「材质需要法线光照但顶点没有 NTB ⇒ 用三角形平面渲染
-            //（顶点 CROSS 出法线）」——这是引擎支持的**正常光照模式**（不是错误回退），
-            // 所以这里只降级并告警，不换材质、不改标记色。
-            // 触发条件见 `MaterialWantsNormalLighting`：只要材质要法线光照（含 `Lit` 这种
-            // 声明了 Normal/ntb 模块但 `normal_mode` 仍是默认 None 的），缺顶点法线就降级。
+            // 语义定稿（2026-10-24 用户两次拍板，后者覆盖前者）：
+            //   · 缺顶点法线**必须看得见** —— 面法线平面着色看起来「像正常的低模」，
+            //     问题会被这层伪装掩掉 ⇒ ECS 渲染层把「材质要顶点法线、几何没有」判为
+            //     `MissingVertexNormal` 几何错配，**整条配方换成错误棋盘格（黄）**，本函数
+            //     根本不会被调用到（见 `RenderPrimitiveCollectSystem::BuildResolvedRecipe`）；
+            //   · 这里的降级因此只剩两类合法/兜底场景：
+            //       ① `normal_mode = OptionalFaceFallback` 的材质（棋盘格自身）——
+            //          面法线就是它声明的行为，静默降级；
+            //       ② ECS 层没拿到几何顶点格式（如离线/测试路径）—— 兜底，不剔除图元。
             RemoveVertexSemanticRequirement(
                 out_resolved_definition, VertexSemantic::Normal);
             RemoveVertexSemanticRequirement(
@@ -925,12 +911,17 @@ namespace hgl::graph::mtl
             out_resolved_definition.compile_defines.push_back(
                 "HGL_MATERIAL_FACE_NORMAL_FALLBACK");
 
-            GLogWarning(
-                u8"[ShaderGen] 材质 %s 需要法线光照（normal_mode=%s，ntb_module=%s），但几何顶点"
-                u8"格式缺少 Normal 语义 => 降级为三角形面法线光照（cross(dFdx,dFdy)）",
-                definition.definition_id.c_str(),
-                GetMaterialVertexNormalModeName(definition.vertex_normal_mode),
-                definition.ntb_module_name ? definition.ntb_module_name : "");
+            // 容忍者（棋盘格）静默；必须顶点法线却走到这里 = ECS 层漏判 ⇒ 出声。
+            if (MaterialRequiresVertexNormal(definition))
+            {
+                GLogError(
+                    u8"[ShaderGen] 材质 %s 必须要顶点法线（normal_mode=%s，ntb_module=%s），但几何"
+                    u8"顶点格式缺少 Normal 语义 => 兜底降级为三角形面法线光照（cross(dFdx,dFdy)）。"
+                    u8"这是**几何顶点格式错配**，正常应已由 ECS 渲染层回退为错误棋盘格",
+                    definition.definition_id.c_str(),
+                    GetMaterialVertexNormalModeName(definition.vertex_normal_mode),
+                    definition.ntb_module_name ? definition.ntb_module_name : "");
+            }
 
             return !out_resolved_definition.vertex_semantic_requirements.IsEmpty();
         }

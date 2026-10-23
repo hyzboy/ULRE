@@ -389,6 +389,88 @@ namespace hgl::ecs
         // A7b：回退（错误）材质配方合成次数（诊断；Update 每帧开头清零）。
         uint32_t g_fallback_recipe_builds = 0;
 
+        // 前向声明：几何级材质错误判据需要顶点格式，采集口径与 program 解析共用一份
+        // （定义在下方，紧邻 program 构建上下文）。
+        void GetPrimitiveProgramBuildInputs(
+            Entity *primitive_comp,
+            graph::PrimitiveType &out_primitive_type,
+            const graph::GeometryVertexFormat *&out_geometry_vertex_format);
+
+        /// 采集「几何级材质错误」所需事实：顶点格式是否存在、是否含 Normal / TexCoord。
+        /// 无几何资产 ⇒ `has_geometry_format = false` ⇒ 判据一律不成立（宁可不报）。
+        graph::mtl::MaterialGeometryFacts BuildMaterialGeometryFacts(
+            Entity *primitive_comp)
+        {
+            graph::mtl::MaterialGeometryFacts facts{};
+
+            graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
+            const graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
+            GetPrimitiveProgramBuildInputs(primitive_comp, primitive_type,
+                                           geometry_vertex_format);
+
+            if (!geometry_vertex_format)
+                return facts;
+
+            facts.has_geometry_format = true;
+            facts.has_vertex_normal =
+                geometry_vertex_format->Find(graph::VertexSemantic::Normal) != nullptr;
+            facts.has_texture_coord =
+                geometry_vertex_format->Find(graph::VertexSemantic::TexCoord) != nullptr;
+
+            return facts;
+        }
+
+        /**
+         * A7d：**几何级**材质错误 ⇒ 整条配方换成错误棋盘格。
+         *
+         * 与 A7b/A7c 的区别：那两类是**配方/定义写错**（数据层看得到），这一类是
+         * **定义与配方都合法、错在几何顶点格式与材质需求对不上**（网格做错了 / 顶点
+         * 格式选错了）—— 数据层拿不到 `geometry_vertex_format`，只有这里能判。
+         *
+         * 为什么必须回退而不是让 ShaderGen 静默降级（用户 2026-10-24 定稿）：
+         *   · 缺顶点法线降级成面法线平面着色后，画面看起来「像正常的低模」，
+         *     法线数据坏了这件事被完全掩掉；
+         *   · 缺 UV 则按垃圾 UV 采样贴图，表现为随机花纹，比没贴图更难查。
+         * 两者都要肉眼一眼可见 ⇒ 统一走错误棋盘格，颜色区分种类（`kFallbackMaterialRules`）。
+         *
+         * 失败语义：合成回退配方失败 ⇒ 保持原配方（宁可画得不对也不剔除图元）。
+         */
+        void ApplyGeometryErrorFallback(Entity *primitive_comp,
+                                        graph::mtl::MaterialRecipe &out_recipe)
+        {
+            graph::mtl::MaterialDefinition definition{};
+
+            if (!graph::mtl::TryGetMaterialDefinitionByID(out_recipe.mtl_def_id,
+                                                          definition))
+                return;
+
+            const graph::mtl::MaterialErrorKind geometry_error =
+                graph::mtl::ClassifyMaterialGeometryError(
+                    definition, BuildMaterialGeometryFacts(primitive_comp));
+
+            if (geometry_error == graph::mtl::MaterialErrorKind::None)
+                return;
+
+            const graph::mtl::FallbackMaterialRule &rule =
+                graph::mtl::GetFallbackMaterialRule(geometry_error);
+
+            GLogError(u8"[MaterialFallback] 材质 \"%s\" 与几何顶点格式不匹配（错误种类 %s）"
+                      u8"=> 回退错误材质 %s（棋盘格，颜色=(%.2f,%.2f,%.2f,%.2f)）owner=%s",
+                      out_recipe.mtl_def_id.c_str(),
+                      rule.marker_name,
+                      rule.definition_id,
+                      rule.marker_color[0], rule.marker_color[1],
+                      rule.marker_color[2], rule.marker_color[3],
+                      GetOwnerName(primitive_comp));
+
+            if (!graph::mtl::BuildFallbackMaterialRecipe(out_recipe, geometry_error))
+            {
+                GLogError(u8"[MaterialFallback] 错误材质合成失败（错误种类 %s）=> 保留原配方 owner=%s",
+                          rule.marker_name,
+                          GetOwnerName(primitive_comp));
+            }
+        }
+
         bool BuildResolvedRecipe(Entity *primitive_comp,
                                  const graph::ShaderProgram *material_program,
                                  graph::mtl::MaterialRecipe &out_recipe)
@@ -409,10 +491,18 @@ namespace hgl::ecs
                                                    material_program,
                                                    geometry ? geometry->GetAssetMaterialRecipe() : nullptr))
             {
+                // A7d：几何级材质错误 —— 定义与配方都合法，错在顶点格式对不上需求
+                //（缺 Normal / 缺 UV0）。必须在**成功路径**上也判：这正是「材质没写错、
+                // 网格做错了」的场景，数据层与 ShaderGen 都不会报。
+                if (out_recipe.fallback_error_kind == graph::mtl::MaterialErrorKind::None)
+                    ApplyGeometryErrorFallback(primitive_comp, out_recipe);
+
                 // A7b ②：构建"成功"，但 mtl 侧可能已把**无法解析的材质定义 ID** 换成保底材质
-                // （`NormalizeRecipe` 的分类结果记在 `fallback_error_kind` 上）⇒ 计入回退次数。
-                // 报错由 mtl 侧那一行承担（见 MaterialDefinitionRegistry.cpp），这里**不重复出声**；
-                // 该位同时是"这帧真的走了错误材质"的取数口（配合上面的每帧汇总行）。
+                // （`NormalizeRecipe` 的分类结果记在 `fallback_error_kind` 上），A7d 也可能刚
+                // 换了配方 ⇒ 计入回退次数。
+                // 报错由各自的判定点承担（见 MaterialDefinitionRegistry.cpp / 上面的
+                // ApplyGeometryErrorFallback），这里**不重复出声**；该位同时是"这帧真的走了
+                // 错误材质"的取数口（配合上面的每帧汇总行）。
                 if (out_recipe.fallback_error_kind != graph::mtl::MaterialErrorKind::None)
                     ++g_fallback_recipe_builds;
 

@@ -230,12 +230,17 @@ namespace hgl::graph::mtl
             out_code +=
                 "    si.worldNormal = normalize(fragWorldNormal);\n";
 
-        // 面法线降级（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`）：
+        // 面法线兜底（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`）：
         // 材质要法线光照、但几何顶点格式没有 Normal 语义 ⇒ 用世界位置的屏幕空间导数
         // 叉积求**三角形面法线**（与 error_checkerboard_3d_source.glsl 同一约定）。
         // 开关由 GenericMaterialBuilder::PrepareResolvedDefinition 决定，这里用
         // GLSL 预处理包住 ⇒ 不降级时本段零成本、且不引用任何可能不存在的 varying。
         // 退化三角形（面积为 0）保持预置值 (0,0,1)，避免 NaN。
+        //
+        // ⚠ 本段只是**兜底**，不是「缺顶点法线的正常处理」：材质要顶点法线、几何却没有，
+        //   是几何顶点格式错配，ECS 渲染层会先把它换成错误棋盘格（黄色），根本走不到这里。
+        //   保留本段的两个合法用途：① `normal_mode = OptionalFaceFallback` 的棋盘格自身；
+        //   ② 调用方未提供几何顶点格式的路径（离线/测试）。
         out_code +=
             "#ifdef HGL_MATERIAL_FACE_NORMAL_FALLBACK\n"
             "    {\n"
