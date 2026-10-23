@@ -5652,29 +5652,25 @@ namespace
     // GLSL 允许 out 数组元素未写入，FS 侧静默读到未定义值（#9：LineQuad
     // 曾漏写 UV0/WorldPosition/WorldNormal/StyleID/FragDirection）。
     // 本用例把「可写性」钉成双向等式：
-    //   ① 描述符声明的 writable_semantics 必须真的被 EmitVaryingWrites 写出
-    //      （声明可写但发射器没写 ⇒ 硬门会放行一份坏 shader）；
+    //   ① 规则表登记可写 ⇒ EmitVaryingWrites 必须真的写出
+    //      （登记了但发射器没写 ⇒ 硬门会放行一份坏 shader）；
     //   ② 发射器写了但表里没登记同样失败（表比实际窄会误拒合法材质）。
-    // 两侧用的都是生产代码（同一张白名单 + 同一个发射器），不是手抄副本。
+    // 两侧用的都是生产代码（同一张规则表 + 同一个发射器），不是手抄副本 ——
+    // 4.3 起可写性与发射共表，本用例保证这张表自身不会退化成 wishful thinking。
     static GateResult RunMeshVaryingWritabilityCase()
     {
         GateResult result;
         result.name = "MV.mesh-varying-writability";
 
-        struct ModeProbe
-        {
-            MeshShaderMode mode;
-            MeshVaryingIndexModel index_model;
-        };
-        static const ModeProbe kProbes[] = {
-            { MeshShaderMode::VertexPassthrough, MeshVaryingIndexModel::PerVertex },
-            { MeshShaderMode::LineQuad,          MeshVaryingIndexModel::LineQuad  },
-            { MeshShaderMode::CharQuad,          MeshVaryingIndexModel::CharQuad  },
+        static const MeshShaderMode kProbeModes[] = {
+            MeshShaderMode::VertexPassthrough,
+            MeshShaderMode::LineQuad,
+            MeshShaderMode::CharQuad,
         };
 
-        for (const ModeProbe &probe : kProbes)
+        for (const MeshShaderMode mode : kProbeModes)
         {
-            const MeshModeDescriptor *desc = GetMeshModeDescriptor(probe.mode);
+            const MeshModeDescriptor *desc = GetMeshModeDescriptor(mode);
             if (!desc)
             {
                 result.diagnostics.emplace_back(
@@ -5702,53 +5698,52 @@ namespace
                 stage_interface.Add(entry);
             }
 
-            MaterialVertexVaryingConfig varying_cfg{};
-            std::string emitted;
-            EmitVaryingWrites(emitted, stage_interface, varying_cfg,
-                              probe.index_model, true, true);
-
-            for (const InterStageSemantic semantic : kMeshEmittedVaryingSemantics)
+            // 顶点色两条取色路径都必须与发射结果一致（表里有 Palette/Attribute 两行）。
+            for (const bool from_palette : { false, true })
             {
-                const InterStageSemanticInfo *info =
-                    GetInterStageSemanticInfo(semantic);
-                if (!info || !info->shader_symbol || !info->shader_symbol[0])
-                    continue;
+                MaterialVertexVaryingConfig varying_cfg{};
+                varying_cfg.emit_vertex_color_from_palette = from_palette;
 
-                bool declared_writable = false;
-                for (int w = 0; w < desc->writable_semantic_count; ++w)
+                std::string emitted;
+                EmitVaryingWrites(emitted, stage_interface, varying_cfg,
+                                  desc->varying_write_rules);
+
+                for (const InterStageSemantic semantic : kMeshEmittedVaryingSemantics)
                 {
-                    if (desc->writable_semantics[w] == semantic)
+                    const InterStageSemanticInfo *info =
+                        GetInterStageSemanticInfo(semantic);
+                    if (!info || !info->shader_symbol || !info->shader_symbol[0])
+                        continue;
+
+                    const bool declared_writable =
+                        IsMeshVaryingWritable(desc->varying_write_rules, semantic);
+
+                    // 发射文本里是否出现 `<symbol>[...] ... = `（同一行内有等号）
+                    const std::string needle =
+                        std::string(info->shader_symbol) + "[";
+                    bool actually_written = false;
+                    for (size_t at = emitted.find(needle);
+                         at != std::string::npos;
+                         at = emitted.find(needle, at + needle.size()))
                     {
-                        declared_writable = true;
-                        break;
+                        const size_t eq = emitted.find('=', at);
+                        const size_t nl = emitted.find('\n', at);
+                        if (eq != std::string::npos
+                         && (nl == std::string::npos || eq < nl))
+                        {
+                            actually_written = true;
+                            break;
+                        }
                     }
-                }
 
-                // 发射文本里是否出现 `<symbol>[...] ... = `（同一行内有等号）
-                const std::string needle =
-                    std::string(info->shader_symbol) + "[";
-                bool actually_written = false;
-                for (size_t at = emitted.find(needle);
-                     at != std::string::npos;
-                     at = emitted.find(needle, at + needle.size()))
-                {
-                    const size_t eq = emitted.find('=', at);
-                    const size_t nl = emitted.find('\n', at);
-                    if (eq != std::string::npos
-                     && (nl == std::string::npos || eq < nl))
+                    if (declared_writable != actually_written)
                     {
-                        actually_written = true;
-                        break;
+                        result.diagnostics.emplace_back(
+                            std::string(desc->name) + ": " + info->shader_symbol
+                            + (declared_writable
+                                ? " 登记为可写，但 EmitVaryingWrites 没有写它"
+                                : " EmitVaryingWrites 会写它，但未登记为可写"));
                     }
-                }
-
-                if (declared_writable != actually_written)
-                {
-                    result.diagnostics.emplace_back(
-                        std::string(desc->name) + ": " + info->shader_symbol
-                        + (declared_writable
-                            ? " 登记为可写，但 EmitVaryingWrites 没有写它"
-                            : " EmitVaryingWrites 会写它，但未登记为可写"));
                 }
             }
         }

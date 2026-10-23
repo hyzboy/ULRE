@@ -26,8 +26,10 @@ namespace hgl::graph::mtl
         uint32_t                max_invocations;
         uint32_t                max_vertices;
         const MaterialVertexVaryingConfig *varying_cfg;
-        bool                    emit_world_pos;
-        bool                    emit_world_normal;
+        /// 本该模式的 varying 写入规则集（= 描述符里的那张表）。
+        /// 发射器把它原样交给 EmitVaryingWrites —— 写什么由表决定，
+        /// 模式下不再持有第二份语义清单。
+        MeshVaryingWriteRuleSet varying_write_rules;
         /// 位置属性格式（仅 LineQuad 使用：vec2/vec3 端点读取适配）。
         /// 由 MeshTemplateEmitter 填充——放在上下文里，模式体发射器签名才能统一为
         /// (std::string&, const MeshShaderModeContext&)，无需签名适配包装层。
@@ -48,9 +50,7 @@ namespace hgl::graph::mtl
             varying_outputs,
             resolved_stage_interface,
             varying_cfg,
-            MeshVaryingIndexModel::PerVertex,
-            ctx.emit_world_pos,
-            ctx.emit_world_normal);
+            ctx.varying_write_rules);
 
         std::string body = GetMeshShaderTemplate(
             GetMeshShaderModeTemplateFile(MeshShaderMode::VertexPassthrough));

@@ -21,7 +21,8 @@
             MeshVertexIndex = sbo_vertex_index.data[draw_params.index_base + MeshVertexIndex];
 
         LoadVertexData();
-{{varying_outputs}}    }
+{{varying_outputs}}    gl_MeshVerticesEXT[vid].gl_Position = GetClipPos(GetLocalPos());
+    }
 
     for (uint p = gl_LocalInvocationIndex; p < prims_this_group; p += {{local_size}}u)
     {

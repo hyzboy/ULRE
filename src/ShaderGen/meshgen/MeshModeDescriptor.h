@@ -68,16 +68,19 @@ namespace hgl::graph::mtl
         MeshStage2MappingResolver resolve_stage2_mapping;
         MeshStage3ProjectionResolver resolve_stage3_projection;
 
-        /// 该模式**实际能写出来**的 mesh varying 语义集合。
+        /// 该模式**实际能写出来**的 mesh varying 语义集合 = 写入规则表
+        /// （MeshShaderVaryingGen.h 的 kMeshVaryingWriteRules*）。
         ///
         /// 声明侧只声明 kMeshEmittedVaryingSemantics 里的语义，可写性只覆盖
-        /// 上面这个子集 —— 二者必须取「声明 ⊆ 可写」。声明了却写不出来的
+        /// 这张规则表 —— 二者必须取「声明 ⊆ 可写」。声明了却写不出来的
         /// varying 不会报任何错（GLSL 允许 out 数组元素未写入），FS 侧会静默
         /// 读到未定义值（#9：LineQuad 曾漏写 UV0/WorldPosition/WorldNormal/
         /// StyleID/FragDirection）。因此本表是**硬门**，不是提示：
         /// MeshTemplateEmitter 在发射前校验，不满足即让材质构建失败。
-        const InterStageSemantic *writable_semantics;
-        int writable_semantic_count;
+        ///
+        /// 这里刻意不再维护一份独立的语义清单 —— 可写性直接由发射用的那张
+        /// 规则表回答，两边不可能漂移。
+        MeshVaryingWriteRuleSet varying_write_rules;
 
         MeshBodyEmitter emit_body;
     };
@@ -158,51 +161,11 @@ namespace hgl::graph::mtl
     // 于是描述符表可直接引用真实实现，包装层整体消失。
 
     // ── Per-Mode Writable Varying Sets ──────────────────────────────────
-    // 与 MeshShaderVaryingGen.h 的 EmitVaryingWrites 分支严格对应：
-    // 那里少写一个，这里就不能声称可写。
-
-    // PerVertex 分支：DataIndexID / Color / UV0 / Luminance / FragDirection
-    // + WorldPosition / WorldNormal（后两者另需 HasWorldSpace 能力门）。
-    // StyleID 只有 CharQuad 写（per-char 图元恒值），VertexPassthrough 无。
-    inline constexpr InterStageSemantic kWritableVertexPassthroughSemantics[] =
-    {
-        InterStageSemantic::DataIndexID,
-        InterStageSemantic::Color,
-        InterStageSemantic::UV0,
-        InterStageSemantic::WorldPosition,
-        InterStageSemantic::WorldNormal,
-        InterStageSemantic::Luminance,
-        InterStageSemantic::FragDirection,
-    };
-    inline constexpr int kCountOfWritableVertexPassthrough =
-        static_cast<int>(sizeof(kWritableVertexPassthroughSemantics)
-                       / sizeof(kWritableVertexPassthroughSemantics[0]));
-
-    // LineQuad 的模板只读位置/颜色/亮度 SSBO：没有 TexCoord、没有法线、
-    // 没有 per-char style。世界位置可由 from_world/to_world 精确给出。
-    inline constexpr InterStageSemantic kWritableLineQuadSemantics[] =
-    {
-        InterStageSemantic::DataIndexID,
-        InterStageSemantic::Color,
-        InterStageSemantic::WorldPosition,
-        InterStageSemantic::Luminance,
-    };
-    inline constexpr int kCountOfWritableLineQuad =
-        static_cast<int>(sizeof(kWritableLineQuadSemantics)
-                       / sizeof(kWritableLineQuadSemantics[0]));
-
-    // CharQuad 自带字形 SSBO：UV 来自字形度量、StyleID 来自字形记录。
-    // 没有亮度、没有世界空间、没有 frag direction。
-    inline constexpr InterStageSemantic kWritableCharQuadSemantics[] =
-    {
-        InterStageSemantic::DataIndexID,
-        InterStageSemantic::Color,
-        InterStageSemantic::UV0,
-        InterStageSemantic::StyleID,
-    };
-    inline constexpr int kCountOfWritableCharQuad =
-        static_cast<int>(sizeof(kWritableCharQuadSemantics)
-                       / sizeof(kWritableCharQuadSemantics[0]));
+    // 可写性不再单列一张语义清单：直接问发射用的那张规则表
+    // （MeshModeDescriptor::varying_write_rules）。此前是三张手写语义表
+    // 与 MeshShaderVaryingGen.h 的 EmitVaryingWrites 分支各自维护，
+    // 同一事实两份拷贝 —— 漏改不会报错（#9 就是这样漏掉 LineQuad 的
+    // WorldPosition：声明了、可写性也声称可写，实际没人写）。
 
     /// 找出第一个「会声明成 varying、但该模式写不出来」的语义。
     /// 返回 true 表示契约被破坏，out_semantic 为罪魁（用于报错定位）。
@@ -217,17 +180,7 @@ namespace hgl::graph::mtl
             if (!IsMeshEmittedVaryingSemantic(semantic))
                 continue;
 
-            bool writable = false;
-            for (int w = 0; w < desc.writable_semantic_count; ++w)
-            {
-                if (desc.writable_semantics[w] == semantic)
-                {
-                    writable = true;
-                    break;
-                }
-            }
-
-            if (!writable)
+            if (!IsMeshVaryingWritable(desc.varying_write_rules, semantic))
             {
                 out_semantic = semantic;
                 return true;
@@ -250,8 +203,8 @@ namespace hgl::graph::mtl
                 ResolveStandardStage1Input,
                 VertexNodeConfigResolver::GetMappingModulePath,
                 VertexNodeConfigResolver::GetStage3ModulePath,
-                kWritableVertexPassthroughSemantics,
-                kCountOfWritableVertexPassthrough,
+                { kMeshVaryingWriteRulesPerVertex,
+                  kCountOfMeshVaryingWriteRulesPerVertex },
                 EmitVertexPassthroughBody,
             },
             {
@@ -263,8 +216,8 @@ namespace hgl::graph::mtl
                 ResolveStandardStage1Input,
                 VertexNodeConfigResolver::GetMappingModulePath,
                 VertexNodeConfigResolver::GetStage3ModulePath,
-                kWritableLineQuadSemantics,
-                kCountOfWritableLineQuad,
+                { kMeshVaryingWriteRulesLineQuad,
+                  kCountOfMeshVaryingWriteRulesLineQuad },
                 EmitLineQuadBody,
             },
             {
@@ -276,8 +229,8 @@ namespace hgl::graph::mtl
                 nullptr,
                 nullptr,
                 nullptr,
-                kWritableCharQuadSemantics,
-                kCountOfWritableCharQuad,
+                { kMeshVaryingWriteRulesCharQuad,
+                  kCountOfMeshVaryingWriteRulesCharQuad },
                 EmitCharQuadBody,
             },
         };

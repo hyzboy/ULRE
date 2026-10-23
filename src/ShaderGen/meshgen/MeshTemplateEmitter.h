@@ -326,8 +326,7 @@ namespace hgl::graph::mtl
         mode_ctx.max_invocations  = max_invocations;
         mode_ctx.max_vertices     = max_vertices;
         mode_ctx.varying_cfg      = &varying_cfg;
-        mode_ctx.emit_world_pos   = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldPosition) != nullptr;
-        mode_ctx.emit_world_normal = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldNormal) != nullptr;
+        mode_ctx.varying_write_rules = desc->varying_write_rules;
         mode_ctx.position_format  = position_format;
 
         if (desc->emit_body)

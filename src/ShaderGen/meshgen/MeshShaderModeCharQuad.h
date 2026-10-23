@@ -51,6 +51,6 @@ namespace hgl::graph::mtl
             ms,
             resolved_stage_interface,
             dummy_varying_cfg,
-            MeshVaryingIndexModel::CharQuad);
+            ctx.varying_write_rules);
     }
 }
