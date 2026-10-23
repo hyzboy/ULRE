@@ -3,6 +3,7 @@
 #include<hgl/framework/WorkObject.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/time/Time.h>
+#include<memory>
 
 namespace hgl
 {
@@ -72,17 +73,23 @@ namespace hgl
             {
                 WorkManager wm(&app);
 
-                WO *wo=new WO();
+                // 所有权：RunFramework 创建 ⇒ RunFramework 必须销毁，且**必须早于 app**。
+                // WorkObject 常持有它自己建的世界（如 OffscreenWorld 内的子 ECSContext，
+                // 其系统持有 VkFence / VkBuffer / 设备内存）。原先正常退出路径没有
+                // delete wo，这些设备对象就活到 app 析构之后 ⇒ 子世界资源越过
+                // vkDestroyDevice，被校验层报成 "<Device> has N leaked objects"
+                //（DualWorldShadows 实测 30 个：8 × VkFence + 子世界 cull 缓冲的设备内存）。
+                // unique_ptr 声明在 wm 之后 ⇒ 逆序析构时 wo 最先走，早于 wm、更早于 app。
+                std::unique_ptr<WO> wo(new WO());
                 wo->SetECSContext(app.GetECSContext());
 
                 if(!wo->Init())
                 {
-                    delete wo;
                     result = -2;
                 }
                 else
                 {
-                    wm.Run(wo);
+                    wm.Run(wo.get());
                 }
             }
         }
