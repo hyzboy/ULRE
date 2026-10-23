@@ -323,7 +323,7 @@ namespace hgl::graph::mtl
         // 生成的 GLSL 无关。提到 Phase 3.5 之前是因为声明键必须折叠它们
         // （它们决定 max_vertices/max_primitives 与部分 #define）。
         // ═══════════════════════════════════════════════════════════════════
-        void ResolveMeshStageMode(
+        bool ResolveMeshStageMode(
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
@@ -332,13 +332,53 @@ namespace hgl::graph::mtl
             if (IsCharQuadMode(definition.mesh_shader_mode))
             {
                 plan.mesh_shader_mode = MeshShaderMode::CharQuad;
-                // CharQuad: 每线程 4 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
-                // 64 × 4 = 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
-                const uint32_t toml_or_ideal = definition.mesh_shader_max_invocations > 0
-                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS)
-                    : TEXT_CHARQUAD_MAX_INVOCATIONS;
-                plan.mesh_max_invocations = ClampMeshInvocationsByDevice(
-                    profile, plan.mesh_shader_mode, toml_or_ideal);
+
+                // ── CharQuad 的线程数是**锁死**契约，不能被钳到更小 ──
+                //
+                // CPU 端 dispatch（TextRenderPipeline）按 TEXT_CHARQUAD_MAX_INVOCATIONS
+                // 整除算组数，它拿不到 shader 的 local_size_x。于是生成侧一旦出现
+                // 更小的 group size，就变成「shader 每组处理不足 64 个字符，而 CPU
+                // 仍按 64 派发」—— 尾部字符整段不显示，且没有任何报错。
+                //
+                // 两条会缩小的路径都在这里拦下：
+                //   ① 材质 TOML 的 mesh_shader_max_invocations 不是 64；
+                //   ② 设备能力上限（ClampMeshInvocationsByDevice）< 64。
+                // ② 在符合 Vulkan 规范的设备上不会发生（保证 maxMeshOutputVertices
+                // ≥ 256、max_mesh_work_group_size_x ≥ 128 ⇒ 64 恒可达），一旦发生
+                // 说明设备不合规，宁可构建失败也不能发出与 CPU 派发不符的 shader。
+                const uint32_t declared = definition.mesh_shader_max_invocations;
+                if (declared != 0 && declared != TEXT_CHARQUAD_MAX_INVOCATIONS)
+                {
+                    GLogError(
+                        "[ShaderGen] CharQuad 线程数契约被破坏：definition=%s "
+                        "mesh_shader_max_invocations=%u 必须为 %u"
+                        "（CPU dispatch 固定按该常量算组数，改小会整段漏字）",
+                        definition.definition_id.c_str(),
+                        static_cast<unsigned>(declared),
+                        static_cast<unsigned>(TEXT_CHARQUAD_MAX_INVOCATIONS));
+                    return false;
+                }
+
+                const uint32_t clamped = ClampMeshInvocationsByDevice(
+                    profile, plan.mesh_shader_mode,
+                    TEXT_CHARQUAD_MAX_INVOCATIONS);
+                if (clamped != TEXT_CHARQUAD_MAX_INVOCATIONS)
+                {
+                    GLogError(
+                        "[ShaderGen] CharQuad 线程数契约无法兑现：definition=%s "
+                        "设备能力上限折算后 group_size=%u < %u"
+                        "（CPU dispatch 固定按 %u 算组数，退让会整段漏字）",
+                        definition.definition_id.c_str(),
+                        static_cast<unsigned>(clamped),
+                        static_cast<unsigned>(TEXT_CHARQUAD_MAX_INVOCATIONS),
+                        static_cast<unsigned>(TEXT_CHARQUAD_MAX_INVOCATIONS));
+                    return false;
+                }
+
+                // CharQuad: 每线程 4 顶点，64 × 4 = 256 = Vulkan 保证的
+                // maxMeshOutputVertices 下限（TEXT_CHARQUAD_MAX_INVOCATIONS 与
+                // CPU dispatch 共享）。
+                plan.mesh_max_invocations = TEXT_CHARQUAD_MAX_INVOCATIONS;
                 // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
             }
             else if (plan.primitive_type == hgl::graph::PrimitiveType::Lines)
@@ -353,6 +393,8 @@ namespace hgl::graph::mtl
                 plan.mesh_max_invocations = ClampMeshInvocationsByDevice(
                     profile, plan.mesh_shader_mode, kMeshVertexPassthroughMaxInvocations);
             }
+
+            return true;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1775,10 +1817,9 @@ namespace hgl::graph::mtl
         plan.primitive_type = request.primitive_type;
 
         if (ResolvePurposeAndCoverage(resolved_definition, request, plan)
-         && ResolveVertexABI(resolved_definition, request, plan))
+         && ResolveVertexABI(resolved_definition, request, plan)
+         && ResolveMeshStageMode(profile, resolved_definition, plan))
         {
-            ResolveMeshStageMode(profile, resolved_definition, plan);
-
             if (BuildResourceContract(resolved_definition, plan)
              && BuildFragmentEmissionInput(resolved_definition, plan)
              && BuildDeclarationKey(resolved_definition, plan)
@@ -1837,7 +1878,13 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
-        ResolveMeshStageMode(profile, resolved_definition, plan);
+        if (!ResolveMeshStageMode(profile, resolved_definition, plan))
+        {
+            if (s_last_build_generic_material_error.IsEmpty())
+                s_last_build_generic_material_error = "ResolveMeshStageMode failed";
+            GLogError("[BuildGenericMaterial] ResolveMeshStageMode failed");
+            return nullptr;
+        }
 
         if (!BuildResourceContract(resolved_definition, plan))
         {

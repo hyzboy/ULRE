@@ -38,6 +38,7 @@
 #include <filesystem>
 #include "ShaderGen/builder/GenericMaterialBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
+#include <hgl/graph/font/CharQuadConfig.h>
 #include "VertexBuilderCommon.h"
 #include "StageBuildContextTest.h"
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
@@ -624,10 +625,154 @@ namespace
         return result;
     }
 
+    /// CharQuad 的 mesh 工作组尺寸必须与 CPU dispatch 常量**逐位一致**。
+    ///
+    /// 反证（历史缺陷）：生成侧用 min(TOML 声明, 64) 再经设备能力二次钳制，
+    /// 而 TextRenderPipeline 固定按 TEXT_CHARQUAD_MAX_INVOCATIONS 整除算
+    /// DispatchMesh 组数、拿不到 shader 的 local_size_x。两者一旦分叉，
+    /// 每个工作组只处理不足 64 个字符，尾部字符整段漏画且无任何报错。
+    static GateResult RunCharQuadWorkgroupContractCase()
+    {
+        GateResult result;
+        result.name = "L0.charquad-workgroup-contract";
+
+        MaterialDefinition definition{};
+        if (!TryGetMaterialDefinitionByID("builtin/text_gpu", definition))
+        {
+            result.diagnostics.emplace_back("missing definition: builtin/text_gpu");
+            result.passed = false;
+            return result;
+        }
+
+        const auto build = [](const contract::PhysicalDeviceProfileLite *profile,
+                              const MaterialDefinition &def)
+            -> std::unique_ptr<ShaderBuildContext>
+        {
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = def.definition_id;
+            request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
+            // 只到 GLSL 文本为止：本用例断言的是发射文本里的 local_size_x，
+            // 不需要（也不该依赖）SPV 编译。
+            request.defer_finalize = true;
+
+            RenderTemplateValidationDiagnostic template_diagnostic{};
+            const SceneRenderTemplateProfile scene_profile =
+                MakeForwardUnlitProfile();
+            if (!ResolveSceneRenderTemplateRequest(
+                    RenderTemplateID::ForwardUnlit,
+                    hgl::graph::ShaderStage::Fragment,
+                    scene_profile, request.render_template_request,
+                    template_diagnostic)
+             || !AppendMaterialRenderTemplateRoots(
+                    def, request.render_template_request))
+            {
+                return std::unique_ptr<ShaderBuildContext>();
+            }
+
+            return std::unique_ptr<ShaderBuildContext>(
+                CreateMaterialFromDefinition(profile, def, request));
+        };
+
+        // ── ① 无 profile（无约束）：local_size_x 必须等于 CPU dispatch 常量 ──
+        const auto plain = build(nullptr, definition);
+        if (!plain)
+        {
+            result.diagnostics.emplace_back(
+                "CharQuad material build failed without device profile");
+        }
+        else
+        {
+            const ShaderCreateInfo *mesh =
+                plain->GetStageShader(ShaderStage::Mesh);
+            if (!mesh)
+            {
+                result.diagnostics.emplace_back(
+                    "CharQuad material emitted no mesh stage");
+            }
+            else
+            {
+                const std::string &glsl = mesh->GetFinalGLSL();
+                if (glsl.find("local_size_x = ")
+                        == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "CharQuad mesh stage emits no local_size_x");
+                }
+                else if (glsl.find(
+                        "local_size_x = "
+                        + std::to_string(
+                            static_cast<unsigned>(
+                                TEXT_CHARQUAD_MAX_INVOCATIONS))
+                        + ")") == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "CharQuad mesh stage local_size_x != "
+                        "TEXT_CHARQUAD_MAX_INVOCATIONS（CPU dispatch 组数会算错）");
+                }
+            }
+        }
+
+        // ── ② 材质声明更小的线程数 ⇒ 必须构建失败，不得静默钳制 ──
+        MaterialDefinition lowered = definition;
+        lowered.mesh_shader_max_invocations =
+            TEXT_CHARQUAD_MAX_INVOCATIONS / 2u;
+        if (build(nullptr, lowered))
+        {
+            result.diagnostics.emplace_back(
+                "CharQuad 接受 mesh_shader_max_invocations < "
+                "TEXT_CHARQUAD_MAX_INVOCATIONS（CPU 按常量派发会漏字）");
+        }
+
+        // ── ③ 设备能力上限低于契约 ⇒ 必须构建失败 ──
+        contract::PhysicalDeviceProfileLite narrow{};
+        narrow.api_version = contract::MakeVkVersion(1, 4);
+        narrow.limits.max_mesh_work_group_size_x =
+            TEXT_CHARQUAD_MAX_INVOCATIONS / 2u;
+        if (build(&narrow, definition))
+        {
+            result.diagnostics.emplace_back(
+                "CharQuad 在设备上限 < TEXT_CHARQUAD_MAX_INVOCATIONS "
+                "时仍生成了更小的 group size");
+        }
+
+        // ── ④ 设备上限高于契约 ⇒ 仍锁在契约值（不退让也不放大）──
+        contract::PhysicalDeviceProfileLite wide{};
+        wide.api_version = contract::MakeVkVersion(1, 4);
+        wide.limits.max_mesh_work_group_size_x =
+            TEXT_CHARQUAD_MAX_INVOCATIONS * 2u;
+        wide.limits.max_mesh_output_vertices = 1024u;
+        wide.limits.max_mesh_output_primitives = 512u;
+        const auto wide_ctx = build(&wide, definition);
+        if (!wide_ctx)
+        {
+            result.diagnostics.emplace_back(
+                "CharQuad 在宽裕设备能力下构建失败");
+        }
+        else
+        {
+            const ShaderCreateInfo *mesh =
+                wide_ctx->GetStageShader(ShaderStage::Mesh);
+            if (!mesh
+             || mesh->GetFinalGLSL().find(
+                    "local_size_x = "
+                    + std::to_string(static_cast<unsigned>(
+                        TEXT_CHARQUAD_MAX_INVOCATIONS))
+                    + ")") == std::string::npos)
+            {
+                result.diagnostics.emplace_back(
+                    "CharQuad 的 group size 随设备能力放大（契约必须锁死）");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderSemanticRegistryCase()
     {
         GateResult result;
         result.name = "L0.shader-semantic-registry";
+
 
         ShaderSemanticRegistryValidationResult validation{};
         if (!ValidateInterStageSemanticRegistry(validation))
@@ -7552,6 +7697,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunShaderCodeModuleMetadataValidationCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_interface) results.push_back(RunDepthVaryingMaskParityCase());
+    if (run_interface) results.push_back(RunCharQuadWorkgroupContractCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());

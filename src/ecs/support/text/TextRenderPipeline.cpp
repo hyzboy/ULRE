@@ -324,8 +324,10 @@ namespace hgl::ecs
             if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
                 gc->BindGlobalDescriptorSets(cmd, res.material->GetPipelineLayout());
 
-            // CharQuad dispatch：每工作组 TEXT_CHARQUAD_MAX_INVOCATIONS 字符
-            //（与 ShaderGen 的 group_size 共享同一常量，见 CharQuadConfig.h）
+            // CharQuad dispatch：每工作组 TEXT_CHARQUAD_MAX_INVOCATIONS 字符。
+            // 本处固定按该常量算组数——它不回读 shader 的 local_size_x，因此
+            // 生成侧必须**锁死**同一数值（GenericMaterialBuilder::ResolveMeshStageMode
+            // 拒绝任何更小的 group size），否则尾部字符会整段漏画且无报错。
             const uint32_t char_count = res.last_draw_char_count;
             const uint32_t group_count = (char_count + graph::mtl::TEXT_CHARQUAD_MAX_INVOCATIONS - 1u)
                                         / graph::mtl::TEXT_CHARQUAD_MAX_INVOCATIONS;
