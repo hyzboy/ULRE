@@ -87,30 +87,8 @@ namespace hgl::graph::mtl
     InterStageSemanticMask GetMaterialInterStageSemanticMask(
         const MaterialVertexVaryingConfig &varying) noexcept
     {
-        InterStageSemanticMask mask = 0;
-        const auto add = [&mask](const InterStageSemantic semantic)
-        {
-            mask |= GetInterStageSemanticMask(semantic);
-        };
-
-        if (varying.emit_data_index_id)
-            add(InterStageSemantic::DataIndexID);
-        if (varying.emit_world_pos)
-            add(InterStageSemantic::WorldPosition);
-        if (varying.emit_world_normal)
-            add(InterStageSemantic::WorldNormal);
-        if (varying.emit_uv0)
-            add(InterStageSemantic::UV0);
-        if (varying.emit_vertex_color
-         || varying.emit_vertex_color_from_palette)
-            add(InterStageSemantic::Color);
-        if (varying.emit_frag_direction)
-            add(InterStageSemantic::FragDirection);
-        if (varying.emit_luminance)
-            add(InterStageSemantic::Luminance);
-        if (varying.emit_style_id)
-            add(InterStageSemantic::StyleID);
-        return mask;
+        // 唯一实现见 MaterialStageInterface.h 的定义表（正反两向同源）。
+        return BuildMaterialInterStageSemanticMaskFromVarying(varying);
     }
 
     bool BuildMaterialStageInterface(

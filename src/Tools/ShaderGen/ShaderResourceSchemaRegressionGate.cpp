@@ -482,6 +482,148 @@ namespace
         return result;
     }
 
+    /// 深度/阴影 purpose 的 varying 裁剪必须完全由 coverage.required_semantics 决定。
+    ///
+    /// 反证（历史缺陷）：裁剪按语义逐项手写白名单时，StyleID / WorldPosition /
+    /// WorldNormal / FragDirection 永远被清零 —— 即使 coverage 在要求它们。
+    /// 生成的 shadow program 于是满足不了自己的 coverage 契约且不报错：
+    /// FS 侧 si 字段恒为零值，alpha 求值静默走错分支。
+    static GateResult RunDepthVaryingMaskParityCase()
+    {
+        GateResult result;
+        result.name = "L0.depth-varying-mask-parity";
+
+        // ── ① 定义表对语义枚举的覆盖（新增语义未登记 = 正反两向同时漏）──
+        // WorldTangent / WorldBinormal 是材质表面内部量，不存在跨阶段字段。
+        for (hgl::uint32 value = 1;
+             value < static_cast<hgl::uint32>(InterStageSemantic::RANGE_SIZE);
+             ++value)
+        {
+            const InterStageSemantic semantic =
+                static_cast<InterStageSemantic>(value);
+            if (semantic == InterStageSemantic::WorldTangent
+             || semantic == InterStageSemantic::WorldBinormal)
+                continue;
+
+            bool covered = false;
+            for (const MaterialVaryingSemanticBinding &binding :
+                    kMaterialVaryingSemanticBindings)
+            {
+                if (binding.semantic == semantic)
+                {
+                    covered = true;
+                    break;
+                }
+            }
+            if (!covered)
+                result.diagnostics.emplace_back(
+                    "varying/semantic 定义表漏登记语义 value="
+                    + std::to_string(value));
+        }
+
+        // ── ② 声明 → 掩码（正向）：两条入口必须同源 ──
+        MaterialVertexVaryingConfig declared{};
+        declared.emit_data_index_id = true;
+        declared.emit_world_pos = true;
+        declared.emit_world_normal = true;
+        declared.emit_uv0 = true;
+        declared.emit_vertex_color = true;
+        declared.emit_vertex_color_from_palette = true;
+        declared.emit_frag_direction = true;
+        declared.emit_luminance = true;
+        declared.emit_style_id = true;
+        declared.use_transform_id_attr = true;
+
+        const InterStageSemanticMask declared_mask =
+            GetInterStageSemanticMask(InterStageSemantic::DataIndexID)
+          | GetInterStageSemanticMask(InterStageSemantic::WorldPosition)
+          | GetInterStageSemanticMask(InterStageSemantic::WorldNormal)
+          | GetInterStageSemanticMask(InterStageSemantic::UV0)
+          | GetInterStageSemanticMask(InterStageSemantic::Color)
+          | GetInterStageSemanticMask(InterStageSemantic::FragDirection)
+          | GetInterStageSemanticMask(InterStageSemantic::Luminance)
+          | GetInterStageSemanticMask(InterStageSemantic::StyleID);
+        if (BuildMaterialInterStageSemanticMaskFromVarying(declared)
+                != declared_mask
+         || GetMaterialInterStageSemanticMask(declared) != declared_mask)
+        {
+            result.diagnostics.emplace_back(
+                "varying → 掩码 与登记表不一致（正反两向不同源）");
+        }
+
+        MaterialDefinition definition{};
+        definition.vertex_varying = declared;
+
+        // ── ③ 掩码裁剪：要什么留什么，多字段语义由定义自己挑字段 ──
+        MaterialCoverageContract masked_coverage{};
+        masked_coverage.mode = MaterialCoverageMode::AlphaTest;
+        masked_coverage.requires_alpha_evaluation = true;
+        masked_coverage.required_semantics =
+            GetInterStageSemanticMask(InterStageSemantic::WorldNormal)
+          | GetInterStageSemanticMask(InterStageSemantic::StyleID)
+          | GetInterStageSemanticMask(InterStageSemantic::DataIndexID)
+          | GetInterStageSemanticMask(InterStageSemantic::Color);
+
+        const MaterialVertexVaryingConfig shadow =
+            ResolveMaterialVertexVaryingConfig(
+                definition, ShaderProgramPurpose::ShadowDepth,
+                masked_coverage);
+        if (!shadow.emit_world_normal)
+            result.diagnostics.emplace_back(
+                "shadow varying 未恢复 WorldNormal（coverage 要求但取不到）");
+        if (!shadow.emit_style_id)
+            result.diagnostics.emplace_back(
+                "shadow varying 未恢复 StyleID（coverage 要求但取不到）");
+        if (!shadow.emit_data_index_id)
+            result.diagnostics.emplace_back(
+                "shadow varying 未恢复 DataIndexID（coverage 要求但取不到）");
+        if (!shadow.emit_vertex_color
+         || !shadow.emit_vertex_color_from_palette)
+            result.diagnostics.emplace_back(
+                "Color 语义的多个输出字段被替定义挑选（定义声明了两个，结果缺一个）");
+        if (shadow.emit_world_pos || shadow.emit_uv0
+         || shadow.emit_frag_direction || shadow.emit_luminance)
+            result.diagnostics.emplace_back(
+                "shadow varying 保留了 coverage 未要求的语义");
+        if (!shadow.use_transform_id_attr)
+            result.diagnostics.emplace_back(
+                "顶点属性选择 use_transform_id_attr 被跨阶段裁剪误伤");
+        if (BuildMaterialInterStageSemanticMaskFromVarying(shadow)
+                != masked_coverage.required_semantics)
+        {
+            result.diagnostics.emplace_back(
+                "裁剪结果反推掩码 ≠ coverage.required_semantics");
+        }
+
+        // ── ④ 不评估 alpha ⇒ 一条跨阶段语义都不留（顶点属性选择仍保留）──
+        MaterialCoverageContract opaque_coverage{};
+        const MaterialVertexVaryingConfig depth_only =
+            ResolveMaterialVertexVaryingConfig(
+                definition, ShaderProgramPurpose::DepthOnly,
+                opaque_coverage);
+        if (BuildMaterialInterStageSemanticMaskFromVarying(depth_only) != 0)
+            result.diagnostics.emplace_back(
+                "不评估 alpha 的 depth program 仍带着跨阶段语义");
+        if (!depth_only.use_transform_id_attr)
+            result.diagnostics.emplace_back(
+                "不评估 alpha 的 depth program 丢了顶点属性选择");
+
+        // ── ⑤ 前向 purpose 不受裁剪影响（原样带出定义声明）──
+        const MaterialVertexVaryingConfig forward =
+            ResolveMaterialVertexVaryingConfig(
+                definition, ShaderProgramPurpose::ForwardColor,
+                opaque_coverage);
+        if (BuildMaterialInterStageSemanticMaskFromVarying(forward)
+                != declared_mask)
+        {
+            result.diagnostics.emplace_back(
+                "前向 purpose 的 varying 被裁剪（只应作用于 depth/shadow）");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderSemanticRegistryCase()
     {
         GateResult result;
@@ -7409,6 +7551,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunShaderCodeModuleFileCase());
     if (run_glsl) results.push_back(RunShaderCodeModuleMetadataValidationCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
+    if (run_interface) results.push_back(RunDepthVaryingMaskParityCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());

@@ -4,6 +4,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
+#include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
@@ -260,38 +261,20 @@ MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     if (!depth_purpose)
         return varying;
 
-    varying.emit_world_pos = false;
-    varying.emit_world_normal = false;
-    varying.emit_frag_direction = false;
-    varying.emit_data_index_id = false;
-    varying.emit_vertex_color = false;
-    varying.emit_uv0 = false;
-    varying.emit_luminance = false;
-    varying.emit_vertex_color_from_palette = false;
-    varying.emit_style_id = false;
-
-    if (!coverage.requires_alpha_evaluation)
-        return varying;
-
-    const auto needs_semantic =
-        [&coverage](const InterStageSemantic semantic)
-    {
-        return (coverage.required_semantics
-            & GetInterStageSemanticMask(semantic)) != 0;
-    };
-    varying.emit_data_index_id =
-        needs_semantic(InterStageSemantic::DataIndexID);
-    varying.emit_vertex_color =
-        needs_semantic(InterStageSemantic::Color)
-     && definition.vertex_varying.emit_vertex_color;
-    varying.emit_vertex_color_from_palette =
-        needs_semantic(InterStageSemantic::Color)
-     && definition.vertex_varying.
-            emit_vertex_color_from_palette;
-    varying.emit_uv0 =
-        needs_semantic(InterStageSemantic::UV0);
-    varying.emit_luminance =
-        needs_semantic(InterStageSemantic::Luminance);
+    // depth/shadow 不带颜色输出：varying 只服务于 alpha 求值。
+    //
+    // 裁剪**不再按语义逐项手写**：coverage.required_semantics 是唯一判据，
+    // 由 varying ↔ 语义定义表统一裁剪（MaterialStageInterface.h）。手写白名单
+    // 曾在枚举新增语义时静默漏项 —— StyleID / WorldPosition / WorldNormal /
+    // FragDirection 永远拿不到，而 coverage 仍在要求它们，于是 shadow program
+    // 既不满足自己的 coverage 契约，也不报错（FS 侧 si 字段恒为零值）。
+    // use_transform_id_attr 是顶点属性选择，不在裁剪范围内。
+    const mtl::InterStageSemanticMask required_mask =
+        coverage.requires_alpha_evaluation
+            ? coverage.required_semantics
+            : mtl::InterStageSemanticMask(0);
+    mtl::RestrictMaterialVertexVaryingToSemanticMask(
+        varying, required_mask);
     return varying;
 }
 
