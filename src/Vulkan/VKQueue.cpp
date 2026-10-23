@@ -4,6 +4,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/type/Smart.h>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 #include<cstdint>
 #include<cstdlib>
@@ -160,7 +161,7 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
                          const SemaphoreSubmit *waits,const uint32_t wait_count,
                          const SemaphoreSubmit *signals,const uint32_t signal_count)
 {
-    static const bool sync_trace_enabled=(getenv("VK_SYNC_TRACE")!=nullptr);
+    const bool sync_trace_enabled=ULRE_DEBUG_ON(VkSync);
 
     if(device_lost)
     {
@@ -349,7 +350,7 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
                  static_cast<unsigned long long>(submit_count+1),cb_count,real_wait_count,real_signal_count);
     }
 
-    // Enable with VK_SYNC_TRACE=1 to capture successful submit dependencies.
+    // Enable with ULRE_DEBUG=vksync (legacy VK_SYNC_TRACE=1) to capture successful submit dependencies.
     // On failure, always dump the same data so the first error remains actionable.
     if(sync_trace_enabled||result!=VK_SUCCESS)
     {

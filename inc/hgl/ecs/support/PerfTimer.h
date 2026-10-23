@@ -2,7 +2,7 @@
 
 #include<cstddef>
 #include<cstdint>
-#include<cstdlib>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 #include<hgl/time/Time.h>
 
@@ -10,6 +10,7 @@ namespace hgl::ecs
 {
     /**
      * PBR_PERF=1 计时代（临时插桩）：每 240 帧打印一次均值（稳态口径，启动杂项不进窗口）。
+     * 开关统一走 `ULRE_DEBUG=perf`（`hgl/common/DebugChannel.h`），旧变量 `PBR_PERF` 仍作别名生效。
      *
      * `CullPerfTimer`（`GPUCullSystem.cpp`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp`）此前是
      * **两份逐字同构**的实现（`on = getenv("PBR_PERF") != nullptr` + `total_us` / `frames` +
@@ -20,12 +21,12 @@ namespace hgl::ecs
      */
     struct PerfTimer
     {
-        const bool  on;                 ///< PBR_PERF 是否开启（调用侧据此跳过取时刻）
+        const bool  on;                 ///< perf 通道是否开启（调用侧据此跳过取时刻）
         const char *name;               ///< 诊断标签
         uint64_t    total_us = 0;
         uint32_t    frames   = 0;
 
-        explicit PerfTimer(const char *name_) : on(getenv("PBR_PERF") != nullptr), name(name_) {}
+        explicit PerfTimer(const char *name_) : on(ULRE_DEBUG_ON(Perf)), name(name_) {}
 
         bool Active() const { return on; }
 

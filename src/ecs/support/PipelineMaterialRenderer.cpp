@@ -22,6 +22,7 @@
 #include<hgl/graph/RootAddressPush.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/vk/VKBufferReadback.h>
+#include<hgl/common/DebugChannel.h>
 
 namespace hgl::ecs
 {
@@ -47,9 +48,8 @@ namespace hgl::ecs
             const int32_t  first     = static_cast<int32_t>(slice.row_base);
             const uint32_t max_count = slice.capacity;
 
-            // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：绘制侧读的槽/切片 —— 与派发侧对照
-            static const bool s_flush_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
-            if (s_flush_trace)
+            // 诊断接线（`ULRE_DEBUG=batch,cull`）：绘制侧读的槽/切片 —— 与派发侧对照
+            if (ULRE_DEBUG_ON(Batch))
                 // 槽 = 偏移 / 2056（每槽 2 pass × 257 行 × 4 B）；此处只打原始偏移，离线换算
                 GLogInfo("[T3i][TRACE] flush first=%d max=%u gpu_driven=%d 计数偏移=%u pass=%u",
                          first, max_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
@@ -58,18 +58,19 @@ namespace hgl::ecs
             if (!engaged_logged_)                       // 批 1.3 C5：每实例闩（原 static 是进程级）
             {
                 engaged_logged_ = true;
-                GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u"
-                         u8"（gpu_driven=%d row_base=%u capacity=%u）",
-                         first, max_count,
-                         cur_owner_batch->gpu_driven_override ? 1 : 0,
-                         slice.row_base, slice.capacity);
+
+                if (ULRE_DEBUG_ON(Batch))
+                    GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u"
+                             u8"（gpu_driven=%d row_base=%u capacity=%u）",
+                             first, max_count,
+                             cur_owner_batch->gpu_driven_override ? 1 : 0,
+                             slice.row_base, slice.capacity);
             }
 
             if (cur_owner_batch->icb_count_buffer)
             {
-                // SSBO DUMP 配套（CULL_SSBO_DUMP=1 才付出同步回读；记录绘制侧真正消费的计数值）
-                static const bool s_count_dump = (getenv("CULL_SSBO_DUMP") != nullptr);
-                if (s_count_dump)
+                // SSBO DUMP 配套（ULRE_DEBUG=culldump 才付出同步回读；记录绘制侧真正消费的计数值）
+                if (ULRE_DEBUG_ON(CullDump))
                 {
                     uint32_t current_count_val = UINT32_MAX;
                     if (graph::ReadbackBuffer(cur_owner_batch->icb_count_buffer, slice.count_buffer_offset, sizeof(uint32_t), &current_count_val))

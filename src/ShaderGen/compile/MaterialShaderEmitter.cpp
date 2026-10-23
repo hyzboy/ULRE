@@ -16,6 +16,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/type/StdString.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <hgl/common/DebugChannel.h>
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -64,17 +65,14 @@ bool BuildCodeModuleDocument(
 }
 
 // ── 诊断用 GLSL 落盘（声明见 MaterialShaderEmitter.h）─────────────────────────
+// 开关：ULRE_DEBUG=shadergen（旧变量 ULRE_DUMP_GLSL）。运行时可开关，Release 同样有效
+// ——排障往往就发生在 Release 跑批上，编译期裁掉等于没有。
 void DumpShaderGenGLSL(const char *stage, const std::string &text)
 {
-#ifndef _DEBUG
-    (void)stage;
-    (void)text;
-#else
     if (!stage || text.empty())
         return;
 
-    const char *enabled = std::getenv("ULRE_DUMP_GLSL");
-    if (!enabled || !enabled[0])
+    if (!ULRE_DEBUG_ON(ShaderGen))
         return;
 
     const OSString root = GetShaderCacheRootPath();
@@ -105,7 +103,6 @@ void DumpShaderGenGLSL(const char *stage, const std::string &text)
         file_path.ToOSString(),
         text.data(),
         static_cast<int64>(text.size()));
-#endif
 }
 
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)

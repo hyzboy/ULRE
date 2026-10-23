@@ -20,6 +20,7 @@
 #include <hgl/vk/VKBufferReadback.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
+#include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
 // 生成器开关（`#if ULRE_ENABLE_SHADERGEN`）的唯一定义处：ON 时头内默认 1，
 // OFF 时 CMake 全局下发 0。必须显式包含，不能靠间接包含。
@@ -698,10 +699,9 @@ namespace hgl::ecs
         pc.batch_block_stride = kBatchBlockStride;
         pc.batch_count_shadow = batch_count_[1];
 
-        // 诊断接线（`ECS_TAKEOVER_TRACE=1`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
+        // 诊断接线（`ULRE_DEBUG=batch,cull`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
         // 定位"派发写的槽 ≠ 绘制读的槽"（帧内切 RT 时槽会变，而派发每帧只跑一次）。
-        static const bool s_dispatch_trace = (getenv("ECS_TAKEOVER_TRACE") != nullptr);
-        if (s_dispatch_trace)
+        if (ULRE_DEBUG_ON(Batch))
             GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=[main:%u, shadow:%u] 相机行=%u",
                      context_->GetFrameIndex(), batch_slot, batch_count_[0], batch_count_[1], context_->GetActiveCameraRow());
 
@@ -786,8 +786,7 @@ namespace hgl::ecs
             s_dispatch_perf.Add(GetUptimeUs() - t_dispatch0, "tracked_objects",
                                 device_ ? (size_t)device_->GetTrackedObjectCount() : 0);
 
-        static const bool s_cull_ssbo_dump = (getenv("CULL_SSBO_DUMP") != nullptr);
-        if (s_cull_ssbo_dump)
+        if (ULRE_DEBUG_ON(CullDump))
         {
             if(cull_queue_->WaitLastSubmitFence())
             {

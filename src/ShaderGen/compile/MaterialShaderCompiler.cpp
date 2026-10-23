@@ -92,9 +92,9 @@ bool FinalizeShaderBuildContext(
     }
     build_spec->SetUsedCachedStages(mesh_cache_hit, fragment_cache_hit);
 
-#ifdef _DEBUG
-    // ULRE_DUMP_GLSL=1: dump final GLSL of every material build (mesh+fragment).
+    // ULRE_DEBUG=shadergen（旧变量 ULRE_DUMP_GLSL）：落盘每次材质构建的最终 GLSL（mesh+fs）。
     // 输出目录由 DumpShaderGenGLSL 解析（<ShaderCacheRoot>/glsldump，不绑定机器路径）。
+    // 运行时可开关，Release 同样有效 —— 这里的调用本身不判断，判断在 DumpShaderGenGLSL 内部。
     if (const ShaderCreateInfo *mesh_si =
             build_spec->GetStageShader(ShaderStage::Mesh))
         DumpShaderGenGLSL("mesh", mesh_si->GetFinalGLSL());
@@ -102,7 +102,6 @@ bool FinalizeShaderBuildContext(
     if (const ShaderCreateInfo *frag_si =
             build_spec->GetStageShader(ShaderStage::Fragment))
         DumpShaderGenGLSL("fs", frag_si->GetFinalGLSL());
-#endif
     if ((!mesh_cache_hit || !fragment_cache_hit)
      && artifact_store
      && artifact_store->GetCacheMode() == ShaderCacheMode::ReadOnly)

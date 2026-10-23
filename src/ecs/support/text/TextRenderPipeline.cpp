@@ -36,6 +36,7 @@
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
+#include<hgl/common/DebugChannel.h>
 #include<cmath>
 #include<algorithm>
 
@@ -259,13 +260,13 @@ namespace hgl::ecs
         if (!cmd)
             return;
 
-        const bool arena_debug = getenv("ULRE_ARENA_DEBUG") != nullptr;
+        const bool text_trace = ULRE_DEBUG_ON(Text);
 
         for (auto &pair : resources_by_font)
         {
             auto &res = pair.second;
 
-            if (arena_debug)
+            if (text_trace)
                 GLogInfo("[TextTrace] font draw: chars=%u pipeline=%p material=%p",
                          res.last_draw_char_count,
                          (void *)res.pipeline, (void *)res.material);
@@ -583,7 +584,7 @@ namespace hgl::ecs
 
         resources_by_font.Add(font_source, std::move(resources));
 
-        if (getenv("ULRE_ARENA_DEBUG"))
+        if (ULRE_DEBUG_ON(Text))
             GLogInfo("[TextTrace] font resources created: atlas_handle=%u", resources.bindless_atlas_handle);
 
         return resources_by_font.GetValuePointer(font_source);

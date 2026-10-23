@@ -11,6 +11,7 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/ShaderBufferSources.h>
+#include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
 #include <cmath>
 #include <cstring>
@@ -38,11 +39,10 @@ namespace hgl::ecs
 
     void CPUCullReferenceSystem::Update(float delta_time)
     {
-        // 测量模式（PBR_PERF=1）：本台架 = CPU 参考剔除全量遍历 + 同步读回 GPU
+        // 测量模式（perf 通道）：本台架 = CPU 参考剔除全量遍历 + 同步读回 GPU
         // 计数 + 位图比对 ⇒ 本身就是毫秒级 CPU 活。测量运行关掉它，A/B 差值才
         // 不被同一份常数成本稀释；判据跑批不受影响。
-        static const bool s_measure_mode = getenv("PBR_PERF") != nullptr;
-        if (s_measure_mode)
+        if (ULRE_DEBUG_ON(Perf))
             return;
 
         if (!context_)
@@ -209,7 +209,7 @@ namespace hgl::ecs
 
                 if (nondefault)
                 {
-                    if (nondefault_seen < 8)
+                    if (ULRE_DEBUG_ON(Cull) && nondefault_seen < 8)
                         GLogInfo(u8"[CPUCullReferenceSystem] shadow non-default: batch=%u"
                                  u8" idx=%u bias=%.3f flags=%u（三段字节=%.3f/%.3f/%.3f %u/%u/%u）",
                                  b, entity_index, bias_for_row, flags_for_row,
@@ -260,10 +260,11 @@ namespace hgl::ecs
             GLogError(u8"[T3i] 两本账越界：Σbatch_counts=%u > 全局幸存=%u"
                       u8"（标签/分区与 gather 输出不同源）", sum, gpu_count_);
 
-        GLogInfo(u8"[T3i] batch slices: image=%u batches=%u rows=%u Σcount=%u global=%u overflow=%u"
-                         u8" 值链=%u/%u bad=%u nondefault=%u",
-                         context_->GetFrameIndex(), batch_count, rows_read, sum, gpu_count_, overflow,
-                         checked, checked, bad, nondefault_seen);
+        if (ULRE_DEBUG_ON(Cull))
+            GLogInfo(u8"[T3i] batch slices: image=%u batches=%u rows=%u Σcount=%u global=%u overflow=%u"
+                             u8" 值链=%u/%u bad=%u nondefault=%u",
+                             context_->GetFrameIndex(), batch_count, rows_read, sum, gpu_count_, overflow,
+                             checked, checked, bad, nondefault_seen);
     }
 
     void CPUCullReferenceSystem::PerformCPUCulling()
@@ -485,8 +486,9 @@ namespace hgl::ecs
             }
         }
 
-        GLogInfo(u8"[CPUCullReferenceSystem] Parity: image=%u CPU=%u, GPU=%u, match=%u, mismatch=%u",
-                 context_->GetFrameIndex(), cpu_count_, gpu_count_, both, mismatch);
+        if (ULRE_DEBUG_ON(Cull))
+            GLogInfo(u8"[CPUCullReferenceSystem] Parity: image=%u CPU=%u, GPU=%u, match=%u, mismatch=%u",
+                     context_->GetFrameIndex(), cpu_count_, gpu_count_, both, mismatch);
     }
 
 }

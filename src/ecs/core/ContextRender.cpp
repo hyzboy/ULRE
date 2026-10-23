@@ -18,6 +18,7 @@
 #include <hgl/graph/module/SwapchainModule.h>
 #include <hgl/graph/CameraInfo.h>
 #include <hgl/time/Time.h>
+#include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
 #include <cstdlib>
 #include <cstdio>
@@ -40,7 +41,8 @@ namespace hgl::ecs
             return true;
         }
 
-        // ── T8（D7）prepass 性能账目：env `PREPASS_TIMING=<N>`（未设 = 完全零成本）──
+        // ── T8（D7）prepass 性能账目：`ULRE_DEBUG=perf`（旧变量 PREPASS_TIMING=<N> 可指定间隔；
+        // 关闭时 = 完全零成本）──
         // 用途 = 量**CPU 可见账**：每次离屏 pass 的墙钟总耗时 = 阻塞（上沿 `saved_target->WaitFence()`
         // 等主帧在途槽排空 + 下沿 `rt->WaitFence()` 等本次离屏 RT 自己的 fence）+ 非阻塞
         //（录制 / 提交 / 相机与槽簿记）。本引擎**没有 GPU 时间戳设施**（全仓无 `vkCmdWriteTimestamp` /
@@ -79,18 +81,23 @@ namespace hgl::ecs
 
                 s_inited = true;
 
-                if (const char *v = std::getenv("PREPASS_TIMING"))
-                {
-                    g_prepass_timing.enabled = true;
+                if (!ULRE_DEBUG_ON(Perf))
+                    return;
 
+                g_prepass_timing.enabled = true;
+
+                const char *v = hgl::debug::EnvValue("PREPASS_TIMING");
+
+                if (v)
+                {
                     const int n = std::atoi(v);
                     if (n > 0)
                         g_prepass_timing.print_interval = static_cast<uint32_t>(n);
-
-                    GLogInfo("[PREPASS-TIMING] 启用（env PREPASS_TIMING=%s）：每 %u 个主帧报一次均值；"
-                             "本引擎无 GPU 时间戳 ⇒ 量的是 CPU 可见账（两处 fence 等待 + 其余）",
-                             v, g_prepass_timing.print_interval);
                 }
+
+                GLogInfo("[PREPASS-TIMING] 启用（ULRE_DEBUG=perf 或旧变量 PREPASS_TIMING=%s）：每 %u 个主帧报一次均值；"
+                         "本引擎无 GPU 时间戳 ⇒ 量的是 CPU 可见账（两处 fence 等待 + 其余）",
+                         v ? v : "(未设置)", g_prepass_timing.print_interval);
             }
 
             // 主帧入口调用：闭合上一帧、按窗口打印均值并复位
