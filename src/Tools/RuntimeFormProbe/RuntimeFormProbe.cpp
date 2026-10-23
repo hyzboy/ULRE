@@ -346,16 +346,6 @@ namespace
         if (!backend)
             return 1;
 
-        ShaderProgramKey key{};
-        probe.Check(backend->ComputeProgramKey(
-                        nullptr, request, definition, key),
-                    "release form: lookup key not found in manifest");
-        probe.Check(key.GetDigest() == expected.program_digest,
-                    "release form: program digest differs from the baked identity");
-        probe.Check(key.mesh_stage_digest == expected.mesh_stage_digest
-                        && key.fragment_stage_digest == expected.fragment_stage_digest,
-                    "release form: stage digests differ from the baked identity");
-
         // 运行时自算的语义键必须与烘焙侧一致 —— 这是「跨进程跨形态查表能对上」
         // 的唯一保证；不一致意味着键函数依赖了只有生成器才有的输入。
         probe.Check(ComputeMaterialProgramManifestKey(definition, request, nullptr)
@@ -413,10 +403,9 @@ namespace
             probe.Check(!miss_context,
                         "release form: unknown ambient provider must hard-fail");
 
-            ShaderProgramKey miss_key{};
-            probe.Check(!backend->ComputeProgramKey(
-                            nullptr, miss, definition, miss_key),
-                        "release form: unknown ambient provider must not resolve a key");
+            probe.Check(ComputeMaterialProgramManifestKey(definition, miss, nullptr)
+                            != expected.lookup_key,
+                        "release form: unknown ambient provider must not alias a baked key");
         }
 
         // ReadOnly 下不回写：清单字节与时间戳都必须原样。

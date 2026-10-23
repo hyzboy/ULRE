@@ -2,11 +2,10 @@
  * ShaderProgramBuildBackend.h —— 运行时 → Shader 生成器的**唯一接缝**。
  *
  * 背景（ShaderGen 物理切割）：
- *   `ShaderProgramManager::AcquireShaderProgram()` 需要三件生成器侧才能做的事：
- *     · `ComputeMaterialProgramKey`   —— 声明闭包算键（要读 ShaderLibrary/*.glsl）
+ *   `ShaderProgramManager::AcquireShaderProgram()` 需要两件生成器侧才能做的事：
  *     · `CreateMaterialFromDefinition` —— 发射 GLSL + 建 ShaderBuildContext
  *     · `FinalizeShaderBuildContext`   —— glslang 编译 / SPV 缓存读写
- *   发行版不带生成器，这三件事必须由**别的东西**顶上（预烘焙 SPV Manifest）。
+ *   发行版不带生成器，这两件事必须由**别的东西**顶上（预烘焙 SPV Manifest）。
  *
  * 所以运行时只认这个抽象接口，不认识生成器：
  *   · 开发形态（`ULRE_ENABLE_SHADERGEN=1`）：`InitShaderCompiler()` 时装入
@@ -38,17 +37,6 @@ namespace hgl::graph::mtl
     struct ShaderProgramBuildBackend
     {
         virtual ~ShaderProgramBuildBackend() = default;
-
-        /**
-         * 纯算键早退：只跑到声明键为止，不发射 GLSL 文本。
-         * 返回 false = 算不出键（例如声明闭包读不到磁盘）⇒ 调用方必须退回
-         * `CreateBuildContext()` 全量路径，**绝不能自己造键**。
-         */
-        virtual bool ComputeProgramKey(
-            const contract::PhysicalDeviceProfileLite *profile,
-            const MaterialDefinitionBuildRequest &request,
-            const MaterialDefinition &definition,
-            ShaderProgramKey &out_key) = 0;
 
         /** 全量构建：发射 GLSL、建立 program link / artifact metadata，产出可用的构建上下文。 */
         virtual ShaderBuildContext *CreateBuildContext(

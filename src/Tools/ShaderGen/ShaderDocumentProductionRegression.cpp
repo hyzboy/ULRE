@@ -353,22 +353,24 @@ namespace
         const uint64 source_hash = HashFinalShaderSource(
             source_serialized.c_str(), source_serialized.Length());
         const auto &actual = actual_stage->GetFinalGLSL();
+        const uint64 actual_hash = HashFinalShaderSource(
+            actual.data(), actual.size());
 
-        // stage key 的 definition_hash 现在由「emit 之前的声明源」派生，不再是
-        // 最终 GLSL 文本的哈希——这是运行时与 ShaderGen 解耦的前提。
-        // 因此这里不再断言两者相等，改为断言它非零、且**确实不等于**文本哈希：
-        // 后者是"声明键已生效"的回归守卫，一旦有人把它改回文本派生会立刻失败。
-        // 声明键与文本键的语义一致性由 ShaderGen 侧的声明/文本闭包对齐诊断盯着。
+        // stage key 的 definition_hash 由**发射出来的文档文本**派生：Phase 4 发射
+        // 的字节就是键的事实输入，不再有"声明侧影子源"这一层。断言它逐位等于
+        // 发射文档的哈希——这是"键单源化"的回归守卫，一旦有人把它改回吃声明
+        // 输入会立刻失败。
         if (source_document_hash == 0 || source_hash == 0
          || stage_key.definition_hash == 0
-         || stage_key.definition_hash == source_hash)
+         || stage_key.definition_hash != source_hash)
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] fixture=%s stage=%s source hash "
-                "mismatch: serialized=%llu document=%llu stage-key=%llu",
+                "mismatch: serialized=%llu document=%llu actual=%llu stage-key=%llu",
                 fixture, stage_name,
                 static_cast<unsigned long long>(source_hash),
                 static_cast<unsigned long long>(source_document_hash),
+                static_cast<unsigned long long>(actual_hash),
                 static_cast<unsigned long long>(stage_key.definition_hash));
             valid = false;
         }
@@ -382,8 +384,6 @@ namespace
             final_document.GetSerializedHash(diagnostics);
         const uint64 final_hash = HashFinalShaderSource(
             serialized.c_str(), serialized.Length());
-        const uint64 actual_hash = HashFinalShaderSource(
-            actual.data(), actual.size());
         if (final_document_hash == 0 || final_hash == 0
          || final_hash != actual_hash)
         {
@@ -404,10 +404,10 @@ namespace
     }
 
     /// 按 fixture 组装完整构建请求并执行一次编译。
-    /// defer_finalize=true：只算到 ProgramLink（含声明键），不跑 SPV。
+    /// defer_finalize=true：只算到 ProgramLink（含 stage 键），不跑 SPV。
     /// RunFixture 与 VerifyDeclarationKeyDeterminism 共用，保证两者比对的
     /// 是同一份输入。
-    /// definition_mutation：可选，在组请求之前扰动定义副本。声明键敏感性探针
+    /// definition_mutation：可选，在组请求之前扰动定义副本。stage 键敏感性探针
     /// 用它证明「改这一项 ⇒ 换键」。
     ShaderBuildContext *BuildFixtureContext(
         const Fixture &fixture,
@@ -576,7 +576,7 @@ namespace
     /// stage 缓存命中路径需要真实 GLSL 与 SPV。这里用真实
     /// ShaderArtifactStore 连做三次构建验证独立命中：
     ///   1) 首次：未命中，落盘
-    ///   2) 再次：命中（声明键与文本都没变）
+    ///   2) 再次：命中（stage 键与文本都没变）
     ///   3) 篡改 Mesh 源摘要：Mesh miss 并重新编译，Fragment 仍命中
     bool VerifyCacheHitPostCheck()
     {
@@ -696,7 +696,7 @@ namespace
         return true;
     }
 
-    /// 声明键确定性：同一份输入算两次，ProgramLink 必须逐位相同。
+    /// stage 键确定性：同一份输入算两次，ProgramLink 必须逐位相同。
     ///
     /// 这是「命中判定只依赖 emit 之前可算的字段」的前提。键若本身不稳定
     /// （典型来源：把含 padding 的结构体整块折进 FNV1a、或折叠顺序依赖
@@ -730,7 +730,7 @@ namespace
              || !(link_a.BuildKey() == link_b.BuildKey()))
             {
                 GLogError(
-                    "[ShaderDocumentProductionRegression] fixture=%s declaration key "
+                    "[ShaderDocumentProductionRegression] fixture=%s stage key "
                     "is not deterministic: mesh=%llu/%llu fragment=%llu/%llu "
                     "program=%llu/%llu",
                     fixture.name,
@@ -745,23 +745,30 @@ namespace
         }
 
         GLogInfo(
-            "[ShaderDocumentProductionRegression] declaration key determinism: "
+            "[ShaderDocumentProductionRegression] stage key determinism: "
             "%d fixtures stable across two builds",
             count);
         return true;
     }
 
-    // ── 声明键敏感性（「不同输入 ⇒ 不同键」）────────────────────────────
+    // ── 接口键敏感性（「不同输入 ⇒ 不同 interface_hash」）──────────────────
     //
     // VerifyDeclarationKeyDeterminism 证明的是「同一输入 ⇒ 同一键」。它的对偶
     // 是「不同输入 ⇒ 不同键」。缺了这一半，一个恒返回常量的假键在确定性探针下
     // 完美通过，却会让所有材质复用同一份 SPV——比不命中更危险，因为它安静。
     //
-    // 覆盖两处人工同步点：
-    //   ① FragmentTemplateComposer::GetDeclarationInputHash / GetInterfaceInputHash
-    //      —— 与 Compose() 之间唯一的人工同步点，加字段忘了折叠就漏在这里；
-    //   ② MaterialDefinition 里不经 ComposeInput、由 emitter 直接写进 GLSL 的
-    //      注入项（compile_defines / sampler_names），见 BuildInjectedMacroHash。
+    // Stage 3 之后，definition/module 两个维度**就是发射文本的哈希**，不存在
+    //「加了字段忘了折进哈希」这个失效模式：字段要么改变射出的文本（键自动变），
+    // 要么它根本不进 GLSL（那本就不该进键）。真正还靠人手维护的只剩 interface
+    // 维度——它刻意不吃文本，只吃契约形状，因此仍需要这份逐字段尺子。
+    //
+    // 于是本探针守两件事：
+    //   ① `affects_interface` 为真的字段扰动后 interface_hash 必须变；
+    //   ② 为假的字段扰动后 interface_hash 必须**不变**——反方向泄漏（接口键
+    //      偷偷吃实现字段）同样会把本该复用的 SPV 拆成多份。
+    //
+    // 注入项（compile_defines / sampler_names）不经 ComposeInput，见
+    // ComputeInjectedSourceHash。
 
     /// 一份「所有字段都取非默认值」的 ComposeInput 基线。
     ///
@@ -850,7 +857,7 @@ namespace
     };
 
     // 逐字段覆盖 ComposeInput 的 12 个成员。新增字段时必须在这里补一行，
-    // 否则「加了字段但忘了折进声明键」这种事故不会被任何测试拦住。
+    // 否则「加了字段但忘了折进 stage 键」这种事故不会被任何测试拦住。
     const ComposeSensitivityCase compose_sensitivity_cases[] =
     {
         { "resolved_template.stable_hash", false,
@@ -988,36 +995,21 @@ namespace
 
             ComposeInputFixture baseline;
             BuildComposeInputFixture(baseline);
-            const uint64 baseline_declaration =
-                FragmentTemplateComposer::GetDeclarationInputHash(baseline.input);
             const uint64 baseline_interface =
                 FragmentTemplateComposer::GetInterfaceInputHash(baseline.input);
 
             ComposeInputFixture mutated;
             BuildComposeInputFixture(mutated);
             item.mutate(mutated);
-            const uint64 mutated_declaration =
-                FragmentTemplateComposer::GetDeclarationInputHash(mutated.input);
             const uint64 mutated_interface =
                 FragmentTemplateComposer::GetInterfaceInputHash(mutated.input);
-
-            if (mutated_declaration == baseline_declaration)
-            {
-                GLogError(
-                    "[ShaderDocumentProductionRegression] declaration key "
-                    "sensitivity: %s changed but the declaration hash did not "
-                    "(%llu) —— 该字段没有折进 GetDeclarationInputHash",
-                    item.name,
-                    static_cast<unsigned long long>(baseline_declaration));
-                return false;
-            }
 
             const bool interface_changed =
                 mutated_interface != baseline_interface;
             if (interface_changed != item.affects_interface)
             {
                 GLogError(
-                    "[ShaderDocumentProductionRegression] declaration key "
+                    "[ShaderDocumentProductionRegression] interface key "
                     "sensitivity: %s expected interface_hash %s but it %s",
                     item.name,
                     item.affects_interface ? "to change" : "to stay",
@@ -1027,8 +1019,8 @@ namespace
         }
 
         GLogInfo(
-            "[ShaderDocumentProductionRegression] declaration key sensitivity: "
-            "%d ComposeInput fields all move the key",
+            "[ShaderDocumentProductionRegression] interface key sensitivity: "
+            "%d ComposeInput fields classified correctly",
             case_count);
         return true;
     }
@@ -1099,7 +1091,7 @@ namespace
     };
 
     // MaterialDefinition 里不经 ComposeInput、由 emitter 直接写进 GLSL 的注入项。
-    // 它们只能靠 BuildInjectedMacroHash 显式折进声明键，是声明键最脆弱的一段。
+    // 它们只能靠 ComputeInjectedSourceHash 显式折进 stage 键，是 stage 键最脆弱的一段。
     const DefinitionSensitivityCase definition_sensitivity_cases[] =
     {
         // compile_defines → `#define <name> 1`，逐条写进 Define 块。
@@ -1159,7 +1151,7 @@ namespace
                 GLogError(
                     "[ShaderDocumentProductionRegression] fixture=%s definition "
                     "sensitivity: %s expected fragment/mesh change=%d/%d but "
-                    "got %d/%d —— 该注入项没有折进声明键",
+                    "got %d/%d —— 该注入项没有折进 stage 键",
                     fixture.name, item.name,
                     item.affects_fragment ? 1 : 0,
                     item.affects_mesh ? 1 : 0,
@@ -1196,7 +1188,7 @@ namespace
              + " compiler=" + AnsiString::numberOf(key.compiler_hash);
     }
 
-    /// 把每个 fixture 的声明键写成可 diff 的文本，用于跨进程/跨机器对照。
+    /// 把每个 fixture 的 stage 键写成可 diff 的文本，用于跨进程/跨机器对照。
     ///
     /// 进程内「同一输入两次算键」已经覆盖了大部分不稳定来源，但覆盖不到一种：
     /// 含 padding 的结构体整块折进 FNV1a 时，同一进程里连续两次调用往往落在
@@ -1254,7 +1246,7 @@ namespace
         }
 
         GLogInfo(
-            "[ShaderDocumentProductionRegression] wrote %d declaration keys to %s",
+            "[ShaderDocumentProductionRegression] wrote %d stage keys to %s",
             count, path);
         return true;
     }
@@ -1320,7 +1312,7 @@ int main(const int argc, char **argv)
     // 独立 stage 缓存命中：其余 fixture 走 defer_finalize=true，
     // 不进入 FinalizeShaderBuildContext，必须单独探针。
     // 探针会真正编译 SPV，因此需要 GLSLCompiler 插件。
-    // dump-keys 只取声明键（不编译 SPV），跳过探针以保持与编译器版本无关。
+    // dump-keys 只取 stage 键（不编译 SPV），跳过探针以保持与编译器版本无关。
     if (!options.dump_keys_path)
     {
         if (!InitShaderCompiler())

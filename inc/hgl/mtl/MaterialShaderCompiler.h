@@ -120,28 +120,6 @@ bool BuildResolvedMaterialVertexABI(
     MaterialResolvedVertexABI &out_abi);
 
 /**
- * Phase 3.5 纯算键：跑到声明键为止，**不发射任何 GLSL 文本**。
- *
- * 热路径早退用：调用方拿到 program key 后可直接查内存缓存，命中即完全跳过
- * Phase 4（数千行 GLSL 拼接）与整个 ShaderBuildContext 分配。
- *
- * 返回 false = 本次无法纯算出键（声明闭包读不到磁盘 / 声明输入不完整）——
- * 调用方**必须**退回 CreateMaterialFromDefinition 全量路径，绝不能自己造键。
- * 成功时 out_program_key 与全量路径 GetProgramLink().BuildKey() 逐位相同
- * （回归门 cache.pre-emit-program-key-parity 全变体断言）。
- *
- * 注意：`request.render_template_request` 必须**已经**被解析好（先由
- * SelectSceneRenderTemplateRequest 选定路由与 ambient provider，再由
- * AppendMaterialRenderTemplateRoots 补入 material provider roots）——
- * 两条路径必须吃同一份 request，否则声明闭包不同 ⇒ 键必然分叉。
- */
-bool ComputeMaterialProgramKey(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinitionBuildRequest &request,
-    const MaterialDefinition &definition,
-    ShaderProgramKey &out_program_key);
-
-/**
  * 生成 sampler 预设宏字符串（统一注册机制）。
  *
  * 遍历 sampler_names，为每个名字生成 "#define <name>Sampler <idx>u"。

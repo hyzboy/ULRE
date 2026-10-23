@@ -101,30 +101,7 @@ namespace hgl::graph::mtl
         }
 
         class ManifestShaderProgramBuildBackend final : public ShaderProgramBuildBackend
-        {        public:
-            bool ComputeProgramKey(
-                const contract::PhysicalDeviceProfileLite *profile,
-                const MaterialDefinitionBuildRequest &request,
-                const MaterialDefinition &definition,
-                ShaderProgramKey &out_key) override
-            {
-                ShaderArtifactStore *store = State().store;
-                if (!store || !LoadManifest(store))
-                    return false;
-
-                ManifestState &state = State();
-                WarnIfProfileMismatch(state, profile);
-
-                const uint64 lookup_key =
-                    ComputeMaterialProgramManifestKey(definition, request, profile);
-                const ShaderProgramManifestEntry *entry = state.manifest.Find(lookup_key);
-                if (!entry)
-                    return false;
-
-                out_key = entry->program_link.BuildKey();
-                return true;
-            }
-
+        {
             ShaderBuildContext *CreateBuildContext(
                 const contract::PhysicalDeviceProfileLite *profile,
                 const MaterialDefinition &definition,

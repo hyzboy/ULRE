@@ -38,19 +38,10 @@ mtl::ShaderBuildContext *CreateMaterialFromDefinition(
 
 namespace
 {
-    /** 把上面三个生成期入口原样转发成运行时认的后端。行为零改动是其全部价值。 */
+    /** 把上面两个生成期入口原样转发成运行时认的后端。行为零改动是其全部价值。 */
     class ShaderGenProgramBuildBackend final : public ShaderProgramBuildBackend
     {
     public:
-
-        bool ComputeProgramKey(
-            const contract::PhysicalDeviceProfileLite *profile,
-            const MaterialDefinitionBuildRequest &request,
-            const MaterialDefinition &definition,
-            ShaderProgramKey &out_key) override
-        {
-            return ComputeMaterialProgramKey(profile, request, definition, out_key);
-        }
 
         ShaderBuildContext *CreateBuildContext(
             const contract::PhysicalDeviceProfileLite *profile,

@@ -21,11 +21,12 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    /// 由**已算好的**定义哈希构造 stage key。
+    /// 由**已算好的**三个哈希构造 stage key。
     ///
-    /// definition_hash 吃调用方在 emit 之前算出的声明键（不是最终 GLSL 文本的
-    /// 哈希）。运行时因此可以只跑声明阶段就得到与 ShaderGen 完全一致的 stage key。
-    inline ShaderStageKey BuildDeclarationShaderStageKey(
+    /// 调用方（`GenericMaterialBuilder::AssembleProgramLinkFromSource`）传入的是
+    /// Phase 4 发射出的文档文本摘要与其 `#include` 闭包指纹 —— 也就是说键覆盖
+    /// 「发射出的全部字节」，不接受任何"声明里应该有但实际没发"的假设。
+    inline ShaderStageKey BuildShaderStageKey(
         const ShaderStage stage,
         const uint64 definition_hash,
         const uint64 module_graph_hash,

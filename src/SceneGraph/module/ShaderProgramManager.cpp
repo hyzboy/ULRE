@@ -774,25 +774,6 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         return nullptr;
     }
 
-    // ── Phase 3.5 纯算键早退 ──
-    //
-    // 同一材质变体在热路径上会被反复取用，而每个不同变体在首次编译后都已经
-    // 在内存缓存里。此前无论命中与否都要先跑一遍全量构建（含 Phase 4 的数千
-    // 行 GLSL 拼接 + 整个 ShaderBuildContext 分配）才发现缓存里就有 —— 这里
-    // 的纯算键只跑到声明键为止，命中即零文本发射直接返回。
-    //
-    // 算不出键（声明闭包读不到磁盘）就静默落到全量路径，绝不自己造键。
-    mtl::ShaderProgramKey pre_emit_key{};
-    if (build_backend->ComputeProgramKey(
-            profile, resolved_request, definition, pre_emit_key))
-    {
-        if (ShaderProgram *cached = TryGetCachedShaderProgram(pre_emit_key))
-        {
-            RecordVariantProgramKey(variant_key, pre_emit_key);
-            return cached;
-        }
-    }
-
     AutoDelete<mtl::ShaderBuildContext> ctx =
         build_backend->CreateBuildContext(profile, definition, resolved_request);
     if (!ctx)
