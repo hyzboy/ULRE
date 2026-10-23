@@ -3,6 +3,7 @@
 #include<hgl/ecs/support/line/LineCollectSystem.h>
 #include<hgl/ecs/support/line/LineRenderSystem.h>
 #include<hgl/ecs/support/line/LineRenderPipeline.h>
+#include<hgl/common/DebugChannel.h>
 
 namespace hgl::ecs
 {
@@ -15,6 +16,9 @@ namespace hgl::ecs
 
     void LineStatsSystem::Update(float /*deltaTime*/)
     {
+        if (!ULRE_DEBUG_ON(Line))
+            return;
+
         ++frame_counter;
 
         if (frame_counter % log_interval != 0)

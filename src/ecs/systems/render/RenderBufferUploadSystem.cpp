@@ -4,6 +4,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/buffer/IGPUBuffer.h>
+#include<hgl/common/DebugChannel.h>
 #include<cstdio>
 
 namespace hgl::ecs
@@ -19,14 +20,16 @@ namespace hgl::ecs
         ECSContext *ctx = world ? world : context;
         if (!ctx)
         {
-            GLogInfo("[RenderBufferUpload] skip: no ECS context");
+            if (ULRE_DEBUG_ON(Upload))
+                GLogInfo("[RenderBufferUpload] skip: no ECS context");
             return;
         }
 
         graph::RenderCmdBuffer *cmdBuffer = ctx->GetCurrentRenderCmd();
         if (!cmdBuffer)
         {
-            GLogInfo("[RenderBufferUpload] skip: no current render command buffer");
+            if (ULRE_DEBUG_ON(Upload))
+                GLogInfo("[RenderBufferUpload] skip: no current render command buffer");
             return;
         }
 
@@ -36,7 +39,8 @@ namespace hgl::ecs
 
         if (!active_device)
         {
-            GLogInfo("[RenderBufferUpload] skip: no active GPU device");
+            if (ULRE_DEBUG_ON(Upload))
+                GLogInfo("[RenderBufferUpload] skip: no active GPU device");
             return;
         }
 

@@ -5,6 +5,7 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
 RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
@@ -102,11 +103,12 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
         if(existing_pipeline && VkPipeline(*existing_pipeline) == graphicsPipeline)
         {
             PipelineResolver::ReleaseFinalPipeline(device, graphicsPipeline);
-            LogDebug("[RenderPass::CreatePipeline] Reuse existing Pipeline wrapper '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
-                     existing_pipeline->GetName().c_str(),
-                     this->name.c_str(),
-                     (unsigned long long)(uintptr_t)graphicsPipeline,
-                     (unsigned long long)(uintptr_t)existing_pipeline);
+            if (ULRE_DEBUG_ON(Pipeline))
+                LogDebug("[RenderPass::CreatePipeline] Reuse existing Pipeline wrapper '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
+                         existing_pipeline->GetName().c_str(),
+                         this->name.c_str(),
+                         (unsigned long long)(uintptr_t)graphicsPipeline,
+                         (unsigned long long)(uintptr_t)existing_pipeline);
             return existing_pipeline;
         }
     }

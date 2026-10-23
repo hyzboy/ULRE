@@ -8,6 +8,7 @@
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -61,8 +62,9 @@ namespace hgl::ecs
             return;
 
         const bool ok = palette_ubo->Write(palette_cpu_.color, 0, uint32_t(sizeof(graph::ColorPalette)));
-        GLogInfo(u8"[ColorPaletteSystem] Flush: Write result=%d size=%zu bytes",
-                 ok ? 1 : 0, sizeof(graph::ColorPalette));
+        if (ULRE_DEBUG_ON(Upload))
+            GLogInfo(u8"[ColorPaletteSystem] Flush: Write result=%d size=%zu bytes",
+                     ok ? 1 : 0, sizeof(graph::ColorPalette));
         palette_dirty_ = false;
     }
 

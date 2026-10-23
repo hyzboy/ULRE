@@ -3,6 +3,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/thread/ThreadMutex.h>
 #include<hgl/util/hash/FNV1a.h>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 #include<cstring>
 
@@ -137,6 +138,9 @@ namespace hgl::graph
         void LogResolveStatsIfNeeded()
         {
             if((g_resolve_stats.requests % 64u) != 0u)
+                return;
+
+            if(!ULRE_DEBUG_ON(Pipeline))
                 return;
 
             GLogInfo("[PipelineResolver] req=%llu invalid=%llu incomplete_key=%llu final_cache(h/m)=%llu/%llu materialize(ok/fail)=%llu/%llu",

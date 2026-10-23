@@ -29,6 +29,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/util/hash/FNV1a.h>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<glm/glm.hpp>
@@ -1546,7 +1547,7 @@ namespace hgl::ecs
 
         if(!material_binding_recipe.material_ssbo_binding.IsValid())
         {
-            if (getenv("ULRE_ARENA_DEBUG"))
+            if (ULRE_DEBUG_ON(Binding))
                 GLogInfo("[ArenaTrace] materialize entry: material_binding_valid=false");
         }
 
@@ -1863,10 +1864,10 @@ namespace hgl::ecs
             row->material_texture_configuration_hash =
                 reference_configuration_hash;
 
-            // 纹理引用行落盘诊断（ULRE_ARENA_DEBUG）：逐语义打印**绑到行里的描述符索引**。
+            // 纹理引用行落盘诊断（ULRE_DEBUG=binding）：逐语义打印**绑到行里的描述符索引**。
             // 「纹理不生效」的第一现场就是这里的 descriptor_index==0 ⇒ 着色器侧
             // SampleOptional 走 fallback（1.0）⇒ alpha 恒 1 ⇒ dither/blend 全看不出。
-            if (getenv("ULRE_ARENA_DEBUG"))
+            if (ULRE_DEBUG_ON(Binding))
             {
                 GLogInfo(
                     "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
@@ -2558,7 +2559,7 @@ namespace hgl::ecs
             shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
         }
 
-        // S6 诊断（CSM_PASS_LOG=1 打开，默认静默）：阴影 pass 的收集结论。
+        // S6 诊断（ULRE_DEBUG=shadow，旧变量 CSM_PASS_LOG=1；默认静默）：阴影 pass 的收集结论。
         // 用途：判定"条带重画帧"与"整级重建帧"是否收到**同一批 caster**——
         //   数量/校验和不同 ⇒ 差异根因在收集/剔除侧（视锥、mobility 筛、shadow_origin 距离、
         //   程序 resolve 失败跳过）；
@@ -2572,7 +2573,7 @@ namespace hgl::ecs
                         world->IsCurrentPassShadow() ? 1 : 0, g_fallback_recipe_builds);
         }
 
-        static const bool s6_collect_log = (std::getenv("CSM_PASS_LOG") != nullptr);
+        const bool s6_collect_log = ULRE_DEBUG_ON(Shadow);
         if (s6_collect_log && world && world->IsCurrentPassShadow())
         {
             const MaterialRuntimeTable *runtime_stats = GetRuntimeTable(world);

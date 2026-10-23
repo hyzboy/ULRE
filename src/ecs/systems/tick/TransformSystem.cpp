@@ -1,9 +1,11 @@
 ﻿#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
+#include<hgl/common/DebugChannel.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/log/Log.h>
 #include<algorithm>
 
 namespace hgl::ecs
@@ -19,11 +21,15 @@ namespace hgl::ecs
 
     TransformSystem::~TransformSystem()
     {
-        std::cout << "[TransformSystem] Destructor called, clearing transform_buffer..." << std::endl;
+        if (ULRE_DEBUG_ON(Transform))
+            GLogInfo("[TransformSystem] Destructor called, clearing transform_buffer...");
+
         // Clean up transform_buffer when system is destroyed
         // This is created by this system in EnsureTransformBuffer(), so this system owns it
         SAFE_CLEAR(transform_buffer);
-        std::cout << "[TransformSystem] Destructor complete" << std::endl;
+
+        if (ULRE_DEBUG_ON(Transform))
+            GLogInfo("[TransformSystem] Destructor complete");
     }
 
 
@@ -129,19 +135,20 @@ namespace hgl::ecs
             }
         });
 
-    #if HGL_TRANSFORM_DEBUG_LOGGING
-        static uint32_t s_update_log_tick = 0;
-        ++s_update_log_tick;
-        if ((s_update_log_tick % 60u) == 1u)
+        if (ULRE_DEBUG_ON(Transform))
         {
-            GLogInfo("[TransformSystem] Update: movable_total=%u dirty=%u updated=%u skip_mask=%u skip_ver=%u",
-                     total_movable,
-                     dirty_movable,
-                     updated_movable,
-                     skipped_by_mask,
-                     skipped_by_version);
+            static uint32_t s_update_log_tick = 0;
+            ++s_update_log_tick;
+            if ((s_update_log_tick % 60u) == 1u)
+            {
+                GLogInfo("[TransformSystem] Update: movable_total=%u dirty=%u updated=%u skip_mask=%u skip_ver=%u",
+                         total_movable,
+                         dirty_movable,
+                         updated_movable,
+                         skipped_by_mask,
+                         skipped_by_version);
+            }
         }
-    #endif//HGL_TRANSFORM_DEBUG_LOGGING
     }
 
     void TransformSystem::UpdateStaticDirty()
@@ -383,37 +390,38 @@ namespace hgl::ecs
 
         last_static_count = static_count;
 
-    #if HGL_TRANSFORM_DEBUG_LOGGING
-        static uint32_t s_submit_log_tick = 0;
-        ++s_submit_log_tick;
-        if ((s_submit_log_tick % 60u) == 1u)
+        if (ULRE_DEBUG_ON(Transform))
         {
-            uint32_t dynamic_base = transform_buffer ? transform_buffer->GetDynamicBaseIndex() : 0u;
-
-            if (storage && dynamic_count > 0 && !dynamic_handles.empty())
+            static uint32_t s_submit_log_tick = 0;
+            ++s_submit_log_tick;
+            if ((s_submit_log_tick % 60u) == 1u)
             {
-                const auto handle = dynamic_handles.front();
-                const glm::mat4 world = storage->GetWorldMatrix(handle);
-                const glm::vec3 pos(world[3]);
+                uint32_t dynamic_base = transform_buffer ? transform_buffer->GetDynamicBaseIndex() : 0u;
 
-                GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u first_dynamic_handle=%u world_pos=(%.3f, %.3f, %.3f)",
-                         static_count,
-                         dynamic_count,
-                         dynamic_base,
-                         static_cast<uint32_t>(handle),
-                         pos.x,
-                         pos.y,
-                         pos.z);
-            }
-            else
-            {
-                GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u (no dynamic sample)",
-                         static_count,
-                         dynamic_count,
-                         dynamic_base);
+                if (storage && dynamic_count > 0 && !dynamic_handles.empty())
+                {
+                    const auto handle = dynamic_handles.front();
+                    const glm::mat4 world = storage->GetWorldMatrix(handle);
+                    const glm::vec3 pos(world[3]);
+
+                    GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u first_dynamic_handle=%u world_pos=(%.3f, %.3f, %.3f)",
+                             static_count,
+                             dynamic_count,
+                             dynamic_base,
+                             static_cast<uint32_t>(handle),
+                             pos.x,
+                             pos.y,
+                             pos.z);
+                }
+                else
+                {
+                    GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u (no dynamic sample)",
+                             static_count,
+                             dynamic_count,
+                             dynamic_base);
+                }
             }
         }
-    #endif//[TransformSystem] SubmitTransformUpdates:
     }
 
     void TransformSystem::EnsureTransformBuffer()

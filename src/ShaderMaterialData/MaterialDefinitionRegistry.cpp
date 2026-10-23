@@ -9,6 +9,7 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
 #include <cstdlib>
 #include <cstring>
@@ -176,12 +177,13 @@ bool SelectSceneRenderTemplateRequest(
                           scene_profile.roles[index]))
                    + "=" + scene_profile.module_names[index];
         }
-        GLogInfo("[SkyRoute] id=%s depth=%d masked=%d has_mtl_src=%d has_ntb=%d -> template=%s slots(%s)",
-                 definition.definition_id.c_str(),
-                 int(depth_purpose), int(masked),
-                 int(has_material_source), int(has_ntb_provider),
-                 GetRenderTemplateName(template_id),
-                 slots.c_str());
+        if (ULRE_DEBUG_ON(Route))
+            GLogInfo("[SkyRoute] id=%s depth=%d masked=%d has_mtl_src=%d has_ntb=%d -> template=%s slots(%s)",
+                     definition.definition_id.c_str(),
+                     int(depth_purpose), int(masked),
+                     int(has_material_source), int(has_ntb_provider),
+                     GetRenderTemplateName(template_id),
+                     slots.c_str());
     }
 
     RenderTemplateValidationDiagnostic diagnostic{};

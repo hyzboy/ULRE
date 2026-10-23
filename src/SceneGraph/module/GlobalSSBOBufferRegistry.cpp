@@ -3,6 +3,7 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/CameraInfo.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
+#include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::graph
@@ -351,10 +352,12 @@ bool GlobalSSBOBufferRegistry::WriteGeometryAABB(const uint32_t id,const mtl::Ge
     *row = aabb;
 
     // 每次行写入留痕（几何创建期各一次，量级 = 场景几何数）：一号双表的**运行期证据**
-    GLogInfo("[GlobalSSBOBufferRegistry] GeometryAABB 行写入 id=%u radius=%.4f center=(%.3f,%.3f,%.3f) extents=(%.3f,%.3f,%.3f)",
-             id, aabb.center[3],
-             aabb.center[0], aabb.center[1], aabb.center[2],
-             aabb.extents[0], aabb.extents[1], aabb.extents[2]);
+    // 默认静默，ULRE_DEBUG=upload 打开
+    if (ULRE_DEBUG_ON(Upload))
+        GLogInfo("[GlobalSSBOBufferRegistry] GeometryAABB 行写入 id=%u radius=%.4f center=(%.3f,%.3f,%.3f) extents=(%.3f,%.3f,%.3f)",
+                 id, aabb.center[3],
+                 aabb.center[0], aabb.center[1], aabb.center[2],
+                 aabb.extents[0], aabb.extents[1], aabb.extents[2]);
 
     return pool->CommitRow(id);
 }
