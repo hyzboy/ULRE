@@ -2410,10 +2410,6 @@ namespace hgl::ecs
                     else
                     {
                         material_slot.valid = true;     // 等价于 MarkValid()
-                        GLogVerbose(
-                            "[DeferredResource] owner=%s valid=%d",
-                            GetOwnerName(geometryComp->GetOwner()),
-                            material_slot.valid ? 1 : 0);
                     }
                 }
             }
