@@ -100,9 +100,9 @@ SOURCE_GROUP("Contract" FILES ${CONTRACT_FILES})
 
 # ── meshgen/ ─────────────────────────────────────────────────────────────────
 # MeshShaderLimits.h 归 ULRE.ShaderRuntimeContract（VKPhysicalDevice 侧也要用），
-# 本清单不再重复列出。
+# MeshShaderMode.h 归 ULRE.ShaderMaterialData（MaterialRecipe.h / 材质定义文件要用），
+# 本清单都不再重复列出。
 set(MESHGEN_FILES
-    ${SHADERGEN_INCLUDE_PATH}/MeshShaderMode.h
     meshgen/MeshTemplateEmitter.h
     meshgen/MeshModeDescriptor.h
     meshgen/MeshShaderHeaderGen.h
@@ -125,11 +125,12 @@ set(BUILDER_FILES
     ${SHADERGEN_INCLUDE_PATH}/VertexNodeConfigResolver.h)
 SOURCE_GROUP("Builder" FILES ${BUILDER_FILES})
 
-# ── 公共类型（Surface/Blend/Pass/Pipeline 等，头-only）────────────────────────
+# ── 生成期枚举（头-only）─────────────────────────────────────────────────────
+# 只剩 PassType：它唯一的消费者是 contract/MaterialOutputContract.h（生成期输出契约），
+# 运行时链路不引用。PipelineConfig.h（Vulkan PSO 数据）与 MeshShaderMode.h、
+# RenderTargetOutputConfig.h 的消费者在数据面/下层，已下移到 ULRE.ShaderMaterialData。
 set(MATERIAL_TYPE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/PassType.h
-    ${SHADERGEN_INCLUDE_PATH}/PipelineConfig.h
-    ${ROOT_INCLUDE_PATH}/hgl/common/RenderTargetOutputConfig.h)
+    ${SHADERGEN_INCLUDE_PATH}/PassType.h)
 SOURCE_GROUP("Material Types" FILES ${MATERIAL_TYPE_FILES})
 
 # ── 设备 profile 契约（头-only）──────────────────────────────────────────────
