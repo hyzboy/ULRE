@@ -305,7 +305,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
 
         if (!material_path.IsDirectory())
         {
-            GLogFatal("[ShaderGen] Missing required ShaderLibrary/material directory: %s. File-backed schema-3 material definitions are mandatory.",
+            GLogFatal("[ShaderGen] Missing required ShaderLibrary/material directory: %s. File-backed schema-4 material definitions are mandatory.",
                       material_path.ToOSString().c_str());
             std::abort();
         }
@@ -324,7 +324,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         // 只有「整库不可用」（目录缺失 / 读不出 / 零份可解析）才是 fatal。
         if (file_count == 0 || registry.GetCount() == 0)
         {
-            GLogFatal("[ShaderGen] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions). File-backed schema-3 materials are required.",
+            GLogFatal("[ShaderGen] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions). File-backed schema-4 materials are required.",
                       file_count, error_count, registry.GetCount());
             std::abort();
         }

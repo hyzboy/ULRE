@@ -127,7 +127,7 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
     return ResolveMaterialVertexSemanticFormat(gvf, VertexSemantic::Position, fallback_format);
 }
 
-// Material definition registry. Every definition is loaded from a schema-3
+// Material definition registry. Every definition is loaded from a schema-4
 // TOML file; there is no native material-definition fallback.
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
