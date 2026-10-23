@@ -61,6 +61,7 @@ namespace
         uint32 mesh_spv_bytes = 0;
         uint32 fragment_spv_bytes = 0;
         bool requires_recipe_runtime_rows = false;
+        bool requires_recipe_payload_row = false;
         bool has_all = false;
     };
 
@@ -135,13 +136,18 @@ namespace
                 out.requires_recipe_runtime_rows = number() != 0;
                 ++seen;
             }
+            else if (key == "requires_recipe_payload_row")
+            {
+                out.requires_recipe_payload_row = number() != 0;
+                ++seen;
+            }
         }
 
-        out.has_all = seen == 8 && !out.definition_id.empty();
+        out.has_all = seen == 9 && !out.definition_id.empty();
         if (!out.has_all)
         {
             std::fprintf(stderr,
-                         "[FAIL] expectation file incomplete (%d/8 fields): %s\n",
+                         "[FAIL] expectation file incomplete (%d/9 fields): %s\n",
                          seen, path.string().c_str());
             return false;
         }
@@ -369,6 +375,14 @@ namespace
             probe.Check(context->RequiresRecipeRuntimeRows()
                             == expected.requires_recipe_runtime_rows,
                         "release form: recipe runtime row requirement changed");
+            // bit1 单独校验：发行形态没有生成器，这两位只能从清单读回 —— 若
+            // 只验 bit0，把两类需求混回一起的回归在发行形态完全不可见。
+            probe.Check(context->RequiresRecipePayloadRow()
+                            == expected.requires_recipe_payload_row,
+                        "release form: recipe payload row requirement changed");
+            probe.Check(!context->RequiresRecipePayloadRow()
+                            || context->RequiresRecipeRuntimeRows(),
+                        "release form: manifest entry violates payload-row subset of runtime-rows");
             probe.Check(backend->FinalizeBuildContext(context.get()),
                         "release form: finalize rejected the manifest-assembled context");
 
@@ -414,6 +428,8 @@ namespace
             entry.lookup_key = expected.lookup_key;
             entry.requires_recipe_runtime_rows =
                 expected.requires_recipe_runtime_rows;
+            entry.requires_recipe_payload_row =
+                expected.requires_recipe_payload_row;
 
             probe.Check(!RecordShaderProgramManifestEntry(&store, nullptr, entry),
                         "release form: read-only store must refuse manifest writes");

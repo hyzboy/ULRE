@@ -117,6 +117,11 @@ namespace hgl::graph::mtl
         if (entry.lookup_key == 0 || !entry.program_link.IsValid())
             return false;
 
+        // 行需求不变量：要 payload 行必然也要行表。非法组合来自上游把两个信号
+        // 填反，放进来只会延迟到运行期变成难查的「读到陈旧 SSBO」。
+        if (!entry.IsConsistent())
+            return false;
+
         const int count = entries.GetCount();
         ShaderProgramManifestEntry *data = entries.GetData();
         for (int i = 0; i < count; ++i)
@@ -273,6 +278,12 @@ namespace hgl::graph::mtl
                     (flags & ShaderProgramManifestFlagRequiresRecipePayloadRow) != 0;
 
                 if (entry.lookup_key == 0 || !entry.program_link.IsValid())
+                {
+                    decode_ok = false;
+                    break;
+                }
+
+                if (!entry.IsConsistent())
                 {
                     decode_ok = false;
                     break;

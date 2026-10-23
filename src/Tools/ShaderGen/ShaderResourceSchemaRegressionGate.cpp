@@ -6426,10 +6426,16 @@ namespace
             entry.program_link.vertex_input_hash = 0xCCull * i;
             entry.program_link.render_target_hash = 0xDDull * i;
             entry.program_link.compiler_hash = 0xEEull * i;
-            entry.requires_recipe_runtime_rows = (i % 2) == 1;
-            // payload 行需求与合并信号必须能各自独立往返（纯纹理材质 = 行需求真、
-            // payload 需求假），否则发行形态会把两类需求混回一起。
-            entry.requires_recipe_payload_row = (i % 4) >= 2;
+            // 行需求的两个信号必须能各自独立往返：三个合法组合来自
+            // 「payload ⊂ rows」这条不变量 ——
+            //   (rows=F,payload=F) 无行无 payload（VertexColor 一类）
+            //   (rows=T,payload=F) 只要纹理引用行表（UnlitTexture 一类）
+            //   (rows=T,payload=T) 读 payload 行（Lit 一类）
+            // (rows=F,payload=T) 非法，由下面的拒绝断言单独覆盖，不放进往返样本。
+            static const bool kRuntimeRows[4] = { false, true, true, true };
+            static const bool kPayloadRows[4] = { false, false, true, false };
+            entry.requires_recipe_runtime_rows = kRuntimeRows[i];
+            entry.requires_recipe_payload_row = kPayloadRows[i];
 
             if (!source.Upsert(entry))
             {
@@ -6447,6 +6453,44 @@ namespace
         if (source.GetEntryCount() != 4)
             result.diagnostics.emplace_back(
                 "manifest entry count mismatch after upsert");
+
+        // ── 行需求不变量：payload ⊂ rows ──
+        //
+        // 「要 payload 行但不要行表」不可能成立（payload_index 来自行表）。放行会
+        // 变成「程序读 payload，运行期从不物化行」——运行期读到越界/陈旧 SSBO，
+        // 而不是一条明确失败。三个合法组合已在上面往返过，这里守非法的那一个。
+        {
+            ShaderProgramManifestEntry illegal{};
+            illegal.lookup_key = 0x2000'0000ull;
+            illegal.program_link.mesh_stage.stage = ShaderStage::Mesh;
+            illegal.program_link.mesh_stage.glsl_module_graph_hash = 0x11ull;
+            illegal.program_link.mesh_stage.interface_hash = 0x22ull;
+            illegal.program_link.mesh_stage.resource_hash = 0x33ull;
+            illegal.program_link.mesh_stage.compiler_hash = 0x44ull;
+            illegal.program_link.fragment_stage.stage = ShaderStage::Fragment;
+            illegal.program_link.fragment_stage.glsl_module_graph_hash = 0x55ull;
+            illegal.program_link.fragment_stage.interface_hash = 0x66ull;
+            illegal.program_link.fragment_stage.resource_hash = 0x77ull;
+            illegal.program_link.fragment_stage.compiler_hash = 0x88ull;
+            illegal.program_link.resource_layout_hash = 0x99ull;
+            illegal.program_link.vertex_input_hash = 0xAAull;
+            illegal.program_link.render_target_hash = 0xBBull;
+            illegal.program_link.compiler_hash = 0xCCull;
+            illegal.requires_recipe_runtime_rows = false;
+            illegal.requires_recipe_payload_row = true;
+
+            if (illegal.IsConsistent())
+                result.diagnostics.emplace_back(
+                    "manifest entry invariant: payload row without runtime rows "
+                    "must be reported inconsistent");
+
+            ShaderProgramManifest reject_source;
+            reject_source.SetStamps(kProfileHash,
+                                    contract::SHADERGEN_CODEGEN_GENERATION);
+            if (reject_source.Upsert(illegal))
+                result.diagnostics.emplace_back(
+                    "Upsert accepted a payload-row-without-runtime-rows entry");
+        }
 
         const std::filesystem::path temp_root =
             std::filesystem::temp_directory_path() / "ulre-program-manifest-gate";
@@ -6469,6 +6513,69 @@ namespace
             result.diagnostics.emplace_back("manifest Load failed on freshly saved file");
             result.passed = false;
             return result;
+        }
+
+        // ── Load 侧的行需求不变量守卫 ──
+        //
+        // 合法清单落盘后把第 0 条（rows=F,payload=F）的 flags 改成 (rows=F,payload=T)：
+        // 这是「要 payload 行却不要行表」的非法组合，必须整份拒绝。校验和不符会先
+        // 一步拦下，所以篡改后必须重算 payload_hash —— 否则测到的是校验和守卫。
+        {
+            hgl::uint8 *raw = nullptr;
+            const hgl::int64 raw_size = hgl::filesystem::LoadFileToMemory(
+                manifest_path, reinterpret_cast<void **>(&raw));
+            const hgl::uint64 payload_offset =
+                static_cast<hgl::uint64>(sizeof(ShaderArtifactFileHeader));
+            // payload = version(u32) + count(u32) + entry*N；flags 是每条 entry 的末位 u32。
+            const hgl::uint64 first_flags_offset = payload_offset
+                + static_cast<hgl::uint64>(sizeof(hgl::uint32) * 2)
+                + static_cast<hgl::uint64>(ShaderProgramManifestEntryPayloadSize)
+                - static_cast<hgl::uint64>(sizeof(hgl::uint32));
+
+            if (raw_size < 0 || !raw
+             || static_cast<hgl::uint64>(raw_size) < first_flags_offset + sizeof(hgl::uint32))
+            {
+                if (raw)
+                    delete[] raw;
+                result.diagnostics.emplace_back(
+                    "manifest fixture unreadable for load-time invariant test");
+            }
+            else
+            {
+                const hgl::uint64 payload_size =
+                    static_cast<hgl::uint64>(raw_size) - payload_offset;
+
+                hgl::uint32 tampered_flags = 0;
+                std::memcpy(&tampered_flags, raw + first_flags_offset,
+                            sizeof(tampered_flags));
+                tampered_flags |= ShaderProgramManifestFlagRequiresRecipePayloadRow;
+                tampered_flags &= ~ShaderProgramManifestFlagRequiresRecipeRows;
+                std::memcpy(raw + first_flags_offset, &tampered_flags,
+                            sizeof(tampered_flags));
+
+                hgl::hash::FNV1aHasher64 hasher;
+                hasher.AppendBytes(raw + payload_offset,
+                                   static_cast<size_t>(payload_size));
+                const hgl::uint64 refreshed_hash = hasher;
+                std::memcpy(raw + offsetof(ShaderArtifactFileHeader, payload_hash),
+                            &refreshed_hash, sizeof(refreshed_hash));
+
+                const hgl::int64 written = hgl::filesystem::SaveMemoryToFile(
+                    manifest_path, raw, raw_size);
+                delete[] raw;
+
+                if (written != raw_size)
+                    result.diagnostics.emplace_back(
+                        "failed to write tampered manifest fixture");
+                else
+                {
+                    ShaderProgramManifest tampered;
+                    if (tampered.Load(manifest_path))
+                        result.diagnostics.emplace_back(
+                            "Load accepted a manifest carrying "
+                            "payload-row-without-runtime-rows");
+                }
+            }
         }
 
         if (loaded.GetCompilerProfileHash() != kProfileHash
@@ -6744,7 +6851,9 @@ namespace
             << "mesh_spv_bytes=" << sizeof(uint32_t) * 4 << "\n"
             << "fragment_spv_bytes=" << sizeof(uint32_t) * 4 << "\n"
             << "requires_recipe_runtime_rows="
-            << (entry.requires_recipe_runtime_rows ? 1 : 0) << "\n";
+            << (entry.requires_recipe_runtime_rows ? 1 : 0) << "\n"
+            << "requires_recipe_payload_row="
+            << (entry.requires_recipe_payload_row ? 1 : 0) << "\n";
         return out.good();
     }
 

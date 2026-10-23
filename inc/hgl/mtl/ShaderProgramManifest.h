@@ -36,6 +36,19 @@ namespace hgl::graph::mtl
         /// 材质私有数据 SSBO 绑定校验。
         bool requires_recipe_payload_row = false;
 
+        /// 两个行需求信号的不变量：payload 行需求是「需要运行时行表」的**子集**。
+        ///
+        /// 读 payload 行（`MTL_ROW`）必须先有行表（行表给出每实例的 payload_index），
+        /// 所以「要 payload 但不要行表」不可能成立。反方向是合法的常态：纯纹理材质
+        /// 要行表（`MTL_TEX` 读 texture_reference_index）但不读 payload。
+        ///
+        /// 违反此不变量的条目一律拒绝 —— 放行会得到「程序要读 payload，运行期却
+        /// 从不物化行」的静默错误（表现是读到越界/陈旧 SSBO，而不是一条明确的失败）。
+        bool IsConsistent() const noexcept
+        {
+            return !requires_recipe_payload_row || requires_recipe_runtime_rows;
+        }
+
         bool operator==(const ShaderProgramManifestEntry &rhs) const noexcept
         {
             return lookup_key == rhs.lookup_key
@@ -82,10 +95,11 @@ namespace hgl::graph::mtl
         const ShaderProgramManifestEntry *Find(const uint64 lookup_key) const;
 
         /// 插入或覆盖同一键的条目。返回值 = 内容是否真的变了（false = 原样命中，
-        /// 调用方据此决定要不要重写文件）。
+        /// 调用方据此决定要不要重写文件）。行需求不变量不成立的条目直接拒绝。
         bool Upsert(const ShaderProgramManifestEntry &entry);
 
         /// 读盘。格式/版本/校验和/代码生成代数任一不符即为失败（并按空清单处理）。
+        /// 任一条目的行需求不变量不成立同样整份失败 —— 半个清单比没有清单更危险。
         bool Load(const OSString &path);
 
         /// 落盘。清单很小（每种材质变体一行），整份重写。

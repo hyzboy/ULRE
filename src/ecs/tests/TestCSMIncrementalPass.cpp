@@ -1777,8 +1777,10 @@ int main(int argc, char** argv)
               true },
             { "VKShaderProgram.h", OS_TEXT("inc/hgl/vk/VKShaderProgram.h"),
               "GetShaderResourceSchema",
-              "资源条目 schema 已按 S1 删除：材质编译产物只剩 requires_recipe_runtime_rows 单信号，"
-              "读口 = RequiresRecipeRuntimeRows()",
+              "资源条目 schema 已按 S1 删除：行需求只剩两个活信号 "
+              "requires_recipe_runtime_rows（合并）与 requires_recipe_payload_row"
+              "（payload 子集），读口 = RequiresRecipeRuntimeRows() / "
+              "RequiresRecipePayloadRow()",
               true },
             { "RenderSceneUBOSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h"),
               "RegisterMaterialStructLayout",

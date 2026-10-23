@@ -132,6 +132,11 @@ std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label
     out += "requires_recipe_runtime_rows=";
     out += ctx.RequiresRecipeRuntimeRows() ? "1" : "0";
     out += '\n';
+    // 两类行需求是两个独立信号，诊断快照必须都给出：只报合并信号会让
+    // 「纯纹理材质被当成要 payload」这类回归在快照里看不出来。
+    out += "requires_recipe_payload_row=";
+    out += ctx.RequiresRecipePayloadRow() ? "1" : "0";
+    out += '\n';
 
     return out;
 }
