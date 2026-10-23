@@ -474,6 +474,7 @@ namespace hgl::graph::mtl
         None = 0,                   ///< 无错误：正常配方（根颜色不参与着色）
         MissingMaterialSource,      ///< 有几何，但**无任何材质来源**（数据层配方与 asset 默认配方皆无）
         UnknownMaterialDefinition,  ///< 有材质来源，但其材质定义 ID 无法解析（落到同一保底材质）
+        MissingTextureResource,     ///< 材质定义声明了 `required` 纹理，但配方里没有实际纹理资源
         Count,
     };
 
@@ -508,6 +509,18 @@ namespace hgl::graph::mtl
           "builtin/error_checkerboard_3d",
           { 1.0f, 0.5f, 0.0f, 1.0f },
           "unknown_material_definition" },
+
+        // 声明为 `required` 的纹理在配方里没有实际资源（写漏 / 资源 ID 为空）：
+        // 错误棋盘格（标记色青 → 棋盘格两色基色）。
+        //
+        // 与另一类纹理错误的分工：**纹理名非法 / 重复 / 未声明** 仍是硬错误（图元剔除），
+        // 那属于作者写坏 key（无法猜测意图）；而「声明了 required 却没给纹理」是
+        // **缺内容**，读者需要看见它 ⇒ 用错误棋盘格标注出来。
+        // 判据唯一来源见 `ClassifyMaterialResourceError`（本文件，紧随分类表）。
+        { MaterialErrorKind::MissingTextureResource,
+          "builtin/error_checkerboard_3d",
+          { 0.0f, 1.0f, 1.0f, 1.0f },
+          "missing_texture_resource" },
     };
 
     /// 标记色行**不可得**时的降级保底材质：零资源依赖的灰度棋盘格。
@@ -705,6 +718,53 @@ namespace hgl::graph::mtl
         binding.required = required;
         recipe.textures.emplace_back(std::move(binding));
         return true;
+    }
+
+    /**
+     * 资源级材质错误判据（A7c）：材质定义声明了 `required` 纹理，但配方里没有实际资源。
+     *
+     * 判据**双向**（任一命中即错误）：
+     *   1. 定义侧声明 `required` 的每个纹理名，配方里必须有绑定且 resource_id 非空；
+     *   2. 配方侧自身标了 `required` 的绑定，其 resource_id 必须非空。
+     *
+     * **不在本函数判定**的纹理错误（仍属硬错误 ⇒ 图元剔除，不走回退）：
+     * 纹理名非法 / 重复绑定 / 未声明的绑定 / 数组层错用 —— 那是作者写坏了 key，
+     * 无法猜测意图；而「声明 required 却没给纹理」是**缺内容**，读者需要看见。
+     *
+     * 用量：数据层（`MaterialData::BuildResolvedRecipe`）在 NormalizeRecipe 之后调用，
+     * 命中即 `BuildFallbackMaterialRecipe` 换成错误棋盘格（标记色青）。
+     */
+    inline MaterialErrorKind ClassifyMaterialResourceError(
+        const MaterialDefinition &definition,
+        const MaterialRecipe &recipe) noexcept
+    {
+        for (const auto &declaration : definition.texture_declarations)
+        {
+            if (!declaration.required)
+                continue;
+
+            bool bound = false;
+
+            for (const auto &binding : recipe.textures)
+            {
+                if (binding.texture_name != declaration.name)
+                    continue;
+
+                bound = !binding.resource_id.empty();
+                break;
+            }
+
+            if (!bound)
+                return MaterialErrorKind::MissingTextureResource;
+        }
+
+        for (const auto &binding : recipe.textures)
+        {
+            if (binding.required && binding.resource_id.empty())
+                return MaterialErrorKind::MissingTextureResource;
+        }
+
+        return MaterialErrorKind::None;
     }
 
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept

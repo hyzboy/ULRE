@@ -454,6 +454,122 @@ int main(int argc, char** argv)
                  static_cast<uint32_t>(MATERIAL_ERROR_KIND_COUNT));
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 7: A7c 资源级材质错误判据（声明 required 纹理却没有实际资源）
+    //   `ClassifyMaterialResourceError` 是纯函数（inline，无副作用），这里逐条断言
+    //   它的双向判据；错误种类必须落到「青色」规则上（示例靠颜色区分种类）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        using namespace graph::mtl;
+
+        MaterialDefinition definition{};
+
+        MaterialRecipe recipe{};
+
+        // ① 无声明、无绑定 ⇒ 不是错误
+        if (ClassifyMaterialResourceError(definition, recipe) != MaterialErrorKind::None)
+        {
+            GLogError(u8"Test 7 Failed: 无纹理声明/绑定时被误分类为资源错误");
+            return 16;
+        }
+
+        // ② 声明 required 但配方里完全没有该纹理的绑定 ⇒ MissingTextureResource
+        {
+            MaterialTextureDeclaration declaration;
+            declaration.name     = "base_color";
+            declaration.required = true;
+            definition.texture_declarations.push_back(declaration);
+
+            if (ClassifyMaterialResourceError(definition, recipe)
+                    != MaterialErrorKind::MissingTextureResource)
+            {
+                GLogError(u8"Test 7 Failed: required 声明没有绑定未被判为 MissingTextureResource");
+                return 16;
+            }
+
+            // ③ 有绑定但 resource_id 为空（写漏资源）⇒ 仍然是 MissingTextureResource
+            RecipeTextureBinding binding;
+            binding.texture_name = "base_color";
+            binding.required     = true;
+            recipe.textures.push_back(binding);
+
+            if (ClassifyMaterialResourceError(definition, recipe)
+                    != MaterialErrorKind::MissingTextureResource)
+            {
+                GLogError(u8"Test 7 Failed: 绑定了纹理名但 resource_id 为空未被判为错误");
+                return 16;
+            }
+
+            // ④ 给了实际资源 ⇒ 不是错误
+            recipe.textures[0].resource_id = "texture/base_color.png";
+
+            if (ClassifyMaterialResourceError(definition, recipe) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 7 Failed: 给了实际纹理资源仍被判为错误");
+                return 16;
+            }
+        }
+
+        // ⑤ 声明 required=false ⇒ 缺绑定属正常，不得报错
+        {
+            MaterialDefinition optional_definition{};
+            MaterialTextureDeclaration declaration;
+            declaration.name     = "emissive";
+            declaration.required = false;
+            optional_definition.texture_declarations.push_back(declaration);
+
+            if (ClassifyMaterialResourceError(optional_definition, MaterialRecipe{})
+                    != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 7 Failed: required=false 的纹理缺绑定被误判为错误"
+                          u8"（可选纹理不得触发回退）");
+                return 16;
+            }
+        }
+
+        // ⑥ 反向判据：定义侧没有声明，但配方侧自己标了 required 且资源为空 ⇒ 仍是错误
+        {
+            MaterialDefinition bare_definition{};
+            MaterialRecipe bad_recipe{};
+
+            RecipeTextureBinding binding;
+            binding.texture_name = "any_texture";
+            binding.required     = true;
+            bad_recipe.textures.push_back(binding);
+
+            if (ClassifyMaterialResourceError(bare_definition, bad_recipe)
+                    != MaterialErrorKind::MissingTextureResource)
+            {
+                GLogError(u8"Test 7 Failed: 配方侧 required 绑定缺资源未被判为错误");
+                return 16;
+            }
+        }
+
+        // 规则表：新种类必须是错误棋盘格 + 青色标记（与示例的肉眼对照表一致）
+        {
+            const FallbackMaterialRule &rule =
+                GetFallbackMaterialRule(MaterialErrorKind::MissingTextureResource);
+
+            if (std::strcmp(rule.definition_id, "builtin/error_checkerboard_3d") != 0)
+            {
+                GLogError(u8"Test 7 Failed: MissingTextureResource 没有回退到错误棋盘格（实际 %s）",
+                          rule.definition_id);
+                return 16;
+            }
+
+            if (rule.marker_color[0] != 0.0f || rule.marker_color[1] != 1.0f
+             || rule.marker_color[2] != 1.0f || rule.marker_color[3] != 1.0f)
+            {
+                GLogError(u8"Test 7 Failed: MissingTextureResource 的标记色不是青色"
+                          u8"（示例用颜色区分错误种类）");
+                return 16;
+            }
+        }
+
+        GLogInfo(u8"Test 7 Passed: 资源级材质错误判据（required 声明缺资源 ⇒ MissingTextureResource，"
+                 u8"可选纹理不误报，反向配方侧判据生效），标记色青 + 错误棋盘格。");
+    }
+
     GLogInfo(u8"=== All RenderStrategyTable tests passed successfully! ===");
     return 0;
 }

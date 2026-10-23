@@ -474,6 +474,35 @@ namespace hgl::ecs
         // 数据层边界规范化：写回 mtl_def_id 权威值与解析后的渲染状态，
         // 下游（acquire / 管线创建）不再重复。
         hgl::graph::mtl::NormalizeRecipe(out_recipe);
+
+        // A7c：资源级材质错误 —— 定义声明了 `required` 纹理，但配方里没有实际纹理资源。
+        // NormalizeRecipe 只认**定义 ID 级**错误（无来源 / ID 不可解析）；纹理是否真的给了
+        // 资源要到本层才可见（具名纹理住在世界级旁表），所以判据挂在这里。
+        //
+        // 语义选择：这类错误**回退成错误棋盘格**（标记色青）而不是剔除图元 —— 作者写了
+        // `required = true` 表达「该材质必须带这张纹理」，缺内容必须被看见，而不是让图元
+        // 静默消失。（纹理名非法/重复/未声明仍是硬错误，见图元校验。）
+        if (out_recipe.fallback_error_kind == hgl::graph::mtl::MaterialErrorKind::None)
+        {
+            const hgl::graph::mtl::MaterialErrorKind resource_error =
+                hgl::graph::mtl::ClassifyMaterialResourceError(definition, out_recipe);
+
+            if (resource_error != hgl::graph::mtl::MaterialErrorKind::None)
+            {
+                const hgl::graph::mtl::FallbackMaterialRule &rule =
+                    hgl::graph::mtl::GetFallbackMaterialRule(resource_error);
+
+                GLogError(u8"[MaterialFallback] 材质 \"%s\" 声明为 required 的纹理缺少实际资源 "
+                          u8"=> 回退错误材质 %s（棋盘格；错误种类 %s，颜色=(%.2f,%.2f,%.2f,%.2f)）",
+                          out_recipe.mtl_def_id.c_str(), rule.definition_id,
+                          rule.marker_name,
+                          rule.marker_color[0], rule.marker_color[1],
+                          rule.marker_color[2], rule.marker_color[3]);
+
+                hgl::graph::mtl::BuildFallbackMaterialRecipe(out_recipe, resource_error);
+            }
+        }
+
         return true;
     }
 
