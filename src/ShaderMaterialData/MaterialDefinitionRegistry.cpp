@@ -107,8 +107,17 @@ bool SelectSceneRenderTemplateRequest(
     const bool depth_purpose =
         purpose == ShaderProgramPurpose::DepthOnly
      || purpose == ShaderProgramPurpose::ShadowDepth;
-    const bool masked =
-        ResolveMaterialRenderState(definition, recipe).alpha_test;
+
+    // 深度/阴影模板的 masked 判定必须与 BuildMaterialCoverageContract 的
+    // `requires_alpha_evaluation` **逐位同义**：coverage mode 只要不是 None
+    // （AlphaTest 或 Dither 或两者）就需要在片元里评估 alpha 后再决定是否丢弃。
+    //
+    // 这里曾经只看 alpha_test，于是「纯 dither」材质在深度/阴影 pass 上会被路由
+    // 到 ShadowCasterOpaque，而 GenericMaterialBuilder 的模板一致性断言要求
+    // ShadowCasterMasked ⇒ 构建直接被拒绝（dither 材质一旦进阴影就报错）。
+    const ResolvedMaterialRenderState resolved_state =
+        ResolveMaterialRenderState(definition, recipe);
+    const bool masked = resolved_state.alpha_test || resolved_state.dither;
     const bool has_material_source =
         definition.material_source_module_name
      && definition.material_source_module_name[0];
