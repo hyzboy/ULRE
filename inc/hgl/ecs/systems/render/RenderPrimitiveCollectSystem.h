@@ -74,9 +74,6 @@ namespace hgl::ecs
         bool MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
                                                MaterialRuntimeSlot &slot);
 
-        /// 批 1.3 C5：`ULRE_ARENA_DEBUG` 一次性 trace 闩改**每实例**（原 static 是进程级 ⇒ 第二个世界静默）
-        bool arena_trace_done_ = false;
-
     public:
 
         RenderPrimitiveCollectSystem(const std::string& name = "RenderPrimitiveCollectSystem");

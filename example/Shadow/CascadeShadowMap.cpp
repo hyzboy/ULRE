@@ -1628,6 +1628,14 @@ public:
 
         if (stats_timer >= 1.0)
         {
+            // 窗口平均：每帧重画纹素占贴图的比例（滚动方案真正的收益指标）
+            auto avg_area_pct = [](const CacheWindow &w) -> float {
+                const uint64_t denom = static_cast<uint64_t>(w.frames) * w.map_texels;
+                return denom > 0 ? 100.0f * static_cast<float>(w.strip_texels) / static_cast<float>(denom) : 0.0f;
+            };
+
+        #ifdef CSM_DEBUG_LOG
+
             const uint32_t win_strips = cache_win[1].strips + cache_win[2].strips + cache_win[3].strips;
             const uint32_t win_fulls  = cache_win[1].call_full + cache_win[2].call_full + cache_win[3].call_full;
 
@@ -1638,12 +1646,6 @@ public:
                                         ? u8"100% Cached (ZERO DrawCalls!)"
                                         : (win_fulls == 0 ? u8"Rolling strips only"
                                                           : u8"Full redraw + rolling strips");
-
-            // 窗口平均：每帧重画纹素占贴图的比例（滚动方案真正的收益指标）
-            auto avg_area_pct = [](const CacheWindow &w) -> float {
-                const uint64_t denom = static_cast<uint64_t>(w.frames) * w.map_texels;
-                return denom > 0 ? 100.0f * static_cast<float>(w.strip_texels) / static_cast<float>(denom) : 0.0f;
-            };
 
             GLogInfo(u8"[CSM Rolling Cache Stats] Cam=(%.1f, %.1f, %.1f) | "
                      u8"C1: %u strips(band=%ut avg=%.2f%% off=(%u,%u) full=%u) | "
@@ -1669,6 +1671,7 @@ public:
                      cache_win[1].call_full, cache_win[1].call_strip, cache_win[1].call_hit,
                      cache_win[2].call_full, cache_win[2].call_strip, cache_win[2].call_hit,
                      cache_win[3].call_full, cache_win[3].call_strip, cache_win[3].call_hit);
+        #endif//CSM_DEBUG_LOG
 
             for (uint32_t c = 0; c < kMaxShadowCascades; ++c)
                 cache_win[c] = CacheWindow{};

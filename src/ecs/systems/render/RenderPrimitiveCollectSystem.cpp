@@ -1544,9 +1544,11 @@ namespace hgl::ecs
             return false;
         }
 
-        if (getenv("ULRE_ARENA_DEBUG"))
-            GLogInfo("[ArenaTrace] materialize entry: material_binding_valid=%d",
-                     material_binding_recipe.material_ssbo_binding.IsValid() ? 1 : 0);
+        if(!material_binding_recipe.material_ssbo_binding.IsValid())
+        {
+            if (getenv("ULRE_ARENA_DEBUG"))
+                GLogInfo("[ArenaTrace] materialize entry: material_binding_valid=false");
+        }
 
         auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
         if (!rdbs)
@@ -1569,15 +1571,6 @@ namespace hgl::ecs
             // data_index is the active row ID in this type's shared material
             // buffer; translate it to the CPU/GPU address used by the current ABI.
             {
-                if (getenv("ULRE_ARENA_DEBUG") && !arena_trace_done_)   // 批 1.3 C5：每实例闩
-                {
-                    arena_trace_done_ = true;
-                    GLogInfo("[ArenaTrace] materialize: ssbo_id=%u data_index=%u assets=%u",
-                             asset_binding.ssbo_id,
-                             asset_binding.data_index,
-                             1u);
-                }
-
                 row->material_row_gpu     = 0;
 
                 auto *graphics_context = world->GetGraphicsContext();
@@ -1635,19 +1628,6 @@ namespace hgl::ecs
                 const uint64_t row_offset =
                     uint64_t(asset_binding.data_index) * material_buffer.row_bytes;
                 row->material_row_gpu = material_buffer.gpu_base + row_offset;
-
-                // 批 1.3 C5：同上，闩改每实例（原 static 是进程级）。
-                // 注意：本处 trace 与上面的 materialize trace **共用同一个闩** ⇒ 上面那次
-                // 触发之后这里恒为假（该行日志实际从未输出）——行为保持原样，仅随闩改名，
-                // 是否拆成两个闩留给后续拍板。
-                if (!arena_trace_done_)
-                {
-                    GLogInfo(
-                        "[ArenaTrace] translated: gpu=0x%llx (base=%llu row_bytes=%u domain=material)",
-                        (unsigned long long)row->material_row_gpu,
-                        (unsigned long long)material_buffer.gpu_base,
-                        material_buffer.row_bytes);
-                }
             }
         }
 

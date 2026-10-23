@@ -8,7 +8,7 @@
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/render/RenderSceneUBOSystem.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/SSBOBufferRegistry.h>
+#include <hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
