@@ -4681,9 +4681,8 @@ namespace
 
         const auto *pbr_2d = registry.FindByName("pbr_surface_source");
         const auto *ntb_2d = registry.FindByName("ntb_tangent_vbo_normalmap");
-        const auto *ntb_derivative = registry.FindByName("ntb_derivative_normalmap");
         const auto *unlit = registry.FindByName("texture_source");
-        if (!pbr_2d || !ntb_2d || !ntb_derivative || !unlit)
+        if (!pbr_2d || !ntb_2d || !unlit)
         {
             result.diagnostics.emplace_back("provider metadata modules are missing");
         }
@@ -4740,14 +4739,14 @@ namespace
                         "Texture2D providers must declare TOML-aligned texture references");
             }
 
-            const char *derivative_root = ntb_derivative->name;
-            ShaderCodeResourceManifest derivative_manifest{};
+            const char *ntb_root = ntb_2d->name;
+            ShaderCodeResourceManifest ntb_manifest{};
             if (!BuildShaderCodeResourceManifest(
-                    &derivative_root, 1, derivative_manifest, &registry)
-             || derivative_manifest.texture_reference_count != 1
-             || !has_texture_reference(derivative_manifest, "normal"))
+                    &ntb_root, 1, ntb_manifest, &registry)
+             || ntb_manifest.texture_reference_count != 1
+             || !has_texture_reference(ntb_manifest, "normal"))
                result.diagnostics.emplace_back(
-                   "Derivative normal-map provider must declare its named texture reference");
+                   "Normal-map provider must declare its named texture reference");
 
             const char *unlit_root = unlit->name;
             ShaderCodeResourceManifest unlit_manifest{};
@@ -4913,14 +4912,15 @@ namespace
         else
         {
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
-            if (file_count != 71)
-                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
+            // Stage 5 removed the duplicate ntb_derivative_normalmap provider (71 → 70).
+            if (file_count != 70)
+                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 71;
+            const int expected_count = 70;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -6158,10 +6158,8 @@ namespace
               "IBL provider samples env maps through bindless textures" },
             { "material_surface", "ntb_interface",
               "surface provider branches on the NTB provider contract" },
-            { "ntb_derivative_normalmap", "ntb_orthonormal",
-              "derivative NTB provider builds its frame via ntb_orthonormal" },
             { "ntb_tangent_vbo_normalmap", "ntb_orthonormal",
-              "tangent NTB provider builds its frame via ntb_orthonormal" },
+              "NTB provider falls back to ntb_orthonormal on UV-degenerate frames" },
             { "surface_interface", "descriptor_macros",
               "surface interface depends on the standard descriptor macros" },
             { "scene_ubo", "descriptor_macros",
