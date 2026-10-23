@@ -14,8 +14,16 @@ namespace hgl::graph::mtl
         // 材质源身份：决定用到哪些 .material.toml / 模块源。
         h << definition.definition_id;
 
-        // 配方全字段（含 render state / 纹理绑定 / SSBO 绑定）。
-        h << HashMaterialRecipe(request.recipe);
+        // 着色器**变体**维度（不是配方实例维度）。
+        //
+        // 这里曾经折进 HashMaterialRecipe（整份实例身份：recipe_name、贴图
+        // resource_id、SSBO 行绑定、纯 PSO 状态、回退标记色）。同一个 program_link
+        // 因此会分裂成多条 lookup_key：烘焙期只走通其中一条，发行期用另一条查表
+        // 必然 miss，现象是「发行版少了某一批材质」。变体键只收真正改变 GLSL 的
+        // 字段，判据见 HashMaterialRecipeShaderVariant 的注释。
+        const ResolvedMaterialRenderState resolved_state =
+            ResolveMaterialRenderState(definition, request.recipe);
+        h << HashMaterialRecipeShaderVariant(request.recipe, resolved_state);
 
         // 图元类型 + 顶点输入 + 编译目标档 + 用途 + ambient provider。
         // 编译目标档里含代码生成代数，跨代际的旧清单自然算出不同的键 ⇒ miss。

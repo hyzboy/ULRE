@@ -742,4 +742,52 @@ namespace hgl::graph::mtl
         return h;
     }
 
+    /**
+     * 着色器**变体**键 —— 与实例键 HashMaterialRecipe 分工不同，两者不可互换。
+     *
+     *  · HashMaterialRecipe            = 材质**实例行**身份（贴图、SSBO 行、回退标记色
+     *                                    全都算）。换张贴图必须换行，所以这些字段必须在内。
+     *  · HashMaterialRecipeShaderVariant = 材质**着色器变体**身份（只有会改变发射出的
+     *                                    GLSL 字节的字段）。换张贴图 / 只改剔除模式
+     *                                    **不得**换变体。
+     *
+     * 判据只有一条：该字段是否改变 GLSL 文本或 stage 接口。`src/ShaderGen` 里真正
+     * 被消费的配方字段只有（见 GenericMaterialBuilder::ResolvePurposeAndCoverage、
+     * BuildMaterialCoverageContract、ResolveMaterialVertexNodeConfig）：
+     *   · coverage：alpha_test / alpha_cutoff / dither（宏 + varying 需求 + 模板路由）
+     *   · alpha_blend（决定片元是否写出 alpha —— plan.alpha_to_output）
+     *   · vertex_node_config
+     * 定义身份（definition_id）由调用方折叠，这里不重复。
+     *
+     * 一律**不进**变体键的字段及理由：
+     *   · recipe_name / 贴图 resource_id、array_layer / SSBO 行绑定
+     *     —— 改的是描述符绑定与运行时材质行，不是 SPV；
+     *   · pipeline_config 的纯 PSO 字段（cull/depth/blend factor/line width/
+     *     overlay/wireframe）—— 改的是 VkPipeline，不是 SPV；
+     *   · fallback_error_kind / fallback_marker_color —— 经材质数据行下发，不是源码常量。
+     *
+     * 反面代价（这就是 Stage 1 缺陷 #1/#3 的根因）：这些字段若被误判进变体键，
+     * 同一条 program_link 会在烘焙清单里分裂成多条 lookup_key —— 烘焙期只触碰到
+     * 其中一条，发行期用另一条查表即 miss，表现为「发行版少了某一批材质」。
+     *
+     * resolved_state 必须是 ResolveMaterialRenderState(definition, recipe) 的结果，
+     * 不能由 recipe.render_state_overrides 直接读 —— 未归一化的配方靠 definition
+     * 的默认值补足。
+     */
+    inline uint64_t HashMaterialRecipeShaderVariant(
+        const MaterialRecipe &recipe,
+        const ResolvedMaterialRenderState &resolved_state) noexcept
+    {
+        hgl::hash::FNV1aHasher64 h;
+
+        h << recipe.vertex_node_config;
+
+        h << resolved_state.alpha_test
+          << resolved_state.alpha_cutoff
+          << resolved_state.dither
+          << resolved_state.pipeline_config.alpha_blend;
+
+        return h;
+    }
+
 }
