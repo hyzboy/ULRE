@@ -67,7 +67,13 @@ namespace hgl::graph::mtl::contract
     //     回退规则表的两个错误种类从 `builtin/checkerboard_3d` 改指到它 ⇒ 该材质的
     //     bit1 从 0 变 1，并且材质库多出一份定义。第 11 代产物里没有这份材质，
     //     必须换代重烘。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 12;
+    // 13：新增「顶点缺法线 ⇒ 面法线光照」降级发射维度 —— 顶点格式没有 Normal 语义
+    //     而材质要法线光照时，剥掉 Normal/Tangent/Bitangent 需求并发射
+    //     `HGL_MATERIAL_FACE_NORMAL_FALLBACK` define，fragment 端用世界位置的屏幕
+    //     空间导数叉积求三角形面法线。这一维直接改变 definition_hash 与发射出的
+    //     GLSL 文本；第 12 代产物里 `Lit` 等材质在同样输入下走的是顶点法线路径
+    //     （读未上传的 Normal 槽），必须换代重烘。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 13;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，

@@ -229,6 +229,28 @@ namespace hgl::graph::mtl
                 entries, InterStageSemantic::WorldNormal))
             out_code +=
                 "    si.worldNormal = normalize(fragWorldNormal);\n";
+
+        // 面法线降级（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`）：
+        // 材质要法线光照、但几何顶点格式没有 Normal 语义 ⇒ 用世界位置的屏幕空间导数
+        // 叉积求**三角形面法线**（与 error_checkerboard_3d_source.glsl 同一约定）。
+        // 开关由 GenericMaterialBuilder::PrepareResolvedDefinition 决定，这里用
+        // GLSL 预处理包住 ⇒ 不降级时本段零成本、且不引用任何可能不存在的 varying。
+        // 退化三角形（面积为 0）保持预置值 (0,0,1)，避免 NaN。
+        out_code +=
+            "#ifdef HGL_MATERIAL_FACE_NORMAL_FALLBACK\n"
+            "    {\n"
+            "        vec3 face_normal_vector =\n"
+            "            cross(dFdx(si.worldPos), dFdy(si.worldPos));\n"
+            "        const float face_normal_length_squared =\n"
+            "            dot(face_normal_vector, face_normal_vector);\n"
+            "        if (face_normal_length_squared > 1e-12)\n"
+            "        {\n"
+            "            face_normal_vector *= inversesqrt(face_normal_length_squared);\n"
+            "            si.worldNormal = gl_FrontFacing\n"
+            "                ? face_normal_vector : -face_normal_vector;\n"
+            "        }\n"
+            "    }\n"
+            "#endif\n";
         if (FindMaterialStageInterfaceEntry(
                 entries, InterStageSemantic::UV0))
             out_code += "    si.uv0 = fragUV0;\n";

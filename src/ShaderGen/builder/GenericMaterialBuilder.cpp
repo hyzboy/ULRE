@@ -105,6 +105,26 @@ namespace hgl::graph::mtl
             }
         }
 
+        /// 去掉某条顶点语义需求（面法线降级用）。
+        bool RemoveVertexSemanticRequirement(
+            MaterialDefinition &definition,
+            const VertexSemantic semantic) noexcept
+        {
+            for (int i = definition.vertex_semantic_requirements.GetCount() - 1;
+                 i >= 0;
+                 --i)
+            {
+                if (GetVertexSemanticFromShaderCodeModuleSemantic(
+                        definition.vertex_semantic_requirements[i].semantic)
+                    != semantic)
+                    continue;
+
+                definition.vertex_semantic_requirements.Delete(i);
+                return true;
+            }
+            return false;
+        }
+
         bool HasVertexSemanticRequirement(
             const MaterialDefinition &definition,
             const VertexSemantic semantic) noexcept
@@ -830,19 +850,39 @@ namespace hgl::graph::mtl
         // ═══════════════════════════════════════════════════════════════════
         // definition 预处理（Phase 0）
         //
-        // OptionalFaceFallback 的归一化只在这里做一次：预处理结果参与
-        // vertex ABI / resource manifest / 最终发射，多处各自归一化必然分叉。
+        // 法线来源的归一化只在这里做一次：预处理结果参与 vertex ABI / resource
+        // manifest / 最终发射，多处各自归一化必然分叉。
         // ═══════════════════════════════════════════════════════════════════
+        /// 定义是否**要法线光照**：显式面法线回退模式，或声明了 Normal 语义/法线贴图模块。
+        bool MaterialWantsNormalLighting(const MaterialDefinition &definition) noexcept
+        {
+            if (definition.vertex_normal_mode
+                    == MaterialVertexNormalMode::OptionalFaceFallback)
+                return true;
+
+            if (definition.ntb_module_name && *definition.ntb_module_name)
+                return true;
+
+            return HasVertexSemanticRequirement(definition, VertexSemantic::Normal)
+                || HasVertexSemanticRequirement(definition, VertexSemantic::Tangent)
+                || HasVertexSemanticRequirement(definition, VertexSemantic::Bitangent);
+        }
+
+        /// 归一化「法线从哪来」，两条路：
+        ///   · 顶点格式有 Normal ⇒ 走顶点法线（补齐 Normal 需求 + `HGL_MATERIAL_HAS_VERTEX_NORMAL`）；
+        ///   · 顶点格式没有 Normal ⇒ 面法线降级（剥 N/T/B 需求 + `HGL_MATERIAL_FACE_NORMAL_FALLBACK`）。
         bool PrepareResolvedDefinition(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
             MaterialDefinition &out_resolved_definition)
         {
             out_resolved_definition = definition;
-            if (definition.vertex_normal_mode
-                    == MaterialVertexNormalMode::OptionalFaceFallback
-             && request.geometry_vertex_format
-             && request.geometry_vertex_format->Find(VertexSemantic::Normal))
+
+            if (!request.geometry_vertex_format
+             || !MaterialWantsNormalLighting(definition))
+                return !out_resolved_definition.vertex_semantic_requirements.IsEmpty();
+
+            if (request.geometry_vertex_format->Find(VertexSemantic::Normal))
             {
                 out_resolved_definition.vertex_varying.emit_world_normal = true;
                 if (!HasVertexSemanticRequirement(
@@ -854,7 +894,43 @@ namespace hgl::graph::mtl
                 }
                 out_resolved_definition.compile_defines.push_back(
                     "HGL_MATERIAL_HAS_VERTEX_NORMAL");
+
+                return !out_resolved_definition.vertex_semantic_requirements.IsEmpty();
             }
+
+            // ── 面法线降级（顶点缺法线，但材质要法线光照）────────────────────
+            //
+            // 顶点格式没有 Normal 语义时，绝不能保留 Normal/Tangent/Bitangent 需求：
+            // `s1_ntb*.glsl` 会按 ABI 从顶点 SSBO 的 Normal 槽取数，而那条通道根本没上传
+            // ⇒ 读到的是别的顶点数据/垃圾值（画面表现为随机明暗，比没光更坏）。
+            // 因此三者一并剥掉，法线改由**片段着色器用屏幕空间导数求三角形面法线**
+            //（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`，装配处见
+            //  contract::BuildGLSLMaterialSurfaceInput）。
+            //
+            // 语义定稿（用户）：「材质需要法线光照但顶点没有 NTB ⇒ 用三角形平面渲染
+            //（顶点 CROSS 出法线）」——这是引擎支持的**正常光照模式**（不是错误回退），
+            // 所以这里只降级并告警，不换材质、不改标记色。
+            // 触发条件见 `MaterialWantsNormalLighting`：只要材质要法线光照（含 `Lit` 这种
+            // 声明了 Normal/ntb 模块但 `normal_mode` 仍是默认 None 的），缺顶点法线就降级。
+            RemoveVertexSemanticRequirement(
+                out_resolved_definition, VertexSemantic::Normal);
+            RemoveVertexSemanticRequirement(
+                out_resolved_definition, VertexSemantic::Tangent);
+            RemoveVertexSemanticRequirement(
+                out_resolved_definition, VertexSemantic::Bitangent);
+
+            // 面法线要用世界位置对屏幕导数求叉积 ⇒ 必须输出世界位置。
+            out_resolved_definition.vertex_varying.emit_world_pos = true;
+            out_resolved_definition.vertex_varying.emit_world_normal = false;
+            out_resolved_definition.compile_defines.push_back(
+                "HGL_MATERIAL_FACE_NORMAL_FALLBACK");
+
+            GLogWarning(
+                u8"[ShaderGen] 材质 %s 需要法线光照（normal_mode=%s，ntb_module=%s），但几何顶点"
+                u8"格式缺少 Normal 语义 => 降级为三角形面法线光照（cross(dFdx,dFdy)）",
+                definition.definition_id.c_str(),
+                GetMaterialVertexNormalModeName(definition.vertex_normal_mode),
+                definition.ntb_module_name ? definition.ntb_module_name : "");
 
             return !out_resolved_definition.vertex_semantic_requirements.IsEmpty();
         }
