@@ -3,7 +3,7 @@
 // 演示「材质配置写错 ⇒ 材质系统回退到错误棋盘格」：**不同错误种类用不同标记色**，
 // 屏幕上肉眼就能分辨是哪一类配置错了。
 //
-// 场景（引擎世界是 Z-up；6 个球体按 2 行 3 列铺开，相机从 -X 侧看）：
+// 场景（引擎世界是 Z-up；8 个球体按 2 行 4 列铺开，相机从 -X 侧看）：
 //   #0 对照     引用 builtin/checkerboard_3d      正常                → 灰度棋盘格
 //   #1 空定义 ID  mtl_def_id = ""                  MissingMaterialSource     → 洋红棋盘格
 //   #2 无材质来源 不设 asset 配方                    MissingMaterialSource     → 洋红棋盘格
@@ -12,6 +12,19 @@
 //                                                  UnknownMaterialDefinition → 橙棋盘格
 //   #5 大小写不符 mtl_def_id = "lit"（真实定义是 "Lit"）
 //                                                  UnknownMaterialDefinition → 橙棋盘格
+//   #6 缺纹理     mtl_def_id = "UnlitTexture"（该定义声明 base_color required=true），
+//                 但配方不给任何纹理资源            MissingTextureResource     → 青棋盘格
+//   #7 缺顶点法线 mtl_def_id = "Lit"，几何顶点只有 Position+TexCoord（**没有 Normal**）
+//                                                 ⇒ 不是错误回退：光照降级为
+//                                                 **三角形面法线**（cross(dFdx,dFdy)），
+//                                                 球面呈现平面着色（正常 PBR 光照）
+//
+// #7 的语义（用户定稿）：「材质需要法线光照，但顶点中没有 NTB 数据 ⇒ 用三角形平面渲染，
+// 即拿三角形顶点 CROSS 出来法线」—— 这是引擎支持的**正常光照模式**，所以它**不换材质**
+// （不是回退），只降级并在日志里出声。实现见
+// `GenericMaterialBuilder::PrepareResolvedDefinition`（剥掉 Normal/Tangent/Bitangent 需求 +
+// 发 `HGL_MATERIAL_FACE_NORMAL_FALLBACK`）与
+// `contract::BuildGLSLMaterialSurfaceInput`（用世界位置的屏幕空间导数求面法线）。
 //
 // 回退机制与本表的定义中枢见 `inc/hgl/mtl/MaterialRecipe.h`：
 //   · `kFallbackMaterialRules`      —— 错误种类 → 保底材质定义 ID + 标记色 + 稳定名
@@ -25,6 +38,10 @@
 //                      （棋盘格；错误种类 missing_material_source，颜色=(1.00,0.00,1.00,1.00)）
 //   [MaterialFallback] 材质定义 ID 无法解析: "NotExist/Material" => 回退错误材质 ...
 //                      （棋盘格；错误种类 unknown_material_definition，颜色=(1.00,0.50,0.00,1.00)）
+//   [MaterialFallback] 材质 "UnlitTexture" 声明为 required 的纹理缺少实际资源 => ...
+//                      （棋盘格；错误种类 missing_texture_resource，颜色=(0.00,1.00,1.00,1.00)）
+//   [ShaderGen] 材质 Lit 需要顶点法线光照（normal_mode=OptionalFaceFallback），但几何顶点格式
+//               缺少 Normal 语义 => 降级为三角形面法线光照（cross(dFdx,dFdy)）
 //
 // 环境变量：
 //   EF_FRAMES=N   跑 N 帧后退出（CI / 抓日志用）
@@ -39,6 +56,9 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/MaterialDataRows.h>
+#include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
 #include<hgl/time/Time.h>
@@ -60,10 +80,10 @@ using namespace hgl::graph;
 
 namespace
 {
-    constexpr int   kCaseCount    = 6;
+    constexpr int   kCaseCount    = 8;
     constexpr float kSphereRadius = 1.0f;
     constexpr float kSpacing      = 3.0f;
-    constexpr int   kCaseColumns  = 3;
+    constexpr int   kCaseColumns  = 4;
     constexpr int   kCaseRows     = 2;
     static_assert(kCaseColumns > 0 && kCaseRows > 0, "错误材质示例必须是网格布局");
     static_assert(kCaseColumns * kCaseRows == kCaseCount, "列 × 行必须等于示例数量");
@@ -77,40 +97,70 @@ namespace
         const char             *expected_kind;
         const char             *expected_color;
         const char             *why;
+        bool                    omit_vertex_normal; ///< true = 几何顶点格式**不含** Normal
+        bool                    use_pbr_surface_row;///< true = 配方要挂 PBRSurface 数据行
     };
 
     constexpr ErrorCaseDesc kErrorCases[kCaseCount] =
     {
         { "00_Control",     "EF.Control",  "builtin/checkerboard_3d",
           "None",                     "灰度(0.00/0.35)",
-          "对照组：正常引用零依赖棋盘格（不读标记色）" },
+          "对照组：正常引用零依赖棋盘格（不读标记色）",
+          false, false },
 
         { "01_EmptyID",     "EF.EmptyID",  "",
           "MissingMaterialSource",    "洋红(1.00,0.00,1.00)",
-          "配方里 mtl_def_id 留空 ⇒ 无材质来源" },
+          "配方里 mtl_def_id 留空 ⇒ 无材质来源",
+          false, false },
 
         { "02_NoSource",    "EF.NoSource", nullptr,
           "MissingMaterialSource",    "洋红(1.00,0.00,1.00)",
-          "asset 的 PrimitiveVariant 为空 ⇒ 数据层与 asset 都没有配方" },
+          "asset 的 PrimitiveVariant 为空 ⇒ 数据层与 asset 都没有配方",
+          false, false },
 
         { "03_UnknownID",   "EF.UnknownID", "NotExist/Material",
           "UnknownMaterialDefinition", "橙(1.00,0.50,0.00)",
-          "材质定义 ID 在材质库里不存在" },
+          "材质定义 ID 在材质库里不存在",
+          false, false },
 
         { "04_TypoID",      "EF.TypoID",   "builtin/checkerbord_3d",
           "UnknownMaterialDefinition", "橙(1.00,0.50,0.00)",
-          "builtin ID 拼写错（少一个 'a'）—— 最容易犯的错" },
+          "builtin ID 拼写错（少一个 'a'）—— 最容易犯的错",
+          false, false },
 
         { "05_CaseMismatch", "EF.CaseMismatch", "lit",
           "UnknownMaterialDefinition", "橙(1.00,0.50,0.00)",
-          "大小写不符：真实定义是 \"Lit\"（ID 区分大小写）" },
+          "大小写不符：真实定义是 \"Lit\"（ID 区分大小写）",
+          false, false },
+
+        { "06_MissingTexture", "EF.MissingTexture", "UnlitTexture",
+          "MissingTextureResource",   "青(0.00,1.00,1.00)",
+          "材质定义声明 base_color required=true，但配方一个纹理资源都没给",
+          false, false },
+
+        { "07_NoVertexNormal", "EF.NoVertexNormal", "Lit",
+          "None（降级，不是回退）",    "正常 PBR 光照 + 平面着色",
+          "几何只有 Position+TexCoord（无 Normal）⇒ 面法线光照（cross(dFdx,dFdy)）",
+          true,  true },
     };
 
-    GeometryVertexFormat CreatePositionNormalGeometryVertexFormat()
+    /// 常规球体：Position + TexCoord + Normal（`UnlitTexture` 要 UV0，`Lit` 要 Normal）。
+    GeometryVertexFormat CreatePositionTexCoordNormalGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
             { VertexSemantic::Position, VF_V3F },
+            { VertexSemantic::TexCoord, VF_V2F },
             { VertexSemantic::Normal,   VF_V3F },
+        };
+        return gvf;
+    }
+
+    /// 「顶点没有 NTB 数据」演示专用：只有 Position + TexCoord（Lit 还要 UV0）。
+    GeometryVertexFormat CreatePositionTexCoordGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf{
+            { VertexSemantic::Position, VF_V3F },
+            { VertexSemantic::TexCoord, VF_V2F },
         };
         return gvf;
     }
@@ -122,14 +172,46 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
 
+    using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
+
     Geometry *     geoms[kCaseCount]   = {};
     graph::mtl::MaterialRecipe recipes[kCaseCount] = {};
     PrimitiveAsset assets[kCaseCount]  = {};
+
+    MaterialDataAccessor material_data_ssbo_accessor{};
 
     uint32_t exit_frames = 0;
     uint32_t frame_seen  = 0;
 
 private:
+
+    /// 「材质要法线光照但顶点没有 NTB」演示所需的 PBR 数据行（Lit 的私有数据资源）。
+    bool InitMaterialDataSSBO()
+    {
+        auto * domain_manager = GetManager<GlobalSSBOBufferRegistry>();
+
+        if (!domain_manager)
+        {
+            GLogError(u8"[MaterialErrorFallback] 没有 SSBO 注册表");
+            return false;
+        }
+
+        material_data_ssbo_accessor =
+            domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
+
+        if (!material_data_ssbo_accessor)
+        {
+            GLogError(u8"[MaterialErrorFallback] 取不到 PBRSurfaceRow 访问器");
+            return false;
+        }
+
+        graph::ssbo::PBRSurfaceRow material_data{};
+        material_data.base_color = Color4f(0.85f, 0.72f, 0.45f, 1.0f);
+        material_data.metallic   = 0.05f;
+        material_data.roughness  = 0.85f;
+
+        return material_data_ssbo_accessor.Write(material_data);
+    }
 
     bool CreateGeometries()
     {
@@ -142,12 +224,20 @@ private:
             return false;
         }
 
-        GeometryCreater geometry_creater(device,
-                                        CreatePositionNormalGeometryVertexFormat());
+        GeometryCreater standard_creater(device,
+                                        CreatePositionTexCoordNormalGeometryVertexFormat());
+        GeometryCreater no_normal_creater(device,
+                                         CreatePositionTexCoordGeometryVertexFormat());
 
         for (int i = 0; i < kCaseCount; ++i)
         {
-            geoms[i] = inline_geometry::CreateSphere(&geometry_creater, 24);
+            const bool no_normal = kErrorCases[i].omit_vertex_normal;
+
+            // 面法线演示用低面数球体：平面着色在高面数球体上会糊成"平滑"，
+            // 看不出 cross(dFdx,dFdy) 真的按三角形出法线。
+            geoms[i] = inline_geometry::CreateSphere(
+                no_normal ? &no_normal_creater : &standard_creater,
+                no_normal ? 12 : 24);
 
             if (!geoms[i])
             {
@@ -180,6 +270,15 @@ private:
         recipe.mtl_def_id  = desc.mtl_def_id;
         recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
+        // Lit 的材质私有数据（PBRSurface）走材质数据行 —— 与其它 Lit 示例同一条路径。
+        // 注意：这里**故意不设任何纹理**（Lit 的 6 张纹理全是 required=false）⇒
+        // 不触发新增的 MissingTextureResource 判定。
+        if (desc.use_pbr_surface_row)
+            recipe.material_ssbo_binding =
+                material_data_ssbo_accessor.GetGlobalSSBOBinding();
+
+        // #06：故意**不**给 base_color 纹理资源 —— UnlitTexture 声明了
+        // `required = true`，缺资源 ⇒ 数据层分类为 MissingTextureResource ⇒ 青棋盘格。
         assets[index] = PrimitiveAsset(geoms[index], &recipe, PrimitiveType::Triangles);
     }
 
@@ -205,7 +304,7 @@ private:
                 ecs_context->CreateTransform(entity->GetEntityID(),
                                              hgl::ecs::Mobility::Static));
 
-            // Z-up：2 行 3 列铺开（列沿 +Y、行沿 +Z），保证一屏内全部可见。
+            // Z-up：2 行 4 列铺开（列沿 +Y、行沿 +Z），保证一屏内全部可见。
             const int column = i % kCaseColumns;
             const int row    = i / kCaseColumns;
 
@@ -248,7 +347,7 @@ private:
 
         camera->control_mode   = hgl::ecs::CameraControlMode::ViewModel;
         camera->target         = math::Vector3f(0.0f, 0.0f, kSphereRadius + kSpacing * 0.5f);
-        camera->distance       = 14.0f;
+        camera->distance       = 17.0f;
         camera->yaw            = 0.0f;
         camera->pitch          = -6.0f;
         camera->is_main_camera = true;
@@ -261,7 +360,8 @@ private:
     void LogCaseTable() const
     {
         GLogInfo(u8"[MaterialErrorFallback] === 错误材质回退演示 ===");
-        GLogInfo(u8"[MaterialErrorFallback] 共 %d 个球体，2 行 3 列（Z-up 世界，列沿 +Y、行沿 +Z）", kCaseCount);
+        GLogInfo(u8"[MaterialErrorFallback] 共 %d 个球体，%d 行 %d 列（Z-up 世界，列沿 +Y、行沿 +Z）",
+                 kCaseCount, kCaseRows, kCaseColumns);
 
         for (int i = 0; i < kCaseCount; ++i)
         {
@@ -301,6 +401,7 @@ public:
         }
 
         if (!CreateGeometries()) return false;
+        if (!InitMaterialDataSSBO()) return false;
         if (!InitScene())        return false;
         if (!InitCamera())       return false;
 
