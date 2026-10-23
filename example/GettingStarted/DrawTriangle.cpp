@@ -28,7 +28,7 @@ namespace
     GeometryVertexFormat CreateDrawTriangleGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
-            {VertexSemantic::Position, VF_V2I},
+            {VertexSemantic::Position, VF_V2I16},
             {VertexSemantic::Color,    VF_V4F},
         };
         return gvf;
@@ -44,7 +44,12 @@ static float position_data_float[VERTEX_COUNT][2]=
     {0.25,  0.75}
 };
 
-static int16 position_data[VERTEX_COUNT][2]={};   // int16 与 VF_V2I（R16G16_SINT）匹配——s1_position_vec2i 按 int16 打包解码
+static int16 position_data[VERTEX_COUNT][2]={};   // int16x2（4B/顶点）——与 VF_V2I16（R16G16_SINT）匹配，
+                                                  // s1_position_vec2i 按 int16 打包解码
+//
+// 注意：这里必须是 VF_V2I16 而不是 VF_V2I。VF_V2I 是 R32G32_SINT（8B/顶点），
+// 与上面 int16 数组的实际步长不符；生成器也不会给出 Vec2Int 模块（只认
+// R16G16_SINT），会直接拒绝构建。
 
 constexpr float color_data[VERTEX_COUNT][4]=
 {
@@ -53,7 +58,7 @@ constexpr float color_data[VERTEX_COUNT][4]=
     {0.0f,0.0f,1.0f,1.0f}
 };
 
-constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I;
+constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I16;
 
 constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4F;
 

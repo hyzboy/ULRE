@@ -1120,8 +1120,11 @@ namespace
             {VertexSemantic::TexCoord, VF_V2F},
             {VertexSemantic::Normal, VF_V3F}
         };
+        // 位置格式必须落在 VertexABIBuilder 的「格式 ↔ s1_position_* 解码模块」白名单里：
+        // VF_V3HF 没有对应解码模块（本来就没人真用它当位置），这里用打包 int16 位置
+        // 制造一个"同语义、不同 ABI"的对照几何，顺便覆盖 Vec2IntPosition 路径。
         const GeometryVertexFormat lit_geometry_b{
-            {VertexSemantic::Position, VF_V3HF},
+            {VertexSemantic::Position, VF_V2I16},
             {VertexSemantic::TexCoord, VF_V2F},
             {VertexSemantic::Normal, VF_V3F}
         };
@@ -3856,6 +3859,49 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "AllowDerived material definition must build a SSBO vertex ABI");
+            }
+
+            // 打包 int16x2 位置（4B/顶点）必须映射到 vec2i 模块——这是三对闭环格式之一。
+            const GeometryVertexFormat packed_position_geometry{
+                {VertexSemantic::Position, VF_V2I16},
+                {VertexSemantic::TexCoord, VF_V2F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            MaterialDefinitionBuildRequest packed_position_request{};
+            packed_position_request.geometry_vertex_format = &packed_position_geometry;
+            MaterialResolvedVertexABI packed_position_abi{};
+            if (!BuildResolvedMaterialVertexABI(
+                    definition, packed_position_request, packed_position_abi)
+             || packed_position_abi.position_format != VK_FORMAT_R16G16_SINT
+             || !std::strstr(packed_position_abi.vertex_input_glsl.c_str(),
+                             "s1_position_vec2i.glsl"))
+            {
+                result.diagnostics.emplace_back(
+                    "packed int16x2 position must resolve to the vec2i module");
+            }
+
+            // 未闭环位置格式必须被拒绝，而不是挑一个"同义"模块凑合：
+            // R16G16_SFLOAT(4B) 曾被当成 Vec2Position（读 8B），R32G32B32A32_SFLOAT(16B)
+            // 曾被当成 Vec3Position（读 12B），两者都产出顶点全体错位的着色器。
+            const VkFormat unsupported_position_formats[] = {
+                VF_V2HF, VF_V2I, VF_V2U, VF_V2U16, VF_V4F
+            };
+            for (const VkFormat unsupported_format : unsupported_position_formats)
+            {
+                const GeometryVertexFormat unsupported_geometry{
+                    {VertexSemantic::Position, unsupported_format},
+                    {VertexSemantic::TexCoord, VF_V2F},
+                    {VertexSemantic::Normal, VF_V3F}
+                };
+                MaterialDefinitionBuildRequest unsupported_request{};
+                unsupported_request.geometry_vertex_format = &unsupported_geometry;
+                MaterialResolvedVertexABI unsupported_abi{};
+                if (BuildResolvedMaterialVertexABI(definition, unsupported_request, unsupported_abi))
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("unsupported vertex position format must be rejected: VkFormat=")
+                        + std::to_string(static_cast<int>(unsupported_format)));
+                }
             }
         }
 
