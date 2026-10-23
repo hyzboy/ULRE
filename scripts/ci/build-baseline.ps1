@@ -215,12 +215,23 @@ if (Test-Path $buildLog) {
             default { [void]$uErrors.Add($l) }
         }
     }
-    # 已被 [3/5] 串行重放修复的 applocal 错误不再计入 B 层错误
+    # 已被 [3/5] 串行重放修复的 applocal 错误不再计入任何层。
+    # 注意：applocal POST_BUILD 的宿主工程既可能在上游（B 层 CMCore examples），
+    # 也可能在本仓（A 层 example/Text/TextDraw 等）——它的成因是并发拷贝冲突，
+    # 与宿主工程归属无关，所以 A 层也要一并剔除，否则偶发时会误报 A 层阻塞。
     if ($appLocalRepaired -gt 0) {
-        $fixed = @($bErrors | Where-Object { $_ -match 'MSB307[35]' })
-        if ($fixed.Count -gt 0) {
-            foreach ($x in $fixed) { [void]$bErrors.Remove($x) }
-            Write-Host ("  其中 {0} 条 applocal MSB3073/MSB3075 已由串行重放修复，不计入" -f $fixed.Count)
+        $fixedCount = 0
+        foreach ($layer in @($aErrors, $bErrors, $uErrors)) {
+            $fixed = @($layer | Where-Object { $_ -match 'MSB307[35]' })
+            if ($fixed.Count -gt 0) {
+                foreach ($x in $fixed) { [void]$layer.Remove($x) }
+                $fixedCount += $fixed.Count
+            }
+        }
+        if ($fixedCount -gt 0) {
+            Write-Host ("  其中 {0} 条 applocal MSB3073/MSB3075 已由串行重放修复，不计入" -f $fixedCount)
+        } else {
+            Write-Host "  串行重放已修复，但构建日志里没有可剔除的 applocal 错误行"
         }
     }
     Write-Host ("  A 层错误 = {0}   B 层错误 = {1}   未归类 = {2}" -f $aErrors.Count, $bErrors.Count, $uErrors.Count)
