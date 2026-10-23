@@ -78,11 +78,11 @@ namespace hgl::ecs
         bool transform_valid = va_transform.IsValid();
         bool width_valid = va_width.IsValid();
 
-        LinePeriodicLog(s_line_log_ticks[0], "[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d",
-                 pos_valid ? 1 : 0,
-             color_valid ? 1 : 0,
-             transform_valid ? 1 : 0,
-             width_valid ? 1 : 0);
+        //LinePeriodicLog(s_line_log_ticks[0], "[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d",
+        //         pos_valid ? 1 : 0,
+        //     color_valid ? 1 : 0,
+        //     transform_valid ? 1 : 0,
+        //     width_valid ? 1 : 0);
 
         if (pos_valid)   va_pos.Seek(0);
         if (color_valid) va_color.Seek(0);
@@ -297,11 +297,11 @@ namespace hgl::ecs
                                     / LineRenderPipeline::MESH_GROUP_SIZE;
         cmd->DrawMeshTasks(group_count);
 
-        LinePeriodicLog(s_line_log_ticks[2], "[LineRenderPipeline] DrawMeshTasks issued: data_buffer=%p line_count=%u vertex_count=%u groups=%u",
-                 data_buffer,
-                 line_count,
-                 line_count * 2u,
-                 group_count);
+        //LinePeriodicLog(s_line_log_ticks[2], "[LineRenderPipeline] DrawMeshTasks issued: data_buffer=%p line_count=%u vertex_count=%u groups=%u",
+        //         data_buffer,
+        //         line_count,
+        //         line_count * 2u,
+        //         group_count);
     }
 
     // -------------------------------------------------------------------------
@@ -485,13 +485,13 @@ namespace hgl::ecs
             ++stats_.visible_components;
         }
 
-        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u skipped_empty=%u collected=%zu culled_visibility=%u culled_frustum=%u",
-                 stats_.total_components,
-                 stats_.visible_components,
-                 stats_.skipped_empty,
-                 collected_.size(),
-                 stats_.culled_by_visibility,
-                 stats_.culled_by_frustum);
+        //LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u skipped_empty=%u collected=%zu culled_visibility=%u culled_frustum=%u",
+        //         stats_.total_components,
+        //         stats_.visible_components,
+        //         stats_.skipped_empty,
+        //         collected_.size(),
+        //         stats_.culled_by_visibility,
+        //         stats_.culled_by_frustum);
     }
 
     void LineRenderPipeline::RunBuild()
@@ -609,42 +609,42 @@ namespace hgl::ecs
         // Tally total
         total_line_count_ = line_buffer_.line_count;
 
-        if (write_fail_count > 0 || total_line_count_ != expected_total)
-        {
-            GLogWarning("[LineRenderPipeline] Build mismatch: expected=%u built=%u write_fail=%u collected_components=%zu",
-                        expected_total,
-                        total_line_count_,
-                        write_fail_count,
-                        collected_.size());
+        //if (write_fail_count > 0 || total_line_count_ != expected_total)
+        //{
+        //    GLogWarning("[LineRenderPipeline] Build mismatch: expected=%u built=%u write_fail=%u collected_components=%zu",
+        //                expected_total,
+        //                total_line_count_,
+        //                write_fail_count,
+        //                collected_.size());
 
-            GLogWarning("[LineRenderPipeline]   line_buffer: built=%u capacity=%u pos_valid=%d color_valid=%d",
-                        line_buffer_.line_count,
-                        line_buffer_.gpu_capacity,
-                        line_buffer_.va_pos.IsValid() ? 1 : 0,
-                        line_buffer_.va_color.IsValid() ? 1 : 0);
-        }
+        //    GLogWarning("[LineRenderPipeline]   line_buffer: built=%u capacity=%u pos_valid=%d color_valid=%d",
+        //                line_buffer_.line_count,
+        //                line_buffer_.gpu_capacity,
+        //                line_buffer_.va_pos.IsValid() ? 1 : 0,
+        //                line_buffer_.va_color.IsValid() ? 1 : 0);
+        //}
 
-        if (transform_owner_components > 0)
-        {
-            static uint32_t s_diag_frame = 0;
-            ++s_diag_frame;
+        //if (transform_owner_components > 0)
+        //{
+        //    static uint32_t s_diag_frame = 0;
+        //    ++s_diag_frame;
 
-            if ((s_diag_frame % 120u) == 1u || resolved_transform_components == 0)
-            {
-                LinePeriodicLog(s_line_log_ticks[4], "[LineRenderPipeline] TransformID resolve: owners=%u resolved_nonzero=%u static=%u dynamic=%u dynamic_base=%u",
-                         transform_owner_components,
-                         resolved_transform_components,
-                         static_count,
-                         dynamic_count,
-                         dynamic_base);
-            }
-        }
+        //    if ((s_diag_frame % 120u) == 1u || resolved_transform_components == 0)
+        //    {
+        //        LinePeriodicLog(s_line_log_ticks[4], "[LineRenderPipeline] TransformID resolve: owners=%u resolved_nonzero=%u static=%u dynamic=%u dynamic_base=%u",
+        //                 transform_owner_components,
+        //                 resolved_transform_components,
+        //                 static_count,
+        //                 dynamic_count,
+        //                 dynamic_base);
+        //    }
+        //}
 
-        LinePeriodicLog(s_line_log_ticks[5], "[LineRenderPipeline] Build summary: collected=%zu expected_lines=%u built_lines=%u write_fail=%u",
-                 collected_.size(),
-                 expected_total,
-                 total_line_count_,
-                 write_fail_count);
+        //LinePeriodicLog(s_line_log_ticks[5], "[LineRenderPipeline] Build summary: collected=%zu expected_lines=%u built_lines=%u write_fail=%u",
+        //         collected_.size(),
+        //         expected_total,
+        //         total_line_count_,
+        //         write_fail_count);
 
         // IndirectMeshDraw：写 mesh per-draw 参数（Line 单 draw 非实例化——
         // 绘制时 gl_DrawID=0；shader 经 MeshDrawCommand -> geometry_id 查全局池）
@@ -803,9 +803,9 @@ namespace hgl::ecs
 
         line_buffer_.Draw(cmd);
 
-        LinePeriodicLog(s_line_log_ticks[8], "[LineRenderPipeline] Render end: submitted_lines=%u expected_lines=%u",
-                 total_line_count_,
-                 total_line_count_);
+        //LinePeriodicLog(s_line_log_ticks[8], "[LineRenderPipeline] Render end: submitted_lines=%u expected_lines=%u",
+        //         total_line_count_,
+        //         total_line_count_);
     }
 
     void LineRenderPipeline::Shutdown()
@@ -859,15 +859,15 @@ namespace hgl::ecs
         transform_buffer->EnsureBudget(static_count, dynamic_count);
 
         auto *gpu = transform_data_buffer->GetGPUBuffer();
-        LinePeriodicLog(s_line_log_ticks[9], "[LineRenderPipeline] SyncTransformBinding snapshot: tab=0x%llX dbuf=0x%llX vk=0x%llX gpu=0x%llX size=%llu dirty=%d static=%u dynamic=%u",
-                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_buffer)),
-                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_data_buffer)),
-                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_data_buffer->GetBuffer())),
-                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
-                 static_cast<unsigned long long>(transform_data_buffer->GetSize()),
-                 gpu ? (gpu->IsDirty() ? 1 : 0) : -1,
-                 static_count,
-                 dynamic_count);
+        //LinePeriodicLog(s_line_log_ticks[9], "[LineRenderPipeline] SyncTransformBinding snapshot: tab=0x%llX dbuf=0x%llX vk=0x%llX gpu=0x%llX size=%llu dirty=%d static=%u dynamic=%u",
+        //         static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_buffer)),
+        //         static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_data_buffer)),
+        //         static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_data_buffer->GetBuffer())),
+        //         static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+        //         static_cast<unsigned long long>(transform_data_buffer->GetSize()),
+        //         gpu ? (gpu->IsDirty() ? 1 : 0) : -1,
+        //         static_count,
+        //         dynamic_count);
 
         // BDA（A5-2）：l2w 表地址经 pc_root.addr_l2w 由 Render 在 draw 前 push——
         // 不再 BindTransform 到描述符 set（material 共享 PerObject set 已无消费者）。

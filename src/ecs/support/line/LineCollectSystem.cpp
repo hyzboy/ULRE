@@ -34,14 +34,13 @@ namespace hgl::ecs
             return;
         }
 
-        const LineCollectStats& stats = line_pipeline->GetCollectStats();
-        GLogInfo("[LineCollectSystem] Collect summary: total=%u visible=%u skipped_empty=%u culled_visibility=%u culled_frustum=%u cull_ratio=%.3f",
-                 stats.total_components,
-                 stats.visible_components,
-                 stats.skipped_empty,
-                 stats.culled_by_visibility,
-                 stats.culled_by_frustum,
-                 stats.GetCullRatio());
+        //const LineCollectStats& stats = line_pipeline->GetCollectStats();
+        //GLogInfo("[LineCollectSystem] Collect summary: total=%u visible=%u skipped_empty=%u culled_visibility=%u culled_frustum=%u cull_ratio=%.3f",
+        //         stats.total_components,
+        //         stats.visible_components,
+        //         stats.skipped_empty,
+        //         stats.culled_by_visibility,
+        //         stats.culled_by_frustum,
+        //         stats.GetCullRatio());
     }
-
 }  // namespace hgl::ecs
