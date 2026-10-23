@@ -442,8 +442,8 @@ namespace hgl::graph::mtl
     // （`EmissiveSurface.color`）——与 `builtin/pure_color` 完全同一条下发路径，
     // 不新建并行机制。新增错误种类 = 加一行；下面的 static_assert 自动纳入检查。
     //
-    // 保底外观（2026-10-12 用户拍板）：**材质错误**（`MissingMaterialSource` /
-    //   `UnknownMaterialDefinition`）走**棋盘格** `builtin/error_checkerboard_3d` —— 它只
+    // 保底外观（2026-10-12 用户拍板）：**材质错误**（除 `None` 外的全部种类）走**棋盘格**
+    //   `builtin/error_checkerboard_3d` —— 它只
     //   依赖 Position 且 `provider_policy = GeometryOnly`（`normal_mode =
     //   OptionalFaceFallback`）⇒ 任意几何都画得出来；**非错误默认**（`None`）仍是
     //   纯色 `builtin/pure_color`（门 F.fallback-dimension-neutral 钉住）。
@@ -453,7 +453,8 @@ namespace hgl::graph::mtl
     // 标记色（2026-10-24 完成，原 TODO ①）：本表的 `marker_color` 经材质数据行
     //   （`EmissiveSurface.color`）下发，由 `error_checkerboard_3d_source.glsl` 读回，
     //   作为棋盘格**两色的基色**（暗格 12% / 亮格 90%）⇒ 洋红 = 无材质来源、
-    //   橙 = 材质定义 ID 无法解析，肉眼可直接分辨错误种类。
+    //   橙 = 材质定义 ID 无法解析、青 = 声明 required 却没给纹理、黄 = 几何缺顶点法线、
+    //   蓝 = 几何缺纹理 UV，肉眼可直接分辨错误种类。
     //   为什么另立一个材质而不是改 `builtin/checkerboard_3d`：那个定义必须保持
     //   **零资源依赖**（不读 payload 行 ⇒ 不需要 `material_ssbo_binding`），它是回退链
     //   的最后一环。带标记色的版本声明 `require Resource MaterialData`，只有在回退路径
@@ -462,7 +463,7 @@ namespace hgl::graph::mtl
     //
     // TODO(未来·2D/3D 分派)：② **2D/3D 必须区分**：2D 走 NDC/UV、3D 走面空间/三平面
     //   （沿用两者现有采样差异）⇒ 标记色要分别落到两套着色器，不能共用一套；届时回退
-    //   规则表还需按绘制维度分派（现在两条错误种类共用 3D 版 ⇒ 仍是维度无关的单一 ID）。
+    //   规则表还需按绘制维度分派（现在全部错误种类共用 3D 版 ⇒ 仍是维度无关的单一 ID）。
     //     ③ 门/契约：门 F 仍断言无参回退 ID == `builtin/pure_color`（未动）；
     //        门 case `S.material-fallback-definitions-exist` 自动遍历本表校验
     //        "定义已注册 + 只依赖 Position + GeometryOnly"（换 ID 写错它会兜底报红）。
@@ -475,6 +476,8 @@ namespace hgl::graph::mtl
         MissingMaterialSource,      ///< 有几何，但**无任何材质来源**（数据层配方与 asset 默认配方皆无）
         UnknownMaterialDefinition,  ///< 有材质来源，但其材质定义 ID 无法解析（落到同一保底材质）
         MissingTextureResource,     ///< 材质定义声明了 `required` 纹理，但配方里没有实际纹理资源
+        MissingVertexNormal,        ///< 材质要顶点法线光照（顶点法线 / NTB 模块），但几何顶点格式没有 Normal
+        MissingTextureUV,           ///< 材质要纹理坐标（UV0），但几何顶点格式没有 TexCoord
         Count,
     };
 
@@ -521,6 +524,25 @@ namespace hgl::graph::mtl
           "builtin/error_checkerboard_3d",
           { 0.0f, 1.0f, 1.0f, 1.0f },
           "missing_texture_resource" },
+
+        // 几何级（顶点格式）错误 —— 与上面三种「配方/定义写错」不同，这两类的**定义与配方
+        // 都合法**，错在**几何顶点格式与材质需求不匹配**（网格做错了 / 顶点格式选错了）。
+        // 判据唯一来源见 `ClassifyMaterialGeometryError`（本文件，紧随资源级判据）。
+        //
+        // 语义（2026-10-24 用户定稿）：顶点法线缺失**也必须看得见** —— 它渲染出来会变成
+        // 面法线平面着色，看起来「像正常的低模」，问题就被这层伪装掩掉了。所以走错误
+        // 棋盘格（黄），而不是静默降级。
+        { MaterialErrorKind::MissingVertexNormal,
+          "builtin/error_checkerboard_3d",
+          { 1.0f, 1.0f, 0.0f, 1.0f },
+          "missing_vertex_normal" },
+
+        // 「材质配了纹理 / 要采样纹理，但顶点没有 UV」：贴图会按垃圾 UV 采样（画面表现为
+        // 随机花纹，比没贴图更难查）⇒ 错误棋盘格（蓝）。
+        { MaterialErrorKind::MissingTextureUV,
+          "builtin/error_checkerboard_3d",
+          { 0.2f, 0.2f, 1.0f, 1.0f },
+          "missing_texture_uv" },
     };
 
     /// 标记色行**不可得**时的降级保底材质：零资源依赖的灰度棋盘格。
@@ -763,6 +785,120 @@ namespace hgl::graph::mtl
             if (binding.required && binding.resource_id.empty())
                 return MaterialErrorKind::MissingTextureResource;
         }
+
+        return MaterialErrorKind::None;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 顶点语义需求判据（材质侧，单一口径）
+    //
+    // 这些谓词被三处共用，口径必须只有一份：
+    //   · ShaderGen（`GenericMaterialBuilder::PrepareResolvedDefinition`）—— 决定发射
+    //     顶点法线还是面法线降级；
+    //   · ECS 渲染层（`RenderPrimitiveCollectSystem`）—— 判定几何顶点格式错配（回退棋盘格）；
+    //   · 契约测试（`TestRenderStrategyTable`）—— 钉住语义边界。
+    // ─────────────────────────────────────────────────────────────
+
+    /// 定义是否声明了某条顶点语义需求（`requirements = [...]` 里的项）。
+    inline bool HasMaterialVertexSemanticRequirement(
+        const MaterialDefinition &definition,
+        const VertexSemantic semantic) noexcept
+    {
+        for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
+        {
+            if (GetVertexSemanticFromShaderCodeModuleSemantic(
+                    definition.vertex_semantic_requirements[i].semantic)
+                == semantic)
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * 定义是否**容忍**面法线兜底（`normal_mode = "OptionalFaceFallback"`）。
+     *
+     * 容忍者（`builtin/checkerboard_3d` / `builtin/error_checkerboard_3d`）自带
+     * `cross(dFdx,dFdy)` 分支 ⇒ **缺顶点法线不是错误**，它们必须能在任何几何上画出来。
+     */
+    inline bool MaterialToleratesFaceNormalFallback(
+        const MaterialDefinition &definition) noexcept
+    {
+        return definition.vertex_normal_mode
+            == MaterialVertexNormalMode::OptionalFaceFallback;
+    }
+
+    /**
+     * 定义是否**必须要顶点法线**（缺了就是几何错配）。
+     *
+     * 判据：不容忍面法线兜底，**且**要法线光照 —— 声明了 Normal/Tangent/Bitangent
+     * 任一语义，或挂了法线贴图模块（`ntb_module_name`）。
+     *
+     * 为什么不看 `normal_mode`：`lit.material.toml` 的 `normal_mode` 是默认 `None`，
+     * 却声明了 `Normal` + `ntb_tangent_vbo_normalmap` ⇒ 它缺顶点法线时 `s1_ntb*.glsl`
+     * 会从没上传的 SSBO 槽读垃圾值（画面随机明暗，比没光更坏）。
+     */
+    inline bool MaterialRequiresVertexNormal(
+        const MaterialDefinition &definition) noexcept
+    {
+        if (MaterialToleratesFaceNormalFallback(definition))
+            return false;
+
+        if (definition.ntb_module_name && *definition.ntb_module_name)
+            return true;
+
+        return HasMaterialVertexSemanticRequirement(definition, VertexSemantic::Normal)
+            || HasMaterialVertexSemanticRequirement(definition, VertexSemantic::Tangent)
+            || HasMaterialVertexSemanticRequirement(definition, VertexSemantic::Bitangent);
+    }
+
+    /// 定义是否**要法线光照**（含容忍面法线兜底者）：决定要不要输出世界法线 varying。
+    /// `= 必须要顶点法线 ∨ 容忍面法线兜底`（后者也要 `si.worldNormal` 有个确定来源）。
+    inline bool MaterialWantsNormalLighting(
+        const MaterialDefinition &definition) noexcept
+    {
+        return MaterialRequiresVertexNormal(definition)
+            || MaterialToleratesFaceNormalFallback(definition);
+    }
+
+    /// 定义是否**要纹理坐标**（声明了 `UV0` 需求）。缺 UV 时贴图会按垃圾 UV 采样。
+    inline bool MaterialRequiresTextureCoordinate(
+        const MaterialDefinition &definition) noexcept
+    {
+        return HasMaterialVertexSemanticRequirement(definition, VertexSemantic::TexCoord);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 几何级材质错误判据（A7d）：**合法**定义 + **合法**配方，但几何顶点格式对不上需求。
+    //
+    // 事实由调用方从 `GeometryVertexFormat` 采集（本文件不认识 Vulkan 顶点格式）：
+    // ECS 渲染层在 `RenderPrimitiveCollectSystem::BuildResolvedRecipe` 采集。
+    // ─────────────────────────────────────────────────────────────
+    struct MaterialGeometryFacts
+    {
+        bool has_geometry_format = false;   ///< false = 不知道顶点格式 ⇒ 不判定（宁可不报）
+        bool has_vertex_normal   = false;   ///< 顶点格式含 Normal 语义
+        bool has_texture_coord   = false;   ///< 顶点格式含 TexCoord 语义
+    };
+
+    /**
+     * 判据顺序 = 严重度顺序：法线错配优先于 UV 错配（缺法线会连光照都不可信）。
+     * 两者都命中只报第一个（一个图元一条标记色，颜色不可叠加）。
+     *
+     * 不在本函数判定：宏/着色器级别的缺失（纹理名非法、绑定重复等）—— 那些是硬错误，
+     * 图元剔除，见 `ValidateMaterialRecipeForRuntime`。
+     */
+    inline MaterialErrorKind ClassifyMaterialGeometryError(
+        const MaterialDefinition &definition,
+        const MaterialGeometryFacts &facts) noexcept
+    {
+        if (!facts.has_geometry_format)
+            return MaterialErrorKind::None;
+
+        if (!facts.has_vertex_normal && MaterialRequiresVertexNormal(definition))
+            return MaterialErrorKind::MissingVertexNormal;
+
+        if (!facts.has_texture_coord && MaterialRequiresTextureCoordinate(definition))
+            return MaterialErrorKind::MissingTextureUV;
 
         return MaterialErrorKind::None;
     }

@@ -570,6 +570,202 @@ int main(int argc, char** argv)
                  u8"可选纹理不误报，反向配方侧判据生效），标记色青 + 错误棋盘格。");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Test 8: A7d 几何级材质错误判据（顶点格式与材质需求错配）
+    //   `ClassifyMaterialGeometryError` 的输入是 `MaterialGeometryFacts`（由 ECS 渲染层
+    //   从 `GeometryVertexFormat` 采集）⇒ 本测试不依赖 Vulkan/几何资产，纯数据断言。
+    //   语义（用户 2026-10-24 定稿）：缺顶点法线 / 缺 UV **都必须回退错误棋盘格**，
+    //   不允许静默降级（否则「法线数据坏了」会被面法线平面着色掩盖）。
+    // ─────────────────────────────────────────────────────────────
+    {
+        using namespace graph::mtl;
+
+        // ① 不知道顶点格式 ⇒ 一律不判定（宁可不报，避免离线/测试路径误伤）
+        {
+            MaterialDefinition definition{};
+            definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::Normal));
+
+            MaterialGeometryFacts facts{};
+            facts.has_geometry_format = false;
+
+            if (ClassifyMaterialGeometryError(definition, facts) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 8 Failed: 没有几何顶点格式时被误判为几何错配");
+                return 17;
+            }
+        }
+
+        // ② 要顶点法线 + 格式没有 Normal ⇒ MissingVertexNormal
+        //    ③ 要顶点法线 + 格式有 Normal ⇒ 不是错误
+        {
+            MaterialDefinition definition{};
+            definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::Normal));
+
+            if (!MaterialRequiresVertexNormal(definition))
+            {
+                GLogError(u8"Test 8 Failed: 声明 Normal 需求的材质没有被判为「必须要顶点法线」");
+                return 17;
+            }
+
+            MaterialGeometryFacts facts{};
+            facts.has_geometry_format = true;
+            facts.has_vertex_normal   = false;
+            facts.has_texture_coord   = true;
+
+            if (ClassifyMaterialGeometryError(definition, facts)
+                    != MaterialErrorKind::MissingVertexNormal)
+            {
+                GLogError(u8"Test 8 Failed: 缺 Normal 语义未被判为 MissingVertexNormal");
+                return 17;
+            }
+
+            facts.has_vertex_normal = true;
+
+            if (ClassifyMaterialGeometryError(definition, facts) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 8 Failed: 顶点格式有 Normal 仍被判为几何错配");
+                return 17;
+            }
+        }
+
+        // ④ 只要法线贴图模块（ntb_module_name）、不声明 Normal 语义 ⇒ 仍然必须要顶点法线
+        //    （`s1_ntb*.glsl` 会按 ABI 读 Normal 槽 —— `Lit` 就是这种写法）
+        {
+            MaterialDefinition definition{};
+            definition.ntb_module_name = "ntb_tangent_vbo_normalmap";
+
+            if (!MaterialRequiresVertexNormal(definition))
+            {
+                GLogError(u8"Test 8 Failed: 挂了法线贴图模块的材质没有被判为「必须要顶点法线」");
+                return 17;
+            }
+        }
+
+        // ⑤ `normal_mode = OptionalFaceFallback` 的材质**容忍**面法线兜底 ⇒ 缺法线不是错误
+        //    （回退棋盘格自身就是这个模式，它必须能在任何几何上画出来）
+        {
+            MaterialDefinition definition{};
+            definition.vertex_normal_mode = MaterialVertexNormalMode::OptionalFaceFallback;
+
+            if (MaterialRequiresVertexNormal(definition))
+            {
+                GLogError(u8"Test 8 Failed: OptionalFaceFallback 材质被误判为必须要顶点法线");
+                return 17;
+            }
+
+            if (!MaterialWantsNormalLighting(definition))
+            {
+                GLogError(u8"Test 8 Failed: OptionalFaceFallback 材质应仍然要法线光照（面法线）");
+                return 17;
+            }
+
+            MaterialGeometryFacts facts{};
+            facts.has_geometry_format = true;
+            facts.has_vertex_normal   = false;
+
+            if (ClassifyMaterialGeometryError(definition, facts) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 8 Failed: 容忍面法线兜底的材质被误判为缺顶点法线");
+                return 17;
+            }
+        }
+
+        // ⑥ 要 UV0 + 格式没有 TexCoord ⇒ MissingTextureUV；有 TexCoord ⇒ 不是错误
+        {
+            MaterialDefinition definition{};
+            definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::TexCoord));
+
+            if (!MaterialRequiresTextureCoordinate(definition))
+            {
+                GLogError(u8"Test 8 Failed: 声明 UV0 需求的材质没有被判为「要纹理坐标」");
+                return 17;
+            }
+
+            MaterialGeometryFacts facts{};
+            facts.has_geometry_format = true;
+            facts.has_vertex_normal   = true;
+            facts.has_texture_coord   = false;
+
+            if (ClassifyMaterialGeometryError(definition, facts)
+                    != MaterialErrorKind::MissingTextureUV)
+            {
+                GLogError(u8"Test 8 Failed: 缺 TexCoord 语义未被判为 MissingTextureUV");
+                return 17;
+            }
+
+            facts.has_texture_coord = true;
+
+            if (ClassifyMaterialGeometryError(definition, facts) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 8 Failed: 顶点格式有 TexCoord 仍被判为几何错配");
+                return 17;
+            }
+        }
+
+        // ⑦ 两种错配同时成立只报一个（图元只有一个标记色，不可叠加）⇒ 法线优先
+        {
+            MaterialDefinition definition{};
+            definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::Normal));
+            definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::TexCoord));
+
+            MaterialGeometryFacts facts{};
+            facts.has_geometry_format = true;
+
+            if (ClassifyMaterialGeometryError(definition, facts)
+                    != MaterialErrorKind::MissingVertexNormal)
+            {
+                GLogError(u8"Test 8 Failed: 法线与 UV 同时缺失时未优先报 MissingVertexNormal");
+                return 17;
+            }
+        }
+
+        // ⑧ 规则表：两个新种类都必须是错误棋盘格，且颜色与示例对照表一致（黄 / 蓝）
+        {
+            const FallbackMaterialRule &normal_rule =
+                GetFallbackMaterialRule(MaterialErrorKind::MissingVertexNormal);
+
+            if (std::strcmp(normal_rule.definition_id, "builtin/error_checkerboard_3d") != 0)
+            {
+                GLogError(u8"Test 8 Failed: MissingVertexNormal 没有回退到错误棋盘格（实际 %s）",
+                          normal_rule.definition_id);
+                return 17;
+            }
+
+            if (normal_rule.marker_color[0] != 1.0f || normal_rule.marker_color[1] != 1.0f
+             || normal_rule.marker_color[2] != 0.0f || normal_rule.marker_color[3] != 1.0f)
+            {
+                GLogError(u8"Test 8 Failed: MissingVertexNormal 的标记色不是黄色");
+                return 17;
+            }
+
+            const FallbackMaterialRule &uv_rule =
+                GetFallbackMaterialRule(MaterialErrorKind::MissingTextureUV);
+
+            if (std::strcmp(uv_rule.definition_id, "builtin/error_checkerboard_3d") != 0)
+            {
+                GLogError(u8"Test 8 Failed: MissingTextureUV 没有回退到错误棋盘格（实际 %s）",
+                          uv_rule.definition_id);
+                return 17;
+            }
+
+            if (uv_rule.marker_color[0] != 0.2f || uv_rule.marker_color[1] != 0.2f
+             || uv_rule.marker_color[2] != 1.0f || uv_rule.marker_color[3] != 1.0f)
+            {
+                GLogError(u8"Test 8 Failed: MissingTextureUV 的标记色不是蓝色");
+                return 17;
+            }
+        }
+
+        GLogInfo(u8"Test 8 Passed: 几何级材质错误判据（缺顶点法线 ⇒ MissingVertexNormal 黄，"
+                 u8"缺纹理 UV ⇒ MissingTextureUV 蓝；OptionalFaceFallback 材质不误报，"
+                 u8"无几何格式时不判定），均回退错误棋盘格。");
+    }
+
     GLogInfo(u8"=== All RenderStrategyTable tests passed successfully! ===");
     return 0;
 }
