@@ -3,14 +3,14 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段三之二完成后（分支 `feature/ultra-thin-stage3-material-instance`，HEAD = `20d36a0d0`）。
+> **最后更新**：阶段三之三完成后（分支 `feature/ultra-thin-stage3-material-instance`，HEAD = `addc99d58`）。**阶段三已完成（3/3），下一步是阶段四。**
 
 ---
 
 ## 0. 新会话开场怎么用
 
 1. 先读本文 **§1 目标** 和 **§3 路线图**，确认自己在哪一阶段。
-2. 读 **§6 下一步**：6.1–6.3 是阶段三之二的调研与方案（已实施，见 §4.4），**§6.4 才是当前待做项**（阶段三之三：MaterialInstance 模型）。
+2. **阶段三已全部完成**（3.1 / 3.2 / 3.3，见 §4.2–§4.5）。**当前待做项是阶段四**，方案见 §6.5；§6.1–6.3 是阶段三之二的调研记录（已实施），§6.4 是阶段三之三的记录（已实施）。
 3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数 82」「golden 无环境变量开关」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
 
@@ -27,7 +27,7 @@
 | # | 铁律 | 现状 |
 |---|------|------|
 | 1 | Domain 就是未来的 Master Material，引擎硬编码，上层**不可**自定义、不可改 | ✅ 16 个领域契约已成体系 |
-| 2 | 上层资产 = MaterialInstance：只能**选一个 Domain** + 配自己的资源与数值 | 🔶 阶段三进行中（2/3） |
+| 2 | 上层资产 = MaterialInstance：只能**选一个 Domain** + 配自己的资源与数值 | ✅ 阶段三完成（3/3）：资产只剩领域 + 槽名 + 采样器 + 顶点需求 + 渲染状态 |
 | 3 | 最终废除 `*.material.toml` 这一中间层 | ⬜ 阶段四 |
 | 4 | 统一函数签名的「多态包含契约」+ 空对象实现（`*_none.glsl`）来消灭条件编译，而不是一堆 `#if` / 宏 | ✅ 宏区仅剩 2 个 |
 | 5 | 主表面着色器是**固定代码**；换光照/GI/天光/阴影只是 `#include` 不同文件；主着色器里只保留必须与 `discard`/输出同函数体的 alpha 三件套宏 | ✅ 阶段二达成 |
@@ -49,10 +49,11 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 7 | 同上 | `b21563928` | 阶段二收尾：路线图改为四阶段并与分支对齐（纯文档） |
 | 8 | `feature/ultra-thin-stage3-material-instance` ← **当前** | `c7d1e45cb` | **阶段三之一**：顶点变换从资产推入领域契约 |
 | 9 | 同上 | `20d36a0d0` | **阶段三之二**：纹理槽形态与 `material_data` 类型从资产推入领域契约 |
+| 10 | 同上 | `addc99d58` | **阶段三之三**：保底链 5 个 builtin 材质定义代码化，不再依赖 TOML 文件 |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
-累计 diff（`6ef579059..HEAD`）：57 files, +2405 / −347。
+累计 diff（`6ef579059..HEAD`）：64 files, +2806 / −471。
 
 ---
 
@@ -62,7 +63,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 |---|---|---|---|
 | 一 | 直接光正交拆分（漫反射 × 高光）+ 空对象库 + 槽角色/能力扩展 | `feature/ultra-thin-stage1-lighting-slots` | ✅ 完成 |
 | 二 | 管线配置头单一真源 + 消灭主着色器里所有算法相关 `#if` | `feature/ultra-thin-stage2-domain-shaders` | ✅ 完成 |
-| 三 | **MaterialInstance 模型**：把「领域已确定的旋钮」逐个从资产契约上移到领域契约 | `feature/ultra-thin-stage3-material-instance` | 🔶 **进行中（2/3）** |
+| 三 | **MaterialInstance 模型**：把「领域已确定的旋钮」逐个从资产契约上移到领域契约 | `feature/ultra-thin-stage3-material-instance` | ✅ 完成（3/3） |
 | 四 | 资产降维为 `.mi.toml` + 废除 `.material.toml` + 清理旧 ShaderGen 拼接代码 | `feature/ultra-thin-stage4-cleanup-and-migration` | ⬜ 未开始 |
 
 **阶段三的指导原则**：凡是「同一个 Domain 下所有材质取值必然相同」的字段，都从资产文件里删掉，改由领域契约给出规范值；资产若显式写了不同值，必须**被校验拒绝**（不是静默覆盖）。这既是减负，也是把「上层不该有的自由度」物理删除。
@@ -131,11 +132,36 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 
 **聚合初始化的坑**：`DomainContracts[]` 是聚合初始化，新增 `material_data_type` 后凡是没写到的条目都会被静默填成枚举 0 = `MeshDrawParams`，而 `IsGlobalSSBOType()` 会照样放行。因此加了编译期 `static_assert`，要求 16 个契约的该字段必须落在 surface 族（`PBRSurface` / `EmissiveSurface` / `TransmissionSurface`）内。**以后再往 `MaterialDomainContract` 加枚举字段，同样要加这种守卫。**
 
+### 4.5 阶段三之三（`addc99d58`）—— 保底链材质定义代码化
+
+**为什么必须做**：`builtin/pure_color`、`builtin/error_checkerboard_3d`、`builtin/checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap` 这五个 ID **就是保底链本身**（`inc/hgl/mtl/MaterialRecipe.h` 的 `kFallbackMaterialRules` 与 `src/ecs/support/text/TextRenderPipeline.cpp:425-426` 按字面量引用）。保底物一旦因为资产被误删 / 改名 / 写坏而解析不出来，错误处理就会**再失败一次** —— 保底物的可依赖性必须高于它所要兜底的东西。这五个材质在阶段三之一 / 之二之后也已没有任何可供作者调整的自由度。
+
+**代码化的边界（关键设计决定）**：内嵌的仍是**完整 schema-4 源码文本**（`R"TOML(...)TOML"`），注册时走与 `.material.toml` **完全同一条**解析 + 领域校验管线。**没有**改成在 C++ 里手工拼 `MaterialDefinition` 结构体 —— 那样领域契约就得在第二处复述一遍（`material_source_module_name` / `ntb_module_name` / `vertex_node_config` / 纹理槽形态 / `material_data_type`…），正是本架构要消灭的重复。**代码化消灭的是「对磁盘文件的依赖」，不是「对校验管线的依赖」。**
+
+**实现**：
+| 文件 | 改动 |
+|---|---|
+| `inc/hgl/mtl/BuiltinMaterialDefinitions.h` | **新增**。`BuiltinMaterialDefinitionSource { source_label / definition_id / schema4_source }` + `GetBuiltinMaterialDefinitionCount()` / `GetBuiltinMaterialDefinitionSource(int)` / `FindBuiltinMaterialDefinitionSource(const char*)` |
+| `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp` | **新增**。5 份 `constexpr const char[]` schema-4 源码 + `kBuiltinSources[]` 表（顺序即加载顺序） |
+| `inc/hgl/mtl/MaterialDefinitionFile.h` | `MaterialDefinitionFileRegistry` 新增 `RegisterDefinitionSource(label, content, content_size)` |
+| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | `LoadFile` 改为「读文件 → 委托 `RegisterDefinitionSource`」；解析 / 领域校验 / 重复 ID 检测只保留一份。日志键 `path`→`label`、`file=`→`source=` |
+| `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp` | `GetMaterialDefinitionFileRegistry()` 改为两段式：先注册 5 个内嵌（失败即 `GLogFatal` + `abort`，属引擎内部错误，不可降级），再扫资产目录（单文件解析失败仍 `GLogError` + 跳过）。空库判据从 `file_count == 0 \|\| registry.GetCount() == 0` 收窄为只看 `file_count`（内嵌保证 `GetCount() != 0`）。日志变为 `Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions` |
+| `src/ShaderMaterialData/CMakeLists.txt` | 加入两个新文件 |
+| `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | `S.material-definition-file-schema` 改为复刻运行时两段式注册：断言内嵌数 == 5、**只喂内嵌源码的独立 registry 必须能解析全部 5 个保底 ID**、资产目录 `file_count == 9`、合并后 14 个 ID 全部可解析 |
+| 5 个 `ShaderLibrary/material/*.material.toml` | **删除**（目录内剩 9 份资产定义 + 9 个 GLSL） |
+| `doc/GUI_Text_Render_Pipeline.md` / `doc/simple-sphere-material-shadergen-overview.md` / `doc/terrain-rendering-implementation-plan.md` | 修正指向已删除文件的过期引用 |
+
+**门禁新增的硬断言**：一个**从未接触过资产目录**的独立 registry 必须能解析这 5 个 ID。谁把它们挪回 `.material.toml`，这条立刻红 —— 这是防止架构回退的物理约束，不是风格偏好。
+
+**`builtin/checkerboard_2d` 仍留在资产目录**：它是 `Checker2D` 领域但**不在**保底链上（只是调试用降级材质），所以按「只代码化保底物」的边界保留为文件，随阶段四一起迁走。
+
+**注意**：这 5 个 ID **永远不能改**（默认 `builtin/pure_color`、错误 `builtin/error_checkerboard_3d`、降级 `builtin/checkerboard_3d`、文本 `builtin/text_gpu` / `builtin/text_gpu_bitmap`）。
+
 ---
 
 ## 5. 验证状态
 
-### 5.1 三条自检命令（**必须在 `E:\ULRE` 仓库根运行**，`GLSLCompiler.dll` 在根目录）
+### 5.1 自检命令（**必须在 `E:\ULRE` 仓库根运行**，`GLSLCompiler.dll` 在根目录）
 
 ```powershell
 cd E:\ULRE
@@ -143,6 +169,8 @@ cd E:\ULRE
 .\build\out\Windows_64_Debug\SceneRenderTemplateResolverRegression.exe        # 期望 exit=0
 .\build\out\Windows_64_Debug\ShaderDocumentRegression.exe                     # 期望 exit=0
 .\build\out\Windows_64_Debug\ShaderDocumentProductionRegression.exe           # 期望 exit=0
+.\build\out\Windows_64_Debug\TestRenderStrategyTable.exe                      # 期望 exit=0（保底链行为）
+.\build\out\Windows_64_Debug\TestMaterialVariantTable.exe                     # 期望 exit=0
 ```
 
 构建单个目标：
@@ -151,11 +179,12 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 ```
 产物目录：`build\out\Windows_64_Debug\`
 
-### 5.2 当前结果（全部绿，阶段三之二完成后复测）
+### 5.2 当前结果（全部绿，阶段三之三完成后复测）
 
-- `ShaderResourceSchemaRegressionGate all`：**55 PASS / 0 FAIL，exit=0**（阶段三之二只在既有 case 内加探针，case 数不变）
+- `ShaderResourceSchemaRegressionGate all`：**55 PASS / 0 FAIL，exit=0**（阶段三之三只在既有 case 内加断言，case 数不变）
 - 三个回归 exe：**全 exit=0**
-- 实跑 `PBRSpheres` / `TextDraw`：`Loaded 14 material TOML definitions (0 errors)`、`Loaded 82 code modules`、无 GLSL 编译错误
+- `TestRenderStrategyTable` / `TestMaterialVariantTable`：**全 exit=0**（这两个覆盖保底链行为断言 —— 未知定义 ID ⇒ 换 `builtin/error_checkerboard_3d`、标记行不可得 ⇒ 降级 `builtin/checkerboard_3d`，是「内嵌定义可用」的最强证据）
+- 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、无 GLSL 编译错误
 - `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）
 - 实跑渲染 exe（脚本是会话局部产物，新会话请直接用下面命令）：
   ```powershell
@@ -166,9 +195,9 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 
 ---
 
-## 6. 阶段三之二（已实施）与下一步：阶段三之三
+## 6. 阶段三的调研与方案记录（已全部实施）与下一步：阶段四
 
-> ✅ **本节 6.1–6.3 已于 `20d36a0d0` 实施完成**，实现明细见 §4.4。以下保留为当时的调研与方案记录，供阶段四迁移时对照。**下一步做 §6.4。**
+> ✅ **§6.1–6.3 已于 `20d36a0d0` 实施完成**（明细见 §4.4），**§6.4 已于 `addc99d58` 实施完成**（明细见 §4.5）。以下保留为当时的调研与方案记录，供阶段四迁移时对照。**下一步做 §6.5（阶段四）。**
 
 ### 6.1 逐材质实测统计（调研已完成，直接作为设计依据）
 
@@ -205,7 +234,7 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 7. 门禁：`D.material-domain-contract` 加正负向探针（例如「StandardOpaque 把 `normal` 的 channels 写成 4」「EmissiveSurface 领域的材质声明 PBRSurface」必须被拒）。
 8. 观察点：`samplers` 参与 `GenericMaterialBuilder.cpp:978` 的结构哈希、经 `BuildSamplerMacros()` 生成 `#define <name>Sampler <idx>u`，改动需回归这四个 exe。
 
-### 6.4 下一步：阶段三之三 —— MaterialInstance 模型
+### 6.4 阶段三之三 —— 保底链代码化（✅ 已于 `addc99d58` 实施，见 §4.5）
 
 - 把 `builtin/*` 保底材质**代码化**（`pure_color` / `error_checkerboard_3d` / `checkerboard_3d` / `text_gpu` / `text_gpu_bitmap`），不再依赖 TOML 文件。
 - 回退链**id 绝不能改**：默认 `builtin/pure_color`、错误 `builtin/error_checkerboard_3d`、降级 `builtin/checkerboard_3d`、文本硬编码 `builtin/text_gpu` / `builtin/text_gpu_bitmap`（`TextRenderPipeline.cpp:425-426`）。
@@ -218,6 +247,8 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 - 清理旧 ShaderGen 字符串拼接代码。
 - **顺手清 3 处过期文档**（见 §10）。
 
+**阶段四开工时值得顺手做的一件事**：`[vertex] requirements` 现在是**冗余声明** —— 它恒等于「所选 varyings 所需的顶点属性」∪「领域 `vertex_node_config` 所需属性」。9 份资产里没有一份能给出反例（同一领域内 `requirements` 全部相同，且都由 varyings 唯一决定）。把它改成**从 varyings 推导**（而非从领域契约上移），既删掉一个可以写错且不会报错的字段，也避免「领域固定 requirements」带来的过严约束（例如某 `StandardOpaque` 材质不发 `emit_world_normal` 时本不该强制要求 `Normal` 属性）。
+
 ---
 
 ## 7. 关键代码地图（全部「单一真源」位置）
@@ -227,6 +258,8 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 | 领域契约（16 个）唯一真源 | `inc/hgl/mtl/MaterialDomain.h` / `src/ShaderMaterialData/MaterialDomain.cpp` |
 | 顶点变换枚举与比较 | `inc/hgl/mtl/VertexShaderNodeConfig.h` |
 | 资产 TOML 解析与兜底 | `src/ShaderMaterialData/MaterialDefinitionFile.cpp` |
+| 保底链内嵌定义（5 个 builtin，不依赖磁盘） | `inc/hgl/mtl/BuiltinMaterialDefinitions.h` / `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp` |
+| 保底链规则表（ID 硬编码处） | `inc/hgl/mtl/MaterialRecipe.h` 的 `kFallbackMaterialRules` / `GetFallbackMaterialDefinitionID()` |
 | 槽表（12 role） | `src/ShaderMaterialData/RenderTemplate.cpp` |
 | 模板 profile | `src/ShaderMaterialData/SceneRenderTemplateResolver.cpp` |
 | 模板选路（depth / lit / unlit / sky） | `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:128-138` |
@@ -328,6 +361,7 @@ Case 名与职责：
 
 - [ ] `ShaderResourceSchemaRegressionGate all` → 55 PASS / exit=0（若新增 case 则数量随之增加并同步文档）
 - [ ] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
+- [ ] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [ ] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
 - [ ] `git status` 只剩既存子模块脏项
 - [ ] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
