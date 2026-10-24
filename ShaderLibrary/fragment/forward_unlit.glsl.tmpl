@@ -2,7 +2,7 @@
 #include "common/descriptor_macros.glsl"
 #include "ubo/scene_ubo.glsl"
 #include "common/surface_interface.glsl"
-#include "lighting/forward_flat.glsl"
+#include "common/pass_environment_interface.glsl"
 {{output_policy_include}}
 {{code_modules}}
 {{material_source_include}}
@@ -15,7 +15,6 @@ void main()
 {
 {{surface_input_wiring}}
     const SurfaceOutput surface = EvalSurface(si, materialDataIndex);
-    const LightingInput lighting = BuildForwardLightingInput(surface, si, materialDataIndex);
-    const vec4 finalColor = EvalLighting(lighting);
+    const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, materialDataIndex));
     WriteMaterialOutput(HGLComposeColor(finalColor));
 }

@@ -196,7 +196,57 @@ ParseMaterialDefinitionFile(.material.toml)
 
 ---
 
-## 6. 门禁
+## 6. 环境接缝实现（阶段三）
+
+阶段一只定义了 `common/pass_environment_interface.glsl` 契约，阶段三把**模板真正接上去**。
+
+### 6.1 调用点彻底收敛
+
+三个 fragment 模板的环境调用各自只剩**一行**：
+
+```glsl
+const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, materialDataIndex));
+```
+
+`si`（`SurfaceInput`）在前、`surface`（`SurfaceOutput`）在后，顺序与
+`PassEnvironmentInput{ geom, surface, dataIndex }` 的字段顺序严格一致。
+
+> **为什么字段叫 `geom` 而不是 `surface`**：GLSL 结构体只能按**位置**构造，没有命名
+> 实参。若第一个字段同样叫 `surface`，调用点 `(si, surface, ...)` 与字段名同音不同义，
+> 极易把两个结构体顺序穿反——这个坑在阶段三开发中真实发生过一次（编译期报
+> `cannot convert parameter 1 from SurfaceOutput to SurfaceInput`）。改名是防回归的
+> 硬性成本，不是风格偏好。
+
+### 6.2 谁提供实现
+
+| 环境 | 提供者（由 `output_policy` 槽选中） | 装配 | 算法 |
+| :--- | :--- | :--- | :--- |
+| Forward Lit | `compositor/forward_lighting.glsl` | `BuildForwardLightingInput` | `lighting/forward_pbr.glsl`（`LightingModel` 槽） |
+| 无光 / 平光 | `compositor/flat_lighting.glsl` | `BuildForwardLightingInput`（平光版） | `lighting/forward_flat.glsl` |
+
+每个提供者只做两件事：`BuildForwardLightingInput(...)` 装配 → `EvalLighting(...)`。
+**环境装配与 BRDF 算法是两层**，本契约不吞掉后者。
+
+### 6.3 顺带修正的职责倒置
+
+`lighting/forward_flat.glsl` 的 `#include` 原本写在 `fragment/forward_unlit.glsl.tmpl` 里，
+等于「模板认识具体光照算法」。阶段三把它**搬进 `compositor/flat_lighting.glsl`**：
+
+- 模板现在只 `#include "common/pass_environment_interface.glsl"`（契约）+ `{{output_policy_include}}`（环境）；
+- 任何 `lighting/*.glsl` 都只对 `compositor/*.glsl` 可见。
+
+判据很简单：**模板里出现 `lighting/` 就是漏解耦**。
+
+### 6.4 模块元数据的连带要求
+
+`flat_lighting.glsl` 新增对 `lighting/forward_flat.glsl` 的 include，因此元数据必须补
+`// @ulre uses forward_flat`。漏写会让 `MI.module-include-declaration-contract`
+报「undeclared #include dependency」——这条门禁是"include 与 `@ulre uses` 必须一致"的
+唯一守卫，改动模块依赖时务必同步。
+
+---
+
+## 7. 门禁
 
 | 门禁 | 基线 | 说明 |
 | :--- | :--- | :--- |
@@ -212,7 +262,7 @@ ParseMaterialDefinitionFile(.material.toml)
 
 ---
 
-## 7. 阶段路线
+## 8. 阶段路线
 
 | 阶段 | 分支 | 交付 |
 | :--- | :--- | :--- |

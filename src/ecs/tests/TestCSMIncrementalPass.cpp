@@ -2133,7 +2133,7 @@ int main(int argc, char** argv)
               "GetShadowFactor(si, data_index)",
               "合成器不再把 per-draw 行号传给阴影 provider（旋钮在最后一步断链）" },
             { "forward_lit.glsl.tmpl", OS_TEXT("ShaderLibrary/fragment/forward_lit.glsl.tmpl"),
-              "BuildForwardLightingInput(surface, si, materialDataIndex)",
+              "PassEnvironmentInput(si, surface, materialDataIndex)",
               "FS 模板不再传 materialDataIndex（行号在入口处就丢了）" },
         };
 

@@ -51,9 +51,12 @@
 struct PassEnvironmentInput
 {
     // 场景/几何侧输入（世界位置、世界法线、UV、视向、屏幕坐标……）
-    SurfaceInput surface;
+    // 字段名刻意叫 `geom` 而不是 `surface`：GLSL 结构体只能用**位置**构造，
+    // 若这里叫 `surface`，调用点 `PassEnvironmentInput(si, surface, idx)` 里的
+    // 第二个实参（真正的 SurfaceOutput）与字段名同音不同义，极易穿错顺序。
+    SurfaceInput geom;
     // 领域 shader 产出的纯表面描述；环境实现是它的唯一消费者
-    SurfaceOutput surfaceOut;
+    SurfaceOutput surface;
     // 本 draw 的材质数据行号（per-draw 行表索引），供需要接收侧阴影参数/
     // 自发光强度的环境实现取数；不需要它的环境可忽略。
     uint dataIndex;

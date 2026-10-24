@@ -6,6 +6,7 @@
 // @ulre provides_capability forward_output
 // @ulre uses surface_interface
 // @ulre uses lighting_interface
+// @ulre uses pass_environment_interface
 // @ulre end
 // Forward Lit compositor input assembly.
 // This module resolves authored material data and scene data into LightingInput.
@@ -16,6 +17,7 @@
 
 #include "common/surface_interface.glsl"
 #include "common/lighting_interface.glsl"
+#include "common/pass_environment_interface.glsl"
 
 // D3：data_index = 本 FS 的材质数据行号（per-draw 行表），用于读该图元的接收侧阴影参数。
 LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si, uint data_index)
@@ -46,6 +48,18 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si, uin
     // 材质数据行号）。不接收阴影的图元在此恒得 1.0。
     lighting.shadowFactor = GetShadowFactor(si, data_index);
     return lighting;
+}
+
+// ── Pass Environment 契约实现（ForwardLit 环境）─────────────────────────────
+// 领域/模板只认这一个入口：EvalPassEnvironment(env)。
+// “本 Pass 用哪个环境” = 本模块由 output_policy 槽选中；换环境 = 换一个模块，
+// 模板与领域源码一行不动。本模块仍只做装配，真正的 BRDF 由 LightingModel 槽
+// 的模块（lighting/*.glsl 的 EvalLighting）提供。
+vec4 EvalPassEnvironment(PassEnvironmentInput env)
+{
+    const LightingInput lighting = BuildForwardLightingInput(
+        env.surface, env.geom, env.dataIndex);
+    return EvalLighting(lighting);
 }
 
 #endif // FORWARD_LIGHTING_GLSL

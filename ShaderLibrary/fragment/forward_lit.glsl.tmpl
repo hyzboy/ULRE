@@ -1,6 +1,7 @@
 {{defines}}
 #include "common/descriptor_macros.glsl"
 #include "common/surface_interface.glsl"
+#include "common/pass_environment_interface.glsl"
 #include "ubo/scene_ubo.glsl"
 {{module_includes}}
 #include "common/alpha_compositor.glsl"
@@ -21,8 +22,7 @@ void main()
     // 会把 dither 材质的覆盖判定整个编译掉 ⇒ dither 静默失效（cutoff/blend 同理看 alpha）。
     HGLApplyAlpha(EvalAlpha(si, materialDataIndex));
 #endif
-    const LightingInput lighting = BuildForwardLightingInput(surface, si, materialDataIndex);
-    const vec4 finalColor = EvalLighting(lighting);
+    const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, materialDataIndex));
 #if defined(HGL_ALPHA_OUTPUT)
     // 曲面 alpha 写进输出：`alpha_blend` 的 SRC_ALPHA 取**输出 alpha**。
     // 此前恒写 HGLComposeColor(finalColor)（alpha = 光照 alpha = 1）⇒ blend 空转

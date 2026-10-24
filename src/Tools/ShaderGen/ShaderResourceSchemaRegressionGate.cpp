@@ -942,7 +942,7 @@ namespace
              || !has(lit_text, "#include \"lighting/forward_pbr.glsl\"")
              || !has(lit_text, "#include \"material/pbr_surface_source.glsl\"")
              || !has(lit_text, "#include \"ntb/ntb_tangent_vbo_normalmap.glsl\"")
-             || !has(lit_text, "EvalLighting(lighting)"))
+             || !has(lit_text, "EvalPassEnvironment("))
                result.diagnostics.emplace_back(
                    "native forward-lit template output is incomplete");
 
@@ -2472,7 +2472,7 @@ namespace
                         "#define HGL_USE_SCENE_LIGHTING 0")
                         == std::string::npos
                  || unlit_fs.find(
-                        "#include \"lighting/forward_flat.glsl\"")
+                        "#include \"compositor/flat_lighting.glsl\"")
                         == std::string::npos
                  || unlit_fs.find(
                         "#include \"common/surface_interface.glsl\"")
@@ -2483,9 +2483,9 @@ namespace
                  || unlit_fs.find(
                         "EvalSurface(si, materialDataIndex)")
                         == std::string::npos
-                 || lit_fs.find("EvalLighting(lighting)")
+                 || lit_fs.find("EvalPassEnvironment(")
                         == std::string::npos
-                 || unlit_fs.find("EvalLighting(lighting)")
+                 || unlit_fs.find("EvalPassEnvironment(")
                         == std::string::npos)
                 {
                     result.diagnostics.emplace_back(
@@ -2555,7 +2555,7 @@ namespace
                 false, 0.5f, false, &output, nullptr, text, error)
          || text.find("#include \"material/unlit_source.glsl\"")
                 == std::string::npos
-         || text.find("#include \"lighting/forward_flat.glsl\"")
+         || text.find("#include \"compositor/flat_lighting.glsl\"")
                 == std::string::npos)
         {
             result.diagnostics.emplace_back(
