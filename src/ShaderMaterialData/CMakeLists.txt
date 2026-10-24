@@ -72,4 +72,5 @@ add_cm_library(ULRE.ShaderMaterialData "ULRE"
 
 # 数据面吃契约类型（ShaderProgramKey / ShaderArtifactContract / 设备 profile）。PUBLIC：
 # 吃掉本库的目标同样需要这些类型。
-target_link_libraries(ULRE.ShaderMaterialData PUBLIC ULRE.ShaderRuntimeContract)
+target_link_libraries(ULRE.ShaderMaterialData PUBLIC ULRE.ShaderRuntimeContract
+                                                    ULRE.Debug)

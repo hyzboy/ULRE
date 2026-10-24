@@ -1,4 +1,5 @@
-﻿add_subdirectory(Vulkan)
+﻿add_subdirectory(Debug)
+add_subdirectory(Vulkan)
 # ShaderRuntimeContract 必须先于 ShaderGen：ShaderGen 依赖它，反向不成立。
 add_subdirectory(ShaderRuntimeContract)
 # ShaderMaterialData：材质/着色器数据面（零 GLSL 发射、零 glslang），发行形态照常构建。

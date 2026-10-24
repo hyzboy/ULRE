@@ -305,7 +305,7 @@ add_cm_library(ULRE.Vulkan "ULRE"   ${VK_INCLUDE_PATH}
 )
 
 if(TARGET Vulkan::Vulkan)
-    target_link_libraries(ULRE.Vulkan PUBLIC Vulkan::Vulkan)
+    target_link_libraries(ULRE.Vulkan PUBLIC Vulkan::Vulkan ULRE.Debug)
 elseif(WIN32)
-    target_link_libraries(ULRE.Vulkan PUBLIC vulkan-1)
+    target_link_libraries(ULRE.Vulkan PUBLIC vulkan-1 ULRE.Debug)
 endif()

@@ -78,6 +78,7 @@ SET(ULRE_RUNTIME
             CMAudio
             ${ULRE_QT_MODULE}
 #            CMGUI
+            ULRE.Debug
             ULRE.Work
             ULRE.ECS
             ULRE.Vulkan

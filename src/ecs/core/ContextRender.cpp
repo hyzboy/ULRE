@@ -41,8 +41,8 @@ namespace hgl::ecs
             return true;
         }
 
-        // ── T8（D7）prepass 性能账目：`ULRE_DEBUG=perf`（旧变量 PREPASS_TIMING=<N> 可指定间隔；
-        // 关闭时 = 完全零成本）──
+        // ── T8（D7）prepass 性能账目：`ULRE_DEBUG.toml` 的 `channels.perf = true`
+        //（`[perf] prepass_interval` 可指定打印间隔；关闭时 = 完全零成本）──
         // 用途 = 量**CPU 可见账**：每次离屏 pass 的墙钟总耗时 = 阻塞（上沿 `saved_target->WaitFence()`
         // 等主帧在途槽排空 + 下沿 `rt->WaitFence()` 等本次离屏 RT 自己的 fence）+ 非阻塞
         //（录制 / 提交 / 相机与槽簿记）。本引擎**没有 GPU 时间戳设施**（全仓无 `vkCmdWriteTimestamp` /
@@ -86,18 +86,17 @@ namespace hgl::ecs
 
                 g_prepass_timing.enabled = true;
 
-                const char *v = hgl::debug::EnvValue("PREPASS_TIMING");
+                // 打印间隔来自 ULRE_DEBUG.toml 的 [perf] prepass_interval（缺省 60 帧）
+                const int64_t interval =
+                    hgl::debug::ConfigInt("perf", "prepass_interval", 60);
 
-                if (v)
-                {
-                    const int n = std::atoi(v);
-                    if (n > 0)
-                        g_prepass_timing.print_interval = static_cast<uint32_t>(n);
-                }
+                if (interval > 0 && interval <= 0xFFFF)
+                    g_prepass_timing.print_interval = static_cast<uint32_t>(interval);
 
-                GLogInfo("[PREPASS-TIMING] 启用（ULRE_DEBUG=perf 或旧变量 PREPASS_TIMING=%s）：每 %u 个主帧报一次均值；"
+                GLogInfo("[PREPASS-TIMING] 启用（ULRE_DEBUG.toml 的 channels.perf=true，"
+                         "间隔 [perf] prepass_interval=%u）：每 %u 个主帧报一次均值；"
                          "本引擎无 GPU 时间戳 ⇒ 量的是 CPU 可见账（两处 fence 等待 + 其余）",
-                         v ? v : "(未设置)", g_prepass_timing.print_interval);
+                         g_prepass_timing.print_interval, g_prepass_timing.print_interval);
             }
 
             // 主帧入口调用：闭合上一帧、按窗口打印均值并复位
@@ -327,7 +326,7 @@ namespace hgl::ecs
             if (!active)
                 return false;
 
-            // T8：本次离屏 pass 的墙钟账（未启用 PREPASS_TIMING 时 probe_t0 = 0，后续判断全短路）
+            // T8：本次离屏 pass 的墙钟账（未启用 perf 通道时 probe_t0 = 0，后续判断全短路）
             PrepassTimingInit();
             const uint64_t probe_t0 = g_prepass_timing.enabled ? PrepassTimingNow() : 0;
             uint64_t probe_up_ns = 0;

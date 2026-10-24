@@ -161,4 +161,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"
 # 数据面（材质定义/模板解析/SPV 产物库/ShaderCreateInfo）同理：ShaderGen 现在是它
 # 的上层，生成期所有「读写定义与产物」的能力都由它提供。
 target_link_libraries(ULRE.ShaderGen PUBLIC ULRE.ShaderRuntimeContract
-                                            ULRE.ShaderMaterialData)
+                                            ULRE.ShaderMaterialData
+                                            ULRE.Debug)

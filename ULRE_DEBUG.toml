@@ -1,0 +1,51 @@
+# ============================================================================
+# ULRE 诊断日志开关
+#
+# 这个文件是全工程唯一的 DEBUG 日志门控输入
+# （接口 inc/hgl/common/DebugChannel.h，实现在 src/Debug/DebugChannel.cpp）。
+# 查找顺序：当前工作目录 → 可执行程序目录 → 由这两处逐级向上（最多 64 级）
+#           ⇒ 从 build/out/Windows_64_Debug 里直接跑 exe 也能找到本文件。
+# 找不到本文件 / 写错语法 ⇒ 全部通道关闭（等于"没开任何诊断"），不影响正常渲染。
+#
+# 全部关闭时**无需改文件**，保持下面全 false 即可；要排障时把关心的通道改成 true。
+# 通道清单与症状对照见 doc/debug-log-channels.md。
+# ============================================================================
+
+[channels]
+
+# all = true   # 一次打开全部通道（基线；随后逐通道的 true/false 仍然生效）
+#              全开日志量极大（TextureQuad 约 1.5 万行/2 秒），只在需要抓全时序时用
+
+# ── 材质 / ShaderGen 链 ──────────────────────────────────────────────────
+material  = false   # 材质定义/配方解析、模板路由输入
+route     = false   # 渲染模板路由决策 [SkyRoute]
+program   = false   # 材质程序获取、清单解析、SPV 缓存命中
+shadergen = false   # 生成器内部：相位/模块注入/varying/GLSL 落盘
+binding   = false   # 材质行、SSBO 绑定、纹理引用落盘
+fallback  = false   # 错配回退与 Checkboard 兜底细节
+
+# ── 渲染 / 剔除 / 批次 ───────────────────────────────────────────────────
+pipeline  = false   # PSO 创建/复用/缓存查找
+collect   = false   # 图元收集明细
+batch     = false   # 批次接管、间接绘制 [T3i]
+cull      = false   # 剔除派发、CPU 参考剔除对拍
+culldump  = false   # 剔除 SSBO 与计数回读转储
+shadow    = false   # 阴影/CSM 逐 pass 诊断
+
+# ── 其它子系统 ───────────────────────────────────────────────────────────
+line      = false   # 线渲染
+text      = false   # 文本渲染
+transform = false   # 变换提交、脏标记
+upload    = false   # 缓冲上传、资源行同步
+perf      = false   # 计时（prepass / pbr 性能账）
+vksync    = false   # Vulkan 队列/fence/信号量
+
+# ----------------------------------------------------------------------------
+# 字符串形式（二选一）—— 等价于旧 `ULRE_DEBUG=...` 的写法，适合临时抓一段：
+# channels = "all,-vksync"
+# 语法：all / * 全开，none 全关，前缀 - 是减法、+ 是加法，分隔符 , ; | 空格
+# 注意：写成字符串时上面逐个通道的 true/false 不再生效。
+# ----------------------------------------------------------------------------
+
+[perf]
+prepass_interval = 60   # channels.perf=true 时，每 N 个主帧打印一次 prepass 墙钟均值
