@@ -1,0 +1,140 @@
+material builtin/text_gpu golden=text-gpu-charquad
+stage mesh
+dir #version 460
+dir #extension GL_EXT_mesh_shader : require
+dir #extension GL_EXT_scalar_block_layout : require
+dir #extension GL_EXT_buffer_reference : require
+dir #extension GL_ARB_gpu_shader_int64 : require
+dir #extension GL_EXT_shader_8bit_storage : require
+dir #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+layout layout(push_constant) uniform RootAddresses
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer LocalToWorldIndexRef { uint values[]; };
+func uint ResolveTransformID(uint iid) { return uint(LocalToWorldIndexRef(pc_root.addr_l2w_index).values[iid]); }
+layout layout(local_size_x = 64) in;
+layout layout(triangles, max_vertices = 256, max_primitives = 128) out;
+dir #include "common/descriptor_macros.glsl"
+dir #include "ubo/scene_ubo.glsl"
+dir #include "common/l2w_ssbo.glsl"
+dir #define VertexIndexID (MeshVertexIndex)
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshDrawParamsRef { MeshDrawParams rows[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=8) buffer MeshDrawCommandsRef { MeshDrawCommand cmds[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexIndexRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionRef { vec3 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionV2Ref { vec2 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVRef { vec2 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBRef { vec3 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorRef { vec4 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexLuminanceRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexSizeRef { vec2 data[]; };
+dir #define sbo_vertex_index VertexIndexRef(draw_params.addr_index)
+dir #include "vertex/s1_text_char_quad.glsl"
+layout layout(location=0) perprimitiveEXT out uint fragDataIndexID[128];
+layout layout(location=3) out vec2 fragUV0[256];
+layout layout(location=5) out vec4 fragVertexColor[256];
+layout layout(location=4) perprimitiveEXT out uint fragStyleID[128];
+func void main()
+stage fragment
+dir #version 450
+dir #extension GL_EXT_mesh_shader : require
+dir #extension GL_EXT_buffer_reference : require
+dir #extension GL_ARB_gpu_shader_int64 : require
+dir #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+dir #define TEXT_SDF_ENABLED 1
+dir #define LinearSampler 1u
+dir #define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))
+layout layout(push_constant) uniform RootAddresses
+dir #extension GL_EXT_buffer_reference : require
+dir #extension GL_ARB_gpu_shader_int64 : require
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialInstanceAddressesRef
+dir #define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 1u
+dir #define HGL_USE_MATERIAL_SOURCE_PROVIDER 1
+dir #define HGL_USE_SCENE_LIGHTING 0
+dir #define HGL_ALPHA_OUTPUT 1
+dir #include "common/descriptor_macros.glsl"
+dir #include "ubo/scene_ubo.glsl"
+dir #include "common/surface_interface.glsl"
+dir #include "common/pass_environment_interface.glsl"
+dir #include "compositor/flat_lighting.glsl"
+dir #ifndef DESCRIPTOR_MACROS_GLSL
+dir #define DESCRIPTOR_MACROS_GLSL
+dir #ifndef BINDLESS_SET
+dir #define BINDLESS_SET 0
+dir #endif
+dir #endif // DESCRIPTOR_MACROS_GLSL
+dir #ifndef SURFACE_INTERFACE_GLSL
+dir #define SURFACE_INTERFACE_GLSL
+dir #include "common/descriptor_macros.glsl"
+dir #endif // SURFACE_INTERFACE_GLSL
+dir #ifndef MATERIAL_SOURCE_INTERFACE_GLSL
+dir #define MATERIAL_SOURCE_INTERFACE_GLSL
+dir #include "common/surface_interface.glsl"
+dir #endif // MATERIAL_SOURCE_INTERFACE_GLSL
+dir #ifndef BINDLESS_TEXTURES_GLSL
+dir #define BINDLESS_TEXTURES_GLSL
+dir #extension GL_EXT_nonuniform_qualifier : enable
+dir #include "common/descriptor_macros.glsl"
+layout layout(set=BINDLESS_SET, binding=0) uniform texture2DArray bindless_tex[];
+layout layout(set=BINDLESS_SET, binding=1) uniform sampler bindless_samp[];
+layout layout(set=BINDLESS_SET, binding=2) uniform textureCubeArray bindless_cube_array[];
+func vec4 Sample2D(uint tex_handle, uint samp_idx, vec2 uv)
+func vec4 Sample2DArray(uint tex_handle, uint samp_idx, vec2 uv, float layer)
+func float Sample2DArrayShadow(uint tex_handle, uint samp_idx, vec2 uv, float layer, float ref_depth)
+func vec4 SampleCubeArray(uint tex_handle, uint samp_idx, vec4 dir_layer)
+func vec4 SampleOptional(uvec2 tex_ref, uint samp_idx, vec2 uv, vec4 fallback)
+dir #endif // BINDLESS_TEXTURES_GLSL
+dir #ifndef TEXT_SOURCE_GPU_GLSL
+dir #define TEXT_SOURCE_GPU_GLSL
+dir #include "common/material_source_interface.glsl"
+dir #include "common/bindless_textures.glsl"
+func uvec2 GetTextAtlasReference(const uint data_index)
+dir #ifdef TEXT_SDF_ENABLED
+dir #define TEXT_SAMPLER LinearSampler
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer CharStyleDataRef {
+dir #define sbo_char_style CharStyleDataRef(pc_root.addr_text_char_style)
+dir #define TEXT_SDF_SPREAD 8.0
+func void EvalTextStyleEffects(
+dir #else
+dir #define TEXT_SAMPLER NearestSampler
+dir #endif
+func MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
+dir #ifdef TEXT_SDF_ENABLED
+dir #else
+dir #endif
+func float EvalMaterialAlpha(MaterialSourceInput sourceInput)
+dir #ifdef TEXT_SDF_ENABLED
+dir #else
+dir #endif
+dir #endif
+dir #ifndef NTB_INTERFACE_GLSL
+dir #define NTB_INTERFACE_GLSL
+dir #include "common/surface_interface.glsl"
+dir #endif // NTB_INTERFACE_GLSL
+dir #ifndef NTB_ORTHONORMAL_GLSL
+dir #define NTB_ORTHONORMAL_GLSL
+dir #include "common/ntb_interface.glsl"
+func NTBSpace BuildOrthoNTB(vec3 normal)
+dir #endif // NTB_ORTHONORMAL_GLSL
+dir #ifndef NTB_NONE_GLSL
+dir #define NTB_NONE_GLSL
+dir #include "common/ntb_interface.glsl"
+dir #include "ntb/ntb_orthonormal.glsl"
+func NTBSpace GetNTB(NTBInput ntb_input)
+dir #endif // NTB_NONE_GLSL
+dir #include "material/text_source_gpu.glsl"
+dir #include "surface/material_surface.glsl"
+dir #include "common/alpha_compositor.glsl"
+layout layout(location=0) flat perprimitiveEXT in uint fragDataIndexID;
+layout layout(location=3) in vec2 fragUV0;
+layout layout(location=5) in vec4 fragVertexColor;
+layout layout(location=4) flat perprimitiveEXT in uint fragStyleID;
+layout layout(location=0) out vec4 outColor;
+func void WriteMaterialOutput(vec4 value) { outColor = value; }
+func void main()
+dir #ifdef HGL_MATERIAL_FACE_NORMAL_FALLBACK
+dir #endif

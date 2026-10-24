@@ -222,7 +222,6 @@ namespace hgl::graph::mtl
         case ShaderModuleSlotRole::SurfaceProvider: return "surface_provider";
         case ShaderModuleSlotRole::DiffuseLightProvider: return "diffuse_light_provider";
         case ShaderModuleSlotRole::SpecularLightProvider: return "specular_light_provider";
-        case ShaderModuleSlotRole::DirectLightProvider: return "direct_light_provider";
         case ShaderModuleSlotRole::ShadowProvider: return "shadow_provider";
         case ShaderModuleSlotRole::AmbientLightProvider: return "ambient_light_provider";
         case ShaderModuleSlotRole::AmbientOcclusionProvider: return "ambient_occlusion_provider";

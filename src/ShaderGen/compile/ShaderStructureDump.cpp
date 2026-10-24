@@ -60,7 +60,139 @@ namespace
 
         return text.empty() ? std::string("-") : text;
     }
+
+    // ── 发射顺序快照的辅助 ────────────────────────────────────────────────
+
+    /// 行内连续空白折叠成一个空格，并去掉首尾空白。
+    /// 目的：让 golden 对「缩进 / 对齐」免疫，只对 token 顺序敏感。
+    std::string CollapseWhitespace(const char *begin, const char *end)
+    {
+        std::string out;
+        bool pending_space = false;
+
+        for (const char *p = begin; p < end; ++p)
+        {
+            const char ch = *p;
+            if (ch == ' ' || ch == '\t' || ch == '\r')
+            {
+                pending_space = !out.empty();
+                continue;
+            }
+
+            if (pending_space)
+            {
+                out += ' ';
+                pending_space = false;
+            }
+
+            out += ch;
+        }
+
+        return out;
+    }
+
+    /// 该行是否为「骨架行」，是则返回其类别标签，否则返回空串。
+    ///
+    /// 只认三类：预处理指令、顶层 `layout(...)` 限定、顶层函数签名。
+    std::string ClassifySkeletonLine(const std::string &line)
+    {
+        if (line.empty())
+            return {};
+
+        if (line[0] == '#')
+            return "dir";
+
+        if (line.compare(0, 6, "layout") == 0)
+            return "layout";
+
+        // 顶层函数签名：`void main() {` / `vec3 EvalDiffuseLight(in LightingInput in)`。
+        // 判据是「行内先出现空格再出现 `(`」且首词不是语句关键字、行尾不是 `;`。
+        const size_t paren = line.find('(');
+        if (paren == std::string::npos)
+            return {};
+
+        const size_t space = line.find(' ');
+        if (space == std::string::npos || space > paren)
+            return {};
+
+        static const char *const kStatementKeywords[] =
+        {
+            "if", "else", "for", "while", "do", "switch", "case",
+            "return", "discard", "struct", "uniform", "buffer",
+            "const", "in", "out", "inout", "flat", "precise",
+        };
+
+        const std::string head = line.substr(0, space);
+        for (const char *keyword : kStatementKeywords)
+            if (head == keyword)
+                return {};
+
+        // 声明语句以 `;` 收尾，函数定义不会。
+        if (line.back() == ';')
+            return {};
+
+        return "func";
+    }
+
+    /// 把一份 stage GLSL 压成骨架事实流。
+    void AppendStageEmissionOrder(
+        std::string &out, const char *stage_name, const char *glsl)
+    {
+        out += "stage ";
+        out += stage_name;
+        out += '\n';
+
+        if (!glsl)
+            return;
+
+        const char *cursor = glsl;
+        while (*cursor)
+        {
+            const char *line_end = cursor;
+            while (*line_end && *line_end != '\n')
+                ++line_end;
+
+            // 列 0 判定必须在折叠空白之前做：缩进行一律不是顶层声明。
+            const bool at_column_zero = (*cursor != ' ' && *cursor != '\t');
+
+            const std::string line = CollapseWhitespace(cursor, line_end);
+
+            if (at_column_zero
+             && line.compare(0, 2, "//") != 0
+             && line.compare(0, 2, "/*") != 0)
+            {
+                const std::string kind = ClassifySkeletonLine(line);
+                if (!kind.empty())
+                {
+                    out += kind;
+                    out += ' ';
+                    out += line;
+                    out += '\n';
+                }
+            }
+
+            cursor = (*line_end == '\n') ? line_end + 1 : line_end;
+        }
+    }
 }//namespace
+
+std::string DumpShaderEmissionOrder(
+    const ShaderBuildContext &ctx, const char *label)
+{
+    std::string out;
+
+    out += "material ";
+    out += (label && label[0]) ? label : "<unnamed>";
+    out += '\n';
+
+    const ShaderCreateInfo *mesh = ctx.GetStageShader(ShaderStage::Mesh);
+    const ShaderCreateInfo *frag = ctx.GetStageShader(ShaderStage::Fragment);
+
+    AppendStageEmissionOrder(out, "mesh", mesh ? mesh->GetFinalGLSL().c_str() : nullptr);
+    AppendStageEmissionOrder(out, "fragment", frag ? frag->GetFinalGLSL().c_str() : nullptr);
+
+    return out;
+}
 
 std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label)
 {

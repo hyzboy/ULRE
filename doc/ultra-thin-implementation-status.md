@@ -3,16 +3,17 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段四完成后（分支 `feature/ultra-thin-stage4-cleanup-and-migration`）。**四阶段全部完成，`.material.toml` 已废除。**
+> **最后更新**：阶段五完成后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网。**
 
 ---
 
 ## 0. 新会话开场怎么用
 
 1. 先读本文 **§1 目标** 和 **§3 路线图**，确认自己在哪一阶段。
-2. **四阶段已全部完成**（一 / 二 / 三 3.1–3.3 / 四，见 §4.1–§4.6）。阶段四已把资产降维为 `.mi.toml` 并废除 `.material.toml`，方案记录见 §6.5。
-3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数 82」「golden 无环境变量开关」）。
+2. **四阶段已全部完成**（一 / 二 / 三 3.1–3.3 / 四，见 §4.1–§4.6），阶段五（拼接清理前置安全网 + 小债，见 §4.7）也已完成。阶段四已把资产降维为 `.mi.toml` 并废除 `.material.toml`，方案记录见 §6.5。
+3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数常量 `kShaderCodeModuleCount`」「golden 无环境变量开关」「快照 case 必须自己装载 sampler 预设」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
+5. **下一步是 §10.2 的旧 ShaderGen 拼接迁移** —— 安全网已就位，但那是独立、可评审的改动，动手前先与用户确认范围。
 
 **铁律**：每个阶段/子阶段**独立分支 + 独立提交**；提交用 `git add` 显式列路径（禁 `-A`）；带 `Co-authored-by` trailer。
 
@@ -50,7 +51,9 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 8 | `feature/ultra-thin-stage3-material-instance` ← **当前** | `c7d1e45cb` | **阶段三之一**：顶点变换从资产推入领域契约 |
 | 9 | 同上 | `20d36a0d0` | **阶段三之二**：纹理槽形态与 `material_data` 类型从资产推入领域契约 |
 | 10 | 同上 | `addc99d58` | **阶段三之三**：保底链 5 个 builtin 材质定义代码化，不再依赖 TOML 文件 |
-| 11 | `feature/ultra-thin-stage4-cleanup-and-migration` ← **当前** | `ec9fae16d` | **阶段四**：资产降维为 `.mi.toml`，废除 `.material.toml` |
+| 11 | `feature/ultra-thin-stage4-cleanup-and-migration`（已并入） | `ec9fae16d` | **阶段四**：资产降维为 `.mi.toml`，废除 `.material.toml` |
+| 12 | 同上 | `29b3febfe` | 阶段四文档收尾：回填提交号并对齐资产示例（纯文档） |
+| 13 | `feature/ultra-thin-stage5-shadergen-emission-cleanup` ← **当前** | 见本节末尾 | **阶段五**：拼接清理前置安全网（emission 快照）+ 小债清理 |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
@@ -58,14 +61,15 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 
 ---
 
-## 3. 四阶段路线图与状态
+## 3. 五阶段路线图与状态
 
 | 阶段 | 主题 | 分支 | 状态 |
 |---|---|---|---|
 | 一 | 直接光正交拆分（漫反射 × 高光）+ 空对象库 + 槽角色/能力扩展 | `feature/ultra-thin-stage1-lighting-slots` | ✅ 完成 |
 | 二 | 管线配置头单一真源 + 消灭主着色器里所有算法相关 `#if` | `feature/ultra-thin-stage2-domain-shaders` | ✅ 完成 |
 | 三 | **MaterialInstance 模型**：把「领域已确定的旋钮」逐个从资产契约上移到领域契约 | `feature/ultra-thin-stage3-material-instance` | ✅ 完成（3/3） |
-| 四 | 资产降维为 `.mi.toml` + 废除 `.material.toml` + 清理旧 ShaderGen 拼接代码 | `feature/ultra-thin-stage4-cleanup-and-migration` | ✅ 完成（迁移 + 废除；拼接清理见 §10.2） |
+| 四 | 资产降维为 `.mi.toml` + 废除 `.material.toml` | `feature/ultra-thin-stage4-cleanup-and-migration` | ✅ 完成（迁移 + 废除） |
+| 五 | **拼接清理前置安全网** + 小债清理（`DirectLightProvider`、模块计数常量） | `feature/ultra-thin-stage5-shadergen-emission-cleanup` | ✅ 完成（安全网就位；实际拼接迁移见 §10.2） |
 
 **阶段三的指导原则**：凡是「同一个 Domain 下所有材质取值必然相同」的字段，都从资产文件里删掉，改由领域契约给出规范值；资产若显式写了不同值，必须**被校验拒绝**（不是静默覆盖）。这既是减负，也是把「上层不该有的自由度」物理删除。
 
@@ -205,6 +209,40 @@ varying-trimmed material parse failed: InvalidValue key="domain" value="DebugNor
 
 **为什么 `[transform]` 解析分支没有删**：资产与内嵌定义里确实已无任何 `[transform]` 声明，但 `Custom` 材质**仍然合法地**用它自选顶点通路（门禁 `S.material-definition-file-schema` 的主 fixture 就是 Custom + 显式 `[transform]`），而 `D.material-domain-contract` 有一条负向探针专门断言「3D 领域自选 2D 变换必须被拒」。删掉解析分支会同时废掉这两条路径。**保留**才是正确形态：Custom 可以选，领域材质选了就报错。
 
+### 4.7 阶段五（`feature/ultra-thin-stage5-shadergen-emission-cleanup`）—— 拼接清理前置安全网
+
+阶段四遗留的唯一实质项是「旧 ShaderGen 字符串拼接代码清理」。但 `FragmentTemplateComposer` / `GenericMaterialBuilder` 的**拼接顺序本身就是隐式契约**：`#include` 的先后、`#define` 在 `#include` 之前还是之后，都是当前可运行的 GLSL 的一部分，却没有任何断言看得见它们。先动拼接、再发现顺序变了，代价是逐帧对着黑屏猜。所以本阶段先造安全网，再清理小债；实际拼接迁移留作下一个可评审的独立改动（见 §10.2）。
+
+**新增 emission 顺序快照**（`DumpShaderEmissionOrder`）：
+
+| 文件 | 改动 |
+|---|---|
+| `inc/hgl/mtl/ShaderStructureDump.h` | 新增 `DumpShaderEmissionOrder(ctx, label)` 声明与设计说明：与 `DumpShaderStructure` **互补** —— 后者记录「有什么」（模块、varying、信号），前者记录「按什么顺序拼起来」 |
+| `src/ShaderGen/compile/ShaderStructureDump.cpp` | 匿名命名空间新增 `CollapseWhitespace()` / `ClassifySkeletonLine()` / `AppendStageEmissionOrder()`；文件尾新增 `DumpShaderEmissionOrder()` |
+| `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | 抽出 `CompareAgainstGolden()` 复用比对逻辑；快照矩阵从 5 个变体扩到 **12 个**；新增 case `SD.emission-order-golden` |
+| `src/Tools/ShaderGen/golden/*.emission.txt` | 12 份新 golden（3.8–8.3 KB） |
+
+**粒度选择（关键）**：快照**只记录骨架行** —— 预处理指令、顶层 `layout(...)`、顶层函数签名；函数体、注释、空行、缩进全部排除，行内连续空白折叠成单空格。这是刻意的：将来把骨架外化成 `.tmpl`、或把多段 `+=` 合并成单次 emit，只要**token 顺序不变**，golden 就不需要刷新。若 golden 每次重构都要刷，它就退化成一张废纸。
+
+配套细节：
+- **顶层判定在折叠空白之前**做（`*cursor` 不是空格/制表符才算顶层），否则缩进的函数体行会被误判成声明。
+- `ClassifySkeletonLine()` 的启发式：`#` 开头 → `dir`；`layout` 前缀 → `layout`；其余要求「含空格且含 `(` 且空格在括号前」「首词不在语句关键字表内」「不以 `;` 结尾」三条同时成立才算 `func`（语句关键字表含 `if/else/for/while/do/switch/case/return/discard/struct/uniform/buffer/const/in/out/inout/flat/precise`）。
+
+**12 变体矩阵覆盖全部 4 条 emission 通路**：`ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky`，并覆盖领域差异（带纹理 / 纯顶点 / 无顶点格式的 SSBO）。矩阵表 `kStructureDumpVariants[]`、`MakeStructureDumpProfile()`、`BuildStructureDumpVariant()` 提升到文件作用域，`SD.structure-dump-golden-pilot` 与 `SD.emission-order-golden` **共用同一张表**，避免两条快照覆盖范围悄悄分叉。
+
+**三个在造网过程中踩到并修掉的坑**：
+
+1. **`SamplerPresetLibrary` 是进程级单例，由 `materialization` 组或各 App 启动时装载**。只跑 `pipeline` 组时预设没装，`MaterialShaderEmitter.cpp:115` 的 `GetIndex(name)` 未命中，`#define TrilinearSampler 2u` / `LinearSampler` / `ShadowPCFSampler` **被静默省略** —— GLSL 照样生成，只是少了三行 `#define`。于是 `pipeline` 组跑出来的 golden 与 `all` 组跑出来的不一致。修法：新增 `EnsureSamplerPresetsLoaded()`，`GetCount()==0` 时自行装载 `ShaderLibrary/sampler.toml`，两个快照 case 开头都调用。**教训：快照门禁必须自己拥有前置条件，否则 golden 本身就不可信。**
+2. **`DebugNormalColor` 是无光调试材质**，在 `ForwardLitShadowedAO` 下 `ResolveSceneRenderTemplateRequest` 直接失败；矩阵里改用 `ForwardUnlit`。
+3. `GetShaderLibraryPath()` 返回 `const char*`，直接 `+ "/sampler.toml"` 会 `C2678`；必须先构造 `std::string`。
+
+**小债清理**：
+
+| 项 | 处理 |
+|---|---|
+| `ShaderModuleSlotRole::DirectLightProvider`（阶段一已被 `DiffuseLightProvider` + `SpecularLightProvider` 取代） | 从 `inc/hgl/mtl/RenderTemplate.h` 枚举与 `src/ShaderMaterialData/RenderTemplate.cpp` 名称映射 switch 中删除。安全性已确认：`ShaderCodeModuleFile.cpp` 按 `Unknown+1 .. SlotRoleCount` 遍历，删值不影响枚举边界 |
+| 模块总数 `82` 硬编码两处 | 收敛为 `constexpr int kShaderCodeModuleCount = 82;`（放在 `struct GateResult` 之后）。**刻意不从实现侧推导** —— 门禁要断言一个独立持有的期望值，用被测实现算出来的期望值等于没断言 |
+
 ---
 
 ## 5. 验证状态
@@ -213,7 +251,7 @@ varying-trimmed material parse failed: InvalidValue key="domain" value="DebugNor
 
 ```powershell
 cd E:\ULRE
-.\build\out\Windows_64_Debug\ShaderResourceSchemaRegressionGate.exe all      # 期望 55 PASS / exit=0
+.\build\out\Windows_64_Debug\ShaderResourceSchemaRegressionGate.exe all      # 期望 56 PASS / exit=0
 .\build\out\Windows_64_Debug\SceneRenderTemplateResolverRegression.exe        # 期望 exit=0
 .\build\out\Windows_64_Debug\ShaderDocumentRegression.exe                     # 期望 exit=0
 .\build\out\Windows_64_Debug\ShaderDocumentProductionRegression.exe           # 期望 exit=0
@@ -227,13 +265,14 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 ```
 产物目录：`build\out\Windows_64_Debug\`
 
-### 5.2 当前结果（全部绿，阶段四完成后复测）
+### 5.2 当前结果（全部绿，阶段五完成后复测）
 
-- `ShaderResourceSchemaRegressionGate all`：**55 PASS / 0 FAIL，exit=0**（阶段四只在既有 case 内加断言，case 数不变）
-- 三个回归 exe：**全 exit=0**
+- `ShaderResourceSchemaRegressionGate all`：**56 PASS / 0 FAIL，exit=0**（阶段四未增删 case；阶段五新增 `SD.emission-order-golden`，55 → 56）
+- 五个回归 exe（`SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` / `TestRenderStrategyTable` / `TestMaterialVariantTable`）：**全 exit=0**
 - `TestRenderStrategyTable` / `TestMaterialVariantTable`：**全 exit=0**（这两个覆盖保底链行为断言 —— 未知定义 ID ⇒ 换 `builtin/error_checkerboard_3d`、标记行不可得 ⇒ 降级 `builtin/checkerboard_3d`，是「内嵌定义可用」的最强证据）
 - 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、`loaded 34 entries from program_manifest.pmf`、无 GLSL 编译错误
-- `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）
+- `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）。该目录现在有两类快照，各 12 份、按同一张变体矩阵一一对应：`<slug>.txt`（结构快照）与 `<slug>.emission.txt`（**拼接顺序快照**）
+- 全量 `cmake --build build --config Debug` 除一个**既存无关**失败外全绿：`TexConvCore.vcxproj` 的 `LNK1104: cannot open file '..\..\..\..\out\Windows_64_Release\TexImage.lib'`（Debug 目标链 Release 库，与本次重构无关）
 - 实跑渲染 exe（脚本是会话局部产物，新会话请直接用下面命令）：
   ```powershell
   cd E:\ULRE
@@ -354,15 +393,18 @@ Case 名与职责：
 | `D2.shader-config-emit` | 校验配置头规范文本（ForwardLit 全开） |
 | `PC.pipeline-config-emit` | `PipelineConfigEmitter` 输出 |
 | `MI.module-include-declaration-contract` | Registry 加载期强制 `#include ⊆ @ulre uses` |
-| `SD.structure-dump-golden-pilot` | 读 `golden/<slug>.txt` 比对；不匹配写 `<slug>.txt.actual` |
+| `SD.structure-dump-golden-pilot` | 读 `golden/<slug>.txt` 比对（12 变体矩阵）；不匹配写 `<slug>.txt.actual` |
+| `SD.emission-order-golden` | 读 `golden/<slug>.emission.txt` 比对**拼接顺序骨架**（同一张 12 变体矩阵）；不匹配写 `<slug>.emission.txt.actual` |
 
 要点：
 
 1. **负向探针断言 `parse_error.key == "domain"`**。任何新增的领域校验失败都必须记成 `"domain"`。
-2. **模块总数硬编码 `82`，出现在两处**（`ShaderResourceSchemaRegressionGate.cpp` 约 `:6013` 与 `:6020`）。每次增删 `.glsl` 都要改。
+2. **模块总数收敛为单个常量 `kShaderCodeModuleCount = 82`**（`struct GateResult` 之后）。每次增删 `.glsl` 都要改这一处。**不要**改成从 `ShaderCodeModuleRegistry` 反推 —— 门禁的期望值必须独立持有，否则断言自证。
 3. `require_slot_module(name, slot_name)` 断言块约 `:6015`。
 4. **golden 没有环境变量开关**。更新方式：`Copy-Item *.actual *.txt` 然后删除 `.actual`。首跑 golden 缺失会自动生成并 PASS。
-5. 门禁注册表在文件尾部（约 `:8515` 起）：`run_glsl / run_interface / run_descriptor / run_cache / run_materialization / run_pipeline / run_module_invariants`。
+5. **快照 case 必须自己装载前置条件**：`EnsureSamplerPresetsLoaded()` 在 `SamplerPresetLibrary` 为空时装载 `ShaderLibrary/sampler.toml`。不装的话采样器 `#define` 会被静默省略，只跑 `pipeline` 组与跑 `all` 组得到的 golden 不一致（详见 §4.7）。
+6. **emission 快照的粒度是骨架行**（预处理指令 / 顶层 `layout` / 顶层函数签名），行内空白折叠、缩进与函数体排除。只要重构不改 token 顺序，就不该需要刷新 emission golden —— 需要刷新就说明顺序真的变了，这正是它要抓的东西。
+7. 门禁注册表在文件尾部（约 `:8515` 起）：`run_glsl / run_interface / run_descriptor / run_cache / run_materialization / run_pipeline / run_module_invariants`。
 
 ---
 
@@ -394,20 +436,21 @@ Case 名与职责：
 
 ### 10.2 结构性遗留
 
-- **旧 ShaderGen 字符串拼接代码尚未清理**（阶段四遗留的唯一实质项）。它是与资产迁移无耦合的独立重构，需要单独分支。清理时注意：`FragmentTemplateComposer` / `GenericMaterialBuilder` 里的拼接顺序本身就是隐式契约（`#include` 顺序、宏定义顺序），必须先有 golden 快照覆盖再动。
+- **旧 ShaderGen 字符串拼接代码尚未清理**（阶段四遗留的唯一实质项，**前置安全网已于阶段五就位**，见 §4.7）。剩下的迁移动作：把 mesh 侧骨架（`MeshShaderHeaderGen` / `MeshVaryingGen` / `VertexAdapter` / `MeshTemplateEmitter`）与 `FragmentTemplateComposer` 里 ShadowCaster 的内联骨架外化成 `.tmpl`，并把 `FragmentTemplateComposer`（角色化 `ResolvedInclude`，`:316-580`）/ `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit。**现在动它是安全的**：`SD.emission-order-golden` 会在 token 顺序发生任何变化时立刻变红。仍应作为独立、可评审的提交。
 - 4 个领域（`Foliage` / `Terrain` / `HumanSkin` / `UI2D` 部分）reference 为 `nullptr`，只有契约骨架、无专属实现。属**刻意保留的扩展位**，不是 bug。
-- `DirectLightProvider`（legacy role）仍在枚举里，阶段一已由 `DiffuseLightProvider` + `SpecularLightProvider` 取代，待删除。
 - 主着色器仍保留 alpha 三件套宏（`HGL_ALPHA_TEST` / `HGL_ALPHA_DITHER` / `HGL_ALPHA_OUTPUT`）—— **这是刻意设计**，因为它们必须与 `discard` / 输出同函数体，无法外移。
-- 模块总数 `82` 硬编码在两处，尚未收敛成常量。
+- ~~`DirectLightProvider`（legacy role）仍在枚举里~~ → **阶段五已删除**（枚举 + 名称映射 switch）。
+- ~~模块总数 `82` 硬编码在两处~~ → **阶段五已收敛**为 `kShaderCodeModuleCount`（门禁内单一常量）。
 
 ---
 
 ## 11. 每个子阶段的完成定义（DoD）
 
-- [x] `ShaderResourceSchemaRegressionGate all` → 55 PASS / exit=0（若新增 case 则数量随之增加并同步文档）
+- [x] `ShaderResourceSchemaRegressionGate all` → 56 PASS / exit=0（若新增 case 则数量随之增加并同步文档）
 - [x] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
 - [x] `git status` 只剩既存子模块脏项
+- [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` 12 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路（阶段五）
 - [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
 - [x] 独立提交，提交信息带 `feat(ultra-thin):` / `docs(ultra-thin):` 前缀

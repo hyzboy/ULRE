@@ -336,14 +336,31 @@ varyings = ["emit_data_index_id"]
 
 ---
 
-## 8. 实施路线图（四阶段）
+## 8. 实施路线图（五阶段）
 
 | 阶段 | 分支 | 核心任务 | 交付产物 |
 | :--- | :--- | :--- | :--- |
 | **阶段 1：契约头与算法函数库固化** ✅ | `feature/ultra-thin-stage1-lighting-slots` | 制定 5 大光照插槽的 GLSL 统一签名；实现对应的固定算法文件及“无/空”对象实现（`*_none.glsl`） | `ShaderLibrary/lighting/` 基础算法库 |
 | **阶段 2：Domain 主着色器固定化** ✅ | `feature/ultra-thin-stage2-domain-shaders` | 主着色器固定为「固定骨架 + 纯 `#include` 拼接」，槽模块内零 `#if`；C++ 侧只生成配置头 | 固定主着色器 + `PipelineConfigEmitter` |
 | **阶段 3：MaterialInstance 模型** ✅ | `feature/ultra-thin-stage3-material-instance` | Domain 即 Master Material；资产降维为「选 Domain + 填数值 + 配贴图」的 MaterialInstance；保底材质移入 C++ | 极简资产形态上线 |
-| **阶段 4：资产迁移与旧架构清理** ✅ | `feature/ultra-thin-stage4-cleanup-and-migration` | 现有资产迁移到 `.mi.toml`；废弃 `material.toml` 与旧版 ShaderGen 拼接代码 | 全套自动化门禁验证通过 |
+| **阶段 4：资产迁移** ✅ | `feature/ultra-thin-stage4-cleanup-and-migration` | 现有资产迁移到 `.mi.toml`；废弃 `material.toml` | 全套自动化门禁验证通过 |
+| **阶段 5：拼接清理前置安全网** ✅ | `feature/ultra-thin-stage5-shadergen-emission-cleanup` | 为旧版 ShaderGen 拼接代码的清理造好 golden 安全网（emission 顺序快照），并清掉小债 | `SD.emission-order-golden`（12 变体）+ 小债清零 |
+
+阶段 5 的进展：
+
+1. ✅ 新增 `DumpShaderEmissionOrder()`（`inc/hgl/mtl/ShaderStructureDump.h` +
+   `src/ShaderGen/compile/ShaderStructureDump.cpp`）与门禁 case
+   `SD.emission-order-golden`，12 份 `<slug>.emission.txt` golden 覆盖
+   `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路。
+   粒度刻意只到**骨架行**（预处理指令 / 顶层 `layout` / 顶层函数签名），使
+   「token 顺序不变」的重构无需刷新 golden。
+2. ✅ 修掉一个会让 golden 自身不可信的坑：`SamplerPresetLibrary` 是进程级单例，
+   只跑 `pipeline` 组时预设未装载，采样器 `#define` 被**静默省略**；两个快照
+   case 现均先调用 `EnsureSamplerPresetsLoaded()`。
+3. ✅ 小债清理：删除 legacy `ShaderModuleSlotRole::DirectLightProvider`；模块总数
+   `82` 的两处硬编码收敛为 `kShaderCodeModuleCount` 单一常量。
+4. ⬜ **旧 ShaderGen 字符串拼接代码的实际迁移仍未做** —— 安全网已就位、路径已解锁，
+   但它是独立、可评审的改动。详见 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 4 的进展：
 
@@ -360,9 +377,9 @@ varyings = ["emit_data_index_id"]
 4. ✅ 门禁新增 4 条探针：正向推导（`DerivedVertexColor`，断言四项全部由契约填对）、
    ABI 不变式（`DerivedKeepAbi`）、以及 Custom 缺 `provider_policy` /
    `requirements` 的两条反向探针。
-5. ⬜ **旧 ShaderGen 字符串拼接代码清理未做**：它与资产迁移无耦合，需要单独分支；
-   且拼接顺序本身就是隐式契约（`#include` 顺序、宏定义顺序），必须先有 golden
-   快照覆盖再动。详见 `doc/ultra-thin-implementation-status.md` §10.2。
+5. ⬜ **旧 ShaderGen 字符串拼接代码清理**：它与资产迁移无耦合，已改由阶段 5 承接 ——
+   阶段 5 先造好 emission 顺序 golden 安全网（见上），实际迁移仍未做。
+   详见 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 2 的进展（按交付顺序）：
 

@@ -1,0 +1,66 @@
+material SkyCube golden=sky-cube-forward
+stage mesh
+dir #version 460
+dir #extension GL_EXT_mesh_shader : require
+dir #extension GL_EXT_scalar_block_layout : require
+dir #extension GL_EXT_buffer_reference : require
+dir #extension GL_ARB_gpu_shader_int64 : require
+dir #extension GL_EXT_shader_8bit_storage : require
+dir #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+layout layout(push_constant) uniform RootAddresses
+dir #define gl_InstanceIndex (draw_params.first_instance + gl_WorkGroupID.y)
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer LocalToWorldIndexRef { uint values[]; };
+func uint ResolveTransformID(uint iid) { return uint(LocalToWorldIndexRef(pc_root.addr_l2w_index).values[iid]); }
+layout layout(local_size_x = 64) in;
+layout layout(triangles, max_vertices = 192, max_primitives = 64) out;
+dir #include "common/descriptor_macros.glsl"
+dir #include "ubo/scene_ubo.glsl"
+dir #include "common/l2w_ssbo.glsl"
+dir #define VertexIndexID (MeshVertexIndex)
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MeshDrawParamsRef { MeshDrawParams rows[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=8) buffer MeshDrawCommandsRef { MeshDrawCommand cmds[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexIndexRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionRef { vec3 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionV2Ref { vec2 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexPositionPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVRef { vec2 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexUVPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBRef { vec3 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexNTBPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorRef { vec4 data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexColorPackedRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexLuminanceRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDRef { uint data[]; };
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexSizeRef { vec2 data[]; };
+dir #define sbo_vertex_index VertexIndexRef(draw_params.addr_index)
+layout layout(location=0) perprimitiveEXT out uint fragDataIndexID[64];
+layout layout(location=6) out vec3 fragDirection[192];
+dir #include "vertex/s1_position_vec3.glsl"
+dir #include "vertex/s2_passthrough3d.glsl"
+dir #include "vertex/s3_world_camera_vp.glsl"
+func void main()
+stage fragment
+dir #version 450
+dir #extension GL_EXT_mesh_shader : require
+dir #extension GL_EXT_buffer_reference : require
+dir #extension GL_ARB_gpu_shader_int64 : require
+dir #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+dir #define TrilinearSampler 2u
+dir #define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))
+layout layout(push_constant) uniform RootAddresses
+dir #extension GL_EXT_buffer_reference : require
+dir #extension GL_ARB_gpu_shader_int64 : require
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
+layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialInstanceAddressesRef
+dir #define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 1u
+dir #include "common/descriptor_macros.glsl"
+dir #include "ubo/scene_ubo.glsl"
+dir #include "sky/sky_atmosphere.glsl"
+dir #include "common/surface_interface.glsl"
+dir #include "material/sky_cube_surface.glsl"
+dir #include "common/alpha_compositor.glsl"
+layout layout(location=0) flat perprimitiveEXT in uint fragDataIndexID;
+layout layout(location=6) in vec3 fragDirection;
+layout layout(location=0) out vec4 outColor;
+func void WriteMaterialOutput(vec4 value) { outColor = value; }
+func void main()

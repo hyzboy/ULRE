@@ -33,9 +33,6 @@ namespace hgl::graph::mtl
         DiffuseLightProvider,
         /// 直接光 — 高光项（`vec3 EvalSpecularLight(LightingInput)`）。
         SpecularLightProvider,
-        /// 旧的“直接光合成黑盒”槽。仅在早期 fixture 里出现，真实模板不再使用；
-        /// 保留枚举值是为了不让历史 fixture 的角色名解析变成硬错误。
-        DirectLightProvider,
         ShadowProvider,
         AmbientLightProvider,
         AmbientOcclusionProvider,

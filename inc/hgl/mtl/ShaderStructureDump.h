@@ -23,4 +23,22 @@ namespace hgl::graph::mtl
 {
     /// 生成结构快照。label 由调用方给出（通常 "<definition_id> purpose=... pass=..."）。
     std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label);
+
+    /// 生成「发射顺序快照」：把两个 stage 的最终 GLSL 压成一条有序的骨架事实流。
+    ///
+    /// 与 `DumpShaderStructure` 互补——那份只看「有什么」（模块、varying、信号），
+    /// 这份只看「按什么顺序拼」：
+    ///   - `#version` / `#extension` / `#define` / `#include` / `#if*` 的先后；
+    ///   - 顶层 `layout(...)` 限定的先后；
+    ///   - 顶层函数签名的先后。
+    ///
+    /// 之所以需要它：`#include` 顺序与宏定义顺序是 ShaderGen 拼接的**隐式契约**
+    /// （宏先于被它影响的声明、`scene_ubo` 先于消费它的模块），而这些顺序在
+    /// 源码里只体现为「几行 += 的先后」，重构时极易在无人察觉的情况下互换。
+    ///
+    /// 粒度选择：只记录骨架行，函数体、注释、空行、缩进一律不入快照；行内连续
+    /// 空白折叠成一个空格。于是「把骨架外置成 `.tmpl`」「把拼接收敛到统一出口」
+    /// 这类**不改变 token 顺序**的重构，golden 不必重刷——这正是它作为安全网的
+    /// 前提：安全网本身不能是每次重构都要改的东西。
+    std::string DumpShaderEmissionOrder(const ShaderBuildContext &ctx, const char *label);
 }//namespace hgl::graph::mtl

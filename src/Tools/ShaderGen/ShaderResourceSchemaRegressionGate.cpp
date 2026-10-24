@@ -229,6 +229,13 @@ namespace
         std::vector<std::string> diagnostics;
     };
 
+    /// `ShaderLibrary` 下 `.glsl` 代码模块的期望总数。
+    ///
+    /// 刻意写成「门自己持有的常量」而不是去问被测代码：这条断言的价值就是
+    /// 在模块被误删/误加时硬失败，跟着实现走就等于没测。历史上每次增删模块
+    /// 都在这里改一行并留下理由，变更记录见 `RunShaderCodeModuleRegistryCase`。
+    constexpr int kShaderCodeModuleCount = 82;
+
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)
     {
@@ -6374,15 +6381,18 @@ namespace
             // + specular_{cook_torrance,toon_step,none} + indirect_none +
             // forward_toon + shadow/full（72 → 81）。
             // 超薄架构阶段二之二：新增 ntb_none 空对象（81 → 82）。
-            if (file_count != 82)
-                result.diagnostics.emplace_back("LoadDirectory expected 82 file modules, got "
-                                                + std::to_string(file_count));
+            // 计数常量已收敛到 `kShaderCodeModuleCount`（文件顶部），增删模块时
+            // 只改那一处并在此追加一行理由。
+            if (file_count != kShaderCodeModuleCount)
+                result.diagnostics.emplace_back("LoadDirectory expected "
+                    + std::to_string(kShaderCodeModuleCount)
+                    + " file modules, got "
+                    + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 82;
-            if (registry.GetCount() != expected_count)
+            if (registry.GetCount() != kShaderCodeModuleCount)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
 
@@ -7885,6 +7895,71 @@ namespace
         return out;
     }
 
+    /// golden 比对（首跑引导 + 首个差异行定位）。
+    ///
+    /// 缺失即生成并通过（提示人工审阅入库），存在即逐行严格比对；不一致时
+    /// 落地 `<golden>.actual` 并只报**首个**差异行——快照动辄数百行，把全文
+    /// 塞进诊断会把真正的第一处变化淹掉。
+    static void CompareAgainstGolden(
+        const std::string &golden_path,
+        const std::string &dump,
+        const char *tag,
+        std::vector<std::string> &diagnostics)
+    {
+        std::string golden;
+        if (!ReadGoldenFile(golden_path, golden))
+        {
+            if (!WriteTextFile(golden_path, dump))
+            {
+                diagnostics.emplace_back(
+                    std::string("cannot write golden: ") + golden_path);
+                return;
+            }
+
+            std::printf(
+                "[%s] golden 已生成（首跑引导），请审阅后入库: %s\n",
+                tag, golden_path.c_str());
+            return;
+        }
+
+        const std::string normalized_golden = NormalizeDumpEOL(golden);
+        if (normalized_golden == dump)
+            return;
+
+        const std::string actual_path = golden_path + ".actual";
+        WriteTextFile(actual_path, dump);
+
+        size_t pos = 0;
+        size_t line = 1;
+        while (pos < dump.size() && pos < normalized_golden.size()
+            && dump[pos] == normalized_golden[pos])
+        {
+            if (dump[pos] == '\n')
+                ++line;
+            ++pos;
+        }
+
+        const auto line_of = [](const std::string &text, const size_t at)
+        {
+            if (text.empty())
+                return std::string();
+
+            const size_t clamped = std::min(at, text.size() - 1);
+            const size_t begin = text.rfind('\n', clamped) == std::string::npos
+                ? 0 : text.rfind('\n', clamped) + 1;
+            const size_t end = text.find('\n', clamped);
+            return text.substr(begin,
+                (end == std::string::npos ? text.size() : end) - begin);
+        };
+
+        diagnostics.emplace_back(
+            std::string("golden mismatch: ") + tag
+            + " line " + std::to_string(line)
+            + "\n  golden: " + line_of(normalized_golden, pos)
+            + "\n  actual: " + line_of(dump, pos)
+            + "\n  actual 全文: " + actual_path);
+    }
+
     /// 发行形态清单门
     ///
     /// 发行版没有生成器、没有 GLSL 源码，只能靠 `program_manifest.pmf` 把「运行时
@@ -8835,90 +8910,170 @@ namespace
         return result;
     }
 
+    /// 结构快照 / 发射顺序快照共用的夹具几何。
+    ///
+    /// 刻意给全 6 个语义：领域契约会按自己的 mask 取子集，多余的不会被用到；
+    /// 给全才能让「同一张表覆盖所有领域」成立。
+    static const GeometryVertexFormat kStructureDumpGeometry{
+        {VertexSemantic::Position, VF_V3F},
+        {VertexSemantic::TexCoord, VF_V2F},
+        {VertexSemantic::Normal, VF_V3F},
+        {VertexSemantic::Color, VF_V4F},
+        {VertexSemantic::TransformID, VK_FORMAT_R32_UINT},
+        {VertexSemantic::Size, VF_V2F}
+    };
+
+    struct StructureDumpVariant
+    {
+        const char *definition_id;
+        const char *golden_slug;
+        ShaderProgramPurpose purpose;
+        RenderTemplateID template_id;
+        bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
+    };
+
+    /// 快照矩阵：四条发射路径（ForwardLit / ForwardUnlit / ShadowCaster / Sky）
+    /// × 领域差异（有纹理 / 纯顶点 / 无顶点格式的 SSBO 材质）。
+    ///
+    /// 两张快照（结构、发射顺序）共用此表——矩阵只有一份，新增材质不会漏测其中一张。
+    static const StructureDumpVariant kStructureDumpVariants[] =
+    {
+        { "Lit", "lit-forward-opaque",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardLitShadowedAO, true },
+        { "Lit", "lit-depth-only",
+          ShaderProgramPurpose::DepthOnly,
+          RenderTemplateID::ShadowCasterOpaque, true },
+        { "Lit", "lit-shadow-depth",
+          ShaderProgramPurpose::ShadowDepth,
+          RenderTemplateID::ShadowCasterOpaque, true },
+        { "VertexPaletteColor", "vertex-palette-color-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true },
+        { "VertexColor", "vertex-color-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true },
+        { "VertexLuminance", "vertex-luminance-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true },
+        { "UnlitTexture", "unlit-texture-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true },
+        { "DebugNormalColor", "debug-normal-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true },
+        { "SkyCube", "sky-cube-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::Sky, true },
+        { "SkyMinimal", "sky-minimal-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::Sky, true },
+        { "builtin/checkerboard_2d", "checkerboard-2d-forward",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true },
+        { "builtin/text_gpu", "text-gpu-charquad",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, false },
+    };
+
+    /// 采样器预设表是进程级单例，`MaterialShaderEmitter` 靠它把 `Trilinear`
+    /// 翻成 `#define TrilinearSampler 2u`。没装载时宏就整体消失——GLSL 仍能生成，
+    /// 只是少几行 `#define`，静默且致命。
+    ///
+    /// 单跑 `pipeline` 组时装载发生在 `materialization` 组里，跨组依赖会让快照
+    /// 随「跑哪个组」而变。快照门必须自带前置条件，否则 golden 自身不可信。
+    static bool EnsureSamplerPresetsLoaded(std::string &diagnostic)
+    {
+        auto &lib = SamplerPresetLibrary::Instance();
+        if (lib.GetCount() != 0)
+            return true;
+
+        const std::string path = GetShaderLibraryPath() + "/sampler.toml";
+        const hgl::filesystem::Path sampler_toml(hgl::ToOSString(path));
+        if (lib.Load(sampler_toml.ToOSString()))
+            return true;
+
+        diagnostic = "cannot load sampler presets from " + path;
+        return false;
+    }
+
+    static SceneRenderTemplateProfile MakeStructureDumpProfile(
+        const RenderTemplateID template_id)
+    {
+        switch (template_id)
+        {
+            case RenderTemplateID::ForwardLitShadowedAO:
+            case RenderTemplateID::ForwardLitShadowedIdentityAO:
+                return MakeIdentityForwardLitProfile();
+            case RenderTemplateID::ForwardUnlit:
+                return MakeForwardUnlitProfile();
+            case RenderTemplateID::Sky:
+                return MakeSkyProfile();
+            default:
+                return MakeShadowCasterProfile();
+        }
+    }
+
+    /// 按快照矩阵构建一个材质实例。失败时把原因写进 `diagnostic` 并返回 nullptr。
+    static std::unique_ptr<ShaderBuildContext> BuildStructureDumpVariant(
+        const StructureDumpVariant &variant, std::string &diagnostic)
+    {
+        MaterialDefinition definition{};
+        if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
+        {
+            diagnostic = std::string("definition unavailable: ") + variant.definition_id;
+            return nullptr;
+        }
+
+        MaterialDefinitionBuildRequest request{};
+        request.recipe.mtl_def_id = definition.definition_id;
+        request.geometry_vertex_format =
+            variant.has_geometry ? &kStructureDumpGeometry : nullptr;
+        request.defer_finalize = true;
+        request.shader_program_purpose = variant.purpose;
+
+        RenderTemplateValidationDiagnostic template_diagnostic{};
+        if (!ResolveSceneRenderTemplateRequest(
+                variant.template_id, hgl::graph::ShaderStage::Fragment,
+                MakeStructureDumpProfile(variant.template_id),
+                request.render_template_request, template_diagnostic)
+         || !AppendMaterialRenderTemplateRoots(
+                definition, request.render_template_request))
+        {
+            diagnostic = std::string("template request resolve failed: ")
+                + variant.golden_slug;
+            return nullptr;
+        }
+
+        std::unique_ptr<ShaderBuildContext> ctx(
+            CreateMaterialFromDefinition(nullptr, definition, request));
+        if (!ctx)
+            diagnostic = std::string("material build failed: ") + variant.golden_slug;
+
+        return ctx;
+    }
+
     static GateResult RunShaderStructureDumpPilotCase()
     {
         GateResult result;
         result.name = "SD.structure-dump-golden-pilot";
 
-        const GeometryVertexFormat geometry{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::TexCoord, VF_V2F},
-            {VertexSemantic::Normal, VF_V3F},
-            {VertexSemantic::Color, VF_V4F},
-            {VertexSemantic::TransformID, VK_FORMAT_R32_UINT},
-            {VertexSemantic::Size, VF_V2F}
-        };
-
-        struct PilotVariant
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
         {
-            const char *definition_id;
-            const char *golden_slug;
-            ShaderProgramPurpose purpose;
-            RenderTemplateID template_id;
-            bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
-        };
+            result.diagnostics.emplace_back(preset_diagnostic);
+            result.passed = false;
+            return result;
+        }
 
-        static const PilotVariant kVariants[] =
+        for (const StructureDumpVariant &variant : kStructureDumpVariants)
         {
-            { "Lit", "lit-forward-opaque",
-              ShaderProgramPurpose::ForwardColor,
-              RenderTemplateID::ForwardLitShadowedAO, true },
-            { "Lit", "lit-depth-only",
-              ShaderProgramPurpose::DepthOnly,
-              RenderTemplateID::ShadowCasterOpaque, true },
-            { "Lit", "lit-shadow-depth",
-              ShaderProgramPurpose::ShadowDepth,
-              RenderTemplateID::ShadowCasterOpaque, true },
-            { "VertexPaletteColor", "vertex-palette-color-forward",
-              ShaderProgramPurpose::ForwardColor,
-              RenderTemplateID::ForwardUnlit, true },
-            { "builtin/text_gpu", "text-gpu-charquad",
-              ShaderProgramPurpose::ForwardColor,
-              RenderTemplateID::ForwardUnlit, false },
-        };
-
-        for (const PilotVariant &variant : kVariants)
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("definition unavailable: ") + variant.definition_id);
-                continue;
-            }
-
-            MaterialDefinitionBuildRequest request{};
-            request.recipe.mtl_def_id = definition.definition_id;
-            request.geometry_vertex_format = variant.has_geometry ? &geometry : nullptr;
-            request.defer_finalize = true;
-            request.shader_program_purpose = variant.purpose;
-            const SceneRenderTemplateProfile profile =
-                variant.template_id == RenderTemplateID::ForwardLitShadowedAO
-                    ? MakeIdentityForwardLitProfile()
-                    : (variant.template_id == RenderTemplateID::ForwardUnlit
-                        ? MakeForwardUnlitProfile()
-                        : MakeShadowCasterProfile());
-            RenderTemplateValidationDiagnostic template_diagnostic{};
-            if (!ResolveSceneRenderTemplateRequest(
-                    variant.template_id, hgl::graph::ShaderStage::Fragment,
-                    profile, request.render_template_request,
-                    template_diagnostic)
-             || !AppendMaterialRenderTemplateRoots(
-                    definition, request.render_template_request))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("template request resolve failed: ")
-                    + variant.golden_slug);
-                continue;
-            }
-
-            const std::unique_ptr<ShaderBuildContext> ctx(
-                CreateMaterialFromDefinition(nullptr, definition, request));
-
+            std::string build_diagnostic;
+            const std::unique_ptr<ShaderBuildContext> ctx =
+                BuildStructureDumpVariant(variant, build_diagnostic);
             if (!ctx)
             {
-                result.diagnostics.emplace_back(
-                    std::string("material build failed: ") + variant.golden_slug);
+                result.diagnostics.emplace_back(build_diagnostic);
                 continue;
             }
 
@@ -8933,56 +9088,55 @@ namespace
                 RepoRootPath((std::string("src/Tools/ShaderGen/golden/")
                               + variant.golden_slug + ".txt").c_str());
 
-            std::string golden;
-            if (!ReadGoldenFile(golden_path, golden))
-            {
-                // 首跑引导：生成 golden 并通过，提示人工审阅入库
-                if (!WriteTextFile(golden_path, dump))
-                {
-                    result.diagnostics.emplace_back(
-                        std::string("cannot write golden: ") + golden_path);
-                    continue;
-                }
+            CompareAgainstGolden(golden_path, dump, "SD.structure", result.diagnostics);
+        }
 
-                std::printf(
-                    "[SD.pilot] golden 已生成（首跑引导），请审阅后入库: %s\n",
-                    golden_path.c_str());
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    /// 发射顺序 golden 门。
+    ///
+    /// 存在的唯一理由是**给拼接重构当安全网**：把 mesh 侧骨架外置成 `.tmpl`、
+    /// 把散落的 `+=` 收敛到统一出口，都必须证明「产出的 GLSL 骨架顺序一字不差」。
+    /// 结构快照只看「有什么」，看不出 `#include` 被挪到了 `#define` 之后——
+    /// 那正是这类重构最容易犯、也最难在跑起来之后发现的错。
+    static GateResult RunShaderEmissionOrderGoldenCase()
+    {
+        GateResult result;
+        result.name = "SD.emission-order-golden";
+
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
+        {
+            result.diagnostics.emplace_back(preset_diagnostic);
+            result.passed = false;
+            return result;
+        }
+
+        for (const StructureDumpVariant &variant : kStructureDumpVariants)
+        {
+            std::string build_diagnostic;
+            const std::unique_ptr<ShaderBuildContext> ctx =
+                BuildStructureDumpVariant(variant, build_diagnostic);
+            if (!ctx)
+            {
+                result.diagnostics.emplace_back(build_diagnostic);
                 continue;
             }
 
-            if (NormalizeDumpEOL(golden) == dump)
-                continue;
+            const std::string label =
+                std::string(variant.definition_id)
+                + " golden=" + variant.golden_slug;
 
-            const std::string actual_path = golden_path + ".actual";
-            WriteTextFile(actual_path, dump);
+            const std::string dump =
+                NormalizeDumpEOL(DumpShaderEmissionOrder(*ctx, label.c_str()));
 
-            // 定位首个差异行，便于直接看出结构变化
-            const std::string normalized_golden = NormalizeDumpEOL(golden);
-            size_t pos = 0;
-            size_t line = 1;
-            while (pos < dump.size() && pos < normalized_golden.size()
-                && dump[pos] == normalized_golden[pos])
-            {
-                if (dump[pos] == '\n')
-                    ++line;
-                ++pos;
-            }
+            const std::string golden_path =
+                RepoRootPath((std::string("src/Tools/ShaderGen/golden/")
+                              + variant.golden_slug + ".emission.txt").c_str());
 
-            const auto line_of = [](const std::string &text, const size_t at)
-            {
-                const size_t begin = text.rfind('\n', at) == std::string::npos
-                    ? 0 : text.rfind('\n', at) + 1;
-                const size_t end = text.find('\n', at);
-                return text.substr(begin,
-                    (end == std::string::npos ? text.size() : end) - begin);
-            };
-
-            result.diagnostics.emplace_back(
-                std::string("structure dump mismatch: ") + variant.golden_slug
-                + " line " + std::to_string(line)
-                + "\n  golden: " + line_of(normalized_golden, std::min(pos, normalized_golden.size() ? normalized_golden.size() - 1 : 0))
-                + "\n  actual: " + line_of(dump, std::min(pos, dump.size() ? dump.size() - 1 : 0))
-                + "\n  actual 全文: " + actual_path);
+            CompareAgainstGolden(golden_path, dump, "SD.emission", result.diagnostics);
         }
 
         result.passed = result.diagnostics.empty();
@@ -9155,6 +9309,7 @@ int main(const int argc, char **argv)
     if (run_module_invariants) results.push_back(RunSamplerReferenceContractCase());
     if (run_module_invariants) results.push_back(RunModuleIncludeDeclarationContractCase());
     if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
+    if (run_pipeline) results.push_back(RunShaderEmissionOrderGoldenCase());
 
     bool all_passed = true;
     for (const auto &result : results)
