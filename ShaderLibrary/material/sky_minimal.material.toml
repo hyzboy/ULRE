@@ -3,10 +3,9 @@ id = "SkyMinimal"
 name = "SkyMinimal"
 provider_policy = "GeometryOnly"
 
-# 引擎内部用途材质：由代码按固定语义直接构造，不是模型表面资产，
-# 故不参与领域契约（顶点语义 / 纹理槽白名单）。此处显式标注而非
-# 省略，便于门禁区分「已定性」与「漏填」。
-domain = "Custom"
+# 领域由此键完整决定：顶点语义要求、表面来源模块、
+# 纹理槽白名单全部由领域契约给出，资产只填领域 + 数值 + 图。
+domain = "Sky"
 
 [transform]
 source = "Vec3Position"

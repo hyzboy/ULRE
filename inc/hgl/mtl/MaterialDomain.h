@@ -55,13 +55,33 @@ namespace hgl::graph::mtl
         UI2D,            // 界面/文本（无光照）
         HumanSkin,       // 人体皮肤（次表面散射）
 
-        ENUM_CLASS_RANGE(Custom, HumanSkin)
+        // ── 无光表面（业务可用）─────────────────────────────────────────────
+        // 这一组与上面的区别：不做 PBR，表面值直接产出最终颜色。
+        // 它们同样是**封闭契约**——不是「无光照的自由组合」。
+        UnlitSolid,      // 纯色（材质行取色，无纹理）
+        VertexColor,     // 顶点色（颜色直接来自 Color 顶点流）
+        VertexPalette,   // 调色板顶点色（Color + TransformID + Size 驱动查表/变换）
+        VertexLuminance, // 顶点亮度索引 → 调色板查表
+        UnlitTexture,    // 无光单图（通用 2D/贴面）
+        Text2D,          // GPU 文本（SDF / 位图两态共用）
+
+        // ── 环境与引擎内部用途 ──────────────────────────────────────────────
+        // 下面这组由引擎代码按固定语义直接构造，不面向美术资产。
+        // 它们仍被纳入领域体系，目的是让「Custom」不再是逃生门：
+        // 任何材质都必须落在某个领域里，想新增组合就必须新增领域（有成本）。
+        Sky,             // 天空（有/无 cube 贴图两态共用）
+        DebugNormal,     // 调试法线可视化
+        Checker2D,       // 调试棋盘格（2D）
+        Checker3D,       // 调试棋盘格（3D）
+        ErrorChecker3D,  // 材质错误回退棋盘格
+
+        ENUM_CLASS_RANGE(Custom, ErrorChecker3D)
     };
 
     const char *GetMaterialDomainName(MaterialDomain domain) noexcept;
 
     // 非 Custom 的契约领域数量（用于契约表遍历与门禁穷举）。
-    constexpr int MaterialDomainContractCount = 5;
+    constexpr int MaterialDomainContractCount = 16;
 
     // 严格解析："StandardOpaque" 等；返回 false 表示未知名字（调用方报错）。
     bool ParseMaterialDomain(const char *name, MaterialDomain &out_domain) noexcept;
@@ -129,6 +149,17 @@ namespace hgl::graph::mtl
 
         // 顶点提供策略必须为 AllowDerived 时置 true（需要从几何流推导顶点）。
         bool require_allow_derived;
+
+        // 该领域**结构上没有**表面来源模块（例：Sky 直接由方向矢量出颜色）。
+        //
+        // 为什么需要这个显式位：校验器对 reference_material_source_module == nullptr
+        // 的领域默认要求资产自行声明来源模块（那是「领域未实现」的保守处理）。
+        // 但 Sky 这类领域是「实现完成但不需要该模块」，两者不能共用 nullptr 表达，
+        // 否则资产一行模块名都不写就会被判违规。填此位即豁免，且反过来禁止资产
+        // 声明来源模块（声明了就是错配）。
+        //
+        // 注意：这个位不能用来给「未实现的领域」开后门偷懒。
+        bool no_material_source;
     };
 
     // 取契约；domain == Custom 或未知时返回 nullptr。

@@ -4724,11 +4724,27 @@ namespace
             if (contract->required_vertex_semantic_mask == 0)
                 result.diagnostics.emplace_back(tag + " requires no vertex semantic at all");
 
-            if (!contract->texture_slots || contract->texture_slot_count <= 0)
+            // 无纹理领域（纯色/顶点色/亮度/棋盘格等）是**合法**的：
+            // 它们结构上就不该有贴图。这里只拦「指针与计数不一致」的笔误，
+            // 不要求每个领域都必须有槽。
+            if ((contract->texture_slots == nullptr) != (contract->texture_slot_count == 0))
             {
-                result.diagnostics.emplace_back(tag + " declares no texture slot");
+                result.diagnostics.emplace_back(
+                    tag + " texture slot table is inconsistent (pointer/count mismatch)");
                 continue;
             }
+
+            // no_material_source 与 reference_source 不能同时成立：
+            // 前者说「本领域没有来源模块」，后者却给出了一个模块名。
+            if (contract->no_material_source
+                && contract->reference_material_source_module)
+            {
+                result.diagnostics.emplace_back(
+                    tag + " sets no_material_source but still names a source module");
+            }
+
+            if (contract->texture_slot_count <= 0)
+                continue;
 
             for (int s = 0; s < contract->texture_slot_count; ++s)
             {
@@ -4960,6 +4976,62 @@ namespace
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
             },
+            {
+                // 无槽领域（UnlitSolid 等）必须拒绝一切纹理声明。
+                "texture on a domain that declares no slot at all",
+                "schema = 4\n"
+                "id = \"DomainBadSlotonSless\"\n"
+                "name = \"DomainBadSlotonSless\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"UnlitSolid\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                // 无光表面族的顶点语义是封闭的：VertexColor 少了 Color 就
+                // 不该被当成顶点色材质放行。
+                "missing Color on a vertex-color domain",
+                "schema = 4\n"
+                "id = \"DomainBadVertexColor\"\n"
+                "name = \"DomainBadVertexColor\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"VertexColor\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\"]\n"
+            },
+            {
+                // VertexPalette 比 VertexColor 多要求 TransformID/Size：
+                // 这份契约存在的意义就是拦住「以为自己是调色板其实缺属性」。
+                "palette domain missing TransformID",
+                "schema = 4\n"
+                "id = \"DomainBadPalette\"\n"
+                "name = \"DomainBadPalette\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"VertexPalette\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"Color\", \"Size\"]\n"
+            },
+            {
+                // no_material_source 领域的反向约束：自己不写来源模块是正确写法，
+                // 但写了任何模块名都是错配（这条与 ③ 的正向兜底成对）。
+                "source module declared on a domain that has none",
+                "schema = 4\n"
+                "id = \"DomainBadSkySource\"\n"
+                "name = \"DomainBadSkySource\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"Sky\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"unlit_source\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\"]\n"
+            },
         };
 
         for (const DomainViolationProbe &probe : probes)
@@ -5060,6 +5132,164 @@ namespace
                                    ? data.definition.ntb_module_name : "<null>")
                             + "'");
                 }
+            }
+        }
+
+        // ── ⑤ 无光表面族：合法材质必须通过（防误杀）───────────────────────────
+        // ④ 全是「必须被拒」的探针。新加的领域若契约写得太严
+        // （比如给无槽领域凭空要求一个纹理槽，或多要一个顶点语义），
+        // 只会表现为「仓库材质全部加载失败」——那是最难定位的一种回归。
+        // 所以这里正面钉住每个新领域的最小合法形态。
+        struct DomainAcceptProbe
+        {
+            const char *label;
+            const char *content;
+            MaterialDomain expect_domain;
+            bool expect_source_derived;   // true = 解析后应从契约兜底得到来源模块
+            const char *expect_source;
+        };
+
+        const DomainAcceptProbe accept_probes[] = {
+            {
+                "UnlitSolid (no texture at all)",
+                "schema = 4\n"
+                "id = \"DomainOkUnlitSolid\"\n"
+                "name = \"DomainOkUnlitSolid\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"UnlitSolid\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\"]\n",
+                MaterialDomain::UnlitSolid, true, "unlit_source"
+            },
+            {
+                "VertexColor",
+                "schema = 4\n"
+                "id = \"DomainOkVertexColor\"\n"
+                "name = \"DomainOkVertexColor\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"VertexColor\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"Color\"]\n",
+                MaterialDomain::VertexColor, true, "vertex_color_source"
+            },
+            {
+                "VertexPalette (four semantics)",
+                "schema = 4\n"
+                "id = \"DomainOkVertexPalette\"\n"
+                "name = \"DomainOkVertexPalette\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"VertexPalette\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"Color\", \"TransformID\", \"Size\"]\n",
+                MaterialDomain::VertexPalette, true, "vertex_color_source"
+            },
+            {
+                "VertexLuminance",
+                "schema = 4\n"
+                "id = \"DomainOkVertexLum\"\n"
+                "name = \"DomainOkVertexLum\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"VertexLuminance\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"Luminance\"]\n",
+                MaterialDomain::VertexLuminance, true, "luminance_source"
+            },
+            {
+                "Text2D",
+                "schema = 4\n"
+                "id = \"DomainOkText2D\"\n"
+                "name = \"DomainOkText2D\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"Text2D\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = true }\n"
+                "]\n",
+                MaterialDomain::Text2D, true, "text_source_gpu"
+            },
+            {
+                // Sky 是 no_material_source：来源模块必须**保持为空**，
+                // 不能被兜底逻辑塞进一个不存在的规范名。
+                "Sky (no material source by design)",
+                "schema = 4\n"
+                "id = \"DomainOkSky\"\n"
+                "name = \"DomainOkSky\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"Sky\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\"]\n",
+                MaterialDomain::Sky, false, nullptr
+            },
+            {
+                "Checker2D (no TexCoord required)",
+                "schema = 4\n"
+                "id = \"DomainOkChecker2D\"\n"
+                "name = \"DomainOkChecker2D\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"Checker2D\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\"]\n",
+                MaterialDomain::Checker2D, true, "checkerboard_2d_source"
+            },
+            {
+                "DebugNormal",
+                "schema = 4\n"
+                "id = \"DomainOkDebugNormal\"\n"
+                "name = \"DomainOkDebugNormal\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"DebugNormal\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"Normal\"]\n",
+                MaterialDomain::DebugNormal, true, "debug_normal_source"
+            },
+        };
+
+        for (const DomainAcceptProbe &probe : accept_probes)
+        {
+            MaterialDefinitionFileData data;
+            const MaterialDefinitionFileParseResult parse_result =
+                ParseMaterialDefinitionFile(
+                    probe.content, static_cast<int>(std::strlen(probe.content)), data);
+            if (parse_result != MaterialDefinitionFileParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("domain contract rejected a legal material: ") + probe.label
+                    + " ('" + data.parse_error.key + "': " + data.parse_error.detail.c_str()
+                    + ")");
+                continue;
+            }
+
+            if (data.definition.domain != probe.expect_domain)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("legal material lost its domain: ") + probe.label);
+            }
+
+            const char *derived = data.definition.material_source_module_name;
+            if (probe.expect_source_derived)
+            {
+                if (!derived || std::strcmp(derived, probe.expect_source) != 0)
+                    result.diagnostics.emplace_back(
+                        std::string("legal material must derive source module '")
+                        + probe.expect_source + "' for " + probe.label + ", got '"
+                        + (derived ? derived : "<null>") + "'");
+            }
+            else if (derived && *derived)
+            {
+                // no_material_source 领域：兜底逻辑不得凭空注入来源模块。
+                result.diagnostics.emplace_back(
+                    std::string("no-source domain must not derive a source module, ")
+                    + probe.label + " got '" + derived + "'");
             }
         }
 

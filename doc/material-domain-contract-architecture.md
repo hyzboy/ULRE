@@ -72,10 +72,24 @@ return EvalPassEnvironment(PassEnvironmentInput(input, surf, materialDataIndex))
 | :--- | :--- | :--- | :--- | :--- |
 | `StandardOpaque` | `Position` `UV0` `Normal` | `base_color` `roughness` `metallic` `occlusion` `opacity_mask` `normal` | `pbr_surface_source` + `ntb_tangent_vbo_normalmap` | ✅ 已实现 |
 | `UI2D` | `Position` `UV0` | `sprite` | `texture_source` + `ntb_orthonormal` | ✅ 已实现 |
+| `UnlitSolid` | `Position` | **无** | `unlit_source` | ✅ 已实现 |
+| `VertexColor` | `Position` `Color` | **无** | `vertex_color_source` | ✅ 已实现 |
+| `VertexPalette` | `Position` `Color` `TransformID` `Size` | **无** | `vertex_color_source` | ✅ 已实现 |
+| `VertexLuminance` | `Position` `Luminance` | **无** | `luminance_source` | ✅ 已实现 |
+| `UnlitTexture` | `Position` `UV0` | `base_color` | `texture_source` | ✅ 已实现 |
+| `Text2D` | `Position` `UV0` | `base_color` | `text_source_gpu` | ✅ 已实现 |
+| `Sky` | `Position` | `sky_cube`（可选） | 无（`no_material_source`） | ✅ 已实现 |
+| `DebugNormal` | `Position` `Normal` | **无** | `debug_normal_source` | ✅ 已实现 |
+| `Checker2D` | `Position` | **无** | `checkerboard_2d_source` | ✅ 已实现 |
+| `Checker3D` | `Position` | **无** | `checkerboard_3d_source` | ✅ 已实现 |
+| `ErrorChecker3D` | `Position` | **无** | `error_checkerboard_3d_source` | ✅ 已实现 |
 | `Foliage` | 待定 | 待定 | — | ⬜ 未实现 |
 | `Terrain` | 待定 | 待定 | — | ⬜ 未实现 |
 | `HumanSkin` | 待定 | 待定 | — | ⬜ 未实现 |
-| `Custom` | 不校验 | 不校验 | — | ✅ 向后兼容逃生口 |
+| `Custom` | 不校验 | 不校验 | — | ⚠ 仅历史资产 |
+
+> 表中 16 个非 Custom 领域与 `MaterialDomainContractCount` 一一对应，
+> 有 `static_assert` 强制。加领域必须同时改枚举、契约表、计数三处。
 
 ### 3.1 为什么 StandardOpaque 的契约里没有 `Tangent`
 
@@ -115,9 +129,12 @@ ShaderGen 按**声明顺序**排布材质引用行。调整契约表里既有领
 材质 TOML 不写 `domain` 键 → `MaterialDomain::Custom` → `ValidateMaterialDefinitionDomain`
 **直接返回 OK**，不做任何校验。
 
-这是刻意的向后兼容设计：schema-4 的历史材质（包括全部示例与既有 Production 资产）
-一夜之间全部变成非法是不可接受的。但 `Custom` 不是"新材质可以不写 domain"的许可——
-新增资产应当声明领域，`Custom` 只会随着阶段四的资产收敛逐步消失。
+这是刻意的向后兼容设计：schema-4 的历史材质一夜之间全部变成非法是不可接受的。
+但 `Custom` 的语义已经收窄为「**临时实验 / 尚未定型的表面形态**」：
+
+- 它是开发期的草稿位，不是交付形态；
+- 仓库内 14 个材质**全部**已落在具体领域，`Custom` 计数为零；
+- 新增材质默认应当选一个已有领域，只有"确实说不出这是哪种表面"时才允许临时用 `Custom`。
 
 > ⚠ 实现细节：`ValidateMaterialDefinitionDomain` 对 `Custom` 返回
 > `MaterialDomainValidationResult::OK` 而**不是** `NoContract`。调用方只把 `OK` 当通过，
@@ -133,12 +150,13 @@ ParseMaterialDefinitionFile(.material.toml)
   ├─ ParseDefinition                 ← 解析 domain 键（缺省 = Custom）
   ├─ ValidateMaterialDefinitionKeys  ← 顶层键白名单（含 "domain"）
   └─ ValidateMaterialDefinitionDomain
-       ├─ Custom            → OK（豁免）
+       ├─ Custom            → OK（豁免，仅限临时实验）
        ├─ 顶点语义 bitmask  → definition.vertex_requirements 必须覆盖
        ├─ 顶点提供策略      → provider_policy 必须允许派生
-       ├─ 材质源模块        → 有规范名则可省略、但不得自选（UI2D 豁免）
+       ├─ 材质源模块        → 有规范名则可省略、但不得自选；
+       │                       no_material_source 领域则禁止声明
        ├─ NTB 模块          → 同上，有规范名则可省略、但不得自选
-       └─ 纹理槽            → 白名单 + must_declare
+       └─ 纹理槽            → 白名单 + must_declare（空槽表则禁止任何槽）
 ```
 
 任何一步失败都返回人类可读的 `out_detail`，由
@@ -308,43 +326,84 @@ domain = "StandardOpaque"
 
 行为等价，但"这份资产属于哪个领域"从**隐式推断**变成**显式声明**。
 
-### 7.5 领域边界的第二条：哪些材质**不该**进领域
+### 7.5 领域边界的第二条：原本"不该进领域"的 13 个材质，最终怎么进的
 
-阶段四只把 `lit.material.toml` 收进 `StandardOpaque`，其余 13 个材质显式标注
-`domain = "Custom"`。这不是"漏收敛"，而是**边界判断**：
+阶段四只把 `lit.material.toml` 收进 `StandardOpaque`，其余 13 个一开始标注为
+`domain = "Custom"`。当时的理由是：领域概念描述的是「**模型表面**」——由美术/场景
+提供的资产，其顶点语义与纹理槽必须收敛，才能推导「同领域 ⇒ 同 layout ⇒ 可合批」，
+而这些材质不是模型表面：
 
-领域概念描述的是「**模型表面**」——由美术/场景提供的资产，其顶点语义与纹理槽
-必须收敛，才能推导「同领域 ⇒ 同 layout ⇒ 可合批」。而下列材质不是模型表面：
-
-| 类别 | 材质 | 存在的问题 |
+| 类别 | 材质 | 当时的障碍 |
 | :--- | :--- | :--- |
 | 调试诊断 | `checkerboard_2d/3d`、`error_checkerboard_3d`、`debug_normal_color` | 专用 source 模块，不做表面计算 |
 | 无纹理 | `pure_color`、`vertex_color/luminance/palette` | `UI2D` 要求 `must_declare` 的 `sprite` 槽 |
 | 文本 | `text_2d_gpu`、`text_2d_gpu_bitmap` | 走 `mesh_shader`，顶点语义不同 |
 | 天空 | `sky_cube`、`sky_minimal` | `profile = None`，整段配置不发射 |
 
-把它们硬塞进现有领域，唯一办法是放宽 `must_declare` 或加特例分支——正是
-§4.1 明令禁止的「放宽契约」。因此采用**显式标注**：
+**后来否掉了「标注 Custom」这个折衷**，理由是它留下了一个真实的后门：
+`Custom` 不做任何校验，新增引擎材质只要写 `domain = "Custom"` 就能绕过全部契约，
+门禁永远发现不了「有人偷偷加了一种表面形态」。这恰好是本架构要消灭的东西。
 
-```toml
-# 引擎内部用途材质：由代码按固定语义直接构造，不是模型表面资产，
-# 故不参与领域契约（顶点语义 / 纹理槽白名单）。此处显式标注而非
-# 省略，便于门禁区分「已定性」与「漏填」。
-domain = "Custom"
+正确的解不是放宽 `UI2D`（那会毁掉它的 `sprite` 语义），而是**新增领域**：
+13 个材质按「表面语义族」归并成 11 个新领域（见 §3 表），每个都有真实的模块引用
+与封闭的顶点语义。判据从「是不是美术资产」改成了：
+
+> **只要这份材质产出的表面数据能用一句话说清"它是什么"，它就够格成为一个领域。**
+> 说不清的才是 Custom。
+
+于是代价反转了：新增一种表面形态现在必须新增领域（改枚举 + 契约表 + 计数 +
+过门禁），成本高到会让人先想清楚"这真的是新形态吗"。这正是"极简固定代码"要的。
+
+### 7.6 领域化过程中暴露的三个实现约束
+
+**① 无槽领域必须被允许。** 早期门禁断言 `texture_slot_count <= 0` 就是"契约腐化"，
+等于要求每个领域至少一个纹理槽。但 `UnlitSolid`/`VertexColor`/`Checker2D` 等
+结构上就不该有贴图——给它们开一个槽白名单等于允许"纯色材质偷偷挂贴图"这种
+自相矛盾的组合。现在规则改为：**只要指针与计数一致**（都是空，或都非空）
+就合法；不一致（`nullptr` + 非零计数）才是笔误。
+
+**② 无光领域不能填 `reference_ntb_module`。** 校验器对 `ntb == nullptr` 的处理是
+「不校验、也不要求声明」，而填一个名字会让 `ApplyDomainModuleDefaults`
+**兜底注入** NTB 模块代码——凭空改变既有材质的 shader 输出。无光表面不做切线空间
+法线贴图，NTB 没有消费方，因此这一族全部置 `nullptr`。
+（`DebugNormal` 需要法线，但直接取顶点 `Normal` varying，同样不需要标架。）
+
+**③ 「结构上没有来源模块」与「尚未实现」不能共用 `nullptr`。** 校验器对
+`reference_material_source_module == nullptr` 的默认处理是"资产必须自行声明来源模块"
+（那是给未实现领域的保守兜底）。但 `Sky` 是**实现完成且不需要**该模块，两者语义相反。
+因此契约表新增显式位 `no_material_source`：置位 ⇒ 资产不写才是对的，写了任何模块名
+都是错配。原代码里那句 `domain != MaterialDomain::UI2D` 特判是死代码
+（`UI2D` 的 reference 非空，永远走不到该分支），一并清除。
+
+### 7.7 收敛结果
+
+14 个材质**全部**落在具体领域，`Custom` 在仓库里已归零：
+
+```
+Loaded 14 material TOML definitions (0 errors)
 ```
 
-写出来而不是省略，意义在于把「沉默」变成「声明」：将来门禁可以要求
-「所有材质必须出现 `domain` 键」，`Custom` 从此是一个合法分类而非逃生门。
+| 领域 | 材质 |
+| :--- | :--- |
+| `StandardOpaque` | `lit` |
+| `UnlitSolid` | `pure_color` |
+| `VertexColor` | `vertex_color` |
+| `VertexPalette` | `vertex_palette_color` |
+| `VertexLuminance` | `vertex_luminance` |
+| `UnlitTexture` | `unlit_texture` |
+| `Text2D` | `text_2d_gpu`、`text_2d_gpu_bitmap` |
+| `Sky` | `sky_cube`、`sky_minimal` |
+| `DebugNormal` | `debug_normal_color` |
+| `Checker2D` | `checkerboard_2d` |
+| `Checker3D` | `checkerboard_3d` |
+| `ErrorChecker3D` | `error_checkerboard_3d` |
 
-### 7.6 已知结构性缺口（下阶段候选）
+> `VertexColor` 与 `VertexPalette` 刻意分成两个领域而不是一个：
+> 后者多要求 `TransformID` + `Size`，这是"按顶点变换/查调色板"的硬前提。
+> 合并会让 `vertex_palette_color` 缺属性时仍然通过校验——那正是契约要拦的东西。
+> 代价是两个领域引用同一个 `vertex_color_source` 模块，视觉上"重复"，
+> 但契约约束的是输入前提，不是模块归属。
 
-`UI2D` 契约目前只有 `sprite` 一个 `must_declare` 槽，reference 为
-`texture_source` / `ntb_orthonormal`。这只能容纳图集精灵类材质，
-`unlit_texture` 因为槽名叫 `base_color` 也进不去。
-
-要么扩容 `UI2D` 的槽表（`sprite` + `base_color` 并存会削弱语义），
-要么承认需要第 6 个承载「引擎内部无光材质」的领域。**这是设计决策，
-未在本阶段擅自决定**——先记录缺口，等资产侧真实需求明确后再定。
 
 ---
 
@@ -372,3 +431,12 @@ domain = "Custom"
 | 二 · 宏头生成器 | `feature/shadergen-config-generator` | ShaderGen 降维为 `Generated_DomainConfig.h` 生成器；剥离 AST 拼接 |
 | 三 · 环境解耦 | `feature/pass-environment-decoupling` | Pass 决定注入哪个环境头；消除 `lit_ibl` 类材质概念 |
 | 四 · 资产收敛 | `feature/surface-asset-unification` | 资产只填领域 + 值 + 图；领域兜底模块名；合批率收敛 |
+| 四·补 · 领域归零 | `ShaderGen2ndReforge` | 13 个 `Custom` 材质全部领域化；领域数 5 → 16；`Custom` 归零 |
+
+### 9.1 剩余工作
+
+| 项 | 说明 |
+| :--- | :--- |
+| `Foliage` / `Terrain` / `HumanSkin` | 三个领域已在枚举里占位但无契约与模块，落地时需同补 §4.1 的四步 |
+| `MaterialCoverageContract` 覆盖登记 | 4 个无光族 surface 模块尚未登记覆盖率规则；若给这些领域加 alpha test 必须先补 |
+| 材质粒度细化 | 目前一个领域一个材质；后续同领域多材质（不同 albedo/粗糙度）应共享 `layout_hash`，可验证合批 |
