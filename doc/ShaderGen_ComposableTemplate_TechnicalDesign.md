@@ -366,7 +366,9 @@ SSAO 可先由 fullscreen pass 写入 AO texture，再由 Forward Lit 的 AO pro
 
 > **状态注(2026-09)**:这条**已落地**——`RenderTemplateID` 里就有 `ForwardLitUnshadowedAO`(名 `forward_lit_unshadowed_ao`)与 `ForwardUnlit`,AO "恒等"也有独立模板 `ForwardLitShadowedIdentityAO` 与模块 `ShaderLibrary/ao/identity.glsl`(`float GetAmbientOcclusion(SurfaceInput)`,:12);PCF shadow 已有实现 `ShaderLibrary/shadow/pcf_shadow.glsl`(签名 `float GetShadowFactor(SurfaceInput)`)。**未落地**的是 SSAO:全树 0 命中,也没有 fullscreen AO pass 的证据。
 >
-> **状态注(2026-10,AO 接线)**:此前 `GetAmbientOcclusion()` 是**零调用者**的死契约(AO 槽 include 进 `forward_lit` 但从不被调用,`lighting.ao` 只来自 `surface.ao`)。现已接线:`forward_lighting.glsl:36-38` 执行 `lighting.ao *= GetAmbientOcclusion(si)`。该槽只在 `ForwardLitSlots` 里(`forward_lit_unshadowed_ao` 用的是 `ForwardLitUnshadowedSlots`,没有此槽),所以调用点由宏 `HGL_USE_AMBIENT_OCCLUSION_PROVIDER` 1/0 守卫,宏在 `FragmentTemplateComposer::BuildFragmentDefines` 按 **template.slots** 判定(不能用 `ResolvedInclude`:它只查 profile 模块表,会把 profile 提供但模板不发射的模块误报为存在)。`identity_ao` 恒返回 1.0 ⇒ 输出逐位不变。
+> **状态注(2026-10,AO 接线)**:此前 `GetAmbientOcclusion()` 是**零调用者**的死契约(AO 槽 include 进 `forward_lit` 但从不被调用,`lighting.ao` 只来自 `surface.ao`)。现已接线:`ShaderLibrary/compositor/forward_lighting.glsl` 执行 `lighting.ao *= GetAmbientOcclusion(si)`。`identity_ao` 恒返回 1.0 ⇒ 输出逐位不变。
+>
+> **订正(2026-10,阶段二之二)**:上一版靠宏 `HGL_USE_AMBIENT_OCCLUSION_PROVIDER` 守卫调用点是**错解**——GLSL 在函数定义处解析符号,与调用点可达性无关;正确做法是把 AO 槽升级为**所有** forward 光照模板的必需槽(`ForwardLitSlots` 与 `ForwardLitUnshadowedSlots` 均含 `AmbientOcclusionProvider`),缺省实现由空对象 `ao/identity.glsl` 提供,调用点无条件化,该宏已整删。同理 `ForwardUnlit` / 两个 shadow caster 模板也把 `NTBProvider` 升为必需槽,空对象是 `ShaderLibrary/ntb/ntb_none.glsl`(返回 `BuildOrthoNTB(normalize(surface.worldNormal))`,与旧路径 `normalize(si.worldNormal)` 逐字节一致)。
 
 ### 4.7 最小输出模块：`output/forward_hdr.glsl`
 

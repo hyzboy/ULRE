@@ -69,23 +69,21 @@ namespace hgl::graph::mtl
             return;
 
         // ── provider 开关 ────────────────────────────────────────────────
-        // ForwardLit 恒为 1（模板表里三个槽都是 required）；
-        // ForwardUnlit 按模块存在性赋值。因此这里按 profile 发射，
-        // 而**不是**按 ShaderConfig 里的布尔字段——后者仅供摘要/检查使用。
+        // ForwardLit 恒为 1；ForwardUnlit 按模块存在性赋值。因此这里按 profile
+        // 发射，而**不是**按 ShaderConfig 里的布尔字段——后者仅供摘要/检查使用。
+        //
+        // NTB / AO 两个开关宏已随「消灭主着色器条件编译」删除：两者现在是所有
+        // 相关模板的必需槽，缺省由空对象模块（ntb/ntb_none.glsl、ao/identity.glsl）
+        // 补位，着色器里没有任何 #if 读它们。
         if (config.profile == ShaderConfigProfile::ForwardLit)
         {
             AppendDefine(out, "HGL_USE_MATERIAL_SOURCE_PROVIDER", 1u);
-            AppendDefine(out, "HGL_USE_NTB_PROVIDER", 1u);
             AppendDefine(out, "HGL_USE_SCENE_LIGHTING", 1u);
-            AppendDefine(out, "HGL_USE_AMBIENT_OCCLUSION_PROVIDER",
-                         config.use_ambient_occlusion_provider ? 1u : 0u);
         }
         else
         {
             AppendDefine(out, "HGL_USE_MATERIAL_SOURCE_PROVIDER",
                          config.use_material_source_provider ? 1u : 0u);
-            AppendDefine(out, "HGL_USE_NTB_PROVIDER",
-                         config.use_ntb_provider ? 1u : 0u);
             AppendDefine(out, "HGL_USE_SCENE_LIGHTING", 0u);
         }
 

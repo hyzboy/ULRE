@@ -45,8 +45,8 @@ namespace hgl::graph::mtl
     enum class ShaderConfigProfile : unsigned char
     {
         None = 0,
-        ForwardLit,     ///< 光照模板：material source / NTB / scene lighting 恒为 1
-        ForwardUnlit,   ///< 非光照模板：前两者按模块存在性赋值，scene lighting 恒 0
+        ForwardLit,     ///< 光照模板：material source / scene lighting 恒为 1
+        ForwardUnlit,   ///< 非光照模板：material source 按模块存在性赋值，scene lighting 恒 0
     };
 
     /// 材质 TOML 里 `channels = n` 的规范化结果（n == 0 的声明不进来）。
@@ -81,10 +81,11 @@ namespace hgl::graph::mtl
         ShaderConfigProfile profile = ShaderConfigProfile::None;
 
         // ── provider 开关（仅 profile != None 时发射）────────────────────────
+        // NTB / AO 的开关位已随「消灭主着色器条件编译」一起删除：
+        // 两者现在是所有相关模板的必需槽，换实现 = 换槽模块（空对象补位），
+        // 不再是编译期开关。
         bool use_material_source_provider = false;
-        bool use_ntb_provider = false;
         bool use_scene_lighting = false;
-        bool use_ambient_occlusion_provider = false;
 
         // ── 阴影 PCF（仅当模板真带 shadow_provider 槽）──────────────────────
         bool emit_shadow_pcf = false;

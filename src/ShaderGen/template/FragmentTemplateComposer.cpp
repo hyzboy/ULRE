@@ -310,23 +310,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        // 模板 slots 里是否存在某角色（必需性/发射顺序的唯一真源在 template.slots）。
-        // 与 ResolvedInclude 的区别：后者只查 profile 的模块表，不看模板槽位表，
-        // 因此 profile 提供但模板不发射的模块会被它误报为"存在"。
-        bool TemplateHasSlot(
-            const RenderTemplateDefinition *definition,
-            const ShaderModuleSlotRole role)
-        {
-            if (!definition)
-                return false;
-            for (hgl::uint32 index = 0; index < definition->slot_count; ++index)
-            {
-                if (definition->slots[index].role == role)
-                    return true;
-            }
-            return false;
-        }
-
         // 解析某 slot 的 #include；缺失（必需）则失败。
         bool BuildSlotIncludeText(
             const FragmentTemplateComposer::ComposeInput &input,
@@ -378,23 +361,13 @@ namespace hgl::graph::mtl
             {
                 config.profile = ShaderConfigProfile::ForwardLit;
                 config.use_material_source_provider = true;
-                config.use_ntb_provider = true;
                 config.use_scene_lighting = true;
-                // AO 槽只在 ForwardLitSlots 里（ForwardLitUnshadowedSlots 没有），
-                // 故必须按 template.slots 判定——ResolvedInclude 只看 profile 模块表，
-                // 对 forward_lit_unshadowed_ao 会误报 ao/identity.glsl 存在。
-                // forward_lighting.glsl 据此决定是否调用 GetAmbientOcclusion()。
-                config.use_ambient_occlusion_provider = TemplateHasSlot(
-                    input.resolved_template ? input.resolved_template->definition : nullptr,
-                    ShaderModuleSlotRole::AmbientOcclusionProvider);
             }
             else if (id == RenderTemplateID::ForwardUnlit)
             {
                 config.profile = ShaderConfigProfile::ForwardUnlit;
                 config.use_material_source_provider =
                     ResolvedInclude(input, ShaderModuleSlotRole::MaterialSourceProvider) != nullptr;
-                config.use_ntb_provider =
-                    ResolvedInclude(input, ShaderModuleSlotRole::NTBProvider) != nullptr;
                 config.use_scene_lighting = false;
             }
             else
@@ -601,6 +574,14 @@ namespace hgl::graph::mtl
                 input, ShaderModuleSlotRole::SurfaceProvider);
             if (!surface_module)
                 return false;
+            // NTB 必须早于 surface：material_surface.glsl 的定义体里无条件调用
+            // GetNTB（本 pass 只用 EvalAlpha，但 GLSL 在定义处就要解析符号）。
+            const char *ntb_module = ResolvedInclude(
+                input, ShaderModuleSlotRole::NTBProvider);
+            if (!ntb_module)
+                return false;
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+                IncludeTemplate(ntb_module), "ShadowCaster.NTB", ntb_module);
             AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
                 IncludeTemplate(surface_module), "ShadowCaster.Surface",
                 surface_module);

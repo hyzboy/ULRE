@@ -32,16 +32,21 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::SurfaceProvider }
         };
 
-        // ForwardLit 的 defines 恒为 "HGL_USE_MATERIAL_SOURCE_PROVIDER 1" /
-        // "HGL_USE_NTB_PROVIDER 1"（FragmentTemplateComposer::BuildFragmentDefines 按模板
-        // 分支发射），故表中这两个槽必须保持 required=true：置 false 会让定义里承诺
-        // 恒为 1 的宏指向缺失模块。必需性判定的唯一执行点 = BuildAllSlotIncludeText。
+        // ForwardLit 的 defines 恒为 "HGL_USE_MATERIAL_SOURCE_PROVIDER 1"（
+        // FragmentTemplateComposer::BuildFragmentDefines 按模板分支发射），故表中该槽
+        // 必须保持 required=true：置 false 会让定义里承诺恒为 1 的宏指向缺失模块。
+        // 必需性判定的唯一执行点 = BuildAllSlotIncludeText。
+        //
+        // AmbientOcclusionProvider 在所有 forward 光照模板里都是必需槽：
+        // forward_lighting.glsl 无条件接线 `GetAmbientOcclusion`，“本模板不做 AO”
+        // 由恒等实现 identity_ao 表达，而不是条件编译。
         constexpr RenderTemplateSlot ForwardLitUnshadowedSlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::DiffuseLightProvider },
             { ShaderModuleSlotRole::SpecularLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
+            { ShaderModuleSlotRole::AmbientOcclusionProvider },
             { ShaderModuleSlotRole::LightingModel },
             { ShaderModuleSlotRole::MaterialSourceProvider },
             { ShaderModuleSlotRole::NTBProvider },
@@ -49,18 +54,24 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::SurfaceProvider }
         };
 
+        // NTBProvider 是必需槽：material_surface.glsl 无条件调用 GetNTB（GLSL 在
+        // 函数定义处就要解析符号，与调用点是否可达无关）。“不需要法线扰动”由空对象
+        // ntb/ntb_none.glsl 表达。
         constexpr RenderTemplateSlot ForwardUnlitSlots[] =
         {
             { ShaderModuleSlotRole::OutputPolicy },
             { ShaderModuleSlotRole::MaterialSourceProvider },
+            { ShaderModuleSlotRole::NTBProvider },
             { ShaderModuleSlotRole::SurfaceProvider }
         };
 
         // OutputPolicy 仅参与校验、不发射：WriteMaterialOutput 由
         // FragmentTemplateComposer::AppendOutputDeclarations 内联生成。
+        // NTBProvider 必需的理由同上（surface 模块要解析 GetNTB）。
         constexpr RenderTemplateSlot ShadowCasterOpaqueSlots[] =
         {
             { ShaderModuleSlotRole::MaterialSourceProvider, false },
+            { ShaderModuleSlotRole::NTBProvider },
             { ShaderModuleSlotRole::SurfaceProvider },
             { ShaderModuleSlotRole::OutputPolicy }
         };
@@ -68,6 +79,7 @@ namespace hgl::graph::mtl
         constexpr RenderTemplateSlot ShadowCasterMaskedSlots[] =
         {
             { ShaderModuleSlotRole::MaterialSourceProvider },
+            { ShaderModuleSlotRole::NTBProvider },
             { ShaderModuleSlotRole::SurfaceProvider },
             { ShaderModuleSlotRole::OutputPolicy }
         };

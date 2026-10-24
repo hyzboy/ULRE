@@ -31,13 +31,10 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si, uin
     lighting.fresnel = surf.fresnel;
     lighting.ao = surf.ao;
     // AO 契约：ambient_occlusion_provider 槽的模块提供
-    // `float GetAmbientOcclusion(SurfaceInput)`。该槽只在 ForwardLitSlots 里，
-    // forward_lit_unshadowed_ao 没有它 ⇒ 由 HGL_USE_AMBIENT_OCCLUSION_PROVIDER 关闭调用
-    // （宏由 FragmentTemplateComposer::BuildFragmentDefines 按模板槽位发射）。
-    // 当前唯一实现 identity_ao 恒返回 1.0，故本接线不改变任何输出。
-#if defined(HGL_USE_AMBIENT_OCCLUSION_PROVIDER) && HGL_USE_AMBIENT_OCCLUSION_PROVIDER
+    // `float GetAmbientOcclusion(SurfaceInput)`。该槽现在是**所有** forward 光照
+    // 模板的必需槽（不需要 AO 的模板用恒等实现 identity_ao 补位），因此这里无条件
+    // 接线 —— 不再有 HGL_USE_AMBIENT_OCCLUSION_PROVIDER 分支。
     lighting.ao *= GetAmbientOcclusion(si);
-#endif
     lighting.emissive = surf.emissive;
     lighting.alpha = surf.alpha;
 

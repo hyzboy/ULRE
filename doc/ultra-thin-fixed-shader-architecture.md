@@ -177,6 +177,23 @@ C++ 端在当前 Pass 构建或调度时，根据 Pass 配置在内存中生成�
 > ```
 > 换算法 = 换掉其中一行，其余 10 行逐字节不变（门禁 `PC.pipeline-config-emit`
 > 钉住了「只换一行则只变一行、摘要必变、缓存键不串味」）。
+>
+> **阶段二之二（2026-10，消灭最后三处条件编译）**：`#include` 面收敛完成后，主着色器
+> 里剩下的条件编译只有三处，全部消除，办法统一是**「槽位升必需 + 空对象补位」**：
+>
+> | 模板 | 新增必需槽 | 空对象 |
+> |---|---|---|
+> | `ForwardLitUnshadowedSlots`（10 槽） | `AmbientOcclusionProvider` | `ao/identity.glsl` |
+> | `ForwardUnlitSlots`（4 槽） | `NTBProvider` | `ntb/ntb_none.glsl`（新增） |
+> | `ShadowCasterOpaqueSlots` / `ShadowCasterMaskedSlots`（各 4 槽） | `NTBProvider` | 同上 |
+>
+> 结果：`ShaderLibrary/surface/material_surface.glsl` 与
+> `ShaderLibrary/compositor/forward_lighting.glsl` 里**零 `#if`**；宏区从 3 个宏降到 2 个
+> （`HGL_USE_MATERIAL_SOURCE_PROVIDER` + `HGL_USE_SCENE_LIGHTING`）。
+> `ntb_none` 返回 `BuildOrthoNTB(normalize(surface.worldNormal))`，其 `N` 与旧路径
+> `normalize(si.worldNormal)` 完全一致 ⇒ `ForwardUnlit` 输出逐字节不变。
+> shadow caster 走的是手写合成（不进 `.tmpl`），NTB include 显式排在
+> `material_surface` 之前，否则 `GetNTB` 未声明。
 
 ### 4.2 物理级固定代码主着色器（`standard_opaque.frag.glsl`）
 代码逻辑直线向下，无任何 `#if` 分支，具备最强可读性与可维护性：
@@ -296,8 +313,21 @@ color = [1.0, 0.0, 0.0, 1.0]
    单一真源与唯一排版出口；`FragmentTemplateComposer` 已改为委托它，不再自己
    遍历 `template.slots`。门禁 `PC.pipeline-config-emit` 覆盖顺序、必需/可选
    缺失、一行换算法、摘要敏感性。
-2. ⬜ 消灭主着色器里最后三处条件编译（`material_surface.glsl` 的
+2. ✅ 消灭主着色器里最后三处条件编译（`material_surface.glsl` 的两处
    `#if HGL_USE_NTB_PROVIDER`、`forward_lighting.glsl` 的
-   `#if defined(HGL_USE_AMBIENT_OCCLUSION_PROVIDER`）——把对应槽位改成必需，
-   缺失即空对象模块而不是不发射。
-3. ⬜ 收敛 `BuildFragmentDefines` 里为兼容旧槽位而保留的过渡判定。
+   `#if defined(HGL_USE_AMBIENT_OCCLUSION_PROVIDER`）。做法是**把槽位改成必需 +
+   补空对象**，而不是加宏：`ForwardUnlitSlots`（4 槽）与两个 shadow caster
+   槽表（各 4 槽）补 `NTBProvider`，`ForwardLitUnshadowedSlots`（10 槽）补
+   `AmbientOcclusionProvider`；空对象是新增的 `ShaderLibrary/ntb/ntb_none.glsl`
+   （复用已有 `ao/identity.glsl`）。`HGL_USE_NTB_PROVIDER` /
+   `HGL_USE_AMBIENT_OCCLUSION_PROVIDER` 两个宏连同 `ShaderConfig` 里的两个字段
+   一并整删，宏区只剩 `HGL_USE_MATERIAL_SOURCE_PROVIDER` +
+   `HGL_USE_SCENE_LIGHTING`。
+   > **为什么必须是「必需槽 + 空对象」而不是「可选槽 + 宏」**：GLSL 在**函数定义处**
+   > 解析符号，`EvalSurface` 无条件调用 `GetNTB`、`forward_lighting` 无条件调用
+   > `GetAmbientOcclusion`，因此凡 include 了这两个文件的模板都必须有实现；
+   > 用宏只守卫调用点，缺陷仍然暴露在定义处。
+3. ✅ 收敛 `BuildFragmentDefines` 里为兼容旧槽位而保留的过渡判定——NTB/AO
+   两个字段删除后，该函数只剩 `material_source` / `scene_lighting` 两个布尔，
+   并进一步委托 `ShaderConfig` 的 `EmitShaderConfigDefines` 发射。
+   `TemplateHasSlot` 辅助函数随之成为死代码，已删。

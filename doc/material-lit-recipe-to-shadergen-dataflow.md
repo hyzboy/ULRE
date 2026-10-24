@@ -89,7 +89,7 @@
 
 `Compose` 产出的不是内联代码，而是以手写模板 `ShaderLibrary/fragment/forward_lit.glsl.tmpl`（含 `main()`）为骨架、按 `{{slot}}` 占位符填入后的 `#version 450` + 宏 + 一串 `#include`。关键对应关系：
 
-- 宏区：`HGL_USE_MATERIAL_SOURCE_PROVIDER 1`、`HGL_USE_NTB_PROVIDER 1`、`HGL_USE_SCENE_LIGHTING 1`，以及 **`MTL_TEX_NORMAL_CHANNELS 2`——直接来自 toml 里 normal 纹理的 `channels = 2`**（BC5 双通道法线，Z 在 shader 还原）；
+- 宏区：`HGL_USE_MATERIAL_SOURCE_PROVIDER 1`、`HGL_USE_SCENE_LIGHTING 1`，以及 **`MTL_TEX_NORMAL_CHANNELS 2`——直接来自 toml 里 normal 纹理的 `channels = 2`**（BC5 双通道法线，Z 在 shader 还原）。**订正（2026-10，阶段二）**：宏区现由 `src/ShaderGen/contract/ShaderConfig.cpp` 的 `EmitShaderConfigDefines` 单一发射，`HGL_USE_NTB_PROVIDER` / `HGL_USE_AMBIENT_OCCLUSION_PROVIDER` 两个宏已整删——槽位缺失改用「空对象模块」补位（`ntb/ntb_none.glsl`、`ao/identity.glsl`），GLSL 侧不再留调用点条件编译；
 - 函数区槽位 include 由 `ShaderModuleSlotRole` 定位：`MaterialSourceProvider` 即 `#include "material/pbr_surface_source.glsl"`，`NTBProvider` 即 `ntb/ntb_tangent_vbo_normalmap.glsl`。TOML 指定的是注册名，路径来自注册来源，不再按文件 basename 猜名字；
 - `main()` 固定管线：装配 `SurfaceInput` → `EvalSurface(si, materialDataIndex)` → `BuildForwardLightingInput` → `EvalLighting` → 输出。
 

@@ -451,7 +451,12 @@ int main(int argc, char **argv)
             "compositor/flat_lighting.glsl")
      || !profile.AddModule(
             ShaderModuleSlotRole::MaterialSourceProvider, "unlit_source",
-            "material/unlit_source.glsl"))
+            "material/unlit_source.glsl")
+     // NTBProvider 是 ForwardUnlit 的必需槽（material_surface.glsl 无条件调用
+     // GetNTB），不需要法线扰动的模板用空对象 ntb_none 补位。
+     || !profile.AddModule(
+            ShaderModuleSlotRole::NTBProvider, "ntb_none",
+            "ntb/ntb_none.glsl"))
         return 1;
 
     RenderTemplateRequest request;
@@ -461,7 +466,7 @@ int main(int argc, char **argv)
             profile, request, diagnostic))
         return 2;
     if (request.template_id != RenderTemplateID::ForwardUnlit
-     || request.module_root_count != 3)
+     || request.module_root_count != 4)
         return 3;
     ShaderCodeModuleRegistry registry;
     int load_errors = 0;
@@ -489,7 +494,7 @@ int main(int argc, char **argv)
         return 9;
     const SceneRenderTemplateProfile shadow_profile =
         MakeShadowCasterProfile();
-    if (shadow_profile.module_count != 2
+    if (shadow_profile.module_count != 3
      || shadow_profile.roles[0] != ShaderModuleSlotRole::SurfaceProvider)
         return 10;
     RenderTemplateRequest shadow_request;

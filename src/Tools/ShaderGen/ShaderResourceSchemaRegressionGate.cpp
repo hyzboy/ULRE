@@ -939,7 +939,6 @@ namespace
             if (lit_text.compare(0, 8, "#version") != 0
              || has(lit_text.substr(8), "#version")
              || !has(lit_text, "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1")
-             || !has(lit_text, "#define HGL_USE_NTB_PROVIDER 1")
              || !has(lit_text, "#include \"lighting/forward_pbr.glsl\"")
              || !has(lit_text, "#include \"material/pbr_surface_source.glsl\"")
              || !has(lit_text, "#include \"ntb/ntb_tangent_vbo_normalmap.glsl\"")
@@ -2492,18 +2491,18 @@ namespace
                     result.diagnostics.emplace_back(
                         "unified Lit/Unlit module schedule mismatch");
                 }
-                // AO 槽必须真的被消费：宏为 1、provider 的 #include 排在
-                // compositor 之前（否则 GetAmbientOcclusion 未声明即调用）。
-                // 此前该槽只 include 不调用，属死契约。
+                // AO 槽必须真的被消费：provider 的 #include 排在 compositor 之前
+                // （否则 GetAmbientOcclusion 未声明即调用）。此前该槽只 include
+                // 不调用，属死契约。
                 // 注：调用点在 compositor/forward_lighting.glsl 文件内部，
                 // 不会出现在组装后的模板正文里，故此处不查调用点文本。
+                // 「是否调用」已不再由宏表达（HGL_USE_AMBIENT_OCCLUSION_PROVIDER
+                // 已删除，forward_lighting 无条件接线），故这里只钉 include 顺序。
                 const size_t ao_include =
                     lit_fs.find("#include \"ao/identity.glsl\"");
                 const size_t output_include =
                     lit_fs.find("#include \"compositor/forward_lighting.glsl\"");
-                if (lit_fs.find("#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 1")
-                        == std::string::npos
-                 || ao_include == std::string::npos
+                if (ao_include == std::string::npos
                  || output_include == std::string::npos
                  || ao_include > output_include)
                 {
@@ -5313,9 +5312,7 @@ namespace
         ShaderConfig full;
         full.profile = ShaderConfigProfile::ForwardLit;
         full.use_material_source_provider = true;
-        full.use_ntb_provider = true;
         full.use_scene_lighting = true;
-        full.use_ambient_occlusion_provider = true;
         full.emit_shadow_pcf = true;
         full.shadow_pcf_poisson_taps = 16;
         full.shadow_normal_offset = 1;
@@ -5344,9 +5341,7 @@ namespace
             // std::to_string(float)，隐式提升 double 后即为该格式。
             const char *expected =
                 "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
-                "#define HGL_USE_NTB_PROVIDER 1\n"
                 "#define HGL_USE_SCENE_LIGHTING 1\n"
-                "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 1\n"
                 "#define MTL_TEX_NORMAL_CHANNELS 2\n"
                 "#define HGL_SHADOW_PCF_POISSON_TAPS 16\n"
                 "#define HGL_SHADOW_NORMAL_OFFSET 1\n"
@@ -5362,13 +5357,12 @@ namespace
         }
 
         // ── ② ForwardLit 的 provider 开关恒为 1（不看布尔字段）────────────────
-        // 模板表里三个槽都是 required，因此即使字段被置 false 也必须发射 1；
+        // 模板表里相关槽都是 required，因此即使字段被置 false 也必须发射 1；
         // 这条防的是「用字段语义悄悄改变模板族行为」。
         {
             ShaderConfig lit_no_flags;
             lit_no_flags.profile = ShaderConfigProfile::ForwardLit;
             lit_no_flags.use_material_source_provider = false;
-            lit_no_flags.use_ntb_provider = false;
             lit_no_flags.use_scene_lighting = false;
 
             std::string text;
@@ -5376,9 +5370,7 @@ namespace
 
             const char *expected =
                 "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
-                "#define HGL_USE_NTB_PROVIDER 1\n"
-                "#define HGL_USE_SCENE_LIGHTING 1\n"
-                "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 0\n";
+                "#define HGL_USE_SCENE_LIGHTING 1\n";
 
             if (text != expected)
                 result.diagnostics.emplace_back(
@@ -5386,20 +5378,18 @@ namespace
                     " family, not from the boolean fields");
         }
 
-        // ── ③ ForwardUnlit：前两者按模块存在性，scene lighting 恒 0 ───────────
+        // ── ③ ForwardUnlit：material source 按模块存在性，scene lighting 恒 0 ─
         {
             ShaderConfig unlit;
             unlit.profile = ShaderConfigProfile::ForwardUnlit;
             unlit.use_material_source_provider = false;
-            unlit.use_ntb_provider = true;
-            unlit.use_scene_lighting = false;
+            unlit.use_scene_lighting = true;
 
             std::string text;
             EmitShaderConfigDefines(unlit, text);
 
             const char *expected =
                 "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 0\n"
-                "#define HGL_USE_NTB_PROVIDER 1\n"
                 "#define HGL_USE_SCENE_LIGHTING 0\n";
 
             if (text != expected)
@@ -5929,14 +5919,15 @@ namespace
             // direct_cook_torrance_pbr，新增 diffuse_{lambert,burley,toon,none}
             // + specular_{cook_torrance,toon_step,none} + indirect_none +
             // forward_toon + shadow/full（72 → 81）。
-            if (file_count != 81)
-                result.diagnostics.emplace_back("LoadDirectory expected 81 file modules, got "
+            // 超薄架构阶段二之二：新增 ntb_none 空对象（81 → 82）。
+            if (file_count != 82)
+                result.diagnostics.emplace_back("LoadDirectory expected 82 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 81;
+            const int expected_count = 82;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -6020,6 +6011,10 @@ namespace
         require_slot_module("indirect_none", "ambient_light_provider");
         require_slot_module("forward_toon", "lighting_model");
         require_slot_module("full_shadow", "shadow_provider");
+        // 超薄架构阶段二之二：NTB / AO 变成「必需槽 + 空对象补位」，
+        // 用空对象替掉编译期开关（HGL_USE_NTB_PROVIDER / HGL_USE_AMBIENT_OCCLUSION_PROVIDER）。
+        require_slot_module("ntb_none", "ntb_provider");
+        require_slot_module("identity_ao", "ambient_occlusion_provider");
 
 
         result.passed = result.diagnostics.empty();

@@ -43,6 +43,11 @@ namespace hgl::graph::mtl
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
             "material_surface", "surface/material_surface.glsl");
+        // material_surface 无条件调用 GetNTB，故 NTB 是必需槽；unlit 不需要法线
+        // 扰动，用空对象补位（返回以世界法线为 N 的正交基）。
+        profile.AddModule(
+            ShaderModuleSlotRole::NTBProvider,
+            "ntb_none", "ntb/ntb_none.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
             "flat_lighting", "compositor/flat_lighting.glsl");
@@ -72,6 +77,11 @@ namespace hgl::graph::mtl
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
             "material_surface", "surface/material_surface.glsl");
+        // 阴影 pass 只用 EvalAlpha，从不读法线；但 material_surface.glsl 的定义里
+        // 无条件调用 GetNTB（GLSL 定义处即解析符号），所以仍需一个实现补位。
+        profile.AddModule(
+            ShaderModuleSlotRole::NTBProvider,
+            "ntb_none", "ntb/ntb_none.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
             "forward_lighting",
