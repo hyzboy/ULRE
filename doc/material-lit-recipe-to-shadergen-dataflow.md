@@ -12,15 +12,15 @@
 > ② `MTL_ROW` 的基址来自 **`GlobalAddresses` SSBO（无绑定无集，`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长）**，经 `pc_root.addr_global_addresses` 下发，不是"Scene 集里的 `GlobalAddressesInfo` UBO"；
 > ③ `RootAddresses` push constant = **80B**（首字段 `addr_global_addresses`，末位 `camera_row` + `_pad_camera`）。
 
-> 分析入口：`example/GettingStarted/SimpleSphere.cpp`（正向）与 `ShaderLibrary/material/lit.material.toml`（反向）。
+> 分析入口：`example/GettingStarted/SimpleSphere.cpp`（正向）与 `ShaderLibrary/material/lit.mi.toml`（反向）。
 > 分析日期：2026-09-13。基于历史分支 `RemoveTexture2DArray`（`git branch -a` 现仅在远端 `hyzgame/RemoveTexture2DArray` 存在，本地分支列表已无此分支）。
 > 符号与 `path:line` 已按当前代码（描述符退役后的 BDA 终态）校正。
 
-整个体系是一个三层结构，`.material.toml` 与 C++ 代码在中间汇合：
+整个体系是一个三层结构，`.mi.toml` 与 C++ 代码在中间汇合：
 
 | 层 | 结构 | 含义 | 来源 |
 |---|---|---|---|
-| Layer 1 | `MaterialDefinition` | 材质**能做什么**（能力超集） | `lit.material.toml` 解析 |
+| Layer 1 | `MaterialDefinition` | 材质**能做什么**（能力超集） | `lit.mi.toml` 解析 |
 | Layer 2 | `MaterialRecipe` | 这次渲染**要什么**（实例输入） | 应用代码（SimpleSphere） |
 | Layer 3 | `MaterialDefinitionBuildRequest` | 构建上下文（recipe + 几何 + purpose + 模板） | 渲染系统组装 |
 
@@ -36,11 +36,11 @@
 
 `MaterialRecipe` 结构本身（`inc/hgl/mtl/MaterialRecipe.h:499`）不含任何 GLSL 或 Vulkan 对象——它纯粹是声明式输入。
 
-## 二、反向：lit.material.toml → MaterialDefinition
+## 二、反向：lit.mi.toml → MaterialDefinition
 
-进程内第一次有代码碰材质注册表时（`ShaderProgramManager` 构造函数和 `GetMaterialDefinitionFileRegistry()`，`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:184`），会惰性扫描 `ShaderLibrary/material/` 下所有 `*.material.toml`，每个文件经 `ParseMaterialDefinitionFile`（`src/ShaderMaterialData/MaterialDefinitionFile.cpp:1211`，用 tomlpp 解析）变成一个 `MaterialDefinition`。
+进程内第一次有代码碰材质注册表时（`ShaderProgramManager` 构造函数和 `GetMaterialDefinitionFileRegistry()`，`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:184`），会惰性扫描 `ShaderLibrary/material/` 下所有 `*.mi.toml`，每个文件经 `ParseMaterialDefinitionFile`（`src/ShaderMaterialData/MaterialDefinitionFile.cpp:1211`，用 tomlpp 解析）变成一个 `MaterialDefinition`。
 
-`lit.material.toml` 的每个字段去向：
+`lit.mi.toml` 的每个字段去向：
 
 | TOML 字段 | 去向 |
 |---|---|
@@ -118,7 +118,7 @@ ShaderLibrary 根目录。所有 include 都写库根相对路径（如 `common/
 ## 七、整体链路图
 
 ```
-SimpleSphere.cpp                          lit.material.toml
+SimpleSphere.cpp                          lit.mi.toml
   sphere_recipe.mtl_def_id="Lit"  ──查找──▶ MaterialDefinitionFileRegistry
   PBRSurfaceRow(base_color…)              (ParseMaterialDefinitionFile)
   SetMaterialTextureResource(…)                  │ id/transform/fragment/vertex/resources
@@ -149,7 +149,7 @@ BuildGenericMaterial (ShaderGen)
 
 ## 八、结论
 
-`SimpleSphere.cpp` 只声明 `"Lit"` 这个字符串和一行 32B 的 PBR 数据；`lit.material.toml` 在首次访问时被解析成 `MaterialDefinition` 提供能力声明（材质源模块、法线模块、纹理声明、varying）；每帧渲染收集系统把两者合成 Layer 3 构建请求，`BuildGenericMaterial` 按"场景模板槽位 + 材质能力槽位"拼出由 `#include` 和 BDA 宏组成的完整 GLSL 文档，最后 glslang 编译为 SPV——toml 的每一个字段（包括 `channels = 2` 这样的细节）都能在最终 shader 里找到确切落点。
+`SimpleSphere.cpp` 只声明 `"Lit"` 这个字符串和一行 32B 的 PBR 数据；`lit.mi.toml` 在首次访问时被解析成 `MaterialDefinition` 提供能力声明（材质源模块、法线模块、纹理声明、varying）；每帧渲染收集系统把两者合成 Layer 3 构建请求，`BuildGenericMaterial` 按"场景模板槽位 + 材质能力槽位"拼出由 `#include` 和 BDA 宏组成的完整 GLSL 文档，最后 glslang 编译为 SPV——toml 的每一个字段（包括 `channels = 2` 这样的细节）都能在最终 shader 里找到确切落点。
 
 ## 附：调试入口
 

@@ -534,6 +534,34 @@ namespace hgl::graph::mtl
         return true;
     }
 
+    bool GetMaterialDomainVertexSemanticRequirements(
+        const MaterialDomain domain,
+        ValueArray<ShaderCodeModuleSemanticRequirement> &out) noexcept
+    {
+        out.Clear();
+
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        if (!contract)
+            return false;
+
+        for (uint32 i = 1; i <= static_cast<uint32>(VertexSemantic::TransformID); ++i)
+        {
+            const VertexSemantic semantic = static_cast<VertexSemantic>(i);
+            if ((contract->required_vertex_semantic_mask
+                 & MaterialDomainSemanticBit(semantic)) == 0)
+                continue;
+
+            // 契约位里存在、但模块语义表没有对应项的（AO / Rotation）不能变成
+            // 一条需求——那会生成一条语义为 Unknown 的垃圾需求。当前无领域使用。
+            if (GetShaderCodeModuleSemanticFromVertexSemantic(semantic)
+                == ShaderCodeModuleSemantic::Unknown)
+                continue;
+
+            out.Add(MakeMaterialVertexSemanticRequirement(semantic));
+        }
+        return true;
+    }
+
     const MaterialDomainTextureSlot *FindMaterialDomainTextureSlot(
         const MaterialDomain domain, const char *slot_name) noexcept
     {

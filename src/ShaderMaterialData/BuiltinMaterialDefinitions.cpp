@@ -16,16 +16,11 @@ namespace hgl::graph::mtl
 
         constexpr const char kPureColorSource[] = R"TOML(schema = 4
 id = "builtin/pure_color"
-name = "builtin/pure_color"
-provider_policy = "GeometryOnly"
 
-# 领域完整决定顶点语义要求、表面来源模块、纹理槽白名单。
+# 领域完整决定顶点语义要求、表面来源模块、顶点提供策略、纹理槽白名单。
 domain = "UnlitSolid"
 
-[fragment]
-
 [vertex]
-requirements = ["Position"]
 varyings = ["emit_data_index_id"]
 
 [resources]
@@ -33,16 +28,11 @@ varyings = ["emit_data_index_id"]
 
         constexpr const char kCheckerboard3DSource[] = R"TOML(schema = 4
 id = "builtin/checkerboard_3d"
-name = "builtin/checkerboard_3d"
-provider_policy = "GeometryOnly"
 
-# 领域完整决定顶点语义要求、表面来源模块、纹理槽白名单。
+# 领域完整决定顶点语义要求、表面来源模块、顶点提供策略、纹理槽白名单。
 domain = "Checker3D"
 
-[fragment]
-
 [vertex]
-requirements = ["Position"]
 normal_mode = "OptionalFaceFallback"
 varyings = ["emit_world_pos"]
 
@@ -51,16 +41,11 @@ varyings = ["emit_world_pos"]
 
         constexpr const char kErrorCheckerboard3DSource[] = R"TOML(schema = 4
 id = "builtin/error_checkerboard_3d"
-name = "builtin/error_checkerboard_3d"
-provider_policy = "GeometryOnly"
 
-# 领域完整决定顶点语义要求、表面来源模块、纹理槽白名单。
+# 领域完整决定顶点语义要求、表面来源模块、顶点提供策略、纹理槽白名单。
 domain = "ErrorChecker3D"
 
-[fragment]
-
 [vertex]
-requirements = ["Position"]
 normal_mode = "OptionalFaceFallback"
 varyings = ["emit_data_index_id", "emit_world_pos"]
 
@@ -70,18 +55,14 @@ varyings = ["emit_data_index_id", "emit_world_pos"]
         constexpr const char kTextGpuSource[] = R"TOML(schema = 4
 id = "builtin/text_gpu"
 name = "Text2D_GPU"
-provider_policy = "GeometryOnly"
 
-# 领域完整决定顶点语义要求、表面来源模块、纹理槽白名单。
+# 领域完整决定顶点语义要求、表面来源模块、顶点提供策略、纹理槽白名单。
 domain = "Text2D"
-
-[fragment]
 
 [render_state]
 pipeline = { alpha_blend = true }
 
 [vertex]
-requirements = ["Position", "UV0"]
 varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color", "emit_style_id"]
 
 [mesh_shader]
@@ -98,18 +79,14 @@ defines = ["TEXT_SDF_ENABLED"]
         constexpr const char kTextGpuBitmapSource[] = R"TOML(schema = 4
 id = "builtin/text_gpu_bitmap"
 name = "Text2D_GPU_Bitmap"
-provider_policy = "GeometryOnly"
 
-# 领域完整决定顶点语义要求、表面来源模块、纹理槽白名单。
+# 领域完整决定顶点语义要求、表面来源模块、顶点提供策略、纹理槽白名单。
 domain = "Text2D"
-
-[fragment]
 
 [render_state]
 pipeline = { alpha_blend = true }
 
 [vertex]
-requirements = ["Position", "UV0"]
 varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
 
 [mesh_shader]

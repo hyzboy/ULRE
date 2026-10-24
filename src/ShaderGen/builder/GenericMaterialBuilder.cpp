@@ -78,33 +78,6 @@ namespace hgl::graph::mtl
             return result > 0 ? result : ideal;
         }
 
-        bool IsVertexSemanticRequiredForVarying(
-            const VertexSemantic semantic,
-            const MaterialVertexVaryingConfig &varying) noexcept
-        {
-            switch (semantic)
-            {
-            case VertexSemantic::Position:
-                return true;
-            case VertexSemantic::Normal:
-                return varying.emit_world_normal;
-            case VertexSemantic::Tangent:
-            case VertexSemantic::Bitangent:
-                return false;
-            case VertexSemantic::TexCoord:
-                return varying.emit_uv0;
-            case VertexSemantic::Color:
-                return varying.emit_vertex_color
-                    || varying.emit_vertex_color_from_palette;
-            case VertexSemantic::Luminance:
-                return varying.emit_luminance;
-            case VertexSemantic::TransformID:
-                return varying.use_transform_id_attr;
-            default:
-                return true;
-            }
-        }
-
         /// 去掉某条顶点语义需求（面法线降级用）。
         bool RemoveVertexSemanticRequirement(
             MaterialDefinition &definition,
@@ -246,7 +219,7 @@ namespace hgl::graph::mtl
                     const VertexSemantic semantic =
                         GetVertexSemanticFromShaderCodeModuleSemantic(
                             requirement.semantic);
-                    if (IsVertexSemanticRequiredForVarying(
+                    if (IsMaterialVertexSemanticRequiredForVarying(
                             semantic, plan.effective_vertex_varying))
                     {
                         plan.vertex_definition.vertex_semantic_requirements.Add(

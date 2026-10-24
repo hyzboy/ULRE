@@ -2945,7 +2945,7 @@ namespace
         if (material_files.empty())
         {
             result.diagnostics.emplace_back(
-                "ShaderLibrary/material contains no .material.toml files");
+                "ShaderLibrary/material contains no .mi.toml files");
             result.passed = false;
             return result;
         }
@@ -2960,8 +2960,21 @@ namespace
                 continue;
             }
 
-            if (path.find(".material.toml") == std::string::npos)
+            // 阶段四：材质资产统一为材质实例格式 `*.mi.toml`。
+            // 这里刻意不再「跳过不认识的后缀」——目录里出现别的 .toml 就是违规，
+            // 否则旧 `*.material.toml` 会被静默忽略（加载器也不会读它）。
+            constexpr const char kMaterialInstanceSuffix[] = ".mi.toml";
+            constexpr std::size_t kMaterialInstanceSuffixLength =
+                sizeof(kMaterialInstanceSuffix) - 1;
+            if (path.size() < kMaterialInstanceSuffixLength
+             || path.compare(path.size() - kMaterialInstanceSuffixLength,
+                             kMaterialInstanceSuffixLength,
+                             kMaterialInstanceSuffix) != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "material asset must use the .mi.toml suffix: " + path);
                 continue;
+            }
 
             if (HasLegacySchemaToken(text))
             {
@@ -4109,7 +4122,7 @@ namespace
     }
 
     // 阶段三之三：材质定义有**两个**来源 —— 内嵌 builtin（C++ 代码）与资产目录
-    // （.material.toml）。这里复刻运行时的注册顺序（先内嵌、后目录），
+    // （阶段四起为 `.mi.toml`）。这里复刻运行时的注册顺序（先内嵌、后目录），
     // 因为后续比对要求 registry 拿到的是完整集合。
     static int RegisterBuiltinMaterialDefinitions(MaterialDefinitionFileRegistry &registry)
     {
@@ -4450,6 +4463,160 @@ namespace
                 "removed source/bootstrap metadata must be rejected");
         }
 
+        // 阶段四：领域材质不再需要抄写 `name` / `provider_policy` / `[fragment]` /
+        // `[vertex] requirements` —— 全部由领域契约给出。这条探针钉死
+        // 「推导结果 == 契约」：抄漏不会报错，只会在运行期拿缺属性的几何喂管线。
+        {
+            const char derived_source[] =
+                "schema = 4\n"
+                "id = \"DerivedVertexColor\"\n"
+                "domain = \"VertexColor\"\n"
+                "[vertex]\n"
+                "varyings = [\"emit_vertex_color\"]\n";
+
+            MaterialDefinitionFileData derived_data;
+            const auto derived_parse = ParseMaterialDefinitionFile(
+                derived_source,
+                static_cast<int>(std::strlen(derived_source)),
+                derived_data);
+            if (derived_parse != MaterialDefinitionFileParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("domain-derived material parse failed: ")
+                    + GetMaterialDefinitionFileParseResultName(derived_parse)
+                    + " table=\"" + derived_data.parse_error.table
+                    + "\" key=\"" + derived_data.parse_error.key
+                    + "\" value=\"" + derived_data.parse_error.value
+                    + "\" detail=\"" + derived_data.parse_error.detail + "\"");
+            }
+            else
+            {
+                const auto &derived = derived_data.definition;
+                if (derived.definition_name != "DerivedVertexColor")
+                {
+                    result.diagnostics.emplace_back(
+                        "omitted name must default to the definition id");
+                }
+                if (derived.vertex_provider_policy
+                        != MaterialVertexProviderPolicy::GeometryOnly)
+                {
+                    result.diagnostics.emplace_back(
+                        "omitted provider_policy must follow the domain contract");
+                }
+                if (!HasMaterialVertexSemanticRequirement(derived, VertexSemantic::Position)
+                 || !HasMaterialVertexSemanticRequirement(derived, VertexSemantic::Color)
+                 || derived.vertex_semantic_requirements.GetCount() != 2)
+                {
+                    result.diagnostics.emplace_back(
+                        "omitted requirements must equal the domain contract mask");
+                }
+                if (!derived.material_source_module_name
+                 || std::strcmp(derived.material_source_module_name,
+                                "vertex_color_source") != 0)
+                {
+                    result.diagnostics.emplace_back(
+                        "omitted [fragment] must be filled from the domain contract");
+                }
+            }
+
+            // 反向探针：非领域材质没有契约可依，缺 `provider_policy` 必须带键名报错。
+            const char custom_no_policy_source[] =
+                "schema = 4\n"
+                "id = \"CustomNoPolicy\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\"]\n";
+
+            MaterialDefinitionFileData custom_no_policy_data;
+            const auto custom_no_policy_parse = ParseMaterialDefinitionFile(
+                custom_no_policy_source,
+                static_cast<int>(std::strlen(custom_no_policy_source)),
+                custom_no_policy_data);
+            if (custom_no_policy_parse == MaterialDefinitionFileParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    "non-domain material without provider_policy must be rejected");
+            }
+            else if (custom_no_policy_data.parse_error.key != "provider_policy")
+            {
+                result.diagnostics.emplace_back(
+                    "non-domain provider_policy rejection must report key "
+                    "\"provider_policy\", got \""
+                    + custom_no_policy_data.parse_error.key + "\"");
+            }
+
+            // 推导结果**不得**与 `varyings` 取交集：领域契约的语义位是顶点 ABI
+            // （同领域必须同布局才能共享 layout/合批），`varyings` 只决定着色器
+            // 发什么插值。DebugNormal 契约要求 Position+Normal，这份材质虽然不发
+            // world normal，Normal 仍必须留在需求里 —— 否则它的顶点布局会与同领域
+            // 其它材质分叉，领域契约校验会直接拒绝（这条探针就是那次拒绝的锚点）。
+            const char trimmed_source[] =
+                "schema = 4\n"
+                "id = \"DerivedKeepAbi\"\n"
+                "domain = \"DebugNormal\"\n"
+                "[vertex]\n"
+                "varyings = [\"emit_data_index_id\"]\n";
+
+            MaterialDefinitionFileData trimmed_data;
+            const auto trimmed_parse = ParseMaterialDefinitionFile(
+                trimmed_source,
+                static_cast<int>(std::strlen(trimmed_source)),
+                trimmed_data);
+            if (trimmed_parse != MaterialDefinitionFileParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("domain-ABI material parse failed: ")
+                    + GetMaterialDefinitionFileParseResultName(trimmed_parse)
+                    + " table=\"" + trimmed_data.parse_error.table
+                    + "\" key=\"" + trimmed_data.parse_error.key
+                    + "\" value=\"" + trimmed_data.parse_error.value
+                    + "\" detail=\"" + trimmed_data.parse_error.detail + "\"");
+            }
+            else
+            {
+                const auto &trimmed = trimmed_data.definition;
+                if (trimmed.vertex_semantic_requirements.GetCount() != 2
+                 || !HasMaterialVertexSemanticRequirement(
+                        trimmed, VertexSemantic::Position)
+                 || !HasMaterialVertexSemanticRequirement(
+                        trimmed, VertexSemantic::Normal))
+                {
+                    result.diagnostics.emplace_back(
+                        "derived requirements must keep the full domain ABI mask "
+                        "regardless of the declared varyings");
+                }
+            }
+        }
+
+        // 反向探针：非领域材质没有契约可依，缺 `requirements` 必须带键名报错
+        // （历史行为是静默 return false，写错只能靠猜）。
+        const char custom_source[] =
+            "schema = 4\n"
+            "id = \"CustomNoRequirements\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module_name = \"pbr_surface_source\"\n"
+            "[resources]\n";
+
+        MaterialDefinitionFileData custom_data;
+        const auto custom_parse = ParseMaterialDefinitionFile(
+            custom_source,
+            static_cast<int>(std::strlen(custom_source)),
+            custom_data);
+        if (custom_parse == MaterialDefinitionFileParseResult::OK)
+        {
+            result.diagnostics.emplace_back(
+                "non-domain material without requirements must be rejected");
+        }
+        else if (custom_data.parse_error.key != "requirements")
+        {
+            result.diagnostics.emplace_back(
+                "non-domain requirements rejection must report key "
+                "\"requirements\", got \""
+                + custom_data.parse_error.key + "\"");
+        }
+
         MaterialDefinitionFileRegistry registry;
         const int builtin_count = RegisterBuiltinMaterialDefinitions(registry);
         if (builtin_count != 5)
@@ -4461,7 +4628,7 @@ namespace
 
         // 内嵌定义**不得**依赖资产目录：只喂内嵌源码的独立 registry 也必须能解析
         // 五个保底 ID。这是"保底物的可依赖性高于被兜底物"的机器化判据 ——
-        // 谁把它们挪回 .material.toml，这条断言立刻变红。
+        // 谁把它们挪回 .mi.toml 资产目录，这条断言立刻变红。
         {
             MaterialDefinitionFileRegistry builtin_only;
             RegisterBuiltinMaterialDefinitions(builtin_only);

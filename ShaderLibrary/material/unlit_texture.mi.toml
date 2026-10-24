@@ -1,0 +1,14 @@
+schema = 4
+id = "UnlitTexture"
+
+# 材质实例：只填领域 + 资源 + 数值。
+# 顶点语义需求（Position/UV0）、顶点提供策略、表面来源模块、纹理槽形态
+# 全部由领域 UnlitTexture 的契约给出（Sampler2DArray / 必绑）。
+domain = "UnlitTexture"
+
+[vertex]
+varyings = ["emit_data_index_id", "emit_uv0"]
+
+[resources]
+textures = [{ name = "base_color" }]
+samplers = ["Trilinear"]

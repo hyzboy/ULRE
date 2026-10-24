@@ -3,14 +3,14 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段三之三完成后（分支 `feature/ultra-thin-stage3-material-instance`，HEAD = `addc99d58`）。**阶段三已完成（3/3），下一步是阶段四。**
+> **最后更新**：阶段四完成后（分支 `feature/ultra-thin-stage4-cleanup-and-migration`）。**四阶段全部完成，`.material.toml` 已废除。**
 
 ---
 
 ## 0. 新会话开场怎么用
 
 1. 先读本文 **§1 目标** 和 **§3 路线图**，确认自己在哪一阶段。
-2. **阶段三已全部完成**（3.1 / 3.2 / 3.3，见 §4.2–§4.5）。**当前待做项是阶段四**，方案见 §6.5；§6.1–6.3 是阶段三之二的调研记录（已实施），§6.4 是阶段三之三的记录（已实施）。
+2. **四阶段已全部完成**（一 / 二 / 三 3.1–3.3 / 四，见 §4.1–§4.6）。阶段四已把资产降维为 `.mi.toml` 并废除 `.material.toml`，方案记录见 §6.5。
 3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数 82」「golden 无环境变量开关」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
 
@@ -27,8 +27,8 @@
 | # | 铁律 | 现状 |
 |---|------|------|
 | 1 | Domain 就是未来的 Master Material，引擎硬编码，上层**不可**自定义、不可改 | ✅ 16 个领域契约已成体系 |
-| 2 | 上层资产 = MaterialInstance：只能**选一个 Domain** + 配自己的资源与数值 | ✅ 阶段三完成（3/3）：资产只剩领域 + 槽名 + 采样器 + 顶点需求 + 渲染状态 |
-| 3 | 最终废除 `*.material.toml` 这一中间层 | ⬜ 阶段四 |
+| 2 | 上层资产 = MaterialInstance：只能**选一个 Domain** + 配自己的资源与数值 | ✅ 阶段四完成：资产只剩 `domain` + `[vertex] varyings` + `[resources]` |
+| 3 | 最终废除 `*.material.toml` 这一中间层 | ✅ 阶段四完成：9 份资产全部迁为 `.mi.toml`，解析器不再识别旧后缀 |
 | 4 | 统一函数签名的「多态包含契约」+ 空对象实现（`*_none.glsl`）来消灭条件编译，而不是一堆 `#if` / 宏 | ✅ 宏区仅剩 2 个 |
 | 5 | 主表面着色器是**固定代码**；换光照/GI/天光/阴影只是 `#include` 不同文件；主着色器里只保留必须与 `discard`/输出同函数体的 alpha 三件套宏 | ✅ 阶段二达成 |
 
@@ -50,6 +50,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 8 | `feature/ultra-thin-stage3-material-instance` ← **当前** | `c7d1e45cb` | **阶段三之一**：顶点变换从资产推入领域契约 |
 | 9 | 同上 | `20d36a0d0` | **阶段三之二**：纹理槽形态与 `material_data` 类型从资产推入领域契约 |
 | 10 | 同上 | `addc99d58` | **阶段三之三**：保底链 5 个 builtin 材质定义代码化，不再依赖 TOML 文件 |
+| 11 | `feature/ultra-thin-stage4-cleanup-and-migration` ← **当前** | `addd8a0ec` | **阶段四**：资产降维为 `.mi.toml`，废除 `.material.toml` |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
@@ -64,7 +65,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 一 | 直接光正交拆分（漫反射 × 高光）+ 空对象库 + 槽角色/能力扩展 | `feature/ultra-thin-stage1-lighting-slots` | ✅ 完成 |
 | 二 | 管线配置头单一真源 + 消灭主着色器里所有算法相关 `#if` | `feature/ultra-thin-stage2-domain-shaders` | ✅ 完成 |
 | 三 | **MaterialInstance 模型**：把「领域已确定的旋钮」逐个从资产契约上移到领域契约 | `feature/ultra-thin-stage3-material-instance` | ✅ 完成（3/3） |
-| 四 | 资产降维为 `.mi.toml` + 废除 `.material.toml` + 清理旧 ShaderGen 拼接代码 | `feature/ultra-thin-stage4-cleanup-and-migration` | ⬜ 未开始 |
+| 四 | 资产降维为 `.mi.toml` + 废除 `.material.toml` + 清理旧 ShaderGen 拼接代码 | `feature/ultra-thin-stage4-cleanup-and-migration` | ✅ 完成（迁移 + 废除；拼接清理见 §10.2） |
 
 **阶段三的指导原则**：凡是「同一个 Domain 下所有材质取值必然相同」的字段，都从资产文件里删掉，改由领域契约给出规范值；资产若显式写了不同值，必须**被校验拒绝**（不是静默覆盖）。这既是减负，也是把「上层不该有的自由度」物理删除。
 
@@ -157,6 +158,53 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 
 **注意**：这 5 个 ID **永远不能改**（默认 `builtin/pure_color`、错误 `builtin/error_checkerboard_3d`、降级 `builtin/checkerboard_3d`、文本 `builtin/text_gpu` / `builtin/text_gpu_bitmap`）。
 
+### 4.6 阶段四（`feature/ultra-thin-stage4-cleanup-and-migration`）—— 资产降维与 `.material.toml` 废除
+
+**资产最终形态**（`ShaderLibrary/material/lit.mi.toml` 全文，6 个纹理槽里最复杂的一份）：
+
+```toml
+schema = 4
+id = "Lit"
+domain = "StandardOpaque"
+
+[vertex]
+varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
+
+[resources]
+textures = [
+    { name = "base_color" }, { name = "roughness" }, { name = "metallic" },
+    { name = "occlusion" }, { name = "opacity_mask" }, { name = "normal" }
+]
+samplers = ["Trilinear", "Linear", "ShadowPCF"]
+```
+
+资产里**只剩三样**：选哪个领域、发哪些插值、声明哪些槽名与采样器。`name` / `provider_policy` / `[fragment]` / `[vertex] requirements` / `[transform]` / 槽形态（`sampler` / `required` / `channels`）/ `material_data.type` **全部由领域契约给出**。
+
+**实现**：
+| 文件 | 改动 |
+|---|---|
+| `inc/hgl/mtl/MaterialDomain.h` / `src/ShaderMaterialData/MaterialDomain.cpp` | 新增 `GetMaterialDomainVertexSemanticRequirements()`：把契约的 `required_vertex_semantic_mask` 翻译成 `ShaderCodeModuleSemanticRequirement` 数组（`AO` / `Rotation` 无正向映射，跳过） |
+| `inc/hgl/mtl/MaterialRecipe.h` | `GetShaderCodeModuleSemanticFromVertexSemantic()` 补上漏掉的 `VertexSemantic::Size` → `ShaderCodeModuleSemantic::Size`；`IsMaterialVertexSemanticRequiredForVarying()` 从 `.cpp` 的匿名命名空间提升为**公开 inline**，成为「语义 ↔ varying」的唯一真源 |
+| `src/ShaderGen/builder/GenericMaterialBuilder.cpp` | 删除本地那份 `IsVertexSemanticRequiredForVarying()`，改调 `MaterialRecipe.h` 的公开版本（深度 pass 重过滤行为不变） |
+| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | `name` / `provider_policy` / `[fragment]` / `[vertex] requirements` 四项改为**领域材质可缺省**；缺省走契约兜底，非领域材质（Custom）缺任何一项都带**键级诊断**报错。`LoadDirectory()` 的扩展名过滤 `.material.toml` → `.mi.toml` |
+| `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp` | 5 份内嵌源码同步降维（去掉 `provider_policy` / `[fragment]` / `requirements`；`name` 仅在确实不同于 `id` 时保留） |
+| 9 个 `ShaderLibrary/material/*.mi.toml` | `git mv` 改名 + 全部重写为降维形态；`sky_cube` 保留 `[fragment] surface_module_name`（legacy 但仍在用） |
+| `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | ① 库契约 case 的扩展名检查从「静默 `continue`」改为**正向断言**（任何非 `.mi.toml` 文件立刻红）；② 新增**正向推导探针** `DerivedVertexColor`（不写 name / provider_policy / fragment / requirements，断言四项全部由契约填对）；③ 新增**反向探针** `CustomNoPolicy`（Custom 缺 `provider_policy` 必须报 `key == "provider_policy"`）、`CustomNoRequirements`（缺 `requirements` 必须报 `key == "requirements"`）；④ 新增 **ABI 不变式探针** `DerivedKeepAbi` |
+| `example/Environment/SkyCubeSphere.cpp` + 约 45 处文档引用 | `.material.toml` → `.mi.toml` |
+
+**`[vertex] requirements` 为什么不从 varyings 推导（推翻了 §6.5 的建议）**：§6.5 曾建议「`requirements` 恒等于 varyings 所需属性，改成从 varyings 推导」。实施时先按这个思路做了交集，**门禁立刻红了**：
+
+```
+varying-trimmed material parse failed: InvalidValue key="domain" value="DebugNormal"
+  detail="[vertex] requirements 缺少领域 DebugNormal 必需的顶点语义：Normal"
+```
+
+原因：`requirements` 是**顶点 ABI**（决定顶点布局与 `VertexABIBuilder` 的输入描述），`varyings` 只是**着色器发什么插值**。同领域必须同布局才能共享 layout / 合批；把不发 `emit_world_normal` 的材质裁掉 `Normal`，会让它与同领域其它材质的顶点布局分叉，领域契约校验**直接拒绝**。两者不是一回事，交集是错的。
+
+结论：`requirements` 从**领域契约**推导（`required_vertex_semantic_mask`），且**不与 varyings 取交集**。`IsMaterialVertexSemanticRequiredForVarying()` 保留在 `MaterialRecipe.h`，只服务它本来的用途 —— ShaderGen 的**深度 pass** 重过滤（那里主表面着色器被替换，插值需求确实不同）。`DerivedKeepAbi` 探针就是这次拒绝的锚点：DebugNormal 材质即使不发 world normal，`Normal` 也必须留在需求里。
+
+**为什么 `[transform]` 解析分支没有删**：资产与内嵌定义里确实已无任何 `[transform]` 声明，但 `Custom` 材质**仍然合法地**用它自选顶点通路（门禁 `S.material-definition-file-schema` 的主 fixture 就是 Custom + 显式 `[transform]`），而 `D.material-domain-contract` 有一条负向探针专门断言「3D 领域自选 2D 变换必须被拒」。删掉解析分支会同时废掉这两条路径。**保留**才是正确形态：Custom 可以选，领域材质选了就报错。
+
 ---
 
 ## 5. 验证状态
@@ -179,12 +227,12 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 ```
 产物目录：`build\out\Windows_64_Debug\`
 
-### 5.2 当前结果（全部绿，阶段三之三完成后复测）
+### 5.2 当前结果（全部绿，阶段四完成后复测）
 
-- `ShaderResourceSchemaRegressionGate all`：**55 PASS / 0 FAIL，exit=0**（阶段三之三只在既有 case 内加断言，case 数不变）
+- `ShaderResourceSchemaRegressionGate all`：**55 PASS / 0 FAIL，exit=0**（阶段四只在既有 case 内加断言，case 数不变）
 - 三个回归 exe：**全 exit=0**
 - `TestRenderStrategyTable` / `TestMaterialVariantTable`：**全 exit=0**（这两个覆盖保底链行为断言 —— 未知定义 ID ⇒ 换 `builtin/error_checkerboard_3d`、标记行不可得 ⇒ 降级 `builtin/checkerboard_3d`，是「内嵌定义可用」的最强证据）
-- 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、无 GLSL 编译错误
+- 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、`loaded 34 entries from program_manifest.pmf`、无 GLSL 编译错误
 - `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）
 - 实跑渲染 exe（脚本是会话局部产物，新会话请直接用下面命令）：
   ```powershell
@@ -240,14 +288,14 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 - 回退链**id 绝不能改**：默认 `builtin/pure_color`、错误 `builtin/error_checkerboard_3d`、降级 `builtin/checkerboard_3d`、文本硬编码 `builtin/text_gpu` / `builtin/text_gpu_bitmap`（`TextRenderPipeline.cpp:425-426`）。
 - 此时 `MaterialInstance` = `{domain_id, texture_bindings, numeric_values, samplers, render_state}`，C++ 只校验 + 发配置头。
 
-### 6.5 阶段四 —— 收尾（分支 `feature/ultra-thin-stage4-cleanup-and-migration`）
+### 6.5 阶段四 —— 收尾（✅ 已实施，见 §4.6）
 
-- 资产降维为 `.mi.toml`（只写 Domain 名 + 资源 + 数值）。
-- 废除 `.material.toml` 与 `MaterialDefinitionFile` 里已无意义的解析分支。
-- 清理旧 ShaderGen 字符串拼接代码。
-- **顺手清 3 处过期文档**（见 §10）。
+- 资产降维为 `.mi.toml`（只写 Domain 名 + 资源 + 数值）。✅
+- 废除 `.material.toml` 与 `MaterialDefinitionFile` 里已无意义的解析分支。✅
+- 清理旧 ShaderGen 字符串拼接代码。⬜ **未做**，见 §10.2 —— 它是独立的、范围较大的重构，与资产迁移无耦合，混进本阶段会让 diff 无法审阅。
+- 顺手清 3 处过期文档（见 §10）。✅
 
-**阶段四开工时值得顺手做的一件事**：`[vertex] requirements` 现在是**冗余声明** —— 它恒等于「所选 varyings 所需的顶点属性」∪「领域 `vertex_node_config` 所需属性」。9 份资产里没有一份能给出反例（同一领域内 `requirements` 全部相同，且都由 varyings 唯一决定）。把它改成**从 varyings 推导**（而非从领域契约上移），既删掉一个可以写错且不会报错的字段，也避免「领域固定 requirements」带来的过严约束（例如某 `StandardOpaque` 材质不发 `emit_world_normal` 时本不该强制要求 `Normal` 属性）。
+**关于 `[vertex] requirements` 从 varyings 推导的建议 —— 已评估并否决**，理由见 §4.6「为什么不从 varyings 推导」：它是顶点 ABI 而非插值需求，交集会让同领域材质的顶点布局分叉，领域契约校验会直接拒绝。**这条建议不要重新尝试**；现在的形态是从领域契约推导，且不与 varyings 取交集。
 
 ---
 
@@ -321,7 +369,7 @@ Case 名与职责：
 ## 9. 环境与工具坑（务必先看，能省半小时）
 
 1. **门禁/回归 exe 必须在 `E:\ULRE` 仓库根运行**（`GLSLCompiler.dll` 在根目录）。
-2. 材质 TOML 缺 `[fragment]` 表或 `[vertex] requirements` → `ParseDefinition` **静默 `return false`，无任何诊断**。新建测试材质必须两样都写全。
+2. 材质 TOML 的 `name` / `provider_policy` / `[fragment]` / `[vertex] requirements` 四项对**领域材质**已可缺省（走契约兜底）；对**非领域材质（Custom）**仍必须写全，缺任何一项都会带**键级诊断**报错（`parse_error.key` = 缺的那个键）。历史上这里是静默 `return false`、无任何诊断 —— 已于阶段四修掉。
 3. `hgl/type/ArrayList.h` **不存在**；HGL 集合是 `ValueArray` / `ManagedArray` / `PtrArray`。
 4. `FNV1a.h` 在 `CMCoreType/inc/hgl/util/hash/FNV1a.h`（**不在** `CMCore/`）。
 5. 项目**禁止 STL**，用 HGL 库（详见仓库 `.ai/skills/SKILL_HGL_TYPES_REFERENCE.md`）；日志用 `GLogInfo` / `OBJECT_LOGGER` + `LogInfo`，禁 `printf` / `std::cout`。
@@ -340,18 +388,15 @@ Case 名与职责：
 
 ## 10. 已知技术债 / 待清理
 
-### 10.1 文档过期（3 处，阶段四顺手清）
+### 10.1 文档过期（✅ 阶段四已全部清掉）
 
-| 文件 | 行 | 过期内容 |
-|---|---|---|
-| `doc/ENVIRONMENT_SYSTEM.md` | `:244` | 说 AO 调用由 `HGL_USE_AMBIENT_OCCLUSION_PROVIDER` 守卫 —— 宏已删除 |
-| `doc/material-lit-recipe-to-shadergen-dataflow.md` | `:92` | 宏区仍列 `HGL_USE_NTB_PROVIDER 1` —— 已删 |
-| `doc/ShaderGen_ComposableTemplate_TechnicalDesign.md` | `:369` | 同上 |
+`doc/ENVIRONMENT_SYSTEM.md:244`、`doc/material-lit-recipe-to-shadergen-dataflow.md:92`、`doc/ShaderGen_ComposableTemplate_TechnicalDesign.md:369` 三处「宏已被删除但文档还在提」的条目已修正。全仓 `.material.toml` 的引用也已统一改为 `.mi.toml`，仅 `doc/backlog.md` 与 `doc/future/` 保留为历史记录（**刻意不改**）。
 
 ### 10.2 结构性遗留
 
+- **旧 ShaderGen 字符串拼接代码尚未清理**（阶段四遗留的唯一实质项）。它是与资产迁移无耦合的独立重构，需要单独分支。清理时注意：`FragmentTemplateComposer` / `GenericMaterialBuilder` 里的拼接顺序本身就是隐式契约（`#include` 顺序、宏定义顺序），必须先有 golden 快照覆盖再动。
 - 4 个领域（`Foliage` / `Terrain` / `HumanSkin` / `UI2D` 部分）reference 为 `nullptr`，只有契约骨架、无专属实现。属**刻意保留的扩展位**，不是 bug。
-- `DirectLightProvider`（legacy role）仍在枚举里，阶段一已由 `DiffuseLightProvider` + `SpecularLightProvider` 取代，待阶段四删除。
+- `DirectLightProvider`（legacy role）仍在枚举里，阶段一已由 `DiffuseLightProvider` + `SpecularLightProvider` 取代，待删除。
 - 主着色器仍保留 alpha 三件套宏（`HGL_ALPHA_TEST` / `HGL_ALPHA_DITHER` / `HGL_ALPHA_OUTPUT`）—— **这是刻意设计**，因为它们必须与 `discard` / 输出同函数体，无法外移。
 - 模块总数 `82` 硬编码在两处，尚未收敛成常量。
 
@@ -359,10 +404,10 @@ Case 名与职责：
 
 ## 11. 每个子阶段的完成定义（DoD）
 
-- [ ] `ShaderResourceSchemaRegressionGate all` → 55 PASS / exit=0（若新增 case 则数量随之增加并同步文档）
-- [ ] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
-- [ ] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
-- [ ] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
-- [ ] `git status` 只剩既存子模块脏项
-- [ ] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
-- [ ] 独立提交，提交信息带 `feat(ultra-thin):` / `docs(ultra-thin):` 前缀
+- [x] `ShaderResourceSchemaRegressionGate all` → 55 PASS / exit=0（若新增 case 则数量随之增加并同步文档）
+- [x] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
+- [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
+- [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
+- [x] `git status` 只剩既存子模块脏项
+- [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
+- [x] 独立提交，提交信息带 `feat(ultra-thin):` / `docs(ultra-thin):` 前缀

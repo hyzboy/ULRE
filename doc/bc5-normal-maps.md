@@ -38,7 +38,7 @@ TexConv /RGB:BC5 /mip Normal.png
 
 ## 3. 材质侧：声明两通道
 
-`ShaderLibrary/material/lit.material.toml`：
+`ShaderLibrary/material/lit.mi.toml`：
 
 ```toml
 [resources]

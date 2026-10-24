@@ -384,7 +384,7 @@ const uint base_vid = compact * 4u;
 
 用 `gl_LocalInvocationIndex` 直接算 `base_vid` 会在边缘组产生空洞（写到超出 `valid*4` 的槽位）。
 
-**地形材质（`ShaderLibrary/material/terrain.material.toml`，照 `unlit_texture.material.toml`）**
+**地形材质（`ShaderLibrary/material/terrain.mi.toml`，照 `unlit_texture.mi.toml`）**
 
 ```toml
 schema = 4
@@ -540,7 +540,7 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 | 专用管线参照 | `inc/hgl/ecs/support/line/*.h`、`src/ecs/support/line/*.cpp`、`src/ecs/core/DefaultSystems.cpp:136` |
 | 间接绘制 / GPU count 参照 | `example/ApiValidation/ComputeIndirectCount.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp:52-65` |
 | 导数法线 NTB 模块 | `ShaderLibrary/ntb/ntb_derivative_normalmap.glsl` |
-| 材质 TOML 自持模式参照 | `ShaderLibrary/material/unlit_texture.material.toml` |
+| 材质 TOML 自持模式参照 | `ShaderLibrary/material/unlit_texture.mi.toml` |
 | 剔除基础设施 | `example/ApiValidation/ComputeFrustumCull.cpp`、`src/ecs/tests/TestBoundingVolumeCull.cpp` |
 | 帧资源在途现状 | `doc/backlog.md` A1 |
 

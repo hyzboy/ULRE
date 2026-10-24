@@ -329,7 +329,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
             ++builtin_count;
         }
 
-        // ② 再扫描资产目录（用户 / 项目可写的 .material.toml）。
+        // ② 再扫描资产目录（用户 / 项目可写的 .mi.toml）。
         int file_count = 0;
         int error_count = 0;
         const hgl::filesystem::Path material_path =

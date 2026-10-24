@@ -1,0 +1,10 @@
+schema = 4
+id = "VertexPaletteColor"
+
+# 材质实例：只填领域 + 资源 + 数值。
+# 顶点语义需求（Position/Color/TransformID/Size）、顶点提供策略、
+# 表面来源模块全部由领域 VertexPalette 的契约给出。
+domain = "VertexPalette"
+
+[vertex]
+varyings = ["use_transform_id_attr", "emit_vertex_color_from_palette"]

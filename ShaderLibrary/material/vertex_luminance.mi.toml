@@ -1,0 +1,10 @@
+schema = 4
+id = "VertexLuminance"
+
+# 材质实例：只填领域 + 资源 + 数值。
+# 顶点语义需求（Position/Luminance）、顶点提供策略、表面来源模块、
+# material_data 类型全部由领域 VertexLuminance 的契约给出。
+domain = "VertexLuminance"
+
+[vertex]
+varyings = ["emit_data_index_id", "emit_luminance"]

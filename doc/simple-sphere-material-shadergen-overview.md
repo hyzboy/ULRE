@@ -38,7 +38,7 @@ SimpleSphere.cpp
           v
 MaterialDefinitionRegistry
           |
-          +-- ShaderLibrary/material/lit.material.toml
+          +-- ShaderLibrary/material/lit.mi.toml
           |
           v
 ShaderCodeModuleRegistry
@@ -73,7 +73,7 @@ MaterialShaderCompiler
 | 运行时使用层 | `example/GettingStarted/SimpleSphere.cpp`、ECS、SceneGraph | 创建几何、材质实例、纹理和运行时资源绑定 |
 | 公共合同层 | `inc/hgl/mtl` | 定义 Recipe、材质定义、Shader 模块、模板和资源 ABI |
 | Shader 生成实现层 | `src/ShaderGen` | 解析、解析依赖、选择模板、生成 GLSL、编译和缓存 |
-| 声明与实现资源层 | `ShaderLibrary` | `.material.toml` 材质定义和可组合 GLSL 模块 |
+| 声明与实现资源层 | `ShaderLibrary` | `.mi.toml` 材质定义和可组合 GLSL 模块 |
 
 ## 3. `SimpleSphere.cpp` 做了什么
 
@@ -133,7 +133,7 @@ normal
 roughness
 ```
 
-这些名称必须与 `lit.material.toml` 和材质 GLSL 中的资源声明保持一致。
+这些名称必须与 `lit.mi.toml` 和材质 GLSL 中的资源声明保持一致。
 
 ### 3.4 创建几何
 
@@ -178,53 +178,39 @@ SimpleSphereApp
 
 `SimpleSphere.cpp` 没有直接调用 `MaterialShaderCompiler`。Shader 解析、生成和编译在材质程序解析或首次使用时由下游渲染系统触发。
 
-## 4. `ShaderLibrary/material/lit.material.toml`
+## 4. `ShaderLibrary/material/lit.mi.toml`
 
-`Lit` 定义是 SimpleSphere 的直接目标。它声明材质“需要什么”和“使用哪些 Shader provider”，而不是提供一份完整 Shader。
+`Lit` 是 SimpleSphere 的直接目标。**阶段四之后它是一个「材质实例」**：只选领域、只填要用的槽、只给数值，不再复述任何结构信息。
 
-主要内容如下：
+```toml
+schema = 4
+id = "Lit"
+domain = "StandardOpaque"
 
-```text
-材质 ID:
-    Lit
+[vertex]
+varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
 
-顶点输入需求:
-    Position
-    UV0
-    Normal
-
-顶点到片元的 varying:
-    emit_data_index_id
-    emit_world_pos
-    emit_world_normal
-    emit_uv0
-
-材质源码:
-    material/pbr_surface_source.glsl
-
-NTB 模块:
-    ntb/ntb_tangent_vbo_normalmap.glsl
-
-场景 UBO:
-    CameraInfo
-    SkyInfo
-
-纹理声明:
-    base_color
-    roughness
-    metallic
-    occlusion
-    opacity_mask
-    normal
-
-采样器预设:
-    Trilinear
-    Linear
-    ShadowMap
-    ShadowPCF
+[resources]
+textures = [
+    { name = "base_color" }, { name = "roughness" }, { name = "metallic" },
+    { name = "occlusion" },  { name = "opacity_mask" }, { name = "normal" }
+]
+samplers = ["Trilinear", "Linear", "ShadowPCF"]
 ```
 
-`normal` 声明带有双通道配置，具体的法线贴图处理由材质源码和 NTB provider 协同完成。
+文件里**没有**的东西，全部由领域 `StandardOpaque` 的契约给出：
+
+```text
+顶点输入需求 (Position / UV0 / Normal)   <- required_vertex_semantic_mask
+顶点提供策略 (GeometryOnly)              <- require_allow_derived
+材质源码 (pbr_surface_source)            <- reference_material_source_module
+NTB 模块 (ntb_tangent_vbo_normalmap)     <- reference_ntb_module
+每个纹理槽的形态                         <- Sampler2DArray / 是否必绑 / normal 的 channels=2
+material_data 类型                       <- GlobalSSBOType::PBRSurface
+name                                     <- 缺省等于 id
+```
+
+`samplers` 是唯一留在资产里的资源设置：**采样器过滤不属领域**（同一领域的不同资产对同一槽可以有不同过滤需求），所以它必须逐资产写。
 
 ## 5. `inc/hgl/mtl` 的结构
 
@@ -247,7 +233,7 @@ MaterialDefinitionRegistry.h
 
 | 载体 | 用途 |
 | --- | --- |
-| `ShaderLibrary/material/*.material.toml` | 所有材质定义，包括 fallback、纯色、文本和错误棋盘格；解析器只接受 `schema = 4`，三种材质 provider 仅使用 `*_module_name` 注册名，路径由注册表提供 |
+| `ShaderLibrary/material/*.mi.toml` | 所有材质定义，包括 fallback、纯色、文本和错误棋盘格；解析器只接受 `schema = 4`，三种材质 provider 仅使用 `*_module_name` 注册名，路径由注册表提供 |
 
 `TryGetMaterialDefinitionByID` 只查询 `MaterialDefinitionFileRegistry`。fallback 直接使用 `builtin/pure_color` 文件定义；如果材质目录缺失，系统会显式报错，不再回退到 C++ 内嵌定义。
 
@@ -505,25 +491,25 @@ ShaderLibrary/material/
 关键文件：
 
 ```text
-lit.material.toml
+lit.mi.toml
 pbr_surface_source.glsl
 ```
 
 其它材质定义包括：
 
 ```text
-checkerboard_2d.material.toml
-unlit_texture.material.toml
-vertex_color.material.toml
-vertex_luminance.material.toml
-vertex_palette_color.material.toml
-sky_minimal.material.toml
-debug_normal_color.material.toml
+checkerboard_2d.mi.toml
+unlit_texture.mi.toml
+vertex_color.mi.toml
+vertex_luminance.mi.toml
+vertex_palette_color.mi.toml
+sky_minimal.mi.toml
+debug_normal_color.mi.toml
 ```
 
 保底链上的五个 builtin 定义（`builtin/pure_color`、`builtin/checkerboard_3d`、
 `builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap`）已代码化，
-内嵌在 `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，不再有对应的 `.material.toml`。
+内嵌在 `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，不再有对应的 `.mi.toml`。
 
 它们使用相同的 ShaderGen 框架，但提供不同的材质 source、顶点需求、输出策略或模板能力。
 
@@ -672,8 +658,8 @@ framebuffer
 
 ## 9. 关键设计结论
 
-1. `.material.toml` 描述材质能力和资源需求，`.glsl` 实现可复用模块，`MaterialRecipe` 提供本次运行时实例数据。
-2. `mtl_def_id = "Lit"` 是 SimpleSphere 与 `lit.material.toml` 之间的连接键。
+1. `.mi.toml` 描述材质能力和资源需求，`.glsl` 实现可复用模块，`MaterialRecipe` 提供本次运行时实例数据。
+2. `mtl_def_id = "Lit"` 是 SimpleSphere 与 `lit.mi.toml` 之间的连接键。
 3. `pbr_surface_source.glsl` 不是完整 Shader，而是被 Forward Lit 模板插入的 Material Source provider。
 4. 材质资源名称是跨层合同，例如 `base_color` 必须在 C++、TOML、GLSL 和资源清单中一致。
 5. 几何顶点格式必须满足材质定义的 vertex requirements；SimpleSphere 的 Position、UV0、Normal 与 Lit 定义匹配。

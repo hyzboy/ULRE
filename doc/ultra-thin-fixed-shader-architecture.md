@@ -246,30 +246,47 @@ void main()
 
 ## 5. 材质实例（MaterialInstance）资产规范
 
-开发者在项目中创建的材质资产统一为材质实例格式，**完全消除原 `*.material.toml` 内部的模块声明**：
+开发者在项目中创建的材质资产统一为**材质实例（`.mi.toml`）**格式。一份实例只回答三件事：**选哪个 Domain**、**发哪些顶点插值**、**声明哪些资源槽**。`name` / `provider_policy` / `[fragment]` 模块名 / `[vertex] requirements` / `[transform]` / 槽形态（`sampler` / `required` / `channels`）/ `material_data.type` **全部由领域契约给出**，资产里写不出来。
 
-### 5.1 业务 PBR 资产（例：`Wood_Floor.mi.toml`）
+> **`.material.toml` 已废除**（阶段四）：解析器只识别 `.mi.toml` 后缀，门禁 `S.material-library-contract` 对任何非该后缀的资产文件直接报错。
+
+### 5.1 业务 PBR 资产（例：`ShaderLibrary/material/lit.mi.toml` 全文）
 ```toml
-# 材质实例: 只选择 Domain，填数值与贴图
+schema = 4
+id = "Lit"
 domain = "StandardOpaque"
 
-[properties]
-roughness_factor = 0.8
-metallic_factor = 0.0
+[vertex]
+varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
 
-[textures]
-base_color = "textures/wood_basecolor.png"
-normal = "textures/wood_normal.png"
-roughness = "textures/wood_roughness.png"
+[resources]
+textures = [
+    { name = "base_color" }, { name = "roughness" }, { name = "metallic" },
+    { name = "occlusion" }, { name = "opacity_mask" }, { name = "normal" }
+]
+samplers = ["Trilinear", "Linear", "ShadowPCF"]
 ```
 
-### 5.2 业务无光纯色资产（例：`Gizmo_Axis_X.mi.toml`）
+**资产没写、由 `StandardOpaque` 契约给出的部分**：`name`（缺省 = `id`）、
+`provider_policy`（= `GeometryOnly`）、`[fragment].material_source_module_name`
+（= `pbr_surface_source`）、`[fragment].ntb_module_name`、
+`[vertex].requirements`（= Position + Normal + UV0）、`[transform]`（3D 规范变换）、
+每个纹理槽的 `sampler` / `required` / `channels`（`normal` 固定 `channels = 2`）、
+`[resources].material_data.type`（= `PBRSurface`）。
+
+**`[vertex].requirements` 是顶点 ABI，不是插值需求**：它由领域契约的
+`required_vertex_semantic_mask` 推导，且**不与 `varyings` 取交集** —— 同一领域
+必须同顶点布局才能共享 layout / 合批。不发 `emit_world_normal` 的材质照样要提供
+`Normal` 顶点属性。`varyings` 只决定着色器发什么插值。
+
+### 5.2 业务无光纯色资产（例：`builtin/pure_color`，已代码化）
 ```toml
+schema = 4
+id = "builtin/pure_color"
 domain = "UnlitSolid"
-
-[properties]
-color = [1.0, 0.0, 0.0, 1.0]
 ```
+连 `[vertex]` / `[resources]` 都可以整块省略——`UnlitSolid` 契约给出顶点需求
+（Position）、表面来源模块与 `EmissiveSurface` 数据类型。
 
 ---
 
@@ -287,10 +304,13 @@ color = [1.0, 0.0, 0.0, 1.0]
 3. **`builtin/text_gpu` / `builtin/text_gpu_bitmap`**：`Text2D` 领域的 SDF / 位图两条
    字形路径，由 `TextRenderPipeline` 按字体数据源二选一。
 
-> 现状（阶段三之三）：上述 5 份定义已**全部代码化**，内嵌在
+> 现状（阶段三之三 + 阶段四）：上述 5 份定义已**全部代码化**，内嵌在
 > `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，不再有对应的
-> `.material.toml`。`builtin/checkerboard_2d`（`Checker2D` 领域）仍以资产文件形式
-> 存在——它不在保底链上，可继续走资产路径直到阶段四。
+> `.mi.toml`，也不再依赖磁盘。内嵌的仍是**完整 schema-4 源码文本**，走与资产
+> **完全同一条**解析 + 领域校验管线——代码化消灭的是「对磁盘文件的依赖」，不是
+> 「对校验管线的依赖」。
+> `builtin/checkerboard_2d`（`Checker2D` 领域）**不在**保底链上（只是调试用降级
+> 材质），因此仍以 `ShaderLibrary/material/checkerboard_2d.mi.toml` 资产文件形式存在。
 
 ---
 
@@ -298,7 +318,7 @@ color = [1.0, 0.0, 0.0, 1.0]
 
 ### 7.1 C++ 裁减清单（废除项）
 - ❌ **废除 ShaderGen 代码拼接引擎**：删除复杂的模块依赖拓扑排序、代码字符串替换引擎。
-- ❌ **废除磁盘 `*.material.toml` 母材质定义文件**：不再通过 TOML 配置模块引用和 NTB 策略。
+- ❌ **废除磁盘 `*.mi.toml` 母材质定义文件**：不再通过 TOML 配置模块引用和 NTB 策略。
 - ❌ **废除 `MaterialDefinitionFileRegistry`**：将其简化为 `MaterialInstanceRegistry`。
 
 ### 7.2 C++ 保留与增强清单（保留项）
@@ -315,8 +335,27 @@ color = [1.0, 0.0, 0.0, 1.0]
 | :--- | :--- | :--- | :--- |
 | **阶段 1：契约头与算法函数库固化** ✅ | `feature/ultra-thin-stage1-lighting-slots` | 制定 5 大光照插槽的 GLSL 统一签名；实现对应的固定算法文件及“无/空”对象实现（`*_none.glsl`） | `ShaderLibrary/lighting/` 基础算法库 |
 | **阶段 2：Domain 主着色器固定化** ✅ | `feature/ultra-thin-stage2-domain-shaders` | 主着色器固定为「固定骨架 + 纯 `#include` 拼接」，槽模块内零 `#if`；C++ 侧只生成配置头 | 固定主着色器 + `PipelineConfigEmitter` |
-| **阶段 3：MaterialInstance 模型** | `feature/ultra-thin-stage3-material-instance` | Domain 即 Master Material；资产降维为「选 Domain + 填数值 + 配贴图」的 MaterialInstance；保底材质移入 C++ | 极简资产形态上线 |
-| **阶段 4：资产迁移与旧架构清理** | `feature/ultra-thin-stage4-cleanup-and-migration` | 现有资产迁移到 `.mi.toml`；废弃 `material.toml` 与旧版 ShaderGen 拼接代码 | 全套自动化门禁验证通过 |
+| **阶段 3：MaterialInstance 模型** ✅ | `feature/ultra-thin-stage3-material-instance` | Domain 即 Master Material；资产降维为「选 Domain + 填数值 + 配贴图」的 MaterialInstance；保底材质移入 C++ | 极简资产形态上线 |
+| **阶段 4：资产迁移与旧架构清理** ✅ | `feature/ultra-thin-stage4-cleanup-and-migration` | 现有资产迁移到 `.mi.toml`；废弃 `material.toml` 与旧版 ShaderGen 拼接代码 | 全套自动化门禁验证通过 |
+
+阶段 4 的进展：
+
+1. ✅ 9 份 `ShaderLibrary/material/*.material.toml` 全部 `git mv` 为 `.mi.toml`
+   并重写为降维形态（只剩 `domain` + `[vertex] varyings` + `[resources]`）；
+   `LoadDirectory()` 的扩展名过滤改为 `.mi.toml`，门禁
+   `S.material-library-contract` 从「静默跳过非 `.material.toml`」改为**正向断言**
+   ——任何非 `.mi.toml` 的资产文件立刻报错。
+2. ✅ `name` / `provider_policy` / `[fragment]` / `[vertex] requirements` 四项对
+   **领域材质**改为可缺省，走 `GetMaterialDomainVertexSemanticRequirements()` 等
+   契约兜底；非领域材质（Custom）缺任何一项都带**键级诊断**报错（历史行为是静默
+   `return false`）。
+3. ✅ 5 份内嵌 builtin 源码同步降维。
+4. ✅ 门禁新增 4 条探针：正向推导（`DerivedVertexColor`，断言四项全部由契约填对）、
+   ABI 不变式（`DerivedKeepAbi`）、以及 Custom 缺 `provider_policy` /
+   `requirements` 的两条反向探针。
+5. ⬜ **旧 ShaderGen 字符串拼接代码清理未做**：它与资产迁移无耦合，需要单独分支；
+   且拼接顺序本身就是隐式契约（`#include` 顺序、宏定义顺序），必须先有 golden
+   快照覆盖再动。详见 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 2 的进展（按交付顺序）：
 
@@ -363,7 +402,7 @@ color = [1.0, 0.0, 0.0, 1.0]
    资产自选的 `[transform]` 与领域规范不符即报错在 `key == "domain"` 上。
    解析器 `ParseDefinition` 在资产缺 `[transform]` 时**从契约兜底**
    （`GetMaterialDomainCanonicalVertexNodeConfig()`），因此 14 个
-   `*.material.toml` 的 `[transform]` 块被**整块删除**（98 行）。
+   `*.mi.toml` 的 `[transform]` 块被**整块删除**（98 行）。
    配套新增 `IsSameVertexNodeConfig()`；门禁 `D.material-domain-contract`
    加 1 条负向探针（3D 领域自选 2D 变换必须被拒）+ 2 处正向断言
    （默认 3D 领域解析结果必须等于默认配置；`Text2D` 最小材质在无
@@ -388,7 +427,7 @@ color = [1.0, 0.0, 0.0, 1.0]
    `channels` 缺失时从契约兜底；槽名不在任何契约内则**显式报错**（无规范值可
    兜底）；`[resources].material_data` 整块缺失时从契约兜底，但**显式写了非规范
    值会被保留**交给校验器报错——与阶段三之一同一原则：兜底只填空，不改作者声明。
-   9 个 `*.material.toml` 随之瘦身：`lit` 的 6 个槽全部收成 `{ name = "..." }`，
+   9 个 `*.mi.toml` 随之瘦身：`lit` 的 6 个槽全部收成 `{ name = "..." }`，
    4 个无光材质的 `material_data = { type = "EmissiveSurface" }` 整行删除。
    门禁 `D.material-domain-contract` 新增 4 条负向探针（自选采样器种类 /
    自选绑定必要性 / 自选通道数 / 自选 `material_data` 类型），并把 `Text2D`
@@ -409,7 +448,7 @@ color = [1.0, 0.0, 0.0, 1.0]
 
 3. ✅ **保底链代码化**。`builtin/pure_color`、`builtin/checkerboard_3d`、
    `builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap`
-   五份定义从 `ShaderLibrary/material/*.material.toml` 移入 C++：
+   五份定义从 `ShaderLibrary/material/*.mi.toml` 移入 C++：
    新增 `inc/hgl/mtl/BuiltinMaterialDefinitions.h` +
    `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`（内嵌 schema-4 源码表），
    `MaterialDefinitionFileRegistry` 新增 `RegisterDefinitionSource()`
@@ -428,7 +467,7 @@ color = [1.0, 0.0, 0.0, 1.0]
    > 的东西。它们也没有作者可调的自由度：纹理槽形态与 `material_data` 类型已在
    > 阶段三之二推入领域契约，剩下的只有「领域 + 顶点语义 + 变体开关」，属于引擎
    > 内部知识。
-   > **代码化的边界**：内嵌的仍是完整 schema-4 源码，注册时走与 `.material.toml`
+   > **代码化的边界**：内嵌的仍是完整 schema-4 源码，注册时走与 `.mi.toml`
    > **完全相同**的解析 + 领域校验管线。若改为在 C++ 里手工拼
    > `MaterialDefinition` 结构体，领域契约就得在第二处复述一遍
    > （`material_source_module_name` / `ntb_module_name` / `vertex_node_config` /

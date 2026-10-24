@@ -1,0 +1,9 @@
+schema = 4
+id = "SkyMinimal"
+
+# 材质实例：只填领域 + 资源 + 数值。
+# 顶点语义需求（Position）、顶点提供策略、表面来源模块全部由领域 Sky 的契约给出。
+domain = "Sky"
+
+[vertex]
+varyings = ["emit_frag_direction"]

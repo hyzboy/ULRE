@@ -151,7 +151,7 @@ RenderSubmit             SwapchainSubmitSystem
 
 ### 3.4 材质定义 → program → pipeline
 
-- `ShaderLibrary/material/lit.material.toml`：`[vertex] requirements=["Position","UV0","Normal"]`（:17-19）；`[resources] ubos=["CameraInfo","SkyInfo"]`、`textures` = **6 个可选槽**（`base_color/roughness/metallic/occlusion/opacity_mask/normal`，`sampler="Sampler2DArray"`，`normal` 带 `channels=2`）、`samplers=["Trilinear","Linear","ShadowMap","ShadowPCF"]`（:21-31）
+- `ShaderLibrary/material/lit.mi.toml`：只声明 `domain = "StandardOpaque"` + `[vertex] varyings` + `[resources]` 的 6 个槽名与 `samplers=["Trilinear","Linear","ShadowPCF"]`。顶点语义需求（`Position/UV0/Normal`）、表面来源模块、法线标架模块、槽形态（`Sampler2DArray`、是否必绑、`channels=2`）**全部由领域契约给出**——材质实例里不再有 `requirements` / `ubos` / 每槽 `sampler`/`channels`。
 - ShaderGen 编译成 `program-<hash>`；`RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:610`）取到 program 后 `render_pass->CreatePipeline(program, effective_recipe)`，key = shader stages + 附件格式；**每个 RenderPass 各自持有一份解析结果**（`PrimitiveComponent::resolvedRuntimePipelineMap`，`inc/hgl/ecs/components/PrimitiveComponent.h:130`、:188-202）——同一世界渲到多个 RT（shadow map 等离屏 pass）时各 RT 用各自格式匹配的管线，互不驱逐。
 
 ### 3.5 纹理 → bindless 句柄 + 引用池

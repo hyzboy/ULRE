@@ -27,7 +27,7 @@
 
 ```
 ┌─ L1 作者层（声明意图）──────────────────────────────────────────┐
-│  MaterialDefinition（能力超集，.material.toml 文件）            │
+│  MaterialDefinition（能力超集，.mi.toml 文件）            │
 │  MaterialRecipe（实例输入：mtl_def_id + 纹理/SSBO 绑定 + 状态覆盖）│
 ├─ L2 构建请求层 ─────────────────────────────────────────────────┤
 │  MaterialDefinitionBuildRequest = Recipe + 几何格式 + purpose + 设备 │
@@ -91,7 +91,7 @@
 
 这是整条链的枢纽，按序执行：
 
-1. **解析 definition**：`mtl_def_id="Lit"` → `ShaderLibrary/material/lit.material.toml`
+1. **解析 definition**：`mtl_def_id="Lit"` → `ShaderLibrary/material/lit.mi.toml`
    （文件注册表懒加载整目录，`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:184`）→ 得到
    `MaterialDefinition`：`[transform]` 五元组（source/mapping/orientation/scale/projection）、
    `[fragment]` provider 模块路径、`[pipeline]` family/profile 与可选 `[render_state]`、
@@ -315,7 +315,7 @@ FNV 哈希**。这带来两个关键收益：
   ——GLSL 侧索引与运行时池
   天然对齐。
 - `MaterialTextureReferencePool` 按 material definition 分配纹理引用行；
-  ShaderGen 依据 `.material.toml` 的 `resources.textures` 声明顺序发射
+  ShaderGen 依据 `.mi.toml` 的 `resources.textures` 声明顺序发射
   `uvec2 tex_<texture_name>` 字段，运行时只写 descriptor index 和 array layer。
 - provider GLSL 只通过 `MTL_TEX(i).tex_<texture_name>` 取得引用，再调用
   `Sample2DArray(handle, sampler, uv, array_layer)`；不再依赖固定 `TextureSlot`、独立 texture-layer SSBO
@@ -370,7 +370,7 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | 层 | 文件 | 职责 |
 |---|---|---|
 | L1 | `inc/hgl/mtl/MaterialRecipe.h` | Definition/Recipe 数据结构、渲染状态解析 |
-| L1 | `inc/hgl/mtl/MaterialDefinitionFile.h` + `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | .material.toml 解析 |
+| L1 | `inc/hgl/mtl/MaterialDefinitionFile.h` + `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | .mi.toml 解析 |
 | L1 | `inc/hgl/mtl/MaterialDefinitionRegistry.h` + `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp` | 材质定义文件注册表 + NormalizeRecipe / 构建上下文哈希 |
 | L1 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp` | BuildGenericMaterial 五阶段主流程（702-806） |
 | L2 | `inc/hgl/mtl/ShaderBuildContext.h` | 编译产物容器（全局资源契约/Stage Map/链接规格） |

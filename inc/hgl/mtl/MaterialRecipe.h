@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/MaterialDomain.h>
@@ -190,6 +190,7 @@ namespace hgl::graph::mtl
         case VertexSemantic::Color:     return ShaderCodeModuleSemantic::Color;
         case VertexSemantic::Luminance: return ShaderCodeModuleSemantic::Luminance;
         case VertexSemantic::TexCoord:  return ShaderCodeModuleSemantic::UV0;
+        case VertexSemantic::Size:      return ShaderCodeModuleSemantic::Size;
         case VertexSemantic::TransformID: return ShaderCodeModuleSemantic::TransformID;
         default:                        return ShaderCodeModuleSemantic::Unknown;
         }
@@ -822,6 +823,37 @@ namespace hgl::graph::mtl
     }
 
     /**
+     * 某条顶点语义需求是否被**当前 varying 配置**真正需要。
+     *
+     * 用途：把「领域契约要求什么」与「这份材质实际发什么」取交集。领域契约的
+     * 语义位是**超集**（同一领域里不同材质可以只用到其中一部分），所以推导出来的
+     * 需求必须先过这一层，否则一个不发 `emit_world_normal` 的 `StandardOpaque`
+     * 材质会被强行要求顶点法线属性 —— 领域契约的过度收紧。
+     *
+     * 语义真源只此一份：ShaderGen 的深度 pass 重过滤与材质解析期的推导都调它。
+     * `default: true` 是刻意的：语义表里没有对应 varying 开关的项（`Size` / `AO` /
+     * `Rotation`）既然被领域契约要求了，就不该被静默丢掉。
+     */
+    inline bool IsMaterialVertexSemanticRequiredForVarying(
+        const VertexSemantic semantic,
+        const MaterialVertexVaryingConfig &varying) noexcept
+    {
+        switch (semantic)
+        {
+        case VertexSemantic::Position:   return true;
+        case VertexSemantic::Normal:     return varying.emit_world_normal;
+        case VertexSemantic::Tangent:
+        case VertexSemantic::Bitangent:  return false;
+        case VertexSemantic::TexCoord:   return varying.emit_uv0;
+        case VertexSemantic::Color:      return varying.emit_vertex_color
+                                             || varying.emit_vertex_color_from_palette;
+        case VertexSemantic::Luminance:  return varying.emit_luminance;
+        case VertexSemantic::TransformID:return varying.use_transform_id_attr;
+        default:                         return true;
+        }
+    }
+
+    /**
      * 定义是否**容忍**面法线兜底（`normal_mode = "OptionalFaceFallback"`）。
      *
      * 容忍者（`builtin/checkerboard_3d` / `builtin/error_checkerboard_3d`）自带
@@ -840,7 +872,7 @@ namespace hgl::graph::mtl
      * 判据：不容忍面法线兜底，**且**要法线光照 —— 声明了 Normal/Tangent/Bitangent
      * 任一语义，或挂了法线贴图模块（`ntb_module_name`）。
      *
-     * 为什么不看 `normal_mode`：`lit.material.toml` 的 `normal_mode` 是默认 `None`，
+     * 为什么不看 `normal_mode`：`lit.mi.toml` 的 `normal_mode` 是默认 `None`，
      * 却声明了 `Normal` + `ntb_tangent_vbo_normalmap` ⇒ 它缺顶点法线时 `s1_ntb*.glsl`
      * 会从没上传的 SSBO 槽读垃圾值（画面随机明暗，比没光更坏）。
      */

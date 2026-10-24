@@ -413,22 +413,24 @@ namespace hgl::graph::mtl
         bool ParseDefinition(const toml::value &root, MaterialDefinitionFileData &out)
         {
             std::string id;
-            std::string name;
-            std::string policy;
 
-            if (!ReadRequiredString(root, "id", id)
-             || !ReadRequiredString(root, "name", name)
-             || !ReadRequiredString(root, "provider_policy", policy))
+            if (!ReadRequiredString(root, "id", id))
                 return false;
-            if (!ParseMaterialVertexProviderPolicy(policy.c_str(), out.definition.vertex_provider_policy))
-            {
-                RecordParseFailure("provider_policy", policy.c_str(),
-                                   "未知策略名（见 MaterialRecipe.h 的 GetMaterialVertexProviderPolicyName）");
-                return false;
-            }
 
             out.definition.definition_id = id;
-            out.definition.definition_name = name;
+
+            // `name` 缺省 = `id`（阶段四：资产只填领域 + 值 + 图）。
+            // 现存资产里两者逐字相同，重复声明只制造「同 id 不同名」的机会；
+            // 少数需要人类可读名的内建定义（如 Text2D_GPU）显式写即可。
+            if (root.contains("name"))
+            {
+                std::string name;
+                if (!ReadRequiredString(root, "name", name))
+                    return false;
+                out.definition.definition_name = name;
+            }
+            else
+                out.definition.definition_name = id;
 
             // ── 表面领域（可选）────────────────────────────────────────────────
             // `domain = "StandardOpaque"` 触发契约校验；缺省 = Custom（不校验）。
@@ -447,6 +449,38 @@ namespace hgl::graph::mtl
             }
             else
                 out.definition.domain = MaterialDomain::Custom;
+
+            // ── 顶点提供策略（领域材质可缺省）────────────────────────────────────
+            // 「顶点从哪来」是领域的属性（`require_allow_derived`），不是单个材质的
+            // 选择；资产再声明一遍只会与契约分叉。非领域材质（Custom）没有契约可依，
+            // 仍必须显式声明。
+            if (root.contains("provider_policy"))
+            {
+                std::string policy;
+                if (!ReadRequiredString(root, "provider_policy", policy))
+                    return false;
+                if (!ParseMaterialVertexProviderPolicy(policy.c_str(), out.definition.vertex_provider_policy))
+                {
+                    RecordParseFailure("provider_policy", policy.c_str(),
+                                       "未知策略名（见 MaterialRecipe.h 的 GetMaterialVertexProviderPolicyName）");
+                    return false;
+                }
+            }
+            else
+            {
+                const MaterialDomainContract *contract =
+                    GetMaterialDomainContract(out.definition.domain);
+                if (!contract)
+                {
+                    RecordParseFailure("provider_policy", "",
+                                       "非领域材质（未声明 domain）必须显式声明顶点提供策略");
+                    return false;
+                }
+                out.definition.vertex_provider_policy =
+                    contract->require_allow_derived
+                        ? MaterialVertexProviderPolicy::AllowDerived
+                        : MaterialVertexProviderPolicy::GeometryOnly;
+            }
 
             if (root.contains("transform"))
             {
@@ -495,19 +529,41 @@ namespace hgl::graph::mtl
                 }
             }
             else
-               return false;
+            {
+                // `[fragment]` 缺省 = 模块全部由领域契约给出（阶段四：资产只填
+                // 领域 + 值 + 图）。非领域材质没有契约可依，必须自己写。
+                if (!GetMaterialDomainContract(out.definition.domain))
+                {
+                    RecordParseFailure("fragment", "",
+                                       "非领域材质（未声明 domain）必须声明 [fragment]");
+                    return false;
+                }
+            }
+
+            // 空 `[fragment]` 表（只有 `surface_module_name` 之类）不算声明了表面来源：
+            // 领域材质由契约补齐，Custom 没有契约 ⇒ 必须在这里挡住，否则会带着
+            // 空模块名一路走到着色器拼装期才炸。
+            if (!out.definition.material_source_module_name
+             && !GetMaterialDomainContract(out.definition.domain))
+            {
+                RecordParseFailure("fragment", "material_source_module_name",
+                                   "非领域材质（未声明 domain）必须声明表面来源模块");
+                return false;
+            }
 
             if (!ParseRenderState(root, out.definition))
                 return false;
 
             const toml::value *vertex = root.contains("vertex") ? &root.at("vertex") : nullptr;
-            if (!vertex || !vertex->contains("requirements")
-             || !vertex->at("requirements").is_array())
+            if (vertex && !vertex->is_table())
+            {
+                RecordParseFailure("vertex", "", "必须是表");
                 return false;
+            }
             {
                 ParseTableScope vertex_table("vertex");
 
-                if (vertex->contains("normal_mode"))
+                if (vertex && vertex->contains("normal_mode"))
                 {
                     std::string normal_mode;
                     if (!ReadRequiredString(*vertex, "normal_mode", normal_mode))
@@ -519,21 +575,50 @@ namespace hgl::graph::mtl
                         return false;
                     }
                 }
-                for (const auto &item : vertex->at("requirements").as_array())
+
+                // `requirements` 缺省 = 由领域契约推导（`required_vertex_semantic_mask`）。
+                // 它曾经是必填项，且缺失时静默 `return false`——一个只能靠猜的陷阱；
+                // 现在显式声明依然接受（Custom 材质必须显式），领域材质可以不写。
+                //
+                // 注意：推导结果**不**与 `varyings` 取交集。领域契约的语义位是
+                // **顶点 ABI**（同一领域必须同布局才能共享 layout/合批），而
+                // `varyings` 只决定着色器发什么插值；两者不是一回事。把不发
+                // `emit_world_normal` 的 StandardOpaque 材质的 Normal 裁掉，会让
+                // 它和同领域其它材质的顶点布局分叉 —— 领域契约校验会直接拒绝。
+                if (vertex && vertex->contains("requirements"))
                 {
-                if (!item.is_string())
-                    return false;
-                ShaderCodeModuleSemantic semantic;
-                if (!ParseSemantic(item.as_string(), semantic))
-                {
-                    RecordParseFailure("requirements", item.as_string().c_str(),
-                                       "未知顶点语义名（见 ShaderCodeModule.h 的 GetShaderCodeModuleSemanticName）");
-                    return false;
+                    if (!vertex->at("requirements").is_array())
+                    {
+                        RecordParseFailure("requirements", "", "必须是顶点语义名数组");
+                        return false;
+                    }
+                    for (const auto &item : vertex->at("requirements").as_array())
+                    {
+                        if (!item.is_string())
+                        {
+                            RecordParseFailure("requirements", "", "数组元素必须是顶点语义名字符串");
+                            return false;
+                        }
+                        ShaderCodeModuleSemantic semantic;
+                        if (!ParseSemantic(item.as_string(), semantic))
+                        {
+                            RecordParseFailure("requirements", item.as_string().c_str(),
+                                               "未知顶点语义名（见 ShaderCodeModule.h 的 GetShaderCodeModuleSemanticName）");
+                            return false;
+                        }
+                        ShaderCodeModuleSemanticRequirement requirement;
+                        requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
+                        requirement.semantic = semantic;
+                        out.definition.vertex_semantic_requirements.Add(requirement);
+                    }
                 }
-                ShaderCodeModuleSemanticRequirement requirement;
-                requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
-                requirement.semantic = semantic;
-                out.definition.vertex_semantic_requirements.Add(requirement);
+                else if (!GetMaterialDomainVertexSemanticRequirements(
+                             out.definition.domain,
+                             out.definition.vertex_semantic_requirements))
+                {
+                    RecordParseFailure("requirements", "",
+                                       "非领域材质（未声明 domain）必须显式声明顶点语义需求");
+                    return false;
                 }
             }
 
@@ -1265,7 +1350,9 @@ namespace hgl::graph::mtl
             if (!file.is_file)
                 continue;
             const OSString name(file.name);
-            if (!name.EndsWith(OS_TEXT(".material.toml")))
+            // 阶段四：材质资产统一为材质实例格式 `*.mi.toml`（旧 `*.material.toml`
+            // 是「母材质定义文件」，它随领域契约化而废止——不再扫描）。
+            if (!name.EndsWith(OS_TEXT(".mi.toml")))
                 continue;
             if (LoadFile(OSString(file.fullname)))
                 ++file_count;

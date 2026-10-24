@@ -146,7 +146,7 @@ ShaderGen 按**声明顺序**排布材质引用行。调整契约表里既有领
 ## 4. 校验流程
 
 ```
-ParseMaterialDefinitionFile(.material.toml)
+ParseMaterialDefinitionFile(.mi.toml)
   ├─ ParseDefinition                 ← 解析 domain 键（缺省 = Custom）
   ├─ ValidateMaterialDefinitionKeys  ← 顶层键白名单（含 "domain"）
   └─ ValidateMaterialDefinitionDomain
@@ -309,7 +309,7 @@ ParseDefinition
 `toon_surface_source`，它们就不是同一个 shader program，合批与缓存键会双双失效——
 那等于把"领域"退化成标签。
 
-### 7.4 示例：`lit.material.toml` 的收敛前后
+### 7.4 示例：`lit.mi.toml` 的收敛前后
 
 ```toml
 # 收敛前
@@ -328,7 +328,7 @@ domain = "StandardOpaque"
 
 ### 7.5 领域边界的第二条：原本"不该进领域"的 13 个材质，最终怎么进的
 
-阶段四只把 `lit.material.toml` 收进 `StandardOpaque`，其余 13 个一开始标注为
+阶段四只把 `lit.mi.toml` 收进 `StandardOpaque`，其余 13 个一开始标注为
 `domain = "Custom"`。当时的理由是：领域概念描述的是「**模型表面**」——由美术/场景
 提供的资产，其顶点语义与纹理槽必须收敛，才能推导「同领域 ⇒ 同 layout ⇒ 可合批」，
 而这些材质不是模型表面：

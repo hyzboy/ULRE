@@ -3,8 +3,10 @@
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
+#include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/type/String.h>
+#include <hgl/type/ValueArray.h>
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MaterialDomain — 表面领域契约（Fixed-Code Domain Shaders，阶段一）
@@ -228,6 +230,17 @@ namespace hgl::graph::mtl
     {
         return 1u << static_cast<uint32>(semantic);
     }
+
+    // 领域契约 → `[vertex] requirements` 需求列表（领域材质的单一真源）。
+    //
+    // 为什么可以推导：`required_vertex_semantic_mask` 就是「这个领域对几何的前提」，
+    // 资产再抄一遍只给「抄漏」留机会——抄漏不会报错，运行期会拿缺属性的几何喂管线。
+    // 顺序按 `VertexSemantic` 枚举升序，稳定可预期（消费方只按语义查表，不看顺序）。
+    //
+    // Custom / 未知领域返回 false：没有契约可依，必须由资产显式声明。
+    bool GetMaterialDomainVertexSemanticRequirements(
+        MaterialDomain domain,
+        ValueArray<ShaderCodeModuleSemanticRequirement> &out) noexcept;
 
     // ── 校验结果 ────────────────────────────────────────────────────────────────
     enum class MaterialDomainValidationResult : uint8
