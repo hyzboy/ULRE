@@ -136,7 +136,8 @@ ParseMaterialDefinitionFile(.material.toml)
        ├─ Custom            → OK（豁免）
        ├─ 顶点语义 bitmask  → definition.vertex_requirements 必须覆盖
        ├─ 顶点提供策略      → provider_policy 必须允许派生
-       ├─ 材质源模块        → material_source_module_name 必须存在（UI2D 豁免）
+       ├─ 材质源模块        → 有规范名则可省略、但不得自选（UI2D 豁免）
+       ├─ NTB 模块          → 同上，有规范名则可省略、但不得自选
        └─ 纹理槽            → 白名单 + must_declare
 ```
 
@@ -246,7 +247,76 @@ const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, ma
 
 ---
 
-## 7. 门禁
+## 7. 资产收敛（阶段四）
+
+阶段一至三解决了「代码侧不认识材质组合」，阶段四解决**资产侧不必描述代码侧**。
+
+### 7.1 资产只填三件事
+
+| 填什么 | 例子 | 说明 |
+| :--- | :--- | :--- |
+| 领域 | `domain = "StandardOpaque"` | 唯一决定顶点输入、纹理槽、参考模块的键 |
+| 数值 | `[fragment]` / 参数 | 粗糙度、albedo 等实例值 |
+| 贴图 | `[resources]` | 纹理槽名与文件 |
+
+**不再填** `material_source_module_name` / `ntb_module_name`——这两个是「算法选择」，
+属于领域契约，不属于实例资产。
+
+### 7.2 兜底时机：必须在契约校验之后
+
+```
+ParseDefinition
+  → ValidateKnownKeys
+  → ValidateMaterialDefinitionDomain   ← 看作者原始声明，判"自选算法"
+  → ApplyDomainModuleDefaults          ← 只有这里才填空缺
+```
+
+顺序不能反：`ApplyDomainModuleDefaults` 若先跑，作者显式写错的模块名会被静默覆盖，
+`ValidateMaterialDefinitionDomain` 就再也发现不了「这个资产在自选光照算法」。
+
+兜底规则本身很短：
+
+- 契约无规范名（`nullptr`，如 `Custom` / `UI2D`）→ 完全不动，保持旧语义「必须自己声明」；
+- 契约有规范名 → 值为空则填入规范名；**值非空但不等则报错**，不覆盖。
+
+### 7.3 为什么"允许省略"但还是"禁止自选"
+
+两个新结果 `MaterialSourceModuleMismatch` / `NtbModuleMismatch` 看似和"收敛"矛盾，
+其实正是收敛的执行手段：
+
+- 「省略」让 99% 的资产只写 `domain` 就够了；
+- 「禁止自选」守住**同领域 ⇒ 同模块 ⇒ 同 layout ⇒ 可合批**这条推导链。
+
+一旦允许同一 `StandardOpaque` 领域里一个用 `pbr_surface_source`、另一个用自定义
+`toon_surface_source`，它们就不是同一个 shader program，合批与缓存键会双双失效——
+那等于把"领域"退化成标签。
+
+### 7.4 示例：`lit.material.toml` 的收敛前后
+
+```toml
+# 收敛前
+domain 缺省               # Custom
+[fragment]
+material_source_module_name = "pbr_surface_source"
+ntb_module_name             = "ntb_tangent_vbo_normalmap"
+
+# 收敛后
+domain = "StandardOpaque"
+[fragment]
+# 两个模块名由领域契约提供，此处刻意不写
+```
+
+行为等价，但"这份资产属于哪个领域"从**隐式推断**变成**显式声明**。
+
+### 7.5 阶段四未做（有意保留）
+
+`sky_cube.material.toml` / `unlit_texture.material.toml` 等仍走 `Custom` 豁免路径。
+把它们收进 `Sky` / `UI2D` 领域需要先确认契约能容纳其纹理槽与顶点语义，
+属于独立评估项，不在阶段四范围内。
+
+---
+
+## 8. 门禁
 
 | 门禁 | 基线 | 说明 |
 | :--- | :--- | :--- |
@@ -262,11 +332,11 @@ const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, ma
 
 ---
 
-## 8. 阶段路线
+## 9. 阶段路线
 
 | 阶段 | 分支 | 交付 |
 | :--- | :--- | :--- |
 | 一 · 契约层 | `feature/shader-domains-contract` | 领域枚举 + 契约表 + 校验 + 门禁 + 环境接缝接口 |
 | 二 · 宏头生成器 | `feature/shadergen-config-generator` | ShaderGen 降维为 `Generated_DomainConfig.h` 生成器；剥离 AST 拼接 |
 | 三 · 环境解耦 | `feature/pass-environment-decoupling` | Pass 决定注入哪个环境头；消除 `lit_ibl` 类材质概念 |
-| 四 · 资产收敛 | `feature/surface-asset-unification` | 资产只填领域 + 值 + 图；合批率收敛；清理旧拼接代码 |
+| 四 · 资产收敛 | `feature/surface-asset-unification` | 资产只填领域 + 值 + 图；领域兜底模块名；合批率收敛 |

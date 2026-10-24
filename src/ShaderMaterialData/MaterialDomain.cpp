@@ -2,6 +2,8 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/type/String.h>
 
+#include <cstring>
+
 namespace hgl::graph::mtl
 {
     const char *GetMaterialDomainName(const MaterialDomain domain) noexcept
@@ -203,6 +205,20 @@ namespace hgl::graph::mtl
         return &DomainContracts[index];
     }
 
+    const char *GetMaterialDomainReferenceMaterialSource(
+        const MaterialDomain domain) noexcept
+    {
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        return contract ? contract->reference_material_source_module : nullptr;
+    }
+
+    const char *GetMaterialDomainReferenceNtb(
+        const MaterialDomain domain) noexcept
+    {
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        return contract ? contract->reference_ntb_module : nullptr;
+    }
+
     const char *GetMaterialDomainValidationResultName(
         const MaterialDomainValidationResult result) noexcept
     {
@@ -217,6 +233,10 @@ namespace hgl::graph::mtl
         case MaterialDomainValidationResult::VertexProviderPolicyMismatch:
             return "VertexProviderPolicyMismatch";
         case MaterialDomainValidationResult::MissingMaterialSource:     return "MissingMaterialSource";
+        case MaterialDomainValidationResult::MaterialSourceModuleMismatch:
+            return "MaterialSourceModuleMismatch";
+        case MaterialDomainValidationResult::NtbModuleMismatch:
+            return "NtbModuleMismatch";
         default:                                                        return "Invalid";
         }
     }
@@ -280,16 +300,51 @@ namespace hgl::graph::mtl
         }
 
         // ── 3. 表面来源模块 ────────────────────────────────────────────────────
-        // UI2D 是纯纹理/无光照形态，允许 surface_module_name 走天空式直通路径；
-        // 其余契约领域必须声明 material_source_module_name，否则表面数据无来源。
-        if (domain != MaterialDomain::UI2D
-            && (!definition.material_source_module_name
-                || !*definition.material_source_module_name))
+        // 契约给出规范模块名时，**资产不必重复声明**（阶段四：资产只填领域 + 值 + 图）。
+        //   · 未声明  → 通过，解析层会用契约里的规范名兜底填入；
+        //   · 声明了但与规范不符 → 失败。领域一旦选定，算法就由领域决定，
+        //     资产不得自选——否则「同领域可共享 layout/合批」立刻失效。
+        // 契约尚未实现（reference 为 nullptr）时才退回「必须自行声明」。
+        const char *reference_source = contract->reference_material_source_module;
+        const bool has_declared_source =
+            definition.material_source_module_name && *definition.material_source_module_name;
+
+        if (reference_source)
         {
+            if (has_declared_source
+                && strcmp(definition.material_source_module_name, reference_source) != 0)
+            {
+                out_detail = "[fragment] material_source_module_name 不得自选（领域 ";
+                out_detail += contract->name;
+                out_detail += " 规范模块为 ";
+                out_detail += reference_source;
+                out_detail += "）";
+                return MaterialDomainValidationResult::MaterialSourceModuleMismatch;
+            }
+        }
+        else if (domain != MaterialDomain::UI2D && !has_declared_source)
+        {
+            // UI2D 是纯纹理/无光照形态，允许 surface_module_name 走天空式直通路径。
             out_detail = "[fragment] material_source_module_name 必须声明（领域 ";
             out_detail += contract->name;
-            out_detail += " 需要 EvalMaterialSource 提供表面数据）";
+            out_detail += " 尚无规范模块，且需要 EvalMaterialSource 提供表面数据）";
             return MaterialDomainValidationResult::MissingMaterialSource;
+        }
+
+        // 法线标架模块同理：契约给出规范名时资产可省略，但不得换成别的。
+        const char *reference_ntb = contract->reference_ntb_module;
+        const bool has_declared_ntb =
+            definition.ntb_module_name && *definition.ntb_module_name;
+
+        if (reference_ntb && has_declared_ntb
+            && strcmp(definition.ntb_module_name, reference_ntb) != 0)
+        {
+            out_detail = "[fragment] ntb_module_name 不得自选（领域 ";
+            out_detail += contract->name;
+            out_detail += " 规范模块为 ";
+            out_detail += reference_ntb;
+            out_detail += "；不需要法线贴图时请删除该键而非改指其它模块）";
+            return MaterialDomainValidationResult::NtbModuleMismatch;
         }
 
         // ── 4. 纹理槽白名单 + 必声明项 ──────────────────────────────────────────

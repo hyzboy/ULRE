@@ -4892,14 +4892,38 @@ namespace
                 "]\n"
             },
             {
-                "no material source module",
+                // 阶段四改成违规：领域已给出规范模块，资产**不得**自选别的来源模块。
+                "self-chosen material source module",
                 "schema = 4\n"
-                "id = \"DomainBadNoSource\"\n"
-                "name = \"DomainBadNoSource\"\n"
+                "id = \"DomainBadWrongSource\"\n"
+                "name = \"DomainBadWrongSource\"\n"
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
+                "material_source_module_name = \"checkerboard_3d_source\"\n"
                 "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                "self-chosen ntb module",
+                "schema = 4\n"
+                "id = \"DomainBadWrongNtb\"\n"
+                "name = \"DomainBadWrongNtb\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "ntb_module_name = \"ntb_orthonormal\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
                 "[resources]\n"
@@ -4953,6 +4977,77 @@ namespace
                 result.diagnostics.emplace_back(
                     std::string("violation '") + probe.label
                     + "' must carry a human-readable detail");
+            }
+        }
+
+        // ── ③ 领域规范模块兜底（阶段四）───────────────────────────────────────
+        // 资产只写 `domain` + 数值 + 贴图，两个模块名都省略 ⇒ 必须由领域契约填上，
+        // 且填进来的必须正是契约里的规范名。这条与 ② 的 mismatch 探针成对：
+        // 一个管「省略要能补上」，一个管「写了不能乱写」。
+        {
+            const char *minimal_domain_material =
+                "schema = 4\n"
+                "id = \"DomainMinimal\"\n"
+                "name = \"DomainMinimal\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n";
+
+            MaterialDefinitionFileData data;
+            const MaterialDefinitionFileParseResult parse_result = ParseMaterialDefinitionFile(
+                minimal_domain_material,
+                static_cast<int>(std::strlen(minimal_domain_material)), data);
+            if (parse_result != MaterialDefinitionFileParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    "minimal domain material (no module names) must parse, got: "
+                    + std::string(data.parse_error.key) + " / "
+                    + data.parse_error.detail.c_str());
+            }
+            else
+            {
+                const char *expect_source = GetMaterialDomainReferenceMaterialSource(
+                    MaterialDomain::StandardOpaque);
+                const char *expect_ntb = GetMaterialDomainReferenceNtb(
+                    MaterialDomain::StandardOpaque);
+
+                if (!expect_source || !expect_ntb)
+                {
+                    result.diagnostics.emplace_back(
+                        "StandardOpaque contract must declare both reference modules");
+                }
+                else
+                {
+                    if (std::string(data.definition.material_source_module_name
+                                    ? data.definition.material_source_module_name : "")
+                        != expect_source)
+                        result.diagnostics.emplace_back(
+                            std::string("derived material source module must be '")
+                            + expect_source + "', got '"
+                            + (data.definition.material_source_module_name
+                                   ? data.definition.material_source_module_name : "<null>")
+                            + "'");
+                    if (std::string(data.definition.ntb_module_name
+                                    ? data.definition.ntb_module_name : "")
+                        != expect_ntb)
+                        result.diagnostics.emplace_back(
+                            std::string("derived ntb module must be '") + expect_ntb
+                            + "', got '"
+                            + (data.definition.ntb_module_name
+                                   ? data.definition.ntb_module_name : "<null>")
+                            + "'");
+                }
             }
         }
 

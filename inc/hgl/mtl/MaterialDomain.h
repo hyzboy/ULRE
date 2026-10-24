@@ -138,6 +138,16 @@ namespace hgl::graph::mtl
     // 按序号取契约表（0..MaterialDomainContractCount-1），供门禁穷举。
     const MaterialDomainContract *GetMaterialDomainContractAt(int index) noexcept;
 
+    // ── 领域规范模块（阶段四：资产只填领域 + 值 + 图）────────────────────────────
+    // 材质 TOML 声明 `domain` 之后，**不必**再写 `material_source_module_name`
+    // 与 `ntb_module_name`：解析层用这两个函数取回领域的规范模块名兜底填入。
+    // 契约尚未实现（reference 为 nullptr）或 domain == Custom 时返回 nullptr。
+    //
+    // 注意取用时机：必须在校验**之后**。校验要看到作者的原始声明，才能判定
+    // 「是不是在自选算法」（MaterialSourceModuleMismatch / NtbModuleMismatch）。
+    const char *GetMaterialDomainReferenceMaterialSource(MaterialDomain domain) noexcept;
+    const char *GetMaterialDomainReferenceNtb(MaterialDomain domain) noexcept;
+
     // 顶点语义 → 契约 bitmask 位。
     inline constexpr uint32 MaterialDomainSemanticBit(VertexSemantic semantic) noexcept
     {
@@ -155,8 +165,10 @@ namespace hgl::graph::mtl
         UnexpectedTextureSlot,      // 材质声明了契约白名单之外的纹理槽
         VertexProviderPolicyMismatch, // 顶点提供策略与契约不符
         MissingMaterialSource,      // 契约要求 material_source_module_name，但材质未声明
+        MaterialSourceModuleMismatch, // 材质自选表面来源模块，与领域规范模块不符
+        NtbModuleMismatch,          // 材质自选法线标架模块，与领域规范模块不符
 
-        ENUM_CLASS_RANGE(OK, MissingMaterialSource)
+        ENUM_CLASS_RANGE(OK, NtbModuleMismatch)
     };
 
     const char *GetMaterialDomainValidationResultName(

@@ -863,6 +863,37 @@ namespace hgl::graph::mtl
         return true;
     }
 
+    // ── 领域规范模块兜底（阶段四：资产只填领域 + 值 + 图）────────────────────────
+    // 前置条件：`ValidateMaterialDefinitionDomain()` 已返回 OK。
+    // 只填空缺，绝不覆盖作者显式值——校验阶段已经保证「显式值必须等于规范值」，
+    // 所以这里覆盖与否结果相同，但保留显式值更利于诊断信息还原。
+    static void ApplyDomainModuleDefaults(MaterialDefinitionFileData &out) noexcept
+    {
+        if (out.definition.domain == MaterialDomain::Custom)
+            return;
+
+        if (!out.definition.material_source_module_name
+            || !*out.definition.material_source_module_name)
+        {
+            if (const char *source =
+                    GetMaterialDomainReferenceMaterialSource(out.definition.domain))
+            {
+                out.material_source_module_name_storage = source;
+                out.definition.material_source_module_name =
+                    out.material_source_module_name_storage.c_str();
+            }
+        }
+
+        if (!out.definition.ntb_module_name || !*out.definition.ntb_module_name)
+        {
+            if (const char *ntb = GetMaterialDomainReferenceNtb(out.definition.domain))
+            {
+                out.ntb_module_name_storage = ntb;
+                out.definition.ntb_module_name = out.ntb_module_name_storage.c_str();
+            }
+        }
+    }
+
     // 顶层 + 各子层键白名单（与 ParseDefinition/ParseRenderState 支持的键逐项对应）
     static bool ValidateMaterialDefinitionKeys(const toml::value &root) noexcept
     {
@@ -994,6 +1025,14 @@ namespace hgl::graph::mtl
                                            GetMaterialDomainName(out_data.definition.domain),
                                            domain_detail.c_str());
                         result = MaterialDefinitionFileParseResult::InvalidValue;
+                    }
+                    else
+                    {
+                        // ── 领域规范模块兜底（阶段四）──────────────────────────
+                        // 资产只写 `domain` + 数值 + 纹理；算法模块名由领域契约给出。
+                        // 顺序不能反过来：校验必须看到作者原始声明，否则「自选算法」
+                        // 会被兜底值覆盖而永远判不出来。
+                        ApplyDomainModuleDefaults(out_data);
                     }
                 }
             }

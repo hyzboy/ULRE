@@ -2,6 +2,7 @@ schema = 4
 id = "Lit"
 name = "Lit"
 provider_policy = "GeometryOnly"
+domain = "StandardOpaque"
 
 [transform]
 source = "Vec3Position"
@@ -11,8 +12,8 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-material_source_module_name = "pbr_surface_source"
-ntb_module_name = "ntb_tangent_vbo_normalmap"
+# 表面来源模块与法线标架模块由领域 StandardOpaque 的契约给出，
+# 资产不再重复声明（阶段四：资产只填领域 + 数值 + 贴图）。
 
 [vertex]
 requirements = ["Position", "UV0", "Normal"]
