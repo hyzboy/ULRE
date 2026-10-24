@@ -3,14 +3,14 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段三之一完成后（分支 `feature/ultra-thin-stage3-material-instance`，HEAD = `c7d1e45cb`）。
+> **最后更新**：阶段三之二完成后（分支 `feature/ultra-thin-stage3-material-instance`，HEAD = `20d36a0d0`）。
 
 ---
 
 ## 0. 新会话开场怎么用
 
 1. 先读本文 **§1 目标** 和 **§3 路线图**，确认自己在哪一阶段。
-2. 读 **§6 下一步**，那里写了当前待做项的完整调研结论，可以直接开工。
+2. 读 **§6 下一步**：6.1–6.3 是阶段三之二的调研与方案（已实施，见 §4.4），**§6.4 才是当前待做项**（阶段三之三：MaterialInstance 模型）。
 3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数 82」「golden 无环境变量开关」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
 
@@ -27,7 +27,7 @@
 | # | 铁律 | 现状 |
 |---|------|------|
 | 1 | Domain 就是未来的 Master Material，引擎硬编码，上层**不可**自定义、不可改 | ✅ 16 个领域契约已成体系 |
-| 2 | 上层资产 = MaterialInstance：只能**选一个 Domain** + 配自己的资源与数值 | 🔶 阶段三进行中 |
+| 2 | 上层资产 = MaterialInstance：只能**选一个 Domain** + 配自己的资源与数值 | 🔶 阶段三进行中（2/3） |
 | 3 | 最终废除 `*.material.toml` 这一中间层 | ⬜ 阶段四 |
 | 4 | 统一函数签名的「多态包含契约」+ 空对象实现（`*_none.glsl`）来消灭条件编译，而不是一堆 `#if` / 宏 | ✅ 宏区仅剩 2 个 |
 | 5 | 主表面着色器是**固定代码**；换光照/GI/天光/阴影只是 `#include` 不同文件；主着色器里只保留必须与 `discard`/输出同函数体的 alpha 三件套宏 | ✅ 阶段二达成 |
@@ -48,10 +48,11 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 6 | 同上 | `69146a2e7` | **阶段二之二**：消灭主着色器最后三处条件编译（槽位升必需 + 空对象） |
 | 7 | 同上 | `b21563928` | 阶段二收尾：路线图改为四阶段并与分支对齐（纯文档） |
 | 8 | `feature/ultra-thin-stage3-material-instance` ← **当前** | `c7d1e45cb` | **阶段三之一**：顶点变换从资产推入领域契约 |
+| 9 | 同上 | `20d36a0d0` | **阶段三之二**：纹理槽形态与 `material_data` 类型从资产推入领域契约 |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
-累计 diff（`6ef579059..HEAD`）：56 files, +1559 / −286。
+累计 diff（`6ef579059..HEAD`）：57 files, +2405 / −347。
 
 ---
 
@@ -61,7 +62,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 |---|---|---|---|
 | 一 | 直接光正交拆分（漫反射 × 高光）+ 空对象库 + 槽角色/能力扩展 | `feature/ultra-thin-stage1-lighting-slots` | ✅ 完成 |
 | 二 | 管线配置头单一真源 + 消灭主着色器里所有算法相关 `#if` | `feature/ultra-thin-stage2-domain-shaders` | ✅ 完成 |
-| 三 | **MaterialInstance 模型**：把「领域已确定的旋钮」逐个从资产契约上移到领域契约 | `feature/ultra-thin-stage3-material-instance` | 🔶 **进行中（1/N）** |
+| 三 | **MaterialInstance 模型**：把「领域已确定的旋钮」逐个从资产契约上移到领域契约 | `feature/ultra-thin-stage3-material-instance` | 🔶 **进行中（2/3）** |
 | 四 | 资产降维为 `.mi.toml` + 废除 `.material.toml` + 清理旧 ShaderGen 拼接代码 | `feature/ultra-thin-stage4-cleanup-and-migration` | ⬜ 未开始 |
 
 **阶段三的指导原则**：凡是「同一个 Domain 下所有材质取值必然相同」的字段，都从资产文件里删掉，改由领域契约给出规范值；资产若显式写了不同值，必须**被校验拒绝**（不是静默覆盖）。这既是减负，也是把「上层不该有的自由度」物理删除。
@@ -113,6 +114,23 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 
 **为什么变换属于 Domain 而不是资产**：变换链（PositionSource / PixelTransform / Projection / Depth / NormalTransform）决定的是「这份材质只能贴在哪类几何体上」。它是 Domain 的身份，不是实例的参数。资产一旦能自选，就等于允许「把 2D UI 材质挂到 3D 网格上」，而这正是校验器必须拒绝的错配。
 
+### 4.4 阶段三之二（`20d36a0d0`）—— 纹理槽形态与 `material_data` 类型推入领域契约
+
+**调研结论**：14 个 `.material.toml` 里，同一 Domain 下 `textures[].sampler` / `required` / `channels` 与 `material_data.type` **完全一致**（见 §6.1 实测表）；唯一不能上移的是 `[resources].samplers`（过滤设置），因为 `Text2D` 的 SDF 字形要 `Linear`、位图字形要 `Nearest`。
+
+**实现**：
+| 文件 | 改动 |
+|---|---|
+| `inc/hgl/mtl/MaterialDomain.h` | `MaterialDomainTextureSlot` 3 → 6 字段（`sampler` / `binding_required` / `channels`）；`MaterialDomainContract` 加第 11 字段 `material_data_type`；`MaterialDomainValidationResult` 加 `TextureSlotMismatch` / `MaterialDataTypeMismatch`；新增 `FindMaterialDomainTextureSlot()` / `GetMaterialDomainCanonicalMaterialDataType()` |
+| `src/ShaderMaterialData/MaterialDomain.cpp` | 6 张槽表按新形态重写（`normal` 固定 `channels = 2`；`Sky.sky_cube` 是唯一的 `SamplerCube` 且 `must_declare = false` + `binding_required = true`）；16 个契约逐条填 `material_data_type`；校验器第 4 段重写为「白名单 + 形态」单遍扫描，新增第 5 段「材质数据类型」；加编译期 `static_assert` 守卫 surface 族 |
+| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | `sampler` / `required` / `channels` 缺省时从契约兜底，槽名不在任何契约内则显式报错；新增 `declares_material_data` 标记，`[resources].material_data` 整块缺失时从契约兜底（显式非规范值保留给校验器报错）；`sampler` / `channels` 的类型错误现在也落键级诊断 |
+| 9 个 `ShaderLibrary/material/*.material.toml` | 删除可上移字段：`lit` 的 6 个槽收成 `{ name = "..." }`；4 个无光材质删除 `material_data = { type = "EmissiveSurface" }`；`[resources].samplers` 全部保留 |
+| `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | 加 4 条负向探针（自选采样器种类 / 自选绑定必要性 / 自选通道数 / 自选 `material_data` 类型）；③b 的 Text2D 探针从「无 `[transform]`」升级为「纹理只写 `name`」，同时断言变换、槽形态、数据类型三者都由契约兜底 |
+
+**为什么槽形态属于 Domain**：同一领域内 `sampler` / `required` / `channels` 必然相同；资产重复声明唯一可能的后果是「同领域不同布局」，进而分叉 `layout_hash`、破坏合批。`channels` 更危险——它直接决定 shader 是否注入 `MTL_TEX_<NAME>_CHANNELS` 与 Z 分量还原逻辑，写错运行期不报错、只是数值全错。
+
+**聚合初始化的坑**：`DomainContracts[]` 是聚合初始化，新增 `material_data_type` 后凡是没写到的条目都会被静默填成枚举 0 = `MeshDrawParams`，而 `IsGlobalSSBOType()` 会照样放行。因此加了编译期 `static_assert`，要求 16 个契约的该字段必须落在 surface 族（`PBRSurface` / `EmissiveSurface` / `TransmissionSurface`）内。**以后再往 `MaterialDomainContract` 加枚举字段，同样要加这种守卫。**
+
 ---
 
 ## 5. 验证状态
@@ -133,11 +151,12 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 ```
 产物目录：`build\out\Windows_64_Debug\`
 
-### 5.2 当前结果（全部绿）
+### 5.2 当前结果（全部绿，阶段三之二完成后复测）
 
-- `ShaderResourceSchemaRegressionGate all`：**55 PASS / 0 FAIL，exit=0**
+- `ShaderResourceSchemaRegressionGate all`：**55 PASS / 0 FAIL，exit=0**（阶段三之二只在既有 case 内加探针，case 数不变）
 - 三个回归 exe：**全 exit=0**
 - 实跑 `PBRSpheres` / `TextDraw`：`Loaded 14 material TOML definitions (0 errors)`、`Loaded 82 code modules`、无 GLSL 编译错误
+- `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）
 - 实跑渲染 exe（脚本是会话局部产物，新会话请直接用下面命令）：
   ```powershell
   cd E:\ULRE
@@ -147,7 +166,9 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 
 ---
 
-## 6. 下一步：阶段三之二 —— 纹理槽 / material_data 从领域契约派生
+## 6. 阶段三之二（已实施）与下一步：阶段三之三
+
+> ✅ **本节 6.1–6.3 已于 `20d36a0d0` 实施完成**，实现明细见 §4.4。以下保留为当时的调研与方案记录，供阶段四迁移时对照。**下一步做 §6.4。**
 
 ### 6.1 逐材质实测统计（调研已完成，直接作为设计依据）
 
@@ -184,7 +205,7 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 7. 门禁：`D.material-domain-contract` 加正负向探针（例如「StandardOpaque 把 `normal` 的 channels 写成 4」「EmissiveSurface 领域的材质声明 PBRSurface」必须被拒）。
 8. 观察点：`samplers` 参与 `GenericMaterialBuilder.cpp:978` 的结构哈希、经 `BuildSamplerMacros()` 生成 `#define <name>Sampler <idx>u`，改动需回归这四个 exe。
 
-### 6.4 阶段三之三 —— MaterialInstance 模型
+### 6.4 下一步：阶段三之三 —— MaterialInstance 模型
 
 - 把 `builtin/*` 保底材质**代码化**（`pure_color` / `error_checkerboard_3d` / `checkerboard_3d` / `text_gpu` / `text_gpu_bitmap`），不再依赖 TOML 文件。
 - 回退链**id 绝不能改**：默认 `builtin/pure_color`、错误 `builtin/error_checkerboard_3d`、降级 `builtin/checkerboard_3d`、文本硬编码 `builtin/text_gpu` / `builtin/text_gpu_bitmap`（`TextRenderPipeline.cpp:425-426`）。
