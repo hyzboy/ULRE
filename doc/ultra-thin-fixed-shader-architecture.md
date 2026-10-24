@@ -345,7 +345,7 @@ varyings = ["emit_data_index_id"]
 | **阶段 3：MaterialInstance 模型** ✅ | `feature/ultra-thin-stage3-material-instance` | Domain 即 Master Material；资产降维为「选 Domain + 填数值 + 配贴图」的 MaterialInstance；保底材质移入 C++ | 极简资产形态上线 |
 | **阶段 4：资产迁移** ✅ | `feature/ultra-thin-stage4-cleanup-and-migration` | 现有资产迁移到 `.mi.toml`；废弃 `material.toml` | 全套自动化门禁验证通过 |
 | **阶段 5：拼接清理前置安全网** ✅ | `feature/ultra-thin-stage5-shadergen-emission-cleanup` | 为旧版 ShaderGen 拼接代码的清理造好 golden 安全网（emission 顺序快照），并清掉小债 | `SD.emission-order-golden`（12 变体）+ 小债清零 |
-| **阶段 6：骨架外置** ✅ | 同上 | 把 `FragmentTemplateComposer` 里最后一段内联 GLSL 骨架 `ComposeShadow()` 外化为 `fragment/shadow_caster.glsl.tmpl`；补 masked 分支快照覆盖 | 四条 emission 通路全部走 `.tmpl`；矩阵 14 变体 |
+| **阶段 6：骨架外置** ✅ | 同上 | 把 `FragmentTemplateComposer` 里最后一段内联 GLSL 骨架 `ComposeShadow()` 外化为 `fragment/shadow_caster.glsl.tmpl`；补 masked 分支快照覆盖 | 四条 emission 通路全部走 `.tmpl`；矩阵 16 变体（含 3 种 mesh 发射模式） |
 
 阶段 6 的进展：
 
@@ -367,7 +367,11 @@ varyings = ["emit_data_index_id"]
    移到「之后」，与 forward 模板一致；宏集合与文本逐字节相同，4 份 shadow emission
    golden 位移而字节数不变，`SHADERGEN_CODEGEN_GENERATION` 13 → 14 并记入 changelog。
    保留旧顺序需要在材质注入路径上加 `pending_prefix` 钩子，收益不抵代价。
-5. ⬜ **mesh 侧骨架外置与 STL 残留清理仍未做** —— 安全网已就位、路径已解锁，
+5. ✅ **再补一次覆盖**：矩阵只从 fragment 维度枚举过，mesh 侧 `LineQuad` 发射模式
+   （只能由 `primitive_type == Lines` 推出）**零覆盖**。收尾补 `vertex-color-lines-quad` /
+   `vertex-color-lines-quad-2d`，矩阵 14 → 16，三种 mesh 发射模式全部有网。
+   详见 `doc/ultra-thin-implementation-status.md` §5.3。
+6. ⬜ **mesh 侧骨架外置与 STL 残留清理仍未做** —— 安全网已就位、路径已解锁，
    但两者都是独立、可评审的改动。详见 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 5 的进展：

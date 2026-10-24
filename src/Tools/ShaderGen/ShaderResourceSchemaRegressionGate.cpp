@@ -8959,6 +8959,20 @@ namespace
         {VertexSemantic::Size, VF_V2F}
     };
 
+    /// 2D 位置几何：`Position` 用 `VF_V2F`。
+    ///
+    /// `LineQuad` 的端点读取按 `position_format` 分叉：`R32G32_SFLOAT` 要把
+    /// `vec2` 补成 `vec3(..., 0.0)`，其余直读 `vec3`。两条分支的 GLSL 不同，
+    /// 只有几何位置格式能选中它们——共享表恒为 `VF_V3F`，vec2 那条永远走不到。
+    static const GeometryVertexFormat kStructureDumpGeometry2D{
+        {VertexSemantic::Position, VF_V2F},
+        {VertexSemantic::TexCoord, VF_V2F},
+        {VertexSemantic::Normal, VF_V3F},
+        {VertexSemantic::Color, VF_V4F},
+        {VertexSemantic::TransformID, VK_FORMAT_R32_UINT},
+        {VertexSemantic::Size, VF_V2F}
+    };
+
     struct StructureDumpVariant
     {
         const char *definition_id;
@@ -8974,6 +8988,13 @@ namespace
         /// 于是那条分支在快照矩阵里**完全没有网**。这里显式构造 masked 变体，
         /// 让外置骨架重构不至于把一条无覆盖的分支改坏。
         bool alpha_test;
+        /// 图元类型。mesh 发射模式的选择优先级是
+        /// `definition.mesh_shader_mode` > `primitive_type` 推断：
+        /// `CharQuad` 靠材质定义显式指定，`LineQuad` 则只能由 `Lines` 推出来。
+        /// 默认 `Triangles` = 前 14 个变体全部走 `VertexPassthrough`。
+        PrimitiveType primitive_type = PrimitiveType::Triangles;
+        /// 位置属性用 `VF_V2F`（见 `kStructureDumpGeometry2D`）。
+        bool vec2_position = false;
     };
 
     /// 快照矩阵：四条发射路径（ForwardLit / ForwardUnlit / ShadowCaster / Sky）
@@ -9024,6 +9045,18 @@ namespace
         { "builtin/text_gpu", "text-gpu-charquad",
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, false, false },
+        // LineQuad 是第三种 mesh 发射模式，只能由 `primitive_type = Lines` 推出来
+        // （材质定义里没有对应字段）。上面 14 个变体全是 VertexPassthrough /
+        // CharQuad，`line_quad.glsl.tmpl` 与它的两条端点读取分支此前**没有任何
+        // 快照覆盖**——和 masked ShadowCaster 一样，属于「改坏了也不会有人报」。
+        { "VertexColor", "vertex-color-lines-quad",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true, false,
+          PrimitiveType::Lines, false },
+        { "VertexColor", "vertex-color-lines-quad-2d",
+          ShaderProgramPurpose::ForwardColor,
+          RenderTemplateID::ForwardUnlit, true, false,
+          PrimitiveType::Lines, true },
     };
 
     /// 采样器预设表是进程级单例，`MaterialShaderEmitter` 靠它把 `Trilinear`
@@ -9085,8 +9118,13 @@ namespace
 
         MaterialDefinitionBuildRequest request{};
         request.recipe.mtl_def_id = definition.definition_id;
+        request.primitive_type = variant.primitive_type;
         request.geometry_vertex_format =
-            variant.has_geometry ? &kStructureDumpGeometry : nullptr;
+            variant.has_geometry
+                ? (variant.vec2_position
+                       ? &kStructureDumpGeometry2D
+                       : &kStructureDumpGeometry)
+                : nullptr;
         request.defer_finalize = true;
         request.shader_program_purpose = variant.purpose;
 

@@ -3,7 +3,7 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段六完成后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（14 变体）；四条 emission 通路全部走 `.tmpl`。**
+> **最后更新**：阶段六完成后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`。**
 
 ---
 
@@ -323,7 +323,7 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 - 五个回归 exe（`SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` / `TestRenderStrategyTable` / `TestMaterialVariantTable`）：**全 exit=0**
 - `TestRenderStrategyTable` / `TestMaterialVariantTable`：**全 exit=0**（这两个覆盖保底链行为断言 —— 未知定义 ID ⇒ 换 `builtin/error_checkerboard_3d`、标记行不可得 ⇒ 降级 `builtin/checkerboard_3d`，是「内嵌定义可用」的最强证据）
 - 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、`loaded 34 entries from program_manifest.pmf`、无 GLSL 编译错误
-- `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）。该目录现在有两类快照，各 **14** 份、按同一张变体矩阵一一对应：`<slug>.txt`（结构快照）与 `<slug>.emission.txt`（**拼接顺序快照**）。阶段六把矩阵从 12 扩到 14（新增 `lit-depth-masked` / `lit-shadow-masked`），并刷新了 2 份 shadow emission golden（define 位置变化，字节数不变）
+- `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）。该目录现在有两类快照，各 **16** 份、按同一张变体矩阵一一对应：`<slug>.txt`（结构快照）与 `<slug>.emission.txt`（**拼接顺序快照**）。阶段六把矩阵从 12 扩到 14（新增 `lit-depth-masked` / `lit-shadow-masked`），并刷新了 2 份 shadow emission golden（define 位置变化，字节数不变）；阶段六收尾再扩到 16（新增 `vertex-color-lines-quad` / `vertex-color-lines-quad-2d`，补上此前**零覆盖**的 `LineQuad` mesh 发射模式，见 §5.3）
 - 全量 `cmake --build build --config Debug` 除一个**既存无关**失败外全绿：`TexConvCore.vcxproj` 的 `LNK1104: cannot open file '..\..\..\..\out\Windows_64_Release\TexImage.lib'`（Debug 目标链 Release 库，与本次重构无关）
 - 实跑渲染 exe（脚本是会话局部产物，新会话请直接用下面命令）：
   ```powershell
@@ -331,6 +331,40 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
   $p = Start-Process .\build\out\Windows_64_Debug\PBRSpheres.exe -PassThru
   Start-Sleep -Seconds 20; Stop-Process -Id $p.Id
   ```
+
+### 5.3 快照矩阵的 mesh 发射模式覆盖（阶段六收尾补齐）
+
+`SD.emission-order-golden` 的原始设计目标是「给 mesh 侧骨架外置当安全网」（见 §10.2），
+但阶段五建网时矩阵只从 **fragment** 维度枚举（四条 emission 通路 × 领域差异），
+mesh 侧只被顺带覆盖了 `VertexPassthrough` 与 `CharQuad`：
+
+| mesh 发射模式 | 选择依据 | 补齐前的变体 |
+|---|---|---|
+| `VertexPassthrough` | 默认（`primitive_type` 非 `Lines`） | 13 个 |
+| `CharQuad` | `definition.mesh_shader_mode` 显式指定 | `text-gpu-charquad` |
+| `LineQuad` | **只能**由 `primitive_type == Lines` 推出 | **0 个** |
+
+`LineQuad` 恰恰是三者里槽位逻辑最复杂的一个（`line_quad.glsl.tmpl` 的
+`{{endpoint_read}}` 按 `position_format` 分叉），却完全没有网 —— 与阶段六
+masked `ShadowCaster` 是同一类漏，属于「改坏了也没人会报」。
+
+补齐方式（只动夹具，不动被测代码）：
+
+| 文件 | 改动 |
+|---|---|
+| `StructureDumpVariant` | 追加 `PrimitiveType primitive_type = Triangles` 与 `bool vec2_position = false`（追加在末尾，前 14 个变体的位置初始化不受影响） |
+| `kStructureDumpGeometry2D` | 新增：`Position` 用 `VF_V2F`。共享表恒为 `VF_V3F`，不换表就永远走不到 vec2 分叉 |
+| `kStructureDumpVariants[]` | 14 → **16**：`vertex-color-lines-quad`（vec3）、`vertex-color-lines-quad-2d`（vec2） |
+| `BuildStructureDumpVariant()` | 把 `variant.primitive_type` 写进 `MaterialDefinitionBuildRequest`，几何表按 `vec2_position` 二选一 |
+
+两份 golden 的差异已实测确认覆盖真实分叉，不是冗余副本：
+
+- 与 `vertex-color-forward`（`VertexPassthrough`）比：`layout(triangles, max_vertices = 256, max_primitives = 128)` vs `192 / 64`，`fragVertexColor[256]` vs `[192]`，且 vertex-input 的 `#ifdef` 分支结构不同 —— 拓扑解析器确实换成了 `ResolveLineQuadTopology`（4× / 2×）。
+- vec3 与 vec2 变体互比：`#include "vertex/s1_position_vec3.glsl"` vs `s1_position_vec2.glsl` —— `position_format` 管线确实被走通了。
+
+> ⚠️ **仍未覆盖**：`{{endpoint_read}}` 的两段**函数体**文本不在快照粒度内（发射顺序快照只看骨架行），
+> 且夹具是 `defer_finalize = true`（不编译 SPV），所以那两段 GLSL 的正确性只靠实跑
+> `Lines` 渲染（`LineRenderPipeline`）保证。补网时不要误以为它已被 golden 锁住。
 
 ---
 
@@ -445,8 +479,8 @@ Case 名与职责：
 | `D2.shader-config-emit` | 校验配置头规范文本（ForwardLit 全开；⑥ 子用例钉死 `ShadowCaster` 只出 `HGL_COVERAGE_ONLY` + alpha 三件套，纹理通道/PCF 宏不得泄漏） |
 | `PC.pipeline-config-emit` | `PipelineConfigEmitter` 输出 |
 | `MI.module-include-declaration-contract` | Registry 加载期强制 `#include ⊆ @ulre uses` |
-| `SD.structure-dump-golden-pilot` | 读 `golden/<slug>.txt` 比对（14 变体矩阵）；不匹配写 `<slug>.txt.actual` |
-| `SD.emission-order-golden` | 读 `golden/<slug>.emission.txt` 比对**拼接顺序骨架**（同一张 14 变体矩阵）；不匹配写 `<slug>.emission.txt.actual` |
+| `SD.structure-dump-golden-pilot` | 读 `golden/<slug>.txt` 比对（16 变体矩阵）；不匹配写 `<slug>.txt.actual` |
+| `SD.emission-order-golden` | 读 `golden/<slug>.emission.txt` 比对**拼接顺序骨架**（同一张 16 变体矩阵）；不匹配写 `<slug>.emission.txt.actual` |
 
 要点：
 
@@ -490,8 +524,8 @@ Case 名与职责：
 
 ### 10.2 结构性遗留
 
-- **mesh 侧骨架仍有多段 `+=` 拼接**（阶段四遗留的最后一角；**fragment 侧已于阶段六收口**，见 §4.8）。剩下的动作：把 mesh 侧骨架（`MeshShaderHeaderGen` / `MeshVaryingGen` / `VertexAdapter` / `MeshTemplateEmitter`）外化成 `.tmpl`，并把 `FragmentTemplateComposer`（角色化 `ResolvedInclude`）/ `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit。**现在动它是安全的**：`SD.emission-order-golden`（14 变体）会在 token 顺序发生任何变化时立刻变红。仍应作为独立、可评审的提交。
-- **STL 残留**：`FragmentTemplateComposer.cpp` 与 `MeshShaderTemplate.cpp` / `MeshTemplateEmitter.h` 仍 `#include <fstream>` / `<map>` / `<string>` 并用 `std::string` / `std::vector`，违反本仓「禁用 STL」规范。属**纯机械替换**（→ `hgl::io::*` / `hgl::UnorderedMap` / `AnsiString` / `hgl::ArrayList`），但触及文件多、收益低，**刻意留作独立提交**，不与结构改动混做。
+- **mesh 侧骨架仍有多段 `+=` 拼接**（阶段四遗留的最后一角；**fragment 侧已于阶段六收口**，见 §4.8）。剩下的动作：把 mesh 侧骨架（`MeshShaderHeaderGen` / `MeshVaryingGen` / `VertexAdapter` / `MeshTemplateEmitter`）外化成 `.tmpl`，并把 `FragmentTemplateComposer`（角色化 `ResolvedInclude`）/ `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit。**现在动它是安全的**：`SD.emission-order-golden`（16 变体，三种 mesh 发射模式全覆盖，见 §5.3）会在 token 顺序发生任何变化时立刻变红。仍应作为独立、可评审的提交。
+- **STL 残留**：`FragmentTemplateComposer.cpp` 与 `MeshShaderTemplate.cpp` / `MeshTemplateEmitter.h` 仍 `#include <fstream>` / `<map>` / `<string>` 并用 `std::string` / `std::vector`，违反本仓「禁用 STL」规范。属**纯机械替换**（→ `hgl::io::*` / `hgl::UnorderedMap` / `AnsiString` / `hgl::ArrayList`），但触及文件多、收益低，**刻意留作独立提交**，不与结构改动混做。前提条件已满足：mesh 侧三种发射模式都有 emission golden 兜底（§5.3），替换 `std::string` 累加器若改变了任何拼接顺序会立刻变红。
 - 4 个领域（`Foliage` / `Terrain` / `HumanSkin` / `UI2D` 部分）reference 为 `nullptr`，只有契约骨架、无专属实现。属**刻意保留的扩展位**，不是 bug。
 - 主着色器仍保留 alpha 三件套宏（`HGL_ALPHA_TEST` / `HGL_ALPHA_DITHER` / `HGL_ALPHA_OUTPUT`）—— **这是刻意设计**，因为它们必须与 `discard` / 输出同函数体，无法外移。
 - ~~`DirectLightProvider`（legacy role）仍在枚举里~~ → **阶段五已删除**（枚举 + 名称映射 switch）。
@@ -506,6 +540,6 @@ Case 名与职责：
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
 - [x] `git status` 只剩既存子模块脏项
-- [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` **14** 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路，且 `ShadowCaster` 的 **opaque 与 masked 两条分支都有覆盖**（阶段五建网、阶段六补 masked）
+- [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` **16** 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路，`ShadowCaster` 的 **opaque 与 masked 两条分支都有覆盖**（阶段五建网、阶段六补 masked），三种 mesh 发射模式（`VertexPassthrough` / `CharQuad` / `LineQuad`）全部有覆盖（阶段六收尾补 `LineQuad`，见 §5.3）
 - [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
 - [x] 独立提交，提交信息带 `feat(ultra-thin):` / `docs(ultra-thin):` 前缀
