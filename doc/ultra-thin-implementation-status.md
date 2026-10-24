@@ -50,7 +50,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 8 | `feature/ultra-thin-stage3-material-instance` ← **当前** | `c7d1e45cb` | **阶段三之一**：顶点变换从资产推入领域契约 |
 | 9 | 同上 | `20d36a0d0` | **阶段三之二**：纹理槽形态与 `material_data` 类型从资产推入领域契约 |
 | 10 | 同上 | `addc99d58` | **阶段三之三**：保底链 5 个 builtin 材质定义代码化，不再依赖 TOML 文件 |
-| 11 | `feature/ultra-thin-stage4-cleanup-and-migration` ← **当前** | `addd8a0ec` | **阶段四**：资产降维为 `.mi.toml`，废除 `.material.toml` |
+| 11 | `feature/ultra-thin-stage4-cleanup-and-migration` ← **当前** | `ec9fae16d` | **阶段四**：资产降维为 `.mi.toml`，废除 `.material.toml` |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 

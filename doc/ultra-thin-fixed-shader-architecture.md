@@ -250,7 +250,7 @@ void main()
 
 > **`.material.toml` 已废除**（阶段四）：解析器只识别 `.mi.toml` 后缀，门禁 `S.material-library-contract` 对任何非该后缀的资产文件直接报错。
 
-### 5.1 业务 PBR 资产（例：`ShaderLibrary/material/lit.mi.toml` 全文）
+### 5.1 业务 PBR 资产（例：`ShaderLibrary/material/lit.mi.toml`，略去行内注释）
 ```toml
 schema = 4
 id = "Lit"
@@ -284,9 +284,16 @@ samplers = ["Trilinear", "Linear", "ShadowPCF"]
 schema = 4
 id = "builtin/pure_color"
 domain = "UnlitSolid"
+
+[vertex]
+varyings = ["emit_data_index_id"]
+
+[resources]
 ```
-连 `[vertex]` / `[resources]` 都可以整块省略——`UnlitSolid` 契约给出顶点需求
-（Position）、表面来源模块与 `EmissiveSurface` 数据类型。
+`UnlitSolid` 契约给出顶点需求（Position）、表面来源模块与 `EmissiveSurface`
+数据类型，所以 `[vertex].requirements` / `[fragment]` / `provider_policy` 全部省略；
+`[resources]` 留空是因为该领域没有纹理槽。**领域没有任何槽位时 `[resources]`
+可整块省略**，写空表只是把「本材质确实不用贴图」说清楚。
 
 ---
 
