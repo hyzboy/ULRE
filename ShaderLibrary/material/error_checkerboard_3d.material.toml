@@ -16,4 +16,4 @@ normal_mode = "OptionalFaceFallback"
 varyings = ["emit_data_index_id", "emit_world_pos"]
 
 [resources]
-material_data = { type = "EmissiveSurface" }
+# material_data.type 由领域 ErrorChecker3D 的契约给出（EmissiveSurface），资产不再声明。

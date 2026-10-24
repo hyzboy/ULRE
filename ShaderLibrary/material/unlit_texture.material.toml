@@ -15,5 +15,6 @@ requirements = ["Position", "UV0"]
 varyings = ["emit_data_index_id", "emit_uv0"]
 
 [resources]
-textures = [{ name = "base_color", sampler = "Sampler2DArray", required = true }]
+# 槽形态由领域 UnlitTexture 的契约给出（Sampler2DArray / 必绑）。
+textures = [{ name = "base_color" }]
 samplers = ["Trilinear"]

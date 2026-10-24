@@ -15,4 +15,4 @@ requirements = ["Position"]
 varyings = ["emit_data_index_id"]
 
 [resources]
-material_data = { type = "EmissiveSurface" }
+# material_data.type 由领域 UnlitSolid 的契约给出（EmissiveSurface），资产不再声明。

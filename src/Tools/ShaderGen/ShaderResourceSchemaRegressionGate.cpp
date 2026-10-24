@@ -5063,6 +5063,105 @@ namespace
                 "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
                 "]\n"
             },
+            {
+                // 阶段三之二：槽形态（采样器种类）由领域决定。
+                // 同一领域里换成 Sampler2D 会让引用行布局与采样方式都分叉，
+                // 合批共享立刻失效——必须拒绝而不是静默接受。
+                "self-chosen sampler on a domain texture slot",
+                "schema = 4\n"
+                "id = \"DomainBadSlotSampler\"\n"
+                "name = \"DomainBadSlotSampler\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2D\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                // 绑定必要性同理：领域说 optional，资产不能自行改成必绑
+                // （否则同一领域里「缺图就报错」与「缺图用中性值」两种运行语义并存）。
+                "self-chosen binding policy on a domain texture slot",
+                "schema = 4\n"
+                "id = \"DomainBadSlotRequired\"\n"
+                "name = \"DomainBadSlotRequired\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = true },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                // 通道数直接决定 shader 是否注入 MTL_TEX_<NAME>_CHANNELS 与 Z 还原逻辑。
+                // normal 契约固定 2 通道，资产改成 4 就是另一种解码方式。
+                "self-chosen channel count on a domain texture slot",
+                "schema = 4\n"
+                "id = \"DomainBadSlotChannels\"\n"
+                "name = \"DomainBadSlotChannels\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false, channels = 4 }\n"
+                "]\n"
+            },
+            {
+                // material_data.type 决定 shader 按哪个结构读 payload 行。
+                // StandardOpaque 规范为 PBRSurface，换成 EmissiveSurface 会让
+                // 片元侧按错误的结构解码同一行字节——运行期不报错，只是数值全错。
+                "self-chosen material_data type",
+                "schema = 4\n"
+                "id = \"DomainBadMaterialData\"\n"
+                "name = \"DomainBadMaterialData\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "material_data = { type = \"EmissiveSurface\" }\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
         };
 
         for (const DomainViolationProbe &probe : probes)
@@ -5175,6 +5274,9 @@ namespace
         // ── ③b 非 3D 领域的顶点变换同样由领域契约给出 ──────────────────────────
         // 这条单独钉住「契约里的 canonical_vertex_node_config 不是摆设」：
         // 只测 StandardOpaque（= 默认值）的话，漏填契约也照样通过。
+        //
+        // 阶段三之二起这条同时钉住「最小形态」：纹理只写 name，
+        // 不写 [transform]、不写 material_data —— 槽形态与数据类型全部由领域给出。
         {
             const char *text_material =
                 "schema = 4\n"
@@ -5186,9 +5288,7 @@ namespace
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\"]\n"
                 "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n";
+                "textures = [{ name = \"base_color\" }]\n";
 
             MaterialDefinitionFileData data;
             const MaterialDefinitionFileParseResult parse_result = ParseMaterialDefinitionFile(
@@ -5196,13 +5296,16 @@ namespace
             if (parse_result != MaterialDefinitionFileParseResult::OK)
             {
                 result.diagnostics.emplace_back(
-                    "minimal Text2D material (no [transform]) must parse, got: "
+                    "minimal Text2D material (only the texture name) must parse, got: "
                     + std::string(data.parse_error.key) + " / "
                     + data.parse_error.detail.c_str());
             }
             else
             {
                 VertexShaderNodeConfig expect{};
+                const MaterialDomainTextureSlot *slot =
+                    FindMaterialDomainTextureSlot(MaterialDomain::Text2D, "base_color");
+
                 if (!GetMaterialDomainCanonicalVertexNodeConfig(
                         MaterialDomain::Text2D, expect))
                 {
@@ -5221,6 +5324,49 @@ namespace
                 {
                     result.diagnostics.emplace_back(
                         "Text2D canonical transform must project through the viewport ortho");
+                }
+                else if (!slot)
+                {
+                    result.diagnostics.emplace_back(
+                        "Text2D contract must expose the base_color texture slot");
+                }
+                else if (data.definition.texture_declarations.size() != 1)
+                {
+                    result.diagnostics.emplace_back(
+                        "minimal Text2D material must end up with exactly one texture slot");
+                }
+                else
+                {
+                    const MaterialTextureDeclaration &declared =
+                        data.definition.texture_declarations.front();
+                    if (declared.sampler_type != slot->sampler)
+                    {
+                        result.diagnostics.emplace_back(
+                            "omitted sampler must derive the domain slot sampler");
+                    }
+                    else if (declared.required != slot->binding_required)
+                    {
+                        result.diagnostics.emplace_back(
+                            "omitted required must derive the domain slot binding policy");
+                    }
+                    else if (declared.channels != slot->channels)
+                    {
+                        result.diagnostics.emplace_back(
+                            "omitted channels must derive the domain slot channel count");
+                    }
+                }
+
+                GlobalSSBOType expect_type = GlobalSSBOType::MeshDrawParams;
+                if (!GetMaterialDomainCanonicalMaterialDataType(
+                        MaterialDomain::Text2D, expect_type))
+                {
+                    result.diagnostics.emplace_back(
+                        "Text2D contract must expose a canonical material_data type");
+                }
+                else if (data.definition.material_private_data != expect_type)
+                {
+                    result.diagnostics.emplace_back(
+                        "omitted [resources].material_data must derive the domain type");
                 }
             }
         }

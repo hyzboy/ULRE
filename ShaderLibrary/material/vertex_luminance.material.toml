@@ -15,4 +15,4 @@ requirements = ["Position", "Luminance"]
 varyings = ["emit_data_index_id", "emit_luminance"]
 
 [resources]
-material_data = { type = "EmissiveSurface" }
+# material_data.type 由领域 VertexLuminance 的契约给出（EmissiveSurface），资产不再声明。

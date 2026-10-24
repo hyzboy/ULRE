@@ -21,6 +21,8 @@ varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color", "emit_style_i
 mode = "CharQuad"
 
 [resources]
-textures = [{ name = "base_color", sampler = "Sampler2DArray", required = true }]
+# 槽形态由领域 Text2D 的契约给出（Sampler2DArray / 必绑）。
+# 过滤设置仍留在资产上：SDF 用 Linear、位图用 Nearest，本来就该按资产不同。
+textures = [{ name = "base_color" }]
 samplers = ["Linear"]
 defines = ["TEXT_SDF_ENABLED"]

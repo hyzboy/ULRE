@@ -13,12 +13,15 @@ requirements = ["Position", "UV0", "Normal"]
 varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
 
 [resources]
+# 槽的形态（采样器种类 / 是否必绑 / 通道数）由领域 StandardOpaque 的契约给出：
+# 同一个领域里这三项必然相同，资产重复声明只会制造「同领域不同布局」。
+# 资产只需列出要声明的槽名。
 textures = [
-    { name = "base_color", sampler = "Sampler2DArray", required = false },
-    { name = "roughness", sampler = "Sampler2DArray", required = false },
-    { name = "metallic", sampler = "Sampler2DArray", required = false },
-    { name = "occlusion", sampler = "Sampler2DArray", required = false },
-    { name = "opacity_mask", sampler = "Sampler2DArray", required = false },
-    { name = "normal", sampler = "Sampler2DArray", required = false, channels = 2 }
+    { name = "base_color" },
+    { name = "roughness" },
+    { name = "metallic" },
+    { name = "occlusion" },
+    { name = "opacity_mask" },
+    { name = "normal" }
 ]
 samplers = ["Trilinear", "Linear", "ShadowPCF"]

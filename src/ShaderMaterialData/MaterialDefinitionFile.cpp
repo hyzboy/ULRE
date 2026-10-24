@@ -538,6 +538,9 @@ namespace hgl::graph::mtl
             }
 
             bool has_texture_configuration_settings = false;
+            // `[resources].material_data` 是否被作者显式声明过。
+            // 只有「完全没写」才按领域契约兜底；显式写了别的类型要报错，不能悄悄覆盖。
+            bool declares_material_data = false;
             if (root.contains("resources"))
             {
                 ParseTableScope resources_table("resources");
@@ -592,6 +595,7 @@ namespace hgl::graph::mtl
                         return false;
                     }
                     out.definition.material_private_data = type;
+                    declares_material_data = true;
                 }
 
                 if (resources.contains("textures"))
@@ -619,16 +623,6 @@ namespace hgl::graph::mtl
                             RecordParseFailure("name", nullptr, "必须有字符串 name");
                             return false;
                         }
-                        if (!item.contains("sampler") || !item.at("sampler").is_string())
-                        {
-                            RecordParseFailure("sampler", nullptr, "必须有字符串 sampler（采样器类型名）");
-                            return false;
-                        }
-                        if (!item.contains("required") || !item.at("required").is_boolean())
-                        {
-                            RecordParseFailure("required", nullptr, "必须有布尔 required（显式声明，不取默认值）");
-                            return false;
-                        }
                         const std::string texture_name = item.at("name").as_string();
                         if (!IsValidMaterialTextureName(texture_name))
                         {
@@ -636,13 +630,67 @@ namespace hgl::graph::mtl
                             return false;
                         }
 
-                        // 采样器类型名走唯一真源（大小写不敏感）；未知名 ⇒ Error ⇒ 解析失败。
-                        const std::string sampler_name = item.at("sampler").as_string();
-                        const SamplerType sampler = ParseSamplerType(sampler_name.c_str());
-                        if (sampler == SamplerType::Error)
+                        // ── 槽形态来自领域契约（阶段三之二）──────────────────────
+                        // `sampler / required / channels` 三项在同一个领域里必然相同，
+                        // 它们是「这个槽在领域里长什么样」，不是「这份资产想怎么用」。
+                        // 故资产可以整段省略：解析层按契约兜底；显式写了不同值的，
+                        // 由 ValidateMaterialDefinitionDomain 判 TextureSlotMismatch。
+                        //
+                        // 契约里没有这个槽（Custom 领域，或槽名不在白名单）时没有
+                        // 兜底来源，仍按原样强制显式声明。
+                        const MaterialDomainTextureSlot *contract_slot =
+                            FindMaterialDomainTextureSlot(out.definition.domain,
+                                                          texture_name.c_str());
+
+                        SamplerType sampler = SamplerType::Sampler2D;
+                        if (item.contains("sampler"))
                         {
-                            RecordParseFailure("sampler", sampler_name.c_str(),
-                                               "未知采样器类型名（见 inc/hgl/common/TextureSamplerTypeDef.h）");
+                            if (!item.at("sampler").is_string())
+                            {
+                                RecordParseFailure("sampler", nullptr,
+                                                   "sampler 必须是字符串（采样器类型名）");
+                                return false;
+                            }
+
+                            // 采样器类型名走唯一真源（大小写不敏感）；未知名 ⇒ Error ⇒ 解析失败。
+                            const std::string sampler_name = item.at("sampler").as_string();
+                            sampler = ParseSamplerType(sampler_name.c_str());
+                            if (sampler == SamplerType::Error)
+                            {
+                                RecordParseFailure(
+                                    "sampler", sampler_name.c_str(),
+                                    "未知采样器类型名（见 inc/hgl/common/TextureSamplerTypeDef.h）");
+                                return false;
+                            }
+                        }
+                        else if (contract_slot)
+                            sampler = contract_slot->sampler;
+                        else
+                        {
+                            RecordParseFailure(
+                                "sampler", nullptr,
+                                "必须有字符串 sampler（该槽不在任何领域契约内，无规范值可兜底）");
+                            return false;
+                        }
+
+                        bool binding_required = false;
+                        if (item.contains("required"))
+                        {
+                            if (!item.at("required").is_boolean())
+                            {
+                                RecordParseFailure("required", nullptr,
+                                                   "required 必须是布尔值");
+                                return false;
+                            }
+                            binding_required = item.at("required").as_boolean();
+                        }
+                        else if (contract_slot)
+                            binding_required = contract_slot->binding_required;
+                        else
+                        {
+                            RecordParseFailure(
+                                "required", nullptr,
+                                "必须有布尔 required（该槽不在任何领域契约内，无规范值可兜底）");
                             return false;
                         }
 
@@ -653,24 +701,29 @@ namespace hgl::graph::mtl
                                 return false;
                         }
 
-                        uint32_t declared_channels = 0;
+                        uint32_t declared_channels = contract_slot ? contract_slot->channels : 0;
                         if (item.contains("channels"))
                         {
                             // 可选：纹理通道数。0/缺省 = 由纹素格式决定；
                             // 2 = 双通道法线(BC5)：只存 XY，Z 由 shader 还原
                             // （ShaderGen 据此注入 MTL_TEX_<NAME>_CHANNELS）。
                             if (!item.at("channels").is_integer())
+                            {
+                                RecordParseFailure("channels", nullptr, "channels 必须是整数");
                                 return false;
+                            }
                             const int64 declared = item.at("channels").as_integer();
                             if (declared < 1 || declared > 4)
+                            {
+                                RecordParseFailure("channels", nullptr,
+                                                   "channels 必须在 1..4 之间");
                                 return false;
+                            }
                             declared_channels = static_cast<uint32_t>(declared);
                         }
 
                         out.definition.texture_declarations.push_back(
-                            {texture_name, sampler,
-                             item.at("required").as_boolean(),
-                             declared_channels});
+                            {texture_name, sampler, binding_required, declared_channels});
                     }
                 }
 
@@ -734,6 +787,19 @@ namespace hgl::graph::mtl
                         out.definition.compile_defines.push_back(name);
                     }
                 }
+            }
+
+            // ── 领域规范材质私有数据类型兜底（阶段三之二）───────────────────────
+            // 类型是「这个领域的 payload 行长什么样」，不是美术参数，故资产不必写。
+            // 只在作者完全没写 `[resources].material_data` 时兜底；显式写了别的类型
+            // 保留原值交给 ValidateMaterialDefinitionDomain 判 MaterialDataTypeMismatch
+            // （悄悄覆盖会让作者以为自己写对了）。
+            if (!declares_material_data)
+            {
+                GlobalSSBOType canonical_type;
+                if (GetMaterialDomainCanonicalMaterialDataType(out.definition.domain,
+                                                               canonical_type))
+                    out.definition.material_private_data = canonical_type;
             }
 
             if (has_texture_configuration_settings

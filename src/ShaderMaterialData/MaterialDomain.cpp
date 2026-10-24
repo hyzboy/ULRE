@@ -95,45 +95,69 @@ namespace hgl::graph::mtl
         //     不属于硬表面。
         //
         // 纹理：六槽全声明。`must_declare = true` 保证**布局稳定**（同一领域所有
-        // 材质的引用行布局一致 ⇒ 可共享 layout_hash），但 `required = false`
+        // 材质的引用行布局一致 ⇒ 可共享 layout_hash），但 `binding_required = false`
         // 仍是作者可选项（未绑定时 SampleOptional 以中性值保底）。
+        //
+        // 阶段三之二：`sampler / binding_required / channels` 也从资产上移到契约。
+        // 同一个领域里这三个值必然相同——它们是「这个槽在领域里长什么样」，
+        // 不是「这份资产想怎么用」。
         constexpr MaterialDomainTextureSlot StandardOpaqueSlots[] = {
-            { "base_color",   MaterialDomainTextureRole::BaseColor,   true },
-            { "roughness",    MaterialDomainTextureRole::Roughness,   true },
-            { "metallic",     MaterialDomainTextureRole::Metallic,    true },
-            { "occlusion",    MaterialDomainTextureRole::Occlusion,   true },
-            { "opacity_mask", MaterialDomainTextureRole::OpacityMask, true },
-            { "normal",       MaterialDomainTextureRole::Normal,      true },
+            { "base_color",   MaterialDomainTextureRole::BaseColor,   true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "roughness",    MaterialDomainTextureRole::Roughness,   true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "metallic",     MaterialDomainTextureRole::Metallic,    true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "occlusion",    MaterialDomainTextureRole::Occlusion,   true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "opacity_mask", MaterialDomainTextureRole::OpacityMask, true,
+              SamplerType::Sampler2DArray, false, 0 },
+            // normal 固定双通道（BC5：只存 XY，Z 由 shader 还原）。
+            { "normal",       MaterialDomainTextureRole::Normal,      true,
+              SamplerType::Sampler2DArray, false, 2 },
         };
 
         // Foliage —— 植被。顶点增加风力参数（走 TransformID 之外的独立通路时再扩），
         // 纹理增加透射槽。当前无实现材质，先立契约占位。
         constexpr MaterialDomainTextureSlot FoliageSlots[] = {
-            { "base_color",     MaterialDomainTextureRole::BaseColor,    true },
-            { "normal",         MaterialDomainTextureRole::Normal,       true },
-            { "roughness",      MaterialDomainTextureRole::Roughness,    true },
-            { "transmission",   MaterialDomainTextureRole::Transmission, true },
-            { "opacity_mask",   MaterialDomainTextureRole::OpacityMask,  true },
+            { "base_color",     MaterialDomainTextureRole::BaseColor,    true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "normal",         MaterialDomainTextureRole::Normal,       true,
+              SamplerType::Sampler2DArray, false, 2 },
+            { "roughness",      MaterialDomainTextureRole::Roughness,    true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "transmission",   MaterialDomainTextureRole::Transmission, true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "opacity_mask",   MaterialDomainTextureRole::OpacityMask,  true,
+              SamplerType::Sampler2DArray, false, 0 },
         };
 
         // Terrain —— 多层地形。权重贴图 + 层纹理（层数组走同一槽名的数组采样器）。
         constexpr MaterialDomainTextureSlot TerrainSlots[] = {
-            { "splat_map",  MaterialDomainTextureRole::SplatMap,  true },
-            { "base_color", MaterialDomainTextureRole::BaseColor, true },
-            { "normal",     MaterialDomainTextureRole::Normal,    true },
+            { "splat_map",  MaterialDomainTextureRole::SplatMap,  true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "base_color", MaterialDomainTextureRole::BaseColor, true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "normal",     MaterialDomainTextureRole::Normal,    true,
+              SamplerType::Sampler2DArray, false, 2 },
         };
 
         // UI2D —— 界面/文本，无光照。
         constexpr MaterialDomainTextureSlot UI2DSlots[] = {
-            { "sprite", MaterialDomainTextureRole::Sprite, true },
+            { "sprite", MaterialDomainTextureRole::Sprite, true,
+              SamplerType::Sampler2DArray, false, 0 },
         };
 
         // HumanSkin —— 人体皮肤。除标准四槽外增加曲率（预积分 SSS）。
         constexpr MaterialDomainTextureSlot HumanSkinSlots[] = {
-            { "base_color", MaterialDomainTextureRole::BaseColor,  true },
-            { "normal",     MaterialDomainTextureRole::Normal,     true },
-            { "roughness",  MaterialDomainTextureRole::Roughness,  true },
-            { "curvature",  MaterialDomainTextureRole::Curvature,  true },
+            { "base_color", MaterialDomainTextureRole::BaseColor,  true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "normal",     MaterialDomainTextureRole::Normal,     true,
+              SamplerType::Sampler2DArray, false, 2 },
+            { "roughness",  MaterialDomainTextureRole::Roughness,  true,
+              SamplerType::Sampler2DArray, false, 0 },
+            { "curvature",  MaterialDomainTextureRole::Curvature,  true,
+              SamplerType::Sampler2DArray, false, 0 },
         };
 
         // ── 无光表面族的槽表 ────────────────────────────────────────────────────
@@ -144,20 +168,27 @@ namespace hgl::graph::mtl
 
         // UnlitTexture —— 无光单图。只有一张基础色。
         constexpr MaterialDomainTextureSlot UnlitTextureSlots[] = {
-            { "base_color", MaterialDomainTextureRole::BaseColor, true },
+            { "base_color", MaterialDomainTextureRole::BaseColor, true,
+              SamplerType::Sampler2DArray, true, 0 },
         };
 
         // Text2D —— GPU 文本。SDF 与位图两种形态都只有一张图集。
         // （SDF 的阈值参数走材质数值，不占纹理槽。）
+        //
+        // 注意：这里定的是**采样器种类**，不是过滤器。SDF 用 Linear、位图用
+        // Nearest，那是 `[resources].samplers` 里的过滤设置，仍留在资产上——
+        // 同一领域的不同资产在过滤器上本来就该不同。
         constexpr MaterialDomainTextureSlot Text2DSlots[] = {
-            { "base_color", MaterialDomainTextureRole::BaseColor, true },
+            { "base_color", MaterialDomainTextureRole::BaseColor, true,
+              SamplerType::Sampler2DArray, true, 0 },
         };
 
         // Sky —— 天空。cube 贴图**可选**：sky_minimal 是纯解析大气，无贴图。
         // must_declare = false 让两种形态共用一个领域，避免为「有没有贴图」
         // 分裂出两个领域。
         constexpr MaterialDomainTextureSlot SkySlots[] = {
-            { "sky_cube", MaterialDomainTextureRole::BaseColor, false },
+            { "sky_cube", MaterialDomainTextureRole::BaseColor, false,
+              SamplerType::SamplerCube, true, 0 },
         };
 
         constexpr uint32 Sem(VertexSemantic semantic) noexcept
@@ -176,6 +207,9 @@ namespace hgl::graph::mtl
                                  / sizeof(StandardOpaqueSlots[0])),
                 false,
                 false,
+                {},
+                // 通用硬表面 = PBR 表面字段组。
+                GlobalSSBOType::PBRSurface,
             },
             {
                 MaterialDomain::Foliage, "Foliage",
@@ -188,6 +222,8 @@ namespace hgl::graph::mtl
                 static_cast<int>(sizeof(FoliageSlots) / sizeof(FoliageSlots[0])),
                 false,
                 false,
+                {},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 MaterialDomain::Terrain, "Terrain",
@@ -199,6 +235,8 @@ namespace hgl::graph::mtl
                 static_cast<int>(sizeof(TerrainSlots) / sizeof(TerrainSlots[0])),
                 false,
                 false,
+                {},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 MaterialDomain::UI2D, "UI2D",
@@ -208,6 +246,8 @@ namespace hgl::graph::mtl
                 static_cast<int>(sizeof(UI2DSlots) / sizeof(UI2DSlots[0])),
                 false,
                 false,
+                {},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 MaterialDomain::HumanSkin, "HumanSkin",
@@ -220,6 +260,8 @@ namespace hgl::graph::mtl
                 static_cast<int>(sizeof(HumanSkinSlots) / sizeof(HumanSkinSlots[0])),
                 false,
                 false,
+                {},
+                GlobalSSBOType::PBRSurface,
             },
 
             // ══ 无光表面族 ═══════════════════════════════════════════════════════
@@ -246,6 +288,9 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                {},
+                // 无光照：颜色直出，Emissive 字段组足够（PBR 字段读不到也没意义）。
+                GlobalSSBOType::EmissiveSurface,
             },
             {
                 // 顶点色：颜色来自 Color 顶点流，逐顶点直出。
@@ -259,6 +304,8 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                {},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 // 调色板顶点色：Color + TransformID + Size 四语义齐全。
@@ -275,6 +322,8 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                {},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 // 顶点亮度：逐顶点亮度索引，片元侧查调色板。无颜色顶点流。
@@ -285,6 +334,9 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                {},
+                // 逐顶点亮度 → 片元查调色板直出颜色：Emissive 字段组。
+                GlobalSSBOType::EmissiveSurface,
             },
             {
                 // 无光单图。与 UI2D 的区别：UI2D 是图集精灵（Sampler2DArray +
@@ -303,6 +355,7 @@ namespace hgl::graph::mtl
                                        OrientationMode::World,
                                        ScaleMode::World,
                                        ProjectionMode::LocalToWorldOnly},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 // GPU 文本。顶点必须是 Position + UV0（字形在纹理里）。
@@ -321,6 +374,7 @@ namespace hgl::graph::mtl
                                        OrientationMode::World,
                                        ScaleMode::World,
                                        ProjectionMode::OrthoViewport},
+                GlobalSSBOType::PBRSurface,
             },
 
             // ══ 环境 ════════════════════════════════════════════════════════════
@@ -335,6 +389,9 @@ namespace hgl::graph::mtl
                 static_cast<int>(sizeof(SkySlots) / sizeof(SkySlots[0])),
                 false,
                 true,
+                {},
+                // 天空不走材质 payload 行；类型只为满足契约完整性。
+                GlobalSSBOType::PBRSurface,
             },
 
             // ══ 引擎内部用途 ════════════════════════════════════════════════════
@@ -348,6 +405,9 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                {},
+                // 法线→颜色直出：Emissive 字段组（与既有资产一致）。
+                GlobalSSBOType::EmissiveSurface,
             },
             {
                 // 2D 棋盘格（屏幕/局部空间出格）。**不要求 UV0**：
@@ -365,6 +425,7 @@ namespace hgl::graph::mtl
                                        OrientationMode::World,
                                        ScaleMode::World,
                                        ProjectionMode::LocalToWorldOnly},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 // 3D 棋盘格：按世界位置出格，需要世界位置 varying 而非 UV。
@@ -375,6 +436,8 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                {},
+                GlobalSSBOType::PBRSurface,
             },
             {
                 // 材质错误回退：与 Checker3D 同源逻辑但独立模块，
@@ -386,6 +449,9 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                {},
+                // 错误回退棋盘格：Emissive 字段组（与既有资产一致）。
+                GlobalSSBOType::EmissiveSurface,
             },
         };
 
@@ -393,6 +459,31 @@ namespace hgl::graph::mtl
             static_cast<int>(sizeof(DomainContracts) / sizeof(DomainContracts[0]))
                 == MaterialDomainContractCount,
             "MaterialDomainContractCount 必须与契约表条目数一致");
+
+        // material_data_type 必须显式填成「材质表面字段组」之一。
+        // 漏填时聚合初始化会把枚举置 0 = MeshDrawParams——那是个合法枚举值，
+        // 门禁的 IsGlobalSSBOType 检查抓不住它，只会在运行期按错误的行结构读数据。
+        // 所以这条判据必须落在编译期。
+        constexpr bool AreAllMaterialDataTypesSurface() noexcept
+        {
+            for (const MaterialDomainContract &contract : DomainContracts)
+            {
+                switch (contract.material_data_type)
+                {
+                case GlobalSSBOType::PBRSurface:
+                case GlobalSSBOType::EmissiveSurface:
+                case GlobalSSBOType::TransmissionSurface:
+                    break;
+                default:
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        static_assert(AreAllMaterialDataTypesSurface(),
+                      "每个领域契约都必须显式填写 material_data_type"
+                      "（PBRSurface / EmissiveSurface / TransmissionSurface）");
     }// namespace
 
     const MaterialDomainContract *GetMaterialDomainContract(
@@ -443,6 +534,36 @@ namespace hgl::graph::mtl
         return true;
     }
 
+    const MaterialDomainTextureSlot *FindMaterialDomainTextureSlot(
+        const MaterialDomain domain, const char *slot_name) noexcept
+    {
+        if (!slot_name || !*slot_name)
+            return nullptr;
+
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        if (!contract)
+            return nullptr;
+
+        for (int i = 0; i < contract->texture_slot_count; ++i)
+        {
+            const MaterialDomainTextureSlot &slot = contract->texture_slots[i];
+            if (slot.name && strcmp(slot.name, slot_name) == 0)
+                return &slot;
+        }
+        return nullptr;
+    }
+
+    bool GetMaterialDomainCanonicalMaterialDataType(
+        const MaterialDomain domain, GlobalSSBOType &out) noexcept
+    {
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        if (!contract)
+            return false;
+
+        out = contract->material_data_type;
+        return true;
+    }
+
     const char *GetMaterialDomainValidationResultName(
         const MaterialDomainValidationResult result) noexcept
     {
@@ -463,6 +584,10 @@ namespace hgl::graph::mtl
             return "NtbModuleMismatch";
         case MaterialDomainValidationResult::TransformMismatch:
             return "TransformMismatch";
+        case MaterialDomainValidationResult::TextureSlotMismatch:
+            return "TextureSlotMismatch";
+        case MaterialDomainValidationResult::MaterialDataTypeMismatch:
+            return "MaterialDataTypeMismatch";
         default:                                                        return "Invalid";
         }
     }
@@ -609,20 +734,20 @@ namespace hgl::graph::mtl
             return MaterialDomainValidationResult::TransformMismatch;
         }
 
-        // ── 4. 纹理槽白名单 + 必声明项 ──────────────────────────────────────────
+        // ── 4. 纹理槽白名单 + 必声明项 + 槽形态 ────────────────────────────────
         for (const MaterialTextureDeclaration &declaration : definition.texture_declarations)
         {
-            bool known = false;
+            const MaterialDomainTextureSlot *slot = nullptr;
             for (int i = 0; i < contract->texture_slot_count; ++i)
             {
-                const MaterialDomainTextureSlot &slot = contract->texture_slots[i];
-                if (slot.name && declaration.name == slot.name)
+                if (contract->texture_slots[i].name
+                    && declaration.name == contract->texture_slots[i].name)
                 {
-                    known = true;
+                    slot = &contract->texture_slots[i];
                     break;
                 }
             }
-            if (!known)
+            if (!slot)
             {
                 out_detail = "[resources] textures 声明了领域 ";
                 out_detail += contract->name;
@@ -646,6 +771,48 @@ namespace hgl::graph::mtl
                     out_detail += "）";
                 }
                 return MaterialDomainValidationResult::UnexpectedTextureSlot;
+            }
+
+            // ── 4b. 槽形态（采样器种类 / 绑定必要性 / 通道数）─────────────────
+            // 这三项由领域决定，资产不必写（解析层已按契约兜底）；显式写了不同值
+            // 就是「同领域不同布局」的源头，必须挡在校验期而不是留到运行期。
+            if (declaration.sampler_type != slot->sampler)
+            {
+                out_detail = "[resources] textures 槽 \"";
+                out_detail += declaration.name.c_str();
+                out_detail += "\" 的 sampler 不得自选（领域 ";
+                out_detail += contract->name;
+                out_detail += " 规范为 ";
+                out_detail += GetSamplerTypeName(slot->sampler);
+                out_detail += "，实际 ";
+                out_detail += GetSamplerTypeName(declaration.sampler_type);
+                out_detail += "；建议直接删除 sampler 键）";
+                return MaterialDomainValidationResult::TextureSlotMismatch;
+            }
+
+            if (declaration.required != slot->binding_required)
+            {
+                out_detail = "[resources] textures 槽 \"";
+                out_detail += declaration.name.c_str();
+                out_detail += "\" 的 required 不得自选（领域 ";
+                out_detail += contract->name;
+                out_detail += slot->binding_required ? " 规范为 true" : " 规范为 false";
+                out_detail += "；建议直接删除 required 键）";
+                return MaterialDomainValidationResult::TextureSlotMismatch;
+            }
+
+            if (declaration.channels != slot->channels)
+            {
+                out_detail = "[resources] textures 槽 \"";
+                out_detail += declaration.name.c_str();
+                out_detail += "\" 的 channels 不得自选（领域 ";
+                out_detail += contract->name;
+                out_detail += " 规范为 ";
+                out_detail += AnsiString::numberOf(slot->channels);
+                out_detail += "，实际 ";
+                out_detail += AnsiString::numberOf(declaration.channels);
+                out_detail += "；建议直接删除 channels 键）";
+                return MaterialDomainValidationResult::TextureSlotMismatch;
             }
         }
 
@@ -675,6 +842,23 @@ namespace hgl::graph::mtl
                 out_detail += "；声明后绑定仍可为 optional）";
                 return MaterialDomainValidationResult::UndeclaredRequiredTexture;
             }
+        }
+
+        // ── 5. 材质私有数据类型 ────────────────────────────────────────────────
+        // 类型决定 shader 按哪个结构读 payload 行；同领域混用两种类型 = 按 A 结构
+        // 读 B 结构的字节，不会报错，只会读到看似合理的垃圾值。
+        // 解析层在 `[resources].material_data` 缺省时已用契约兜底，所以这里
+        // 只可能捕捉到「显式写错」。
+        if (definition.material_private_data != contract->material_data_type)
+        {
+            out_detail = "[resources].material_data.type 不得自选（领域 ";
+            out_detail += contract->name;
+            out_detail += " 规范为 ";
+            out_detail += GetGlobalSSBOTypeName(contract->material_data_type);
+            out_detail += "，实际 ";
+            out_detail += GetGlobalSSBOTypeName(definition.material_private_data);
+            out_detail += "；建议直接删除 [resources].material_data 表）";
+            return MaterialDomainValidationResult::MaterialDataTypeMismatch;
         }
 
         return MaterialDomainValidationResult::OK;

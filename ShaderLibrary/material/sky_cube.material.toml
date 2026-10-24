@@ -15,5 +15,6 @@ requirements = ["Position"]
 varyings = ["emit_frag_direction", "emit_data_index_id"]
 
 [resources]
-textures = [{ name = "sky_cube", sampler = "SamplerCube", required = true }]
+# 槽形态由领域 Sky 的契约给出（SamplerCube / 必绑）。
+textures = [{ name = "sky_cube" }]
 samplers = ["Trilinear"]

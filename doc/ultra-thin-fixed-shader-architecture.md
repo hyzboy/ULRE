@@ -366,3 +366,35 @@ color = [1.0, 0.0, 0.0, 1.0]
    > 像素→局部 + 正交。让资产自选变换既无表达力收益，又打开了「3D 材质用 2D
    > 变换」这类必然出错的组合。这正是「Domain 即 Master Material」的第一条
    > 落地点：凡是领域已确定的东西，资产就不该有旋钮。
+
+2. ✅ **纹理槽形态与 `material_data` 类型推入领域契约**。
+   `MaterialDomainTextureSlot` 从 3 字段扩到 6 字段，新增
+   `sampler`（`SamplerType`）、`binding_required`、`channels`（0 = 由纹素格式
+   决定，2 = 双通道法线 BC5）；`MaterialDomainContract` 新增第 11 个字段
+   `material_data_type`（`GlobalSSBOType`）。配套新增
+   `FindMaterialDomainTextureSlot()` 与 `GetMaterialDomainCanonicalMaterialDataType()`。
+   校验器新增 `TextureSlotMismatch` / `MaterialDataTypeMismatch`：原「4. 纹理槽
+   白名单」重写为**单遍扫描**（先查白名单，命中后比形态），并新增「5. 材质数据
+   类型」一档，两者都报在 `key == "domain"` 上，错误文案给出领域规范值并附
+   「建议直接删除 X 键」。解析器 `ParseDefinition` 在 `sampler` / `required` /
+   `channels` 缺失时从契约兜底；槽名不在任何契约内则**显式报错**（无规范值可
+   兜底）；`[resources].material_data` 整块缺失时从契约兜底，但**显式写了非规范
+   值会被保留**交给校验器报错——与阶段三之一同一原则：兜底只填空，不改作者声明。
+   9 个 `*.material.toml` 随之瘦身：`lit` 的 6 个槽全部收成 `{ name = "..." }`，
+   4 个无光材质的 `material_data = { type = "EmissiveSurface" }` 整行删除。
+   门禁 `D.material-domain-contract` 新增 4 条负向探针（自选采样器种类 /
+   自选绑定必要性 / 自选通道数 / 自选 `material_data` 类型），并把 `Text2D`
+   最小材质探针从「无 `[transform]`」升级为「纹理只写 `name`」——一次钉住变换、
+   槽形态、数据类型三者的契约兜底。门禁仍为 55 PASS / 0 FAIL。
+   > **为什么槽形态属于 Domain**：同一领域内 `sampler` / `required` / `channels`
+   > 必然相同；资产重复声明唯一可能的后果是「同领域不同布局」，进而分叉
+   > `layout_hash`、破坏合批。`channels` 更危险——它直接决定 shader 是否注入
+   > `MTL_TEX_<NAME>_CHANNELS` 与 Z 分量还原逻辑，写错运行期不报错、只是数值全错。
+   > **为什么 `[resources].samplers`（过滤设置）留在资产**：这是真实的表达力差异，
+   > `Text2D` 的 SDF 字形要 `Linear`、位图字形要 `Nearest`，领域无法统一。
+   > 区分标准始终是「同领域是否必然相同」——采样器**种类**必然相同，采样器
+   > **过滤**不必相同。
+   > 契约表用聚合初始化，漏填 `material_data_type` 会被静默填成枚举 0
+   > （`MeshDrawParams`），而 `IsGlobalSSBOType()` 会照样放行；因此加了一条
+   > 编译期 `static_assert`，要求 16 个契约的该字段必须落在 surface 族
+   > （`PBRSurface` / `EmissiveSurface` / `TransmissionSurface`）内。

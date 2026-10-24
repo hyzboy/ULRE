@@ -1,6 +1,8 @@
 #pragma once
 
+#include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/type/String.h>
 
@@ -117,6 +119,16 @@ namespace hgl::graph::mtl
         const char *name;                 // 材质 TOML 里必须使用的槽名
         MaterialDomainTextureRole role;   // 语义角色
         bool        must_declare;         // true = 材质必须声明此槽（可仍为 optional 绑定）
+
+        // ── 规范纹理形态（阶段三之二：从资产上移到契约）─────────────────────────
+        // 同一个领域内这三个值**必然相同**：它们描述的是「这个槽在领域里长什么样」，
+        // 不是「这份资产想怎么用」。资产重复声明只会制造「同领域不同布局」，
+        // 而布局差异会让 layout_hash 分叉、合批失效。
+        //
+        // 资产可以省略这三个键（解析层按契约兜底）；显式写了不同值 ⇒ 校验失败。
+        SamplerType sampler;              // GLSL 采样器种类（唯一真源 TextureSamplerTypeDef.h）
+        bool        binding_required;     // true = 运行时必须绑定（缺失 = 显式错误）
+        uint32_t    channels;             // 0 = 由纹素格式决定；2 = 双通道法线(XY)
     };
 
     // ── 领域契约 ────────────────────────────────────────────────────────────────
@@ -170,6 +182,16 @@ namespace hgl::graph::mtl
         //
         // 未显式填写的条目即取聚合初始化的默认值（默认 3D 配置），与历史行为一致。
         VertexShaderNodeConfig canonical_vertex_node_config;
+
+        // 领域规范材质私有数据 SSBO 类型（`[resources].material_data.type`）。
+        //
+        // 为什么放在领域契约里：类型决定 shader 按哪个结构读 payload 行
+        // （PBRSurface / EmissiveSurface / TransmissionSurface 字段宽度与顺序都不同），
+        // 它不是美术参数。同一个领域混用两种类型 ⇒ 运行期按 A 结构读 B 结构的字节，
+        // 不会报错，只会读到一堆看似合理的垃圾值。
+        //
+        // 必须显式填写（枚举 0 是 MeshDrawParams，不是材质表面类型）。
+        GlobalSSBOType material_data_type;
     };
 
     // 取契约；domain == Custom 或未知时返回 nullptr。
@@ -182,6 +204,14 @@ namespace hgl::graph::mtl
     // 领域规范顶点变换。Custom / 未知领域返回 false（调用方保留资产声明或默认值）。
     bool GetMaterialDomainCanonicalVertexNodeConfig(
         MaterialDomain domain, VertexShaderNodeConfig &out) noexcept;
+
+    // 按槽名取领域契约里的纹理槽条目。Custom / 未知领域 / 槽名不在白名单时返回 nullptr。
+    const MaterialDomainTextureSlot *FindMaterialDomainTextureSlot(
+        MaterialDomain domain, const char *slot_name) noexcept;
+
+    // 领域规范材质私有数据 SSBO 类型。Custom / 未知领域返回 false。
+    bool GetMaterialDomainCanonicalMaterialDataType(
+        MaterialDomain domain, GlobalSSBOType &out) noexcept;
 
     // ── 领域规范模块（阶段四：资产只填领域 + 值 + 图）────────────────────────────
     // 材质 TOML 声明 `domain` 之后，**不必**再写 `material_source_module_name`
@@ -213,8 +243,10 @@ namespace hgl::graph::mtl
         MaterialSourceModuleMismatch, // 材质自选表面来源模块，与领域规范模块不符
         NtbModuleMismatch,          // 材质自选法线标架模块，与领域规范模块不符
         TransformMismatch,          // 材质自选顶点变换，与领域规范变换不符
+        TextureSlotMismatch,        // 材质显式声明的纹理槽形态（采样器/绑定/通道数）与领域规范不符
+        MaterialDataTypeMismatch,   // 材质显式声明的 material_data 类型与领域规范不符
 
-        ENUM_CLASS_RANGE(OK, TransformMismatch)
+        ENUM_CLASS_RANGE(OK, MaterialDataTypeMismatch)
     };
 
     const char *GetMaterialDomainValidationResultName(
