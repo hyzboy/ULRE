@@ -3,7 +3,7 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段六完成后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`。**
+> **最后更新**：阶段六收尾复查后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`；mesh 侧拼接债经复查确认已清空，STL 残留清理判定为需整体迁移、刻意不做。**
 
 ---
 
@@ -13,7 +13,7 @@
 2. **四阶段已全部完成**（一 / 二 / 三 3.1–3.3 / 四，见 §4.1–§4.6），阶段五（拼接清理前置安全网 + 小债，见 §4.7）与阶段六（ShadowCaster 骨架外置，见 §4.8）也已完成。阶段四已把资产降维为 `.mi.toml` 并废除 `.material.toml`，方案记录见 §6.5。
 3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数常量 `kShaderCodeModuleCount`」「golden 无环境变量开关」「快照 case 必须自己装载 sampler 预设」「`alpha_test` 必须写在模板请求解析之前」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
-5. **下一步是 §10.2 的 mesh 侧骨架外置与 STL 残留清理** —— 两者都是独立、可评审的改动，动手前先与用户确认范围。
+5. **剩余工作见 §10.2** —— mesh 侧骨架经复查判定「已做到该做的程度」（剩余段数来自刻意的单一真源数据表），STL 残留清理经实测判定**必须整体迁移、刻意不做**。即当前**没有待办的技术债**，下一步动作需由用户指定（可选：STL 整体迁移、`inc/hgl/mtl/` 公共头清理、4 个 `nullptr` 领域补实现）。
 
 **铁律**：每个阶段/子阶段**独立分支 + 独立提交**；提交用 `git add` 显式列路径（禁 `-A`）；带 `Co-authored-by` trailer。
 
@@ -55,11 +55,14 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 12 | 同上 | `29b3febfe` | 阶段四文档收尾：回填提交号并对齐资产示例（纯文档） |
 | 13 | `feature/ultra-thin-stage5-shadergen-emission-cleanup`（已并入） | `0fffcdba1` | **阶段五**：拼接清理前置安全网（emission 快照）+ 小债清理 |
 | 14 | 同上 | `caf38cb34` | 阶段五文档收尾：回填提交号（纯文档） |
-| 15 | 同上 ← **当前** | 待回填 | **阶段六**：ShadowCaster 内联骨架外置为 `shadow_caster.glsl.tmpl`（+ 补 masked 快照覆盖） |
+| 15 | 同上 | `83bac9349` | **阶段六**：ShadowCaster 内联骨架外置为 `shadow_caster.glsl.tmpl`（+ 补 masked 快照覆盖） |
+| 16 | 同上 | `528531be8` | 阶段六文档收尾：新增 §4.8 并修正快照覆盖口径（纯文档） |
+| 17 | 同上 ← **当前** | `53a3629ef` | 补齐 `LineQuad` mesh 发射模式的快照覆盖（矩阵 14 → 16，纯测试夹具） |
+| 18 | 同上 | `eeb325d36` | STL 残留改判：从「纯机械替换」改为需要整体迁移（纯文档） |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
-累计 diff（`6ef579059..HEAD`）：64 files, +2806 / −471。
+累计 diff（`6ef579059..eeb325d36`，即上表第 3 行 → 第 18 行）：114 files, +6080 / −1085。
 
 ---
 
@@ -524,7 +527,18 @@ Case 名与职责：
 
 ### 10.2 结构性遗留
 
-- **mesh 侧骨架仍有多段 `+=` 拼接**（阶段四遗留的最后一角；**fragment 侧已于阶段六收口**，见 §4.8）。剩下的动作：把 mesh 侧骨架（`MeshShaderHeaderGen` / `MeshVaryingGen` / `VertexAdapter` / `MeshTemplateEmitter`）外化成 `.tmpl`，并把 `FragmentTemplateComposer`（角色化 `ResolvedInclude`）/ `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit。**现在动它是安全的**：`SD.emission-order-golden`（16 变体，三种 mesh 发射模式全覆盖，见 §5.3）会在 token 顺序发生任何变化时立刻变红。仍应作为独立、可评审的提交。
+- ~~mesh 侧骨架外化成 `.tmpl`~~ → **复查后判定：已经做到该做的程度，剩余部分不该外置**（fragment 侧已于阶段六收口，见 §4.8）。
+  原先按「内嵌 `\n` 数量」排序（`MeshVaryingGen` 47 段 > `VertexAdapter` 34 > `HeaderGen` 22）挑目标，实际读文件后发现**这个度量选错了对象**——段数多的原因是 GLSL 片段被放进了**数据表**，而不是 `ms +=` 拼接代码：
+
+  | 文件 | 实际形态 | 为何不该外置 |
+  |---|---|---|
+  | `MeshShaderVaryingGen.h` | `MeshVaryingWriteRule { semantic, color_source, const char *glsl }` 规则表 | 该表同时是「发射什么」与「模式**能**写什么」（`IsMeshVaryingWritable` 硬门）的**唯一真源**，正是为消灭「描述符清单 + 发射器 if 链」双表漂移而建（`LineQuad` 漏写 `WorldPosition` 就是漂移产物）。搬到 `.tmpl` 会把语义↔GLSL 的邻接关系拆开，反而重造一个需要第二套查找的真源 |
+  | `MeshShaderVertexAdapter.h` / `MeshShaderHeaderGen.h` 的 `pc_root`、`MeshDrawParams` 块 | 遍历 `kMeshDrawParamsField*` / `kRootAddressesField*` 的 X 列表生成 | 字段名/类型是**与 CPU struct 同源**的 X 宏单一真源（`ShaderBufferSources.h`）。写进 `.tmpl` 就是把字段清单抄第二份，改字段只改一处的前提直接破掉 |
+  | 三个 `MeshShaderMode*.h` | 无条件静态骨架 | **阶段三已外置完毕**（`line_quad.glsl.tmpl` 等） |
+
+  剩余真正无条件的静态行每个文件只有 3–6 行短 `+=`（如 `#version 460`、6 条 `#extension`、`#define gl_InstanceIndex`），外置只增加一次模板查找、不减少任何 C++ 分支，是净可读性损失。
+  `MeshTemplateEmitter` 的多段拼接已收敛为「按模式选表 + 拼接」，其残余分支（`mode == VertexPassthrough || mode == LineQuad`，E2）属模式语义而非字符串拼接。
+  结论：**mesh 侧字符串拼接债已清空**；`FragmentTemplateComposer`（角色化 `ResolvedInclude`）与 `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit 仍是可选优化（纯风格，低价值），留作独立提交。
 - **STL 残留**：`FragmentTemplateComposer.cpp` 与 `MeshShaderTemplate.cpp` / `MeshTemplateEmitter.h` 仍 `#include <fstream>` / `<map>` / `<string>` 并用 `std::string` / `std::vector`，违反本仓「禁用 STL」规范（全量口径：`src/ShaderGen` + `src/ShaderMaterialData` + `inc/hgl/mtl` 共 **40 个文件 / 247 处**）。
   前提条件已满足：mesh 侧三种发射模式都有 emission golden 兜底（§5.3），替换 `std::string` 累加器若改变任何拼接顺序会立刻变红。
   **但它不是「纯机械替换」** —— 实测最小目标 `MeshShaderTemplate.cpp` 就卡在第一个依赖上：
@@ -550,6 +564,7 @@ Case 名与职责：
 - [x] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
+- [x] 实跑 `LineRender`（`PrimitiveType::Lines` → 真正走 `LineQuad` mesh 发射模式）：0 validation error、SPV 缓存全命中、持续出帧。**这条不能用 golden 代替**——`{{endpoint_read}}` 的两个函数体文本不在快照粒度内，且夹具是 `defer_finalize`（不编译 SPV），只有实跑能证明两条 `position_format` 分支都产出合法 GLSL
 - [x] `git status` 只剩既存子模块脏项
 - [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` **16** 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路，`ShadowCaster` 的 **opaque 与 masked 两条分支都有覆盖**（阶段五建网、阶段六补 masked），三种 mesh 发射模式（`VertexPassthrough` / `CharQuad` / `LineQuad`）全部有覆盖（阶段六收尾补 `LineQuad`，见 §5.3）
 - [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目

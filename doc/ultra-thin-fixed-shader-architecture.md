@@ -371,11 +371,19 @@ varyings = ["emit_data_index_id"]
    （只能由 `primitive_type == Lines` 推出）**零覆盖**。收尾补 `vertex-color-lines-quad` /
    `vertex-color-lines-quad-2d`，矩阵 14 → 16，三种 mesh 发射模式全部有网。
    详见 `doc/ultra-thin-implementation-status.md` §5.3。
-6. ⬜ **mesh 侧骨架外置与 STL 残留清理仍未做** —— 安全网已就位、路径已解锁，
-   但两者都是独立、可评审的改动。STL 清理经实测**不是纯机械替换**：最小目标
+6. ✅ **mesh 侧骨架复查完毕：已经做到该做的程度** —— 原先按「内嵌 `\n` 段数」挑目标
+   （`MeshVaryingGen` 47 段 > `VertexAdapter` 34 > `HeaderGen` 22），读文件后发现度量选错了对象：
+   段数多是因为 GLSL 被放进了**数据表**（`MeshVaryingWriteRule` 规则表、`kMeshDrawParamsField*` /
+   `kRootAddressesField*` X 列表），而这两类表都是刻意的**单一真源**（前者同时驱动发射与
+   「模式能写什么」硬门，后者与 CPU struct 同源）。搬进 `.tmpl` 等于把清单抄第二份，
+   正是这些表当初要消灭的漂移。三个 `MeshShaderMode*.h` 的无条件骨架阶段三已外置完毕，
+   剩余每个文件只有 3–6 行短 `+=`，外置是净可读性损失。**结论：mesh 侧拼接债已清空**。
+   详见 `doc/ultra-thin-implementation-status.md` §10.2。
+7. ⬜ **STL 残留清理仍未做（刻意）** —— 经实测**不是纯机械替换**：最小目标
    `MeshShaderTemplate.cpp` 的第一个依赖 `GetShaderLibraryPath()` 是返回
    `std::string` 的 inline 公共头（26 个调用点），且 `std::vector<PendingBlock>` /
-   `std::sort` 在 HGL 里没有等价物。局部改只会让仓里一半 HGL 一半 STL。
+   `std::sort` 在 HGL 里没有等价物。局部改只会让仓里一半 HGL 一半 STL，
+   因此要么整体迁移（含公共头签名）要么不动，留作独立可评审的改动。
    详见 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 5 的进展：
@@ -392,9 +400,10 @@ varyings = ["emit_data_index_id"]
    case 现均先调用 `EnsureSamplerPresetsLoaded()`。
 3. ✅ 小债清理：删除 legacy `ShaderModuleSlotRole::DirectLightProvider`；模块总数
    `82` 的两处硬编码收敛为 `kShaderCodeModuleCount` 单一常量。
-4. ⬜ **旧 ShaderGen 字符串拼接代码的实际迁移** —— fragment 侧已于阶段 6 收口
-   （见下方「阶段 6 的进展」），剩余 mesh 侧骨架与多段 `+=` 合并仍待处理，详见
-   `doc/ultra-thin-implementation-status.md` §10.2。
+4. ✅ **旧 ShaderGen 字符串拼接代码的实际迁移** —— fragment 侧阶段 6 收口、mesh 侧
+   经复查判定「已做到该做的程度」（剩下的段数来自刻意的单一真源数据表，不是拼接代码），
+   仅余 `FragmentTemplateComposer` / `GenericMaterialBuilder` 的多段 `+=` 合并属可选风格优化。
+   详见下方「阶段 6 的进展」第 6 条与 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 4 的进展：
 
