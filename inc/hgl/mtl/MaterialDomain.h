@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/common/VertexAttribDef.h>
+#include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/type/String.h>
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -160,6 +161,15 @@ namespace hgl::graph::mtl
         //
         // 注意：这个位不能用来给「未实现的领域」开后门偷懒。
         bool no_material_source;
+
+        // 领域规范顶点变换（= 顶点通路 source/mapping/orientation/scale/projection）。
+        //
+        // 为什么放在领域契约里：`[transform]` 表达的是「这个领域怎么把顶点喂进管线」，
+        // 不是美术的选择。全部内建材质统计下来只有三种形态（默认 3D / 2D NDC / 文字
+        // Ortho），且与领域一一对应——资产重复写一遍只是在制造不一致的机会。
+        //
+        // 未显式填写的条目即取聚合初始化的默认值（默认 3D 配置），与历史行为一致。
+        VertexShaderNodeConfig canonical_vertex_node_config;
     };
 
     // 取契约；domain == Custom 或未知时返回 nullptr。
@@ -168,6 +178,10 @@ namespace hgl::graph::mtl
 
     // 按序号取契约表（0..MaterialDomainContractCount-1），供门禁穷举。
     const MaterialDomainContract *GetMaterialDomainContractAt(int index) noexcept;
+
+    // 领域规范顶点变换。Custom / 未知领域返回 false（调用方保留资产声明或默认值）。
+    bool GetMaterialDomainCanonicalVertexNodeConfig(
+        MaterialDomain domain, VertexShaderNodeConfig &out) noexcept;
 
     // ── 领域规范模块（阶段四：资产只填领域 + 值 + 图）────────────────────────────
     // 材质 TOML 声明 `domain` 之后，**不必**再写 `material_source_module_name`
@@ -198,8 +212,9 @@ namespace hgl::graph::mtl
         MissingMaterialSource,      // 契约要求 material_source_module_name，但材质未声明
         MaterialSourceModuleMismatch, // 材质自选表面来源模块，与领域规范模块不符
         NtbModuleMismatch,          // 材质自选法线标架模块，与领域规范模块不符
+        TransformMismatch,          // 材质自选顶点变换，与领域规范变换不符
 
-        ENUM_CLASS_RANGE(OK, NtbModuleMismatch)
+        ENUM_CLASS_RANGE(OK, TransformMismatch)
     };
 
     const char *GetMaterialDomainValidationResultName(

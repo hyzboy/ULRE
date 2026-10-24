@@ -340,3 +340,26 @@ color = [1.0, 0.0, 0.0, 1.0]
    正是本架构要消灭的重复。主文件里刻意保留的宏只有 alpha 覆盖相关的三处
    （`HGL_ALPHA_TEST` / `HGL_ALPHA_DITHER` / `HGL_ALPHA_OUTPUT`）——它们必须与
    `discard` / 输出写在同一个函数体内，属于设计明确允许的例外。
+
+阶段 3 的进展（按交付顺序）：
+
+1. ✅ **顶点变换推入领域契约**。`MaterialDomainContract` 新增第 10 个字段
+   `canonical_vertex_node_config`（`VertexShaderNodeConfig`，聚合缺省即默认 3D
+   配置），`MaterialDomain.cpp` 只为真需要非默认变换的三个领域显式填写：
+   `UnlitTexture` 与 `Checker2D` 用 2D NDC、`Text2D` 用
+   `None + PixelToLocal + OrthoViewport`；其余 13 个领域靠聚合默认。
+   校验器新增 `TransformMismatch`，在 NTB 段之后追加「3c. 顶点变换」一档：
+   资产自选的 `[transform]` 与领域规范不符即报错在 `key == "domain"` 上。
+   解析器 `ParseDefinition` 在资产缺 `[transform]` 时**从契约兜底**
+   （`GetMaterialDomainCanonicalVertexNodeConfig()`），因此 14 个
+   `*.material.toml` 的 `[transform]` 块被**整块删除**（98 行）。
+   配套新增 `IsSameVertexNodeConfig()`；门禁 `D.material-domain-contract`
+   加 1 条负向探针（3D 领域自选 2D 变换必须被拒）+ 2 处正向断言
+   （默认 3D 领域解析结果必须等于默认配置；`Text2D` 最小材质在无
+   `[transform]` 时解析成功且投影为 `OrthoViewport`）。
+   > **为什么变换属于 Domain 而不是资产**：5 个字段（source / mapping /
+   > orientation / scale / projection）在现有 14 个资产里只有 4 种组合，且组合
+   > **完全由领域决定**——2D 精灵/棋盘必然是 NDC 抬升，字形必然是
+   > 像素→局部 + 正交。让资产自选变换既无表达力收益，又打开了「3D 材质用 2D
+   > 变换」这类必然出错的组合。这正是「Domain 即 Master Material」的第一条
+   > 落地点：凡是领域已确定的东西，资产就不该有旋钮。

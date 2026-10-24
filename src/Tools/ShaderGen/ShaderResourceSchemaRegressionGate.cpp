@@ -5032,6 +5032,37 @@ namespace
                 "[vertex]\n"
                 "requirements = [\"Position\"]\n"
             },
+            {
+                // `[transform]` 由领域决定：StandardOpaque 是 3D 通路，
+                // 写 2D NDC 变换会让同一领域的材质走不同顶点管线，
+                // 合批/layout 共享立刻失效——必须拒绝而不是静默接受。
+                "self-chosen vertex transform on a 3D domain",
+                "schema = 4\n"
+                "id = \"DomainBadTransform\"\n"
+                "name = \"DomainBadTransform\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[transform]\n"
+                "source = \"Vec2Position\"\n"
+                "mapping = \"NDCLift\"\n"
+                "orientation = \"World\"\n"
+                "scale = \"World\"\n"
+                "projection = \"LocalToWorldOnly\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
         };
 
         for (const DomainViolationProbe &probe : probes)
@@ -5131,6 +5162,65 @@ namespace
                             + (data.definition.ntb_module_name
                                    ? data.definition.ntb_module_name : "<null>")
                             + "'");
+
+                    // `[transform]` 同理：缺省必须由领域契约填成规范变换。
+                    if (!IsDefault3DNodeConfig(data.definition.vertex_node_config))
+                        result.diagnostics.emplace_back(
+                            "omitted [transform] on StandardOpaque must derive the domain "
+                            "canonical 3D transform");
+                }
+            }
+        }
+
+        // ── ③b 非 3D 领域的顶点变换同样由领域契约给出 ──────────────────────────
+        // 这条单独钉住「契约里的 canonical_vertex_node_config 不是摆设」：
+        // 只测 StandardOpaque（= 默认值）的话，漏填契约也照样通过。
+        {
+            const char *text_material =
+                "schema = 4\n"
+                "id = \"DomainMinimalText\"\n"
+                "name = \"DomainMinimalText\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"Text2D\"\n"
+                "[fragment]\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n";
+
+            MaterialDefinitionFileData data;
+            const MaterialDefinitionFileParseResult parse_result = ParseMaterialDefinitionFile(
+                text_material, static_cast<int>(std::strlen(text_material)), data);
+            if (parse_result != MaterialDefinitionFileParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    "minimal Text2D material (no [transform]) must parse, got: "
+                    + std::string(data.parse_error.key) + " / "
+                    + data.parse_error.detail.c_str());
+            }
+            else
+            {
+                VertexShaderNodeConfig expect{};
+                if (!GetMaterialDomainCanonicalVertexNodeConfig(
+                        MaterialDomain::Text2D, expect))
+                {
+                    result.diagnostics.emplace_back(
+                        "Text2D contract must expose a canonical vertex transform");
+                }
+                else if (!IsSameVertexNodeConfig(
+                             data.definition.vertex_node_config, expect))
+                {
+                    result.diagnostics.emplace_back(
+                        "omitted [transform] on Text2D must derive the domain canonical "
+                        "transform (expected PixelToLocal / OrthoViewport)");
+                }
+                else if (data.definition.vertex_node_config.projection
+                         != ProjectionMode::OrthoViewport)
+                {
+                    result.diagnostics.emplace_back(
+                        "Text2D canonical transform must project through the viewport ortho");
                 }
             }
         }

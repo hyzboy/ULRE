@@ -297,6 +297,12 @@ namespace hgl::graph::mtl
                                  / sizeof(UnlitTextureSlots[0])),
                 false,
                 false,
+                // 贴面 2D：顶点是 NDC，直接升维后乘 L2W（无相机投影）。
+                VertexShaderNodeConfig{VertexInputMode::Vec2Position,
+                                       PositionMappingMode::NDCLift,
+                                       OrientationMode::World,
+                                       ScaleMode::World,
+                                       ProjectionMode::LocalToWorldOnly},
             },
             {
                 // GPU 文本。顶点必须是 Position + UV0（字形在纹理里）。
@@ -309,6 +315,12 @@ namespace hgl::graph::mtl
                 static_cast<int>(sizeof(Text2DSlots) / sizeof(Text2DSlots[0])),
                 false,
                 false,
+                // 文字：无顶点位置输入（字形自 SSBO），像素坐标经 viewport ortho 出裁剪空间。
+                VertexShaderNodeConfig{VertexInputMode::None,
+                                       PositionMappingMode::PixelToLocal,
+                                       OrientationMode::World,
+                                       ScaleMode::World,
+                                       ProjectionMode::OrthoViewport},
             },
 
             // ══ 环境 ════════════════════════════════════════════════════════════
@@ -347,6 +359,12 @@ namespace hgl::graph::mtl
                 0,
                 false,
                 false,
+                // 屏幕/局部空间出格：与 UnlitTexture 同为 2D NDC 顶点通路。
+                VertexShaderNodeConfig{VertexInputMode::Vec2Position,
+                                       PositionMappingMode::NDCLift,
+                                       OrientationMode::World,
+                                       ScaleMode::World,
+                                       ProjectionMode::LocalToWorldOnly},
             },
             {
                 // 3D 棋盘格：按世界位置出格，需要世界位置 varying 而非 UV。
@@ -413,6 +431,18 @@ namespace hgl::graph::mtl
         return contract ? contract->reference_ntb_module : nullptr;
     }
 
+    bool GetMaterialDomainCanonicalVertexNodeConfig(
+        const MaterialDomain domain,
+        VertexShaderNodeConfig &out) noexcept
+    {
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        if (!contract)
+            return false;
+
+        out = contract->canonical_vertex_node_config;
+        return true;
+    }
+
     const char *GetMaterialDomainValidationResultName(
         const MaterialDomainValidationResult result) noexcept
     {
@@ -431,6 +461,8 @@ namespace hgl::graph::mtl
             return "MaterialSourceModuleMismatch";
         case MaterialDomainValidationResult::NtbModuleMismatch:
             return "NtbModuleMismatch";
+        case MaterialDomainValidationResult::TransformMismatch:
+            return "TransformMismatch";
         default:                                                        return "Invalid";
         }
     }
@@ -550,6 +582,31 @@ namespace hgl::graph::mtl
             out_detail += reference_ntb;
             out_detail += "；不需要法线贴图时请删除该键而非改指其它模块）";
             return MaterialDomainValidationResult::NtbModuleMismatch;
+        }
+
+        // ── 3c. 顶点变换 ──────────────────────────────────────────────────────
+        // `[transform]` 同样由领域决定：三种顶点通路（默认 3D / 2D NDC / 文字 Ortho）
+        // 与领域一一对应，资产重复声明只会制造「同领域不同通路」的不一致。
+        // 解析层在缺省时已用契约兜底，所以这里只可能捕捉到「显式写错」。
+        if (!IsSameVertexNodeConfig(definition.vertex_node_config,
+                                    contract->canonical_vertex_node_config))
+        {
+            const VertexShaderNodeConfig &canonical =
+                contract->canonical_vertex_node_config;
+            out_detail = "[transform] 不得自选（领域 ";
+            out_detail += contract->name;
+            out_detail += " 规范为 source=";
+            out_detail += GetVertexInputModeName(canonical.input);
+            out_detail += " / mapping=";
+            out_detail += GetPositionMappingModeName(canonical.position_mapping);
+            out_detail += " / orientation=";
+            out_detail += GetOrientationModeName(canonical.orientation);
+            out_detail += " / scale=";
+            out_detail += GetScaleModeName(canonical.scale);
+            out_detail += " / projection=";
+            out_detail += GetProjectionModeName(canonical.projection);
+            out_detail += "；建议直接删除 [transform] 表）";
+            return MaterialDomainValidationResult::TransformMismatch;
         }
 
         // ── 4. 纹理槽白名单 + 必声明项 ──────────────────────────────────────────

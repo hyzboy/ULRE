@@ -284,6 +284,16 @@ namespace hgl::graph::mtl
             && cfg.projection == ProjectionMode::WorldCameraVP;
     }
 
+    inline bool IsSameVertexNodeConfig(const VertexShaderNodeConfig &a,
+                                       const VertexShaderNodeConfig &b) noexcept
+    {
+        return a.input == b.input
+            && a.position_mapping == b.position_mapping
+            && a.orientation == b.orientation
+            && a.scale == b.scale
+            && a.projection == b.projection;
+    }
+
     inline VertexShaderNodeConfig Make2DNodeConfigNDC(bool local_to_world) noexcept
     {
         VertexShaderNodeConfig cfg;

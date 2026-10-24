@@ -7,13 +7,6 @@ provider_policy = "GeometryOnly"
 # 纹理槽白名单全部由领域契约给出，资产只填领域 + 数值 + 图。
 domain = "UnlitTexture"
 
-[transform]
-source = "Vec2Position"
-mapping = "NDCLift"
-orientation = "World"
-scale = "World"
-projection = "LocalToWorldOnly"
-
 [fragment]
 # 表面来源模块由领域契约给出，不再重复声明。
 

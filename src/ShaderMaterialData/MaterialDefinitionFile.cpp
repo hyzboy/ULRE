@@ -454,6 +454,13 @@ namespace hgl::graph::mtl
                         root.at("transform"), out.definition.vertex_node_config))
                     return false;
             }
+            else
+            {
+                // `[transform]` 缺省 = 采用领域规范变换（领域即材质：顶点通路由领域决定）。
+                // 非领域材质（domain 缺省 = Custom）保留结构体默认值，与历史行为一致。
+                GetMaterialDomainCanonicalVertexNodeConfig(
+                    out.definition.domain, out.definition.vertex_node_config);
+            }
 
             const toml::value *fragment = root.contains("fragment")
                 ? &root.at("fragment") : nullptr;
