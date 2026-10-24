@@ -48,7 +48,7 @@ namespace hgl::ecs
             const int32_t  first     = static_cast<int32_t>(slice.row_base);
             const uint32_t max_count = slice.capacity;
 
-            // 诊断接线（`ULRE_DEBUG=batch,cull`）：绘制侧读的槽/切片 —— 与派发侧对照
+            // 诊断接线（`ULRE_DEBUG.toml` 的 `channels.batch/cull = true`）：绘制侧读的槽/切片 —— 与派发侧对照
             if (ULRE_DEBUG_ON(Batch))
                 // 槽 = 偏移 / 2056（每槽 2 pass × 257 行 × 4 B）；此处只打原始偏移，离线换算
                 GLogInfo("[T3i][TRACE] flush first=%d max=%u gpu_driven=%d 计数偏移=%u pass=%u",
@@ -69,7 +69,7 @@ namespace hgl::ecs
 
             if (cur_owner_batch->icb_count_buffer)
             {
-                // SSBO DUMP 配套（ULRE_DEBUG=culldump 才付出同步回读；记录绘制侧真正消费的计数值）
+                // SSBO DUMP 配套（ULRE_DEBUG.toml 的 channels.culldump = true 才付出同步回读；记录绘制侧真正消费的计数值）
                 if (ULRE_DEBUG_ON(CullDump))
                 {
                     uint32_t current_count_val = UINT32_MAX;

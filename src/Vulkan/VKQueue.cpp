@@ -350,7 +350,7 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
                  static_cast<unsigned long long>(submit_count+1),cb_count,real_wait_count,real_signal_count);
     }
 
-    // Enable with ULRE_DEBUG=vksync (legacy VK_SYNC_TRACE=1) to capture successful submit dependencies.
+    // Enable with channels.vksync = true in ULRE_DEBUG.toml to capture successful submit dependencies.
     // On failure, always dump the same data so the first error remains actionable.
     if(sync_trace_enabled||result!=VK_SUCCESS)
     {

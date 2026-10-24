@@ -48,7 +48,7 @@ namespace hgl::graph::mtl
 
     /// 诊断用：把最终 GLSL 文本落盘，供人工比对（原本散落在两处且路径硬编码）。
     ///
-    /// 仅在开关 `ULRE_DEBUG=shadergen`（旧变量 ULRE_DUMP_GLSL）开启时生效，
+    /// 仅在开关 `ULRE_DEBUG.toml` 的 `channels.shadergen = true` 开启时生效，
     /// 其余情况为空操作。开关是运行时的，Debug/Release 均有效。
     /// 输出目录 = <ShaderCacheRoot>/glsldump；ShaderCacheRoot 由
     /// ULRE_SHADER_CACHE_PATH > exe 目录 > cwd 解析（见 ShaderCacheRoot.h），

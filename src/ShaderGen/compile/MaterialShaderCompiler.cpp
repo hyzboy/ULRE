@@ -92,7 +92,7 @@ bool FinalizeShaderBuildContext(
     }
     build_spec->SetUsedCachedStages(mesh_cache_hit, fragment_cache_hit);
 
-    // ULRE_DEBUG=shadergen（旧变量 ULRE_DUMP_GLSL）：落盘每次材质构建的最终 GLSL（mesh+fs）。
+    // ULRE_DEBUG.toml 的 channels.shadergen = true：落盘每次材质构建的最终 GLSL（mesh+fs）。
     // 输出目录由 DumpShaderGenGLSL 解析（<ShaderCacheRoot>/glsldump，不绑定机器路径）。
     // 运行时可开关，Release 同样有效 —— 这里的调用本身不判断，判断在 DumpShaderGenGLSL 内部。
     if (const ShaderCreateInfo *mesh_si =

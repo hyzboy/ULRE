@@ -65,7 +65,7 @@ bool BuildCodeModuleDocument(
 }
 
 // ── 诊断用 GLSL 落盘（声明见 MaterialShaderEmitter.h）─────────────────────────
-// 开关：ULRE_DEBUG=shadergen（旧变量 ULRE_DUMP_GLSL）。运行时可开关，Release 同样有效
+// 开关：ULRE_DEBUG.toml 的 channels.shadergen = true。运行时可开关，Release 同样有效
 // ——排障往往就发生在 Release 跑批上，编译期裁掉等于没有。
 void DumpShaderGenGLSL(const char *stage, const std::string &text)
 {

@@ -699,7 +699,7 @@ namespace hgl::ecs
         pc.batch_block_stride = kBatchBlockStride;
         pc.batch_count_shadow = batch_count_[1];
 
-        // 诊断接线（`ULRE_DEBUG=batch,cull`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
+        // 诊断接线（`ULRE_DEBUG.toml` 的 `channels.batch/cull = true`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
         // 定位"派发写的槽 ≠ 绘制读的槽"（帧内切 RT 时槽会变，而派发每帧只跑一次）。
         if (ULRE_DEBUG_ON(Batch))
             GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=[main:%u, shadow:%u] 相机行=%u",

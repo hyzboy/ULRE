@@ -9,11 +9,12 @@
 namespace hgl::ecs
 {
     /**
-     * PBR_PERF=1 计时代（临时插桩）：每 240 帧打印一次均值（稳态口径，启动杂项不进窗口）。
-     * 开关统一走 `ULRE_DEBUG=perf`（`hgl/common/DebugChannel.h`），旧变量 `PBR_PERF` 仍作别名生效。
+     * perf 通道计时代（原 `PBR_PERF=1` 临时插桩）：每 240 帧打印一次均值（稳态口径，启动杂项不进窗口）。
+     * 开关统一走仓库根 `ULRE_DEBUG.toml` 的 `channels.perf = true`
+     * （唯一读取点 `src/Debug/DebugChannel.cpp`，接口在 `hgl/common/DebugChannel.h`）。
      *
      * `CullPerfTimer`（`GPUCullSystem.cpp`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp`）此前是
-     * **两份逐字同构**的实现（`on = getenv("PBR_PERF") != nullptr` + `total_us` / `frames` +
+     * **两份逐字同构**的实现（各自现读环境变量探测开关 + `total_us` / `frames` +
      * `frames % 240` 窗口 + 归零），差别只有：名字在构造时给还是 `Add` 时给、以及是否追加一个
      * 可选诊断值（`gpu_dispatch` 的泄漏判据）⇒ 收成这一份。
      *

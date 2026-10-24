@@ -179,7 +179,7 @@ namespace hgl::ecs
         uint32_t GetGPUVisibleCount() const;
 
         /// **对拍台架专用同步点**（T3g）：等本系统队列最近一次提交完成（fence）。
-        /// 只在台架采样帧调用 ⇒ 稳态生产路径 0 同步开销（`PBR_PERF` 测量运行根本
+        /// 只在台架采样帧调用 ⇒ 稳态生产路径 0 同步开销（`channels.perf` 测量运行根本
         /// 不调台架）。非采样帧调它 = 白白 stall ⇒ 别在每帧路径上调。
         bool SyncForParityReadback();
 

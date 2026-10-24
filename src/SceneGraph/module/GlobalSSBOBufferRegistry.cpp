@@ -352,7 +352,7 @@ bool GlobalSSBOBufferRegistry::WriteGeometryAABB(const uint32_t id,const mtl::Ge
     *row = aabb;
 
     // 每次行写入留痕（几何创建期各一次，量级 = 场景几何数）：一号双表的**运行期证据**
-    // 默认静默，ULRE_DEBUG=upload 打开
+    // 默认静默，ULRE_DEBUG.toml 的 channels.upload = true 打开
     if (ULRE_DEBUG_ON(Upload))
         GLogInfo("[GlobalSSBOBufferRegistry] GeometryAABB 行写入 id=%u radius=%.4f center=(%.3f,%.3f,%.3f) extents=(%.3f,%.3f,%.3f)",
                  id, aabb.center[3],

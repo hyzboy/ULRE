@@ -299,7 +299,7 @@ namespace hgl::ecs
             if (!rt)
                 continue;
 
-            // S6 诊断开关（ULRE_DEBUG=shadow，默认静默）：逐 pass 打印级联/类型/scissor/写侧平移，
+            // S6 诊断开关（ULRE_DEBUG.toml 的 channels.shadow = true，默认静默）：逐 pass 打印级联/类型/scissor/写侧平移，
             // 与 [S6-COLLECT] 的"图元数 + 实体 ID 校验和"配对读：同批 caster ⇒ 差异在光栅化侧；
             // 不同批 ⇒ 差异在收集/剔除侧。
             const bool s6_pass_log = ULRE_DEBUG_ON(Shadow);

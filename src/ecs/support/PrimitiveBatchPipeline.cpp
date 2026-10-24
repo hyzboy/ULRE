@@ -122,7 +122,7 @@ namespace hgl::ecs
         return true;
     }
 
-    // ULRE_DEBUG=perf（旧变量 PBR_PERF=1）计时代（三处独立累计，函数内 static ⇒ 零头文件改动）：
+    // ULRE_DEBUG.toml 的 channels.perf = true 计时代（三处独立累计，函数内 static ⇒ 零头文件改动）：
     //   cull  = PerformFrustumCulling 的 CPU 时间（形态 B 接管帧 = 0）
     //   batch = RunBatching 的 CPU 时间（形态 B guard+接管帧仍要建批，含差异）
     // 计时器/RAII 段本体见 `support/PerfTimer.h`（与 `GPUCullSystem` 的派发计时共用一份实现）。
@@ -275,7 +275,7 @@ namespace hgl::ecs
             }
         }
 
-        // 批级纹理引用基址诊断（ULRE_DEBUG=binding）：「纹理不生效」的第一现场——
+        // 批级纹理引用基址诊断（ULRE_DEBUG.toml 的 channels.binding = true）：「纹理不生效」的第一现场——
         // base==0 ⇒ push 出去的 addr_texture_references 是 0 ⇒ 着色器 MTL_TEX 解引用
         // 地址 0 ⇒ tex_handle=0 ⇒ SampleOptional 走 fallback 1.0（alpha 恒 1，
         // dither/blend 全部看不出效果）。
@@ -442,7 +442,7 @@ namespace hgl::ecs
         uint32_t pending_count = 0;
 
         uint32_t next_index = 0;
-        // 诊断接线（`ULRE_DEBUG=batch,cull`）：逐帧/逐 pass 记录接管评估的出口与关键量——
+        // 诊断接线（`ULRE_DEBUG.toml` 的 `channels.batch/cull = true`）：逐帧/逐 pass 记录接管评估的出口与关键量——
         // "某帧 count=0"这类症状必须靠它定位（帧摘要只看一张图，看不见帧间差异）。
         const bool s_takeover_trace = ULRE_DEBUG_ON(Batch);
         // T4c3c：切片起点 = 本 pass 的竞技场扇区（主帧 0 / 阴影 4096）⇒ 两 pass 行集互不覆盖。

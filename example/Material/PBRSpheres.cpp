@@ -687,7 +687,7 @@ public:
             dump_tag = tag;
         }
 
-        // PBR_FRAMES=N：性能对照定帧退出（配 PBR_PERF=1；Tick 全帧计时打印）。
+        // PBR_FRAMES=N：性能对照定帧退出（配 ULRE_DEBUG.toml 的 channels.perf = true；Tick 全帧计时打印）。
         if (const char *v = getenv("PBR_FRAMES"))
             perf_frames = (uint32_t)atoi(v);
 
@@ -696,7 +696,7 @@ public:
 
     void Tick(double delta_time) override
     {
-        // PBR_PERF=1：Tick 全帧 CPU 时间（record/present 同步框架内的线程占用；
+        // ULRE_DEBUG.toml 的 channels.perf = true：Tick 全帧 CPU 时间（record/present 同步框架内的线程占用；
         // 与 cull/batch/dispatch 分计时互补，给出端到端口径。引擎时间源，禁 chrono）
         const bool perf_on = perf_frames > 0;
         const uint64 perf_t0 = hgl::GetUptimeUs();
@@ -804,7 +804,7 @@ public:
             });
         }
 
-        // PBR_PERF：Tick 全帧 CPU 时间累计，240 帧一窗打印；PBR_FRAMES 到数即退。
+        // channels.perf：Tick 全帧 CPU 时间累计，240 帧一窗打印；PBR_FRAMES 到数即退。
         if (perf_on)
         {
             perf_total_us += double(hgl::GetUptimeUs() - perf_t0);
