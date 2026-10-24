@@ -525,7 +525,18 @@ Case 名与职责：
 ### 10.2 结构性遗留
 
 - **mesh 侧骨架仍有多段 `+=` 拼接**（阶段四遗留的最后一角；**fragment 侧已于阶段六收口**，见 §4.8）。剩下的动作：把 mesh 侧骨架（`MeshShaderHeaderGen` / `MeshVaryingGen` / `VertexAdapter` / `MeshTemplateEmitter`）外化成 `.tmpl`，并把 `FragmentTemplateComposer`（角色化 `ResolvedInclude`）/ `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit。**现在动它是安全的**：`SD.emission-order-golden`（16 变体，三种 mesh 发射模式全覆盖，见 §5.3）会在 token 顺序发生任何变化时立刻变红。仍应作为独立、可评审的提交。
-- **STL 残留**：`FragmentTemplateComposer.cpp` 与 `MeshShaderTemplate.cpp` / `MeshTemplateEmitter.h` 仍 `#include <fstream>` / `<map>` / `<string>` 并用 `std::string` / `std::vector`，违反本仓「禁用 STL」规范。属**纯机械替换**（→ `hgl::io::*` / `hgl::UnorderedMap` / `AnsiString` / `hgl::ArrayList`），但触及文件多、收益低，**刻意留作独立提交**，不与结构改动混做。前提条件已满足：mesh 侧三种发射模式都有 emission golden 兜底（§5.3），替换 `std::string` 累加器若改变了任何拼接顺序会立刻变红。
+- **STL 残留**：`FragmentTemplateComposer.cpp` 与 `MeshShaderTemplate.cpp` / `MeshTemplateEmitter.h` 仍 `#include <fstream>` / `<map>` / `<string>` 并用 `std::string` / `std::vector`，违反本仓「禁用 STL」规范（全量口径：`src/ShaderGen` + `src/ShaderMaterialData` + `inc/hgl/mtl` 共 **40 个文件 / 247 处**）。
+  前提条件已满足：mesh 侧三种发射模式都有 emission golden 兜底（§5.3），替换 `std::string` 累加器若改变任何拼接顺序会立刻变红。
+  **但它不是「纯机械替换」** —— 实测最小目标 `MeshShaderTemplate.cpp` 就卡在第一个依赖上：
+  | 依赖 | 实情 | 后果 |
+  |---|---|---|
+  | `GetShaderLibraryPath()`（`inc/hgl/mtl/ShaderLibraryPath.h`） | inline 公共头，**返回 `std::string`**，内部还用 `std::vector<std::string>` + `_wgetenv` | 改返回类型要动 **11 个文件 / 26 个调用点**；不改则累加器只能在 `AnsiString` / `std::string` 之间来回转换，`<string>` 仍留着 |
+  | `std::sort`（`MeshTemplateEmitter.h:341`） | HGL 无 `hgl::sort`（`CMCoreType` / `CMCore` 里只有 `ValueArray` 等容器，且它们内部自己就调 `std::sort`） | 需手写稳定插入排序或引入新机制 |
+  | `std::vector<PendingBlock>` | `hgl::ValueArray` 只有 `Add/Get/Set/GetCount/GetData`，**没有 `begin/end`/`operator[]`** | 遍历与排序都要改写 |
+
+  结论：**局部改会把仓里搞得更不一致**（一半 HGL 一半 STL，边界处来回转换），
+  所以要么整体做（含 `ShaderLibraryPath.h` 的公共签名迁移），要么不做。
+  **刻意不做**，留作独立、可评审的迁移；`inc/hgl/mtl/` 的公共头 STL 清理另需专门方案（`MaterialRecipe.h` 一个文件就 17 处）。
 - 4 个领域（`Foliage` / `Terrain` / `HumanSkin` / `UI2D` 部分）reference 为 `nullptr`，只有契约骨架、无专属实现。属**刻意保留的扩展位**，不是 bug。
 - 主着色器仍保留 alpha 三件套宏（`HGL_ALPHA_TEST` / `HGL_ALPHA_DITHER` / `HGL_ALPHA_OUTPUT`）—— **这是刻意设计**，因为它们必须与 `discard` / 输出同函数体，无法外移。
 - ~~`DirectLightProvider`（legacy role）仍在枚举里~~ → **阶段五已删除**（枚举 + 名称映射 switch）。

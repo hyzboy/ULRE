@@ -372,7 +372,11 @@ varyings = ["emit_data_index_id"]
    `vertex-color-lines-quad-2d`，矩阵 14 → 16，三种 mesh 发射模式全部有网。
    详见 `doc/ultra-thin-implementation-status.md` §5.3。
 6. ⬜ **mesh 侧骨架外置与 STL 残留清理仍未做** —— 安全网已就位、路径已解锁，
-   但两者都是独立、可评审的改动。详见 `doc/ultra-thin-implementation-status.md` §10.2。
+   但两者都是独立、可评审的改动。STL 清理经实测**不是纯机械替换**：最小目标
+   `MeshShaderTemplate.cpp` 的第一个依赖 `GetShaderLibraryPath()` 是返回
+   `std::string` 的 inline 公共头（26 个调用点），且 `std::vector<PendingBlock>` /
+   `std::sort` 在 HGL 里没有等价物。局部改只会让仓里一半 HGL 一半 STL。
+   详见 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 5 的进展：
 
