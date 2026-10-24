@@ -2975,6 +2975,18 @@ namespace
                     "material file must use schema 4 only: " + path);
             }
 
+            // 领域必须是显式声明，不允许靠缺省值蒙混。
+            // 非模型表面材质（调试/UI/天空等）同样要写 domain = "Custom"，
+            // 这样「已定性为非领域」与「漏填」在文本层就能区分开。
+            if (text.find("domain =") == std::string::npos
+             && text.find("domain=") == std::string::npos)
+            {
+                result.diagnostics.emplace_back(
+                    "material file must declare an explicit domain key "
+                    "(use \"Custom\" for engine-internal non-surface materials): "
+                    + path);
+            }
+
             if (ContainsAnyToken(text, {
                     "MTL_DEF_",
                     "MaterialDefinitionSourceKind",

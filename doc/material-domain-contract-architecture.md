@@ -308,11 +308,43 @@ domain = "StandardOpaque"
 
 行为等价，但"这份资产属于哪个领域"从**隐式推断**变成**显式声明**。
 
-### 7.5 阶段四未做（有意保留）
+### 7.5 领域边界的第二条：哪些材质**不该**进领域
 
-`sky_cube.material.toml` / `unlit_texture.material.toml` 等仍走 `Custom` 豁免路径。
-把它们收进 `Sky` / `UI2D` 领域需要先确认契约能容纳其纹理槽与顶点语义，
-属于独立评估项，不在阶段四范围内。
+阶段四只把 `lit.material.toml` 收进 `StandardOpaque`，其余 13 个材质显式标注
+`domain = "Custom"`。这不是"漏收敛"，而是**边界判断**：
+
+领域概念描述的是「**模型表面**」——由美术/场景提供的资产，其顶点语义与纹理槽
+必须收敛，才能推导「同领域 ⇒ 同 layout ⇒ 可合批」。而下列材质不是模型表面：
+
+| 类别 | 材质 | 存在的问题 |
+| :--- | :--- | :--- |
+| 调试诊断 | `checkerboard_2d/3d`、`error_checkerboard_3d`、`debug_normal_color` | 专用 source 模块，不做表面计算 |
+| 无纹理 | `pure_color`、`vertex_color/luminance/palette` | `UI2D` 要求 `must_declare` 的 `sprite` 槽 |
+| 文本 | `text_2d_gpu`、`text_2d_gpu_bitmap` | 走 `mesh_shader`，顶点语义不同 |
+| 天空 | `sky_cube`、`sky_minimal` | `profile = None`，整段配置不发射 |
+
+把它们硬塞进现有领域，唯一办法是放宽 `must_declare` 或加特例分支——正是
+§4.1 明令禁止的「放宽契约」。因此采用**显式标注**：
+
+```toml
+# 引擎内部用途材质：由代码按固定语义直接构造，不是模型表面资产，
+# 故不参与领域契约（顶点语义 / 纹理槽白名单）。此处显式标注而非
+# 省略，便于门禁区分「已定性」与「漏填」。
+domain = "Custom"
+```
+
+写出来而不是省略，意义在于把「沉默」变成「声明」：将来门禁可以要求
+「所有材质必须出现 `domain` 键」，`Custom` 从此是一个合法分类而非逃生门。
+
+### 7.6 已知结构性缺口（下阶段候选）
+
+`UI2D` 契约目前只有 `sprite` 一个 `must_declare` 槽，reference 为
+`texture_source` / `ntb_orthonormal`。这只能容纳图集精灵类材质，
+`unlit_texture` 因为槽名叫 `base_color` 也进不去。
+
+要么扩容 `UI2D` 的槽表（`sprite` + `base_color` 并存会削弱语义），
+要么承认需要第 6 个承载「引擎内部无光材质」的领域。**这是设计决策，
+未在本阶段擅自决定**——先记录缺口，等资产侧真实需求明确后再定。
 
 ---
 

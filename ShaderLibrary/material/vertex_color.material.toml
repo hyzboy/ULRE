@@ -3,6 +3,11 @@ id = "VertexColor"
 name = "VertexColor"
 provider_policy = "GeometryOnly"
 
+# 引擎内部用途材质：由代码按固定语义直接构造，不是模型表面资产，
+# 故不参与领域契约（顶点语义 / 纹理槽白名单）。此处显式标注而非
+# 省略，便于门禁区分「已定性」与「漏填」。
+domain = "Custom"
+
 [transform]
 source = "Vec3Position"
 mapping = "Passthrough3D"
