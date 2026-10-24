@@ -1,6 +1,7 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/MaterialDomain.h>
+#include <hgl/mtl/ShaderConfig.h>
 #include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
@@ -4959,6 +4960,171 @@ namespace
         return result;
     }
 
+    // 编译期配置（inc/hgl/mtl/ShaderConfig.h）的门禁。
+    //
+    // 固定代码架构下「可变的东西只剩一组宏」，因此这组宏的**内容与顺序**
+    // 本身就是行为：顺序变了，`#if defined()` 的求值时机就可能变。本用例把
+    // 每个模板族的规范文本逐字节钉死——有人调整字段顺序 / 宏名 / 浮点格式
+    // 时，这里是唯一会立刻变红的地方。
+    static GateResult RunShaderConfigEmitCase()
+    {
+        GateResult result;
+        result.name = "D2.shader-config-emit";
+
+        // ── ① ForwardLit 全开：规范文本逐字节比对 ────────────────────────────
+        ShaderConfig full;
+        full.profile = ShaderConfigProfile::ForwardLit;
+        full.use_material_source_provider = true;
+        full.use_ntb_provider = true;
+        full.use_scene_lighting = true;
+        full.use_ambient_occlusion_provider = true;
+        full.emit_shadow_pcf = true;
+        full.shadow_pcf_poisson_taps = 16;
+        full.shadow_normal_offset = 1;
+        full.alpha_test = true;
+        full.alpha_cutoff = 0.5f;
+        full.alpha_dither = true;
+        full.alpha_output = true;
+        {
+            ShaderConfigTextureChannel normal_channel;
+            SetShaderConfigTextureChannelName(normal_channel, "normal");
+            normal_channel.channels = 2;
+            full.texture_channels.Add(normal_channel);
+
+            // channels == 0 的含义是「由纹素格式决定」，必须整条跳过：
+            // 下游用 `#if defined(MTL_TEX_X_CHANNELS)` 判断，发射成 0 会误判为 2 通道。
+            ShaderConfigTextureChannel skipped_channel;
+            SetShaderConfigTextureChannelName(skipped_channel, "base_color");
+            skipped_channel.channels = 0;
+            full.texture_channels.Add(skipped_channel);
+        }
+        {
+            std::string text;
+            EmitShaderConfigDefines(full, text);
+
+            // HGL_ALPHA_CUTOFF 必须是 "%f" 六位小数：历史上是
+            // std::to_string(float)，隐式提升 double 后即为该格式。
+            const char *expected =
+                "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
+                "#define HGL_USE_NTB_PROVIDER 1\n"
+                "#define HGL_USE_SCENE_LIGHTING 1\n"
+                "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 1\n"
+                "#define MTL_TEX_NORMAL_CHANNELS 2\n"
+                "#define HGL_SHADOW_PCF_POISSON_TAPS 16\n"
+                "#define HGL_SHADOW_NORMAL_OFFSET 1\n"
+                "#define HGL_ALPHA_TEST 1\n"
+                "#define HGL_ALPHA_CUTOFF 0.500000\n"
+                "#define HGL_ALPHA_DITHER 1\n"
+                "#define HGL_ALPHA_OUTPUT 1\n";
+
+            if (text != expected)
+                result.diagnostics.emplace_back(
+                    std::string("forward-lit canonical defines mismatch:\n--- got ---\n")
+                    + text + "--- expected ---\n" + expected);
+        }
+
+        // ── ② ForwardLit 的 provider 开关恒为 1（不看布尔字段）────────────────
+        // 模板表里三个槽都是 required，因此即使字段被置 false 也必须发射 1；
+        // 这条防的是「用字段语义悄悄改变模板族行为」。
+        {
+            ShaderConfig lit_no_flags;
+            lit_no_flags.profile = ShaderConfigProfile::ForwardLit;
+            lit_no_flags.use_material_source_provider = false;
+            lit_no_flags.use_ntb_provider = false;
+            lit_no_flags.use_scene_lighting = false;
+
+            std::string text;
+            EmitShaderConfigDefines(lit_no_flags, text);
+
+            const char *expected =
+                "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
+                "#define HGL_USE_NTB_PROVIDER 1\n"
+                "#define HGL_USE_SCENE_LIGHTING 1\n"
+                "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 0\n";
+
+            if (text != expected)
+                result.diagnostics.emplace_back(
+                    "forward-lit must emit provider flags from the template"
+                    " family, not from the boolean fields");
+        }
+
+        // ── ③ ForwardUnlit：前两者按模块存在性，scene lighting 恒 0 ───────────
+        {
+            ShaderConfig unlit;
+            unlit.profile = ShaderConfigProfile::ForwardUnlit;
+            unlit.use_material_source_provider = false;
+            unlit.use_ntb_provider = true;
+            unlit.use_scene_lighting = false;
+
+            std::string text;
+            EmitShaderConfigDefines(unlit, text);
+
+            const char *expected =
+                "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 0\n"
+                "#define HGL_USE_NTB_PROVIDER 1\n"
+                "#define HGL_USE_SCENE_LIGHTING 0\n";
+
+            if (text != expected)
+                result.diagnostics.emplace_back(
+                    std::string("forward-unlit canonical defines mismatch:\n--- got ---\n")
+                    + text + "--- expected ---\n" + expected);
+        }
+
+        // ── ④ None（Sky 等）：整段配置都必须为空 ─────────────────────────────
+        // 这是既有行为，不是遗漏：Sky 模板没有 provider 槽，也没有阴影/alpha
+        // 通路，凭空补宏会让 `#if defined()` 判断带偏。
+        {
+            ShaderConfig none;
+            none.profile = ShaderConfigProfile::None;
+            none.alpha_test = true;
+            none.alpha_dither = true;
+            none.alpha_output = true;
+            none.emit_shadow_pcf = true;
+
+            ShaderConfigTextureChannel channel;
+            SetShaderConfigTextureChannelName(channel, "sprite");
+            channel.channels = 2;
+            none.texture_channels.Add(channel);
+
+            std::string text;
+            EmitShaderConfigDefines(none, text);
+            if (!text.empty())
+                result.diagnostics.emplace_back(
+                    std::string("profile None must emit nothing, got:\n") + text);
+        }
+
+        // ── ⑤ 摘要：内容相同则相同，顺序不同则不同 ───────────────────────────
+        {
+            ShaderConfig a;
+            a.profile = ShaderConfigProfile::ForwardLit;
+            ShaderConfig b;
+            b.profile = ShaderConfigProfile::ForwardLit;
+
+            ShaderConfigTextureChannel c1;
+            SetShaderConfigTextureChannelName(c1, "normal");
+            c1.channels = 2;
+            ShaderConfigTextureChannel c2;
+            SetShaderConfigTextureChannelName(c2, "orm");
+            c2.channels = 3;
+
+            a.texture_channels.Add(c1);
+            a.texture_channels.Add(c2);
+            b.texture_channels.Add(c2);
+            b.texture_channels.Add(c1);
+
+            if (ComputeShaderConfigHash(a) != ComputeShaderConfigHash(a))
+                result.diagnostics.emplace_back(
+                    "shader config hash must be stable for identical configs");
+            if (ComputeShaderConfigHash(a) == ComputeShaderConfigHash(b))
+                result.diagnostics.emplace_back(
+                    "shader config hash must depend on texture channel order"
+                    " (slot order == material reference row order)");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunFallbackInferenceCase()
     {
         GateResult result;
@@ -7937,6 +8103,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionParseDetailCase());
     if (run_materialization) results.push_back(RunMaterialDomainContractCase());
+    if (run_materialization) results.push_back(RunShaderConfigEmitCase());
     if (run_materialization) results.push_back(RunMaterialLibraryContractCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());

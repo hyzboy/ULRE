@@ -159,11 +159,48 @@ ParseMaterialDefinitionFile(.material.toml)
 
 ---
 
-## 5. 门禁
+## 5. 配置发射器（阶段二）
+
+「编译期宏头」的单一真源是 `inc/hgl/mtl/ShaderConfig.h` 的 `ShaderConfig`，
+唯一发射器是 `src/ShaderGen/contract/ShaderConfig.cpp` 的 `EmitShaderConfigDefines`。
+
+判定与排版被彻底分开：
+
+| 角色 | 位置 | 职责 |
+| :--- | :--- | :--- |
+| 判定 | `FragmentTemplateComposer::BuildFragmentDefines` | 只决定「哪些开关为真」，不再拼任何字符串 |
+| 排版 | `EmitShaderConfigDefines` | 宏名、顺序、字面量格式的唯一出口 |
+| 摘要 | `ComputeShaderConfigHash` | 对规范化文本做 FNV1a，供缓存键/门禁基线 |
+
+### 5.1 为什么不落盘一个物理 `.h` 文件
+
+概念上它确实是「一个只含宏的头」（`Generated_DomainConfig`），但**不写成磁盘文件**：
+
+- GLSL 的 `#include` 解析依赖 GLSLCompiler 的搜索路径，落盘会引入
+  「生成目录生命周期 / 并发写 / 陈旧文件」三类新问题；
+- 单遍编译（读模板 → 填槽 → 编译）不产生中间文件，失败也不留垃圾。
+
+发射结果被填进固定模板的 `{{defines}}` 槽，位置**早于所有 `#include`**，
+因此下游模块的 `#ifndef` 兜底能取到这里的值。
+
+### 5.2 发射顺序是行为的一部分
+
+- `MTL_TEX_<NAME>_CHANNELS` 必须先于 NTB 模块 include（`ntb_tangent_vbo_normalmap`
+  靠它判断 BC5 法线）；
+- 阴影 PCF 宏必须早于 `pcf_shadow.glsl` 的 `#ifndef`；
+- `channels == 0` 的声明必须**整条跳过**（下游用 `#if defined()` 判断，发射成 0 会误判）；
+- `HGL_ALPHA_CUTOFF` 必须保持 `0.500000`（历史上是 `std::to_string(float)`）；
+- `profile == None`（Sky 等）**整段配置都不发射**，这是既有行为而非遗漏。
+
+以上每一条都有门禁 `D2.shader-config-emit` 用固定规范文本钉死。
+
+---
+
+## 6. 门禁
 
 | 门禁 | 基线 | 说明 |
 | :--- | :--- | :--- |
-| `ShaderResourceSchemaRegressionGate all` | 53 PASS / 0 FAIL | 含 `D.material-domain-contract` |
+| `ShaderResourceSchemaRegressionGate all` | 54 PASS / 0 FAIL | 含 `D.material-domain-contract`、`D2.shader-config-emit` |
 | `TestCSMIncrementalPass` | 51/51 | CSM 契约 |
 | 8 示例烟测 | 零 error / 零 VUID | TextureQuad / DrawTriangle / MaterialErrorFallback / LineRender / TextDraw / CascadeShadowMap / PBRSpheres / DualWorldShadows |
 | 全量 `ctest` | 183/184 | `BidirectionalMapStressTest` Timeout 为既存问题 |
@@ -175,7 +212,7 @@ ParseMaterialDefinitionFile(.material.toml)
 
 ---
 
-## 6. 阶段路线
+## 7. 阶段路线
 
 | 阶段 | 分支 | 交付 |
 | :--- | :--- | :--- |

@@ -93,6 +93,8 @@ set(CONTRACT_FILES
     contract/MaterialStageInterface.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderSemanticRegistry.h
     contract/ShaderSemanticRegistry.cpp
+    ${SHADERGEN_INCLUDE_PATH}/ShaderConfig.h
+    contract/ShaderConfig.cpp
     contract/CanonicalContractWriter.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderStageValueType.h
     ${SHADERGEN_INCLUDE_PATH}/SerializedVertexEntry.h)

@@ -2,6 +2,7 @@
 #include <hgl/log/Log.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/mtl/ShaderConfig.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/util/hash/FNV1a.h>
 #include "../compile/MaterialShaderEmitter.h"
@@ -85,15 +86,15 @@ namespace hgl::graph::mtl
                 ? root->include_path.c_str() : nullptr;
         }
 
-        // 纹理声明里的 channels → GLSL 宏 MTL_TEX_<NAME>_CHANNELS=<n>。
-        // 用途：法线贴图声明 channels = 2 时，ntb 模块据此只读 XY 并用球面公式还原 Z
-        // （BC5 法线；宏名"存在即非零"也让 #if defined() 判断可用）。
-        void AppendTextureChannelDefines(
-            std::string &defines,
+        // 纹理声明里的 channels → 配置里的通道覆盖项。
+        // 唯一发射器是 EmitShaderConfigDefines；这里只负责从材质声明搬运数据。
+        // 返回 false 表示槽名超出配置缓冲，宁可让编译失败也不要静默改名。
+        bool CollectTextureChannelOverrides(
+            ShaderConfig &config,
             const FragmentTemplateComposer::ComposeInput &input)
         {
             if (!input.texture_declarations)
-                return;
+                return true;
 
             for (const MaterialTextureDeclaration &declaration :
                 *input.texture_declarations)
@@ -101,18 +102,15 @@ namespace hgl::graph::mtl
                 if (declaration.channels == 0)
                     continue;
 
-                std::string macro = "MTL_TEX_";
-                for (const char ch : declaration.name)
-                    macro += (ch >= 'a' && ch <= 'z')
-                        ? static_cast<char>(ch - 'a' + 'A') : ch;
-                macro += "_CHANNELS";
+                ShaderConfigTextureChannel channel;
+                if (!SetShaderConfigTextureChannelName(channel, declaration.name.c_str()))
+                    return false;
 
-                defines += "#define ";
-                defines += macro;
-                defines += " ";
-                defines += std::to_string(declaration.channels);
-                defines += "\n";
+                channel.channels = static_cast<unsigned char>(declaration.channels);
+                config.texture_channels.Add(channel);
             }
+
+            return true;
         }
 
         // ── Step 3：外置 .tmpl 骨架 + 通用填槽循环 ──────────────────────────
@@ -371,71 +369,65 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        // 模板固定宏（HGL_USE_* / MTL_TEX_* / alpha）。ForwardLit 恒为 1，
-        // ForwardUnlit 按模块存在性赋值，Sky 无 Define 块。
+        // 模板固定宏（HGL_USE_* / MTL_TEX_* / alpha）→ ShaderConfig → 唯一发射器。
+        // 本函数只负责**判定**，不负责排版；宏的名字/顺序/格式一律由
+        // EmitShaderConfigDefines 决定（见 inc/hgl/mtl/ShaderConfig.h）。
         bool BuildFragmentDefines(
             const RenderTemplateID id,
             const FragmentTemplateComposer::ComposeInput &input,
             std::string &defines)
         {
+            ShaderConfig config;
+            config.alpha_test = input.alpha_test;
+            config.alpha_cutoff = input.alpha_cutoff;
+            config.alpha_dither = input.dither;
+            config.alpha_output = input.alpha_to_output;
+
             if (IsForwardLitTemplate(id))
             {
-                defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n";
-                defines += "#define HGL_USE_NTB_PROVIDER 1\n";
-                defines += "#define HGL_USE_SCENE_LIGHTING 1\n";
+                config.profile = ShaderConfigProfile::ForwardLit;
+                config.use_material_source_provider = true;
+                config.use_ntb_provider = true;
+                config.use_scene_lighting = true;
                 // AO 槽只在 ForwardLitSlots 里（ForwardLitUnshadowedSlots 没有），
                 // 故必须按 template.slots 判定——ResolvedInclude 只看 profile 模块表，
                 // 对 forward_lit_unshadowed_ao 会误报 ao/identity.glsl 存在。
                 // forward_lighting.glsl 据此决定是否调用 GetAmbientOcclusion()。
-                defines += TemplateHasSlot(
-                        input.resolved_template ? input.resolved_template->definition : nullptr,
-                        ShaderModuleSlotRole::AmbientOcclusionProvider)
-                    ? "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 1\n"
-                    : "#define HGL_USE_AMBIENT_OCCLUSION_PROVIDER 0\n";
+                config.use_ambient_occlusion_provider = TemplateHasSlot(
+                    input.resolved_template ? input.resolved_template->definition : nullptr,
+                    ShaderModuleSlotRole::AmbientOcclusionProvider);
             }
             else if (id == RenderTemplateID::ForwardUnlit)
             {
-                const char *material_source_module =
-                    ResolvedInclude(input, ShaderModuleSlotRole::MaterialSourceProvider);
-                const char *ntb_module =
-                    ResolvedInclude(input, ShaderModuleSlotRole::NTBProvider);
-                defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER ";
-                defines += material_source_module ? "1\n" : "0\n";
-                defines += "#define HGL_USE_NTB_PROVIDER ";
-                defines += ntb_module ? "1\n" : "0\n";
-                defines += "#define HGL_USE_SCENE_LIGHTING 0\n";
+                config.profile = ShaderConfigProfile::ForwardUnlit;
+                config.use_material_source_provider =
+                    ResolvedInclude(input, ShaderModuleSlotRole::MaterialSourceProvider) != nullptr;
+                config.use_ntb_provider =
+                    ResolvedInclude(input, ShaderModuleSlotRole::NTBProvider) != nullptr;
+                config.use_scene_lighting = false;
             }
             else
             {
-                // Sky（及其它未外置模板）无 Define 块。
+                // Sky（及其它未外置模板）无 Define 块 —— 整段配置都不发射。
+                // 注意这里必须**提前返回**：纹理通道 / 阴影 / alpha 宏同样不发射，
+                // 否则 "#宏存在即非零" 的 #if defined() 判断会被带偏。
+                config.profile = ShaderConfigProfile::None;
+                EmitShaderConfigDefines(config, defines);
                 return true;
             }
 
-            AppendTextureChannelDefines(defines, input);
+            if (!CollectTextureChannelOverrides(config, input))
+                return false;
 
             // 阴影 PCF 采样宏：只有模板真的带 shadow_provider 槽时才发射。
             // 该宏落在 .tmpl 的 {{defines}} 块（早于 {{module_includes}}），
             // 因此 pcf_shadow.glsl 的 #ifndef 会取这里的值。
-            if (ResolvedInclude(input, ShaderModuleSlotRole::ShadowProvider))
-            {
-                defines += "#define HGL_SHADOW_PCF_POISSON_TAPS ";
-                defines += std::to_string(input.shadow_pcf_poisson_taps);
-                defines += "\n";
-                defines += "#define HGL_SHADOW_NORMAL_OFFSET ";
-                defines += std::to_string(input.shadow_normal_offset);
-                defines += "\n";
-            }
+            config.emit_shadow_pcf =
+                ResolvedInclude(input, ShaderModuleSlotRole::ShadowProvider) != nullptr;
+            config.shadow_pcf_poisson_taps = input.shadow_pcf_poisson_taps;
+            config.shadow_normal_offset = input.shadow_normal_offset;
 
-            if (input.alpha_test)
-            {
-                defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";
-                defines += std::to_string(input.alpha_cutoff);
-                defines += "\n";
-            }
-            if (input.dither)
-                defines += "#define HGL_ALPHA_DITHER 1\n";
-            if (input.alpha_to_output)
-                defines += "#define HGL_ALPHA_OUTPUT 1\n";
+            EmitShaderConfigDefines(config, defines);
             return true;
         }
 
