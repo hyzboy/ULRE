@@ -3,17 +3,17 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段五完成后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网。**
+> **最后更新**：阶段六完成后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（14 变体）；四条 emission 通路全部走 `.tmpl`。**
 
 ---
 
 ## 0. 新会话开场怎么用
 
 1. 先读本文 **§1 目标** 和 **§3 路线图**，确认自己在哪一阶段。
-2. **四阶段已全部完成**（一 / 二 / 三 3.1–3.3 / 四，见 §4.1–§4.6），阶段五（拼接清理前置安全网 + 小债，见 §4.7）也已完成。阶段四已把资产降维为 `.mi.toml` 并废除 `.material.toml`，方案记录见 §6.5。
-3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数常量 `kShaderCodeModuleCount`」「golden 无环境变量开关」「快照 case 必须自己装载 sampler 预设」）。
+2. **四阶段已全部完成**（一 / 二 / 三 3.1–3.3 / 四，见 §4.1–§4.6），阶段五（拼接清理前置安全网 + 小债，见 §4.7）与阶段六（ShadowCaster 骨架外置，见 §4.8）也已完成。阶段四已把资产降维为 `.mi.toml` 并废除 `.material.toml`，方案记录见 §6.5。
+3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数常量 `kShaderCodeModuleCount`」「golden 无环境变量开关」「快照 case 必须自己装载 sampler 预设」「`alpha_test` 必须写在模板请求解析之前」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
-5. **下一步是 §10.2 的旧 ShaderGen 拼接迁移** —— 安全网已就位，但那是独立、可评审的改动，动手前先与用户确认范围。
+5. **下一步是 §10.2 的 mesh 侧骨架外置与 STL 残留清理** —— 两者都是独立、可评审的改动，动手前先与用户确认范围。
 
 **铁律**：每个阶段/子阶段**独立分支 + 独立提交**；提交用 `git add` 显式列路径（禁 `-A`）；带 `Co-authored-by` trailer。
 
@@ -53,7 +53,9 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 10 | 同上 | `addc99d58` | **阶段三之三**：保底链 5 个 builtin 材质定义代码化，不再依赖 TOML 文件 |
 | 11 | `feature/ultra-thin-stage4-cleanup-and-migration`（已并入） | `ec9fae16d` | **阶段四**：资产降维为 `.mi.toml`，废除 `.material.toml` |
 | 12 | 同上 | `29b3febfe` | 阶段四文档收尾：回填提交号并对齐资产示例（纯文档） |
-| 13 | `feature/ultra-thin-stage5-shadergen-emission-cleanup` ← **当前** | `0fffcdba1` | **阶段五**：拼接清理前置安全网（emission 快照）+ 小债清理 |
+| 13 | `feature/ultra-thin-stage5-shadergen-emission-cleanup`（已并入） | `0fffcdba1` | **阶段五**：拼接清理前置安全网（emission 快照）+ 小债清理 |
+| 14 | 同上 | `caf38cb34` | 阶段五文档收尾：回填提交号（纯文档） |
+| 15 | 同上 ← **当前** | 待回填 | **阶段六**：ShadowCaster 内联骨架外置为 `shadow_caster.glsl.tmpl`（+ 补 masked 快照覆盖） |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
@@ -61,7 +63,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 
 ---
 
-## 3. 五阶段路线图与状态
+## 3. 六阶段路线图与状态
 
 | 阶段 | 主题 | 分支 | 状态 |
 |---|---|---|---|
@@ -69,7 +71,8 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 二 | 管线配置头单一真源 + 消灭主着色器里所有算法相关 `#if` | `feature/ultra-thin-stage2-domain-shaders` | ✅ 完成 |
 | 三 | **MaterialInstance 模型**：把「领域已确定的旋钮」逐个从资产契约上移到领域契约 | `feature/ultra-thin-stage3-material-instance` | ✅ 完成（3/3） |
 | 四 | 资产降维为 `.mi.toml` + 废除 `.material.toml` | `feature/ultra-thin-stage4-cleanup-and-migration` | ✅ 完成（迁移 + 废除） |
-| 五 | **拼接清理前置安全网** + 小债清理（`DirectLightProvider`、模块计数常量） | `feature/ultra-thin-stage5-shadergen-emission-cleanup` | ✅ 完成（安全网就位；实际拼接迁移见 §10.2） |
+| 五 | **拼接清理前置安全网** + 小债清理（`DirectLightProvider`、模块计数常量） | `feature/ultra-thin-stage5-shadergen-emission-cleanup` | ✅ 完成（安全网就位） |
+| 六 | **骨架外置**：ShadowCaster 内联骨架 → `fragment/shadow_caster.glsl.tmpl` | 同上 | ✅ 完成（见 §4.8；mesh 侧多段 `+=` 合并仍留 §10.2） |
 
 **阶段三的指导原则**：凡是「同一个 Domain 下所有材质取值必然相同」的字段，都从资产文件里删掉，改由领域契约给出规范值；资产若显式写了不同值，必须**被校验拒绝**（不是静默覆盖）。这既是减负，也是把「上层不该有的自由度」物理删除。
 
@@ -230,6 +233,8 @@ varying-trimmed material parse failed: InvalidValue key="domain" value="DebugNor
 
 **12 变体矩阵覆盖全部 4 条 emission 通路**：`ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky`，并覆盖领域差异（带纹理 / 纯顶点 / 无顶点格式的 SSBO）。矩阵表 `kStructureDumpVariants[]`、`MakeStructureDumpProfile()`、`BuildStructureDumpVariant()` 提升到文件作用域，`SD.structure-dump-golden-pilot` 与 `SD.emission-order-golden` **共用同一张表**，避免两条快照覆盖范围悄悄分叉。
 
+> ⚠️ **事后修正（阶段六）**：这里当时写「覆盖 ShadowCaster」是不完整的 —— 12 个变体里没有任何一个设置 `alpha_test`，所以 `ShadowCaster` 只覆盖了 opaque 分支，masked 分支（`requires_alpha == true`）**覆盖为 0**。阶段六已补 `lit-depth-masked` / `lit-shadow-masked`，矩阵 12 → 14。**教训：矩阵「包含某条通路」不等于「覆盖该通路的所有分支」，枚举分支时要把每条 `if` 都点名。**
+
 **三个在造网过程中踩到并修掉的坑**：
 
 1. **`SamplerPresetLibrary` 是进程级单例，由 `materialization` 组或各 App 启动时装载**。只跑 `pipeline` 组时预设没装，`MaterialShaderEmitter.cpp:115` 的 `GetIndex(name)` 未命中，`#define TrilinearSampler 2u` / `LinearSampler` / `ShadowPCFSampler` **被静默省略** —— GLSL 照样生成，只是少了三行 `#define`。于是 `pipeline` 组跑出来的 golden 与 `all` 组跑出来的不一致。修法：新增 `EnsureSamplerPresetsLoaded()`，`GetCount()==0` 时自行装载 `ShaderLibrary/sampler.toml`，两个快照 case 开头都调用。**教训：快照门禁必须自己拥有前置条件，否则 golden 本身就不可信。**
@@ -242,6 +247,53 @@ varying-trimmed material parse failed: InvalidValue key="domain" value="DebugNor
 |---|---|
 | `ShaderModuleSlotRole::DirectLightProvider`（阶段一已被 `DiffuseLightProvider` + `SpecularLightProvider` 取代） | 从 `inc/hgl/mtl/RenderTemplate.h` 枚举与 `src/ShaderMaterialData/RenderTemplate.cpp` 名称映射 switch 中删除。安全性已确认：`ShaderCodeModuleFile.cpp` 按 `Unknown+1 .. SlotRoleCount` 遍历，删值不影响枚举边界 |
 | 模块总数 `82` 硬编码两处 | 收敛为 `constexpr int kShaderCodeModuleCount = 82;`（放在 `struct GateResult` 之后）。**刻意不从实现侧推导** —— 门禁要断言一个独立持有的期望值，用被测实现算出来的期望值等于没断言 |
+
+---
+
+### 4.8 阶段六 —— ShadowCaster 骨架外置
+
+阶段五的判断是「拼接顺序本身是隐式契约」，所以先造网再动刀。阶段六就是用那张网做的第一刀：把 `FragmentTemplateComposer` 里**最后一段内联 GLSL 骨架** `ComposeShadow()`（约 134 行）彻底删掉，改由 `ShaderLibrary/fragment/shadow_caster.glsl.tmpl` 承载。至此 4 条 emission 通路（`ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky`）**全部走 `.tmpl`**，不再有「某一族骨架写在 C++ 里」的特例。
+
+**为什么先补覆盖（关键顺序）**：9 个示例 `.mi.toml` 与 5 个 builtin 定义**没有任何一个**设置 `alpha_test`，而 `ComposeShadow()` 的 masked 分支（`requires_alpha == true`）只在那时进入 —— 也就是说这一刀砍下去，快照矩阵对 masked 分支的覆盖是 **0**。于是先扩矩阵再删代码。
+
+| 文件 | 改动 |
+|---|---|
+| `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | `StructureDumpVariant` 增 `bool alpha_test`；`kStructureDumpVariants[]` 12 → **14**（新增 `lit-depth-masked` / `lit-shadow-masked`）；`BuildStructureDumpVariant()` 在**模板请求解析之前**写 `alpha_test = true` + `alpha_cutoff = 0.5f` |
+| `src/Tools/ShaderGen/golden/lit-depth-masked.txt` / `lit-shadow-masked.txt` | 2 份新结构快照 |
+| `src/Tools/ShaderGen/golden/lit-depth-masked.emission.txt` / `lit-shadow-masked.emission.txt` | 2 份新 emission 快照 |
+
+**`alpha_test` 必须写在 `ResolveSceneRenderTemplateRequest()` 之前**：`MaterialCoverageContract.cpp:112` 的 `requires_alpha_evaluation = (mode != None)` 是从 `ResolvedMaterialRenderState{alpha_test, alpha_cutoff, dither}` 经 `ResolveMaterialRenderState()` 推出来的，契约在**模板请求解析那一刻**读取渲染状态。写在后面等于没写 —— 这条踩过。
+
+**外置后的结构**（`shadow_caster.glsl.tmpl`，7 个占位符）：
+
+```
+{{defines}}
+{{alpha_resources}}
+{{fragment_inputs}}
+{{output_declarations}}
+{{code_modules}}
+{{alpha_includes}}
+{{main_body}}
+```
+
+配套改动：
+
+| 文件 | 改动 |
+|---|---|
+| `inc/hgl/mtl/ShaderConfig.h` | `ShaderConfigProfile` 新增 `ShadowCaster`（现 4 值：`None` / `ForwardLit` / `ForwardUnlit` / `ShadowCaster`）。头注释明确：**四个 profile 互斥**，宏集合只由模板族决定 |
+| `src/ShaderGen/contract/ShaderConfig.cpp` | `EmitShaderConfigDefines` 成为 `#define HGL_COVERAGE_ONLY 1` 的**单一真源**（此前是 `ComposeShadow` 手写）；`ShadowCaster` 分支提前返回，跳过 provider 旗标 / 纹理通道 / PCF 宏；纹理通道循环与 PCF 块加 `profile != ShadowCaster` 守卫 |
+| `src/ShaderMaterialData/RenderTemplate.cpp` | `GetRenderTemplateFragmentSourceFile()` 补 `ShadowCasterOpaque` / `ShadowCasterMasked` → `"shadow_caster.glsl.tmpl"`，四族齐了；`nullptr` 语义收窄为「未注册」 |
+| `src/ShaderGen/template/FragmentTemplateComposer.cpp` | 删除 `ComposeShadow` 与 4 个随之失效的 helper（`AddTemplateBlock` / `AppendDocumentBlocks` / `AppendFragmentInputDeclarations` / `AppendOutputDeclarations`），852 → 646 行；新增 `IsShadowCasterTemplate` / `RequiresAlphaEvaluation` / `BuildShadowAlphaIncludeText` / `BuildShadowMainBodyText`；`ComposeFromFragmentTemplate` 增 `is_shadow` 分支（输出附件允许整型、alpha 资源/`#include`/`main` 体三槽） |
+| `inc/hgl/mtl/contract/ShaderGenProfileTargetVersion.h` | `SHADERGEN_CODEGEN_GENERATION` 13 → **14**（见下方「唯一的行为变化」） |
+| `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | `D2.shader-config-emit` 增子用例 ⑥，钉死 ShadowCaster 的规范宏文本（首跑就抓到纹理通道与 PCF 宏泄漏） |
+
+**唯一的行为变化（已接受并写进 generation changelog）**：旧 `ComposeShadow` 把 `HGL_COVERAGE_ONLY` / `HGL_ALPHA_*` 作为 `Define` 块**放在材质注入块之前**；新路径是单一 `MainBody` 块，**在注入之后** —— 与 forward 模板一致。宏集合与文本逐字节相同，只有位置变了。4 份 shadow emission golden 因此位移（`lit-depth-only` 的三行 define 从 L52-54 移到 L59-61 / L62-64），**文件字节数不变**（4203 / 6541）。
+
+**为什么不去保留旧顺序**：那需要在材质注入路径（`MaterialShaderEmitter::EmitMaterialInjection`）上加一个 `pending_prefix` 钩子，让 `.tmpl` 路径把 define 前插 —— 新机制，且要动 forward 模板那条已验证的路径。forward 模板本来就把 define 放在注入之后，所以新顺序才是**一致的那个**。
+
+**两个易错的实现细节**：
+- **NTB 必须排在 surface 之前**：`material_surface.glsl` 的定义体无条件调用 `GetNTB`，顺序反了直接编译失败。
+- **`materialDataIndex` vs `0u`**：`BuildShadowMainBodyText` 按 `coverage_contract->required_semantics & GetInterStageSemanticMask(InterStageSemantic::DataIndexID)` 决定是走 `fragment_inputs` 的接线还是手写零初始化 `si`。
 
 ---
 
@@ -265,13 +317,13 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 ```
 产物目录：`build\out\Windows_64_Debug\`
 
-### 5.2 当前结果（全部绿，阶段五完成后复测）
+### 5.2 当前结果（全部绿，阶段六完成后复测）
 
-- `ShaderResourceSchemaRegressionGate all`：**56 PASS / 0 FAIL，exit=0**（阶段四未增删 case；阶段五新增 `SD.emission-order-golden`，55 → 56）
+- `ShaderResourceSchemaRegressionGate all`：**56 PASS / 0 FAIL，exit=0**（阶段四未增删 case；阶段五新增 `SD.emission-order-golden`，55 → 56；阶段六只在 `D2.shader-config-emit` 内增子用例 ⑥，case 总数不变）
 - 五个回归 exe（`SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` / `TestRenderStrategyTable` / `TestMaterialVariantTable`）：**全 exit=0**
 - `TestRenderStrategyTable` / `TestMaterialVariantTable`：**全 exit=0**（这两个覆盖保底链行为断言 —— 未知定义 ID ⇒ 换 `builtin/error_checkerboard_3d`、标记行不可得 ⇒ 降级 `builtin/checkerboard_3d`，是「内嵌定义可用」的最强证据）
 - 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、`loaded 34 entries from program_manifest.pmf`、无 GLSL 编译错误
-- `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）。该目录现在有两类快照，各 12 份、按同一张变体矩阵一一对应：`<slug>.txt`（结构快照）与 `<slug>.emission.txt`（**拼接顺序快照**）
+- `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）。该目录现在有两类快照，各 **14** 份、按同一张变体矩阵一一对应：`<slug>.txt`（结构快照）与 `<slug>.emission.txt`（**拼接顺序快照**）。阶段六把矩阵从 12 扩到 14（新增 `lit-depth-masked` / `lit-shadow-masked`），并刷新了 2 份 shadow emission golden（define 位置变化，字节数不变）
 - 全量 `cmake --build build --config Debug` 除一个**既存无关**失败外全绿：`TexConvCore.vcxproj` 的 `LNK1104: cannot open file '..\..\..\..\out\Windows_64_Release\TexImage.lib'`（Debug 目标链 Release 库，与本次重构无关）
 - 实跑渲染 exe（脚本是会话局部产物，新会话请直接用下面命令）：
   ```powershell
@@ -390,11 +442,11 @@ Case 名与职责：
 | Case | 作用 |
 |---|---|
 | `D.material-domain-contract` | ① 契约表自检 + 引用模块存在性；② 合法材质必须通过；③ 未声明 domain = Custom 豁免；③ 领域规范模块兜底正向；③b 非 3D 领域变换兜底；④ 负向探针表 `DomainViolationProbe probes[]`；⑤ 无光表面族正向 |
-| `D2.shader-config-emit` | 校验配置头规范文本（ForwardLit 全开） |
+| `D2.shader-config-emit` | 校验配置头规范文本（ForwardLit 全开；⑥ 子用例钉死 `ShadowCaster` 只出 `HGL_COVERAGE_ONLY` + alpha 三件套，纹理通道/PCF 宏不得泄漏） |
 | `PC.pipeline-config-emit` | `PipelineConfigEmitter` 输出 |
 | `MI.module-include-declaration-contract` | Registry 加载期强制 `#include ⊆ @ulre uses` |
-| `SD.structure-dump-golden-pilot` | 读 `golden/<slug>.txt` 比对（12 变体矩阵）；不匹配写 `<slug>.txt.actual` |
-| `SD.emission-order-golden` | 读 `golden/<slug>.emission.txt` 比对**拼接顺序骨架**（同一张 12 变体矩阵）；不匹配写 `<slug>.emission.txt.actual` |
+| `SD.structure-dump-golden-pilot` | 读 `golden/<slug>.txt` 比对（14 变体矩阵）；不匹配写 `<slug>.txt.actual` |
+| `SD.emission-order-golden` | 读 `golden/<slug>.emission.txt` 比对**拼接顺序骨架**（同一张 14 变体矩阵）；不匹配写 `<slug>.emission.txt.actual` |
 
 要点：
 
@@ -403,7 +455,7 @@ Case 名与职责：
 3. `require_slot_module(name, slot_name)` 断言块约 `:6015`。
 4. **golden 没有环境变量开关**。更新方式：`Copy-Item *.actual *.txt` 然后删除 `.actual`。首跑 golden 缺失会自动生成并 PASS。
 5. **快照 case 必须自己装载前置条件**：`EnsureSamplerPresetsLoaded()` 在 `SamplerPresetLibrary` 为空时装载 `ShaderLibrary/sampler.toml`。不装的话采样器 `#define` 会被静默省略，只跑 `pipeline` 组与跑 `all` 组得到的 golden 不一致（详见 §4.7）。
-6. **emission 快照的粒度是骨架行**（预处理指令 / 顶层 `layout` / 顶层函数签名），行内空白折叠、缩进与函数体排除。只要重构不改 token 顺序，就不该需要刷新 emission golden —— 需要刷新就说明顺序真的变了，这正是它要抓的东西。
+6. **emission 快照的粒度是骨架行**（预处理指令 / 顶层 `layout` / 顶层函数签名），行内空白折叠、缩进与函数体排除。只要重构不改 token 顺序，就不该需要刷新 emission golden —— 需要刷新就说明顺序真的变了，这正是它要抓的东西。**但「顺序变了但宏集合没变」是合法的**：阶段六把 `ComposeShadow` 的 define 块从注入前移到注入后（与 forward 模板一致），golden 位移、字节数不变，此时应接受位移 + 升 `SHADERGEN_CODEGEN_GENERATION`，而不是为了 golden 不变去改拼接顺序。
 7. 门禁注册表在文件尾部（约 `:8515` 起）：`run_glsl / run_interface / run_descriptor / run_cache / run_materialization / run_pipeline / run_module_invariants`。
 
 ---
@@ -425,6 +477,8 @@ Case 名与职责：
 12. 日志里 `Failed to find vkGetDeviceProcAddr in layer ...amdvlk64.dll` 是既存噪声，不是错误。
 13. 提交必须 `git add` 显式列路径（禁 `-A`），带
     `Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>`。
+14. **快照变体里改渲染状态必须写在 `ResolveSceneRenderTemplateRequest()` 之前**：`MaterialCoverageContract.cpp:112` 的 `requires_alpha_evaluation` 是从 `ResolvedMaterialRenderState` 推出来的，契约在模板请求解析那一刻就读走了。写晚了等于没写，golden 会安静地覆盖错分支（阶段六补 masked 覆盖时踩过）。
+15. `ApplyFragmentTemplateSlot` 的吞行规则：替换 `{{key}}` 后若紧跟一个 `\n` 就删掉它。所以**空值独占一行时整行消失** —— 写 `.tmpl` 时靠这个实现可选段。
 
 ---
 
@@ -436,7 +490,8 @@ Case 名与职责：
 
 ### 10.2 结构性遗留
 
-- **旧 ShaderGen 字符串拼接代码尚未清理**（阶段四遗留的唯一实质项，**前置安全网已于阶段五就位**，见 §4.7）。剩下的迁移动作：把 mesh 侧骨架（`MeshShaderHeaderGen` / `MeshVaryingGen` / `VertexAdapter` / `MeshTemplateEmitter`）与 `FragmentTemplateComposer` 里 ShadowCaster 的内联骨架外化成 `.tmpl`，并把 `FragmentTemplateComposer`（角色化 `ResolvedInclude`，`:316-580`）/ `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit。**现在动它是安全的**：`SD.emission-order-golden` 会在 token 顺序发生任何变化时立刻变红。仍应作为独立、可评审的提交。
+- **mesh 侧骨架仍有多段 `+=` 拼接**（阶段四遗留的最后一角；**fragment 侧已于阶段六收口**，见 §4.8）。剩下的动作：把 mesh 侧骨架（`MeshShaderHeaderGen` / `MeshVaryingGen` / `VertexAdapter` / `MeshTemplateEmitter`）外化成 `.tmpl`，并把 `FragmentTemplateComposer`（角色化 `ResolvedInclude`）/ `GenericMaterialBuilder` 的多段 `+=` 合并成单次 emit。**现在动它是安全的**：`SD.emission-order-golden`（14 变体）会在 token 顺序发生任何变化时立刻变红。仍应作为独立、可评审的提交。
+- **STL 残留**：`FragmentTemplateComposer.cpp` 与 `MeshShaderTemplate.cpp` / `MeshTemplateEmitter.h` 仍 `#include <fstream>` / `<map>` / `<string>` 并用 `std::string` / `std::vector`，违反本仓「禁用 STL」规范。属**纯机械替换**（→ `hgl::io::*` / `hgl::UnorderedMap` / `AnsiString` / `hgl::ArrayList`），但触及文件多、收益低，**刻意留作独立提交**，不与结构改动混做。
 - 4 个领域（`Foliage` / `Terrain` / `HumanSkin` / `UI2D` 部分）reference 为 `nullptr`，只有契约骨架、无专属实现。属**刻意保留的扩展位**，不是 bug。
 - 主着色器仍保留 alpha 三件套宏（`HGL_ALPHA_TEST` / `HGL_ALPHA_DITHER` / `HGL_ALPHA_OUTPUT`）—— **这是刻意设计**，因为它们必须与 `discard` / 输出同函数体，无法外移。
 - ~~`DirectLightProvider`（legacy role）仍在枚举里~~ → **阶段五已删除**（枚举 + 名称映射 switch）。
@@ -451,6 +506,6 @@ Case 名与职责：
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
 - [x] `git status` 只剩既存子模块脏项
-- [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` 12 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路（阶段五）
+- [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` **14** 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路，且 `ShadowCaster` 的 **opaque 与 masked 两条分支都有覆盖**（阶段五建网、阶段六补 masked）
 - [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
 - [x] 独立提交，提交信息带 `feat(ultra-thin):` / `docs(ultra-thin):` 前缀

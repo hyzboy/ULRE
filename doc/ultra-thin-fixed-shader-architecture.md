@@ -336,7 +336,7 @@ varyings = ["emit_data_index_id"]
 
 ---
 
-## 8. 实施路线图（五阶段）
+## 8. 实施路线图（六阶段）
 
 | 阶段 | 分支 | 核心任务 | 交付产物 |
 | :--- | :--- | :--- | :--- |
@@ -345,13 +345,38 @@ varyings = ["emit_data_index_id"]
 | **阶段 3：MaterialInstance 模型** ✅ | `feature/ultra-thin-stage3-material-instance` | Domain 即 Master Material；资产降维为「选 Domain + 填数值 + 配贴图」的 MaterialInstance；保底材质移入 C++ | 极简资产形态上线 |
 | **阶段 4：资产迁移** ✅ | `feature/ultra-thin-stage4-cleanup-and-migration` | 现有资产迁移到 `.mi.toml`；废弃 `material.toml` | 全套自动化门禁验证通过 |
 | **阶段 5：拼接清理前置安全网** ✅ | `feature/ultra-thin-stage5-shadergen-emission-cleanup` | 为旧版 ShaderGen 拼接代码的清理造好 golden 安全网（emission 顺序快照），并清掉小债 | `SD.emission-order-golden`（12 变体）+ 小债清零 |
+| **阶段 6：骨架外置** ✅ | 同上 | 把 `FragmentTemplateComposer` 里最后一段内联 GLSL 骨架 `ComposeShadow()` 外化为 `fragment/shadow_caster.glsl.tmpl`；补 masked 分支快照覆盖 | 四条 emission 通路全部走 `.tmpl`；矩阵 14 变体 |
+
+阶段 6 的进展：
+
+1. ✅ **先补覆盖再动刀**：9 份 `.mi.toml` 与 5 份 builtin 定义都没有设 `alpha_test`，
+   所以 `ComposeShadow()` 的 masked 分支（`requires_alpha == true`）快照覆盖为 **0**。
+   先给 `StructureDumpVariant` 加 `alpha_test`、矩阵 12 → 14（`lit-depth-masked` /
+   `lit-shadow-masked`），并确认新 golden 里确实出现了 alpha 路径，然后才删代码。
+   `alpha_test` 必须写在 `ResolveSceneRenderTemplateRequest()` **之前**
+   （`MaterialCoverageContract.cpp:112` 在那一刻读渲染状态）。
+2. ✅ 新增 `ShaderConfigProfile::ShadowCaster`，让 `EmitShaderConfigDefines` 成为
+   `#define HGL_COVERAGE_ONLY 1` 的单一真源；该 profile 下跳过 provider 旗标、
+   纹理通道宏与 PCF 宏。门禁 `D2.shader-config-emit` 增子用例 ⑥ 钉死这份规范文本
+   （首跑就抓到宏泄漏）。
+3. ✅ 新增 `ShaderLibrary/fragment/shadow_caster.glsl.tmpl`（7 个占位符），
+   `GetRenderTemplateFragmentSourceFile()` 补齐 `ShadowCasterOpaque` /
+   `ShadowCasterMasked`，`ComposeShadow()` 及 4 个随之失效的 helper 全部删除
+   （852 → 646 行）。
+4. ✅ **唯一的行为变化**：`HGL_COVERAGE_ONLY` / `HGL_ALPHA_*` 从「材质注入块之前」
+   移到「之后」，与 forward 模板一致；宏集合与文本逐字节相同，4 份 shadow emission
+   golden 位移而字节数不变，`SHADERGEN_CODEGEN_GENERATION` 13 → 14 并记入 changelog。
+   保留旧顺序需要在材质注入路径上加 `pending_prefix` 钩子，收益不抵代价。
+5. ⬜ **mesh 侧骨架外置与 STL 残留清理仍未做** —— 安全网已就位、路径已解锁，
+   但两者都是独立、可评审的改动。详见 `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 5 的进展：
 
 1. ✅ 新增 `DumpShaderEmissionOrder()`（`inc/hgl/mtl/ShaderStructureDump.h` +
    `src/ShaderGen/compile/ShaderStructureDump.cpp`）与门禁 case
    `SD.emission-order-golden`，12 份 `<slug>.emission.txt` golden 覆盖
-   `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路。
+   `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路
+   （阶段 6 补 masked 分支后扩为 14 份，见下）。
    粒度刻意只到**骨架行**（预处理指令 / 顶层 `layout` / 顶层函数签名），使
    「token 顺序不变」的重构无需刷新 golden。
 2. ✅ 修掉一个会让 golden 自身不可信的坑：`SamplerPresetLibrary` 是进程级单例，
@@ -359,8 +384,9 @@ varyings = ["emit_data_index_id"]
    case 现均先调用 `EnsureSamplerPresetsLoaded()`。
 3. ✅ 小债清理：删除 legacy `ShaderModuleSlotRole::DirectLightProvider`；模块总数
    `82` 的两处硬编码收敛为 `kShaderCodeModuleCount` 单一常量。
-4. ⬜ **旧 ShaderGen 字符串拼接代码的实际迁移仍未做** —— 安全网已就位、路径已解锁，
-   但它是独立、可评审的改动。详见 `doc/ultra-thin-implementation-status.md` §10.2。
+4. ⬜ **旧 ShaderGen 字符串拼接代码的实际迁移** —— fragment 侧已于阶段 6 收口
+   （见下方「阶段 6 的进展」），剩余 mesh 侧骨架与多段 `+=` 合并仍待处理，详见
+   `doc/ultra-thin-implementation-status.md` §10.2。
 
 阶段 4 的进展：
 

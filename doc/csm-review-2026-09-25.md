@@ -79,7 +79,7 @@ VUID / [ERROR] = 0（本机未启用 VK_LAYER_KHRONOS_validation）
 | purpose → 程序 purpose | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:445-456` | `Surface → ShaderProgramPurpose::ForwardColor` |
 | 请求构造 | 同上 `:499` | `mtl_request.shader_program_purpose = effective_purpose`（全仓唯一构造点，**不看 RT 是否 depth-only**） |
 | 模板分派 | `src/SceneGraph/module/ShaderProgramManager.cpp:217-230`、`src/ShaderGen/contract/MaterialOutputContract.cpp:36-46` | 只有 `DepthOnly`/`ShadowDepth` 才走 `ShadowCasterOpaque` / `ShadowCasterMasked` |
-| 专用实现已就绪 | `src/ShaderGen/template/FragmentTemplateComposer.cpp:659-661` | `ComposeShadow()`：空 fragment main、无 material/sky descriptors、裁掉无关 varying |
+| 专用实现已就绪 | `src/ShaderGen/template/FragmentTemplateComposer.cpp`（超薄阶段六后为 `ShaderLibrary/fragment/shadow_caster.glsl.tmpl`） | ShadowCaster 骨架：空 fragment main、无 material/sky descriptors、裁掉无关 varying |
 | 实测 | §0.3 | 101/101 `depth=0`，`forward_lit_shadowed_ao` |
 
 **后果**（按可信度分层）：
