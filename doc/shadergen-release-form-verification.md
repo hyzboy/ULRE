@@ -100,7 +100,7 @@ pwsh scripts/ci/build-baseline.ps1 -VerifyReleaseForm
 | 改动 | 必须跑 |
 |---|---|
 | `ULRE::Runtime` 成员列表 | `verify-release-form.ps1` |
-| `ShaderProgramManifestBackend` / `ComputeMaterialProgramManifestKey` | `verify-release-form.ps1` + `Gate all`（51 条） |
+| `ShaderProgramManifestBackend` / `ComputeMaterialProgramManifestKey` | `verify-release-form.ps1` + `Gate all`（56 条） |
 | `ShaderArtifactStore` 磁盘布局 | `verify-release-form.ps1` + `Gate cache` |
 | `compute_manifest.pmf` 格式 / `LoadShaderComputeProgramArtifact` | `verify-release-form.ps1` + `Gate cache-compute-lookup` |
 | `GPUCullSystem` 的 push constant 布局 | `verify-release-form.ps1` + `ctest -L ecs` |
@@ -122,3 +122,9 @@ pwsh scripts/ci/build-baseline.ps1 -VerifyReleaseForm
   `EnsureShaderProgramManifestBackend()` 按「先到先得」不会顶替 ——
   ON 树里跑探针验证的是**夹具与清单后端逻辑**，不是纯发行行为。
   真正的发行行为只在 `build_probe_nosg` 里成立。
+- **`-SkipBuild` 会产生假 FAIL**。它复用旧的 `RuntimeFormProbe.exe`，而 `ULRE::Runtime`
+  的 ABI 会随运行时改造变化 ⇒ 探针静默 `abort()`：MSVC 退出码 **3**、stdout/stderr **全空**。
+  看到「exit=3 且零输出」就是二进制陈旧，**去掉 `-SkipBuild` 重建即 PASS**，
+  不要去查夹具或清单后端（这条踩过一次，白查半小时）。
+  `-SkipConfigure` 与 `-SkipBake` 是安全的：前者只重读 `CMakeCache.txt`，后者产出的夹具
+  本身会被探针逐字节校验。

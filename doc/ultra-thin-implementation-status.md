@@ -3,7 +3,7 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段六收尾复查后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`；mesh 侧拼接债经复查确认已清空，STL 残留清理判定为需整体迁移、刻意不做。**
+> **最后更新**：阶段六收尾 + 「SPV 反射替代 ShaderGen 预推断」可行性核查后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`；mesh 侧拼接债经复查确认已清空，STL 残留清理判定为需整体迁移、刻意不做。ShaderGen 已**物理切出发行形态**（`ULRE_ENABLE_SHADERGEN=OFF`，跨进程验收 PASS），「用 SPV 反射替代预推断」经核查判定**没有靶子**（见 §10.3）。**
 
 ---
 
@@ -13,7 +13,9 @@
 2. **四阶段已全部完成**（一 / 二 / 三 3.1–3.3 / 四，见 §4.1–§4.6），阶段五（拼接清理前置安全网 + 小债，见 §4.7）与阶段六（ShadowCaster 骨架外置，见 §4.8）也已完成。阶段四已把资产降维为 `.mi.toml` 并废除 `.material.toml`，方案记录见 §6.5。
 3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数常量 `kShaderCodeModuleCount`」「golden 无环境变量开关」「快照 case 必须自己装载 sampler 预设」「`alpha_test` 必须写在模板请求解析之前」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
-5. **剩余工作见 §10.2** —— mesh 侧骨架经复查判定「已做到该做的程度」（剩余段数来自刻意的单一真源数据表），STL 残留清理经实测判定**必须整体迁移、刻意不做**。即当前**没有待办的技术债**，下一步动作需由用户指定（可选：STL 整体迁移、`inc/hgl/mtl/` 公共头清理、4 个 `nullptr` 领域补实现）。
+5. **剩余工作见 §10.2** —— mesh 侧骨架经复查判定「已做到该做的程度」（剩余段数来自刻意的单一真源数据表），STL 残留清理经实测判定**必须整体迁移、刻意不做**。
+   **另见 §10.3**：ShaderGen 已从发行形态物理切干净，「用 SPV 反射大幅简化/删除 ShaderGen」经地面核查判定**前提不成立**（描述符契约层 2026-10-11 S1 就已删除，没有预推断可替代）。
+   即当前**没有待办的技术债**，下一步动作需由用户指定（可选：STL 整体迁移、`inc/hgl/mtl/` 公共头清理、4 个 `nullptr` 领域补实现）。
 
 **铁律**：每个阶段/子阶段**独立分支 + 独立提交**；提交用 `git add` 显式列路径（禁 `-A`）；带 `Co-authored-by` trailer。
 
@@ -326,6 +328,7 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 - 五个回归 exe（`SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` / `TestRenderStrategyTable` / `TestMaterialVariantTable`）：**全 exit=0**
 - `TestRenderStrategyTable` / `TestMaterialVariantTable`：**全 exit=0**（这两个覆盖保底链行为断言 —— 未知定义 ID ⇒ 换 `builtin/error_checkerboard_3d`、标记行不可得 ⇒ 降级 `builtin/checkerboard_3d`，是「内嵌定义可用」的最强证据）
 - 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、`loaded 34 entries from program_manifest.pmf`、无 GLSL 编译错误
+- **发行形态跨进程验收**（`scripts/ci/verify-release-form.ps1 -SkipConfigure`）：**5/5 PASS**，含 `[ OK ] prod tree has no ULRE.ShaderGen artifacts` 与 `[PASS] release form verified: baked cache resolved with zero generator symbols`。这一条是本仓唯一能证明「ShaderGen 真的不在发行包里」的证据 —— 它靠**链接失败**断言（探针只链 `ULRE::Runtime`），不是靠没有符号被优化掉。详见 `doc/shadergen-release-form-verification.md`
 - `src/Tools/ShaderGen/golden/` 下无 `.actual` 残留（无 golden 漂移）。该目录现在有两类快照，各 **16** 份、按同一张变体矩阵一一对应：`<slug>.txt`（结构快照）与 `<slug>.emission.txt`（**拼接顺序快照**）。阶段六把矩阵从 12 扩到 14（新增 `lit-depth-masked` / `lit-shadow-masked`），并刷新了 2 份 shadow emission golden（define 位置变化，字节数不变）；阶段六收尾再扩到 16（新增 `vertex-color-lines-quad` / `vertex-color-lines-quad-2d`，补上此前**零覆盖**的 `LineQuad` mesh 发射模式，见 §5.3）
 - 全量 `cmake --build build --config Debug` 除一个**既存无关**失败外全绿：`TexConvCore.vcxproj` 的 `LNK1104: cannot open file '..\..\..\..\out\Windows_64_Release\TexImage.lib'`（Debug 目标链 Release 库，与本次重构无关）
 - 实跑渲染 exe（脚本是会话局部产物，新会话请直接用下面命令）：
@@ -516,6 +519,8 @@ Case 名与职责：
     `Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>`。
 14. **快照变体里改渲染状态必须写在 `ResolveSceneRenderTemplateRequest()` 之前**：`MaterialCoverageContract.cpp:112` 的 `requires_alpha_evaluation` 是从 `ResolvedMaterialRenderState` 推出来的，契约在模板请求解析那一刻就读走了。写晚了等于没写，golden 会安静地覆盖错分支（阶段六补 masked 覆盖时踩过）。
 15. `ApplyFragmentTemplateSlot` 的吞行规则：替换 `{{key}}` 后若紧跟一个 `\n` 就删掉它。所以**空值独占一行时整行消失** —— 写 `.tmpl` 时靠这个实现可选段。
+16. **`verify-release-form.ps1 -SkipBuild` 会给出假 FAIL**：它复用旧探针二进制，而运行时库 ABI 已随超薄六阶段变化 ⇒ 探针静默 `abort()`（MSVC 退出码 **3**、零 stdout/stderr）。看到 exit=3 且无输出就是 ABI 陈旧，**去掉 `-SkipBuild` 重建即 PASS**，不要去查清单或夹具。
+    `-SkipConfigure` 是安全的（只重读 CMakeCache），`-SkipBake` 在有现成夹具时也是安全的（夹具本身会被探针校验）。
 
 ---
 
@@ -556,6 +561,38 @@ Case 名与职责：
 - ~~`DirectLightProvider`（legacy role）仍在枚举里~~ → **阶段五已删除**（枚举 + 名称映射 switch）。
 - ~~模块总数 `82` 硬编码在两处~~ → **阶段五已收敛**为 `kShaderCodeModuleCount`（门禁内单一常量）。
 
+### 10.3 「用 SPV 反射大幅简化/删除 ShaderGen」—— 核查后否决
+
+**背景**：超薄架构的原始动机之一是「大幅简化甚至删除 Shader 生成器」。建议方案是：用 `GLSLCompiler.dll` 的 `ParseSPV` 反射出资源绑定，替代 ShaderGen 的「资源预推断」，从而把 ShaderGen 压成薄装配器。
+
+**结论：方案失败在靶子不存在，不在技术。** 逐条证据：
+
+| 待证命题 | 核查方式 | 结果 |
+|---|---|---|
+| ShaderGen 仍在预推断描述符布局 | 全搜 `src/ShaderGen` + `inc/hgl/mtl` 的 `VkDescriptorSetLayoutCreateInfo` / `DescriptorSetLayoutBinding` / `CreateDescriptorSetLayout` | **0 命中** |
+| 运行时需要 per-material 布局 | `src/Vulkan/pipeline/VKPipelineLayoutData.cpp` `CreateGlobalPipelineLayout()` | 只吃 `bindless_layout` 一个参数，函数体硬编码「Bindless(0) + 单条 `sizeof(RootAddresses)` 推送区」，**签名里没有任何材质输入** |
+| `resource_layout_hash` 被运行时消费成绑定 | 全搜该字段 | 仅 `ShaderProgramManifest.cpp` 用于 manifest 行**自比对**；`ShaderProgramManager.cpp` 只校验 `baked_push_constant_size` |
+| 「资源清单」是描述符表 | `inc/hgl/mtl/ShaderCodeResourceManifest.h` | 是 `code_module_names[64]` + `texture_references` + `sampler_references` + `stable_hash`，**不是布局** |
+
+**关键因果**：描述符契约层已于 **2026-10-11（S1）删除**（`MaterialResourceManifestBuilder.h` 的头注释就是墓碑）。所以 `GenericMaterialBuilder.cpp` 里根本没有「预推断→布局」这一段可供反射替代 —— 反射只能**看见编译后的状态**，而 sampler 名 → 索引映射必须在编译**前**以 `#define <Name>Sampler N` 注入（`shader_type`/`includes` 依赖它）。`ParseSPV` 输出 set/binding/type，出不来 preset 名。
+
+**产品目标已达成，且是物理保证**：`CMakeLists.txt:63` 的 `ULRE_ENABLE_SHADERGEN=OFF` 会让 `src/ShaderGen`、`src/Tools/ShaderGen`、`example/` 一并退出构建；`ULRE::Runtime`（发行唯一入口）**永不含** `ULRE.ShaderGen`。`scripts/ci/verify-release-form.ps1` 是现成的跨进程验收，断言方式是**链接失败即测试失败**（探针只链 `ULRE::Runtime`）。本条已实测通过：
+
+```
+[PASS] release form verified: baked cache resolved with zero generator symbols
+```
+
+**面积实测**（真实代码行，剔除空行与纯注释行）：`src/ShaderGen` = **42 文件 / 9762 总行 / 7765 代码行 / 909 注释行**。
+Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`ShaderCodeModuleFile.cpp` 573、`FragmentTemplateComposer.cpp` 499、`ShaderCodeModuleRegistry.cpp` 418。
+`GenericMaterialBuilder.cpp` 已是 20 个全可达具名函数（最大 `ResolvePurposeAndCoverage` 141 行），**无重复逻辑、无死码**。`CanonicalContractWriter.h` 是唯一自引用单元。
+
+**唯一剩下的真实靶子**是删 `ShaderDocument`（173 代码行，只被消费 `GetBlockCount()` + `Serialize()`，`plan.ms`/`plan.fs` 本来就是纯文本），但代价是丢掉「Version 必须首块 / 单一 MainBody / 拒空块」三条排序校验 —— 那是 16 变体 golden 之外唯一能拦住结构性错误的检查。**收益 ≈ 全量 2.6%，对产品体积与运行时零影响**，判定**风险大于收益，不做**。
+
+**不要重试以下方向**（均已证伪）：
+- 用反射推导描述符绑定 —— 没有可推导的对象；
+- 把 `MaterialResourceManifestBuilder` / 资源清单当作「伪预推断」删除 —— 它是真实的**编译前输入**；
+- 从 varyings 反推 `[vertex] requirements`；删除 `[transform]` 解析分支；**局部** STL 迁移；把 mesh 侧数据表外置成 `.tmpl`。
+
 ---
 
 ## 11. 每个子阶段的完成定义（DoD）
@@ -568,4 +605,5 @@ Case 名与职责：
 - [x] `git status` 只剩既存子模块脏项
 - [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` **16** 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路，`ShadowCaster` 的 **opaque 与 masked 两条分支都有覆盖**（阶段五建网、阶段六补 masked），三种 mesh 发射模式（`VertexPassthrough` / `CharQuad` / `LineQuad`）全部有覆盖（阶段六收尾补 `LineQuad`，见 §5.3）
 - [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
+- [x] **发行形态跨进程验收 PASS**：`verify-release-form.ps1` 5/5（烘焙 → 探针只链 `ULRE::Runtime` 链接 → 只读运行），证明零生成器符号。任何触碰 `ULRE::Runtime` 成员列表、清单后端、`ShaderArtifactStore` 磁盘布局的改动都必须重跑，见 `doc/shadergen-release-form-verification.md` §6
 - [x] 独立提交，提交信息带 `feat(ultra-thin):` / `docs(ultra-thin):` 前缀

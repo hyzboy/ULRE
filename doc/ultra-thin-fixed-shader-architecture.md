@@ -325,6 +325,9 @@ varyings = ["emit_data_index_id"]
 
 ### 7.1 C++ 裁减清单（废除项）
 - ❌ **废除 ShaderGen 代码拼接引擎**：删除复杂的模块依赖拓扑排序、代码字符串替换引擎。
+  **实际达成度（六阶段后复测）**：四条 emission 通路已全部收敛为「`.tmpl` 文本插槽 + 单一真源数据表」，字符串拼接引擎事实上已不存在；剩余 `src/ShaderGen`（42 文件 / 7765 代码行）做的是**装配**（purpose/coverage 解析、vertex ABI、mesh 发射模式、模块依赖图、GLSL include 闭包哈希、program link 组装），不是拼接。
+  更重要的是：**ShaderGen 已从发行形态物理切出**（`ULRE_ENABLE_SHADERGEN=OFF`，`ULRE::Runtime` 永不含它），且有跨进程验收守住这条边界。因此「删除 ShaderGen」在产品层面**已经完成**，剩下的只是开发期工具的体积。
+  原计划「用 `GLSLCompiler.dll` 的 `ParseSPV` 反射替代资源预推断、把 ShaderGen 压成薄装配器」**经核查否决**：描述符契约层早在 2026-10-11（S1）就已删除，没有预推断可替代，而 sampler 名→索引映射是编译**前**的 `#define` 输入，反射（编译后）取不到。证据与实测数据见 `doc/ultra-thin-implementation-status.md` §10.3。
 - ❌ **废除磁盘 `*.mi.toml` 母材质定义文件**：不再通过 TOML 配置模块引用和 NTB 策略。
 - ❌ **废除 `MaterialDefinitionFileRegistry`**：将其简化为 `MaterialInstanceRegistry`。
 
@@ -385,6 +388,18 @@ varyings = ["emit_data_index_id"]
    `std::sort` 在 HGL 里没有等价物。局部改只会让仓里一半 HGL 一半 STL，
    因此要么整体迁移（含公共头签名）要么不动，留作独立可评审的改动。
    详见 `doc/ultra-thin-implementation-status.md` §10.2。
+8. ❌ **「用 SPV 反射替代资源预推断」方案已否决（核查完成，不实施）** ——
+   地面核查推翻了两个前提：① `src/ShaderGen` + `inc/hgl/mtl` 里
+   `VkDescriptorSetLayoutCreateInfo` / `DescriptorSetLayoutBinding` / `CreateDescriptorSetLayout`
+   **零命中**，描述符契约层 2026-10-11（S1）就删了；② `VKPipelineLayoutData.cpp::CreateGlobalPipelineLayout()`
+   只吃 `bindless_layout`，硬编码「Bindless(0) + 单条 `sizeof(RootAddresses)` 推送区」，
+   **签名里没有材质输入**。`ShaderCodeResourceManifest` 也不是描述符表，而是
+   `code_module_names[]` + `texture_references` + `sampler_references` —— 全是编译**前**
+   必须已知的 `#define <Name>Sampler N` 输入，反射（编译后）无从恢复。
+   **产品目标已由 `ULRE_ENABLE_SHADERGEN=OFF` 物理保证**，`scripts/ci/verify-release-form.ps1`
+   跨进程实测 PASS。剩余真实靶子只有删 `ShaderDocument`（173 代码行，占全量 2.6%），
+   代价是丢掉三条 block 排序校验 ⇒ 风险大于收益，不做。
+   详见 `doc/ultra-thin-implementation-status.md` §10.3。
 
 阶段 5 的进展：
 
