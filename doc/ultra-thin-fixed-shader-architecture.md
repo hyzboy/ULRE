@@ -298,13 +298,14 @@ color = [1.0, 0.0, 0.0, 1.0]
 
 ---
 
-## 8. 实施路线图（三阶段）
+## 8. 实施路线图（四阶段）
 
-| 阶段 | 核心任务 | 交付产物 |
-| :--- | :--- | :--- |
-| **阶段 1：契约头与算法函数库固化** ✅ | 制定 5 大光照插槽的 GLSL 统一签名；实现对应的固定算法文件及“无/空”对象实现（`*_none.glsl`） | `ShaderLibrary/lighting/` 基础算法库 |
-| **阶段 2：Domain 主着色器固定化** 🚧 | 将 `StandardOpaque`、`UnlitSolid` 等核心 Domain 重构为无 `#if` 的物理 `.frag.glsl` 文件；编写 C++ `PipelineConfigEmitter` | 固定主着色器 + C++ 配置发射器 |
-| **阶段 3：资产降维与旧架构清理** | 将现有材质转为纯粹的 `MaterialInstance`；将 `pure_color` 与 `checkerboard` 保底机制移入 C++；废弃旧版 ShaderGen 拼接代码与 `material.toml` | 极简架构上线，全套自动化门禁验证通过 |
+| 阶段 | 分支 | 核心任务 | 交付产物 |
+| :--- | :--- | :--- | :--- |
+| **阶段 1：契约头与算法函数库固化** ✅ | `feature/ultra-thin-stage1-lighting-slots` | 制定 5 大光照插槽的 GLSL 统一签名；实现对应的固定算法文件及“无/空”对象实现（`*_none.glsl`） | `ShaderLibrary/lighting/` 基础算法库 |
+| **阶段 2：Domain 主着色器固定化** ✅ | `feature/ultra-thin-stage2-domain-shaders` | 主着色器固定为「固定骨架 + 纯 `#include` 拼接」，槽模块内零 `#if`；C++ 侧只生成配置头 | 固定主着色器 + `PipelineConfigEmitter` |
+| **阶段 3：MaterialInstance 模型** | `feature/ultra-thin-stage3-material-instance` | Domain 即 Master Material；资产降维为「选 Domain + 填数值 + 配贴图」的 MaterialInstance；保底材质移入 C++ | 极简资产形态上线 |
+| **阶段 4：资产迁移与旧架构清理** | `feature/ultra-thin-stage4-cleanup-and-migration` | 现有资产迁移到 `.mi.toml`；废弃 `material.toml` 与旧版 ShaderGen 拼接代码 | 全套自动化门禁验证通过 |
 
 阶段 2 的进展（按交付顺序）：
 
@@ -331,3 +332,11 @@ color = [1.0, 0.0, 0.0, 1.0]
    两个字段删除后，该函数只剩 `material_source` / `scene_lighting` 两个布尔，
    并进一步委托 `ShaderConfig` 的 `EmitShaderConfigDefines` 发射。
    `TemplateHasSlot` 辅助函数随之成为死代码，已删。
+4. ✅ 「固定主着色器」按**渲染模板**而非按 Domain 落文件：`ShaderLibrary/fragment/`
+   下只有 `forward_lit.glsl.tmpl` / `forward_unlit.glsl.tmpl` / `sky.glsl.tmpl`
+   三个骨架，内容 = `{{defines}}` + 固定 include + `{{module_includes}}` +
+   main 体。之所以不按 Domain 各拆一个物理 `.frag.glsl`：Domain 之间的差异
+   **全部**表达在模块集合与配置头里，拆成多份物理文件只会复制同一段 main 体，
+   正是本架构要消灭的重复。主文件里刻意保留的宏只有 alpha 覆盖相关的三处
+   （`HGL_ALPHA_TEST` / `HGL_ALPHA_DITHER` / `HGL_ALPHA_OUTPUT`）——它们必须与
+   `discard` / 输出写在同一个函数体内，属于设计明确允许的例外。
