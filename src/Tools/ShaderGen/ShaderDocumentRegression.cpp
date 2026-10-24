@@ -25,7 +25,8 @@ namespace
     const RootModuleSpec root_specs[] =
     {
         { ShaderModuleSlotRole::SurfaceProvider, "surface/pbr_texture", "surface/pbr_texture.glsl" },
-        { ShaderModuleSlotRole::DirectLightProvider, "direct/sun", "direct/sun.glsl" },
+        { ShaderModuleSlotRole::DiffuseLightProvider, "diffuse/lambert", "diffuse/lambert.glsl" },
+        { ShaderModuleSlotRole::SpecularLightProvider, "specular/ggx", "specular/ggx.glsl" },
         { ShaderModuleSlotRole::ShadowProvider, "shadow/pcf", "shadow/pcf.glsl" },
         { ShaderModuleSlotRole::AmbientLightProvider, "ambient/ibl", "ambient/ibl.glsl" },
         { ShaderModuleSlotRole::AmbientOcclusionProvider, "ao/identity", "ao/identity.glsl" },
@@ -156,18 +157,22 @@ namespace
 
         switch (spec.role)
         {
-            case ShaderModuleSlotRole::DirectLightProvider:
+            case ShaderModuleSlotRole::DiffuseLightProvider:
                 if (variant != FixtureVariant::MissingDirectLightCapability)
-                    provides = "direct_light";
+                    provides = "direct_diffuse";
+                break;
+            case ShaderModuleSlotRole::SpecularLightProvider:
+                if (variant != FixtureVariant::MissingDirectLightCapability)
+                    provides = "direct_specular";
                 break;
             case ShaderModuleSlotRole::LightingModel:
-                requires_capability = "direct_light";
+                requires_capability = "direct_diffuse|direct_specular";
                 break;
             case ShaderModuleSlotRole::SurfaceProvider:
                 if (variant == FixtureVariant::SurfaceDeclaresLightingModelSlot)
                     slot = "lighting_model";
                 else if (variant == FixtureVariant::SurfaceConflictsWithDirectSun)
-                    conflicts = "direct/sun";
+                    conflicts = "diffuse/lambert";
                 break;
             default:
                 break;
@@ -430,7 +435,7 @@ int main()
      || !resolved_template.IsValid()
      || resolved_template.definition->id != template_request.template_id
      || resolved_template.module_root_count != template_request.module_root_count
-     || resolved_template.manifest.code_module_count != 10
+     || resolved_template.manifest.code_module_count != 11
      || resolved_template.stable_hash == 0)
         return 29;
 

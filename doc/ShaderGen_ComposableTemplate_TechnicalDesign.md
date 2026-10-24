@@ -14,7 +14,7 @@
 | `StageTemplate` / `StageTemplateResolver` | 落地为**两件东西**:`RenderTemplate`(模板定义 + slot 表)与 `SceneRenderTemplateResolver`(从显式选定的身份构造请求) | `inc/hgl/mtl/RenderTemplate.h:14-120`、`inc/hgl/mtl/SceneRenderTemplateResolver.h:9-37`、`src/ShaderMaterialData/SceneRenderTemplateResolver.cpp` |
 | "已批准组合表" / `FixedPipelineVariantTable` | 落地形态是 **`RenderTemplateID` + `RenderTemplateDefinition Templates[]` 静态表**(7 个模板:`forward_lit_shadowed_ao` / `forward_lit_shadowed_identity_ao` / `forward_lit_unshadowed_ao` / `forward_unlit` / `shadow_caster_opaque` / `shadow_caster_masked` / `sky`) | `src/ShaderGen/template/RenderTemplate.cpp:74-96` |
 | "resolver 对未登记组合返回明确诊断" | **已落地**:`RenderTemplateValidationError`(含 `UnknownTemplate`/`StageMismatch`/`VersionMismatch`/`EmptyModuleRoot`/`UnknownSlotRole`/`UnexpectedSlotRole`/`DuplicateSlotRole`/`MissingRequiredSlot`/`ModuleNotFound`) | `inc/hgl/mtl/RenderTemplate.h:109-121` |
-| slot 契约(`surface_provider`、`lighting_model`、`output_policy`…) | **已落地**为 `enum class ShaderModuleSlotRole`:`SurfaceProvider`、`DirectLightProvider`、`ShadowProvider`、`AmbientLightProvider`、`AmbientOcclusionProvider`、`LightingModel`、`OutputPolicy`、`MaterialSourceProvider`、`NTBProvider`、`SkyProvider` | `inc/hgl/mtl/RenderTemplate.h:26-47` |
+| slot 契约(`surface_provider`、`lighting_model`、`output_policy`…) | **已落地**为 `enum class ShaderModuleSlotRole`:`SurfaceProvider`、`DiffuseLightProvider`、`SpecularLightProvider`、`ShadowProvider`、`AmbientLightProvider`、`AmbientOcclusionProvider`、`LightingModel`、`OutputPolicy`、`MaterialSourceProvider`、`NTBProvider`、`SkyProvider`(`DirectLightProvider` 已拆分,仅为历史 fixture 保留) | `inc/hgl/mtl/RenderTemplate.h:26-47` |
 | "输出 capability 满足 lighting model 输入 capability" | **已落地**:模块定义携带 `slot_role` / `provided_capabilities` / `required_capabilities` | `inc/hgl/mtl/ShaderCodeModule.h:260-262` |
 | `Module` / `Function` block | **已落地**(是 `ShaderDocumentBlockKind::Module` / `::Function` 两个枚举值,不是独立类) | `inc/hgl/mtl/ShaderDocument.h:9-19` |
 | `FragmentTemplateComposer` | **已落地**,同名(slot → `#include` 发射、MainBody 组装、输出声明内联生成) | `inc/hgl/mtl/FragmentTemplateComposer.h:18-51`、`src/ShaderGen/template/FragmentTemplateComposer.cpp:128`、`:251`、`:491-515` |
@@ -152,19 +152,27 @@ WriteFragmentOutput(surface, direct_radiance + ambient_radiance);
 > WriteMaterialOutput(HGLComposeColor(finalColor));
 > ```
 >
-> 对应关系:`FragmentInput → SurfaceInput`(`ShaderLibrary/common/surface_interface.glsl:13-24`)、`SurfaceData → SurfaceOutput`(`:29-38`)、`DirectLightData`+`AmbientLightData` → 单一 `LightingInput`(`ShaderLibrary/common/lighting_interface.glsl:13-30`,含 `mainLightDir/mainLightColor/reflectionColor/shadowFactor`;`shadowFactor` 是 `float`,不再有 `ShadowFactor` 结构体。⚠ 旧文在这里列过的 `ambientColor` **已删**(2026-10):它只被写入、全树零读取,天空色由 ambient provider 模块自己 `EvalSkyAtmosphere(N)` 求)、`GetSurfaceData → EvalSurface`、`EvaluateDirectLighting → EvalDirectLighting(LightingInput)`(`ShaderLibrary/lighting/direct_cook_torrance_pbr.glsl:15`)、`EvaluateAmbientLighting` → 独立 ambient 模块的 `EvalIndirectLighting(LightingInput)`(`ShaderLibrary/lighting/indirect_sky_ambient.glsl:20`)、`WriteFragmentOutput → WriteMaterialOutput(HGLComposeColor(...))`(输出声明由 `FragmentTemplateComposer::BuildOutputDeclarationText` 内联生成,见 §4.7)。
+> 对应关系:`FragmentInput → SurfaceInput`(`ShaderLibrary/common/surface_interface.glsl:13-24`)、`SurfaceData → SurfaceOutput`(`:29-38`)、`DirectLightData`+`AmbientLightData` → 单一 `LightingInput`(`ShaderLibrary/common/lighting_interface.glsl:13-30`,含 `mainLightDir/mainLightColor/reflectionColor/shadowFactor`;`shadowFactor` 是 `float`,不再有 `ShadowFactor` 结构体。⚠ 旧文在这里列过的 `ambientColor` **已删**(2026-10):它只被写入、全树零读取,天空色由 ambient provider 模块自己 `EvalSkyAtmosphere(N)` 求)、`GetSurfaceData → EvalSurface`、`EvaluateDirectLighting` → 直接光已拆成两条独立轴:漫反射 `EvalDiffuseLight(LightingInput)`(`ShaderLibrary/lighting/diffuse_lambert.glsl`)、高光 `EvalSpecularLight(LightingInput)`(`ShaderLibrary/lighting/specular_cook_torrance.glsl`)、`EvaluateAmbientLighting` → 独立 ambient 模块的 `EvalIndirectLighting(LightingInput)`(`ShaderLibrary/lighting/indirect_sky_ambient.glsl:20`)、`WriteFragmentOutput → WriteMaterialOutput(HGLComposeColor(...))`(输出声明由 `FragmentTemplateComposer::BuildOutputDeclarationText` 内联生成,见 §4.7)。
 
 模块只可填充下列 slot：
 
 | Slot | 输出或职责 | 典型实现 |
 |---|---|---|
 | `surface_provider` | `SurfaceData GetSurfaceData(FragmentInput)` | PBR texture、顶点色、decal |
-| `direct_provider` | `DirectLightData GetDirectLight(FragmentInput)` | Sun、forward local-light list |
-| `shadow_provider` | `ShadowFactor GetShadowFactor(FragmentInput)` | PCF ShadowMap 等 shadow 实现 |
-| `ambient_provider` | `GetAmbientLight` 和可选 `SampleAmbientSpecular` | Constant、SH、EnvMap、IBL、GI |
+| `diffuse_light_provider` | `vec3 EvalDiffuseLight(LightingInput)`（只返回未调制的漫反射辐射项） | `diffuse_lambert`、`diffuse_burley`、`diffuse_toon`、`diffuse_none` |
+| `specular_light_provider` | `vec3 EvalSpecularLight(LightingInput)`（只返回未调制的高光辐射项） | `specular_cook_torrance`、`specular_toon_step`、`specular_none` |
+| `shadow_provider` | `ShadowFactor GetShadowFactor(FragmentInput)` | PCF ShadowMap、`identity_shadow`（恒 1.0）、`full_shadow`（恒 0.0） |
+| `ambient_provider` | `GetAmbientLight` 和可选 `SampleAmbientSpecular` | Constant、SH、EnvMap、IBL、GI、`indirect_none`（恒 0） |
 | `ao_provider` | `float GetAmbientOcclusion(SurfaceInput)` | material AO、SSAO、GTAO |
-| `lighting_model` | direct/ambient evaluation | PBR、FakePBR、Blinn-Phong |
+| `lighting_model` | direct/ambient evaluation | `forward_pbr`、`forward_toon`、`forward_flat` |
 | `output_policy` | MRT/HDR/alpha policy | Forward HDR、decal、depth-only |
+
+> **就地校正(2026-10)**:`direct_provider` 已拆成 `diffuse_light_provider` +
+> `specular_light_provider` 两条**正交**轴（枚举里的 `DirectLightProvider` 仅为历史
+> fixture 保留）。两个 provider 都只返回**未调制**辐射项——光源色 × 阴影系数由
+> `lighting_model` 槽统一乘一次，这样"写实高光 + 卡通漫反射"这类组合无需任何新代码，
+> 而"无高光/无漫反射/无间接光"就是把对应槽换成 `*_none` 空对象（恒返回 0，
+> 编译器内联后 DCE，不存在 `#if` 分支）。
 
 `SurfaceData` 和 `AmbientLightData` 是稳定 ABI；可以随版本增加字段，但不得让模块经隐式全局
 变量耦合：
@@ -217,7 +225,7 @@ struct ShadowFactor
 
 // Generated resource and interface declarations are inserted here.
 
-// surface_provider, direct_provider, shadow_provider, ambient_provider,
+// surface_provider, diffuse_provider, specular_provider, shadow_provider, ambient_provider,
 // ao_provider, lighting_model and output_policy are inserted here.
 
 void main()
@@ -291,8 +299,8 @@ RG8/RGBA16F x2 NTB 的差异不应改变 `LightingModel`。它们是不同的
 // 数据源:Scene 集 binding 1 的 SkyInfo sky(块声明 ShaderLibrary/ubo/scene_ubo.glsl:61-70)
 #include "sky/sky_atmosphere.glsl"
 
-// ShaderLibrary/lighting/direct_cook_torrance_pbr.glsl:15
-vec3 EvalDirectLighting(LightingInput lighting)
+// ShaderLibrary/lighting/diffuse_lambert.glsl / specular_cook_torrance.glsl
+vec3 EvalDiffuseLight(LightingInput lighting)
 {
     // lighting.mainLightDir / mainLightColor / shadowFactor 已由
     // BuildForwardLightingInput 填好(ShaderLibrary/compositor/forward_lighting.glsl:42-47)
@@ -348,7 +356,7 @@ vec3 EvaluateAmbientLighting(
 这是最小可运行示意，不是完整 Cook-Torrance。完整 PBR 只替换这两个函数；模板、surface、
 direct、shadow 和 AO 模块都不变。
 
-> **就地校正(2026-09)**:现实中的 lighting_model 模块只实现**一个**函数——`vec4 EvalLighting(LightingInput)`(`ShaderLibrary/lighting/forward_pbr.glsl:17`、`forward_flat.glsl:16`),不再有 `EvaluateDirectLighting`/`EvaluateAmbientLighting` 两个入口;直接光算法被拆进 `direct_light_provider` 模块的 `EvalDirectLighting(LightingInput)`(Cook-Torrance 实测见 `ShaderLibrary/lighting/direct_cook_torrance_pbr.glsl:15-39`)。
+> **就地校正(2026-09)**:现实中的 lighting_model 模块只实现**一个**函数——`vec4 EvalLighting(LightingInput)`(`ShaderLibrary/lighting/forward_pbr.glsl:17`、`forward_flat.glsl:16`),不再有 `EvaluateDirectLighting`/`EvaluateAmbientLighting` 两个入口;直接光算法被拆进 `diffuse_light_provider` / `specular_light_provider` 两个模块的 `EvalDiffuseLight` / `EvalSpecularLight`(实测见 `ShaderLibrary/lighting/diffuse_lambert.glsl` 与 `specular_cook_torrance.glsl`)。
 
 ### 4.6 Shadow 与 AO 模块
 

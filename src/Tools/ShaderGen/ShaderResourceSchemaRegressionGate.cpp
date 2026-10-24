@@ -5739,14 +5739,18 @@ namespace
             // Stage 5 removed the duplicate ntb_derivative_normalmap provider (71 → 70).
             // 回退标记色：新增 error_checkerboard_3d_source（70 → 71）。
             // 阶段一：新增 pass_environment_interface（71 → 72）。
-            if (file_count != 72)
-                result.diagnostics.emplace_back("LoadDirectory expected 72 file modules, got "
+            // 超薄架构阶段一：直接光拆成 diffuse/specular 两槽，删除
+            // direct_cook_torrance_pbr，新增 diffuse_{lambert,burley,toon,none}
+            // + specular_{cook_torrance,toon_step,none} + indirect_none +
+            // forward_toon + shadow/full（72 → 81）。
+            if (file_count != 81)
+                result.diagnostics.emplace_back("LoadDirectory expected 81 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 72;
+            const int expected_count = 81;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -5798,6 +5802,38 @@ namespace
         const auto *alternate_algorithm = registry.FindByName("forward_flat");
         if (!alternate_algorithm || alternate_algorithm->kind != ShaderCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_flat alternate lighting algorithm is missing or has wrong kind");
+
+        // 超薄架构阶段一：直接光拆成两条正交轴，每条轴都必须有“真实实现 + 空对象”。
+        // 缺任何一个都会让“换模型 = 换一行 include”的承诺失效，因此在这里钉住。
+        const auto require_slot_module = [&](const char *name,
+                                             const char *slot_name)
+        {
+            const auto *module = registry.FindByName(name);
+            if (!module)
+            {
+                result.diagnostics.emplace_back(
+                    std::string(name) + " slot module is missing");
+                return;
+            }
+            if (module->kind != ShaderCodeModuleKind::Utility)
+                result.diagnostics.emplace_back(
+                    std::string(name) + " kind mismatch (expected Utility)");
+            if (std::strcmp(GetShaderModuleSlotRoleName(module->slot_role),
+                            slot_name) != 0)
+                result.diagnostics.emplace_back(
+                    std::string(name) + " declares wrong slot (expected "
+                    + slot_name + ")");
+        };
+
+        for (const char *name : { "diffuse_lambert", "diffuse_burley",
+                                  "diffuse_toon", "diffuse_none" })
+            require_slot_module(name, "diffuse_light_provider");
+        for (const char *name : { "specular_cook_torrance", "specular_toon_step",
+                                  "specular_none" })
+            require_slot_module(name, "specular_light_provider");
+        require_slot_module("indirect_none", "ambient_light_provider");
+        require_slot_module("forward_toon", "lighting_model");
+        require_slot_module("full_shadow", "shadow_provider");
 
 
         result.passed = result.diagnostics.empty();

@@ -174,12 +174,18 @@ namespace hgl::graph::mtl
         SurfaceMetallic = 1u << 2,
         SurfaceRoughness = 1u << 3,
         SurfaceOpacity = 1u << 4,
+        /// 直接光“黑盒”能力。超薄架构把直接光拆成 diffuse/specular 两条独立轴后，
+        /// 真实模板不再使用它；保留枚举值只为让历史 fixture 的解析不变成硬错误。
         DirectLight = 1u << 5,
         ShadowFactor = 1u << 6,
         AmbientDiffuse = 1u << 7,
         AmbientSpecular = 1u << 8,
         AmbientOcclusion = 1u << 9,
-        ForwardOutput = 1u << 10
+        ForwardOutput = 1u << 10,
+        /// 直接光的漫反射项（由 diffuse_light_provider 槽提供）。
+        DirectDiffuse = 1u << 11,
+        /// 直接光的高光项（由 specular_light_provider 槽提供）。
+        DirectSpecular = 1u << 12
     };
 
 

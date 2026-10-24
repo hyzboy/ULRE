@@ -32,6 +32,17 @@ struct LightingInput
 // A lighting algorithm consumes only LightingInput and returns final RGBA.
 //   vec4 EvalLighting(LightingInput lighting)
 
+// ── 直接光可插槽契约（阶段一：diffuse / specular 拆分）───────────────────────
+// 直接光被拆成两个**互相独立**的可插拔槽：
+//   diffuse_light_provider  → vec3 EvalDiffuseLight (LightingInput lighting)
+//   specular_light_provider → vec3 EvalSpecularLight(LightingInput lighting)
+// 两者都只返回**未调制**的辐射项（不含 mainLightColor / shadowFactor）；
+// 由 LightingModel 槽负责 `(diffuse + specular) * color * shadow` 的调制。
+// 这样“换漫反射模型不影响高光模型”、"无高光"（specular_none 返回 0）都能
+// 只换一个 include 实现，主着色器里不出现任何 #if。
+vec3 EvalDiffuseLight(LightingInput lighting);
+vec3 EvalSpecularLight(LightingInput lighting);
+
 // 光照基础 Math 辅助库
 float ULRE_LIT_D_GGX(float NdotH, float alpha2)
 {

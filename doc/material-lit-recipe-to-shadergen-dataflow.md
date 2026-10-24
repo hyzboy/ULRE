@@ -64,7 +64,8 @@
 2. `TryGetMaterialDefinitionByID("Lit")` 拿到定义；
 3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**——判定只有一份实现：`mtl::SelectSceneRenderTemplateRequest`（`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp`，运行时与文档生产回归工具共用），SceneGraph 侧仅转发。Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderMaterialData/SceneRenderTemplateResolver.cpp`）：
    - Surface → `surface/material_surface.glsl`
-   - 直接光 → `lighting/direct_cook_torrance_pbr.glsl`
+   - 直接光 · 漫反射 → `lighting/diffuse_lambert.glsl`（`diffuse_light_provider` 槽）
+   - 直接光 · 高光 → `lighting/specular_cook_torrance.glsl`（`specular_light_provider` 槽）
    - 天光（SkyProvider）→ `sky/sky_atmosphere.glsl`
    - 阴影 → `shadow/pcf_shadow.glsl`
    - 环境光 → `lighting/indirect_sky_ambient.glsl`（**环境层**选定 provider 时被覆盖，如 `EnvironmentSystem::SetAmbientProvider("indirect_ibl")`；只写注册名，include 路径由注册表来源解析）

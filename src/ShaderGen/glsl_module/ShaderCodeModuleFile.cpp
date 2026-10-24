@@ -150,6 +150,8 @@ namespace hgl::graph::mtl
                 { "surface_roughness", ShaderModuleCapability::SurfaceRoughness },
                 { "surface_opacity", ShaderModuleCapability::SurfaceOpacity },
                 { "direct_light", ShaderModuleCapability::DirectLight },
+                { "direct_diffuse", ShaderModuleCapability::DirectDiffuse },
+                { "direct_specular", ShaderModuleCapability::DirectSpecular },
                 { "shadow_factor", ShaderModuleCapability::ShadowFactor },
                 { "ambient_diffuse", ShaderModuleCapability::AmbientDiffuse },
                 { "ambient_specular", ShaderModuleCapability::AmbientSpecular },

@@ -20,7 +20,8 @@ namespace hgl::graph::mtl
         constexpr RenderTemplateSlot ForwardLitSlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
-            { ShaderModuleSlotRole::DirectLightProvider },
+            { ShaderModuleSlotRole::DiffuseLightProvider },
+            { ShaderModuleSlotRole::SpecularLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::ShadowProvider },
             { ShaderModuleSlotRole::AmbientOcclusionProvider },
@@ -38,7 +39,8 @@ namespace hgl::graph::mtl
         constexpr RenderTemplateSlot ForwardLitUnshadowedSlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
-            { ShaderModuleSlotRole::DirectLightProvider },
+            { ShaderModuleSlotRole::DiffuseLightProvider },
+            { ShaderModuleSlotRole::SpecularLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::LightingModel },
             { ShaderModuleSlotRole::MaterialSourceProvider },
@@ -206,6 +208,8 @@ namespace hgl::graph::mtl
         switch (role)
         {
         case ShaderModuleSlotRole::SurfaceProvider: return "surface_provider";
+        case ShaderModuleSlotRole::DiffuseLightProvider: return "diffuse_light_provider";
+        case ShaderModuleSlotRole::SpecularLightProvider: return "specular_light_provider";
         case ShaderModuleSlotRole::DirectLightProvider: return "direct_light_provider";
         case ShaderModuleSlotRole::ShadowProvider: return "shadow_provider";
         case ShaderModuleSlotRole::AmbientLightProvider: return "ambient_light_provider";

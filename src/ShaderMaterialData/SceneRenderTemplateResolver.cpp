@@ -12,9 +12,12 @@ namespace hgl::graph::mtl
             ShaderModuleSlotRole::SurfaceProvider,
             "material_surface", "surface/material_surface.glsl");
         profile.AddModule(
-            ShaderModuleSlotRole::DirectLightProvider,
-            "direct_cook_torrance_pbr",
-            "lighting/direct_cook_torrance_pbr.glsl");
+            ShaderModuleSlotRole::DiffuseLightProvider,
+            "diffuse_lambert", "lighting/diffuse_lambert.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::SpecularLightProvider,
+            "specular_cook_torrance",
+            "lighting/specular_cook_torrance.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::ShadowProvider,
             "pcf_shadow", "shadow/pcf_shadow.glsl");

@@ -59,7 +59,7 @@
   灯模型与策略枚举，**全仓零 include**（`Light.h` 的形状与今天的 POD 行 + GLSL 镜像架构相反）。仅
   `CascadedShadowController.h` 是活的（被 `EnvironmentSystem`、两个阴影示例、`TestCSMIncrementalPass` include）。
 - **shader 侧已经是模块化光照栈**（不需要"新建光照系统"这种大词）：
-  `ShaderLibrary/lighting/{direct_cook_torrance_pbr, forward_pbr, forward_flat, indirect_ibl, indirect_sky_ambient}.glsl`、
+  `ShaderLibrary/lighting/{diffuse_lambert, specular_cook_torrance, forward_pbr, forward_flat, indirect_ibl, indirect_sky_ambient}.glsl`、
   `ShaderLibrary/compositor/{forward_lighting, flat_lighting}.glsl`，接口 = `LightingInput`
   ⇒ 多光源的扩展点**已存在**。
 

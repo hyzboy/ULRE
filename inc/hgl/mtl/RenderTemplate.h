@@ -27,6 +27,14 @@ namespace hgl::graph::mtl
     {
         Unknown = 0,
         SurfaceProvider,
+        /// 直接光 — 漫反射项（`vec3 EvalDiffuseLight(LightingInput)`）。
+        /// 与 SpecularLightProvider 是两条独立轴：写实高光可以配卡通漫反射，
+        /// “无漫反射”也只是把实现换成 diffuse_none。
+        DiffuseLightProvider,
+        /// 直接光 — 高光项（`vec3 EvalSpecularLight(LightingInput)`）。
+        SpecularLightProvider,
+        /// 旧的“直接光合成黑盒”槽。仅在早期 fixture 里出现，真实模板不再使用；
+        /// 保留枚举值是为了不让历史 fixture 的角色名解析变成硬错误。
         DirectLightProvider,
         ShadowProvider,
         AmbientLightProvider,
@@ -46,10 +54,10 @@ namespace hgl::graph::mtl
         SlotRoleCount
     };
 
-    // ForwardLit profile（8 个 scene 模块）+ MaterialSource + NTB = 10，
-    // 留 2 个余量，避免 AddModuleRoot() 静默失败（其返回值在 profile
-    // 构造处未被检查）。
-    constexpr uint32 MaxRenderTemplateModuleRoots = 12;
+    // ForwardLit profile（9 个 scene 模块）+ MaterialSource + NTB = 11，
+    // 留 5 个余量，避免 AddModuleRoot() 静默失败（其返回值在 profile
+    // 构造处未被检查）。直接光已拆成 diffuse/specular 两个槽（10 → 11）。
+    constexpr uint32 MaxRenderTemplateModuleRoots = 16;
 
     struct RenderTemplateModuleRoot
     {

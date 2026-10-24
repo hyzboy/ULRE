@@ -110,7 +110,7 @@ namespace
         int count = 0, errors = 0;
         if (!Check(registry.LoadDirectory(
                 filesystem::Path(fixtures.root).GetFilename(), &count, &errors)
-                && errors == 0 && count == 11, "load file-backed providers"))
+                && errors == 0 && count == 12, "load file-backed providers"))
             return false;
         ResolvedRenderTemplate canonical;
         RenderTemplateValidationDiagnostic diagnostic;
@@ -184,7 +184,7 @@ namespace
         const ShaderCodeModuleFileData *first = registry.FindFileByName(
             request.module_roots[0].module_name.c_str());
         if (!Check(registry.LoadDirectory(fixtures.root, &count, &errors)
-                && count == 0 && errors == 11
+                && count == 0 && errors == 12
                 && registry.FindFileByName(first->name.c_str()) == first,
                 "duplicate scan preserves original provenance"))
             return false;
@@ -205,10 +205,19 @@ namespace
             return false;
 
         alias = request;
-        auto &source_root = alias.module_roots[6];
-        if (!Check(source_root.role == ShaderModuleSlotRole::MaterialSourceProvider,
-                "fixture source slot"))
+        // 槽表会演进（直接光已拆成 diffuse/specular 两槽），所以按角色查索引，
+        // 不把 MaterialSourceProvider 的位置写死。
+        uint32 source_index = UINT32_MAX;
+        for (uint32 i = 0; i < alias.module_root_count; ++i)
+            if (alias.module_roots[i].role == ShaderModuleSlotRole::MaterialSourceProvider)
+            {
+                source_index = i;
+                break;
+            }
+        if (!Check(source_index != UINT32_MAX, "fixture source slot"))
             return false;
+        const uint32 source_slot_index = source_index;
+        auto &source_root = alias.module_roots[source_index];
         source_root.module_name = "common_source";
         source_root.include_path = "shared.glsl";
         if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
@@ -217,7 +226,8 @@ namespace
             return false;
         source_root.include_path = "common/shared.glsl";
         if (!Check(ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && resolved.request.module_roots[6].include_path == "common/shared.glsl",
+                && resolved.request.module_roots[source_slot_index].include_path
+                    == "common/shared.glsl",
                 "explicit common path resolves to its registered source"))
             return false;
         if (!Check(fixtures.Write("shared.glsl",

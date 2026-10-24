@@ -585,7 +585,8 @@ Lit 路径的主要模块包括：
 
 ```text
 ntb/ntb_tangent_vbo_normalmap.glsl
-lighting/direct_cook_torrance_pbr.glsl
+lighting/diffuse_lambert.glsl
+lighting/specular_cook_torrance.glsl
 lighting/indirect_sky_ambient.glsl
 lighting/forward_pbr.glsl
 compositor/forward_lighting.glsl
