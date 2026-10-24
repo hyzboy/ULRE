@@ -42,11 +42,15 @@ namespace hgl::graph::mtl
     /// 模板族。"None" 表示该模板没有 Define 块（Sky 及其它未外置模板），
     /// 此时**整段配置都不发射**——包括纹理通道、阴影、alpha 宏。
     /// 这是既有行为，不要"顺手补上"。
+    /// 四种 profile 互斥：宏的集合由模板族唯一决定，不看字段语义。
     enum class ShaderConfigProfile : unsigned char
     {
         None = 0,
         ForwardLit,     ///< 光照模板：material source / scene lighting 恒为 1
         ForwardUnlit,   ///< 非光照模板：material source 按模块存在性赋值，scene lighting 恒 0
+        /// 深度/阴影模板：没有颜色附件、没有光照，provider 开关一个都不发射，
+        /// 只发 `HGL_COVERAGE_ONLY 1`（+ 共享的 alpha 三宏）。
+        ShadowCaster,
     };
 
     /// 材质 TOML 里 `channels = n` 的规范化结果（n == 0 的声明不进来）。

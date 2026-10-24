@@ -209,6 +209,9 @@ namespace hgl::graph::mtl
             return "forward_unlit.glsl.tmpl";
         case RenderTemplateID::Sky:
             return "sky.glsl.tmpl";
+        case RenderTemplateID::ShadowCasterOpaque:
+        case RenderTemplateID::ShadowCasterMasked:
+            return "shadow_caster.glsl.tmpl";
         default:
             return nullptr;
         }

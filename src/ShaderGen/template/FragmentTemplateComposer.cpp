@@ -18,40 +18,6 @@ namespace hgl::graph::mtl
         using namespace hgl::graph::mtl;
         using hgl::AnsiString;
 
-        void AddTemplateBlock(
-            ShaderDocument &document,
-            const ShaderDocumentBlockKind kind,
-            const AnsiString &text,
-            const char *logical_name,
-            const char *path = nullptr)
-        {
-            if (text.IsEmpty())
-                return;
-            ShaderDocumentSource source;
-            source.stage = "fragment";
-            source.logical_name = logical_name;
-            if (path)
-            {
-                source.module = path;
-                source.path = path;
-            }
-            document.Add(kind, text, source);
-        }
-
-        void AppendDocumentBlocks(
-            ShaderDocument &out_document,
-            const ShaderDocument *fragment)
-        {
-            if (!fragment)
-                return;
-
-            for (int index = 0; index < fragment->GetBlockCount(); ++index)
-            {
-                const ShaderDocumentBlock &block = fragment->GetBlock(index);
-                out_document.Add(block.kind, block.text, block.source);
-            }
-        }
-
         AnsiString IncludeTemplate(const char *path)
         {
             return AnsiString("#include \"") + AnsiString(path) + AnsiString("\"\n");
@@ -222,22 +188,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        // 保留给 Shadow（块级发射）；其余模板走 BuildFragmentInputDeclarationText。
-        bool AppendFragmentInputDeclarations(
-            const hgl::ValueArray<InterStageSemanticContractEntry> *fragment_inputs,
-            const char *logical_name,
-            ShaderDocument &document)
-        {
-            std::string text;
-            if (!BuildFragmentInputDeclarationText(fragment_inputs, text))
-                return false;
-            if (!text.empty())
-                AddTemplateBlock(
-                    document, ShaderDocumentBlockKind::Interface,
-                    AnsiString(text.c_str()), logical_name);
-            return true;
-        }
-
         // 输出附件声明（layout(location=n) out ... + WriteMaterialOutput）→ 文本块。
         bool BuildOutputDeclarationText(
             const OutputContract *output_contract,
@@ -279,24 +229,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool AppendOutputDeclarations(
-            const OutputContract *output_contract,
-            const char *logical_name,
-            const bool allow_integer_types,
-            ShaderDocument &document)
-        {
-            std::string text;
-            if (!BuildOutputDeclarationText(
-                    output_contract, allow_integer_types, text))
-                return false;
-            if (!text.empty())
-                AddTemplateBlock(
-                    document, ShaderDocumentBlockKind::Interface,
-                    AnsiString(text.c_str()), logical_name);
-            return true;
-        }
-
-        // code module document（传递依赖闭包的内联 GLSL）原样拼接为单一文本块。
         bool BuildCodeModuleText(
             const ShaderDocument *code_module_document,
             std::string &out)
@@ -370,6 +302,16 @@ namespace hgl::graph::mtl
                     ResolvedInclude(input, ShaderModuleSlotRole::MaterialSourceProvider) != nullptr;
                 config.use_scene_lighting = false;
             }
+            else if (id == RenderTemplateID::ShadowCasterOpaque
+                  || id == RenderTemplateID::ShadowCasterMasked)
+            {
+                // 深度/阴影 pass：只有 HGL_COVERAGE_ONLY + 共享的 alpha 三宏。
+                // 纹理通道宏与 PCF 宏都不发射——本 pass 既不读 NTB 通道语义
+                // （NTB 槽恒为 ntb_none），也没有 shadow_provider 槽。
+                config.profile = ShaderConfigProfile::ShadowCaster;
+                EmitShaderConfigDefines(config, defines);
+                return true;
+            }
             else
             {
                 // Sky（及其它未外置模板）无 Define 块 —— 整段配置都不发射。
@@ -410,6 +352,117 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        bool IsShadowCasterTemplate(const RenderTemplateID id) noexcept
+        {
+            return id == RenderTemplateID::ShadowCasterOpaque
+                || id == RenderTemplateID::ShadowCasterMasked;
+        }
+
+        bool RequiresAlphaEvaluation(
+            const FragmentTemplateComposer::ComposeInput &input) noexcept
+        {
+            return input.coverage_contract
+                && input.coverage_contract->requires_alpha_evaluation;
+        }
+
+        /// ShadowCaster 骨架的 `{{alpha_resources}}` / `{{alpha_includes}}` 两槽。
+        ///
+        /// 深度/阴影 pass 有两条互斥形态：opaque 只需一个空 `main`，masked 还要
+        /// 求 alpha，因而额外拖进 surface 接口、场景 UBO、alpha 合成器与材质源/
+        /// NTB/surface 三个模块。两段都是**固定文本**，所以外置到骨架里，由这里
+        /// 决定填什么；空串等于整行消失（见 ApplyFragmentTemplateSlot 的吞行约定）。
+        bool BuildShadowAlphaIncludeText(
+            const FragmentTemplateComposer::ComposeInput &input,
+            std::string &out_resources,
+            std::string &out_includes)
+        {
+            out_resources.clear();
+            out_includes.clear();
+            if (!RequiresAlphaEvaluation(input))
+                return true;
+
+            // BINDLESS_SET 等宏由 descriptor_macros 提供，scene_ubo 必须排在
+            // surface_interface 之后。
+            out_resources += IncludeTemplate("common/surface_interface.glsl").c_str();
+            out_resources += IncludeTemplate("ubo/scene_ubo.glsl").c_str();
+
+            out_includes += IncludeTemplate("common/alpha_compositor.glsl").c_str();
+
+            // 材质源可缺省（opaque 模板的该槽 required=false）；masked 时由模板表
+            // 强制存在，缺失会在 BuildAllSlotIncludeText 处先报错。
+            const char *material_source_module = ResolvedInclude(
+                input, ShaderModuleSlotRole::MaterialSourceProvider);
+            if (material_source_module)
+                out_includes += IncludeTemplate(material_source_module).c_str();
+
+            const char *surface_module = ResolvedInclude(
+                input, ShaderModuleSlotRole::SurfaceProvider);
+            if (!surface_module)
+                return false;
+            // NTB 必须早于 surface：material_surface.glsl 的定义体里无条件调用
+            // GetNTB（本 pass 只用 EvalAlpha，但 GLSL 在定义处就要解析符号）。
+            const char *ntb_module = ResolvedInclude(
+                input, ShaderModuleSlotRole::NTBProvider);
+            if (!ntb_module)
+                return false;
+            out_includes += IncludeTemplate(ntb_module).c_str();
+            out_includes += IncludeTemplate(surface_module).c_str();
+            return true;
+        }
+
+        /// ShadowCaster 骨架的 `{{main_body}}` 槽。
+        ///
+        /// 唯一带控制流的骨架文本：是否求 alpha 由 coverage 契约决定，且
+        /// `materialDataIndex` 只在契约要求 DataIndexID 时才可用——否则 wiring
+        /// 没声明它，引用即编译错误。此前这里硬编码 `EvalAlpha(si, 0u)`，
+        /// batch 内非 0 号物体的 opacity 槽会读到别人的行（表现为 masked 阴影
+        /// 与 opaque 一样实心），所以这两个分支不能合并。
+        bool BuildShadowMainBodyText(
+            const FragmentTemplateComposer::ComposeInput &input,
+            const std::string &wiring,
+            std::string &out)
+        {
+            if (!RequiresAlphaEvaluation(input))
+            {
+                out = "void main()\n{\n}\n";
+                return true;
+            }
+
+            // 前导空行：骨架里 include 段与 main 之间空一行，历史发射如此。
+            out = "\nvoid main()\n{\n";
+            const bool wiring_data_index =
+                (input.coverage_contract->required_semantics
+                 & GetInterStageSemanticMask(InterStageSemantic::DataIndexID)) != 0;
+
+            if (input.fragment_inputs)
+            {
+                out += wiring;
+                out += "    const float alpha = EvalAlpha(si, ";
+                out += wiring_data_index ? "materialDataIndex" : "0u";
+                out += ");\n";
+            }
+            else
+            {
+                // wiring 缺失（无 fragment_inputs）时的零值兜底。
+                out +=
+                    "    SurfaceInput si;\n"
+                    "    si.worldPos = vec3(0.0);\n"
+                    "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n"
+                    "    si.uv0 = vec2(0.0);\n"
+                    "    si.uv1 = vec2(0.0);\n"
+                    "    si.vertexColor = vec4(1.0);\n"
+                    "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
+                    "    si.screenPos = gl_FragCoord.xy;\n"
+                    "    si.luminance = 1.0;\n"
+                    "    si.styleID = 0u;\n"
+                    "    const float alpha = EvalAlpha(si, 0u);\n";
+            }
+            out +=
+                "    HGLApplyAlpha(alpha);\n"
+                "}\n";
+            return true;
+        }
+
         bool ComposeFromFragmentTemplate(
             const FragmentTemplateComposer::ComposeInput &input,
             ShaderDocument &document)
@@ -429,20 +482,35 @@ namespace hgl::graph::mtl
             std::string code_modules, wiring;
             std::string sky_provider_inc, output_policy_inc;
             std::string material_source_inc, surface_inc, module_includes;
+            std::string alpha_resources, alpha_includes, main_body;
+
+            const bool is_shadow = IsShadowCasterTemplate(id);
 
             if (!BuildFragmentDefines(id, input, defines))
                 return false;
             if (!BuildFragmentInputDeclarationText(
                     input.fragment_inputs, fragment_inputs))
                 return false;
+            // 深度/阴影 pass 的输出是深度/模板附件，允许整型附件；颜色 pass 不允许。
             if (!BuildOutputDeclarationText(
-                    input.output_contract, false, output_declarations))
+                    input.output_contract, is_shadow, output_declarations))
                 return false;
             if (!BuildCodeModuleText(input.code_module_document, code_modules))
                 return false;
             if (!BuildSurfaceWiringText(
                     input, IsForwardLitTemplate(id), wiring))
                 return false;
+
+            // ShadowCaster 的 alpha 资源 / include / main 三段（其它模板没有对应
+            // 占位符，填了也无处落地）。
+            if (is_shadow)
+            {
+                if (!BuildShadowAlphaIncludeText(
+                        input, alpha_resources, alpha_includes))
+                    return false;
+                if (!BuildShadowMainBodyText(input, wiring, main_body))
+                    return false;
+            }
 
             // 各 slot 的 #include：ForwardLit 走统一的 module_includes（slots 顺序）；
             // ForwardUnlit / Sky 按各自骨架中显式标注的占位符单独填。
@@ -483,6 +551,9 @@ namespace hgl::graph::mtl
             ApplyFragmentTemplateSlot(tpl, "output_declarations", output_declarations);
             ApplyFragmentTemplateSlot(tpl, "code_modules", code_modules);
             ApplyFragmentTemplateSlot(tpl, "surface_input_wiring", wiring);
+            ApplyFragmentTemplateSlot(tpl, "alpha_resources", alpha_resources);
+            ApplyFragmentTemplateSlot(tpl, "alpha_includes", alpha_includes);
+            ApplyFragmentTemplateSlot(tpl, "main_body", main_body);
 
             // 发射：Version 块 + 单 MainBody 块。Block 边界不进入最终 GLSL
             // （Serialize 仅拼接），但为满足 ValidateSourceDocument 的不变量
@@ -501,140 +572,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ComposeShadow(
-            const FragmentTemplateComposer::ComposeInput &input,
-            ShaderDocument &document)
-        {
-            document.Clear();
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Version,
-                AnsiString("#version 450\n"), "ShadowCaster.Version");
-            std::string defines = "#define HGL_COVERAGE_ONLY 1\n";
-            if (input.alpha_test)
-            {
-                defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";
-                defines += std::to_string(input.alpha_cutoff);
-                defines += "\n";
-            }
-            if (input.dither)
-                defines += "#define HGL_ALPHA_DITHER 1\n";
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Define,
-                AnsiString(defines.c_str()), "ShadowCaster.Defines");
-
-            const bool requires_alpha = input.coverage_contract
-                && input.coverage_contract->requires_alpha_evaluation;
-
-            if (requires_alpha)
-            {
-                AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
-                    IncludeTemplate("common/surface_interface.glsl"),
-                    "ShadowCaster.SurfaceInterface", "common/surface_interface.glsl");
-
-                // A1-4：masked 片元经 material source 的 EvalMaterialAlpha 消费
-                // MTL_ROW 宏（池基址取 global_addresses.addr_*，行号取
-                // pc_root.addr_mtl_data_addrs 的 payload_index）——pc_root push
-                // constant 与 BDA 扩展由 BuildMaterialStageDocument 的 material
-                // injection 对所有程序注入（含 pc_root 本身），这里只补
-                // global_addresses 的 buffer_reference 声明（scene_ubo）。必须排在
-                // SurfaceInterface 之后：BINDLESS_SET 等宏由其内的 descriptor_macros 提供。
-                AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
-                    IncludeTemplate("ubo/scene_ubo.glsl"),
-                    "ShadowCaster.SceneUbo", "ubo/scene_ubo.glsl");
-
-                if (!AppendFragmentInputDeclarations(
-                        input.fragment_inputs, "ShadowCaster.FragmentInputs", document))
-                    return false;
-            }
-
-            // ShadowCaster 允许整数/布尔输出附件（depth-only 变体）
-            if (!AppendOutputDeclarations(
-                    input.output_contract, "ShadowCaster.Output", true, document))
-                return false;
-
-            AppendDocumentBlocks(document, input.code_module_document);
-
-            if (!requires_alpha)
-            {
-                AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
-                    AnsiString("void main()\n{\n}\n"), "ShadowCaster.Main");
-                return true;
-            }
-
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-                IncludeTemplate("common/alpha_compositor.glsl"),
-                "ShadowCaster.Alpha", "common/alpha_compositor.glsl");
-
-            const char *material_source_module = ResolvedInclude(
-                input, ShaderModuleSlotRole::MaterialSourceProvider);
-            if (material_source_module)
-                AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-                    IncludeTemplate(material_source_module),
-                    "ShadowCaster.MaterialSource",
-                    material_source_module);
-            const char *surface_module = ResolvedInclude(
-                input, ShaderModuleSlotRole::SurfaceProvider);
-            if (!surface_module)
-                return false;
-            // NTB 必须早于 surface：material_surface.glsl 的定义体里无条件调用
-            // GetNTB（本 pass 只用 EvalAlpha，但 GLSL 在定义处就要解析符号）。
-            const char *ntb_module = ResolvedInclude(
-                input, ShaderModuleSlotRole::NTBProvider);
-            if (!ntb_module)
-                return false;
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-                IncludeTemplate(ntb_module), "ShadowCaster.NTB", ntb_module);
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-                IncludeTemplate(surface_module), "ShadowCaster.Surface",
-                surface_module);
-
-            // A1-4：si 由 BuildGLSLMaterialSurfaceInput 的 wiring 完整生成
-            // （声明+零值初始化+真实来源填充）。此前手写 si 初始化在 wiring
-            // 之前会造成 'si' redefinition——wiring 缺失（fragment_inputs 为
-            // null）时才用手写零值兜底。
-            //
-            // dataIndex 同理：coverage 契约要求 DataIndexID 时 wiring 已生成
-            // `const uint materialDataIndex = fragDataIndexID;`（per-draw 行表
-            // 索引）。此前硬编码 EvalAlpha(si, 0u) 恒取行表第 0 行——batch 内
-            // 非 0 号物体的 opacity 槽读到别人的配置，未绑定即 fallback 1.0，
-            // 表现为"masked 阴影与 opaque 一样实心"。
-            std::string main_body = "\nvoid main()\n{\n";
-            const bool wiring_data_index =
-                input.coverage_contract
-             && (input.coverage_contract->required_semantics
-                 & GetInterStageSemanticMask(InterStageSemantic::DataIndexID))
-                    != 0;
-            if (input.fragment_inputs)
-            {
-                AnsiString wiring;
-                if (!BuildGLSLMaterialSurfaceInput(
-                        *input.fragment_inputs, false, wiring))
-                    return false;
-                main_body += wiring.c_str();
-                main_body += "    const float alpha = EvalAlpha(si, ";
-                main_body += wiring_data_index ? "materialDataIndex" : "0u";
-                main_body += ");\n";
-            }
-            else
-            {
-                main_body +=
-                    "    SurfaceInput si;\n"
-                    "    si.worldPos = vec3(0.0);\n"
-                    "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n"
-                    "    si.uv0 = vec2(0.0);\n"
-                    "    si.uv1 = vec2(0.0);\n"
-                    "    si.vertexColor = vec4(1.0);\n"
-                    "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
-                    "    si.screenPos = gl_FragCoord.xy;\n"
-                    "    si.luminance = 1.0;\n"
-                    "    si.styleID = 0u;\n";
-                main_body += "    const float alpha = EvalAlpha(si, 0u);\n";
-            }
-            main_body +=
-                "    HGLApplyAlpha(alpha);\n"
-                "}\n";
-            AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
-                AnsiString(main_body.c_str()), "ShadowCaster.Main");
-            return true;
-        }
     }
 
     // ── 接口契约哈希（不吃源文本）────────────────────────────────────────
@@ -694,10 +631,6 @@ namespace hgl::graph::mtl
 
         const RenderTemplateID template_id =
            input.resolved_template->request.template_id;
-        if (template_id == RenderTemplateID::ShadowCasterOpaque
-         || template_id == RenderTemplateID::ShadowCasterMasked)
-          return ComposeShadow(input, out_document);
-
         if (GetFragmentTemplateFile(template_id))
           return ComposeFromFragmentTemplate(input, out_document);
 

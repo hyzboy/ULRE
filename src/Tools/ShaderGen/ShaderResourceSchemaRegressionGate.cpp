@@ -5910,6 +5910,42 @@ namespace
                     " (slot order == material reference row order)");
         }
 
+        // ── ⑥ ShadowCaster：只发 HGL_COVERAGE_ONLY，provider 开关一个都不发 ────
+        // 深度/阴影 pass 没有颜色附件、没有光照，也没有 shadow_provider 槽：
+        // HGL_USE_* 一旦出现，下游 `#if defined()` 会走进根本不存在的通路。
+        // HGL_COVERAGE_ONLY 必须排在最前（alpha 三宏紧随其后），因为它是本 pass
+        // 唯一的「我是谁」标记。
+        {
+            ShaderConfig shadow;
+            shadow.profile = ShaderConfigProfile::ShadowCaster;
+            shadow.use_material_source_provider = true;
+            shadow.use_scene_lighting = true;
+            shadow.emit_shadow_pcf = true;
+            shadow.alpha_test = true;
+            shadow.alpha_cutoff = 0.5f;
+            shadow.alpha_dither = true;
+            {
+                ShaderConfigTextureChannel channel;
+                SetShaderConfigTextureChannelName(channel, "normal");
+                channel.channels = 2;
+                shadow.texture_channels.Add(channel);
+            }
+
+            std::string text;
+            EmitShaderConfigDefines(shadow, text);
+
+            const char *expected =
+                "#define HGL_COVERAGE_ONLY 1\n"
+                "#define HGL_ALPHA_TEST 1\n"
+                "#define HGL_ALPHA_CUTOFF 0.500000\n"
+                "#define HGL_ALPHA_DITHER 1\n";
+
+            if (text != expected)
+                result.diagnostics.emplace_back(
+                    std::string("shadow-caster canonical defines mismatch:\n--- got ---\n")
+                    + text + "--- expected ---\n" + expected);
+        }
+
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -8930,6 +8966,14 @@ namespace
         ShaderProgramPurpose purpose;
         RenderTemplateID template_id;
         bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
+        /// 强制 alpha_test（覆盖材质定义里的渲染状态）。
+        ///
+        /// ShadowCaster 骨架有两条互斥分支：不带 alpha 的 `void main(){}` 和带
+        /// alpha 求值的 masked 分支。前者被普通 Lit 材质覆盖，后者只有「材质
+        /// 声明了 alpha_test/dither」才会走到——现有 9 个示例材质一个都没有，
+        /// 于是那条分支在快照矩阵里**完全没有网**。这里显式构造 masked 变体，
+        /// 让外置骨架重构不至于把一条无覆盖的分支改坏。
+        bool alpha_test;
     };
 
     /// 快照矩阵：四条发射路径（ForwardLit / ForwardUnlit / ShadowCaster / Sky）
@@ -8940,40 +8984,46 @@ namespace
     {
         { "Lit", "lit-forward-opaque",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardLitShadowedAO, true },
+          RenderTemplateID::ForwardLitShadowedAO, true, false },
         { "Lit", "lit-depth-only",
           ShaderProgramPurpose::DepthOnly,
-          RenderTemplateID::ShadowCasterOpaque, true },
+          RenderTemplateID::ShadowCasterOpaque, true, false },
         { "Lit", "lit-shadow-depth",
           ShaderProgramPurpose::ShadowDepth,
-          RenderTemplateID::ShadowCasterOpaque, true },
+          RenderTemplateID::ShadowCasterOpaque, true, false },
+        { "Lit", "lit-depth-masked",
+          ShaderProgramPurpose::DepthOnly,
+          RenderTemplateID::ShadowCasterMasked, true, true },
+        { "Lit", "lit-shadow-masked",
+          ShaderProgramPurpose::ShadowDepth,
+          RenderTemplateID::ShadowCasterMasked, true, true },
         { "VertexPaletteColor", "vertex-palette-color-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true },
+          RenderTemplateID::ForwardUnlit, true, false },
         { "VertexColor", "vertex-color-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true },
+          RenderTemplateID::ForwardUnlit, true, false },
         { "VertexLuminance", "vertex-luminance-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true },
+          RenderTemplateID::ForwardUnlit, true, false },
         { "UnlitTexture", "unlit-texture-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true },
+          RenderTemplateID::ForwardUnlit, true, false },
         { "DebugNormalColor", "debug-normal-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true },
+          RenderTemplateID::ForwardUnlit, true, false },
         { "SkyCube", "sky-cube-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::Sky, true },
+          RenderTemplateID::Sky, true, false },
         { "SkyMinimal", "sky-minimal-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::Sky, true },
+          RenderTemplateID::Sky, true, false },
         { "builtin/checkerboard_2d", "checkerboard-2d-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true },
+          RenderTemplateID::ForwardUnlit, true, false },
         { "builtin/text_gpu", "text-gpu-charquad",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, false },
+          RenderTemplateID::ForwardUnlit, false, false },
     };
 
     /// 采样器预设表是进程级单例，`MaterialShaderEmitter` 靠它把 `Trilinear`
@@ -9023,6 +9073,14 @@ namespace
         {
             diagnostic = std::string("definition unavailable: ") + variant.definition_id;
             return nullptr;
+        }
+
+        // 必须在解析 template request 之前生效：coverage 契约（是否需要求 alpha、
+        // 需要哪些 interstage 语义）由 `ResolveMaterialRenderState` 从这里读。
+        if (variant.alpha_test)
+        {
+            definition.default_render_state.alpha_test = true;
+            definition.default_render_state.alpha_cutoff = 0.5f;
         }
 
         MaterialDefinitionBuildRequest request{};

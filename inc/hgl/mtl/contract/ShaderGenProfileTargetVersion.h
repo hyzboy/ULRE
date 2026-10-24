@@ -73,7 +73,13 @@ namespace hgl::graph::mtl::contract
     //     空间导数叉积求三角形面法线。这一维直接改变 definition_hash 与发射出的
     //     GLSL 文本；第 12 代产物里 `Lit` 等材质在同样输入下走的是顶点法线路径
     //     （读未上传的 Normal 槽），必须换代重烘。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 13;
+    // 14：ShadowCaster 的两个模板从 C++ 手写块发射改为外置骨架
+    //     `fragment/shadow_caster.glsl.tmpl`（Stage 6）。骨架是单 MainBody 块，
+    //     与 forward 模板一致，于是 `HGL_COVERAGE_ONLY` / `HGL_ALPHA_*` 的发射位置
+    //     从「材质注入前置块之前」移到「之后」——宏的集合与文本不变，但**字节顺序
+    //     变了**，深度/阴影程序必须换代重烘。golden `lit-*-masked.emission.txt` /
+    //     `lit-*-depth.emission.txt` 同步刷新。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 14;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，

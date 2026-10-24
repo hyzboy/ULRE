@@ -49,7 +49,6 @@ dir #define LinearSampler 1u
 dir #define ShadowPCFSampler 4u
 dir #define MTL_ROW(i) PBRSurfaceRow(global_addresses.addr_pbr_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(32))
 dir #define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(48))
-dir #define HGL_COVERAGE_ONLY 1
 layout layout(push_constant) uniform RootAddresses
 dir #extension GL_EXT_buffer_reference : require
 dir #extension GL_ARB_gpu_shader_int64 : require
@@ -57,4 +56,5 @@ layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer PBRSur
 layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
 layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialInstanceAddressesRef
 dir #define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 1u
+dir #define HGL_COVERAGE_ONLY 1
 func void main()

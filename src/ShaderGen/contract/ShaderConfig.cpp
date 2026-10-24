@@ -80,6 +80,14 @@ namespace hgl::graph::mtl
             AppendDefine(out, "HGL_USE_MATERIAL_SOURCE_PROVIDER", 1u);
             AppendDefine(out, "HGL_USE_SCENE_LIGHTING", 1u);
         }
+        else if (config.profile == ShaderConfigProfile::ShadowCaster)
+        {
+            // 深度/阴影 pass 既无颜色输出也无光照：两个 provider 开关一条都不
+            // 发射（历史行为，`#if defined()` 判断依赖它们的缺席）。
+            // HGL_COVERAGE_ONLY 落在这里而不是 composer 的 `defines += ...`，
+            // 是因为「宏的名字/顺序/格式」只能有这一个出口。
+            AppendDefine(out, "HGL_COVERAGE_ONLY", 1u);
+        }
         else
         {
             AppendDefine(out, "HGL_USE_MATERIAL_SOURCE_PROVIDER",
@@ -91,7 +99,13 @@ namespace hgl::graph::mtl
         // 宏名形如 MTL_TEX_NORMAL_CHANNELS=2；"宏存在即非零" 让下游可以
         // 用 #if defined(MTL_TEX_NORMAL_CHANNELS) 判断，因此 channels==0
         // 的声明必须整条跳过（不能发射成 0）。
-        for (int index = 0; index < config.texture_channels.GetCount(); ++index)
+        //
+        // 深度/阴影 pass 整段跳过：它的 NTB 槽恒为 ntb_none，没有任何模块读
+        // 通道数；发射出去只会让 ntb_* 的 #if defined() 分支被误触发。
+        for (int index = 0;
+             config.profile != ShaderConfigProfile::ShadowCaster
+             && index < config.texture_channels.GetCount();
+             ++index)
         {
             const ShaderConfigTextureChannel &channel = config.texture_channels[index];
             if (channel.channels == 0)
@@ -106,8 +120,10 @@ namespace hgl::graph::mtl
         // ── 阴影 PCF ────────────────────────────────────────────────────
         // 只有模板真的带 shadow_provider 槽时才发射；该块落在模板的
         // {{defines}}（早于 {{module_includes}}），pcf_shadow.glsl 的
-        // #ifndef 兜底值取这里的值。
-        if (config.emit_shadow_pcf)
+        // #ifndef 兜底值取这里的值。深度/阴影 pass 自己没有 shadow_provider
+        // 槽（它就在写深度），因此也不会走到这里。
+        if (config.profile != ShaderConfigProfile::ShadowCaster
+         && config.emit_shadow_pcf)
         {
             AppendDefine(out, "HGL_SHADOW_PCF_POISSON_TAPS",
                          config.shadow_pcf_poisson_taps);
