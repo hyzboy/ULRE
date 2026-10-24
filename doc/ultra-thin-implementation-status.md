@@ -53,7 +53,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 10 | 同上 | `addc99d58` | **阶段三之三**：保底链 5 个 builtin 材质定义代码化，不再依赖 TOML 文件 |
 | 11 | `feature/ultra-thin-stage4-cleanup-and-migration`（已并入） | `ec9fae16d` | **阶段四**：资产降维为 `.mi.toml`，废除 `.material.toml` |
 | 12 | 同上 | `29b3febfe` | 阶段四文档收尾：回填提交号并对齐资产示例（纯文档） |
-| 13 | `feature/ultra-thin-stage5-shadergen-emission-cleanup` ← **当前** | 见本节末尾 | **阶段五**：拼接清理前置安全网（emission 快照）+ 小债清理 |
+| 13 | `feature/ultra-thin-stage5-shadergen-emission-cleanup` ← **当前** | `0fffcdba1` | **阶段五**：拼接清理前置安全网（emission 快照）+ 小债清理 |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
