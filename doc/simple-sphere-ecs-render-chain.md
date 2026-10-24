@@ -275,7 +275,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 [DeferredResource] owner=%s program=%s planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu
                                               src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:581-588
 [ArenaTrace] materialize entry / ssbo_id=… data_index=… / translated: gpu=…
-                                              RenderPrimitiveCollectSystem.cpp:684 / :735 / :806（ULRE_ARENA_DEBUG 置位时）
+                                              RenderPrimitiveCollectSystem.cpp:684 / :735 / :806（channels.binding/batch/collect/text 置位时）
 [IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u
                                               src/ecs/support/PipelineMaterialRenderer.cpp:47-48（仅首次）
 [LineStats] total=… visible=… culled(vis=… frustum=… hzb=…)
@@ -293,7 +293,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 - `payload_index` / `texture_reference_index` 两列是「写入点 ↔ 读取点」一一对应：`WriteBatchIndexRows`（`PrimitiveBatchPipeline.cpp:975-994`）写 → `MTL_ROW` / `MTL_TEX` 宏（`MaterialShaderEmitter.cpp:291-297,322-325`）读
 - 未绑定纹理槽写 `(0,0)`，`SampleOptional` 以 `tex_ref.x == 0` 走 fallback（`bindless_textures.glsl:86-91`）
 
-复现：`cmake --build build --config Debug --target SimpleSphere` → 设 `ULRE_ARENA_DEBUG=1` 起 `build/out/Windows_64_Debug/SimpleSphere.exe`（cwd = 仓库根，`res/` 在根）。
+复现：`cmake --build build --config Debug --target SimpleSphere` → 在仓库根 `ULRE_DEBUG.toml` 里设 `channels.binding/batch/collect/text = true` 再起 `build/out/Windows_64_Debug/SimpleSphere.exe`（cwd = 仓库根，`res/` 在根）。
 
 ---
 

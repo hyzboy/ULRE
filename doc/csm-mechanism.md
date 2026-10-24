@@ -121,10 +121,10 @@
 | `CSM_CACHE_DIFF=1` | S5 整级 vs 条带 **深度图对拍**，逐轮打印 `不一致=`（判据：恒 `不一致=0`） |
 | `CSM_AUTOWALK=<m/s>` | 相机自动行走速度（**不是帧数**） |
 | `CSM_CACHE_DIFF_FREEZE` | 冻结对拍基准（配合上一项） |
-| `CSM_PASS_LOG=1` | **S6 仪器**（默认静默）：逐 pass 打印 `[S6-PASS] cascade/kind=full|strip/mobility/off/rect`，与 |
+| `channels.shadow = true` | **S6 仪器**（默认静默）：逐 pass 打印 `[S6-PASS] cascade/kind=full|strip/mobility/off/rect`，与 |
 | | `[S6-COLLECT]`（图元数 + Σ(entity<<16\|gen) 校验和）配对读 ⇒ "同批 caster 却在光栅化侧不同"才成立 |
 | `ATS_SELFCHECK=1` | AlphaTestShadow 自检：D1/D3/D4 契约 + selfcheck 退出码 |
-| `PREPASS_TIMING=<N>` | **prepass 性能账目**（每 N 个主帧报一行均值）：离屏 pass 次数/帧、总墙钟、
+| `[perf] prepass_interval = N` | **prepass 性能账目**（每 N 个主帧报一行均值）：离屏 pass 次数/帧、总墙钟、
 | | 两处 fence 等待（上沿等主帧 / 下沿等自身）、begin/draw/submit 细分。未设 = **零成本**
 | | （`Context.cpp` 内匿名 namespace 门控）。基线数据见 §8.5；**引擎无 GPU 时间戳 ⇒ 这是 CPU 可见账** |
 
@@ -168,7 +168,7 @@
 4. ~~Scene 集剩余 5 个 UBO 待彻底 BDA 化~~ —— **✅ 已闭合（2026-10-07 复核）**：描述符机制**整体退役**（终态 = 唯一集 `pc_root` + `Bindless=0`），
    `inc/hgl/common/DescriptorSetTypeDef.h` 的注已明写「Set 0（Scene 集）与其绑定枚举**已整体退场**」⇒ 不再有待迁出的 UBO。
 
-5. **prepass 性能账目（D7 的 T8）✅ 已量测（`f8760056b`，2026-10-07）** —— 探针 `PREPASS_TIMING=<N>`（见 §6）。
+5. **prepass 性能账目（D7 的 T8）✅ 已量测（`f8760056b`，2026-10-07）** —— 探针 `[perf] prepass_interval = N`（见 §6）。
    实测床 = `CascadeShadowMap` 1600×900、稳态 60fps（帧 16.67ms）、50 个窗口 = 1500 帧：
    - **离屏 pass = 1.00 次/帧**（只有级联 0 每帧全量；其余 3 级走静态缓存 + dirty-rect 条带，稳态无条带）；
    - 合计均值 **3.76ms/帧**（中位 3.23）⇒ 占主帧 **≈19%**；

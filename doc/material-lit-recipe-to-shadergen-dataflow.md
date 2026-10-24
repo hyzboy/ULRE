@@ -152,5 +152,5 @@ BuildGenericMaterial (ShaderGen)
 
 ## 附：调试入口
 
-- `ULRE_DUMP_GLSL=1`（Debug 构建；读取点 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:77`）可导出拼装后的最终 mesh/fs GLSL；
+- `channels.shadergen = true`（Debug 构建；读取点 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:77`）可导出拼装后的最终 mesh/fs GLSL；
 - `ULRE_SHADER_CACHE_MODE=readonly` 强制只读缓存（miss 即失败），用于验证缓存覆盖完整性。

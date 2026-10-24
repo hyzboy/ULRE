@@ -353,7 +353,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
     GLSL 侧补了「本式是 C++ `GetMaxWorldScaleRaw` 的镜像、两边都不带保护」的指路注释（零行为变化）。
     ⚠️ **端到端对拍未取到**：开关打开后台架能正常注册并初始化（见 §4.1 行），但 `ShadowMap` 当前
     过不了启动阶段 ⇒ 拿不到对拍采样（与本次改动无关，见 §4.1 行）。`S3`
-- **两套同构 profiler** — `CullPerfTimer`（`GPUCullSystem.cpp:33-60`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp:121-146`），都匿名 namespace、都读 `getenv("PBR_PERF")`、都按 240 帧窗口平均。`S3`
+- **两套同构 profiler** — `CullPerfTimer`（`GPUCullSystem.cpp:33-60`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp:121-146`），都匿名 namespace、都读环境变量 `PBR_PERF`（后统一为 `channels.perf`）、都按 240 帧窗口平均。`S3`
   - ⇒ **已处置（2026-10-10）**：抽成 `inc/hgl/ecs/support/PerfTimer.h` —— `PerfTimer`（`name` 构造 +
     `Active()` + `Add(us, probe_name=nullptr, probe_value=0)`）+ `DeltaUs` + `PerfSpan` 一份实现；
     两处调用点删掉本地副本。差异点收敛为**一个可选探针**：`gpu_dispatch` 的 `tracked_objects` 泄漏判据
@@ -456,7 +456,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 - **`ArenaSectorBase/BatchBlockBase` 对越界 pass 静默钳到 0**，而 `SetBatchLayout` 对坏 pass **fail-fast** — `GPUCullSystem.h:116-127` vs `.cpp:431-436` ⇒ 同一类内两套相反约定。`S3`
 - **`LineBuffer::AddSegment` 在一次有效性检查后做 8 次无门 accessor 写**（中途失败即留下撕裂的顶点对，调用方只 `write_fail_count++`）— `LineRenderPipeline.cpp:234-251`、`:589`。`S3`
 - **恒真守卫（假信心）** — `LineRenderPipeline.cpp:570-573`：`kMaxTransformID = uint32 max; transform_id = resolved > kMaxTransformID ? 0 : …`，而 `resolved` 本就是 `uint32_t` ⇒ 分支静态不可达。`S3`
-- **~100 行 `getenv` 探针内联在渲染路径**（`PREPASS_TIMING`）— `Context.cpp:449-546`，且**只覆盖 `RenderTo` 路径** ⇒ 其数字与主帧**不可比**。`S2`
+- **~100 行环境变量探针内联在渲染路径**（`PREPASS_TIMING`）— `Context.cpp:449-546`，且**只覆盖 `RenderTo` 路径** ⇒ 其数字与主帧**不可比**。`S2`
 - **`ULRE_ARENA_DEBUG` 在 `Render()` 内每次读取（未缓存）** — `TextRenderPipeline.cpp:262,584`，而同类的 `PBR_PERF`/`ECS_TAKEOVER_TRACE`/`CULL_SSBO_DUMP` 有缓存 ⇒ 5 个开关 3 种缓存策略。`S3`
 - **函数内 `static` 可变状态**（进程级、非 per-world、不可重置的告警闩）— `GPUCullSystem.cpp:452,531`、`LineRenderPipeline.cpp:618`、`LineRenderSystem.cpp:39,51`、`PipelineMaterialRenderer.cpp:58`、`TransformDataStorage.h:646`、`PrimitiveBatchPipeline.cpp:173,194`。`S3`
 - **120/60 帧重试魔数**（`RenderPrimitiveCollectSystem.cpp:214-215`）、**16:9 兜底**（`MainLightShadowSystem.cpp:248-251`）、**16 位 `entity_id` 打包校验和**（`:2406`，`index` 超 16 位即碰撞 ⇒ 废掉该校验和的自述目的）、**按 buffer 名字字符串匹配分类**（`RenderBufferUploadSystem.cpp:85-88`）。`S1`

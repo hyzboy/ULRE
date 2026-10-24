@@ -1159,27 +1159,27 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 
 ### 20.1 取证：三类病同时存在
 
-- **门的数量和风格都不统一**：全仓 `getenv` 命中 `src` 15 文件 25 处、`inc` 4 处；其中与渲染/材质链相关的"日志门"共 8 个（`ULRE_ARENA_DEBUG` / `CSM_PASS_LOG` / `ECS_TAKEOVER_TRACE` / `CULL_SSBO_DUMP` / `PBR_PERF` / `PREPASS_TIMING` / `VK_SYNC_TRACE` / `ULRE_DUMP_GLSL`），命名毫无体系，用户必须查代码才知道有什么可开。
-- **缓存位置有三种**：函数内 `static const bool s_x = getenv(...)`（首次调用即固化）、循环体内每帧 `getenv`（`TextRenderPipeline::Render` / `MainLightShadowSystem` 逐 pass）、以及完全没有门直接 `LogInfo`。
+- **门的数量和风格都不统一**：全仓环境变量门命中 `src` 15 文件 25 处、`inc` 4 处；其中与渲染/材质链相关的"日志门"共 8 个（`ULRE_ARENA_DEBUG` / `CSM_PASS_LOG` / `ECS_TAKEOVER_TRACE` / `CULL_SSBO_DUMP` / `PBR_PERF` / `PREPASS_TIMING` / `VK_SYNC_TRACE` / `ULRE_DUMP_GLSL`），命名毫无体系，用户必须查代码才知道有什么可开。
+- **缓存位置有三种**：函数内 `static const bool s_x = <读一次环境变量>`（首次调用即固化）、循环体内每帧重读环境变量（`TextRenderPipeline::Render` / `MainLightShadowSystem` 逐 pass）、以及完全没有门直接 `LogInfo`。
 - **层级障碍（决定方案形态）**：最底层的日志点在 `ULRE.Vulkan`（`VKQueue.cpp` 的 `[QUEUE][SYNC]`、`VKRenderPass.cpp` 的 `Reuse existing Pipeline wrapper`）。`src/CMakeLists.txt` 的构建序是 `Vulkan → ShaderRuntimeContract → ShaderMaterialData → ShaderGen → SceneGraph → InlineGeometry → Work → ecs`，所以**任何放在 ECS / SceneGraph 的门，Vulkan 都用不了**。
 
 ### 20.2 设计：一个 header-only 的通道掩码
 
-`inc/hgl/common/DebugChannel.h`（新增，约 360 行，无对应 .cpp）：
+`inc/hgl/common/DebugChannel.h`（新增，约 360 行，无对应 .cpp —— **此形态已被 §20.10 取代**：实现移到 `src/Debug/DebugChannel.cpp`，符号由独立的 `ULRE.Debug` 承载）：
 
 | 决策 | 理由 |
 |---|---|
 | header-only（`inline` + 函数级 `static`） | `inc/hgl/common/` 本来就没有库；新增 .cpp 只能塞进 Vulkan（污染最底层）或 ecs（Vulkan 反而用不了）。header-only 零新库、破不了依赖序。 |
-| 18 个通道的 `uint32_t` 位掩码 | 一个环境变量即可任意组合；`static_assert(kChannelCount <= 32)` 钉住上限。 |
-| 全进程只解析一次（`EnvironmentMaskRef()` 的函数级 `static`） | 相当于把原来散落的"每帧 getenv"和"函数内 static 缓存"收成**一份**缓存；同时保留了 `SetEnabled()` 运行期覆盖给测试用，且覆盖优先于环境变量。 |
-| `detail::Env()` 是**全仓唯一** `std::getenv` 出口 | 用户要求"统一所有 DEBUG 门开关的获取位置"，字面兑现。 |
+| 18 个通道的 `uint32_t` 位掩码 | 一份配置即可任意组合；`static_assert(kChannelCount <= 32)` 钉住上限。 |
+| 全进程只解析一次（`ConfigMaskRef()` 的函数级 `static`） | 相当于把原来散落的"每帧重读环境变量"和"函数内 static 缓存"收成**一份**缓存；同时保留了 `SetEnabled()` 运行期覆盖给测试用，且覆盖优先于配置文件。 |
+| `detail::ConfigRootRef()` 是**全仓唯一** `ULRE_DEBUG.toml` 读取点（§20.9 已把最早的 `detail::Env()` 环境变量出口整体替换掉） | 用户要求"统一所有 DEBUG 门开关的获取位置"，字面兑现。 |
 | 不拿 `LogDebug` / `LogVerbose` 当门 | 二者在非 `_DEBUG` 下被 `CMCore/inc/hgl/log/Log.h` 展开成 `{}`，Release 无法排障；用户要的是**运行时**可开。 |
 
-通道表（`GetChannelTable()`，令牌即 `ULRE_DEBUG` 写法）：`material` `route` `program` `shadergen` `binding` `fallback` `pipeline` `collect` `batch` `cull` `culldump` `shadow` `line` `text` `transform` `upload` `perf` `vksync`。
+通道表（`GetChannelTable()`，令牌即 `[channels]` 里的键名）：`material` `route` `program` `shadergen` `binding` `fallback` `pipeline` `collect` `batch` `cull` `culldump` `shadow` `line` `text` `transform` `upload` `perf` `vksync`。
 
-`ULRE_DEBUG` 语法：`all` / `*` 全开，`none` 全关，`+`/`-` 加减，分隔符 `, ; | 空格 tab`；未知令牌打一条 `GLogWarning` 后忽略。`ULRE_DEBUG` **一旦设置即为唯一权威**，旧变量全部不参与；未设置时才回落 `LegacyAliasMask()`，避免新旧语义打架。
+掩码语法：`all` / `*` 全开，`none` 全关，`+`/`-` 加减，分隔符 `, ; | 空格 tab`；未知令牌打一条 `GLogWarning` 后忽略。**（§20.9：本段的"环境变量唯一权威 + 回落 `LegacyAliasMask()`"已被 TOML 方案取代——旧变量整条删除。）**
 
-旧变量别名（8 条，`GetLegacyAliasTable()`，全部保留兼容）：`ULRE_ARENA_DEBUG`→`binding|batch|collect|text`、`CSM_PASS_LOG`→`shadow`、`ECS_TAKEOVER_TRACE`→`batch|cull`、`CULL_SSBO_DUMP`→`culldump`、`PBR_PERF`→`perf`、`PREPASS_TIMING`→`perf`、`VK_SYNC_TRACE`→`vksync`、`ULRE_DUMP_GLSL`→`shadergen`。
+旧变量别名（8 条，`GetLegacyAliasTable()`，一度全部保留兼容）：`ULRE_ARENA_DEBUG`→`binding|batch|collect|text`、`CSM_PASS_LOG`→`shadow`、`ECS_TAKEOVER_TRACE`→`batch|cull`、`CULL_SSBO_DUMP`→`culldump`、`PBR_PERF`→`perf`、`PREPASS_TIMING`→`perf`、`VK_SYNC_TRACE`→`vksync`、`ULRE_DUMP_GLSL`→`shadergen`。**§20.9 后这张表整体作废**（等价关系保留在文档里，代码不再识别旧变量）。
 
 判决**不再做**的一处反向优化：不保留"函数内 `static const bool s = ULRE_DEBUG_ON(...)`"这层缓存——掩码本身已是 `static`，多一层会让测试里 `SetEnabled()` 失效。因此 `s6_pass_log` / `s6_collect_log` / `s_takeover_trace` / `sync_trace_enabled` 全部改回函数内 `const bool`。
 
@@ -1188,7 +1188,7 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 | 类别 | 文件 |
 |---|---|
 | 新增 | `inc/hgl/common/DebugChannel.h`、`doc/debug-log-channels.md` |
-| 门统一（旧 getenv → 通道） | `inc/hgl/ecs/support/PerfTimer.h`、`src/ecs/support/CPUCullReferenceSystem.cpp`、`src/ecs/support/GPUCullSystem.cpp`、`src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp`、`src/ecs/support/text/TextRenderPipeline.cpp`、`src/ecs/systems/render/MainLightShadowSystem.cpp`、`src/ecs/core/ContextRender.cpp`、`src/Vulkan/VKQueue.cpp`、`src/ShaderGen/compile/MaterialShaderEmitter.cpp`（`.h` 同步注释）、`src/ShaderGen/compile/MaterialShaderCompiler.cpp` |
+| 门统一（旧环境变量门 → 通道） | `inc/hgl/ecs/support/PerfTimer.h`、`src/ecs/support/CPUCullReferenceSystem.cpp`、`src/ecs/support/GPUCullSystem.cpp`、`src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp`、`src/ecs/support/text/TextRenderPipeline.cpp`、`src/ecs/systems/render/MainLightShadowSystem.cpp`、`src/ecs/core/ContextRender.cpp`、`src/Vulkan/VKQueue.cpp`、`src/ShaderGen/compile/MaterialShaderEmitter.cpp`（`.h` 同步注释）、`src/ShaderGen/compile/MaterialShaderCompiler.cpp` |
 | 高频无门日志补门 | `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp`（`[SkyRoute]`→`route`）、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`（`[ArenaTrace]`/`[MaterialTextureReferences]`→`binding`）、`src/ecs/systems/render/LineStatsSystem.cpp`（`line`）、`src/ecs/systems/render/ColorPaletteSystem.cpp` + `src/ecs/systems/render/RenderBufferUploadSystem.cpp` + `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`（`upload`）、`src/Vulkan/VKRenderPass.cpp` + `src/Vulkan/pipeline/VKPipelineResolver.cpp`（`pipeline`） |
 | 顺带修规范违规 | `src/ecs/systems/tick/TransformSystem.cpp`：两处 `std::cout`（析构期）改为 `ULRE_DEBUG_ON(transform)` + `GLogInfo`；两处 `#if HGL_TRANSFORM_DEBUG_LOGGING` 改运行时判定 |
 
@@ -1212,37 +1212,116 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 | `TextureQuad` | `all,-vksync` | 14486 | 比 `all` 少 1100（减法成立） |
 | `CascadeShadowMap` | （未设） | 1942 | `[S6-PASS]` 0、`[S6-COLLECT]` 0 |
 | `CascadeShadowMap` | `shadow` | 3035 | `[S6-PASS]` **546**、`[S6-COLLECT]` 547 |
-| `CascadeShadowMap` | 旧变量 `CSM_PASS_LOG=1` | 3034 | `[S6-PASS]` **546**、`[S6-COLLECT]` 546 |
+| `CascadeShadowMap` | 旧变量 `CSM_PASS_LOG=1`（§20.9 前的机制） | 3034 | `[S6-PASS]` **546**、`[S6-COLLECT]` 546 |
 | `DualWorldShadows` | （未设） / `all` | 1803 / 100098 | 两者 Vulkan 校验错误均为 **0** |
 
-`shadow` 与旧变量 `CSM_PASS_LOG=1` 行数差 1 帧（3035 vs 3034）属帧数抖动，**标签计数完全相同**，别名等价成立。
+`shadow` 与旧变量 `CSM_PASS_LOG=1` 行数差 1 帧（3035 vs 3034）属帧数抖动，**标签计数完全相同**，当时的别名等价成立。（§20.9 之后旧变量不再被识别，该对照仅作历史记录。）
 
-默认态降噪：`[SkyRoute]` / `[ArenaTrace]` / `[BatchTextureRef]` / `[MaterialTextureReferences]` / `[QUEUE][SYNC]` / `[S6-*]` 在未设 `ULRE_DEBUG` 时全部为 **0**；仅剩三条**一次性**公告（`GeometryAABB 同 ID 索引 rows=...`、`ColorPaletteSSBO 就绪`、`[T3i] ... ENGAGED`）保留输出——按 §20.2 的分工，一次性建立类 Info 不受门控。
+默认态降噪：`[SkyRoute]` / `[ArenaTrace]` / `[BatchTextureRef]` / `[MaterialTextureReferences]` / `[QUEUE][SYNC]` / `[S6-*]` 在配置全关时全部为 **0**；仅剩三条**一次性**公告（`GeometryAABB 同 ID 索引 rows=...`、`ColorPaletteSSBO 就绪`、`[T3i] ... ENGAGED`）保留输出——按 §20.2 的分工，一次性建立类 Info 不受门控。
 
 ### 20.5 反证（三条，各一次真实输出）
 
-① 令牌拼错：
+① 令牌拼错（当时的 `ULRE_DEBUG="bogus"` 形态）：
 ```
 [#79] [ULRE_DEBUG] 未知通道 'bogus'，已忽略（可用令牌见 hgl/common/DebugChannel.h）
 ```
-② 旧变量仍可单独使用（上表 `CSM_PASS_LOG=1` 一行即反证，未设 `ULRE_DEBUG` 也能开）。
-③ 减法：`ULRE_DEBUG=all,-vksync` 相对 `all` 少 1100 行（`[QUEUE][SYNC]` 归零）。
+② 当时旧变量可单独使用（上表 `CSM_PASS_LOG=1` 一行即反证）；**§20.9 后此条作废**。
+③ 减法：`all,-vksync` 相对 `all` 少 1100 行（`[QUEUE][SYNC]` 归零）。
 
 ### 20.6 明确排除（查过、判定不该动）
 
-- **值语义变量**：`PREPASS_TIMING` 的 atoi 间隔（门归 `perf`，值仍从 `hgl::debug::EnvValue()` 取）、`ULRE_SHADER_CACHE_MODE`（`readonly`/`ro`）、`ULRE_SHADERLIBRARY_PATH` / `ULRE_SHADER_CACHE_PATH`（宽字符 `_wgetenv` + 跨平台双路径）。
-- **设备创建类**：`HGL_*` 系列（`VKDeviceCreater.cpp` 里 `GetEnvironmentVariableA` + `getenv` 双路径）。
-- **示例侧全部 getenv**（`GC_*` / `PG_*` / `PBR_*` / `CSM_*` / `AM_*` / `CV_*` / `LS_*` / `ATS_*` / `DWS_*` / `EF_*` / `SKYMIN_*` / `IBLENV_*` / `RTT*_SELFCHECK`）：被既有测试脚本按名调用，改名即破脚本。
-- **`src/Tools/GLTFConvert/meshoptimizer/*`** 的 `getenv("DUMP")` / `getenv("TEMP")`：第三方。
+- **值语义变量**：`ULRE_SHADER_CACHE_MODE`（`readonly`/`ro`）、`ULRE_SHADERLIBRARY_PATH` / `ULRE_SHADER_CACHE_PATH`（宽字符环境读取 + 跨平台双路径）。（`PREPASS_TIMING` 的打印间隔后来改为 `ULRE_DEBUG.toml` 的 `[perf] prepass_interval`，见 §20.9。）
+- **设备创建类**：`HGL_*` 系列（`VKDeviceCreater.cpp` 里宽/窄字符两套环境读取）。
+- **示例侧全部走环境变量开关**（`GC_*` / `PG_*` / `PBR_*` / `CSM_*` / `AM_*` / `CV_*` / `LS_*` / `ATS_*` / `DWS_*` / `EF_*` / `SKYMIN_*` / `IBLENV_*` / `RTT*_SELFCHECK`）：被既有测试脚本按名调用，改名即破脚本。
+- **`src/Tools/GLTFConvert/meshoptimizer/*`** 自带的环境变量读取（`DUMP` / `TEMP`）：第三方，本仓不改。
 
 以上全部写进 `doc/debug-log-channels.md` §6，避免下一轮当"漏网"再改一遍。
 
 ### 20.7 本批踩的三个坑（供下次）
 
 1. **命名空间未限定**：`PerfTimer.h(29)` 报 `C2653: 'Channel': is not a class or namespace name`。`PerfTimer` 声明在 `namespace hgl::ecs` 内，非限定 `IsEnabled(Channel::Perf)` 找不到 `hgl::debug::`。正解是**统一走宏** `ULRE_DEBUG_ON(Perf)`（宏体自带 `::hgl::debug::` 全限定），而不是逐个补限定。
-2. **改库头后示例 exe 不自动重链**：先只 build 了 `ULRE.ECS`，随后拿**旧** `CascadeShadowMap.exe` 测 `ULRE_DEBUG=shadow`，结果 S6 标签为 0，一度误判"通道没生效"。重链该 target 后立刻变成 546 条。**任何按通道开门的验收，必须先 build 对应的示例 target**。
+2. **改库头后示例 exe 不自动重链**：先只 build 了 `ULRE.ECS`，随后拿**旧** `CascadeShadowMap.exe` 测 `shadow` 通道，结果 S6 标签为 0，一度误判"通道没生效"。重链该 target 后立刻变成 546 条。**任何按通道开门的验收，必须先 build 对应的示例 target**。
 3. **重定向 + Kill 会丢缓冲**：`ReadToEnd()` + `Kill()` 只拿到启动期的 41 行，baseline 与 `all` 都是 910 行（假相等）。正解是 `BeginOutputReadLine()` + `OutputDataReceived` 事件异步收集后再 Kill——否则"降噪前后对比"整类结论都不可信。
 
 ### 20.8 边界
 
 本批只改**日志的开关与出口**，不动任何日志的业务判据、等级、文案与触发时机；`Error` / `Warning` / 一次性 `Info` 一律不门控（见 `doc/debug-log-channels.md` §8）。通道令牌一经发布即视为对外契约（脚本与文档已引用），改名需同步 §5 迁移表。
+
+### 20.9 后续：开关载体由环境变量改为仓库根 TOML
+
+用户反馈：**"这读 env 不太合适，直接在 `E:\ULRE` 放一个 `.toml` 然后用读 TOML 的方式获取这些标记"**。
+
+| 项 | §20.1–20.8（env 时代） | 现在 |
+|---|---|---|
+| 载体 | 环境变量 `ULRE_DEBUG=batch,cull` | 仓库根 `ULRE_DEBUG.toml` |
+| 读取点 | 全仓唯一出口 `detail::Env()`（进程环境读取） | 全仓唯一出口 `detail::ConfigRootRef()`（toml11 解析，函数级 `static`，进程内一次） |
+| 语法 | 只有字符串一种 | 两种：`channels = "batch,cull"` 字符串，或 `[channels]` 表里逐键布尔 |
+| 值语义（打印间隔） | `PREPASS_TIMING=<N>` + `atoi` | `[perf] prepass_interval = N`，读法 `hgl::debug::ConfigInt("perf","prepass_interval",60)` |
+| 8 条旧变量别名 | `GetLegacyAliasTable()` 保留兼容 | **整条删除**，设了也不生效（等价关系仅存于文档 §5 迁移表） |
+| 配置文件缺失/语法错 | 不适用（未设即全关） | 全部通道按关闭处理；语法错误额外输出带**文件路径 + 行号**的 `GLogWarning` |
+
+配置查找顺序：`cwd/ULRE_DEBUG.toml` → exe 目录 → 从 `cwd` 逐级向上 → 从 exe 目录逐级向上（各 ≤64 级），所以从 `build/out/...` 起 exe 也能定位到仓库根那份。
+
+**为什么不用注入式（把解析后的掩码从 main 传下去）**：`ULRE.Vulkan` 是最底层的库（`src/CMakeLists.txt` 构建序 `Vulkan → … → ecs`），它自己就要用 `vksync` 通道；注入需要改 Vulkan 的初始化签名并让所有示例/测试跟着改，收益只是省一次头文件包含，不划算。
+
+**toml11 的代价（实测，接受）**：`inc/toml/toml.hpp`（v4.4.0，header-only，约 600 KB）由 `DebugChannel.h` 直接 include，传染到 19 个 include 点。增量编译实测：`ULRE.Vulkan` 11 s、`ULRE.ECS` 54 s（41 个 TU）、其余三库合计 12 s。此前全仓只有 `MaterialDefinitionFile.cpp`、`SamplerPreset.cpp` 两个 TU 用它。**（§20.10 已把这笔代价关进 `src/Debug/DebugChannel.cpp` 一个 TU。）**
+
+**验收（本机实测，全部通过）**
+
+| 配置 | exe | 结果 |
+|---|---|---|
+| 全 `false` | `TextureQuad` | 912 行（与 env 时代的 910 同一量级） |
+| `channels = "batch"` | `TextureQuad` | 1918 行 |
+| `[channels] batch = true` | `TextureQuad` | 1918 行（与字符串形式等价） |
+| `channels = "batch,bogus"` | `TextureQuad` | 含未知**令牌**告警 |
+| `[channels] batchh = true` | `TextureQuad` | 含未知**键**告警（拼错不再静默） |
+| 语法错 `[channels` | `TextureQuad` | `[DebugChannel] E:\ULRE\ULRE_DEBUG.toml 语法错误（第 1 行）：expected ]；全部通道按关闭处理` |
+| `channels.perf = true` + `prepass_interval = 5` | `CascadeShadowMap` | `[PREPASS-TIMING] 启用（… 间隔 [perf] prepass_interval=5）` 且每 5 帧一次 |
+| `channels = "shadow"` | `CascadeShadowMap` | `[S6-PASS]` 303 次（采样时长 6 s；env 时代 546 次是更长采样的结果，非差异） |
+
+另加一行**启用公告**：任一路径解析出非零掩码时输出
+`[DebugChannel] ULRE_DEBUG.toml 启用通道：batch`，全关则完全静默——避免"以为打开了其实拼错了键"。
+
+### 20.10 后续：头/实现拆分与 `ULRE.Debug` 独立目标
+
+用户口径：**"加一个 DebugChannel.cpp 用于存放加载函数的实体，DebugChannel.h 要干净"**。
+
+动机是 §20.9 遗留的传染代价：TOML 化之后 `DebugChannel.h` 里全是 `inline` 实体，于是
+`<toml/toml.hpp>`（约 600 KB 头）+ `<hgl/log/Log.h>` + `<hgl/utf.h>` + 文件 IO / 文件系统头
+被 20 个 TU 白白吃掉，实测 `ULRE.ECS` 增量 54 s、`ULRE.Vulkan` 11 s。
+
+| 项 | 拆分前 | 拆分后 |
+|---|---|---|
+| `inc/hgl/common/DebugChannel.h` | 583 行，含 toml11 / 日志 / IO / 文件系统头 + 全部 `inline` 实现 + `namespace detail` | 约 130 行，**只有** `Channel` 枚举、`kChannelCount`、`Bit()`、`kDebugConfigFilename`、`ChannelInfo`、8 个函数**声明**、`ULRE_DEBUG_ON` 宏；只 include `<cstdint>` + `<hgl/type/String.h>` |
+| 实现位置 | 头内 `inline` | `src/Debug/DebugChannel.cpp`（**唯一**携带 toml11 的 TU，此前全仓只有 `MaterialDefinitionFile.cpp`、`SamplerPreset.cpp` 用它） |
+| 承载符号的构建目标 | 无（header-only） | 新增 `ULRE.Debug`（`src/Debug/CMakeLists.txt`，STATIC，只 PUBLIC 链 `CMCore`） |
+| 消费方 Payload | 全部 TU 吃 toml11 | 只有 `ULRE.Debug` 一个 TU 吃 |
+
+**为什么必须新建目标，不能塞进现有库**（第一次尝试就在这里炸了）：
+
+1. `CMCMakeModule/cm_modules.cmake` 的 `add_cm_library` 在 WIN32 下是 `add_library(... STATIC)`
+   ⇒ 符号必须落到某个**被链接**的 target 上，不能像 header-only 那样随头走。
+2. 第一次把 `.cpp` 放进 `src/Vulkan/Debug/` + `VK_DEVICE_DEBUG_FILES`：`ULRE.Vulkan` 编过了，
+   但全量链接在 `SceneRenderTemplateResolverRegression.exe` 报
+   `LNK2019 unresolved external symbol hgl::debug::IsEnabled` —— 该 target 只链 `ULRE.ShaderGen`，
+   **不含 `ULRE.Vulkan`**，而 `ULRE.ShaderGen` / `ULRE.ShaderMaterialData` 里都有 `IsEnabled` 调用方。
+3. 消费方还包含 `src/Tools/RuntimeFormProbe`（只链 `ULRE::Runtime`，CMake 注释明写"永不含
+   ULRE.ShaderGen / glslang"）、`VulkanPhysicalDeviceProfileCollector`（只链 `ULRE.Vulkan`）、
+   以及 Ultra-light 示例 `GPUDrivenCull`。
+4. 根 `CMakeLists.txt` 的注释明写 `ULRE.Vulkan` / `ULRE.ShaderGen` / `ULRE.SceneGraph` / `ULRE.ECS`
+   四者互相 include，构成**强连通分量**，不存在可声明的有向依赖图
+   ⇒ 任何现有库都不适合承载"所有层都要用"的符号定义。**独立最小目标**是唯一干净解。
+
+**落地的 6 处构建改动**：`src/Debug/{DebugChannel.cpp,CMakeLists.txt}` 新增；
+`src/CMakeLists.txt` 首行 `add_subdirectory(Debug)`（在 `Vulkan` 之前）；
+根 `CMakeLists.txt` 的 `ULRE_RUNTIME` 列表加 `ULRE.Debug`；
+`ULRE.Vulkan` / `ULRE.ShaderMaterialData` / `ULRE.ShaderGen` 三个 `target_link_libraries(... PUBLIC ... ULRE.Debug)`。
+
+**顺带清理**：全仓注释与文档里残留的 `getenv` 表述按新口径改写（`DebugChannel.h` 头注释、
+`PerfTimer.h`、`doc/debug-log-channels.md`、`doc/ecs-quality-audit-2026-10.md`、本档 §20.1–20.9）。
+**仍保留**的 `getenv` / `_wgetenv` 全是**非 DEBUG 门**的真实代码：`VKDeviceCreater.cpp` 的
+`HGL_*` 设备创建开关、`ShaderCacheRoot.h` / `ShaderLibraryPath.h` / `ShaderProgramManager.cpp` 的
+路径与缓存模式变量、`src/Tools/GLTFConvert/meshoptimizer/*`（第三方）、以及示例各自的调参变量
+（`GC_*` / `PG_*` / `PBR_*`，被既有脚本按名调用，改名即破脚本）。
+
+**验收**：`cmake -S . -B build` 重配置 rc=0；全量 `cmake --build build --config Debug` **rc=0，零 error / 零 LNK**。

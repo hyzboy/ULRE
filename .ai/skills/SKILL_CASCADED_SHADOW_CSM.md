@@ -504,7 +504,7 @@ C1: fullC=<整级重建> stripC=<条带> hitC=<命中> | C2: ... | C3: ...
 
 ### 4.9 阴影 pass 的收集侧日志与 S6 差异排查（2026-09-26）
 
-`CSM_PASS_LOG=1`（默认静默）打开两类逐 pass 日志：
+`channels.shadow = true`（默认静默）打开两类逐 pass 日志：
 
 ```
 [S6-PASS]    cascade=1 kind=full|strip mobility=0 off=(16,0) view_t=(..) rect=(0,0,16,1024) load_depth=1

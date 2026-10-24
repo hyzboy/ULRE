@@ -266,7 +266,7 @@ material_output.ao =
 |---|---|
 | 全量 cook | `ShaderCooker --store <dir>` → **cooked=28 / failed=0 / skipped=10**，17 个 `.frag` |
 | 生成物残留 | 所有 `.frag` 中 `_texture.x != 0u` / `opacity_texture.x == 0u` **0 命中**；Lit forward 的 `EvalMaterialSource` 即上面那 8 行 |
-| 示例冒烟（`ULRE_ARENA_DEBUG=1`，12s） | PBRSpheres 668 帧 / TextureRectArray 695 / SingleSphereMaterialSwitch 693，**`[ERROR]`=0、`VUID`=0**；`descriptor/layer` 与改前逐字一致 |
+| 示例冒烟（`ULRE_DEBUG.toml` 开 `channels.batch/collect/binding/text`，12s） | PBRSpheres 668 帧 / TextureRectArray 695 / SingleSphereMaterialSwitch 693，**`[ERROR]`=0、`VUID`=0**；`descriptor/layer` 与改前逐字一致 |
 | 门禁 | `ShaderResourceSchemaRegressionGate` = **38 PASS / 1 FAIL**；`ShaderDocumentRegression` exit 0；`ShaderDocumentProductionRegression` → "smoke production fixtures passed" |
 | 既有 FAIL | `V1.material-output-contract` → `depth coverage resource pruning mismatch` 为**基线状态**（路径限定 `git stash push -- <两文件>` 复跑同一条 FAIL），与本改动无关 |
 | 视觉自证 | `computer_use list_windows` → `capture mode=vision`；PBRSpheres 可见贴图图案与金属度渐变（非全灰） |
@@ -304,14 +304,16 @@ material_output.ao =
 ```bash
 cd D:/ULRE
 
-# 1) 生成物检查（离线 cook 工具已移除：改用 Debug 构建 + ULRE_DUMP_GLSL=1 跑示例）
+# 1) 生成物检查（离线 cook 工具已移除：改用 Debug 构建 + ULRE_DEBUG.toml 开 channels.shadergen 跑示例）
+#   先编辑仓库根 ULRE_DEBUG.toml：[channels] 下 shadergen = true
 STORE="$LOCALAPPDATA/Temp/ulre_dump" && rm -rf "$STORE"
-ULRE_DUMP_GLSL=1 ULRE_SHADER_CACHE_PATH="$STORE" ./build/out/Windows_64_Debug/PBRSpheres.exe
+ULRE_SHADER_CACHE_PATH="$STORE" ./build/out/Windows_64_Debug/PBRSpheres.exe
 grep -c "SampleOptional(" "$STORE"/glsldump/*.glsl          # Lit forward 应为 7
 grep -n "_texture.x != 0u\|opacity_texture.x == 0u" "$STORE"/glsldump/*.glsl   # 应为空
 
 # 2) 示例冒烟（cwd 必须是仓库根，res/ 在根）
-ULRE_ARENA_DEBUG=1 timeout 12 ./build/out/Windows_64_Debug/PBRSpheres.exe > "$LOCALAPPDATA/Temp/pbr.log" 2>&1
+#   先在 ULRE_DEBUG.toml 开 channels.batch/collect/binding/text
+timeout 12 ./build/out/Windows_64_Debug/PBRSpheres.exe > "$LOCALAPPDATA/Temp/pbr.log" 2>&1
 grep -c "\[ERROR\]\|VUID" "$LOCALAPPDATA/Temp/pbr.log"                # 应为 0
 grep "MaterialTextureReferences] texture=" "$LOCALAPPDATA/Temp/pbr.log" | head
 
@@ -321,7 +323,8 @@ grep "MaterialTextureReferences] texture=" "$LOCALAPPDATA/Temp/pbr.log" | head
 ./build/out/Windows_64_Debug/ShaderDocumentProductionRegression.exe
 
 # 4) 同一 Lit 下两种纹理共存的对照例（远/近模式切换：滚轮 / PageUp·PageDown）
-ULRE_ARENA_DEBUG=1 ./build/out/Windows_64_Debug/SingleSphereMaterialSwitch.exe > "$LOCALAPPDATA/Temp/sw.log" 2>&1
+#   ULRE_DEBUG.toml 同上开 channels.batch/collect/binding/text
+./build/out/Windows_64_Debug/SingleSphereMaterialSwitch.exe > "$LOCALAPPDATA/Temp/sw.log" 2>&1
 grep "Register texture handle" "$LOCALAPPDATA/Temp/sw.log"             # 近=1,2（array）；远=再多 2 个（普通 2D）
 ```
 

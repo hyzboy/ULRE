@@ -508,7 +508,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 | 组注册清单 | `[RenderGraph] Registered %zu system groups (total %zu)`（`src/ecs/core/RenderGraph.cpp:83-84`）+ `SystemGroupRegistry::DebugPrint()`（同处 :85，定义 `inc/hgl/ecs/core/SystemGroup.h:88`）；`[RenderGraph]   active group: %s` 逐个活跃组（`src/ecs/core/RenderGraph.cpp:211`） |
 | 帧边界 / pass 执行日志 | **当前已注释**（`src/ecs/core/RenderGraph.cpp:168,176` 的 Frame Start/End；:104/:108 的 skip/execute pass；`src/ecs/core/Context.cpp:412-418` 的 phase range）。需要时打开对应注释行 |
 | 系统级计时 | **`SystemProfiler` 已删除**（0 命中）。逐系统 `[ECS] Update/Render Begin|End` 日志也已注释（`src/ecs/core/Context.cpp:824-868` 的 `RunSystemUpdate` / `RunRenderSystemsInRange`）——「某系统没跑」改由组开关 + 系统自身日志判断 |
-| 材质/寻址诊断 | `ULRE_ARENA_DEBUG` 环境变量开启 `[ArenaTrace]`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:684/:735/:806`）；`[ArenaDebug]` 首次行表诊断由 `MaterialBatch::debug_blocks_logged` 控制（`inc/hgl/ecs/core/MaterialBatch.h:80`） |
+| 材质/寻址诊断 | `ULRE_DEBUG.toml` 的 `channels.binding/batch/collect/text = true` 开启 `[ArenaTrace]`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:684/:735/:806`）；`[ArenaDebug]` 首次行表诊断由 `MaterialBatch::debug_blocks_logged` 控制（`inc/hgl/ecs/core/MaterialBatch.h:80`） |
 | 渲染层一次性日志 | `[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u`（`src/ecs/support/PipelineMaterialRenderer.cpp:47-48`）；`[MaterialTextureReferencePool] created …`（`src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89`）；`[LineStats] total=…`（`src/ecs/systems/render/LineStatsSystem.cpp:34`）；`[SceneUBO] viewport addr=0x%llX 入表（全帧槽）`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:146`） |
 
 ---
@@ -543,7 +543,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
    - **静态物体的写入是"罕见且有全局代价的事件"（D4/A′）**：静态 L2W 只在被判脏时算；任一次写入都会让**整段**静态矩阵重写 + A3 链失效**全部**静态级联缓存（当帧 4 级全量重绘），`MarkDirty` 还会连带标脏整棵子树。因此运行期写 Static 会打一条一次性告警（`[Transform] 运行期写入 Static transform（<setter>｜实体 '<名字>' id=…）`，`TransformAccessor::WarnStaticRuntimeWrite`，**每个变换行只报一次**），**搭建期（首次被渲染侧识别前）写入不告警**。
    - **会动的对象就迁到 Movable**：`SetMobility(Mobility::Movable)`（`TransformDataStorage` 的换边迁移，`ECSContext::MigrateTransform`）——不要在每帧里写一个 Static 物体；同值写也一样（判据是版本号，不做值比较）。
 9. **`geometry_id == 0` 是「未注册」而不是「第 0 行」**：几何参数行 0 是预留零行（全 0 地址），shader 解引用不崩但什么都不画。`GeometryCreater::Create()` 会自动注册，私有构造路径要自己 `EnsureMeshDrawParams`。
-10. **诊断开关**：`ULRE_ARENA_DEBUG`（材质/寻址）、`SystemGroupRegistry::DebugPrint`（组定义）+ `[RenderGraph] active group`（谁在跑，需临时打开注释）、`[IndirectMeshDraw]`（合批是否生效）——排查「某系统没生效」按三层依次排除：组是否启用 → 系统是否注册/启用 → 相位是否被 pass 覆盖。
+10. **诊断开关**：`ULRE_DEBUG.toml` 的 `channels.binding/batch/collect/text`（材质/寻址）、`SystemGroupRegistry::DebugPrint`（组定义）+ `[RenderGraph] active group`（谁在跑，需临时打开注释）、`[IndirectMeshDraw]`（合批是否生效）——排查「某系统没生效」按三层依次排除：组是否启用 → 系统是否注册/启用 → 相位是否被 pass 覆盖。
 
 ---
 

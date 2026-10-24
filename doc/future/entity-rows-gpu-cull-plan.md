@@ -1798,7 +1798,7 @@ FNV 完全相同 = 纯清屏、与场景无关）。固定取景下三图 FNV �
 **留作接手第一站的自相矛盾**：`draw_count` 是**全帧单份 1 个 u32**（非按帧槽），
 由剔除在**帧末**写入；回读发生在**帧首**，因此 `image=1` 帧读到的应是 `image=0` 帧（槽 0）
 的剔除结果 = 100 —— **实测却是 0**。⇒ 该量在"写入时刻 ↔ 读取时刻"之间存在尚未建模的
-按槽/跨帧关系。下一步只需在该缓冲上同时记录**写入时的帧号/槽号**与**读回时的帧号/槽号即定位**。 ⇒ **该「下一步」已作废：§11.15 用 `CULL_SSBO_DUMP` 在派发后全量回读即一击定位（帧首回读永远看不到本帧派发写了什么）。**
+按槽/跨帧关系。下一步只需在该缓冲上同时记录**写入时的帧号/槽号**与**读回时的帧号/槽号即定位**。 ⇒ **该「下一步」已作废：§11.15 用 `channels.culldump` 在派发后全量回读即一击定位（帧首回读永远看不到本帧派发写了什么）。**
 
 **方法论收获（已生效）**：① 判据必须**横向**（冻结取景下多张交换链图的内容应相等），
 "单帧对单值"的基线结构上抓不到本类缺陷；② 每轮改动**构建失败即不采信运行结果**；
@@ -1818,7 +1818,7 @@ T4c3a 把实体 4-ID 表按 pass 分半（每帧槽 `kRowStride = 2×kCapacity` 
 
 ⇒ 解释了全部观测：只坏一张图、CPU 侧每样实测正确、标签/布局无罪、对拍看不见（CPU 参考不走设备地址）。
 
-**定位手段 = 特殊 dump 版（`CULL_SSBO_DUMP=1`，转正为常驻诊断件）**：每次 compute 派发后
+**定位手段 = 特殊 dump 版（`channels.culldump = true`，转正为常驻诊断件）**：每次 compute 派发后
 `WaitLastSubmitFence()` 再全量回读所有帧槽的计数/布局/标签/命令 + 绘制端 `COUNT_DUMP` +
 `[WADUMP]` 每帧下发基址。**帧首读回永远看不到本帧派发写了什么**——观测必须锚在派发后。
 
@@ -1864,7 +1864,7 @@ AsyncTextureUpload/门/CSM 全对基线逐字节不变。
 | ④ 脏行上传时机 | 实体行/4-ID 表脏行上传挂帧首 `SetFrameIndex` ⇒ 本帧 collect 标的行传不到本帧派发 | `PrepareRenderPassSetup` 在 RenderCollect 后补一次 `SyncWorldAddresses()` | `2f9a8a437` |
 | ⑤ **变换提交时机（真·最后一步）** | `SubmitTransformUpdates`（= L2W 矩阵行与实体行 `row[Transform]` 的**唯一落盘点**）只挂在 `RecordPreparedRenderPhaseRange`（BeginRenderPass **之后**的绘制录制段）⇒ 同帧 RenderFrameSync 的剔除派发恒读**上一帧**的写入；单帧世界首帧 `row[Transform]=0` ⇒ cull 着色器视锥测试前 return ⇒ `DrawCount=0` | `PrepareRenderPassSetup` 在 `SetFrameIndex` 后、collect 前补一次 `SubmitTransformUpdates`（同帧幂等 ⇒ 绘制段第二次调用退化 no-op）| 本批 |
 
-**⑤ 的取证捷径（关键教训）**：`CULL_SSBO_DUMP` 的 `[EntityDump]` 段读的是 **CPU 权威表**
+**⑤ 的取证捷径（关键教训）**：`channels.culldump` 的 `[EntityDump]` 段读的是 **CPU 权威表**
 （`GPUCullSystem.cpp` `context_->GetEntityGPUTable().Row(e)`），不是 GPU 回读 ⇒
 `transform_id=0` 直接证明**派发时刻 CPU 侧就没写过**（上传路径无罪，专项档 §7 P1 的方向 1/2
 都不成立——不是 Mobility 登记也不是 `GetDirtyCount()==0` 短路，是**写者相位晚于消费者相位**）。
