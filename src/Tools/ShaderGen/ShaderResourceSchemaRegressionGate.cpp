@@ -6,6 +6,7 @@
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/mtl/PipelineConfigEmitter.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
@@ -5462,6 +5463,191 @@ namespace
         return result;
     }
 
+    // 管线配置（`pipeline_config.h` 的那一半：#include 清单）。
+    // 超薄架构的承诺是「换算法 = 换一行 include」，因此这里钉死三件事：
+    //   ① 发射顺序 == template.slots 顺序（= 编译期 #include 顺序）；
+    //   ② 每个槽的路径来自 resolved 模块根，而不是任何硬编码常量；
+    //   ③ 换掉某槽的模块，只有那一行变化、摘要必然变化（缓存键不会串味）。
+    static GateResult RunPipelineConfigEmitCase()
+    {
+        GateResult result;
+        result.name = "PC.pipeline-config-emit";
+
+        const auto build = [](const SceneRenderTemplateProfile &profile,
+                              ResolvedRenderTemplate &out_resolved,
+                              PipelineConfig &out_config,
+                              std::string &out_error) -> bool
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID("Lit", definition))
+            {
+                out_error = "material definition 'Lit' unavailable";
+                return false;
+            }
+
+            RenderTemplateRequest request{};
+            RenderTemplateValidationDiagnostic diagnostic{};
+            if (!ResolveSceneRenderTemplateRequest(
+                    RenderTemplateID::ForwardLitShadowedAO,
+                    ShaderStage::Fragment,
+                    profile,
+                    request,
+                    diagnostic)
+             || !AppendMaterialRenderTemplateRoots(definition, request))
+            {
+                out_error = "render template request resolution failed";
+                return false;
+            }
+
+            if (!ResolveRenderTemplate(
+                    request, GetShaderCodeModuleRegistry(), out_resolved, diagnostic))
+            {
+                out_error = std::string("render template resolution failed: error=")
+                    + std::to_string(static_cast<int>(diagnostic.error))
+                    + " role=" + GetShaderModuleSlotRoleName(diagnostic.role)
+                    + " module=" + std::string(diagnostic.module_name.c_str());
+                return false;
+            }
+
+            if (!EmitPipelineConfig(out_resolved, out_config))
+            {
+                out_error = "pipeline config emission failed";
+                return false;
+            }
+            return true;
+        };
+
+        ResolvedRenderTemplate baseline_resolved{};
+        PipelineConfig baseline{};
+        std::string error;
+        if (!build(MakeIdentityForwardLitProfile(),
+                   baseline_resolved, baseline, error))
+        {
+            result.diagnostics.emplace_back(error);
+            result.passed = false;
+            return result;
+        }
+
+        // ① 条目数 == 模板声明的槽位数（必需槽恒有模块 ⇒ 无跳过）。
+        if (baseline.entry_count != baseline_resolved.definition->slot_count)
+            result.diagnostics.emplace_back(
+                "pipeline config entry count must equal template slot count ("
+                + std::to_string(baseline_resolved.definition->slot_count)
+                + "), got " + std::to_string(baseline.entry_count));
+
+        // ② 顺序必须是 template.slots 顺序。
+        for (hgl::uint32 index = 0;
+             index < baseline.entry_count
+          && index < baseline_resolved.definition->slot_count;
+             ++index)
+        {
+            const ShaderModuleSlotRole expected_role =
+                baseline_resolved.definition->slots[index].role;
+            if (baseline.entries[index].role != expected_role)
+                result.diagnostics.emplace_back(
+                    std::string("pipeline config entry #") + std::to_string(index)
+                    + " role mismatch: expected "
+                    + GetShaderModuleSlotRoleName(expected_role)
+                    + ", got "
+                    + GetShaderModuleSlotRoleName(baseline.entries[index].role));
+        }
+
+        // ③ 两条正交的光照轴都必须在配置里，且各自指向真实模块。
+        const int diffuse_index = FindPipelineConfigEntry(
+            baseline, ShaderModuleSlotRole::DiffuseLightProvider);
+        const int specular_index = FindPipelineConfigEntry(
+            baseline, ShaderModuleSlotRole::SpecularLightProvider);
+        if (diffuse_index < 0)
+            result.diagnostics.emplace_back(
+                "pipeline config is missing diffuse_light_provider");
+        if (specular_index < 0)
+            result.diagnostics.emplace_back(
+                "pipeline config is missing specular_light_provider");
+        if (diffuse_index >= 0 && specular_index >= 0
+         && std::strcmp(baseline.entries[diffuse_index].module_name,
+                        baseline.entries[specular_index].module_name) == 0)
+            result.diagnostics.emplace_back(
+                "diffuse and specular providers must be independent modules");
+
+        // ④ 规范化文本 == 逐行 `#include "<path>"`，且摘要 != 0。
+        {
+            std::string text;
+            EmitPipelineConfigText(baseline, text);
+            std::string expected;
+            for (hgl::uint32 index = 0; index < baseline.entry_count; ++index)
+            {
+                expected += "#include \"";
+                expected += baseline.entries[index].include_path;
+                expected += "\"\n";
+            }
+            if (text != expected)
+                result.diagnostics.emplace_back(
+                    std::string("pipeline config text is not canonical:\n--- got ---\n")
+                    + text + "--- expected ---\n" + expected);
+            if (baseline.hash == 0)
+                result.diagnostics.emplace_back(
+                    "pipeline config hash must be non-zero for a non-empty config");
+            if (ComputePipelineConfigHash(baseline) != baseline.hash)
+                result.diagnostics.emplace_back(
+                    "pipeline config hash must be recomputable from the text");
+        }
+
+        // ⑤ 只换一个槽的模块：恰好一行变化，摘要必须变（缓存键不能串味）。
+        {
+            PipelineConfig swapped = baseline;
+            const auto overwrite = [](char *buffer, const size_t size, const char *text)
+            {
+                std::memset(buffer, 0, size);
+                std::strncpy(buffer, text, size - 1);
+            };
+            overwrite(swapped.entries[diffuse_index].module_name,
+                      sizeof(swapped.entries[diffuse_index].module_name),
+                      "diffuse_toon");
+            overwrite(swapped.entries[diffuse_index].include_path,
+                      sizeof(swapped.entries[diffuse_index].include_path),
+                      "lighting/diffuse_toon.glsl");
+            swapped.hash = ComputePipelineConfigHash(swapped);
+
+            int changed = 0;
+            int changed_index = -1;
+            for (hgl::uint32 index = 0;
+                 index < swapped.entry_count
+              && index < baseline.entry_count;
+                 ++index)
+            {
+                if (swapped.entries[index] != baseline.entries[index])
+                {
+                    ++changed;
+                    changed_index = static_cast<int>(index);
+                }
+            }
+            if (changed != 1 || changed_index != diffuse_index)
+                result.diagnostics.emplace_back(
+                    "replacing one slot module must change exactly that entry, got "
+                    + std::to_string(changed));
+            if (swapped.hash == baseline.hash)
+                result.diagnostics.emplace_back(
+                    "replacing a slot module must change the pipeline config hash");
+
+            // 文本层面同样只差一行，且差异行正是该槽的 include。
+            std::string baseline_text;
+            std::string swapped_text;
+            EmitPipelineConfigText(baseline, baseline_text);
+            EmitPipelineConfigText(swapped, swapped_text);
+            if (swapped_text.find("#include \"lighting/diffuse_toon.glsl\"\n")
+                    == std::string::npos)
+                result.diagnostics.emplace_back(
+                    "replaced module must appear in the emitted config text");
+            if (baseline_text.find("#include \"lighting/diffuse_lambert.glsl\"\n")
+                    == std::string::npos)
+                result.diagnostics.emplace_back(
+                    "baseline module must appear in the emitted config text");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunFallbackInferenceCase()
     {
         GateResult result;
@@ -7294,8 +7480,11 @@ namespace
             //   (rows=T,payload=F) 只要纹理引用行表（UnlitTexture 一类）
             //   (rows=T,payload=T) 读 payload 行（Lit 一类）
             // (rows=F,payload=T) 非法，由下面的拒绝断言单独覆盖，不放进往返样本。
-            static const bool kRuntimeRows[4] = { false, true, true, true };
-            static const bool kPayloadRows[4] = { false, false, true, false };
+            // 下标 0 是占位（下面按 1..4 取样本），数组长度必须是 5 —— 长度 4 时
+            // `[4]` 会读到数组外，静态存储的越界读会随链接布局改变，表现为
+            // 「这条断言时好时坏」而不是编译错误。
+            static const bool kRuntimeRows[5] = { false, false, true, true, true };
+            static const bool kPayloadRows[5] = { false, false, false, true, false };
             entry.requires_recipe_runtime_rows = kRuntimeRows[i];
             entry.requires_recipe_payload_row = kPayloadRows[i];
 
@@ -8477,6 +8666,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunMaterialDefinitionParseDetailCase());
     if (run_materialization) results.push_back(RunMaterialDomainContractCase());
     if (run_materialization) results.push_back(RunShaderConfigEmitCase());
+    if (run_pipeline) results.push_back(RunPipelineConfigEmitCase());
     if (run_materialization) results.push_back(RunMaterialLibraryContractCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());

@@ -154,6 +154,30 @@ C++ 端在当前 Pass 构建或调度时，根据 Pass 配置在内存中生成�
 #include "lighting/shadow/shadow_none.glsl"
 ```
 
+> **落地校正（2026-10，阶段二）**
+> 上面是概念示意，实际路径不带 `lighting/` 分组子目录以外的层级。这个头由
+> `hgl/mtl/PipelineConfigEmitter.h` 的 `EmitPipelineConfig()` + `EmitPipelineConfigText()`
+> 生成：前者是**唯一判定点**（必需槽缺失=硬失败 / 可选槽缺失=跳过 / 未声明槽=忽略 /
+> 路径超长=失败），后者是**唯一排版出口**（一行一个 `#include "…"`，行尾 `\n`）。
+> 顺序恒等于模板 `slots[]` 顺序，`SurfaceProvider` 因调用关系恒排末位。
+>
+> 真实发射结果（`MakeIdentityForwardLitProfile()`，实测 11 行）：
+> ```c
+> #include "sky/sky_atmosphere.glsl"
+> #include "lighting/diffuse_lambert.glsl"
+> #include "lighting/specular_cook_torrance.glsl"
+> #include "lighting/indirect_sky_ambient.glsl"
+> #include "shadow/pcf_shadow.glsl"
+> #include "ao/identity.glsl"
+> #include "lighting/forward_pbr.glsl"
+> #include "material/pbr_surface_source.glsl"     // 来自材质定义
+> #include "ntb/ntb_tangent_vbo_normalmap.glsl"    // 来自材质定义
+> #include "compositor/forward_lighting.glsl"
+> #include "surface/material_surface.glsl"        // 恒末位
+> ```
+> 换算法 = 换掉其中一行，其余 10 行逐字节不变（门禁 `PC.pipeline-config-emit`
+> 钉住了「只换一行则只变一行、摘要必变、缓存键不串味」）。
+
 ### 4.2 物理级固定代码主着色器（`standard_opaque.frag.glsl`）
 代码逻辑直线向下，无任何 `#if` 分支，具备最强可读性与可维护性：
 
@@ -261,6 +285,19 @@ color = [1.0, 0.0, 0.0, 1.0]
 
 | 阶段 | 核心任务 | 交付产物 |
 | :--- | :--- | :--- |
-| **阶段 1：契约头与算法函数库固化** | 制定 5 大光照插槽的 GLSL 统一签名；实现对应的固定算法文件及“无/空”对象实现（`*_none.glsl`） | `ShaderLibrary/lighting/` 基础算法库 |
-| **阶段 2：Domain 主着色器固定化** | 将 `StandardOpaque`、`UnlitSolid` 等核心 Domain 重构为无 `#if` 的物理 `.frag.glsl` 文件；编写 C++ `PipelineConfigEmitter` | 固定主着色器 + C++ 配置发射器 |
+| **阶段 1：契约头与算法函数库固化** ✅ | 制定 5 大光照插槽的 GLSL 统一签名；实现对应的固定算法文件及“无/空”对象实现（`*_none.glsl`） | `ShaderLibrary/lighting/` 基础算法库 |
+| **阶段 2：Domain 主着色器固定化** 🚧 | 将 `StandardOpaque`、`UnlitSolid` 等核心 Domain 重构为无 `#if` 的物理 `.frag.glsl` 文件；编写 C++ `PipelineConfigEmitter` | 固定主着色器 + C++ 配置发射器 |
 | **阶段 3：资产降维与旧架构清理** | 将现有材质转为纯粹的 `MaterialInstance`；将 `pure_color` 与 `checkerboard` 保底机制移入 C++；废弃旧版 ShaderGen 拼接代码与 `material.toml` | 极简架构上线，全套自动化门禁验证通过 |
+
+阶段 2 的进展（按交付顺序）：
+
+1. ✅ `PipelineConfigEmitter`（`inc/hgl/mtl/PipelineConfigEmitter.h` +
+   `src/ShaderGen/template/PipelineConfigEmitter.cpp`）：`#include` 这一半的
+   单一真源与唯一排版出口；`FragmentTemplateComposer` 已改为委托它，不再自己
+   遍历 `template.slots`。门禁 `PC.pipeline-config-emit` 覆盖顺序、必需/可选
+   缺失、一行换算法、摘要敏感性。
+2. ⬜ 消灭主着色器里最后三处条件编译（`material_surface.glsl` 的
+   `#if HGL_USE_NTB_PROVIDER`、`forward_lighting.glsl` 的
+   `#if defined(HGL_USE_AMBIENT_OCCLUSION_PROVIDER`）——把对应槽位改成必需，
+   缺失即空对象模块而不是不发射。
+3. ⬜ 收敛 `BuildFragmentDefines` 里为兼容旧槽位而保留的过渡判定。

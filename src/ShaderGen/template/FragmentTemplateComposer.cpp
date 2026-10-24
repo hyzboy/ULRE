@@ -3,6 +3,7 @@
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderConfig.h>
+#include <hgl/mtl/PipelineConfigEmitter.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/util/hash/FNV1a.h>
 #include "../compile/MaterialShaderEmitter.h"
@@ -342,30 +343,20 @@ namespace hgl::graph::mtl
         }
 
         // 按 template.slots 顺序发射全部模块 #include（ForwardLit 用）。
-        // include 顺序唯一来源 = slots；可选 slot 未提供则跳过，必需缺失则失败。
+        // 判定与排版都委托 PipelineConfigEmitter——本函数只做「接线」，
+        // 不允许在这里重写遍历/缺失处理逻辑（那会变成第二真源）。
         bool BuildAllSlotIncludeText(
             const FragmentTemplateComposer::ComposeInput &input,
             std::string &out)
         {
             const ResolvedRenderTemplate *resolved = input.resolved_template;
-            if (!resolved || !resolved->definition)
+            if (!resolved)
                 return false;
 
-            const RenderTemplateDefinition &definition = *resolved->definition;
-            for (hgl::uint32 index = 0; index < definition.slot_count; ++index)
-            {
-                const char *path =
-                    ResolvedInclude(input, definition.slots[index].role);
-                if (!path)
-                {
-                    if (definition.slots[index].required)
-                        return false;
-                    continue;
-                }
-                out += "#include \"";
-                out += path;
-                out += "\"\n";
-            }
+            PipelineConfig config;
+            if (!EmitPipelineConfig(*resolved, config))
+                return false;
+            EmitPipelineConfigText(config, out);
             return true;
         }
 

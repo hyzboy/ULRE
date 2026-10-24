@@ -38,6 +38,8 @@ SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ResolvedRenderTemplate.h
     template/RenderTemplateResolve.cpp
+    ${SHADERGEN_INCLUDE_PATH}/PipelineConfigEmitter.h
+    template/PipelineConfigEmitter.cpp
     ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
     template/FragmentTemplateComposer.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
