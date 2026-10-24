@@ -512,11 +512,7 @@ pbr_surface_source.glsl
 其它材质定义包括：
 
 ```text
-pure_color.material.toml
 checkerboard_2d.material.toml
-checkerboard_3d.material.toml
-text_2d_gpu.material.toml
-text_2d_gpu_bitmap.material.toml
 unlit_texture.material.toml
 vertex_color.material.toml
 vertex_luminance.material.toml
@@ -524,6 +520,10 @@ vertex_palette_color.material.toml
 sky_minimal.material.toml
 debug_normal_color.material.toml
 ```
+
+保底链上的五个 builtin 定义（`builtin/pure_color`、`builtin/checkerboard_3d`、
+`builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap`）已代码化，
+内嵌在 `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，不再有对应的 `.material.toml`。
 
 它们使用相同的 ShaderGen 框架，但提供不同的材质 source、顶点需求、输出策略或模板能力。
 

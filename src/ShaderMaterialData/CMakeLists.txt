@@ -23,6 +23,9 @@ set(SHADERMATERIALDATA_FILES
     MaterialDefinitionFile.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDefinitionRegistry.h
     MaterialDefinitionRegistry.cpp
+    # 内嵌 builtin 材质定义（保底链的单一真源，不依赖资产目录）。
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/BuiltinMaterialDefinitions.h
+    BuiltinMaterialDefinitions.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialVertexVaryingConfig.h
     # ── 表面领域契约（Fixed-Code Domain Shaders 的单一真源）──

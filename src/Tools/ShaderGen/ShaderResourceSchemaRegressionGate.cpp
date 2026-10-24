@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/BuiltinMaterialDefinitions.h>
 #include <hgl/mtl/MaterialDomain.h>
 #include <hgl/mtl/ShaderConfig.h>
 #include <hgl/mtl/VkEnumText.h>
@@ -4107,6 +4108,26 @@ namespace
         return result;
     }
 
+    // 阶段三之三：材质定义有**两个**来源 —— 内嵌 builtin（C++ 代码）与资产目录
+    // （.material.toml）。这里复刻运行时的注册顺序（先内嵌、后目录），
+    // 因为后续比对要求 registry 拿到的是完整集合。
+    static int RegisterBuiltinMaterialDefinitions(MaterialDefinitionFileRegistry &registry)
+    {
+        int count = 0;
+        for (int i = 0; i < GetBuiltinMaterialDefinitionCount(); ++i)
+        {
+            const BuiltinMaterialDefinitionSource *source =
+                GetBuiltinMaterialDefinitionSource(i);
+            if (!source || !source->schema4_source)
+                continue;
+            if (registry.RegisterDefinitionSource(
+                    source->source_label, source->schema4_source,
+                    static_cast<int>(std::strlen(source->schema4_source))))
+                ++count;
+        }
+        return count;
+    }
+
     static GateResult RunMaterialDefinitionFileSchemaCase()
     {
         GateResult result;
@@ -4430,18 +4451,48 @@ namespace
         }
 
         MaterialDefinitionFileRegistry registry;
+        const int builtin_count = RegisterBuiltinMaterialDefinitions(registry);
+        if (builtin_count != 5)
+        {
+            result.diagnostics.emplace_back(
+                "expected 5 embedded builtin material definitions, got "
+                + std::to_string(builtin_count));
+        }
+
+        // 内嵌定义**不得**依赖资产目录：只喂内嵌源码的独立 registry 也必须能解析
+        // 五个保底 ID。这是"保底物的可依赖性高于被兜底物"的机器化判据 ——
+        // 谁把它们挪回 .material.toml，这条断言立刻变红。
+        {
+            MaterialDefinitionFileRegistry builtin_only;
+            RegisterBuiltinMaterialDefinitions(builtin_only);
+            static const char *fallback_ids[] = {
+                "builtin/pure_color",
+                "builtin/checkerboard_3d",
+                "builtin/error_checkerboard_3d",
+                "builtin/text_gpu",
+                "builtin/text_gpu_bitmap"
+            };
+            for (const char *id : fallback_ids)
+            {
+                if (!builtin_only.FindByID(id))
+                    result.diagnostics.emplace_back(
+                        std::string("builtin definition must not depend on the asset "
+                                    "directory: ") + id);
+            }
+        }
+
         int file_count = 0;
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 14
+         || file_count != 9
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
         }
         else
         {
-            const char *expected_file_ids[] = {
+            const char *expected_ids[] = {
                 "Lit", "SkyMinimal", "SkyCube",
                 "DebugNormalColor",
                 "VertexColor", "UnlitTexture",
@@ -4452,11 +4503,11 @@ namespace
                 "builtin/error_checkerboard_3d",
                 "builtin/text_gpu", "builtin/text_gpu_bitmap"
             };
-            for (const char *id : expected_file_ids)
+            for (const char *id : expected_ids)
             {
                 if (!registry.FindByID(id))
                     result.diagnostics.emplace_back(
-                        std::string("missing bulk material file: ") + id);
+                        std::string("missing bulk material definition: ") + id);
             }
 
         const char *bulk_ids[] = {

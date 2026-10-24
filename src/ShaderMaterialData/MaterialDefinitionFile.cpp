@@ -1185,12 +1185,22 @@ namespace hgl::graph::mtl
         }
         buffer[size_t(size)] = 0;
 
+        return RegisterDefinitionSource(
+            path.c_str(), buffer.data(), static_cast<int>(size));
+    }
+
+    bool MaterialDefinitionFileRegistry::RegisterDefinitionSource(
+        const os_char *label, const char *content, const int content_size)
+    {
+        if (!content || content_size <= 0)
+            return false;
+
         MaterialDefinitionFileData *data = files.Create();
         if (!data)
             return false;
 
         const MaterialDefinitionFileParseResult parse_result =
-            ParseMaterialDefinitionFile(buffer.data(), static_cast<int>(size), *data);
+            ParseMaterialDefinitionFile(content, content_size, *data);
         if (parse_result != MaterialDefinitionFileParseResult::OK)
         {
             // 口径（2026-10-11 用户）：采样器等配置写错 = **LOG 报错**（不静默、不假装能编）。
@@ -1216,7 +1226,7 @@ namespace hgl::graph::mtl
                 error_detail += " (" + error.detail + ")";
 
             GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义解析失败: %ls (%s)%s",
-                      path.c_str(), GetMaterialDefinitionFileParseResultName(parse_result),
+                      label, GetMaterialDefinitionFileParseResultName(parse_result),
                       error_detail.c_str());
             files.DeleteAt(files.GetCount() - 1);
             return false;
@@ -1229,8 +1239,8 @@ namespace hgl::graph::mtl
              && files[i]->definition.definition_id
                     == data->definition.definition_id)
             {
-                GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义 ID 重复: %s (file=%ls)",
-                          data->definition.definition_id.c_str(), path.c_str());
+                GLogError(u8"[MaterialDefinitionFileRegistry] 材质定义 ID 重复: %s (source=%ls)",
+                          data->definition.definition_id.c_str(), label);
                 files.DeleteAt(new_file_index);
                 return false;
             }

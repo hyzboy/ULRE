@@ -68,6 +68,18 @@ namespace hgl::graph::mtl
                            int *out_file_count = nullptr,
                            int *out_error_count = nullptr);
 
+        /**
+         * 注册一份**内嵌**的 schema-4 源码（不碰磁盘）。
+         *
+         * 与 LoadFile 共用同一套解析 + 领域校验 + 重复 ID 检测：代码化只消灭"对磁盘文件的
+         * 依赖"，不消灭"对校验管线的依赖"（领域契约仍是唯一真源）。
+         * label 仅用于诊断日志，应形如 OS_TEXT("builtin:pure_color")。
+         * 解析失败或 ID 重复 ⇒ 该份不注册并返回 false。
+         */
+        bool RegisterDefinitionSource(const os_char *label,
+                                      const char *content,
+                                      int content_size);
+
         const MaterialDefinition *FindByID(const char *definition_id) const;
         int GetCount() const { return files.GetCount(); }
         void Clear() { files.Clear(); }

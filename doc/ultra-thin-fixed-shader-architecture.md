@@ -279,10 +279,18 @@ color = [1.0, 0.0, 0.0, 1.0]
 1. **`builtin/pure_color`**：
    - 不是独立材质系统，而是基于 `MaterialDomain::UnlitSolid` 的**C++ 内置保底默认实例（Default Fallback Instance）**。
    - 供无材质指定的图元、简单 Gizmo 调试直接引用。
-2. **`builtin/checkerboard` 系列**：
-   - 基于 `MaterialDomain::ErrorChecker3D` 的**C++ 内置报错实例（Error Visualizer Instance）**。
+2. **`builtin/checkerboard_3d` / `builtin/error_checkerboard_3d`**：
+   - 前者基于 `MaterialDomain::Checker3D`（无报错标记的中性棋盘），后者基于
+     `MaterialDomain::ErrorChecker3D` 的**C++ 内置报错实例（Error Visualizer Instance）**。
    - 当检测到网格缺少必需顶点属性（如缺 Normal、缺 UV）或缺少必要贴图时，自动路由至该实例，并传递特定标记色（例如洋红表示无材质、黄色表示缺法线、蓝色表示缺 UV）。
    - **完全脱离磁盘文件依赖，全部在 C++ 内部常驻构造**。
+3. **`builtin/text_gpu` / `builtin/text_gpu_bitmap`**：`Text2D` 领域的 SDF / 位图两条
+   字形路径，由 `TextRenderPipeline` 按字体数据源二选一。
+
+> 现状（阶段三之三）：上述 5 份定义已**全部代码化**，内嵌在
+> `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，不再有对应的
+> `.material.toml`。`builtin/checkerboard_2d`（`Checker2D` 领域）仍以资产文件形式
+> 存在——它不在保底链上，可继续走资产路径直到阶段四。
 
 ---
 
@@ -398,3 +406,31 @@ color = [1.0, 0.0, 0.0, 1.0]
    > （`MeshDrawParams`），而 `IsGlobalSSBOType()` 会照样放行；因此加了一条
    > 编译期 `static_assert`，要求 16 个契约的该字段必须落在 surface 族
    > （`PBRSurface` / `EmissiveSurface` / `TransmissionSurface`）内。
+
+3. ✅ **保底链代码化**。`builtin/pure_color`、`builtin/checkerboard_3d`、
+   `builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap`
+   五份定义从 `ShaderLibrary/material/*.material.toml` 移入 C++：
+   新增 `inc/hgl/mtl/BuiltinMaterialDefinitions.h` +
+   `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`（内嵌 schema-4 源码表），
+   `MaterialDefinitionFileRegistry` 新增 `RegisterDefinitionSource()`
+   （与 `LoadFile` 共用解析 + 领域校验 + 重复 ID 检测，`LoadFile` 改为委托它），
+   `GetMaterialDefinitionFileRegistry()` 改为**先注册内嵌、再扫资产目录**，
+   五个文件随之删除（目录内剩 9 份资产定义）。
+   加载日志变为 `Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`；
+   空库判据从 `file_count == 0 || registry.GetCount() == 0` 改为只看 `file_count`
+   （内嵌定义已保证 registry 非空）。门禁 `S.material-definition-file-schema`
+   改为复刻运行时的两段式注册（内嵌 5 + 目录 9），并新增一条硬断言：
+   只喂内嵌源码的独立 registry 必须能解析五个保底 ID ——
+   谁把它们挪回 TOML，这条立刻变红。
+   > **为什么必须代码化**：这五个 ID 是**保底链本身**（`kFallbackMaterialRules`
+   > 与 `TextRenderPipeline` 按字面量引用）。保底物一旦因为资产缺失 / 误删 / 写错
+   > 而解析不出来，错误处理就会再失败一次——保底物的可依赖性必须高于它所要兜底
+   > 的东西。它们也没有作者可调的自由度：纹理槽形态与 `material_data` 类型已在
+   > 阶段三之二推入领域契约，剩下的只有「领域 + 顶点语义 + 变体开关」，属于引擎
+   > 内部知识。
+   > **代码化的边界**：内嵌的仍是完整 schema-4 源码，注册时走与 `.material.toml`
+   > **完全相同**的解析 + 领域校验管线。若改为在 C++ 里手工拼
+   > `MaterialDefinition` 结构体，领域契约就得在第二处复述一遍
+   > （`material_source_module_name` / `ntb_module_name` / `vertex_node_config` /
+   > 纹理槽形态…），那正是本架构要消灭的重复。代码化消灭的是「对磁盘文件的
+   > 依赖」，不是「对校验管线的依赖」。

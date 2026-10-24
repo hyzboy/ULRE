@@ -1,5 +1,6 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
+#include<hgl/mtl/BuiltinMaterialDefinitions.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
@@ -291,6 +292,44 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
     static bool loaded = false;
     if (!loaded)
     {
+        // ① 先注册**内嵌** builtin 定义（阶段三之三）。
+        //
+        // 顺序理由：保底链（kFallbackMaterialRules / 字体管线）按字面量引用这些 ID。
+        // 它们必须先于资产目录就位 —— 资产目录缺失、读不出、单份写错，都不能让
+        // "错误材质"本身也拿不到。内嵌源码仍走同一条解析 + 领域校验管线，所以
+        // MaterialDomainContract 依旧是唯一真源。
+        int builtin_count = 0;
+        for (int i = 0; i < mtl::GetBuiltinMaterialDefinitionCount(); ++i)
+        {
+            const mtl::BuiltinMaterialDefinitionSource *source =
+                mtl::GetBuiltinMaterialDefinitionSource(i);
+            if (!source || !source->schema4_source || !source->definition_id)
+                continue;
+
+            if (!registry.RegisterDefinitionSource(
+                    source->source_label, source->schema4_source,
+                    static_cast<int>(strlen(source->schema4_source))))
+            {
+                // 内嵌定义解析不出来 = 引擎内部错误（源码与领域契约脱节），
+                // 与"某份资产写错"性质不同，不可降级 ⇒ 进程级致命。
+                GLogFatal("[ShaderGen] 内嵌 builtin 材质定义注册失败: %ls。这是引擎内部错误"
+                          "（内嵌源码与领域契约不一致），保底材质不可依赖，进程不可继续。",
+                          source->source_label);
+                std::abort();
+            }
+
+            // 内嵌源码声明的 id 必须与登记 ID 一致，否则保底链会指向一个不存在的定义。
+            if (!registry.FindByID(source->definition_id))
+            {
+                GLogFatal("[ShaderGen] 内嵌 builtin 材质定义 ID 不一致: 期望 \"%s\""
+                          "（标签 %ls），注册后查不到该 ID。",
+                          source->definition_id, source->source_label);
+                std::abort();
+            }
+            ++builtin_count;
+        }
+
+        // ② 再扫描资产目录（用户 / 项目可写的 .material.toml）。
         int file_count = 0;
         int error_count = 0;
         const hgl::filesystem::Path material_path =
@@ -315,11 +354,12 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         // 口径（2026-10-11 用户）：**单份材质写错（例如 sampler 配错）= LOG 报错**，不是进程级致命；
         // 出错的那份不注册 ⇒ 引用它的配方落到错误材质路径
         // （MaterialErrorKind::UnknownMaterialDefinition ⇒ 保底材质 + 按颜色标错误种类）。
-        // 只有「整库不可用」（目录缺失 / 读不出 / 零份可解析）才是 fatal。
-        if (file_count == 0 || registry.GetCount() == 0)
+        // 只有「资产库不可用」（目录缺失 / 读不出 / 零份可解析）才是 fatal —— 内嵌 builtin
+        // 定义已经保证 registry 非空，所以这里判的是**资产份数**，不是 registry.GetCount()。
+        if (file_count == 0)
         {
-            GLogFatal("[ShaderGen] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions). File-backed schema-4 materials are required.",
-                      file_count, error_count, registry.GetCount());
+            GLogFatal("[ShaderGen] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions, %d builtin). File-backed schema-4 materials are required.",
+                      file_count, error_count, registry.GetCount(), builtin_count);
             std::abort();
         }
 
@@ -327,8 +367,8 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
             GLogError("[ShaderGen] %d 份材质定义加载失败（逐份原因见上）——这些定义不注册，"
                       "引用它们的配方会走错误材质路径。", error_count);
 
-        GLogInfo("[ShaderGen] Loaded %d material TOML definitions (%d errors)",
-                 file_count, error_count);
+        GLogInfo("[ShaderGen] Loaded %d material TOML definitions (%d errors) + %d builtin definitions",
+                 file_count, error_count, builtin_count);
         loaded = true;
     }
     return registry;
