@@ -209,14 +209,14 @@ RenderFrameSync(dt)     → RunRenderPhaseUpdates(...)         Context.cpp:711-7
 
 ## 5. 提交绘制（`RenderDrawSubmit` → vkCmd）
 
-`PrimitiveRenderSystem::OnRender`（`src/ecs/support/primitive/PrimitiveRenderSystem.cpp:39-94`）：从 `cache.materialBatches` 收非空批 → 按 `MaterialBatch::key` 排序（:60-65）→ 跳过 `pipeline->GetOverlay()` 的批（:72-73，交给 Overlay 系统）→ `renderer->Render(cmdBuffer, batch->transform_buffer, batch, context->GetRenderContext(), context->GetActiveCameraRow())`（:86-92）。
+`PrimitiveRenderSystem::OnRender`（`src/ecs/support/primitive/PrimitiveRenderSystem.cpp:39-94`）：从 `cache.materialBatches` 收非空批 → 按 `MaterialBatch::key` 排序（:60-65）→ 跳过 `key.pipeline_config.overlay` 的批（:72-73，交给 Overlay 系统）→ `renderer->Render(cmdBuffer, batch->transform_buffer, batch, context->GetRenderContext(), context->GetActiveCameraRow())`（:86-92）。
 
 `PipelineMaterialRenderer::Render`（`src/ecs/support/PipelineMaterialRenderer.cpp:103-208`）对每个批次只做这几件事：
 
 | 步 | 代码 | 内容 |
 |---|---|---|
 | 1 | :124 | `BindPipeline(pipeline)` —— pipeline 只含 shader 部分 |
-| 2 | :127-128 | `ApplyPipelineState(pipeline->GetConfig())` —— EDS 1/2/3 全套 `vkCmdSet*`（cull/depth/blend/polygon/…） |
+| 2 | :127-129 | `ApplyPipelineState(owner_batch->pipeline_config)` —— EDS 1/2/3 全套 `vkCmdSet*`（cull/depth/blend/polygon/…）；**状态取自本批，不回读管线**（`Pipeline` 不持有渲染状态） |
 | 3 | :130-134 | `GraphicsContext::BindGlobalDescriptorSets(cmd, layout)` —— 唯一 **Bindless(0)** 集每 cmd 首绑一次（`GraphicsContext` 内部守卫）；Scene 集已退场 |
 | 4 | :155-187 | `graph::PushRootAddresses(...)` —— `pc_root`：`addr_global_addresses` / `addr_batch_mesh_draw_params` / l2w / l2w_index / mtl_data_addrs 基址 + `texture_reference_base_addr` + 文本三表（nullptr）+ `camera_row` |
 | 5 | :195-207 | 累积 DrawBatch 计数 → 批末 `ProcIndirectRender`（:37-74）：`DrawMeshTasksIndirect` 或 `DrawMeshTasksIndirectCount`（icb 有计数缓冲时）一条 multi-draw |

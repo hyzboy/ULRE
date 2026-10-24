@@ -121,7 +121,7 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 |---|---|---|
 | ① 项（帧级） | `PrimitiveBatchPipeline::RunSorting → SortByDistance` | 全部渲染项按 `distanceToCamera` **升序**（远 → 近） | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
 | ② 批内 | ~~`SortBatchItems`~~ **已不存在** | ⚠ **2026-10-10 订正**（`SortBatchItems` / `RenderItem::Compare()` / `item->index` / `static_count` 全仓已无，随 T4c4「删 CPU 绘制链」消失）——原描述：分**静态**（`!transform.IsMovable()`）与**可动**两组，各自按 `RenderItem::Compare()` 排序；静态在前；回写 `item->index`、记 `static_count`。**`gpu_driven_override` 批直接 return（不排序）** |
-| ③ 批间 | `PrimitiveRenderSystem::OnRender` | 按 `MaterialBatch::key`（`ShaderProgramPipelineKey{shader_program, pipeline}`）排序后逐个提交 ⇒ 同 program 相邻、状态切换最少 |
+| ③ 批间 | `PrimitiveRenderSystem::OnRender` | 按 `MaterialBatch::key`（`ShaderProgramPipelineKey{shader_program, pipeline, pipeline_config}`）排序后逐个提交 ⇒ 同 program 同形态相邻、状态切换最少 |
 | ④ 透明排序 | **不存在** | 没有按深度给混合材质排序的机制。`alpha_blend` 的真结果顺序 = ①②③ 的副产物；GPU 接管批的行序 = `atomicAdd` **到达序** ⇒ 与 CPU 账可不同。**像素逐字节判据只对不透明/镂空/抖动类硬，对混合排不硬**（"B1"，已知缺口） |
 
 > 机制提醒：② 的"静态在前"是**为帧间稳定性**服务的（静态项不随相机重排 ⇒ 命令流稳定、属性更新量小）；
@@ -133,10 +133,25 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 
 ### 4.1 批键（决定"哪些项能一起画"）
 
-`MaterialBatch::key = ShaderProgramPipelineKey{ShaderProgram*, Pipeline*}`（只比两个指针）。
-**EDS 之后 pipeline 只保留 shader 部分** ⇒ 改 blend/depth/cull/wireframe **不成批**；
-要成新批必须是**不同的 shader program**：不同 `mtl_def_id` / 不同顶点节点（如 billboard）/ 不同覆盖模式（dither/alpha_test）等。
-实测口径：AlphaModes 4 个 program ⇒ 4 批；同 def 但 alpha_cutoff 不同 ⇒ 每档一个 program（A4 台架用它造了 260 批）。
+`MaterialBatch::key = ShaderProgramPipelineKey{ShaderProgram*, Pipeline*, MaterialPipelineConfig}`
+（两个指针 + 一份渲染状态）。
+
+- **`Pipeline*` 只编码 Shader Stages + FBO 附件格式**：全面启用 EDS 1/2/3 后，cull / depth / blend /
+  polygon mode / line width 等全部是 `VK_DYNAMIC_STATE_*`（见 `inc/hgl/vk/pipeline/VKPipeline.h`），
+  所以**同一个 `Pipeline*` 会被多种渲染形态共用**。因此"改 blend/depth/cull 是否成新批"这件事
+  **不能由 pipeline 指针回答**。
+- **形态不同必须成新批**：一条批只下发一次动态状态、发一条 indirect multi-draw，
+  若把双面/单面、不透明/混合混进同一批，后画的项会套用先下发的那份状态（历史 bug）。
+  ⇒ 键里带上 `MaterialPipelineConfig`，`{同 shader, 同管线, 同渲染形态}` 才同批。
+- 仍会因 **不同 shader program** 分出新批：不同 `mtl_def_id` / 不同顶点节点（如 billboard）/
+  不同覆盖模式（dither/alpha_test）等。
+- `pipeline_config` 的来源链：recipe 的 `render_state_overrides.pipeline_config`
+  → `RenderPass::CreatePipeline(program, recipe, &out_config)`
+  → `MaterialRuntimePipelineTable` 按 `(entity, pass)` 与管线一起存
+  → `RenderItem::GetPipelineConfig(pass)` → 合批键 → `MaterialBatch::pipeline_config`。
+
+实测口径：AlphaModes 4 个 program ⇒ 4 批；同 def 但 alpha_cutoff 不同 ⇒ 每档一个 program
+（A4 台架用它造了 260 批）。同 program 同管线但 cull/blend 不同 ⇒ 按形态再拆批。
 
 ### 4.2 项定型（每个 item 的三个下标）
 
@@ -197,7 +212,9 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 1. **push constant**（`RootAddresses` + 切片）：全局/世界地址、相机行、以及**四流在本批切片的地址**
    （`row_base × {8,4,16,…}` 的字节偏移，与 12B 命令流分开）；
 2. **状态应用（EDS）**：`vkCmdSet*` 逐批设置 cull / depth test·write·compare / blend enable·equation / polygon mode /
-   line width ⇒ **pipeline 只绑 shader**，渲染状态不参与批键、也不参与 pipeline 缓存；
+   line width ⇒ **pipeline 只绑 shader**；状态取自**本批**（`MaterialBatch::pipeline_config`），
+   且**不回读管线**（`Pipeline` 不持有渲染状态，`GetConfig()` 已随架构删除）；
+   状态已进批键 ⇒ 本批内形态一致，只下发一次；
 3. **一条 multi-draw**（段累积后 flush）；批末重置段计数。
 
 **判据一眼认法**（日志）：`[IndirectMeshDraw] mesh indirect flush engaged: first=… count=… (gpu_driven=… row_base=… capacity=…)`
@@ -271,7 +288,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 
 | 场景 | 命令要点 | 期望 |
 |---|---|---|
-| 离线正确性 | `ShaderResourceSchemaRegressionGate.exe` | 45 PASS / 0 FAIL |
+| 离线正确性 | `ShaderResourceSchemaRegressionGate.exe all`（**在仓库根运行**，插件 `GLSLCompiler.dll` 在根目录） | 52 PASS / 0 FAIL |
 | CPU 账基线 | 示例直接跑（不开 cull） | `[ERROR]`=0、VUID=0 |
 | 仅派发（判决） | `<示例>_CULL=1` | Parity mismatch=0；绘制不变 |
 | 形态 B 接管 | `<示例>_FORM_B=1` | `ENGAGED batches=k/n`；Pixel 三方全等 |
@@ -286,7 +303,7 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 
 | 词 | 含义 |
 |---|---|
-| 批（MaterialBatch） | 一个 `{ShaderProgram*, Pipeline*}` 键下的全部待绘项；键相同才可能一起画 |
+| 批（MaterialBatch） | 一个 `{ShaderProgram*, Pipeline*, MaterialPipelineConfig}` 键下的全部待绘项；键相同才可能一起画（同 shader 同管线**且同渲染形态**） |
 | 切片（slice） | 接管批在共享行竞技场里的连续行区间，`{row_base, capacity}` |
 | 四流 | 间接命令 / mesh 参数 / `l2w_index` / 材质行，同一 `row_base` 索引 |
 | gather | GPU 剔除阶段把幸存实体"装配"进本批切片的动作 |
@@ -298,3 +315,4 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 | 版本 | 变更 |
 |---|---|
 | v1（2026-10-05） | 首版：整理 T3i 之后的剔除 / 排序 / DrawCall 生成与提交现状，含 CPU 与 GPU 双路对照、A3/A4 实测口径、文件索引与验证矩阵；并标注帧流程档 §7.4/§7.5 为旧修订 |
+| v2（2026-10-24） | **Pipeline 无状态化**落地：`Pipeline` 只由 Shader Stages + FBO 附件格式决定，渲染状态改由 `MaterialPipelineConfig` 随批次下发。修正 §4.1「改 blend/depth/cull 不成批」的旧结论（那是 bug：一条批只下发一次动态状态，形态不同必须拆批），批键改为三字段、附录 A 术语同步；§5 状态应用改为「取自本批、不回读管线」；验证矩阵的离线门禁计数按实测订正为 52 PASS |
