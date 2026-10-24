@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
+#include <hgl/mtl/MaterialDomain.h>
 #include <hgl/mtl/PipelineConfig.h>
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
@@ -238,6 +239,12 @@ namespace hgl::graph::mtl
         // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataName）。
         // GlobalSSBOType：统一的全局 SSBO 池类型（材质表面字段与 MeshDrawParams 共用）。
         GlobalSSBOType material_private_data = GlobalSSBOType::PBRSurface;
+
+        // Part-B0: 表面领域（Fixed-Code Domain Shaders）。
+        // `domain = "StandardOpaque"` → 解析期按领域契约校验顶点语义与纹理槽
+        // （见 <hgl/mtl/MaterialDomain.h>）。缺省 Custom = 不做契约校验，
+        // 保持 schema-4 历史材质的完全向后兼容。
+        MaterialDomain domain = MaterialDomain::Custom;
 
         // Part-B4: TOML-defined texture-reference declarations.
         // 无纹理材质（PureColor、VertexColor 等）此列表为空。

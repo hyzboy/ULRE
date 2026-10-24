@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/MaterialDomain.h>
 #include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
@@ -4654,6 +4655,310 @@ namespace
         return result;
     }
 
+    // 表面领域契约（MaterialDomain.h）的门禁。
+    //
+    // 这一层是「有限领域」取代「顶点×材质×Pass 笛卡尔积」的唯一强制点，
+    // 所以门禁必须同时守住两个方向：
+    //   ① 契约表自身不能腐化（指向不存在的模块 / 空语义 / 重复槽名）；
+    //   ② 校验器不能放行违规材质，也不能误杀合法材质。
+    static GateResult RunMaterialDomainContractCase()
+    {
+        GateResult result;
+        result.name = "D.material-domain-contract";
+
+        // ── ① 契约表自检 + 引用模块存在性 ────────────────────────────────────
+        ShaderCodeModuleRegistry registry;
+        int module_file_count = 0;
+        int module_error_count = 0;
+        const bool registry_ok = registry.LoadDirectory(
+            hgl::ToOSString(GetShaderLibraryPath()),
+            &module_file_count, &module_error_count);
+        if (!registry_ok)
+            result.diagnostics.emplace_back("domain contract: module registry scan failed");
+        else if (module_error_count != 0)
+            result.diagnostics.emplace_back(
+                "domain contract: module registry scan reported parse errors");
+
+        for (int i = 0; i < MaterialDomainContractCount; ++i)
+        {
+            const MaterialDomainContract *contract = GetMaterialDomainContractAt(i);
+            if (!contract)
+            {
+                result.diagnostics.emplace_back(
+                    "domain contract table has a null entry at index "
+                    + std::to_string(i));
+                continue;
+            }
+
+            const std::string tag = std::string("domain '")
+                + (contract->name ? contract->name : "<null>") + "'";
+
+            if (!contract->name || !*contract->name)
+                result.diagnostics.emplace_back(
+                    "domain contract at index " + std::to_string(i) + " has no name");
+
+            // 名字必须能被 ParseMaterialDomain 反解回同一个枚举值，
+            // 否则 TOML 写什么名字都对不上。
+            MaterialDomain roundtrip = MaterialDomain::Custom;
+            if (contract->name
+                && (!ParseMaterialDomain(contract->name, roundtrip)
+                    || roundtrip != contract->domain))
+            {
+                result.diagnostics.emplace_back(
+                    tag + " name does not round-trip through ParseMaterialDomain");
+            }
+
+            if (contract->required_vertex_semantic_mask == 0)
+                result.diagnostics.emplace_back(tag + " requires no vertex semantic at all");
+
+            if (!contract->texture_slots || contract->texture_slot_count <= 0)
+            {
+                result.diagnostics.emplace_back(tag + " declares no texture slot");
+                continue;
+            }
+
+            for (int s = 0; s < contract->texture_slot_count; ++s)
+            {
+                const MaterialDomainTextureSlot &slot = contract->texture_slots[s];
+                if (!slot.name || !*slot.name)
+                {
+                    result.diagnostics.emplace_back(
+                        tag + " has an unnamed texture slot at index "
+                        + std::to_string(s));
+                    continue;
+                }
+                for (int t = s + 1; t < contract->texture_slot_count; ++t)
+                {
+                    const MaterialDomainTextureSlot &other = contract->texture_slots[t];
+                    if (other.name && std::strcmp(slot.name, other.name) == 0)
+                        result.diagnostics.emplace_back(
+                            tag + " declares duplicate texture slot '" + slot.name + "'");
+                }
+            }
+
+            // 引用模块必须真实存在于注册表：契约指向空气时，
+            // Phase 2 的宏头生成会产出无法编译的结果。
+            if (registry_ok)
+            {
+                if (contract->reference_material_source_module
+                    && !registry.FindByName(contract->reference_material_source_module))
+                {
+                    result.diagnostics.emplace_back(
+                        tag + " references unknown material source module '"
+                        + contract->reference_material_source_module + "'");
+                }
+                if (contract->reference_ntb_module
+                    && !registry.FindByName(contract->reference_ntb_module))
+                {
+                    result.diagnostics.emplace_back(
+                        tag + " references unknown ntb module '"
+                        + contract->reference_ntb_module + "'");
+                }
+            }
+        }
+
+        // ── ② 合法材质必须通过 ────────────────────────────────────────────────
+        const char good_file[] =
+            "schema = 4\n"
+            "id = \"DomainGoodStandardOpaque\"\n"
+            "name = \"DomainGoodStandardOpaque\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "domain = \"StandardOpaque\"\n"
+            "[fragment]\n"
+            "material_source_module_name = \"pbr_surface_source\"\n"
+            "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+            "[resources]\n"
+            "textures = [\n"
+            "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+            "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+            "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+            "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+            "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+            "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+            "]\n";
+        MaterialDefinitionFileData good_data;
+        const MaterialDefinitionFileParseResult good_result =
+            ParseMaterialDefinitionFile(
+                good_file, static_cast<int>(std::strlen(good_file)), good_data);
+        if (good_result != MaterialDefinitionFileParseResult::OK)
+        {
+            result.diagnostics.emplace_back(
+                std::string("a conforming StandardOpaque material must parse, got ")
+                + GetMaterialDefinitionFileParseResultName(good_result)
+                + " key='" + good_data.parse_error.key
+                + "' detail='" + good_data.parse_error.detail + "'");
+        }
+        else if (good_data.definition.domain != MaterialDomain::StandardOpaque)
+        {
+            result.diagnostics.emplace_back(
+                "parsed material lost its domain (expected StandardOpaque)");
+        }
+
+        // ── ③ 未声明 domain = Custom = 不校验（向后兼容）─────────────────────
+        // 这个材质缺 base_color 槽、缺 Normal 语义，对 StandardOpaque 是违规，
+        // 但 Custom 不做契约校验 ⇒ 必须通过。任何「无条件套契约」的改动都会
+        // 在这里炸出来。
+        const char custom_file[] =
+            "schema = 4\n"
+            "id = \"DomainCustomLoose\"\n"
+            "name = \"DomainCustomLoose\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[fragment]\n"
+            "material_source_module_name = \"unlit_source\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\"]\n";
+        MaterialDefinitionFileData custom_data;
+        if (ParseMaterialDefinitionFile(
+                custom_file, static_cast<int>(std::strlen(custom_file)), custom_data)
+            != MaterialDefinitionFileParseResult::OK)
+        {
+            result.diagnostics.emplace_back(
+                "a material without 'domain' must stay exempt from contract checks");
+        }
+        else if (custom_data.definition.domain != MaterialDomain::Custom)
+        {
+            result.diagnostics.emplace_back(
+                "missing 'domain' must default to MaterialDomain::Custom");
+        }
+
+        // ── ④ 负向：逐条契约违规都必须被拒 ──────────────────────────────────
+        struct DomainViolationProbe
+        {
+            const char *label;
+            const char *content;
+        };
+
+        const DomainViolationProbe probes[] = {
+            {
+                "missing required vertex semantic (Normal)",
+                "schema = 4\n"
+                "id = \"DomainBadVertex\"\n"
+                "name = \"DomainBadVertex\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                "texture slot outside the domain whitelist",
+                "schema = 4\n"
+                "id = \"DomainBadSlot\"\n"
+                "name = \"DomainBadSlot\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"splat_map\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                "missing a must-declare texture slot",
+                "schema = 4\n"
+                "id = \"DomainBadMissingSlot\"\n"
+                "name = \"DomainBadMissingSlot\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                "no material source module",
+                "schema = 4\n"
+                "id = \"DomainBadNoSource\"\n"
+                "name = \"DomainBadNoSource\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"StandardOpaque\"\n"
+                "[fragment]\n"
+                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+                "[resources]\n"
+                "textures = [\n"
+                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
+                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
+                "]\n"
+            },
+            {
+                "unknown domain name",
+                "schema = 4\n"
+                "id = \"DomainBadUnknown\"\n"
+                "name = \"DomainBadUnknown\"\n"
+                "provider_policy = \"GeometryOnly\"\n"
+                "domain = \"NoSuchDomain\"\n"
+                "[fragment]\n"
+                "material_source_module_name = \"pbr_surface_source\"\n"
+                "[vertex]\n"
+                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+            },
+        };
+
+        for (const DomainViolationProbe &probe : probes)
+        {
+            MaterialDefinitionFileData data;
+            const MaterialDefinitionFileParseResult parse_result =
+                ParseMaterialDefinitionFile(
+                    probe.content, static_cast<int>(std::strlen(probe.content)), data);
+            if (parse_result == MaterialDefinitionFileParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("domain contract let through a violation: ") + probe.label);
+                continue;
+            }
+
+            // 报错必须落在 domain 这个键上，而不是飘去别的键——
+            // 否则作者按提示改半天也修不好。
+            if (data.parse_error.key != "domain")
+            {
+                result.diagnostics.emplace_back(
+                    std::string("violation '") + probe.label
+                    + "' must be reported on key 'domain', got '"
+                    + data.parse_error.key + "'");
+            }
+            if (data.parse_error.detail.empty())
+            {
+                result.diagnostics.emplace_back(
+                    std::string("violation '") + probe.label
+                    + "' must carry a human-readable detail");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunFallbackInferenceCase()
     {
         GateResult result;
@@ -4930,14 +5235,15 @@ namespace
             // Consolidated scene Set 0 UBOs into single scene_ubo.glsl; added RenderItemResolve.glsl, shadow_receiver_source.glsl, pcf_shadow.glsl.
             // Stage 5 removed the duplicate ntb_derivative_normalmap provider (71 → 70).
             // 回退标记色：新增 error_checkerboard_3d_source（70 → 71）。
-            if (file_count != 71)
-                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
+            // 阶段一：新增 pass_environment_interface（71 → 72）。
+            if (file_count != 72)
+                result.diagnostics.emplace_back("LoadDirectory expected 72 file modules, got "
                                                 + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 71;
+            const int expected_count = 72;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -7630,6 +7936,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionParseDetailCase());
+    if (run_materialization) results.push_back(RunMaterialDomainContractCase());
     if (run_materialization) results.push_back(RunMaterialLibraryContractCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());

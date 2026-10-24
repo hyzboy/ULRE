@@ -1,4 +1,5 @@
 ﻿#include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/MaterialDomain.h>
 
 #include <hgl/log/Log.h>
 #include <hgl/mtl/VkEnumText.h>
@@ -428,6 +429,25 @@ namespace hgl::graph::mtl
 
             out.definition.definition_id = id;
             out.definition.definition_name = name;
+
+            // ── 表面领域（可选）────────────────────────────────────────────────
+            // `domain = "StandardOpaque"` 触发契约校验；缺省 = Custom（不校验）。
+            // 契约不满足时在这里就失败：这是「有限领域」取代「任意组合」的
+            // 强制点——不许把非法形态放到运行时再兜底。
+            if (root.contains("domain"))
+            {
+                std::string domain_name;
+                if (!ReadRequiredString(root, "domain", domain_name)
+                 || !ParseMaterialDomain(domain_name.c_str(), out.definition.domain))
+                {
+                    RecordParseFailure("domain", domain_name.c_str(),
+                                       "未知表面领域名（见 MaterialDomain.h 的 GetMaterialDomainName）");
+                    return false;
+                }
+            }
+            else
+                out.definition.domain = MaterialDomain::Custom;
+
             if (root.contains("transform"))
             {
                 if (!ParseTransformGraph(
@@ -847,7 +867,7 @@ namespace hgl::graph::mtl
     static bool ValidateMaterialDefinitionKeys(const toml::value &root) noexcept
     {
         if (!ValidateKnownKeys(root, {
-                "schema", "id", "name", "provider_policy",
+                "schema", "id", "name", "provider_policy", "domain",
                 "transform", "fragment", "vertex", "resources",
                 "mesh_shader", "render_state"}))
             return false;
@@ -960,6 +980,22 @@ namespace hgl::graph::mtl
                     result = MaterialDefinitionFileParseResult::InvalidValue;
                 else if (!ValidateMaterialDefinitionKeys(root))
                     result = MaterialDefinitionFileParseResult::UnknownKey;
+                else
+                {
+                    // 表面领域契约校验：只在显式声明了 domain 时生效。
+                    // 放在键白名单校验之后，保证报出的是「契约」而不是「拼错键」。
+                    AnsiString domain_detail;
+
+                    if (ValidateMaterialDefinitionDomain(
+                            out_data.definition, out_data.definition.domain,
+                            domain_detail) != MaterialDomainValidationResult::OK)
+                    {
+                        RecordParseFailure("domain",
+                                           GetMaterialDomainName(out_data.definition.domain),
+                                           domain_detail.c_str());
+                        result = MaterialDefinitionFileParseResult::InvalidValue;
+                    }
+                }
             }
             catch (const toml::syntax_error &error)
             {

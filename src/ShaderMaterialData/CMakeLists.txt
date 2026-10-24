@@ -25,6 +25,11 @@ set(SHADERMATERIALDATA_FILES
     MaterialDefinitionRegistry.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialVertexVaryingConfig.h
+    # ── 表面领域契约（Fixed-Code Domain Shaders 的单一真源）──
+    # 只做「声明 → 契约校验」这一件事：零 GLSL 发射、零着色器编译，
+    # 因此发行形态也必须链接（与 MaterialDefinitionFile 同层）。
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDomain.h
+    MaterialDomain.cpp
     # ── 渲染模板解析 ──
     ${ROOT_INCLUDE_PATH}/hgl/mtl/RenderTemplate.h
     RenderTemplate.cpp
