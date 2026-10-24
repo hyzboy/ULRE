@@ -2,6 +2,7 @@
 
 #include<hgl/CoreType.h>
 #include<hgl/ecs/core/EntityHandle.h>
+#include<hgl/mtl/PipelineConfig.h>
 #include<hgl/type/UnorderedMap.h>
 #include<cstdint>
 #include<unordered_map>
@@ -37,12 +38,19 @@ namespace hgl::ecs
         {
             graph::RenderPass *pass     = nullptr;
             graph::Pipeline   *pipeline = nullptr;
+
+            /// EDS 1/2/3：管线对象**不保存**渲染状态（见 `inc/hgl/vk/pipeline/VKPipeline.h`），
+            /// 解析时得到的 `MaterialPipelineConfig` 必须与管线一起存下来 —— 它就是
+            /// 「本实例在本 pass 下的动态渲染状态」的唯一来源，绘制期由批次带给
+            /// `RenderCmdBuffer::ApplyPipelineState`。
+            graph::mtl::MaterialPipelineConfig config;
         };
 
-        /// 登记本实例在 `pass` 下解析出的管线（覆盖旧值）
-        void Set(EntityID id, graph::RenderPass *pass, graph::Pipeline *pipeline)
+        /// 登记本实例在 `pass` 下解析出的管线与配套渲染状态（覆盖旧值）
+        void Set(EntityID id, graph::RenderPass *pass, graph::Pipeline *pipeline,
+                 const graph::mtl::MaterialPipelineConfig &config)
         {
-            entries[id] = Entry{ pass, pipeline };
+            entries[id] = Entry{ pass, pipeline, config };
         }
 
         /// 取本实例在 `pass` 下的管线；未登记 / pass 不匹配 ⇒ nullptr
@@ -54,6 +62,18 @@ namespace hgl::ecs
                 return nullptr;
 
             return it->second.pipeline;
+        }
+
+        /// 取本实例在 `pass` 下的动态渲染状态；未登记 / pass 不匹配 ⇒ 默认配置
+        ///（此时 `Get` 也必然返回 nullptr，该图元根本不会进批）。
+        graph::mtl::MaterialPipelineConfig GetConfig(EntityID id, graph::RenderPass *pass) const
+        {
+            const auto it = entries.find(id);
+
+            if (it == entries.end() || it->second.pass != pass)
+                return graph::mtl::MaterialPipelineConfig{};
+
+            return it->second.config;
         }
 
         /// 摘除（实体销毁 / 管线失效时调用；未登记则忽略）

@@ -20,7 +20,9 @@ namespace hgl::ecs
             if (!batch || !batch->key.pipeline)
                 return false;
 
-            return batch->key.pipeline->GetOverlay();
+            // EDS：覆盖层标记属于**渲染形态**（材质/批次事实），不在 Pipeline 对象上
+            //（两个 recipe 只差 overlay 时会共用同一 Pipeline ⇒ 读 Pipeline 会串味）。
+            return batch->key.pipeline_config.overlay;
         }
     }
 

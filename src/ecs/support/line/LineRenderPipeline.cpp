@@ -379,7 +379,9 @@ namespace hgl::ecs
 
         // ------- Create pipeline -------
         // P2：mesh 管线（宽度入 SSBO，cull off——quad 绕序不定，双面绘制）
-        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig());
+        // EDS 1/2/3：管线只带 shader 部分 ⇒ 这份配置自己留着，绘制期动态下发。
+        pipeline_config_ = graph::mtl::MakeLineMeshConfig();
+        pipeline_ = rp->CreatePipeline(material_, pipeline_config_);
 
         if (!pipeline_)
             return false;
@@ -748,8 +750,9 @@ namespace hgl::ecs
 
         cmd->BindPipeline(pipeline_);
 
-        // EDS 1/2/3：pipeline 只保留 shader 部分——Line 材质状态（cull off）渲染侧动态应用
-        cmd->ApplyPipelineState(pipeline_->GetConfig());
+        // EDS 1/2/3：pipeline 只保留 shader 部分——Line 材质状态（cull off）渲染侧动态应用。
+        // 状态取自建管线时留存的那份配置（管线对象上已不存渲染状态）。
+        cmd->ApplyPipelineState(pipeline_config_);
 
         // 全局集（Scene/Bindless）绑定：每 cmd 首绑一次（守卫），重复调用跳过。
         if (auto* rc = context_ ? context_->GetRenderContext() : nullptr)

@@ -2,6 +2,7 @@
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/vk/buffer/TypedArrayView.h>
+#include <hgl/mtl/PipelineConfig.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -73,6 +74,10 @@ namespace hgl::ecs
         graph::VulkanDevice*    device_         = nullptr;
         graph::ShaderProgram*        material_       = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;
+
+        /// EDS 1/2/3：管线不带渲染状态 ⇒ 建管线时的那份配置留在这里，绘制期下发
+        ///（见 `inc/hgl/vk/pipeline/VKPipeline.h`；`MakeLineMeshConfig()`：双面 + 深度 test/write）。
+        graph::mtl::MaterialPipelineConfig pipeline_config_{};
 
         // ------- 单 Line buffer（P2：删 4 slot 分组——mesh shader 展开 quad，宽度入 SSBO）-------
         struct LineBuffer

@@ -119,9 +119,14 @@ namespace hgl::ecs
         // 绑定管线
         cmd_buf->BindPipeline(pipeline);
 
-        // EDS 1/2/3：pipeline 只保留 shader 部分——材质渲染状态渲染侧动态应用
-        if (pipeline)
-            cmd_buf->ApplyPipelineState(pipeline->GetConfig());
+        // ── EDS 1/2/3：管线只管 shader ──────────────────────────────────────────
+        // `Pipeline` 只由 Shader Stages + FBO 附件格式决定（见 `VKPipeline.h`），
+        // 渲染状态一律动态下发，且**取自本批次**（`MaterialBatch::pipeline_config`）：
+        // 它在合批键里 ⇒ 形态不同的图元已被拆成不同批，本批只需下发一次。
+        // ⚠ 不要再回读管线取状态（`pipeline->GetConfig()` 已随架构删除）——
+        //   那会让"先创建的材质"决定"后创建的材质"的 cull/blend。
+        if (pipeline && owner_batch)
+            cmd_buf->ApplyPipelineState(owner_batch->pipeline_config);
 
         // 全局集（Scene/Bindless）绑定：共享 pipeline layout 下每 cmd 首绑一次
         //（GraphicsContext::BindGlobalDescriptorSets 守卫），本批重复调用自动跳过。

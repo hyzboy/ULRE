@@ -50,6 +50,27 @@ namespace hgl::graph::mtl
     }
 
     /**
+     * 严格弱序（供有序容器 / 合批键的 `operator<` 使用）。
+     * 与 `operator==` 逐字段对齐：相等 ⇒ 两个方向都返回 false。
+     * 哈希（`HashMaterialPipelineConfig`）不能替代它——哈希相等不代表配置相同。
+     */
+    inline bool LessMaterialPipelineConfig(const MaterialPipelineConfig &lhs,
+                                           const MaterialPipelineConfig &rhs) noexcept
+    {
+        if (lhs.cull_mode          != rhs.cull_mode         ) return lhs.cull_mode          < rhs.cull_mode;
+        if (lhs.depth_test         != rhs.depth_test        ) return lhs.depth_test         < rhs.depth_test;
+        if (lhs.depth_write        != rhs.depth_write       ) return lhs.depth_write        < rhs.depth_write;
+        if (lhs.depth_compare_op   != rhs.depth_compare_op  ) return lhs.depth_compare_op   < rhs.depth_compare_op;
+        if (lhs.alpha_blend        != rhs.alpha_blend       ) return lhs.alpha_blend        < rhs.alpha_blend;
+        if (lhs.blend_src          != rhs.blend_src         ) return lhs.blend_src          < rhs.blend_src;
+        if (lhs.blend_dst          != rhs.blend_dst         ) return lhs.blend_dst          < rhs.blend_dst;
+        if (lhs.line_width         != rhs.line_width        ) return lhs.line_width         < rhs.line_width;
+        if (lhs.dynamic_line_width != rhs.dynamic_line_width) return lhs.dynamic_line_width < rhs.dynamic_line_width;
+        if (lhs.overlay            != rhs.overlay           ) return lhs.overlay            < rhs.overlay;
+        return lhs.wireframe < rhs.wireframe;
+    }
+
+    /**
      * The single render-state payload consumed by both shader generation and
      * Vulkan pipeline creation.  Material definitions provide the defaults;
      * recipes are resolved into this value before either backend is called.

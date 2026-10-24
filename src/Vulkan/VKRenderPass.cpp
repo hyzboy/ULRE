@@ -95,8 +95,10 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
 
     VkPipeline graphicsPipeline = resolve_result.pipeline;
 
-    // Resolver may return an already-cached VkPipeline handle for identical final keys.
+    // Resolver may return an already-cached VkPipeline handle for identical final keys
+    // （= 同 shader stages + 同 FBO 格式；EDS 下与渲染状态无关）。
     // Reuse existing wrapper to keep one owner per VkPipeline handle.
+    // 包装对象不带渲染状态 ⇒ 复用是安全的；调用方各自用自己那份 MaterialPipelineConfig 下发动态状态。
     for(int i=0;i<pipeline_list.GetCount();++i)
     {
         Pipeline *existing_pipeline = pipeline_list[i];
@@ -113,7 +115,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
         }
     }
 
-    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,config,config.overlay);
+    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline);
 
     LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
              name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
@@ -141,6 +143,15 @@ Pipeline *RenderPass::CreatePipelineForProgram(ShaderProgram *mtl,
 
     // 上层早退：同程序 + 同通道形态 ⇒ 已解析过，直接返回同一包装对象。
     // 渲染状态没动就不存在重新 CreatePipeline（既不重复解析，也不重复建 VkPipeline）。
+    // ⚠ 缓存键**故意**只有 (program_digest, strip_fragment_shader)，不含任何渲染状态
+    //   （cull / depth test / depth write / depth compare / blend / ...）。
+    //
+    // 依据：EDS 1/2/3 下 `VkPipeline` 只由 **Shader Stages + FBO 附件格式** 决定，
+    // 全部可变状态都是 `VK_DYNAMIC_STATE_*`（见 `VKPipelineResolver::MaterializePipeline`），
+    // 由绘制期 `RenderCmdBuffer::ApplyPipelineState` 下发。同一 RenderPass 实例的附件
+    // 格式固定 ⇒ 同 program + 同剥 FS 形态 ⇒ 必然是同一个 `VkPipeline`。
+    // 动态状态由使用方带着走（ECS 侧 = `MaterialBatch::pipeline_config`，不同配置会拆成
+    // 不同批），**不要**在这里补 config 比对 —— 那会把 EDS 的收益退回"每材质一份管线"。
     const int memo_count = pipeline_memo.GetCount();
     for(int i = 0; i < memo_count; ++i)
     {
@@ -184,7 +195,8 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipel
     return CreatePipelineForProgram(mtl, config, false);
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe,
+                                     mtl::MaterialPipelineConfig *out_config)
 {
     if(!mtl)
         return(nullptr);
@@ -217,6 +229,11 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
     const bool keep_fragment_shader =
         render_state.alpha_test
      || render_state.dither;
+
+    // EDS：管线不带状态 ⇒ 把本次解析出的配置回传给调用方，由它带着走到绘制期
+    // （这就是唯一的一份「本材质的动态渲染状态」）。
+    if (out_config)
+        *out_config = render_state.pipeline_config;
 
     return CreatePipelineForProgram(mtl, render_state.pipeline_config, keep_fragment_shader);
 }

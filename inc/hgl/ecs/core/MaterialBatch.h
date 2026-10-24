@@ -44,6 +44,14 @@ namespace hgl::ecs
     public:
 
         ShaderProgramPipelineKey                key;                                        ///<材质/管线键
+
+        /// EDS 1/2/3：本批的**动态渲染状态**（cull / depth test / depth write / depth compare /
+        /// blend / overlay / wireframe ...）。管线对象不带状态（见
+        /// `inc/hgl/vk/pipeline/VKPipeline.h`），绘制期由 `PipelineMaterialRenderer` 用本字段
+        /// 下发一次 `ApplyPipelineState`。它来自 `key`（合批键的一部分）⇒ 形态不同的图元
+        /// 不会落进同一批。
+        graph::mtl::MaterialPipelineConfig      pipeline_config;                            ///<本批动态渲染状态
+
         std::vector<RenderItem *>               items;                                      ///<渲染项列表
         graph::VulkanDevice *                   device                  = nullptr;          ///<设备指针
         graph::BufferManager *                  buffer_manager          = nullptr;          ///<缓冲区管理器

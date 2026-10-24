@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/graph/render/RenderItemDescriptor.h>
+#include<hgl/mtl/PipelineConfig.h>
 #include<memory>
 
 namespace hgl
@@ -52,6 +53,12 @@ namespace hgl::ecs
         // 管线按 RenderPass 维度解析：同一世界渲染到多个 RT（如 ShadowMap 的
         // depth-only 离屏 Pass）时，各 RT 使用各自格式匹配的管线。
         virtual hgl::graph::Pipeline* GetPipeline(hgl::graph::RenderPass* render_pass) const = 0;
+        // EDS 1/2/3：管线只由「Shader Stages + FBO 附件格式」决定，**不保存**渲染状态
+        //（见 `inc/hgl/vk/pipeline/VKPipeline.h`）。动态渲染状态（cull/depth/blend/overlay）
+        // 按「每实例 × 每 pass」与管线同源解析，随此接口取用；合批键带上它 ⇒
+        // 形态不同的图元自然拆到不同批（一批只下发一次动态状态）。
+        virtual hgl::graph::mtl::MaterialPipelineConfig GetPipelineConfig(
+            hgl::graph::RenderPass* render_pass) const = 0;
 
         // A5（2026-10-14）：原先这里还有两个带默认实现的虚接口（"位置来源"与"朝向策略"）。
         // **全仓零 override** ⇒ 唯一消费者（批处理管线里的行号赋值）那两组

@@ -4,6 +4,7 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/mtl/PipelineConfig.h>
 #include<hgl/vk/buffer/ArrayView.h>
 #include<cstdint>
 #include<unordered_map>
@@ -46,6 +47,10 @@ namespace hgl
                 graph::TileFont* tile_font = nullptr;
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
+
+                /// EDS 1/2/3：管线不带渲染状态 ⇒ 建管线时的那份配置留在这里，绘制期下发
+                ///（见 `inc/hgl/vk/pipeline/VKPipeline.h`；`MakeAlpha2DConfig()`：2D overlay + alpha blend）。
+                graph::mtl::MaterialPipelineConfig pipeline_config{};
                 graph::MaterialTextureConfigurationAllocation
                     texture_configuration;
                 graph::DeviceBuffer* material_instance_addresses_buffer =

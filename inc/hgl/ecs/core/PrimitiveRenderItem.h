@@ -69,6 +69,8 @@ namespace hgl::ecs
         // ShaderProgram batching interface
         hgl::graph::ShaderProgram* GetShaderProgram() const override;
         hgl::graph::Pipeline* GetPipeline(hgl::graph::RenderPass* render_pass) const override;
+        hgl::graph::mtl::MaterialPipelineConfig GetPipelineConfig(
+            hgl::graph::RenderPass* render_pass) const override;
 
         // Update world matrix from transform
         void UpdateWorldMatrix();

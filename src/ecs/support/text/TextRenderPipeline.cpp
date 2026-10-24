@@ -280,8 +280,9 @@ namespace hgl::ecs
 
             cmd->BindPipeline(res.pipeline);
 
-            // EDS 1/2/3：pipeline 只保留 shader 部分——文字材质状态（alpha blend）渲染侧动态应用
-            cmd->ApplyPipelineState(res.pipeline->GetConfig());
+            // EDS 1/2/3：pipeline 只保留 shader 部分——文字材质状态（alpha blend）渲染侧动态应用。
+            // 状态取自建管线时留存的那份配置（管线对象上已不存渲染状态）。
+            cmd->ApplyPipelineState(res.pipeline_config);
 
             // RootAddresses push constant：每字体一次（draw 前）。mesh shader 经
             // pc_root.addr_batch_mesh_draw_params 解引用参数表 row 0；文本三表地址和
@@ -696,8 +697,10 @@ namespace hgl::ecs
             if (!resources->pipeline && resources->material)
             {
                 // CharQuad mesh shader self-declares all vertex SSBOs; no geometry_vertex_format
+                // EDS 1/2/3：管线只带 shader 部分 ⇒ 这份配置随资源留存，绘制期动态下发。
+                resources->pipeline_config = graph::mtl::MakeAlpha2DConfig();
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
-                                                                  graph::mtl::MakeAlpha2DConfig());
+                                                                  resources->pipeline_config);
                 if (!resources->pipeline)
                     GLogError("[TextRenderPipeline] Failed to create GPU text pipeline");
             }

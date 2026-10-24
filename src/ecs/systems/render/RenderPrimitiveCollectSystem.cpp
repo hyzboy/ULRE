@@ -1489,8 +1489,10 @@ namespace hgl::ecs
                 == row->cached_effective_recipe_hash)
             effective_recipe = row->cached_normalized_recipe;
 
+        graph::mtl::MaterialPipelineConfig resolved_pipeline_config{};
         graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(program,
-                                                                         effective_recipe);
+                                                                         effective_recipe,
+                                                                         &resolved_pipeline_config);
         if (!resolved_pipeline)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",
@@ -1500,9 +1502,12 @@ namespace hgl::ecs
         }
 
         // B5-b：管线缓存落世界级旁表（键 = 本实体；slot 里不放指针 ⇒ 行宽才能冻结）
+        // EDS 1/2/3：管线本身不带渲染状态 ⇒ 同一份旁表里连同**解析出的动态渲染状态**
+        // 一起存（两都按 pass 键控、同源解析）；批装配时按同一个 pass 取出，进合批键。
         world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),
                                                      render_pass,
-                                                     resolved_pipeline);
+                                                     resolved_pipeline,
+                                                     resolved_pipeline_config);
         return true;
     }
 

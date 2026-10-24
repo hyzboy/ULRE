@@ -113,7 +113,16 @@ public:
 public:
 
     Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialPipelineConfig &config);
-    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialRecipe &recipe);
+
+    /**
+     * recipe 重载：从 recipe 解析出 `ResolvedMaterialRenderState` 后建管线。
+     *
+     * EDS 1/2/3 下管线**不保存**渲染状态 ⇒ 解析出的 `MaterialPipelineConfig` 是调用方
+     * 必须带走的那一份（绘制期用它下发动态状态）。给了 `out_config` 就回传，没给则丢弃
+     * ——调用方若还要画这一批，就必须取。
+     */
+    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialRecipe &recipe,
+                             mtl::MaterialPipelineConfig *out_config = nullptr);
 
     /**
      * 从原始着色器阶段 + Pipeline Layout 创建管线（供 Compositor 系统使用）

@@ -349,8 +349,14 @@ namespace hgl::ecs
                 continue;
             }
 
+            // EDS 1/2/3：管线对象只由 Shader Stages + FBO 附件格式决定，**不含**渲染状态
+            // ⇒ 键必须再带上「本实例在本 pass 下解析出的动态渲染状态」，否则双面/单面、
+            // 混合/不透明等形态不同的图元会落进同一批，后者套用前者的状态（历史 bug）。
             ShaderProgramPipelineKey key(shader_prog,
-                                         pipeline);
+                                         pipeline,
+                                         prim_item
+                                            ? prim_item->GetPipelineConfig(current_render_pass)
+                                            : graph::mtl::MaterialPipelineConfig{});
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

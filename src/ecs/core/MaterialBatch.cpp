@@ -10,6 +10,7 @@ namespace hgl::ecs
 {
     MaterialBatch::MaterialBatch(const ShaderProgramPipelineKey& k, graph::VulkanDevice* dev, graph::BufferManager* bm)
         : key(k)
+        , pipeline_config(k.pipeline_config)
         , device(dev)
         , buffer_manager(bm)
         , renderer(nullptr)

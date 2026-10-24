@@ -74,6 +74,17 @@ namespace hgl::ecs
             : nullptr;
     }
 
+    hgl::graph::mtl::MaterialPipelineConfig
+    PrimitiveRenderItem::GetPipelineConfig(hgl::graph::RenderPass* render_pass) const
+    {
+        // EDS 1/2/3：管线对象不带渲染状态 ⇒ 与管线同源解析出的配置必须一并取出，
+        // 由批次带到绘制期（`RenderCmdBuffer::ApplyPipelineState`）。
+        // 与 `GetPipeline` 同一份旁表、同一套 pass 比对语义（未命中 ⇒ 默认配置）。
+        return context
+            ? context->GetMaterialRuntimePipelineTable().GetConfig(entity_id, render_pass)
+            : hgl::graph::mtl::MaterialPipelineConfig{};
+    }
+
     void PrimitiveRenderItem::UpdateWorldMatrix()
     {
         if (transform.IsValid())
