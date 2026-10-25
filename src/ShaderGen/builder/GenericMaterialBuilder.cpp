@@ -27,6 +27,7 @@
 #include "meshgen/MeshTemplateEmitter.h"
 #include "builder/GenericMaterialBuilder.h"
 
+#include <hgl/io/FileInputStream.h>
 #include <cstring>
 #include <vector>
 #include <algorithm>
@@ -484,6 +485,123 @@ namespace hgl::graph::mtl
         // Phase 4 — vertex + fragment stage sources
         // (originally MaterialDefinitionRegistry.cpp:439-531)
         // ═══════════════════════════════════════════════════════════════════
+        uint64 ComputeMeshSourceShapeKey(
+            const GenericMaterialBuildPlan &plan)
+        {
+            hgl::hash::FNV1aHasher64 hasher;
+            static constexpr char kVersion[] = "FixedMeshSourceShape.v1";
+            hasher.AppendBytes(kVersion, sizeof(kVersion) - 1);
+
+            const auto append_text =
+                [&hasher](const char *text)
+                {
+                    const uint32 length = text
+                        ? static_cast<uint32>(std::strlen(text)) : 0;
+                    hasher << length;
+                    if (length > 0)
+                        hasher.AppendBytes(text, length);
+                };
+
+            hasher << plan.mesh_shader_mode
+                   << static_cast<uint32>(plan.position_format)
+                   << plan.mesh_max_invocations;
+            append_text(VertexNodeConfigResolver::GetMappingModulePath(
+                plan.vertex_node_config));
+            append_text(VertexNodeConfigResolver::GetStage3ModulePath(
+                plan.vertex_node_config));
+            const bool needs_l2w =
+                plan.vertex_node_config.orientation == OrientationMode::World
+             || plan.vertex_node_config.orientation == OrientationMode::CameraFacingFree
+             || plan.vertex_node_config.orientation == OrientationMode::CameraFacingAxisY;
+            hasher << static_cast<uint32>(needs_l2w);
+
+            const MaterialVertexVaryingConfig &varying = plan.varying;
+            hasher << static_cast<uint32>(varying.emit_data_index_id)
+                   << static_cast<uint32>(varying.emit_vertex_color)
+                   << static_cast<uint32>(varying.emit_uv0)
+                   << static_cast<uint32>(varying.emit_world_pos)
+                   << static_cast<uint32>(varying.emit_world_normal)
+                   << static_cast<uint32>(varying.emit_luminance)
+                   << static_cast<uint32>(varying.emit_frag_direction)
+                   << static_cast<uint32>(varying.use_transform_id_attr)
+                   << static_cast<uint32>(varying.emit_vertex_color_from_palette)
+                   << static_cast<uint32>(varying.emit_style_id)
+                   << static_cast<uint32>(plan.stage_interface.GetCount());
+            for (int index = 0; index < plan.stage_interface.GetCount(); ++index)
+                hasher << plan.stage_interface[index];
+
+            hasher << static_cast<uint32>(
+                plan.resolved_vertex_input_document.GetBlockCount());
+            for (int index = 0;
+                 index < plan.resolved_vertex_input_document.GetBlockCount();
+                 ++index)
+            {
+                const ShaderDocumentBlock &block =
+                    plan.resolved_vertex_input_document.GetBlock(index);
+                hasher << block.kind
+                       << static_cast<uint32>(block.text.Length());
+                if (!block.text.IsEmpty())
+                    hasher.AppendBytes(
+                        block.text.c_str(),
+                        static_cast<size_t>(block.text.Length()));
+            }
+
+            return hasher;
+        }
+
+        bool TryLoadFixedMeshSource(
+            const uint64 shape_key,
+            AnsiString &out_source,
+            bool &out_found)
+        {
+            out_source.Clear();
+            out_found = false;
+
+            const std::string library_root = GetShaderLibraryPath();
+            if (library_root.empty())
+                return true;
+
+            const AnsiString include_path =
+                AnsiString("mesh/fixed/")
+                + AnsiString::numberOf(shape_key)
+                + AnsiString(".mesh");
+            const OSString path = ResolveShaderLibraryModulePath(
+                ToOSString(library_root.c_str()), include_path);
+            if (path.IsEmpty())
+                return true;
+
+            out_found = true;
+            hgl::io::OpenFileInputStream opener(path);
+            if (!opener)
+            {
+                GLogError(
+                    "[ShaderGen] Failed to open fixed mesh source: key=%s",
+                    AnsiString::numberOf(shape_key).c_str());
+                return false;
+            }
+
+            const int64 file_size = opener->GetSize();
+            if (file_size <= 0 || file_size > 0x7FFFFFFF)
+            {
+                GLogError(
+                    "[ShaderGen] Fixed mesh source has invalid size: key=%s size=%lld",
+                    AnsiString::numberOf(shape_key).c_str(),
+                    static_cast<long long>(file_size));
+                return false;
+            }
+
+            char *buffer = out_source.Resize(static_cast<int>(file_size));
+            if (!buffer || opener->Read(buffer, file_size) != file_size)
+            {
+                GLogError(
+                    "[ShaderGen] Failed to read fixed mesh source: key=%s",
+                    AnsiString::numberOf(shape_key).c_str());
+                out_source.Clear();
+                return false;
+            }
+            return true;
+        }
+
         bool GenerateStageSources(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
@@ -495,51 +613,80 @@ namespace hgl::graph::mtl
 
             const MeshShaderMode ms_mode = plan.mesh_shader_mode;
             const uint32_t max_invocations = plan.mesh_max_invocations;
+            plan.mesh_source_shape_key = ComputeMeshSourceShapeKey(plan);
 
             ShaderDocument &mesh_document = document_capture
                 ? document_capture->mesh_source_document
                 : plan.mesh_source_document;
-            // 直调 mesh 阶段发射器。原先这里经 MeshTemplateComposer 门面转发——
-            // 那个类体只有一句"9 实参原样透传"，没有任何编排，仅增加一层间接，已删除。
-            if (!EmitMeshTemplateDocument(
-                    plan.vertex_node_config,
-                    plan.varying,
-                    plan.position_format,
-                    ms_mode,
-                    max_invocations,
-                    mesh_document,
-                    &plan.resolved_vertex_input_document,
-                    &plan.stage_interface))
+            if (request.fixed_mesh_source && request.fixed_mesh_source[0])
             {
-                s_last_build_generic_material_error = "EmitMeshTemplateDocument failed";
-                GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
-                          definition.definition_name.c_str());
-                return false;
+                plan.ms = request.fixed_mesh_source;
+                plan.mesh_source_was_fixed = true;
             }
+            else
             {
-                ShaderDocumentDiagnostics diagnostics;
-                AnsiString serialized;
-                if (!mesh_document.Serialize(serialized, diagnostics))
+                AnsiString fixed_source;
+                bool catalog_source_found = false;
+                if (!TryLoadFixedMeshSource(
+                        plan.mesh_source_shape_key,
+                        fixed_source,
+                        catalog_source_found))
                 {
-                    s_last_build_generic_material_error = "mesh_document.Serialize failed";
-                    GLogError("[ShaderGen] Generic material mesh document serialization failed: name=%s",
-                              definition.definition_name.c_str());
-                    for (int i = 0; i < diagnostics.GetCount(); ++i)
-                    {
-                        const ShaderDocumentDiagnostic &d = *diagnostics[i];
-                        GLogError("[ShaderGen] mesh-doc-diagnostic[%d] code=%s message=%s block_index=%d stage=%s logic=%s module=%s path=%s",
-                                  i,
-                                  d.code.c_str(),
-                                  d.message.c_str(),
-                                  d.block_index,
-                                  d.source.stage.c_str(),
-                                  d.source.logical_name.c_str(),
-                                  d.source.module.c_str(),
-                                  d.source.path.c_str());
-                    }
+                    s_last_build_generic_material_error =
+                        "failed to load fixed mesh source catalog entry";
                     return false;
                 }
-                plan.ms.assign(serialized.c_str(), serialized.Length());
+
+                if (catalog_source_found)
+                {
+                    plan.ms.assign(fixed_source.c_str(), fixed_source.Length());
+                    plan.mesh_source_was_fixed = true;
+                }
+                else
+                {
+                    // 直调 mesh 阶段发射器。原先这里经 MeshTemplateComposer 门面转发——
+                    // 那个类体只有一句"9 实参原样透传"，没有任何编排，仅增加一层间接，已删除。
+                    if (!EmitMeshTemplateDocument(
+                            plan.vertex_node_config,
+                            plan.varying,
+                            plan.position_format,
+                            ms_mode,
+                            max_invocations,
+                            mesh_document,
+                            &plan.resolved_vertex_input_document,
+                            &plan.stage_interface))
+                    {
+                        s_last_build_generic_material_error = "EmitMeshTemplateDocument failed";
+                        GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
+                                  definition.definition_name.c_str());
+                        return false;
+                    }
+                    {
+                        ShaderDocumentDiagnostics diagnostics;
+                        AnsiString serialized;
+                        if (!mesh_document.Serialize(serialized, diagnostics))
+                        {
+                            s_last_build_generic_material_error = "mesh_document.Serialize failed";
+                            GLogError("[ShaderGen] Generic material mesh document serialization failed: name=%s",
+                                      definition.definition_name.c_str());
+                            for (int i = 0; i < diagnostics.GetCount(); ++i)
+                            {
+                                const ShaderDocumentDiagnostic &d = *diagnostics[i];
+                                GLogError("[ShaderGen] mesh-doc-diagnostic[%d] code=%s message=%s block_index=%d stage=%s logic=%s module=%s path=%s",
+                                          i,
+                                          d.code.c_str(),
+                                          d.message.c_str(),
+                                          d.block_index,
+                                          d.source.stage.c_str(),
+                                          d.source.logical_name.c_str(),
+                                          d.source.module.c_str(),
+                                          d.source.path.c_str());
+                            }
+                            return false;
+                        }
+                        plan.ms.assign(serialized.c_str(), serialized.Length());
+                    }
+                }
             }
 
             // ── 片段阶段：物理固定，永远不由本函数发射 ──────────────────────
@@ -1038,6 +1185,8 @@ namespace hgl::graph::mtl
             config.material_private_data = definition.material_private_data;
             config.defer_finalize = request.defer_finalize;
             config.fixed_fragment_source = request.fixed_fragment_source;
+            config.fixed_mesh_source = plan.mesh_source_was_fixed
+                ? plan.ms.c_str() : nullptr;
             return true;
         }
     }
@@ -1124,7 +1273,6 @@ namespace hgl::graph::mtl
             GLogError("[BuildGenericMaterial] GenerateStageSources failed");
             return nullptr;
         }
-
         MaterialShaderCompilerInput compiler_input{};
         MaterialCompileConfig config{};
         if (!FinalizeProgramLink(
@@ -1151,6 +1299,15 @@ namespace hgl::graph::mtl
             s_last_build_generic_material_error = "BuildMaterialStageDocuments failed";
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());
+            return nullptr;
+        }
+
+        if (document_capture)
+        {
+            document_capture->mesh_source_shape_key =
+                plan.mesh_source_shape_key;
+            document_capture->mesh_source_was_fixed =
+                plan.mesh_source_was_fixed;
         }
         return result;
     }

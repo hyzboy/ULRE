@@ -321,11 +321,13 @@ ShaderBuildContext *BuildMaterialStageDocuments(
     // ctx 尚未创建，此处 FailCompile 只负责统一报告（delete nullptr 安全）
     CompileContext c{&input};
 
-    if (mesh_source_document.GetBlockCount() == 0
+    const bool has_fixed_mesh_source =
+        config.fixed_mesh_source && config.fixed_mesh_source[0];
+    if ((mesh_source_document.GetBlockCount() == 0) != has_fixed_mesh_source
      || (fragment_source_document.GetBlockCount() == 0
       && !config.fixed_fragment_source))
     {
-        c.Fail("source document is empty");
+        c.Fail("mesh stage must have exactly one source (document or fixed GLSL)");
         return FailCompile(c);
     }
 
@@ -393,7 +395,8 @@ ShaderBuildContext *BuildMaterialStageDocuments(
         fragment_final_document = &document_capture->fragment_final_document;
     }
     ShaderDocumentDiagnostics document_diagnostics;
-    if (!BuildMaterialStageDocument(
+    if (!has_fixed_mesh_source
+     && !BuildMaterialStageDocument(
             mesh_source_document,
             ShaderStage::Mesh,
             input.debug_name,
@@ -433,7 +436,9 @@ ShaderBuildContext *BuildMaterialStageDocuments(
 
     AnsiString mesh_final_glsl;
     AnsiString fragment_final_glsl;
-    if (!mesh_final_document->Serialize(mesh_final_glsl, document_diagnostics))
+    if (has_fixed_mesh_source)
+        mesh_final_glsl = config.fixed_mesh_source;
+    else if (!mesh_final_document->Serialize(mesh_final_glsl, document_diagnostics))
     {
         c.Fail("Material stage document serialization failed");
         return FailCompile(c);

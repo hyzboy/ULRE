@@ -79,6 +79,8 @@ namespace hgl::graph::mtl
         std::string ms;   // mesh stage（唯一顶点路径——VS 已废弃）
         std::string fs;
         ShaderDocument mesh_source_document;
+        uint64 mesh_source_shape_key = 0;
+        bool mesh_source_was_fixed = false;
 
         // Phase 5: program link + compile config
         MaterialDefinition contract_definition;

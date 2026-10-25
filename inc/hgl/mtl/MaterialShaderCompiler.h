@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 ///
 /// 使用 BuildMaterialStageDocuments 编译阶段源：片段阶段在
 /// `MaterialCompileConfig::fixed_fragment_source` 非空时直通（领域主着色器就是
-/// 最终编译单元），网格阶段仍由 `BuildMaterialStageDocument` 拼出文档。
+/// 最终编译单元）；网格阶段也可用 `fixed_mesh_source` 直通。
 /// 内部流程：
 ///   1. 求解层构建契约/schema（描述符分配器已随 BDA 化退役）
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
@@ -39,6 +39,8 @@ struct MaterialShaderDocumentCapture
     // been fully authored/validated. This keeps the diagnostic flow out of the
     // real generation path and avoids hidden state drift on the cache key path.
     ShaderDocument mesh_source_document;
+    uint64 mesh_source_shape_key = 0;
+    bool mesh_source_was_fixed = false;
     // 片段侧已物理固定：生产路径只在**没有** fixed_fragment_source 时才构建片段
     // 文档，而该字段现在是硬前置，所以这里恒为空。想断言片段文本请看
     // `ShaderCreateInfo::GetFinalGLSL()`，断言宏/环境光看 `EmitDomainOptions*`。
@@ -49,6 +51,8 @@ struct MaterialShaderDocumentCapture
     void Clear() noexcept
     {
         mesh_source_document.Clear();
+        mesh_source_shape_key = 0;
+        mesh_source_was_fixed = false;
         fragment_document.Clear();
         mesh_final_document.Clear();
         fragment_final_document.Clear();
@@ -92,6 +96,8 @@ struct MaterialCompileConfig
     // 片段文档合并与序列化，其余（网格阶段、link、元数据）流程不变。
     // 见 `MaterialDefinitionBuildRequest::fixed_fragment_source`。
     const char *fixed_fragment_source = nullptr;
+    // 非空 ⇒ 完整 mesh stage GLSL 直通；跳过 mesh 文档合并与序列化。
+    const char *fixed_mesh_source = nullptr;
 };
 
 class ShaderBuildContext;

@@ -460,6 +460,37 @@ namespace
         return valid;
     }
 
+    bool VerifyFixedMeshStage(
+        const char *fixture,
+        const ShaderCreateInfo *actual_stage,
+        const ShaderStageKey &stage_key)
+    {
+        if (!actual_stage)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s stage=mesh is "
+                "absent from its production ShaderBuildContext",
+                fixture);
+            return false;
+        }
+
+        const auto &actual = actual_stage->GetFinalGLSL();
+        const uint64 actual_hash = HashFinalShaderSource(
+            actual.data(), actual.size());
+        if (actual_hash == 0
+         || stage_key.definition_hash != actual_hash)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s fixed mesh "
+                "source hash mismatch: actual=%llu stage-key=%llu",
+                fixture,
+                static_cast<unsigned long long>(actual_hash),
+                static_cast<unsigned long long>(stage_key.definition_hash));
+            return false;
+        }
+        return true;
+    }
+
     /// 按 fixture 组装完整构建请求并执行一次构建计划。
     /// defer_finalize=true：只算到 ProgramLink（含 stage 键），不跑 SPV。
     /// RunFixture 与 VerifyDeclarationKeyDeterminism 共用，保证两者比对的
@@ -506,7 +537,8 @@ namespace
         RenderTemplateID *out_template_id = nullptr,
         void (*definition_mutation)(MaterialDefinition &) = nullptr,
         AnsiString *out_options_text = nullptr,
-        AnsiString *out_skip_reason = nullptr)
+        AnsiString *out_skip_reason = nullptr,
+        const char *fixed_mesh_source = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
@@ -586,6 +618,7 @@ namespace
         }
         request.fixed_fragment_source = fixed.source.c_str();
         request.fixed_fragment_interface_hash = fixed.interface_hash;
+        request.fixed_mesh_source = fixed_mesh_source;
 
         // 环境光 provider 的选择已经从片元文本搬到 `options.glsl`（主着色器只
         // `#include "generated/options.glsl"`，provider 的 `#include` 由发射器
@@ -606,6 +639,87 @@ namespace
         }
 
         return BuildGenericMaterial(nullptr, request, definition, capture);
+    }
+
+    bool VerifyFixedMeshSourcePassThrough(const Fixture &fixture)
+    {
+        AutoDelete<ShaderBuildContext> generated(
+            BuildFixtureContext(fixture, nullptr));
+        if (!generated || !generated->HasProgramLink())
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s cannot build "
+                "baseline mesh source",
+                fixture.name);
+            return false;
+        }
+
+        const ShaderCreateInfo *generated_mesh =
+            generated->GetStageShader(ShaderStage::Mesh);
+        if (!generated_mesh || generated_mesh->GetFinalGLSL().empty())
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s has no baseline "
+                "mesh GLSL",
+                fixture.name);
+            return false;
+        }
+
+        AutoDelete<ShaderBuildContext> fixed(
+            BuildFixtureContext(
+                fixture, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                generated_mesh->GetFinalGLSL().c_str()));
+        if (!fixed || !fixed->HasProgramLink())
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s fixed mesh "
+                "pass-through build failed",
+                fixture.name);
+            return false;
+        }
+
+        const ShaderCreateInfo *fixed_mesh =
+            fixed->GetStageShader(ShaderStage::Mesh);
+        if (!fixed_mesh)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s fixed mesh "
+                "stage missing",
+                fixture.name);
+            return false;
+        }
+
+        const bool source_matches =
+            std::strcmp(
+                generated_mesh->GetFinalGLSL().c_str(),
+                fixed_mesh->GetFinalGLSL().c_str()) == 0;
+        const uint64 fixed_source_hash = HashFinalShaderSource(
+            fixed_mesh->GetFinalGLSL().data(),
+            fixed_mesh->GetFinalGLSL().size());
+        const bool key_matches_final_source =
+            fixed->GetProgramLink().mesh_stage.definition_hash
+                == fixed_source_hash;
+        if (!source_matches || !key_matches_final_source)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s fixed mesh "
+                "source mismatch: source=%d (%llu/%llu bytes) "
+                "key_matches_final_source=%d",
+                fixture.name,
+                source_matches ? 1 : 0,
+                static_cast<unsigned long long>(
+                    generated_mesh->GetFinalGLSL().size()),
+                static_cast<unsigned long long>(
+                    fixed_mesh->GetFinalGLSL().size()),
+                key_matches_final_source ? 1 : 0);
+            return false;
+        }
+
+        GLogInfo(
+            "[ShaderDocumentProductionRegression] fixture=%s fixed mesh GLSL "
+            "pass-through preserves source and hashes final text into stage key",
+            fixture.name);
+        return true;
     }
 
     /// `--dump-source <dir>`：把每个 fixture 两个阶段的**最终 GLSL**（注入完成、
@@ -705,10 +819,15 @@ namespace
                 return false;
             }
         }
-        bool valid = VerifyStage(
-            fixture.name, "mesh", capture.mesh_source_document,
-            capture.mesh_final_document,
-            context->GetStageShader(ShaderStage::Mesh), link.mesh_stage);
+        bool valid = capture.mesh_source_was_fixed
+            ? VerifyFixedMeshStage(
+                fixture.name,
+                context->GetStageShader(ShaderStage::Mesh),
+                link.mesh_stage)
+            : VerifyStage(
+                fixture.name, "mesh", capture.mesh_source_document,
+                capture.mesh_final_document,
+                context->GetStageShader(ShaderStage::Mesh), link.mesh_stage);
         valid = VerifyFixedFragmentStage(
             fixture.name,
             context->GetStageShader(ShaderStage::Fragment),
@@ -718,6 +837,11 @@ namespace
             context->GetProgramArtifactMetadata();
         const auto *mesh = context->GetStageShader(ShaderStage::Mesh);
         const auto *fragment = context->GetStageShader(ShaderStage::Fragment);
+        GLogInfo(
+            "[ShaderDocumentProductionRegression] fixture=%s mesh_shape=%s source=%s",
+            fixture.name,
+            AnsiString::numberOf(capture.mesh_source_shape_key).c_str(),
+            capture.mesh_source_was_fixed ? "fixed" : "generator");
         if (g_dump_source_dir)
         {
             const auto dump_stage =
@@ -729,6 +853,12 @@ namespace
                     int64(stage.GetFinalGLSL().size()));
             };
             if (!dump_stage(*mesh, "mesh") || !dump_stage(*fragment, "frag"))
+                valid = false;
+            const AnsiString shape_key =
+                AnsiString::numberOf(capture.mesh_source_shape_key);
+            if (!WriteDumpSourceFile(
+                    fixture.name, "mesh-key",
+                    shape_key.c_str(), shape_key.Length()))
                 valid = false;
         }
         hgl::hash::FNV1aHasher64 source_hasher;
@@ -1379,6 +1509,9 @@ int main(const int argc, char **argv)
         if (!RunFixture(fixtures[i]))
             return 1;
     }
+
+    if (!VerifyFixedMeshSourcePassThrough(fixtures[0]))
+        return 11;
 
     if (!VerifyDeclarationKeyDeterminism(fixtures, fixture_count))
         return 8;

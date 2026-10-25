@@ -80,6 +80,10 @@ struct MaterialDefinitionBuildRequest
     // 接口形状由这里体现，两者在键里不互相掩盖。为 0 时走生成器路径。
     uint64 fixed_fragment_interface_hash = 0;
 
+    // 非空表示「网格阶段不生成」：构建器直接把这份完整 GLSL 作为 mesh stage
+    // 编译输入。调用方必须保证文本与已解析的 mode / ABI / stage interface 相符。
+    const char *fixed_mesh_source = nullptr;
+
 };
 
 // Render preparation calls this after selecting the scene template. It copies
