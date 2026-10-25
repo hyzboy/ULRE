@@ -92,17 +92,28 @@ function Invoke-Verification
     {
         Write-Step "[1/5] configure dev + prod trees"
 
+        $devCache = Join-Path $devPath "CMakeCache.txt"
+        $extraArgs = @("-A", "x64")
+        if (Test-Path $devCache)
+        {
+            $tc = Select-String -Path $devCache -Pattern '^CMAKE_TOOLCHAIN_FILE:FILEPATH=(.*)$' | Select-Object -First 1
+            if ($tc -and $tc.Matches.Groups[1].Value)
+            {
+                $extraArgs += "-DCMAKE_TOOLCHAIN_FILE=$($tc.Matches.Groups[1].Value)"
+            }
+        }
+
         if (-not (Test-Path (Join-Path $devPath "CMakeCache.txt")))
         {
             if (-not (Invoke-Logged "configure dev tree (ULRE_ENABLE_SHADERGEN=ON)" {
-                        cmake -S $repoRoot -B $devPath -DULRE_ENABLE_SHADERGEN=ON }))
+                        cmake -S $repoRoot -B $devPath -DULRE_ENABLE_SHADERGEN=ON @extraArgs }))
             { return }
         }
 
         if (-not (Test-Path (Join-Path $prodPath "CMakeCache.txt")))
         {
             if (-not (Invoke-Logged "configure prod tree (ULRE_ENABLE_SHADERGEN=OFF)" {
-                        cmake -S $repoRoot -B $prodPath -DULRE_ENABLE_SHADERGEN=OFF }))
+                        cmake -S $repoRoot -B $prodPath -DULRE_ENABLE_SHADERGEN=OFF @extraArgs }))
             { return }
         }
     }

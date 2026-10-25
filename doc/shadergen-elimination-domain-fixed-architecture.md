@@ -94,7 +94,8 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
 ```
 
 **发射顺序即 program 身份**（`ComputeShaderConfigHash` 是对该文本做哈希），改动必须过
-`scripts/ci/verify-domain-master-shaders.ps1`：
+门禁 `DH.domain-backend-equivalence`（`golden/domain-backend/*.equiv.txt` 是这 15 个形状的
+反射文本 + SPV 体积冻结基线，任何发射漂移都会在那里现形）：
 
 1. `#define HGL_COVERAGE_ONLY 1` —— 仅 `ShadowCaster`
 2. `#define HGL_MATERIAL_FACE_NORMAL_FALLBACK 1` —— 顶点无法线时
@@ -186,17 +187,19 @@ varying 的**集合**按 (domain, pass, 覆盖判定) 三者确定，**不是按
 - 内容不同但语义等价的源码，字节差异会有数千处，而 reflection 文本完全相同 ⇒ reflection 才是稳定判据。
 - 字节数全等是一个额外的强信号（能抓住「多一个未使用 varying」这类 reflection 看不出的偏差）。
 
-复现方式：直接跑 `scripts/ci/verify-domain-master-shaders.ps1`。它做的事是——用
-`ShaderDocumentProductionRegression --dump-source <dir>` 导出**旧路径的真实编译输入**
-（`GetFinalGLSL()`，即 glslang 实际吃到的文本），为每个 pass 形状写一份 `generated/options.glsl`，
-再用 `spvfc` 分别编译旧文本与新主着色器，比较 reflection 与字节数。脚本退出码 0 = 全等价。
-（注意 `--dump-source` 的目录必须已存在——它不创建目录。）
+复现方式：门禁 `all` 里的 `DH.domain-backend-equivalence`（退出码 0 = 15 个形状全部
+与冻结基线一致）。历史上的做法是——用 `ShaderDocumentProductionRegression --dump-source <dir>`
+导出**旧路径的真实编译输入**（`GetFinalGLSL()`，即 glslang 实际吃到的文本），为每个 pass
+形状写一份 `generated/options.glsl`，再用 `spvfc` 分别编译旧文本与新主着色器，比较 reflection
+与字节数。旧生成器路径在阶段五-2-g 被物理删除后，**该参考侧已不可再生**：等价性证据已在
+删除之前冻结进 `src/Tools/ShaderGen/golden/domain-backend/*.equiv.txt`（门禁拥有并逐次比对），
+`scripts/ci/verify-domain-master-shaders.ps1` 与门禁的 `dump-domain-glsl` 子命令一并退役。
 
 ⚠ `--dump-source` 导出的文本**未必能直接编译**：实测同一 fixture 的两次导出，
 天空盒那份漏掉了采样器宏（见 1.1 的非确定性说明）。遇到「参考文本编不过」时，
 先判断是不是参考文本本身有病，而不是急着改主着色器。
 
-已测通过（5 例，`failures=0`，由 `scripts/ci/verify-domain-master-shaders.ps1` 保证）：
+冻结时的实测结果（5 例，`failures=0`）：
 
 | 主着色器 | options 变体 | reflection 行数 | SPIR-V 字节 |
 |---|---|---|---|
@@ -384,13 +387,17 @@ location 之间**留空是正常现象**，不要自作聪明改成紧凑排布�
 没有 PCF、没有 ambient provider 需要注入。空文件依然必须存在且必须被第二 include 根
 解析到，否则 `#include "generated/options.glsl"` 直接失败。
 
-**`verify-domain-master-shaders.ps1` 的参考源也换成了门禁**：脚本过去依赖
+**（已退役）`verify-domain-master-shaders.ps1` 与门禁 `dump-domain-glsl`**：脚本过去依赖
 `ShaderDocumentProductionRegression --dump-source` 的生产夹具，而那套夹具里
 **根本没有**无光族领域，且夹具名与形状名不同名，扩表必然要手抄映射。
-现在统一走 `ShaderResourceSchemaRegressionGate dump-domain-glsl <dir>`：它按
+后来统一走 `ShaderResourceSchemaRegressionGate dump-domain-glsl <dir>`：它按
 `kDomainBackendEquivShapes` 一次性导出 9 份 `<slug>.frag` **和**
 `<slug>/generated/options.glsl`（后者由真实后端的 `EmitDomainOptionsForDefinition`
 产出），脚本不再持有任何宏表，也就不可能与发射器漂移。
+阶段五-2-g 物理删除生成器后，`dump-domain-glsl` 赖以生产的「旧路径最终 GLSL」已不存在
+（该子命令会以 `fixed_fragment_source is required` 硬失败），故**二者一并删除**：
+等价性证据已冻结在 `golden/domain-backend/*.equiv.txt`，由
+`DH.domain-backend-equivalence` 逐次比对 —— 一份更持久、且不依赖已删代码的保证。
 
 ### 1.9 内建定义族领域与「骨架」事实（Phase 4.3 固化）
 
@@ -499,8 +506,9 @@ layout(location=5) in vec4 fragVertexColor;
 | `text-gpu` | `builtin/text_gpu` | Text2D | `HGL_ALPHA_OUTPUT` + `TEXT_SDF_ENABLED` | 18200 |
 | `debug-normal` | DebugNormalColor | DebugNormal | 空 | 13000 |
 
-（表内是门禁 `spv=` 报告的 Debug 构建字节数；`verify-domain-master-shaders.ps1`
-用 `spvfc` 走 Release 布局，同一形状数值不同，两边各自内部自洽即可。）
+（表内是门禁 `spv=` 报告的 Debug 构建字节数。已退役的 `verify-domain-master-shaders.ps1`
+当年用 `spvfc` 走 Release 布局，同一形状数值不同，两边各自内部自洽 —— 那也是它作为
+独立证据的一层价值；退役后这层「第二编译器交叉验证」不再存在，字节数只作漂移探测器。）
 
 **`kDomainBackendEquivShapes[]` 是只追加的表**：`DH.domain-backend-cache`
 按下标引用条目（`[13]` = text-gpu、`[14]` = debug-normal），重排会静默把缓存用例
@@ -588,7 +596,9 @@ layout(location=5) in vec4 fragVertexColor;
      - 结果：五个示例（`SimpleSphere` / `PBRSpheres` / `LineRender` / `TextDraw` /
        `DrawTriangle`）零着色器错误；`verify-release-form.ps1` 全 5 步
        `[PASS] release form verified`；门禁 `all` 61/0、`DomainOptionsRegression` 26/0、
-       `verify-domain-master-shaders.ps1` 15/15、`ShaderDocumentProductionRegression --full` 通过。
+       `ShaderDocumentProductionRegression --full` 通过。
+       （当时还跑过 `verify-domain-master-shaders.ps1` 15/15，该脚本随生成器删除在
+       5.4 退役，见 §1.8。）
 5. **第五阶段：整体切替与旧代码物理删除**
    - `5.1` ✅：**默认后端反转为领域后端**。选择器改名为
      `IsShaderGenBuildBackendRequested()`：未设 `ULRE_SHADER_BUILD_BACKEND` 即返回 `false`，
