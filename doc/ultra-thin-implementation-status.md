@@ -58,12 +58,15 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | 14 | 同上 | `caf38cb34` | 阶段五文档收尾：回填提交号（纯文档） |
 | 15 | 同上 | `83bac9349` | **阶段六**：ShadowCaster 内联骨架外置为 `shadow_caster.glsl.tmpl`（+ 补 masked 快照覆盖） |
 | 16 | 同上 | `528531be8` | 阶段六文档收尾：新增 §4.8 并修正快照覆盖口径（纯文档） |
-| 17 | 同上 ← **当前** | `53a3629ef` | 补齐 `LineQuad` mesh 发射模式的快照覆盖（矩阵 14 → 16，纯测试夹具） |
+| 17 | 同上 | `53a3629ef` | 补齐 `LineQuad` mesh 发射模式的快照覆盖（矩阵 14 → 16，纯测试夹具） |
 | 18 | 同上 | `eeb325d36` | STL 残留改判：从「纯机械替换」改为需要整体迁移（纯文档） |
+| 19 | 同上 | `0a1a07ace` | mesh 侧拼接债复查判定已清空，STL 清理确认为整体迁移（纯文档） |
+| 20 | 同上 | `872ee3fd4` | 记录 SPV 反射核查结论与 `verify-release-form.ps1 -SkipBuild` 假 FAIL 陷阱（纯文档） |
+| 21 | 同上 ← **当前** | `707178f17` | **反射落地**：`ShaderReflectionData` + `ReflectSPVData`/`GetSPVPushConstantEnd`，compute push-constant 范围改由反射决定；新增 `SPV.buffer-reference-reflection` 证明 BDA 不可由反射推断 |
 
 当前工作区干净，仅有既存子模块脏项 `? CMScript` / `? res` / `? src/Tools/GLTFConvert`（**不是**本次改动，勿提交）。
 
-累计 diff（`6ef579059..eeb325d36`，即上表第 3 行 → 第 18 行）：114 files, +6080 / −1085。
+累计 diff（`6ef579059..707178f17`，即上表第 3 行 → 第 21 行）：123 files, +6812 / −1102。
 
 ---
 
