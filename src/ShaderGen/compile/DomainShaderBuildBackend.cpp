@@ -40,6 +40,7 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
+#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileOutputStream.h>
@@ -322,6 +323,7 @@ namespace hgl::graph::mtl
         /// 撤掉，否则它会读到上一份 options。
         bool CompileDomainMasterFragment(
             const AnsiString &source,
+            const AnsiString &options_text,
             const OSString &options_root,
             const MaterialDomain domain,
             const ShaderProgramPurpose purpose,
@@ -334,8 +336,56 @@ namespace hgl::graph::mtl
                 return false;
             }
 
-            fragment->SetFinalGLSL(std::string(source.c_str(),
-                                               static_cast<size_t>(source.Length())));
+            // ── 把 options 的内容键钉进片段源 ────────────────────────────
+            //
+            // options 的全部差异都落在 `generated/options.glsl` 里，主着色器文本
+            // 对「同领域 + 同 pass」是**逐字节相同**的。若 stage source digest 只
+            // 覆盖主着色器，两种不同 options 就会算出同一个摘要（实测：
+            // fwd 与 fwd-alpha 的主着色器文本完全一致，SPV 却是 65072 vs 67024）。
+            // 摘要既是缓存命中的判据也是事后校验的判据，撞了就只剩缓存文件名这
+            // 一道保险。把内容键作为溯源注释钉在文本尾部，摘要自然覆盖 options，
+            // 同时让落盘的 `.frag` 能自述「这份 SPV 是哪组宏编出来的」。
+            char options_key[32];
+            MakeOptionsKey(options_text, domain, purpose,
+                           options_key, sizeof(options_key));
+
+            std::string fragment_source(source.c_str(),
+                                        static_cast<size_t>(source.Length()));
+            fragment_source += "\n// domain-options-key ";
+            fragment_source += options_key;
+            fragment_source += "\n";
+
+            fragment->SetFinalGLSL(fragment_source);
+
+            // ── 缓存优先 ────────────────────────────────────────────────
+            //
+            // 主着色器是**物理固定**的，所以「这份 options 编出来的 SPV」跨进程
+            // 可复用，判据就是舞台自己的 source digest。先探缓存再编译：不做这
+            // 一步，命中缓存也照样白烧一遍 glslang（`FinalizeShaderBuildContext`
+            // 的命中分支只是不再覆盖已装好的 SPV）。
+            // 探不到就照常编，后续 `FinalizeShaderBuildContext` 负责落盘。
+            if (ShaderArtifactStore *store = ctx.GetArtifactStore())
+            {
+                if (ctx.HasProgramLink())
+                {
+                    const ShaderStageKey &stage_key =
+                        ctx.GetProgramLink().fragment_stage;
+
+                    const uint64 expected_digest =
+                        ComputeGeneratedStageSourceDigest(
+                            fragment->GetFinalGLSL().data(),
+                            fragment->GetFinalGLSL().size());
+
+                    ValueArray<uint8> cached_spv;
+                    uint64 stored_digest = 0;
+                    if (expected_digest != 0
+                     && store->LoadStageSPV(stage_key, cached_spv, &stored_digest)
+                     && stored_digest == expected_digest
+                     && fragment->SetCachedSPVData(
+                            cached_spv.GetData(), cached_spv.GetCount()))
+                        return true;
+                }
+            }
 
             const std::string library_root = GetShaderLibraryPath();
             if (library_root.empty())
@@ -372,6 +422,31 @@ namespace hgl::graph::mtl
                 return false;
             }
 
+            return true;
+        }
+
+        /// 片段源被整篇换掉之后，与源文本相关的 artifact 元数据必须按**新源**重算。
+        ///
+        /// `BuildGenericMaterial` 是在换源**之前**建元数据的，所以它留下的
+        /// `generated_source_digest` 描述的是那份根本没被编译的生成物。缓存装载
+        /// 侧虽然不拿这个字段判命中（stage 命中看每阶段自己的 source digest），
+        /// 但它会被写进 program metadata，并被缓存审计与回归断言当作「实际编译
+        /// 源」的摘要使用——记错就是埋一个事后永远查不出来的偏差。
+        bool RefreshProgramArtifactMetadata(
+            const contract::PhysicalDeviceProfileLite *profile,
+            ShaderBuildContext &ctx)
+        {
+            if (!ctx.HasProgramLink())
+                return true;
+
+            ShaderProgramArtifactMetadata metadata{};
+            if (!BuildShaderProgramArtifactMetadata(profile, ctx, metadata))
+            {
+                DomainBuildFailed(u8"[DomainBackend] 换源后重建 program artifact 元数据失败");
+                return false;
+            }
+
+            ctx.SetProgramArtifactMetadata(metadata);
             return true;
         }
     }//namespace
@@ -416,6 +491,14 @@ namespace hgl::graph::mtl
                 const bool ok = ApplyDomainMasterShader(
                     definition, request, *ctx, resolved_template);
                 if (!ok)
+                {
+                    delete ctx;
+                    return nullptr;
+                }
+
+                // 元数据重建必须在换源之后、`FinalizeBuildContext` 之前——
+                // 落盘时写的就是这里的结果。
+                if (!RefreshProgramArtifactMetadata(profile, *ctx))
                 {
                     delete ctx;
                     return nullptr;
@@ -483,7 +566,7 @@ namespace hgl::graph::mtl
                     return false;
 
                 return CompileDomainMasterFragment(
-                    source, options_root, domain, purpose, ctx);
+                    source, options_text, options_root, domain, purpose, ctx);
             }
         };//class DomainShaderBuildBackend
 

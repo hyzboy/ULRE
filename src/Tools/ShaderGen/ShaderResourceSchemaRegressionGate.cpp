@@ -10052,6 +10052,349 @@ void main()
         return result;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // DH.domain-backend-cache — 领域后端产物真的能烘焙进 SPV Cache
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    // 等价性用例比的是「两条路径编出来的东西一样」，但它**故意不带**
+    // artifact store（带了就可能读到彼此的缓存，测到的就不再是编译）。这条
+    // 用例反过来只证明落盘/复用这条链，以及换源后的元数据自洽：
+    //
+    //   ① 冷构建：空目录 ⇒ 两阶段都 miss，编译并写盘；
+    //   ② 重开一个新 store 对象（同一目录）⇒ 两阶段都 hit，且 SPV 逐字节
+    //      等于冷构建那次；
+    //   ③ `generated_source_digest` 必须等于**当前**两阶段最终 GLSL 的摘要。
+    //      `BuildGenericMaterial` 是在换源前建元数据的，它算的是那份根本没被
+    //      编译的生成物——不在换源后重算，这个字段就永远描述另一份文本；
+    //   ④ 落盘的 `.frag` 源必须含 `generated/options.glsl`，即缓存里存的是
+    //      固定主着色器，不是旧的生成物。
+    //
+    // 只跑 `StandardOpaque`：它是唯一同时支持 forward 与 depth 的领域，
+    // 其余领域的主着色器要到阶段 4.3 才补齐。
+
+    static GateResult RunDomainBackendCacheCase()
+    {
+        GateResult result;
+        result.name = "DH.domain-backend-cache";
+
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
+        {
+            result.diagnostics.emplace_back(preset_diagnostic);
+            result.passed = false;
+            return result;
+        }
+
+        const DomainBackendEquivShape *shapes[] =
+        {
+            &kDomainBackendEquivShapes[0],  // fwd
+            &kDomainBackendEquivShapes[1],  // fwd-alpha
+            &kDomainBackendEquivShapes[2],  // shadow
+            &kDomainBackendEquivShapes[3],  // shadow-alpha
+        };
+
+        // 每个形状的 fragment stage source digest。最后要求两两互不相同：
+        // domain options 的差异只体现在 `generated/options.glsl`，主着色器文本
+        // 逐字节相同，摘要如果不覆盖 options，两个不同 pass 变体会共享同一个
+        // digest —— 撞上缓存文件名就是静默复用错误的 SPV。
+        std::string digest_labels[4];
+        hgl::uint64 digest_values[4] = { 0, 0, 0, 0 };
+        size_t digest_count = 0;
+
+        for (const DomainBackendEquivShape *shape : shapes)
+        {
+            const std::string label = std::string(shape->label)
+                                    + " (" + shape->definition_id + ")";
+
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(shape->definition_id, definition))
+            {
+                result.diagnostics.emplace_back(label + ": definition unavailable");
+                continue;
+            }
+
+            GeometryVertexFormat geometry;
+            MaterialDefinitionBuildRequest request{};
+            std::string build_diagnostic;
+            if (!BuildDomainEquivRequest(
+                    *shape, definition, geometry, request, build_diagnostic))
+            {
+                result.diagnostics.emplace_back(label + ": " + build_diagnostic);
+                continue;
+            }
+
+            // 每个形状独占一个目录：共用会让别条用例的产物冒充命中。
+            const std::filesystem::path cache_root =
+                std::filesystem::path(RepoRootPath("build"))
+                / "domain-backend-cache" / shape->label;
+            std::error_code remove_ec;
+            std::filesystem::remove_all(cache_root, remove_ec);
+            // store 自己在写盘时才建 `<root>/shader-cache/stage`，而它的 `MakePath`
+            // 依赖父目录已存在——先把根建出来，否则失败看起来像「元数据不合法」。
+            std::filesystem::create_directories(cache_root, remove_ec);
+
+            const hgl::OSString cache_root_os =
+                hgl::ToOSString(cache_root.generic_string());
+            request.defer_finalize = true;
+
+            // ── ① 冷构建 ─────────────────────────────────────────────────
+            std::unique_ptr<ShaderBuildContext> cold_ctx;
+            {
+                ShaderArtifactStore store(cache_root_os, ShaderCacheMode::BuildIfMissing);
+                request.shader_artifact_store = &store;
+
+                InstallDomainShaderBuildBackend();
+                ShaderProgramBuildBackend *backend = GetShaderProgramBuildBackend();
+                if (!backend)
+                {
+                    InstallShaderGenProgramBuildBackend();
+                    result.diagnostics.emplace_back(label + ": domain backend slot empty");
+                    continue;
+                }
+
+                cold_ctx.reset(backend->CreateBuildContext(nullptr, definition, request));
+                if (!cold_ctx)
+                {
+                    const char *err = GetLastDomainShaderBuildBackendError();
+                    InstallShaderGenProgramBuildBackend();
+                    result.diagnostics.emplace_back(
+                        label + ": cold build failed: "
+                        + (err && err[0] ? err : "unknown error"));
+                    continue;
+                }
+                if (!backend->FinalizeBuildContext(cold_ctx.get()))
+                {
+                    InstallShaderGenProgramBuildBackend();
+                    char detail[256];
+                    std::snprintf(detail, sizeof(detail),
+                                  ": cold finalize failed (link=%d metadata=%d"
+                                  " mesh_spv=%d frag_spv=%d)",
+                                  cold_ctx->HasProgramLink() ? 1 : 0,
+                                  cold_ctx->HasProgramArtifactMetadata() ? 1 : 0,
+                                  cold_ctx->GetStageShader(ShaderStage::Mesh)
+                                      && cold_ctx->GetStageShader(ShaderStage::Mesh)->HasSPVData() ? 1 : 0,
+                                  cold_ctx->GetStageShader(ShaderStage::Fragment)
+                                      && cold_ctx->GetStageShader(ShaderStage::Fragment)->HasSPVData() ? 1 : 0);
+                    result.diagnostics.emplace_back(label + detail);
+                    continue;
+                }
+                InstallShaderGenProgramBuildBackend();
+            }
+
+            const ShaderCreateInfo *cold_fs =
+                cold_ctx->GetStageShader(ShaderStage::Fragment);
+            const ShaderCreateInfo *cold_ms =
+                cold_ctx->GetStageShader(ShaderStage::Mesh);
+            if (!cold_fs || !cold_fs->HasSPVData() || !cold_ms || !cold_ms->HasSPVData())
+            {
+                result.diagnostics.emplace_back(label + ": cold build produced no SPIR-V");
+                continue;
+            }
+
+            // 冷构建必须真的记账为 miss——不然「命中」这条断言恒真，什么也没测到。
+            if (cold_ctx->UsedCachedFragmentStage() || cold_ctx->UsedCachedMeshStage())
+            {
+                result.diagnostics.emplace_back(
+                    label + ": cold build reported a cache hit on an empty store");
+                continue;
+            }
+
+            const std::string cold_frag_glsl = cold_fs->GetFinalGLSL();
+            const std::string cold_mesh_glsl = cold_ms->GetFinalGLSL();
+            const hgl::uint64 cold_frag_digest =
+                ComputeGeneratedStageSourceDigest(cold_frag_glsl.data(), cold_frag_glsl.size());
+
+            // ── ② 重开 store，同目录 ⇒ 必须命中且 SPV 一致 ────────────────
+            std::unique_ptr<ShaderBuildContext> warm_ctx;
+            {
+                ShaderArtifactStore store(cache_root_os, ShaderCacheMode::BuildIfMissing);
+                request.shader_artifact_store = &store;
+
+                InstallDomainShaderBuildBackend();
+                ShaderProgramBuildBackend *backend = GetShaderProgramBuildBackend();
+                if (!backend)
+                {
+                    InstallShaderGenProgramBuildBackend();
+                    result.diagnostics.emplace_back(label + ": domain backend slot empty (warm)");
+                    continue;
+                }
+
+                warm_ctx.reset(backend->CreateBuildContext(nullptr, definition, request));
+                if (!warm_ctx)
+                {
+                    const char *err = GetLastDomainShaderBuildBackendError();
+                    InstallShaderGenProgramBuildBackend();
+                    result.diagnostics.emplace_back(
+                        label + ": warm build failed: "
+                        + (err && err[0] ? err : "unknown error"));
+                    continue;
+                }
+                if (!backend->FinalizeBuildContext(warm_ctx.get()))
+                {
+                    InstallShaderGenProgramBuildBackend();
+                    result.diagnostics.emplace_back(label + ": warm finalize failed");
+                    continue;
+                }
+                InstallShaderGenProgramBuildBackend();
+            }
+
+            const ShaderCreateInfo *warm_fs =
+                warm_ctx->GetStageShader(ShaderStage::Fragment);
+            const ShaderCreateInfo *warm_ms =
+                warm_ctx->GetStageShader(ShaderStage::Mesh);
+            if (!warm_fs || !warm_fs->HasSPVData() || !warm_ms || !warm_ms->HasSPVData())
+            {
+                result.diagnostics.emplace_back(label + ": warm build produced no SPIR-V");
+                continue;
+            }
+            if (!warm_ctx->UsedCachedFragmentStage())
+            {
+                result.diagnostics.emplace_back(
+                    label + ": fragment stage missed on a warm store"
+                    " (domain master shader is not being baked)");
+                continue;
+            }
+            if (!warm_ctx->UsedCachedMeshStage())
+            {
+                result.diagnostics.emplace_back(label + ": mesh stage missed on a warm store");
+                continue;
+            }
+            if (warm_fs->GetSPVSize() != cold_fs->GetSPVSize()
+             || std::memcmp(warm_fs->GetSPVData(), cold_fs->GetSPVData(),
+                            cold_fs->GetSPVSize()) != 0)
+            {
+                char detail[192];
+                std::snprintf(detail, sizeof(detail),
+                              ": warm fragment SPIR-V differs from cold (cold=%zu warm=%zu)",
+                              cold_fs->GetSPVSize(), warm_fs->GetSPVSize());
+                result.diagnostics.emplace_back(label + detail);
+                continue;
+            }
+
+            // ── ③ 磁盘上的 stage digest / 元数据摘要必须自洽 ──────────────
+            {
+                ShaderArtifactStore verify_store(cache_root_os, ShaderCacheMode::ReadOnly);
+
+                hgl::ValueArray<uint8_t> stored_spv;
+                hgl::uint64 stored_digest = 0;
+                if (!verify_store.LoadStageSPV(
+                        cold_ctx->GetProgramLink().fragment_stage,
+                        stored_spv, &stored_digest))
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": fragment stage SPV not present on disk");
+                    continue;
+                }
+                if (stored_digest != cold_frag_digest)
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": on-disk fragment source digest does not describe"
+                        " the domain master shader that was compiled");
+                    continue;
+                }
+
+                ShaderProgramArtifactMetadata metadata{};
+                if (!verify_store.LoadProgramMetadata(
+                        cold_ctx->GetProgramLink(), metadata))
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": program metadata not present on disk");
+                    continue;
+                }
+
+                // 换源后不重算元数据 ⇒ 这里比的就是生成器那份没参与编译的文本。
+                const hgl::uint64 expected_source_digest = ComputeGeneratedSourceDigest(
+                    cold_mesh_glsl.data(), cold_mesh_glsl.size(),
+                    cold_frag_glsl.data(), cold_frag_glsl.size());
+                if (metadata.generated_source_digest != expected_source_digest)
+                {
+                    char detail[224];
+                    std::snprintf(detail, sizeof(detail),
+                                  ": program metadata generated_source_digest=%llu"
+                                  " does not match the compiled sources (%llu)",
+                                  static_cast<unsigned long long>(
+                                      metadata.generated_source_digest),
+                                  static_cast<unsigned long long>(
+                                      expected_source_digest));
+                    result.diagnostics.emplace_back(label + detail);
+                    continue;
+                }
+
+                // ── ④ 落盘的 .frag 就是固定主着色器 ──────────────────────
+                // `GetStagePath()` 是私有的，所以按契约（stage 与 .frag 同目录、
+                // 同主文件名、只换扩展名）去 `shader-cache/stage/` 里找。每个
+                // 形状独占一个目录，故这里恰好只有一个 `.frag`。
+                bool found_frag_source = false;
+                bool has_options_include = false;
+                {
+                    std::filesystem::path stage_dir(cache_root);
+                    stage_dir /= ShaderArtifactCacheDirectory;
+                    stage_dir /= ShaderArtifactStageDirectory;
+
+                    std::error_code iter_ec;
+                    for (std::filesystem::directory_iterator it(stage_dir, iter_ec), end;
+                         !iter_ec && it != end; it.increment(iter_ec))
+                    {
+                        if (it->path().extension()
+                            != GetShaderArtifactStageSourceExtension(ShaderStage::Fragment))
+                            continue;
+
+                        found_frag_source = true;
+
+                        std::ifstream source_stream(it->path(), std::ios::binary);
+                        if (!source_stream)
+                            continue;
+                        const std::string text(
+                            (std::istreambuf_iterator<char>(source_stream)),
+                            std::istreambuf_iterator<char>());
+                        has_options_include =
+                            text.find("generated/options.glsl") != std::string::npos;
+                    }
+                }
+
+                if (!found_frag_source)
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": no cached .frag source next to the stage SPV");
+                    continue;
+                }
+                if (!has_options_include)
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": cached .frag source does not include"
+                        " generated/options.glsl (a generated shader was baked"
+                        " instead of the fixed domain master)");
+                    continue;
+                }
+            }
+
+            char ok[160];
+            std::snprintf(ok, sizeof(ok),
+                          "%s: cold miss -> warm hit, spv=%zu bytes",
+                          label.c_str(), warm_fs->GetSPVSize());
+            std::fprintf(stdout, "[INFO] DH.domain-backend-cache %s\n", ok);
+
+            if (digest_count < 4)
+            {
+                digest_labels[digest_count] = label;
+                digest_values[digest_count] = cold_frag_digest;
+                ++digest_count;
+            }
+        }
+
+        for (size_t i = 0; i < digest_count; ++i)
+            for (size_t j = i + 1; j < digest_count; ++j)
+                if (digest_values[i] == digest_values[j])
+                    result.diagnostics.emplace_back(
+                        digest_labels[i] + " and " + digest_labels[j]
+                        + ": identical fragment stage source digest — the domain"
+                          " options are not covered by the digest, so two"
+                          " different option sets can silently reuse one SPV");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
 }
 
 int main(const int argc, char **argv)
@@ -10224,6 +10567,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
     if (run_pipeline) results.push_back(RunShaderEmissionOrderGoldenCase());
     if (run_pipeline) results.push_back(RunDomainBackendEquivalenceCase());
+    if (run_pipeline) results.push_back(RunDomainBackendCacheCase());
 
     bool all_passed = true;
     for (const auto &result : results)

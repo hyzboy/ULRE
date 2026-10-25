@@ -230,6 +230,56 @@ offset/size/name）后做**文本全等**比较，再比较 `GetSPVSize()`。用
 `AppendMaterialRenderTemplateRoots()` 把材质能力槽拷进请求。只调前者会因槽缺失被
 `ValidateRenderTemplateRequest` 拒；只调后者会给 Sky 选错模板。
 
+### 1.7 磁盘缓存烘焙链（Phase 4.1 固化）
+
+固定主着色器要真正替代生成器，还必须回答一个问题：**SPV 磁盘缓存怎么复用**。
+生成器时代每次冷启动都要跑一遍 AST 组装 + glslang；固定主着色器省掉了前者，
+但如果缓存语义不对，后者仍会白烧一遍，甚至悄悄写出错误的产物。
+
+缓存键是 `ShaderStageKey`（`stage / definition_hash / glsl_module_graph_hash /
+interface_hash / resource_hash / compiler_hash`，六项 FNV1a），**按阶段存**，
+和最终 GLSL 文本无关；`generated_source_digest` **不参与**命中判定，只作事后校验。
+由此推出两条必须遵守的实现约束：
+
+1. **摘要必须覆盖 domain options。** 主着色器文本对「同领域 + 同 pass」是逐字节相同的，
+   options 的全部差异都在 `generated/options.glsl` 里。若 stage source digest 只覆盖
+   主着色器文本，fwd 与 fwd-alpha 会算出**同一个摘要**（实测：主着色器文本完全一致，
+   SPV 却是 65072 vs 67024）。摘要既是缓存命中判据也是事后校验判据，撞了就只剩
+   缓存文件名这一道保险。因此 `CompileDomainMasterFragment` 把 options 的**内容键**
+   （`MakeOptionsKey` = FNV1a(options 文本, domain, purpose)）作为溯源注释
+   `// domain-options-key <hex>` 钉在片段源尾部：摘要自然覆盖 options，落盘的 `.frag`
+   也能自述「这份 SPV 是哪组宏编出来的」。
+2. **元数据必须在换源之后重建。** `BuildGenericMaterial` 在领域后端换掉片段源**之前**
+   就构造好了 `ShaderProgramArtifactMetadata`，其中的 `generated_source_digest` 描述的
+   是被丢弃的生成文本。`FinalizeShaderBuildContext` 会把它原样落盘，所以
+   `CreateBuildContext` 必须在 `ApplyDomainMasterShader` 之后、`FinalizeBuildContext`
+   之前调 `RefreshProgramArtifactMetadata()`。去掉这一步，门禁立刻报
+   `generated_source_digest=… does not match the compiled sources (…)`（已反自证）。
+
+**为什么后端要自己做早期缓存探针**：`FinalizeShaderBuildContext` 的命中路径只是
+「不覆盖」已设好的 SPV，并不会跳过已经发生的编译。所以 `CompileDomainMasterFragment`
+在 `SetFinalGLSL` 之后立刻用固定主着色器的源算摘要、`LoadStageSPV` 试读、要求
+`stored_digest == expected_digest`，命中就直接 `SetCachedSPVData` 返回，完全不碰 glslang。
+这对固定领域是合法的：SPIR-V 只取决于（主着色器源, options），而 options 已被
+stage key + 源尾注释双重点住。
+
+门禁用例 `DH.domain-backend-cache` 把上述链条钉成四段断言（每个形状独立缓存目录，
+因为四种 Lit 形状共享同一个 `ShaderStageKey`）：
+
+1. 冷构建必须**未命中**，并把 SPV 落盘；
+2. 同进程再构建必须**命中**，且 SPV 与冷构建**逐字节相同**；
+3. 盘上 stage digest 与 program metadata 的 `generated_source_digest` 都必须等于
+   按实际编译源重算的值（第 2 条约束的反自证）；
+4. 缓存里的 `.frag` 必须含 `generated/options.glsl`（证明是固定主着色器编出来的）。
+
+外加一条跨形状断言：四个形状的片段 stage source digest **两两互不相同**
+（第 1 条约束的反自证）。当前 4/4 形状 `cold miss -> warm hit`，
+spv = 65072 / 67024 / 1232 / 8896 字节。
+
+⚠ `SaveStageSPV` / `GetSPVSize()` 是**字节**数，不是 32 位字数——照字数 `memcmp` 会越界读，
+表现为「明明相同却报不等」。`ShaderArtifactStore` 写盘还要求缓存根目录**事先存在**
+（`MakePath` 逐段创建，父目录不存在时整体失败，且一个目录都不建）。
+
 ---
 
 ## 2. 待清理的旧 ShaderGen 模块清单
