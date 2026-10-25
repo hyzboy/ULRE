@@ -10,9 +10,7 @@
 // 改这个数字必须同步改顶点阶段的输出布局。
 //
 // 等价性：SPIR-V 尺寸与 reflection 均与旧 ShaderGen 产物全等。
-// 若换成 `sky_minimal_surface`（无 cube 采样），把下面的 include 换成
-// `material/sky_minimal_surface.glsl` 即可——那是一份独立的主着色器，
-// 不是同一文件的运行时分支。
+// 无 cube 采样的 SkyMinimal 使用同域独立主着色器 `sky_minimal.frag`。
 
 #include "domain/root_bindings.glsl"
 #include "domain/sky_bindings.glsl"

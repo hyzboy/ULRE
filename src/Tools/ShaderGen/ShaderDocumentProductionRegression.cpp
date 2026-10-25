@@ -248,7 +248,8 @@ namespace
 
         DomainShaderTemplate probe;
         if (ResolveDomainShaderTemplate(
-                definition.domain, fixture.purpose, fixture.alpha_test, probe))
+                definition.domain, fixture.purpose, fixture.alpha_test, probe,
+                definition.surface_module_name))
             return false;
 
         if (out_reason)

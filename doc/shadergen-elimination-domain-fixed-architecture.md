@@ -1963,3 +1963,16 @@ AcquireShaderProgram failed for BBox_0 ... unresolved runtime pipeline
 `emit-fixed-mesh` 的 cache-identity 形状矩阵追加了 `plane-grid-luminance-wire`（`VertexLuminance` + `Lines` + Position/Luminance 格式），避免该组合再次漏出覆盖清单。PlaneGrid3D 的析构也移除了对已注册至 `GeometryManager` 的 `geom_plane_grid` 的重复释放。
 
 **最终复验**：PlaneGrid3D Debug 重建运行并正常退出（rc=0），确认新 master 成功打开、GPU cull 已初始化、shader/pipeline 错误为 0；gate `all` 仍为 **59 PASS / 0 FAIL**；`emit-fixed-mesh` 更新为 `covered=37 missing=0 failed=0`；`verify-release-form.ps1 -SkipConfigure` 五步再次全绿。此补充将阶段九最终覆盖数从阶段 9.1 首次验收时的 36 提升为 37。
+
+## 阶段九后续回归：AtmosphereSky 固定表面选择与双面绘制
+
+AtmosphereSky 的日志中，`SkyMinimal` 配方没有贴图行（`planned_texture=0`），但片元 stage key 实际加载 `domain/sky/sky.frag`，该 master 固定 include `sky_cube_surface.glsl` 并通过 `MTL_TEX` 读取 cubemap 行。GPU cull 的 `culldump` 证明实体已可见、批计数为 1、间接命令 `groupCount=(20,1,1)` 已生成；随后该无贴图 shader 路径触发 `VK_ERROR_DEVICE_LOST`，Fence/Swapchain 报错是下游现象，不是“没有绘图命令”。
+
+修复：
+
+- `ResolveDomainShaderTemplate` 对 Sky 的固定表面变体显式分流：默认/`sky_minimal_surface` 选 `sky_minimal.frag`，`sky_cube_surface` 保留 `sky.frag`，其他未知 Sky 表面提供者硬失败。`D.material-domain-contract` 加入三种路径选择断言。
+- 新增 `domain/sky/sky_minimal.frag`，直接 include 无贴图 `surface/sky_minimal_surface.glsl`；Cubemap 变体继续使用原 `sky.frag`。
+- `MakeSkyConfig` 改为 `VK_CULL_MODE_NONE`：天空球从球内观察，不能用单面绕序剔除。
+- 同一 AtmosphereSky 复跑发现 `AtmosphereSkyAmbient::MeshEntry` 也重复删除由 `GeometryManager` 持有的网格，移除其析构删除。
+
+**验证**：AtmosphereSkyMinimal/SunGizmo/Ambient 与 SkyCubeSphere 均 Debug 重建并正常退出；device-lost、GPUCull submit 与 unresolved-pipeline 错误均为 0。`SKYMIN_SELFCHECK=1` 恢复为 PASS：1280×720、219 个不同字节值、FNV=`0xC914C338EFC7790E`。RegressionGate 保持 59 PASS / 0 FAIL，固定 mesh 覆盖 37/0/0；production fixtures、Test 51 及 `verify-release-form.ps1 -SkipConfigure` 五步均复验通过。

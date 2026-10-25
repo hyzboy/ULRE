@@ -2,6 +2,7 @@
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/BuiltinMaterialDefinitions.h>
 #include <hgl/mtl/MaterialDomain.h>
+#include <hgl/mtl/DomainShaderTemplate.h>
 #include <hgl/mtl/ShaderConfig.h>
 #include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -5906,6 +5907,45 @@ namespace
     {
         GateResult result;
         result.name = "D.material-domain-contract";
+
+        if (MakeSkyConfig().cull_mode != VK_CULL_MODE_NONE)
+            result.diagnostics.emplace_back(
+                "Sky spheres are viewed from inside and must not cull either face");
+
+        DomainShaderTemplate sky_minimal_template;
+        if (!ResolveDomainShaderTemplate(
+                MaterialDomain::Sky,
+                ShaderProgramPurpose::ForwardColor,
+                false,
+                sky_minimal_template)
+         || std::strcmp(
+                sky_minimal_template.relative_path.c_str(),
+                "domain/sky/sky_minimal.frag") != 0)
+            result.diagnostics.emplace_back(
+                "SkyMinimal must resolve the fixed fragment that includes its no-texture surface");
+
+        DomainShaderTemplate sky_cube_template;
+        if (!ResolveDomainShaderTemplate(
+                MaterialDomain::Sky,
+                ShaderProgramPurpose::ForwardColor,
+                false,
+                sky_cube_template,
+                "sky_cube_surface")
+         || std::strcmp(
+                sky_cube_template.relative_path.c_str(),
+                "domain/sky/sky.frag") != 0)
+            result.diagnostics.emplace_back(
+                "SkyCube must retain its cubemap fixed fragment");
+
+        DomainShaderTemplate unsupported_sky_template;
+        if (ResolveDomainShaderTemplate(
+                MaterialDomain::Sky,
+                ShaderProgramPurpose::ForwardColor,
+                false,
+                unsupported_sky_template,
+                "unknown_sky_surface"))
+            result.diagnostics.emplace_back(
+                "Sky must reject a surface provider without a fixed fragment master");
 
         // ── ① 契约表自检 + 引用模块存在性 ────────────────────────────────────
         ShaderCodeModuleRegistry registry;

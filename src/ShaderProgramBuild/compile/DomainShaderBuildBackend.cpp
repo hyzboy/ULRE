@@ -671,7 +671,8 @@ namespace hgl::graph::mtl
 
             DomainShaderTemplate domain_template;
             if (!ResolveDomainShaderTemplate(
-                    domain, purpose, masked_coverage, domain_template))
+                    domain, purpose, masked_coverage, domain_template,
+                    definition.surface_module_name))
             {
                 DomainBuildFailed(
                     u8"[DomainBackend] 领域 %d 没有对应的固定主着色器"

@@ -1,6 +1,7 @@
 #include <hgl/mtl/DomainShaderTemplate.h>
 
 #include <cstdio>
+#include <cstring>
 
 namespace hgl::graph::mtl
 {
@@ -58,7 +59,8 @@ namespace hgl::graph::mtl
         const MaterialDomain domain,
         const ShaderProgramPurpose purpose,
         const bool masked_coverage,
-        DomainShaderTemplate &out_template) noexcept
+        DomainShaderTemplate &out_template,
+        const char *surface_module_name) noexcept
     {
         out_template.domain = MaterialDomain::Custom;
         out_template.relative_path.Clear();
@@ -71,8 +73,21 @@ namespace hgl::graph::mtl
 
         if (!IsDomainDepthPurpose(purpose))
         {
-            // 前向 pass：文件名取自表，不做推断。
-            stage_name = entry->forward_file;
+            if (domain == MaterialDomain::Sky)
+            {
+                if (!surface_module_name || !surface_module_name[0]
+                 || std::strcmp(surface_module_name, "sky_minimal_surface") == 0)
+                    stage_name = "sky_minimal.frag";
+                else if (std::strcmp(surface_module_name, "sky_cube_surface") == 0)
+                    stage_name = entry->forward_file;
+                else
+                    return false;
+            }
+            else
+            {
+                // 其他领域的前向文件名取自表，不做推断。
+                stage_name = entry->forward_file;
+            }
         }
         else
         {

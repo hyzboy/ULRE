@@ -66,8 +66,6 @@ private:
     {
         Geometry* geometry = nullptr;
         PrimitiveAsset asset{};
-
-        ~MeshEntry() { delete geometry; }
     };
 
     graph::mtl::MaterialRecipe sky_recipe{};

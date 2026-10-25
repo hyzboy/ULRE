@@ -149,7 +149,8 @@ namespace hgl::graph::mtl
     inline MaterialPipelineConfig MakeSkyConfig()
     {
         MaterialPipelineConfig config;
-        config.cull_mode = VK_CULL_MODE_FRONT_BIT;
+        // Sky geometry is viewed from inside; winding is not a visibility filter.
+        config.cull_mode = VK_CULL_MODE_NONE;
         config.depth_write = false;
         return config;
     }
