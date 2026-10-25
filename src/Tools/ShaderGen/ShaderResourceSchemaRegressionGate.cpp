@@ -9734,7 +9734,17 @@ void main()
     // ═════════════════════════════════════════════════════════════════════════
     // DH.domain-backend-equivalence
     //
-    // 「不生成着色器」后端（DomainShaderBuildBackend）与生成器的**等价性**证明。
+    // 领域后端产物的**等价性基线**。
+    //
+    // 历史上这条用例是「生成器 vs 领域后端」的现场比对（阶段 4）。生成器在
+    // 阶段 5.2 被物理删除之后就没有第二条路径可现场比了，而「换个后端产物没变」
+    // 这件事恰恰是最需要长期守住的东西 —— 因此把生成器那一侧的判据**冻结**成
+    // 仓库内的 golden：录制时由生成器产出，之后领域后端必须逐字对齐。
+    //
+    // 录制：设置 `ULRE_DOMAIN_EQUIV_RECORD=1` 跑 `all`。该模式下仍会构建生成器
+    // 路径并断言两侧相等（录制与比对是同一次运行的同一个结论），把**生成器**
+    // 那一侧写进 golden。生成器删除后这个分支失效，`CompareAgainstGolden` 的
+    // 「缺失即生成」引导仍会让新形状首跑落地待审。
     //
     // 为什么不能只靠 scripts/ci/verify-domain-master-shaders.ps1：
     //   那个脚本证明的是「主着色器 + options.glsl（由 DomainOptionsRegression 写出）
@@ -9745,13 +9755,19 @@ void main()
     // 判据（与脚本一致，别换成逐字节比较）：
     //   · SPIR-V 逐字节比较无效——同一份源码两次编译就差几十字节（内嵌内容哈希）；
     //   · 比 reflection 文本（稳定）+ SPV 字节数（抓 reflection 看不见的多余声明）。
+    //     编译器/插件升级导致字节数变化时，golden 会精确指出是哪个形状变了，
+    //     按提示重录并人工确认差异即可。
     //
-    // 防"自证"：
-    //   request 不带 artifact store（默认 nullptr）⇒ 两条路径都不碰磁盘缓存，
-    //   否则第二次构建可能直接读到第一次的产物，等价性就成了循环论证；
-    //   并断言生成器侧的最终 GLSL **不含** `generated/options.glsl`
-    //   ——两条路径的输入文本确实不同，比较才有意义。
+    // 防"自证"：request 不带 artifact store（默认 nullptr）⇒ 不碰磁盘缓存，
+    // 否则可能直接读到上一次的产物，等价性就成了循环论证。
     // ═════════════════════════════════════════════════════════════════════════
+
+    /// 录制模式：由生成器一侧产出 golden（见上方注释）。
+    static bool DomainEquivRecordRequested()
+    {
+        const char *flag = std::getenv("ULRE_DOMAIN_EQUIV_RECORD");
+        return flag && flag[0] == '1';
+    }
 
     struct DomainBackendEquivShape
     {
@@ -9994,20 +10010,8 @@ void main()
                 continue;
             }
 
-            // ── ① 生成器路径：defer_finalize=false ⇒ 先内部收尾并编译出 SPV ──
+            // ── ① 领域后端路径（临时接管槽位，跑完交还）────────────────────
             request.defer_finalize = false;
-            std::unique_ptr<ShaderBuildContext> generated(
-                CreateMaterialFromDefinition(nullptr, definition, request));
-            if (!generated)
-            {
-                const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
-                result.diagnostics.emplace_back(
-                    label + ": generator build failed: "
-                    + (err.IsEmpty() ? "unknown error" : err.c_str()));
-                continue;
-            }
-
-            // ── ② 领域后端路径（临时接管槽位，跑完立刻交还给生成器）──────────
             std::unique_ptr<ShaderBuildContext> domain_built;
             InstallDomainShaderBuildBackend();
             ShaderProgramBuildBackend *domain_backend = GetShaderProgramBuildBackend();
@@ -10035,32 +10039,21 @@ void main()
             if (!domain_built)
                 continue;
 
-            // ── ③ 取片段阶段：两侧都必须有 SPV ──────────────────────────────
-            const ShaderCreateInfo *gen_fs = generated->has_fragment()
-                ? generated->GetStageShader(ShaderStage::Fragment) : nullptr;
+            // ── ② 片段阶段必须有 SPV，且必须真的吃 generated/options.glsl ──
             const ShaderCreateInfo *dom_fs = domain_built->has_fragment()
                 ? domain_built->GetStageShader(ShaderStage::Fragment) : nullptr;
-
-            if (!gen_fs || !dom_fs)
+            if (!dom_fs)
             {
                 result.diagnostics.emplace_back(label + ": fragment stage missing");
                 continue;
             }
-            if (!gen_fs->HasSPVData() || !dom_fs->HasSPVData())
+            if (!dom_fs->HasSPVData())
             {
                 result.diagnostics.emplace_back(label + ": fragment SPIR-V missing");
                 continue;
             }
 
-            // 防自证：两条路径的输入文本必须真的不同。
-            const std::string &gen_glsl = gen_fs->GetFinalGLSL();
             const std::string &dom_glsl = dom_fs->GetFinalGLSL();
-            if (gen_glsl.find("generated/options.glsl") != std::string::npos)
-            {
-                result.diagnostics.emplace_back(
-                    label + ": generator GLSL unexpectedly references generated/options.glsl");
-                continue;
-            }
             if (dom_glsl.find("generated/options.glsl") == std::string::npos)
             {
                 result.diagnostics.emplace_back(
@@ -10069,18 +10062,8 @@ void main()
                 continue;
             }
 
-            // ── ④ 比 reflection 文本 + SPV 尺寸 ───────────────────────────
-            hgl::ValueArray<uint8_t> gen_storage;
             hgl::ValueArray<uint8_t> dom_storage;
-            ShaderFlatView gen_view{};
             ShaderFlatView dom_view{};
-            if (!ReflectSPVData(
-                    gen_fs->GetSPVData(), gen_fs->GetSPVSize(),
-                    uint32_t(ShaderStage::Fragment), "main", gen_storage, gen_view))
-            {
-                result.diagnostics.emplace_back(label + ": generator reflection failed");
-                continue;
-            }
             if (!ReflectSPVData(
                     dom_fs->GetSPVData(), dom_fs->GetSPVSize(),
                     uint32_t(ShaderStage::Fragment), "main", dom_storage, dom_view))
@@ -10089,30 +10072,106 @@ void main()
                 continue;
             }
 
-            const std::string gen_text = FormatDomainEquivReflection(gen_view);
             const std::string dom_text = FormatDomainEquivReflection(dom_view);
-            if (gen_text != dom_text)
+
+            // ── ③ 录制：由生成器一侧产出 golden，并断言两侧此刻相等 ────────
+            //
+            // 「等价」这个结论是由两种独立拼装方式同时得出同一条判据，才不是
+            // 自证。录制时现场比一次，比对的就是 golden 里的那些字节。
+            std::string golden_text = dom_text;
+            size_t golden_size = dom_fs->GetSPVSize();
+
+            if (DomainEquivRecordRequested())
             {
-                result.diagnostics.emplace_back(
-                    label + ": reflection differs\n--- generator ---\n" + gen_text
-                    + "--- domain ---\n" + dom_text);
-                continue;
+                std::unique_ptr<ShaderBuildContext> generated(
+                    CreateMaterialFromDefinition(nullptr, definition, request));
+                if (!generated)
+                {
+                    const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
+                    result.diagnostics.emplace_back(
+                        label + ": generator build failed: "
+                        + (err.IsEmpty() ? "unknown error" : err.c_str()));
+                    continue;
+                }
+
+                const ShaderCreateInfo *gen_fs = generated->has_fragment()
+                    ? generated->GetStageShader(ShaderStage::Fragment) : nullptr;
+                if (!gen_fs || !gen_fs->HasSPVData())
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": generator produced no fragment SPIR-V");
+                    continue;
+                }
+                if (gen_fs->GetFinalGLSL().find("generated/options.glsl")
+                    != std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": generator GLSL unexpectedly references"
+                        " generated/options.glsl");
+                    continue;
+                }
+
+                hgl::ValueArray<uint8_t> gen_storage;
+                ShaderFlatView gen_view{};
+                if (!ReflectSPVData(
+                        gen_fs->GetSPVData(), gen_fs->GetSPVSize(),
+                        uint32_t(ShaderStage::Fragment), "main",
+                        gen_storage, gen_view))
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": generator reflection failed");
+                    continue;
+                }
+
+                const std::string gen_text = FormatDomainEquivReflection(gen_view);
+                if (gen_text != dom_text)
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": reflection differs\n--- generator ---\n" + gen_text
+                        + "--- domain ---\n" + dom_text);
+                    continue;
+                }
+                if (gen_fs->GetSPVSize() != dom_fs->GetSPVSize())
+                {
+                    char detail[160];
+                    std::snprintf(detail, sizeof(detail),
+                                  ": SPIR-V size differs (generator=%zu domain=%zu)",
+                                  gen_fs->GetSPVSize(), dom_fs->GetSPVSize());
+                    result.diagnostics.emplace_back(label + detail);
+                    continue;
+                }
+
+                golden_text = gen_text;
+                golden_size = gen_fs->GetSPVSize();
             }
 
-            if (gen_fs->GetSPVSize() != dom_fs->GetSPVSize())
+            // ── ④ 与冻结基线比对 ─────────────────────────────────────────
             {
-                char detail[160];
-                std::snprintf(detail, sizeof(detail),
-                              ": SPIR-V size differs (generator=%zu domain=%zu)",
-                              gen_fs->GetSPVSize(), dom_fs->GetSPVSize());
-                result.diagnostics.emplace_back(label + detail);
-                continue;
-            }
+                char header[256];
+                std::snprintf(header, sizeof(header),
+                              "# DH.domain-backend-equivalence shape=%s"
+                              " definition=%s purpose=%d alpha_test=%d\n",
+                              shape.label, shape.definition_id,
+                              int(shape.purpose), shape.alpha_test ? 1 : 0);
+                char size_line[64];
+                std::snprintf(size_line, sizeof(size_line),
+                              "spv_bytes=%zu\n", golden_size);
 
-            char ok[128];
-            std::snprintf(ok, sizeof(ok), "%s: equivalent (spv=%zu bytes)",
-                          label.c_str(), dom_fs->GetSPVSize());
-            std::fprintf(stdout, "[INFO] DH.domain-backend %s\n", ok);
+                const std::string dump =
+                    std::string(header) + NormalizeDumpEOL(golden_text) + size_line;
+
+                const std::string golden_path = RepoRootPath(
+                    (std::string("src/Tools/ShaderGen/golden/domain-backend/")
+                     + shape.label + ".equiv.txt").c_str());
+
+                CompareAgainstGolden(
+                    golden_path, dump, "DH.domain-equiv", result.diagnostics);
+
+                char ok[160];
+                std::snprintf(ok, sizeof(ok), "%s: baseline ok (spv=%zu bytes)",
+                              label.c_str(), golden_size);
+                std::fprintf(stdout, "[INFO] DH.domain-backend %s\n", ok);
+            }
         }
 
         result.passed = result.diagnostics.empty();

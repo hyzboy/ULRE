@@ -1,0 +1,5 @@
+# DH.domain-backend-equivalence shape=shadow definition=Lit purpose=2 alpha_test=0
+entrypoint=main
+inputs=0 outputs=0 push_constants=1 subpass=0
+pc  offset=0 size=88 name=pc_root
+spv_bytes=1232

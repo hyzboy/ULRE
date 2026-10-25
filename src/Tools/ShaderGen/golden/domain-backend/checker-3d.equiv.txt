@@ -1,0 +1,7 @@
+# DH.domain-backend-equivalence shape=checker-3d definition=builtin/checkerboard_3d purpose=0 alpha_test=0
+entrypoint=main
+inputs=1 outputs=1 push_constants=1 subpass=0
+in  loc=1 name=fragWorldPos base=3 vec=3 col=1
+out loc=0 name=outColor base=3 vec=4 col=1
+pc  offset=0 size=88 name=pc_root
+spv_bytes=13824

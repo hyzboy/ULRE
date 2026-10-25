@@ -1,0 +1,13 @@
+# DH.domain-backend-equivalence shape=fwd definition=Lit purpose=0 alpha_test=0
+entrypoint=main
+inputs=4 outputs=1 push_constants=1 subpass=0
+in  loc=1 name=fragWorldPos base=3 vec=3 col=1
+in  loc=2 name=fragWorldNormal base=3 vec=3 col=1
+in  loc=3 name=fragUV0 base=3 vec=2 col=1
+in  loc=0 name=fragDataIndexID base=2 vec=1 col=1
+out loc=0 name=outColor base=3 vec=4 col=1
+res type=0 set=0 binding=1 array=0 name=bindless_samp
+res type=2 set=0 binding=0 array=0 name=bindless_tex
+res type=2 set=0 binding=2 array=0 name=bindless_cube_array
+pc  offset=0 size=88 name=pc_root
+spv_bytes=65072
