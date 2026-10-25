@@ -280,6 +280,115 @@ spv = 65072 / 67024 / 1232 / 8896 字节。
 表现为「明明相同却报不等」。`ShaderArtifactStore` 写盘还要求缓存根目录**事先存在**
 （`MakePath` 逐段创建，父目录不存在时整体失败，且一个目录都不建）。
 
+### 1.8 无光族领域的固化经验（Phase 4.2 固化）
+
+Phase 4.2 补齐了 `UnlitTexture` / `VertexColor` / `VertexPalette` / `VertexLuminance`
+四个领域。它们都属于「前向 + `flat_lighting`」形状，但**不是** `forward_lit.frag`
+少几行——照抄 `standard_opaque` 一定编不过。下面五条都是踩出来的，不写下来下一次
+还会再踩。
+
+**① `ntb/ntb_none.glsl` 必须显式 include，且必须排在 `surface/material_surface.glsl` 之前**
+
+`EvalSurface` 在**函数体内**调用 `GetNTB(...)`，而 GLSL 在**定义处**就要解析符号，
+所以 `ntb_none.glsl` 不能等到后面再进来。生成器那条路没有这个顺序问题：它把
+`ntb_none.glsl` 的内容**文本内联**进最终 GLSL（`#ifndef NTB_NONE_GLSL` 整块就贴在
+材质源 include 的正前方）。
+
+漏掉它会看到两条报错，第二条极具误导性：
+
+```
+'material_surface.glsl:35': error: 'GetNTB' : no matching overloaded function found
+error: '#' : preprocessor directive cannot be preceded by another token
+```
+
+第二条只是 `EvalSurface` 那一行被整体判死之后，紧随其后的 `#if` 变成了「前导 token 之后的 `#`」。
+
+**② 面法线兜底块不是可选的——不要「推理掉」看着是死代码的东西**
+
+无光族领域不做任何法线光照，很容易判断「`#ifdef HGL_MATERIAL_FACE_NORMAL_FALLBACK`
+那一块对我没用」。这个判断是**错的**：生成器对**任何前向 pass** 都无条件发射该块
+（只有 `shadow_pass` 才跳过），它决定 `si.worldNormal` 是否被填值，进而影响
+`EvalSurface` / alpha 覆盖链的产物。删掉它，三个领域的 SPIR-V 会分别少
+**64 / 92 / 64 字节**——尺寸差是唯一能看见的信号，而尺寸差又只在逐字节比对里
+才被当成失败。
+
+> 通用规则：**照抄生成器，不要讲道理**。等价性验收的对象是「生成器实际产出的字节」，
+> 不是「我认为它应该产出的字节」。
+
+**③ 只有两种材质 SSBO 布局，bindings 文件不能互借**
+
+| 布局 | 结构 | stride | 表基址 | 使用者 |
+|---|---|---|---|---|
+| `PBRSurface` | `{ vec4 base_color; float metallic; float roughness; float normal_scale; float fresnel; }` | 32 | `global_addresses.addr_pbr_surface` | StandardOpaque / **VertexColor** / **VertexPalette** / **UnlitTexture** |
+| `EmissiveSurface` | `{ vec4 color; }` | 16 | `global_addresses.addr_emissive_surface` | UnlitSolid / **VertexLuminance** |
+
+注意反直觉的两处：`UnlitTexture` 走的是 **PBR** 行（它需要 `base_color` 之外的
+`metallic` 等常量来保证 alpha 链的形状一致），而 `VertexLuminance` 走的是
+**Emissive** 行。生成器在 Emissive 情况下会同时发射
+`struct EmissiveSurfaceData {...}` 与 `layout(buffer_reference…) buffer EmissiveSurfaceRow {...}`，
+两份都要照抄。
+
+**④ 纹理表的存在性只由领域契约的槽位表决定**
+
+`UnlitTexture` 有 `base_color` 槽 ⇒ 单元素
+`MaterialTextureReferencesRef { uvec2 tex_base_color; }`（stride 16）+ `#define TrilinearSampler 2u`；
+`VertexColor` / `VertexPalette` / `VertexLuminance` 的槽位表是空的 ⇒
+**整个纹理表都不出现**——没有 `MaterialTextureReferencesRef`，没有任何采样器 `#define`。
+所以 `vertex_color_bindings.glsl` 内容是空的（只留守卫宏），这是正确状态，不是漏写。
+
+**⑤ varying location 是顶点/片段两阶段的硬契约，只能查不能猜**
+
+权威来源是生成器 dump 出来的最终 GLSL。当前实测表：
+
+| varying | location | 备注 |
+|---|---|---|
+| `fragDataIndexID` | 0 | `flat perprimitiveEXT in uint`；**无私有数据行的领域整条不声明** |
+| `fragWorldPos` | 1 | |
+| `fragWorldNormal` | 2 | |
+| `fragUV0` | 3 | |
+| `fragVertexColor` | 5 | |
+| `fragDirection` | 6 | |
+| `fragLuminance` | 7 | `float`，不是向量 |
+
+location 之间**留空是正常现象**（4 号空着），不要自作聪明改成紧凑排布。
+`VertexColor` / `VertexPalette` 没有私有数据行，因此 `fragDataIndexID` 整条不声明，
+`materialDataIndex` 直接是字面量 `0u`。
+
+**⑥ 逐领域目录可以跨域复用，但只能在片段阶段逐字节相同时复用**
+
+`VertexPalette` 与 `VertexColor` 的片段阶段**完全一致**（差异只体现在顶点语义：
+`TransformID` / `Size`，而那属于 `DomainContracts` 的事），因此
+`DomainShaderTemplate` 允许 `VertexPalette → vertex_color/vertex_color.frag`。
+`kDomainDirs[]` 的 `domain_dir` / `forward_file` 因此是多对一的映射，不是 1:1。
+
+**等价矩阵（Phase 4.2 后的 9 形状，`DH.domain-backend-equivalence` 全绿）**
+
+| 固定主着色器 | pass | SPIR-V 字节 |
+|---|---|---|
+| `standard_opaque/forward_lit.frag` | ForwardColor | 65072 |
+| `standard_opaque/forward_lit.frag`（alpha） | ForwardColor | 67024 |
+| `standard_opaque/shadow_caster_masked.frag` | ShadowDepth + coverage | 8896 |
+| `standard_opaque/shadow_caster.frag` | ShadowDepth 裸 | 1232 |
+| `sky/sky.frag` | ForwardColor | 6732 |
+| `unlit_texture/unlit_texture.frag` | ForwardColor | 13360 |
+| `vertex_color/vertex_color.frag` | ForwardColor | 10248 |
+| `vertex_luminance/vertex_luminance.frag` | ForwardColor | 12152 |
+| `vertex_color/vertex_color.frag`（作 VertexPalette） | ForwardColor | 10248 |
+
+**无光族的 `options.glsl` 是空文件**（4 个形状实测均为 0 字节）。这**不是**发射器漏发：
+`ResolveDomainOptionsProfile` 对「无光照 + 有材质源」给出 `ForwardUnlit`，而该 profile
+不产生任何 `#define`——它们的主着色器全部走 `flat_lighting.glsl`，没有场景光照、
+没有 PCF、没有 ambient provider 需要注入。空文件依然必须存在且必须被第二 include 根
+解析到，否则 `#include "generated/options.glsl"` 直接失败。
+
+**`verify-domain-master-shaders.ps1` 的参考源也换成了门禁**：脚本过去依赖
+`ShaderDocumentProductionRegression --dump-source` 的生产夹具，而那套夹具里
+**根本没有**无光族领域，且夹具名与形状名不同名，扩表必然要手抄映射。
+现在统一走 `ShaderResourceSchemaRegressionGate dump-domain-glsl <dir>`：它按
+`kDomainBackendEquivShapes` 一次性导出 9 份 `<slug>.frag` **和**
+`<slug>/generated/options.glsl`（后者由真实后端的 `EmitDomainOptionsForDefinition`
+产出），脚本不再持有任何宏表，也就不可能与发射器漂移。
+
 ---
 
 ## 2. 待清理的旧 ShaderGen 模块清单
@@ -304,8 +413,8 @@ spv = 65072 / 67024 / 1232 / 8896 字节。
 1. **第一阶段：固化各 MaterialDomain 的主着色器** ✅ `709eb58ce`
    - 已固化：`StandardOpaque` 的 ForwardColor / ShadowDepth(有覆盖) / ShadowDepth(无覆盖)，`Sky` 的 ForwardColor。
    - 已定义 `options.glsl` 注入协议与 `<domain>_bindings.glsl` 分层。
-   - 待补：`UnlitSolid` / `VertexColor` / `VertexPalette` / `VertexLuminance` /
-     `UnlitTexture` / `UI2D` / `Text2D` / `Checker2D` / `Checker3D` 等（这些走
+   - `4.2` 补入无光族四域，累计 9 形状（见 1.8）。
+   - 待补：`UnlitSolid` / `UI2D` / `Text2D` / `Checker2D` / `Checker3D` 等（这些走
      `flat_lighting` 形状，留待阶段四按域迁移时逐个固化）。
 2. **第二阶段：实现极简 `DomainOptionsEmitter`** ✅ `fc70e0847`
    - 输入 `MaterialDomain` + Pass 类型，输出 `options.glsl` 文本（8 步发射顺序、4 路 profile 表）。
@@ -328,7 +437,14 @@ spv = 65072 / 67024 / 1232 / 8896 字节。
      `GetLastDomainShaderBuildBackendError()`（`GLogError` 在门禁里不可见，诊断必须走字符串出口）；
      顺带刷新了仓库根的 `GLSLCompiler.dll`——它一直是**旧的单 include 根构建**，与插件源码脱节。
 4. **第四阶段：业务域全面接入新管道并打通全 Pass**
-   - 逐域迁移，跑 `SimpleSphere` / `PBRSpheres` / `LineRender` / `DrawText` 实机验证。
+   - `4.1` ✅ `b0110c8be`：修掉 `generated_source_digest` 描述「被丢弃的生成文本」的真 bug，
+     后端加早期缓存探针，`DH.domain-backend-cache` 落地（见 1.7）。
+   - `4.2` ✅：无光族四域（`UnlitTexture` / `VertexColor` / `VertexPalette` /
+     `VertexLuminance`）主着色器固化，等价矩阵扩到 9 形状（见 1.8）。
+     `kDomainDirs[]` 由 2 行扩到 6 行，并支持跨域复用同一份片段源。
+   - 待办：逐域迁移 `UnlitSolid` / `Text2D` / `UI2D` / `Checker2D` / `Checker3D` /
+     `ErrorChecker3D` / `DebugNormal`，再跑 `SimpleSphere` / `PBRSpheres` /
+     `LineRender` / `DrawText` 实机验证。
 5. **第五阶段：整体切替与旧代码物理删除**
    - 将渲染系统底层对接至直通管道。
    - 一次性物理删除 `src/ShaderGen` 下冗余的生成器、注记解析与 AST 模块。

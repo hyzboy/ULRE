@@ -9769,6 +9769,10 @@ void main()
         { "shadow",       "Lit",     ShaderProgramPurpose::ShadowDepth,  false },
         { "shadow-alpha", "Lit",     ShaderProgramPurpose::ShadowDepth,  true  },
         { "sky",          "SkyCube", ShaderProgramPurpose::ForwardColor, false },
+        { "unlit-tex",    "UnlitTexture", ShaderProgramPurpose::ForwardColor, false },
+        { "vert-color",   "VertexColor",  ShaderProgramPurpose::ForwardColor, false },
+        { "vert-lum",     "VertexLuminance", ShaderProgramPurpose::ForwardColor, false },
+        { "vert-pal",     "VertexPaletteColor", ShaderProgramPurpose::ForwardColor, false },
     };
 
     /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。
@@ -9842,21 +9846,76 @@ void main()
         MaterialDefinitionBuildRequest &request,
         std::string &diagnostic)
     {
-        if (!geometry.Add(VertexSemantic::Position, VF_V3F, 0, 0))
+        // 位置格式由领域的**规范顶点节点配置**决定，不是常量 VF_V3F：
+        // `Vec2Position` 领域（UnlitTexture / Checker2D 等 2D 贴面）要求两个分量的
+        // 位置流，给 VF_V3F 会让 `ResolveVertexABI` 直接失败。
+        VkFormat position_format = VF_V3F;
+        {
+            VertexShaderNodeConfig canonical;
+            if (GetMaterialDomainCanonicalVertexNodeConfig(
+                    definition.domain, canonical)
+             && canonical.input == VertexInputMode::Vec2Position)
+                position_format = VF_V2F;
+        }
+        if (!geometry.Add(VertexSemantic::Position, position_format, 0, 0))
         {
             diagnostic = "geometry.Add(Position) failed";
             return false;
         }
 
-        // 与生产夹具同一条规则：定义声明了 NTB 就必须有 UV0 + Normal。
-        const bool requires_ntb =
-            definition.ntb_module_name && definition.ntb_module_name[0];
-        if (requires_ntb
-         && (!geometry.Add(VertexSemantic::TexCoord, VF_V2F, 0, 0)
-          || !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0)))
+        // 其余顶点语义**由领域契约推导**，不再手写「有 NTB 就加 UV0+Normal」。
+        // 领域契约（`required_vertex_semantic_mask`）是领域材质顶点前提的单一真源，
+        // 手抄一遍只会给「抄漏」留机会：漏了 UV0，`ResolveVertexABI` 直接失败
+        // （实测 UnlitTexture 就是这么挂的），而不是给出清晰的诊断。
         {
-            diagnostic = "geometry.Add(UV0/Normal) failed";
-            return false;
+            hgl::ValueArray<ShaderCodeModuleSemanticRequirement> requirements;
+            if (!GetMaterialDomainVertexSemanticRequirements(
+                    definition.domain, requirements))
+            {
+                diagnostic = "GetMaterialDomainVertexSemanticRequirements failed";
+                return false;
+            }
+
+            struct SemanticFormat
+            {
+                VertexSemantic semantic;
+                VkFormat format;
+            };
+            static const SemanticFormat kExtraSemantics[] =
+            {
+                { VertexSemantic::TexCoord,    VF_V2F },
+                { VertexSemantic::Normal,      VF_V3F },
+                { VertexSemantic::Tangent,     VF_V3F },
+                { VertexSemantic::Bitangent,   VF_V3F },
+                { VertexSemantic::Color,       VF_V4F },
+                { VertexSemantic::TransformID, VF_V1U },
+                { VertexSemantic::Size,        VF_V1F },
+                { VertexSemantic::Luminance,   VF_V1F },
+            };
+
+            for (const SemanticFormat &entry : kExtraSemantics)
+            {
+                const ShaderCodeModuleSemantic wanted =
+                    GetShaderCodeModuleSemanticFromVertexSemantic(entry.semantic);
+                if (wanted == ShaderCodeModuleSemantic::Unknown)
+                    continue;
+
+                bool required = false;
+                for (int i = 0; i < requirements.GetCount(); ++i)
+                {
+                    if (requirements[i].semantic == wanted)
+                    {
+                        required = true;
+                        break;
+                    }
+                }
+
+                if (required && !geometry.Add(entry.semantic, entry.format, 0, 0))
+                {
+                    diagnostic = "geometry.Add(contract semantic) failed";
+                    return false;
+                }
+            }
         }
 
         request.recipe.mtl_def_id = definition.definition_id;
@@ -10069,8 +10128,14 @@ void main()
     //   ④ 落盘的 `.frag` 源必须含 `generated/options.glsl`，即缓存里存的是
     //      固定主着色器，不是旧的生成物。
     //
-    // 只跑 `StandardOpaque`：它是唯一同时支持 forward 与 depth 的领域，
-    // 其余领域的主着色器要到阶段 4.3 才补齐。
+    // 只跑 `StandardOpaque` 的 4 个 pass 形状，外加无光族的两个前向形状
+    // （`UnlitTexture` 与 `VertexColor`）：前者覆盖「同 domain 多 pass」的
+    // 缓存分歧，后者覆盖「多 domain 共享同一份缓存机制」且两个形状的主着色器
+    // 文本与 options 都不同 ⇒ 摘要必然不同，能继续守住「摘要必须覆盖 options」。
+    //
+    // 不加 `VertexPaletteColor`：它与 `VertexColor` 的固定主着色器**逐字节相同**、
+    // options 也相同，摘要天然相等——放进「两两互不相同」的断言里会假失败
+    //（它们本来就该共享同一份产物，只是落在不同定义各自的缓存目录里）。
 
     static GateResult RunDomainBackendCacheCase()
     {
@@ -10091,14 +10156,17 @@ void main()
             &kDomainBackendEquivShapes[1],  // fwd-alpha
             &kDomainBackendEquivShapes[2],  // shadow
             &kDomainBackendEquivShapes[3],  // shadow-alpha
+            &kDomainBackendEquivShapes[5],  // unlit-tex
+            &kDomainBackendEquivShapes[6],  // vert-color
         };
+        constexpr size_t kCacheShapeCount = sizeof(shapes) / sizeof(shapes[0]);
 
         // 每个形状的 fragment stage source digest。最后要求两两互不相同：
         // domain options 的差异只体现在 `generated/options.glsl`，主着色器文本
         // 逐字节相同，摘要如果不覆盖 options，两个不同 pass 变体会共享同一个
         // digest —— 撞上缓存文件名就是静默复用错误的 SPV。
-        std::string digest_labels[4];
-        hgl::uint64 digest_values[4] = { 0, 0, 0, 0 };
+        std::string digest_labels[kCacheShapeCount];
+        hgl::uint64 digest_values[kCacheShapeCount] = {};
         size_t digest_count = 0;
 
         for (const DomainBackendEquivShape *shape : shapes)
@@ -10374,7 +10442,7 @@ void main()
                           label.c_str(), warm_fs->GetSPVSize());
             std::fprintf(stdout, "[INFO] DH.domain-backend-cache %s\n", ok);
 
-            if (digest_count < 4)
+            if (digest_count < kCacheShapeCount)
             {
                 digest_labels[digest_count] = label;
                 digest_values[digest_count] = cold_frag_digest;
@@ -10402,15 +10470,8 @@ int main(const int argc, char **argv)
     // 发行形态夹具烘焙模式：argc==3 且 argv[1]=="emit-release-cache"。
     // 产物（manifest + 两 stage SPV + expectation.txt）留给 RuntimeFormProbe
     // 在 ULRE_ENABLE_SHADERGEN=0 构建里消费。
-    if (argc == 3)
+    if (argc == 3 && std::strcmp(argv[1], "emit-release-cache") == 0)
     {
-        if (std::strcmp(argv[1], "emit-release-cache") != 0)
-        {
-            GLogError(
-                "[ShaderResourceSchemaRegressionGate] Unknown command: %s", argv[1]);
-            return 2;
-        }
-
         if (!InitShaderCompiler())
         {
             GLogError(
@@ -10461,6 +10522,109 @@ int main(const int argc, char **argv)
         }
 
         return manifest_result.passed ? 0 : 1;
+    }
+
+    if (argc == 3 && std::strcmp(argv[1], "dump-domain-glsl") == 0)
+    {
+        if (!InitShaderCompiler())
+        {
+            GLogError(
+                "[ShaderResourceSchemaRegressionGate] Failed to initialize GLSL compiler.");
+            return 3;
+        }
+
+        // 无光/前向领域主着色器的采样器宏来自 sampler.toml 预设表；不加载预设
+        // 会让生成的采样器索引宏缺失，编译直接失败。
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
+        {
+            GLogError("[ShaderResourceSchemaRegressionGate] %s",
+                      preset_diagnostic.c_str());
+            return 3;
+        }
+
+        // 作者工具：把每个等价性形状**旧生成器路径**的最终 GLSL 落盘成
+        // `<dir>/<slug>.frag`。新增固定主着色器时必须照这份文本抄 varying
+        // 布局（location 是顶点阶段与片段阶段的硬契约，猜不出来），否则
+        // reflection 比对会以 location 不符失败。
+        //
+        // 同时把该形状的 `generated/options.glsl` 也落盘到
+        // `<dir>/<slug>/generated/options.glsl`：等价性必须是「同一个形状、
+        // 同一份 options」的比对，让脚本手抄宏表会随发射器漂移。
+        const std::filesystem::path dump_root =
+            std::filesystem::absolute(std::filesystem::path(argv[2]));
+        std::filesystem::create_directories(dump_root);
+
+        int written = 0;
+        for (const DomainBackendEquivShape &shape : kDomainBackendEquivShapes)
+        {
+            std::string slug(shape.label);
+            for (char &c : slug)
+                if (c == ' ' || c == '(' || c == ')' || c == '/')
+                    c = '_';
+
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(shape.definition_id, definition))
+            {
+                std::fprintf(stderr, "[SKIP] %s: definition unavailable\n", slug.c_str());
+                continue;
+            }
+
+            GeometryVertexFormat geometry;
+            MaterialDefinitionBuildRequest request{};
+            std::string diagnostic;
+            if (!BuildDomainEquivRequest(shape, definition, geometry, request, diagnostic))
+            {
+                std::fprintf(stderr, "[SKIP] %s: %s\n", slug.c_str(), diagnostic.c_str());
+                continue;
+            }
+
+            hgl::AnsiString options_text;
+            if (!EmitDomainOptionsForDefinition(
+                    definition, request, definition.domain, shape.purpose, options_text))
+            {
+                std::fprintf(stderr, "[SKIP] %s: options emission failed: %s\n",
+                             slug.c_str(), GetLastDomainShaderBuildBackendError());
+                continue;
+            }
+
+            const std::filesystem::path options_dir =
+                dump_root / slug / "generated";
+            std::error_code options_ec;
+            std::filesystem::create_directories(options_dir, options_ec);
+            {
+                std::ofstream out(options_dir / "options.glsl", std::ios::binary);
+                if (options_text.Length() > 0)
+                    out.write(options_text.c_str(),
+                              static_cast<std::streamsize>(options_text.Length()));
+            }
+
+            request.defer_finalize = false;
+            std::unique_ptr<ShaderBuildContext> ctx(
+                CreateMaterialFromDefinition(nullptr, definition, request));
+            const ShaderCreateInfo *fragment = (ctx && ctx->has_fragment())
+                ? ctx->GetStageShader(ShaderStage::Fragment) : nullptr;
+            if (!fragment)
+            {
+                const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
+                std::fprintf(stderr, "[SKIP] %s: generator build failed: %s\n",
+                             slug.c_str(), err.IsEmpty() ? "unknown" : err.c_str());
+                continue;
+            }
+
+            const std::string &glsl = fragment->GetFinalGLSL();
+            std::ofstream out(dump_root / (slug + ".frag"), std::ios::binary);
+            out.write(glsl.data(), static_cast<std::streamsize>(glsl.size()));
+            out.close();
+
+            std::fprintf(stdout, "[INFO] %s -> %s.frag (%zu bytes)\n",
+                         slug.c_str(), slug.c_str(), glsl.size());
+            ++written;
+        }
+
+        std::fprintf(stdout, "[INFO] dumped %d fragment sources to %s\n",
+                     written, dump_root.string().c_str());
+        return written > 0 ? 0 : 1;
     }
 
     if (argc > 2)

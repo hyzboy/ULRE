@@ -583,6 +583,16 @@ namespace hgl::graph::mtl
         return text ? text : "";
     }
 
+    bool EmitDomainOptionsForDefinition(
+        const MaterialDefinition &definition,
+        const MaterialDefinitionBuildRequest &request,
+        const MaterialDomain domain,
+        const ShaderProgramPurpose purpose,
+        AnsiString &out_text)
+    {
+        return BuildDomainOptions(definition, request, domain, purpose, out_text);
+    }
+
     bool IsDomainShaderBuildBackendRequested()
     {
         const char *selector = getenv(kBackendSelectorEnvironmentVariable);

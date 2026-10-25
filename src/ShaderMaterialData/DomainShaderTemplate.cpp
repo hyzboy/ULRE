@@ -21,10 +21,18 @@ namespace hgl::graph::mtl
         /// 一份完整的 PBR 前向着色（`forward_lit.frag`），而 Sky 是自己的一套环境
         /// 采样（`sky.frag`，输出方向向量而非世界坐标）。用同一个文件名去拼会让
         /// 后加的领域在编译期就找不到文件。
+        ///
+        /// 一个领域**允许**指向另一个领域的目录与文件（VertexPalette 复用
+        /// vertex_color）：两者片元阶段逐字节相同，差异只在顶点语义，而顶点语义
+        /// 由 `DomainContracts[]` 驱动顶点阶段，与本表无关。
         constexpr DomainDirEntry kDomainDirs[] =
         {
-            { MaterialDomain::StandardOpaque, "standard_opaque", "forward_lit.frag", true  },
-            { MaterialDomain::Sky,            "sky",             "sky.frag",         false },
+            { MaterialDomain::StandardOpaque,    "standard_opaque",    "forward_lit.frag", true  },
+            { MaterialDomain::Sky,               "sky",                "sky.frag",         false },
+            { MaterialDomain::UnlitTexture,      "unlit_texture",      "unlit_texture.frag",      false },
+            { MaterialDomain::VertexColor,       "vertex_color",       "vertex_color.frag",       false },
+            { MaterialDomain::VertexPalette,     "vertex_color",       "vertex_color.frag",       false },
+            { MaterialDomain::VertexLuminance,   "vertex_luminance",   "vertex_luminance.frag",   false },
         };
 
         constexpr int kDomainDirCount =

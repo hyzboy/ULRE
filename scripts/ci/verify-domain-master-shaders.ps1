@@ -1,5 +1,5 @@
 param(
-    # 构建树：需已构建 ShaderDocumentProductionRegression（含 --dump-source）
+    # 构建树：需已构建 ShaderResourceSchemaRegressionGate（含 dump-domain-glsl）
     [string]$BuildDir = "build",
     [string]$Config   = "Debug",
     # spvfc 不在根构建树内，只在 GLSLCompiler 预置 Release 产物里
@@ -23,8 +23,14 @@ $ErrorActionPreference = 'Stop'
 #   * 再加一道 **SPIR-V 字节数全等**：能抓住 reflection 看不见的偏差
 #     （例如多声明一个未被使用的 varying / 多一个未用常量）。
 #
-# 参考文本的来源：ShaderDocumentProductionRegression --dump-source，它导出的是
-# `GetFinalGLSL()`——即 glslang 实际吃到的最终文本，不是预处理期的半成品。
+# 参考文本 + options 的唯一来源：ShaderResourceSchemaRegressionGate dump-domain-glsl。
+#   * 它导出的是 `GetFinalGLSL()`——即 glslang 实际吃到的最终文本，不是预处理期的
+#     半成品；
+#   * 它同时落盘**每个形状自己的** `generated/options.glsl`（走真实后端的
+#     `EmitDomainOptionsForDefinition`）。脚本绝不手抄宏表：手抄的表会和发射器
+#     悄悄漂移，等价性验收就失去意义；
+#   * 它覆盖全部 9 个形状，包含生产夹具表里没有的无光族领域（UnlitTexture /
+#     VertexColor / VertexPalette / VertexLuminance）。
 #
 # 用法：pwsh -File scripts/ci/verify-domain-master-shaders.ps1
 # 退出码 0 = 全部等价。
@@ -38,72 +44,76 @@ $refDir  = Join-Path $work 'ref'
 $outDir  = Join-Path $work 'out'
 New-Item -ItemType Directory -Force $work, $refDir, $outDir | Out-Null
 
-$regExe = Join-Path $root "$BuildDir/out/Windows_64_$Config/ShaderDocumentProductionRegression.exe"
-if (-not (Test-Path $regExe)) {
-    throw "找不到 $regExe —— 先构建 ShaderDocumentProductionRegression。"
+$gateExe = Join-Path $root "$BuildDir/out/Windows_64_$Config/ShaderResourceSchemaRegressionGate.exe"
+if (-not (Test-Path $gateExe)) {
+    throw "找不到 $gateExe —— 先构建 ShaderResourceSchemaRegressionGate。"
 }
 if (-not (Test-Path (Join-Path $root $Spvfc))) {
     throw "找不到 $Spvfc —— spvfc 不在根构建树内，需单独构建 src/Tools/GLSLCompiler。"
 }
 $spvfc = Join-Path $root $Spvfc
 
-# ── 1. 导出旧路径参考文本 ──
+# ── 1. 导出旧路径参考文本 + 每个形状的 options ──
 if (-not $SkipDump) {
-    $env:ULRE_SHADER_CACHE_PATH = Join-Path $work 'cache'
-    $dumpLog = & $regExe --full --dump-source $refDir 2>&1
+    $dumpLog = & $gateExe dump-domain-glsl $refDir 2>&1
     if ($LASTEXITCODE -ne 0) {
         $dumpLog | Select-Object -Last 30 | Write-Host
-        throw "ShaderDocumentProductionRegression --dump-source 失败（exit=$LASTEXITCODE）。"
+        throw "dump-domain-glsl 失败（exit=$LASTEXITCODE）。"
+    }
+    $skipped = @($dumpLog | Where-Object { $_ -match '^\[SKIP\]' })
+    if ($skipped.Count -gt 0) {
+        $skipped | Write-Host
+        throw "dump-domain-glsl 有 $($skipped.Count) 个形状未能导出（见上）。"
     }
 }
 
-# ── 2. 每个 pass 形状的 options.glsl ──
-# **由生产者自己生成**：DomainOptionsRegression --write-options 直接调用
-# EmitDomainOptions（与将来运行时同一条代码路径），脚本不再手抄宏表 ——
-# 手抄的表会和发射器悄悄漂移，等价性验收就失去意义。
-$optExe = Join-Path $root "$BuildDir/out/Windows_64_$Config/DomainOptionsRegression.exe"
-if (-not (Test-Path $optExe)) {
-    throw "找不到 $optExe —— 先构建 DomainOptionsRegression。"
-}
-$variants = & $optExe --write-options $work 2>&1
-if ($LASTEXITCODE -ne 0) {
-    $variants | Select-Object -Last 20 | Write-Host
-    throw "DomainOptionsRegression --write-options 失败（exit=$LASTEXITCODE）。"
-}
-
-# ── 3. 编译 + 比对 ──
-# 主着色器：两条 -I 根（ShaderLibrary + 本形状的 generated 父目录）
-# 参考文本：无 generated/options.glsl 的 include，多给一条根无副作用
-function Get-Reflection([string]$src, [string]$profile, [string]$out) {
-    $gen = Join-Path $work $profile
-    $txt = & $spvfc -I ShaderLibrary -I $gen -o $out $src 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "编译失败：$src（profile=$profile）" }
+# ── 2. 编译 + 比对 ──
+# 主着色器与参考文本都用同样两条 -I 根（ShaderLibrary + 本形状的 generated 父目录），
+# 保证两边吃的是同一份 options.glsl。
+function Get-Reflection([string]$src, [string]$genRoot, [string]$out) {
+    $txt = & $spvfc -I ShaderLibrary -I $genRoot -o $out $src 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $txt | Select-Object -Last 15 | Write-Host
+        throw "编译失败：$src"
+    }
     return ($txt | Where-Object { $_ -notmatch '^=== Reflection:|^\[spvfc\] (Compiling|Written)' })
 }
 
+# slug（= dump-domain-glsl 的文件名） / 固定主着色器
 $cases = @(
-    @('ShaderLibrary/domain/standard_opaque/forward_lit.frag',          'fwd',           'lit-forward.frag'),
-    @('ShaderLibrary/domain/standard_opaque/forward_lit.frag',          'fwd-alpha',     'lit-forward-alpha.frag'),
-    @('ShaderLibrary/domain/standard_opaque/shadow_caster.frag',        'shadow',        'lit-shadow.frag'),
-    @('ShaderLibrary/domain/standard_opaque/shadow_caster_masked.frag', 'shadow-masked', 'lit-shadow-alpha.frag'),
-    @('ShaderLibrary/domain/sky/sky.frag',                              'sky',           'sky-cube.frag')
+    @('fwd',          'ShaderLibrary/domain/standard_opaque/forward_lit.frag'),
+    @('fwd-alpha',    'ShaderLibrary/domain/standard_opaque/forward_lit.frag'),
+    @('shadow',       'ShaderLibrary/domain/standard_opaque/shadow_caster.frag'),
+    @('shadow-alpha', 'ShaderLibrary/domain/standard_opaque/shadow_caster_masked.frag'),
+    @('sky',          'ShaderLibrary/domain/sky/sky.frag'),
+    @('unlit-tex',    'ShaderLibrary/domain/unlit_texture/unlit_texture.frag'),
+    @('vert-color',   'ShaderLibrary/domain/vertex_color/vertex_color.frag'),
+    @('vert-lum',     'ShaderLibrary/domain/vertex_luminance/vertex_luminance.frag'),
+    @('vert-pal',     'ShaderLibrary/domain/vertex_color/vertex_color.frag')
 )
 
 $failed = 0
 $newSpv  = Join-Path $outDir 'new.spv'
 $refSpv  = Join-Path $outDir 'ref.spv'
 foreach ($c in $cases) {
-    $master   = $c[0]; $profile = $c[1]
-    $refSrc   = Join-Path $refDir $c[2]
-    $label    = "$master  [$profile]"
+    $slug     = $c[0]
+    $master   = $c[1]
+    $refSrc   = Join-Path $refDir "$slug.frag"
+    $genRoot  = Join-Path $refDir $slug
+    $label    = "$master  [$slug]"
     if (-not (Test-Path $refSrc)) {
-        Write-Host "FAIL $label  参考文本缺失：$($c[2])（--dump-source 未产出该 fixture？）"
+        Write-Host "FAIL $label  参考文本缺失：$slug.frag（dump-domain-glsl 未产出？）"
+        $failed++
+        continue
+    }
+    if (-not (Test-Path (Join-Path $genRoot 'generated/options.glsl'))) {
+        Write-Host "FAIL $label  缺少 $slug/generated/options.glsl"
         $failed++
         continue
     }
     try {
-        $a = Get-Reflection $master $profile $newSpv
-        $b = Get-Reflection $refSrc $profile $refSpv
+        $a = Get-Reflection $master $genRoot $newSpv
+        $b = Get-Reflection $refSrc $genRoot $refSpv
         $diff = Compare-Object $a $b
         if ($diff) {
             Write-Host "FAIL $label  reflection 差异行数=$($diff.Count)"

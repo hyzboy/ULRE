@@ -10,6 +10,10 @@
 
 #pragma once
 
+#include <hgl/mtl/MaterialDomain.h>
+#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/type/String.h>
+
 namespace hgl::graph::mtl
 {
     void InstallShaderGenProgramBuildBackend();
@@ -26,6 +30,21 @@ namespace hgl::graph::mtl
     /// 最近一次领域后端失败的原因（空串表示没有失败记录）。
     /// `GLogError` 在门禁/工具里不可见，诊断需要这个出口。
     const char *GetLastDomainShaderBuildBackendError();
+
+    /// 工具/门禁用：按与真实构建路径**完全相同的规则**算出某定义的
+    /// `generated/options.glsl` 文本。
+    ///
+    /// 为什么必须走这里而不是让脚本手抄宏表：等价性验收要分别拿「旧生成器产物」
+    /// 与「固定主着色器」编译同一个形状，两者必须吃**同一份** options。手抄的表
+    /// 会和 `EmitDomainOptions` 的输入推导悄悄漂移（profile / ambient include /
+    /// shadow pcf / face normal fallback / 渲染状态各自都有独立分支），漂移之后
+    /// 的等价性结论就没有意义了。
+    bool EmitDomainOptionsForDefinition(
+        const MaterialDefinition &definition,
+        const MaterialDefinitionBuildRequest &request,
+        MaterialDomain domain,
+        ShaderProgramPurpose purpose,
+        AnsiString &out_text);
 
     void InstallShaderCreateInfoSPVReleaser();
     void UninstallShaderCreateInfoSPVReleaser();
