@@ -155,6 +155,14 @@ namespace hgl::graph::mtl
         return config;
     }
 
+    inline MaterialPipelineConfig MakeSkyCubeSphereConfig()
+    {
+        MaterialPipelineConfig config = MakeSkyConfig();
+        // This sample uses a dedicated face-culling mode instead of the inside-view sky default.
+        config.cull_mode = VK_CULL_MODE_FRONT_BIT;
+        return config;
+    }
+
     inline uint64_t HashMaterialPipelineConfig(const MaterialPipelineConfig &config) noexcept
     {
         hgl::hash::FNV1aHasher64 h;

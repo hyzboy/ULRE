@@ -99,7 +99,7 @@ private:
 
         sky_recipe.recipe_name = "SkyCubeSphere.Sky";
         sky_recipe.mtl_def_id  = "SkyCube";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
+        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyCubeSphereConfig();
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
         return true;

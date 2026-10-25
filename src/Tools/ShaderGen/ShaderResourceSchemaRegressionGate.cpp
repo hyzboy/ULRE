@@ -5912,6 +5912,10 @@ namespace
             result.diagnostics.emplace_back(
                 "Sky spheres are viewed from inside and must not cull either face");
 
+        if (MakeSkyCubeSphereConfig().cull_mode != VK_CULL_MODE_FRONT_BIT)
+            result.diagnostics.emplace_back(
+                "SkyCubeSphere must use its explicit front-face culling config");
+
         DomainShaderTemplate sky_minimal_template;
         if (!ResolveDomainShaderTemplate(
                 MaterialDomain::Sky,
