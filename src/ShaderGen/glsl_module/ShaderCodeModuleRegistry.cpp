@@ -404,8 +404,9 @@ namespace hgl::graph::mtl
             }
         }
 
-        // 完整校验接线到生产加载收尾（DFS 环检测 / AmbiguousProviderPriority）：
-        // 此前校验层仅回归门使用，pass2 只有散装检查；此处补全生产侧约束。
+        // 生产侧收尾校验：单条定义的自述完整性 + 同优先级 provider 歧义。
+        // 缺失依赖 / 缺失冲突目标已在上面的 incomplete 剔除环里处理；
+        // 依赖环由 `BuildShaderCodeResourceManifest` 的 DFS 报 `CodeModuleCycle`。
         ShaderCodeModuleMetadataValidationDiagnostic validation_diagnostic{};
         if (!ValidateShaderCodeModuleRegistryMetadata(
                 *this, validation_diagnostic))

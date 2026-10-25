@@ -594,6 +594,29 @@ Case 名与职责：
 
 门禁 `SPV.reflection-api` 与 `SPV.buffer-reference-reflection` / CTest 分组 `reflection`：前者端到端验证 stage input/output、UBO set/binding、push constant 和提取结果独立生命周期；后者编译实际使用 `buffer_reference` 的 probe，证实当前 flat 反射只返回 push-constant 地址、不把该引用报告为 descriptor。当前完成的是反射事实提取及 compute manifest 值的反射校验；未据此猜测 `MTL_ROW`/`MTL_TEX` 语义，也未移除材质生成逻辑。
 
+**本轮进展（2026-10-25，SPV 反射门 + Position 分量数硬门）**：
+
+`SPV.generated-interface`（`reflection` 组）把结构快照矩阵的 **16 个变体全部真编译成 SPIR-V** 并反射，按 Vulkan 链接规则断言四件事：① 两 stage 都能编译；② 片元每个 stage input 在 mesh stage output 里有同 location、同 basetype/vec_size/col_count 的对应项；③ `ForwardColor` 用途必须写 ≥1 个颜色附件，深度/阴影用途必须一个都不写；④ 两 stage 的 `GetPushConstantEnd()` 都 == `RootAddresses` 的 88 字节。断言全部取自二进制，不看生成器怎么描述自己。
+
+**门上线第一天就抓到一类真实缺陷**（这正是反射该接管的位置）：
+
+- Stage 1 的 `s1_position_*` 由 **`VkFormat`** 选（`VertexABIBuilder.cpp` 的 `switch(out_position_format)` 与 `MeshModeDescriptor.h:142 ResolveStandardStage1Input` 两份重复逻辑）；
+- Stage 2 的 `s2_*` 由 **`position_mapping`** 选（`VertexNodeConfigResolver.h:14`），**从不看 `VkFormat`**；
+- 两者对 Position 分量数的选择是两条互不相见的路径。不一致时生成的是 `vec4(vec3, 0.0, 1.0)` 这类五分量构造，**glslang 直接拒绝**，且报错指向 `s2` 模块 —— 定位成本极高。快照矩阵里 3 个变体就是这种状态（`unlit-texture-forward` / `checkerboard-2d-forward` / `vertex-color-lines-quad-2d`）。
+- `.glsl` 模块上的 `// @ulre require GeometryAttribute Position Float N N` 注记**一直在被解析和校验格式**（`ShaderCodeModuleFile.cpp:196/567`、`ShaderCodeModuleMetadata.cpp:33`），但**从未与真实顶点格式比对过**（唯一消费者是 `Resource MaterialData` 检查，见 `MaterialShaderEmitter.cpp:137-170`）。
+
+修法是把一致性做成**发射期硬门**，而不是再加一条事后校验：`GetPositionMappingComponentCount(mode)`（`Passthrough3D`→3，其余 lift→2）+ `VertexNodeConfigResolver::CheckPositionComponentCount(...)`，材质路径（`VertexABIBuilder`）与 mesh 路径（`MeshTemplateEmitter`）共用同一道门 → **不可能再产出分量数矛盾的解码模块**。
+
+**规模 80% 削减的正靶子（分层模型，后续轮次按此判断，勿再回到「ShaderGen 不用动」）**：
+
+| 层 | 内容 | 反射能否替代 | 归属 |
+|---|---|---|---|
+| **A. 编译前必须已知的输入** | `#define NameSampler N` / 纹理引用表 / `s1_position_*` 选择 / `s2_*` 选择 / `layout(location=N) out` 附件编号 / `RootAddresses` 字段布局 | **不能**（反射只能看见已写进去的东西） | 保留，最终沉进静态 `.tmpl` |
+| **B. 编译后的验证（现在靠 C++ 人肉模拟）** | stage 间 varying 同 location 同类型 / push constant 末端 == CPU 侧 / 用途与附件数 / 手写契约断言 | **能，且应当** | 改成反射断言后删掉 C++ 侧那份 |
+| **C. 生成物里的纯自述结构** | `ShaderDocument` 的 AST 校验 | 部分能 | 见 §10.4 的判定 |
+
+**别再重复的错误结论**：曾把上述核查总结为「**建议：不再为减行数而动 `src/ShaderGen`**」。那句话把主目标从「削减 80%」偷换成「别碰它」，已作废 —— 「发行版不含 ShaderGen」（`ULRE_ENABLE_SHADERGEN=OFF`）是打包边界，与开发期维护成本是两个独立目标。
+
 **面积实测**（真实代码行，剔除空行与纯注释行）：`src/ShaderGen` = **42 文件 / 9762 总行 / 7765 代码行 / 909 注释行**。
 Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`ShaderCodeModuleFile.cpp` 573、`FragmentTemplateComposer.cpp` 499、`ShaderCodeModuleRegistry.cpp` 418。
 `GenericMaterialBuilder.cpp` 已是 20 个全可达具名函数（最大 `ResolvePurposeAndCoverage` 141 行），**无重复逻辑、无死码**。`CanonicalContractWriter.h` 是唯一自引用单元。
@@ -614,21 +637,25 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 ### 10.4 未完成计划清单（2026-10-25 整理，唯一入口）
 
-**一句话**：超薄六阶段 + 反射落地已全部完成；真正还开着的只剩 **1 项待决策迁移（STL）**、**1 项待取证审计（manifest 消费者）**、**1 项可选风格优化**。其余条目都是「判定不做」的设计决策，**不再计为待办**，不要重新评估。
+**一句话**：超薄六阶段 + 反射落地已全部完成；**「削减 80%」的正靶子已按 §10.3 的 A/B/C 分层重排为 P1→P4**（B 层换成反射断言 → C 层删自述校验 → A 层外置成 `.tmpl` → 模块 registry 交给 glslang `#include`）。原来那张「只剩 1 项 STL 迁移 + 1 项审计」的清单把主目标漏掉了，已改写。**P1 的 B 层删除已完成并提交（-94 代码行）**，P2 判定不做，P3/P4 经实测大幅缩水，剩余空间见 §10.5。
 
 #### A. 未完成（Open）
 
 | # | 项 | 实测范围 | 为什么还开着 | 开工前置 | 风险 |
 |---|---|---|---|---|---|
-| P1 | **STL 整体迁移** | 3 目录 116 文件；35 文件仍 include 禁列头；`std::` 436 处（`src/ShaderGen` 29/283、`src/ShaderMaterialData` 7/62、`inc/hgl/mtl` 19/91） | 局部替换会造出「一半 HGL 一半 STL」，边界反复转换更糟 | ① HGL 侧补 `ValueArray` 迭代能力与 `hgl::sort`（当前**无等价物**：`ValueArray` 无 `begin/end`/`operator[]`，内部自己调 `std::sort`）② `GetShaderLibraryPath()` 返回 `std::string`，改签名要动 **11 文件 / 26 调用点** | **高**：跨 CMCore 公共库 + 公共头 |
-| P2 | **manifest 运行时消费者审计**（反射方向收尾） | `ShaderProgramManifest` / `ShaderCodeResourceManifest` 的全部运行时读取点 | 唯一没逐行取证的候选：是否还有「编译后事实可被反射替代」的派生值 | 无 | **低**：纯只读审计，产出「结项」证据 |
-| P3 | **拼接收敛为单次 emit**（可选、纯风格） | `FragmentTemplateComposer` / `GenericMaterialBuilder` 的多段 `+=` | 无外部行为差异，低价值 | emission golden 16 变体已在网（做则**必须零位移**） | 低 |
+| P1 | **把 B 层（编译后人肉验证）换成反射断言** | ✅ 已在 `SPV.generated-interface` 完成 mesh↔fragment 接口、用途↔附件数、push-constant 末端三组；✅ 并已删除 `ShaderCodeModuleMetadata.cpp` 的依赖满足性推断（107 行 / 代码行 −94） | **已完成**。删除依据与保留项见 §10.5「本轮实际兑现」 | — | 已完成 |
+| P2 | **C 层：`ShaderDocument` 的自述校验** | `Serialize` 4 条诊断（Version 首块 / 单一 MainBody / 拒空块 / 块序单调） | 见下方 B 表判定：**保留校验，不删** | — | — |
+| P3 | **A 层外置**：把仍在 C++ 里的静态 GLSL 文本沉进 `.tmpl` | 实测后**大幅缩水**，见下方 §10.5 | 静态骨架（mesh 3 个 + fragment 4 个 `.tmpl`）**已经外置完毕**；剩下的 `GenericMaterialBuilder.cpp` 929 代码行里只有 **3** 条 `+= "` 语句 | emission golden 16 变体 + `SPV.generated-interface` | 低（但收益也低） |
+| P4 | **用 glslang `#include` 取代依赖预解析** | 实测后**只剩一小段**，见 §10.5 | `ShaderCodeModuleFile.cpp` 的主体是 `// @ulre` 注记解析器（name/kind/priority/slot/require/provide/uses/conflicts），glslang 的 includer **不解析注记**；可删的只有 `CollectShaderCodeModuleIncludePaths`（~45 行） | 先确认 include 闭包哈希口径 | 低 |
+| P5 | **STL 整体迁移** | 3 目录 116 文件；35 文件仍 include 禁列头；`std::` 436 处（`src/ShaderGen` 29/283、`src/ShaderMaterialData` 7/62、`inc/hgl/mtl` 19/91） | 局部替换会造出「一半 HGL 一半 STL」，边界反复转换更糟 | ① HGL 侧补 `ValueArray` 迭代能力与 `hgl::sort`（当前**无等价物**：`ValueArray` 无 `begin/end`/`operator[]`，内部自己调 `std::sort`）② `GetShaderLibraryPath()` 返回 `std::string`，改签名要动 **11 文件 / 26 调用点** | **高**：跨 CMCore 公共库 + 公共头 |
+| P6 | **manifest 运行时消费者审计**（反射方向收尾） | `ShaderProgramManifest` / `ShaderCodeResourceManifest` 的全部运行时读取点 | 唯一没逐行取证的候选：是否还有「编译后事实可被反射替代」的派生值 | 无 | **低**：纯只读审计，产出「结项」证据 |
+| P7 | **拼接收敛为单次 emit**（可选、纯风格） | `FragmentTemplateComposer` / `GenericMaterialBuilder` 的多段 `+=` | 无外部行为差异，低价值 | emission golden 16 变体已在网（做则**必须零位移**） | 低 |
 
 #### B. 判定不做（设计决策，附依据）
 
 | 项 | 判定依据 |
 |---|---|
-| 删除 `ShaderDocument`（173 代码行） | 面积仅占 `src/ShaderGen` 2.6%，对体积/运行时零影响；删掉会丢「Version 首块 / 单一 MainBody / 拒空块」三条结构校验 |
+| 删除 `ShaderDocument`（173 代码行） | 面积仅占 `src/ShaderGen` 2.6%，对体积/运行时零影响。**逐条复核后新增两条依据**：① `ShaderDocument::GetBlockOrder` 是**发射期**排序真源（`MeshTemplateEmitter.h:189/204`、`MaterialShaderEmitter.cpp:762`、`DocumentFragmentBuilder.cpp:47` 都拿它排序），删 AST 等于重写三条 emission 通路；② 唯一可删的是 4 条校验，而其中「拒空块」glslang **抓不到**（空块只会在别处炸成行号无关的报错），且报错文本里带着 `source.stage/module/path` —— 删它换来 149 行、赔上定位能力，净亏 |
 | 合并 `GenericMaterialBuilder` 为薄装配器（929 行） | 已是 20 个全可达具名函数，无重复逻辑、无死码；职责是装配而非拼接 |
 | 用反射推断 `requires_recipe_payload_row` / `requires_recipe_runtime_rows` | 标志决定**是否发射** `MTL_ROW`/`MTL_TEX`，属编译**前**输入 → 循环依赖；`SPV.buffer-reference-reflection` 已实测 BDA 零 descriptor |
 | 用反射做 mesh→fragment stage interface 对照 | 反射能给出 in/out 列表，但判定「被消费」仍需 location/type 匹配规则，等于把一次拼接检查换成两遍编译 |
@@ -639,17 +666,69 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 #### C. 守卫项（改动后必跑，不是待办）
 
-- `ShaderResourceSchemaRegressionGate all` → **58 PASS / exit=0**
+- `ShaderResourceSchemaRegressionGate all` → **59 PASS / 0 FAIL / exit=0**（`cycle_first`/`cycle_second` 用例已改指向 `BuildShaderCodeResourceManifest` 的真实判据）
 - CTest 门禁组 → **9 条**（含 `reflection` 分组）
-- 5 个回归 exe（`SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` / `TestRenderStrategyTable` / `TestMaterialVariantTable`）→ 全 exit=0
+- **3 个回归 exe**（`SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression`）→ 全 exit=0；触及保底链时另跑 `TestRenderStrategyTable` / `TestMaterialVariantTable`
 - 触及 `ULRE::Runtime` 成员列表、manifest 后端、`ShaderArtifactStore` 磁盘布局或烘焙值时，必须重跑 `verify-release-form.ps1`（**不要**用 `-SkipBuild`，会给出假 FAIL）
 - 任何 emitted GLSL 变化必须显式声明为 golden 位移并升 `SHADERGEN_CODEGEN_GENERATION`
+- **编译失败必须能看到 glslang 原文**：`SPV.generated-interface` 内含一条自检，故意编译非法 GLSL，要求 `CompileFinalGLSLToSPVWithDiagnostic` 既返回 `nullptr` 又写出非空日志（见 §10.3）
+
+---
+
+### 10.5 「削减 80%」的实测天花板（2026-10-25，勿再凭印象估算）
+
+**先看总量趋势**（口径：`src/ShaderGen` 下全部 `.cpp`/`.h`；总行数 / 代码行＝总行 − 空行 − 整行注释）：
+
+| 提交 | 文件 | 总行 | 代码行 |
+|---|---|---|---|
+| `006d2b8e5`（超薄工程开始前） | 41 | 9617 | 7690 |
+| `277ad2a7c`（超薄第一个提交） | 42 | 9729 | 7782 |
+| `HEAD`（本次删依赖推断前） | 44 | 10234 | 8165 |
+| 当前工作区（已删依赖推断） | 44 | 10128 | **8071** |
+
+整个超薄工程**没有让 ShaderGen 变小**，反而 +548 代码行 —— 因为它做的是「单一真源 / 契约化 / 骨架外置」，同时新增了契约代码。**「大幅减化 80%」目前只兑现了 1.15%**（详见下方「本轮实际兑现」）。
+
+**逐文件实测（代码行 = 总行 − 空行 − 整行注释）**：
+
+| 文件 | 代码行 | `+= "` 发射行 | 字符串字面量 | 真实职责 |
+|---|---|---|---|---|
+| `GenericMaterialBuilder.cpp` | 929 | **3** | 81 | 组装：purpose/coverage、顶点 ABI、mesh 发射模式、模块图、include 闭包哈希、链接 |
+| `MaterialShaderEmitter.cpp` | 675 | 56 | 113 | 唯一大量发射文本的文件（`#define`、layout、资源表） |
+| `ShaderCodeModuleFile.cpp` | 573 | 0 | 71 | `// @ulre` 注记解析器（12 种指令）+ include 路径收集 |
+| `FragmentTemplateComposer.cpp` | 499 | 13 | 80 | `.tmpl` 填槽 + 模块拼接 |
+| `ShaderCodeModuleRegistry.cpp` | 418 | 0 | 15 | 模块清册、查找、依赖闭包 |
+| `ShaderCodeModuleMetadata.cpp` | 370 → **276** | 0 | 4 | 模块表的**纯校验**（依赖满足性推断已删，见下） |
+
+**结论一（推翻 P3 的前提）**：`GenericMaterialBuilder.cpp` 929 行里只有 3 条文本发射语句 —— 它是**逻辑**，不是文本。把它「外置成 `.tmpl`」无处可外置。留存的静态骨架其实早已外置完（`ShaderLibrary/mesh/*.glsl.tmpl` 3 个 + `fragment/*.glsl.tmpl` 4 个）。
+
+**结论二（推翻 P4 的前提）**：glslang 的 `DirStackFileIncluder` 只替代 `#include` 的**解析**；`ShaderCodeModuleFile.cpp` 的 573 行是**注记语义解析**，glslang 不碰。可删的是 `CollectShaderCodeModuleIncludePaths` 一段，约 45 行。
+
+**结论三（这才是真实可删清单）**：
+
+| 目标 | 层 | 可删行数 | 替代物 | 现状 |
+|---|---|---|---|---|
+| `ShaderCodeModuleMetadata.cpp` 的依赖满足性推断（`FindModuleIndex` / `ValidateDependencyVisit` / `MissingDependency` / `DependencyCycle` / `MissingConflictTarget`） | B | 估 ~150，实删 107 行（代码行 −94） | 「拼出来的 GLSL 能编译」+ registry 的 incomplete 剔除环 + `BuildShaderCodeResourceManifest` 的 DFS | ✅ **已完成** |
+| `CollectShaderCodeModuleIncludePaths` | A | ~45 / 573 | glslang `#include` | 待做 |
+| `MaterialShaderEmitter.cpp` 静态文本 | A | ~100 / 675 | `.tmpl` | 待做（性价比低） |
+| `ShaderDocument` 校验 | C | 0 | — | **已判定不做**（见 B 表） |
+| **合计** | | **~256 ≈ 2.9%** | | |
+
+**本轮实际兑现（唯一真正符合 SPV 反射主旨的一块）**：`src/ShaderGen` 代码行 **8165 → 8071（−94，−1.15%）**，总行 10234 → 10128。删除的判据（三个都是既有的、更早生效的权威判据，删掉的只是它们的 C++ 复述）：
+
+1. **registry 的 incomplete 剔除环**（`ShaderCodeModuleRegistry.cpp:349-397`）已经用 `FindByName` 把「依赖名或冲突名解析不到」的模块整个移出注册表 → 等价于 `MissingDependency` + `MissingConflictTarget`；
+2. **`BuildShaderCodeResourceManifest` 的 DFS**（`ShaderCodeResourceManifest.cpp:110-215`）返回 `UnknownCodeModule` / `CodeModuleCycle`，且**阻断编译** → 等价于缺失依赖 + 依赖环；
+3. **`SPV.generated-interface` 对 16 个变体做真实编译** → 兜住前两者漏掉的任何装配错误。
+
+保留项（删不得）：`AreShaderCodeModulesConflicting`（`ShaderCodeResourceManifest.cpp:197` 用它报 `ResourceConflict`，删了会把「干净拒绝」变成「缺符号崩溃」）、`AmbiguousProviderPriority`（同优先级 provider 歧义，无第二判据）、`IsProviderCandidate`。
+回归门的 `cycle_first`/`cycle_second` 用例已改指向真实判据：断言 `BuildShaderCodeResourceManifest` 对环返回 `CodeModuleCycle`、对缺失依赖返回 `UnknownCodeModule`（用例数不变，仍 59 PASS）。
+
+**天花板结论**：按当前架构，**反射能合法替代的 B 层只有那 94 行（已兑现）**；其余 ~8000 行是「编译前必须已知的输入」与「组装逻辑」，反射在定义上无法替代（它只能看见已经写进去的东西）。因此 **80% 削减在当前架构下不可达**；若要真削减，必须换命题 —— 例如「把注记驱动的模块表整体换成静态 include 树」，那是重写而非减化，需要单独立项评估。
 
 ---
 
 ## 11. 每个子阶段的完成定义（DoD）
 
-- [x] `ShaderResourceSchemaRegressionGate all` → 58 PASS / exit=0（含 `reflection` 分组；若新增 case 则数量随之增加并同步文档）
+- [x] `ShaderResourceSchemaRegressionGate all` → **59 PASS / 0 FAIL / exit=0**（含 `reflection` 分组；新增 case 时数量随之增加并同步文档）
 - [x] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误

@@ -1,6 +1,5 @@
 ﻿#include <hgl/mtl/ShaderCodeModuleMetadata.h>
 
-#include <hgl/type/ValueArray.h>
 #include <hgl/type/StrChar.h>
 
 #include <cstring>
@@ -58,73 +57,6 @@ namespace hgl::graph::mtl
             return definition.semantic_provide_count > 0
                 && definition.kind != ShaderCodeModuleKind::Surface
                 && definition.kind != ShaderCodeModuleKind::FragmentShader;
-        }
-
-        bool FindModuleIndex(
-            const ShaderCodeModuleRegistry &registry,
-            const char *name,
-            int &out_index) noexcept
-        {
-            for (int index = 0; index < registry.GetCount(); ++index)
-            {
-                const ShaderCodeModuleDefinition *definition =
-                    registry.GetModuleByIndex(index);
-                if (definition && SameName(definition->name, name))
-                {
-                    out_index = index;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        bool ValidateDependencyVisit(
-            const ShaderCodeModuleRegistry &registry,
-            const int module_index,
-            ValueArray<uint8> &visit_state,
-            ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic) noexcept
-        {
-            if (visit_state[module_index] == 2)
-                return true;
-            if (visit_state[module_index] == 1)
-                return false;
-
-            visit_state[module_index] = 1;
-            const ShaderCodeModuleDefinition *definition =
-                registry.GetModuleByIndex(module_index);
-            if (!definition)
-                return false;
-
-            const uint32 dependency_count =
-                definition->dependency_count;
-            for (uint32 dependency_index = 0;
-                 dependency_index < dependency_count;
-                 ++dependency_index)
-            {
-                ShaderCodeModuleDependency dependency =
-                    definition->dependencies[dependency_index];
-
-                int target_index = -1;
-                if (!FindModuleIndex(registry, dependency.module_name, target_index))
-                    continue;
-
-                if (visit_state[target_index] == 1)
-                {
-                    return SetMetadataFailure(
-                        out_diagnostic,
-                        ShaderCodeModuleMetadataValidationError::DependencyCycle,
-                        definition->name,
-                        dependency.module_name);
-                }
-
-                if (!ValidateDependencyVisit(
-                        registry, target_index, visit_state, out_diagnostic))
-                    return false;
-            }
-
-            visit_state[module_index] = 2;
-            return true;
         }
     }
 
@@ -316,6 +248,8 @@ namespace hgl::graph::mtl
     {
         out_diagnostic = {};
 
+        // 只做单条定义的自述校验 + 同优先级 provider 歧义。
+        // 缺失依赖 / 环 / 缺失冲突目标由装配期负责（见头文件注释）。
         for (int index = 0; index < registry.GetCount(); ++index)
         {
             const ShaderCodeModuleDefinition *definition =
@@ -323,48 +257,6 @@ namespace hgl::graph::mtl
             if (!definition
              || !ValidateShaderCodeModuleMetadata(
                     *definition, out_diagnostic))
-                return false;
-
-            const uint32 dependency_count =
-                definition->dependency_count;
-            for (uint32 i = 0; i < dependency_count; ++i)
-            {
-                ShaderCodeModuleDependency dependency =
-                    definition->dependencies[i];
-
-                const ShaderCodeModuleDefinition *target =
-                    registry.FindByName(dependency.module_name);
-                if (!target)
-                    return SetMetadataFailure(
-                        out_diagnostic,
-                        ShaderCodeModuleMetadataValidationError::MissingDependency,
-                        definition->name,
-                        dependency.module_name);
-
-            }
-
-            for (uint32 i = 0; i < definition->module_conflict_count; ++i)
-            {
-                if (!registry.FindByName(definition->module_conflict_names[i]))
-                    return SetMetadataFailure(
-                        out_diagnostic,
-                        ShaderCodeModuleMetadataValidationError::
-                            MissingConflictTarget,
-                        definition->name,
-                        definition->module_conflict_names[i]);
-            }
-        }
-
-        ValueArray<uint8> visit_state;
-        visit_state.Resize(registry.GetCount());
-        for (int index = 0; index < visit_state.GetCount(); ++index)
-            visit_state[index] = 0;
-
-        for (int index = 0; index < registry.GetCount(); ++index)
-        {
-            if (visit_state[index] == 0
-             && !ValidateDependencyVisit(
-                    registry, index, visit_state, out_diagnostic))
                 return false;
         }
 

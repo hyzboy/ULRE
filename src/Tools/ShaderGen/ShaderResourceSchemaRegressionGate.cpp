@@ -6589,6 +6589,8 @@ namespace
         }
 
         {
+            // 依赖环的权威判据是装配期 DFS（`BuildShaderCodeResourceManifest`），
+            // 不是元数据静态校验 —— 元数据层不再重复检测。
             ShaderCodeModuleDefinition first =
                 make_definition("cycle_first");
             ShaderCodeModuleDefinition second =
@@ -6607,15 +6609,38 @@ namespace
             second.dependency_count = 1;
 
             ShaderCodeModuleRegistry registry;
-            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
+            ShaderCodeResourceManifest manifest{};
+            const char *roots[] = {first.name};
             if (!registry.Register(first)
              || !registry.Register(second)
-             || ValidateShaderCodeModuleRegistryMetadata(registry, diagnostic)
-             || diagnostic.error
-                    != ShaderCodeModuleMetadataValidationError::DependencyCycle)
+             || BuildShaderCodeResourceManifest(roots, 1, manifest, &registry)
+             || manifest.error
+                    != ShaderCodeResourceManifestError::CodeModuleCycle)
             {
                 result.diagnostics.emplace_back(
-                    "explicit dependency cycle must be rejected");
+                    "explicit dependency cycle must be rejected by the assembly DFS");
+            }
+
+            const char *missing_roots[] = {"cycle_first_missing_probe"};
+            ShaderCodeModuleDefinition orphan =
+                make_definition(missing_roots[0]);
+            const ShaderCodeModuleDependency orphan_dependencies[] =
+            {
+                {"no_such_module"}
+            };
+            orphan.dependencies = orphan_dependencies;
+            orphan.dependency_count = 1;
+
+            ShaderCodeModuleRegistry orphan_registry;
+            ShaderCodeResourceManifest orphan_manifest{};
+            if (!orphan_registry.Register(orphan)
+             || BuildShaderCodeResourceManifest(
+                    missing_roots, 1, orphan_manifest, &orphan_registry)
+             || orphan_manifest.error
+                    != ShaderCodeResourceManifestError::UnknownCodeModule)
+            {
+                result.diagnostics.emplace_back(
+                    "missing dependency must be rejected by the assembly DFS");
             }
         }
 
