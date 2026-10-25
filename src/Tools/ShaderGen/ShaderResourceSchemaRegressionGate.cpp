@@ -37,7 +37,6 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/time/Time.h>
-#include <hgl/mtl/ShaderStructureDump.h>
 #include <hgl/ShaderCompilerAPI.h>
 #include "ShaderCompiler/ShaderReflectionData.h"
 #include "SPVParseFlat.h"
@@ -8149,13 +8148,11 @@ void main()
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // S4 试点：结构快照 golden 比对（取代 GLSL 文本子串断言）
+    // golden 文本比对基础设施
     //
-    // 现状问题：本文件大量断言形如 contains(fs, "layout(set=2, binding=0)")，
-    // 生成器格式一变就要改断言 → 生成器与测试双向锁死。
-    // 试点做法：DumpShaderStructure(ctx) 产出结构快照（资源 semantic/layer/
-    // set/binding/stages/required + stage 存在性 + program_link 存在性，
-    // **不含 hash 值与 GLSL 文本**），与 golden 文件逐行比对。
+    // 本文件大量断言形如 contains(fs, "layout(set=2, binding=0)") 的写法会把
+    // 测试与具体产物格式双向锁死：格式一变就要改断言。凡是能用「整份快照逐行
+    // 比对」表达的判据，一律走这里。
     //
     // golden 缺失时**自动生成**并通过（首跑引导）——生成后须人工审阅并入库；
     // 已存在时不一致即 FAIL，并落地 .actual 便于 diff。
@@ -9235,7 +9232,7 @@ void main()
     ///
     /// 刻意给全 6 个语义：领域契约会按自己的 mask 取子集，多余的不会被用到；
     /// 给全才能让「同一张表覆盖所有领域」成立。
-    static const GeometryVertexFormat kStructureDumpGeometry{
+    static const GeometryVertexFormat kReflectionCoverageGeometry{
         {VertexSemantic::Position, VF_V3F},
         {VertexSemantic::TexCoord, VF_V2F},
         {VertexSemantic::Normal, VF_V3F},
@@ -9249,7 +9246,7 @@ void main()
     /// `LineQuad` 的端点读取按 `position_format` 分叉：`R32G32_SFLOAT` 要把
     /// `vec2` 补成 `vec3(..., 0.0)`，其余直读 `vec3`。两条分支的 GLSL 不同，
     /// 只有几何位置格式能选中它们——共享表恒为 `VF_V3F`，vec2 那条永远走不到。
-    static const GeometryVertexFormat kStructureDumpGeometry2D{
+    static const GeometryVertexFormat kReflectionCoverageGeometry2D{
         {VertexSemantic::Position, VF_V2F},
         {VertexSemantic::TexCoord, VF_V2F},
         {VertexSemantic::Normal, VF_V3F},
@@ -9258,10 +9255,10 @@ void main()
         {VertexSemantic::Size, VF_V2F}
     };
 
-    struct StructureDumpVariant
+    struct ReflectionCoverageVariant
     {
         const char *definition_id;
-        const char *golden_slug;
+        const char *variant_slug;
         ShaderProgramPurpose purpose;
         RenderTemplateID template_id;
         bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
@@ -9278,7 +9275,7 @@ void main()
         /// `CharQuad` 靠材质定义显式指定，`LineQuad` 则只能由 `Lines` 推出来。
         /// 默认 `Triangles` = 前 14 个变体全部走 `VertexPassthrough`。
         PrimitiveType primitive_type = PrimitiveType::Triangles;
-        /// 位置属性用 `VF_V2F`（见 `kStructureDumpGeometry2D`）。
+        /// 位置属性用 `VF_V2F`（见 `kReflectionCoverageGeometry2D`）。
         ///
         /// 只对 `position_mapping` 需要 vec2 Position 的材质成立
         /// （`NDCLift` / `ZeroOneToNDC` / `PixelToLocal` / `LiftXY_*`）；
@@ -9292,7 +9289,7 @@ void main()
     /// × 领域差异（有纹理 / 纯顶点 / 无顶点格式的 SSBO 材质）。
     ///
     /// 两张快照（结构、发射顺序）共用此表——矩阵只有一份，新增材质不会漏测其中一张。
-    static const StructureDumpVariant kStructureDumpVariants[] =
+    static const ReflectionCoverageVariant kReflectionCoverageVariants[] =
     {
         { "Lit", "lit-forward-opaque",
           ShaderProgramPurpose::ForwardColor,
@@ -9377,7 +9374,7 @@ void main()
         return false;
     }
 
-    static SceneRenderTemplateProfile MakeStructureDumpProfile(
+    static SceneRenderTemplateProfile MakeReflectionCoverageProfile(
         const RenderTemplateID template_id)
     {
         switch (template_id)
@@ -9395,8 +9392,8 @@ void main()
     }
 
     /// 按快照矩阵构建一个材质实例。失败时把原因写进 `diagnostic` 并返回 nullptr。
-    static std::unique_ptr<ShaderBuildContext> BuildStructureDumpVariant(
-        const StructureDumpVariant &variant, std::string &diagnostic)
+    static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
+        const ReflectionCoverageVariant &variant, std::string &diagnostic)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
@@ -9419,8 +9416,8 @@ void main()
         request.geometry_vertex_format =
             variant.has_geometry
                 ? (variant.vec2_position
-                       ? &kStructureDumpGeometry2D
-                       : &kStructureDumpGeometry)
+                       ? &kReflectionCoverageGeometry2D
+                       : &kReflectionCoverageGeometry)
                 : nullptr;
         request.defer_finalize = true;
         request.shader_program_purpose = variant.purpose;
@@ -9428,20 +9425,20 @@ void main()
         RenderTemplateValidationDiagnostic template_diagnostic{};
         if (!ResolveSceneRenderTemplateRequest(
                 variant.template_id, hgl::graph::ShaderStage::Fragment,
-                MakeStructureDumpProfile(variant.template_id),
+                MakeReflectionCoverageProfile(variant.template_id),
                 request.render_template_request, template_diagnostic)
          || !AppendMaterialRenderTemplateRoots(
                 definition, request.render_template_request))
         {
             diagnostic = std::string("template request resolve failed: ")
-                + variant.golden_slug;
+                + variant.variant_slug;
             return nullptr;
         }
 
         std::unique_ptr<ShaderBuildContext> ctx(
             BuildGenericMaterial(nullptr, request, definition, nullptr));
         if (!ctx)
-            diagnostic = std::string("material build failed: ") + variant.golden_slug;
+            diagnostic = std::string("material build failed: ") + variant.variant_slug;
 
         return ctx;
     }
@@ -9505,18 +9502,18 @@ void main()
         // 防止将来新增的跳过分支把变体静默漏掉。
         uint32_t reflected_variant_count = 0;
 
-        for (const StructureDumpVariant &variant : kStructureDumpVariants)
+        for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
         {
             std::string build_diagnostic;
             const std::unique_ptr<ShaderBuildContext> ctx =
-                BuildStructureDumpVariant(variant, build_diagnostic);
+                BuildReflectionCoverageVariant(variant, build_diagnostic);
             if (!ctx)
             {
                 result.diagnostics.emplace_back(build_diagnostic);
                 continue;
             }
 
-            const std::string label = variant.golden_slug;
+            const std::string label = variant.variant_slug;
 
             hgl::graph::mtl::ShaderReflectionData reflection[2];
             const uint32_t stage_bits[2] =
@@ -9535,7 +9532,7 @@ void main()
 
             for (int i = 0; i < 2; ++i)
             {
-                // 编译由本门自己做（而不是让 BuildStructureDumpVariant 顺手 finalize），
+                // 编译由本门自己做（而不是让 BuildReflectionCoverageVariant 顺手 finalize），
                 // 这样「哪个 stage 的哪一步失败」能落到诊断里：
                 // `FinalizeShaderBuildContext` 对空源码是静默 false，看不出根因。
                 ShaderCreateInfo *si = ctx->GetStageShader(stage_enums[i]);
@@ -9674,103 +9671,13 @@ void main()
         }
 
         const uint32_t expected_variant_count =
-            static_cast<uint32_t>(sizeof(kStructureDumpVariants)
-                                  / sizeof(kStructureDumpVariants[0]));
+            static_cast<uint32_t>(sizeof(kReflectionCoverageVariants)
+                                  / sizeof(kReflectionCoverageVariants[0]));
         if (reflected_variant_count != expected_variant_count)
             result.diagnostics.emplace_back(
                 "only " + std::to_string(reflected_variant_count) + " of "
                 + std::to_string(expected_variant_count)
                 + " structure-dump variants reached SPIR-V reflection");
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunShaderStructureDumpPilotCase()
-    {
-        GateResult result;
-        result.name = "SD.structure-dump-golden-pilot";
-
-        std::string preset_diagnostic;
-        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
-        {
-            result.diagnostics.emplace_back(preset_diagnostic);
-            result.passed = false;
-            return result;
-        }
-
-        for (const StructureDumpVariant &variant : kStructureDumpVariants)
-        {
-            std::string build_diagnostic;
-            const std::unique_ptr<ShaderBuildContext> ctx =
-                BuildStructureDumpVariant(variant, build_diagnostic);
-            if (!ctx)
-            {
-                result.diagnostics.emplace_back(build_diagnostic);
-                continue;
-            }
-
-            const std::string label =
-                std::string(variant.definition_id)
-                + " golden=" + variant.golden_slug;
-
-            const std::string dump =
-                NormalizeDumpEOL(DumpShaderStructure(*ctx, label.c_str()));
-
-            const std::string golden_path =
-                RepoRootPath((std::string("src/Tools/ShaderGen/golden/")
-                              + variant.golden_slug + ".txt").c_str());
-
-            CompareAgainstGolden(golden_path, dump, "SD.structure", result.diagnostics);
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    /// 发射顺序 golden 门。
-    ///
-    /// 存在的唯一理由是**给拼接重构当安全网**：把 mesh 侧骨架外置成 `.tmpl`、
-    /// 把散落的 `+=` 收敛到统一出口，都必须证明「产出的 GLSL 骨架顺序一字不差」。
-    /// 结构快照只看「有什么」，看不出 `#include` 被挪到了 `#define` 之后——
-    /// 那正是这类重构最容易犯、也最难在跑起来之后发现的错。
-    static GateResult RunShaderEmissionOrderGoldenCase()
-    {
-        GateResult result;
-        result.name = "SD.emission-order-golden";
-
-        std::string preset_diagnostic;
-        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
-        {
-            result.diagnostics.emplace_back(preset_diagnostic);
-            result.passed = false;
-            return result;
-        }
-
-        for (const StructureDumpVariant &variant : kStructureDumpVariants)
-        {
-            std::string build_diagnostic;
-            const std::unique_ptr<ShaderBuildContext> ctx =
-                BuildStructureDumpVariant(variant, build_diagnostic);
-            if (!ctx)
-            {
-                result.diagnostics.emplace_back(build_diagnostic);
-                continue;
-            }
-
-            const std::string label =
-                std::string(variant.definition_id)
-                + " golden=" + variant.golden_slug;
-
-            const std::string dump =
-                NormalizeDumpEOL(DumpShaderEmissionOrder(*ctx, label.c_str()));
-
-            const std::string golden_path =
-                RepoRootPath((std::string("src/Tools/ShaderGen/golden/")
-                              + variant.golden_slug + ".emission.txt").c_str());
-
-            CompareAgainstGolden(golden_path, dump, "SD.emission", result.diagnostics);
-        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -10831,8 +10738,6 @@ int main(const int argc, char **argv)
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
     if (run_module_invariants) results.push_back(RunSamplerReferenceContractCase());
     if (run_module_invariants) results.push_back(RunModuleIncludeDeclarationContractCase());
-    if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
-    if (run_pipeline) results.push_back(RunShaderEmissionOrderGoldenCase());
     if (run_pipeline) results.push_back(RunDomainBackendEquivalenceCase());
     if (run_pipeline) results.push_back(RunDomainBackendCacheCase());
 

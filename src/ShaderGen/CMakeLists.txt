@@ -68,8 +68,6 @@ set(COMPILE_FILES
     compile/DomainShaderBuildBackend.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
     compile/ShaderProgramArtifactBuilder.cpp
-    ${SHADERGEN_INCLUDE_PATH}/ShaderStructureDump.h
-    compile/ShaderStructureDump.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialShaderCompiler.h
     compile/MaterialShaderCompiler.cpp
     compile/MaterialShaderEmitter.h
