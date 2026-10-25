@@ -477,6 +477,47 @@ namespace
         return CreateMaterialFromDefinition(nullptr, definition, request, capture);
     }
 
+    /// `--dump-source <dir>`：把每个 fixture 两个阶段的**最终 GLSL**（注入完成、
+    /// glslang 实际吃掉的那份文本）落盘为 `<dir>/<fixture>.<mesh|frag>`。
+    ///
+    /// 这是"废除 ShaderGen"的等价性证据来源：物理固定主着色器必须编译出与这些
+    /// 文本等价的 SPIR-V 接口与反射。`shadergen` 调试通道只能落**源文档**（含尚未
+    /// 注入的扩展、pc_root push constant、采样器宏），既不可直接编译也无法对拍。
+    const char *g_dump_source_dir = nullptr;
+
+    bool WriteDumpSourceFile(
+        const char *fixture,
+        const char *extension,
+        const char *text,
+        const int64 length)
+    {
+        AnsiString file_name;
+        file_name += fixture;
+        file_name += ".";
+        file_name += extension;
+
+        const hgl::filesystem::Path path =
+            hgl::filesystem::Path(ToOSString(g_dump_source_dir))
+            / ToOSString(file_name.c_str());
+
+        hgl::io::FileOutputStream *stream =
+            hgl::io::CreateFileOutputStream(path.ToOSString());
+        if (!stream)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] cannot open source dump %s",
+                file_name.c_str());
+            return false;
+        }
+        const bool written = stream->Write(text, length) == length;
+        delete stream;
+        if (!written)
+            GLogError(
+                "[ShaderDocumentProductionRegression] failed to write source dump %s",
+                file_name.c_str());
+        return written;
+    }
+
     bool RunFixture(const Fixture &fixture)
     {
         MaterialShaderDocumentCapture capture{};
@@ -541,6 +582,19 @@ namespace
             context->GetProgramArtifactMetadata();
         const auto *mesh = context->GetStageShader(ShaderStage::Mesh);
         const auto *fragment = context->GetStageShader(ShaderStage::Fragment);
+        if (g_dump_source_dir)
+        {
+            const auto dump_stage =
+                [&fixture](const ShaderCreateInfo &stage, const char *extension)
+            {
+                return WriteDumpSourceFile(
+                    fixture.name, extension,
+                    stage.GetFinalGLSL().data(),
+                    int64(stage.GetFinalGLSL().size()));
+            };
+            if (!dump_stage(*mesh, "mesh") || !dump_stage(*fragment, "frag"))
+                valid = false;
+        }
         hgl::hash::FNV1aHasher64 source_hasher;
         source_hasher << HashFinalShaderSource(
             mesh->GetFinalGLSL().data(), mesh->GetFinalGLSL().size())
@@ -1251,10 +1305,12 @@ namespace
         return true;
     }
 
+    /// `--dump-source <dir>`：见 RunFixture 上方的定义。
     struct Options
     {
         bool full = false;
         const char *dump_keys_path = nullptr;
+        const char *dump_source_dir = nullptr;
     };
 
     bool ParseOptions(const int argc, char **argv, Options &out)
@@ -1275,6 +1331,13 @@ namespace
                 out.dump_keys_path = argv[++i];
                 continue;
             }
+            if (std::strcmp(argv[i], "--dump-source") == 0)
+            {
+                if (i + 1 >= argc)
+                    return false;
+                out.dump_source_dir = argv[++i];
+                continue;
+            }
             return false;
         }
         return true;
@@ -1291,10 +1354,12 @@ int main(const int argc, char **argv)
     {
         GLogError(
             "[ShaderDocumentProductionRegression] usage: "
-            "ShaderDocumentProductionRegression [--smoke|--full] [--dump-keys <path>]");
+            "ShaderDocumentProductionRegression [--smoke|--full] "
+            "[--dump-keys <path>] [--dump-source <dir>]");
         return 2;
     }
     const bool full = options.full;
+    g_dump_source_dir = options.dump_source_dir;
 
     const hgl::filesystem::Path sampler_toml =
         hgl::filesystem::Path(ToOSString(GetShaderLibraryPath()))
@@ -1367,6 +1432,12 @@ int main(const int argc, char **argv)
           ShaderProgramPurpose::DepthOnly, true, true, false, false },
         { "checkerboard-2d-alpha", "builtin/checkerboard_2d",
           ShaderProgramPurpose::ForwardColor, true, true, false, true },
+        // 蒙版阴影/depth：HGL_COVERAGE_ONLY + HGL_ALPHA_* 同时成立——FS 只求
+        // EvalAlpha 并 discard，不发 EvalSurface。此前 fixture 表只有非 alpha 的
+        // depth/shadow 用例，这条路径（ShadowCasterMasked）在端到端回归里完全没有
+        // 覆盖，ShadowCaster 模板一旦写错不会被任何用例发现。
+        { "checkerboard-2d-alpha-depth", "builtin/checkerboard_2d",
+          ShaderProgramPurpose::DepthOnly, true, true, false, true },
         { "checkerboard-3d-face-forward", "builtin/checkerboard_3d",
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
         { "checkerboard-3d-face-depth", "builtin/checkerboard_3d",
@@ -1381,9 +1452,20 @@ int main(const int argc, char **argv)
           ShaderProgramPurpose::DepthOnly, true, false, true, false },
         { "checkerboard-3d-normal-shadow", "builtin/checkerboard_3d",
           ShaderProgramPurpose::ShadowDepth, true, false, true, false },
+        { "checkerboard-3d-normal-alpha-shadow", "builtin/checkerboard_3d",
+          ShaderProgramPurpose::ShadowDepth, true, false, true, true },
         { "checkerboard-3d-normal-alpha", "builtin/checkerboard_3d",
           ShaderProgramPurpose::ForwardColor, true, false, true, true },
         { "lit-forward", "Lit", ShaderProgramPurpose::ForwardColor,
+          true, false, false, false },
+        // PBR 域的 alpha 前向 + 蒙版阴影。这两条此前只有 Checker2D/Checker3D
+        // 覆盖，而 PBR 走的是不同的材质源（pbr_surface_source）+ NTB 组合。
+        // 删除 ShaderGen 后 domain/standard_opaque/*.frag 需要它们作为等价基线。
+        { "lit-forward-alpha", "Lit", ShaderProgramPurpose::ForwardColor,
+          true, false, false, true },
+        { "lit-shadow-alpha", "Lit", ShaderProgramPurpose::ShadowDepth,
+          true, false, false, true },
+        { "lit-shadow", "Lit", ShaderProgramPurpose::ShadowDepth,
           true, false, false, false },
         { "text-gpu-charquad", "builtin/text_gpu",
           ShaderProgramPurpose::ForwardColor, false, false, false, false },
