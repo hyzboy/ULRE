@@ -370,6 +370,292 @@ namespace
               "purity: dead HGL_USE_* macros are not emitted");
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // mesh_options.glsl
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void CheckMeshText(
+        const char *name,
+        const char *expected,
+        const MeshOptionsInput &input)
+    {
+        AnsiString text;
+        if (!EmitMeshOptions(input, text))
+        {
+            g_fail++;
+            GLogError(u8"[FAIL] %s (EmitMeshOptions returned false)", name);
+            return;
+        }
+
+        if (text == expected)
+        {
+            g_pass++;
+            GLogInfo(u8"[PASS] %s", name);
+            return;
+        }
+
+        g_fail++;
+        GLogError(u8"[FAIL] %s", name);
+        GLogError(u8"  expected:\n%s", expected);
+        GLogError(u8"  actual:\n%s", text.c_str());
+    }
+
+    // 负例还要断言"拒绝时不留半截文本"：out 必须与调用前逐字节一致。
+    void CheckMeshRejected(const char *name, const MeshOptionsInput &input)
+    {
+        AnsiString text("SENTINEL");
+        if (EmitMeshOptions(input, text))
+        {
+            g_fail++;
+            GLogError(u8"[FAIL] %s (expected rejection, got: %s)", name, text.c_str());
+            return;
+        }
+
+        if (text != "SENTINEL")
+        {
+            g_fail++;
+            GLogError(u8"[FAIL] %s (rejected but clobbered output)", name);
+            return;
+        }
+
+        g_pass++;
+        GLogInfo(u8"[PASS] %s", name);
+    }
+
+    void RunMeshOptions()
+    {
+        // ── 正例：三种位置形态 × 典型属性组合 ────────────────────────────────
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_color.glsl\"\n"
+                "#include \"vertex/s1_position_vec3.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_passthrough3d.glsl";
+            input.stage3_module = "vertex/s3_world_camera_vp.glsl";
+
+            CheckMeshText("meshopts: 3D passthrough + vertex color",
+                          "#include \"vertex/s1_color.glsl\"\n"
+                          "#include \"vertex/s1_position_vec3.glsl\"\n"
+                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          input);
+        }
+
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_color.glsl\"\n"
+                "#include \"vertex/s1_position_vec2.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/s3_l2w_only.glsl";
+
+            CheckMeshText("meshopts: 2D vec2 NDC lift + L2W only",
+                          "#include \"vertex/s1_color.glsl\"\n"
+                          "#include \"vertex/s1_position_vec2.glsl\"\n"
+                          "#include \"vertex/s2_ndc_lift.glsl\"\n"
+                          "#include \"vertex/s3_l2w_only.glsl\"\n",
+                          input);
+        }
+
+        {
+            // DrawTriangle：int16 打包顶点 + 像素坐标 → 局部坐标 → 正交视口
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_color.glsl\"\n"
+                "#include \"vertex/s1_position_vec2i.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_pixel_to_local.glsl";
+            input.stage3_module = "vertex/s3_ortho_viewport.glsl";
+
+            CheckMeshText("meshopts: vec2i pixel-to-local + ortho viewport",
+                          "#include \"vertex/s1_color.glsl\"\n"
+                          "#include \"vertex/s1_position_vec2i.glsl\"\n"
+                          "#include \"vertex/s2_pixel_to_local.glsl\"\n"
+                          "#include \"vertex/s3_ortho_viewport.glsl\"\n",
+                          input);
+        }
+
+        {
+            // SimpleSphere：RG16F UV + RG8 八面体法线 —— 六边形过滤器
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_uv_rg16f.glsl\"\n"
+                "#include \"vertex/s1_ntb_rg8.glsl\"\n"
+                "#include \"vertex/s1_position_vec3.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_passthrough3d.glsl";
+            input.stage3_module = "vertex/s3_world_camera_vp.glsl";
+
+            CheckMeshText("meshopts: RG16F uv + RG8 octahedral normal",
+                          "#include \"vertex/s1_uv_rg16f.glsl\"\n"
+                          "#include \"vertex/s1_ntb_rg8.glsl\"\n"
+                          "#include \"vertex/s1_position_vec3.glsl\"\n"
+                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          input);
+        }
+
+        {
+            // VertexPalette：调色板索引 + 骨骼变换索引 + 逐实例尺寸
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_palette_index.glsl\"\n"
+                "#include \"vertex/s1_transform_id.glsl\"\n"
+                "#include \"vertex/s1_size.glsl\"\n"
+                "#include \"vertex/s1_position_vec3.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_passthrough3d.glsl";
+            input.stage3_module = "vertex/s3_world_camera_vp.glsl";
+
+            CheckMeshText("meshopts: palette + transform id + size chain",
+                          "#include \"vertex/s1_palette_index.glsl\"\n"
+                          "#include \"vertex/s1_transform_id.glsl\"\n"
+                          "#include \"vertex/s1_size.glsl\"\n"
+                          "#include \"vertex/s1_position_vec3.glsl\"\n"
+                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          input);
+        }
+
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_luminance.glsl\"\n"
+                "#include \"vertex/s1_position_vec3.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_passthrough3d.glsl";
+            input.stage3_module = "vertex/s3_world_camera_vp.glsl";
+
+            CheckMeshText("meshopts: luminance attribute",
+                          "#include \"vertex/s1_luminance.glsl\"\n"
+                          "#include \"vertex/s1_position_vec3.glsl\"\n"
+                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          input);
+        }
+
+        {
+            // Text2D CharQuad：s1_text_char_quad.glsl 自带整条 SSBO/变换链路，
+            // 所以 s2/s3 皆空是唯一合法的"无成对"形态。
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_text_char_quad.glsl\"\n";
+
+            CheckMeshText("meshopts: char quad is self-contained (no s2/s3)",
+                          "#include \"vertex/s1_text_char_quad.glsl\"\n",
+                          input);
+        }
+
+        {
+            // 上游解码块不以 '\n' 收尾时，必须补一个——否则两行 include 粘成一行。
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "#include \"vertex/s1_color.glsl\"";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/s3_l2w_only.glsl";
+
+            CheckMeshText("meshopts: missing trailing newline is repaired",
+                          "#include \"vertex/s1_color.glsl\"\n"
+                          "#include \"vertex/s2_ndc_lift.glsl\"\n"
+                          "#include \"vertex/s3_l2w_only.glsl\"\n",
+                          input);
+        }
+
+        // ── 纯度与确定性 ─────────────────────────────────────────────────────
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_uv.glsl\"\n"
+                "#include \"vertex/s1_ntb.glsl\"\n"
+                "#include \"vertex/s1_position_vec3.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_passthrough3d.glsl";
+            input.stage3_module = "vertex/s3_world_camera_vp.glsl";
+
+            AnsiString first;
+            AnsiString second;
+            Check(EmitMeshOptions(input, first) && EmitMeshOptions(input, second)
+                      && first == second,
+                  "meshopts: emission is deterministic");
+            Check(IsPureOptionsText(first),
+                  "meshopts: only #include lines, no blank lines, LF endings");
+        }
+
+        // ── 负例 ─────────────────────────────────────────────────────────────
+        {
+            MeshOptionsInput input;
+            CheckMeshRejected("meshopts: reject all-empty input", input);
+        }
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "#include \"vertex/s1_color.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            CheckMeshRejected("meshopts: reject s2 without s3", input);
+        }
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "#include \"vertex/s1_color.glsl\"\n";
+            input.stage3_module = "vertex/s3_l2w_only.glsl";
+            CheckMeshRejected("meshopts: reject s3 without s2", input);
+        }
+        {
+            // s2/s3 存在但解码块缺失：GetLocalPos() 拿不到 Position。
+            MeshOptionsInput input;
+            input.position_mapping_module = "vertex/s2_passthrough3d.glsl";
+            input.stage3_module = "vertex/s3_world_camera_vp.glsl";
+            CheckMeshRejected("meshopts: reject no stage-1 decode block", input);
+        }
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "#include \"vertex/s1_color.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/s3_l2w_only";
+            CheckMeshRejected("meshopts: reject module path without .glsl", input);
+        }
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "#include \"vertex/s1_color.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/../s3_l2w_only.glsl";
+            CheckMeshRejected("meshopts: reject parent-directory escape", input);
+        }
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "#include \"vertex/s1_color.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "/abs/s3_l2w_only.glsl";
+            CheckMeshRejected("meshopts: reject absolute module path", input);
+        }
+        {
+            // 引号会把 options 文本撕成两份 ⇒ 发射期拒绝。
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "#include \"vertex/s1_color.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/s3\"_l2w_only.glsl";
+            CheckMeshRejected("meshopts: reject quote in module path", input);
+        }
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes = "vertex/s1_color.glsl\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/s3_l2w_only.glsl";
+            CheckMeshRejected("meshopts: reject non-#include line in decode block", input);
+        }
+        {
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_color.glsl\"\n"
+                "\n"
+                "#include \"vertex/s1_position_vec2.glsl\"\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/s3_l2w_only.glsl";
+            CheckMeshRejected("meshopts: reject blank line in decode block", input);
+        }
+        {
+            // CR 会随文本进入 program 身份 ⇒ 与片段侧同一套口径，一律拒绝。
+            MeshOptionsInput input;
+            input.vertex_decode_includes =
+                "#include \"vertex/s1_color.glsl\"\r\n";
+            input.position_mapping_module = "vertex/s2_ndc_lift.glsl";
+            input.stage3_module = "vertex/s3_l2w_only.glsl";
+            CheckMeshRejected("meshopts: reject CR in decode block", input);
+        }
+    }
+
     // ── --write-options ────────────────────────────────────────────────────
     // 给 scripts/ci/verify-domain-master-shaders.ps1 产出**由发射器生成**的
     // options.glsl，让等价性验收直接消费生产代码，而不是脚本里手抄的宏表。
@@ -476,6 +762,7 @@ int main(int argc, char **argv)
     RunForwardUnlit();
     RunRejections();
     RunPurityAndDeterminism();
+    RunMeshOptions();
 
     GLogInfo(u8"[DomainOptionsRegression] PASS=%d FAIL=%d", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;

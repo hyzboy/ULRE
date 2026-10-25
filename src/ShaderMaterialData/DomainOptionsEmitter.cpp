@@ -73,6 +73,78 @@ namespace hgl::graph::mtl
             }
             return true;
         }
+
+        // ── mesh_options 专用 ───────────────────────────────────────────────
+
+        // 单个 include 路径的合法性。要求是**字面相对路径**：
+        // glslang 的 `#include` 不接受宏展开，路径必须原样可解析；引号/换行/反斜杠
+        // 会直接把 options 文本撕成两份，所以在发射期就拒绝，而不是等编译。
+        bool IsValidModulePath(const char *path)
+        {
+            if (!path || !path[0])
+                return false;
+            if (path[0] == '/')
+                return false;
+
+            for (const char *p = path; *p; ++p)
+            {
+                const char c = *p;
+                const bool valid = (c >= 'a' && c <= 'z')
+                                || (c >= 'A' && c <= 'Z')
+                                || (c >= '0' && c <= '9')
+                                || c == '_' || c == '/' || c == '.';
+                if (!valid)
+                    return false;
+            }
+
+            // `..` 越出 ShaderLibrary 根目录：允许它等于允许 include 任意文件。
+            for (const char *p = path; p[0] && p[1]; ++p)
+                if (p[0] == '.' && p[1] == '.')
+                    return false;
+
+            const size_t length = strlen(path);
+            const char Suffix[] = ".glsl";
+            constexpr size_t SuffixLength = sizeof(Suffix) - 1;
+            return length > SuffixLength
+                && strcmp(path + length - SuffixLength, Suffix) == 0;
+        }
+
+        // Stage 1 解码块是**多行**文本：每一非空行都必须是 `#include "<path>"`。
+        // 这条校验的存在理由：该块由另一层（VertexABIBuilder）产出，本层只透传；
+        // 一旦上游哪天改成"顺手拼点别的东西"，here 会是第一个报警点——否则症状
+        // 是主着色器里多出一行非法 GLSL，报错落在 glslang 而看不出产地。
+        bool IsValidIncludeBlock(const char *block)
+        {
+            const char *cursor = block;
+            while (*cursor)
+            {
+                if (*cursor == '\r')
+                    return false;
+
+                const char *line_end = cursor;
+                while (*line_end && *line_end != '\n')
+                    ++line_end;
+
+                const size_t line_length = static_cast<size_t>(line_end - cursor);
+                // `#include "` (10) + 至少一个字符的路径 + `"` ⇒ 至少 12。
+                if (line_length < 12)
+                    return false;
+                if (strncmp(cursor, "#include \"", 10) != 0)
+                    return false;
+                if (cursor[line_length - 1] != '"')
+                    return false;
+
+                cursor = (*line_end == '\n') ? (line_end + 1) : line_end;
+            }
+            return true;
+        }
+
+        void AppendInclude(AnsiString &out, const char *module_path)
+        {
+            out += "#include \"";
+            out += module_path;
+            out += "\"\n";
+        }
     }// namespace
 
     DomainOptionsProfile ResolveDomainOptionsProfile(
@@ -212,6 +284,64 @@ namespace hgl::graph::mtl
         }
 
         out_options_glsl = text_buffer;
+        return true;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // mesh_options.glsl
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // 发射顺序是契约（见头文件约束 1）：
+    //   Stage 1（全部属性解码） → Stage 2（位置映射） → Stage 3（投影/视口）
+    // 三段的依赖方向是单向的：s1 声明 Position/UV/Color/Normal…，s2 消费 Position
+    // 产出 GetLocalPos()，s3 消费 GetLocalPos() 产出 GetClipPos()/GetWorldPos()。
+    bool EmitMeshOptions(
+        const MeshOptionsInput &input,
+        AnsiString &out_mesh_options_glsl)
+    {
+        const bool has_decode = input.vertex_decode_includes
+                             && input.vertex_decode_includes[0];
+        const bool has_stage2 = input.position_mapping_module
+                             && input.position_mapping_module[0];
+        const bool has_stage3 = input.stage3_module
+                             && input.stage3_module[0];
+
+        // s2/s3 成对出现（见头文件约束 2）。只给一半 ⇒ GetClipPos(GetLocalPos())
+        // 少一个函数，主着色器编不过，而错落点离这里很远。
+        if (has_stage2 != has_stage3)
+            return false;
+
+        // Stage 1 是硬前提：每个 `s2_*` 都声明了
+        // `@ulre require GeometryAttribute Position …`，它消费的是 Stage 1 解出的
+        // `Position`。没有解码块就等于没有 Position，s2/s3 会在 glslang 里报未声明
+        // 标识符——不如在发射期就拒绝。
+        if (!has_decode)
+            return false;
+
+        if (!IsValidIncludeBlock(input.vertex_decode_includes))
+            return false;
+        if (has_stage2 && !IsValidModulePath(input.position_mapping_module))
+            return false;
+        if (has_stage3 && !IsValidModulePath(input.stage3_module))
+            return false;
+
+        // 局部缓冲 + 末尾整体赋值：任何一条拒绝路径都不留半截文本。
+        AnsiString text_buffer;
+
+        text_buffer += input.vertex_decode_includes;
+
+        // 上游块不保证以 '\n' 收尾，而紧接着要拼下一行 include ——
+        // 少了这个换行会把两行 include 粘成一行（GLSL 里是语法错误）。
+        const int length = text_buffer.Length();
+        if (length > 0 && text_buffer.c_str()[length - 1] != '\n')
+            text_buffer += "\n";
+
+        if (has_stage2)
+            AppendInclude(text_buffer, input.position_mapping_module);
+        if (has_stage3)
+            AppendInclude(text_buffer, input.stage3_module);
+
+        out_mesh_options_glsl = text_buffer;
         return true;
     }
 }// namespace hgl::graph::mtl

@@ -144,4 +144,64 @@ namespace hgl::graph::mtl
     bool EmitDomainOptions(
         const DomainOptionsInput &input,
         AnsiString &out_options_glsl);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // mesh_options.glsl —— 网格阶段主着色器唯一的可变输入
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // 与片段侧**完全同构**：每个网格形状是一份物理固定的 GLSL 编译单元
+    // （`ShaderLibrary/mesh/master/<模式>__<变体签名>.mesh`），它能接受的唯一外部
+    // 输入就是主着色器里那一行 `#include "generated/mesh_options.glsl"`。
+    //
+    // 为什么非要切这一刀：阶段六的过渡态把整个网格源按顶点格式哈希落盘
+    // （`ShaderLibrary/mesh/fixed/<shape_key>.mesh`，22 份）。顶点格式每多一种组合
+    // （半精度 UV、八面体法线、2D NDC 变换……）就多一个"找不到固定源"的运行时失败，
+    // 因为**网格源里唯一随格式变化的部分**被固化了。切出来之后：
+    //
+    //   顶点格式变化 → 只改 options 文本（同样落盘为 `generated/mesh_options.glsl`）
+    //   领域/变体变化 → 换一份主着色器（这本来就该是一份文件）
+    //
+    // 三条硬约束（与 `EmitDomainOptions` 同一套口径）：
+    //
+    //   1. **只发射真正被消费的 `#include`**，顺序固定为
+    //      Stage 1（属性解码） → Stage 2（位置映射） → Stage 3（投影/视口）。
+    //      顺序不是风格问题：`s1_position_*` 的 `LoadVertexData()` 用
+    //      `#ifdef HGL_*_LOADER` 展开各属性装载，其它 s1 模块必须先于它被 include
+    //      才能定义出那些宏；而 `s2_*` 的 `GetLocalPos()` 依赖 Stage 1 声明的
+    //      `Position`，`s3_*` 的 `GetClipPos()` 依赖 Stage 2。
+    //   2. **`s2` 与 `s3` 必须成对出现**。Stage 2 给出 `GetLocalPos()`、Stage 3 给出
+    //      `GetClipPos()`/`GetWorldPos()`，主着色器的 `GetClipPos(GetLocalPos())`
+    //      少了任一半都编不过。两者皆空是合法的唯一特例：CharQuad 一类自持全部
+    //      SSBO 的路径（`s1_text_char_quad.glsl` 自带整条链路）。
+    //      Stage 1 则无条件必需——`s2_*` 消费的正是 Stage 1 解出的 `Position`。
+    //   3. **文本同时是 program 身份的一部分** ⇒ 无注释、无空行、无 CR、
+    //      以 `'\n'` 收尾，且每次都是整体覆盖（不留半截文本）。
+
+    struct MeshOptionsInput
+    {
+        /// Stage 1：顶点属性解码 include 块（1~5 行，每行一条
+        /// `#include "vertex/s1_*.glsl"`）。
+        ///
+        /// 这段文本由 `BuildResolvedVertexABI` 按「几何 VkFormat × 材质顶点语义需求」
+        /// 选出——那份「格式 ↔ 解码模块」查表是唯一真源（新增格式必须同时新增解码
+        /// 模块并在那里登记）。本层只做**透传**，绝不在这里再枚举一遍格式：两处
+        /// 各写一份迟早会分叉，而分叉的症状是"顶点全体错位"这种最难查的静默缺陷。
+        const char *vertex_decode_includes = nullptr;
+
+        /// Stage 2：位置映射模块（`vertex/s2_*.glsl`），由
+        /// `VertexNodeConfigResolver::GetMappingModulePath` 产出。CharQuad 自持路径为 nullptr。
+        const char *position_mapping_module = nullptr;
+
+        /// Stage 3：投影/视口变换模块（`vertex/s3_*.glsl`），由
+        /// `VertexNodeConfigResolver::GetStage3ModulePath` 产出。CharQuad 自持路径为 nullptr。
+        const char *stage3_module = nullptr;
+    };
+
+    /// 发射 mesh_options.glsl 文本。
+    /// 成功时**整体覆盖** `out_mesh_options_glsl`；返回 false 时保持调用前的原值。
+    /// 返回 false = 输入不自洽（全空 / s2 与 s3 只给了一半 / 路径非法 /
+    /// 解码块里有非 `#include` 行）。
+    bool EmitMeshOptions(
+        const MeshOptionsInput &input,
+        AnsiString &out_mesh_options_glsl);
 }// namespace hgl::graph::mtl
