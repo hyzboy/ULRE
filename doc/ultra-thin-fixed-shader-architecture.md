@@ -400,9 +400,10 @@ varyings = ["emit_data_index_id"]
    2026-10-25 已新增反射桥接与 `ShaderReflectionData` 提取层，并将 compute manifest 的 push-constant size 改为反射后校验并记录；
    `SPV.reflection-api` / `SPV.buffer-reference-reflection` 与真实 GPU cull compute cache 门禁通过。flat 反射未暴露
    `buffer_reference` 实际访问信息，所以没有据此改变 payload/runtime-row 标志。
-   下一步应继续逐项审计 stage interface 与 manifest 消费者，并查清 buffer-reference 访问是否能可靠反映，
-   再决定删减边界。
-   详见 `doc/ultra-thin-implementation-status.md` §10.3。
+   候选审计已收敛（payload-row 标志 = 编译前输入，构成循环依赖；stage interface 对照 = 换成两遍编译、净增复杂度；
+   `ShaderDocument` = 2.6% 面积换掉三条结构校验；`GenericMaterialBuilder` = 无重复逻辑可合并；扩展 flat 格式承载 BDA
+   = 无消费者），结论见 `doc/ultra-thin-implementation-status.md` §10.3 与 §10.4。
+   唯一仍未逐行取证的只剩 manifest 运行时消费者（§10.4 的 P2）。
 
 阶段 5 的进展：
 
