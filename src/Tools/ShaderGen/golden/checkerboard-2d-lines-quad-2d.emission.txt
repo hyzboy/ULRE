@@ -1,4 +1,4 @@
-material VertexColor golden=vertex-color-lines-quad-2d
+material builtin/checkerboard_2d golden=checkerboard-2d-lines-quad-2d
 stage mesh
 dir #version 460
 dir #extension GL_EXT_mesh_shader : require
@@ -33,11 +33,9 @@ layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer Vertex
 layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDRef { uint data[]; };
 layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexSizeRef { vec2 data[]; };
 dir #define sbo_vertex_index VertexIndexRef(draw_params.addr_index)
-layout layout(location=5) out vec4 fragVertexColor[256];
-dir #include "vertex/s1_color.glsl"
 dir #include "vertex/s1_position_vec2.glsl"
-dir #include "vertex/s2_passthrough3d.glsl"
-dir #include "vertex/s3_world_camera_vp.glsl"
+dir #include "vertex/s2_ndc_lift.glsl"
+dir #include "vertex/s3_l2w_only.glsl"
 func void main()
 dir #ifdef S1_PALETTE_INDEX_GLSL
 dir #endif
@@ -46,8 +44,6 @@ dir #else
 dir #endif
 dir #ifdef S1_SIZE_GLSL
 dir #else
-dir #endif
-dir #ifdef S1_COLOR_GLSL
 dir #endif
 stage fragment
 dir #version 450
@@ -79,12 +75,12 @@ dir #ifndef MATERIAL_SOURCE_INTERFACE_GLSL
 dir #define MATERIAL_SOURCE_INTERFACE_GLSL
 dir #include "common/surface_interface.glsl"
 dir #endif // MATERIAL_SOURCE_INTERFACE_GLSL
-dir #ifndef VERTEX_COLOR_SOURCE_GLSL
-dir #define VERTEX_COLOR_SOURCE_GLSL
+dir #ifndef CHECKERBOARD_2D_SOURCE_GLSL
+dir #define CHECKERBOARD_2D_SOURCE_GLSL
 dir #include "common/material_source_interface.glsl"
-func MaterialSourceOutput EvalMaterialSource(
+func MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 func float EvalMaterialAlpha(MaterialSourceInput sourceInput)
-dir #endif
+dir #endif // CHECKERBOARD_2D_SOURCE_GLSL
 dir #ifndef NTB_INTERFACE_GLSL
 dir #define NTB_INTERFACE_GLSL
 dir #include "common/surface_interface.glsl"
@@ -100,10 +96,9 @@ dir #include "common/ntb_interface.glsl"
 dir #include "ntb/ntb_orthonormal.glsl"
 func NTBSpace GetNTB(NTBInput ntb_input)
 dir #endif // NTB_NONE_GLSL
-dir #include "material/vertex_color_source.glsl"
+dir #include "material/checkerboard_2d_source.glsl"
 dir #include "surface/material_surface.glsl"
 dir #include "common/alpha_compositor.glsl"
-layout layout(location=5) in vec4 fragVertexColor;
 layout layout(location=0) out vec4 outColor;
 func void WriteMaterialOutput(vec4 value) { outColor = value; }
 func void main()

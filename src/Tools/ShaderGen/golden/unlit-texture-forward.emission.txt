@@ -36,7 +36,7 @@ dir #define sbo_vertex_index VertexIndexRef(draw_params.addr_index)
 layout layout(location=0) perprimitiveEXT out uint fragDataIndexID[64];
 layout layout(location=3) out vec2 fragUV0[192];
 dir #include "vertex/s1_uv.glsl"
-dir #include "vertex/s1_position_vec3.glsl"
+dir #include "vertex/s1_position_vec2.glsl"
 dir #include "vertex/s2_ndc_lift.glsl"
 dir #include "vertex/s3_l2w_only.glsl"
 func void main()

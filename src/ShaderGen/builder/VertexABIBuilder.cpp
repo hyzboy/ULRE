@@ -139,6 +139,19 @@ namespace
                 return false;
             }
 
+            // Stage 2 的映射是材质声明（position_mapping），Stage 1 的输入由几何格式决定
+            // （上面那个 switch）——两个来源互不可见，分量数不一致会产出编不过的 GLSL。
+            // 在发射期硬门，别让错误漂到 glslang 里。
+            if (effective_input != VertexInputMode::None)
+            {
+                const uint32_t s1_component_count =
+                    (effective_input == VertexInputMode::Vec3Position) ? 3u : 2u;
+                if (!VertexNodeConfigResolver::CheckPositionComponentCount(
+                        definition.vertex_node_config, s1_component_count,
+                        definition.definition_id.c_str()))
+                    return false;
+            }
+
             switch (effective_input)
             {
             case VertexInputMode::Vec3Position:

@@ -275,6 +275,22 @@ namespace hgl::graph::mtl
             const char *input_module = desc->resolve_stage1_input(node_cfg, position_format);
             if (input_module)
             {
+                // Stage 1（几何 VkFormat 决定）与 Stage 2（材质 position_mapping 决定）
+                // 是两个所有者；分量数不一致会生成「能生成、编不过」的 GLSL，故在此对账。
+                uint32_t s1_component_count = 0;
+                switch (position_format)
+                {
+                case VK_FORMAT_R32G32B32_SFLOAT: s1_component_count = 3; break;
+                case VK_FORMAT_R32G32_SFLOAT:
+                case VK_FORMAT_R16G16_SINT:      s1_component_count = 2; break;
+                default: break;
+                }
+
+                if (s1_component_count != 0
+                 && !VertexNodeConfigResolver::CheckPositionComponentCount(
+                        node_cfg, s1_component_count, desc->name))
+                    return false;
+
                 fragment.clear();
                 fragment += "#include \"";
                 fragment += input_module;

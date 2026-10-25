@@ -1423,12 +1423,15 @@ namespace
             {VertexSemantic::TexCoord, VF_V2F},
             {VertexSemantic::Normal, VF_V3F}
         };
-        // 位置格式必须落在 VertexABIBuilder 的「格式 ↔ s1_position_* 解码模块」白名单里：
-        // VF_V3HF 没有对应解码模块（本来就没人真用它当位置），这里用打包 int16 位置
-        // 制造一个"同语义、不同 ABI"的对照几何，顺便覆盖 Vec2IntPosition 路径。
+        // 「同语义、不同 ABI」的对照几何：TexCoord 从 VF_V2F（8B）换成 VF_V2HF（RG16F，4B），
+        // s1_uv 模块随之从 s1_uv 变成 s1_uv_rg16f —— 顶点输入文本与流哈希必须不同。
+        //
+        // 这里刻意不再用 VF_V2I16 制造对照：2 分量位置只能配 2D 映射的材质，而 `lit`
+        // 是 Passthrough3D，那份 GLSL 的 `vec4(vec3, 1.0)`/`vec4(vec2, 1.0)` 根本编不过。
+        // 生成期已把「位置分量数 ↔ 映射分量数」做成硬门，ABI 对照只能换非位置语义。
         const GeometryVertexFormat lit_geometry_b{
-            {VertexSemantic::Position, VF_V2I16},
-            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2HF},
             {VertexSemantic::Normal, VF_V3F}
         };
         const GeometryVertexFormat color_geometry{
@@ -2652,8 +2655,14 @@ namespace
 
         const auto build = [&](const VertexShaderNodeConfig &graph)
         {
+            // 位置格式必须与映射的分量数一致（生成期硬门）：2D 映射的图只吃 vec2 位置。
+            // 拿 vec3 格式去出 2D 图，产出的是 `vec4(vec3, 0.0, 1.0)` 这类编不过的 GLSL。
+            const VkFormat position_format =
+                GetPositionMappingComponentCount(graph.position_mapping) == 3
+                    ? VK_FORMAT_R32G32B32_SFLOAT
+                    : VK_FORMAT_R32G32_SFLOAT;
             return GenerateMeshShaderDocumentText(
-                graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
+                graph, varying, position_format,
                 MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
                 {}, nullptr);
         };
@@ -4222,6 +4231,12 @@ namespace
             }
 
             // 打包 int16x2 位置（4B/顶点）必须映射到 vec2i 模块——这是三对闭环格式之一。
+            // 该格式产出 `vec2 Position`，因此只能配 2D 映射的材质；`LitFile` 是
+            // Passthrough3D（要 3 分量），直接配它会被生成期硬门拦下。
+            MaterialDefinition packed_position_definition = definition;
+            packed_position_definition.vertex_node_config.position_mapping =
+                PositionMappingMode::PixelToLocal;
+
             const GeometryVertexFormat packed_position_geometry{
                 {VertexSemantic::Position, VF_V2I16},
                 {VertexSemantic::TexCoord, VF_V2F},
@@ -4231,13 +4246,25 @@ namespace
             packed_position_request.geometry_vertex_format = &packed_position_geometry;
             MaterialResolvedVertexABI packed_position_abi{};
             if (!BuildResolvedMaterialVertexABI(
-                    definition, packed_position_request, packed_position_abi)
+                    packed_position_definition, packed_position_request, packed_position_abi)
              || packed_position_abi.position_format != VK_FORMAT_R16G16_SINT
              || !std::strstr(packed_position_abi.vertex_input_glsl.c_str(),
                              "s1_position_vec2i.glsl"))
             {
                 result.diagnostics.emplace_back(
                     "packed int16x2 position must resolve to the vec2i module");
+            }
+
+            // 反向：分量数不匹配时必须硬失败（历史上这种组合会静默产出一份编不过的 GLSL，
+            // glslang 再把错误指向 s2 模块，定位成本极高）。
+            MaterialResolvedVertexABI mismatch_abi{};
+            MaterialDefinitionBuildRequest mismatch_request{};
+            mismatch_request.geometry_vertex_format = &packed_position_geometry;
+            if (BuildResolvedMaterialVertexABI(
+                    definition, mismatch_request, mismatch_abi))
+            {
+                result.diagnostics.emplace_back(
+                    "vec2 position with Passthrough3D mapping must be rejected");
             }
 
             // 未闭环位置格式必须被拒绝，而不是挑一个"同义"模块凑合：
@@ -9196,6 +9223,12 @@ void main()
         /// 默认 `Triangles` = 前 14 个变体全部走 `VertexPassthrough`。
         PrimitiveType primitive_type = PrimitiveType::Triangles;
         /// 位置属性用 `VF_V2F`（见 `kStructureDumpGeometry2D`）。
+        ///
+        /// 只对 `position_mapping` 需要 vec2 Position 的材质成立
+        /// （`NDCLift` / `ZeroOneToNDC` / `PixelToLocal` / `LiftXY_*`）；
+        /// `Passthrough3D` 必须配 3 分量。两者不一致时生成器发射期即硬失败
+        /// （`VertexNodeConfigResolver::CheckPositionComponentCount`），
+        /// 而不是产出一份编不过的 GLSL。
         bool vec2_position = false;
     };
 
@@ -9231,7 +9264,8 @@ void main()
           RenderTemplateID::ForwardUnlit, true, false },
         { "UnlitTexture", "unlit-texture-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false },
+          RenderTemplateID::ForwardUnlit, true, false,
+          PrimitiveType::Triangles, true },
         { "DebugNormalColor", "debug-normal-forward",
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, true, false },
@@ -9243,7 +9277,8 @@ void main()
           RenderTemplateID::Sky, true, false },
         { "builtin/checkerboard_2d", "checkerboard-2d-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false },
+          RenderTemplateID::ForwardUnlit, true, false,
+          PrimitiveType::Triangles, true },
         { "builtin/text_gpu", "text-gpu-charquad",
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, false, false },
@@ -9255,7 +9290,11 @@ void main()
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, true, false,
           PrimitiveType::Lines, false },
-        { "VertexColor", "vertex-color-lines-quad-2d",
+        // vec2 端点是另一条 `{{endpoint_read}}` 分支。原先这里挂 `VertexColor`，
+        // 但它是 `Passthrough3D`（需要 vec3 Position），与 VF_V2F 夹具配不上——
+        // 生成的 `vec4(vec3, 0.0, 1.0)` 五分量构造根本编不过。2D 位置必须配
+        // 2D 映射的材质，故改用 `builtin/checkerboard_2d`（NDCLift）。
+        { "builtin/checkerboard_2d", "checkerboard-2d-lines-quad-2d",
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, true, false,
           PrimitiveType::Lines, true },
@@ -9349,6 +9388,238 @@ void main()
             diagnostic = std::string("material build failed: ") + variant.golden_slug;
 
         return ctx;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // SPV.generated-interface
+    //
+    // 生成接口的**反射门**：SPIR-V 是接口的唯一权威。
+    //
+    // `SD.structure-dump-golden-pilot` / `SD.emission-order-golden` 读的都是生成器
+    // 在编译前的自述。自述可以自洽，却与真正编译出的二进制不一致 —— 唯一能证伪
+    // 它的是编译器。本用例把整张快照矩阵（16 变体）真的编译成 SPIR-V 并反射，
+    // 按 Vulkan 的链接规则校验：
+    //   ① 两 stage 都必须编译成功。此前这 16 个变体的 GLSL 在门里从未被编译过，
+    //      生成器发错一行就能让整套 shader 只在跑 demo 时才炸；
+    //   ② 片元每个 stage input 必须在 mesh 的 stage output 里找到同 location 同
+    //      类型的对应项 —— 这是管线创建时驱动会硬拒的条件；
+    //   ③ 前向着色必须写至少一个颜色附件；纯深度/阴影用途必须一个都不写；
+    //   ④ 两 stage 的 push constant 末端必须等于 RootAddresses 的 CPU 侧大小。
+    // ①②③④ 全部来自二进制，完全不看生成器怎么描述自己。
+    static GateResult RunGeneratedInterfaceReflectionCase()
+    {
+        GateResult result;
+        result.name = "SPV.generated-interface";
+
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
+        {
+            result.diagnostics.emplace_back(preset_diagnostic);
+            result.passed = false;
+            return result;
+        }
+
+        // RootAddresses = 10 个 uint64 地址 + 2 个 uint 标量（camera_row + 显式
+        // padding）。这里刻意写死数值（与 `PM.compute-release-cache` 的 112 同理）：
+        // 若两侧一起漂，本门才会失败。
+        const uint32_t kRootAddressesPCBytes = 88;
+
+        // 完整性：每个变体都必须走到「两 stage 都反射成功」这一步。
+        // 任何 `continue` 提前退出都会留下诊断，这里再加一道计数，
+        // 防止将来新增的跳过分支把变体静默漏掉。
+        uint32_t reflected_variant_count = 0;
+
+        for (const StructureDumpVariant &variant : kStructureDumpVariants)
+        {
+            std::string build_diagnostic;
+            const std::unique_ptr<ShaderBuildContext> ctx =
+                BuildStructureDumpVariant(variant, build_diagnostic);
+            if (!ctx)
+            {
+                result.diagnostics.emplace_back(build_diagnostic);
+                continue;
+            }
+
+            const std::string label = variant.golden_slug;
+
+            hgl::graph::mtl::ShaderReflectionData reflection[2];
+            const uint32_t stage_bits[2] =
+            {
+                VK_SHADER_STAGE_MESH_BIT_EXT,
+                VK_SHADER_STAGE_FRAGMENT_BIT
+            };
+            const hgl::graph::ShaderStage stage_enums[2] =
+            {
+                hgl::graph::ShaderStage::Mesh,
+                hgl::graph::ShaderStage::Fragment
+            };
+            const char *const stage_names[2] = { "mesh", "fragment" };
+
+            bool reflected[2] = { false, false };
+
+            for (int i = 0; i < 2; ++i)
+            {
+                // 编译由本门自己做（而不是让 BuildStructureDumpVariant 顺手 finalize），
+                // 这样「哪个 stage 的哪一步失败」能落到诊断里：
+                // `FinalizeShaderBuildContext` 对空源码是静默 false，看不出根因。
+                ShaderCreateInfo *si = ctx->GetStageShader(stage_enums[i]);
+                if (!si)
+                {
+                    result.diagnostics.emplace_back(
+                        label + " " + stage_names[i] + ": stage missing");
+                    continue;
+                }
+
+                if (si->GetFinalGLSL().empty())
+                {
+                    result.diagnostics.emplace_back(
+                        label + " " + stage_names[i]
+                        + ": generated GLSL is empty");
+                    continue;
+                }
+
+                if (!si->HasSPVData() && !si->CompileFinalGLSLToSPV())
+                {
+                    // `CompileFinalGLSLToSPV` 只回 bool，glslang 的错误行号/原因走日
+                    // 志通道。这里再走一次底层编译，把编译器的原始报错捞进诊断，
+                    // 否则失败信息只剩「没编过」，定位不到是生成的哪一行。
+                    std::string compiler_log;
+                    if (SPVData *spv =
+                            hgl::graph::CompileShader(stage_bits[i], si->GetFinalGLSL().c_str()))
+                    {
+                        compiler_log = std::string("result=") + (spv->result ? "1" : "0")
+                                     + " log=" + (spv->log && *spv->log ? spv->log : "<empty>")
+                                     + " dbg=" + (spv->debug_log && *spv->debug_log ? spv->debug_log : "<empty>")
+                                     + " len=" + std::to_string(spv->spv_length);
+                        hgl::graph::FreeSPVData(spv);
+                    }
+                    else
+                    {
+                        compiler_log = "CompileShader returned null";
+                    }
+
+                    result.diagnostics.emplace_back(
+                        label + " " + stage_names[i]
+                        + ": generated GLSL failed to compile"
+                        + (compiler_log.empty() ? std::string()
+                                                : ": " + compiler_log));
+                    continue;
+                }
+
+                if (!si->HasSPVData() || si->GetSPVSize() == 0)
+                {
+                    result.diagnostics.emplace_back(
+                        label + " " + stage_names[i]
+                        + ": no SPIR-V after compile");
+                    continue;
+                }
+
+                hgl::ValueArray<uint8_t> flat_storage;
+                ShaderFlatView view{};
+                if (!ReflectSPVData(
+                        si->GetSPVData(), si->GetSPVSize(), stage_bits[i],
+                        "main", flat_storage, view)
+                 || !reflection[i].Extract(view))
+                {
+                    result.diagnostics.emplace_back(
+                        label + " " + stage_names[i]
+                        + ": SPIR-V reflection failed");
+                    continue;
+                }
+
+                reflected[i] = true;
+
+                if (reflection[i].push_constants.IsEmpty())
+                {
+                    result.diagnostics.emplace_back(
+                        label + " " + stage_names[i]
+                        + ": push constant block missing");
+                    continue;
+                }
+
+                uint32_t pc_end = 0;
+                if (!reflection[i].GetPushConstantEnd(pc_end)
+                 || pc_end != kRootAddressesPCBytes)
+                {
+                    result.diagnostics.emplace_back(
+                        label + " " + stage_names[i]
+                        + ": push constant end " + std::to_string(pc_end)
+                        + " != " + std::to_string(kRootAddressesPCBytes));
+                }
+            }
+
+            if (!reflected[0] || !reflected[1])
+                continue;
+
+            ++reflected_variant_count;
+
+            // ② 片元 input ⊆ mesh output（同 location、同 basetype、同 vec_size）
+            for (int i = 0; i < reflection[1].stage_inputs.GetCount(); ++i)
+            {
+                const hgl::graph::mtl::ShaderReflectionAttribute &fin =
+                    reflection[1].stage_inputs[i];
+
+                const hgl::graph::mtl::ShaderReflectionAttribute *match = nullptr;
+                for (int j = 0; j < reflection[0].stage_outputs.GetCount(); ++j)
+                {
+                    if (reflection[0].stage_outputs[j].location == fin.location)
+                    {
+                        match = &reflection[0].stage_outputs[j];
+                        break;
+                    }
+                }
+
+                if (!match)
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": fragment input #"
+                        + std::to_string(int(fin.location)) + " ("
+                        + fin.name + ") has no matching mesh output");
+                    continue;
+                }
+
+                if (match->basetype != fin.basetype
+                 || match->vec_size != fin.vec_size
+                 || match->col_count != fin.col_count)
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": interface type mismatch at #"
+                        + std::to_string(int(fin.location))
+                        + " mesh(" + match->name + ",base="
+                        + std::to_string(int(match->basetype)) + ",vec="
+                        + std::to_string(int(match->vec_size)) + ",col="
+                        + std::to_string(int(match->col_count)) + ") fragment("
+                        + fin.name + ",base=" + std::to_string(int(fin.basetype))
+                        + ",vec=" + std::to_string(int(fin.vec_size)) + ",col="
+                        + std::to_string(int(fin.col_count)) + ")");
+                }
+            }
+
+            // ③ 输出附件：前向着色写颜色，纯深度/阴影一个都不写
+            const bool expects_color =
+                variant.purpose == ShaderProgramPurpose::ForwardColor;
+            const int color_outputs = reflection[1].stage_outputs.GetCount();
+
+            if (expects_color && color_outputs <= 0)
+                result.diagnostics.emplace_back(
+                    label + ": forward purpose wrote no color attachment");
+            else if (!expects_color && color_outputs != 0)
+                result.diagnostics.emplace_back(
+                    label + ": depth purpose wrote "
+                    + std::to_string(color_outputs) + " color attachment(s)");
+        }
+
+        const uint32_t expected_variant_count =
+            static_cast<uint32_t>(sizeof(kStructureDumpVariants)
+                                  / sizeof(kStructureDumpVariants[0]));
+        if (reflected_variant_count != expected_variant_count)
+            result.diagnostics.emplace_back(
+                "only " + std::to_string(reflected_variant_count) + " of "
+                + std::to_string(expected_variant_count)
+                + " structure-dump variants reached SPIR-V reflection");
+
+        result.passed = result.diagnostics.empty();
+        return result;
     }
 
     static GateResult RunShaderStructureDumpPilotCase()
@@ -9604,6 +9875,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_reflection) results.push_back(RunSPVReflectionCase());
     if (run_reflection) results.push_back(RunSPVBufferReferenceReflectionCase());
+    if (run_reflection) results.push_back(RunGeneratedInterfaceReflectionCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_interface) results.push_back(RunMeshVaryingWritabilityCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());

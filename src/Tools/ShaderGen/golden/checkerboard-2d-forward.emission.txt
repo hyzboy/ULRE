@@ -33,7 +33,7 @@ layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer Vertex
 layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexTransformIDRef { uint data[]; };
 layout layout(buffer_reference, scalar, buffer_reference_align=16) buffer VertexSizeRef { vec2 data[]; };
 dir #define sbo_vertex_index VertexIndexRef(draw_params.addr_index)
-dir #include "vertex/s1_position_vec3.glsl"
+dir #include "vertex/s1_position_vec2.glsl"
 dir #include "vertex/s2_ndc_lift.glsl"
 dir #include "vertex/s3_l2w_only.glsl"
 func void main()
