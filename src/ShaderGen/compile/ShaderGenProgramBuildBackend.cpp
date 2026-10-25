@@ -12,7 +12,6 @@
 
 #include "builder/GenericMaterialBuilder.h"
 #include "ShaderGenBackendInstall.h"
-#include <hgl/ShaderCompilerAPI.h>
 
 namespace hgl::graph::mtl
 {
@@ -73,53 +72,6 @@ namespace
         SetShaderProgramBuildBackend(nullptr);
     }
 
-    namespace
-    {
-        /// 生命周期钩子两端的**选择器**：安装时读一次环境变量并记住结论，
-        /// 卸载必须装/卸对称（`SetShaderProgramBuildBackend(nullptr)` 对错的
-        /// 后端调用会把槽位清空但漏掉释放器，或反之）。
-        bool g_use_shadergen_build_backend = false;
-
-        void InstallSelectedShaderProgramBuildBackend()
-        {
-            g_use_shadergen_build_backend = IsShaderGenBuildBackendRequested();
-
-            if (g_use_shadergen_build_backend)
-                InstallShaderGenProgramBuildBackend();
-            else
-                InstallDomainShaderBuildBackend();
-        }
-
-        void UninstallSelectedShaderProgramBuildBackend()
-        {
-            if (g_use_shadergen_build_backend)
-                UninstallShaderGenProgramBuildBackend();
-            else
-                UninstallDomainShaderBuildBackend();
-
-            g_use_shadergen_build_backend = false;
-        }
-
-        /**
-         * 把上面的安装器注册成编译器插件的生命周期钩子。
-         *
-         * 编译器桥（ULRE.ShaderCompiler）不认识任何后端；钩子是唯一的连接方式。
-         * 注册对象是 TU 级静态量，构造发生在 main 之前，因此 InitShaderCompiler() 被调用时
-         * 钩子必然已经就位——**前提是这个 TU 真的被链接进可执行文件**。它没有任何对外符号，
-         * 静态库链接器会把整个 TU 丢掉，所以聚合入口 ULRE::Engine 对 ULRE.ShaderGen 使用
-         * $<LINK_LIBRARY:WHOLE_ARCHIVE,...>（见根 CMakeLists.txt 的 ULRE_SHADERGEN）。
-         * 发行形态整个 TU 不存在，钩子保持为空，编译器照常工作而不装任何后端。
-         */
-        struct ShaderGenBackendLifecycleRegistration
-        {
-            ShaderGenBackendLifecycleRegistration()
-            {
-                hgl::graph::SetShaderCompilerLifecycleHooks(
-                    &InstallSelectedShaderProgramBuildBackend,
-                    &UninstallSelectedShaderProgramBuildBackend);
-            }
-        };//struct ShaderGenBackendLifecycleRegistration
-
-        ShaderGenBackendLifecycleRegistration g_shadergen_backend_lifecycle_registration;
-    }//namespace
+    // 生命周期接线（选择器 + 注册对象）已迁到 ShaderBuildBackendLifecycle.cpp：
+    // 那是存活代码，本 TU 是待删的生成器。
 }//namespace hgl::graph::mtl

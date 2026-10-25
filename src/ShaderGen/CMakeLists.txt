@@ -60,6 +60,9 @@ set(COMPILE_FILES
     compile/ShaderGenBackendInstall.h
     compile/ShaderCreateInfoCompile.cpp
     compile/ShaderGenProgramBuildBackend.cpp
+    # 编译器插件的生命周期接线（选择器 + 注册对象）。独立成 TU 是因为它是
+    # **存活**代码：生成器 TU 删除后接线必须仍然在，否则发行形态没有后端。
+    compile/ShaderBuildBackendLifecycle.cpp
     # 「不生成着色器」的后端：片段阶段换成领域固定主着色器 + options。
     # 临时留在本模块是因为它复用 BuildGenericMaterial 的网格阶段（见阶段五搬走）。
     compile/DomainShaderBuildBackend.cpp
