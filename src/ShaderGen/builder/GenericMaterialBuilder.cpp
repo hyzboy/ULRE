@@ -10,7 +10,6 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
-#include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/graph/font/CharQuadConfig.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -24,7 +23,6 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include "compile/MaterialShaderEmitter.h"
 #include "builder/MaterialResourceManifestBuilder.h"
 #include "meshgen/MeshTemplateEmitter.h"
 #include "builder/GenericMaterialBuilder.h"
@@ -502,8 +500,7 @@ namespace hgl::graph::mtl
                 ? document_capture->mesh_source_document
                 : plan.mesh_source_document;
             // 直调 mesh 阶段发射器。原先这里经 MeshTemplateComposer 门面转发——
-            // 那个类体只有一句"9 实参原样透传"，没有任何编排（对照 fragment 侧的
-            // FragmentTemplateComposer 才是真编排器），仅增加一层间接，已删除。
+            // 那个类体只有一句"9 实参原样透传"，没有任何编排，仅增加一层间接，已删除。
             if (!EmitMeshTemplateDocument(
                     plan.vertex_node_config,
                     plan.varying,
@@ -545,72 +542,27 @@ namespace hgl::graph::mtl
                 plan.ms.assign(serialized.c_str(), serialized.Length());
             }
 
-            // ── 片段阶段：由领域主着色器物理固定时不发射 ────────────────────
+            // ── 片段阶段：物理固定，永远不由本函数发射 ──────────────────────
             //
             // 固定源直接成为最终片段文本。它同时也喂 stage key 的
             // definition_hash——键与真正被编译的文本是同一份字节。
-            if (request.fixed_fragment_source)
+            //
+            // 缺失即硬失败：片段拼装路径已经删掉，没有"退回去生成"这回事。
+            // 让它留在空指针上静默产出空片段，症状会是下游的
+            // `FinalizeShaderBuildContext` 悄悄 false，看不出根因。
+            if (!request.fixed_fragment_source
+             || !request.fixed_fragment_source[0])
             {
-                plan.fs = request.fixed_fragment_source;
-                return true;
-            }
-
-            FragmentTemplateComposer composer;
-            ShaderDocument &fragment_document = document_capture
-                ? document_capture->fragment_document
-                : plan.fragment_source_document;
-            ShaderDocumentDiagnostics fragment_diagnostics;
-            if (!composer.Compose(
-                    plan.compose_input, fragment_document, fragment_diagnostics))
-            {
-                s_last_build_generic_material_error = "composer.Compose failed: ";
-                for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
-                {
-                    s_last_build_generic_material_error += fragment_diagnostics[i]->message.c_str();
-                }
-                GLogError("[ShaderGen] Generic material fragment document build failed: name=%s",
-                          definition.definition_name.c_str());
+                s_last_build_generic_material_error =
+                    "fixed_fragment_source is required (fragment stage is physically fixed)";
+                GLogError(
+                    "[ShaderGen] Generic material build has no fixed fragment source: name=%s",
+                    definition.definition_name.c_str());
                 return false;
             }
-            {
-                AnsiString serialized;
-                if (!fragment_document.Serialize(serialized, fragment_diagnostics))
-                {
-                    s_last_build_generic_material_error = "fragment_document.Serialize failed: ";
-                    for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
-                    {
-                        const ShaderDocumentDiagnostic &d = *fragment_diagnostics[i];
-                        s_last_build_generic_material_error += "[";
-                        s_last_build_generic_material_error += d.code.c_str();
-                        s_last_build_generic_material_error += "] ";
-                        s_last_build_generic_material_error += d.message.c_str();
-                        s_last_build_generic_material_error += "; ";
-                    }
-                    GLogError("[ShaderGen] Generic material fragment document serialization failed: name=%s",
-                              definition.definition_name.c_str());
-                    for (int i = 0; i < fragment_diagnostics.GetCount(); ++i)
-                    {
-                        const ShaderDocumentDiagnostic &d = *fragment_diagnostics[i];
-                        GLogError("[ShaderGen] fragment-doc-diagnostic[%d] code=%s message=%s block_index=%d stage=%s logic=%s module=%s path=%s",
-                                  i,
-                                  d.code.c_str(),
-                                  d.message.c_str(),
-                                  d.block_index,
-                                  d.source.stage.c_str(),
-                                  d.source.logical_name.c_str(),
-                                  d.source.module.c_str(),
-                                  d.source.path.c_str());
-                    }
-                    return false;
-                }
-                plan.fs.assign(serialized.c_str(), serialized.Length());
-            }
 
-            if (document_capture)
-            {
-                document_capture->CaptureSourceDocuments(
-                    mesh_document, fragment_document);
-            }
+            plan.fs = request.fixed_fragment_source;
+
             return true;
         }
 
@@ -762,46 +714,6 @@ namespace hgl::graph::mtl
             }
 
             return dependency_hash;
-        }
-
-        /// 构造 fragment 阶段的发射输入。
-        ///
-        /// ComposeInput 是「声明侧」与「发射侧」之间唯一的一份对象：interface_hash
-        /// 直接吃它，Phase 4 原样把它喂给 Compose()。两处各自拼装会悄悄分叉。
-        bool BuildFragmentEmissionInput(
-            const MaterialDefinition &definition,
-            GenericMaterialBuildPlan &plan)
-        {
-            if (!BuildCodeModuleDocument(
-                    plan.manifest.IsValid() ? &plan.manifest : nullptr,
-                    "fragment",
-                    definition.definition_name.c_str(),
-                    plan.code_module_document))
-            {
-                GLogError("[ShaderGen] Generic material code module document build failed: name=%s",
-                          definition.definition_name.c_str());
-                return false;
-            }
-
-            FragmentTemplateComposer::ComposeInput &input = plan.compose_input;
-            input = FragmentTemplateComposer::ComposeInput{};
-            input.resolved_template =
-                plan.resolved_render_template.IsValid()
-                    ? &plan.resolved_render_template : nullptr;
-            input.alpha_test =
-                plan.coverage.mode == MaterialCoverageMode::AlphaTest
-             || plan.coverage.mode == MaterialCoverageMode::AlphaTestDither;
-            input.alpha_cutoff = plan.coverage.alpha_cutoff;
-            input.dither =
-                plan.coverage.mode == MaterialCoverageMode::Dither
-             || plan.coverage.mode == MaterialCoverageMode::AlphaTestDither;
-            input.alpha_to_output = plan.alpha_to_output;
-            input.fragment_inputs = &plan.stage_interface;
-            input.output_contract = &plan.output_contract;
-            input.coverage_contract = &plan.coverage;
-            input.code_module_document = &plan.code_module_document;
-            input.texture_declarations = &definition.texture_declarations;
-            return true;
         }
 
         /// 校验并归一化输出附件契约。
@@ -995,7 +907,7 @@ namespace hgl::graph::mtl
         // 代价是键必须等 Phase 4 发射完才能算；用不起早退的地方由上层用变体键
         //（`mtl::ComputeMaterialProgramManifestKey`，纯内存）做一级缓存补偿。
         // ═══════════════════════════════════════════════════════════════════
-        void AssembleProgramLinkFromSource(
+        bool AssembleProgramLinkFromSource(
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
@@ -1049,12 +961,20 @@ namespace hgl::graph::mtl
             // 排查失效原因时能一眼看出是哪一类。
             //
             // 领域固定主着色器路径没有 ComposeInput（片段不发射），接口形状由
-            // 调用方按「领域 + purpose + 覆盖判定」给出。
+            // 调用方按「领域 + purpose + 覆盖判定」给出，因此这里必须是硬输入：
+            // 兜底成 0 会让所有覆盖形态在键里塌成同一个片段 stage。
+            if (request.fixed_fragment_interface_hash == 0)
+            {
+                s_last_build_generic_material_error =
+                    "fixed_fragment_interface_hash is required when the fragment stage is physically fixed";
+                GLogError(
+                    "[ShaderGen] Generic material build has no fixed fragment interface hash: name=%s",
+                    definition.definition_name.c_str());
+                return false;
+            }
+
             const uint64 fragment_interface_hash =
-                request.fixed_fragment_interface_hash != 0
-                    ? request.fixed_fragment_interface_hash
-                    : FragmentTemplateComposer::GetInterfaceInputHash(
-                            plan.compose_input);
+                request.fixed_fragment_interface_hash;
 
             plan.program_link.fragment_stage = BuildShaderStageKey(
                 ShaderStage::Fragment,
@@ -1069,6 +989,7 @@ namespace hgl::graph::mtl
             plan.program_link.render_target_hash =
                 GetOutputContractHash(plan.output_contract);
             plan.program_link.compiler_hash = compiler_hash;
+            return true;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1104,7 +1025,14 @@ namespace hgl::graph::mtl
 #endif
 
             // ── stage key：从最终发射文本派生（唯一路径）──
-            AssembleProgramLinkFromSource(profile, definition, request, plan);
+            if (!AssembleProgramLinkFromSource(profile, definition, request, plan))
+            {
+                if (s_last_build_generic_material_error.IsEmpty())
+                    s_last_build_generic_material_error =
+                        "AssembleProgramLinkFromSource failed";
+                GLogError("[BuildGenericMaterial] AssembleProgramLinkFromSource failed");
+                return false;
+            }
 
             config.program_link = &plan.program_link;
             config.material_private_data = definition.material_private_data;
@@ -1178,19 +1106,8 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
-        // fragment 发射输入先建好：interface_hash 直接吃这份 ComposeInput，
-        // Phase 4 也原样复用它——两处共用一份对象，避免"声明侧看到的"与
-        // "实际发射的"悄悄分叉。
-        // 片段阶段已由领域主着色器物理固定时没有可发射的东西，整条链跳过。
-        if (!request.fixed_fragment_source
-         && !BuildFragmentEmissionInput(resolved_definition, plan))
-        {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "BuildFragmentEmissionInput failed";
-            GLogError("[BuildGenericMaterial] BuildFragmentEmissionInput failed");
-            return nullptr;
-        }
-
+        // 片段发射输入已随 FragmentTemplateComposer 一并删除：片段阶段由领域
+        // 主着色器物理固定，构建请求直接带来最终文本。
         if (!BuildFragmentOutputContract(resolved_definition, plan))
         {
             if (s_last_build_generic_material_error.IsEmpty())
@@ -1225,9 +1142,9 @@ namespace hgl::graph::mtl
             document_capture
                 ? document_capture->mesh_source_document
                 : plan.mesh_source_document,
-            document_capture
-                ? document_capture->fragment_document
-                : plan.fragment_source_document,
+            // 片段源物理固定：没有 source document，最终文本由
+            // config.fixed_fragment_source 直接提供。
+            ShaderDocument{},
             config, document_capture);
         if (!result)
         {

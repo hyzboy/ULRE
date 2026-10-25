@@ -5,7 +5,7 @@
 #include <hgl/mtl/ShaderConfig.h>
 #include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/mtl/FragmentTemplateComposer.h>
+#include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/PipelineConfigEmitter.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
@@ -72,12 +72,11 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
-    /// 用**领域后端**构建一次并收尾（跑完把后端槽位交还生成器）。
+    /// 用**领域后端**构建一次并收尾（跑完把后端槽位复原）。
     ///
-    /// 阶段 5.2 起门禁不再依赖生成器的 `CreateMaterialFromDefinition`：生成器要被
-    /// 物理删除，而「编译出的二进制长什么样」这类判据本来就只该问后端。领域后端
-    /// 内部强制 `defer_finalize`（SPV 编译要等 include 根设对），因此调用方必须
-    /// 显式收尾 —— 收尾之后 `HasProgramLink()` 才成立。
+    /// 门禁不依赖任何生成器入口：生成器已物理删除，而「编译出的二进制长什么样」
+    /// 这类判据本来就只该问后端。领域后端内部强制 `defer_finalize`（SPV 编译要等
+    /// include 根设对），因此调用方必须显式收尾 —— 收尾之后 `HasProgramLink()` 才成立。
     ///
     /// 失败时 `error` 取领域后端/网格构建的报错；两者都没有时给一句兜底，
     /// 免得诊断变成空行（GLogError 不进 stdout，门禁里看不见）。
@@ -111,69 +110,8 @@ namespace
                 ctx.reset();
             }
         }
-        InstallShaderGenProgramBuildBackend();
+        InstallDomainShaderBuildBackend();
         return ctx;
-    }
-
-    static bool ComposeTemplateText(
-        const RenderTemplateID template_id,
-        const SceneRenderTemplateProfile &profile,
-        const MaterialDefinition *definition,
-        const bool alpha_test,
-        const float alpha_cutoff,
-        const bool dither,
-        const OutputContract *output_contract,
-        const MaterialCoverageContract *coverage_contract,
-        std::string &out_text,
-        std::string &out_error)
-    {
-        RenderTemplateRequest request{};
-        RenderTemplateValidationDiagnostic template_diagnostic{};
-        if (!ResolveSceneRenderTemplateRequest(
-                template_id, ShaderStage::Fragment, profile, request,
-                template_diagnostic)
-         || (definition
-             && !AppendMaterialRenderTemplateRoots(*definition, request)))
-        {
-            out_error = "render template request resolution failed";
-            return false;
-        }
-
-        ResolvedRenderTemplate resolved_template{};
-        if (!ResolveRenderTemplate(
-                request, GetShaderCodeModuleRegistry(), resolved_template,
-                template_diagnostic))
-        {
-            out_error = "render template resolution failed";
-            return false;
-        }
-
-        FragmentTemplateComposer composer;
-        FragmentTemplateComposer::ComposeInput input{};
-        input.resolved_template = &resolved_template;
-        input.alpha_test = alpha_test;
-        input.alpha_cutoff = alpha_cutoff;
-        input.dither = dither;
-        input.output_contract = output_contract;
-        input.coverage_contract = coverage_contract;
-
-        ShaderDocument document;
-        ShaderDocumentDiagnostics diagnostics;
-        hgl::AnsiString serialized;
-        if (!composer.Compose(input, document, diagnostics)
-         || !document.SerializeFragment(serialized, diagnostics))
-        {
-            if (diagnostics.GetCount() > 0)
-                out_error = diagnostics[0]->message.c_str();
-            else
-                out_error = "fragment template composition failed";
-            return false;
-        }
-
-        out_text.assign(
-            serialized.c_str(),
-            static_cast<size_t>(serialized.Length()));
-        return true;
     }
 
     static std::string GenerateMeshShaderDocumentText(
@@ -294,6 +232,8 @@ namespace
     {
         return hgl::ToOSString(RepoRootPath(suffix));
     }
+
+    static std::string ReadFileText(const std::string &path);
 
     static bool CheckVertexEntries(const std::vector<SerializedVertexEntry> &actual,
                                    const std::vector<SerializedVertexEntry> &expected,
@@ -926,120 +866,6 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "stable vertex-color ABI was not generated");
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunNativeFragmentTemplateCompositionCase()
-    {
-        GateResult result;
-        result.name = "N.native-fragment-template-composition";
-
-        MaterialDefinition lit{};
-        MaterialDefinition unlit{};
-        if (!TryGetMaterialDefinitionByID("Lit", lit)
-         || !TryGetMaterialDefinitionByID("UnlitTexture", unlit))
-        {
-            result.diagnostics.emplace_back(
-               "native template material definitions are unavailable");
-            result.passed = false;
-            return result;
-        }
-
-        OutputContract color_output{};
-        OutputContract shadow_output{};
-        MaterialOutputContractDiagnostic output_diagnostic{};
-        if (!BuildMaterialOutputContract(
-               PassType::ForwardOpaque, color_output, output_diagnostic)
-         || !BuildMaterialOutputContract(
-               PassType::ShadowOpaque, shadow_output, output_diagnostic))
-        {
-            result.diagnostics.emplace_back(
-               "native template output contracts failed to resolve");
-            result.passed = false;
-            return result;
-        }
-
-        MaterialCoverageContract masked_coverage{};
-        masked_coverage.mode = MaterialCoverageMode::AlphaTestDither;
-        masked_coverage.alpha_cutoff = 0.25f;
-        masked_coverage.requires_alpha_evaluation = true;
-
-        std::string lit_text;
-        std::string unlit_text;
-        std::string sky_text;
-        std::string shadow_opaque_text;
-        std::string shadow_masked_text;
-        std::string error;
-        if (!ComposeTemplateText(
-               RenderTemplateID::ForwardLitShadowedAO,
-               MakeIdentityForwardLitProfile(), &lit,
-               false, 0.5f, false, &color_output, nullptr, lit_text, error)
-         || !ComposeTemplateText(
-               RenderTemplateID::ForwardUnlit, MakeForwardUnlitProfile(), &unlit,
-               true, 0.25f, true, &color_output, &masked_coverage,
-               unlit_text, error)
-         || !ComposeTemplateText(
-               RenderTemplateID::Sky, MakeSkyProfile(), nullptr,
-               false, 0.5f, false, &color_output, nullptr, sky_text, error)
-         || !ComposeTemplateText(
-               RenderTemplateID::ShadowCasterOpaque,
-               MakeShadowCasterProfile(), nullptr,
-               false, 0.5f, false, &shadow_output, nullptr,
-               shadow_opaque_text, error)
-         || !ComposeTemplateText(
-               RenderTemplateID::ShadowCasterMasked,
-               MakeShadowCasterProfile(), &unlit,
-               true, 0.25f, true, &shadow_output, &masked_coverage,
-               shadow_masked_text, error))
-        {
-            result.diagnostics.emplace_back(
-               "native fragment template composition failed: " + error);
-        }
-        else
-        {
-            const auto has = [](const std::string &text, const char *needle)
-            {
-               return text.find(needle) != std::string::npos;
-            };
-            if (lit_text.compare(0, 8, "#version") != 0
-             || has(lit_text.substr(8), "#version")
-             || !has(lit_text, "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1")
-             || !has(lit_text, "#include \"lighting/forward_pbr.glsl\"")
-             || !has(lit_text, "#include \"material/pbr_surface_source.glsl\"")
-             || !has(lit_text, "#include \"ntb/ntb_tangent_vbo_normalmap.glsl\"")
-             || !has(lit_text, "EvalPassEnvironment("))
-               result.diagnostics.emplace_back(
-                   "native forward-lit template output is incomplete");
-
-            if (!has(unlit_text, "#define HGL_USE_SCENE_LIGHTING 0")
-             || !has(unlit_text, "#define HGL_ALPHA_TEST 1")
-             || !has(unlit_text, "#define HGL_ALPHA_CUTOFF 0.250000")
-             || !has(unlit_text, "#define HGL_ALPHA_DITHER 1")
-             || !has(unlit_text, "#include \"material/texture_source.glsl\"")
-             || !has(unlit_text, "layout(location=0) out vec4 outColor;")
-             || !has(unlit_text, "HGLComposeColor"))
-               result.diagnostics.emplace_back(
-                   "native forward-unlit output or coverage defines are incomplete");
-
-            if (!has(sky_text, "#include \"sky/sky_atmosphere.glsl\"")
-             || !has(sky_text, "#include \"surface/sky_minimal_surface.glsl\"")
-             || !has(sky_text, "si.worldPos = fragDirection"))
-               result.diagnostics.emplace_back(
-                   "native sky template output is incomplete");
-
-            if (!has(shadow_opaque_text, "void main()")
-             || has(shadow_opaque_text, "layout(location=0) out")
-             || has(shadow_opaque_text, "EvalAlpha(")
-             || !has(shadow_masked_text, "#define HGL_COVERAGE_ONLY 1")
-             || !has(shadow_masked_text, "#define HGL_ALPHA_TEST 1")
-             || !has(shadow_masked_text, "#define HGL_ALPHA_DITHER 1")
-             || !has(shadow_masked_text, "EvalAlpha(")
-             || has(shadow_masked_text, "EvalLighting("))
-               result.diagnostics.emplace_back(
-                   "native shadow template coverage or output is incomplete");
         }
 
         result.passed = result.diagnostics.empty();
@@ -2164,7 +1990,8 @@ namespace
                 const auto build = [&](
                     const ShaderProgramPurpose purpose,
                     const bool alpha_test,
-                    const bool dither)
+                    const bool dither,
+                    std::string *out_options = nullptr)
                 {
                     MaterialDefinition selected = lit;
                     MaterialDefinitionBuildRequest request{};
@@ -2204,6 +2031,41 @@ namespace
                         result.diagnostics.emplace_back("AppendMaterialRenderTemplateRoots failed");
                         return std::unique_ptr<ShaderBuildContext>();
                     }
+                    // 本用例断言的是输出契约 / program link 形状，片段文本不参与。
+                    // 片段源照样按领域固定源填进请求——不填会被
+                    // GenericMaterialBuilder 直接拒收（片段拼装链已删除）。
+                    FixedFragmentSource fixed;
+                    if (!ResolveFixedFragmentSource(selected, request, fixed))
+                    {
+                        result.diagnostics.emplace_back(
+                            std::string("ResolveFixedFragmentSource failed for ")
+                            + GetRenderTemplateName(template_id));
+                        return std::unique_ptr<ShaderBuildContext>();
+                    }
+                    request.fixed_fragment_source = fixed.source.c_str();
+                    request.fixed_fragment_interface_hash = fixed.interface_hash;
+                    if (out_options)
+                    {
+                        // 覆盖语义（alpha test / cutoff / dither）**不在**固定主
+                        // 着色器文本里，而全部落在 generated/options.glsl 的
+                        // #define 上。要让本用例仍能断言它，就必须走生产同一条
+                        // 发射路径取值（手抄宏表会随发射器漂移）。
+                        hgl::AnsiString options_text;
+                        if (!EmitDomainOptionsForDefinition(
+                                selected, request, fixed.domain, purpose,
+                                options_text))
+                        {
+                            result.diagnostics.emplace_back(
+                                std::string("options emission failed for ")
+                                + GetRenderTemplateName(template_id));
+                        }
+                        else if (options_text.Length() > 0)
+                        {
+                            out_options->assign(
+                                options_text.c_str(),
+                                static_cast<size_t>(options_text.Length()));
+                        }
+                    }
                     auto ctx = std::unique_ptr<ShaderBuildContext>(
                         BuildGenericMaterial(
                             nullptr, request, selected, nullptr));
@@ -2219,6 +2081,8 @@ namespace
                     return ctx;
                 };
 
+                std::string masked_depth_options;
+                std::string dither_shadow_options;
                 const auto opaque = build(
                     ShaderProgramPurpose::ForwardColor,
                     false,
@@ -2238,11 +2102,13 @@ namespace
                 const auto masked_depth = build(
                     ShaderProgramPurpose::DepthOnly,
                     true,
-                    false);
+                    false,
+                    &masked_depth_options);
                 const auto dither_shadow = build(
                     ShaderProgramPurpose::ShadowDepth,
                     false,
-                    true);
+                    true,
+                    &dither_shadow_options);
 
                 if (!opaque || !opaque->HasProgramLink()) result.diagnostics.emplace_back("opaque failed");
                 if (!transparent || !transparent->HasProgramLink()) result.diagnostics.emplace_back("transparent failed");
@@ -2318,21 +2184,35 @@ namespace
                     if (has(depth.get(), ShaderStage::Mesh)
                      && contains(depth_ms, "fragDataIndexID"))
                         mismatch = true;
-                    // masked_depth：alpha test，期望含 EvalAlpha/HGLApplyAlpha/ALPHA_TEST
+                    // masked_depth：alpha test，固定主着色器必须真的走覆盖判定
+                    // 通路（EvalAlpha + HGLApplyAlpha），且不得引入光照合成。
                     if (has(masked_depth.get(), ShaderStage::Fragment)
                      && (lacks(masked_depth_fs, "EvalAlpha(")
                       || lacks(masked_depth_fs, "HGLApplyAlpha(")
-                      || lacks(masked_depth_fs, "#define HGL_ALPHA_TEST 1")
                       || contains(masked_depth_fs, "EvalLighting(")))
+                        mismatch = true;
+                    // 覆盖宏不在片段文本里（固定源无条件 include
+                    // generated/options.glsl），因此改断 options 文本：
+                    // alpha test 必须真的发射 HGL_ALPHA_TEST + cutoff。
+                    if (masked_depth_options.find("#define HGL_ALPHA_TEST 1")
+                            == std::string::npos
+                     || masked_depth_options.find("#define HGL_ALPHA_CUTOFF ")
+                            == std::string::npos)
                         mismatch = true;
                     // masked_depth：mesh 源不应含 fragWorldPos（depth 无需世界坐标输出）
                     if (has(masked_depth.get(), ShaderStage::Mesh)
                      && contains(masked_depth_ms, "fragWorldPos"))
                         mismatch = true;
-                    // dither_shadow：期望含 ALPHA_DITHER + EvalLighting
+                    // dither_shadow：dither 与 alpha test 共用同一份 masked 主着色器，
+                    // 区别只在 options —— 必须是 HGL_ALPHA_DITHER（而非 ALPHA_TEST）。
                     if (has(dither_shadow.get(), ShaderStage::Fragment)
-                     && (lacks(dither_shadow_fs, "#define HGL_ALPHA_DITHER 1")
+                     && (lacks(dither_shadow_fs, "HGLApplyAlpha(")
                       || contains(dither_shadow_fs, "EvalLighting(")))
+                        mismatch = true;
+                    if (dither_shadow_options.find("#define HGL_ALPHA_DITHER 1")
+                            == std::string::npos
+                     || dither_shadow_options.find("#define HGL_ALPHA_TEST ")
+                            != std::string::npos)
                         mismatch = true;
 
                     if (mismatch)
@@ -2513,6 +2393,14 @@ namespace
                  || !AppendMaterialRenderTemplateRoots(
                         definition, request.render_template_request))
                     return std::unique_ptr<ShaderBuildContext>();
+                // 本用例断言的是统一骨架的 program link 形状，片段文本不参与。
+                // 片段源照样按领域固定源填进请求——不填会被
+                // GenericMaterialBuilder 直接拒收（片段拼装链已删除）。
+                FixedFragmentSource fixed;
+                if (!ResolveFixedFragmentSource(definition, request, fixed))
+                    return std::unique_ptr<ShaderBuildContext>();
+                request.fixed_fragment_source = fixed.source.c_str();
+                request.fixed_fragment_interface_hash = fixed.interface_hash;
                 return std::unique_ptr<ShaderBuildContext>(
                     BuildGenericMaterial(
                         nullptr, request, definition, nullptr));
@@ -2537,36 +2425,44 @@ namespace
                     unlit_build->GetStageShader(
                         ShaderStage::Fragment)->GetFinalGLSL();
                 if (lit_fs.find(
-                        "#define HGL_USE_SCENE_LIGHTING 1")
-                        == std::string::npos
-                 || lit_fs.find(
                         "#include \"lighting/forward_pbr.glsl\"")
                         == std::string::npos
                  || lit_fs.find(
                         "#include \"compositor/forward_lighting.glsl\"")
                         == std::string::npos
-                 || unlit_fs.find(
-                        "#define HGL_USE_SCENE_LIGHTING 0")
+                 || lit_fs.find(
+                        "EvalSurface(si, materialDataIndex)")
                         == std::string::npos
-                 || unlit_fs.find(
+                 || lit_fs.find("EvalPassEnvironment(")
+                        == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "unified Lit module schedule mismatch");
+                }
+                // 「有无场景光照」在新架构里不再是宏（旧的
+                // `#define HGL_USE_SCENE_LIGHTING 0/1` 属于已删除的生成器 define
+                // 文档），而是**结构性的**：Lit 走 forward_pbr + forward_lighting
+                // 合成器，无光照领域走 flat_lighting 且完全不含光照模块。
+                if (unlit_fs.find(
                         "#include \"compositor/flat_lighting.glsl\"")
                         == std::string::npos
                  || unlit_fs.find(
                         "#include \"common/surface_interface.glsl\"")
                         == std::string::npos
-                 || lit_fs.find(
-                        "EvalSurface(si, materialDataIndex)")
-                        == std::string::npos
                  || unlit_fs.find(
                         "EvalSurface(si, materialDataIndex)")
                         == std::string::npos
-                 || lit_fs.find("EvalPassEnvironment(")
-                        == std::string::npos
                  || unlit_fs.find("EvalPassEnvironment(")
-                        == std::string::npos)
+                        == std::string::npos
+                 || unlit_fs.find(
+                        "#include \"compositor/forward_lighting.glsl\"")
+                        != std::string::npos
+                 || unlit_fs.find(
+                        "#include \"lighting/forward_pbr.glsl\"")
+                        != std::string::npos)
                 {
                     result.diagnostics.emplace_back(
-                        "unified Lit/Unlit module schedule mismatch");
+                        "unified Unlit module schedule mismatch");
                 }
                 // AO 槽必须真的被消费：provider 的 #include 排在 compositor 之前
                 // （否则 GetAmbientOcclusion 未声明即调用）。此前该槽只 include
@@ -2620,23 +2516,27 @@ namespace
                 "unlit_source") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
-        OutputContract output{};
-        MaterialOutputContractDiagnostic output_diagnostic{};
-        std::string text;
-        std::string error;
-        if (!BuildMaterialOutputContract(
-                PassType::ForwardOpaque, output, output_diagnostic)
-         || !ComposeTemplateText(
-                RenderTemplateID::ForwardUnlit, MakeForwardUnlitProfile(),
-                &pure_color,
-                false, 0.5f, false, &output, nullptr, text, error)
-         || text.find("#include \"material/unlit_source.glsl\"")
-                == std::string::npos
-         || text.find("#include \"compositor/flat_lighting.glsl\"")
-                == std::string::npos)
+        // 片段阶段由领域主着色器物理固定：PureColor 走 UnlitSolid，那份
+        // `.frag` 必须真的 include unlit 的 surface provider 与 flat 光照
+        // compositor。原先这里组装一遍模板再查文本，组装器已删除；直接查真源
+        // 更硬——它查的就是运行时会被编译的那份字节。
+        const std::string unlit_fs = ReadFileText(
+            RepoRootPath("ShaderLibrary/domain/unlit_solid/unlit_solid.frag"));
+        if (unlit_fs.empty())
         {
             result.diagnostics.emplace_back(
-                "native PureColor fragment template is invalid: " + error);
+                "unlit_solid.frag is unavailable");
+        }
+        else
+        {
+            if (unlit_fs.find("#include \"material/unlit_source.glsl\"")
+                == std::string::npos)
+                result.diagnostics.emplace_back(
+                    "unlit_solid.frag does not use material/unlit_source.glsl");
+            if (unlit_fs.find("#include \"compositor/flat_lighting.glsl\"")
+                == std::string::npos)
+                result.diagnostics.emplace_back(
+                    "unlit_solid.frag does not use compositor/flat_lighting.glsl");
         }
 
         result.passed = result.diagnostics.empty();
@@ -9383,7 +9283,7 @@ void main()
           PrimitiveType::Lines, true },
     };
 
-    /// 采样器预设表是进程级单例，`MaterialShaderEmitter` 靠它把 `Trilinear`
+    /// 采样器预设表是进程级单例，`BuildSamplerMacros` 靠它把 `Trilinear`
     /// 翻成 `#define TrilinearSampler 2u`。没装载时宏就整体消失——GLSL 仍能生成，
     /// 只是少几行 `#define`，静默且致命。
     ///
@@ -9744,23 +9644,19 @@ void main()
     // ═════════════════════════════════════════════════════════════════════════
     // DH.domain-backend-equivalence
     //
-    // 领域后端产物的**等价性基线**。
+    // 领域后端产物的**冻结基线**（反射文本 + SPV 体积）。
     //
     // 历史上这条用例是「生成器 vs 领域后端」的现场比对（阶段 4）。生成器在
-    // 阶段 5.2 被物理删除之后就没有第二条路径可现场比了，而「换个后端产物没变」
-    // 这件事恰恰是最需要长期守住的东西 —— 因此把生成器那一侧的判据**冻结**成
-    // 仓库内的 golden：录制时由生成器产出，之后领域后端必须逐字对齐。
-    //
-    // 录制：设置 `ULRE_DOMAIN_EQUIV_RECORD=1` 跑 `all`。该模式下仍会构建生成器
-    // 路径并断言两侧相等（录制与比对是同一次运行的同一个结论），把**生成器**
-    // 那一侧写进 golden。生成器删除后这个分支失效，`CompareAgainstGolden` 的
-    // 「缺失即生成」引导仍会让新形状首跑落地待审。
+    // 阶段 5.2 被物理删除之后就没有第二条路径可现场比了，继续保留只会变成
+    // 同一份输出的自证 —— 因此判据降级为「与仓库内 golden 逐字对齐」，即
+    // 15 个形状的变更探测器：任何领域主着色器、options 发射、include 接线的
+    // 漂移都会在这里现形，并精确指出是哪个形状变了。
     //
     // 为什么不能只靠 scripts/ci/verify-domain-master-shaders.ps1：
     //   那个脚本证明的是「主着色器 + options.glsl（由 DomainOptionsRegression 写出）
-    //   编译出来 == 生成器产物」。它绕开了引擎：options 是那个工具自己 emit 的，
-    //   主着色器是脚本手选的。**接线**（后端选了哪份文件、options 里的字段从哪来、
-    //   include 根怎么给）完全没有被它覆盖。这里补的就是这一段。
+    //   能编译」。它绕开了引擎：options 是那个工具自己 emit 的，主着色器是脚本
+    //   手选的。**接线**（后端选了哪份文件、options 里的字段从哪来、include 根
+    //   怎么给）完全没有被它覆盖。这里补的就是这一段。
     //
     // 判据（与脚本一致，别换成逐字节比较）：
     //   · SPIR-V 逐字节比较无效——同一份源码两次编译就差几十字节（内嵌内容哈希）；
@@ -9768,16 +9664,11 @@ void main()
     //     编译器/插件升级导致字节数变化时，golden 会精确指出是哪个形状变了，
     //     按提示重录并人工确认差异即可。
     //
+    // 本用例**不**做 mesh ↔ fragment varying 链接校验（见 ③ 的说明）。
+    //
     // 防"自证"：request 不带 artifact store（默认 nullptr）⇒ 不碰磁盘缓存，
-    // 否则可能直接读到上一次的产物，等价性就成了循环论证。
+    // 否则比到的就不是本次编译。
     // ═════════════════════════════════════════════════════════════════════════
-
-    /// 录制模式：由生成器一侧产出 golden（见上方注释）。
-    static bool DomainEquivRecordRequested()
-    {
-        const char *flag = std::getenv("ULRE_DOMAIN_EQUIV_RECORD");
-        return flag && flag[0] == '1';
-    }
 
     struct DomainBackendEquivShape
     {
@@ -10067,76 +9958,22 @@ void main()
 
             const std::string dom_text = FormatDomainEquivReflection(dom_view);
 
-            // ── ③ 录制：由生成器一侧产出 golden，并断言两侧此刻相等 ────────
+            // ── ③ 冻结基线 ─────────────────────────────────────────────────
             //
-            // 「等价」这个结论是由两种独立拼装方式同时得出同一条判据，才不是
-            // 自证。录制时现场比一次，比对的就是 golden 里的那些字节。
-            std::string golden_text = dom_text;
-            size_t golden_size = dom_fs->GetSPVSize();
-
-            if (DomainEquivRecordRequested())
-            {
-                std::unique_ptr<ShaderBuildContext> generated(
-                    BuildGenericMaterial(nullptr, request, definition, nullptr));
-                if (!generated)
-                {
-                    const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
-                    result.diagnostics.emplace_back(
-                        label + ": generator build failed: "
-                        + (err.IsEmpty() ? "unknown error" : err.c_str()));
-                    continue;
-                }
-
-                const ShaderCreateInfo *gen_fs = generated->has_fragment()
-                    ? generated->GetStageShader(ShaderStage::Fragment) : nullptr;
-                if (!gen_fs || !gen_fs->HasSPVData())
-                {
-                    result.diagnostics.emplace_back(
-                        label + ": generator produced no fragment SPIR-V");
-                    continue;
-                }
-                if (gen_fs->GetFinalGLSL().find("generated/options.glsl")
-                    != std::string::npos)
-                {
-                    result.diagnostics.emplace_back(
-                        label + ": generator GLSL unexpectedly references"
-                        " generated/options.glsl");
-                    continue;
-                }
-
-                hgl::ValueArray<uint8_t> gen_storage;
-                ShaderFlatView gen_view{};
-                if (!ReflectSPVData(
-                        gen_fs->GetSPVData(), gen_fs->GetSPVSize(),
-                        uint32_t(ShaderStage::Fragment), "main",
-                        gen_storage, gen_view))
-                {
-                    result.diagnostics.emplace_back(
-                        label + ": generator reflection failed");
-                    continue;
-                }
-
-                const std::string gen_text = FormatDomainEquivReflection(gen_view);
-                if (gen_text != dom_text)
-                {
-                    result.diagnostics.emplace_back(
-                        label + ": reflection differs\n--- generator ---\n" + gen_text
-                        + "--- domain ---\n" + dom_text);
-                    continue;
-                }
-                if (gen_fs->GetSPVSize() != dom_fs->GetSPVSize())
-                {
-                    char detail[160];
-                    std::snprintf(detail, sizeof(detail),
-                                  ": SPIR-V size differs (generator=%zu domain=%zu)",
-                                  gen_fs->GetSPVSize(), dom_fs->GetSPVSize());
-                    result.diagnostics.emplace_back(label + detail);
-                    continue;
-                }
-
-                golden_text = gen_text;
-                golden_size = gen_fs->GetSPVSize();
-            }
+            // 这里曾经有第二个"生成器"侧构建，用两条独立拼装路径产出同一形状
+            // 再逐字节比对——那才是"等价"的证据。片段阶段被领域主着色器物理
+            // 固定、且 GenericMaterialBuilder 已拒收没有固定片段源的构建之后，
+            // 第二条路径不存在了，继续留着只会是同一份输出的自证。
+            //
+            // 基线本身仍然有价值：它是这 15 个形状的反射文本 + SPV 体积的
+            // 变更探测器，任何领域主着色器 / options 发射的漂移都会在这里
+            // 现形。逐字节 SPV 比对已无对象，故不再参与。
+            //
+            // 注意：本用例**不做** mesh ↔ fragment varying 链接校验，
+            // `fragDataIndexID` 那类"片段声明了、网格没发射"的缺陷它看不见。
+            // 那类问题由 SPV.generated-interface 用真实 Vulkan 规则覆盖。
+            const std::string &golden_text = dom_text;
+            const size_t golden_size = dom_fs->GetSPVSize();
 
             // ── ④ 与冻结基线比对 ─────────────────────────────────────────
             {
@@ -10283,7 +10120,7 @@ void main()
                 ShaderProgramBuildBackend *backend = GetShaderProgramBuildBackend();
                 if (!backend)
                 {
-                    InstallShaderGenProgramBuildBackend();
+                    InstallDomainShaderBuildBackend();
                     result.diagnostics.emplace_back(label + ": domain backend slot empty");
                     continue;
                 }
@@ -10292,7 +10129,7 @@ void main()
                 if (!cold_ctx)
                 {
                     const char *err = GetLastDomainShaderBuildBackendError();
-                    InstallShaderGenProgramBuildBackend();
+                    InstallDomainShaderBuildBackend();
                     result.diagnostics.emplace_back(
                         label + ": cold build failed: "
                         + (err && err[0] ? err : "unknown error"));
@@ -10300,7 +10137,7 @@ void main()
                 }
                 if (!backend->FinalizeBuildContext(cold_ctx.get()))
                 {
-                    InstallShaderGenProgramBuildBackend();
+                    InstallDomainShaderBuildBackend();
                     char detail[256];
                     std::snprintf(detail, sizeof(detail),
                                   ": cold finalize failed (link=%d metadata=%d"
@@ -10314,7 +10151,7 @@ void main()
                     result.diagnostics.emplace_back(label + detail);
                     continue;
                 }
-                InstallShaderGenProgramBuildBackend();
+                InstallDomainShaderBuildBackend();
             }
 
             const ShaderCreateInfo *cold_fs =
@@ -10350,7 +10187,7 @@ void main()
                 ShaderProgramBuildBackend *backend = GetShaderProgramBuildBackend();
                 if (!backend)
                 {
-                    InstallShaderGenProgramBuildBackend();
+                    InstallDomainShaderBuildBackend();
                     result.diagnostics.emplace_back(label + ": domain backend slot empty (warm)");
                     continue;
                 }
@@ -10359,7 +10196,7 @@ void main()
                 if (!warm_ctx)
                 {
                     const char *err = GetLastDomainShaderBuildBackendError();
-                    InstallShaderGenProgramBuildBackend();
+                    InstallDomainShaderBuildBackend();
                     result.diagnostics.emplace_back(
                         label + ": warm build failed: "
                         + (err && err[0] ? err : "unknown error"));
@@ -10367,11 +10204,11 @@ void main()
                 }
                 if (!backend->FinalizeBuildContext(warm_ctx.get()))
                 {
-                    InstallShaderGenProgramBuildBackend();
+                    InstallDomainShaderBuildBackend();
                     result.diagnostics.emplace_back(label + ": warm finalize failed");
                     continue;
                 }
-                InstallShaderGenProgramBuildBackend();
+                InstallDomainShaderBuildBackend();
             }
 
             const ShaderCreateInfo *warm_fs =
@@ -10773,7 +10610,6 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunMeshDrawParamsHeadParityCase());
     if (run_interface) results.push_back(RunAddressOwnershipCase(false));
     if (run_interface) results.push_back(RunAddressOwnershipCase(true));
-    if (run_glsl) results.push_back(RunNativeFragmentTemplateCompositionCase());
     if (run_glsl) results.push_back(RunVkEnumTextCase());
     if (run_cache) results.push_back(RunComposedStageInterfaceCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());

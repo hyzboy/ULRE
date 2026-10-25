@@ -1,6 +1,5 @@
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
-#include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
@@ -479,15 +478,8 @@ int main(int argc, char **argv)
      || resolved.request.module_roots[0].include_path
             != "surface/material_surface.glsl")
         return 6;
-    FragmentTemplateComposer composer;
-    FragmentTemplateComposer::ComposeInput compose_input{};
-    compose_input.resolved_template = &resolved;
-    ShaderDocument document;
-    ShaderDocumentDiagnostics document_diagnostics;
-    if (!composer.Compose(
-            compose_input, document, document_diagnostics)
-     || document.GetBlockCount() == 0)
-        return 7;
+    // 片段模板组装（FragmentTemplateComposer）已随「无生成器」终态删除：
+    // 片段阶段的编排不再由本工具验证，改由领域固定主着色器文件本体承担。
     const SceneRenderTemplateProfile sky_profile = MakeSkyProfile();
     if (sky_profile.module_count != 2
      || sky_profile.roles[0] != ShaderModuleSlotRole::SkyProvider)

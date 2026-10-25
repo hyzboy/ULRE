@@ -8,10 +8,9 @@
 // （见根 CMakeLists.txt 的 `ULRE_SHADERGEN`）。发行形态整个 TU 不存在，钩子保持
 // 为空，编译器照常工作而不装任何后端。
 //
-// 这个 TU 独立于 `ShaderGenProgramBuildBackend.cpp`（阶段 5.2 要删掉那个文件）：
-// 接线是**存活**的东西，不该寄居在待删的生成器 TU 里。寄居的后果是删生成器时
-// 必须同时把接线搬走，而搬走那一刻的失败只会表现成「发行形态没有后端」这种
-// 事后才发现的症状。
+// 这个 TU 是**存活**的接线，不寄居在任何具体后端里。阶段 5.2 之前它曾住在
+// 生成器 TU 里，删生成器时就必须顺带搬家；搬晚一步的症状是「发行形态没有后端」，
+// 只在运行期才暴露。现在后端只有领域后端一个，选择器也随之消失。
 
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include <hgl/ShaderCompilerAPI.h>
@@ -22,29 +21,16 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        /// 生命周期钩子两端的**选择器**：安装时读一次环境变量并记住结论，
-        /// 卸载必须装/卸对称（`SetShaderProgramBuildBackend(nullptr)` 对错的
-        /// 后端调用会把槽位清空但漏掉释放器，或反之）。
-        bool g_use_shadergen_build_backend = false;
-
-        void InstallSelectedShaderProgramBuildBackend()
+        /// 生命周期钩子的两端。装/卸必须对称：`SetShaderProgramBuildBackend(nullptr)`
+        /// 与释放器各自成对，漏一边会让槽位清空却留着释放器（或反之）。
+        void InstallShaderProgramBuildBackend()
         {
-            g_use_shadergen_build_backend = IsShaderGenBuildBackendRequested();
-
-            if (g_use_shadergen_build_backend)
-                InstallShaderGenProgramBuildBackend();
-            else
-                InstallDomainShaderBuildBackend();
+            InstallDomainShaderBuildBackend();
         }
 
-        void UninstallSelectedShaderProgramBuildBackend()
+        void UninstallShaderProgramBuildBackend()
         {
-            if (g_use_shadergen_build_backend)
-                UninstallShaderGenProgramBuildBackend();
-            else
-                UninstallDomainShaderBuildBackend();
-
-            g_use_shadergen_build_backend = false;
+            UninstallDomainShaderBuildBackend();
         }
 
         struct ShaderGenBackendLifecycleRegistration
@@ -52,8 +38,8 @@ namespace hgl::graph::mtl
             ShaderGenBackendLifecycleRegistration()
             {
                 hgl::graph::SetShaderCompilerLifecycleHooks(
-                    &InstallSelectedShaderProgramBuildBackend,
-                    &UninstallSelectedShaderProgramBuildBackend);
+                    &InstallShaderProgramBuildBackend,
+                    &UninstallShaderProgramBuildBackend);
             }
         };//struct ShaderGenBackendLifecycleRegistration
 

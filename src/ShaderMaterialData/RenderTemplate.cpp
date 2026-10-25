@@ -65,8 +65,8 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::SurfaceProvider }
         };
 
-        // OutputPolicy 仅参与校验、不发射：WriteMaterialOutput 由
-        // FragmentTemplateComposer::AppendOutputDeclarations 内联生成。
+        // OutputPolicy 仅参与校验、不发射：WriteMaterialOutput 由领域主着色器
+        // 直接书写，不经任何拼装。
         // NTBProvider 必需的理由同上（surface 模块要解析 GetNTB）。
         constexpr RenderTemplateSlot ShadowCasterOpaqueSlots[] =
         {

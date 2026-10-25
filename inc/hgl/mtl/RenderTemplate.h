@@ -95,8 +95,8 @@ namespace hgl::graph::mtl
         ShaderStage stage = ShaderStage::Fragment;
         uint32 version = 0;
 
-        /// slots 的数组顺序即 fragment 模块的 #include 发射顺序，
-        /// FragmentTemplateComposer 按此顺序遍历（见 AppendSlotIncludes）。
+        /// slots 的数组顺序即 fragment 模块的 #include 排列顺序，领域主着色器
+        /// 按此顺序 include（见 ShaderLibrary/domain/）。
         /// 重排会改变生成的 GLSL 文本 → program hash 变化 → SPV 缓存失效。
         ///
         /// 硬约束：SurfaceProvider 必须排在 MaterialSourceProvider 与
@@ -149,8 +149,8 @@ namespace hgl::graph::mtl
     /// "forward_lit.glsl.tmpl"）。四种模板族都有骨架文件；返回 nullptr 表示
     /// 该模板未登记骨架，composer 会以 `template-unregistered` 拒绝它。
     ///
-    /// 骨架文件名属于模板定义的一部分：此前该映射只存在于
-    /// FragmentTemplateComposer 的匿名命名空间里，其它阶段无法复用。
+    /// 骨架文件名属于模板定义的一部分：此前该映射只存在于片段拼装器的
+    /// 匿名命名空间里，拼装器删除后它成了唯一出口。
     const char *GetRenderTemplateFragmentSourceFile(RenderTemplateID id) noexcept;
 
     const char *GetShaderModuleSlotRoleName(ShaderModuleSlotRole role) noexcept;

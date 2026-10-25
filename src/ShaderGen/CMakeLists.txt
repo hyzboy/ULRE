@@ -30,18 +30,14 @@ SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 
 set(DOCUMENT_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderDocument.h
-    document/ShaderDocument.cpp
-    document/DocumentFragmentBuilder.h
-    document/DocumentFragmentBuilder.cpp)
+    document/ShaderDocument.cpp)
 SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 
 set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ResolvedRenderTemplate.h
     template/RenderTemplateResolve.cpp
     ${SHADERGEN_INCLUDE_PATH}/PipelineConfigEmitter.h
-    template/PipelineConfigEmitter.cpp
-    ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
-    template/FragmentTemplateComposer.cpp)
+    template/PipelineConfigEmitter.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
 
 set(SSBO_STRUCT_FILES
@@ -59,9 +55,8 @@ SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 set(COMPILE_FILES
     compile/ShaderGenBackendInstall.h
     compile/ShaderCreateInfoCompile.cpp
-    compile/ShaderGenProgramBuildBackend.cpp
-    # 编译器插件的生命周期接线（选择器 + 注册对象）。独立成 TU 是因为它是
-    # **存活**代码：生成器 TU 删除后接线必须仍然在，否则发行形态没有后端。
+    # 编译器插件的生命周期接线（注册对象）。独立成 TU 是因为它是**存活**代码：
+    # 无对外符号，靠 WHOLE_ARCHIVE 才不被链接器丢掉。
     compile/ShaderBuildBackendLifecycle.cpp
     # 「不生成着色器」的后端：片段阶段换成领域固定主着色器 + options。
     # 临时留在本模块是因为它复用 BuildGenericMaterial 的网格阶段（见阶段五搬走）。
@@ -69,9 +64,7 @@ set(COMPILE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
     compile/ShaderProgramArtifactBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/MaterialShaderCompiler.h
-    compile/MaterialShaderCompiler.cpp
-    compile/MaterialShaderEmitter.h
-    compile/MaterialShaderEmitter.cpp)
+    compile/MaterialShaderCompiler.cpp)
 SOURCE_GROUP("Compile" FILES ${COMPILE_FILES})
 
 # ── glsl_module/ ─────────────────────────────────────────────────────────────

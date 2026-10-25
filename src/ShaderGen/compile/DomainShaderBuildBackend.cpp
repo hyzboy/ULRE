@@ -4,8 +4,7 @@
 // 这个后端做的是**减法**：
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// 生成器后端（ShaderGenProgramBuildBackend）把所有代码模块拼装成一份完整
-// GLSL 再编译。本后端只做四件事：
+// 生成器后端曾把所有代码模块拼装成一份完整 GLSL 再编译。本后端只做四件事：
 //
 //   1. 先按领域/pass/渲染状态解析出**固定片段源**（`ShaderLibrary/domain/...`
 //      主着色器，本身就是一个完整编译单元）并发射 `generated/options.glsl`
@@ -61,15 +60,6 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        /// 后端选择器。阶段 5.1 起**默认就是领域后端**：未设置时返回 false，
-        /// 只有显式写 `ULRE_SHADER_BUILD_BACKEND=shadergen` 才回到生成器。
-        ///
-        /// 之所以保留这个反向选择器而不是删掉：阶段 5.2 要物理删除生成器，
-        /// 在删除落地前需要一条能原地切回去的对照路径，用来证明「同一份材质
-        /// 换后端后的产物差异只来自拼装方式」。删除完成后该项一并消失。
-        constexpr const char *kBackendSelectorEnvironmentVariable =
-            "ULRE_SHADER_BUILD_BACKEND";
-
         // ── 小工具 ────────────────────────────────────────────────────────
 
         /// 最近一次领域后端失败原因。
@@ -237,8 +227,7 @@ namespace hgl::graph::mtl
             input.emit_shadow_pcf = !depth_purpose && HasShadowProviderSlot(request);
 
             // shadow_pcf_poisson_taps / shadow_normal_offset 用 DomainOptionsInput
-            // 的默认值（16 / 1）——生成器侧同样是这两个常量
-            // （FragmentTemplateComposer 的默认值，全流程无人改写）。
+            // 的默认值（16 / 1）——与历史上生成器侧的两个常量一致。
 
             input.face_normal_fallback = ResolveFaceNormalFallback(definition, request);
             input.vertex_normal_present = ResolveVertexNormalPresent(definition, request);
@@ -566,8 +555,8 @@ namespace hgl::graph::mtl
                 // ── 2. 网格阶段/链接规格/元数据仍走生成器构建器 ─────────────
                 //
                 // 请求里带上固定片段源 ⇒ 构建器**不发射**片段：不建代码模块
-                // 文档、不跑 FragmentTemplateComposer、不序列化片段文档，片段
-                // stage key 的 definition_hash 直接吃这份真正会被编译的文本。
+                // 文档、不序列化片段文档，片段 stage key 的 definition_hash
+                // 直接吃这份真正会被编译的文本。
                 // 仍要 `defer_finalize`：SPV 编译必须等 include 根设对，那一步
                 // 由本后端在第 3 步做（见 CompileFixedFragment）。
                 MaterialDefinitionBuildRequest deferred_request = request;
@@ -662,15 +651,6 @@ namespace hgl::graph::mtl
         }
 
         return true;
-    }
-
-    bool IsShaderGenBuildBackendRequested()
-    {
-        const char *selector = getenv(kBackendSelectorEnvironmentVariable);
-        if (!selector || !selector[0])
-            return false;
-
-        return std::strcmp(selector, "shadergen") == 0;
     }
 
     void InstallDomainShaderBuildBackend()

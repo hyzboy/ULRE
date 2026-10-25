@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
             ///
             /// 纯纹理材质（如 `UnlitTexture`）只命中第 2 类：合并信号为真但 payload 为假。
             /// 运行期校验若只读合并信号，就会把这类材质当成「缺绑定」错杀，因此本字段把
-            /// 第 1 类单独记下来（编译期判定，见 MaterialShaderEmitter 的
+            /// 第 1 类单独记下来（编译期判定，见 MaterialShaderCompiler 的
             /// `MaterialDefinitionRequiresPayloadRow`），运行期不再反推。
             bool requires_recipe_payload_row = false;
 

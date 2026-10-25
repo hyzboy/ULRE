@@ -63,8 +63,8 @@ namespace hgl::graph::mtl
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
             "sky_minimal_surface", "surface/sky_minimal_surface.glsl");
-        // 刻意不提供 OutputPolicy：Sky 骨架的 WriteMaterialOutput 由
-        // FragmentTemplateComposer::AppendOutputDeclarations 内联生成，
+        // 刻意不提供 OutputPolicy：Sky 骨架的 WriteMaterialOutput 由领域主
+        // 着色器直接书写，
         // forward_lighting 一个字节都不会出现在生成的 GLSL 里。给它一个 root
         // 只会让声明闭包把永不发射的模块（连同其 lighting_interface 依赖）
         // 算进去——纯粹的过近似，缓存键跟着无关文件失效。

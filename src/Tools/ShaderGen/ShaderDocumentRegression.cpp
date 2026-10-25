@@ -7,7 +7,6 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 #include <hgl/time/Time.h>
-#include "ShaderGen/document/DocumentFragmentBuilder.h"
 
 using namespace hgl;
 using namespace hgl::graph::mtl;
@@ -291,16 +290,6 @@ int main()
      || injected_serialized !=
             "#version 460\n#define INJECTED 1\nvoid main() {}\n")
         return 7;
-
-    ShaderDocument builder_document;
-    ShaderDocumentDiagnostics builder_diagnostics;
-    DocumentFragmentBuilder builder(builder_document, builder_diagnostics);
-    if (!builder.Add(ShaderDocumentBlockKind::Version, "#version 460\n")
-     || !builder.Add(ShaderDocumentBlockKind::Define, "#define TEST 1\n")
-     || !builder.Add(ShaderDocumentBlockKind::MainBody, "void main() {}\n")
-     || builder.Add(ShaderDocumentBlockKind::Resource, "layout(set=0) uniform X {};\n")
-     || builder_diagnostics.GetCount() != 1)
-        return 11;
 
 
     RenderTemplateRequest template_request{};

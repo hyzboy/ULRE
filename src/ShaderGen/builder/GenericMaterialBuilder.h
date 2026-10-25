@@ -11,7 +11,6 @@
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
-#include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/type/String.h>
@@ -72,17 +71,14 @@ namespace hgl::graph::mtl
         ShaderCodeResourceManifest manifest;
         MaterialDefinition manifest_definition;
 
-        // Phase 4 产出、Phase 5 原样消费的发射输入（同一份对象，防止两处各自
-        // 拼装导致"声明侧看到的"与"实际发射的"悄悄分叉）
-        FragmentTemplateComposer::ComposeInput compose_input;
-        ShaderDocument code_module_document;
+        // Phase 4 产出、Phase 5 原样消费的发射输入
         mtl::OutputContract output_contract;
 
         // Phase 4: stage sources
+        // 片段源**不在**这里生成：它由领域主着色器物理固定，构建请求带进来。
         std::string ms;   // mesh stage（唯一顶点路径——VS 已废弃）
         std::string fs;
         ShaderDocument mesh_source_document;
-        ShaderDocument fragment_source_document;
 
         // Phase 5: program link + compile config
         MaterialDefinition contract_definition;

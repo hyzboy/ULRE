@@ -5,10 +5,9 @@
 // 本头只描述「读材质定义 + 组装构建请求」这些运行时也要做的事，因此它可以被
 // 发行形态（ULRE_ENABLE_SHADERGEN=0）单独编译。
 //
-// 生成期入口（CreateMaterialFromDefinition / ComputeMaterialProgramKey /
-// BuildResolvedMaterialVertexABI）**不在这里**：它们要么发射 GLSL，要么要读
-// ShaderLibrary/*.glsl 的声明闭包，只有生成器才知道怎么做。声明在
-// inc/hgl/mtl/MaterialShaderCompiler.h（ShaderGen 专属头）。
+// 生成期入口（ComputeMaterialProgramKey / BuildResolvedMaterialVertexABI）**不在这里**：
+// 它们要么发射 GLSL，要么要读 ShaderLibrary/*.glsl 的声明闭包，只有构建期才知道怎么做。
+// 声明在 inc/hgl/mtl/MaterialShaderCompiler.h（ShaderGen 专属头）。
 
 #include<hgl/vk/VK.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
@@ -67,8 +66,8 @@ struct MaterialDefinitionBuildRequest
 
     // ── 片段阶段物理固定（阶段五）───────────────────────────────────────────
     //
-    // 非空表示「片段阶段不生成」：构建器跳过整条片段发射链（代码模块文档、
-    // `FragmentTemplateComposer`、文档序列化），把这份文本当成最终片段源。
+    // 非空表示「片段阶段不生成」：构建器跳过整条片段发射链，把这份文本当成
+    // 最终片段源。
     //
     // 为什么必须在**构建前**传入、而不是事后覆盖阶段源：片段 stage key 的
     // definition_hash 吃的是最终源文本的摘要。事后再换源 ⇒ 键描述的是那份

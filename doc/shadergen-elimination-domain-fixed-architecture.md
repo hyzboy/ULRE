@@ -517,14 +517,14 @@ layout(location=5) in vec4 fragVertexColor;
 
 | 模块 / 类 | 现有代码行 | 历史职责 | 终极形态处理 |
 |---|---|---|---|
-| `GenericMaterialBuilder.cpp` | 929 | 统筹材质依赖、插槽选择、AST 装配 | **彻底删除** |
-| `MaterialShaderEmitter.cpp` | 675 | 动态拼接 GLSL 文本与宏定义 | **彻底删除** |
-| `ShaderCodeModuleFile.cpp` | 573 | 解析 `// @ulre` 12 种注记表 | **彻底删除** |
-| `FragmentTemplateComposer.cpp` | 499 | 动态拼接片元模板插槽与输出声明 | **彻底删除** |
-| `ShaderCodeModuleRegistry.cpp` | 418 | 模块图维护、DFS 依赖遍历、剔除环 | **彻底删除** |
-| `ShaderDocument.cpp` / AST | 173 | 维护代码块顺序、自述校验 | **彻底删除** |
-| `RenderTemplateResolve.cpp` | 150 | 动态解析模板根与插槽角色 | **彻底删除** |
-| **合计** | **3400+ 行**（核心逻辑占 ~38%） | 全部属于 C++ 人肉代码预处理器 | **替换为一个不到 200 行的极简 OptionsEmitter** |
+| `GenericMaterialBuilder.cpp` | 929 | 统筹材质依赖、插槽选择、AST 装配 | **彻底删除**（阶段六；5.2 起已不再拼装片段） |
+| `MaterialShaderEmitter.cpp` | 675 | 动态拼接 GLSL 文本与宏定义 | ✅ 已删；活的一半（`DumpShaderGenGLSL` / `BuildSamplerMacros` / `BuildMaterialStageDocument`）并入 `MaterialShaderCompiler.cpp`，等阶段六随网格阶段一起消失 |
+| `ShaderCodeModuleFile.cpp` | 573 | 解析 `// @ulre` 12 种注记表 | 保留（阶段六）：`VertexABIBuilder` 仍靠它读 provider 模块元数据 |
+| `FragmentTemplateComposer.cpp` | 499 | 动态拼接片元模板插槽与输出声明 | ✅ 已删 |
+| `ShaderCodeModuleRegistry.cpp` | 418 | 模块图维护、DFS 依赖遍历、剔除环 | 保留（阶段六）：同上 |
+| `ShaderDocument.cpp` / AST | 173 | 维护代码块顺序、自述校验 | 保留：已退化为纯"文本块容器 + 出处"，网格阶段仍在用 |
+| `RenderTemplateResolve.cpp` | 150 | 动态解析模板根与插槽角色 | 保留（阶段六）：`resolved_template_hash` 是缓存键的一维 |
+| **合计** | **3400+ 行**（核心逻辑占 ~38%） | 全部属于 C++ 人肉代码预处理器 | 片元侧已清零；剩余全部只在网格/顶点阶段服务，阶段六收尾 |
 
 ---
 
@@ -602,6 +602,38 @@ layout(location=5) in vec4 fragVertexColor;
      领域主着色器等价 15/15、`verify-release-form.ps1` 全 5 步 `[PASS]`。
      注意：本次未动 `ShaderGenProgramBuildBackend.cpp` 里的生命周期注册对象，
      `5.2` 删除它时必须把注册与选择器迁到存活的 `DomainShaderBuildBackend.cpp`。
-   - `5.2`（待办）：将渲染系统底层对接至直通管道后，一次性物理删除 `src/ShaderGen`
-     下冗余的生成器、注记解析与 AST 模块。
+   - `5.2`（进行中）：将渲染系统底层对接至直通管道后，分批物理删除 `src/ShaderGen`
+     下冗余的生成器、注记解析与 AST 模块。实际落地分四步（原始清单曾假定"整体可删"，
+     核对代码后收窄为片段侧——网格/顶点阶段要到阶段六才物理固定）：
+     - `5.2-a` ✅ `b6be01478`：`fixed_fragment_source` 在**构建前**传入，片段 stage key
+       的 `definition_hash` 直接吃这份真正会被编译的文本（事后换源会让键描述一份从未
+       被编译的代码）。
+     - `5.2-b` ✅ `c91e687c9`：生命周期接线搬出待删的生成器 TU，独立成
+       `compile/ShaderBuildBackendLifecycle.cpp`——它无对外符号、靠 `WHOLE_ARCHIVE`
+       存活，跟着生成器一起消失的症状是"发行形态没有后端"，事后才暴露。
+     - `5.2-c` ✅ `a60ef252d`：`DH.domain-backend-equivalence` 冻结为
+       `golden/domain-backend/<shape>.equiv.txt`（reflection 文本 + `spv_bytes`），
+       15 形状全录；录制时两侧现场互证，再由字节落盘，默认路径完全不碰生成器。
+     - `5.2-d` ✅ `6449b850e`：门禁 8 处 `CreateMaterialFromDefinition` →
+       `BuildGenericMaterial`（前者本就是后者的薄包装），把门禁从待删 TU 上摘下来。
+     - `5.2-e` ✅：删「生成器自述」通道（`ShaderStructureDump` + 30 份 golden），
+       `SPV.generated-interface`（真编译 + 反射）守同一批形状；顺带把
+       `StructureDumpVariant` 正名为 `ReflectionCoverageVariant`，避免旧名字诱导误删。
+     - `5.2-f` ✅ `d5772b486`：`fixed_fragment_source` 升为硬前置，五处残余入口
+       全部先 `ResolveFixedFragmentSource` 再建；`GenerateStageSources` 的片段拼装
+       分支成为静态死代码。该变化当场证出真问题：`sky.frag` 声明 location 0 的
+       `fragDataIndexID`，而 `sky_minimal.mi.toml` 未覆盖它 → 链接期 "no matching"。
+       **固定片段定义了领域的最低输入集，配方必须覆盖它。**
+     - `5.2-g` ✅：物理删除 `FragmentTemplateComposer`、`DocumentFragmentBuilder`、
+       `ShaderGenProgramBuildBackend`（含两个 `CreateMaterialFromDefinition` 重载与
+       `ULRE_SHADER_BUILD_BACKEND` 选择器）。`MaterialShaderEmitter` **未整份删除，
+       而是并入 `MaterialShaderCompiler.cpp`**：只有 `BuildCodeModuleDocument` 真死，
+       `DumpShaderGenGLSL` / `BuildSamplerMacros` / `MaterialDefinitionRequiresPayloadRow`
+       / `BuildMaterialStageDocument`（网格阶段仍需要 SSBO 声明与 FS 索引表）全活。
+       `RenderTemplateResolve.cpp` 实测不可删（`resolved_template_hash` 是缓存键的一维，
+       且门禁仍有模板解析用例），留到阶段六随构建器一起处理。
+       `glsl_module/*` 与 `MaterialShaderCompiler.cpp` 保留（前者是网格阶段的 provider
+       元数据查询，后者是"最终 GLSL → SPV + 反射"的唯一实现）。
+       验收：门禁 58/0、`DomainOptionsRegression` 26/0、`TestCSMIncrementalPass` 51 条全过、
+       四个示例零着色器错误。
 

@@ -94,25 +94,11 @@ class ShaderBuildContext;
 bool FinalizeShaderBuildContext(
     ShaderBuildContext *build_spec);
 
-// ── 生成期入口（定义 → 构建上下文 / 声明键 / 顶点 ABI）────────────────────────
-// 这些函数**只属于生成器**：要么发射 GLSL，要么读 ShaderLibrary/*.glsl 的声明闭包。
+// ── 生成期入口（构建上下文 / 声明键 / 顶点 ABI）──────────────────────────────
+// 这些函数要么发射网格阶段 GLSL，要么读 ShaderLibrary/*.glsl 的声明闭包。
 // 它们原先声明在 MaterialDefinitionRegistry.h（数据面）里，会把「发行形态用不到的
 // 生成期能力」挂在数据面的头文件上；现在收到本头，数据面只留纯数据能力。
-// 实现位置：ShaderGenProgramBuildBackend.cpp / GenericMaterialBuilder.cpp /
-// VertexABIBuilder.cpp。
-
-mtl::ShaderBuildContext *CreateMaterialFromDefinition(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request);
-
-// Document capture is diagnostic-only. Keep it out of the frequently passed
-// build request so adding observability does not change that request's ABI.
-mtl::ShaderBuildContext *CreateMaterialFromDefinition(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
-    MaterialShaderDocumentCapture *document_capture);
+// 实现位置：GenericMaterialBuilder.cpp / VertexABIBuilder.cpp。
 
 /**
  * Build the resolver-derived vertex ABI without compiling shaders or mutating
@@ -132,6 +118,30 @@ bool BuildResolvedMaterialVertexABI(
  * 与运行时 bindless 采样器数组的下标保持一致。空列表返回空字符串。
  */
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
+
+/**
+ * 诊断用：把最终 GLSL 文本落盘，供人工比对。
+ *
+ * 仅在开关 `ULRE_DEBUG.toml` 的 `channels.shadergen = true` 开启时生效，
+ * 其余情况为空操作。输出目录 = <ShaderCacheRoot>/glsldump。
+ */
+void DumpShaderGenGLSL(const char *stage, const std::string &text);
+
+/**
+ * 把模板 source document 与已解出的材质资源声明合并为最终 stage document。
+ * source document 必须以 Version block 开始。
+ *
+ * 无生成器终态下只剩 map-shader（网格）阶段使用；片段阶段由领域固定主
+ * 着色器文件直接承载，不再经本函数。
+ */
+bool BuildMaterialStageDocument(
+    const ShaderDocument &source_document,
+    ShaderStage stage,
+    const char *material,
+    const MaterialCompileConfig &config,
+    GlobalSSBOType material_private_data,
+    ShaderDocument &out_document,
+    ShaderDocumentDiagnostics &out_diagnostics);
 
 /**
  * 编译 Compositor 模板产出的完整 GLSL → ShaderBuildContext*。

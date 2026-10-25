@@ -140,7 +140,7 @@ namespace hgl::graph::mtl
     //   shadow_flags            0 → 未置位 = 正常接收阴影
     //
     // 单一真源（X 列表）：CPU struct / 布局断言 / GLSL struct 发射全部从这一份生成
-    //（发射端见 MaterialShaderEmitter::BuildFSIndexTableDecls）——改字段只改这里。
+    //（发射端见 MaterialShaderCompiler.cpp 的 BuildFSIndexTableDecls）——改字段只改这里。
     #define HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(M)  \
         M(payload_index,           "uint",  uint32_t)      \
         M(texture_reference_index, "uint",  uint32_t)      \
