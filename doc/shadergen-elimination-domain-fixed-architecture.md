@@ -885,3 +885,118 @@ interpolation、拓扑常量、属性装载顺序、`main` 主体全部等价。
   必须失败、④ 宽裕设备不得放大、⑤⑥⑦ 三个 topology 篡改必须失败、⑧ 反射取证）。
 - `ShaderDocumentProductionRegression --full`：退出码 0，15/15 `source=fixed`，
   9 个 depth/shadow `[SKIP]` 与本阶段无关。
+
+---
+
+## 6.4 `DrawTriangle` 真实形状的门禁与固定源
+
+### 失败现场
+
+用户运行 `DrawTriangle` 示例时构建直接失败：
+
+```
+[VertexNodeConfigResolver.h:30] 位置映射与顶点位置输入不匹配：
+  position_mapping=Passthrough3D 需要 Position 分量数 3，
+  而 Stage 1 输入模块提供 2 个分量（VertexColor）
+[GenericMaterialBuilder.cpp] Resolved vertex ABI build failed: name=VertexColor
+```
+
+`DrawTriangle` 的几何是 2 分量整数像素坐标（`VF_V2I16`），并显式设了
+`Make2DNodeConfigOrtho()`（`Vec2Position` + `PixelToLocal` + `OrthoViewport`）。
+但 `vertex_node_config` 有**四层**来源（`ResolveMaterialVertexNodeConfig`）：
+request 覆盖 → recipe（非默认时）→ **definition（非默认时）** → recipe 兜底。
+`VertexColor` 的 definition 是默认 3D（`Passthrough3D`，3 分量），recipe 是 2D，
+于是 ABI 求解读到了 definition 那一层，与 `s1` 的 2 分量对不上。
+
+修法早在阶段 4.4 就落地，是 `ResolveVertexABI` 里的一行回写：
+
+```cpp
+plan.vertex_definition.vertex_node_config = plan.vertex_node_config;
+```
+
+本阶段的任务是把这行变成一个**有看守的契约** —— 6.5 删掉 ABI 求解链时，
+若有人顺手删掉它，必须立刻红灯。
+
+### 固定源的第 10 个形状
+
+`ComputeMeshSourceShapeKey` 对 `VertexColor` + `VF_V2I16` + `Make2DNodeConfigOrtho`
+算出 `13020131598835485143`。捕获流程与 6.2 相同，逐个字节核对：
+
+```
+generator=044D60D08A04B63C59A506640D0FC8CC6F204B85D017B16B80DE4934C7A411C5
+fixed    =044D60D08A04B63C59A506640D0FC8CC6F204B85D017B16B80DE4934C7A411C5
+```
+
+`mesh/fixed/` 目录现为 **10 份**。内容是：`s1_color` + `s1_position_vec2i`
+（4B packed int16x2）+ `s2_pixel_to_local` + `s3_ortho_viewport`，
+`local_size_x = 64`、`triangles`、`max_vertices = 192`、`max_primitives = 64`。
+
+`vec2i` 与 `vec2` 这两份解码模块**都能编译通过**：选错不会报错，只会让整批顶点
+按 8B 跨距去读 4B 数据，静默错位。所以下面的断言是双向的（必须命中 vec2i、
+且不得命中浮点 vec2/vec3），而不是"看起来没问题"。
+
+### 门禁用例 `L0.draw-triangle-vertex-color-2d`
+
+登记在 `interface` 组，用一次 `defer_finalize = true` 的构建（只要 GLSL 文本，
+不编译 SPV），断言：
+
+1. 构建必须成功 —— 回写失效时 ABI 对账会先失败，这里直接拿到 `nullptr`。
+2. 网格阶段必须 `#include "vertex/s1_position_vec2i.glsl"`，且**不得**出现
+   `s1_position_vec2.glsl` / `s1_position_vec3.glsl`。
+3. 映射必须 `#include "vertex/s2_pixel_to_local.glsl"`，且**不得**出现
+   `s2_passthrough3d.glsl`（证明 recipe 覆盖没有丢）。
+4. 该形状在 `ShaderLibrary/mesh/fixed/` 里必须存在一份**内容与这份 GLSL 完全
+   一致**的 `.mesh`。按内容比对而非按文件名硬编码形状键：6.5 之后没有生成器兜底，
+   目录里缺这一份该域就没有 mesh 阶段可编译；而重新捕获时只需替换文件，门禁依然有效。
+5. 反方向反证：`Passthrough3D` + 2 分量几何、`PixelToLocal` + 3 分量几何，
+   **都必须构建失败** —— 证明分量数对账不是单向放行。
+
+### 反证（确认守卫真的在守）
+
+把 `GenericMaterialBuilder.cpp:266` 的回写注释掉重跑，用例立刻报两条：
+
+```
+- DrawTriangle 形状构建失败（recipe 的 2D 节点配置未回写到 ABI 求解用的定义）
+- PixelToLocal（2 分量）+ 3 分量位置几何被接受（分量数对账失效）
+```
+
+第二条尤其说明问题：没有回写时，ABI 读的是 definition 的 `Passthrough3D`，
+它与 3 分量几何**对得上**，于是本该失败的组合被接受了。恢复后回到 PASS。
+
+踩坑记录：`Copy-Item` 恢复备份会保留原文件的 `LastWriteTime`，MSBuild 认为源文件
+没变而跳过重编，导致"恢复后仍然红灯"。改文件后需要显式 touch 时间戳。
+
+### 计划原文的 `R32G32B32A32_SFLOAT` 分歧：不是活缺陷
+
+6.4 原文要求"修复或显式拒绝 `MeshModeDescriptor::ResolveStandardStage1Input`
+（声称 RGBA32F→`Vec3Position`）与 `VertexABIBuilder` 的分歧"。查证结论是**两者不可能
+同时生效**：
+
+- `VertexABIBuilder::BuildResolvedVertexABI` 是标准模式的唯一选择器，只接受
+  `R32G32B32_SFLOAT` / `R32G32_SFLOAT` / `R16G16_SINT`（分别对应 12B / 8B / 4B
+  三份解码模块），其余格式一律硬失败。
+- `MeshModeDescriptor::resolve_stage1_input` 只在 `MeshTemplateEmitter.h:273` 的
+  **else 分支**被读；而 `GenericMaterialBuilder::ResolveVertexABI` 只要
+  `request.geometry_vertex_format` 存在就一定会先填
+  `plan.resolved_vertex_input_document`，让 `MeshTemplateEmitter.h:269` 的
+  `if (resolved_input_document && GetBlockCount() > 0)` 恒为真。
+
+所以 `resolve_stage1_input` 对标准模式**不可达**，那条 RGBA32F 的说法是注释层面的
+虚构。处理方式不是"修"，而是 6.5 直接把 `ResolveStandardStage1Input` 和
+`resolve_stage1_input` / `resolve_stage2_mapping` / `resolve_stage3_projection`
+三个成员一起删掉 —— 死代码留着只会继续误导。
+
+### 仍未覆盖
+
+`LineQuad`：`mesh/line_quad.glsl.tmpl` 还留着 `#ifdef S1_TRANSFORM_ID_GLSL` /
+`S1_SIZE_GLSL` 两个条件分支，说明这个形状**还没有**固定 `.mesh` —— 有分支就意味着
+生成器仍在为它做选择。门禁里对应的是 `kReflectionCoverageVariants` 的
+`vertex-color-lines-quad` 与 `checkerboard-2d-lines-quad-2d` 两个变体，需要单独捕获
+（生产工具侧的 `Fixture` 目前还没有 `primitive_type` 字段，`PrimitiveType::Lines`
+要先补上）。这是 6.5 删除生成器之前必须补齐的两份源。
+
+### 验收
+
+- `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL（+1 即本用例）。
+- `ShaderDocumentProductionRegression --full`：退出码 0，**16/16** `source=fixed`
+  （+1 即 `vert-color-2d-int16`），9 个 depth/shadow `[SKIP]` 与本阶段无关。

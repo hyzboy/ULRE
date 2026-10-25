@@ -99,6 +99,26 @@ namespace
         // 引擎/环境层选定的 ambient provider（`ambient_light_provider` 槽）；
         // nullptr = 模板默认。材质不再声明它。
         const char *ambient_module_name = nullptr;
+        /// 位置属性格式覆盖。`VK_FORMAT_UNDEFINED` = 沿用 `vec2_position`
+        /// 的 V2F/V3F 二选一。
+        ///
+        /// 需要它是因为「位置格式决定 s1 解码模块」这条契约**不是**
+        /// 浮点专属：`VK_FORMAT_R16G16_SINT` 走 `s1_position_vec2i.glsl`
+        /// （4B packed int16x2），与 `vec2`（8B）是两个不同 ABI。只用
+        /// `vec2_position` 布尔表达不出来，`DrawTriangle` 那条真实路径
+        /// （`VF_V2I16` 像素坐标）就一直进不了回归。
+        VkFormat position_format_override = VK_FORMAT_UNDEFINED;
+        /// 由 recipe 层指定 2D 顶点节点配置（`Make2DNodeConfigOrtho`）。
+        ///
+        /// 这面旗子守的是阶段 4.4 修过的真实缺陷：`vertex_node_config`
+        /// 有四层来源（request 覆盖 > recipe > definition > 默认），而
+        /// `GenericMaterialBuilder::ResolveVertexABI` 必须把求解结果**回写**
+        /// 到 `plan.vertex_definition`，否则 ABI 对账读 definition 的
+        /// `Passthrough3D`（要 3 分量）、mesh 发射读 recipe 的
+        /// `PixelToLocal`（要 2 分量），`CheckPositionComponentCount` 硬失败。
+        /// 没有「definition 是 3D、recipe 是 2D」这种组合，写回删掉了也
+        /// 不会有人报错。
+        bool recipe_2d_node_config = false;
     };
 
     bool ResolveFixtureTemplateRequest(
@@ -555,9 +575,13 @@ namespace
         GeometryVertexFormat geometry;
         if (fixture.requires_geometry)
         {
+            const VkFormat position_format =
+                fixture.position_format_override != VK_FORMAT_UNDEFINED
+                    ? fixture.position_format_override
+                    : (fixture.vec2_position ? VF_V2F : VF_V3F);
             if (!geometry.Add(
                     VertexSemantic::Position,
-                    fixture.vec2_position ? VF_V2F : VF_V3F,
+                    position_format,
                     0, 0))
                 return nullptr;
             const bool requires_ntb =
@@ -574,6 +598,8 @@ namespace
 
         MaterialDefinitionBuildRequest request{};
         request.recipe.mtl_def_id = definition.definition_id;
+        if (fixture.recipe_2d_node_config)
+            request.recipe.vertex_node_config = Make2DNodeConfigOrtho(false);
         request.recipe.render_state_overrides.has_alpha_test = fixture.alpha_test;
         request.recipe.render_state_overrides.alpha_test = fixture.alpha_test;
         request.recipe.render_state_overrides.has_alpha_cutoff = fixture.alpha_test;
@@ -1493,7 +1519,21 @@ int main(const int argc, char **argv)
         { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         { "lit-ibl", "Lit", ShaderProgramPurpose::ForwardColor,
-          true, false, false, false, "indirect_ibl" }
+          true, false, false, false, "indirect_ibl" },
+        // DrawTriangle 的真实形状：`VertexColor` 域 + `VF_V2I16` 像素坐标
+        // + recipe 层 2D 节点配置（`Make2DNodeConfigOrtho`）。
+        //
+        // 它守三件事：
+        //   ① `R16G16_SINT` 必须选到 `vertex/s1_position_vec2i.glsl`（4B
+        //      packed int16x2），不是浮点 vec2 的 8B 版本；
+        //   ② `ResolveVertexABI` 的 `vertex_node_config` 回写（阶段 4.4
+        //      缺陷）——去掉回写后 ABI 读 definition 的 `Passthrough3D`
+        //      （3 分量）与 s1 的 2 分量冲突，构建直接失败；
+        //   ③ 该形状必须在固定 mesh 源目录里有一份 `.mesh`，否则
+        //      ShaderGen 删除后这个域没有 mesh 阶段。
+        { "vert-color-2d-int16", "VertexColor",
+          ShaderProgramPurpose::ForwardColor, true, false, false, false,
+          nullptr, VF_V2I16, true }
     };
 
     const Fixture *fixtures = full ? full_fixtures : smoke_fixtures;

@@ -1052,6 +1052,200 @@ namespace
         return result;
     }
 
+    /// `DrawTriangle` 的真实形状：`VertexColor` 域 + 2 分量整数位置。
+    ///
+    /// 失败现场（用户运行 DrawTriangle 示例时）：
+    /// ```
+    /// [VertexNodeConfigResolver.h:30] 位置映射与顶点位置输入不匹配：
+    ///   position_mapping=Passthrough3D 需要 Position 分量数 3，
+    ///   而 Stage 1 输入模块提供 2 个分量（VertexColor）
+    /// ```
+    /// 根因是 `vertex_node_config` 有四层来源（request 覆盖 > recipe >
+    /// definition > 默认），而 ABI 对账读的是 `definition` 里最弱的那一层。
+    /// 阶段 4.4 用一行回写修掉了它（`plan.vertex_definition.vertex_node_config
+    /// = plan.vertex_node_config;`）——本用例就是那行的看守：`VertexColor`
+    /// 的 definition 是 `Passthrough3D`（3 分量），而 DrawTriangle 的 recipe
+    /// 是 `Make2DNodeConfigOrtho`（2 分量），只有回写生效时两者才一致。
+    ///
+    /// 同时守第二件事：`VK_FORMAT_R16G16_SINT` 必须选到 4B packed int16x2 的
+    /// `s1_position_vec2i.glsl`，不是 8B 浮点 `s1_position_vec2.glsl`——两者
+    /// 都能编译通过，选错了整批顶点静默错位。
+    static GateResult RunDrawTriangleVertexColor2DCase()
+    {
+        GateResult result;
+        result.name = "L0.draw-triangle-vertex-color-2d";
+
+        MaterialDefinition definition{};
+        if (!TryGetMaterialDefinitionByID("VertexColor", definition))
+        {
+            result.diagnostics.emplace_back("missing definition: VertexColor");
+            result.passed = false;
+            return result;
+        }
+
+        // DrawTriangle 的几何：像素坐标是 int16x2（`VF_V2I16`），不是 float。
+        GeometryVertexFormat geometry;
+        if (!geometry.Add(VertexSemantic::Position, VF_V2I16, 0, 0)
+         || !geometry.Add(VertexSemantic::Color, VF_V4F, 0, 0))
+        {
+            result.diagnostics.emplace_back("cannot build DrawTriangle geometry");
+            result.passed = false;
+            return result;
+        }
+
+        const auto build = [&geometry](const MaterialDefinition &def,
+                                       const VertexShaderNodeConfig &node_cfg,
+                                       const GeometryVertexFormat *gvf)
+            -> std::unique_ptr<ShaderBuildContext>
+        {
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = def.definition_id;
+            request.recipe.vertex_node_config = node_cfg;
+            request.recipe.render_state_overrides.has_alpha_test = false;
+            request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
+            request.geometry_vertex_format = gvf;
+            // 只到 GLSL 文本为止：本用例断言的是发射文本，不需要 SPV。
+            request.defer_finalize = true;
+
+            RenderTemplateValidationDiagnostic template_diagnostic{};
+            const SceneRenderTemplateProfile scene_profile =
+                MakeForwardUnlitProfile();
+            if (!ResolveSceneRenderTemplateRequest(
+                    RenderTemplateID::ForwardUnlit,
+                    hgl::graph::ShaderStage::Fragment,
+                    scene_profile, request.render_template_request,
+                    template_diagnostic)
+             || !AppendMaterialRenderTemplateRoots(
+                    def, request.render_template_request))
+                return std::unique_ptr<ShaderBuildContext>();
+
+            FixedFragmentSource fixed;
+            if (!ResolveFixedFragmentSource(def, request, fixed))
+                return std::unique_ptr<ShaderBuildContext>();
+            request.fixed_fragment_source = fixed.source.c_str();
+            request.fixed_fragment_interface_hash = fixed.interface_hash;
+
+            return std::unique_ptr<ShaderBuildContext>(
+                BuildGenericMaterial(nullptr, request, def, nullptr));
+        };
+
+        const VertexShaderNodeConfig node_2d = Make2DNodeConfigOrtho(false);
+
+        // ── ① recipe 的 2D 节点配置 + 2 分量位置 ⇒ 必须构建成功 ──
+        // 回写若失效，ABI 会读 definition 的 Passthrough3D（3 分量）与 s1 的
+        // 2 分量对不上，这里直接返回 null。
+        const auto ctx = build(definition, node_2d, &geometry);
+        if (!ctx)
+        {
+            result.diagnostics.emplace_back(
+                "DrawTriangle 形状构建失败（recipe 的 2D 节点配置未回写到 ABI 求解用的定义）");
+        }
+        else
+        {
+            const ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
+            if (!mesh)
+            {
+                result.diagnostics.emplace_back(
+                    "DrawTriangle 形状没有网格阶段");
+            }
+            else
+            {
+                const std::string &glsl = mesh->GetFinalGLSL();
+
+                // ── ② 位置解码模块必须是 packed int16x2 那一份 ──
+                if (glsl.find("#include \"vertex/s1_position_vec2i.glsl\"")
+                        == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "R16G16_SINT 没有选到 vertex/s1_position_vec2i.glsl"
+                        "（4B packed int16x2 与 8B float vec2 是两个 ABI）");
+                }
+                if (glsl.find("#include \"vertex/s1_position_vec2.glsl\"")
+                        != std::string::npos
+                 || glsl.find("#include \"vertex/s1_position_vec3.glsl\"")
+                        != std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "位置解码模块指向浮点 vec2/vec3（与 R16G16_SINT 不匹配）");
+                }
+
+                // ── ③ 映射必须取 recipe 的 PixelToLocal，而不是 definition 的 Passthrough3D ──
+                if (glsl.find("#include \"vertex/s2_pixel_to_local.glsl\"")
+                        == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "网格阶段没有使用 recipe 的 s2_pixel_to_local 映射");
+                }
+                if (glsl.find("#include \"vertex/s2_passthrough3d.glsl\"")
+                        != std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "网格阶段用了 definition 的 Passthrough3D 映射（recipe 覆盖丢失）");
+                }
+
+                // ── ④ 该形状必须在固定 mesh 源目录里有一份，且内容就是这份 GLSL ──
+                // ShaderGen 删除后没有生成器兜底：目录里缺这一份，该域就没有
+                // mesh 阶段可编译。按内容比对（而不是按形状键硬编码文件名），
+                // 重新捕获时只需替换文件，门禁仍然有效。
+                bool matched = false;
+                const std::filesystem::path fixed_dir = RepoRootPath(
+                    "ShaderLibrary/mesh/fixed");
+                try
+                {
+                    for (const auto &entry :
+                         std::filesystem::directory_iterator(fixed_dir))
+                    {
+                        if (!entry.is_regular_file()
+                         || entry.path().extension() != ".mesh")
+                            continue;
+                        if (ReadFileText(entry.path().string()) == glsl)
+                        {
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+                catch (const std::filesystem::filesystem_error &)
+                {
+                    result.diagnostics.emplace_back(
+                        "cannot enumerate ShaderLibrary/mesh/fixed");
+                }
+                if (!matched)
+                {
+                    result.diagnostics.emplace_back(
+                        "ShaderLibrary/mesh/fixed 没有与该形状一致的 .mesh"
+                        "（删除 ShaderGen 后该域将无 mesh 阶段可用）");
+                }
+            }
+        }
+
+        // ── ⑤ 2 分量几何 + definition 默认的 3D 节点配置 ⇒ 必须构建失败 ──
+        // 这是「没有回写时会发生什么」的等价现场：两个所有者不匹配必须硬失败，
+        // 不得产出一份编不过（或能编过但顶点错位）的 GLSL。
+        if (build(definition, definition.vertex_node_config, &geometry))
+        {
+            result.diagnostics.emplace_back(
+                "Passthrough3D + 2 分量位置几何被接受（分量数对账失效）");
+        }
+
+        // ── ⑥ 3 分量几何 + 2D 节点配置 ⇒ 同样必须失败 ──
+        // 反方向：证明对账不是「只认 recipe」的单向放行。
+        GeometryVertexFormat geometry_3d;
+        if (!geometry_3d.Add(VertexSemantic::Position, VF_V3F, 0, 0)
+         || !geometry_3d.Add(VertexSemantic::Color, VF_V4F, 0, 0))
+        {
+            result.diagnostics.emplace_back("cannot build 3D control geometry");
+        }
+        else if (build(definition, node_2d, &geometry_3d))
+        {
+            result.diagnostics.emplace_back(
+                "PixelToLocal（2 分量）+ 3 分量位置几何被接受（分量数对账失效）");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderSemanticRegistryCase()
     {
         GateResult result;
@@ -10768,6 +10962,7 @@ int main(const int argc, char **argv)
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_interface) results.push_back(RunDepthVaryingMaskParityCase());
     if (run_interface) results.push_back(RunCharQuadWorkgroupContractCase());
+    if (run_interface) results.push_back(RunDrawTriangleVertexColor2DCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunGlobalAddressesStructParityCase());
