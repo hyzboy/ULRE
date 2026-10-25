@@ -2,6 +2,7 @@
 #define HGL_GLSL_COMPILER_INCLUDE
 
 #include<hgl/type/DataType.h>
+#include<hgl/type/String.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
 #include<hgl/mtl/ShaderCompilerSPVData.h>
@@ -16,6 +17,12 @@ namespace hgl
         void        CloseShaderCompiler();
 
         SPVData *   CompileShader   (const uint32 type,const char *source);
+
+        // 带诊断的编译入口。失败时把 glslang（或初始化/BOM）的原始报错写进
+        // `*out_diagnostic`（可为 nullptr）。没有它，调用方只能看到
+        // `CompileShader` 返回 nullptr —— SPVData 已被释放，日志无从取回。
+        SPVData *   CompileShader   (const uint32 type,const char *source,
+                                     AnsiString *out_diagnostic);
         void        FreeSPVData     (SPVData *spv_data);
 
         // Copies plugin-owned reflection output into flat_storage; out_view

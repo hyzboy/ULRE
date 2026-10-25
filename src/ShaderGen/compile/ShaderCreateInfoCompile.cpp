@@ -24,6 +24,24 @@ bool ShaderCreateInfo::CompileFinalGLSLToSPV()
     return(true);
 }
 
+bool ShaderCreateInfo::CompileFinalGLSLToSPVWithDiagnostic(AnsiString &out_diagnostic)
+{
+    out_diagnostic.Clear();
+
+    if(final_shader.empty())
+    {
+        out_diagnostic = "generated GLSL is empty";
+        return(false);
+    }
+
+    if(!CompileToSPVWithDiagnostic(out_diagnostic))
+        return(false);
+
+    // 成功即清空，调用方不必自己区分「没失败」与「没写」。
+    out_diagnostic.Clear();
+    return(true);
+}
+
 bool ShaderCreateInfo::CompileToSPV()
 {
     cached_spv_data.Clear();
@@ -34,6 +52,23 @@ bool ShaderCreateInfo::CompileToSPV()
     }
 
     spv_data=CompileShader(uint32_t(shader_stage),final_shader.c_str());
+
+    if(!spv_data)
+        return(false);
+
+    return(true);
+}
+
+bool ShaderCreateInfo::CompileToSPVWithDiagnostic(AnsiString &out_diagnostic)
+{
+    cached_spv_data.Clear();
+    if(spv_data)
+    {
+        FreeSPVData(spv_data);
+        spv_data=nullptr;
+    }
+
+    spv_data=CompileShader(uint32_t(shader_stage),final_shader.c_str(),&out_diagnostic);
 
     if(!spv_data)
         return(false);

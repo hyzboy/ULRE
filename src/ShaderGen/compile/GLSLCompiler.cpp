@@ -519,12 +519,17 @@ namespace hgl
             return true;
         }
 
-        SPVData *CompileShader(const uint32_t type,const char *source)
+        SPVData *CompileShader(const uint32_t type,const char *source,AnsiString *out_diagnostic)
         {
+            if(out_diagnostic)
+                out_diagnostic->Clear();
+
             if(!gsi)
             {
                 std::fprintf(stderr,
                     "[GLSLCompiler] CompileShader failed: compiler not initialized (GLSLCompiler plugin unavailable?)\n");
+                if(out_diagnostic)
+                    *out_diagnostic = "compiler not initialized (GLSLCompiler plugin unavailable?)";
                 return(nullptr);
             }
 
@@ -536,6 +541,8 @@ namespace hgl
             if(bom!=ByteOrderMask::NONE)
             {
                 std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: unsupported BOM\n");
+                if(out_diagnostic)
+                    *out_diagnostic = "unsupported BOM";
                 return(nullptr);
             }
 
@@ -544,6 +551,8 @@ namespace hgl
             if(!spv)
             {
                 std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: gsi->Compile returned null\n");
+                if(out_diagnostic)
+                    *out_diagnostic = "GLSLCompiler::Compile returned null";
                 return(nullptr);
             }
 
@@ -553,11 +562,19 @@ namespace hgl
             {
                 GLogError(u8"[GLSLCompiler] Compile failed: %s", spv->log ? spv->log : "");
 
+                if(out_diagnostic)
+                    *out_diagnostic = spv->log ? spv->log : "compile failed without a log";
+
                 FreeSPVData(spv);
                 return(nullptr);
             }
 
             return spv;
+        }
+
+        SPVData *CompileShader(const uint32_t type,const char *source)
+        {
+            return CompileShader(type,source,nullptr);
         }
     }//namespace graph
 }//namespace hgl

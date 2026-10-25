@@ -4,6 +4,7 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/type/ValueArray.h>
+#include <hgl/type/String.h>
 #include<hgl/log/Log.h>
 #include<string>
 
@@ -41,6 +42,7 @@ protected:
 protected:
 
     bool CompileToSPV();
+    bool CompileToSPVWithDiagnostic(AnsiString &out_diagnostic);
 
 public:
 
@@ -59,6 +61,12 @@ public:
     void SetFinalGLSL(const char *glsl){final_shader=glsl?glsl:"";}
 
     bool CompileFinalGLSLToSPV();                ///< 直接编译 final_shader 到 SPV
+
+    /** 同 `CompileFinalGLSLToSPV`，但失败时把 glslang 的原始报错留在
+     *  `out_diagnostic`（成功时清空）。刻意不合并进上面那个签名：发行形态的
+     *  `ShaderProgramManager` 也调用 `CompileFinalGLSLToSPV`，改签名等于改 ABI。 */
+    bool CompileFinalGLSLToSPVWithDiagnostic(AnsiString &out_diagnostic);
+
     bool SetCachedSPVData(const void *data, size_t byte_size);
     bool HasSPVData() const;
     const uint32 *GetSPVData()const;

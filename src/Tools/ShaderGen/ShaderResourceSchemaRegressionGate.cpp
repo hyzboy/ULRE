@@ -9424,6 +9424,26 @@ void main()
         // 若两侧一起漂，本门才会失败。
         const uint32_t kRootAddressesPCBytes = 88;
 
+        // 诊断通道自检：故意编一段非法 GLSL，必须同时得到 nullptr 与非空报错。
+        // 这道断言保护的是「本用例下方那些编译失败诊断有内容」这件事本身 ——
+        // 没有它，编译器一旦退回「静默 false」，本门就只会输出「没编过」。
+        {
+            hgl::AnsiString broken_log;
+            if (hgl::graph::CompileShader(
+                    uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                    "layout(location=0) out vec4 c;\nvoid main() { c = not_declared; }\n",
+                    &broken_log) != nullptr)
+            {
+                result.diagnostics.emplace_back(
+                    "invalid GLSL compiled successfully (diagnostic channel broken)");
+            }
+            else if (broken_log.IsEmpty())
+            {
+                result.diagnostics.emplace_back(
+                    "compile failure carried no compiler log (diagnostic channel broken)");
+            }
+        }
+
         // 完整性：每个变体都必须走到「两 stage 都反射成功」这一步。
         // 任何 `continue` 提前退出都会留下诊断，这里再加一道计数，
         // 防止将来新增的跳过分支把变体静默漏掉。
@@ -9478,32 +9498,20 @@ void main()
                     continue;
                 }
 
-                if (!si->HasSPVData() && !si->CompileFinalGLSLToSPV())
+                if (!si->HasSPVData())
                 {
-                    // `CompileFinalGLSLToSPV` 只回 bool，glslang 的错误行号/原因走日
-                    // 志通道。这里再走一次底层编译，把编译器的原始报错捞进诊断，
-                    // 否则失败信息只剩「没编过」，定位不到是生成的哪一行。
-                    std::string compiler_log;
-                    if (SPVData *spv =
-                            hgl::graph::CompileShader(stage_bits[i], si->GetFinalGLSL().c_str()))
+                    // 带诊断的编译入口：glslang 的原始报错（含行号与生成的 GLSL 片段）
+                    // 直接进诊断。没有它，失败信息只剩「没编过」—— SPVData 一被释
+                    // 放日志就取不回来了。
+                    hgl::AnsiString compile_diagnostic;
+                    if (!si->CompileFinalGLSLToSPVWithDiagnostic(compile_diagnostic))
                     {
-                        compiler_log = std::string("result=") + (spv->result ? "1" : "0")
-                                     + " log=" + (spv->log && *spv->log ? spv->log : "<empty>")
-                                     + " dbg=" + (spv->debug_log && *spv->debug_log ? spv->debug_log : "<empty>")
-                                     + " len=" + std::to_string(spv->spv_length);
-                        hgl::graph::FreeSPVData(spv);
+                        result.diagnostics.emplace_back(
+                            label + " " + stage_names[i]
+                            + ": generated GLSL failed to compile: "
+                            + compile_diagnostic.c_str());
+                        continue;
                     }
-                    else
-                    {
-                        compiler_log = "CompileShader returned null";
-                    }
-
-                    result.diagnostics.emplace_back(
-                        label + " " + stage_names[i]
-                        + ": generated GLSL failed to compile"
-                        + (compiler_log.empty() ? std::string()
-                                                : ": " + compiler_log));
-                    continue;
                 }
 
                 if (!si->HasSPVData() || si->GetSPVSize() == 0)
