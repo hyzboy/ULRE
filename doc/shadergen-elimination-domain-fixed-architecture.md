@@ -1916,3 +1916,42 @@ AcquireShaderProgram failed for BBox_0 ... unresolved runtime pipeline
 **非门禁观察**：单独运行 Debug `PBRSpheres` 的 `PBR_SELFCHECK=1` 时，画面非空（`distinct_byte_values=256`），但当前设备得到 FNV `0x5EE2B4F88E551284`，与源码冻结值 `0x3DD88A0999CDC486` 不同。此阶段的图形 smoke 用定帧 `PBR_FRAMES=8` 验证管线与 GPU cull，不把跨配置/设备像素摘要当作 shader 构建判据；阶段九-2 仍需按发布形态脚本单独验收。
 
 **剩余**：9.1 完成；继续执行阶段九-2 的全门禁与发行形态验证。
+
+## 阶段九-2：全门禁与发行形态封口
+
+> **状态**：✅ 完成。开发形态回归、固定 mesh 覆盖、全量 production fixtures 与发行形态跨构建树探针全部通过。
+
+### 1. 最终开发形态验收
+
+| 命令 | 结果 |
+| --- | --- |
+| `ShaderResourceSchemaRegressionGate.exe all` | `exit=0`，**59 PASS / 0 FAIL** |
+| `ShaderResourceSchemaRegressionGate.exe emit-fixed-mesh` | `covered=36 missing=0 failed=0` |
+| `ShaderDocumentProductionRegression.exe --full` | `exit=0`，`full production fixtures passed` |
+| `TestCSMIncrementalPass.exe` | `exit=0`，Test 51 全部通过 |
+| 图形示例 smoke | 9.1 列出的 8 个程序均重建、退出码 0；GPU cull 已初始化，shader 构建错误为 0 |
+
+`--full` 仍将 **9 个**缺少 depth/shadow 固定 master 的 fixture 报为 skip；这是阶段六已登记的覆盖缺口，不被记作通过或失败，也不影响当前示例与当前 master 的验收。
+
+### 2. `verify-release-form.ps1` 五步验收
+
+脚本使用独立 `build_probe_nosg` 发行树，实际运行结果：
+
+| 步骤 | 判据 | 结果 |
+| --- | --- | --- |
+| 1/5 | 配置开发形态与 `ULRE_ENABLE_SHADERGEN=OFF` 发行形态构建树 | PASS |
+| 2/5 | 开发树构建 `ShaderResourceSchemaRegressionGate` | PASS |
+| 3/5 | 烘焙材质 program 与 compute manifest / SPV 夹具 | PASS |
+| 4/5 | 发行树构建仅链接 `ULRE::Runtime` 的 `RuntimeFormProbe`；无 `ULRE.ShaderProgramBuild` 产物 | PASS |
+| 5/5 | 发行探针只读加载材质与 compute 夹具 | PASS |
+
+终端汇总：`[PASS] release form verified: baked cache resolved with zero generator symbols`。
+
+### 3. 项目结项
+
+- 开发构建的物理固定阶段源由 MaterialDomain fragment masters、shape-named mesh masters 与最小 options 驱动；运行时程序构建层命名为 `ShaderProgramBuild`，材质/模块元数据归 `ShaderMaterialData`。
+- 发行形态不构建 `ULRE.ShaderProgramBuild`，仍可通过预烘焙 program/compute manifest 与 SPV 在独立进程内解析运行。
+- 各阶段按独立提交收敛：8.1 `43eb3c0e1`、8.2 `10d671213`、8.3 `9a625738e`、9.1 `d283af3a1`；9.2 为本次文档结项提交。
+- `ULRE_ENABLE_SHADERGEN` 是兼容保留的 CMake 选项名；其控制的内部 target 已重命名为 `ULRE.ShaderProgramBuild`。
+
+**未结项阻塞**：无。保留的边界事项是 9 个 depth/shadow fixture 尚无固定 master，以及 Debug `PBRSpheres` 的冻结像素摘要与当前设备实测摘要不同；后者不影响本阶段通过的定帧运行、shader 构建、GPU cull 和发行形态探针。
