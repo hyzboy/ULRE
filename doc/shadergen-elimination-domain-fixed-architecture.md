@@ -1277,5 +1277,5 @@ std::string("... (last error: ") + GetLastBuildGenericMaterialError().c_str() + 
 ### 4. 验收结果
 
 - `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL（全量通过，含 L0.draw-triangle-vertex-color-2d 对 AutoInstance 形状的守护断言）。
-- `ShaderResourceSchemaRegressionGate emit-fixed-mesh`：`written=0 unchanged=35 failed=0`（补齐 SimpleSphere 的 `11473310428698951072.mesh` 与 AutoInstance 2D 顶点色的 `4442253396988711992.mesh` 后，固定库扩充至 21 份，全量通过 `AuditFixedMeshMasters` 静态语法与契约审查）。
+- `ShaderResourceSchemaRegressionGate emit-fixed-mesh`：`written=0 unchanged=35 failed=0`（补齐 SimpleSphere 的 `11473310428698951072.mesh`、AutoInstance 2D 顶点色的 `4442253396988711992.mesh` 以及 AutoMergeMaterialInstance 2D 纯色实例行的 `6503166534270626483.mesh` 后，固定库扩充至 22 份，全量通过 `AuditFixedMeshMasters` 静态语法与契约审查）。
 - `ShaderDocumentProductionRegression --full`：16/16 `source=fixed`，0 `source=generator`，退出码 0。
