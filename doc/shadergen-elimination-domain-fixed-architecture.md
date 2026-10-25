@@ -986,17 +986,106 @@ fixed    =044D60D08A04B63C59A506640D0FC8CC6F204B85D017B16B80DE4934C7A411C5
 `resolve_stage1_input` / `resolve_stage2_mapping` / `resolve_stage3_projection`
 三个成员一起删掉 —— 死代码留着只会继续误导。
 
-### 仍未覆盖
-
-`LineQuad`：`mesh/line_quad.glsl.tmpl` 还留着 `#ifdef S1_TRANSFORM_ID_GLSL` /
-`S1_SIZE_GLSL` 两个条件分支，说明这个形状**还没有**固定 `.mesh` —— 有分支就意味着
-生成器仍在为它做选择。门禁里对应的是 `kReflectionCoverageVariants` 的
-`vertex-color-lines-quad` 与 `checkerboard-2d-lines-quad-2d` 两个变体，需要单独捕获
-（生产工具侧的 `Fixture` 目前还没有 `primitive_type` 字段，`PrimitiveType::Lines`
-要先补上）。这是 6.5 删除生成器之前必须补齐的两份源。
-
-### 验收
+### 6.4 验收
 
 - `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL（+1 即本用例）。
 - `ShaderDocumentProductionRegression --full`：退出码 0，**16/16** `source=fixed`
   （+1 即 `vert-color-2d-int16`），9 个 depth/shadow `[SKIP]` 与本阶段无关。
+
+## 6.4b `LineQuad` 固定源与「目录覆盖」门禁
+
+### 为什么先做这一步
+
+6.5 要删 `meshgen/*`，而 `mesh/line_quad.glsl.tmpl` 里还有三个活分支：
+`S1_PALETTE_INDEX_GLSL`、`S1_TRANSFORM_ID_GLSL`（else 分支才走
+`ResolveTransformID(gl_InstanceIndex)`）、`S1_SIZE_GLSL`（else 分支把
+`width = min_width = 1.0`）。有分支就意味着生成器还在替这个形状做选择，
+所以它必须先有一份固定 `.mesh`，否则删掉生成器后线框就画不出来。
+
+### 捕获入口放在门禁里，而不是生产工具里
+
+形状矩阵只存在于一处：门禁的 `kReflectionCoverageVariants`（16 个变体，
+含两个 `PrimitiveType::Lines` 的 `LineQuad` 变体）。生产工具的 `Fixture`
+没有 `primitive_type` 字段，要在那里生成线框就得复制一份形状定义 —— 两份
+形状表必然漂移，漂移的表现是"少覆盖"而不是报错。
+
+所以捕获入口放进同一个可执行文件：
+
+```
+ShaderResourceSchemaRegressionGate.exe emit-fixed-mesh
+```
+
+`EmitFixedMeshCatalog()` 遍历 `kReflectionCoverageVariants`，对每个变体用
+`BuildReflectionCoverageVariant(..., MaterialShaderDocumentCapture *out_capture)`
+拿到 `mesh_source_shape_key` 与 `mesh_source_document`，若该 GLSL 尚未出现在
+目录里就写 `ShaderLibrary/mesh/fixed/<shape_key>.mesh`，打印 `[written]` /
+`[unchanged]`。形状表只有一份，捕获与验证不可能互相漂移。
+
+### 覆盖断言：新增形状必须有人捕获
+
+`RunGeneratedInterfaceReflectionCase` 对每个变体的 mesh 阶段增加一条检查：
+其 `GetFinalGLSL()` 必须在目录里有一份内容**完全一致**的 `.mesh`，否则
+
+```
+vertex-color-lines-quad: mesh stage has no source in ShaderLibrary/mesh/fixed（用 emit-fixed-mesh 捕获）
+```
+
+这条断言把"矩阵新增了形状但没人捕获固定源"从运行时的"某个域画不出来"
+提前成门禁红灯。按内容比对而不是按文件名比对，重新捕获时只需替换文件，
+不需要同步改断言。
+
+### 捕获结果
+
+16 个变体去重后共 17 份源（`lit-depth-only` 与 `lit-shadow-depth` 同形
+（`16010825705453514407`），`lit-depth-masked` 与 `lit-shadow-masked` 同形
+（`14117761268391746788`），`sky-cube-forward` 与 `sky-minimal-forward`
+同形（`5523130418547404603`））。本次新增 7 份：
+
+| 形状键 | 变体 | 字节（LF 文本长度） |
+|---|---|---|
+| `1383689879301672014` | `vertex-color-lines-quad` | 8620 |
+| `13907659216699454923` | `checkerboard-2d-lines-quad-2d` | 8309 |
+| `10556500708867411382` | `vertex-palette-color-forward` | 5664 |
+| `16714434726803612563` | `vertex-color-forward` | 5511 |
+| `6057340463783612614` | `vertex-luminance-forward` | 5631 |
+| `5130637854479680447` | `unlit-texture-forward` | 5598 |
+| `8102413982750205303` | `debug-normal-forward` | 5740 |
+
+后五份不是新形状语义，而是这 5 个定义根本不在 `--full` 夹具表里：
+生产工具从未捕获过它们，只有反射覆盖矩阵会走到。这也说明覆盖断言
+放在门禁里是对的 —— 生产工具的表补不补都不影响覆盖完整性。
+
+二次运行 `emit-fixed-mesh` 得 `written=0 unchanged=16`，即幂等。
+
+关于换行：`.mesh` 在版本库里统一是 LF，Windows 检出时由 `core.autocrlf`
+变成 CRLF，和目录里既有的 10 份一致。固定源路径按字节原样读文件、原样
+交给编译器，`glslang` 对 CRLF 无要求，形状键哈希的是请求而不是文本，
+所以换行不构成接口差异。
+
+这条断言证明的是**覆盖**（每个变体都有固定源），不是**新鲜度**。形状键落盘
+之后，固定路径就不再问生成器，因此"文件比模板旧"这类问题它看不出来 ——
+模板变更导致接口不兼容时由同组的 mesh→fragment 链接检查兜住；
+6.5 删掉生成器之后，"新鲜度"这个概念本身也就不存在了（文件即真源）。
+
+### 反证
+
+把 `ShaderLibrary/mesh/fixed/1383689879301672014.mesh` 移走后跑 `reflection` 组：
+
+```
+[FAIL] SPV.generated-interface
+- vertex-color-lines-quad: mesh stage has no source in ShaderLibrary/mesh/fixed（用 emit-fixed-mesh 捕获）
+```
+
+exit 1，且**只有**这一条诊断 —— 说明失败确实由覆盖检查负责，没有别的检查
+在掩盖它。恢复文件后 3 PASS / 0 FAIL。
+
+### 6.4b 验收
+
+- `emit-fixed-mesh`：`written=7 unchanged=9 failed=0`；再跑一次
+  `written=0 unchanged=16 failed=0`。目录 17 份 `.mesh`。
+- `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL。
+- `ShaderDocumentProductionRegression --full`：退出码 0，16/16 `source=fixed`，
+  0 `source=generator`，9 个 `[SKIP]` 不变。
+
+至此 `kReflectionCoverageVariants` 的 16 个变体全部有固定 mesh 源，
+`meshgen/` 删除的前置条件已满足。

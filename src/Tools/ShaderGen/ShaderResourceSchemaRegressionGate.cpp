@@ -9789,7 +9789,8 @@ void main()
     /// 按快照矩阵构建一个材质实例。失败时把原因写进 `diagnostic` 并返回 nullptr。
     static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
         const ReflectionCoverageVariant &variant, std::string &diagnostic,
-        FixedFragmentSource *out_fixed = nullptr)
+        FixedFragmentSource *out_fixed = nullptr,
+        MaterialShaderDocumentCapture *out_capture = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
@@ -9845,7 +9846,7 @@ void main()
         request.fixed_fragment_interface_hash = fixed.interface_hash;
 
         std::unique_ptr<ShaderBuildContext> ctx(
-            BuildGenericMaterial(nullptr, request, definition, nullptr));
+            BuildGenericMaterial(nullptr, request, definition, out_capture));
         if (!ctx)
         {
             diagnostic = std::string("material build failed: ") + variant.variant_slug;
@@ -9856,6 +9857,172 @@ void main()
             *out_fixed = std::move(fixed);
 
         return ctx;
+    }
+
+    /// 固定 mesh 源目录里所有 `.mesh` 的文本。
+    ///
+    /// 6.5 之后网格阶段**只有**固定源一条路径：目录里没有对应形状，该域就没有
+    /// mesh 阶段可编译，没有生成器兜底。因此这张表既是数据源也是覆盖率的判据。
+    static bool LoadFixedMeshCatalog(
+        std::vector<std::string> &out, std::string &diagnostic)
+    {
+        out.clear();
+
+        const std::filesystem::path dir = RepoRootPath("ShaderLibrary/mesh/fixed");
+        try
+        {
+            if (!std::filesystem::exists(dir)
+             || !std::filesystem::is_directory(dir))
+            {
+                diagnostic = "fixed mesh source directory missing: " + dir.string();
+                return false;
+            }
+
+            for (const auto &entry : std::filesystem::directory_iterator(dir))
+            {
+                if (!entry.is_regular_file()
+                 || entry.path().extension() != ".mesh")
+                    continue;
+
+                const std::string text = ReadFileText(entry.path().string());
+                if (text.empty())
+                {
+                    diagnostic = "cannot read fixed mesh source: "
+                        + entry.path().string();
+                    return false;
+                }
+                out.push_back(text);
+            }
+        }
+        catch (const std::filesystem::filesystem_error &)
+        {
+            diagnostic = "cannot enumerate " + dir.string();
+            return false;
+        }
+
+        if (out.empty())
+        {
+            diagnostic = "fixed mesh source directory is empty: " + dir.string();
+            return false;
+        }
+        return true;
+    }
+
+    static bool FixedMeshCatalogHas(
+        const std::vector<std::string> &catalog, const std::string &glsl)
+    {
+        for (const std::string &text : catalog)
+            if (text == glsl)
+                return true;
+        return false;
+    }
+
+    /// `emit-fixed-mesh` 模式：把快照矩阵里每个变体的网格阶段文本落进
+    /// `ShaderLibrary/mesh/fixed/<形状键>.mesh`。
+    ///
+    /// 为什么捕获工具放在门禁里而不是生产回归工具里：形状由**请求**决定
+    /// （几何语义集合、位置格式、节点配置、图元类型），而矩阵只在这里维护一份。
+    /// 在别处复现同一张矩阵，等于把「哪个形状需要覆盖」抄两份，抄歪了不会报错，
+    /// 只会静默少覆盖一个形状。
+    ///
+    /// 已存在且内容一致的形状跳过，所以它是幂等的。形状键相同但文本不同时会
+    /// **覆盖**写入——这是有意的重捕获流程：形状键哈希的是请求而不是发射文本，
+    /// 主着色器模板演进属于正常情况，届时门禁的内容比对会先亮红灯，人工跑一次
+    /// 本命令即完成更新。
+    static int EmitFixedMeshCatalog()
+    {
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
+        {
+            GLogError("[emit-fixed-mesh] %s", preset_diagnostic.c_str());
+            return 1;
+        }
+
+        std::vector<std::string> catalog;
+        std::string catalog_diagnostic;
+        if (!LoadFixedMeshCatalog(catalog, catalog_diagnostic))
+        {
+            GLogError("[emit-fixed-mesh] %s", catalog_diagnostic.c_str());
+            return 1;
+        }
+
+        const std::filesystem::path dir = RepoRootPath("ShaderLibrary/mesh/fixed");
+
+        int written = 0;
+        int unchanged = 0;
+        int failed = 0;
+
+        for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
+        {
+            std::string build_diagnostic;
+            MaterialShaderDocumentCapture capture{};
+            std::unique_ptr<ShaderBuildContext> ctx =
+                BuildReflectionCoverageVariant(
+                    variant, build_diagnostic, nullptr, &capture);
+            if (!ctx)
+            {
+                GLogError("[emit-fixed-mesh] %s: %s",
+                          variant.variant_slug, build_diagnostic.c_str());
+                ++failed;
+                continue;
+            }
+
+            const ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
+            if (!mesh)
+            {
+                GLogError("[emit-fixed-mesh] %s: no mesh stage",
+                          variant.variant_slug);
+                ++failed;
+                continue;
+            }
+
+            const std::string &glsl = mesh->GetFinalGLSL();
+            if (glsl.empty())
+            {
+                GLogError("[emit-fixed-mesh] %s: empty mesh GLSL",
+                          variant.variant_slug);
+                ++failed;
+                continue;
+            }
+
+            const std::string path = (dir /
+                (std::to_string(static_cast<uint64_t>(
+                     capture.mesh_source_shape_key)) + ".mesh")).string();
+
+            if (FixedMeshCatalogHas(catalog, glsl))
+            {
+                ++unchanged;
+                std::fprintf(stdout, "[unchanged] %s key=%s\n",
+                             variant.variant_slug, path.c_str());
+                continue;
+            }
+
+            std::ofstream out(path, std::ios::binary | std::ios::trunc);
+            if (!out)
+            {
+                GLogError("[emit-fixed-mesh] cannot write %s", path.c_str());
+                ++failed;
+                continue;
+            }
+            out.write(glsl.data(), static_cast<std::streamsize>(glsl.size()));
+            if (!out.good())
+            {
+                GLogError("[emit-fixed-mesh] write failed %s", path.c_str());
+                ++failed;
+                continue;
+            }
+
+            catalog.push_back(glsl);
+            ++written;
+            std::fprintf(stdout, "[written] %s key=%s bytes=%zu source=%s\n",
+                         variant.variant_slug, path.c_str(), glsl.size(),
+                         capture.mesh_source_was_fixed ? "fixed" : "generator");
+        }
+
+        std::fprintf(stdout,
+                     "[emit-fixed-mesh] written=%d unchanged=%d failed=%d\n",
+                     written, unchanged, failed);
+        return failed == 0 ? 0 : 1;
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -9916,6 +10083,13 @@ void main()
         // 防止将来新增的跳过分支把变体静默漏掉。
         uint32_t reflected_variant_count = 0;
 
+        std::vector<std::string> fixed_mesh_catalog;
+        {
+            std::string catalog_diagnostic;
+            if (!LoadFixedMeshCatalog(fixed_mesh_catalog, catalog_diagnostic))
+                result.diagnostics.emplace_back(catalog_diagnostic);
+        }
+
         for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
         {
             std::string build_diagnostic;
@@ -9964,6 +10138,17 @@ void main()
                         label + " " + stage_names[i]
                         + ": generated GLSL is empty");
                     continue;
+                }
+
+                // 每个变体的网格阶段都必须能在固定源目录里找到同一份文本。
+                // 6.5 删掉 meshgen 之后没有生成器兜底：目录里缺这一份，该变体
+                // 就没有 mesh 阶段可编译。这条断言把「矩阵新增了一个形状但没人
+                // 捕获固定源」变成红灯，而不是等到运行时才发现某个域画不出来。
+                if (i == 0 && !FixedMeshCatalogHas(fixed_mesh_catalog, si->GetFinalGLSL()))
+                {
+                    result.diagnostics.emplace_back(
+                        label + ": mesh stage has no source in "
+                        "ShaderLibrary/mesh/fixed（用 emit-fixed-mesh 捕获）");
                 }
 
                 if (!si->HasSPVData())
@@ -10902,6 +11087,21 @@ int main(const int argc, char **argv)
     }
 
     const char *selected_group = argc == 2 ? argv[1] : "all";
+
+    // `emit-fixed-mesh` 不是回归组，而是捕获入口：把快照矩阵里的每个网格形状
+    // 落进 `ShaderLibrary/mesh/fixed/`。它与门禁共用同一张变体表，形状定义只有
+    // 一份——捕获与验证不可能互相漂移。
+    if (std::strcmp(selected_group, "emit-fixed-mesh") == 0)
+    {
+        if (!InitShaderCompiler())
+        {
+            GLogError(
+                "[ShaderResourceSchemaRegressionGate] Failed to initialize GLSL compiler.");
+            return 3;
+        }
+        return EmitFixedMeshCatalog();
+    }
+
     if (!IsKnownRegressionGroup(selected_group))
     {
         GLogError(
