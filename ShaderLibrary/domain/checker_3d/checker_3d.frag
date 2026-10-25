@@ -23,6 +23,9 @@
 #include "surface/material_surface.glsl"
 #include "common/alpha_compositor.glsl"
 layout(location=1) in vec3 fragWorldPos;
+#ifdef HGL_MATERIAL_HAS_VERTEX_NORMAL
+layout(location=2) in vec3 fragWorldNormal;
+#endif
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }
 
@@ -40,6 +43,9 @@ void main()
     si.styleID = 0u;
     si.worldPos = fragWorldPos;
     si.viewDir = normalize(-fragWorldPos);
+#ifdef HGL_MATERIAL_HAS_VERTEX_NORMAL
+    si.worldNormal = normalize(fragWorldNormal);
+#endif
 #ifdef HGL_MATERIAL_FACE_NORMAL_FALLBACK
     // 顶点流没有法线（本领域 normal_mode = OptionalFaceFallback，属于合法降级）。
     {

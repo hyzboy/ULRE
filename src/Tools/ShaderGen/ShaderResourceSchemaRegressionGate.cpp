@@ -5916,6 +5916,23 @@ namespace
             result.diagnostics.emplace_back(
                 "SkyCubeSphere must use its explicit front-face culling config");
 
+        const char *normal_varying_fragments[] =
+        {
+            "ShaderLibrary/domain/checker_3d/checker_3d.frag",
+            "ShaderLibrary/domain/error_checker_3d/error_checker_3d.frag",
+        };
+        for (const char *path : normal_varying_fragments)
+        {
+            const std::string source = ReadFileText(RepoRootPath(path));
+            if (source.find("layout(location=2) in vec3 fragWorldNormal;")
+                    == std::string::npos
+             || source.find("si.worldNormal = normalize(fragWorldNormal);")
+                    == std::string::npos)
+                result.diagnostics.emplace_back(
+                    std::string(path)
+                    + " must consume the optional WorldNormal varying when present");
+        }
+
         DomainShaderTemplate sky_minimal_template;
         if (!ResolveDomainShaderTemplate(
                 MaterialDomain::Sky,
