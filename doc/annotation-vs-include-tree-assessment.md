@@ -1,5 +1,10 @@
 # 「用静态 include 树取代注记驱动模块表」立项评估
 
+> 📌 **最新架构导流（2026-10）**：
+> 本文针对旧 ShaderGen 模块注记表的评估已完成历史使命。
+> 引擎关于彻底废除生成器、走向 MaterialDomain 固定 Shader 的最新终极方案请参阅：
+> **`doc/shadergen-elimination-domain-fixed-architecture.md`**。
+
 > 2026-10-25。起因：超薄工程 + SPV 反射落地后，「削减 ShaderGen 80%」实际只兑现 1.15%（见
 > `ultra-thin-implementation-status.md` §10.5）。剩余空间里唯一**看起来**能大幅削减的路径是
 > 「废掉 `// @ulre` 注记表，改成手写静态 `#include` 树」。

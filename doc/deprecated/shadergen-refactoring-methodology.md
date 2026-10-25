@@ -1,5 +1,10 @@
 # ShaderGen 数据驱动化与复杂度削减方法论
 
+> ⚠️ **[DEPRECATED: 历史设计归档]**
+> 本文档已被废弃并归档至 `doc/deprecated/`。
+> 现行权威架构设计请阅读：**`doc/shadergen-elimination-domain-fixed-architecture.md`**（彻底废除 ShaderGen 终极架构设计）
+> 以及 `doc/ultra-thin-fixed-shader-architecture.md`。
+
 > 2026-08-30 定稿。从 ShaderGen 整套改造（T1-T3/候选/C1-C4/命名清理）提炼的
 > 可复用重构方法论。适用：任何「演进叠加 + 样板膨胀 + 隐式协议」的自研代码。
 

@@ -1,5 +1,10 @@
 # 超薄固定着色器架构 —— 实施现状与交接文档
 
+> 📌 **最新架构与演进终态导流（2026-10）**：
+> 超薄固定着色器前六阶段已全部完成落地。后续**彻底废除 ShaderGen** 的终极方案与执行设计，
+> 请参阅最新权威文档：**`doc/shadergen-elimination-domain-fixed-architecture.md`**（基于 MaterialDomain 的固定着色器方案）。
+> 本文保留作为阶段一至阶段六的落地历史台账与环境坑参考。
+
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。

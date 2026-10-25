@@ -1,5 +1,10 @@
 # ShaderGen 材质 GLSL 生成器设计分析
 
+> ⚠️ **[DEPRECATED: 历史设计归档]**
+> 本文档已被废弃并归档至 `doc/deprecated/`。
+> 现行权威架构设计请阅读：**`doc/shadergen-elimination-domain-fixed-architecture.md`**（彻底废除 ShaderGen 终极架构设计）
+> 以及 `doc/ultra-thin-fixed-shader-architecture.md`。
+
 > **⚠ 2026-10-14 文卫生订正（B3）**：末段"交给 `PrimitiveComponent` 的 recipe 合并"按**历史口径**读（该类已删）；现行 = `MaterialData` + `MaterialRecipe` + collect 侧求值。
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
 

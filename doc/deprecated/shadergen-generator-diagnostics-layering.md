@@ -1,5 +1,10 @@
 # ShaderGen：真实生成器与诊断工具分层设计
 
+> ⚠️ **[DEPRECATED: 历史设计归档]**
+> 本文档已被废弃并归档至 `doc/deprecated/`。
+> 现行权威架构设计请阅读：**`doc/shadergen-elimination-domain-fixed-architecture.md`**（彻底废除 ShaderGen 终极架构设计）
+> 以及 `doc/ultra-thin-fixed-shader-architecture.md`。
+
 ## 1. 目标
 
 把 `ShaderGen` 的工作拆成三条清晰链路：

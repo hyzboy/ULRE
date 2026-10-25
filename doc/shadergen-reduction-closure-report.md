@@ -1,5 +1,10 @@
 # ShaderGen 削减工程 · 结项报告
 
+> 📌 **后续演进方向（2026-10）**：
+> 本结项报告证明了在旧 ShaderGen 内部做局部推断削减的结构性不可达性。
+> 引擎关于彻底跳出生成器、走向 MaterialDomain 固定 Shader 的最新终极方案请参阅：
+> **`doc/shadergen-elimination-domain-fixed-architecture.md`**。
+
 > 状态：**结项（目标未达成，结论已定）**
 > 范围：`src/ShaderGen` / `src/ShaderMaterialData` / `inc/hgl/mtl` / `src/Tools/ShaderGen`
 > 依据文档：`doc/ultra-thin-implementation-status.md`（过程台账）、`doc/annotation-vs-include-tree-assessment.md`（注记表改写立项评估）

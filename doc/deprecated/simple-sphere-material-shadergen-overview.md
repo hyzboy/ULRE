@@ -1,5 +1,10 @@
 # SimpleSphere 到 ShaderGen 的材质与 Shader 工作链
 
+> ⚠️ **[DEPRECATED: 历史设计归档]**
+> 本文档已被废弃并归档至 `doc/deprecated/`。
+> 现行权威架构设计请阅读：**`doc/shadergen-elimination-domain-fixed-architecture.md`**（彻底废除 ShaderGen 终极架构设计）
+> 以及 `doc/ultra-thin-fixed-shader-architecture.md`。
+
 > **⚠ 2026-10-14 文卫生订正（B3）**：`PrimitiveComponent`（**挂纹理/材质的那一层**）已删 —— 现行作者面 = `MaterialData`（`inc/hgl/ecs/components/MaterialData.h`，纹理/采样器/层号的选择器住在 `MaterialAuthoringSideTable`）。
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
 

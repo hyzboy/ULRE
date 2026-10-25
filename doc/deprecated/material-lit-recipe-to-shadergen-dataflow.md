@@ -1,5 +1,10 @@
 # Lit 材质数据流全链路分析
 
+> ⚠️ **[DEPRECATED: 历史设计归档]**
+> 本文档已被废弃并归档至 `doc/deprecated/`。
+> 现行权威架构设计请阅读：**`doc/shadergen-elimination-domain-fixed-architecture.md`**（彻底废除 ShaderGen 终极架构设计）
+> 以及 `doc/ultra-thin-fixed-shader-architecture.md`。
+
 > **材质 provider 身份规范化**：材质只接受 schema 4；material-source、NTB、surface 只存 `@ulre name`，include 路径由注册表来源解析。Ambient 的**算法选择**（`ambient_module_name`）已上移到环境层（`EnvironmentSystem::SetAmbientProvider`），材质不再声明。
 
 > **⚠ 2026-10-14 文卫生订正（B3）**：`PrimitiveComponent` 已删（A5）⇒ 文中"经 PrimitiveComponent 挂纹理 / BuildResolvedRecipe 从 PrimitiveComponent 收集"按**历史口径**读；现行 = `MaterialData` + `MaterialRecipe` + collect 侧求值（`RenderPrimitiveCollectSystem`）。

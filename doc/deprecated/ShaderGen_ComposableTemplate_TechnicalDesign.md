@@ -1,5 +1,10 @@
 # ShaderGen 受控组合模板技术方案
 
+> ⚠️ **[DEPRECATED: 历史设计归档]**
+> 本文档已被废弃并归档至 `doc/deprecated/`。
+> 现行权威架构设计请阅读：**`doc/shadergen-elimination-domain-fixed-architecture.md`**（彻底废除 ShaderGen 终极架构设计）
+> 以及 `doc/ultra-thin-fixed-shader-architecture.md`。
+
 > ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
 
 > **校对说明(2026-09)**:本文是设计意图文档。为不破坏原有设计叙述,正文未删改,只在开头补一节「实现状态(以当前代码为准)」,并在与当前代码冲突的示例 GLSL 片段处**就地校正 + 标注**;所有未在代码树中命中的设计态符号集中列在 §0.2,不做改名,也不删设计意图。
