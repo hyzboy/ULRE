@@ -320,7 +320,7 @@ error: '#' : preprocessor directive cannot be preceded by another token
 | 布局 | 结构 | stride | 表基址 | 使用者 |
 |---|---|---|---|---|
 | `PBRSurface` | `{ vec4 base_color; float metallic; float roughness; float normal_scale; float fresnel; }` | 32 | `global_addresses.addr_pbr_surface` | StandardOpaque / **VertexColor** / **VertexPalette** / **UnlitTexture** |
-| `EmissiveSurface` | `{ vec4 color; }` | 16 | `global_addresses.addr_emissive_surface` | UnlitSolid / **VertexLuminance** |
+| `EmissiveSurface` | `{ vec4 color; }` | 16 | `global_addresses.addr_emissive_surface` | UnlitSolid / **VertexLuminance** / ErrorChecker3D / DebugNormal |
 
 注意反直觉的两处：`UnlitTexture` 走的是 **PBR** 行（它需要 `base_color` 之外的
 `metallic` 等常量来保证 alpha 链的形状一致），而 `VertexLuminance` 走的是
@@ -346,13 +346,16 @@ error: '#' : preprocessor directive cannot be preceded by another token
 | `fragWorldPos` | 1 | |
 | `fragWorldNormal` | 2 | |
 | `fragUV0` | 3 | |
+| `fragStyleID` | 4 | `flat perprimitiveEXT in uint`；**只有 `Text2D` 用**（见 1.9 ④） |
 | `fragVertexColor` | 5 | |
 | `fragDirection` | 6 | |
 | `fragLuminance` | 7 | `float`，不是向量 |
 
-location 之间**留空是正常现象**（4 号空着），不要自作聪明改成紧凑排布。
+location 之间**留空是正常现象**，不要自作聪明改成紧凑排布。
 `VertexColor` / `VertexPalette` 没有私有数据行，因此 `fragDataIndexID` 整条不声明，
 `materialDataIndex` 直接是字面量 `0u`。
+
+> 勘误（Phase 4.3）：4 号并不是「永久空位」——`Text2D` 的 `fragStyleID` 就在 4 号。
 
 **⑥ 逐领域目录可以跨域复用，但只能在片段阶段逐字节相同时复用**
 
@@ -389,6 +392,123 @@ location 之间**留空是正常现象**（4 号空着），不要自作聪明�
 `<slug>/generated/options.glsl`（后者由真实后端的 `EmitDomainOptionsForDefinition`
 产出），脚本不再持有任何宏表，也就不可能与发射器漂移。
 
+### 1.9 内建定义族领域与「骨架」事实（Phase 4.3 固化）
+
+Phase 4.3 一次性补齐了剩下六个**定义驱动**的领域：`UnlitSolid`（`builtin/pure_color`）、
+`Checker2D`、`Checker3D`（`builtin/checkerboard_3d`）、`ErrorChecker3D`、
+`Text2D`（`builtin/text_gpu`）、`DebugNormal`。等价矩阵由 9 形状扩到 **15 形状**。
+这一轮暴露的问题与前几轮完全不同：不是「漏了哪个模块」，而是**每一行的模板归属**。
+
+**① 主着色器属于哪条「骨架」，决定尾段有没有 alpha 分支**
+
+生成器只有四份片元骨架（`ShaderLibrary/fragment/*.glsl.tmpl`）：
+
+| 骨架 | 使用它的领域 | `main()` 尾段 |
+|---|---|---|
+| `forward_lit` | StandardOpaque、Foliage、Terrain、HumanSkin | 有 `HGLApplyAlpha(EvalAlpha(...))` 块 **和** `#if defined(HGL_ALPHA_OUTPUT)` 分支 |
+| `forward_unlit` | UnlitTexture、UnlitSolid、VertexColor/Palette/Luminance、Checker2D/3D、ErrorChecker3D、DebugNormal、**Text2D** | 只有 `WriteMaterialOutput(HGLComposeColor(finalColor));` |
+| `sky` | Sky | 同上（且 `si` 完全由 `fragDirection` 填） |
+| `shadow_caster` | StandardOpaque 深度 pass | `main()` 可为空实现 |
+
+`Text2D` 是**唯一**「看起来该有 alpha 分支、实际属于 unlit 骨架」的领域：
+它 `alpha_blend = true`，`options.glsl` 里确实有 `#define HGL_ALPHA_OUTPUT 1`，
+但骨架里**没有**任何消费者。照着 `unlit_texture.frag` 补上那两段 → SPIR-V 从
+18200 涨到 19560 字节，等价性直接失败。
+
+> 通用规则：**骨架归属看 `RenderTemplateID`，不靠宏推断**。
+> `alpha_output` 宏存在 ≠ 骨架里有对应分支。真正的 alpha 通路是
+> `HGLComposeColor` → 内部 `HGLApplyAlpha(color.a)`，且 `flat_lighting` 已把
+> `surface.alpha` 带进 `finalColor.a`。
+
+**② 两族宏原先在 `options.glsl` 之外，Phase 4.3 才收进来**
+
+到此为止 `options.glsl` 只发模板固定宏 + 覆盖率宏，于是有两个真实构建请求
+**无处表达**，只能继续走 `compile_defines`（散落在编译命令行）：
+
+| 宏 | 语义来源 | 消费者 |
+|---|---|---|
+| `HGL_MATERIAL_HAS_VERTEX_NORMAL` | 几何顶点格式含 Normal × 材质要法线光照 | `material/checkerboard_3d_source.glsl`、`material/error_checkerboard_3d_source.glsl` |
+| 定义自带 `defines`（如 `TEXT_SDF_ENABLED`） | `.mi.toml` 的 `defines` 表 | `material/text_source_gpu.glsl`（SDF / 位图双路） |
+
+现在两者都由 `DomainOptionsInput` 承载：
+
+```cpp
+bool         vertex_normal_present   = false;  // 与 face_normal_fallback 严格互补
+const char *const *definition_defines = nullptr;
+uint32       definition_define_count  = 0;     // 逐条发射 `#define <name> 1`
+```
+
+`HGL_MATERIAL_HAS_VERTEX_NORMAL` 与 `HGL_MATERIAL_FACE_NORMAL_FALLBACK` 是**同一个谓词
+的两种结果**（`GenericMaterialBuilder::PrepareResolvedDefinition` 只推其中一个），
+实现上互为镜像，别把它们当成两个独立开关。
+
+**③ 四个 Emissive 行领域共享一份 row bindings**
+
+`UnlitSolid` / `VertexLuminance` / `ErrorChecker3D` / `DebugNormal` 的
+`material_private_data` 全是 `EmissiveSurface`（跨度 16）。原先每个领域各有一份
+`*_bindings.glsl`，四份内容逐字节相同 ⇒ 抽成
+`ShaderLibrary/domain/emissive_row_bindings.glsl`（`vertex_luminance_bindings.glsl`
+已删除）。抽的依据是「这一层只依赖 `DomainContracts[].material_private_data`，
+不依赖领域语义」——所以它可以跨领域复用，而**领域专属的贴图表不能**（②里的
+`text_2d_bindings.glsl` 就必须独立）。
+
+**④ `Text2D` 的 `fragStyleID` 在 location 4，且纹理表只有一张图**
+
+```glsl
+layout(location=0) flat perprimitiveEXT in  uint fragDataIndexID;
+layout(location=3) in vec2 fragUV0;
+layout(location=4) flat perprimitiveEXT in  uint fragStyleID;   // ← 只有 Text2D
+layout(location=5) in vec4 fragVertexColor;
+```
+
+文字颜色来自顶点色、样式来自 `sbo_char_style` 样式表，**都不在材质行里**；
+但贴图表仍然存在（`base_color` 槽 = 字体图集），所以 `fragDataIndexID` 不能省。
+`LinearSampler` / `NearestSampler` 两个宏**都要发**：SDF 走 Linear、位图走 Nearest，
+而选哪条由定义自带 `TEXT_SDF_ENABLED` 决定 —— 过滤方式属于**定义**而非领域，
+物理文件里必须同时给出两个索引（多余的那个没有消费者，零代码）。
+
+**⑤ `Checker2D` 是最简形状：没有 varying、没有数据行、没有面法线兜底**
+
+`materialDataIndex` 是字面量 `0u`，`main()` 只有一行 `EvalSurface` 调用；
+`options.glsl` 为空。它的 `checker_2d_bindings.glsl` **刻意留成空文件**（只守卫宏），
+与 `vertex_color_bindings.glsl` 同构：把「本领域无数据行、无贴图」写成可见的物理事实。
+
+**⑥ 空 bindings 文件是有意义的，不要合并删除**
+
+`checker_2d_bindings.glsl` / `checker_3d_bindings.glsl` 除了 `#ifndef` 守卫什么都没有。
+保留它们的理由：主着色器的 `#include` 行是**结构**，不是条件；将来契约新增槽位时，
+改动点只有一个文件，而不是回来重新判断「这个领域当初为什么没有 bindings」。
+
+**等价矩阵（Phase 4.3 后的 15 形状，`DH.domain-backend-equivalence` 全绿）**
+
+| slug | 定义 | 领域 | `options.glsl` | SPIR-V 字节 |
+|---|---|---|---|---|
+| `fwd` | Lit | StandardOpaque | 4 宏 + ambient include | 65072 |
+| `fwd-alpha` | Lit | StandardOpaque | 6 宏 + ambient include | 67024 |
+| `shadow` | Lit | StandardOpaque | 覆盖率宏 | 1232 |
+| `shadow-alpha` | Lit | StandardOpaque | 覆盖率宏 | 8896 |
+| `sky` | SkyCube | Sky | 空 | 6732 |
+| `unlit-tex` | UnlitTexture | UnlitTexture | 空 | 13360 |
+| `vert-color` | VertexColor | VertexColor | 空 | 10248 |
+| `vert-pal` | VertexPaletteColor | VertexPalette | 空 | 10248 |
+| `vert-lum` | VertexLuminance | VertexLuminance | 空 | 12152 |
+| `unlit-solid` | `builtin/pure_color` | UnlitSolid | 空 | 12428 |
+| `checker-2d` | `builtin/checkerboard_2d` | Checker2D | 空 | 10620 |
+| `checker-3d` | `builtin/checkerboard_3d` | Checker3D | `HGL_MATERIAL_FACE_NORMAL_FALLBACK` | 13824 |
+| `err-check-3d` | `builtin/error_checkerboard_3d` | ErrorChecker3D | `HGL_MATERIAL_FACE_NORMAL_FALLBACK` | 15900 |
+| `text-gpu` | `builtin/text_gpu` | Text2D | `HGL_ALPHA_OUTPUT` + `TEXT_SDF_ENABLED` | 18200 |
+| `debug-normal` | DebugNormalColor | DebugNormal | 空 | 13000 |
+
+（表内是门禁 `spv=` 报告的 Debug 构建字节数；`verify-domain-master-shaders.ps1`
+用 `spvfc` 走 Release 布局，同一形状数值不同，两边各自内部自洽即可。）
+
+**`kDomainBackendEquivShapes[]` 是只追加的表**：`DH.domain-backend-cache`
+按下标引用条目（`[13]` = text-gpu、`[14]` = debug-normal），重排会静默把缓存用例
+指向别的形状。这条约束已写进数组注释。
+
+**覆盖到的模板差异**：15 形状里 `forward_lit` 4 份、`forward_unlit` 9 份、
+`sky` 1 份、`shadow_caster` 2 份 —— 四份骨架全部至少被一份主着色器复现。
+
 ---
 
 ## 2. 待清理的旧 ShaderGen 模块清单
@@ -414,8 +534,8 @@ location 之间**留空是正常现象**（4 号空着），不要自作聪明�
    - 已固化：`StandardOpaque` 的 ForwardColor / ShadowDepth(有覆盖) / ShadowDepth(无覆盖)，`Sky` 的 ForwardColor。
    - 已定义 `options.glsl` 注入协议与 `<domain>_bindings.glsl` 分层。
    - `4.2` 补入无光族四域，累计 9 形状（见 1.8）。
-   - 待补：`UnlitSolid` / `UI2D` / `Text2D` / `Checker2D` / `Checker3D` 等（这些走
-     `flat_lighting` 形状，留待阶段四按域迁移时逐个固化）。
+   - 待补：`UI2D` / `Foliage` / `Terrain` / `HumanSkin` / `Custom`（**当前没有任何材质
+     定义指向它们**，属阶段五之后的按需补齐，不再是阻塞项）。
 2. **第二阶段：实现极简 `DomainOptionsEmitter`** ✅ `fc70e0847`
    - 输入 `MaterialDomain` + Pass 类型，输出 `options.glsl` 文本（8 步发射顺序、4 路 profile 表）。
    - 不做任何依赖推导、不做任何模块排序——模块顺序已经物理写在主着色器里。
@@ -442,9 +562,13 @@ location 之间**留空是正常现象**（4 号空着），不要自作聪明�
    - `4.2` ✅：无光族四域（`UnlitTexture` / `VertexColor` / `VertexPalette` /
      `VertexLuminance`）主着色器固化，等价矩阵扩到 9 形状（见 1.8）。
      `kDomainDirs[]` 由 2 行扩到 6 行，并支持跨域复用同一份片段源。
-   - 待办：逐域迁移 `UnlitSolid` / `Text2D` / `UI2D` / `Checker2D` / `Checker3D` /
-     `ErrorChecker3D` / `DebugNormal`，再跑 `SimpleSphere` / `PBRSpheres` /
-     `LineRender` / `DrawText` 实机验证。
+   - `4.3` ✅：内建定义族六域（`UnlitSolid` / `Checker2D` / `Checker3D` /
+     `ErrorChecker3D` / `Text2D` / `DebugNormal`）固化，等价矩阵扩到 15 形状；
+     `kDomainDirs[]` 12 行，四份片元骨架全部被复现；`options.glsl` 收编最后两族
+     外挂宏（`HGL_MATERIAL_HAS_VERTEX_NORMAL`、定义自带 `defines`）。
+     详见 1.9。
+   - 待办（`4.4`）：跑 `SimpleSphere` / `PBRSpheres` / `LineRender` / `DrawText`
+     实机验证 + `verify-release-form.ps1`。
 5. **第五阶段：整体切替与旧代码物理删除**
    - 将渲染系统底层对接至直通管道。
    - 一次性物理删除 `src/ShaderGen` 下冗余的生成器、注记解析与 AST 模块。

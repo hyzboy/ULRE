@@ -160,6 +160,21 @@ namespace hgl::graph::mtl
                 == nullptr;
         }
 
+        /// 与 `ResolveFaceNormalFallback` 同判据的互补分支：顶点格式**有** Normal。
+        /// 口径直接对齐 `GenericMaterialBuilder::PrepareResolvedDefinition` ——
+        /// 那里两条路各自 push 一个 compile_define，这里必须发同样的宏。
+        bool ResolveVertexNormalPresent(
+            const MaterialDefinition &definition,
+            const MaterialDefinitionBuildRequest &request) noexcept
+        {
+            if (!request.geometry_vertex_format
+             || !MaterialWantsNormalLighting(definition))
+                return false;
+
+            return request.geometry_vertex_format->Find(VertexSemantic::Normal)
+                != nullptr;
+        }
+
         /// 模板里是否真的挂了 shadow provider 槽。只有挂了的主着色器才会
         /// include `shadow/pcf_shadow.glsl`，也只有它需要 PCF 宏。
         bool HasShadowProviderSlot(const MaterialDefinitionBuildRequest &request) noexcept
@@ -221,6 +236,23 @@ namespace hgl::graph::mtl
             // （FragmentTemplateComposer 的默认值，全流程无人改写）。
 
             input.face_normal_fallback = ResolveFaceNormalFallback(definition, request);
+            input.vertex_normal_present = ResolveVertexNormalPresent(definition, request);
+
+            // compile_defines（`.mi.toml` 的 `defines`）→ 逐条 `#define <name> 1`。
+            // 只在本函数内活着：EmitDomainOptions 同步读完，不留悬垂指针。
+            std::vector<const char *> definition_defines;
+            definition_defines.reserve(definition.compile_defines.size());
+            for (const std::string &name : definition.compile_defines)
+            {
+                if (!name.empty())
+                    definition_defines.push_back(name.c_str());
+            }
+            if (!definition_defines.empty())
+            {
+                input.definition_defines = definition_defines.data();
+                input.definition_define_count =
+                    static_cast<uint32>(definition_defines.size());
+            }
 
             input.texture_declarations = definition.texture_declarations.empty()
                 ? nullptr

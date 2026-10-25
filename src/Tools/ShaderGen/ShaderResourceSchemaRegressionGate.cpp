@@ -9761,7 +9761,9 @@ void main()
         bool alpha_test;
     };
 
-    /// 五个 pass 形状与 Phase 1 实测矩阵、以及 lit-*/sky-* 夹具一一对应。
+    /// 等价矩阵：每个形状 = 「某个材质定义 + 某个 pass」的编译单元。
+    /// 与前缀无关：条目顺序被 `DH.domain-backend-cache` 按下标引用，**不要重排**，
+    /// 新增条目一律追加到末尾。
     static const DomainBackendEquivShape kDomainBackendEquivShapes[] =
     {
         { "fwd",          "Lit",     ShaderProgramPurpose::ForwardColor, false },
@@ -9773,6 +9775,12 @@ void main()
         { "vert-color",   "VertexColor",  ShaderProgramPurpose::ForwardColor, false },
         { "vert-lum",     "VertexLuminance", ShaderProgramPurpose::ForwardColor, false },
         { "vert-pal",     "VertexPaletteColor", ShaderProgramPurpose::ForwardColor, false },
+        { "unlit-solid",  "builtin/pure_color", ShaderProgramPurpose::ForwardColor, false },
+        { "checker-2d",   "builtin/checkerboard_2d", ShaderProgramPurpose::ForwardColor, false },
+        { "checker-3d",   "builtin/checkerboard_3d", ShaderProgramPurpose::ForwardColor, false },
+        { "err-check-3d", "builtin/error_checkerboard_3d", ShaderProgramPurpose::ForwardColor, false },
+        { "text-gpu",     "builtin/text_gpu", ShaderProgramPurpose::ForwardColor, false },
+        { "debug-normal", "DebugNormalColor", ShaderProgramPurpose::ForwardColor, false },
     };
 
     /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。
@@ -10133,6 +10141,12 @@ void main()
     // 缓存分歧，后者覆盖「多 domain 共享同一份缓存机制」且两个形状的主着色器
     // 文本与 options 都不同 ⇒ 摘要必然不同，能继续守住「摘要必须覆盖 options」。
     //
+    // 再加两个必须单独覆盖的形态：
+    //   · `DebugNormal` —— 材质私有行是 `EmissiveSurface`（跨度 16），与前面
+    //     全部 `PBRSurface`（跨度 32）不同，缓存键里若掺了行布局差异会在这里炸；
+    //   · `builtin/text_gpu` —— 走 unlit 骨架 + 贴图表 + `styleID` 通道，
+    //     是唯一 `HGL_ALPHA_OUTPUT` 真的生效的形状。
+    //
     // 不加 `VertexPaletteColor`：它与 `VertexColor` 的固定主着色器**逐字节相同**、
     // options 也相同，摘要天然相等——放进「两两互不相同」的断言里会假失败
     //（它们本来就该共享同一份产物，只是落在不同定义各自的缓存目录里）。
@@ -10158,6 +10172,8 @@ void main()
             &kDomainBackendEquivShapes[3],  // shadow-alpha
             &kDomainBackendEquivShapes[5],  // unlit-tex
             &kDomainBackendEquivShapes[6],  // vert-color
+            &kDomainBackendEquivShapes[13], // text-gpu
+            &kDomainBackendEquivShapes[14], // debug-normal
         };
         constexpr size_t kCacheShapeCount = sizeof(shapes) / sizeof(shapes[0]);
 

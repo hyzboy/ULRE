@@ -29,8 +29,9 @@ $ErrorActionPreference = 'Stop'
 #   * 它同时落盘**每个形状自己的** `generated/options.glsl`（走真实后端的
 #     `EmitDomainOptionsForDefinition`）。脚本绝不手抄宏表：手抄的表会和发射器
 #     悄悄漂移，等价性验收就失去意义；
-#   * 它覆盖全部 9 个形状，包含生产夹具表里没有的无光族领域（UnlitTexture /
-#     VertexColor / VertexPalette / VertexLuminance）。
+#   * 它覆盖全部 15 个形状，包含生产夹具表里没有的无光族与内建定义族领域
+#     （UnlitTexture / VertexColor / VertexPalette / VertexLuminance /
+#      UnlitSolid / Checker2D / Checker3D / ErrorChecker3D / Text2D / DebugNormal）。
 #
 # 用法：pwsh -File scripts/ci/verify-domain-master-shaders.ps1
 # 退出码 0 = 全部等价。
@@ -89,7 +90,13 @@ $cases = @(
     @('unlit-tex',    'ShaderLibrary/domain/unlit_texture/unlit_texture.frag'),
     @('vert-color',   'ShaderLibrary/domain/vertex_color/vertex_color.frag'),
     @('vert-lum',     'ShaderLibrary/domain/vertex_luminance/vertex_luminance.frag'),
-    @('vert-pal',     'ShaderLibrary/domain/vertex_color/vertex_color.frag')
+    @('vert-pal',     'ShaderLibrary/domain/vertex_color/vertex_color.frag'),
+    @('unlit-solid',  'ShaderLibrary/domain/unlit_solid/unlit_solid.frag'),
+    @('checker-2d',   'ShaderLibrary/domain/checker_2d/checker_2d.frag'),
+    @('checker-3d',   'ShaderLibrary/domain/checker_3d/checker_3d.frag'),
+    @('err-check-3d', 'ShaderLibrary/domain/error_checker_3d/error_checker_3d.frag'),
+    @('text-gpu',     'ShaderLibrary/domain/text_2d/text_2d.frag'),
+    @('debug-normal', 'ShaderLibrary/domain/debug_normal/debug_normal.frag')
 )
 
 $failed = 0

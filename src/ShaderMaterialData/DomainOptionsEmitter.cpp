@@ -126,6 +126,8 @@ namespace hgl::graph::mtl
         // ── 顶点法线降级 ────────────────────────────────────────────────────
         if (input.face_normal_fallback)
             AppendDefine(text_buffer, "HGL_MATERIAL_FACE_NORMAL_FALLBACK", 1u);
+        if (input.vertex_normal_present)
+            AppendDefine(text_buffer, "HGL_MATERIAL_HAS_VERTEX_NORMAL", 1u);
 
         // ── 纹理通道覆盖 ────────────────────────────────────────────────────
         // 深度/阴影 pass 整段跳过：它的 NTB 槽恒为 ntb_none，没有任何模块读通道数，
@@ -178,6 +180,26 @@ namespace hgl::graph::mtl
             AppendDefine(text_buffer, "HGL_ALPHA_DITHER", 1u);
         if (input.alpha_output)
             AppendDefine(text_buffer, "HGL_ALPHA_OUTPUT", 1u);
+
+        // ── 材质定义自带宏 ──────────────────────────────────────────────────
+        // 定义在 `.mi.toml` 的 `defines` 里，旧路径由 BuildCompileDefineDocument
+        // 逐条写成 `#define <name> 1`（值恒为 1，不是 key=value 形式）。
+        if (input.definition_defines)
+        {
+            for (uint32 index = 0; index < input.definition_define_count; ++index)
+            {
+                const char *name = input.definition_defines[index];
+                if (!name || !name[0])
+                    continue;
+
+                if (!IsValidMacroNameBody(name))
+                    return false;
+
+                text_buffer += "#define ";
+                text_buffer += name;
+                text_buffer += " 1\n";
+            }
+        }
 
         // ── 环境光 provider ─────────────────────────────────────────────────
         // 放在最后：主着色器里 options.glsl 位于 bindings 之后、其它公共契约之前，

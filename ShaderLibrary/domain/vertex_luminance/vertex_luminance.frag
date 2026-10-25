@@ -13,7 +13,7 @@
 // SPIR-V 少 64 字节。别「推理掉」看着是死代码的东西。
 
 #include "domain/root_bindings.glsl"
-#include "domain/vertex_luminance_bindings.glsl"
+#include "domain/emissive_row_bindings.glsl"
 #include "generated/options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "ubo/scene_ubo.glsl"

@@ -23,6 +23,8 @@ namespace hgl::graph::mtl
     //        HGL_SHADOW_PCF_POISSON_TAPS ← shadow/pcf_shadow.glsl: #ifndef 兜底 + #if >0
     //        HGL_SHADOW_NORMAL_OFFSET    ← 同上
     //        HGL_MATERIAL_FACE_NORMAL_FALLBACK ← 各主着色器的 main()
+    //        HGL_MATERIAL_HAS_VERTEX_NORMAL   ← material/checkerboard_3d_source.glsl 等
+    //                                          （`#ifdef` 选顶点法线，与上一行互斥）
     //        HGL_ALPHA_TEST / HGL_ALPHA_CUTOFF / HGL_ALPHA_DITHER ← alpha_compositor.glsl
     //        HGL_ALPHA_OUTPUT            ← 各主着色器的 main()
     //      旧路径还会发射 `HGL_USE_MATERIAL_SOURCE_PROVIDER` / `HGL_USE_SCENE_LIGHTING`，
@@ -78,10 +80,27 @@ namespace hgl::graph::mtl
         /// 0 = 不编译法线偏移代码，只靠深度 bias。
         uint32 shadow_normal_offset = 1;
 
-        // ── 顶点法线降级 ────────────────────────────────────────────────────
+        // ── 顶点法线来源 ────────────────────────────────────────────────────
         /// 顶点格式没有 Normal 但材质要法线光照 ⇒ main() 用 dFdx/dFdy 叉积求面法线。
         /// 这是**构建请求**的事实（几何格式），不是材质数据。
         bool face_normal_fallback = false;
+
+        /// 顶点格式**有** Normal 且材质要法线光照 ⇒ 走顶点法线，并让
+        /// `material/checkerboard_3d_source.glsl` 等模块的
+        /// `#ifdef HGL_MATERIAL_HAS_VERTEX_NORMAL` 分支成立。
+        /// 与 `face_normal_fallback` 严格互补：同一个判据（几何格式 × 材质法线需求）
+        /// 的两个互斥结果，两者绝不同时为真。
+        bool vertex_normal_present = false;
+
+        // ── 材质定义自带的 compile_defines ──────────────────────────────────
+        /// 指向 `MaterialDefinition::compile_defines` 的元素数组，逐条发射成
+        /// `#define <name> 1`。旧路径由 `BuildCompileDefineDocument` 在收尾阶段
+        /// 注入，现在同样是 options 的唯一产地（例：Text2D 的 TEXT_SDF_ENABLED
+        /// 决定 `text_source_gpu.glsl` 走 SDF 还是位图分支）。
+        ///
+        /// 不走容器类型：本层只读这块连续内存（`definition_define_count` 个元素）。
+        const char *const *definition_defines = nullptr;
+        uint32 definition_define_count = 0;
 
         // ── 纹理通道覆盖 ────────────────────────────────────────────────────
         /// 指向 `MaterialDefinition::texture_declarations` 的元素数组。

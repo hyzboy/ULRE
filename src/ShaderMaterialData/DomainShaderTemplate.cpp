@@ -33,6 +33,12 @@ namespace hgl::graph::mtl
             { MaterialDomain::VertexColor,       "vertex_color",       "vertex_color.frag",       false },
             { MaterialDomain::VertexPalette,     "vertex_color",       "vertex_color.frag",       false },
             { MaterialDomain::VertexLuminance,   "vertex_luminance",   "vertex_luminance.frag",   false },
+            { MaterialDomain::UnlitSolid,        "unlit_solid",        "unlit_solid.frag",        false },
+            { MaterialDomain::Checker2D,         "checker_2d",         "checker_2d.frag",         false },
+            { MaterialDomain::Checker3D,         "checker_3d",         "checker_3d.frag",         false },
+            { MaterialDomain::ErrorChecker3D,    "error_checker_3d",   "error_checker_3d.frag",   false },
+            { MaterialDomain::Text2D,            "text_2d",            "text_2d.frag",            false },
+            { MaterialDomain::DebugNormal,       "debug_normal",       "debug_normal.frag",       false },
         };
 
         constexpr int kDomainDirCount =
