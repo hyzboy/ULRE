@@ -1,13 +1,11 @@
 // ShaderLibrary/mesh/stage_common_head.glsl
 //
-// 网格阶段固定主着色器（mesh/fixed/<形状键>.mesh）前导的上半段：扩展声明、
+// 网格阶段固定主着色器（mesh/shape/<形状名>.mesh）前导的上半段：扩展声明、
 // RootAddresses push constant、LocalToWorldIndexRef、ResolveTransformID。
 //
-// 为什么拆成 head / body 两个文件：生成器（src/ShaderGen/meshgen/MeshShaderHeaderGen.h）
-// 把 topology 行插在这两段之间，拆开才能让固定源码与生成器输出保持同样的声明顺序，
-// 从而 SPIR-V 逐字节可比。
+// 共享前缀与 topology 声明分开，供不同形状 master 复用同一套引擎 ABI 声明。
 //
-// ResolveTransformID 即使形状不用也保留（生成器无条件发射），去掉会改变 SPIR-V。
+// ResolveTransformID 是共享阶段接口的一部分；移除前需确认所有形状 master 均不再引用。
 //
 // 本文件不得含结构性 #if 分支。
 

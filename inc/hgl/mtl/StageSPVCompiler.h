@@ -2,11 +2,11 @@
 
 namespace hgl::graph::mtl {}
 
-/// MaterialShaderCompiler.h — canonical material input → ShaderBuildContext
+/// StageSPVCompiler.h — canonical material input → ShaderBuildContext
 ///
-/// 使用 BuildMaterialStageDocuments 编译阶段源：两个阶段都**物理固定**，
-/// `MaterialCompileConfig::fixed_mesh_source` 与 `fixed_fragment_source`
-/// 是硬前置（网格阶段=ShaderLibrary/mesh/fixed/<key>.mesh，片段阶段=领域主
+/// 使用 CompileMaterialStages 编译阶段源：两个阶段都**物理固定**，
+/// `StageSPVCompileConfig::fixed_mesh_source` 与 `fixed_fragment_source`
+/// 是硬前置（网格阶段=ShaderLibrary/mesh/shape/<shape_name>.mesh，片段阶段=领域主
 /// 着色器），它们本身就是最终编译单元。
 /// 内部流程：
 ///   1. 求解层构建契约/schema（描述符分配器已随 BDA 化退役）
@@ -29,31 +29,13 @@ namespace hgl::graph
 }
 
 namespace hgl::graph::mtl{
-/// 构建期观测快照（仅回归门禁用）。
-///
-/// 文档层删除后它只剩两个标量：本次构建落在哪个网格形状键、该键是否由固定
-/// 源满足。想断言阶段文本请看 `ShaderCreateInfo::GetFinalGLSL()`；想断言宏/
-/// 环境光看 `EmitDomainOptions*`。快照由 GenericMaterialBuilder 写入，
-/// 编译器本身不再触碰它。
-struct MaterialShaderBuildCapture
-{
-    uint64 mesh_source_shape_key = 0;
-    bool mesh_source_was_fixed = false;
-
-    void Clear() noexcept
-    {
-        mesh_source_shape_key = 0;
-        mesh_source_was_fixed = false;
-    }
-};
-
-struct MaterialShaderCompilerInput
+struct StageSPVCompilerInput
 {
     const char *debug_name = nullptr;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
 };
 
-struct MaterialCompileConfig
+struct StageSPVCompileConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
@@ -72,7 +54,7 @@ struct MaterialCompileConfig
     // 片段阶段的最终 GLSL 就是这份文本（领域固定主着色器）。硬前置。
     // 见 `MaterialDefinitionBuildRequest::fixed_fragment_source`。
     const char *fixed_fragment_source = nullptr;
-    // 完整 mesh stage GLSL 直通（ShaderLibrary/mesh/fixed/<shape_key>.mesh）。硬前置。
+    // 完整 mesh stage GLSL 直通（ShaderLibrary/mesh/shape/<shape_name>.mesh）。硬前置。
     const char *fixed_mesh_source = nullptr;
 };
 
@@ -85,7 +67,7 @@ bool FinalizeShaderBuildContext(
 // 这些函数要么发射网格阶段 GLSL，要么读 ShaderLibrary/*.glsl 的声明闭包。
 // 它们原先声明在 MaterialDefinitionRegistry.h（数据面）里，会把「发行形态用不到的
 // 生成期能力」挂在数据面的头文件上；现在收到本头，数据面只留纯数据能力。
-// 实现位置：GenericMaterialBuilder.cpp / VertexABIBuilder.cpp。
+// 实现位置：MaterialProgramAssembler.cpp / VertexABIBuilder.cpp。
 
 /**
  * Build the resolver-derived vertex ABI without compiling shaders or mutating
@@ -112,7 +94,7 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
  * 仅在开关 `ULRE_DEBUG.toml` 的 `channels.shadergen = true` 开启时生效，
  * 其余情况为空操作。输出目录 = <ShaderCacheRoot>/glsldump。
  */
-void DumpShaderGenGLSL(const char *stage, const std::string &text);
+void DumpStageGLSL(const char *stage, const std::string &text);
 
 /**
  * 判定材质定义是否需要 payload 行（MTL_ROW）。
@@ -134,9 +116,9 @@ bool MaterialDefinitionRequiresPayloadRow(
  * @param config    编译期配置视图（含两份固定源）
  * @return          编译好的 ShaderBuildContext*; 失败返回 nullptr
  */
-ShaderBuildContext *BuildMaterialStageDocuments(
+ShaderBuildContext *CompileMaterialStages(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialShaderCompilerInput &input,
-    const MaterialCompileConfig &config);
+    const StageSPVCompilerInput &input,
+    const StageSPVCompileConfig &config);
 
 }//namespace hgl::graph::mtl

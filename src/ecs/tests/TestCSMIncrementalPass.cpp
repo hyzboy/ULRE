@@ -1970,8 +1970,8 @@ int main(int argc, char** argv)
               "RequiresRecipeRuntimeRows",
               "阴影 pass 不再判定 masked caster 的行需求——行未就绪时仍采深度会写出实心影子" },
             // ── 禁复活（S1 收敛，2026-10-11：描述符契约层 + 三处恒空消费者）──
-            { "GenericMaterialBuilder.cpp",
-              OS_TEXT("src/ShaderGen/builder/GenericMaterialBuilder.cpp"),
+            { "MaterialProgramAssembler.cpp",
+              OS_TEXT("src/ShaderProgramBuild/builder/MaterialProgramAssembler.cpp"),
               "SerializedDescriptorEntry",
               "描述符条目载体已按 S1 整体删除（生产点为 0、消费者或空转或自比）：要恢复"
               "「按 definition 声明描述符」必须先重做载体与其真源，勿在生成器里补半套",
@@ -2032,7 +2032,7 @@ int main(int argc, char** argv)
               "ToOSString(ShaderArtifactSPVExtension)",
               "artifact 扩展名单一真源 = inc/hgl/mtl/ShaderArtifactContract.h：SPV 文件名必须由常量拼出，不得再硬编码字面量（2026-10-11 F-3 修正）",
               false },
-            { "ShaderGen/CMakeLists.txt", OS_TEXT("src/ShaderGen/CMakeLists.txt"),
+            { "ShaderProgramBuild/CMakeLists.txt", OS_TEXT("src/ShaderProgramBuild/CMakeLists.txt"),
               "BlendMode.h",
               "BlendMode 枚举已于 2026-10-11 F-3 删除（全仓 0 使用）；混合状态由运行时管线状态管，不建材质侧类型",
               true },
@@ -2062,7 +2062,7 @@ int main(int argc, char** argv)
             { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "ParsePolicy(", "MaterialVertexProviderPolicy 的名字表已归位到枚举定义处（MaterialRecipe.h，2026-10-11 S3b-2）："
               "解析文件里不得再有本地单向解析器", true },
-            { "ShaderCodeModuleFile.cpp", OS_TEXT("src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp"),
+            { "ShaderCodeModuleFile.cpp", OS_TEXT("src/ShaderMaterialData/ShaderCodeModuleFile.cpp"),
               "ParseKind(", "ShaderCodeModuleKind 的名字表已归位到枚举定义处（ShaderCodeModule.h，2026-10-11 S3b-2）", true },
             { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
               "ResolvedMaterialRenderState GetNormalizedRecipeRenderState(", "归一化取用口已收敛为 TryGetNormalizedRecipeRenderState(recipe, out_state)（S4b/D4，2026-10-12）："

@@ -7,7 +7,7 @@
 //
 // 生成期入口（ComputeMaterialProgramKey / BuildResolvedMaterialVertexABI）**不在这里**：
 // 它们要么发射 GLSL，要么要读 ShaderLibrary/*.glsl 的声明闭包，只有构建期才知道怎么做。
-// 声明在 inc/hgl/mtl/MaterialShaderCompiler.h（ShaderGen 专属头）。
+// 声明在 inc/hgl/mtl/StageSPVCompiler.h（阶段编译专用头）。
 
 #include<hgl/vk/VK.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
@@ -60,7 +60,7 @@ struct MaterialDefinitionBuildRequest
     // nullptr / 空串 = 用场景渲染模板默认 provider。
     // 与 recipe（材质数据）分开放：材质不再声明 ambient 算法。
     const char *ambient_module_name = nullptr;
-    // Render preparation supplies this resolved request. ShaderGen validates
+    // Render preparation supplies this resolved request. The program builder validates
     // and emits it but does not select scene lighting or quality policies.
     RenderTemplateRequest render_template_request;
 

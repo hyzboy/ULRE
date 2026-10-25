@@ -256,12 +256,12 @@ namespace hgl::graph::mtl
 
         // Part-B5: Sampler 预设能力声明（统一注册机制）。
         // 列出此材质在 GLSL 中实际用到的 sampler 预设名（对应 ShaderLibrary/sampler.toml）。
-        // ShaderGen 据此生成 "#define <name>Sampler <idx>u" 宏；名字缺失时保底索引 0。
+        // 程序构建侧据此生成 "#define <name>Sampler <idx>u" 宏；名字缺失时保底索引 0。
         std::vector<std::string> sampler_names;
 
         // Part-B6: 编译期 GLSL 宏定义。
         // 列出此材质需要注入到 GLSL 源码中的 #define 宏名（如 "TEXT_SDF_ENABLED"）。
-        // ShaderGen 据此生成 "#define <name> 1" 注入到 fragment shader。
+        // 程序构建侧据此生成 "#define <name> 1" 注入到 fragment shader。
         std::vector<std::string> compile_defines;
 
         // 材质根 GLSL 代码模块名（注册表唯一键；无数字 ID 轨道）。
@@ -801,7 +801,7 @@ namespace hgl::graph::mtl
     // 顶点语义需求判据（材质侧，单一口径）
     //
     // 这些谓词被三处共用，口径必须只有一份：
-    //   · ShaderGen（`GenericMaterialBuilder::PrepareResolvedDefinition`）—— 决定发射
+    //   · 程序构建侧（`MaterialProgramAssembler::PrepareResolvedDefinition`）—— 决定发射
     //     顶点法线还是面法线降级；
     //   · ECS 渲染层（`RenderPrimitiveCollectSystem`）—— 判定几何顶点格式错配（回退棋盘格）；
     //   · 契约测试（`TestRenderStrategyTable`）—— 钉住语义边界。
@@ -830,7 +830,7 @@ namespace hgl::graph::mtl
      * 需求必须先过这一层，否则一个不发 `emit_world_normal` 的 `StandardOpaque`
      * 材质会被强行要求顶点法线属性 —— 领域契约的过度收紧。
      *
-     * 语义真源只此一份：ShaderGen 的深度 pass 重过滤与材质解析期的推导都调它。
+     * 语义真源只此一份：程序构建侧的深度 pass 重过滤与材质解析期的推导都调它。
      * `default: true` 是刻意的：语义表里没有对应 varying 开关的项（`Size` / `AO` /
      * `Rotation`）既然被领域契约要求了，就不该被静默丢掉。
      */
@@ -997,8 +997,8 @@ namespace hgl::graph::mtl
      *                                    GLSL 字节的字段）。换张贴图 / 只改剔除模式
      *                                    **不得**换变体。
      *
-     * 判据只有一条：该字段是否改变 GLSL 文本或 stage 接口。`src/ShaderGen` 里真正
-     * 被消费的配方字段只有（见 GenericMaterialBuilder::ResolvePurposeAndCoverage、
+     * 判据只有一条：该字段是否改变 GLSL 文本或 stage 接口。`src/ShaderProgramBuild` 里真正
+     * 被消费的配方字段只有（见 MaterialProgramAssembler::ResolvePurposeAndCoverage、
      * BuildMaterialCoverageContract、ResolveMaterialVertexNodeConfig）：
      *   · coverage：alpha_test / alpha_cutoff / dither（宏 + varying 需求 + 模板路由）
      *   · alpha_blend（决定片元是否写出 alpha —— plan.alpha_to_output）

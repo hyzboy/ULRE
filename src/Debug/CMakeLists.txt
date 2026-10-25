@@ -1,7 +1,7 @@
 # ============================================================================
 # ULRE.Debug —— DEBUG 通道开关的唯一定义目标（ULRE_DEBUG.toml 的加载与解析）
 #
-# 为什么单独成库：ULRE.Vulkan / ULRE.ShaderGen / ULRE.ShaderMaterialData /
+# 为什么单独成库：ULRE.Vulkan / ULRE.ShaderProgramBuild / ULRE.ShaderMaterialData /
 # ULRE.SceneGraph / ULRE.ECS 之间没有可声明的有向依赖（强连通分量，见
 # doc/build-and-module-structure-audit-2026-10.md），任何一方都不适合承载一个
 # 「所有层都要用」的符号定义。独立成最小目标后，上层只需 PUBLIC 链接它一次。

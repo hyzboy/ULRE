@@ -20,7 +20,7 @@ namespace hgl::graph::mtl
      * 数据源：ShaderLibrary/sampler.toml（单一 array-of-tables，出现顺序即索引）。
      * 全链路以名字为键：
      *   运行时   BindlessTextureManager::RegisterSamplers 按序 vkCreateSampler 写 binding=1
-     *   ShaderGen MaterialShaderCompiler 生成 "#define <name>Sampler <idx>u" 宏
+     *   ShaderGen StageSPVCompiler 生成 "#define <name>Sampler <idx>u" 宏
      * 二者引用本库，保证 name→index 唯一一致（避免两处独立读文件漂移）。
      *
      * GetIndex(name) 查不到时保底返回 0（Nearest），确保 ShaderGen 不因缺失名而失败。

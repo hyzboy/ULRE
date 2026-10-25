@@ -175,7 +175,7 @@ namespace hgl::graph::mtl
             + AnsiString(") ");
         // per-primitive 语义（DataIndexID/StyleID）：mesh 侧 out 是 perprimitiveEXT
         // 数组，FS 侧 in 必须同加 perprimitiveEXT（VUID-08746 接口装饰匹配；
-        // 扩展 GL_EXT_mesh_shader 由 MaterialShaderCompiler 统一注入 FS）。
+        // 扩展 GL_EXT_mesh_shader 由 StageSPVCompiler 统一注入 FS）。
         // glslang 要求 uint 必须 flat 且顺序为 flat 在前（perprimitiveEXT flat 报
         // unexpected FLAT——qualifier 组合顺序坑，实测 flat perprimitiveEXT 合法）。
         if (IsPerPrimitiveInterStageSemantic(entry.semantic))
@@ -233,7 +233,7 @@ namespace hgl::graph::mtl
         // 面法线兜底（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`）：
         // 材质要法线光照、但几何顶点格式没有 Normal 语义 ⇒ 用世界位置的屏幕空间导数
         // 叉积求**三角形面法线**（与 error_checkerboard_3d_source.glsl 同一约定）。
-        // 开关由 GenericMaterialBuilder::PrepareResolvedDefinition 决定，这里用
+        // 开关由 MaterialProgramAssembler::PrepareResolvedDefinition 决定，这里用
         // GLSL 预处理包住 ⇒ 不降级时本段零成本、且不引用任何可能不存在的 varying。
         // 退化三角形（面积为 0）保持预置值 (0,0,1)，避免 NaN。
         //

@@ -1,10 +1,10 @@
-/// MaterialShaderCompiler.cpp — canonical material input compiler
+/// StageSPVCompiler.cpp — canonical material input compiler
 ///
 /// 流程（BDA 终态，描述符分配器已退役）：
 ///   1. 求解层构建契约/schema（数据槽信号经 requires_runtime_data_rows 直判）
 ///   2. 使用 SetFinalGLSL；Finalize 时独立读取 stage 缓存并只编译 miss
 
-#include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
@@ -107,15 +107,15 @@ bool FinalizeShaderBuildContext(
     build_spec->SetUsedCachedStages(mesh_cache_hit, fragment_cache_hit);
 
     // ULRE_DEBUG.toml 的 channels.shadergen = true：落盘每次材质构建的最终 GLSL（mesh+fs）。
-    // 输出目录由 DumpShaderGenGLSL 解析（<ShaderCacheRoot>/glsldump，不绑定机器路径）。
-    // 运行时可开关，Release 同样有效 —— 这里的调用本身不判断，判断在 DumpShaderGenGLSL 内部。
+    // 输出目录由 DumpStageGLSL 解析（<ShaderCacheRoot>/glsldump，不绑定机器路径）。
+    // 运行时可开关，Release 同样有效 —— 这里的调用本身不判断，判断在 DumpStageGLSL 内部。
     if (const ShaderCreateInfo *mesh_si =
             build_spec->GetStageShader(ShaderStage::Mesh))
-        DumpShaderGenGLSL("mesh", mesh_si->GetFinalGLSL());
+        DumpStageGLSL("mesh", mesh_si->GetFinalGLSL());
 
     if (const ShaderCreateInfo *frag_si =
             build_spec->GetStageShader(ShaderStage::Fragment))
-        DumpShaderGenGLSL("fs", frag_si->GetFinalGLSL());
+        DumpStageGLSL("fs", frag_si->GetFinalGLSL());
     if ((!mesh_cache_hit || !fragment_cache_hit)
      && artifact_store
      && artifact_store->GetCacheMode() == ShaderCacheMode::ReadOnly)
@@ -175,7 +175,7 @@ bool FinalizeShaderBuildContext(
 
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BuildMaterialStageDocuments — 阶段源 → ShaderBuildContext
+// CompileMaterialStages — 阶段源 → ShaderBuildContext
 //
 // 两个阶段都物理固定：`config.fixed_mesh_source` /
 // `config.fixed_fragment_source` 原样直通（网格阶段=固定 .mesh 源，片段阶段=
@@ -185,16 +185,16 @@ bool FinalizeShaderBuildContext(
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BuildMaterialStageDocuments 内部辅助实现
+// CompileMaterialStages 内部辅助实现
 //
-// BuildMaterialStageDocuments 的 7 步流水线被拆分为多个静态辅助函数，
+// CompileMaterialStages 的 7 步流水线被拆分为多个静态辅助函数，
 // 描述符注册 / 行表声明 / binding 宏注入改为配表驱动，主函数仅做编排。
 // 所有失败路径统一走 CompileContext::Fail() + FailCompile()（打印并 delete ctx）。
 // ═══════════════════════════════════════════════════════════════════════════
 
 struct CompileContext
 {
-    const MaterialShaderCompilerInput *input = nullptr;
+    const StageSPVCompilerInput *input = nullptr;
     ShaderBuildContext *ctx = nullptr;
     std::string last_error;
 
@@ -210,7 +210,7 @@ static ShaderBuildContext *FailCompile(CompileContext &c)
     if (!c.last_error.empty())
     {
         std::fprintf(stderr,
-            "[BuildMaterialStageDocuments] material=%s failed: %s\n",
+            "[CompileMaterialStages] material=%s failed: %s\n",
             c.input && c.input->debug_name ? c.input->debug_name : "<unnamed>",
             c.last_error.c_str());
     }
@@ -221,7 +221,7 @@ static ShaderBuildContext *FailCompile(CompileContext &c)
 
 // ── Step 2: 创建 ShaderBuildContext ─────────────────────────────────────────
 static bool CreateBuildContext(
-    const MaterialCompileConfig &config,
+    const StageSPVCompileConfig &config,
     const uint32_t shader_stage_bits,
     CompileContext &c)
 {
@@ -237,7 +237,7 @@ static bool CreateBuildContext(
 // DefaultMaterialPrivateDataName），类型由 MaterialDefinition/CompileConfig
 // 传入，不再从 provider manifest 推导。
 static bool ResolveEffectiveMaterialPrivateData(
-    const MaterialCompileConfig &config,
+    const StageSPVCompileConfig &config,
     CompileContext &c,
     GlobalSSBOType &out_material_private_data)
 {
@@ -277,10 +277,10 @@ static bool BuildArtifactMetadata(
     return true;
 }
 
-ShaderBuildContext *BuildMaterialStageDocuments(
+ShaderBuildContext *CompileMaterialStages(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialShaderCompilerInput &input,
-    const MaterialCompileConfig &config)
+    const StageSPVCompilerInput &input,
+    const StageSPVCompileConfig &config)
 {
     // ctx 尚未创建，此处 FailCompile 只负责统一报告（delete nullptr 安全）
     CompileContext c{&input};
@@ -445,14 +445,14 @@ ShaderBuildContext *BuildMaterialStageDocuments(
 // 发射层（原 MaterialShaderEmitter.cpp，2026 阶段5.2-g 并入本文件）
 //
 // 纯函数、零决策。无生成器终态下仍有消费者的只剩：
-// DumpShaderGenGLSL / BuildSamplerMacros / MaterialDefinitionRequiresPayloadRow。
+// DumpStageGLSL / BuildSamplerMacros / MaterialDefinitionRequiresPayloadRow。
 // 文档拼装与序列化（BuildMaterialStageDocument 及其全部子步骤）已随文档层删除。
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── 诊断用 GLSL 落盘（声明见 MaterialShaderCompiler.h）────────────────────────
+// ── 诊断用 GLSL 落盘（声明见 StageSPVCompiler.h）────────────────────────
 // 开关：ULRE_DEBUG.toml 的 channels.shadergen = true。运行时可开关，Release 同样有效
 // ——排障往往就发生在 Release 跑批上，编译期裁掉等于没有。
-void DumpShaderGenGLSL(const char *stage, const std::string &text)
+void DumpStageGLSL(const char *stage, const std::string &text)
 {
     if (!stage || text.empty())
         return;
@@ -502,7 +502,7 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
         {
             // sampler.toml 无此名字——不生成宏，shader 编译会因未定义
             // 宏显式失败（vs 静默错位成 Nearest）
-            GLogError(u8"[MaterialShaderCompiler] sampler preset not found: %s — "
+            GLogError(u8"[StageSPVCompiler] sampler preset not found: %s — "
                       u8"check sampler.toml ordering",
                       name.c_str());
             continue;
@@ -530,7 +530,7 @@ static bool MaterialSourceRequiresMaterialDataRow(
         GetShaderCodeModuleRegistry().FindByName(module_name);
     if (!module)
     {
-        GLogError(u8"[MaterialShaderCompiler] Material source module not registered: %s",
+        GLogError(u8"[StageSPVCompiler] Material source module not registered: %s",
                   module_name);
         return false;
     }

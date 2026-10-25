@@ -9,7 +9,7 @@ macro(SetupToolTarget name)
                 ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
                 ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
-    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Tools/ShaderGen")
+    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Tools/ShaderProgramBuild")
 
     if(MSVC)
         set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
@@ -37,7 +37,7 @@ add_executable(DescriptorMacroGen
     DescriptorMacroGen.cpp)
 
 target_link_libraries(DescriptorMacroGen
-    PRIVATE ULRE.ShaderGen
+    PRIVATE ULRE.ShaderProgramBuild
             CMCore
             CMCoreType)
 
@@ -85,7 +85,7 @@ add_executable(ShaderResourceSchemaRegressionGate
     ShaderResourceSchemaRegressionGate.cpp)
 
 target_link_libraries(ShaderResourceSchemaRegressionGate
-    PRIVATE ULRE.ShaderGen
+    PRIVATE ULRE.ShaderProgramBuild
             ULRE.Vulkan
             CMCore
             CMMath
@@ -136,7 +136,7 @@ add_executable(SceneRenderTemplateResolverRegression
     SceneRenderTemplateResolverRegression.cpp)
 
 target_link_libraries(SceneRenderTemplateResolverRegression
-    PRIVATE ULRE.ShaderGen
+    PRIVATE ULRE.ShaderProgramBuild
             CMCore
             CMCoreType)
 
@@ -165,7 +165,7 @@ add_executable(ShaderDocumentProductionRegression
     ShaderDocumentProductionRegression.cpp)
 
 target_link_libraries(ShaderDocumentProductionRegression
-    PRIVATE ULRE.ShaderGen
+    PRIVATE ULRE.ShaderProgramBuild
             ULRE.Vulkan
             CMCore
             CMMath

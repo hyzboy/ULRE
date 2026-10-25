@@ -10,7 +10,8 @@ add_subdirectory(RuntimeFormProbe)
 # options 是发行形态也要用到的 program 身份，绝不能反向依赖生成器。
 add_subdirectory(DomainOptions)
 
-# ShaderGen 回归门/工具：直接链接 ULRE.ShaderGen，发行形态（ULRE_ENABLE_SHADERGEN=OFF）下不构建。
+# 着色器/材质程序回归工具：直接链接 ULRE.ShaderProgramBuild，发行形态
+# （ULRE_ENABLE_SHADERGEN=OFF）下不构建。
 IF(ULRE_ENABLE_SHADERGEN)
     add_subdirectory(ShaderGen)
 ENDIF()

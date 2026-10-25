@@ -758,7 +758,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     // 接通跨进程 SPV 磁盘缓存：FinalizeShaderBuildContext 先查缓存，未命中
     // 才走 glslang 编译并回填（BuildIfMissing）。FinalizeShaderBuildContext 在
     // store 非空时要求 program link + artifact metadata 齐备——生产路径的
-    // BuildGenericMaterial 两者恒备（回归门已全变体验证）。
+    // AssembleMaterialProgram 两者恒备（回归门已全变体验证）。
     normalized_request.shader_artifact_store = GetRuntimeShaderArtifactStore();
 
     mtl::MaterialDefinition definition{};

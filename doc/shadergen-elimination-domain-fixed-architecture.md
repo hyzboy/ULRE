@@ -1824,3 +1824,53 @@ Test 29（22 条契约）与 Test 34（5 条契约）第一次真正执行而不
 8.2 的判定性收敛已完成。下一阶段 8.3 只做**改名**（`MaterialShaderCompiler` → `StageSPVCompiler`、
 `GenericMaterialBuilder` → `MaterialProgramAssembler`、抹掉 `src/ShaderGen` 模块名），
 不改语义；改名之后，门禁用例名里的 `emitter` / `emit` 一类措辞一并复核。
+
+## 阶段八-3：程序构建模块命名与数据层归属收敛
+
+> **状态**：✅ 完成。程序构建目标不再使用 `ShaderGen` 目录/target 名称；阶段编译与材质程序组装的文件和 API 改为职责命名，GLSL 模块数据及资源清单实现归入 `ShaderMaterialData`。
+
+### 1. 构建模块重命名
+
+`src/ShaderGen` 与 `ULRE.ShaderGen` 分别改为 `src/ShaderProgramBuild` 与 `ULRE.ShaderProgramBuild`。根聚合目标通过 `ULRE_PROGRAM_BUILD` 链接新 target，回归工具、发行形态检查脚本及运行时注释同步使用新名称。
+
+`ULRE_ENABLE_SHADERGEN` / `ULRE_ENABLE_SHADERGEN=0` 保留为既有配置接口，避免仅重命名内部模块时改变开发/发行构建行为；它现在控制 `ULRE.ShaderProgramBuild` 是否构建。
+
+### 2. 按实际职责重命名接口
+
+仓库中原名对应的是自由函数与输入结构，而非同名 C++ class；因此这次重命名覆盖了文件、公开 API、计划结构、诊断函数与全部调用点：
+
+| 旧名称 | 新名称 |
+| --- | --- |
+| `MaterialShaderCompiler.h/.cpp` | `StageSPVCompiler.h/.cpp` |
+| `MaterialShaderCompilerInput` / `MaterialCompileConfig` | `StageSPVCompilerInput` / `StageSPVCompileConfig` |
+| `BuildMaterialStageDocuments` | `CompileMaterialStages` |
+| `GenericMaterialBuilder.h/.cpp` | `MaterialProgramAssembler.h/.cpp` |
+| `BuildGenericMaterial` / `GenericMaterialBuildPlan` | `AssembleMaterialProgram` / `MaterialProgramAssemblyPlan` |
+| `MaterialShaderBuildCapture` | `MaterialProgramBuildCapture` |
+
+`MaterialProgramBuildCapture` 移到 assembler 头中，由写入它的组装侧拥有；阶段编译仍通过 `FinalizeShaderBuildContext` 保持原有编译/缓存流程。固定网格源注释同步改为 `mesh/shape/<shape_name>.mesh`。
+
+### 3. GLSL 模块元数据归属下沉
+
+`ShaderCodeModule`、文件元数据解析、模块注册表与 `ShaderCodeResourceManifest` 的实现从程序构建 target 移入 `src/ShaderMaterialData`，对应公共头由数据层 target 统一登记。`MaterialRecipe` / `RenderTemplate` 使用这些描述符时不再跨层引用程序构建私有源。
+
+资源清单实现此前通过 `builder/MaterialResourceManifestBuilder.h` 间接取得字符串比较函数；下沉后改为本文件已有的 `std::strcmp`，完整的「材质定义 → code-module 资源清单」辅助入口仍留在组装模块。两层依赖方向保持为 `ShaderProgramBuild → ShaderMaterialData`。
+
+### 4. 终态措辞与门禁名
+
+- `Z.material-bda-emitter` 改名为 `Z.material-bda-fixed-bindings`，对应它现在验证的固定库绑定真值与最终文档，而不是旧发射器假设。
+- 描述符验证生成物随 `DescriptorMacroGen` 更新并通过 `--verify`；`stage_common_head.glsl` 中依赖已删除 mesh-header generator 的说明替换为固定形状 master 的共享前缀说明。
+- 发行脚本继续接受旧的 `ULRE_ENABLE_SHADERGEN` 配置名，但检查的实际产物是 `ULRE.ShaderProgramBuild.*`。
+
+### 验收结果
+
+| 命令 | 结果 |
+| --- | --- |
+| Debug 构建 `ShaderResourceSchemaRegressionGate` / `ShaderDocumentProductionRegression` / `TestCSMIncrementalPass` | 全部构建成功 |
+| `ShaderResourceSchemaRegressionGate.exe all` | `exit=0`，**59 PASS / 0 FAIL** |
+| `ShaderResourceSchemaRegressionGate.exe emit-fixed-mesh` | `covered=35 missing=0 failed=0` |
+| `ShaderDocumentProductionRegression.exe --full` | `exit=0`，`full production fixtures passed`；已知 9 个 depth/shadow master 缺口仍为 skip |
+| `TestCSMIncrementalPass.exe` | `exit=0`，Test 51 `All CSM Incremental Pass Contract Tests PASSED` |
+| `git diff --check` | 无空白错误；活动源码/构建配置中不再引用 `src/ShaderGen`、`ULRE.ShaderGen` 或旧的编译器/组装器 API |
+
+**剩余**：8.3 完成；下一步进入阶段九，全量示例与发行形态验收。

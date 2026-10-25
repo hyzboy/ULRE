@@ -23,7 +23,7 @@ namespace hgl::graph::mtl
 
     /// 由**已算好的**三个哈希构造 stage key。
     ///
-    /// 调用方（`GenericMaterialBuilder::AssembleProgramLinkFromSource`）传入的是
+    /// 调用方（`MaterialProgramAssembler::AssembleProgramLinkFromSource`）传入的是
     /// Phase 4 发射出的文档文本摘要与其 `#include` 闭包指纹 —— 也就是说键覆盖
     /// 「发射出的全部字节」，不接受任何"声明里应该有但实际没发"的假设。
     inline ShaderStageKey BuildShaderStageKey(

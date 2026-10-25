@@ -29,7 +29,7 @@
 //   （网格做错了 / 顶点格式选错了），数据层拿不到 `geometry_vertex_format`，所以判在
 //   ECS 渲染层（`RenderPrimitiveCollectSystem::ApplyGeometryErrorFallback`），判据本身是
 //   `MaterialRecipe.h::ClassifyMaterialGeometryError`（纯函数，可被契约测试覆盖）。
-//   ShaderGen 的面法线降级（`GenericMaterialBuilder::PrepareResolvedDefinition`）因此只剩
+//   ShaderGen 的面法线降级（`MaterialProgramAssembler::PrepareResolvedDefinition`）因此只剩
 //   两种合法用途：① `normal_mode = OptionalFaceFallback` 的棋盘格自身；
 //   ② 调用方没提供几何顶点格式的路径（离线/测试）兜底。
 //

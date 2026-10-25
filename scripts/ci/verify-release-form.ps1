@@ -1,7 +1,7 @@
 param(
     # 开发形态构建树：含 ShaderResourceSchemaRegressionGate（只能在生成器 ON 的树里构建）
     [string]$DevBuildDir  = "build",
-    # 发行形态构建树：ULRE_ENABLE_SHADERGEN=OFF，树内不存在 ULRE.ShaderGen
+    # 发行形态构建树：ULRE_ENABLE_SHADERGEN=OFF，树内不存在 ULRE.ShaderProgramBuild
     [string]$ProdBuildDir = "build_probe_nosg",
     [string]$Config       = "Debug",
     [int]$Jobs            = 8,
@@ -12,14 +12,14 @@ param(
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ShaderGen 物理切割的**发行形态验收**（2026-10）。
+# 材质程序构建层物理切割的**发行形态验收**（2026-10）。
 #
 # 判据不是「代码分成了两个 target」，而是这条跨进程链路能真跑通：
 #
-#   [开发形态]  ULRE.ShaderGen 在场
+#   [开发形态]  ULRE.ShaderProgramBuild 在场
 #        └─ RegressionGate emit-release-cache  → 烘焙 program_manifest.pmf
 #                                               + compute_manifest.pmf + stage SPV
-#   [发行形态]  ULRE.ShaderGen 不存在于链接图
+#   [发行形态]  ULRE.ShaderProgramBuild 不存在于链接图
 #        └─ RuntimeFormProbe（只链 ULRE::Runtime）→ 只读查表 + 装配 build context
 #                                                 + 按名字取 compute SPV
 #
@@ -179,19 +179,19 @@ function Invoke-Verification
         return
     }
 
-    # 发行形态树里不该有任何 ULRE.ShaderGen 产物；出现即意味着 OFF 开关失效。
-    $sgArtifacts = Get-ChildItem $prodPath -Recurse -Filter "ULRE.ShaderGen.*" -File -ErrorAction SilentlyContinue
-    if ($sgArtifacts)
+    # 发行形态树里不该有任何 ULRE.ShaderProgramBuild 产物；出现即意味着 OFF 开关失效。
+    $programBuildArtifacts = Get-ChildItem $prodPath -Recurse -Filter "ULRE.ShaderProgramBuild.*" -File -ErrorAction SilentlyContinue
+    if ($programBuildArtifacts)
     {
-        $failures.Add("prod tree contains ULRE.ShaderGen artifacts")
-        foreach ($item in $sgArtifacts)
+        $failures.Add("prod tree contains ULRE.ShaderProgramBuild artifacts")
+        foreach ($item in $programBuildArtifacts)
         {
             $failures.Add("  " + $item.FullName)
             Write-Host "[FAIL] $($item.FullName)" -ForegroundColor Red
         }
         return
     }
-    Write-Host "[ OK ] prod tree has no ULRE.ShaderGen artifacts" -ForegroundColor Green
+    Write-Host "[ OK ] prod tree has no ULRE.ShaderProgramBuild artifacts" -ForegroundColor Green
 
     # ── [5/5] 发行形态：跑探针 ───────────────────────────────────────────────
     Write-Step "[5/5] run runtime probe in prod tree (material + compute lookups)"

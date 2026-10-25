@@ -1,4 +1,4 @@
-// ShaderGenBackendInstall.h — 构建后端与 SPV 释放器的「接缝安装」入口声明
+// ShaderProgramBuildBackendInstall.h — 构建后端与 SPV 释放器的「接缝安装」入口声明
 //
 // 两个安装器负责把构建期的东西挂到运行时：
 //   · 构建后端  → inc/hgl/mtl/ShaderProgramBuildBackend.h 的进程级槽位
@@ -70,7 +70,7 @@ namespace hgl::graph::mtl
     /// 内部就是后端自己用的 `ResolveFixedFragmentStage`：options 落盘、接口形状
     /// 哈希、`// domain-options-key` 溯源注释三者都由它负责。取到之后把
     /// `source` / `interface_hash` 填进构建请求，片段阶段便不再进入任何拼装
-    /// 路径，`BuildGenericMaterial` 只做网格阶段与链接规格。
+    /// 路径，`AssembleMaterialProgram` 只做网格阶段与链接规格。
     ///
     /// 失败原因见 `GetLastDomainShaderBuildBackendError()`。
     bool ResolveFixedFragmentSource(

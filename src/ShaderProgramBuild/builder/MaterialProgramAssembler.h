@@ -1,9 +1,9 @@
 #pragma once
 
-/// GenericMaterialBuilder.h — phase-split generic material compilation.
+/// MaterialProgramAssembler.h — phase-split generic material compilation.
 ///
-/// BuildGenericMaterial is decomposed into five ordered phases that
-/// share a GenericMaterialBuildPlan.
+/// AssembleMaterialProgram is decomposed into five ordered phases that
+/// share a MaterialProgramAssemblyPlan.
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
@@ -31,12 +31,22 @@ namespace hgl::graph::mtl
 {
     struct MaterialDefinition;
     struct MaterialDefinitionBuildRequest;
-    struct MaterialShaderBuildCapture;
 
+    struct MaterialProgramBuildCapture
+    {
+        uint64 mesh_source_shape_key = 0;
+        bool mesh_source_was_fixed = false;
 
-    /// 中间产物：BuildGenericMaterial 各相位之间共享的全部状态。
+        void Clear() noexcept
+        {
+            mesh_source_shape_key = 0;
+            mesh_source_was_fixed = false;
+        }
+    };
+
+    /// 中间产物：AssembleMaterialProgram 各相位之间共享的全部状态。
     /// 字段对应原单函数中的局部变量；相位按原执行顺序逐行搬移。
-    struct GenericMaterialBuildPlan
+    struct MaterialProgramAssemblyPlan
     {
         // Phase 1: purpose / coverage / varying / stage interface
         mtl::ShaderProgramPurpose purpose =
@@ -90,12 +100,12 @@ namespace hgl::graph::mtl
     };
 
     /// 统一 generic 材质编译入口（原 MaterialDefinitionRegistry.cpp 中
-    /// BuildGenericMaterial 的相位化版本）。返回编译好的 ShaderBuildContext*。
-    mtl::ShaderBuildContext *BuildGenericMaterial(
+    /// AssembleMaterialProgram 的相位化版本）。返回编译好的 ShaderBuildContext*。
+    mtl::ShaderBuildContext *AssembleMaterialProgram(
         const mtl::contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition,
-        MaterialShaderBuildCapture *build_capture);
+        MaterialProgramBuildCapture *build_capture);
 
-    const AnsiString &GetLastBuildGenericMaterialError();
+    const AnsiString &GetLastMaterialProgramAssemblyError();
 }

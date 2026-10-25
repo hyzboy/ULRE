@@ -4,9 +4,9 @@
 // 结构校验。发行形态（ULRE_ENABLE_SHADERGEN=0）同样需要这些能力——选模板、
 // 装 module root、算 stable_hash 都要在运行时完成。
 //
-// 与 ULRE.ShaderGen 的分界线：任何需要读 ShaderLibrary 里的 GLSL 模块清单
+// 与 ULRE.ShaderProgramBuild 的分界线：任何需要读 ShaderLibrary 里的 GLSL 模块清单
 // （ShaderCodeModuleRegistry / ShaderCodeResourceManifest）才能做的校验与解析，
-// 都留在 src/ShaderGen/template/RenderTemplateResolve.cpp。
+// 都留在 src/ShaderProgramBuild/template/RenderTemplateResolve.cpp。
 
 namespace hgl::graph::mtl
 {

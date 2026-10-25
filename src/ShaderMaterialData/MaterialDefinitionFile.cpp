@@ -791,7 +791,7 @@ namespace hgl::graph::mtl
                         {
                             // 可选：纹理通道数。0/缺省 = 由纹素格式决定；
                             // 2 = 双通道法线(BC5)：只存 XY，Z 由 shader 还原
-                            // （ShaderGen 据此注入 MTL_TEX_<NAME>_CHANNELS）。
+                            // （程序构建阶段据此注入 MTL_TEX_<NAME>_CHANNELS）。
                             if (!item.at("channels").is_integer())
                             {
                                 RecordParseFailure("channels", nullptr, "channels 必须是整数");

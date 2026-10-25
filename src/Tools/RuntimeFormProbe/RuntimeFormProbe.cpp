@@ -1,7 +1,7 @@
 /**
  * RuntimeFormProbe —— 「发行形态」可执行证明。
  *
- * 只链接 `ULRE::Runtime`（永不含 `ULRE.ShaderGen` / glslang），因此本文件能
+ * 只链接 `ULRE::Runtime`（永不含 `ULRE.ShaderProgramBuild` / glslang），因此本文件能
  * 编出来、这一行链接能过，本身就是「运行时不依赖生成器」的硬断言。
  *
  * 它消费由开发形态烘焙出来的 shader-cache 夹具（`program_manifest.pmf` +

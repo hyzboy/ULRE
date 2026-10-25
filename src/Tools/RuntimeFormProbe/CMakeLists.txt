@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 # 发行形态探针（RuntimeFormProbe）
 #
-# **只链接 ULRE::Runtime**，永不含 ULRE.ShaderGen / glslang。因此本 target 能否
+# **只链接 ULRE::Runtime**，永不含 ULRE.ShaderProgramBuild / glslang。因此本 target 能否
 # 链接通过，本身就是「运行时不再引用生成器符号」的可执行断言：哪天有运行时 .cpp
 # 又反向依赖了生成器，这里会直接 LNK2019。
 #

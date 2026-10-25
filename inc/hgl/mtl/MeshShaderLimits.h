@@ -7,7 +7,7 @@
 namespace hgl::graph::mtl
 {
     // mesh shader 每工作组 invocation 的理想值（设备 profile 缺失/未填时的默认）。
-    // 实际 group size = min(理想值, 设备能力上限)（见 GenericMaterialBuilder 的
+    // 实际 group size = min(理想值, 设备能力上限)（见 MaterialProgramAssembler 的
     // ClampMeshInvocationsByDevice——拒绝在生成侧硬编码，设备上限从物理设备实测传入）。
     //
     // VertexPassthrough：64 线程（与 Wave32/Wave64 硬件原生对齐），
@@ -26,7 +26,7 @@ namespace hgl::graph::mtl
     // ── 「模式 × invocation 数 → 输出容量」的唯一真源 ────────────────────────
     //
     // 这个公式原先只住在 `meshgen/MeshModeDescriptor.h` 的三个 topology resolver 里，
-    // 于是一旦生成器被删除，就没有任何东西能回答「固定 `.mesh` 文件里那三行
+    // 于是一旦程序构建模块被删除，就没有任何东西能回答「固定 `.mesh` 文件里那三行
     // `layout(...)` 该是什么数值」。固定源把那三行变成**外部数据**：形状键只哈希
     // invocation 数，不哈希公式，所以手改文件里的 `local_size_x` 不会让键失配——
     // 文件照样被找到、照样编译，然后 CPU 与 shader 的组数/容量悄悄分叉。

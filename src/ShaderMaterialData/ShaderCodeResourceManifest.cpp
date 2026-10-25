@@ -1,7 +1,7 @@
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
-#include "builder/MaterialResourceManifestBuilder.h"
+#include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/util/hash/FNV1a.h>
 
 #include <cstring>
@@ -41,9 +41,8 @@ namespace hgl::graph::mtl
             for (uint32 i = 0; i < manifest.texture_reference_count; ++i)
             {
                 auto &existing = manifest.texture_references[i];
-                if (!resource_manifest_builder::CStrEqual(
-                        existing.texture_name,
-                        incoming.texture_name))
+                if (!existing.texture_name
+                 || std::strcmp(existing.texture_name, incoming.texture_name) != 0)
                     continue;
 
                 existing.stage_flags |= incoming.stage_flags;
@@ -77,9 +76,8 @@ namespace hgl::graph::mtl
             for (uint32 i = 0; i < manifest.sampler_reference_count; ++i)
             {
                 auto &existing = manifest.sampler_references[i];
-                if (!resource_manifest_builder::CStrEqual(
-                        existing.sampler_name,
-                        incoming.sampler_name))
+                if (!existing.sampler_name
+                 || std::strcmp(existing.sampler_name, incoming.sampler_name) != 0)
                     continue;
 
                 existing.required = existing.required || incoming.required;

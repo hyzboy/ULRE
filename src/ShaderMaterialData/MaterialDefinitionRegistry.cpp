@@ -116,7 +116,7 @@ bool SelectSceneRenderTemplateRequest(
     // （AlphaTest 或 Dither 或两者）就需要在片元里评估 alpha 后再决定是否丢弃。
     //
     // 这里曾经只看 alpha_test，于是「纯 dither」材质在深度/阴影 pass 上会被路由
-    // 到 ShadowCasterOpaque，而 GenericMaterialBuilder 的模板一致性断言要求
+    // 到 ShadowCasterOpaque，而 MaterialProgramAssembler 的模板一致性断言要求
     // ShadowCasterMasked ⇒ 构建直接被拒绝（dither 材质一旦进阴影就报错）。
     const ResolvedMaterialRenderState resolved_state =
         ResolveMaterialRenderState(definition, recipe);
@@ -161,7 +161,7 @@ bool SelectSceneRenderTemplateRequest(
         }
         if (!ambient_applied)
             GLogWarning(
-                "[ShaderGen] ambient provider ignored: id=%s template=%s "
+                "[MaterialDefinitionRegistry] ambient provider ignored: id=%s template=%s "
                 "has no ambient_light_provider slot",
                 definition.definition_id.c_str(),
                 GetRenderTemplateName(template_id));
@@ -195,7 +195,7 @@ bool SelectSceneRenderTemplateRequest(
         return true;
 
     GLogError(
-        "[ShaderGen] Scene render route selection failed: id=%s error=%s",
+        "[MaterialDefinitionRegistry] Scene render route selection failed: id=%s error=%s",
         definition.definition_id.c_str(),
         GetRenderTemplateValidationErrorName(diagnostic.error));
     return false;
@@ -312,7 +312,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
             {
                 // 内嵌定义解析不出来 = 引擎内部错误（源码与领域契约脱节），
                 // 与"某份资产写错"性质不同，不可降级 ⇒ 进程级致命。
-                GLogFatal("[ShaderGen] 内嵌 builtin 材质定义注册失败: %ls。这是引擎内部错误"
+                GLogFatal("[MaterialDefinitionRegistry] 内嵌 builtin 材质定义注册失败: %ls。这是引擎内部错误"
                           "（内嵌源码与领域契约不一致），保底材质不可依赖，进程不可继续。",
                           source->source_label);
                 std::abort();
@@ -321,7 +321,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
             // 内嵌源码声明的 id 必须与登记 ID 一致，否则保底链会指向一个不存在的定义。
             if (!registry.FindByID(source->definition_id))
             {
-                GLogFatal("[ShaderGen] 内嵌 builtin 材质定义 ID 不一致: 期望 \"%s\""
+                GLogFatal("[MaterialDefinitionRegistry] 内嵌 builtin 材质定义 ID 不一致: 期望 \"%s\""
                           "（标签 %ls），注册后查不到该 ID。",
                           source->definition_id, source->source_label);
                 std::abort();
@@ -338,7 +338,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
 
         if (!material_path.IsDirectory())
         {
-            GLogFatal("[ShaderGen] Missing required ShaderLibrary/material directory: %s. File-backed schema-4 material definitions are mandatory.",
+            GLogFatal("[MaterialDefinitionRegistry] Missing required ShaderLibrary/material directory: %s. File-backed schema-4 material definitions are mandatory.",
                       material_path.ToOSString().c_str());
             std::abort();
         }
@@ -346,7 +346,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         if (!registry.LoadDirectory(
                 material_path.ToOSString(), &file_count, &error_count))
         {
-            GLogFatal("[ShaderGen] Material TOML directory unavailable; no material definitions are available from %s. This is a hard failure.",
+            GLogFatal("[MaterialDefinitionRegistry] Material TOML directory unavailable; no material definitions are available from %s. This is a hard failure.",
                       material_path.ToOSString().c_str());
             std::abort();
         }
@@ -358,16 +358,16 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         // 定义已经保证 registry 非空，所以这里判的是**资产份数**，不是 registry.GetCount()。
         if (file_count == 0)
         {
-            GLogFatal("[ShaderGen] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions, %d builtin). File-backed schema-4 materials are required.",
+            GLogFatal("[MaterialDefinitionRegistry] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions, %d builtin). File-backed schema-4 materials are required.",
                       file_count, error_count, registry.GetCount(), builtin_count);
             std::abort();
         }
 
         if (error_count > 0)
-            GLogError("[ShaderGen] %d 份材质定义加载失败（逐份原因见上）——这些定义不注册，"
+            GLogError("[MaterialDefinitionRegistry] %d 份材质定义加载失败（逐份原因见上）——这些定义不注册，"
                       "引用它们的配方会走错误材质路径。", error_count);
 
-        GLogInfo("[ShaderGen] Loaded %d material TOML definitions (%d errors) + %d builtin definitions",
+        GLogInfo("[MaterialDefinitionRegistry] Loaded %d material TOML definitions (%d errors) + %d builtin definitions",
                  file_count, error_count, builtin_count);
         loaded = true;
     }

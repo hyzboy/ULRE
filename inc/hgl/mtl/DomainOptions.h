@@ -52,7 +52,7 @@ namespace hgl::graph::mtl
     // 因为这段文本同时充当 program 身份的一部分。
 
     /// 主着色器的宏族。语义与旧的 `ShaderConfigProfile` 相同，但**刻意不复用**：
-    /// `src/ShaderGen` 将在阶段五被物理删除，本层不能反向依赖它。
+    /// 这是运行时可用的数据契约，不反向依赖程序构建模块。
     enum class DomainOptionsProfile : unsigned char
     {
         None = 0,       ///< Sky 等无 define 块的主着色器：整段不发射（不是遗漏）

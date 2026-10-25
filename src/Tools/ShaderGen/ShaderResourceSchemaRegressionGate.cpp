@@ -8,7 +8,7 @@
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/PipelineConfigEmitter.h>
-#include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -42,7 +42,7 @@
 #include "SPVParseFlat.h"
 #include <fstream>
 #include <filesystem>
-#include "ShaderGen/builder/GenericMaterialBuilder.h"
+#include "ShaderProgramBuild/builder/MaterialProgramAssembler.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/graph/font/CharQuadConfig.h>
 #include "VertexBuilderCommon.h"
@@ -50,7 +50,7 @@
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
-#include "ShaderGen/compile/ShaderGenBackendInstall.h"
+#include "ShaderProgramBuild/compile/ShaderProgramBuildBackendInstall.h"
 
 #include <algorithm>
 #include <cctype>
@@ -97,7 +97,7 @@ namespace
             if (!ctx)
             {
                 const char *domain_error = GetLastDomainShaderBuildBackendError();
-                const hgl::AnsiString &mesh_error = GetLastBuildGenericMaterialError();
+                const hgl::AnsiString &mesh_error = GetLastMaterialProgramAssemblyError();
                 if (domain_error && domain_error[0])
                     error = domain_error;
                 else if (!mesh_error.IsEmpty())
@@ -1239,7 +1239,7 @@ namespace
 
             // 不编译 SPV：本用例只读网格阶段 GLSL 文本。
             return std::unique_ptr<ShaderBuildContext>(
-                BuildGenericMaterial(profile, request, def, nullptr));
+                AssembleMaterialProgram(profile, request, def, nullptr));
         };
 
         // ── ① 无 profile（无约束）：local_size_x 必须等于 CPU dispatch 常量 ──
@@ -1571,7 +1571,7 @@ namespace
             request.mesh_options_glsl_out = &mesh_options_text;
 
             return std::unique_ptr<ShaderBuildContext>(
-                BuildGenericMaterial(nullptr, request, def, nullptr));
+                AssembleMaterialProgram(nullptr, request, def, nullptr));
         };
 
         const VertexShaderNodeConfig node_2d = Make2DNodeConfigOrtho(false);
@@ -2261,7 +2261,7 @@ namespace
         const GeometryVertexFormat &lit_geometry_b = kCacheIdentityLitGeometryB;
         const GeometryVertexFormat &color_geometry = kCacheIdentityColorGeometry;
 
-        // 失败原因必须逐次记录：`GetLastBuildGenericMaterialError()` 只反映
+        // 失败原因必须逐次记录：`GetLastMaterialProgramAssemblyError()` 只反映
         // **最后一次**构建，后面的构建一旦成功就会把它清空，而空串的 `c_str()`
         // 返回 nullptr——诊断里直接取它会把错误路径变成崩溃。
         std::string build_error;
@@ -2298,11 +2298,11 @@ namespace
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
             std::unique_ptr<ShaderBuildContext> context(
-                BuildGenericMaterial(
+                AssembleMaterialProgram(
                     profile, request, definition, nullptr));
             if (!context || !context->HasProgramLink())
             {
-                const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
+                const hgl::AnsiString &err = GetLastMaterialProgramAssemblyError();
                 build_error = err.IsEmpty()
                     ? "(no diagnostic)" : err.c_str();
             }
@@ -2992,7 +2992,7 @@ namespace
                     }
                     // 本用例断言的是输出契约 / program link 形状，片段文本不参与。
                     // 片段源照样按领域固定源填进请求——不填会被
-                    // GenericMaterialBuilder 直接拒收（片段拼装链已删除）。
+                    // MaterialProgramAssembler 直接拒收（片段拼装链已删除）。
                     FixedFragmentSource fixed;
                     if (!ResolveFixedFragmentSource(selected, request, fixed))
                     {
@@ -3026,12 +3026,12 @@ namespace
                         }
                     }
                     auto ctx = std::unique_ptr<ShaderBuildContext>(
-                        BuildGenericMaterial(
+                        AssembleMaterialProgram(
                             nullptr, request, selected, nullptr));
                     if (!ctx)
                     {
-                        const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
-                        result.diagnostics.emplace_back(std::string("BuildGenericMaterial returned null: ") + (err.IsEmpty() ? "unknown error" : err.c_str()));
+                        const hgl::AnsiString &err = GetLastMaterialProgramAssemblyError();
+                        result.diagnostics.emplace_back(std::string("AssembleMaterialProgram returned null: ") + (err.IsEmpty() ? "unknown error" : err.c_str()));
                     }
                     else if (!ctx->HasProgramLink())
                     {
@@ -3354,14 +3354,14 @@ namespace
                     return std::unique_ptr<ShaderBuildContext>();
                 // 本用例断言的是统一骨架的 program link 形状，片段文本不参与。
                 // 片段源照样按领域固定源填进请求——不填会被
-                // GenericMaterialBuilder 直接拒收（片段拼装链已删除）。
+                // MaterialProgramAssembler 直接拒收（片段拼装链已删除）。
                 FixedFragmentSource fixed;
                 if (!ResolveFixedFragmentSource(definition, request, fixed))
                     return std::unique_ptr<ShaderBuildContext>();
                 request.fixed_fragment_source = fixed.source.c_str();
                 request.fixed_fragment_interface_hash = fixed.interface_hash;
                 return std::unique_ptr<ShaderBuildContext>(
-                    BuildGenericMaterial(
+                    AssembleMaterialProgram(
                         nullptr, request, definition, nullptr));
             };
             const auto lit_build = build(
@@ -7654,11 +7654,11 @@ namespace
         return result;
     }
 
-    static GateResult RunMaterialBDAEmitterCase()
+    static GateResult RunMaterialBDAFixedBindingsCase()
     {
         GateResult result;
-        result.name = "Z.material-bda-emitter";
-        const MaterialShaderCompilerInput compiler_input{
+        result.name = "Z.material-bda-fixed-bindings";
+        const StageSPVCompilerInput compiler_input{
             "MaterialPrivateDataMaterial",
             PrimitiveType::Triangles
         };
@@ -7670,7 +7670,7 @@ namespace
         const std::string emissive_frag_source =
             root_bindings + "\n" + emissive_bindings;
 
-        MaterialCompileConfig config{};
+        StageSPVCompileConfig config{};
         config.material_private_data = GlobalSSBOType::EmissiveSurface;
         config.defer_finalize = true;
         config.fixed_mesh_source = "#version 460\nvoid main(){}\n";
@@ -7678,7 +7678,7 @@ namespace
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
-        ShaderBuildContext *build_spec = BuildMaterialStageDocuments(
+        ShaderBuildContext *build_spec = CompileMaterialStages(
             nullptr,
             compiler_input,
             config);
@@ -7807,10 +7807,10 @@ namespace
             "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef { uvec2 tex_base_color; uvec2 tex_normal; };\n"
             "#define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))\n";
 
-        MaterialShaderCompilerInput texture_compiler_input{
+        StageSPVCompilerInput texture_compiler_input{
             "MaterialTextureReferenceOnly",
             PrimitiveType::Triangles};
-        MaterialCompileConfig texture_config{};
+        StageSPVCompileConfig texture_config{};
         texture_config.material_private_data = GlobalSSBOType::PBRSurface;
         texture_config.material_definition = &texture_definition;
         texture_config.defer_finalize = true;
@@ -7819,7 +7819,7 @@ namespace
         texture_config.shader_stage_flag_bits =
             uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
-        ShaderBuildContext *texture_build_spec = BuildMaterialStageDocuments(
+        ShaderBuildContext *texture_build_spec = CompileMaterialStages(
             nullptr,
             texture_compiler_input,
             texture_config);
@@ -7888,10 +7888,10 @@ namespace
         vertex_color_definition.material_source_module_name = "vertex_color_source";
         vertex_color_definition.vertex_varying.emit_data_index_id = false;
 
-        MaterialShaderCompilerInput vertex_color_compiler_input{
+        StageSPVCompilerInput vertex_color_compiler_input{
             "MaterialPayloadFreeVertexColor",
             PrimitiveType::Triangles};
-        MaterialCompileConfig vertex_color_config{};
+        StageSPVCompileConfig vertex_color_config{};
         vertex_color_config.material_private_data = GlobalSSBOType::PBRSurface;
         vertex_color_config.material_definition = &vertex_color_definition;
         vertex_color_config.defer_finalize = true;
@@ -7900,7 +7900,7 @@ namespace
         vertex_color_config.shader_stage_flag_bits =
             uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
-        ShaderBuildContext *vertex_color_build_spec = BuildMaterialStageDocuments(
+        ShaderBuildContext *vertex_color_build_spec = CompileMaterialStages(
             nullptr,
             vertex_color_compiler_input,
             vertex_color_config);
@@ -7948,10 +7948,10 @@ namespace
         pbr_definition.material_source_module_name = "pbr_surface_source";
         pbr_definition.vertex_varying.emit_data_index_id = true;
 
-        MaterialShaderCompilerInput pbr_compiler_input{
+        StageSPVCompilerInput pbr_compiler_input{
             "MaterialPayloadDeclaredNoTexture",
             PrimitiveType::Triangles};
-        MaterialCompileConfig pbr_config{};
+        StageSPVCompileConfig pbr_config{};
         pbr_config.material_private_data = GlobalSSBOType::PBRSurface;
         pbr_config.material_definition = &pbr_definition;
         pbr_config.defer_finalize = true;
@@ -7960,7 +7960,7 @@ namespace
         pbr_config.shader_stage_flag_bits =
             uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
-        ShaderBuildContext *pbr_build_spec = BuildMaterialStageDocuments(
+        ShaderBuildContext *pbr_build_spec = CompileMaterialStages(
             nullptr,
             pbr_compiler_input,
             pbr_config);
@@ -7991,7 +7991,7 @@ namespace
         // 编译器不得再注入 #define（原 kBindingDefineTable 注入路径已删除，Phase 3）。
         // 输入 GLSL 特意 include 并使用宏（与真实模板一致）——旧注入路径会因此向
         // mesh 阶段注入 L2W_SET/L2W_BINDING（该注入路径已删除，本用例钉住不许复活）。
-        const MaterialShaderCompilerInput compiler_input{
+        const StageSPVCompilerInput compiler_input{
             "BindingMacroSingleSourceMaterial",
             PrimitiveType::Triangles
         };
@@ -8006,13 +8006,13 @@ namespace
             "layout(location=0) out vec4 outColor;\n"
             "void main(){outColor=vec4(1.0);}\n";
 
-        MaterialCompileConfig config{};
+        StageSPVCompileConfig config{};
         config.defer_finalize = true;
         config.fixed_mesh_source = kMeshSource;
         config.fixed_fragment_source = kFragSource;
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
-        ShaderBuildContext *build_spec = BuildMaterialStageDocuments(
+        ShaderBuildContext *build_spec = CompileMaterialStages(
             nullptr,
             compiler_input,
             config);
@@ -9607,7 +9607,7 @@ void main()
             }
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
-            baked.reset(BuildGenericMaterial(nullptr, request, definition, nullptr));
+            baked.reset(AssembleMaterialProgram(nullptr, request, definition, nullptr));
         }
         if (!baked || !baked->HasProgramLink() || !baked->HasProgramArtifactMetadata())
         {
@@ -10200,7 +10200,7 @@ void main()
     static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
         const ReflectionCoverageVariant &variant, std::string &diagnostic,
         FixedFragmentSource *out_fixed = nullptr,
-        MaterialShaderBuildCapture *out_capture = nullptr,
+        MaterialProgramBuildCapture *out_capture = nullptr,
         hgl::AnsiString *out_mesh_options = nullptr)
     {
         MaterialDefinition definition{};
@@ -10261,7 +10261,7 @@ void main()
         request.mesh_options_glsl_out = &mesh_options_text;
 
         std::unique_ptr<ShaderBuildContext> ctx(
-            BuildGenericMaterial(nullptr, request, definition, out_capture));
+            AssembleMaterialProgram(nullptr, request, definition, out_capture));
         if (!ctx)
         {
             diagnostic = std::string("material build failed: ") + variant.variant_slug;
@@ -10982,7 +10982,7 @@ void main()
             //
             // 这里曾经有第二个"生成器"侧构建，用两条独立拼装路径产出同一形状
             // 再逐字节比对——那才是"等价"的证据。片段阶段被领域主着色器物理
-            // 固定、且 GenericMaterialBuilder 已拒收没有固定片段源的构建之后，
+            // 固定、且 MaterialProgramAssembler 已拒收没有固定片段源的构建之后，
             // 第二条路径不存在了，继续留着只会是同一份输出的自证。
             //
             // 基线本身仍然有价值：它是这 15 个形状的反射文本 + SPV 体积的
@@ -11040,7 +11040,7 @@ void main()
     //   ② 重开一个新 store 对象（同一目录）⇒ 两阶段都 hit，且 SPV 逐字节
     //      等于冷构建那次；
     //   ③ `generated_source_digest` 必须等于**当前**两阶段最终 GLSL 的摘要。
-    //      `BuildGenericMaterial` 是在换源前建元数据的，它算的是那份根本没被
+    //      `AssembleMaterialProgram` 是在换源前建元数据的，它算的是那份根本没被
     //      编译的生成物——不在换源后重算，这个字段就永远描述另一份文本；
     //   ④ 落盘的 `.frag` 源必须含 `generated/options.glsl`，即缓存里存的是
     //      固定主着色器，不是旧的生成物。
@@ -11491,7 +11491,7 @@ void main()
         for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
         {
             std::string build_diagnostic;
-            MaterialShaderBuildCapture capture{};
+            MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx =
                 BuildReflectionCoverageVariant(
                     variant, build_diagnostic, nullptr, &capture);
@@ -11511,7 +11511,7 @@ void main()
         // ── 领域后端矩阵 ────────────────────────────────────────────────
         //
         // 这条路径不吃 `fixed_fragment_source`（片段由领域后端自己解析主着色器），
-        // 所以这里只取网格阶段。`BuildGenericMaterial` 在这里的作用等价于
+        // 所以这里只取网格阶段。`AssembleMaterialProgram` 在这里的作用等价于
         // 「按请求生成网格阶段」，片段侧产出什么无关紧要。
         for (const DomainBackendEquivShape &shape : kDomainBackendEquivShapes)
         {
@@ -11540,7 +11540,7 @@ void main()
             // 才编译固定片段（include 根要按 options 域就位），捕获用不到。
             request.defer_finalize = true;
 
-            // 片段侧同样是物理固定的：`BuildGenericMaterial` 在没有
+            // 片段侧同样是物理固定的：`AssembleMaterialProgram` 在没有
             // `fixed_fragment_source` 时会直接拒绝。这里照抄领域后端的做法先解析
             // 固定片段源——否则捕获路径根本走不到网格阶段。
             FixedFragmentSource fixed;
@@ -11554,13 +11554,13 @@ void main()
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
 
-            MaterialShaderBuildCapture capture{};
+            MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
-                BuildGenericMaterial(nullptr, request, definition, &capture));
+                AssembleMaterialProgram(nullptr, request, definition, &capture));
             if (!ctx)
             {
                 const hgl::AnsiString &build_error =
-                    GetLastBuildGenericMaterialError();
+                    GetLastMaterialProgramAssemblyError();
                 std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n", shape.label,
                           build_error.IsEmpty()
                               ? "(no diagnostic)" : build_error.c_str());
@@ -11618,13 +11618,13 @@ void main()
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
 
-            MaterialShaderBuildCapture capture{};
+            MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
-                BuildGenericMaterial(nullptr, request, definition, &capture));
+                AssembleMaterialProgram(nullptr, request, definition, &capture));
             if (!ctx)
             {
                 const hgl::AnsiString &build_error =
-                    GetLastBuildGenericMaterialError();
+                    GetLastMaterialProgramAssemblyError();
                 std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n", shape.label,
                              build_error.IsEmpty()
                                  ? "(no diagnostic)" : build_error.c_str());
@@ -11809,7 +11809,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(
         RunComputeProgramCacheCase(
             std::filesystem::path(RepoRootOSPath("build/cache-compute-lookup").c_str())));
-    if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
+    if (run_pipeline) results.push_back(RunMaterialBDAFixedBindingsCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_reflection) results.push_back(RunSPVReflectionCase());

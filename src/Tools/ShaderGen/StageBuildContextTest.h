@@ -2,7 +2,7 @@
 
 // StageBuildContextTest.h — 回归门专用的 stage key/接口一致性测试辅助。
 // 原生产头 ShaderStageBuildContext.h（2026-09 清扫迁出）：生产路径构建
-// ShaderStageKey 的唯一位置是 ShaderKeyUtility/GenericMaterialBuilder，
+// ShaderStageKey 的唯一位置是 ShaderKeyUtility/MaterialProgramAssembler，
 // 本结构仅供门用例构造键与做 mesh↔fragment 接口一致性断言。
 // 已相对原生产版删减：resources 集合与 GetResourceHash（全库零使用）、
 // ShaderStageInterfaceFlags / ShaderStageResourceKind /

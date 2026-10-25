@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
             ///
             /// 纯纹理材质（如 `UnlitTexture`）只命中第 2 类：合并信号为真但 payload 为假。
             /// 运行期校验若只读合并信号，就会把这类材质当成「缺绑定」错杀，因此本字段把
-            /// 第 1 类单独记下来（编译期判定，见 MaterialShaderCompiler 的
+            /// 第 1 类单独记下来（编译期判定，见 StageSPVCompiler 的
             /// `MaterialDefinitionRequiresPayloadRow`），运行期不再反推。
             bool requires_recipe_payload_row = false;
 
@@ -66,7 +66,7 @@ namespace hgl::graph::mtl
             bool used_cached_fragment_stage = false;
 
             // ── 结构快照观察字段（ShaderStructureDump 用；不参与 shader 生成语义）──
-            // 求解层产出的、但原本只在 GenericMaterialBuilder plan 里存在的状态：
+            // 求解层产出的、但原本只在 MaterialProgramAssembler plan 里存在的状态：
             // 模块列表（manifest 依赖序）与有效 varying 配置。存到 ctx 上让
             // 结构快照/回归门无需持有 plan 也能 dump 完整求解结果。
             std::vector<std::string> resolved_module_names;          ///< 依赖序的 code module 名

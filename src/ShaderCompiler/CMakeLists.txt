@@ -2,13 +2,13 @@
 #
 # glslang 插件桥：GLSL → SPIR-V 编译 + SPIR-V 反射。**不认识 ShaderGen**。
 #
-# 存在理由：这些 TU 原先住在 src/ShaderGen/compile，而运行时（ULRE.SceneGraph）
+# 存在理由：这些 TU 原先住在 src/ShaderProgramBuild/compile，而运行时（ULRE.SceneGraph）
 # 要调 GetSPVPushConstantEnd，等于运行时反向依赖生成器；发行形态
 # （ULRE_ENABLE_SHADERGEN=OFF）因此断链。本目标把桥提取成独立模块：
 #
 #   SceneGraph / Work / 工具  →  ULRE.ShaderCompiler  →  GLSLCompiler 插件(.dll)
 #                                        ↑
-#                          ULRE.ShaderGen / 直通构建后端（只注册生命周期钩子）
+#                          ULRE.ShaderProgramBuild / 直通构建后端（只注册生命周期钩子）
 #
 # 约束：
 #   1. 只收「编译/反射」本身，不收任何构建后端实现（后端通过钩子安装）

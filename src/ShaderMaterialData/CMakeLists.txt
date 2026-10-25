@@ -4,18 +4,12 @@
 # ShaderCreateInfo 的纯数据成员、采样器预设表。它零 GLSL 文本发射、零 glslang，
 # 因此发行形态（ULRE_ENABLE_SHADERGEN=0）也照常链接。
 #
-# 与 ULRE.ShaderGen 的分界线：任何需要「把定义拼成 GLSL 再编译」的东西都留在
-# ShaderGen。跨界的唯一**行为**通道是 inc/hgl/mtl/ShaderProgramBuildBackend.h ——
-# 这个接缝头的接口吃本层的材质定义 / 构建请求，所以它连同槽位 .cpp 都归本层，
-# 契约层保持零运行时依赖。
+# ShaderCodeModule* 与 ShaderCodeResourceManifest 是材质/着色器元数据，归本层；
+# 物理阶段源解析、options 生成及 SPIR-V 编译则由 ULRE.ShaderProgramBuild 消费。
+# 跨界的唯一**构建行为**通道是 inc/hgl/mtl/ShaderProgramBuildBackend.h —— 这个接缝
+# 头的接口吃本层的材质定义 / 构建请求，所以它连同槽位 .cpp 都归本层。
 #
 # 头清单归属判据：本层有对应 .cpp，或本层源文件直接包含该头。
-#
-# 已知的遗留反向包含（仅类型声明，不含 GLSL 发射行为，故本层仍能独立编译）：
-#   RenderTemplate.h / MaterialRecipe.h → ShaderCodeModule.h
-#   RenderTemplate.h                    → ShaderCodeResourceManifest.h
-# 这两处是 glsl_module 代码模块描述符被材质定义/模板口径复用的结果；要彻底切断，
-# 需把那组「模块描述符头」也下移到本层（属独立的重构任务，不在此处夹带）。
 
 set(SHADERMATERIALDATA_FILES
     # ── 材质定义与注册表 ──
@@ -28,6 +22,17 @@ set(SHADERMATERIALDATA_FILES
     BuiltinMaterialDefinitions.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialVertexVaryingConfig.h
+    # ── GLSL code-module 描述、元数据与文件注册表（纯数据/资源闭包）──
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModule.h
+    ShaderCodeModule.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModuleFile.h
+    ShaderCodeModuleFile.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModuleMetadata.h
+    ShaderCodeModuleMetadata.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModuleRegistry.h
+    ShaderCodeModuleRegistry.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeResourceManifest.h
+    ShaderCodeResourceManifest.cpp
     # ── 表面领域契约（Fixed-Code Domain Shaders 的单一真源）──
     # 只做「声明 → 契约校验」这一件事：零 GLSL 发射、零着色器编译，
     # 因此发行形态也必须链接（与 MaterialDefinitionFile 同层）。
@@ -75,10 +80,10 @@ set(SHADERMATERIALDATA_FILES
     ShaderProgramManifestBackend.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderComputeProgramManifest.h
     ShaderComputeProgramManifest.cpp
-    # ── 管线状态与顶点模式枚举（下层/运行时强依赖，ShaderGen 零引用或仅作为上层引用）──
+    # ── 管线状态与顶点模式枚举（下层/运行时强依赖，程序构建侧仅作为上层消费者）──
     # 归属判据：MaterialRecipe.h / MaterialDefinitionFile.cpp 直接用它们，而
     # VKPipeline.h（Vulkan 层）持有 MaterialPipelineConfig 成员 —— 这些消费者都在
-    # 本层或本层之下，ShaderGen 只是上层的顺带使用者。
+    # 本层或本层之下，程序构建侧只是上层的顺带使用者。
     ${ROOT_INCLUDE_PATH}/hgl/mtl/PipelineConfig.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MeshShaderMode.h
     ${ROOT_INCLUDE_PATH}/hgl/common/RenderTargetOutputConfig.h)

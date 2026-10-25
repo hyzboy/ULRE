@@ -81,7 +81,7 @@ namespace hgl::graph::mtl
         // 槽名即材质 TOML `[resources] textures` 里 `name = "..."` 的写法，
         // 也是 GLSL 侧 `MTL_TEX(row).tex_<name>` 的后缀。
         //
-        // 顺序有意义：ShaderGen 按声明顺序排布引用行，顺序变化 = layout_hash 变化
+        // 顺序有意义：程序构建阶段按声明顺序排布引用行，顺序变化 = layout_hash 变化。
         // = 缓存失效。故**不要**重排既有领域的槽顺序。
 
         // StandardOpaque —— 通用硬表面。
@@ -892,5 +892,4 @@ namespace hgl::graph::mtl
         return MaterialDomainValidationResult::OK;
     }
 }// namespace hgl::graph::mtl
-
 

@@ -2,7 +2,7 @@
 #
 # 纯数据契约层：只收「运行时也需要」的身份 / 产物 / 设备能力类型。
 #
-# 这个目标存在的唯一理由是**让运行时不必链接 ULRE.ShaderGen**。所以它有硬约束，
+# 这个目标存在的唯一理由是**让运行时不必链接 ULRE.ShaderProgramBuild**。所以它有硬约束，
 # 往这里加文件前先逐条确认：
 #
 #   1. 零 GLSL 源码处理（不 include 任何 glsl_module / template / builder 头）

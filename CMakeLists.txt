@@ -55,19 +55,18 @@ if(ULRE_ENABLE_QT)
     set(ULRE_QT_MODULE CMQT)
 endif()
 
-# ── 发行形态：是否把 Shader 生成器（GLSL 文本生成 + GLSL→SPIR-V 编译）编进引擎 ──────
-# ON（默认，开发形态）：构建 src/ShaderGen 与用它的工具/示例，ULRE::Engine 含 ULRE.ShaderGen。
-# OFF（发行形态）：产品只打包预烘焙的 SPV；运行时不链接生成器、不调 InitShaderCompiler()，
-#   src/ShaderGen、src/Tools/ShaderGen、example/ 一并退出构建（它们都直接调生成器 API）。
+# ── 发行形态：是否把材质程序构建与阶段编译接入开发引擎 ─────────────────────────────
+# ULRE_ENABLE_SHADERGEN 保留为既有配置名。ON（默认）构建 src/ShaderProgramBuild、
+# 回归工具和示例；OFF 则只保留读取预烘焙 SPV 的运行时。
 # C++ 侧同名宏登记在 inc/hgl/common/RenderOptions.h §2b，值域只有 0/1，判断写 `#if`。
-option(ULRE_ENABLE_SHADERGEN "Build and link the shader generator (GLSL -> SPIR-V)" ON)
+option(ULRE_ENABLE_SHADERGEN "Build and link material program compilation support" ON)
 
 if(NOT ULRE_ENABLE_SHADERGEN)
     # 全工程统一下发 0（不按配置区分），避免同一头在不同 TU 看到不同值。
     add_compile_definitions(ULRE_ENABLE_SHADERGEN=0)
 endif()
 
-# ULRE_RUNTIME：运行时真正需要的一切，**不含** ULRE.ShaderGen。
+# ULRE_RUNTIME：运行时真正需要的一切，**不含** ULRE.ShaderProgramBuild。
 SET(ULRE_RUNTIME
             CMCoreType
             CMMath
@@ -95,7 +94,7 @@ SET(ULRE_RUNTIME
             ${Vulkan_LIBRARIES}
 )
 
-# ULRE_SHADERGEN：生成器侧，只在 ULRE_ENABLE_SHADERGEN=ON 时存在。
+# ULRE_PROGRAM_BUILD：材质程序组装/阶段编译侧，只在 ULRE_ENABLE_SHADERGEN=ON 时存在。
 #
 # **必须整库链接（WHOLE_ARCHIVE），不能用普通静态库链接。**
 # Windows 下 add_cm_library 产出的是静态库，链接器只从 .lib 中取「被引用符号」所在的 .obj。
@@ -104,20 +103,20 @@ SET(ULRE_RUNTIME
 # 它所在 TU 的其它函数 ⇒ 整个 TU 被链接器丢弃 ⇒ 生命周期钩子恒为空 ⇒
 # GetShaderProgramBuildBackend() 返回 nullptr ⇒ 材质构建退化到 manifest 后端（开发树里
 # 没有烘焙缓存，必然 miss，所有图元因 "unresolved runtime pipeline" 被跳过）。
-# 实证：SimpleSphere.exe 中搜不到 BuildGenericMaterial / options.glsl，
+# 实证：SimpleSphere.exe 中搜不到 AssembleMaterialProgram / options.glsl，
 # 却能搜到 "No shader program build backend installed"。
 # 注意发行形态（ULRE_ENABLE_SHADERGEN=OFF）没有这个目标，钩子保持为空是**正确**行为：
 # 那时由 EnsureShaderProgramManifestBackend() 装 manifest 后端读预烘焙缓存。
-# 只对聚合入口做整库链接；直接 PRIVATE 链接 ULRE.ShaderGen 且确实调用了生成器 API 的
+# 只对聚合入口做整库链接；直接 PRIVATE 链接 ULRE.ShaderProgramBuild 且确实调用了构建 API 的
 # 工具/回归门不受影响（它们本来就按需取 TU）。
 IF(ULRE_ENABLE_SHADERGEN)
-    SET(ULRE_SHADERGEN "$<LINK_LIBRARY:WHOLE_ARCHIVE,ULRE.ShaderGen>")
+    SET(ULRE_PROGRAM_BUILD "$<LINK_LIBRARY:WHOLE_ARCHIVE,ULRE.ShaderProgramBuild>")
 ELSE()
-    SET(ULRE_SHADERGEN "")
+    SET(ULRE_PROGRAM_BUILD "")
 ENDIF()
 
 SET(ULRE    ${ULRE_RUNTIME}
-            ${ULRE_SHADERGEN}
+            ${ULRE_PROGRAM_BUILD}
 )
 
 use_cm_module(CoreType)
@@ -139,9 +138,9 @@ endif()
 # 消费方只写 `target_link_libraries(<t> PRIVATE ULRE::Engine)`，不必再展开 ${ULRE}。
 #
 # **ULRE::Runtime 是发行版的唯一入口**：与 ULRE::Engine 完全相同，只是**永不含**
-# ULRE.ShaderGen。开发机上的工具/示例仍可继续用 ULRE::Engine。
+# ULRE.ShaderProgramBuild。开发机上的工具/示例仍可继续用 ULRE::Engine。
 #
-# 这里只做「等价聚合」，不拆逐模块依赖。原因：ULRE.Vulkan / ULRE.ShaderGen /
+# 这里只做「等价聚合」，不拆逐模块依赖。原因：ULRE.Vulkan / ULRE.ShaderProgramBuild /
 # ULRE.SceneGraph / ULRE.ECS 四者两两互相 include 对方头文件，构成一个强连通分量，
 # 不存在可声明的有向依赖图；要拆必须先做架构级解环，不属于构建系统改造范围。
 # 证据见 doc/build-and-module-structure-audit-2026-10.md「ULRE 模块依赖是强连通分量」。
@@ -155,7 +154,7 @@ add_library(ULRE::Engine ALIAS ULRE_Engine)
 
 add_subdirectory(src)
 
-# example/ 全部示例直接调 ShaderGen API（MaterialDefinitionRegistry / 模板解析等），
+# example/ 示例需要材质程序构建能力（MaterialDefinitionRegistry / 模板解析等），
 # 发行形态（ULRE_ENABLE_SHADERGEN=OFF）下没有它们可链接的目标，故一并退出构建。
 IF(ULRE_ENABLE_SHADERGEN)
     add_subdirectory(example)

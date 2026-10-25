@@ -1,16 +1,16 @@
-/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
+/// MaterialProgramAssembler.cpp — phase-split generic material compilation.
 ///
 /// This file is the behavior-preserving decomposition of the former
-/// BuildGenericMaterial function in MaterialDefinitionRegistry.cpp. Every
+/// AssembleMaterialProgram function in MaterialDefinitionRegistry.cpp. Every
 /// statement executes in the original order; intermediate values travel via
-/// GenericMaterialBuildPlan. Do not reorder statements here — stage keys and
+/// MaterialProgramAssemblyPlan. Do not reorder statements here — stage keys and
 /// resource contracts depend on the exact hash input sequence.
 
 #include <hgl/mtl/contract/ShaderGenContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
-#include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/graph/font/CharQuadConfig.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -25,7 +25,7 @@
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include "builder/MaterialResourceManifestBuilder.h"
-#include "builder/GenericMaterialBuilder.h"
+#include "builder/MaterialProgramAssembler.h"
 
 #include <hgl/io/FileInputStream.h>
 #include <cstring>
@@ -40,7 +40,7 @@
 
 namespace hgl::graph::mtl
 {
-    static AnsiString s_last_build_generic_material_error;
+    static AnsiString s_last_material_program_assembly_error;
 
     namespace
     {
@@ -112,7 +112,7 @@ namespace hgl::graph::mtl
         bool ResolvePurposeAndCoverage(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
-            GenericMaterialBuildPlan &plan)
+            MaterialProgramAssemblyPlan &plan)
         {
             plan.purpose = request.shader_program_purpose;
             const RenderTemplateRequest &resolved_request =
@@ -120,7 +120,7 @@ namespace hgl::graph::mtl
             if (resolved_request.template_id == RenderTemplateID::Unknown)
             {
                 GLogError(
-                   "[ShaderGen] Material build requires a resolved render template request: name=%s",
+                   "[MaterialProgramAssembler] Material build requires a resolved render template request: name=%s",
                    definition.definition_name.c_str());
                 return false;
             }
@@ -158,7 +158,7 @@ namespace hgl::graph::mtl
                            : RenderTemplateID::ShadowCasterOpaque)))
             {
                 GLogError(
-                   "[ShaderGen] Render template request rejected: name=%s "
+                   "[MaterialProgramAssembler] Render template request rejected: name=%s "
                    "template=%s validation=%s role=%s module=%s include=%s expected=%s",
                    definition.definition_name.c_str(),
                    GetRenderTemplateName(
@@ -177,7 +177,7 @@ namespace hgl::graph::mtl
                    diagnostic))
             {
                 GLogError(
-                   "[ShaderGen] Render template resolution failed: name=%s "
+                   "[MaterialProgramAssembler] Render template resolution failed: name=%s "
                    "template=%s validation=%s role=%s module=%s include=%s expected=%s",
                    definition.definition_name.c_str(),
                    GetRenderTemplateName(
@@ -236,7 +236,7 @@ namespace hgl::graph::mtl
                     stage_interface_diagnostic))
             {
                 GLogError(
-                    "[ShaderGen] Material stage interface build failed: name=%s error=%s",
+                    "[MaterialProgramAssembler] Material stage interface build failed: name=%s error=%s",
                     definition.definition_name.c_str(),
                     GetMaterialStageInterfaceErrorName(
                         stage_interface_diagnostic.error));
@@ -253,7 +253,7 @@ namespace hgl::graph::mtl
         bool ResolveVertexABI(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
-            GenericMaterialBuildPlan &plan)
+            MaterialProgramAssemblyPlan &plan)
         {
             plan.vertex_node_config =
                 ResolveMaterialVertexNodeConfig(definition, request);
@@ -275,7 +275,7 @@ namespace hgl::graph::mtl
                 if (!BuildResolvedMaterialVertexABI(
                         plan.vertex_definition, request, resolved_abi))
                 {
-                    GLogError("[ShaderGen] Resolved vertex ABI build failed: name=%s",
+                    GLogError("[MaterialProgramAssembler] Resolved vertex ABI build failed: name=%s",
                               definition.definition_name.c_str());
                     return false;
                 }
@@ -308,7 +308,7 @@ namespace hgl::graph::mtl
         bool ResolveMeshStageMode(
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
-            GenericMaterialBuildPlan &plan)
+            MaterialProgramAssemblyPlan &plan)
         {
             // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
             if (IsCharQuadMode(definition.mesh_shader_mode))
@@ -332,7 +332,7 @@ namespace hgl::graph::mtl
                 if (declared != 0 && declared != TEXT_CHARQUAD_MAX_INVOCATIONS)
                 {
                     GLogError(
-                        "[ShaderGen] CharQuad 线程数契约被破坏：definition=%s "
+                        "[MaterialProgramAssembler] CharQuad 线程数契约被破坏：definition=%s "
                         "mesh_shader_max_invocations=%u 必须为 %u"
                         "（CPU dispatch 固定按该常量算组数，改小会整段漏字）",
                         definition.definition_id.c_str(),
@@ -347,7 +347,7 @@ namespace hgl::graph::mtl
                 if (clamped != TEXT_CHARQUAD_MAX_INVOCATIONS)
                 {
                     GLogError(
-                        "[ShaderGen] CharQuad 线程数契约无法兑现：definition=%s "
+                        "[MaterialProgramAssembler] CharQuad 线程数契约无法兑现：definition=%s "
                         "设备能力上限折算后 group_size=%u < %u"
                         "（CPU dispatch 固定按 %u 算组数，退让会整段漏字）",
                         definition.definition_id.c_str(),
@@ -385,7 +385,7 @@ namespace hgl::graph::mtl
         // ═══════════════════════════════════════════════════════════════════
         bool BuildResourceContract(
             const MaterialDefinition &definition,
-            GenericMaterialBuildPlan &plan)
+            MaterialProgramAssemblyPlan &plan)
         {
             plan.manifest = ShaderCodeResourceManifest{};
             plan.manifest_definition = definition;
@@ -416,7 +416,7 @@ namespace hgl::graph::mtl
                     module_registry.FindByName(root->module_name.c_str());
                 if (!provider)
                 {
-                    GLogError("[ShaderGen] Selected provider has no registered metadata: %s",
+                    GLogError("[MaterialProgramAssembler] Selected provider has no registered metadata: %s",
                               root->module_name.c_str());
                     return false;
                 }
@@ -427,7 +427,7 @@ namespace hgl::graph::mtl
                     plan.manifest_definition, plan.manifest,
                     provider_root_names, provider_root_count, &module_registry))
             {
-                GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
+                GLogError("[MaterialProgramAssembler] Generic material resource manifest failed: name=%s",
                           definition.definition_name.c_str());
                 return false;
             }
@@ -438,7 +438,7 @@ namespace hgl::graph::mtl
                     &invalid_texture_reference))
             {
                 GLogError(
-                    "[ShaderGen] Provider texture reference is not declared by material: material=%s texture=%s",
+                    "[MaterialProgramAssembler] Provider texture reference is not declared by material: material=%s texture=%s",
                     definition.definition_name.c_str(),
                     invalid_texture_reference
                         ? invalid_texture_reference
@@ -452,7 +452,7 @@ namespace hgl::graph::mtl
                     &missing_sampler_reference))
             {
                 GLogError(
-                    "[ShaderGen] Provider sampler preset is not declared by material: material=%s sampler=%s",
+                    "[MaterialProgramAssembler] Provider sampler preset is not declared by material: material=%s sampler=%s",
                     definition.definition_name.c_str(),
                     missing_sampler_reference
                         ? missing_sampler_reference
@@ -461,7 +461,7 @@ namespace hgl::graph::mtl
             }
             if (!plan.manifest.IsValid())
             {
-                GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",
+                GLogError("[MaterialProgramAssembler] Generic material resource contract failed: name=%s error=%s",
                           definition.definition_name.c_str(),
                           GetShaderCodeResourceManifestErrorName(plan.manifest.error));
                 return false;
@@ -587,7 +587,7 @@ namespace hgl::graph::mtl
         // 按构造必然一致，多跑一次只多几次字符串查找。
         bool ValidateMeshSourceTopology(
             const std::string &source,
-            const GenericMaterialBuildPlan &plan)
+            const MaterialProgramAssemblyPlan &plan)
         {
             const MeshModeCapacity capacity = ResolveMeshModeTopology(
                 plan.mesh_shader_mode, plan.mesh_max_invocations);
@@ -611,10 +611,10 @@ namespace hgl::graph::mtl
                 const size_t at = source.find(token.prefix);
                 if (at == std::string::npos)
                 {
-                    s_last_build_generic_material_error =
+                    s_last_material_program_assembly_error =
                         "fixed mesh source is missing a topology declaration";
                     GLogError(
-                        "[ShaderGen] Mesh source has no %s declaration: mode=%u "
+                        "[MaterialProgramAssembler] Mesh source has no %s declaration: mode=%u "
                         "invocations=%u",
                         token.label,
                         static_cast<unsigned>(plan.mesh_shader_mode),
@@ -636,10 +636,10 @@ namespace hgl::graph::mtl
 
                 if (digits == 0 || actual != token.expected)
                 {
-                    s_last_build_generic_material_error =
+                    s_last_material_program_assembly_error =
                         "fixed mesh source topology disagrees with the build contract";
                     GLogError(
-                        "[ShaderGen] Mesh source %s mismatch: declared=%llu "
+                        "[MaterialProgramAssembler] Mesh source %s mismatch: declared=%llu "
                         "expected=%u mode=%u invocations=%u（CPU 侧按契约派发/取址，"
                         "数值分叉会静默漏画或读越界）",
                         token.label,
@@ -657,8 +657,8 @@ namespace hgl::graph::mtl
         bool GenerateStageSources(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
-            MaterialShaderBuildCapture *build_capture,
-            GenericMaterialBuildPlan &plan)
+            MaterialProgramBuildCapture *build_capture,
+            MaterialProgramAssemblyPlan &plan)
         {
             if (build_capture)
                 build_capture->Clear();
@@ -693,11 +693,11 @@ namespace hgl::graph::mtl
                 AnsiString master_source;
                 if (!LoadShaderLibraryModule(master_include_path, master_source))
                 {
-                    s_last_build_generic_material_error =
+                    s_last_material_program_assembly_error =
                         AnsiString("fixed mesh master source is missing or unreadable: ")
                         + master_include_path;
                     GLogError(
-                        "[ShaderGen] Generic material build cannot load fixed mesh master: "
+                        "[MaterialProgramAssembler] Generic material build cannot load fixed mesh master: "
                         "name=%s shape=%s path=%s mode=%u invocations=%u",
                         definition.definition_name.c_str(),
                         shape_name.c_str(),
@@ -738,13 +738,13 @@ namespace hgl::graph::mtl
                     AnsiString mesh_options_glsl;
                     if (!mtl::EmitMeshOptions(mesh_options_input, mesh_options_glsl))
                     {
-                        s_last_build_generic_material_error =
+                        s_last_material_program_assembly_error =
                             AnsiString("mesh options emit failed (inconsistent vertex "
                                        "decode / position mapping / stage3 combination) "
                                        "for shape ")
                             + shape_name;
                         GLogError(
-                            "[ShaderGen] Generic material build failed to emit mesh options: "
+                            "[MaterialProgramAssembler] Generic material build failed to emit mesh options: "
                             "name=%s shape=%s mapping=%s stage3=%s",
                             definition.definition_name.c_str(),
                             shape_name.c_str(),
@@ -791,10 +791,10 @@ namespace hgl::graph::mtl
             if (!request.fixed_fragment_source
              || !request.fixed_fragment_source[0])
             {
-                s_last_build_generic_material_error =
+                s_last_material_program_assembly_error =
                     "fixed_fragment_source is required (fragment stage is physically fixed)";
                 GLogError(
-                    "[ShaderGen] Generic material build has no fixed fragment source: name=%s",
+                    "[MaterialProgramAssembler] Generic material build has no fixed fragment source: name=%s",
                     definition.definition_name.c_str());
                 return false;
             }
@@ -960,7 +960,7 @@ namespace hgl::graph::mtl
         /// 在这里给出定位明确的诊断，而不是在几千行 GLSL 里失败。
         bool BuildFragmentOutputContract(
             const MaterialDefinition &definition,
-            GenericMaterialBuildPlan &plan)
+            MaterialProgramAssemblyPlan &plan)
         {
             MaterialOutputContractDiagnostic output_diagnostic{};
             if (!BuildMaterialOutputContract(
@@ -968,10 +968,10 @@ namespace hgl::graph::mtl
                     plan.output_contract,
                     output_diagnostic))
             {
-                s_last_build_generic_material_error =
+                s_last_material_program_assembly_error =
                     "BuildMaterialOutputContract failed";
                 GLogError(
-                    "[ShaderGen] Material output contract build failed: name=%s error=%s",
+                    "[MaterialProgramAssembler] Material output contract build failed: name=%s error=%s",
                     definition.definition_name.c_str(),
                     GetMaterialOutputContractErrorName(
                         output_diagnostic.error));
@@ -1056,7 +1056,7 @@ namespace hgl::graph::mtl
             if (MaterialRequiresVertexNormal(definition))
             {
                 GLogError(
-                    u8"[ShaderGen] 材质 %s 必须要顶点法线（normal_mode=%s，ntb_module=%s），但几何"
+                    u8"[MaterialProgramAssembler] 材质 %s 必须要顶点法线（normal_mode=%s，ntb_module=%s），但几何"
                     u8"顶点格式缺少 Normal 语义 => 兜底降级为三角形面法线光照（cross(dFdx,dFdy)）。"
                     u8"这是**几何顶点格式错配**，正常应已由 ECS 渲染层回退为错误棋盘格",
                     definition.definition_id.c_str(),
@@ -1078,7 +1078,7 @@ namespace hgl::graph::mtl
         ProgramLinkHashes ComputeProgramLinkHashes(
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinitionBuildRequest &request,
-            const GenericMaterialBuildPlan &plan)
+            const MaterialProgramAssemblyPlan &plan)
         {
             ProgramLinkHashes hashes;
             // 资源布局身份 = manifest 内容哈希（2026-10-11 S1：描述符契约层删除）。
@@ -1149,7 +1149,7 @@ namespace hgl::graph::mtl
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
-            GenericMaterialBuildPlan &plan)
+            MaterialProgramAssemblyPlan &plan)
         {
             const ProgramLinkHashes hashes =
                 ComputeProgramLinkHashes(profile, request, plan);
@@ -1203,10 +1203,10 @@ namespace hgl::graph::mtl
             // 兜底成 0 会让所有覆盖形态在键里塌成同一个片段 stage。
             if (request.fixed_fragment_interface_hash == 0)
             {
-                s_last_build_generic_material_error =
+                s_last_material_program_assembly_error =
                     "fixed_fragment_interface_hash is required when the fragment stage is physically fixed";
                 GLogError(
-                    "[ShaderGen] Generic material build has no fixed fragment interface hash: name=%s",
+                    "[MaterialProgramAssembler] Generic material build has no fixed fragment interface hash: name=%s",
                     definition.definition_name.c_str());
                 return false;
             }
@@ -1238,15 +1238,15 @@ namespace hgl::graph::mtl
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
-            GenericMaterialBuildPlan &plan,
-            MaterialShaderCompilerInput &out_compiler_input,
-            MaterialCompileConfig &out_config)
+            MaterialProgramAssemblyPlan &plan,
+            StageSPVCompilerInput &out_compiler_input,
+            StageSPVCompileConfig &out_config)
         {
-            out_compiler_input = MaterialShaderCompilerInput{
+            out_compiler_input = StageSPVCompilerInput{
                 definition.definition_name.c_str(),
                 request.primitive_type
             };
-            MaterialCompileConfig &config = out_config;
+            StageSPVCompileConfig &config = out_config;
             config.primitive_type = request.primitive_type;
             config.shader_stage_flag_bits =
                 uint32(ShaderStage::MeshFragment);
@@ -1258,17 +1258,17 @@ namespace hgl::graph::mtl
             config.artifact_store = request.shader_artifact_store;
 
 #ifdef _DEBUG
-            DumpShaderGenGLSL("mesh", plan.ms);
-            DumpShaderGenGLSL("fs", plan.fs);
+            DumpStageGLSL("mesh", plan.ms);
+            DumpStageGLSL("fs", plan.fs);
 #endif
 
             // ── stage key：从最终发射文本派生（唯一路径）──
             if (!AssembleProgramLinkFromSource(profile, definition, request, plan))
             {
-                if (s_last_build_generic_material_error.IsEmpty())
-                    s_last_build_generic_material_error =
+                if (s_last_material_program_assembly_error.IsEmpty())
+                    s_last_material_program_assembly_error =
                         "AssembleProgramLinkFromSource failed";
-                GLogError("[BuildGenericMaterial] AssembleProgramLinkFromSource failed");
+                GLogError("[AssembleMaterialProgram] AssembleProgramLinkFromSource failed");
                 return false;
             }
 
@@ -1282,33 +1282,33 @@ namespace hgl::graph::mtl
         }
     }
 
-    const AnsiString &GetLastBuildGenericMaterialError()
+    const AnsiString &GetLastMaterialProgramAssemblyError()
     {
-        return s_last_build_generic_material_error;
+        return s_last_material_program_assembly_error;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // BuildGenericMaterial — orchestration
+    // AssembleMaterialProgram — orchestration
     // (originally MaterialDefinitionRegistry.cpp:218-603)
     // ═══════════════════════════════════════════════════════════════════════
-    ShaderBuildContext *BuildGenericMaterial(
+    ShaderBuildContext *AssembleMaterialProgram(
         const contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition,
-        MaterialShaderBuildCapture *build_capture)
+        MaterialProgramBuildCapture *build_capture)
     {
-        s_last_build_generic_material_error.Clear();
+        s_last_material_program_assembly_error.Clear();
         MaterialDefinition resolved_definition;
         if (!PrepareResolvedDefinition(definition, request, resolved_definition))
         {
-            s_last_build_generic_material_error = "semantic_contract invalid";
-            GLogError("[ShaderGen] Generic material contract invalid: name=%s semantic_requirements=%d",
+            s_last_material_program_assembly_error = "semantic_contract invalid";
+            GLogError("[MaterialProgramAssembler] Generic material contract invalid: name=%s semantic_requirements=%d",
                       definition.definition_name.c_str(),
                       resolved_definition.vertex_semantic_requirements.GetCount());
             return nullptr;
         }
 
-        GenericMaterialBuildPlan plan{};
+        MaterialProgramAssemblyPlan plan{};
 
         // Mesh shader 材质：mesh 是唯一顶点路径（不做触发标志/分支；
         // Lines 走 LineQuad，其余走 VertexPassthrough）
@@ -1316,33 +1316,33 @@ namespace hgl::graph::mtl
 
         if (!ResolvePurposeAndCoverage(resolved_definition, request, plan))
         {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "ResolvePurposeAndCoverage failed";
-            GLogError("[BuildGenericMaterial] ResolvePurposeAndCoverage failed");
+            if (s_last_material_program_assembly_error.IsEmpty())
+                s_last_material_program_assembly_error = "ResolvePurposeAndCoverage failed";
+            GLogError("[AssembleMaterialProgram] ResolvePurposeAndCoverage failed");
             return nullptr;
         }
 
         if (!ResolveVertexABI(resolved_definition, request, plan))
         {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "ResolveVertexABI failed";
-            GLogError("[BuildGenericMaterial] ResolveVertexABI failed");
+            if (s_last_material_program_assembly_error.IsEmpty())
+                s_last_material_program_assembly_error = "ResolveVertexABI failed";
+            GLogError("[AssembleMaterialProgram] ResolveVertexABI failed");
             return nullptr;
         }
 
         if (!ResolveMeshStageMode(profile, resolved_definition, plan))
         {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "ResolveMeshStageMode failed";
-            GLogError("[BuildGenericMaterial] ResolveMeshStageMode failed");
+            if (s_last_material_program_assembly_error.IsEmpty())
+                s_last_material_program_assembly_error = "ResolveMeshStageMode failed";
+            GLogError("[AssembleMaterialProgram] ResolveMeshStageMode failed");
             return nullptr;
         }
 
         if (!BuildResourceContract(resolved_definition, plan))
         {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "BuildResourceContract failed";
-            GLogError("[BuildGenericMaterial] BuildResourceContract failed");
+            if (s_last_material_program_assembly_error.IsEmpty())
+                s_last_material_program_assembly_error = "BuildResourceContract failed";
+            GLogError("[AssembleMaterialProgram] BuildResourceContract failed");
             return nullptr;
         }
 
@@ -1350,38 +1350,38 @@ namespace hgl::graph::mtl
         // 主着色器物理固定，构建请求直接带来最终文本。
         if (!BuildFragmentOutputContract(resolved_definition, plan))
         {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "BuildFragmentOutputContract failed";
-            GLogError("[BuildGenericMaterial] BuildFragmentOutputContract failed");
+            if (s_last_material_program_assembly_error.IsEmpty())
+                s_last_material_program_assembly_error = "BuildFragmentOutputContract failed";
+            GLogError("[AssembleMaterialProgram] BuildFragmentOutputContract failed");
             return nullptr;
         }
 
         if (!GenerateStageSources(
                 resolved_definition, request, build_capture, plan))
         {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "GenerateStageSources failed";
-            GLogError("[BuildGenericMaterial] GenerateStageSources failed");
+            if (s_last_material_program_assembly_error.IsEmpty())
+                s_last_material_program_assembly_error = "GenerateStageSources failed";
+            GLogError("[AssembleMaterialProgram] GenerateStageSources failed");
             return nullptr;
         }
-        MaterialShaderCompilerInput compiler_input{};
-        MaterialCompileConfig config{};
+        StageSPVCompilerInput compiler_input{};
+        StageSPVCompileConfig config{};
         if (!FinalizeProgramLink(
                 profile, resolved_definition, request, plan,
                                  compiler_input, config))
         {
-            if (s_last_build_generic_material_error.IsEmpty())
-                s_last_build_generic_material_error = "FinalizeProgramLink failed";
-            GLogError("[BuildGenericMaterial] FinalizeProgramLink failed");
+            if (s_last_material_program_assembly_error.IsEmpty())
+                s_last_material_program_assembly_error = "FinalizeProgramLink failed";
+            GLogError("[AssembleMaterialProgram] FinalizeProgramLink failed");
             return nullptr;
         }
 
-        ShaderBuildContext *result = BuildMaterialStageDocuments(
+        ShaderBuildContext *result = CompileMaterialStages(
             profile, compiler_input, config);
         if (!result)
         {
-            s_last_build_generic_material_error = "BuildMaterialStageDocuments failed";
-            GLogError("[ShaderGen] Generic material compilation failed: name=%s",
+            s_last_material_program_assembly_error = "CompileMaterialStages failed";
+            GLogError("[MaterialProgramAssembler] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());
             return nullptr;
         }

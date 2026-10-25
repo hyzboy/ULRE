@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 # DomainOptions 回归门
 #
-# **只链接 ULRE.ShaderMaterialData**（+ 基础库）：不含 ULRE.ShaderGen / glslang / Vulkan。
+# **只链接 ULRE.ShaderMaterialData**（+ 基础库）：不含 ULRE.ShaderProgramBuild / glslang / Vulkan。
 # 因此本 target 在发行形态（ULRE_ENABLE_SHADERGEN=OFF）下照常构建，这本身就是
 # 「options.glsl 的发射不依赖生成器」的结构性断言。见 src/Tools/CMakeLists.txt。
 add_executable(DomainOptionsRegression

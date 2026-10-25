@@ -7,7 +7,7 @@
 #include <hgl/mtl/DomainShaderTemplate.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -16,8 +16,8 @@
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
-#include "ShaderGen/builder/GenericMaterialBuilder.h"
-#include "ShaderGen/compile/ShaderGenBackendInstall.h"
+#include "ShaderProgramBuild/builder/MaterialProgramAssembler.h"
+#include "ShaderProgramBuild/compile/ShaderProgramBuildBackendInstall.h"
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/ShaderCompilerAPI.h>
@@ -102,7 +102,7 @@ namespace
         ///
         /// 这面旗子守的是阶段 4.4 修过的真实缺陷：`vertex_node_config`
         /// 有四层来源（request 覆盖 > recipe > definition > 默认），而
-        /// `GenericMaterialBuilder::ResolveVertexABI` 必须把求解结果**回写**
+        /// `MaterialProgramAssembler::ResolveVertexABI` 必须把求解结果**回写**
         /// 到 `plan.vertex_definition`，否则 ABI 对账读 definition 的
         /// `Passthrough3D`（要 3 分量）、mesh 发射读 recipe 的
         /// `PixelToLocal`（要 2 分量），`CheckPositionComponentCount` 硬失败。
@@ -264,7 +264,7 @@ namespace
 
     ShaderBuildContext *BuildFixtureContext(
         const Fixture &fixture,
-        MaterialShaderBuildCapture *capture,
+        MaterialProgramBuildCapture *capture,
         MaterialDefinition *out_definition = nullptr,
         RenderTemplateID *out_template_id = nullptr,
         void (*definition_mutation)(MaterialDefinition &) = nullptr,
@@ -376,7 +376,7 @@ namespace
             }
         }
 
-        return BuildGenericMaterial(nullptr, request, definition, capture);
+        return AssembleMaterialProgram(nullptr, request, definition, capture);
     }
 
     bool VerifyFixedMeshSourcePassThrough(const Fixture &fixture)
@@ -507,7 +507,7 @@ namespace
 
     bool RunFixture(const Fixture &fixture)
     {
-        MaterialShaderBuildCapture capture{};
+        MaterialProgramBuildCapture capture{};
         MaterialDefinition definition{};
         RenderTemplateID template_id = RenderTemplateID::Unknown;
         AnsiString options_text;
@@ -670,7 +670,7 @@ namespace
                     &request.recipe, request.render_template_request, nullptr))
                 return nullptr;
 
-            // 走**领域后端**而不是直接 `BuildGenericMaterial`：片段阶段是物理固定的
+            // 走**领域后端**而不是直接 `AssembleMaterialProgram`：片段阶段是物理固定的
             // 主着色器，编译它需要「ShaderLibrary + generated/options.glsl 目录」两
             // 个 include 根，而那是插件里的进程级配置，只有后端在编译那一刻设得对。
             // 这里手写一份根管理等于把后端逻辑抄到工具里，迟早漂移。
@@ -778,10 +778,10 @@ namespace
 
             ++built;
 
-            MaterialShaderBuildCapture capture_a{};
+            MaterialProgramBuildCapture capture_a{};
             AutoDelete<ShaderBuildContext> a(
                 BuildFixtureContext(fixture, &capture_a));
-            MaterialShaderBuildCapture capture_b{};
+            MaterialProgramBuildCapture capture_b{};
             AutoDelete<ShaderBuildContext> b(
                 BuildFixtureContext(fixture, &capture_b));
             if (!a || !a->HasProgramLink() || !b || !b->HasProgramLink())
@@ -912,7 +912,7 @@ namespace
             return true;
         }
 
-        MaterialShaderBuildCapture baseline_capture{};
+        MaterialProgramBuildCapture baseline_capture{};
         AutoDelete<ShaderBuildContext> baseline(
             BuildFixtureContext(fixture, &baseline_capture));
         if (!baseline || !baseline->HasProgramLink())
@@ -933,7 +933,7 @@ namespace
             const DefinitionSensitivityCase &item =
                 definition_sensitivity_cases[i];
 
-            MaterialShaderBuildCapture capture{};
+            MaterialProgramBuildCapture capture{};
             AutoDelete<ShaderBuildContext> mutated(BuildFixtureContext(
                 fixture, &capture, nullptr, nullptr, item.mutate));
             if (!mutated || !mutated->HasProgramLink())
@@ -1010,7 +1010,7 @@ namespace
             if (FixtureNeedsMissingDomainMaster(fixtures[i], nullptr))
                 continue;
 
-            MaterialShaderBuildCapture capture{};
+            MaterialProgramBuildCapture capture{};
             AutoDelete<ShaderBuildContext> context(
                 BuildFixtureContext(fixtures[i], &capture));
             if (!context || !context->HasProgramLink())

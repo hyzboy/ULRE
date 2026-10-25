@@ -4,7 +4,7 @@
 //
 // 归属说明：本文件曾位于 src/Tools/GLSLCompiler/RootIncludePath.h。那个目录是
 // 独立 submodule（GLSLCompiler），必须能脱离 ULRE 单独构建，因此不能反向依赖
-// inc/ 下的公共头；而 ULRE.ShaderGen 是库，也不该跨仓库去 include 工具侧的私有
+// inc/ 下的公共头；而 ULRE.ShaderProgramBuild 是库，也不该跨仓库去 include 工具侧的私有
 // 头。于是两侧各持一份实现，均为无状态 inline 函数。
 // 约束：两份实现必须保持逐字一致（同名同 namespace 的 inline 函数若在某 TU 内
 // 同时可见且不一致，属于 ODR 违反）。修改时请同步

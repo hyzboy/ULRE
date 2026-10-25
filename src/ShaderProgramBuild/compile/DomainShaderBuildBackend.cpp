@@ -1,4 +1,4 @@
-// DomainShaderBuildBackend.cpp — 「不再生成着色器」的构建后端。
+// DomainShaderBuildBackend.cpp — 物理固定 Domain 源的构建后端。
 //
 // ═══════════════════════════════════════════════════════════════════════════
 // 这个后端做的是**减法**：
@@ -11,7 +11,7 @@
 //      （Phase 2 的 `EmitDomainOptions`）到缓存目录——不进源码树；
 //   2. 把这份源**放进构建请求**（`fixed_fragment_source`）。构建器因此不发射
 //      片段：片段 stage key、artifact 元数据、编译输入三者是同一份字节；
-//   3. 借 `BuildGenericMaterial` 拿到网格阶段、link spec、artifact 元数据、
+//   3. 借 `AssembleMaterialProgram` 拿到网格阶段、link spec、artifact 元数据、
 //      `requires_recipe_*` 结论（这些与「片段算法怎么写」无关，废除生成器
 //      不代表废除它们）；
 //   4. 把编译器插件的 include 根设成 { ShaderLibrary, options 所在目录 }，
@@ -22,18 +22,13 @@
 // 代码模块，因此这一层不需要任何文本拼装逻辑——这正是删除 ShaderGen 的
 // 意义所在。唯一"生成"的东西是 options（宏定义 + 一个 ambient include）。
 //
-// ═══════════════════════════════════════════════════════════════════════════
-// 为什么临时放在 src/ShaderGen 里
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// 它仍然调用 `BuildGenericMaterial`（生成期代码），所以不能进
-// ShaderMaterialData——那会造成「数据层反依赖生成器」的倒挂。等网格阶段
-// 也脱离生成器（阶段五），本文件连同 `BuildGenericMaterial` 一起搬走。
+// 该后端与 `AssembleMaterialProgram`、`CompileMaterialStages` 同属程序构建层；
+// ShaderMaterialData 只提供材质/模块元数据和 options，不反向依赖组装或编译行为。
 
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
-#include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/DomainShaderTemplate.h>
@@ -49,8 +44,8 @@
 #include <hgl/type/String.h>
 #include <hgl/util/hash/FNV1a.h>
 
-#include "builder/GenericMaterialBuilder.h"
-#include "ShaderGenBackendInstall.h"
+#include "builder/MaterialProgramAssembler.h"
+#include "ShaderProgramBuildBackendInstall.h"
 
 #include <cstdio>
 #include <cstdarg>
@@ -67,7 +62,7 @@ namespace hgl::graph::mtl
         /// `GLogError` 走的是日志通道——门禁/工具里通常看不到（stdout 里只剩
         /// 「build failed」），所以失败出口同时往这里记一份，调用方用
         /// `GetLastDomainShaderBuildBackendError()` 取走放进自己的诊断。
-        /// 与 `GetLastBuildGenericMaterialError()` 同一动机。
+        /// 与 `GetLastMaterialProgramAssemblyError()` 同一动机。
         AnsiString g_last_domain_build_error;
 
         void DomainBuildFailed(const char8_t *format, ...)
@@ -141,7 +136,7 @@ namespace hgl::graph::mtl
     namespace
     {
         /// 顶点格式没有 Normal 但材质要法线光照 ⇒ 主着色器要算面法线。
-        /// 判据与 `GenericMaterialBuilder::PrepareResolvedDefinition` 同源
+        /// 判据与 `MaterialProgramAssembler::PrepareResolvedDefinition` 同源
         /// （`MaterialWantsNormalLighting` + 顶点格式），两处必须一致：那边决定
         /// 顶点阶段是否剥掉 N/T/B 需求，这边决定片段阶段要不要 dFdx/dFdy。
         bool ResolveFaceNormalFallback(
@@ -157,7 +152,7 @@ namespace hgl::graph::mtl
         }
 
         /// 与 `ResolveFaceNormalFallback` 同判据的互补分支：顶点格式**有** Normal。
-        /// 口径直接对齐 `GenericMaterialBuilder::PrepareResolvedDefinition` ——
+        /// 口径直接对齐 `MaterialProgramAssembler::PrepareResolvedDefinition` ——
         /// 那里两条路各自 push 一个 compile_define，这里必须发同样的宏。
         bool ResolveVertexNormalPresent(
             const MaterialDefinition &definition,
@@ -464,7 +459,7 @@ namespace hgl::graph::mtl
 
         /// 用「主着色器 + options」直接编出片段 SPV。
         ///
-        /// 此时片段阶段的最终 GLSL **已经**由 `MaterialShaderCompiler` 按
+        /// 此时片段阶段的最终 GLSL **已经**由 `StageSPVCompiler` 按
         /// `fixed_fragment_source` 装好了（同一份文本也进了 stage key 与元数据），
         /// 这里只负责在正确的 include 根下把它编出来：
         ///
@@ -650,7 +645,7 @@ namespace hgl::graph::mtl
 
         /// 解析「本材质该用哪份固定片段源」，并把 options 落到缓存目录。
         ///
-        /// 这一步必须在 `BuildGenericMaterial` **之前**完成：固定源会被写进
+        /// 这一步必须在 `AssembleMaterialProgram` **之前**完成：固定源会被写进
         /// 构建请求，因此片段 stage key、artifact 元数据与真正编译的输入是同一
         /// 份文本。换源（先建后改）会让键描述一份从未被编译的代码。
         bool ResolveFixedFragmentStage(
@@ -778,13 +773,13 @@ namespace hgl::graph::mtl
                 AnsiString mesh_options_glsl;
                 deferred_request.mesh_options_glsl_out = &mesh_options_glsl;
 
-                ShaderBuildContext *ctx = BuildGenericMaterial(
+                ShaderBuildContext *ctx = AssembleMaterialProgram(
                     profile, deferred_request, definition, nullptr);
                 if (!ctx)
                 {
                     DomainBuildFailed(u8"[DomainBackend] 网格阶段构建失败：材质 %s（%s）",
                         definition.definition_id.c_str(),
-                        GetLastBuildGenericMaterialError().c_str());
+                        GetLastMaterialProgramAssemblyError().c_str());
                     return nullptr;
                 }
 

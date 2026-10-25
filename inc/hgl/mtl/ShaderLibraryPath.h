@@ -65,7 +65,7 @@ namespace hgl::graph::mtl
                 return ShaderLibraryPathToUTF8(env_value);
 
             GLogWarning(
-                "[ShaderGen] ULRE_SHADERLIBRARY_PATH points to a non-ShaderLibrary root: %s (ignored)",
+                "[ShaderLibraryPath] ULRE_SHADERLIBRARY_PATH points to a non-ShaderLibrary root: %s (ignored)",
                 ShaderLibraryPathToUTF8(env_value).c_str());
         }
 
@@ -122,7 +122,7 @@ namespace hgl::graph::mtl
             chain += candidate;
         }
         GLogError(
-            "[ShaderGen] ShaderLibrary root not found. Set ULRE_SHADERLIBRARY_PATH to the ShaderLibrary directory "
+            "[ShaderLibraryPath] ShaderLibrary root not found. Set ULRE_SHADERLIBRARY_PATH to the ShaderLibrary directory "
             "(or run from a location that contains it). Searched: %s",
             chain.empty() ? "<none>" : chain.c_str());
         return requested_path && requested_path[0]
