@@ -1411,11 +1411,19 @@ namespace
             return result;
         }
 
-        const auto build = [&geometry](const MaterialDefinition &def,
-                                       const VertexShaderNodeConfig &node_cfg,
-                                       const GeometryVertexFormat *gvf)
+        // 顶点解码 / 位置映射 / 投影全部落在 `generated/mesh_options.glsl` 里，
+        // 网格主着色器文本对同形状是逐字节相同的。断言必须看 options 文本，
+        // 否则「形状对了但顶点格式选错」会静默通过。
+        hgl::AnsiString mesh_options_text;
+
+        const auto build = [&geometry, &mesh_options_text](
+                               const MaterialDefinition &def,
+                               const VertexShaderNodeConfig &node_cfg,
+                               const GeometryVertexFormat *gvf)
             -> std::unique_ptr<ShaderBuildContext>
         {
+            mesh_options_text.Clear();
+
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = def.definition_id;
             request.recipe.vertex_node_config = node_cfg;
@@ -1442,6 +1450,7 @@ namespace
                 return std::unique_ptr<ShaderBuildContext>();
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
+            request.mesh_options_glsl_out = &mesh_options_text;
 
             return std::unique_ptr<ShaderBuildContext>(
                 BuildGenericMaterial(nullptr, request, def, nullptr));
@@ -1468,7 +1477,10 @@ namespace
             }
             else
             {
-                const std::string &glsl = mesh->GetFinalGLSL();
+                // 断言看 options 文本：顶点解码与映射都在那里，主着色器已不含这些。
+                const std::string glsl = mesh_options_text.c_str()
+                    ? std::string(mesh_options_text.c_str())
+                    : std::string();
 
                 // ── ② 位置解码模块必须是 packed int16x2 那一份 ──
                 if (glsl.find("#include \"vertex/s1_position_vec2i.glsl\"")
@@ -1505,33 +1517,56 @@ namespace
                 // ShaderGen 删除后没有生成器兜底：目录里缺这一份，该域就没有
                 // mesh 阶段可编译。按内容比对（而不是按形状键硬编码文件名），
                 // 重新捕获时只需替换文件，门禁仍然有效。
+                //
+                // 形状主着色器现在只在 `mesh/shape/` 下（`mesh/fixed/` 只剩
+                // CharQuad/LineQuad 过渡源），两个目录都扫。
                 bool matched = false;
-                const std::filesystem::path fixed_dir = RepoRootPath(
-                    "ShaderLibrary/mesh/fixed");
-                try
                 {
-                    for (const auto &entry :
-                         std::filesystem::directory_iterator(fixed_dir))
+                    // 生产文本尾部附了 `// mesh-options-digest <n>` 溯源注释
+                    // （让 stage key 覆盖 generated/mesh_options.glsl），比对前剥掉。
+                    static const std::string kDigestMarker =
+                        "\n// mesh-options-digest ";
+                    std::string body = mesh->GetFinalGLSL();
+                    const size_t digest_at = body.rfind(kDigestMarker);
+                    if (digest_at != std::string::npos)
+                        body.resize(digest_at);
+
+                    const std::filesystem::path dirs[2] =
                     {
-                        if (!entry.is_regular_file()
-                         || entry.path().extension() != ".mesh")
-                            continue;
-                        if (ReadFileText(entry.path().string()) == glsl)
+                        RepoRootPath("ShaderLibrary/mesh/shape"),
+                        RepoRootPath("ShaderLibrary/mesh/fixed")
+                    };
+                    try
+                    {
+                        for (const std::filesystem::path &fixed_dir : dirs)
                         {
-                            matched = true;
-                            break;
+                            if (matched
+                             || !std::filesystem::exists(fixed_dir))
+                                continue;
+                            for (const auto &entry :
+                                 std::filesystem::directory_iterator(fixed_dir))
+                            {
+                                if (!entry.is_regular_file()
+                                 || entry.path().extension() != ".mesh")
+                                    continue;
+                                if (ReadFileText(entry.path().string()) == body)
+                                {
+                                    matched = true;
+                                    break;
+                                }
+                            }
                         }
                     }
-                }
-                catch (const std::filesystem::filesystem_error &)
-                {
-                    result.diagnostics.emplace_back(
-                        "cannot enumerate ShaderLibrary/mesh/fixed");
+                    catch (const std::filesystem::filesystem_error &)
+                    {
+                        result.diagnostics.emplace_back(
+                            "cannot enumerate ShaderLibrary/mesh/shape");
+                    }
                 }
                 if (!matched)
                 {
                     result.diagnostics.emplace_back(
-                        "ShaderLibrary/mesh/fixed 没有与该形状一致的 .mesh"
+                        "ShaderLibrary/mesh/shape 没有与该形状一致的 .mesh"
                         "（删除 ShaderGen 后该域将无 mesh 阶段可用）");
                 }
             }
@@ -1559,7 +1594,9 @@ namespace
                     result.diagnostics.emplace_back("AutoInstance 没有网格阶段");
                 else
                 {
-                    const std::string &glsl = mesh->GetFinalGLSL();
+                    const std::string glsl = mesh_options_text.c_str()
+                        ? std::string(mesh_options_text.c_str())
+                        : std::string();
                     if (glsl.find("#include \"vertex/s1_position_vec2.glsl\"") == std::string::npos)
                         result.diagnostics.emplace_back("AutoInstance 没有选到 s1_position_vec2.glsl");
                     if (glsl.find("#include \"vertex/s2_ndc_lift.glsl\"") == std::string::npos)
@@ -10016,7 +10053,8 @@ void main()
     static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
         const ReflectionCoverageVariant &variant, std::string &diagnostic,
         FixedFragmentSource *out_fixed = nullptr,
-        MaterialShaderBuildCapture *out_capture = nullptr)
+        MaterialShaderBuildCapture *out_capture = nullptr,
+        hgl::AnsiString *out_mesh_options = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
@@ -10071,6 +10109,10 @@ void main()
         request.fixed_fragment_source = fixed.source.c_str();
         request.fixed_fragment_interface_hash = fixed.interface_hash;
 
+        // 网格 options：生产侧由后端落盘并挑成对目录；本门手写编译，自己收下文本。
+        hgl::AnsiString mesh_options_text;
+        request.mesh_options_glsl_out = &mesh_options_text;
+
         std::unique_ptr<ShaderBuildContext> ctx(
             BuildGenericMaterial(nullptr, request, definition, out_capture));
         if (!ctx)
@@ -10078,6 +10120,8 @@ void main()
             diagnostic = std::string("material build failed: ") + variant.variant_slug;
             return nullptr;
         }
+        if (out_mesh_options)
+            *out_mesh_options = mesh_options_text;
 
         if (out_fixed)
             *out_fixed = std::move(fixed);
@@ -10094,41 +10138,59 @@ void main()
     {
         out.clear();
 
-        const std::filesystem::path dir = RepoRootPath("ShaderLibrary/mesh/fixed");
+        // 形状主着色器（`mesh/shape/*.mesh`）与过渡期的拓扑专用源
+        // （`mesh/fixed/<形状键>.mesh`）都算「固定源」：前者按形状固定，
+        // 后者是 CharQuad/LineQuad 还没搬完的那几份。两者都不可生成。
+        const std::filesystem::path dirs[2] =
+        {
+            RepoRootPath("ShaderLibrary/mesh/shape"),
+            RepoRootPath("ShaderLibrary/mesh/fixed")
+        };
+
         try
         {
-            if (!std::filesystem::exists(dir)
-             || !std::filesystem::is_directory(dir))
+            bool seen_any_dir = false;
+            for (const std::filesystem::path &dir : dirs)
             {
-                diagnostic = "fixed mesh source directory missing: " + dir.string();
-                return false;
+                if (!std::filesystem::exists(dir)
+                 || !std::filesystem::is_directory(dir))
+                    continue;
+                seen_any_dir = true;
+
+                for (const auto &entry : std::filesystem::directory_iterator(dir))
+                {
+                    if (!entry.is_regular_file()
+                     || entry.path().extension() != ".mesh")
+                        continue;
+
+                    const std::string text = ReadFileText(entry.path().string());
+                    if (text.empty())
+                    {
+                        diagnostic = "cannot read fixed mesh source: "
+                            + entry.path().string();
+                        return false;
+                    }
+                    out.push_back(text);
+                }
             }
 
-            for (const auto &entry : std::filesystem::directory_iterator(dir))
+            if (!seen_any_dir)
             {
-                if (!entry.is_regular_file()
-                 || entry.path().extension() != ".mesh")
-                    continue;
-
-                const std::string text = ReadFileText(entry.path().string());
-                if (text.empty())
-                {
-                    diagnostic = "cannot read fixed mesh source: "
-                        + entry.path().string();
-                    return false;
-                }
-                out.push_back(text);
+                diagnostic = "fixed mesh source directory missing: "
+                    + dirs[0].string();
+                return false;
             }
         }
         catch (const std::filesystem::filesystem_error &)
         {
-            diagnostic = "cannot enumerate " + dir.string();
+            diagnostic = "cannot enumerate fixed mesh source directories";
             return false;
         }
 
         if (out.empty())
         {
-            diagnostic = "fixed mesh source directory is empty: " + dir.string();
+            diagnostic = "fixed mesh source directory is empty: "
+                + dirs[0].string();
             return false;
         }
         return true;
@@ -10137,9 +10199,36 @@ void main()
     static bool FixedMeshCatalogHas(
         const std::vector<std::string> &catalog, const std::string &glsl)
     {
+        // 生产文本尾部会附一行 `// mesh-options-digest <n>` 溯源注释：它的作用是
+        // 让 stage key 覆盖 `generated/mesh_options.glsl` 的内容（同形状的主着色器
+        // 文本逐字节相同，只有 options 不同）。它不是主着色器的一部分，比对时剥掉。
+        static const std::string kDigestMarker = "\n// mesh-options-digest ";
+        std::string body = glsl;
+        const size_t digest_at = body.rfind(kDigestMarker);
+        if (digest_at != std::string::npos)
+            body.resize(digest_at);
+
+        auto trim_tail = [](std::string &text)
+        {
+            while (!text.empty())
+            {
+                const char last = text.back();
+                if (last != '\n' && last != '\r' && last != ' ' && last != '\t')
+                    break;
+                text.pop_back();
+            }
+        };
+        trim_tail(body);
+        if (body.empty())
+            return false;
+
         for (const std::string &text : catalog)
-            if (text == glsl)
+        {
+            std::string normalized = text;
+            trim_tail(normalized);
+            if (normalized == body)
                 return true;
+        }
         return false;
     }
 
@@ -10213,11 +10302,27 @@ void main()
         {
             std::string build_diagnostic;
             FixedFragmentSource fixed_source;
+            hgl::AnsiString mesh_options_text;
             std::unique_ptr<ShaderBuildContext> ctx =
-                BuildReflectionCoverageVariant(variant, build_diagnostic, &fixed_source);
+                BuildReflectionCoverageVariant(
+                    variant, build_diagnostic, &fixed_source, nullptr,
+                    &mesh_options_text);
             if (!ctx)
             {
                 result.diagnostics.emplace_back(build_diagnostic);
+                continue;
+            }
+
+            // 网格主着色器里有 `#include "generated/mesh_options.glsl"`：先在
+            // 片段 options 已落盘的那个根下把它写出来，下面手写编译才有第二根可读。
+            if (!mesh_options_text.IsEmpty()
+             && !hgl::graph::mtl::WriteMeshOptionsSource(
+                    fixed_source.options_root, mesh_options_text))
+            {
+                result.diagnostics.emplace_back(
+                    std::string(variant.variant_slug)
+                    + ": cannot write generated/mesh_options.glsl | "
+                    + hgl::graph::mtl::GetLastDomainShaderBuildBackendError());
                 continue;
             }
 
@@ -10283,7 +10388,7 @@ void main()
                     const bool compiled =
                         i == 1
                             ? CompileFixedFragmentSource(*ctx, fixed_source, compile_diagnostic)
-                            : si->CompileFinalGLSLToSPVWithDiagnostic(compile_diagnostic);
+                            : CompileFixedMeshSource(*ctx, fixed_source, compile_diagnostic);
                     if (!compiled)
                     {
                         result.diagnostics.emplace_back(

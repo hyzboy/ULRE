@@ -325,6 +325,110 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        /// 把网格 options 文本写成 `<options_root>/generated/mesh_options.glsl`。
+        ///
+        /// 供两条路径共用：生产侧（后端自己拼的成对根）与工具/门禁（手写编译，
+        /// 用 `ResolveFixedFragmentSource` 给出的根）。只做落盘，不碰目录命名，
+        /// 免得两处对「根在哪」各写一套。
+        bool WriteMeshOptionsSourceFile(
+            const OSString &options_root,
+            const AnsiString &mesh_options_text)
+        {
+            const OSString generated_dir =
+                (filesystem::Path(options_root)
+                 / OSString(OS_TEXT("generated"))).ToOSString();
+            if (!filesystem::MakePath(generated_dir))
+            {
+                DomainBuildFailed(u8"[DomainBackend] 无法创建网格 options 目录：%s",
+                    ShaderLibraryPathToUTF8(generated_dir).c_str());
+                return false;
+            }
+
+            const OSString mesh_options_path =
+                (filesystem::Path(generated_dir)
+                 / OSString(OS_TEXT("mesh_options.glsl"))).ToOSString();
+            if (!WriteTextFile(mesh_options_path, mesh_options_text))
+            {
+                DomainBuildFailed(u8"[DomainBackend] 写入 mesh_options.glsl 失败：%s",
+                    ShaderLibraryPathToUTF8(mesh_options_path).c_str());
+                return false;
+            }
+            return true;
+        }
+
+        /// 把网格阶段的 `generated/mesh_options.glsl` 落盘，并切换到**成对**的
+        /// options 根。
+        ///
+        /// 为什么不直接写进 `fixed.options_root`：那个目录名只由**片段** options
+        /// 内容决定，而两个顶点格式完全不同的材质（例如 `DrawTriangle` 与
+        /// `AutoInstance` 都是 VertexColor 域）片段 options 可能逐字节相同。
+        /// 共用目录就会读到上一份 `mesh_options.glsl` ⇒ 顶点按错误的格式解码，
+        /// 表现为几何静默错位。因此根目录按「片段 options + 网格 options」两段
+        /// 内容一起定名，两文件永远成对。
+        bool WriteMeshOptionsToCache(
+            const AnsiString &mesh_options_text,
+            const AnsiString &fragment_options_text,
+            const MaterialDomain domain,
+            const ShaderProgramPurpose purpose,
+            OSString &inout_options_root)
+        {
+            char fragment_key[32];
+            MakeOptionsKey(fragment_options_text, domain, purpose,
+                           fragment_key, sizeof(fragment_key));
+
+            hgl::hash::FNV1aHasher64 mesh_hasher;
+            mesh_hasher.AppendBytes(
+                mesh_options_text.c_str(),
+                static_cast<size_t>(mesh_options_text.Length()));
+            const AnsiString mesh_key =
+                AnsiString::numberOf(static_cast<uint64>(mesh_hasher));
+
+            const OSString cache_root = GetShaderCacheRootPath();
+            if (cache_root.IsEmpty())
+            {
+                DomainBuildFailed(u8"[DomainBackend] 找不到着色器缓存根目录");
+                return false;
+            }
+
+            OSString dir_name{ToOSString(fragment_key)};
+            dir_name += OSString(OS_TEXT("-m"));
+            dir_name += OSString(ToOSString(mesh_key.c_str()));
+
+            const filesystem::Path options_root =
+                filesystem::Path(cache_root)
+                / OSString(OS_TEXT("domain-options"))
+                / dir_name;
+
+            const OSString options_root_os = options_root.ToOSString();
+            const OSString generated_dir =
+                (filesystem::Path(options_root_os)
+                 / OSString(OS_TEXT("generated"))).ToOSString();
+
+            if (!filesystem::MakePath(generated_dir))
+            {
+                DomainBuildFailed(u8"[DomainBackend] 无法创建网格 options 目录：%s",
+                    ShaderLibraryPathToUTF8(generated_dir).c_str());
+                return false;
+            }
+
+            const OSString options_path =
+                (filesystem::Path(generated_dir)
+                 / OSString(OS_TEXT("options.glsl"))).ToOSString();
+            if (!WriteTextFile(options_path, fragment_options_text))
+            {
+                DomainBuildFailed(u8"[DomainBackend] 写入 options.glsl 失败：%s",
+                    ShaderLibraryPathToUTF8(options_path).c_str());
+                return false;
+            }
+
+            inout_options_root = options_root_os;
+
+            return WriteMeshOptionsSourceFile(
+                inout_options_root, mesh_options_text);
+        }
+
+
+
         /// 读领域主着色器源文件（`ShaderLibrary/domain/<领域>/<文件>.frag`）。
         bool LoadDomainMasterShader(
             const DomainShaderTemplate &domain_template,
@@ -449,10 +553,95 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        /// 用「形状主着色器 + options」直接编出网格 SPV。
+        ///
+        /// 与片段侧同一个理由必须在**这里**编：网格主着色器里有
+        /// `#include "generated/mesh_options.glsl"`，而 options 根是编译那一刻的
+        /// 进程级配置（`compile_info.includes`）。`FinalizeShaderBuildContext`
+        /// 只能在**唯一** ShaderLibrary 根下编，根本看不到 options。
+        ///
+        /// 编好之后 `CreateShaderDirect()` 会因为该阶段已有 SPV 而跳过它，
+        /// 与片段阶段的既有做法一致。
+        bool CompileFixedMesh(
+            const OSString &options_root,
+            const MaterialDomain domain,
+            const ShaderProgramPurpose purpose,
+            ShaderBuildContext &ctx)
+        {
+            ShaderCreateInfo *mesh = ctx.GetStageShader(ShaderStage::Mesh);
+            if (!mesh)
+            {
+                DomainBuildFailed(u8"[DomainBackend] 构建上下文缺少网格阶段");
+                return false;
+            }
+
+            // ── 缓存优先（与片段侧同理，判据是舞台自己的 source digest）──
+            if (ShaderArtifactStore *store = ctx.GetArtifactStore())
+            {
+                if (ctx.HasProgramLink())
+                {
+                    const ShaderStageKey &stage_key =
+                        ctx.GetProgramLink().mesh_stage;
+
+                    const uint64 expected_digest =
+                        ComputeGeneratedStageSourceDigest(
+                            mesh->GetFinalGLSL().data(),
+                            mesh->GetFinalGLSL().size());
+
+                    ValueArray<uint8> cached_spv;
+                    uint64 stored_digest = 0;
+                    if (expected_digest != 0
+                     && store->LoadStageSPV(stage_key, cached_spv, &stored_digest)
+                     && stored_digest == expected_digest
+                     && mesh->SetCachedSPVData(
+                            cached_spv.GetData(), cached_spv.GetCount()))
+                        return true;
+                }
+            }
+
+            const std::string library_root = GetShaderLibraryPath();
+            if (library_root.empty())
+            {
+                DomainBuildFailed(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");
+                return false;
+            }
+
+            const std::string options_root_utf8 =
+                ShaderLibraryPathToUTF8(options_root);
+
+            const char *roots[2] = { library_root.c_str(), options_root_utf8.c_str() };
+            if (!SetShaderIncludeRoots(roots, 2))
+            {
+                DomainBuildFailed(u8"[DomainBackend] 设置 include 根失败：%s | %s",
+                    library_root.c_str(), options_root_utf8.c_str());
+                return false;
+            }
+
+            AnsiString diagnostic;
+            const bool compiled = mesh->CompileFinalGLSLToSPVWithDiagnostic(diagnostic);
+
+            // 无论成败都收回第二根（同片段侧：残留的 options 根会让后续编译读到错误宏）
+            const char *library_only[1] = { library_root.c_str() };
+            SetShaderIncludeRoots(library_only, 1);
+
+            if (!compiled)
+            {
+                DomainBuildFailed(
+                    u8"[DomainBackend] 网格主着色器编译失败：domain=%d purpose=%d\n%s",
+                    static_cast<int>(domain),
+                    static_cast<int>(purpose),
+                    diagnostic.c_str() ? diagnostic.c_str() : "");
+                return false;
+            }
+
+            return true;
+        }
+
         /// 片段阶段的物理固定内容：源文本 + 接口形状 + 编译期位置信息。
         struct FixedFragmentStage
         {
             AnsiString source;      // 领域主着色器 + options 内容键
+            AnsiString options_text; // 片段 options 原文（与网格 options 合成根）
             uint64 interface_hash = 0;
             OSString options_root;
             MaterialDomain domain = MaterialDomain::Custom;
@@ -543,6 +732,7 @@ namespace hgl::graph::mtl
             out_stage.source += "\n// domain-options-key ";
             out_stage.source += options_key;
             out_stage.source += "\n";
+            out_stage.options_text = options_text;
             return true;
         }
     }//namespace
@@ -582,6 +772,12 @@ namespace hgl::graph::mtl
                 deferred_request.fixed_fragment_interface_hash =
                     fixed.interface_hash;
 
+                // 网格阶段：主着色器按形状固定，顶点解码/位置映射/投影由
+                // `generated/mesh_options.glsl` 注入。构建器算出 options 文本
+                // 交回来，落盘位置由本后端决定（必须与 options.glsl 同根）。
+                AnsiString mesh_options_glsl;
+                deferred_request.mesh_options_glsl_out = &mesh_options_glsl;
+
                 ShaderBuildContext *ctx = BuildGenericMaterial(
                     profile, deferred_request, definition, nullptr);
                 if (!ctx)
@@ -592,7 +788,26 @@ namespace hgl::graph::mtl
                     return nullptr;
                 }
 
-                // ── 3. 在 options 的 include 根下编译固定片段 ──────────────
+                if (mesh_options_glsl.Length() > 0
+                 && !WriteMeshOptionsToCache(
+                        mesh_options_glsl,
+                        fixed.options_text,
+                        fixed.domain,
+                        fixed.purpose,
+                        fixed.options_root))
+                {
+                    delete ctx;
+                    return nullptr;
+                }
+
+                // ── 3. 在 options 的 include 根下编译两个固定阶段 ──────────
+                if (!CompileFixedMesh(
+                        fixed.options_root, fixed.domain, fixed.purpose, *ctx))
+                {
+                    delete ctx;
+                    return nullptr;
+                }
+
                 if (!CompileFixedFragment(
                         fixed.options_root, fixed.domain, fixed.purpose, *ctx))
                 {
@@ -668,6 +883,34 @@ namespace hgl::graph::mtl
         }
 
         return true;
+    }
+
+    bool CompileFixedMeshSource(
+        ShaderBuildContext &ctx,
+        const FixedFragmentSource &fixed,
+        AnsiString &out_diagnostic)
+    {
+        if (fixed.options_root.IsEmpty())
+        {
+            DomainBuildFailed(u8"[DomainBackend] 固定网格源缺少 options 根，无法编译");
+            return false;
+        }
+
+        if (!CompileFixedMesh(fixed.options_root, fixed.domain,
+                              fixed.purpose, ctx))
+        {
+            out_diagnostic = GetLastDomainShaderBuildBackendError();
+            return false;
+        }
+
+        return true;
+    }
+
+    bool WriteMeshOptionsSource(
+        const OSString &options_root,
+        const AnsiString &mesh_options_text)
+    {
+        return WriteMeshOptionsSourceFile(options_root, mesh_options_text);
     }
 
     void InstallDomainShaderBuildBackend()

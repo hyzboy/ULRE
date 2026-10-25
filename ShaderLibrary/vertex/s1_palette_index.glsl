@@ -23,4 +23,8 @@ uint ColorIndex;
         ColorIndex = (packed >> ((vidx & 3u) * 8u)) & 0xFFu; \
     }
 
+// 语义取值口：与 s1_color.glsl 同名同签名，网格阶段主着色器因此无需区分
+// 「直读顶点色」与「调色板索引」两种来源（color_palette 由 ubo/scene_ubo.glsl 提供）。
+vec4 GetVertexColor() { return unpackUnorm4x8(color_palette.color[ColorIndex]); }
+
 #endif // S1_PALETTE_INDEX_GLSL

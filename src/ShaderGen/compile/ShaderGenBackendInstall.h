@@ -89,6 +89,23 @@ namespace hgl::graph::mtl
         const FixedFragmentSource &fixed,
         AnsiString &out_diagnostic);
 
+    /// 工具/门禁用：用生产同一条路径把固定网格阶段编成 SPV。
+    ///
+    /// 与片段同理：网格主着色器里也有 `#include "generated/mesh_options.glsl"`，
+    /// 手写编译拿不到第二 include 根。调用前必须先把网格 options 落盘到
+    /// `fixed.options_root`（`WriteMeshOptionsSource`）。
+    bool CompileFixedMeshSource(
+        ShaderBuildContext &ctx,
+        const FixedFragmentSource &fixed,
+        AnsiString &out_diagnostic);
+
+    /// 工具/门禁用：把网格 options 写进给定根（`<root>/generated/mesh_options.glsl`）。
+    ///
+    /// 生产侧由后端自己挑成对目录；这里只做落盘，供手写编译的门复用同一个根。
+    bool WriteMeshOptionsSource(
+        const OSString &options_root,
+        const AnsiString &mesh_options_text);
+
     void InstallShaderCreateInfoSPVReleaser();
     void UninstallShaderCreateInfoSPVReleaser();
 }//namespace hgl::graph::mtl

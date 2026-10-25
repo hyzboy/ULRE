@@ -17,4 +17,9 @@ vec4 Color;
 
 #define HGL_COLOR_LOADER { Color = sbo_vertex_color.data[draw_params.vertex_base + VertexIndexID]; }
 
+// 语义取值口：形状主着色器只写 `fragVertexColor[vid] = GetVertexColor();`，
+// 由本模块决定「顶点色从哪来」。调色板索引版（s1_palette_index）提供同名函数，
+// 因此两种顶点色来源共用同一份网格阶段主着色器。
+vec4 GetVertexColor() { return Color; }
+
 #endif // S1_COLOR_GLSL

@@ -84,6 +84,13 @@ struct MaterialDefinitionBuildRequest
     // 编译输入。调用方必须保证文本与已解析的 mode / ABI / stage interface 相符。
     const char *fixed_mesh_source = nullptr;
 
+    // 非空时：构建器把本次解析出的 `generated/mesh_options.glsl` 文本写进这里，
+    // 由调用方（领域后端）落到 options 缓存目录。构建器不碰文件系统 —— 落盘位置
+    // 与片段侧的 `generated/options.glsl` 必须是同一个根，只有后端知道那个根。
+    //
+    // 空指针 = 不需要（调用方自己给了 `fixed_mesh_source`，或该模式不走形状主着色器）。
+    AnsiString *mesh_options_glsl_out = nullptr;
+
 };
 
 // Render preparation calls this after selecting the scene template. It copies
