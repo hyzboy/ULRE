@@ -132,27 +132,6 @@ endif()
 
 ####################################################################################################
 
-add_executable(ShaderDocumentRegression
-    ShaderDocumentRegression.cpp)
-
-target_link_libraries(ShaderDocumentRegression
-    PRIVATE ULRE.ShaderGen
-            CMCore
-            CMCoreType)
-
-SetupToolTarget(ShaderDocumentRegression)
-
-if(BUILD_TESTING)
-    add_test(
-        NAME shader_document_regression
-        COMMAND ShaderDocumentRegression)
-    set_tests_properties(
-        shader_document_regression
-        PROPERTIES LABELS "shadergen;document")
-endif()
-
-####################################################################################################
-
 add_executable(SceneRenderTemplateResolverRegression
     SceneRenderTemplateResolverRegression.cpp)
 

@@ -1226,3 +1226,56 @@ std::string("... (last error: ") + GetLastBuildGenericMaterialError().c_str() + 
 顺带把捕获工具的失败输出从 `GLogError` 换成 `std::fprintf(stdout, ...)`：
 `GLogError` 在这个工具里不落到重定向的日志文件，改造期间 DH/Q0 的失败原因
 一直是不可见的。门禁文件本来就有大量 `fprintf`，与既有风格一致。
+
+## 阶段六-5b：删除文档层与 meshgen（物理移除 ShaderDocument）
+
+6.5a 保证了生产与测试全面使用物理固定源之后，`BuildMaterialStageDocument`
+（模板合并 → 序列化）及整套 `ShaderDocument` 基础设施已不再有任何生产消费者。
+本阶段将其物理删除：
+
+### 1. 物理删除的文件
+
+- `src/ShaderGen/meshgen/`（10 个文件全部删除）：
+  - `MeshTemplateEmitter.h`
+  - `MeshModeDescriptor.h`
+  - `MeshShaderHeaderGen.h`
+  - `MeshShaderVaryingGen.h`
+  - `MeshShaderVertexAdapter.h`
+  - `MeshShaderModeVertexPassthrough.h`
+  - `MeshShaderModeLineQuad.h`
+  - `MeshShaderModeCharQuad.h`
+  - `MeshShaderTemplate.h`
+  - `MeshShaderTemplate.cpp`
+- 文档层实现与接口：
+  - `src/ShaderGen/document/ShaderDocument.cpp`
+  - `inc/hgl/mtl/ShaderDocument.h`
+- 专属测试工具：
+  - `src/Tools/ShaderGen/ShaderDocumentRegression.cpp`（及 CMake 目标与 ctest 声明）
+
+### 2. 生产侧改造
+
+- `inc/hgl/mtl/MaterialShaderCompiler.h`：
+  - `MaterialShaderDocumentCapture` 简化为 `MaterialShaderBuildCapture`（仅包含 `mesh_source_shape_key` 与 `mesh_source_was_fixed`）。
+  - `BuildMaterialStageDocuments` 统一收敛为三参数版本 `(profile, input, config)`，原 5 参数文档版本彻底废除。
+  - 公开 `MaterialDefinitionRequiresPayloadRow` 声明（编译期直判信号）。
+- `src/ShaderGen/builder/GenericMaterialBuilder.h/.cpp`：
+  - 移除 `mesh_source_document` 成员与相关组装逻辑；顶点输入声明直接保留为 `resolved_vertex_input_glsl` 纯文本。
+  - 形状键哈希精确保持历史 byte sequence（以字面量 `5` 代表原 `ShaderDocumentBlockKind::Module`），保证 19 份已落盘的 `.mesh` 文件名 100% 幂等。
+- `src/ShaderGen/compile/MaterialShaderCompiler.cpp`：
+  - 精简为单一编译入口：硬要求 `fixed_mesh_source` 与 `fixed_fragment_source` 两份物理固定源，直接走 `SetFinalGLSL` 编译，不经过任何文档合并与注入。
+
+### 3. 测试工具改造与不变量转移
+
+- `ShaderDocumentProductionRegression.cpp`：
+  - 移除所有旧 `ShaderDocument` 断言与块序列化比对，转为直接验证固定阶段与 `MaterialDefinitionRequiresPayloadRow`。
+- `ShaderResourceSchemaRegressionGate.cpp`：
+  - 原 `MV.mesh-varying-writability`（生成器可写性表测试）改造为 `MV.fixed-mesh-varying-invariants`：使用 `AuditFixedMeshMasters` 对 `ShaderLibrary/mesh/fixed/*.mesh` 全量物理文件进行静态语法与结构审查（验证 stable location、GLSL 类型、`perprimitiveEXT` 约束、调度契约维数、真实写入性、Stage2/3 组合约束）。
+  - `X.transform-graph-composition` 改为直接遍历 `PositionMappingMode` 与 `ProjectionMode` 枚举，断言 `VertexNodeConfigResolver` 映射的物理模块文件存在并保持阶段键区分度。
+  - `Z.material-bda-emitter` 与 `AE.binding-macro-single-source` 迁移至三参数 `BuildMaterialStageDocuments`，直接使用物理领域头文件与固定源。
+  - 捕获类型统一改名为 `MaterialShaderBuildCapture`。
+
+### 4. 验收结果
+
+- `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL（全量通过）。
+- `ShaderResourceSchemaRegressionGate emit-fixed-mesh`：`written=0 unchanged=34 failed=0`（19 份 `.mesh` 形状键 100% 幂等）。
+- `ShaderDocumentProductionRegression --full`：16/16 `source=fixed`，0 `source=generator`，退出码 0。

@@ -4,9 +4,10 @@ namespace hgl::graph::mtl {}
 
 /// MaterialShaderCompiler.h — canonical material input → ShaderBuildContext
 ///
-/// 使用 BuildMaterialStageDocuments 编译阶段源：片段阶段在
-/// `MaterialCompileConfig::fixed_fragment_source` 非空时直通（领域主着色器就是
-/// 最终编译单元）；网格阶段也可用 `fixed_mesh_source` 直通。
+/// 使用 BuildMaterialStageDocuments 编译阶段源：两个阶段都**物理固定**，
+/// `MaterialCompileConfig::fixed_mesh_source` 与 `fixed_fragment_source`
+/// 是硬前置（网格阶段=ShaderLibrary/mesh/fixed/<key>.mesh，片段阶段=领域主
+/// 着色器），它们本身就是最终编译单元。
 /// 内部流程：
 ///   1. 求解层构建契约/schema（描述符分配器已随 BDA 化退役）
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
@@ -18,7 +19,6 @@ namespace hgl::graph::mtl {}
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/ShaderCodeResourceManifest.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
-#include <hgl/mtl/ShaderDocument.h>
 #include <string>
 #include <vector>
 
@@ -29,45 +29,22 @@ namespace hgl::graph
 }
 
 namespace hgl::graph::mtl{
-struct MaterialShaderDocumentCapture
+/// 构建期观测快照（仅回归门禁用）。
+///
+/// 文档层删除后它只剩两个标量：本次构建落在哪个网格形状键、该键是否由固定
+/// 源满足。想断言阶段文本请看 `ShaderCreateInfo::GetFinalGLSL()`；想断言宏/
+/// 环境光看 `EmitDomainOptions*`。快照由 GenericMaterialBuilder 写入，
+/// 编译器本身不再触碰它。
+struct MaterialShaderBuildCapture
 {
-    // Optional production-pipeline observability for regression gates. The
-    // compiler serializes final documents from these exact instances.
-    //
-    // The capture object is intentionally a snapshot-only observer: it is reset
-    // before production generation and populated only after a stage document has
-    // been fully authored/validated. This keeps the diagnostic flow out of the
-    // real generation path and avoids hidden state drift on the cache key path.
-    ShaderDocument mesh_source_document;
     uint64 mesh_source_shape_key = 0;
     bool mesh_source_was_fixed = false;
-    // 片段侧已物理固定：生产路径只在**没有** fixed_fragment_source 时才构建片段
-    // 文档，而该字段现在是硬前置，所以这里恒为空。想断言片段文本请看
-    // `ShaderCreateInfo::GetFinalGLSL()`，断言宏/环境光看 `EmitDomainOptions*`。
-    ShaderDocument fragment_document;
-    ShaderDocument mesh_final_document;
-    ShaderDocument fragment_final_document;
 
     void Clear() noexcept
     {
-        mesh_source_document.Clear();
         mesh_source_shape_key = 0;
         mesh_source_was_fixed = false;
-        fragment_document.Clear();
-        mesh_final_document.Clear();
-        fragment_final_document.Clear();
     }
-
-    void CaptureSourceDocuments(
-        const ShaderDocument &mesh_source,
-        const ShaderDocument &fragment_source) noexcept
-    {
-        const ShaderDocument mesh_source_snapshot = mesh_source;
-        const ShaderDocument fragment_source_snapshot = fragment_source;
-        mesh_source_document = mesh_source_snapshot;
-        fragment_document = fragment_source_snapshot;
-    }
-
 };
 
 struct MaterialShaderCompilerInput
@@ -92,11 +69,10 @@ struct MaterialCompileConfig
     const ShaderCodeResourceManifest *resource_manifest = nullptr;
     ShaderArtifactStore *artifact_store = nullptr;
     bool defer_finalize = false; // 生成 GLSL/契约后返回，SPV 编译推迟（生产主路径先查 program 缓存）
-    // 非空 ⇒ 片段阶段的最终 GLSL 就是这份文本（领域固定主着色器）：跳过
-    // 片段文档合并与序列化，其余（网格阶段、link、元数据）流程不变。
+    // 片段阶段的最终 GLSL 就是这份文本（领域固定主着色器）。硬前置。
     // 见 `MaterialDefinitionBuildRequest::fixed_fragment_source`。
     const char *fixed_fragment_source = nullptr;
-    // 非空 ⇒ 完整 mesh stage GLSL 直通；跳过 mesh 文档合并与序列化。
+    // 完整 mesh stage GLSL 直通（ShaderLibrary/mesh/fixed/<shape_key>.mesh）。硬前置。
     const char *fixed_mesh_source = nullptr;
 };
 
@@ -139,48 +115,28 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
 void DumpShaderGenGLSL(const char *stage, const std::string &text);
 
 /**
- * 把模板 source document 与已解出的材质资源声明合并为最终 stage document。
- * source document 必须以 Version block 开始。
- *
- * 无生成器终态下只剩 map-shader（网格）阶段使用；片段阶段由领域固定主
- * 着色器文件直接承载，不再经本函数。
+ * 判定材质定义是否需要 payload 行（MTL_ROW）。
  */
-bool BuildMaterialStageDocument(
-    const ShaderDocument &source_document,
-    ShaderStage stage,
-    const char *material,
-    const MaterialCompileConfig &config,
+bool MaterialDefinitionRequiresPayloadRow(
     GlobalSSBOType material_private_data,
-    ShaderDocument &out_document,
-    ShaderDocumentDiagnostics &out_diagnostics);
+    const MaterialDefinition *material_definition,
+    bool &out_required) noexcept;
 
 /**
- * 编译 Compositor 模板产出的完整 GLSL → ShaderBuildContext*。
+ * 编译两份物理固定的阶段源 → ShaderBuildContext*。
  *
- * 使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。
+ * 不再有"模板文档合并 → 序列化"环节：`config.fixed_mesh_source` 与
+ * `config.fixed_fragment_source` 缺任一份即硬失败（静默降级会让网格阶段变成
+ * 空壳）。使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。
  *
  * @param profile   设备能力 profile
  * @param input     canonical compiler input
- * @param mesh_source_document      mesh 模板的结构化 source document
- * @param fragment_source_document  fragment 模板的结构化 source document
- * @param config    编译期配置视图
+ * @param config    编译期配置视图（含两份固定源）
  * @return          编译好的 ShaderBuildContext*; 失败返回 nullptr
  */
 ShaderBuildContext *BuildMaterialStageDocuments(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
-    const ShaderDocument &mesh_source_document,
-    const ShaderDocument &fragment_source_document,
     const MaterialCompileConfig &config);
-
-// Diagnostic-only overload. Keeping capture outside MaterialCompileConfig
-// preserves the layout of the production compiler configuration.
-ShaderBuildContext *BuildMaterialStageDocuments(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialShaderCompilerInput &input,
-    const ShaderDocument &mesh_source_document,
-    const ShaderDocument &fragment_source_document,
-    const MaterialCompileConfig &config,
-    MaterialShaderDocumentCapture *document_capture);
 
 }//namespace hgl::graph::mtl

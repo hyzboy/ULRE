@@ -5,7 +5,6 @@ set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 #                        （含 ShaderGenProgramBuildBackend.cpp：生成器侧的装配后端实现）
 #   glsl_module/         GLSL 代码模块体系（registry/metadata/file/manifest/preset）
 #   contract/            契约层（结构校验/哈希/绑定解析/输出/覆盖率/接口）
-#   meshgen/             mesh shader 生成（装配器 + 模式子模块 + 模板）
 #   template/            fragment/mesh 模板发射器
 #   builder/             定义 → 构建计划编排（generic builder/顶点 ABI/描述符推导）
 # 公共头（inc/hgl/mtl 与 inc/hgl/graph）不参与物理搬移，路径保持稳定。
@@ -27,11 +26,6 @@ set(SHADERGEN_COMMON_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ColorPalette.h)
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
-
-set(DOCUMENT_FILES
-    ${SHADERGEN_INCLUDE_PATH}/ShaderDocument.h
-    document/ShaderDocument.cpp)
-SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 
 set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/ResolvedRenderTemplate.h
@@ -99,23 +93,6 @@ set(CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/SerializedVertexEntry.h)
 SOURCE_GROUP("Contract" FILES ${CONTRACT_FILES})
 
-# ── meshgen/ ─────────────────────────────────────────────────────────────────
-# MeshShaderLimits.h 归 ULRE.ShaderRuntimeContract（VKPhysicalDevice 侧也要用），
-# MeshShaderMode.h 归 ULRE.ShaderMaterialData（MaterialRecipe.h / 材质定义文件要用），
-# 本清单都不再重复列出。
-set(MESHGEN_FILES
-    meshgen/MeshTemplateEmitter.h
-    meshgen/MeshModeDescriptor.h
-    meshgen/MeshShaderHeaderGen.h
-    meshgen/MeshShaderVaryingGen.h
-    meshgen/MeshShaderVertexAdapter.h
-    meshgen/MeshShaderModeVertexPassthrough.h
-    meshgen/MeshShaderModeLineQuad.h
-    meshgen/MeshShaderModeCharQuad.h
-    meshgen/MeshShaderTemplate.h
-    meshgen/MeshShaderTemplate.cpp)
-SOURCE_GROUP("MeshGen" FILES ${MESHGEN_FILES})
-
 # ── builder/ ─────────────────────────────────────────────────────────────────
 set(BUILDER_FILES
     builder/GenericMaterialBuilder.h
@@ -146,13 +123,11 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADERGEN_INCLUDE_PATH}
 
     ${SHADERGEN_COMMON_FILES}
-    ${DOCUMENT_FILES}
     ${TEMPLATE_FILES}
     ${SSBO_STRUCT_FILES}
     ${COMPILE_FILES}
     ${GLSL_MODULE_FILES}
     ${CONTRACT_FILES}
-    ${MESHGEN_FILES}
     ${BUILDER_FILES}
     ${MATERIAL_TYPE_FILES}
 )

@@ -48,7 +48,7 @@
 #include "VertexBuilderCommon.h"
 #include "StageBuildContextTest.h"
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
-#include "ShaderGen/meshgen/MeshTemplateEmitter.h"   // EmitMeshTemplateDocument / MeshShaderMode
+#include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include "ShaderGen/compile/ShaderGenBackendInstall.h"
 
@@ -56,6 +56,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iterator>
 #include <memory>
@@ -112,35 +113,6 @@ namespace
         }
         InstallDomainShaderBuildBackend();
         return ctx;
-    }
-
-    static std::string GenerateMeshShaderDocumentText(
-        const VertexShaderNodeConfig &node_cfg,
-        const MaterialVertexVaryingConfig &varying_cfg,
-        VkFormat position_format,
-        MeshShaderMode mode = MeshShaderMode::VertexPassthrough,
-        uint32_t max_invocations = 64,
-        const ShaderDocument *resolved_input_document = nullptr,
-        const hgl::ValueArray<InterStageSemanticContractEntry>
-            *resolved_stage_interface = nullptr)
-    {
-        ShaderDocument document;
-        if (!EmitMeshTemplateDocument(
-                node_cfg,
-                varying_cfg,
-                position_format,
-                mode,
-                max_invocations,
-                document,
-                resolved_input_document,
-                resolved_stage_interface))
-            return {};
-
-        ShaderDocumentDiagnostics diagnostics;
-        hgl::AnsiString serialized;
-        if (!document.Serialize(serialized, diagnostics))
-            return {};
-        return std::string(serialized.c_str(), serialized.Length());
     }
 
     static hgl::uint64 StableID(const char *text)
@@ -234,6 +206,352 @@ namespace
     }
 
     static std::string ReadFileText(const std::string &path);
+
+    /// 递归读一棵目录下的**全部**文本文件。
+    ///
+    /// 固定库是唯一真源：生成器删除之后，凡是「生成器该产出什么」的判据都只能
+    /// 改成「库里实际是什么」。按扩展名过滤会漏掉 `.tmpl`，所以这里只跳过目录。
+    static std::vector<std::pair<std::string, std::string>> LoadTextTree(
+        const std::filesystem::path &root)
+    {
+        std::vector<std::pair<std::string, std::string>> files;
+        std::error_code ec;
+        if (!std::filesystem::is_directory(root, ec))
+            return files;
+
+        for (const auto &entry :
+             std::filesystem::recursive_directory_iterator(root, ec))
+        {
+            if (ec)
+                break;
+            if (!entry.is_regular_file())
+                continue;
+            std::string text = ReadFileText(entry.path().string());
+            if (text.empty())
+                continue;
+            files.emplace_back(
+                entry.path().lexically_relative(root).string() + "|"
+                    + entry.path().string(),
+                std::move(text));
+        }
+        std::sort(
+            files.begin(), files.end(),
+            [](const auto &a, const auto &b) { return a.first < b.first; });
+        return files;
+    }
+
+    static std::filesystem::path FixedMeshMasterRoot()
+    {
+        return std::filesystem::path(RepoRootPath("ShaderLibrary/mesh/fixed"));
+    }
+
+    /// 相对路径（诊断里用的短名；key 形如 `相对路径|绝对路径`）。
+    static std::string TreeEntryName(
+        const std::pair<std::string, std::string> &entry)
+    {
+        const size_t sep = entry.first.find('|');
+        return sep == std::string::npos
+            ? entry.first
+            : entry.first.substr(0, sep);
+    }
+
+    /// 诊断限流：固定库全量扫描可能一次抓出几十条同类问题，
+    /// 刷屏反而看不见第一个根因。
+    static void AddCappedDiagnostic(
+        GateResult &result, const std::string &message)
+    {
+        if (result.diagnostics.size() < 24)
+            result.diagnostics.emplace_back(message);
+    }
+
+    static bool StartsWith(const std::string &text, size_t offset,
+                           const char *prefix)
+    {
+        const size_t length = std::strlen(prefix);
+        return text.size() >= offset + length
+            && text.compare(offset, length, prefix) == 0;
+    }
+
+    /// 跳过空白（GLSL 里的声明要容忍任意排版）。
+    static void SkipBlanks(const std::string &text, size_t &offset)
+    {
+        while (offset < text.size()
+            && (text[offset] == ' ' || text[offset] == '\t'
+                || text[offset] == '\r' || text[offset] == '\n'))
+            ++offset;
+    }
+
+    /// 读一个标识符（字母/数字/下划线）。
+    static std::string ReadIdentifier(const std::string &text, size_t &offset)
+    {
+        const size_t begin = offset;
+        while (offset < text.size()
+            && (std::isalnum(static_cast<unsigned char>(text[offset]))
+                || text[offset] == '_'))
+            ++offset;
+        return text.substr(begin, offset - begin);
+    }
+
+    /// 固定库网格阶段主着色器的**结构审计**。
+    ///
+    /// 这段判据原先住在 `meshgen/MeshModeDescriptor.h` 的
+    /// `resolve_stage1_input` / `resolve_stage2_mapping` / `resolve_stage3_projection`
+    /// 与 `MeshShaderVaryingGen.h` 的写规则表里——那是「生成器打算产出什么」。
+    /// 生成器删除之后，同一批不变量必须改成对**库里实际文本**的直接断言：
+    ///
+    /// ① 每个 `layout(location=N) [perprimitiveEXT] out <T> <sym>[<inv>];`
+    ///    都与 `ShaderSemanticRegistry` 的稳定 location / GLSL 类型一致，
+    ///    且 `perprimitiveEXT` 恰好出现在 Flat 语义上；
+    /// ② 数组维数必须等于该文件的 max_vertices（非 perprimitive）或
+    ///    max_primitives（perprimitive），也就是 CPU 侧调度契约；
+    /// ③ 每个声明出来的 varying 必须在本文件内真的被写（`sym[...] =`）；
+    /// ④ Stage2/Stage3 模块恰好一个（CharQuad 例外：它自带位置拼装）。
+    ///
+    /// ①②④ 覆盖了原来「生成器按模式推导」的内容，③ 覆盖了
+    /// 「某个模式不写某 varying」的可写性表。
+    static void AuditFixedMeshMasters(GateResult &result)
+    {
+        const auto masters = LoadTextTree(FixedMeshMasterRoot());
+        if (masters.empty())
+        {
+            result.diagnostics.emplace_back(
+                "fixed mesh master directory is missing or empty");
+            return;
+        }
+
+        uint32_t char_quad_files = 0;
+        uint32_t total_declaration_count = 0;
+        for (const auto &file : masters)
+        {
+            const std::string name = TreeEntryName(file);
+            const std::string &text = file.second;
+
+            // ── 调度契约：max_vertices / max_primitives ──
+            uint32_t max_vertices = 0;
+            uint32_t max_primitives = 0;
+            {
+                const size_t layout = text.find("layout(triangles, max_vertices =");
+                if (layout == std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": 缺少 layout(triangles, ...) 输出声明");
+                    continue;
+                }
+                const size_t first =
+                    text.find("max_vertices =", layout);
+                const size_t second =
+                    text.find("max_primitives =", first);
+                if (first == std::string::npos || second == std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": 输出声明缺少 max_vertices/max_primitives");
+                    continue;
+                }
+                max_vertices = uint32_t(std::strtoul(
+                    text.c_str() + first + std::strlen("max_vertices ="),
+                    nullptr, 10));
+                max_primitives = uint32_t(std::strtoul(
+                    text.c_str() + second + std::strlen("max_primitives ="),
+                    nullptr, 10));
+                if (max_vertices == 0 || max_primitives == 0)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": max_vertices/max_primitives 解析失败");
+                    continue;
+                }
+            }
+
+            // ── ②③ 逐条声明检查 ──
+            uint32_t declaration_count = 0;
+            size_t cursor = 0;
+            while (true)
+            {
+                const size_t layout = text.find("layout(location=", cursor);
+                if (layout == std::string::npos)
+                    break;
+                cursor = layout + 1;
+
+                const size_t close = text.find(')', layout);
+                if (close == std::string::npos)
+                    break;
+                const uint32_t location = uint32_t(std::strtoul(
+                    text.c_str() + layout + std::strlen("layout(location="),
+                    nullptr, 10));
+
+                const size_t semicolon = text.find(';', close);
+                if (semicolon == std::string::npos)
+                    break;
+                const std::string body =
+                    text.substr(close + 1, semicolon - close - 1);
+
+                size_t offset = body.find("out");
+                if (offset == std::string::npos)
+                    continue; // in / uniform 声明，不是阶段间 varying
+                // `out` 必须是独立记号，避免命中 `outColor` 之类。
+                const size_t after = offset + 3;
+                if (after < body.size()
+                    && (std::isalnum(static_cast<unsigned char>(body[after]))
+                        || body[after] == '_'))
+                    continue;
+
+                const bool perprimitive =
+                    body.find("perprimitiveEXT") != std::string::npos;
+
+                offset = after;
+                SkipBlanks(body, offset);
+                const std::string type = ReadIdentifier(body, offset);
+                SkipBlanks(body, offset);
+                const std::string symbol = ReadIdentifier(body, offset);
+                SkipBlanks(body, offset);
+                if (type.empty() || symbol.empty())
+                    continue;
+                if (offset >= body.size() || body[offset] != '[')
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": varying " + symbol
+                            + " 必须是定长数组（缺 [N]）");
+                    continue;
+                }
+                ++offset;
+                SkipBlanks(body, offset);
+                const uint32_t dimension = uint32_t(std::strtoul(
+                    body.c_str() + offset, nullptr, 10));
+
+                ++declaration_count;
+
+                // ① 注册表对齐
+                const InterStageSemanticInfo *info = nullptr;
+                for (uint32_t i = 1; i < 32 && !info; ++i)
+                {
+                    const InterStageSemanticInfo *candidate =
+                        GetInterStageSemanticInfo(
+                            static_cast<InterStageSemantic>(i));
+                    if (candidate && candidate->shader_symbol
+                        && symbol == candidate->shader_symbol)
+                        info = candidate;
+                }
+                if (!info)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": varying " + symbol
+                            + " 不在 ShaderSemanticRegistry 里");
+                }
+                else
+                {
+                    if (info->stable_location != location)
+                    {
+                        AddCappedDiagnostic(
+                            result, name + ": " + symbol + " 的 location 是 "
+                                + std::to_string(location) + "，注册表要求 "
+                                + std::to_string(info->stable_location));
+                    }
+                    const char *expected_type = GetGLSLTypeName(
+                        info->value_shape.scalar_type,
+                        info->value_shape.component_count);
+                    if (!expected_type || type != expected_type)
+                    {
+                        AddCappedDiagnostic(
+                            result, name + ": " + symbol + " 的类型是 " + type
+                                + "，注册表要求 "
+                                + (expected_type ? expected_type : "<invalid>"));
+                    }
+                    const bool flat =
+                        info->interpolation == InterStageInterpolation::Flat;
+                    if (flat != perprimitive)
+                    {
+                        AddCappedDiagnostic(
+                            result, name + ": " + symbol
+                                + (flat ? " 是 Flat 语义，必须带 perprimitiveEXT"
+                                        : " 不是 Flat 语义，不应带 perprimitiveEXT"));
+                    }
+                }
+
+                // ② 调度契约对齐
+                const uint32_t expected_dimension =
+                    perprimitive ? max_primitives : max_vertices;
+                if (dimension != expected_dimension)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": " + symbol + " 的数组维数是 "
+                            + std::to_string(dimension) + "，调度契约要求 "
+                            + std::to_string(expected_dimension));
+                }
+
+                // ③ 写了才算数
+                const std::string write_probe = symbol + "[";
+                size_t scan = semicolon;
+                bool written = false;
+                while ((scan = text.find(write_probe, scan)) != std::string::npos)
+                {
+                    const size_t bracket = text.find(']', scan);
+                    if (bracket == std::string::npos)
+                        break;
+                    const size_t assignment = text.find('=', bracket);
+                    const size_t terminator = text.find(';', bracket);
+                    if (assignment != std::string::npos
+                        && (terminator == std::string::npos
+                            || assignment < terminator))
+                    {
+                        written = true;
+                        break;
+                    }
+                    scan = bracket + 1;
+                }
+                if (!written)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": varying " + symbol
+                            + " 声明了却从未写入");
+                }
+            }
+
+            total_declaration_count += declaration_count;
+
+            // ── ④ Stage2/Stage3 组合 ──
+            const bool char_quad =
+                text.find("#include \"vertex/s1_text_char_quad.glsl\"")
+                != std::string::npos;
+            if (char_quad)
+            {
+                ++char_quad_files;
+                if (text.find("#include \"vertex/s2_") != std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name
+                            + ": CharQuad 自带位置拼装，不应再引入 Stage2 模块");
+                }
+            }
+            else
+            {
+                const size_t stage2 = text.find("#include \"vertex/s2_");
+                const size_t stage3 = text.find("#include \"vertex/s3_");
+                if (stage2 == std::string::npos || stage3 == std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": 缺少 Stage2/Stage3 顶点变换模块");
+                }
+                else if (text.find("#include \"vertex/s2_", stage2 + 1)
+                      != std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": Stage2 模块只能有一个");
+                }
+                else if (stage3 < stage2)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": Stage3 必须排在 Stage2 之后");
+                }
+            }
+        }
+
+        if (total_declaration_count == 0)
+            result.diagnostics.emplace_back(
+                "fixed mesh master corpus declared zero interstage varyings");
+
+        if (char_quad_files == 0)
+            result.diagnostics.emplace_back(
+                "fixed mesh master corpus lost its CharQuad master");
+    }
 
     static bool CheckVertexEntries(const std::vector<SerializedVertexEntry> &actual,
                                    const std::vector<SerializedVertexEntry> &expected,
@@ -1282,56 +1600,10 @@ namespace
                 "inter-stage stable ABI metadata mismatch");
         }
 
-        MaterialVertexVaryingConfig lit_varying{};
-        lit_varying.emit_data_index_id = true;
-        lit_varying.emit_world_pos = true;
-        lit_varying.emit_world_normal = true;
-        lit_varying.emit_uv0 = true;
-        const std::string lit_vs = GenerateMeshShaderDocumentText(
-            MakeDefault3DNodeConfig(),
-            lit_varying,
-            VK_FORMAT_R32G32B32_SFLOAT,
-            MeshShaderMode::VertexPassthrough,
-            kMeshVertexPassthroughMaxInvocations,
-            {},
-            nullptr);
-        if (lit_vs.find(
-                "layout(location=0) perprimitiveEXT out uint fragDataIndexID[")
-                == std::string::npos
-         || lit_vs.find(
-                "layout(location=1) out vec3 fragWorldPos[")
-                == std::string::npos
-         || lit_vs.find(
-                "layout(location=2) out vec3 fragWorldNormal[")
-                == std::string::npos
-         || lit_vs.find(
-                "layout(location=3) out vec2 fragUV0[")
-                == std::string::npos)
-        {
-            result.diagnostics.emplace_back(
-                "legacy generated lit varying ABI changed");
-        }
-
-        MaterialVertexVaryingConfig color_varying{};
-        color_varying.emit_vertex_color = true;
-        const std::string color_vs = GenerateMeshShaderDocumentText(
-            MakeDefault3DNodeConfig(),
-            color_varying,
-            VK_FORMAT_R32G32B32_SFLOAT,
-            MeshShaderMode::VertexPassthrough,
-            kMeshVertexPassthroughMaxInvocations,
-            {},
-            nullptr);
-        if (color_vs.find(
-                "layout(location=5) out vec4 fragVertexColor[")
-                == std::string::npos
-         || color_vs.find(
-                "layout(location=0) out vec4 fragVertexColor[")
-                != std::string::npos)
-        {
-            result.diagnostics.emplace_back(
-                "stable vertex-color ABI was not generated");
-        }
+        // 生成器已物理删除：原来这里拿「生成器产出的 lit/color 顶点文本」当
+        // varying ABI 的判据。现在稳定 ABI 的唯一真源就是上面这张注册表，
+        // 而「库里的主着色器是否照着它发射」由 MV.fixed-mesh-varying-invariants
+        // 对 19 个 .mesh 逐条断言 —— 两边分工，避免一处失败两处报。
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -3106,35 +3378,79 @@ namespace
         GateResult result;
         result.name = "X.transform-graph-composition";
 
-        MaterialVertexVaryingConfig varying{};
-        varying.emit_data_index_id = true;
-
-        const auto build = [&](const VertexShaderNodeConfig &graph)
+        // 生成器删除后，「这个图会拼出哪些 Stage2/Stage3 模块」不再靠生成一段
+        // GLSL 去观察，而是直接问 `VertexNodeConfigResolver` 要模块路径，并核对
+        // **该模块文件真的在库里**。少一个文件、改名、删枚举分支都会在这里硬失败，
+        // 而原断言只证明「生成器当次拼对了字符串」。
+        const auto require_module = [&](const char *module, const char *context)
         {
-            // 位置格式必须与映射的分量数一致（生成期硬门）：2D 映射的图只吃 vec2 位置。
-            // 拿 vec3 格式去出 2D 图，产出的是 `vec4(vec3, 0.0, 1.0)` 这类编不过的 GLSL。
-            const VkFormat position_format =
-                GetPositionMappingComponentCount(graph.position_mapping) == 3
-                    ? VK_FORMAT_R32G32B32_SFLOAT
-                    : VK_FORMAT_R32G32_SFLOAT;
-            return GenerateMeshShaderDocumentText(
-                graph, varying, position_format,
-                MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
-                {}, nullptr);
+            if (!module || !module[0])
+            {
+                result.diagnostics.emplace_back(
+                    std::string(context) + ": 图没有映射到任何模块");
+                return;
+            }
+            const std::string path =
+                RepoRootPath((std::string("ShaderLibrary/") + module).c_str());
+            std::error_code ec;
+            if (!std::filesystem::is_regular_file(path, ec))
+                result.diagnostics.emplace_back(
+                    std::string(context) + ": 模块文件不存在 " + module);
         };
 
-        const std::string flat = build(VertexNodeConfigResolver::FlatXY());
-        const std::string wall = build(VertexNodeConfigResolver::WallXY());
-        const std::string world = build(VertexNodeConfigResolver::World3D());
+        for (uint32_t i = uint32_t(PositionMappingMode::BEGIN_RANGE);
+             i <= uint32_t(PositionMappingMode::END_RANGE); ++i)
+        {
+            const auto mapping = PositionMappingMode(i);
+            VertexShaderNodeConfig cfg = MakeDefault3DNodeConfig();
+            cfg.position_mapping = mapping;
+            require_module(
+                VertexNodeConfigResolver::GetMappingModulePath(cfg),
+                GetPositionMappingModeName(mapping));
+            if (GetPositionMappingComponentCount(mapping) == 0)
+                result.diagnostics.emplace_back(
+                    std::string(GetPositionMappingModeName(mapping))
+                    + ": 位置分量数不能为 0");
+        }
 
-        if (flat == wall || flat == world)
-            result.diagnostics.emplace_back(
-                "one material must produce distinct VS sources per transform graph");
-        if (flat.find("vertex/s2_ndc_lift.glsl") == std::string::npos
-         || wall.find("vertex/s2_lift_x0y.glsl") == std::string::npos
-         || world.find("vertex/s2_passthrough3d.glsl") == std::string::npos)
-            result.diagnostics.emplace_back(
-                "transform graph source composition selected the wrong stage");
+        for (uint32_t i = uint32_t(ProjectionMode::BEGIN_RANGE);
+             i <= uint32_t(ProjectionMode::END_RANGE); ++i)
+        {
+            const auto projection = ProjectionMode(i);
+            VertexShaderNodeConfig cfg = MakeDefault3DNodeConfig();
+            cfg.projection = projection;
+            require_module(
+                VertexNodeConfigResolver::GetStage3ModulePath(cfg),
+                GetProjectionModeName(projection));
+        }
+
+        // 相机朝向是 Stage3 的另一条分叉（不看 projection），必须单独覆盖。
+        {
+            VertexShaderNodeConfig facing = MakeDefault3DNodeConfig();
+            facing.orientation = OrientationMode::CameraFacingAxisY;
+            facing.scale = ScaleMode::World;
+            require_module(
+                VertexNodeConfigResolver::GetStage3ModulePath(facing),
+                "CameraFacingAxisY/World");
+            facing.scale = ScaleMode::FixedPixelSize;
+            require_module(
+                VertexNodeConfigResolver::GetStage3ModulePath(facing),
+                "CameraFacingAxisY/FixedPixelSize");
+        }
+
+        // 图不同 ⇒ 选中的模块必须不同（否则「图」就是个摆设）。
+        {
+            const std::string flat_module = VertexNodeConfigResolver::GetMappingModulePath(
+                VertexNodeConfigResolver::FlatXY());
+            const std::string wall_module = VertexNodeConfigResolver::GetMappingModulePath(
+                VertexNodeConfigResolver::WallXY());
+            const std::string world_module = VertexNodeConfigResolver::GetMappingModulePath(
+                VertexNodeConfigResolver::World3D());
+            if (flat_module == wall_module || flat_module == world_module
+             || wall_module == world_module)
+                result.diagnostics.emplace_back(
+                    "transform graph variants must map to distinct Stage2 modules");
+        }
 
         ShaderStageBuildContext flat_stage{};
         flat_stage.stage = ShaderStage::Mesh;
@@ -7154,31 +7470,24 @@ namespace
             PrimitiveType::Triangles
         };
 
+        const std::string root_bindings =
+            ReadFileText(RepoRootPath("ShaderLibrary/domain/root_bindings.glsl"));
+        const std::string emissive_bindings =
+            ReadFileText(RepoRootPath("ShaderLibrary/domain/emissive_row_bindings.glsl"));
+        const std::string emissive_frag_source =
+            root_bindings + "\n" + emissive_bindings;
+
         MaterialCompileConfig config{};
         config.material_private_data = GlobalSSBOType::EmissiveSurface;
         config.defer_finalize = true;
+        config.fixed_mesh_source = "#version 460\nvoid main(){}\n";
+        config.fixed_fragment_source = emissive_frag_source.c_str();
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
-        ShaderDocument mesh_document;
-        mesh_document.Add(
-            ShaderDocumentBlockKind::Version, "#version 460\n");
-        mesh_document.Add(
-            ShaderDocumentBlockKind::Raw,
-            "layout(location=0) in vec2 Position;\n"
-            "void main(){gl_Position=vec4(Position,0.0,1.0);}\n");
-        ShaderDocument fragment_document;
-        fragment_document.Add(
-            ShaderDocumentBlockKind::Version, "#version 460\n");
-        fragment_document.Add(
-            ShaderDocumentBlockKind::Raw,
-            "layout(location=0) out vec4 outColor;\n"
-            "void main(){outColor=vec4(1.0);}\n");
         ShaderBuildContext *build_spec = BuildMaterialStageDocuments(
             nullptr,
             compiler_input,
-            mesh_document,
-            fragment_document,
             config);
         if (!build_spec)
         {
@@ -7237,7 +7546,7 @@ namespace
                 result.diagnostics.emplace_back("arena row reference declaration is incomplete");
 
             const size_t extension = source.find(
-                "#extension GL_EXT_mesh_shader : require\n");
+                "#extension GL_EXT_mesh_shader : require");
             const size_t declaration = source.find(
                 "struct EmissiveSurfaceData");
             const size_t alias = source.find(expected_alias);
@@ -7250,7 +7559,7 @@ namespace
             if (extension == std::string::npos
              || declaration == std::string::npos
              || alias == std::string::npos
-             || !(extension < alias && alias < declaration))
+             || !(extension < declaration && declaration < alias))
             {
                 result.diagnostics.emplace_back(
                     "material stage document injection order changed: ext=" + std::to_string(extension) + " decl=" + std::to_string(declaration) + " alias=" + std::to_string(alias));
@@ -7268,6 +7577,12 @@ namespace
             {"normal", SamplerType::Sampler2DArray, false});
         texture_definition.vertex_varying.emit_data_index_id = false;
 
+        const std::string texture_frag_source =
+            root_bindings + "\n"
+            "struct MaterialTextureReferences { uvec2 tex_base_color; uvec2 tex_normal; };\n"
+            "layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef { uvec2 tex_base_color; uvec2 tex_normal; };\n"
+            "#define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))\n";
+
         MaterialShaderCompilerInput texture_compiler_input{
             "MaterialTextureReferenceOnly",
             PrimitiveType::Triangles};
@@ -7275,14 +7590,14 @@ namespace
         texture_config.material_private_data = GlobalSSBOType::PBRSurface;
         texture_config.material_definition = &texture_definition;
         texture_config.defer_finalize = true;
+        texture_config.fixed_mesh_source = "#version 460\nvoid main(){}\n";
+        texture_config.fixed_fragment_source = texture_frag_source.c_str();
         texture_config.shader_stage_flag_bits =
             uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
         ShaderBuildContext *texture_build_spec = BuildMaterialStageDocuments(
             nullptr,
             texture_compiler_input,
-            mesh_document,
-            fragment_document,
             texture_config);
         if (!texture_build_spec)
         {
@@ -7356,14 +7671,14 @@ namespace
         vertex_color_config.material_private_data = GlobalSSBOType::PBRSurface;
         vertex_color_config.material_definition = &vertex_color_definition;
         vertex_color_config.defer_finalize = true;
+        vertex_color_config.fixed_mesh_source = "#version 460\nvoid main(){}\n";
+        vertex_color_config.fixed_fragment_source = root_bindings.c_str();
         vertex_color_config.shader_stage_flag_bits =
             uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
         ShaderBuildContext *vertex_color_build_spec = BuildMaterialStageDocuments(
             nullptr,
             vertex_color_compiler_input,
-            mesh_document,
-            fragment_document,
             vertex_color_config);
         if (!vertex_color_build_spec)
         {
@@ -7416,14 +7731,14 @@ namespace
         pbr_config.material_private_data = GlobalSSBOType::PBRSurface;
         pbr_config.material_definition = &pbr_definition;
         pbr_config.defer_finalize = true;
+        pbr_config.fixed_mesh_source = "#version 460\nvoid main(){}\n";
+        pbr_config.fixed_fragment_source = root_bindings.c_str();
         pbr_config.shader_stage_flag_bits =
             uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
         ShaderBuildContext *pbr_build_spec = BuildMaterialStageDocuments(
             nullptr,
             pbr_compiler_input,
-            mesh_document,
-            fragment_document,
             pbr_config);
         if (!pbr_build_spec)
         {
@@ -7457,30 +7772,25 @@ namespace
             PrimitiveType::Triangles
         };
 
-        MaterialCompileConfig config{};
-        config.defer_finalize = true;
-        config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
-
-        ShaderDocument mesh_document;
-        mesh_document.Add(
-            ShaderDocumentBlockKind::Version, "#version 460\n");
-        mesh_document.Add(
-            ShaderDocumentBlockKind::Raw,
+        static const char kMeshSource[] =
+            "#version 460\n"
             "#include \"common/descriptor_macros.glsl\"\n"
             "layout(location=0) in vec2 Position;\n"
-            "void main(){gl_Position=vec4(Position,L2W_SET,L2W_BINDING);}\n");
-        ShaderDocument fragment_document;
-        fragment_document.Add(
-            ShaderDocumentBlockKind::Version, "#version 460\n");
-        fragment_document.Add(
-            ShaderDocumentBlockKind::Raw,
+            "void main(){gl_Position=vec4(Position,L2W_SET,L2W_BINDING);}\n";
+        static const char kFragSource[] =
+            "#version 460\n"
             "layout(location=0) out vec4 outColor;\n"
-            "void main(){outColor=vec4(1.0);}\n");
+            "void main(){outColor=vec4(1.0);}\n";
+
+        MaterialCompileConfig config{};
+        config.defer_finalize = true;
+        config.fixed_mesh_source = kMeshSource;
+        config.fixed_fragment_source = kFragSource;
+        config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
+
         ShaderBuildContext *build_spec = BuildMaterialStageDocuments(
             nullptr,
             compiler_input,
-            mesh_document,
-            fragment_document,
             config);
         if (!build_spec)
         {
@@ -7975,173 +8285,20 @@ void main()
     }
 
         // ══════════════════════════════════════════════════════════════════════
-    // MV.mesh-varying-writability
-    //
-    // 「声明即必须可写」。mesh 侧声明了却写不出来的 varying 不报任何错 ——
-    // GLSL 允许 out 数组元素未写入，FS 侧静默读到未定义值（#9：LineQuad
-    // 曾漏写 UV0/WorldPosition/WorldNormal/StyleID/FragDirection）。
-    // 本用例把「可写性」钉成双向等式：
-    //   ① 规则表登记可写 ⇒ EmitVaryingWrites 必须真的写出
-    //      （登记了但发射器没写 ⇒ 硬门会放行一份坏 shader）；
-    //   ② 发射器写了但表里没登记同样失败（表比实际窄会误拒合法材质）。
-    // 两侧用的都是生产代码（同一张规则表 + 同一个发射器），不是手抄副本 ——
-    // 4.3 起可写性与发射共表，本用例保证这张表自身不会退化成 wishful thinking。
-    static GateResult RunMeshVaryingWritabilityCase()
-    {
-        GateResult result;
-        result.name = "MV.mesh-varying-writability";
-
-        static const MeshShaderMode kProbeModes[] = {
-            MeshShaderMode::VertexPassthrough,
-            MeshShaderMode::LineQuad,
-            MeshShaderMode::CharQuad,
-        };
-
-        for (const MeshShaderMode mode : kProbeModes)
+        // MV.fixed-mesh-varying-invariants
+        //
+        // 原 MV.mesh-varying-writability（生成器可写性表测试）的终态替代：
+        // 在完全物理固定的网格主着色器库（ShaderLibrary/mesh/fixed/*.mesh）上，
+        // 直接断言所有 varying 声明、调度契约、真实写入及 Stage2/3 组合不变量。
+        // ══════════════════════════════════════════════════════════════════════
+        static GateResult RunFixedMeshVaryingInvariantsCase()
         {
-            const MeshModeDescriptor *desc = GetMeshModeDescriptor(mode);
-            if (!desc)
-            {
-                result.diagnostics.emplace_back(
-                    "mesh mode descriptor missing for probe");
-                continue;
-            }
-
-            // 用全部白名单语义构造 stage interface ⇒ 声明侧会全部声明，
-            // 于是「可写性」是唯一的过滤条件。
-            hgl::ValueArray<InterStageSemanticContractEntry> stage_interface;
-            for (const InterStageSemantic semantic : kMeshEmittedVaryingSemantics)
-            {
-                const InterStageSemanticInfo *info =
-                    GetInterStageSemanticInfo(semantic);
-                InterStageSemanticContractEntry entry{};
-                entry.semantic = semantic;
-                if (info)
-                {
-                    entry.scalar_type = info->value_shape.scalar_type;
-                    entry.component_count = info->value_shape.component_count;
-                    entry.interpolation = info->interpolation;
-                    entry.location_width = info->location_width;
-                }
-                entry.location = static_cast<hgl::uint32>(stage_interface.GetCount());
-                stage_interface.Add(entry);
-            }
-
-            // 顶点色两条取色路径都必须与发射结果一致（表里有 Palette/Attribute 两行）。
-            for (const bool from_palette : { false, true })
-            {
-                MaterialVertexVaryingConfig varying_cfg{};
-                varying_cfg.emit_vertex_color_from_palette = from_palette;
-
-                std::string emitted;
-                EmitVaryingWrites(emitted, stage_interface, varying_cfg,
-                                  desc->varying_write_rules);
-
-                for (const InterStageSemantic semantic : kMeshEmittedVaryingSemantics)
-                {
-                    const InterStageSemanticInfo *info =
-                        GetInterStageSemanticInfo(semantic);
-                    if (!info || !info->shader_symbol || !info->shader_symbol[0])
-                        continue;
-
-                    const bool declared_writable =
-                        IsMeshVaryingWritable(desc->varying_write_rules, semantic);
-
-                    // 发射文本里是否出现 `<symbol>[...] ... = `（同一行内有等号）
-                    const std::string needle =
-                        std::string(info->shader_symbol) + "[";
-                    bool actually_written = false;
-                    for (size_t at = emitted.find(needle);
-                         at != std::string::npos;
-                         at = emitted.find(needle, at + needle.size()))
-                    {
-                        const size_t eq = emitted.find('=', at);
-                        const size_t nl = emitted.find('\n', at);
-                        if (eq != std::string::npos
-                         && (nl == std::string::npos || eq < nl))
-                        {
-                            actually_written = true;
-                            break;
-                        }
-                    }
-
-                    if (declared_writable != actually_written)
-                    {
-                        result.diagnostics.emplace_back(
-                            std::string(desc->name) + ": " + info->shader_symbol
-                            + (declared_writable
-                                ? " 登记为可写，但 EmitVaryingWrites 没有写它"
-                                : " EmitVaryingWrites 会写它，但未登记为可写"));
-                    }
-                }
-            }
+            GateResult result;
+            result.name = "MV.fixed-mesh-varying-invariants";
+            AuditFixedMeshMasters(result);
+            result.passed = result.diagnostics.empty();
+            return result;
         }
-
-        // 反向锁：#9 的具体组合必须被拒（写不出来就不许声明）。
-        struct RejectProbe
-        {
-            MeshShaderMode mode;
-            InterStageSemantic semantic;
-        };
-        static const RejectProbe kRejects[] = {
-            { MeshShaderMode::LineQuad, InterStageSemantic::WorldNormal },
-            { MeshShaderMode::LineQuad, InterStageSemantic::UV0 },
-            { MeshShaderMode::LineQuad, InterStageSemantic::FragDirection },
-            { MeshShaderMode::LineQuad, InterStageSemantic::StyleID },
-            { MeshShaderMode::VertexPassthrough, InterStageSemantic::StyleID },
-            { MeshShaderMode::CharQuad, InterStageSemantic::WorldPosition },
-            { MeshShaderMode::CharQuad, InterStageSemantic::WorldNormal },
-            { MeshShaderMode::CharQuad, InterStageSemantic::Luminance },
-            { MeshShaderMode::CharQuad, InterStageSemantic::FragDirection },
-        };
-
-        for (const RejectProbe &reject : kRejects)
-        {
-            const MeshModeDescriptor *desc =
-                GetMeshModeDescriptor(reject.mode);
-            if (!desc)
-                continue;
-
-            hgl::ValueArray<InterStageSemanticContractEntry> one;
-            InterStageSemanticContractEntry entry{};
-            entry.semantic = reject.semantic;
-            one.Add(entry);
-
-            InterStageSemantic found = InterStageSemantic::Unknown;
-            if (!FindUnwritableMeshVarying(*desc, one, found)
-             || found != reject.semantic)
-            {
-                const InterStageSemanticInfo *info =
-                    GetInterStageSemanticInfo(reject.semantic);
-                result.diagnostics.emplace_back(
-                    std::string(desc->name) + " 本应拒绝 varying "
-                    + ((info && info->shader_symbol)
-                        ? info->shader_symbol : "<unknown>")
-                    + "，但可写性门放行了");
-            }
-        }
-
-        // 正向锁：LineQuad 的世界位置必须可写（#9 的补齐写）。
-        const MeshModeDescriptor *line_quad =
-            GetMeshModeDescriptor(MeshShaderMode::LineQuad);
-        if (line_quad)
-        {
-            hgl::ValueArray<InterStageSemanticContractEntry> one;
-            InterStageSemanticContractEntry entry{};
-            entry.semantic = InterStageSemantic::WorldPosition;
-            one.Add(entry);
-
-            InterStageSemantic found = InterStageSemantic::Unknown;
-            if (FindUnwritableMeshVarying(*line_quad, one, found))
-            {
-                result.diagnostics.emplace_back(
-                    "LineQuad 必须能写 WorldPosition（from_world/to_world 已知）");
-            }
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
 
     static GateResult RunModuleInvariantsCase()
     {
@@ -9819,7 +9976,7 @@ void main()
     static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
         const ReflectionCoverageVariant &variant, std::string &diagnostic,
         FixedFragmentSource *out_fixed = nullptr,
-        MaterialShaderDocumentCapture *out_capture = nullptr)
+        MaterialShaderBuildCapture *out_capture = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
@@ -10961,7 +11118,7 @@ void main()
     static bool EmitOneFixedMeshSource(
         const char *label,
         const ShaderBuildContext &ctx,
-        const MaterialShaderDocumentCapture &capture,
+        const MaterialShaderBuildCapture &capture,
         const std::filesystem::path &dir,
         std::vector<std::string> &catalog,
         int &written,
@@ -11063,7 +11220,7 @@ void main()
         for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
         {
             std::string build_diagnostic;
-            MaterialShaderDocumentCapture capture{};
+            MaterialShaderBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx =
                 BuildReflectionCoverageVariant(
                     variant, build_diagnostic, nullptr, &capture);
@@ -11126,7 +11283,7 @@ void main()
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
 
-            MaterialShaderDocumentCapture capture{};
+            MaterialShaderBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
                 BuildGenericMaterial(nullptr, request, definition, &capture));
             if (!ctx)
@@ -11190,7 +11347,7 @@ void main()
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
 
-            MaterialShaderDocumentCapture capture{};
+            MaterialShaderBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
                 BuildGenericMaterial(nullptr, request, definition, &capture));
             if (!ctx)
@@ -11388,7 +11545,7 @@ int main(const int argc, char **argv)
     if (run_reflection) results.push_back(RunSPVBufferReferenceReflectionCase());
     if (run_reflection) results.push_back(RunGeneratedInterfaceReflectionCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
-    if (run_interface) results.push_back(RunMeshVaryingWritabilityCase());
+    if (run_interface) results.push_back(RunFixedMeshVaryingInvariantsCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
     if (run_module_invariants) results.push_back(RunSamplerReferenceContractCase());
     if (run_module_invariants) results.push_back(RunModuleIncludeDeclarationContractCase());

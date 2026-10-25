@@ -24,7 +24,6 @@
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include "builder/MaterialResourceManifestBuilder.h"
-#include "meshgen/MeshTemplateEmitter.h"
 #include "builder/GenericMaterialBuilder.h"
 
 #include <hgl/io/FileInputStream.h>
@@ -264,7 +263,7 @@ namespace hgl::graph::mtl
             // 位置分量数一个 2 一个 3，`CheckPositionComponentCount` 必然硬失败
             // （DrawTriangle 的 VertexColor 就是这么炸的）。
             plan.vertex_definition.vertex_node_config = plan.vertex_node_config;
-            plan.resolved_vertex_input_document.Clear();
+            plan.resolved_vertex_input_glsl.Clear();
 
             // CharQuad: mesh shader self-declares all SSBOs; no vertex ABI needed.
             if (IsCharQuadMode(definition.mesh_shader_mode))
@@ -280,17 +279,7 @@ namespace hgl::graph::mtl
                     return false;
                 }
                 plan.position_format = resolved_abi.position_format;
-                if (!resolved_abi.vertex_input_glsl.IsEmpty())
-                {
-                    ShaderDocumentSource input_source;
-                    input_source.stage = "mesh";
-                    input_source.module = "vertex-input";
-                    input_source.logical_name = "MeshTemplateEmitter.ResolvedInput";
-                    plan.resolved_vertex_input_document.Add(
-                        ShaderDocumentBlockKind::Module,
-                        resolved_abi.vertex_input_glsl,
-                        input_source);
-                }
+                plan.resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl;
             }
             return true;
         }
@@ -530,20 +519,21 @@ namespace hgl::graph::mtl
             for (int index = 0; index < plan.stage_interface.GetCount(); ++index)
                 hasher << plan.stage_interface[index];
 
+            // ── 顶点输入声明：只作为形状键的哈希输入 ─────────────────────
+            // 历史实现把这份文本塞进一个 ShaderDocument（块数 0/1、kind=
+            // ShaderDocumentBlockKind::Module=5 以 int 宽度、再是文本长度）。
+            // 文档层删除后必须**逐字节**保持原序列：19 份已落盘的 .mesh 文件名
+            // 就是按它算出来的，多加一个字节全体失配。
             hasher << static_cast<uint32>(
-                plan.resolved_vertex_input_document.GetBlockCount());
-            for (int index = 0;
-                 index < plan.resolved_vertex_input_document.GetBlockCount();
-                 ++index)
+                plan.resolved_vertex_input_glsl.IsEmpty() ? 0 : 1);
+            if (!plan.resolved_vertex_input_glsl.IsEmpty())
             {
-                const ShaderDocumentBlock &block =
-                    plan.resolved_vertex_input_document.GetBlock(index);
-                hasher << block.kind
-                       << static_cast<uint32>(block.text.Length());
-                if (!block.text.IsEmpty())
-                    hasher.AppendBytes(
-                        block.text.c_str(),
-                        static_cast<size_t>(block.text.Length()));
+                hasher << static_cast<uint32>(5);   // 原 Module 枚举值
+                hasher << static_cast<uint32>(
+                    plan.resolved_vertex_input_glsl.Length());
+                hasher.AppendBytes(
+                    plan.resolved_vertex_input_glsl.c_str(),
+                    static_cast<size_t>(plan.resolved_vertex_input_glsl.Length()));
             }
 
             return hasher;
@@ -686,11 +676,11 @@ namespace hgl::graph::mtl
         bool GenerateStageSources(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
-            MaterialShaderDocumentCapture *document_capture,
+            MaterialShaderBuildCapture *build_capture,
             GenericMaterialBuildPlan &plan)
         {
-            if (document_capture)
-                document_capture->Clear();
+            if (build_capture)
+                build_capture->Clear();
 
             plan.mesh_source_shape_key = ComputeMeshSourceShapeKey(plan);
 
@@ -1265,7 +1255,7 @@ namespace hgl::graph::mtl
         const contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition,
-        MaterialShaderDocumentCapture *document_capture)
+        MaterialShaderBuildCapture *build_capture)
     {
         s_last_build_generic_material_error.Clear();
         MaterialDefinition resolved_definition;
@@ -1327,7 +1317,7 @@ namespace hgl::graph::mtl
         }
 
         if (!GenerateStageSources(
-                resolved_definition, request, document_capture, plan))
+                resolved_definition, request, build_capture, plan))
         {
             if (s_last_build_generic_material_error.IsEmpty())
                 s_last_build_generic_material_error = "GenerateStageSources failed";
@@ -1347,14 +1337,7 @@ namespace hgl::graph::mtl
         }
 
         ShaderBuildContext *result = BuildMaterialStageDocuments(
-            profile, compiler_input,
-            document_capture
-                ? document_capture->mesh_source_document
-                : plan.mesh_source_document,
-            // 片段源物理固定：没有 source document，最终文本由
-            // config.fixed_fragment_source 直接提供。
-            ShaderDocument{},
-            config, document_capture);
+            profile, compiler_input, config);
         if (!result)
         {
             s_last_build_generic_material_error = "BuildMaterialStageDocuments failed";
@@ -1363,11 +1346,11 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
-        if (document_capture)
+        if (build_capture)
         {
-            document_capture->mesh_source_shape_key =
+            build_capture->mesh_source_shape_key =
                 plan.mesh_source_shape_key;
-            document_capture->mesh_source_was_fixed =
+            build_capture->mesh_source_was_fixed =
                 plan.mesh_source_was_fixed;
         }
         return result;

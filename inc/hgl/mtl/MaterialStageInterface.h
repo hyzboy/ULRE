@@ -4,7 +4,6 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
-#include <hgl/mtl/ShaderDocument.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph::mtl

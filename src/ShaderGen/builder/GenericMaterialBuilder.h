@@ -31,7 +31,7 @@ namespace hgl::graph::mtl
 {
     struct MaterialDefinition;
     struct MaterialDefinitionBuildRequest;
-    struct MaterialShaderDocumentCapture;
+    struct MaterialShaderBuildCapture;
 
 
     /// 中间产物：BuildGenericMaterial 各相位之间共享的全部状态。
@@ -59,7 +59,10 @@ namespace hgl::graph::mtl
         // Phase 2: vertex ABI
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config;
-        ShaderDocument resolved_vertex_input_document;
+        // 求解出的顶点输入声明文本。生成器删除后它不再进任何 shader：只作为
+        // 网格形状键（ComputeMeshSourceShapeKey）的哈希输入保留——19 份已落盘
+        // 的 .mesh 文件名就是按它算出来的，改动会全体失配。
+        AnsiString resolved_vertex_input_glsl;
 
         // Phase 2.5: mesh stage 发射模式（只依赖 profile + definition + primitive）
         MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
@@ -78,7 +81,6 @@ namespace hgl::graph::mtl
         // 片段源**不在**这里生成：它由领域主着色器物理固定，构建请求带进来。
         std::string ms;   // mesh stage（唯一顶点路径——VS 已废弃）
         std::string fs;
-        ShaderDocument mesh_source_document;
         uint64 mesh_source_shape_key = 0;
         bool mesh_source_was_fixed = false;
 
@@ -93,7 +95,7 @@ namespace hgl::graph::mtl
         const mtl::contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition,
-        MaterialShaderDocumentCapture *document_capture);
+        MaterialShaderBuildCapture *build_capture);
 
     const AnsiString &GetLastBuildGenericMaterialError();
 }

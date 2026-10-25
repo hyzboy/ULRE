@@ -52,33 +52,23 @@ namespace
             if (!registry.Register(named))
                 return false;
             definition.material_source_module_name = named.name;
-            MaterialCompileConfig config;
-            config.material_definition = &definition;
-            ShaderDocument input, output;
-            input.Add(ShaderDocumentBlockKind::Version, "#version 460\n");
-            ShaderDocumentDiagnostics diagnostics;
-            const bool built = BuildMaterialStageDocument(
-                input, ShaderStage::Fragment, material_ids[i], config,
-                definition.material_private_data, output, diagnostics);
-            registry.RemoveByName(named.name);
+
+            // 副本的模块名故意既不含 "texture_source" 也不含 "pbr_surface_source"：
+            // payload 行需求必须由模块注解（`require Resource MaterialData`）决定，
+            // 而不是由名字子串反推。
             bool has_payload = false;
-            const char *row_name =
-                ssbo::GetGlobalSSBORowName(definition.material_private_data);
-            for (int block = 0; block < output.GetBlockCount(); ++block)
-            {
-                if (row_name && output.GetBlock(block).text.FindString(row_name) >= 0)
-                    has_payload = true;
-            }
-            if (!built || has_payload != (i == 1))
+            const bool queried = MaterialDefinitionRequiresPayloadRow(
+                definition.material_private_data, &definition, has_payload);
+            registry.RemoveByName(named.name);
+            if (!queried || has_payload != (i == 1))
             {
                 GLogError(u8"Payload inference must use module identity: %s", source_names[i]);
                 return false;
             }
+
             definition.material_source_module_name = "missing_payload_provider";
-            if (BuildMaterialStageDocument(
-                    input, ShaderStage::Fragment, material_ids[i], config,
-                    definition.material_private_data, output, diagnostics)
-             || diagnostics.GetCount() == 0)
+            if (MaterialDefinitionRequiresPayloadRow(
+                    definition.material_private_data, &definition, has_payload))
             {
                 GLogError(u8"Unknown payload provider must fail with a diagnostic");
                 return false;
@@ -136,60 +126,6 @@ namespace
             && AppendMaterialRenderTemplateRoots(definition, out_request);
     }
 
-    const char *GetBlockKindName(const ShaderDocumentBlockKind kind)
-    {
-        switch (kind)
-        {
-        case ShaderDocumentBlockKind::Version:  return "version";
-        case ShaderDocumentBlockKind::Extension:return "extension";
-        case ShaderDocumentBlockKind::Define:   return "define";
-        case ShaderDocumentBlockKind::Resource: return "resource";
-        case ShaderDocumentBlockKind::Interface:return "interface";
-        case ShaderDocumentBlockKind::Module:   return "module";
-        case ShaderDocumentBlockKind::Function: return "function";
-        case ShaderDocumentBlockKind::MainBody: return "main";
-        case ShaderDocumentBlockKind::Raw:      return "raw";
-        }
-        return "unknown";
-    }
-
-    int FindFirstDifference(const AnsiString &lhs, const char *rhs, const int rhs_length)
-    {
-        const int common_length = lhs.Length() < rhs_length
-            ? lhs.Length()
-            : rhs_length;
-        for (int i = 0; i < common_length; ++i)
-            if (lhs[i] != rhs[i])
-                return i;
-        return lhs.Length() == rhs_length ? -1 : common_length;
-    }
-
-    int GetLineNumber(const char *text, const int length, const int offset)
-    {
-        int line = 1;
-        for (int i = 0; i < offset && i < length; ++i)
-            if (text[i] == '\n')
-                ++line;
-        return line;
-    }
-
-    AnsiString GetContext(const char *text, const int length, const int offset)
-    {
-        const int begin = offset > 32 ? offset - 32 : 0;
-        const int end = offset + 32 < length ? offset + 32 : length;
-        AnsiString result;
-        for (int i = begin; i < end; ++i)
-        {
-            if (text[i] == '\n')
-                result += "\\n";
-            else if (text[i] == '\r')
-                result += "\\r";
-            else
-                result += AnsiString::charOf(text[i]);
-        }
-        return result;
-    }
-
     int CountText(const AnsiString &text, const char *needle)
     {
         int count = 0;
@@ -200,230 +136,6 @@ namespace
                 ++count;
         }
         return count;
-    }
-
-    const ShaderDocumentBlock *FindBlockAtOffset(
-        const ShaderDocument &document, const int offset, int &out_index)
-    {
-        int begin = 0;
-        for (int i = 0; i < document.GetBlockCount(); ++i)
-        {
-            const ShaderDocumentBlock &block = document.GetBlock(i);
-            const int end = begin + block.text.Length();
-            if (offset < end || (offset == end && i + 1 == document.GetBlockCount()))
-            {
-                out_index = i;
-                return &block;
-            }
-            begin = end;
-        }
-        out_index = -1;
-        return nullptr;
-    }
-
-    bool ReportSerializationMismatch(
-        const char *fixture,
-        const char *stage,
-        const ShaderDocument &document,
-        const AnsiString &serialized,
-        const char *actual,
-        const int actual_length)
-    {
-        const int offset = FindFirstDifference(serialized, actual, actual_length);
-        if (offset < 0)
-            return true;
-
-        int block_index = -1;
-        const ShaderDocumentBlock *block =
-            FindBlockAtOffset(document, offset, block_index);
-        const ShaderDocumentSource empty_source{};
-        const ShaderDocumentSource &source = block
-            ? block->source
-            : empty_source;
-        const int document_line = GetLineNumber(
-            serialized.c_str(), serialized.Length(), offset);
-        const int actual_line = GetLineNumber(actual, actual_length, offset);
-        const AnsiString document_context = GetContext(
-            serialized.c_str(), serialized.Length(), offset);
-        const AnsiString actual_context = GetContext(
-            actual, actual_length, offset);
-        GLogError(
-            "[ShaderDocumentProductionRegression] fixture=%s stage=%s GLSL mismatch "
-            "offset=%d document(line=%d,length=%d,context=\"%s\") "
-            "actual(line=%d,length=%d,context=\"%s\") "
-            "block=%d kind=%s source={material=%s,stage=%s,module=%s,path=%s,name=%s}",
-            fixture, stage, offset,
-            document_line, serialized.Length(), document_context.c_str(),
-            actual_line, actual_length, actual_context.c_str(),
-            block_index, block ? GetBlockKindName(block->kind) : "end",
-            source.material.c_str(), source.stage.c_str(), source.module.c_str(),
-            source.path.c_str(), source.logical_name.c_str());
-        return false;
-    }
-
-    bool ValidateSourceDocument(
-        const char *fixture,
-        const char *stage,
-        const ShaderDocument &document)
-    {
-        int version_count = 0;
-        int main_count = 0;
-        bool valid = document.GetBlockCount() > 0;
-
-        for (int i = 0; i < document.GetBlockCount(); ++i)
-        {
-            const ShaderDocumentBlock &block = document.GetBlock(i);
-            if (block.kind == ShaderDocumentBlockKind::Version)
-                ++version_count;
-            if (block.kind == ShaderDocumentBlockKind::MainBody)
-                ++main_count;
-            if (block.source.stage != stage
-             || block.source.logical_name.IsEmpty())
-            {
-                GLogError(
-                    "[ShaderDocumentProductionRegression] fixture=%s stage=%s source "
-                    "document block=%d has invalid metadata "
-                    "{stage=%s,module=%s,path=%s,name=%s}",
-                    fixture, stage, i, block.source.stage.c_str(),
-                    block.source.module.c_str(), block.source.path.c_str(),
-                    block.source.logical_name.c_str());
-                valid = false;
-            }
-        }
-
-        if (version_count != 1 || main_count != 1
-         || document.GetBlock(0).kind != ShaderDocumentBlockKind::Version
-         || document.GetBlock(document.GetBlockCount() - 1).kind
-                != ShaderDocumentBlockKind::MainBody)
-        {
-            GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s stage=%s source "
-                "document order invalid: blocks=%d versions=%d mains=%d "
-                "first=%s last=%s",
-                fixture, stage, document.GetBlockCount(), version_count, main_count,
-                document.GetBlockCount() > 0
-                    ? GetBlockKindName(document.GetBlock(0).kind) : "none",
-                document.GetBlockCount() > 0
-                    ? GetBlockKindName(
-                        document.GetBlock(document.GetBlockCount() - 1).kind)
-                    : "none");
-            valid = false;
-        }
-        return valid;
-    }
-
-    bool ValidateFinalDocument(
-        const char *fixture,
-        const char *stage,
-        const ShaderDocument &document,
-        AnsiString &out_serialized)
-    {
-        ShaderDocumentDiagnostics diagnostics;
-        if (!document.Serialize(out_serialized, diagnostics))
-        {
-            GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s stage=%s final "
-                "document serialization failed (diagnostics=%d)",
-                fixture, stage, diagnostics.GetCount());
-            return false;
-        }
-
-        const int version_count = CountText(out_serialized, "#version");
-        const int main_count = CountText(out_serialized, "void main(");
-        if (version_count != 1 || main_count != 1
-         || out_serialized.Left(8).Comp("#version") != 0)
-        {
-            GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s stage=%s final "
-                "document invariant failed: versions=%d mains=%d first=\"%s\"",
-                fixture, stage, version_count, main_count,
-                GetContext(out_serialized.c_str(), out_serialized.Length(), 0).c_str());
-            return false;
-        }
-        return true;
-    }
-
-    bool VerifyStage(
-        const char *fixture,
-        const char *stage_name,
-        const ShaderDocument &source_document,
-        const ShaderDocument &final_document,
-        const ShaderCreateInfo *actual_stage,
-        const ShaderStageKey &stage_key)
-    {
-        if (!actual_stage)
-        {
-            GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s stage=%s is absent "
-                "from its production ShaderBuildContext",
-                fixture, stage_name);
-            return false;
-        }
-
-        bool valid = ValidateSourceDocument(fixture, stage_name, source_document);
-        ShaderDocumentDiagnostics diagnostics;
-        AnsiString source_serialized;
-        if (!source_document.Serialize(source_serialized, diagnostics))
-        {
-            GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s stage=%s source "
-                "document serialization failed (diagnostics=%d)",
-                fixture, stage_name, diagnostics.GetCount());
-            return false;
-        }
-        const uint64 source_document_hash =
-            source_document.GetSerializedHash(diagnostics);
-        const uint64 source_hash = HashFinalShaderSource(
-            source_serialized.c_str(), source_serialized.Length());
-        const auto &actual = actual_stage->GetFinalGLSL();
-        const uint64 actual_hash = HashFinalShaderSource(
-            actual.data(), actual.size());
-
-        // stage key 的 definition_hash 由**发射出来的文档文本**派生：Phase 4 发射
-        // 的字节就是键的事实输入，不再有"声明侧影子源"这一层。断言它逐位等于
-        // 发射文档的哈希——这是"键单源化"的回归守卫，一旦有人把它改回吃声明
-        // 输入会立刻失败。
-        if (source_document_hash == 0 || source_hash == 0
-         || stage_key.definition_hash == 0
-         || stage_key.definition_hash != source_hash)
-        {
-            GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s stage=%s source hash "
-                "mismatch: serialized=%llu document=%llu actual=%llu stage-key=%llu",
-                fixture, stage_name,
-                static_cast<unsigned long long>(source_hash),
-                static_cast<unsigned long long>(source_document_hash),
-                static_cast<unsigned long long>(actual_hash),
-                static_cast<unsigned long long>(stage_key.definition_hash));
-            valid = false;
-        }
-
-        AnsiString serialized;
-        if (!ValidateFinalDocument(
-                fixture, stage_name, final_document, serialized))
-            return false;
-
-        const uint64 final_document_hash =
-            final_document.GetSerializedHash(diagnostics);
-        const uint64 final_hash = HashFinalShaderSource(
-            serialized.c_str(), serialized.Length());
-        if (final_document_hash == 0 || final_hash == 0
-         || final_hash != actual_hash)
-        {
-            GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s stage=%s final hash "
-                "mismatch: serialized=%llu document=%llu actual=%llu",
-                fixture, stage_name,
-                static_cast<unsigned long long>(final_hash),
-                static_cast<unsigned long long>(final_document_hash),
-                static_cast<unsigned long long>(actual_hash));
-            valid = false;
-        }
-
-        return ReportSerializationMismatch(
-                   fixture, stage_name, final_document, serialized,
-                   actual.data(), int(actual.size()))
-            && valid;
     }
 
     /// 固定片段阶段的校验。
@@ -552,7 +264,7 @@ namespace
 
     ShaderBuildContext *BuildFixtureContext(
         const Fixture &fixture,
-        MaterialShaderDocumentCapture *capture,
+        MaterialShaderBuildCapture *capture,
         MaterialDefinition *out_definition = nullptr,
         RenderTemplateID *out_template_id = nullptr,
         void (*definition_mutation)(MaterialDefinition &) = nullptr,
@@ -795,7 +507,7 @@ namespace
 
     bool RunFixture(const Fixture &fixture)
     {
-        MaterialShaderDocumentCapture capture{};
+        MaterialShaderBuildCapture capture{};
         MaterialDefinition definition{};
         RenderTemplateID template_id = RenderTemplateID::Unknown;
         AnsiString options_text;
@@ -845,15 +557,12 @@ namespace
                 return false;
             }
         }
-        bool valid = capture.mesh_source_was_fixed
-            ? VerifyFixedMeshStage(
-                fixture.name,
-                context->GetStageShader(ShaderStage::Mesh),
-                link.mesh_stage)
-            : VerifyStage(
-                fixture.name, "mesh", capture.mesh_source_document,
-                capture.mesh_final_document,
-                context->GetStageShader(ShaderStage::Mesh), link.mesh_stage);
+        // 两个阶段都已物理固定，网格阶段不再有"生成器回退"分支：这里只做
+        // 固定源的不变量与键单源校验。
+        bool valid = VerifyFixedMeshStage(
+            fixture.name,
+            context->GetStageShader(ShaderStage::Mesh),
+            link.mesh_stage);
         valid = VerifyFixedFragmentStage(
             fixture.name,
             context->GetStageShader(ShaderStage::Fragment),
@@ -864,10 +573,9 @@ namespace
         const auto *mesh = context->GetStageShader(ShaderStage::Mesh);
         const auto *fragment = context->GetStageShader(ShaderStage::Fragment);
         GLogInfo(
-            "[ShaderDocumentProductionRegression] fixture=%s mesh_shape=%s source=%s",
+            "[ShaderDocumentProductionRegression] fixture=%s mesh_shape=%s source=fixed",
             fixture.name,
-            AnsiString::numberOf(capture.mesh_source_shape_key).c_str(),
-            capture.mesh_source_was_fixed ? "fixed" : "generator");
+            AnsiString::numberOf(capture.mesh_source_shape_key).c_str());
         if (g_dump_source_dir)
         {
             const auto dump_stage =
@@ -1070,10 +778,10 @@ namespace
 
             ++built;
 
-            MaterialShaderDocumentCapture capture_a{};
+            MaterialShaderBuildCapture capture_a{};
             AutoDelete<ShaderBuildContext> a(
                 BuildFixtureContext(fixture, &capture_a));
-            MaterialShaderDocumentCapture capture_b{};
+            MaterialShaderBuildCapture capture_b{};
             AutoDelete<ShaderBuildContext> b(
                 BuildFixtureContext(fixture, &capture_b));
             if (!a || !a->HasProgramLink() || !b || !b->HasProgramLink())
@@ -1204,7 +912,7 @@ namespace
             return true;
         }
 
-        MaterialShaderDocumentCapture baseline_capture{};
+        MaterialShaderBuildCapture baseline_capture{};
         AutoDelete<ShaderBuildContext> baseline(
             BuildFixtureContext(fixture, &baseline_capture));
         if (!baseline || !baseline->HasProgramLink())
@@ -1225,7 +933,7 @@ namespace
             const DefinitionSensitivityCase &item =
                 definition_sensitivity_cases[i];
 
-            MaterialShaderDocumentCapture capture{};
+            MaterialShaderBuildCapture capture{};
             AutoDelete<ShaderBuildContext> mutated(BuildFixtureContext(
                 fixture, &capture, nullptr, nullptr, item.mutate));
             if (!mutated || !mutated->HasProgramLink())
@@ -1302,7 +1010,7 @@ namespace
             if (FixtureNeedsMissingDomainMaster(fixtures[i], nullptr))
                 continue;
 
-            MaterialShaderDocumentCapture capture{};
+            MaterialShaderBuildCapture capture{};
             AutoDelete<ShaderBuildContext> context(
                 BuildFixtureContext(fixtures[i], &capture));
             if (!context || !context->HasProgramLink())
