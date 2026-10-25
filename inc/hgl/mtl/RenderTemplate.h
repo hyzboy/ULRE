@@ -127,7 +127,6 @@ namespace hgl::graph::mtl
         ,ModuleSlotMismatch
         ,MissingModuleCapability
         ,ModuleGraphInvalid
-        ,ModuleConflict
         ,ModuleSourceMissing
         ,IncludePathNotFound
         ,IncludePathNameMismatch

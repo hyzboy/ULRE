@@ -233,7 +233,6 @@ namespace hgl::graph::mtl
                 continue;
 
             data->dependencies.Clear();
-            data->module_conflict_names.Clear();
             data->metadata_resolution_valid = true;
             const int pending_count = data->pending_module_requirements.GetCount();
             for (int k = 0; k < pending_count; ++k)
@@ -312,31 +311,6 @@ namespace hgl::graph::mtl
                     data->metadata_resolution_valid = false;
                 }
             }
-
-            for (int k = 0;
-                 k < data->pending_module_conflicts.GetCount();
-                 ++k)
-            {
-                const AnsiString &conflict_name =
-                    data->pending_module_conflicts[k];
-                const ShaderCodeModuleDefinition *conflict =
-                    FindByName(conflict_name.c_str());
-                if (!conflict)
-                {
-                    GLogError(u8"[ShaderCodeModuleRegistry] Unresolved code-module conflict: module=%s conflicts_with=%s",
-                              data->name.c_str(), conflict_name.c_str());
-                    ++error_count;
-                    data->metadata_resolution_valid = false;
-                    continue;
-                }
-
-                data->module_conflict_names.Add(conflict->name);
-            }
-
-            data->definition.module_conflict_names =
-                data->module_conflict_names.GetData();
-            data->definition.module_conflict_count =
-                static_cast<uint32>(data->module_conflict_names.GetCount());
         }
 
         for (int i = 0; i < file_data.GetCount(); ++i)
@@ -364,9 +338,7 @@ namespace hgl::graph::mtl
                 bool complete =
                     data->metadata_resolution_valid
                  && data->dependencies.GetCount()
-                        == data->pending_module_requirements.GetCount()
-                 && data->module_conflict_names.GetCount()
-                        == data->pending_module_conflicts.GetCount();
+                        == data->pending_module_requirements.GetCount();
                 for (int k = 0;
                      complete
                         && k < data->dependencies.GetCount();
@@ -376,20 +348,6 @@ namespace hgl::graph::mtl
                     {
                         complete = false;
                         break;
-                    }
-                }
-
-                if (complete)
-                {
-                    for (int k = 0;
-                         k < data->module_conflict_names.GetCount();
-                         ++k)
-                    {
-                        if (!FindByName(data->module_conflict_names[k]))
-                        {
-                            complete = false;
-                            break;
-                        }
                     }
                 }
 

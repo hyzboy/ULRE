@@ -33,8 +33,7 @@ namespace hgl::graph::mtl
         InvalidStage,
         InvalidSlotRole,
         InvalidCapability,
-        InvalidDependency,
-        InvalidConflict
+        InvalidDependency
     };
 
     const char *GetShaderCodeModuleParseResultName(ShaderCodeModuleParseResult result) noexcept;
@@ -60,7 +59,6 @@ namespace hgl::graph::mtl
         // `uses <module-name>` references; validated against the registry
         // by pass 2 after all files are registered. Names are the identity.
         AnsiStringList pending_module_requirements;
-        AnsiStringList pending_module_conflicts;
 
         ValueArray<ShaderCodeModuleSemanticRequirement> semantic_requirements;
         ValueArray<ShaderCodeModuleSemantic> semantic_provides;
@@ -79,8 +77,6 @@ namespace hgl::graph::mtl
         uint32 required_capabilities = 0;
         bool metadata_resolution_valid = false;
         ValueArray<ShaderCodeModuleDependency> dependencies;
-        // Resolved conflict target names (pointing at target module names).
-        ValueArray<const char *> module_conflict_names;
 
         ShaderCodeModuleDefinition definition;
     };

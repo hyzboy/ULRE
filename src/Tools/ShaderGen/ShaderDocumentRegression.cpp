@@ -45,8 +45,7 @@ namespace
     {
         Baseline,
         MissingDirectLightCapability,
-        SurfaceDeclaresLightingModelSlot,
-        SurfaceConflictsWithDirectSun
+        SurfaceDeclaresLightingModelSlot
     };
 
     struct FixtureVariantSpec
@@ -59,8 +58,7 @@ namespace
     {
         { FixtureVariant::Baseline, "baseline" },
         { FixtureVariant::MissingDirectLightCapability, "missing_capability" },
-        { FixtureVariant::SurfaceDeclaresLightingModelSlot, "slot_mismatch" },
-        { FixtureVariant::SurfaceConflictsWithDirectSun, "conflict" }
+        { FixtureVariant::SurfaceDeclaresLightingModelSlot, "slot_mismatch" }
     };
 
     const int fixture_variant_count =
@@ -153,7 +151,6 @@ namespace
         const char *slot = GetShaderModuleSlotRoleName(spec.role);
         const char *provides = nullptr;
         const char *requires_capability = nullptr;
-        const char *conflicts = nullptr;
 
         switch (spec.role)
         {
@@ -171,8 +168,6 @@ namespace
             case ShaderModuleSlotRole::SurfaceProvider:
                 if (variant == FixtureVariant::SurfaceDeclaresLightingModelSlot)
                     slot = "lighting_model";
-                else if (variant == FixtureVariant::SurfaceConflictsWithDirectSun)
-                    conflicts = "diffuse/lambert";
                 break;
             default:
                 break;
@@ -184,8 +179,6 @@ namespace
             text += AnsiString("// @ulre provides_capability ") + provides + "\n";
         if (requires_capability)
             text += AnsiString("// @ulre requires_capability ") + requires_capability + "\n";
-        if (conflicts)
-            text += AnsiString("// @ulre conflicts ") + conflicts + "\n";
         text += "// @ulre end\nvoid ModuleBody() {}\n";
         return text;
     }
@@ -458,16 +451,6 @@ int main()
      || template_diagnostic.error
             != RenderTemplateValidationError::ModuleSlotMismatch)
         return 27;
-
-    ShaderCodeModuleRegistry conflict_registry;
-    if (!LoadFixtureRegistry(
-            fixtures, fixture_variants[3].directory, conflict_registry))
-        return 33;
-    if (ValidateRenderTemplateRequest(
-            template_request, conflict_registry, template_diagnostic)
-     || template_diagnostic.error
-            != RenderTemplateValidationError::ModuleConflict)
-        return 28;
 
     return 0;
 }

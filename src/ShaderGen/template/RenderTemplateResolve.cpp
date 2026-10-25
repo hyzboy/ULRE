@@ -112,9 +112,7 @@ namespace hgl::graph::mtl
                 &module_registry))
             return SetFailure(
                 out_diagnostic,
-                manifest->error == ShaderCodeResourceManifestError::ResourceConflict
-                    ? RenderTemplateValidationError::ModuleConflict
-                    : RenderTemplateValidationError::ModuleGraphInvalid,
+                RenderTemplateValidationError::ModuleGraphInvalid,
                 request);
 
         // 能力闭合必须基于整张依赖图（含传递依赖），不能只看 roots——

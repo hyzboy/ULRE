@@ -330,7 +330,6 @@ namespace hgl::graph::mtl
             case ShaderCodeModuleParseResult::InvalidSlotRole: return "InvalidSlotRole";
             case ShaderCodeModuleParseResult::InvalidCapability: return "InvalidCapability";
             case ShaderCodeModuleParseResult::InvalidDependency: return "InvalidDependency";
-            case ShaderCodeModuleParseResult::InvalidConflict: return "InvalidConflict";
             default: return "Unknown";
         }
     }
@@ -584,15 +583,6 @@ namespace hgl::graph::mtl
                         return ShaderCodeModuleParseResult::MissingDirectiveArgument;
 
                     out_data.pending_module_requirements.Add(AnsiString(token));
-                }
-                else if (std::strcmp(token, "conflicts") == 0)
-                {
-                    const char *next =
-                        ReadToken(after_keyword, line_end, token, sizeof(token));
-                    if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::InvalidConflict;
-
-                    out_data.pending_module_conflicts.Add(AnsiString(token));
                 }
                 else
                 {

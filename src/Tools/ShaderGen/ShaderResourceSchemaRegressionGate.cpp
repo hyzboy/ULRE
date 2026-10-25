@@ -6428,7 +6428,7 @@ namespace
         expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
         expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumber, "invalid-number");
         expect_parse("// @ulre begin\n// @ulre texture_reference invalid-name Fragment\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidResource, "invalid-texture-reference");
-        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidConflict, "invalid-conflict");
+        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", ShaderCodeModuleParseResult::UnknownDirective, "conflicts-directive-removed");
 
         // Registry scan of the real ShaderLibrary directory.
         ShaderCodeModuleRegistry registry;
@@ -6669,22 +6669,6 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "equal-priority providers must be rejected as ambiguous");
-            }
-        }
-
-        {
-            ShaderCodeModuleDefinition first =
-                make_definition("conflict_first");
-            ShaderCodeModuleDefinition second =
-                make_definition("conflict_second");
-            const char *conflicts[] = {second.name};
-            first.module_conflict_names = conflicts;
-            first.module_conflict_count = 1;
-            if (!AreShaderCodeModulesConflicting(first, second)
-             || !AreShaderCodeModulesConflicting(second, first))
-            {
-                result.diagnostics.emplace_back(
-                    "module conflicts must be symmetric at query time");
             }
         }
 

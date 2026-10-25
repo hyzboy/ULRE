@@ -55,10 +55,6 @@ namespace hgl::graph::mtl
             h << dependency.module_name;
         }
 
-        h << definition.module_conflict_count;
-        for (uint32 i = 0; i < definition.module_conflict_count; ++i)
-            h << definition.module_conflict_names[i];
-
         return h;
     }
 }

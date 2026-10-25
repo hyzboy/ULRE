@@ -33,7 +33,7 @@
 | 子命题 | 内容 | 本文判定 |
 |---|---|---|
 | **A. 依赖边改由 `#include` 表达** | 删掉 `@ulre uses`，模块图的边直接取自正文 `#include` | ✅ 可行，省 ~55 代码行 |
-| **B. 删掉零实例的注记** | `conflicts` 及其全部校验链路 | ✅ 可行，省 ~73 代码行 |
+| **B. 删掉零实例的注记** | `conflicts` 及其全部校验链路 | ✅ 已执行，实测省 **155** 代码行（估算 ~73，低估 65%） |
 | **B'. 删掉只写不读的注记** | `provide` / `priority` / `kind` | ⚠ 可行但**建议保留**（意图文档 + 资产哈希位移） |
 | **C. 整张模块表废掉** | 不再扫描解析 `.glsl`，不再有 `ShaderCodeModuleDefinition` | ❌ 不可行，见 §5 |
 
@@ -106,12 +106,47 @@
 外加 `ShaderCodeModule.h` 的 `module_conflict_names` / `module_conflict_count` 两个字段与
 `ShaderCodeModuleFile.cpp` 的 `pending_module_conflicts`。
 
-> 注：`ShaderCodeResourceManifest.cpp` 里还有 4 处 `ResourceConflict`（`:37/:59/:73/:92`），那是
-> **纹理/采样器引用的重复声明**冲突，与模块冲突无关，**不能删**。
+> **口径修正（实施后才发现，务必注意）**：`ShaderCodeResourceManifest.cpp` 里还有 4 处
+> `ResourceConflict`（`:37/:59/:73/:92`），此前写成「纹理/采样器引用的重复声明冲突」是**错的** ——
+> `AddTextureReference` / `AddSamplerReference` 对同名条目是**合并**（`:41-51` / `:64-68`），
+> `ResourceConflict` 只在**名称为空**或**数组容量溢出**时触发，与重复声明无关。**这 4 处不能删。**
 
 ⚠ **注意**：删除后必须确认没有「模块 A 与 B 同时进图会重复定义符号」的现实风险。当前 `conflicts`
 实例为 0，说明这个风险从未被规避过 —— 若真有重复定义，glslang 会直接报错。所以删除是**把判据交给
-编译器**，符合反射方向；但要同步改回归门里 3 个冲突用例。
+编译器**，符合反射方向。
+
+⚠ **实施中发现一处此前漏算的消费者**：`RenderTemplateResolve.cpp:116` 曾把
+`BuildShaderCodeResourceManifest` 的 `ResourceConflict` 映射成
+`RenderTemplateValidationError::ModuleConflict`，而 `ShaderDocumentRegression` 的
+`SurfaceConflictsWithDirectSun` 夹具变体正是用 `@ulre conflicts diffuse/lambert` 触发它。
+删掉模块冲突检查后这条路径**不可达**，故连带删除 `ModuleConflict` 枚举值、它的
+`GetXxxErrorName` 分支和该夹具变体。**教训：`conflicts` 不是「零消费者」，而是「零生产实例 +
+一个仅供夹具使用的消费者」。**
+
+### 3.1a 实施结果（`conflicts` 全链已删除，实测）
+
+| 文件 | 总行 | 代码行 |
+|---|---|---|
+| `ShaderCodeModuleMetadata.cpp` | −48 | −42 |
+| `ShaderCodeModuleRegistry.cpp` | −43 | −39 |
+| `ShaderCodeResourceManifest.cpp` | −13 | −12 |
+| `ShaderCodeModuleFile.cpp` | −10 | −9 |
+| `ShaderCodeModuleMetadata.h` | −7 | −5 |
+| `ShaderCodeModule.h` | −5 | −2 |
+| `ShaderCodeModuleFile.h` | −5 | −4 |
+| `ShaderCodeModule.cpp` | −4 | −3 |
+| `RenderTemplateResolve.cpp` | −3 | −3 |
+| `RenderTemplate.h` | −1 | −1 |
+| `RenderTemplate.cpp`（ShaderMaterialData） | −1 | −1 |
+| **小计（`src/ShaderGen` + `inc/hgl/mtl` + `ShaderMaterialData`）** | **−140** | **−121** |
+| 回归工装（`ShaderDocumentRegression` + 门禁） | −36 | −34 |
+| **合计** | **−176** | **−155** |
+
+比 §3.1 的 ~73 代码行估算高 ~65%，原因是估算时漏掉了 `ModuleConflict` 路径与多处
+成对删掉的守卫行（`HasValidArray` 条目、哈希循环、`complete` 的 `&&` 链）。
+校验：门禁 59 PASS / 0 FAIL；`ShaderDocumentRegression`、`ShaderDocumentProductionRegression`、
+`SceneRenderTemplateResolverRegression`、`TestCSMIncrementalPass` 全部 exit=0，
+`Loaded 82 code modules (0 errors)`。
 
 ### 3.2 `uses`（与 `#include` 重复）
 
@@ -166,15 +201,19 @@
 
 （代码行按上一轮实测的「代码行/文件行 ≈ 0.88」折算。）
 
-| 簇 | 文件行 | 代码行 | 资产改动 | 风险 |
-|---|---|---|---|---|
-| `conflicts` | ~83 | **~73** | 0 | 低（改 3 个门用例） |
-| `uses` | ~64 | **~56** | +2 行 `#include`，−82 行 `uses` | 中（glslang include 深度需复核） |
-| `provide`/`priority`/`kind` | ~51 | ~45（建议保留） | ~180 | 中（哈希位移） |
-| **合计（A+B，建议执行）** | **~147** | **~129 ≈ 1.6%** | | |
+| 簇 | 文件行 | 代码行 | 资产改动 | 风险 | 状态 |
+|---|---|---|---|---|---|
+| `conflicts` | −176 | **−155** | 0 | 低 | ✅ 已执行（实测比估算高 65%，见 §3.1a） |
+| `uses` | ~64 | **~56** | +2 行 `#include`，−82 行 `uses` | 中（glslang include 深度需复核） | 待执行 |
+| `provide`/`priority`/`kind` | ~51 | ~45（建议保留） | ~180 | 中（哈希位移） | 建议不做 |
+| **合计（A+B，建议执行）** | **−240** | **−211** | | | A 已落地 −155，B 待执行 ~56 |
 
-加上上一轮已删的 94 代码行，累计 **~223 代码行 ≈ 2.8%**；若连第三簇一起删则 ≈ **3.3%**。
-**距离 80% 仍是两个数量级。**
+实测修正：`conflicts` 一簇实际就是 **−155 代码行**，估算 ~73 偏低 65%——既高估了「删得干净」的
+程度，也漏算了 `ModuleConflict` 那条路径。剩余可执行项只有 `uses` 的 ~56 代码行。
+
+按 8071 代码行的分母：已落地 **−249 代码行 ≈ 3.1%**；若再做 `uses` 则 ≈ **3.8%**；
+若连第三簇一起删则 ≈ **4.3%**。**距离 80% 仍是两个数量级。**
+（`conflicts` 在全仓 13 个文件合计 −155，其中 `src/ShaderGen` 本身占 −106 → 8071 → 7965。）
 
 ---
 
@@ -202,8 +241,9 @@
 ## 6. 最终结论
 
 1. **不立项**做整体重写。它只能吃掉 `uses` 的 ~56 代码行，代价是 ~1650 行重写 + 3 个回归门大改。
-2. **不需要立项，直接做**的是 §3.1 + §3.2：**~147 文件行 / ~129 代码行**，判据交给编译器与 include 树，
-   风险可控，跟「让编译器和反射当权威」这条主线完全一致。
+2. **不需要立项，直接做**的是 §3.1 + §3.2，判据交给编译器与 include 树，风险可控，跟「让编译器和
+   反射当权威」这条主线完全一致。其中 **§3.1 `conflicts` 已执行完毕（−155 代码行，实测）**，
+   §3.2 `uses` 的 ~56 代码行仍待执行。
 3. **80% 削减在当前架构下结构性不可达**。无论注记表怎么改，`src/ShaderGen` 的主体是
    **组装逻辑**：929 + 675 + 573 + 499 + 418 = 3094 行（38%），它们决定「往 GLSL 里写什么」，
    而反射只能看见「已经写进去的东西」。想要真正的数量级削减，唯一的方向是**减少需要组装的变体**
@@ -219,7 +259,8 @@
 python -c "import re,pathlib,collections; ..."   # 正则 ^\s*//\s*@ulre\s+(\w+)\s*(.*)$
 
 # uses ↔ #include 精确交叉核对（必须建 name→path 映射，不能拿字符串直接比）
-#   期望：64/64 匹配、0 指向不存在模块、0 include 到非模块文件、0 include 未在 uses 声明
+#   期望：80/82 匹配（2 条例外即两个 Surface 模块）、0 指向不存在模块、
+#         0 include 到非模块文件、0 include 未在 uses 声明
 
 # 元数据字段的消费者倒查（排除回归门）
 Get-ChildItem src,inc -Recurse -Include *.cpp,*.h |

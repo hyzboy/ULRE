@@ -72,29 +72,6 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    bool AreShaderCodeModulesConflicting(
-        const ShaderCodeModuleDefinition &lhs,
-        const ShaderCodeModuleDefinition &rhs) noexcept
-    {
-        if ((lhs.module_conflict_count > 0 && !lhs.module_conflict_names)
-         || (rhs.module_conflict_count > 0 && !rhs.module_conflict_names))
-            return false;
-
-        for (uint32 i = 0; i < lhs.module_conflict_count; ++i)
-        {
-            if (SameName(lhs.module_conflict_names[i], rhs.name))
-                return true;
-        }
-
-        for (uint32 i = 0; i < rhs.module_conflict_count; ++i)
-        {
-            if (SameName(rhs.module_conflict_names[i], lhs.name))
-                return true;
-        }
-
-        return false;
-    }
-
     bool ValidateShaderCodeModuleMetadata(
         const ShaderCodeModuleDefinition &definition,
         ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic) noexcept
@@ -115,9 +92,6 @@ namespace hgl::graph::mtl
                 definition.semantic_provides,
                 definition.semantic_provide_count)
          || !HasValidArray(definition.dependencies, definition.dependency_count)
-         || !HasValidArray(
-                definition.module_conflict_names,
-                definition.module_conflict_count)
          || !HasValidArray(
                 definition.texture_reference_requirements,
                 definition.texture_reference_requirement_count)
@@ -214,28 +188,6 @@ namespace hgl::graph::mtl
                         definition.name,
                         dependency.module_name);
                 }
-            }
-        }
-
-        for (uint32 i = 0; i < definition.module_conflict_count; ++i)
-        {
-            const char *const conflict = definition.module_conflict_names[i];
-            if (SameName(conflict, definition.name))
-                return SetMetadataFailure(
-                    out_diagnostic,
-                    ShaderCodeModuleMetadataValidationError::SelfConflict,
-                    definition.name,
-                    conflict);
-
-            for (uint32 j = 0; j < i; ++j)
-            {
-                if (SameName(conflict, definition.module_conflict_names[j]))
-                    return SetMetadataFailure(
-                        out_diagnostic,
-                        ShaderCodeModuleMetadataValidationError::
-                            DuplicateConflict,
-                        definition.name,
-                        conflict);
             }
         }
 

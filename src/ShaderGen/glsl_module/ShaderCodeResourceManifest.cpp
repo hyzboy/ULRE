@@ -189,19 +189,6 @@ namespace hgl::graph::mtl
                     return false;
             }
 
-            for (uint32 i = 0; i < manifest.code_module_count; ++i)
-            {
-                const ShaderCodeModuleDefinition *existing =
-                    FindModuleByName(manifest.code_module_names[i], registry);
-                if (existing
-                 && AreShaderCodeModulesConflicting(*existing, *definition))
-                {
-                    manifest.error =
-                        ShaderCodeResourceManifestError::ResourceConflict;
-                    return false;
-                }
-            }
-
             if (manifest.code_module_count >= MaxShaderCodeResourceManifestCodeModules)
             {
                 manifest.error = ShaderCodeResourceManifestError::CodeModuleCapacityExceeded;

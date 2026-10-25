@@ -322,11 +322,6 @@ namespace hgl::graph::mtl
         const ShaderCodeModuleDependency *dependencies = nullptr;
         uint32 dependency_count = 0;
 
-        // Names of mutually exclusive modules. The registry resolves them at
-        // load time; strings are owned by the registry's file-data storage.
-        const char **module_conflict_names = nullptr;
-        uint32 module_conflict_count = 0;
-
         // A root selected by RenderTemplateRequest occupies exactly one slot.
         // Dependency-only utility modules retain Unknown.
         ShaderModuleSlotRole slot_role = ShaderModuleSlotRole::Unknown;

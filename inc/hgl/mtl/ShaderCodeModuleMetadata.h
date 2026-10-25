@@ -8,7 +8,8 @@ namespace hgl::graph::mtl
     //
     // 这里只校验**单条定义的自述完整性**（表自身的卫生）。
     // 「依赖满足性」三项（MissingDependency / MissingConflictTarget /
-    // DependencyCycle）已删除：它们与真实装配路径重复，权威判据是
+    // DependencyCycle）与模块冲突两项（SelfConflict / DuplicateConflict）已删除：
+    // 它们与真实装配路径重复，权威判据是
     //   ① `ShaderCodeModuleRegistry` 加载期 incomplete 模块剔除（发现缺失即丢弃）
     //   ② `BuildShaderCodeResourceManifest` 的 DFS（UnknownCodeModule / CodeModuleCycle）
     //   ③ 最终「拼出的 GLSL 能否编译」（`SPV.generated-interface` 16 变体断言）
@@ -21,8 +22,6 @@ namespace hgl::graph::mtl
     HGL_ERROR(DuplicateProvide) \
     HGL_ERROR(DuplicateDependency) \
     HGL_ERROR(SelfDependency) \
-    HGL_ERROR(DuplicateConflict) \
-    HGL_ERROR(SelfConflict) \
     HGL_ERROR(AmbiguousProviderPriority)
 
     enum class ShaderCodeModuleMetadataValidationError : uint8
@@ -43,10 +42,6 @@ namespace hgl::graph::mtl
 
     const char *GetShaderCodeModuleMetadataValidationErrorName(
         ShaderCodeModuleMetadataValidationError error) noexcept;
-
-    bool AreShaderCodeModulesConflicting(
-        const ShaderCodeModuleDefinition &lhs,
-        const ShaderCodeModuleDefinition &rhs) noexcept;
 
     bool ValidateShaderCodeModuleMetadata(
         const ShaderCodeModuleDefinition &definition,

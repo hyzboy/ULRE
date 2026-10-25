@@ -255,7 +255,6 @@ namespace hgl::graph::mtl
         case RenderTemplateValidationError::ModuleSlotMismatch: return "ModuleSlotMismatch";
         case RenderTemplateValidationError::MissingModuleCapability: return "MissingModuleCapability";
         case RenderTemplateValidationError::ModuleGraphInvalid: return "ModuleGraphInvalid";
-        case RenderTemplateValidationError::ModuleConflict: return "ModuleConflict";
         case RenderTemplateValidationError::ModuleSourceMissing: return "ModuleSourceMissing";
         case RenderTemplateValidationError::IncludePathNotFound: return "IncludePathNotFound";
         case RenderTemplateValidationError::IncludePathNameMismatch: return "IncludePathNameMismatch";
