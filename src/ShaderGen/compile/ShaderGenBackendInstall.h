@@ -48,6 +48,51 @@ namespace hgl::graph::mtl
         ShaderProgramPurpose purpose,
         AnsiString &out_text);
 
+    /// 「本材质该用哪份固定片段源」的持有者。
+    ///
+    /// `MaterialDefinitionBuildRequest::fixed_fragment_source` 是裸指针（沿用
+    /// 构建请求「只借用、不持有」的约定），所以文本必须活在调用者栈上。用它而
+    /// 不是让 `ResolveFixedFragmentSource` 直接往请求里写指针——那样指针会指向
+    /// 一个已经析构的临时串。
+    struct FixedFragmentSource
+    {
+        AnsiString source;
+        uint64 interface_hash = 0;
+
+        /// `generated/options.glsl` 所在目录的**上一级**（编译器的第二 include 根）。
+        /// 固定源里带着 `#include "generated/options.glsl"`，所以任何要亲手编译它
+        /// 的地方都离不开这个根；把它和源放在一起，免得调用方各自拼路径。
+        OSString options_root;
+
+        /// 仅供诊断文本使用（失败信息里要指出是哪个领域/用途编不过）。
+        MaterialDomain domain = MaterialDomain::Custom;
+        ShaderProgramPurpose purpose = ShaderProgramPurpose::ForwardColor;
+    };
+
+    /// 工具/门禁用：按与真实构建路径**完全相同**的规则取出固定片段源。
+    ///
+    /// 内部就是后端自己用的 `ResolveFixedFragmentStage`：options 落盘、接口形状
+    /// 哈希、`// domain-options-key` 溯源注释三者都由它负责。取到之后把
+    /// `source` / `interface_hash` 填进构建请求，片段阶段便不再进入任何拼装
+    /// 路径，`BuildGenericMaterial` 只做网格阶段与链接规格。
+    ///
+    /// 失败原因见 `GetLastDomainShaderBuildBackendError()`。
+    bool ResolveFixedFragmentSource(
+        const MaterialDefinition &definition,
+        const MaterialDefinitionBuildRequest &request,
+        FixedFragmentSource &out_source);
+
+    /// 工具/门禁用：用**生产同一条**编译路径把固定片段编成 SPV。
+    ///
+    /// 只在「门自己要按 stage 逐个编译以便定位失败」时调用：include 根是插件里
+    /// 的进程级配置，手写 `CompileFinalGLSLToSPVWithDiagnostic` 会因为没有第二
+    /// 根而在 `#include "generated/options.glsl"` 上失败，于是门只能去复制后端
+    /// 的根管理逻辑——那份复制迟早会与后端漂移。这里直接复用后端的实现。
+    bool CompileFixedFragmentSource(
+        ShaderBuildContext &ctx,
+        const FixedFragmentSource &fixed,
+        AnsiString &out_diagnostic);
+
     void InstallShaderCreateInfoSPVReleaser();
     void UninstallShaderCreateInfoSPVReleaser();
 }//namespace hgl::graph::mtl

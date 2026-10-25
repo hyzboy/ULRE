@@ -626,6 +626,44 @@ namespace hgl::graph::mtl
         return BuildDomainOptions(definition, request, domain, purpose, out_text);
     }
 
+    bool ResolveFixedFragmentSource(
+        const MaterialDefinition &definition,
+        const MaterialDefinitionBuildRequest &request,
+        FixedFragmentSource &out_source)
+    {
+        FixedFragmentStage fixed;
+        if (!ResolveFixedFragmentStage(definition, request, fixed))
+            return false;
+
+        out_source.source = fixed.source;
+        out_source.interface_hash = fixed.interface_hash;
+        out_source.options_root = fixed.options_root;
+        out_source.domain = fixed.domain;
+        out_source.purpose = fixed.purpose;
+        return true;
+    }
+
+    bool CompileFixedFragmentSource(
+        ShaderBuildContext &ctx,
+        const FixedFragmentSource &fixed,
+        AnsiString &out_diagnostic)
+    {
+        if (fixed.options_root.IsEmpty())
+        {
+            DomainBuildFailed(u8"[DomainBackend] 固定片段源缺少 options 根，无法编译");
+            return false;
+        }
+
+        if (!CompileFixedFragment(fixed.options_root, fixed.domain,
+                                  fixed.purpose, ctx))
+        {
+            out_diagnostic = GetLastDomainShaderBuildBackendError();
+            return false;
+        }
+
+        return true;
+    }
+
     bool IsShaderGenBuildBackendRequested()
     {
         const char *selector = getenv(kBackendSelectorEnvironmentVariable);

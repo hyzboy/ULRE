@@ -731,8 +731,17 @@ namespace
             }
 
             // 本用例断言的是**网格阶段**发射文本里的 local_size_x 与设备上限
-            // 守卫，片段根本不参与。直接调网格阶段构建器（阶段 5.2 后它是唯一
-            // 还存在的构建入口），也就不需要 SPV 编译。
+            // 守卫，片段根本不参与。片段源照样按领域固定源填进请求——不填就
+            // 会退回生成器的片段拼装链（阶段 5.2 后那条链不复存在）。
+            FixedFragmentSource fixed;
+            if (!ResolveFixedFragmentSource(def, request, fixed))
+            {
+                return std::unique_ptr<ShaderBuildContext>();
+            }
+            request.fixed_fragment_source = fixed.source.c_str();
+            request.fixed_fragment_interface_hash = fixed.interface_hash;
+
+            // 不编译 SPV：本用例只读网格阶段 GLSL 文本。
             return std::unique_ptr<ShaderBuildContext>(
                 BuildGenericMaterial(profile, request, def, nullptr));
         };
@@ -1505,6 +1514,13 @@ namespace
              || !AppendMaterialRenderTemplateRoots(
                     definition, request.render_template_request))
                 return std::unique_ptr<ShaderBuildContext>();
+            // 片段源走领域固定源：本用例算的是缓存身份（链接规格 + 各种摘要），
+            // 与片段怎么写无关。不填就会退回生成器的片段拼装链。
+            FixedFragmentSource fixed;
+            if (!ResolveFixedFragmentSource(definition, request, fixed))
+                return std::unique_ptr<ShaderBuildContext>();
+            request.fixed_fragment_source = fixed.source.c_str();
+            request.fixed_fragment_interface_hash = fixed.interface_hash;
             return std::unique_ptr<ShaderBuildContext>(
                 BuildGenericMaterial(
                     profile, request, definition, nullptr));
@@ -8802,8 +8818,22 @@ void main()
             return result;
         }
 
-        std::unique_ptr<ShaderBuildContext> baked(
-            BuildGenericMaterial(nullptr, request, definition, nullptr));
+        std::unique_ptr<ShaderBuildContext> baked;
+        {
+            // 片段源走领域固定源：本用例算的是清单/缓存身份，与片段怎么写无关。
+            FixedFragmentSource fixed;
+            if (!ResolveFixedFragmentSource(definition, request, fixed))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("fixed fragment source unavailable: ")
+                    + GetLastDomainShaderBuildBackendError());
+                result.passed = false;
+                return result;
+            }
+            request.fixed_fragment_source = fixed.source.c_str();
+            request.fixed_fragment_interface_hash = fixed.interface_hash;
+            baked.reset(BuildGenericMaterial(nullptr, request, definition, nullptr));
+        }
         if (!baked || !baked->HasProgramLink() || !baked->HasProgramArtifactMetadata())
         {
             result.diagnostics.emplace_back(
@@ -9393,7 +9423,8 @@ void main()
 
     /// 按快照矩阵构建一个材质实例。失败时把原因写进 `diagnostic` 并返回 nullptr。
     static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
-        const ReflectionCoverageVariant &variant, std::string &diagnostic)
+        const ReflectionCoverageVariant &variant, std::string &diagnostic,
+        FixedFragmentSource *out_fixed = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
@@ -9435,10 +9466,29 @@ void main()
             return nullptr;
         }
 
+        // 片段源走领域固定源：本门要证的是「拿真实生产会用的那份固定片段，
+        // 与网格阶段拼在一起后，接口在 SPIR-V 里仍然成立」。若这里退回生成器
+        // 的片段拼装，证的就是一条已经不存在的路径。
+        FixedFragmentSource fixed;
+        if (!ResolveFixedFragmentSource(definition, request, fixed))
+        {
+            diagnostic = std::string("fixed fragment source failed: ")
+                + variant.variant_slug + " | " + GetLastDomainShaderBuildBackendError();
+            return nullptr;
+        }
+        request.fixed_fragment_source = fixed.source.c_str();
+        request.fixed_fragment_interface_hash = fixed.interface_hash;
+
         std::unique_ptr<ShaderBuildContext> ctx(
             BuildGenericMaterial(nullptr, request, definition, nullptr));
         if (!ctx)
+        {
             diagnostic = std::string("material build failed: ") + variant.variant_slug;
+            return nullptr;
+        }
+
+        if (out_fixed)
+            *out_fixed = std::move(fixed);
 
         return ctx;
     }
@@ -9448,10 +9498,9 @@ void main()
     //
     // 生成接口的**反射门**：SPIR-V 是接口的唯一权威。
     //
-    // `SD.structure-dump-golden-pilot` / `SD.emission-order-golden` 读的都是生成器
-    // 在编译前的自述。自述可以自洽，却与真正编译出的二进制不一致 —— 唯一能证伪
-    // 它的是编译器。本用例把整张快照矩阵（16 变体）真的编译成 SPIR-V 并反射，
-    // 按 Vulkan 的链接规则校验：
+    // 生成器在编译前会自述「我生成了什么」，而自述可以自洽却与真正编出的二进
+    // 制不一致——唯一能证伪它的是编译器。本用例把整张覆盖矩阵真的编译成
+    // SPIR-V 并反射，按 Vulkan 的链接规则校验：
     //   ① 两 stage 都必须编译成功。此前这 16 个变体的 GLSL 在门里从未被编译过，
     //      生成器发错一行就能让整套 shader 只在跑 demo 时才炸；
     //   ② 片元每个 stage input 必须在 mesh 的 stage output 里找到同 location 同
@@ -9505,8 +9554,9 @@ void main()
         for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
         {
             std::string build_diagnostic;
-            const std::unique_ptr<ShaderBuildContext> ctx =
-                BuildReflectionCoverageVariant(variant, build_diagnostic);
+            FixedFragmentSource fixed_source;
+            std::unique_ptr<ShaderBuildContext> ctx =
+                BuildReflectionCoverageVariant(variant, build_diagnostic, &fixed_source);
             if (!ctx)
             {
                 result.diagnostics.emplace_back(build_diagnostic);
@@ -9556,13 +9606,21 @@ void main()
                     // 带诊断的编译入口：glslang 的原始报错（含行号与生成的 GLSL 片段）
                     // 直接进诊断。没有它，失败信息只剩「没编过」—— SPVData 一被释
                     // 放日志就取不回来了。
+                    //
+                    // 片段走生产那条编译路径（第二 include 根由后端管）：固定源里含
+                    // `#include "generated/options.glsl"`，手写编译没有那个根就必然
+                    // 编不过，而复制一份根管理只会等它慢慢漂移。
                     hgl::AnsiString compile_diagnostic;
-                    if (!si->CompileFinalGLSLToSPVWithDiagnostic(compile_diagnostic))
+                    const bool compiled =
+                        i == 1
+                            ? CompileFixedFragmentSource(*ctx, fixed_source, compile_diagnostic)
+                            : si->CompileFinalGLSLToSPVWithDiagnostic(compile_diagnostic);
+                    if (!compiled)
                     {
                         result.diagnostics.emplace_back(
                             label + " " + stage_names[i]
                             + ": generated GLSL failed to compile: "
-                            + compile_diagnostic.c_str());
+                            + (compile_diagnostic.c_str() ? compile_diagnostic.c_str() : ""));
                         continue;
                     }
                 }
