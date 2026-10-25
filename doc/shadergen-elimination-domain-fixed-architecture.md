@@ -740,3 +740,88 @@ recipe 覆盖、几何 ABI、图元类型、coverage 与设备 profile 都会改
    宏条件装载属性，`orient_world.glsl` 仍按 `HGL_L2W_FROM_VERTEX_ATTR` 条件编译。
    这些不是 options 中允许保留的 dither 条件；若阶段六继续要求无 `#if`，固定形状必须
    静态封闭所需属性和变换路径，并删除这些依赖的分支，而不能只把当前模板改名为 `.mesh`。
+
+## 阶段六 6.2：网格阶段固定源目录（已落地）
+
+6.2 把 6.1 的九组真实输出固化成**仓库内的物理源码**。生产路径不再从模板拼装网格阶段：
+
+```text
+ShaderLibrary/mesh/
+  stage_common_head.glsl          公共前导上半段（扩展 / RootAddresses / ResolveTransformID）
+  stage_common.glsl               公共前导下半段（descriptor 宏 / scene UBO / l2w / 结构 / 属性 buffer_reference）
+  fixed/<形状键>.mesh × 9         每个形状一份固定主着色器
+```
+
+`GenericMaterialBuilder::TryLoadFixedMeshSource()` 以 `mesh/fixed/<十进制形状键>.mesh` 查表；
+文件不存在即视为目录未覆盖（合法空目录），只有不可读/空/超大才报错。形状键由
+`ComputeMeshSourceShapeKey()` 只对**已解析的构建计划**取值哈希（mode、位置格式、调用数、
+Stage2/Stage3 模块路径、`needs_l2w`、八种 varying 标志、stage interface 尺寸），不依赖
+最终文本——否则键会自指。
+
+### 为什么拆成 head + body 两个 include
+
+生成器的发射顺序是：扩展 → push constant → `ResolveTransformID` → **topology 行** →
+`descriptor_macros`/`scene_ubo`/`l2w_ssbo` → 结构体 → 属性 `buffer_reference` → 形状相关部分。
+`local_size_x` 与 `max_vertices`/`max_primitives` 是形状差异，必须插在中间；把公共前导切成
+两段，固定源码的全局声明顺序才与生成器逐行一致，SPIR-V 才能逐字节比对。若把 topology 挪到
+整段前导之后，普通形状的 SPIR-V 侥幸不变（workgroup/输出布局是 `OpExecutionMode`，不进
+指令流），但 `CharQuad`（`256/128`）会真的改变二进制——这类"看起来没事"的顺序漂移必须在
+结构上排除，而不是靠运气。
+
+### 属性装载：结构性 `#if` 已经消失
+
+`s1_position_vec3.glsl` / `s1_position_vec2.glsl` 的 `LoadVertexData()` 原本靠 8 个
+`#ifdef HGL_*_LOADER` 钩子按需展开属性装载。固定源把这 8 个分支**静态展开成显式语句**：
+
+```glsl
+void LoadVertexData()
+{
+    Position = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
+    TexCoord = sbo_vertex_uv.data[draw_params.vertex_base + VertexIndexID];
+    Normal   = sbo_vertex_ntb.data[draw_params.vertex_base + VertexIndexID];
+}
+```
+
+固定源码及其 include 闭包不再含结构性 `#if`；`s1_uv` / `s1_ntb` 等属性模块只保留"声明
+全局变量 + 定义 `sbo_vertex_*` 基址宏"，其 `HGL_*_LOADER` 钩子在固定形状里无人消费
+（生成器删除后一并清理，见 6.5）。
+
+### topology 数值为什么是字面量而不是 options 常量
+
+6.1.4 曾预留「`local_size_x` / topology 由 options 常量承载」。落地时改为**字面量**，理由：
+
+- 普通模式的 invocation 数若被设备上限钳制，最终 N 已进入形状键（`mesh_max_invocations`），
+  不同 N 对应不同固定文件；再让 options 二次覆盖只会让"同一文件在不同设备上编译出不同
+  拓扑"，与固定源的不变性目标冲突。
+- `CharQuad` 的 64 是 CPU dispatch 契约，设备不足必须失败而不是钳低；把它放进可生成的
+  options 等于把契约变成可漂移数据。6.3 的守卫按字面量 + 反射出的 `local_size_x` 取证。
+
+### 等价性验证（逐字节）
+
+`glslangValidator` 拒绝 `#include`，除非源码声明 `GL_GOOGLE_include_directive`；仓库编译器
+（`src/Tools/GLSLCompiler/glsl2spv.cpp` 的 `PrepareShaderSource`）的做法是在 `#version` 行
+**紧后面**插入该扩展声明。用同一手法处理两份文本后编译，即可直接比二进制：
+
+```text
+把 #extension GL_GOOGLE_include_directive : require 插到 #version 460 之后
+glslangValidator -V --target-env vulkan1.2 -S mesh -IShaderLibrary -o out.spv <file>.mesh
+```
+
+对 6.1 的九组代表 fixture，生成器导出的 `GetFinalGLSL()` 与对应 `fixed/<键>.mesh` 编译出的
+SPIR-V **9/9 SHA-256 完全相同**（12976 / 9920 / 12932 / 14944 / 15800 / 12696 / 13552 /
+13172 / 19800 字节）。这比"文本相似"强得多：它同时证明模块选择、varying location 与
+interpolation、拓扑常量、属性装载顺序、`main` 主体全部等价。
+
+生产侧验收：`ShaderDocumentProductionRegression --full` 全部 15 个可构建 fixture 报
+`source=fixed` 且退出码 0（`VerifyFixedMeshStage` 断言
+`stage_key.definition_hash == HashFinalShaderSource(final GLSL)`）；`ShaderResourceSchemaRegressionGate all`
+仍 58 PASS / 0 FAIL。9 个 depth/shadow fixture 仍因领域固定片段主着色器覆盖缺口被跳过，
+与本阶段无关。
+
+### 仍未覆盖（不在 6.2 范围内）
+
+- `LineQuad` 模式尚无捕获形状（`ShaderLibrary/mesh/line_quad.glsl.tmpl` 仍带 `#ifdef`）。
+- `DrawTriangle` / `VertexColor`（`R16G16_SINT` + `Make2DNodeConfigOrtho`）尚无形状，属 6.4。
+- `VK_FORMAT_R32G32B32A32_SFLOAT` 在 `MeshModeDescriptor::ResolveStandardStage1Input` 与
+  `VertexABIBuilder` 之间的分歧仍未修正，不得列入固定源覆盖面。
+
