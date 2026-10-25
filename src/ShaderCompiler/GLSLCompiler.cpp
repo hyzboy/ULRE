@@ -44,9 +44,16 @@ namespace hgl
         static bool g_pd_profile_valid = false;
 
         static CompileInfo compile_info;
-        static OSString g_include_root;
-        static AnsiString g_include_root_utf8;
-        static const char *g_include_root_ptr = nullptr;
+
+        /// include 根表。主着色器的固定 include 表 + 构建期生成的 options 需要同时可见，
+        /// 故支持多于一个根；数量极小（主根 + 至多几个 per-program 目录），用定长表，
+        /// 不为它引入动态容器。
+        static constexpr uint32_t MAX_INCLUDE_ROOTS = 2;   // 插件契约：includes[0]=库根，includes[1]=generated 根，多于此插件直接拒绝
+
+        static OSString     g_include_root;                            // roots[0]（主根）
+        static AnsiString   g_include_utf8[MAX_INCLUDE_ROOTS];         // 全部根的 UTF-8 文本（所有权）
+        static const char * g_include_ptrs[MAX_INCLUDE_ROOTS] = {};    // 指向 g_include_utf8 的稳定视图
+        static uint32_t     g_include_root_count = 0;
 
         struct SPVParseData;
 
@@ -335,10 +342,14 @@ namespace hgl
                 g_lifecycle_on_close();
 
             g_include_root.Clear();
-            g_include_root_utf8.Clear();
-            g_include_root_ptr=nullptr;
-            compile_info.includes=nullptr;
-            compile_info.includes_count=0;
+            for (uint32_t i = 0; i < MAX_INCLUDE_ROOTS; ++i)
+            {
+                g_include_utf8[i].Clear();
+                g_include_ptrs[i] = nullptr;
+            }
+            g_include_root_count = 0;
+            compile_info.includes = nullptr;
+            compile_info.includes_count = 0;
 
             if(gsi)
             {
@@ -355,7 +366,8 @@ namespace hgl
 
         namespace mtl
         {
-        bool SetShaderIncludeRoot(const char *path)
+        // 单个根：归一化为绝对路径并校验存在。
+        static bool ResolveIncludeRootPath(const char *path, OSString &out_root)
         {
             OSString root = filesystem::NormalizeFilename(ToOSString(path ? path : ""));
             if (!root.IsEmpty()
@@ -377,14 +389,56 @@ namespace hgl
                 return false;
             }
 
-            const U8String utf8 = ToU8String(root);
-            g_include_root_utf8 = AnsiString(
-                reinterpret_cast<const char *>(utf8.c_str()), utf8.Length());
-            g_include_root = root;
-            g_include_root_ptr = g_include_root_utf8.c_str();
-            compile_info.includes = &g_include_root_ptr;
-            compile_info.includes_count = 1;
+            out_root = root;
             return true;
+        }
+
+        bool SetShaderIncludeRoots(const char **paths, const uint32_t count)
+        {
+            if (!paths || count == 0)
+            {
+                GLogError(u8"[GLSLCompiler] Include root list is empty");
+                return false;
+            }
+
+            if (count > MAX_INCLUDE_ROOTS)
+            {
+                GLogError(u8"[GLSLCompiler] Too many include roots: %u (max %u)",
+                          count, MAX_INCLUDE_ROOTS);
+                return false;
+            }
+
+            // 先整体校验再落地：任何一根失败都保持原状（多根是「全有或全无」的配置）。
+            OSString roots[MAX_INCLUDE_ROOTS];
+            for (uint32_t i = 0; i < count; ++i)
+                if (!ResolveIncludeRootPath(paths[i], roots[i]))
+                    return false;
+
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const U8String utf8 = ToU8String(roots[i]);
+                g_include_utf8[i] = AnsiString(
+                    reinterpret_cast<const char *>(utf8.c_str()), utf8.Length());
+            }
+
+            // 文本表填满后才固化指针视图：此后不再赋值，c_str() 指针保持有效。
+            for (uint32_t i = 0; i < count; ++i)
+                g_include_ptrs[i] = g_include_utf8[i].c_str();
+
+            for (uint32_t i = count; i < MAX_INCLUDE_ROOTS; ++i)
+                g_include_ptrs[i] = nullptr;
+
+            g_include_root = roots[0];
+            g_include_root_count = count;
+            compile_info.includes = g_include_ptrs;
+            compile_info.includes_count = count;
+            return true;
+        }
+
+        bool SetShaderIncludeRoot(const char *path)
+        {
+            const char *single = path;
+            return SetShaderIncludeRoots(&single, 1);
         }
 
         OSString GetShaderIncludeRoot()
@@ -393,6 +447,11 @@ namespace hgl
              && !SetShaderIncludeRoot(GetShaderLibraryPath().c_str()))
                 return {};
             return g_include_root;
+        }
+
+        uint32_t GetShaderIncludeRootCount()
+        {
+            return g_include_root_count;
         }
         }//namespace mtl
 

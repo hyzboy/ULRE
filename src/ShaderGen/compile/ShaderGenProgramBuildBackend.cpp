@@ -75,8 +75,33 @@ namespace
 
     namespace
     {
+        /// 生命周期钩子两端的**选择器**：安装时读一次环境变量并记住结论，
+        /// 卸载必须装/卸对称（`SetShaderProgramBuildBackend(nullptr)` 对错的
+        /// 后端调用会把槽位清空但漏掉释放器，或反之）。
+        bool g_use_domain_build_backend = false;
+
+        void InstallSelectedShaderProgramBuildBackend()
+        {
+            g_use_domain_build_backend = IsDomainShaderBuildBackendRequested();
+
+            if (g_use_domain_build_backend)
+                InstallDomainShaderBuildBackend();
+            else
+                InstallShaderGenProgramBuildBackend();
+        }
+
+        void UninstallSelectedShaderProgramBuildBackend()
+        {
+            if (g_use_domain_build_backend)
+                UninstallDomainShaderBuildBackend();
+            else
+                UninstallShaderGenProgramBuildBackend();
+
+            g_use_domain_build_backend = false;
+        }
+
         /**
-         * 把上面两个安装器注册成编译器插件的生命周期钩子。
+         * 把上面的安装器注册成编译器插件的生命周期钩子。
          *
          * 编译器桥（ULRE.ShaderCompiler）不认识任何后端；钩子是唯一的连接方式。
          * 注册对象是 TU 级静态量 ⇒ 在 InitShaderCompiler() 之前必然已构造完毕
@@ -88,8 +113,8 @@ namespace
             ShaderGenBackendLifecycleRegistration()
             {
                 hgl::graph::SetShaderCompilerLifecycleHooks(
-                    &InstallShaderGenProgramBuildBackend,
-                    &UninstallShaderGenProgramBuildBackend);
+                    &InstallSelectedShaderProgramBuildBackend,
+                    &UninstallSelectedShaderProgramBuildBackend);
             }
         };//struct ShaderGenBackendLifecycleRegistration
 

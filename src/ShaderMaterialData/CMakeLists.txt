@@ -39,6 +39,11 @@ set(SHADERMATERIALDATA_FILES
     # glslang、零模板拼装，发行形态（ULRE_ENABLE_SHADERGEN=0）照常链接。
     ${ROOT_INCLUDE_PATH}/hgl/mtl/DomainOptions.h
     DomainOptionsEmitter.cpp
+    # ── 领域主着色器模板表（领域 + pass → 固定 .frag 文件）──
+    # 只有「查表」，没有拼装：废除生成器之后主着色器不再是生成物，
+    # 运行时只需要知道该编哪个文件。发行形态照常链接。
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/DomainShaderTemplate.h
+    DomainShaderTemplate.cpp
     # ── 渲染模板解析 ──
     ${ROOT_INCLUDE_PATH}/hgl/mtl/RenderTemplate.h
     RenderTemplate.cpp

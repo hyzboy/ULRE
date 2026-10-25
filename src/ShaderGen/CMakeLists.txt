@@ -60,6 +60,9 @@ set(COMPILE_FILES
     compile/ShaderGenBackendInstall.h
     compile/ShaderCreateInfoCompile.cpp
     compile/ShaderGenProgramBuildBackend.cpp
+    # 「不生成着色器」的后端：片段阶段换成领域固定主着色器 + options。
+    # 临时留在本模块是因为它复用 BuildGenericMaterial 的网格阶段（见阶段五搬走）。
+    compile/DomainShaderBuildBackend.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
     compile/ShaderProgramArtifactBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderStructureDump.h
