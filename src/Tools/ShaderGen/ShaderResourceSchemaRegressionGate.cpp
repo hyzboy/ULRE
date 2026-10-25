@@ -626,6 +626,122 @@ namespace
         return result;
     }
 
+    /// 按 result id 读 `OpConstant` 的整型字面量。
+    ///
+    /// 词法：`word1 = 结果类型 id`，`word2 = 结果 id`，`word3.. = 字面量`。
+    static bool FindSPVConstantU32(
+        const ShaderFlatView &view,
+        const uint32_t result_id,
+        uint32_t &out_value)
+    {
+        constexpr uint32_t kOpConstant = 43u;
+
+        for (uint32_t i = 5u; i < view.spv_word_count; )
+        {
+            const uint32_t word = view.spv_words[i];
+            const uint32_t word_count = word >> 16;
+            if (word_count == 0u)
+                return false;
+
+            if ((word & 0xFFFFu) == kOpConstant
+             && word_count >= 4u
+             && i + 3u < view.spv_word_count
+             && view.spv_words[i + 2u] == result_id)
+            {
+                out_value = view.spv_words[i + 3u];
+                return true;
+            }
+
+            i += word_count;
+        }
+
+        return false;
+    }
+
+    /// 读 `OpExecutionModeId`（opcode 331）的实参并解析成常量值。
+    ///
+    /// 新版本 glslang 把 mesh 的局部尺寸降级为 `OpExecutionModeId %main
+    /// LocalSizeId %cx %cy %cz`（opcode 331 / 模式 38），实参是常量 id 而不是
+    /// 字面量，因此必须再查一次 `OpConstant`。
+    static bool FindSPVExecutionModeIdConstant(
+        const ShaderFlatView &view,
+        const uint32_t execution_mode,
+        const uint32_t operand_index,
+        uint32_t &out_value)
+    {
+        constexpr uint32_t kOpExecutionModeId = 331u;
+
+        for (uint32_t i = 5u; i < view.spv_word_count; )
+        {
+            const uint32_t word = view.spv_words[i];
+            const uint32_t word_count = word >> 16;
+            if (word_count == 0u)
+                return false;
+
+            if ((word & 0xFFFFu) == kOpExecutionModeId
+             && i + 3u < view.spv_word_count
+             && view.spv_words[i + 2u] == execution_mode)
+            {
+                const uint32_t id_index = i + 3u + operand_index;
+                if (id_index >= view.spv_word_count)
+                    return false;
+                return FindSPVConstantU32(
+                    view, view.spv_words[id_index], out_value);
+            }
+
+            i += word_count;
+        }
+
+        return false;
+    }
+
+    /// 读 mesh 阶段的 `local_size_x`：先试字面量 `OpExecutionMode LocalSize`，
+    /// 再退回 `OpExecutionModeId LocalSizeId`（较新 glslang 的默认产物）。
+    static bool FindSPVLocalSizeX(const ShaderFlatView &view, uint32_t &out_value);
+
+    /// 从已反射的 SPIR-V 里取 `OpExecutionMode` 的一个字面量。
+    ///
+    /// 词法：`word0 = (word_count << 16) | opcode`，`word1 = 目标 id`，
+    /// `word2 = 执行模式枚举`，`word3.. = 字面量`。`OpExecutionMode` 的 opcode 是 16。
+    static bool FindSPVExecutionModeLiteral(
+        const ShaderFlatView &view,
+        const uint32_t execution_mode,
+        const uint32_t literal_index,
+        uint32_t &out_value)
+    {
+        constexpr uint32_t kOpExecutionMode = 16u;
+
+        for (uint32_t i = 5u; i < view.spv_word_count; )
+        {
+            const uint32_t word = view.spv_words[i];
+            const uint32_t word_count = word >> 16;
+            if (word_count == 0u)
+                return false;
+
+            if ((word & 0xFFFFu) == kOpExecutionMode
+             && i + 3u < view.spv_word_count
+             && view.spv_words[i + 2u] == execution_mode
+             && i + 3u + literal_index < view.spv_word_count)
+            {
+                out_value = view.spv_words[i + 3u + literal_index];
+                return true;
+            }
+
+            i += word_count;
+        }
+
+        return false;
+    }
+
+    static bool FindSPVLocalSizeX(const ShaderFlatView &view, uint32_t &out_value)
+    {
+        constexpr uint32_t kLocalSize   = 17u;
+        constexpr uint32_t kLocalSizeId = 38u;
+
+        return FindSPVExecutionModeLiteral(view, kLocalSize, 0, out_value)
+            || FindSPVExecutionModeIdConstant(view, kLocalSizeId, 0, out_value);
+    }
+
     /// CharQuad 的 mesh 工作组尺寸必须与 CPU dispatch 常量**逐位一致**。
     ///
     /// 反证（历史缺陷）：生成侧用 min(TOML 声明, 64) 再经设备能力二次钳制，
@@ -646,7 +762,8 @@ namespace
         }
 
         const auto build = [](const contract::PhysicalDeviceProfileLite *profile,
-                              const MaterialDefinition &def)
+                              const MaterialDefinition &def,
+                              const char *mesh_source_override)
             -> std::unique_ptr<ShaderBuildContext>
         {
             MaterialDefinitionBuildRequest request{};
@@ -655,6 +772,9 @@ namespace
             // 只到 GLSL 文本为止：本用例断言的是发射文本里的 local_size_x，
             // 不需要（也不该依赖）SPV 编译。
             request.defer_finalize = true;
+            // 非空即绕过固定源目录，直接把给定文本当网格阶段源——⑤⑥⑦ 用它注入
+            // 被篡改的拓扑行，验证装配期校验真的会拒绝。
+            request.fixed_mesh_source = mesh_source_override;
 
             RenderTemplateValidationDiagnostic template_diagnostic{};
             const SceneRenderTemplateProfile scene_profile =
@@ -687,7 +807,7 @@ namespace
         };
 
         // ── ① 无 profile（无约束）：local_size_x 必须等于 CPU dispatch 常量 ──
-        const auto plain = build(nullptr, definition);
+        const auto plain = build(nullptr, definition, nullptr);
         if (!plain)
         {
             result.diagnostics.emplace_back(
@@ -729,7 +849,7 @@ namespace
         MaterialDefinition lowered = definition;
         lowered.mesh_shader_max_invocations =
             TEXT_CHARQUAD_MAX_INVOCATIONS / 2u;
-        if (build(nullptr, lowered))
+        if (build(nullptr, lowered, nullptr))
         {
             result.diagnostics.emplace_back(
                 "CharQuad 接受 mesh_shader_max_invocations < "
@@ -741,7 +861,7 @@ namespace
         narrow.api_version = contract::MakeVkVersion(1, 4);
         narrow.limits.max_mesh_work_group_size_x =
             TEXT_CHARQUAD_MAX_INVOCATIONS / 2u;
-        if (build(&narrow, definition))
+        if (build(&narrow, definition, nullptr))
         {
             result.diagnostics.emplace_back(
                 "CharQuad 在设备上限 < TEXT_CHARQUAD_MAX_INVOCATIONS "
@@ -755,7 +875,7 @@ namespace
             TEXT_CHARQUAD_MAX_INVOCATIONS * 2u;
         wide.limits.max_mesh_output_vertices = 1024u;
         wide.limits.max_mesh_output_primitives = 512u;
-        const auto wide_ctx = build(&wide, definition);
+        const auto wide_ctx = build(&wide, definition, nullptr);
         if (!wide_ctx)
         {
             result.diagnostics.emplace_back(
@@ -774,6 +894,157 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "CharQuad 的 group size 随设备能力放大（契约必须锁死）");
+            }
+        }
+
+        // ── ⑤⑥⑦ 固定源被改写 ⇒ 必须构建失败，不得照着文本编译 ──
+        //
+        // 6.2 之后 topology 三行是**外部数据**：形状键只哈希「模式 + invocation 数」，
+        // 不哈希这三行，所以手改文件里的数字不会让键失配——文件照样被找到、照样编译。
+        // 以下三条把「数据被改动」变成硬失败；否则缺陷会以「每组处理不足 / 输出容量
+        // 不够」的形式静默漏画，正是本用例登记的那类历史问题，只是从代码搬到了数据。
+        const ShaderCreateInfo *plain_mesh =
+            plain ? plain->GetStageShader(ShaderStage::Mesh) : nullptr;
+        const MeshModeCapacity charquad_capacity = ResolveMeshModeTopology(
+            MeshShaderMode::CharQuad, TEXT_CHARQUAD_MAX_INVOCATIONS);
+
+        if (!plain_mesh)
+        {
+            result.diagnostics.emplace_back(
+                "CharQuad mesh stage unavailable: topology tampering not exercised");
+        }
+        else
+        {
+            const std::string baseline = plain_mesh->GetFinalGLSL();
+
+            struct TopologyTamper
+            {
+                const char *label;
+                std::string from;
+                std::string to;
+            };
+
+            const TopologyTamper tampers[3] =
+            {
+                {
+                    "local_size_x",
+                    "local_size_x = "
+                        + std::to_string(TEXT_CHARQUAD_MAX_INVOCATIONS),
+                    "local_size_x = "
+                        + std::to_string(TEXT_CHARQUAD_MAX_INVOCATIONS / 2u)
+                },
+                {
+                    "max_vertices",
+                    "max_vertices = "
+                        + std::to_string(charquad_capacity.max_vertices),
+                    "max_vertices = "
+                        + std::to_string(charquad_capacity.max_vertices / 2u)
+                },
+                {
+                    "max_primitives",
+                    "max_primitives = "
+                        + std::to_string(charquad_capacity.max_primitives),
+                    "max_primitives = "
+                        + std::to_string(charquad_capacity.max_primitives / 2u)
+                },
+            };
+
+            for (const TopologyTamper &tamper : tampers)
+            {
+                std::string tampered = baseline;
+                const size_t at = tampered.find(tamper.from);
+                if (at == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("CharQuad 固定源里找不到可篡改的 ")
+                        + tamper.label + " 声明");
+                    continue;
+                }
+                tampered.replace(at, tamper.from.size(), tamper.to);
+
+                if (build(nullptr, definition, tampered.c_str()))
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("CharQuad 接受了被改写的 ")
+                        + tamper.label
+                        + "（固定源拓扑与 CPU 契约分叉却不报错）");
+                }
+            }
+        }
+
+        // ── ⑧ 反射取证：驱动真正读到的那份 SPIR-V 里的执行模式 ──
+        //
+        // ①④ 只证明文本里有那串数字，⑤⑥⑦ 只证明装配期把文本解析回了数值并比对。
+        // 这一条钉住第三段：编译产物里的 LocalSize / OutputVertices /
+        // OutputPrimitivesEXT。三者任一分叉，CPU 按常量派发就与 GPU 实际执行规模不符。
+        // 执行模式枚举按 SPIR-V 规范写死（LocalSize=17 / OutputVertices=26 /
+        // OutputPrimitivesEXT=5270），与 `PM.compute-release-cache` 写死 112 同理：
+        // 若两侧一起漂，本门才会失败。
+        if (plain_mesh && !plain_mesh->GetFinalGLSL().empty())
+        {
+            hgl::AnsiString compile_log;
+            SPVData *spv = CompileShader(
+                static_cast<uint32_t>(VK_SHADER_STAGE_MESH_BIT_EXT),
+                plain_mesh->GetFinalGLSL().c_str(), &compile_log);
+            if (!spv)
+            {
+                result.diagnostics.emplace_back(
+                    "CharQuad mesh stage failed to compile: "
+                    + std::string(compile_log.c_str()));
+            }
+            else
+            {
+                hgl::ValueArray<uint8_t> storage;
+                ShaderFlatView view{};
+                if (!ReflectSPVData(
+                        spv,
+                        static_cast<uint32_t>(VK_SHADER_STAGE_MESH_BIT_EXT),
+                        "main", storage, view))
+                {
+                    result.diagnostics.emplace_back(
+                        "CharQuad mesh stage SPIR-V reflection failed");
+                }
+                else
+                {
+                    struct ReflectedMode
+                    {
+                        const char *label;
+                        uint32_t    expected;
+                    };
+
+                    // 17 = LocalSize / 26 = OutputVertices / 5270 = OutputPrimitivesEXT。
+                    // 写死枚举与 `PM.compute-release-cache` 写死 112 同理：两侧一起漂
+                    // 才会漏过本门。
+                    const ReflectedMode modes[3] =
+                    {
+                        { "LocalSize", TEXT_CHARQUAD_MAX_INVOCATIONS },
+                        { "OutputVertices", charquad_capacity.max_vertices },
+                        { "OutputPrimitivesEXT", charquad_capacity.max_primitives },
+                    };
+
+                    for (uint32_t m = 0; m < 3u; ++m)
+                    {
+                        uint32_t actual = 0;
+                        // 数组顺序与 modes[] 一致：0=LocalSize 走 331/LocalSizeId
+                        // 回退，1/2 是字面量 `OpExecutionMode`。
+                        const bool found = (m == 0u)
+                            ? FindSPVLocalSizeX(view, actual)
+                            : FindSPVExecutionModeLiteral(
+                                  view, (m == 1u) ? 26u : 5270u, 0, actual);
+
+                        if (!found)
+                            result.diagnostics.emplace_back(
+                                std::string("CharQuad mesh SPIR-V has no ")
+                                + modes[m].label + " execution mode");
+                        else if (actual != modes[m].expected)
+                            result.diagnostics.emplace_back(
+                                std::string("CharQuad mesh SPIR-V ")
+                                + modes[m].label + " = " + std::to_string(actual)
+                                + " != " + std::to_string(modes[m].expected)
+                                + "（CPU 派发契约与实际执行规模分叉）");
+                    }
+                }
+                FreeSPVData(spv);
             }
         }
 

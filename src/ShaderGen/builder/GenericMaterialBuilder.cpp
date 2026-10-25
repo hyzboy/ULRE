@@ -602,6 +602,87 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        // ── 固定 mesh 源的拓扑字面量校验 ────────────────────────────────────
+        //
+        // 固定 `.mesh` 文件把 topology 三行（local_size_x / max_vertices /
+        // max_primitives）写成了**字面量数据**。形状键只哈希「模式 + invocation 数」，
+        // 不哈希这三行，于是手改文件里的数字不会让键失配：文件照样被找到、照样编译，
+        // 然后 CPU 派发组数与 shader 执行规模/输出容量悄悄分叉——正是
+        // `L0.charquad-workgroup-contract` 记录的历史缺陷（每组处理不足，尾部整段
+        // 漏画且无报错），只是缺陷从代码搬到了数据里。
+        //
+        // 因此每次装配都把实际文本解析回数值，与 ResolveMeshModeTopology 的契约逐位
+        // 比对；三条路径（request 覆盖 / 目录固定源 / 生成器）一视同仁。生成器侧
+        // 按构造必然一致，多跑一次只多几次字符串查找。
+        bool ValidateMeshSourceTopology(
+            const std::string &source,
+            const GenericMaterialBuildPlan &plan)
+        {
+            const MeshModeCapacity capacity = ResolveMeshModeTopology(
+                plan.mesh_shader_mode, plan.mesh_max_invocations);
+
+            struct ExpectedToken
+            {
+                const char *label;
+                const char *prefix;
+                uint32_t    expected;
+            };
+
+            const ExpectedToken tokens[3] =
+            {
+                { "local_size_x", "local_size_x = ", plan.mesh_max_invocations },
+                { "max_vertices", ", max_vertices = ", capacity.max_vertices },
+                { "max_primitives", ", max_primitives = ", capacity.max_primitives },
+            };
+
+            for (const ExpectedToken &token : tokens)
+            {
+                const size_t at = source.find(token.prefix);
+                if (at == std::string::npos)
+                {
+                    s_last_build_generic_material_error =
+                        "fixed mesh source is missing a topology declaration";
+                    GLogError(
+                        "[ShaderGen] Mesh source has no %s declaration: mode=%u "
+                        "invocations=%u",
+                        token.label,
+                        static_cast<unsigned>(plan.mesh_shader_mode),
+                        static_cast<unsigned>(plan.mesh_max_invocations));
+                    return false;
+                }
+
+                size_t cursor = at + std::strlen(token.prefix);
+                uint64_t actual = 0;
+                size_t digits = 0;
+                while (cursor < source.size()
+                    && source[cursor] >= '0' && source[cursor] <= '9')
+                {
+                    actual = actual * 10u
+                           + static_cast<uint64_t>(source[cursor] - '0');
+                    ++cursor;
+                    ++digits;
+                }
+
+                if (digits == 0 || actual != token.expected)
+                {
+                    s_last_build_generic_material_error =
+                        "fixed mesh source topology disagrees with the build contract";
+                    GLogError(
+                        "[ShaderGen] Mesh source %s mismatch: declared=%llu "
+                        "expected=%u mode=%u invocations=%u（CPU 侧按契约派发/取址，"
+                        "数值分叉会静默漏画或读越界）",
+                        token.label,
+                        static_cast<unsigned long long>(actual),
+                        static_cast<unsigned>(token.expected),
+                        static_cast<unsigned>(plan.mesh_shader_mode),
+                        static_cast<unsigned>(plan.mesh_max_invocations));
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         bool GenerateStageSources(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
@@ -688,6 +769,10 @@ namespace hgl::graph::mtl
                     }
                 }
             }
+
+            // ── mesh 源拓扑与构建契约必须逐位一致（见 ValidateMeshSourceTopology）──
+            if (!ValidateMeshSourceTopology(plan.ms, plan))
+                return false;
 
             // ── 片段阶段：物理固定，永远不由本函数发射 ──────────────────────
             //

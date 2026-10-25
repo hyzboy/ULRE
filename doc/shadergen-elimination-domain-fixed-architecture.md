@@ -825,3 +825,63 @@ interpolation、拓扑常量、属性装载顺序、`main` 主体全部等价。
 - `VK_FORMAT_R32G32B32A32_SFLOAT` 在 `MeshModeDescriptor::ResolveStandardStage1Input` 与
   `VertexABIBuilder` 之间的分歧仍未修正，不得列入固定源覆盖面。
 
+
+---
+
+## 6.3 网格拓扑契约守卫迁移
+
+### 问题
+
+`L0.charquad-workgroup-contract` 原先守的是「设备上限 < 契约值必须构建失败、不得静默钳制」。
+这条断言依赖生成器里的两件事：`ResolveCharQuadTopology` 算出的 `max_vertices` /
+`max_primitives`，以及生成侧写下的 `local_size_x`。生成器一删，公式与守卫同时消失。
+
+更糟的是固定源把问题搬进了数据：形状键（`ComputeMeshSourceShapeKey`）只哈希
+**模式 + invocation 数**，不哈希 topology 三行。于是手改 `fixed/<键>.mesh` 里的
+`local_size_x` 不会让键失配 —— 文件照样被找到、照样编译，然后 CPU 按
+`TEXT_CHARQUAD_MAX_INVOCATIONS` 派发组数、GPU 按被改小的组处理，尾部整段漏画且无报错。
+这正是该用例登记的历史缺陷，只是从代码搬到了数据。
+
+### 三处改动
+
+1. **公式上移**到公开头 `inc/hgl/mtl/MeshShaderLimits.h`：
+   `ResolveMeshModeTopology(MeshShaderMode, uint32_t) -> MeshModeCapacity`。
+   它只有算术、没有发射逻辑，因此能活过 `meshgen/` 的删除，并同时服务发射侧与校验侧。
+   `meshgen/MeshModeDescriptor.h` 的三个 topology resolver 改为一行转发，公式只存一份。
+2. **装配期解析回数值**：`GenericMaterialBuilder::ValidateMeshSourceTopology()` 在三条
+   源路径（request 覆盖 / 目录固定源 / 生成器）汇合之后，把最终文本里的
+   `local_size_x` / `max_vertices` / `max_primitives` 解析成整数，与构建计划逐位比对，
+   任一不等即 `GLogError` + 构建失败。生成器路径按构造必然一致，多跑一次只多三次
+   字符串查找，换来三条路径同一把锁。
+3. **编译产物取证**：用例 ⑧ 对最终 mesh GLSL 真编译一次，反射出 SPIR-V 里的
+   `OpExecutionMode`，读 `LocalSize` / `OutputVertices` / `OutputPrimitivesEXT`。
+   前两条（文本、装配期解析）只能证明"我们写/读的数字对"，这一条才证明"驱动真正拿到的
+   模块里数字对"。
+
+### 反射的两个坑
+
+- **`LocalSize` 可能不是字面量**。较新 glslang 把 mesh 局部尺寸降级为
+  `OpExecutionModeId %main LocalSizeId %cx %cy %cz`（opcode **331** / 模式 **38**），
+  实参是常量 id 而不是字面量。实测仓库 `GLSLCompiler.dll` 就产出这一形态：模块里
+  只有 `OpExecutionMode` 的 `OutputVertices(26)=256`、`OutputPrimitivesEXT(5270)=128`
+  与 `5298`，没有 `LocalSize(17)`。因此 `FindSPVLocalSizeX()` 先试字面量形态，再退回
+  `OpExecutionModeId` 查 `OpConstant(43)` 解出值 —— 两种形态都要认。
+- **`OutputVertices` / `OutputPrimitivesEXT` 仍是字面量**，走
+  `FindSPVExecutionModeLiteral()` 直接读 `words[i+3]`。
+
+两个 helper 都按 `word0 = (word_count << 16) | opcode` 从索引 5 起线性走指令流，
+不依赖任何反汇编库。
+
+### 反证（确认守卫真的在守）
+
+把 `GenericMaterialBuilder.cpp` 的 `ValidateMeshSourceTopology` 调用临时短路后重跑，
+用例立刻报三条 `CharQuad 接受了被改写的 local_size_x / max_vertices / max_primitives`。
+恢复后回到 PASS —— 证明 ⑤⑥⑦ 三条把「数据被改动」变成硬失败，不是被别的机制顺带挡住的。
+
+### 验收
+
+- `ShaderResourceSchemaRegressionGate all`：58 PASS / 0 FAIL（`L0.charquad-workgroup-contract`
+  仍是单个具名用例，内部覆盖 ① 无 profile 契约值、② 声明更小必须失败、③ 设备上限更低
+  必须失败、④ 宽裕设备不得放大、⑤⑥⑦ 三个 topology 篡改必须失败、⑧ 反射取证）。
+- `ShaderDocumentProductionRegression --full`：退出码 0，15/15 `source=fixed`，
+  9 个 depth/shadow `[SKIP]` 与本阶段无关。

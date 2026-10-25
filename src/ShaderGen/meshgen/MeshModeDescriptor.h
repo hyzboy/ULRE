@@ -7,6 +7,7 @@
 #pragma once
 
 #include <hgl/mtl/MeshShaderMode.h>
+#include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/mtl/MaterialStageInterface.h>
@@ -24,11 +25,9 @@
 
 namespace hgl::graph::mtl
 {
-    struct MeshModeCapacity
-    {
-        uint32_t max_vertices   = 0;
-        uint32_t max_primitives = 0;
-    };
+    // MeshModeCapacity 与拓扑公式的唯一真源在 <hgl/mtl/MeshShaderLimits.h>：
+    // 固定 `.mesh` 源的校验侧（GenericMaterialBuilder）也必须能算出同一组容量，
+    // 而它不能依赖会被删除的 meshgen/。这里只保留 resolver 函数指针签名。
 
     using MeshTopologyResolver = bool (*)(
         uint32_t max_invocations,
@@ -86,12 +85,14 @@ namespace hgl::graph::mtl
     };
 
     // ── Topology Resolvers ──────────────────────────────────────────────
+    // 三支都直接转发到 <hgl/mtl/MeshShaderLimits.h> 的 ResolveMeshModeTopology：
+    // 公式只存在一份，生成器与固定源校验不可能各说一套。
     inline bool ResolveVertexPassthroughTopology(
         uint32_t max_invocations,
         MeshModeCapacity &out_capacity)
     {
-        out_capacity.max_vertices   = max_invocations * 3u;
-        out_capacity.max_primitives = max_invocations;
+        out_capacity =
+            ResolveMeshModeTopology(MeshShaderMode::VertexPassthrough, max_invocations);
         return true;
     }
 
@@ -99,8 +100,7 @@ namespace hgl::graph::mtl
         uint32_t max_invocations,
         MeshModeCapacity &out_capacity)
     {
-        out_capacity.max_vertices   = max_invocations * 4u;
-        out_capacity.max_primitives = max_invocations * 2u;
+        out_capacity = ResolveMeshModeTopology(MeshShaderMode::LineQuad, max_invocations);
         return true;
     }
 
@@ -108,8 +108,7 @@ namespace hgl::graph::mtl
         uint32_t max_invocations,
         MeshModeCapacity &out_capacity)
     {
-        out_capacity.max_vertices   = max_invocations * 4u;
-        out_capacity.max_primitives = max_invocations * 2u;
+        out_capacity = ResolveMeshModeTopology(MeshShaderMode::CharQuad, max_invocations);
         return true;
     }
 
