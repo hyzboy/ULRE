@@ -84,6 +84,7 @@ SET(ULRE_RUNTIME
             ULRE.Vulkan
             ULRE.ShaderRuntimeContract
             ULRE.ShaderMaterialData
+            ULRE.ShaderCompiler
             ULRE.SceneGraph
             ULRE.InlineGeometry
             # HGL_MATH_LIB(glm::glm) 与 RENDER_LIBRARY(xcb, 仅 UNIX) 看似"与 ULRE 无关"，

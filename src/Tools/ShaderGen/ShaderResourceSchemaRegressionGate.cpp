@@ -38,8 +38,8 @@
 #include <hgl/filesystem/Path.h>
 #include <hgl/time/Time.h>
 #include <hgl/mtl/ShaderStructureDump.h>
-#include "ShaderGen/compile/GLSLCompiler.h"
-#include "ShaderGen/compile/ShaderReflectionData.h"
+#include <hgl/ShaderCompilerAPI.h>
+#include "ShaderCompiler/ShaderReflectionData.h"
 #include "SPVParseFlat.h"
 #include <fstream>
 #include <filesystem>

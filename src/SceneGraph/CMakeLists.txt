@@ -1,4 +1,4 @@
-﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
+set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
 SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/data/BitmapData.h
                     ${SG_INCLUDE_PATH}/data/ImageRegion.h
@@ -279,5 +279,4 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
 
 )
 
-target_include_directories(ULRE.SceneGraph PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/ShaderGen/compile)
+

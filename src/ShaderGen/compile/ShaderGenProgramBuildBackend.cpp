@@ -11,7 +11,8 @@
 #include <hgl/mtl/MaterialShaderCompiler.h>
 
 #include "builder/GenericMaterialBuilder.h"
-#include "../compile/GLSLCompiler.h"
+#include "ShaderGenBackendInstall.h"
+#include <hgl/ShaderCompilerAPI.h>
 
 namespace hgl::graph::mtl
 {
@@ -71,4 +72,27 @@ namespace
         UninstallShaderCreateInfoSPVReleaser();
         SetShaderProgramBuildBackend(nullptr);
     }
+
+    namespace
+    {
+        /**
+         * 把上面两个安装器注册成编译器插件的生命周期钩子。
+         *
+         * 编译器桥（ULRE.ShaderCompiler）不认识任何后端；钩子是唯一的连接方式。
+         * 注册对象是 TU 级静态量 ⇒ 在 InitShaderCompiler() 之前必然已构造完毕
+         * （包括 AppFramework 在 main 之前的初始化），发行形态整个 TU 不存在，
+         * 钩子保持为空，编译器照常工作而不装任何后端。
+         */
+        struct ShaderGenBackendLifecycleRegistration
+        {
+            ShaderGenBackendLifecycleRegistration()
+            {
+                hgl::graph::SetShaderCompilerLifecycleHooks(
+                    &InstallShaderGenProgramBuildBackend,
+                    &UninstallShaderGenProgramBuildBackend);
+            }
+        };//struct ShaderGenBackendLifecycleRegistration
+
+        ShaderGenBackendLifecycleRegistration g_shadergen_backend_lifecycle_registration;
+    }//namespace
 }//namespace hgl::graph::mtl

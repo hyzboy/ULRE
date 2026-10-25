@@ -1,4 +1,4 @@
-﻿#include"GLSLCompiler.h"
+#include<hgl/ShaderCompilerAPI.h>
 #include"TBuiltInResourceCompat.h"
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
@@ -207,6 +207,19 @@ namespace hgl
 
         static ExternalModule *gsi_module=nullptr;
 
+        // 后端生命周期钩子：由「往接缝里装后端」的那一层注册（生成器侧 TU 的静态
+        // 对象）。本模块只保管指针，并在插件就绪后/关闭前原样回调，从而对上层
+        // 保持零反向依赖（见 inc/hgl/ShaderCompilerAPI.h 的说明）。
+        static ShaderCompilerLifecycleHook g_lifecycle_on_ready=nullptr;
+        static ShaderCompilerLifecycleHook g_lifecycle_on_close=nullptr;
+
+        void SetShaderCompilerLifecycleHooks(ShaderCompilerLifecycleHook on_ready,
+                                             ShaderCompilerLifecycleHook on_close)
+        {
+            g_lifecycle_on_ready=on_ready;
+            g_lifecycle_on_close=on_close;
+        }
+
         typedef GLSLCompilerInterface *(*GetInterfaceFUNC)();
 
         // 与插件侧 glsl2spv.cpp 的 plug_in_interface 首字段同步
@@ -290,9 +303,10 @@ namespace hgl
                             return false;
                         }
 
-                        // 生成器就绪 ⇒ 立刻接管运行时构建入口
+                        // 插件就绪 ⇒ 回调注册者接管运行时构建入口
                         // （接缝见 inc/hgl/mtl/ShaderProgramBuildBackend.h）
-                        mtl::InstallShaderGenProgramBuildBackend();
+                        if(g_lifecycle_on_ready)
+                            g_lifecycle_on_ready();
                         return(true);
                     }
 
@@ -317,7 +331,8 @@ namespace hgl
         void CloseShaderCompiler()
         {
             // 先摘接缝，避免关闭窗口期还有 TU 拿旧指针乱转
-            mtl::UninstallShaderGenProgramBuildBackend();
+            if(g_lifecycle_on_close)
+                g_lifecycle_on_close();
 
             g_include_root.Clear();
             g_include_root_utf8.Clear();

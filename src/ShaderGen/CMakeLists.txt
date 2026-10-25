@@ -53,15 +53,13 @@ SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 # ShaderCreateInfo.cpp / ShaderArtifactStore.cpp / SamplerPreset.cpp /
 # MaterialDefinitionRegistry.cpp / SceneRenderTemplateResolver.cpp / RenderTemplate.cpp
 # 已迁入 ULRE.ShaderMaterialData（数据面，运行时也要）。
+#
+# GLSLCompiler / ShaderReflectionData / TBuiltInResourceCompat 已迁出到
+# ULRE.ShaderCompiler（src/ShaderCompiler）：编译桥运行时也要，不能跟着生成器。
 set(COMPILE_FILES
-    ${ROOT_INCLUDE_PATH}/hgl/ShaderCompilerAPI.h
-    compile/GLSLCompiler.h
-    compile/GLSLCompiler.cpp
-    compile/ShaderReflectionData.h
-    compile/ShaderReflectionData.cpp
+    compile/ShaderGenBackendInstall.h
     compile/ShaderCreateInfoCompile.cpp
     compile/ShaderGenProgramBuildBackend.cpp
-    compile/TBuiltInResourceCompat.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
     compile/ShaderProgramArtifactBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/ShaderStructureDump.h
@@ -168,6 +166,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"
 # 的上层，生成期所有「读写定义与产物」的能力都由它提供。
 target_link_libraries(ULRE.ShaderGen PUBLIC ULRE.ShaderRuntimeContract
                                             ULRE.ShaderMaterialData
+                                            ULRE.ShaderCompiler
                                             ULRE.Debug)
-target_include_directories(ULRE.ShaderGen PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)

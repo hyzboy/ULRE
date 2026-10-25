@@ -2,7 +2,7 @@
 // 其余成员（构造/析构/缓存 SPV 装载）在 src/ShaderMaterialData/ShaderCreateInfo.cpp，
 // 属纯数据面，发行形态也要用。
 #include<hgl/mtl/ShaderCreateInfo.h>
-#include"GLSLCompiler.h"
+#include<hgl/ShaderCompilerAPI.h>
 namespace hgl{namespace graph::mtl{
 
 namespace

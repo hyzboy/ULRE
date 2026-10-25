@@ -10,7 +10,7 @@
 // 误判为 0，把 compute 的现编路径整条摘掉。
 #include<hgl/common/RenderOptions.h>
 #if ULRE_ENABLE_SHADERGEN
-#include "GLSLCompiler.h"
+#include <hgl/ShaderCompilerAPI.h>
 #endif
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>

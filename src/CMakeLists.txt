@@ -4,6 +4,9 @@ add_subdirectory(Vulkan)
 add_subdirectory(ShaderRuntimeContract)
 # ShaderMaterialData：材质/着色器数据面（零 GLSL 发射、零 glslang），发行形态照常构建。
 add_subdirectory(ShaderMaterialData)
+# ShaderCompiler：glslang 插件桥（编译/反射）。运行时（SceneGraph）也要用，故不受
+# ULRE_ENABLE_SHADERGEN 约束；它不认识任何构建后端，后端由上层注册生命周期钩子。
+add_subdirectory(ShaderCompiler)
 # 生成器侧：发行形态（ULRE_ENABLE_SHADERGEN=OFF）下不构建。
 # 注意：ULRE.SceneGraph / ULRE.Vulkan / ULRE.Work / ULRE.ECS 里仍有 TU include
 # ShaderGen 的头文件——头文件在源码树里始终存在，所以这里收掉目标不会断编译，
