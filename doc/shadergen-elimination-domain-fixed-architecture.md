@@ -647,3 +647,96 @@ layout(location=5) in vec4 fragVertexColor;
        验收：门禁 58/0、`DomainOptionsRegression` 26/0、`TestCSMIncrementalPass` 51 条全过、
        四个示例零着色器错误。
 
+## 阶段六：顶点 / 网格阶段盘点（6.1）
+
+本节记录 6.1 对当前代码和仓库内定义/调用点的盘点。**源码尚未切换**；后续 6.2
+必须用实际编译输入验证候选分组，不能把本节的维度表误当作已经完成的 shader 文件集。
+
+### 6.1.1 先纠正两个边界
+
+- 当前 Vulkan 图形路径实际编译的是 `ShaderStage::Mesh`。`MeshShaderMode::VertexPassthrough`
+  仍然是 mesh shader（模拟传统 VS 的每线程顶点搬运），并不存在供该路径选择的独立
+  `ShaderStage::Vertex` GLSL。故 6.2 的直接目标应是固定 `.mesh`；只有未来确有传统 vertex
+  stage 消费者时，才增加 `.vert`。原计划的 `.vert (+ .mesh)` 不能作为当前实现既定事实。
+- `vertex_node_config` 不是“14 种节点配置”。代码里有 **7 种 Stage 2 映射模块 + 7 种
+  Stage 3 投影/朝向模块**；配置是 5 个枚举字段组成的有效组合，并且运行时 recipe
+  可以覆盖定义的缺省值。不能把 14 个模块数当成 14 个完整配置或 14 个固定 shader。
+
+### 6.1.2 变异维度与当前取值
+
+| 维度 | 当前源码选择规则 / 已知取值 | 对固定源码的影响 |
+|---|---|---|
+| `MeshShaderMode` | 恰好三种：`VertexPassthrough`、`LineQuad`、`CharQuad`。显式 `CharQuad` 定义优先；否则 `PrimitiveType::Lines` 选 `LineQuad`；其余选 `VertexPassthrough`。 | 三种不同主体和拓扑，必须成为不同结构形状；不能只按领域选择。 |
+| `VertexInputMode` / Position 格式 | ABI 当前只闭环支持 `R32G32B32_SFLOAT → Vec3`、`R32G32_SFLOAT → Vec2`、`R16G16_SINT → Vec2Int` 三种位置解码模块。`CharQuad` 自带 SSBO，不读外部位置。 | Stage 1 输入模块与 ABI 绑定，文件选择必须以已解析的几何格式为准，而非只看材质配置。 |
+| Stage 1 其他属性解码 | UV：`s1_uv` / `s1_uv_rg16f`；NTB：`s1_ntb` / `s1_ntb_rg8` / `s1_ntb_rg16f` / `s1_ntb_a2bgr10`；Color：属性色 / palette index；另有 Luminance、TransformID、Size。它们由语义需求及属性格式共同选择。 | 引用模块集合不同即为不同源码依赖闭包；不能靠一个领域名推导。 |
+| Stage 2 `position_mapping` | 7 个固定模块：`Passthrough3D`、`LiftXY_XY0`、`LiftXY_X0Y`、`LiftXY_0XY`、`NDCLift`、`ZeroOneToNDC`、`PixelToLocal`。只有 `Passthrough3D` 要 3 个输入分量，其余要 2 个；与 Position 解码格式不符时必须失败。 | 固定模块路径可查表，但不能把不同 mapping 当作同一输入 ABI。 |
+| Stage 3 | 7 个固定模块：world camera VP、L2W only、ortho viewport、ortho then L2W、clip passthrough、camera-facing world、camera-facing fixed pixels。朝向为 camera-facing 时按 scale 选后两者，普通朝向按 projection 选前五者。 | 有世界空间输出能力差异；也决定 WorldPosition / WorldNormal 是否可写。 |
+| `MaterialDomain` 规范节点配置 | 16 个非 `Custom` 契约中，13 个使用默认 3D；`UnlitTexture` 与 `Checker2D` 共用 `Vec2 + NDCLift + World + ScaleMode::World + LocalToWorldOnly`；`Text2D` 为 `None + PixelToLocal + World + ScaleMode::World + OrthoViewport`。即当前契约只有 3 种规范 tuple。 | 规范值可作为各领域默认值，**不能**据此忽略 recipe override。 |
+| 仓库内 recipe 节点覆盖 | 已发现的有效覆盖形状：默认 3D；2D NDC→L2W；2D `[0,1]`→NDC→L2W；2D PixelToLocal→OrthoViewport（`DrawTriangle`）；Vec2 LiftXY→WorldCameraVP（网格/线）；CameraFacingFree→world-facing。`CameraFacingAxisY`、fixed-pixel、ortho-then-L2W 也在 API 枚举中可达，但当前搜索未发现仓库调用点。 | 至少需覆盖上述真实调用形状；公开 API 可达组合若保留，则需有稳定查表拒绝/选择策略，而不是生成时临时拼 GLSL。 |
+| varying 接口 | mesh 可输出 8 种语义：DataIndexID、Color、UV0、WorldPosition、WorldNormal、Luminance、FragDirection、StyleID。PerVertex 可写集合与 LineQuad（DataIndexID / Color / Luminance / WorldPosition）及 CharQuad（UV0 / Color / DataIndexID / StyleID）不同；Color 还分属性色 / palette 路径。 | 声明 location、插值类别、数组容量与写入语句都属于链接接口。固定文件必须覆盖真实的语义集合与写入来源，不能只保证各 stage 单独编译。 |
+| Pass / coverage | DepthOnly 与 ShadowDepth 走 depth 路径；有效 varying 按 alpha coverage 需求裁剪，无 alpha 求值时可能为空；alpha-test / dither 需要保留对应覆盖输入。 | 文件候选需以**解析后的 stage interface** 分组；两种 depth purpose 只有在归一化接口相同时才可共用。 |
+| `max_invocations` / 拓扑容量 | VP、LineQuad 理想值均为 64，可被设备的 workgroup、输出顶点、输出图元上限折小；CharQuad 固定为 `TEXT_CHARQUAD_MAX_INVOCATIONS`（当前 64），设备不足必须失败。输出容量分别为 VP `(3×N, N)`、LineQuad/CharQuad `(4×N, 2×N)`。 | `local_size_x`、`max_vertices`、`max_primitives` 可由 options 常量承载；CharQuad 的 64 是 CPU dispatch 契约，不能被钳低。若保留普通模式钳制，最终 N 仍必须纳入 shader program identity。 |
+
+### 6.1.3 固定文件集的归一化键
+
+初步最小分组应按**实际消费的 mesh 源形状**合并，而不是复制一份给每个 domain。
+候选身份至少包含：
+
+```text
+mode
++ position decoder + Stage 1 attribute decoder/include closure
++ effective Stage 2 / Stage 3 module identity
++ resolved stage-interface entries (semantic, location, interpolation, per-vertex/per-primitive)
++ color source
++ pass/coverage interface
++ final workgroup/topology constants (unless safely represented as options constants)
+```
+
+`MaterialDomain` 提供默认契约和 fragment 侧最低输入约束，但并非所有 mesh 源差异的唯一拥有者；
+recipe 覆盖、几何 ABI、图元类型、coverage 与设备 profile 都会改变实际输入。只有当两个形状
+在上述消费契约上相同，且最终 mesh GLSL / include 闭包相同，才可共用一个物理文件。
+
+这不要求引入运行时 shader generator：运行时可用已解析的 program shape key 查找一份**预先存在**
+的 `.mesh` 文件，再用 `generated/options.glsl` 提供合法的数值常量；不得在 C++ 中重排块、
+枚举 varying、拼接 include 或发射 body。若仍要求结构差异经宏切换，就会重新引入条件编译；
+阶段六的“无 `#if`”约束下，结构差异应落在独立固定源码文件中。
+
+**生产 fixture 实测（非全量）**：`ShaderDocumentProductionRegression --full --dump-source`
+导出 15 个可构建 fixture 的真实 Mesh `GetFinalGLSL()`；按完整文本 SHA-256 聚类为 9 组：
+
+| 固定源码候选组 | 完全相同的 fixture 输出 |
+|---|---|
+| Checker2D forward | `checkerboard-2d-forward` / `checkerboard-2d-alpha` |
+| Checker3D face-normal forward | `checkerboard-3d-face-forward` / `checkerboard-3d-face-alpha` |
+| Checker3D vertex-normal forward | `checkerboard-3d-normal-forward` / `checkerboard-3d-normal-alpha` |
+| UnlitSolid forward | `pure-color-forward` |
+| StandardOpaque forward | `lit-forward` / `lit-forward-alpha` / `lit-ibl` |
+| StandardOpaque shadow | `lit-shadow` |
+| StandardOpaque masked shadow | `lit-shadow-alpha` |
+| Sky forward | `sky-cube` / `sky-minimal` |
+| Text2D CharQuad | `text-gpu-charquad` |
+
+这些组只证明上述 fixture **当前输出可合并**，不是最终文件数量：本组没有 `LineQuad`、
+`R16G16_SINT + PixelToLocal` 的 `DrawTriangle/VertexColor`、全部注册定义和全部几何格式。
+同一次 `--full` 有 9 个 depth/shadow fixture 因领域固定片段主着色器覆盖缺口被显式跳过
+（UnlitSolid 2、Checker2D 2、Checker3D 5）；不能把跳过数计作覆盖或从表中推断这些 mesh
+源码已等价。6.2/6.4 必须补齐矩阵后重新聚类。
+
+### 6.1.4 对 6.2 的实现约束
+
+1. 用生产路径捕获 `.mesh` 最终编译文本及 include 闭包，覆盖所有已注册 material definition、
+   实际 Forward / Depth / Shadow 覆盖形状、三种 mesh mode、三种合法 Position 解码和仓库内
+   recipe override；以最终 GLSL + 链接接口相同为条件聚类，得到可复核的文件数量与清单。
+2. 明确设备 profile 对普通 VP / LineQuad 的 invocation clamp 是否保留。若保留，需要为实际 N
+   选择固定源码/常量组合；若固定为 64，则先证明所有支持设备满足输出能力且行为/性能变化可接受。
+   CharQuad 恒为 64 且其 CPU dispatch 守卫不得删除。
+3. 修正或拒绝 `MeshModeDescriptor::ResolveStandardStage1Input` 对
+   `VK_FORMAT_R32G32B32A32_SFLOAT` 返回 Vec3、而 `VertexABIBuilder` 当前不支持该格式的分歧；
+   不得将此格式误列入固定源覆盖面。
+4. 把 6.4 的 `DrawTriangle` / `VertexColor`（`R16G16_SINT` + `Make2DNodeConfigOrtho(false)`）
+   放入形状矩阵，确保节点配置、ABI 与 varying 链接在源选择时仍同一份解析结果。
+5. 当前 `ShaderLibrary/mesh/line_quad.glsl.tmpl` 仍用 `#ifdef S1_TRANSFORM_ID_GLSL` /
+   `S1_SIZE_GLSL` 改变执行语句，`vertex/s1_position_*.glsl` 仍按 `HGL_*_LOADER`
+   宏条件装载属性，`orient_world.glsl` 仍按 `HGL_L2W_FROM_VERTEX_ATTR` 条件编译。
+   这些不是 options 中允许保留的 dither 条件；若阶段六继续要求无 `#if`，固定形状必须
+   静态封闭所需属性和变换路径，并删除这些依赖的分支，而不能只把当前模板改名为 `.mesh`。
