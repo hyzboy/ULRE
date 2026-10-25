@@ -258,6 +258,13 @@ namespace hgl::graph::mtl
         {
             plan.vertex_node_config =
                 ResolveMaterialVertexNodeConfig(definition, request);
+            // 求解结果必须回写到 ABI 求解用的那份定义：`vertex_node_config` 有四个
+            // 来源（request 覆盖 > recipe > definition > 默认），而 `definition` 里
+            // 存的是**最弱的那一层**。不回写就会出现「mesh 发射器用 recipe 的
+            // PixelToLocal，ABI 对账却用 definition 的 Passthrough3D」——
+            // 位置分量数一个 2 一个 3，`CheckPositionComponentCount` 必然硬失败
+            // （DrawTriangle 的 VertexColor 就是这么炸的）。
+            plan.vertex_definition.vertex_node_config = plan.vertex_node_config;
             plan.resolved_vertex_input_document.Clear();
 
             // CharQuad: mesh shader self-declares all SSBOs; no vertex ABI needed.

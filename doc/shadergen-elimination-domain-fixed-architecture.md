@@ -567,8 +567,28 @@ layout(location=5) in vec4 fragVertexColor;
      `kDomainDirs[]` 12 行，四份片元骨架全部被复现；`options.glsl` 收编最后两族
      外挂宏（`HGL_MATERIAL_HAS_VERTEX_NORMAL`、定义自带 `defines`）。
      详见 1.9。
-   - 待办（`4.4`）：跑 `SimpleSphere` / `PBRSpheres` / `LineRender` / `DrawText`
-     实机验证 + `verify-release-form.ps1`。
+   - `4.4` ✅：示例实机验证 + 端到端回归，抓出两个真 bug：
+     - **后端注册 TU 被静态库链接丢弃**（自 `3.0` 起潜伏）。`ULRE::Engine` 对
+       `ULRE.ShaderGen` 走普通静态库链接，而 `ShaderGenProgramBuildBackend.cpp`
+       唯一的入口是「无导出符号、无人引用」的注册对象，于是整块 TU 被链接器剔除，
+       `SetShaderCompilerLifecycleHooks()` 从未被调用、钩子恒空、没有任何后端被安装，
+       运行时静默降级到 manifest 后端（`EnsureShaderProgramManifestBackend` 是
+       先到先得），所有示例的每个图元都 `unresolved runtime pipeline` 却不报错。
+       根 `CMakeLists.txt` 改用 `$<LINK_LIBRARY:WHOLE_ARCHIVE,ULRE.ShaderGen>`。
+       发行形态依旧正确：`ULRE_ENABLE_SHADERGEN=OFF` 时该目标不存在，钩子空是**设计**，
+       manifest 后端读烘焙缓存即可（`verify-release-form.ps1` 硬断言 prod 树无生成器产物）。
+     - **顶点 ABI 用了错误的 `vertex_node_config`**。`ResolveVertexABI` 把
+       `ResolveMaterialVertexNodeConfig()` 的结果只写进 `plan.vertex_node_config`
+       （mesh 发射器用），喂给 `BuildResolvedMaterialVertexABI` 的却是
+       `plan.vertex_definition`——里面存的是定义层最弱那一层（默认 `Passthrough3D`）。
+       recipe 显式设置 `PixelToLocal` 时就出现「发射器按 2 分量、对账按 3 分量」，
+       `VertexNodeConfigResolver::CheckPositionComponentCount` 硬失败
+       （`DrawTriangle` 的 `DrawTriangle.VertexColor` 即此）。现在求解结果回写进
+       `plan.vertex_definition.vertex_node_config`，两端同源。
+     - 结果：五个示例（`SimpleSphere` / `PBRSpheres` / `LineRender` / `TextDraw` /
+       `DrawTriangle`）零着色器错误；`verify-release-form.ps1` 全 5 步
+       `[PASS] release form verified`；门禁 `all` 61/0、`DomainOptionsRegression` 26/0、
+       `verify-domain-master-shaders.ps1` 15/15、`ShaderDocumentProductionRegression --full` 通过。
 5. **第五阶段：整体切替与旧代码物理删除**
    - 将渲染系统底层对接至直通管道。
    - 一次性物理删除 `src/ShaderGen` 下冗余的生成器、注记解析与 AST 模块。

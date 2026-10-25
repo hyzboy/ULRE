@@ -96,8 +96,22 @@ SET(ULRE_RUNTIME
 )
 
 # ULRE_SHADERGEN：生成器侧，只在 ULRE_ENABLE_SHADERGEN=ON 时存在。
+#
+# **必须整库链接（WHOLE_ARCHIVE），不能用普通静态库链接。**
+# Windows 下 add_cm_library 产出的是静态库，链接器只从 .lib 中取「被引用符号」所在的 .obj。
+# 生成器后端的唯一入口是 compile/ShaderGenProgramBuildBackend.cpp 末尾那个 TU 级静态注册
+# 对象（构造时调用 SetShaderCompilerLifecycleHooks），它没有任何对外符号，应用也不会引用
+# 它所在 TU 的其它函数 ⇒ 整个 TU 被链接器丢弃 ⇒ 生命周期钩子恒为空 ⇒
+# GetShaderProgramBuildBackend() 返回 nullptr ⇒ 材质构建退化到 manifest 后端（开发树里
+# 没有烘焙缓存，必然 miss，所有图元因 "unresolved runtime pipeline" 被跳过）。
+# 实证：SimpleSphere.exe 中搜不到 ULRE_SHADER_BUILD_BACKEND / BuildGenericMaterial /
+# options.glsl，却能搜到 "No shader program build backend installed"。
+# 注意发行形态（ULRE_ENABLE_SHADERGEN=OFF）没有这个目标，钩子保持为空是**正确**行为：
+# 那时由 EnsureShaderProgramManifestBackend() 装 manifest 后端读预烘焙缓存。
+# 只对聚合入口做整库链接；直接 PRIVATE 链接 ULRE.ShaderGen 且确实调用了生成器 API 的
+# 工具/回归门不受影响（它们本来就按需取 TU）。
 IF(ULRE_ENABLE_SHADERGEN)
-    SET(ULRE_SHADERGEN ULRE.ShaderGen)
+    SET(ULRE_SHADERGEN "$<LINK_LIBRARY:WHOLE_ARCHIVE,ULRE.ShaderGen>")
 ELSE()
     SET(ULRE_SHADERGEN "")
 ENDIF()

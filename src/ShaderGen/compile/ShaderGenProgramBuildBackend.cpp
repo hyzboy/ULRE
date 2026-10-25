@@ -104,9 +104,11 @@ namespace
          * 把上面的安装器注册成编译器插件的生命周期钩子。
          *
          * 编译器桥（ULRE.ShaderCompiler）不认识任何后端；钩子是唯一的连接方式。
-         * 注册对象是 TU 级静态量 ⇒ 在 InitShaderCompiler() 之前必然已构造完毕
-         * （包括 AppFramework 在 main 之前的初始化），发行形态整个 TU 不存在，
-         * 钩子保持为空，编译器照常工作而不装任何后端。
+         * 注册对象是 TU 级静态量，构造发生在 main 之前，因此 InitShaderCompiler() 被调用时
+         * 钩子必然已经就位——**前提是这个 TU 真的被链接进可执行文件**。它没有任何对外符号，
+         * 静态库链接器会把整个 TU 丢掉，所以聚合入口 ULRE::Engine 对 ULRE.ShaderGen 使用
+         * $<LINK_LIBRARY:WHOLE_ARCHIVE,...>（见根 CMakeLists.txt 的 ULRE_SHADERGEN）。
+         * 发行形态整个 TU 不存在，钩子保持为空，编译器照常工作而不装任何后端。
          */
         struct ShaderGenBackendLifecycleRegistration
         {
