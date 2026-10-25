@@ -66,6 +66,7 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
   的加载顺序。采样器槽表本来就在 `DomainContracts[]` 里是静态数据，物理固定即可彻底消除该隐患。
 
 ### 1.2 唯一允许的动态物：极简 `options.glsl`
+
 全套着色器编译中，C++ 端**唯一允许动态生成**的产物是一个不到 20 行的配置头，落到
 `<include-root>/generated/options.glsl`。主着色器用固定的一行包含它：
 
@@ -73,13 +74,17 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
 #include "generated/options.glsl"
 ```
 
+发射器只有一处：`hgl::graph::mtl::EmitDomainOptions(const DomainOptionsInput &, AnsiString &)`
+（`inc/hgl/mtl/DomainOptions.h` + `src/ShaderMaterialData/DomainOptionsEmitter.cpp`）。
+它**不接收** `MaterialDomain` / `MaterialRecipe`：recipe 只是在 BDA 行里描述实例，
+反查 recipe 会让这一层重新长出领域知识。调用侧先用
+`ApplyRenderStateToDomainOptions()` 把 `ResolvedMaterialRenderState` 压平进输入，
+再用 `ResolveDomainOptionsProfile()` 定 profile。
+
 协议内容只有两类，**没有任何算法逻辑、没有任何 `const` 变量、没有任何非 `#define` 之外的声明**：
 
 ```glsl
-// options.glsl —— StandardOpaque / ForwardColor 的一个具体实例
-#define HGL_MATERIAL_HAS_VERTEX_NORMAL 1
-#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1
-#define HGL_USE_SCENE_LIGHTING 1
+// options.glsl —— StandardOpaque / ForwardColor 的一个具体实例（真实发射结果）
 #define MTL_TEX_NORMAL_CHANNELS 2
 #define HGL_SHADOW_PCF_POISSON_TAPS 16
 #define HGL_SHADOW_NORMAL_OFFSET 1
@@ -87,6 +92,30 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
 #define HGL_ALPHA_CUTOFF 0.500000
 #include "lighting/indirect_sky_ambient.glsl"     // ← 环境光 provider（多态 include）
 ```
+
+**发射顺序即 program 身份**（`ComputeShaderConfigHash` 是对该文本做哈希），改动必须过
+`scripts/ci/verify-domain-master-shaders.ps1`：
+
+1. `#define HGL_COVERAGE_ONLY 1` —— 仅 `ShadowCaster`
+2. `#define HGL_MATERIAL_FACE_NORMAL_FALLBACK 1` —— 顶点无法线时
+3. `#define MTL_TEX_<SLOT>_CHANNELS <n>` —— `ShadowCaster` 整段跳过；`channels == 0` 整条跳过
+4. `#define HGL_SHADOW_PCF_POISSON_TAPS` / `HGL_SHADOW_NORMAL_OFFSET` —— 非 `ShadowCaster` 且启用 PCF
+5. `#define HGL_ALPHA_TEST 1` + `#define HGL_ALPHA_CUTOFF <%f>`
+6. `#define HGL_ALPHA_DITHER 1`
+7. `#define HGL_ALPHA_OUTPUT 1`
+8. `#include "<ambient>"` —— 仅 `ForwardLit`，全文件唯一一行 include
+
+`DomainOptionsProfile` 路由（镜像 `SelectSceneRenderTemplateRequest`）：
+
+| 条件 | profile | 输出 |
+|---|---|---|
+| 深度用途 | `ShadowCaster` | 覆盖标记 + alpha |
+| 非深度、有 NTB provider | `ForwardLit` | 通道数 + 阴影参数 + alpha + ambient include |
+| 非深度、有 surface provider、无 NTB | `ForwardUnlit` | 同上去掉 ambient include |
+| 都没有 | `None`（Sky） | **空文件，一个字节都不发** |
+
+**已删除的两个宏**：`HGL_USE_MATERIAL_SOURCE_PROVIDER` / `HGL_USE_SCENE_LIGHTING`
+在 `ShaderLibrary` 里**零消费者**，属于旧生成期的死宏，不再发射。
 
 硬约束（实测得出，不可再犯）：
 
@@ -98,8 +127,18 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
 3. 它只承载**按 program 变化**的量（覆盖判定开关、阴影采样参数、法线贴图通道数、环境光
    provider）。材质业务参数（颜色、粗糙度乘数、贴图索引）一律走运行时 BDA，**绝不进这里**。
 4. `HGL_ALPHA_CUTOFF` 用 `#define`（`alpha_compositor.glsl` 在家守卫内直接比 `alpha < HGL_ALPHA_CUTOFF`）。
+5. 数字格式锁死：整数 `%u`；浮点 `%f`（六位小数）。这是逐字节兼容旧产物的前提。
+6. `channels == 0` **必须整条跳过**，因为下游全部按"宏存在即非零"判断
+   （`ntb_tangent_vbo_normalmap.glsl` 只用 `== 2` 才走双通道重建）。
+7. 成功路径**整体覆盖**输出（`None` ⇒ 清空）；任何拒绝（缺 ambient 路径、非法槽名）都不得
+   留下半截文本。
 
-### 1.3 绝大部分分支走“多态 include”与“空对象（Null Object）”，彻底消灭 `#if`
+`HGL_MATERIAL_HAS_VERTEX_NORMAL` **不在本协议内**：它描述顶点格式而非 recipe，走
+`MaterialDefinition::compile_defines` 那条独立通道（`MaterialShaderEmitter::BuildCompileDefineDocument`）。
+
+回归门：`DomainOptionsRegression`（独立 target，只链接 `ULRE.ShaderMaterialData`，
+ShaderGen 删除后照常构建）26 条断言；`--write-options <dir>` 供等价性脚本直接消费发射结果。
+## 1.3 绝大部分分支走“多态 include”与“空对象（Null Object）”，彻底消灭 `#if`
 除硬件管线必须依赖的 Alpha 覆盖（`discard` / Dither）外，所有光照与环境算法**绝不使用 `#if / #else` 条件编译**，而是包含一个「空对象」模块。现已具备的空对象（实测存在的文件名，不要臆造其它名字）：
 
 | 关闭的东西 | 包含的文件 | 语义 |

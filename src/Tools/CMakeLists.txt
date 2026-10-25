@@ -6,6 +6,10 @@ add_subdirectory(GLTFConvert)
 # 在开发形态就暴露成链接错误，而不是等到打发行包时才发现。
 add_subdirectory(RuntimeFormProbe)
 
+# options.glsl 发射器回归门：只链接 ULRE.ShaderMaterialData，两种形态下都构建 ——
+# options 是发行形态也要用到的 program 身份，绝不能反向依赖生成器。
+add_subdirectory(DomainOptions)
+
 # ShaderGen 回归门/工具：直接链接 ULRE.ShaderGen，发行形态（ULRE_ENABLE_SHADERGEN=OFF）下不构建。
 IF(ULRE_ENABLE_SHADERGEN)
     add_subdirectory(ShaderGen)

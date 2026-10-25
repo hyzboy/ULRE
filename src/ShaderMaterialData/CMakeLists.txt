@@ -33,6 +33,12 @@ set(SHADERMATERIALDATA_FILES
     # 因此发行形态也必须链接（与 MaterialDefinitionFile 同层）。
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDomain.h
     MaterialDomain.cpp
+    # 主着色器的唯一可变输入（generated/options.glsl）。它**发射 GLSL 文本**，
+    # 是本层「零 GLSL 文本发射」表述的唯一例外，但边界仍然干净：发射的是一份
+    # 十几行的宏表（兼作 program 身份），不是可执行着色器源码 —— 本层依旧零
+    # glslang、零模板拼装，发行形态（ULRE_ENABLE_SHADERGEN=0）照常链接。
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/DomainOptions.h
+    DomainOptionsEmitter.cpp
     # ── 渲染模板解析 ──
     ${ROOT_INCLUDE_PATH}/hgl/mtl/RenderTemplate.h
     RenderTemplate.cpp

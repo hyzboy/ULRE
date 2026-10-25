@@ -58,35 +58,17 @@ if (-not $SkipDump) {
 }
 
 # ── 2. 每个 pass 形状的 options.glsl ──
-# 与 DomainOptionsEmitter 将来的输出格式一一对应，见
-# doc/shadergen-elimination-domain-fixed-architecture.md §1.2
-$fwdCommon = @(
-    '#define HGL_MATERIAL_HAS_VERTEX_NORMAL 1',
-    '#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1',
-    '#define HGL_USE_SCENE_LIGHTING 1',
-    '#define MTL_TEX_NORMAL_CHANNELS 2',
-    '#define HGL_SHADOW_PCF_POISSON_TAPS 16',
-    '#define HGL_SHADOW_NORMAL_OFFSET 1',
-    '#include "lighting/indirect_sky_ambient.glsl"'
-)
-$variants = [ordered]@{
-    'fwd'           = $fwdCommon
-    'fwd-alpha'     = $fwdCommon + @('#define HGL_ALPHA_TEST 1', '#define HGL_ALPHA_CUTOFF 0.500000')
-    'shadow'        = @('#define HGL_COVERAGE_ONLY 1')
-    'shadow-masked' = @(
-        '#define HGL_MATERIAL_HAS_VERTEX_NORMAL 1',
-        '#define HGL_COVERAGE_ONLY 1',
-        '#define HGL_ALPHA_TEST 1',
-        '#define HGL_ALPHA_CUTOFF 0.500000'
-    )
-    'sky'           = @()
+# **由生产者自己生成**：DomainOptionsRegression --write-options 直接调用
+# EmitDomainOptions（与将来运行时同一条代码路径），脚本不再手抄宏表 ——
+# 手抄的表会和发射器悄悄漂移，等价性验收就失去意义。
+$optExe = Join-Path $root "$BuildDir/out/Windows_64_$Config/DomainOptionsRegression.exe"
+if (-not (Test-Path $optExe)) {
+    throw "找不到 $optExe —— 先构建 DomainOptionsRegression。"
 }
-foreach ($k in $variants.Keys) {
-    $d = Join-Path $work "$k/generated"
-    New-Item -ItemType Directory -Force $d | Out-Null
-    $text = ($variants[$k] -join "`r`n")
-    if ($text.Length -gt 0) { $text += "`r`n" }
-    [IO.File]::WriteAllText((Join-Path $d 'options.glsl'), $text, (New-Object Text.UTF8Encoding($false)))
+$variants = & $optExe --write-options $work 2>&1
+if ($LASTEXITCODE -ne 0) {
+    $variants | Select-Object -Last 20 | Write-Host
+    throw "DomainOptionsRegression --write-options 失败（exit=$LASTEXITCODE）。"
 }
 
 # ── 3. 编译 + 比对 ──

@@ -32,10 +32,10 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::SurfaceProvider }
         };
 
-        // ForwardLit 的 defines 恒为 "HGL_USE_MATERIAL_SOURCE_PROVIDER 1"（
-        // FragmentTemplateComposer::BuildFragmentDefines 按模板分支发射），故表中该槽
-        // 必须保持 required=true：置 false 会让定义里承诺恒为 1 的宏指向缺失模块。
-        // 必需性判定的唯一执行点 = BuildAllSlotIncludeText。
+        // MaterialSourceProvider 在 ForwardLit 的固定 include 表里是必需槽：
+        // 主着色器已物理 include material_surface.glsl 并调用其 EvalSurface，
+        // 缺了 provider 就会在链接期才炸，所以表里保持 required=true。
+        // 必需性判定的唯一执行点 = ValidateSceneRenderTemplateRequest。
         //
         // AmbientOcclusionProvider 在所有 forward 光照模板里都是必需槽：
         // forward_lighting.glsl 无条件接线 `GetAmbientOcclusion`，“本模板不做 AO”
