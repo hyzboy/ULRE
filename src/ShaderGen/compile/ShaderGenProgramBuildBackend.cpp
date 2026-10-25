@@ -78,26 +78,26 @@ namespace
         /// 生命周期钩子两端的**选择器**：安装时读一次环境变量并记住结论，
         /// 卸载必须装/卸对称（`SetShaderProgramBuildBackend(nullptr)` 对错的
         /// 后端调用会把槽位清空但漏掉释放器，或反之）。
-        bool g_use_domain_build_backend = false;
+        bool g_use_shadergen_build_backend = false;
 
         void InstallSelectedShaderProgramBuildBackend()
         {
-            g_use_domain_build_backend = IsDomainShaderBuildBackendRequested();
+            g_use_shadergen_build_backend = IsShaderGenBuildBackendRequested();
 
-            if (g_use_domain_build_backend)
-                InstallDomainShaderBuildBackend();
-            else
+            if (g_use_shadergen_build_backend)
                 InstallShaderGenProgramBuildBackend();
+            else
+                InstallDomainShaderBuildBackend();
         }
 
         void UninstallSelectedShaderProgramBuildBackend()
         {
-            if (g_use_domain_build_backend)
-                UninstallDomainShaderBuildBackend();
-            else
+            if (g_use_shadergen_build_backend)
                 UninstallShaderGenProgramBuildBackend();
+            else
+                UninstallDomainShaderBuildBackend();
 
-            g_use_domain_build_backend = false;
+            g_use_shadergen_build_backend = false;
         }
 
         /**

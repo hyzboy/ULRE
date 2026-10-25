@@ -21,9 +21,11 @@ namespace hgl::graph::mtl
 
     /// 「不生成着色器」的后端（阶段 3.1）。它同样需要构建上下文与 SPV 释放器，
     /// 与前者的唯一区别是**片段阶段用领域固定主着色器 + options**，不做拼装。
-    /// 两者互斥（`SetShaderProgramBuildBackend` 先装先得），由环境变量
-    /// `ULRE_SHADER_BUILD_BACKEND=domain` 选择；默认仍是生成器后端。
-    bool IsDomainShaderBuildBackendRequested();
+    /// 两者互斥（`SetShaderProgramBuildBackend` 先装先得）。
+    ///
+    /// 阶段 5.1 起默认即此后端；生成器后端只在显式设置
+    /// `ULRE_SHADER_BUILD_BACKEND=shadergen` 时才被选中，供阶段 5.2 删除前的对照。
+    bool IsShaderGenBuildBackendRequested();
     void InstallDomainShaderBuildBackend();
     void UninstallDomainShaderBuildBackend();
 

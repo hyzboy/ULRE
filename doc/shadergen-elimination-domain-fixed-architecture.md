@@ -590,6 +590,18 @@ layout(location=5) in vec4 fragVertexColor;
        `[PASS] release form verified`；门禁 `all` 61/0、`DomainOptionsRegression` 26/0、
        `verify-domain-master-shaders.ps1` 15/15、`ShaderDocumentProductionRegression --full` 通过。
 5. **第五阶段：整体切替与旧代码物理删除**
-   - 将渲染系统底层对接至直通管道。
-   - 一次性物理删除 `src/ShaderGen` 下冗余的生成器、注记解析与 AST 模块。
+   - `5.1` ✅：**默认后端反转为领域后端**。选择器改名为
+     `IsShaderGenBuildBackendRequested()`：未设 `ULRE_SHADER_BUILD_BACKEND` 即返回 `false`，
+     `InstallSelectedShaderProgramBuildBackend()` 走 `InstallDomainShaderBuildBackend()`；
+     生成器后端只在显式 `ULRE_SHADER_BUILD_BACKEND=shadergen` 时可达。
+     保留反向选择器只为 `5.2` 删除前留一条原地回切的对照路径，删除落地后一并消失。
+     实证（避免"没报错即通过"的假验证）：默认运行的日志里会出现
+     `domain-options/<hash>/generated/options.glsl` 与 `domain/vertex_color/vertex_color.frag`，
+     显式选 `shadergen` 时这两行消失、改读 `vertex/s3_clip_passthrough.glsl`——两条路径互斥可见。
+     五个示例如常零着色器错误，门禁 61/0、`DomainOptionsRegression` 26/0、
+     领域主着色器等价 15/15、`verify-release-form.ps1` 全 5 步 `[PASS]`。
+     注意：本次未动 `ShaderGenProgramBuildBackend.cpp` 里的生命周期注册对象，
+     `5.2` 删除它时必须把注册与选择器迁到存活的 `DomainShaderBuildBackend.cpp`。
+   - `5.2`（待办）：将渲染系统底层对接至直通管道后，一次性物理删除 `src/ShaderGen`
+     下冗余的生成器、注记解析与 AST 模块。
 

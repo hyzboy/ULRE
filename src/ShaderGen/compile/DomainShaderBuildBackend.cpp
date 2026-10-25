@@ -60,8 +60,12 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        /// 后端选择器：值为 `domain` 时用本文件的后端，否则沿用生成器后端。
-        /// 默认（未设置）必须保持原行为——废除生成器是阶段五的事。
+        /// 后端选择器。阶段 5.1 起**默认就是领域后端**：未设置时返回 false，
+        /// 只有显式写 `ULRE_SHADER_BUILD_BACKEND=shadergen` 才回到生成器。
+        ///
+        /// 之所以保留这个反向选择器而不是删掉：阶段 5.2 要物理删除生成器，
+        /// 在删除落地前需要一条能原地切回去的对照路径，用来证明「同一份材质
+        /// 换后端后的产物差异只来自拼装方式」。删除完成后该项一并消失。
         constexpr const char *kBackendSelectorEnvironmentVariable =
             "ULRE_SHADER_BUILD_BACKEND";
 
@@ -625,13 +629,13 @@ namespace hgl::graph::mtl
         return BuildDomainOptions(definition, request, domain, purpose, out_text);
     }
 
-    bool IsDomainShaderBuildBackendRequested()
+    bool IsShaderGenBuildBackendRequested()
     {
         const char *selector = getenv(kBackendSelectorEnvironmentVariable);
         if (!selector || !selector[0])
             return false;
 
-        return std::strcmp(selector, "domain") == 0;
+        return std::strcmp(selector, "shadergen") == 0;
     }
 
     void InstallDomainShaderBuildBackend()
