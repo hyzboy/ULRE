@@ -218,11 +218,6 @@ private:
     }
 
 public:
-    ~SimpleSphereApp()
-    {
-        SAFE_CLEAR(sphere_geometry)
-    }
-
     bool Init() override
     {
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));

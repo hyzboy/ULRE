@@ -1874,3 +1874,45 @@ Test 29（22 条契约）与 Test 34（5 条契约）第一次真正执行而不
 | `git diff --check` | 无空白错误；活动源码/构建配置中不再引用 `src/ShaderGen`、`ULRE.ShaderGen` 或旧的编译器/组装器 API |
 
 **剩余**：8.3 完成；下一步进入阶段九，全量示例与发行形态验收。
+
+## 阶段九-1：全量示例运行与缺失形状补齐
+
+> **状态**：✅ 示例清单通过。8 个目标均以当前源码重建并启动；每个进程都初始化 GPU cull、退出码为 0，日志中没有 shader 构建失败、缺失 master 或 unresolved pipeline。
+
+### 1. LoadGeometry 揭示的形状缺口
+
+`LoadGeometry` 的包围盒线框使用 `builtin/pure_color` + `PrimitiveType::Lines`。它同时要求 `dataid` varying，因而实际 shape 是 `linequad_256_dataid`；已有 corpus 只有 `linequad_256_color` 与 `linequad_256_plain`。首次运行稳定报：
+
+```
+fixed mesh master source is missing or unreadable: mesh/shape/linequad_256_dataid.mesh
+AcquireShaderProgram failed for BBox_0 ... unresolved runtime pipeline
+```
+
+新增 `ShaderLibrary/mesh/shape/linequad_256_dataid.mesh`：位置/变换仍由 mesh options 提供，几何复用 `line_quad_body.glsl`，两个 per-primitive 三角形都写入 `gl_InstanceIndex`。`emit-fixed-mesh` 的形状矩阵追加了 `load-geometry-wire`，以后缺失该 shape 会直接失败。
+
+### 2. 示例析构时 Geometry 所有权冲突
+
+首次关闭窗口时，`SimpleSphere`、`BasicLitMeshes`、`LoadGeometry` 均出现应用退出期 access violation。Windows dump 符号栈指向的根因是 Geometry 的双重/逆序释放，而不是 shader 或驱动编译：
+
+- `SimpleSphere` 已将球体交给 `GeometryManager`，应用析构又 `SAFE_CLEAR(sphere_geometry)`；移除重复释放。
+- `BasicLitMeshes` 的 `MeshEntry` 同样不拥有 Geometry；移除其析构删除，并在释放 `VertexDataManager` 前让 `GeometryManager` 先清理 Geometry，避免 `GeometryDataVDM` 析构时回调已释放的 VDM。
+- `LoadGeometry` 的 bbox Geometry 已由 `GeometryManager` 管理，移除应用析构中的重复 `delete`；文件载入 Geometry 仍由对应 mesh entry 持有。
+
+### 3. 示例验收
+
+| 示例 | 运行方式 / 结果 |
+| --- | --- |
+| `DrawTriangle` | Debug 重建；启动并正常关闭，rc=0 |
+| `AutoInstance` | Debug 重建；启动并正常关闭，rc=0 |
+| `AutoMergeMaterialInstance` | Debug 重建；启动并正常关闭，rc=0 |
+| `SimpleSphere` | Debug 重建；启动并正常关闭，rc=0（原退出期 AV 已消除） |
+| `BasicLitMeshes` | Debug 重建；启动并正常关闭，rc=0（VDM/Geometry 销毁顺序已修正） |
+| `PBRSpheres` | `PBR_FRAMES=8`；rc=0，GPU cull 已初始化 |
+| `LoadGeometry` | Debug 重建；线框 master 被加载并编译，启动/关闭 rc=0 |
+| `LoadScene` | `LS_FRAMES=8`；帧数完成并 rc=0，GPU cull 已初始化 |
+
+8 个运行日志均为 **0** shader/pipeline 错误；每个都出现 `GPUCullSystem Initialized`。固定 mesh 覆盖门 `emit-fixed-mesh` → `covered=36 missing=0 failed=0`；gate `all` → `59 PASS / 0 FAIL`。
+
+**非门禁观察**：单独运行 Debug `PBRSpheres` 的 `PBR_SELFCHECK=1` 时，画面非空（`distinct_byte_values=256`），但当前设备得到 FNV `0x5EE2B4F88E551284`，与源码冻结值 `0x3DD88A0999CDC486` 不同。此阶段的图形 smoke 用定帧 `PBR_FRAMES=8` 验证管线与 GPU cull，不把跨配置/设备像素摘要当作 shader 构建判据；阶段九-2 仍需按发布形态脚本单独验收。
+
+**剩余**：9.1 完成；继续执行阶段九-2 的全门禁与发行形态验证。

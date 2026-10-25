@@ -55,11 +55,6 @@ private:
     {
         Geometry* geometry = nullptr;
         PrimitiveAsset asset{};
-
-        ~MeshEntry()
-        {
-            delete geometry;
-        }
     };
 
     ECSContext* ecs_context = nullptr;
@@ -490,6 +485,10 @@ private:
 public:
     ~BasicLitMeshesApp()
     {
+        // GeometryDataVDM releases its ranges through mesh_vdm when GeometryManager
+        // destroys the geometries, so clear that owner before releasing the manager.
+        if (auto* geometry_manager = GetManager<GeometryManager>())
+            geometry_manager->Release();
         SAFE_CLEAR(mesh_vdm)
     }
 

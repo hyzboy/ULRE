@@ -2240,6 +2240,9 @@ namespace
         {VertexSemantic::Position, VF_V3F},
         {VertexSemantic::Color,    VF_V4UN8}
     };
+    static const GeometryVertexFormat kCacheIdentityPureColorGeometry{
+        {VertexSemantic::Position, VF_V3F}
+    };
 
     static GateResult RunAuthoritativeMaterialCacheIdentityCase()
     {
@@ -11393,6 +11396,7 @@ void main()
         const char *label;
         const char *definition_id;
         const GeometryVertexFormat *geometry;
+        PrimitiveType primitive_type = PrimitiveType::Triangles;
     };
 
     static const CacheIdentityEmitShape kCacheIdentityEmitShapes[] =
@@ -11401,6 +11405,8 @@ void main()
         { "cache-lit-abi-b",   "Lit",         &kCacheIdentityLitGeometryB },
         { "cache-lit-abi-std", "Lit",         &kCacheIdentityLitGeometryStandard },
         { "cache-color",       "VertexColor", &kCacheIdentityColorGeometry },
+        { "load-geometry-wire", "builtin/pure_color",
+          &kCacheIdentityPureColorGeometry, PrimitiveType::Lines },
     };
 
     /// 覆盖率检查：某个已构建上下文的网格阶段文本，是否已在固定源库里有一份
@@ -11462,7 +11468,7 @@ void main()
     ///     后者的几何是**由领域契约推导**的，与前者手写的几何不是同一份请求，
     ///     形状自然也不同（`builtin/error_checkerboard_3d` 就是这么漏掉的：
     ///     它只出现在领域后端矩阵里，第一次跑「缺源即失败」才现形）；
-    ///   · `kCacheIdentityEmitShapes`——缓存身份门用的四种 ABI。
+    ///   · `kCacheIdentityEmitShapes`——缓存身份 ABI 与 LoadGeometry 线框形状。
     ///
     /// 本探针**只读**。七-2 之后形状 master 是按形状命名、人工维护的物理源，
     /// 不再有「按哈希键把生成结果落盘」这件事；留着写盘分支只会把
@@ -11592,6 +11598,7 @@ void main()
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = shape.geometry;
+            request.primitive_type = shape.primitive_type;
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
             request.defer_finalize = true;
 

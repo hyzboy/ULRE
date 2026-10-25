@@ -383,11 +383,6 @@ private:
     }
 
 public:
-    ~LoadGeometryApp()
-    {
-        delete bbox_geometry;
-    }
-
     bool Init() override
     {
         InitMaterialRecipes();
