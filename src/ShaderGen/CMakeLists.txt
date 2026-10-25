@@ -57,6 +57,8 @@ set(COMPILE_FILES
     ${ROOT_INCLUDE_PATH}/hgl/ShaderCompilerAPI.h
     compile/GLSLCompiler.h
     compile/GLSLCompiler.cpp
+    compile/ShaderReflectionData.h
+    compile/ShaderReflectionData.cpp
     compile/ShaderCreateInfoCompile.cpp
     compile/ShaderGenProgramBuildBackend.cpp
     compile/TBuiltInResourceCompat.h
@@ -167,3 +169,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"
 target_link_libraries(ULRE.ShaderGen PUBLIC ULRE.ShaderRuntimeContract
                                             ULRE.ShaderMaterialData
                                             ULRE.Debug)
+target_include_directories(ULRE.ShaderGen PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)

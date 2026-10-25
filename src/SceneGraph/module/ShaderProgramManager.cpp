@@ -9,6 +9,9 @@
 // OFF 时 CMake 全局下发 0。必须显式包含，不能靠间接包含 —— 否则开发形态会
 // 误判为 0，把 compute 的现编路径整条摘掉。
 #include<hgl/common/RenderOptions.h>
+#if ULRE_ENABLE_SHADERGEN
+#include "GLSLCompiler.h"
+#endif
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -369,6 +372,24 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
     if(!sci.CompileFinalGLSLToSPV())
         return(nullptr);
 
+    uint32_t reflected_push_constant_size = 0;
+    if(!GetSPVPushConstantEnd(
+            sci.GetSPVData(),
+            sci.GetSPVSize(),
+            VK_SHADER_STAGE_COMPUTE_BIT,
+            reflected_push_constant_size))
+        return(nullptr);
+
+    if(reflected_push_constant_size != push_constant_size)
+    {
+        GLogError(u8"[ShaderProgramManager] compute push constant size mismatch: "
+                  u8"shader=%u requested=%u (%s)",
+                  reflected_push_constant_size,
+                  push_constant_size,
+                  shader_module_name.c_str());
+        return(nullptr);
+    }
+
     // 顺手烘焙：开发形态每跑一次就把 compute 产物写进 shader-cache，
     // 发行形态才有 compute_manifest 可查。只读 store（ULRE_SHADER_CACHE_MODE=readonly）
     // 下 Record 内部直接拒绝，不会污染既有缓存。
@@ -377,7 +398,7 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
                                                 shader_module_name.c_str(),
                                                 sci.GetSPVData(),
                                                 static_cast<uint64>(sci.GetSPVSize()),
-                                                push_constant_size);
+                                                reflected_push_constant_size);
 
     return(CreateShaderModule(shader_module_name,&sci));
 #else

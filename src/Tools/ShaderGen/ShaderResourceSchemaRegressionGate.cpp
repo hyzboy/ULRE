@@ -38,6 +38,9 @@
 #include <hgl/filesystem/Path.h>
 #include <hgl/time/Time.h>
 #include <hgl/mtl/ShaderStructureDump.h>
+#include "ShaderGen/compile/GLSLCompiler.h"
+#include "ShaderGen/compile/ShaderReflectionData.h"
+#include "SPVParseFlat.h"
 #include <fstream>
 #include <filesystem>
 #include "ShaderGen/builder/GenericMaterialBuilder.h"
@@ -211,6 +214,7 @@ namespace
             || std::strcmp(group, "cache") == 0
             || std::strcmp(group, "materialization") == 0
             || std::strcmp(group, "pipeline") == 0
+            || std::strcmp(group, "reflection") == 0
             || std::strcmp(group, "module-invariants") == 0;
     }
 
@@ -7301,6 +7305,183 @@ namespace
         return result;
     }
 
+    static GateResult RunSPVReflectionCase()
+    {
+        GateResult result;
+        result.name = "SPV.reflection-api";
+
+        static constexpr char shader_source[] = R"GLSL(#version 460
+layout(location = 0) in vec3 in_position;
+layout(location = 1) out vec3 out_position;
+layout(set = 0, binding = 7, std140) uniform ReflectionProbe
+{
+    vec4 tint;
+} probe;
+layout(push_constant) uniform ReflectionPush
+{
+    vec4 offset;
+} push_data;
+
+void main()
+{
+    vec3 position = in_position + probe.tint.xyz + push_data.offset.xyz;
+    out_position = position;
+    gl_Position = vec4(position, 1.0);
+}
+)GLSL";
+
+        SPVData *spv = CompileShader(
+            static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT), shader_source);
+        if (!spv)
+        {
+            result.diagnostics.emplace_back("failed to compile reflection probe GLSL");
+            return result;
+        }
+
+        hgl::ValueArray<uint8_t> flat_storage;
+        ShaderFlatView view{};
+        const bool reflected = ReflectSPVData(
+            spv,
+            static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT),
+            "main",
+            flat_storage,
+            view);
+        FreeSPVData(spv);
+
+        if (!reflected)
+        {
+            result.diagnostics.emplace_back("ReflectSPVData failed");
+            return result;
+        }
+
+        hgl::graph::mtl::ShaderReflectionData extracted;
+        if (!extracted.Extract(view))
+        {
+            result.diagnostics.emplace_back("ShaderReflectionData extraction failed");
+            return result;
+        }
+        flat_storage.Clear();
+
+        if (extracted.shader_stage != static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT)
+         || std::strcmp(extracted.entrypoint.c_str(), "main") != 0)
+            result.diagnostics.emplace_back("reflection stage or entrypoint mismatch");
+
+        if (extracted.stage_inputs.GetCount() != 1
+         || extracted.stage_inputs[0].location != 0
+         || extracted.stage_inputs[0].basetype != SF_BASETYPE_FLOAT
+         || extracted.stage_inputs[0].vec_size != 3)
+            result.diagnostics.emplace_back("vertex input reflection mismatch");
+
+        if (!extracted.FindDescriptor(
+                SF_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, 7))
+            result.diagnostics.emplace_back("uniform-buffer set/binding reflection mismatch");
+
+        bool found_output = false;
+        for (int i = 0; i < extracted.stage_outputs.GetCount(); ++i)
+        {
+            if (extracted.stage_outputs[i].location == 1
+             && extracted.stage_outputs[i].basetype == SF_BASETYPE_FLOAT
+             && extracted.stage_outputs[i].vec_size == 3)
+            {
+                found_output = true;
+                break;
+            }
+        }
+        if (!found_output)
+            result.diagnostics.emplace_back("vertex output reflection mismatch");
+
+        uint32_t push_constant_end = 0;
+        if (extracted.push_constants.GetCount() != 1
+         || extracted.push_constants[0].offset != 0
+         || !extracted.GetPushConstantEnd(push_constant_end)
+         || push_constant_end < sizeof(float) * 4)
+            result.diagnostics.emplace_back("push-constant reflection mismatch");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunSPVBufferReferenceReflectionCase()
+    {
+        GateResult result;
+        result.name = "SPV.buffer-reference-reflection";
+
+        static constexpr char shader_source[] = R"GLSL(#version 460
+#extension GL_EXT_buffer_reference : require
+#extension GL_ARB_gpu_shader_int64 : require
+
+layout(buffer_reference, scalar, buffer_reference_align = 16) buffer PayloadRow
+{
+    vec4 color;
+};
+layout(push_constant) uniform RootAddresses
+{
+    uint64_t addr_payload;
+} pc_root;
+layout(location = 0) out vec4 out_color;
+
+void main()
+{
+    PayloadRow row = PayloadRow(pc_root.addr_payload);
+    out_color = row.color;
+    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+}
+)GLSL";
+
+        SPVData *spv = CompileShader(
+            static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT), shader_source);
+        if (!spv)
+        {
+            result.diagnostics.emplace_back(
+                "failed to compile buffer-reference reflection probe");
+            return result;
+        }
+
+        hgl::ValueArray<uint8_t> flat_storage;
+        ShaderFlatView view{};
+        const bool reflected = ReflectSPVData(
+            spv,
+            static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT),
+            "main",
+            flat_storage,
+            view);
+        FreeSPVData(spv);
+        if (!reflected)
+        {
+            result.diagnostics.emplace_back(
+                "buffer-reference SPIR-V reflection failed");
+            return result;
+        }
+
+        hgl::graph::mtl::ShaderReflectionData extracted;
+        if (!extracted.Extract(view))
+        {
+            result.diagnostics.emplace_back(
+                "buffer-reference reflection extraction failed");
+            return result;
+        }
+
+        for (uint32_t type = 0; type < SF_DESCRIPTOR_TYPE_COUNT; ++type)
+        {
+            if (!extracted.resources[type].IsEmpty())
+            {
+                result.diagnostics.emplace_back(
+                    "buffer_reference was unexpectedly reported as a descriptor resource");
+                break;
+            }
+        }
+
+        uint32_t push_constant_end = 0;
+        if (extracted.push_constants.GetCount() != 1
+         || !extracted.GetPushConstantEnd(push_constant_end)
+         || push_constant_end != sizeof(uint64_t))
+            result.diagnostics.emplace_back(
+                "buffer-reference address push-constant reflection mismatch");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
         // ══════════════════════════════════════════════════════════════════════
     // MV.mesh-varying-writability
     //
@@ -8776,6 +8957,25 @@ namespace
         }
 
         const uint64_t spv_size = static_cast<uint64_t>(sci.GetSPVSize());
+        uint32_t reflected_push_constant_size = 0;
+        if (!GetSPVPushConstantEnd(
+                sci.GetSPVData(),
+                sci.GetSPVSize(),
+                VK_SHADER_STAGE_COMPUTE_BIT,
+                reflected_push_constant_size))
+        {
+            result.diagnostics.emplace_back(
+                "compute SPIR-V push-constant reflection failed");
+            result.passed = false;
+            return result;
+        }
+        if (reflected_push_constant_size != kPushConstantSize)
+        {
+            result.diagnostics.emplace_back(
+                "reflected compute push-constant extent differs from CullPushConstants");
+            result.passed = false;
+            return result;
+        }
 
         std::error_code ec;
         if (!keep_artifacts)
@@ -8789,7 +8989,8 @@ namespace
             MakeShaderComputeProgramManifestPath(store.GetRootPath());
 
         if (!RecordShaderComputeProgramArtifact(
-                store, kProgramName, sci.GetSPVData(), spv_size, kPushConstantSize))
+                store, kProgramName, sci.GetSPVData(), spv_size,
+                reflected_push_constant_size))
         {
             result.diagnostics.emplace_back(
                 "failed to record the compute artifact");
@@ -8799,7 +9000,8 @@ namespace
 
         // 重复烘焙同一份产物必须幂等：清单不该长出第二条，文件也不该被改坏。
         if (!RecordShaderComputeProgramArtifact(
-                store, kProgramName, sci.GetSPVData(), spv_size, kPushConstantSize))
+                store, kProgramName, sci.GetSPVData(), spv_size,
+                reflected_push_constant_size))
         {
             result.diagnostics.emplace_back(
                 "re-recording the same compute artifact failed");
@@ -8831,7 +9033,7 @@ namespace
         // 只读 store 绝不能回写：哪怕烘焙入口被误调，也必须被拒。
         if (RecordShaderComputeProgramArtifact(
                 readonly_store, kProgramName, sci.GetSPVData(),
-                spv_size, kPushConstantSize))
+                spv_size, reflected_push_constant_size))
             result.diagnostics.emplace_back(
                 "read-only store accepted a compute artifact write");
 
@@ -8854,7 +9056,7 @@ namespace
                 result.diagnostics.emplace_back(
                     "loaded compute SPV bytes differ from the baked bytes");
 
-            if (loaded_push_constant_size != kPushConstantSize)
+            if (loaded_push_constant_size != reflected_push_constant_size)
                 result.diagnostics.emplace_back(
                     "compute push constant contract did not survive the cache");
         }
@@ -9337,6 +9539,7 @@ int main(const int argc, char **argv)
     const bool run_materialization =
         IsRegressionGroupSelected(selected_group, "materialization");
     const bool run_pipeline = IsRegressionGroupSelected(selected_group, "pipeline");
+    const bool run_reflection = IsRegressionGroupSelected(selected_group, "reflection");
     const bool run_module_invariants =
         IsRegressionGroupSelected(selected_group, "module-invariants");
 
@@ -9399,6 +9602,8 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunMaterialBDAEmitterCase());
     if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
+    if (run_reflection) results.push_back(RunSPVReflectionCase());
+    if (run_reflection) results.push_back(RunSPVBufferReferenceReflectionCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_interface) results.push_back(RunMeshVaryingWritabilityCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());

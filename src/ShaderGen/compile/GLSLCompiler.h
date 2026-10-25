@@ -2,8 +2,12 @@
 #define HGL_GLSL_COMPILER_INCLUDE
 
 #include<hgl/type/DataType.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
 #include<hgl/mtl/ShaderCompilerSPVData.h>
+
+struct ShaderFlatView;
+
 namespace hgl
 {
     namespace graph
@@ -13,6 +17,27 @@ namespace hgl
 
         SPVData *   CompileShader   (const uint32 type,const char *source);
         void        FreeSPVData     (SPVData *spv_data);
+
+        // Copies plugin-owned reflection output into flat_storage; out_view
+        // points into that storage and remains valid until it is modified.
+        bool        ReflectSPVData(
+            SPVData *spv_data,
+            uint32 shader_stage,
+            const char *entrypoint,
+            ValueArray<uint8> &flat_storage,
+            ::ShaderFlatView &out_view);
+        bool        ReflectSPVData(
+            const uint32 *spv_data,
+            size_t spv_size,
+            uint32 shader_stage,
+            const char *entrypoint,
+            ValueArray<uint8> &flat_storage,
+            ::ShaderFlatView &out_view);
+        bool        GetSPVPushConstantEnd(
+            const uint32 *spv_data,
+            size_t spv_size,
+            uint32 shader_stage,
+            uint32 &out_end);
     }//namespace graph
 
     namespace graph::mtl

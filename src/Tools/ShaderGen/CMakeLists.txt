@@ -90,6 +90,8 @@ target_link_libraries(ShaderResourceSchemaRegressionGate
             CMCore
             CMMath
             CMCoreType)
+target_include_directories(ShaderResourceSchemaRegressionGate
+    PRIVATE ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)
 
 SetupToolTarget(ShaderResourceSchemaRegressionGate)
 add_dependencies(ShaderResourceSchemaRegressionGate descriptor_macros_verify)
@@ -116,6 +118,7 @@ if(BUILD_TESTING)
             cache
             materialization
             pipeline
+            reflection
             module-invariants)
         add_test(
             NAME shader_resource_schema_regression_gate.${regression_group}

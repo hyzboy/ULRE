@@ -326,8 +326,8 @@ varyings = ["emit_data_index_id"]
 ### 7.1 C++ 裁减清单（废除项）
 - ❌ **废除 ShaderGen 代码拼接引擎**：删除复杂的模块依赖拓扑排序、代码字符串替换引擎。
   **实际达成度（六阶段后复测）**：四条 emission 通路已全部收敛为「`.tmpl` 文本插槽 + 单一真源数据表」，字符串拼接引擎事实上已不存在；剩余 `src/ShaderGen`（42 文件 / 7765 代码行）做的是**装配**（purpose/coverage 解析、vertex ABI、mesh 发射模式、模块依赖图、GLSL include 闭包哈希、program link 组装），不是拼接。
-  更重要的是：**ShaderGen 已从发行形态物理切出**（`ULRE_ENABLE_SHADERGEN=OFF`，`ULRE::Runtime` 永不含它），且有跨进程验收守住这条边界。因此「删除 ShaderGen」在产品层面**已经完成**，剩下的只是开发期工具的体积。
-  原计划「用 `GLSLCompiler.dll` 的 `ParseSPV` 反射替代资源预推断、把 ShaderGen 压成薄装配器」**经核查否决**：描述符契约层早在 2026-10-11（S1）就已删除，没有预推断可替代，而 sampler 名→索引映射是编译**前**的 `#define` 输入，反射（编译后）取不到。证据与实测数据见 `doc/ultra-thin-implementation-status.md` §10.3。
+  发行形态的 `ULRE_ENABLE_SHADERGEN=OFF` 是独立的链接/打包边界，**不计作开发期减化成果**。
+  对反射的窄结论也仅限「用 SPV 推导 per-material descriptor-set-layout」：该布局输出不存在；不据此否决反射替代其他编译期派生状态的可能。2026-10-25 已打通 `GLSLCompiler.dll` 的 `ParseSPV` + `CreateShaderFlat`，新增 `ShaderReflectionData`；compute 烘焙用反射 push-constant extent 校验 CPU ABI 并写入 manifest；门禁覆盖 stage I/O、UBO set/binding、push constant 与 BDA 反射边界。尚未替换材质代码生成逻辑。审计范围与下一步候选见 `doc/ultra-thin-implementation-status.md` §10.3。
 - ❌ **废除磁盘 `*.mi.toml` 母材质定义文件**：不再通过 TOML 配置模块引用和 NTB 策略。
 - ❌ **废除 `MaterialDefinitionFileRegistry`**：将其简化为 `MaterialInstanceRegistry`。
 
@@ -388,17 +388,20 @@ varyings = ["emit_data_index_id"]
    `std::sort` 在 HGL 里没有等价物。局部改只会让仓里一半 HGL 一半 STL，
    因此要么整体迁移（含公共头签名）要么不动，留作独立可评审的改动。
    详见 `doc/ultra-thin-implementation-status.md` §10.2。
-8. ❌ **「用 SPV 反射替代资源预推断」方案已否决（核查完成，不实施）** ——
-   地面核查推翻了两个前提：① `src/ShaderGen` + `inc/hgl/mtl` 里
+8. ⚠️ **SPV 反射减化方向继续审计（第一步已完成）** ——
+   核查只推翻了「反射替代 per-material descriptor layout」这一具体前提：① `src/ShaderGen` + `inc/hgl/mtl` 里
    `VkDescriptorSetLayoutCreateInfo` / `DescriptorSetLayoutBinding` / `CreateDescriptorSetLayout`
    **零命中**，描述符契约层 2026-10-11（S1）就删了；② `VKPipelineLayoutData.cpp::CreateGlobalPipelineLayout()`
    只吃 `bindless_layout`，硬编码「Bindless(0) + 单条 `sizeof(RootAddresses)` 推送区」，
-   **签名里没有材质输入**。`ShaderCodeResourceManifest` 也不是描述符表，而是
+   **签名里没有材质输入**。这只说明没有 per-material descriptor-layout 代码可删，**不说明反射与 ShaderGen 减化无关**。
+   `ShaderCodeResourceManifest` 也不是描述符表，而是
    `code_module_names[]` + `texture_references` + `sampler_references` —— 全是编译**前**
    必须已知的 `#define <Name>Sampler N` 输入，反射（编译后）无从恢复。
-   **产品目标已由 `ULRE_ENABLE_SHADERGEN=OFF` 物理保证**，`scripts/ci/verify-release-form.ps1`
-   跨进程实测 PASS。剩余真实靶子只有删 `ShaderDocument`（173 代码行，占全量 2.6%），
-   代价是丢掉三条 block 排序校验 ⇒ 风险大于收益，不做。
+   2026-10-25 已新增反射桥接与 `ShaderReflectionData` 提取层，并将 compute manifest 的 push-constant size 改为反射后校验并记录；
+   `SPV.reflection-api` / `SPV.buffer-reference-reflection` 与真实 GPU cull compute cache 门禁通过。flat 反射未暴露
+   `buffer_reference` 实际访问信息，所以没有据此改变 payload/runtime-row 标志。
+   下一步应继续逐项审计 stage interface 与 manifest 消费者，并查清 buffer-reference 访问是否能可靠反映，
+   再决定删减边界。
    详见 `doc/ultra-thin-implementation-status.md` §10.3。
 
 阶段 5 的进展：

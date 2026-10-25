@@ -278,3 +278,6 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
                                         ${CM_SG_HEADER}
 
 )
+
+target_include_directories(ULRE.SceneGraph PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/ShaderGen/compile)

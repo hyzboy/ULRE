@@ -3,7 +3,7 @@
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
-> **最后更新**：阶段六收尾 + 「SPV 反射替代 ShaderGen 预推断」可行性核查后（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`；mesh 侧拼接债经复查确认已清空，STL 残留清理判定为需整体迁移、刻意不做。ShaderGen 已**物理切出发行形态**（`ULRE_ENABLE_SHADERGEN=OFF`，跨进程验收 PASS），「用 SPV 反射替代预推断」经核查判定**没有靶子**（见 §10.3）。**
+> **最后更新**：阶段六收尾 + SPV 反射方向重审（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`；mesh 侧拼接债经复查确认已清空，STL 残留清理判定为需整体迁移、刻意不做。2026-10-25 已在 ShaderGen 编译桥接中暴露 SPIR-V 反射并加入端到端门禁，并已接入**第一个真实消费者**：compute 模块烘焙的 push-constant 范围由反射结果决定（见 §10.3）；per-material descriptor-layout 假设经地面核查**没有靶子**，`ShaderDocument` 与 `GenericMaterialBuilder` 两个候选经面积实测**判定不做**。**
 
 ---
 
@@ -14,8 +14,7 @@
 3. 读 **§9 环境与坑**，避免重复踩已记录的坑（尤其是「门禁探针必须报 `domain` key」「模块数常量 `kShaderCodeModuleCount`」「golden 无环境变量开关」「快照 case 必须自己装载 sampler 预设」「`alpha_test` 必须写在模板请求解析之前」）。
 4. 动手前跑三条自检命令（见 §5.1），确认基线是绿的。
 5. **剩余工作见 §10.2** —— mesh 侧骨架经复查判定「已做到该做的程度」（剩余段数来自刻意的单一真源数据表），STL 残留清理经实测判定**必须整体迁移、刻意不做**。
-   **另见 §10.3**：ShaderGen 已从发行形态物理切干净，「用 SPV 反射大幅简化/删除 ShaderGen」经地面核查判定**前提不成立**（描述符契约层 2026-10-11 S1 就已删除，没有预推断可替代）。
-   即当前**没有待办的技术债**，下一步动作需由用户指定（可选：STL 整体迁移、`inc/hgl/mtl/` 公共头清理、4 个 `nullptr` 领域补实现）。
+   **另见 §10.3**：发行形态是否链接 ShaderGen 与开发期减化是两个独立问题；本轮只否决「反射替代 per-material descriptor layout」这一具体假设，不据此否决 SPV 反射用于精简其他编译期派生状态。反射接缝已通并已有一个真实消费者；其余候选（payload-row / runtime-row 标志、stage interface 对照、`ShaderDocument`、`GenericMaterialBuilder` 合并）已逐项审计，结论与理由见 §10.3。
 
 **铁律**：每个阶段/子阶段**独立分支 + 独立提交**；提交用 `git add` 显式列路径（禁 `-A`）；带 `Co-authored-by` trailer。
 
@@ -308,7 +307,7 @@ varying-trimmed material parse failed: InvalidValue key="domain" value="DebugNor
 
 ```powershell
 cd E:\ULRE
-.\build\out\Windows_64_Debug\ShaderResourceSchemaRegressionGate.exe all      # 期望 56 PASS / exit=0
+.\build\out\Windows_64_Debug\ShaderResourceSchemaRegressionGate.exe all      # 期望 58 PASS / exit=0
 .\build\out\Windows_64_Debug\SceneRenderTemplateResolverRegression.exe        # 期望 exit=0
 .\build\out\Windows_64_Debug\ShaderDocumentRegression.exe                     # 期望 exit=0
 .\build\out\Windows_64_Debug\ShaderDocumentProductionRegression.exe           # 期望 exit=0
@@ -324,7 +323,7 @@ cmake --build build --config Debug --target ShaderResourceSchemaRegressionGate -
 
 ### 5.2 当前结果（全部绿，阶段六完成后复测）
 
-- `ShaderResourceSchemaRegressionGate all`：**56 PASS / 0 FAIL，exit=0**（阶段四未增删 case；阶段五新增 `SD.emission-order-golden`，55 → 56；阶段六只在 `D2.shader-config-emit` 内增子用例 ⑥，case 总数不变）
+- `ShaderResourceSchemaRegressionGate all`：**58 PASS / 0 FAIL，exit=0**（阶段六后原有 56 条；2026-10-25 新增 `SPV.reflection-api` 与 `SPV.buffer-reference-reflection`，均在 `reflection` 分组）
 - 五个回归 exe（`SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` / `TestRenderStrategyTable` / `TestMaterialVariantTable`）：**全 exit=0**
 - `TestRenderStrategyTable` / `TestMaterialVariantTable`：**全 exit=0**（这两个覆盖保底链行为断言 —— 未知定义 ID ⇒ 换 `builtin/error_checkerboard_3d`、标记行不可得 ⇒ 降级 `builtin/checkerboard_3d`，是「内嵌定义可用」的最强证据）
 - 实跑 `PBRSpheres` / `TextDraw`：`Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`、`Loaded 82 code modules`、`loaded 34 entries from program_manifest.pmf`、无 GLSL 编译错误
@@ -561,11 +560,11 @@ Case 名与职责：
 - ~~`DirectLightProvider`（legacy role）仍在枚举里~~ → **阶段五已删除**（枚举 + 名称映射 switch）。
 - ~~模块总数 `82` 硬编码在两处~~ → **阶段五已收敛**为 `kShaderCodeModuleCount`（门禁内单一常量）。
 
-### 10.3 「用 SPV 反射大幅简化/删除 ShaderGen」—— 核查后否决
+### 10.3 SPV 反射与 ShaderGen 减化：descriptor-layout 假设已排除，其他候选继续审计
 
 **背景**：超薄架构的原始动机之一是「大幅简化甚至删除 Shader 生成器」。建议方案是：用 `GLSLCompiler.dll` 的 `ParseSPV` 反射出资源绑定，替代 ShaderGen 的「资源预推断」，从而把 ShaderGen 压成薄装配器。
 
-**结论：方案失败在靶子不存在，不在技术。** 逐条证据：
+**范围限定**：以下核查只说明 SPV 反射不能替代「按材质生成 descriptor-set-layout」—— 仓库当前没有这类生成逻辑。这**不等于**「SPV 反射与 ShaderGen 减化无关」；是否能替代其他编译期派生状态，仍需逐项按真实消费者判断。
 
 | 待证命题 | 核查方式 | 结果 |
 |---|---|---|
@@ -576,20 +575,29 @@ Case 名与职责：
 
 **关键因果**：描述符契约层已于 **2026-10-11（S1）删除**（`MaterialResourceManifestBuilder.h` 的头注释就是墓碑）。所以 `GenericMaterialBuilder.cpp` 里根本没有「预推断→布局」这一段可供反射替代 —— 反射只能**看见编译后的状态**，而 sampler 名 → 索引映射必须在编译**前**以 `#define <Name>Sampler N` 注入（`shader_type`/`includes` 依赖它）。`ParseSPV` 输出 set/binding/type，出不来 preset 名。
 
-**产品目标已达成，且是物理保证**：`CMakeLists.txt:63` 的 `ULRE_ENABLE_SHADERGEN=OFF` 会让 `src/ShaderGen`、`src/Tools/ShaderGen`、`example/` 一并退出构建；`ULRE::Runtime`（发行唯一入口）**永不含** `ULRE.ShaderGen`。`scripts/ci/verify-release-form.ps1` 是现成的跨进程验收，断言方式是**链接失败即测试失败**（探针只链 `ULRE::Runtime`）。本条已实测通过：
+发行构建是否排除 ShaderGen 是独立的打包/链接边界，与本节讨论的开发期代码减化**不作为同一目标或论据**；发行验收细节单列在 `doc/shadergen-release-form-verification.md`。
 
-```
-[PASS] release form verified: baked cache resolved with zero generator symbols
-```
+**本轮进展（2026-10-25）**：`src/ShaderGen/compile/GLSLCompiler.cpp` 已通过现有插件接口调用 `ParseSPV` + `CreateShaderFlat`，用 HGL `ValueArray<uint8>` 持有 flat 数据，并以 `ShaderFlatLoad` 产生零拷贝 view。随后新增 `ShaderReflectionData`，把 stage I/O、descriptor、push-constant 与 subpass-input 事实复制到有类型的 HGL 容器，支持 descriptor set/binding 查找与 push-constant end 计算；门禁在清空原 flat 缓冲区后继续断言提取数据，验证其独立生命周期。
+
+**语义边界**：flat 反射格式当前给出 stage I/O、descriptor resources、push constants 与 subpass inputs；它没有记录 buffer-reference 类型/调用点的实际访问语义。`MaterialData` / `MTL_ROW` 在本引擎经 `RootAddresses` + `buffer_reference` 寻址，不是 descriptor。因此本步骤不从 SPV 反射猜测 `requires_recipe_payload_row` 或 `requires_recipe_runtime_rows`，也不移除原模块元数据判定。需先证明另有可靠的 SPIR-V 信号与运行时消费者等价，再讨论替换。
+
+**第三步的安全落点**：`ShaderProgramManager::CreateComputeShaderModule` 编译真实 compute SPV 后，现调用 `GetSPVPushConstantEnd()` 取得反射范围；反射值必须与调用方的 CPU push-constant 大小相等，否则拒绝烘焙。compute manifest 记录反射值，而不是把调用参数不经核验地复制进去。CPU 大小仍保留为 host ABI 断言与 `VkPipelineLayout` 输入，避免改变 API/运行时布局行为。`PM.compute-release-cache` 现用真实 `entity_gpu_cull.glsl` 证实反射范围为 112B 并验证该值可烘焙/只读取回。
+
+门禁 `SPV.reflection-api` 与 `SPV.buffer-reference-reflection` / CTest 分组 `reflection`：前者端到端验证 stage input/output、UBO set/binding、push constant 和提取结果独立生命周期；后者编译实际使用 `buffer_reference` 的 probe，证实当前 flat 反射只返回 push-constant 地址、不把该引用报告为 descriptor。当前完成的是反射事实提取及 compute manifest 值的反射校验；未据此猜测 `MTL_ROW`/`MTL_TEX` 语义，也未移除材质生成逻辑。
 
 **面积实测**（真实代码行，剔除空行与纯注释行）：`src/ShaderGen` = **42 文件 / 9762 总行 / 7765 代码行 / 909 注释行**。
 Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`ShaderCodeModuleFile.cpp` 573、`FragmentTemplateComposer.cpp` 499、`ShaderCodeModuleRegistry.cpp` 418。
 `GenericMaterialBuilder.cpp` 已是 20 个全可达具名函数（最大 `ResolvePurposeAndCoverage` 141 行），**无重复逻辑、无死码**。`CanonicalContractWriter.h` 是唯一自引用单元。
 
-**唯一剩下的真实靶子**是删 `ShaderDocument`（173 代码行，只被消费 `GetBlockCount()` + `Serialize()`，`plan.ms`/`plan.fs` 本来就是纯文本），但代价是丢掉「Version 必须首块 / 单一 MainBody / 拒空块」三条排序校验 —— 那是 16 变体 golden 之外唯一能拦住结构性错误的检查。**收益 ≈ 全量 2.6%，对产品体积与运行时零影响**，判定**风险大于收益，不做**。
+**候选审计结果**：
+- **payload-row / runtime-row 标志**（`MaterialShaderCompiler` Step 6）—— **不能由反射替代**：`ParseSPV` 只能看见编译后状态，而这两个标志决定**是否发射** `MTL_ROW`/`MTL_TEX` 声明与 BDA 布局，属于编译**前**输入，构成循环依赖。语义边界段已给出实测证据（buffer-reference probe 零 descriptor）。
+- **mesh→fragment stage interface 对照** —— 反射确实给出每 stage 的 in/out 列表，但要判定「mesh 输出被 fragment 消费」还需要 location/type 匹配规则，而当前 emitter 在拼接期生成的就是同一张表；换成「先编译、再反射、再比对」只会把一次性拼接检查变成两遍编译，净增复杂度。**改为不做**。
+- **`ShaderDocument`**（173 代码行）—— 面积 = `src/ShaderGen` 全量 **2.6%**，对产品体积与运行时**零影响**；删除代价是丢掉「Version 必须首块 / 单一 MainBody / 拒空块」三条结构性校验（16 变体 golden 只管拼接顺序，不管这些）。`SerializeFragment` / `GetSerializedHash` 仍被回归与门禁使用。**判定风险大于收益，刻意不做**。
+- **合并 `GenericMaterialBuilder` 为「薄装配器」**（929 代码行）—— 它已是 20 个全可达具名函数（最大 `ResolvePurposeAndCoverage` 141 行），无重复逻辑、无死码；其职责是装配（purpose/coverage、顶点 ABI、mesh 发射模式、模块图、include 闭包哈希、program 链接），不是字符串拼接 —— 拼接已在阶段五/六收敛到 `.tmpl` + 单一真源数据表。**没有可合并的对象**。
+- **新增 flat 反射字段以承载 BDA 指针类型** —— 属于「为能力而能力」：唯一潜在消费者（payload-row 标志）是编译前输入，反射结果无法反哺，故**不扩展** flat 格式，避免为没有消费者的事实付出格式版本成本。
 
-**不要重试以下方向**（均已证伪）：
-- 用反射推导描述符绑定 —— 没有可推导的对象；
+**已证伪的具体方向**：
+- 用反射推导 per-material descriptor-set-layout —— 当前 Vulkan pipeline layout 是全局固定布局，没有 per-material 布局输出；
 - 把 `MaterialResourceManifestBuilder` / 资源清单当作「伪预推断」删除 —— 它是真实的**编译前输入**；
 - 从 varyings 反推 `[vertex] requirements`；删除 `[transform]` 解析分支；**局部** STL 迁移；把 mesh 侧数据表外置成 `.tmpl`。
 
@@ -597,7 +605,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 ## 11. 每个子阶段的完成定义（DoD）
 
-- [x] `ShaderResourceSchemaRegressionGate all` → 56 PASS / exit=0（若新增 case 则数量随之增加并同步文档）
+- [x] `ShaderResourceSchemaRegressionGate all` → 58 PASS / exit=0（含 `reflection` 分组；若新增 case 则数量随之增加并同步文档）
 - [x] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误

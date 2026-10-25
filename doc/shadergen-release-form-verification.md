@@ -100,7 +100,7 @@ pwsh scripts/ci/build-baseline.ps1 -VerifyReleaseForm
 | 改动 | 必须跑 |
 |---|---|
 | `ULRE::Runtime` 成员列表 | `verify-release-form.ps1` |
-| `ShaderProgramManifestBackend` / `ComputeMaterialProgramManifestKey` | `verify-release-form.ps1` + `Gate all`（56 条） |
+| `ShaderProgramManifestBackend` / `ComputeMaterialProgramManifestKey` | `verify-release-form.ps1` + `Gate all`（58 条） |
 | `ShaderArtifactStore` 磁盘布局 | `verify-release-form.ps1` + `Gate cache` |
 | `compute_manifest.pmf` 格式 / `LoadShaderComputeProgramArtifact` | `verify-release-form.ps1` + `Gate cache-compute-lookup` |
 | `GPUCullSystem` 的 push constant 布局 | `verify-release-form.ps1` + `ctest -L ecs` |

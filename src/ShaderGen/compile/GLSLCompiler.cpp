@@ -9,6 +9,10 @@
 #include<hgl/mtl/contract/ShaderGenPhysicalDeviceProfileJson.h>
 #include<hgl/mtl/ShaderLibraryPath.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
+#include "ShaderReflectionData.h"
+#include "SPVParseFlat.h"
+
+#include <cstring>
 
 namespace hgl
 {
@@ -68,6 +72,16 @@ namespace hgl
 
             SPVParseData *(*ParseSPV)(SPVData *spv_data);
             void        (*FreeParseSPVData)(SPVParseData *);
+
+            // These tail callbacks already exist in plugin ABI v2; the host
+            // previously declared only the interface prefix.
+            uint8_t *    (*CreateShaderFlat)(
+                uint32_t shader_stage,
+                const char *entrypoint,
+                const SPVData *spv_data,
+                const SPVParseData *parsed,
+                uint32_t *out_size);
+            void         (*FreeShaderFlat)(uint8_t *flat_data);
         };
 
         static GLSLCompilerInterface *gsi=nullptr;
@@ -371,6 +385,138 @@ namespace hgl
         {
             if(gsi)
                 gsi->Free(spv_data);
+        }
+
+        bool ReflectSPVData(
+            SPVData *spv_data,
+            const uint32 shader_stage,
+            const char *entrypoint,
+            ValueArray<uint8> &flat_storage,
+            ::ShaderFlatView &out_view)
+        {
+            flat_storage.Clear();
+            out_view = {};
+
+            if(!gsi
+             || !spv_data
+             || !spv_data->result
+             || !spv_data->spv_data
+             || spv_data->spv_length == 0
+             || (spv_data->spv_length % sizeof(uint32)) != 0
+             || !gsi->ParseSPV
+             || !gsi->FreeParseSPVData
+             || !gsi->CreateShaderFlat
+             || !gsi->FreeShaderFlat)
+            {
+                GLogError(u8"[GLSLCompiler] SPIR-V reflection API is unavailable");
+                return false;
+            }
+
+            SPVParseData *parsed = gsi->ParseSPV(spv_data);
+            if(!parsed)
+            {
+                GLogError(u8"[GLSLCompiler] SPIR-V reflection failed");
+                return false;
+            }
+
+            uint32_t flat_size = 0;
+            uint8_t *flat_data = gsi->CreateShaderFlat(
+                shader_stage, entrypoint, spv_data, parsed, &flat_size);
+            if(!flat_data || flat_size == 0
+             || flat_size > static_cast<uint32_t>(0x7fffffff))
+            {
+                if(flat_data)
+                    gsi->FreeShaderFlat(flat_data);
+                gsi->FreeParseSPVData(parsed);
+                GLogError(u8"[GLSLCompiler] Failed to serialize SPIR-V reflection");
+                return false;
+            }
+
+            const bool copied = flat_storage.Resize(static_cast<int>(flat_size));
+            if(copied)
+                std::memcpy(flat_storage.GetData(), flat_data, flat_size);
+
+            gsi->FreeShaderFlat(flat_data);
+            gsi->FreeParseSPVData(parsed);
+
+            if(!copied)
+            {
+                flat_storage.Clear();
+                GLogError(u8"[GLSLCompiler] Failed to allocate SPIR-V reflection storage");
+                return false;
+            }
+
+            if(!ShaderFlatLoad(flat_storage.GetData(), flat_size, &out_view))
+            {
+                flat_storage.Clear();
+                out_view = {};
+                GLogError(u8"[GLSLCompiler] Serialized SPIR-V reflection is invalid");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool ReflectSPVData(
+            const uint32 *spv_data,
+            const size_t spv_size,
+            const uint32 shader_stage,
+            const char *entrypoint,
+            ValueArray<uint8> &flat_storage,
+            ::ShaderFlatView &out_view)
+        {
+            if(!spv_data
+             || spv_size == 0
+             || spv_size > static_cast<size_t>(uint32(-1))
+             || (spv_size % sizeof(uint32)) != 0)
+            {
+                flat_storage.Clear();
+                out_view = {};
+                GLogError(u8"[GLSLCompiler] Invalid raw SPIR-V buffer for reflection");
+                return false;
+            }
+
+            SPVData borrowed_spv{};
+            borrowed_spv.result = true;
+            borrowed_spv.spv_data = const_cast<uint32 *>(spv_data);
+            borrowed_spv.spv_length = static_cast<uint32>(spv_size);
+            return ReflectSPVData(
+                &borrowed_spv,
+                shader_stage,
+                entrypoint,
+                flat_storage,
+                out_view);
+        }
+
+        bool GetSPVPushConstantEnd(
+            const uint32 *spv_data,
+            const size_t spv_size,
+            const uint32 shader_stage,
+            uint32 &out_end)
+        {
+            out_end = 0;
+
+            ValueArray<uint8> flat_storage;
+            ShaderFlatView view{};
+            if(!ReflectSPVData(
+                    spv_data,
+                    spv_size,
+                    shader_stage,
+                    "main",
+                    flat_storage,
+                    view))
+                return false;
+
+            mtl::ShaderReflectionData reflection;
+            if(!reflection.Extract(view)
+             || !reflection.GetPushConstantEnd(out_end))
+            {
+                out_end = 0;
+                GLogError(u8"[GLSLCompiler] Failed to extract reflected push-constant extent");
+                return false;
+            }
+
+            return true;
         }
 
         SPVData *CompileShader(const uint32_t type,const char *source)
