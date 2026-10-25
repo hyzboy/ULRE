@@ -692,13 +692,8 @@ namespace hgl::graph::mtl
             if (document_capture)
                 document_capture->Clear();
 
-            const MeshShaderMode ms_mode = plan.mesh_shader_mode;
-            const uint32_t max_invocations = plan.mesh_max_invocations;
             plan.mesh_source_shape_key = ComputeMeshSourceShapeKey(plan);
 
-            ShaderDocument &mesh_document = document_capture
-                ? document_capture->mesh_source_document
-                : plan.mesh_source_document;
             if (request.fixed_mesh_source && request.fixed_mesh_source[0])
             {
                 plan.ms = request.fixed_mesh_source;
@@ -725,48 +720,29 @@ namespace hgl::graph::mtl
                 }
                 else
                 {
-                    // 直调 mesh 阶段发射器。原先这里经 MeshTemplateComposer 门面转发——
-                    // 那个类体只有一句"9 实参原样透传"，没有任何编排，仅增加一层间接，已删除。
-                    if (!EmitMeshTemplateDocument(
-                            plan.vertex_node_config,
-                            plan.varying,
-                            plan.position_format,
-                            ms_mode,
-                            max_invocations,
-                            mesh_document,
-                            &plan.resolved_vertex_input_document,
-                            &plan.stage_interface))
-                    {
-                        s_last_build_generic_material_error = "EmitMeshTemplateDocument failed";
-                        GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
-                                  definition.definition_name.c_str());
-                        return false;
-                    }
-                    {
-                        ShaderDocumentDiagnostics diagnostics;
-                        AnsiString serialized;
-                        if (!mesh_document.Serialize(serialized, diagnostics))
-                        {
-                            s_last_build_generic_material_error = "mesh_document.Serialize failed";
-                            GLogError("[ShaderGen] Generic material mesh document serialization failed: name=%s",
-                                      definition.definition_name.c_str());
-                            for (int i = 0; i < diagnostics.GetCount(); ++i)
-                            {
-                                const ShaderDocumentDiagnostic &d = *diagnostics[i];
-                                GLogError("[ShaderGen] mesh-doc-diagnostic[%d] code=%s message=%s block_index=%d stage=%s logic=%s module=%s path=%s",
-                                          i,
-                                          d.code.c_str(),
-                                          d.message.c_str(),
-                                          d.block_index,
-                                          d.source.stage.c_str(),
-                                          d.source.logical_name.c_str(),
-                                          d.source.module.c_str(),
-                                          d.source.path.c_str());
-                            }
-                            return false;
-                        }
-                        plan.ms.assign(serialized.c_str(), serialized.Length());
-                    }
+                    // ── 网格阶段同样是物理固定的 ────────────────────────────────
+                    //
+                    // 主着色器文本不再由本模块发射：形状键找不到固定源就直接失败，
+                    // 与片段侧同一个理由——拼装路径已经删除，没有"退回去生成"这回事。
+                    //
+                    // 诊断里带上形状键与模式/invocation，是本函数能给出的唯一定位信息：
+                    // 缺少的是**数据**（`ShaderLibrary/mesh/fixed/<键>.mesh`），不是代码，
+                    // 所以报错必须说清楚该往哪个键补文件，否则只会看到"某个域画不出来"。
+                    s_last_build_generic_material_error =
+                        AnsiString("no fixed mesh source for shape key ")
+                        + AnsiString::numberOf(
+                              static_cast<uint64_t>(plan.mesh_source_shape_key))
+                        + " (mesh stage is physically fixed; the source must exist in "
+                          "ShaderLibrary/mesh/fixed)";
+                    GLogError(
+                        "[ShaderGen] Generic material build has no fixed mesh source: "
+                        "name=%s shape_key=%s mode=%u invocations=%u",
+                        definition.definition_name.c_str(),
+                        AnsiString::numberOf(
+                            static_cast<uint64_t>(plan.mesh_source_shape_key)).c_str(),
+                        static_cast<unsigned>(plan.mesh_shader_mode),
+                        static_cast<unsigned>(plan.mesh_max_invocations));
+                    return false;
                 }
             }
 

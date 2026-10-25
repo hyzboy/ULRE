@@ -1749,6 +1749,33 @@ namespace
         return result;
     }
 
+    // ── Q0 缓存身份的几何夹具 ────────────────────────────────────────────
+    //
+    // 放在命名空间作用域：`emit-fixed-mesh` 也要用同一份几何去捕获网格源。
+    // 形状键只吃（顶点节点配置、varying、位置格式、mesh 模式、invocation 上限），
+    // 与模板/profile 无关，所以捕获侧可以用路由器选模板而不必复现这条用例
+    // 手选的模板 ID；但**几何不能抄两份**——抄歪了只会静默少覆盖一个形状。
+    static const GeometryVertexFormat kCacheIdentityLitGeometryA{
+        {VertexSemantic::Position, VF_V3F},
+        {VertexSemantic::TexCoord, VF_V2F},
+        {VertexSemantic::Normal,   VF_V3F}
+    };
+    // 「同语义、不同 ABI」的对照几何：TexCoord 从 VF_V2F（8B）换成 VF_V2HF（RG16F，4B），
+    // s1_uv 模块随之从 s1_uv 变成 s1_uv_rg16f —— 顶点输入文本与流哈希必须不同。
+    //
+    // 这里刻意不再用 VF_V2I16 制造对照：2 分量位置只能配 2D 映射的材质，而 `lit`
+    // 是 Passthrough3D，那份 GLSL 的 `vec4(vec3, 1.0)`/`vec4(vec2, 1.0)` 根本编不过。
+    // 生成期已把「位置分量数 ↔ 映射分量数」做成硬门，ABI 对照只能换非位置语义。
+    static const GeometryVertexFormat kCacheIdentityLitGeometryB{
+        {VertexSemantic::Position, VF_V3F},
+        {VertexSemantic::TexCoord, VF_V2HF},
+        {VertexSemantic::Normal,   VF_V3F}
+    };
+    static const GeometryVertexFormat kCacheIdentityColorGeometry{
+        {VertexSemantic::Position, VF_V3F},
+        {VertexSemantic::Color,    VF_V4UN8}
+    };
+
     static GateResult RunAuthoritativeMaterialCacheIdentityCase()
     {
         GateResult result;
@@ -1765,28 +1792,15 @@ namespace
             return result;
         }
 
-        const GeometryVertexFormat lit_geometry_a{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::TexCoord, VF_V2F},
-            {VertexSemantic::Normal, VF_V3F}
-        };
-        // 「同语义、不同 ABI」的对照几何：TexCoord 从 VF_V2F（8B）换成 VF_V2HF（RG16F，4B），
-        // s1_uv 模块随之从 s1_uv 变成 s1_uv_rg16f —— 顶点输入文本与流哈希必须不同。
-        //
-        // 这里刻意不再用 VF_V2I16 制造对照：2 分量位置只能配 2D 映射的材质，而 `lit`
-        // 是 Passthrough3D，那份 GLSL 的 `vec4(vec3, 1.0)`/`vec4(vec2, 1.0)` 根本编不过。
-        // 生成期已把「位置分量数 ↔ 映射分量数」做成硬门，ABI 对照只能换非位置语义。
-        const GeometryVertexFormat lit_geometry_b{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::TexCoord, VF_V2HF},
-            {VertexSemantic::Normal, VF_V3F}
-        };
-        const GeometryVertexFormat color_geometry{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::Color, VF_V4UN8}
-        };
+        const GeometryVertexFormat &lit_geometry_a = kCacheIdentityLitGeometryA;
+        const GeometryVertexFormat &lit_geometry_b = kCacheIdentityLitGeometryB;
+        const GeometryVertexFormat &color_geometry = kCacheIdentityColorGeometry;
 
-        const auto build = [](
+        // 失败原因必须逐次记录：`GetLastBuildGenericMaterialError()` 只反映
+        // **最后一次**构建，后面的构建一旦成功就会把它清空，而空串的 `c_str()`
+        // 返回 nullptr——诊断里直接取它会把错误路径变成崩溃。
+        std::string build_error;
+        const auto build = [&build_error](
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             const GeometryVertexFormat &geometry,
@@ -1804,17 +1818,30 @@ namespace
                     template_diagnostic)
              || !AppendMaterialRenderTemplateRoots(
                     definition, request.render_template_request))
+            {
+                build_error = "render template request resolution failed";
                 return std::unique_ptr<ShaderBuildContext>();
+            }
             // 片段源走领域固定源：本用例算的是缓存身份（链接规格 + 各种摘要），
-            // 与片段怎么写无关。不填就会退回生成器的片段拼装链。
+            // 与片段怎么写无关。
             FixedFragmentSource fixed;
             if (!ResolveFixedFragmentSource(definition, request, fixed))
+            {
+                build_error = "fixed fragment source resolution failed";
                 return std::unique_ptr<ShaderBuildContext>();
+            }
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
-            return std::unique_ptr<ShaderBuildContext>(
+            std::unique_ptr<ShaderBuildContext> context(
                 BuildGenericMaterial(
                     profile, request, definition, nullptr));
+            if (!context || !context->HasProgramLink())
+            {
+                const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
+                build_error = err.IsEmpty()
+                    ? "(no diagnostic)" : err.c_str();
+            }
+            return context;
         };
         const auto lit_a = build(
             nullptr, lit, lit_geometry_a,
@@ -1848,7 +1875,9 @@ namespace
          || !lit_targeted->HasProgramArtifactMetadata())
         {
             result.diagnostics.emplace_back(
-                "generate-only material builds must produce ProgramLink");
+                std::string("material builds must produce ProgramLink (last error: ")
+                + (build_error.empty() ? "(no diagnostic)" : build_error)
+                + ")");
         }
         else
         {
@@ -9917,113 +9946,6 @@ void main()
         return false;
     }
 
-    /// `emit-fixed-mesh` 模式：把快照矩阵里每个变体的网格阶段文本落进
-    /// `ShaderLibrary/mesh/fixed/<形状键>.mesh`。
-    ///
-    /// 为什么捕获工具放在门禁里而不是生产回归工具里：形状由**请求**决定
-    /// （几何语义集合、位置格式、节点配置、图元类型），而矩阵只在这里维护一份。
-    /// 在别处复现同一张矩阵，等于把「哪个形状需要覆盖」抄两份，抄歪了不会报错，
-    /// 只会静默少覆盖一个形状。
-    ///
-    /// 已存在且内容一致的形状跳过，所以它是幂等的。形状键相同但文本不同时会
-    /// **覆盖**写入——这是有意的重捕获流程：形状键哈希的是请求而不是发射文本，
-    /// 主着色器模板演进属于正常情况，届时门禁的内容比对会先亮红灯，人工跑一次
-    /// 本命令即完成更新。
-    static int EmitFixedMeshCatalog()
-    {
-        std::string preset_diagnostic;
-        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
-        {
-            GLogError("[emit-fixed-mesh] %s", preset_diagnostic.c_str());
-            return 1;
-        }
-
-        std::vector<std::string> catalog;
-        std::string catalog_diagnostic;
-        if (!LoadFixedMeshCatalog(catalog, catalog_diagnostic))
-        {
-            GLogError("[emit-fixed-mesh] %s", catalog_diagnostic.c_str());
-            return 1;
-        }
-
-        const std::filesystem::path dir = RepoRootPath("ShaderLibrary/mesh/fixed");
-
-        int written = 0;
-        int unchanged = 0;
-        int failed = 0;
-
-        for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
-        {
-            std::string build_diagnostic;
-            MaterialShaderDocumentCapture capture{};
-            std::unique_ptr<ShaderBuildContext> ctx =
-                BuildReflectionCoverageVariant(
-                    variant, build_diagnostic, nullptr, &capture);
-            if (!ctx)
-            {
-                GLogError("[emit-fixed-mesh] %s: %s",
-                          variant.variant_slug, build_diagnostic.c_str());
-                ++failed;
-                continue;
-            }
-
-            const ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
-            if (!mesh)
-            {
-                GLogError("[emit-fixed-mesh] %s: no mesh stage",
-                          variant.variant_slug);
-                ++failed;
-                continue;
-            }
-
-            const std::string &glsl = mesh->GetFinalGLSL();
-            if (glsl.empty())
-            {
-                GLogError("[emit-fixed-mesh] %s: empty mesh GLSL",
-                          variant.variant_slug);
-                ++failed;
-                continue;
-            }
-
-            const std::string path = (dir /
-                (std::to_string(static_cast<uint64_t>(
-                     capture.mesh_source_shape_key)) + ".mesh")).string();
-
-            if (FixedMeshCatalogHas(catalog, glsl))
-            {
-                ++unchanged;
-                std::fprintf(stdout, "[unchanged] %s key=%s\n",
-                             variant.variant_slug, path.c_str());
-                continue;
-            }
-
-            std::ofstream out(path, std::ios::binary | std::ios::trunc);
-            if (!out)
-            {
-                GLogError("[emit-fixed-mesh] cannot write %s", path.c_str());
-                ++failed;
-                continue;
-            }
-            out.write(glsl.data(), static_cast<std::streamsize>(glsl.size()));
-            if (!out.good())
-            {
-                GLogError("[emit-fixed-mesh] write failed %s", path.c_str());
-                ++failed;
-                continue;
-            }
-
-            catalog.push_back(glsl);
-            ++written;
-            std::fprintf(stdout, "[written] %s key=%s bytes=%zu source=%s\n",
-                         variant.variant_slug, path.c_str(), glsl.size(),
-                         capture.mesh_source_was_fixed ? "fixed" : "generator");
-        }
-
-        std::fprintf(stdout,
-                     "[emit-fixed-mesh] written=%d unchanged=%d failed=%d\n",
-                     written, unchanged, failed);
-        return failed == 0 ? 0 : 1;
-    }
 
     // ══════════════════════════════════════════════════════════════════════
     // SPV.generated-interface
@@ -11016,6 +10938,281 @@ void main()
 
         result.passed = result.diagnostics.empty();
         return result;
+    }
+
+    struct CacheIdentityEmitShape
+    {
+        const char *label;
+        const char *definition_id;
+        const GeometryVertexFormat *geometry;
+    };
+
+    static const CacheIdentityEmitShape kCacheIdentityEmitShapes[] =
+    {
+        { "cache-lit-abi-a", "Lit",         &kCacheIdentityLitGeometryA },
+        { "cache-lit-abi-b", "Lit",         &kCacheIdentityLitGeometryB },
+        { "cache-color",     "VertexColor", &kCacheIdentityColorGeometry },
+    };
+
+    /// 把一个已构建上下文的网格阶段文本落进固定源目录。返回 false 表示失败。
+    ///
+    /// 形状键取自构建期捕获（`ComputeMeshSourceShapeKey` 的输入是**请求**，
+    /// 不是发射文本），所以文件名与内容解耦：模板演进只改内容，不改名字。
+    static bool EmitOneFixedMeshSource(
+        const char *label,
+        const ShaderBuildContext &ctx,
+        const MaterialShaderDocumentCapture &capture,
+        const std::filesystem::path &dir,
+        std::vector<std::string> &catalog,
+        int &written,
+        int &unchanged)
+    {
+        const ShaderCreateInfo *mesh = ctx.GetStageShader(ShaderStage::Mesh);
+        if (!mesh)
+        {
+            std::fprintf(stdout, "[emit-fixed-mesh] %s: no mesh stage\n", label);
+            return false;
+        }
+
+        const std::string &glsl = mesh->GetFinalGLSL();
+        if (glsl.empty())
+        {
+            std::fprintf(stdout, "[emit-fixed-mesh] %s: empty mesh GLSL\n", label);
+            return false;
+        }
+
+        const std::string path = (dir /
+            (std::to_string(static_cast<uint64_t>(
+                 capture.mesh_source_shape_key)) + ".mesh")).string();
+
+        if (FixedMeshCatalogHas(catalog, glsl))
+        {
+            ++unchanged;
+            std::fprintf(stdout, "[unchanged] %s key=%s\n", label, path.c_str());
+            return true;
+        }
+
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        if (!out)
+        {
+            std::fprintf(stdout, "[emit-fixed-mesh] cannot write %s\n", path.c_str());
+            return false;
+        }
+        out.write(glsl.data(), static_cast<std::streamsize>(glsl.size()));
+        if (!out.good())
+        {
+            std::fprintf(stdout, "[emit-fixed-mesh] write failed %s\n", path.c_str());
+            return false;
+        }
+
+        catalog.push_back(glsl);
+        ++written;
+        std::fprintf(stdout, "[written] %s key=%s bytes=%zu source=%s\n", label,
+                     path.c_str(), glsl.size(),
+                     capture.mesh_source_was_fixed ? "fixed" : "generator");
+        return true;
+    }
+
+    /// `emit-fixed-mesh` 模式：把两张矩阵里每个形状的网格阶段文本落进
+    /// `ShaderLibrary/mesh/fixed/<形状键>.mesh`。
+    ///
+    /// 为什么捕获工具放在门禁里而不是生产回归工具里：形状由**请求**决定
+    /// （几何语义集合、位置格式、节点配置、图元类型），而矩阵只在这里维护一份。
+    /// 在别处复现同一张矩阵，等于把「哪个形状需要覆盖」抄两份，抄歪了不会报错，
+    /// 只会静默少覆盖一个形状。
+    ///
+    /// 两张矩阵都要走：
+    ///   · `kReflectionCoverageVariants`——反射门逐 stage 编译的那 16 个变体；
+    ///   · `kDomainBackendEquivShapes`——领域后端等价门逐域的 15 个形状。
+    ///     后者的几何是**由领域契约推导**的，与前者手写的几何不是同一份请求，
+    ///     形状键自然也不同（`builtin/error_checkerboard_3d` 就是这么漏掉的：
+    ///     它只出现在领域后端矩阵里，第一次跑「缺源即失败」才现形）。
+    ///
+    /// 已存在且内容一致的形状跳过，所以它是幂等的。形状键相同但文本不同时会
+    /// **覆盖**写入——这是有意的重捕获流程：形状键哈希的是请求而不是发射文本，
+    /// 主着色器模板演进属于正常情况，届时门禁的内容比对会先亮红灯，人工跑一次
+    /// 本命令即完成更新。
+    ///
+    /// 生成器删除后本命令退化为**纯覆盖率检查**：`GenerateStageSources` 在缺源时
+    /// 已经硬失败，所以「不在目录里」永远走不到写盘那一支，`[written]` 不会再出现。
+    /// 这时它的价值是「一次跑完三张矩阵，逐形状点名谁缺源」——比让某条用例在
+    /// 半途炸掉要好定位得多。
+    static int EmitFixedMeshCatalog()
+    {
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
+        {
+            std::fprintf(stdout, "[emit-fixed-mesh] %s\n", preset_diagnostic.c_str());
+            return 1;
+        }
+
+        std::vector<std::string> catalog;
+        std::string catalog_diagnostic;
+        if (!LoadFixedMeshCatalog(catalog, catalog_diagnostic))
+        {
+            std::fprintf(stdout, "[emit-fixed-mesh] %s\n", catalog_diagnostic.c_str());
+            return 1;
+        }
+
+        const std::filesystem::path dir = RepoRootPath("ShaderLibrary/mesh/fixed");
+
+        int written = 0;
+        int unchanged = 0;
+        int failed = 0;
+
+        for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
+        {
+            std::string build_diagnostic;
+            MaterialShaderDocumentCapture capture{};
+            std::unique_ptr<ShaderBuildContext> ctx =
+                BuildReflectionCoverageVariant(
+                    variant, build_diagnostic, nullptr, &capture);
+            if (!ctx)
+            {
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n",
+                          variant.variant_slug, build_diagnostic.c_str());
+                ++failed;
+                continue;
+            }
+
+            if (!EmitOneFixedMeshSource(variant.variant_slug, *ctx, capture,
+                                        dir, catalog, written, unchanged))
+                ++failed;
+        }
+
+        // ── 领域后端矩阵 ────────────────────────────────────────────────
+        //
+        // 这条路径不吃 `fixed_fragment_source`（片段由领域后端自己解析主着色器），
+        // 所以这里只取网格阶段。`BuildGenericMaterial` 在这里的作用等价于
+        // 「按请求生成网格阶段」，片段侧产出什么无关紧要。
+        for (const DomainBackendEquivShape &shape : kDomainBackendEquivShapes)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(shape.definition_id, definition))
+            {
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: definition unavailable\n",
+                             shape.label);
+                ++failed;
+                continue;
+            }
+
+            GeometryVertexFormat geometry;
+            MaterialDefinitionBuildRequest request{};
+            std::string build_diagnostic;
+            if (!BuildDomainEquivRequest(
+                    shape, definition, geometry, request, build_diagnostic))
+            {
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n", shape.label,
+                          build_diagnostic.c_str());
+                ++failed;
+                continue;
+            }
+
+            // 只需要网格阶段文本，所以**不** finalize：领域后端在 finalize 阶段
+            // 才编译固定片段（include 根要按 options 域就位），捕获用不到。
+            request.defer_finalize = true;
+
+            // 片段侧同样是物理固定的：`BuildGenericMaterial` 在没有
+            // `fixed_fragment_source` 时会直接拒绝。这里照抄领域后端的做法先解析
+            // 固定片段源——否则捕获路径根本走不到网格阶段。
+            FixedFragmentSource fixed;
+            if (!ResolveFixedFragmentSource(definition, request, fixed))
+            {
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n", shape.label,
+                             GetLastDomainShaderBuildBackendError());
+                ++failed;
+                continue;
+            }
+            request.fixed_fragment_source = fixed.source.c_str();
+            request.fixed_fragment_interface_hash = fixed.interface_hash;
+
+            MaterialShaderDocumentCapture capture{};
+            std::unique_ptr<ShaderBuildContext> ctx(
+                BuildGenericMaterial(nullptr, request, definition, &capture));
+            if (!ctx)
+            {
+                const hgl::AnsiString &build_error =
+                    GetLastBuildGenericMaterialError();
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n", shape.label,
+                          build_error.IsEmpty()
+                              ? "(no diagnostic)" : build_error.c_str());
+                ++failed;
+                continue;
+            }
+
+            if (!EmitOneFixedMeshSource(shape.label, *ctx, capture, dir,
+                                        catalog, written, unchanged))
+                ++failed;
+        }
+
+        // ── Q0 缓存身份矩阵 ────────────────────────────────────────────
+        //
+        // 形状键与模板/profile 无关（只吃顶点节点配置、varying、位置格式、
+        // mesh 模式、invocation 上限），所以这里让路由器选模板即可，不必复现
+        // 那条用例手选的模板 ID；几何则**必须**复用同一批常量。
+        for (const CacheIdentityEmitShape &shape : kCacheIdentityEmitShapes)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(shape.definition_id, definition))
+            {
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: definition unavailable\n",
+                             shape.label);
+                ++failed;
+                continue;
+            }
+
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = definition.definition_id;
+            request.geometry_vertex_format = shape.geometry;
+            request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
+            request.defer_finalize = true;
+
+            if (!SelectSceneRenderTemplateRequest(
+                    definition, ShaderProgramPurpose::ForwardColor, request.recipe,
+                    request.render_template_request, nullptr)
+             || !AppendMaterialRenderTemplateRoots(
+                    definition, request.render_template_request))
+            {
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: template request failed\n",
+                             shape.label);
+                ++failed;
+                continue;
+            }
+
+            FixedFragmentSource fixed;
+            if (!ResolveFixedFragmentSource(definition, request, fixed))
+            {
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n", shape.label,
+                             GetLastDomainShaderBuildBackendError());
+                ++failed;
+                continue;
+            }
+            request.fixed_fragment_source = fixed.source.c_str();
+            request.fixed_fragment_interface_hash = fixed.interface_hash;
+
+            MaterialShaderDocumentCapture capture{};
+            std::unique_ptr<ShaderBuildContext> ctx(
+                BuildGenericMaterial(nullptr, request, definition, &capture));
+            if (!ctx)
+            {
+                const hgl::AnsiString &build_error =
+                    GetLastBuildGenericMaterialError();
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n", shape.label,
+                             build_error.IsEmpty()
+                                 ? "(no diagnostic)" : build_error.c_str());
+                ++failed;
+                continue;
+            }
+
+            if (!EmitOneFixedMeshSource(shape.label, *ctx, capture, dir,
+                                        catalog, written, unchanged))
+                ++failed;
+        }
+
+        std::fprintf(stdout,
+                     "[emit-fixed-mesh] written=%d unchanged=%d failed=%d\n",
+                     written, unchanged, failed);
+        return failed == 0 ? 0 : 1;
     }
 
 }

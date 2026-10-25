@@ -1089,3 +1089,140 @@ exit 1，且**只有**这一条诊断 —— 说明失败确实由覆盖检查�
 
 至此 `kReflectionCoverageVariants` 的 16 个变体全部有固定 mesh 源，
 `meshgen/` 删除的前置条件已满足。
+
+## 6.5a 网格阶段缺固定源即失败
+
+### 改的是什么
+
+`GenericMaterialBuilder::GenerateStageSources` 里原本在"形状键在
+`ShaderLibrary/mesh/fixed/` 找不到文件"时有一个 `else` 分支，回头调
+`EmitMeshTemplateDocument(...)` 现场生成网格阶段文本、再 `ShaderDocument`
+序列化。这一分支删除，改成直接失败：
+
+```
+no fixed mesh source for shape key <键> (mesh stage is physically fixed;
+the source must exist in ShaderLibrary/mesh/fixed)
+```
+
+片段侧（`fixed_fragment_source` 缺失）从 5.3 起就已经是硬失败，网格侧一直是
+"有固定源就用、没有就生成"。两边不对称的后果不是"多留一条路"，而是生成器
+永远删不掉：只要还有形状键没有固定源，删掉 `meshgen/` 就会让那批形状静默
+变成空网格阶段。所以必须先让缺失变成不可忽略的错误。
+
+这是 `EmitMeshTemplateDocument` 在**生产路径**上的最后一个调用点。剩下的调用
+只在门禁的 `GenerateMeshShaderDocumentText`（6.5b 随文档层一起删）。
+
+### 硬失败暴露出的三个形状矩阵
+
+把生成器关掉之后，`all` 立刻从 59 PASS 变成 57 PASS / 2 FAIL：
+
+| 用例 | 缺失的形状键 | 来源矩阵 |
+|---|---|---|
+| `DH.domain-backend-equivalence` | `329204832091855392` | `kDomainBackendEquivShapes`（15 个） |
+| `Q0.authoritative-material-cache-identity` | `6106896277463206806` | Q0 自己的 A/B 几何 |
+
+`kReflectionCoverageVariants`（16 个）盖不住这两个形状，原因不是"漏了几个"，
+而是三张矩阵的**几何来源互不相同**：
+
+- `kReflectionCoverageVariants` — 手写几何常量（`kReflectionCoverageGeometry`
+  / `...2D`），mesh 模式由 `primitive_type` 推出。
+- `kDomainBackendEquivShapes` — 几何**由领域契约推导**：
+  位置格式取 `GetMaterialDomainCanonicalVertexNodeConfig`，其余语义取
+  `GetMaterialDomainVertexSemanticRequirements` + 本表补充项。同一个定义在
+  两张表里键也不同。
+- Q0 — 缓存身份比对用的 A/B 几何，其中 `TexCoord = VF_V2HF` 这一档在别处
+  完全不存在。
+
+`builtin/error_checkerboard_3d` 只出现在 DH 表里，这就是它一直没被发现的原因：
+它连 `--full` 夹具都不在，只有 `all` 跑到 DH 用例时才需要网格源。
+
+因此 `emit-fixed-mesh` 从"遍历一张表"扩成"遍历三张矩阵"，每张表各跑一遍：
+
+1. `kReflectionCoverageVariants` — 复用 `BuildReflectionCoverageVariant`。
+2. `kDomainBackendEquivShapes` — 复用 `BuildDomainEquivRequest`（它已经做了
+   `SelectSceneRenderTemplateRequest` + `AppendMaterialRenderTemplateRoots`）。
+3. `kCacheIdentityEmitShapes` — 新的小表，几何常量
+   `kCacheIdentityLitGeometryA/B`、`kCacheIdentityColorGeometry` 从 Q0 用例里
+   **上提到命名空间作用域**，让捕获与验证共用同一份（复制一份必然漂移）。
+
+捕获路径要能走到网格阶段，必须满足两个前提，缺一个就报别的错：
+
+- **`request.defer_finalize = true`**。领域后端本来就是延后 finalize 的；
+  finalize 阶段才编译固定片段，而编译需要按域就位的 options include 根。
+  捕获只要网格文本，提前 finalize 会在片段上失败。
+- **先 `ResolveFixedFragmentSource` 并把结果放进请求**。否则
+  `BuildGenericMaterial` 会在片段检查处直接拒绝
+  （`fixed_fragment_source is required`），根本到不了网格阶段。
+
+### 捕获做法：最后一次机会
+
+`emit-fixed-mesh` 本身要走 `BuildGenericMaterial`，而 6.5a 之后这个函数遇到
+缺键就返回 null —— 工具**再也不可能写出新文件**。要补最后两份源，只能在
+生成器还活着的时候捕获：
+
+```powershell
+git stash push -q -m "reopen-generator" -- src/ShaderGen/builder/GenericMaterialBuilder.cpp
+# 构建 + emit-fixed-mesh
+git stash pop -q
+```
+
+本次补的两份：
+
+| 形状键 | 来源 | 字节 |
+|---|---|---|
+| `329204832091855392` | `DH` 的 `err-check-3d`（`builtin/error_checkerboard_3d`） | 5609 |
+| `6106896277463206806` | Q0 的 `cache-lit-abi-b`（`TexCoord = VF_V2HF`） | 5846 |
+
+**这是最后一次。** 6.5b 删掉 `meshgen/` 之后没有生成器可捕获，真正需要的
+新形状只能手写 `.mesh`。也正因如此，`emit-fixed-mesh` 后续退化成一个纯粹的
+**覆盖检查**：它能一次跑完三张矩阵并点名谁缺源，但 `[written]` 不会再出现。
+
+### 反证踩到的坑：`GetLastBuildGenericMaterialError()` 只反映最后一次构建
+
+移走 `6106896277463206806.mesh` 跑 `cache` 组，得到的是
+`exit=0xC0000005`、**输出 0 行**。`cdb` 定位到
+`RunAuthoritativeMaterialCacheIdentityCase` 里的诊断拼接：
+
+```
+std::string("... (last error: ") + GetLastBuildGenericMaterialError().c_str() + ")"
+```
+
+崩因有两层：
+
+1. `s_last_build_generic_material_error` 在**每次** `BuildGenericMaterial`
+   入口被 `Clear()`。Q0 依次构建 `lit_a` / `lit_b` / `color` / `lit_targeted`，
+   失败的是 `lit_b`，而它后面的 `color`、`lit_targeted` 成功了，于是静态
+   错误又被清空。此前所有构建都失败，才碰巧能打出诊断。
+2. `hgl::String::c_str()` 在字符串为空时返回 **`nullptr`**（见
+   `CMCore/inc/hgl/type/String.h`），`std::string + const char*` 里的
+   `strlen(nullptr)` 直接踩空。
+
+修法是把失败原因**逐次记录**在 `build` lambda 里（`build_error`，并区分
+"模板请求失败 / 固定片段解析失败 / 构建无 ProgramLink"三种来源），诊断只读
+这个局部变量，不再读那个"最后一次"的静态。
+
+> 通用教训：`GetLastXxxError()` 这类"最后一次"访问器在**多轮构建的用例**里
+> 是不可靠的；只要有一轮成功就会把前面真正的原因清掉。要在失败点就地取值。
+
+### 6.5a 验收
+
+- 负向对照：移走 `6106896277463206806.mesh` 跑 `cache` 组，exit 1，单条诊断
+
+  ```
+  [FAIL] Q0.authoritative-material-cache-identity
+    - material builds must produce ProgramLink (last error: no fixed mesh source
+      for shape key 6106896277463206806 (mesh stage is physically fixed;
+      the source must exist in ShaderLibrary/mesh/fixed))
+  ```
+
+  键值与目录名都在诊断里，等于直接告诉人该补哪个文件；不再是崩溃、也不再是
+  下游"某个域画不出来"。
+- `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL。
+- `ShaderDocumentProductionRegression --full`：退出码 0，16/16 `source=fixed`，
+  0 `source=generator`，9 个 `[SKIP]` 不变。
+- `emit-fixed-mesh`：`written=0 unchanged=34 failed=0`（三张矩阵合起来 34 个
+  形状键，去重后即目录里的 19 份 `.mesh`）。
+
+顺带把捕获工具的失败输出从 `GLogError` 换成 `std::fprintf(stdout, ...)`：
+`GLogError` 在这个工具里不落到重定向的日志文件，改造期间 DH/Q0 的失败原因
+一直是不可见的。门禁文件本来就有大量 `fprintf`，与既有风格一致。
