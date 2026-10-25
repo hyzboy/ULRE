@@ -1417,3 +1417,91 @@ master 不允许结构性条件编译，所以让两个模块各自提供同名�
 | `SimpleCube` / `SkyCubeSphere` | 零着色器错误 |
 
 四个此前报告「no fixed mesh source for shape key …」的示例全部恢复，且不再需要为任何单个示例补文件。
+
+---
+
+## 阶段七-4：门禁改审形状 master，退役过渡态哈希目录
+
+### 为什么必须做这一步
+
+七-2 让网格阶段「按形状物理固定」，但磁盘上仍躺着 22 份 `<形状键>.mesh`——它们是七-2 之前
+`emit-fixed-mesh` 探针把生成结果按 FNV1a 键落盘的产物。其中的键吃的是**请求的完整字节序列**
+（位置格式、invocation 数、位置映射、投影、`needs_l2w`、10 个 vary 布尔、stage 接口列表），
+所以只要示例的顶点配置稍有不同，键就不同，就要再补一份文件。这正是「打地鼠」的物化形态。
+
+留着这批文件的害处不是占空间，而是**它还在被当作真源**：
+
+* 门禁 `AuditFixedMeshMasters` 只审 `mesh/fixed/`，而运行时实际加载的是 `mesh/shape/`。
+  审计覆盖的是已经死掉的目录，形状 master 无人审查。
+* `emit-fixed-mesh` 探针仍只扫 `mesh/fixed/`，报 `unchanged=35`，看上去一切正常，
+  实际上它统计的是一批不会再被读取的文件。
+
+### 做了什么
+
+**1. 审计范围改为双目录，形状 master 走新规则**
+
+`FixedMeshMasterRoot()` 换成 `LoadFixedMeshMasters()`：同时读 `ShaderLibrary/mesh/shape` 与
+`ShaderLibrary/mesh/fixed`，每项名字前加 `shape/` 或 `fixed/` 前缀后统一排序。
+`AuditFixedMeshMasters` 因此对 11 份形状 master + 3 份拓扑专用源一并审查。
+
+对**含 `#include "generated/mesh_options.glsl"`** 的形状 master 新增三条断言：
+
+| 断言 | 为什么 |
+| --- | --- |
+| `generated/mesh_options.glsl` 只能 include 一次 | 两次 include 会重复定义顶点解码相关实体 |
+| 不得直接 include `vertex/s2_*` / `vertex/s3_*` | 位置映射与投影已整体下沉到 options，主着色器再直引一份就会与 options 选择的那份冲突 |
+| 不得出现 `#ifdef` / `#if` / `#ifndef` / `#elif` | 顶点格式差异必须由 options 承载。主着色器里出现条件编译，等于把「按顶点格式选择」偷偷还给编译期分支 |
+
+第三条是这次最关键的一条：七-2 之前，LineQuad 那份 master 里就有 4 个活 `#ifdef`
+（`S1_PALETTE_INDEX_GLSL` / `S1_TRANSFORM_ID_GLSL` / `S1_SIZE_GLSL` / `S1_COLOR_GLSL`），
+它们正是生成器时代的残留，也是阶段八 8.1 要清掉的东西。门禁现在会把它们点出来。
+
+其余 master（`char_quad` / `line_quad` 那批）继续走原有规则：不得引入 Stage2、
+Stage3 必须存在且排在 Stage2 之后、varying 维度必须等于 `max_vertices` / `max_primitives`、
+`perprimitiveEXT` 与 `Flat` 必须一一对应、声明了就必须写。
+
+**2. `emit-fixed-mesh` 探针退役写盘职责**
+
+`EmitOneFixedMeshSource` → `CheckOneFixedMeshSource`：删掉 `dir` / `capture` / `written` /
+`unchanged` 参数，删掉 `std::ofstream` 写盘与 `catalog.push_back`，只报两种结果：
+
+```
+[covered] lit-with-uv
+[missing] some-shape: 网格阶段文本在 ShaderLibrary/mesh/shape 下没有对应 master（形状 master 需人工按形状新增）
+```
+
+汇总行从 `written=0 unchanged=35 failed=0` 改为 `covered=35 missing=0 failed=0`，
+且 `missing > 0` 时退出码非零——原来只剩 `failed` 参与退出码，缺源会被当成正常。
+
+探针本身保留，因为它的价值不在写盘：形状由**请求**决定，三张矩阵（反射覆盖、领域后端等价、
+缓存身份）里哪些形状需要覆盖只有它一处维护。在别处复现同一张矩阵等于抄两份，抄歪了不会报错，
+只会静默少覆盖一个形状——`builtin/error_checkerboard_3d` 就是这么漏过一次。
+
+**3. 删除 19 份过渡态哈希文件**
+
+`ShaderLibrary/mesh/fixed/` 从 22 份降到 3 份，保留：
+
+| 文件 | 用途 | 去向 |
+| --- | --- | --- |
+| `3748810927694461494.mesh` | CharQuad（`max_vertices=256` / `max_primitives=128`） | 阶段八 8.1 |
+| `1383689879301672014.mesh` | LineQuad，带顶点色 | 阶段八 8.1 |
+| `13907659216699454923.mesh` | LineQuad，无 varying | 阶段八 8.1 |
+
+删掉的 19 份是各 `tri_192_*` 形状 master 已完整覆盖的旧键（其中 1 份 debug-normal 只出现在
+探针日志里，从未出现在示例配置中）。删后 `emit-fixed-mesh` 仍是 `covered=35 missing=0`——
+覆盖率没有下降，说明这些文件确实已无独占内容。
+
+### 验收结果
+
+| 项目 | 结果 |
+| --- | --- |
+| `ShaderResourceSchemaRegressionGate all` | exit=0，0 个 FAIL |
+| `ShaderResourceSchemaRegressionGate emit-fixed-mesh` | `covered=35 missing=0 failed=0`，exit=0 |
+| `ShaderDocumentProductionRegression --full` | exit=0，`full production fixtures passed` |
+| `DrawTriangle` / `SimpleSphere` / `AutoInstance` / `AutoMergeMaterialInstance` / `SimpleCube` | 5/5 存活，零 `no fixed mesh source` / `AcquireShaderProgram failed` / `Skip primitive` |
+
+### 剩余
+
+`TextDraw`（CharQuad）与 `LineRender`（LineQuad）仍然失败，属阶段八 8.1：这两类拓扑的
+master 还没搬到 `mesh/shape` 的形状命名体系，仍走 `GenerateStageSources` 的 legacy 哈希分支，
+而该分支的键计算从未改动，磁盘里也一直没有匹配的键。

@@ -240,9 +240,30 @@ namespace
         return files;
     }
 
-    static std::filesystem::path FixedMeshMasterRoot()
+    /// 固定网格主着色器的两个根目录。
+    ///
+    /// `mesh/shape/` 是形状固定 master（运行时真实加载的那批），`mesh/fixed/` 只剩
+    /// CharQuad / LineQuad 的拓扑专用源。审计必须同时覆盖两者——只审 `mesh/fixed/`
+    /// 会漏掉全部形状 master，而它们才是绝大多数图元实际走的路径。
+    static std::vector<std::pair<std::string, std::string>>
+    LoadFixedMeshMasters()
     {
-        return std::filesystem::path(RepoRootPath("ShaderLibrary/mesh/fixed"));
+        std::vector<std::pair<std::string, std::string>> masters;
+        for (const char *suffix :
+             {"ShaderLibrary/mesh/shape", "ShaderLibrary/mesh/fixed"})
+        {
+            const std::filesystem::path root(RepoRootPath(suffix));
+            const std::string prefix = root.filename().string() + "/";
+            for (auto &entry : LoadTextTree(root))
+            {
+                entry.first = prefix + entry.first;
+                masters.emplace_back(std::move(entry));
+            }
+        }
+        std::sort(
+            masters.begin(), masters.end(),
+            [](const auto &a, const auto &b) { return a.first < b.first; });
+        return masters;
     }
 
     /// 相对路径（诊断里用的短名；key 形如 `相对路径|绝对路径`）。
@@ -311,11 +332,11 @@ namespace
     /// 「某个模式不写某 varying」的可写性表。
     static void AuditFixedMeshMasters(GateResult &result)
     {
-        const auto masters = LoadTextTree(FixedMeshMasterRoot());
+        const auto masters = LoadFixedMeshMasters();
         if (masters.empty())
         {
             result.diagnostics.emplace_back(
-                "fixed mesh master directory is missing or empty");
+                "fixed mesh master directories are missing or empty");
             return;
         }
 
@@ -508,10 +529,47 @@ namespace
             total_declaration_count += declaration_count;
 
             // ── ④ Stage2/Stage3 组合 ──
+            //
+            // 形状 master 不自己挑 Stage2/Stage3——两者都来自 `generated/mesh_options.glsl`。
+            // 所以判据分两支：带 options 的形状 master 必须正好 include 一次、且不得再
+            // 直接引入 Stage2/Stage3（否则与 options 里的重复定义打架）；拓扑专用源
+            // （CharQuad / LineQuad）仍自带模块，按原来的规则查。
             const bool char_quad =
                 text.find("#include \"vertex/s1_text_char_quad.glsl\"")
                 != std::string::npos;
-            if (char_quad)
+            const size_t options_include =
+                text.find("#include \"generated/mesh_options.glsl\"");
+            if (options_include != std::string::npos)
+            {
+                if (text.find("#include \"generated/mesh_options.glsl\"",
+                              options_include + 1) != std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name
+                            + ": generated/mesh_options.glsl 只能 include 一次");
+                }
+                if (text.find("#include \"vertex/s2_") != std::string::npos
+                    || text.find("#include \"vertex/s3_") != std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name
+                            + ": 形状 master 的 Stage2/Stage3 必须来自"
+                              " generated/mesh_options.glsl，不得直接 include");
+                }
+                // 形状 master 只允许形状层面的差异，任何 `#ifdef` 都是把选择权偷偷
+                // 还给编译期分支——那正是生成器残留的形态。
+                for (const char *branch : {"#ifdef", "#if ", "#elif", "#ifndef"})
+                {
+                    if (text.find(branch) != std::string::npos)
+                    {
+                        AddCappedDiagnostic(
+                            result, name + ": 形状 master 不得含预处理分支 "
+                                        + branch);
+                        break;
+                    }
+                }
+            }
+            else if (char_quad)
             {
                 ++char_quad_files;
                 if (text.find("#include \"vertex/s2_") != std::string::npos)
@@ -1513,7 +1571,7 @@ namespace
                         "网格阶段用了 definition 的 Passthrough3D 映射（recipe 覆盖丢失）");
                 }
 
-                // ── ④ 该形状必须在固定 mesh 源目录里有一份，且内容就是这份 GLSL ──
+                // ── ④ 该形状必须在形状 master 目录里有一份，且内容就是这份 GLSL ──
                 // ShaderGen 删除后没有生成器兜底：目录里缺这一份，该域就没有
                 // mesh 阶段可编译。按内容比对（而不是按形状键硬编码文件名），
                 // 重新捕获时只需替换文件，门禁仍然有效。
@@ -8365,7 +8423,7 @@ void main()
         // MV.fixed-mesh-varying-invariants
         //
         // 原 MV.mesh-varying-writability（生成器可写性表测试）的终态替代：
-        // 在完全物理固定的网格主着色器库（ShaderLibrary/mesh/fixed/*.mesh）上，
+        // 在完全物理固定的网格主着色器库（ShaderLibrary/mesh/shape/*.mesh 与 mesh/fixed/*.mesh）上，
         // 直接断言所有 varying 声明、调度契约、真实写入及 Stage2/3 组合不变量。
         // ══════════════════════════════════════════════════════════════════════
         static GateResult RunFixedMeshVaryingInvariantsCase()
@@ -10372,7 +10430,8 @@ void main()
                 {
                     result.diagnostics.emplace_back(
                         label + ": mesh stage has no source in "
-                        "ShaderLibrary/mesh/fixed（用 emit-fixed-mesh 捕获）");
+                        "ShaderLibrary/mesh/shape 下没有对应形状 master"
+                        "（形状 master 需人工按形状新增，见 plan.md 阶段七-2）");
                 }
 
                 if (!si->HasSPVData())
@@ -11257,23 +11316,25 @@ void main()
         { "cache-color",       "VertexColor", &kCacheIdentityColorGeometry },
     };
 
-    /// 把一个已构建上下文的网格阶段文本落进固定源目录。返回 false 表示失败。
+    /// 覆盖率检查：某个已构建上下文的网格阶段文本，是否已在固定源库里有一份
+    /// 内容完全一致的 master。返回 false 表示缺源。
     ///
-    /// 形状键取自构建期捕获（`ComputeMeshSourceShapeKey` 的输入是**请求**，
-    /// 不是发射文本），所以文件名与内容解耦：模板演进只改内容，不改名字。
-    static bool EmitOneFixedMeshSource(
+    /// 这里**不再写盘**。七-2 之后形状 master 是按形状命名、人工维护的物理源
+    /// （`mesh/shape/tri_<顶点数>_<varying>.mesh`），不再是「按形状键哈希落盘的
+    /// 生成产物」。继续保留写盘分支只会把 `mesh/fixed/` 那套哈希命名重新养出来，
+    /// 所以本探针退化为纯覆盖率检查：缺源就点名，改名/新增由人决定。
+    static bool CheckOneFixedMeshSource(
         const char *label,
         const ShaderBuildContext &ctx,
-        const MaterialShaderBuildCapture &capture,
-        const std::filesystem::path &dir,
-        std::vector<std::string> &catalog,
-        int &written,
-        int &unchanged)
+        const std::vector<std::string> &catalog,
+        int &covered,
+        int &missing)
     {
         const ShaderCreateInfo *mesh = ctx.GetStageShader(ShaderStage::Mesh);
         if (!mesh)
         {
             std::fprintf(stdout, "[emit-fixed-mesh] %s: no mesh stage\n", label);
+            ++missing;
             return false;
         }
 
@@ -11281,65 +11342,44 @@ void main()
         if (glsl.empty())
         {
             std::fprintf(stdout, "[emit-fixed-mesh] %s: empty mesh GLSL\n", label);
+            ++missing;
             return false;
         }
-
-        const std::string path = (dir /
-            (std::to_string(static_cast<uint64_t>(
-                 capture.mesh_source_shape_key)) + ".mesh")).string();
 
         if (FixedMeshCatalogHas(catalog, glsl))
         {
-            ++unchanged;
-            std::fprintf(stdout, "[unchanged] %s key=%s\n", label, path.c_str());
+            ++covered;
+            std::fprintf(stdout, "[covered] %s\n", label);
             return true;
         }
 
-        std::ofstream out(path, std::ios::binary | std::ios::trunc);
-        if (!out)
-        {
-            std::fprintf(stdout, "[emit-fixed-mesh] cannot write %s\n", path.c_str());
-            return false;
-        }
-        out.write(glsl.data(), static_cast<std::streamsize>(glsl.size()));
-        if (!out.good())
-        {
-            std::fprintf(stdout, "[emit-fixed-mesh] write failed %s\n", path.c_str());
-            return false;
-        }
-
-        catalog.push_back(glsl);
-        ++written;
-        std::fprintf(stdout, "[written] %s key=%s bytes=%zu source=%s\n", label,
-                     path.c_str(), glsl.size(),
-                     capture.mesh_source_was_fixed ? "fixed" : "generator");
-        return true;
+        ++missing;
+        std::fprintf(stdout,
+                     "[missing] %s: 网格阶段文本在 ShaderLibrary/mesh/shape 下没有"
+                     "对应 master（形状 master 需人工按形状新增）\n",
+                     label);
+        return false;
     }
 
-    /// `emit-fixed-mesh` 模式：把两张矩阵里每个形状的网格阶段文本落进
-    /// `ShaderLibrary/mesh/fixed/<形状键>.mesh`。
+    /// `emit-fixed-mesh` 模式：一次跑完三张矩阵，逐形状点名网格阶段是否已有
+    /// 内容一致的形状 master。
     ///
-    /// 为什么捕获工具放在门禁里而不是生产回归工具里：形状由**请求**决定
+    /// 为什么这个探针放在门禁里而不是生产回归工具里：形状由**请求**决定
     /// （几何语义集合、位置格式、节点配置、图元类型），而矩阵只在这里维护一份。
     /// 在别处复现同一张矩阵，等于把「哪个形状需要覆盖」抄两份，抄歪了不会报错，
     /// 只会静默少覆盖一个形状。
     ///
-    /// 两张矩阵都要走：
-    ///   · `kReflectionCoverageVariants`——反射门逐 stage 编译的那 16 个变体；
-    ///   · `kDomainBackendEquivShapes`——领域后端等价门逐域的 15 个形状。
+    /// 三张矩阵都要走：
+    ///   · `kReflectionCoverageVariants`——反射门逐 stage 编译的变体；
+    ///   · `kDomainBackendEquivShapes`——领域后端等价门逐域的形状。
     ///     后者的几何是**由领域契约推导**的，与前者手写的几何不是同一份请求，
-    ///     形状键自然也不同（`builtin/error_checkerboard_3d` 就是这么漏掉的：
-    ///     它只出现在领域后端矩阵里，第一次跑「缺源即失败」才现形）。
+    ///     形状自然也不同（`builtin/error_checkerboard_3d` 就是这么漏掉的：
+    ///     它只出现在领域后端矩阵里，第一次跑「缺源即失败」才现形）；
+    ///   · `kCacheIdentityEmitShapes`——缓存身份门用的四种 ABI。
     ///
-    /// 已存在且内容一致的形状跳过，所以它是幂等的。形状键相同但文本不同时会
-    /// **覆盖**写入——这是有意的重捕获流程：形状键哈希的是请求而不是发射文本，
-    /// 主着色器模板演进属于正常情况，届时门禁的内容比对会先亮红灯，人工跑一次
-    /// 本命令即完成更新。
-    ///
-    /// 生成器删除后本命令退化为**纯覆盖率检查**：`GenerateStageSources` 在缺源时
-    /// 已经硬失败，所以「不在目录里」永远走不到写盘那一支，`[written]` 不会再出现。
-    /// 这时它的价值是「一次跑完三张矩阵，逐形状点名谁缺源」——比让某条用例在
-    /// 半途炸掉要好定位得多。
+    /// 本探针**只读**。七-2 之后形状 master 是按形状命名、人工维护的物理源，
+    /// 不再有「按哈希键把生成结果落盘」这件事；留着写盘分支只会把
+    /// `mesh/fixed/` 那套哈希命名重新养出来。
     static int EmitFixedMeshCatalog()
     {
         std::string preset_diagnostic;
@@ -11357,10 +11397,8 @@ void main()
             return 1;
         }
 
-        const std::filesystem::path dir = RepoRootPath("ShaderLibrary/mesh/fixed");
-
-        int written = 0;
-        int unchanged = 0;
+        int covered = 0;
+        int missing = 0;
         int failed = 0;
 
         for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
@@ -11378,8 +11416,8 @@ void main()
                 continue;
             }
 
-            if (!EmitOneFixedMeshSource(variant.variant_slug, *ctx, capture,
-                                        dir, catalog, written, unchanged))
+            if (!CheckOneFixedMeshSource(variant.variant_slug, *ctx, catalog,
+                                        covered, missing))
                 ++failed;
         }
 
@@ -11443,8 +11481,8 @@ void main()
                 continue;
             }
 
-            if (!EmitOneFixedMeshSource(shape.label, *ctx, capture, dir,
-                                        catalog, written, unchanged))
+            if (!CheckOneFixedMeshSource(shape.label, *ctx, catalog,
+                                        covered, missing))
                 ++failed;
         }
 
@@ -11507,15 +11545,15 @@ void main()
                 continue;
             }
 
-            if (!EmitOneFixedMeshSource(shape.label, *ctx, capture, dir,
-                                        catalog, written, unchanged))
+            if (!CheckOneFixedMeshSource(shape.label, *ctx, catalog,
+                                        covered, missing))
                 ++failed;
         }
 
         std::fprintf(stdout,
-                     "[emit-fixed-mesh] written=%d unchanged=%d failed=%d\n",
-                     written, unchanged, failed);
-        return failed == 0 ? 0 : 1;
+                     "[emit-fixed-mesh] covered=%d missing=%d failed=%d\n",
+                     covered, missing, failed);
+        return (failed == 0 && missing == 0) ? 0 : 1;
     }
 
 }
@@ -11588,9 +11626,9 @@ int main(const int argc, char **argv)
 
     const char *selected_group = argc == 2 ? argv[1] : "all";
 
-    // `emit-fixed-mesh` 不是回归组，而是捕获入口：把快照矩阵里的每个网格形状
-    // 落进 `ShaderLibrary/mesh/fixed/`。它与门禁共用同一张变体表，形状定义只有
-    // 一份——捕获与验证不可能互相漂移。
+    // `emit-fixed-mesh` 不是回归组，而是覆盖率探针：一次跑完三张矩阵，
+    // 逐形状点名 `ShaderLibrary/mesh/shape` 下有没有对应的形状 master。
+    // 它与门禁共用同一张变体表，形状定义只有一份——覆盖检查与验证不可能互相漂移。
     if (std::strcmp(selected_group, "emit-fixed-mesh") == 0)
     {
         if (!InitShaderCompiler())
