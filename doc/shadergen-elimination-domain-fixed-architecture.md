@@ -206,6 +206,30 @@ varying 的**集合**按 (domain, pass, 覆盖判定) 三者确定，**不是按
 | `standard_opaque/shadow_caster_masked.frag` | shadow-masked | 22 | 9260 |
 | `sky/sky.frag` | sky | 22 | 7132 |
 
+**第二条等价性证据链（进程内，与上表互为交叉验证）**：门禁用例
+`DH.domain-backend-equivalence`（`ShaderResourceSchemaRegressionGate all` 的 `pipeline` 分组）
+在**同一进程**里把同一个 `MaterialRecipe` 走两条路各建一次构建上下文：
+
+1. 旧路：`GenericMaterialBuilder` → `GetFinalGLSL()` → `ULRE.ShaderCompiler`；
+2. 新路：`DomainShaderBuildBackend` → 固定主着色器 + `generated/options.glsl`。
+
+然后两侧都用 `ReflectSPVData()` 取 reflection，逐行格式化（入口点、各阶段 I/O 的
+loc/name/base/vec/col、全部 11 类 descriptor 的 set/binding/array/name、push constant 的
+offset/size/name）后做**文本全等**比较，再比较 `GetSPVSize()`。用例还带两条**反自证**断言：
+
+- 旧路 GLSL 里**不许**出现 `generated/options.glsl`（否则说明新路代码串进了旧路）；
+- 新路 GLSL 里**必须**出现 `generated/options.glsl`（否则说明根本没走固定主着色器）。
+
+两条路都**不挂** `shader_artifact_store`，因此不读也不写磁盘缓存，比较的是纯编译产物。
+当前 5/5 通过：fwd 65072 B、fwd-alpha 67024 B、shadow 1232 B、shadow-alpha 8896 B、sky 6732 B。
+（字节数与上表不同属正常：上表是 `spvfc` 用脚本写死的 options 编出来的，本节是两条进程内
+路径各用自己的 options 生成逻辑，**比的正是这两条路彼此等价**。）
+
+模板路由必须**走引擎路由器**而不是门禁自己按 purpose/alpha 拼：先
+`SelectSceneRenderTemplateRequest()` 定模板与 profile，再
+`AppendMaterialRenderTemplateRoots()` 把材质能力槽拷进请求。只调前者会因槽缺失被
+`ValidateRenderTemplateRequest` 拒；只调后者会给 Sky 选错模板。
+
 ---
 
 ## 2. 待清理的旧 ShaderGen 模块清单
@@ -227,20 +251,35 @@ varying 的**集合**按 (domain, pass, 覆盖判定) 三者确定，**不是按
 
 ## 3. 演进路线图（含实际进度）
 
-1. **第一阶段：固化各 MaterialDomain 的主着色器** ✅（StandardOpaque 4 档 + Sky 已完成）
+1. **第一阶段：固化各 MaterialDomain 的主着色器** ✅ `709eb58ce`
    - 已固化：`StandardOpaque` 的 ForwardColor / ShadowDepth(有覆盖) / ShadowDepth(无覆盖)，`Sky` 的 ForwardColor。
    - 已定义 `options.glsl` 注入协议与 `<domain>_bindings.glsl` 分层。
    - 待补：`UnlitSolid` / `VertexColor` / `VertexPalette` / `VertexLuminance` /
      `UnlitTexture` / `UI2D` / `Text2D` / `Checker2D` / `Checker3D` 等（这些走
      `flat_lighting` 形状，留待阶段四按域迁移时逐个固化）。
-2. **第二阶段：实现极简 `DomainOptionsEmitter`（< 200 行）**
-   - 输入 `MaterialDomain` + Pass 类型，输出上述 `options.glsl` 文本。
+2. **第二阶段：实现极简 `DomainOptionsEmitter`** ✅ `fc70e0847`
+   - 输入 `MaterialDomain` + Pass 类型，输出 `options.glsl` 文本（8 步发射顺序、4 路 profile 表）。
    - 不做任何依赖推导、不做任何模块排序——模块顺序已经物理写在主着色器里。
-3. **第三阶段：直通编译后端 `DomainShaderBuildBackend`**
-   - 直接调 `GLSLCompiler.dll` 编译固定主着色器，用 SPIR-V 反射提取 binding/varying 信息。
-   - 把 1.6 的等价性判据固化为回归用例。
+   - `DomainOptionsRegression.exe` 26 项纯度断言（只有 `#define`/`#include`、无空行、LF 结尾、
+     宏集合与 profile 精确匹配、不再发射已死的 `HGL_USE_*`）。
+3. **第三阶段：直通编译后端 `DomainShaderBuildBackend`** ✅
+   - `3.0` ✅ `b26f738ea`：把 glslang 桥从 `src/ShaderGen` 提成独立模块 `ULRE.ShaderCompiler`，
+     用 `SetShaderCompilerLifecycleHooks()` 反转生命周期，消除「运行时反向依赖生成器」。
+     现在的模块边界是
+     `SceneGraph/Work/Tools → ULRE.ShaderCompiler → GLSLCompiler.dll`，
+     而 `ULRE.ShaderGen` 只是从上方注册后端钩子。
+   - `3.1` ✅ `77efd2ede`：`DomainShaderTemplate` 查找表 + `DomainShaderBuildBackend`，
+     多 include 根支持（`includes[0]=ShaderLibrary`，`includes[1]=generated`，上限 2 个），
+     并由环境变量选择后端（默认仍是生成器，故是**可选项**而非切替）。
+   - `3.2` ✅：`DomainShaderTemplate` 增加**逐领域**前向文件名与 `supports_depth`
+     （`standard_opaque/forward_lit.frag`、`sky/sky.frag`；Sky 不参与深度 pass），
+     修掉「把 Sky 的前向 pass 也拼成 `forward_lit.frag`」的隐患；新增门禁用例
+     `DH.domain-backend-equivalence`（见 1.6），并给领域后端补
+     `GetLastDomainShaderBuildBackendError()`（`GLogError` 在门禁里不可见，诊断必须走字符串出口）；
+     顺带刷新了仓库根的 `GLSLCompiler.dll`——它一直是**旧的单 include 根构建**，与插件源码脱节。
 4. **第四阶段：业务域全面接入新管道并打通全 Pass**
    - 逐域迁移，跑 `SimpleSphere` / `PBRSpheres` / `LineRender` / `DrawText` 实机验证。
 5. **第五阶段：整体切替与旧代码物理删除**
    - 将渲染系统底层对接至直通管道。
    - 一次性物理删除 `src/ShaderGen` 下冗余的生成器、注记解析与 AST 模块。
+

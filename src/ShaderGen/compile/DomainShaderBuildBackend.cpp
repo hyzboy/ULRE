@@ -51,6 +51,7 @@
 #include "ShaderGenBackendInstall.h"
 
 #include <cstdio>
+#include <cstdarg>
 #include <cstring>
 #include <string>
 
@@ -64,6 +65,26 @@ namespace hgl::graph::mtl
             "ULRE_SHADER_BUILD_BACKEND";
 
         // ── 小工具 ────────────────────────────────────────────────────────
+
+        /// 最近一次领域后端失败原因。
+        /// `GLogError` 走的是日志通道——门禁/工具里通常看不到（stdout 里只剩
+        /// 「build failed」），所以失败出口同时往这里记一份，调用方用
+        /// `GetLastDomainShaderBuildBackendError()` 取走放进自己的诊断。
+        /// 与 `GetLastBuildGenericMaterialError()` 同一动机。
+        AnsiString g_last_domain_build_error;
+
+        void DomainBuildFailed(const char8_t *format, ...)
+        {
+            char buffer[1024];
+            va_list args;
+            va_start(args, format);
+            vsnprintf(buffer, sizeof(buffer),
+                      reinterpret_cast<const char *>(format), args);
+            va_end(args);
+
+            g_last_domain_build_error = buffer;
+            GLogError(u8"%s", buffer);
+        }
 
         bool LoadTextFile(const OSString &path, AnsiString &out_text)
         {
@@ -181,7 +202,7 @@ namespace hgl::graph::mtl
                 input.ambient_include_path = GetAmbientIncludePath(request);
                 if (!input.ambient_include_path)
                 {
-                    GLogError(
+                    DomainBuildFailed(
                         u8"[DomainBackend] 领域 %d 需要 ForwardLit options，但渲染模板没有"
                         u8" AmbientLightProvider 槽（材质 %s）",
                         static_cast<int>(domain),
@@ -224,7 +245,7 @@ namespace hgl::graph::mtl
             const OSString cache_root = GetShaderCacheRootPath();
             if (cache_root.IsEmpty())
             {
-                GLogError(u8"[DomainBackend] 着色器缓存根目录不可用，options.glsl 无处落盘");
+                DomainBuildFailed(u8"[DomainBackend] 着色器缓存根目录不可用，options.glsl 无处落盘");
                 return false;
             }
 
@@ -240,8 +261,8 @@ namespace hgl::graph::mtl
 
             if (!filesystem::MakePath(generated_dir))
             {
-                GLogError(u8"[DomainBackend] 无法创建 options 目录：%s",
-                          ShaderLibraryPathToUTF8(generated_dir).c_str());
+                DomainBuildFailed(u8"[DomainBackend] 无法创建 options 目录：%s",
+                    ShaderLibraryPathToUTF8(generated_dir).c_str());
                 return false;
             }
 
@@ -251,8 +272,8 @@ namespace hgl::graph::mtl
 
             if (!WriteTextFile(options_path, options_text))
             {
-                GLogError(u8"[DomainBackend] 写入 options.glsl 失败：%s",
-                          ShaderLibraryPathToUTF8(options_path).c_str());
+                DomainBuildFailed(u8"[DomainBackend] 写入 options.glsl 失败：%s",
+                    ShaderLibraryPathToUTF8(options_path).c_str());
                 return false;
             }
 
@@ -268,7 +289,7 @@ namespace hgl::graph::mtl
             const std::string library_root = GetShaderLibraryPath();
             if (library_root.empty())
             {
-                GLogError(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");
+                DomainBuildFailed(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");
                 return false;
             }
 
@@ -278,15 +299,15 @@ namespace hgl::graph::mtl
 
             if (!LoadTextFile(path, out_source))
             {
-                GLogError(u8"[DomainBackend] 读取领域主着色器失败：%s",
-                          ShaderLibraryPathToUTF8(path).c_str());
+                DomainBuildFailed(u8"[DomainBackend] 读取领域主着色器失败：%s",
+                    ShaderLibraryPathToUTF8(path).c_str());
                 return false;
             }
 
             if (out_source.Length() <= 0)
             {
-                GLogError(u8"[DomainBackend] 领域主着色器是空文件：%s",
-                          ShaderLibraryPathToUTF8(path).c_str());
+                DomainBuildFailed(u8"[DomainBackend] 领域主着色器是空文件：%s",
+                    ShaderLibraryPathToUTF8(path).c_str());
                 return false;
             }
 
@@ -309,7 +330,7 @@ namespace hgl::graph::mtl
             ShaderCreateInfo *fragment = ctx.GetStageShader(ShaderStage::Fragment);
             if (!fragment)
             {
-                GLogError(u8"[DomainBackend] 构建上下文缺少片段阶段");
+                DomainBuildFailed(u8"[DomainBackend] 构建上下文缺少片段阶段");
                 return false;
             }
 
@@ -319,7 +340,7 @@ namespace hgl::graph::mtl
             const std::string library_root = GetShaderLibraryPath();
             if (library_root.empty())
             {
-                GLogError(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");
+                DomainBuildFailed(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");
                 return false;
             }
 
@@ -329,8 +350,8 @@ namespace hgl::graph::mtl
             const char *roots[2] = { library_root.c_str(), options_root_utf8.c_str() };
             if (!SetShaderIncludeRoots(roots, 2))
             {
-                GLogError(u8"[DomainBackend] 设置 include 根失败：%s | %s",
-                          library_root.c_str(), options_root_utf8.c_str());
+                DomainBuildFailed(u8"[DomainBackend] 设置 include 根失败：%s | %s",
+                    library_root.c_str(), options_root_utf8.c_str());
                 return false;
             }
 
@@ -343,7 +364,7 @@ namespace hgl::graph::mtl
 
             if (!compiled)
             {
-                GLogError(
+                DomainBuildFailed(
                     u8"[DomainBackend] 领域主着色器编译失败：domain=%d purpose=%d\n%s",
                     static_cast<int>(domain),
                     static_cast<int>(purpose),
@@ -372,6 +393,8 @@ namespace hgl::graph::mtl
             {
                 DomainShaderTemplate resolved_template;
 
+                g_last_domain_build_error.Clear();
+
                 // ── 1. 网格阶段/链接规格/元数据仍走生成器 ────────────────────
                 //
                 // 片段阶段要整篇换源，所以必须 `defer_finalize`：否则
@@ -384,9 +407,9 @@ namespace hgl::graph::mtl
                     profile, deferred_request, definition, nullptr);
                 if (!ctx)
                 {
-                    GLogError(u8"[DomainBackend] 网格阶段构建失败：材质 %s（%s）",
-                              definition.definition_id.c_str(),
-                              GetLastBuildGenericMaterialError());
+                    DomainBuildFailed(u8"[DomainBackend] 网格阶段构建失败：材质 %s（%s）",
+                        definition.definition_id.c_str(),
+                        GetLastBuildGenericMaterialError());
                     return nullptr;
                 }
 
@@ -432,7 +455,7 @@ namespace hgl::graph::mtl
                 if (!ResolveDomainShaderTemplate(
                         domain, purpose, masked_coverage, out_template))
                 {
-                    GLogError(
+                    DomainBuildFailed(
                         u8"[DomainBackend] 领域 %d 没有对应的固定主着色器"
                         u8"（purpose=%d masked=%d，材质 %s）",
                         static_cast<int>(domain),
@@ -470,6 +493,12 @@ namespace hgl::graph::mtl
     // ═══════════════════════════════════════════════════════════════════════
     // 安装 / 选择
     // ═══════════════════════════════════════════════════════════════════════
+
+    const char *GetLastDomainShaderBuildBackendError()
+    {
+        const char *text = g_last_domain_build_error.c_str();
+        return text ? text : "";
+    }
 
     bool IsDomainShaderBuildBackendRequested()
     {

@@ -10,24 +10,31 @@ namespace hgl::graph::mtl
         {
             MaterialDomain domain;
             const char *dir_name;       ///< ShaderLibrary/domain/ 下的子目录名
+            const char *forward_file;   ///< 前向 pass 的主着色器文件名
+            bool supports_depth;        ///< 是否参与深度/阴影 pass
         };
 
         /// 已实现固定主着色器的领域。新增领域 = 在此加一行 + 提供对应 .frag 文件；
         /// 只加枚举不加文件是**不允许**的（会解析失败，而不是悄悄退化成别的领域）。
+        ///
+        /// 前向文件名**逐领域给出**，不共用一套命名：StandardOpaque 的主着色器是
+        /// 一份完整的 PBR 前向着色（`forward_lit.frag`），而 Sky 是自己的一套环境
+        /// 采样（`sky.frag`，输出方向向量而非世界坐标）。用同一个文件名去拼会让
+        /// 后加的领域在编译期就找不到文件。
         constexpr DomainDirEntry kDomainDirs[] =
         {
-            { MaterialDomain::StandardOpaque, "standard_opaque" },
-            { MaterialDomain::Sky,            "sky"            },
+            { MaterialDomain::StandardOpaque, "standard_opaque", "forward_lit.frag", true  },
+            { MaterialDomain::Sky,            "sky",             "sky.frag",         false },
         };
 
         constexpr int kDomainDirCount =
             static_cast<int>(sizeof(kDomainDirs) / sizeof(kDomainDirs[0]));
 
-        const char *FindDomainDir(const MaterialDomain domain) noexcept
+        const DomainDirEntry *FindDomainEntry(const MaterialDomain domain) noexcept
         {
             for (int i = 0; i < kDomainDirCount; ++i)
                 if (kDomainDirs[i].domain == domain)
-                    return kDomainDirs[i].dir_name;
+                    return &kDomainDirs[i];
 
             return nullptr;
         }
@@ -42,24 +49,21 @@ namespace hgl::graph::mtl
         out_template.domain = MaterialDomain::Custom;
         out_template.relative_path.Clear();
 
-        const char *dir_name = FindDomainDir(domain);
-        if (!dir_name)
+        const DomainDirEntry *entry = FindDomainEntry(domain);
+        if (!entry)
             return false;
 
         const char *stage_name = nullptr;
 
         if (!IsDomainDepthPurpose(purpose))
         {
-            // Sky 是环境 pass 专用领域，没有前向着色形状。
-            if (domain == MaterialDomain::Sky)
-                return false;
-
-            stage_name = "forward_lit.frag";
+            // 前向 pass：文件名取自表，不做推断。
+            stage_name = entry->forward_file;
         }
         else
         {
             // 天空不进深度/阴影 pass：给它一份深度主着色器只会掩盖调用方错误。
-            if (domain == MaterialDomain::Sky)
+            if (!entry->supports_depth)
                 return false;
 
             stage_name = masked_coverage
@@ -68,7 +72,7 @@ namespace hgl::graph::mtl
         }
 
         char buffer[128];
-        snprintf(buffer, sizeof(buffer), "domain/%s/%s", dir_name, stage_name);
+        snprintf(buffer, sizeof(buffer), "domain/%s/%s", entry->dir_name, stage_name);
 
         out_template.domain = domain;
         out_template.relative_path = buffer;

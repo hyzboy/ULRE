@@ -41,6 +41,9 @@ namespace hgl::graph::mtl
     ///
     /// 返回 false = 该领域尚无固定主着色器，或该领域不支持此 pass
     /// （例如 Sky 不会出现在深度 pass 里）。调用方必须当成构建失败处理。
+    ///
+    /// 前向 pass 的文件名**逐领域不同**（StandardOpaque → `forward_lit.frag`，
+    /// Sky → `sky.frag`），所以不要在调用方按领域名拼路径，一律走本函数。
     bool ResolveDomainShaderTemplate(
         MaterialDomain domain,
         ShaderProgramPurpose purpose,

@@ -50,6 +50,8 @@
 #include "StageBuildContextTest.h"
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include "ShaderGen/meshgen/MeshTemplateEmitter.h"   // EmitMeshTemplateDocument / MeshShaderMode
+#include <hgl/mtl/ShaderProgramBuildBackend.h>
+#include "ShaderGen/compile/ShaderGenBackendInstall.h"
 
 #include <algorithm>
 #include <cctype>
@@ -9729,6 +9731,327 @@ void main()
         return result;
     }
 
+    // ═════════════════════════════════════════════════════════════════════════
+    // DH.domain-backend-equivalence
+    //
+    // 「不生成着色器」后端（DomainShaderBuildBackend）与生成器的**等价性**证明。
+    //
+    // 为什么不能只靠 scripts/ci/verify-domain-master-shaders.ps1：
+    //   那个脚本证明的是「主着色器 + options.glsl（由 DomainOptionsRegression 写出）
+    //   编译出来 == 生成器产物」。它绕开了引擎：options 是那个工具自己 emit 的，
+    //   主着色器是脚本手选的。**接线**（后端选了哪份文件、options 里的字段从哪来、
+    //   include 根怎么给）完全没有被它覆盖。这里补的就是这一段。
+    //
+    // 判据（与脚本一致，别换成逐字节比较）：
+    //   · SPIR-V 逐字节比较无效——同一份源码两次编译就差几十字节（内嵌内容哈希）；
+    //   · 比 reflection 文本（稳定）+ SPV 字节数（抓 reflection 看不见的多余声明）。
+    //
+    // 防"自证"：
+    //   request 不带 artifact store（默认 nullptr）⇒ 两条路径都不碰磁盘缓存，
+    //   否则第二次构建可能直接读到第一次的产物，等价性就成了循环论证；
+    //   并断言生成器侧的最终 GLSL **不含** `generated/options.glsl`
+    //   ——两条路径的输入文本确实不同，比较才有意义。
+    // ═════════════════════════════════════════════════════════════════════════
+
+    struct DomainBackendEquivShape
+    {
+        const char *label;
+        const char *definition_id;
+        ShaderProgramPurpose purpose;
+        bool alpha_test;
+    };
+
+    /// 五个 pass 形状与 Phase 1 实测矩阵、以及 lit-*/sky-* 夹具一一对应。
+    static const DomainBackendEquivShape kDomainBackendEquivShapes[] =
+    {
+        { "fwd",          "Lit",     ShaderProgramPurpose::ForwardColor, false },
+        { "fwd-alpha",    "Lit",     ShaderProgramPurpose::ForwardColor, true  },
+        { "shadow",       "Lit",     ShaderProgramPurpose::ShadowDepth,  false },
+        { "shadow-alpha", "Lit",     ShaderProgramPurpose::ShadowDepth,  true  },
+        { "sky",          "SkyCube", ShaderProgramPurpose::ForwardColor, false },
+    };
+
+    /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。
+    static std::string FormatDomainEquivReflection(const ShaderFlatView &view)
+    {
+        std::string text;
+        char line[192];
+
+        std::snprintf(line, sizeof(line), "entrypoint=%s\n",
+                      view.entrypoint ? view.entrypoint : "");
+        text += line;
+
+        std::snprintf(line, sizeof(line), "inputs=%u outputs=%u push_constants=%u subpass=%u\n",
+                      view.input_count, view.output_count,
+                      view.push_constant_count, view.subpass_input_count);
+        text += line;
+
+        for (uint32_t i = 0; i < view.input_count; ++i)
+        {
+            const SFAttribute &a = view.inputs[i];
+            std::snprintf(line, sizeof(line), "in  loc=%u name=%s base=%u vec=%u col=%u\n",
+                          static_cast<unsigned>(a.location), a.name,
+                          static_cast<unsigned>(a.basetype),
+                          static_cast<unsigned>(a.vec_size),
+                          static_cast<unsigned>(a.col_count));
+            text += line;
+        }
+
+        for (uint32_t i = 0; i < view.output_count; ++i)
+        {
+            const SFAttribute &a = view.outputs[i];
+            std::snprintf(line, sizeof(line), "out loc=%u name=%s base=%u vec=%u col=%u\n",
+                          static_cast<unsigned>(a.location), a.name,
+                          static_cast<unsigned>(a.basetype),
+                          static_cast<unsigned>(a.vec_size),
+                          static_cast<unsigned>(a.col_count));
+            text += line;
+        }
+
+        for (uint32_t t = 0; t < SF_DESCRIPTOR_TYPE_COUNT; ++t)
+        {
+            for (uint32_t i = 0; i < view.resource_count[t]; ++i)
+            {
+                const SFDescriptor &d = view.resources[t][i];
+                std::snprintf(line, sizeof(line), "res type=%u set=%u binding=%u array=%u name=%s\n",
+                              t,
+                              static_cast<unsigned>(d.set),
+                              static_cast<unsigned>(d.binding),
+                              static_cast<unsigned>(d.array_size),
+                              d.name);
+                text += line;
+            }
+        }
+
+        for (uint32_t i = 0; i < view.push_constant_count; ++i)
+        {
+            const SFPushConstant &pc = view.push_constants[i];
+            std::snprintf(line, sizeof(line), "pc  offset=%u size=%u name=%s\n",
+                          pc.offset, pc.size, pc.name);
+            text += line;
+        }
+
+        return text;
+    }
+
+    /// 两条路径共用的构建请求。几何格式由调用方持有（request 只存指针）。
+    static bool BuildDomainEquivRequest(
+        const DomainBackendEquivShape &shape,
+        const MaterialDefinition &definition,
+        GeometryVertexFormat &geometry,
+        MaterialDefinitionBuildRequest &request,
+        std::string &diagnostic)
+    {
+        if (!geometry.Add(VertexSemantic::Position, VF_V3F, 0, 0))
+        {
+            diagnostic = "geometry.Add(Position) failed";
+            return false;
+        }
+
+        // 与生产夹具同一条规则：定义声明了 NTB 就必须有 UV0 + Normal。
+        const bool requires_ntb =
+            definition.ntb_module_name && definition.ntb_module_name[0];
+        if (requires_ntb
+         && (!geometry.Add(VertexSemantic::TexCoord, VF_V2F, 0, 0)
+          || !geometry.Add(VertexSemantic::Normal, VF_V3F, 0, 0)))
+        {
+            diagnostic = "geometry.Add(UV0/Normal) failed";
+            return false;
+        }
+
+        request.recipe.mtl_def_id = definition.definition_id;
+        request.recipe.render_state_overrides.has_alpha_test = shape.alpha_test;
+        request.recipe.render_state_overrides.alpha_test = shape.alpha_test;
+        request.recipe.render_state_overrides.has_alpha_cutoff = shape.alpha_test;
+        request.recipe.render_state_overrides.alpha_cutoff = 0.5f;
+        request.geometry_vertex_format = &geometry;
+        request.shader_program_purpose = shape.purpose;
+
+        // 模板选择**必须**走引擎的路由器：它按「深度？/有 NTB？/有材质源？」
+        // 选模板与 profile，并顺带挂上材质模块根。早期这里手写过一份等价
+        // 分支，Sky 立刻炸了（SkyCube 没有 NTB provider，路由到 ForwardUnlit
+        // 而不是 ForwardLitShadowedAO）——不要再复制这些规则。
+        if (!SelectSceneRenderTemplateRequest(
+                definition, shape.purpose, request.recipe,
+                request.render_template_request, nullptr))
+        {
+            diagnostic = "SelectSceneRenderTemplateRequest failed";
+            return false;
+        }
+
+        // 路由器只负责「选哪个模板 + 哪个 profile」；材质自身的能力
+        // （surface / ntb / shadow … 槽）要靠这一步搬进请求，否则
+        // `ValidateRenderTemplateRequest` 会以「槽缺失」拒绝构建。
+        if (!AppendMaterialRenderTemplateRoots(
+                definition, request.render_template_request))
+        {
+            diagnostic = "AppendMaterialRenderTemplateRoots failed";
+            return false;
+        }
+
+        return true;
+    }
+
+    static GateResult RunDomainBackendEquivalenceCase()
+    {
+        GateResult result;
+        result.name = "DH.domain-backend-equivalence";
+
+        std::string preset_diagnostic;
+        if (!EnsureSamplerPresetsLoaded(preset_diagnostic))
+        {
+            result.diagnostics.emplace_back(preset_diagnostic);
+            result.passed = false;
+            return result;
+        }
+
+        for (const DomainBackendEquivShape &shape : kDomainBackendEquivShapes)
+        {
+            const std::string label = std::string(shape.label)
+                                    + " (" + shape.definition_id + ")";
+
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(shape.definition_id, definition))
+            {
+                result.diagnostics.emplace_back(label + ": definition unavailable");
+                continue;
+            }
+
+            GeometryVertexFormat geometry;
+            MaterialDefinitionBuildRequest request{};
+            std::string build_diagnostic;
+            if (!BuildDomainEquivRequest(
+                    shape, definition, geometry, request, build_diagnostic))
+            {
+                result.diagnostics.emplace_back(label + ": " + build_diagnostic);
+                continue;
+            }
+
+            // ── ① 生成器路径：defer_finalize=false ⇒ 先内部收尾并编译出 SPV ──
+            request.defer_finalize = false;
+            std::unique_ptr<ShaderBuildContext> generated(
+                CreateMaterialFromDefinition(nullptr, definition, request));
+            if (!generated)
+            {
+                const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
+                result.diagnostics.emplace_back(
+                    label + ": generator build failed: "
+                    + (err.IsEmpty() ? "unknown error" : err.c_str()));
+                continue;
+            }
+
+            // ── ② 领域后端路径（临时接管槽位，跑完立刻交还给生成器）──────────
+            std::unique_ptr<ShaderBuildContext> domain_built;
+            InstallDomainShaderBuildBackend();
+            ShaderProgramBuildBackend *domain_backend = GetShaderProgramBuildBackend();
+            if (!domain_backend)
+                result.diagnostics.emplace_back(label + ": domain backend slot empty");
+            else
+            {
+                domain_built.reset(
+                    domain_backend->CreateBuildContext(nullptr, definition, request));
+                if (!domain_built)
+                {
+                    const char *domain_error = GetLastDomainShaderBuildBackendError();
+                    result.diagnostics.emplace_back(
+                        label + ": domain backend build failed: "
+                        + (domain_error && domain_error[0] ? domain_error : "unknown error"));
+                }
+                else if (!domain_backend->FinalizeBuildContext(domain_built.get()))
+                {
+                    result.diagnostics.emplace_back(label + ": domain backend finalize failed");
+                    domain_built.reset();
+                }
+            }
+            InstallShaderGenProgramBuildBackend();
+
+            if (!domain_built)
+                continue;
+
+            // ── ③ 取片段阶段：两侧都必须有 SPV ──────────────────────────────
+            const ShaderCreateInfo *gen_fs = generated->has_fragment()
+                ? generated->GetStageShader(ShaderStage::Fragment) : nullptr;
+            const ShaderCreateInfo *dom_fs = domain_built->has_fragment()
+                ? domain_built->GetStageShader(ShaderStage::Fragment) : nullptr;
+
+            if (!gen_fs || !dom_fs)
+            {
+                result.diagnostics.emplace_back(label + ": fragment stage missing");
+                continue;
+            }
+            if (!gen_fs->HasSPVData() || !dom_fs->HasSPVData())
+            {
+                result.diagnostics.emplace_back(label + ": fragment SPIR-V missing");
+                continue;
+            }
+
+            // 防自证：两条路径的输入文本必须真的不同。
+            const std::string &gen_glsl = gen_fs->GetFinalGLSL();
+            const std::string &dom_glsl = dom_fs->GetFinalGLSL();
+            if (gen_glsl.find("generated/options.glsl") != std::string::npos)
+            {
+                result.diagnostics.emplace_back(
+                    label + ": generator GLSL unexpectedly references generated/options.glsl");
+                continue;
+            }
+            if (dom_glsl.find("generated/options.glsl") == std::string::npos)
+            {
+                result.diagnostics.emplace_back(
+                    label + ": domain GLSL does not include generated/options.glsl"
+                    " (include root wiring broken)");
+                continue;
+            }
+
+            // ── ④ 比 reflection 文本 + SPV 尺寸 ───────────────────────────
+            hgl::ValueArray<uint8_t> gen_storage;
+            hgl::ValueArray<uint8_t> dom_storage;
+            ShaderFlatView gen_view{};
+            ShaderFlatView dom_view{};
+            if (!ReflectSPVData(
+                    gen_fs->GetSPVData(), gen_fs->GetSPVSize(),
+                    uint32_t(ShaderStage::Fragment), "main", gen_storage, gen_view))
+            {
+                result.diagnostics.emplace_back(label + ": generator reflection failed");
+                continue;
+            }
+            if (!ReflectSPVData(
+                    dom_fs->GetSPVData(), dom_fs->GetSPVSize(),
+                    uint32_t(ShaderStage::Fragment), "main", dom_storage, dom_view))
+            {
+                result.diagnostics.emplace_back(label + ": domain reflection failed");
+                continue;
+            }
+
+            const std::string gen_text = FormatDomainEquivReflection(gen_view);
+            const std::string dom_text = FormatDomainEquivReflection(dom_view);
+            if (gen_text != dom_text)
+            {
+                result.diagnostics.emplace_back(
+                    label + ": reflection differs\n--- generator ---\n" + gen_text
+                    + "--- domain ---\n" + dom_text);
+                continue;
+            }
+
+            if (gen_fs->GetSPVSize() != dom_fs->GetSPVSize())
+            {
+                char detail[160];
+                std::snprintf(detail, sizeof(detail),
+                              ": SPIR-V size differs (generator=%zu domain=%zu)",
+                              gen_fs->GetSPVSize(), dom_fs->GetSPVSize());
+                result.diagnostics.emplace_back(label + detail);
+                continue;
+            }
+
+            char ok[128];
+            std::snprintf(ok, sizeof(ok), "%s: equivalent (spv=%zu bytes)",
+                          label.c_str(), dom_fs->GetSPVSize());
+            std::fprintf(stdout, "[INFO] DH.domain-backend %s\n", ok);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
 }
 
 int main(const int argc, char **argv)
@@ -9900,6 +10223,7 @@ int main(const int argc, char **argv)
     if (run_module_invariants) results.push_back(RunModuleIncludeDeclarationContractCase());
     if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
     if (run_pipeline) results.push_back(RunShaderEmissionOrderGoldenCase());
+    if (run_pipeline) results.push_back(RunDomainBackendEquivalenceCase());
 
     bool all_passed = true;
     for (const auto &result : results)

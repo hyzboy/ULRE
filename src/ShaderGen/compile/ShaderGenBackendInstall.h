@@ -23,6 +23,10 @@ namespace hgl::graph::mtl
     void InstallDomainShaderBuildBackend();
     void UninstallDomainShaderBuildBackend();
 
+    /// 最近一次领域后端失败的原因（空串表示没有失败记录）。
+    /// `GLogError` 在门禁/工具里不可见，诊断需要这个出口。
+    const char *GetLastDomainShaderBuildBackendError();
+
     void InstallShaderCreateInfoSPVReleaser();
     void UninstallShaderCreateInfoSPVReleaser();
 }//namespace hgl::graph::mtl
