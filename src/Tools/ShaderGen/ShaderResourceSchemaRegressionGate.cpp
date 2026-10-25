@@ -73,6 +73,49 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
+    /// 用**领域后端**构建一次并收尾（跑完把后端槽位交还生成器）。
+    ///
+    /// 阶段 5.2 起门禁不再依赖生成器的 `CreateMaterialFromDefinition`：生成器要被
+    /// 物理删除，而「编译出的二进制长什么样」这类判据本来就只该问后端。领域后端
+    /// 内部强制 `defer_finalize`（SPV 编译要等 include 根设对），因此调用方必须
+    /// 显式收尾 —— 收尾之后 `HasProgramLink()` 才成立。
+    ///
+    /// 失败时 `error` 取领域后端/网格构建的报错；两者都没有时给一句兜底，
+    /// 免得诊断变成空行（GLogError 不进 stdout，门禁里看不见）。
+    static std::unique_ptr<ShaderBuildContext> BuildViaDomainBackend(
+        const MaterialDefinition &definition,
+        const MaterialDefinitionBuildRequest &request,
+        std::string &error)
+    {
+        InstallDomainShaderBuildBackend();
+        std::unique_ptr<ShaderBuildContext> ctx;
+        ShaderProgramBuildBackend *backend = GetShaderProgramBuildBackend();
+        if (!backend)
+            error = "domain backend slot empty";
+        else
+        {
+            ctx.reset(backend->CreateBuildContext(nullptr, definition, request));
+            if (!ctx)
+            {
+                const char *domain_error = GetLastDomainShaderBuildBackendError();
+                const hgl::AnsiString &mesh_error = GetLastBuildGenericMaterialError();
+                if (domain_error && domain_error[0])
+                    error = domain_error;
+                else if (!mesh_error.IsEmpty())
+                    error = mesh_error.c_str();
+                else
+                    error = "unknown error";
+            }
+            else if (!backend->FinalizeBuildContext(ctx.get()))
+            {
+                error = "finalize failed";
+                ctx.reset();
+            }
+        }
+        InstallShaderGenProgramBuildBackend();
+        return ctx;
+    }
+
     static bool ComposeTemplateText(
         const RenderTemplateID template_id,
         const SceneRenderTemplateProfile &profile,
@@ -688,8 +731,11 @@ namespace
                 return std::unique_ptr<ShaderBuildContext>();
             }
 
+            // 本用例断言的是**网格阶段**发射文本里的 local_size_x 与设备上限
+            // 守卫，片段根本不参与。直接调网格阶段构建器（阶段 5.2 后它是唯一
+            // 还存在的构建入口），也就不需要 SPV 编译。
             return std::unique_ptr<ShaderBuildContext>(
-                CreateMaterialFromDefinition(profile, def, request));
+                BuildGenericMaterial(profile, request, def, nullptr));
         };
 
         // ── ① 无 profile（无约束）：local_size_x 必须等于 CPU dispatch 常量 ──
@@ -1461,10 +1507,9 @@ namespace
                     definition, request.render_template_request))
                 return std::unique_ptr<ShaderBuildContext>();
             return std::unique_ptr<ShaderBuildContext>(
-                CreateMaterialFromDefinition(
-                    profile, definition, request));
+                BuildGenericMaterial(
+                    profile, request, definition, nullptr));
         };
-
         const auto lit_a = build(
             nullptr, lit, lit_geometry_a,
             RenderTemplateID::ForwardLitShadowedAO,
@@ -2145,12 +2190,12 @@ namespace
                         return std::unique_ptr<ShaderBuildContext>();
                     }
                     auto ctx = std::unique_ptr<ShaderBuildContext>(
-                        CreateMaterialFromDefinition(
-                            nullptr, selected, request));
+                        BuildGenericMaterial(
+                            nullptr, request, selected, nullptr));
                     if (!ctx)
                     {
                         const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
-                        result.diagnostics.emplace_back(std::string("CreateMaterialFromDefinition returned null: ") + (err.IsEmpty() ? "unknown error" : err.c_str()));
+                        result.diagnostics.emplace_back(std::string("BuildGenericMaterial returned null: ") + (err.IsEmpty() ? "unknown error" : err.c_str()));
                     }
                     else if (!ctx->HasProgramLink())
                     {
@@ -2454,8 +2499,8 @@ namespace
                         definition, request.render_template_request))
                     return std::unique_ptr<ShaderBuildContext>();
                 return std::unique_ptr<ShaderBuildContext>(
-                    CreateMaterialFromDefinition(
-                        nullptr, definition, request));
+                    BuildGenericMaterial(
+                        nullptr, request, definition, nullptr));
             };
             const auto lit_build = build(
                 lit, lit_geometry, RenderTemplateID::ForwardLitShadowedAO,
@@ -8761,7 +8806,7 @@ void main()
         }
 
         std::unique_ptr<ShaderBuildContext> baked(
-            CreateMaterialFromDefinition(nullptr, definition, request));
+            BuildGenericMaterial(nullptr, request, definition, nullptr));
         if (!baked || !baked->HasProgramLink() || !baked->HasProgramArtifactMetadata())
         {
             result.diagnostics.emplace_back(
@@ -9394,7 +9439,7 @@ void main()
         }
 
         std::unique_ptr<ShaderBuildContext> ctx(
-            CreateMaterialFromDefinition(nullptr, definition, request));
+            BuildGenericMaterial(nullptr, request, definition, nullptr));
         if (!ctx)
             diagnostic = std::string("material build failed: ") + variant.golden_slug;
 
@@ -10012,32 +10057,15 @@ void main()
 
             // ── ① 领域后端路径（临时接管槽位，跑完交还）────────────────────
             request.defer_finalize = false;
-            std::unique_ptr<ShaderBuildContext> domain_built;
-            InstallDomainShaderBuildBackend();
-            ShaderProgramBuildBackend *domain_backend = GetShaderProgramBuildBackend();
-            if (!domain_backend)
-                result.diagnostics.emplace_back(label + ": domain backend slot empty");
-            else
-            {
-                domain_built.reset(
-                    domain_backend->CreateBuildContext(nullptr, definition, request));
-                if (!domain_built)
-                {
-                    const char *domain_error = GetLastDomainShaderBuildBackendError();
-                    result.diagnostics.emplace_back(
-                        label + ": domain backend build failed: "
-                        + (domain_error && domain_error[0] ? domain_error : "unknown error"));
-                }
-                else if (!domain_backend->FinalizeBuildContext(domain_built.get()))
-                {
-                    result.diagnostics.emplace_back(label + ": domain backend finalize failed");
-                    domain_built.reset();
-                }
-            }
-            InstallShaderGenProgramBuildBackend();
-
+            std::string build_error;
+            std::unique_ptr<ShaderBuildContext> domain_built =
+                BuildViaDomainBackend(definition, request, build_error);
             if (!domain_built)
+            {
+                result.diagnostics.emplace_back(
+                    label + ": domain backend build failed: " + build_error);
                 continue;
+            }
 
             // ── ② 片段阶段必须有 SPV，且必须真的吃 generated/options.glsl ──
             const ShaderCreateInfo *dom_fs = domain_built->has_fragment()
@@ -10084,7 +10112,7 @@ void main()
             if (DomainEquivRecordRequested())
             {
                 std::unique_ptr<ShaderBuildContext> generated(
-                    CreateMaterialFromDefinition(nullptr, definition, request));
+                    BuildGenericMaterial(nullptr, request, definition, nullptr));
                 if (!generated)
                 {
                     const hgl::AnsiString &err = GetLastBuildGenericMaterialError();
@@ -10676,7 +10704,7 @@ int main(const int argc, char **argv)
 
             request.defer_finalize = false;
             std::unique_ptr<ShaderBuildContext> ctx(
-                CreateMaterialFromDefinition(nullptr, definition, request));
+                BuildGenericMaterial(nullptr, request, definition, nullptr));
             const ShaderCreateInfo *fragment = (ctx && ctx->has_fragment())
                 ? ctx->GetStageShader(ShaderStage::Fragment) : nullptr;
             if (!fragment)
