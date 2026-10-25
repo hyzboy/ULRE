@@ -1711,3 +1711,116 @@ vec2 GetLineSize() { return vec2(1.0, 1.0); }
 但该发射代码在域固定架构落地时已整体移走（`git show HEAD` 版本中同样不存在），
 于是该用例在 HEAD 上就已经失败。因为它在 Test 14 就中止，Test 29 / Test 34 本轮无法通过运行验证；
 契约改写的正确性用逐条字符串核对代替（见 §7 的两列对照），文件存在性与匹配文本均已确认。
+## 阶段八-2：门禁测试全面收敛到终态事实
+
+8.2 的目标不是"再删一批代码"，而是**把门禁从"生成器打算做什么"改判为"终态架构里什么是真的"**。
+生成器删除后有一类契约会自动失效却不报错：它断言的对象（发射器）没了，
+或者它自己拼一份期望字符串喂进去再查输出里有没有——那种断言连整段内容丢失都能过。
+本阶段逐条处理。
+
+### 1. Test 14：从"发射器遍历列表"改为跨文件逐字段比对
+
+**失效点**：Test 14 ② 原本断言 `src/ShaderGen/compile/MaterialShaderCompiler.cpp` 里存在
+`kMaterialInstanceAddressesFieldNames[field_index]`，即"GLSL 行结构由发射器遍历 X 列表生成"。
+域固定架构落地时那段发射代码整体移走，GLSL 侧改成 `ShaderLibrary/domain/root_bindings.glsl`
+里**物理固定的手写文本**——于是这条断言在 `HEAD` 上就已经失败，整个
+`TestCSMIncrementalPass` 在 Test 14 中止（Test 29 / Test 34 因此长期没有真正跑过）。
+
+**为什么不能简单删掉**：契约的**意图**（CPU 与 GLSL 两侧行结构不漂移）依然活着，只是**位置**变了。
+手写文本必然有漂移面：加一个字段只改一侧，编译照样通过，运行时整条 BDA 寻址**静默错位**——
+比读错值更糟，没有任何报错，只有画面不对。
+
+**做法**：新增 `CheckMaterialInstanceAddressesRowMirror()`（`TestCSMIncrementalPass.cpp`），
+两个解析器 + 一次**按顺序**逐字段比对：
+
+| 侧 | 抽取方式 |
+| --- | --- |
+| C++ | 解析 `inc/hgl/graph/ShaderBufferSources.h` 的 `HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(M)` 宏体（按行尾 `\` 续行），每行取 `M(name, "glsl_type", cpu_type)` 的前两段 |
+| GLSL | 解析 `ShaderLibrary/domain/root_bindings.glsl` 的 `struct MaterialInstanceAddresses { … }` 体，取每条 `type name;` |
+
+比对**字段数与每一项的 (名字, GLSL 类型)**，顺序不同即失败——顺序决定行内偏移，错位与缺字段等价。
+失败信息直接打印第几个字段两侧各是什么。
+
+> 解析器必须容忍 CRLF：初次实现用 `line.back() == '\\'` 判续行，但工作区是 CRLF，
+> 行尾是 `\r` 而不是 `\`，续行判定当场断掉、宏体解析为空。教训：**判行尾先 trim**。
+
+**非空验证**（这是本阶段最重要的一步——守卫本身也要被证明不是摆设）：
+
+| 探针 | 结果 |
+| --- | --- |
+| 把 GLSL 的 `shadow_flags` 改成 `shadow_flagz` 后直接跑（无需重编译，运行期读文件） | `exit=14`，`行结构第 3 个字段不一致——C++ 是 (shadow_flags, uint)，GLSL 是 (shadow_flagz, uint)` |
+| 还原后 | `exit=0`，Test 14 `Passed (23 checks)` |
+
+同一轮还顺手修正了两处会误导后来者的**过时注释**：
+`root_bindings.glsl` 前导仍写着"字段顺序 = C++ 侧 `kRootAddressesFieldNames` 的顺序（MaterialShaderEmitter）"，
+`ShaderBufferSources.h` 仍写着"GLSL struct 发射全部从这一份生成（发射端见 `MaterialShaderCompiler.cpp`
+的 `BuildFSIndexTableDecls`）"。两处都改成指向真实现状 + 指向守住它的那条测试。
+
+**连带收获**：`TestCSMIncrementalPass` 首次**完整跑通**——50 条用例全绿，
+Test 29（22 条契约）与 Test 34（5 条契约）第一次真正执行而不是靠字符串核对。
+
+### 2. 门禁 ④ 的 `#ifdef` 扫描改为只看代码
+
+形状 master 的 ④ 判据是"不得含预处理分支"，实现为对整份文件文本做
+`"#ifdef" / "#if " / "#elif" / "#ifndef"` 子串扫描——**注释也算**。
+于是"本文件刻意不留 `#ifdef`"这种正当文档会被判死，8.1 只能靠改措辞绕开。
+
+本阶段新增 `StripGlslComments()`（去 `//` 行注释与 `/* */` 块注释，块注释按行保留换行以便偏移可用），
+`AuditFixedMeshMasters` 内的 `text` 改为**剥注释后的代码文本**，判据对象回到"代码"。
+
+同一份文本还被 ①②③④ 的 include / `layout(` / 写入探针共用，改动后偏移全部在同一份剥后文本上取值，
+不会出现"一半在原文本取偏移、一半在剥后文本查子串"的错配。
+
+**非空验证（两个方向都要证，否则等于把门关掉）**：
+
+| 探针（改 `tri_192_color.mesh`，无需重编译门禁） | 结果 |
+| --- | --- |
+| 在文件头加一行注释 `// 探针：形状 master 不得含 #ifdef / #if 分支` | `MV.fixed-mesh-varying-invariants` **PASS**（改动前会被判死） |
+| 再加真正的 `#ifdef PROBE_FLAG` / `#endif` 两行代码 | `MV.fixed-mesh-varying-invariants` **FAIL**：`形状 master 不得含预处理分支 #ifdef` |
+| 还原 | gate `all` `exit=0`，59 PASS |
+
+### 3. `Z.material-bda-emitter`：去掉"自己拼期望值再回声"的空转
+
+该用例原本把 `{ "base_color", Sampler2D, true }, { "normal", Sampler2DArray, false }` 等
+自建文本作为 `fixed_fragment_source` 喂给编译器，然后断言输出里有
+`#define MTL_ROW(i) EmissiveSurfaceRow(...payload_index...)`——期望值**硬编码在测试里**，
+与库文件毫无关系：库里的 `MTL_ROW` 改了、删了、甚至整段丢了，只要测试自己那份字符串没变，照样绿。
+
+改为从库文件取真值：
+
+- 新增 `ExtractDefineLine(src, prefix)`：取以 `#define MTL_ROW(i)` 开头的整行（去行尾 CR/空白），
+  作为**期望值**；库文件不再定义该宏 ⇒ 直接失败（`emissive_row_bindings.glsl 不再定义 MTL_ROW 行别名`）。
+- 断言该行在最终 stage 文档里**恰好出现一次**（防重复发射）。
+- 断言三要素 `struct EmissiveSurfaceData` / `buffer EmissiveSurfaceRow` / `MaterialInstanceAddressesRef`
+  的声明点在**库文件**（`emissive_row_bindings.glsl` 或 `root_bindings.glsl`）里，而不是测试字符串里。
+- 保留真正有语义的管线断言：`RequiresRecipePayloadRow()` 对有 payload 的材质为真、
+  对纯纹理材质为假；`RequiresRecipeRuntimeRows()` 反之；扩展声明 → 值结构 → 行别名的顺序不变。
+
+**为什么纯纹理子用例仍保留合成源**：真实库 `standard_opaque_bindings.glsl` 同时声明
+`MTL_ROW` 与 `MTL_TEX`（行跨度 32 / 贴图引用跨度 48），无法用来证明"只有贴图行时不会多发 payload 行"。
+那一段要证明的是**编译器的判定语义**而非库文件内容，故刻意自建最小源，并在代码里写明这一点。
+
+**非空验证**：把库里的 `#define MTL_ROW(i)` 改成 `#define MTL_ROWX(i)` ⇒ `Z.material-bda-emitter` **FAIL**
+并打印上面那句诊断；同时 `SPV.generated-interface` / `DH.domain-backend-equivalence` / `DH.domain-backend-cache`
+也一起 FAIL——这三条会真编 shader，反过来证明它们不是空转。
+
+### 4. `X.transform-graph-composition`：复核后无需改动
+
+该用例在 7.x 已经改判过："这个图会拼出哪些 Stage2/Stage3 模块"不再靠生成一段 GLSL 去观察，
+而是直接问 `VertexNodeConfigResolver` 要模块路径，再核对**该模块文件真的在库里**。
+复核确认已是终态形态（少一个文件、改名、删枚举分支都硬失败），本阶段不动。
+
+### 验收结果
+
+| 命令 | 结果 |
+| --- | --- |
+| `ShaderResourceSchemaRegressionGate.exe all` | `exit=0`，**59 PASS / 0 FAIL** |
+| `ShaderResourceSchemaRegressionGate.exe emit-fixed-mesh` | `covered=35 missing=0 failed=0`，`exit=0` |
+| `ShaderDocumentProductionRegression.exe --full` | `exit=0`，`full production fixtures passed` |
+| `TestCSMIncrementalPass.exe` | `exit=0`，**50 条用例全绿**（Test 14 / 29 / 34 首次真正执行） |
+
+### 剩余
+
+8.2 的判定性收敛已完成。下一阶段 8.3 只做**改名**（`MaterialShaderCompiler` → `StageSPVCompiler`、
+`GenericMaterialBuilder` → `MaterialProgramAssembler`、抹掉 `src/ShaderGen` 模块名），
+不改语义；改名之后，门禁用例名里的 `emitter` / `emit` 一类措辞一并复核。

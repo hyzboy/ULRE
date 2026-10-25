@@ -10,7 +10,8 @@
 // 不得再声明 `RootAddresses`，否则会得到重复的 push constant 块。
 //
 // ⚠ 字段顺序 = C++ 侧 `kRootAddressesFieldNames / kRootAddressesFieldTypes`
-// 的顺序（MaterialShaderEmitter），改动必须两边同步，否则整条 BDA 寻址错位。
+// 的顺序（inc/hgl/graph/ShaderBufferSources.h），改动必须两边同步，否则整条
+// BDA 寻址错位。此文件是物理固定文本，不参与任何生成。
 #ifndef HGL_DOMAIN_ROOT_BINDINGS_GLSL
 #define HGL_DOMAIN_ROOT_BINDINGS_GLSL
 
@@ -37,6 +38,12 @@ layout(push_constant) uniform RootAddresses
 
 // 材质实例行寻址。`.mi.toml`（MaterialRecipe）在运行时只是一行 BDA 记录，
 // 从不参与编译——这是"材质实例不需要独立 SPV"的物理依据。
+//
+// ⚠ 下面这 4 个字段是**手写**的（域固定架构下不再由发射器遍历 X 列表生成）。
+// 字段名与顺序必须与 inc/hgl/graph/ShaderBufferSources.h 的
+// `HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST` 完全一致——顺序决定行内偏移，
+// 错位即静默读错字段。该不变量由 TestCSMIncrementalPass Test 14 ②
+// （CheckMaterialInstanceAddressesRowMirror）跨文件逐字段比对守住。
 struct MaterialInstanceAddresses
 {
     uint payload_index;

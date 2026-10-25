@@ -30,6 +30,16 @@ static_assert(hgl::graph::kMainLightRowIndex == 0, "主方向光恒为 0 号行�
 
 #include <cmath>
 
+// 本文件是工具链测试程序（非引擎生产代码），沿用本仓测试的既有做法允许 STL；
+// 生产代码仍必须使用 HGL 类型。
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <numbers>
+#include <string>
+#include <utility>
+#include <vector>
+
 // 源码计数助手（Test 28）：verify_source_contracts 只能判「有没有」，判不了「有几条」——
 // 而「指针版是否又走了一次 GetEntity」这种不变量必须按**条数**钉（同一段直通体 const/非 const 各一条）。
 static uint32_t CountSubstring(const std::string &src, const std::string &needle)
@@ -44,11 +54,199 @@ static uint32_t CountSubstring(const std::string &src, const std::string &needle
 
     return n;
 }
-#include <numbers>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
-#include <string>
+
+// ─────────────────────────────────────────────────────────────
+// Test 14 ② 的跨文件一致性守卫
+//
+// 域固定架构后，GLSL 侧的 `MaterialInstanceAddresses` 行结构是**手写**在
+// `ShaderLibrary/domain/root_bindings.glsl` 里的物理固定文本——不再由发射器遍历
+// `HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST` 生成。手写就必然有漂移面：
+// 加一个字段只改一侧，编译照样通过，运行时整条 BDA 寻址**静默错位**
+//（比读错值更糟：没有任何报错，只有画面不对）。
+//
+// 所以这个守卫必须按**顺序**逐字段比对名字与 GLSL 类型，而不是只查「有没有」——
+// 字段顺序决定行内偏移，顺序错了与缺字段等价。
+// ─────────────────────────────────────────────────────────────
+static std::string ReadRepoTextFile(const char *rel)
+{
+    std::ifstream in(rel, std::ios::binary);
+    if (!in)
+        return std::string();
+
+    return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+}
+
+static std::string TrimAsciiBlanks(const std::string &s)
+{
+    size_t b = 0;
+    size_t e = s.size();
+
+    while (b < e && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n'))
+        ++b;
+    while (e > b && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r' || s[e - 1] == '\n'))
+        --e;
+
+    return s.substr(b, e - b);
+}
+
+// X 列表 → 有序 (字段名, GLSL 类型)
+static bool ParseFieldListMacro(const std::string &header,
+                                std::vector<std::pair<std::string, std::string>> &out)
+{
+    const std::string kAnchor = "#define HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(M)";
+    const size_t anchor = header.find(kAnchor);
+    if (anchor == std::string::npos)
+        return false;
+
+    size_t pos = anchor;
+    bool   more = true;
+
+    while (more)
+    {
+        const size_t eol = header.find('\n', pos);
+        const size_t end = (eol == std::string::npos) ? header.size() : eol;
+        std::string  line = TrimAsciiBlanks(header.substr(pos, end - pos));
+
+        more = (!line.empty() && line.back() == '\\');
+
+        const size_t m = line.find("M(");
+        if (m != std::string::npos)
+        {
+            const size_t close = line.find(')', m);
+            if (close == std::string::npos)
+                return false;
+
+            const std::string body = line.substr(m + 2, close - m - 2);
+            const size_t      c1 = body.find(',');
+            if (c1 == std::string::npos)
+                return false;
+            const size_t c2 = body.find(',', c1 + 1);
+            if (c2 == std::string::npos)
+                return false;
+
+            std::string name = TrimAsciiBlanks(body.substr(0, c1));
+
+            std::string type = TrimAsciiBlanks(body.substr(c1 + 1, c2 - c1 - 1));
+            if (type.size() >= 2 && type.front() == '"' && type.back() == '"')
+                type = type.substr(1, type.size() - 2);
+
+            if (name.empty() || type.empty())
+                return false;
+
+            out.emplace_back(name, type);
+        }
+
+        if (eol == std::string::npos)
+            break;
+
+        pos = eol + 1;
+    }
+
+    return !out.empty();
+}
+
+// GLSL struct 体 → 有序 (字段名, GLSL 类型)
+static bool ParseGlslStructFields(const std::string &glsl, const char *struct_name,
+                                  std::vector<std::pair<std::string, std::string>> &out)
+{
+    const size_t at = glsl.find(struct_name);
+    if (at == std::string::npos)
+        return false;
+
+    const size_t brace = glsl.find('{', at);
+    if (brace == std::string::npos)
+        return false;
+
+    size_t pos = brace + 1;
+
+    for (;;)
+    {
+        const size_t eol = glsl.find('\n', pos);
+        const size_t end = (eol == std::string::npos) ? glsl.size() : eol;
+
+        const std::string line = TrimAsciiBlanks(glsl.substr(pos, end - pos));
+
+        if (!line.empty() && line.front() == '}')
+            break;
+        if (eol == std::string::npos)
+            return false;
+
+        pos = eol + 1;
+
+        if (line.empty() || line.compare(0, 2, "//") == 0 || line.back() != ';')
+            continue;
+
+        const std::string decl = TrimAsciiBlanks(line.substr(0, line.size() - 1));
+        const size_t      sp = decl.find(' ');
+        if (sp == std::string::npos)
+            return false;
+
+        const std::string type = TrimAsciiBlanks(decl.substr(0, sp));
+        std::string       name = TrimAsciiBlanks(decl.substr(sp + 1));
+        const size_t      arr = name.find('[');          // 数组声明（本行结构不该有，容错截断）
+        if (arr != std::string::npos)
+            name = TrimAsciiBlanks(name.substr(0, arr));
+
+        if (name.empty() || type.empty())
+            return false;
+
+        out.emplace_back(name, type);
+    }
+
+    return !out.empty();
+}
+
+static int CheckMaterialInstanceAddressesRowMirror()
+{
+    const std::string header = ReadRepoTextFile("inc/hgl/graph/ShaderBufferSources.h");
+    const std::string glsl   = ReadRepoTextFile("ShaderLibrary/domain/root_bindings.glsl");
+
+    if (header.empty() || glsl.empty())
+    {
+        GLogError(u8"Test 14 Failed: cannot read ShaderBufferSources.h / root_bindings.glsl"
+                  u8" (run from repo root)");
+        return 14;
+    }
+
+    std::vector<std::pair<std::string, std::string>> cpu_fields;
+    if (!ParseFieldListMacro(header, cpu_fields))
+    {
+        GLogError(u8"Test 14 Failed: cannot parse HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST"
+                  u8"（X 列表单源被破坏 ⇒ CPU 侧 struct / 布局断言 / 名字表全部失效）");
+        return 14;
+    }
+
+    std::vector<std::pair<std::string, std::string>> gpu_fields;
+    if (!ParseGlslStructFields(glsl, "struct MaterialInstanceAddresses", gpu_fields))
+    {
+        GLogError(u8"Test 14 Failed: cannot parse GLSL struct MaterialInstanceAddresses"
+                  u8"（片元侧行结构与 CPU 侧脱钩）");
+        return 14;
+    }
+
+    if (cpu_fields.size() != gpu_fields.size())
+    {
+        GLogError(u8"Test 14 Failed: 行结构字段数不一致——C++ X 列表 %d 个，GLSL struct %d 个"
+                  u8"（加字段只改一侧 ⇒ 整条 BDA 寻址静默错位）",
+                  static_cast<int>(cpu_fields.size()), static_cast<int>(gpu_fields.size()));
+        return 14;
+    }
+
+    for (size_t i = 0; i < cpu_fields.size(); ++i)
+    {
+        if (cpu_fields[i].first != gpu_fields[i].first || cpu_fields[i].second != gpu_fields[i].second)
+        {
+            GLogError(u8"Test 14 Failed: 行结构第 %d 个字段不一致——C++ 是 (%s, %s)，GLSL 是 (%s, %s)"
+                      u8"（顺序决定行内偏移，错位即静默读错字段）",
+                      static_cast<int>(i),
+                      cpu_fields[i].first.c_str(), cpu_fields[i].second.c_str(),
+                      gpu_fields[i].first.c_str(), gpu_fields[i].second.c_str());
+            return 14;
+        }
+    }
+
+    return 0;
+}
 
 using namespace hgl;
 using namespace hgl::ecs;
@@ -2044,7 +2242,9 @@ int main(int argc, char** argv)
     //（MaterialInstanceAddresses —— FS 早已按 dataIndex 寻址同一行）。
     // 本测试钉住这条链的四段：
     //   ① 行结构是 X 列表单源（CPU struct / 布局断言 / GLSL 发射同源，无手写漂移面）；
-    //   ② 发射端遍历该列表，不手写字段；
+    //   ② GLSL 侧行结构：域固定架构后是物理固定手写文本（root_bindings.glsl），
+    //      不再由发射器遍历 X 列表生成 ⇒ 由 CheckMaterialInstanceAddressesRowMirror()
+    //      按顺序逐字段比对两份，守住唯一的漂移面；
     //   ③ 逐图元真值 → per-draw 行：**2026-10-14（批 D）后载体是两跳**——
     //      实体事实端（collect）读组件自由函数写 EntityGPU 行，剔除以
     //      `entity.shadow_*` 把该行抄进 per-draw 行（CPU 行写入端已随
@@ -2075,17 +2275,18 @@ int main(int argc, char** argv)
               "sizeof(MaterialInstanceAddresses) == 8",
               "行结构退回了 8B（D3 之前的形态）——接收侧旋钮又没地方放", true },
 
-            // ② 发射端遍历列表（不是手写字段）
-            // 阶段5.2-g 起原 MaterialShaderEmitter.cpp 已并入 MaterialShaderCompiler.cpp。
-            { "MaterialShaderCompiler.cpp", OS_TEXT("src/ShaderGen/compile/MaterialShaderCompiler.cpp"),
-              "kMaterialInstanceAddressesFieldNames[field_index]",
-              "GLSL 行结构不再从 X 列表发射，而是手写字段——与 CPU 端的漂移面复活" },
-            { "MaterialShaderCompiler.cpp", OS_TEXT("src/ShaderGen/compile/MaterialShaderCompiler.cpp"),
-              "kMaterialShadowFlagNoReceive",
-              "接收标志位不再由 C++ 枚举发射（GLSL 侧数值会与 CPU 端脱钩）" },
-            { "MaterialShaderCompiler.cpp", OS_TEXT("src/ShaderGen/compile/MaterialShaderCompiler.cpp"),
-              "uint payload_index",
-              "GLSL 行结构退回手写字段发射——加字段必然漏改一侧", true },
+            // ② GLSL 侧行结构（域固定架构后是**物理固定**文本，不再由发射器遍历 X 列表生成）
+            // 手写就必然有漂移面，所以真正的守卫是下面 CheckMaterialInstanceAddressesRowMirror()
+            // 的**顺序逐字段**比对；这里只钉住「声明点仍在这一份文件里」与标志位定义还在。
+            { "root_bindings.glsl", OS_TEXT("ShaderLibrary/domain/root_bindings.glsl"),
+              "struct MaterialInstanceAddresses",
+              "GLSL 侧行结构声明点不见了（fragment 主着色器再也找不到该类型）" },
+            { "root_bindings.glsl", OS_TEXT("ShaderLibrary/domain/root_bindings.glsl"),
+              "MaterialInstanceAddresses values[];",
+              "行表 buffer_reference 声明丢失（per-draw 行无法寻址）" },
+            { "root_bindings.glsl", OS_TEXT("ShaderLibrary/domain/root_bindings.glsl"),
+              "#define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 1u",
+              "接收标志位常量与 CPU 端 kMaterialShadowFlagNoReceive 脱钩（GLSL 侧只能硬编码数值）" },
 
             // ③ 逐图元写入（真值 = 组件自由函数 → EntityGPU 事实行 → per-draw 行）
             { "RenderPrimitiveCollectSystem.cpp",
@@ -2140,9 +2341,13 @@ int main(int argc, char** argv)
                                                        sizeof(kShadowKnobContracts) / sizeof(kShadowKnobContracts[0])))
             return failed;
 
+        if (const int failed = CheckMaterialInstanceAddressesRowMirror())
+            return failed;
+
         GLogInfo(u8"Test 14 Passed: shadow receive-side knob contract holds (%d checks) -- "
                  u8"receive_shadow/bias_multiplier carried by the per-draw row from "
-                 u8"the entity-level shadow free functions to the fragment-side shadow factor.",
+                 u8"the entity-level shadow free functions to the fragment-side shadow factor; "
+                 u8"CPU X-list and hand-written GLSL row struct are field-for-field identical in order.",
                  static_cast<int>(sizeof(kShadowKnobContracts) / sizeof(kShadowKnobContracts[0])));
     }
 

@@ -330,6 +330,64 @@ namespace
     ///
     /// ①②④ 覆盖了原来「生成器按模式推导」的内容，③ 覆盖了
     /// 「某个模式不写某 varying」的可写性表。
+    /// 去掉 `//` 行注释与 `/* */` 块注释（保留换行，便于按偏移取原文本片段）。
+    ///
+    /// 形状 master 的 ④ 判据是「不得含预处理分支」，但按原文本直接查子串会把
+    /// **注释里的说明文字**也算成违规——`// 本文件刻意不留 #ifdef` 这种正当注释
+    /// 会被判死。判据的对象必须是**代码**，不是注释。
+    static std::string StripGlslComments(const std::string &src)
+    {
+        std::string out;
+        out.reserve(src.size());
+
+        for (size_t i = 0; i < src.size();)
+        {
+            if (src[i] == '/' && i + 1 < src.size() && src[i + 1] == '/')
+            {
+                while (i < src.size() && src[i] != '\n')
+                    ++i;
+            }
+            else if (src[i] == '/' && i + 1 < src.size() && src[i + 1] == '*')
+            {
+                i += 2;
+                while (i + 1 < src.size() && !(src[i] == '*' && src[i + 1] == '/'))
+                {
+                    if (src[i] == '\n')
+                        out += '\n';
+                    ++i;
+                }
+                i = (i + 1 < src.size()) ? i + 2 : src.size();
+            }
+            else
+            {
+                out += src[i];
+                ++i;
+            }
+        }
+
+        return out;
+    }
+
+    /// 取出以 `prefix` 开头的一整行（去掉行尾 CR/空白与行首缩进）。
+    ///
+    /// 用于把「库里写的宏定义原文」当成期望值：测试不再自己复制一份字符串，
+    /// 否则库文本改了而测试没改，两边一起漂移也照样绿。
+    static std::string ExtractDefineLine(const std::string &src, const char *prefix)
+    {
+        const size_t at = src.find(prefix);
+        if (at == std::string::npos)
+            return std::string();
+
+        const size_t eol = src.find('\n', at);
+        std::string line = src.substr(at, (eol == std::string::npos ? src.size() : eol) - at);
+
+        while (!line.empty()
+               && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t'))
+            line.pop_back();
+
+        return line;
+    }
+
     static void AuditFixedMeshMasters(GateResult &result)
     {
         const auto masters = LoadFixedMeshMasters();
@@ -345,7 +403,8 @@ namespace
         for (const auto &file : masters)
         {
             const std::string name = TreeEntryName(file);
-            const std::string &text = file.second;
+            // 判据一律针对**代码**：注释里的说明文字不算违规（见 StripGlslComments）。
+            const std::string text = StripGlslComments(file.second);
 
             // ── 调度契约：max_vertices / max_primitives ──
             uint32_t max_vertices = 0;
@@ -557,7 +616,8 @@ namespace
                               " generated/mesh_options.glsl，不得直接 include");
                 }
                 // 形状 master 只允许形状层面的差异，任何 `#ifdef` 都是把选择权偷偷
-                // 还给编译期分支——那正是生成器残留的形态。
+                // 还给编译期分支——那正是生成器残留的形态。扫描对象是已剥掉注释的
+                // 代码文本（见 StripGlslComments）：文档里讨论这些关键字是正当的。
                 for (const char *branch : {"#ifdef", "#if ", "#elif", "#ifndef"})
                 {
                     if (text.find(branch) != std::string::npos)
@@ -7653,13 +7713,41 @@ namespace
                 return count;
             };
 
-            // Arena+BDA：材质数据经设备地址行表寻址，断言行指针别名 /
-            // 行引用声明 / 值结构三要素齐全且顺序稳定。
-            // （阶段 3 双 index 两级寻址：MTL_ROW 经 global_addresses + payload_index 解引用）
-            const std::string expected_alias =
-                "#define MTL_ROW(i) EmissiveSurfaceRow(global_addresses.addr_emissive_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(16))";
-            if (source.find(expected_alias) == std::string::npos)
-                result.diagnostics.emplace_back("arena row alias was not injected");
+            // Arena+BDA：材质数据经设备地址行表寻址。
+            // 域固定架构后这些文本**不再被发射**：它们物理固定在
+            // ShaderLibrary/domain/emissive_row_bindings.glsl 里。所以判据改成
+            // 「库文件自己声明的行别名，是否原样、只出现一次地进了最终 stage 文档」——
+            // 测试不再自己拼一份期望字符串去回声（那样连发射器丢了整段内容都能过）。
+            const std::string expected_alias = ExtractDefineLine(
+                emissive_bindings, "#define MTL_ROW(i)");
+            if (expected_alias.empty())
+            {
+                result.diagnostics.emplace_back(
+                    "emissive_row_bindings.glsl 不再定义 MTL_ROW 行别名"
+                    "（材质私有数据行无法按 payload_index 解引用）");
+            }
+            else
+            {
+                const size_t alias_hits = count_occurrences(expected_alias.c_str());
+                if (alias_hits != 1)
+                {
+                    result.diagnostics.emplace_back(
+                        "库文件的 MTL_ROW 行别名没有恰好一次地进入 stage 文档（hits="
+                        + std::to_string(alias_hits) + "）");
+                }
+            }
+
+            // 三要素（值结构 / 行引用 / 行别名）的声明点是库文件本身：
+            // 少一个、改名、或多个文件重复声明，都在这里硬失败。
+            for (const char *required : {"struct EmissiveSurfaceData",
+                                         "buffer EmissiveSurfaceRow",
+                                         "MaterialInstanceAddressesRef"})
+            {
+                if (emissive_bindings.find(required) == std::string::npos
+                 && root_bindings.find(required) == std::string::npos)
+                    result.diagnostics.emplace_back(
+                        std::string("库文件缺少材质私有数据行声明：") + required);
+            }
 
             // payload 行需求必须与 MTL_ROW 一起出现：运行期的材质私有数据 SSBO
             // 绑定校验只认这一位。
@@ -7702,6 +7790,9 @@ namespace
         delete build_spec;
 
         // 独立纯纹理材质：没有 payload 时仍必须发射双地址行表和 MTL_TEX。
+        // 说明：这里的片元源是**合成**的（真实库里 `standard_opaque_bindings.glsl`
+        // 同时声明 MTL_ROW/MTL_TEX，无法用来证明「只有贴图行时不会多发 payload 行」）。
+        // 本段要证明的是编译器的**判定语义**，不是库文件内容，故刻意自建最小源。
         MaterialDefinition texture_definition{};
         texture_definition.definition_id = "MaterialTextureReferenceOnly";
         texture_definition.texture_declarations.push_back(

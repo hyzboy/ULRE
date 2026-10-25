@@ -139,8 +139,13 @@ namespace hgl::graph::mtl
     //   shadow_bias_multiplier 0 → 视为 1.0（引擎默认倍率）
     //   shadow_flags            0 → 未置位 = 正常接收阴影
     //
-    // 单一真源（X 列表）：CPU struct / 布局断言 / GLSL struct 发射全部从这一份生成
-    //（发射端见 MaterialShaderCompiler.cpp 的 BuildFSIndexTableDecls）——改字段只改这里。
+    // 单一真源（X 列表）：CPU struct / 布局断言全部从这一份生成——改字段只改这里。
+    //
+    // ⚠ GLSL 侧（ShaderLibrary/domain/root_bindings.glsl 的 struct MaterialInstanceAddresses）
+    //   在域固定架构下是**物理固定手写文本**，不再由发射器遍历本列表生成。
+    //   因此那份文本必须与本列表**顺序逐字段**一致；这条不变量由
+    //   `TestCSMIncrementalPass` Test 14 ②（CheckMaterialInstanceAddressesRowMirror）
+    //   跨文件比对守住——改字段请两侧同时改，否则 BDA 寻址会静默错位。
     #define HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST(M)  \
         M(payload_index,           "uint",  uint32_t)      \
         M(texture_reference_index, "uint",  uint32_t)      \
