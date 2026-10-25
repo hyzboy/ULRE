@@ -1537,7 +1537,40 @@ namespace
             }
         }
 
-        // ── ⑤ 2 分量几何 + definition 默认的 3D 节点配置 ⇒ 必须构建失败 ──
+        // ── ⑤ AutoInstance 形状：VF_V2F + Make2DNodeConfigNDC(true) ──
+        GeometryVertexFormat autoinstance_geometry;
+        if (!autoinstance_geometry.Add(VertexSemantic::Position, VF_V2F, 0, 0)
+         || !autoinstance_geometry.Add(VertexSemantic::Color, VF_V4F, 0, 0))
+        {
+            result.diagnostics.emplace_back("cannot build AutoInstance geometry");
+        }
+        else
+        {
+            const VertexShaderNodeConfig autoinstance_node = Make2DNodeConfigNDC(true);
+            const auto autoinstance_ctx = build(definition, autoinstance_node, &autoinstance_geometry);
+            if (!autoinstance_ctx)
+            {
+                result.diagnostics.emplace_back("AutoInstance 形状构建失败");
+            }
+            else
+            {
+                const ShaderCreateInfo *mesh = autoinstance_ctx->GetStageShader(ShaderStage::Mesh);
+                if (!mesh)
+                    result.diagnostics.emplace_back("AutoInstance 没有网格阶段");
+                else
+                {
+                    const std::string &glsl = mesh->GetFinalGLSL();
+                    if (glsl.find("#include \"vertex/s1_position_vec2.glsl\"") == std::string::npos)
+                        result.diagnostics.emplace_back("AutoInstance 没有选到 s1_position_vec2.glsl");
+                    if (glsl.find("#include \"vertex/s2_ndc_lift.glsl\"") == std::string::npos)
+                        result.diagnostics.emplace_back("AutoInstance 没有选到 s2_ndc_lift.glsl");
+                    if (glsl.find("#include \"vertex/s3_l2w_only.glsl\"") == std::string::npos)
+                        result.diagnostics.emplace_back("AutoInstance 没有选到 s3_l2w_only.glsl");
+                }
+            }
+        }
+
+        // ── ⑥ 2 分量几何 + definition 默认的 3D 节点配置 ⇒ 必须构建失败 ──
         // 这是「没有回写时会发生什么」的等价现场：两个所有者不匹配必须硬失败，
         // 不得产出一份编不过（或能编过但顶点错位）的 GLSL。
         if (build(definition, definition.vertex_node_config, &geometry))
@@ -1546,7 +1579,7 @@ namespace
                 "Passthrough3D + 2 分量位置几何被接受（分量数对账失效）");
         }
 
-        // ── ⑥ 3 分量几何 + 2D 节点配置 ⇒ 同样必须失败 ──
+        // ── ⑦ 3 分量几何 + 2D 节点配置 ⇒ 同样必须失败 ──
         // 反方向：证明对账不是「只认 recipe」的单向放行。
         GeometryVertexFormat geometry_3d;
         if (!geometry_3d.Add(VertexSemantic::Position, VF_V3F, 0, 0)
