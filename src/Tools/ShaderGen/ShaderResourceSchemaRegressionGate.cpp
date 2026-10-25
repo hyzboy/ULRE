@@ -2043,6 +2043,13 @@ namespace
         {VertexSemantic::TexCoord, VF_V2HF},
         {VertexSemantic::Normal,   VF_V3F}
     };
+    // 引擎标准紧凑几何（SimpleSphere / BasicLitMeshes / LoadGeometry / LoadScene 等示例）：
+    // TexCoord 为 VF_V2HF（RG16F），Normal 为 VF_V2UN8（RG8 octahedral）。
+    static const GeometryVertexFormat kCacheIdentityLitGeometryStandard{
+        {VertexSemantic::Position, VF_V3F},
+        {VertexSemantic::TexCoord, VF_V2HF},
+        {VertexSemantic::Normal,   VF_V2UN8}
+    };
     static const GeometryVertexFormat kCacheIdentityColorGeometry{
         {VertexSemantic::Position, VF_V3F},
         {VertexSemantic::Color,    VF_V4UN8}
@@ -11106,9 +11113,10 @@ void main()
 
     static const CacheIdentityEmitShape kCacheIdentityEmitShapes[] =
     {
-        { "cache-lit-abi-a", "Lit",         &kCacheIdentityLitGeometryA },
-        { "cache-lit-abi-b", "Lit",         &kCacheIdentityLitGeometryB },
-        { "cache-color",     "VertexColor", &kCacheIdentityColorGeometry },
+        { "cache-lit-abi-a",   "Lit",         &kCacheIdentityLitGeometryA },
+        { "cache-lit-abi-b",   "Lit",         &kCacheIdentityLitGeometryB },
+        { "cache-lit-abi-std", "Lit",         &kCacheIdentityLitGeometryStandard },
+        { "cache-color",       "VertexColor", &kCacheIdentityColorGeometry },
     };
 
     /// 把一个已构建上下文的网格阶段文本落进固定源目录。返回 false 表示失败。

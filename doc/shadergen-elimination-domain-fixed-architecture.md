@@ -1277,5 +1277,5 @@ std::string("... (last error: ") + GetLastBuildGenericMaterialError().c_str() + 
 ### 4. 验收结果
 
 - `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL（全量通过）。
-- `ShaderResourceSchemaRegressionGate emit-fixed-mesh`：`written=0 unchanged=34 failed=0`（19 份 `.mesh` 形状键 100% 幂等）。
+- `ShaderResourceSchemaRegressionGate emit-fixed-mesh`：`written=0 unchanged=35 failed=0`（补齐 SimpleSphere 等示例的标准紧凑顶点格式 `11473310428698951072.mesh` 后，固定库扩充至 20 份，35 变体 100% 幂等）。
 - `ShaderDocumentProductionRegression --full`：16/16 `source=fixed`，0 `source=generator`，退出码 0。
