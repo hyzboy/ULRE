@@ -137,9 +137,8 @@ namespace hgl
             /// pass 覆盖解除后恢复主相机共享数据（不重算矩阵、不消耗输入）
             void RestoreMainCamera();
 
-            /// 强制下一次 Update 重算当前选中相机（主相机）的矩阵——
-            /// pass 覆盖解除后恢复共享数据用（主相机可能不脏，否则
-            /// 共享 camera_info 会残留 pass 相机的矩阵）
+            /// 将当前视口重新绑定到选中相机并标脏矩阵。用于 RT 被替换后的刷新，
+            /// 因为相机缓存的 ViewportInfo 指针不拥有目标对象。
             void ForceRefreshSelectedCamera();
             void MarkAllCameraMatricesDirty();
 
@@ -224,4 +223,3 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
-

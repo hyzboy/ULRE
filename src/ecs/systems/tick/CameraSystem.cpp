@@ -302,7 +302,13 @@ namespace hgl::ecs
         auto cameras = CollectCameras();
         CameraComponent* selected = override_camera ? override_camera : SelectMainCamera(cameras);
         if (selected)
+        {
+            // Swapchain recreation replaces the RT object, so its ViewportInfo
+            // address changes even though the logical viewport is still active.
+            if (viewport_info)
+                selected->viewport_info = viewport_info;
             selected->matrix_dirty = true;
+        }
     }
 
     void CameraSystem::SetViewportInfo(const graph::ViewportInfo* vp)
@@ -806,7 +812,7 @@ namespace hgl::ecs
         // viewport"，离屏 pass 的设置阶段它是**离屏 RT** 的。若在发布路径（PublishCameraRows，离屏 pass
         // 也会走）里绑，主相机会拿到离屏 RT 的 viewport ⇒ 主帧投影/级联尺寸全错
         // （实测症状：ATS 的 D1 bbox 112x58 → 146x77、D3 受影像素 18189 → 30766）。
-        if (viewport_info && !camera->viewport_info)
+        if (viewport_info)
             camera->viewport_info = viewport_info;
 
         // 相机槽是**世界**资源（16 槽 × 帧槽、0 号槽恒为默认相机）：认领/升格一律走世界访问器

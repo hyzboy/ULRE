@@ -315,9 +315,8 @@ bool RenderTargetManager::CreateAttachments(RenderTargetData *data,const AnsiStr
     if(!rp)
         return(false);
 
-    // 只存指针、不持所有权：纹理归 TextureManager，失败路径必须走 Release() 而不是
-    // delete（原实现用 AutoDeleteObjectArray 会在失败路径 delete 纹理，
-    // 在 TextureManager 侧留下悬挂指针）。
+    // 只存指针、不持所有权：纹理由 TextureManager 管理，失败路径通过
+    // Destory() 从管理器登记中移除并销毁，不能直接 delete。
     // 长度至少 1：color_count 为 0 时循环不写这些数组，但要保证传给 CreateFBO
     // 的附件数组参数不是空指针。
     const uint32_t slot_count = (color_count > 0) ? color_count : 1;
@@ -338,7 +337,7 @@ bool RenderTargetManager::CreateAttachments(RenderTargetData *data,const AnsiStr
         if(!color_texture)
         {
             for(uint32_t i = 0; i < created_color_count; ++i)
-                tex_manager->Release(color_texture_list[i]);
+                tex_manager->Destory(color_texture_list[i]);
 
             return(false);
         }
@@ -358,7 +357,7 @@ bool RenderTargetManager::CreateAttachments(RenderTargetData *data,const AnsiStr
         if(!depth_texture)
         {
             for(uint32_t i = 0; i < created_color_count; ++i)
-                tex_manager->Release(color_texture_list[i]);
+                tex_manager->Destory(color_texture_list[i]);
 
             return(false);
         }
@@ -370,10 +369,10 @@ bool RenderTargetManager::CreateAttachments(RenderTargetData *data,const AnsiStr
     if(!fb)
     {
         for(uint32_t i = 0; i < created_color_count; ++i)
-            tex_manager->Release(color_texture_list[i]);
+            tex_manager->Destory(color_texture_list[i]);
 
         if(depth_texture)
-            tex_manager->Release(depth_texture);
+            tex_manager->Destory(depth_texture);
 
         return(false);
     }
@@ -403,22 +402,21 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
     if(!ResolveFramebufferInfo(desc, fbi))
         return(false);
 
-    // ---- 2. 释放旧纹理（纹理由 TextureManager 创建，需显式 Release）----
+    // ---- 2. 销毁旧 framebuffer，再销毁其附件纹理 ----
+    // Vulkan framebuffer 依赖 image views，必须先销毁 framebuffer。
+    SAFE_CLEAR(data->fbo);
+
     for(uint32_t i = 0; i < data->color_count; ++i)
     {
         if(data->color_textures[i])
-            tex_manager->Release(data->color_textures[i]);
+            tex_manager->Destory(data->color_textures[i]);
     }
 
     if(data->depth_texture)
-        tex_manager->Release(data->depth_texture);
+        tex_manager->Destory(data->depth_texture);
 
-    // ---- 3. 销毁旧 FBO ----
-    // 注意：queue / cmd_buf / render_complete_semaphore 由设备侧持有，
-    // RenderTargetData::Clear() 只清指针不释放；此处若重新创建会造成设备对象累积，
-    // 因此保留复用，仅重建纹理与 FBO。
-    SAFE_CLEAR(data->fbo);
-
+    // queue / cmd_buf / render_complete_semaphore 由设备侧持有，保留复用；
+    // 这里只替换随尺寸变化的附件与 framebuffer。
     delete[] data->color_textures;
     data->color_textures = nullptr;
     data->color_count    = 0;

@@ -11,6 +11,7 @@
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/support/CameraInfoStorage.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <hgl/graph/ubo/ViewportInfo.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
@@ -138,6 +139,30 @@ int main()
         if (cam_sys->ResolveActiveCamera() != cam_a || world.GetDefaultCamera() != cam_a)
         {
             GLogError(u8"Test 2 Failed: 认领后纯读结果/默认相机发生了变化");
+            return 2;
+        }
+
+        // Simulate swapchain recreation: the new RT owns a different ViewportInfo.
+        graph::ViewportInfo old_viewport;
+        graph::ViewportInfo new_viewport;
+        old_viewport.Set(1280, 720);
+        new_viewport.Set(900, 700);
+
+        cam_sys->SetViewportInfo(&old_viewport);
+        cam_sys->ForceRefreshSelectedCamera();
+        cam_sys->SetViewportInfo(&new_viewport);
+        cam_sys->ForceRefreshSelectedCamera();
+
+        if (cam_a->viewport_info != &new_viewport)
+        {
+            GLogError(u8"Test 2 Failed: resize 后主相机仍绑定旧 ViewportInfo");
+            return 2;
+        }
+
+        cam_sys->Update(0.0f);
+        if (cam_a->viewport_info != &new_viewport || cam_b->viewport_info != &new_viewport)
+        {
+            GLogError(u8"Test 2 Failed: CameraSystem 更新后相机没有绑定当前 ViewportInfo");
             return 2;
         }
 
