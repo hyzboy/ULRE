@@ -1279,3 +1279,141 @@ std::string("... (last error: ") + GetLastBuildGenericMaterialError().c_str() + 
 - `ShaderResourceSchemaRegressionGate all`：59 PASS / 0 FAIL（全量通过，含 L0.draw-triangle-vertex-color-2d 对 AutoInstance 形状的守护断言）。
 - `ShaderResourceSchemaRegressionGate emit-fixed-mesh`：`written=0 unchanged=35 failed=0`（补齐 SimpleSphere 的 `11473310428698951072.mesh`、AutoInstance 2D 顶点色的 `4442253396988711992.mesh` 以及 AutoMergeMaterialInstance 2D 纯色实例行的 `6503166534270626483.mesh` 后，固定库扩充至 22 份，全量通过 `AuditFixedMeshMasters` 静态语法与契约审查）。
 - `ShaderDocumentProductionRegression --full`：16/16 `source=fixed`，0 `source=generator`，退出码 0。
+---
+
+## 阶段七-2：网格阶段按形状物理固定，顶点格式下沉到 mesh_options.glsl
+
+### 改的是什么
+
+阶段六-5b 之后网格阶段已「物理固定」，但固定文件的**命名键**仍是 FNV1a 哈希
+（`ShaderLibrary/mesh/fixed/11473310428698951072.mesh` 之类），键里混入了顶点格式、位置映射、
+投影模式与 invocation 数。后果是每出现一种新的顶点格式组合，就得补一份新的哈希文件——
+本阶段开始时库里有 22 份，且仍在按示例逐个追加。
+
+七-2 把命名键换成**形状**：
+
+```
+ShaderLibrary/mesh/shape/tri_<顶点数>_<varying 按 location 升序>.mesh
+```
+
+顶点格式、位置映射（s2）、投影（s3）、invocation 数全部移入生成的
+`generated/mesh_options.glsl`。11 份 master 覆盖原来的 22 个哈希键：
+`plain` / `dataid` / `dataid_pos` / `dataid_pos_nrm` / `dataid_pos_nrm_uv` / `dataid_uv` /
+`dataid_dir` / `dataid_lum` / `pos` / `pos_nrm` / `color`。
+
+「新增顶点格式要加新文件」这件事从此不存在：`DrawTriangle` 用 `R16G16_SINT`
+（`s1_position_vec2i`）、`AutoInstance` 用 `R32G32_SFLOAT`（`s1_position_vec2`），两者现在同用
+`tri_192_color.mesh`，差别只在各自的 options。
+
+### 为什么不能按 MaterialDomain 命名
+
+原计划写成 `ShaderLibrary/domain/<domain>/<domain>.mesh`。实测不成立：网格阶段的可变部分是
+**varying 集合**，既不是 `domain` 也不是 `purpose`。
+
+- 多个域共用同一套 varying：`VertexColor` 与 `Unlit` 都只输出 `loc0`。
+- 同一域可能有两套 varying：`Lit` 带 UV 与不带 UV（`tri_192_dataid_pos_nrm_uv` vs `tri_192_dataid_pos_nrm`）。
+
+按域命名会让「同一域不同顶点语义抢一份文件」，而这正是被 22 份哈希文件掩盖掉的那层维度。
+
+### 每份 master 的结构
+
+```glsl
+#version 460
+#include "mesh/stage_common_head.glsl"
+
+layout(local_size_x = 64) in;
+layout(triangles, max_vertices = 192, max_primitives = 64) out;
+#include "mesh/stage_common.glsl"
+
+// varying 声明，须与 domain/*.frag 逐 location 一致
+layout(location = 0) perprimitiveEXT out uint fragDataIndexID[64];
+// ...
+
+// 唯一可变输入：顶点解码 + 位置映射 + 变换
+#include "generated/mesh_options.glsl"
+
+void WriteMeshVertexOutputs(uint vid) { /* ... */ }
+
+#define ULRE_MESH_MAX_VERTS   192u
+#define ULRE_MESH_INVOCATIONS 64u
+#include "mesh/stage_body.glsl"
+```
+
+`ShaderLibrary/mesh/stage_body.glsl` 是 11 份 master 唯一的公共 `main()`：算 `total_vertices`、
+`group_base_vertex`、`prims_this_group`、`verts_this_group`，`SetMeshOutputsEXT`，然后两个按
+`gl_LocalInvocationIndex` 步进的循环（写顶点输出 + `gl_Position`，写三角形索引）。放在一份文件里
+是为了避免 11 份 dispatch 逻辑各自漂移。
+
+include 顺序是硬约束，不能调换：
+
+1. `stage_common_head.glsl`（6 个 `#extension`、push constant、`gl_InstanceIndex` 宏）
+2. topology 三个 `layout(...)`，取值必须是**字面量**——`ValidateMeshSourceTopology` 用文本解析
+   `local_size_x = ` / `, max_vertices = ` / `, max_primitives = `，吃不了宏或常量
+3. `stage_common.glsl`（descriptor 宏、scene UBO、l2w SSBO、13 个 `Vertex*Ref`）
+4. varying 声明
+5. `generated/mesh_options.glsl`
+6. `WriteMeshVertexOutputs`
+
+varying 必须在 options 之前：`s1_*` 数据模块要声明属性变量（`Position` / `Normal` / `TexCoord` /
+`Color` / …），`s1_position_*` 再用 `HGL_*_LOADER` 宏把它们折进 `LoadVertexData()`。options 整体
+排在 varying 之后、写出函数之前，才能既不破坏声明可见性、又保持「顶点解码由 options 决定」。
+
+### `GetVertexColor()`：两种顶点色来源共用一个形状
+
+`tri_192_color.mesh` 的写出函数必须有一句 `gl_MeshVerticesEXT[vid].fragVertexColor = GetVertexColor();`。
+但顶点色有两种来源：直接读顶点属性（`s1_color`），或读调色板索引（`s1_palette_index`，
+`VertexColor` 域在 `AutoMergeMaterialInstance` 之类的实例合并场景走后者）。
+
+master 不允许结构性条件编译，所以让两个模块各自提供同名同签名的 `vec4 GetVertexColor()`：
+
+- `vertex/s1_color.glsl` → `return Color;`
+- `vertex/s1_palette_index.glsl` → `return unpackUnorm4x8(color_palette.color[ColorIndex]);`
+
+一份形状覆盖两种来源，选择权仍在 options。
+
+### 两道必须做的防护
+
+**一、`// mesh-options-digest <FNV1a64>` 溯源注释。**
+同形状的主着色器文本逐字节相同，两种不同顶点格式会算出同一个 stage source digest，于是磁盘上
+旧的 SPV 被永久命中复用——症状是「换了顶点格式，几何还是老的」。options 文件的 include 闭包
+（`ShaderLibrary/vertex/s1_*.glsl` 之外的 `generated/`）不在 ShaderLibrary 下，闭包哈希抓不到它，
+所以把 options 文本的 FNV1a64 摘要作为一行注释钉在主着色器文本尾部，让 stage digest 覆盖 options。
+门禁侧 `FixedMeshCatalogHas` 比对前剥掉这一行并 trim 尾随空白。
+
+**二、options 缓存目录名必须含网格 options 哈希。**
+原 `WriteOptionsToCache` 的目录名只由**片段** options 决定。两个顶点格式完全不同、但片段 options
+逐字节相同的材质（例如同为 `VertexColor` 域的 `DrawTriangle` 与 `AutoInstance`）会共用同一个目录，
+后写的 `mesh_options.glsl` 覆盖先写的，先编译的那份顶点数据就按错格式解码——几何静默错位，不报错。
+现在目录名是 `<片段options键>-m<网格options哈希>`，`options.glsl` 与 `mesh_options.glsl` 永远成对。
+
+### 网格阶段必须提前编译
+
+`FinalizeShaderBuildContext` 只能在**唯一** ShaderLibrary 根下编译，而 options 根是编译那一刻的
+进程级 `compile_info.includes`。因此新增的 `CompileFixedMesh` 与既有的 `CompileFixedFragment`
+完全对称：设两个根 → 编译 → 收回第二个根。编好后 `CreateShaderDirect()` 因为该阶段已有 SPV 而跳过。
+
+### 旧哈希路径的收尾
+
+`ComputeMeshSourceShapeKey` / `TryLoadFixedMeshSource` 改名为
+`ComputeLegacyMeshSourceKey` / `TryLoadLegacyMeshSource`，**FNV1a 字节序列一字未动**（已落盘的
+文件名按它算出，多一字节全体失配）。它现在只剩 CharQuad / LineQuad 两个分支在用，由阶段八替换。
+
+同时确认：`TextDraw`（CharQuad）与 `LineRender`（LineQuad）在本阶段仍报
+`no fixed mesh source for legacy shape key ...`。`mesh/fixed/` 里那 3 份文件是门禁反射矩阵变体捕获的，
+键与实际示例的配置不同——属于「矩阵没覆盖到实例配置」的老缺口，不是七-2 引入的（本阶段对 old path
+只做了重命名）。阶段八-1 用 `mesh/char_quad.mesh` / `mesh/line_quad.mesh` 一次消掉。
+
+### 验收结果
+
+| 项目 | 结果 |
+| --- | --- |
+| `DomainOptionsRegression` | 47 PASS / 0 FAIL |
+| `ShaderResourceSchemaRegressionGate all` | exit=0，0 个 FAIL |
+| `ShaderDocumentProductionRegression --full` | exit=0，`full production fixtures passed` |
+| `DrawTriangle` | 加载 `mesh/shape/tri_192_color.mesh`，零着色器错误 |
+| `SimpleSphere` | 加载 `mesh/shape/tri_192_dataid_pos_nrm_uv.mesh`，零着色器错误 |
+| `AutoInstance` | 加载 `mesh/shape/tri_192_color.mesh`，零着色器错误 |
+| `AutoMergeMaterialInstance` | 加载 `mesh/shape/tri_192_dataid.mesh`，零着色器错误 |
+| `SimpleCube` / `SkyCubeSphere` | 零着色器错误 |
+
+四个此前报告「no fixed mesh source for shape key …」的示例全部恢复，且不再需要为任何单个示例补文件。
