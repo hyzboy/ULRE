@@ -1926,7 +1926,7 @@ AcquireShaderProgram failed for BBox_0 ... unresolved runtime pipeline
 | 命令 | 结果 |
 | --- | --- |
 | `ShaderResourceSchemaRegressionGate.exe all` | `exit=0`，**59 PASS / 0 FAIL** |
-| `ShaderResourceSchemaRegressionGate.exe emit-fixed-mesh` | `covered=36 missing=0 failed=0` |
+| `ShaderResourceSchemaRegressionGate.exe emit-fixed-mesh` | `covered=37 missing=0 failed=0` |
 | `ShaderDocumentProductionRegression.exe --full` | `exit=0`，`full production fixtures passed` |
 | `TestCSMIncrementalPass.exe` | `exit=0`，Test 51 全部通过 |
 | 图形示例 smoke | 9.1 列出的 8 个程序均重建、退出码 0；GPU cull 已初始化，shader 构建错误为 0 |
@@ -1955,3 +1955,11 @@ AcquireShaderProgram failed for BBox_0 ... unresolved runtime pipeline
 - `ULRE_ENABLE_SHADERGEN` 是兼容保留的 CMake 选项名；其控制的内部 target 已重命名为 `ULRE.ShaderProgramBuild`。
 
 **未结项阻塞**：无。保留的边界事项是 9 个 depth/shadow fixture 尚无固定 master，以及 Debug `PBRSpheres` 的冻结像素摘要与当前设备实测摘要不同；后者不影响本阶段通过的定帧运行、shader 构建、GPU cull 和发行形态探针。
+
+## 阶段九后续回归：PlaneGrid3D 的 LineQuad + Luminance
+
+阶段九结项后，`PlaneGrid3D` 暴露了另一种可达 varying 组合：`LineQuad + dataid + lum`，请求形状名为 `linequad_256_dataid_lum`。新增 `ShaderLibrary/mesh/shape/linequad_256_dataid_lum.mesh`，用 `line_quad_body.glsl` 复用线扩张几何，并为两枚 per-primitive 输出写入同一 `gl_InstanceIndex`，四个 quad 顶点复制首端亮度值。
+
+`emit-fixed-mesh` 的 cache-identity 形状矩阵追加了 `plane-grid-luminance-wire`（`VertexLuminance` + `Lines` + Position/Luminance 格式），避免该组合再次漏出覆盖清单。PlaneGrid3D 的析构也移除了对已注册至 `GeometryManager` 的 `geom_plane_grid` 的重复释放。
+
+**最终复验**：PlaneGrid3D Debug 重建运行并正常退出（rc=0），确认新 master 成功打开、GPU cull 已初始化、shader/pipeline 错误为 0；gate `all` 仍为 **59 PASS / 0 FAIL**；`emit-fixed-mesh` 更新为 `covered=37 missing=0 failed=0`；`verify-release-form.ps1 -SkipConfigure` 五步再次全绿。此补充将阶段九最终覆盖数从阶段 9.1 首次验收时的 36 提升为 37。

@@ -256,11 +256,6 @@ private:
     }
 
 public:
-    ~PlaneGrid3DApp()
-    {
-        SAFE_CLEAR(geom_plane_grid);
-    }
-
     bool Init() override
     {
         if(!CreateRenderObject())

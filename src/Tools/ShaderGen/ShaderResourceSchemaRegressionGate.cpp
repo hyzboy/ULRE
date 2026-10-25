@@ -2243,6 +2243,10 @@ namespace
     static const GeometryVertexFormat kCacheIdentityPureColorGeometry{
         {VertexSemantic::Position, VF_V3F}
     };
+    static const GeometryVertexFormat kCacheIdentityLuminanceGeometry{
+        {VertexSemantic::Position,  VF_V3F},
+        {VertexSemantic::Luminance, VF_V1UN8}
+    };
 
     static GateResult RunAuthoritativeMaterialCacheIdentityCase()
     {
@@ -11407,6 +11411,8 @@ void main()
         { "cache-color",       "VertexColor", &kCacheIdentityColorGeometry },
         { "load-geometry-wire", "builtin/pure_color",
           &kCacheIdentityPureColorGeometry, PrimitiveType::Lines },
+        { "plane-grid-luminance-wire", "VertexLuminance",
+          &kCacheIdentityLuminanceGeometry, PrimitiveType::Lines },
     };
 
     /// 覆盖率检查：某个已构建上下文的网格阶段文本，是否已在固定源库里有一份

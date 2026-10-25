@@ -482,7 +482,7 @@ namespace hgl::graph::mtl
         // 拼接，因此任一组合只有一种拼写：
         //   `tri_192_dataid_pos_nrm_uv`、`tri_192_plain`（不输出任何 varying）、
         //   `charquad_256_dataid_uv_color_style`、`linequad_256_color`、
-        //   `linequad_256_dataid`。
+        //   `linequad_256_dataid`、`linequad_256_dataid_lum`。
         //
         // 这个名字就是 `ShaderLibrary/mesh/shape/<名>.mesh` 的文件名，两边必须
         // 逐字一致。新增一个 varying 组合 = 新增一个 .mesh 文件；顶点格式/位置
