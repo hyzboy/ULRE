@@ -4,7 +4,9 @@ namespace hgl::graph::mtl {}
 
 /// MaterialShaderCompiler.h — canonical material input → ShaderBuildContext
 ///
-/// 使用 BuildMaterialStageDocuments 编译 Compositor 模板产出的完整 GLSL。
+/// 使用 BuildMaterialStageDocuments 编译阶段源：片段阶段在
+/// `MaterialCompileConfig::fixed_fragment_source` 非空时直通（领域主着色器就是
+/// 最终编译单元），网格阶段仍由 `BuildMaterialStageDocument` 拼出文档。
 /// 内部流程：
 ///   1. 求解层构建契约/schema（描述符分配器已随 BDA 化退役）
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
@@ -37,6 +39,9 @@ struct MaterialShaderDocumentCapture
     // been fully authored/validated. This keeps the diagnostic flow out of the
     // real generation path and avoids hidden state drift on the cache key path.
     ShaderDocument mesh_source_document;
+    // 片段侧已物理固定：生产路径只在**没有** fixed_fragment_source 时才构建片段
+    // 文档，而该字段现在是硬前置，所以这里恒为空。想断言片段文本请看
+    // `ShaderCreateInfo::GetFinalGLSL()`，断言宏/环境光看 `EmitDomainOptions*`。
     ShaderDocument fragment_document;
     ShaderDocument mesh_final_document;
     ShaderDocument fragment_final_document;

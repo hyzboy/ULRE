@@ -38,6 +38,7 @@
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/DomainShaderTemplate.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
@@ -180,6 +181,13 @@ namespace hgl::graph::mtl
 
         /// 环境光 provider 的 include 路径（`lighting/indirect_sky_ambient.glsl`）。
         /// 主着色器的固定 include 表里不含 ambient 模块，必须由 options 带进来。
+        ///
+        /// 注意 include 路径**未必已被填好**：环境层覆盖 ambient 模块名时
+        /// （`SelectSceneRenderTemplateRequest` 的 ambient 分支）会把 include_path
+        /// 清空，靠渲染模板校验按模块注册表回填——而那条回填只作用于
+        /// `ResolveRenderTemplate` 产出的**副本**，本请求里仍是空串。所以这里必须
+        /// 按模块名回查注册表，否则任何 ambient 覆盖（例如 indirect_ibl）都会以
+        /// 「模板没有 AmbientLightProvider 槽」为由误判失败。
         const char *GetAmbientIncludePath(
             const MaterialDefinitionBuildRequest &request) noexcept
         {
@@ -187,10 +195,19 @@ namespace hgl::graph::mtl
                 request.render_template_request.FindModuleRoot(
                     ShaderModuleSlotRole::AmbientLightProvider);
 
-            if (!root || root->include_path.IsEmpty())
+            if (!root)
                 return nullptr;
 
-            return root->include_path.c_str();
+            if (!root->include_path.IsEmpty())
+                return root->include_path.c_str();
+
+            const ShaderCodeModuleFileData *source =
+                GetShaderCodeModuleRegistry().FindFileByName(
+                    root->module_name.c_str());
+            if (!source || source->include_path.IsEmpty())
+                return nullptr;
+
+            return source->include_path.c_str();
         }
 
         bool BuildDomainOptions(

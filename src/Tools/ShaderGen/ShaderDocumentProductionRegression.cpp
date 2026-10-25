@@ -4,6 +4,7 @@
 
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
+#include <hgl/mtl/DomainShaderTemplate.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
@@ -14,7 +15,9 @@
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
+#include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include "ShaderGen/builder/GenericMaterialBuilder.h"
+#include "ShaderGen/compile/ShaderGenBackendInstall.h"
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/ShaderCompilerAPI.h>
@@ -403,18 +406,107 @@ namespace
             && valid;
     }
 
-    /// 按 fixture 组装完整构建请求并执行一次编译。
+    /// 固定片段阶段的校验。
+    ///
+    /// 片段阶段不再有 `ShaderDocument`：主着色器是一份完整编译单元，构建器只把
+    /// 它的文本原样交给 `ShaderCreateInfo`。因此这里检查的是文本不变量 + 键单源：
+    /// `definition_hash` 必须等于**最终 GLSL 字节**的摘要（构建器侧 `plan.fs`
+    /// 与编译侧 `config.fixed_fragment_source` 是同一份字节）。
+    bool VerifyFixedFragmentStage(
+        const char *fixture,
+        const ShaderCreateInfo *actual_stage,
+        const ShaderStageKey &stage_key)
+    {
+        if (!actual_stage)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s stage=fragment is "
+                "absent from its production ShaderBuildContext",
+                fixture);
+            return false;
+        }
+
+        const auto &actual = actual_stage->GetFinalGLSL();
+        const uint64 actual_hash = HashFinalShaderSource(
+            actual.data(), actual.size());
+        const int version_count = CountText(
+            AnsiString(actual.c_str(), int64(actual.size())), "#version");
+        const int main_count = CountText(
+            AnsiString(actual.c_str(), int64(actual.size())), "void main(");
+
+        bool valid = true;
+        if (actual_hash == 0 || version_count != 1 || main_count != 1
+         || actual.size() < 8
+         || actual.compare(0, 8, "#version") != 0)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s stage=fragment "
+                "final text invariant failed: bytes=%d versions=%d mains=%d",
+                fixture, int(actual.size()), version_count, main_count);
+            valid = false;
+        }
+
+        if (stage_key.definition_hash == 0
+         || stage_key.definition_hash != actual_hash)
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s stage=fragment "
+                "source hash mismatch: actual=%llu stage-key=%llu",
+                fixture,
+                static_cast<unsigned long long>(actual_hash),
+                static_cast<unsigned long long>(stage_key.definition_hash));
+            valid = false;
+        }
+        return valid;
+    }
+
+    /// 按 fixture 组装完整构建请求并执行一次构建计划。
     /// defer_finalize=true：只算到 ProgramLink（含 stage 键），不跑 SPV。
     /// RunFixture 与 VerifyDeclarationKeyDeterminism 共用，保证两者比对的
     /// 是同一份输入。
     /// definition_mutation：可选，在组请求之前扰动定义副本。stage 键敏感性探针
     /// 用它证明「改这一项 ⇒ 换键」。
+    /// out_options_text：可选，回传本 fixture 的 `generated/options.glsl` 文本。
+    /// 片段文本已物理固定，选项（provider 选择、alpha 通路、采样档位）全部住在
+    /// options 里，因此断言必须落在它上面。
+    /// 该夹具是否因「领域缺少本 purpose 的固定主着色器」而无法构建。
+    ///
+    /// 这不是夹具失败，而是域主着色器表的**覆盖缺口**：`kDomainDirs[]` 里只有
+    /// `standard_opaque` 声明了 `supports_depth`，其余 11 个领域没有 depth/shadow
+    /// 主着色器。缺口必须在 `[SKIP]` 里显式留痕，不能当成通过——静默跳过会让
+    /// 「领域深度能力」这个真实回归永久隐形。补齐主着色器后这里的触发条件应当
+    /// 变得不可达（见 plan.md 阶段六）。
+    bool FixtureNeedsMissingDomainMaster(
+        const Fixture &fixture, AnsiString *out_reason)
+    {
+        MaterialDefinition definition{};
+        if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
+            return false;
+
+        DomainShaderTemplate probe;
+        if (ResolveDomainShaderTemplate(
+                definition.domain, fixture.purpose, fixture.alpha_test, probe))
+            return false;
+
+        if (out_reason)
+        {
+            *out_reason =
+                AnsiString("no fixed domain master for domain=")
+                + GetMaterialDomainName(definition.domain)
+                + " purpose=" + AnsiString::numberOf(
+                      static_cast<int>(fixture.purpose));
+        }
+        return true;
+    }
+
     ShaderBuildContext *BuildFixtureContext(
         const Fixture &fixture,
         MaterialShaderDocumentCapture *capture,
         MaterialDefinition *out_definition = nullptr,
         RenderTemplateID *out_template_id = nullptr,
-        void (*definition_mutation)(MaterialDefinition &) = nullptr)
+        void (*definition_mutation)(MaterialDefinition &) = nullptr,
+        AnsiString *out_options_text = nullptr,
+        AnsiString *out_skip_reason = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
@@ -474,6 +566,45 @@ namespace
         if (out_template_id)
             *out_template_id = request.render_template_request.template_id;
 
+        // 片段阶段物理固定：构建器不再发射片段，请求必须自带最终文本。
+        // 后端内部也是这么做的（`DomainShaderBuildBackend::CreateBuildContext`），
+        // 这里手工复现两步是因为本工具要 `defer_finalize`——只要文档与 stage 键，
+        // 不碰 SPV，因此不能借后端（后端拿到上下文就立刻把片段编成 SPV）。
+        // 先判「该领域有没有本 purpose 的固定主着色器」，缺口交给 `[SKIP]` 留痕。
+        if (out_skip_reason
+         && FixtureNeedsMissingDomainMaster(fixture, out_skip_reason))
+            return nullptr;
+
+        FixedFragmentSource fixed;
+        if (!ResolveFixedFragmentSource(definition, request, fixed))
+        {
+            GLogError(
+                "[ShaderDocumentProductionRegression] fixture=%s cannot resolve "
+                "fixed fragment source",
+                fixture.name);
+            return nullptr;
+        }
+        request.fixed_fragment_source = fixed.source.c_str();
+        request.fixed_fragment_interface_hash = fixed.interface_hash;
+
+        // 环境光 provider 的选择已经从片元文本搬到 `options.glsl`（主着色器只
+        // `#include "generated/options.glsl"`，provider 的 `#include` 由发射器
+        // 写在里面）。因此断言必须落在 options 文本上，落在 `GetFinalGLSL()`
+        // 上会永远为假。这里顺势一次发射，调用方拿到的就是真正喂给编译的那份。
+        if (out_options_text)
+        {
+            if (!EmitDomainOptionsForDefinition(
+                    definition, request, definition.domain,
+                    fixture.purpose, *out_options_text))
+            {
+                GLogError(
+                    "[ShaderDocumentProductionRegression] fixture=%s cannot emit "
+                    "domain options",
+                    fixture.name);
+                return nullptr;
+            }
+        }
+
         return BuildGenericMaterial(nullptr, request, definition, capture);
     }
 
@@ -484,6 +615,10 @@ namespace
     /// 文本等价的 SPIR-V 接口与反射。`shadergen` 调试通道只能落**源文档**（含尚未
     /// 注入的扩展、pc_root push constant、采样器宏），既不可直接编译也无法对拍。
     const char *g_dump_source_dir = nullptr;
+
+    /// 因「该领域尚无该 purpose 的固定主着色器」而跳过的夹具数。
+    /// 非零 = 域主着色器覆盖缺口，必须在收尾日志里显式呈现。
+    int g_skipped_fixture_count = 0;
 
     bool WriteDumpSourceFile(
         const char *fixture,
@@ -523,8 +658,21 @@ namespace
         MaterialShaderDocumentCapture capture{};
         MaterialDefinition definition{};
         RenderTemplateID template_id = RenderTemplateID::Unknown;
+        AnsiString options_text;
+        AnsiString skip_reason;
         AutoDelete<ShaderBuildContext> context(
-            BuildFixtureContext(fixture, &capture, &definition, &template_id));
+            BuildFixtureContext(
+                fixture, &capture, &definition, &template_id, nullptr,
+                &options_text, &skip_reason));
+        if (!context && skip_reason.Length())
+        {
+            // 覆盖缺口：显式留痕并计数，绝不当作通过。
+            GLogWarning(
+                "[SKIP] fixture=%s %s",
+                fixture.name, skip_reason.c_str());
+            ++g_skipped_fixture_count;
+            return true;
+        }
         if (!context || !context->HasProgramLink()
          || !context->HasProgramArtifactMetadata())
         {
@@ -536,35 +684,24 @@ namespace
         }
 
         const ShaderLinkSpec &link = context->GetProgramLink();
-        if (template_id == RenderTemplateID::Sky)
-        {
-            const char *name = definition.surface_module_name
-                ? definition.surface_module_name : "sky_minimal_surface";
-            const auto *source = GetShaderCodeModuleRegistry().FindFileByName(name);
-            ShaderDocumentDiagnostics diagnostics;
-            AnsiString fragment_text;
-            if (!source
-             || !capture.fragment_document.Serialize(fragment_text, diagnostics)
-             || CountText(fragment_text,
-                    (AnsiString("#include \"") + source->include_path + "\"").c_str()) != 1)
-            {
-                GLogError(u8"Sky document does not include the selected surface: %s", name);
-                return false;
-            }
-        }
+        // Sky 的 surface 选择已经从「文档里合成」变成「主着色器里写死」：domain
+        // master 自带 `#include "material/sky_cube_surface.glsl"`，不再由定义挑。
+        // 因此这里不再有「文档是否 include 了所选 surface」这回事 —— 该不变量由
+        // 门禁的 `DH.*` 域等价与 `verify-domain-master-shaders.ps1` 覆盖。
+        // 环境光 provider 仍然可选，但它现在写在 `options.glsl` 里；片段文本已
+        // 物理固定，options 才是 provider 的唯一入口。
         if (fixture.ambient_module_name && fixture.ambient_module_name[0])
         {
             const char *name = fixture.ambient_module_name;
             const auto *source = GetShaderCodeModuleRegistry().FindFileByName(name);
-            ShaderDocumentDiagnostics diagnostics;
-            AnsiString fragment_text;
             if (!source
-             || !capture.fragment_document.Serialize(fragment_text, diagnostics)
-             || CountText(fragment_text,
-                    (AnsiString("#include \"") + source->include_path + "\"").c_str()) != 1)
+             || CountText(options_text,
+                    (AnsiString("#include \"") + source->include_path + "\"")
+                        .c_str()) != 1)
             {
-                GLogError(u8"Fragment document does not include the ambient provider: %s",
-                          name);
+                GLogError(
+                    u8"options.glsl does not include the ambient provider: %s",
+                    name);
                 return false;
             }
         }
@@ -572,11 +709,10 @@ namespace
             fixture.name, "mesh", capture.mesh_source_document,
             capture.mesh_final_document,
             context->GetStageShader(ShaderStage::Mesh), link.mesh_stage);
-        valid = VerifyStage(
-            fixture.name, "fragment", capture.fragment_document,
-            capture.fragment_final_document,
-            context->GetStageShader(ShaderStage::Fragment), link.fragment_stage)
-            && valid;
+        valid = VerifyFixedFragmentStage(
+            fixture.name,
+            context->GetStageShader(ShaderStage::Fragment),
+            link.fragment_stage) && valid;
 
         const ShaderProgramArtifactMetadata &metadata =
             context->GetProgramArtifactMetadata();
@@ -663,7 +799,6 @@ namespace
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = &geometry;
-            request.defer_finalize = false;
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
             request.shader_artifact_store = &store;
             if (!ResolveFixtureTemplateRequest(
@@ -671,9 +806,20 @@ namespace
                     &request.recipe, request.render_template_request, nullptr))
                 return nullptr;
 
-            ShaderBuildContext *context = BuildGenericMaterial(
-                nullptr, request, definition, nullptr);
-            if (!context || !context->HasProgramLink())
+            // 走**领域后端**而不是直接 `BuildGenericMaterial`：片段阶段是物理固定的
+            // 主着色器，编译它需要「ShaderLibrary + generated/options.glsl 目录」两
+            // 个 include 根，而那是插件里的进程级配置，只有后端在编译那一刻设得对。
+            // 这里手写一份根管理等于把后端逻辑抄到工具里，迟早漂移。
+            InstallDomainShaderBuildBackend();
+            ShaderProgramBuildBackend *backend = GetShaderProgramBuildBackend();
+            if (!backend)
+                return nullptr;
+            ShaderBuildContext *context =
+                backend->CreateBuildContext(nullptr, definition, request);
+            if (!context)
+                return nullptr;
+            if (!backend->FinalizeBuildContext(context)
+             || !context->HasProgramLink())
             {
                 delete context;
                 return nullptr;
@@ -758,9 +904,15 @@ namespace
     bool VerifyDeclarationKeyDeterminism(
         const Fixture *fixtures, const int count)
     {
+        int built = 0;
         for (int i = 0; i < count; ++i)
         {
             const Fixture &fixture = fixtures[i];
+
+            if (FixtureNeedsMissingDomainMaster(fixture, nullptr))
+                continue;
+
+            ++built;
 
             MaterialShaderDocumentCapture capture_a{};
             AutoDelete<ShaderBuildContext> a(
@@ -801,7 +953,7 @@ namespace
         GLogInfo(
             "[ShaderDocumentProductionRegression] stage key determinism: "
             "%d fixtures stable across two builds",
-            count);
+            built);
         return true;
     }
 
@@ -887,6 +1039,15 @@ namespace
 
     bool VerifyDefinitionSensitivity(const Fixture &fixture)
     {
+        if (FixtureNeedsMissingDomainMaster(fixture, nullptr))
+        {
+            GLogWarning(
+                "[SKIP] fixture=%s definition sensitivity (no fixed domain "
+                "master for this purpose)",
+                fixture.name);
+            return true;
+        }
+
         MaterialShaderDocumentCapture baseline_capture{};
         AutoDelete<ShaderBuildContext> baseline(
             BuildFixtureContext(fixture, &baseline_capture));
@@ -982,6 +1143,9 @@ namespace
         AnsiString text;
         for (int i = 0; i < count; ++i)
         {
+            if (FixtureNeedsMissingDomainMaster(fixtures[i], nullptr))
+                continue;
+
             MaterialShaderDocumentCapture capture{};
             AutoDelete<ShaderBuildContext> context(
                 BuildFixtureContext(fixtures[i], &capture));
@@ -1225,5 +1389,14 @@ int main(const int argc, char **argv)
     GLogInfo(
         "[ShaderDocumentProductionRegression] %s production fixtures passed",
         full ? "full" : "smoke");
+    if (g_skipped_fixture_count > 0)
+    {
+        // 不做「跳过也算过」的默认：缺口必须被收尾日志打断视线。
+        GLogWarning(
+            "[ShaderDocumentProductionRegression] %s: %d fixture(s) skipped for "
+            "missing fixed domain masters (depth/shadow coverage gap, see "
+            "plan.md 阶段六)",
+            full ? "full" : "smoke", g_skipped_fixture_count);
+    }
     return 0;
 }

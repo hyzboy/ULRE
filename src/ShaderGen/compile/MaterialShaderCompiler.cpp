@@ -175,8 +175,11 @@ bool FinalizeShaderBuildContext(
 
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BuildMaterialStageDocuments — Compositor 模板完整 GLSL → ShaderBuildContext
+// BuildMaterialStageDocuments — 阶段源 → ShaderBuildContext
 //
+// 片段阶段：`config.fixed_fragment_source` 非空时**原样直通**（领域主着色器就是
+// 最终文本，没有占位符、没有代码模块拼装），此处只负责编译成 SPV + 反射。
+// 网格阶段：仍接收 `BuildMaterialStageDocument` 拼出的文档（阶段六的对象）。
 // 使用 SetFinalGLSL + CreateShaderDirect 直接编译。
 // ═══════════════════════════════════════════════════════════════════════════
 
