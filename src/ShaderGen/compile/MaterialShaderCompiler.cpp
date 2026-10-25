@@ -305,7 +305,8 @@ ShaderBuildContext *BuildMaterialStageDocuments(
     CompileContext c{&input};
 
     if (mesh_source_document.GetBlockCount() == 0
-     || fragment_source_document.GetBlockCount() == 0)
+     || (fragment_source_document.GetBlockCount() == 0
+      && !config.fixed_fragment_source))
     {
         c.Fail("source document is empty");
         return FailCompile(c);
@@ -387,7 +388,10 @@ ShaderBuildContext *BuildMaterialStageDocuments(
         c.Fail("Material stage document build failed");
         return FailCompile(c);
     }
-    if (!BuildMaterialStageDocument(
+    // 片段源已物理固定（领域主着色器）时不做文档合并：那份文本本身就是完整
+    // 编译单元，再套一层 version/define 前缀会写出重复指令。
+    if (!config.fixed_fragment_source
+     && !BuildMaterialStageDocument(
             fragment_source_document,
             ShaderStage::Fragment,
             input.debug_name,
@@ -412,8 +416,14 @@ ShaderBuildContext *BuildMaterialStageDocuments(
 
     AnsiString mesh_final_glsl;
     AnsiString fragment_final_glsl;
-    if (!mesh_final_document->Serialize(mesh_final_glsl, document_diagnostics)
-     || !fragment_final_document->Serialize(fragment_final_glsl, document_diagnostics))
+    if (!mesh_final_document->Serialize(mesh_final_glsl, document_diagnostics))
+    {
+        c.Fail("Material stage document serialization failed");
+        return FailCompile(c);
+    }
+    if (config.fixed_fragment_source)
+        fragment_final_glsl = config.fixed_fragment_source;
+    else if (!fragment_final_document->Serialize(fragment_final_glsl, document_diagnostics))
     {
         c.Fail("Material stage document serialization failed");
         return FailCompile(c);

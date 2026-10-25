@@ -83,6 +83,10 @@ struct MaterialCompileConfig
     const ShaderCodeResourceManifest *resource_manifest = nullptr;
     ShaderArtifactStore *artifact_store = nullptr;
     bool defer_finalize = false; // 生成 GLSL/契约后返回，SPV 编译推迟（生产主路径先查 program 缓存）
+    // 非空 ⇒ 片段阶段的最终 GLSL 就是这份文本（领域固定主着色器）：跳过
+    // 片段文档合并与序列化，其余（网格阶段、link、元数据）流程不变。
+    // 见 `MaterialDefinitionBuildRequest::fixed_fragment_source`。
+    const char *fixed_fragment_source = nullptr;
 };
 
 class ShaderBuildContext;

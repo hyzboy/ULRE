@@ -5,18 +5,19 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // 生成器后端（ShaderGenProgramBuildBackend）把所有代码模块拼装成一份完整
-// GLSL 再编译。本后端只做五件事：
+// GLSL 再编译。本后端只做四件事：
 //
-//   1. 借 `BuildGenericMaterial` 拿到网格阶段、link spec、artifact 元数据、
+//   1. 先按领域/pass/渲染状态解析出**固定片段源**（`ShaderLibrary/domain/...`
+//      主着色器，本身就是一个完整编译单元）并发射 `generated/options.glsl`
+//      （Phase 2 的 `EmitDomainOptions`）到缓存目录——不进源码树；
+//   2. 把这份源**放进构建请求**（`fixed_fragment_source`）。构建器因此不发射
+//      片段：片段 stage key、artifact 元数据、编译输入三者是同一份字节；
+//   3. 借 `BuildGenericMaterial` 拿到网格阶段、link spec、artifact 元数据、
 //      `requires_recipe_*` 结论（这些与「片段算法怎么写」无关，废除生成器
 //      不代表废除它们）；
-//   2. 把片段阶段的最终 GLSL **整篇替换**成领域固定主着色器
-//      （`ShaderLibrary/domain/...`）——它本身就是一个完整编译单元；
-//   3. 按领域/pass/渲染状态发射 `generated/options.glsl`（Phase 2 的
-//      `EmitDomainOptions`），写到缓存目录，不进源码树；
 //   4. 把编译器插件的 include 根设成 { ShaderLibrary, options 所在目录 }，
-//      立刻把主着色器编成 SPV；
-//   5. 交回 `FinalizeShaderBuildContext` 走原有的缓存/落盘/元数据流程。
+//      立刻把片段编成 SPV，然后交回 `FinalizeShaderBuildContext` 走原有的
+//      缓存/落盘/元数据流程。
 //
 // 关键点：**主着色器不是生成物**。它没有 `{{...}}` 占位符、没有被拼接的
 // 代码模块，因此这一层不需要任何文本拼装逻辑——这正是删除 ShaderGen 的
@@ -353,13 +354,15 @@ namespace hgl::graph::mtl
 
         /// 用「主着色器 + options」直接编出片段 SPV。
         ///
+        /// 此时片段阶段的最终 GLSL **已经**由 `MaterialShaderCompiler` 按
+        /// `fixed_fragment_source` 装好了（同一份文本也进了 stage key 与元数据），
+        /// 这里只负责在正确的 include 根下把它编出来：
+        ///
         /// 必须在这里编、而不是留给 `CreateShaderDirect()`：include 根是插件里的
         /// **进程级**配置（`compile_info.includes`），只有在编译那一刻设对才有意义，
         /// 而 `FinalizeShaderBuildContext` 稍后还要编网格阶段——那时第二根必须已经
         /// 撤掉，否则它会读到上一份 options。
-        bool CompileDomainMasterFragment(
-            const AnsiString &source,
-            const AnsiString &options_text,
+        bool CompileFixedFragment(
             const OSString &options_root,
             const MaterialDomain domain,
             const ShaderProgramPurpose purpose,
@@ -371,27 +374,6 @@ namespace hgl::graph::mtl
                 DomainBuildFailed(u8"[DomainBackend] 构建上下文缺少片段阶段");
                 return false;
             }
-
-            // ── 把 options 的内容键钉进片段源 ────────────────────────────
-            //
-            // options 的全部差异都落在 `generated/options.glsl` 里，主着色器文本
-            // 对「同领域 + 同 pass」是**逐字节相同**的。若 stage source digest 只
-            // 覆盖主着色器，两种不同 options 就会算出同一个摘要（实测：
-            // fwd 与 fwd-alpha 的主着色器文本完全一致，SPV 却是 65072 vs 67024）。
-            // 摘要既是缓存命中的判据也是事后校验的判据，撞了就只剩缓存文件名这
-            // 一道保险。把内容键作为溯源注释钉在文本尾部，摘要自然覆盖 options，
-            // 同时让落盘的 `.frag` 能自述「这份 SPV 是哪组宏编出来的」。
-            char options_key[32];
-            MakeOptionsKey(options_text, domain, purpose,
-                           options_key, sizeof(options_key));
-
-            std::string fragment_source(source.c_str(),
-                                        static_cast<size_t>(source.Length()));
-            fragment_source += "\n// domain-options-key ";
-            fragment_source += options_key;
-            fragment_source += "\n";
-
-            fragment->SetFinalGLSL(fragment_source);
 
             // ── 缓存优先 ────────────────────────────────────────────────
             //
@@ -461,28 +443,100 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        /// 片段源被整篇换掉之后，与源文本相关的 artifact 元数据必须按**新源**重算。
-        ///
-        /// `BuildGenericMaterial` 是在换源**之前**建元数据的，所以它留下的
-        /// `generated_source_digest` 描述的是那份根本没被编译的生成物。缓存装载
-        /// 侧虽然不拿这个字段判命中（stage 命中看每阶段自己的 source digest），
-        /// 但它会被写进 program metadata，并被缓存审计与回归断言当作「实际编译
-        /// 源」的摘要使用——记错就是埋一个事后永远查不出来的偏差。
-        bool RefreshProgramArtifactMetadata(
-            const contract::PhysicalDeviceProfileLite *profile,
-            ShaderBuildContext &ctx)
+        /// 片段阶段的物理固定内容：源文本 + 接口形状 + 编译期位置信息。
+        struct FixedFragmentStage
         {
-            if (!ctx.HasProgramLink())
-                return true;
+            AnsiString source;      // 领域主着色器 + options 内容键
+            uint64 interface_hash = 0;
+            OSString options_root;
+            MaterialDomain domain = MaterialDomain::Custom;
+            ShaderProgramPurpose purpose = ShaderProgramPurpose::ForwardColor;
+        };
 
-            ShaderProgramArtifactMetadata metadata{};
-            if (!BuildShaderProgramArtifactMetadata(profile, ctx, metadata))
+        /// 解析「本材质该用哪份固定片段源」，并把 options 落到缓存目录。
+        ///
+        /// 这一步必须在 `BuildGenericMaterial` **之前**完成：固定源会被写进
+        /// 构建请求，因此片段 stage key、artifact 元数据与真正编译的输入是同一
+        /// 份文本。换源（先建后改）会让键描述一份从未被编译的代码。
+        bool ResolveFixedFragmentStage(
+            const MaterialDefinition &definition,
+            const MaterialDefinitionBuildRequest &request,
+            FixedFragmentStage &out_stage)
+        {
+            const MaterialDomain domain = definition.domain;
+            const ShaderProgramPurpose purpose = request.shader_program_purpose;
+            out_stage.domain = domain;
+            out_stage.purpose = purpose;
+
+            // ── 覆盖判定决定深度 pass 用哪份主着色器 ──────────────────────
+            //
+            // 前向 pass 不需要区分：是否写出 alpha 由 options 的
+            // `HGL_ALPHA_OUTPUT` 表达，一份文件足够。深度 pass 则必须分开——
+            // 不需要覆盖判定时片段着色器是**彻头彻尾的空实现**（省掉整个
+            // 纹理采样链），这是 Phase 1 实测的形状，不是偷懒。
+            const ResolvedMaterialRenderState render_state =
+                ResolveMaterialRenderState(definition, request.recipe);
+            const bool masked_coverage =
+                render_state.alpha_test || render_state.dither;
+
+            DomainShaderTemplate domain_template;
+            if (!ResolveDomainShaderTemplate(
+                    domain, purpose, masked_coverage, domain_template))
             {
-                DomainBuildFailed(u8"[DomainBackend] 换源后重建 program artifact 元数据失败");
+                DomainBuildFailed(
+                    u8"[DomainBackend] 领域 %d 没有对应的固定主着色器"
+                    u8"（purpose=%d masked=%d，材质 %s）",
+                    static_cast<int>(domain),
+                    static_cast<int>(purpose),
+                    masked_coverage ? 1 : 0,
+                    definition.definition_id.c_str());
                 return false;
             }
 
-            ctx.SetProgramArtifactMetadata(metadata);
+            // ── 接口形状哈希 ─────────────────────────────────────────────
+            //
+            // 不吃源文本：实现变了由 definition_hash 表达，接口形状变了由这里
+            // 表达，两者在 key 里不互相掩盖。alpha 写输出也算形状的一部分。
+            {
+                hgl::hash::FNV1aHasher64 interface_hasher;
+                interface_hasher << static_cast<uint32>(domain)
+                                 << static_cast<uint32>(purpose)
+                                 << static_cast<uint32>(masked_coverage ? 1 : 0)
+                                 << static_cast<uint32>(render_state.pipeline_config.alpha_blend ? 1 : 0);
+                out_stage.interface_hash = interface_hasher;
+            }
+
+            // ── options ──────────────────────────────────────────────────
+            AnsiString options_text;
+            if (!BuildDomainOptions(
+                    definition, request, domain, purpose, options_text))
+                return false;
+
+            if (!WriteOptionsToCache(
+                    options_text, domain, purpose, out_stage.options_root))
+                return false;
+
+            // ── 主着色器 + options 内容键 ────────────────────────────────
+            //
+            // options 的全部差异都落在 `generated/options.glsl` 里，主着色器文本
+            // 对「同领域 + 同 pass」是**逐字节相同**的。若 stage source digest 只
+            // 覆盖主着色器，两种不同 options 就会算出同一个摘要（实测：
+            // fwd 与 fwd-alpha 的主着色器文本完全一致，SPV 却是 65072 vs 67024）。
+            // 摘要既是缓存命中的判据也是事后校验的判据，撞了就只剩缓存文件名这
+            // 一道保险。把内容键作为溯源注释钉在文本尾部，摘要自然覆盖 options，
+            // 同时让落盘的 `.frag` 能自述「这份 SPV 是哪组宏编出来的」。
+            AnsiString master_source;
+            if (!LoadDomainMasterShader(domain_template, master_source))
+                return false;
+
+            char options_key[32];
+            MakeOptionsKey(options_text, domain, purpose,
+                           options_key, sizeof(options_key));
+
+            out_stage.source = master_source;
+            out_stage.source += "\n// domain-options-key ";
+            out_stage.source += options_key;
+            out_stage.source += "\n";
             return true;
         }
     }//namespace
@@ -502,17 +556,25 @@ namespace hgl::graph::mtl
                 const MaterialDefinition &definition,
                 const MaterialDefinitionBuildRequest &request) override
             {
-                DomainShaderTemplate resolved_template;
-
                 g_last_domain_build_error.Clear();
 
-                // ── 1. 网格阶段/链接规格/元数据仍走生成器 ────────────────────
+                // ── 1. 先定片段源 + options（不依赖生成器）─────────────────
+                FixedFragmentStage fixed;
+                if (!ResolveFixedFragmentStage(definition, request, fixed))
+                    return nullptr;
+
+                // ── 2. 网格阶段/链接规格/元数据仍走生成器构建器 ─────────────
                 //
-                // 片段阶段要整篇换源，所以必须 `defer_finalize`：否则
-                // BuildGenericMaterial 会把生成出来的片段 GLSL 编成 SPV，
-                // 那是白烧一遍（而且是要被丢掉的代码）。
+                // 请求里带上固定片段源 ⇒ 构建器**不发射**片段：不建代码模块
+                // 文档、不跑 FragmentTemplateComposer、不序列化片段文档，片段
+                // stage key 的 definition_hash 直接吃这份真正会被编译的文本。
+                // 仍要 `defer_finalize`：SPV 编译必须等 include 根设对，那一步
+                // 由本后端在第 3 步做（见 CompileFixedFragment）。
                 MaterialDefinitionBuildRequest deferred_request = request;
                 deferred_request.defer_finalize = true;
+                deferred_request.fixed_fragment_source = fixed.source.c_str();
+                deferred_request.fixed_fragment_interface_hash =
+                    fixed.interface_hash;
 
                 ShaderBuildContext *ctx = BuildGenericMaterial(
                     profile, deferred_request, definition, nullptr);
@@ -520,89 +582,24 @@ namespace hgl::graph::mtl
                 {
                     DomainBuildFailed(u8"[DomainBackend] 网格阶段构建失败：材质 %s（%s）",
                         definition.definition_id.c_str(),
-                        GetLastBuildGenericMaterialError());
+                        GetLastBuildGenericMaterialError().c_str());
                     return nullptr;
                 }
 
-                const bool ok = ApplyDomainMasterShader(
-                    definition, request, *ctx, resolved_template);
-                if (!ok)
+                // ── 3. 在 options 的 include 根下编译固定片段 ──────────────
+                if (!CompileFixedFragment(
+                        fixed.options_root, fixed.domain, fixed.purpose, *ctx))
                 {
                     delete ctx;
                     return nullptr;
                 }
 
-                // 元数据重建必须在换源之后、`FinalizeBuildContext` 之前——
-                // 落盘时写的就是这里的结果。
-                if (!RefreshProgramArtifactMetadata(profile, *ctx))
-                {
-                    delete ctx;
-                    return nullptr;
-                }
-
-                (void)resolved_template;
                 return ctx;
             }
 
             bool FinalizeBuildContext(ShaderBuildContext *ctx) override
             {
                 return FinalizeShaderBuildContext(ctx);
-            }
-
-        private:
-
-            bool ApplyDomainMasterShader(
-                const MaterialDefinition &definition,
-                const MaterialDefinitionBuildRequest &request,
-                ShaderBuildContext &ctx,
-                DomainShaderTemplate &out_template)
-            {
-                const MaterialDomain domain = definition.domain;
-                const ShaderProgramPurpose purpose = request.shader_program_purpose;
-
-                // ── 2. 覆盖判定决定深度 pass 用哪份主着色器 ──────────────────
-                //
-                // 前向 pass 不需要区分：是否写出 alpha 由 options 的
-                // `HGL_ALPHA_OUTPUT` 表达，一份文件足够。深度 pass 则必须分开——
-                // 不需要覆盖判定时片段着色器是**彻头彻尾的空实现**（省掉整个
-                // 纹理采样链），这是 Phase 1 实测的形状，不是偷懒。
-                const ResolvedMaterialRenderState render_state =
-                    ResolveMaterialRenderState(definition, request.recipe);
-                const bool masked_coverage =
-                    render_state.alpha_test || render_state.dither;
-
-                if (!ResolveDomainShaderTemplate(
-                        domain, purpose, masked_coverage, out_template))
-                {
-                    DomainBuildFailed(
-                        u8"[DomainBackend] 领域 %d 没有对应的固定主着色器"
-                        u8"（purpose=%d masked=%d，材质 %s）",
-                        static_cast<int>(domain),
-                        static_cast<int>(purpose),
-                        masked_coverage ? 1 : 0,
-                        definition.definition_id.c_str());
-                    return false;
-                }
-
-                // ── 3. 生成 options ─────────────────────────────────────────
-                AnsiString options_text;
-                if (!BuildDomainOptions(
-                        definition, request, domain, purpose, options_text))
-                    return false;
-
-                // ── 4. options 落盘（缓存目录，不写源码树）──────────────────
-                OSString options_root;
-                if (!WriteOptionsToCache(
-                        options_text, domain, purpose, options_root))
-                    return false;
-
-                // ── 5. 主着色器替换片段源并立刻编译 ────────────────────────
-                AnsiString source;
-                if (!LoadDomainMasterShader(out_template, source))
-                    return false;
-
-                return CompileDomainMasterFragment(
-                    source, options_text, options_root, domain, purpose, ctx);
             }
         };//class DomainShaderBuildBackend
 

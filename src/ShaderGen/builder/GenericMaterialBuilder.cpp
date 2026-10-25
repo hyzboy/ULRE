@@ -488,6 +488,7 @@ namespace hgl::graph::mtl
         // ═══════════════════════════════════════════════════════════════════
         bool GenerateStageSources(
             const MaterialDefinition &definition,
+            const MaterialDefinitionBuildRequest &request,
             MaterialShaderDocumentCapture *document_capture,
             GenericMaterialBuildPlan &plan)
         {
@@ -542,6 +543,16 @@ namespace hgl::graph::mtl
                     return false;
                 }
                 plan.ms.assign(serialized.c_str(), serialized.Length());
+            }
+
+            // ── 片段阶段：由领域主着色器物理固定时不发射 ────────────────────
+            //
+            // 固定源直接成为最终片段文本。它同时也喂 stage key 的
+            // definition_hash——键与真正被编译的文本是同一份字节。
+            if (request.fixed_fragment_source)
+            {
+                plan.fs = request.fixed_fragment_source;
+                return true;
             }
 
             FragmentTemplateComposer composer;
@@ -1036,9 +1047,14 @@ namespace hgl::graph::mtl
             // 接口维度：片元输入 varying + 输出附件 + alpha 写输出。它不吃源
             // 文本，只吃契约形状——把「接口变了」与「实现变了」在键里分开，
             // 排查失效原因时能一眼看出是哪一类。
+            //
+            // 领域固定主着色器路径没有 ComposeInput（片段不发射），接口形状由
+            // 调用方按「领域 + purpose + 覆盖判定」给出。
             const uint64 fragment_interface_hash =
-                FragmentTemplateComposer::GetInterfaceInputHash(
-                    plan.compose_input);
+                request.fixed_fragment_interface_hash != 0
+                    ? request.fixed_fragment_interface_hash
+                    : FragmentTemplateComposer::GetInterfaceInputHash(
+                            plan.compose_input);
 
             plan.program_link.fragment_stage = BuildShaderStageKey(
                 ShaderStage::Fragment,
@@ -1093,6 +1109,7 @@ namespace hgl::graph::mtl
             config.program_link = &plan.program_link;
             config.material_private_data = definition.material_private_data;
             config.defer_finalize = request.defer_finalize;
+            config.fixed_fragment_source = request.fixed_fragment_source;
             return true;
         }
     }
@@ -1164,7 +1181,9 @@ namespace hgl::graph::mtl
         // fragment 发射输入先建好：interface_hash 直接吃这份 ComposeInput，
         // Phase 4 也原样复用它——两处共用一份对象，避免"声明侧看到的"与
         // "实际发射的"悄悄分叉。
-        if (!BuildFragmentEmissionInput(resolved_definition, plan))
+        // 片段阶段已由领域主着色器物理固定时没有可发射的东西，整条链跳过。
+        if (!request.fixed_fragment_source
+         && !BuildFragmentEmissionInput(resolved_definition, plan))
         {
             if (s_last_build_generic_material_error.IsEmpty())
                 s_last_build_generic_material_error = "BuildFragmentEmissionInput failed";
@@ -1181,7 +1200,7 @@ namespace hgl::graph::mtl
         }
 
         if (!GenerateStageSources(
-                resolved_definition, document_capture, plan))
+                resolved_definition, request, document_capture, plan))
         {
             if (s_last_build_generic_material_error.IsEmpty())
                 s_last_build_generic_material_error = "GenerateStageSources failed";
