@@ -240,17 +240,17 @@ namespace
         return files;
     }
 
-    /// 固定网格主着色器的两个根目录。
+    /// 固定网格主着色器的根目录。
     ///
-    /// `mesh/shape/` 是形状固定 master（运行时真实加载的那批），`mesh/fixed/` 只剩
-    /// CharQuad / LineQuad 的拓扑专用源。审计必须同时覆盖两者——只审 `mesh/fixed/`
-    /// 会漏掉全部形状 master，而它们才是绝大多数图元实际走的路径。
+    /// 只有 `mesh/shape/`：三种几何模式（VertexPassthrough / LineQuad /
+    /// CharQuad）的全部形状 master 都在这里，形状名即文件名。`mesh/fixed/`
+    /// 那套哈希命名（`<shape_key>.mesh`）已随生成器残留一起删除——它是
+    /// 「按顶点格式算形状键再查表」的遗物，形状数随格式表组合爆炸。
     static std::vector<std::pair<std::string, std::string>>
     LoadFixedMeshMasters()
     {
         std::vector<std::pair<std::string, std::string>> masters;
-        for (const char *suffix :
-             {"ShaderLibrary/mesh/shape", "ShaderLibrary/mesh/fixed"})
+        for (const char *suffix : {"ShaderLibrary/mesh/shape"})
         {
             const std::filesystem::path root(RepoRootPath(suffix));
             const std::string prefix = root.filename().string() + "/";
@@ -1576,8 +1576,7 @@ namespace
                 // mesh 阶段可编译。按内容比对（而不是按形状键硬编码文件名），
                 // 重新捕获时只需替换文件，门禁仍然有效。
                 //
-                // 形状主着色器现在只在 `mesh/shape/` 下（`mesh/fixed/` 只剩
-                // CharQuad/LineQuad 过渡源），两个目录都扫。
+                // 形状主着色器只在 `mesh/shape/` 下（`mesh/fixed/` 已删除）。
                 bool matched = false;
                 {
                     // 生产文本尾部附了 `// mesh-options-digest <n>` 溯源注释
@@ -1589,10 +1588,9 @@ namespace
                     if (digest_at != std::string::npos)
                         body.resize(digest_at);
 
-                    const std::filesystem::path dirs[2] =
+                    const std::filesystem::path dirs[1] =
                     {
-                        RepoRootPath("ShaderLibrary/mesh/shape"),
-                        RepoRootPath("ShaderLibrary/mesh/fixed")
+                        RepoRootPath("ShaderLibrary/mesh/shape")
                     };
                     try
                     {
@@ -8423,7 +8421,7 @@ void main()
         // MV.fixed-mesh-varying-invariants
         //
         // 原 MV.mesh-varying-writability（生成器可写性表测试）的终态替代：
-        // 在完全物理固定的网格主着色器库（ShaderLibrary/mesh/shape/*.mesh 与 mesh/fixed/*.mesh）上，
+        // 在完全物理固定的网格主着色器库（ShaderLibrary/mesh/shape/*.mesh）上，
         // 直接断言所有 varying 声明、调度契约、真实写入及 Stage2/3 组合不变量。
         // ══════════════════════════════════════════════════════════════════════
         static GateResult RunFixedMeshVaryingInvariantsCase()
@@ -10196,13 +10194,11 @@ void main()
     {
         out.clear();
 
-        // 形状主着色器（`mesh/shape/*.mesh`）与过渡期的拓扑专用源
-        // （`mesh/fixed/<形状键>.mesh`）都算「固定源」：前者按形状固定，
-        // 后者是 CharQuad/LineQuad 还没搬完的那几份。两者都不可生成。
-        const std::filesystem::path dirs[2] =
+        // 形状主着色器（`mesh/shape/*.mesh`）是唯一的固定源：形状名即文件名，
+        // 三种几何模式（VertexPassthrough / LineQuad / CharQuad）全在此目录。
+        const std::filesystem::path dirs[1] =
         {
-            RepoRootPath("ShaderLibrary/mesh/shape"),
-            RepoRootPath("ShaderLibrary/mesh/fixed")
+            RepoRootPath("ShaderLibrary/mesh/shape")
         };
 
         try

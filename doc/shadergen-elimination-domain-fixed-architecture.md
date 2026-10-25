@@ -1505,3 +1505,209 @@ Stage3 必须存在且排在 Stage2 之后、varying 维度必须等于 `max_ver
 `TextDraw`（CharQuad）与 `LineRender`（LineQuad）仍然失败，属阶段八 8.1：这两类拓扑的
 master 还没搬到 `mesh/shape` 的形状命名体系，仍走 `GenerateStageSources` 的 legacy 哈希分支，
 而该分支的键计算从未改动，磁盘里也一直没有匹配的键。
+
+---
+
+## 阶段八-1：CharQuad / LineQuad 形状 Master 化
+
+> **状态**：✅ 完成。`TextDraw`（CharQuad）与 `LineRender`（LineQuad）从「零成功」变为零着色器错误，
+> 三份 `ShaderLibrary/mesh/*.glsl.tmpl` 与最后 3 份哈希 `.mesh` 全部删除，
+> `GenerateStageSources` 的 legacy 分支不复存在。
+
+### 1. 形状 master 命名：模式前缀是必需的
+
+七-2 只覆盖了 `VertexPassthrough`，形状名形如 `tri_192_<varyings>`。八-1 把同一套命名推广到三种模式：
+
+```
+<模式前缀>_<容量>_<varying 令牌，按固定顺序用 _ 连接>.mesh
+  tri_192_color.mesh                         VertexPassthrough，192 顶点，color
+  charquad_256_dataid_uv_color_style.mesh     CharQuad，256 顶点，dataid+uv+color+style
+  charquad_256_dataid_uv_color.mesh           CharQuad，256 顶点，dataid+uv+color
+  linequad_256_color.mesh                     LineQuad，256 顶点，color
+  linequad_256_plain.mesh                     LineQuad，256 顶点，无 varying
+```
+
+**模式前缀不是装饰，是唯一性的一部分。** 三种模式的几何主体是**三段完全不同的算法**：
+`VertexPassthrough` 是「连续三点一组」，`CharQuad` 是「每工作项一个字符四边形 + 笔位推进」，
+`LineQuad` 是「每条线扩成两三角」。若共用一个前缀，`<容量>_<varyings>` 相同的
+`CharQuad` 与 `LineQuad` 会撞名——而两者的顶点输出语义毫不相干。撞名的后果不是编译失败，
+是**静默用错几何**。
+
+`BuildMeshShapeName` 因此改为：
+
+```cpp
+AnsiString BuildMeshShapeName(const MeshShaderMode mode,
+                              const MaterialVertexVaryingConfig & varying,
+                              const uint32 max_vertices);
+```
+
+另一处改动同样关键：**容量来源由 `invocations * 3` 改为 `ResolveMeshModeTopology(...).max_vertices`**。
+旧写法把「工作项数」当成「顶点数」再乘 3，只对 `VertexPassthrough` 恰好成立；
+`CharQuad`（`inv*4` 顶点 / `inv*2` 图元）与 `LineQuad`（同）会算错。容量是 master 文件名的组成部分，
+算错就等于查不到文件——这一次修的是**根因**，不是补一个文件名。
+
+### 2. 两份共享几何主体
+
+形状之间的差异只在 **varying 集合**，几何算法是同一份。所以先抽主体，再让形状提供钩子：
+
+| 文件 | 内容 |
+| --- | --- |
+| `ShaderLibrary/mesh/char_quad_body.glsl` | 笔位推进、字符度量、缩放/旋转/斜切、`viewport.ortho_matrix` 投影；调 `WriteCharQuadVertexOutputs(vid, uv, color)` ×4 与 `WriteCharQuadPrimitiveOutputs(prim, data_id, style_id)` ×2 |
+| `ShaderLibrary/mesh/line_quad_body.glsl` | 端点解析、屏幕空间垂直扩张、4 顶点 2 图元；调 `GetClipPos(GetLocalPos())` 与 `WriteLineQuadVertexOutputs(vid)` |
+
+主体里**没有再出现任何 varying 数组名**——只出现钩子名。少一个 varying 的形状只需重写两个钩子函数体，
+不必复制整套几何（这正是「打地鼠」式复制哈希文件的反面）。
+
+### 3. CharQuad 与 LineQuad 的不同：一个用 options，一个不用
+
+| | 是否 include `generated/mesh_options.glsl` | 原因 |
+| --- | --- | --- |
+| `tri_*` / `linequad_*` | ✅ | 主体调 `GetClipPos(GetLocalPos())`，Stage 2 映射层与 Stage 3 变换层必须注入 |
+| `charquad_*` | ❌ | 它不读任何外部顶点流；三层文本数据（字符度量 / 样式 / 实例）与整条 2D 变换链由 `vertex/s1_text_char_quad.glsl` + `viewport.ortho_matrix` 自持 |
+
+对应地在 `GenerateStageSources` 里 `CharQuad` 直接跳过 `EmitMeshOptions`——不是特判偷懒，
+而是 `EmitMeshOptions` 的契约本来就把「有 Stage 1 顶点解码」当硬前提（`ResolveVertexABI` 对
+`VertexInputMode::None` 早退，`resolved_vertex_input_glsl` 为空，函数必然返回 false）。
+写盘侧 `DomainShaderBuildBackend` 也只在 `mesh_options_glsl.Length() > 0` 时才写文件，两端一致。
+
+### 4. `GenerateStageSources` 归一：legacy 分支彻底删除
+
+八-1 之前该函数有两条路：`CharQuad` / `LineQuad` 走 `ComputeLegacyMeshSourceKey` +
+`TryLoadLegacyMeshSource`（哈希键 + `mesh/fixed/<key>.mesh`），`VertexPassthrough` 走形状命名。
+八-1 删掉整条 `else` 分支与这两个函数，三种模式共用一条路径：
+
+```
+mode → ResolveMeshModeTopology(mode, invocations) → capacity
+     → BuildMeshShapeName(mode, varying, capacity.max_vertices) → shape_name
+     → 读 ShaderLibrary/mesh/shape/<shape_name>.mesh
+     → if (!IsCharQuadMode) { EmitMeshOptions(...) ; 追加 // mesh-options-digest <FNV1a> }
+```
+
+`// mesh-options-digest` 仍然是必需的：master 文本对同一形状**逐字节相同**，
+不同顶点格式的差异全在 options 里，摘要进 `plan.ms` 才能让缓存键分开。
+
+随之删除的磁盘文件：
+
+| 文件 | 原用途 |
+| --- | --- |
+| `ShaderLibrary/mesh/fixed/3748810927694461494.mesh` | CharQuad |
+| `ShaderLibrary/mesh/fixed/1383689879301672014.mesh` | LineQuad（带顶点色） |
+| `ShaderLibrary/mesh/fixed/13907659216699454923.mesh` | LineQuad（无 varying） |
+
+`ShaderLibrary/mesh/fixed/` 目录至此为空并移除：**形状由「模式 + 容量 + varying 集合」直接命名，
+不再由哈希键间接寻址**，哈希文件这一过渡形态没有存在理由。
+
+### 5. 两处符号归位
+
+**(a) `GetLineSize()`**：`LineQuad` 需要「线宽 + 最小宽度」两个数，来自 Size 顶点流。
+提供者是 `s1_size.glsl`：
+
+```glsl
+vec2 GetLineSize() { return sbo_vertex_size.data[draw_params.vertex_base + VertexIndexID]; }
+```
+
+但 Size 流是**可选**的——没有 Size 的形状不应因此编不过。所以 fallback 写在
+`EmitMeshOptions` 生成的 options 文件尾部：
+
+```glsl
+#ifndef S1_SIZE_GLSL
+vec2 GetLineSize() { return vec2(1.0, 1.0); }
+#endif
+```
+
+位置不能挪：master 的顺序是 `mesh/stage_common.glsl` → `generated/mesh_options.glsl`，
+只有生成文件的**尾部**才能看见 Stage 1 是否定义了 `S1_SIZE_GLSL`。
+换句话说，「按需提供缺失符号」这件事只有生成器知道该不该做，所以它必须留在生成文件里，
+而不是散落到各形状 master。
+
+**(b) `HGL_L2W_FROM_VERTEX_ATTR`**：从 C++ 发射器搬进 `s1_transform_id.glsl` 自身。
+理由是这个宏的语义就是「TransformID 模块在场」，模块自己定义它，两者不可能漂移。
+`vertex/helpers/orient_world.glsl` 里保留一个真正的 `#ifdef`：两个分支是**同名函数的两种语义**，
+不存在能同时服务两者的中间层，这是允许保留的条件编译。
+
+### 6. 门禁收敛
+
+| 函数 | 改动 |
+| --- | --- |
+| `LoadFixedMeshMasters()` | 扫描根由 `{mesh/fixed, mesh/shape}` 收敛为 `{mesh/shape}` |
+| `RunShaderSemanticRegistryCase` 断言 ④ | `dirs[1]` 改为仅 `mesh/shape` |
+| `LoadFixedMeshCatalog` | 同上 |
+| `CheckOneFixedMeshSource` | 失败文案改为 `ShaderLibrary/mesh/shape 下缺形状 master（需人工按形状新增）` |
+| `MaterialShaderCompiler.cpp` 错误文案 | `mesh/fixed/<shape_key>.mesh` → `mesh/shape/<shape_name>.mesh` |
+
+**踩到的一个坑（值得记住）**：断言 ④ 对「含 `generated/mesh_options.glsl` 的 master」执行严格规则，
+其中一条是**禁止 `#ifdef` / `#if` / `#elif` / `#ifndef` 出现**。实现是**对整份文件文本做裸子串扫描**，
+于是 `linequad_256_color.mesh` 的**注释里**写到「那批 `#ifdef` 已随生成器一起删除」时，
+门禁判定该文件含条件编译分支——**散文触发了规则**。
+
+本次的处理是改写注释（避免字面量），因为改门禁语义属于 8.2 的收敛范围。
+长期看门禁应当先剥掉 `//` 行注释再扫描：文档需要能讨论这些构造，
+而「讨论」与「使用」在文本层必须区分开。
+
+### 7. 删除三份 `mesh/*.glsl.tmpl` 并重指向契约
+
+`char_quad.glsl.tmpl` / `line_quad.glsl.tmpl` / `vertex_passthrough.glsl.tmpl` 是阶段三外置的
+固定骨架，全部内容已由 `mesh/*_body.glsl` + `mesh/stage_body.glsl` 承载，且 6.5 删除 `meshgen/*` 后
+已无生产代码引用它们。删除后契约的**归属人**改为新文件：
+
+| 测试 | 原契约文件 | 新契约文件 |
+| --- | --- | --- |
+| Test 29 ④ | `vertex_passthrough.glsl.tmpl`（`draw_params.is_indexed != 0u`） | `mesh/stage_body.glsl` |
+| Test 29 ⑤ 禁复活 | `vertex_passthrough.glsl.tmpl`（`draw_params.total_vertices`） | `mesh/stage_body.glsl` |
+| Test 34 | `line_quad.glsl.tmpl` ×2 | `mesh/line_quad_body.glsl` ×2 |
+| Test 34 | `char_quad.glsl.tmpl` ×2 | `mesh/char_quad_body.glsl` ×2 |
+| Test 34 | `vertex_passthrough.glsl.tmpl` ×1 | `mesh/stage_body.glsl` |
+
+契约**语义一字未改**：`const uint total_elements = (draw_params.is_indexed != 0u)` 在
+`line_quad_body.glsl:33` 与 `char_quad_body.glsl:27` 逐字保留，禁复活项
+（`draw_params.vertex_count >> 1u` / `const uint total_chars = draw_params.vertex_count;` /
+`draw_params.total_vertices`）在新文件里依然不存在。
+
+### 8. 决策记录：`#ifdef HGL_*_LOADER` 宏保留
+
+`s1_position_vec3/vec2/vec2i.glsl` 的 `LoadVertexData()` 里有 7 段
+`#ifdef HGL_<STREAM>_LOADER` / `<宏>` / `#endif`。**这不是生成器遗留，保留。**
+
+原因是这三个位置解码模块共用同一套流装载机制：`s1_uv.glsl` / `s1_color.glsl` / `s1_size.glsl` 等
+各自 `#define HGL_<STREAM>_LOADER { ... }`，位置模块在自己的 `LoadVertexData()` 里展开。
+这些宏的**定义者已经是库文件本身**（不再由 C++ 发射器 `#define`），语义与
+`HGL_L2W_FROM_VERTEX_ATTR` 相同——「流模块在场」。
+
+若改成直接 `#include` 代码片段，需要 3 个位置变体 × 7 种流 = 21 份片段文件，
+而收益只是消掉 14 行 `#ifdef`：**这是用 21 份文件换 14 行**，明确的负收益。
+判定标准仍然是「分支是否由 C++ 生成器写入」——由库自己拥有、且分支两侧是同一函数的
+不同实现片段的，可以留。
+
+### 验收结果
+
+| 项目 | 结果 |
+| --- | --- |
+| `ShaderResourceSchemaRegressionGate all` | exit=0，**59 个 PASS，0 个 FAIL** |
+| `ShaderResourceSchemaRegressionGate emit-fixed-mesh` | `covered=35 missing=0 failed=0`，exit=0 |
+| `ShaderDocumentProductionRegression --full` | exit=0，`full production fixtures passed`（9 个 depth/shadow 已知跳过） |
+| `TextDraw`（CharQuad） | 存活，**零** `no fixed mesh source` / `AcquireShaderProgram failed` / `Skip primitive` |
+| `LineRender`（LineQuad） | 存活，零上述错误 |
+| `DrawTriangle` / `SimpleSphere` / `AutoInstance` / `AutoMergeMaterialInstance` / `SimpleCube` | 5/5 存活，零上述错误 |
+
+合计 **7/7 示例通过**。
+
+### 冒烟测试发现的一处遗漏
+
+`TextDraw` 首轮仍报 `cannot load fixed mesh master: shape=charquad_256_dataid_uv_color`。
+根因不是命名算错，而是 **`builtin/text_gpu_bitmap` 的 varying 集合本身就没有 `emit_style_id`**
+（`BuiltinMaterialDefinitions.cpp:90`），于是形状名自然少了 `style` 令牌。
+补 `charquad_256_dataid_uv_color.mesh`（钩子里丢弃 `style_id`）后通过。
+
+这恰好演示了形状命名的**正确行为**：varying 集合不同 ⇒ 形状名不同 ⇒ 必须是另一份 master 文件。
+这正是「fragment 输入集合必须逐 location 对上」的物理约束在 mesh 侧的镜像，
+不能用同一份源里的开关冒充。
+
+### 剩余
+
+8.1 的验收项（`TextDraw` + `LineRender` 零着色器错误）已达成，下一阶段是 8.2 门禁收敛。
+
+顺带发现一处**与本次改动无关的既有失败**，归 8.2：`TestCSMIncrementalPass` 的 Test 14 断言
+`src/ShaderGen/compile/MaterialShaderCompiler.cpp` 里存在 `kMaterialInstanceAddressesFieldNames[field_index]`，
+但该发射代码在域固定架构落地时已整体移走（`git show HEAD` 版本中同样不存在），
+于是该用例在 HEAD 上就已经失败。因为它在 Test 14 就中止，Test 29 / Test 34 本轮无法通过运行验证；
+契约改写的正确性用逐条字符串核对代替（见 §7 的两列对照），文件存在性与匹配文本均已确认。

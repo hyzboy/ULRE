@@ -292,7 +292,7 @@ ShaderBuildContext *BuildMaterialStageDocuments(
     if (!config.fixed_mesh_source || !config.fixed_mesh_source[0])
     {
         c.Fail("mesh stage requires a fixed GLSL source "
-               "(ShaderLibrary/mesh/fixed/<shape_key>.mesh)");
+               "(ShaderLibrary/mesh/shape/<shape_name>.mesh)");
         return FailCompile(c);
     }
     if (!config.fixed_fragment_source || !config.fixed_fragment_source[0])

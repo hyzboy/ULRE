@@ -478,20 +478,32 @@ namespace hgl::graph::mtl
 
         // 网格阶段「物理固定」形状命名
         //
-        // 形状 = 输出接口（varying 集合）+ 拓扑。名字按 location 升序拼接，
-        // 因此任一组合只有一种拼写：`tri_192_dataid_pos_nrm_uv`、
-        // `tri_192_plain`（不输出任何 varying）。
+        // 形状 = 几何模式 + 输出接口（varying 集合）+ 拓扑容量。名字按语义升序
+        // 拼接，因此任一组合只有一种拼写：
+        //   `tri_192_dataid_pos_nrm_uv`、`tri_192_plain`（不输出任何 varying）、
+        //   `charquad_256_dataid_uv_color_style`、`linequad_256_color`。
         //
         // 这个名字就是 `ShaderLibrary/mesh/shape/<名>.mesh` 的文件名，两边必须
         // 逐字一致。新增一个 varying 组合 = 新增一个 .mesh 文件；顶点格式/位置
         // 映射的变化**不**改名字 —— 它们落在 `generated/mesh_options.glsl` 里。
         // 这正是「按顶点格式算形状键再查表」被废除的原因：那种形状数随格式表
         // 组合爆炸，每加一种顶点格式就要人工补一份哈希 .mesh。
+        //
+        // 模式前缀必须进名字：三种模式的几何主体互不相同（三角形装载 / 字形
+        // 解码 / 线段撑宽），若共用 `tri_` 前缀，「同 varying、同容量」的两种
+        // 模式会算出同一个名字而互相顶替。
         AnsiString BuildMeshShapeName(
+            const MeshShaderMode mode,
             const MaterialVertexVaryingConfig &varying,
             const uint32 max_vertices)
         {
-            AnsiString name("tri_");
+            const char *prefix = "tri_";
+            if (IsCharQuadMode(mode))
+                prefix = "charquad_";
+            else if (mode == MeshShaderMode::LineQuad)
+                prefix = "linequad_";
+
+            AnsiString name(prefix);
             name += AnsiString::numberOf(max_vertices);
             name += AnsiString("_");
 
@@ -508,6 +520,7 @@ namespace hgl::graph::mtl
                 { varying.emit_uv0, "uv" },
                 { varying.emit_vertex_color
                       || varying.emit_vertex_color_from_palette, "color" },
+                { varying.emit_style_id, "style" },
                 { varying.emit_frag_direction, "dir" },
                 { varying.emit_luminance, "lum" },
             };
@@ -555,113 +568,6 @@ namespace hgl::graph::mtl
             if (!buffer || opener->Read(buffer, file_size) != file_size)
             {
                 out_source.Clear();
-                return false;
-            }
-            return true;
-        }
-
-        // ── 过渡期保留：CharQuad / LineQuad 的拓扑专用主体 ────────────────
-        //
-        // 这两种模式的网格主体不是「顶点装载 → 三角形输出」的通用形状：
-        // CharQuad 把字形四边形与样式表写死在自身主体里，LineQuad 做的是
-        // 线段→四边形的屏幕空间展开。它们的主体各自只有一份，因此仍按
-        // 「模式 + ABI + 接口」的哈希键查 `mesh/fixed/`。
-        //
-        // 收敛计划：阶段八 8.1（CharQuad → `mesh/char_quad.mesh`）与 8.2
-        // （LineQuad → `mesh/line_quad.mesh`）。届时本函数与本查表一并删除。
-        uint64 ComputeLegacyMeshSourceKey(
-            const GenericMaterialBuildPlan &plan)
-        {
-            hgl::hash::FNV1aHasher64 hasher;
-            static constexpr char kVersion[] = "FixedMeshSourceShape.v1";
-            hasher.AppendBytes(kVersion, sizeof(kVersion) - 1);
-
-            const auto append_text =
-                [&hasher](const char *text)
-                {
-                    const uint32 length = text
-                        ? static_cast<uint32>(std::strlen(text)) : 0;
-                    hasher << length;
-                    if (length > 0)
-                        hasher.AppendBytes(text, length);
-                };
-
-            hasher << plan.mesh_shader_mode
-                   << static_cast<uint32>(plan.position_format)
-                   << plan.mesh_max_invocations;
-            append_text(VertexNodeConfigResolver::GetMappingModulePath(
-                plan.vertex_node_config));
-            append_text(VertexNodeConfigResolver::GetStage3ModulePath(
-                plan.vertex_node_config));
-            const bool needs_l2w =
-                plan.vertex_node_config.orientation == OrientationMode::World
-             || plan.vertex_node_config.orientation == OrientationMode::CameraFacingFree
-             || plan.vertex_node_config.orientation == OrientationMode::CameraFacingAxisY;
-            hasher << static_cast<uint32>(needs_l2w);
-
-            const MaterialVertexVaryingConfig &varying = plan.varying;
-            hasher << static_cast<uint32>(varying.emit_data_index_id)
-                   << static_cast<uint32>(varying.emit_vertex_color)
-                   << static_cast<uint32>(varying.emit_uv0)
-                   << static_cast<uint32>(varying.emit_world_pos)
-                   << static_cast<uint32>(varying.emit_world_normal)
-                   << static_cast<uint32>(varying.emit_luminance)
-                   << static_cast<uint32>(varying.emit_frag_direction)
-                   << static_cast<uint32>(varying.use_transform_id_attr)
-                   << static_cast<uint32>(varying.emit_vertex_color_from_palette)
-                   << static_cast<uint32>(varying.emit_style_id)
-                   << static_cast<uint32>(plan.stage_interface.GetCount());
-            for (int index = 0; index < plan.stage_interface.GetCount(); ++index)
-                hasher << plan.stage_interface[index];
-
-            // ── 顶点输入声明：只作为形状键的哈希输入 ─────────────────────
-            // 历史实现把这份文本塞进一个 ShaderDocument（块数 0/1、kind=
-            // ShaderDocumentBlockKind::Module=5 以 int 宽度、再是文本长度）。
-            // 文档层删除后必须**逐字节**保持原序列：已落盘的 .mesh 文件名
-            // 就是按它算出来的，多加一个字节全体失配。
-            hasher << static_cast<uint32>(
-                plan.resolved_vertex_input_glsl.IsEmpty() ? 0 : 1);
-            if (!plan.resolved_vertex_input_glsl.IsEmpty())
-            {
-                hasher << static_cast<uint32>(5);   // 原 Module 枚举值
-                hasher << static_cast<uint32>(
-                    plan.resolved_vertex_input_glsl.Length());
-                hasher.AppendBytes(
-                    plan.resolved_vertex_input_glsl.c_str(),
-                    static_cast<size_t>(plan.resolved_vertex_input_glsl.Length()));
-            }
-
-            return hasher;
-        }
-
-        bool TryLoadLegacyMeshSource(
-            const uint64 shape_key,
-            AnsiString &out_source,
-            bool &out_found)
-        {
-            out_source.Clear();
-            out_found = false;
-
-            const AnsiString include_path =
-                AnsiString("mesh/fixed/")
-                + AnsiString::numberOf(shape_key)
-                + AnsiString(".mesh");
-
-            const std::string library_root = GetShaderLibraryPath();
-            if (library_root.empty())
-                return true;
-
-            const OSString path = ResolveShaderLibraryModulePath(
-                ToOSString(library_root.c_str()), include_path);
-            if (path.IsEmpty())
-                return true;
-
-            out_found = true;
-            if (!LoadShaderLibraryModule(include_path, out_source))
-            {
-                GLogError(
-                    "[ShaderGen] Failed to read fixed mesh source: key=%s",
-                    AnsiString::numberOf(shape_key).c_str());
                 return false;
             }
             return true;
@@ -764,17 +670,23 @@ namespace hgl::graph::mtl
                 plan.ms = request.fixed_mesh_source;
                 plan.mesh_source_was_fixed = true;
             }
-            else if (plan.mesh_shader_mode == MeshShaderMode::VertexPassthrough)
+            else
             {
                 // ── 主路径：形状名 → ShaderLibrary/mesh/shape/<形状名>.mesh ──
+                //
+                // 三种几何模式（VertexPassthrough / LineQuad / CharQuad）走**同
+                // 一条**路径：按「模式 + varying 集合 + 容量」算出形状名，加载
+                // 对应主着色器。它们的差别只在主着色器文本与「要不要 options」
+                // 两件事，不再有第二套哈希查表。
                 //
                 // 主体对「同一输出接口」是逐字节相同的；顶点解码（s1_*）、位置
                 // 映射（s2_*）、投影（s3_*）三件事全部由
                 // `generated/mesh_options.glsl` 注入。构建器只负责算出这三者的
                 // 路径、把内容交给 options 发射器，再把落盘交给后端。
+                const MeshModeCapacity capacity = ResolveMeshModeTopology(
+                    plan.mesh_shader_mode, plan.mesh_max_invocations);
                 const AnsiString shape_name = BuildMeshShapeName(
-                    plan.varying,
-                    static_cast<uint32>(plan.mesh_max_invocations) * 3u);
+                    plan.mesh_shader_mode, plan.varying, capacity.max_vertices);
                 const AnsiString master_include_path =
                     AnsiString("mesh/shape/") + shape_name + AnsiString(".mesh");
 
@@ -805,47 +717,53 @@ namespace hgl::graph::mtl
                     plan.mesh_source_shape_key = shape_hasher;
                 }
 
-                mtl::MeshOptionsInput mesh_options_input;
-                mesh_options_input.vertex_decode_includes =
-                    plan.resolved_vertex_input_glsl.c_str();
-                mesh_options_input.position_mapping_module =
-                    VertexNodeConfigResolver::GetMappingModulePath(
-                        plan.vertex_node_config);
-                mesh_options_input.stage3_module =
-                    VertexNodeConfigResolver::GetStage3ModulePath(
-                        plan.vertex_node_config);
-
-                AnsiString mesh_options_glsl;
-                if (!mtl::EmitMeshOptions(mesh_options_input, mesh_options_glsl))
-                {
-                    s_last_build_generic_material_error =
-                        AnsiString("mesh options emit failed (inconsistent vertex "
-                                   "decode / position mapping / stage3 combination) "
-                                   "for shape ")
-                        + shape_name;
-                    GLogError(
-                        "[ShaderGen] Generic material build failed to emit mesh options: "
-                        "name=%s shape=%s mapping=%s stage3=%s",
-                        definition.definition_name.c_str(),
-                        shape_name.c_str(),
-                        VertexNodeConfigResolver::GetMappingModulePath(
-                            plan.vertex_node_config),
-                        VertexNodeConfigResolver::GetStage3ModulePath(
-                            plan.vertex_node_config));
-                    return false;
-                }
-
-                if (request.mesh_options_glsl_out)
-                    *request.mesh_options_glsl_out = mesh_options_glsl;
-
-                // ── stage key 必须覆盖 options 内容 ────────────────────────
+                // ── CharQuad 不消费 options ────────────────────────────────
                 //
-                // 主着色器文本对「同形状」是**逐字节相同**的：两种完全不同的
-                // 顶点格式/位置映射会算出同一个 stage key，磁盘上旧 SPV 被永久
-                // 命中复用（症状：换了顶点格式却还是老几何）。options 文件的
-                // include 闭包不在 ShaderLibrary 下，闭包哈希自然抓不到它，
-                // 所以把 options 的内容摘要作为溯源注释钉在文本尾部。
+                // CharQuad 的顶点 ABI 求解器在 `VertexInputMode::None` 上直接
+                // 返回（没有 s1_*/s2_*/s3_* 三段），options 只能是空文件；而主
+                // 着色器自持全部 SSBO 与 2D 变换链（直接乘 viewport.ortho_matrix），
+                // 也不需要它们。发一份空 options 只会多一次磁盘写入，故跳过。
+                if (!IsCharQuadMode(plan.mesh_shader_mode))
                 {
+                    mtl::MeshOptionsInput mesh_options_input;
+                    mesh_options_input.vertex_decode_includes =
+                        plan.resolved_vertex_input_glsl.c_str();
+                    mesh_options_input.position_mapping_module =
+                        VertexNodeConfigResolver::GetMappingModulePath(
+                            plan.vertex_node_config);
+                    mesh_options_input.stage3_module =
+                        VertexNodeConfigResolver::GetStage3ModulePath(
+                            plan.vertex_node_config);
+
+                    AnsiString mesh_options_glsl;
+                    if (!mtl::EmitMeshOptions(mesh_options_input, mesh_options_glsl))
+                    {
+                        s_last_build_generic_material_error =
+                            AnsiString("mesh options emit failed (inconsistent vertex "
+                                       "decode / position mapping / stage3 combination) "
+                                       "for shape ")
+                            + shape_name;
+                        GLogError(
+                            "[ShaderGen] Generic material build failed to emit mesh options: "
+                            "name=%s shape=%s mapping=%s stage3=%s",
+                            definition.definition_name.c_str(),
+                            shape_name.c_str(),
+                            VertexNodeConfigResolver::GetMappingModulePath(
+                                plan.vertex_node_config),
+                            VertexNodeConfigResolver::GetStage3ModulePath(
+                                plan.vertex_node_config));
+                        return false;
+                    }
+
+                    if (request.mesh_options_glsl_out)
+                        *request.mesh_options_glsl_out = mesh_options_glsl;
+
+                    // ── stage key 必须覆盖 options 内容 ────────────────────
+                    // 主着色器文本对「同形状」是**逐字节相同**的：两种完全不同的
+                    // 顶点格式/位置映射会算出同一个 stage key，磁盘上旧 SPV 被永久
+                    // 命中复用（症状：换了顶点格式却还是老几何）。options 文件的
+                    // include 闭包不在 ShaderLibrary 下，闭包哈希自然抓不到它，
+                    // 所以把 options 的内容摘要作为溯源注释钉在文本尾部。
                     hgl::hash::FNV1aHasher64 options_hasher;
                     options_hasher.AppendBytes(
                         mesh_options_glsl.c_str(),
@@ -856,53 +774,6 @@ namespace hgl::graph::mtl
                     plan.ms += options_digest.c_str();
                     plan.ms += "\n";
                 }
-            }
-            else
-            {
-                // ── 过渡路径：CharQuad / LineQuad 的拓扑专用主体 ────────────
-                plan.mesh_source_shape_key = ComputeLegacyMeshSourceKey(plan);
-
-                AnsiString fixed_source;
-                bool catalog_source_found = false;
-                if (!TryLoadLegacyMeshSource(
-                        plan.mesh_source_shape_key,
-                        fixed_source,
-                        catalog_source_found))
-                {
-                    s_last_build_generic_material_error =
-                        "failed to load legacy fixed mesh source catalog entry";
-                    return false;
-                }
-
-                if (!catalog_source_found)
-                {
-                    // ── 网格阶段同样是物理固定的 ────────────────────────────────
-                    //
-                    // 主着色器文本不由本模块发射：形状键找不到固定源就直接失败，
-                    // 与片段侧同一个理由——拼装路径已经删除，没有"退回去生成"这回事。
-                    //
-                    // 诊断里带上形状键与模式/invocation，是本函数能给出的唯一定位信息：
-                    // 缺少的是**数据**（`ShaderLibrary/mesh/fixed/<键>.mesh`），不是代码，
-                    // 所以报错必须说清楚该往哪个键补文件，否则只会看到"某个域画不出来"。
-                    s_last_build_generic_material_error =
-                        AnsiString("no fixed mesh source for legacy shape key ")
-                        + AnsiString::numberOf(
-                              static_cast<uint64_t>(plan.mesh_source_shape_key))
-                        + " (mesh stage is physically fixed; the source must exist in "
-                          "ShaderLibrary/mesh/fixed)";
-                    GLogError(
-                        "[ShaderGen] Generic material build has no fixed mesh source: "
-                        "name=%s shape_key=%s mode=%u invocations=%u",
-                        definition.definition_name.c_str(),
-                        AnsiString::numberOf(
-                            static_cast<uint64_t>(plan.mesh_source_shape_key)).c_str(),
-                        static_cast<unsigned>(plan.mesh_shader_mode),
-                        static_cast<unsigned>(plan.mesh_max_invocations));
-                    return false;
-                }
-
-                plan.ms.assign(fixed_source.c_str(), fixed_source.Length());
-                plan.mesh_source_was_fixed = true;
             }
 
             // ── mesh 源拓扑与构建契约必须逐位一致（见 ValidateMeshSourceTopology）──

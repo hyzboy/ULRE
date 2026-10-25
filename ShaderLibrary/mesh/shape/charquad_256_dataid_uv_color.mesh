@@ -1,0 +1,42 @@
+#version 460
+// ShaderLibrary/mesh/shape/charquad_256_dataid_uv_color.mesh
+//
+// 网格阶段「物理固定」主着色器 · 形状 = CharQuad（文本位图）+ varying{dDataIndexID, UV0, Color}。
+//
+// 本文件是 `charquad_256_dataid_uv_color_style.mesh` 的**无样式**兄弟：
+// 差别只有 `fragStyleID` 这一个 varying（本形状不输出 style，因此几何主体算出的
+// style_id 在图元钩子里被丢弃）。几何 / 旋转 / 斜切算法仍只有一份，住在
+// `mesh/char_quad_body.glsl`。
+//
+// 为什么必须单独一个形状文件而不是在同一份源里加开关：
+// varying 集合是**编译期物理事实**——fragment 阶段的输入集合必须逐 location 对上，
+// 一旦在 mesh 阶段用条件分支输出 varying，fragment 侧就只能靠宏去猜，
+// 这正是本次重构要彻底删除的东西。形状不同 ⇒ 文件不同。
+//
+// 改本文件前请先读 doc/shadergen-elimination-domain-fixed-architecture.md。
+
+#include "mesh/stage_common_head.glsl"
+
+layout(local_size_x = 64) in;
+layout(triangles, max_vertices = 256, max_primitives = 128) out;
+#include "mesh/stage_common.glsl"
+
+// ── Text CharQuad SSBOs（结构真源：ShaderLibrary/vertex/s1_text_char_quad.glsl）──
+#include "vertex/s1_text_char_quad.glsl"
+
+layout(location=0) perprimitiveEXT out uint fragDataIndexID[128];
+layout(location=3) out vec2 fragUV0[256];
+layout(location=5) out vec4 fragVertexColor[256];
+
+void WriteCharQuadVertexOutputs(uint vid, vec2 uv, vec4 color)
+{
+    fragUV0[vid] = uv;
+    fragVertexColor[vid] = color;
+}
+
+void WriteCharQuadPrimitiveOutputs(uint prim, uint data_id, uint style_id)
+{
+    fragDataIndexID[prim] = data_id;
+}
+
+#include "mesh/char_quad_body.glsl"

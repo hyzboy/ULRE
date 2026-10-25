@@ -341,6 +341,22 @@ namespace hgl::graph::mtl
         if (has_stage3)
             AppendInclude(text_buffer, input.stage3_module);
 
+        // ── 线宽缺省 ───────────────────────────────────────────────────────
+        // LineQuad 的几何主体无条件调 `GetLineSize()`（.x 满宽 / .y 最细阈值），
+        // 而 Size 流是可选属性：装了 `vertex/s1_size.glsl` 就由它定义，没装就
+        // 必须有人补一份同签名默认值，否则「固定 1 像素线框」一类形状编不过。
+        //
+        // 放在这里（而不是主着色器里）有两个理由：
+        //   ① 顺序：主着色器先 include `mesh/stage_common.glsl`、后 include 本文件，
+        //      只有在本文件尾部才能看见 `S1_SIZE_GLSL` 是否已被定义；
+        //   ② 归属：这是「属性在位性」的选择，和 s2/s3 的注入同一个性质 ——
+        //      由生成数据表达，形状 master 因此保持零分支。
+        text_buffer += "\n"
+            "// 线宽缺省（Size 流未装载时恒 1 像素）\n"
+            "#ifndef S1_SIZE_GLSL\n"
+            "vec2 GetLineSize() { return vec2(1.0, 1.0); }\n"
+            "#endif\n";
+
         out_mesh_options_glsl = text_buffer;
         return true;
     }

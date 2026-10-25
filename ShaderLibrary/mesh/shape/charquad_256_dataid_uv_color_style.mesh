@@ -1,0 +1,46 @@
+#version 460
+// ShaderLibrary/mesh/shape/charquad_256_dataid_uv_color_style.mesh
+//
+// 网格阶段「物理固定」主着色器 · 形状 = CharQuad（文本）+ varying{dDataIndexID, UV0, Color, StyleID}。
+//
+// 与 `tri_*` / `linequad_*` 的差别：CharQuad **不引入**
+// `generated/mesh_options.glsl` —— 它不读任何外部顶点流，三层文本数据
+// （字符度量 / 样式 / 实例）与整条 2D 变换链路都由
+// `vertex/s1_text_char_quad.glsl` + `viewport.ortho_matrix` 自持。
+// 顶点 ABI 解析在 `ResolveVertexABI` 里对 CharQuad 直接早退，options 因此为空。
+//
+// 形状差异只在 varying 集合：几何/旋转/斜切算法住在 `mesh/char_quad_body.glsl`，
+// 主体通过下面两个符号钩子写 varying。缺 UV 或 style 的文本形状只需另写一份
+// 钩子集合，不必再复制整套几何。
+//
+// 输出 varying 集合必须与 Text2D 域 fragment 主着色器的输入集合逐 location 一致。
+//
+// 改本文件前请先读 doc/shadergen-elimination-domain-fixed-architecture.md。
+
+#include "mesh/stage_common_head.glsl"
+
+layout(local_size_x = 64) in;
+layout(triangles, max_vertices = 256, max_primitives = 128) out;
+#include "mesh/stage_common.glsl"
+
+// ── Text CharQuad SSBOs（结构真源：ShaderLibrary/vertex/s1_text_char_quad.glsl）──
+#include "vertex/s1_text_char_quad.glsl"
+
+layout(location=0) perprimitiveEXT out uint fragDataIndexID[128];
+layout(location=3) out vec2 fragUV0[256];
+layout(location=5) out vec4 fragVertexColor[256];
+layout(location=4) perprimitiveEXT out uint fragStyleID[128];
+
+void WriteCharQuadVertexOutputs(uint vid, vec2 uv, vec4 color)
+{
+    fragUV0[vid] = uv;
+    fragVertexColor[vid] = color;
+}
+
+void WriteCharQuadPrimitiveOutputs(uint prim, uint data_id, uint style_id)
+{
+    fragDataIndexID[prim] = data_id;
+    fragStyleID[prim] = style_id;
+}
+
+#include "mesh/char_quad_body.glsl"

@@ -1,4 +1,26 @@
-    const uint char_idx = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
+// ShaderLibrary/mesh/char_quad_body.glsl
+//
+// 网格阶段主体・文本字符四边形（CharQuad 拓扑）。
+//
+// 每线程一个字符 → 4 顶点 / 2 三角形。三层数据（字符度量 / 样式 / 实例）来自
+// `vertex/s1_text_char_quad.glsl` 里的三个 buffer_reference 垫片，主体自己算
+// 缩放 / 旋转 / 斜切 / 基线，用 `viewport.ortho_matrix` 直接拼裁剪空间
+// （文本路径是 2D 像素空间，没有 s2/s3 映射，这是 CharQuad 与其它形状的
+// 本质差别 —— 它自持整条变换链路，不走 `generated/mesh_options.glsl`）。
+//
+// varying 的写入由主着色器提供的两个符号钩子负责（形状差异 = varying 集合）：
+//   WriteCharQuadVertexOutputs(vid, uv, color)      逐顶点
+//   WriteCharQuadPrimitiveOutputs(prim, data_id, style_id)  逐图元
+//
+// 前置条件（由 `mesh/stage_common.glsl` + `vertex/s1_text_char_quad.glsl` 提供）：
+//   draw_params / sbo_char_info / sbo_char_style / sbo_char_instance / viewport
+
+void main()
+{
+    draw_params = MeshDrawParamsRef(pc_root.addr_batch_mesh_draw_params).rows[gl_DrawID];
+
+    const uint char_idx = gl_WorkGroupID.x * gl_WorkGroupSize.x
+                        + gl_LocalInvocationIndex;
     const uint base_vid = gl_LocalInvocationIndex * 4u;
 
     // 元素数：索引路径取 index_count、非索引路径取 vertex_count（与 vertex_passthrough 同口径）
@@ -6,7 +28,8 @@
         ? draw_params.index_count
         : draw_params.vertex_count;
     const uint total_chars = total_elements;   // 文本路径：每字符一个元素
-    const uint chars_this_group = min({{group_size}}u, total_chars - gl_WorkGroupID.x * {{group_size}}u);
+    const uint chars_this_group = min(gl_WorkGroupSize.x,
+                                      total_chars - gl_WorkGroupID.x * gl_WorkGroupSize.x);
     SetMeshOutputsEXT(chars_this_group * 4u, chars_this_group * 2u);
 
     if (char_idx >= total_chars)
@@ -74,20 +97,30 @@
     const float uv_r = uv_rb.x;
     const float uv_b = uv_rb.y;
 
-    // UV: keep original (quad rotates, content follows)
-    const float rot_tl_u = uv_l, rot_tl_v = uv_t;
-    const float rot_tr_u = uv_r, rot_tr_v = uv_t;
-    const float rot_bl_u = uv_l, rot_bl_v = uv_b;
-    const float rot_br_u = uv_r, rot_br_v = uv_b;
-
     const vec4 char_color = unpackUnorm4x8(cs.text_color);
 
     // Triangle 1: TL, BL, TR
-    gl_MeshVerticesEXT[base_vid + 0u].gl_Position = viewport.ortho_matrix * vec4(pos_tl_x, pos_tl_y, 0.0, 1.0);
-    gl_MeshVerticesEXT[base_vid + 1u].gl_Position = viewport.ortho_matrix * vec4(pos_bl_x, pos_bl_y, 0.0, 1.0);
-    gl_MeshVerticesEXT[base_vid + 2u].gl_Position = viewport.ortho_matrix * vec4(pos_tr_x, pos_tr_y, 0.0, 1.0);
-    gl_MeshVerticesEXT[base_vid + 3u].gl_Position = viewport.ortho_matrix * vec4(pos_br_x, pos_br_y, 0.0, 1.0);
+    gl_MeshVerticesEXT[base_vid + 0u].gl_Position =
+        viewport.ortho_matrix * vec4(pos_tl_x, pos_tl_y, 0.0, 1.0);
+    gl_MeshVerticesEXT[base_vid + 1u].gl_Position =
+        viewport.ortho_matrix * vec4(pos_bl_x, pos_bl_y, 0.0, 1.0);
+    gl_MeshVerticesEXT[base_vid + 2u].gl_Position =
+        viewport.ortho_matrix * vec4(pos_tr_x, pos_tr_y, 0.0, 1.0);
+    gl_MeshVerticesEXT[base_vid + 3u].gl_Position =
+        viewport.ortho_matrix * vec4(pos_br_x, pos_br_y, 0.0, 1.0);
 
-    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 0u] = uvec3(base_vid, base_vid + 1u, base_vid + 2u);
-    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 1u] = uvec3(base_vid + 2u, base_vid + 1u, base_vid + 3u);
+    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 0u] =
+        uvec3(base_vid, base_vid + 1u, base_vid + 2u);
+    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 1u] =
+        uvec3(base_vid + 2u, base_vid + 1u, base_vid + 3u);
 
+    // UV: keep original (quad rotates, content follows)
+    WriteCharQuadVertexOutputs(base_vid + 0u, vec2(uv_l, uv_t), char_color);  // TL
+    WriteCharQuadVertexOutputs(base_vid + 1u, vec2(uv_l, uv_b), char_color);  // BL
+    WriteCharQuadVertexOutputs(base_vid + 2u, vec2(uv_r, uv_t), char_color);  // TR
+    WriteCharQuadVertexOutputs(base_vid + 3u, vec2(uv_r, uv_b), char_color);  // BR
+
+    const uint data_id = gl_DrawID;
+    WriteCharQuadPrimitiveOutputs(gl_LocalInvocationIndex * 2u + 0u, data_id, style_id);
+    WriteCharQuadPrimitiveOutputs(gl_LocalInvocationIndex * 2u + 1u, data_id, style_id);
+}

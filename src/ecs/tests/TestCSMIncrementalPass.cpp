@@ -5074,7 +5074,7 @@ int main(int argc, char** argv)
             { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
               "sizeof(MeshDrawParams) == 104",
               "行宽断言不是 104 B（9×4B 头 + 4B 填充 + 8×uint64）" },
-            { "vertex_passthrough.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl"),
+            { "stage_body.glsl", OS_TEXT("ShaderLibrary/mesh/stage_body.glsl"),
               "draw_params.is_indexed != 0u",
               "非索引/索引路径不再按 is_indexed 择一取元素数（读数退化）" },
             // 注：text/line 的「元素数口径」已整体移交 Test 34（含禁复活）——本用例只管行宽/data_* 面。
@@ -5086,8 +5086,8 @@ int main(int argc, char** argv)
             // ⑤ 禁复活
             { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
               "M(total_vertices,", "total_vertices 复活（绘制元素数又混装成一个字段）", true },
-            { "vertex_passthrough.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl"),
-              "draw_params.total_vertices", "vertex_passthrough 又读混装字段", true },
+            { "stage_body.glsl", OS_TEXT("ShaderLibrary/mesh/stage_body.glsl"),
+              "draw_params.total_vertices", "网格阶段主体又读混装字段", true },
             { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
               "sizeof(mtl::GeometryAABB),  16384u, 1u",
               "AABB 池又预留行（ActivateAllRows 前提被破坏 ⇒ 实测只激活 513 行）", true },
@@ -5409,19 +5409,19 @@ int main(int argc, char** argv)
     {
         const SourceContract kElementCountContracts[] =
         {
-            { "line_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/line_quad.glsl.tmpl"),
+            { "line_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/line_quad_body.glsl"),
               "const uint total_elements = (draw_params.is_indexed != 0u)",
               "线段着色器未按元素数（索引路径取 index_count）取数" },
-            { "line_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/line_quad.glsl.tmpl"),
+            { "line_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/line_quad_body.glsl"),
               "draw_params.vertex_count >> 1u",
               "线段着色器又直接读 vertex_count 算线数（少 3 倍：只画 4 条线）", true },
-            { "char_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/char_quad.glsl.tmpl"),
+            { "char_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/char_quad_body.glsl"),
               "const uint total_elements = (draw_params.is_indexed != 0u)",
               "文本着色器未按元素数取数" },
-            { "char_quad.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/char_quad.glsl.tmpl"),
+            { "char_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/char_quad_body.glsl"),
               "const uint total_chars = draw_params.vertex_count;",
               "文本着色器又直接读 vertex_count（索引几何会少画）", true },
-            { "vertex_passthrough.glsl.tmpl", OS_TEXT("ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl"),
+            { "stage_body.glsl", OS_TEXT("ShaderLibrary/mesh/stage_body.glsl"),
               "const uint total_vertices = (draw_params.is_indexed != 0u)",
               "顶点直通着色器不再按元素数取数（基准口径丢失）" },
         };

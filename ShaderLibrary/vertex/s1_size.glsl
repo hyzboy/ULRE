@@ -17,4 +17,11 @@ float Width;
 
 #define HGL_SIZE_LOADER { Width = sbo_vertex_size.data[draw_params.vertex_base + VertexIndexID].x; }
 
+// 尺寸访问器：LineQuad 主体只认这一个口（.x = 满宽/最粗，.y = 最细阈值），
+// 不直接认 `Width` 全局 —— 形状 master 里的主体因此不需要知道 Size 从哪来。
+vec2 GetLineSize()
+{
+    return sbo_vertex_size.data[draw_params.vertex_base + VertexIndexID];
+}
+
 #endif // S1_SIZE_GLSL
