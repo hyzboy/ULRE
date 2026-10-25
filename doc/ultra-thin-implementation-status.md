@@ -643,7 +643,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 | # | 项 | 实测范围 | 为什么还开着 | 开工前置 | 风险 |
 |---|---|---|---|---|---|
-| P1 | **把 B 层（编译后人肉验证）换成反射断言** | ✅ 已在 `SPV.generated-interface` 完成 mesh↔fragment 接口、用途↔附件数、push-constant 末端三组；✅ 并已删除 `ShaderCodeModuleMetadata.cpp` 的依赖满足性推断（107 行 / 代码行 −94） | **已完成**。删除依据与保留项见 §10.5「本轮实际兑现」 | — | 已完成 |
+| P1 | **把 B 层（编译后人肉验证）换成反射断言** | ✅ 已在 `SPV.generated-interface` 完成 mesh↔fragment 接口、用途↔附件数、push-constant 末端三组；✅ 并已删除 `ShaderCodeModuleMetadata.cpp` 的依赖满足性推断（107 行 / 代码行 −95） | **已完成**。删除依据与保留项见 §10.5「本轮实际兑现」 | — | 已完成 |
 | P2 | **C 层：`ShaderDocument` 的自述校验** | `Serialize` 4 条诊断（Version 首块 / 单一 MainBody / 拒空块 / 块序单调） | 见下方 B 表判定：**保留校验，不删** | — | — |
 | P3 | **A 层外置**：把仍在 C++ 里的静态 GLSL 文本沉进 `.tmpl` | 实测后**大幅缩水**，见下方 §10.5 | 静态骨架（mesh 3 个 + fragment 4 个 `.tmpl`）**已经外置完毕**；剩下的 `GenericMaterialBuilder.cpp` 929 代码行里只有 **3** 条 `+= "` 语句 | emission golden 16 变体 + `SPV.generated-interface` | 低（但收益也低） |
 | P4 | **用 glslang `#include` 取代依赖预解析** | ✅ 已完成立项评估，见 **§10.6**：只剩 ~45 行（`CollectShaderCodeModuleIncludePaths`），且从中剥离出 `uses` 改推边（~56 代码行）+ 删 `conflicts` 全链（**已落地 −155 代码行**）两项 | 评估已证明「整张注记表换成 include 树」可行但**不划算**（1650 行重写换 ~56 行），因此降级为两项精确删除而非重写 | `uses` 推边前先修那 2 个无 `#include` 的 `surface_interface` 反例 | 低 |
@@ -683,7 +683,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 |---|---|---|---|
 | `006d2b8e5`（超薄工程开始前） | 41 | 9617 | 7690 |
 | `277ad2a7c`（超薄第一个提交） | 42 | 9729 | 7782 |
-| `HEAD`（本次删依赖推断前） | 44 | 10234 | 8165 |
+| `HEAD`（本次删依赖推断前） | 44 | 10234 | 8166 |
 | 当前工作区（已删依赖推断） | 44 | 10128 | **8071** |
 
 整个超薄工程**没有让 ShaderGen 变小**，反而 +548 代码行 —— 因为它做的是「单一真源 / 契约化 / 骨架外置」，同时新增了契约代码。**「大幅减化 80%」目前只兑现了 1.15%**（详见下方「本轮实际兑现」）。
@@ -707,7 +707,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 | 目标 | 层 | 可删行数 | 替代物 | 现状 |
 |---|---|---|---|---|
-| `ShaderCodeModuleMetadata.cpp` 的依赖满足性推断（`FindModuleIndex` / `ValidateDependencyVisit` / `MissingDependency` / `DependencyCycle` / `MissingConflictTarget`） | B | 估 ~150，实删 107 行（代码行 −94） | 「拼出来的 GLSL 能编译」+ registry 的 incomplete 剔除环 + `BuildShaderCodeResourceManifest` 的 DFS | ✅ **已完成** |
+| `ShaderCodeModuleMetadata.cpp` 的依赖满足性推断（`FindModuleIndex` / `ValidateDependencyVisit` / `MissingDependency` / `DependencyCycle` / `MissingConflictTarget`） | B | 估 ~150，实删 107 行（代码行 −95） | 「拼出来的 GLSL 能编译」+ registry 的 incomplete 剔除环 + `BuildShaderCodeResourceManifest` 的 DFS | ✅ **已完成** |
 | `CollectShaderCodeModuleIncludePaths` | A | ~45 / 573 | glslang `#include` | 待做 |
 | `MaterialShaderEmitter.cpp` 静态文本 | A | ~100 / 675 | `.tmpl` | 待做（性价比低） |
 | `ShaderDocument` 校验 | C | 0 | — | **已判定不做**（见 B 表） |
@@ -719,7 +719,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 > 所以 §10.6 的口径才是更保守、更可执行的那个。注意 §10.6-B（`conflicts`）**实测删掉了 −155 代码行**，
 > 高于本表与评估文档原先的 ~73 估算，因此本表合计 ~256 也需相应上修。
 
-**本轮实际兑现（唯一真正符合 SPV 反射主旨的一块）**：`src/ShaderGen` 代码行 **8165 → 7965（−200，−2.45%）**，总行 10234 → 10008。分两批：① 换反射断言 −94（8071）；② 删 `conflicts` 全链 −106（7965；全仓同批 13 文件合计 −155）。删除的判据（三个都是既有的、更早生效的权威判据，删掉的只是它们的 C++ 复述）：
+**本轮实际兑现**：`src/ShaderGen` 代码行 **8166 → 7965（−201，−2.5%）**，总行 10234 → 10008。分两批：① 换反射断言 −95（8071）；② 删 `conflicts` 全链 −106（7965；全仓同批 13 文件合计 −155）。删除的判据（三个都是既有的、更早生效的权威判据，删掉的只是它们的 C++ 复述）：
 
 1. **registry 的 incomplete 剔除环**（`ShaderCodeModuleRegistry.cpp`）已经用 `FindByName` 把「依赖名解析不到」的模块整个移出注册表 → 等价于 `MissingDependency`；
 2. **`BuildShaderCodeResourceManifest` 的 DFS**（`ShaderCodeResourceManifest.cpp:110-215`）返回 `UnknownCodeModule` / `CodeModuleCycle`，且**阻断编译** → 等价于缺失依赖 + 依赖环；
@@ -761,7 +761,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 | `uses` 改由 `#include` 推边 | `Registry.cpp:261-313`(52) + `File.cpp` 解析(~12)，`CollectShaderCodeModuleIncludePaths` 转为唯一边来源 | **~56 代码行** | 中。前置：给 2 个 Surface 模块各补一行 `#include "common/surface_interface.glsl"`（已查明原因，零风险） |
 | `provide`/`priority`/`kind` | `Metadata.cpp:263-306`(44) + `:54-60`(7) | ~51 | **建议保留**：它是意图文档；删则需同步清掉 82 个文件里 ~180 行资产，引起哈希位移 |
 
-4. **累计天花板修正**：已兑现 94（B 层）+ 155（`conflicts`）≈ **249 代码行 ≈ 3.1%**；再做 `uses` 则 ≈ 3.8%（若连只写不读那一簇一起删 ≈ 4.3%），仍与 80% 差两个数量级。
+4. **累计天花板修正**：已兑现 95（B 层）+ 155（`conflicts`，全文件口径）≈ **250 代码行**；按 `src/ShaderGen` 口径为 **−201（−2.5%）**，按全部触碰文件口径约 **3.1%**。仍与 80% 差两个数量级。工程已结项，见 `doc/shadergen-reduction-closure-report.md`。
 
 **实施教训（供下次估算用）**：`conflicts` 一簇估算 ~73 代码行、实际删掉 −155，**低估 65%**。
 两个原因：① 成对守卫行（`HasValidArray` 条目、哈希循环、`complete` 的 `&&` 链）在估算时被漏算；
@@ -770,12 +770,16 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 **今后凡判定某特性「可删」，必须同时倒查 `ShaderCodeResourceManifestError` /
 `RenderTemplateValidationError` 这类错误枚举的映射链，而不只是 grep 字段名。**
 
-**下一步动作**（按顺序，均无需立项）：
+**下一步动作**（工程已结项，以下按结项报告 §5 的判定标注）：
 
 - [x] §10.6-B：删 `conflicts` 全链 —— 实际 −155 代码行，门禁 59 PASS / 0 FAIL，4 个回归 exe 全 exit=0
-- [ ] §10.6-A：`uses` 改由 `#include` 推边（~56 代码行）—— 前置只需给 `material/sky_cube_surface.glsl`、`surface/sky_minimal_surface.glsl` 各补一行 `#include "common/surface_interface.glsl"`（文件自带 `#ifndef` 守卫，零风险；原因见评估文档 §3.2）
-- [ ] §10.4 P4：`CollectShaderCodeModuleIncludePaths` → glslang `#include`（~45 行，评估前置条件已满足）
-- [ ] §10.6-C：给 `provide`/`priority`/`kind` 加「只写不读」注释，不删
+- [ ] ~~§10.6-A：`uses` 改由 `#include` 推边（~56 代码行）~~ —— **已判定不做**（收益 0.7%，需动 2 个资产文件并复核 glslang include 深度上限）
+- [ ] ~~§10.4 P4：`CollectShaderCodeModuleIncludePaths` → glslang `#include`~~ —— **已判定不做**（`uses` 不做后属重复投入）
+- [ ] ~~§10.6-C：给 `provide`/`priority`/`kind` 加「只写不读」注释~~ —— **已判定不做**（工程结项，不再做纯文档性改动）
+
+> **结项**：本工程结论见 **`doc/shadergen-reduction-closure-report.md`**。
+> 一句话：SPV 反射能替代的 B 层已替代完（95 代码行）；相对引入反射前的基线，ShaderGen 代码量是 **+274 行（+3.6%）**。
+> 80% 的目标在当前架构下结构性不可达，真正的出口是「减少需要装配的变体数量」，应另立命题。
 
 **结构性断言（勿再重复论证）**：`GenericMaterialBuilder`(929) + `MaterialShaderEmitter`(675) + `ShaderCodeModuleFile`(573) + `FragmentTemplateComposer`(499) + `ShaderCodeModuleRegistry`(418) = **3094 行（38%）是组装逻辑** —— 它们决定「往 GLSL 里写什么」，反射只能看见「已经写进去的东西」。想真正数量级削减，唯一方向是**减少需要组装的变体**（继续超薄化，把变体推给领域契约与模板），而不是改注记格式。
 
