@@ -2107,3 +2107,93 @@ AtmosphereSky 的日志中，`SkyMinimal` 配方没有贴图行（`planned_textu
    `mesh_options_glsl_out` 文本的摘要（即与真正落盘的那份字节严格互锁）。
 
 见 `doc/ultra-thin-implementation-status.md` §12 的 Layer 4 条目。
+## 阶段十-3：资源所有权单点化（网格收口 Layer 5）
+
+Layer 1-4 都在"发射侧"（模块全集、loader 宏、ABI 选择表、options 摘要）。Layer 5 做的是
+全量示例实跑，暴露出来的是**另一条轴**：资源的销毁路径。两者相关——网格到底"谁才是主人"
+决定了示例能不能安全地持有它。
+
+### 一、三类资源的唯一所有者
+
+| 资源 | 唯一所有者 | 正确释放 | 错误写法 |
+| --- | --- | --- | --- |
+| `Geometry` | `GeometryManager` | `Release(g)` → `rm_geometry.Clear()` | `delete g` / `SAFE_CLEAR(g)` |
+| `Texture` | `TextureManager` | `Release(tex)` | `delete tex` / `SAFE_CLEAR(tex)` |
+| `Sampler` | `SamplerManager` | `Release(smp)` | `delete smp` / `SAFE_CLEAR(smp)` |
+| `ECSContext` | 框架（`GetECSContext()` 返回借用） | 只 null 化 | `SAFE_CLEAR(ecs_world)` |
+
+判据在 `CMCore/inc/hgl/type/ObjectManager.h` L72-84：`AutoIdObjectManager::Clear()` 里是
+`delete obj.value`——管理器是强持有者，`Release()` 只是从表里摘掉并把所有权交回调用方，
+`Clear()` 会在管理器收尾时自己 delete 表里剩下的每个对象。所以凡是通过
+`Add` / `Load` / 构造进过管理器的对象，示例侧再 `delete` 一次就是**必崩的双重释放**。
+
+### 二、示例侧出现的两类双重释放形态
+
+1. **自建结构体里的析构**：示例常把 `Geometry*` 包进 `struct MeshEntry { ~MeshEntry(){ delete geometry; } }`
+   放进 `ArrayList<MeshEntry>`。这是最隐蔽的一类——语义上像"RAII"，实际是把观察者写成了主人。
+2. **App 析构里的批量回收**：`SAFE_CLEAR(geoms[i])` / `SAFE_CLEAR(sampler)` 之类，看起来是
+   "收尾清理"，实际全部与管理器撞车。
+
+**症状的一致性**：两者都表现为进程退出时的 AV，地址 `0xFEEEFEEE`——MSVC Debug 堆对已释放
+块填的标记。反汇编若是 `mov rax,qword ptr [rax] ds:feeefeee'feeefeee`，基本可以直接判定
+"访问了已经 delete 过的对象"，不必再怀疑逻辑。且崩溃点在**退出路径**，日志里帧循环早已正常
+跑完，`AppFramework Destructor End` 缺失是唯一的文本线索。
+
+### 三、引擎侧缺陷：`OffscreenWorld` 析构三定律
+
+这一条不是示例的锅，是本节最有价值的产出。
+
+`OffscreenWorld` 持有 `camera_system_` / `ubo_system_` / `collect_system_` / `rt_system_`
+四个 `shared_ptr`，而 `ecs::System::context` 是**裸指针**。`ECSContext::Shutdown()` 并**不**
+销毁系统（系统由 `SystemManager` 持 `shared_ptr`），于是系统的析构时机取决于**还有谁持有
+最后一个引用**——如果 `OffscreenWorld` 的成员 `shared_ptr` 是最后一个，系统就会在
+`ECSContext` 被 delete **之后**才析构，析构里任何走 `context->...` 的语句都是悬垂访问。
+
+首个触雷点是 `RenderSceneUBOSystem::ReleaseViewportUBO()`：它内部
+`GetBufferManager(context)` → `context->GetRenderContext()`。
+
+实测栈：
+
+```
+~OffscreenWorld -> ~shared_ptr<RenderSceneUBOSystem>
+                -> ~RenderSceneUBOSystem -> ReleaseViewportUBO
+                -> GetBufferManager(context) -> GetRenderContext()  [AV @ 0xFEEEFEEE]
+```
+
+修正后的析构顺序（三段，缺一段就复现）：
+
+1. 先 `reset()` 四个系统 `shared_ptr`——此时 `ECSContext` 仍存活，系统即便在此析构也是安全的；
+   放掉后系统仍由 `ECSContext` 自身的 `shared_ptr` 持有，最终在 `Shutdown()` 内销毁；
+2. 再 `world_->Shutdown()` + `world_.reset()`；
+3. 最后 `rt_.reset()`。
+
+一条可推广的规则：**任何在析构里持有 ECS 系统 `shared_ptr` 的模块对象，都必须先于
+`ECSContext` 的销毁放掉它们**，否则就等于让 `ECSContext` 的生命周期被系统延迟析构"越过"。
+
+### 四、为什么 `RenderBoundBox` / `LoadGeometry` 是例外
+
+这两个示例把 `Geometry` 直接 `new` 出来自己持有、**没有**进 `GeometryManager`（不参与
+"按名字取网格"的流程），因此它们的 `delete` 是合法的、也是必须的。判断某个示例是否属于
+例外，看它是否走 `GeometryManager::Add` / `LoadGeometry`——走了就必须交还管理器，没走就
+自己管。这条边界必须在改动示例时逐一看，不能一律套用一种写法。
+
+### 五、本层修复清单（14 个示例文件 + 1 个引擎文件，17 个示例崩溃）
+
+`Geometry` 双重释放——`MeshEntry` 形态（4 个）：
+`Environment/BasicLitSunDirection`、`Environment/IBLEnvironment`、
+`Geometry/MixedBufferMeshes`、`Material/FullPrecisionLitMeshes`。
+
+`Geometry` 双重释放——App 析构 `SAFE_CLEAR` 形态（9 个）：
+`Cull/GPUDrivenCull`、`Debug/SimplestAxis`、`GettingStarted/SimpleCube`、
+`Interaction/RayPicking`、`Material/AlphaModes`、`Material/CoverageVariants`、
+`Material/MaterialErrorFallback`、`Material/MaterialRecipeEntry`、`Transform/RecursiveCube`。
+
+引擎侧（1 个）：`src/SceneGraph/module/OffscreenWorld.cpp`。
+
+`Texture` / `Sampler` 双重释放（1 个）：`Texture/TextureMipLevels`
+（三张 mip 纹理 + `sampler` + `ecs_world` 全改 null 化；另 `bc7_probe` 改为 `Release`）。
+
+**关键结论：17 个崩溃全部是既存缺陷，与 Layer 1-4 的改动无关**——它们只是此前从未被"全量实跑"
+照到（Layer 1-4 的验证只到门禁 / ctest 一级，示例因缺 `GLSLCompiler.dll` 而根本没跑起来）。
+这也说明 Layer 5 这类"实跑验收"在门禁之外仍有独立价值：门禁用例覆盖的是文本与选项，覆盖不到
+进程退出路径。

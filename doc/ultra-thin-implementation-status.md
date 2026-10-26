@@ -799,6 +799,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
 - [x] 实跑 `LineRender`（`PrimitiveType::Lines` → 真正走 `LineQuad` mesh 发射模式）：0 validation error、SPV 缓存全命中、持续出帧。**这条不能用 golden 代替**——`{{endpoint_read}}` 的两个函数体文本不在快照粒度内，且夹具是 `defer_finalize`（不编译 SPV），只有实跑能证明两条 `position_format` 分支都产出合法 GLSL
+- [x] **全量示例实跑（Layer 5 起纳入 DoD）**：`example/` 下 51 个可运行目标全部 `exit=0` 且日志出现 `AppFramework Destructor End`（析构路径走完）。门禁覆盖文本与选项，覆盖不到进程退出路径，这一维必须靠实跑。运行前置见 §12 末的 ℹ️ 说明
 - [x] `git status` 只剩既存子模块脏项
 - [x] **拼接顺序有 golden 覆盖**：`SD.emission-order-golden` **16** 变体全绿，覆盖 `ForwardLit` / `ForwardUnlit` / `ShadowCaster` / `Sky` 四条 emission 通路，`ShadowCaster` 的 **opaque 与 masked 两条分支都有覆盖**（阶段五建网、阶段六补 masked），三种 mesh 发射模式（`VertexPassthrough` / `CharQuad` / `LineQuad`）全部有覆盖（阶段六收尾补 `LineQuad`，见 §5.3）
 - [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
@@ -903,15 +904,65 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 **Layer 4 的收益**：网格 options 与 stage 键之间从「注释存在与否靠人记得写」变成「文本自带
 可复算的摘要，门禁四态全断言」。摘要算法从三份内联收敛成一处定义，避免三处口径漂移。
 
+### Layer 5：全量示例实跑验收（分支 `feature/mesh-layer5-full-validation-dod`）
+
+Layer 1-4 的验证只到门禁 / ctest 一级，示例因缺 `GLSLCompiler.dll` 从未真正跑起来。本层把
+「全量实跑」补成 DoD 的一条，并因此发现了前四层与门禁都照不到的一整类缺陷——**资源所有权**。
+
+- [x] **运行前置打通**：`GLSLCompiler.dll` 不由本仓构建，手工复制到
+      `build/out/Windows_64_Debug/`；确认三条运行约束（cwd=仓库根、脚本关闭窗口、插件到位）
+- [x] **可脚本化的优雅退出**：`RunFramework` 的帧循环只在窗口关闭时返回，
+      `Stop-Process` 会跳过析构、`Start-Process -RedirectStandardOutput` 会让进程不退出。
+      改用 P/Invoke `EnumWindows` + `PostMessage(hwnd, WM_CLOSE)`，析构路径得以真实执行
+      ——**这一步是本层所有发现的前提**：不跑析构就永远看不到退出路径的双重释放
+- [x] **全量扫描 51 个可运行目标**（`example/` 下 54 条 `CreateProject`，其中
+      `ExtrudedPolygonTest` / `WallsFromPolyline` / `WallsFromPolyline_Texture` 在
+      `example/Geometry/CMakeLists.txt` L3/L5/L6 是**注释掉的既有状态**，不参与构建与验收）
+- [x] **17 个示例崩溃，三类根因，全部修复**：
+
+  | 根因 | 数量 | 崩点 |
+  | --- | --- | --- |
+  | `Geometry` 双重释放（`MeshEntry::~MeshEntry` / App 析构 `SAFE_CLEAR`） | 13 个示例 | `~Geometry` ← `GeometryManager` 收尾 `Clear()` |
+  | `Texture` / `Sampler` 双重释放 + `ecs_world` 误 delete | 1 个示例（`TextureMipLevels`） | `~Sampler` ← `SamplerManager::Release` ← `~GraphModuleManager` |
+  | **引擎侧** `OffscreenWorld` 析构顺序错误 | 3 个示例（`RenderToTexture` / `RenderToTextureColorDepth` / `DualWorldShadows`） | `~RenderSceneUBOSystem` → `ReleaseViewportUBO` → `GetRenderContext()` on 裸 `context` |
+
+- [x] **引擎侧修复**：`OffscreenWorld::~OffscreenWorld()` 改为三段顺序（先 reset 四个系统
+      `shared_ptr` → 再 `world_->Shutdown()` → 最后 `rt_.reset()`）。机理：`ecs::System::context`
+      是裸指针，`ECSContext::Shutdown()` 不销毁系统，若本类持有最后一个 `shared_ptr`，系统
+      析构就会被推迟到 `ECSContext` 之后 → 悬垂。详见架构文档「阶段十-3」
+- [x] **示例侧修复**：14 个示例文件归还所有权（`GeometryManager` / `TextureManager` /
+      `SamplerManager` 是各自资源的唯一所有者，示例只做观察）
+- [x] **定向复验**：修复后 17 个受影响示例全部 `exit=0 / dest=1`（`dest` = 日志出现
+      `AppFramework Destructor End`，是「析构路径真的走完」的唯一判据）；其余 34 个示例首轮即
+      `exit=0`
+- [x] 门禁三件套在 Layer 5 期间复跑全绿（见下表），确认所有权改动**零回归**
+
+> 🔎 **本层的定性与归责**：17 个崩溃、15 个文件的改动全部是**既存缺陷**，与 Layer 1-4 的改动无关——它们此前从未
+> 被执行到，因为示例根本没跑起来。反过来说：门禁用例覆盖的是文本与选项，覆盖不到进程退出
+> 路径，所以「全量实跑」不是冗余步骤，而是**正交的一维**。
+>
+> ⚠️ **已知不阻塞项**：`ComputeDispatch` / `ComputeIndirectCount` /
+> `ComputeTransformHierarchy` / `DualWorldShadows` 等报 `vuid=2`
+> （`vkDestroyDevice-device-05137` 对象泄漏告警 / `vkDestroyPipeline` handle 无效），
+> 属收尾阶段既存项，不影响 `exit=0` 与 DoD。
+
 ### 各层验收门槛（每层收尾必须全绿）
 
 | 检查 | 门槛 |
 | --- | --- |
 | `ShaderResourceSchemaRegressionGate all` | 57 PASS / 0 FAIL / exit=0 |
 | `ShaderResourceSchemaRegressionGate emit-fixed-mesh` | `covered=37 missing=0 failed=0` |
-| `ctest -L 'shadermaterial|shadergen'` | 16/16 |
+| `ctest --test-dir build -C Debug -R <shader 系正则>` | 13/13（**必须带 `-C Debug`**；本仓 ctest 未打 label，`-L` 一律 "No Labels Exist"，漏 `-C` 会全部 "NOT_AVAILABLE"。正则见下注） |
 | `VertexLoaderConsistency <ShaderLibrary/vertex>` | Layer 2 起：6 个流守卫 × 3 个位置模块，调用序列一致 |
+| **全量示例实跑**（Layer 5 起） | 51 个可运行目标全部 `exit=0` 且 `dest=1`（走完 `AppFramework` 析构） |
 
-> ⚠️ 本机示例 exe 暂时跑不起来（`BasicLitMeshes.exe` 报 `cannot load GLSLCompiler plugin module`，
-> 输出目录缺插件 `.dll`），因此 Layer 1-2 的验证只到门禁/ctest 一级；实机示例验证统一放在
-> Layer 5，需先把 `GLSLCompiler` 插件产物复制到 `build/out/Windows_64_Debug/`。
+> 注：上表 ctest 一行用的正则（需按 shell 转义，PowerShell 下用引号包住即可）：
+> `shader|domain_options|interstage|vertex_loader|scene_render_template`
+
+> ℹ️ **示例 exe 的运行前置**：`GLSLCompiler.dll` 不由本仓构建（`src/Tools/CMakeLists.txt` 无
+> `add_subdirectory(GLSLCompiler)`），必须手工复制到 `build/out/Windows_64_Debug/`，否则任何
+> 示例都报 `cannot load GLSLCompiler plugin module`（`GLSLCompiler.cpp` L247/L259-278 的查找逻辑）
+> 并直接退出。这就是 Layer 1-4 期间验证只到门禁/ctest 一级的原因，Layer 5 起已补齐。
+> 另外两条运行约束：① cwd 必须是仓库根（`res/...` 是相对路径）；② `RunFramework` 的帧循环
+> 只在窗口关闭时退出，批量验收要用 `PostMessage(hwnd, WM_CLOSE)` 优雅关闭，`Stop-Process` 会
+> 跳过析构、`Start-Process -RedirectStandardOutput` 会让进程不退出。
