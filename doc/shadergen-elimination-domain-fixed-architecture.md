@@ -2050,3 +2050,60 @@ AtmosphereSky 的日志中，`SkyMinimal` 配方没有贴图行（`planned_textu
 1. **删除孤岛形状 master**：`ShaderLibrary/mesh/shape/charquad_256_dataid_uv_color.mesh` 是 `s1_color` 统一为 `s1_color_default` 之后的残骸——两份 builtin 文本材质（`kTextGpuSource` / `kTextGpuBitmapSource`）都声明了 `emit_style_id`，因此 `BuildMeshShapeName` 只会算出 `charquad_256_dataid_uv_color_style`，无 style 的名字再无任何输入能拼出。删除前已核对引用面：`src/` 内仅 `MaterialProgramAssembler.cpp` 的一条历史注释提及，门禁无硬编码路径，无资产引用。
 2. **本节即白名单基线**：Layer 2（消灭 `HGL_*_LOADER`，**已完成**，见 §8）、Layer 3（`VertexABIBuilder` 表驱动化，**已完成**：`VERTEX_STREAM_MODULES[]` + `POSITION_MODULE_TABLE[]`）、Layer 4（options 预设化）均以本节的模块全集与家族划分为对照表。
 3. **门禁基线锁定**：`ShaderResourceSchemaRegressionGate all` = **57 PASS / 0 FAIL**，`emit-fixed-mesh` = **covered=37 missing=0 failed=0**。删除孤岛文件后两项计数必须不变（该形状从未进入覆盖清单）。
+
+---
+
+## 阶段十-2：网格 Options 预设化评估（网格收口 Layer 4）
+
+### 一、评估对象
+
+计划项原本的设想是：把最高频的三类组合（标准 3D PBR、2D 正交、2D 像素）做成静态预设，
+从 `EmitMeshOptions` 里"查表返回常量串"，以减少**临时文件创建与磁盘 I/O**。
+
+实测数据（本机 `build/out/Windows_64_Debug/domain-options/`，覆盖 57 项门禁 + 全部示例
+变体累计下来的缓存）：
+
+| 指标 | 实测值 |
+| --- | --- |
+| 成对 options 目录（`<片段键>-m<网格哈希>`） | 38 |
+| 仅片段 options 目录（CharQuad 不写网格 options） | 15 |
+| `generated/mesh_options.glsl` 文件数 | 38（与成对目录数一致，无遗漏） |
+| 内容去重后份数 | **20** |
+| 单文件大小 | 平均 183 B，最大 232 B，全部 38 份合计 **6 961 B** |
+| 最高频的一份 | 出现 5 次：`s1_color_default` + `s1_position_vec3` + `s2_passthrough3d` + `s3_world_camera_vp` |
+
+### 二、为什么"预设化"收益为零
+
+1. **文本本身就极小**。整个 options 是 4～7 行 `#include`，最长 232 字节。`EmitMeshOptions`
+   的全部工作就是查一次表 + 3～7 次 `AnsiString` 追加（≈1 次分配），量级子微秒；而它前后
+   紧邻的是 FNV 遍历整棵 ShaderLibrary 闭包与 glslang 编译，量级毫秒。比值 ~1e-4。
+   预设只能省掉这子微秒，属于测不出来的优化。
+2. **磁盘 I/O 不可消除**。`generated/mesh_options.glsl` 必须**落在 options 根下**——glslang
+   的 `#include` 是按 root-relative 从磁盘解析的，没有"内存 include"通道。预设能省的是
+   拼串，不是写盘。
+3. **天然去重已被内容寻址目录吃掉**。38 份文件里只有 20 份内容不同，重复的 18 份分散在
+   不同目录里（目录名把片段 options + 网格 options 一起编进去，成对才安全）。而"同一目录
+   重复写同一份内容"在重复构建时才发生，且写入幂等——预设在语义上无法比这更省。
+
+**结论：不做预设化。** 记录理由而不是留一条"待办"，避免后续又被当成优化项重开。
+
+### 三、"已存在就跳过写盘"为什么也不做
+
+看似可行的替代是：目录名已经是内容的哈希，若 `<root>/generated/mesh_options.glsl` 已存在
+就跳过写。但这会把"文件被删一半/被手工改过"从**必然被覆盖纠正**变成**静默读旧内容**——
+而后果正是本方案最想消灭的那类故障（顶点按错格式解码、几何静默错位、不报错）。
+用 183 字节的写换掉这个事故类别不划算。
+
+### 四、真正要固化的是 digest 互锁
+
+评估的产出不是预设表，而是把既有的两道防护（`// mesh-options-digest` 溯源注释、目录名含
+网格 options 哈希）从"写了但没人验"提升为"门禁可证伪"：
+
+1. **摘要计算收敛到单点**：写入目录名用的哈希、写进主着色器尾部的溯源注释、门禁校验的三方
+   必须调同一个函数，否则三者可以各自漂移而都不报错。
+2. **门禁断言摘要存在且正确**：原门禁在比对形状 master 前会把 `// mesh-options-digest <n>`
+   剥掉，于是"摘要漏写"与"摘要算错"都能静默通过——而这两件事的后果都是磁盘上旧 SPV 被
+   永久命中复用。新断言要求非 CharQuad 的网格文本**恰好一条**摘要行，且其值等于当次
+   `mesh_options_glsl_out` 文本的摘要（即与真正落盘的那份字节严格互锁）。
+
+见 `doc/ultra-thin-implementation-status.md` §12 的 Layer 4 条目。
