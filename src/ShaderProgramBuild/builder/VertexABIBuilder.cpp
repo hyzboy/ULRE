@@ -67,6 +67,42 @@ namespace
     // 常量白的 `GetVertexColor()`，因此不进上表、也不受 LoadXxx 调用序列约束。
     constexpr const char *COLOR_DEFAULT_MODULE = "s1_color_default";
 
+    // ── 位置流解码模块表 ────────────────────────────────────────────────────
+    // 位置流的「几何属性格式 ↔ 解码模块 ↔ 分量数」是一体的：stride 与符号由
+    // s1_position_* 模块内部硬编码（vec3 = 12B compact、vec2 = 8B、
+    // vec2i = 4B packed int16x2），C++ 侧换个别名就等于换了 ABI，而生成器毫不知情。
+    //
+    // 这里曾经接受过一串"看起来同义"的格式别名：
+    //   R32G32_SINT / R32G32_UINT   → Vec2IntPosition（读 4B 打包，实际 8B 输入）
+    //   R16G16_UINT                 → Vec2IntPosition（无符号，模块按有符号扩展）
+    //   R16G16_SFLOAT               → Vec2Position  （读 8B vec2，实际 4B 输入）
+    //   R32G32B32A32_SFLOAT         → Vec3Position  （读 12B scalar vec3，实际 16B 输入）
+    // 每一种都会产出「能编译、能跑、顶点全体错位」的着色器。
+    // 因此只登记真正闭环的三对：精确格式匹配、无别名、无回退，
+    // 新增格式必须同时新增解码模块并在此登记。
+    struct PositionModuleEntry
+    {
+        VkFormat format;            ///< 几何 Position 属性格式（精确匹配）
+        uint32_t component_count;   ///< 该模块隐含的分量数（Stage 2 position_mapping 对账用）
+        const char *module_name;    ///< ShaderLibrary/vertex/<name>.glsl
+    };
+
+    constexpr PositionModuleEntry POSITION_MODULE_TABLE[] =
+    {
+        { VK_FORMAT_R32G32B32_SFLOAT, 3u, "s1_position_vec3"  },
+        { VK_FORMAT_R32G32_SFLOAT,    2u, "s1_position_vec2"  },
+        { VK_FORMAT_R16G16_SINT,      2u, "s1_position_vec2i" },
+    };
+
+    const PositionModuleEntry *FindPositionModule(VkFormat format)
+    {
+        for (const PositionModuleEntry &entry : POSITION_MODULE_TABLE)
+            if (entry.format == format)
+                return &entry;
+
+        return nullptr;
+    }
+
     bool AppendVertexModuleInclude(const char *module_name, AnsiString &out_glsl)
     {
         out_glsl += "#include \"vertex/";
@@ -145,7 +181,7 @@ namespace
                 case VertexSemantic::Luminance: need_luminance = true; break;
                 case VertexSemantic::TransformID: need_transform_id = true; break;
                 case VertexSemantic::Size: need_size = true; break;
-                default: break;  // Position 由 input mode 决定
+                default: break;  // Position 由几何 Position 格式查表决定
                 }
             }
 
@@ -203,64 +239,32 @@ namespace
              && !AppendVertexStreamInclude(VertexStreamSlot::Size, VK_FORMAT_UNDEFINED, out_vertex_input_glsl))
                 return false;
 
-            // 位置模块按 effective input 选择（position_format 判定——geometry 格式说了算，
-            // recipe/TOML input 仅兜底）。
-            //
-            // 这里曾经接受过一串"看起来同义"的格式别名：
-            //   R32G32_SINT / R32G32_UINT   → Vec2IntPosition（读 4B 打包，实际 8B 输入）
-            //   R16G16_UINT                 → Vec2IntPosition（无符号，模块按有符号扩展）
-            //   R16G16_SFLOAT               → Vec2Position  （读 8B vec2，实际 4B 输入）
-            //   R32G32B32A32_SFLOAT         → Vec3Position  （读 12B scalar vec3，实际 16B 输入）
-            // 每一种都会生成"能编译、能跑、顶点全体错位"的着色器：stride 与符号由 s1_position_*
-            // 模块内部硬编码（vec3 = 12B compact、vec2 = 8B、vec2i = 4B packed int16x2），
-            // C++ 侧换个别名就等于换了个 ABI，而生成器毫不知情。
-            //
-            // 因此串口收紧为「格式 ↔ 模块」一一对应，只有这三对是真正闭环的。
-            // 新增格式必须同时新增解码模块并在此登记，不能用别名蒙混。
-            VertexInputMode effective_input = definition.vertex_node_config.input;
-            switch (out_position_format)
+            // 位置模块只由几何 Position 格式决定（geometry 说了算，recipe/TOML 的
+            // vertex input 仅兜底），查 POSITION_MODULE_TABLE 一次拿齐
+            // 「解码模块 + 分量数」，不再维护三份平行 switch。
+            const PositionModuleEntry *position_module = FindPositionModule(out_position_format);
+
+            if (!position_module)
             {
-            case VK_FORMAT_R32G32B32_SFLOAT: effective_input = VertexInputMode::Vec3Position;    break;
-            case VK_FORMAT_R32G32_SFLOAT:    effective_input = VertexInputMode::Vec2Position;    break;
-            case VK_FORMAT_R16G16_SINT:      effective_input = VertexInputMode::Vec2IntPosition; break;
-            default:
                 // input=None 表示不读外部顶点位置（CharQuad 一类自持 SSBO），格式对本路径无意义
-                if (effective_input == VertexInputMode::None)
-                    break;
-
-                GLogError(u8"顶点位置格式没有对应的 s1_position_* 解码模块：VkFormat=%d（definition=%s）",
-                          static_cast<int>(out_position_format), definition.definition_id.c_str());
-                return false;
+                if (definition.vertex_node_config.input != VertexInputMode::None)
+                {
+                    GLogError(u8"顶点位置格式没有对应的 s1_position_* 解码模块：VkFormat=%d（definition=%s）",
+                              static_cast<int>(out_position_format), definition.definition_id.c_str());
+                    return false;
+                }
             }
-
-            // Stage 2 的映射是材质声明（position_mapping），Stage 1 的输入由几何格式决定
-            // （上面那个 switch）——两个来源互不可见，分量数不一致会产出编不过的 GLSL。
-            // 在发射期硬门，别让错误漂到 glslang 里。
-            if (effective_input != VertexInputMode::None)
+            else
             {
-                const uint32_t s1_component_count =
-                    (effective_input == VertexInputMode::Vec3Position) ? 3u : 2u;
+                // Stage 2 的映射是材质声明（position_mapping），Stage 1 的输入由几何格式决定
+                // ——两个来源互不可见，分量数不一致会产出编不过的 GLSL。
+                // 在发射期硬门，别让错误漂到 glslang 里。
                 if (!VertexNodeConfigResolver::CheckPositionComponentCount(
-                        definition.vertex_node_config, s1_component_count,
+                        definition.vertex_node_config, position_module->component_count,
                         definition.definition_id.c_str()))
                     return false;
-            }
 
-            switch (effective_input)
-            {
-            case VertexInputMode::Vec3Position:
-                out_vertex_input_glsl += "#include \"vertex/s1_position_vec3.glsl\"\n";
-                break;
-            case VertexInputMode::Vec2IntPosition:
-                out_vertex_input_glsl += "#include \"vertex/s1_position_vec2i.glsl\"\n";
-                break;
-            case VertexInputMode::Vec2Position:
-                out_vertex_input_glsl += "#include \"vertex/s1_position_vec2.glsl\"\n";
-                break;
-            case VertexInputMode::None:
-                break;   // 无外部顶点输入（CharQuad 等自持全部 SSBO，不 include 顶点输入模块）
-            default:
-                return false;
+                AppendVertexModuleInclude(position_module->module_name, out_vertex_input_glsl);
             }
         }
 
