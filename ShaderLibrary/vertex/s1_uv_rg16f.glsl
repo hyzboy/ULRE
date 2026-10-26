@@ -11,12 +11,18 @@
 #ifndef S1_UV_RG16F_GLSL
 #define S1_UV_RG16F_GLSL
 
+// 流在位标记：告知 s1_stream_defaults 本流已提供 LoadUV()
+#define S1_STREAM_UV 1
+
 // BDA：UV 基址由 MeshDrawParams 行 addr_uv 携带（VertexUVPackedRef 由
 // MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
 #define sbo_vertex_uv VertexUVPackedRef(draw_params.addr_uv)
 
 vec2 TexCoord;
 
-#define HGL_UV_LOADER { TexCoord = unpackHalf2x16(sbo_vertex_uv.data[draw_params.vertex_base + VertexIndexID]); }
+void LoadUV()
+{
+    TexCoord = unpackHalf2x16(sbo_vertex_uv.data[draw_params.vertex_base + VertexIndexID]);
+}
 
 #endif // S1_UV_RG16F_GLSL

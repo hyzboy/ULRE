@@ -190,7 +190,7 @@ namespace
     /// 刻意写成「门自己持有的常量」而不是去问被测代码：这条断言的价值就是
     /// 在模块被误删/误加时硬失败，跟着实现走就等于没测。历史上每次增删模块
     /// 都在这里改一行并留下理由，变更记录见 `RunShaderCodeModuleRegistryCase`。
-    constexpr int kShaderCodeModuleCount = 83;
+    constexpr int kShaderCodeModuleCount = 84;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)
@@ -7160,6 +7160,7 @@ namespace
             // forward_toon + shadow/full（72 → 81）。
             // 超薄架构阶段二之二：新增 ntb_none 空对象（81 → 82）。
             // 顶点色统一阶段：新增 s1_color_default 空对象（82 → 83）。
+            // 网格阶段收口 Layer 2a：新增 s1_stream_defaults 空对象（83 → 84）。
             // 计数常量已收敛到 `kShaderCodeModuleCount`（文件顶部），增删模块时
             // 只改那一处并在此追加一行理由。
             if (file_count != kShaderCodeModuleCount)

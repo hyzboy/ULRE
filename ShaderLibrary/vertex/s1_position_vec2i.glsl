@@ -2,6 +2,7 @@
 // @ulre name s1_position_vec2i
 // @ulre kind Position
 // @ulre priority 9
+// @ulre uses s1_stream_defaults
 // @ulre provide Position
 // @ulre end
 // Stage 1: 2D 顶点位置从独立 SSBO 读取——RG16i 压缩格式（像素坐标 int16×2，4B/顶点）
@@ -9,13 +10,16 @@
 // 解码：符号扩展（算术移位）+ int→float（像素坐标——s2 链 PixelToLocal 变换）
 // 布局注意：每顶点恰好 4B → uint data[] 4B stride 天然匹配（同 RG16F 模式）
 // 接口约定：声明全局 Position + LoadVertexData()（s2/s3 模块读 Position）
-// include 顺序：本模块须最后（以 #ifdef 展开 HGL_*_LOADER 宏）
+// include 顺序：本模块须在各数据流模块之后（LoadVertexData 调用它们的 LoadXxx()）
 #ifndef S1_POSITION_VEC2I_GLSL
 #define S1_POSITION_VEC2I_GLSL
 
 // BDA：位置基址由 MeshDrawParams 行 addr_position 携带（VertexPositionPackedRef
 // 由 MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
 #define sbo_vertex_position VertexPositionPackedRef(draw_params.addr_position)
+
+// 缺流空实现必须先于 LoadVertexData 可见
+#include "vertex/s1_stream_defaults.glsl"
 
 vec2 Position;
 
@@ -25,9 +29,7 @@ void LoadVertexData()
     const uint d = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
     Position = vec2(float(int(d) << 16 >> 16),
                     float(int(d) >> 16));
-#ifdef HGL_UV_LOADER
-    HGL_UV_LOADER
-#endif
+    LoadUV();
 #ifdef HGL_NTB_LOADER
     HGL_NTB_LOADER
 #endif

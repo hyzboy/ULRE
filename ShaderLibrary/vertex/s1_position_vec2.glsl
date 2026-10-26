@@ -2,6 +2,7 @@
 // @ulre name s1_position_vec2
 // @ulre kind Position
 // @ulre priority 8
+// @ulre uses s1_stream_defaults
 // @ulre provide Position
 // @ulre end
 // Stage 1: 顶点位置从 SSBO 读取（2D float——VF_V2F，8B/顶点）
@@ -13,14 +14,15 @@
 // MeshShaderVertexAdapter 集中声明）——vec2 8B stride 与 VAB 布局一致，读法不变
 #define sbo_vertex_position VertexPositionV2Ref(draw_params.addr_position)
 
+// 缺流空实现必须先于 LoadVertexData 可见
+#include "vertex/s1_stream_defaults.glsl"
+
 vec2 Position;
 
 void LoadVertexData()
 {
     Position = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
-#ifdef HGL_UV_LOADER
-    HGL_UV_LOADER
-#endif
+    LoadUV();
 #ifdef HGL_NTB_LOADER
     HGL_NTB_LOADER
 #endif
