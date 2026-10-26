@@ -734,6 +734,32 @@ public:
 // MyResource b = a;  // 编译错误
 ```
 
+### 7.2 `ObjectIdentity.h` — 对象身份与类型注册
+
+```cpp
+#include <hgl/object/ObjectIdentity.h>
+
+// 对象唯一ID（进程内单调递增）
+const hgl::ObjectId object_id = hgl::AllocateObjectId();
+
+// 类型ID：由类型名 UTF-8 字节的 FNV1a 计算，跨进程/跨平台稳定
+const hgl::ObjectTypeId type_id = hgl::ComputeObjectTypeId(OS_TEXT("MyRenderer"));
+
+// 注册类型（幂等），同时自动注册对应的日志类别
+const hgl::ObjectTypeInfo *info = hgl::RegisterObjectType(OS_TEXT("MyRenderer"), nullptr, hgl::LogLevel::Info);
+// info->type_id / info->category_id / info->parent_type
+// info->IsDerivedFrom(other_type_id)
+
+// 反查
+const hgl::ObjectTypeInfo *found = hgl::FindObjectType(type_id);
+const uint type_count = hgl::GetObjectTypeCount();
+```
+
+约束：
+- `type_name` 必须是进程生命周期稳定的字符串常量（注册表只保存指针，不复制）。
+- 类型注册表使用静态存储，`ObjectTypeInfo*` 指针在进程内始终有效，容量 1024 种类型。
+- 与日志关联见 `.ai/skills/SKILL_LOGGING_REFERENCE.md` 的「对象身份与日志关联」一节（`ObjectLogger::BindObjectIdentity()`）。
+
 ---
 
 ## 8. 文件系统扩展（Filesystem Extensions）

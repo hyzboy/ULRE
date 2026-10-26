@@ -73,9 +73,37 @@ ClearLogCategoryOutputterLevel(render, file);
 2. 否则，使用类别默认阈值和输出器全局阈值中更严格的一个。
 3. 只有至少一个输出器接受日志时才进行格式化；分发时仍会再次按输出器规则过滤。
 
-模块类别与显示用的对象名/实例名独立。没有显式类别的类日志按类名归类，全局宏归入 `Global` 类别。`DEFINE_LOGGER_MODULE`、`FLogXxx`、`MLogXxx` 和 `OBJECT_LOGGER` 的现有用法保持兼容。
+模块类别与对象实例身份、可读名称相互独立。每个 `ObjectLogger` 构造时都会获得进程内唯一的 `ObjectLoggerId`；日志文本会输出 `[ObjectLogger:<id>]`，结构化元数据也包含 `object_logger_id`。复制构造会分配新 ID，赋值则保留目标 logger 的 ID。`SetLoggerInstanceName()` 只设置开发者提供的人类可读名称；名称设置后会随文本日志和结构化元数据输出，不承担唯一标识职责。模块名仍由 logger 类型名表达。没有显式类别的类日志按类名归类，全局宏归入 `Global` 类别。`DEFINE_LOGGER_MODULE`、`FLogXxx`、`MLogXxx` 和 `OBJECT_LOGGER` 的现有用法保持兼容。
 
 Release 下现有 `Verbose`/`Debug` 宏仍会在编译期移除；运行时阈值只能调节已编译进目标文件的级别，不能重新启用已剔除的调用。
+
+---
+
+## 对象身份与日志关联（`<hgl/object/ObjectIdentity.h>`）
+
+日志身份与对象身份是两套独立 ID，通过 `BindObjectIdentity()` 关联：
+
+| 概念 | 类型 | 生成方式 | 用途 |
+|------|------|---------|------|
+| `ObjectLoggerId` | `uint64` | logger 构造时递增分配 | 标识“哪一路输出来源” |
+| `ObjectId` | `uint64` | `AllocateObjectId()` 递增分配 | 标识“哪个对象实例” |
+| `ObjectTypeId` | `uint32` | 类型名 UTF-8 字节 FNV1a | 标识“哪个类型”，跨进程稳定 |
+| `LogCategoryId` | `uint32` | `RegisterLogCategory()` 运行时分配 | 运行时过滤类别 |
+
+```cpp
+#include <hgl/object/ObjectIdentity.h>
+
+const hgl::ObjectTypeInfo *info = hgl::RegisterObjectType(OS_TEXT("MyRenderer"), nullptr, hgl::LogLevel::Info);
+
+// info->type_id 由类型名计算；info->category_id 已自动注册日志类别
+hgl::logger::ObjectLogger log(OS_TEXT("MyRenderer"));
+
+log.BindObjectIdentity(hgl::AllocateObjectId(), info->type_id, info->category_id, info->type_name);
+```
+
+绑定后，`LogMessageMeta` 会同时携带 `object_logger_id`、`object_id`、`object_type_id`，查看器可据此把日志行归并到具体对象实例。
+
+`RegisterObjectType()` 是幂等的：同名类型重复注册返回同一份 `ObjectTypeInfo`，其指针在进程内始终有效（静态存储，容量 1024 种类型）。
 
 ---
 
