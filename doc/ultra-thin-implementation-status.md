@@ -809,7 +809,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 计划真源见会话 `plan.md`：《网格阶段收口与极简化深度重构计划》，5 层串行，每层独立分支、
 层内每个小动作独立提交。设计背景见 `doc/shadergen-elimination-domain-fixed-architecture.md`
-「阶段十-1」（Layer 1 白名单基线）与 §8（Layer 2 决策记录）。
+「阶段十-1」（Layer 1 白名单基线）、§8（Layer 2 决策记录）与 §6 决策表（Layer 3 的两张表）。
 
 ### Layer 1：顶点解码矩阵白名单盘点（分支 `feature/mesh-layer1-inventory-cleanup`）
 
@@ -841,6 +841,38 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 一对 `#ifdef`"会让该属性静默为 0（AutoInstance 全黑即此因），几何正确、测试难发现；
 新方案下位置模块没有分支，"忘记 `#ifdef`"这个动作不存在了，新增的失效模式（漏写
 `LoadXxx();`）由上述工具做跨文件对账。
+
+### Layer 3：压平 `VertexABIBuilder` 的选择逻辑（分支 `feature/mesh-layer3-flatten-vertex-abi-builder`）
+
+`src/ShaderProgramBuild/builder/VertexABIBuilder.cpp` 原先把「选了哪个 s1 解码模块」这一个
+事实，用若干段平行 `if-else` / `switch` 分别翻译成不同产物。平行分支的 case 集合必须靠人
+手工保持一致，一旦漏改一处，产出的就是「能编译、能跑、但语义错」的组合。
+
+- [x] **3a 顶点流解码模块表驱动**：新增 `VertexStreamSlot` 枚举 + `VertexStreamModuleEntry`
+      表 `VERTEX_STREAM_MODULES[]`（11 行：UV 2 / NTB 4 / Color 2 / Luminance / TransformID / Size）
+      + `AppendVertexStreamInclude()`；原先 6 段 if-else 换成 6 次查表调用。
+      选择规则「精确格式命中优先，否则回落该 slot 的 `VK_FORMAT_UNDEFINED` 默认行」写在
+      查找函数里，不再由调用点各自实现。`s1_color_default` 走常量 `COLOR_DEFAULT_MODULE`
+      （它不装载流，不属于流表）。
+- [x] **3a 表顺序 = 发射顺序**：`VERTEX_STREAM_MODULES[]` 的行序就是 GLSL include 的行序，
+      且**数据流必须整体排在位置模块之前**——位置模块 include 的 `s1_stream_defaults.glsl`
+      会先展开 `#ifndef` 空 stub，数据模块排到后面会撞成重复定义。该约束写成表声明处的显式注释。
+- [x] **3b 位置解码模块与分量数合并为单表**：新增 `PositionModuleEntry` 表
+      `POSITION_MODULE_TABLE[]`（`{format, component_count, module_name}`）+ `FindPositionModule()`；
+      原先三份平行 `switch`（格式 → `VertexInputMode`、`VertexInputMode` → `s1_position_*` include、
+      `VertexInputMode` → 分量数）合并为**一次查表**。
+- [x] **位置格式无别名、无回退**：`FindPositionModule()` 只做精确匹配，未命中返回 `nullptr`。
+      只有三对闭环：`R32G32B32_SFLOAT`→`s1_position_vec3`(3) / `R32G32_SFLOAT`→`s1_position_vec2`(2) /
+      `R16G16_SINT`→`s1_position_vec2i`(2)。历史上把 `R32G32_SINT` / `R32G32_UINT` / `R16G16_UINT` /
+      `R16G16_SFLOAT` / `R32G32B32A32_SFLOAT` 当别名，会造出「能编译、能跑、顶点全体错位」的组合。
+- [x] `VertexInputMode::None` 语义保留：查表未命中且配置的 `input == None` 时放行（不读外部
+      顶点位置，CharQuad 一类自持 SSBO，格式对本路径无意义）；否则硬错并打印 VkFormat 与
+      `definition_id`。`CheckPositionComponentCount` 的硬门位置与报错文案不变。
+- [x] 发射文本逐字节一致（本层是等价重构，不改变任何产出）。
+
+**Layer 3 的收益**：模块选择从「多处平行分支靠人同步」变成「一张表 + 一次查找」。
+三份平行 `switch` 合并后，「格式认了但分量数算错」这类组合在内部分支层面不再可能——
+错误只剩两种显式出口：查不到表（硬错）或分量数门禁（硬错）。
 
 ### 各层验收门槛（每层收尾必须全绿）
 

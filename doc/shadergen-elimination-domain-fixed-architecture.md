@@ -667,7 +667,7 @@ layout(location=5) in vec4 fragVertexColor;
 | 维度 | 当前源码选择规则 / 已知取值 | 对固定源码的影响 |
 |---|---|---|
 | `MeshShaderMode` | 恰好三种：`VertexPassthrough`、`LineQuad`、`CharQuad`。显式 `CharQuad` 定义优先；否则 `PrimitiveType::Lines` 选 `LineQuad`；其余选 `VertexPassthrough`。 | 三种不同主体和拓扑，必须成为不同结构形状；不能只按领域选择。 |
-| `VertexInputMode` / Position 格式 | ABI 当前只闭环支持 `R32G32B32_SFLOAT → Vec3`、`R32G32_SFLOAT → Vec2`、`R16G16_SINT → Vec2Int` 三种位置解码模块。`CharQuad` 自带 SSBO，不读外部位置。 | Stage 1 输入模块与 ABI 绑定，文件选择必须以已解析的几何格式为准，而非只看材质配置。 |
+| `VertexInputMode` / Position 格式 | ABI 当前只闭环支持 `R32G32B32_SFLOAT → Vec3`、`R32G32_SFLOAT → Vec2`、`R16G16_SINT → Vec2Int` 三种位置解码模块，三对闭环登记在 `VertexABIBuilder.cpp` 的 `POSITION_MODULE_TABLE[]`（`{format, component_count, module_name}`），精确匹配、无别名无回退。`CharQuad` 自带 SSBO，不读外部位置（`VertexInputMode::None` 放行）。 | Stage 1 输入模块与 ABI 绑定，文件选择必须以已解析的几何格式为准，而非只看材质配置。 |
 | Stage 1 其他属性解码 | UV：`s1_uv` / `s1_uv_rg16f`；NTB：`s1_ntb` / `s1_ntb_rg8` / `s1_ntb_rg16f` / `s1_ntb_a2bgr10`；Color：属性色 / palette index；另有 Luminance、TransformID、Size。它们由语义需求及属性格式共同选择。 | 引用模块集合不同即为不同源码依赖闭包；不能靠一个领域名推导。 |
 | Stage 2 `position_mapping` | 7 个固定模块：`Passthrough3D`、`LiftXY_XY0`、`LiftXY_X0Y`、`LiftXY_0XY`、`NDCLift`、`ZeroOneToNDC`、`PixelToLocal`。只有 `Passthrough3D` 要 3 个输入分量，其余要 2 个；与 Position 解码格式不符时必须失败。 | 固定模块路径可查表，但不能把不同 mapping 当作同一输入 ABI。 |
 | Stage 3 | 7 个固定模块：world camera VP、L2W only、ortho viewport、ortho then L2W、clip passthrough、camera-facing world、camera-facing fixed pixels。朝向为 camera-facing 时按 scale 选后两者，普通朝向按 projection 选前五者。 | 有世界空间输出能力差异；也决定 WorldPosition / WorldNormal 是否可写。 |
@@ -2048,5 +2048,5 @@ AtmosphereSky 的日志中，`SkyMinimal` 配方没有贴图行（`planned_textu
 ### 四、Layer 1 的清理动作
 
 1. **删除孤岛形状 master**：`ShaderLibrary/mesh/shape/charquad_256_dataid_uv_color.mesh` 是 `s1_color` 统一为 `s1_color_default` 之后的残骸——两份 builtin 文本材质（`kTextGpuSource` / `kTextGpuBitmapSource`）都声明了 `emit_style_id`，因此 `BuildMeshShapeName` 只会算出 `charquad_256_dataid_uv_color_style`，无 style 的名字再无任何输入能拼出。删除前已核对引用面：`src/` 内仅 `MaterialProgramAssembler.cpp` 的一条历史注释提及，门禁无硬编码路径，无资产引用。
-2. **本节即白名单基线**：Layer 2（消灭 `HGL_*_LOADER`，**已完成**，见 §8）、Layer 3（`VertexABIBuilder` 表驱动化）、Layer 4（options 预设化）均以本节的模块全集与家族划分为对照表。
+2. **本节即白名单基线**：Layer 2（消灭 `HGL_*_LOADER`，**已完成**，见 §8）、Layer 3（`VertexABIBuilder` 表驱动化，**已完成**：`VERTEX_STREAM_MODULES[]` + `POSITION_MODULE_TABLE[]`）、Layer 4（options 预设化）均以本节的模块全集与家族划分为对照表。
 3. **门禁基线锁定**：`ShaderResourceSchemaRegressionGate all` = **57 PASS / 0 FAIL**，`emit-fixed-mesh` = **covered=37 missing=0 failed=0**。删除孤岛文件后两项计数必须不变（该形状从未进入覆盖清单）。
