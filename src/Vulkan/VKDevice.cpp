@@ -8,6 +8,7 @@
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/buffer/IGPUBuffer.h>
 #include<hgl/log/Log.h>
+#include<hgl/type/Smart.h>
 #include<hgl/utf.h>
 #include <algorithm>
 #include <functional>
@@ -373,8 +374,19 @@ Fence *VulkanDevice::CreateFence(const ObjectNameBuilder &name, bool create_sign
 
     TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, name.Append(ObjectTypeTag::VKFence), loc);
 
-    // 创建Fence对象并传入追踪信息
-    return(new Fence(attr->device, fence, ToOSString(name.Append(ObjectTypeTag::VKFence).ToString().c_str())));
+    const AnsiString fence_name =
+        name.Append(ObjectTypeTag::VKFence).ToString();
+    AutoDelete<Fence> result(
+        new Fence(attr->device, fence, ToOSString(fence_name.c_str())));
+
+    if (!result->Init())
+    {
+        GLogError(u8"[VulkanDevice] Fence object initialization failed: %s",
+                  fence_name.c_str());
+        return nullptr;
+    }
+
+    return result.Finish();
 }
 
 Fence *VulkanDevice::CreateFence(bool create_signaled, const std::source_location &loc)
