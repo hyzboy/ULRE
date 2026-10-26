@@ -6,7 +6,8 @@
 //
 // 用例覆盖：四种 profile 的逐字节文本、纯度（只含 #define / #include）、
 // 数字格式（float 六位小数）、channels==0 跳过、非法槽名拒绝、
-// ForwardLit 缺 ambient 路径拒绝、profile 路由与渲染状态映射。
+// ForwardLit 缺 ambient 路径拒绝、profile 路由与渲染状态映射；
+// 以及 mesh_options.glsl 的逐字节文本（头段纯 include + 固定线宽缺省尾块）。
 
 #include <hgl/mtl/DomainOptions.h>
 
@@ -103,6 +104,59 @@ namespace
         }
 
         return line_start == length;
+    }
+
+    // `EmitMeshOptions` 在尾部**无条件**补一份线宽缺省块：LineQuad 的几何主体恒调
+    // `GetLineSize()`，而 Size 流是可选属性 —— 没装 `vertex/s1_size.glsl` 时必须有人
+    // 补同签名默认值。GLSL 侧靠 `#ifndef S1_SIZE_GLSL` 去重，所以尾块恒定存在。
+    // 这段字面量是「mesh_options 发射协议」的一部分，与发射器逐字节对应。
+    const char kLineSizeDefaultSuffix[] =
+        "\n"
+        "// 线宽缺省（Size 流未装载时恒 1 像素）\n"
+        "#ifndef S1_SIZE_GLSL\n"
+        "vec2 GetLineSize() { return vec2(1.0, 1.0); }\n"
+        "#endif\n";
+
+    // 正例的期望文本 = 纯 include 头段 + 固定尾块，避免在 9 处重复抄写尾块。
+    AnsiString ExpectedMeshOptions(const char *include_block)
+    {
+        return AnsiString(include_block) + kLineSizeDefaultSuffix;
+    }
+
+    // mesh_options 的纯度：头段每行必须是一条 `#include "`，尾段必须**恰好**是
+    // 线宽缺省块；整体无 CR、无空行、以 '\n' 收尾。
+    bool IsPureMeshOptionsText(const AnsiString &text)
+    {
+        const char *raw = text.c_str();
+        const int length = text.Length();
+        const int suffix_length = static_cast<int>(strlen(kLineSizeDefaultSuffix));
+        if (!raw || length <= suffix_length)
+            return false;
+        if (strcmp(raw + length - suffix_length, kLineSizeDefaultSuffix) != 0)
+            return false;
+
+        const int head_length = length - suffix_length;
+        int line_start = 0;
+        for (int index = 0; index < head_length; ++index)
+        {
+            const char c = raw[index];
+            if (c == '\r')
+                return false;
+            if (c != '\n')
+                continue;
+
+            if (index == line_start)
+                return false;
+
+            const int line_length = index - line_start;
+            if (line_length <= 12
+                || strncmp(raw + line_start, "#include \"", 10) != 0)
+                return false;
+
+            line_start = index + 1;
+        }
+
+        return line_start == head_length;
     }
 
     void RunProfileRouting()
@@ -376,7 +430,7 @@ namespace
 
     void CheckMeshText(
         const char *name,
-        const char *expected,
+        const AnsiString &expected,
         const MeshOptionsInput &input)
     {
         AnsiString text;
@@ -396,7 +450,7 @@ namespace
 
         g_fail++;
         GLogError(u8"[FAIL] %s", name);
-        GLogError(u8"  expected:\n%s", expected);
+        GLogError(u8"  expected:\n%s", expected.c_str());
         GLogError(u8"  actual:\n%s", text.c_str());
     }
 
@@ -434,10 +488,11 @@ namespace
             input.stage3_module = "vertex/s3_world_camera_vp.glsl";
 
             CheckMeshText("meshopts: 3D passthrough + vertex color",
-                          "#include \"vertex/s1_color.glsl\"\n"
-                          "#include \"vertex/s1_position_vec3.glsl\"\n"
-                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
-                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_color.glsl\"\n"
+                              "#include \"vertex/s1_position_vec3.glsl\"\n"
+                              "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                              "#include \"vertex/s3_world_camera_vp.glsl\"\n"),
                           input);
         }
 
@@ -450,10 +505,11 @@ namespace
             input.stage3_module = "vertex/s3_l2w_only.glsl";
 
             CheckMeshText("meshopts: 2D vec2 NDC lift + L2W only",
-                          "#include \"vertex/s1_color.glsl\"\n"
-                          "#include \"vertex/s1_position_vec2.glsl\"\n"
-                          "#include \"vertex/s2_ndc_lift.glsl\"\n"
-                          "#include \"vertex/s3_l2w_only.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_color.glsl\"\n"
+                              "#include \"vertex/s1_position_vec2.glsl\"\n"
+                              "#include \"vertex/s2_ndc_lift.glsl\"\n"
+                              "#include \"vertex/s3_l2w_only.glsl\"\n"),
                           input);
         }
 
@@ -467,10 +523,11 @@ namespace
             input.stage3_module = "vertex/s3_ortho_viewport.glsl";
 
             CheckMeshText("meshopts: vec2i pixel-to-local + ortho viewport",
-                          "#include \"vertex/s1_color.glsl\"\n"
-                          "#include \"vertex/s1_position_vec2i.glsl\"\n"
-                          "#include \"vertex/s2_pixel_to_local.glsl\"\n"
-                          "#include \"vertex/s3_ortho_viewport.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_color.glsl\"\n"
+                              "#include \"vertex/s1_position_vec2i.glsl\"\n"
+                              "#include \"vertex/s2_pixel_to_local.glsl\"\n"
+                              "#include \"vertex/s3_ortho_viewport.glsl\"\n"),
                           input);
         }
 
@@ -485,11 +542,12 @@ namespace
             input.stage3_module = "vertex/s3_world_camera_vp.glsl";
 
             CheckMeshText("meshopts: RG16F uv + RG8 octahedral normal",
-                          "#include \"vertex/s1_uv_rg16f.glsl\"\n"
-                          "#include \"vertex/s1_ntb_rg8.glsl\"\n"
-                          "#include \"vertex/s1_position_vec3.glsl\"\n"
-                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
-                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_uv_rg16f.glsl\"\n"
+                              "#include \"vertex/s1_ntb_rg8.glsl\"\n"
+                              "#include \"vertex/s1_position_vec3.glsl\"\n"
+                              "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                              "#include \"vertex/s3_world_camera_vp.glsl\"\n"),
                           input);
         }
 
@@ -505,12 +563,13 @@ namespace
             input.stage3_module = "vertex/s3_world_camera_vp.glsl";
 
             CheckMeshText("meshopts: palette + transform id + size chain",
-                          "#include \"vertex/s1_palette_index.glsl\"\n"
-                          "#include \"vertex/s1_transform_id.glsl\"\n"
-                          "#include \"vertex/s1_size.glsl\"\n"
-                          "#include \"vertex/s1_position_vec3.glsl\"\n"
-                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
-                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_palette_index.glsl\"\n"
+                              "#include \"vertex/s1_transform_id.glsl\"\n"
+                              "#include \"vertex/s1_size.glsl\"\n"
+                              "#include \"vertex/s1_position_vec3.glsl\"\n"
+                              "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                              "#include \"vertex/s3_world_camera_vp.glsl\"\n"),
                           input);
         }
 
@@ -523,10 +582,11 @@ namespace
             input.stage3_module = "vertex/s3_world_camera_vp.glsl";
 
             CheckMeshText("meshopts: luminance attribute",
-                          "#include \"vertex/s1_luminance.glsl\"\n"
-                          "#include \"vertex/s1_position_vec3.glsl\"\n"
-                          "#include \"vertex/s2_passthrough3d.glsl\"\n"
-                          "#include \"vertex/s3_world_camera_vp.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_luminance.glsl\"\n"
+                              "#include \"vertex/s1_position_vec3.glsl\"\n"
+                              "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                              "#include \"vertex/s3_world_camera_vp.glsl\"\n"),
                           input);
         }
 
@@ -538,7 +598,8 @@ namespace
                 "#include \"vertex/s1_text_char_quad.glsl\"\n";
 
             CheckMeshText("meshopts: char quad is self-contained (no s2/s3)",
-                          "#include \"vertex/s1_text_char_quad.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_text_char_quad.glsl\"\n"),
                           input);
         }
 
@@ -550,9 +611,10 @@ namespace
             input.stage3_module = "vertex/s3_l2w_only.glsl";
 
             CheckMeshText("meshopts: missing trailing newline is repaired",
-                          "#include \"vertex/s1_color.glsl\"\n"
-                          "#include \"vertex/s2_ndc_lift.glsl\"\n"
-                          "#include \"vertex/s3_l2w_only.glsl\"\n",
+                          ExpectedMeshOptions(
+                              "#include \"vertex/s1_color.glsl\"\n"
+                              "#include \"vertex/s2_ndc_lift.glsl\"\n"
+                              "#include \"vertex/s3_l2w_only.glsl\"\n"),
                           input);
         }
 
@@ -571,8 +633,9 @@ namespace
             Check(EmitMeshOptions(input, first) && EmitMeshOptions(input, second)
                       && first == second,
                   "meshopts: emission is deterministic");
-            Check(IsPureOptionsText(first),
-                  "meshopts: only #include lines, no blank lines, LF endings");
+            Check(IsPureMeshOptionsText(first),
+                  "meshopts: only #include lines + fixed line-size tail, no blank "
+                  "lines, LF endings");
         }
 
         // ── 负例 ─────────────────────────────────────────────────────────────

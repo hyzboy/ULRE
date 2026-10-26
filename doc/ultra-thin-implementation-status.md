@@ -793,7 +793,9 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 ## 11. 每个子阶段的完成定义（DoD）
 
 - [x] `ShaderResourceSchemaRegressionGate all` → **59 PASS / 0 FAIL / exit=0**（含 `reflection` 分组；新增 case 时数量随之增加并同步文档）
+- [x] **interstage location 单源化**：`InterStageSemanticRegistry[]` 是唯一真源（`location_macro` + `stable_location`），`ShaderLibrary/common/interstage_locations.glsl` 由 `InterStageLocationMacroGen --emit` 生成、构建期由 `interstage_locations_verify`（ALL 目标）+ `VerifyInterStageLocations`（ctest）校验。C++ 侧不再持有名字→数字对照表（门禁改查 `FindInterStageSemanticByLocationMacro()` 回退 `isdigit`）。改注册表后必须重跑 `--emit`，否则常规构建即失败
 - [x] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
+- [x] `DomainOptionsRegression`（`domain_options_regression`）→ **47 PASS / 0 FAIL**。断言 `EmitMeshOptions` 的逐字节文本时，期望值必须用 `ExpectedMeshOptions()`（= 纯 include 头段 + 固定的线宽缺省尾块 `kLineSizeDefaultSuffix`）；给 mesh_options 增加新段落时同步改这两处，别让文本断言先漂
 - [x] `TestRenderStrategyTable` / `TestMaterialVariantTable` → 全 exit=0（保底链行为断言，改动材质定义/回退规则时必跑）
 - [x] 实跑 `PBRSpheres` + `TextDraw`：0 errors、模块数正确、无 GLSL 编译错误
 - [x] 实跑 `LineRender`（`PrimitiveType::Lines` → 真正走 `LineQuad` mesh 发射模式）：0 validation error、SPV 缓存全命中、持续出帧。**这条不能用 golden 代替**——`{{endpoint_read}}` 的两个函数体文本不在快照粒度内，且夹具是 `defer_finalize`（不编译 SPV），只有实跑能证明两条 `position_format` 分支都产出合法 GLSL
