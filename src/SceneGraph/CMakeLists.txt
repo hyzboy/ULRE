@@ -65,6 +65,10 @@ SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/LightRow.h
 
 SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 
+SET(SCENE_TRANSFORM_FILES ${SG_INCLUDE_PATH}/transform/TransformAction.h)
+
+SOURCE_GROUP("2.Scene\\Transform" FILES ${SCENE_TRANSFORM_FILES})
+
 # ============================================================================
 # 3. Camera System - 相机系统
 # ============================================================================
@@ -247,6 +251,7 @@ SOURCE_GROUP("9.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
 # ============================================================================
 
 SET(SCENE_GRAPH_FILES   ${SCENE_ENVIRONMENT_FILES}
+                        ${SCENE_TRANSFORM_FILES}
                         ${RENDERING_CORE_FILES}
                         ${RENDERING_SHADOW_FILES}
                         ${GIZMO_ALL_FILES})
@@ -279,4 +284,4 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
 
 )
 
-
+target_include_directories(ULRE.SceneGraph PUBLIC ${ROOT_INCLUDE_PATH})

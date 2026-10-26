@@ -565,6 +565,8 @@ Transform result = Lerp(from, to, t);   // TRS 各分量分别插值
 const Transform IdentityTransform;
 ```
 
+`TransformAction`、`TransAction*` 和 `TransActionManager` 属于 ULRE SceneGraph 的运行时变换组合，不再由 CMMath 提供；对应头文件为 `<hgl/graph/transform/TransformAction.h>`。CMMath 只保留不依赖 CMCore 容器和版本管理的数学变换。
+
 ---
 
 ## 8. 几何体（geometry/）
