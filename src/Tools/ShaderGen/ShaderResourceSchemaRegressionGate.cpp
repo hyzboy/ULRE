@@ -455,9 +455,28 @@ namespace
                 const size_t close = text.find(')', layout);
                 if (close == std::string::npos)
                     break;
-                const uint32_t location = uint32_t(std::strtoul(
-                    text.c_str() + layout + std::strlen("layout(location="),
-                    nullptr, 10));
+                std::string loc_token = text.substr(
+                    layout + std::strlen("layout(location="),
+                    close - (layout + std::strlen("layout(location=")));
+                while (!loc_token.empty() && (loc_token.back() == ' ' || loc_token.back() == '\t' || loc_token.back() == '\r'))
+                    loc_token.pop_back();
+                size_t token_start = 0;
+                while (token_start < loc_token.size() && (loc_token[token_start] == ' ' || loc_token[token_start] == '\t'))
+                    ++token_start;
+                loc_token = loc_token.substr(token_start);
+
+                uint32_t location = 0;
+                if (loc_token == "HGL_LOCATION_DATA_INDEX_ID")        location = 0;
+                else if (loc_token == "HGL_LOCATION_WORLD_POS")      location = 1;
+                else if (loc_token == "HGL_LOCATION_WORLD_NORMAL")   location = 2;
+                else if (loc_token == "HGL_LOCATION_UV0")            location = 3;
+                else if (loc_token == "HGL_LOCATION_STYLE_ID")       location = 4;
+                else if (loc_token == "HGL_LOCATION_VERTEX_COLOR")   location = 5;
+                else if (loc_token == "HGL_LOCATION_FRAG_DIRECTION") location = 6;
+                else if (loc_token == "HGL_LOCATION_LUMINANCE")      location = 7;
+                else if (loc_token == "HGL_LOCATION_WORLD_TANGENT")  location = 8;
+                else if (loc_token == "HGL_LOCATION_WORLD_BINORMAL") location = 9;
+                else location = uint32_t(std::strtoul(loc_token.c_str(), nullptr, 10));
 
                 const size_t semicolon = text.find(';', close);
                 if (semicolon == std::string::npos)
@@ -5924,8 +5943,10 @@ namespace
         for (const char *path : normal_varying_fragments)
         {
             const std::string source = ReadFileText(RepoRootPath(path));
-            if (source.find("layout(location=2) in vec3 fragWorldNormal;")
-                    == std::string::npos
+            const bool has_normal_loc =
+                source.find("layout(location=2) in vec3 fragWorldNormal;") != std::string::npos
+             || source.find("layout(location=HGL_LOCATION_WORLD_NORMAL) in vec3 fragWorldNormal;") != std::string::npos;
+            if (!has_normal_loc
              || source.find("si.worldNormal = normalize(fragWorldNormal);")
                     == std::string::npos)
                 result.diagnostics.emplace_back(

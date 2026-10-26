@@ -25,10 +25,10 @@
 #include "ntb/ntb_none.glsl"
 #include "surface/material_surface.glsl"
 #include "common/alpha_compositor.glsl"
-layout(location=0) flat perprimitiveEXT in  uint fragDataIndexID;
-layout(location=1) in vec3 fragWorldPos;
+layout(location=HGL_LOCATION_DATA_INDEX_ID) flat perprimitiveEXT in  uint fragDataIndexID;
+layout(location=HGL_LOCATION_WORLD_POS) in vec3 fragWorldPos;
 #ifdef HGL_MATERIAL_HAS_VERTEX_NORMAL
-layout(location=2) in vec3 fragWorldNormal;
+layout(location=HGL_LOCATION_WORLD_NORMAL) in vec3 fragWorldNormal;
 #endif
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }

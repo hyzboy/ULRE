@@ -508,34 +508,21 @@ namespace hgl::graph::mtl
             name += AnsiString::numberOf(max_vertices);
             name += AnsiString("_");
 
-            int emitted = 0;
-            const struct
-            {
-                bool enabled;
-                const char *token;
-            } slots[] =
-            {
-                { varying.emit_data_index_id, "dataid" },
-                { varying.emit_world_pos, "pos" },
-                { varying.emit_world_normal, "nrm" },
-                { varying.emit_uv0, "uv" },
-                { varying.emit_vertex_color
-                      || varying.emit_vertex_color_from_palette, "color" },
-                { varying.emit_style_id, "style" },
-                { varying.emit_frag_direction, "dir" },
-                { varying.emit_luminance, "lum" },
-            };
+            const InterStageSemanticMask mask =
+                GetMaterialInterStageSemanticMask(varying);
 
-            for (const auto &slot : slots)
+            const char *tokens[16]{};
+            const uint32 token_count =
+                GetOrderedInterStageShapeTokens(mask, tokens, 16);
+
+            for (uint32 i = 0; i < token_count; ++i)
             {
-                if (!slot.enabled)
-                    continue;
-                if (emitted++ > 0)
+                if (i > 0)
                     name += AnsiString("_");
-                name += AnsiString(slot.token);
+                name += AnsiString(tokens[i]);
             }
 
-            if (emitted == 0)
+            if (token_count == 0)
                 name += AnsiString("plain");
 
             return name;
@@ -1028,8 +1015,7 @@ namespace hgl::graph::mtl
             // `s1_ntb*.glsl` 会按 ABI 从顶点 SSBO 的 Normal 槽取数，而那条通道根本没上传
             // ⇒ 读到的是别的顶点数据/垃圾值（画面表现为随机明暗，比没光更坏）。
             // 因此三者一并剥掉，法线改由**片段着色器用屏幕空间导数求三角形面法线**
-            //（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`，装配处见
-            //  contract::BuildGLSLMaterialSurfaceInput）。
+            //（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`，在对应 Domain 的片元 master 中由 options 控制）。
             //
             // 语义定稿（2026-10-24 用户两次拍板，后者覆盖前者）：
             //   · 缺顶点法线**必须看得见** —— 面法线平面着色看起来「像正常的低模」，

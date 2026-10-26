@@ -10,9 +10,6 @@ domain = "Sky"
 [fragment]
 surface_module_name = "sky_cube_surface"
 
-[vertex]
-varyings = ["emit_frag_direction", "emit_data_index_id"]
-
 [resources]
 textures = [{ name = "sky_cube" }]
 samplers = ["Trilinear"]

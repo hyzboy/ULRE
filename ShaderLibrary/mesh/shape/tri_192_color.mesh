@@ -21,7 +21,7 @@ layout(local_size_x = 64) in;
 layout(triangles, max_vertices = 192, max_primitives = 64) out;
 #include "mesh/stage_common.glsl"
 
-layout(location=5) out vec4 fragVertexColor[192];
+layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[192];
 
 // 唯一可变输入：顶点解码 + 位置映射 + 变换
 #include "generated/mesh_options.glsl"

@@ -21,6 +21,8 @@
 #include <hgl/type/StdString.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/common/DebugChannel.h>
+#include <hgl/ShaderCompilerAPI.h>
+#include "ShaderReflectionData.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdlib>
@@ -65,6 +67,82 @@ bool LoadCachedStage(
             ToU8String(key.ToString()).c_str());
     cached_spv.Clear();
     return false;
+}
+
+bool ValidateInterStageInterfaceReflection(
+    const uint32 *mesh_spv, size_t mesh_spv_size,
+    const uint32 *frag_spv, size_t frag_spv_size,
+    AnsiString &out_error)
+{
+    if (!mesh_spv || mesh_spv_size == 0 || !frag_spv || frag_spv_size == 0)
+        return true;
+
+    hgl::ValueArray<uint8> mesh_flat_storage;
+    ::ShaderFlatView mesh_view{};
+    if (!ReflectSPVData(mesh_spv, mesh_spv_size,
+                        static_cast<uint32>(VK_SHADER_STAGE_MESH_BIT_EXT),
+                        "main", mesh_flat_storage, mesh_view))
+    {
+        out_error = "ReflectSPVData on mesh stage failed";
+        return false;
+    }
+    ShaderReflectionData mesh_reflection;
+    if (!mesh_reflection.Extract(mesh_view))
+    {
+        out_error = "ShaderReflectionData::Extract on mesh stage failed";
+        return false;
+    }
+
+    hgl::ValueArray<uint8> frag_flat_storage;
+    ::ShaderFlatView frag_view{};
+    if (!ReflectSPVData(frag_spv, frag_spv_size,
+                        static_cast<uint32>(VK_SHADER_STAGE_FRAGMENT_BIT),
+                        "main", frag_flat_storage, frag_view))
+    {
+        out_error = "ReflectSPVData on fragment stage failed";
+        return false;
+    }
+    ShaderReflectionData frag_reflection;
+    if (!frag_reflection.Extract(frag_view))
+    {
+        out_error = "ShaderReflectionData::Extract on fragment stage failed";
+        return false;
+    }
+
+    for (int i = 0; i < frag_reflection.stage_inputs.GetCount(); ++i)
+    {
+        const auto &fin = frag_reflection.stage_inputs[i];
+        const ShaderReflectionAttribute *match = nullptr;
+        for (int j = 0; j < mesh_reflection.stage_outputs.GetCount(); ++j)
+        {
+            if (mesh_reflection.stage_outputs[j].location == fin.location)
+            {
+                match = &mesh_reflection.stage_outputs[j];
+                break;
+            }
+        }
+
+        if (!match)
+        {
+            out_error = AnsiString("Fragment stage input '")
+                      + fin.name
+                      + "' (location=" + AnsiString::numberOf(fin.location)
+                      + ") has no matching mesh stage output";
+            return false;
+        }
+
+        if (match->basetype != fin.basetype
+         || match->vec_size != fin.vec_size
+         || match->col_count != fin.col_count)
+        {
+            out_error = AnsiString("Interface type mismatch at location ")
+                      + AnsiString::numberOf(fin.location)
+                      + ": mesh(" + match->name + ") vs fragment(" + fin.name + ")";
+            return false;
+        }
+    }
+
+    return true;
 }
 } // namespace
 
@@ -123,6 +201,17 @@ bool FinalizeShaderBuildContext(
 
     if (!build_spec->CreateShaderDirect())
         return false;
+
+    // AnsiString stage_interface_error;
+    // if (!ValidateInterStageInterfaceReflection(
+    //         mesh->GetSPVData(), mesh->GetSPVSize(),
+    //         fragment->GetSPVData(), fragment->GetSPVSize(),
+    //         stage_interface_error))
+    // {
+    //     GLogError(u8"[StageSPVCompiler] 双 Stage 接口反射校验失败：%s",
+    //               stage_interface_error.c_str());
+    //     return false;
+    // }
 
     if (artifact_store)
     {

@@ -10,8 +10,8 @@ layout(local_size_x = 64) in;
 layout(triangles, max_vertices = 256, max_primitives = 128) out;
 #include "mesh/stage_common.glsl"
 
-layout(location=0) perprimitiveEXT out uint fragDataIndexID[128];
-layout(location=7) out float fragLuminance[256];
+layout(location=HGL_LOCATION_DATA_INDEX_ID) perprimitiveEXT out uint fragDataIndexID[128];
+layout(location=HGL_LOCATION_LUMINANCE) out float fragLuminance[256];
 
 #include "generated/mesh_options.glsl"
 

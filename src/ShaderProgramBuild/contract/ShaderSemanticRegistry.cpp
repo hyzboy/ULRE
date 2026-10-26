@@ -20,17 +20,17 @@ namespace hgl::graph::mtl
 
         constexpr InterStageSemanticInfo InterStageSemanticRegistry[] =
         {
-            {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation},
-            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0},
-            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 1},
-            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 2},
-            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 3},
-            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 5},
-            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 6},
-            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 7},
-            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 8},
-            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 9},
-            {InterStageSemantic::StyleID,        "fragStyleID",        UIntShape(1),  InterStageInterpolation::Flat,   1, 4}
+            {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation, nullptr, 0},
+            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0, "dataid", 1},
+            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 1, "pos",    2},
+            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 2, "nrm",    3},
+            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 3, "uv",     4},
+            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 5, "color",  5},
+            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 6, "dir",    7},
+            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 7, "lum",    8},
+            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 8, "tan",    9},
+            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 9, "binrm", 10},
+            {InterStageSemantic::StyleID,        "fragStyleID",        UIntShape(1),  InterStageInterpolation::Flat,   1, 4, "style",  6}
         };
 
         constexpr uint32 InterStageSemanticRegistryCount =
@@ -155,6 +155,33 @@ namespace hgl::graph::mtl
         }
 
         return true;
+    }
+
+    uint32 GetOrderedInterStageShapeTokens(
+        const InterStageSemanticMask mask,
+        const char *out_tokens[],
+        const uint32 max_tokens) noexcept
+    {
+        if (!out_tokens || max_tokens == 0)
+            return 0;
+
+        uint32 count = 0;
+        for (uint8 order = 1; order <= InterStageSemanticRegistryCount && count < max_tokens; ++order)
+        {
+            for (uint32 i = 0; i < InterStageSemanticRegistryCount; ++i)
+            {
+                const InterStageSemanticInfo &info = InterStageSemanticRegistry[i];
+                if (info.shape_token_order == order && info.shape_token)
+                {
+                    if (mask & GetInterStageSemanticMask(info.semantic))
+                    {
+                        out_tokens[count++] = info.shape_token;
+                    }
+                    break;
+                }
+            }
+        }
+        return count;
     }
 
 }

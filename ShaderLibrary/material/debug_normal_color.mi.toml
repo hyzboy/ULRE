@@ -5,6 +5,3 @@ id = "DebugNormalColor"
 # 顶点语义需求（Position/Normal）、顶点提供策略、表面来源模块、
 # material_data 类型全部由领域 DebugNormal 的契约给出。
 domain = "DebugNormal"
-
-[vertex]
-varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal"]

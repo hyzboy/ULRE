@@ -5,6 +5,7 @@
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
+#include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 
@@ -194,6 +195,10 @@ namespace hgl::graph::mtl
         //
         // 必须显式填写（枚举 0 是 MeshDrawParams，不是材质表面类型）。
         GlobalSSBOType material_data_type;
+
+        // 领域规范默认 Varying 语义掩码（双 Stage 接口契约）：
+        // 若资产未手动声明 [vertex] varyings，解析层以此掩码为默认值自动推导。
+        InterStageSemanticMask default_varying_semantic_mask = 0;
     };
 
     // 取契约；domain == Custom 或未知时返回 nullptr。
@@ -202,6 +207,10 @@ namespace hgl::graph::mtl
 
     // 按序号取契约表（0..MaterialDomainContractCount-1），供门禁穷举。
     const MaterialDomainContract *GetMaterialDomainContractAt(int index) noexcept;
+
+    // 领域规范默认 Varying 掩码。Custom / 未知领域返回 0。
+    InterStageSemanticMask GetMaterialDomainDefaultVaryingMask(
+        MaterialDomain domain) noexcept;
 
     // 领域规范顶点变换。Custom / 未知领域返回 false（调用方保留资产声明或默认值）。
     bool GetMaterialDomainCanonicalVertexNodeConfig(

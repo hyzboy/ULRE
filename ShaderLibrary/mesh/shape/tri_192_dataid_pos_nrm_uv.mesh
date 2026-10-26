@@ -21,10 +21,10 @@ layout(local_size_x = 64) in;
 layout(triangles, max_vertices = 192, max_primitives = 64) out;
 #include "mesh/stage_common.glsl"
 
-layout(location=0) perprimitiveEXT out uint fragDataIndexID[64];
-layout(location=1) out vec3 fragWorldPos[192];
-layout(location=2) out vec3 fragWorldNormal[192];
-layout(location=3) out vec2 fragUV0[192];
+layout(location=HGL_LOCATION_DATA_INDEX_ID) perprimitiveEXT out uint fragDataIndexID[64];
+layout(location=HGL_LOCATION_WORLD_POS) out vec3 fragWorldPos[192];
+layout(location=HGL_LOCATION_WORLD_NORMAL) out vec3 fragWorldNormal[192];
+layout(location=HGL_LOCATION_UV0) out vec2 fragUV0[192];
 
 // 唯一可变输入：顶点解码 + 位置映射 + 变换
 #include "generated/mesh_options.glsl"

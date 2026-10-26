@@ -61,6 +61,8 @@ namespace hgl::graph::mtl
         InterStageInterpolation interpolation = InterStageInterpolation::Smooth;
         uint8 location_width = 0;
         uint32 stable_location = InvalidShaderSemanticLocation;
+        const char *shape_token = nullptr;
+        uint8 shape_token_order = 0;
     };
 
     using InterStageSemanticMask = uint32;
@@ -138,4 +140,9 @@ namespace hgl::graph::mtl
 
     bool ValidateInterStageSemanticRegistry(
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
+
+    uint32 GetOrderedInterStageShapeTokens(
+        InterStageSemanticMask mask,
+        const char *out_tokens[],
+        uint32 max_tokens) noexcept;
 }//namespace hgl::graph::mtl

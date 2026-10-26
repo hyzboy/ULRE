@@ -27,7 +27,7 @@
 #include "ntb/ntb_none.glsl"
 #include "surface/material_surface.glsl"
 #include "common/alpha_compositor.glsl"
-layout(location=0) flat perprimitiveEXT in  uint fragDataIndexID;
+layout(location=HGL_LOCATION_DATA_INDEX_ID) flat perprimitiveEXT in  uint fragDataIndexID;
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }
 

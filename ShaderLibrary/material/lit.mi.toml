@@ -2,12 +2,9 @@ schema = 4
 id = "Lit"
 
 # 材质实例：只填领域 + 资源 + 数值。
-# 顶点语义需求（Position/UV0/Normal）、顶点提供策略、表面来源模块、
-# 法线标架模块全部由领域 StandardOpaque 的契约给出。
+# 顶点语义需求（Position/UV0/Normal）、Varying（根据领域契约自动推导）、
+# 顶点提供策略、表面来源模块、法线标架模块全部由领域 StandardOpaque 契约给出。
 domain = "StandardOpaque"
-
-[vertex]
-varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
 
 [resources]
 # 槽的形态（采样器种类 / 是否必绑 / 通道数）由领域 StandardOpaque 的契约给出：

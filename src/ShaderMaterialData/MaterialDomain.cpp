@@ -196,6 +196,11 @@ namespace hgl::graph::mtl
             return MaterialDomainSemanticBit(semantic);
         }
 
+        constexpr InterStageSemanticMask VarSem(const InterStageSemantic semantic) noexcept
+        {
+            return GetInterStageSemanticMask(semantic);
+        }
+
         constexpr MaterialDomainContract DomainContracts[] = {
             {
                 MaterialDomain::StandardOpaque, "StandardOpaque",
@@ -210,6 +215,10 @@ namespace hgl::graph::mtl
                 {},
                 // 通用硬表面 = PBR 表面字段组。
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition)
+                    | VarSem(InterStageSemantic::WorldNormal)
+                    | VarSem(InterStageSemantic::UV0),
             },
             {
                 MaterialDomain::Foliage, "Foliage",
@@ -224,6 +233,10 @@ namespace hgl::graph::mtl
                 false,
                 {},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition)
+                    | VarSem(InterStageSemantic::WorldNormal)
+                    | VarSem(InterStageSemantic::UV0),
             },
             {
                 MaterialDomain::Terrain, "Terrain",
@@ -237,6 +250,10 @@ namespace hgl::graph::mtl
                 false,
                 {},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition)
+                    | VarSem(InterStageSemantic::WorldNormal)
+                    | VarSem(InterStageSemantic::UV0),
             },
             {
                 MaterialDomain::UI2D, "UI2D",
@@ -248,6 +265,9 @@ namespace hgl::graph::mtl
                 false,
                 {},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::UV0)
+                    | VarSem(InterStageSemantic::Color),
             },
             {
                 MaterialDomain::HumanSkin, "HumanSkin",
@@ -262,6 +282,10 @@ namespace hgl::graph::mtl
                 false,
                 {},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition)
+                    | VarSem(InterStageSemantic::WorldNormal)
+                    | VarSem(InterStageSemantic::UV0),
             },
 
             // ══ 无光表面族 ═══════════════════════════════════════════════════════
@@ -291,6 +315,7 @@ namespace hgl::graph::mtl
                 {},
                 // 无光照：颜色直出，Emissive 字段组足够（PBR 字段读不到也没意义）。
                 GlobalSSBOType::EmissiveSurface,
+                VarSem(InterStageSemantic::DataIndexID),
             },
             {
                 // 顶点色：颜色来自 Color 顶点流，逐顶点直出。
@@ -306,6 +331,7 @@ namespace hgl::graph::mtl
                 false,
                 {},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::Color),
             },
             {
                 // 调色板顶点色：Color + TransformID + Size 四语义齐全。
@@ -324,6 +350,7 @@ namespace hgl::graph::mtl
                 false,
                 {},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::Color),
             },
             {
                 // 顶点亮度：逐顶点亮度索引，片元侧查调色板。无颜色顶点流。
@@ -337,6 +364,8 @@ namespace hgl::graph::mtl
                 {},
                 // 逐顶点亮度 → 片元查调色板直出颜色：Emissive 字段组。
                 GlobalSSBOType::EmissiveSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::Luminance),
             },
             {
                 // 无光单图。与 UI2D 的区别：UI2D 是图集精灵（Sampler2DArray +
@@ -356,6 +385,8 @@ namespace hgl::graph::mtl
                                        ScaleMode::World,
                                        ProjectionMode::LocalToWorldOnly},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::UV0),
             },
             {
                 // GPU 文本。顶点必须是 Position + UV0（字形在纹理里）。
@@ -375,6 +406,10 @@ namespace hgl::graph::mtl
                                        ScaleMode::World,
                                        ProjectionMode::OrthoViewport},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::UV0)
+                    | VarSem(InterStageSemantic::StyleID)
+                    | VarSem(InterStageSemantic::Color),
             },
 
             // ══ 环境 ════════════════════════════════════════════════════════════
@@ -392,6 +427,8 @@ namespace hgl::graph::mtl
                 {},
                 // 天空不走材质 payload 行；类型只为满足契约完整性。
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::FragDirection),
             },
 
             // ══ 引擎内部用途 ════════════════════════════════════════════════════
@@ -408,6 +445,9 @@ namespace hgl::graph::mtl
                 {},
                 // 法线→颜色直出：Emissive 字段组（与既有资产一致）。
                 GlobalSSBOType::EmissiveSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition)
+                    | VarSem(InterStageSemantic::WorldNormal),
             },
             {
                 // 2D 棋盘格（屏幕/局部空间出格）。**不要求 UV0**：
@@ -426,6 +466,7 @@ namespace hgl::graph::mtl
                                        ScaleMode::World,
                                        ProjectionMode::LocalToWorldOnly},
                 GlobalSSBOType::PBRSurface,
+                0,
             },
             {
                 // 3D 棋盘格：按世界位置出格，需要世界位置 varying 而非 UV。
@@ -438,6 +479,7 @@ namespace hgl::graph::mtl
                 false,
                 {},
                 GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::WorldPosition),
             },
             {
                 // 材质错误回退：与 Checker3D 同源逻辑但独立模块，
@@ -452,6 +494,8 @@ namespace hgl::graph::mtl
                 {},
                 // 错误回退棋盘格：Emissive 字段组（与既有资产一致）。
                 GlobalSSBOType::EmissiveSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition),
             },
         };
 
@@ -890,6 +934,13 @@ namespace hgl::graph::mtl
         }
 
         return MaterialDomainValidationResult::OK;
+    }
+
+    InterStageSemanticMask GetMaterialDomainDefaultVaryingMask(
+        const MaterialDomain domain) noexcept
+    {
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        return contract ? contract->default_varying_semantic_mask : 0;
     }
 }// namespace hgl::graph::mtl
 

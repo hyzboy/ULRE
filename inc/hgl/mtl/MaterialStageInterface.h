@@ -127,6 +127,24 @@ namespace hgl::graph::mtl
         }
     }
 
+    /// 由语义掩码构造 Varying 配置（双 Stage 接口契约逆向推导）
+    inline void BuildMaterialVertexVaryingFromSemanticMask(
+        const InterStageSemanticMask mask,
+        mtl::MaterialVertexVaryingConfig &out_varying) noexcept
+    {
+        out_varying = {};
+        for (const MaterialVaryingSemanticBinding &binding :
+                kMaterialVaryingSemanticBindings)
+        {
+            // 调色板特殊流（Color 语义的变体）只能由 VertexPalette 显式启用，通用的 Color 默认走标准顶点色
+            if (binding.field == &mtl::MaterialVertexVaryingConfig::emit_vertex_color_from_palette)
+                continue;
+
+            if (mask & GetInterStageSemanticMask(binding.semantic))
+                out_varying.*(binding.field) = true;
+        }
+    }
+
     bool BuildMaterialStageInterface(
         const mtl::MaterialVertexVaryingConfig &varying,
         ValueArray<InterStageSemanticContractEntry> &out_entries,
@@ -135,16 +153,6 @@ namespace hgl::graph::mtl
     const InterStageSemanticContractEntry *FindMaterialStageInterfaceEntry(
         const ValueArray<InterStageSemanticContractEntry> &entries,
         InterStageSemantic semantic) noexcept;
-
-    bool BuildGLSLInterStageDeclaration(
-        const InterStageSemanticContractEntry &entry,
-        const char *direction,
-        AnsiString &out_declaration);
-
-    bool BuildGLSLMaterialSurfaceInput(
-        const ValueArray<InterStageSemanticContractEntry> &entries,
-        bool camera_ubo_available,
-        AnsiString &out_code);
 
     // 该语义在 mesh shader 里是 per-primitive（perprimitiveEXT）而非 per-vertex：
     // 每图元恒定一份（DataIndexID/StyleID——flat 且按图元共享）。

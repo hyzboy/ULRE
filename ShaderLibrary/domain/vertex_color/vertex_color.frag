@@ -26,7 +26,7 @@
 #include "ntb/ntb_none.glsl"
 #include "surface/material_surface.glsl"
 #include "common/alpha_compositor.glsl"
-layout(location=5) in vec4 fragVertexColor;
+layout(location=HGL_LOCATION_VERTEX_COLOR) in vec4 fragVertexColor;
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }
 

@@ -1,5 +1,6 @@
 ﻿#include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/MaterialDomain.h>
+#include <hgl/mtl/MaterialStageInterface.h>
 
 #include <hgl/log/Log.h>
 #include <hgl/mtl/VkEnumText.h>
@@ -932,6 +933,26 @@ namespace hgl::graph::mtl
                     }
                     if (!found)
                         return false;
+                }
+            }
+            else
+            {
+                // 资产未显式声明 [vertex] varyings 时：由领域契约自动推导规范 Varying 掩码。
+                if (out.definition.domain != MaterialDomain::Custom)
+                {
+                    const InterStageSemanticMask default_mask =
+                        GetMaterialDomainDefaultVaryingMask(out.definition.domain);
+                    if (default_mask != 0)
+                    {
+                        BuildMaterialVertexVaryingFromSemanticMask(
+                            default_mask, out.definition.vertex_varying);
+                        if (out.definition.domain == MaterialDomain::VertexPalette)
+                        {
+                            out.definition.vertex_varying.emit_vertex_color = false;
+                            out.definition.vertex_varying.emit_vertex_color_from_palette = true;
+                            out.definition.vertex_varying.use_transform_id_attr = true;
+                        }
+                    }
                 }
             }
 

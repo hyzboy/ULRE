@@ -15,6 +15,8 @@
 #ifndef HGL_DOMAIN_ROOT_BINDINGS_GLSL
 #define HGL_DOMAIN_ROOT_BINDINGS_GLSL
 
+#include "common/interstage_locations.glsl"
+
 #extension GL_EXT_mesh_shader : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_ARB_gpu_shader_int64 : require

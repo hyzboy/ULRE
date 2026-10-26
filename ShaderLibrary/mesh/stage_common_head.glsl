@@ -16,6 +16,8 @@
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 
+#include "common/interstage_locations.glsl"
+
 layout(push_constant) uniform RootAddresses
 {
     uint64_t addr_global_addresses;

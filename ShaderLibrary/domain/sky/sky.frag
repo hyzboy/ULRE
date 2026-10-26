@@ -21,8 +21,8 @@
 #include "common/surface_interface.glsl"
 #include "material/sky_cube_surface.glsl"
 #include "common/alpha_compositor.glsl"
-layout(location=0) flat perprimitiveEXT in  uint fragDataIndexID;
-layout(location=6) in vec3 fragDirection;
+layout(location=HGL_LOCATION_DATA_INDEX_ID) flat perprimitiveEXT in  uint fragDataIndexID;
+layout(location=HGL_LOCATION_FRAG_DIRECTION) in vec3 fragDirection;
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }
 

@@ -26,10 +26,10 @@ layout(triangles, max_vertices = 256, max_primitives = 128) out;
 // ── Text CharQuad SSBOs（结构真源：ShaderLibrary/vertex/s1_text_char_quad.glsl）──
 #include "vertex/s1_text_char_quad.glsl"
 
-layout(location=0) perprimitiveEXT out uint fragDataIndexID[128];
-layout(location=3) out vec2 fragUV0[256];
-layout(location=5) out vec4 fragVertexColor[256];
-layout(location=4) perprimitiveEXT out uint fragStyleID[128];
+layout(location=HGL_LOCATION_DATA_INDEX_ID) perprimitiveEXT out uint fragDataIndexID[128];
+layout(location=HGL_LOCATION_UV0) out vec2 fragUV0[256];
+layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[256];
+layout(location=HGL_LOCATION_STYLE_ID) perprimitiveEXT out uint fragStyleID[128];
 
 void WriteCharQuadVertexOutputs(uint vid, vec2 uv, vec4 color)
 {

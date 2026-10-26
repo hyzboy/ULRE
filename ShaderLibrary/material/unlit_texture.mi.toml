@@ -6,9 +6,6 @@ id = "UnlitTexture"
 # 全部由领域 UnlitTexture 的契约给出（Sampler2DArray / 必绑）。
 domain = "UnlitTexture"
 
-[vertex]
-varyings = ["emit_data_index_id", "emit_uv0"]
-
 [resources]
 textures = [{ name = "base_color" }]
 samplers = ["Trilinear"]

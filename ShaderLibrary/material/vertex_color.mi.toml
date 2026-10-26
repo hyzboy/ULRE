@@ -5,6 +5,3 @@ id = "VertexColor"
 # 顶点语义需求（Position/Color）、顶点提供策略、表面来源模块全部由领域
 # VertexColor 的契约给出。
 domain = "VertexColor"
-
-[vertex]
-varyings = ["emit_vertex_color"]

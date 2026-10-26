@@ -23,8 +23,8 @@
 #include "material/pbr_surface_source.glsl"
 #include "ntb/ntb_none.glsl"
 #include "surface/material_surface.glsl"
-layout(location=0) flat perprimitiveEXT in  uint fragDataIndexID;
-layout(location=3) in vec2 fragUV0;
+layout(location=HGL_LOCATION_DATA_INDEX_ID) flat perprimitiveEXT in  uint fragDataIndexID;
+layout(location=HGL_LOCATION_UV0) in vec2 fragUV0;
 
 void main()
 {

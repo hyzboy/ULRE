@@ -120,3 +120,7 @@ target_link_libraries(ULRE.ShaderProgramBuild PUBLIC ULRE.ShaderRuntimeContract
                                                     ULRE.ShaderMaterialData
                                                     ULRE.ShaderCompiler
                                                     ULRE.Debug)
+
+target_include_directories(ULRE.ShaderProgramBuild PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/ShaderCompiler
+    ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)

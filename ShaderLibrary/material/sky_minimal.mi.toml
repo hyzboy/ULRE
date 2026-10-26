@@ -4,11 +4,3 @@ id = "SkyMinimal"
 # 材质实例：只填领域 + 资源 + 数值。
 # 顶点语义需求（Position）、顶点提供策略、表面来源模块全部由领域 Sky 的契约给出。
 domain = "Sky"
-
-# 领域 Sky 的片段主着色器是**物理固定**的一份，形状 `layout(location=0) flat
-# perprimitiveEXT in uint fragDataIndexID;` 写在里面，不会因为某个材质用不到
-# 材质私有数据就消失。所以这里必须声明 `emit_data_index_id`：缺了它，网格阶段
-# 不产出该输出，SPIR-V 链接期直接报「fragment input #0 has no matching mesh
-# output」。天空单实例绘制时实例号恒为 0，与原先固定 `0u` 的含义一致。
-[vertex]
-varyings = ["emit_frag_direction", "emit_data_index_id"]
