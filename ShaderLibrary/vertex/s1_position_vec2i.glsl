@@ -30,9 +30,7 @@ void LoadVertexData()
     Position = vec2(float(int(d) << 16 >> 16),
                     float(int(d) >> 16));
     LoadUV();
-#ifdef HGL_NTB_LOADER
-    HGL_NTB_LOADER
-#endif
+    LoadNTB();
 #ifdef HGL_COLOR_LOADER
     HGL_COLOR_LOADER
 #endif

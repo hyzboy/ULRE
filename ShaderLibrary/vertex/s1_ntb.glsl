@@ -9,7 +9,7 @@
 // 未来发行版格式：RG8/RG16F/RGB10A2/R11G11B10——uint 打包 + 模块内位解码
 //   （RG16F 用 unpackHalf2x16、RG8 用 unpackUnorm2x16、RGB10A2/R11G11B10 手写位解码）
 //   ——同一 VertexNTB SSBO，仅本模块的解码实现不同（C++ 侧零感知）
-// 接口约定：声明全局 Normal + HGL_NTB_LOADER 宏（s1_position_vec3 的 LoadVertexData 展开）
+// 接口约定：声明全局 Normal + LoadNTB()（s1_position_vec3 的 LoadVertexData 调用）
 // 注意：Vulkan gl_VertexIndex 已含 firstVertex（BaseVertex）——data[gl_VertexIndex] 即绝对顶点号
 #ifndef S1_NTB_GLSL
 #define S1_NTB_GLSL
@@ -20,6 +20,11 @@
 
 vec3 Normal;
 
-#define HGL_NTB_LOADER { Normal = sbo_vertex_ntb.data[draw_params.vertex_base + VertexIndexID]; }
+#define S1_STREAM_NTB 1
+
+void LoadNTB()
+{
+    Normal = sbo_vertex_ntb.data[draw_params.vertex_base + VertexIndexID];
+}
 
 #endif // S1_NTB_GLSL

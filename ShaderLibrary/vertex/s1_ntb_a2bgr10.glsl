@@ -17,12 +17,14 @@
 
 vec3 Normal;
 
-#define HGL_NTB_LOADER \
-    { \
-        const uint packed = sbo_vertex_ntb.data[draw_params.vertex_base + VertexIndexID]; \
-        Normal = vec3(float(packed & 0x3FFu) / 1023.0 * 2.0 - 1.0, \
-                      float((packed >> 10) & 0x3FFu) / 1023.0 * 2.0 - 1.0, \
-                      float((packed >> 20) & 0x3FFu) / 1023.0 * 2.0 - 1.0); \
-    }
+#define S1_STREAM_NTB 1
+
+void LoadNTB()
+{
+    const uint packed = sbo_vertex_ntb.data[draw_params.vertex_base + VertexIndexID];
+    Normal = vec3(float(packed & 0x3FFu) / 1023.0 * 2.0 - 1.0,
+                  float((packed >> 10) & 0x3FFu) / 1023.0 * 2.0 - 1.0,
+                  float((packed >> 20) & 0x3FFu) / 1023.0 * 2.0 - 1.0);
+}
 
 #endif // S1_NTB_A2BGR10_GLSL

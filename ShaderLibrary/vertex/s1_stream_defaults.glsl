@@ -22,4 +22,9 @@
 void LoadUV() { }
 #endif
 
+// 法线（s1_ntb / s1_ntb_rg8 / s1_ntb_rg16f / s1_ntb_a2bgr10 提供）
+#ifndef S1_STREAM_NTB
+void LoadNTB() { }
+#endif
+
 #endif // S1_STREAM_DEFAULTS_GLSL
