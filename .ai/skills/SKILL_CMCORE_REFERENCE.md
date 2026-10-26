@@ -869,6 +869,8 @@ const uint type_count = hgl::GetObjectTypeCount();
 - 类型注册表使用静态存储，`ObjectTypeInfo*` 指针在进程内始终有效，容量 1024 种类型。
 - 与日志关联见 `.ai/skills/SKILL_LOGGING_REFERENCE.md` 的「对象身份与日志关联」一节（`ObjectLogger::BindObjectIdentity()`）。
 
+完整可运行验证见 `CMCore/examples/system/MetaObjectTest.cpp`（构建目标 `MetaObjectTest`）：用例 1 验证 `Object` 身份与 `Init`/`Release` 幂等，用例 2 验证 `RefObject` 计数归零自动销毁，用例 3 验证 `MetaObject` 卸载资源保留 meta 并可重载。退出码 0 即全部通过。
+
 ---
 
 ## 8. 文件系统扩展（Filesystem Extensions）
