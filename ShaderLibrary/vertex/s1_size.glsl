@@ -5,7 +5,7 @@
 // @ulre provide Size
 // @ulre end
 // Stage 1: 顶点尺寸/宽度从独立 SSBO 读取（VF_V2F——vec2 直读 8B/顶点，取 .x 为宽度）
-// 定义 HGL_SIZE_LOADER 宏，由 s1_position_* 的 LoadVertexData 展开
+// 提供 LoadSize()，由 s1_position_* 的 LoadVertexData 调用
 #ifndef S1_SIZE_GLSL
 #define S1_SIZE_GLSL
 
@@ -15,7 +15,12 @@
 
 float Width;
 
-#define HGL_SIZE_LOADER { Width = sbo_vertex_size.data[draw_params.vertex_base + VertexIndexID].x; }
+#define S1_STREAM_SIZE 1
+
+void LoadSize()
+{
+    Width = sbo_vertex_size.data[draw_params.vertex_base + VertexIndexID].x;
+}
 
 // 尺寸访问器：LineQuad 主体只认这一个口（.x = 满宽/最粗，.y = 最细阈值），
 // 不直接认 `Width` 全局 —— 形状 master 里的主体因此不需要知道 Size 从哪来。

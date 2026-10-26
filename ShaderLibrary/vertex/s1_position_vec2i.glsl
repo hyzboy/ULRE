@@ -32,15 +32,9 @@ void LoadVertexData()
     LoadUV();
     LoadNTB();
     LoadColor();
-#ifdef HGL_LUMINANCE_LOADER
-    HGL_LUMINANCE_LOADER
-#endif
-#ifdef HGL_TRANSFORMID_LOADER
-    HGL_TRANSFORMID_LOADER
-#endif
-#ifdef HGL_SIZE_LOADER
-    HGL_SIZE_LOADER
-#endif
+    LoadLuminance();
+    LoadTransformID();
+    LoadSize();
 }
 
 #endif // S1_POSITION_VEC2I_GLSL

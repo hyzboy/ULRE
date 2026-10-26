@@ -7,7 +7,7 @@
 // Stage 1: 顶点亮度从独立 SSBO 读取（VF_V1UN8——1B/顶点）
 // 打包布局：4 个亮度字节/uint（VAB stride 1 紧凑——uint 数组按 4B 对齐读）
 // 注：glslang 不支持 uint8_t 数组（8bit storage 转换失败）——uint 打包解码
-// 定义 HGL_LUMINANCE_LOADER 宏，由 s1_position_* 的 LoadVertexData 展开
+// 提供 LoadLuminance()，由 s1_position_* 的 LoadVertexData 调用
 #ifndef S1_LUMINANCE_GLSL
 #define S1_LUMINANCE_GLSL
 
@@ -17,11 +17,13 @@
 
 float Luminance;
 
-#define HGL_LUMINANCE_LOADER \
-    { \
-        const uint vidx = draw_params.vertex_base + VertexIndexID; \
-        const uint packed = sbo_vertex_luminance.data[vidx >> 2]; \
-        Luminance = float((packed >> ((vidx & 3u) * 8u)) & 0xFFu) / 255.0; \
-    }
+#define S1_STREAM_LUMINANCE 1
+
+void LoadLuminance()
+{
+    const uint vidx = draw_params.vertex_base + VertexIndexID;
+    const uint packed = sbo_vertex_luminance.data[vidx >> 2];
+    Luminance = float((packed >> ((vidx & 3u) * 8u)) & 0xFFu) / 255.0;
+}
 
 #endif // S1_LUMINANCE_GLSL

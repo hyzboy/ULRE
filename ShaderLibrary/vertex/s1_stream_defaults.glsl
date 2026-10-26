@@ -33,4 +33,19 @@ void LoadNTB() { }
 void LoadColor() { }
 #endif
 
+// 亮度（s1_luminance 提供）
+#ifndef S1_STREAM_LUMINANCE
+void LoadLuminance() { }
+#endif
+
+// 调色板变换索引（s1_transform_id 提供）
+#ifndef S1_STREAM_TRANSFORM_ID
+void LoadTransformID() { }
+#endif
+
+// 线宽/尺寸（s1_size 提供）
+#ifndef S1_STREAM_SIZE
+void LoadSize() { }
+#endif
+
 #endif // S1_STREAM_DEFAULTS_GLSL
