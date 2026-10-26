@@ -10,10 +10,8 @@
 #include<hgl/mtl/ShaderCodeModuleRegistry.h>
 #include<hgl/mtl/ShaderLibraryPath.h>
 #include<hgl/log/Log.h>
+#include<hgl/type/String.h>
 #include<cstring>
-#include<algorithm>
-#include<vector>
-#include<string>
 
 namespace hgl::graph::mtl{
 
@@ -23,7 +21,7 @@ namespace
         const MaterialDefinition &definition,
         const MaterialDefinitionBuildRequest &request,
         VkFormat &out_position_format,
-        std::string &out_vertex_input_glsl)
+        AnsiString &out_vertex_input_glsl)
     {
         switch (definition.vertex_provider_policy)
         {
@@ -39,7 +37,7 @@ namespace
 
         // SSBO 顶点输入：顶点输入由下方 s1_* 模块选择完成，无 provider 图。
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
-        out_vertex_input_glsl.clear();
+        out_vertex_input_glsl.Clear();
         out_position_format = VK_FORMAT_UNDEFINED;
 
         // SSBO 顶点输入：C++ 只做"选择"——按需求语义选 s1_* 模块，
@@ -203,15 +201,8 @@ bool BuildResolvedMaterialVertexABI(
     const MaterialDefinitionBuildRequest &request,
     MaterialResolvedVertexABI &out_abi)
 {
-    std::string vertex_input_glsl;
-    VkFormat position_format = VK_FORMAT_UNDEFINED;
-    if (!BuildResolvedVertexABI(definition, request, position_format,
-                                vertex_input_glsl))
-        return false;
-
-    out_abi.position_format = position_format;
-    out_abi.vertex_input_glsl = vertex_input_glsl.c_str();
-    return true;
+    return BuildResolvedVertexABI(definition, request, out_abi.position_format,
+                                  out_abi.vertex_input_glsl);
 }
 
 }//namespace hgl::graph::mtl

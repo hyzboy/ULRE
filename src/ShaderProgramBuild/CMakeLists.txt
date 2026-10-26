@@ -26,9 +26,7 @@ SOURCE_GROUP("Common" FILES ${SHADERPROGRAMBUILD_COMMON_FILES})
 
 set(TEMPLATE_FILES
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ResolvedRenderTemplate.h
-    template/RenderTemplateResolve.cpp
-    ${SHADERPROGRAMBUILD_INCLUDE_PATH}/PipelineConfigEmitter.h
-    template/PipelineConfigEmitter.cpp)
+    template/RenderTemplateResolve.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
 
 set(SSBO_STRUCT_FILES
@@ -62,16 +60,12 @@ SOURCE_GROUP("Compile" FILES ${COMPILE_FILES})
 set(CONTRACT_FILES
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/CanonicalShaderContract.h
     contract/CanonicalShaderContract.cpp
-    ${SHADERPROGRAMBUILD_INCLUDE_PATH}/MaterialOutputContract.h
-    contract/MaterialOutputContract.cpp
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/MaterialCoverageContract.h
     contract/MaterialCoverageContract.cpp
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/MaterialStageInterface.h
     contract/MaterialStageInterface.cpp
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ShaderSemanticRegistry.h
     contract/ShaderSemanticRegistry.cpp
-    ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ShaderConfig.h
-    contract/ShaderConfig.cpp
     contract/CanonicalContractWriter.h
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ShaderStageValueType.h
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/SerializedVertexEntry.h)
@@ -86,14 +80,6 @@ set(BUILDER_FILES
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/VertexShaderNodeConfig.h
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/VertexNodeConfigResolver.h)
 SOURCE_GROUP("Builder" FILES ${BUILDER_FILES})
-
-# ── 构建期枚举（头-only）─────────────────────────────────────────────────────
-# 只剩 PassType：它唯一的消费者是 contract/MaterialOutputContract.h（输出契约），
-# 运行时链路不引用。PipelineConfig.h（Vulkan PSO 数据）与 MeshShaderMode.h、
-# RenderTargetOutputConfig.h 的消费者在数据面/下层，已下移到 ULRE.ShaderMaterialData。
-set(MATERIAL_TYPE_FILES
-    ${SHADERPROGRAMBUILD_INCLUDE_PATH}/PassType.h)
-SOURCE_GROUP("Material Types" FILES ${MATERIAL_TYPE_FILES})
 
 # ── 设备 profile 契约（头-only）──────────────────────────────────────────────
 # 已整体迁入 ULRE.ShaderRuntimeContract：设备能力契约运行时也要用
@@ -112,7 +98,6 @@ add_cm_library(ULRE.ShaderProgramBuild "ULRE"
     ${COMPILE_FILES}
     ${CONTRACT_FILES}
     ${BUILDER_FILES}
-    ${MATERIAL_TYPE_FILES}
 )
 
 # Program build consumes the runtime contracts, material data, and stage compiler.

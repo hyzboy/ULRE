@@ -71,6 +71,39 @@ namespace hgl::graph::mtl
         return true;
     }
 
+    bool BuildOutputContract(
+        const ShaderProgramPurpose purpose,
+        OutputContract &out_contract) noexcept
+    {
+        out_contract = {};
+        out_contract.purpose = purpose;
+
+        switch (purpose)
+        {
+        case ShaderProgramPurpose::ForwardColor:
+        {
+            hgl::hash::FNV1aHasher64 h;
+            h << "outColor";
+            out_contract.attachments.Add({
+                static_cast<uint64>(h),
+                ShaderStageValueType::Vec4,
+                0,
+                1,
+                0
+            });
+            break;
+        }
+        case ShaderProgramPurpose::DepthOnly:
+        case ShaderProgramPurpose::ShadowDepth:
+            out_contract.depth_only = true;
+            break;
+        default:
+            return false;
+        }
+
+        return ValidateOutputContract(out_contract);
+    }
+
     bool SerializeOutputContract(
         const OutputContract &contract,
         ValueArray<uint8> &out_bytes)

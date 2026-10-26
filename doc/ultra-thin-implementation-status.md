@@ -792,7 +792,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 ## 11. 每个子阶段的完成定义（DoD）
 
-- [x] `ShaderResourceSchemaRegressionGate all` → **59 PASS / 0 FAIL / exit=0**（含 `reflection` 分组；新增 case 时数量随之增加并同步文档）
+- [x] `ShaderResourceSchemaRegressionGate all` → **57 PASS / 0 FAIL / exit=0**（已退役死契约 D2/PC 2 项用例；含 `reflection` 分组；新增/退役 case 时数量随之同步文档）
 - [x] **interstage location 单源化**：`InterStageSemanticRegistry[]` 是唯一真源（`location_macro` + `stable_location`），`ShaderLibrary/common/interstage_locations.glsl` 由 `InterStageLocationMacroGen --emit` 生成、构建期由 `interstage_locations_verify`（ALL 目标）+ `VerifyInterStageLocations`（ctest）校验。C++ 侧不再持有名字→数字对照表（门禁改查 `FindInterStageSemanticByLocationMacro()` 回退 `isdigit`）。改注册表后必须重跑 `--emit`，否则常规构建即失败
 - [x] `SceneRenderTemplateResolverRegression` / `ShaderDocumentRegression` / `ShaderDocumentProductionRegression` → 全 exit=0
 - [x] `DomainOptionsRegression`（`domain_options_regression`）→ **47 PASS / 0 FAIL**。断言 `EmitMeshOptions` 的逐字节文本与纯度：`mesh_options.glsl` 严格保持纯 include 列表（特殊拓扑 LineQuad 的 `GetLineSize()` 缺省在 `line_quad_body.glsl` 自持，不污染通用 options 也不污染 3D 网格）

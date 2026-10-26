@@ -12,7 +12,6 @@
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/graph/font/CharQuadConfig.h>
-#include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
@@ -950,26 +949,17 @@ namespace hgl::graph::mtl
         }
 
         /// 校验并归一化输出附件契约。
-        ///
-        /// 必须先于 Phase 4：Compose() 读 plan.output_contract，契约非法时要
-        /// 在这里给出定位明确的诊断，而不是在几千行 GLSL 里失败。
         bool BuildFragmentOutputContract(
             const MaterialDefinition &definition,
             MaterialProgramAssemblyPlan &plan)
         {
-            MaterialOutputContractDiagnostic output_diagnostic{};
-            if (!BuildMaterialOutputContract(
-                    plan.purpose,
-                    plan.output_contract,
-                    output_diagnostic))
+            if (!BuildOutputContract(plan.purpose, plan.output_contract))
             {
                 s_last_material_program_assembly_error =
-                    "BuildMaterialOutputContract failed";
+                    "BuildOutputContract failed";
                 GLogError(
-                    "[MaterialProgramAssembler] Material output contract build failed: name=%s error=%s",
-                    definition.definition_name.c_str(),
-                    GetMaterialOutputContractErrorName(
-                        output_diagnostic.error));
+                    "[MaterialProgramAssembler] Material output contract build failed: name=%s",
+                    definition.definition_name.c_str());
                 return false;
             }
 

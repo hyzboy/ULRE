@@ -95,6 +95,10 @@ namespace hgl::graph::mtl
 
     bool ValidateOutputContract(const OutputContract &contract) noexcept;
 
+    bool BuildOutputContract(
+        ShaderProgramPurpose purpose,
+        OutputContract &out_contract) noexcept;
+
     bool SerializeOutputContract(
         const OutputContract &contract,
         ValueArray<uint8> &out_bytes);
