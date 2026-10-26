@@ -224,7 +224,10 @@ private:
             return false;
         }
 
-        SAFE_CLEAR(bc7_probe);
+        // bc7_probe 由 TextureManager 持有（LoadTexture2D 内部 Add 过），只作规格探针用：
+        // 交还管理器释放，不得 delete
+        tex_manager->Release(bc7_probe);
+        bc7_probe = nullptr;
 
         return true;
     }
@@ -410,17 +413,15 @@ public:
 
     ~TextureMipLevelsApp()
     {
-        auto *tex_manager = GetManager<TextureManager>();
-
-        if (tex_manager)
-        {
-            SAFE_CLEAR(mip_level_texture_2d);
-            SAFE_CLEAR(mip_level_array_rgba8);
-            SAFE_CLEAR(mip_level_array_bc7);
-        }
-
-        SAFE_CLEAR(sampler);
-        SAFE_CLEAR(ecs_world);
+        // 所有权单点：mip_level_* 纹理由 TextureManager 持有、sampler 由 SamplerManager 持有、
+        // ecs_world 由框架持有。示例只做观察，析构不得 delete / SAFE_CLEAR ——
+        // 否则管理器收尾时会二次 delete（实测 AV @ 0xFEEEFEEE，
+        // 栈 ~Sampler ← ObjectManagerImpl::Clear ← SamplerManager::Release ← ~GraphModuleManager）。
+        mip_level_texture_2d  = nullptr;
+        mip_level_array_rgba8 = nullptr;
+        mip_level_array_bc7   = nullptr;
+        sampler               = nullptr;
+        ecs_world             = nullptr;
     }
 
     bool Init() override
