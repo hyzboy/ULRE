@@ -15,6 +15,16 @@
 //   MeshVertexIndex / VertexIndexID / draw_params / sbo_vertex_index / ViewportUBO
 //   LoadVertexData() / GetLocalPos() / GetClipPos() / GetLineSize()
 
+// 线宽缺省：LineQuad 几何主体无条件调用 `GetLineSize()`（.x 满宽 / .y 最细阈值）。
+// 当顶点输入未装载 `vertex/s1_size.glsl`（未定义 S1_SIZE_GLSL）时，本文件
+// 自持 1 像素默认线宽，不污染通用 mesh_options.glsl 或 3D 网格。
+#ifndef S1_SIZE_GLSL
+vec2 GetLineSize()
+{
+    return vec2(1.0, 1.0);
+}
+#endif
+
 void main()
 {
     const MeshDrawCommand cmd =
