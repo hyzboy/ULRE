@@ -12,9 +12,12 @@
 //   4. 定义 `void WriteMeshVertexOutputs(uint vid)`
 //   5. `#define ULRE_MESH_MAX_VERTS <本组顶点数>` 与 `#define ULRE_MESH_INVOCATIONS <local_size_x>`
 //
-// 为什么 2/3 的顺序不能换：s1_* 数据模块声明属性变量，s1_position_* 用
-// `HGL_*_LOADER` 宏把它们折进 `LoadVertexData()`，因此 options 必须整体排在
-// varying 声明之后、写出函数之前。
+// 为什么 2/3 的顺序不能换：`s1_position_*` 的 `LoadVertexData()` 无条件按固定
+// 顺序调用各数据流的 `LoadXxx()`，而 `s1_*` 数据模块声明属性变量并以同名头文件
+// 守卫（`S1_STREAM_XXX`）标记"本流在位"，未被选中的流由
+// `vertex/s1_stream_defaults.glsl` 的空实现补齐，因此 options 必须整体排在
+// varying 声明之后、写出函数之前（属性变量先于写出函数可见）。
+// 调用序列的一致性由 VertexLoaderConsistency 工具守护（漏调 = 属性静默为 0）。
 //
 // local_size_x / max_vertices / max_primitives 是 CPU 侧派发契约（每组 64 线程、
 // 每组 192 顶点 = 64 三角形），不是可运行时调节的选项 —— 它们必须以**字面量**

@@ -735,9 +735,11 @@ recipe 覆盖、几何 ABI、图元类型、coverage 与设备 profile 都会改
    不得将此格式误列入固定源覆盖面。
 4. 把 6.4 的 `DrawTriangle` / `VertexColor`（`R16G16_SINT` + `Make2DNodeConfigOrtho(false)`）
    放入形状矩阵，确保节点配置、ABI 与 varying 链接在源选择时仍同一份解析结果。
-5. 当前 `ShaderLibrary/mesh/line_quad.glsl.tmpl` 仍用 `#ifdef S1_TRANSFORM_ID_GLSL` /
+5. ~~当前 `ShaderLibrary/mesh/line_quad.glsl.tmpl` 仍用 `#ifdef S1_TRANSFORM_ID_GLSL` /
    `S1_SIZE_GLSL` 改变执行语句，`vertex/s1_position_*.glsl` 仍按 `HGL_*_LOADER`
-   宏条件装载属性，`orient_world.glsl` 仍按 `HGL_L2W_FROM_VERTEX_ATTR` 条件编译。
+   宏条件装载属性~~（该快照已完成使命：`.glsl.tmpl` 已全部改写为 `.mesh`，`HGL_*_LOADER`
+   已在网格阶段收口 Layer 2 删除，见 §8），`orient_world.glsl` 仍按
+   `HGL_L2W_FROM_VERTEX_ATTR` 条件编译。
    这些不是 options 中允许保留的 dither 条件；若阶段六继续要求无 `#if`，固定形状必须
    静态封闭所需属性和变换路径，并删除这些依赖的分支，而不能只把当前模板改名为 `.mesh`。
 
@@ -771,7 +773,10 @@ Stage2/Stage3 模块路径、`needs_l2w`、八种 varying 标志、stage interfa
 ### 属性装载：结构性 `#if` 已经消失
 
 `s1_position_vec3.glsl` / `s1_position_vec2.glsl` 的 `LoadVertexData()` 原本靠 8 个
-`#ifdef HGL_*_LOADER` 钩子按需展开属性装载。固定源把这 8 个分支**静态展开成显式语句**：
+`#ifdef HGL_*_LOADER` 钩子按需展开属性装载。固定源把这 8 个分支**静态展开成显式语句**
+（下方片段是当时的中间形态；Layer 2 之后 `LoadVertexData()` 改为无条件调用
+`LoadUV(); LoadNTB(); LoadColor(); LoadLuminance(); LoadTransformID(); LoadSize();`，
+未在场的流由 `vertex/s1_stream_defaults.glsl` 的空实现补齐，语义等价）：
 
 ```glsl
 void LoadVertexData()
@@ -783,8 +788,8 @@ void LoadVertexData()
 ```
 
 固定源码及其 include 闭包不再含结构性 `#if`；`s1_uv` / `s1_ntb` 等属性模块只保留"声明
-全局变量 + 定义 `sbo_vertex_*` 基址宏"，其 `HGL_*_LOADER` 钩子在固定形状里无人消费
-（生成器删除后一并清理，见 6.5）。
+全局变量 + 定义 `sbo_vertex_*` 基址宏"，其装载钩子已在网格阶段收口 Layer 2 中
+**全部删除**（改为 `#define S1_STREAM_*` + `void LoadXxx()`，见 §8）。
 
 ### topology 数值为什么是字面量而不是 options 常量
 
@@ -1355,8 +1360,9 @@ include 顺序是硬约束，不能调换：
 6. `WriteMeshVertexOutputs`
 
 varying 必须在 options 之前：`s1_*` 数据模块要声明属性变量（`Position` / `Normal` / `TexCoord` /
-`Color` / …），`s1_position_*` 再用 `HGL_*_LOADER` 宏把它们折进 `LoadVertexData()`。options 整体
-排在 varying 之后、写出函数之前，才能既不破坏声明可见性、又保持「顶点解码由 options 决定」。
+`Color` / …），`s1_position_*` 的 `LoadVertexData()` 再按固定顺序调用各流的 `LoadXxx()`
+把它们装进属性变量（未在场的流由 `vertex/s1_stream_defaults.glsl` 的空实现补齐，见 §8）。
+options 整体排在 varying 之后、写出函数之前，才能既不破坏声明可见性、又保持「顶点解码由 options 决定」。
 
 ### `GetVertexColor()`：两种顶点色来源共用一个形状
 
@@ -1667,20 +1673,34 @@ vec2 GetLineSize() { return vec2(1.0, 1.0); }
 （`draw_params.vertex_count >> 1u` / `const uint total_chars = draw_params.vertex_count;` /
 `draw_params.total_vertices`）在新文件里依然不存在。
 
-### 8. 决策记录：`#ifdef HGL_*_LOADER` 宏保留
+### 8. 决策记录：`#ifdef HGL_*_LOADER` → 空对象 stub（已执行，宏已全删）
 
-`s1_position_vec3/vec2/vec2i.glsl` 的 `LoadVertexData()` 里有 7 段
-`#ifdef HGL_<STREAM>_LOADER` / `<宏>` / `#endif`。**这不是生成器遗留，保留。**
+历史状态：`s1_position_vec3/vec2/vec2i.glsl` 的 `LoadVertexData()` 里有 7 段
+`#ifdef HGL_<STREAM>_LOADER` / `<宏>` / `#endif`，各 `s1_*.glsl` 流模块自述
+`#define HGL_<STREAM>_LOADER { ... }` 并展开。当时的备选是：
 
-原因是这三个位置解码模块共用同一套流装载机制：`s1_uv.glsl` / `s1_color.glsl` / `s1_size.glsl` 等
-各自 `#define HGL_<STREAM>_LOADER { ... }`，位置模块在自己的 `LoadVertexData()` 里展开。
-这些宏的**定义者已经是库文件本身**（不再由 C++ 发射器 `#define`），语义与
-`HGL_L2W_FROM_VERTEX_ATTR` 相同——「流模块在场」。
+- **甲**：改成 `#include` 代码片段 → 3 位置变体 × 7 流 = **21 份片段文件**换 14 行 `#ifdef`，负收益；
+- **乙**：保留 `#ifdef` 宏（当时的暂定结论）；
+- **丙（最终采纳）**：**空对象 stub + 函数调用**。
 
-若改成直接 `#include` 代码片段，需要 3 个位置变体 × 7 种流 = 21 份片段文件，
-而收益只是消掉 14 行 `#ifdef`：**这是用 21 份文件换 14 行**，明确的负收益。
-判定标准仍然是「分支是否由 C++ 生成器写入」——由库自己拥有、且分支两侧是同一函数的
-不同实现片段的，可以留。
+采纳丙的形态：
+
+1. 每个流模块自述 `#define S1_STREAM_<NAME> 1` 并提供 `void Load<Name>()`；
+2. `vertex/s1_stream_defaults.glsl` 用 `#ifndef S1_STREAM_<NAME>` 为**未在场的流**补
+   同名空函数（6 个：UV / NTB / Color / Luminance / TransformID / Size）；
+3. 三个位置模块先 `#include "vertex/s1_stream_defaults.glsl"`，再在 `LoadVertexData()`
+   里**无条件按固定顺序**调用 6 个入口。
+
+为什么丙优于乙：`#ifdef` 方案的失效模式是「漏写一对 `#ifdef` = 该属性静默为 0」
+（AutoInstance 全黑的成因就是 `s1_position_vec2` 漏了顶点色装载），而这恰恰是
+**最难在测试里发现**的一类错误——几何正确、只有一个属性错。丙把这个事故类别
+**物理消除**：位置模块里不再有分支，「忘记 `#ifdef`」这个动作不再存在；替换后的
+新失效模式（漏写 `LoadXxx();` 调用）由 `VertexLoaderConsistency` 工具做三方对账
+（守卫 ↔ stub ↔ 三个位置模块的调用序列），规则全部从 GLSL 文本推导。
+另外丙不再依赖「位置模块必须最后 include」这一隐式约定，文件顺序耦合随之消失。
+
+`HGL_L2W_FROM_VERTEX_ATTR` **不在此列、保留**：它是「属性在位 → `GetL2W()` 走
+`l2w.mats[TransformID]`，否则按实例号查 `l2w_index`」的属性选择宏，不是装载宏。
 
 ### 验收结果
 
@@ -2028,5 +2048,5 @@ AtmosphereSky 的日志中，`SkyMinimal` 配方没有贴图行（`planned_textu
 ### 四、Layer 1 的清理动作
 
 1. **删除孤岛形状 master**：`ShaderLibrary/mesh/shape/charquad_256_dataid_uv_color.mesh` 是 `s1_color` 统一为 `s1_color_default` 之后的残骸——两份 builtin 文本材质（`kTextGpuSource` / `kTextGpuBitmapSource`）都声明了 `emit_style_id`，因此 `BuildMeshShapeName` 只会算出 `charquad_256_dataid_uv_color_style`，无 style 的名字再无任何输入能拼出。删除前已核对引用面：`src/` 内仅 `MaterialProgramAssembler.cpp` 的一条历史注释提及，门禁无硬编码路径，无资产引用。
-2. **本节即白名单基线**：后续 Layer 2（消灭 `HGL_*_LOADER`）、Layer 3（`VertexABIBuilder` 表驱动化）、Layer 4（options 预设化）均以本节的模块全集与家族划分为对照表。
+2. **本节即白名单基线**：Layer 2（消灭 `HGL_*_LOADER`，**已完成**，见 §8）、Layer 3（`VertexABIBuilder` 表驱动化）、Layer 4（options 预设化）均以本节的模块全集与家族划分为对照表。
 3. **门禁基线锁定**：`ShaderResourceSchemaRegressionGate all` = **57 PASS / 0 FAIL**，`emit-fixed-mesh` = **covered=37 missing=0 failed=0**。删除孤岛文件后两项计数必须不变（该形状从未进入覆盖清单）。

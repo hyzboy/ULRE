@@ -804,3 +804,53 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 - [x] 更新 `doc/ultra-thin-fixed-shader-architecture.md` 的「阶段进展」条目
 - [x] **发行形态跨进程验收 PASS**：`verify-release-form.ps1` 5/5（烘焙 → 探针只链 `ULRE::Runtime` 链接 → 只读运行），证明零生成器符号。任何触碰 `ULRE::Runtime` 成员列表、清单后端、`ShaderArtifactStore` 磁盘布局的改动都必须重跑，见 `doc/shadergen-release-form-verification.md` §6
 - [x] 独立提交，提交信息带 `feat(ultra-thin):` / `docs(ultra-thin):` 前缀
+
+## 12. 网格阶段收口进展（mesh consolidation）
+
+计划真源见会话 `plan.md`：《网格阶段收口与极简化深度重构计划》，5 层串行，每层独立分支、
+层内每个小动作独立提交。设计背景见 `doc/shadergen-elimination-domain-fixed-architecture.md`
+「阶段十-1」（Layer 1 白名单基线）与 §8（Layer 2 决策记录）。
+
+### Layer 1：顶点解码矩阵白名单盘点（分支 `feature/mesh-layer1-inventory-cleanup`）
+
+- [x] `(s1, s2, s3)` 组合重新盘点：`ShaderLibrary` 模块全集 83 份（当次），实测可达
+      `(s1,s2,s3)` 组合去重后 28 行、5 个组合家族
+- [x] 删除孤岛形状主文件 `ShaderLibrary/mesh/shape/charquad_256_dataid_uv_color.mesh`
+- [x] 缓存快照的可信度边界已写入文档：`mesh_options.glsl` 缓存只能当**证据下界**
+      （旧版本缓存缺新模块），组合清单必须由模块全集 + 家族划分推导，不能只扫缓存
+- [x] 架构文档新增「阶段十-1」节（模块全集表、实测可达矩阵、缓存可信度边界）
+
+### Layer 2：消灭 `HGL_*_LOADER` 宏（分支 `feature/mesh-layer2-eliminate-loader-macros`）
+
+采用**空对象 stub + 函数调用**（方案丙，否决了"保留 `#ifdef`"与"21 份片段文件"）：
+
+- [x] 2a UV 流、2b NTB 流、2c 顶点色流、2d 亮度/变换索引/尺寸流 —— 全部改为
+      `#define S1_STREAM_<NAME> 1` + `void Load<NAME>()`，各自独立提交
+- [x] 新建 `ShaderLibrary/vertex/s1_stream_defaults.glsl`：6 个 `#ifndef S1_STREAM_*` + 空函数
+- [x] 三个位置模块（`s1_position_vec2/vec2i/vec3`）的 `LoadVertexData()` 改为**无条件**调用
+      `LoadUV()` / `LoadNTB()` / `LoadColor()` / `LoadLuminance()` / `LoadTransformID()` / `LoadSize()`
+- [x] 全库 `HGL_*_LOADER` 归零；`HGL_L2W_FROM_VERTEX_ATTR` **保留**（属性选择宏，非装载宏）
+- [x] `VertexLoaderConsistency` 工具语义重写：从「`HGL_*_LOADER` 对称性」改为
+      「`S1_STREAM_*` 守卫 ↔ defaults stub ↔ 三个位置模块调用序列」三方对账，
+      规则全部从 GLSL 文本推导。**它恢复了"漏调用 = 属性静默为 0"的守门能力**
+- [x] 该工具做过反向探针：删一处 `LoadNTB();` → FAIL 并打印三份序列差异；删一个 stub →
+      FAIL 4 项（② 缺 stub + ④ 三个位置模块各有一次无 stub 调用）。探针后已还原
+- [x] `kShaderCodeModuleCount` 83 → 84（新增 `s1_stream_defaults.glsl`）
+
+**Layer 2 的收益不是少了几行 `#ifdef`，而是删掉了一个事故类别**：旧方案下"位置模块漏写
+一对 `#ifdef`"会让该属性静默为 0（AutoInstance 全黑即此因），几何正确、测试难发现；
+新方案下位置模块没有分支，"忘记 `#ifdef`"这个动作不存在了，新增的失效模式（漏写
+`LoadXxx();`）由上述工具做跨文件对账。
+
+### 各层验收门槛（每层收尾必须全绿）
+
+| 检查 | 门槛 |
+| --- | --- |
+| `ShaderResourceSchemaRegressionGate all` | 57 PASS / 0 FAIL / exit=0 |
+| `ShaderResourceSchemaRegressionGate emit-fixed-mesh` | `covered=37 missing=0 failed=0` |
+| `ctest -L 'shadermaterial|shadergen'` | 16/16 |
+| `VertexLoaderConsistency <ShaderLibrary/vertex>` | Layer 2 起：6 个流守卫 × 3 个位置模块，调用序列一致 |
+
+> ⚠️ 本机示例 exe 暂时跑不起来（`BasicLitMeshes.exe` 报 `cannot load GLSLCompiler plugin module`，
+> 输出目录缺插件 `.dll`），因此 Layer 1-2 的验证只到门禁/ctest 一级；实机示例验证统一放在
+> Layer 5，需先把 `GLSLCompiler` 插件产物复制到 `build/out/Windows_64_Debug/`。
