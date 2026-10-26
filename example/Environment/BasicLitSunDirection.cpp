@@ -65,12 +65,8 @@ private:
     struct MeshEntry
     {
         Geometry* geometry = nullptr;
+        // Geometry 由 GeometryManager 唯一持有，本结构只做观察（勿在此 delete）
         PrimitiveAsset asset{};
-
-        ~MeshEntry()
-        {
-            delete geometry;
-        }
     };
 
     ECSContext* ecs_context = nullptr;
@@ -481,6 +477,10 @@ private:
 public:
     ~BasicLitSunDirectionApp()
     {
+        // GeometryDataVDM releases its ranges through mesh_vdm when GeometryManager
+        // destroys the geometries, so clear that owner before releasing the manager.
+        if (auto* geometry_manager = GetManager<GeometryManager>())
+            geometry_manager->Release();
         SAFE_CLEAR(mesh_vdm)
     }
 
