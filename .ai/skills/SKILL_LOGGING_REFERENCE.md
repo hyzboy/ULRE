@@ -35,6 +35,48 @@
 | Error   | `Error`   | 有效 | 错误 |
 | Fatal   | `Fatal`   | 有效 | 致命错误 |
 
+阈值按 `Verbose < Debug < Info < Notice < Warning < Error < Fatal` 递增；消息级别达到或高于阈值时才输出。
+
+---
+
+## 模块类别与运行时过滤
+
+模块 logger 同时作为过滤类别。旧的 `DEFINE_LOGGER_MODULE(name)` 默认类别阈值为 `Verbose`，不改变原有输出行为；需要声明模块默认级别时可使用：
+
+```cpp
+DEFINE_LOGGER_MODULE_WITH_LEVEL(Render, hgl::LogLevel::Info)
+```
+
+运行时可分别调节类别默认阈值、输出器全局阈值，以及单个“类别 × 输出器”组合：
+
+```cpp
+using namespace hgl::logger;
+
+const LogCategoryId render = LogLogRender.GetCategoryId();
+const LogOutputterId console = FindLogOutputter(OS_TEXT("Console"));
+const LogOutputterId file = FindLogOutputter(OS_TEXT("File"));
+
+SetLogCategoryLevel(render, hgl::LogLevel::Debug);
+SetLogOutputterLevel(console, hgl::LogLevel::Warning);
+SetLogOutputterLevel(file, hgl::LogLevel::Verbose);
+
+// 此显式组合规则覆盖类别默认值和输出器全局值。
+SetLogCategoryOutputterLevel(render, file, hgl::LogLevel::Verbose);
+ClearLogCategoryOutputterLevel(render, file);
+```
+
+`FindLogOutputter` 在已注册的输出器中按名称查找；内置输出器名称为 `Console`、`File`。找不到时返回 `InvalidLogOutputterId`；`SetLogOutputterLevel` 对无效输出器 ID 返回 `false`，类别规则 API 对未知类别 ID 或未注册的输出器 ID 返回 `false`。
+
+阈值计算规则：
+
+1. 存在类别×输出器显式规则时，只使用该规则。
+2. 否则，使用类别默认阈值和输出器全局阈值中更严格的一个。
+3. 只有至少一个输出器接受日志时才进行格式化；分发时仍会再次按输出器规则过滤。
+
+模块类别与显示用的对象名/实例名独立。没有显式类别的类日志按类名归类，全局宏归入 `Global` 类别。`DEFINE_LOGGER_MODULE`、`FLogXxx`、`MLogXxx` 和 `OBJECT_LOGGER` 的现有用法保持兼容。
+
+Release 下现有 `Verbose`/`Debug` 宏仍会在编译期移除；运行时阈值只能调节已编译进目标文件的级别，不能重新启用已剔除的调用。
+
 ---
 
 ## 模式1：类成员日志（最常用）
