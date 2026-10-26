@@ -31,12 +31,7 @@ void LoadVertexData()
     Position = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
     LoadUV();
     LoadNTB();
-#ifdef HGL_COLOR_LOADER
-    HGL_COLOR_LOADER
-#endif
-#ifdef HGL_COLORINDEX_LOADER
-    HGL_COLORINDEX_LOADER
-#endif
+    LoadColor();
 #ifdef HGL_LUMINANCE_LOADER
     HGL_LUMINANCE_LOADER
 #endif

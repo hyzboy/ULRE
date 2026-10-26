@@ -5,7 +5,7 @@
 // @ulre provide Color
 // @ulre end
 // Stage 1: 顶点色从独立 SSBO 读取（VF_V4F——vec4 直读 16B/顶点）
-// 定义 HGL_COLOR_LOADER 宏，由 s1_position_* 的 LoadVertexData 展开
+// 提供 LoadColor()，由 s1_position_* 的 LoadVertexData 调用
 #ifndef S1_COLOR_GLSL
 #define S1_COLOR_GLSL
 
@@ -15,7 +15,12 @@
 
 vec4 Color;
 
-#define HGL_COLOR_LOADER { Color = sbo_vertex_color.data[draw_params.vertex_base + VertexIndexID]; }
+#define S1_STREAM_COLOR 1
+
+void LoadColor()
+{
+    Color = sbo_vertex_color.data[draw_params.vertex_base + VertexIndexID];
+}
 
 // 语义取值口：形状主着色器只写 `fragVertexColor[vid] = GetVertexColor();`，
 // 由本模块决定「顶点色从哪来」。调色板索引版（s1_palette_index）提供同名函数，

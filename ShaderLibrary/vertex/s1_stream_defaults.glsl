@@ -27,4 +27,10 @@ void LoadUV() { }
 void LoadNTB() { }
 #endif
 
+// 顶点色来源（s1_color 直读 / s1_palette_index 调色板索引提供；
+// s1_color_default 只提供 GetVertexColor() 常量白，故此处仍走空实现）
+#ifndef S1_STREAM_COLOR
+void LoadColor() { }
+#endif
+
 #endif // S1_STREAM_DEFAULTS_GLSL
