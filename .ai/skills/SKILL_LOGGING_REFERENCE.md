@@ -251,8 +251,10 @@ FLogFatal(fmt, ...)
 | 参数类型 | 说明 | 示例 |
 |---------|------|------|
 | `const u8char *fmt, ...` | UTF-8 printf 风格（推荐） | `LogInfo(u8"路径：%s", path.c_str())` |
-| `const u16char *fmt, ...` | UTF-16 printf 风格 | `LogInfo(u"路径：%s", wpath.c_str())` |
+| `const U16String &text` | UTF-16 正文直接输出 | `LogInfo(U16String(U16_TEXT("日志正文")))` |
 | `const std::string &text` | 直接传 std::string（内部转换） | `LogInfo(std::string("hello"))` |
+
+变参 printf 风格格式化以 UTF-8 格式字符串为跨平台保证接口。Windows 仍提供 UTF-16 格式化重载；POSIX 不提供该变参重载，因为 `u16char` 是 `char16_t`，不能传给要求 `wchar_t` 的 `vswprintf`。POSIX 调用方可通过 `U16String` 直接输出 UTF-16 正文。
 
 ---
 
