@@ -758,15 +758,10 @@ namespace hgl::graph::mtl
                     // 命中复用（症状：换了顶点格式却还是老几何）。options 文件的
                     // include 闭包不在 ShaderLibrary 下，闭包哈希自然抓不到它，
                     // 所以把 options 的内容摘要作为溯源注释钉在文本尾部。
-                    hgl::hash::FNV1aHasher64 options_hasher;
-                    options_hasher.AppendBytes(
-                        mesh_options_glsl.c_str(),
-                        static_cast<size_t>(mesh_options_glsl.Length()));
-                    const AnsiString options_digest =
-                        AnsiString::numberOf(static_cast<uint64>(options_hasher));
-                    plan.ms += "\n// mesh-options-digest ";
-                    plan.ms += options_digest.c_str();
-                    plan.ms += "\n";
+                    // 摘要的算法与注释形态只有 `DomainOptions.h` 那一处定义：
+                    // 门禁与后端都要按同一口径复算，各写一份必然分叉。
+                    mtl::AppendMeshOptionsDigest(
+                        plan.ms, mtl::ComputeMeshOptionsDigest(mesh_options_glsl));
                 }
             }
 

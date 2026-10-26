@@ -165,10 +165,10 @@ namespace hgl::graph::mtl
     //
     //   1. **只发射真正被消费的 `#include`**，顺序固定为
     //      Stage 1（属性解码） → Stage 2（位置映射） → Stage 3（投影/视口）。
-    //      顺序不是风格问题：`s1_position_*` 的 `LoadVertexData()` 用
-    //      `#ifdef HGL_*_LOADER` 展开各属性装载，其它 s1 模块必须先于它被 include
-    //      才能定义出那些宏；而 `s2_*` 的 `GetLocalPos()` 依赖 Stage 1 声明的
-    //      `Position`，`s3_*` 的 `GetClipPos()` 依赖 Stage 2。
+    //      顺序不是风格问题：`s1_position_*` 的 `LoadVertexData()` 按固定顺序调用
+    //      各流模块的空对象实现（空对象模式见 `s1_stream_defaults.glsl`），所以
+    //      其它 s1 模块必须先于它被 include；而 `s2_*` 的 `GetLocalPos()` 依赖
+    //      Stage 1 声明的 `Position`，`s3_*` 的 `GetClipPos()` 依赖 Stage 2。
     //   2. **`s2` 与 `s3` 必须成对出现**。Stage 2 给出 `GetLocalPos()`、Stage 3 给出
     //      `GetClipPos()`/`GetWorldPos()`，主着色器的 `GetClipPos(GetLocalPos())`
     //      少了任一半都编不过。两者皆空是合法的唯一特例：CharQuad 一类自持全部
@@ -204,4 +204,59 @@ namespace hgl::graph::mtl
     bool EmitMeshOptions(
         const MeshOptionsInput &input,
         AnsiString &out_mesh_options_glsl);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // mesh options 摘要（stage 缓存键互锁）
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // 同形状的网格主着色器文本**逐字节相同**，两种完全不同的顶点格式会算出同一个
+    // stage source digest，磁盘上旧 SPV 被永久命中复用（症状：换了顶点格式，几何
+    // 还是老的）。options 文件的 include 闭包不在 ShaderLibrary 下，闭包哈希抓不到
+    // 它，所以必须把 options 文本的摘要送进 stage 键——落点是主着色器尾部的一行注释。
+    //
+    // 三处消费方必须**调同一个函数**，否则会各自漂移且都不报错：
+    //   ① 生产侧写注释（`MaterialProgramAssembler`，让 stage 键覆盖 options 内容）；
+    //   ② `DomainShaderBuildBackend` 给 options 目录名取网格哈希（两文件成对）；
+    //   ③ 门禁校验注释真的存在、只有一条、且等于落盘文本的摘要。
+    //
+    // 注释形态固定为 `"\n// mesh-options-digest <十进制 uint64>\n"`，其中前导换行属于
+    // 标记本身：主着色器不保证以换行收尾，标记自带一个才能保证注释独立成行。
+
+    /// 注释标记本体（**含前导换行**）。声明成数组而非 `const char *`，
+    /// 才能让扫描侧拿到编译期长度，不必再手数一遍字符。
+    inline constexpr char kMeshOptionsDigestMarker[] = "\n// mesh-options-digest ";
+    inline constexpr size_t kMeshOptionsDigestMarkerLength =
+        sizeof(kMeshOptionsDigestMarker) - 1;
+
+    /// options 文本 → 摘要。空指针/空长度返回 0（0 是"无摘要"的保留值）。
+    uint64 ComputeMeshOptionsDigest(const char *text, const size_t length);
+    uint64 ComputeMeshOptionsDigest(const AnsiString &text);
+
+    /// 把摘要追加到网格主着色器文本尾部（上述固定形态）。
+    /// 模板而非固定类型：生产侧的目标缓冲历史上是 `std::string`（`plan.ms`），
+    /// 而本层其余接口都用 `AnsiString`——为了一个拼接动作去改上游缓冲类型是反向成本。
+    template <typename TextType_>
+    void AppendMeshOptionsDigest(TextType_ &inout_glsl, const uint64 digest)
+    {
+        const AnsiString digits = AnsiString::numberOf(digest);
+        inout_glsl += kMeshOptionsDigestMarker;
+        inout_glsl += digits.c_str();
+        inout_glsl += "\n";
+    }
+
+    /// 扫描主着色器文本里的溯源注释。
+    /// 三种异常形态必须能与"不存在"区分开：多写一条、值不是十进制数字，
+    /// 都说明生产侧被改坏了，而它们在索引层面都会被当成合法注释静默放过。
+    enum class MeshOptionsDigestScan
+    {
+        Absent,     ///< 没有标记（CharQuad 一类不写 options 的路径，或生产侧漏写）
+        Present,    ///< 恰好一条，且值解析成功
+        Malformed,  ///< 标记在，但后面不是"至少一位十进制数字 + 行尾"
+        Duplicated, ///< 标记出现多于一次（谁才是被 stage 键覆盖的那一条不可判定）
+    };
+
+    /// `out_offset` 返回标记的字节偏移（用于剥离尾部注释，`Absent` 时不写）。
+    MeshOptionsDigestScan ScanMeshOptionsDigest(
+        const char *glsl, const size_t length,
+        uint64 &out_digest, size_t *out_offset = nullptr);
 }// namespace hgl::graph::mtl

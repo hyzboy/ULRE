@@ -371,12 +371,11 @@ namespace hgl::graph::mtl
             MakeOptionsKey(fragment_options_text, domain, purpose,
                            fragment_key, sizeof(fragment_key));
 
-            hgl::hash::FNV1aHasher64 mesh_hasher;
-            mesh_hasher.AppendBytes(
-                mesh_options_text.c_str(),
-                static_cast<size_t>(mesh_options_text.Length()));
-            const AnsiString mesh_key =
-                AnsiString::numberOf(static_cast<uint64>(mesh_hasher));
+            // 与主着色器尾部溯源注释**同一算法同一出处**（见 DomainOptions.h）：
+            // 目录名里的网格哈希与写进 stage 键的摘要必须是同一个数，否则"目录换了
+            // 但 stage 键没换"或反过来，两种错法都不会自己暴露。
+            const AnsiString mesh_key = AnsiString::numberOf(
+                mtl::ComputeMeshOptionsDigest(mesh_options_text));
 
             const OSString cache_root = GetShaderCacheRootPath();
             if (cache_root.IsEmpty())

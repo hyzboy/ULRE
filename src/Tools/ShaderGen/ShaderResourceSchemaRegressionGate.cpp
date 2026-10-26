@@ -3,6 +3,7 @@
 #include <hgl/mtl/BuiltinMaterialDefinitions.h>
 #include <hgl/mtl/MaterialDomain.h>
 #include <hgl/mtl/DomainShaderTemplate.h>
+#include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
@@ -1675,11 +1676,13 @@ namespace
                 {
                     // 生产文本尾部附了 `// mesh-options-digest <n>` 溯源注释
                     // （让 stage key 覆盖 generated/mesh_options.glsl），比对前剥掉。
-                    static const std::string kDigestMarker =
-                        "\n// mesh-options-digest ";
+                    // 剥离与校验共用同一处扫描实现（`DomainOptions.h`）。
                     std::string body = mesh->GetFinalGLSL();
-                    const size_t digest_at = body.rfind(kDigestMarker);
-                    if (digest_at != std::string::npos)
+                    hgl::uint64 digest_value = 0;
+                    size_t digest_at = 0;
+                    if (ScanMeshOptionsDigest(
+                            body.data(), body.size(), digest_value, &digest_at)
+                        != MeshOptionsDigestScan::Absent)
                         body.resize(digest_at);
 
                     const std::filesystem::path dirs[1] =
@@ -10106,10 +10109,13 @@ void main()
         // 生产文本尾部会附一行 `// mesh-options-digest <n>` 溯源注释：它的作用是
         // 让 stage key 覆盖 `generated/mesh_options.glsl` 的内容（同形状的主着色器
         // 文本逐字节相同，只有 options 不同）。它不是主着色器的一部分，比对时剥掉。
-        static const std::string kDigestMarker = "\n// mesh-options-digest ";
+        // 标记形态与扫描口径只有 `DomainOptions.h` 一处定义。
         std::string body = glsl;
-        const size_t digest_at = body.rfind(kDigestMarker);
-        if (digest_at != std::string::npos)
+        hgl::uint64 digest_value = 0;
+        size_t digest_at = 0;
+        if (ScanMeshOptionsDigest(
+                body.data(), body.size(), digest_value, &digest_at)
+            != MeshOptionsDigestScan::Absent)
             body.resize(digest_at);
 
         auto trim_tail = [](std::string &text)

@@ -1,5 +1,7 @@
 #include <hgl/mtl/DomainOptions.h>
 
+#include <hgl/util/hash/FNV1a.h>
+
 #include <cstdio>
 #include <cstring>
 
@@ -343,5 +345,89 @@ namespace hgl::graph::mtl
 
         out_mesh_options_glsl = text_buffer;
         return true;
+    }
+
+    // ── mesh options 摘要 ──────────────────────────────────────────────────────
+
+    uint64 ComputeMeshOptionsDigest(const char *text, const size_t length)
+    {
+        if (!text || length == 0)
+            return 0;
+
+        hgl::hash::FNV1aHasher64 hasher;
+        hasher.AppendBytes(text, length);
+        return (uint64)hasher;
+    }
+
+    uint64 ComputeMeshOptionsDigest(const AnsiString &text)
+    {
+        // 不取 c_str() + strlen：options 文本按契约不含 '\0'，但摘要必须覆盖
+        // 真实长度，避免"文本里意外混入 NUL"被截断成另一份合法摘要。
+        return ComputeMeshOptionsDigest(text.c_str(), (size_t)text.Length());
+    }
+
+    MeshOptionsDigestScan ScanMeshOptionsDigest(
+        const char *glsl, const size_t length,
+        uint64 &out_digest, size_t *out_offset)
+    {
+        out_digest = 0;
+        if (!glsl || length == 0)
+            return MeshOptionsDigestScan::Absent;
+
+        constexpr size_t MarkerLength = kMeshOptionsDigestMarkerLength;
+
+        MeshOptionsDigestScan result = MeshOptionsDigestScan::Absent;
+        size_t offset = 0;
+
+        for (size_t i = 0; i + MarkerLength <= length; ++i)
+        {
+            if (memcmp(glsl + i, kMeshOptionsDigestMarker, MarkerLength) != 0)
+                continue;
+
+            if (result != MeshOptionsDigestScan::Absent)
+            {
+                // 出现过第二条：不再继续解析，值已无意义。
+                if (out_offset)
+                    *out_offset = offset;
+                return MeshOptionsDigestScan::Duplicated;
+            }
+
+            result = MeshOptionsDigestScan::Malformed;
+            offset = i;
+
+            size_t cursor = i + MarkerLength;
+            uint64 value = 0;
+            bool has_digit = false;
+            bool overflow = false;
+
+            while (cursor < length && glsl[cursor] >= '0' && glsl[cursor] <= '9')
+            {
+                const uint64 digit = (uint64)(glsl[cursor] - '0');
+                if (value > ((uint64)-1 - digit) / 10)
+                    overflow = true;
+                else
+                    value = value * 10 + digit;
+                has_digit = true;
+                ++cursor;
+            }
+
+            // 行尾：文件可能正好在数字后结束（无尾换行），也算合法。
+            const bool at_line_end = (cursor == length) || (glsl[cursor] == '\n');
+            if (!has_digit || overflow || !at_line_end)
+                continue; // 保持 Malformed，继续找下一条（多写一条要报 Duplicated）
+
+            out_digest = value;
+            result = MeshOptionsDigestScan::Present;
+
+            // 跳过刚才那一段，避免"数字里恰好含标记"这类自匹配。
+            i = cursor > 0 ? cursor - 1 : 0;
+        }
+
+        // 只要标记出现过就给偏移：调用方要按它剥离尾部注释，
+        // 而 Malformed / Duplicated 也一样需要剥（否则下一步比对的是带注释的文本）。
+        if (out_offset && result != MeshOptionsDigestScan::Absent)
+            *out_offset = offset;
+
+        return result;
     }
 }// namespace hgl::graph::mtl
