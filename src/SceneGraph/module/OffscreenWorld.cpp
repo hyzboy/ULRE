@@ -22,13 +22,27 @@ namespace hgl::graph
 
     OffscreenWorld::~OffscreenWorld()
     {
-        // 顺序敏感：ECSContext 先 Shutdown（其 RenderSystemCore 持有 RT 指针），再释放 RT
+        // 顺序敏感（三段，缺一段就会踩悬垂指针）：
+        // 1. 本类持有的四个系统 shared_ptr 必须在 ECSContext 存活时先放掉。
+        //    `ecs::System::context` 是裸指针，若 ECSContext 已销毁而这里还持有最后一个
+        //    引用，系统析构路径（如 ~RenderSceneUBOSystem → ReleaseViewportUBO →
+        //    GetBufferManager(context) → context->GetRenderContext()）会解引用悬垂 context：
+        //    RenderToTexture 系列实测 AV @ 0xFEEEFEEE。
+        //    放掉后系统仍由 ECSContext 自身的 shared_ptr 持有，最终在 Shutdown 内销毁，
+        //    那时 context 仍是有效对象。
+        camera_system_.reset();
+        ubo_system_.reset();
+        collect_system_.reset();
+        rt_system_.reset();
+
+        // 2. ECSContext 再 Shutdown（其 RenderSystemCore 持有 RT 指针），再释放
         if(world_)
         {
             world_->Shutdown();
             world_.reset();
         }
 
+        // 3. RT 最后释放
         rt_.reset();
     }
 
