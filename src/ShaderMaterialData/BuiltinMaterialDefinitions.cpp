@@ -87,7 +87,7 @@ domain = "Text2D"
 pipeline = { alpha_blend = true }
 
 [vertex]
-varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
+varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color", "emit_style_id"]
 
 [mesh_shader]
 mode = "CharQuad"
