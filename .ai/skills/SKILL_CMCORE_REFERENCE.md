@@ -761,7 +761,89 @@ res.Release();              // 幂等
 - 可选覆盖 `OnLifecycleEvent(ObjectLifecycleEvent)` 接生命周期事件（供诊断工具/对象查看器）。
 - 仍禁止拷贝/移动（`NO_COPY` + `NO_MOVE`）。
 
-### 7.2 `ObjectIdentity.h` — 对象身份与类型注册
+### 7.2 `RefObject.h` — 引用计数对象与 `RefPtr<T>`
+
+```cpp
+#include<hgl/object/RefObject.h>
+
+class SharedBuffer : public hgl::RefObject
+{
+public:
+
+    HGL_OBJECT(SharedBuffer,hgl::RefObject)
+
+protected:
+
+    bool OnInit() override { return(true); }
+    void OnRelease() override {}
+};
+
+// AutoDestroy（默认）：引用归零会 Release() 并 delete 自身
+hgl::RefPtr<SharedBuffer> buf(new SharedBuffer());
+buf->RefInc();          // +1
+buf->RefDec();          // -1；归零时按策略销毁
+
+buf->GetRefCount();
+buf->SetRefZeroPolicy(hgl::RefZeroPolicy::KeepMetaUnloadPayload);
+
+// RefPtr 语义
+hgl::RefPtr<SharedBuffer> a(new SharedBuffer());
+hgl::RefPtr<SharedBuffer> b=a;      // 拷贝：RefInc
+a.Reset();                          // RefDec
+SharedBuffer *raw=a.Detach();       // 交出所有权，不 RefDec
+```
+
+策略：`RefZeroPolicy::AutoDestroy`（引用归零 → `Release()` + `delete this`）、`RefZeroPolicy::KeepMetaUnloadPayload`（引用归零 → 只 `Release()`，对象壳保留）。
+
+> `AutoDestroy` 下**不得在栈上创建对象**，必须由 `RefPtr<>` 持有。
+
+### 7.3 `MetaObject.h` — meta 与负载分离的对象
+
+```cpp
+#include<hgl/object/MetaObject.h>
+
+class TextureAsset : public hgl::MetaObject
+{
+public:
+
+    HGL_OBJECT(TextureAsset,hgl::MetaObject)
+
+protected:
+
+    bool OnLoadPayload() override      // 纯虚：按 GetMeta() 加载资源
+    {
+        return(!GetMeta().source_path.IsEmpty());
+    }
+
+    void OnUnloadPayload() override    // 释放运行时资源，meta 保留
+    {
+    }
+
+    bool OnInitMeta() override { return(true); }   // 可选
+    void OnReleaseMeta() override {}               // 可选
+};
+
+hgl::RefPtr<TextureAsset> tex(new TextureAsset());
+
+tex->GetMeta().source_path=OS_TEXT("res/tex/a.png");   // 先填 meta
+tex->Init();                     // meta 层初始化
+tex->LoadPayload();              // MetaOnly → Resident
+tex->UnloadPayload();            // Resident → MetaOnly（meta 仍在）
+tex->IsPayloadResident();
+tex->GetPayloadState();          // PayloadState::MetaOnly / Resident / ...
+tex->Release();                  // 卸载负载 + 释放 meta → Disposed
+```
+
+两层契约：
+
+| 层 | 钩子 | 触发时机 |
+|----|------|---------|
+| meta | `OnInitMeta()` / `OnReleaseMeta()` | `Init()` / `Release()` |
+| 负载 | `OnLoadPayload()` / `OnUnloadPayload()` | `LoadPayload()` / `UnloadPayload()` |
+
+`MetaObject` 默认策略是 `KeepMetaUnloadPayload`：引用归零只卸载负载，meta 壳保留，可再次 `LoadPayload()` 复用（重载时无需重新解析资源头）。`MetaObject` 把 `OnInit`/`OnRelease` 声明为 `final`，禁止绕过双层契约。
+
+### 7.4 `ObjectIdentity.h` — 对象身份与类型注册
 
 ```cpp
 #include <hgl/object/ObjectIdentity.h>
