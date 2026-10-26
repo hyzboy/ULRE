@@ -662,7 +662,6 @@ namespace hgl::ecs
 
         void ECSContext::OnResize(const VkExtent2D &extent)
         {
-            HGL_CAPTURE_SCOPE();
 
             if (!active)
                 return;
@@ -965,7 +964,6 @@ namespace hgl::ecs
             if (!system->IsEnabled())
                 return;
 
-//            HGL_CAPTURE_SCOPE();
 //            LogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
 
             system->Update(deltaTime);
@@ -991,7 +989,6 @@ namespace hgl::ecs
                 if (entry.phase < min_phase || entry.phase > max_phase)
                     continue;
 
-//                HGL_CAPTURE_SCOPE();
 //                LogDebug("[ECS] Render Begin: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
 
                 entry.system->Render(current_render_cmd, deltaTime);

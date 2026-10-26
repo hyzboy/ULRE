@@ -26,7 +26,6 @@
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/mtl/ShaderCacheRoot.h>
-#include<hgl/object/ObjectTracker.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/utf.h>
 #include<cstdint>
@@ -637,7 +636,6 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const mtl::ShaderProgramKey &program_key,
     const mtl::ShaderBuildContext *ctx)
 {
-    HGL_CAPTURE_SCOPE();
 
     if (!ctx
      || !ctx->HasProgramLink()
@@ -680,7 +678,6 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
     shader_program_cache.Add(program_key, mtl);
     // ShaderProgram is a C++ object managed by ShaderProgramManager, not a Vulkan object
-    // No need to track with ObjectTracker
     return mtl.Finish();
 }
 

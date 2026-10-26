@@ -111,7 +111,6 @@ namespace
 
 bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 {
-    HGL_CAPTURE_SCOPE();
 
     VkResult sc_result=vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr);
     if(sc_result!=VK_SUCCESS)
@@ -173,7 +172,6 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 
 Swapchain *SwapchainModule::CreateSwapchain(const VkExtent2D &extent, VkSwapchainKHR old_swapchain)
 {
-    HGL_CAPTURE_SCOPE();
     auto *dev_attr=GetDevAttr();
 
     if(!dev_attr)
@@ -286,7 +284,6 @@ bool SwapchainModule::CreateSwapchainRenderTarget(const VkExtent2D &extent, Swap
 SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
     :GraphModuleInherit<SwapchainModule,GraphModule>(gc,"SwapchainModule")
 {
-    HGL_CAPTURE_SCOPE();
     tex_manager=tm;
     rt_manager=rtm;
     rp_manager=rpm;

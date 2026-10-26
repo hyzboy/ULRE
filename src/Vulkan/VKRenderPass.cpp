@@ -4,7 +4,6 @@
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/object/ObjectTracker.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
@@ -55,7 +54,6 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
                                       const mtl::MaterialPipelineConfig &config,
                                       bool keep_fragment_shader)
 {
-    HGL_CAPTURE_SCOPE();
 
     FinalPipelineResolveRequest request{};
     request.device = device;

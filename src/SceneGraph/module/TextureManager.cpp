@@ -7,7 +7,6 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/module/RenderPassManager.h>
-#include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -18,7 +17,6 @@ const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat form
 
 GRAPH_MODULE_CONSTRUCT(TextureManager)
 {
-    HGL_CAPTURE_SCOPE();
     EnsureTransferResources();
     if (GetDevice())
         upload_queue = new TextureUploadQueue(GetDevice());
@@ -64,13 +62,11 @@ void TextureManager::Release()
 
 void TextureManager::OnGraphicsContextChanged(GraphicsContext *)
 {
-    HGL_CAPTURE_SCOPE();
     EnsureTransferResources();
 }
 
 void TextureManager::EnsureTransferResources()
 {
-    HGL_CAPTURE_SCOPE();
 
     auto dev=GetDevice();
     auto phy_device=GetPhyDevice();

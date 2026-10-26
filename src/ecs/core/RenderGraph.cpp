@@ -116,7 +116,6 @@ namespace hgl
                     }
                 }
 
-                HGL_CAPTURE_SCOPE();
                 RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,true,"[ECS RENDER] Render");
 
 //                LogDebug("[ECS RENDER] Completed pass %zu", pass_idx);

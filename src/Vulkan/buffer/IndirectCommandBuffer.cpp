@@ -2,13 +2,11 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/buffer/StagedBuffer.h>
 #include<hgl/vk/buffer/ReBarBuffer.h>
-#include<hgl/object/ObjectTracker.h>
 
 namespace hgl::graph{
 
 bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,const ObjectNameBuilder &name,SharingMode sharing_mode)
 {
-    HGL_CAPTURE_SCOPE();
 
     const uint32_t size=cmd_count*cmd_size;
 
@@ -19,7 +17,6 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 
 bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,IGPUBuffer **staged_out,const ObjectNameBuilder &name,VkBufferUsageFlags extra_usage,SharingMode sharing_mode)
 {
-    HGL_CAPTURE_SCOPE();
 
     if(staged_out)
         *staged_out=nullptr;
@@ -81,7 +78,6 @@ IndirectMeshTaskBuffer *VulkanDevice::CreateIndirectMeshTaskBuffer(const uint32_
 
 IndirectMeshTaskBuffer *VulkanDevice::CreateIndirectMeshTaskBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,VkBufferUsageFlags extra_usage,SharingMode sm)
 {
-    HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
     IGPUBuffer *staged=nullptr;
 
@@ -105,7 +101,6 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
 
 IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
 {
-    HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
     IGPUBuffer *staged=nullptr;
 

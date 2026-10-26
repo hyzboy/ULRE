@@ -18,7 +18,6 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/object/ObjectTracker.h>
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
@@ -69,7 +68,6 @@ private:
     // ECS组件
     ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
     Entity* triangle_entity     =nullptr;
-    uint64_t entity_id          =0;          // 对象追踪ID
 
     // 传统渲染资源
     Geometry *          geom_triangle       =nullptr;
@@ -112,7 +110,6 @@ private:
 
     bool InitECS()
     {
-        HGL_CAPTURE_SCOPE();  // 记录此函数调用的栈信息
 
         // === 步骤1: 创建ECS世界 ===
         // World是ECS架构的顶层容器，管理所有Entity和System
@@ -123,12 +120,10 @@ private:
         // === 步骤2: 创建Entity ===
         // Entity是游戏对象的容器，本身不包含数据，只是Component的集合
         triangle_entity = ecs_world->CreateEntity<Entity>("TriangleEntity");
-        entity_id = HGL_TRACK_ALLOCATION("TriangleEntity", hgl::core::ObjectTypeTag::RenderSystem);
 
         // === 步骤3: 添加变换（Transform） ===
         // TransformAccessor管理空间变换（位置、旋转、缩放）
         // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
-        HGL_TRACK_ALLOCATION("TriangleTransform", hgl::core::ObjectTypeTag::FrameResource);
         auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(triangle_entity->GetEntityID(), Mobility::Static));
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -140,7 +135,6 @@ private:
         // === 步骤4: 建几何资产组件 GeometryData ===
         // 几何/资产侧状态由 GeometryData 承载
         // 注意：需要明确使用 hgl::ecs 命名空间
-        HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->GetContext()->GetOrCreateGeometryData(triangle_entity);
         triangle_recipe.recipe_name = "DrawTriangle.VertexColor";
         triangle_recipe.mtl_def_id = "VertexColor";
@@ -157,7 +151,6 @@ public:
 
     bool Init() override
     {
-        HGL_CAPTURE_SCOPE();  // 记录应用初始化的调用栈
 
         if(!CreateRenderObject())
             return(false);

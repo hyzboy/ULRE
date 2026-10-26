@@ -19,7 +19,6 @@
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
 #include<hgl/thread/ThreadMutex.h>
-#include<hgl/object/ObjectTracker.h>
 #include<typeinfo>
 #include<type_traits>
 #include<utility>
@@ -62,7 +61,17 @@ class VulkanDevice
         std::string function;
         uint32_t line = 0;
         uint32_t stack_depth = 0;
-        hgl::utils::SourceLocation stack[64];
+
+        /// 旧 ObjectTracker::SourceLocation 的本地替代（栈采集暂未启用，保留结构以便后续接入）
+        struct StackFrame
+        {
+            const char *file     = nullptr;
+            uint32_t    line     = 0;
+            uint32_t    column   = 0;
+            const char *function = nullptr;
+        };
+
+        StackFrame stack[64];
     };
 
     struct ObjectKey

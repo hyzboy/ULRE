@@ -42,7 +42,6 @@
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
-#include<hgl/object/ObjectTracker.h>
 #include<hgl/time/Time.h>
 #include<algorithm>
 #include<cstdlib>

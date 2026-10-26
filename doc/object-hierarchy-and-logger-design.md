@@ -14,8 +14,8 @@
 | 现有设施 | 所在位置 | 现状与主要问题 |
 |---|---|---|
 | `hgl::Object` | `CMCore/inc/hgl/object/Object.h` | 空壳基类（仅有 `NO_COPY`/`NO_MOVE` 与默认构造/虚析构），无身份、无生命周期管理。 |
-| `hgl::utils::ObjectBase` | `CMCore/inc/hgl/object/ObjectBase.h` | 半成品：大量使用被规范禁止的 STL（`std::string`、`std::mutex`、`std::unordered_map`、`printf`），且反向依赖了上层引擎的 `<hgl/core/ObjectType.h>`（破坏 CMCore 底层独立性）。 |
-| `hgl::utils::ObjectTracker` | `CMCore/inc/hgl/object/ObjectTracker.h` | 预分配百万级大数组导致启动缓慢、干扰 RenderDoc，默认被 `#define HGL_ENABLE_OBJECT_TRACKER 0` 关闭。 |
+| `hgl::utils::ObjectBase` | `CMCore/inc/hgl/object/ObjectBase.h` | **已删除**。曾为半成品：大量使用被规范禁止的 STL（`std::string`、`std::mutex`、`std::unordered_map`、`printf`），且反向依赖了上层引擎的 `<hgl/core/ObjectType.h>`（破坏 CMCore 底层独立性）。 |
+| `hgl::utils::ObjectTracker` | `CMCore/inc/hgl/object/ObjectTracker.h` | **已删除**。曾预分配百万级大数组导致启动缓慢、干扰 RenderDoc，默认被 `#define HGL_ENABLE_OBJECT_TRACKER 0` 关闭。 |
 | `hgl::ecs::Object` | `ULRE/inc/hgl/ecs/core/Object.h` | ECS 自建的基类，仅保存 `AnsiString objectName`，与 `CMCore` 的 `hgl::Object` 割裂。 |
 | `hgl::logger::ObjectLogger` | `CMCore/inc/hgl/log/Log.h` | 独立日志组件，用 `object_instance_name` 兼任实例标识与可读名称，缺少稳定的唯一实例 ID 与生命周期事件联动。 |
 
@@ -691,12 +691,15 @@ protected:
    * `Init()` / `Release()` NVI 状态机及 `OnInit()` / `OnRelease()` 纯虚接口；
    * 析构未 `Release()` 告警检测。
 2. 新增 `CMCore/inc/hgl/object/RefObject.h` 与 `CMCore/inc/hgl/object/MetaObject.h`，实现 Meta 与 Payload 分离状态机。
-3. **清理废弃遗留物**：删除 `ObjectBase.h`、`ObjectBaseExamples.h`、`ObjectCrashRecovery.h` 以及旧版 `ObjectTracker.h/.cpp`（消除了 CMCore 中残留的 STL 违规引用与对 `hgl/core/ObjectType.h` 的跨层依赖）。
-4. 编写单元测试 `ObjectLifecycleTest`（验证 ID 唯一性、`Init`/`Release` 状态转换、未 `Release` 析构报警、`MetaObject` 卸载资源保留 Meta 并重载）。
+3. **清理废弃遗留物（已完成）**：`ObjectBase.h`、`ObjectBaseExamples.h`、`ObjectCrashRecovery.h`、旧版 `ObjectTracker.h/.cpp` 与 `ObjectBase_GUIDE.md` 已全部删除（消除了 CMCore 中残留的 STL 违规引用与对 `hgl/core/ObjectType.h` 的跨层依赖）。`ObjectLogger` 保持独立，`Object` 作为其他对象的基类。
+4. 编写验证程序 `CMCore/examples/system/MetaObjectTest.cpp`（验证 ID 唯一性、`Init`/`Release` 状态转换、引用计数归零销毁、`MetaObject` 卸载资源保留 Meta 并重载）。
 
 ### Phase 3：ULRE 引擎层迁移对接
-1. **统一 `hgl::ecs::Object`**：让 `hgl::ecs::Object` 直接继承或对齐 `hgl::Object`，`ecs::System` 和 `ecs::Entity` 自动获得全局唯一 `ObjectId`、类型 ID 与日志绑定能力。
-2. **迁移典型资源类到 `MetaObject`**：选取 `Texture` / `Buffer` / `ShaderModule` 代表性管理对象试点接入 `MetaObject`，验证“释放 GPU 资源保留 Meta 描述”的完整流程。
+1. **`CMUtil` 的 `Timer` 已迁移**：改为继承 `hgl::Object`，用 `HGL_OBJECT(Timer,hgl::Object)` 声明，`OnInit()`/`OnRelease()` 实现生命周期，事件回调用裸函数指针 `TimerEvent` 取代已不存在的 `DefEvent`/`SafeCallEvent`，时间源改用 `<hgl/time/Time.h>` 的 `GetUptimeSec()`。
+2. **`VKFence` 已迁移**：`Fence` 改为继承 `hgl::Object`，构造只需 `VkDevice`/`VkFence`/可读名；`OnRelease()` 内完成 `UntrackObject` + `vkDestroyFence`，取代旧的 `HGL_OBJECT_DESTROY_LOCATION()` 宏仪式。
+3. **移除 `ObjectTracker` 遗留调用面**：`HGL_CAPTURE_SCOPE()` / `HGL_TRACK_ALLOCATION` 全量删除，`WorkManager::EnableObjectTracking()/DisableObjectTracking()` 删除；`VulkanDevice` 的 `ObjectDebugRecord` 保留本地 `StackFrame` 结构，栈采集暂置空，后续可接入新的身份/遥测管线。
+4. **待办：统一 `hgl::ecs::Object`**：让 `hgl::ecs::Object` 直接继承或对齐 `hgl::Object`，`ecs::System` 和 `ecs::Entity` 自动获得全局唯一 `ObjectId`、类型 ID 与日志绑定能力。
+5. **待办：迁移典型资源类到 `MetaObject`**：选取 `Texture` / `Buffer` / `ShaderModule` 代表性管理对象试点接入 `MetaObject`，验证“释放 GPU 资源保留 Meta 描述”的完整流程。
 
 ### Phase 4：结构化事件输出器（对接独立查看器）
 1. 实现一个标准的 `Logger` / Telemetry Sink 子类（如 `TraceFileOutputter` 或 `LocalIpcOutputter`），将日志、对象生命周期、MetaObject 内存驻留变化编码输出，供独立查看器实时消费。

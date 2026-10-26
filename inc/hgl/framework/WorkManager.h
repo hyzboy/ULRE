@@ -50,13 +50,6 @@ namespace hgl
         void Run(WorkObject *wo);
     };//class WorkManager
 
-    /**
-     * 开启对象追踪器（泄漏诊断）。HGL_ENABLE_OBJECT_TRACKER 关闭时为空实现。
-     * 刻意不放在 RunFramework 内：它只服务诊断，不该出现在正常启动路径上。
-     */
-    void EnableObjectTracking();
-    void DisableObjectTracking();
-
     template<typename WO> int RunFramework(const OSString &title,int argc,os_char **argv,uint width=1280,uint height=720)
     {
         int result = 0;

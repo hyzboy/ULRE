@@ -25,7 +25,6 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/object/ObjectTracker.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>

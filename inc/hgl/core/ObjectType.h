@@ -9,8 +9,7 @@ namespace hgl::core
  * 对象类型标签
  * 用于：
  *  1. VKObjectNameBuilder - 层级命名
- *  2. ObjectTracker - 分配追踪
- *  3. 通用资源分类
+ *  2. 通用资源分类
  */
 enum class ObjectTypeTag : uint8_t
 {

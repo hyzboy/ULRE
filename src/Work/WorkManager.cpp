@@ -1,5 +1,4 @@
 #include<hgl/framework/WorkManager.h>
-#include<hgl/object/ObjectTracker.h>
 #include<hgl/time/Time.h>
 
 namespace hgl
@@ -70,15 +69,5 @@ namespace hgl
         }
 
         cur_work_object = nullptr;
-    }
-
-    void EnableObjectTracking()
-    {
-        hgl::utils::initialize_object_tracker();
-    }
-
-    void DisableObjectTracking()
-    {
-        hgl::utils::shutdown_object_tracker();
     }
 }//namespace hgl

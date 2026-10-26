@@ -2,46 +2,42 @@
 #define HGL_VULKAN_GRAPH_FENCE_INCLUDE
 
 #include<hgl/vk/VK.h>
-#include<hgl/object/ObjectBase.h>
-#include<source_location>
+#include<hgl/object/Object.h>
 
 namespace hgl::graph{
 
 /**
  * Fence - Vulkan栅栏对象的RAII包装
- * 现已继承ObjectBase以支持对象追踪
+ *
+ * 继承 hgl::Object：构造即分配对象唯一ID并绑定logger身份；
+ * 销毁时由 OnRelease() 调用 vkDestroyFence 并向设备注销追踪记录。
  */
-class Fence : public hgl::utils::ObjectBase
+class Fence:public hgl::Object
 {
+public:
+
+    HGL_OBJECT(Fence,hgl::Object)
+
     friend class DeviceQueue;
 
     VkDevice device;
     VkFence fence;
     bool queue_submitted = false;
 
+protected:
+
+    bool OnInit() override { return(true); }
+
+    void OnRelease() override;
+
 private:
 
     friend class VulkanDevice;
 
-    /**
-     * 构造函数 - 强制传入创建位置以支持追踪
-     */
-    Fence(
-        VkDevice d,
-        VkFence f,
-        const std::string& fence_name = "Fence",
-        const std::source_location& loc = std::source_location::current()
-    ) : ObjectBase(hgl::core::ObjectTypeTag::VKFence, fence_name, loc)
-        , device(d)
-        , fence(f)
-    {
-    }
+    Fence(VkDevice d,VkFence f,const OSString &fence_name=OS_TEXT("Fence"));
 
 public:
 
-    /**
-     * 析构函数 - 自动记录销毁位置
-     */
     virtual ~Fence() override;
 
     /**

@@ -8,6 +8,7 @@
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/buffer/IGPUBuffer.h>
 #include<hgl/log/Log.h>
+#include<hgl/utf.h>
 #include <algorithm>
 #include <functional>
 #include <thread>
@@ -115,7 +116,7 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
     record.file = loc.file_name();
     record.function = loc.function_name();
     record.line = loc.line();
-    record.stack_depth = hgl::utils::get_current_allocation_stack(record.stack, 64);
+    record.stack_depth = 0;         //旧ObjectTracker已移除，栈信息暂不采集
 
 //#ifdef _DEBUG
 //    // 详细日志：记录对象创建
@@ -164,7 +165,7 @@ void VulkanDevice::TrackObjectWithoutLocation(VkObjectType type, uint64_t handle
     record.file = "";
     record.function = "";
     record.line = 0;
-    record.stack_depth = hgl::utils::get_current_allocation_stack(record.stack, 64);
+    record.stack_depth = 0;         //旧ObjectTracker已移除，栈信息暂不采集
 
     tracked_objects.emplace(key, std::move(record));
 }
@@ -373,8 +374,7 @@ Fence *VulkanDevice::CreateFence(const ObjectNameBuilder &name, bool create_sign
     TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, name.Append(ObjectTypeTag::VKFence), loc);
 
     // 创建Fence对象并传入追踪信息
-    std::string fence_name = name.Append(ObjectTypeTag::VKFence).ToString().c_str();
-    return(new Fence(attr->device, fence, fence_name, loc));
+    return(new Fence(attr->device, fence, ToOSString(name.Append(ObjectTypeTag::VKFence).ToString().c_str())));
 }
 
 Fence *VulkanDevice::CreateFence(bool create_signaled, const std::source_location &loc)
