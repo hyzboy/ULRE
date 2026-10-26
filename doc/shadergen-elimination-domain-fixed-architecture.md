@@ -1527,6 +1527,10 @@ master 还没搬到 `mesh/shape` 的形状命名体系，仍走 `GenerateStageSo
   linequad_256_plain.mesh                     LineQuad，256 顶点，无 varying
 ```
 
+> **已废弃（阶段十-1 删除）**：`charquad_256_dataid_uv_color.mesh`（无 `_style` 后缀）在
+> `s1_color` 统一为 `s1_color_default`、且两份 builtin 文本材质都声明 `emit_style_id` 之后
+> 再无任何输入能拼出，属孤岛残骸，已物理删除。此处保留仅作命名演进的记录。
+
 **模式前缀不是装饰，是唯一性的一部分。** 三种模式的几何主体是**三段完全不同的算法**：
 `VertexPassthrough` 是「连续三点一组」，`CharQuad` 是「每工作项一个字符四边形 + 笔位推进」，
 `LineQuad` 是「每条线扩成两三角」。若共用一个前缀，`<容量>_<varyings>` 相同的
@@ -1976,3 +1980,53 @@ AtmosphereSky 的日志中，`SkyMinimal` 配方没有贴图行（`planned_textu
 - 同一 AtmosphereSky 复跑发现 `AtmosphereSkyAmbient::MeshEntry` 也重复删除由 `GeometryManager` 持有的网格，移除其析构删除。
 
 **验证**：AtmosphereSkyMinimal/SunGizmo/Ambient 与 SkyCubeSphere 均 Debug 重建并正常退出；device-lost、GPUCull submit 与 unresolved-pipeline 错误均为 0。`SKYMIN_SELFCHECK=1` 恢复为 PASS：1280×720、219 个不同字节值、FNV=`0xC914C338EFC7790E`。RegressionGate 保持 59 PASS / 0 FAIL，固定 mesh 覆盖 37/0/0；production fixtures、Test 51 及 `verify-release-form.ps1 -SkipConfigure` 五步均复验通过。
+
+## 阶段十-1：网格顶点解码矩阵白名单盘点（网格收口 Layer 1）
+
+网格阶段收口的目标是把「顶点解码（s1）/局部映射（s2）/投影朝向（s3）」这条组合链从**运行时自由拼装**收敛为**可枚举的白名单**，从而获得三件事：组合数可被门禁穷举、模块顺序耦合可被消除、`#ifdef HGL_*_LOADER` 这类隐式协议可被删除。收口之前必须先有**唯一可信的组合清单**，否则后续层的任何"简化"都只能靠猜。本节就是这份清单。
+
+### 一、模块现状全集
+
+`generated/mesh_options.glsl` 由 `DomainOptionsEmitter::EmitMeshOptions` 拼装，顺序固定为：`s1`（流解码）→ `s2`（局部映射）→ `s3`（投影与朝向）。磁盘上的模块文件全集：
+
+| 层 | 模块 | 数量 | 说明 |
+|----|------|------|------|
+| s1 位置 | `s1_position_vec3` / `s1_position_vec2` / `s1_position_vec2i` | 3 | 位置格式硬门决定，`LoadVertexData()` 在此展开 |
+| s1 流 | `s1_uv` / `s1_uv_rg16f` / `s1_ntb` / `s1_ntb_rg8` / `s1_ntb_rg16f` / `s1_ntb_a2bgr10` / `s1_color` / `s1_color_default` / `s1_palette_index` / `s1_luminance` / `s1_transform_id` / `s1_size` | 12 | 每份文件以 `#define HGL_<STREAM>_LOADER {...}` 交付自己的装载片段 |
+| s2 映射 | `s2_passthrough3d` / `s2_ndc_lift` / `s2_zeroone_to_ndc` / `s2_lift_xy0` / `s2_lift_x0y` / `s2_lift_0xy` / `s2_pixel_to_local` | 7 | 由 `VertexNodeConfigResolver::GetMappingModulePath` 决定 |
+| s3 朝向/投影 | `s3_world_camera_vp` / `s3_l2w_only` / `s3_ortho_viewport` / `s3_ortho_then_l2w` / `s3_clip_passthrough` / `s3_camera_facing_world` / `s3_camera_facing_fixed_pixels` | 7 | 由 `GetStage3ModulePath` 的 (投影, 朝向, 缩放) 三元组决定 |
+
+讨论口径：`s1_color_default` 是**空对象实现**（顶点色恒白），`line_quad_body.glsl` 自持的 `GetLineSize()` 默认实现是同类先例——两者共同构成本仓库"缺流即缺省"的既有范式，后续层应沿用而非另造。
+
+### 二、示例实测可达组合
+
+扫描 `build/` 下全部 46 份缓存 `mesh_options.glsl`（覆盖 stage9 全示例验证运行与后续若干次定点复跑），去掉 include 顺序噪声后得到 **27 种 distinct 组合**。按「s1 流集合」归并后得到可达性结论：
+
+| 层 | 示例实测可达 | API 可达但示例未覆盖 |
+|----|--------------|----------------------|
+| s1 位置 | `vec3`、`vec2`、`vec2i`（全 3 种） | — |
+| s1 流 | `uv`、`uv_rg16f`、`ntb`、`ntb_rg8`、`color`、`color_default`、`palette_index`、`luminance`、`transform_id`、`size`（10 种） | `ntb_rg16f`、`ntb_a2bgr10`（格式门支持，无示例使用） |
+| s2 映射 | `passthrough3d`、`ndc_lift`、`zeroone_to_ndc`、`lift_xy0`、`pixel_to_local`（5 种） | `lift_x0y`、`lift_0xy`（`Make2DNodeConfig` 工厂支持，无领域/示例选中） |
+| s3 朝向 | `world_camera_vp`、`l2w_only`、`ortho_viewport`（3 种） | `ortho_then_l2w`、`clip_passthrough`（仅 `Make2DNodeConfigNDC(false)` / `Make2DNodeConfigOrtho(true)` 可达）；`camera_facing_world`、`camera_facing_fixed_pixels`（**无任何领域或示例选择 CameraFacing 朝向，当前为纯死分支**） |
+
+实测组合的矩阵形状高度集中，落点只有 4 个"家族"：
+
+1. **默认 3D**：`s1_position_vec3` + `s2_passthrough3d` + `s3_world_camera_vp`（占绝大多数；可选叠加 `uv`/`uv_rg16f`、`ntb`/`ntb_rg8`、`color`/`color_default`/`luminance`）
+2. **2D NDC**：`s1_position_vec2` + `s2_ndc_lift` + `s3_l2w_only`（`UnlitTexture` / `Checker2D` 领域契约）
+3. **2D 纹理 0..1**：`s1_position_vec2` + `s2_zeroone_to_ndc` + `s3_l2w_only`（仅 `s1_uv` + `s1_color_default` 一例）
+4. **文本像素空间**：`s1_position_vec2i` + `s2_pixel_to_local` + `s3_ortho_viewport`（`Text2D` 契约）
+5. **顶点调色板**：`s1_palette_index` + `transform_id` + `size` + `s1_position_vec3` + `passthrough3d` + `world_camera_vp`（`VertexPalette` 领域）
+
+`lift_xy0` 只与 `s1_luminance` 一同出现（`PlaneGrid3D` 的线框亮度路径），是家族外的唯一特例。
+
+### 三、缓存快照的可信度边界（重要教训）
+
+`build/` 下的缓存**不是同一代码版本的快照**：其中有若干份文件在 `mesh_options.glsl` 尾部内联了 `#ifndef S1_SIZE_GLSL` 的线宽默认实现，而当前实现已把该默认实现挪进 `mesh/line_quad_body.glsl`（源码中 `DomainOptionsEmitter.cpp` 已无该文本）。同时，部分旧快照在 LineQuad 路径上根本没有 `s1_color*` 模块，而当时 `s1_color_default` 尚未引入。
+
+**结论：不要把缓存并集当成"当前可达集"，只能当成"证据下界"。** 后续层若需要精确的可达性判定，必须以当次代码重新生成的缓存为准，或由门禁 `emit-fixed-mesh` 直接裁决。本次盘点的实测列因此取并集（上界），API 可达列取静态推导——两层夹逼出的差异集中在上表「API 可达但示例未覆盖」一栏，恰好就是收口后可以判定去留的候选。
+
+### 四、Layer 1 的清理动作
+
+1. **删除孤岛形状 master**：`ShaderLibrary/mesh/shape/charquad_256_dataid_uv_color.mesh` 是 `s1_color` 统一为 `s1_color_default` 之后的残骸——两份 builtin 文本材质（`kTextGpuSource` / `kTextGpuBitmapSource`）都声明了 `emit_style_id`，因此 `BuildMeshShapeName` 只会算出 `charquad_256_dataid_uv_color_style`，无 style 的名字再无任何输入能拼出。删除前已核对引用面：`src/` 内仅 `MaterialProgramAssembler.cpp` 的一条历史注释提及，门禁无硬编码路径，无资产引用。
+2. **本节即白名单基线**：后续 Layer 2（消灭 `HGL_*_LOADER`）、Layer 3（`VertexABIBuilder` 表驱动化）、Layer 4（options 预设化）均以本节的模块全集与家族划分为对照表。
+3. **门禁基线锁定**：`ShaderResourceSchemaRegressionGate all` = **57 PASS / 0 FAIL**，`emit-fixed-mesh` = **covered=37 missing=0 failed=0**。删除孤岛文件后两项计数必须不变（该形状从未进入覆盖清单）。
