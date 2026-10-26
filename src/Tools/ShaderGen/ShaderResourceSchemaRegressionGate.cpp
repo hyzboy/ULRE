@@ -208,6 +208,10 @@ namespace
 
     static std::string ReadFileText(const std::string &path);
 
+    /// 顶点色 varying 的声明文本：宏名与符号名都取自 ShaderSemanticRegistry，
+    /// 固定网格主着色器审计里不再出现第二份名字/数字对照。
+    static std::string ExpectedVertexColorVaryingDeclaration();
+
     /// 递归读一棵目录下的**全部**文本文件。
     ///
     /// 固定库是唯一真源：生成器删除之后，凡是「生成器该产出什么」的判据都只能
@@ -407,7 +411,7 @@ namespace
             // 判据一律针对**代码**：注释里的说明文字不算违规（见 StripGlslComments）。
             const std::string text = StripGlslComments(file.second);
 
-            if (text.find("layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[")
+            if (text.find(ExpectedVertexColorVaryingDeclaration())
                     == std::string::npos)
             {
                 AddCappedDiagnostic(
@@ -472,18 +476,24 @@ namespace
                     ++token_start;
                 loc_token = loc_token.substr(token_start);
 
+                // location 数字的唯一真源是 ShaderSemanticRegistry：
+                // 宏名→值不再在这里维护第二份 if/else 对照表。
+                const InterStageSemantic location_semantic =
+                    FindInterStageSemanticByLocationMacro(loc_token.c_str());
                 uint32_t location = 0;
-                if (loc_token == "HGL_LOCATION_DATA_INDEX_ID")        location = 0;
-                else if (loc_token == "HGL_LOCATION_WORLD_POS")      location = 1;
-                else if (loc_token == "HGL_LOCATION_WORLD_NORMAL")   location = 2;
-                else if (loc_token == "HGL_LOCATION_UV0")            location = 3;
-                else if (loc_token == "HGL_LOCATION_STYLE_ID")       location = 4;
-                else if (loc_token == "HGL_LOCATION_VERTEX_COLOR")   location = 5;
-                else if (loc_token == "HGL_LOCATION_FRAG_DIRECTION") location = 6;
-                else if (loc_token == "HGL_LOCATION_LUMINANCE")      location = 7;
-                else if (loc_token == "HGL_LOCATION_WORLD_TANGENT")  location = 8;
-                else if (loc_token == "HGL_LOCATION_WORLD_BINORMAL") location = 9;
-                else location = uint32_t(std::strtoul(loc_token.c_str(), nullptr, 10));
+                if (location_semantic != InterStageSemantic::Unknown)
+                    location = GetInterStageSemanticInfo(
+                        location_semantic)->stable_location;
+                else if (!loc_token.empty()
+                      && std::isdigit(static_cast<unsigned char>(loc_token[0])))
+                    location = uint32_t(std::strtoul(loc_token.c_str(), nullptr, 10));
+                else
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": location 宏 " + loc_token
+                            + " 不在 ShaderSemanticRegistry 里");
+                    continue;
+                }
 
                 const size_t semicolon = text.find(';', close);
                 if (semicolon == std::string::npos)
@@ -1820,6 +1830,21 @@ namespace
 
         result.passed = result.diagnostics.empty();
         return result;
+    }
+
+    /// 顶点色 varying 的声明文本：宏名与符号名都取自 ShaderSemanticRegistry，
+    /// 固定网格主着色器审计里不再出现第二份名字/数字对照。
+    static std::string ExpectedVertexColorVaryingDeclaration()
+    {
+        const InterStageSemanticInfo *info =
+            GetInterStageSemanticInfo(InterStageSemantic::Color);
+        const char *macro_name =
+            GetInterStageSemanticLocationMacro(InterStageSemantic::Color);
+        if (!info || !info->shader_symbol || !macro_name)
+            return std::string();
+
+        return std::string("layout(location=") + macro_name + ") out vec4 "
+            + info->shader_symbol + "[";
     }
 
     static GateResult RunComposedStageInterfaceCase()
@@ -5975,9 +6000,26 @@ namespace
         for (const char *path : normal_varying_fragments)
         {
             const std::string source = ReadFileText(RepoRootPath(path));
-            const bool has_normal_loc =
-                source.find("layout(location=2) in vec3 fragWorldNormal;") != std::string::npos
-             || source.find("layout(location=HGL_LOCATION_WORLD_NORMAL) in vec3 fragWorldNormal;") != std::string::npos;
+
+            // location 数字与 varying 符号名都取自注册表，两种写法都接受
+            // （数字直写 / HGL_LOCATION_* 宏）。
+            const InterStageSemanticInfo *normal_info =
+                GetInterStageSemanticInfo(InterStageSemantic::WorldNormal);
+            const char *normal_macro =
+                GetInterStageSemanticLocationMacro(InterStageSemantic::WorldNormal);
+            bool has_normal_loc = false;
+            if (normal_info && normal_info->shader_symbol && normal_macro)
+            {
+                const std::string declaration_tail =
+                    std::string(") in vec3 ") + normal_info->shader_symbol + ";";
+                has_normal_loc =
+                    source.find("layout(location="
+                        + std::to_string(normal_info->stable_location)
+                        + declaration_tail) != std::string::npos
+                 || source.find("layout(location=" + std::string(normal_macro)
+                        + declaration_tail) != std::string::npos;
+            }
+
             if (!has_normal_loc
              || source.find("si.worldNormal = normalize(fragWorldNormal);")
                     == std::string::npos)

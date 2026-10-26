@@ -63,6 +63,11 @@ namespace hgl::graph::mtl
         uint32 stable_location = InvalidShaderSemanticLocation;
         const char *shape_token = nullptr;
         uint8 shape_token_order = 0;
+
+        /// 稳定 ABI 在 GLSL 侧的宏名（`ShaderLibrary/common/interstage_locations.glsl`
+        /// 的 `#define`）。C++ 侧不得再手写这张名字→location 的对照，
+        /// 一律经 GetInterStageSemanticLocationMacro() 取用。
+        const char *location_macro = nullptr;
     };
 
     using InterStageSemanticMask = uint32;
@@ -123,7 +128,10 @@ namespace hgl::graph::mtl
         InterStageTypeInvalid,
         InterStageInterpolationInvalid,
         InterStageLocationInvalid,
-        InterStageLocationConflict
+        InterStageLocationConflict,
+        InterStageLocationMacroMissing,
+        InterStageLocationMacroInvalid,
+        InterStageLocationMacroConflict
     };
 
     struct ShaderSemanticRegistryValidationResult
@@ -140,6 +148,14 @@ namespace hgl::graph::mtl
 
     bool ValidateInterStageSemanticRegistry(
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
+
+    /// 取稳定 ABI 的 GLSL 宏名（如 `HGL_LOCATION_WORLD_POS`）；Unknown 返回 nullptr。
+    const char *GetInterStageSemanticLocationMacro(
+        InterStageSemantic semantic) noexcept;
+
+    /// 由 GLSL 宏名反查语义；未知宏名返回 InterStageSemantic::Unknown。
+    InterStageSemantic FindInterStageSemanticByLocationMacro(
+        const char *location_macro) noexcept;
 
     uint32 GetOrderedInterStageShapeTokens(
         InterStageSemanticMask mask,

@@ -62,6 +62,36 @@ add_custom_target(descriptor_macros_verify ALL
 
 ####################################################################################################
 
+# interstage_locations.glsl 生成器（真源：ShaderSemanticRegistry 规范表）
+# stable_location 进 program 缓存键，GLSL 侧数值单边漂移不会被编译期抓到（两个 stage
+# 都用宏、各自仍自洽），故生成物必须与注册表逐条相等，构建期强制校验。
+add_executable(InterStageLocationMacroGen
+    InterStageLocationMacroGen.cpp)
+
+target_link_libraries(InterStageLocationMacroGen
+    PRIVATE ULRE.ShaderProgramBuild
+            CMCore
+            CMCoreType)
+
+SetupToolTarget(InterStageLocationMacroGen)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME VerifyInterStageLocations
+        COMMAND InterStageLocationMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/interstage_locations.glsl)
+
+    set_tests_properties(
+        VerifyInterStageLocations
+        PROPERTIES LABELS "shadergen;baseline")
+endif()
+
+add_custom_target(interstage_locations_verify ALL
+    COMMAND $<TARGET_FILE:InterStageLocationMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/interstage_locations.glsl
+    DEPENDS InterStageLocationMacroGen
+    COMMENT "校验 interstage_locations.glsl 与 ShaderSemanticRegistry 一致")
+
+####################################################################################################
+
 # s1_* 顶点 loader 宏一致性校验（规则从 GLSL 文本推导，无平行清单）
 # 漏展开 HGL_*_LOADER = 属性静默为 0，无编译/运行期报错——故必须 CI 断言
 add_executable(VertexLoaderConsistency
