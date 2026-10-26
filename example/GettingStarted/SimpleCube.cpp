@@ -183,7 +183,8 @@ private:
 public:
     ~SimpleCubeApp()
     {
-        SAFE_CLEAR(geometry)
+        // geometry 已在 CreateCubeGeometry() 里交给 GeometryManager（唯一持有者），
+        // 这里再 delete 就是双重释放；由 manager 的 Clear() 负责销毁。
     }
 
     bool Init() override

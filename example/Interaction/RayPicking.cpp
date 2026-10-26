@@ -286,8 +286,7 @@ private:
 public:
     ~RayPickingApp()
     {
-        SAFE_CLEAR(geom_plane_grid);
-        SAFE_CLEAR(geom_line);
+        // geom_plane_grid / geom_line 已交给 GeometryManager（唯一持有者），此处不再 delete。
     }
 
     bool Init() override

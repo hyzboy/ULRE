@@ -418,8 +418,7 @@ public:
 
     ~MaterialErrorFallbackApp()
     {
-        for (int i = 0; i < kCaseCount; ++i)
-            SAFE_CLEAR(geoms[i]);
+        // geoms[] 已逐个交给 GeometryManager（唯一持有者），此处不再 delete。
     }
 
     bool Init() override

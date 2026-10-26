@@ -188,7 +188,7 @@ private:
 public:
     ~MaterialRecipeEntryApp()
     {
-        SAFE_CLEAR(geometry)
+        // geometry 已交给 GeometryManager（唯一持有者），此处不再 delete。
     }
 
     bool Init() override

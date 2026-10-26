@@ -138,7 +138,7 @@ private:
 public:
     ~SimplestAxisApp()
     {
-        SAFE_CLEAR(geom_axis);
+        // geom_axis 已交给 GeometryManager（唯一持有者），此处不再 delete。
     }
 
     bool Init() override
