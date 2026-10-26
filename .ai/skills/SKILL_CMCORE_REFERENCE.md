@@ -714,25 +714,52 @@ buf[0] = 0xFF;
 
 ## 7. 对象基类（Object）
 
-### 7.1 `Object.h` — 禁止拷贝/移动的基类
+### 7.1 `Object.h` — 对象基类（身份 + 生命周期 + 日志）
 
 ```cpp
-#include <hgl/object/Object.h>
+#include<hgl/object/Object.h>
 
-// 继承 Object：自动禁止拷贝和移动语义（NO_COPY + NO_MOVE）
 class MyResource : public hgl::Object
 {
 public:
-    MyResource() = default;
-    virtual ~MyResource() override = default;
-    
-    void Use() { /* ... */ }
+
+    HGL_OBJECT(MyResource,hgl::Object)          // 必须写在 public: 区段内
+
+protected:
+
+    bool OnInit() override                      // 纯虚：派生类必须实现
+    {
+        LogInfo(u8"申请资源");
+        return(true);
+    }
+
+    void OnRelease() override                   // 纯虚：派生类必须实现
+    {
+        LogInfo(u8"释放资源");
+    }
 };
 
-// 错误：不能拷贝/移动
-// MyResource a;
-// MyResource b = a;  // 编译错误
+MyResource res;
+res.SetInstanceName(OS_TEXT("main-texture"));   // 人类可读名，不承担唯一标识
+res.Init();                                     // 失败返回false
+
+res.GetObjectId();          // 进程内唯一ID（构造时分配）
+res.GetTypeId();            // 类型ID（由类型名FNV1a计算）
+res.GetTypeName();          // 类型名
+res.IsA<hgl::Object>();     // 类型链判定
+res.Cast<MyResource>();     // 类型不匹配返回nullptr
+res.IsInitialized();
+
+res.Release();              // 幂等
 ```
+
+要点：
+- `Init()`/`Release()` 是非虚模板方法，负责状态机与生命周期事件；派生类只实现 `OnInit()`/`OnRelease()`。
+- `Init()` 幂等（已初始化返回 true）；`Release()` 幂等；析构时若仍处于 `Initialized`/`InitFailed` 状态会输出 `LogError` 违规告警。
+- 内置 `protected logger::ObjectLogger Log`，`Init()` 成功后自动 `BindObjectIdentity()`；因此派生类**不要**再用 `OBJECT_LOGGER` 宏（会重名）。
+- `HGL_OBJECT_WITH_LEVEL(类名,父类名,默认级别)` 可指定该类型日志类别的默认级别。
+- 可选覆盖 `OnLifecycleEvent(ObjectLifecycleEvent)` 接生命周期事件（供诊断工具/对象查看器）。
+- 仍禁止拷贝/移动（`NO_COPY` + `NO_MOVE`）。
 
 ### 7.2 `ObjectIdentity.h` — 对象身份与类型注册
 
