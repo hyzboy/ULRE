@@ -17,6 +17,87 @@ namespace hgl::graph::mtl{
 
 namespace
 {
+    // ── 顶点流解码模块表 ────────────────────────────────────────────────────
+    // 一条记录 = 「哪个几何属性格式 → 哪个 s1_* 解码模块」。选择规则统一为
+    // 「精确格式命中优先，否则回落该流的 VK_FORMAT_UNDEFINED 默认行」，
+    // 因此新增压缩格式只需在表里加一行，不需要在发射逻辑里加分支。
+    //
+    // 表顺序 = 发射顺序：数据流必须整体排在位置模块之前。位置模块内部 include 的
+    // `vertex/s1_stream_defaults.glsl` 用 `#ifndef S1_STREAM_*` 补空实现，数据模块
+    // 若排在它后面，自己定义的 `LoadXxx()` 会与已展开的空 stub 撞成重复定义。
+    enum class VertexStreamSlot
+    {
+        UV,
+        NTB,
+        Color,
+        Luminance,
+        TransformID,
+        Size,
+    };
+
+    struct VertexStreamModuleEntry
+    {
+        VertexStreamSlot slot;
+        VkFormat format;          ///< VK_FORMAT_UNDEFINED = 该流的默认（无格式偏好）实现
+        const char *module_name;  ///< ShaderLibrary/vertex/<name>.glsl
+    };
+
+    constexpr VertexStreamModuleEntry VERTEX_STREAM_MODULES[] =
+    {
+        // UV：按属性格式选解码模块（格式=模块，RG16F 发行版独立一模块）
+        { VertexStreamSlot::UV, VK_FORMAT_R16G16_SFLOAT, "s1_uv_rg16f" },
+        { VertexStreamSlot::UV, VK_FORMAT_UNDEFINED,     "s1_uv" },
+
+        // NTB：按 Normal 属性格式选（发行版压缩格式各一模块）
+        { VertexStreamSlot::NTB, VK_FORMAT_R8G8_UNORM,    "s1_ntb_rg8" },
+        { VertexStreamSlot::NTB, VK_FORMAT_R16G16_SFLOAT, "s1_ntb_rg16f" },
+        { VertexStreamSlot::NTB, PF_A2BGR10UN,            "s1_ntb_a2bgr10" },
+        { VertexStreamSlot::NTB, VK_FORMAT_UNDEFINED,     "s1_ntb" },
+
+        // 顶点色：调色板索引（VertexPalette 域）/ 直读 / 无属性时补白
+        { VertexStreamSlot::Color, VK_FORMAT_R8_UINT,   "s1_palette_index" },
+        { VertexStreamSlot::Color, VK_FORMAT_UNDEFINED, "s1_color" },
+
+        { VertexStreamSlot::Luminance,   VK_FORMAT_UNDEFINED, "s1_luminance" },
+        { VertexStreamSlot::TransformID, VK_FORMAT_UNDEFINED, "s1_transform_id" },
+        { VertexStreamSlot::Size,        VK_FORMAT_UNDEFINED, "s1_size" },
+    };
+
+    // 无顶点色属性时的补白模块。它不装载任何流（不定义 S1_STREAM_*），只提供
+    // 常量白的 `GetVertexColor()`，因此不进上表、也不受 LoadXxx 调用序列约束。
+    constexpr const char *COLOR_DEFAULT_MODULE = "s1_color_default";
+
+    bool AppendVertexModuleInclude(const char *module_name, AnsiString &out_glsl)
+    {
+        out_glsl += "#include \"vertex/";
+        out_glsl += module_name;
+        out_glsl += ".glsl\"\n";
+        return true;
+    }
+
+    /// 按 (流, 属性格式) 查表发射 include；表里既无精确行也无默认行时返回 false
+    bool AppendVertexStreamInclude(VertexStreamSlot slot, VkFormat format, AnsiString &out_glsl)
+    {
+        const VertexStreamModuleEntry *fallback = nullptr;
+
+        for (const VertexStreamModuleEntry &entry : VERTEX_STREAM_MODULES)
+        {
+            if (entry.slot != slot)
+                continue;
+
+            if (entry.format == format)
+                return AppendVertexModuleInclude(entry.module_name, out_glsl);
+
+            if (entry.format == VK_FORMAT_UNDEFINED)
+                fallback = &entry;
+        }
+
+        if (!fallback)
+            return false;
+
+        return AppendVertexModuleInclude(fallback->module_name, out_glsl);
+    }
+
     bool BuildResolvedVertexABI(
         const MaterialDefinition &definition,
         const MaterialDefinitionBuildRequest &request,
@@ -68,34 +149,28 @@ namespace
                 }
             }
 
-            // 各数据模块先 include（定义 HGL_*_LOADER 宏），
-            // Position 模块最后（LoadVertexData 以 #ifdef 展开全部 loader）
-            if (need_uv)
-            {
-                // 按 UV 属性格式选解码模块（格式=模块——RG16F 发行版一模块）
-                const auto *uv_attr = geometry.Find(VertexSemantic::TexCoord);
-                if (uv_attr && uv_attr->format == VK_FORMAT_R16G16_SFLOAT)
-                    out_vertex_input_glsl += "#include \"vertex/s1_uv_rg16f.glsl\"\n";
-                else
-                    out_vertex_input_glsl += "#include \"vertex/s1_uv.glsl\"\n";
-            }
-            if (need_ntb)
-            {
-                // 按 Normal 属性格式选解码模块（格式=模块——发行版压缩格式各一模块）
-                const auto *normal_attr = geometry.Find(VertexSemantic::Normal);
-                if (normal_attr && normal_attr->format == VK_FORMAT_R8G8_UNORM)
-                    out_vertex_input_glsl += "#include \"vertex/s1_ntb_rg8.glsl\"\n";
-                else if (normal_attr && normal_attr->format == VK_FORMAT_R16G16_SFLOAT)
-                    out_vertex_input_glsl += "#include \"vertex/s1_ntb_rg16f.glsl\"\n";
-                else if (normal_attr && normal_attr->format == PF_A2BGR10UN)
-                    out_vertex_input_glsl += "#include \"vertex/s1_ntb_a2bgr10.glsl\"\n";
-                else
-                    out_vertex_input_glsl += "#include \"vertex/s1_ntb.glsl\"\n";
-            }
+            // 顶点流装载模块按表选择（表顺序 = 发射顺序，数据流在前、位置模块在后）。
+            const GeometryVertexAttributeFormat *uv_attribute =
+                geometry.Find(VertexSemantic::TexCoord);
+            const GeometryVertexAttributeFormat *normal_attribute =
+                geometry.Find(VertexSemantic::Normal);
+            const GeometryVertexAttributeFormat *color_attribute =
+                geometry.Find(VertexSemantic::Color);
+
+            const VkFormat uv_format     = uv_attribute     ? uv_attribute->format     : VK_FORMAT_UNDEFINED;
+            const VkFormat normal_format = normal_attribute ? normal_attribute->format : VK_FORMAT_UNDEFINED;
+
+            if (need_uv
+             && !AppendVertexStreamInclude(VertexStreamSlot::UV, uv_format, out_vertex_input_glsl))
+                return false;
+
+            if (need_ntb
+             && !AppendVertexStreamInclude(VertexStreamSlot::NTB, normal_format, out_vertex_input_glsl))
+                return false;
+
             // Vertex color is a universal mesh input contract. Its provider is
             // selected from authored domain/geometry facts, never inferred from
             // the flattened Color semantic mask.
-            const auto *color_attribute = geometry.Find(VertexSemantic::Color);
             if (definition.domain == MaterialDomain::VertexPalette)
             {
                 if (!color_attribute || color_attribute->format != VK_FORMAT_R8_UINT)
@@ -104,20 +179,29 @@ namespace
                               definition.definition_id.c_str());
                     return false;
                 }
-                out_vertex_input_glsl += "#include \"vertex/s1_palette_index.glsl\"\n";
+
+                if (!AppendVertexStreamInclude(VertexStreamSlot::Color, VK_FORMAT_R8_UINT, out_vertex_input_glsl))
+                    return false;
             }
             else if (color_attribute)
             {
-                out_vertex_input_glsl += "#include \"vertex/s1_color.glsl\"\n";
+                if (!AppendVertexStreamInclude(VertexStreamSlot::Color, VK_FORMAT_UNDEFINED, out_vertex_input_glsl))
+                    return false;
             }
             else
-                out_vertex_input_glsl += "#include \"vertex/s1_color_default.glsl\"\n";
-            if (need_luminance)
-                out_vertex_input_glsl += "#include \"vertex/s1_luminance.glsl\"\n";
-            if (need_transform_id)
-                out_vertex_input_glsl += "#include \"vertex/s1_transform_id.glsl\"\n";
-            if (need_size)
-                out_vertex_input_glsl += "#include \"vertex/s1_size.glsl\"\n";
+                AppendVertexModuleInclude(COLOR_DEFAULT_MODULE, out_vertex_input_glsl);
+
+            if (need_luminance
+             && !AppendVertexStreamInclude(VertexStreamSlot::Luminance, VK_FORMAT_UNDEFINED, out_vertex_input_glsl))
+                return false;
+
+            if (need_transform_id
+             && !AppendVertexStreamInclude(VertexStreamSlot::TransformID, VK_FORMAT_UNDEFINED, out_vertex_input_glsl))
+                return false;
+
+            if (need_size
+             && !AppendVertexStreamInclude(VertexStreamSlot::Size, VK_FORMAT_UNDEFINED, out_vertex_input_glsl))
+                return false;
 
             // 位置模块按 effective input 选择（position_format 判定——geometry 格式说了算，
             // recipe/TOML input 仅兜底）。
