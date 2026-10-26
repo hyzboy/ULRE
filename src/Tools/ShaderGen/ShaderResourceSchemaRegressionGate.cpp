@@ -11186,10 +11186,65 @@ void main()
     /// （`mesh/shape/tri_<顶点数>_<varying>.mesh`），不再是「按形状键哈希落盘的
     /// 生成产物」。继续保留写盘分支只会把 `mesh/fixed/` 那套哈希命名重新养出来，
     /// 所以本探针退化为纯覆盖率检查：缺源就点名，改名/新增由人决定。
+    /// 溯源注释自洽性：主着色器尾部那条 `// mesh-options-digest <n>` 必须
+    /// ①存在且只有一条（CharQuad 一类不写 options 的路径则必须没有）
+    /// ②值等于本次 options 文本的摘要。
+    ///
+    /// 为什么这条要单独断言：`FixedMeshCatalogHas` 在比对形状 master 前会剥掉
+    /// 这一行，于是「生产侧漏写」「摘要算错」「写了两条」三种缺陷都会被当成
+    /// 「没有注释」或「一条合法注释」静默放过。而它们的后果是 stage 键不再随
+    /// `generated/mesh_options.glsl` 变化 ⇒ 换顶点格式后磁盘上的旧 SPV 被永久
+    /// 命中（症状是几何依旧按老格式解码，改 options 怎么都不生效）。
+    ///
+    /// 返回空串 = 自洽；否则返回可直接落进诊断的说明。
+    static std::string CheckMeshOptionsDigest(
+        const std::string &final_glsl, const hgl::AnsiString &mesh_options_text)
+    {
+        hgl::uint64 digest_value = 0;
+        size_t digest_at = 0;
+        const MeshOptionsDigestScan scan = ScanMeshOptionsDigest(
+            final_glsl.data(), final_glsl.size(), digest_value, &digest_at);
+
+        if (mesh_options_text.IsEmpty())
+        {
+            // 没有 options 文本就是 CharQuad 一类自持路径：网格主着色器自己
+            // 解全部 SSBO，不该被别人的 options 内容影响，也就没有摘要。
+            if (scan == MeshOptionsDigestScan::Absent)
+                return std::string();
+            return "网格阶段尾部带了 mesh-options-digest 注释，但本次没有 mesh options 文本"
+                   "（自持 SSBO 的 CharQuad 路径不该有）";
+        }
+
+        switch (scan)
+        {
+        case MeshOptionsDigestScan::Absent:
+            return "网格阶段尾部缺少 // mesh-options-digest 注释："
+                   "stage 键不会随 generated/mesh_options.glsl 变化";
+        case MeshOptionsDigestScan::Malformed:
+            return "mesh-options-digest 注释的值不是十进制摘要";
+        case MeshOptionsDigestScan::Duplicated:
+            return "mesh-options-digest 注释出现多条（无法判定哪条进了 stage 键；"
+                   "形状 master 里也不该带这一行）";
+        case MeshOptionsDigestScan::Present:
+            break;
+        }
+
+        const hgl::uint64 expected = ComputeMeshOptionsDigest(mesh_options_text);
+        if (digest_value != expected)
+        {
+            return "mesh-options-digest 与本次 options 文本摘要不一致（注释="
+                 + std::to_string(digest_value)
+                 + " 实际=" + std::to_string(expected) + "）";
+        }
+
+        return std::string();
+    }
+
     static bool CheckOneFixedMeshSource(
         const char *label,
         const ShaderBuildContext &ctx,
         const std::vector<std::string> &catalog,
+        const hgl::AnsiString &mesh_options_text,
         int &covered,
         int &missing)
     {
@@ -11206,6 +11261,18 @@ void main()
         {
             std::fprintf(stdout, "[emit-fixed-mesh] %s: empty mesh GLSL\n", label);
             ++missing;
+            return false;
+        }
+
+        // 摘要缺陷先于覆盖率判定：它说明生产侧坏了，此时「形状 master 缺失」
+        // 只是它的副作用（剥掉注释后文本对不上），先报根因。
+        // 计数器交给调用方统一 ++failed：这里不是「缺源」类问题。
+        const std::string digest_problem =
+            CheckMeshOptionsDigest(glsl, mesh_options_text);
+        if (!digest_problem.empty())
+        {
+            std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n",
+                         label, digest_problem.c_str());
             return false;
         }
 
@@ -11268,9 +11335,11 @@ void main()
         {
             std::string build_diagnostic;
             MaterialProgramBuildCapture capture{};
+            hgl::AnsiString mesh_options_text;
             std::unique_ptr<ShaderBuildContext> ctx =
                 BuildReflectionCoverageVariant(
-                    variant, build_diagnostic, nullptr, &capture);
+                    variant, build_diagnostic, nullptr, &capture,
+                    &mesh_options_text);
             if (!ctx)
             {
                 std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n",
@@ -11280,7 +11349,7 @@ void main()
             }
 
             if (!CheckOneFixedMeshSource(variant.variant_slug, *ctx, catalog,
-                                        covered, missing))
+                                        mesh_options_text, covered, missing))
                 ++failed;
         }
 
@@ -11330,6 +11399,10 @@ void main()
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
 
+            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
+            hgl::AnsiString mesh_options_text;
+            request.mesh_options_glsl_out = &mesh_options_text;
+
             MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
                 AssembleMaterialProgram(nullptr, request, definition, &capture));
@@ -11345,7 +11418,7 @@ void main()
             }
 
             if (!CheckOneFixedMeshSource(shape.label, *ctx, catalog,
-                                        covered, missing))
+                                        mesh_options_text, covered, missing))
                 ++failed;
         }
 
@@ -11395,6 +11468,10 @@ void main()
             request.fixed_fragment_source = fixed.source.c_str();
             request.fixed_fragment_interface_hash = fixed.interface_hash;
 
+            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
+            hgl::AnsiString mesh_options_text;
+            request.mesh_options_glsl_out = &mesh_options_text;
+
             MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
                 AssembleMaterialProgram(nullptr, request, definition, &capture));
@@ -11410,7 +11487,7 @@ void main()
             }
 
             if (!CheckOneFixedMeshSource(shape.label, *ctx, catalog,
-                                        covered, missing))
+                                        mesh_options_text, covered, missing))
                 ++failed;
         }
 
