@@ -874,6 +874,35 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 三份平行 `switch` 合并后，「格式认了但分量数算错」这类组合在内部分支层面不再可能——
 错误只剩两种显式出口：查不到表（硬错）或分量数门禁（硬错）。
 
+### Layer 4：网格 Options 预设化评估与摘要单点化（分支 `feature/mesh-layer4-options-presets-evaluation`）
+
+本层原本准备把 `mesh_options.glsl` 的字段组合「预设化」。实测后**否决了预设化**，改为把
+「options 内容 → stage 键」这条溯源链单点化并补上门禁，因为真正的缺陷不在体积上。
+
+- [x] **4a 预设化评估（结论：不做）**，实测数据：53 个缓存目录 / 38 份 `mesh_options.glsl` /
+      去重后 20 份 / 平均 183 B / 合计 6 961 B。三条否决论据写入架构文档「阶段十-2」：
+      总量过小（不足 7 KB）、20 份里有 15 份只差少数几行（预设化省下的是几行文本而不是分支）、
+      预设化会把「options 是发射产物」变成「options 有第二份手写真源」，与阶段九的一元化方向相反。
+- [x] **4b 摘要算法单点化**：`mesh_options` 内容摘要原先在三个消费方各内联一份（
+      `MaterialProgramAssembler` 拼注释、`DomainShaderBuildBackend::WriteMeshOptionsToCache`
+      算目录里的网格哈希、门禁校验），三份必然分叉。现收敛到 `inc/hgl/mtl/DomainOptions.h`
+      三个符号：`kMeshOptionsDigestMarker` / `ComputeMeshOptionsDigest()` / `AppendMeshOptionsDigest()`
+      与 `ScanMeshOptionsDigest()` + `MeshOptionsDigestScan` 枚举。走真实长度不用 `strlen`。
+- [x] **4c 门禁补断言（本层关键产出）**：`FixedMeshCatalogHas` 在比对形状 master 前会把
+      `// mesh-options-digest` 那一行**剥掉**，但从不校验它是否存在、是否唯一、值是否算对。
+      这是一个真实的静默缺口：注释漏写 → stage 键退回「同形状共享」→ 换了顶点格式仍命中
+      磁盘旧 SPV（症状是几何没变）；注释写错 → 溯源信息本身是假的；注释写两条 → 无法判定
+      哪条进了 stage 键。现由 `CheckMeshOptionsDigest` 覆盖四种扫描结论，且**先于**覆盖率
+      判定报错（剥掉注释后文本必然对不上，先报根因）。
+- [x] 反向探针逐个点亮（每次均显式重构建 `ShaderResourceSchemaRegressionGate` 目标后跑
+      `emit-fixed-mesh`）：① 注掉发射 → 35 形状「缺少注释」；② 摘要值 `^1` → 35 形状「值不一致」；
+      ③ 追加两次 → 35 形状「出现多条」；④ 只写 marker + `abc` → 35 形状「不是十进制摘要」；
+      ⑤ 在 CharQuad 分支之前的公共路径追加 → `covered=0 failed=37`，连 options 为空的那
+      2 个形状也报「不该带这一行」。五条分支全部可被真实缺陷触发。
+
+**Layer 4 的收益**：网格 options 与 stage 键之间从「注释存在与否靠人记得写」变成「文本自带
+可复算的摘要，门禁四态全断言」。摘要算法从三份内联收敛成一处定义，避免三处口径漂移。
+
 ### 各层验收门槛（每层收尾必须全绿）
 
 | 检查 | 门槛 |
