@@ -16,8 +16,9 @@
 #include "common/alpha_compositor.glsl"
 layout(location=HGL_LOCATION_DATA_INDEX_ID) flat perprimitiveEXT in  uint fragDataIndexID;
 layout(location=HGL_LOCATION_FRAG_DIRECTION) in vec3 fragDirection;
+layout(location=HGL_LOCATION_VERTEX_COLOR) in vec4 fragVertexColor;
 layout(location=0) out vec4 outColor;
-void WriteMaterialOutput(vec4 value) { outColor = value; }
+void WriteMaterialOutput(vec4 value) { outColor = value * fragVertexColor; }
 
 void main()
 {
@@ -26,7 +27,7 @@ void main()
     si.worldNormal = normalize(fragDirection);
     si.uv0 = vec2(0.0);
     si.uv1 = vec2(0.0);
-    si.vertexColor = vec4(1.0);
+    si.vertexColor = fragVertexColor;
     si.viewDir = fragDirection;
     si.screenPos = vec2(0.0);
     si.luminance = 0.0;

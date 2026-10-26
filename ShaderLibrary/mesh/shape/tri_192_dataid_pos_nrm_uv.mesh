@@ -25,6 +25,7 @@ layout(location=HGL_LOCATION_DATA_INDEX_ID) perprimitiveEXT out uint fragDataInd
 layout(location=HGL_LOCATION_WORLD_POS) out vec3 fragWorldPos[192];
 layout(location=HGL_LOCATION_WORLD_NORMAL) out vec3 fragWorldNormal[192];
 layout(location=HGL_LOCATION_UV0) out vec2 fragUV0[192];
+layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[192];
 
 // 唯一可变输入：顶点解码 + 位置映射 + 变换
 #include "generated/mesh_options.glsl"
@@ -35,6 +36,7 @@ void WriteMeshVertexOutputs(uint vid)
     fragWorldPos[vid] = GetWorldPos(GetLocalPos());
     fragWorldNormal[vid] = GetWorldNormal(Normal);
     fragUV0[vid] = TexCoord;
+    fragVertexColor[vid] = GetVertexColor();
 }
 
 #define ULRE_MESH_MAX_VERTS 192u

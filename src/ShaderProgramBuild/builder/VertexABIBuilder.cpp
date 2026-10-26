@@ -51,7 +51,7 @@ namespace
                 return false;
             out_position_format = position_attribute->format;
 
-            bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
+            bool need_uv = false, need_ntb = false, need_luminance = false, need_transform_id = false, need_size = false;
             for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
                 const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -63,7 +63,6 @@ namespace
                 case VertexSemantic::Normal:
                 case VertexSemantic::Tangent:
                 case VertexSemantic::Bitangent: need_ntb = true; break;
-                case VertexSemantic::Color: need_color = true; break;
                 case VertexSemantic::Luminance: need_luminance = true; break;
                 case VertexSemantic::TransformID: need_transform_id = true; break;
                 case VertexSemantic::Size: need_size = true; break;
@@ -95,13 +94,26 @@ namespace
                 else
                     out_vertex_input_glsl += "#include \"vertex/s1_ntb.glsl\"\n";
             }
-            if (need_color)
+            // Vertex color is a universal mesh input contract. Its provider is
+            // selected from authored domain/geometry facts, never inferred from
+            // the flattened Color semantic mask.
+            const auto *color_attribute = geometry.Find(VertexSemantic::Color);
+            if (definition.domain == MaterialDomain::VertexPalette)
             {
-                if (definition.vertex_varying.emit_vertex_color_from_palette)
-                    out_vertex_input_glsl += "#include \"vertex/s1_palette_index.glsl\"\n";   // palette 材质：ColorIndex（R8_UINT 索引）
-                else
-                    out_vertex_input_glsl += "#include \"vertex/s1_color.glsl\"\n";           // 标准顶点色：vec4 直读
+                if (!color_attribute || color_attribute->format != VK_FORMAT_R8_UINT)
+                {
+                    GLogError(u8"VertexPalette requires an R8_UINT palette-index color stream: definition=%s",
+                              definition.definition_id.c_str());
+                    return false;
+                }
+                out_vertex_input_glsl += "#include \"vertex/s1_palette_index.glsl\"\n";
             }
+            else if (color_attribute)
+            {
+                out_vertex_input_glsl += "#include \"vertex/s1_color.glsl\"\n";
+            }
+            else
+                out_vertex_input_glsl += "#include \"vertex/s1_color_default.glsl\"\n";
             if (need_luminance)
                 out_vertex_input_glsl += "#include \"vertex/s1_luminance.glsl\"\n";
             if (need_transform_id)

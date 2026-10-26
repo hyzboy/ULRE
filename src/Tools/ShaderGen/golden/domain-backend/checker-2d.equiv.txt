@@ -1,6 +1,7 @@
 # DH.domain-backend-equivalence shape=checker-2d definition=builtin/checkerboard_2d purpose=0 alpha_test=0
 entrypoint=main
-inputs=0 outputs=1 push_constants=1 subpass=0
+inputs=1 outputs=1 push_constants=1 subpass=0
+in  loc=5 name=fragVertexColor base=3 vec=4 col=1
 out loc=0 name=outColor base=3 vec=4 col=1
 pc  offset=0 size=88 name=pc_root
-spv_bytes=10620
+spv_bytes=10816

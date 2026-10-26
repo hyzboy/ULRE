@@ -1,7 +1,7 @@
 #version 460
 // ShaderLibrary/mesh/shape/tri_192_plain.mesh
 //
-// 网格阶段「物理固定」主着色器 · 形状 = 无 varying（纯深度 / 覆盖判定 / Checker2D 前向）（VertexPassthrough 192/64）。
+// 网格阶段「物理固定」主着色器 · 形状 = 世界顶点色（缺省时由白色空对象提供）（VertexPassthrough 192/64）。
 //
 // 本文件**不随顶点格式 / 位置映射变化**：顶点解码（s1_*）与局部→裁剪变换
 // （s2_* / s3_*）由 `generated/mesh_options.glsl` 注入，选项词表见
@@ -21,14 +21,14 @@ layout(local_size_x = 64) in;
 layout(triangles, max_vertices = 192, max_primitives = 64) out;
 #include "mesh/stage_common.glsl"
 
-// 本形状不输出任何 varying
+layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[192];
 
 // 唯一可变输入：顶点解码 + 位置映射 + 变换
 #include "generated/mesh_options.glsl"
 
 void WriteMeshVertexOutputs(uint vid)
 {
-    // 本形状不输出任何 varying（片元阶段也不需要）
+    fragVertexColor[vid] = GetVertexColor();
 }
 
 #define ULRE_MESH_MAX_VERTS 192u

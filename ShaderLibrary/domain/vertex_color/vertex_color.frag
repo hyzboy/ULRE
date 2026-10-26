@@ -37,7 +37,7 @@ void main()
     si.worldNormal = vec3(0.0, 0.0, 1.0);
     si.uv0 = vec2(0.0);
     si.uv1 = vec2(0.0);
-    si.vertexColor = vec4(1.0);
+    si.vertexColor = fragVertexColor;
     si.viewDir = vec3(0.0, 0.0, 1.0);
     si.screenPos = gl_FragCoord.xy;
     si.luminance = 1.0;
@@ -58,7 +58,6 @@ void main()
         }
     }
 #endif
-    si.vertexColor = fragVertexColor;
     const uint materialDataIndex = 0u;
     si.styleID = 0u;
     const SurfaceOutput surface = EvalSurface(si, materialDataIndex);

@@ -12,6 +12,7 @@ layout(triangles, max_vertices = 256, max_primitives = 128) out;
 
 layout(location=HGL_LOCATION_DATA_INDEX_ID) perprimitiveEXT out uint fragDataIndexID[128];
 layout(location=HGL_LOCATION_LUMINANCE) out float fragLuminance[256];
+layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[256];
 
 #include "generated/mesh_options.glsl"
 
@@ -25,6 +26,11 @@ void WriteLineQuadVertexOutputs(uint base_vid)
     fragLuminance[base_vid + 1u] = luminance;
     fragLuminance[base_vid + 2u] = luminance;
     fragLuminance[base_vid + 3u] = luminance;
+    const vec4 color = GetVertexColor();
+    fragVertexColor[base_vid + 0u] = color;
+    fragVertexColor[base_vid + 1u] = color;
+    fragVertexColor[base_vid + 2u] = color;
+    fragVertexColor[base_vid + 3u] = color;
 }
 
 #include "mesh/line_quad_body.glsl"

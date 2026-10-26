@@ -1,11 +1,8 @@
 #version 460
 // ShaderLibrary/mesh/shape/linequad_256_plain.mesh
 //
-// 网格阶段「物理固定」主着色器 · 形状 = LineQuad（线段→四边形）· 无 varying(256/128)。
-//
-// 与 `linequad_256_color.mesh` 的唯一差别是**形状集合**：本形状不输出任何
-// 插值量（2D 线框一类，片元阶段不要顶点色）。几何完全共用
-// `mesh/line_quad_body.glsl`，因此钩子是空实现。
+// 网格阶段「物理固定」主着色器 · 形状 = LineQuad（线段→四边形），始终输出顶点色。
+// 无顶点色输入时 `GetVertexColor()` 返回白色恒等值。
 //
 // 顶点解码 / 位置映射 / 变换由 `generated/mesh_options.glsl` 注入。
 //
@@ -17,11 +14,18 @@ layout(local_size_x = 64) in;
 layout(triangles, max_vertices = 256, max_primitives = 128) out;
 #include "mesh/stage_common.glsl"
 
+layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[256];
+
 // 唯一可变输入：顶点解码 + 位置映射 + 变换
 #include "generated/mesh_options.glsl"
 
 void WriteLineQuadVertexOutputs(uint base_vid)
 {
+    const vec4 color = GetVertexColor();
+    fragVertexColor[base_vid + 0u] = color;
+    fragVertexColor[base_vid + 1u] = color;
+    fragVertexColor[base_vid + 2u] = color;
+    fragVertexColor[base_vid + 3u] = color;
 }
 
 #include "mesh/line_quad_body.glsl"

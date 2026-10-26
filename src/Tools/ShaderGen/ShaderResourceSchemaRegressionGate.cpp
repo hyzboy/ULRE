@@ -193,7 +193,7 @@ namespace
     /// 刻意写成「门自己持有的常量」而不是去问被测代码：这条断言的价值就是
     /// 在模块被误删/误加时硬失败，跟着实现走就等于没测。历史上每次增删模块
     /// 都在这里改一行并留下理由，变更记录见 `RunShaderCodeModuleRegistryCase`。
-    constexpr int kShaderCodeModuleCount = 82;
+    constexpr int kShaderCodeModuleCount = 83;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)
@@ -406,6 +406,13 @@ namespace
             const std::string name = TreeEntryName(file);
             // 判据一律针对**代码**：注释里的说明文字不算违规（见 StripGlslComments）。
             const std::string text = StripGlslComments(file.second);
+
+            if (text.find("layout(location=HGL_LOCATION_VERTEX_COLOR) out vec4 fragVertexColor[")
+                    == std::string::npos)
+            {
+                AddCappedDiagnostic(
+                    result, name + ": fixed mesh master must always output the vertex-color varying");
+            }
 
             // ── 调度契约：max_vertices / max_primitives ──
             uint32_t max_vertices = 0;
@@ -5935,6 +5942,31 @@ namespace
             result.diagnostics.emplace_back(
                 "SkyCubeSphere must use its explicit front-face culling config");
 
+        const std::string color_identity = ReadFileText(
+            RepoRootPath("ShaderLibrary/vertex/s1_color_default.glsl"));
+        if (color_identity.find("vec4 GetVertexColor() { return vec4(1.0); }")
+                == std::string::npos)
+            result.diagnostics.emplace_back(
+                "default vertex-color provider must return the white multiplicative identity");
+
+        const std::string surface_interface = ReadFileText(
+            RepoRootPath("ShaderLibrary/surface/material_surface.glsl"));
+        if (surface_interface.find(
+                "surface.baseColor = material.baseColor * si.vertexColor.rgb;")
+                == std::string::npos
+         || surface_interface.find(
+                "surface.alpha = material.alpha * si.vertexColor.a;")
+                == std::string::npos)
+            result.diagnostics.emplace_back(
+                "common surface contract must apply vertex color exactly once to RGB and alpha");
+
+        const std::string vertex_color_source = ReadFileText(
+            RepoRootPath("ShaderLibrary/material/vertex_color_source.glsl"));
+        if (vertex_color_source.find("materialResult.baseColor = vec3(1.0);")
+                == std::string::npos)
+            result.diagnostics.emplace_back(
+                "VertexColor domain must rely on the common vertex-color multiplier, not multiply it twice");
+
         const char *normal_varying_fragments[] =
         {
             "ShaderLibrary/domain/checker_3d/checker_3d.frag",
@@ -7502,6 +7534,7 @@ namespace
             // + specular_{cook_torrance,toon_step,none} + indirect_none +
             // forward_toon + shadow/full（72 → 81）。
             // 超薄架构阶段二之二：新增 ntb_none 空对象（81 → 82）。
+            // 顶点色统一阶段：新增 s1_color_default 空对象（82 → 83）。
             // 计数常量已收敛到 `kShaderCodeModuleCount`（文件顶部），增删模块时
             // 只改那一处并在此追加一行理由。
             if (file_count != kShaderCodeModuleCount)
@@ -10135,6 +10168,15 @@ void main()
         {VertexSemantic::Size, VF_V2F}
     };
 
+    static const GeometryVertexFormat kReflectionCoveragePaletteGeometry{
+        {VertexSemantic::Position, VF_V3F},
+        {VertexSemantic::TexCoord, VF_V2F},
+        {VertexSemantic::Normal, VF_V3F},
+        {VertexSemantic::Color, VK_FORMAT_R8_UINT},
+        {VertexSemantic::TransformID, VK_FORMAT_R32_UINT},
+        {VertexSemantic::Size, VF_V2F}
+    };
+
     /// 2D 位置几何：`Position` 用 `VF_V2F`。
     ///
     /// `LineQuad` 的端点读取按 `position_format` 分叉：`R32G32_SFLOAT` 要把
@@ -10312,9 +10354,11 @@ void main()
         request.primitive_type = variant.primitive_type;
         request.geometry_vertex_format =
             variant.has_geometry
-                ? (variant.vec2_position
-                       ? &kReflectionCoverageGeometry2D
-                       : &kReflectionCoverageGeometry)
+                ? (definition.domain == MaterialDomain::VertexPalette
+                       ? &kReflectionCoveragePaletteGeometry
+                       : (variant.vec2_position
+                              ? &kReflectionCoverageGeometry2D
+                              : &kReflectionCoverageGeometry))
                 : nullptr;
         request.defer_finalize = true;
         request.shader_program_purpose = variant.purpose;
@@ -10944,7 +10988,13 @@ void main()
                     }
                 }
 
-                if (required && !geometry.Add(entry.semantic, entry.format, 0, 0))
+                const VkFormat format =
+                    entry.semantic == VertexSemantic::Color
+                     && definition.domain == MaterialDomain::VertexPalette
+                        ? VK_FORMAT_R8_UINT
+                        : entry.format;
+
+                if (required && !geometry.Add(entry.semantic, format, 0, 0))
                 {
                     diagnostic = "geometry.Add(contract semantic) failed";
                     return false;

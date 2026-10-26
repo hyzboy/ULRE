@@ -35,14 +35,17 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     const vec3 resolvedNormal = GetNTB(ntbInput).N;
 
     SurfaceOutput surface;
-    surface.baseColor = material.baseColor;
+    // Vertex color is a universal multiplicative input. Mesh masters always
+    // provide it; the default provider returns white when geometry has no color
+    // stream, so ordinary materials retain their previous result.
+    surface.baseColor = material.baseColor * si.vertexColor.rgb;
     surface.normal = resolvedNormal;
     surface.metallic = material.metallic;
     surface.roughness = material.roughness;
     surface.fresnel = material.fresnel;
     surface.ao = material.ao;
     surface.emissive = material.emissive;
-    surface.alpha = material.alpha;
+    surface.alpha = material.alpha * si.vertexColor.a;
     return surface;
 }
 #endif
@@ -52,7 +55,7 @@ float EvalAlpha(SurfaceInput si, uint dataIndex)
     MaterialSourceInput sourceInput;
     sourceInput.surface = si;
     sourceInput.dataIndex = dataIndex;
-    return EvalMaterialAlpha(sourceInput);
+    return EvalMaterialAlpha(sourceInput) * si.vertexColor.a;
 }
 
 #endif

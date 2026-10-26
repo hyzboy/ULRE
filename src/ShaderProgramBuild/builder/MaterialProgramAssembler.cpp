@@ -508,8 +508,15 @@ namespace hgl::graph::mtl
             name += AnsiString::numberOf(max_vertices);
             name += AnsiString("_");
 
-            const InterStageSemanticMask mask =
+            InterStageSemanticMask mask =
                 GetMaterialInterStageSemanticMask(varying);
+
+            // Vertex color is a universal mesh output now; direct-color,
+            // palette-color, and default-white providers share one shape master.
+            // CharQuad retains its authored color varying because its color is
+            // carried in the glyph instance data, not a vertex stream.
+            if (!IsCharQuadMode(mode))
+                mask &= ~GetInterStageSemanticMask(InterStageSemantic::Color);
 
             const char *tokens[16]{};
             const uint32 token_count =

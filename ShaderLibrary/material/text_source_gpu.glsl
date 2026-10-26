@@ -53,8 +53,8 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer CharStyleData
 
 // 文本样式特效合成（EvalMaterialSource / EvalMaterialAlpha 共用）：
 //   输入：当前像素已解码的有符号距离场 sdf（[-1,1]，字身边界 = 0）
-//   输出：预乘 rgb（baseColor = rgb * coverage，与现有输出约定一致）
-//         与最终 alpha（含 textColor.a）
+//   输出：不依赖顶点色的 coverage RGB 与 alpha；统一顶点色乘算由
+//         surface/material_surface.glsl 完成。
 // 零参数（bold=0、outline=0、flags=0）时退化为原始
 // smoothstep(-sm, sm, sdf) 公式，视觉完全等价。
 void EvalTextStyleEffects(
@@ -64,7 +64,6 @@ void EvalTextStyleEffects(
     out float out_alpha)
 {
     const CharStyleData st = sbo_char_style.styles[sourceInput.surface.styleID];
-    const vec4 textColor = sourceInput.surface.vertexColor;
     const float du = 2.0 / TEXT_SDF_SPREAD;  // 每像素对应的 sdf 单位
     const float sm = fwidth(sdf);            // 抗锯齿带宽
 
@@ -106,13 +105,13 @@ void EvalTextStyleEffects(
     }
 
     // 预乘 over 合成：top = body over outline；final = shadow over top（阴影在最底层）
-    const vec3 top_rgb = textColor.rgb * body_a
+    const vec3 top_rgb = vec3(body_a)
         + unpackUnorm4x8(st.outline_color).rgb * outline_a * (1.0 - body_a);
     const float top_a = body_a + outline_a * (1.0 - body_a);
 
     out_rgb = top_rgb
         + unpackUnorm4x8(st.shadow_color).rgb * shadow_a * (1.0 - top_a);
-    out_alpha = textColor.a * (top_a + shadow_a * (1.0 - top_a));
+    out_alpha = top_a + shadow_a * (1.0 - top_a);
 }
 #else
 #define TEXT_SAMPLER NearestSampler
@@ -120,7 +119,6 @@ void EvalTextStyleEffects(
 
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 {
-    const vec4 textColor = sourceInput.surface.vertexColor;
     const uvec2 texture_reference =
         GetTextAtlasReference(sourceInput.dataIndex);
     const float rawSample =
@@ -141,10 +139,13 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     materialResult.baseColor = styled_rgb;
     materialResult.alpha = styled_alpha;
 #else
-    // 原始位图路径：直接灰度调制（预乘 alpha 输出，与 SDF 路径一致）
+    // 原始位图路径：灰度 coverage；顶点色 / alpha 在共同 Surface 契约中应用。
     const float coverage = rawSample;
-    materialResult.baseColor = textColor.rgb * textColor.a * coverage;
-    materialResult.alpha = textColor.a * coverage;
+    // Preserve legacy premultiplied bitmap input while the common surface
+    // contract applies vertexColor.rgb once after source evaluation.
+    materialResult.baseColor =
+        vec3(coverage * sourceInput.surface.vertexColor.a);
+    materialResult.alpha = coverage;
 #endif
 
     materialResult.metallic = 0.0;
@@ -174,7 +175,7 @@ float EvalMaterialAlpha(MaterialSourceInput sourceInput)
     EvalTextStyleEffects(sourceInput, sdf, styled_rgb, styled_alpha);
     return styled_alpha;
 #else
-    return sourceInput.surface.vertexColor.a * rawSample;
+    return rawSample;
 #endif
 }
 #endif
