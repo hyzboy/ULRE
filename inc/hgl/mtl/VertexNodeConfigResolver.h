@@ -71,40 +71,6 @@ namespace hgl::graph::mtl
             }
         }
 
-        /// s3 模块是否提供 `GetWorldPos` / `GetWorldNormal`。
-        ///
-        /// 只有真正建立了世界空间的模块才提供这对接口：
-        ///  - `s3_world_camera_vp`       L2W → camera.vp
-        ///  - `s3_l2w_only`              纯 L2W（2D NDC/ZeroOne）
-        ///  - `s3_ortho_then_l2w`        ortho → L2W
-        ///  - `s3_camera_facing_world`   相机朝向、世界单位尺寸
-        /// 其余三种**不提供**：
-        ///  - `s3_camera_facing_fixed_pixels` 位置由 clip 空间像素偏移直接给出
-        ///  - `s3_ortho_viewport`             只有 viewport.ortho_matrix，无 L2W
-        ///  - `s3_clip_passthrough`           原样透传，语义上没有世界空间
-        /// 材质若在这些模式上要求 WorldPosition/WorldNormal 语义，
-        /// 生成期必须硬失败（硬编码兜底会静默产出错值）。
-        static bool HasWorldSpace(const VertexShaderNodeConfig &cfg) noexcept
-        {
-            if (cfg.orientation == OrientationMode::CameraFacingFree
-             || cfg.orientation == OrientationMode::CameraFacingAxisY)
-            {
-                return cfg.scale != ScaleMode::FixedPixelSize;
-            }
-
-            switch (cfg.projection)
-            {
-            case ProjectionMode::LocalToWorldOnly:
-            case ProjectionMode::OrthoThenLocalToWorld:
-            case ProjectionMode::WorldCameraVP:
-                return true;
-            case ProjectionMode::OrthoViewport:
-            case ProjectionMode::ClipPassthrough:
-            default:
-                return false;
-            }
-        }
-
         static bool IsScreenLike(const VertexShaderNodeConfig &cfg) noexcept
         {
             if (cfg.input != VertexInputMode::Vec2Position

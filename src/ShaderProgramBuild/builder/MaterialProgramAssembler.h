@@ -58,7 +58,6 @@ namespace hgl::graph::mtl
     struct MaterialProgramBuildCapture
     {
         uint64 mesh_source_shape_key = 0;
-        bool mesh_source_was_fixed = false;
         /// 本次解析出的 `generated/mesh_options.glsl` 文本。装配器只发射文本、
         /// 不碰文件系统：落盘位置由后端决定（必须与片段 options 同一个根）。
         AnsiString mesh_options;
@@ -66,7 +65,6 @@ namespace hgl::graph::mtl
         void Clear() noexcept
         {
             mesh_source_shape_key = 0;
-            mesh_source_was_fixed = false;
             mesh_options.Clear();
         }
     };

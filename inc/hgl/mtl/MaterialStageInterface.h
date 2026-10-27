@@ -153,14 +153,4 @@ namespace hgl::graph::mtl
     const InterStageSemanticContractEntry *FindMaterialStageInterfaceEntry(
         const ValueArray<InterStageSemanticContractEntry> &entries,
         InterStageSemantic semantic) noexcept;
-
-    // 该语义在 mesh shader 里是 per-primitive（perprimitiveEXT）而非 per-vertex：
-    // 每图元恒定一份（DataIndexID/StyleID——flat 且按图元共享）。
-    // mesh 侧 out 数组尺寸 = max_primitives，FS 侧 in 必须同加 perprimitiveEXT。
-    inline bool IsPerPrimitiveInterStageSemantic(
-        const InterStageSemantic semantic) noexcept
-    {
-        return semantic == InterStageSemantic::DataIndexID
-            || semantic == InterStageSemantic::StyleID;
-    }
 }

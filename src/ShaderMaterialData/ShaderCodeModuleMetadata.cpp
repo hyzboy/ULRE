@@ -176,9 +176,7 @@ namespace hgl::graph::mtl
 
             for (uint32 j = 0; j < i; ++j)
             {
-                ShaderCodeModuleDependency other{};
-                if (j < definition.dependency_count
-                 && SameName(dependency.module_name,
+                if (SameName(dependency.module_name,
                              definition.dependencies[j].module_name))
                 {
                     return SetMetadataFailure(

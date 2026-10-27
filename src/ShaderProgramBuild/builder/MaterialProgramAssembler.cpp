@@ -1390,8 +1390,6 @@ namespace hgl::graph::mtl
         {
             build_capture->mesh_source_shape_key =
                 plan.mesh_source_shape_key;
-            build_capture->mesh_source_was_fixed =
-                plan.mesh_source_was_fixed;
         }
         return result;
     }
