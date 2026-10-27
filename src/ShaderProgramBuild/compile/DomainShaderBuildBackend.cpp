@@ -116,15 +116,18 @@ namespace hgl::graph::mtl
         /// options 目录名由**文本内容**决定：内容相同 ⇒ 复用同一目录（写是幂等的），
         /// 内容不同 ⇒ 目录不同（不可能读到别人的 options）。
         ///
-        /// 片段与网格两份 options **一起入键**。只按片段定名不够：两个顶点格式
-        /// 不同的材质（例如 `DrawTriangle` 与 `AutoInstance` 同属 VertexColor 域）
-        /// 片段 options 可能逐字节相同，共用目录就会互相覆盖 `mesh_options.glsl`
-        /// ⇒ 顶点按错误的格式解码，表现为几何静默错位且不报错。
+        /// 片段、网格、阶段间 varying 三份 options **一起入键**。只按片段定名不够：
+        /// 两个顶点格式不同的材质（例如 `DrawTriangle` 与 `AutoInstance` 同属
+        /// VertexColor 域）片段 options 可能逐字节相同，共用目录就会互相覆盖
+        /// `mesh_options.glsl` ⇒ 顶点按错误的格式解码，表现为几何静默错位且不报错。
+        /// 同理，varying 集合不同的两份材质会互相覆盖 `common_options.glsl`。
         ///
-        /// `mesh_options_text` 传 `nullptr` 表示「本材质没有网格 options」（工具/
-        /// 门禁只解片段时的路径），此时键值只覆盖片段文本，与旧口径逐字节一致。
+        /// `mesh_options_text` / `common_options_text` 传 `nullptr` 表示「本材质没有
+        /// 那一份」（工具/门禁只解片段时的路径），此时键值只覆盖其余文本。
+        /// `AppendBytes` 对零长度是空操作，所以「多传一个空串」不改变既有键值。
         void MakeOptionsKey(const AnsiString &fragment_options_text,
                             const AnsiString *mesh_options_text,
+                            const AnsiString *common_options_text,
                             const MaterialDomain domain,
                             const ShaderProgramPurpose purpose,
                             char *out_key,
@@ -137,6 +140,10 @@ namespace hgl::graph::mtl
             if (mesh_options_text && mesh_options_text->Length() > 0)
                 hasher.AppendBytes(mesh_options_text->c_str(),
                                    static_cast<size_t>(mesh_options_text->Length()));
+
+            if (common_options_text && common_options_text->Length() > 0)
+                hasher.AppendBytes(common_options_text->c_str(),
+                                   static_cast<size_t>(common_options_text->Length()));
 
             hasher << static_cast<uint64>(domain);
             hasher << static_cast<uint64>(purpose);
@@ -332,9 +339,14 @@ namespace hgl::graph::mtl
             static const char kReadme[] =
                 "# 本目录自包含：一次完整编译的全部可变输入都在这里\n"
                 "#\n"
-                "# 两份 options 与主着色器的对应关系：\n"
+                "# 三份 options 与主着色器的对应关系：\n"
                 "#   ShaderLibrary/domain/<领域>/<主着色器>.frag  #include \"generated/frag_options.glsl\"\n"
                 "#   ShaderLibrary/mesh/*.mesh                    #include \"generated/mesh_options.glsl\"\n"
+                "#   ShaderLibrary/mesh/*.mesh + domain/*/*.frag  #include \"generated/common_options.glsl\"\n"
+                "#\n"
+                "# common_options.glsl 是阶段间 varying 的唯一开关源（HGL_VARYING_*）：\n"
+                "# 网格阶段据它声明并写出 out 数组，片段阶段据它声明 in 并解包。\n"
+                "# 两份主着色器读的是同一份文件，接口错配从结构上不可能发生。\n"
                 "#\n"
                 "# 用任意 GLSL 编译器复现（两个 include 根：库根 + 本目录）：\n"
                 "#   glslangValidator -V -I<ShaderLibrary> -I<本目录> \\\n"
@@ -358,6 +370,7 @@ namespace hgl::graph::mtl
         bool WriteOptionsToCache(
             const AnsiString &fragment_options_text,
             const AnsiString &mesh_options_text,
+            const AnsiString &common_options_text,
             const MaterialDomain domain,
             const ShaderProgramPurpose purpose,
             OSString &out_options_root)
@@ -372,6 +385,7 @@ namespace hgl::graph::mtl
             char key[32];
             MakeOptionsKey(fragment_options_text,
                            mesh_options_text.IsEmpty() ? nullptr : &mesh_options_text,
+                           common_options_text.IsEmpty() ? nullptr : &common_options_text,
                            domain, purpose, key, sizeof(key));
 
             const OSString options_root =
@@ -392,6 +406,12 @@ namespace hgl::graph::mtl
                                         mesh_options_text))
                 return false;
 
+            if (!common_options_text.IsEmpty()
+             && !WriteGeneratedTextFile(generated_dir,
+                                        OSString(OS_TEXT("common_options.glsl")),
+                                        common_options_text))
+                return false;
+
             out_options_root = options_root;
             WriteOptionsReadme(options_root);
             return true;
@@ -409,6 +429,20 @@ namespace hgl::graph::mtl
             return WriteGeneratedTextFile(MakeGeneratedDir(options_root),
                                           OSString(OS_TEXT("mesh_options.glsl")),
                                           mesh_options_text);
+        }
+
+        /// 把阶段间 varying 开关写成 `<options_root>/generated/common_options.glsl`。
+        ///
+        /// 只给工具/门禁用，理由同 `WriteMeshOptionsSourceFile`：这是一份
+        /// **两个 stage 共用**的文件，手写编译的门必须把它补进与网格 options
+        /// 同一个根，否则 `#include "generated/common_options.glsl"` 解析不到。
+        bool WriteInterStageVaryingOptionsSourceFile(
+            const OSString &options_root,
+            const AnsiString &common_options_text)
+        {
+            return WriteGeneratedTextFile(MakeGeneratedDir(options_root),
+                                          OSString(OS_TEXT("common_options.glsl")),
+                                          common_options_text);
         }
         /// 读领域主着色器源文件（`ShaderLibrary/domain/<领域>/<文件>.frag`）。
         bool LoadDomainMasterShader(
@@ -700,11 +734,12 @@ namespace hgl::graph::mtl
                     return nullptr;
                 }
 
-                // ── 3. 两份 options 一次落盘，再在它的 include 根下编译 ──────
+                // ── 3. 三份 options 一次落盘，再在它的 include 根下编译 ──────
                 OSString options_root;
                 if (!WriteOptionsToCache(
                         fixed.options_text,
                         capture.mesh_options,
+                        capture.interstage_varying_options,
                         fixed.domain,
                         fixed.purpose,
                         options_root))
@@ -769,8 +804,9 @@ namespace hgl::graph::mtl
             return false;
 
         // 工具/门禁只解片段：目录按片段文本定名，网格那份由调用方拿到之后再补进
-        // 同一个 `generated/`（见 `WriteMeshOptionsSource`）。
-        if (!WriteOptionsToCache(fixed.options_text, AnsiString(),
+        // 同一个 `generated/`（见 `WriteMeshOptionsSource`）。`common_options.glsl`
+        // 同理走 `WriteInterStageVaryingOptionsSource`。
+        if (!WriteOptionsToCache(fixed.options_text, AnsiString(), AnsiString(),
                                  fixed.domain, fixed.purpose,
                                  out_source.options_root))
             return false;
@@ -830,6 +866,14 @@ namespace hgl::graph::mtl
         const AnsiString &mesh_options_text)
     {
         return WriteMeshOptionsSourceFile(options_root, mesh_options_text);
+    }
+
+    bool WriteInterStageVaryingOptionsSource(
+        const OSString &options_root,
+        const AnsiString &common_options_text)
+    {
+        return WriteInterStageVaryingOptionsSourceFile(
+            options_root, common_options_text);
     }
 
     void InstallDomainShaderBuildBackend()

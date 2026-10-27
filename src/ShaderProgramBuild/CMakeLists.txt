@@ -66,6 +66,11 @@ set(CONTRACT_FILES
     contract/MaterialStageInterface.cpp
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ShaderSemanticRegistry.h
     contract/ShaderSemanticRegistry.cpp
+    # 阶段间 varying 的宏开关发射器（common_options.glsl）。
+    # 必须留在本模块：它派生宏名要读 InterStageSemanticRegistry[]，
+    # 而注册表在下层 ShaderMaterialData 里不可见。
+    ${SHADERPROGRAMBUILD_INCLUDE_PATH}/InterStageVaryingOptions.h
+    contract/InterStageVaryingOptions.cpp
     contract/CanonicalContractWriter.h
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ShaderStageValueType.h
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}/SerializedVertexEntry.h)

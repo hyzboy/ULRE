@@ -18,6 +18,7 @@
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/mtl/InterStageVaryingOptions.h>
 #include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
@@ -712,6 +713,48 @@ namespace hgl::graph::mtl
                     plan.mesh_source_shape_key = shape_hasher;
                 }
 
+                // ── 阶段间 varying 开关：`generated/common_options.glsl` ────────
+            //
+            // 与 `mesh_options` / `frag_options` 不同，这一份是**两个 stage 共用**
+            // 的：网格阶段据它声明 out 数组并写值，片段阶段据它声明 in 并解包。
+            // 一个文件同时决定了「传什么」和「两端怎么读」，接口错配从结构上消失
+            // （此前是每条 varying 在 14 个 .mesh × 39 处 .frag 声明里各写两遍）。
+            //
+            // 发射在模式判断之外：CharQuad 也走统一 varying 文件，只是它不消费
+            // mesh_options（顶点链路自持）。
+            {
+                const mtl::InterStageSemanticMask mask =
+                    mtl::GetMaterialInterStageSemanticMask(plan.varying);
+
+                AnsiString common_options_glsl;
+                if (!mtl::EmitInterStageVaryingOptions(mask, common_options_glsl))
+                {
+                    s_last_material_program_assembly_error =
+                        AnsiString("interstage varying options emit failed "
+                                   "(mask has a semantic the unified varying file "
+                                   "does not implement) for shape ")
+                        + shape_name;
+                    GLogError(
+                        "[MaterialProgramAssembler] Generic material build failed to emit interstage varying options: "
+                        "name=%s shape=%s mask=0x%08x",
+                        definition.definition_name.c_str(),
+                        shape_name.c_str(),
+                        static_cast<unsigned>(mask));
+                    return false;
+                }
+
+                if (build_capture)
+                    build_capture->interstage_varying_options =
+                        common_options_glsl;
+
+                // 语义集合决定 out/in 数组的**集合**，因此也决定网格阶段的编译
+                // 输入：同一份主着色器文本 + 不同 common_options 就是两次编译。
+                // 它和 mesh_options 一样不在 ShaderLibrary 的 include 闭包内。
+                plan.interstage_varying_options_digest = HashFinalShaderSource(
+                    common_options_glsl.c_str(),
+                    static_cast<size_t>(common_options_glsl.Length()));
+            }
+
                 // ── CharQuad 不消费 options ────────────────────────────────
                 //
                 // CharQuad 的顶点 ABI 求解器在 `VertexInputMode::None` 上直接
@@ -1147,13 +1190,15 @@ namespace hgl::graph::mtl
                     plan.ms.c_str(), static_cast<size_t>(plan.ms.Length()));
 
             // 文本之外的输入：注入项 + `#include` 闭包 + 网格 options 文本 +
-            // 资源布局契约。这四样任何一样变了，同一份工具文本就编出不同的 SPV。
+            // 阶段间 varying 开关 + 资源布局契约。这五样任何一样变了，同一份
+            // 工具文本就编出不同的 SPV。
             hgl::hash::FNV1aHasher64 mesh_compile_inputs_hasher;
             mesh_compile_inputs_hasher
                 << injected_source_hash
                 << ComputeShaderLibraryDependencyHash(
                        plan.ms.c_str(), static_cast<size_t>(plan.ms.Length()))
                 << plan.mesh_options_digest
+                << plan.interstage_varying_options_digest
                 << resource_contract_hash;
             const uint64 mesh_compile_inputs_hash = mesh_compile_inputs_hasher;
 

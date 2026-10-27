@@ -62,10 +62,16 @@ namespace hgl::graph::mtl
         /// 不碰文件系统：落盘位置由后端决定（必须与片段 options 同一个根）。
         AnsiString mesh_options;
 
+        /// 本次解析出的 `generated/common_options.glsl` 文本 —— 阶段间 varying 的
+        /// `HGL_VARYING_*` 开关。网格阶段与片段阶段**共用同一份**：两端都 include
+        /// 它，所以「传什么」只有一处决定（见 inc/hgl/mtl/InterStageVaryingOptions.h）。
+        AnsiString interstage_varying_options;
+
         void Clear() noexcept
         {
             mesh_source_shape_key = 0;
             mesh_options.Clear();
+            interstage_varying_options.Clear();
         }
     };
 
@@ -122,6 +128,10 @@ namespace hgl::graph::mtl
         /// 摘要同样必须进 stage 键：主着色器文本对「同形状」逐字节相同，两种不同
         /// 顶点格式/位置映射只在 options 里分叉。
         uint64 mesh_options_digest = 0;
+        /// 本次发射出的 `generated/common_options.glsl`（阶段间 varying 开关）文本摘要。
+        /// 它决定网格阶段声明并写出哪些 out 数组 —— 同主着色器 + 不同开关是不同的
+        /// 编译输入，与 `mesh_options_digest` 同理必须进 stage 键。
+        uint64 interstage_varying_options_digest = 0;
 
         // Phase 5: program link + compile config
         MaterialDefinition contract_definition;

@@ -111,6 +111,14 @@ namespace hgl::graph::mtl
         const OSString &options_root,
         const AnsiString &mesh_options_text);
 
+    /// 工具/门禁用：把阶段间 varying 开关写进给定根
+    /// （`<root>/generated/common_options.glsl`）。
+    ///
+    /// 网格与片段主着色器都 include 它，门禁手写编译时必须补进同一个根。
+    bool WriteInterStageVaryingOptionsSource(
+        const OSString &options_root,
+        const AnsiString &common_options_text);
+
     void InstallShaderCreateInfoSPVReleaser();
     void UninstallShaderCreateInfoSPVReleaser();
 }//namespace hgl::graph::mtl
