@@ -145,14 +145,6 @@ namespace hgl::graph::mtl
 
     const char *GetRenderTemplateName(RenderTemplateID id) noexcept;
 
-    /// 渲染模板骨架源文件名（位于 ShaderLibrary/fragment/，如
-    /// "forward_lit.glsl.tmpl"）。四种模板族都有骨架文件；返回 nullptr 表示
-    /// 该模板未登记骨架，composer 会以 `template-unregistered` 拒绝它。
-    ///
-    /// 骨架文件名属于模板定义的一部分：此前该映射只存在于片段拼装器的
-    /// 匿名命名空间里，拼装器删除后它成了唯一出口。
-    const char *GetRenderTemplateFragmentSourceFile(RenderTemplateID id) noexcept;
-
     const char *GetShaderModuleSlotRoleName(ShaderModuleSlotRole role) noexcept;
     const char *GetRenderTemplateValidationErrorName(
         RenderTemplateValidationError error) noexcept;

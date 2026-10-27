@@ -2293,3 +2293,20 @@ include `common/interstage_varying.glsl`，那份文件无条件 include
 门禁因此不再解释「某个形状应该有哪些 varying」——它只需要相信
 `common_options.glsl`，而那一份的正确性由 `EmitInterStageVaryingOptions` 的三条
 硬约束守。
+
+## 阶段十一-2：退役片元模板骨架与遗留路径
+
+固定片元主着色器已由 `DomainShaderTemplate` 按领域 / pass 选择
+`ShaderLibrary/domain/**/*.frag`。生产构建不再读取 `ShaderLibrary/fragment/*.glsl.tmpl`；
+清理前，旧目录四份 `.tmpl` 只剩文件名映射和一条源码契约测试引用，没有生产消费点。
+
+- 删除 `forward_lit.glsl.tmpl`、`forward_unlit.glsl.tmpl`、`shadow_caster.glsl.tmpl`、
+  `sky.glsl.tmpl`，并删除只映射这些旧路径的公开函数
+  `GetRenderTemplateFragmentSourceFile()`。
+- 将 `TestCSMIncrementalPass` 的 data-index 契约改为检查实际编译的
+  `domain/standard_opaque/forward_lit.frag`。
+- 清除 ShaderLibrary 中多余的 `.gitkeep`，包括原本仅用于占位的空目录。
+
+其它模块没有因「当前默认模板未选择」就被删除：lighting、shadow、NTB、vertex
+provider 仍是可由材质 / scene profile 选择的模块，compute GLSL 仍由独立调度路径
+消费。只有无生产调用点、且语义已由固定 `.frag` 选路取代的模板骨架被退役。

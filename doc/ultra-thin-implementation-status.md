@@ -449,7 +449,7 @@ masked `ShadowCaster` 是同一类漏，属于「改坏了也没人会报」。
 | 槽表（12 role） | `src/ShaderMaterialData/RenderTemplate.cpp` |
 | 模板 profile | `src/ShaderMaterialData/SceneRenderTemplateResolver.cpp` |
 | 模板选路（depth / lit / unlit / sky） | `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:128-138` |
-| 三个固定主着色器 `.tmpl` | `ShaderLibrary/fragment/forward_lit.glsl.tmpl` / `forward_unlit.glsl.tmpl` / `sky.glsl.tmpl` |
+| 固定片元主着色器 | `ShaderLibrary/domain/<domain>/*.frag`，由 `ResolveDomainShaderTemplate()` 按领域 / pass 选择；Sky 与 ShadowCaster 有显式变体 |
 | 管线配置头（`#include` 一半） | `inc/hgl/mtl/PipelineConfigEmitter.h` / `src/ShaderGen/template/PipelineConfigEmitter.cpp` |
 | 能力名解析静态表 | `src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp:152`（`ParseCapabilityMask()`，**新增能力名必须同时加行**） |
 | 门禁 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` |
@@ -1008,3 +1008,11 @@ Layer 1-5 之后 `ShaderLibrary/mesh/shape/` 仍是 13 份 `.mesh`，文件名�
 
 **验收**：全量构建仅既存 TexConv `LNK1104`；冷缓存 6 目录全删后 16/16 ctest；16 个载荷 SPV
 与收敛前基线**逐字节相同**（零 MISMATCH / 零 EXTRA）——宏展开后的文本等价，收敛不改变任何产出。
+
+### Layer 7：移除已退役的片元模板骨架
+
+固定领域主着色器已由 `ResolveDomainShaderTemplate()` 直接选取
+`ShaderLibrary/domain/<domain>/*.frag`；生产构建不再读取 `ShaderLibrary/fragment/*.glsl.tmpl`。
+清理删除四份 `.tmpl`、只返回这些旧文件名的 `GetRenderTemplateFragmentSourceFile()` 映射，
+并将 CSM 源码契约测试改为读取当前 `standard_opaque/forward_lit.frag`。空目录占位
+`.gitkeep` 也已移除；保留仍由 include、模块注册或运行时配置使用的其它 GLSL 模块。

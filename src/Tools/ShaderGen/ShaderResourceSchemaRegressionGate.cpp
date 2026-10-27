@@ -2082,7 +2082,7 @@ namespace
         // 生成器已物理删除：原来这里拿「生成器产出的 lit/color 顶点文本」当
         // varying ABI 的判据。现在稳定 ABI 的唯一真源就是上面这张注册表，
         // 而「库里的主着色器是否照着它发射」由 MV.fixed-mesh-varying-invariants
-        // 对 19 个 .mesh 逐条断言 —— 两边分工，避免一处失败两处报。
+        // 检查三份拓扑 master —— 两边分工，避免一处失败两处报。
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -10218,17 +10218,14 @@ void main()
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, false, false },
         // LineQuad 是第三种 mesh 发射模式，只能由 `primitive_type = Lines` 推出来
-        // （材质定义里没有对应字段）。上面 14 个变体全是 VertexPassthrough /
-        // CharQuad，`line_quad.glsl.tmpl` 与它的两条端点读取分支此前**没有任何
-        // 快照覆盖**——和 masked ShadowCaster 一样，属于「改坏了也不会有人报」。
+        // （材质定义里没有对应字段）。这些用例覆盖 LineQuad 固定拓扑 master 与
+        // `mesh/line_quad_body.glsl` 的端点读取路径，避免该独立几何路径退化后漏报。
         { "VertexColor", "vertex-color-lines-quad",
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, true, false,
           PrimitiveType::Lines, false },
-        // vec2 端点是另一条 `{{endpoint_read}}` 分支。原先这里挂 `VertexColor`，
-        // 但它是 `Passthrough3D`（需要 vec3 Position），与 VF_V2F 夹具配不上——
-        // 生成的 `vec4(vec3, 0.0, 1.0)` 五分量构造根本编不过。2D 位置必须配
-        // 2D 映射的材质，故改用 `builtin/checkerboard_2d`（NDCLift）。
+        // 2D 位置需要与顶点格式匹配的 2D 映射模块。用 checkerboard_2d
+        // （NDCLift）覆盖 VF_V2F 夹具，避免把 Passthrough3D 的 vec3 ABI 错配进来。
         { "builtin/checkerboard_2d", "checkerboard-2d-lines-quad-2d",
           ShaderProgramPurpose::ForwardColor,
           RenderTemplateID::ForwardUnlit, true, false,

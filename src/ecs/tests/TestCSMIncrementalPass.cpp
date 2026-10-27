@@ -2332,9 +2332,9 @@ int main(int argc, char** argv)
             { "forward_lighting.glsl", OS_TEXT("ShaderLibrary/compositor/forward_lighting.glsl"),
               "GetShadowFactor(si, data_index)",
               "合成器不再把 per-draw 行号传给阴影 provider（旋钮在最后一步断链）" },
-            { "forward_lit.glsl.tmpl", OS_TEXT("ShaderLibrary/fragment/forward_lit.glsl.tmpl"),
+            { "forward_lit.frag", OS_TEXT("ShaderLibrary/domain/standard_opaque/forward_lit.frag"),
               "PassEnvironmentInput(si, surface, materialDataIndex)",
-              "FS 模板不再传 materialDataIndex（行号在入口处就丢了）" },
+              "固定 ForwardLit 片元主着色器不再传 materialDataIndex（行号在入口处就丢了）" },
         };
 
         if (const int failed = verify_source_contracts(14, kShadowKnobContracts,

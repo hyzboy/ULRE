@@ -642,9 +642,8 @@ namespace hgl::graph::mtl
                 // ── 主路径：形状名 → ShaderLibrary/mesh/shape/<形状名>.mesh ──
                 //
                 // 三种几何模式（VertexPassthrough / LineQuad / CharQuad）走**同
-                // 一条**路径：按「模式 + varying 集合 + 容量」算出形状名，加载
-                // 对应主着色器。它们的差别只在主着色器文本与「要不要 options」
-                // 两件事，不再有第二套哈希查表。
+                // 一条**路径：只按「模式 + 拓扑容量」算出形状名，加载唯一的拓扑
+                // 主着色器。varying 集合由 common_options.glsl 决定，不再进入形状名。
                 //
                 // 主体对「同一输出接口」是逐字节相同的；顶点解码（s1_*）、位置
                 // 映射（s2_*）、投影（s3_*）三件事全部由
@@ -689,7 +688,7 @@ namespace hgl::graph::mtl
             // 与 `mesh_options` / `frag_options` 不同，这一份是**两个 stage 共用**
             // 的：网格阶段据它声明 out 数组并写值，片段阶段据它声明 in 并解包。
             // 一个文件同时决定了「传什么」和「两端怎么读」，接口错配从结构上消失
-            // （此前是每条 varying 在 14 个 .mesh × 39 处 .frag 声明里各写两遍）。
+            // （此前 varying 集合散落在多份 .mesh 变体与各 .frag 的手写声明中）。
             //
             // 发射在模式判断之外：CharQuad 也走统一 varying 文件，只是它不消费
             // mesh_options（顶点链路自持）。

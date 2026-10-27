@@ -8,8 +8,8 @@
 // 「3D + Passthrough3D + camera.vp」与「2D + NDCLift + l2w_only」两种映射家族：
 // 主体只调 `GetClipPos(GetLocalPos())`，不自己拼变换。
 //
-// varying 的写入由主着色器提供的符号钩子 `WriteLineQuadVertexOutputs()` 负责
-// （形状差异 = varying 集合，与主体无关）。
+// varying 的写入由主着色器提供的符号钩子 `WriteLineQuadVertexOutputs()` 负责；
+// 钩子与统一声明读同一批 `HGL_VARYING_*` options，本主体不关心具体接口集合。
 //
 // 前置条件（由 `mesh/stage_common.glsl` + options 提供）：
 //   MeshVertexIndex / VertexIndexID / draw_params / sbo_vertex_index / ViewportUBO

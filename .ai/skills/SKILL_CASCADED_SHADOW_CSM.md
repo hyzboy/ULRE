@@ -391,7 +391,7 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    不完整，**禁止退回 `VkShaderModule` 句柄值**——句柄可被复用，两个不同 shader 会
    撞同一个键）。契约由 `TestCSMIncrementalPass` **Test 12**（7 checks，含 2 条禁复活）
    把守；根因与验证见 `doc/backlog.md` D2。
-5. **主帧同步**：forward 管线的 alpha test 同语义（`forward_lit.glsl.tmpl` 的
+5. **主帧同步**：forward 管线的 alpha test 同语义（`domain/standard_opaque/forward_lit.frag` 的
    `#ifdef HGL_ALPHA_TEST HGLApplyAlpha(EvalAlpha(si, materialDataIndex))`）——
    本体与影子用同一 opacity_mask 槽。
 6. **取证**：深度图直接读回（`AlphaTestShadow::DumpCascadeDepth`，graphics

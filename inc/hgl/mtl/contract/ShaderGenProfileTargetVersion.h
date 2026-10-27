@@ -74,7 +74,8 @@ namespace hgl::graph::mtl::contract
     //     GLSL 文本；第 12 代产物里 `Lit` 等材质在同样输入下走的是顶点法线路径
     //     （读未上传的 Normal 槽），必须换代重烘。
     // 14：ShadowCaster 的两个模板从 C++ 手写块发射改为外置骨架
-    //     `fragment/shadow_caster.glsl.tmpl`（Stage 6）。骨架是单 MainBody 块，
+    //     `fragment/shadow_caster.glsl.tmpl`（Stage 6，后续已由固定领域 `.frag` 取代）。
+    //     骨架是单 MainBody 块，
     //     与 forward 模板一致，于是 `HGL_COVERAGE_ONLY` / `HGL_ALPHA_*` 的发射位置
     //     从「材质注入前置块之前」移到「之后」——宏的集合与文本不变，但**字节顺序
     //     变了**，深度/阴影程序必须换代重烘。golden `lit-*-masked.emission.txt` /

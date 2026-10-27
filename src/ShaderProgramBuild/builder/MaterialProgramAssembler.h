@@ -100,9 +100,8 @@ namespace hgl::graph::mtl
         // Phase 2: vertex ABI
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config;
-        // 求解出的顶点输入声明文本。生成器删除后它不再进任何 shader：只作为
-        // 网格形状键（ComputeMeshSourceShapeKey）的哈希输入保留——19 份已落盘
-        // 的 .mesh 文件名就是按它算出来的，改动会全体失配。
+        // 求解出的顶点流解码 include 文本，供 mesh_options 发射器使用。
+        // 其内容摘要进入 mesh stage 编译键；固定拓扑 master 的名称不依赖它。
         AnsiString resolved_vertex_input_glsl;
 
         // Phase 2.5: mesh stage 发射模式（只依赖 profile + definition + primitive）

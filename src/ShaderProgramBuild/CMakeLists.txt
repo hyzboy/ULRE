@@ -3,7 +3,7 @@ set(SHADERPROGRAMBUILD_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 # ── 物理目录 = SOURCE_GROUP = 管线角色 ──
 #   compile/             阶段编译 + 构建上下文 + SPV 产物
 #   contract/            契约层（结构校验/哈希/绑定解析/输出/覆盖率/接口）
-#   template/            fragment/mesh 模板发射器
+#   template/             render-template 模块图解析
 #   builder/             材质定义 → 程序构建计划（顶点 ABI / 链接规格）
 # 公共头（inc/hgl/mtl 与 inc/hgl/graph）不参与物理搬移，路径保持稳定。
 #

@@ -352,6 +352,10 @@ varyings = ["emit_data_index_id"]
 
 阶段 6 的进展：
 
+> 后续状态（2026-10-28）：`fragment/*.glsl.tmpl` 后来被固定的
+> `domain/**/*.frag` 与 `ResolveDomainShaderTemplate()` 选路取代；四份模板骨架及
+> `GetRenderTemplateFragmentSourceFile()` 已删除。下列记录保留阶段 6 当时的实施历史。
+
 1. ✅ **先补覆盖再动刀**：9 份 `.mi.toml` 与 5 份 builtin 定义都没有设 `alpha_test`，
    所以 `ComposeShadow()` 的 masked 分支（`requires_alpha == true`）快照覆盖为 **0**。
    先给 `StructureDumpVariant` 加 `alpha_test`、矩阵 12 → 14（`lit-depth-masked` /

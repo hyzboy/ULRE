@@ -256,6 +256,10 @@ const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, ma
 
 判据很简单：**模板里出现 `lighting/` 就是漏解耦**。
 
+> 后续状态：片元模板骨架又被按领域 / pass 选择的固定 `domain/**/*.frag` 取代。
+> `ShaderLibrary/fragment/*.glsl.tmpl` 与其文件名映射已从生产代码删除；上文只记录
+> 当时的职责迁移过程。
+
 ### 6.4 模块元数据的连带要求
 
 `flat_lighting.glsl` 新增对 `lighting/forward_flat.glsl` 的 include，因此元数据必须补

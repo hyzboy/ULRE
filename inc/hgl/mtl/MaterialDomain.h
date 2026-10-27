@@ -145,10 +145,10 @@ namespace hgl::graph::mtl
         // 该领域的**规范表面来源模块**与**规范法线标架模块**
         // （ShaderCodeModuleRegistry 里的模块名，不是文件路径）。
         //
-        // 为什么用模块名而不是模板文件路径：本引擎没有 `.vert`/`.frag` 模板，
-        // 顶点侧由 `[transform]`+`[vertex]` 解析出 mesh shader 模板，
-        // 片元侧由 `fragment/*.glsl.tmpl` + 代码模块拼接而成。领域能钉死的
-        // 是「用哪个表面来源模块」，文件组合仍由管线决定（Phase 2 收编为宏头）。
+        // 为什么用模块名而不是主着色器文件路径：顶点侧由 `[transform]`+
+        // `[vertex]` 解析出 mesh options；片元侧由 DomainShaderTemplate 按领域与
+        // pass 选择 ShaderLibrary/domain/ 下的固定 `.frag`。契约钉死的是
+        // 「用哪个表面来源模块」，文件选路由独立的领域模板表完成。
         //
         // 门禁会核对这两个名字在模块注册表里确实存在，防止契约指向空气。
         // 领域尚未实现时两者置 nullptr（门禁跳过核对）——不要为凑数填一个
