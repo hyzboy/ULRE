@@ -201,5 +201,5 @@ RenderTemplate 的 AmbientLightProvider 槽 → 变体键 / program 身份
 | P3 | `GetSkyAmbientColor()` 死函数 | `5852ba7eb` |
 | P4 | 正文 `#include` 对 manifest 模块图不可见 | include↔`@ulre uses` 硬契约（`c2ea0bd5d`、`7653e45be`、`d8fe774c6`） |
 
-P4 的契约细节见 `doc/ShaderGen_MaterialGLSL_DesignAnalysis.md`
+P4 的契约细节见 `doc/deprecated/ShaderGen_MaterialGLSL_DesignAnalysis.md`
 「原理 2：GLSL 代码模块自描述」中 `@ulre uses` 一致性段落。

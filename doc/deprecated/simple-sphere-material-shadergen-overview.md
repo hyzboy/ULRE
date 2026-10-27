@@ -676,8 +676,8 @@ framebuffer
 仓库中已有更细的专项资料：
 
 ```text
-doc/material-lit-recipe-to-shadergen-dataflow.md
+doc/deprecated/material-lit-recipe-to-shadergen-dataflow.md
 doc/simple-sphere-ecs-render-chain.md
-doc/ShaderGen_ComposableTemplate_TechnicalDesign.md
-doc/ShaderGen_MaterialGLSL_DesignAnalysis.md
+doc/deprecated/ShaderGen_ComposableTemplate_TechnicalDesign.md
+doc/deprecated/ShaderGen_MaterialGLSL_DesignAnalysis.md
 ```
