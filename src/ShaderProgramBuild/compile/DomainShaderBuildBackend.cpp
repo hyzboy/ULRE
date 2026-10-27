@@ -9,8 +9,9 @@
 //   1. 先按领域/pass/渲染状态解析出**固定片段源**（`ShaderLibrary/domain/...`
 //      主着色器，本身就是一个完整编译单元）并发射 `generated/options.glsl`
 //      （Phase 2 的 `EmitDomainOptions`）到缓存目录——不进源码树；
-//   2. 把这份源**放进构建请求**（`fixed_fragment_source`）。构建器因此不发射
-//      片段：片段 stage key、artifact 元数据、编译输入三者是同一份字节；
+//   2. 把这份源**作为固定阶段输入**传进构建器（`FixedStageInputs`）。构建器
+//      因此不发射片段：片段 stage key、artifact 元数据、编译输入三者是同一份
+//      字节；
 //   3. 借 `AssembleMaterialProgram` 拿到网格阶段、link spec、artifact 元数据、
 //      `requires_recipe_*` 结论（这些与「片段算法怎么写」无关，废除生成器
 //      不代表废除它们）；
@@ -666,25 +667,24 @@ namespace hgl::graph::mtl
 
                 // ── 2. 网格阶段/链接规格/元数据仍走生成器构建器 ─────────────
                 //
-                // 请求里带上固定片段源 ⇒ 构建器**不发射**片段：不建代码模块
-                // 文档、不序列化片段文档，片段 stage key 的 definition_hash
-                // 直接吃这份真正会被编译的文本。
+                // 固定片段源通过 FixedStageInputs 传给构建器 ⇒ 构建器**不发射**
+                // 片段：不建代码模块文档、不序列化片段文档，片段 stage key 的
+                // definition_hash 直接吃这份真正会被编译的文本。
                 // 仍要 `defer_finalize`：SPV 编译必须等 include 根设对，那一步
                 // 由本后端在第 3 步做（见 CompileFixedStage）。
                 MaterialDefinitionBuildRequest deferred_request = request;
                 deferred_request.defer_finalize = true;
-                deferred_request.fixed_fragment_source = fixed.source.c_str();
-                deferred_request.fixed_fragment_interface_hash =
-                    fixed.interface_hash;
+
+                FixedStageInputs fixed_stage;
+                fixed_stage.fragment_source = fixed.source.c_str();
+                fixed_stage.fragment_interface_hash = fixed.interface_hash;
 
                 // 网格阶段：主着色器按形状固定，顶点解码/位置映射/投影由
-                // `generated/mesh_options.glsl` 注入。构建器算出 options 文本
-                // 交回来，落盘位置由本后端决定（必须与 options.glsl 同根）。
-                AnsiString mesh_options_glsl;
-                deferred_request.mesh_options_glsl_out = &mesh_options_glsl;
-
+                // `generated/mesh_options.glsl` 注入。构建器只交出 options 文本，
+                // 落盘位置由本后端决定（必须与 frag_options.glsl 同根）。
+                MaterialProgramBuildCapture capture{};
                 ShaderBuildContext *ctx = AssembleMaterialProgram(
-                    profile, deferred_request, definition, nullptr);
+                    profile, deferred_request, definition, &capture, fixed_stage);
                 if (!ctx)
                 {
                     DomainBuildFailed(u8"[DomainBackend] 网格阶段构建失败：材质 %s（%s）",
@@ -693,9 +693,9 @@ namespace hgl::graph::mtl
                     return nullptr;
                 }
 
-                if (mesh_options_glsl.Length() > 0
+                if (capture.mesh_options.Length() > 0
                  && !WriteMeshOptionsToCache(
-                        mesh_options_glsl,
+                        capture.mesh_options,
                         fixed.options_text,
                         fixed.domain,
                         fixed.purpose,

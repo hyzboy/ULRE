@@ -233,10 +233,10 @@ namespace hgl::graph::mtl
     uint64 ComputeMeshOptionsDigest(const AnsiString &text);
 
     /// 把摘要追加到网格主着色器文本尾部（上述固定形态）。
-    /// 模板而非固定类型：生产侧的目标缓冲历史上是 `std::string`（`plan.ms`），
-    /// 而本层其余接口都用 `AnsiString`——为了一个拼接动作去改上游缓冲类型是反向成本。
-    template <typename TextType_>
-    void AppendMeshOptionsDigest(TextType_ &inout_glsl, const uint64 digest)
+    ///
+    /// 目标缓冲就是生产侧的 `plan.ms`（`AnsiString`），所以不再需要为
+    /// 「历史上是 `std::string`」留模板。
+    inline void AppendMeshOptionsDigest(AnsiString &inout_glsl, const uint64 digest)
     {
         const AnsiString digits = AnsiString::numberOf(digest);
         inout_glsl += kMeshOptionsDigestMarker;

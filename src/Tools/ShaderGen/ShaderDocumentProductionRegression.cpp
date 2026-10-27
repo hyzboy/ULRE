@@ -355,9 +355,10 @@ namespace
                 fixture.name);
             return nullptr;
         }
-        request.fixed_fragment_source = fixed.source.c_str();
-        request.fixed_fragment_interface_hash = fixed.interface_hash;
-        request.fixed_mesh_source = fixed_mesh_source;
+        FixedStageInputs fixed_stage;
+        fixed_stage.fragment_source = fixed.source.c_str();
+        fixed_stage.fragment_interface_hash = fixed.interface_hash;
+        fixed_stage.mesh_source = fixed_mesh_source;
 
         // 环境光 provider 的选择已经从片元文本搬到 `options.glsl`（主着色器只
         // `#include "generated/options.glsl"`，provider 的 `#include` 由发射器
@@ -377,7 +378,8 @@ namespace
             }
         }
 
-        return AssembleMaterialProgram(nullptr, request, definition, capture);
+        return AssembleMaterialProgram(
+            nullptr, request, definition, capture, fixed_stage);
     }
 
     bool VerifyFixedMeshSourcePassThrough(const Fixture &fixture)

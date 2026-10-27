@@ -63,34 +63,6 @@ struct MaterialDefinitionBuildRequest
     // Render preparation supplies this resolved request. The program builder validates
     // and emits it but does not select scene lighting or quality policies.
     RenderTemplateRequest render_template_request;
-
-    // ── 片段阶段物理固定（阶段五）───────────────────────────────────────────
-    //
-    // 非空表示「片段阶段不生成」：构建器跳过整条片段发射链，把这份文本当成
-    // 最终片段源。
-    //
-    // 为什么必须在**构建前**传入、而不是事后覆盖阶段源：片段 stage key 的
-    // definition_hash 吃的是最终源文本的摘要。事后再换源 ⇒ 键描述的是那份
-    // 从未被编译的生成物，键与产物脱钩（只能靠 digest 事后补救，且元数据
-    // 一定记错）。传进来 ⇒ 键、元数据、编译输入三者天然同一份文本。
-    const char *fixed_fragment_source = nullptr;
-
-    // 固定片段阶段的**接口形状**哈希（领域 + purpose + 覆盖判定）。
-    // 与 `fragment_definition_hash`（吃源文本）互补：换实现由文本体现，换
-    // 接口形状由这里体现，两者在键里不互相掩盖。为 0 时走生成器路径。
-    uint64 fixed_fragment_interface_hash = 0;
-
-    // 非空表示「网格阶段不生成」：构建器直接把这份完整 GLSL 作为 mesh stage
-    // 编译输入。调用方必须保证文本与已解析的 mode / ABI / stage interface 相符。
-    const char *fixed_mesh_source = nullptr;
-
-    // 非空时：构建器把本次解析出的 `generated/mesh_options.glsl` 文本写进这里，
-    // 由调用方（领域后端）落到 options 缓存目录。构建器不碰文件系统 —— 落盘位置
-    // 与片段侧的 `generated/options.glsl` 必须是同一个根，只有后端知道那个根。
-    //
-    // 空指针 = 不需要（调用方自己给了 `fixed_mesh_source`，或该模式不走形状主着色器）。
-    AnsiString *mesh_options_glsl_out = nullptr;
-
 };
 
 // Render preparation calls this after selecting the scene template. It copies

@@ -1243,9 +1243,6 @@ namespace
             // 只到 GLSL 文本为止：本用例断言的是发射文本里的 local_size_x，
             // 不需要（也不该依赖）SPV 编译。
             request.defer_finalize = true;
-            // 非空即绕过固定源目录，直接把给定文本当网格阶段源——⑤⑥⑦ 用它注入
-            // 被篡改的拓扑行，验证装配期校验真的会拒绝。
-            request.fixed_mesh_source = mesh_source_override;
 
             RenderTemplateValidationDiagnostic template_diagnostic{};
             const SceneRenderTemplateProfile scene_profile =
@@ -1269,12 +1266,17 @@ namespace
             {
                 return std::unique_ptr<ShaderBuildContext>();
             }
-            request.fixed_fragment_source = fixed.source.c_str();
-            request.fixed_fragment_interface_hash = fixed.interface_hash;
+
+            // 非空即绕过固定源目录，直接把给定文本当网格阶段源——⑤⑥⑦ 用它注入
+            // 被篡改的拓扑行，验证装配期校验真的会拒绝。
+            FixedStageInputs fixed_stage;
+            fixed_stage.fragment_source = fixed.source.c_str();
+            fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            fixed_stage.mesh_source = mesh_source_override;
 
             // 不编译 SPV：本用例只读网格阶段 GLSL 文本。
             return std::unique_ptr<ShaderBuildContext>(
-                AssembleMaterialProgram(profile, request, def, nullptr));
+                AssembleMaterialProgram(profile, request, def, nullptr, fixed_stage));
         };
 
         // ── ① 无 profile（无约束）：local_size_x 必须等于 CPU dispatch 常量 ──
@@ -1601,12 +1603,15 @@ namespace
             FixedFragmentSource fixed;
             if (!ResolveFixedFragmentSource(def, request, fixed))
                 return std::unique_ptr<ShaderBuildContext>();
-            request.fixed_fragment_source = fixed.source.c_str();
-            request.fixed_fragment_interface_hash = fixed.interface_hash;
-            request.mesh_options_glsl_out = &mesh_options_text;
+            FixedStageInputs fixed_stage;
+            fixed_stage.fragment_source = fixed.source.c_str();
+            fixed_stage.fragment_interface_hash = fixed.interface_hash;
 
-            return std::unique_ptr<ShaderBuildContext>(
-                AssembleMaterialProgram(nullptr, request, def, nullptr));
+            MaterialProgramBuildCapture capture{};
+            std::unique_ptr<ShaderBuildContext> ctx(
+                AssembleMaterialProgram(nullptr, request, def, &capture, fixed_stage));
+            mesh_options_text = capture.mesh_options;
+            return ctx;
         };
 
         const VertexShaderNodeConfig node_2d = Make2DNodeConfigOrtho(false);
@@ -2354,11 +2359,12 @@ namespace
                 build_error = "fixed fragment source resolution failed";
                 return std::unique_ptr<ShaderBuildContext>();
             }
-            request.fixed_fragment_source = fixed.source.c_str();
-            request.fixed_fragment_interface_hash = fixed.interface_hash;
+            FixedStageInputs fixed_stage;
+            fixed_stage.fragment_source = fixed.source.c_str();
+            fixed_stage.fragment_interface_hash = fixed.interface_hash;
             std::unique_ptr<ShaderBuildContext> context(
                 AssembleMaterialProgram(
-                    profile, request, definition, nullptr));
+                    profile, request, definition, nullptr, fixed_stage));
             if (!context || !context->HasProgramLink())
             {
                 const hgl::AnsiString &err = GetLastMaterialProgramAssemblyError();
@@ -3023,8 +3029,9 @@ namespace
                             + GetRenderTemplateName(template_id));
                         return std::unique_ptr<ShaderBuildContext>();
                     }
-                    request.fixed_fragment_source = fixed.source.c_str();
-                    request.fixed_fragment_interface_hash = fixed.interface_hash;
+                    FixedStageInputs fixed_stage;
+                    fixed_stage.fragment_source = fixed.source.c_str();
+                    fixed_stage.fragment_interface_hash = fixed.interface_hash;
                     if (out_options)
                     {
                         // 覆盖语义（alpha test / cutoff / dither）**不在**固定主
@@ -3049,7 +3056,7 @@ namespace
                     }
                     auto ctx = std::unique_ptr<ShaderBuildContext>(
                         AssembleMaterialProgram(
-                            nullptr, request, selected, nullptr));
+                            nullptr, request, selected, nullptr, fixed_stage));
                     if (!ctx)
                     {
                         const hgl::AnsiString &err = GetLastMaterialProgramAssemblyError();
@@ -3380,11 +3387,12 @@ namespace
                 FixedFragmentSource fixed;
                 if (!ResolveFixedFragmentSource(definition, request, fixed))
                     return std::unique_ptr<ShaderBuildContext>();
-                request.fixed_fragment_source = fixed.source.c_str();
-                request.fixed_fragment_interface_hash = fixed.interface_hash;
+                FixedStageInputs fixed_stage;
+                fixed_stage.fragment_source = fixed.source.c_str();
+                fixed_stage.fragment_interface_hash = fixed.interface_hash;
                 return std::unique_ptr<ShaderBuildContext>(
                     AssembleMaterialProgram(
-                        nullptr, request, definition, nullptr));
+                        nullptr, request, definition, nullptr, fixed_stage));
             };
             const auto lit_build = build(
                 lit, lit_geometry, RenderTemplateID::ForwardLitShadowedAO,
@@ -9356,9 +9364,11 @@ void main()
                 result.passed = false;
                 return result;
             }
-            request.fixed_fragment_source = fixed.source.c_str();
-            request.fixed_fragment_interface_hash = fixed.interface_hash;
-            baked.reset(AssembleMaterialProgram(nullptr, request, definition, nullptr));
+            FixedStageInputs fixed_stage;
+            fixed_stage.fragment_source = fixed.source.c_str();
+            fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            baked.reset(
+                AssembleMaterialProgram(nullptr, request, definition, nullptr, fixed_stage));
         }
         if (!baked || !baked->HasProgramLink() || !baked->HasProgramArtifactMetadata())
         {
@@ -9960,7 +9970,6 @@ void main()
     static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
         const ReflectionCoverageVariant &variant, std::string &diagnostic,
         FixedFragmentSource *out_fixed = nullptr,
-        MaterialProgramBuildCapture *out_capture = nullptr,
         hgl::AnsiString *out_mesh_options = nullptr)
     {
         MaterialDefinition definition{};
@@ -10015,22 +10024,21 @@ void main()
                 + variant.variant_slug + " | " + GetLastDomainShaderBuildBackendError();
             return nullptr;
         }
-        request.fixed_fragment_source = fixed.source.c_str();
-        request.fixed_fragment_interface_hash = fixed.interface_hash;
+        FixedStageInputs fixed_stage;
+        fixed_stage.fragment_source = fixed.source.c_str();
+        fixed_stage.fragment_interface_hash = fixed.interface_hash;
 
         // 网格 options：生产侧由后端落盘并挑成对目录；本门手写编译，自己收下文本。
-        hgl::AnsiString mesh_options_text;
-        request.mesh_options_glsl_out = &mesh_options_text;
-
+        MaterialProgramBuildCapture capture{};
         std::unique_ptr<ShaderBuildContext> ctx(
-            AssembleMaterialProgram(nullptr, request, definition, out_capture));
+            AssembleMaterialProgram(nullptr, request, definition, &capture, fixed_stage));
         if (!ctx)
         {
             diagnostic = std::string("material build failed: ") + variant.variant_slug;
             return nullptr;
         }
         if (out_mesh_options)
-            *out_mesh_options = mesh_options_text;
+            *out_mesh_options = capture.mesh_options;
 
         if (out_fixed)
             *out_fixed = std::move(fixed);
@@ -10215,7 +10223,7 @@ void main()
             hgl::AnsiString mesh_options_text;
             std::unique_ptr<ShaderBuildContext> ctx =
                 BuildReflectionCoverageVariant(
-                    variant, build_diagnostic, &fixed_source, nullptr,
+                    variant, build_diagnostic, &fixed_source,
                     &mesh_options_text);
             if (!ctx)
             {
@@ -11334,11 +11342,10 @@ void main()
         for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
         {
             std::string build_diagnostic;
-            MaterialProgramBuildCapture capture{};
             hgl::AnsiString mesh_options_text;
             std::unique_ptr<ShaderBuildContext> ctx =
                 BuildReflectionCoverageVariant(
-                    variant, build_diagnostic, nullptr, &capture,
+                    variant, build_diagnostic, nullptr,
                     &mesh_options_text);
             if (!ctx)
             {
@@ -11396,16 +11403,15 @@ void main()
                 ++failed;
                 continue;
             }
-            request.fixed_fragment_source = fixed.source.c_str();
-            request.fixed_fragment_interface_hash = fixed.interface_hash;
-
-            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
-            hgl::AnsiString mesh_options_text;
-            request.mesh_options_glsl_out = &mesh_options_text;
+            FixedStageInputs fixed_stage;
+            fixed_stage.fragment_source = fixed.source.c_str();
+            fixed_stage.fragment_interface_hash = fixed.interface_hash;
 
             MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
-                AssembleMaterialProgram(nullptr, request, definition, &capture));
+                AssembleMaterialProgram(nullptr, request, definition, &capture, fixed_stage));
+            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
+            const hgl::AnsiString &mesh_options_text = capture.mesh_options;
             if (!ctx)
             {
                 const hgl::AnsiString &build_error =
@@ -11465,16 +11471,15 @@ void main()
                 ++failed;
                 continue;
             }
-            request.fixed_fragment_source = fixed.source.c_str();
-            request.fixed_fragment_interface_hash = fixed.interface_hash;
-
-            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
-            hgl::AnsiString mesh_options_text;
-            request.mesh_options_glsl_out = &mesh_options_text;
+            FixedStageInputs fixed_stage;
+            fixed_stage.fragment_source = fixed.source.c_str();
+            fixed_stage.fragment_interface_hash = fixed.interface_hash;
 
             MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
-                AssembleMaterialProgram(nullptr, request, definition, &capture));
+                AssembleMaterialProgram(nullptr, request, definition, &capture, fixed_stage));
+            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
+            const hgl::AnsiString &mesh_options_text = capture.mesh_options;
             if (!ctx)
             {
                 const hgl::AnsiString &build_error =

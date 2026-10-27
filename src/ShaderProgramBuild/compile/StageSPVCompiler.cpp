@@ -562,6 +562,16 @@ void DumpStageGLSL(const char *stage, const std::string &text)
         static_cast<int64>(text.size()));
 }
 
+void DumpStageGLSL(const char *stage, const AnsiString &text)
+{
+    if (!stage || text.IsEmpty())
+        return;
+
+    DumpStageGLSL(
+        stage,
+        std::string(text.c_str(), static_cast<size_t>(text.Length())));
+}
+
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 {
     std::string macros;

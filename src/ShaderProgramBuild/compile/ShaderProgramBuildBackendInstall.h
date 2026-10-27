@@ -46,10 +46,10 @@ namespace hgl::graph::mtl
 
     /// 「本材质该用哪份固定片段源」的持有者。
     ///
-    /// `MaterialDefinitionBuildRequest::fixed_fragment_source` 是裸指针（沿用
-    /// 构建请求「只借用、不持有」的约定），所以文本必须活在调用者栈上。用它而
-    /// 不是让 `ResolveFixedFragmentSource` 直接往请求里写指针——那样指针会指向
-    /// 一个已经析构的临时串。
+    /// `FixedStageInputs::fragment_source` 是裸指针（沿用「只借用、不持有」的
+    /// 约定），所以文本必须活在调用者栈上。用它而不是让
+    /// `ResolveFixedFragmentSource` 直接往输入里写指针——那样指针会指向一个
+    /// 已经析构的临时串。
     struct FixedFragmentSource
     {
         AnsiString source;

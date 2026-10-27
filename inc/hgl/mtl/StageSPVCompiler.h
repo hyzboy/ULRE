@@ -96,6 +96,9 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
  */
 void DumpStageGLSL(const char *stage, const std::string &text);
 
+/// `AnsiString` 重载：程序构建层已无 `std::string`，而 dump 只关心字节。
+void DumpStageGLSL(const char *stage, const AnsiString &text);
+
 /**
  * 判定材质定义是否需要 payload 行（MTL_ROW）。
  */

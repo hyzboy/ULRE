@@ -580,7 +580,7 @@ namespace hgl::graph::mtl
         // 比对；三条路径（request 覆盖 / 目录固定源 / 生成器）一视同仁。生成器侧
         // 按构造必然一致，多跑一次只多几次字符串查找。
         bool ValidateMeshSourceTopology(
-            const std::string &source,
+            const AnsiString &source,
             const MaterialProgramAssemblyPlan &plan)
         {
             const MeshModeCapacity capacity = ResolveMeshModeTopology(
@@ -602,8 +602,8 @@ namespace hgl::graph::mtl
 
             for (const ExpectedToken &token : tokens)
             {
-                const size_t at = source.find(token.prefix);
-                if (at == std::string::npos)
+                const int at = source.FindString(AnsiString(token.prefix));
+                if (at < 0)
                 {
                     s_last_material_program_assembly_error =
                         "fixed mesh source is missing a topology declaration";
@@ -616,10 +616,10 @@ namespace hgl::graph::mtl
                     return false;
                 }
 
-                size_t cursor = at + std::strlen(token.prefix);
+                int cursor = at + static_cast<int>(std::strlen(token.prefix));
                 uint64_t actual = 0;
                 size_t digits = 0;
-                while (cursor < source.size()
+                while (cursor < source.Length()
                     && source[cursor] >= '0' && source[cursor] <= '9')
                 {
                     actual = actual * 10u
@@ -651,17 +651,18 @@ namespace hgl::graph::mtl
         bool GenerateStageSources(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
+            const FixedStageInputs &fixed,
             MaterialProgramBuildCapture *build_capture,
             MaterialProgramAssemblyPlan &plan)
         {
             if (build_capture)
                 build_capture->Clear();
 
-            if (request.fixed_mesh_source && request.fixed_mesh_source[0])
+            if (fixed.mesh_source && fixed.mesh_source[0])
             {
                 // 显式覆盖（离线/回归通道）：调用方保证文本与已解析的
                 // mode / ABI / stage interface 相符。
-                plan.ms = request.fixed_mesh_source;
+                plan.ms = fixed.mesh_source;
                 plan.mesh_source_was_fixed = true;
             }
             else
@@ -701,7 +702,7 @@ namespace hgl::graph::mtl
                     return false;
                 }
 
-                plan.ms.assign(master_source.c_str(), master_source.Length());
+                plan.ms = master_source;
                 plan.mesh_source_was_fixed = true;
                 {
                     hgl::hash::FNV1aHasher64 shape_hasher;
@@ -749,8 +750,8 @@ namespace hgl::graph::mtl
                         return false;
                     }
 
-                    if (request.mesh_options_glsl_out)
-                        *request.mesh_options_glsl_out = mesh_options_glsl;
+                    if (build_capture)
+                        build_capture->mesh_options = mesh_options_glsl;
 
                     // ── stage key 必须覆盖 options 内容 ────────────────────
                     // 主着色器文本对「同形状」是**逐字节相同**的：两种完全不同的
@@ -777,18 +778,18 @@ namespace hgl::graph::mtl
             // 缺失即硬失败：片段拼装路径已经删掉，没有"退回去生成"这回事。
             // 让它留在空指针上静默产出空片段，症状会是下游的
             // `FinalizeShaderBuildContext` 悄悄 false，看不出根因。
-            if (!request.fixed_fragment_source
-             || !request.fixed_fragment_source[0])
+            if (!fixed.fragment_source
+             || !fixed.fragment_source[0])
             {
                 s_last_material_program_assembly_error =
-                    "fixed_fragment_source is required (fragment stage is physically fixed)";
+                    "fixed fragment source is required (fragment stage is physically fixed)";
                 GLogError(
                     "[MaterialProgramAssembler] Generic material build has no fixed fragment source: name=%s",
                     definition.definition_name.c_str());
                 return false;
             }
 
-            plan.fs = request.fixed_fragment_source;
+            plan.fs = fixed.fragment_source;
 
             return true;
         }
@@ -1128,6 +1129,7 @@ namespace hgl::graph::mtl
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
+            const FixedStageInputs &fixed,
             MaterialProgramAssemblyPlan &plan)
         {
             const ProgramLinkHashes hashes =
@@ -1139,12 +1141,13 @@ namespace hgl::graph::mtl
                 ComputeInjectedSourceHash(definition);
 
             const uint64 mesh_definition_hash =
-                HashFinalShaderSource(plan.ms.data(), plan.ms.size());
+                HashFinalShaderSource(
+                    plan.ms.c_str(), static_cast<size_t>(plan.ms.Length()));
 
             hgl::hash::FNV1aHasher64 mesh_module_graph_hasher;
             mesh_module_graph_hasher << injected_source_hash
                                      << ComputeShaderLibraryDependencyHash(
-                                            plan.ms.data(), plan.ms.size());
+                                            plan.ms.c_str(), static_cast<size_t>(plan.ms.Length()));
             const uint64 mesh_module_graph_hash = mesh_module_graph_hasher;
 
             // 顶点输入格式是 program_link 的独立维度，但与 mesh stage 的
@@ -1162,7 +1165,8 @@ namespace hgl::graph::mtl
                 compiler_hash);
 
             const uint64 fragment_definition_hash =
-                HashFinalShaderSource(plan.fs.data(), plan.fs.size());
+                HashFinalShaderSource(
+                    plan.fs.c_str(), static_cast<size_t>(plan.fs.Length()));
 
             // 片元的闭包指纹额外吃掉 manifest、模板哈希与注入项：模块集合相同的
             // 两份文档，只要资源绑定、模板骨架或注入宏不同，也必须是不同的 stage。
@@ -1171,7 +1175,7 @@ namespace hgl::graph::mtl
                                          << plan.resolved_template_hash
                                          << injected_source_hash
                                          << ComputeShaderLibraryDependencyHash(
-                                                plan.fs.data(), plan.fs.size());
+                                                plan.fs.c_str(), static_cast<size_t>(plan.fs.Length()));
 
             // 接口维度：片元输入 varying + 输出附件 + alpha 写输出。它不吃源
             // 文本，只吃契约形状——把「接口变了」与「实现变了」在键里分开，
@@ -1180,10 +1184,10 @@ namespace hgl::graph::mtl
             // 领域固定主着色器路径没有 ComposeInput（片段不发射），接口形状由
             // 调用方按「领域 + purpose + 覆盖判定」给出，因此这里必须是硬输入：
             // 兜底成 0 会让所有覆盖形态在键里塌成同一个片段 stage。
-            if (request.fixed_fragment_interface_hash == 0)
+            if (fixed.fragment_interface_hash == 0)
             {
                 s_last_material_program_assembly_error =
-                    "fixed_fragment_interface_hash is required when the fragment stage is physically fixed";
+                    "fixed fragment interface hash is required when the fragment stage is physically fixed";
                 GLogError(
                     "[MaterialProgramAssembler] Generic material build has no fixed fragment interface hash: name=%s",
                     definition.definition_name.c_str());
@@ -1191,7 +1195,7 @@ namespace hgl::graph::mtl
             }
 
             const uint64 fragment_interface_hash =
-                request.fixed_fragment_interface_hash;
+                fixed.fragment_interface_hash;
 
             plan.program_link.fragment_stage = BuildShaderStageKey(
                 ShaderStage::Fragment,
@@ -1217,6 +1221,7 @@ namespace hgl::graph::mtl
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
+            const FixedStageInputs &fixed,
             MaterialProgramAssemblyPlan &plan,
             StageSPVCompilerInput &out_compiler_input,
             StageSPVCompileConfig &out_config)
@@ -1242,7 +1247,7 @@ namespace hgl::graph::mtl
 #endif
 
             // ── stage key：从最终发射文本派生（唯一路径）──
-            if (!AssembleProgramLinkFromSource(profile, definition, request, plan))
+            if (!AssembleProgramLinkFromSource(profile, definition, request, fixed, plan))
             {
                 if (s_last_material_program_assembly_error.IsEmpty())
                     s_last_material_program_assembly_error =
@@ -1254,7 +1259,7 @@ namespace hgl::graph::mtl
             config.program_link = &plan.program_link;
             config.material_private_data = definition.material_private_data;
             config.defer_finalize = request.defer_finalize;
-            config.fixed_fragment_source = request.fixed_fragment_source;
+            config.fixed_fragment_source = fixed.fragment_source;
             config.fixed_mesh_source = plan.mesh_source_was_fixed
                 ? plan.ms.c_str() : nullptr;
             return true;
@@ -1274,7 +1279,8 @@ namespace hgl::graph::mtl
         const contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition,
-        MaterialProgramBuildCapture *build_capture)
+        MaterialProgramBuildCapture *build_capture,
+        const FixedStageInputs &fixed)
     {
         s_last_material_program_assembly_error.Clear();
         MaterialDefinition resolved_definition;
@@ -1336,7 +1342,7 @@ namespace hgl::graph::mtl
         }
 
         if (!GenerateStageSources(
-                resolved_definition, request, build_capture, plan))
+                resolved_definition, request, fixed, build_capture, plan))
         {
             if (s_last_material_program_assembly_error.IsEmpty())
                 s_last_material_program_assembly_error = "GenerateStageSources failed";
@@ -1346,7 +1352,7 @@ namespace hgl::graph::mtl
         StageSPVCompilerInput compiler_input{};
         StageSPVCompileConfig config{};
         if (!FinalizeProgramLink(
-                profile, resolved_definition, request, plan,
+                profile, resolved_definition, request, fixed, plan,
                                  compiler_input, config))
         {
             if (s_last_material_program_assembly_error.IsEmpty())
