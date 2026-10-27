@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/core/EntityHandle.h>
 #include <ankerl/unordered_dense.h>
-#include<hgl/thread/ThreadMutex.h>
+#include<hgl/sync/Mutex.h>
 
 namespace hgl::ecs
 {
@@ -26,7 +26,7 @@ namespace hgl::ecs
     {
     private:
         ankerl::unordered_dense::set<EntityID> invisible_entities;
-        mutable hgl::ThreadMutex mutex;
+        mutable hgl::Mutex mutex;
         ECSContext* context = nullptr;
 
     public:

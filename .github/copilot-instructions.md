@@ -89,14 +89,14 @@
 | `std::filesystem::remove_all`| `hgl::filesystem::DeleteTree`                       | `<hgl/filesystem/FileSystem.h>`     |
 | 文件系统操作                  | `hgl::filesystem::*`                                | `<hgl/filesystem/FileSystem.h>`     |
 | `std::thread`                | `hgl::Thread`                                       | `<hgl/thread/Thread.h>`             |
-| `std::mutex`                 | `hgl::ThreadMutex`                                  | `<hgl/thread/ThreadMutex.h>`        |
-| `std::lock_guard<mutex>`     | `hgl::ThreadMutexLock`                              | `<hgl/thread/ThreadMutex.h>`        |
-| `std::shared_mutex`          | `hgl::RWLock`                                       | `<hgl/thread/RWLock.h>`             |
-| `std::shared_lock`           | `hgl::OnlyReadLock`                                 | `<hgl/thread/RWLock.h>`             |
-| `std::unique_lock<shared_mutex>` | `hgl::OnlyWriteLock`                            | `<hgl/thread/RWLock.h>`             |
-| `std::atomic<T>`             | `hgl::atom<T>`                                      | `<hgl/thread/Atomic.h>`             |
-| `std::counting_semaphore`    | `hgl::Semaphore`                                    | `<hgl/thread/Semaphore.h>`          |
-| `std::condition_variable`    | `hgl::CondVar`                                      | `<hgl/thread/CondVar.h>`            |
+| `std::mutex`                 | `hgl::Mutex`                                  | `<hgl/sync/Mutex.h>`        |
+| `std::lock_guard<mutex>`     | `hgl::MutexLock`                              | `<hgl/sync/Mutex.h>`        |
+| `std::shared_mutex`          | `hgl::RWLock`                                       | `<hgl/sync/RWLock.h>`             |
+| `std::shared_lock`           | `hgl::ReadLockGuard`                                 | `<hgl/sync/RWLock.h>`             |
+| `std::unique_lock<shared_mutex>` | `hgl::WriteLockGuard`                            | `<hgl/sync/RWLock.h>`             |
+| `std::atomic<T>`             | `hgl::atom<T>`                                      | `<hgl/sync/Atomic.h>`             |
+| `std::counting_semaphore`    | `hgl::Semaphore`                                    | `<hgl/sync/Semaphore.h>`          |
+| `std::condition_variable`    | `hgl::CondVar`                                      | `<hgl/sync/CondVar.h>`            |
 | `std::queue<T>`              | `hgl::Queue<T>`                                     | `<hgl/type/Queue.h>`                |
 | `std::stack<T>`              | `hgl::Stack<T>`                                     | `<hgl/type/Stack.h>`                |
 | `std::chrono::*` 时间        | `hgl::GetTimeSec()` / `hgl::GetUptimeSec()`         | `<hgl/time/Time.h>`                 |

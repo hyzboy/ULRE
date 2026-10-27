@@ -4,7 +4,7 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/type/OrderedSet.h>
-#include <hgl/thread/ThreadMutex.h>
+#include <hgl/sync/Mutex.h>
 #include <hgl/log/Log.h>
 #include <hgl/graph/module/TextureUploadTask.h>
 
@@ -66,7 +66,7 @@ namespace hgl::graph
         Semaphore * upload_lane_       = nullptr;
         uint64_t    upload_lane_value_ = 0;      ///< 已提交的最新信号值（0 = 从未派发）
 
-        ThreadMutex         mutex_;
+        Mutex         mutex_;
 
     private:
         void EnsureResources();

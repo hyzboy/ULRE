@@ -2,7 +2,7 @@
 
 #include <hgl/vk/VK.h>
 #include <hgl/type/String.h>
-#include <hgl/thread/Atomic.h>
+#include <hgl/sync/Atomic.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/vk/VKQueue.h>

@@ -33,7 +33,7 @@
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/LoadDataArray.h>
-#include <hgl/thread/ThreadMutex.h>
+#include <hgl/sync/Mutex.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/utf.h>
 
@@ -912,7 +912,7 @@ namespace hgl::graph::mtl
             if (!document || length == 0)
                 return 0;
 
-            static hgl::ThreadMutex dependency_hash_mutex;
+            static hgl::Mutex dependency_hash_mutex;
             static hgl::UnorderedMap<uint64, uint64> dependency_hash_cache;
 
             const OSString root = GetShaderIncludeRoot();
@@ -922,7 +922,7 @@ namespace hgl::graph::mtl
             const uint64 document_hash = key_hasher;
 
             {
-                hgl::ThreadMutexLock lock(&dependency_hash_mutex);
+                hgl::MutexLock lock(&dependency_hash_mutex);
 
                 uint64 cached_hash = 0;
                 if (dependency_hash_cache.Get(document_hash, cached_hash))
@@ -936,7 +936,7 @@ namespace hgl::graph::mtl
             const uint64 dependency_hash = hasher;
 
             {
-                hgl::ThreadMutexLock lock(&dependency_hash_mutex);
+                hgl::MutexLock lock(&dependency_hash_mutex);
                 dependency_hash_cache.Add(document_hash, dependency_hash);
             }
 

@@ -9,7 +9,7 @@
 
 | 表示 | 位置 | 极性 | 语义 |
 |---|---|---|---|
-| **① 缺席集**（权威） | `VisibilityDataStorage`（`inc/hgl/ecs/support/VisibilityDataStorage.h`）：`ankerl::unordered_dense::set<EntityID> invisible_entities` + `ThreadMutex` | **负向**（集合里的 = 不可见；默认可见） | 文件头自述"**唯一真值**：由世界通过 `ECSContext::SetEntityVisible` 写入（A5a 起组件级可见性副本已删除）"；`IsInvisible` = **直查集合 + 祖先链上溯**（`:26-38`），`IsDirectlyInvisible` = 只查自己 |
+| **① 缺席集**（权威） | `VisibilityDataStorage`（`inc/hgl/ecs/support/VisibilityDataStorage.h`）：`ankerl::unordered_dense::set<EntityID> invisible_entities` + `Mutex` | **负向**（集合里的 = 不可见；默认可见） | 文件头自述"**唯一真值**：由世界通过 `ECSContext::SetEntityVisible` 写入（A5a 起组件级可见性副本已删除）"；`IsInvisible` = **直查集合 + 祖先链上溯**（`:26-38`），`IsDirectlyInvisible` = 只查自己 |
 | **② GPU 行正位** | `EntityGPUFlags::Visible = 1u << 1`（`inc/hgl/ecs/core/EntityGPU.h:30-35`），落在 `EntityGPU::flags` | **正向**（置位 = 可见） | 实体建立时置位（`EntityGPUTable.h:97-115`，注释写着"Visible 默认置位是**与真值同源**的要求……之后只有 `SetEntityVisible` 会改它，两条路径闭环"）；写入口 `EntityGPUTable::SetVisible`（`:132-141`） |
 | **③ 策略事实** | `StrategyFact::EntityVisible`（`RenderStrategyTable.h:80-81`，注释"读法 = `ECSContext::IsEntityVisible`，含祖先继承，已算完"） | **正向** | 每帧由 collect 现算：`out.facts.entity_visible = world->IsEntityVisible(...)`（`RenderPrimitiveCollectSystem.cpp:794`），喂 `EvaluateRenderNeed` |
 
@@ -60,7 +60,7 @@ GPU 侧对"陈旧可见"有两道兜底：`geometry_id == 0` 跳过（`entity_gp
 
 | 表示 | 存在理由 |
 |---|---|
-| ① | CPU 权威 + **层级继承** + 线程安全（`ThreadMutex`）+ 默认可见（O(1) 查空集） |
+| ① | CPU 权威 + **层级继承** + 线程安全（`Mutex`）+ 默认可见（O(1) 查空集） |
 | ② | 着色器的 O(1) 读法：GPU 剔除在 dispatch 里按 `entity_index` 枚举，不能回 CPU 查集合；`EntityGPU` 行是它唯一输入面 |
 | ③ | 策略判定的输入形状：`EvaluateRenderNeed(mask, facts)` 需要"已算完（含继承）"的布尔事实，而不是"要不要上溯祖先"的问题 |
 

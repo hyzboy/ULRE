@@ -24,7 +24,7 @@
 ### 1.1 原子类型 `Atomic.h` → 替代 `<atomic>`
 
 ```cpp
-#include <hgl/thread/Atomic.h>
+#include <hgl/sync/Atomic.h>
 
 // 原子类型（封装 std::atomic，允许此头文件内部使用）
 hgl::atom<int>   counter{0};
@@ -66,7 +66,7 @@ public:
 MyThread *t = new MyThread();
 t->Start();         // 启动线程
 // ...
-t->WaitExit();      // 等待线程退出（内部调用 Exit()）
+t->StopAndJoin();      // 请求协作式停止并等待退出
 // Thread 默认在退出时自动 delete 自身（DeletedAfterExit()=true）
 
 // 多线程管理
@@ -79,12 +79,12 @@ mgr.Close();        // 等待所有线程退出
 
 ---
 
-### 1.3 互斥锁 `ThreadMutex.h` → 替代 `std::mutex` / `std::lock_guard`
+### 1.3 互斥锁 `Mutex.h` → 替代 `std::mutex` / `std::lock_guard`
 
 ```cpp
-#include <hgl/thread/ThreadMutex.h>
+#include <hgl/sync/Mutex.h>
 
-hgl::ThreadMutex mutex;
+hgl::Mutex mutex;
 
 // 手动加锁/解锁
 mutex.Lock();
@@ -99,12 +99,12 @@ if (mutex.TryLock()) {
 
 // RAII 自动释放锁（替代 std::lock_guard）
 {
-    hgl::ThreadMutexLock lock(&mutex);  // 构造时自动 Lock()
+    hgl::MutexLock lock(&mutex);  // 构造时自动 Lock()
     // ... 访问共享数据 ...
 }   // 析构时自动 Unlock()
 
 // 带数据的线程安全对象
-hgl::ThreadMutexObject<MyData> safe_obj;
+hgl::MutexObject<MyData> safe_obj;
 safe_obj->DoSomething();    // 通过 operator-> 访问数据（不加锁，需手动锁定）
 ```
 
@@ -113,7 +113,7 @@ safe_obj->DoSomething();    // 通过 operator-> 访问数据（不加锁，需�
 ### 1.4 读写锁 `RWLock.h` → 替代 `std::shared_mutex`
 
 ```cpp
-#include <hgl/thread/RWLock.h>
+#include <hgl/sync/RWLock.h>
 
 hgl::RWLock rw;
 
@@ -129,13 +129,13 @@ rw.WriteUnlock();
 
 // RAII 读锁（替代 std::shared_lock）
 {
-    hgl::OnlyReadLock read_guard(rw);   // 构造时 ReadLock()
+    hgl::ReadLockGuard read_guard(rw);   // 构造时 ReadLock()
     // ...
 }   // 析构时 ReadUnlock()
 
 // RAII 写锁（替代 std::unique_lock<shared_mutex>）
 {
-    hgl::OnlyWriteLock write_guard(rw); // 构造时 WriteLock()
+    hgl::WriteLockGuard write_guard(rw); // 构造时 WriteLock()
     // ...
 }   // 析构时 WriteUnlock()
 ```
@@ -145,7 +145,7 @@ rw.WriteUnlock();
 ### 1.5 信号量 `Semaphore.h`
 
 ```cpp
-#include <hgl/thread/Semaphore.h>
+#include <hgl/sync/Semaphore.h>
 
 hgl::Semaphore sem(10);  // 初始容量 10
 
@@ -163,9 +163,9 @@ bool ok = sem.TryAcquire(); // 非阻塞尝试
 ### 1.6 条件变量 `CondVar.h`
 
 ```cpp
-#include <hgl/thread/CondVar.h>
+#include <hgl/sync/CondVar.h>
 
-hgl::ThreadMutex mutex;
+hgl::Mutex mutex;
 hgl::CondVar cond;
 
 // 等待线程
@@ -180,76 +180,56 @@ cond.Broadcast();           // 唤醒所有等待线程
 
 ---
 
-### 1.7 双缓冲数据交换 `SwapData.h`
+### 1.7 并发队列与批处理邮箱
 
-适用场景：多个线程投递数据，一个线程消费数据，零拷贝交换。
+`SpscQueue` 是有界单生产者/单消费者队列；`DuplexQueue` 将两个 SPSC 队列组合成请求/响应通道。`SwapMailbox` 面向多生产者、单消费者的批量交付，`TaskQueue` 提供带关闭/排空语义的多生产者、多消费者任务队列。
 
 ```cpp
-#include <hgl/thread/SwapData.h>
+#include <hgl/concurrency/SpscQueue.h>
+#include <hgl/concurrency/SwapMailbox.h>
+#include <hgl/concurrency/TaskQueue.h>
 
-// 简单双缓冲
-hgl::SwapData<MyStruct> swap;
+hgl::SpscQueue<uint32> samples(1024);
+samples.Push(42);
+uint32 sample;
+if (samples.Pop(sample)) { /* consume sample */ }
 
-// 投递方（多个线程）
-{
-    MyStruct &post = swap.GetPost();    // 加锁获取写缓冲
-    post.value = 42;
-    swap.ReleasePost();                 // 解锁
+hgl::SwapMailbox<uint32> mailbox;
+mailbox.Post(7);
+if (mailbox.TrySwap()) {
+    hgl::ValueArray<uint32> &batch = mailbox.GetReceive();
+    // Process batch, then release the receive buffer.
+    mailbox.ReleaseReceive();
 }
 
-// 消费方（单线程）
-swap.Swap();                            // 交换前后台
-MyStruct &recv = swap.GetReceive();     // 获取读缓冲（无锁）
-
-// 带信号的版本（消费方阻塞等待）
-hgl::SemSwapData<MyStruct> sem_swap;
-
-// 投递方
-{
-    MyStruct &post = sem_swap.GetPost();
-    post.value = 99;
-    sem_swap.ReleasePost();
-    sem_swap.PostSem();                 // 发送信号通知消费方
-}
-
-// 消费方
-sem_swap.WaitSemSwap(5.0);             // 等待最多 5 秒并自动交换
-MyStruct &data = sem_swap.GetReceive();
+hgl::TaskQueue<uint32> tasks;
+tasks.Submit(9);
+tasks.Close(); // Reject new submissions; consumers can drain accepted work.
 ```
+
+`SpscQueue<T>` requires trivially copyable values and exactly one producer and one consumer. `SwapMailbox<T>` receive data remains active until `ReleaseReceive()`; close it to wake a waiting consumer.
 
 ---
 
-### 1.8 线程安全集合交换 `SwapColl.h`
+### 1.8 异步事件分发
 
 ```cpp
-#include <hgl/thread/SwapColl.h>
+#include <hgl/async/AsyncEvent.h>
 
-// SwapList（基于 ValueArray 的线程安全列表）
-hgl::SwapList<int> list;
+hgl::AsyncEventQueue queue;
+hgl::AsyncEventThread worker(&queue);
+worker.Start();
 
-// 投递方（可多线程）
-list.Add(1);
-list.Add(2);
-
-// 消费方
-hgl::ValueArray<int> &proc = list.GetProcList(); // 加锁合并 + 解锁，返回处理列表
-for (int i = 0; i < proc.GetCount(); i++) { /* 处理 proc[i] */ }
-
-// SemSwapList（带信号等待）
-hgl::SemSwapList<int> sem_list;
-sem_list.Add(42);                       // 自动发送信号
-
-// 消费方
-sem_list.WaitProc(5.0);               // 等待最多 5 秒并合并
-hgl::ValueArray<int> &items = *sem_list;
+// EventAction objects are borrowed and must outlive processing.
+hgl::EventAction *event = /* caller-owned action */;
+hgl::PostAsyncEvent(&queue, event);
+worker.StopAndJoin();
 ```
-
----
 
 ### 1.9 环形缓冲 `RingBuffer.h`
 
 ```cpp
-#include <hgl/thread/RingBuffer.h>
+#include <hgl/concurrency/RingBuffer.h>
 
 hgl::RingBuffer<uint8> ring(4096);      // 4096字节环形缓冲
 
@@ -258,7 +238,7 @@ ring.SafeWrite(data, size);
 
 // 读线程  
 ring.SafeRead(buf, size);
-int avail = ring._GetReadSize();
+int avail = ring.SafeGetReadSize();
 ```
 
 ---
@@ -1064,17 +1044,17 @@ delete wmf;
 | 禁止使用 (STL)                        | 必须使用 (HGL)                              | 头文件                              |
 |--------------------------------------|---------------------------------------------|-------------------------------------|
 | `std::thread`                        | `hgl::Thread`                               | `<hgl/thread/Thread.h>`             |
-| `std::mutex`                         | `hgl::ThreadMutex`                          | `<hgl/thread/ThreadMutex.h>`        |
-| `std::lock_guard<mutex>`             | `hgl::ThreadMutexLock`                      | `<hgl/thread/ThreadMutex.h>`        |
-| `std::unique_lock<mutex>`            | `hgl::ThreadMutexLock`                      | `<hgl/thread/ThreadMutex.h>`        |
-| `std::shared_mutex`                  | `hgl::RWLock`                               | `<hgl/thread/RWLock.h>`             |
-| `std::shared_lock`                   | `hgl::OnlyReadLock`                         | `<hgl/thread/RWLock.h>`             |
-| `std::unique_lock<shared_mutex>`     | `hgl::OnlyWriteLock`                        | `<hgl/thread/RWLock.h>`             |
-| `std::atomic<T>`                     | `hgl::atom<T>`                              | `<hgl/thread/Atomic.h>`             |
-| `std::atomic<int>`                   | `hgl::atom_int`                             | `<hgl/thread/Atomic.h>`             |
-| `std::atomic<bool>`                  | `hgl::atom_bool`                            | `<hgl/thread/Atomic.h>`             |
-| `std::counting_semaphore`            | `hgl::Semaphore`                            | `<hgl/thread/Semaphore.h>`          |
-| `std::condition_variable`            | `hgl::CondVar`                              | `<hgl/thread/CondVar.h>`            |
+| `std::mutex`                         | `hgl::Mutex`                          | `<hgl/sync/Mutex.h>`        |
+| `std::lock_guard<mutex>`             | `hgl::MutexLock`                      | `<hgl/sync/Mutex.h>`        |
+| `std::unique_lock<mutex>`            | `hgl::MutexLock`                      | `<hgl/sync/Mutex.h>`        |
+| `std::shared_mutex`                  | `hgl::RWLock`                               | `<hgl/sync/RWLock.h>`             |
+| `std::shared_lock`                   | `hgl::ReadLockGuard`                         | `<hgl/sync/RWLock.h>`             |
+| `std::unique_lock<shared_mutex>`     | `hgl::WriteLockGuard`                        | `<hgl/sync/RWLock.h>`             |
+| `std::atomic<T>`                     | `hgl::atom<T>`                              | `<hgl/sync/Atomic.h>`             |
+| `std::atomic<int>`                   | `hgl::atom_int`                             | `<hgl/sync/Atomic.h>`             |
+| `std::atomic<bool>`                  | `hgl::atom_bool`                            | `<hgl/sync/Atomic.h>`             |
+| `std::counting_semaphore`            | `hgl::Semaphore`                            | `<hgl/sync/Semaphore.h>`          |
+| `std::condition_variable`            | `hgl::CondVar`                              | `<hgl/sync/CondVar.h>`            |
 | `std::queue<T>`                      | `hgl::Queue<T>`                             | `<hgl/type/Queue.h>`                |
 | `std::stack<T>`                      | `hgl::Stack<T>`                             | `<hgl/type/Stack.h>`                |
 | `std::chrono::high_resolution_clock` | `hgl::GetUptimeSec()` / `hgl::GetTimeMs()`  | `<hgl/time/Time.h>`                 |

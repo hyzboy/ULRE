@@ -105,9 +105,9 @@
 ### 0.4 [SKILL_CMCORE_REFERENCE.md](SKILL_CMCORE_REFERENCE.md)
 **适用：CMCore基础库中的线程/并发、时间、字符编码、队列/栈/LRU缓存、内存管理、智能指针等**
 
-- 🧵 线程：`Thread`、`ThreadMutex`、`RWLock`、`Semaphore`、`CondVar`
+- 🧵 线程：`Thread`、`Mutex`、`RWLock`、`Semaphore`、`CondVar`
 - ⚛️ 原子：`atom<T>` / `atom_int` / `atom_bool`（替代 `std::atomic`）
-- 🔄 线程安全集合：`SwapData`、`SwapList`、`SemSwapData`、`RingBuffer`
+- 🔄 并发队列：`SpscQueue`、`DuplexQueue`、`SwapMailbox`、`TaskQueue`、`RingBuffer`
 - ⏱️ 时间：`GetTimeSec`、`GetUptimeSec`、`SleepSecond`、`Timestamp` 类
 - 🔤 字符编码：`Endian`（字节序）、`Charset`（字符集转换）、`utf.h`（UTF-8↔UTF-16）
 - 📦 集合扩展：`Queue<T>`、`Stack<T>`、`LRUCache`、`FlatOrderedMap`、`OrderedMap`
@@ -116,9 +116,9 @@
 
 **快速导航：**
 ```
-需要线程？                → Thread + ThreadMutex / RWLock
+需要线程？                → Thread + Mutex / RWLock
 需要原子变量？            → atom<T> / atom_int / atom_bool
-需要线程安全队列交换？    → SwapData / SemSwapData / SwapList
+需要并发队列/批量投递？   → SpscQueue / SwapMailbox / TaskQueue
 需要时间戳/计时？         → GetUptimeSec() / Timestamp
 需要 UTF-8/UTF-16 转换？  → utf.h: to_u16 / to_u8 / ToOSString
 需要队列/栈/LRU缓存？     → Queue<T> / Stack<T> / LRUCache<K,V>
@@ -454,12 +454,12 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | 主题 | 相关SKILL | 快速用法 |
 |------|---------|---------|
 | Thread / 线程           | CMCORE_REFERENCE | §1.2 Thread |
-| ThreadMutex / 互斥锁   | CMCORE_REFERENCE | §1.3 ThreadMutex |
+| Mutex / 互斥锁   | CMCORE_REFERENCE | §1.3 Mutex |
 | RWLock / 读写锁         | CMCORE_REFERENCE | §1.4 RWLock |
 | Semaphore / 信号量      | CMCORE_REFERENCE | §1.5 Semaphore |
 | CondVar / 条件变量      | CMCORE_REFERENCE | §1.6 CondVar |
-| SwapData / 双缓冲交换   | CMCORE_REFERENCE | §1.7 SwapData |
-| SwapList/SemSwapList    | CMCORE_REFERENCE | §1.8 SwapColl |
+| 并发队列/批量投递        | CMCORE_REFERENCE | §1.7 并发队列与批处理邮箱 |
+| 异步事件分发             | CMCORE_REFERENCE | §1.8 异步事件分发 |
 | atom<T> / 原子变量      | CMCORE_REFERENCE | §1.1 Atomic |
 | GetTimeSec/GetUptimeSec | CMCORE_REFERENCE | §2.1 Time.h |
 | Timestamp 时间戳类      | CMCORE_REFERENCE | §2.2 Timestamp |

@@ -314,7 +314,7 @@ namespace hgl::graph
         if (!task)
             return 0;
 
-        ThreadMutexLock lock(&mutex_);
+        MutexLock lock(&mutex_);
 
         const uint64_t task_id = next_task_id_++;
         task->task_id = task_id;
@@ -349,7 +349,7 @@ namespace hgl::graph
 
     bool TextureUploadQueue::CancelUpload(uint64_t task_id)
     {
-        ThreadMutexLock lock(&mutex_);
+        MutexLock lock(&mutex_);
 
         TextureUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
         if (!task_ptr || !*task_ptr)
@@ -372,7 +372,7 @@ namespace hgl::graph
 
     UploadTaskState TextureUploadQueue::GetTaskState(uint64_t task_id)
     {
-        ThreadMutexLock lock(&mutex_);
+        MutexLock lock(&mutex_);
         TextureUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
         if (task_ptr && *task_ptr)
             return (*task_ptr)->state;
@@ -385,7 +385,7 @@ namespace hgl::graph
 
     TextureUploadTask *TextureUploadQueue::FindTask(uint64_t task_id)
     {
-        ThreadMutexLock lock(&mutex_);
+        MutexLock lock(&mutex_);
         TextureUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
         return task_ptr ? *task_ptr : nullptr;
     }
@@ -398,7 +398,7 @@ namespace hgl::graph
 
         if (task->state == UploadTaskState::Queued)
         {
-            ThreadMutexLock lock(&mutex_);
+            MutexLock lock(&mutex_);
             for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
             {
                 int idx = queued_tasks_[p].Find(task);
@@ -929,7 +929,7 @@ namespace hgl::graph
 
     void TextureUploadQueue::Update()
     {
-        ThreadMutexLock lock(&mutex_);
+        MutexLock lock(&mutex_);
 
         // 1. 检查已在飞任务的完成状态
         if (in_flight_tasks_.GetCount() > 0)
@@ -1005,7 +1005,7 @@ namespace hgl::graph
 
     void TextureUploadQueue::ExtractCompletedTasks(ValueArray<TextureUploadTask *> &out_completed)
     {
-        ThreadMutexLock lock(&mutex_);
+        MutexLock lock(&mutex_);
         out_completed.Clear();
         for (int i = 0; i < completed_tasks_.GetCount(); ++i)
         {

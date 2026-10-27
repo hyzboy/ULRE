@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/thread/ThreadMutex.h>
+#include<hgl/sync/Mutex.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
@@ -96,7 +96,7 @@ namespace hgl::graph
         };
 
         PipelineResolveStats g_resolve_stats;
-        ThreadMutex g_resolver_mutex;
+        Mutex g_resolver_mutex;
 
         const char *ResolveErrorText(const ResolveError error)
         {
@@ -375,7 +375,7 @@ namespace hgl::graph
 
     bool PipelineResolver::ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result)
     {
-        ThreadMutexLock resolver_lock(&g_resolver_mutex);
+        MutexLock resolver_lock(&g_resolver_mutex);
 
         out_result = {};
         ++g_resolve_stats.requests;
@@ -423,7 +423,7 @@ namespace hgl::graph
 
     void PipelineResolver::ReleaseFinalPipeline(VulkanDevice *device, VkPipeline pipeline)
     {
-        ThreadMutexLock resolver_lock(&g_resolver_mutex);
+        MutexLock resolver_lock(&g_resolver_mutex);
 
         if(!device || pipeline == VK_NULL_HANDLE)
             return;
@@ -447,7 +447,7 @@ namespace hgl::graph
 
     void PipelineResolver::ClearCacheForDevice(VulkanDevice *device)
     {
-        ThreadMutexLock resolver_lock(&g_resolver_mutex);
+        MutexLock resolver_lock(&g_resolver_mutex);
 
         if(!device)
             return;

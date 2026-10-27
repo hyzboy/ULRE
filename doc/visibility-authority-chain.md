@@ -16,7 +16,7 @@
 
 | # | 表示 | 位置（符号） | 极性 | 语义 | 消费者 |
 |---|---|---|---|---|---|
-| ① **权威** | 缺席集 `VisibilityDataStorage::invisible_entities`（+ `ThreadMutex`） | **负向**（在集合里 = 不可见；**默认可见**） | `IsInvisible` = O(1) 直查 **+ 祖先链上溯**；`IsDirectlyInvisible` = 只查自己 | CPU：`ECSContext::IsEntityVisible` → collect（`RenderPrimitiveCollectSystem`）、`LineRenderPipeline`、测试 `TestVisibilityStorage` |
+| ① **权威** | 缺席集 `VisibilityDataStorage::invisible_entities`（+ `Mutex`） | **负向**（在集合里 = 不可见；**默认可见**） | `IsInvisible` = O(1) 直查 **+ 祖先链上溯**；`IsDirectlyInvisible` = 只查自己 | CPU：`ECSContext::IsEntityVisible` → collect（`RenderPrimitiveCollectSystem`）、`LineRenderPipeline`、测试 `TestVisibilityStorage` |
 | ② GPU 行位 | `EntityGPUFlags::Visible`（落在 `EntityGPU::flags`，表 = `EntityGPUTable`） | 正向 | **扁平**：只镜像 `SetEntityVisible` 落在这一个实体上的值 | GPU：`entity_gpu_cull.glsl`（`flags & 2u`） |
 | ③ 策略事实 | `StrategyFact::EntityVisible` | 正向 | **每帧现算、含继承**（collect 里 `world->IsEntityVisible(...)`） | 策略表 `EvaluateRenderNeed(mask, facts)` |
 
@@ -75,7 +75,7 @@
 
 | 表示 | 理由 |
 |---|---|
-| ① | CPU 权威 + **层级继承** + 线程安全（`ThreadMutex`）+ 默认可见（O(1) 查空集） |
+| ① | CPU 权威 + **层级继承** + 线程安全（`Mutex`）+ 默认可见（O(1) 查空集） |
 | ② | 着色器的 O(1) 读法：GPU 剔除在 dispatch 里按 `entity_index` 枚举，不能回 CPU 查集合 ⇒ 行是它唯一输入面 |
 | ③ | 策略判定的输入形状：`EvaluateRenderNeed(mask, facts)` 要的是「已算完（含继承）」的布尔事实，而不是「要不要上溯祖先」的问题 |
 

@@ -25,7 +25,7 @@ void VulkanDevice::RegisterShaderModuleHash(VkShaderModule module, uint64_t cont
     if(module == VK_NULL_HANDLE)
         return;
 
-    ThreadMutexLock lock(&shader_module_hashes_mutex);
+    MutexLock lock(&shader_module_hashes_mutex);
 
     shader_module_hashes[(uint64_t)(uintptr_t)module] = content_hash;
 }
@@ -35,7 +35,7 @@ void VulkanDevice::UnregisterShaderModuleHash(VkShaderModule module)
     if(module == VK_NULL_HANDLE)
         return;
 
-    ThreadMutexLock lock(&shader_module_hashes_mutex);
+    MutexLock lock(&shader_module_hashes_mutex);
 
     shader_module_hashes.erase((uint64_t)(uintptr_t)module);
 }
@@ -45,7 +45,7 @@ uint64_t VulkanDevice::GetShaderModuleHash(VkShaderModule module)const
     if(module == VK_NULL_HANDLE)
         return 0;
 
-    ThreadMutexLock lock(&shader_module_hashes_mutex);
+    MutexLock lock(&shader_module_hashes_mutex);
 
     const auto it = shader_module_hashes.find((uint64_t)(uintptr_t)module);
     return it == shader_module_hashes.end() ? 0 : it->second;

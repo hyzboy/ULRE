@@ -455,7 +455,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 - **构建事故（记录，非代码缺陷）**：给 `VKDevice.h` 加成员的那次编辑**落在构建进行中**，
   MSBuild 的 tlog 此后不再重编 `VKDevice.obj`/`VKDeviceCreater.obj`（obj mtime 比头文件新、
   内容却是旧布局）→ 构造函数没构造新成员、使用者按新布局读 → 首次建 pipeline 键走**空 vptr**
-  崩（cdb 栈：`ThreadMutexLock::ThreadMutexLock` ← `VulkanDevice::RegisterShaderModuleHash`）。
+  崩（cdb 栈：`MutexLock::MutexLock` ← `VulkanDevice::RegisterShaderModuleHash`）。
   清掉整棵 `find build -type d -path "*.dir/Debug"` obj 树重编后全绿。判定法：
   `ls -la <header> <obj>` 看 obj 是否早于头文件（详见技能 crlf-safe-editing）。
 

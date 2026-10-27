@@ -228,7 +228,7 @@ E-3 既有泵    BeginManagedRenderFrame → UpdateUploadQueue → Completed →
 - **回滚**：纯增量消费点，revert 安全。
 
 ### T4 —— 解码 worker 化（真异步兑现）
-- **内容**：拆 `VkTextureLoader` 为 CPU 半（读文件+解头+解像素，零 Vulkan 调用）与主线程半（建 tci/入队）；worker 用 `CMCore/inc/hgl/thread/Workflow.h` 池 + `SpscQueue` 回投；**像素交接默认 ring 直写**（§3.4）：worker 经锁取 `StagingRingBuffer::Allocate` 段、解码产出直写其映射块，主线程泵只记 offset 入队——命中队列现成的 `tci->buffer` 零拷贝直通分支，**消掉主线程 4K/HDR 大缓冲 memcpy 尖峰**；环分配失败 = CPU 块 + 主线程拷贝的背压退化路径；新增 `Decoding` 态与待解码池内存预算（默认 256MB，待拍板随实现）。**Immediate 优先级绕过 worker 直走 T1 同步路径**。
+- **内容**：拆 `VkTextureLoader` 为 CPU 半（读文件+解头+解像素，零 Vulkan 调用）与主线程半（建 tci/入队）；worker 用 `CMCore/inc/hgl/thread/WorkerPool.h` 池 + `CMCore/inc/hgl/concurrency/SpscQueue.h` 回投；**像素交接默认 ring 直写**（§3.4）：worker 经锁取 `StagingRingBuffer::Allocate` 段、解码产出直写其映射块，主线程泵只记 offset 入队——命中队列现成的 `tci->buffer` 零拷贝直通分支，**消掉主线程 4K/HDR 大缓冲 memcpy 尖峰**；环分配失败 = CPU 块 + 主线程拷贝的背压退化路径；新增 `Decoding` 态与待解码池内存预算（默认 256MB，待拍板随实现）。**Immediate 优先级绕过 worker 直走 T1 同步路径**。
 - **判据**：主线程单帧内不再出现文件 IO（`RenderDoc`/`ETW` 目视一次即可，判据以日志为主：worker 领取/回投时间戳均在 Tick 之外）；台架用例"同帧 Request 100 文件 → 泵 N 帧后全 Ready"无卡顿断言改为状态断言；上传三契约基线不劣化。
 - **回滚**：`TextureAssetManager` 加环境开关退回同步解码路径（属应急阀，非兼容层——一版后删）。
 
@@ -324,7 +324,7 @@ E-3 既有泵    BeginManagedRenderFrame → UpdateUploadQueue → Completed →
 - 材质侧：`inc/hgl/ecs/components/MaterialData.h`、`inc/hgl/ecs/support/MaterialAuthoringSideTable.h`、`MaterialRuntimeTable.h`
 - 收集链：`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`、`src/ecs/support/RenderResource.cpp`
 - 帧入口：`src/ecs/core/Context.cpp:BeginManagedRenderFrame`
-- 线程件：`CMCore/inc/hgl/thread/Workflow.h`、`SpscQueue.h`
+- 线程件：`CMCore/inc/hgl/thread/WorkerPool.h`、`CMCore/inc/hgl/concurrency/SpscQueue.h`
 - 台架样板：`src/ecs/tests/TestCSMIncrementalPass.cpp`；帧摘要 `example/Shared/FrameDigest.h`
 
 ## 附录 B：术语

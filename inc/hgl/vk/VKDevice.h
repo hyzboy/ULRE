@@ -18,7 +18,7 @@
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
-#include<hgl/thread/ThreadMutex.h>
+#include<hgl/sync/Mutex.h>
 #include<typeinfo>
 #include<type_traits>
 #include<utility>
@@ -154,7 +154,7 @@ public: //ShaderModule 内容 hash 注册表（pipeline 缓存键身份，禁用
 private:
 
                 std::unordered_map<uint64_t, uint64_t>  shader_module_hashes;          ///< key = (uint64_t)VkShaderModule
-                mutable ThreadMutex                     shader_module_hashes_mutex;
+                mutable Mutex                     shader_module_hashes_mutex;
 
 public:
 
