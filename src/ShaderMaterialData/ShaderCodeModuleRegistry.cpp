@@ -50,7 +50,7 @@ namespace hgl::graph::mtl
         if (FindByName(definition.name))
             return false;
 
-        modules.push_back(&definition);
+        modules.Add(&definition);
         return true;
     }
 
@@ -422,12 +422,12 @@ namespace hgl::graph::mtl
         if (!name || !*name)
             return false;
 
-        for (size_t i = 0; i < modules.size(); ++i)
+        for (int i = 0; i < modules.GetCount(); ++i)
         {
             const auto *definition = modules[i];
             if (definition && definition->name && std::strcmp(definition->name, name) == 0)
             {
-                modules.erase(modules.begin() + static_cast<ptrdiff_t>(i));
+                modules.Delete(i, 1);
                 return true;
             }
         }
@@ -437,7 +437,7 @@ namespace hgl::graph::mtl
 
     const ShaderCodeModuleDefinition *ShaderCodeModuleRegistry::GetModuleByIndex(const int index) const
     {
-        const int count = static_cast<int>(modules.size());
+        const int count = modules.GetCount();
         if (index < 0 || index >= count)
             return nullptr;
 

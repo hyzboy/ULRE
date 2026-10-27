@@ -3,7 +3,7 @@
 #include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/type/ManagedArray.h>
-#include <vector>
+#include <hgl/type/ValueArray.h>
 
 namespace hgl::graph::mtl
 {
@@ -12,7 +12,7 @@ namespace hgl::graph::mtl
         // Registered modules in registration order. Identity is the module
         // name (unique per registry); lookups are linear over a small set
         // (~tens of modules), avoiding a second identity track.
-        std::vector<const ShaderCodeModuleDefinition *> modules;
+        hgl::ValueArray<const ShaderCodeModuleDefinition *> modules;
 
         // File-backed module payloads. Entries are heap objects with stable
         // addresses; ShaderCodeModuleDefinition pointers inside each entry point
@@ -45,14 +45,14 @@ namespace hgl::graph::mtl
         /// dependency/conflict graph is incomplete). Returns false when absent.
         bool RemoveByName(const char *name);
 
-        int GetCount() const { return static_cast<int>(modules.size()); }
+        int GetCount() const { return modules.GetCount(); }
 
         /**
          * Access a module by iteration index. The order is not guaranteed to be
          * stable across calls; consumers that need determinism must sort.
          */
         const ShaderCodeModuleDefinition *GetModuleByIndex(const int index) const;
-        void Clear() { modules.clear(); file_data.Clear(); }
+        void Clear() { modules.Clear(); file_data.Clear(); }
     };
 
     // 全局 GLSL 模块注册表单例（懒加载，首次调用时扫描 ShaderLibrary）。
