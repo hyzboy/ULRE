@@ -56,10 +56,7 @@ namespace hgl::graph::mtl
                 && requires_recipe_payload_row == rhs.requires_recipe_payload_row
                 && program_link.mesh_stage == rhs.program_link.mesh_stage
                 && program_link.fragment_stage == rhs.program_link.fragment_stage
-                && program_link.resource_layout_hash == rhs.program_link.resource_layout_hash
-                && program_link.vertex_input_hash == rhs.program_link.vertex_input_hash
-                && program_link.render_target_hash == rhs.program_link.render_target_hash
-                && program_link.compiler_hash == rhs.program_link.compiler_hash;
+                && program_link.link_contract_hash == rhs.program_link.link_contract_hash;
         }
 
         bool operator!=(const ShaderProgramManifestEntry &rhs) const noexcept

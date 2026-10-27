@@ -79,7 +79,16 @@ namespace hgl::graph::mtl::contract
     //     从「材质注入前置块之前」移到「之后」——宏的集合与文本不变，但**字节顺序
     //     变了**，深度/阴影程序必须换代重烘。golden `lit-*-masked.emission.txt` /
     //     `lit-*-depth.emission.txt` 同步刷新。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 14;
+    // 15：均匀化「program / stage 键的形状」——
+    //      · `ShaderStageKey` 5→4：`glsl_module_graph_hash` + `resource_hash` 合成
+    //        `compile_inputs_hash`（options 摘要不再靠 `// domain-options-key`
+    //        注释混进 definition_hash，改为显式进 compile_inputs_hash）；
+    //      · `ShaderProgramKey` / `ShaderLinkSpec` 的 4 个 link 哈希 → 1 个
+    //        `link_contract_hash`；
+    //      · `ShaderProgramArtifactMetadata` 9→2、两份 manifest 升 v2。
+    //      GLSL 文本与 SPV 字节不变，但**所有键值、缓存文件名、清单格式全变**，
+    //      旧产物既不会被命中也不会被读出，必须换代重烘。
+    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 15;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，

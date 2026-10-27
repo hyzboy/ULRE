@@ -38,6 +38,7 @@
 #include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
+#include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileOutputStream.h>
@@ -543,11 +544,12 @@ namespace hgl::graph::mtl
         }
 
 
-        /// 片段阶段的物理固定内容：源文本 + 接口形状 + 编译期位置信息。
+        /// 片段阶段的物理固定内容：源文本 + options 文本/摘要 + 接口形状。
         struct FixedFragmentStage
         {
-            AnsiString source;       // 领域主着色器 + options 内容键
+            AnsiString source;       // 领域主着色器（纯 GLSL，逐字节就是被编译的文本）
             AnsiString options_text; // 片段 options 原文（与网格 options 合成目录名）
+            uint64 options_digest = 0;// 片段 options 文本摘要（进 stage 键）
             uint64 interface_hash = 0;
             MaterialDomain domain = MaterialDomain::Custom;
             ShaderProgramPurpose purpose = ShaderProgramPurpose::ForwardColor;
@@ -620,28 +622,28 @@ namespace hgl::graph::mtl
             // `AssembleMaterialProgram` 才产出。落盘统一由 `WriteOptionsToCache`
             // 在拿到两份文本之后一次做完（见 CreateBuildContext）。
 
-            // ── 主着色器 + options 内容键 ────────────────────────────────
+            // ── options 摘要进 stage 键 ──────────────────────────────────
             //
             // options 的全部差异都落在 `generated/frag_options.glsl` 里，主着色器文本
-            // 对「同领域 + 同 pass」是**逐字节相同**的。若 stage source digest 只
-            // 覆盖主着色器，两种不同 options 就会算出同一个摘要（实测：
-            // fwd 与 fwd-alpha 的主着色器文本完全一致，SPV 却是 65072 vs 67024）。
-            // 摘要既是缓存命中的判据也是事后校验的判据，撞了就只剩缓存文件名这
-            // 一道保险。把内容键作为溯源注释钉在文本尾部，摘要自然覆盖 options，
-            // 同时让落盘的 `.frag` 能自述「这份 SPV 是哪组宏编出来的」。
+            // 对「同领域 + 同 pass」是**逐字节相同**的。若 stage 键只覆盖主着色器，
+            // 两种不同 options 就会算出同一个摘要（实测：fwd 与 fwd-alpha 的主着色器
+            // 文本完全一致，SPV 却是 65072 vs 67024）。
+            //
+            // 早期做法是把摘要编码成 `// domain-options-key <key>` 注释拼在文本尾部，
+            // 靠 definition_hash 顺带覆盖它。代价：落盘的 `.frag` 混进一行无意义注释，
+            // 任何按文本比对的断言都得先剥掉它，而且「摘要」与「被编译的字节」被绑成
+            // 一件事——想单独核对 options 覆盖就得复算并解析注释。现在 options 摘要
+            // 走 `FixedStageInputs::fragment_options_digest` 直达 stage 键的
+            // compile_inputs_hash，文本保持纯净。
             AnsiString master_source;
             if (!LoadDomainMasterShader(domain_template, master_source))
                 return false;
 
-            char options_key[32];
-            MakeOptionsKey(options_text, nullptr, domain, purpose,
-                           options_key, sizeof(options_key));
-
             out_stage.source = master_source;
-            out_stage.source += "\n// domain-options-key ";
-            out_stage.source += options_key;
-            out_stage.source += "\n";
             out_stage.options_text = options_text;
+            out_stage.options_digest = HashFinalShaderSource(
+                options_text.c_str(),
+                static_cast<size_t>(options_text.Length()));
             return true;
         }
     }//namespace
@@ -681,6 +683,7 @@ namespace hgl::graph::mtl
                 FixedStageInputs fixed_stage;
                 fixed_stage.fragment_source = fixed.source.c_str();
                 fixed_stage.fragment_interface_hash = fixed.interface_hash;
+                fixed_stage.fragment_options_digest = fixed.options_digest;
 
                 // 网格阶段：主着色器按形状固定，顶点解码/位置映射/投影由
                 // `generated/mesh_options.glsl` 注入。构建器只交出 options 文本，
@@ -774,6 +777,7 @@ namespace hgl::graph::mtl
 
         out_source.source = fixed.source;
         out_source.interface_hash = fixed.interface_hash;
+        out_source.options_digest = fixed.options_digest;
         out_source.domain = fixed.domain;
         out_source.purpose = fixed.purpose;
         return true;

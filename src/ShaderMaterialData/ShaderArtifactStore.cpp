@@ -101,13 +101,6 @@ namespace hgl::graph::mtl
             out_payload.Clear();
             out_payload.Reserve(ShaderProgramMetadataPayloadSize);
             AppendU64(out_payload, metadata.program_key_digest);
-            AppendU64(out_payload, metadata.resolved_module_graph_hash);
-            AppendU64(out_payload, metadata.shader_interface_hash);
-            AppendU64(out_payload, metadata.output_contract_hash);
-            AppendU64(out_payload, metadata.mesh_stage_digest);
-            AppendU64(out_payload, metadata.fragment_stage_digest);
-            AppendU64(out_payload, metadata.compiler_profile_hash);
-            AppendU64(out_payload, metadata.device_target_hash);
             AppendU64(out_payload, metadata.generated_source_digest);
         }
 
@@ -124,16 +117,6 @@ namespace hgl::graph::mtl
             const uint8 *cursor = payload;
             const uint8 *end = payload + payload_size;
             return ReadU64(cursor, end, out_metadata.program_key_digest)
-                && ReadU64(
-                    cursor,
-                    end,
-                    out_metadata.resolved_module_graph_hash)
-                && ReadU64(cursor, end, out_metadata.shader_interface_hash)
-                && ReadU64(cursor, end, out_metadata.output_contract_hash)
-                && ReadU64(cursor, end, out_metadata.mesh_stage_digest)
-                && ReadU64(cursor, end, out_metadata.fragment_stage_digest)
-                && ReadU64(cursor, end, out_metadata.compiler_profile_hash)
-                && ReadU64(cursor, end, out_metadata.device_target_hash)
                 && ReadU64(cursor, end, out_metadata.generated_source_digest)
                 && cursor == end;
         }
@@ -367,13 +350,7 @@ namespace hgl::graph::mtl
                     out_metadata)
              || !IsValidShaderProgramArtifactMetadata(out_metadata)
              || out_metadata.program_key_digest
-                    != program_key.GetDigest()
-             || out_metadata.mesh_stage_digest
-                    != GetMeshStageKey(link).GetDigest()
-             || out_metadata.fragment_stage_digest
-                    != link.fragment_stage.GetDigest()
-             || out_metadata.compiler_profile_hash
-                    != link.compiler_hash)
+                    != program_key.GetDigest())
                 break;
 
             success = true;
@@ -393,12 +370,7 @@ namespace hgl::graph::mtl
         if (cache_mode == ShaderCacheMode::ReadOnly
          || !link.IsValid()
          || !IsValidShaderProgramArtifactMetadata(metadata)
-         || metadata.program_key_digest != link.BuildKey().GetDigest()
-         || metadata.mesh_stage_digest
-            != GetMeshStageKey(link).GetDigest()
-         || metadata.fragment_stage_digest
-            != link.fragment_stage.GetDigest()
-         || metadata.compiler_profile_hash != link.compiler_hash)
+         || metadata.program_key_digest != link.BuildKey().GetDigest())
             return false;
 
         const OSString directory =

@@ -24,13 +24,13 @@ namespace
     // 与运行时的读法必须对同一份结构解释一致；字段一旦增删或换序，这里立刻断编译，
     // 而不是留到「烘焙端写、运行端读」时静默错位。真要改布局，请同步升级
     // ShaderGenProfileTargetVersion.h 里的 SHADERGEN_CODEGEN_GENERATION。
-    static_assert(sizeof(hgl::graph::mtl::ShaderProgramKey) == 6 * sizeof(hgl::uint64),
+    static_assert(sizeof(hgl::graph::mtl::ShaderProgramKey) == 3 * sizeof(hgl::uint64),
                   "ShaderProgramKey 布局属于 Manifest 身份契约");
-    static_assert(offsetof(hgl::graph::mtl::ShaderProgramKey, compiler_hash)
-                      == 5 * sizeof(hgl::uint64),
+    static_assert(offsetof(hgl::graph::mtl::ShaderProgramKey, link_contract_hash)
+                      == 2 * sizeof(hgl::uint64),
                   "ShaderProgramKey 字段顺序属于 Manifest 身份契约");
     static_assert(offsetof(hgl::graph::mtl::ShaderStageKey, definition_hash) == 8,
                   "ShaderStageKey 首字段之后必须紧跟 definition_hash");
-    static_assert(offsetof(hgl::graph::mtl::ShaderStageKey, compiler_hash) == 40,
+    static_assert(offsetof(hgl::graph::mtl::ShaderStageKey, compiler_hash) == 32,
                   "ShaderStageKey 末字段必须是 compiler_hash");
 }

@@ -239,19 +239,19 @@ offset/size/name）后做**文本全等**比较，再比较 `GetSPVSize()`。用
 生成器时代每次冷启动都要跑一遍 AST 组装 + glslang；固定主着色器省掉了前者，
 但如果缓存语义不对，后者仍会白烧一遍，甚至悄悄写出错误的产物。
 
-缓存键是 `ShaderStageKey`（`stage / definition_hash / glsl_module_graph_hash /
-interface_hash / resource_hash / compiler_hash`，六项 FNV1a），**按阶段存**，
-和最终 GLSL 文本无关；`generated_source_digest` **不参与**命中判定，只作事后校验。
-由此推出两条必须遵守的实现约束：
+缓存键是 `ShaderStageKey`（`stage / definition_hash / compile_inputs_hash /
+interface_hash / compiler_hash`，四项 FNV1a，`GetDigest()` 额外混入 `stage`），
+**按阶段存**，和最终 GLSL 文本无关；`generated_source_digest` **不参与**命中判定，
+只作事后校验。由此推出两条必须遵守的实现约束：
 
-1. **摘要必须覆盖 domain options。** 主着色器文本对「同领域 + 同 pass」是逐字节相同的，
-   options 的全部差异都在 `generated/frag_options.glsl` 里。若 stage source digest 只覆盖
-   主着色器文本，fwd 与 fwd-alpha 会算出**同一个摘要**（实测：主着色器文本完全一致，
-   SPV 却是 65072 vs 67024）。摘要既是缓存命中判据也是事后校验判据，撞了就只剩
-   缓存文件名这一道保险。因此 `CompileDomainMasterFragment` 把 options 的**内容键**
-   （`MakeOptionsKey` = FNV1a(options 文本, domain, purpose)）作为溯源注释
-   `// domain-options-key <hex>` 钉在片段源尾部：摘要自然覆盖 options，落盘的 `.frag`
-   也能自述「这份 SPV 是哪组宏编出来的」。
+1. **options 必须进 `compile_inputs_hash`，而不是进文本。** 主着色器文本对「同领域 + 同
+   pass」是逐字节相同的，options 的全部差异都在 `generated/frag_options.glsl` 里。历史做法
+   是把 options 的内容键伪装成 `// domain-options-key <hex>` 注释钉在片段源尾部，靠「文本变了
+   ⇒ 摘要变了」间接覆盖；这要求源码里塞假注释、摘要口径与文本耦合、门禁还得把它剥掉再比。
+   现在改为两个正交字段：`definition_hash` = 最终 GLSL 文本摘要（纯 GLSL，可交给任何外部
+   glslang 编译），`compile_inputs_hash` = 显式混入 options 摘要 / include 闭包 / 资源契约。
+   落盘的 `.frag` 因此可以直接手编，而缓存仍然区分得开 fwd 与 fwd-alpha（实测同样文本
+   SPV 为 65344 vs 67356）。
 2. **元数据必须在换源之后重建。** `BuildGenericMaterial` 在领域后端换掉片段源**之前**
    就构造好了 `ShaderProgramArtifactMetadata`，其中的 `generated_source_digest` 描述的
    是被丢弃的生成文本。`FinalizeShaderBuildContext` 会把它原样落盘，所以
@@ -1379,12 +1379,14 @@ master 不允许结构性条件编译，所以让两个模块各自提供同名�
 
 ### 两道必须做的防护
 
-**一、`// mesh-options-digest <FNV1a64>` 溯源注释。**
-同形状的主着色器文本逐字节相同，两种不同顶点格式会算出同一个 stage source digest，于是磁盘上
+**一、options 摘要必须进 stage 键的 `compile_inputs_hash`。**
+同形状的主着色器文本逐字节相同，两种不同顶点格式会算出同一个 `definition_hash`，于是磁盘上
 旧的 SPV 被永久命中复用——症状是「换了顶点格式，几何还是老的」。options 文件的 include 闭包
 （`ShaderLibrary/vertex/s1_*.glsl` 之外的 `generated/`）不在 ShaderLibrary 下，闭包哈希抓不到它，
-所以把 options 文本的 FNV1a64 摘要作为一行注释钉在主着色器文本尾部，让 stage digest 覆盖 options。
-门禁侧 `FixedMeshCatalogHas` 比对前剥掉这一行并 trim 尾随空白。
+所以把 options 文本的 FNV1a64 摘要**显式混进** `compile_inputs_hash`（
+`MaterialProgramAssembler` 的 `mesh_options_digest`）。历史实现是把它作为一行
+`// mesh-options-digest` 注释钉在文本尾部；阶段四之后注释已删除，文本恢复纯 GLSL，
+门禁改为 `CheckMeshTextIsPure` 反向断言这两种历史标记不再出现。
 
 **二、options 缓存目录名必须含网格 options 哈希。**
 原 `WriteOptionsToCache` 的目录名只由**片段** options 决定。两个顶点格式完全不同、但片段 options
@@ -1590,11 +1592,12 @@ AnsiString BuildMeshShapeName(const MeshShaderMode mode,
 mode → ResolveMeshModeTopology(mode, invocations) → capacity
      → BuildMeshShapeName(mode, varying, capacity.max_vertices) → shape_name
      → 读 ShaderLibrary/mesh/shape/<shape_name>.mesh
-     → if (!IsCharQuadMode) { EmitMeshOptions(...) ; 追加 // mesh-options-digest <FNV1a> }
+     → if (!IsCharQuadMode) { EmitMeshOptions(...) }   # 摘要只进键，不进文本
 ```
 
-`// mesh-options-digest` 仍然是必需的：master 文本对同一形状**逐字节相同**，
-不同顶点格式的差异全在 options 里，摘要进 `plan.ms` 才能让缓存键分开。
+options 摘要仍然是必需的：master 文本对同一形状**逐字节相同**，不同顶点格式的差异全在
+options 里，摘要进 `plan.ms` / `compile_inputs_hash` 才能让缓存键分开。（历史实现把它写成
+`// mesh-options-digest` 注释钉在尾部，已随键形状统一删除。）
 
 随之删除的磁盘文件：
 
@@ -2096,15 +2099,17 @@ AtmosphereSky 的日志中，`SkyMinimal` 配方没有贴图行（`planned_textu
 
 ### 四、真正要固化的是 digest 互锁
 
-评估的产出不是预设表，而是把既有的两道防护（`// mesh-options-digest` 溯源注释、目录名含
+评估的产出不是预设表，而是把既有的两道防护（options 摘要进入 stage 键、目录名含
 网格 options 哈希）从"写了但没人验"提升为"门禁可证伪"：
 
-1. **摘要计算收敛到单点**：写入目录名用的哈希、写进主着色器尾部的溯源注释、门禁校验的三方
+1. **摘要计算收敛到单点**：目录名用的哈希、进 `compile_inputs_hash` 的摘要、门禁校验的三方
    必须调同一个函数，否则三者可以各自漂移而都不报错。
-2. **门禁断言摘要存在且正确**：原门禁在比对形状 master 前会把 `// mesh-options-digest <n>`
-   剥掉，于是"摘要漏写"与"摘要算错"都能静默通过——而这两件事的后果都是磁盘上旧 SPV 被
-   永久命中复用。新断言要求非 CharQuad 的网格文本**恰好一条**摘要行，且其值等于当次
-   `mesh_options_glsl_out` 文本的摘要（即与真正落盘的那份字节严格互锁）。
+2. **门禁断言文本纯净 + 键区分得开**：原门禁在比对形状 master 前会把 `// mesh-options-digest
+   <n>` 剥掉，于是"摘要漏写"与"摘要算错"都能静默通过——而这两件事的后果都是磁盘上旧 SPV 被
+   永久命中复用。键形状统一之后文本里已不存在任何溯源注释，门禁改为两条正向断言：
+   `CheckMeshTextIsPure` 要求最终 GLSL 里**不出现**两种历史标记（防返祖），
+   `DH.domain-backend-cache` 要求「同形状不同 options」的片段阶段
+   `compile_inputs_hash` **两两互不相同**（选项确实进了身份）。
 
 见 `doc/ultra-thin-implementation-status.md` §12 的 Layer 4 条目。
 ## 阶段十-3：资源所有权单点化（网格收口 Layer 5）

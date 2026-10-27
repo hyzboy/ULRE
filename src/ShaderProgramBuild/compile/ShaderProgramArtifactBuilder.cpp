@@ -68,7 +68,9 @@ namespace hgl::graph::mtl
 
         const ShaderLinkSpec &link =
             build_spec.GetProgramLink();
-        if (link.compiler_hash
+        // 编译配置不属于键的身份，但仍是元数据可写的前提：拿不到本 profile 的
+        // 编译器摘要就说明 stage 键不是为这台设备算的。
+        if (link.mesh_stage.compiler_hash
             != contract::GetShaderCompilerProfileHash(profile))
             return false;
 
@@ -80,32 +82,13 @@ namespace hgl::graph::mtl
         if (source_digest == 0)
             return false;
 
-        hgl::hash::FNV1aHasher64 module_graph_hasher;
-        module_graph_hasher << link.mesh_stage.glsl_module_graph_hash
-                            << link.fragment_stage.glsl_module_graph_hash;
-        const uint64 module_graph_hash = module_graph_hasher;
-
-        hgl::hash::FNV1aHasher64 interface_hasher;
-        interface_hasher << link.mesh_stage.interface_hash
-                         << link.fragment_stage.interface_hash
-                         // 2026-10-11（S1）：原资源 schema 哈希 → 其唯一活字段。
-                         // 取值变化属预期（artifact / SPV 缓存一次性重建）。
-                         << build_spec.RequiresRecipeRuntimeRows();
-        const uint64 interface_hash = interface_hasher;
-
-        const uint64 program_digest = link.BuildKey().GetDigest();
-
-        out_metadata.program_key_digest = program_digest;
-        out_metadata.resolved_module_graph_hash = module_graph_hash;
-        out_metadata.shader_interface_hash = interface_hash;
-        out_metadata.output_contract_hash = link.render_target_hash;
-        out_metadata.mesh_stage_digest =
-            link.mesh_stage.GetDigest();
-        out_metadata.fragment_stage_digest =
-            link.fragment_stage.GetDigest();
-        out_metadata.compiler_profile_hash = link.compiler_hash;
-        out_metadata.device_target_hash =
-            contract::GetShaderCompilerProfileHash(profile);
+        // 只剩两项：程序键摘要 + 生成源摘要。
+        //
+        // 原来这里还落 7 个派生字段（模块图/接口/输出契约/stage 摘要/编译器/设备
+        // 目标），全部是由 `link` 与 `profile` 现算出来的。落盘它们没有增加任何
+        // 判据强度——事后校验只能比对程序键摘要，其余 6 项要么恒等于输入的
+        // 纯函数值、要么（如 output_contract_hash）已被程序键传递性覆盖。
+        out_metadata.program_key_digest = link.BuildKey().GetDigest();
         out_metadata.generated_source_digest = source_digest;
         return IsValidShaderProgramArtifactMetadata(out_metadata);
     }

@@ -60,9 +60,8 @@ namespace hgl::graph::mtl
         {
             AppendU32(bytes, static_cast<uint32>(key.stage));
             AppendU64(bytes, key.definition_hash);
-            AppendU64(bytes, key.glsl_module_graph_hash);
+            AppendU64(bytes, key.compile_inputs_hash);
             AppendU64(bytes, key.interface_hash);
-            AppendU64(bytes, key.resource_hash);
             AppendU64(bytes, key.compiler_hash);
         }
 
@@ -75,9 +74,8 @@ namespace hgl::graph::mtl
             out_key.stage = static_cast<ShaderStage>(stage);
 
             return ReadU64(cursor, end, out_key.definition_hash)
-                && ReadU64(cursor, end, out_key.glsl_module_graph_hash)
+                && ReadU64(cursor, end, out_key.compile_inputs_hash)
                 && ReadU64(cursor, end, out_key.interface_hash)
-                && ReadU64(cursor, end, out_key.resource_hash)
                 && ReadU64(cursor, end, out_key.compiler_hash);
         }
 
@@ -297,16 +295,23 @@ namespace hgl::graph::mtl
         const uint64 spv_size,
         const uint64 compiler_hash)
     {
-        // compute 没有声明闭包，这五个字段不表示「声明哈希」，只表示
+        // compute 没有声明闭包，这四个字段不表示「声明哈希」，只表示
         // 「这段 SPV 是哪一份」。填法：名字定身份、内容定版本、编译器定兼容性，
         // 于是「改了 GLSL 但名字没变」自然换文件名，旧文件退场。
+        //
+        // 字段语义按 stage 键的统一含义重新对齐：
+        //   definition_hash     = 名字键（没有 GLSL 文本，名字就是定义身份）
+        //   compile_inputs_hash = SPV 内容哈希（本 stage 的编译产物身份）
+        //   interface_hash      = SPV 字节数 + 1（0 值在别的键位上代表「没填」）
+        //   compiler_hash       = 编译器 profile 哈希
+        // 原先把 compiler_hash 同时塞给 interface_hash，等于让两个维度退化成一个；
+        // 现在 interface 取字节数，纯粹用于把同名不同体积的旧产物错开。
         ShaderStageKey key{};
 
         key.stage = ShaderStage::Compute;
         key.definition_hash = ComputeShaderComputeProgramManifestKey(program_name);
-        key.glsl_module_graph_hash = HashBytes(spv_data, spv_size);
-        key.interface_hash = compiler_hash;
-        key.resource_hash = spv_size + 1;   // +1：0 值在别的键位上代表「没填」
+        key.compile_inputs_hash = HashBytes(spv_data, spv_size);
+        key.interface_hash = spv_size + 1;
         key.compiler_hash = compiler_hash;
 
         return key;

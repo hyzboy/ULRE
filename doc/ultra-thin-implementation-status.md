@@ -584,7 +584,7 @@ Case 名与职责：
 |---|---|---|
 | ShaderGen 仍在预推断描述符布局 | 全搜 `src/ShaderGen` + `inc/hgl/mtl` 的 `VkDescriptorSetLayoutCreateInfo` / `DescriptorSetLayoutBinding` / `CreateDescriptorSetLayout` | **0 命中** |
 | 运行时需要 per-material 布局 | `src/Vulkan/pipeline/VKPipelineLayoutData.cpp` `CreateGlobalPipelineLayout()` | 只吃 `bindless_layout` 一个参数，函数体硬编码「Bindless(0) + 单条 `sizeof(RootAddresses)` 推送区」，**签名里没有任何材质输入** |
-| `resource_layout_hash` 被运行时消费成绑定 | 全搜该字段 | 仅 `ShaderProgramManifest.cpp` 用于 manifest 行**自比对**；`ShaderProgramManager.cpp` 只校验 `baked_push_constant_size` |
+| `resource_layout_hash` 被运行时消费成绑定 | 全搜该字段 | 仅 `ShaderProgramManifest.cpp` 用于 manifest 行**自比对**；`ShaderProgramManager.cpp` 只校验 `baked_push_constant_size`。**阶段四后该字段已整体删除**，manifest 行自比对改用 `link_contract_hash` |
 | 「资源清单」是描述符表 | `inc/hgl/mtl/ShaderCodeResourceManifest.h` | 是 `code_module_names[64]` + `texture_references` + `sampler_references` + `stable_hash`，**不是布局** |
 
 **关键因果**：描述符契约层已于 **2026-10-11（S1）删除**（`MaterialResourceManifestBuilder.h` 的头注释就是墓碑）。所以 `GenericMaterialBuilder.cpp` 里根本没有「预推断→布局」这一段可供反射替代 —— 反射只能**看见编译后的状态**，而 sampler 名 → 索引映射必须在编译**前**以 `#define <Name>Sampler N` 注入（`shader_type`/`includes` 依赖它）。`ParseSPV` 输出 set/binding/type，出不来 preset 名。
@@ -895,6 +895,12 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
       磁盘旧 SPV（症状是几何没变）；注释写错 → 溯源信息本身是假的；注释写两条 → 无法判定
       哪条进了 stage 键。现由 `CheckMeshOptionsDigest` 覆盖四种扫描结论，且**先于**覆盖率
       判定报错（剥掉注释后文本必然对不上，先报根因）。
+- [x] **4d 摘掉注释、只在键里留摘要（键形状统一阶段）**：4b/4c 的整条「注释即摘要」链路
+      已经删除——`DomainOptions.h` 里的 `kMeshOptionsDigestMarker` /
+      `ComputeMeshOptionsDigest` / `AppendMeshOptionsDigest` / `ScanMeshOptionsDigest` 全部
+      移除，两份最终 GLSL 恢复纯文本。摘要改由 `compile_inputs_hash` 承担（片段用
+      `FixedFragmentStage::options_digest`，网格用 `plan.mesh_options_digest`），
+      `CheckMeshOptionsDigest` 换成反向的 `CheckMeshTextIsPure`（出现历史标记即报返祖）。
 - [x] 反向探针逐个点亮（每次均显式重构建 `ShaderResourceSchemaRegressionGate` 目标后跑
       `emit-fixed-mesh`）：① 注掉发射 → 35 形状「缺少注释」；② 摘要值 `^1` → 35 形状「值不一致」；
       ③ 追加两次 → 35 形状「出现多条」；④ 只写 marker + `abc` → 35 形状「不是十进制摘要」；

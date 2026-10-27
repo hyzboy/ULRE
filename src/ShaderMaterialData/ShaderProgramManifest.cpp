@@ -54,9 +54,8 @@ namespace hgl::graph::mtl
         {
             AppendU32(bytes, static_cast<uint32>(key.stage));
             AppendU64(bytes, key.definition_hash);
-            AppendU64(bytes, key.glsl_module_graph_hash);
+            AppendU64(bytes, key.compile_inputs_hash);
             AppendU64(bytes, key.interface_hash);
-            AppendU64(bytes, key.resource_hash);
             AppendU64(bytes, key.compiler_hash);
         }
 
@@ -69,9 +68,8 @@ namespace hgl::graph::mtl
             out_key.stage = static_cast<ShaderStage>(stage);
 
             return ReadU64(cursor, end, out_key.definition_hash)
-                && ReadU64(cursor, end, out_key.glsl_module_graph_hash)
+                && ReadU64(cursor, end, out_key.compile_inputs_hash)
                 && ReadU64(cursor, end, out_key.interface_hash)
-                && ReadU64(cursor, end, out_key.resource_hash)
                 && ReadU64(cursor, end, out_key.compiler_hash);
         }
 
@@ -82,10 +80,8 @@ namespace hgl::graph::mtl
             return lhs.lookup_key == rhs.lookup_key
                 && lhs.program_link.mesh_stage == rhs.program_link.mesh_stage
                 && lhs.program_link.fragment_stage == rhs.program_link.fragment_stage
-                && lhs.program_link.resource_layout_hash == rhs.program_link.resource_layout_hash
-                && lhs.program_link.vertex_input_hash == rhs.program_link.vertex_input_hash
-                && lhs.program_link.render_target_hash == rhs.program_link.render_target_hash
-                && lhs.program_link.compiler_hash == rhs.program_link.compiler_hash
+                && lhs.program_link.link_contract_hash
+                    == rhs.program_link.link_contract_hash
                 && lhs.requires_recipe_runtime_rows == rhs.requires_recipe_runtime_rows
                 && lhs.requires_recipe_payload_row == rhs.requires_recipe_payload_row;
         }
@@ -165,10 +161,7 @@ namespace hgl::graph::mtl
             AppendU64(payload, entry.lookup_key);
             AppendStageKey(payload, entry.program_link.mesh_stage);
             AppendStageKey(payload, entry.program_link.fragment_stage);
-            AppendU64(payload, entry.program_link.resource_layout_hash);
-            AppendU64(payload, entry.program_link.vertex_input_hash);
-            AppendU64(payload, entry.program_link.render_target_hash);
-            AppendU64(payload, entry.program_link.compiler_hash);
+            AppendU64(payload, entry.program_link.link_contract_hash);
             AppendU32(payload, (entry.requires_recipe_runtime_rows
                 ? ShaderProgramManifestFlagRequiresRecipeRows : 0u)
               | (entry.requires_recipe_payload_row
@@ -263,10 +256,7 @@ namespace hgl::graph::mtl
                        ReadU64(cursor, end, entry.lookup_key)
                     && ReadStageKey(cursor, end, entry.program_link.mesh_stage)
                     && ReadStageKey(cursor, end, entry.program_link.fragment_stage)
-                    && ReadU64(cursor, end, entry.program_link.resource_layout_hash)
-                    && ReadU64(cursor, end, entry.program_link.vertex_input_hash)
-                    && ReadU64(cursor, end, entry.program_link.render_target_hash)
-                    && ReadU64(cursor, end, entry.program_link.compiler_hash)
+                    && ReadU64(cursor, end, entry.program_link.link_contract_hash)
                     && ReadU32(cursor, end, flags);
 
                 if (!decode_ok)

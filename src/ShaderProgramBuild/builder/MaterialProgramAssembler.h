@@ -37,13 +37,18 @@ namespace hgl::graph::mtl
     /// 字节由后端显式传入——请求里少四个只有领域后端认识的字段。
     struct FixedStageInputs
     {
-        /// 最终片段源（已含 options 溯源注释）。缺失即硬失败：片段拼装链已删除，
+        /// 最终片段源。缺失即硬失败：片段拼装链已删除，
         /// 没有"退回去生成"这回事。
         const char *fragment_source = nullptr;
 
         /// 片段接口形状哈希（领域 + purpose + 覆盖判定）。与吃源文本的
         /// definition_hash 互补，两者在键里不互相掩盖。
         uint64 fragment_interface_hash = 0;
+
+        /// `generated/frag_options.glsl` 的文本摘要。片段 options 不走 `#include`
+        /// 闭包（它在 ShaderLibrary 之外），必须显式进 stage 键——同主着色器、
+        /// 不同 options 是完全不同的两次编译。
+        uint64 fragment_options_digest = 0;
 
         /// 非空 = 覆盖网格阶段源（离线/回归通道）；调用方保证文本与已解析的
         /// mode / ABI / stage interface 相符。
@@ -115,6 +120,10 @@ namespace hgl::graph::mtl
         AnsiString fs;
         uint64 mesh_source_shape_key = 0;
         bool mesh_source_was_fixed = false;
+        /// 本次发射出的 `generated/mesh_options.glsl` 文本摘要。与片段 options
+        /// 摘要同样必须进 stage 键：主着色器文本对「同形状」逐字节相同，两种不同
+        /// 顶点格式/位置映射只在 options 里分叉。
+        uint64 mesh_options_digest = 0;
 
         // Phase 5: program link + compile config
         MaterialDefinition contract_definition;

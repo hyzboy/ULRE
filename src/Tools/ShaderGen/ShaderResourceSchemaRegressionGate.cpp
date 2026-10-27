@@ -1272,6 +1272,7 @@ namespace
             FixedStageInputs fixed_stage;
             fixed_stage.fragment_source = fixed.source.c_str();
             fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            fixed_stage.fragment_options_digest = fixed.options_digest;
             fixed_stage.mesh_source = mesh_source_override;
 
             // 不编译 SPV：本用例只读网格阶段 GLSL 文本。
@@ -1606,6 +1607,7 @@ namespace
             FixedStageInputs fixed_stage;
             fixed_stage.fragment_source = fixed.source.c_str();
             fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            fixed_stage.fragment_options_digest = fixed.options_digest;
 
             MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
@@ -1679,16 +1681,9 @@ namespace
                 // 形状主着色器只在 `mesh/shape/` 下（`mesh/fixed/` 已删除）。
                 bool matched = false;
                 {
-                    // 生产文本尾部附了 `// mesh-options-digest <n>` 溯源注释
-                    // （让 stage key 覆盖 generated/mesh_options.glsl），比对前剥掉。
-                    // 剥离与校验共用同一处扫描实现（`DomainOptions.h`）。
-                    std::string body = mesh->GetFinalGLSL();
-                    hgl::uint64 digest_value = 0;
-                    size_t digest_at = 0;
-                    if (ScanMeshOptionsDigest(
-                            body.data(), body.size(), digest_value, &digest_at)
-                        != MeshOptionsDigestScan::Absent)
-                        body.resize(digest_at);
+                    // 生产文本就是形状 master 本身（options 摘要已迁出文本），
+                    // 逐字节比对，不做任何剥离。
+                    const std::string body = mesh->GetFinalGLSL();
 
                     const std::filesystem::path dirs[1] =
                     {
@@ -1890,7 +1885,7 @@ namespace
 
         ShaderStageBuildContext stage{};
         stage.stage = ShaderStage::Mesh;
-        stage.glsl_module_graph_hash = 0x13579bdf2468ace0ull;
+        stage.compile_inputs_hash = 0x13579bdf2468ace0ull;
         const ShaderStageKey stage_key = stage.BuildKey();
         const ShaderStageKey equivalent_stage_key = stage.BuildKey();
         if (!(stage_key == equivalent_stage_key))
@@ -1902,9 +1897,13 @@ namespace
         ShaderLinkSpec rg16_link{};
         rg16_link.mesh_stage = stage_key;
         rg16_link.fragment_stage.stage = ShaderStage::Fragment;
-        rg16_link.vertex_input_hash = rg16_geometry.GetVertexInputHash();
+        // 顶点输入格式差异只能通过 mesh stage 的 interface_hash 进键（VS 已废弃，
+        // link 层不再单独存一份 vertex_input_hash）。
+        rg16_link.mesh_stage.interface_hash ^=
+            rg16_geometry.GetVertexInputHash();
         ShaderLinkSpec rg32_link = rg16_link;
-        rg32_link.vertex_input_hash = rg32_geometry.GetVertexInputHash();
+        rg32_link.mesh_stage.interface_hash ^=
+            rg32_geometry.GetVertexInputHash();
         if (rg16_link.BuildKey() == rg32_link.BuildKey())
             result.diagnostics.emplace_back(
                 "equivalent shader stages must retain distinct program input identity");
@@ -1932,7 +1931,7 @@ namespace
             }
 
             ShaderStageKey wrong_key = stage_key;
-            wrong_key.glsl_module_graph_hash ^= 1ull;
+            wrong_key.compile_inputs_hash ^= 1ull;
             if (store.LoadStageSPV(wrong_key, loaded))
                 result.diagnostics.emplace_back("cache must reject a different stage key");
         }
@@ -1951,34 +1950,18 @@ namespace
         program_link.mesh_stage = stage_key;
         program_link.fragment_stage.stage = ShaderStage::Fragment;
         program_link.fragment_stage.definition_hash = 0x2201u;
-        program_link.fragment_stage.glsl_module_graph_hash = 0x2202u;
+        program_link.fragment_stage.compile_inputs_hash = 0x2202u;
         program_link.fragment_stage.interface_hash = 0x2203u;
-        program_link.fragment_stage.resource_hash = 0x2204u;
-        program_link.fragment_stage.compiler_hash = 0x2205u;
-        program_link.resource_layout_hash = 0x2301u;
-        program_link.vertex_input_hash = 0x2302u;
-        program_link.render_target_hash = 0x2303u;
-        program_link.compiler_hash = stage_key.compiler_hash != 0
-            ? stage_key.compiler_hash : 0x2304u;
-        program_link.mesh_stage.compiler_hash =
-            program_link.compiler_hash;
         program_link.fragment_stage.compiler_hash =
-            program_link.compiler_hash;
+            stage_key.compiler_hash != 0
+                ? stage_key.compiler_hash : 0x2304u;
+        program_link.mesh_stage.compiler_hash =
+            program_link.fragment_stage.compiler_hash;
+        program_link.link_contract_hash = 0x2303u;
 
         ShaderProgramArtifactMetadata metadata{};
         metadata.program_key_digest =
             program_link.BuildKey().GetDigest();
-        metadata.resolved_module_graph_hash = 0x2403u;
-        metadata.shader_interface_hash = 0x2404u;
-        metadata.output_contract_hash =
-            program_link.render_target_hash;
-        metadata.mesh_stage_digest =
-            program_link.mesh_stage.GetDigest();
-        metadata.fragment_stage_digest =
-            program_link.fragment_stage.GetDigest();
-        metadata.compiler_profile_hash =
-            program_link.compiler_hash;
-        metadata.device_target_hash = 0x2405u;
         metadata.generated_source_digest = 0x2406u;
 
         const uint32_t fragment_payload[] =
@@ -2023,8 +2006,9 @@ namespace
                     "complete program artifact load failed");
             }
 
+            // 命中判定的唯一维度是 program 键摘要：把它改掉必须拒。
             ShaderProgramArtifactMetadata changed_metadata = metadata;
-            changed_metadata.device_target_hash ^= 1u;
+            changed_metadata.program_key_digest ^= 1u;
             if (store.LoadProgramArtifacts(
                     program_link,
                     changed_metadata,
@@ -2146,7 +2130,7 @@ namespace
                 "invalid program metadata must reject writes");
 
         ShaderLinkSpec stage_only_link = program_link;
-        stage_only_link.render_target_hash ^= 0x1000u;
+        stage_only_link.link_contract_hash ^= 0x1000u;
         ShaderProgramArtifactMetadata stage_only_metadata = metadata;
         stage_only_metadata.program_key_digest =
             stage_only_link.BuildKey().GetDigest();
@@ -2167,8 +2151,6 @@ namespace
         ShaderProgramArtifactMetadata metadata_only = metadata;
         metadata_only.program_key_digest =
             metadata_only_link.BuildKey().GetDigest();
-        metadata_only.fragment_stage_digest =
-            metadata_only_link.fragment_stage.GetDigest();
         if (!store.SaveProgramMetadata(
                 metadata_only_link, metadata_only))
         {
@@ -2362,6 +2344,7 @@ namespace
             FixedStageInputs fixed_stage;
             fixed_stage.fragment_source = fixed.source.c_str();
             fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            fixed_stage.fragment_options_digest = fixed.options_digest;
             std::unique_ptr<ShaderBuildContext> context(
                 AssembleMaterialProgram(
                     profile, request, definition, nullptr, fixed_stage));
@@ -2418,13 +2401,7 @@ namespace
                 lit_targeted->GetProgramLink();
             if (lit_a->GetProgramArtifactMetadata().
                     program_key_digest
-                    != a.BuildKey().GetDigest()
-             || lit_a->GetProgramArtifactMetadata().
-                    mesh_stage_digest
-                    != a.mesh_stage.GetDigest()
-             || lit_a->GetProgramArtifactMetadata().
-                    fragment_stage_digest
-                    != a.fragment_stage.GetDigest())
+                    != a.BuildKey().GetDigest())
             {
                 result.diagnostics.emplace_back(
                     "BuildContext program metadata does not match ProgramLink");
@@ -2513,16 +2490,14 @@ namespace
             }
 
             if (a.mesh_stage.definition_hash == 0
+             || a.mesh_stage.compile_inputs_hash == 0
              || a.mesh_stage.interface_hash == 0
-             || a.mesh_stage.resource_hash == 0
              || a.mesh_stage.compiler_hash == 0
              || a.fragment_stage.definition_hash == 0
+             || a.fragment_stage.compile_inputs_hash == 0
              || a.fragment_stage.interface_hash == 0
-             || a.fragment_stage.resource_hash == 0
              || a.fragment_stage.compiler_hash == 0
-             || a.resource_layout_hash == 0
-             || a.vertex_input_hash == 0
-             || a.compiler_hash == 0)
+             || a.link_contract_hash == 0)
             {
                 result.diagnostics.emplace_back(
                     "authoritative stage/program keys contain zero identity");
@@ -3032,6 +3007,7 @@ namespace
                     FixedStageInputs fixed_stage;
                     fixed_stage.fragment_source = fixed.source.c_str();
                     fixed_stage.fragment_interface_hash = fixed.interface_hash;
+                    fixed_stage.fragment_options_digest = fixed.options_digest;
                     if (out_options)
                     {
                         // 覆盖语义（alpha test / cutoff / dither）**不在**固定主
@@ -3390,6 +3366,7 @@ namespace
                 FixedStageInputs fixed_stage;
                 fixed_stage.fragment_source = fixed.source.c_str();
                 fixed_stage.fragment_interface_hash = fixed.interface_hash;
+                fixed_stage.fragment_options_digest = fixed.options_digest;
                 return std::unique_ptr<ShaderBuildContext>(
                     AssembleMaterialProgram(
                         nullptr, request, definition, nullptr, fixed_stage));
@@ -3677,13 +3654,13 @@ namespace
 
         ShaderStageBuildContext flat_stage{};
         flat_stage.stage = ShaderStage::Mesh;
-        flat_stage.glsl_module_graph_hash =
+        flat_stage.compile_inputs_hash =
             VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::FlatXY());
         const ShaderStageKey flat_key = flat_stage.BuildKey();
 
         ShaderStageBuildContext wall_stage{};
         wall_stage.stage = ShaderStage::Mesh;
-        wall_stage.glsl_module_graph_hash =
+        wall_stage.compile_inputs_hash =
             VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::WallXY());
         const ShaderStageKey wall_key = wall_stage.BuildKey();
         if (flat_key == wall_key)
@@ -8831,20 +8808,15 @@ void main()
             entry.lookup_key = 0x1000'0000ull + i;
             entry.program_link.mesh_stage.stage = ShaderStage::Mesh;
             entry.program_link.mesh_stage.definition_hash = 0x11ull * i;
-            entry.program_link.mesh_stage.glsl_module_graph_hash = 0x22ull * i;
+            entry.program_link.mesh_stage.compile_inputs_hash = 0x22ull * i;
             entry.program_link.mesh_stage.interface_hash = 0x33ull * i;
-            entry.program_link.mesh_stage.resource_hash = 0x44ull * i;
             entry.program_link.mesh_stage.compiler_hash = 0x55ull * i;
             entry.program_link.fragment_stage.stage = ShaderStage::Fragment;
             entry.program_link.fragment_stage.definition_hash = 0x66ull * i;
-            entry.program_link.fragment_stage.glsl_module_graph_hash = 0x77ull * i;
+            entry.program_link.fragment_stage.compile_inputs_hash = 0x77ull * i;
             entry.program_link.fragment_stage.interface_hash = 0x88ull * i;
-            entry.program_link.fragment_stage.resource_hash = 0x99ull * i;
             entry.program_link.fragment_stage.compiler_hash = 0xAAull * i;
-            entry.program_link.resource_layout_hash = 0xBBull * i;
-            entry.program_link.vertex_input_hash = 0xCCull * i;
-            entry.program_link.render_target_hash = 0xDDull * i;
-            entry.program_link.compiler_hash = 0xEEull * i;
+            entry.program_link.link_contract_hash = 0xDDull * i;
             // 行需求的两个信号必须能各自独立往返：三个合法组合来自
             // 「payload ⊂ rows」这条不变量 ——
             //   (rows=F,payload=F) 无行无 payload（VertexColor 一类）
@@ -8885,19 +8857,14 @@ void main()
             ShaderProgramManifestEntry illegal{};
             illegal.lookup_key = 0x2000'0000ull;
             illegal.program_link.mesh_stage.stage = ShaderStage::Mesh;
-            illegal.program_link.mesh_stage.glsl_module_graph_hash = 0x11ull;
+            illegal.program_link.mesh_stage.compile_inputs_hash = 0x11ull;
             illegal.program_link.mesh_stage.interface_hash = 0x22ull;
-            illegal.program_link.mesh_stage.resource_hash = 0x33ull;
             illegal.program_link.mesh_stage.compiler_hash = 0x44ull;
             illegal.program_link.fragment_stage.stage = ShaderStage::Fragment;
-            illegal.program_link.fragment_stage.glsl_module_graph_hash = 0x55ull;
+            illegal.program_link.fragment_stage.compile_inputs_hash = 0x55ull;
             illegal.program_link.fragment_stage.interface_hash = 0x66ull;
-            illegal.program_link.fragment_stage.resource_hash = 0x77ull;
             illegal.program_link.fragment_stage.compiler_hash = 0x88ull;
-            illegal.program_link.resource_layout_hash = 0x99ull;
-            illegal.program_link.vertex_input_hash = 0xAAull;
-            illegal.program_link.render_target_hash = 0xBBull;
-            illegal.program_link.compiler_hash = 0xCCull;
+            illegal.program_link.link_contract_hash = 0xBBull;
             illegal.requires_recipe_runtime_rows = false;
             illegal.requires_recipe_payload_row = true;
 
@@ -9367,6 +9334,7 @@ void main()
             FixedStageInputs fixed_stage;
             fixed_stage.fragment_source = fixed.source.c_str();
             fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            fixed_stage.fragment_options_digest = fixed.options_digest;
             baked.reset(
                 AssembleMaterialProgram(nullptr, request, definition, nullptr, fixed_stage));
         }
@@ -10027,6 +9995,7 @@ void main()
         FixedStageInputs fixed_stage;
         fixed_stage.fragment_source = fixed.source.c_str();
         fixed_stage.fragment_interface_hash = fixed.interface_hash;
+        fixed_stage.fragment_options_digest = fixed.options_digest;
 
         // 网格 options：生产侧由后端落盘并挑成对目录；本门手写编译，自己收下文本。
         MaterialProgramBuildCapture capture{};
@@ -10114,17 +10083,11 @@ void main()
     static bool FixedMeshCatalogHas(
         const std::vector<std::string> &catalog, const std::string &glsl)
     {
-        // 生产文本尾部会附一行 `// mesh-options-digest <n>` 溯源注释：它的作用是
-        // 让 stage key 覆盖 `generated/mesh_options.glsl` 的内容（同形状的主着色器
-        // 文本逐字节相同，只有 options 不同）。它不是主着色器的一部分，比对时剥掉。
-        // 标记形态与扫描口径只有 `DomainOptions.h` 一处定义。
+        // 生产文本就是形状 master 本身，逐字节比对，不再有需要剥离的溯源注释：
+        // options 摘要已经从文本里搬出去，改为显式进 stage 键的 compile_inputs_hash
+        // （见 ShaderStageKey.h）。文本一旦掺进非 GLSL 的行，这里的比对就该报错，
+        // 而不是宽容地剥掉。
         std::string body = glsl;
-        hgl::uint64 digest_value = 0;
-        size_t digest_at = 0;
-        if (ScanMeshOptionsDigest(
-                body.data(), body.size(), digest_value, &digest_at)
-            != MeshOptionsDigestScan::Absent)
-            body.resize(digest_at);
 
         auto trim_tail = [](std::string &text)
         {
@@ -10865,10 +10828,10 @@ void main()
         };
         constexpr size_t kCacheShapeCount = sizeof(shapes) / sizeof(shapes[0]);
 
-        // 每个形状的 fragment stage source digest。最后要求两两互不相同：
+        // 每个形状的片段阶段 compile_inputs_hash。最后要求两两互不相同：
         // domain options 的差异只体现在 `generated/frag_options.glsl`，主着色器文本
-        // 逐字节相同，摘要如果不覆盖 options，两个不同 pass 变体会共享同一个
-        // digest —— 撞上缓存文件名就是静默复用错误的 SPV。
+        // 逐字节相同，所以选项必须进 compile_inputs_hash —— 否则两个不同 pass 变体
+        // 会共享同一个 stage 键，撞上缓存文件名就是静默复用错误的 SPV。
         std::string digest_labels[kCacheShapeCount];
         hgl::uint64 digest_values[kCacheShapeCount] = {};
         size_t digest_count = 0;
@@ -11149,7 +11112,12 @@ void main()
             if (digest_count < kCacheShapeCount)
             {
                 digest_labels[digest_count] = label;
-                digest_values[digest_count] = cold_frag_digest;
+                // 片段阶段主着色器文本对同形状是逐字节相同的（选项住在
+                // generated/frag_options.glsl），所以「选项有没有进身份」只能看
+                // 文本之外的 compile_inputs_hash。这也是阶段 4 之后唯一的口径：
+                // 文本摘要 = definition_hash，选项/依赖 = compile_inputs_hash。
+                digest_values[digest_count] =
+                    cold_ctx->GetProgramLink().fragment_stage.compile_inputs_hash;
                 ++digest_count;
             }
         }
@@ -11159,8 +11127,8 @@ void main()
                 if (digest_values[i] == digest_values[j])
                     result.diagnostics.emplace_back(
                         digest_labels[i] + " and " + digest_labels[j]
-                        + ": identical fragment stage source digest — the domain"
-                          " options are not covered by the digest, so two"
+                        + ": identical fragment stage compile-inputs digest — the"
+                          " domain options are not covered by the key, so two"
                           " different option sets can silently reuse one SPV");
 
         result.passed = result.diagnostics.empty();
@@ -11187,62 +11155,33 @@ void main()
           &kCacheIdentityLuminanceGeometry, PrimitiveType::Lines },
     };
 
-    /// 覆盖率检查：某个已构建上下文的网格阶段文本，是否已在固定源库里有一份
-    /// 内容完全一致的 master。返回 false 表示缺源。
+    /// 网格主着色器文本必须是「纯 GLSL」。
     ///
-    /// 这里**不再写盘**。七-2 之后形状 master 是按形状命名、人工维护的物理源
-    /// （`mesh/shape/tri_<顶点数>_<varying>.mesh`），不再是「按形状键哈希落盘的
-    /// 生成产物」。继续保留写盘分支只会把 `mesh/fixed/` 那套哈希命名重新养出来，
-    /// 所以本探针退化为纯覆盖率检查：缺源就点名，改名/新增由人决定。
-    /// 溯源注释自洽性：主着色器尾部那条 `// mesh-options-digest <n>` 必须
-    /// ①存在且只有一条（CharQuad 一类不写 options 的路径则必须没有）
-    /// ②值等于本次 options 文本的摘要。
+    /// options 的差异不再靠文本尾部的一行溯源注释传递，而是显式进 stage 键的
+    /// `compile_inputs_hash`（见 `ShaderStageKey.h`）。于是这里只需要守一件事：
+    /// 生产侧没有把摘要重新塞回被编译的文本。
     ///
-    /// 为什么这条要单独断言：`FixedMeshCatalogHas` 在比对形状 master 前会剥掉
-    /// 这一行，于是「生产侧漏写」「摘要算错」「写了两条」三种缺陷都会被当成
-    /// 「没有注释」或「一条合法注释」静默放过。而它们的后果是 stage 键不再随
-    /// `generated/mesh_options.glsl` 变化 ⇒ 换顶点格式后磁盘上的旧 SPV 被永久
-    /// 命中（症状是几何依旧按老格式解码，改 options 怎么都不生效）。
+    /// 为什么这条要单独断言：`FixedMeshCatalogHas` 现在逐字节比对形状 master，
+    /// 文本一旦掺进非 GLSL 行，覆盖率会整片报「缺源」——症状像是「形状 master 丢了」，
+    /// 实际根因是有人把注释契约加了回来。而历史上的两种标记形态
+    /// （`// mesh-options-digest`、`// domain-options-key`）正是这种返祖的指纹。
     ///
-    /// 返回空串 = 自洽；否则返回可直接落进诊断的说明。
-    static std::string CheckMeshOptionsDigest(
-        const std::string &final_glsl, const hgl::AnsiString &mesh_options_text)
+    /// 返回空串 = 干净；否则返回可直接落进诊断的说明。
+    static std::string CheckMeshTextIsPure(const std::string &final_glsl)
     {
-        hgl::uint64 digest_value = 0;
-        size_t digest_at = 0;
-        const MeshOptionsDigestScan scan = ScanMeshOptionsDigest(
-            final_glsl.data(), final_glsl.size(), digest_value, &digest_at);
-
-        if (mesh_options_text.IsEmpty())
+        static const char *const kLegacyMarkers[] =
         {
-            // 没有 options 文本就是 CharQuad 一类自持路径：网格主着色器自己
-            // 解全部 SSBO，不该被别人的 options 内容影响，也就没有摘要。
-            if (scan == MeshOptionsDigestScan::Absent)
-                return std::string();
-            return "网格阶段尾部带了 mesh-options-digest 注释，但本次没有 mesh options 文本"
-                   "（自持 SSBO 的 CharQuad 路径不该有）";
-        }
+            "// mesh-options-digest",
+            "// domain-options-key",
+        };
 
-        switch (scan)
+        for (const char *marker : kLegacyMarkers)
         {
-        case MeshOptionsDigestScan::Absent:
-            return "网格阶段尾部缺少 // mesh-options-digest 注释："
-                   "stage 键不会随 generated/mesh_options.glsl 变化";
-        case MeshOptionsDigestScan::Malformed:
-            return "mesh-options-digest 注释的值不是十进制摘要";
-        case MeshOptionsDigestScan::Duplicated:
-            return "mesh-options-digest 注释出现多条（无法判定哪条进了 stage 键；"
-                   "形状 master 里也不该带这一行）";
-        case MeshOptionsDigestScan::Present:
-            break;
-        }
-
-        const hgl::uint64 expected = ComputeMeshOptionsDigest(mesh_options_text);
-        if (digest_value != expected)
-        {
-            return "mesh-options-digest 与本次 options 文本摘要不一致（注释="
-                 + std::to_string(digest_value)
-                 + " 实际=" + std::to_string(expected) + "）";
+            if (final_glsl.find(marker) != std::string::npos)
+                return std::string("网格主着色器文本里出现了历史上的溯源注释「")
+                     + marker
+                     + "」：options 摘要必须走 stage 键的 compile_inputs_hash，"
+                       "不能写进被编译的文本";
         }
 
         return std::string();
@@ -11252,7 +11191,6 @@ void main()
         const char *label,
         const ShaderBuildContext &ctx,
         const std::vector<std::string> &catalog,
-        const hgl::AnsiString &mesh_options_text,
         int &covered,
         int &missing)
     {
@@ -11272,15 +11210,14 @@ void main()
             return false;
         }
 
-        // 摘要缺陷先于覆盖率判定：它说明生产侧坏了，此时「形状 master 缺失」
-        // 只是它的副作用（剥掉注释后文本对不上），先报根因。
+        // 文本纯净性先于覆盖率判定：掺了注释说明生产侧返祖了，此时「形状 master
+        // 缺失」只是它的副作用（逐字节对不上），先报根因。
         // 计数器交给调用方统一 ++failed：这里不是「缺源」类问题。
-        const std::string digest_problem =
-            CheckMeshOptionsDigest(glsl, mesh_options_text);
-        if (!digest_problem.empty())
+        const std::string purity_problem = CheckMeshTextIsPure(glsl);
+        if (!purity_problem.empty())
         {
             std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n",
-                         label, digest_problem.c_str());
+                         label, purity_problem.c_str());
             return false;
         }
 
@@ -11342,11 +11279,9 @@ void main()
         for (const ReflectionCoverageVariant &variant : kReflectionCoverageVariants)
         {
             std::string build_diagnostic;
-            hgl::AnsiString mesh_options_text;
             std::unique_ptr<ShaderBuildContext> ctx =
                 BuildReflectionCoverageVariant(
-                    variant, build_diagnostic, nullptr,
-                    &mesh_options_text);
+                    variant, build_diagnostic, nullptr, nullptr);
             if (!ctx)
             {
                 std::fprintf(stdout, "[emit-fixed-mesh] %s: %s\n",
@@ -11356,7 +11291,7 @@ void main()
             }
 
             if (!CheckOneFixedMeshSource(variant.variant_slug, *ctx, catalog,
-                                        mesh_options_text, covered, missing))
+                                        covered, missing))
                 ++failed;
         }
 
@@ -11406,12 +11341,11 @@ void main()
             FixedStageInputs fixed_stage;
             fixed_stage.fragment_source = fixed.source.c_str();
             fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            fixed_stage.fragment_options_digest = fixed.options_digest;
 
             MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
                 AssembleMaterialProgram(nullptr, request, definition, &capture, fixed_stage));
-            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
-            const hgl::AnsiString &mesh_options_text = capture.mesh_options;
             if (!ctx)
             {
                 const hgl::AnsiString &build_error =
@@ -11424,7 +11358,7 @@ void main()
             }
 
             if (!CheckOneFixedMeshSource(shape.label, *ctx, catalog,
-                                        mesh_options_text, covered, missing))
+                                        covered, missing))
                 ++failed;
         }
 
@@ -11474,12 +11408,11 @@ void main()
             FixedStageInputs fixed_stage;
             fixed_stage.fragment_source = fixed.source.c_str();
             fixed_stage.fragment_interface_hash = fixed.interface_hash;
+            fixed_stage.fragment_options_digest = fixed.options_digest;
 
             MaterialProgramBuildCapture capture{};
             std::unique_ptr<ShaderBuildContext> ctx(
                 AssembleMaterialProgram(nullptr, request, definition, &capture, fixed_stage));
-            // 捕获 options 文本：网格阶段尾部的溯源注释必须与它逐位相符。
-            const hgl::AnsiString &mesh_options_text = capture.mesh_options;
             if (!ctx)
             {
                 const hgl::AnsiString &build_error =
@@ -11492,7 +11425,7 @@ void main()
             }
 
             if (!CheckOneFixedMeshSource(shape.label, *ctx, catalog,
-                                        mesh_options_text, covered, missing))
+                                        covered, missing))
                 ++failed;
         }
 

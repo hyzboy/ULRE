@@ -358,6 +358,7 @@ namespace
         FixedStageInputs fixed_stage;
         fixed_stage.fragment_source = fixed.source.c_str();
         fixed_stage.fragment_interface_hash = fixed.interface_hash;
+        fixed_stage.fragment_options_digest = fixed.options_digest;
         fixed_stage.mesh_source = fixed_mesh_source;
 
         // 环境光 provider 的选择已经从片元文本搬到 `frag_options.glsl`（主着色器只
@@ -604,21 +605,14 @@ namespace
                       << HashFinalShaderSource(
             fragment->GetFinalGLSL().data(), fragment->GetFinalGLSL().size());
         if (metadata.program_key_digest != link.BuildKey().GetDigest()
-         || metadata.mesh_stage_digest != link.mesh_stage.GetDigest()
-         || metadata.fragment_stage_digest != link.fragment_stage.GetDigest()
          || metadata.generated_source_digest != uint64(source_hasher))
         {
             GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s program/stage key "
-                "mismatch: program=%llu/%llu mesh=%llu/%llu fragment=%llu/%llu "
-                "source=%llu/%llu",
+                "[ShaderDocumentProductionRegression] fixture=%s program key "
+                "mismatch: program=%llu/%llu source=%llu/%llu",
                 fixture.name,
                 static_cast<unsigned long long>(metadata.program_key_digest),
                 static_cast<unsigned long long>(link.BuildKey().GetDigest()),
-                static_cast<unsigned long long>(metadata.mesh_stage_digest),
-                static_cast<unsigned long long>(link.mesh_stage.GetDigest()),
-                static_cast<unsigned long long>(metadata.fragment_stage_digest),
-                static_cast<unsigned long long>(link.fragment_stage.GetDigest()),
                 static_cast<unsigned long long>(metadata.generated_source_digest),
                 static_cast<unsigned long long>(uint64(source_hasher)));
             valid = false;
@@ -989,9 +983,8 @@ namespace
              + AnsiString::numberOf(static_cast<uint32>(key.stage))
              + " digest=" + AnsiString::numberOf(key.GetDigest())
              + " definition=" + AnsiString::numberOf(key.definition_hash)
-             + " module_graph=" + AnsiString::numberOf(key.glsl_module_graph_hash)
+             + " compile_inputs=" + AnsiString::numberOf(key.compile_inputs_hash)
              + " interface=" + AnsiString::numberOf(key.interface_hash)
-             + " resource=" + AnsiString::numberOf(key.resource_hash)
              + " compiler=" + AnsiString::numberOf(key.compiler_hash);
     }
 
@@ -1003,7 +996,7 @@ namespace
     /// 机器才会暴露。dump 出来的行可以直接 diff。
     ///
     /// 判读：`compiler=` 来自着色器编译器身份，跨机器可能不同；判断「声明是否
-    /// 换代、缓存是否全失效」只看 definition/module_graph/interface/resource。
+    /// 换代、缓存是否全失效」只看 definition/compile_inputs/interface。
     bool DumpDeclarationKeys(
         const Fixture *fixtures, const int count, const char *path)
     {

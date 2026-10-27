@@ -55,6 +55,11 @@ namespace hgl::graph::mtl
         AnsiString source;
         uint64 interface_hash = 0;
 
+        /// `generated/frag_options.glsl` 文本摘要。调用方必须把它填进
+        /// `FixedStageInputs::fragment_options_digest`，否则片段 stage 键看不见
+        /// options —— 同主着色器、不同 options 会算出同一个键。
+        uint64 options_digest = 0;
+
         /// `generated/frag_options.glsl` 所在目录的**上一级**（编译器的第二 include 根）。
         /// 固定源里带着 `#include "generated/frag_options.glsl"`，所以任何要亲手编译它
         /// 的地方都离不开这个根；把它和源放在一起，免得调用方各自拼路径。
@@ -68,9 +73,9 @@ namespace hgl::graph::mtl
     /// 工具/门禁用：按与真实构建路径**完全相同**的规则取出固定片段源。
     ///
     /// 内部就是后端自己用的 `ResolveFixedFragmentStage`：options 落盘、接口形状
-    /// 哈希、`// domain-options-key` 溯源注释三者都由它负责。取到之后把
-    /// `source` / `interface_hash` 填进构建请求，片段阶段便不再进入任何拼装
-    /// 路径，`AssembleMaterialProgram` 只做网格阶段与链接规格。
+    /// 哈希与 options 文本摘要三者都由它负责。取到之后把 `source` /
+    /// `interface_hash` / `options_digest` 填进构建请求，片段阶段便不再进入任何
+    /// 拼装路径，`AssembleMaterialProgram` 只做网格阶段与链接规格。
     ///
     /// 失败原因见 `GetLastDomainShaderBuildBackendError()`。
     bool ResolveFixedFragmentSource(

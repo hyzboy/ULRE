@@ -758,11 +758,11 @@ namespace hgl::graph::mtl
                     // 顶点格式/位置映射会算出同一个 stage key，磁盘上旧 SPV 被永久
                     // 命中复用（症状：换了顶点格式却还是老几何）。options 文件的
                     // include 闭包不在 ShaderLibrary 下，闭包哈希自然抓不到它，
-                    // 所以把 options 的内容摘要作为溯源注释钉在文本尾部。
-                    // 摘要的算法与注释形态只有 `DomainOptions.h` 那一处定义：
-                    // 门禁与后端都要按同一口径复算，各写一份必然分叉。
-                    mtl::AppendMeshOptionsDigest(
-                        plan.ms, mtl::ComputeMeshOptionsDigest(mesh_options_glsl));
+                    // 所以它的摘要显式进 compile_inputs_hash——它是**编译输入**，
+                    // 不是文本的一部分，落地的主着色器保持纯 GLSL。
+                    plan.mesh_options_digest = HashFinalShaderSource(
+                        mesh_options_glsl.c_str(),
+                        static_cast<size_t>(mesh_options_glsl.Length()));
                 }
             }
 
@@ -1047,7 +1047,8 @@ namespace hgl::graph::mtl
             return !out_resolved_definition.vertex_semantic_requirements.IsEmpty();
         }
 
-        // program link 的三个独立哈希维度（不含 stage 声明键）
+        // link 期才确定的三个派生维度。它们不再各自平铺成 program key 的字段：
+        // resource/vertex-input/compiler 都折进 stage 键，输出契约折进 link 契约。
         struct ProgramLinkHashes
         {
             uint64 resource_contract_hash = 0;
@@ -1063,7 +1064,7 @@ namespace hgl::graph::mtl
             ProgramLinkHashes hashes;
             // 资源布局身份 = manifest 内容哈希（2026-10-11 S1：描述符契约层删除）。
             // 等价式保留：原「契约哈希(空契约, manifest_hash)」= FNV1a(manifest_hash, FNV1a(uint32(0)))
-            // —— 空契约的条目哈希是常量 ⇒ 逐位同值，stage key / resource_layout_hash 不变、
+            // —— 空契约的条目哈希是常量 ⇒ 逐位同值，stage key 的 compile_inputs_hash 不变、
             // 不触发 SPV 与管线缓存整体失效。
             hashes.resource_contract_hash = ComputeResourceLayoutHash(
                 plan.depth_purpose, plan.manifest.stable_hash);
@@ -1113,10 +1114,11 @@ namespace hgl::graph::mtl
         // ═══════════════════════════════════════════════════════════════════
         // program link 装配 —— 唯一的键派生路径
         //
-        // 键**只**从 Phase 4 发射出的文档文本派生：definition_hash 吃整份文本的
-        // 摘要，module_graph_hash 吃文本的 `#include` 闭包指纹，因此「发射出的
-        // 任何字节发生变化」都必然改变键 —— 不需要再维护一份手写的「哪些文件
-        // 算数」清单去跟发射器同步。
+        // 键**只**从 Phase 4 发射出的文档文本 + 它的完整编译输入派生：
+        // definition_hash 吃整份文本的摘要，compile_inputs_hash 吃文本之外的
+        // `#include` 闭包、注入项与 options 文本，因此「发射出的任何字节」或
+        // 「喂给编译器的任何输入」发生变化都必然改变键 —— 不需要再维护一份手写的
+        // 「哪些文件算数」清单去跟发射器同步。
         //
         // 这里刻意不做「声明输入 ≈ 发射结果」的对齐假设：早期版本额外算一份
         // 预发射声明键并逐位比对两者，实际结果是同一份信息维护两遍、且两遍都
@@ -1144,11 +1146,16 @@ namespace hgl::graph::mtl
                 HashFinalShaderSource(
                     plan.ms.c_str(), static_cast<size_t>(plan.ms.Length()));
 
-            hgl::hash::FNV1aHasher64 mesh_module_graph_hasher;
-            mesh_module_graph_hasher << injected_source_hash
-                                     << ComputeShaderLibraryDependencyHash(
-                                            plan.ms.c_str(), static_cast<size_t>(plan.ms.Length()));
-            const uint64 mesh_module_graph_hash = mesh_module_graph_hasher;
+            // 文本之外的输入：注入项 + `#include` 闭包 + 网格 options 文本 +
+            // 资源布局契约。这四样任何一样变了，同一份工具文本就编出不同的 SPV。
+            hgl::hash::FNV1aHasher64 mesh_compile_inputs_hasher;
+            mesh_compile_inputs_hasher
+                << injected_source_hash
+                << ComputeShaderLibraryDependencyHash(
+                       plan.ms.c_str(), static_cast<size_t>(plan.ms.Length()))
+                << plan.mesh_options_digest
+                << resource_contract_hash;
+            const uint64 mesh_compile_inputs_hash = mesh_compile_inputs_hasher;
 
             // 顶点输入格式是 program_link 的独立维度，但与 mesh stage 的
             // varying 输出声明强耦合，仍然折进 interface_hash。
@@ -1159,23 +1166,28 @@ namespace hgl::graph::mtl
             plan.program_link.mesh_stage = BuildShaderStageKey(
                 ShaderStage::Mesh,
                 mesh_definition_hash,
-                mesh_module_graph_hash,
+                mesh_compile_inputs_hash,
                 mesh_interface_hash,
-                resource_contract_hash,
                 compiler_hash);
 
             const uint64 fragment_definition_hash =
                 HashFinalShaderSource(
                     plan.fs.c_str(), static_cast<size_t>(plan.fs.Length()));
 
-            // 片元的闭包指纹额外吃掉 manifest、模板哈希与注入项：模块集合相同的
-            // 两份文档，只要资源绑定、模板骨架或注入宏不同，也必须是不同的 stage。
-            hgl::hash::FNV1aHasher64 fragment_module_graph_hasher;
-            fragment_module_graph_hasher << plan.manifest.stable_hash
-                                         << plan.resolved_template_hash
-                                         << injected_source_hash
-                                         << ComputeShaderLibraryDependencyHash(
-                                                plan.fs.c_str(), static_cast<size_t>(plan.fs.Length()));
+            // 片元的编译输入额外吃掉 manifest、模板哈希、注入项与片段 options：
+            // 模块集合相同的两份文档，只要资源绑定、模板骨架、注入宏或 options
+            // 不同，也必须是不同的 stage。
+            hgl::hash::FNV1aHasher64 fragment_compile_inputs_hasher;
+            fragment_compile_inputs_hasher
+                << plan.manifest.stable_hash
+                << plan.resolved_template_hash
+                << injected_source_hash
+                << ComputeShaderLibraryDependencyHash(
+                       plan.fs.c_str(), static_cast<size_t>(plan.fs.Length()))
+                << fixed.fragment_options_digest
+                << resource_contract_hash;
+            const uint64 fragment_compile_inputs_hash =
+                fragment_compile_inputs_hasher;
 
             // 接口维度：片元输入 varying + 输出附件 + alpha 写输出。它不吃源
             // 文本，只吃契约形状——把「接口变了」与「实现变了」在键里分开，
@@ -1200,16 +1212,19 @@ namespace hgl::graph::mtl
             plan.program_link.fragment_stage = BuildShaderStageKey(
                 ShaderStage::Fragment,
                 fragment_definition_hash,
-                fragment_module_graph_hasher,
+                fragment_compile_inputs_hash,
                 fragment_interface_hash,
-                resource_contract_hash,
                 compiler_hash);
 
-            plan.program_link.resource_layout_hash = resource_contract_hash;
-            plan.program_link.vertex_input_hash = vertex_input_hash;
-            plan.program_link.render_target_hash =
-                GetOutputContractHash(plan.output_contract);
-            plan.program_link.compiler_hash = compiler_hash;
+            // link 层唯一装不下的维度：资源布局身份 + 输出契约（attachment /
+            // render target 形状）。资源布局已各自进两个 stage 的 compile_inputs_hash，
+            // 但它同样定义「这两个 stage 能不能连在一起」，故在 link 上也记一份；
+            // 输出契约只有 link 期才知道，只能在这里汇总。
+            hgl::hash::FNV1aHasher64 link_contract_hasher;
+            link_contract_hasher
+                << resource_contract_hash
+                << GetOutputContractHash(plan.output_contract);
+            plan.program_link.link_contract_hash = link_contract_hasher;
             return true;
         }
 
