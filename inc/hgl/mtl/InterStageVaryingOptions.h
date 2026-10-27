@@ -10,8 +10,8 @@ namespace hgl::graph::mtl
     // ═══════════════════════════════════════════════════════════════════════════
     //
     // 网格阶段与片段阶段之间传什么数据，原先由**两处独立的事实**决定：
-    //   · 网格侧：C++ 按 `MaterialVertexVaryingConfig` 拼出形状名（
-    //     `tri_192_dataid_pos_nrm_uv` 之类），再挑一份形状主着色器；
+    //   · 网格侧：一个 varying 集合就对应一份门形状主着色器文件
+    //     （`tri_192_dataid_pos_nrm_uv.mesh` 之类），命名与集合各写一遍；
     //   · 片段侧：各领域 `.frag` 主着色器里手抄一份 `layout(location=...) in`。
     // 两个集合必须逐 location 相等，而它们之间没有任何机械约束——只能靠人。
     //
@@ -31,8 +31,9 @@ namespace hgl::graph::mtl
     //      `location_macro` 派生（`HGL_LOCATION_WORLD_POS` → `HGL_VARYING_WORLD_POS`），
     //      不在本文件维护第二份对照表。
     //   2. **vertex color 恒发**。网格侧不区分「直出 / 调色板 / 缺省白」三种
-    //      顶点色来源，一律输出顶点色；`BuildMeshShapeName` 也是这么算形状名的
-    //      （非 CharQuad 模式一律 `mask &= ~Color`，再在形状主着色器里无条件写出）。
+    //      顶点色来源，一律输出顶点色；形状名也不再参与这件事——网格侧现在
+    //      只有三份拓扑 master（`tri_192` / `linequad_256` / `charquad_256`），
+    //      集合差异全由本文件的宏表达。
     //      把 Color 纳入领域契约需要改 14 条 `DomainContracts[]`，收益为零。
     //   3. **输出无注释无空行**——这段文本进 options 键（`MakeOptionsKey`），
     //      是 program 身份的一部分。

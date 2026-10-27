@@ -1,0 +1,69 @@
+#version 460
+// ShaderLibrary/mesh/shape/charquad_256.mesh
+//
+// 网格阶段「物理固定」主着色器 · 文本字符（CharQuad，256 顶点 / 128 图元）。
+//
+// 与 `tri_192.mesh` / `linequad_256.mesh` 的差别：CharQuad **不引入**
+// `generated/mesh_options.glsl` —— 它不读任何外部顶点流，三层文本数据
+// （字符度量 / 样式 / 实例）与整条 2D 变换链路都由
+// `vertex/s1_text_char_quad.glsl` + `viewport.ortho_matrix` 自持。
+// 顶点 ABI 解析在 `ResolveVertexABI` 里对 CharQuad 直接早退，options 因此为空。
+//
+// varying 的口径与另外两份形状一致：声明来自 `common/interstage_varying.glsl`
+// 的网格段，开关来自 `generated/common_options.glsl`，写出钩子按同一批宏写。
+// 曾经本文件名是 `charquad_256_dataid_uv_color_style` —— varying 集合进文件名，
+// 于是「改材质要传什么」这件事在磁盘上又被物化成新文件。
+//
+// 几何/旋转/斜切算法住在 `mesh/char_quad_body.glsl`，主体通过下面两个符号钩子
+// 写 varying，所以形状 master 只剩「钩子 + 声明」。
+//
+// 输出 varying 集合必须与 Text2D 域 fragment 主着色器的输入集合逐 location 一致
+// ——两端读的是同一个宏集合，这一点已由构造保证，不再是需要人守的约定。
+//
+// 改本文件前请先读 doc/shadergen-elimination-domain-fixed-architecture.md。
+
+#define ULRE_MESH_MAX_VERTS 256u
+#define ULRE_MESH_MAX_PRIMITIVES 128u
+#define ULRE_MESH_INVOCATIONS 64u
+#define HGL_MESH_OUTPUT_VARYINGS
+
+#include "mesh/stage_common_head.glsl"
+
+layout(local_size_x = 64) in;
+layout(triangles, max_vertices = 256, max_primitives = 128) out;
+#include "mesh/stage_common.glsl"
+
+// ── Text CharQuad SSBOs（结构真源：ShaderLibrary/vertex/s1_text_char_quad.glsl）──
+#include "vertex/s1_text_char_quad.glsl"
+
+#include "generated/common_options.glsl"
+#include "common/interstage_varying.glsl"
+
+// 字符四边形由整个字形实例直接给出 UV 与颜色，不经过顶点流：给它打开位置 /
+// 法线 / 亮度之类的语义，声明会出现而钩子不写 —— 未定义数据比编译失败难查得多。
+#if defined(HGL_VARYING_WORLD_POS) || defined(HGL_VARYING_WORLD_NORMAL) \
+ || defined(HGL_VARYING_LUMINANCE) || defined(HGL_VARYING_FRAG_DIRECTION)
+#error "charquad_256.mesh: 字符形状只输出 DataIndexID / UV0 / VertexColor / StyleID，材质请求了它不产生的语义"
+#endif
+
+void WriteCharQuadVertexOutputs(uint vid, vec2 uv, vec4 color)
+{
+#if defined(HGL_VARYING_UV0)
+    fragUV0[vid] = uv;
+#endif
+#if defined(HGL_VARYING_VERTEX_COLOR)
+    fragVertexColor[vid] = color;
+#endif
+}
+
+void WriteCharQuadPrimitiveOutputs(uint prim, uint data_id, uint style_id)
+{
+#if defined(HGL_VARYING_DATA_INDEX_ID)
+    fragDataIndexID[prim] = data_id;
+#endif
+#if defined(HGL_VARYING_STYLE_ID)
+    fragStyleID[prim] = style_id;
+#endif
+}
+
+#include "mesh/char_quad_body.glsl"

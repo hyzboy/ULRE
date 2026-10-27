@@ -9,11 +9,13 @@
 // 「声明 → options → 写出」这个固定顺序。
 //
 // 只有三角形直通形状（拓扑 `triangles` + options 提供整条顶点链路）用本文件。
-// 其它拓扑自带几何主体，写出钩子的签名也不同，各自写：
+// 其它拓扑自带几何主体，写出钩子的签名也不同，钩子留在各自形状 master 里
+// （`linequad_256.mesh` / `charquad_256.mesh`）：
 //   · `mesh/line_quad_body.glsl`  → `WriteLineQuadVertexOutputs(uint base_vid)`
 //   · `mesh/char_quad_body.glsl`  → `WriteCharQuadVertexOutputs(...)` + `WriteCharQuadPrimitiveOutputs(...)`
-// 那两个仍然自己按符号写数组 —— 它们的几何生成与 varying 集合强耦合（一字符
-// 4 顶点、一线段 4 顶点），套不进「按 vid 逐点写」的形态。
+// 「套不进按 vid 逐点写」的只是**函数形状**：一线段 / 一字符一次出 4 个顶点，
+// 图元级 varying 还要写两个槽。它们同样按 `HGL_VARYING_*` 开关写，读的是与声明
+// 同一批宏 —— 差别只在循环写几次，不再是「按 varying 集合另抄一份主着色器」。
 //
 // 前置条件：`common/interstage_varying.glsl`（声明）+ `generated/mesh_options.glsl`
 // 都已 include，且 `HGL_MESH_OUTPUT_VARYINGS` 已定义。

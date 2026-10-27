@@ -478,24 +478,21 @@ namespace hgl::graph::mtl
 
         // 网格阶段「物理固定」主着色器名
         //
-        // 名字 = 几何模式前缀 + 拓扑容量 +（仅未迁移模式的）varying 后缀。
+        // 名字 = 几何模式前缀 + 拓扑容量，**仅此两项**。
         //
-        // **三角形直通没有 varying 后缀**：它的输出接口由
+        // 输出接口（哪些 varying、location、插值）由
         // `common/interstage_varying.glsl` 与 `generated/common_options.glsl`
-        // 共同决定，与挑哪份 `.mesh` 无关，所以整个模式只剩一份 `tri_192.mesh`
-        // —— 迁移前按 varying 组合有 10 份，任何新组合都是一次「手抄一份主着色器
-        // 再手工对齐片段声明」的作业。
-        //
-        // LineQuad / CharQuad 仍带后缀：它们的 varying 还写在自己文件里，写出表达式
-        // 也藏在主着色器内部。二者的合并是后续阶段的事；在那之前，名字里的 token
-        // 串必须与实际文件名逐字一致 —— 对不上会直接「主着色器加载失败」。
+        // 共同决定，与挑哪份 `.mesh` 无关，因此每种几何模式只剩一份主着色器：
+        // `tri_192.mesh` / `linequad_256.mesh` / `charquad_256.mesh`。
+        // 迁移前名字里还带 varying token 串（`linequad_256_dataid_lum` 之类），
+        // 于是「材质要传什么」被物化成了磁盘文件，且名字必须与文件逐字对齐 ——
+        // 拼错就是一次运行期「主着色器加载失败」。
         //
         // 名字就是 `ShaderLibrary/mesh/shape/<名>.mesh` 的文件名。容量进名字是
         // 为了让「layout 行的 max_vertices」与文件名保持同一份事实：改了拓扑容量
         // 就必须同时改文件名与文件内容，不可能只改一半。
         AnsiString BuildMeshShapeName(
             const MeshShaderMode mode,
-            const MaterialVertexVaryingConfig &varying,
             const uint32 max_vertices)
         {
             const char *prefix = "tri_";
@@ -506,37 +503,6 @@ namespace hgl::graph::mtl
 
             AnsiString name(prefix);
             name += AnsiString::numberOf(max_vertices);
-
-            // 三角形直通：名字到容量为止（接口不参与命名）。
-            if (!IsCharQuadMode(mode) && mode != MeshShaderMode::LineQuad)
-                return name;
-
-            name += AnsiString("_");
-
-            InterStageSemanticMask mask =
-                GetMaterialInterStageSemanticMask(varying);
-
-            // Vertex color is a universal mesh output now; direct-color,
-            // palette-color, and default-white providers share one shape master.
-            // CharQuad retains its authored color varying because its color is
-            // carried in the glyph instance data, not a vertex stream.
-            if (!IsCharQuadMode(mode))
-                mask &= ~GetInterStageSemanticMask(InterStageSemantic::Color);
-
-            const char *tokens[16]{};
-            const uint32 token_count =
-                GetOrderedInterStageShapeTokens(mask, tokens, 16);
-
-            for (uint32 i = 0; i < token_count; ++i)
-            {
-                if (i > 0)
-                    name += AnsiString("_");
-                name += AnsiString(tokens[i]);
-            }
-
-            if (token_count == 0)
-                name += AnsiString("plain");
-
             return name;
         }
 
@@ -687,7 +653,7 @@ namespace hgl::graph::mtl
                 const MeshModeCapacity capacity = ResolveMeshModeTopology(
                     plan.mesh_shader_mode, plan.mesh_max_invocations);
                 const AnsiString shape_name = BuildMeshShapeName(
-                    plan.mesh_shader_mode, plan.varying, capacity.max_vertices);
+                    plan.mesh_shader_mode, capacity.max_vertices);
                 const AnsiString master_include_path =
                     AnsiString("mesh/shape/") + shape_name + AnsiString(".mesh");
 

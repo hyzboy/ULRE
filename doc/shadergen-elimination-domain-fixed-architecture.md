@@ -1538,6 +1538,10 @@ master 还没搬到 `mesh/shape` 的形状命名体系，仍走 `GenerateStageSo
 > **已废弃（阶段十-1 删除）**：`charquad_256_dataid_uv_color.mesh`（无 `_style` 后缀）在
 > `s1_color` 统一为 `s1_color_default`、且两份 builtin 文本材质都声明 `emit_style_id` 之后
 > 再无任何输入能拼出，属孤岛残骸，已物理删除。此处保留仅作命名演进的记录。
+>
+> **本节的 varying 后缀命名也已废弃（阶段十一-1）**：形状名现在只剩「模式前缀 + 容量」，
+> 三份 master 分别是 `tri_192.mesh` / `linequad_256.mesh` / `charquad_256.mesh`。
+> 见 `阶段十一-1：形状主着色器收敛到「每拓扑一份」`。
 
 **模式前缀不是装饰，是唯一性的一部分。** 三种模式的几何主体是**三段完全不同的算法**：
 `VertexPassthrough` 是「连续三点一组」，`CharQuad` 是「每工作项一个字符四边形 + 笔位推进」，
@@ -2202,3 +2206,90 @@ Layer 1-4 都在"发射侧"（模块全集、loader 宏、ABI 选择表、option
 照到（Layer 1-4 的验证只到门禁 / ctest 一级，示例因缺 `GLSLCompiler.dll` 而根本没跑起来）。
 这也说明 Layer 5 这类"实跑验收"在门禁之外仍有独立价值：门禁用例覆盖的是文本与选项，覆盖不到
 进程退出路径。
+
+## 阶段十一-1：形状主着色器收敛到「每拓扑一份」
+
+> **状态**：✅ 完成。`ShaderLibrary/mesh/shape/` 从 13 份 `.mesh` 收到 **3 份**：
+> `tri_192.mesh` / `linequad_256.mesh` / `charquad_256.mesh`。
+> 16 个载荷 SPV 与收敛前的基线**逐字节相同**。
+
+### 1. 为什么还能再收
+
+阶段七-2 / 八-1 把「一份 varying 组合 = 一份 master 文件」当成了终态，于是
+`BuildMeshShapeName` 要按 mask 拼 token 串（`GetOrderedInterStageShapeTokens`），
+文件名与 varying 集合互为镜像。但阶段十一之前，接口已经统一到
+`common/interstage_varying.glsl` + `generated/common_options.glsl`：**同一份 master
+文本在不同宏集合下就是不同的接口**。名字里的 varying 后缀于是变成了纯粹的冗余事实，
+而冗余事实会漂——拼错一个 token 就是一次运行期「主着色器加载失败」。
+
+收敛的判据只有一条：master 文本里**还有没有按 varying 集合分叉的内容**。
+
+| 模式 | 收敛前 | 收敛后 | 文本差异只剩 |
+| --- | --- | --- | --- |
+| VertexPassthrough | 10 份 | `tri_192.mesh` | 无 |
+| LineQuad | 3 份（`plain` / `_dataid` / `_dataid_lum`） | `linequad_256.mesh` | 无 |
+| CharQuad | 1 份 | `charquad_256.mesh` | 无 |
+
+LineQuad 那 3 份的 `#include "mesh/line_quad_body.glsl"` 完全一致，差异只在
+`WriteLineQuadVertexOutputs()` 的函数体与 out 声明——而这两样现在都由
+`HGL_VARYING_*` 开关决定。
+
+### 2. 名字只剩前缀 + 容量
+
+```cpp
+AnsiString BuildMeshShapeName(const MeshShaderMode mode,
+                              const uint32 max_vertices);
+```
+
+`MaterialVertexVaryingConfig` 参数、token 串、`mask &= ~Color` 特例、
+`token_count == 0` 时补 `plain` 的分支全部删除；`InterStageSemanticInfo::shape_token` /
+`shape_token_order` 两个字段与 `GetOrderedInterStageShapeTokens()` 一并消失
+（登记表从 9 列回到 7 列）。
+
+### 3. 异构拓扑的钩子留在 master 里，但不再分叉
+
+`tri_192.mesh` 用 `common/interstage_varying_writer.glsl` 的标准入口
+`WriteMeshVertexOutputs(uint vid)`；LineQuad / CharQuad 一次工作项出 4 个顶点、
+图元级 varying 还要写两个槽，**函数形状**套不进去，所以钩子留在各自 master：
+
+```glsl
+// linequad_256.mesh
+void WriteLineQuadVertexOutputs(uint base_vid)
+{
+#if defined(HGL_VARYING_DATA_INDEX_ID)
+    ...
+#endif
+#if defined(HGL_VARYING_LUMINANCE)
+    ...
+#endif
+}
+```
+
+区别只在「循环写几次」，不再是「按 varying 集合另抄一份主着色器」——
+读的是与声明同一批宏，集合仍然只有 `common_options.glsl` 一个真源。
+
+### 4. CharQuad 现在也吃 `generated/common_options.glsl`
+
+收敛前 `charquad_256_dataid_uv_color_style.mesh` 自己写 4 条 `layout(...) out`，
+**不 include 任何 `generated/` 文件**（顶点链路自持，mesh options 为空）。收敛后它
+include `common/interstage_varying.glsl`，那份文件无条件 include
+`generated/common_options.glsl`，于是 **CharQuad 的编译也必须能解析到 options 根**。
+
+生产侧无影响（`WriteOptionsToCache` 一次写全三份）。受影响的是门禁：
+`L0.charquad-workgroup-contract` 的反射取证原先裸调 `CompileShader`（只有库根），
+现在改为「先把 `capture.interstage_varying_options` 补进片段 options 根，再走
+`CompileFixedMeshSource` 的双根生产路径」。这是**故意**的：用生产的编译入口，
+两条 include 根的管理就只有一份实现。
+
+### 5. 门禁重写
+
+`AuditFixedMeshMasters` 原先要逐条比对 master 里的 `layout(location=...)` 声明与
+注册表（172 行），收敛后这些声明已经不在 master 里，整个循环删除。新契约只有三条：
+
+1. 每份 `.mesh` 必须含 `#include "common/interstage_varying.glsl"`；
+2. 必须定义 `HGL_MESH_OUTPUT_VARYINGS`（varying 段的启用开关）；
+3. 不得出现 `layout(location=`；条件编译只允许 `#if defined(HGL_VARYING_*)`。
+
+门禁因此不再解释「某个形状应该有哪些 varying」——它只需要相信
+`common_options.glsl`，而那一份的正确性由 `EmitInterStageVaryingOptions` 的三条
+硬约束守。

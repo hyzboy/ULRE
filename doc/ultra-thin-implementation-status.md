@@ -974,3 +974,37 @@ Layer 1-4 的验证只到门禁 / ctest 一级，示例因缺 `GLSLCompiler.dll`
 > 另外两条运行约束：① cwd 必须是仓库根（`res/...` 是相对路径）；② `RunFramework` 的帧循环
 > 只在窗口关闭时退出，批量验收要用 `PostMessage(hwnd, WM_CLOSE)` 优雅关闭，`Stop-Process` 会
 > 跳过析构、`Start-Process -RedirectStandardOutput` 会让进程不退出。
+
+### Layer 6：形状主着色器收敛到「每拓扑一份」（阶段十一-1）
+
+Layer 1-5 之后 `ShaderLibrary/mesh/shape/` 仍是 13 份 `.mesh`，文件名带着 varying 集合
+（`tri_192_dataid_pos_nrm_uv`、`linequad_256_dataid_lum` 之类）。这份冗余在阶段十一之前已经
+不成立：接口早已统一到 `common/interstage_varying.glsl` + `generated/common_options.glsl`，
+同一份 master 文本在不同宏集合下就是不同接口，名字里的 varying 后缀只剩下「必须与文件名
+逐字对齐」这一项成本——拼错一个 token 就是一次运行期「主着色器加载失败」。
+
+- [x] **6a 三角形 10 → 1**：`tri_192.mesh`（阶段二已提交 `4448c4abf`）
+- [x] **6b 片段侧 varying 声明统一**：13 份 `.frag` 里手抄的 `layout(in)` 全部消除，改由
+      `common/interstage_varying.glsl` 的片段段统一声明（阶段三已提交 `ca299d841`）
+- [x] **6c LineQuad 3 → 1**：`linequad_256.mesh`。三份变体的 `#include "mesh/line_quad_body.glsl"`
+      完全一致，差异只在 `WriteLineQuadVertexOutputs()` 函数体；钩子内改为
+      `#if defined(HGL_VARYING_DATA_INDEX_ID)` / `HGL_VARYING_LUMINANCE` 开关写
+- [x] **6d CharQuad 1 → 1（改名 + 宏化）**：`charquad_256.mesh`。原先自己写 4 条
+      `layout(...) out`，现在 include 统一 varying 文件；两个钩子
+      （`WriteCharQuadVertexOutputs` / `WriteCharQuadPrimitiveOutputs`）内按宏开关写
+- [x] **6e 名字只剩前缀 + 容量**：`BuildMeshShapeName(mode, max_vertices)`，
+      `InterStageSemanticInfo::shape_token` / `shape_token_order` 与
+      `GetOrderedInterStageShapeTokens()` 删除（登记表 9 列 → 7 列）
+- [x] **6f 门禁重写**：`AuditFixedMeshMasters` 的 172 行「逐条声明比对注册表」删除，
+      改为三条契约（必须 include 统一文件 / 必须定义 `HGL_MESH_OUTPUT_VARYINGS` /
+      不得出现 `layout(location=`，条件编译只允许 `#if defined(HGL_VARYING_*)`）
+
+**本层唯一的连带影响**：CharQuad 原先不 include 任何 `generated/` 文件，收敛后它 include
+`common/interstage_varying.glsl`（该文件无条件 include `generated/common_options.glsl`），
+于是 CharQuad 的编译也必须能解析到 options 根。生产侧无影响（`WriteOptionsToCache` 一次写全
+三份）；受影响的是 `L0.charquad-workgroup-contract` 的反射取证——原先裸调 `CompileShader`
+（只有库根），改为「先补 `common_options.glsl`、再走 `CompileFixedMeshSource` 的双根生产
+路径」。这是有意的：include 根的管理只保留一份实现。
+
+**验收**：全量构建仅既存 TexConv `LNK1104`；冷缓存 6 目录全删后 16/16 ctest；16 个载荷 SPV
+与收敛前基线**逐字节相同**（零 MISMATCH / 零 EXTRA）——宏展开后的文本等价，收敛不改变任何产出。

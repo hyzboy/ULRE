@@ -61,8 +61,6 @@ namespace hgl::graph::mtl
         InterStageInterpolation interpolation = InterStageInterpolation::Smooth;
         uint8 location_width = 0;
         uint32 stable_location = InvalidShaderSemanticLocation;
-        const char *shape_token = nullptr;
-        uint8 shape_token_order = 0;
 
         /// 稳定 ABI 在 GLSL 侧的宏名（`ShaderLibrary/common/interstage_locations.glsl`
         /// 的 `#define`）。C++ 侧不得再手写这张名字→location 的对照，
@@ -156,9 +154,4 @@ namespace hgl::graph::mtl
     /// 由 GLSL 宏名反查语义；未知宏名返回 InterStageSemantic::Unknown。
     InterStageSemantic FindInterStageSemanticByLocationMacro(
         const char *location_macro) noexcept;
-
-    uint32 GetOrderedInterStageShapeTokens(
-        InterStageSemanticMask mask,
-        const char *out_tokens[],
-        uint32 max_tokens) noexcept;
 }//namespace hgl::graph::mtl

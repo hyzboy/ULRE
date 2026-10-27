@@ -207,9 +207,6 @@ namespace
 
     static std::string ReadFileText(const std::string &path);
 
-    /// 顶点色 varying 的声明文本：宏名与符号名都取自 ShaderSemanticRegistry，
-    /// 固定网格主着色器审计里不再出现第二份名字/数字对照。
-    static std::string ExpectedVertexColorVaryingDeclaration();
 
     /// 递归读一棵目录下的**全部**文本文件。
     ///
@@ -734,13 +731,11 @@ namespace
     /// 见 AuditUnifiedInterStageVarying()。本函数现在只看主着色器自身的结构：
     ///
     /// ① 拓扑契约 `layout(triangles, max_vertices = N, max_primitives = M)` 是字面量
-    ///    （与 varying 数组维数宏、CPU 派发是同一份事实）；② 用了统一 varying 文件
-    ///    的形状 master **不得**再自己声明阶段间 varying（否则又出现第二个真源）；
-    ///    ③ Stage2/Stage3 只能来自 `generated/mesh_options.glsl`；④ 形状 master
-    ///    不得含预处理分支。
-    ///
-    /// 尚未迁移的旧式 master（LineQuad / CharQuad 变体）仍按原来的逐条声明规则
-    /// 检查 —— 它们的 varying 还写在自己文件里。迁移完成后这一支随之删除。
+    ///    （与 varying 数组维数宏、CPU 派发是同一份事实）；② 每份形状 master 都走
+    ///    统一 varying 文件，且不得再自己 `layout(location=...)`（否则又出现第二个
+    ///    真源）；③ Stage2/Stage3 只能来自 `generated/mesh_options.glsl`；④ 形状
+    ///    master 不得含预处理分支，唯一例外是 `#if defined(HGL_VARYING_*)` ——
+    ///    写 varying 的钩子必须读声明用的同一批开关。
     static void AuditFixedMeshMasters(GateResult &result)
     {
         const auto masters = LoadFixedMeshMasters();
@@ -752,35 +747,74 @@ namespace
         }
 
         uint32_t char_quad_files = 0;
-        uint32_t unified_varying_files = 0;
-        uint32_t total_declaration_count = 0;
         for (const auto &file : masters)
         {
             const std::string name = TreeEntryName(file);
             // 判据一律针对**代码**：注释里的说明文字不算违规（见 StripGlslComments）。
             const std::string text = StripGlslComments(file.second);
 
-            const bool unified_varying =
-                text.find("#include \"common/interstage_varying.glsl\"")
-                != std::string::npos;
-            if (unified_varying)
-            {
-                ++unified_varying_files;
-
-                // 接口声明的唯一去处是统一文件。本文件再写一条 `layout(location=`
-                // 就等于把「接口是什么」拆回两份，且两端的成对性再也无法由一处保证。
-                if (text.find("layout(location=") != std::string::npos)
-                {
-                    AddCappedDiagnostic(
-                        result, name + ": 使用统一 varying 文件时不得再自己声明"
-                                      " layout(location=...) 阶段间 varying");
-                }
-            }
-            else if (text.find(ExpectedVertexColorVaryingDeclaration())
-                         == std::string::npos)
+            // ── ② 接口声明的唯一去处 ──
+            //
+            // 曾经每个 varying 组合各一份 master，文件名就是接口（`linequad_256_
+            // dataid_lum.mesh`），于是「材质要传什么」被物化进磁盘、并与片段侧手抄的
+            // `layout(in)` 只能靠人对齐。集中到统一文件后，master 对接口一无所知；
+            // 这里断言这个形态不再被回退，并顺带确认它确实处在网格段（否则统一文件
+            // 会 `#error`，但报错点在 include 里，不如在这里指出文件名）。
+            if (text.find("#include \"common/interstage_varying.glsl\"")
+                == std::string::npos)
             {
                 AddCappedDiagnostic(
-                    result, name + ": fixed mesh master must always output the vertex-color varying");
+                    result, name + ": 形状 master 必须 include"
+                                  " common/interstage_varying.glsl（接口声明"
+                                  "只能有这一处真源）");
+            }
+            if (text.find("HGL_MESH_OUTPUT_VARYINGS") == std::string::npos)
+            {
+                AddCappedDiagnostic(
+                    result, name + ": 形状 master 必须在 include 统一文件前"
+                                  " 定义 HGL_MESH_OUTPUT_VARYINGS");
+            }
+            // 本文件再写一条 `layout(location=` 就等于把「接口是什么」拆回两份，
+            // 且两端的成对性再也无法由一处保证。
+            if (text.find("layout(location=") != std::string::npos)
+            {
+                AddCappedDiagnostic(
+                    result, name + ": 使用统一 varying 文件时不得再自己声明"
+                                  " layout(location=...) 阶段间 varying");
+            }
+
+            // 形状 master 只允许形状层面的差异，任何 `#ifdef` 都是把选择权偷偷还给
+            // 编译期分支——那正是生成器残留的形态。唯一合法的分支是 varying 写出
+            // 钩子里的 `#if defined(HGL_VARYING_*)`：它读的正是声明用的那批开关，
+            // 删掉它就会「声明了却不写」，留着别的开关则是把 vary 集合又搬回文件。
+            // 扫描对象是已剥掉注释的代码文本（见 StripGlslComments）：文档里讨论
+            // 这些关键字是正当的。
+            if (text.find("#ifdef") != std::string::npos
+                || text.find("#ifndef") != std::string::npos
+                || text.find("#elif") != std::string::npos)
+            {
+                AddCappedDiagnostic(
+                    result, name + ": 形状 master 不得含预处理分支"
+                                  "（#ifdef / #ifndef / #elif）；varying 钩子"
+                                  "只允许 `#if defined(HGL_VARYING_*)`");
+            }
+            else
+            {
+                static const char kAllowedBranch[] = "#if defined(HGL_VARYING_";
+                for (size_t at = text.find("#if ");
+                     at != std::string::npos;
+                     at = text.find("#if ", at + 1))
+                {
+                    if (text.compare(at, std::strlen(kAllowedBranch),
+                                     kAllowedBranch) != 0)
+                    {
+                        AddCappedDiagnostic(
+                            result, name + ": 形状 master 的 `#if` 只允许"
+                                          " `#if defined(HGL_VARYING_*)`"
+                                          "（varying 钩子必须按声明的开关写）");
+                        break;
+                    }
+                }
             }
 
             // ── 调度契约：max_vertices / max_primitives ──
@@ -818,177 +852,6 @@ namespace
                 }
             }
 
-            // ── ②③ 逐条声明检查 ──
-            uint32_t declaration_count = 0;
-            size_t cursor = 0;
-            while (true)
-            {
-                const size_t layout = text.find("layout(location=", cursor);
-                if (layout == std::string::npos)
-                    break;
-                cursor = layout + 1;
-
-                const size_t close = text.find(')', layout);
-                if (close == std::string::npos)
-                    break;
-                std::string loc_token = text.substr(
-                    layout + std::strlen("layout(location="),
-                    close - (layout + std::strlen("layout(location=")));
-                while (!loc_token.empty() && (loc_token.back() == ' ' || loc_token.back() == '\t' || loc_token.back() == '\r'))
-                    loc_token.pop_back();
-                size_t token_start = 0;
-                while (token_start < loc_token.size() && (loc_token[token_start] == ' ' || loc_token[token_start] == '\t'))
-                    ++token_start;
-                loc_token = loc_token.substr(token_start);
-
-                // location 数字的唯一真源是 ShaderSemanticRegistry：
-                // 宏名→值不再在这里维护第二份 if/else 对照表。
-                const InterStageSemantic location_semantic =
-                    FindInterStageSemanticByLocationMacro(loc_token.c_str());
-                uint32_t location = 0;
-                if (location_semantic != InterStageSemantic::Unknown)
-                    location = GetInterStageSemanticInfo(
-                        location_semantic)->stable_location;
-                else if (!loc_token.empty()
-                      && std::isdigit(static_cast<unsigned char>(loc_token[0])))
-                    location = uint32_t(std::strtoul(loc_token.c_str(), nullptr, 10));
-                else
-                {
-                    AddCappedDiagnostic(
-                        result, name + ": location 宏 " + loc_token
-                            + " 不在 ShaderSemanticRegistry 里");
-                    continue;
-                }
-
-                const size_t semicolon = text.find(';', close);
-                if (semicolon == std::string::npos)
-                    break;
-                const std::string body =
-                    text.substr(close + 1, semicolon - close - 1);
-
-                size_t offset = body.find("out");
-                if (offset == std::string::npos)
-                    continue; // in / uniform 声明，不是阶段间 varying
-                // `out` 必须是独立记号，避免命中 `outColor` 之类。
-                const size_t after = offset + 3;
-                if (after < body.size()
-                    && (std::isalnum(static_cast<unsigned char>(body[after]))
-                        || body[after] == '_'))
-                    continue;
-
-                const bool perprimitive =
-                    body.find("perprimitiveEXT") != std::string::npos;
-
-                offset = after;
-                SkipBlanks(body, offset);
-                const std::string type = ReadIdentifier(body, offset);
-                SkipBlanks(body, offset);
-                const std::string symbol = ReadIdentifier(body, offset);
-                SkipBlanks(body, offset);
-                if (type.empty() || symbol.empty())
-                    continue;
-                if (offset >= body.size() || body[offset] != '[')
-                {
-                    AddCappedDiagnostic(
-                        result, name + ": varying " + symbol
-                            + " 必须是定长数组（缺 [N]）");
-                    continue;
-                }
-                ++offset;
-                SkipBlanks(body, offset);
-                const uint32_t dimension = uint32_t(std::strtoul(
-                    body.c_str() + offset, nullptr, 10));
-
-                ++declaration_count;
-
-                // ① 注册表对齐
-                const InterStageSemanticInfo *info = nullptr;
-                for (uint32_t i = 1; i < 32 && !info; ++i)
-                {
-                    const InterStageSemanticInfo *candidate =
-                        GetInterStageSemanticInfo(
-                            static_cast<InterStageSemantic>(i));
-                    if (candidate && candidate->shader_symbol
-                        && symbol == candidate->shader_symbol)
-                        info = candidate;
-                }
-                if (!info)
-                {
-                    AddCappedDiagnostic(
-                        result, name + ": varying " + symbol
-                            + " 不在 ShaderSemanticRegistry 里");
-                }
-                else
-                {
-                    if (info->stable_location != location)
-                    {
-                        AddCappedDiagnostic(
-                            result, name + ": " + symbol + " 的 location 是 "
-                                + std::to_string(location) + "，注册表要求 "
-                                + std::to_string(info->stable_location));
-                    }
-                    const char *expected_type = GetGLSLTypeName(
-                        info->value_shape.scalar_type,
-                        info->value_shape.component_count);
-                    if (!expected_type || type != expected_type)
-                    {
-                        AddCappedDiagnostic(
-                            result, name + ": " + symbol + " 的类型是 " + type
-                                + "，注册表要求 "
-                                + (expected_type ? expected_type : "<invalid>"));
-                    }
-                    const bool flat =
-                        info->interpolation == InterStageInterpolation::Flat;
-                    if (flat != perprimitive)
-                    {
-                        AddCappedDiagnostic(
-                            result, name + ": " + symbol
-                                + (flat ? " 是 Flat 语义，必须带 perprimitiveEXT"
-                                        : " 不是 Flat 语义，不应带 perprimitiveEXT"));
-                    }
-                }
-
-                // ② 调度契约对齐
-                const uint32_t expected_dimension =
-                    perprimitive ? max_primitives : max_vertices;
-                if (dimension != expected_dimension)
-                {
-                    AddCappedDiagnostic(
-                        result, name + ": " + symbol + " 的数组维数是 "
-                            + std::to_string(dimension) + "，调度契约要求 "
-                            + std::to_string(expected_dimension));
-                }
-
-                // ③ 写了才算数
-                const std::string write_probe = symbol + "[";
-                size_t scan = semicolon;
-                bool written = false;
-                while ((scan = text.find(write_probe, scan)) != std::string::npos)
-                {
-                    const size_t bracket = text.find(']', scan);
-                    if (bracket == std::string::npos)
-                        break;
-                    const size_t assignment = text.find('=', bracket);
-                    const size_t terminator = text.find(';', bracket);
-                    if (assignment != std::string::npos
-                        && (terminator == std::string::npos
-                            || assignment < terminator))
-                    {
-                        written = true;
-                        break;
-                    }
-                    scan = bracket + 1;
-                }
-                if (!written)
-                {
-                    AddCappedDiagnostic(
-                        result, name + ": varying " + symbol
-                            + " 声明了却从未写入");
-                }
-            }
-
-            total_declaration_count += declaration_count;
-
             // ── ④ Stage2/Stage3 组合 ──
             //
             // 形状 master 不自己挑 Stage2/Stage3——两者都来自 `generated/mesh_options.glsl`。
@@ -1016,19 +879,6 @@ namespace
                         result, name
                             + ": 形状 master 的 Stage2/Stage3 必须来自"
                               " generated/mesh_options.glsl，不得直接 include");
-                }
-                // 形状 master 只允许形状层面的差异，任何 `#ifdef` 都是把选择权偷偷
-                // 还给编译期分支——那正是生成器残留的形态。扫描对象是已剥掉注释的
-                // 代码文本（见 StripGlslComments）：文档里讨论这些关键字是正当的。
-                for (const char *branch : {"#ifdef", "#if ", "#elif", "#ifndef"})
-                {
-                    if (text.find(branch) != std::string::npos)
-                    {
-                        AddCappedDiagnostic(
-                            result, name + ": 形状 master 不得含预处理分支 "
-                                        + branch);
-                        break;
-                    }
                 }
             }
             else if (char_quad)
@@ -1066,19 +916,6 @@ namespace
 
         // 统一接口文件本身的自洽（成对性 / location / 类型 / 插值 / 维数 / 写出）。
         AuditUnifiedInterStageVarying(result);
-
-        if (unified_varying_files == 0)
-        {
-            result.diagnostics.emplace_back(
-                "fixed mesh master corpus has no master using"
-                " common/interstage_varying.glsl");
-        }
-        else if (masters.size() > unified_varying_files
-                 && total_declaration_count == 0)
-        {
-            result.diagnostics.emplace_back(
-                "fixed mesh master corpus declared zero interstage varyings");
-        }
 
         if (char_quad_files == 0)
             result.diagnostics.emplace_back(
@@ -1613,7 +1450,9 @@ namespace
 
         const auto build = [](const contract::PhysicalDeviceProfileLite *profile,
                               const MaterialDefinition &def,
-                              const char *mesh_source_override)
+                              const char *mesh_source_override,
+                              FixedFragmentSource *out_fixed = nullptr,
+                              MaterialProgramBuildCapture *out_capture = nullptr)
             -> std::unique_ptr<ShaderBuildContext>
         {
             MaterialDefinitionBuildRequest request{};
@@ -1654,9 +1493,13 @@ namespace
             fixed_stage.fragment_options_digest = fixed.options_digest;
             fixed_stage.mesh_source = mesh_source_override;
 
+            if (out_fixed)
+                *out_fixed = fixed;
+
             // 不编译 SPV：本用例只读网格阶段 GLSL 文本。
             return std::unique_ptr<ShaderBuildContext>(
-                AssembleMaterialProgram(profile, request, def, nullptr, fixed_stage));
+                AssembleMaterialProgram(profile, request, def, out_capture,
+                                        fixed_stage));
         };
 
         // ── ① 无 profile（无约束）：local_size_x 必须等于 CPU dispatch 常量 ──
@@ -1835,22 +1678,56 @@ namespace
         // 若两侧一起漂，本门才会失败。
         if (plain_mesh && !plain_mesh->GetFinalGLSL().empty())
         {
+            // 网格主着色器 include `generated/common_options.glsl`（阶段间 varying
+            // 开关，两 stage 共用一份）。裸 `CompileShader` 只有库根，解析不到这份
+            // 生成文件；必须先把 options 补进片段的 options 根，再走生产的双根编译。
+            FixedFragmentSource toggle_fixed;
+            MaterialProgramBuildCapture toggle_capture{};
+            std::unique_ptr<ShaderBuildContext> toggle_ctx =
+                build(nullptr, definition, nullptr, &toggle_fixed, &toggle_capture);
+
             hgl::AnsiString compile_log;
-            SPVData *spv = CompileShader(
-                static_cast<uint32_t>(VK_SHADER_STAGE_MESH_BIT_EXT),
-                plain_mesh->GetFinalGLSL().c_str(), &compile_log);
-            if (!spv)
+            const uint32_t *spv_words = nullptr;
+            uint32_t spv_size = 0u;
+            if (!toggle_ctx)
+            {
+                compile_log = "material build failed (no options root)";
+            }
+            else if (!hgl::graph::mtl::WriteInterStageVaryingOptionsSource(
+                         toggle_fixed.options_root,
+                         toggle_capture.interstage_varying_options))
+            {
+                compile_log =
+                    hgl::graph::mtl::GetLastDomainShaderBuildBackendError();
+            }
+            else if (!CompileFixedMeshSource(*toggle_ctx, toggle_fixed,
+                                             compile_log))
+            {
+                // compile_log 已由后端写入
+            }
+            else
+            {
+                const ShaderCreateInfo *compiled =
+                    toggle_ctx->GetStageShader(ShaderStage::Mesh);
+                if (compiled && compiled->HasSPVData())
+                {
+                    spv_words = compiled->GetSPVData();
+                    spv_size = compiled->GetSPVSize();
+                }
+            }
+
+            if (!spv_words || spv_size == 0u)
             {
                 result.diagnostics.emplace_back(
                     "CharQuad mesh stage failed to compile: "
-                    + std::string(compile_log.c_str()));
+                    + std::string(compile_log.c_str() ? compile_log.c_str() : ""));
             }
             else
             {
                 hgl::ValueArray<uint8_t> storage;
                 ShaderFlatView view{};
                 if (!ReflectSPVData(
-                        spv,
+                        spv_words, spv_size,
                         static_cast<uint32_t>(VK_SHADER_STAGE_MESH_BIT_EXT),
                         "main", storage, view))
                 {
@@ -1897,7 +1774,7 @@ namespace
                                 + "（CPU 派发契约与实际执行规模分叉）");
                     }
                 }
-                FreeSPVData(spv);
+                // SPV 归 toggle_ctx 所有，此处不得释放。
             }
         }
 
@@ -2211,20 +2088,6 @@ namespace
         return result;
     }
 
-    /// 顶点色 varying 的声明文本：宏名与符号名都取自 ShaderSemanticRegistry，
-    /// 固定网格主着色器审计里不再出现第二份名字/数字对照。
-    static std::string ExpectedVertexColorVaryingDeclaration()
-    {
-        const InterStageSemanticInfo *info =
-            GetInterStageSemanticInfo(InterStageSemantic::Color);
-        const char *macro_name =
-            GetInterStageSemanticLocationMacro(InterStageSemantic::Color);
-        if (!info || !info->shader_symbol || !macro_name)
-            return std::string();
-
-        return std::string("layout(location=") + macro_name + ") out vec4 "
-            + info->shader_symbol + "[";
-    }
 
     static GateResult RunComposedStageInterfaceCase()
     {

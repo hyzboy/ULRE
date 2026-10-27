@@ -1,0 +1,75 @@
+#version 460
+// ShaderLibrary/mesh/shape/linequad_256.mesh
+//
+// 网格阶段「物理固定」主着色器 · 线段 → 四边形（LineQuad，256 顶点 / 128 图元）。
+//
+// 这是**唯一**一份线段形状 master。曾经每个 varying 组合各一份
+// （linequad_256_plain / linequad_256_dataid / linequad_256_dataid_lum …），
+// 于是「材质要什么」被物化成了若干文件，而文件名与片段的 `layout(in)` 之间
+// 只能靠人对齐。现在与 `tri_192.mesh` 同构：
+//
+//   · 输出 varying 由 `common/interstage_varying.glsl` 按 `HGL_VARYING_*` 声明；
+//   · 开关来自 `generated/common_options.glsl`（inc/hgl/mtl/InterStageVaryingOptions.h）；
+//   · 写出钩子按同一批宏写数组 —— 声明与写出读的是同一个开关，不可能只改一半。
+//
+// 本文件对「材质要传什么」完全无知：换材质只换 options，不换 .mesh。
+//
+// include 顺序沿用 `tri_192.mesh` 的硬契约（见 mesh/stage_body.glsl）：
+//   容量宏 → 公共头 → 拓扑 layout → 公共体 → varying 开关 → varying 声明
+//   → options → 写出 → 主体。容量宏必须排在 varying 文件之前，它是数组维数。
+//
+// 改本文件前请先读 doc/shadergen-elimination-domain-fixed-architecture.md。
+
+#define ULRE_MESH_MAX_VERTS 256u
+#define ULRE_MESH_MAX_PRIMITIVES 128u
+#define ULRE_MESH_INVOCATIONS 64u
+#define HGL_MESH_OUTPUT_VARYINGS
+
+#include "mesh/stage_common_head.glsl"
+
+layout(local_size_x = 64) in;
+layout(triangles, max_vertices = 256, max_primitives = 128) out;
+#include "mesh/stage_common.glsl"
+
+#include "generated/common_options.glsl"
+#include "common/interstage_varying.glsl"
+
+// 唯一可变输入：顶点解码 + 位置映射 + 变换
+#include "generated/mesh_options.glsl"
+
+// 线段几何只产生下面三条语义。其余语义若被材质打开，声明会出现而钩子不写 ——
+// 数组留下未定义数据，屏幕上是随机值而不是报错。所以这里显式炸掉：
+// 「线段画不了的东西」在编译期就该失败，而不是等画面上出花。
+#if defined(HGL_VARYING_WORLD_POS) || defined(HGL_VARYING_WORLD_NORMAL) \
+ || defined(HGL_VARYING_UV0) || defined(HGL_VARYING_STYLE_ID) \
+ || defined(HGL_VARYING_FRAG_DIRECTION)
+#error "linequad_256.mesh: 线段形状只输出 DataIndexID / Luminance / VertexColor，材质请求了它不产生的语义"
+#endif
+
+// 每条输入的线段出 4 个顶点、2 个三角形：`base_vid` 是首顶点槽位，两个三角形
+// 共用同一份实例数据行与首端顶点属性（线的另一端只提供位置，不提供属性）。
+void WriteLineQuadVertexOutputs(uint base_vid)
+{
+    const uint base_primitive = base_vid / 2u;
+#if defined(HGL_VARYING_DATA_INDEX_ID)
+    // 图元级（Flat）：两个三角形的 2 个槽都写同一个实例行，重复写值相同。
+    fragDataIndexID[base_primitive + 0u] = gl_InstanceIndex;
+    fragDataIndexID[base_primitive + 1u] = gl_InstanceIndex;
+#endif
+#if defined(HGL_VARYING_LUMINANCE)
+    const float luminance = Luminance;
+    fragLuminance[base_vid + 0u] = luminance;
+    fragLuminance[base_vid + 1u] = luminance;
+    fragLuminance[base_vid + 2u] = luminance;
+    fragLuminance[base_vid + 3u] = luminance;
+#endif
+#if defined(HGL_VARYING_VERTEX_COLOR)
+    const vec4 color = GetVertexColor();
+    fragVertexColor[base_vid + 0u] = color;
+    fragVertexColor[base_vid + 1u] = color;
+    fragVertexColor[base_vid + 2u] = color;
+    fragVertexColor[base_vid + 3u] = color;
+#endif
+}
+
+#include "mesh/line_quad_body.glsl"

@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/ShaderSemanticRegistry.h>
+#include <hgl/mtl/ShaderSemanticRegistry.h>
 
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <cstring>
@@ -20,17 +20,17 @@ namespace hgl::graph::mtl
 
         constexpr InterStageSemanticInfo InterStageSemanticRegistry[] =
         {
-            {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation, nullptr, 0, nullptr},
-            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0, "dataid", 1, "HGL_LOCATION_DATA_INDEX_ID"},
-            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 1, "pos",    2, "HGL_LOCATION_WORLD_POS"},
-            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 2, "nrm",    3, "HGL_LOCATION_WORLD_NORMAL"},
-            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 3, "uv",     4, "HGL_LOCATION_UV0"},
-            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 5, "color",  5, "HGL_LOCATION_VERTEX_COLOR"},
-            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 6, "dir",    7, "HGL_LOCATION_FRAG_DIRECTION"},
-            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 7, "lum",    8, "HGL_LOCATION_LUMINANCE"},
-            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 8, "tan",    9, "HGL_LOCATION_WORLD_TANGENT"},
-            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 9, "binrm", 10, "HGL_LOCATION_WORLD_BINORMAL"},
-            {InterStageSemantic::StyleID,        "fragStyleID",        UIntShape(1),  InterStageInterpolation::Flat,   1, 4, "style",  6, "HGL_LOCATION_STYLE_ID"}
+            {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation, nullptr},
+            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0, "HGL_LOCATION_DATA_INDEX_ID"},
+            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 1, "HGL_LOCATION_WORLD_POS"},
+            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 2, "HGL_LOCATION_WORLD_NORMAL"},
+            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 3, "HGL_LOCATION_UV0"},
+            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 5, "HGL_LOCATION_VERTEX_COLOR"},
+            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 6, "HGL_LOCATION_FRAG_DIRECTION"},
+            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 7, "HGL_LOCATION_LUMINANCE"},
+            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 8, "HGL_LOCATION_WORLD_TANGENT"},
+            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 9, "HGL_LOCATION_WORLD_BINORMAL"},
+            {InterStageSemantic::StyleID,        "fragStyleID",        UIntShape(1),  InterStageInterpolation::Flat,   1, 4, "HGL_LOCATION_STYLE_ID"}
         };
 
         constexpr uint32 InterStageSemanticRegistryCount =
@@ -236,33 +236,6 @@ namespace hgl::graph::mtl
         }
 
         return true;
-    }
-
-    uint32 GetOrderedInterStageShapeTokens(
-        const InterStageSemanticMask mask,
-        const char *out_tokens[],
-        const uint32 max_tokens) noexcept
-    {
-        if (!out_tokens || max_tokens == 0)
-            return 0;
-
-        uint32 count = 0;
-        for (uint8 order = 1; order <= InterStageSemanticRegistryCount && count < max_tokens; ++order)
-        {
-            for (uint32 i = 0; i < InterStageSemanticRegistryCount; ++i)
-            {
-                const InterStageSemanticInfo &info = InterStageSemanticRegistry[i];
-                if (info.shape_token_order == order && info.shape_token)
-                {
-                    if (mask & GetInterStageSemanticMask(info.semantic))
-                    {
-                        out_tokens[count++] = info.shape_token;
-                    }
-                    break;
-                }
-            }
-        }
-        return count;
     }
 
 }
