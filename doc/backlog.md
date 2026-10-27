@@ -5,7 +5,7 @@
 > 要么有明确的触发条件（等用例出现再做）。每项标注现状、做法、触发条件
 > 与规模。完成一项划掉一项，不再回写正文细节——实现说明属于提交信息。
 >
-> 关联文档：`doc/render-target-standardization-design.md`（RT 标准化主线）。
+> 关联文档：`doc/deprecated/render-target-standardization-design.md`（RT 标准化主线，已归档：`RenderGraph::Pass::renderTarget` 整体删除，多 RT 权柄改为 `ECSContext::RenderTo()` + RenderPassOptions）。
 
 ## 🚧 当前未结项索引（唯一入口，2026-10-12 建立 · **2026-10-13 更新**）
 
@@ -1002,8 +1002,33 @@ A5(比较采样) ◄──同做───────────┘            
 | 已落地的一次性计划/交接 | `future/ULRE_Architecture_Phase0_GLTF_TRS_Normalization.md`、`…Phase1_Transform_ID_Accessor.md`、`…Phase2_Subsystems_Component_To_ID.md`、`future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`、`future/HANDOFF_2026-10-01.md`、`scene_ubo_bda_migration_ready.md`、`scene-ubo-bda-migration-handoff.md`、`camera-ubo-removal-plan.md`、`t3-camera-row-slotting-plan.md` | Camera UBO 移除已实测干净（全仓只剩 3 处注释性提及）；相机行槽化见 `inc/hgl/ecs/support/CameraInfoStorage.h` 的 `CameraRow(camera_slot, frame_slot)` |
 | 已结案复盘 + 审计冗余 | `future/gpu-cull-flicker-postmortem.md`、`future/offscreen-onetime-world-stall-analysis.md`、`ecs-deep-quality-audit-and-evidence-2026-10.md`、`ecs-deep-audit-crossreview-2026-10.md`、`ecs-deep-audit-second-crossreview-2026-10-11.md`、`ecs-audit-consensus-and-task-plan-2026-10-11.md` | 结论已合流进 `ecs-quality-audit-2026-10.md` §2.2 + `analysis/ecs-audit-2026-10/` 与 `future/entity-rows-gpu-cull-plan.md` §11.9/§11.17 |
 
-**保留**（虽形似候选，但有未结项或为现行交付物）：`future/stage_B_debt_list.md`（本档 §5 有 `receive_shadow` 幅度漂移未定位）、`future/e2-gather-run-length-merge-plan.md`（🟡 已开工）、`instance-batching-and-static-bake-design.md`、`texture-asset-id-streaming-plan.md`（纯提案，`TextureAssetID` 代码零命中）、`terrain-rendering-implementation-plan.md` 与 `terrain-vulkan-standalone-experiment.md`（`ShaderLibrary/`/`example/` 下无 terrain）、`future/ULRE_Architecture_Phase3_Entity64B_Binary_Scene_BlitLoading.md`（§5 已延后）、`simple-sphere-*` 两篇、`ambient-provider-types-inventory.md`。
+**保留**（虽形似候选，但有未结项或为现行交付物）：`future/stage_B_debt_list.md`（本档 §5 有 `receive_shadow` 幅度漂移未定位）、`future/e2-gather-run-length-merge-plan.md`（🟡 已开工）、`instance-batching-and-static-bake-design.md`、`future/ULRE_Architecture_Phase3_Entity64B_Binary_Scene_BlitLoading.md`（§5 已延后）、`simple-sphere-*` 两篇、`ambient-provider-types-inventory.md`。
+> 注：`texture-asset-id-streaming-plan.md`、`terrain-rendering-implementation-plan.md`、`terrain-vulkan-standalone-experiment.md` 原本也在此清单，2026-10-19 复核判定为"纯提案且无实施痕迹"，已改判**归档**（见下方「文档归档记录（2026-10-19）」）。
 
 **同步改写的引用**：本档 3 处（§1 B4 过期声明行、§2 标题、§2 ② 历史记录档清单）、`csm-mechanism.md`、`ecs-quality-audit-2026-10.md`（3 处）、`future/ULRE_FINAL_TARGET_v2_设计约束.md`、`future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`、`future/ULRE_Transform_System_Completion_Design_and_Plan.md`、`future/entity-rows-gpu-cull-plan.md`（2 处）、`future/shadergen-material-chain-review.md`、`render-flow-cull-sort-drawcall.md`、`terrain-rendering-implementation-plan.md`、`texture-asset-id-streaming-plan.md`（2 处）、`src/ecs/core/ContextRender.cpp` 与 `src/ecs/tests/TestCSMIncrementalPass.cpp` 的注释（指向 `entity-rows-gpu-cull-plan.md` §11.17）。
 
 **同时删除 3 个空目录**：`doc/material/shader-system`、`doc/material/shadergen`、`doc/refactor`。
+## 📦 文档归档记录（2026-10-19）
+
+本轮把「**与当前进度偏差较大**」的过时设计/计划档移入 `doc/deprecated/`（`git mv`，历史可追溯，不再从工作树删除）。
+判据 = 档首自述作废/别再按本文实现 **或** 描述对象在代码中整体消失（符号/目录 0 命中）**或** 立了计划但全仓无任何实施痕迹且非未结项索引中的在办项。
+
+| 档 | 判据 |
+|---|---|
+| `texture-asset-id-streaming-plan.md` | 用户点名。基线分支 `TextureStreaming`（基点 `e74514c2c`）从未合入；§0.3 六项待拍板 P-1…P-6 全未定案；`TextureAssetID` 代码零命中；引用的 `CMCore/inc/hgl/thread/Workflow.h` 已不存在（现为 `thread/WorkerPool.h` + `concurrency/SpscQueue.h`） |
+| `meshlet-geometry-pipeline-implementation.md` | 档首自述 **⚠ 已作废（2026-10-05）**：用户拍板本轮不支持 meshlet，引擎侧 meshlet 路径整体删除，loader 改为显式拒绝 |
+| `mesh-shader-thread-model-and-loadvertexdata-conflicts.md` | 关联代码 `src/ShaderGen/meshgen/MeshTemplateEmitter.h` 所在目录已整体删除；全仓无反向引用 |
+| `annotation-vs-include-tree-assessment.md` | 档首自述「针对旧 ShaderGen 模块注记表的评估**已完成历史使命**」；评估对象（注记驱动模块表）已随生成器废除而消失 |
+| `shadow-mask-and-hybrid-shadows-design.md` | 档首自述「设计草案 / 预研规划」；`ShadowMask` / `HybridShadow` / `hybrid_shadow` 在 `inc/`+`src/`+`example/` **全部 0 命中**；阴影路线已定为 CSM + 世界私有 `ShadowInfo` |
+| `render-target-standardization-design.md` | 档首「**别再按本文去实现**」：其核心字段 `RenderGraph::Pass::renderTarget` 已整体删除（A3 `34af98709`），多 RT 权柄改为 `ECSContext::RenderTo()` + RenderPassOptions |
+| `terrain-rendering-implementation-plan.md` | 状态「设计定稿，未执行」，T1–T5 全未开工；`Terrain` 在代码中仅剩 `MaterialDomain.h` 一个枚举值，`ShaderLibrary/`、`example/` 下无任何地形实现 |
+| `terrain-vulkan-standalone-experiment.md` | 档首定位「为**独立 Vulkan 工程**（不依赖 ULRE）设计」，本仓从无该工程 |
+
+**保留**（形似候选但**不动**，理由 = 仍被现行代码/权威档引用）：
+
+- `future/lighting-shadow-domain-split-plan.md` — 虽 T6a/T6b 均已落地结案，但仍是**现行光源/影子域的设计依据**，被 `inc/hgl/ecs/support/LightRowTable.h`、`inc/hgl/ecs/systems/render/{EnvironmentSystem,LightSystem,MainLightShadowSystem}.h` 等 6 处代码注释直接引用。
+- `future/sky-domain-and-provider-params-plan.md` — sky 段已整删，但 §2 的 provider 参数块规则（R1 一槽一块一地址 / R2 同族字段）仍是 `inc/hgl/graph/ubo/AmbientEnvInfo.h` 的规则出处。
+- `future/ULRE_Transform_System_Completion_Design_and_Plan.md` — 无内部完成度标记，无法判定是否已被 A5/T2-c 全量覆盖。
+- `build-and-module-structure-audit-2026-10.md`、`object-hierarchy-and-logger-design.md`、`instance-batching-and-static-bake-design.md`、`gpu-cull-multipass-design-and-shadow-hang-analysis.md` — 均为**提案/底稿/记录**，描述对象仍在位且无失效证据。
+
+**同步改写的引用**：本档 2 处（档首关联文档、文档清理记录「保留」清单）、`src/GUI/ThemeEngine.cpp:20` 注释、`doc/shadergen-reduction-closure-report.md`（3 处）、`doc/ultra-thin-implementation-status.md`（1 处）、`doc/future/lighting-shadow-domain-split-plan.md`（2 处）、`doc/future/stage_B_debt_list.md`（1 处）、归档档内部互引 4 处。索引另见 `doc/deprecated/README.md`。
