@@ -23,10 +23,12 @@
 #include "ntb/ntb_none.glsl"
 #include "surface/material_surface.glsl"
 #include "common/alpha_compositor.glsl"
-layout(location=HGL_LOCATION_DATA_INDEX_ID) flat perprimitiveEXT in  uint fragDataIndexID;
-layout(location=HGL_LOCATION_WORLD_POS) in vec3 fragWorldPos;
-layout(location=HGL_LOCATION_WORLD_NORMAL) in vec3 fragWorldNormal;
-layout(location=HGL_LOCATION_VERTEX_COLOR) in vec4 fragVertexColor;
+// 阶段间 varying 的输入声明来自 `common/interstage_varying.glsl` 的片段段：
+// 置位哪些语义由 `generated/common_options.glsl` 的 `HGL_VARYING_*` 决定，与网格
+// 阶段读的是同一个宏集合，两端口径不可能分叉。派生量（viewDir / screenPos /
+// 面法线兜底）仍在本文件里按领域赋值。
+#define HGL_FRAGMENT_INPUT_VARYINGS
+#include "common/interstage_varying.glsl"
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }
 

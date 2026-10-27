@@ -1227,6 +1227,12 @@ namespace hgl::graph::mtl
             // 片元的编译输入额外吃掉 manifest、模板哈希、注入项与片段 options：
             // 模块集合相同的两份文档，只要资源绑定、模板骨架、注入宏或 options
             // 不同，也必须是不同的 stage。
+            //
+            // `interstage_varying_options_digest` 同样必须在这里：片段主着色器
+            // `#include "common/interstage_varying.glsl"`，它按 `HGL_VARYING_*`
+            // 声明输入 —— 那是**阶段间接口**，不是片段 options 的子集。漏掉它，
+            // 同 domain + 同 fragment options + 不同 varying 集合会撞键，第二个
+            // 材质直接复用第一个的 SPV（接口与 pipeline 不匹配）。
             hgl::hash::FNV1aHasher64 fragment_compile_inputs_hasher;
             fragment_compile_inputs_hasher
                 << plan.manifest.stable_hash
@@ -1235,6 +1241,7 @@ namespace hgl::graph::mtl
                 << ComputeShaderLibraryDependencyHash(
                        plan.fs.c_str(), static_cast<size_t>(plan.fs.Length()))
                 << fixed.fragment_options_digest
+                << plan.interstage_varying_options_digest
                 << resource_contract_hash;
             const uint64 fragment_compile_inputs_hash =
                 fragment_compile_inputs_hasher;

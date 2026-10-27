@@ -487,8 +487,9 @@ namespace
             writer_text += StripGlslComments(master.second);
         }
 
-        // 两段的分界必须是「网格段在前、片段段在后」：片段段的解包函数要读网格段
-        // 声明的同一批符号，物理顺序反了等于把两套接口拼在一起。
+        // 两段的分界必须是「网格段在前、片段段在后」：两段读的是同一批
+        // `HGL_VARYING_*` 与 location 宏，各自声明接口的一端；顺序反了等于把
+        // 两套接口拼在一起，本审计也按「前段必须是 out、后段必须是 in」定位。
         const size_t mesh_marker =
             text.find("#if defined(HGL_MESH_OUTPUT_VARYINGS)");
         const size_t frag_marker =
@@ -672,6 +673,52 @@ namespace
                     result, "common/interstage_varying.glsl 含死开关 "
                         + macro + "（发射器永远不会定义它）");
             }
+        }
+
+        // ── 片段 stage 的键必须吃阶段间接口开关 ──
+        //
+        // 把声明搬进统一文件，等于把 varying 集合从 `.frag` 文本里**拿走**：
+        // 迁移前片段文本随 `HGL_MATERIAL_*` 这类片段 options 变，迁移后它只随
+        // `generated/common_options.glsl` 的 `HGL_VARYING_*` 变。于是片段 stage
+        // 的 `compile_inputs` 若不含这份摘要，就退化回「只看文本」，同 domain +
+        // 同 fragment options + 不同 varying 集合会撞键 —— 第二个材质直接复用
+        // 第一个的 SPV，管线接口对不上。
+        const std::string assembler = ReadFileText(
+            RepoRootPath(
+                "src/ShaderProgramBuild/builder/MaterialProgramAssembler.cpp"));
+        if (assembler.empty())
+        {
+            result.diagnostics.emplace_back(
+                "MaterialProgramAssembler.cpp is missing or empty");
+            return;
+        }
+
+        const size_t fragment_hasher =
+            assembler.find("fragment_compile_inputs_hasher");
+        if (fragment_hasher == std::string::npos)
+        {
+            result.diagnostics.emplace_back(
+                "MaterialProgramAssembler.cpp 不再含 fragment_compile_inputs_hasher"
+                "（片段 stage 键的构成被改写了，本审计需要同步）");
+            return;
+        }
+
+        const size_t fragment_hash_end = assembler.find(
+            "const uint64 fragment_compile_inputs_hash", fragment_hasher + 1);
+        const std::string fragment_key_inputs =
+            assembler.substr(
+                fragment_hasher,
+                fragment_hash_end == std::string::npos
+                    ? std::string::npos
+                    : fragment_hash_end - fragment_hasher);
+        if (fragment_key_inputs.find("interstage_varying_options_digest")
+            == std::string::npos)
+        {
+            result.diagnostics.emplace_back(
+                "MaterialProgramAssembler.cpp: 片段 compile_inputs 未折入 "
+                "interstage_varying_options_digest —— 统一文件之后片段文本不再"
+                "随 varying 集合变化，同 domain 同 fragment options 的两份材质"
+                "会撞键并复用错误的 SPV");
         }
     }
 
@@ -6272,40 +6319,137 @@ namespace
             result.diagnostics.emplace_back(
                 "VertexColor domain must rely on the common vertex-color multiplier, not multiply it twice");
 
-        const char *normal_varying_fragments[] =
-        {
-            "ShaderLibrary/domain/checker_3d/checker_3d.frag",
-            "ShaderLibrary/domain/error_checker_3d/error_checker_3d.frag",
-        };
-        for (const char *path : normal_varying_fragments)
-        {
-            const std::string source = ReadFileText(RepoRootPath(path));
+        // ── 片段侧 varying 声明：单一真源审计 ──
+        //
+        // 迁移前 13 份领域 `.frag` 各自手抄 `layout(in …)`：网格写出什么与片段读
+        // 什么只能靠人对齐，而 checker_3d / error_checker_3d 还给 WorldNormal 挂了
+        // 一个与接口无关的 `HGL_MATERIAL_HAS_VERTEX_NORMAL` 开关。现在声明只有一
+        // 处——`common/interstage_varying.glsl` 的片段段，开关是
+        // `generated/common_options.glsl` 的 `HGL_VARYING_*`，与网格侧同一份。
+        // 契约因此变成三条可机检的事实：
+        //   ① 领域 `.frag` 里不再出现任何阶段间 varying 的手写声明；
+        //   ② 除纯空体占位外，每份 `.frag` 都经 `HGL_FRAGMENT_INPUT_VARYINGS`
+        //      走统一文件（否则「统一」只是别人的统一）；
+        //   ③ 统一文件把 WorldNormal 声明挂在 `HGL_VARYING_WORLD_NORMAL` 之下，
+        //      且两个「有则消费」的领域仍在消费 `fragWorldNormal`。
+        const std::string interstage_source = ReadFileText(
+            RepoRootPath("ShaderLibrary/common/interstage_varying.glsl"));
 
-            // location 数字与 varying 符号名都取自注册表，两种写法都接受
-            // （数字直写 / HGL_LOCATION_* 宏）。
-            const InterStageSemanticInfo *normal_info =
-                GetInterStageSemanticInfo(InterStageSemantic::WorldNormal);
-            const char *normal_macro =
-                GetInterStageSemanticLocationMacro(InterStageSemantic::WorldNormal);
-            bool has_normal_loc = false;
-            if (normal_info && normal_info->shader_symbol && normal_macro)
+        // 「这一行是阶段间输入声明」：`layout(location=…)` 起头且带 `in` 记号。
+        // 输出附件用 `out`，因此两者不会混。
+        const auto declares_interstage_input =
+            [](const std::string &line) -> bool
             {
-                const std::string declaration_tail =
-                    std::string(") in vec3 ") + normal_info->shader_symbol + ";";
-                has_normal_loc =
-                    source.find("layout(location="
-                        + std::to_string(normal_info->stable_location)
-                        + declaration_tail) != std::string::npos
-                 || source.find("layout(location=" + std::string(normal_macro)
-                        + declaration_tail) != std::string::npos;
+                return line.find("layout(location=") != std::string::npos
+                    && ContainsWord(line, "in")
+                    && !ContainsWord(line, "out");
+            };
+
+        // 唯一豁免：StandardOpaque 的 depth pass 空体占位。它刻意没有 varying、
+        // 没有 include、没有采样输出，加任何东西都会平白改变 depth 管线。
+        const char *const varying_free_fragments[] =
+        {
+            "ShaderLibrary/domain/standard_opaque/shadow_caster.frag",
+        };
+
+        const std::vector<std::pair<std::string, std::string>> domain_tree =
+            LoadTextTree(RepoRootPath("ShaderLibrary/domain"));
+        std::size_t audited_fragments = 0;
+        for (const auto &entry : domain_tree)
+        {
+            const std::string &identity = entry.first;
+            if (identity.find(".frag|") == std::string::npos)
+                continue;
+
+            // `LoadTextTree` 的 key 是 `lexically_relative` 结果，Windows 上带 `\`。
+            // 判据与诊断信息统一成 `/`，免得同一个文件出现两种写法。
+            std::string relative = identity.substr(0, identity.find('|'));
+            for (char &ch : relative)
+                if (ch == '\\')
+                    ch = '/';
+            const std::string path = "ShaderLibrary/domain/" + relative;
+
+            bool exempt = false;
+            for (const char *allowed : varying_free_fragments)
+                exempt = exempt || path == allowed;
+            if (exempt)
+                continue;
+
+            ++audited_fragments;
+            const std::string &source = entry.second;
+
+            for (std::size_t line_begin = 0; line_begin < source.size();)
+            {
+                const std::size_t line_end = source.find('\n', line_begin);
+                const std::string line = source.substr(
+                    line_begin,
+                    line_end == std::string::npos
+                        ? std::string::npos
+                        : line_end - line_begin);
+                if (declares_interstage_input(line))
+                    result.diagnostics.emplace_back(
+                        path
+                        + " declares an inter-stage varying inline; the only "
+                          "definition point is common/interstage_varying.glsl");
+
+                if (line_end == std::string::npos)
+                    break;
+                line_begin = line_end + 1;
             }
 
-            if (!has_normal_loc
-             || source.find("si.worldNormal = normalize(fragWorldNormal);")
+            const bool routes_through_unified_file =
+                source.find("#define HGL_FRAGMENT_INPUT_VARYINGS")
+                    != std::string::npos
+             && source.find("#include \"common/interstage_varying.glsl\"")
+                    != std::string::npos;
+            if (!routes_through_unified_file)
+                result.diagnostics.emplace_back(
+                    path
+                    + " must define HGL_FRAGMENT_INPUT_VARYINGS and include "
+                      "common/interstage_varying.glsl instead of declaring "
+                      "inter-stage varyings itself");
+        }
+        if (audited_fragments < 12)
+            result.diagnostics.emplace_back(
+                "domain fragment sweep found only "
+                + std::to_string(audited_fragments)
+                + " master(s); the domain library is expected to be far larger");
+
+        const InterStageSemanticInfo *normal_info =
+            GetInterStageSemanticInfo(InterStageSemantic::WorldNormal);
+        if (normal_info == nullptr || normal_info->shader_symbol == nullptr)
+        {
+            result.diagnostics.emplace_back(
+                "WorldNormal semantics are not registered");
+        }
+        else
+        {
+            const std::string conditional = ExtractConditionalBlock(
+                interstage_source, "HGL_VARYING_WORLD_NORMAL");
+            if (conditional.find(std::string("vec3 ") + normal_info->shader_symbol)
                     == std::string::npos)
                 result.diagnostics.emplace_back(
-                    std::string(path)
-                    + " must consume the optional WorldNormal varying when present");
+                    "common/interstage_varying.glsl must declare fragWorldNormal "
+                    "under HGL_VARYING_WORLD_NORMAL");
+
+            // 「有则消费」的两个领域：接口给了就必须用上，否则顶点法线会静默退化
+            // 成面法线兜底。
+            const char *const normal_consumers[] =
+            {
+                "ShaderLibrary/domain/checker_3d/checker_3d.frag",
+                "ShaderLibrary/domain/error_checker_3d/error_checker_3d.frag",
+            };
+            for (const char *consumer_path : normal_consumers)
+            {
+                const std::string consumer_source =
+                    ReadFileText(RepoRootPath(consumer_path));
+                if (consumer_source.find(
+                        "si.worldNormal = normalize(fragWorldNormal);")
+                        == std::string::npos)
+                    result.diagnostics.emplace_back(
+                        std::string(consumer_path)
+                        + " must consume the optional WorldNormal varying when present");
+            }
         }
 
         DomainShaderTemplate sky_minimal_template;

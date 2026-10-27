@@ -12,7 +12,7 @@
 //
 // ── 本文件必须被两个 stage 各 include 一次，include 前必须定义其一 ──
 //   HGL_MESH_OUTPUT_VARYINGS     → `out` 数组声明（网格阶段）
-//   HGL_FRAGMENT_INPUT_VARYINGS  → `in` 声明 + UnpackVaryingsToSurfaceInput()（片段阶段）
+//   HGL_FRAGMENT_INPUT_VARYINGS  → `in` 声明（片段阶段）
 //
 // ── 网格阶段前置条件 ──
 //   1. `mesh/stage_common.glsl` 已 include（提供 perprimitiveEXT 等）
@@ -25,15 +25,25 @@
 //   这个顺序是硬要求（见 mesh/stage_body.glsl 的说明）。
 //
 // ── 片段阶段前置条件 ──
-//   1. `generated/common_options.glsl` 已 include
-//   其余（`common/surface_interface.glsl`）由本文件自己拉。
+//   只有一条：主着色器在**所有 `#extension` 之后**（也就是所有 include 之后、
+//   第一条非预处理 token 之前）定义 HGL_FRAGMENT_INPUT_VARYINGS 并 include 本文件。
+//   开关源 `generated/common_options.glsl` 由片段段自己拉，主着色器不必知道它。
+//
+//   本文件只管**声明**，不管搬运。`fragXxx` → `SurfaceInput` 的赋值留在各领域
+//   主着色器里，因为「搬过来的东西怎么解释」是领域语义而不是接口语义：
+//   · `sky` 没有 world pos，它拿 `fragDirection` 当 `worldPos` / `viewDir` 用；
+//   · `checker_3d` / `debug_normal` 的 `viewDir` 分别是 `-fragWorldPos` 与
+//     归一化后的法线，`forward_lit` 却是 `camera.camera_world_pos - fragWorldPos`；
+//   · 面法线兜底必须排在顶点法线之后，次序写死在 main 里。
+//   这些差异不是重复，所以没有、也不要加统一的 `UnpackVaryings(...)`。
 //
 // 顶点色在网格阶段恒开（见 EmitInterStageVaryingOptions 的约束 2）：网格侧不区分
 // 直出 / 调色板 / 缺省白三种来源，一律输出顶点色。多写一个片段侧不读的 varying
 // 在 Vulkan 里是合法的（只浪费一点带宽），少写则不合法 —— 所以恒开是安全方向。
 //
 // 新增一条阶段间语义的顺序：ShaderSemanticRegistry.cpp 的注册表 → 本文件补
-// 声明与解包 → writer 补写出 → EmitInterStageVaryingOptions 的 emittable 判定放行。
+// 声明 → writer 补写出 → EmitInterStageVaryingOptions 的 emittable 判定放行，
+// 并在消费该语义的领域主着色器里自行赋值。
 // 四处缺一不可，且 location 数字**永远**只来自 interstage_locations.glsl。
 #ifndef HGL_INTERSTAGE_VARYING_GLSL
 #define HGL_INTERSTAGE_VARYING_GLSL
@@ -84,12 +94,19 @@ layout(location=HGL_LOCATION_LUMINANCE) out float fragLuminance[ULRE_MESH_MAX_VE
 #endif // HGL_MESH_OUTPUT_VARYINGS
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 片段阶段：输入 varying + 解包到 SurfaceInput
+// 片段阶段：输入 varying
 // ═══════════════════════════════════════════════════════════════════════════
 #if defined(HGL_FRAGMENT_INPUT_VARYINGS)
 
-#include "common/surface_interface.glsl"
+// 片段段自己拉开关源：主着色器只需「定义 HGL_FRAGMENT_INPUT_VARYINGS + include
+// 本文件」两行，不必知道 `generated/` 下有几个文件。网格段的开关源由形状主着色器
+// 显式 include（它的 include 顺序是硬契约，声明必须在 topology layout 之后）。
+#include "generated/common_options.glsl"
 
+// ⚠ 声明**次序**是 SPIR-V 字节等价性的一部分（glslang 按声明序发射 OpVariable）。
+// 这一段的次序刻意与迁移前各 `.frag` 里的手抄次序一致：DataIndexID → WorldPos →
+// WorldNormal → UV0 → StyleID → Direction → Luminance → VertexColor。改动它会让
+// 全部片段 SPV 变字节（语义不变），等价性比对与基线都会失效。
 #if defined(HGL_VARYING_DATA_INDEX_ID)
 layout(location=HGL_LOCATION_DATA_INDEX_ID) flat perprimitiveEXT in  uint fragDataIndexID;
 #endif
@@ -105,46 +122,15 @@ layout(location=HGL_LOCATION_UV0) in vec2 fragUV0;
 #if defined(HGL_VARYING_STYLE_ID)
 layout(location=HGL_LOCATION_STYLE_ID) flat perprimitiveEXT in  uint fragStyleID;
 #endif
-#if defined(HGL_VARYING_VERTEX_COLOR)
-layout(location=HGL_LOCATION_VERTEX_COLOR) in vec4 fragVertexColor;
-#endif
 #if defined(HGL_VARYING_FRAG_DIRECTION)
 layout(location=HGL_LOCATION_FRAG_DIRECTION) in vec3 fragDirection;
 #endif
 #if defined(HGL_VARYING_LUMINANCE)
 layout(location=HGL_LOCATION_LUMINANCE) in float fragLuminance;
 #endif
-
-// 只把「阶段间传过来的东西」搬进 SurfaceInput：点位 / 法线 / UV / 顶点色 /
-// 亮度 / 样式索引。**派生量不属于这里**（`worldPos` 的视线方向要用
-// `camera.camera_world_pos` 还是 `-worldPos` 是领域自己决定的，`screenPos`
-// 恒取 gl_FragCoord），面法线兜底同理留在主着色器里 —— 它们依赖该领域的
-// `HGL_MATERIAL_FACE_NORMAL_FALLBACK` 与赋值次序（兜底必须排在顶点法线之后）。
-//
-// 未置位的语义保持 `si` 的初值不动，所以主着色器**必须**在调用前给 `si`
-// 赋全套默认值 —— 这是有意的：默认值的语义（法线朝 +Z、视线朝 +Z、
-// 亮度 1.0）是 `SurfaceInput` 契约的一部分，不能让解包函数替它隐式决定。
-void UnpackVaryingsToSurfaceInput(inout SurfaceInput si)
-{
 #if defined(HGL_VARYING_VERTEX_COLOR)
-    si.vertexColor = fragVertexColor;
+layout(location=HGL_LOCATION_VERTEX_COLOR) in vec4 fragVertexColor;
 #endif
-#if defined(HGL_VARYING_WORLD_POS)
-    si.worldPos = fragWorldPos;
-#endif
-#if defined(HGL_VARYING_WORLD_NORMAL)
-    si.worldNormal = normalize(fragWorldNormal);
-#endif
-#if defined(HGL_VARYING_UV0)
-    si.uv0 = fragUV0;
-#endif
-#if defined(HGL_VARYING_LUMINANCE)
-    si.luminance = fragLuminance;
-#endif
-#if defined(HGL_VARYING_STYLE_ID)
-    si.styleID = fragStyleID;
-#endif
-}
 
 #endif // HGL_FRAGMENT_INPUT_VARYINGS
 
