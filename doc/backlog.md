@@ -87,8 +87,8 @@
    **余下（第二遍，随触碰收敛）**：① 8 档里**非关键句**的措辞（如散文里"经 PrimitiveComponent 绑定"）只被 banner 覆盖、未逐句改写；
    ② 扫描口径注：banner 本身会**提**已删符号 ⇒ 原"250 处"计数会**升**，别把计数当进度（判据应是"没有档把已删符号当现行"）。
    **2026-10-14 新量化（A5 去组件化后仍在提已删组件名的档 = 27 档 / 250 处，分三类处置）**：
-   · ① **现行口径档**（须改到与代码一致）：`doc/ecs/primitive-geometry-vdm.md`(7) · `doc/ecs/transform-data-management-and-transfer.md`(5) · `doc/simple-sphere-ecs-render-chain.md`(6) · `doc/simple-sphere-material-shadergen-overview.md`(4) · `doc/texture2darray-unified-texture-binding.md`(5) · `doc/shadow-component-and-automated-pipeline-design.md`(5) · `doc/material-lit-recipe-to-shadergen-dataflow.md`(3) · `doc/ShaderGen_MaterialGLSL_DesignAnalysis.md`(1)；
-   · ② **历史记录档**（只挂 banner 指路，不改正文）：`doc/future/**`（**2026-10-18 删 9 档后余 10 档**，含 `ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`(49)、`ULRE_Architecture_Technical_Review_20260930.md`(29)）· `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`(5) · `doc/csm-review-2026-09-25.md`(4) · `doc/gpu-driven-4id-draw-item-plan-2026-09.md`(11)；
+   · ① **现行口径档**（须改到与代码一致）：`doc/archive/ecs/primitive-geometry-vdm.md`(7) · `doc/archive/ecs/transform-data-management-and-transfer.md`(5) · `doc/simple-sphere-ecs-render-chain.md`(6) · `doc/simple-sphere-material-shadergen-overview.md`(4) · `doc/texture2darray-unified-texture-binding.md`(5) · `doc/archive/shadow-component-and-automated-pipeline-design.md`(5) · `doc/material-lit-recipe-to-shadergen-dataflow.md`(3) · `doc/ShaderGen_MaterialGLSL_DesignAnalysis.md`(1)；
+   · ② **历史记录档**（只挂 banner 指路，不改正文）：`doc/future/**`（**2026-10-18 删 9 档后余 10 档**，含 `ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`(49)、`ULRE_Architecture_Technical_Review_20260930.md`(29)）· `doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`(5) · `doc/csm-review-2026-09-25.md`(4) · `doc/gpu-driven-4id-draw-item-plan-2026-09.md`(11)；
    · ③ **故意提及，不动**：逐条审计报告 / 本账本 / `doc/visibility-authority-chain.md` / 主档里的「已删」清单。
    **主档 `doc/ecs-layer-architecture-and-frame-flow.md` 已于 2026-10-14 改到一致**（§2.1 对象模型 + §5 组件表 + 17 处同题口径）。
 7. 功能项：棋盘格标记色上色 + 2D/3D 分派
@@ -387,7 +387,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 ## D 线：CSM/阴影后续（2026-09-26 review 消化 + masked 链深挖新卡）
 
 > 来源：`doc/csm-review-2026-09-25.md`（A5/A6/A7-A10/T 系列剩余）+
-> `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`（masked 链深挖
+> `doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`（masked 链深挖
 > 新卡）。快赢组（A9/A7/T10/T2/T7 + demote feature）已完成不再列。
 > 深度图读回报证工具见 `example/Shadow/AlphaTestShadow.cpp` 的 DumpCascadeDepth。
 
@@ -869,7 +869,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
   （bbox 112x58 filled 3740）；D3 `18189 px / 0 px` 与 `600662 px` 不变；`mean_lum=113.3/112.3/134.0` 不变；
   `CSM_CACHE_DIFF=1 CSM_AUTOWALK=24` 74 轮 `不一致=0`；`TestCSMIncrementalPass` **21 Passed**/rc=0
   （新增 Test 21 源码契约 + 破坏验证双向咬住）。
-- **遗留（新发现，非本次引入）→ ✅ 已解决（2026-09-27，见 `doc/csm-readback-and-leak-followup.md` 第 1 项）**：
+- **遗留（新发现，非本次引入）→ ✅ 已解决（2026-09-27，见 `doc/archive/csm-readback-and-leak-followup.md` 第 1 项）**：
   从帧外读回**交换链颜色图**曾触发 `vkQueueSubmit(): ... presentable VkImage ... has not been acquired`
   （改造前同样存在：旧代码硬编码 `PRESENT_SRC_KHR` 转的就是这张图，实测拷贝有效）。现在改为：
   交换链 RT 维护「颜色访问窗口」状态（`NextFrame()` 开、`Submit()` 收尾关）+ 帧内回读钩子
@@ -929,7 +929,8 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 
 ### E2. gather 侧运行长度合并：把「一项一条 ICB 命令」合批成实例（2026-10-05 用户留置）
 
-**状态：🟡 已开工（2026-10-07）—— 技术文档（研究用）= `doc/instance-batching-and-static-bake-design.md`；执行方案 = `doc/future/e2-gather-run-length-merge-plan.md`（本稿定"怎么做 + 怎么验"：硬约束=合并命令的实例行号必须连续；形态 A 块内合并（推荐）/ B 全局扫描；判据必须换维度=命令数 + ΣY==项数）。** 现象详版 = `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八。
+**状态：🟡 已开工（2026-10-07）—— 技术文档（研究用）= `doc/archive/instance-batching-and-static-bake-design.md`；执行方案 = `doc/archive/future/e2-gather-run-length-merge-plan.md`（本稿定"怎么做 + 怎么验"：硬约束=合并命令的实例行号必须连续；形态 A 块内合并（推荐）/ B 全局扫描；判据必须换维度=命令数 + ΣY==项数）。** 现象详版 = `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八。
+> ⚠ 上述两份档已于 2026-10-28 按「7 天时间窗」封存进 `doc/archive/`（正文不再维护，方案结论仍适用）；本项**仍为在办工作**，恢复推进时先按代码现状复核这两份档再动手。
 
 - **现象**：`GPUDrivenCull` 接管后 ICB 内 64 个 cube 是 **64 条 `(x,1,1)` 命令**（用户 RenderDoc 截帧实测），
   而 CPU 账路径是 **1 条 Y=64**（`src/ecs/support/PrimitiveBatchPipeline.cpp:733`
@@ -1003,6 +1004,7 @@ A5(比较采样) ◄──同做───────────┘            
 | 已结案复盘 + 审计冗余 | `future/gpu-cull-flicker-postmortem.md`、`future/offscreen-onetime-world-stall-analysis.md`、`ecs-deep-quality-audit-and-evidence-2026-10.md`、`ecs-deep-audit-crossreview-2026-10.md`、`ecs-deep-audit-second-crossreview-2026-10-11.md`、`ecs-audit-consensus-and-task-plan-2026-10-11.md` | 结论已合流进 `ecs-quality-audit-2026-10.md` §2.2 + `analysis/ecs-audit-2026-10/` 与 `future/entity-rows-gpu-cull-plan.md` §11.9/§11.17 |
 
 **保留**（虽形似候选，但有未结项或为现行交付物）：`future/stage_B_debt_list.md`（本档 §5 有 `receive_shadow` 幅度漂移未定位）、`future/e2-gather-run-length-merge-plan.md`（🟡 已开工）、`instance-batching-and-static-bake-design.md`、`future/ULRE_Architecture_Phase3_Entity64B_Binary_Scene_BlitLoading.md`（§5 已延后）、`simple-sphere-*` 两篇、`ambient-provider-types-inventory.md`。
+> 注：上句「保留」按**内容**判定（有未结项或为现行交付物）。其中 `future/e2-gather-run-length-merge-plan.md`、`instance-batching-and-static-bake-design.md`、`future/ULRE_Architecture_Phase3_Entity64B_Binary_Scene_BlitLoading.md` 三份在 2026-10-28 按**时间窗**（>7 天未更新）改判**封存**至 `doc/archive/`——即「内容有效但停止维护」，与内容作废的 `doc/deprecated/` 不同。
 > 注：`texture-asset-id-streaming-plan.md`、`terrain-rendering-implementation-plan.md`、`terrain-vulkan-standalone-experiment.md` 原本也在此清单，2026-10-19 复核判定为"纯提案且无实施痕迹"，已改判**归档**（见下方「文档归档记录（2026-10-19）」）。
 
 **同步改写的引用**：本档 3 处（§1 B4 过期声明行、§2 标题、§2 ② 历史记录档清单）、`csm-mechanism.md`、`ecs-quality-audit-2026-10.md`（3 处）、`future/ULRE_FINAL_TARGET_v2_设计约束.md`、`future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`、`future/ULRE_Transform_System_Completion_Design_and_Plan.md`、`future/entity-rows-gpu-cull-plan.md`（2 处）、`future/shadergen-material-chain-review.md`、`render-flow-cull-sort-drawcall.md`、`terrain-rendering-implementation-plan.md`、`texture-asset-id-streaming-plan.md`（2 处）、`src/ecs/core/ContextRender.cpp` 与 `src/ecs/tests/TestCSMIncrementalPass.cpp` 的注释（指向 `entity-rows-gpu-cull-plan.md` §11.17）。
@@ -1028,7 +1030,22 @@ A5(比较采样) ◄──同做───────────┘            
 
 - `future/lighting-shadow-domain-split-plan.md` — 虽 T6a/T6b 均已落地结案，但仍是**现行光源/影子域的设计依据**，被 `inc/hgl/ecs/support/LightRowTable.h`、`inc/hgl/ecs/systems/render/{EnvironmentSystem,LightSystem,MainLightShadowSystem}.h` 等 6 处代码注释直接引用。
 - `future/sky-domain-and-provider-params-plan.md` — sky 段已整删，但 §2 的 provider 参数块规则（R1 一槽一块一地址 / R2 同族字段）仍是 `inc/hgl/graph/ubo/AmbientEnvInfo.h` 的规则出处。
-- `future/ULRE_Transform_System_Completion_Design_and_Plan.md` — 无内部完成度标记，无法判定是否已被 A5/T2-c 全量覆盖。
-- `build-and-module-structure-audit-2026-10.md`、`object-hierarchy-and-logger-design.md`、`instance-batching-and-static-bake-design.md`、`gpu-cull-multipass-design-and-shadow-hang-analysis.md` — 均为**提案/底稿/记录**，描述对象仍在位且无失效证据。
+- `future/ULRE_Transform_System_Completion_Design_and_Plan.md`（2026-10-28 已封存至 `doc/archive/`）— 无内部完成度标记，无法判定是否已被 A5/T2-c 全量覆盖。
+- `build-and-module-structure-audit-2026-10.md`、`object-hierarchy-and-logger-design.md`、`instance-batching-and-static-bake-design.md`（2026-10-28 已封存至 `doc/archive/`）、`gpu-cull-multipass-design-and-shadow-hang-analysis.md`（手工移入 `doc/deprecated/`）— 均为**提案/底稿/记录**，描述对象仍在位且无失效证据。
 
 **同步改写的引用**：本档 2 处（档首关联文档、文档清理记录「保留」清单）、`src/GUI/ThemeEngine.cpp:20` 注释、`doc/shadergen-reduction-closure-report.md`（3 处）、`doc/ultra-thin-implementation-status.md`（1 处）、`doc/future/lighting-shadow-domain-split-plan.md`（2 处）、`doc/future/stage_B_debt_list.md`（1 处）、归档档内部互引 4 处。索引另见 `doc/deprecated/README.md`。
+
+---
+
+## 📦 文档封存记录（2026-10-28）
+
+本轮改用**纯 git 时间窗**判据：以 `2026-10-28` 为基准，**最近 7 天**（HEAD 提交日 ≥ `2026-10-21`）内更新过的档保留在 `doc/`，其余全部封存至 `doc/archive/`（`git mv`，路径可追溯）。
+
+- **保留 43 份**（根目录活跃档 + `future/` + `analysis/` 中 10-21 后动过的档 + `backlog.md` / `ultra-thin-implementation-status.md` 等交接主档）
+- **封存 20 份** → `doc/archive/`，其中 `future/` 4 份、`analysis/ecs-audit-2026-10/` 5 份、`ecs/` 2 份、`baseline/` 1 份、根目录 8 份
+- **豁免 6 份**（超出时间窗但**被代码注释引用**，强行搬迁会打断源码指引）：`world-addresses-and-camera-model-plan.md`(14 处)、`future/ULRE_FINAL_TARGET_v2_设计约束.md`(3)、`build-and-module-structure-audit-2026-10.md`(2)、`future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`(1)、`future/stage_B_execution_plan.md`(1)、`future/entitygpu-and-ulrescene-design.md`(1)
+- **不套用时间窗**：`doc/deprecated/`（已于 2026-10-19 按内容判据封存，另有 `README.md` 说明）；`doc/material/bc5-normal-maps.md` 与移入 `doc/deprecated/gpu-cull-multipass-design-and-shadow-hang-analysis.md` 的两份为并发手工整理结果，未纳入本轮动作
+
+**`archive` 与 `deprecated` 的语义区分**：`deprecated` = 判定**失效**（会误导实现）；`archive` = 仅**停止维护**（内容未必错，用前须对照代码）。索引见 `doc/archive/README.md`。
+
+**同步改写的引用**（18 个文件，全部改为 `doc/archive/...`）：`.ai/skills/SKILL_CASCADED_SHADOW_CSM.md`（4 处）、本档（12 处，含 §E2「已开工」状态注、文档清理「保留」清单改判注）、`doc/csm-mechanism.md`（2）、`doc/csm-review-2026-09-25.md`（3）、`doc/ENVIRONMENT_SYSTEM.md`（3）、`doc/visibility-authority-chain.md`（1）、`doc/world-addresses-and-camera-model-plan.md`（1）、`doc/ecs-quality-audit-2026-10.md` 同族审计表（5 行，保持文件名写法）、`doc/build-and-module-structure-audit-2026-10.md`（1）、`doc/simple-sphere-ecs-render-chain.md`（1）、`doc/gpu-driven-4id-draw-item-plan-2026-09.md`（1）、`doc/future/lighting-shadow-domain-split-plan.md`（1）、`doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`（1）、`doc/deprecated/README.md`（2）、`doc/deprecated/texture-asset-id-streaming-plan.md`（3）、以及被封存档内部互引 3 处。
