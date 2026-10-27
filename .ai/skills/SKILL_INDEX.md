@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含12个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph、**级联阴影CSM**、**ECS架构解耦设计规范**和快速参考。
+本目录包含14个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、CMCore线程/并发与异步文件IO、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph、**级联阴影CSM**、**ECS架构解耦设计规范**和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -125,6 +125,24 @@
 需要有序Map高频增删？      → OrderedMap（B树）
 需要静态有序Map序列化？   → FlatOrderedMap
 需要内存块管理？          → MemoryBlock / BlockAllocator
+→ 使用这个SKILL
+```
+
+---
+
+### 0.4.1 [SKILL_TASK_SYSTEM_AND_ASYNC_IO.md](SKILL_TASK_SYSTEM_AND_ASYNC_IO.md)
+**适用：统一任务执行/队列架构、优先级异步文件加载及跨线程结果分流**
+
+- 🧵 `WorkHandler`、`SingleWorker`、`WorkerPool`、`PolledWorker` 的职责边界
+- 🚦 多级优先队列、优先级饥饿与 SPSC/MPSC/MPMC 通道选择
+- 📁 图片/音频异步文件加载、目标线程路由、取消与缓冲区生命周期
+- 📊 队列峰值、请求计数、等待时间及 IO 耗时统计
+
+**快速导航：**
+```
+图片优先于音频读取？       → AsyncFilePriority + AsyncFileLoader
+结果需要交给不同线程？     → AsyncFileLoadHandler::OnFileLoaded + target_id
+如何选择目标队列？         → 本文 §2 通道拓扑选择
 → 使用这个SKILL
 ```
 
@@ -381,10 +399,11 @@
 
 ```
 .ai/skills/ 目录结构
-├── SKILL_*.md (本集合，7个文件)
+├── SKILL_*.md (本集合，14个指南文档)
 │   ├── SKILL_HGL_TYPES_REFERENCE.md  ← HGL类型参考（必读）
 │   ├── SKILL_CMCORETYPE_REFERENCE.md ← CMCoreType底层库完整参考
 │   ├── SKILL_CMCORE_REFERENCE.md     ← CMCore完整参考（线程/时间/队列等）
+│   ├── SKILL_TASK_SYSTEM_AND_ASYNC_IO.md ← 任务架构与优先级异步文件IO
 │   ├── SKILL_ADD_NEW_RENDER_COMPONENT.md
 │   ├── SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md
 │   ├── SKILL_EXECUTION_PHASE_ORDERING.md
@@ -441,6 +460,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | SKILL_HGL_TYPES_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_CMCORETYPE_REFERENCE.md | 📊 深 | 10 min | ⭐ | ✓ |
 | SKILL_CMCORE_REFERENCE.md | 📊 深 | 10 min | ⭐ | ✓ |
+| SKILL_TASK_SYSTEM_AND_ASYNC_IO.md | 📘 深 | 20 min | ⭐⭐ | ✓✓ |
 | SKILL_QUICK_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_ADD_NEW_RENDER_COMPONENT.md | 📘 深 | 20 min | ⭐⭐ | ✓✓ |
 | SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md | 📗 中等 | 15 min | ⭐⭐ | ✓ |
