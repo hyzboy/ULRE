@@ -1,7 +1,7 @@
 # CSM（级联阴影贴图）工作机制 — 会话快速进入文档
 
 > 目的：让新会话在最短时间内掌握 CSM 的数据流、不变量、开关、判据与改动禁忌。
-> 相关文档：`doc/csm-readback-and-leak-followup.md`（遗留两项线索）。
+> 相关文档：`doc/archive/csm-readback-and-leak-followup.md`（遗留两项线索）。
 > 相机行槽化（T3）与 Scene UBO 的 BDA 化（S1–S3）均已落地，现行口径见 `doc/world-addresses-and-camera-model-plan.md`。
 
 ## 1. 一句话结构
@@ -161,7 +161,7 @@
 1. **交换链颜色图帧外读回** —— **✅ 已闭合（2026-10-07 复核）**：所需的引擎侧「渲染后 present 前」回读窗口 + 非 acquire 态 fail-fast 护栏**均已落地**
    （`IRenderTarget::IsColorReadbackWindowOpen()` + 交换链 RT 的帧内回读钩子 + `ReadbackColorTarget` 在窗口外直接拒绝），
    各示例的帧摘要自检（`*_SELFCHECK`）正是走这条窗口。以下原文保留作背景：
-   读回发生在帧后，而 acquire/present 在渲染阶段内开合 ⇒ 需引擎侧「渲染后 present 前」回读窗口 + 非 acquire 态 fail-fast 护栏。详见 `doc/csm-readback-and-leak-followup.md`。
+   读回发生在帧后，而 acquire/present 在渲染阶段内开合 ⇒ 需引擎侧「渲染后 present 前」回读窗口 + 非 acquire 态 fail-fast 护栏。详见 `doc/archive/csm-readback-and-leak-followup.md`。
 2. **`[LEAK]` 报告不可观察**：示例无自动退出开关（`CSM_AUTOWALK` 是速度），headless 只会被 timeout 杀掉
    ⇒ 退出期报告没机会打印。需先加帧上限开关，再用引擎已有的按类型汇总（`src/Vulkan/VKDevice.cpp:205-227`）分类。
 3. **ViewportInfo 每帧多份化**未做（与 BDA 化任务有耦合）。

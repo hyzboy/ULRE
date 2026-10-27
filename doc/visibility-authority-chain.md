@@ -2,7 +2,7 @@
 
 > **性质**：**契约文档**（不是计划）。它把此前只散在三个文件头注里的语义**收在一处**。
 > **出处**：`doc/analysis/ecs-audit-2026-10/06-visibility-three-representations.md`（问题详述 + 三个处置选项）；本档 = 该报告 **§五 选项 (c)** 的落地件。
-> **关联**：ECS 层主档 `doc/ecs-layer-architecture-and-frame-flow.md`（§5 组件层 / §6 Tick 系统层）；策略表那条审计见 `doc/analysis/ecs-audit-2026-10/07-material-four-key-spaces.md`（③ 的消费面）。
+> **关联**：ECS 层主档 `doc/ecs-layer-architecture-and-frame-flow.md`（§5 组件层 / §6 Tick 系统层）；策略表那条审计见 `doc/archive/analysis/ecs-audit-2026-10/07-material-four-key-spaces.md`（③ 的消费面）。
 > **复核基线**：`0b4a62479`（2026-10-14）。**符号名是稳定锚点，行号随重构漂移**。
 > **范围**：可见性的三种表示、谁是权威、传播规则、边界换算的唯一位置、已知失步与它的闸门、以及后续 (b)/(a) 的路径与判据。
 

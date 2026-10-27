@@ -960,7 +960,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 
 ## 8. 外部架构评审整合（2026-09-30）
 
-> 来源：`doc/future/ULRE_Architecture_Technical_Review_20260930.md`（另一工具生成，代码基线 `b941570` = **删组件之前**）。
+> 来源：`doc/archive/future/ULRE_Architecture_Technical_Review_20260930.md`（另一工具生成，代码基线 `b941570` = **删组件之前**）。
 > 本节把它逐条对照**当前**状态判定：已解决 / 仍成立（采纳）/ 不成立（给依据），并把数字重测于本批之后。
 
 ### 8.1 判定表

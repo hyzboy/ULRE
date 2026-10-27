@@ -8,7 +8,7 @@
 > **关联文档**：`doc/csm-mechanism.md`（CSM 机制本身，本稿不动其数学/缓存策略）、
 > `doc/world-addresses-and-camera-model-plan.md`（地址三档；本稿新增 `addr_lights` 与它同级）、
 > `doc/ENVIRONMENT_SYSTEM.md`（本稿**改变其一部分结论**：Environment 不再托管阴影、不再持有光源参数）、
-> `doc/shadow-component-and-automated-pipeline-design.md`（本稿**推翻其 §1 的一句定论**，见 §8 变更记录）、
+> `doc/archive/shadow-component-and-automated-pipeline-design.md`（本稿**推翻其 §1 的一句定论**，见 §8 变更记录）、
 > `doc/deprecated/shadow-mask-and-hybrid-shadows-design.md`（**未来多光源阴影**的设计草案 = 本稿的消费者）、
 > `doc/future/sky-domain-and-provider-params-plan.md`（**后续档**：天空/环境光数据面的正式形态 ——
 > 本稿把 `SkyInfo` 瘦成“天空外观”后，那份档定它作为“多种天空/天光方法共用结构”的规则；触发项，本稿不做）。
@@ -279,7 +279,7 @@
 
 | 旧说法（出处） | 新结论 | 原因 |
 |---|---|---|
-| "阴影系统本质上是方向光（太阳光）的环境衍生特征；全局配置统一由 `EnvironmentSystem`（与 `SkyInfo` 同级）托管"（`doc/shadow-component-and-automated-pipeline-design.md` §一.1） | **光源是独立域**；阴影**从属于光源**（光行持阴影句柄）；`EnvironmentSystem` 只管天空/IBL | 光的定义寄居"天空"、阴影寄居"环境" ⇒ 多光源无处安放；光源方向无单一真源（§0.3） |
+| "阴影系统本质上是方向光（太阳光）的环境衍生特征；全局配置统一由 `EnvironmentSystem`（与 `SkyInfo` 同级）托管"（`doc/archive/shadow-component-and-automated-pipeline-design.md` §一.1） | **光源是独立域**；阴影**从属于光源**（光行持阴影句柄）；`EnvironmentSystem` 只管天空/IBL | 光的定义寄居"天空"、阴影寄居"环境" ⇒ 多光源无处安放；光源方向无单一真源（§0.3） |
 | "统一管理世界级环境信息（目前有天空 `SkyInfo` 与阴影 `ShadowInfo` 两段）"（`doc/ENVIRONMENT_SYSTEM.md` §1） | 环境域**只留天空/IBL**；影子数据移出 `EnvironmentInfo` 并**世界私有化** | 影子数据挂 profile、CSM 资源挂世界 ⇒ 两世界共享 default profile 会互踩（§0.3） |
 
 ---

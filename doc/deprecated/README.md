@@ -18,8 +18,8 @@
    - ShaderGen 削减工程实测结项报告。
 5. **`doc/ecs-layer-architecture-and-frame-flow.md`** / **`doc/world-addresses-and-camera-model-plan.md`**
    - ECS 分层与帧流权威口径、世界地址与相机模型权威口径（取代归档的 RenderTarget / 多 RT 旧设计）。
-6. **`doc/async-texture-upload-and-bindless.md`**
-   - 纹理异步上传与 bindless 现行机制（取代归档的纹理资产 ID streaming 计划）。
+6. **`doc/archive/async-texture-upload-and-bindless.md`**
+   - 纹理异步上传与 bindless 现行机制（取代归档的纹理资产 ID streaming 计划）。⚠ 该档本身已在 2026-10-28 按时间窗封存，机制未变、仍可参考。
 7. **`doc/csm-mechanism.md`** / **`doc/visibility-authority-chain.md`**
    - 阴影（CSM）与可见性权威链路的现行设计（取代归档的 ShadowMask / 混合阴影草案）。
 
@@ -35,7 +35,7 @@
 | `material-lit-recipe-to-shadergen-dataflow.md` | Lit 材质数据流全链路分析 | 描述了通过生成器解析材质与生成专属着色器的历史链路，不符合「资产仅填参、不编译 SPV」的现行设计。 |
 | `shadergen-generator-diagnostics-layering.md` | 真实生成器与诊断工具分层设计 | 试图对旧版 ShaderGen 做生成态与诊断态分层，现行方向为整体剔除生成器。 |
 | `shadergen-refactoring-methodology.md` | 复杂度削减方法论 (2026-08) | 早期局部优化方法论，现行架构已升级为顶层固定 Domain 体系。 |
-| `texture-asset-id-streaming-plan.md` | 纹理资产 ID 化与全异步加载（TextureStreaming，v2） | 基线分支 `TextureStreaming` 从未合入；六项待拍板 P-1…P-6 全未定案；`TextureAssetID` 全仓零命中；引用的 `CMCore/inc/hgl/thread/Workflow.h` 已不存在（现为 `thread/WorkerPool.h` + `concurrency/SpscQueue.h`）。纹理上传机制真源仍为 `doc/async-texture-upload-and-bindless.md`（未归档）。 |
+| `texture-asset-id-streaming-plan.md` | 纹理资产 ID 化与全异步加载（TextureStreaming，v2） | 基线分支 `TextureStreaming` 从未合入；六项待拍板 P-1…P-6 全未定案；`TextureAssetID` 全仓零命中；引用的 `CMCore/inc/hgl/thread/Workflow.h` 已不存在（现为 `thread/WorkerPool.h` + `concurrency/SpscQueue.h`）。纹理上传机制真源仍为 `doc/archive/async-texture-upload-and-bindless.md`（未归档）。 |
 | `meshlet-geometry-pipeline-implementation.md` | Meshlet 几何管道与压缩顶点格式 | 档首自述 **⚠ 已作废（2026-10-05）**：用户拍板本轮不支持 meshlet，引擎侧 meshlet 路径整体删除，loader 改为显式拒绝。 |
 | `mesh-shader-thread-model-and-loadvertexdata-conflicts.md` | Mesh Shader 迁移踩坑实录 | 关联代码 `src/ShaderGen/meshgen/` 整目录已删除；分支 `to_mesh_shader` / 提交 `ad547e843` 为一次性迁移记录，全仓无反向引用。 |
 | `annotation-vs-include-tree-assessment.md` | 「用静态 include 树取代注记驱动模块表」立项评估 | 档首自述已完成历史使命；评估对象（旧 ShaderGen 注记驱动模块表）随生成器废除而消失，现行方向见 `doc/shadergen-elimination-domain-fixed-architecture.md`。 |

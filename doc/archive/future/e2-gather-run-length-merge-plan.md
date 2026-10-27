@@ -17,7 +17,7 @@
 >    （S2 每帧紧凑重排 ⇒ 行号仅帧内有效，外部不得缓存；跨帧稳定只能 tombstone = Q1 已否形态）；
 >    ④ §3 补「S1 与 CSM 静态缓存各管一段」的关系说明。
 >
-> **背景/机制/方案空间通读稿**（研究用）= `doc/instance-batching-and-static-bake-design.md`（技术文档 v3）。
+> **背景/机制/方案空间通读稿**（研究用）= `doc/archive/instance-batching-and-static-bake-design.md`（技术文档 v3）。
 > **来源**：`doc/backlog.md` E 线 E2（2026-10-05 用户留置）→ 2026-10-07 用户重定方向（v2）→ 2026-10-08 架构收敛（v3）→ 同日补档（**本稿 v4**）。
 > 现象与机制层规格仍见 `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八 / §9。
 >

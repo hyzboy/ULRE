@@ -132,7 +132,7 @@ if (world && world->IsCurrentPassShadow())
 - `bias_multiplier`：`ShadowComponent.h:19/41`，`RenderableComponent.h:104 GetShadowBiasMultiplier()` **零调用者**
 - `max_cast_distance` 是唯一真正被消费的（`RenderPrimitiveCollectSystem.cpp:1172`/`:1293`）
 
-而 `doc/shadow-component-and-automated-pipeline-design.md:19` 把两者写成已生效的"标准默认行为"，Test 8C 又断言了整条 getter 转发链——读出"已接通"的错觉。要么落地（receive 需接 shader/材质侧，bias_multiplier 需进 material row），要么删字段并把文档标为未接通。
+而 `doc/archive/shadow-component-and-automated-pipeline-design.md:19` 把两者写成已生效的"标准默认行为"，Test 8C 又断言了整条 getter 转发链——读出"已接通"的错觉。要么落地（receive 需接 shader/材质侧，bias_multiplier 需进 material row），要么删字段并把文档标为未接通。
 
 ### A6【低-中】一帧最多 4 次离屏 `RenderTo`，各带一次全流水线排空
 
@@ -176,7 +176,7 @@ if (world && world->IsCurrentPassShadow())
 | 选级与采样分离 | `EvalPCFShadowAt(worldPos, selectPos)` 双入参让法线偏移不污染级联归属，7C 源码契约守住该不变量 |
 | `bias_world` 世界单位化 | 正视了"同一归一化 bias 在 2.75 倍深度范围差下不可调"的真问题；与 `per_cascade_bias_scale` 的优先级有 6A-6D 契约 |
 | 法线偏移（`tan(θ)` 加权） | 补上引擎缺 `vkCmdSetDepthBias`（`VKPipelineResolver` 无 `VK_DYNAMIC_STATE_DEPTH_BIAS`）的短板；几何法线 / 光方向同源 / 总开关与强度分离三条约束写得很清楚 |
-| 多帧在飞一致性 | `ShadowInfo` 分槽 + 只写当前槽 + `MarkDirty` 不写 GPU，并明确禁止"全槽 WaitFence 压症状"（`doc/shadow-ubo-inflight-overwrite.md`） |
+| 多帧在飞一致性 | `ShadowInfo` 分槽 + 只写当前槽 + `MarkDirty` 不写 GPU，并明确禁止"全槽 WaitFence 压症状"（`doc/archive/shadow-ubo-inflight-overwrite.md`） |
 | 屏蔽级联硬规则 | "先按 view_depth 定级，再判 `shadow_tex.x==0` 返回受光，绝不下沉"，连反例（关 CSM1 后近景被 CSM2 接管且无缝）都写清了 |
 | `§3.4` 锚定基准 | `snapped_sphere_center` 必须回到 `cx0/cy0` 而非 `cx/cy`——这类方案的经典致命细节，有反证记录 |
 
@@ -219,7 +219,7 @@ if (world && world->IsCurrentPassShadow())
 - [ ] 同文件补：`ShadowCaster/DepthOnly` 变体未被启用（A1）与静态缓存失效链缺失（A3）两个已知缺口
 - [ ] 同文件补 T2 / T7：包围球拟合的交易、为什么不用 `OffscreenWorld`
 - [ ] `example/Shadow/CascadeShadowMap.cpp:886` 窗口标题去掉 "Toroidal Cache"（未实现）
-- [ ] `doc/shadow-component-and-automated-pipeline-design.md:19`：标注 `receive_shadow` / `bias_multiplier` 尚未接通
+- [ ] `doc/archive/shadow-component-and-automated-pipeline-design.md:19`：标注 `receive_shadow` / `bias_multiplier` 尚未接通
   —— **作废（2026-09-26 D3 已接通）**，无需再标注
 
 ---
@@ -227,7 +227,7 @@ if (world && world->IsCurrentPassShadow())
 ## 4.5 执行结果附记（2026-09-26 更新）
 
 §3 执行顺序的落地状态（提交号见 `git log`；取证方法与判读基准见
-`doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`）：
+`doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`）：
 
 | 项 | 状态 | 说明 |
 |----|------|------|

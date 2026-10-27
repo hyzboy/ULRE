@@ -45,7 +45,7 @@
 
 1. **数据放哪**——集中在一个管理器(`EnvironmentManager`,设备级容器;profile 生命周期随世界,见下 2),而不是每个 ECS world 各自建 UBO。旧 EnvironmentSystem 模式当年的症状是"多 RT 争抢共享描述符集的 sky binding",但**Scene 集已整体退场**,该形态不复存在;现在要防的是 sky / shadow / env 的**地址写全局字段** ⇒ 多世界同帧只有最后解析的那个 profile 生效(权威文档 §4);
 2. **谁用哪份**——RT/WORLD 只持有一个 `EnvProfileID` 引用,不复制数据;未设置即用内置 default(订正 2026-09-28:profile 的所有权与生命周期**随世界**——世界创建时选/建自己的 profile、销毁时归还,内置 default 可共享;C2);
-3. **什么时候写 GPU**——sky 在每个 RT/RenderPass 开始时固定全量写入。shadow 不是单份:按交换链 acquired image 分槽,只在交换链帧 acquire 之后写入当前槽。详见 `doc/shadow-ubo-inflight-overwrite.md`。
+3. **什么时候写 GPU**——sky 在每个 RT/RenderPass 开始时固定全量写入。shadow 不是单份:按交换链 acquired image 分槽,只在交换链帧 acquire 之后写入当前槽。详见 `doc/archive/shadow-ubo-inflight-overwrite.md`。
 
 ### 分层总览
 
@@ -134,7 +134,7 @@ struct Profile
 - `accessor->Update(data)`(拷贝进映射窗口 + 置脏,`inc/hgl/vk/buffer/StructView.h:200`)接着 `accessor->Commit()`(把窗口范围标脏交 L2,`StructView.h:215`)——只调其中一个都不完整;
 - 直接改 `Data()` 返回的指针后必须自己 `Commit()`,否则数据停在映射窗口未提交(历史上 sky 丢数据就是这个原因);
 - manager 内所有写入路径都遵守这一约定:`MaterializeSkyUBO`(`EnvironmentManager.cpp`)、`MarkDirty`;**影子数据的写入路径已不在此**(世界侧 `ECSContext::InitializeShadowInfoTable` / `CommitShadowInfo`,同样 `Update()+Commit()` 两连);
-- 注:`MarkSkyDirty()` 转发到 `MarkDirty`,sky 当帧写入 GPU。~~`MarkShadowDirty()`~~ **已删(T6b/P4)**;影子数据的跨帧安全由「世界私有 + 按帧槽各一份 + 只在交换链帧 acquire 之后写本帧槽」保证(旧症状与修复见 `doc/shadow-ubo-inflight-overwrite.md`)。
+- 注:`MarkSkyDirty()` 转发到 `MarkDirty`,sky 当帧写入 GPU。~~`MarkShadowDirty()`~~ **已删(T6b/P4)**;影子数据的跨帧安全由「世界私有 + 按帧槽各一份 + 只在交换链帧 acquire 之后写本帧槽」保证(旧症状与修复见 `doc/archive/shadow-ubo-inflight-overwrite.md`)。
 
 ## 4. 选择层:RT 持有句柄
 
@@ -218,7 +218,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 | 信息 | 写入策略 |
 |---|---|
 | camera / viewport / sky | **pass 开始固定全量写** |
-| ~~shadow~~ | **已移出本模块(T6b/P4)**:影子数据世界私有,写入点 = `ECSContext::CommitShadowInfo`(**本世界帧 RT** 的当前槽,非仅交换链);~~`MarkShadowDirty`~~ 已删。旧症状与修法见 `doc/shadow-ubo-inflight-overwrite.md`(头部已标结构性解决) |
+| ~~shadow~~ | **已移出本模块(T6b/P4)**:影子数据世界私有,写入点 = `ECSContext::CommitShadowInfo`(**本世界帧 RT** 的当前槽,非仅交换链);~~`MarkShadowDirty`~~ 已删。旧症状与修法见 `doc/archive/shadow-ubo-inflight-overwrite.md`(头部已标结构性解决) |
 | ColorPalette | 变化时写一次(内容基本静态) |
 | 材质 SSBO(PBRSurface 等) | 作者侧 `Commit()`,不在此管 |
 

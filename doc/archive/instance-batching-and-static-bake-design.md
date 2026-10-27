@@ -22,7 +22,7 @@
 >    （= Q1 已否的 flag 形态，属取舍）。见 §5.1。
 > 4. **关系澄清**：S1 与 CSM 的静态 caster 缓存**各管一段**（见 §4.5 新增行）。
 >
-> **配套**：执行方案（怎么做/怎么验）= `doc/future/e2-gather-run-length-merge-plan.md`（v3）；
+> **配套**：执行方案（怎么做/怎么验）= `doc/archive/future/e2-gather-run-length-merge-plan.md`（v3）；
 > 现象原始记录 = `doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八（含用户 RenderDoc 截帧证据）；
 > 机制层规格 = 同档 §9；任务登记 = `doc/backlog.md` E 线 E2。
 >
@@ -388,7 +388,7 @@ uint entity_index = gl_GlobalInvocationID.x;  // 实体表轴的一维网格
 
 ### 9.3 相关文档
 
-- 执行方案（含 T1..T6、破坏验证、回滚点）：`doc/future/e2-gather-run-length-merge-plan.md`（v4）
+- 执行方案（含 T1..T6、破坏验证、回滚点）：`doc/archive/future/e2-gather-run-length-merge-plan.md`（v4）
 - 现象与原始证据（RenderDoc 截帧、flush 日志、CPU vs 接管对照表）：`doc/future/entity-rows-gpu-cull-plan.md` §8.10 §八
 - 机制层规格与契约条目（M1..M6）：同档 §9
 - 静态/动态与阴影域的先例（`mobility_filter=Static` 条带路径）：`doc/csm-mechanism.md`、`doc/backlog.md` D5

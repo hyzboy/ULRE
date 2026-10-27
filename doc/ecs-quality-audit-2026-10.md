@@ -308,6 +308,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 > | 8 | `MaterialRuntimeRow` 把 key 存了约 3.5 份（`key` + `recipe_hash` + `data_index_row` + `cached_effective_recipe_hash`） | `key` 是段内三元组；`recipe_hash`/`data_index_row` 是键的可比字段（比较/索引用），`cached_effective_recipe_hash` 是**缓存**（键的纯函数） | 可做：把"键的三元组"与"缓存值"的**边界写进头注**（哪些字段必须与键一致、哪些允许滞后）；真删字段要连带改键比较与 GPU 侧读取，风险中 |
 
 **逐条详述报告（2026-10-10）**：`doc/analysis/ecs-audit-2026-10/` 下 6 份，每份含「现状证据 → 为什么要这么设计 → 可证的问题 → 未证实/需确认 → 处置选项与成本 → 建议」：
+> 位置更新（2026-10-28）：其中 #1 #2 #3 #7 #8 五份已按时间窗封存至 `doc/archive/analysis/ecs-audit-2026-10/`（正文未变），#6 仍在 `doc/analysis/ecs-audit-2026-10/`。下表沿用原文件名。
 
 | # | 报告 | 一句话结论 |
 |---|---|---|

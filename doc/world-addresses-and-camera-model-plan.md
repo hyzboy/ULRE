@@ -4,12 +4,12 @@
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
 
 > 权威口径文档。决策人：hyzboy（2026-09-28 会话）。落地前请先读本文，再读
-> `doc/global-addresses-bda-unification-plan.md`（S1–S3：Scene 集退役 + 地址归口 GlobalAddresses）。
+> `doc/archive/global-addresses-bda-unification-plan.md`（S1–S3：Scene 集退役 + 地址归口 GlobalAddresses）。
 > 本文同时收录**本轮核出的文档事实订正清单**（§7）——其它文档按该表对齐，不要再沿用旧写法。
 >
 > ⚠ **订正（2026-10-14）**：世界表里的 **渲染项表地址**（`addr_global_render_items`）与 **DrawItemID 表地址**（`addr_draw_item_ids`）已随「CPU/GPU 双剔除遗留」
 > **整族删除**（两级存储 + 压缩器 + 绘制期解析 GLSL + 二者地址/接线/契约）⇒ 世界表 **9 → 7 字段**；GLSL 侧的 `global_render_items` / `draw_item_ids` 两个宏同批删除。
-> 4-ID 元组的**唯一真源 = 实体 4-ID 表**（`addr_entity_render_ids`）。定论见 `doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九；本文其余段落里的两表读作当时形态。
+> 4-ID 元组的**唯一真源 = 实体 4-ID 表**（`addr_entity_render_ids`）。定论见 `doc/archive/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九；本文其余段落里的两表读作当时形态。
 
 ## 0. 决策记录（用户拍板，勿翻案）
 
@@ -117,7 +117,7 @@ CPU 侧消费者（剔除 / gizmo / Line 视锥 / shadow origin）统一通过"�
 | **C0** | 提交 ShadowMap 相机行污染修复：`CameraSystem::RestoreMainCamera()` 改为**重新解算**主相机（原来是自拷贝，导致主帧相机行带离屏相机数据）。单文件、已验证。 |
 | **C1** | **表 + 相机收口**：`WorldAddresses` 落地（camera / render items / draw item ids / sky / shadow / env 地址归口）+ 相机存储下沉世界级 + 三级解析 + 0 号槽默认相机 + 容量 16 + 删世界共享相机载体 / `WorkObject::GetCamera/GetCameraInfo` / 28 示例别名 + `GetActiveCameraInfo()` + `req.camera` 必须属本世界。 |
 | **C2** | **Env 归世界**：profile 生命周期随世界 + `ResolveSkyUBO/ResolveShadowUBO` 改按世界 + `RenderSceneUBOSystem` / `ViewUBOCommitSystem` / `EnvironmentSystem` 取数点改造。 |
-| **C3** | **灯光 / 镜子相机通用化**：每个投影阴影的灯光 → 申请一个相机槽（申请/归还随灯光生命周期）；对齐 `doc/shadow-component-and-automated-pipeline-design.md` 的三层设计。 |
+| **C3** | **灯光 / 镜子相机通用化**：每个投影阴影的灯光 → 申请一个相机槽（申请/归还随灯光生命周期）；对齐 `doc/archive/shadow-component-and-automated-pipeline-design.md` 的三层设计。 |
 | **C4** | **ComponentData 骨架**：先做 CameraComponent 样板（`CameraData` + 世界级存储 + 槽访问器），再依次 Transform / Geometry / Material。 |
 
 C1 与 C4 可合并为一批（都是相机存储重构），代价是回归面变宽；建议分开。

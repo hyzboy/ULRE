@@ -695,7 +695,7 @@ node 也在跑同一批工程。⇒ 全部是**并发假象**，不是上游缺�
 
 而 `src/Tools/GLSLCompiler` **不在 ULRE 构建图内**（`src/Tools/CMakeLists.txt` 只 add MiniPack / GLTFConvert / ShaderGen / TexConv），它有自己的 `build/` 和 `output_path.cmake`，产物落在 `src/Tools/GLSLCompiler/build/out/Windows_64_Release/GLSLCompiler.dll`；`build/out/` 里**没有** `GLSLCompiler.dll`。
 
-⇒ 根级这份 4.70 MB 二进制目前是「从仓库根跑 example」时**唯一能找到的副本**，删掉会直接让运行时 shader 编译失败。`doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md:198` 也记录了这一点（「GLSLCompiler.dll 等插件在仓库根，从 exe 目录跑会……」）。
+⇒ 根级这份 4.70 MB 二进制目前是「从仓库根跑 example」时**唯一能找到的副本**，删掉会直接让运行时 shader 编译失败。`doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md:198` 也记录了这一点（「GLSLCompiler.dll 等插件在仓库根，从 exe 目录跑会……」）。
 
 **结构性缺陷与建议**（未实施，属构建图改动而非清理）：把 `src/Tools/GLSLCompiler` 纳入 ULRE 构建，并加后置步骤把 DLL 拷到 `$<TARGET_FILE_DIR:...>`，让 exe 目录成为唯一查找点；此后根级副本可删，也不再需要 CWD 兜底。**在此之前不要清理这份二进制。**
 

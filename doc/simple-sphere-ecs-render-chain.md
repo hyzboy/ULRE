@@ -8,7 +8,7 @@
 > ⚠ **历史口径（2026-10-14 起）**：世界表 `WorldAddresses` 里的 **渲染项表地址**（`addr_global_render_items`）与 **DrawItemID 表地址**（`addr_draw_item_ids`）
 > 已随「CPU/GPU 双剔除遗留」**整族删除**（两级存储 + 压缩器 + 绘制期解析 GLSL + 二者地址/接线/契约；世界表 **9 → 7 字段**）。
 > 4-ID 元组的**唯一真源 = 实体 4-ID 表**（`EntityRenderIDTable` / `addr_entity_render_ids`）：每帧由 collect 在「几何行成立 ⇒ 本项进批」判据块内发布，
-> 剔除按 `EntityID.index` 读、CPU 批行写入读本 pass 那一半。本文相关段落读作当时形态；定论见 `doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九。
+> 剔除按 `EntityID.index` 读、CPU 批行写入读本 pass 那一半。本文相关段落读作当时形态；定论见 `doc/archive/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九。
 > 基线：**2026-09-24，分支 `CSM`**——描述符机制退役后的 **BDA 终态**：4-ID 全局图元描述符池 + 全局 SSBO 行池 + `pc_root`/`buffer_reference` 寻址，mesh shader（`vkCmdDrawMeshTasksIndirectEXT`）是唯一顶点路径。
 > 入口示例：`example/GettingStarted/SimpleSphere.cpp`（264 行；私有缓冲几何 + `Lit` PBR 材质 + 单球体 ECS 实体 + `ViewModel` 相机）。
 > 目的：以单个最小示例为剖面，记录「作者侧 API → 每帧 CPU 物化 → 一条 vkCmd 提交 → shader BDA 取数」的完整链路与行号证据。全部 path:line 在本基线核实；**符号名是稳定锚点，行号随重构漂移**，引用时按 `file:line` + 符号名双锚。

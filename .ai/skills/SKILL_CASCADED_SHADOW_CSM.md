@@ -20,9 +20,9 @@
 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | 发射 `HGL_SHADOW_PCF_POISSON_TAPS` 宏（仅当模板含 ShadowProvider 槽） |
 | `example/Shadow/CascadeShadowMap.cpp` | 参考用法：4 张 D32F 离屏 RT、`light_camera` 覆写矩阵、F1 之外只有 `[`/`]` 调 bias |
 | `example/Shadow/AlphaTestShadow.cpp` | alpha test 镂空阴影最小用例（masked vs fallback-opaque 对照）+ `DumpCascadeDepth` 级联深度读回报证工具 |
-| `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md` | ShadowCasterMasked 修复链全记录（7 层因果、两级寻址、取证方法） |
+| `doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md` | ShadowCasterMasked 修复链全记录（7 层因果、两级寻址、取证方法） |
 | `src/ecs/support/TestCSMIncrementalPass.cpp` | 契约测试（Test 1-4 渲染选项、Test 5A 重绘预算、Test 5B 矩阵恒定性+覆盖率、Test 5C 旋转恒定性、Test 6A-D 逐级联 bias） |
-| `doc/shadow-ubo-inflight-overwrite.md` | 拖拽时阴影逐帧左右/远近跳：单份 ShadowInfo 被在途帧覆写，以及分槽修复 |
+| `doc/archive/shadow-ubo-inflight-overwrite.md` | 拖拽时阴影逐帧左右/远近跳：单份 ShadowInfo 被在途帧覆写，以及分槽修复 |
 
 相关但不在本 SKILL 范围：`RenderPassRequest`（脏矩形/scissor 翻译）、`Mobility`（动静标志）、
 `ECSContext::RenderTo`（渲染到离屏 RT）。
@@ -353,7 +353,7 @@ for c in 0..count-1:
 ### 4.5 ShadowCasterMasked 数据链（alpha test 镂空阴影，2026-09-26 接线）
 
 masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任何一层前
-先读本节（完整因果链见 `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`）：
+先读本节（完整因果链见 `doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`）：
 
 1. **程序双槽**：阴影 pass 的 program 存 `MaterialComponent::shadow_program`
    （与 forward 槽独立），由 `ResolveShadowCasterProgram` 解析——模板分派按
@@ -400,7 +400,7 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    （地面纹理/环境光/透视压缩都会干扰判读）。
 7. **后续工作**（TransformComponent 同值短路、级联重配置形态、拆分等）见
    `doc/backlog.md` **D 线**（D1/D8/D2 已完成 ✅）；完整修复因果链见
-   `doc/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`。
+   `doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md`。
 
 ---
 
@@ -909,7 +909,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | 法线偏移**看起来完全没生效** | 生成后的 GLSL 里是否有 `#define HGL_SHADOW_NORMAL_OFFSET 1` | 模板没带 ShadowProvider 槽（宏不会被发射）或 `shadow_normal_offset = 0`；或 `shadow_params.w` 仍是 0（CPU 侧没接通） |
 | 半影出现**光晕** | `bias` 负值过大 | 收一点（更贴合方向） |
 | **启动几帧**阴影闪现 | — | 尚无 warm-up 流程（见 §10） |
-| 拖拽时阴影**一帧左一帧右 / 一帧近一帧远**，静止后正常；RenderDoc 截帧永远正常 | 不是拟合公式。先确认 `ShadowInfo` 是否又变回单份 UBO | 在途主帧还在读 binding 5 时，CPU 覆写了同一块 `ShadowInfo`。修复与禁令见 `doc/shadow-ubo-inflight-overwrite.md`。不要用每帧 `WaitFence()` 全槽排空来压症状 |
+| 拖拽时阴影**一帧左一帧右 / 一帧近一帧远**，静止后正常；RenderDoc 截帧永远正常 | 不是拟合公式。先确认 `ShadowInfo` 是否又变回单份 UBO | 在途主帧还在读 binding 5 时，CPU 覆写了同一块 `ShadowInfo`。修复与禁令见 `doc/archive/shadow-ubo-inflight-overwrite.md`。不要用每帧 `WaitFence()` 全槽排空来压症状 |
 | 静态阴影能渲染但**读到就没了** | 是否每帧都发了静态级的 DrawCall | 静态级被错误地也当成了逐帧层 |
 | **alpha test 物体的阴影是实心的**（本体镂空正常） | 物件的 recipe 是否声明了 `alpha_test`/`dither`（depth-only FS 保留的**唯一**判据，D8 后程序级扫描已删） | 片元含 discard 却被 depth-only 快速路径剥掉；或 `batch.texture_reference_base_addr`=0（MTL_TEX 解引用 0 → fallback 1.0）。**取证**：`AlphaTestShadow` 第 45 帧自动判读 c0 的 `[D1-CONTRACT]` 行（**包围盒内**填充率 57.6%=镂空、~100%=实心、全空=未进深度图）；`ATS_SELFCHECK=1` 时以退出码给出结论（0/1）。判据链本身由 `TestCSMIncrementalPass` Test 11 源码契约把守 |
 | **masked 物体在深度图里缺失**（影子不出现或固化消失） | collect 日志 `shadow pass skip for '<名字>': <原因>`（首帧起）或 `persisted 120 frames`（持续失败） | 首帧 resolve/行未就绪失败 + 静态缓存固化。跳过路径已带告警与收敛（D9：120 帧内每帧 bump 重画，之后降频到每 60 帧一次并报错）；手动调 `InvalidateMainLightStaticShadowCache()` 立即重画 |
@@ -944,7 +944,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 | 静态级联分辨率与更新频率解耦 | 静态级联被迫跟动态级联同分辨率同 `caster_depth_margin` |
 | 单张 shadow atlas | 目前 4 张独立 D32F RT，无 atlas 合并 |
 | 逐物体脏追踪 | 脏粒度是"整级联"，不是"受影响的物体集合" |
-| ~~ShadowInfo 单份 UBO 被在途帧覆写~~ | 已分槽（`kShadowUboRing`，按下标 = acquired image）。`MarkDirty` 不再写 shadow GPU。见 `doc/shadow-ubo-inflight-overwrite.md` |
+| ~~ShadowInfo 单份 UBO 被在途帧覆写~~ | 已分槽（`kShadowUboRing`，按下标 = acquired image）。`MarkDirty` 不再写 shadow GPU。见 `doc/archive/shadow-ubo-inflight-overwrite.md` |
 | ~~ShadowCaster 专用程序未接线~~ | 已实现（A1 + A1-4）：阴影 pass 走 `MaterialComponent` 双槽（`shadow_program`，`ShadowCasterOpaque/Masked` 模板）；masked caster 的 opacity_mask 采样链完整（纹理引用行由 forward 物化链持有，深度镂空经深度图读回验证）。链路细节见 §4.5 |
 | ~~静态缓存失效链缺失~~ | 已接线（A3）：TransformSystem 检出 Static 变更 → `static_scene_revision` → EnvironmentSystem 消费失效。剩余缺口：新增/删除静态物体与材质/贴图替换需手动调 `InvalidateMainLightStaticShadowCache()`；`SetLocalPosition` 等无同值短路 |
 

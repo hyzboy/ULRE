@@ -4,7 +4,7 @@
 > 材质授权旁表**零指针**（彻底数据化，为 TOML/BINARY 序列化做好前提）。
 > **分支基线**：`TextureStreaming`（基点 `e74514c2c`，与事项同名）。
 > **关联文档**：
-> - `doc/async-texture-upload-and-bindless.md` —— 上传队列 + Bindless 热换的机制真源。本计划**延伸它、不取代它**（队列语义不变，在其上立"资产记录"层）。
+> - `doc/archive/async-texture-upload-and-bindless.md` —— 上传队列 + Bindless 热换的机制真源。本计划**延伸它、不取代它**（队列语义不变，在其上立"资产记录"层）。
 > - 原 `doc/future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`（2026-10-18 删档，存于 git 历史）—— 阶段二"材质子系统 ID 化"的纹理侧由本计划落地。
 > - `doc/texture2darray-unified-texture-binding.md` —— 数组纹理事件级绑定；本计划 T5 的逐层 API 与其口径对齐。
 > - 引用一律写 `文件:符号`，不写行号（行号属本基点提交）。
@@ -63,7 +63,7 @@
 - **不写** TOML/BINARY 的解析与落盘本体（本计划只交付"可序列化"的零指针前提与 name-table 语义）。
 - **不做** mipmap streaming / virtual texture / 记录驱逐（P-6）。
 - **不碰** glTF 导入链（U-5）。
-- **不动** upload lane、staging ring、背压、优先级调度等队列机制（E-4；`doc/async-texture-upload-and-bindless.md` 继续是真源）。
+- **不动** upload lane、staging ring、背压、优先级调度等队列机制（E-4；`doc/archive/async-texture-upload-and-bindless.md` 继续是真源）。
 - **不动** `PBRSurfaceRow` 等材质**参数**行空间（那是 SSBO 域，与纹理身份无关）。
 
 ---
@@ -318,7 +318,7 @@ E-3 既有泵    BeginManagedRenderFrame → UpdateUploadQueue → Completed →
 
 ## 附录 A：关键文件索引
 
-- 队列机制真源：`doc/async-texture-upload-and-bindless.md`；`inc/hgl/graph/module/TextureUploadQueue.h`、`TextureUploadTask.h`
+- 队列机制真源：`doc/archive/async-texture-upload-and-bindless.md`；`inc/hgl/graph/module/TextureUploadQueue.h`、`TextureUploadTask.h`
 - bindless：`inc/hgl/vk/VKBindlessTextureManager.h`（AllocateHandle/UpdateTextureHandle）
 - 解码现场：`src/SceneGraph/texture/VKTextureLoader.h`、`VKTexture2DLoader.cpp`、`VKTexture2DArrayLoader.cpp`
 - 材质侧：`inc/hgl/ecs/components/MaterialData.h`、`inc/hgl/ecs/support/MaterialAuthoringSideTable.h`、`MaterialRuntimeTable.h`

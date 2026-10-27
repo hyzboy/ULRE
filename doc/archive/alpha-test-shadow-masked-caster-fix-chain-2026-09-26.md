@@ -9,7 +9,7 @@
 > 已随「CPU 侧 per-batch 表构建」整族删除（非接管批不画）——段③ 现由「实体事实上行
 > （`RenderPrimitiveCollectSystem`）→ 剔除写 per-draw 行（`entity_gpu_cull.glsl`）」两跳承担，
 > 判据（策略表 `RenderNeed::ShadowReceiver`）与对拍装置随之搬家；见
-> `doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §11.7。
+> `doc/archive/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §11.7。
 > 本文正文保留原貌作为历史记录。
 
 > 时间：2026-09-26；分支 `CSM`；起因 = csm-review-2026-09-25 的 A1/A1-4（阴影 pass 程序接线），

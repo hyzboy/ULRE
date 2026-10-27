@@ -8,7 +8,7 @@
 > ⚠ **历史口径（2026-10-14 起）**：世界表 `WorldAddresses` 里的 **渲染项表地址**（`addr_global_render_items`）与 **DrawItemID 表地址**（`addr_draw_item_ids`）
 > 已随「CPU/GPU 双剔除遗留」**整族删除**（两级存储 + 压缩器 + 绘制期解析 GLSL + 二者地址/接线/契约；世界表 **9 → 7 字段**）。
 > 4-ID 元组的**唯一真源 = 实体 4-ID 表**（`EntityRenderIDTable` / `addr_entity_render_ids`）：每帧由 collect 在「几何行成立 ⇒ 本项进批」判据块内发布，
-> 剔除按 `EntityID.index` 读、CPU 批行写入读本 pass 那一半。本文相关段落读作当时形态；定论见 `doc/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九。
+> 剔除按 `EntityID.index` 读、CPU 批行写入读本 pass 那一半。本文相关段落读作当时形态；定论见 `doc/archive/analysis/ecs-audit-2026-10/03-renderitem-descriptor-two-tables.md` §九。
 > **注（2026-09-28）**：本文的 S1–S3 已全部落地（Scene 集整体退场、地址归口 GlobalAddresses）。
 > **后续定稿已改为"两张表"**：新增世界表 `WorldAddresses`（相机行 / 渲染项表 / DrawItemID 表 /
 > sky / shadow / env 随世界；viewport 留全局表），相机存储下沉世界级 —— 见
