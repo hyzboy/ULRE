@@ -1,7 +1,7 @@
 # 彻底废除 ShaderGen 终极架构设计：基于 MaterialDomain 的固定着色器方案
 
 > 状态：**终极架构规范（指导彻底删除 ShaderGen）**
-> 核心命题：**彻底废除 C++ Shader 生成器与 AST 拼装，主着色器走向纯物理固定 GLSL，C++ 仅输出极简 options.glsl**
+> 核心命题：**彻底废除 C++ Shader 生成器与 AST 拼装，主着色器走向纯物理固定 GLSL，C++ 仅输出极简 frag_options.glsl**
 > 日期：2026-10-25
 
 ---
@@ -65,13 +65,13 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
   会产出不同的宏集合**（第二次整个漏掉采样器宏，`sky` 因此编不过）——因为它取决于 definition
   的加载顺序。采样器槽表本来就在 `DomainContracts[]` 里是静态数据，物理固定即可彻底消除该隐患。
 
-### 1.2 唯一允许的动态物：极简 `options.glsl`
+### 1.2 唯一允许的动态物：极简 `frag_options.glsl`
 
 全套着色器编译中，C++ 端**唯一允许动态生成**的产物是一个不到 20 行的配置头，落到
-`<include-root>/generated/options.glsl`。主着色器用固定的一行包含它：
+`<include-root>/generated/frag_options.glsl`。主着色器用固定的一行包含它：
 
 ```glsl
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 ```
 
 发射器只有一处：`hgl::graph::mtl::EmitDomainOptions(const DomainOptionsInput &, AnsiString &)`
@@ -84,7 +84,7 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
 协议内容只有两类，**没有任何算法逻辑、没有任何 `const` 变量、没有任何非 `#define` 之外的声明**：
 
 ```glsl
-// options.glsl —— StandardOpaque / ForwardColor 的一个具体实例（真实发射结果）
+// frag_options.glsl —— StandardOpaque / ForwardColor 的一个具体实例（真实发射结果）
 #define MTL_TEX_NORMAL_CHANNELS 2
 #define HGL_SHADOW_PCF_POISSON_TAPS 16
 #define HGL_SHADOW_NORMAL_OFFSET 1
@@ -120,7 +120,7 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
 
 硬约束（实测得出，不可再犯）：
 
-1. **多态 include 必须是字面路径写死在 `options.glsl` 文本里**。
+1. **多态 include 必须是字面路径写死在 `frag_options.glsl` 文本里**。
    `#define AMB "lighting/indirect_sky_ambient.glsl"` 配合 `#include AMB` **编译失败**：
    `ERROR: '#include' : must be followed by a header name`。GLSL 预处理器不支持宏展开成头文件名。
 2. 它只允许出现 `#define` 与 `#include`。任何需要计算的逻辑都不许进来，否则它又会退化成
@@ -163,7 +163,7 @@ ShaderGen 删除后照常构建）26 条断言；`--write-options <dir>` 供等�
 
 varying 的**集合**按 (domain, pass, 覆盖判定) 三者确定，**不是按 pass 确定**——这是把「通用模板」思路彻底否定的关键证据。
 
-| 主着色器 | pass | `options.glsl` 提供的宏 | varyings |
+| 主着色器 | pass | `frag_options.glsl` 提供的宏 | varyings |
 |---|---|---|---|
 | `standard_opaque/forward_lit.frag` | ForwardColor | `HAS_VERTEX_NORMAL` `USE_MATERIAL_SOURCE_PROVIDER` `USE_SCENE_LIGHTING` `MTL_TEX_NORMAL_CHANNELS` `SHADOW_PCF_POISSON_TAPS` `SHADOW_NORMAL_OFFSET`（+可选 `ALPHA_TEST`/`ALPHA_CUTOFF`） | `fragDataIndexID`@0 `fragWorldPos`@1 `fragWorldNormal`@2 `fragUV0`@3 |
 | `standard_opaque/shadow_caster_masked.frag` | ShadowDepth（覆盖判定） | `COVERAGE_ONLY` `HAS_VERTEX_NORMAL` `ALPHA_TEST` `ALPHA_CUTOFF` | `fragDataIndexID`@0 `fragUV0`@3 |
@@ -190,7 +190,7 @@ varying 的**集合**按 (domain, pass, 覆盖判定) 三者确定，**不是按
 复现方式：门禁 `all` 里的 `DH.domain-backend-equivalence`（退出码 0 = 15 个形状全部
 与冻结基线一致）。历史上的做法是——用 `ShaderDocumentProductionRegression --dump-source <dir>`
 导出**旧路径的真实编译输入**（`GetFinalGLSL()`，即 glslang 实际吃到的文本），为每个 pass
-形状写一份 `generated/options.glsl`，再用 `spvfc` 分别编译旧文本与新主着色器，比较 reflection
+形状写一份 `generated/frag_options.glsl`，再用 `spvfc` 分别编译旧文本与新主着色器，比较 reflection
 与字节数。旧生成器路径在阶段五-2-g 被物理删除后，**该参考侧已不可再生**：等价性证据已在
 删除之前冻结进 `src/Tools/ShaderGen/golden/domain-backend/*.equiv.txt`（门禁拥有并逐次比对），
 `scripts/ci/verify-domain-master-shaders.ps1` 与门禁的 `dump-domain-glsl` 子命令一并退役。
@@ -214,14 +214,14 @@ varying 的**集合**按 (domain, pass, 覆盖判定) 三者确定，**不是按
 在**同一进程**里把同一个 `MaterialRecipe` 走两条路各建一次构建上下文：
 
 1. 旧路：`GenericMaterialBuilder` → `GetFinalGLSL()` → `ULRE.ShaderCompiler`；
-2. 新路：`DomainShaderBuildBackend` → 固定主着色器 + `generated/options.glsl`。
+2. 新路：`DomainShaderBuildBackend` → 固定主着色器 + `generated/frag_options.glsl`。
 
 然后两侧都用 `ReflectSPVData()` 取 reflection，逐行格式化（入口点、各阶段 I/O 的
 loc/name/base/vec/col、全部 11 类 descriptor 的 set/binding/array/name、push constant 的
 offset/size/name）后做**文本全等**比较，再比较 `GetSPVSize()`。用例还带两条**反自证**断言：
 
-- 旧路 GLSL 里**不许**出现 `generated/options.glsl`（否则说明新路代码串进了旧路）；
-- 新路 GLSL 里**必须**出现 `generated/options.glsl`（否则说明根本没走固定主着色器）。
+- 旧路 GLSL 里**不许**出现 `generated/frag_options.glsl`（否则说明新路代码串进了旧路）；
+- 新路 GLSL 里**必须**出现 `generated/frag_options.glsl`（否则说明根本没走固定主着色器）。
 
 两条路都**不挂** `shader_artifact_store`，因此不读也不写磁盘缓存，比较的是纯编译产物。
 当前 5/5 通过：fwd 65072 B、fwd-alpha 67024 B、shadow 1232 B、shadow-alpha 8896 B、sky 6732 B。
@@ -245,7 +245,7 @@ interface_hash / resource_hash / compiler_hash`，六项 FNV1a），**按阶段�
 由此推出两条必须遵守的实现约束：
 
 1. **摘要必须覆盖 domain options。** 主着色器文本对「同领域 + 同 pass」是逐字节相同的，
-   options 的全部差异都在 `generated/options.glsl` 里。若 stage source digest 只覆盖
+   options 的全部差异都在 `generated/frag_options.glsl` 里。若 stage source digest 只覆盖
    主着色器文本，fwd 与 fwd-alpha 会算出**同一个摘要**（实测：主着色器文本完全一致，
    SPV 却是 65072 vs 67024）。摘要既是缓存命中判据也是事后校验判据，撞了就只剩
    缓存文件名这一道保险。因此 `CompileDomainMasterFragment` 把 options 的**内容键**
@@ -273,7 +273,7 @@ stage key + 源尾注释双重点住。
 2. 同进程再构建必须**命中**，且 SPV 与冷构建**逐字节相同**；
 3. 盘上 stage digest 与 program metadata 的 `generated_source_digest` 都必须等于
    按实际编译源重算的值（第 2 条约束的反自证）；
-4. 缓存里的 `.frag` 必须含 `generated/options.glsl`（证明是固定主着色器编出来的）。
+4. 缓存里的 `.frag` 必须含 `generated/frag_options.glsl`（证明是固定主着色器编出来的）。
 
 外加一条跨形状断言：四个形状的片段 stage source digest **两两互不相同**
 （第 1 条约束的反自证）。当前 4/4 形状 `cold miss -> warm hit`，
@@ -381,18 +381,18 @@ location 之间**留空是正常现象**，不要自作聪明改成紧凑排布�
 | `vertex_luminance/vertex_luminance.frag` | ForwardColor | 12152 |
 | `vertex_color/vertex_color.frag`（作 VertexPalette） | ForwardColor | 10248 |
 
-**无光族的 `options.glsl` 是空文件**（4 个形状实测均为 0 字节）。这**不是**发射器漏发：
+**无光族的 `frag_options.glsl` 是空文件**（4 个形状实测均为 0 字节）。这**不是**发射器漏发：
 `ResolveDomainOptionsProfile` 对「无光照 + 有材质源」给出 `ForwardUnlit`，而该 profile
 不产生任何 `#define`——它们的主着色器全部走 `flat_lighting.glsl`，没有场景光照、
 没有 PCF、没有 ambient provider 需要注入。空文件依然必须存在且必须被第二 include 根
-解析到，否则 `#include "generated/options.glsl"` 直接失败。
+解析到，否则 `#include "generated/frag_options.glsl"` 直接失败。
 
 **（已退役）`verify-domain-master-shaders.ps1` 与门禁 `dump-domain-glsl`**：脚本过去依赖
 `ShaderDocumentProductionRegression --dump-source` 的生产夹具，而那套夹具里
 **根本没有**无光族领域，且夹具名与形状名不同名，扩表必然要手抄映射。
 后来统一走 `ShaderResourceSchemaRegressionGate dump-domain-glsl <dir>`：它按
 `kDomainBackendEquivShapes` 一次性导出 9 份 `<slug>.frag` **和**
-`<slug>/generated/options.glsl`（后者由真实后端的 `EmitDomainOptionsForDefinition`
+`<slug>/generated/frag_options.glsl`（后者由真实后端的 `EmitDomainOptionsForDefinition`
 产出），脚本不再持有任何宏表，也就不可能与发射器漂移。
 阶段五-2-g 物理删除生成器后，`dump-domain-glsl` 赖以生产的「旧路径最终 GLSL」已不存在
 （该子命令会以 `fixed_fragment_source is required` 硬失败），故**二者一并删除**：
@@ -418,7 +418,7 @@ Phase 4.3 一次性补齐了剩下六个**定义驱动**的领域：`UnlitSolid`
 | `shadow_caster` | StandardOpaque 深度 pass | `main()` 可为空实现 |
 
 `Text2D` 是**唯一**「看起来该有 alpha 分支、实际属于 unlit 骨架」的领域：
-它 `alpha_blend = true`，`options.glsl` 里确实有 `#define HGL_ALPHA_OUTPUT 1`，
+它 `alpha_blend = true`，`frag_options.glsl` 里确实有 `#define HGL_ALPHA_OUTPUT 1`，
 但骨架里**没有**任何消费者。照着 `unlit_texture.frag` 补上那两段 → SPIR-V 从
 18200 涨到 19560 字节，等价性直接失败。
 
@@ -427,9 +427,9 @@ Phase 4.3 一次性补齐了剩下六个**定义驱动**的领域：`UnlitSolid`
 > `HGLComposeColor` → 内部 `HGLApplyAlpha(color.a)`，且 `flat_lighting` 已把
 > `surface.alpha` 带进 `finalColor.a`。
 
-**② 两族宏原先在 `options.glsl` 之外，Phase 4.3 才收进来**
+**② 两族宏原先在 `frag_options.glsl` 之外，Phase 4.3 才收进来**
 
-到此为止 `options.glsl` 只发模板固定宏 + 覆盖率宏，于是有两个真实构建请求
+到此为止 `frag_options.glsl` 只发模板固定宏 + 覆盖率宏，于是有两个真实构建请求
 **无处表达**，只能继续走 `compile_defines`（散落在编译命令行）：
 
 | 宏 | 语义来源 | 消费者 |
@@ -477,7 +477,7 @@ layout(location=5) in vec4 fragVertexColor;
 **⑤ `Checker2D` 是最简形状：没有 varying、没有数据行、没有面法线兜底**
 
 `materialDataIndex` 是字面量 `0u`，`main()` 只有一行 `EvalSurface` 调用；
-`options.glsl` 为空。它的 `checker_2d_bindings.glsl` **刻意留成空文件**（只守卫宏），
+`frag_options.glsl` 为空。它的 `checker_2d_bindings.glsl` **刻意留成空文件**（只守卫宏），
 与 `vertex_color_bindings.glsl` 同构：把「本领域无数据行、无贴图」写成可见的物理事实。
 
 **⑥ 空 bindings 文件是有意义的，不要合并删除**
@@ -488,7 +488,7 @@ layout(location=5) in vec4 fragVertexColor;
 
 **等价矩阵（Phase 4.3 后的 15 形状，`DH.domain-backend-equivalence` 全绿）**
 
-| slug | 定义 | 领域 | `options.glsl` | SPIR-V 字节 |
+| slug | 定义 | 领域 | `frag_options.glsl` | SPIR-V 字节 |
 |---|---|---|---|---|
 | `fwd` | Lit | StandardOpaque | 4 宏 + ambient include | 65072 |
 | `fwd-alpha` | Lit | StandardOpaque | 6 宏 + ambient include | 67024 |
@@ -540,12 +540,12 @@ layout(location=5) in vec4 fragVertexColor;
 
 1. **第一阶段：固化各 MaterialDomain 的主着色器** ✅ `709eb58ce`
    - 已固化：`StandardOpaque` 的 ForwardColor / ShadowDepth(有覆盖) / ShadowDepth(无覆盖)，`Sky` 的 ForwardColor。
-   - 已定义 `options.glsl` 注入协议与 `<domain>_bindings.glsl` 分层。
+   - 已定义 `frag_options.glsl` 注入协议与 `<domain>_bindings.glsl` 分层。
    - `4.2` 补入无光族四域，累计 9 形状（见 1.8）。
    - 待补：`UI2D` / `Foliage` / `Terrain` / `HumanSkin` / `Custom`（**当前没有任何材质
      定义指向它们**，属阶段五之后的按需补齐，不再是阻塞项）。
 2. **第二阶段：实现极简 `DomainOptionsEmitter`** ✅ `fc70e0847`
-   - 输入 `MaterialDomain` + Pass 类型，输出 `options.glsl` 文本（8 步发射顺序、4 路 profile 表）。
+   - 输入 `MaterialDomain` + Pass 类型，输出 `frag_options.glsl` 文本（8 步发射顺序、4 路 profile 表）。
    - 不做任何依赖推导、不做任何模块排序——模块顺序已经物理写在主着色器里。
    - `DomainOptionsRegression.exe` 26 项纯度断言（只有 `#define`/`#include`、无空行、LF 结尾、
      宏集合与 profile 精确匹配、不再发射已死的 `HGL_USE_*`）。
@@ -572,7 +572,7 @@ layout(location=5) in vec4 fragVertexColor;
      `kDomainDirs[]` 由 2 行扩到 6 行，并支持跨域复用同一份片段源。
    - `4.3` ✅：内建定义族六域（`UnlitSolid` / `Checker2D` / `Checker3D` /
      `ErrorChecker3D` / `Text2D` / `DebugNormal`）固化，等价矩阵扩到 15 形状；
-     `kDomainDirs[]` 12 行，四份片元骨架全部被复现；`options.glsl` 收编最后两族
+     `kDomainDirs[]` 12 行，四份片元骨架全部被复现；`frag_options.glsl` 收编最后两族
      外挂宏（`HGL_MATERIAL_HAS_VERTEX_NORMAL`、定义自带 `defines`）。
      详见 1.9。
    - `4.4` ✅：示例实机验证 + 端到端回归，抓出两个真 bug：
@@ -606,7 +606,7 @@ layout(location=5) in vec4 fragVertexColor;
      生成器后端只在显式 `ULRE_SHADER_BUILD_BACKEND=shadergen` 时可达。
      保留反向选择器只为 `5.2` 删除前留一条原地回切的对照路径，删除落地后一并消失。
      实证（避免"没报错即通过"的假验证）：默认运行的日志里会出现
-     `domain-options/<hash>/generated/options.glsl` 与 `domain/vertex_color/vertex_color.frag`，
+     `domain-options/<hash>/generated/frag_options.glsl` 与 `domain/vertex_color/vertex_color.frag`，
      显式选 `shadergen` 时这两行消失、改读 `vertex/s3_clip_passthrough.glsl`——两条路径互斥可见。
      五个示例如常零着色器错误，门禁 61/0、`DomainOptionsRegression` 26/0、
      领域主着色器等价 15/15、`verify-release-form.ps1` 全 5 步 `[PASS]`。
@@ -697,7 +697,7 @@ recipe 覆盖、几何 ABI、图元类型、coverage 与设备 profile 都会改
 在上述消费契约上相同，且最终 mesh GLSL / include 闭包相同，才可共用一个物理文件。
 
 这不要求引入运行时 shader generator：运行时可用已解析的 program shape key 查找一份**预先存在**
-的 `.mesh` 文件，再用 `generated/options.glsl` 提供合法的数值常量；不得在 C++ 中重排块、
+的 `.mesh` 文件，再用 `generated/frag_options.glsl` 提供合法的数值常量；不得在 C++ 中重排块、
 枚举 varying、拼接 include 或发射 body。若仍要求结构差异经宏切换，就会重新引入条件编译；
 阶段六的“无 `#if`”约束下，结构差异应落在独立固定源码文件中。
 
@@ -1390,7 +1390,7 @@ master 不允许结构性条件编译，所以让两个模块各自提供同名�
 原 `WriteOptionsToCache` 的目录名只由**片段** options 决定。两个顶点格式完全不同、但片段 options
 逐字节相同的材质（例如同为 `VertexColor` 域的 `DrawTriangle` 与 `AutoInstance`）会共用同一个目录，
 后写的 `mesh_options.glsl` 覆盖先写的，先编译的那份顶点数据就按错格式解码——几何静默错位，不报错。
-现在目录名是 `<片段options键>-m<网格options哈希>`，`options.glsl` 与 `mesh_options.glsl` 永远成对。
+现在目录名是 `<片段options键>-m<网格options哈希>`，`frag_options.glsl` 与 `mesh_options.glsl` 永远成对。
 
 ### 网格阶段必须提前编译
 

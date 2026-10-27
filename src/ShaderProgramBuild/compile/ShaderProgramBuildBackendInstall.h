@@ -30,7 +30,7 @@ namespace hgl::graph::mtl
     const char *GetLastDomainShaderBuildBackendError();
 
     /// 工具/门禁用：按与真实构建路径**完全相同的规则**算出某定义的
-    /// `generated/options.glsl` 文本。
+    /// `generated/frag_options.glsl` 文本。
     ///
     /// 为什么必须走这里而不是让脚本手抄宏表：等价性验收要分别拿「旧生成器产物」
     /// 与「固定主着色器」编译同一个形状，两者必须吃**同一份** options。手抄的表
@@ -55,8 +55,8 @@ namespace hgl::graph::mtl
         AnsiString source;
         uint64 interface_hash = 0;
 
-        /// `generated/options.glsl` 所在目录的**上一级**（编译器的第二 include 根）。
-        /// 固定源里带着 `#include "generated/options.glsl"`，所以任何要亲手编译它
+        /// `generated/frag_options.glsl` 所在目录的**上一级**（编译器的第二 include 根）。
+        /// 固定源里带着 `#include "generated/frag_options.glsl"`，所以任何要亲手编译它
         /// 的地方都离不开这个根；把它和源放在一起，免得调用方各自拼路径。
         OSString options_root;
 
@@ -82,7 +82,7 @@ namespace hgl::graph::mtl
     ///
     /// 只在「门自己要按 stage 逐个编译以便定位失败」时调用：include 根是插件里
     /// 的进程级配置，手写 `CompileFinalGLSLToSPVWithDiagnostic` 会因为没有第二
-    /// 根而在 `#include "generated/options.glsl"` 上失败，于是门只能去复制后端
+    /// 根而在 `#include "generated/frag_options.glsl"` 上失败，于是门只能去复制后端
     /// 的根管理逻辑——那份复制迟早会与后端漂移。这里直接复用后端的实现。
     bool CompileFixedFragmentSource(
         ShaderBuildContext &ctx,

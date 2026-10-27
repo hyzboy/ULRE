@@ -6,14 +6,14 @@
 // 所以契约的 `material_private_data` 是 `GlobalSSBOType::EmissiveSurface`。
 //
 // 本领域是**法线必需**的领域（`normal_mode` 要求顶点法线）：
-// `HGL_MATERIAL_HAS_VERTEX_NORMAL` 由 options.glsl 发放，主着色器据此把
+// `HGL_MATERIAL_HAS_VERTEX_NORMAL` 由 frag_options.glsl 发放，主着色器据此把
 // `si.worldNormal = normalize(fragWorldNormal)`（location 2）。面法线兜底块
 // 仍保留：ECS 层的错配回退可能让构建请求失去 Normal 语义，那时代码必须能编译、
 // 且画出来的东西同样「看得出是法线」。
 
 #include "domain/root_bindings.glsl"
 #include "domain/emissive_row_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "ubo/scene_ubo.glsl"
 #include "common/surface_interface.glsl"

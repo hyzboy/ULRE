@@ -7,12 +7,12 @@
 // 它同样不读材质私有数据行、不读贴图 ⇒ `materialDataIndex` 是字面 `0u`。
 //
 // 该模块自己也有 `#ifdef HGL_MATERIAL_HAS_VERTEX_NORMAL` 分支（有顶点法线就
-// 直接用，没有就用下面的面法线兜底）；两个宏由 options.glsl 按构建请求发放，
+// 直接用，没有就用下面的面法线兜底）；两个宏由 frag_options.glsl 按构建请求发放，
 // 本文件不判断。
 
 #include "domain/root_bindings.glsl"
 #include "domain/checker_3d_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "ubo/scene_ubo.glsl"
 #include "common/surface_interface.glsl"

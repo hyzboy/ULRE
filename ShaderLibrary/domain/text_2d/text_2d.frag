@@ -4,7 +4,7 @@
 // 字形四边形（mesh 阶段 s1_text_char_quad 出几何）：表面来源固定是
 // `material/text_source_gpu.glsl`，它按 `TEXT_SDF_ENABLED` 走 SDF 距离场
 // 或原始位图两条**既存分支**——该宏来自材质定义的 `defines`，由
-// options.glsl 发放，不在本文件里判断。
+// frag_options.glsl 发放，不在本文件里判断。
 //
 // 输入比其它领域多一条 `fragStyleID`（**location 4**，flat perprimitiveEXT）：
 // 它索引 `sbo_char_style` 样式表（加粗/勾边/阴影参数），是该领域独有的
@@ -16,7 +16,7 @@
 
 #include "domain/root_bindings.glsl"
 #include "domain/text_2d_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "ubo/scene_ubo.glsl"
 #include "common/surface_interface.glsl"

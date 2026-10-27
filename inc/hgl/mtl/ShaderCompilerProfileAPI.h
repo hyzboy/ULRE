@@ -17,7 +17,7 @@ namespace hgl::graph::mtl
     /// `SetShaderIncludeRoot`), the rest are additional roots searched in order.
     ///
     /// Needed because a physically fixed master shader (`ShaderLibrary/domain/*.frag`)
-    /// carries `#include "generated/options.glsl"`, while that generated file lives in
+    /// carries `#include "generated/frag_options.glsl"`, while that generated file lives in
     /// the build cache, not in the source tree — the two must be visible at once.
     /// All-or-nothing: if any root fails to resolve, the previous configuration stays.
     bool SetShaderIncludeRoots(const char **paths, uint32_t count);

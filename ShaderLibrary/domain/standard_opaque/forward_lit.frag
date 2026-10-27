@@ -6,7 +6,7 @@
 // 同一 domain 同一 pass 只有这一个文件；`.mi.toml`（MaterialRecipe）不上浮到
 // 编译期，因此**改不了**本文件一个字——它只在运行时给 BDA 行填值。
 //
-// 唯一可变输入是 `generated/options.glsl`（只含 `#define` 与环境光 provider
+// 唯一可变输入是 `generated/frag_options.glsl`（只含 `#define` 与环境光 provider
 // 的 include 行），选项词表见该文件。
 //
 // 等价性：SPIR-V 尺寸与 reflection 均已与 ShaderGen 旧路径产物全等。
@@ -14,7 +14,7 @@
 
 #include "domain/root_bindings.glsl"
 #include "domain/standard_opaque_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "common/surface_interface.glsl"
 #include "common/pass_environment_interface.glsl"

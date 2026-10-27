@@ -1,7 +1,7 @@
 // DomainOptions 回归门
 //
 // 与 src/Tools/ShaderGen/ 下的工具不同，本 target **只链接 ULRE.ShaderMaterialData**：
-// 它断言的是「options.glsl 的发射与生成器无关」——即使 ShaderGen 被物理删除，
+// 它断言的是「frag_options.glsl 的发射与生成器无关」——即使 ShaderGen 被物理删除，
 // 这条用例也必须照常构建、照常通过。
 //
 // 用例覆盖：四种 profile 的逐字节文本、纯度（只含 #define / #include）、
@@ -67,7 +67,7 @@ namespace
         GLogError(u8"  actual:\n%s", text.c_str());
     }
 
-    // options.glsl 的文本同时是 program 身份的一部分，所以它必须只有一种形态：
+    // frag_options.glsl 的文本同时是 program 身份的一部分，所以它必须只有一种形态：
     // 每行一条 `#define ` 或一行 `#include "`，无注释、无空行、无 CR、以 '\n' 收尾。
     bool IsPureOptionsText(const AnsiString &text)
     {
@@ -695,8 +695,8 @@ namespace
 
     // ── --write-options ────────────────────────────────────────────────────
     // 给 scripts/ci/verify-domain-master-shaders.ps1 产出**由发射器生成**的
-    // options.glsl，让等价性验收直接消费生产代码，而不是脚本里手抄的宏表。
-    // 目录布局与脚本约定一致： <root>/<variant>/generated/options.glsl
+    // frag_options.glsl，让等价性验收直接消费生产代码，而不是脚本里手抄的宏表。
+    // 目录布局与脚本约定一致： <root>/<variant>/generated/frag_options.glsl
     struct OptionsVariant
     {
         const char *dir_name;
@@ -761,7 +761,7 @@ namespace
                 root / ToOSString(variant.dir_name) / ToOSString("generated");
             filesystem::MakePath(dir.ToOSString());
 
-            if (!WriteOptionsFile((dir / ToOSString("options.glsl")).ToOSString(), text))
+            if (!WriteOptionsFile((dir / ToOSString("frag_options.glsl")).ToOSString(), text))
             {
                 GLogError(u8"[FAIL] --write-options: %s 写入失败", variant.dir_name);
                 ++failures;

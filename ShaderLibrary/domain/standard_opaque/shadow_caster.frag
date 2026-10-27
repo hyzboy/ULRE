@@ -9,7 +9,7 @@
 // 有 alpha 覆盖判定的深度 pass 见同目录 shadow_caster_masked.frag。
 
 #include "domain/root_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 
 void main()
 {

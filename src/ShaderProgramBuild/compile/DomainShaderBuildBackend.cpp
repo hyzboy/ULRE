@@ -7,7 +7,7 @@
 // 生成器后端曾把所有代码模块拼装成一份完整 GLSL 再编译。本后端只做四件事：
 //
 //   1. 先按领域/pass/渲染状态解析出**固定片段源**（`ShaderLibrary/domain/...`
-//      主着色器，本身就是一个完整编译单元）并发射 `generated/options.glsl`
+//      主着色器，本身就是一个完整编译单元）并发射 `generated/frag_options.glsl`
 //      （Phase 2 的 `EmitDomainOptions`）到缓存目录——不进源码树；
 //   2. 把这份源**作为固定阶段输入**传进构建器（`FixedStageInputs`）。构建器
 //      因此不发射片段：片段 stage key、artifact 元数据、编译输入三者是同一份
@@ -114,14 +114,29 @@ namespace hgl::graph::mtl
 
         /// options 目录名由**文本内容**决定：内容相同 ⇒ 复用同一目录（写是幂等的），
         /// 内容不同 ⇒ 目录不同（不可能读到别人的 options）。
-        void MakeOptionsKey(const AnsiString &options_text,
+        ///
+        /// 片段与网格两份 options **一起入键**。只按片段定名不够：两个顶点格式
+        /// 不同的材质（例如 `DrawTriangle` 与 `AutoInstance` 同属 VertexColor 域）
+        /// 片段 options 可能逐字节相同，共用目录就会互相覆盖 `mesh_options.glsl`
+        /// ⇒ 顶点按错误的格式解码，表现为几何静默错位且不报错。
+        ///
+        /// `mesh_options_text` 传 `nullptr` 表示「本材质没有网格 options」（工具/
+        /// 门禁只解片段时的路径），此时键值只覆盖片段文本，与旧口径逐字节一致。
+        void MakeOptionsKey(const AnsiString &fragment_options_text,
+                            const AnsiString *mesh_options_text,
                             const MaterialDomain domain,
                             const ShaderProgramPurpose purpose,
                             char *out_key,
                             const size_t out_key_size)
         {
             hgl::hash::FNV1aHasher64 hasher;
-            hasher.AppendBytes(options_text.c_str(), static_cast<size_t>(options_text.Length()));
+            hasher.AppendBytes(fragment_options_text.c_str(),
+                               static_cast<size_t>(fragment_options_text.Length()));
+
+            if (mesh_options_text && mesh_options_text->Length() > 0)
+                hasher.AppendBytes(mesh_options_text->c_str(),
+                                   static_cast<size_t>(mesh_options_text->Length()));
+
             hasher << static_cast<uint64>(domain);
             hasher << static_cast<uint64>(purpose);
 
@@ -308,11 +323,40 @@ namespace hgl::graph::mtl
                     / OSString(OS_TEXT("generated"))).ToOSString();
         }
 
-        /// 把 options 写到缓存目录并返回**包含 `generated/` 的那一层**目录
-        /// （编译器插件的第二 include 根就是它：`generated/x.glsl` 会去掉前缀
-        /// 后在该目录下解析）。
+        /// 在 options 根目录写一份 `build.txt`，说明这一个目录就是一次完整编译的
+        /// 全部可变输入。写不写它不影响编译（编译器只认 `generated/` 里的两份
+        /// options），价值在于有人拿到缓存目录时能立刻看懂怎么复现，因此失败不报错。
+        void WriteOptionsReadme(const OSString &options_root)
+        {
+            static const char kReadme[] =
+                "# 本目录自包含：一次完整编译的全部可变输入都在这里\n"
+                "#\n"
+                "# 两份 options 与主着色器的对应关系：\n"
+                "#   ShaderLibrary/domain/<领域>/<主着色器>.frag  #include \"generated/frag_options.glsl\"\n"
+                "#   ShaderLibrary/mesh/*.mesh                    #include \"generated/mesh_options.glsl\"\n"
+                "#\n"
+                "# 用任意 GLSL 编译器复现（两个 include 根：库根 + 本目录）：\n"
+                "#   glslangValidator -V -I<ShaderLibrary> -I<本目录> \\\n"
+                "#       <ShaderLibrary/domain/<领域>/<主着色器>.frag>\n"
+                "#\n"
+                "# 本目录由 ULRE 着色器缓存按内容定名生成，发行版不包含它（只有 SPV）。\n";
+
+            const OSString path =
+                (filesystem::Path(options_root) / OSString(OS_TEXT("build.txt"))).ToOSString();
+            WriteTextFile(path, AnsiString(kReadme));
+        }
+
+        /// 把一套 options 文本落盘到按内容定名的目录，返回**包含 `generated/` 的
+        /// 那一层**目录（编译器插件的第二 include 根就是它：`generated/x.glsl` 会
+        /// 去掉前缀后在该目录下解析）。
+        ///
+        /// 片段与网格两份 options 落在**同一个** `generated/` 里，目录名由两者合成
+        /// （见 `MakeOptionsKey`）：一个目录 = 一次完整编译的全部可变输入，拿到它
+        /// 就能用任意 GLSL 编译器复现这份 SPV。`mesh_options_text` 为空表示本材质
+        /// 没有网格 options，此时只写片段那一份。
         bool WriteOptionsToCache(
-            const AnsiString &options_text,
+            const AnsiString &fragment_options_text,
+            const AnsiString &mesh_options_text,
             const MaterialDomain domain,
             const ShaderProgramPurpose purpose,
             OSString &out_options_root)
@@ -320,32 +364,43 @@ namespace hgl::graph::mtl
             const OSString cache_root = GetShaderCacheRootPath();
             if (cache_root.IsEmpty())
             {
-                DomainBuildFailed(u8"[DomainBackend] 着色器缓存根目录不可用，options.glsl 无处落盘");
+                DomainBuildFailed(u8"[DomainBackend] 着色器缓存根目录不可用，options 无处落盘");
                 return false;
             }
 
             char key[32];
-            MakeOptionsKey(options_text, domain, purpose, key, sizeof(key));
+            MakeOptionsKey(fragment_options_text,
+                           mesh_options_text.IsEmpty() ? nullptr : &mesh_options_text,
+                           domain, purpose, key, sizeof(key));
 
             const OSString options_root =
                 (filesystem::Path(cache_root)
                  / OSString(OS_TEXT("domain-options"))
                  / OSString(ToOSString(key))).ToOSString();
 
-            if (!WriteGeneratedTextFile(MakeGeneratedDir(options_root),
-                                        OSString(OS_TEXT("options.glsl")),
-                                        options_text))
+            const OSString generated_dir = MakeGeneratedDir(options_root);
+
+            if (!WriteGeneratedTextFile(generated_dir,
+                                        OSString(OS_TEXT("frag_options.glsl")),
+                                        fragment_options_text))
+                return false;
+
+            if (!mesh_options_text.IsEmpty()
+             && !WriteGeneratedTextFile(generated_dir,
+                                        OSString(OS_TEXT("mesh_options.glsl")),
+                                        mesh_options_text))
                 return false;
 
             out_options_root = options_root;
+            WriteOptionsReadme(options_root);
             return true;
         }
 
         /// 把网格 options 文本写成 `<options_root>/generated/mesh_options.glsl`。
         ///
-        /// 供两条路径共用：生产侧（后端自己拼的成对根）与工具/门禁（手写编译，
-        /// 用 `ResolveFixedFragmentSource` 给出的根）。只做落盘，不碰目录命名，
-        /// 免得两处对「根在哪」各写一套。
+        /// 只给工具/门禁用：生产侧由 `WriteOptionsToCache` 一次写全两份。工具侧
+        /// 先解出片段 options 的根、拿到网格 options 之后再把这一份补进**同一个**
+        /// 目录，于是「一个目录自包含」对两侧都成立。
         bool WriteMeshOptionsSourceFile(
             const OSString &options_root,
             const AnsiString &mesh_options_text)
@@ -354,60 +409,6 @@ namespace hgl::graph::mtl
                                           OSString(OS_TEXT("mesh_options.glsl")),
                                           mesh_options_text);
         }
-
-        /// 把网格阶段的 `generated/mesh_options.glsl` 落盘，并切换到**成对**的
-        /// options 根。
-        ///
-        /// 为什么不直接写进 `fixed.options_root`：那个目录名只由**片段** options
-        /// 内容决定，而两个顶点格式完全不同的材质（例如 `DrawTriangle` 与
-        /// `AutoInstance` 都是 VertexColor 域）片段 options 可能逐字节相同。
-        /// 共用目录就会读到上一份 `mesh_options.glsl` ⇒ 顶点按错误的格式解码，
-        /// 表现为几何静默错位。因此根目录按「片段 options + 网格 options」两段
-        /// 内容一起定名，两文件永远成对。
-        bool WriteMeshOptionsToCache(
-            const AnsiString &mesh_options_text,
-            const AnsiString &fragment_options_text,
-            const MaterialDomain domain,
-            const ShaderProgramPurpose purpose,
-            OSString &inout_options_root)
-        {
-            char fragment_key[32];
-            MakeOptionsKey(fragment_options_text, domain, purpose,
-                           fragment_key, sizeof(fragment_key));
-
-            // 与主着色器尾部溯源注释**同一算法同一出处**（见 DomainOptions.h）：
-            // 目录名里的网格哈希与写进 stage 键的摘要必须是同一个数，否则"目录换了
-            // 但 stage 键没换"或反过来，两种错法都不会自己暴露。
-            const AnsiString mesh_key = AnsiString::numberOf(
-                mtl::ComputeMeshOptionsDigest(mesh_options_text));
-
-            const OSString cache_root = GetShaderCacheRootPath();
-            if (cache_root.IsEmpty())
-            {
-                DomainBuildFailed(u8"[DomainBackend] 找不到着色器缓存根目录");
-                return false;
-            }
-
-            OSString dir_name{ToOSString(fragment_key)};
-            dir_name += OSString(OS_TEXT("-m"));
-            dir_name += OSString(ToOSString(mesh_key.c_str()));
-
-            const OSString options_root =
-                (filesystem::Path(cache_root)
-                 / OSString(OS_TEXT("domain-options"))
-                 / dir_name).ToOSString();
-
-            if (!WriteGeneratedTextFile(MakeGeneratedDir(options_root),
-                                        OSString(OS_TEXT("options.glsl")),
-                                        fragment_options_text))
-                return false;
-
-            inout_options_root = options_root;
-
-            return WriteMeshOptionsSourceFile(
-                inout_options_root, mesh_options_text);
-        }
-
         /// 读领域主着色器源文件（`ShaderLibrary/domain/<领域>/<文件>.frag`）。
         bool LoadDomainMasterShader(
             const DomainShaderTemplate &domain_template,
@@ -545,19 +546,21 @@ namespace hgl::graph::mtl
         /// 片段阶段的物理固定内容：源文本 + 接口形状 + 编译期位置信息。
         struct FixedFragmentStage
         {
-            AnsiString source;      // 领域主着色器 + options 内容键
-            AnsiString options_text; // 片段 options 原文（与网格 options 合成根）
+            AnsiString source;       // 领域主着色器 + options 内容键
+            AnsiString options_text; // 片段 options 原文（与网格 options 合成目录名）
             uint64 interface_hash = 0;
-            OSString options_root;
             MaterialDomain domain = MaterialDomain::Custom;
             ShaderProgramPurpose purpose = ShaderProgramPurpose::ForwardColor;
         };
 
-        /// 解析「本材质该用哪份固定片段源」，并把 options 落到缓存目录。
+        /// 解析「本材质该用哪份固定片段源」。
         ///
         /// 这一步必须在 `AssembleMaterialProgram` **之前**完成：固定源会被写进
         /// 构建请求，因此片段 stage key、artifact 元数据与真正编译的输入是同一
         /// 份文本。换源（先建后改）会让键描述一份从未被编译的代码。
+        ///
+        /// 只算文本，不落盘：目录名要同时覆盖片段与网格两份 options，而网格那份
+        /// 由 `AssembleMaterialProgram` 产出，落盘留给调用方在拿到两份之后一次做完。
         bool ResolveFixedFragmentStage(
             const MaterialDefinition &definition,
             const MaterialDefinitionBuildRequest &request,
@@ -613,13 +616,13 @@ namespace hgl::graph::mtl
                     definition, request, domain, purpose, options_text))
                 return false;
 
-            if (!WriteOptionsToCache(
-                    options_text, domain, purpose, out_stage.options_root))
-                return false;
+            // 这里**不落盘**：目录名要覆盖片段与网格两份 options，而网格那份要等
+            // `AssembleMaterialProgram` 才产出。落盘统一由 `WriteOptionsToCache`
+            // 在拿到两份文本之后一次做完（见 CreateBuildContext）。
 
             // ── 主着色器 + options 内容键 ────────────────────────────────
             //
-            // options 的全部差异都落在 `generated/options.glsl` 里，主着色器文本
+            // options 的全部差异都落在 `generated/frag_options.glsl` 里，主着色器文本
             // 对「同领域 + 同 pass」是**逐字节相同**的。若 stage source digest 只
             // 覆盖主着色器，两种不同 options 就会算出同一个摘要（实测：
             // fwd 与 fwd-alpha 的主着色器文本完全一致，SPV 却是 65072 vs 67024）。
@@ -631,7 +634,7 @@ namespace hgl::graph::mtl
                 return false;
 
             char options_key[32];
-            MakeOptionsKey(options_text, domain, purpose,
+            MakeOptionsKey(options_text, nullptr, domain, purpose,
                            options_key, sizeof(options_key));
 
             out_stage.source = master_source;
@@ -681,7 +684,8 @@ namespace hgl::graph::mtl
 
                 // 网格阶段：主着色器按形状固定，顶点解码/位置映射/投影由
                 // `generated/mesh_options.glsl` 注入。构建器只交出 options 文本，
-                // 落盘位置由本后端决定（必须与 frag_options.glsl 同根）。
+                // 落盘由本后端负责——两份文本落到**同一个** `generated/` 里，
+                // 目录名由两者合成，一个目录就是一次完整编译的全部可变输入。
                 MaterialProgramBuildCapture capture{};
                 ShaderBuildContext *ctx = AssembleMaterialProgram(
                     profile, deferred_request, definition, &capture, fixed_stage);
@@ -693,28 +697,28 @@ namespace hgl::graph::mtl
                     return nullptr;
                 }
 
-                if (capture.mesh_options.Length() > 0
-                 && !WriteMeshOptionsToCache(
-                        capture.mesh_options,
+                // ── 3. 两份 options 一次落盘，再在它的 include 根下编译 ──────
+                OSString options_root;
+                if (!WriteOptionsToCache(
                         fixed.options_text,
+                        capture.mesh_options,
                         fixed.domain,
                         fixed.purpose,
-                        fixed.options_root))
+                        options_root))
                 {
                     delete ctx;
                     return nullptr;
                 }
 
-                // ── 3. 在 options 的 include 根下编译两个固定阶段 ──────────
                 if (!CompileFixedStage(ShaderStage::Mesh,
-                        fixed.options_root, fixed.domain, fixed.purpose, *ctx))
+                        options_root, fixed.domain, fixed.purpose, *ctx))
                 {
                     delete ctx;
                     return nullptr;
                 }
 
                 if (!CompileFixedStage(ShaderStage::Fragment,
-                        fixed.options_root, fixed.domain, fixed.purpose, *ctx))
+                        options_root, fixed.domain, fixed.purpose, *ctx))
                 {
                     delete ctx;
                     return nullptr;
@@ -761,9 +765,15 @@ namespace hgl::graph::mtl
         if (!ResolveFixedFragmentStage(definition, request, fixed))
             return false;
 
+        // 工具/门禁只解片段：目录按片段文本定名，网格那份由调用方拿到之后再补进
+        // 同一个 `generated/`（见 `WriteMeshOptionsSource`）。
+        if (!WriteOptionsToCache(fixed.options_text, AnsiString(),
+                                 fixed.domain, fixed.purpose,
+                                 out_source.options_root))
+            return false;
+
         out_source.source = fixed.source;
         out_source.interface_hash = fixed.interface_hash;
-        out_source.options_root = fixed.options_root;
         out_source.domain = fixed.domain;
         out_source.purpose = fixed.purpose;
         return true;

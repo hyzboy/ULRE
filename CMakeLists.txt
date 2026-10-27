@@ -103,7 +103,7 @@ SET(ULRE_RUNTIME
 # 它所在 TU 的其它函数 ⇒ 整个 TU 被链接器丢弃 ⇒ 生命周期钩子恒为空 ⇒
 # GetShaderProgramBuildBackend() 返回 nullptr ⇒ 材质构建退化到 manifest 后端（开发树里
 # 没有烘焙缓存，必然 miss，所有图元因 "unresolved runtime pipeline" 被跳过）。
-# 实证：SimpleSphere.exe 中搜不到 AssembleMaterialProgram / options.glsl，
+# 实证：SimpleSphere.exe 中搜不到 AssembleMaterialProgram / frag_options.glsl，
 # 却能搜到 "No shader program build backend installed"。
 # 注意发行形态（ULRE_ENABLE_SHADERGEN=OFF）没有这个目标，钩子保持为空是**正确**行为：
 # 那时由 EnsureShaderProgramManifestBackend() 装 manifest 后端读预烘焙缓存。

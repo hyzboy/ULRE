@@ -7,7 +7,7 @@
 
 #include "domain/root_bindings.glsl"
 #include "domain/sky_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "ubo/scene_ubo.glsl"
 #include "sky/sky_atmosphere.glsl"

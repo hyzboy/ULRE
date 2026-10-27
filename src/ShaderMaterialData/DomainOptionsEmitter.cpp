@@ -276,7 +276,7 @@ namespace hgl::graph::mtl
         }
 
         // ── 环境光 provider ─────────────────────────────────────────────────
-        // 放在最后：主着色器里 options.glsl 位于 bindings 之后、其它公共契约之前，
+        // 放在最后：主着色器里 frag_options.glsl 位于 bindings 之后、其它公共契约之前，
         // 该模块只定义 EvalAmbientLight 一个函数，位置不影响编译产物。
         if (input.profile == DomainOptionsProfile::ForwardLit)
         {

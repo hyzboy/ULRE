@@ -13,7 +13,7 @@
 
 #include "domain/root_bindings.glsl"
 #include "domain/checker_2d_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "ubo/scene_ubo.glsl"
 #include "common/surface_interface.glsl"

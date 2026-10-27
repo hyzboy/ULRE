@@ -15,7 +15,7 @@
 
 #include "domain/root_bindings.glsl"
 #include "domain/standard_opaque_bindings.glsl"
-#include "generated/options.glsl"
+#include "generated/frag_options.glsl"
 #include "common/descriptor_macros.glsl"
 #include "common/surface_interface.glsl"
 #include "ubo/scene_ubo.glsl"

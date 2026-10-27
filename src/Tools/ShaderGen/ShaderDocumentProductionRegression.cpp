@@ -229,7 +229,7 @@ namespace
     /// 是同一份输入。
     /// definition_mutation：可选，在组请求之前扰动定义副本。stage 键敏感性探针
     /// 用它证明「改这一项 ⇒ 换键」。
-    /// out_options_text：可选，回传本 fixture 的 `generated/options.glsl` 文本。
+    /// out_options_text：可选，回传本 fixture 的 `generated/frag_options.glsl` 文本。
     /// 片段文本已物理固定，选项（provider 选择、alpha 通路、采样档位）全部住在
     /// options 里，因此断言必须落在它上面。
     /// 该夹具是否因「领域缺少本 purpose 的固定主着色器」而无法构建。
@@ -360,8 +360,8 @@ namespace
         fixed_stage.fragment_interface_hash = fixed.interface_hash;
         fixed_stage.mesh_source = fixed_mesh_source;
 
-        // 环境光 provider 的选择已经从片元文本搬到 `options.glsl`（主着色器只
-        // `#include "generated/options.glsl"`，provider 的 `#include` 由发射器
+        // 环境光 provider 的选择已经从片元文本搬到 `frag_options.glsl`（主着色器只
+        // `#include "generated/frag_options.glsl"`，provider 的 `#include` 由发射器
         // 写在里面）。因此断言必须落在 options 文本上，落在 `GetFinalGLSL()`
         // 上会永远为假。这里顺势一次发射，调用方拿到的就是真正喂给编译的那份。
         if (out_options_text)
@@ -543,7 +543,7 @@ namespace
         // master 自带 `#include "material/sky_cube_surface.glsl"`，不再由定义挑。
         // 因此这里不再有「文档是否 include 了所选 surface」这回事 —— 该不变量由
         // 门禁的 `DH.*` 域等价与 `verify-domain-master-shaders.ps1` 覆盖。
-        // 环境光 provider 仍然可选，但它现在写在 `options.glsl` 里；片段文本已
+        // 环境光 provider 仍然可选，但它现在写在 `frag_options.glsl` 里；片段文本已
         // 物理固定，options 才是 provider 的唯一入口。
         if (fixture.ambient_module_name && fixture.ambient_module_name[0])
         {
@@ -555,7 +555,7 @@ namespace
                         .c_str()) != 1)
             {
                 GLogError(
-                    u8"options.glsl does not include the ambient provider: %s",
+                    u8"frag_options.glsl does not include the ambient provider: %s",
                     name);
                 return false;
             }
@@ -674,7 +674,7 @@ namespace
                 return nullptr;
 
             // 走**领域后端**而不是直接 `AssembleMaterialProgram`：片段阶段是物理固定的
-            // 主着色器，编译它需要「ShaderLibrary + generated/options.glsl 目录」两
+            // 主着色器，编译它需要「ShaderLibrary + generated/frag_options.glsl 目录」两
             // 个 include 根，而那是插件里的进程级配置，只有后端在编译那一刻设得对。
             // 这里手写一份根管理等于把后端逻辑抄到工具里，迟早漂移。
             InstallDomainShaderBuildBackend();

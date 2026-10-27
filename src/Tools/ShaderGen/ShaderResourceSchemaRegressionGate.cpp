@@ -3035,7 +3035,7 @@ namespace
                     if (out_options)
                     {
                         // 覆盖语义（alpha test / cutoff / dither）**不在**固定主
-                        // 着色器文本里，而全部落在 generated/options.glsl 的
+                        // 着色器文本里，而全部落在 generated/frag_options.glsl 的
                         // #define 上。要让本用例仍能断言它，就必须走生产同一条
                         // 发射路径取值（手抄宏表会随发射器漂移）。
                         hgl::AnsiString options_text;
@@ -3180,7 +3180,7 @@ namespace
                       || contains(masked_depth_fs, "EvalLighting(")))
                         mismatch = true;
                     // 覆盖宏不在片段文本里（固定源无条件 include
-                    // generated/options.glsl），因此改断 options 文本：
+                    // generated/frag_options.glsl），因此改断 options 文本：
                     // alpha test 必须真的发射 HGL_ALPHA_TEST + cutoff。
                     if (masked_depth_options.find("#define HGL_ALPHA_TEST 1")
                             == std::string::npos
@@ -10301,7 +10301,7 @@ void main()
                     // 放日志就取不回来了。
                     //
                     // 片段走生产那条编译路径（第二 include 根由后端管）：固定源里含
-                    // `#include "generated/options.glsl"`，手写编译没有那个根就必然
+                    // `#include "generated/frag_options.glsl"`，手写编译没有那个根就必然
                     // 编不过，而复制一份根管理只会等它慢慢漂移。
                     hgl::AnsiString compile_diagnostic;
                     const bool compiled =
@@ -10446,7 +10446,7 @@ void main()
     // 漂移都会在这里现形，并精确指出是哪个形状变了。
     //
     // 为什么不能只靠 scripts/ci/verify-domain-master-shaders.ps1：
-    //   那个脚本证明的是「主着色器 + options.glsl（由 DomainOptionsRegression 写出）
+    //   那个脚本证明的是「主着色器 + frag_options.glsl（由 DomainOptionsRegression 写出）
     //   能编译」。它绕开了引擎：options 是那个工具自己 emit 的，主着色器是脚本
     //   手选的。**接线**（后端选了哪份文件、options 里的字段从哪来、include 根
     //   怎么给）完全没有被它覆盖。这里补的就是这一段。
@@ -10722,7 +10722,7 @@ void main()
                 continue;
             }
 
-            // ── ② 片段阶段必须有 SPV，且必须真的吃 generated/options.glsl ──
+            // ── ② 片段阶段必须有 SPV，且必须真的吃 generated/frag_options.glsl ──
             const ShaderCreateInfo *dom_fs = domain_built->has_fragment()
                 ? domain_built->GetStageShader(ShaderStage::Fragment) : nullptr;
             if (!dom_fs)
@@ -10737,10 +10737,10 @@ void main()
             }
 
             const std::string &dom_glsl = dom_fs->GetFinalGLSL();
-            if (dom_glsl.find("generated/options.glsl") == std::string::npos)
+            if (dom_glsl.find("generated/frag_options.glsl") == std::string::npos)
             {
                 result.diagnostics.emplace_back(
-                    label + ": domain GLSL does not include generated/options.glsl"
+                    label + ": domain GLSL does not include generated/frag_options.glsl"
                     " (include root wiring broken)");
                 continue;
             }
@@ -10821,7 +10821,7 @@ void main()
     //   ③ `generated_source_digest` 必须等于**当前**两阶段最终 GLSL 的摘要。
     //      `AssembleMaterialProgram` 是在换源前建元数据的，它算的是那份根本没被
     //      编译的生成物——不在换源后重算，这个字段就永远描述另一份文本；
-    //   ④ 落盘的 `.frag` 源必须含 `generated/options.glsl`，即缓存里存的是
+    //   ④ 落盘的 `.frag` 源必须含 `generated/frag_options.glsl`，即缓存里存的是
     //      固定主着色器，不是旧的生成物。
     //
     // 只跑 `StandardOpaque` 的 4 个 pass 形状，外加无光族的两个前向形状
@@ -10866,7 +10866,7 @@ void main()
         constexpr size_t kCacheShapeCount = sizeof(shapes) / sizeof(shapes[0]);
 
         // 每个形状的 fragment stage source digest。最后要求两两互不相同：
-        // domain options 的差异只体现在 `generated/options.glsl`，主着色器文本
+        // domain options 的差异只体现在 `generated/frag_options.glsl`，主着色器文本
         // 逐字节相同，摘要如果不覆盖 options，两个不同 pass 变体会共享同一个
         // digest —— 撞上缓存文件名就是静默复用错误的 SPV。
         std::string digest_labels[kCacheShapeCount];
@@ -11120,7 +11120,7 @@ void main()
                             (std::istreambuf_iterator<char>(source_stream)),
                             std::istreambuf_iterator<char>());
                         has_options_include =
-                            text.find("generated/options.glsl") != std::string::npos;
+                            text.find("generated/frag_options.glsl") != std::string::npos;
                     }
                 }
 
@@ -11134,7 +11134,7 @@ void main()
                 {
                     result.diagnostics.emplace_back(
                         label + ": cached .frag source does not include"
-                        " generated/options.glsl (a generated shader was baked"
+                        " generated/frag_options.glsl (a generated shader was baked"
                         " instead of the fixed domain master)");
                     continue;
                 }

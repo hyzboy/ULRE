@@ -6,13 +6,13 @@
 namespace hgl::graph::mtl
 {
     // ═══════════════════════════════════════════════════════════════════════════
-    // options.glsl —— 主着色器唯一的可变输入
+    // frag_options.glsl —— 主着色器唯一的可变输入
     // ═══════════════════════════════════════════════════════════════════════════
     //
     // 废除 ShaderGen 之后，每个 `MaterialDomain` × pass 组合是一份**物理固定**的
     // GLSL 完整编译单元（`ShaderLibrary/domain/<domain>/*.frag`），由 glslang 直接
     // 编译。它能接受的唯一外部输入，就是主着色器里那一行
-    // `#include "generated/options.glsl"`——本文件就是该 options 文本的唯一产地。
+    // `#include "generated/frag_options.glsl"`——本文件就是该 options 文本的唯一产地。
     //
     // 三条硬约束（违反其一，等价性立刻失效）：
     //
@@ -137,7 +137,7 @@ namespace hgl::graph::mtl
         const char *material_source_module_name,
         const char *ntb_provider_module_name) noexcept;
 
-    /// 发射 options.glsl 文本。
+    /// 发射 frag_options.glsl 文本。
 /// 成功时**整体覆盖** `out_options_glsl`（profile==None ⇒ 空串）；
 /// 返回 false 时 `out_options_glsl` 保持调用前的原值。
     /// 返回 false = 输入不自洽（例如 ForwardLit 缺 ambient 路径、槽名字符非法）。

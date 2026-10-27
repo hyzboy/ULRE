@@ -12,7 +12,7 @@ namespace hgl::graph::mtl
     //
     // 一个 `MaterialDomain` × pass × 固定表面变体 = 一份**物理固定**的 GLSL 编译单元
     // （`ShaderLibrary/domain/<领域>/<stage>.frag`）。它不含任何 #if 分支选择
-    // 「用什么算法」，算法在文件里写死；唯一的可变输入是 `generated/options.glsl`
+    // 「用什么算法」，算法在文件里写死；唯一的可变输入是 `generated/frag_options.glsl`
     // （见 <hgl/mtl/DomainOptions.h>）。
     //
     // 为什么这里只有表、没有拼装：废除 ShaderGen 之后，主着色器**不再是生成物**，
