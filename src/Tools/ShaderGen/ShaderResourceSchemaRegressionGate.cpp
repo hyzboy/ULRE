@@ -21,6 +21,7 @@
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
+#include <hgl/mtl/InterStageVaryingOptions.h>
 #include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
@@ -316,26 +317,9 @@ namespace
         return text.substr(begin, offset - begin);
     }
 
-    /// 固定库网格阶段主着色器的**结构审计**。
-    ///
-    /// 这段判据原先住在 `meshgen/MeshModeDescriptor.h` 的
-    /// `resolve_stage1_input` / `resolve_stage2_mapping` / `resolve_stage3_projection`
-    /// 与 `MeshShaderVaryingGen.h` 的写规则表里——那是「生成器打算产出什么」。
-    /// 生成器删除之后，同一批不变量必须改成对**库里实际文本**的直接断言：
-    ///
-    /// ① 每个 `layout(location=N) [perprimitiveEXT] out <T> <sym>[<inv>];`
-    ///    都与 `ShaderSemanticRegistry` 的稳定 location / GLSL 类型一致，
-    ///    且 `perprimitiveEXT` 恰好出现在 Flat 语义上；
-    /// ② 数组维数必须等于该文件的 max_vertices（非 perprimitive）或
-    ///    max_primitives（perprimitive），也就是 CPU 侧调度契约；
-    /// ③ 每个声明出来的 varying 必须在本文件内真的被写（`sym[...] =`）；
-    /// ④ Stage2/Stage3 模块恰好一个（CharQuad 例外：它自带位置拼装）。
-    ///
-    /// ①②④ 覆盖了原来「生成器按模式推导」的内容，③ 覆盖了
-    /// 「某个模式不写某 varying」的可写性表。
     /// 去掉 `//` 行注释与 `/* */` 块注释（保留换行，便于按偏移取原文本片段）。
     ///
-    /// 形状 master 的 ④ 判据是「不得含预处理分支」，但按原文本直接查子串会把
+    /// 形状 master 的「不得含预处理分支」判据必须走这里：按原文本直接查子串会把
     /// **注释里的说明文字**也算成违规——`// 本文件刻意不留 #ifdef` 这种正当注释
     /// 会被判死。判据的对象必须是**代码**，不是注释。
     static std::string StripGlslComments(const std::string &src)
@@ -391,6 +375,325 @@ namespace
         return line;
     }
 
+    /// `text` 里是否出现独立记号 `word`（前后不是标识符字符）。
+    ///
+    /// 声明审计用它是为了「容忍排版、不容忍改写」：`in  uint` 与 `in uint` 是同一
+    /// 件事，而 `uint` 与 `uvec2` 不是。
+    static bool ContainsWord(const std::string &text, const char *word)
+    {
+        const size_t length = std::strlen(word);
+        if (length == 0)
+            return false;
+
+        for (size_t at = text.find(word); at != std::string::npos;
+             at = text.find(word, at + 1))
+        {
+            const bool left_ok = at == 0
+                || !(std::isalnum(static_cast<unsigned char>(text[at - 1]))
+                     || text[at - 1] == '_');
+            const size_t after = at + length;
+            const bool right_ok = after >= text.size()
+                || !(std::isalnum(static_cast<unsigned char>(text[after]))
+                     || text[after] == '_');
+            if (left_ok && right_ok)
+                return true;
+        }
+        return false;
+    }
+
+    /// 取 `#if defined(<macro>)` … `#endif` 之间的代码（不含两端的指令行）。
+    /// 找不到返回空串——调用方据此区分「这一段没声明」。
+    static std::string ExtractConditionalBlock(
+        const std::string &text, const std::string &macro)
+    {
+        const std::string open = "#if defined(" + macro + ")";
+        const size_t begin = text.find(open);
+        if (begin == std::string::npos)
+            return std::string();
+
+        const size_t body = begin + open.size();
+        const size_t end = text.find("#endif", body);
+        if (end == std::string::npos)
+            return std::string();
+
+        return text.substr(body, end - body);
+    }
+
+    /// `symbol` 在 `text` 里是否被写过（`symbol[...] = …`，等号必须在分号之前）。
+    static bool IsVaryingWritten(
+        const std::string &text, const std::string &symbol)
+    {
+        const std::string probe = symbol + "[";
+        size_t scan = 0;
+        while ((scan = text.find(probe, scan)) != std::string::npos)
+        {
+            const size_t bracket = text.find(']', scan);
+            if (bracket == std::string::npos)
+                return false;
+
+            const size_t assignment = text.find('=', bracket);
+            const size_t terminator = text.find(';', bracket);
+            if (assignment != std::string::npos
+                && (terminator == std::string::npos || assignment < terminator))
+                return true;
+
+            scan = bracket + 1;
+        }
+        return false;
+    }
+
+    /// 统一阶段间 varying 文件的**自洽审计**。
+    ///
+    /// 迁移前这条判据必须对 14 个 `.mesh` 各跑一遍：每个 varying 组合各有一份
+    /// master，「声明对不对」实际上是在检查「文件名有没有被手抄错」。接口集中到
+    /// `common/interstage_varying.glsl` 之后，同一批不变量只需检查**一份文件**，
+    /// 而且检查对象从「某个组合碰巧写了什么」变成「注册表里每条**已接线**语义
+    /// 是否两端成对、location / 类型 / 插值 / 维数是否与注册表与调度契约一致」。
+    ///
+    /// 「哪些语义已接线」不在这里维护第二份清单：直接拿真实发射器
+    /// （EmitInterStageVaryingOptions）对单语义 mask 试发一次，发得出来就算接线。
+    /// 于是「发射器认为能发」与「GLSL 里真有对应声明」之间不存在
+    /// 「两边各记一份、漂移了也照样绿」的缝隙。
+    static void AuditUnifiedInterStageVarying(GateResult &result)
+    {
+        const std::string source = ReadFileText(
+            RepoRootPath("ShaderLibrary/common/interstage_varying.glsl"));
+        if (source.empty())
+        {
+            result.diagnostics.emplace_back(
+                "common/interstage_varying.glsl is missing or empty");
+            return;
+        }
+
+        const std::string writer = ReadFileText(
+            RepoRootPath("ShaderLibrary/common/interstage_varying_writer.glsl"));
+        if (writer.empty())
+        {
+            result.diagnostics.emplace_back(
+                "common/interstage_varying_writer.glsl is missing or empty");
+            return;
+        }
+
+        const std::string text = StripGlslComments(source);
+        std::string writer_text = StripGlslComments(writer);
+
+        // 写出方不只有标准写出函数：CharQuad 的 `fragStyleID` 由主着色器自己的
+        // 钩子写（`WriteCharQuadPrimitiveOutputs`），线段的写出钩子也在主着色器里。
+        // 只扫 `interstage_varying_writer.glsl` 会把「声明了、由别的钩子写」误判成
+        // 「声明了却没写」。所以判据是「语料里某处真的写了」。
+        for (auto &master : LoadFixedMeshMasters())
+        {
+            writer_text += "\n";
+            writer_text += StripGlslComments(master.second);
+        }
+
+        // 两段的分界必须是「网格段在前、片段段在后」：片段段的解包函数要读网格段
+        // 声明的同一批符号，物理顺序反了等于把两套接口拼在一起。
+        const size_t mesh_marker =
+            text.find("#if defined(HGL_MESH_OUTPUT_VARYINGS)");
+        const size_t frag_marker =
+            text.find("#if defined(HGL_FRAGMENT_INPUT_VARYINGS)");
+        if (mesh_marker == std::string::npos
+            || frag_marker == std::string::npos
+            || mesh_marker > frag_marker)
+        {
+            result.diagnostics.emplace_back(
+                "common/interstage_varying.glsl 必须依次含"
+                " 网格段 (#if defined(HGL_MESH_OUTPUT_VARYINGS)) 与"
+                " 片段段 (#if defined(HGL_FRAGMENT_INPUT_VARYINGS))");
+            return;
+        }
+
+        const std::string mesh_half = text.substr(0, frag_marker);
+        const std::string frag_half = text.substr(frag_marker);
+
+        uint32_t wired = 0;
+        for (uint32_t index = 1; index < 32; ++index)
+        {
+            const InterStageSemantic semantic =
+                static_cast<InterStageSemantic>(index);
+            const InterStageSemanticInfo *info =
+                GetInterStageSemanticInfo(semantic);
+            if (!info || !info->shader_symbol || !info->location_macro)
+                continue;
+
+            // 「已接线」的判据是发射器本身：只有这一条语义也发得出来，才算接通。
+            hgl::AnsiString emitted;
+            if (!EmitInterStageVaryingOptions(
+                    GetInterStageSemanticMask(semantic), emitted))
+                continue;
+            ++wired;
+
+            const std::string symbol(info->shader_symbol);
+            static const char *const kLocationPrefix = "HGL_LOCATION_";
+            const std::string varying_macro =
+                std::string("HGL_VARYING_")
+                + (std::string(info->location_macro)
+                   .substr(std::strlen(kLocationPrefix)));
+
+            if (std::string(emitted.c_str()).find(varying_macro)
+                    == std::string::npos)
+            {
+                AddCappedDiagnostic(
+                    result, std::string("interstage varying 发射器未给出 ")
+                        + varying_macro + "（开关名与 GLSL 文件不一致）");
+            }
+
+            const std::string mesh_block =
+                ExtractConditionalBlock(mesh_half, varying_macro);
+            const std::string frag_block =
+                ExtractConditionalBlock(frag_half, varying_macro);
+            if (mesh_block.empty() && frag_block.empty())
+            {
+                AddCappedDiagnostic(
+                    result, std::string("common/interstage_varying.glsl: ")
+                        + varying_macro + " 已接线，两段却都没有声明 "
+                        + symbol);
+                continue;
+            }
+            if (mesh_block.empty() || frag_block.empty())
+            {
+                AddCappedDiagnostic(
+                    result, std::string("common/interstage_varying.glsl: ")
+                        + varying_macro + " 只在"
+                        + (mesh_block.empty() ? "片段段" : "网格段")
+                        + "声明了 " + symbol + "，另一端缺失（接口必须成对）");
+                continue;
+            }
+
+            const char *expected_type = GetGLSLTypeName(
+                info->value_shape.scalar_type,
+                info->value_shape.component_count);
+            if (!expected_type)
+            {
+                AddCappedDiagnostic(
+                    result, std::string("ShaderSemanticRegistry 的 ") + symbol
+                        + " 没有可用的 GLSL 类型");
+                continue;
+            }
+
+            const bool flat =
+                info->interpolation == InterStageInterpolation::Flat;
+
+            // ── 网格段：`out` 数组，维数取自调度宏 ──
+            //
+            // 维数写错不会编译失败（GLSL 数组越界是未定义行为），所以这条必须由
+            // 门禁守住：逐顶点语义按 max_vertices、Flat 按 max_primitives。
+            const std::string expected_dimension =
+                std::string("[")
+                + (flat ? "ULRE_MESH_MAX_PRIMITIVES" : "ULRE_MESH_MAX_VERTS")
+                + "]";
+            if (!ContainsWord(mesh_block, info->location_macro)
+                || !ContainsWord(mesh_block, "out")
+                || !ContainsWord(mesh_block, expected_type)
+                || !ContainsWord(mesh_block, info->shader_symbol)
+                || mesh_block.find(expected_dimension) == std::string::npos
+                || ((mesh_block.find("perprimitiveEXT") != std::string::npos)
+                    != flat))
+            {
+                AddCappedDiagnostic(
+                    result, std::string("common/interstage_varying.glsl 网格段: ")
+                        + varying_macro + " 的声明必须是 `layout(location="
+                        + info->location_macro + ") "
+                        + (flat ? "perprimitiveEXT " : "") + "out "
+                        + expected_type + " " + symbol + expected_dimension
+                        + ";`");
+            }
+
+            // ── 片段段：`in` 标量，Flat 带 `flat perprimitiveEXT` ──
+            if (!ContainsWord(frag_block, info->location_macro)
+                || !ContainsWord(frag_block, "in")
+                || !ContainsWord(frag_block, expected_type)
+                || !ContainsWord(frag_block, info->shader_symbol)
+                || frag_block.find('[') != std::string::npos
+                || ((frag_block.find("flat perprimitiveEXT") != std::string::npos)
+                    != flat))
+            {
+                AddCappedDiagnostic(
+                    result, std::string("common/interstage_varying.glsl 片段段: ")
+                        + varying_macro + " 的声明必须是 `layout(location="
+                        + info->location_macro + ") "
+                        + (flat ? "flat perprimitiveEXT " : "") + "in "
+                        + expected_type + " " + symbol + ";`");
+            }
+
+            // ── 网格段声明了就必须真的写出去 ──
+            if (!IsVaryingWritten(writer_text, symbol))
+            {
+                AddCappedDiagnostic(
+                    result, std::string("common/interstage_varying_writer.glsl: ")
+                        + symbol + " 声明了却从未写入");
+            }
+        }
+
+        if (wired == 0)
+        {
+            result.diagnostics.emplace_back(
+                "interstage varying 发射器放行了零条语义"
+                "（统一接口文件因此没有任何 varying）");
+        }
+
+        // 反向：文件里出现的每个开关都必须是发射器真会发的，否则就是死声明——
+        // 它永远不会被打开，也永远不会被发现写错了。
+        for (size_t at = text.find("HGL_VARYING_"); at != std::string::npos;
+             at = text.find("HGL_VARYING_", at + 1))
+        {
+            size_t end = at + std::strlen("HGL_VARYING_");
+            while (end < text.size()
+                && (std::isalnum(static_cast<unsigned char>(text[end]))
+                    || text[end] == '_'))
+                ++end;
+            const std::string macro = text.substr(at, end - at);
+
+            bool emittable = false;
+            for (uint32_t index = 1; index < 32 && !emittable; ++index)
+            {
+                const InterStageSemanticInfo *info =
+                    GetInterStageSemanticInfo(
+                        static_cast<InterStageSemantic>(index));
+                if (!info || !info->location_macro)
+                    continue;
+                static const char *const kLocationPrefix = "HGL_LOCATION_";
+                if (macro != std::string("HGL_VARYING_")
+                        + (std::string(info->location_macro)
+                           .substr(std::strlen(kLocationPrefix))))
+                    continue;
+
+                hgl::AnsiString probe;
+                emittable = EmitInterStageVaryingOptions(
+                    GetInterStageSemanticMask(
+                        static_cast<InterStageSemantic>(index)),
+                    probe);
+            }
+
+            if (!emittable)
+            {
+                AddCappedDiagnostic(
+                    result, "common/interstage_varying.glsl 含死开关 "
+                        + macro + "（发射器永远不会定义它）");
+            }
+        }
+    }
+
+    /// 固定库网格阶段主着色器的**结构审计**。
+    ///
+    /// 这段判据原先住在 `meshgen/MeshModeDescriptor.h` 的
+    /// `resolve_stage1_input` / `resolve_stage2_mapping` / `resolve_stage3_projection`
+    /// 与 `MeshShaderVaryingGen.h` 的写规则表里——那是「生成器打算产出什么」。
+    /// 生成器删除之后，同一批不变量必须改成对**库里实际文本**的直接断言。
+    ///
+    /// **阶段间 varying 的声明审计已经不在这里**：接口集中到
+    /// `common/interstage_varying.glsl` 之后，同一批不变量只剩一份检查对象，
+    /// 见 AuditUnifiedInterStageVarying()。本函数现在只看主着色器自身的结构：
+    ///
+    /// ① 拓扑契约 `layout(triangles, max_vertices = N, max_primitives = M)` 是字面量
+    ///    （与 varying 数组维数宏、CPU 派发是同一份事实）；② 用了统一 varying 文件
+    ///    的形状 master **不得**再自己声明阶段间 varying（否则又出现第二个真源）；
+    ///    ③ Stage2/Stage3 只能来自 `generated/mesh_options.glsl`；④ 形状 master
+    ///    不得含预处理分支。
+    ///
+    /// 尚未迁移的旧式 master（LineQuad / CharQuad 变体）仍按原来的逐条声明规则
+    /// 检查 —— 它们的 varying 还写在自己文件里。迁移完成后这一支随之删除。
     static void AuditFixedMeshMasters(GateResult &result)
     {
         const auto masters = LoadFixedMeshMasters();
@@ -402,6 +705,7 @@ namespace
         }
 
         uint32_t char_quad_files = 0;
+        uint32_t unified_varying_files = 0;
         uint32_t total_declaration_count = 0;
         for (const auto &file : masters)
         {
@@ -409,8 +713,24 @@ namespace
             // 判据一律针对**代码**：注释里的说明文字不算违规（见 StripGlslComments）。
             const std::string text = StripGlslComments(file.second);
 
-            if (text.find(ExpectedVertexColorVaryingDeclaration())
-                    == std::string::npos)
+            const bool unified_varying =
+                text.find("#include \"common/interstage_varying.glsl\"")
+                != std::string::npos;
+            if (unified_varying)
+            {
+                ++unified_varying_files;
+
+                // 接口声明的唯一去处是统一文件。本文件再写一条 `layout(location=`
+                // 就等于把「接口是什么」拆回两份，且两端的成对性再也无法由一处保证。
+                if (text.find("layout(location=") != std::string::npos)
+                {
+                    AddCappedDiagnostic(
+                        result, name + ": 使用统一 varying 文件时不得再自己声明"
+                                      " layout(location=...) 阶段间 varying");
+                }
+            }
+            else if (text.find(ExpectedVertexColorVaryingDeclaration())
+                         == std::string::npos)
             {
                 AddCappedDiagnostic(
                     result, name + ": fixed mesh master must always output the vertex-color varying");
@@ -697,9 +1017,21 @@ namespace
             }
         }
 
-        if (total_declaration_count == 0)
+        // 统一接口文件本身的自洽（成对性 / location / 类型 / 插值 / 维数 / 写出）。
+        AuditUnifiedInterStageVarying(result);
+
+        if (unified_varying_files == 0)
+        {
+            result.diagnostics.emplace_back(
+                "fixed mesh master corpus has no master using"
+                " common/interstage_varying.glsl");
+        }
+        else if (masters.size() > unified_varying_files
+                 && total_declaration_count == 0)
+        {
             result.diagnostics.emplace_back(
                 "fixed mesh master corpus declared zero interstage varyings");
+        }
 
         if (char_quad_files == 0)
             result.diagnostics.emplace_back(
@@ -9938,7 +10270,8 @@ void main()
     static std::unique_ptr<ShaderBuildContext> BuildReflectionCoverageVariant(
         const ReflectionCoverageVariant &variant, std::string &diagnostic,
         FixedFragmentSource *out_fixed = nullptr,
-        hgl::AnsiString *out_mesh_options = nullptr)
+        hgl::AnsiString *out_mesh_options = nullptr,
+        hgl::AnsiString *out_common_options = nullptr)
     {
         MaterialDefinition definition{};
         if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
@@ -10008,6 +10341,8 @@ void main()
         }
         if (out_mesh_options)
             *out_mesh_options = capture.mesh_options;
+        if (out_common_options)
+            *out_common_options = capture.interstage_varying_options;
 
         if (out_fixed)
             *out_fixed = std::move(fixed);
@@ -10184,10 +10519,11 @@ void main()
             std::string build_diagnostic;
             FixedFragmentSource fixed_source;
             hgl::AnsiString mesh_options_text;
+            hgl::AnsiString common_options_text;
             std::unique_ptr<ShaderBuildContext> ctx =
                 BuildReflectionCoverageVariant(
                     variant, build_diagnostic, &fixed_source,
-                    &mesh_options_text);
+                    &mesh_options_text, &common_options_text);
             if (!ctx)
             {
                 result.diagnostics.emplace_back(build_diagnostic);
@@ -10203,6 +10539,19 @@ void main()
                 result.diagnostics.emplace_back(
                     std::string(variant.variant_slug)
                     + ": cannot write generated/mesh_options.glsl | "
+                    + hgl::graph::mtl::GetLastDomainShaderBuildBackendError());
+                continue;
+            }
+
+            // 网格主着色器同时也 include `generated/common_options.glsl`
+            //（阶段间 varying 开关）：它与片段共用一份，必须落在同一个根。
+            if (!common_options_text.IsEmpty()
+             && !hgl::graph::mtl::WriteInterStageVaryingOptionsSource(
+                    fixed_source.options_root, common_options_text))
+            {
+                result.diagnostics.emplace_back(
+                    std::string(variant.variant_slug)
+                    + ": cannot write generated/common_options.glsl | "
                     + hgl::graph::mtl::GetLastDomainShaderBuildBackendError());
                 continue;
             }

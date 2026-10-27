@@ -476,23 +476,23 @@ namespace hgl::graph::mtl
         // (originally MaterialDefinitionRegistry.cpp:439-531)
         // ═══════════════════════════════════════════════════════════════════
 
-        // 网格阶段「物理固定」形状命名
+        // 网格阶段「物理固定」主着色器名
         //
-        // 形状 = 几何模式 + 输出接口（varying 集合）+ 拓扑容量。名字按语义升序
-        // 拼接，因此任一组合只有一种拼写：
-        //   `tri_192_dataid_pos_nrm_uv`、`tri_192_plain`（不输出任何 varying）、
-        //   `charquad_256_dataid_uv_color_style`、`linequad_256_color`、
-        //   `linequad_256_dataid`、`linequad_256_dataid_lum`。
+        // 名字 = 几何模式前缀 + 拓扑容量 +（仅未迁移模式的）varying 后缀。
         //
-        // 这个名字就是 `ShaderLibrary/mesh/shape/<名>.mesh` 的文件名，两边必须
-        // 逐字一致。新增一个 varying 组合 = 新增一个 .mesh 文件；顶点格式/位置
-        // 映射的变化**不**改名字 —— 它们落在 `generated/mesh_options.glsl` 里。
-        // 这正是「按顶点格式算形状键再查表」被废除的原因：那种形状数随格式表
-        // 组合爆炸，每加一种顶点格式就要人工补一份哈希 .mesh。
+        // **三角形直通没有 varying 后缀**：它的输出接口由
+        // `common/interstage_varying.glsl` 与 `generated/common_options.glsl`
+        // 共同决定，与挑哪份 `.mesh` 无关，所以整个模式只剩一份 `tri_192.mesh`
+        // —— 迁移前按 varying 组合有 10 份，任何新组合都是一次「手抄一份主着色器
+        // 再手工对齐片段声明」的作业。
         //
-        // 模式前缀必须进名字：三种模式的几何主体互不相同（三角形装载 / 字形
-        // 解码 / 线段撑宽），若共用 `tri_` 前缀，「同 varying、同容量」的两种
-        // 模式会算出同一个名字而互相顶替。
+        // LineQuad / CharQuad 仍带后缀：它们的 varying 还写在自己文件里，写出表达式
+        // 也藏在主着色器内部。二者的合并是后续阶段的事；在那之前，名字里的 token
+        // 串必须与实际文件名逐字一致 —— 对不上会直接「主着色器加载失败」。
+        //
+        // 名字就是 `ShaderLibrary/mesh/shape/<名>.mesh` 的文件名。容量进名字是
+        // 为了让「layout 行的 max_vertices」与文件名保持同一份事实：改了拓扑容量
+        // 就必须同时改文件名与文件内容，不可能只改一半。
         AnsiString BuildMeshShapeName(
             const MeshShaderMode mode,
             const MaterialVertexVaryingConfig &varying,
@@ -506,6 +506,11 @@ namespace hgl::graph::mtl
 
             AnsiString name(prefix);
             name += AnsiString::numberOf(max_vertices);
+
+            // 三角形直通：名字到容量为止（接口不参与命名）。
+            if (!IsCharQuadMode(mode) && mode != MeshShaderMode::LineQuad)
+                return name;
+
             name += AnsiString("_");
 
             InterStageSemanticMask mask =
