@@ -1,4 +1,4 @@
-﻿# stage B 欠账清单（存储形：行 arena / 访问器 / EntityGPU / 预算冻结）
+# stage B 欠账清单（存储形：行 arena / 访问器 / EntityGPU / 预算冻结）
 
 > 采集基线：工作区 A7c 完成态（HEAD = `19f2b1c5e`「A7b」+ A7c 未提交改动），采集日期 2026-10-01。
 > **凡本文给出的事实一律为代码实测**（附 `path:line`）；**没有实测**的（行字节数、GPU 实机行为、未跑过的路径）一律标
@@ -238,7 +238,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
   落地判据：`transform_index` 的赋值语义不变（静态 `1 + slot` / 动态 `预算基址 + slot`）；示例帧摘要**逐位不变**；
   契约针 4 条禁复活。
   **将来若要表达"位置来源 / 朝向策略"**（如 2D 分派、地形）以**每实例事实**重生，不要恢复虚接口 ——
-  地形方案已定 R7「不复用」（`doc/terrain-rendering-implementation-plan.md` 决策表）。
+  地形方案已定 R7「不复用」（`doc/deprecated/terrain-rendering-implementation-plan.md` 决策表）。
 
 ---
 

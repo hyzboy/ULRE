@@ -7,7 +7,7 @@
 > **状态**：设计定稿，未执行。T1–T5 每阶段以「改 → `cmake --build` → 运行验证 → commit」收尾，
 > 每阶段必须先通过验证矩阵中对应判据才进入下一阶段。
 >
-> **关联文档**：`doc/meshlet-geometry-pipeline-implementation.md`（MeshDrawParams 112B 契约、
+> **关联文档**：`doc/deprecated/meshlet-geometry-pipeline-implementation.md`（MeshDrawParams 112B 契约、
 > 间接绘制双轨分流）、`doc/gpu-driven-4id-draw-item-plan-2026-09.md`（4-ID 与全局池基线）、
 > `doc/ecs-layer-architecture-and-frame-flow.md`（相位与帧流）、`doc/backlog.md`（A1 在途帧资源现状）。
 
@@ -150,7 +150,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer TextCharInfoR
 - 多命令一次提交：`PipelineMaterialRenderer.cpp:52-65`（`DrawMeshTasksIndirectCount`，
   `gl_DrawID` 索引 `MeshDrawParams` 行，命令序 = 行序）。
 - 双轨分流现状：含 meshlet 的几何按 `meshlet_count` 发射，其余走 `VertexPassthrough`
-  （`doc/meshlet-geometry-pipeline-implementation.md` §6.3，`PrimitiveBatchPipeline.cpp` 写命令处）。
+  （`doc/deprecated/meshlet-geometry-pipeline-implementation.md` §6.3，`PrimitiveBatchPipeline.cpp` 写命令处）。
 
 ### 2.7 限制一：mesh 阶段**不能**采样 bindless 纹理
 
@@ -435,7 +435,7 @@ CMakeLists 内 `CreateProject(TerrainBasic TerrainBasic.cpp)`，
 - 页/缓冲：`CreateSSBO` 建高度页缓冲；页表（T1-T3 可为单页）与 tile 表均由
   `GlobalSSBOBufferRegistry` 申请（§2.11），地址经 §3.4-A 的 `pc_root` 下发。
 - **不接入通用 4-ID 批处理**：地形有自己的管线与命令面，避免与 `PrimitiveBatchPipeline` 的
-  meshlet 双轨纠缠（`doc/meshlet-geometry-pipeline-implementation.md` §6.3）。
+  meshlet 双轨纠缠（`doc/deprecated/meshlet-geometry-pipeline-implementation.md` §6.3）。
 
 **T2 验证**：`TerrainTiles` 示例（同目录），判据 = 8×8 tile 无缝拼出完整地形，
 且 tile 间无重复/空洞（用 tile 边界高亮调试材质或 overlay 检查）。

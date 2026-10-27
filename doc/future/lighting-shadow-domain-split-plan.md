@@ -9,7 +9,7 @@
 > `doc/world-addresses-and-camera-model-plan.md`（地址三档；本稿新增 `addr_lights` 与它同级）、
 > `doc/ENVIRONMENT_SYSTEM.md`（本稿**改变其一部分结论**：Environment 不再托管阴影、不再持有光源参数）、
 > `doc/shadow-component-and-automated-pipeline-design.md`（本稿**推翻其 §1 的一句定论**，见 §8 变更记录）、
-> `doc/shadow-mask-and-hybrid-shadows-design.md`（**未来多光源阴影**的设计草案 = 本稿的消费者）、
+> `doc/deprecated/shadow-mask-and-hybrid-shadows-design.md`（**未来多光源阴影**的设计草案 = 本稿的消费者）、
 > `doc/future/sky-domain-and-provider-params-plan.md`（**后续档**：天空/环境光数据面的正式形态 ——
 > 本稿把 `SkyInfo` 瘦成“天空外观”后，那份档定它作为“多种天空/天光方法共用结构”的规则；触发项，本稿不做）。
 

@@ -7,7 +7,7 @@
 
 > 状态：**结项（目标未达成，结论已定）**
 > 范围：`src/ShaderGen` / `src/ShaderMaterialData` / `inc/hgl/mtl` / `src/Tools/ShaderGen`
-> 依据文档：`doc/ultra-thin-implementation-status.md`（过程台账）、`doc/annotation-vs-include-tree-assessment.md`（注记表改写立项评估）
+> 依据文档：`doc/ultra-thin-implementation-status.md`（过程台账）、`doc/deprecated/annotation-vs-include-tree-assessment.md`（注记表改写立项评估）
 > 计口径：**代码行 = 总行 − 空行 − 整行注释**，文件集用 `git ls-tree -r --name-only <ref> src/ShaderGen`（`*.cpp` / `*.h`）
 
 ---
@@ -97,7 +97,7 @@
 
 ### 3.3 「整体换掉注记表」也不成立
 
-已单独立项评估（见 `doc/annotation-vs-include-tree-assessment.md`）：
+已单独立项评估（见 `doc/deprecated/annotation-vs-include-tree-assessment.md`）：
 
 - **换语法 ≠ 删代码**：`slot`、`provides_capability`/`requires_capability`、`texture_reference`、`sampler_reference`、`require`
   都是**节点属性**，include 树只能表达「谁包含谁」，表达不了节点属性。搬进新格式 = 同一张表换皮。
@@ -156,7 +156,7 @@ TestCSMIncrementalPass                 exit=0
 
 **文档入口**
 - `doc/ultra-thin-implementation-status.md` — 过程台账（§10.4 P1–P7 清单、§10.5 天花板对账、§10.6 立项评估）
-- `doc/annotation-vs-include-tree-assessment.md` — 注记表改写立项评估（含 `conflicts` 实施结果 §3.1a）
+- `doc/deprecated/annotation-vs-include-tree-assessment.md` — 注记表改写立项评估（含 `conflicts` 实施结果 §3.1a）
 
 ---
 

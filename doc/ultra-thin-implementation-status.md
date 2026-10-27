@@ -743,7 +743,7 @@ Top5：`GenericMaterialBuilder.cpp` 929、`MaterialShaderEmitter.cpp` 675、`Sha
 
 ### 10.6 「注记表 → 静态 include 树」立项评估（2026-10-25）
 
-全文见 [`doc/annotation-vs-include-tree-assessment.md`](annotation-vs-include-tree-assessment.md)。此处只放可执行结论。
+全文见 [`doc/deprecated/annotation-vs-include-tree-assessment.md`](deprecated/annotation-vs-include-tree-assessment.md)（已归档：评估对象＝旧 ShaderGen 注记表，后者随生成器废除而消失）。此处只放可执行结论。
 
 **核心事实**：`// @ulre` 不是一张表，是 12 条互不相关的指令。逐条倒查消费者后（`ShaderLibrary` 89 文件 / 82 带注记）：
 

@@ -17,7 +17,7 @@
 //
 // 结论：重新启用 GUI 前，本文件需连同 inc/hgl/gui/* 一并重写，
 // 并以 RenderTargetDesc + OffscreenWorld 为新基线。参见
-// doc/render-target-standardization-design.md 阶段 D。
+// doc/deprecated/render-target-standardization-design.md 阶段 D。
 // ============================================================================
 
 #include<hgl/gui/ThemeEngine.h>

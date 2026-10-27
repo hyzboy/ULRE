@@ -4,7 +4,7 @@
 > 目标是把 `D:\AIProgramming\Terrain`（OpenGL 4.6，下文"源工程"）的地形技术用 Vulkan 重做，
 > 并按 GPU-Driven 形态演进到 compute 生成间接绘制。
 >
-> **与 ULRE 版的差异**：另一份 `doc/terrain-rendering-implementation-plan.md` 受 ULRE 既有架构
+> **与 ULRE 版的差异**：另一份 `doc/deprecated/terrain-rendering-implementation-plan.md` 受 ULRE 既有架构
 > 约束（bindless 纹理集 stageFlags 无 mesh 阶段、相机相对渲染未启用、帧资源单份、mesh 模式需
 > 注册进 ShaderGen）。独立工程**没有这些约束**——可以自由给描述符加 mesh 阶段、可以一开始
 > 就按帧多份化、可以直接做纹理采样与稀疏驻留对照实验。本方案中标注「独立工程优势」之处即是。
