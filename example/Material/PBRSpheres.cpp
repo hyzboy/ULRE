@@ -118,6 +118,10 @@ private:
     MaterialDataAccessor sphere_slot_accessors[GRID_SIZE][GRID_SIZE]{};
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
+
+    /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
+    TextureAsset *      base_color_asset = nullptr;
+    TextureAsset *      normal_asset = nullptr;
     Sampler *           sampler = nullptr;
 
     VertexDataManager * mesh_vdm = nullptr;
@@ -278,7 +282,10 @@ private:
             }
         }
 
-        return true;
+        base_color_asset = texture_manager->WrapTextureAsset(base_color_texture);
+        normal_asset     = texture_manager->WrapTextureAsset(normal_texture);
+
+        return base_color_asset && normal_asset;
     }
 
     bool CreateLitMaterialData()
@@ -556,14 +563,14 @@ private:
                     use_recipe_b ? &base_primitives_b[col] : &base_primitives[col]);
                 if (!material_data_comp->SetTextureResource(
                         "base_color",
-                        base_color_texture,
+                        base_color_asset,
                         sampler,
                         hgl::ecs::MaterialTextureResourceKind::
                             Texture2DArray,
                         row)
                  || !material_data_comp->SetTextureResource(
                         "normal",
-                        normal_texture,
+                        normal_asset,
                         sampler,
                         hgl::ecs::MaterialTextureResourceKind::
                             Texture2DArray,

@@ -84,6 +84,12 @@ private:
     Texture2DArray *near_normal_array = nullptr;
     Texture2D *far_base_color_texture = nullptr;
     Texture2D *far_normal_texture = nullptr;
+
+    /// 材质授权统一走句柄：上面四张纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
+    TextureAsset *near_base_color_asset = nullptr;
+    TextureAsset *near_normal_asset = nullptr;
+    TextureAsset *far_base_color_asset = nullptr;
+    TextureAsset *far_normal_asset = nullptr;
     Sampler *sampler = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
@@ -146,6 +152,14 @@ private:
             return LogFail("InitTextures", "failed to load baseColor into array layer 0");
         if (!texture_manager->LoadTexture2DArray(near_normal_array, 0, normal_file))
             return LogFail("InitTextures", "failed to load normal into array layer 0");
+
+        near_base_color_asset  = texture_manager->WrapTextureAsset(near_base_color_array);
+        near_normal_asset      = texture_manager->WrapTextureAsset(near_normal_array);
+        far_base_color_asset   = texture_manager->WrapTextureAsset(far_base_color_texture);
+        far_normal_asset       = texture_manager->WrapTextureAsset(far_normal_texture);
+
+        if (!near_base_color_asset || !near_normal_asset || !far_base_color_asset || !far_normal_asset)
+            return LogFail("InitTextures", "failed to wrap texture assets");
 
         return true;
     }
@@ -237,11 +251,11 @@ private:
         {
             if (!sphere_material_data->SetTextureResource(
                     "base_color",
-                    far_base_color_texture,
+                    far_base_color_asset,
                     sampler)
              || !sphere_material_data->SetTextureResource(
                     "normal",
-                    far_normal_texture,
+                    far_normal_asset,
                     sampler))
                 return false;
         }
@@ -249,13 +263,13 @@ private:
         {
             if (!sphere_material_data->SetTextureResource(
                     "base_color",
-                    near_base_color_array,
+                    near_base_color_asset,
                     sampler,
                     hgl::ecs::MaterialTextureResourceKind::
                         Texture2DArray)
              || !sphere_material_data->SetTextureResource(
                     "normal",
-                    near_normal_array,
+                    near_normal_asset,
                     sampler,
                     hgl::ecs::MaterialTextureResourceKind::
                         Texture2DArray))
