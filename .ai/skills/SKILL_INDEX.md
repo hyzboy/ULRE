@@ -139,6 +139,8 @@
 - 🗂️ `LoadedFileManager` 两段式加载：弱表缓存、延迟释放、`Collect()` 回收
 - 🖼️ `TextureLoadCommitter`：内存字节 → GPU 上传队列/数组纹理层
 - 🧩 ECS 资源流式：`TextureAsset` 句柄 + `TextureStreamingSystem` + 未就绪不渲染门禁
+- 🎯 离屏 RT 资产化：`rt:` URI 寻址、容器/内容双重就绪、帧槽号陷阱
+- 🪞 把离屏图像贴到几何上：无光领域选型、深度视图 swizzle、逆序 Z
 - 📊 队列峰值、请求计数、等待时间及 IO 耗时统计
 
 **快速导航：**
@@ -149,6 +151,10 @@
 游戏里怎么用（去重/复用）？ → 本文 §8 LoadedFileManager
 纹理文件读完怎么上显存？   → 本文 §8.4 TextureLoadCommitter
 贴图还没加载好怎么不渲染？ → 本文 §9 ECS 侧资源流式
+离屏 RT 怎么用名字引用？   → 本文 §10 rt: URI + 双重就绪
+离屏图贴到立方体上发灰？   → 本文 §10.8 坑 1（别用 Lit，用 UnlitTexture3D）
+深度图贴上去全是红色？     → 本文 §10.8 坑 2（采样视图要 R->RGB 广播）
+深度图一片黑？             → 本文 §10.8 逆序 Z（d=0 是无限远）
 → 使用这个SKILL
 ```
 
