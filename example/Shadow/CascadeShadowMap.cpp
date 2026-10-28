@@ -148,6 +148,11 @@ private:
     Texture2DArray *base_color_texture = nullptr;
     Texture2DArray *normal_texture = nullptr;
     Texture2DArray *alpha_base_texture = nullptr; // A1-4: alpha test 物体专用（1 层 RGBA8 棋盘）
+
+    /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
+    TextureAsset *base_color_asset = nullptr;
+    TextureAsset *normal_asset = nullptr;
+    TextureAsset *alpha_base_asset = nullptr;
     Sampler *pbr_sampler = nullptr;
 
     Geometry *builtin_geometries[kBuiltinGeomCount]{};
@@ -889,7 +894,14 @@ private:
         auto *sampler_manager = GetManager<SamplerManager>();
         pbr_sampler = sampler_manager ? sampler_manager->CreateSampler() : nullptr;
 
-        return pbr_sampler != nullptr;
+        if (!pbr_sampler)
+            return false;
+
+        base_color_asset = texture_manager->WrapTextureAsset(base_color_texture);
+        normal_asset     = texture_manager->WrapTextureAsset(normal_texture);
+        alpha_base_asset = texture_manager->WrapTextureAsset(alpha_base_texture);
+
+        return base_color_asset && normal_asset && alpha_base_asset;
     }
 
     bool InitMaterial()
@@ -1105,9 +1117,9 @@ private:
         ground_prim = ground_entity->GetContext()->GetOrCreateGeometryData(ground_entity);
         hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity);
         ground_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
-        material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
+        material_data_comp->SetTextureResource("base_color", base_color_asset, pbr_sampler,
             hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0); // Concrete_Plain
-        material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
+        material_data_comp->SetTextureResource("normal", normal_asset, pbr_sampler,
             hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
         material_data_comp->SetDataResource(ground_accessor.GetGlobalSSBOBinding());
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
@@ -1198,9 +1210,9 @@ private:
             auto prim = e->GetContext()->GetOrCreateGeometryData(e);
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
-            material_data_comp->SetTextureResource("base_color", base_color_texture, pbr_sampler,
+            material_data_comp->SetTextureResource("base_color", base_color_asset, pbr_sampler,
                 hgl::ecs::MaterialTextureResourceKind::Texture2DArray, tex_idx);
-            material_data_comp->SetTextureResource("normal", normal_texture, pbr_sampler,
+            material_data_comp->SetTextureResource("normal", normal_asset, pbr_sampler,
                 hgl::ecs::MaterialTextureResourceKind::Texture2DArray, tex_idx);
             material_data_comp->SetDataResource(material_accessors[mat_idx].GetGlobalSSBOBinding());
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
@@ -1237,9 +1249,9 @@ private:
                 prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
-                material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
+                material_data_comp->SetTextureResource("base_color", alpha_base_asset, pbr_sampler,
                     hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
-                material_data_comp->SetTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
+                material_data_comp->SetTextureResource("opacity_mask", alpha_base_asset, pbr_sampler,
                     hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
                 material_data_comp->SetDataResource(material_accessors[0].GetGlobalSSBOBinding());
                 // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
