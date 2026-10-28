@@ -1,6 +1,7 @@
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/log/Log.h>
+#include<hgl/utf.h>
 
 namespace hgl::graph
 {
@@ -32,7 +33,7 @@ namespace hgl::graph
 
         if(!tex_manager)
         {
-            GLogError(u8"[TextureAsset] 同步加载失败：未绑定 TextureManager（%s）",
+            GLogError(OS_TEXT("[TextureAsset] 同步加载失败：未绑定 TextureManager（%s）"),
                       GetMeta().source_path.c_str());
             return(false);
         }
@@ -41,7 +42,7 @@ namespace hgl::graph
 
         if(!texture)
         {
-            GLogError(u8"[TextureAsset] 纹理加载失败：%s",meta.source_path.c_str());
+            GLogError(OS_TEXT("[TextureAsset] 纹理加载失败：%s"),meta.source_path.c_str());
             return(false);
         }
 
@@ -67,7 +68,7 @@ namespace hgl::graph
 
         if(!tex_manager)
         {
-            GLogError(u8"[TextureAsset] SetupFromFilename 时未绑定 TextureManager（%s）",
+            GLogError(OS_TEXT("[TextureAsset] SetupFromFilename 时未绑定 TextureManager（%s）"),
                       filename.c_str());
             return(false);
         }
@@ -133,8 +134,12 @@ namespace hgl::graph
 
     void TextureAsset::FailAsyncLoad(const char *reason)
     {
+        // source_path 是 OSString（Windows 上是 UTF-16），而 reason 是 UTF-8 —— 统一转成
+        // UTF-8 再用 %s，否则格式化参数与格式串编码不一致，日志会输出乱码甚至读越界。
+        const U8String u8_path=ToU8String(meta.source_path);
+
         GLogError(u8"[TextureAsset] 异步加载失败：%s（%s）",
-                  meta.source_path.c_str(),
+                  reinterpret_cast<const char *>(u8_path.c_str()),
                   reason?reason:"未指明原因");
 
         texture         =nullptr;

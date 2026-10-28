@@ -31,6 +31,7 @@
 #include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/support/CPUCullReferenceSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
+#include <hgl/ecs/systems/render/TextureStreamingSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/ViewUBOCommitSystem.h>
@@ -75,6 +76,11 @@ namespace
             render_upload_system->SetWorld(ctx);
             render_upload_system->SetDevice(device);
         }
+
+        // 纹理流式加载：把材质里"只给了文件名"的纹理句柄在后台读盘 + 上传，
+        // 就绪后 CanRender 会自动放行。相位 RenderPreBeginFrame，早于引擎的
+        // UpdateUploadQueue，所以本帧发起、下帧生效。
+        EnsureSystem<hgl::ecs::TextureStreamingSystem>(ctx);
 
         // Register the Primitive pipeline and its thin proxy systems directly
         // (the RenderPipelineGroup container abstraction was removed — it had

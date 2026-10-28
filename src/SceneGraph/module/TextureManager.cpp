@@ -160,6 +160,39 @@ void TextureManager::Release(Texture *tex)
     texture_by_filename.DeleteByValue(tex);    ///<从文件名映射删除
 }
 
+Texture *TextureManager::FindTextureByFilename(const OSString &filename)const
+{
+    if(filename.IsEmpty())
+        return(nullptr);
+
+    Texture *tex=nullptr;
+
+    if(!texture_by_filename.Get(filename,tex))
+        return(nullptr);
+
+    return tex;
+}
+
+bool TextureManager::RegisterTextureFilename(const OSString &filename,Texture *texture)
+{
+    if(filename.IsEmpty()||!texture)
+        return(false);
+
+    // 只登记本管理器名下的纹理：否则 Release(tex) 的 DeleteByValue 清不掉这条映射，
+    // 会留下指向已销毁纹理的悬垂条目。
+    if(!texture_set.Contains(texture))
+        return(false);
+
+    Texture *existing=nullptr;
+
+    if(texture_by_filename.Get(filename,existing))
+        return(existing==texture);
+
+    texture_by_filename.Add(filename,texture);
+
+    return(true);
+}
+
 Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps);
 uint64_t CreateTexture2DFromFileAsync(TextureManager *tm,
                                      const OSString &filename,

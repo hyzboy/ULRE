@@ -187,5 +187,19 @@ public: // TextureAsset
     /// 句柄表只读视图（流式系统逐帧扫描 `MetaOnly` 句柄用）
     const ValueArray<TextureAsset *> &GetTextureAssets()const{return texture_assets;}
 
+    /**
+     * 按文件名查**已就绪**的纹理（`LoadTexture2D`/`LoadTextureCube` 用过的同一张）。
+
+     * 流式系统在发起读盘前先用它收敛：如果同步路径早已加载过同一个文件，
+     * 直接把那张纹理交给句柄，不重复读盘、不重复建纹理。
+     * 查找键与 `LoadTexture2D` 完全一致（原样比较，不做规范化），
+     * 保证「查得到」与「命中缓存」是同一个判据。
+     */
+    Texture *FindTextureByFilename(const OSString &filename)const;
+
+    /// 流式加载完成后回填「文件名 → 纹理」，让后续 `LoadTexture2D` 命中同一张（不重复创建）。
+    /// 同文件名已映射到别的纹理时不覆盖（先到者优先），返回 false。
+    bool RegisterTextureFilename(const OSString &filename,Texture *texture);
+
 };//class TextureManager
 }//namespace hgl::graph
