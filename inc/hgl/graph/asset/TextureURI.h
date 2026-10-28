@@ -31,6 +31,10 @@ namespace hgl::graph
      *   交由 `MakeLoadedFileKey` 处理，避免出现第二套路径规则。
      * - `rt:<target>[:<attachment>]`：`target` 是 `RenderTargetDesc::name`，
      *   `attachment` 缺省为 `color0`，深度用 `depth`。
+     *   分隔符取**最后一个**冒号，且只有其后是合法附件名（`color`/`color<N>`/`depth`）时才
+     *   算分隔 —— 因为 RT 名常沿用 `resource_prefix`（如 `RenderToTexture:OffscreenRT`），
+     *   名字里带冒号是常态。因此 `rt:A:B:color0` = 名 `A:B` + 附件 `color0`，
+     *   而 `rt:A:B` = 名 `A:B` + 缺省 `color0`。
      *
      * 注意 `C:\path\to\texture.Tex2D` 这类盘符不会被误判成 scheme：
      * 只有 `file`/`rt` 两个已知 scheme 才生效，其余形如 `<prefix>:...` 的一律按文件路径处理。

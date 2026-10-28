@@ -1,4 +1,5 @@
 #include<hgl/graph/asset/TextureURI.h>
+#include<hgl/graph/asset/RenderTargetAsset.h>
 #include<hgl/utf.h>
 
 namespace hgl::graph
@@ -38,6 +39,25 @@ namespace hgl::graph
 
             return(true);
         }
+
+        /**
+         * 这段文本是不是一个合法的附件名（`color` / `color<N>` / `depth`）。
+         *
+         * 用来决定 `rt:` 里最后一个冒号是「名字与附件的分隔符」还是「名字自身的一部分」：
+         * RT 名常常沿用 `resource_prefix`（形如 `RenderToTexture:OffscreenRT`），
+         * 不能简单地按第一个或最后一个冒号切分。
+         */
+        bool IsAttachmentName(const OSString &name)
+        {
+            if(name.IsEmpty())
+                return(false);
+
+            if(name==OSString(kTextureURIAttachmentDepth))
+                return(true);
+
+            uint32_t index=0;
+            return(ParseColorAttachmentName(name,index));
+        }
     }//namespace
 
     TextureURI TextureURI::Parse(const OSString &uri)
@@ -65,23 +85,30 @@ namespace hgl::graph
             const os_char *data=rest.c_str();
             const int len=rest.Length();
 
+            // 从**尾部**找最后一个冒号，并只看最后一小段是否是合法附件名。
+            // RT 名可能自带冒号（示例的 resource_prefix 就是 `Xxx:Yyy`），
+            // 而附件名只有 `color<N>`/`depth` 这几种，因此可以无歧义地区分：
+            //   rt:RenderToTexture:OffscreenRT:color0 → 名 `RenderToTexture:OffscreenRT`，附件 `color0`
+            //   rt:RenderToTexture:OffscreenRT        → 整段是名字，附件缺省 `color0`
             int colon=-1;
-            for(int i=0;i<len;i++)
+            for(int i=len-1;i>=0;--i)
                 if(data[i]==OS_TEXT(':'))
                 {
-                    colon=i;
+                    const OSString tail=rest.SubString(i+1);
+
+                    if(IsAttachmentName(tail))
+                    {
+                        colon=i;
+                        info.attachment=tail;
+                    }
+
                     break;
                 }
 
             if(colon>=0)
-            {
-                info.path      =rest.SubString(0,colon);
-                info.attachment=rest.SubString(colon+1);
-            }
+                info.path=rest.SubString(0,colon);
             else
-            {
                 info.path=rest;
-            }
 
             if(info.attachment.IsEmpty())
                 info.attachment=kTextureURIAttachmentColor;
