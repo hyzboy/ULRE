@@ -616,7 +616,7 @@ public:
         static constexpr uint32_t kSelfW           = 1280;
         static constexpr uint32_t kSelfH           = 720;
         static constexpr uint32_t kSelfMinDistinct = 256;   // 不空转守卫（恒定图会 FAIL）
-        static constexpr uint64_t kSelfFNV         = 0x2D28D72AEA4FC87Dull;  // T0 实跑记录
+        static constexpr uint64_t kSelfFNV         = 0xF420BEB0153C2E12ull;  // 重录：帧守卫修复后（离屏/IBL 世界真正逐帧装配）实测；FRAMEDIGEST_PERFRAME=60 帧全一致
 
         if (s_selfcheck && ++s_self_frame == 8)
         {

@@ -1554,7 +1554,7 @@ public:
             static constexpr uint32_t kSelfW           = 1600;   // 本例跑 1600×900（非默认 1280×720）
             static constexpr uint32_t kSelfH           = 900;
             static constexpr uint32_t kSelfMinDistinct = 2;    // 不空转守卫
-            static constexpr uint64_t kSelfFNV         = 0x1cdaadebf18b7ce4ull;   // 冻结动画（从第 0 帧）+ 接管下实跑记录
+            static constexpr uint64_t kSelfFNV         = 0xE3F90B49348EE047ull;   // 重录：帧守卫修复后（离屏级联世界真正逐帧装配，masked caster 得以收敛进深度图）实测；FRAMEDIGEST_PERFRAME=120 帧全一致
 
             if (s_selfcheck && ++s_self_frame == 8)
             {
