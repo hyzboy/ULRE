@@ -10,6 +10,18 @@ namespace hgl::ecs
 {
     // ── 能力判定 ──
 
+    /// 材质侧资源就绪度：任一**必需**纹理句柄尚未加载完毕 ⇒ 本图元暂不可渲染。
+    /// 没有材质数据覆盖时不做限制（由几何默认资产决定），保持既有行为。
+    static bool IsMaterialResourceReady(const ECSContext *context, const Entity *entity)
+    {
+        const MaterialData *material_data = context->GetMaterialData(entity);
+
+        if (!material_data)
+            return true;
+
+        return !material_data->HasPendingRequiredTexture();
+    }
+
     bool CanRender(const Entity *entity)
     {
         if (!entity)
@@ -21,7 +33,12 @@ namespace hgl::ecs
 
         const GeometryData *geometry = context->GetGeometryData(entity);
 
-        return geometry && geometry->GetPrimitiveAsset() != nullptr;
+        if (!geometry || geometry->GetPrimitiveAsset() == nullptr)
+            return false;
+
+        // 资源未就绪不渲染：贴图仍在流式加载时该图元不进收集（不占实例槽、不产生 DrawCall），
+        // 等必需句柄全部 Resident 后 `authored_generation` 前进，本判据自动放行。
+        return IsMaterialResourceReady(context, entity);
     }
 
     bool HasAnyMaterialSource(const Entity *entity)
@@ -33,7 +50,7 @@ namespace hgl::ecs
         if (!context)
             return false;
 
-        // A7d\uff1a\u624b\u91cc\u5df2\u6709\u5b9e\u4f53 \u21d2 \u8d70 `Entity*` \u91cd\u8f7d\uff08\u4e0d\u505a\u300c\u6307\u9488 \u2192 ID \u2192 \u518d\u89e3\u6790\u56de\u6307\u9488\u300d\u7684\u5f80\u8fd4\uff09
+        // A7d：手里已有实体 ⇒ 走 `Entity*` 重载（不做「指针 → ID → 再解析回指针」的往返）
         const MaterialData *material_data = context->GetMaterialData(entity);
         const GeometryData *geometry = context->GetGeometryData(entity);
 

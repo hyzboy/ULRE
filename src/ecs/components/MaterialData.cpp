@@ -200,6 +200,30 @@ namespace hgl::ecs
         return nullptr;
     }
 
+    bool
+        MaterialData::HasPendingRequiredTexture() const
+    {
+        const MaterialAuthoringSideTable *table = GetAuthoringTable();
+
+        if (!table)
+            return false;
+
+        const MaterialAuthoringSideTable::Entry *side = table->Find(material_row_id);
+
+        if (!side)
+            return false;
+
+        for (const auto &[named_key, resource] : side->named_texture_resources)
+        {
+            // 只对「必需 + 确实声明了来源」的条目把关：既无纹理又无文件名的空条目
+            // 本来就不会被收集路径当作有效绑定，不该把图元永久钉在不可渲染状态。
+            if (resource.required && resource.HasSource() && !resource.IsReady())
+                return true;
+        }
+
+        return false;
+    }
+
     // ── B4-iii-a：材质数据在设备级的家 = (Global, MaterialData) 组件行 ──────────
     //   真源只有一处：**行**。组件只持行号 ⇒ 不存在「组件副本 vs 行」双真值。
     //   行归属设备级（材质数据是资源级、跨世界共享）—— 与 P-1 及 B4 拍板「路 B」一致。

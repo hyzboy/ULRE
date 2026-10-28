@@ -128,6 +128,11 @@ namespace hgl::ecs
         /// 是否可绑定由调用方看 `resource.GetTexture()`/`IsReady()`。
         const MaterialTextureAuthoringResource *GetTextureResource(const std::string &name) const;
 
+        /// 是否仍有**必需的**纹理句柄未就绪（`required && !IsReady()`）。
+        /// 渲染决策据此判定「资源未加载完成时不渲染」：任一必需贴图缺席 ⇒ 整个图元暂不进入收集。
+        /// 就绪度直接读句柄的 `PayloadState`，不另立计数器 ⇒ 无双状态源。
+        bool HasPendingRequiredTexture() const;
+
         // ── 材质数据行资源 ──
         /// 授权 / 清空材质数据行（真源写在 (Global, MaterialData) 组件行里；本组件只持行号）。
         /// `resource.ssbo_id == 0` ⇒ 清空（行保留）；其余情况要求 binding 有效（无效即报错拒绝）。
