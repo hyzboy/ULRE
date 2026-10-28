@@ -8,6 +8,8 @@ namespace hgl::ecs
 
     void RenderFrameCache::BeginFrame()
     {
+        ++frame_serial;
+
         renderItems.clear();
         ordered_batches.clear();
         renderableCount = 0;

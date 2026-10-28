@@ -398,7 +398,9 @@ namespace hgl::ecs
         if (!context_)
             return false;
 
-        const uint32_t frame = context_->GetFrameIndex();
+        // 键用世界内帧序列号（`RenderFrameCache::frame_serial`）而非 `GetFrameIndex()`：
+        // 后者是驱动相机的帧槽号，离屏 pass 恒为固定槽（永不推进）⇒ 同槽后续帧会被误判为"本帧已准备"。
+        const uint32_t frame = context_->GetRenderFrameCache().frame_serial;
         if (frame == prepared_frame_)
             return true;
         prepared_frame_ = frame;

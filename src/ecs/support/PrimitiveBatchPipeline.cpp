@@ -88,14 +88,22 @@ namespace hgl::ecs
 
         // §2 #11（2026-10-11）：**每帧只准备一次**的真守卫。
         // `PrimitiveRenderPipeline::RunCull/RunSort/RunBuild` 各自调用本函数 ⇒ 原实现每帧最多
-        // 做三遍同样的帧前准备（其中 Sort 那遍没有任何下游动作）。守卫 = 帧号 + 结果缓存：
-        // 同一帧的后续调用直接返回首次结果（含失败），帧号推进后才重新准备。
-        // 本对象每世界一个（`PrimitiveRenderPipeline::impl_`）⇒ 用帧号做键是安全的。
-        if (prepared_frame_ == ctx->GetFrameIndex())
+        // 做三遍同样的帧前准备（其中 Sort 那遍没有任何下游动作）。守卫 = 帧序列号 + 结果缓存：
+        // 同一帧的后续调用直接返回首次结果（含失败），下一帧才开始重新准备。
+        //
+        // ⚠ 键必须是 `RenderFrameCache::frame_serial`（每次 BeginFrame 自增），**不能**是
+        // `ECSContext::GetFrameIndex()`：后者是驱动相机的**帧槽号**，离屏 pass 恒为该 RT 的
+        // 固定槽 ⇒ 离屏世界永不推进 ⇒ 首帧准备失败（首帧 renderItems 必为空）被永久缓存，
+        // `RunBatching()` 再也不被调用、`materialBatches` 恒空 ⇒ 离屏世界永不绘制
+        // （RenderToTexture / RenderToTextureColorDepth 两例的最终根因）。
+        auto& cache = ctx->GetRenderFrameCache();
+        const uint32_t frame_serial = cache.frame_serial;
+
+        if (prepared_frame_ == frame_serial)
             return prepared_frame_ok_;
 
         ++prepare_frame_count_;
-        prepared_frame_      = ctx->GetFrameIndex();
+        prepared_frame_      = frame_serial;
         prepared_frame_ok_   = PrepareFrameInternal(ctx);
 
         return prepared_frame_ok_;
