@@ -132,67 +132,46 @@ namespace hgl::graph::mtl
                     plan.coverage))
                 return false;
 
-            // 曲面 alpha 是否写进输出：alpha_blend 的 SRC_ALPHA 取输出 alpha
-            //（不写进输出 ⇒ blend 空转；见 ComposeInput 注释）。
             {
-                const ResolvedMaterialRenderState render_state =
-                    ResolveMaterialRenderState(definition, request.recipe);
-
-                plan.alpha_to_output = render_state.pipeline_config.alpha_blend;
-            }
-            {
-                plan.render_template_request_storage = resolved_request;
-                plan.render_template_request = &plan.render_template_request_storage;
-                RenderTemplateValidationDiagnostic diagnostic{};
-                const ShaderCodeModuleRegistry &module_registry =
-                   GetShaderCodeModuleRegistry();
-                if (!ValidateRenderTemplateRequest(
-                       *plan.render_template_request,
-                       module_registry,
-                       diagnostic)
-                 || ((plan.purpose == ShaderProgramPurpose::DepthOnly
-                   || plan.purpose == ShaderProgramPurpose::ShadowDepth)
-                  && plan.render_template_request->template_id
-                      != (plan.coverage.requires_alpha_evaluation
+                if ((plan.purpose == ShaderProgramPurpose::DepthOnly
+                  || plan.purpose == ShaderProgramPurpose::ShadowDepth)
+                 && resolved_request.template_id
+                     != (plan.coverage.requires_alpha_evaluation
+                          ? RenderTemplateID::ShadowCasterMasked
+                          : RenderTemplateID::ShadowCasterOpaque))
+                {
+                    GLogError(
+                       "[MaterialProgramAssembler] Render template request rejected: name=%s "
+                       "template=%s expected=%s",
+                       definition.definition_name.c_str(),
+                       GetRenderTemplateName(resolved_request.template_id),
+                       GetRenderTemplateName(plan.coverage.requires_alpha_evaluation
                            ? RenderTemplateID::ShadowCasterMasked
-                           : RenderTemplateID::ShadowCasterOpaque)))
-            {
-                GLogError(
-                   "[MaterialProgramAssembler] Render template request rejected: name=%s "
-                   "template=%s validation=%s role=%s module=%s include=%s expected=%s",
-                   definition.definition_name.c_str(),
-                   GetRenderTemplateName(
-                       plan.render_template_request->template_id),
-                   GetRenderTemplateValidationErrorName(diagnostic.error),
-                   GetShaderModuleSlotRoleName(diagnostic.role),
-                   diagnostic.module_name.c_str(),
-                   diagnostic.include_path.c_str(),
-                   diagnostic.expected_include_path.c_str());
-                return false;
-            }
-            if (!ResolveRenderTemplate(
-                   *plan.render_template_request,
-                   GetShaderCodeModuleRegistry(),
-                   plan.resolved_render_template,
-                   diagnostic))
-            {
-                GLogError(
-                   "[MaterialProgramAssembler] Render template resolution failed: name=%s "
-                   "template=%s validation=%s role=%s module=%s include=%s expected=%s",
-                   definition.definition_name.c_str(),
-                   GetRenderTemplateName(
-                       plan.render_template_request->template_id),
-                   GetRenderTemplateValidationErrorName(diagnostic.error),
-                   GetShaderModuleSlotRoleName(diagnostic.role),
-                   diagnostic.module_name.c_str(),
-                   diagnostic.include_path.c_str(),
-                   diagnostic.expected_include_path.c_str());
-                return false;
-            }
-            plan.render_template_request_storage =
-                plan.resolved_render_template.request;
-            plan.resolved_template_hash =
-                plan.render_template_request_storage.GetHash();
+                           : RenderTemplateID::ShadowCasterOpaque));
+                    return false;
+                }
+
+                RenderTemplateValidationDiagnostic diagnostic{};
+                if (!ResolveRenderTemplate(
+                       resolved_request,
+                       GetShaderCodeModuleRegistry(),
+                       plan.resolved_render_template,
+                       diagnostic))
+                {
+                    GLogError(
+                       "[MaterialProgramAssembler] Render template resolution failed: name=%s "
+                       "template=%s validation=%s role=%s module=%s include=%s expected=%s",
+                       definition.definition_name.c_str(),
+                       GetRenderTemplateName(resolved_request.template_id),
+                       GetRenderTemplateValidationErrorName(diagnostic.error),
+                       GetShaderModuleSlotRoleName(diagnostic.role),
+                       diagnostic.module_name.c_str(),
+                       diagnostic.include_path.c_str(),
+                       diagnostic.expected_include_path.c_str());
+                    return false;
+                }
+                plan.resolved_template_hash =
+                    plan.resolved_render_template.request.GetHash();
             }
             plan.depth_purpose =
                 plan.purpose == ShaderProgramPurpose::DepthOnly
@@ -227,12 +206,11 @@ namespace hgl::graph::mtl
                 }
             }
 
-            plan.varying = plan.effective_vertex_varying;
-
+            hgl::ValueArray<mtl::InterStageSemanticContractEntry> stage_interface;
             MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
             if (!BuildMaterialStageInterface(
                     plan.effective_vertex_varying,
-                    plan.stage_interface,
+                    stage_interface,
                     stage_interface_diagnostic))
             {
                 GLogError(
@@ -279,7 +257,6 @@ namespace hgl::graph::mtl
                               definition.definition_name.c_str());
                     return false;
                 }
-                plan.position_format = resolved_abi.position_format;
                 plan.resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl;
             }
             return true;
@@ -388,9 +365,9 @@ namespace hgl::graph::mtl
             MaterialProgramAssemblyPlan &plan)
         {
             plan.manifest = ShaderCodeResourceManifest{};
-            plan.manifest_definition = definition;
+            MaterialDefinition manifest_definition = definition;
             if (plan.depth_purpose)
-                plan.manifest_definition.code_module_requirements.clear();
+                manifest_definition.code_module_requirements.clear();
             const char *provider_root_names[2]{};
             uint32 provider_root_count = 0;
             const ShaderCodeModuleRegistry &module_registry = GetShaderCodeModuleRegistry();
@@ -409,7 +386,7 @@ namespace hgl::graph::mtl
                   && role == ShaderModuleSlotRole::NTBProvider))
                     break;
                 const RenderTemplateModuleRoot *root =
-                    plan.render_template_request->FindModuleRoot(role);
+                    plan.resolved_render_template.request.FindModuleRoot(role);
                 if (!root)
                     continue;
                 const ShaderCodeModuleDefinition *provider =
@@ -424,7 +401,7 @@ namespace hgl::graph::mtl
                     provider_root_names[provider_root_count++] = provider->name;
             }
             if (!resource_manifest_builder::BuildMaterialShaderCodeResourceManifest(
-                    plan.manifest_definition, plan.manifest,
+                    manifest_definition, plan.manifest,
                     provider_root_names, provider_root_count, &module_registry))
             {
                 GLogError("[MaterialProgramAssembler] Generic material resource manifest failed: name=%s",
@@ -434,7 +411,7 @@ namespace hgl::graph::mtl
             const char *invalid_texture_reference = nullptr;
             if (!ValidateShaderCodeResourceManifestTextureReferences(
                     plan.manifest,
-                    plan.manifest_definition,
+                    manifest_definition,
                     &invalid_texture_reference))
             {
                 GLogError(
@@ -448,7 +425,7 @@ namespace hgl::graph::mtl
             const char *missing_sampler_reference = nullptr;
             if (!ValidateShaderCodeResourceManifestSamplerReferences(
                     plan.manifest,
-                    plan.manifest_definition,
+                    manifest_definition,
                     &missing_sampler_reference))
             {
                 GLogError(
@@ -694,7 +671,7 @@ namespace hgl::graph::mtl
             // mesh_options（顶点链路自持）。
             {
                 const mtl::InterStageSemanticMask mask =
-                    mtl::GetMaterialInterStageSemanticMask(plan.varying);
+                    mtl::GetMaterialInterStageSemanticMask(plan.effective_vertex_varying);
 
                 AnsiString common_options_glsl;
                 if (!mtl::EmitInterStageVaryingOptions(mask, common_options_glsl))

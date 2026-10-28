@@ -84,21 +84,13 @@ namespace hgl::graph::mtl
             mtl::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;
 
-        // 曲面 alpha 写进片元输出（alpha_blend 需要；见 ComposeInput）
-        bool alpha_to_output = false;
-        RenderTemplateRequest render_template_request_storage;
-        const RenderTemplateRequest *render_template_request = nullptr;
         ResolvedRenderTemplate resolved_render_template;
         uint64 resolved_template_hash = 0;
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;
         MaterialDefinition vertex_definition;
-        MaterialVertexVaryingConfig varying;
-        hgl::ValueArray<mtl::InterStageSemanticContractEntry>
-            stage_interface;
 
         // Phase 2: vertex ABI
-        VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config;
         // 求解出的顶点流解码 include 文本，供 mesh_options 发射器使用。
         // 其内容摘要进入 mesh stage 编译键；固定拓扑 master 的名称不依赖它。
@@ -112,7 +104,6 @@ namespace hgl::graph::mtl
 
         // Phase 3: resource manifest
         ShaderCodeResourceManifest manifest;
-        MaterialDefinition manifest_definition;
 
         // Phase 4 产出、Phase 5 原样消费的发射输入
         mtl::OutputContract output_contract;
