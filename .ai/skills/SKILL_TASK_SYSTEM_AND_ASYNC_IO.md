@@ -172,3 +172,86 @@ These are cumulative, low-contention counters rather than a tracing system. Queu
 cmake --build build --config Debug --target WorkHandlerTest PriorityTaskQueueTest AsyncFileLoaderTest WorkerPoolTest
 ctest --test-dir build -C Debug -R "^(WorkHandlerTest|PriorityTaskQueueTest|AsyncFileLoaderTest|WorkerPoolTest)$" --output-on-failure
 ```
+
+## 8. 上层封装：LoadedFileManager + TextureLoadCommitter（两段式）
+
+CMCore 的 `AsyncFileLoader` 只解决"把字节读出来"。真实业务还需要三件事：**去重缓存**、**延迟释放**，以及"读完之后怎么交给需要线程亲和性的目标"。ULRE 用 `LoadedFileManager` + 各领域 Committer 组合出两段式流水线。
+
+```
+主线程                      IO 线程池                             主线程（Pump 所在线程）
+Submit(path, handler) ─▶ 读整文件进 LoadedFile ─▶ SwapMailbox ─▶ Pump() → handler → Committer → GPU/音频队列
+        │                                                                     │
+   命中弱表缓存 → 直接进 ready                                              放手引用
+                                                                              ▼
+                                                       引用归零 → 待释放队列 → Collect() 真正释放
+```
+
+### 8.1 角色划分
+
+| 组件 | 位置 | 职责 |
+|------|------|------|
+| `LoadedFile` | `inc/hgl/framework/LoadedFile.h` | 文件字节 + META + 引用计数；字节直接读进内部 `AsyncFileLoadRequest`，零额外拷贝 |
+| `LoadedFileHandler` | `inc/hgl/framework/LoadedFileHandler.h` | 业务回调接口；业务上下文放子类成员 |
+| `LoadedFileManager` | `inc/hgl/framework/LoadedFileManager.h` | 读盘调度、弱表缓存、待释放队列、统计 |
+| `TextureLoadCommitter` | `inc/hgl/graph/module/TextureLoadCommitter.h` | 把 `LoadedFile` 解析成 `TextureCreateInfo` 并提交 GPU 上传队列 |
+
+### 8.2 弱表缓存与复活
+
+`files` 表只存**弱引用**（裸指针，不加计数）。引用归零时 `LoadedFile::OnRefZero()` 只把它挂进 `pending_release`，真正的 `Release()+delete` 由 `Collect()` 完成：
+
+1. 排队期间 `Find()` / `Submit()` 命中同名文件 → `RefInc` 复活，`Collect()` 见到计数 > 0 就放过它；
+2. 因此只要还有人持有 `LoadedFilePtr`，同名路径就**不会重复读盘**；
+3. `Collect()` 先摘表、再在锁外释放，避免持锁时触发归零回调造成死锁。
+
+### 8.3 线程契约
+
+- `Submit` / `Cancel` / `Pump` / `Collect` / `Stop`：**同一线程**（通常主线程）；
+- `Find` 与 `RefInc/RefDec`：任意线程安全；
+- `LoadedFileHandler` 的三个回调**只在 `Pump()` 所在线程**触发 —— 这正是可以直接调用 `ChangeTexture2DArray`、创建 ECS 实体等主线程接口的原因；
+- `AsyncFileLoadHandler`（IO 线程侧）只做"记 outcome + 投邮箱"，绝不碰业务状态。
+
+### 8.4 为什么提交后可以立刻放掉文件引用
+
+`VkTextureLoader::Load` 在 `OnBegin` 里创建并 `Map` 了 staging `DeviceBuffer`，像素是**同步拷贝**进去的。所以 `TextureLoadCommitter::CommitTexture2D` / `CommitTexture2DArrayLayer` 返回后，`LoadedFile` 的字节已不再被需要，调用方可以立即放手引用，帧末 `Collect()` 回收。
+
+```cpp
+// 典型回调（只在 Pump 线程执行）
+void MyHandler::OnFileLoaded(const FileLoadTicket &, LoadedFile *file)
+{
+    task_id = committer->CommitTexture2D(file,false,UploadPriority::High,bindless_handle,OnUploadDone,this);
+    // 不需要保留 file：像素已拷入 staging
+}
+```
+
+### 8.5 两层取消与两层优先级
+
+| 层 | 取消接口 | 优先级枚举 | 生效范围 |
+|----|----------|------------|----------|
+| 文件读取 | `LoadedFileManager::Cancel(FileLoadId)` | `io::AsyncFilePriority`（Critical/High/Normal/Low） | 尚未回调的请求；已读完的会被转成 `OnFileCancelled` |
+| GPU 上传 | `TextureManager::CancelUpload(task_id)` | `UploadPriority`（Immediate/High/Normal/Low） | 已提交的上传任务；`Queued` 直接撤销，`InFlight` 标记 Discarded |
+
+两层编号互不相同（`FileLoadId` 与上传 `task_id`），不要混用。
+
+### 8.6 帧预算
+
+`Pump(max_dispatch)` 与 `Collect()` 建议放在同一帧的固定位置：
+
+```cpp
+void Tick(double dt) override
+{
+    load_manager.Pump(kPerFrameBudget);   // 第二段：限量提交，避免上传尖峰
+    // ... 业务 ...
+    load_manager.Collect();               // 帧末：回收已放手的文件
+}
+```
+
+### 8.7 示例与测试
+
+- `example/Loader/LoadedFileManagerTest.cpp`：读取成功、文件不存在、取消、延迟释放、复活、缓存命中、`Pump` 限量、`Stop(Drain)` / `Stop(CancelPending)`。
+- `example/Texture/AsyncTextureUpload.cpp`：5 个文件请求（读盘 Critical/High/Normal/Low 分档）+ 两层取消演示 + Bindless 热替换。
+- `example/Texture/TextureArrayStreaming.cpp`：50 个图标并发读盘、按帧预算逐层写进 `Texture2DArray`。
+
+```powershell
+cmake --build build --config Debug --target LoadedFileManagerTest AsyncTextureUpload TextureArrayStreaming
+ctest --test-dir build -C Debug -R "^LoadedFileManagerTest$" --output-on-failure
+```
