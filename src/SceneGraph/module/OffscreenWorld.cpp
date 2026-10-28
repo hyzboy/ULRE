@@ -177,19 +177,31 @@ namespace hgl::graph
 
         RestoreMainRenderContext();
 
-        if(scene_ready)
+        // **资源就绪 ≠ 内容已画出**：资源刚 Resident 的那一帧，图元可能还卡在材质物化链
+        // （`materialBatches` 为空 ⇒ 一个 DrawCall 都没有），此时若置就绪位，下游会把
+        // 「只有清屏色」当内容采样，而离屏侧随后停止驱动 ⇒ 内容永远补不上（离屏示例实测：
+        // 主场景看到的是纯清屏色）。所以判据必须再看本帧**真建出了批**。
+        // 没有图元进收集（空场景 / 全被剔除）不算残缺 —— 那种情况下清屏色就是内容。
+        const auto &frame_cache = world_->GetRenderFrameCache();
+        const bool drew_content = frame_cache.renderItems.empty()
+                                ? true
+                                : frame_cache.materialBatches.GetCount() > 0;
+
+        if(scene_ready && drew_content)
         {
             MarkContentReady();
             return;
         }
 
-        // 资源还没齐：本帧内容残缺，不置就绪位。下游材质因此继续被 CanRender 拦住，
+        // 内容还不完整：本帧内容残缺，不置就绪位。下游材质因此继续被 CanRender 拦住，
         // 不会把「只有清屏色 / 少了贴图」的画面采样出去。
         ++pending_frames_;
 
         if(pending_frames_ == kPendingWarnFrames)
-            GLogWarning("[OffscreenWorld] 已连续 %u 帧离屏图元资源未就绪，输出暂不可用",
-                        pending_frames_);
+            GLogWarning("[OffscreenWorld] 已连续 %u 帧离屏内容不可用（资源就绪=%d，本帧建批=%u），输出暂不可用",
+                        pending_frames_,
+                        scene_ready ? 1 : 0,
+                        (uint32_t)frame_cache.materialBatches.GetCount());
     }
 
     bool OffscreenWorld::IsSceneContentReady() const
