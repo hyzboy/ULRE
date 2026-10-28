@@ -5904,7 +5904,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 9
+         || file_count != 10
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -5914,7 +5914,7 @@ namespace
             const char *expected_ids[] = {
                 "Lit", "SkyMinimal", "SkyCube",
                 "DebugNormalColor",
-                "VertexColor", "UnlitTexture",
+                "VertexColor", "UnlitTexture", "UnlitTexture3D",
                 "VertexLuminance", "VertexPaletteColor",
                 "builtin/pure_color",
                 "builtin/checkerboard_2d",

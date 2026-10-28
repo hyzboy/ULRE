@@ -17,6 +17,8 @@ namespace hgl::ecs
     std::string BuildTextureResourceId(const graph::Texture *texture);
 
     /// 纹理句柄的稳定标识（统一入口）。
+    /// - RenderTarget 句柄 ⇒ `rtex:<目标名>:<附件名>`：附件名参与身份，同一 RT 的
+    ///   color0 与 depth 必须是不同资源（否则两个物体贴同一张图）。
     /// - 句柄带文件名 ⇒ `texfile:<path>`：**就绪前后不变**（材质配方记录过的绑定不需要重写，
     ///   同一文件的两个句柄也归并到同一 bindless 资源）。
     /// - 句柄只是包装一张现成纹理（无文件名）⇒ 退化为 `BuildTextureResourceId(GetTexture())`

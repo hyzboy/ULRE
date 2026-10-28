@@ -68,7 +68,8 @@ namespace hgl::graph::mtl
         VertexColor,     // 顶点色（颜色直接来自 Color 顶点流）
         VertexPalette,   // 调色板顶点色（Color + TransformID + Size 驱动查表/变换）
         VertexLuminance, // 顶点亮度索引 → 调色板查表
-        UnlitTexture,    // 无光单图（通用 2D/贴面）
+        UnlitTexture,    // 无光单图（2D NDC 贴面）
+        UnlitTexture3D,  // 无光单图（世界空间 3D 几何）
         Text2D,          // GPU 文本（SDF / 位图两态共用）
 
         // ── 环境与引擎内部用途 ──────────────────────────────────────────────
@@ -87,7 +88,7 @@ namespace hgl::graph::mtl
     const char *GetMaterialDomainName(MaterialDomain domain) noexcept;
 
     // 非 Custom 的契约领域数量（用于契约表遍历与门禁穷举）。
-    constexpr int MaterialDomainContractCount = 16;
+    constexpr int MaterialDomainContractCount = 17;
 
     // 严格解析："StandardOpaque" 等；返回 false 表示未知名字（调用方报错）。
     bool ParseMaterialDomain(const char *name, MaterialDomain &out_domain) noexcept;

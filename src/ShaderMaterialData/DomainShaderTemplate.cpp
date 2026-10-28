@@ -31,6 +31,10 @@ namespace hgl::graph::mtl
             { MaterialDomain::StandardOpaque,    "standard_opaque",    "forward_lit.frag", true  },
             { MaterialDomain::Sky,               "sky",                "sky.frag",         false },
             { MaterialDomain::UnlitTexture,      "unlit_texture",      "unlit_texture.frag",      false },
+            // 世界空间无光贴面：片元阶段与 UnlitTexture 逐字节相同，直接复用同一
+            // 目录与同一份固定主着色器（本表允许跨领域复用），差异全部在顶点侧，
+            // 而顶点侧由 DomainContracts[] 的规范顶点通路驱动，与本表无关。
+            { MaterialDomain::UnlitTexture3D,    "unlit_texture",      "unlit_texture.frag",      false },
             { MaterialDomain::VertexColor,       "vertex_color",       "vertex_color.frag",       false },
             { MaterialDomain::VertexPalette,     "vertex_color",       "vertex_color.frag",       false },
             { MaterialDomain::VertexLuminance,   "vertex_luminance",   "vertex_luminance.frag",   false },

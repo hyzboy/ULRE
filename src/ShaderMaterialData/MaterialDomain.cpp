@@ -22,6 +22,7 @@ namespace hgl::graph::mtl
         case MaterialDomain::VertexPalette:   return "VertexPalette";
         case MaterialDomain::VertexLuminance: return "VertexLuminance";
         case MaterialDomain::UnlitTexture:    return "UnlitTexture";
+        case MaterialDomain::UnlitTexture3D:  return "UnlitTexture3D";
         case MaterialDomain::Text2D:          return "Text2D";
 
         case MaterialDomain::Sky:             return "Sky";
@@ -384,6 +385,31 @@ namespace hgl::graph::mtl
                                        OrientationMode::World,
                                        ScaleMode::World,
                                        ProjectionMode::LocalToWorldOnly},
+                GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::UV0),
+            },
+            {
+                // 世界空间无光贴面。片元阶段与 UnlitTexture **逐字节相同**——
+                // 复用同一份固定主着色器（`domain/unlit_texture/unlit_texture.frag`）
+                // 与同一个来源模块（`texture_source`），差异只在顶点通路：
+                // UnlitTexture 是 2D NDC（只配给屏幕矩形），本领域走标准 3D
+                // （Position 经相机投影），因此可以直接贴到任意世界几何上。
+                //
+                // 存在的理由：此前「把一张图原样铺在世界物体上」没有落点——用
+                // StandardOpaque（Lit）会进 PBR 光照，图像被环境光/高光改写；
+                // 用 UnlitTexture 又会被当成 NDC 顶点处理。调试视图（深度/法线/
+                // 中间缓冲显示）与以后的面片类需求都落在这个领域。
+                MaterialDomain::UnlitTexture3D, "UnlitTexture3D",
+                "texture_source", nullptr,
+                Sem(VertexSemantic::Position) | Sem(VertexSemantic::TexCoord),
+                UnlitTextureSlots,
+                static_cast<int>(sizeof(UnlitTextureSlots)
+                                 / sizeof(UnlitTextureSlots[0])),
+                false,
+                false,
+                // 世界几何：走默认 3D 顶点通路（与 StandardOpaque 一致）。
+                {},
                 GlobalSSBOType::PBRSurface,
                 VarSem(InterStageSemantic::DataIndexID)
                     | VarSem(InterStageSemantic::UV0),

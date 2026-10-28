@@ -77,6 +77,7 @@ return EvalPassEnvironment(PassEnvironmentInput(input, surf, materialDataIndex))
 | `VertexPalette` | `Position` `Color` `TransformID` `Size` | **无** | `vertex_color_source` | ✅ 已实现 |
 | `VertexLuminance` | `Position` `Luminance` | **无** | `luminance_source` | ✅ 已实现 |
 | `UnlitTexture` | `Position` `UV0` | `base_color` | `texture_source` | ✅ 已实现 |
+| `UnlitTexture3D` | `Position` `UV0` | `base_color` | `texture_source` | ✅ 已实现 |
 | `Text2D` | `Position` `UV0` | `base_color` | `text_source_gpu` | ✅ 已实现 |
 | `Sky` | `Position` | `sky_cube`（可选） | 无（`no_material_source`） | ✅ 已实现 |
 | `DebugNormal` | `Position` `Normal` | **无** | `debug_normal_source` | ✅ 已实现 |
@@ -88,8 +89,15 @@ return EvalPassEnvironment(PassEnvironmentInput(input, surf, materialDataIndex))
 | `HumanSkin` | 待定 | 待定 | — | ⬜ 未实现 |
 | `Custom` | 不校验 | 不校验 | — | ⚠ 仅历史资产 |
 
-> 表中 16 个非 Custom 领域与 `MaterialDomainContractCount` 一一对应，
+> 表中 17 个非 Custom 领域与 `MaterialDomainContractCount` 一一对应，
 > 有 `static_assert` 强制。加领域必须同时改枚举、契约表、计数三处。
+
+> `UnlitTexture` 与 `UnlitTexture3D` 的片元算法完全相同（同一个 `texture_source`，
+> 同一份 `domain/unlit_texture/unlit_texture.frag`），差别只在**顶点通路**：
+> 前者把 `Vec2Position` 直接当 NDC（只配屏幕矩形），后者走标准世界空间投影。
+> 因此「把一张中间缓冲贴到世界物体上」必须用 `UnlitTexture3D`——用 `UnlitTexture`
+> 会按 NDC 处理顶点，物体位置/尺寸全错；用 `StandardOpaque`(Lit) 则会把缓冲值当
+> 反照率再过一遍 PBR，图像被环境光改写。
 
 ### 3.1 为什么 StandardOpaque 的契约里没有 `Tangent`
 
@@ -395,6 +403,7 @@ Loaded 14 material TOML definitions (0 errors)
 | `VertexPalette` | `vertex_palette_color` |
 | `VertexLuminance` | `vertex_luminance` |
 | `UnlitTexture` | `unlit_texture` |
+| `UnlitTexture3D` | `unlit_texture_3d` |
 | `Text2D` | `text_2d_gpu`、`text_2d_gpu_bitmap` |
 | `Sky` | `sky_cube`、`sky_minimal` |
 | `DebugNormal` | `debug_normal_color` |
