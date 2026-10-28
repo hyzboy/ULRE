@@ -1,4 +1,16 @@
-﻿#include<hgl/framework/WorkManager.h>
+// RenderToTexture —— 离屏世界回归床（离屏球画进 `rt:` 附件，主场景立方体再采样它）
+//
+// 前端只有两句话：
+//   · 立方体材质 `base_color` 直接给 `rt:<RT 名>:color0`（纹理 URI），示例不碰裸纹理、
+//     不做同步预渲染、不管加载时机；
+//   · 离屏世界每帧驱动到 `IsContentReady()` 为真即停（内容静态），之后只主世界在画。
+//
+// env：
+//   RTT_SELFCHECK=1     帧摘要自检（就绪后第 8 帧；PASS 退 0 / FAIL 退 1 / 读回失败退 2）
+//   RTT_DUMP=<tag>      就绪后第 8 帧帧内回读主场景颜色靶落原始字节后退出
+//                       （`rttdump_<tag>_WxH_fmt.raw`）
+
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -85,6 +97,10 @@ namespace
     {
         GLogInfo("[RenderToTexture][%s] %s", stage, message);
     }
+
+    // env 开关：Tick 的旋转冻结与摘要/落盘计数共用
+    const char *s_dump_tag   = getenv("RTT_DUMP");
+    const bool  s_selfcheck  = (getenv("RTT_SELFCHECK") != nullptr);
 }
 
 class OffscreenPass
@@ -109,45 +125,6 @@ private:
     TextureAsset* sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
     hgl::ecs::GeometryData *sphere_primitive_comp = nullptr;
-
-    void DumpOffscreenState(const char *stage)
-    {
-        auto *world = offscreen ? offscreen->GetWorld() : nullptr;
-        if (!world)
-        {
-            std::printf("[RenderToTextureDiag][%s] world=null\n", stage ? stage : "<null>");
-            return;
-        }
-
-        auto &cache = world->GetRenderFrameCache();
-        std::printf("[RenderToTextureDiag][%s] renderableCount=%u renderItems=%zu materialBatches=%u\n",
-                    stage ? stage : "<null>",
-                    cache.renderableCount,
-                    cache.renderItems.size(),
-                    cache.materialBatches.GetCount());
-
-        if (sphere_primitive_comp)
-        {
-            hgl::ecs::Entity *diag_owner = sphere_primitive_comp->GetOwner();
-            hgl::ecs::ECSContext *diag_world = diag_owner ? diag_owner->GetContext() : nullptr;
-            const hgl::ecs::MaterialData *material_data_comp = diag_world
-                ? diag_world->GetMaterialData(diag_owner)
-                : nullptr;
-            const bool has_recipe_override =
-                material_data_comp && material_data_comp->HasRecipeOverride();
-            const bool has_recipe_source =
-                has_recipe_override || sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_comp->GetOwnerID())->GetAssetMaterialRecipe() != nullptr;
-
-            std::printf("[RenderToTextureDiag][%s] primitive visible=%d hasRecipeSource=%d hasRecipeOverride=%d primitiveAsset=%p\n",
-                        stage ? stage : "<null>",
-                        sphere_primitive_comp->GetOwner()->GetContext()->IsEntityVisible(sphere_primitive_comp->GetOwnerID()) ? 1 : 0,
-                        has_recipe_source ? 1 : 0,
-                        has_recipe_override ? 1 : 0,
-                        (void *)sphere_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_comp->GetOwnerID())->GetPrimitiveAsset());
-        }
-
-    }
-
 
     bool InitMaterialDataSSBO(ECSContext *world)
     {
@@ -217,6 +194,21 @@ public:
     Texture2D *GetColorTexture() const
     {
         return offscreen ? offscreen->GetColorTexture(0) : nullptr;
+    }
+
+    /// 离屏内容已产出（内部图元资源齐备并画过一帧）
+    bool IsContentReady() const
+    {
+        return offscreen && offscreen->IsContentReady();
+    }
+
+    bool IsSceneContentReady() const
+    {
+        return offscreen && offscreen->IsSceneContentReady();
+    }
+    IRenderTarget *GetRenderTarget() const
+    {
+        return offscreen ? offscreen->GetRenderTarget() : nullptr;
     }
 
     bool Init(WorkObject *owner, const uint32_t width, const uint32_t height)
@@ -382,20 +374,15 @@ public:
         return true;
     }
 
-    bool RenderOnce()
+    /// 驱动离屏世界一帧。就绪前每帧调用；一旦 `IsContentReady()` 为真即停止驱动。
+    bool RenderOffscreenFrame()
     {
-        LogStage("OffscreenPass::RenderOnce", "begin");
-        DumpOffscreenState("pre-renderonce");
-
         // 清屏色已声明在 OffscreenWorldDesc::clear_color（见 Init），此处无需再传。
         // 内部走 ECSContext::RenderTo()，与主窗口路径共用同一套帧驱动。
         if (!offscreen)
-            return LogStageFail("OffscreenPass::RenderOnce", "offscreen world is null");
+            return LogStageFail("OffscreenPass::RenderOffscreenFrame", "offscreen world is null");
 
         offscreen->Render();
-
-        DumpOffscreenState("post-renderonce");
-        LogStage("OffscreenPass::RenderOnce", "success");
         return true;
     }
 };
@@ -418,12 +405,8 @@ private:
     Sampler *cube_sampler = nullptr;
     graph::ssbo::PBRSurfaceRow cube_material_data{};
 
-    Texture2D *base_tex = nullptr;
-    Texture2D *fallback_albedo = nullptr;
-    Texture2D *normal_tex = nullptr;
-    Texture2D *roughness_tex = nullptr;
-
-    /// 材质授权统一走句柄(TextureAsset)：上面这些已就绪纹理只是它们的来源。
+    /// 材质授权统一走句柄(TextureAsset)：底座直接给 `rt:` URI，其余给文件名。
+    /// 就绪判定（含离屏内容是否已画出）由 ECS 侧统一负责，示例不再持有裸纹理。
     TextureAsset *base_asset = nullptr;
     TextureAsset *normal_asset = nullptr;
     TextureAsset *roughness_asset = nullptr;
@@ -468,10 +451,9 @@ private:
         if (!offscreen->BuildSphere(this))
             return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::BuildSphere failed");
 
-        // This sample's offscreen content is static. Render once at startup to
-        // avoid cross-pass write/read jitter on the same texture each frame.
-        if (!offscreen->RenderOnce())
-            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::RenderOnce failed");
+        // 这里**不再**同步渲染一次：离屏世界的球体贴图是异步加载的，此刻任何一次
+        // 绘制都只会得到清屏色，而且会把「已产出内容」这个状态永久钉死。
+        // 由 Tick() 逐帧驱动离屏世界，待其内部资源齐备、内容真正画出来后自动停止。
 
         LogStage("RenderToTextureApp::CreateOffscreenRT", "success");
         return true;
@@ -495,29 +477,15 @@ private:
         if (!cube_sampler)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreateSampler failed");
 
-        base_tex = offscreen ? offscreen->GetColorTexture() : nullptr;
-        if (!base_tex)
-        {
-            LogStage("RenderToTextureApp::CreateCube", "offscreen texture unavailable, loading fallback albedo");
-            fallback_albedo = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-            base_tex = fallback_albedo;
-        }
-
-        normal_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        roughness_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-
-        if (!base_tex || !normal_tex || !roughness_tex)
-            return LogStageFail("RenderToTextureApp::CreateCube", "required textures missing");
-
-        LogTextureInfo("onscreen_bind_basecolor", base_tex);
-
-        // 已就绪纹理包成句柄：材质授权只走 TextureAsset 一种形式。
-        base_asset      = tm->WrapTextureAsset(base_tex);
-        normal_asset    = tm->WrapTextureAsset(normal_tex);
-        roughness_asset = tm->WrapTextureAsset(roughness_tex);
+        // 底座 = 离屏 RT 的颜色附件，用 URI 声明式引用；不拿裸纹理、不再 WrapTextureAsset。
+        // 句柄在 RT 创建时已由 RenderTargetManager 绑定，此刻「容器就绪、内容未就绪」，
+        // ECS 的 CanRender 会拦住立方体，直到离屏 pass 真正画出内容。
+        base_asset      = tm->CreateTextureAsset(OS_TEXT("rt:RenderToTexture:OffscreenRT:color0"));
+        normal_asset    = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        roughness_asset = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
 
         if (!base_asset || !normal_asset || !roughness_asset)
-            return LogStageFail("RenderToTextureApp::CreateCube", "wrap texture asset failed");
+            return LogStageFail("RenderToTextureApp::CreateCube", "create texture asset failed");
 
         cube_material_data.base_color = Color4f(1.0f);
         cube_material_data.metallic = 0.08f;
@@ -608,10 +576,6 @@ public:
         }
 
         cube_sampler = nullptr;
-        base_tex = nullptr;
-        fallback_albedo = nullptr;
-        normal_tex = nullptr;
-        roughness_tex = nullptr;
     }
 
     bool Init() override
@@ -650,12 +614,11 @@ public:
     void Tick(double delta_time) override
     {
         // RTT_SELFCHECK=1：**帧摘要自检**（§6.5；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读主场景颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
+        // 就绪后第 8 帧帧内回读主场景颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
         // PASS 退出 0 / FAIL 退出 1 / 读回失败退出 2。
-        // 判据意义 = **单帧离屏世界回归床**：主场景立方体贴的是 RenderOnce 离屏球的纹理，
-        // 离屏世界若再"永不绘制"（五层缺陷族任一回潮），贴图退化为纯清屏色 ⇒ 摘要立变。
+        // 判据意义 = **离屏世界回归床**：主场景立方体贴的是离屏球画出的 rt: 附件，
+        // 离屏世界若再"永不绘制"（五层缺陷族任一回潮），贴图退化为纯清屏色或压根不渲染 ⇒ 摘要立变。
         // 摘要必须冻结（自旋停走 + 定帧），否则两次运行几何不同 ⇒ 假红。
-        static const bool s_selfcheck = (getenv("RTT_SELFCHECK") != nullptr);
 
         // 逻辑更新写在 Tick（渲染前）——TransformSystem 在渲染帧内提交变换，
         // Tick 里改与本回调内改同帧等价，且不占用命令缓冲录制时间
@@ -671,13 +634,74 @@ public:
 
         WorkObject::Tick(delta_time);
 
+        // 离屏内容静态：驱动到内容就绪即可，之后停止（避免同一纹理跨 pass 每帧写/读抖动）。
+        // 就绪前每帧都要驱动 —— 离屏世界内部的异步读盘由它自己的 TextureStreamingSystem
+        // 推进，不调 Render() 就没有帧，资源也就永远不会到齐。
+        //
+        // 帧预算**不能固定**：异步读盘完成在第几帧取决于磁盘与解码速度（实测 2~10 帧浮动），
+        // 写死帧数会让"贴图刚好没赶上"伪装成"离屏永不渲染"。判据就是内容就绪本身。
+        if (offscreen && !offscreen->IsContentReady())
         {
+            offscreen->RenderOffscreenFrame();
+        }
+
+        // 自检与落盘都只从「离屏内容已就绪」之后开始计数 —— 否则第 8 帧可能仍落在
+        // 异步读盘尚未完成的窗口里，摘要就会把"还没加载完"当成"离屏没画"。
+        if (offscreen && !offscreen->IsContentReady())
+            return;
+
+        {
+            static int s_dump_frame = s_dump_tag ? 0 : -1;
             static uint32_t s_self_frame = 0;
 
             static constexpr uint32_t kSelfW           = 1280;
             static constexpr uint32_t kSelfH           = 720;
             static constexpr uint32_t kSelfMinDistinct = 50;  // 不空转守卫：实测 distinct=256；纯清屏帧只有个位数
-            static constexpr uint64_t kSelfFNV         = 0xBA9CA214778AF3A4ull;  // 冻结自旋 + 第 8 帧实测（三次连跑一致）
+            static constexpr uint64_t kSelfFNV         = 0x2D730BDC6D96FD49ull;  // 冻结自旋 + 就绪后第 8 帧实测（三次连跑一致）
+            // 生产端（离屏附件本体）摘要：主场景摘要是"经材质采样后的二手证据"，
+            // 这里钉一手证据 —— 离屏世界若"永不绘制"，附件退化为纯清屏色 ⇒ 本值必变。
+            static constexpr uint64_t kOffFNV          = 0xE4DE179225AD6E74ull;
+
+            if (s_dump_tag && ++s_dump_frame == 8)
+            {
+                auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
+                    ecs_context ? ecs_context->GetRenderTarget() : nullptr);
+                if (!rt)
+                {
+                    printf("[RTTDUMP] no swapchain RT\n");
+                    std::exit(2);
+                }
+
+                const char *tag = s_dump_tag;
+                graph::IRenderTarget *rt_ptr = rt;
+                rt->SetInFrameReadbackHook([tag, rt_ptr]()
+                {
+                    std::vector<uint8_t> pixels;
+                    graph::TextureReadbackInfo info;
+                    if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
+                    {
+                        printf("[RTTDUMP] readback failed\n");
+                        std::exit(2);
+                    }
+
+                    char name[256];
+                    snprintf(name, sizeof(name), "rttdump_%s_%ux%u_%s.raw",
+                             tag, info.width, info.height,
+                             GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
+
+                    FILE *fp = fopen(name, "wb");
+                    if (!fp)
+                    {
+                        printf("[RTTDUMP] open %s failed\n", name);
+                        std::exit(2);
+                    }
+
+                    fwrite(pixels.data(), 1, pixels.size(), fp);
+                    fclose(fp);
+                    printf("[RTTDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
+                    std::exit(0);
+                });
+            }
 
             if (s_selfcheck && ++s_self_frame == 8)
             {
@@ -687,6 +711,43 @@ public:
                 {
                     printf("[RTTSELF] no swapchain RT\n");
                     std::exit(2);
+                }
+
+                // 生产端摘要：离屏附件本身（不经主场景采样）。主场景摘要红而这里绿 ⇒
+                // 缺陷在"关联/采样"侧；两侧同时绿才算离屏管线整体成立。
+                if (auto *ort = offscreen ? offscreen->GetRenderTarget() : nullptr)
+                {
+                    std::vector<uint8_t> px;
+                    graph::TextureReadbackInfo oinfo;
+                    if (graph::ReadbackColorTarget(ort, px, 0, &oinfo))
+                    {
+                        uint32_t d = 0;
+                        {
+                            uint8_t seen[256] = {};
+                            for (uint8_t b : px) seen[b] = 1;
+                            for (uint32_t i = 0; i < 256; ++i) d += seen[i];
+                        }
+
+                        hgl::hash::FNV1aHasher64 hasher;
+                        hasher.AppendBytes(px.data(), px.size());
+                        const uint64_t ofnv = hasher;
+
+                        printf("[RTTORT] offscreen %ux%u %s bytes=%zu distinct=%u fnv=0x%016llX\n",
+                               oinfo.width, oinfo.height,
+                               GetVulkanFormatName(oinfo.format),
+                               px.size(), d, (unsigned long long)ofnv);
+
+                        if (ofnv != kOffFNV)
+                        {
+                            printf("[RTTORT] FAIL（期望 fnv=0x%016llX）\n", (unsigned long long)kOffFNV);
+                            std::exit(1);
+                        }
+                    }
+                    else
+                    {
+                        printf("[RTTORT] offscreen readback failed\n");
+                        std::exit(2);
+                    }
                 }
 
                 ulre_example::FrameDigest expect;
