@@ -184,6 +184,24 @@ public: // TextureAsset
     /// 把一张已就绪的纹理包装成句柄（不入文件名去重表：按一次性句柄处理，仍归本表所有）
     TextureAsset *WrapTextureAsset(Texture *texture);
 
+    /**
+     * 取（无则建）某个 RenderTarget 附件对应的纹理句柄（`rt:<target>[:<attachment>]`）。
+     *
+     * 与 `CreateTextureAsset` 共享同一张句柄表：材质侧写 `CreateTextureAsset(OS_TEXT("rt:GBuffer:depth"))`
+     * 与 `RenderTargetManager` 内部按 (target, attachment) 查找走的是**同一个句柄**，
+     * 因此附件重建后不需要任何一方重新装配材质。
+     */
+    TextureAsset *GetOrCreateRenderTargetAsset(const OSString &target,const OSString &attachment);
+
+    /// 按 (target, attachment) 查已有句柄（不做规范化，名字与 `RenderTargetDesc::name` 一致）
+    TextureAsset *FindRenderTargetAsset(const OSString &target,const OSString &attachment)const;
+
+    /// 附件纹理已创建/重建：绑定到所有相关句柄。返回绑定的句柄数。
+    int BindRenderTargetTextures(const OSString &target,Texture *texture,const OSString &attachment);
+
+    /// 附件纹理即将销毁：把所有相关句柄退回 `MetaOnly`
+    void UnbindRenderTargetTextures(const OSString &target);
+
     /// 句柄表只读视图（流式系统逐帧扫描 `MetaOnly` 句柄用）
     const ValueArray<TextureAsset *> &GetTextureAssets()const{return texture_assets;}
 

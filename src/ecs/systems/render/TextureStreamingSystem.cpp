@@ -214,6 +214,11 @@ namespace hgl::ecs
             if (!asset || asset->IsReady() || asset->IsAsyncRequested())
                 continue;
 
+            // RenderTarget 来源的句柄没有磁盘负载：它的就绪由 RenderTargetManager
+            // 在附件创建/重建时直接绑定，绝不能被当成文件名送去读盘。
+            if (asset->IsRenderTarget())
+                continue;
+
             const PayloadState state = asset->GetPayloadState();
 
             // 失败/已销毁的句柄不自动重试：坏文件每帧重读磁盘只会刷屏，

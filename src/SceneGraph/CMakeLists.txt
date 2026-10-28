@@ -156,7 +156,9 @@ SOURCE_GROUP("6.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
 
 SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
                             ${SG_INCLUDE_PATH}/asset/TextureAsset.h
-                            asset/TextureAsset.cpp)
+                            ${SG_INCLUDE_PATH}/asset/TextureURI.h
+                            asset/TextureAsset.cpp
+                            asset/TextureURI.cpp)
 
 SOURCE_GROUP("6.Asset\\Registry" FILES ${ASSET_REGISTRY_FILES})
 

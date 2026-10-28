@@ -431,22 +431,35 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
         return(nullptr);
     }
 
+    // 作者可以直接写 `rt:GBuffer:depth`：解析后落到 RenderTarget 句柄表，
+    // 由 RenderTargetManager 在附件创建时绑定，完全不读盘。
+    const TextureURI uri=TextureURI::Parse(filename);
+
+    if(!uri.IsValid())
+    {
+        GLogError(OS_TEXT("[TextureManager] 纹理 URI 非法：%s"),filename.c_str());
+        return(nullptr);
+    }
+
+    if(uri.IsRenderTarget())
+        return(GetOrCreateRenderTargetAsset(uri.path,uri.attachment));
+
     // 规范化键 ⇒ "res/a.Tex2D"、"res\\a.Tex2D"、"RES/./a.Tex2D" 归到同一个句柄。
     // 线性扫描是有意选择：句柄只在材质装配期创建，规模是几十到几百，
     // 换成哈希表还要为 OSString 造一套哈希，收益不成比例。
-    const OSString key=MakeLoadedFileKey(filename);
+    const OSString key=MakeLoadedFileKey(uri.path);
 
     for(int i=0;i<texture_assets.GetCount();++i)
     {
         TextureAsset *exist=texture_assets[i];
 
-        if(exist && MakeLoadedFileKey(exist->GetFilename())==key)
+        if(exist && !exist->IsRenderTarget() && MakeLoadedFileKey(exist->GetFilename())==key)
             return(exist);
     }
 
     TextureAsset *asset=new TextureAsset(this);
 
-    if(!asset->SetupFromFilename(filename,auto_mipmaps))
+    if(!asset->SetupFromFilename(uri.path,auto_mipmaps))
     {
         delete asset;
         return(nullptr);
@@ -456,6 +469,101 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
 
     return(asset);
 }
+
+TextureAsset *TextureManager::FindRenderTargetAsset(const OSString &target,const OSString &attachment)const
+{
+    if(target.IsEmpty())
+        return(nullptr);
+
+    const OSString &att=attachment.IsEmpty()?OSString(kTextureURIAttachmentColor):attachment;
+
+    for(int i=0;i<texture_assets.GetCount();++i)
+    {
+        TextureAsset *exist=texture_assets[i];
+
+        if(!exist||!exist->IsRenderTarget())
+            continue;
+
+        if(exist->GetRenderTargetName()==target
+         &&exist->GetRenderTargetAttachment()==att)
+            return(exist);
+    }
+
+    return(nullptr);
+}
+
+TextureAsset *TextureManager::GetOrCreateRenderTargetAsset(const OSString &target,const OSString &attachment)
+{
+    if(target.IsEmpty())
+    {
+        GLogError(u8"[TextureManager] GetOrCreateRenderTargetAsset 收到空 RenderTarget 名");
+        return(nullptr);
+    }
+
+    const OSString &att=attachment.IsEmpty()?OSString(kTextureURIAttachmentColor):attachment;
+
+    TextureAsset *exist=FindRenderTargetAsset(target,att);
+
+    if(exist)
+        return(exist);
+
+    TextureAsset *asset=new TextureAsset(this);
+
+    if(!asset->SetupFromRenderTarget(target,att))
+    {
+        delete asset;
+        return(nullptr);
+    }
+
+    texture_assets.Add(asset);
+
+    return(asset);
+}
+
+int TextureManager::BindRenderTargetTextures(const OSString &target,Texture *texture,const OSString &attachment)
+{
+    if(target.IsEmpty()||!texture)
+        return(0);
+
+    /// 附件名只在指定时过滤；给空串表示「该目标的所有附件都用这张纹理」（仅单附件场景安全）
+    const bool filter_by_attachment=!attachment.IsEmpty();
+
+    int count=0;
+
+    for(int i=0;i<texture_assets.GetCount();++i)
+    {
+        TextureAsset *asset=texture_assets[i];
+
+        if(!asset||!asset->IsRenderTarget())
+            continue;
+
+        if(asset->GetRenderTargetName()!=target)
+            continue;
+
+        if(filter_by_attachment&&asset->GetRenderTargetAttachment()!=attachment)
+            continue;
+
+        if(asset->BindRenderTargetTexture(texture))
+            ++count;
+    }
+
+    return(count);
+}
+
+void TextureManager::UnbindRenderTargetTextures(const OSString &target)
+{
+    if(target.IsEmpty())
+        return;
+
+    for(int i=0;i<texture_assets.GetCount();++i)
+    {
+        TextureAsset *asset=texture_assets[i];
+
+        if(asset&&asset->IsRenderTarget()&&asset->GetRenderTargetName()==target)
+            asset->UnbindRenderTargetTexture("RenderTarget 已销毁");
+    }
+}
+
 
 TextureAsset *TextureManager::WrapTextureAsset(Texture *texture)
 {
