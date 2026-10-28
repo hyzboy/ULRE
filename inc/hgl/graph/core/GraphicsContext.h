@@ -20,6 +20,11 @@
 
 #include <hgl/vk/VKDevice.h>
 
+namespace hgl
+{
+    class LoadedFileManager;
+}//namespace hgl
+
 namespace hgl::graph
 {
     namespace mtl::contract
@@ -74,6 +79,11 @@ namespace hgl::graph
         GlobalSSBOBufferRegistry *global_ssbo_registry = nullptr;
         EnvironmentManager *env_manager = nullptr;
         BindlessTextureManager *bindless_texture_manager_ = nullptr;
+
+        /// 全局异步文件加载底座（后台单 IO 线程串行读盘 + 主线程 Pump 提交）。
+        /// 归属 GraphicsContext：所有资源级异步加载（纹理流式加载等）共用一个队列，
+        /// 保证同一物理设备上不会并发读盘。
+        LoadedFileManager *loaded_file_manager_ = nullptr;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -132,6 +142,11 @@ namespace hgl::graph
         EnvironmentManager *GetEnvironmentManager() { return env_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
+
+        /// 全局异步文件加载管理器（Initialize 后恒为有效，Shutdown 后为 nullptr）。
+        /// 调用方只在主线程使用：Submit/Pump/Collect/Stop 有线程亲和性。
+        LoadedFileManager *GetLoadedFileManager() { return loaded_file_manager_; }
+        const LoadedFileManager *GetLoadedFileManager() const { return loaded_file_manager_; }
 
 
         /**

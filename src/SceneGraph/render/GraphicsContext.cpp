@@ -14,6 +14,7 @@
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKCommandBuffer.h>
+#include <hgl/framework/LoadedFileManager.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/type/StdString.h>
@@ -125,6 +126,17 @@ namespace hgl::graph
 
         material_manager->SetBindlessLayout(bindless_texture_manager_->GetLayout());
 
+        // 全局异步文件加载底座：后台单 IO 线程（同一物理设备串行读盘更稳），
+        // 主线程侧由各消费系统在自己的更新阶段调用 Pump()/Collect()。
+        // 必须在任何消费者（纹理流式加载系统等）创建之前就位。
+        loaded_file_manager_ = new LoadedFileManager();
+
+        if (!loaded_file_manager_ || !loaded_file_manager_->Start(1))
+        {
+            GLogError("[GraphicsContext] LoadedFileManager Start failed");
+            return false;
+        }
+
         // Scene 集（Set 0）已整体退场（S3）：viewport/sky/shadow 全走 BDA，
         // 设备级全局集只剩 Bindless 一个（见 SetSceneLayout 的删除）。
 
@@ -150,6 +162,14 @@ namespace hgl::graph
         // 无人释放会在 static 析构(晚于本函数)时把行还回已销毁的
         // GlobalSSBOBufferRegistry 行池 —— 必须趁设备与模块还活着时释放。
         ForceReleaseGizmoSystemResources();
+
+        // 先收掉后台加载底座：Stop(Drain) 会等所有已提交读盘结束并同步派发取消回调，
+        // 保证此后不再有 IO 线程访问本上下文持有的任何资源。必须早于模块销毁。
+        if (loaded_file_manager_)
+        {
+            loaded_file_manager_->Stop();
+            SAFE_CLEAR(loaded_file_manager_)
+        }
 
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
         // GraphModuleManager destructor will call Release() on all modules automatically
