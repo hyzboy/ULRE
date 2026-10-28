@@ -815,12 +815,18 @@ namespace hgl::ecs
                 const auto *resource = material_data
                     ? material_data->GetTextureResource(binding.texture_name)
                     : nullptr;
-                // 未就绪的句柄（只有文件名）不该走到这里 —— `CanRender` 会先把图元拦下；
-                // 走到这里说明就绪判定与收集判定脱节，直接报错更容易定位。
+                // 纹理来源两条，语义同一套：实体级 `SetTextureResource`（同名覆盖）优先，
+                // 其次配方级 `RecipeTextureBinding::asset`（材质原型固有属性，多数场景只用这条）。
+                // 未就绪的句柄（只有文件名 / RT 尚未出图）不该走到这里 —— `CanRender` 会先把图元
+                // 拦下；走到这里说明就绪判定与收集判定脱节，直接报错更容易定位。
                 // 采样器不参与判据：Bindless 预设（`sampler.toml` → `samplers[]`）统一管理。
+                graph::TextureAsset *binding_asset =
+                    resource ? resource->asset : binding.asset;
                 graph::Texture *resource_texture =
-                    resource ? resource->GetTexture() : nullptr;
-                if (!resource
+                    (binding_asset && binding_asset->IsReady())
+                    ? binding_asset->GetTexture()
+                    : nullptr;
+                if (!binding_asset
                  || !resource_texture
                  || !bindless_mgr)
                 {
@@ -829,13 +835,13 @@ namespace hgl::ecs
                         owner_name,
                         binding.texture_name.c_str(),
                         1,
-                        resource ? 1 : 0,
+                        binding_asset ? 1 : 0,
                         bindless_mgr ? 1 : 0);
                     return false;
                 }
 
                 const std::string resource_id =
-                    BuildTextureResourceId(resource->asset);
+                    BuildTextureResourceId(binding_asset);
                 if (resource_id != binding.resource_id)
                 {
                     GLogError(
@@ -1742,16 +1748,22 @@ namespace hgl::ecs
 
                     if (handle == 0)
                     {
+                        // 兜底：配方里记录的身份还没登记 bindless（例如 RT 附件刚重建、
+                        // 或资源由实体级覆盖提供）。实体级覆盖优先，其次配方级句柄。
                         const MaterialData *material_data =
                             EnsureMaterialDataOf(primitive_comp);
                         const auto *authoring = material_data
                             ? material_data->GetTextureResource(declaration.name)
                             : nullptr;
-                        if (authoring
-                         && authoring->IsReady())
+                        graph::TextureAsset *fallback_asset =
+                            (authoring && authoring->IsReady())
+                            ? authoring->asset
+                            : recipe_binding->asset;
+                        if (fallback_asset
+                         && fallback_asset->IsReady())
                         {
                             const std::string fallback_id =
-                                BuildTextureResourceId(authoring->asset);
+                                BuildTextureResourceId(fallback_asset);
                             handle = rdbs->GetBindlessHandle(
                                 AnsiString(fallback_id.c_str()));
                         }

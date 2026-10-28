@@ -10,7 +10,39 @@ namespace hgl::ecs
 {
     // ── 能力判定 ──
 
-    /// 材质侧资源就绪度：任一**必需**纹理句柄尚未加载完毕 ⇒ 本图元暂不可渲染。
+    /// 配方级纹理就绪度：材质原型在 `MaterialRecipe::textures` 里声明的绑定（含 `asset`）
+    /// 同样要等就绪才能画。实体级同名覆盖优先 —— 覆盖了就以覆盖句柄为准，不再看配方句柄。
+    ///
+    /// 配方来源两级：实体 `SetRecipe` 覆盖 > 几何默认资产的材质配方（与 `BuildResolvedRecipe`
+    /// 的基底选择一致）。
+    static bool IsRecipeTextureReady(const MaterialData *material_data,
+                                     const GeometryData *geometry)
+    {
+        const hgl::graph::mtl::MaterialRecipe *recipe =
+            (material_data && material_data->GetRecipeOverride())
+            ? material_data->GetRecipeOverride()
+            : (geometry ? geometry->GetAssetMaterialRecipe() : nullptr);
+
+        if (!recipe)
+            return true;
+
+        for (const auto &texture : recipe->textures)
+        {
+            if (!texture.required || !texture.asset)
+                continue;
+
+            if (material_data
+             && material_data->GetTextureResource(texture.texture_name))
+                continue;
+
+            if (!texture.asset->IsReady())
+                return false;
+        }
+
+        return true;
+    }
+
+    /// 材质侧资源就绪度：任一**必需**纹理尚未加载完毕 ⇒ 本图元暂不可渲染。
     /// 没有材质数据覆盖时不做限制（由几何默认资产决定），保持既有行为。
     static bool IsMaterialResourceReady(const ECSContext *context, const Entity *entity)
     {
@@ -19,7 +51,13 @@ namespace hgl::ecs
         if (!material_data)
             return true;
 
-        return !material_data->HasPendingRequiredTexture();
+        if (material_data->HasPendingRequiredTexture())
+            return false;
+
+        // 配方（材质原型）里声明的纹理同样参与门禁 —— 用 `AddTexture` 挂在配方上的
+        // 资源未就绪时，图元一样不该进收集。
+        return IsRecipeTextureReady(material_data,
+                                    context->GetGeometryData(entity));
     }
 
     bool CanRender(const Entity *entity)
