@@ -867,15 +867,21 @@ namespace hgl::graph
             graphics_cmd_buf_->CopyBufferToImage(task->staging_buffer->GetBuffer(), image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mip_levels, bic_list.data());
         }
 
-        graphics_cmd_buf_->ImageMemoryBarrier2(
-            image,
-            VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT,
-            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            VK_ACCESS_2_SHADER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            subresource_range);
+        if (!task->auto_mipmaps)
+        {
+            // 非自动生成路径：全部 mip 层由拷贝写入，统一停在 TRANSFER_DST
+            graphics_cmd_buf_->ImageMemoryBarrier2(
+                image,
+                VK_PIPELINE_STAGE_2_COPY_BIT,
+                VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                VK_ACCESS_2_SHADER_READ_BIT,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                subresource_range);
+        }
+        // 自动生成路径：GenerateMipmaps 内部已逐层把 0..mip_levels-1 转换到 SHADER_READ_ONLY，
+        // 这里若再以 TRANSFER_DST 为 oldLayout 整体转换一次，会与已记录的布局冲突(VUID 01197)。
 
         if(!graphics_cmd_buf_->End())
         {
