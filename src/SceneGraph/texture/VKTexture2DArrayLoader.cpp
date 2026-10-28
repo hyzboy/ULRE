@@ -28,7 +28,7 @@ namespace hgl::graph{
  */
 static bool CommitTexture2DLayer(TextureManager *tm,
                                  Texture2DArray *ta,
-                                 const uint32_t layer,
+                                 const uint32 layer,
                                  VkTextureLoader<Texture2D,Texture2DLoader> &loader,
                                  const OSString &source_name)
 {
@@ -41,7 +41,9 @@ static bool CommitTexture2DLayer(TextureManager *tm,
     const VkFormat file_format=loader.GetTextureFormat();
 
     const char *file_format_name=GetVulkanFormatName(file_format)?GetVulkanFormatName(file_format):"unknown";
-    const U8String source_u8=source_name.IsEmpty()?U8String():to_u8(source_name.c_str(),source_name.Length());
+    const U8String source_u8=source_name.IsEmpty()
+                            ?U8String((const u8char *)u8"<memory>")
+                            :to_u8(source_name.c_str(),source_name.Length());
 
     if(file_header.width!=ta->GetWidth()
      ||file_header.height!=ta->GetHeight()
@@ -56,8 +58,8 @@ static bool CommitTexture2DLayer(TextureManager *tm,
         return(false);
     }
 
-    const uint32_t array_mips=ta->GetMipLevel();
-    const uint32_t file_mips =file_header.mipmaps;
+    const uint32 array_mips=ta->GetMipLevel();
+    const uint32 file_mips =file_header.mipmaps;
 
     RectScope2ui scope;
     scope.Width =ta->GetWidth();
@@ -90,7 +92,7 @@ static bool CommitTexture2DLayer(TextureManager *tm,
     return tm->GenerateTexture2DArrayMipmaps(ta,layer);
 }
 
-bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *ta,const uint32_t layer,const OSString &filename)
+bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *ta,const uint32 layer,const OSString &filename)
 {
     if(!tm||!ta||filename.IsEmpty())
         return(false);
@@ -111,7 +113,7 @@ bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *ta,const uint
  *          EN: Shares extent/format validation and the mip policy with the file variant;
  *              only the data source differs (a memory stream).
  */
-bool LoadTexture2DLayerFromMemory(TextureManager *tm,Texture2DArray *ta,const uint32_t layer,const void *data,int64 size)
+bool LoadTexture2DLayerFromMemory(TextureManager *tm,Texture2DArray *ta,const uint32 layer,const void *data,int64 size,const OSString &source_name)
 {
     if(!tm||!ta||!data||size<=0)
         return(false);
@@ -123,6 +125,6 @@ bool LoadTexture2DLayerFromMemory(TextureManager *tm,Texture2DArray *ta,const ui
     if(!loader.Load(&stream))
         return(false);
 
-    return CommitTexture2DLayer(tm,ta,layer,loader,OSString());
+    return CommitTexture2DLayer(tm,ta,layer,loader,source_name);
 }
 }//namespace hgl::graph

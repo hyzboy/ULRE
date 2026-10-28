@@ -32,7 +32,8 @@ namespace hgl::graph
                                                             priority,
                                                             bindless_handle,
                                                             callback,
-                                                            user_data);
+                                                            user_data,
+                                                            file->GetFilename());
 
         if(task_id==0)
             GLogError(u8"[TextureLoadCommitter] submit failed: %s",to_u8(file->GetFilename().c_str(),file->GetFilename().Length()).c_str());
@@ -57,6 +58,6 @@ namespace hgl::graph
             return(false);
         }
 
-        return(LoadTexture2DLayerFromMemory(tex_manager,array,layer,data,(int64)size));
+        return(LoadTexture2DLayerFromMemory(tex_manager,array,layer,data,(int64)size,file->GetFilename()));
     }
 }//namespace hgl::graph

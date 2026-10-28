@@ -29,11 +29,11 @@ Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,b
     return loader.CreateTexture(loader.GetFileHeader(),loader.GetTextureFormat(),loader.GetZeroMipmapBytes());
 }
 
-uint64_t CreateTexture2DFromFileAsync(TextureManager *tm,
+uint64 CreateTexture2DFromFileAsync(TextureManager *tm,
                                      const OSString &filename,
                                      bool auto_mipmaps,
                                      UploadPriority priority,
-                                     uint32_t bindless_handle,
+                                     uint32 bindless_handle,
                                      void (*callback)(TextureUploadTask *, void *),
                                      void *user_data)
 {
@@ -52,13 +52,12 @@ uint64_t CreateTexture2DFromFileAsync(TextureManager *tm,
     return tm->CreateTexture2DAsync(tci, priority, bindless_handle, callback, user_data);
 }
 
-Texture2D *CreateTexture2DFromMemory(TextureManager *tm,const void *data,int64 size,bool auto_mipmaps)
+Texture2D *CreateTexture2DFromMemory(TextureManager *tm,const void *data,int64 size,bool auto_mipmaps,const OSString &source_name)
 {
     if(!tm||!data||size<=0)
         return(nullptr);
 
-    // 纹理名留空：CreateTextureCreateInfo 会退化成默认名 "Texture"
-    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps);
+    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps,source_name);
 
     io::MemoryInputStream stream(const_cast<void *>(data),(int64)size);
 
@@ -68,19 +67,20 @@ Texture2D *CreateTexture2DFromMemory(TextureManager *tm,const void *data,int64 s
     return loader.CreateTexture(loader.GetFileHeader(),loader.GetTextureFormat(),loader.GetZeroMipmapBytes());
 }
 
-uint64_t CreateTexture2DFromMemoryAsync(TextureManager *tm,
-                                       const void *data,
-                                       int64 size,
-                                       bool auto_mipmaps,
-                                       UploadPriority priority,
-                                       uint32_t bindless_handle,
-                                       void (*callback)(TextureUploadTask *,void *),
-                                       void *user_data)
+uint64 CreateTexture2DFromMemoryAsync(TextureManager *tm,
+                                      const void *data,
+                                      int64 size,
+                                      bool auto_mipmaps,
+                                      UploadPriority priority,
+                                      uint32 bindless_handle,
+                                      void (*callback)(TextureUploadTask *,void *),
+                                      void *user_data,
+                                      const OSString &source_name)
 {
     if(!tm||!data||size<=0)
         return(0);
 
-    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps);
+    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps,source_name);
 
     io::MemoryInputStream stream(const_cast<void *>(data),(int64)size);
 
