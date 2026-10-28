@@ -1,3 +1,15 @@
+// RenderToTextureColorDepth —— 离屏世界回归床（color + depth 双附件）
+//
+// 以 RenderToTexture 为基线，多一路深度显示：离屏世界渲染一帧（颜色 + 深度附件），
+// 主画面并排两个立方体，左贴 `rt:<RT 名>:color0`，右贴 `rt:<RT 名>:depth`。
+// 前端同样只有两句话：材质直接给纹理 URI；离屏世界每帧驱动到 `IsContentReady()`
+// 为真即停。示例不碰裸纹理、不做同步预渲染、不管加载时机。
+//
+// env：
+//   RTTCD_SELFCHECK=1   帧摘要自检（就绪后第 8 帧；PASS 退 0 / FAIL 退 1 / 读回失败退 2）
+//   RTTCD_DUMP=<tag>    就绪后第 8 帧帧内回读主场景颜色靶落原始字节后退出
+//                       （`rttcddump_<tag>_WxH_fmt.raw`）
+
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
@@ -44,13 +56,6 @@
 #include <numbers>
 
 /**
- * RenderToTextureColorDepth —— 离屏渲染的 color 与 depth 并排显示
- *
- * 以 RenderToTexture 为基线（该示例已验证可正常显示），在其之上加一路深度显示：
- * 离屏世界渲染一帧（颜色附件 + 深度附件），主画面并排放两个立方体，
- * 左边贴离屏的 **颜色** 纹理，右边贴离屏的 **深度** 纹理。
- * 这样一眼即可确认「离屏渲染是否正常」以及「深度是否真的有内容」。
- *
  * 关于深度可视化（之前 ShadowMap 示例"什么都看不到"的根因）：
  *   透视投影下深度值是非线性的，物体若落在 near~far 的远端附近，全部深度值会挤在
  *   0.95~1.0，做成贴图后是一片近乎均匀的白，肉眼分辨不出任何形状。
@@ -103,6 +108,10 @@ namespace
     {
         GLogInfo("[RTTColorDepth][%s] %s", stage, message);
     }
+
+    // env 开关：Tick 的旋转冻结与摘要/落盘计数共用
+    const char *s_dump_tag  = getenv("RTTCD_DUMP");
+    const bool  s_selfcheck = (getenv("RTTCD_SELFCHECK") != nullptr);
 }
 
 /**
@@ -201,14 +210,20 @@ public:
         geometry = nullptr;
     }
 
-    Texture2D *GetColorTexture() const
+    /// 离屏内容已产出（内部图元资源齐备并画过一帧）
+    bool IsContentReady() const
     {
-        return offscreen ? offscreen->GetColorTexture(0) : nullptr;
+        return offscreen && offscreen->IsContentReady();
     }
 
-    Texture2D *GetDepthTexture() const
+    bool IsSceneContentReady() const
     {
-        return offscreen ? offscreen->GetDepthTexture() : nullptr;
+        return offscreen && offscreen->IsSceneContentReady();
+    }
+
+    IRenderTarget *GetRenderTarget() const
+    {
+        return offscreen ? offscreen->GetRenderTarget() : nullptr;
     }
 
     bool Init(WorkObject *owner, const uint32_t width, const uint32_t height)
@@ -383,21 +398,14 @@ public:
         return true;
     }
 
-    bool RenderOnce()
+    bool RenderOffscreenFrame()
     {
-        LogStage("OffscreenPass::RenderOnce", "begin");
-
         // 清屏色已声明在 OffscreenWorldDesc::clear_color（见 Init），此处无需再传。
         // 内部走 ECSContext::RenderTo()，与主窗口路径共用同一套帧驱动。
         if (!offscreen)
-            return LogStageFail("OffscreenPass::RenderOnce", "offscreen world is null");
+            return LogStageFail("OffscreenPass::RenderOffscreenFrame", "offscreen world is null");
 
         offscreen->Render();
-
-        LogTextureInfo("offscreen_rt_color0_after_render", offscreen->GetColorTexture(0));
-        LogTextureInfo("offscreen_rt_depth_after_render",  offscreen->GetDepthTexture());
-
-        LogStage("OffscreenPass::RenderOnce", "success");
         return true;
     }
 };
@@ -411,6 +419,7 @@ struct DisplayCube
     const char *recipe_name = nullptr;  ///< 两个立方体用不同配方名，避免材质缓存互相覆盖
     float x_offset = 0.0f;              ///< 世界坐标 X 偏移，用于并排摆放颜色与深度两个立方体
     const char *tag = nullptr;          ///< 日志标签
+    const char *uri = nullptr;          ///< 纹理 URI（`rt:<RT 名>:<附件名>`）
 
     Geometry *geometry = nullptr;
 
@@ -422,8 +431,8 @@ struct DisplayCube
     graph::ssbo::PBRSurfaceRow material_data{};
 
     Sampler *sampler = nullptr;
-    Texture2D *texture = nullptr;
-    /// 材质授权统一走句柄：离屏颜色/深度纹理各自的 TextureAsset 句柄（Resident，由已知纹理包装而成）。
+    /// 材质授权统一走句柄：离屏颜色/深度附件的 TextureAsset（RT 创建时已绑定）。
+    /// 示例不再持有裸纹理 —— 就绪判定（含离屏内容是否已画出）由 ECS 侧统一负责。
     TextureAsset *texture_asset = nullptr;
 
     Entity *entity = nullptr;
@@ -499,9 +508,9 @@ private:
         if (!offscreen->BuildSphere(this))
             return LogStageFail("App::CreateOffscreenRT", "OffscreenPass::BuildSphere failed");
 
-        // 本例离屏内容静态，启动时渲染一次，避免同一纹理跨 pass 的写读抖动
-        if (!offscreen->RenderOnce())
-            return LogStageFail("App::CreateOffscreenRT", "OffscreenPass::RenderOnce failed");
+        // 这里**不再**同步渲染一次：离屏世界的球体贴图是异步加载的，此刻任何一次
+        // 绘制都只会得到清屏色，而且会把「已产出内容」这个状态永久钉死。
+        // 由 Tick() 逐帧驱动离屏世界，待其内部资源齐备、内容真正画出来后自动停止。
 
         LogStage("App::CreateOffscreenRT", "success");
         return true;
@@ -523,8 +532,8 @@ private:
         if (!sm || !gm || !device)
             return LogStageFail("App::CreateDisplayCube", "required managers/device missing");
 
-        if (!cube.texture)
-            return LogStageFail("App::CreateDisplayCube", "offscreen texture is null");
+        if (!cube.texture_asset)
+            return LogStageFail("App::CreateDisplayCube", "offscreen texture asset is null");
 
         cube.sampler = sm->CreateSampler();
         if (!cube.sampler)
@@ -580,7 +589,7 @@ private:
         material_data_comp->SetDataResource(cube_struct);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
-        LogTextureInfo(cube.tag, cube.texture);
+        GLogInfo("[RTTColorDepth] %s uri=%s", cube.tag, cube.uri ? cube.uri : "(null)");
         LogStage("App::CreateDisplayCube", "success");
         return true;
     }
@@ -595,31 +604,30 @@ private:
         cubes[0].name        = "Color";
         cubes[0].recipe_name = "RTTColorDepth.DisplayColor";
         cubes[0].tag         = "onscreen_bind_color";
+        cubes[0].uri         = "rt:RTTColorDepth:OffscreenRT:color0";
         cubes[0].x_offset    = -kCubeSpacing;
-        cubes[0].texture     = offscreen->GetColorTexture();
 
         cubes[1].name        = "Depth";
         cubes[1].recipe_name = "RTTColorDepth.DisplayDepth";
         cubes[1].tag         = "onscreen_bind_depth";
+        cubes[1].uri         = "rt:RTTColorDepth:OffscreenRT:depth";
         cubes[1].x_offset    = +kCubeSpacing;
-        cubes[1].texture     = offscreen->GetDepthTexture();
-
-        if (!cubes[0].texture)
-            return LogStageFail("App::CreateDisplayCubes", "offscreen color texture unavailable");
-
-        if (!cubes[1].texture)
-            return LogStageFail("App::CreateDisplayCubes", "offscreen depth texture unavailable");
 
         auto *texture_manager = GetManager<TextureManager>();
         if (!texture_manager)
             return LogStageFail("App::CreateDisplayCubes", "texture manager unavailable");
 
-        for (DisplayCube &cube : cubes)
-        {
-            cube.texture_asset = texture_manager->WrapTextureAsset(cube.texture);
-            if (!cube.texture_asset)
-                return LogStageFail("App::CreateDisplayCubes", "wrap offscreen texture as asset failed");
-        }
+        // 只用 URI 声明"要哪个附件"，不拿裸纹理、不再 WrapTextureAsset：
+        // 句柄在 RT 创建时已由 RenderTargetManager 绑定，此刻「容器就绪、内容未就绪」，
+        // ECS 的 CanRender 会拦住两个立方体，直到离屏 pass 真正画出内容。
+        cubes[0].texture_asset = texture_manager->CreateTextureAsset(OS_TEXT("rt:RTTColorDepth:OffscreenRT:color0"));
+        cubes[1].texture_asset = texture_manager->CreateTextureAsset(OS_TEXT("rt:RTTColorDepth:OffscreenRT:depth"));
+
+        if (!cubes[0].texture_asset)
+            return LogStageFail("App::CreateDisplayCubes", "offscreen color texture asset unavailable");
+
+        if (!cubes[1].texture_asset)
+            return LogStageFail("App::CreateDisplayCubes", "offscreen depth texture asset unavailable");
 
         for (DisplayCube &cube : cubes)
         {
@@ -652,10 +660,7 @@ public:
         }
 
         for (DisplayCube &cube : cubes)
-        {
-            cube.texture = nullptr;
             cube.texture_asset = nullptr;
-        }
     }
 
     bool Init() override
@@ -694,12 +699,11 @@ public:
     void Tick(double delta_time) override
     {
         // RTTCD_SELFCHECK=1：**帧摘要自检**（§6.5；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读主场景颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
+        // 就绪后第 8 帧帧内回读主场景颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
         // PASS 退出 0 / FAIL 退出 1 / 读回失败退出 2。
-        // 判据意义 = **单帧离屏世界回归床**（color+depth 双输出版）：主场景立方体贴的是
-        // RenderOnce 离屏世界的纹理，离屏若再"永不绘制"，贴图退化为纯清屏色 ⇒ 摘要立变。
-        // 摘要必须冻结（自旋停走 + 定帧），否则两次运行几何不同 ⇒ 假红。
-        static const bool s_selfcheck = (getenv("RTTCD_SELFCHECK") != nullptr);
+        // 判据意义 = **离屏世界回归床**（color+depth 双输出版）：主场景两个立方体分别贴
+        // `rt:...:color0` 与 `rt:...:depth`；离屏世界若再"永不绘制"，贴图退化为纯清屏色/纯白
+        // ⇒ 摘要立变。摘要必须冻结（自旋停走 + 定帧），否则两次运行几何不同 ⇒ 假红。
 
         // 逻辑更新写在 Tick（渲染前）——TransformSystem 在渲染帧内提交变换，
         // Tick 里改与本回调内改同帧等价，且不占用命令缓冲录制时间
@@ -720,13 +724,71 @@ public:
 
         WorkObject::Tick(delta_time);
 
+        // 离屏内容静态：驱动到内容就绪即可，之后停止（避免同一纹理跨 pass 每帧写/读抖动）。
+        // 就绪前每帧都要驱动 —— 离屏世界内部的异步读盘由它自己的 TextureStreamingSystem
+        // 推进，不调 Render() 就没有帧，资源也就永远不会到齐。
+        //
+        // 帧预算**不能固定**：异步读盘完成在第几帧取决于磁盘与解码速度（实测 2~10 帧浮动），
+        // 写死帧数会让"贴图刚好没赶上"伪装成"离屏永不渲染"。判据就是内容就绪本身。
+        if (offscreen && !offscreen->IsContentReady())
         {
+            offscreen->RenderOffscreenFrame();
+        }
+
+        // 自检与落盘都只从「离屏内容已就绪」之后开始计数 —— 否则第 8 帧可能仍落在
+        // 异步读盘尚未完成的窗口里，摘要就会把"还没加载完"当成"离屏没画"。
+        if (offscreen && !offscreen->IsContentReady())
+            return;
+
+        {
+            static int s_dump_frame = s_dump_tag ? 0 : -1;
             static uint32_t s_self_frame = 0;
 
             static constexpr uint32_t kSelfW           = 1280;
             static constexpr uint32_t kSelfH           = 720;
             static constexpr uint32_t kSelfMinDistinct = 50;  // 不空转守卫：实测 distinct=256；纯清屏帧只有个位数
-            static constexpr uint64_t kSelfFNV         = 0xD71ABABC2BE460C0ull;  // 冻结自旋 + 第 8 帧实测（三次连跑一致）
+            static constexpr uint64_t kSelfFNV         = 0x24FB50FDDC9F8CABull;  // 冻结自旋 + 就绪后第 8 帧实测（三次连跑一致）
+
+            if (s_dump_tag && ++s_dump_frame == 8)
+            {
+                auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
+                    ecs_context ? ecs_context->GetRenderTarget() : nullptr);
+                if (!rt)
+                {
+                    printf("[RTTCDDUMP] no swapchain RT\n");
+                    std::exit(2);
+                }
+
+                const char *tag = s_dump_tag;
+                graph::IRenderTarget *rt_ptr = rt;
+                rt->SetInFrameReadbackHook([tag, rt_ptr]()
+                {
+                    std::vector<uint8_t> pixels;
+                    graph::TextureReadbackInfo info;
+                    if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
+                    {
+                        printf("[RTTCDDUMP] readback failed\n");
+                        std::exit(2);
+                    }
+
+                    char name[256];
+                    snprintf(name, sizeof(name), "rttcddump_%s_%ux%u_%s.raw",
+                             tag, info.width, info.height,
+                             GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
+
+                    FILE *fp = fopen(name, "wb");
+                    if (!fp)
+                    {
+                        printf("[RTTCDDUMP] open %s failed\n", name);
+                        std::exit(2);
+                    }
+
+                    fwrite(pixels.data(), 1, pixels.size(), fp);
+                    fclose(fp);
+                    printf("[RTTCDDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
+                    std::exit(0);
+                });
+            }
 
             if (s_selfcheck && ++s_self_frame == 8)
             {
