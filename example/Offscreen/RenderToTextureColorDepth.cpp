@@ -423,6 +423,8 @@ struct DisplayCube
 
     Sampler *sampler = nullptr;
     Texture2D *texture = nullptr;
+    /// 材质授权统一走句柄：离屏颜色/深度纹理各自的 TextureAsset 句柄（Resident，由已知纹理包装而成）。
+    TextureAsset *texture_asset = nullptr;
 
     Entity *entity = nullptr;
     hgl::ecs::TransformAccessor transform;
@@ -572,7 +574,7 @@ private:
 
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube.asset);
         // 唯一区别：绑定的离屏纹理不同（颜色 / 深度）
-        material_data_comp->SetTextureResource("base_color", cube.texture, cube.sampler);
+        material_data_comp->SetTextureResource("base_color", cube.texture_asset, cube.sampler);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube.accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(cube_struct);
@@ -608,6 +610,17 @@ private:
         if (!cubes[1].texture)
             return LogStageFail("App::CreateDisplayCubes", "offscreen depth texture unavailable");
 
+        auto *texture_manager = GetManager<TextureManager>();
+        if (!texture_manager)
+            return LogStageFail("App::CreateDisplayCubes", "texture manager unavailable");
+
+        for (DisplayCube &cube : cubes)
+        {
+            cube.texture_asset = texture_manager->WrapTextureAsset(cube.texture);
+            if (!cube.texture_asset)
+                return LogStageFail("App::CreateDisplayCubes", "wrap offscreen texture as asset failed");
+        }
+
         for (DisplayCube &cube : cubes)
         {
             if (!CreateDisplayCube(cube))
@@ -639,7 +652,10 @@ public:
         }
 
         for (DisplayCube &cube : cubes)
+        {
             cube.texture = nullptr;
+            cube.texture_asset = nullptr;
+        }
     }
 
     bool Init() override
