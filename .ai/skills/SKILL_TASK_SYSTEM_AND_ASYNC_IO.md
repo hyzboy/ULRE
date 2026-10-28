@@ -276,3 +276,86 @@ void Tick(double dt) override
 cmake --build build --config Debug --target LoadedFileManagerTest AsyncTextureUpload TextureArrayStreaming
 ctest --test-dir build -C Debug -R "^LoadedFileManagerTest$" --output-on-failure
 ```
+
+---
+
+## 9. ECS 侧资源流式：TextureAsset + TextureStreamingSystem
+
+前面 8 章讲的是「怎么把文件读进内存再上显存」。这一层对**前台开发者不可见**：
+业务代码不再持有 `Texture2D*`、不再自己排读盘，只声明「这个材质用哪个文件」。
+真正把「文件名 → 可绑定纹理」打通的是下面三者：
+
+| 组件 | 位置 | 职责 |
+|---|---|---|
+| `TextureAsset` | `inc/hgl/graph/asset/TextureAsset.h` | 纹理**句柄**：只带文件名的 `MetaOnly` → `Loading` → `Resident` |
+| `TextureManager` | `inc/hgl/graph/module/TextureManager.h` | 句柄表所有者：`CreateTextureAsset` / `WrapTextureAsset` / `RegisterTextureFilename` |
+| `TextureStreamingSystem` | `inc/hgl/ecs/systems/render/TextureStreamingSystem.h` | ECS 系统：扫句柄表 → 提读盘请求 → 提交 GPU 上传 → 回填句柄 |
+
+### 9.1 唯一接口：材质只收句柄
+
+```cpp
+// 前台只声明文件名（句柄此刻是 MetaOnly，没有像素）
+TextureAsset *base = texture_manager->CreateTextureAsset(
+    OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), /*auto_mipmaps*/true);
+
+// required=true ⇒ 未就绪时该图元不进入可渲染集合
+material_data->SetTextureResource("base_color", base, sampler,
+                                  MaterialTextureResourceKind::Texture2D, 0, true);
+```
+
+- **没有第二套接口**：`SetTextureResource(name, Texture*, sampler, ...)` 这个便捷重载内部
+  做的就是 `WrapTextureAsset(texture)` 之后转发到同一个入口；作者侧只存在
+  `MaterialTextureAuthoringResource{ asset, sampler, kind, array_layer, required }` 一种存法。
+- 已同步加载好的纹理（离屏 RT 颜色纹理、立方体贴图）也用 `WrapTextureAsset()` 包成
+  句柄再授权 —— 这样「材质里的纹理」永远只有一个类型，不存在「有的条目是裸指针、有的是句柄」。
+
+### 9.2 就绪门禁（未就绪不渲染）
+
+```cpp
+// src/ECS/support/PrimitiveState.cpp
+bool CanRender(const Entity *entity);   // 内部 = !material_data->HasPendingRequiredTexture()
+```
+
+- 判据每帧现算（直接读句柄的 `IsReady()`），**不做第二份状态机**，所以句柄就绪的当帧即生效；
+- 只有 `required=true` 的条目参与门禁；可选纹理（如贴花、遮罩）晚到不影响可见性；
+- 多张 `required` 纹理是**原子切换**：全部就绪才一次性显示，避免半成品渲染一帧。
+
+### 9.3 TextureStreamingSystem 的工作方式
+
+```
+ExecutionPhase::RenderPreBeginFrame
+  ├─ 扫 TextureManager 的句柄表，跳过 Resident / LoadFailed / Disposed / 已在途
+  ├─ 每帧最多 kMaxSubmitPerFrame(=2) 个请求 → LoadedFileManager::Submit
+  ├─ OnFileLoaded → TextureLoadCommitter::CommitTexture2D → GPU 上传队列
+  ├─ 上传完成回调 → asset->CommitAsyncTexture(tex) → 句柄转 Resident
+  │                 + tm->RegisterTextureFilename(...) 回填「文件名 → 纹理」
+  └─ 失败 → asset->FailAsyncLoad()（不自动重试，避免坏文件无限打盘）
+```
+
+- 帧预算 2 是**首帧不卡顿**的关键：启动时几十张贴图不会一次性灌满上传队列；
+- 完成回调里的 `user_data` 就是句柄本身（归 `TextureManager` 所有，活得比任何世界都久），
+  所以回调期间不存在实体/组件悬垂问题；
+- `StreamHandler` 自持引用计数并 `DetachOwner`，保证系统销毁后迟到回调不会踩空指针。
+
+### 9.4 迁移范例
+
+```cpp
+// example/GettingStarted/SimpleSphere.cpp（试点）
+auto *base = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+material_data->SetTextureResource("base_color", base, sampler,
+                                 MaterialTextureResourceKind::Texture2D, 0, true);
+// 启动时日志：TextureStreaming 就绪 ×3 → 门禁 ENGAGED（GPU cull 生效）
+```
+
+### 9.5 仍然保留同步加载的位置（有意为之）
+
+| 位置 | 原因 |
+|---|---|
+| `IBLEnvironment` 的 irradiance / prefilter / BRDF LUT | 直接 `RegisterTexture` 进 bindless，不经过材质授权；句柄化需等环境系统支持延迟绑定 |
+| `PBRSpheres` / `CascadeShadowMap` / `SingleSphereMaterialSwitch` 的 `LoadTexture2D` | 它们是**探针**：先用 2D 纹理拿到 `width/height/format/mip` 才能创建 `Texture2DArray`，再逐层 `LoadTexture2DArray` |
+| `AsyncTextureUpload` / `TextureMipLevels` / `TextureArrayStreaming` | 底层机制演示，本身就是「原生 API 对照」，不走 ECS 抽象 |
+| 立方体贴图 / 离屏 RT 纹理 | 已 `WrapTextureAsset` 统一入口，但来源是同步加载或运行时生成，没有可异步的文件 |
+
+`TextureAsset` 目前只驱动 `Texture2D` 的文件流（`CommitTexture2D`）；数组层与立方体的
+「按文件异步装配」是后续扩展点（需要先有「只读 Meta 拿尺寸/格式」的 API）。
+

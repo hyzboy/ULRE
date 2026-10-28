@@ -138,6 +138,7 @@
 - 📁 图片/音频异步文件加载、目标线程路由、取消与缓冲区生命周期
 - 🗂️ `LoadedFileManager` 两段式加载：弱表缓存、延迟释放、`Collect()` 回收
 - 🖼️ `TextureLoadCommitter`：内存字节 → GPU 上传队列/数组纹理层
+- 🧩 ECS 资源流式：`TextureAsset` 句柄 + `TextureStreamingSystem` + 未就绪不渲染门禁
 - 📊 队列峰值、请求计数、等待时间及 IO 耗时统计
 
 **快速导航：**
@@ -147,6 +148,7 @@
 如何选择目标队列？         → 本文 §2 通道拓扑选择
 游戏里怎么用（去重/复用）？ → 本文 §8 LoadedFileManager
 纹理文件读完怎么上显存？   → 本文 §8.4 TextureLoadCommitter
+贴图还没加载好怎么不渲染？ → 本文 §9 ECS 侧资源流式
 → 使用这个SKILL
 ```
 
