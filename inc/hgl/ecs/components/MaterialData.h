@@ -19,6 +19,7 @@ namespace hgl
         class Sampler;
         class ShaderProgram;
         class Texture;
+        class TextureAsset;
     }
 }
 
@@ -119,6 +120,16 @@ namespace hgl::ecs
         /// 它不构成第二条行为路径 —— 落库的同样是一个 `TextureAsset*`。
         bool SetTextureResource(const std::string &name,
                                 hgl::graph::Texture *texture,
+                                hgl::graph::Sampler *sampler,
+                                MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
+                                uint32_t array_layer = 0,
+                                bool required = false);
+
+        /// 便捷重载：直接给**句柄**。句柄可以是「已就绪」，也可以只有文件名
+        /// （`MetaOnly`）—— 后者由 `TextureStreamingSystem` 自动加载，此处不做任何判断，
+        /// 与统一入口完全同义，只是省去手填 `MaterialTextureAuthoringResource`。
+        bool SetTextureResource(const std::string &name,
+                                hgl::graph::TextureAsset *asset,
                                 hgl::graph::Sampler *sampler,
                                 MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
                                 uint32_t array_layer = 0,

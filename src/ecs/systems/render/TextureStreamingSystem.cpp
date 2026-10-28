@@ -39,6 +39,12 @@ namespace hgl::ecs
             // 同一个文件不会因为走了哪条路径而出现两张纹理。
             if (graph::TextureManager *tm = asset->GetTextureManager())
                 tm->RegisterTextureFilename(asset->GetFilename(), task->target_texture);
+
+            const U8String u8_filename = ToU8String(asset->GetFilename());
+
+            GLogDebug(u8"[TextureStreaming] 就绪：%s（tex=%p）",
+                      reinterpret_cast<const char *>(u8_filename.c_str()),
+                      static_cast<void *>(task->target_texture));
         }
     }//namespace
 

@@ -4,6 +4,7 @@
 // 本范例展示了：
 // 1. 使用 CreateSphere 创建球体几何体（私有顶点缓冲——每几何独立 VAB/IBO）
 // 2. 使用 Lit(PBR) 材质绘制球体（材质数据行 PBRSurfaceRow + 纹理）
+//    纹理只声明文件名，由 ECS 的 TextureStreamingSystem 后台加载，就绪后自动渲染
 // 3. 使用TransformAccessor管理空间变换
 // 4. 使用 GeometryData 管理渲染图元
 // 5. CameraSystem配置为ViewModel控制模式
@@ -14,6 +15,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -74,9 +76,9 @@ private:
     Geometry *          sphere_geometry = nullptr;
     PrimitiveAsset      sphere_asset{};
 
-    Texture2D * base_texture      = nullptr;
-    Texture2D * normal_texture    = nullptr;
-    Texture2D * roughness_texture = nullptr;
+    TextureAsset * base_texture      = nullptr;
+    TextureAsset * normal_texture    = nullptr;
+    TextureAsset * roughness_texture = nullptr;
     Sampler *   sampler           = nullptr;
 
     hgl::ecs::TransformAccessor sphere_transform;
@@ -118,15 +120,15 @@ private:
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
-        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+        base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
             return false;
 
-        normal_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        normal_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
         if (!normal_texture)
             return false;
 
-        roughness_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
+        roughness_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
         if (!roughness_texture)
             return false;
 
@@ -183,9 +185,12 @@ private:
         sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
 
-        material_data_comp->SetTextureResource("base_color", base_texture, sampler);
-        material_data_comp->SetTextureResource("normal", normal_texture, sampler);
-        material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
+        // 只声明「要哪张图」：句柄此刻只有文件名（MetaOnly），加载由 ECS 的
+        // TextureStreamingSystem 在后台完成；就绪前球体不进入渲染收集。
+        if (!material_data_comp->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
+         || !material_data_comp->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
+         || !material_data_comp->SetTextureResource("roughness", roughness_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
+            return false;
 
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();

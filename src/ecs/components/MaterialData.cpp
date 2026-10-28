@@ -172,6 +172,34 @@ namespace hgl::ecs
         return SetTextureResource(name, resource);
     }
 
+    bool MaterialData::SetTextureResource(
+        const std::string &name,
+        hgl::graph::TextureAsset *asset,
+        hgl::graph::Sampler *sampler,
+        MaterialTextureResourceKind kind,
+        const uint32_t array_layer,
+        const bool required)
+    {
+        if (!asset)
+        {
+            GLogError(
+                "[MaterialData] Texture authoring rejected null asset name=%s",
+                name.c_str());
+            return false;
+        }
+
+        // 与 Texture* 重载同理：不新增行为路径，只是把句柄直接落库。
+        // 「只有文件名」的句柄在这里是**合法**的 —— 加载由 ECS 侧驱动。
+        MaterialTextureAuthoringResource resource{};
+        resource.asset        = asset;
+        resource.sampler      = sampler;
+        resource.kind         = kind;
+        resource.array_layer  = array_layer;
+        resource.required     = required;
+
+        return SetTextureResource(name, resource);
+    }
+
     const MaterialTextureAuthoringResource *
         MaterialData::GetTextureResource(
             const std::string &name) const
