@@ -4,7 +4,8 @@
 // 本范例展示了：
 // 1. 使用 CreateSphere 创建球体几何体（私有顶点缓冲——每几何独立 VAB/IBO）
 // 2. 使用 Lit(PBR) 材质绘制球体（材质数据行 PBRSurfaceRow + 纹理）
-//    纹理只声明文件名，由 ECS 的 TextureStreamingSystem 后台加载，就绪后自动渲染
+//    纹理绑定声明在材质配方里（MaterialRecipe::AddTexture），只给文件名/句柄，
+//    由 ECS 的 TextureStreamingSystem 后台加载，就绪后自动渲染
 // 3. 使用TransformAccessor管理空间变换
 // 4. 使用 GeometryData 管理渲染图元
 // 5. CameraSystem配置为ViewModel控制模式
@@ -16,7 +17,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -79,7 +79,6 @@ private:
     TextureAsset * base_texture      = nullptr;
     TextureAsset * normal_texture    = nullptr;
     TextureAsset * roughness_texture = nullptr;
-    Sampler *   sampler           = nullptr;
 
     hgl::ecs::TransformAccessor sphere_transform;
 
@@ -109,9 +108,8 @@ private:
     bool InitMaterial()
     {
         auto* texture_manager = GetManager<TextureManager>();
-        auto* sampler_manager = GetManager<SamplerManager>();
 
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager)
             return false;
 
         sphere_recipe.recipe_name = "SimpleSphere.Lit";
@@ -132,8 +130,12 @@ private:
         if (!roughness_texture)
             return false;
 
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
+        // 纹理绑定属于**材质原型固有属性** ⇒ 写进配方，与具体实体无关。
+        // 句柄此刻只有文件名（MetaOnly），加载由 ECS 的 TextureStreamingSystem 后台完成；
+        // 就绪前 `CanRender` 会拦下所有使用该配方的图元，就绪后自动放行。
+        if (!sphere_recipe.AddTexture("base_color", base_texture, true)
+         || !sphere_recipe.AddTexture("normal", normal_texture, true)
+         || !sphere_recipe.AddTexture("roughness", roughness_texture, true))
             return false;
 
         return true;
@@ -184,13 +186,6 @@ private:
 
         sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
-
-        // 只声明「要哪张图」：句柄此刻只有文件名（MetaOnly），加载由 ECS 的
-        // TextureStreamingSystem 在后台完成；就绪前球体不进入渲染收集。
-        if (!material_data_comp->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
-         || !material_data_comp->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
-         || !material_data_comp->SetTextureResource("roughness", roughness_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
-            return false;
 
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
