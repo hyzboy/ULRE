@@ -253,4 +253,37 @@ namespace hgl::graph
         async_request_id=0;
         payload_state   =PayloadState::MetaOnly;
     }
+
+    U8String TextureAsset::GetResourceId()const
+    {
+        switch(source_kind)
+        {
+            case TextureURIKind::File:
+            {
+                if(meta.source_path.IsEmpty())
+                    return U8String();
+
+                U8String id(u8"texfile:");
+
+                id+=ToU8String(meta.source_path);
+                return id;
+            }
+            case TextureURIKind::RenderTarget:
+            {
+                if(rt_target.IsEmpty())
+                    return U8String();
+
+                U8String id(u8"rtex:");
+
+                id+=ToU8String(rt_target);
+                id+=U8String(u8":");
+                id+=ToU8String(rt_attachment);
+                return id;
+            }
+            default:
+                break;
+        }
+
+        return U8String();
+    }
 }//namespace hgl::graph

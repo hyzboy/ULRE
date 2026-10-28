@@ -43,7 +43,8 @@ namespace hgl::ecs
                 name,
                 resource_id,
                 resource.required,
-                resource.array_layer);
+                resource.array_layer,
+                resource.asset);
         }
     }
 

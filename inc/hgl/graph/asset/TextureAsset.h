@@ -107,6 +107,17 @@ namespace hgl::graph
         const OSString & GetRenderTargetName()const{return rt_target;}
         const OSString & GetRenderTargetAttachment()const{return rt_attachment;}
 
+        /**
+         * @brief 资源**身份**（材质配方绑定 / bindless 去重键的唯一来源）。
+         *
+         * | 来源 | 身份 | 为什么不换别的 |
+         * |------|------|----------------|
+         * | 文件 | `texfile:<path>` | **就绪前后同一值** ⇒ 异步加载完成不需要改写配方绑定；同一文件的两个句柄自然归并 |
+         * | RT   | `rtex:<target>:<attachment>` | 附件名必须参与（同一 RT 的 color0 与 depth 是两张纹理）；不能用纹理 ID（RT 重建后 ID 会变） |
+         * | 仅包装现成纹理 | 空串 | 没有来源可作身份，调用方退回 `texid:<GetID()>` |
+         */
+        U8String GetResourceId()const;
+
     public:     // 异步状态机（只由 TextureStreamingSystem 写）
 
         bool IsAsyncRequested()const{return async_requested;}

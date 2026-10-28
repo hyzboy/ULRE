@@ -21,6 +21,11 @@
 #include <string>
 #include <vector>
 
+// 纹理资源统一句柄。配方的纹理绑定直接持有它（`RecipeTextureBinding::asset`），
+// `MaterialRecipe::AddTexture` 需要调 `GetResourceId()` 推出资源身份，故必须完整类型。
+// `TextureAsset.h` 的依赖链止于 `MetaObject` / `String` / `TextureURI`，不反向包含 mtl，无环。
+#include <hgl/graph/asset/TextureAsset.h>
+
 namespace hgl::graph::mtl
 {
     constexpr const char DefaultMaterialPrivateDataName[] = "mtl_private_data";
@@ -30,6 +35,21 @@ namespace hgl::graph::mtl
     {
         std::string texture_name;                 // TOML/GLSL 纹理名（snake_case，如 "base_color"）
         std::string resource_id;                   // 资源标识（路径/资产ID/逻辑名）
+        /// 可选的**配方级句柄**（2026-10-29）。
+        ///
+        /// 为什么需要：纹理是材质原型的固有属性，不该由每个实体在 `MaterialData` 上
+        /// 重复声明一遍。配方直接持有句柄后，100 个球体共享同一个配方即可，实体只
+        /// 按需做**覆盖**（实体级 `SetTextureResource` 按同名 upsert，优先级更高）。
+        ///
+        /// 与 `resource_id` 的关系：
+        /// - 声明期二选一即可 —— 给句柄时 `resource_id` 由 `BuildTextureResourceId(asset)`
+        ///   推出（`texfile:` / `rtex:`，就绪前后同一值），因此异步加载完成也不需要改写配方；
+        /// - 二者等价时（句柄推出的身份 == `resource_id`）收集路径直接命中 bindless 句柄。
+        ///
+        /// 生命周期：句柄归 `TextureManager` 的句柄表所有，配方只持裸观察指针。
+        /// 未就绪（`MetaOnly` / `Loading`）是合法状态 —— `TextureStreamingSystem` 负责驱动，
+        /// 就绪度由 `PrimitiveState::CanRender` 门禁判定。
+        hgl::graph::TextureAsset *asset = nullptr;
         bool required = false;                     // true 时缺失应触发显式错误
         uint32_t array_layer = 0;                 // Texture2DArray layer; non-array must be zero.
     };
@@ -645,6 +665,30 @@ namespace hgl::graph::mtl
         // 着色器，与 builtin/pure_color 完全同一条路径。
         MaterialErrorKind fallback_error_kind = MaterialErrorKind::None;
         float             fallback_marker_color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+        /**
+         * @brief 声明一条**配方级**纹理绑定：把语义名绑到一个已加载/待加载的纹理句柄。
+         *
+         * 这是纹理绑定的推荐写法 —— 纹理属于材质原型，不是每个实体的属性：
+         *
+         * @code
+         *   recipe.AddTexture("base_color", tex_base);      // 必需（默认）
+         *   recipe.AddTexture("detail_mask", tex_mask, false); // 可选
+         * @endcode
+         *
+         * 句柄未就绪（`MetaOnly`/`Loading`）是合法状态：`TextureStreamingSystem` 会驱动加载，
+         * 就绪度由 `PrimitiveState::CanRender` 门禁；`resource_id` 由句柄身份推出
+         * （`texfile:` / `rtex:`，加载前后同一值），因此异步完成后无需改写配方。
+         *
+         * 实体级 `MaterialData::SetTextureResource` 同名绑定仍是**覆盖**（优先级更高），
+         * 用于「同一配方下少数实体换图」。
+         *
+         * @return false = 参数非法（空名 / 空句柄 / 句柄无来源身份，如仅包装现成纹理）
+         */
+        bool AddTexture(const std::string &texture_name,
+                        hgl::graph::TextureAsset *asset,
+                        bool required = true,
+                        uint32_t array_layer = 0);
     };
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
@@ -721,11 +765,13 @@ namespace hgl::graph::mtl
     }
 
     // 纹理绑定 upsert：texture_name 已存在则原位更新，否则追加。
+    // `asset` 非空时同时记录配方级句柄（identity 由调用方保证与 `resource_id` 一致）。
     inline bool UpsertRecipeTextureBinding(MaterialRecipe &recipe,
                                            const std::string &texture_name,
                                            const std::string &resource_id,
                                            const bool required,
-                                           const uint32_t array_layer = 0)
+                                           const uint32_t array_layer = 0,
+                                           hgl::graph::TextureAsset *asset = nullptr)
     {
         if (texture_name.empty())
             return false;
@@ -738,6 +784,10 @@ namespace hgl::graph::mtl
             binding.resource_id = resource_id;
             binding.array_layer = array_layer;
             binding.required = required;
+
+            if (asset)
+                binding.asset = asset;
+
             return true;
         }
 
@@ -746,8 +796,34 @@ namespace hgl::graph::mtl
         binding.resource_id = resource_id;
         binding.array_layer = array_layer;
         binding.required = required;
+        binding.asset = asset;
         recipe.textures.emplace_back(std::move(binding));
         return true;
+    }
+
+    inline bool MaterialRecipe::AddTexture(const std::string &texture_name,
+                                           hgl::graph::TextureAsset *asset,
+                                           const bool required,
+                                           const uint32_t array_layer)
+    {
+        if (!asset)
+            return false;
+
+        // 身份来自句柄的来源（文件路径 / RT 目标+附件），加载前后一致。
+        // 空 ⇒ 该句柄只是包装一张现成纹理，没有可写进配方的稳定身份；
+        // 这种用法必须走实体级 `MaterialData::SetTextureResource`（退回 `texid:<n>`）。
+        const U8String resource_id = asset->GetResourceId();
+
+        if (resource_id.IsEmpty())
+            return false;
+
+        return UpsertRecipeTextureBinding(
+            *this,
+            texture_name,
+            std::string(reinterpret_cast<const char *>(resource_id.c_str()), resource_id.Length()),
+            required,
+            array_layer,
+            asset);
     }
 
     /**
