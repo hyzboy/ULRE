@@ -76,6 +76,8 @@ private:
     ECSContext *        ecs_world           = nullptr;
 
     Texture2DArray *    texture             = nullptr;
+    /// 材质授权统一走句柄：上面的数组纹理有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
+    TextureAsset *      texture_asset       = nullptr;
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
@@ -111,7 +113,9 @@ private:
                 return(false);
         }
 
-        return(true);
+        texture_asset=tex_manager->WrapTextureAsset(texture);
+
+        return(texture_asset!=nullptr);
     }
 
     bool InitMaterial()
@@ -178,7 +182,7 @@ private:
             primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
             if (!material_data_comp->SetTextureResource(
                     "base_color",
-                    texture,
+                    texture_asset,
                     sampler,
                     hgl::ecs::MaterialTextureResourceKind::
                         Texture2DArray,
