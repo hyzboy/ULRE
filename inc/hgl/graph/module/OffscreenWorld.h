@@ -34,6 +34,7 @@
 
 #include<memory>
 #include<string>
+#include<hgl/type/String.h>
 
 namespace hgl::graph
 {
@@ -109,6 +110,26 @@ namespace hgl::graph
         /// Tick + 渲染一帧，指定清屏色（覆盖 desc 中的声明）
         void Render(const Color4f &clear_color, float delta_time = 0.0f);
 
+    public: // 就绪协同
+
+        /**
+         * 本世界的图元是否还有卡在必需资源上的（异步读盘在途）。
+         *
+         * 有 ⇒ 这帧即使提交了，画出来的内容是**残缺**的，不能当作 RT 的最终内容。
+         */
+        bool IsSceneContentReady()const;
+
+        /// 离屏输出是否已产出可采样的内容（= `rt:<name>:*` 句柄内容就绪位）
+        bool IsContentReady()const{return content_ready_;}
+
+        /**
+         * 手动声明内容已就绪。
+         *
+         * `Render()` 会在「绘制前所有图元资源就绪」时自动调用它；手工调用的场景是
+         * 内容由本世界之外驱动（例如自己往 RT 上贴图），或调用方明确知道残缺内容可接受。
+         */
+        void MarkContentReady();
+
         /// 调整离屏 RT 尺寸（按 desc 重建纹理与 FBO）
         ///
         /// @warning 重建后 Texture2D 指针会变化：持有旧指针者必须重新
@@ -147,6 +168,15 @@ namespace hgl::graph
 
         /// 本世界 pass 的剔除模式（取自 desc，显式声明）
         ecs::CullMode       cull_mode_       = ecs::CullMode::Inherit;
+
+        /// 离屏输出是否已产出可采样内容（生产侧就绪位，供下游 `CanRender` 使用）
+        bool                content_ready_   = false;
+
+        /// 本 RT 的名字（`RenderTargetDesc::name` 的 OSString 形式，用于寻址 rt: 句柄）
+        OSString            rt_name_;
+
+        /// 等待资源就绪的帧数（诊断用：长时间不就绪时打印一次告警）
+        uint32_t            pending_frames_  = 0;
 
         std::unique_ptr<ecs::ECSContext> world_;
 

@@ -7,6 +7,8 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/support/CameraInfoStorage.h>
+#include <hgl/ecs/support/PrimitiveState.h>
+#include <hgl/ecs/components/GeometryData.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/vk/VKCommandBuffer.h>
@@ -152,6 +154,23 @@ namespace hgl::ecs
                 T.frames     = 0;
                 T.t_frame_ns = 0;
             }
+        }
+
+        bool ECSContext::HasPendingRenderableResources() const
+        {
+            ValueArray<GeometryData *> primitives;
+            GetComponents<GeometryData>(primitives);
+
+            for (GeometryData *geometry : primitives)
+            {
+                if (!geometry)
+                    continue;
+
+                if (HasPendingMaterialResources(geometry->GetOwner()))
+                    return true;
+            }
+
+            return false;
         }
 
         void ECSContext::ExecuteScenePrePassWorkflow(float deltaTime)

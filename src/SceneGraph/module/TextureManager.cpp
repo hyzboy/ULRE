@@ -588,6 +588,35 @@ void TextureManager::UnbindRenderTargetTextures(const OSString &target)
     }
 }
 
+int TextureManager::MarkRenderTargetContentReady(const OSString &target)
+{
+    if(target.IsEmpty())
+        return(0);
+
+    int count=0;
+
+    for(int i=0;i<texture_assets.GetCount();++i)
+    {
+        TextureAsset *asset=texture_assets[i];
+
+        if(!asset||!asset->IsRenderTarget())
+            continue;
+
+        if(asset->GetRenderTargetName()!=target)
+            continue;
+
+        if(asset->IsContentReady())
+            continue;
+
+        asset->MarkContentReady();
+
+        if(asset->IsContentReady())
+            ++count;
+    }
+
+    return(count);
+}
+
 
 TextureAsset *TextureManager::WrapTextureAsset(Texture *texture)
 {

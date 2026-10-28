@@ -26,6 +26,15 @@ namespace hgl::graph
      * | `Resident`   | 纹理已可绑定 | `GetTexture()!=nullptr` |
      * | `LoadFailed` | 读取或上传失败（可重试） | `GetTexture()==nullptr` |
      *
+     * `Resident` 只表示**容器**（VkImage/VkImageView）已存在，不等于**内容**已有意义：
+     * - 文件来源：读盘 + 上传完成 = 内容就绪，两者同一时刻发生；
+     * - RT 来源：附件纹理在 RT 创建瞬间就存在，但此刻还没画过任何东西。若把
+     *   `Resident` 直接当成"可以采样"，第一帧就会把清屏色当内容采样，而且**永远**
+     *   不会重画（下游认为已就绪）。因此 RT 句柄额外带一个内容就绪位：
+     *   `BindRenderTargetTexture()` 只推 `Resident`（容器就绪），内容就绪由生产方
+     *   （`OffscreenWorld` 完成一次有效绘制后）调用 `MarkContentReady()` 置位。
+     *   `IsReady()` = 容器就绪 **且** 内容就绪 ⇒ `CanRender` 门禁对两者一视同仁。
+     *
      * 因此**不需要两套接口**：作者创建一个句柄（给文件名、给 RT 名、或给现成纹理），材质直接收下；
      * 是否已加载由 ECS 侧判断并自动驱动，加载完成后再让图元进入可渲染状态。
      *
@@ -56,6 +65,7 @@ namespace hgl::graph
         TextureURIKind      source_kind     = TextureURIKind::File;
         OSString            rt_target;                      ///<RenderTarget 来源：目标名
         OSString            rt_attachment;                  ///<RenderTarget 来源：附件名
+        bool                content_ready = false;          ///<内容就绪(RT:已按此目标画过一帧)
 
     protected:  // MetaObject 双层契约
 
@@ -88,7 +98,8 @@ namespace hgl::graph
         TextureManager * GetTextureManager()const{return tex_manager;}
         const OSString & GetFilename      ()const{return GetMeta().source_path;}
         Texture *        GetTexture       ()const{return texture;}
-        bool             IsReady          ()const{return texture!=nullptr;}
+        bool             IsReady          ()const{return texture!=nullptr && content_ready;}
+        bool             IsContentReady   ()const{return content_ready;}
         bool             GetAutoMipmaps   ()const{return auto_mipmaps;}
 
         TextureURIKind   GetSourceKind    ()const{return source_kind;}
@@ -120,5 +131,13 @@ namespace hgl::graph
 
         /// 附件纹理即将销毁：句柄退回 `MetaOnly`（保留句柄本身，等待重建）
         void UnbindRenderTargetTexture(const char *reason);
+
+        /**
+         * @brief 生产方声明「本句柄背后的内容已经画出来了」。
+         *
+         * 只对 RT 来源有意义：容器早就在，内容要靠离屏 pass 真正绘制一次。
+         * 由 `OffscreenWorld` 在其内部图元全部就绪并完成一次绘制后调用。
+         */
+        void MarkContentReady();
     };//class TextureAsset
 }//namespace hgl::graph

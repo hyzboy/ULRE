@@ -54,9 +54,14 @@ namespace hgl::ecs
             return asset ? asset->GetTexture() : nullptr;
         }
 
-        bool IsReady() const { return GetTexture() != nullptr; }
+        /// 句柄是否带了**可用内容**（= 容器就绪且内容就绪）
+        ///
+        /// RT 来源的句柄在附件纹理创建后就已经有 `GetTexture()`，但此时离屏 pass 还
+        /// 没画过任何东西。若这里只看容器，主世界会在离屏 pass 产出内容之前就采样
+        /// 一张只有清屏色的纹理，且此后永远不重画 ⇒ 改用句柄的 `IsReady()`。
+        bool IsReady() const { return asset && asset->IsReady(); }
 
-        /// 是否表达了「某个纹理」（已就绪的纹理，或只有文件名待加载）
+        /// 是否表达了「某个纹理」（已就绪的纹理，或只有来源待加载/待绘制）
         bool HasSource() const
         {
             return asset && (asset->GetTexture() || !asset->GetFilename().IsEmpty());

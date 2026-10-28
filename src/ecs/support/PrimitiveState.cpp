@@ -41,6 +41,18 @@ namespace hgl::ecs
         return IsMaterialResourceReady(context, entity);
     }
 
+    bool HasPendingMaterialResources(const Entity *entity)
+    {
+        if (!entity)
+            return false;
+
+        ECSContext *context = entity->GetContext();
+        if (!context)
+            return false;
+
+        return !IsMaterialResourceReady(context, entity);
+    }
+
     bool HasAnyMaterialSource(const Entity *entity)
     {
         if (!entity)

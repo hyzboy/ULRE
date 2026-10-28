@@ -202,6 +202,14 @@ public: // TextureAsset
     /// 附件纹理即将销毁：把所有相关句柄退回 `MetaOnly`
     void UnbindRenderTargetTextures(const OSString &target);
 
+    /**
+     * 生产方声明「这个 RenderTarget 的内容已经画出来了」：把该目标下所有句柄的内容
+     * 就绪位置位。返回置位的句柄数（0 表示调用方还没建过句柄 —— 不是错误）。
+     *
+     * 幂等：重复调用不会重复置位。RT 重建会经 `UnbindRenderTargetTextures` 清零。
+     */
+    int MarkRenderTargetContentReady(const OSString &target);
+
     /// 句柄表只读视图（流式系统逐帧扫描 `MetaOnly` 句柄用）
     const ValueArray<TextureAsset *> &GetTextureAssets()const{return texture_assets;}
 

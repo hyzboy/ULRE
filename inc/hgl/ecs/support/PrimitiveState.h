@@ -38,4 +38,13 @@ namespace hgl::ecs
     /// 实体是否有材质来源（材质数据层有配方覆盖，或几何 asset 里有默认配方）。
     bool HasAnyMaterialSource(const Entity *entity);
 
+    /**
+     * 实体的**必需**纹理工作是否仍未完成（异步读盘在途 / RT 尚未产出内容）。
+     *
+     * 与 `CanRender` 的区别：`CanRender` 是「能不能画」的合成判据（还含几何是否存在），
+     * 本函数只回答「卡在资源上吗」。离屏世界的驱动方（`OffscreenWorld`）用它判断
+     * 「这帧画出来的东西是不是完整的」——只有完整的一帧才允许把 RT 内容标为就绪。
+     */
+    bool HasPendingMaterialResources(const Entity *entity);
+
 }//namespace hgl::ecs

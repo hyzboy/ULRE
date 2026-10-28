@@ -1,5 +1,7 @@
 ﻿#include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/asset/TextureURI.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -8,6 +10,12 @@
 
 namespace hgl::graph
 {
+    namespace
+    {
+        /// 连续多少帧资源未就绪后打印一次告警（避免每帧刷屏，又不至于静默失败）
+        constexpr uint32_t kPendingWarnFrames = 120;
+    }
+
     std::unique_ptr<OffscreenWorld> OffscreenWorld::Create(GraphicsContext *gc,
                                                            ecs::ECSContext *main_world,
                                                            const OffscreenWorldDesc &desc)
@@ -84,6 +92,9 @@ namespace hgl::graph
         rt_desc.clear_color = desc.clear_color;
         rt_desc.env_profile = desc.env_profile;
 
+        // RT 名 = rt: 寻址的键。必须在 Create 之前取，创建后 desc 不再被读。
+        rt_name_ = FromRenderTargetName(rt_desc.name);
+
         rt_ = rtm->Create(rt_desc);
 
         if(!rt_)
@@ -155,12 +166,57 @@ namespace hgl::graph
         if(!world_ || !rt_)
             return;
 
+        // **绘制前**判定资源就绪：本帧若现在提交，画出来的是不是完整内容。
+        // 必须在 Tick/RenderTo 之前取，否则可能被本帧 DriveResources 改过状态。
+        const bool scene_ready = !world_->HasPendingRenderableResources();
+
         world_->Tick(delta_time);
 
         // 复用与主窗口路径相同的帧驱动（BeginManagedRenderFrame + RenderDrawOnly + EndManagedRenderFrame）
         world_->RenderTo(rt_.get(), clear_color, delta_time, cull_mode_);
 
         RestoreMainRenderContext();
+
+        if(scene_ready)
+        {
+            MarkContentReady();
+            return;
+        }
+
+        // 资源还没齐：本帧内容残缺，不置就绪位。下游材质因此继续被 CanRender 拦住，
+        // 不会把「只有清屏色 / 少了贴图」的画面采样出去。
+        ++pending_frames_;
+
+        if(pending_frames_ == kPendingWarnFrames)
+            GLogWarning("[OffscreenWorld] 已连续 %u 帧离屏图元资源未就绪，输出暂不可用",
+                        pending_frames_);
+    }
+
+    bool OffscreenWorld::IsSceneContentReady() const
+    {
+        return world_ ? !world_->HasPendingRenderableResources() : true;
+    }
+
+    void OffscreenWorld::MarkContentReady()
+    {
+        if(content_ready_)
+            return;
+
+        content_ready_  = true;
+        pending_frames_ = 0;
+
+        // 把就绪位传播到 rt:<name>:<attachment> 句柄 —— 这是下游材质看到的唯一状态源。
+        if(TextureManager *tm = gc_ ? gc_->GetTextureManager() : nullptr)
+        {
+            if(rt_name_.IsEmpty())
+                return;
+
+            const int count = tm->MarkRenderTargetContentReady(rt_name_);
+
+            GLogInfo(OS_TEXT("[OffscreenWorld] 离屏输出就绪（rt:%s，%d 个句柄）"),
+                     rt_name_.c_str(),
+                     count);
+        }
     }
 
     bool OffscreenWorld::Resize(const uint32_t width, const uint32_t height)
@@ -174,6 +230,11 @@ namespace hgl::graph
 
         if(!rtm->Resize(rt_.get(), width, height))
             return false;
+
+        // RT 重建 ⇒ 附件纹理换了，内容回到"未产出"。就绪位在重新画过一帧后由
+        // Render() 自动置回，下游材质在此期间被 CanRender 拦住。
+        content_ready_  = false;
+        pending_frames_ = 0;
 
         // RT 重建后视口信息随之变化，需重新接线相机与收集系统
         IRenderTarget *rt = rt_.get();

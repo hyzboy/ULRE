@@ -22,8 +22,9 @@ namespace hgl::graph
     void TextureAsset::OnReleaseMeta()
     {
         texture         = nullptr;
-        async_requested = false;
-        async_request_id= 0;
+        content_ready   =false;
+        async_requested =false;
+        async_request_id=0;
     }
 
     bool TextureAsset::OnLoadPayload()
@@ -136,6 +137,7 @@ namespace hgl::graph
             return(false);
 
         texture      =tex;
+        content_ready=true;
         payload_state=PayloadState::Resident;
 
         return(true);
@@ -169,6 +171,7 @@ namespace hgl::graph
         }
 
         texture         =tex;
+        content_ready   =true;
         async_requested =false;
         async_request_id=0;
         payload_state   =PayloadState::Resident;
@@ -187,6 +190,7 @@ namespace hgl::graph
                   reason?reason:"未指明原因");
 
         texture         =nullptr;
+        content_ready   =false;
         async_requested =false;
         async_request_id=0;
         payload_state   =PayloadState::LoadFailed;
@@ -211,11 +215,24 @@ namespace hgl::graph
         }
 
         texture         =tex;
+        content_ready   =false;     ///<容器就绪≠内容就绪：等生产方画过一次
         async_requested =false;
         async_request_id=0;
         payload_state   =PayloadState::Resident;
 
         return(true);
+    }
+
+    void TextureAsset::MarkContentReady()
+    {
+        if(!texture||content_ready)
+            return;
+
+        content_ready=true;
+
+        GLogDebug(OS_TEXT("[TextureAsset] RT 内容就绪（rt:%s:%s）"),
+                  rt_target.c_str(),
+                  rt_attachment.c_str());
     }
 
     void TextureAsset::UnbindRenderTargetTexture(const char *reason)
@@ -231,6 +248,7 @@ namespace hgl::graph
 
         // 句柄本身必须活着：它可能已经被材质收下，重建后会自动重新绑定。
         texture         =nullptr;
+        content_ready   =false;
         async_requested =false;
         async_request_id=0;
         payload_state   =PayloadState::MetaOnly;

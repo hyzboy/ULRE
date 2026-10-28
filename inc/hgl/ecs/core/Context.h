@@ -351,6 +351,7 @@ namespace hgl
 
             bool EnsureRenderCoreInitialized();
             void ExecuteScenePrePassWorkflow(float deltaTime);
+
             bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true, const graph::RenderPassOptions *options = nullptr);
             void EndManagedRenderFrame(float deltaTime);
             void RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
@@ -1048,6 +1049,13 @@ namespace hgl
             void ResetComponentDrivenGroups();
 
         public:
+            /**
+             * 本世界是否还有图元卡在必需资源上（异步读盘在途 / 离屏 RT 尚未产出）。
+             *
+             * 生产方（如 `OffscreenWorld`）据此判断「刚画的那一帧内容是否完整」。
+             */
+            bool HasPendingRenderableResources() const;
+
             RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }
             const RenderFrameCache& GetRenderFrameCache() const { return render_frame_cache; }
 
