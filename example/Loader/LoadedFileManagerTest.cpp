@@ -9,7 +9,9 @@
 //   ⑥ 命中缓存 → 不重复读盘(cache_hits 增加)；
 //   ⑦ Pump(max_dispatch) 限量分发；
 //   ⑧ Stop(Drain) 后仍能 Pump 取走已完成结果；
-//   ⑨ Stop(CancelPending) 之后每个请求都恰好回调一次，不丢不重。
+//   ⑨ Stop(CancelPending) 之后每个请求都恰好回调一次，不丢不重；
+//   ⑩ 在途去重：同帧同文件多次 Submit（含大小写/分隔符变体）只读一次盘；
+//   ⑪ 单 IO worker 下按提交顺序串行完成并回调。
 //
 // 返回值：0 表示全部通过，非 0 为失败阶段编号。
 
@@ -29,6 +31,22 @@ namespace
     const OSString kMissingFile=OS_TEXT("LoadedFileManagerTest.missing.bin");
     const OSString kBigFile    =OS_TEXT("res/image/PeachWine.Tex2D");
 
+    // 在途去重用：同一文件的三种子路径写法
+    const OSString kDedupDir    =OS_TEXT("LoadedFileManagerTestDir");
+    const OSString kDedupFile   =OS_TEXT("LoadedFileManagerTestDir/sub.bin");
+    const OSString kDedupFileRepeat =OS_TEXT("LoadedFileManagerTestDir//sub.bin");
+
+#if HGL_OS == HGL_OS_Windows
+    const OSString kDedupFileVariant=OS_TEXT("LOADEDFILEMANAGERTESTDIR\\SUB.BIN");   // 大小写 + 分隔符变体
+#else
+    const OSString kDedupFileVariant=OS_TEXT("LoadedFileManagerTestDir///sub.bin");  // 仅分隔符重复变体
+#endif
+
+    // 串行顺序用：三个不同的文件，按提交顺序回调
+    const OSString kOrderFile0=OS_TEXT("LoadedFileManagerTestDir/order0.bin");
+    const OSString kOrderFile1=OS_TEXT("LoadedFileManagerTestDir/order1.bin");
+    const OSString kOrderFile2=OS_TEXT("LoadedFileManagerTestDir/order2.bin");
+
     /**
      * 记录回调结果的 handler。
      *
@@ -44,6 +62,10 @@ namespace
 
         LoadedFilePtr keep;                 ///<需要跨阶段保留文件时挂在这里
 
+        OSString order_files[3];                            ///<按回调顺序记录的最近三个文件名
+        int      order_count=0;
+        bool     record_order=false;
+
         OSString                last_filename;
         uint64                  last_size=0;
         bool                    last_bytes_ok=false;
@@ -58,6 +80,14 @@ namespace
             last_filename=file?file->GetFilename():OSString();
             last_size=file?file->GetSize():0;
             last_bytes_ok=false;
+
+            if(record_order)
+            {
+                if(order_count<3)
+                    order_files[order_count]=last_filename;
+
+                ++order_count;
+            }
 
             if(file&&file->GetSize()==sizeof(kPayload))
             {
@@ -135,7 +165,7 @@ int main()
 
     int result=0;
 
-    if(!manager.Start(2))
+    if(!manager.Start())      // 默认单线程串行读盘
         result=2;
 
     // ---------------------------------------------------------------- ① 读取成功
@@ -334,6 +364,89 @@ int main()
         }
     }
 
+    // ---------------------------------------------------------------- ⑩ 在途去重
+    // 同一路径在读盘完成前的多次 Submit（含大小写/分隔符变体）只读一次盘，
+    // 每个请求各自收到一次 OnFileLoaded，共享同一份字节。
+    if(result==0)
+    {
+        LoadedFileManager dedup_manager;
+        RecordHandler dedup_a;
+        RecordHandler dedup_b;
+        RecordHandler dedup_c;
+
+        if(!filesystem::MakePath(kDedupDir)||!WritePayloadFile(kDedupFile))
+            result=37;
+        else
+        if(!dedup_manager.Start())                      // 默认单线程串行读盘
+            result=38;
+        else
+        if(dedup_manager.Submit(kDedupFile,&dedup_a)==0)
+            result=39;
+        else
+        if(dedup_manager.Submit(kDedupFileRepeat,&dedup_b)==0)
+            result=40;
+        else
+        if(dedup_manager.Submit(kDedupFileVariant,&dedup_c)==0)
+            result=41;
+        else
+        if(dedup_manager.GetStatistics().merged_in_flight!=2)
+            result=42;
+        else
+        if(!WaitDispatch(dedup_manager,dedup_a,1))
+            result=43;
+        else
+        if(dedup_a.loaded!=1||dedup_b.loaded!=1||dedup_c.loaded!=1
+         ||dedup_a.failed!=0||dedup_b.failed!=0||dedup_c.failed!=0
+         ||!dedup_a.last_bytes_ok||!dedup_b.last_bytes_ok||!dedup_c.last_bytes_ok)
+            result=44;
+        else
+        if(dedup_manager.GetStatistics().io.submitted!=1)   // 底层只读了一次
+            result=45;
+        else
+        if(dedup_a.last_filename!=kDedupFile             // 报告的是首次 Submit 的原始拼写
+         ||dedup_b.last_filename!=kDedupFile
+         ||dedup_c.last_filename!=kDedupFile)
+            result=46;
+    }
+
+    // ---------------------------------------------------------------- ⑪ 单线程串行顺序
+    // 单 IO worker 下，先后 Submit 的三个不同文件应按提交顺序完成并回调。
+    if(result==0)
+    {
+        LoadedFileManager order_manager;
+        RecordHandler order_handler;
+
+        order_handler.record_order=true;
+
+        if(!filesystem::MakePath(kDedupDir)
+         ||!WritePayloadFile(kOrderFile0)||!WritePayloadFile(kOrderFile1)||!WritePayloadFile(kOrderFile2))
+            result=47;
+        else
+        if(!order_manager.Start(1))
+            result=48;
+        else
+        if(order_manager.Submit(kOrderFile0,&order_handler)==0
+         ||order_manager.Submit(kOrderFile1,&order_handler)==0
+         ||order_manager.Submit(kOrderFile2,&order_handler)==0)
+            result=49;
+        else
+        if(!WaitDispatch(order_manager,order_handler,3))
+            result=50;
+        else
+        if(order_manager.GetStatistics().merged_in_flight!=0)   // 不同文件不应被合并
+            result=51;
+        else
+        if(order_handler.order_count!=3
+         ||order_handler.order_files[0]!=kOrderFile0
+         ||order_handler.order_files[1]!=kOrderFile1
+         ||order_handler.order_files[2]!=kOrderFile2)
+            result=52;
+    }
+
+    filesystem::FileDelete(kOrderFile0);
+    filesystem::FileDelete(kOrderFile1);
+    filesystem::FileDelete(kOrderFile2);
+    filesystem::FileDelete(kDedupFile);
     filesystem::FileDelete(kGoodFile);
     return(result);
 }
