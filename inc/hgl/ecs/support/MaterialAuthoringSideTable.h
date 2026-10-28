@@ -9,11 +9,6 @@
 #include<cstdint>
 #include<string>
 
-namespace hgl::graph
-{
-    class Sampler;
-}//namespace hgl::graph
-
 namespace hgl::ecs
 {
     /// 具名纹理资源的**选择器**类型（B4-iii-b：原为 `MaterialData` 的嵌套枚举，随重类型移出）。
@@ -37,11 +32,15 @@ namespace hgl::ecs
     /// 未加载时句柄停在 `MetaOnly`（只带文件名），已加载时带完整 `Texture`；作者不再需要
     /// 在「自己先同步加载」与「异步回填」之间二选一 —— ECS 侧判断 `IsReady()`，未就绪就自动
     /// 驱动异步加载，等就绪后再让图元进入可渲染状态。
+    ///
+    /// **没有 `sampler` 字段（2026-10-29 解耦）**：Vulkan 侧是 Bindless —— 采样器由
+    /// `sampler.toml` 的预设集中写入 `binding=1` 的 `samplers[]`，片元着色器按预设名字
+    /// 索引采样；材质侧传进来的 `Sampler*` 从未进入任何描述符（旧描述符时代残留）。
+    /// 因此本结构只表达「哪张纹理」，采样状态不是每纹理的授权数据。
     struct MaterialTextureAuthoringResource
     {
         /// 纹理句柄（由 `TextureManager` 的句柄表拥有；本结构只持裸观察指针）
         hgl::graph::TextureAsset *asset = nullptr;
-        hgl::graph::Sampler *sampler = nullptr;
         /// 注：kind/array_layer/required 是**选择器**（不是每实体 GPU 数据）——
         /// 留在旁表条目里即可，不进设备级行。
         MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;

@@ -30,7 +30,8 @@ namespace hgl::ecs
         {
             // 统一句柄语义：只要有来源就产出绑定 —— 只有文件名的句柄同样产出绑定，
             // 身份用 `texfile:<path>`（就绪前后不变），图元就绪后即可直接命中 bindless 资源。
-            if (!resource.HasSource() || !resource.sampler)
+            // 采样器不参与绑定（Bindless 预设集中管理），故这里没有任何 sampler 判据。
+            if (!resource.HasSource())
                 return true;
 
             const std::string resource_id = BuildTextureResourceId(resource.asset);
@@ -84,19 +85,13 @@ namespace hgl::ecs
                 name.c_str());
             return false;
         }
-        // 统一句柄：只拒绝「根本没表达纹理」（无句柄 / 无采样器 / 句柄既无纹理也无文件名）。
+        // 统一句柄：只拒绝「根本没表达纹理」（无句柄 / 句柄既无纹理也无文件名）。
         // **只有文件名的句柄是合法状态** —— 由 ECS 侧驱动异步加载。
+        // 采样器不是授权数据（Bindless 预设统一管理）⇒ 这里不再校验。
         if (!resource.HasSource())
         {
             GLogError(
                 "[MaterialData] Texture authoring rejected empty handle name=%s",
-                name.c_str());
-            return false;
-        }
-        if (!resource.sampler)
-        {
-            GLogError(
-                "[MaterialData] Texture authoring rejected null sampler name=%s",
                 name.c_str());
             return false;
         }
@@ -129,6 +124,9 @@ namespace hgl::ecs
         const uint32_t array_layer,
         const bool required)
     {
+        // `sampler` 已废弃：Bindless 预设集中管理采样器，材质侧不再持有它。
+        (void)sampler;
+
         if (!texture)
         {
             GLogError(
@@ -164,7 +162,6 @@ namespace hgl::ecs
 
         MaterialTextureAuthoringResource resource{};
         resource.asset        = asset;
-        resource.sampler      = sampler;
         resource.kind         = kind;
         resource.array_layer  = array_layer;
         resource.required     = required;
@@ -180,6 +177,9 @@ namespace hgl::ecs
         const uint32_t array_layer,
         const bool required)
     {
+        // 与 Texture* 重载同理：`sampler` 已废弃（Bindless 预设集中管理），只是被忽略。
+        (void)sampler;
+
         if (!asset)
         {
             GLogError(
@@ -192,7 +192,6 @@ namespace hgl::ecs
         // 「只有文件名」的句柄在这里是**合法**的 —— 加载由 ECS 侧驱动。
         MaterialTextureAuthoringResource resource{};
         resource.asset        = asset;
-        resource.sampler      = sampler;
         resource.kind         = kind;
         resource.array_layer  = array_layer;
         resource.required     = required;
@@ -222,7 +221,7 @@ namespace hgl::ecs
         {
             // 只要求「表达了某个纹理」：只有文件名的句柄也要能被看到（渲染层据 IsReady()
             // 判断可否绑定，未就绪的图元由 CanRender 拦截，不会走到绑定路径）。
-            if (entry->HasSource() && entry->sampler)
+            if (entry->HasSource())
                 return entry;
         }
         return nullptr;

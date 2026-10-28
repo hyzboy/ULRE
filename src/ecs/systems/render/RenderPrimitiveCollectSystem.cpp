@@ -817,11 +817,11 @@ namespace hgl::ecs
                     : nullptr;
                 // 未就绪的句柄（只有文件名）不该走到这里 —— `CanRender` 会先把图元拦下；
                 // 走到这里说明就绪判定与收集判定脱节，直接报错更容易定位。
+                // 采样器不参与判据：Bindless 预设（`sampler.toml` → `samplers[]`）统一管理。
                 graph::Texture *resource_texture =
                     resource ? resource->GetTexture() : nullptr;
                 if (!resource
                  || !resource_texture
-                 || !resource->sampler
                  || !bindless_mgr)
                 {
                     GLogError(
