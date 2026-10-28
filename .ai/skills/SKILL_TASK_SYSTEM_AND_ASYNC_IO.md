@@ -359,3 +359,151 @@ material_data->SetTextureResource("base_color", base, sampler,
 `TextureAsset` 目前只驱动 `Texture2D` 的文件流（`CommitTexture2D`）；数组层与立方体的
 「按文件异步装配」是后续扩展点（需要先有「只读 Meta 拿尺寸/格式」的 API）。
 
+
+---
+
+## 10. 离屏渲染目标资产化：`rt:` URI + 容器就绪 / 内容就绪
+
+第 9 章让「文件纹理」变成了句柄。这一章解决同一问题的另一半：**离屏 RT 的附件**
+也必须能像文件贴图一样被材质直接引用，否则「离屏画出来的东西贴到物体上」这件事永远
+需要调用方手动 `GetColorTexture()` → `WrapTextureAsset()` 搬运，一旦 RT 重建
+（Resize / 参数变更）关联就断，而且**无法从外部配置**。
+
+### 10.1 两种来源，一种句柄
+
+`TextureAsset` 用 `TextureURI` 描述来源，材质侧看到的永远只是句柄：
+
+| scheme | 语法 | 语义 |
+|---|---|---|
+| `file` | `file:<path>`（**无 scheme 时默认按此处理**） | 磁盘文件，走第 8 章的异步读盘 |
+| `rt` | `rt:<target>[:<attachment>]` | 某个 `RenderTargetDesc::name` 的附件 |
+
+- `attachment` 缺省 = `color0`，深度用 `depth`；
+- 只有 `file` / `rt` 两个已知 scheme 生效 ⇒ `C:\path\to\x.Tex2D` 不会被误判成 scheme；
+- 同一 URI 解析结果稳定 ⇒ 可以拿 `ToString()` 当去重键。
+
+```cpp
+// 前台只写名字，不碰裸纹理
+auto *color = tm->CreateTextureAsset(OS_TEXT("rt:RTTColorDepth:OffscreenRT:color0"));
+auto *depth = tm->CreateTextureAsset(OS_TEXT("rt:RTTColorDepth:OffscreenRT:depth"));
+```
+
+### 10.2 `rt:` 的附件切分必须**从尾部**判
+
+RT 名常沿用 `resource_prefix`，**名字里带冒号是常态**
+（`OffscreenWorldDesc::resource_prefix = "RTTColorDepth:OffscreenRT"`）。
+按第一个冒号切会得到错误的 target 名，因此 `TextureURI::Parse` 取**最后一个**冒号，
+且只有其后片段通过 `IsAttachmentName()`（`depth` 或 `ParseColorAttachmentName` 成功）
+才当作附件分隔符：
+
+```
+rt:A:B:color0   ⇒ target="A:B"  attachment="color0"
+rt:A:B          ⇒ target="A:B"  attachment="color0"（缺省）
+rt:A:shadow     ⇒ target="A:shadow" attachment="color0"（"shadow" 不是附件名）
+```
+
+`RenderTargetDesc::name` 是 `AnsiString`、URI 用 `OSString`，两者往返**只允许**走
+`ToRenderTargetName()` / `FromRenderTargetName()`（`u8char` 在 C++20 下是 `char8_t`，
+手写 `reinterpret_cast` 必错）。
+
+### 10.3 RT 资产规约与 TOML
+
+`RenderTargetAssetSpec`（`inc/hgl/graph/asset/RenderTargetAsset.h`）只描述「RT 长什么样」，
+不持有任何 GPU 对象：
+
+| 字段 | 说明 |
+|---|---|
+| `name` | 资产名 = `rt:` 里的 target 名，必须唯一非空 |
+| `size_mode` | `Absolute`（像素） / `WindowRelative`（窗口千分比，1000 = 100%） |
+| `width` / `height` | 按 `size_mode` 解释 |
+| `tpl` | `RenderTargetDesc` 模板；`kind` 固定 `Offscreen`，`width`/`height`/`name` 由 `ToDesc()` 覆写，**模板里不要填** |
+
+```toml
+name          = "OffscreenColor"
+size_mode     = "absolute"          # 或 "window_relative"（千分比）
+width         = 512
+height        = 512
+has_color     = true
+color_formats = ["rgba8"]           # 省略 ⇒ 设备默认 surface format
+has_depth     = true
+depth_format  = "d32"               # 省略 ⇒ 设备默认深度格式
+resizable     = true
+follow_window = false
+slot_count    = 1
+clear_color   = [0.1, 0.2, 0.3, 1.0]
+```
+
+`LoadRenderTargetAssetSpecFromTOML()` 读它；`RenderTargetManager::Create()` 展开并创建，
+成功后**自动**把每个附件绑定到对应 `rt:` 句柄
+（`TextureManager::BindRenderTargetTextures(rt_name, tex, MakeColorAttachmentName(i))`，
+深度用 `kTextureURIAttachmentDepth`）。`RebuildOffscreenRT()` 会先 `Unbind` 再重建。
+
+⇒ 调用方**永远不需要**知道 Rt 何时重建、附件纹理换了几个对象：句柄不变，指向的内容随
+绑定更新。这正是「某个后期要输入些啥，直接用名字」能成立的前提。
+
+### 10.4 容器就绪 ≠ 内容就绪（**本层最重要的语义**）
+
+`required=true` 的 `rt:` 纹理若只按「附件纹理存在」判就绪，会出现「RT 已创建、但这一帧
+还没画过 ⇒ 只有清屏色」被当成正常内容贴到物体上。因此拆成两个状态：
+
+| 状态 | 判据 | 何时置位 |
+|---|---|---|
+| 容器就绪 | 句柄已绑定到实际附件纹理 | `BindRenderTargetTextures` 之后 |
+| 内容就绪 | 该 RT **至少完成过一次有效绘制** | `OffscreenWorld::MarkContentReady()` |
+
+- 未内容就绪时，`required=true` 的材质照旧被 `CanRender` 拦下 ⇒ 不渲染半成品；
+- `OffscreenWorld::MarkContentReady()` 由 `OffscreenWorld::Render()` 判定
+  「资源就绪 **且** 本帧真的建出了批（`drew_content`）」后才调用，随后
+  `TextureManager::MarkRenderTargetContentReady(rt_name)` 把该 RT 名下所有
+  `IsRenderTarget() && GetRenderTargetName()==rt_name && !IsContentReady()` 的句柄
+  一次性置位。
+
+> `scene_ready` 必须在 `Tick()`/`RenderTo()` **之前**取快照：本帧的 `DriveResources`
+> 会改写资源状态，事后取会让判据永远「已就绪」。
+
+### 10.5 「驱动到就绪」，不要用固定帧数
+
+```cpp
+// example/Offscreen/RenderToTextureColorDepth.cpp
+if (!offscreen->IsContentReady())
+    offscreen->RenderOffscreenFrame();      // 每帧驱动一次，直到内容就绪
+else
+    /* 正常一帧 */;
+```
+
+⚠ **反面教训**：在 `Init()` 里同步调一次 `RenderOnce()` 是错的 —— 离屏场景自己的贴图
+此时还停在 `MetaOnly`，`CanRender` 会把它全部拦下，RT 于是「成功渲染了一张只有清屏色的
+图」并被判为已就绪。正确做法是把离屏 pass 交给逐帧循环，由就绪判据决定何时结束等待。
+
+### 10.6 陷阱：`GetFrameIndex()` 是**帧槽号**，不是帧序数
+
+`ECSContext::GetFrameIndex()` 返回**驱动相机的帧槽号**：
+
+- 主世界 = 交换链图像号（0/1/2 循环，每帧都在变）；
+- 离屏世界 = 该 RT 的固定槽（实测恒为同一个值）。
+
+任何「每帧只做一次」的守卫若拿它当键，离屏世界会在**首帧**把结果永久缓存 ⇒
+`RunBatching()` 再也不被调用 ⇒ 离屏世界**永不绘制**（表现为 `items=1` 但 `batches=0`
+恒不变）。可靠口径只有 `RenderFrameCache::frame_serial`（`BeginFrame()` 自增）：
+
+```cpp
+// src/ecs/support/PrimitiveBatchPipeline.cpp
+if (cache.last_prepared_serial == cache.frame_serial) return true;
+cache.last_prepared_serial = cache.frame_serial;
+```
+
+已修正三处同类守卫：`PrimitiveBatchPipeline::PrepareFrame`、
+`TextRenderPipeline::PrepareFrame`、`LineRenderPipeline::PrepareFrame`。
+
+### 10.7 验证手法
+
+| 手段 | 用途 |
+|---|---|
+| `RTT_SELFCHECK` / `RTTCD_SELFCHECK` | 主场景帧摘要；PASS 退 0 |
+| `[RTTORT]` 生产端摘要 | 离屏附件**本体**的 FNV —— 区分「关联侧坏了」还是「生产侧没画」 |
+| `RTT_DUMP` / `RTTCD_DUMP` | 落 `*_WxH_fmt.raw`，可转 PNG 目视 |
+| `FRAMEDIGEST_PERFRAME=N` | 逐帧摘要：抓「每 N 帧闪一帧」这类帧间不稳定（一次性摘要在第 8 帧采样会漏） |
+| `[OffscreenWorld] 离屏输出就绪（rt:xxx，N 个句柄）` | 内容就绪翻转的时刻与句柄数 |
+
+> 改动渲染路径后，**基线必须重录**：`kSelfFNV` 只是「当时那一帧的指纹」，不是正确性
+> 证明。重录前先跑 `FRAMEDIGEST_PERFRAME` 确认帧间一致，再把稳定值钉进去。
