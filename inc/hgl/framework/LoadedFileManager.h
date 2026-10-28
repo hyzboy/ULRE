@@ -45,6 +45,10 @@ namespace hgl
      *      - 排队期间被 Find()/Submit() 命中则 RefInc 复活，Collect() 放过它。
      *     由此得到的语义是"弱表缓存"：只要还有人持有 LoadedFilePtr，同名文件就不会重复读盘。
      *
+     *     表键由 MakeLoadedFileKey() 生成：分隔符规范化 + Windows 下大小写折叠。因此
+     *     "Res\\Image/A.Tex2D" 与 "res/image/a.tex2d" 视为同一个文件；回调里报告的文件名
+     *     仍是该文件首次 Submit 时的原始拼写。
+     *
      *     线程约束：
      *      - Submit/Cancel/Pump/Collect/Stop 只允许在同一(主)线程调用；
      *      - Find 以及 LoadedFile 的 RefInc/RefDec 可在任意线程调用。
@@ -60,6 +64,11 @@ namespace hgl
      *     Release()+delete when the count is still zero, and a hit through Find()/Submit()
      *     while queued resurrects it with RefInc. The result is a weak table: as long as
      *     someone holds a LoadedFilePtr the same path is never read twice.
+     *
+     *     Table keys come from MakeLoadedFileKey(): separator normalization plus case
+     *     folding on Windows, so "Res\\Image/A.Tex2D" and "res/image/a.tex2d" are one
+     *     entry. The file name reported to handlers keeps the spelling used by the first
+     *     Submit of that file.
      *
      *     Threading: Submit/Cancel/Pump/Collect/Stop must be called from one thread
      *     (normally the main thread); Find and reference counting are thread-safe.
@@ -171,7 +180,7 @@ namespace hgl
         /**
          * @brief CN: 提交一个文件加载请求。
          *        EN: Submit one file-load request.
-         * @param filename CN: 文件名，作为已加载表的键，不做路径规范化。 EN: File name used as the table key; no path normalization is applied.
+         * @param filename CN: 文件名；查表前会经 MakeLoadedFileKey() 规范化。 EN: File name; normalized through MakeLoadedFileKey() before the lookup.
          * @param handler  CN: 结果接收者，必须活到该请求回调完成。 EN: Result receiver that must outlive this request's callback.
          * @param priority CN: 读盘优先级(数值越小越优先)。 EN: Read priority; lower values are served first.
          * @return CN: 请求编号，0 表示失败。 EN: Request identifier, or 0 on failure.

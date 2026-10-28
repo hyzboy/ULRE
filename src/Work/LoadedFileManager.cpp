@@ -146,8 +146,8 @@ namespace hgl
 
                 LoadedFile *registered=nullptr;
 
-                if(files.Get(file->GetFilename(),registered)&&registered==file)
-                    files.DeleteByKey(file->GetFilename());     // 摘表后 Find 再也找不到它，锁外释放是安全的
+                if(files.Get(file->path_key,registered)&&registered==file)
+                    files.DeleteByKey(file->path_key);      // 摘表后 Find 再也找不到它，锁外释放是安全的
 
                 dead.Add(file);
             }
@@ -168,7 +168,7 @@ namespace hgl
 
         LoadedFile *file=nullptr;
 
-        if(!files.Get(filename,file)||!file)
+        if(!files.Get(MakeLoadedFileKey(filename),file)||!file)
             return LoadedFilePtr();
 
         return LoadedFilePtr(file);                 // RefInc：计数为 0 的待释放文件在此复活
@@ -282,11 +282,11 @@ namespace hgl
                     LoadedFile *existing=nullptr;
 
                     // 同名文件抢先读完(两次 Submit 在途重叠)：沿用已登记的那份，本份随 Job 一起走进待释放队列
-                    if(files.Get(file->GetFilename(),existing)&&existing&&existing!=file)
+                    if(files.Get(file->path_key,existing)&&existing&&existing!=file)
                         publish=existing;
                     else
                     {
-                        files.Add(file->GetFilename(),file);
+                        files.Add(file->path_key,file);
                         publish=file;
                     }
                 }

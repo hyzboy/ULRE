@@ -8,6 +8,21 @@ namespace hgl
     class LoadedFileManager;
 
     /**
+     * @brief CN: 把文件名规范化为已加载表的查表键。
+     *        EN: Normalize a file name into a loaded-table key.
+     * @details CN: 分隔符统一为平台原生分隔符并合并连续分隔符；Windows 下再做大小写折叠，
+     *              使 "Res\\Image/A.Tex2D" 与 "res/image/a.tex2d" 命中同一份数据。
+     *              该键只用于查表，不改变 LoadedFile::GetFilename() 报告给使用方的原始拼写。
+     *          EN: Separators are converted to the platform-native one and repeats collapsed;
+     *              on Windows the result is additionally case-folded, so differently spelled
+     *              variants of one path share the same payload. The key is used for table
+     *              lookups only: LoadedFile::GetFilename() keeps the original spelling.
+     * @param filename CN: 原始文件名(任意分隔符/大小写)。 EN: Original file name with any separator or case.
+     * @return CN: 规范键。 EN: The normalized key.
+     */
+    OSString MakeLoadedFileKey(const OSString &filename);
+
+    /**
      * @brief CN: 已加载的原始文件：文件字节 + META + 引用计数。
      *        EN: A loaded raw file: byte payload, META and reference counting.
      * @details
@@ -47,6 +62,7 @@ namespace hgl
     private:
 
         io::AsyncFileLoadRequest    request;                        ///< @brief CN: 读盘请求兼字节持有者。 EN: Read request that also owns the bytes.
+        OSString                    path_key;                       ///< @brief CN: 已加载表的查表键(见 MakeLoadedFileKey)。 EN: Loaded-table lookup key (see MakeLoadedFileKey).
         LoadedFileManager *         owner=nullptr;                  ///< @brief CN: 所属管理器；为空则归零时直接销毁。 EN: Owning manager; when null the object destroys itself on ref-zero.
         bool                        in_pending=false;               ///< @brief CN: 是否已在待释放队列(受管理器锁保护)。 EN: Whether it is already queued for release (guarded by the manager lock).
 

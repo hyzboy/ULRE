@@ -1,11 +1,24 @@
 ﻿#include<hgl/framework/LoadedFileManager.h>
+#include<hgl/filesystem/Filename.h>
 
 namespace hgl
 {
+    OSString MakeLoadedFileKey(const OSString &filename)
+    {
+        OSString key=filesystem::NormalizeFilename(filename);
+
+#if HGL_OS == HGL_OS_Windows
+        key.LowerCase();                            // Windows 文件系统大小写无关，查表键也折叠大小写
+#endif
+
+        return key;
+    }
+
     LoadedFile::LoadedFile(const OSString &filename)
         :request(filename)
     {
         meta.source_path=filename;
+        path_key=MakeLoadedFileKey(filename);
     }
 
     bool LoadedFile::OnLoadPayload()
