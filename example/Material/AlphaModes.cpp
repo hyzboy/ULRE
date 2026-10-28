@@ -47,6 +47,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -145,7 +146,7 @@ private:
 
     MaterialDataAccessor surface_rows[MODE_ROWS][ALPHA_STEPS]{};
 
-    Texture2D * pattern_texture = nullptr;   ///< 单通道 gradient：base_color + opacity_mask
+    TextureAsset* pattern_texture = nullptr;   ///< 单通道 gradient：base_color + opacity_mask
     Sampler *   sampler = nullptr;
 
     hgl::ecs::TransformAccessor item_transforms[MODE_ROWS][ALPHA_STEPS]{};
@@ -166,7 +167,7 @@ private:
         if (!texture_manager || !sampler_manager)
             return false;
 
-        pattern_texture = texture_manager->LoadTexture2D(
+        pattern_texture = texture_manager->CreateTextureAsset(
             filesystem::JoinPathWithFilename(OS_TEXT("res/image/gradient"), PATTERN_TEXTURE_NAME),
             true);
         if (!pattern_texture)
@@ -342,8 +343,8 @@ private:
 
                 // 同一张单通道 gradient 同时当 base_color（可见图案）与 opacity_mask
                 //（逐像素 alpha 图案）⇒ 有效 alpha = 本列比例 × 纹理采样
-                if (!material_data->SetTextureResource("base_color", pattern_texture, sampler)
-                 || !material_data->SetTextureResource("opacity_mask", pattern_texture, sampler))
+                if (!material_data->SetTextureResource("base_color", pattern_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
+                 || !material_data->SetTextureResource("opacity_mask", pattern_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
                     return false;
 
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};

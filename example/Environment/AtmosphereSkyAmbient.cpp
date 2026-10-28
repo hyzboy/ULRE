@@ -8,6 +8,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -78,9 +79,9 @@ private:
     Geometry* prim_sky_sphere = nullptr;
     PrimitiveAsset sky_asset{};
 
-    Texture2D* base_texture = nullptr;
-    Texture2D* normal_texture = nullptr;
-    Texture2D* roughness_texture = nullptr;
+    TextureAsset* base_texture = nullptr;
+    TextureAsset* normal_texture = nullptr;
+    TextureAsset* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
 
     std::vector<std::unique_ptr<MeshEntry>> meshes;
@@ -102,15 +103,15 @@ private:
         if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
-        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+        base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
             return false;
 
-        normal_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        normal_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
         if (!normal_texture)
             return false;
 
-        roughness_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
+        roughness_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
         if (!roughness_texture)
             return false;
 
@@ -283,9 +284,9 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
-            material_data_comp->SetTextureResource("base_color", base_texture, sampler);
-            material_data_comp->SetTextureResource("normal", normal_texture, sampler);
-            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler);
+            material_data_comp->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+            material_data_comp->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
 
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();

@@ -5,6 +5,7 @@
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -103,9 +104,9 @@ private:
     MaterialDataAccessor material_data_ssbo_accessor{};
     graph::ssbo::PBRSurfaceRow sphere_material_data{};
     Sampler *sphere_sampler = nullptr;
-    Texture2D *sphere_base_tex = nullptr;
-    Texture2D *sphere_normal_tex = nullptr;
-    Texture2D *sphere_roughness_tex = nullptr;
+    TextureAsset* sphere_base_tex = nullptr;
+    TextureAsset* sphere_normal_tex = nullptr;
+    TextureAsset* sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
     hgl::ecs::GeometryData *sphere_primitive_comp = nullptr;
 
@@ -313,9 +314,9 @@ public:
         if (!sphere_sampler)
             return LogStageFail("OffscreenPass::BuildSphere", "CreateSampler failed");
 
-        sphere_base_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        sphere_normal_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        sphere_roughness_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
+        sphere_base_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+        sphere_normal_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        sphere_roughness_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
         if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
             return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
 
@@ -353,9 +354,9 @@ public:
         transform.SetMobility(Mobility::Static);
 
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
-        material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler);
-        material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler);
-        material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler);
+        material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+        material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+        material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler, MaterialTextureResourceKind::Texture2D, 0, true);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(sphere_struct);

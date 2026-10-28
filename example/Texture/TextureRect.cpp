@@ -3,6 +3,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
@@ -62,7 +63,7 @@ private:
     ECSContext *        ecs_world           = nullptr;
     Entity *            rect_entity         = nullptr;
 
-    Texture2D *         texture             = nullptr;
+    TextureAsset* texture = nullptr;
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
@@ -76,7 +77,7 @@ private:
         if (!sampler_manager || !tex_manager )
             return false;
 
-        texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        texture = tex_manager->CreateTextureAsset(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
@@ -132,7 +133,10 @@ private:
         if (!material_data_comp->SetTextureResource(
                 "base_color",
                 texture,
-                sampler))
+                sampler,
+                MaterialTextureResourceKind::Texture2D,
+                /*array_layer*/ 0,
+                /*required*/ true))
             return false;
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

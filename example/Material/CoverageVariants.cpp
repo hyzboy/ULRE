@@ -26,6 +26,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -113,9 +114,9 @@ private:
 
     MaterialDataAccessor surface_rows[GRID_ROWS][GRID_COLS]{};
 
-    Texture2D * base_texture   = nullptr;
-    Texture2D * normal_texture = nullptr;
-    Texture2D * mask_texture   = nullptr;   ///< DitherMask 变体的 alpha 来源（opacity_mask）
+    TextureAsset * base_texture   = nullptr;
+    TextureAsset * normal_texture = nullptr;
+    TextureAsset * mask_texture   = nullptr;   ///< DitherMask 变体的 alpha 来源（opacity_mask）
     Sampler *   sampler        = nullptr;
 
     hgl::ecs::TransformAccessor item_transforms[GRID_ROWS][GRID_COLS]{};
@@ -136,13 +137,13 @@ private:
         if (!texture_manager || !sampler_manager)
             return false;
 
-        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        normal_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+        normal_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
 
         // DitherMask 的 alpha 来源：黑白棋盘（白格 r=1 保留、黑格 r=0 必被阈值丢弃）
         // —— 与 AlphaTestShadow 的 opacity_mask 用法同源；Lit 定义的 alpha 真值**只来自
         // opacity_mask**（pbr_surface_source.glsl 的 EvalMaterialAlpha），base_color.a 不参与。
-        mask_texture = texture_manager->LoadTexture2D(
+        mask_texture = texture_manager->CreateTextureAsset(
             OS_TEXT("res/image/pbr/AlphaChecker/baseColor.Tex2D"), true);
 
         if (!base_texture || !normal_texture || !mask_texture)
@@ -321,9 +322,9 @@ private:
                 geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(&stress_asset[i]);
 
-                if (!material_data->SetTextureResource("base_color", base_texture, sampler)
-                 || !material_data->SetTextureResource("normal", normal_texture, sampler)
-                 || !material_data->SetTextureResource("opacity_mask", mask_texture, sampler))
+                if (!material_data->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
+                 || !material_data->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
+                 || !material_data->SetTextureResource("opacity_mask", mask_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
                     return false;
 
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
@@ -370,14 +371,14 @@ private:
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(
                         (row == 0) ? &opaque_asset : &dither_asset);
 
-                if (!material_data->SetTextureResource("base_color", base_texture, sampler)
-                 || !material_data->SetTextureResource("normal", normal_texture, sampler))
+                if (!material_data->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
+                 || !material_data->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
                     return false;
 
                 // DitherMask 变体：绑 opacity_mask（alpha 真值来源；未绑 = 1.0 ⇒ dither 不裁剪，
                 // 即"状态关掉"的那一端）—— 与 AlphaTestShadow 的 CubeA/CubeB 对照同款作者写法。
                 if (row == 1
-                 && !material_data->SetTextureResource("opacity_mask", mask_texture, sampler))
+                 && !material_data->SetTextureResource("opacity_mask", mask_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
                     return false;
 
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
