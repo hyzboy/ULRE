@@ -1,4 +1,4 @@
-﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
+set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
 SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/data/BitmapData.h
                     ${SG_INCLUDE_PATH}/data/ImageRegion.h
@@ -7,7 +7,7 @@ SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/data/BitmapData.h
 source_group("SceneGraph" FILES ${CM_SG_HEADER})
 
 # ============================================================================
-# 1. Core Framework - 鏍稿績妗嗘灦
+# 1. Core Framework - 核心框架
 # ============================================================================
 
 SET(GRAPHICS_CONTEXT_FILES   ${SG_INCLUDE_PATH}/core/GraphicsContext.h
@@ -59,7 +59,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
 SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 
 # ============================================================================
-# 2. Scene Management - 鍦烘櫙绠＄悊绯荤粺
+# 2. Scene Management - 场景管理系统
 # ============================================================================
 
 SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/LightRow.h
@@ -72,7 +72,7 @@ SET(SCENE_TRANSFORM_FILES ${SG_INCLUDE_PATH}/transform/TransformAction.h)
 SOURCE_GROUP("2.Scene\\Transform" FILES ${SCENE_TRANSFORM_FILES})
 
 # ============================================================================
-# 3. Camera System - 鐩告満绯荤粺
+# 3. Camera System - 相机系统
 # ============================================================================
 
 SET(CAMERA_FILES    ${SG_INCLUDE_PATH}/camera/Camera.h
@@ -83,7 +83,7 @@ SET(CAMERA_FILES    ${SG_INCLUDE_PATH}/camera/Camera.h
 SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 
 # ============================================================================
-# 4. Rendering System - 娓叉煋绯荤粺
+# 4. Rendering System - 渲染系统
 # ============================================================================
 
 SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderContext.h
@@ -98,7 +98,7 @@ SET(RENDERING_SHADOW_FILES ${SG_INCLUDE_PATH}/render/shadow/CascadedShadowContro
 SOURCE_GROUP("4.Rendering\\Shadow" FILES ${RENDERING_SHADOW_FILES})
 
 # ============================================================================
-# 5. Gizmo System - Gizmo浜や簰绯荤粺
+# 5. Gizmo System - Gizmo交互系统
 # ============================================================================
 
 SET(GIZMO_PUBLIC_HEADERS    ${SG_INCLUDE_PATH}/gizmo/GizmoTypes.h
@@ -131,7 +131,7 @@ SET(GIZMO_ALL_FILES ${GIZMO_PUBLIC_HEADERS} ${GIZMO_INTERNAL_FILES})
 SOURCE_GROUP("5.Gizmo" FILES ${GIZMO_ALL_FILES})
 
 # ============================================================================
-# 6. Geometry & Mesh System - 鍑犱綍浣撲笌缃戞牸绯荤粺
+# 6. Geometry & Mesh System - 几何体与网格系统
 # ============================================================================
 
 SET(GEOMETRY_CORE_FILES ${SG_INCLUDE_PATH}/geo/VKGeometry.h
@@ -159,7 +159,7 @@ SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h)
 SOURCE_GROUP("6.Asset\\Registry" FILES ${ASSET_REGISTRY_FILES})
 
 # ============================================================================
-# 7. Texture System - 绾圭悊绯荤粺
+# 7. Texture System - 纹理系统
 # ============================================================================
 
 SET(TEXTURE_LOADER_FILES    ${SG_INCLUDE_PATH}/texture/TextureLoader.h
@@ -178,7 +178,7 @@ SET(TEXTURE_TILE_FILES  ${SG_INCLUDE_PATH}/tile/TileData.h
 SOURCE_GROUP("7.Texture\\Tile" FILES ${TEXTURE_TILE_FILES})
 
 # ============================================================================
-# 8. Font System - 瀛椾綋绯荤粺
+# 8. Font System - 字体系统
 # ============================================================================
 
 SET(FONT_CORE_FILES ${SG_INCLUDE_PATH}/font/Font.h
@@ -228,11 +228,11 @@ SET(FONT_ALL_FILES  ${FONT_CORE_FILES}
                     ${FONT_LAYOUT_FILES})
 
 # ============================================================================
-# 9. Vulkan - 楂樺眰娓叉煋閫昏緫锛堝嚑浣曚綋銆佹潗璐ㄣ€佺汗鐞嗗姞杞界瓑锛?
+# 9. Vulkan - 高层渲染逻辑（几何体、材质、纹理加载等）
 # ============================================================================
 
 # --- 8.1 Geometry Management ---
-# 鍑犱綍浣撴簮鏂囦欢宸茬粺涓€鐧昏鍦?GEOMETRY_CORE_FILES锛屾澶勪笉鍐嶉噸澶嶅垪鍑恒€?
+# 几何体源文件已统一登记在 GEOMETRY_CORE_FILES，此处不再重复列出。
 
 # --- 8.2 Material System ---
 SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKShaderProgram.h
