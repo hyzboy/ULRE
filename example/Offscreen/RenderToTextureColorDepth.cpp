@@ -1,4 +1,4 @@
-// RenderToTextureColorDepth —— 离屏世界回归床（color + depth 双附件）
+﻿// RenderToTextureColorDepth —— 离屏世界回归床（color + depth 双附件）
 //
 // 以 RenderToTexture 为基线，多一路深度显示：离屏世界渲染一帧（颜色 + 深度附件），
 // 主画面并排两个立方体，左贴 `rt:<RT 名>:color0`，右贴 `rt:<RT 名>:depth`。
@@ -57,13 +57,20 @@
 
 /**
  * 关于深度可视化（之前 ShadowMap 示例"什么都看不到"的根因）：
- *   透视投影下深度值是非线性的，物体若落在 near~far 的远端附近，全部深度值会挤在
- *   0.95~1.0，做成贴图后是一片近乎均匀的白，肉眼分辨不出任何形状。
+ *   引擎深度为逆序 Z（近端=1、远端=0，实测 d≈near/z）：透视下 d 对距离高度非线性，
+ *   默认 near=0.1 时全部深度值都落在 0.01 量级，与清屏值 0 分不开，做成贴图是一片黑。
  *   本例把离屏相机的 near/far **收紧到刚好包住物体**（distance ± 球半径附近），
  *   让深度值铺满 [0,1]，深度图才有对比度。
  *
- *   另一个注意点：采样深度纹理时 GLSL texture() 返回 vec4(depth, 0, 0, 1)——
- *   只有 R 通道有效，所以深度贴图呈红色调，这是正常现象而非渲染错误。
+ *   另一个注意点：本例深度立方体走 `UnlitTexture3D`（世界空间无光贴面，直接输出
+ *   采样值、不经光照）。采样深度时 `texture()` 只有一个通道有效，引擎在**采样视图**
+ *   上把 R 广播到 RGB ⇒ 深度图呈灰度；若走 `Lit` 这类 PBR 材质，深度值会被当成
+ *   反照率再过一遍光照，环境高光把整个面染成天空色，看上去和颜色立方体一模一样
+ *   ——这正是「两个立方体都在显示 COLOR」的根因。
+ *
+ *   深度 RT 的空区域是清屏值（远端 0），映射到立方体面上即为黑色，与场景背景重合，
+ *   所以深度立方体看起来只有一块「浮着的灰色圆盘」（球面深度）+ 淡淡的棱边，
+ *   这是深度数据的正常表现，不是渲染错误。
  */
 
 using namespace hgl;
@@ -383,8 +390,9 @@ public:
         camera->matrix_dirty = true;
 
         // 关键：把 near/far 收紧到刚好包住球体（距相机 kCameraDistance ± kSphereRadius，
-        // 再留一点余量）。默认的 0.1 / 1000 会把全部深度值压到 0.99 附近，
-        // 深度贴图将是一片无法分辨的白——这正是之前 ShadowMap 示例看不到东西的原因。
+        // 再留一点余量）。引擎深度是「近端=1、远端=0」的逆序 Z（实测 d≈near/z），
+        // 默认的 near=0.1 会让全部深度值落到 0.01 量级，与清屏值 0（无限远）几乎
+        // 分不开，深度贴图就是一片黑——这正是之前 ShadowMap 示例看不到东西的原因。
         camera->near_plane = kCameraDistance - kSphereRadius - 0.5f;
         camera->far_plane  = kCameraDistance + kSphereRadius + 0.5f;
 
@@ -417,6 +425,7 @@ struct DisplayCube
 {
     const char *name = nullptr;
     const char *recipe_name = nullptr;  ///< 两个立方体用不同配方名，避免材质缓存互相覆盖
+    const char *mtl_def_id = "UnlitTexture3D";  ///< 两个立方体都是「把离屏附件原样显示」，故都走世界空间无光贴面
     float x_offset = 0.0f;              ///< 世界坐标 X 偏移，用于并排摆放颜色与深度两个立方体
     const char *tag = nullptr;          ///< 日志标签
     const char *uri = nullptr;          ///< 纹理 URI（`rt:<RT 名>:<附件名>`）
@@ -562,7 +571,7 @@ private:
         gm->Add(cube.geometry);
 
         cube.recipe.recipe_name = cube.recipe_name;
-        cube.recipe.mtl_def_id = "Lit";
+        cube.recipe.mtl_def_id = cube.mtl_def_id;
         cube.recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!(cube.recipe.material_ssbo_binding = cube.accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("App::CreateDisplayCube", "register material SSBO binding failed");
@@ -609,6 +618,13 @@ private:
 
         cubes[1].name        = "Depth";
         cubes[1].recipe_name = "RTTColorDepth.DisplayDepth";
+        // 两个立方体都必须是「原样显示」的无光领域：
+        //   · 走 Lit（PBR）会把附件值当反照率再过一遍光照 —— 颜色立方体被压暗
+        //    （实测 Rmax 0.66 vs 附件 0.98），深度立方体则被环境高光染成天空色，
+        //     看上去和颜色立方体几乎一样（这就是「两个都像在显示 COLOR」的根因）。
+        //   · 走 UnlitTexture（2D NDC）顶点通路错，物体位置/尺寸全错。
+        // 深度立方体另有一层：深度采样视图已把 R 广播到 RGB，故呈灰度。
+        cubes[1].mtl_def_id  = "UnlitTexture3D";
         cubes[1].tag         = "onscreen_bind_depth";
         cubes[1].uri         = "rt:RTTColorDepth:OffscreenRT:depth";
         cubes[1].x_offset    = +kCubeSpacing;
@@ -747,7 +763,7 @@ public:
             static constexpr uint32_t kSelfW           = 1280;
             static constexpr uint32_t kSelfH           = 720;
             static constexpr uint32_t kSelfMinDistinct = 50;  // 不空转守卫：实测 distinct=256；纯清屏帧只有个位数
-            static constexpr uint64_t kSelfFNV         = 0x24FB50FDDC9F8CABull;  // 冻结自旋 + 就绪后第 8 帧实测（三次连跑一致）
+            static constexpr uint64_t kSelfFNV         = 0xCF4D2D34F619C18Dull;  // 冻结自旋 + 就绪后第 8 帧实测（三次连跑一致）
 
             if (s_dump_tag && ++s_dump_frame == 8)
             {
