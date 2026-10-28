@@ -293,19 +293,33 @@ ctest --test-dir build -C Debug -R "^LoadedFileManagerTest$" --output-on-failure
 
 ### 9.1 唯一接口：材质只收句柄
 
+纹理绑定是**材质原型（`MaterialRecipe`）的固有属性**，不是实体的属性 —— 同一个配方
+被 100 个实体共享时，纹理只该声明一次。实体级 `SetTextureResource` 仍然保留，但语义
+收窄为**同名覆盖**（少数需要实例差异的场景才用）。
+
 ```cpp
-// 前台只声明文件名（句柄此刻是 MetaOnly，没有像素）
+// ── 推荐：写在配方里（材质原型固有属性，一次声明全体共享）──
 TextureAsset *base = texture_manager->CreateTextureAsset(
     OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), /*auto_mipmaps*/true);
 
-// required=true ⇒ 未就绪时该图元不进入可渲染集合
-material_data->SetTextureResource("base_color", base, sampler,
+sphere_recipe.AddTexture("base_color", base, /*required*/true);
+// required=true ⇒ 未就绪时使用该配方的图元都不进入可渲染集合
+
+// ── 实体级覆盖（少数场景：同一配方，个别实例换图）──
+material_data->SetTextureResource("base_color", other_asset,
+                                  nullptr, /*sampler 已废弃*/
                                   MaterialTextureResourceKind::Texture2D, 0, true);
 ```
 
+- **身份由资产层统一给出**：`TextureAsset::GetResourceId()` 按来源产出
+  `texfile:<path>`（文件）/ `rtex:<target>:<attachment>`（离屏 RT）/ 空串（仅包装现成纹理）。
+  配方写身份、渲染层读身份，两边不各写一套推导。
 - **没有第二套接口**：`SetTextureResource(name, Texture*, sampler, ...)` 这个便捷重载内部
-  做的就是 `WrapTextureAsset(texture)` 之后转发到同一个入口；作者侧只存在
-  `MaterialTextureAuthoringResource{ asset, sampler, kind, array_layer, required }` 一种存法。
+  做的就是 `WrapTextureAsset(texture)` 之后转发到同一个入口；配方侧 `AddTexture` 只是
+  `UpsertRecipeTextureBinding(recip, name, asset->GetResourceId(), ..., asset)` 的语法糖。
+- **`sampler` 参数已废弃且被忽略**（2026-10-29）：Vulkan Bindless 下采样器由
+  `sampler.toml` 的预设集中写在 `binding=1` 的 `samplers[]`，着色器按预设名索引采样，
+  材质侧传入的 `Sampler*` 从未进入任何描述符。新代码不要再传。
 - 已同步加载好的纹理（离屏 RT 颜色纹理、立方体贴图）也用 `WrapTextureAsset()` 包成
   句柄再授权 —— 这样「材质里的纹理」永远只有一个类型，不存在「有的条目是裸指针、有的是句柄」。
 
@@ -313,9 +327,12 @@ material_data->SetTextureResource("base_color", base, sampler,
 
 ```cpp
 // src/ECS/support/PrimitiveState.cpp
-bool CanRender(const Entity *entity);   // 内部 = !material_data->HasPendingRequiredTexture()
+bool CanRender(const Entity *entity);
+//   = !HasPendingRequiredTexture()        // 实体级覆盖里的必需句柄
+//     && IsRecipeTextureReady(...)        // 配方里声明的必需句柄
 ```
 
+- 两级判据对应两种来源：实体同名覆盖优先，未被覆盖的槽位再看配方 `RecipeTextureBinding::asset`；
 - 判据每帧现算（直接读句柄的 `IsReady()`），**不做第二份状态机**，所以句柄就绪的当帧即生效；
 - 只有 `required=true` 的条目参与门禁；可选纹理（如贴花、遮罩）晚到不影响可见性；
 - 多张 `required` 纹理是**原子切换**：全部就绪才一次性显示，避免半成品渲染一帧。
@@ -342,9 +359,14 @@ ExecutionPhase::RenderPreBeginFrame
 ```cpp
 // example/GettingStarted/SimpleSphere.cpp（试点）
 auto *base = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-material_data->SetTextureResource("base_color", base, sampler,
-                                 MaterialTextureResourceKind::Texture2D, 0, true);
-// 启动时日志：TextureStreaming 就绪 ×3 → 门禁 ENGAGED（GPU cull 生效）
+
+// 配方三行搞定，实体端零纹理调用
+sphere_recipe.AddTexture("base_color", base, true);
+sphere_recipe.AddTexture("normal",    normal_tex, true);
+sphere_recipe.AddTexture("roughness", rough_tex,  true);
+
+sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
+// 启动时日志：BindlessTextureManager Update handle=1..3 → GPU cull ENGAGED
 ```
 
 ### 9.5 仍然保留同步加载的位置（有意为之）
