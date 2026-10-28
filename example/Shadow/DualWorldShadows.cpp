@@ -32,6 +32,8 @@
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -110,6 +112,7 @@ private:
     graph::GlobalSSBODataAccessor material_accessor{};
     graph::ssbo::PBRSurfaceRow    material_row{};
     Sampler *common_sampler = nullptr;
+    TextureManager *texture_manager = nullptr;
 
     std::shared_ptr<MainLightShadowSystem> main_csm;
     std::shared_ptr<MainLightShadowSystem> child_csm;
@@ -206,10 +209,13 @@ private:
 
         auto *gm      = GetManager<GeometryManager>();
         auto *sm      = GetManager<SamplerManager>();
+        auto *tm      = GetManager<TextureManager>();
         auto *device  = gc->GetDevice();
         auto *registry = gc->GetGlobalSSBOBufferRegistry();
-        if (!gm || !sm || !device || !registry)
+        if (!gm || !sm || !tm || !device || !registry)
             return LogStageFail("CreateSharedResources", "manager/sampler/device/registry missing");
+
+        texture_manager = tm;
 
         common_sampler = sm->CreateSampler();
         if (!common_sampler)
@@ -479,7 +485,13 @@ private:
         if (!material_data)
             return LogStageFail("BindChildScreenTexture", "screen material data missing");
 
-        material_data->SetTextureResource("base_color", child_color, common_sampler);
+        // 离屏 RT 的颜色纹理是「现成纹理」，没有文件名：包成句柄后仍走统一的句柄入口，
+        // 材质侧只认 TextureAsset，不存在第二条行为路径。
+        TextureAsset *child_color_asset = texture_manager->WrapTextureAsset(child_color);
+        if (!child_color_asset)
+            return LogStageFail("BindChildScreenTexture", "wrap child color texture failed");
+
+        material_data->SetTextureResource("base_color", child_color_asset, common_sampler);
         return true;
     }
 

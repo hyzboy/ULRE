@@ -3,6 +3,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -53,6 +54,7 @@ private:
     PrimitiveAsset             sky_asset{};
 
     TextureCube* sky_cube_texture = nullptr;
+    TextureAsset* sky_cube_asset  = nullptr;
     Sampler*     sampler          = nullptr;
 
 private:
@@ -72,6 +74,11 @@ private:
             false);
 
         if (!sky_cube_texture)
+            return false;
+
+        // 同步加载后的立方体贴图同样包成句柄：材质授权只走 TextureAsset 一种形式。
+        sky_cube_asset = texture_manager->WrapTextureAsset(sky_cube_texture);
+        if (!sky_cube_asset)
             return false;
 
         sampler = sampler_manager->CreateSampler();
@@ -121,7 +128,7 @@ private:
         transform.SetMobility(Mobility::Static);
 
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-        material_data_comp->SetTextureResource("sky_cube", sky_cube_texture, sampler);
+        material_data_comp->SetTextureResource("sky_cube", sky_cube_asset, sampler);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

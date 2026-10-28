@@ -423,6 +423,11 @@ private:
     Texture2D *normal_tex = nullptr;
     Texture2D *roughness_tex = nullptr;
 
+    /// 材质授权统一走句柄(TextureAsset)：上面这些已就绪纹理只是它们的来源。
+    TextureAsset *base_asset = nullptr;
+    TextureAsset *normal_asset = nullptr;
+    TextureAsset *roughness_asset = nullptr;
+
     hgl::ecs::TransformAccessor cube_transform;
     float cube_theta = 0.0f;
 
@@ -506,6 +511,14 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
+        // 已就绪纹理包成句柄：材质授权只走 TextureAsset 一种形式。
+        base_asset      = tm->WrapTextureAsset(base_tex);
+        normal_asset    = tm->WrapTextureAsset(normal_tex);
+        roughness_asset = tm->WrapTextureAsset(roughness_tex);
+
+        if (!base_asset || !normal_asset || !roughness_asset)
+            return LogStageFail("RenderToTextureApp::CreateCube", "wrap texture asset failed");
+
         cube_material_data.base_color = Color4f(1.0f);
         cube_material_data.metallic = 0.08f;
         cube_material_data.roughness = 0.92f;
@@ -548,9 +561,9 @@ private:
         cube_transform.SetMobility(Mobility::Movable);
 
         cube_prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
-        material_data_comp->SetTextureResource("base_color", base_tex, cube_sampler);
-        material_data_comp->SetTextureResource("normal", normal_tex, cube_sampler);
-        material_data_comp->SetTextureResource("roughness", roughness_tex, cube_sampler);
+        material_data_comp->SetTextureResource("base_color", base_asset, cube_sampler);
+        material_data_comp->SetTextureResource("normal", normal_asset, cube_sampler);
+        material_data_comp->SetTextureResource("roughness", roughness_asset, cube_sampler);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(cube_struct);

@@ -121,6 +121,7 @@ private:
     Sampler* sampler = nullptr;
 
     TextureCube* sky_cube_texture = nullptr;                ///<天空背景环境贴图
+    TextureAsset* sky_cube_asset  = nullptr;                ///<天空背景的句柄(材质授权唯一入口)
 
     TextureCube* env_irradiance  = nullptr;                 ///<IBL 漫反射辐照度
     TextureCube* env_prefilter   = nullptr;                 ///<IBL 镜面预滤波
@@ -185,6 +186,11 @@ private:
             false);
 
         if (!sky_cube_texture)
+            return false;
+
+        // 同步加载的立方体贴图同样包成句柄：材质授权只走 TextureAsset 一种形式。
+        sky_cube_asset = texture_manager->WrapTextureAsset(sky_cube_texture);
+        if (!sky_cube_asset)
             return false;
 
         using namespace inline_geometry;
@@ -480,7 +486,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-            material_data_comp->SetTextureResource("sky_cube", sky_cube_texture, sampler);
+            material_data_comp->SetTextureResource("sky_cube", sky_cube_asset, sampler);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
     #endif//DRAW_SKY_SPHERE
