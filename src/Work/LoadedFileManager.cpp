@@ -11,7 +11,7 @@ namespace hgl
     {
         Stop(thread::ShutdownMode::CancelPending);
 
-        // 1. 丢弃所有未回调的请求；Job 持有的引用随之放开，归零的文件进入待释放队列
+        // 1. 丢弃所有未回调的请求与在读分组；它们持有的引用随之放开，归零的文件进入待释放队列
         {
             ValueArray<Job *> all;
             jobs.GetValueArray(all);
@@ -21,6 +21,37 @@ namespace hgl
 
             jobs.Clear();
             ready.Clear();
+
+            if(done_mailbox.TrySwap())              // 已完成但还没被 Pump 取走的分组
+            {
+                ValueArray<ReadGroup *> &batch=done_mailbox.GetReceive();
+
+                for(int i=0;i<batch.GetCount();i++)
+                {
+                    ReadGroup *group=batch[i];
+
+                    reading.DeleteByKey(group->file->path_key);    // 同一个组可能还在在途表里，先摘掉避免重复析构
+                    delete group;
+                }
+
+                batch.Clear();
+                done_mailbox.ReleaseReceive();
+            }
+
+            ValueArray<ReadGroup *> groups;
+            reading.GetValueArray(groups);           // 读盘被取消、永远不会再有回调的分组
+
+            for(int i=0;i<groups.GetCount();i++)
+                delete groups[i];
+
+            reading.Clear();
+
+            ReadGroup *group=nullptr;
+
+            while(ready_groups.Pop(group))
+                delete group;
+
+            ready_groups.Clear();
         }
 
         // 2. 解除所有文件与本管理器的关联；计数为 0 的立即销毁，其余等持有者放手后自行销毁
@@ -75,38 +106,38 @@ namespace hgl
 
     // ---------------------------------------------------------------- IO 线程侧
 
-    void LoadedFileManager::Post(Job *job,Outcome outcome,io::AsyncFileLoadError error)
+    void LoadedFileManager::PostGroup(ReadGroup *group,Outcome outcome,io::AsyncFileLoadError error)
     {
-        job->outcome=outcome;
-        job->error=error;
-        done_mailbox.Post(job);
+        group->outcome=outcome;
+        group->error=error;
+        done_mailbox.Post(group);
     }
 
     bool LoadedFileManager::OnFileLoaded(uint,io::AsyncFileLoadRequest *request)
     {
-        Job *job=static_cast<Job *>(request->user_data);
+        ReadGroup *group=static_cast<ReadGroup *>(request->user_data);
 
-        if(!job)
+        if(!group)
             return(false);
 
-        job->outcome=Outcome::Loaded;
-        return done_mailbox.Post(job);
+        group->outcome=Outcome::Loaded;
+        return done_mailbox.Post(group);
     }
 
     void LoadedFileManager::OnFileError(uint,io::AsyncFileLoadRequest *request,io::AsyncFileLoadError error)
     {
-        Job *job=static_cast<Job *>(request->user_data);
+        ReadGroup *group=static_cast<ReadGroup *>(request->user_data);
 
-        if(job)
-            Post(job,Outcome::Failed,error);
+        if(group)
+            PostGroup(group,Outcome::Failed,error);
     }
 
     void LoadedFileManager::OnFileCancelled(uint,io::AsyncFileLoadRequest *request)
     {
-        Job *job=static_cast<Job *>(request->user_data);
+        ReadGroup *group=static_cast<ReadGroup *>(request->user_data);
 
-        if(job)
-            Post(job,Outcome::Cancelled);
+        if(group)
+            PostGroup(group,Outcome::Cancelled);
     }
 
     // ---------------------------------------------------------------- 引用归零 / 释放
@@ -181,27 +212,47 @@ namespace hgl
         if(!started||!handler||filename.IsEmpty())
             return(0);
 
-        Job *job=new Job;
-        job->id=next_id;
-        job->handler=handler;
-
+        // 1. 命中已加载表：不读盘，下一次 Pump 直接回调
         LoadedFilePtr cached=Find(filename);
 
         if(cached)
         {
-            job->file=cached;
-            job->from_cache=true;
-            job->outcome=Outcome::Loaded;
+            Job *job=new Job;
 
-            ++next_id;
+            job->id=next_id++;
+            job->handler=handler;
+            job->file=cached;
+
             ++stats.submitted;
             ++stats.cache_hits;
 
             jobs.Add(job->id,job);
-            ready.Push(job);                        // 无需读盘，下一次 Pump 回调
+            ready.Push(job);
             return job->id;
         }
 
+        const OSString key=MakeLoadedFileKey(filename);
+
+        // 2. 同一路径已经在读：挂到在途分组上，不重复读盘
+        ReadGroup *group=nullptr;
+
+        if(reading.Get(key,group)&&group)
+        {
+            Job *job=new Job;
+
+            job->id=next_id++;
+            job->handler=handler;
+            job->group=group;
+
+            ++stats.submitted;
+            ++stats.merged_in_flight;
+
+            jobs.Add(job->id,job);
+            group->waiters.Add(job);
+            return job->id;
+        }
+
+        // 3. 新读盘：一个分组承载本次读盘及其所有等待者
         LoadedFile *file=new LoadedFile(filename);
 
         file->owner=this;
@@ -209,24 +260,35 @@ namespace hgl
         if(!file->Init())
         {
             ReleaseFile(file);
-            delete job;
             return(0);
         }
 
-        job->file=LoadedFilePtr(file);              // 计数 0→1：读盘期间由 Job 持有
-        file->request.user_data=job;
+        group=new ReadGroup;
+        group->file=LoadedFilePtr(file);            // 计数 0→1：读盘期间由分组持有
 
+        Job *job=new Job;
+        job->id=next_id++;
+        job->handler=handler;
+        job->group=group;
+
+        group->waiters.Add(job);
         jobs.Add(job->id,job);
+
+        file->request.user_data=group;
+        reading.Add(key,group);
 
         if(!loader.Submit(&file->request,priority))
         {
+            reading.DeleteByKey(key);
             jobs.DeleteByKey(job->id);
-            delete job;                             // 引用归零 → 入待释放队列，等 Collect
+            delete job;
+
+            delete group;                           // 引用归零 → 入待释放队列，等 Collect
             return(0);
         }
 
         ++stats.submitted;
-        return next_id++;
+        return job->id;
     }
 
     bool LoadedFileManager::Cancel(FileLoadId id)
@@ -238,62 +300,31 @@ namespace hgl
 
         job->cancel_requested=true;
 
-        if(!job->from_cache)
-            job->file->request.Cancel();            // 协作式：读盘线程在检查点响应
+        ReadGroup *group=job->group;
 
+        if(!group)                                  // 缓存命中：无需打断读盘，Pump 时转成取消
+            return(true);
+
+        for(int i=0;i<group->waiters.GetCount();i++)
+            if(!group->waiters[i]->cancel_requested)
+                return(true);                       // 组内还有别的请求要这份数据，不能打断读盘
+
+        group->file->request.Cancel();              // 协作式：读盘线程在检查点响应
         return(true);
     }
 
-    void LoadedFileManager::Dispatch(Job *job)
+    void LoadedFileManager::DispatchOne(Job *job,const OSString &filename,LoadedFile *publish,Outcome outcome,io::AsyncFileLoadError error)
     {
         jobs.DeleteByKey(job->id);
 
         FileLoadTicket ticket;
         ticket.id=job->id;
-        ticket.filename=&job->file->GetFilename();
-
-        Outcome outcome=job->outcome;
-        io::AsyncFileLoadError error=job->error;
+        ticket.filename=&filename;
 
         if(outcome==Outcome::Loaded&&job->cancel_requested)
             outcome=Outcome::Cancelled;
 
-        LoadedFile *publish=nullptr;                // 需要交给 handler 的文件
-
-        if(outcome==Outcome::Loaded)
-        {
-            if(job->from_cache)
-                publish=job->file.Get();
-            else
-            {
-                LoadedFile *file=job->file.Get();
-
-                file->GetMeta().source_size=(uint64)file->request.GetDataSize();
-
-                if(!file->LoadPayload())
-                {
-                    outcome=Outcome::Failed;
-                    error=io::AsyncFileLoadError::ReadFailed;
-                }
-                else
-                {
-                    MutexLock guard(&table_lock);
-
-                    LoadedFile *existing=nullptr;
-
-                    // 同名文件抢先读完(两次 Submit 在途重叠)：沿用已登记的那份，本份随 Job 一起走进待释放队列
-                    if(files.Get(file->path_key,existing)&&existing&&existing!=file)
-                        publish=existing;
-                    else
-                    {
-                        files.Add(file->path_key,file);
-                        publish=file;
-                    }
-                }
-            }
-        }
-
-        if(publish)
+        if(outcome==Outcome::Loaded&&publish)
         {
             LoadedFilePtr use(publish);             // 在锁外 RefInc，避免与归零回调互相阻塞
 
@@ -319,14 +350,60 @@ namespace hgl
         delete job;                                 // Job 里的引用随之放开
     }
 
+    int LoadedFileManager::DispatchGroup(ReadGroup *group)
+    {
+        LoadedFile *file=group->file.Get();
+
+        reading.DeleteByKey(file->path_key);        // 先摘在途表：回调里再 Submit 同一路径会走缓存命中
+
+        Outcome outcome=group->outcome;
+        io::AsyncFileLoadError error=group->error;
+
+        LoadedFilePtr publish;
+
+        if(outcome==Outcome::Loaded)
+        {
+            file->GetMeta().source_size=(uint64)file->request.GetDataSize();
+
+            if(!file->LoadPayload())
+            {
+                outcome=Outcome::Failed;
+                error=io::AsyncFileLoadError::ReadFailed;
+            }
+            else
+            {
+                MutexLock guard(&table_lock);
+
+                LoadedFile *existing=nullptr;
+
+                // 同名文件已被别的路径抢先登记：沿用已登记的那份，本份随分组一起走进待释放队列
+                if(files.Get(file->path_key,existing)&&existing&&existing!=file)
+                    publish=LoadedFilePtr(existing);
+                else
+                {
+                    files.Add(file->path_key,file);
+                    publish=group->file;
+                }
+            }
+        }
+
+        const int count=group->waiters.GetCount();
+
+        for(int i=0;i<count;i++)
+            DispatchOne(group->waiters[i],file->GetFilename(),publish.Get(),outcome,error);    // 共享同一份数据
+
+        delete group;
+        return count;
+    }
+
     int LoadedFileManager::Pump(int max_dispatch)
     {
         if(done_mailbox.TrySwap())
         {
-            ValueArray<Job *> &batch=done_mailbox.GetReceive();
+            ValueArray<ReadGroup *> &batch=done_mailbox.GetReceive();
 
             for(int i=0;i<batch.GetCount();i++)
-                ready.Push(batch[i]);
+                ready_groups.Push(batch[i]);
 
             done_mailbox.ReleaseReceive();
         }
@@ -337,11 +414,19 @@ namespace hgl
         {
             Job *job=nullptr;
 
-            if(!ready.Pop(job)||!job)
+            if(ready.Pop(job)&&job)                 // 缓存命中优先：不读盘，处理成本极低
+            {
+                DispatchOne(job,job->file->GetFilename(),job->file.Get(),Outcome::Loaded,io::AsyncFileLoadError::None);
+                ++count;
+                continue;
+            }
+
+            ReadGroup *group=nullptr;
+
+            if(!ready_groups.Pop(group)||!group)
                 break;
 
-            Dispatch(job);
-            ++count;
+            count+=DispatchGroup(group);            // 同一读盘的多个请求共享一次读盘，可能超过剩余名额
         }
 
         return count;

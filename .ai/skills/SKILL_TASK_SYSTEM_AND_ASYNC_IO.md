@@ -203,14 +203,35 @@ Submit(path, handler) ─▶ 读整文件进 LoadedFile ─▶ SwapMailbox ─�
 2. 因此只要还有人持有 `LoadedFilePtr`，同名路径就**不会重复读盘**；
 3. `Collect()` 先摘表、再在锁外释放，避免持锁时触发归零回调造成死锁。
 
-### 8.3 线程契约
+表键由 `MakeLoadedFileKey()` 生成：分隔符统一为平台原生分隔符并合并连续分隔符，Windows 下再做大小写折叠。所以 `"Res\\Image/A.Tex2D"` 与 `"res/image/a.tex2d"` 是同一个条目；回调里 `FileLoadTicket::filename` 报告的仍是该文件**首次 `Submit`** 时的原始拼写。
+
+### 8.3 单线程串行读盘与在途合并
+
+`Start()` 默认只起 **1 个 IO 线程**：同一块物理设备上的并发读会互相争道，串行反而更快也更可预测。等将来做成"按设备分流"（每个物理设备一个队列、一个线程）之后再从这里放开线程数。
+
+同一路径在途期间的重复 `Submit` 不会重复读盘：`LoadedFileManager` 维护 `reading` 在途表，后续请求挂到同一个 `ReadGroup` 的等待者数组上，读完后逐个回调，共享同一份字节：
+
+```cpp
+// 同一帧内三处代码各自请求同一张图（大小写/分隔符写法不同也一样）
+manager.Submit(OS_TEXT("res/image/Lena.Tex2D"), &handler_a);
+manager.Submit(OS_TEXT("res/image/lena.tex2d"), &handler_b);   // 合并，不读盘
+manager.Submit(OS_TEXT("res\\image\\Lena.Tex2D"), &handler_c); // 合并，不读盘
+
+manager.Pump();   // handler_a / handler_b / handler_c 各收到一次 OnFileLoaded
+```
+
+合并只在**读盘完成前**发生；读完之后同一路径走的是弱表缓存命中，同样不读盘。`GetStatistics().merged_in_flight` 可观察合并次数。
+
+取消也是按分组协作的：`Cancel(id)` 只标记该请求，只有当分组内**所有**请求都被取消时才真正 `AsyncFileLoadRequest::Cancel()`，避免一个请求的取消拖累其他还在等同一份数据的请求。
+
+### 8.4 线程契约
 
 - `Submit` / `Cancel` / `Pump` / `Collect` / `Stop`：**同一线程**（通常主线程）；
 - `Find` 与 `RefInc/RefDec`：任意线程安全；
 - `LoadedFileHandler` 的三个回调**只在 `Pump()` 所在线程**触发 —— 这正是可以直接调用 `ChangeTexture2DArray`、创建 ECS 实体等主线程接口的原因；
 - `AsyncFileLoadHandler`（IO 线程侧）只做"记 outcome + 投邮箱"，绝不碰业务状态。
 
-### 8.4 为什么提交后可以立刻放掉文件引用
+### 8.5 为什么提交后可以立刻放掉文件引用
 
 `VkTextureLoader::Load` 在 `OnBegin` 里创建并 `Map` 了 staging `DeviceBuffer`，像素是**同步拷贝**进去的。所以 `TextureLoadCommitter::CommitTexture2D` / `CommitTexture2DArrayLayer` 返回后，`LoadedFile` 的字节已不再被需要，调用方可以立即放手引用，帧末 `Collect()` 回收。
 
@@ -223,7 +244,7 @@ void MyHandler::OnFileLoaded(const FileLoadTicket &, LoadedFile *file)
 }
 ```
 
-### 8.5 两层取消与两层优先级
+### 8.6 两层取消与两层优先级
 
 | 层 | 取消接口 | 优先级枚举 | 生效范围 |
 |----|----------|------------|----------|
@@ -232,7 +253,7 @@ void MyHandler::OnFileLoaded(const FileLoadTicket &, LoadedFile *file)
 
 两层编号互不相同（`FileLoadId` 与上传 `task_id`），不要混用。
 
-### 8.6 帧预算
+### 8.7 帧预算
 
 `Pump(max_dispatch)` 与 `Collect()` 建议放在同一帧的固定位置：
 
@@ -245,11 +266,11 @@ void Tick(double dt) override
 }
 ```
 
-### 8.7 示例与测试
+### 8.8 示例与测试
 
 - `example/Loader/LoadedFileManagerTest.cpp`：读取成功、文件不存在、取消、延迟释放、复活、缓存命中、`Pump` 限量、`Stop(Drain)` / `Stop(CancelPending)`。
 - `example/Texture/AsyncTextureUpload.cpp`：5 个文件请求（读盘 Critical/High/Normal/Low 分档）+ 两层取消演示 + Bindless 热替换。
-- `example/Texture/TextureArrayStreaming.cpp`：50 个图标并发读盘、按帧预算逐层写进 `Texture2DArray`。
+- `example/Texture/TextureArrayStreaming.cpp`：50 个图标请求（默认单线程串行读盘）、按帧预算逐层写进 `Texture2DArray`。
 
 ```powershell
 cmake --build build --config Debug --target LoadedFileManagerTest AsyncTextureUpload TextureArrayStreaming

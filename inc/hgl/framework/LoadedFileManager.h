@@ -21,6 +21,7 @@ namespace hgl
     {
         uint64 submitted=0;             ///< @brief CN: Submit 接受的请求数。 EN: Requests accepted by Submit.
         uint64 cache_hits=0;            ///< @brief CN: 直接命中已加载表(含待释放区复活)的请求数。 EN: Requests served from the loaded table, including resurrection from the pending-release area.
+        uint64 merged_in_flight=0;      ///< @brief CN: 合并到在途读盘、未额外发起读盘的请求数。 EN: Requests merged into an in-flight read instead of starting a new one.
         uint64 dispatched_loaded=0;     ///< @brief CN: 已回调 OnFileLoaded 的次数。 EN: Number of OnFileLoaded callbacks delivered.
         uint64 dispatched_failed=0;     ///< @brief CN: 已回调 OnFileFailed 的次数。 EN: Number of OnFileFailed callbacks delivered.
         uint64 dispatched_cancelled=0;  ///< @brief CN: 已回调 OnFileCancelled 的次数。 EN: Number of OnFileCancelled callbacks delivered.
@@ -49,6 +50,10 @@ namespace hgl
      *     "Res\\Image/A.Tex2D" 与 "res/image/a.tex2d" 视为同一个文件；回调里报告的文件名
      *     仍是该文件首次 Submit 时的原始拼写。
      *
+     *     读盘默认只有一个 IO 线程(Start 的默认参数为 1)：同一块物理设备上的并发读会互相
+     *     争道，串行反而更快更稳。未来按设备分流时再提高线程数。同一路径在途期间的重复
+     *     Submit 会合并到同一个 ReadGroup，只发起一次读盘，所有请求各自收到回调。
+     *
      *     线程约束：
      *      - Submit/Cancel/Pump/Collect/Stop 只允许在同一(主)线程调用；
      *      - Find 以及 LoadedFile 的 RefInc/RefDec 可在任意线程调用。
@@ -70,6 +75,12 @@ namespace hgl
      *     entry. The file name reported to handlers keeps the spelling used by the first
      *     Submit of that file.
      *
+     *     Reading defaults to a single IO worker (Start's default argument is 1): concurrent
+     *     reads on one physical device contend for the same head, so serializing is faster
+     *     and steadier. Raise the worker count only after reads are split per device.
+     *     Repeated Submit of one path while it is being read merges into a single ReadGroup:
+     *     the file is read once and every request still gets its own callback.
+     *
      *     Threading: Submit/Cancel/Pump/Collect/Stop must be called from one thread
      *     (normally the main thread); Find and reference counting are thread-safe.
      *     The manager must outlive every LoadedFile; destruction detaches them.
@@ -89,33 +100,53 @@ namespace hgl
             Cancelled       ///< @brief CN: 被取消。 EN: Cancelled.
         };//enum class Outcome
 
+        struct ReadGroup;
+
         /**
          * @brief CN: 一次请求的完整上下文，贯穿读取段与提交段。
          *        EN: Full context of one request spanning both stages.
-         * @details CN: Job 由 Submit 创建、由 Dispatch 销毁；IO 线程只把它贴到邮箱上，
-         *              由回调线程填写 outcome。
-         *          EN: Created by Submit and destroyed by Dispatch. IO threads only post it
-         *              through the mailbox; the callback thread fills in its outcome.
+         * @details CN: Job 由 Submit 创建、由回调段销毁。命中缓存时 file 直接可用；
+         *              需要读盘时只挂到所属 ReadGroup 的等待者表上，结果在 DispatchGroup 里填写。
+         *          EN: Created by Submit and destroyed by the dispatch stage. A cache hit fills
+         *              file directly; a read joins its ReadGroup's waiter list and receives its
+         *              result in DispatchGroup.
          */
         struct Job
         {
             FileLoadId                  id=0;                       ///< @brief CN: 请求编号。 EN: Request identifier.
-            LoadedFilePtr               file;                       ///< @brief CN: 本次请求的文件对象。 EN: File object for this request.
+            LoadedFilePtr               file;                       ///< @brief CN: 命中缓存时的文件对象。 EN: File object, for cache hits only.
+            ReadGroup *                 group=nullptr;              ///< @brief CN: 所属在途读盘分组，命中缓存时为空。 EN: Owning in-flight read group; null for cache hits.
             LoadedFileHandler *         handler=nullptr;            ///< @brief CN: 结果接收者(不拥有)。 EN: Result receiver, not owned.
-            Outcome                     outcome=Outcome::Loading;   ///< @brief CN: 当前结果。 EN: Current outcome.
-            io::AsyncFileLoadError      error=io::AsyncFileLoadError::None; ///< @brief CN: 失败原因。 EN: Failure reason.
-            bool                        from_cache=false;           ///< @brief CN: 命中已加载表，未走读盘。 EN: Served from the loaded table without reading.
             bool                        cancel_requested=false;     ///< @brief CN: 调用方已请求取消。 EN: Caller requested cancellation.
         };//struct Job
+
+        /**
+         * @brief CN: 一次真实读盘以及所有等待它的请求。
+         *        EN: One real read together with every request waiting on it.
+         * @details CN: 同一路径在途期间的重复 Submit 只发起一次读盘，全部请求挂到同一分组里，
+         *              读完后逐个回调。只有当分组内所有请求都被取消时才真正取消底层读盘。
+         *          EN: Repeated in-flight Submit for one path starts a single read; every request
+         *              joins the same group and is dispatched after it finishes. The underlying
+         *              read is cancelled only when every request in the group asked for it.
+         */
+        struct ReadGroup
+        {
+            LoadedFilePtr               file;                       ///< @brief CN: 本次读盘的文件对象(持引用)。 EN: File object of this read, holding a reference.
+            ValueArray<Job *>           waiters;                    ///< @brief CN: 等待同一读盘的请求。 EN: Requests waiting on this read.
+            Outcome                     outcome=Outcome::Loading;   ///< @brief CN: 读盘结果。 EN: Read outcome.
+            io::AsyncFileLoadError      error=io::AsyncFileLoadError::None; ///< @brief CN: 失败原因。 EN: Failure reason.
+        };//struct ReadGroup
 
     private:
 
         io::AsyncFileLoader             loader;                     ///< @brief CN: 底层读盘线程池。 EN: Underlying read worker pool.
-        SwapMailbox<Job *>              done_mailbox;               ///< @brief CN: 多写单读：IO 线程 → 调用线程。 EN: Multiple writers, one reader: IO threads to caller thread.
+        SwapMailbox<ReadGroup *>        done_mailbox;               ///< @brief CN: 多写单读：IO 线程 → 调用线程。 EN: Multiple writers, one reader: IO threads to caller thread.
 
         FileLoadId                      next_id=1;                  ///< @brief CN: 下一个请求编号。 EN: Next request identifier.
         UnorderedMap<FileLoadId,Job *>  jobs;                       ///< @brief CN: 尚未回调完的请求(调用线程独占)。 EN: Requests not yet dispatched (caller-thread only).
-        Queue<Job *>                    ready;                      ///< @brief CN: 已从邮箱取出、待回调的请求(调用线程独占)。 EN: Requests taken from the mailbox and awaiting dispatch (caller-thread only).
+        UnorderedMap<OSString,ReadGroup *> reading;                 ///< @brief CN: 在途读盘表：规范键 → 分组(调用线程独占)。 EN: In-flight reads, key to group (caller-thread only).
+        Queue<Job *>                    ready;                      ///< @brief CN: 待回调的缓存命中请求(调用线程独占)。 EN: Cache-hit requests awaiting dispatch (caller-thread only).
+        Queue<ReadGroup *>              ready_groups;               ///< @brief CN: 已从邮箱取出、待回调的读盘分组(调用线程独占)。 EN: Completed groups taken from the mailbox (caller-thread only).
 
         Mutex                           table_lock;                 ///< @brief CN: 保护下面三项。 EN: Guards the three members below.
         UnorderedMap<OSString,LoadedFile *> files;                  ///< @brief CN: 已加载文件表(弱引用，不增加计数)。 EN: Loaded-file table holding weak, non-owning pointers.
@@ -131,14 +162,17 @@ namespace hgl
         void OnFileError    (uint worker_index,io::AsyncFileLoadRequest *request,io::AsyncFileLoadError error)override;
         void OnFileCancelled(uint worker_index,io::AsyncFileLoadRequest *request)override;
 
-        /** @brief CN: IO 线程：写结果标记并投递邮箱。 EN: IO thread: record the outcome and post to the mailbox. */
-        void Post(Job *job,Outcome outcome,io::AsyncFileLoadError error=io::AsyncFileLoadError::None);
+        /** @brief CN: IO 线程：记录分组的读盘结果并投递邮箱。 EN: IO thread: record the group's outcome and post it to the mailbox. */
+        void PostGroup(ReadGroup *group,Outcome outcome,io::AsyncFileLoadError error=io::AsyncFileLoadError::None);
 
         /** @brief CN: 引用归零回调(任意线程，持 table_lock 入队)。 EN: Reference-zero callback; enqueues while holding table_lock. */
         void OnFileRefZero(LoadedFile *file);
 
         /** @brief CN: 回调一个请求并销毁 Job。 EN: Dispatch one request and destroy its Job. */
-        void Dispatch(Job *job);
+        void DispatchOne(Job *job,const OSString &filename,LoadedFile *publish,Outcome outcome,io::AsyncFileLoadError error);
+
+        /** @brief CN: 校验负载、登记到已加载表，然后回调分组里的所有请求并销毁分组。 EN: Validate the payload, register it in the loaded table, dispatch every request of the group and destroy the group. */
+        int DispatchGroup(ReadGroup *group);
 
         /** @brief CN: Release()+delete，必须在 table_lock 之外调用。 EN: Release()+delete; must run outside table_lock. */
         void ReleaseFile(LoadedFile *file);
@@ -163,10 +197,17 @@ namespace hgl
         /**
          * @brief CN: 启动 IO 线程池，仅可成功一次。
          *        EN: Start the IO worker pool; succeeds only once.
-         * @param io_worker_count CN: IO 线程数，必须大于 0。 EN: Number of IO workers; must be greater than 0.
+         * @param io_worker_count CN: IO 线程数，必须大于 0；默认 1，即所有文件逐个串行读取。
+         *                        同一物理设备上的并发读会互相争道，串行反而更快也更可控；
+         *                        等按设备分流做好后再从此处放开。
+         *                      EN: Number of IO workers; must be greater than 0. The default of 1
+         *                          reads files one at a time: concurrent reads on one physical
+         *                          device contend for the same head and are slower and less
+         *                          predictable, so serializing is the safer default until reads
+         *                          are split per device.
          * @return CN: 成功返回 true。 EN: True on success.
          */
-        bool Start(uint io_worker_count);
+        bool Start(uint io_worker_count=1);
 
         /**
          * @brief CN: 停止读盘；停止后仍可 Pump 取走已完成的结果。
@@ -185,7 +226,11 @@ namespace hgl
          * @param priority CN: 读盘优先级(数值越小越优先)。 EN: Read priority; lower values are served first.
          * @return CN: 请求编号，0 表示失败。 EN: Request identifier, or 0 on failure.
          * @note CN: 命中已加载表时不读盘，结果在下一次 Pump() 中回调。
+         *           同一路径已在读盘时不会重复读盘：本次请求挂到在途分组上，
+         *           与先前的请求共享同一份数据。
          *       EN: A table hit skips reading and is dispatched by the next Pump().
+         *           When the same path is already being read the read is not repeated: this
+         *           request joins the in-flight group and shares the same payload.
          */
         FileLoadId Submit(const OSString &filename,
                           LoadedFileHandler *handler,
@@ -196,9 +241,12 @@ namespace hgl
          *        EN: Cancel a request that has not been dispatched yet.
          * @return CN: false 表示编号无效(已回调或从未存在)。 EN: False if the identifier is unknown or already dispatched.
          * @note CN: 取消是协作式的：不能中断正在进行的系统读取，但即使读取已完成，
-         *           回调也会被转成 OnFileCancelled。
+         *           回调也会被转成 OnFileCancelled。共享同一读盘的多个请求互不牵连：
+         *           只有当分组内所有请求都被取消时才会真正取消底层读盘。
          *       EN: Cancellation is cooperative and cannot interrupt a blocking OS read, but a
-         *           request that already finished is still reported as OnFileCancelled.
+         *           request that already finished is still reported as OnFileCancelled. Requests
+         *           sharing one read are independent: the underlying read is cancelled only when
+         *           every request in the group has been cancelled.
          */
         bool Cancel(FileLoadId id);
 
@@ -208,7 +256,10 @@ namespace hgl
          * @param max_dispatch CN: 本次最多回调的请求数。 EN: Maximum number of requests to dispatch this call.
          * @return CN: 本次实际回调的请求数。 EN: Number of requests actually dispatched.
          * @note CN: 每帧限量可把完成事件平滑摊到多帧，避免一次性提交过多 GPU 上传。
+         *           共享同一读盘的请求各自计数，因此一次可能超过 max_dispatch 中剩余的名额。
          *       EN: Limiting per frame spreads completion work across frames, avoiding an upload burst.
+         *           Requests sharing one read are counted individually, so one group may exceed the
+         *           remaining budget of max_dispatch.
          */
         int Pump(int max_dispatch=0x7fffffff);
 

@@ -334,7 +334,8 @@ public:
 
         committer.SetTextureManager(tex_manager);
 
-        if (!load_manager.Start(2))
+        // 默认单线程串行读盘：同一块物理设备上的并发读会互相争道，示例不需要更快
+        if (!load_manager.Start())
         {
             GLogError(u8"[IconWall] IO 线程池启动失败");
             return false;
