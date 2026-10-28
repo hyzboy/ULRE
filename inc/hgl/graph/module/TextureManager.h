@@ -7,8 +7,10 @@
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/data/ImageRegion.h>
 #include<hgl/vk/VKTexture.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureUploadTask.h>
 #include<hgl/graph/module/TextureUploadQueue.h>
+#include<hgl/type/ValueArray.h>
 
 namespace hgl::graph{
 
@@ -33,6 +35,10 @@ private:
 
     BidirectionalMap<TextureID,Texture *> texture_by_id;          ///< ID <-> Texture* 双向映射
     BidirectionalMap<OSString,Texture *> texture_by_filename;     ///< Filename <-> Texture* 双向映射
+
+    /// 纹理句柄表（材质侧唯一入口）。**按文件名去重**：同一个文件只创建一个句柄，
+    /// 多个材质共享同一份加载状态与同一张纹理。线性扫描即可 —— 只在材质装配期写入。
+    ValueArray<TextureAsset *> texture_assets;
 
     const TextureID Add(Texture *);
     const TextureID Add(Texture *,const OSString &);
@@ -157,9 +163,29 @@ public: // Async Upload Queue
 
     void UpdateUploadQueue(BindlessTextureManager *bindless_mgr = nullptr);
 
-public: //TileData
+public: // TileData
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
+
+public: // TextureAsset
+
+    /**
+     * 取（无则建）文件名对应的纹理句柄。
+     *
+     * 同一个文件（按 `MakeLoadedFileKey` 规范化后比较）只创建一个句柄 ⇒ 多个材质
+     * 共享同一份「未加载 / 加载中 / 就绪」状态，也只会有一次读盘与一次上传。
+     * 返回的句柄**初始为 `MetaOnly`**（只有文件名），由 `TextureStreamingSystem`
+     * 驱动异步加载；也可以直接调用 `LoadPayload()` 走同步路径。
+     *
+     * 句柄归本表所有，调用方只持有裸观察指针（不要 delete）。
+     */
+    TextureAsset *CreateTextureAsset(const OSString &filename,bool auto_mipmaps=false);
+
+    /// 把一张已就绪的纹理包装成句柄（不入文件名去重表：按一次性句柄处理，仍归本表所有）
+    TextureAsset *WrapTextureAsset(Texture *texture);
+
+    /// 句柄表只读视图（流式系统逐帧扫描 `MetaOnly` 句柄用）
+    const ValueArray<TextureAsset *> &GetTextureAssets()const{return texture_assets;}
 
 };//class TextureManager
 }//namespace hgl::graph

@@ -7,6 +7,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/module/RenderPassManager.h>
+#include<hgl/framework/LoadedFile.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -31,6 +32,25 @@ TextureManager::~TextureManager()
 
 void TextureManager::Release()
 {
+    // 纹理句柄表归本管理器所有：先按稳定快照逐个 Release + delete，再动纹理本体，
+    // 这样句柄的 OnUnloadPayload 一定跑在纹理对象仍然有效的时候。
+    if(texture_assets.GetCount()>0)
+    {
+        ValueArray<TextureAsset *> to_delete;
+
+        for(int i=0;i<texture_assets.GetCount();++i)
+            if(texture_assets[i])
+                to_delete.Add(texture_assets[i]);
+
+        texture_assets.Clear();
+
+        for(int i=0;i<to_delete.GetCount();++i)
+        {
+            to_delete[i]->Release();
+            delete to_delete[i];
+        }
+    }
+
     SAFE_CLEAR(upload_queue);
 
     // Delete using a stable snapshot so destructor-side unregister is safe.
@@ -366,6 +386,63 @@ void TextureManager::UpdateUploadQueue(BindlessTextureManager *bindless_mgr)
         }
         delete task;
     }
+}
+
+// ── TextureAsset：材质侧统一纹理句柄 ──────────────────────────────────────────
+
+TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool auto_mipmaps)
+{
+    if(filename.IsEmpty())
+    {
+        GLogError(u8"[TextureManager] CreateTextureAsset 收到空文件名");
+        return(nullptr);
+    }
+
+    // 规范化键 ⇒ "res/a.Tex2D"、"res\\a.Tex2D"、"RES/./a.Tex2D" 归到同一个句柄。
+    // 线性扫描是有意选择：句柄只在材质装配期创建，规模是几十到几百，
+    // 换成哈希表还要为 OSString 造一套哈希，收益不成比例。
+    const OSString key=MakeLoadedFileKey(filename);
+
+    for(int i=0;i<texture_assets.GetCount();++i)
+    {
+        TextureAsset *exist=texture_assets[i];
+
+        if(exist && MakeLoadedFileKey(exist->GetFilename())==key)
+            return(exist);
+    }
+
+    TextureAsset *asset=new TextureAsset(this);
+
+    if(!asset->SetupFromFilename(filename,auto_mipmaps))
+    {
+        delete asset;
+        return(nullptr);
+    }
+
+    texture_assets.Add(asset);
+
+    return(asset);
+}
+
+TextureAsset *TextureManager::WrapTextureAsset(Texture *texture)
+{
+    if(!texture)
+    {
+        GLogError(u8"[TextureManager] WrapTextureAsset 收到空纹理");
+        return(nullptr);
+    }
+
+    TextureAsset *asset=new TextureAsset(this);
+
+    if(!asset->SetupFromTexture(texture))
+    {
+        delete asset;
+        return(nullptr);
+    }
+
+    texture_assets.Add(asset);
+
+    return(asset);
 }
 
 }//namespace hgl::graph
