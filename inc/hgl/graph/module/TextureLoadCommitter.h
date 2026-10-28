@@ -38,12 +38,18 @@ namespace hgl::graph
 
     public:
 
+        /** @brief CN: 构造一个未绑定纹理管理器的提交者，随后必须调用 SetTextureManager。 EN: Construct an unbound committer; SetTextureManager must be called afterwards. */
+        TextureLoadCommitter()=default;
+
         /**
-         * @brief CN: 构造提交者。
-         *        EN: Construct the committer.
+         * @brief CN: 构造并立即绑定纹理管理器。
+         *        EN: Construct and bind a texture manager immediately.
          * @param tm CN: 纹理管理器，必须比本对象活得更久。 EN: Texture manager; must outlive this object.
          */
         explicit TextureLoadCommitter(TextureManager *tm):tex_manager(tm){}
+
+        /** @brief CN: 绑定纹理管理器；用于从属对象在 Init 阶段(没有构造函数上下文)完成绑定。 EN: Bind the texture manager; used by owned objects that bind during Init when no constructor context exists. */
+        void SetTextureManager(TextureManager *tm){tex_manager=tm;}
 
         /** @brief CN: 是否已绑定纹理管理器。 EN: Whether a texture manager is bound. */
         bool IsValid()const{return tex_manager!=nullptr;}
