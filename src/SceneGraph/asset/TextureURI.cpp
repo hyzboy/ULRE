@@ -1,4 +1,5 @@
 #include<hgl/graph/asset/TextureURI.h>
+#include<hgl/utf.h>
 
 namespace hgl::graph
 {
@@ -106,5 +107,23 @@ namespace hgl::graph
     OSString TextureURI::Normalize(const OSString &uri)
     {
         return Parse(uri).ToString();
+    }
+
+    AnsiString ToRenderTargetName(const OSString &os_name)
+    {
+        if(os_name.IsEmpty())
+            return(AnsiString());
+
+        const U8String u8_name=ToU8String(os_name);
+
+        return AnsiString(reinterpret_cast<const char *>(u8_name.c_str()),u8_name.Length());
+    }
+
+    OSString FromRenderTargetName(const AnsiString &ansi_name)
+    {
+        if(ansi_name.IsEmpty())
+            return(OSString());
+
+        return ToOSString(U8String(reinterpret_cast<const u8char *>(ansi_name.c_str()),ansi_name.Length()));
     }
 }//namespace hgl::graph

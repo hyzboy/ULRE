@@ -55,4 +55,13 @@ namespace hgl::graph
         /// 无 scheme 前缀时补 `file:`
         static OSString Normalize(const OSString &uri);
     };//struct TextureURI
+
+    /**
+     * 名字域转换：`RenderTargetDesc::name` 是 `AnsiString`，URI 用 `OSString`。
+     *
+     * 两者之间的往返在各处自己写 `reinterpret_cast` 极易出错（`u8char` 在 C++20 下
+     * 是 `char8_t`），因此统一收敛到这一对函数。
+     */
+    AnsiString ToRenderTargetName(const OSString &os_name);
+    OSString   FromRenderTargetName(const AnsiString &ansi_name);
 }//namespace hgl::graph

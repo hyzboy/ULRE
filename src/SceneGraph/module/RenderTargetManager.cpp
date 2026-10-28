@@ -7,6 +7,8 @@
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/asset/RenderTargetAsset.h>
+#include<hgl/graph/asset/TextureURI.h>
 #include <hgl/Macro.h>
 #include <hgl/type/MemoryAlloc.h>
 #include <hgl/type/Smart.h>
@@ -165,6 +167,40 @@ RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
     deleter.manager = this;
 
     return RenderTargetHandle(rt, deleter);
+}
+
+RenderTargetHandle RenderTargetManager::CreateFromSpec(const RenderTargetAssetSpec &spec,
+                                                       const uint32_t window_width,
+                                                       const uint32_t window_height)
+{
+    RenderTargetDesc desc;
+
+    if(!spec.ToDesc(window_width, window_height, desc))
+    {
+        GLogError("[RenderTargetManager] CreateFromSpec: 规约非法（name=%s）", spec.name.c_str());
+        return RenderTargetHandle();
+    }
+
+    // 名字是 rt: 的寻址键，重名会让「这张纹理来自哪个 RT」变得不确定 ⇒ fail-fast
+    if(Find(desc.name))
+    {
+        GLogError("[RenderTargetManager] CreateFromSpec: 同名 RenderTarget 已存在（%s）", desc.name.c_str());
+        return RenderTargetHandle();
+    }
+
+    return Create(desc);
+}
+
+RenderTargetHandle RenderTargetManager::CreateFromSpecFile(const OSString &filename,
+                                                           const uint32_t window_width,
+                                                           const uint32_t window_height)
+{
+    RenderTargetAssetSpec spec;
+
+    if(!LoadRenderTargetAssetSpecFromTOML(filename, spec))
+        return RenderTargetHandle();
+
+    return CreateFromSpec(spec, window_width, window_height);
 }
 
 OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
@@ -382,6 +418,17 @@ bool RenderTargetManager::CreateAttachments(RenderTargetData *data,const AnsiStr
     data->color_textures = new_copy<Texture2D *>(color_texture_list.data(), color_count);
     data->depth_texture  = depth_texture;
 
+    // 附件已就绪 ⇒ 把 (RT名, 附件名) 对应的纹理句柄推进 Resident。
+    // 材质侧只写 `rt:<name>:<attachment>`，因此 RT 重建后不需要任何一方重新装配材质；
+    // 句柄在 RT 创建之前就存在时（材质先于 RT 创建）同样在这里被接上。
+    const OSString rt_name = FromRenderTargetName(name);
+
+    for(uint32_t i = 0; i < created_color_count; ++i)
+        tex_manager->BindRenderTargetTextures(rt_name, color_texture_list[i], MakeColorAttachmentName(i));
+
+    if(depth_texture)
+        tex_manager->BindRenderTargetTextures(rt_name, depth_texture, OSString(kTextureURIAttachmentDepth));
+
     return(true);
 }
 
@@ -404,6 +451,14 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
 
     // ---- 2. 销毁旧 framebuffer，再销毁其附件纹理 ----
     // Vulkan framebuffer 依赖 image views，必须先销毁 framebuffer。
+    AnsiString name = desc.name;
+    if(name.IsEmpty())
+        name = "RT_" + AnsiString::numberOf(desc.width) + "x" + AnsiString::numberOf(desc.height);
+
+    // 附件纹理即将被销毁 ⇒ 先把所有引用本 RT 的句柄退回 MetaOnly，
+    // 否则句柄会继续指向已销毁的 Texture2D。重建成功后 CreateAttachments 会重新接上。
+    tex_manager->UnbindRenderTargetTextures(FromRenderTargetName(name));
+
     SAFE_CLEAR(data->fbo);
 
     for(uint32_t i = 0; i < data->color_count; ++i)
@@ -423,10 +478,6 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
     data->depth_texture  = nullptr;
 
     // ---- 4. 按新尺寸与附件配置重建 ----
-    AnsiString name = desc.name;
-    if(name.IsEmpty())
-        name = "RT_" + AnsiString::numberOf(desc.width) + "x" + AnsiString::numberOf(desc.height);
-
     return CreateAttachments(data, name, &fbi);
 }
 
@@ -482,6 +533,9 @@ bool RenderTargetManager::Destroy(IRenderTarget *rt)
         if(band_base != OffscreenSlotBands::kInvalidBase && band_slots > 0)
             slot_bands.ReleaseBand(band_base, band_slots);
 
+        // RT 消失 ⇒ 引用它的句柄退回 MetaOnly（材质不会继续往一个不存在的目标上绑）
+        tex_manager->UnbindRenderTargetTextures(FromRenderTargetName(it->name));
+
         registry.erase(it);
         delete rt;
         return(true);
@@ -507,7 +561,12 @@ void RenderTargetManager::Release()
     for(RenderTargetEntry &entry : registry)
     {
         if(entry.rt)
+        {
+            if(tex_manager)
+                tex_manager->UnbindRenderTargetTextures(FromRenderTargetName(entry.name));
+
             delete entry.rt;
+        }
     }
 
     registry.clear();

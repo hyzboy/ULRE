@@ -3,6 +3,7 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/OffscreenSlotBands.h>
 #include<hgl/graph/render/RenderTargetDesc.h>
+#include<hgl/graph/asset/RenderTargetAsset.h>
 #include<memory>
 #include<vector>
 
@@ -108,6 +109,24 @@ public: // 创建
     /// @param desc 描述子；未指定的格式字段由本函数按设备默认值解析
     /// @return 成功返回非空句柄；失败返回空句柄（desc 非法、设备/管理器缺失、附件创建失败）
     RenderTargetHandle Create(const RenderTargetDesc &desc);
+
+    /**
+     * [声明式入口] 按 RT 资产规约创建离屏渲染目标。
+     *
+     * 与 `Create(desc)` 的区别只有两点：
+     * - 尺寸由 spec 按 `size_mode` 用当前窗口尺寸展开（支持千分比跟随窗口）
+     * - 名字已是资产名 ⇒ 附件会自动绑定到 `rt:<name>:<attachment>` 纹理句柄
+     *
+     * 同名 RT 已存在时拒绝创建（名字是 `rt:` 的寻址键，重名会让寻址有歧义）。
+     */
+    RenderTargetHandle CreateFromSpec(const RenderTargetAssetSpec &spec,
+                                      uint32_t window_width,
+                                      uint32_t window_height);
+
+    /// 读 TOML 规约再 `CreateFromSpec`（便于外部调参而不改代码）
+    RenderTargetHandle CreateFromSpecFile(const OSString &filename,
+                                          uint32_t window_width,
+                                          uint32_t window_height);
 
     /// 内部实现：按已解析好的 FramebufferInfo 创建并登记
     /// @note 供 Create() 与旧的静态便捷入口使用，新代码请用 Create()

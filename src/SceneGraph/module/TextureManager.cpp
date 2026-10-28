@@ -7,6 +7,9 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/module/RenderPassManager.h>
+#include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/asset/RenderTargetAsset.h>
 #include<hgl/framework/LoadedFile.h>
 #include<hgl/log/Log.h>
 
@@ -513,6 +516,27 @@ TextureAsset *TextureManager::GetOrCreateRenderTargetAsset(const OSString &targe
     {
         delete asset;
         return(nullptr);
+    }
+
+    // 句柄可能先于 RT 创建（材质装配期引用了一个还没建的 RT）。若此刻 RT 已存在，
+    // 就地取一次附件纹理把它推进 Resident，这样创建顺序不影响最终结果；
+    // 反过来（RT 先建、句柄后建）由 RenderTargetManager::CreateAttachments 负责绑定。
+    if(GetGraphicsContext())
+    {
+        RenderTargetManager *rtm=GetGraphicsContext()->GetRenderTargetManager();
+
+        if(rtm)
+        {
+            IRenderTarget *rt=rtm->Find(ToRenderTargetName(target));
+
+            if(rt)
+            {
+                Texture2D *tex=ResolveRenderTargetAttachment(rt,att);
+
+                if(tex)
+                    asset->BindRenderTargetTexture(tex);
+            }
+        }
     }
 
     texture_assets.Add(asset);
