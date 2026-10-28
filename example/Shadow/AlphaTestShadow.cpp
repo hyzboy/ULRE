@@ -132,6 +132,10 @@ private:
     VertexDataManager *vdm = nullptr;
     Texture2DArray *alpha_base_texture = nullptr;
     Texture2DArray *white_texture = nullptr; // 地面用：纯白，影子落点清晰可读
+
+    /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
+    TextureAsset *alpha_base_asset = nullptr;
+    TextureAsset *white_asset = nullptr;
     Sampler *pbr_sampler = nullptr;
 
     Geometry *ground_geometry = nullptr;
@@ -503,10 +507,16 @@ public:
         if (!white_texture)
             return false;
 
-        return texture_manager->LoadTexture2DArray(
-            white_texture, 0,
-            filesystem::JoinPathWithFilename(
-                OS_TEXT("res/image/pbr/AlphaChecker"), OS_TEXT("white.Tex2D")));
+        if (!texture_manager->LoadTexture2DArray(
+                white_texture, 0,
+                filesystem::JoinPathWithFilename(
+                    OS_TEXT("res/image/pbr/AlphaChecker"), OS_TEXT("white.Tex2D"))))
+            return false;
+
+        alpha_base_asset = texture_manager->WrapTextureAsset(alpha_base_texture);
+        white_asset      = texture_manager->WrapTextureAsset(white_texture);
+
+        return alpha_base_asset && white_asset;
     }
 
     bool InitMaterial()
@@ -602,7 +612,7 @@ public:
             auto prim = e->GetContext()->GetOrCreateGeometryData(e);
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
-            material_data_comp->SetTextureResource("base_color", white_texture, pbr_sampler,
+            material_data_comp->SetTextureResource("base_color", white_asset, pbr_sampler,
                 hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
             material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
@@ -634,11 +644,11 @@ public:
             auto prim = e->GetContext()->GetOrCreateGeometryData(e);
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
-            material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
+            material_data_comp->SetTextureResource("base_color", alpha_base_asset, pbr_sampler,
                 hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
             if (bind_opacity[i])
             {
-                material_data_comp->SetTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
+                material_data_comp->SetTextureResource("opacity_mask", alpha_base_asset, pbr_sampler,
                     hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
             }
             material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
