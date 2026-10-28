@@ -603,7 +603,7 @@ public:
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
             material_data_comp->SetTextureResource("base_color", white_texture, pbr_sampler,
-                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
             material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -635,11 +635,11 @@ public:
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
             material_data_comp->SetTextureResource("base_color", alpha_base_texture, pbr_sampler,
-                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
             if (bind_opacity[i])
             {
                 material_data_comp->SetTextureResource("opacity_mask", alpha_base_texture, pbr_sampler,
-                    hgl::ecs::MaterialTextureResourceKind::Texture2DArray, "", 0);
+                    hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
             }
             material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删

@@ -109,15 +109,23 @@ namespace hgl::ecs
         bool HasRecipeOverride() const { return GetRecipeOverride() != nullptr; }
 
         // ── 具名纹理资源 ──
+        /// **统一入口**：`resource.asset` 是唯一纹理来源（`TextureAsset*` 句柄）。
+        /// 句柄只有文件名（`MetaOnly`）时也接受 —— ECS 侧会自动驱动加载，就绪后再渲染。
         bool SetTextureResource(const std::string &name,
                                 const MaterialTextureAuthoringResource &resource);
+
+        /// 便捷重载：把一张**已就绪**的纹理包成句柄后走同一个统一入口
+        /// （`WrapTextureAsset` 不接管纹理所有权，纹理仍归 `TextureManager`）。
+        /// 它不构成第二条行为路径 —— 落库的同样是一个 `TextureAsset*`。
         bool SetTextureResource(const std::string &name,
                                 hgl::graph::Texture *texture,
                                 hgl::graph::Sampler *sampler,
                                 MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
-                                const std::string &resource_id = std::string(),
                                 uint32_t array_layer = 0,
                                 bool required = false);
+
+        /// 查具名纹理资源。返回条目只要求「表达了某个纹理」（已就绪或只有文件名）；
+        /// 是否可绑定由调用方看 `resource.GetTexture()`/`IsReady()`。
         const MaterialTextureAuthoringResource *GetTextureResource(const std::string &name) const;
 
         // ── 材质数据行资源 ──

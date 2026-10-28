@@ -439,7 +439,6 @@ bool TextureArrayStreamingApp::AttachIcon(const uint32_t index,const U8String &i
             icon_array,
             sampler,
             MaterialTextureResourceKind::Texture2DArray,
-            "",
             index))
         return false;
 

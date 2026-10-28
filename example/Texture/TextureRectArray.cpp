@@ -182,7 +182,6 @@ private:
                     sampler,
                     hgl::ecs::MaterialTextureResourceKind::
                         Texture2DArray,
-                    "",
                     i))
                 return false;
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删

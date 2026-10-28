@@ -560,7 +560,6 @@ private:
                         sampler,
                         hgl::ecs::MaterialTextureResourceKind::
                             Texture2DArray,
-                        "",
                         row)
                  || !material_data_comp->SetTextureResource(
                         "normal",
@@ -568,7 +567,6 @@ private:
                         sampler,
                         hgl::ecs::MaterialTextureResourceKind::
                             Texture2DArray,
-                        "",
                         row))
                     return false;
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};

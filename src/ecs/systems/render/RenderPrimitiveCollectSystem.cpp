@@ -815,8 +815,12 @@ namespace hgl::ecs
                 const auto *resource = material_data
                     ? material_data->GetTextureResource(binding.texture_name)
                     : nullptr;
+                // 未就绪的句柄（只有文件名）不该走到这里 —— `CanRender` 会先把图元拦下；
+                // 走到这里说明就绪判定与收集判定脱节，直接报错更容易定位。
+                graph::Texture *resource_texture =
+                    resource ? resource->GetTexture() : nullptr;
                 if (!resource
-                 || !resource->texture
+                 || !resource_texture
                  || !resource->sampler
                  || !bindless_mgr)
                 {
@@ -831,9 +835,7 @@ namespace hgl::ecs
                 }
 
                 const std::string resource_id =
-                    resource->resource_id.empty()
-                        ? BuildTextureResourceId(resource->texture)
-                        : resource->resource_id;
+                    BuildTextureResourceId(resource->asset);
                 if (resource_id != binding.resource_id)
                 {
                     GLogError(
@@ -848,7 +850,7 @@ namespace hgl::ecs
                 // 描述符侧 2D 与 2DArray 均落在 sampler2DArray[]（单层/多层）。
                 uint32_t handle = rdbs->RegisterTextureResource(
                     resource_id,
-                    resource->texture,
+                    resource_texture,
                     bindless_mgr);
                 if (handle == 0)
                     return false;
@@ -1746,12 +1748,10 @@ namespace hgl::ecs
                             ? material_data->GetTextureResource(declaration.name)
                             : nullptr;
                         if (authoring
-                         && authoring->texture)
+                         && authoring->IsReady())
                         {
                             const std::string fallback_id =
-                                authoring->resource_id.empty()
-                                    ? BuildTextureResourceId(authoring->texture)
-                                    : authoring->resource_id;
+                                BuildTextureResourceId(authoring->asset);
                             handle = rdbs->GetBindlessHandle(
                                 AnsiString(fallback_id.c_str()));
                         }

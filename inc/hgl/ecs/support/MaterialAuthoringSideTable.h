@@ -3,6 +3,7 @@
 #include<hgl/CoreType.h>
 #include<hgl/log/Log.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
 #include<cstdint>
@@ -11,7 +12,6 @@
 namespace hgl::graph
 {
     class Sampler;
-    class Texture;
 }//namespace hgl::graph
 
 namespace hgl::ecs
@@ -32,16 +32,35 @@ namespace hgl::ecs
 
     /// 具名纹理授权资源（B4-iii-b：原为 `MaterialData` 的嵌套类型；随重类型整体移入旁表，
     /// 组件不再持有它 —— 类型名与限定名在 `hgl::ecs` 内保持不变，调用点零改动）。
+    ///
+    /// **统一句柄（2026-10 定稿）**：纹理来源只有一个字段 `asset`（`TextureAsset*`）。
+    /// 未加载时句柄停在 `MetaOnly`（只带文件名），已加载时带完整 `Texture`；作者不再需要
+    /// 在「自己先同步加载」与「异步回填」之间二选一 —— ECS 侧判断 `IsReady()`，未就绪就自动
+    /// 驱动异步加载，等就绪后再让图元进入可渲染状态。
     struct MaterialTextureAuthoringResource
     {
-        std::string resource_id;
-        hgl::graph::Texture *texture = nullptr;
+        /// 纹理句柄（由 `TextureManager` 的句柄表拥有；本结构只持裸观察指针）
+        hgl::graph::TextureAsset *asset = nullptr;
         hgl::graph::Sampler *sampler = nullptr;
         /// 注：kind/array_layer/required 是**选择器**（不是每实体 GPU 数据）——
         /// 留在旁表条目里即可，不进设备级行。
         MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;
         uint32_t array_layer = 0;
         bool required = false;
+
+        /// 句柄是否带了可绑定的纹理（= 已就绪）
+        hgl::graph::Texture *GetTexture() const
+        {
+            return asset ? asset->GetTexture() : nullptr;
+        }
+
+        bool IsReady() const { return GetTexture() != nullptr; }
+
+        /// 是否表达了「某个纹理」（已就绪的纹理，或只有文件名待加载）
+        bool HasSource() const
+        {
+            return asset && (asset->GetTexture() || !asset->GetFilename().IsEmpty());
+        }
     };
 
     /**

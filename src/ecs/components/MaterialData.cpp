@@ -2,6 +2,7 @@
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/log/Log.h>
@@ -27,12 +28,12 @@ namespace hgl::ecs
             const std::string &name,
             const MaterialTextureAuthoringResource &resource)
         {
-            if (!resource.texture || !resource.sampler)
+            // 统一句柄语义：只要有来源就产出绑定 —— 只有文件名的句柄同样产出绑定，
+            // 身份用 `texfile:<path>`（就绪前后不变），图元就绪后即可直接命中 bindless 资源。
+            if (!resource.HasSource() || !resource.sampler)
                 return true;
 
-            const std::string resource_id = resource.resource_id.empty()
-                ? BuildTextureResourceId(resource.texture)
-                : resource.resource_id;
+            const std::string resource_id = BuildTextureResourceId(resource.asset);
             if (resource_id.empty())
                 return false;
 
@@ -83,10 +84,19 @@ namespace hgl::ecs
                 name.c_str());
             return false;
         }
-        if (!resource.texture || !resource.sampler)
+        // 统一句柄：只拒绝「根本没表达纹理」（无句柄 / 无采样器 / 句柄既无纹理也无文件名）。
+        // **只有文件名的句柄是合法状态** —— 由 ECS 侧驱动异步加载。
+        if (!resource.HasSource())
         {
             GLogError(
-                "[MaterialData] Texture authoring rejected null resource name=%s",
+                "[MaterialData] Texture authoring rejected empty handle name=%s",
+                name.c_str());
+            return false;
+        }
+        if (!resource.sampler)
+        {
+            GLogError(
+                "[MaterialData] Texture authoring rejected null sampler name=%s",
                 name.c_str());
             return false;
         }
@@ -116,19 +126,48 @@ namespace hgl::ecs
         hgl::graph::Texture *texture,
         hgl::graph::Sampler *sampler,
         MaterialTextureResourceKind kind,
-        const std::string &resource_id,
         const uint32_t array_layer,
         const bool required)
     {
+        if (!texture)
+        {
+            GLogError(
+                "[MaterialData] Texture authoring rejected null texture name=%s",
+                name.c_str());
+            return false;
+        }
+
+        // 便捷重载不新增行为路径：把现成纹理包成句柄（Resident）后走统一入口。
+        hgl::graph::TextureManager *tex_manager = nullptr;
+        if (const Entity *owner = GetOwner())
+            if (ECSContext *world = owner->GetContext())
+                if (hgl::graph::GraphicsContext *gc = world->GetGraphicsContext())
+                    tex_manager = gc->GetTextureManager();
+
+        if (!tex_manager)
+        {
+            GLogError(
+                "[MaterialData] Texture authoring rejected no TextureManager name=%s",
+                name.c_str());
+            return false;
+        }
+
+        hgl::graph::TextureAsset *asset = tex_manager->WrapTextureAsset(texture);
+
+        if (!asset)
+        {
+            GLogError(
+                "[MaterialData] Texture authoring rejected wrap failed name=%s",
+                name.c_str());
+            return false;
+        }
+
         MaterialTextureAuthoringResource resource{};
-        resource.resource_id = resource_id.empty()
-            ? BuildTextureResourceId(texture)
-            : resource_id;
-        resource.texture       = texture;
-        resource.sampler       = sampler;
-        resource.kind          = kind;
-        resource.array_layer   = array_layer;
-        resource.required      = required;
+        resource.asset        = asset;
+        resource.sampler      = sampler;
+        resource.kind         = kind;
+        resource.array_layer  = array_layer;
+        resource.required     = required;
 
         return SetTextureResource(name, resource);
     }
@@ -153,7 +192,9 @@ namespace hgl::ecs
         const hgl::AnsiString key(name.c_str());
         if (const auto *entry = side->named_texture_resources.GetValuePointer(key))
         {
-            if (entry->texture && entry->sampler)
+            // 只要求「表达了某个纹理」：只有文件名的句柄也要能被看到（渲染层据 IsReady()
+            // 判断可否绑定，未就绪的图元由 CanRender 拦截，不会走到绑定路径）。
+            if (entry->HasSource() && entry->sampler)
                 return entry;
         }
         return nullptr;
