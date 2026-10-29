@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/type/String.h>
+#include <hgl/asset/AssetAnnotation.h>
 #include <hgl/graph/geo/InlineGeometry.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 
@@ -37,17 +38,17 @@ namespace hgl::graph
         ENUM_CLASS_RANGE(Sphere, Frustum)
     };
 
-    struct BuiltinSphereParams
+    struct HGL_ASSET_STRUCT BuiltinSphereParams
     {
         uint32_t slices = 32;
     };
 
-    struct BuiltinDomeParams
+    struct HGL_ASSET_STRUCT BuiltinDomeParams
     {
         uint32_t slices = 32;
     };
 
-    struct BuiltinCubeParams
+    struct HGL_ASSET_STRUCT BuiltinCubeParams
     {
         uint32_t segments_x = 1;
         uint32_t segments_y = 1;
@@ -56,7 +57,7 @@ namespace hgl::graph
         bool tex_coord = true;
     };
 
-    struct BuiltinPlaneGridParams
+    struct HGL_ASSET_STRUCT BuiltinPlaneGridParams
     {
         uint32_t grid_x = 10;
         uint32_t grid_y = 10;
@@ -67,14 +68,14 @@ namespace hgl::graph
         bool is_3d = false;
     };
 
-    struct BuiltinCylinderParams
+    struct HGL_ASSET_STRUCT BuiltinCylinderParams
     {
         float half_extend = 1.0f;
         float radius = 1.0f;
         uint32_t slices = 32;
     };
 
-    struct BuiltinHollowCylinderParams
+    struct HGL_ASSET_STRUCT BuiltinHollowCylinderParams
     {
         float half_extend = 1.0f;
         float inner_radius = 0.5f;
@@ -84,7 +85,7 @@ namespace hgl::graph
         float cap_angular_tiles = 1.0f;
     };
 
-    struct BuiltinTorusParams
+    struct HGL_ASSET_STRUCT BuiltinTorusParams
     {
         float inner_radius = 0.5f;
         float outer_radius = 1.0f;
@@ -94,7 +95,7 @@ namespace hgl::graph
         float uv_scale_y = 1.0f;
     };
 
-    struct BuiltinConeParams
+    struct HGL_ASSET_STRUCT BuiltinConeParams
     {
         float half_extend = 1.0f;
         float radius = 1.0f;
@@ -102,7 +103,7 @@ namespace hgl::graph
         uint32_t stacks = 4;
     };
 
-    struct BuiltinCapsuleParams
+    struct HGL_ASSET_STRUCT BuiltinCapsuleParams
     {
         float half_height = 1.0f;
         float radius = 0.5f;
@@ -110,7 +111,7 @@ namespace hgl::graph
         uint32_t stacks = 8;
     };
 
-    struct BuiltinRectangleParams
+    struct HGL_ASSET_STRUCT BuiltinRectangleParams
     {
         float left = -1.0f;
         float top = -1.0f;
@@ -122,12 +123,12 @@ namespace hgl::graph
         bool tex_coord = true;
     };
 
-    struct BuiltinBoundingBoxParams
+    struct HGL_ASSET_STRUCT BuiltinBoundingBoxParams
     {
         NTBType ntb = NTBType::None;
     };
 
-    struct BuiltinHexSphereParams
+    struct HGL_ASSET_STRUCT BuiltinHexSphereParams
     {
         uint32_t subdivisions = 0;
         float    radius = 1.0f;
@@ -135,7 +136,7 @@ namespace hgl::graph
         float    uv_scale_y = 1.0f;
     };
 
-    struct BuiltinTaperedCapsuleParams
+    struct HGL_ASSET_STRUCT BuiltinTaperedCapsuleParams
     {
         float    half_height = 1.0f;
         float    bottom_radius = 0.5f;
@@ -144,7 +145,7 @@ namespace hgl::graph
         uint32_t stacks = 8;
     };
 
-    struct BuiltinFrustumParams
+    struct HGL_ASSET_STRUCT BuiltinFrustumParams
     {
         float    bottom_radius = 1.0f;
         float    top_radius = 0.5f;

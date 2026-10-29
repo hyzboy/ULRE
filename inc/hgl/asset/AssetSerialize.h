@@ -60,6 +60,15 @@ namespace hgl::asset::detail
         return false;
     }
 
+    inline bool AsFloat(const toml::value &v, float &out)
+    {
+        double tmp = 0.0;
+        if (!AsFloat(v, tmp))
+            return false;
+        out = static_cast<float>(tmp);
+        return true;
+    }
+
     template <typename T>
     inline bool AsUnsigned(const toml::value &v, T &out)
     {
@@ -161,9 +170,21 @@ namespace hgl::asset::detail
         return true;
     }
 
-    template <typename T>
-    inline bool AsUnsignedArray(const toml::value &v, T *out, const int count)
+    inline bool AsBoolArray(const toml::value &v, bool *out, const int count)
     {
+        if (!v.is_array())
+            return false;
+        const auto &a = v.as_array();
+        if (static_cast<int>(a.size()) != count)
+            return false;
+        for (int i = 0; i < count; ++i)
+            if (!AsBool(a[static_cast<size_t>(i)], out[i]))
+                return false;
+        return true;
+    }
+
+    template <typename T>
+    inline bool AsUnsignedArray(const toml::value &v, T *out, const int count)    {
         if (!v.is_array())
             return false;
         const auto &a = v.as_array();
@@ -195,6 +216,15 @@ namespace hgl::asset::detail
         a.reserve(static_cast<size_t>(count));
         for (int i = 0; i < count; ++i)
             a.push_back(FromFloat(static_cast<double>(src[i])));
+        return toml::value(std::move(a));
+    }
+
+    inline toml::value FromBoolArray(const bool *src, const int count)
+    {
+        toml::array a;
+        a.reserve(static_cast<size_t>(count));
+        for (int i = 0; i < count; ++i)
+            a.push_back(FromBool(src[i]));
         return toml::value(std::move(a));
     }
 

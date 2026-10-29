@@ -1,0 +1,17 @@
+# AssetGen 配置 —— 只登记「分组与产物位置」，绝不描述字段/布局。
+#
+# 字段清单、类型、顺序、偏移、类内缺省值全部由 Clang AST 与记录布局推导；
+# 这里唯一的人工信息是「输出到哪个文件、属于哪个命名空间」。
+
+# 外部定义的枚举（来自第三方头，例如 Vulkan）。按整数序列化，不生成名字表。
+integer_enums = ["VkFormat"]
+
+# ── 分组：一个分组产出一套四个文件 ──────────────────────────────────────────
+[group.Geometry]
+namespace   = "hgl::graph"
+scan        = ["inc/hgl/graph/asset"]
+toml        = "inc/hgl/asset/generated/GeometryToml.gen.h"
+meta        = "inc/hgl/asset/generated/GeometryMeta.gen.h"
+fbs         = "inc/hgl/asset/generated/geometry_schema.fbs"
+fbs_generated = "inc/hgl/asset/generated/geometry_schema_generated.h"
+flat        = "inc/hgl/asset/generated/GeometryFlat.gen.h"
