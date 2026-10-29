@@ -1,0 +1,21 @@
+schema = 1
+name = "TextureQuad.UnlitTexture"
+material_definition = "UnlitTexture"
+
+[render_state.pipeline]
+cull_mode = "None"
+depth_test = false
+depth_write = false
+depth_compare_op = "Always"
+alpha_blend = false
+blend_src = "SrcAlpha"
+blend_dst = "OneMinusSrcAlpha"
+dynamic_line_width = false
+overlay = true
+wireframe = false
+line_width = 1.0
+
+[[textures]]
+name = "base_color"
+asset = "res/image/lena.Tex2D"
+required = true

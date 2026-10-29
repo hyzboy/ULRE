@@ -104,6 +104,13 @@ if(MSVC)
     set_target_properties(TestMaterialRuntimeTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# TOML MaterialRecipe parser schema and diagnostics.
+add_executable(TestMaterialRecipeFile tests/TestMaterialRecipeFile.cpp)
+target_link_libraries(TestMaterialRecipeFile PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestMaterialRecipeFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 add_executable(TestComponentRows tests/TestComponentRows.cpp)
 target_link_libraries(TestComponentRows PRIVATE ULRE::Engine)
 if(MSVC)
@@ -196,6 +203,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialRuntimeTable
         PROPERTIES LABELS "ecs;material_runtime")
+
+    add_test(
+        NAME TestMaterialRecipeFile
+        COMMAND TestMaterialRecipeFile
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMaterialRecipeFile
+        PROPERTIES LABELS "material;recipe")
 
     add_test(
         NAME TestBoundingBoxStorage
