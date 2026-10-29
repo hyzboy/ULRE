@@ -307,19 +307,22 @@ sphere_recipe.AddTexture("base_color", base, /*required*/true);
 
 // ── 实体级覆盖（少数场景：同一配方，个别实例换图）──
 material_data->SetTextureResource("base_color", other_asset,
-                                  nullptr, /*sampler 已废弃*/
-                                  MaterialTextureResourceKind::Texture2D, 0, true);
+                                  MaterialTextureResourceKind::Texture2D, 0 /*layer*/, true /*required*/);
+// 或者（更贴合「换配方」语义）：
+//   MaterialRecipe variant = base_recipe;
+//   variant.AddTexture("base_color", other_asset, true);
+//   material_data->SetRecipe(variant);      // 会前进授权代数 ⇒ 当帧重建材质行
 ```
 
 - **身份由资产层统一给出**：`TextureAsset::GetResourceId()` 按来源产出
-  `texfile:<path>`（文件）/ `rtex:<target>:<attachment>`（离屏 RT）/ 空串（仅包装现成纹理）。
-  配方写身份、渲染层读身份，两边不各写一套推导。
-- **没有第二套接口**：`SetTextureResource(name, Texture*, sampler, ...)` 这个便捷重载内部
+  `texfile:<path>`（文件）/ `rtex:<target>:<attachment>`（离屏 RT）/ `texid:<id>`（仅包装现成纹理）。
+  配方写身份、渲染层读身份，两边不各写一套推导；三种身份恒非空 ⇒ 任何合法句柄都能进配方。
+- **没有第二套接口**：`SetTextureResource(name, Texture*, ...)` 这个便捷重载内部
   做的就是 `WrapTextureAsset(texture)` 之后转发到同一个入口；配方侧 `AddTexture` 只是
-  `UpsertRecipeTextureBinding(recip, name, asset->GetResourceId(), ..., asset)` 的语法糖。
-- **`sampler` 参数已废弃且被忽略**（2026-10-29）：Vulkan Bindless 下采样器由
-  `sampler.toml` 的预设集中写在 `binding=1` 的 `samplers[]`，着色器按预设名索引采样，
-  材质侧传入的 `Sampler*` 从未进入任何描述符。新代码不要再传。
+  `UpsertRecipeTextureBinding(recipe, name, asset->GetResourceId(), ..., asset)` 的语法糖。
+- **材质侧没有采样器参数**（2026-10-29 起彻底移除，不是「忽略」而是**不存在**）：
+  Vulkan Bindless 下采样器由 `sampler.toml` 的预设集中写在 `binding=1` 的 `samplers[]`，
+  着色器按预设名索引采样。全仓 `example/` 已无 `CreateSampler()` 调用。
 - 已同步加载好的纹理（离屏 RT 颜色纹理、立方体贴图）也用 `WrapTextureAsset()` 包成
   句柄再授权 —— 这样「材质里的纹理」永远只有一个类型，不存在「有的条目是裸指针、有的是句柄」。
 
@@ -368,6 +371,17 @@ sphere_recipe.AddTexture("roughness", rough_tex,  true);
 sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
 // 启动时日志：BindlessTextureManager Update handle=1..3 → GPU cull ENGAGED
 ```
+
+**全仓 23 个示例已全部完成迁移**（2026-10-29），按类型归纳出三种写法：
+
+| 场景 | 写法 | 代表示例 |
+|---|---|---|
+| 材质原型固定不变 | 配方便携式声明一次，实体端零纹理调用 | `SimpleSphere` / `BasicLitMeshes` / `MixedBufferMeshes` / `BasicLitSunDirection` |
+| 同一纹理不同图层 | 每格一份配方（图层号进配方），几何共享 | `TextureRectArray` / `PBRSpheres` / `CascadeShadowMap` |
+| 运行期换图 / 个别实例差异 | 复制基础配方 + 同名 `AddTexture` ⇒ `MaterialData::SetRecipe` | `AsyncTextureUpload` / `SingleSphereMaterialSwitch` / `DualWorldShadows` / `AlphaTestShadow` |
+| 变体配方族 | 基础配方先 `AddTexture`，变体从它拷贝后追加 | `CoverageVariants` / `AlphaModes` |
+
+`example/` 下已不存在 `CreateSampler()` / `SamplerManager` 引用。
 
 ### 9.5 仍然保留同步加载的位置（有意为之）
 

@@ -406,8 +406,7 @@ public:
     {
         // 所有权单点：mip_level_* 纹理由 TextureManager 持有、句柄归 TextureManager 的句柄表、
         // ecs_world 由框架持有。示例只做观察，析构不得 delete / SAFE_CLEAR ——
-        // 否则管理器收尾时会二次 delete（实测 AV @ 0xFEEEFEEE，
-        // 栈 ~Sampler ← ObjectManagerImpl::Clear ← SamplerManager::Release ← ~GraphModuleManager）。
+        // 否则管理器收尾时会二次 delete（实测 AV @ 0xFEEEFEEE）
         mip_level_texture_2d  = nullptr;
         mip_level_array_rgba8 = nullptr;
         mip_level_array_bc7   = nullptr;

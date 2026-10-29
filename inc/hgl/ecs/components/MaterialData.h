@@ -119,12 +119,10 @@ namespace hgl::ecs
         /// （`WrapTextureAsset` 不接管纹理所有权，纹理仍归 `TextureManager`）。
         /// 它不构成第二条行为路径 —— 落库的同样是一个 `TextureAsset*`。
         ///
-        /// `sampler` 参数**已废弃且被忽略**（2026-10-29）：Vulkan Bindless 下采样器由
-        /// `sampler.toml` 的预设集中管理，着色器按预设名字索引采样，材质侧传入的 `Sampler*`
-        /// 从未进入任何描述符。保留该参数仅为源码兼容，新代码不应再传。
+        /// 采样器由 Vulkan Bindless 预设（`sampler.toml` → `samplers[]`）统一管理，
+        /// 材质侧**不存在**采样器参数（2026-10-29 起彻底移除）。
         bool SetTextureResource(const std::string &name,
                                 hgl::graph::Texture *texture,
-                                hgl::graph::Sampler *sampler = nullptr,
                                 MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
                                 uint32_t array_layer = 0,
                                 bool required = false);
@@ -132,10 +130,11 @@ namespace hgl::ecs
         /// 便捷重载：直接给**句柄**。句柄可以是「已就绪」，也可以只有文件名
         /// （`MetaOnly`）—— 后者由 `TextureStreamingSystem` 自动加载，此处不做任何判断，
         /// 与统一入口完全同义，只是省去手填 `MaterialTextureAuthoringResource`。
-        /// `sampler` 同上：已废弃、被忽略。
+        ///
+        /// 注意：纹理的推荐归属地是**配方**（`MaterialRecipe::AddTexture`）；本入口只用于
+        /// 「同一配方下少数实例换图」的同名覆盖场景。
         bool SetTextureResource(const std::string &name,
                                 hgl::graph::TextureAsset *asset,
-                                hgl::graph::Sampler *sampler = nullptr,
                                 MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
                                 uint32_t array_layer = 0,
                                 bool required = false);

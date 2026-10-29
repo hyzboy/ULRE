@@ -120,14 +120,10 @@ namespace hgl::ecs
     bool MaterialData::SetTextureResource(
         const std::string &name,
         hgl::graph::Texture *texture,
-        hgl::graph::Sampler *sampler,
         MaterialTextureResourceKind kind,
         const uint32_t array_layer,
         const bool required)
     {
-        // `sampler` 已废弃：Bindless 预设集中管理采样器，材质侧不再持有它。
-        (void)sampler;
-
         if (!texture)
         {
             GLogError(
@@ -173,14 +169,10 @@ namespace hgl::ecs
     bool MaterialData::SetTextureResource(
         const std::string &name,
         hgl::graph::TextureAsset *asset,
-        hgl::graph::Sampler *sampler,
         MaterialTextureResourceKind kind,
         const uint32_t array_layer,
         const bool required)
     {
-        // 与 Texture* 重载同理：`sampler` 已废弃（Bindless 预设集中管理），只是被忽略。
-        (void)sampler;
-
         if (!asset)
         {
             GLogError(

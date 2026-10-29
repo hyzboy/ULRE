@@ -20,7 +20,7 @@ namespace hgl::ecs
     /**
      * 纹理流式加载系统 —— 把"句柄"变成"可绑定的纹理"。
      *
-     * 为什么需要它：作者只写 `material.SetTextureResource("Diffuse", filename)`，
+     * 为什么需要它：作者只在配方里写 `recipe.AddTexture("Diffuse", asset)`，
      * 这时材质手里的 `graph::TextureAsset` 只有文件名（`MetaOnly`），显存里什么都没有。
      * 谁来把文件读进来、谁在上传完成后把句柄转成 `Resident`、谁决定图元何时可以渲染,
      * 这些问题**不能散落在每个示例里**（那就退化成手工两段式 `AsyncTextureUpload`）。
