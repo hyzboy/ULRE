@@ -1,0 +1,162 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// @ulre-codegen begin
+//   由 src/Tools/BufferGen/buffer_gen.py 生成，请勿手工修改。
+//   源：inc/hgl/graph/ubo/*.h、inc/hgl/graph/ssbo/*.h 的 HGL_UBO* / HGL_SSBO* 结构
+//   说明：嵌套 GPU 结构（HGL_GPU_STRUCT）→ FlatBuffers `struct`（定长、可内联）；
+//         块 / 行结构 → `table`。字段名与 C++ 逐字同名（便于双向对照）。
+//         `_pad*` / `reserved*` 是对齐填充，不进 schema（序列化不需要它）。
+//         FlatBuffers 不允许 table 含定长数组 ⇒ 数组字段用本文件生成的包装 struct。
+// @ulre-codegen end
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace hgl.graph.generated;
+
+// inc/hgl/graph/ubo/ShadowInfo.h → ShadowCascadeInfo（嵌套 GPU 结构）
+struct ShadowCascadeInfo
+{
+  shadow_vp: [float:16];
+  shadow_params: [float:4];
+  shadow_map_size: [float:2];
+  inv_shadow_map_size: [float:2];
+  shadow_tex: [uint:4];
+  cascade_params: [float:4];
+  cache_origin: [float:4];
+  cache_offset: [uint:4];
+  cache_valid_rect: [uint:4];
+}
+
+// ── table 数组字段的定长包装（元素类型 + 长度各一份） ──
+struct UInt4
+{
+  v: [uint:4];
+}
+
+struct Float16
+{
+  v: [float:16];
+}
+
+struct UInt2
+{
+  v: [uint:2];
+}
+
+struct Float2
+{
+  v: [float:2];
+}
+
+struct UInt256
+{
+  v: [uint:256];
+}
+
+struct Float4
+{
+  v: [float:4];
+}
+
+struct ShadowCascadeInfo4
+{
+  v: [ShadowCascadeInfo:4];
+}
+
+// inc/hgl/graph/ubo/AmbientEnvInfo.h → AmbientEnvInfo
+table AmbientEnvInfo
+{
+  env_tex: UInt4;
+}
+
+// inc/hgl/graph/ubo/ViewportInfo.h → ViewportInfo
+table ViewportInfo
+{
+  ortho_matrix: Float16;
+  canvas_resolution: UInt2;
+  viewport_resolution: UInt2;
+  inv_viewport_resolution: Float2;
+}
+
+// inc/hgl/graph/ubo/ColorPalette.h → ColorPalette
+table ColorPalette
+{
+  color: UInt256;
+}
+
+// inc/hgl/graph/ubo/ShadowInfo.h → ShadowInfo
+table ShadowInfo
+{
+  shadow_vp: Float16;
+  shadow_params: Float4;
+  shadow_map_size: Float2;
+  inv_shadow_map_size: Float2;
+  shadow_tex: UInt4;
+  csm_params: UInt4;
+  cascades: ShadowCascadeInfo4;
+}
+
+// inc/hgl/graph/ubo/GlobalAddresses.h → GlobalAddresses
+table GlobalAddresses
+{
+  addr_mesh_draw_params_pool: ulong;
+  addr_geometry_aabb: ulong;
+  addr_pbr_surface: ulong;
+  addr_emissive_surface: ulong;
+  addr_transmission_surface: ulong;
+  addr_color_palette: ulong;
+  addr_viewport: ulong;
+}
+
+// inc/hgl/graph/ubo/WorldAddresses.h → WorldAddresses
+table WorldAddresses
+{
+  addr_camera_info: ulong;
+  addr_shadow: ulong;
+  addr_entity_gpu: ulong;
+  addr_l2w: ulong;
+  addr_entity_render_ids: ulong;
+  addr_lights: ulong;
+  addr_ambient_env: ulong;
+}
+
+// inc/hgl/graph/ubo/LightRow.h → LightRow
+table LightRow
+{
+  type: uint;
+  flags: uint;
+  direction_intensity: Float4;
+  color_angle: Float4;
+  shadow_kind: uint;
+  shadow_index: uint;
+}
+
+// inc/hgl/graph/ssbo/MaterialDataRows.h → PBRSurfaceRow
+table PBRSurfaceRow
+{
+  base_color: Float4;
+  metallic: float;
+  roughness: float;
+  normal_scale: float;
+  fresnel: float;
+}
+
+// inc/hgl/graph/ssbo/MaterialDataRows.h → EmissiveSurfaceRow
+table EmissiveSurfaceRow
+{
+  color: Float4;
+}
+
+// inc/hgl/graph/ssbo/MaterialDataRows.h → TransmissionSurfaceRow
+table TransmissionSurfaceRow
+{
+  trans_color: uint;
+}
+
+// inc/hgl/graph/ssbo/MaterialDataRows.h → MaterialDataRow
+table MaterialDataRow
+{
+  surface_type: uint;
+  surface_ssbo_id: uint;
+  surface_data_index: uint;
+  authored_flags: uint;
+}
+
