@@ -46,6 +46,9 @@ normal = "VF_V2UN8"        # v2un8 | v2hf | v3f | v3sn16（也接受 VF_ 宏名 
 | `capsule` | `half_height`、`radius`、`slices`、`stacks` |
 | `rectangle` | `left`、`top`、`width`、`height`、`segments_x/y`、`ntb`、`tex_coord` |
 | `bounding_box` | `ntb` |
+| `hex_sphere` | `subdivisions`、`radius`、`uv_scale_x/y` |
+| `tapered_capsule` | `half_height`、`bottom_radius`、`top_radius`、`slices`、`stacks` |
+| `frustum` | `bottom_radius`、`top_radius`、`height`、`slices`、`generate_caps` |
 
 `ntb` 取值：`none` / `normal` / `normal_tangent` / `normal_tangent_bitangent`。
 
@@ -84,7 +87,13 @@ lod = 0
 
 ## 4. 运行时 API
 
+### 4.1 独立几何资产（自管 GPU 资源）
+
 ```cpp
+// 走注册器：句柄拥有自己的 VDM/缓冲，文件来源自动异步
+auto *geo_asset = gc->GetGeometryAssetRegistry()->GetOrLoad(OS_TEXT("res/geo/unit_sphere.geo.toml"));
+Geometry *geo = geo_asset->GetGeometry();     // 文件来源此时可能还是 nullptr（未就绪）
+
 // 单文件装配（同名去重，需先加载配方）
 auto *prm = gc->GetPrimitiveAssetRegistry()->GetOrLoad(OS_TEXT("res/primitive/pbr_sphere.primitive.toml"));
 
@@ -94,6 +103,24 @@ RenderableBuilder(world, "GoldSphere")
     .WithPrimitiveAssetPath(OS_TEXT("res/primitive/pbr_sphere.primitive.toml"))
     .Build();
 ```
+
+### 4.2 形状预设（共享 VertexDataManager）
+
+一批几何共用一个 VDM 时（示例的合并批次、混合缓冲）**不能**走注册器 —— 那会给每个
+几何各建一套 VDM。这类场合用预设库，只把「形状参数」外置：
+
+```cpp
+#include <hgl/graph/asset/GeometryPreset.h>
+
+auto pc = std::make_unique<GeometryCreater>(mesh_vdm);   // VDM 仍由调用方持有
+
+Geometry *cube  = CreateGeometryPreset(pc.get(), "cube");
+Geometry *torus = CreateGeometryPreset(pc.get(), "torus_ring");
+```
+
+预设 = `res/geo/presets/<name>.geo.toml`，与独立资产同一套 schema；解析结果按名缓存。
+`GeometryPresetLibrary::SetRoot()` 可改根目录，`TestGeometryPreset` 会把示例用到的
+每个预设名都解析一遍（挡住「改了预设名、TOML 没跟上」）。
 
 `GraphicsContext` 上的两个注册器（设备级、拥有句柄）：
 
@@ -138,7 +165,6 @@ if (req.IsReady() && req.Build(device, geo_mgr, gvf, recipe, base_dir, assets, n
 （`LoadStaticMeshSceneFromMemory`），只是数据来源从磁盘映射换成内存块。
 
 ## 7. 常见坑
-
 1. **不要在头文件里引入 STL**：`toml11` 只在 `.cpp` 内使用，取出的 `std::string`
    立即转成 `AnsiString` / `OSString`。
 2. **`PrimitiveAsset` 里的变体数组是裸指针**：注册器先把变体数组全部 `Add` 完，
