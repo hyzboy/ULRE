@@ -179,6 +179,30 @@
 
 ---
 
+### 0.4.3 [SKILL_GEOMETRY_ASSET_TOML.md](SKILL_GEOMETRY_ASSET_TOML.md)
+**适用：创建/解析 `*.geo.toml` 几何资产与 `*.primitive.toml` 图元资产（几何 + 配方绑定）、异步几何流送**
+
+- 🧊 `*.geo.toml`：12 种内置参数化几何体 + 外部 `.geo` 文件两种来源
+- 🔗 `*.primitive.toml`：`geometry` + `recipe` 绑定、`[[variants]]` 多用途配方
+- ⚙️ `GeometryAsset` 句柄状态机：内置创建即 `Resident`，文件走后台读盘
+- 🗂️ `GeometryAssetRegistry` / `PrimitiveAssetRegistry`（挂在 `GraphicsContext` 上，设备级）
+- 🚚 `GeometryStreamingSystem`：后台读盘 → 主线程建 GPU buffer → 句柄转正
+- 🚧 `CanRender` 双重门禁：几何就绪 **且** 必需贴图就绪，未就绪实体不进收集
+- 🎬 `SceneStreamingRequest`：`.scene` 包异步读盘 + 主线程解析两段式
+
+**快速导航：**
+```
+球/立方体/网格面板怎么写进文件？  → 本文 §2 *.geo.toml 规约
+几何+材质怎么一步绑定？           → 本文 §3 *.primitive.toml 规约
+上层只给一个路径就能建实体？       → RenderableBuilder::WithPrimitiveAssetPath
+模型文件太大卡住启动？             → 本文 §5 异步流送（GeometryStreamingSystem）
+场景包读盘卡主线程？               → 本文 §6 SceneStreamingRequest
+资源没加载好会不会画出错？         → 本文 §4 CanRender 双重门禁
+→ 使用这个SKILL
+```
+
+---
+
 ### 0.5 [SKILL_CMMATH_REFERENCE.md](SKILL_CMMATH_REFERENCE.md)
 **适用：向量、矩阵、投影/视图矩阵、四元数、变换（Transform）、几何体（AABB/OBB/Frustum）等数学运算**
 

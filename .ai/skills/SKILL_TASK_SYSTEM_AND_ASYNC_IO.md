@@ -291,6 +291,25 @@ ctest --test-dir build -C Debug -R "^LoadedFileManagerTest$" --output-on-failure
 | `TextureManager` | `inc/hgl/graph/module/TextureManager.h` | 句柄表所有者：`CreateTextureAsset` / `WrapTextureAsset` / `RegisterTextureFilename` |
 | `TextureStreamingSystem` | `inc/hgl/ecs/systems/render/TextureStreamingSystem.h` | ECS 系统：扫句柄表 → 提读盘请求 → 提交 GPU 上传 → 回填句柄 |
 
+### 9.0 几何侧同构管线（2026-10-29 补）
+
+几何走的是**同一台读盘底座 + 同一套句柄状态机**，只是主线程那一步从「提交 GPU 上传」
+换成了「解析 Minipack 建 buffer」：
+
+| 组件 | 位置 | 职责 |
+|---|---|---|
+| `GeometryAsset` | `inc/hgl/graph/asset/GeometryAsset.h` | 几何句柄：内置参数化创建即 `Resident`，文件来源 `MetaOnly` → `Loading` → `Resident` |
+| `GeometryAssetRegistry` | `inc/hgl/graph/asset/GeometryAssetRegistry.h` | 句柄表所有者（挂 `GraphicsContext`，拥有句柄及其 `Geometry*`） |
+| `GeometryStreamingSystem` | `inc/hgl/ecs/systems/render/GeometryStreamingSystem.h` | ECS 系统：扫句柄表 → 提读盘请求 → 主线程解析建 buffer → 回填句柄 |
+| `PrimitiveAssetRegistry` | `inc/hgl/graph/asset/PrimitiveAssetRegistry.h` | 把「几何 + 配方」装配成 `PrimitiveAsset`（`*.primitive.toml`） |
+
+`PrimitiveState::CanRender` 因此是**双重门禁**：几何 `IsGeometryReady()` **且** 材质必需
+贴图 `IsReady()`。配置规范与用法见
+[SKILL_GEOMETRY_ASSET_TOML.md](SKILL_GEOMETRY_ASSET_TOML.md)。
+
+场景包（`.scene`）的读盘也可异步：`SceneStreamingRequest`（`inc/hgl/graph/mesh/SceneStreaming.h`）
+分「后台读盘 → 主线程 `Build()` 解析」两段，`Pump()` 由上面两个流送系统顺带驱动。
+
 ### 9.1 唯一接口：材质只收句柄
 
 纹理绑定是**材质原型（`MaterialRecipe`）的固有属性**，不是实体的属性 —— 同一个配方

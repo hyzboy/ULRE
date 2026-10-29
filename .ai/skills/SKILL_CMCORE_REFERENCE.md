@@ -21,23 +21,27 @@
 
 ## 1. 线程/并发（Threading）
 
+并发相关头文件按职责分层：`hgl/sync/` 放锁、信号量、条件变量和原子类型；`hgl/concurrency/` 放跨线程通信队列及缓冲区；`hgl/thread/` 放线程生命周期和工作池；`hgl/event/` 定义可执行动作，`hgl/async/` 提供异步事件消费器。旧路径与旧名称不再提供兼容转发，请新代码直接使用以下新路径与符号。
+
 ### 1.1 原子类型 `Atomic.h` → 替代 `<atomic>`
 
 ```cpp
 #include <hgl/sync/Atomic.h>
 
-// 原子类型（封装 std::atomic，允许此头文件内部使用）
+// CN: atom<T> 是 HGL 原子类型入口；原子性只保护该变量，不会自动保护相关复合数据。
+// EN: atom<T> is the HGL atomic type; atomicity protects this variable only, not related compound data.
 hgl::atom<int>   counter{0};
 hgl::atom_bool   flag{false};
 hgl::atom_int    index{0};
 hgl::atom_int32  ref_cnt{1};
 hgl::atom_uint64 timestamp{0};
 
-// 用法与 std::atomic 一致
-counter.fetch_add(1, std::memory_order_acq_rel);
+// CN: 原子读写；若多个原子变量之间存在依赖关系，需另外分析并选择合适的内存序。
+// EN: Atomic operations; analyze dependencies across variables and select the appropriate memory order.
+counter.fetch_add(1);
 bool prev = flag.exchange(true);
-int val = index.load(std::memory_order_acquire);
-index.store(42, std::memory_order_release);
+int val = index.load();
+index.store(42);
 ```
 
 可用别名：`atom_bool`, `atom_char`, `atom_uchar`, `atom_int`, `atom_uint`, `atom_int32`, `atom_uint32`, `atom_int64`, `atom_uint64`, `atom_float`
@@ -48,33 +52,40 @@ index.store(42, std::memory_order_release);
 
 ```cpp
 #include <hgl/thread/Thread.h>
+#include <hgl/time/Time.h>
 
-// 继承 Thread，重写 Execute()
+// CN: 继承 Thread 并重写 Execute。
+// EN: Derive from Thread and override Execute.
 class MyThread : public hgl::Thread
 {
     OBJECT_LOGGER
 public:
     bool Execute() override
     {
-        // 在这里写线程循环体，返回 true 继续，返回 false 退出
+        // CN: 返回 true 表示允许下一轮；请求停止后应尽快从工作循环返回。
+        // EN: Return true to permit another iteration; exit promptly after stop is requested.
         LogInfo(u8"线程帧执行");
+        hgl::SleepSecond(0.01);
         return true;
     }
 };
 
-// 使用
-MyThread *t = new MyThread();
-t->Start();         // 启动线程
+// CN: 创建方负责线程对象的生命周期，不能在线程运行时销毁。
+// EN: The creator owns the thread object's lifetime and must not destroy it while running.
+MyThread thread;
+thread.Start();              // CN: 启动线程。 EN: Start the thread.
 // ...
-t->StopAndJoin();      // 请求协作式停止并等待退出
-// Thread 默认在退出时自动 delete 自身（DeletedAfterExit()=true）
+thread.StopAndJoin();        // CN: 请求协作式停止并等待结束、回收平台句柄。 EN: Request cooperative stop, wait for exit, and reclaim the platform handle.
 
-// 多线程管理
+// CN: 管理器只借用线程指针，不拥有或销毁线程对象。
+// EN: The manager borrows thread pointers and does not own or delete the objects.
+MyThread first;
+MyThread second;
 hgl::MultiThreadManage<MyThread> mgr;
-mgr.Add(new MyThread());
-mgr.Add(new MyThread());
-mgr.Start();        // 启动所有线程
-mgr.Close();        // 等待所有线程退出
+mgr.Add(&first);
+mgr.Add(&second);
+mgr.Start();        // CN: 启动所有线程。 EN: Start all threads.
+mgr.Close();        // CN: 请求停止并 Join，然后清空指针集合。 EN: Request stop, join all threads, then clear the pointer set.
 ```
 
 ---
@@ -86,26 +97,28 @@ mgr.Close();        // 等待所有线程退出
 
 hgl::Mutex mutex;
 
-// 手动加锁/解锁
+// CN: 手动加锁和解锁。 EN: Lock and unlock manually.
 mutex.Lock();
 // ... 访问共享数据 ...
 mutex.Unlock();
 
-// 尝试加锁（非阻塞）
+// CN: 非阻塞尝试加锁。 EN: Try to acquire the lock without blocking.
 if (mutex.TryLock()) {
     // ... 
     mutex.Unlock();
 }
 
-// RAII 自动释放锁（替代 std::lock_guard）
+// CN: 使用 RAII 自动释放锁。 EN: Use RAII to release the lock automatically.
 {
-    hgl::MutexLock lock(&mutex);  // 构造时自动 Lock()
+    hgl::MutexLock lock(&mutex);  // CN: 构造时自动 Lock。 EN: Locks during construction.
     // ... 访问共享数据 ...
-}   // 析构时自动 Unlock()
+}   // CN: 析构时自动 Unlock。 EN: Unlocks during destruction.
 
 // 带数据的线程安全对象
 hgl::MutexObject<MyData> safe_obj;
-safe_obj->DoSomething();    // 通过 operator-> 访问数据（不加锁，需手动锁定）
+safe_obj.Lock();
+safe_obj->DoSomething();    // CN: operator-> 本身不加锁；调用方必须显式持锁。 EN: operator-> does not lock; the caller must hold the mutex explicitly.
+safe_obj.Unlock();
 ```
 
 ---
@@ -117,27 +130,27 @@ safe_obj->DoSomething();    // 通过 operator-> 访问数据（不加锁，需�
 
 hgl::RWLock rw;
 
-// 读锁（共享访问，多个读线程可同时持有）
+// CN: 读锁允许多个读线程同时持有。 EN: Multiple reader threads may hold a read lock concurrently.
 rw.ReadLock();
 // ... 只读访问 ...
 rw.ReadUnlock();
 
-// 写锁（独占访问）
+// CN: 写锁提供独占访问。 EN: A write lock provides exclusive access.
 rw.WriteLock();
 // ... 修改数据 ...
 rw.WriteUnlock();
 
-// RAII 读锁（替代 std::shared_lock）
+// CN: 使用 RAII 管理读锁。 EN: Manage the read lock with RAII.
 {
-    hgl::ReadLockGuard read_guard(rw);   // 构造时 ReadLock()
+    hgl::ReadLockGuard read_guard(rw);   // CN: 构造时获取 ReadLock。 EN: Acquires the read lock on construction.
     // ...
-}   // 析构时 ReadUnlock()
+}   // CN: 析构时 ReadUnlock。 EN: Releases the read lock on destruction.
 
-// RAII 写锁（替代 std::unique_lock<shared_mutex>）
+// CN: 使用 RAII 管理写锁。 EN: Manage the write lock with RAII.
 {
-    hgl::WriteLockGuard write_guard(rw); // 构造时 WriteLock()
+    hgl::WriteLockGuard write_guard(rw); // CN: 构造时获取 WriteLock。 EN: Acquires the write lock on construction.
     // ...
-}   // 析构时 WriteUnlock()
+}   // CN: 析构时 WriteUnlock。 EN: Releases the write lock on destruction.
 ```
 
 ---
@@ -147,15 +160,15 @@ rw.WriteUnlock();
 ```cpp
 #include <hgl/sync/Semaphore.h>
 
-hgl::Semaphore sem(10);  // 初始容量 10
+hgl::Semaphore sem(10);  // CN: 最大许可数为 10，初始可用许可数为 0。 EN: Maximum count is 10; initially there are no permits.
 
-// 生产者
-sem.Post(1);                // 发送 1 个信号
+// CN: 生产者发布许可。 EN: Producer posts a permit.
+sem.Post(1);                // CN: 发布 1 个许可。 EN: Post one permit.
 
-// 消费者
-sem.Acquire();              // 阻塞等待一个信号
-sem.Acquire(5.0);           // 等待最多 5 秒
-bool ok = sem.TryAcquire(); // 非阻塞尝试
+// CN: 消费者获取许可。 EN: Consumer acquires permits.
+sem.Acquire();              // CN: 阻塞等待一个许可。 EN: Block until one permit is available.
+sem.Acquire(5.0);           // CN: 最多等待 5 秒。 EN: Wait up to five seconds.
+bool ok = sem.TryAcquire(); // CN: 非阻塞尝试。 EN: Try without blocking.
 ```
 
 ---
@@ -168,14 +181,23 @@ bool ok = sem.TryAcquire(); // 非阻塞尝试
 hgl::Mutex mutex;
 hgl::CondVar cond;
 
-// 等待线程
+// CN: 等待线程：条件状态由同一把互斥锁保护，并在 while 循环中重复检查谓词，
+//     因为通知可能早到，也可能发生虚假唤醒。
+// EN: Waiter: protect the predicate with the same mutex and recheck it in a while loop,
+//      because notifications may arrive early and wakeups may be spurious.
 mutex.Lock();
-cond.Wait(&mutex);          // 释放 mutex 并等待信号，唤醒后重新持有 mutex
+while (!ready)
+    cond.Wait(&mutex);      // CN: 等待时释放 mutex，返回前重新持有。 EN: Releases the mutex while waiting and reacquires it before returning.
 mutex.Unlock();
 
-// 通知线程
-cond.Signal();              // 唤醒一个等待线程
-cond.Broadcast();           // 唤醒所有等待线程
+// CN: 通知线程在持锁时更新谓词并发送通知。
+// EN: Notifier updates the predicate and signals while holding the mutex.
+mutex.Lock();
+ready = true;                // CN: 更新受 mutex 保护的谓词。 EN: Update the mutex-protected predicate.
+cond.Signal();               // CN: 唤醒一个等待线程。 EN: Wake one waiter.
+mutex.Unlock();
+// CN: 若需唤醒所有等待者，可在同一临界区将 Signal 换为 Broadcast。
+// EN: To wake all waiters, replace Signal with Broadcast in the same critical section.
 ```
 
 ---
@@ -192,22 +214,23 @@ cond.Broadcast();           // 唤醒所有等待线程
 hgl::SpscQueue<uint32> samples(1024);
 samples.Push(42);
 uint32 sample;
-if (samples.Pop(sample)) { /* consume sample */ }
+if (samples.Pop(sample)) { /* CN: 已成功取出一个值，可在此处理。 EN: A value was popped successfully and can now be processed. */ }
 
 hgl::SwapMailbox<uint32> mailbox;
 mailbox.Post(7);
 if (mailbox.TrySwap()) {
     hgl::ValueArray<uint32> &batch = mailbox.GetReceive();
-    // Process batch, then release the receive buffer.
+    // CN: 批次处理完毕后必须释放接收缓冲区，不要跨释放保存其引用。
+    // EN: Release the receive buffer after processing; do not retain its reference past release.
     mailbox.ReleaseReceive();
 }
 
 hgl::TaskQueue<uint32> tasks;
 tasks.Submit(9);
-tasks.Close(); // Reject new submissions; consumers can drain accepted work.
+tasks.Close(); // CN: 拒绝新提交；消费者仍可处理已接受任务。 EN: Reject new submissions; consumers can drain accepted tasks.
 ```
 
-`SpscQueue<T>` requires trivially copyable values and exactly one producer and one consumer. `SwapMailbox<T>` receive data remains active until `ReleaseReceive()`; close it to wake a waiting consumer.
+`SpscQueue<T>` 要求 T 可平凡复制，且严格只有一个生产者和一个消费者；队列满时 Push 返回 false，不覆盖旧值。`SwapMailbox<T>` 的接收批次在调用 `ReleaseReceive()` 前持续占用接收缓冲区；`Close()` 会拒绝新投递并唤醒等待者，但保留已接受数据供消费者排空。`TaskQueue<T>` 关闭后同样可以排空已有任务；`CloseAndCancel()` 取出的未处理任务由调用方负责处置。
 
 ---
 
@@ -218,12 +241,13 @@ tasks.Close(); // Reject new submissions; consumers can drain accepted work.
 
 hgl::AsyncEventQueue queue;
 hgl::AsyncEventThread worker(&queue);
-worker.Start();
+worker.Start(); // CN: 由唯一消费者线程批量处理事件。 EN: Start the single consumer thread that processes event batches.
 
-// EventAction objects are borrowed and must outlive processing.
+// CN: 队列只借用事件指针；对象须活到 Execute 返回，且由调用方销毁。
+// EN: The queue borrows the event pointer; the caller owns it and keeps it alive until Execute returns.
 hgl::EventAction *event = /* caller-owned action */;
 hgl::PostAsyncEvent(&queue, event);
-worker.StopAndJoin();
+worker.StopAndJoin(); // CN: 关闭邮箱并排空已接受批次后结束。 EN: Close the mailbox, drain accepted batches, and join.
 ```
 
 ### 1.9 环形缓冲 `RingBuffer.h`
@@ -231,15 +255,17 @@ worker.StopAndJoin();
 ```cpp
 #include <hgl/concurrency/RingBuffer.h>
 
-hgl::RingBuffer<uint8> ring(4096);      // 4096字节环形缓冲
+hgl::RingBuffer<uint8> ring(4096);      // CN: 固定 4096 个 uint8 槽位。 EN: Fixed capacity of 4096 uint8 slots.
 
-// 写线程
+// CN: Safe* 是便捷的一次性加锁访问；分段读写须配对 Safe*Start 与 Safe*End。
+// EN: Safe* provides single-call locked access; pair segmented operations with Safe*Start and Safe*End.
 ring.SafeWrite(data, size);
 
-// 读线程  
 ring.SafeRead(buf, size);
 int avail = ring.SafeGetReadSize();
 ```
+
+`RingBuffer` 的基础 Start/Read/End 接口不自动加锁；多个线程共享时使用 Safe* 接口。分段访问只有在 Start 返回正值后才持有锁，必须配对 End。安全 TryStart 返回负值表示锁忙、零表示无可用数据或空间，这两种情况下都不可再调用 End。`RingInputStream` 与 `RingOutputStream` 不拥有底层缓冲区。
 
 ---
 
