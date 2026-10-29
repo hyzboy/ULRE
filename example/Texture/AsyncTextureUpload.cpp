@@ -24,7 +24,7 @@
 #include <hgl/graph/module/TextureLoadCommitter.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
-#include <hgl/graph/module/SamplerManager.h>
+#include <hgl/graph/asset/TextureAsset.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/log/Log.h>
@@ -127,9 +127,23 @@ class AsyncTextureUploadApp : public WorkObject
 public:
     void OnHighTextureReady(Texture *tex)
     {
-        if (tex && quad_primitive && sampler)
+        if (tex && quad_primitive && quad_material_data)
         {
-            quad_material_data->SetTextureResource("base_color", tex, sampler);
+            // 运行期换图 = 换配方绑定：纹理是配方（材质原型）的固有属性，
+            // 因此这里给实体挂一份**配方覆盖**（与共享 recipe 同名 upsert），
+            // 而不是回到实体级的裸纹理授权。采样器由 Bindless 预设统一管理。
+            TextureAsset *switched = GetManager<TextureManager>()->WrapTextureAsset(tex);
+
+            if (!switched)
+                return;
+
+            mtl::MaterialRecipe switched_recipe = quad_recipe;
+
+            if (!switched_recipe.AddTexture("base_color", switched, true))
+                return;
+
+            quad_material_data->SetRecipe(switched_recipe);
+
             switched_texture = true;
             GLogInfo(u8"[AsyncTextureUpload] Dynamically switched Quad texture to loaded high priority lena.Tex2D!");
         }
@@ -144,7 +158,7 @@ private:
     hgl::ecs::MaterialData *quad_material_data = nullptr;
 
     Texture2D *         placeholder_tex     = nullptr;
-    Sampler *           sampler             = nullptr;
+    TextureAsset *      placeholder_asset   = nullptr;   ///< 占位纹理句柄（配方 base_color 的初值）
     mtl::MaterialRecipe quad_recipe{};
     PrimitiveAsset      quad_asset{};
 
@@ -167,9 +181,8 @@ private:
 private:
     bool InitMaterial()
     {
-        auto *sampler_manager = GetManager<SamplerManager>();
         auto *tex_manager = GetManager<TextureManager>();
-        if (!sampler_manager || !tex_manager)
+        if (!tex_manager)
             return false;
 
         // 占位纹理走同步加载：首帧必须有材质可用，且它很小、不构成卡顿
@@ -180,8 +193,12 @@ private:
             return false;
         }
 
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
+        // 纹理绑定写进配方（材质原型固有属性）；采样器由 Bindless 预设统一管理。
+        placeholder_asset = tex_manager->WrapTextureAsset(placeholder_tex);
+        if (!placeholder_asset)
+            return false;
+
+        if (!quad_recipe.AddTexture("base_color", placeholder_asset, true))
             return false;
 
         // 预分配 Bindless Handle 并绑定占位纹理
@@ -244,11 +261,7 @@ private:
         quad_transform.SetMobility(Mobility::Static);
 
         quad_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
-        if (!quad_material_data->SetTextureResource(
-                "base_color",
-                placeholder_tex,
-                sampler))
-            return false;
+        // 纹理已由配方声明（quad_recipe.AddTexture），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

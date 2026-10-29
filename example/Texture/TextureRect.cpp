@@ -7,7 +7,6 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 
 // ECS headers
@@ -64,7 +63,6 @@ private:
     Entity *            rect_entity         = nullptr;
 
     TextureAsset* texture = nullptr;
-    Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
 
@@ -72,16 +70,17 @@ private:
 
     bool InitMaterial()
     {
-        auto* sampler_manager = GetManager<SamplerManager>();
         auto* tex_manager = GetManager<TextureManager>();
-        if (!sampler_manager || !tex_manager )
+        if (!tex_manager)
             return false;
 
         texture = tex_manager->CreateTextureAsset(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
-        sampler=sampler_manager->CreateSampler();
+        // 纹理是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理，材质侧不再持有。
+        if(!rect_recipe.AddTexture("base_color",texture,true))
+            return(false);
 
         return(true);
     }
@@ -122,7 +121,8 @@ private:
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
         auto rect_transform = ecs_world->GetTransform(ecs_world->CreateTransform(rect_entity->GetEntityID(), Mobility::Static));
         auto rect_primitive = rect_entity->GetContext()->GetOrCreateGeometryData(rect_entity);
-        hgl::ecs::MaterialData *material_data_comp = rect_entity->GetContext()->GetOrCreateMaterialData(rect_entity);
+        // 材质数据层组件（配方/绑定/行号的承载者）——渲染侧需要它存在
+        rect_entity->GetContext()->GetOrCreateMaterialData(rect_entity);
 
         rect_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         rect_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -130,14 +130,7 @@ private:
         rect_transform.SetMobility(Mobility::Static);
 
         rect_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(rect_primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
-        if (!material_data_comp->SetTextureResource(
-                "base_color",
-                texture,
-                sampler,
-                MaterialTextureResourceKind::Texture2D,
-                /*array_layer*/ 0,
-                /*required*/ true))
-            return false;
+        // 纹理已由配方声明（rect_recipe.AddTexture），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

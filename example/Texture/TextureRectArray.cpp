@@ -6,7 +6,6 @@
 #include<hgl/filesystem/Filename.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/math/Vector.h>
@@ -78,9 +77,9 @@ private:
     Texture2DArray *    texture             = nullptr;
     /// 材质授权统一走句柄：上面的数组纹理有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
     TextureAsset *      texture_asset       = nullptr;
-    Sampler *           sampler             = nullptr;
-    graph::mtl::MaterialRecipe rect_recipe{};
-    PrimitiveAsset      rect_asset{};
+    /// 每格一个配方：四格是同一张数组纹理的不同 layer，图层号是配方的固有属性。
+    graph::mtl::MaterialRecipe rect_recipe[TexCount];
+    PrimitiveAsset      rect_asset[TexCount];
 
     struct
     {
@@ -120,16 +119,17 @@ private:
 
     bool InitMaterial()
     {
-        auto* sampler_manager = GetManager<SamplerManager>();
-        if (!sampler_manager)
-            return false;
+        for(uint32_t i=0;i<TexCount;i++)
+        {
+            rect_recipe[i].recipe_name = "TextureRectArray.UnlitTexture";
+            rect_recipe[i].mtl_def_id = "UnlitTexture";
+            rect_recipe[i].render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
+            rect_recipe[i].vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
 
-        sampler=sampler_manager->CreateSampler();
-
-        rect_recipe.recipe_name = "TextureRectArray.UnlitTexture";
-        rect_recipe.mtl_def_id = "UnlitTexture";
-        rect_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
+            // 纹理 + 图层都是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理。
+            if(!rect_recipe[i].AddTexture("base_color",texture_asset,true,i))
+                return(false);
+        }
 
         return(true);
     }
@@ -152,7 +152,10 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-        rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
+
+        // 四个配方共享同一份几何体：差别只在图层号（配方固有属性）。
+        for(uint32_t i=0;i<TexCount;i++)
+            rect_asset[i] = PrimitiveAsset(geometry, &rect_recipe[i], PrimitiveType::Triangles);
 
         return(true);
     }
@@ -172,22 +175,16 @@ private:
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
             auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(render_obj[i].entity->GetEntityID(), Mobility::Static));
             auto primitive = render_obj[i].entity->GetContext()->GetOrCreateGeometryData(render_obj[i].entity);
-            hgl::ecs::MaterialData *material_data_comp = render_obj[i].entity->GetContext()->GetOrCreateMaterialData(render_obj[i].entity);
+            // 材质数据层组件（配方/绑定/行号的承载者）——渲染侧需要它存在
+            render_obj[i].entity->GetContext()->GetOrCreateMaterialData(render_obj[i].entity);
 
             transform.SetLocalPosition(glm::vec3(offset.x, offset.y, offset.z));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
-            if (!material_data_comp->SetTextureResource(
-                    "base_color",
-                    texture_asset,
-                    sampler,
-                    hgl::ecs::MaterialTextureResourceKind::
-                        Texture2DArray,
-                    i))
-                return false;
+            primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset[i]);
+            // 纹理与图层已由配方声明（rect_recipe[i].AddTexture），实体端不再重复绑定
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 

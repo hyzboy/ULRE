@@ -6,7 +6,6 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 
 // ECS headers
@@ -69,7 +68,6 @@ private:
     Entity *            quad_entity         = nullptr;
 
     TextureAsset* texture = nullptr;
-    Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe quad_recipe{};
     PrimitiveAsset      quad_asset{};
 
@@ -77,16 +75,17 @@ private:
 
     bool InitMaterial()
     {
-        auto* sampler_manager = GetManager<SamplerManager>();
         auto* tex_manager = GetManager<TextureManager>();
-        if (!sampler_manager || !tex_manager)
+        if (!tex_manager)
             return false;
 
         texture = tex_manager->CreateTextureAsset(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
-        sampler=sampler_manager->CreateSampler();
+        // 纹理是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理，材质侧不再持有。
+        if(!quad_recipe.AddTexture("base_color",texture,true))
+            return(false);
 
         return(true);
     }
@@ -127,7 +126,8 @@ private:
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = ecs_world->GetTransform(ecs_world->CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
         auto quad_primitive = quad_entity->GetContext()->GetOrCreateGeometryData(quad_entity);
-        hgl::ecs::MaterialData *material_data_comp = quad_entity->GetContext()->GetOrCreateMaterialData(quad_entity);
+        // 材质数据层组件（配方/绑定/行号的承载者）——渲染侧需要它存在
+        quad_entity->GetContext()->GetOrCreateMaterialData(quad_entity);
 
         quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         quad_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -135,14 +135,7 @@ private:
         quad_transform.SetMobility(Mobility::Static);
 
         quad_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
-        if (!material_data_comp->SetTextureResource(
-                "base_color",
-                texture,
-                sampler,
-                MaterialTextureResourceKind::Texture2D,
-                /*array_layer*/ 0,
-                /*required*/ true))
-            return false;
+        // 纹理已由配方声明（quad_recipe.AddTexture），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

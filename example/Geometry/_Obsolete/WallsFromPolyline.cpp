@@ -6,8 +6,8 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -56,8 +56,8 @@ private:
     graph::ssbo::PBRSurfaceRow material_data;
     graph::mtl::MaterialRecipe wall_recipe{};
     MaterialDataAccessor mtl_data_ssbo_accessor{};
-    Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
+    TextureAsset *base_color_asset = nullptr;   ///< 材质侧统一句柄
 
     VertexDataManager *mesh_vdm = nullptr;
 
@@ -66,7 +66,6 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
     }
 
@@ -112,7 +111,7 @@ public:
             transform.SetMobility(hgl::ecs::Mobility::Static);
 
             prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&wall_meshes[i]);
-            material_data_comp->SetTextureResource("base_color", base_color_texture, sampler);
+            // 纹理已由配方声明（wall_recipe.AddTexture），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource wall_struct{};
             wall_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(wall_struct);
@@ -125,8 +124,7 @@ public:
     bool Init() override
     {
         auto* texture_manager = GetManager<TextureManager>();
-        auto* sampler_manager = GetManager<SamplerManager>();
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager)
             return false;
 
         auto* geometry_manager = GetManager<GeometryManager>();
@@ -162,8 +160,9 @@ public:
         if (!base_color_texture)
             return false;
 
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
+        // 纹理是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理。
+        base_color_asset = texture_manager->WrapTextureAsset(base_color_texture);
+        if (!base_color_asset || !wall_recipe.AddTexture("base_color", base_color_asset, true))
             return false;
 
         // Bindless registration deferred until ECS context is ready.

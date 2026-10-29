@@ -21,8 +21,8 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/TextureLoadCommitter.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/io/LoadStringList.h>
 #include<hgl/utf.h>
@@ -127,7 +127,7 @@ private:
     ECSContext *        ecs_world  = nullptr;
 
     Texture2DArray *    icon_array = nullptr;
-    Sampler *           sampler    = nullptr;
+    TextureAsset *      icon_handle = nullptr;  ///< 数组纹理的统一句柄（材质侧只认句柄）
     graph::mtl::MaterialRecipe icon_recipe{};
     PrimitiveAsset      icon_asset{};
 
@@ -184,6 +184,11 @@ private:
         if (!icon_array)
             return false;
 
+        // 数组纹理一次建满：句柄也只建一次，图层号在每格的配方里给。
+        icon_handle = tex_manager->WrapTextureAsset(icon_array);
+        if (!icon_handle)
+            return false;
+
         GLogInfo(u8"[IconWall] Texture2DArray 已建：%ux%u × %u 层 PF_BC7UN",
                  kIconSize, kIconSize, kIconCount);
         return true;
@@ -191,12 +196,6 @@ private:
 
     bool InitMaterial()
     {
-        auto *sampler_manager = GetManager<SamplerManager>();
-        if (!sampler_manager)
-            return false;
-
-        sampler = sampler_manager->CreateSampler();
-
         icon_recipe.recipe_name = "TextureArrayStreaming.UnlitTexture";
         icon_recipe.mtl_def_id  = "UnlitTexture";
         icon_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
@@ -434,13 +433,14 @@ bool TextureArrayStreamingApp::AttachIcon(const uint32_t index,const U8String &i
 
     ecs_world->GetOrCreateGeometryData(entity)->SetPrimitiveAsset(&icon_asset);
 
-    if (!ecs_world->GetOrCreateMaterialData(entity)->SetTextureResource(
-            "base_color",
-            icon_array,
-            sampler,
-            MaterialTextureResourceKind::Texture2DArray,
-            index))
+    // 每格的差别只有「数组图层号」——它是配方的固有属性，所以给该实体挂一份配方覆盖。
+    // 采样器由 Bindless 预设统一管理，这里不再有 sampler。
+    graph::mtl::MaterialRecipe layer_recipe = icon_recipe;
+
+    if (!layer_recipe.AddTexture("base_color", icon_handle, true, index))
         return false;
+
+    ecs_world->GetOrCreateMaterialData(entity)->SetRecipe(layer_recipe);
 
     ++loaded_count;
 

@@ -24,8 +24,8 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/math/Vector.h>
@@ -122,9 +122,12 @@ private:
     Texture2D *         mip_level_texture_2d     = nullptr;    ///< A 行：RGBA8，9 级
     Texture2DArray *    mip_level_array_rgba8    = nullptr;    ///< B 行：1 层 x 9 级（RGBA8）
     Texture2DArray *    mip_level_array_bc7      = nullptr;    ///< C 行：1 层 x 7 级（BC7）
-    Sampler *           sampler                  = nullptr;
 
-    graph::mtl::MaterialRecipe  ruler_recipe{};
+    /// 每行的纹理句柄：材质侧只认句柄，采样器由 Bindless 预设统一管理。
+    TextureAsset *      row_texture[3]{};
+
+    /// 每行一个配方：三行是**三张不同纹理**，纹理身份是配方的固有属性。
+    graph::mtl::MaterialRecipe  ruler_recipe[3];
     PrimitiveAsset              ruler_asset[3]{};
 
     Entity *            row_entities[3]{};
@@ -229,23 +232,31 @@ private:
         tex_manager->Release(bc7_probe);
         bc7_probe = nullptr;
 
-        return true;
+        // 三行纹理各自包成句柄：材质只收句柄，包装句柄的身份自动退回 `texid:<n>`。
+        row_texture[0] = tex_manager->WrapTextureAsset(mip_level_texture_2d);
+        row_texture[1] = tex_manager->WrapTextureAsset(mip_level_array_rgba8);
+        row_texture[2] = tex_manager->WrapTextureAsset(mip_level_array_bc7);
+
+        return row_texture[0] && row_texture[1] && row_texture[2];
     }
 
     bool InitMaterial()
     {
-        auto *sampler_manager = GetManager<SamplerManager>();
+        for (uint32_t row = 0; row < 3; row++)
+        {
+            // UnlitTexture：2D 模式专用，只采样 base_color，无光照干扰 → 屏幕上就是资产本身的颜色
+            ruler_recipe[row].recipe_name = "TextureMipLevels.UnlitTexture";
+            ruler_recipe[row].mtl_def_id = "UnlitTexture";
+            ruler_recipe[row].render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
+            ruler_recipe[row].vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
 
-        if (!sampler_manager)
-            return false;
-
-        sampler = sampler_manager->CreateSampler();
-
-        // UnlitTexture：2D 模式专用，只采样 base_color，无光照干扰 → 屏幕上就是资产本身的颜色
-        ruler_recipe.recipe_name = "TextureMipLevels.UnlitTexture";
-        ruler_recipe.mtl_def_id = "UnlitTexture";
-        ruler_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        ruler_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
+            // 纹理是材质原型固有属性 ⇒ 写进配方；三行共用 layer=0（A 行 2D 会被引擎包成单层数组）
+            if (!ruler_recipe[row].AddTexture("base_color", row_texture[row], true, 0))
+            {
+                GLogError("InitMaterial: AddTexture failed (row=%u)", row);
+                return false;
+            }
+        }
 
         return true;
     }
@@ -284,7 +295,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        ruler_asset[row] = PrimitiveAsset(geometry, &ruler_recipe, PrimitiveType::Triangles);
+        ruler_asset[row] = PrimitiveAsset(geometry, &ruler_recipe[row], PrimitiveType::Triangles);
 
         return true;
     }
@@ -307,32 +318,13 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto primitive = row_entities[row]->GetContext()->GetOrCreateGeometryData(row_entities[row]);
-            hgl::ecs::MaterialData *material_data_comp = row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]);
+            // 材质数据层组件（配方/绑定/行号的承载者）——渲染侧需要它存在
+            row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]);
             primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
 
             row_primitives[row] = primitive;
 
-            if (row == 0)
-            {
-                // A 行：普通 Texture2D（会被引擎包成单层 2D_ARRAY，layer=0）
-                if (!material_data_comp->SetTextureResource(
-                        "base_color",
-                        mip_level_texture_2d,
-                        sampler))
-                    return false;
-            }
-            else
-            {
-                // B/C 行：真数组，1 层，layer=0
-                if (!material_data_comp->SetTextureResource(
-                        "base_color",
-                        (row == 1) ? (Texture *)mip_level_array_rgba8 : (Texture *)mip_level_array_bc7,
-                        sampler,
-                        hgl::ecs::MaterialTextureResourceKind::Texture2DArray,
-                        0))
-                    return false;
-            }
-
+            // 纹理已由配方声明（ruler_recipe[row].AddTexture），实体端不再重复绑定
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
@@ -412,14 +404,16 @@ public:
 
     ~TextureMipLevelsApp()
     {
-        // 所有权单点：mip_level_* 纹理由 TextureManager 持有、sampler 由 SamplerManager 持有、
+        // 所有权单点：mip_level_* 纹理由 TextureManager 持有、句柄归 TextureManager 的句柄表、
         // ecs_world 由框架持有。示例只做观察，析构不得 delete / SAFE_CLEAR ——
         // 否则管理器收尾时会二次 delete（实测 AV @ 0xFEEEFEEE，
         // 栈 ~Sampler ← ObjectManagerImpl::Clear ← SamplerManager::Release ← ~GraphModuleManager）。
         mip_level_texture_2d  = nullptr;
         mip_level_array_rgba8 = nullptr;
         mip_level_array_bc7   = nullptr;
-        sampler               = nullptr;
+        row_texture[0]        = nullptr;
+        row_texture[1]        = nullptr;
+        row_texture[2]        = nullptr;
         ecs_world             = nullptr;
     }
 
