@@ -32,6 +32,7 @@
 #include <hgl/ecs/support/CPUCullReferenceSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/TextureStreamingSystem.h>
+#include <hgl/ecs/systems/render/GeometryStreamingSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/ViewUBOCommitSystem.h>
@@ -81,6 +82,11 @@ namespace
         // 就绪后 CanRender 会自动放行。相位 RenderPreBeginFrame，早于引擎的
         // UpdateUploadQueue，所以本帧发起、下帧生效。
         EnsureSystem<hgl::ecs::TextureStreamingSystem>(ctx);
+
+        // 几何流式加载：把图元资产里"只给了路径"的几何句柄在后台读盘 + 主线程建 buffer。
+        // 与纹理流送共用同一台 LoadedFileManager（设备级串行读盘），相位相同；
+        // 就绪前 CanRender 的几何门禁会拦住图元。
+        EnsureSystem<hgl::ecs::GeometryStreamingSystem>(ctx);
 
         // Register the Primitive pipeline and its thin proxy systems directly
         // (the RenderPipelineGroup container abstraction was removed — it had

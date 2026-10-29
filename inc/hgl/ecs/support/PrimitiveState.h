@@ -47,4 +47,12 @@ namespace hgl::ecs
      */
     bool HasPendingMaterialResources(const Entity *entity);
 
+    /**
+     * 实体的**几何**是否仍未就绪（几何资产句柄处于 `MetaOnly`/`Loading`）。
+     *
+     * 与 `HasPendingMaterialResources` 分开是有意的：驱动方要能区分「等几何」与
+     * 「等贴图」，从而给出不同的诊断日志（前者通常是模型文件太慢/太大）。
+     */
+    bool HasPendingGeometryResource(const Entity *entity);
+
 }//namespace hgl::ecs

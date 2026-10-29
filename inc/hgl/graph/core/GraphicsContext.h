@@ -20,6 +20,8 @@
 
 #include <hgl/vk/VKDevice.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
+#include <hgl/graph/asset/GeometryAssetRegistry.h>
+#include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 
 namespace hgl
 {
@@ -91,6 +93,17 @@ namespace hgl::graph
         mtl::MaterialRecipeRegistry material_recipe_registry_;
         bool default_material_recipes_loaded_ = false;
 
+        /// 几何资产句柄表（设备级，拥有句柄及其 Geometry）。
+        /// 必须在 `GeometryManager` 之后创建、在其之前销毁：句柄里的 Geometry
+        /// 析构时会向 MeshDrawParams 池归还行号，要求池仍存活。
+        GeometryAssetRegistry geometry_asset_registry_;
+        bool geometry_asset_registry_ready_ = false;
+
+        /// 图元资产绑定表（几何 + 配方）。持有的是两个注册器的裸观察指针，
+        /// 因此必须在它们清空之前先清空。
+        PrimitiveAssetRegistry primitive_asset_registry_;
+        bool primitive_asset_registry_ready_ = false;
+
     public:
         explicit GraphicsContext(VulkanDevice *dev);
         ~GraphicsContext();
@@ -155,6 +168,14 @@ namespace hgl::graph
                                          int *out_error_count = nullptr);
         const mtl::MaterialRecipe *FindMaterialRecipe(const char *name) const;
         const mtl::MaterialRecipe *FindOrLoadMaterialRecipe(const char *name);
+
+        /// 几何资产句柄表（`Initialize` 成功后可用；设备级，拥有句柄及其 Geometry）。
+        GeometryAssetRegistry *GetGeometryAssetRegistry() { return &geometry_asset_registry_; }
+        const GeometryAssetRegistry *GetGeometryAssetRegistry() const { return &geometry_asset_registry_; }
+
+        /// 图元资产绑定表（几何 + 配方），`GetOrLoad("*.primitive.toml")` 一步装配。
+        PrimitiveAssetRegistry *GetPrimitiveAssetRegistry() { return &primitive_asset_registry_; }
+        const PrimitiveAssetRegistry *GetPrimitiveAssetRegistry() const { return &primitive_asset_registry_; }
 
         /// 全局异步文件加载管理器（Initialize 后恒为有效，Shutdown 后为 nullptr）。
         /// 调用方只在主线程使用：Submit/Pump/Collect/Stop 有线程亲和性。

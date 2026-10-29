@@ -127,6 +127,15 @@ namespace hgl::graph
         if (!geometry_manager)
             return false;
 
+        // 几何资产句柄表：绑定设备与缓冲管理器，此后 `GetOrLoad` 即可直接用。
+        geometry_asset_registry_.SetTargets(device, buffer_manager);
+        geometry_asset_registry_ready_ = true;
+
+        // 图元资产绑定表：几何来自上面的句柄表，配方来自本上下文的配方注册器。
+        primitive_asset_registry_.SetSources(&geometry_asset_registry_,
+                                             &material_recipe_registry_);
+        primitive_asset_registry_ready_ = true;
+
         // 环境综合信息统一管理（sky 等）。必须在 BufferManager 之后创建：
         // default profile 在模块获得 GraphicsContext 时立即物化 sky UBO，
         // 保证任何 world（含离屏 RenderOnce）第一帧即拿到有效环境数据。
@@ -213,10 +222,27 @@ namespace hgl::graph
             SAFE_CLEAR(loaded_file_manager_)
         }
 
+        // 图元资产绑定表持有几何/配方注册器的裸指针 ⇒ 必须先于它们清空。
+        if (primitive_asset_registry_ready_)
+        {
+            primitive_asset_registry_.Clear();
+            primitive_asset_registry_.SetSources(nullptr, nullptr);
+            primitive_asset_registry_ready_ = false;
+        }
+
         // Recipe data contains TextureAsset observers owned by TextureManager.
         // Drop the cache before destroying the module manager that owns them.
         material_recipe_registry_.Clear();
         default_material_recipes_loaded_ = false;
+
+        // 几何资产句柄拥有各自的 Geometry，几何析构会向 MeshDrawParams 池归还行号，
+        // 因此必须在模块（含 GlobalSSBOBufferRegistry / GeometryManager）销毁之前清空。
+        if (geometry_asset_registry_ready_)
+        {
+            geometry_asset_registry_.Clear();
+            geometry_asset_registry_.SetTargets(nullptr, nullptr);
+            geometry_asset_registry_ready_ = false;
+        }
 
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
         // GraphModuleManager destructor will call Release() on all modules automatically

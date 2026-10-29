@@ -152,9 +152,11 @@ SET(GEOMETRY_MESH_FILES ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                         ${SG_INCLUDE_PATH}/mesh/Primitive.h
                         ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
                         ${SG_INCLUDE_PATH}/mesh/LoadStaticMesh.h
+                        ${SG_INCLUDE_PATH}/mesh/SceneStreaming.h
                         mesh/Primitive.cpp
                         mesh/StaticMesh.cpp
-                        mesh/LoadStaticMesh.cpp)
+                        mesh/LoadStaticMesh.cpp
+                        mesh/SceneStreaming.cpp)
 
 SOURCE_GROUP("6.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
 

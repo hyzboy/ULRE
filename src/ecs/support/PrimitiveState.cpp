@@ -74,9 +74,34 @@ namespace hgl::ecs
         if (!geometry || geometry->GetPrimitiveAsset() == nullptr)
             return false;
 
+        // 几何侧门禁：几何资产仍在后台读盘时该图元不进收集。
+        // 没有资产句柄的手工 `PrimitiveAsset(Geometry*, recipe)` 恒放行（`IsGeometryReady`
+        // 在无句柄时返回 true），因此既有示例行为不变。
+        if (!geometry->GetPrimitiveAsset()->IsGeometryReady())
+            return false;
+
         // 资源未就绪不渲染：贴图仍在流式加载时该图元不进收集（不占实例槽、不产生 DrawCall），
         // 等必需句柄全部 Resident 后 `authored_generation` 前进，本判据自动放行。
         return IsMaterialResourceReady(context, entity);
+    }
+
+    bool HasPendingGeometryResource(const Entity *entity)
+    {
+        if (!entity)
+            return false;
+
+        ECSContext *context = entity->GetContext();
+        if (!context)
+            return false;
+
+        const GeometryData *geometry = context->GetGeometryData(entity);
+
+        if (!geometry)
+            return false;
+
+        const hgl::graph::PrimitiveAsset *asset = geometry->GetPrimitiveAsset();
+
+        return asset && !asset->IsGeometryReady();
     }
 
     bool HasPendingMaterialResources(const Entity *entity)
