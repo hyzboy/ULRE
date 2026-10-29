@@ -82,9 +82,10 @@ private:
         if (!texture_manager
          || !material_data_ssbo_accessor)
             return false;
-        mesh_recipe.recipe_name = "06c.FullPrecisionLit.Lit";
-        mesh_recipe.mtl_def_id = "Lit";
-        mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("06c.FullPrecisionLit.Lit");
+        if (!loaded_recipe)
+            return false;
+        mesh_recipe = *loaded_recipe;
         if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 

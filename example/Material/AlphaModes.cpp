@@ -179,28 +179,16 @@ private:
     bool InitMaterial()
     {
         // 基础配方：Lit，实心（Opaque 就是它）
-        opaque_recipe.recipe_name = "AlphaModes.LitOpaque";
-        opaque_recipe.mtl_def_id  = "Lit";
-        opaque_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-
-        // 变体二：alpha 混合（其余同基础配方）
-        blend_recipe = opaque_recipe;
-        blend_recipe.recipe_name = "AlphaModes.LitAlphaBlend";
-        blend_recipe.render_state_overrides.pipeline_config = mtl::MakeAlpha3DConfig();
-
-        // 变体三：alpha test（固定阈值硬边丢弃；同样进生成的 GLSL）
-        alpha_test_recipe = opaque_recipe;
-        alpha_test_recipe.recipe_name = "AlphaModes.LitAlphaTest";
-        alpha_test_recipe.render_state_overrides.has_alpha_test = true;
-        alpha_test_recipe.render_state_overrides.alpha_test     = true;
-        alpha_test_recipe.render_state_overrides.has_alpha_cutoff = true;
-        alpha_test_recipe.render_state_overrides.alpha_cutoff     = ALPHA_TEST_CUTOFF;
-
-        // 变体四：dither 覆盖（逐像素阈值，用 dither 模拟 alpha_blend）
-        dither_recipe = opaque_recipe;
-        dither_recipe.recipe_name = "AlphaModes.LitAlphaDither";
-        dither_recipe.render_state_overrides.has_dither = true;
-        dither_recipe.render_state_overrides.dither     = true;
+        const mtl::MaterialRecipe *opaque_loaded = GetRecipe("AlphaModes.LitOpaque");
+        const mtl::MaterialRecipe *blend_loaded = GetRecipe("AlphaModes.LitAlphaBlend");
+        const mtl::MaterialRecipe *alpha_test_loaded = GetRecipe("AlphaModes.LitAlphaTest");
+        const mtl::MaterialRecipe *dither_loaded = GetRecipe("AlphaModes.LitAlphaDither");
+        if (!opaque_loaded || !blend_loaded || !alpha_test_loaded || !dither_loaded)
+            return false;
+        opaque_recipe = *opaque_loaded;
+        blend_recipe = *blend_loaded;
+        alpha_test_recipe = *alpha_test_loaded;
+        dither_recipe = *dither_loaded;
 
         // A3（AM_PARTIAL=1）：Lit + **不同顶点节点**（billboard）⇒ 不同 shader program
         // ⇒ 自成一批（接管须能处理多批异 program）。⚠ 2026-10-05：④「实例化项」类项已整体删除（无真实使用者）⇒ 该批不再被 guard 挡住 ⇒ A3 现为全量接管 5/5；「部分接管」判据改由 A4 批数超限（CV_STRESS=260）覆盖。
@@ -208,9 +196,11 @@ private:
 
         if (partial_enabled)
         {
-            partial_recipe = opaque_recipe;
-            partial_recipe.recipe_name = "AlphaModes.LitOpaqueBillboard";
-            partial_recipe.vertex_node_config.orientation = mtl::OrientationMode::CameraFacingFree;
+            const mtl::MaterialRecipe *partial_loaded =
+                GetRecipe("AlphaModes.LitOpaqueBillboard");
+            if (!partial_loaded)
+                return false;
+            partial_recipe = *partial_loaded;
 
             printf("[A3] AM_PARTIAL=1：Opaque 行最后一格改走第二套配方（Lit + billboard 顶点节点）"
                    "⇒ 自成一批（异 program），接管须能处理多批异 program"

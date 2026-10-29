@@ -150,11 +150,13 @@ private:
         }
 
         // ── 基础配方（变体的"原始"形态）──
-        opaque_recipe.recipe_name = "CoverageVariants.LitOpaque";
-        opaque_recipe.mtl_def_id  = "Lit";
-        opaque_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *opaque_loaded = GetRecipe("CoverageVariants.LitOpaque");
+        const mtl::MaterialRecipe *dither_loaded = GetRecipe("CoverageVariants.LitDitherMask");
+        if (!opaque_loaded || !dither_loaded)
+            return false;
+        opaque_recipe = *opaque_loaded;
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方。变体配方从它拷贝，因此自动继承这两条绑定。
+        // 纹理句柄由运行时创建，分别覆盖到静态 TOML 配方上。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
         if (!opaque_recipe.AddTexture("base_color", base_texture, true)
          || !opaque_recipe.AddTexture("normal", normal_texture, true))
@@ -162,14 +164,13 @@ private:
 
         // ── 变体：同源拷贝 + 覆盖模式（dither）──
         // dither 会进生成的 GLSL（#define HGL_ALPHA_DITHER）⇒ 不同 shader program。
-        dither_recipe = opaque_recipe;
-        dither_recipe.recipe_name = "CoverageVariants.LitDitherMask";
-        dither_recipe.render_state_overrides.has_dither = true;
-        dither_recipe.render_state_overrides.dither     = true;
+        dither_recipe = *dither_loaded;
 
         // DitherMask 的 alpha 真值来源：只有这个变体绑 opacity_mask
         //（Opaque 不绑 ⇒ 未绑 = 1.0 ⇒ dither 不裁剪，即"状态关掉"的那一端）
-        if (!dither_recipe.AddTexture("opacity_mask", mask_texture, true))
+        if (!dither_recipe.AddTexture("base_color", base_texture, true)
+         || !dither_recipe.AddTexture("normal", normal_texture, true)
+         || !dither_recipe.AddTexture("opacity_mask", mask_texture, true))
             return false;
 
         // ── A4：N 个「仅 alpha_cutoff 不同」的配方 ──

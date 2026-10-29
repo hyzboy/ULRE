@@ -178,9 +178,13 @@ private:
         if (!far_material_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
 
-        near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
-        near_recipe.mtl_def_id = "Lit";
-        near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *near_loaded_recipe =
+            GetRecipe("06e.SingleSphereSwitch.Near");
+        const mtl::MaterialRecipe *far_loaded_recipe =
+            GetRecipe("06e.SingleSphereSwitch.Far");
+        if (!near_loaded_recipe || !far_loaded_recipe)
+            return LogFail("InitMaterials", "material recipe not found");
+        near_recipe = *near_loaded_recipe;
         if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
@@ -190,9 +194,7 @@ private:
          || !near_recipe.AddTexture("normal", near_normal_asset, true))
             return LogFail("InitMaterials", "near recipe texture binding failed");
 
-        far_recipe = near_recipe;
-        far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
-        far_recipe.mtl_def_id = "Lit";
+        far_recipe = *far_loaded_recipe;
         if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "far material SSBO binding failed");
 

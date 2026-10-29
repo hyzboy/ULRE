@@ -194,9 +194,11 @@ private:
             //     纹理/数据行）⇒ 那些实体没有渲染项，不是"第二个批"。
             // ⇒ 用**同 def + 不同顶点节点配置**（billboard 朝向 ⇒ 不同 vertex program，
             //   资源/材质行路径完全一致）拿到真正的第二个批。
-            sphere_recipe_b = sphere_recipe;
-            sphere_recipe_b.recipe_name = "PBRSpheres.LitBillboard";
-            sphere_recipe_b.vertex_node_config.orientation = mtl::OrientationMode::CameraFacingFree;
+            const mtl::MaterialRecipe *billboard_recipe =
+                GetRecipe("PBRSpheres.LitBillboard");
+            if (!billboard_recipe)
+                return false;
+            sphere_recipe_b = *billboard_recipe;
 
             printf("[T3i] PBR_MULTIBATCH=1：网格后半走第二套配方"
                    "（Lit + 顶点节点=Billboard ⇒ 不同 shader program）⇒ 期望 2 个批\n");
