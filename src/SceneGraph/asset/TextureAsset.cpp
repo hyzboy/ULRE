@@ -1,5 +1,6 @@
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/vk/VKTexture.h>
 #include<hgl/log/Log.h>
 #include<hgl/utf.h>
 
@@ -260,30 +261,43 @@ namespace hgl::graph
         {
             case TextureURIKind::File:
             {
-                if(meta.source_path.IsEmpty())
-                    return U8String();
+                if(!meta.source_path.IsEmpty())
+                {
+                    U8String id(u8"texfile:");
 
-                U8String id(u8"texfile:");
+                    id+=ToU8String(meta.source_path);
+                    return id;
+                }
 
-                id+=ToU8String(meta.source_path);
-                return id;
+                break;
             }
             case TextureURIKind::RenderTarget:
             {
-                if(rt_target.IsEmpty())
-                    return U8String();
+                if(!rt_target.IsEmpty())
+                {
+                    U8String id(u8"rtex:");
 
-                U8String id(u8"rtex:");
+                    id+=ToU8String(rt_target);
+                    id+=U8String(u8":");
+                    id+=ToU8String(rt_attachment);
+                    return id;
+                }
 
-                id+=ToU8String(rt_target);
-                id+=U8String(u8":");
-                id+=ToU8String(rt_attachment);
-                return id;
+                break;
             }
             default:
                 break;
         }
 
-        return U8String();
+        // 没有来源可作身份（典型：`WrapTextureAsset` 只包装一张已在显存里的纹理）
+        // ⇒ 退回纹理 ID。这条值与句柄化之前 `BuildTextureResourceId(Texture*)` 完全一致，
+        // 因此把它收敛到资产层不改变任何既有行为，只是让配方侧也能绑定这类句柄。
+        if(!texture)
+            return U8String();
+
+        U8String id(u8"texid:");
+
+        id+=U8String::numberOf(texture->GetID());
+        return id;
     }
 }//namespace hgl::graph

@@ -683,7 +683,7 @@ namespace hgl::graph::mtl
          * 实体级 `MaterialData::SetTextureResource` 同名绑定仍是**覆盖**（优先级更高），
          * 用于「同一配方下少数实体换图」。
          *
-         * @return false = 参数非法（空名 / 空句柄 / 句柄无来源身份，如仅包装现成纹理）
+         * @return false = 参数非法（空名 / 空句柄）
          */
         bool AddTexture(const std::string &texture_name,
                         hgl::graph::TextureAsset *asset,
@@ -809,9 +809,7 @@ namespace hgl::graph::mtl
         if (!asset)
             return false;
 
-        // 身份来自句柄的来源（文件路径 / RT 目标+附件），加载前后一致。
-        // 空 ⇒ 该句柄只是包装一张现成纹理，没有可写进配方的稳定身份；
-        // 这种用法必须走实体级 `MaterialData::SetTextureResource`（退回 `texid:<n>`）。
+        // 身份来自句柄的来源（文件路径 / RT 目标+附件 / 包装纹理的纹理 ID），加载前后一致。
         const U8String resource_id = asset->GetResourceId();
 
         if (resource_id.IsEmpty())

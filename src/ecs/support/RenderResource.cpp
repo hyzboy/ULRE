@@ -19,13 +19,13 @@ namespace hgl::ecs
             return {};
 
         // 身份规则唯一实现在 TextureAsset::GetResourceId()：hgl::graph::mtl 的配方绑定也要用它，
-        // 而 mtl 不能反向依赖 ecs，所以这里只做 U8 → std::string 的搬运 + 包装纹理兜底。
+        // 而 mtl 不能反向依赖 ecs，所以这里只做 U8 → std::string 的搬运。
+        // 包装纹理（无来源身份）由 GetResourceId() 自己退回 `texid:<n>`，此处不再补一套规则。
         const U8String resource_id = asset->GetResourceId();
 
         if (!resource_id.IsEmpty())
             return std::string(reinterpret_cast<const char *>(resource_id.c_str()), resource_id.Length());
 
-        // 无文件名的句柄只是「包装一张现成纹理」⇒ 身份退回纹理 ID，与句柄化之前完全一致。
-        return BuildTextureResourceId(asset->GetTexture());
+        return {};
     }
 }
