@@ -172,6 +172,16 @@ namespace hgl::graph
 
     };
 
+    inline GeometryVertexFormat GetStandardGeometryVertexFormat(VkFormat normal_format = VF_V2UN8)
+    {
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2HF},
+            {VertexSemantic::Normal,   normal_format},
+        };
+        return gvf;
+    }
+
     enum class GeometryVertexMatchKind : uint8
     {
         Exact = 0,
