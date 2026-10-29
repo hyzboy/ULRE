@@ -1,8 +1,9 @@
-﻿// PlaneGrid3D
+// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -104,7 +105,7 @@ private:
             device,
             plane_grid_gvf);
 
-        geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
+        geom_plane_grid=CreateGeometryPreset(pc.get(), "plane_grid_lod");
         if (geom_plane_grid)
             geometry_manager->Add(geom_plane_grid);
 

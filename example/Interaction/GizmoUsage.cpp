@@ -1,4 +1,4 @@
-﻿/*
+/*
  TransformGizmoSystem 使用示例
 
  展示如何使用 TransformGizmoSystem 控制物体变换
@@ -10,6 +10,7 @@
 #include<hgl/graph/gizmo/TransformGizmoSystem.h>
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -102,7 +103,7 @@ private:
                 device,
                 CreateVertexLuminance2DGeometryVertexFormat());
 
-            grid_geometry = inline_geometry::CreatePlaneGrid2D(pc.get(), &pgci);
+            grid_geometry = CreateGeometryPreset(pc.get(), "plane_grid_lod");
             if(!grid_geometry)
                 return false;
 
@@ -146,7 +147,7 @@ private:
             cci.segments_y = 2;
             cci.segments_z = 2;
 
-            cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
+            cube_geometry = CreateGeometryPreset(pc.get(), "cube_2x2x2");
             if(!cube_geometry)
                 return false;
 

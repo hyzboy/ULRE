@@ -1,4 +1,4 @@
-﻿// RenderToTextureColorDepth —— 离屏世界回归床（color + depth 双附件）
+// RenderToTextureColorDepth —— 离屏世界回归床（color + depth 双附件）
 //
 // 以 RenderToTexture 为基线，多一路深度显示：离屏世界渲染一帧（颜色 + 深度附件），
 // 主画面并排两个立方体，左贴 `rt:<RT 名>:color0`，右贴 `rt:<RT 名>:depth`。
@@ -14,6 +14,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
@@ -326,7 +327,7 @@ public:
         auto pc = std::make_unique<GeometryCreater>(
             device,
             CreateStandardGeometryVertexFormat());
-        geometry = inline_geometry::CreateSphere(pc.get(), 64);
+        geometry = CreateGeometryPreset(pc.get(), "sphere_64");
         if (!geometry)
             return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
 
@@ -550,7 +551,7 @@ private:
         cci.tex_coord = true;
         cci.ntb = NTBType::Normal;
 
-        cube.geometry = inline_geometry::CreateCube(pc.get(), &cci);
+        cube.geometry = CreateGeometryPreset(pc.get(), "cube");
         if (!cube.geometry)
             return LogStageFail("App::CreateDisplayCube", "CreateCube geometry failed");
 

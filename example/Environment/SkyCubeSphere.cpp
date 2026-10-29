@@ -1,5 +1,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -92,11 +93,8 @@ private:
         if (!pc)
             return false;
 
-        HexSphereCreateInfo hsci;
-        hsci.subdivisions = 4;
-        hsci.radius       = 4.0f;
 
-        sky_geometry = CreateHexSphere(pc.get(), &hsci);
+        sky_geometry = CreateGeometryPreset(pc.get(), "hex_sphere_far");
         if (!sky_geometry)
             return false;
 

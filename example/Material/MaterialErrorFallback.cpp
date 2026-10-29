@@ -60,6 +60,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -270,7 +271,7 @@ private:
 
             // 缺法线的演示用低面数球体：只是为了能看清 cross(dFdx,dFdy) 真的按三角形
             // 出法线（错误棋盘格的三平面投影不受面数影响）。
-            geoms[i] = inline_geometry::CreateSphere(creater, no_normal ? 12 : 24);
+            geoms[i] = CreateGeometryPreset(creater, no_normal ? "sphere_12" : "sphere_24");
 
             if (!geoms[i])
             {

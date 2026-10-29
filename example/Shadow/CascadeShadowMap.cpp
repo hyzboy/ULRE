@@ -1,10 +1,11 @@
-﻿#include <hgl/framework/WorkManager.h>
+#include <hgl/framework/WorkManager.h>
 
 #include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VertexDataManager.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
+#include <hgl/graph/asset/GeometryPreset.h>
 #include <hgl/graph/render/RenderTargetDesc.h>
 #include <hgl/graph/module/RenderTargetManager.h>
 #include <hgl/graph/module/GeometryManager.h>
@@ -981,67 +982,39 @@ private:
             return pc ? creator(pc.get()) : nullptr;
         };
 
-        builtin_geometries[0] = create_geom([](GeometryCreater *pc) { return CreateSphere(pc, 64); });
-        builtin_geometries[1] = create_geom([](GeometryCreater *pc) { return CreateDome(pc, 64); });
+        builtin_geometries[0] = create_geom([](GeometryCreater *pc) { return CreateGeometryPreset(pc, "sphere_64"); });
+        builtin_geometries[1] = create_geom([](GeometryCreater *pc) { return CreateGeometryPreset(pc, "dome_64"); });
         builtin_geometries[2] = create_geom([](GeometryCreater *pc)
         {
-            ConeCreateInfo cci;
-            cci.radius = 1.0f;
-            cci.halfExtend = 1.0f;
-            cci.numberSlices = 64;
-            cci.numberStacks = 4;
-            return CreateCone(pc, &cci);
+            return CreateGeometryPreset(pc, "cone");
         });
         builtin_geometries[3] = create_geom([](GeometryCreater *pc)
         {
-            CylinderCreateInfo cci;
-            cci.radius = 1.0f;
-            cci.halfExtend = 1.0f;
-            cci.numberSlices = 32;
-            return CreateCylinder(pc, &cci);
+            return CreateGeometryPreset(pc, "cylinder");
         });
         builtin_geometries[4] = create_geom([](GeometryCreater *pc)
         {
-            TorusCreateInfo tci;
-            tci.innerRadius = 0.65f;
-            tci.outerRadius = 1.25f;
-            tci.numberSlices = 96;
-            tci.numberStacks = 24;
-            return CreateTorus(pc, &tci);
+            return CreateGeometryPreset(pc, "torus");
         });
         builtin_geometries[5] = create_geom([](GeometryCreater *pc)
         {
-            HollowCylinderCreateInfo hcci;
-            hcci.halfExtend = 1.0f;
-            hcci.innerRadius = 0.6f;
-            hcci.outerRadius = 1.0f;
-            hcci.numberSlices = 64;
-            return CreateHollowCylinder(pc, &hcci);
+            return CreateGeometryPreset(pc, "hollow_cylinder");
         });
         builtin_geometries[6] = create_geom([](GeometryCreater *pc)
         {
-            HexSphereCreateInfo hsci;
-            hsci.subdivisions = 3;
-            return CreateHexSphere(pc, &hsci);
+            return CreateGeometryPreset(pc, "hex_sphere");
         });
         builtin_geometries[7] = create_geom([](GeometryCreater *pc)
         {
-            CapsuleCreateInfo cci;
-            return CreateCapsule(pc, &cci);
+            return CreateGeometryPreset(pc, "capsule");
         });
         builtin_geometries[8] = create_geom([](GeometryCreater *pc)
         {
-            TaperedCapsuleCreateInfo tcci;
-            tcci.topRadius = 0.25f;
-            return CreateTaperedCapsule(pc, &tcci);
+            return CreateGeometryPreset(pc, "tapered_capsule_wide");
         });
         builtin_geometries[9] = create_geom([](GeometryCreater *pc)
         {
-            CubeCreateInfo cci;
-            cci.segments_x = 1;
-            cci.segments_y = 1;
-            cci.segments_z = 1;
-            return CreateCube(pc, &cci);
+            return CreateGeometryPreset(pc, "cube");
         });
 
         for (uint32_t i = 0; i < kBuiltinGeomCount; ++i)
@@ -1053,7 +1026,7 @@ private:
 
         ground_geometry = create_geom([](GeometryCreater *pc)
         {
-            return CreatePlaneSqaure(pc);
+            return CreateGeometryPreset(pc, "plane_square");
         });
         if (!ground_geometry)
             return false;

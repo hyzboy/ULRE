@@ -10,6 +10,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -223,7 +224,7 @@ private:
         if (!pc)
             return LogFail("InitGeometry", "failed to create geometry creator");
 
-        sphere_geometry = inline_geometry::CreateSphere(pc, 64);
+        sphere_geometry = CreateGeometryPreset(pc, "sphere_64");
         delete pc;
         if (!sphere_geometry)
             return LogFail("InitGeometry", "failed to create sphere geometry");

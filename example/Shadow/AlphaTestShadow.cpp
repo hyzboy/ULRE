@@ -1,9 +1,10 @@
-﻿#include <hgl/framework/WorkManager.h>
+#include <hgl/framework/WorkManager.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VertexDataManager.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
+#include <hgl/graph/asset/GeometryPreset.h>
 #include <hgl/graph/render/RenderTargetDesc.h>
 #include <hgl/graph/module/RenderTargetManager.h>
 #include <hgl/graph/module/TextureManager.h>
@@ -567,15 +568,11 @@ public:
 
         {
             auto pc = std::make_unique<GeometryCreater>(vdm);
-            CubeCreateInfo cci;
-            cci.segments_x = 1;
-            cci.segments_y = 1;
-            cci.segments_z = 1;
-            cube_geometry = pc ? CreateCube(pc.get(), &cci) : nullptr;
+            cube_geometry = pc ? CreateGeometryPreset(pc.get(), "cube") : nullptr;
         }
         {
             auto pc = std::make_unique<GeometryCreater>(vdm);
-            ground_geometry = pc ? CreatePlaneSqaure(pc.get()) : nullptr;
+            ground_geometry = pc ? CreateGeometryPreset(pc.get(), "plane_square") : nullptr;
         }
 
         if (!cube_geometry || !ground_geometry)

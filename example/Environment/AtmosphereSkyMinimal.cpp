@@ -1,5 +1,6 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/ShaderBufferSources.h>
@@ -76,7 +77,7 @@ private:
         hsci.subdivisions=3;
         hsci.radius=256;
 
-        prim_sky_sphere=CreateHexSphere(pc.get(),&hsci);
+        prim_sky_sphere=CreateGeometryPreset(pc.get(), "hex_sphere_sky");
         if (prim_sky_sphere)
             geometry_manager->Add(prim_sky_sphere);
 

@@ -44,6 +44,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -269,12 +270,7 @@ private:
             device,
             CreateStandardGeometryVertexFormat());
 
-        CubeCreateInfo cci;
-        cci.segments_x = 1;
-        cci.segments_y = 1;
-        cci.segments_z = 1;
-
-        cube_geometry = CreateCube(geometry_creater.get(), &cci);
+        cube_geometry = CreateGeometryPreset(geometry_creater.get(), "cube");
         if (!cube_geometry)
             return false;
 

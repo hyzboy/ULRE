@@ -14,6 +14,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
@@ -306,7 +307,7 @@ public:
         auto pc = std::make_unique<GeometryCreater>(
             device,
             CreateStandardGeometryVertexFormat());
-        geometry = inline_geometry::CreateSphere(pc.get(), 64);
+        geometry = CreateGeometryPreset(pc.get(), "sphere_64");
         if (!geometry)
             return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
 
@@ -491,7 +492,7 @@ private:
         cci.tex_coord = true;
         cci.ntb = NTBType::Normal;
 
-        Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
+        Geometry *cube_geometry = CreateGeometryPreset(pc.get(), "cube");
         if (!cube_geometry)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreateCube geometry failed");
 

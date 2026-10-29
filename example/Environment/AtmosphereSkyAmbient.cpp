@@ -1,9 +1,10 @@
-﻿// AtmosphereSkyAmbient — 同一个 sky light 算法双用途演示
+// AtmosphereSkyAmbient — 同一个 sky light 算法双用途演示
 // ① 天空球向内显示（SkyMinimal——Position 方向即法线）
 // ② 低画质间接光 ambient：物体世界法线采样同一算法（EvalSkyAtmosphere）
 //    ——无 GI/IBL 探针时 sky ambient 参与 PBR 计算（indirect_sky_ambient）
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
@@ -161,12 +162,9 @@ private:
         };
 
         // ── 天空球（SkyMinimal——仅 Position）──
-        HexSphereCreateInfo hsci;
-        hsci.subdivisions = 3;
-        hsci.radius = 256;
 
         prim_sky_sphere = create_geometry(CreateSkyGeometryVertexFormat(),
-            [&](GeometryCreater* pc) { return CreateHexSphere(pc, &hsci); });
+            [&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "hex_sphere_sky"); });
         if (!prim_sky_sphere)
             return false;
 
@@ -191,41 +189,26 @@ private:
             return true;
         };
 
-        if (!add_mesh([](GeometryCreater* pc) { return CreateSphere(pc, 48); }))
+        if (!add_mesh([](GeometryCreater* pc) { return CreateGeometryPreset(pc, "sphere_48"); }))
             return false;
 
         {
-            CubeCreateInfo cci;
-            cci.segments_x = 1;
-            cci.segments_y = 1;
-            cci.segments_z = 1;
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateCube(pc, &cci); }))
+            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "cube"); }))
                 return false;
         }
 
         {
-            ConeCreateInfo cci;
-            cci.radius = 1;
-            cci.halfExtend = 1;
-            cci.numberSlices = 48;
-            cci.numberStacks = 3;
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateCone(pc, &cci); }))
+            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "cone_low"); }))
                 return false;
         }
 
         {
-            TorusCreateInfo tci;
-            tci.innerRadius = 0.8f;
-            tci.outerRadius = 1.0f;
-            tci.numberSlices = 48;
-            tci.numberStacks = 12;
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateTorus(pc, &tci); }))
+            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "torus_low"); }))
                 return false;
         }
 
         {
-            CapsuleCreateInfo cci;
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateCapsule(pc, &cci); }))
+            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "capsule"); }))
                 return false;
         }
 

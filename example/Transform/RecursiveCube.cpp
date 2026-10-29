@@ -6,6 +6,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -158,12 +159,7 @@ private:
             device,
             CreateGizmo3DGeometryVertexFormat());
 
-        CubeCreateInfo cci;
-        cci.segments_x = 1;
-        cci.segments_y = 1;
-        cci.segments_z = 1;
-
-        geometry = CreateCube(pc.get(), &cci);
+        geometry = CreateGeometryPreset(pc.get(), "cube");
         if (!geometry)
             return false;
 

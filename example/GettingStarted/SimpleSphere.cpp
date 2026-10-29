@@ -12,6 +12,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -159,7 +160,7 @@ private:
             device,
             CreateStandardGeometryVertexFormat());
 
-        sphere_geometry = CreateSphere(geometry_creater.get(), SPHERE_SLICES);
+        sphere_geometry = CreateGeometryPreset(geometry_creater.get(), "sphere_64");
         if (!sphere_geometry)
             return false;
 

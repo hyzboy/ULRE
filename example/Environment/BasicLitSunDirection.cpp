@@ -1,5 +1,6 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -152,11 +153,8 @@ private:
         if (!pc)
             return false;
 
-        HexSphereCreateInfo hsci;
-        hsci.subdivisions = 3;
-        hsci.radius = 256.0f;
 
-        sky_geometry = CreateHexSphere(pc.get(), &hsci);
+        sky_geometry = CreateGeometryPreset(pc.get(), "hex_sphere_sky");
         if (!sky_geometry)
             return false;
 
@@ -280,7 +278,7 @@ private:
         {
             auto geom = create_geometry([](GeometryCreater* pc)
             {
-                return CreatePlaneSqaure(pc);
+                return CreateGeometryPreset(pc, "plane_square");
             });
             if (!geom)
                 return false;
@@ -293,49 +291,34 @@ private:
         {
             auto geom = create_geometry([](GeometryCreater* pc)
             {
-                return CreateSphere(pc, 64);
+                return CreateGeometryPreset(pc, "sphere_64");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            CubeCreateInfo cci;
-            cci.segments_x = 2;
-            cci.segments_y = 2;
-            cci.segments_z = 2;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateCube(pc, &cci);
+                return CreateGeometryPreset(pc, "cube_2x2x2");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            TorusCreateInfo tci;
-            tci.innerRadius = 1.9f;
-            tci.outerRadius = 2.1f;
-            tci.numberSlices = 128;
-            tci.numberStacks = 16;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateTorus(pc, &tci);
+                return CreateGeometryPreset(pc, "torus_ring");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
+#if 0    // Arrow is not part of the *.geo.toml shape schema yet
         {
-            ArrowCreateInfo aci;
-            aci.shaft_radius = 0.1f;
-            aci.shaft_length = 2.0f;
-            aci.head_radius = 0.3f;
-            aci.head_length = 0.5f;
-            aci.numberSlices = 16;
-            aci.cross_section = ArrowCrossSection::Circular;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
@@ -344,6 +327,7 @@ private:
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
+#endif
 
         return true;
     }

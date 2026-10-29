@@ -1,4 +1,4 @@
-﻿// RayPicking (ECS Version)
+// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
 //
@@ -12,6 +12,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/camera/Camera.h>
@@ -135,7 +136,7 @@ private:
             pgci.lum=128;
             pgci.sub_lum=196;
 
-            geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
+            geom_plane_grid=CreateGeometryPreset(pc.get(), "plane_grid_pick");
 
             if(!geom_plane_grid)
                 return(false);

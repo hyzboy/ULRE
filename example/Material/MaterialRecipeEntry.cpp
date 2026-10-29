@@ -18,6 +18,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -100,12 +101,7 @@ private:
             device,
             CreateGizmo3DGeometryVertexFormat());
 
-        CubeCreateInfo cci;
-        cci.segments_x = 2;
-        cci.segments_y = 3;
-        cci.segments_z = 4;
-
-        geometry = CreateCube(pc.get(), &cci);
+        geometry = CreateGeometryPreset(pc.get(), "cube_2x3x4");
 
         if(!geometry)
             return false;

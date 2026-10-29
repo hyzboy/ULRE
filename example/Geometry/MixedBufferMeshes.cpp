@@ -1,4 +1,4 @@
-﻿// MixedBufferMeshes — BasicLitMeshes 的变体：
+// MixedBufferMeshes — BasicLitMeshes 的变体：
 // 前半（7 个）Geometry 用共享 VertexDataManager（VDM）大缓冲池创建（同 BasicLitMeshes），
 // 后半（7 个）Geometry 用每几何独立的私有缓冲创建（同 RenderToTexture/MaterialRecipeEntry），
 // 两批使用完全同一套材质（同一 MaterialRecipe / 同一材质 SSBO 行 / 同一组纹理）。
@@ -6,6 +6,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -234,7 +235,7 @@ private:
         {
             floor_mesh = create_mesh(MeshBufferSource::VDM, [](GeometryCreater* pc)
             {
-                return CreatePlaneSqaure(pc);
+                return CreateGeometryPreset(pc, "plane_square");
             });
             if (!floor_mesh)
                 return false;
@@ -243,7 +244,7 @@ private:
         {
             if (!create_mesh(MeshBufferSource::VDM, [](GeometryCreater* pc)
             {
-                return CreateSphere(pc, 64);
+                return CreateGeometryPreset(pc, "sphere_64");
             }))
                 return false;
         }
@@ -251,62 +252,43 @@ private:
         {
             if (!create_mesh(MeshBufferSource::VDM, [](GeometryCreater* pc)
             {
-                return CreateDome(pc, 64);
+                return CreateGeometryPreset(pc, "dome_64");
             }))
                 return false;
         }
 
         {
-            ConeCreateInfo cci;
-            cci.radius = 1;
-            cci.halfExtend = 1;
-            cci.numberSlices = 64;
-            cci.numberStacks = 4;
 
             if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
             {
-                return CreateCone(pc, &cci);
+                return CreateGeometryPreset(pc, "cone");
             }))
                 return false;
         }
 
         {
-            CylinderCreateInfo cci;
-            cci.halfExtend = 1.25f;
-            cci.numberSlices = 16;
-            cci.radius = 1.25f;
 
             if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
             {
-                return CreateCylinder(pc, &cci);
+                return CreateGeometryPreset(pc, "cylinder_big");
             }))
                 return false;
         }
 
         {
-            TorusCreateInfo tci;
-            tci.innerRadius = 1.9f;
-            tci.outerRadius = 2.1f;
-            tci.numberSlices = 128;
-            tci.numberStacks = 16;
 
             if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
             {
-                return CreateTorus(pc, &tci);
+                return CreateGeometryPreset(pc, "torus_ring");
             }))
                 return false;
         }
 
         {
-            HollowCylinderCreateInfo hcci;
-            hcci.halfExtend = 1.25f;
-            hcci.innerRadius = 0.8f;
-            hcci.outerRadius = 1.25f;
-            hcci.numberSlices = 64;
 
             if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
             {
-                return CreateHollowCylinder(pc, &hcci);
+                return CreateGeometryPreset(pc, "hollow_cylinder_big");
             }))
                 return false;
         }
@@ -314,73 +296,52 @@ private:
 
         // ===== 私有缓冲组：每几何独立 VAB/IBO（7 个，偏移恒 0） =====
         {
-            HexSphereCreateInfo hsci;
-            hsci.subdivisions = 3;
 
             if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
             {
-                return CreateHexSphere(pc, &hsci);
+                return CreateGeometryPreset(pc, "hex_sphere");
             }))
                 return false;
         }
 
         {
-            CapsuleCreateInfo cci;
 
             if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
             {
-                return CreateCapsule(pc, &cci);
+                return CreateGeometryPreset(pc, "capsule");
             }))
                 return false;
         }
 
         {
-            TaperedCapsuleCreateInfo tcci;
-            tcci.topRadius = 0.1f;
 
             if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
             {
-                return CreateTaperedCapsule(pc, &tcci);
+                return CreateGeometryPreset(pc, "tapered_capsule");
             }))
                 return false;
         }
 
         {
-            CubeCreateInfo cci;
-            cci.segments_x = 1;
-            cci.segments_y = 1;
-            cci.segments_z = 1;
-            cci.ntb = NTBType::Normal;   // 仅法线（不存 tangent——试验完全无切线）
 
             if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
             {
-                return CreateCube(pc, &cci);
+                return CreateGeometryPreset(pc, "cube");
             }))
                 return false;
         }
 
         {
-            FrustumCreateInfo fci;
-            fci.bottom_radius = 1.0f;
-            fci.top_radius = 0.5f;
-            fci.height = 2.0f;
-            fci.numberSlices = 32;
 
             if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
             {
-                return CreateFrustum(pc, &fci);
+                return CreateGeometryPreset(pc, "frustum");
             }))
                 return false;
         }
 
+#if 0    // Arrow is not part of the *.geo.toml shape schema yet
         {
-            ArrowCreateInfo aci;
-            aci.shaft_radius = 0.1f;
-            aci.shaft_length = 2.0f;
-            aci.head_radius = 0.3f;
-            aci.head_length = 0.5f;
-            aci.numberSlices = 16;
-            aci.cross_section = ArrowCrossSection::Circular;
 
             if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
             {
@@ -388,15 +349,10 @@ private:
             }))
                 return false;
         }
+#endif
 
+#if 0    // PipeElbow is not part of the *.geo.toml shape schema yet
         {
-            PipeElbowCreateInfo peci;
-            peci.inner_radius = 0.3f;
-            peci.outer_radius = 0.5f;
-            peci.bend_angle = 90.0f;
-            peci.bend_radius = 1.0f;
-            peci.pipe_segments = 16;
-            peci.bend_segments = 16;
 
             if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
             {
@@ -404,6 +360,7 @@ private:
             }))
                 return false;
         }
+#endif
 
         return true;
     }

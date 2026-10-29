@@ -26,7 +26,8 @@
  * 不跑自检时：两个世界的主光各自缓慢旋转（相位不同）⇒ 肉眼可同时看到两套独立阴影。
  */
 
-#include<hgl/framework/WorkManager.h>      // WorkObject / RunFramework
+#include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/GeometryPreset.h>      // WorkObject / RunFramework
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/OffscreenWorld.h>
@@ -243,28 +244,28 @@ private:
         {
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 1; cci.segments_y = 1; cci.segments_z = 1;
-            return inline_geometry::CreateCube(pc, &cci);
+            return CreateGeometryPreset(pc, "cube");
         });
         shape_geometry[1] = create_geometry([](GeometryCreater *pc)
         {
-            return inline_geometry::CreateSphere(pc, 48);
+            return CreateGeometryPreset(pc, "sphere_48");
         });
         shape_geometry[2] = create_geometry([](GeometryCreater *pc)
         {
             inline_geometry::CylinderCreateInfo cci;
             cci.radius = 0.8f; cci.halfExtend = 1.2f; cci.numberSlices = 32;
-            return inline_geometry::CreateCylinder(pc, &cci);
+            return CreateGeometryPreset(pc, "cylinder_thin");
         });
         shape_geometry[3] = create_geometry([](GeometryCreater *pc)
         {
             inline_geometry::TorusCreateInfo tci;
             tci.innerRadius = 0.6f; tci.outerRadius = 1.1f;
             tci.numberSlices = 64; tci.numberStacks = 20;
-            return inline_geometry::CreateTorus(pc, &tci);
+            return CreateGeometryPreset(pc, "torus_small");
         });
         ground_geometry = create_geometry([](GeometryCreater *pc)
         {
-            return inline_geometry::CreatePlaneSqaure(pc);
+            return CreateGeometryPreset(pc, "plane_square");
         });
 
         for (uint32_t i = 0; i < 4; ++i)
@@ -289,7 +290,7 @@ private:
         // 展示离屏世界画面的屏幕（主世界里的 Static 四边形；Static ⇒ 不进 cascade 0 的 caster 集）
         child_screen_geometry = create_geometry([](GeometryCreater *pc)
         {
-            return inline_geometry::CreatePlaneSqaure(pc);
+            return CreateGeometryPreset(pc, "plane_square");
         });
         if (!child_screen_geometry)
             return LogStageFail("CreateSharedResources", "screen geometry creation failed");

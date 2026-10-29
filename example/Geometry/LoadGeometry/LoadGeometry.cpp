@@ -1,6 +1,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/LoadGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -203,7 +204,7 @@ private:
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 
-        bbox_geometry = CreateBoundingBox(pc.get(),&bbci);
+        bbox_geometry = CreateGeometryPreset(pc.get(), "bounding_box");
         if(!bbox_geometry)
             return false;
 

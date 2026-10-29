@@ -1,5 +1,6 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -190,7 +191,7 @@ private:
         {
             auto geom = create_geometry([](GeometryCreater* pc)
             {
-                return CreatePlaneSqaure(pc);
+                return CreateGeometryPreset(pc, "plane_square");
             });
             if (!geom)
                 return false;
@@ -203,7 +204,7 @@ private:
         {
             auto geom = create_geometry([](GeometryCreater* pc)
             {
-                return CreateSphere(pc, 64);
+                return CreateGeometryPreset(pc, "sphere_64");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
@@ -212,143 +213,104 @@ private:
         {
             auto geom = create_geometry([](GeometryCreater* pc)
             {
-                return CreateDome(pc, 64);
+                return CreateGeometryPreset(pc, "dome_64");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            ConeCreateInfo cci;
-            cci.radius = 1;
-            cci.halfExtend = 1;
-            cci.numberSlices = 64;
-            cci.numberStacks = 4;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateCone(pc, &cci);
+                return CreateGeometryPreset(pc, "cone");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            CylinderCreateInfo cci;
-            cci.halfExtend = 1.25f;
-            cci.numberSlices = 16;
-            cci.radius = 1.25f;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateCylinder(pc, &cci);
+                return CreateGeometryPreset(pc, "cylinder_big");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            TorusCreateInfo tci;
-            tci.innerRadius = 1.9f;
-            tci.outerRadius = 2.1f;
-            tci.numberSlices = 128;
-            tci.numberStacks = 16;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateTorus(pc, &tci);
+                return CreateGeometryPreset(pc, "torus_ring");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            HollowCylinderCreateInfo hcci;
-            hcci.halfExtend = 1.25f;
-            hcci.innerRadius = 0.8f;
-            hcci.outerRadius = 1.25f;
-            hcci.numberSlices = 64;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateHollowCylinder(pc, &hcci);
+                return CreateGeometryPreset(pc, "hollow_cylinder_big");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            HexSphereCreateInfo hsci;
-            hsci.subdivisions = 3;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateHexSphere(pc, &hsci);
+                return CreateGeometryPreset(pc, "hex_sphere");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            CapsuleCreateInfo cci;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateCapsule(pc, &cci);
+                return CreateGeometryPreset(pc, "capsule");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            TaperedCapsuleCreateInfo tcci;
-            tcci.topRadius = 0.1f;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateTaperedCapsule(pc, &tcci);
+                return CreateGeometryPreset(pc, "tapered_capsule");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            CubeCreateInfo cci;
-            cci.segments_x = 2;
-            cci.segments_y = 2;
-            cci.segments_z = 2;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateCube(pc, &cci);
+                return CreateGeometryPreset(pc, "cube");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            FrustumCreateInfo fci;
-            fci.bottom_radius = 1.0f;
-            fci.top_radius = 0.5f;
-            fci.height = 2.0f;
-            fci.numberSlices = 32;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
-                return CreateFrustum(pc, &fci);
+                return CreateGeometryPreset(pc, "frustum");
             });
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
+#if 0    // Arrow is not part of the *.geo.toml shape schema yet
         {
-            ArrowCreateInfo aci;
-            aci.shaft_radius = 0.1f;
-            aci.shaft_length = 2.0f;
-            aci.head_radius = 0.3f;
-            aci.head_length = 0.5f;
-            aci.numberSlices = 16;
-            aci.cross_section = ArrowCrossSection::Circular;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
@@ -357,15 +319,10 @@ private:
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
+#endif
 
+#if 0    // PipeElbow is not part of the *.geo.toml shape schema yet
         {
-            PipeElbowCreateInfo peci;
-            peci.inner_radius = 0.3f;
-            peci.outer_radius = 0.5f;
-            peci.bend_angle = 90.0f;
-            peci.bend_radius = 1.0f;
-            peci.pipe_segments = 16;
-            peci.bend_segments = 16;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
@@ -374,6 +331,7 @@ private:
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
+#endif
 
         return true;
     }
