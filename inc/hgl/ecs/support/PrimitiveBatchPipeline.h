@@ -13,7 +13,7 @@ namespace hgl
 {
     namespace graph
     {
-        class CameraInfo;
+        struct CameraInfo;
         class VulkanDevice;
         class BufferManager;
     }

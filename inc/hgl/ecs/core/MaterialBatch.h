@@ -14,7 +14,7 @@ namespace hgl
 {
     namespace graph
     {
-        class CameraInfo;
+        struct CameraInfo;
         class BufferManager;
         class VulkanDevice;
         class IndirectMeshTaskBuffer;

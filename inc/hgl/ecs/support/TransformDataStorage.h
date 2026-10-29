@@ -18,7 +18,7 @@ namespace hgl
     namespace graph
     {
         struct CameraInfo;
-        class ViewportInfo;
+        struct ViewportInfo;
     }
 
     namespace ecs

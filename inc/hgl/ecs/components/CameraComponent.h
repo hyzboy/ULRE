@@ -9,7 +9,7 @@
 
 namespace hgl::graph
 {
-    class ViewportInfo;
+    struct ViewportInfo;
 }
 
 namespace hgl::ecs

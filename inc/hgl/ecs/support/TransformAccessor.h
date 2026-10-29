@@ -7,6 +7,18 @@
 
 namespace hgl
 {
+    namespace graph
+    {
+        // 必须是 struct：与 CameraInfo.h / ubo/ViewportInfo.h 的定义一致。
+        // 写成 class 会让本头文件里声明的成员函数被 mangle 成 PEV，
+        // 与定义处的 PEU 不符 ⇒ LNK2019（C4099）。
+        struct CameraInfo;
+        struct ViewportInfo;
+    }
+}
+
+namespace hgl
+{
     namespace ecs
     {
         class ECSContext;

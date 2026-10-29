@@ -43,7 +43,7 @@
 namespace hgl {
     namespace graph {
         class RenderCmdBuffer;
-        class CameraInfo;
+        struct CameraInfo;
         class IRenderTarget;
         class GraphicsContext;  // 图形资源管理器（原IGraphicsContext）
         class VulkanDevice;

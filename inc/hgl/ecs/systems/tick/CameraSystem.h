@@ -12,7 +12,7 @@ namespace hgl::graph
 {
     struct Camera;
     struct CameraInfo;
-    class ViewportInfo;
+    struct ViewportInfo;
     class RenderContext;
     class GlobalSSBOBufferRegistry;
     template<typename T> class StructView;

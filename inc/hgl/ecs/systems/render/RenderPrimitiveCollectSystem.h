@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        class CameraInfo;
+        struct CameraInfo;
     }
 }
 
