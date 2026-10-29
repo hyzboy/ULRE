@@ -93,9 +93,10 @@ private:
          || !material_data_ssbo_accessor)
             return false;
 
-        mesh_recipe.recipe_name = "AtmosphereSkyAmbient.Lit";
-        mesh_recipe.mtl_def_id = "Lit";
-        mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("AtmosphereSkyAmbient.Lit");
+        if (!loaded_recipe)
+            return false;
+        mesh_recipe = *loaded_recipe;
         if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 
@@ -236,9 +237,10 @@ private:
         if (!prim_sky_sphere)
             return false;
 
-        sky_recipe.recipe_name = "AtmosphereSkyAmbient.Sky";
-        sky_recipe.mtl_def_id = "SkyMinimal";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("AtmosphereSkyAmbient.Sky");
+        if (!loaded_recipe)
+            return false;
+        sky_recipe = *loaded_recipe;
 
         return true;
     }

@@ -49,9 +49,11 @@ private:
     {
         if (!prim_sky_sphere)
             return false;
-        sky_recipe.recipe_name = "AtmosphereSkyMinimal.Sky";
-        sky_recipe.mtl_def_id = "SkyMinimal";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("AtmosphereSkyMinimal.Sky");
+        if (!loaded_recipe)
+            return false;
+        sky_recipe = *loaded_recipe;
         sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
         return true;
     }

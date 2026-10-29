@@ -162,9 +162,11 @@ private:
 
         geometry_manager->Add(sky_geometry);
 
-        sky_recipe.recipe_name = "BasicLitSunDirection.Sky";
-        sky_recipe.mtl_def_id = "SkyMinimal";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
+        const mtl::MaterialRecipe *loaded_sky_recipe =
+            GetRecipe("BasicLitSunDirection.Sky");
+        if (!loaded_sky_recipe)
+            return false;
+        sky_recipe = *loaded_sky_recipe;
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -203,9 +205,11 @@ private:
         material_data.metallic = 0.08f;
         material_data.roughness = 0.92f;
         material_data.normal_scale = 0.35f;
-        mesh_recipe.recipe_name = "BasicLitSunDirection.Lit";
-        mesh_recipe.mtl_def_id = "Lit";
-        mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_mesh_recipe =
+            GetRecipe("BasicLitSunDirection.Lit");
+        if (!loaded_mesh_recipe)
+            return false;
+        mesh_recipe = *loaded_mesh_recipe;
 
         auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)

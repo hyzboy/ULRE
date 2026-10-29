@@ -102,9 +102,10 @@ private:
 
         geometry_manager->Add(sky_geometry);
 
-        sky_recipe.recipe_name = "SkyCubeSphere.Sky";
-        sky_recipe.mtl_def_id  = "SkyCube";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyCubeSphereConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SkyCubeSphere.Sky");
+        if (!loaded_recipe)
+            return false;
+        sky_recipe = *loaded_recipe;
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
         return true;

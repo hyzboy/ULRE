@@ -898,9 +898,11 @@ private:
 
     bool InitMaterial()
     {
-        lit_recipe.recipe_name = "CascadeShadowMap.Lit";
-        lit_recipe.mtl_def_id = "Lit";
-        lit_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *lit_loaded = GetRecipe("CascadeShadowMap.Lit");
+        const mtl::MaterialRecipe *alpha_loaded = GetRecipe("CascadeShadowMap.AlphaTest");
+        if (!lit_loaded || !alpha_loaded)
+            return false;
+        lit_recipe = *lit_loaded;
 
         auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
@@ -945,15 +947,12 @@ private:
 
         // A1-4：alpha test 材质——resolve 侧据此路由 ShadowCasterMasked（阴影）
         // 并在片元里 EvalAlpha 丢弃低于阈值的纹素。与 lit 共享材质 SSBO 行。
-        alpha_recipe = lit_recipe;
-        alpha_recipe.recipe_name = "CascadeShadowMap.AlphaTest";
-        alpha_recipe.render_state_overrides.has_alpha_test = true;
-        alpha_recipe.render_state_overrides.alpha_test = true;
-        alpha_recipe.render_state_overrides.has_alpha_cutoff = true;
-        alpha_recipe.render_state_overrides.alpha_cutoff = 0.5f;
+        alpha_recipe = *alpha_loaded;
 
         // 镂空阴影的 alpha 真值来源（棋盘黑格 alpha=0 ⇒ 影子同图案镂空）
-        if (!alpha_recipe.AddTexture("opacity_mask", alpha_base_asset, true, 0))
+        if (!alpha_recipe.AddTexture("base_color", base_color_asset, true, 0)
+         || !alpha_recipe.AddTexture("normal", normal_asset, true, 0)
+         || !alpha_recipe.AddTexture("opacity_mask", alpha_base_asset, true, 0))
             return false;
 
         return true;

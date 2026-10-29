@@ -509,13 +509,11 @@ public:
         if (!domain_manager)
             return false;
 
-        alpha_recipe.recipe_name = "AlphaTestShadow.Lit";
-        alpha_recipe.mtl_def_id = "Lit";
-        alpha_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        alpha_recipe.render_state_overrides.has_alpha_test = true;
-        alpha_recipe.render_state_overrides.alpha_test = true;
-        alpha_recipe.render_state_overrides.has_alpha_cutoff = true;
-        alpha_recipe.render_state_overrides.alpha_cutoff = 0.5f;
+        const mtl::MaterialRecipe *alpha_loaded = GetRecipe("AlphaTestShadow.Lit");
+        const mtl::MaterialRecipe *ground_loaded = GetRecipe("AlphaTestShadow.Ground");
+        if (!alpha_loaded || !ground_loaded)
+            return false;
+        alpha_recipe = *alpha_loaded;
 
         material_accessor = domain_manager->GetAccessor<ssbo::PBRSurfaceRow>();
         if (!material_accessor)
@@ -541,10 +539,7 @@ public:
 
         // 地面用同一 Lit 定义但不带 alpha_test——实心渲染，影子判读不被
         // 地面自身的镂空干扰。
-        ground_recipe = alpha_recipe;
-        ground_recipe.recipe_name = "AlphaTestShadow.Ground";
-        ground_recipe.render_state_overrides.has_alpha_test = false;
-        ground_recipe.render_state_overrides.alpha_test = false;
+        ground_recipe = *ground_loaded;
 
         // 地面换成纯白纹理（同名 upsert）
         if (!ground_recipe.AddTexture("base_color", white_asset, true, 0))

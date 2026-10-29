@@ -209,9 +209,10 @@ private:
 
         geometry_manager->Add(sky_geometry);
 
-        sky_recipe.recipe_name = "IBLEnvironment.Sky";
-        sky_recipe.mtl_def_id = "SkyCube";
-        sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
+        const mtl::MaterialRecipe *loaded_sky_recipe = GetRecipe("IBLEnvironment.Sky");
+        if (!loaded_sky_recipe)
+            return false;
+        sky_recipe = *loaded_sky_recipe;
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -254,9 +255,10 @@ private:
             return false;
 
         // 与默认 Lit 材质同一套 PBR 表面：环境光**算法**由环境层决定（见 InitIBLBinding）
-        mesh_recipe.recipe_name = "IBLEnvironment.Lit";
-        mesh_recipe.mtl_def_id = "Lit";
-        mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_mesh_recipe = GetRecipe("IBLEnvironment.Lit");
+        if (!loaded_mesh_recipe)
+            return false;
+        mesh_recipe = *loaded_mesh_recipe;
 
         // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。

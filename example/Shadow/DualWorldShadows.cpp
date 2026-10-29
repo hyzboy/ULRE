@@ -226,9 +226,10 @@ private:
         if (!material_accessor.Write(material_row))
             return LogStageFail("CreateSharedResources", "material row write failed");
 
-        lit_recipe.recipe_name = "DualWorldShadows.Lit";
-        lit_recipe.mtl_def_id  = "Lit";
-        lit_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("DualWorldShadows.Lit");
+        if (!loaded_recipe)
+            return LogStageFail("CreateSharedResources", "material recipe not found");
+        lit_recipe = *loaded_recipe;
         if (!(lit_recipe.material_ssbo_binding = material_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("CreateSharedResources", "material SSBO binding invalid");
 
