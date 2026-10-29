@@ -125,6 +125,13 @@ if(MSVC)
     set_target_properties(TestPrimitiveAssetFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# Geometry preset library: every shape name used by examples must resolve to a TOML.
+add_executable(TestGeometryPreset tests/TestGeometryPreset.cpp)
+target_link_libraries(TestGeometryPreset PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestGeometryPreset PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 add_executable(TestComponentRows tests/TestComponentRows.cpp)
 target_link_libraries(TestComponentRows PRIVATE ULRE::Engine)
 if(MSVC)
@@ -241,6 +248,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestPrimitiveAssetFile
         PROPERTIES LABELS "geometry;primitive;asset")
+
+    add_test(
+        NAME TestGeometryPreset
+        COMMAND TestGeometryPreset
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestGeometryPreset
+        PROPERTIES LABELS "geometry;preset;asset")
 
     add_test(
         NAME TestBoundingBoxStorage
