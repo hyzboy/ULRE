@@ -112,9 +112,10 @@ private:
         if (!texture_manager)
             return false;
 
-        sphere_recipe.recipe_name = "SimpleSphere.Lit";
-        sphere_recipe.mtl_def_id = "Lit";
-        sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SimpleSphere.Lit");
+        if (!loaded_recipe)
+            return false;
+        sphere_recipe = *loaded_recipe;
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 

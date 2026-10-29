@@ -122,14 +122,11 @@ private:
             if (!grid_mtl_data_ssbo_accessor.Write(grid_row))
                 return false;
 
-            grid_recipe.recipe_name = "GizmoUsage.VertexLuminance";
-            grid_recipe.mtl_def_id = "VertexLuminance";
-            grid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-            grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
-            grid_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;
-            grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
-            grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
-            grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
+            const mtl::MaterialRecipe *loaded_grid_recipe =
+                GetRecipe("GizmoUsage.VertexLuminance");
+            if (!loaded_grid_recipe)
+                return false;
+            grid_recipe = *loaded_grid_recipe;
             if (!(grid_recipe.material_ssbo_binding = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
                 return false;
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
@@ -165,9 +162,11 @@ private:
             if (!cube_mtl_data_ssbo_accessor.Write(cube_row))
                 return false;
 
-            cube_recipe.recipe_name = "GizmoUsage.DebugNormalColor";
-            cube_recipe.mtl_def_id = "DebugNormalColor";
-            cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+            const mtl::MaterialRecipe *loaded_cube_recipe =
+                GetRecipe("GizmoUsage.DebugNormalColor");
+            if (!loaded_cube_recipe)
+                return false;
+            cube_recipe = *loaded_cube_recipe;
             if (!(cube_recipe.material_ssbo_binding = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
                 return false;
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);

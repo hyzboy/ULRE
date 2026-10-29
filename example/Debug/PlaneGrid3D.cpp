@@ -143,14 +143,11 @@ private:
         if(!ecs_context)
             return false;
 
-        plane_grid_recipe.recipe_name = "PlaneGrid3D.VertexLuminance";
-        plane_grid_recipe.mtl_def_id = "VertexLuminance";
-        plane_grid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        plane_grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
-        plane_grid_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;
-        plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
-        plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
-        plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("PlaneGrid3D.VertexLuminance");
+        if (!loaded_recipe)
+            return false;
+        plane_grid_recipe = *loaded_recipe;
         if (!(plane_grid_recipe.material_ssbo_binding = material_data_accessors[0].GetGlobalSSBOBinding()).IsValid())
             return false;
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);

@@ -171,15 +171,15 @@ private:
         return true;
     }
 
-    void InitMaterialRecipes()
+    bool InitMaterialRecipes()
     {
-        solid_recipe.recipe_name = "RenderBoundBox.Solid";
-        solid_recipe.mtl_def_id = "DebugNormalColor";
-        solid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-
-        wire_recipe.recipe_name = "RenderBoundBox.Wire";
-        wire_recipe.mtl_def_id = "builtin/pure_color";
-        wire_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_solid = GetRecipe("RenderBoundBox.Solid");
+        const mtl::MaterialRecipe *loaded_wire = GetRecipe("RenderBoundBox.Wire");
+        if (!loaded_solid || !loaded_wire)
+            return false;
+        solid_recipe = *loaded_solid;
+        wire_recipe = *loaded_wire;
+        return true;
     }
 
     bool InitSolidMDP()
@@ -670,7 +670,8 @@ public:
     bool Init() override
     {
         SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
-        InitMaterialRecipes();
+        if (!InitMaterialRecipes())
+            return false;
 
         if(!InitSolidMDP())
             return false;

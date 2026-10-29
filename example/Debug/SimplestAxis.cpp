@@ -87,9 +87,10 @@ private:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        axis_recipe.recipe_name = "SimplestAxis.VertexColor";
-        axis_recipe.mtl_def_id = "VertexColor";
-        axis_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SimplestAxis.VertexColor");
+        if (!loaded_recipe)
+            return false;
+        axis_recipe = *loaded_recipe;
         axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&axis_asset);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删

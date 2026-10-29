@@ -527,9 +527,11 @@ private:
         if (!planet_mtl_accessor.Write(planet_data))
             return false;
 
-        planet_recipe.recipe_name = "ComputeAsteroidBelt.PlanetMaterial";
-        planet_recipe.mtl_def_id  = "builtin/pure_color";
-        planet_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *planet_loaded =
+            GetRecipe("ComputeAsteroidBelt.PlanetMaterial");
+        if (!planet_loaded)
+            return false;
+        planet_recipe = *planet_loaded;
         planet_recipe.material_ssbo_binding = planet_mtl_accessor.GetGlobalSSBOBinding();
 
         // 2. 陨星群材质（10 种太空矿物色系）
@@ -560,9 +562,11 @@ private:
             mineral_payload_indices[i] = asteroid_mtl_accessors[i].GetRowID();
         }
 
-        asteroid_recipe.recipe_name = "ComputeAsteroidBelt.AsteroidMaterial";
-        asteroid_recipe.mtl_def_id  = "DebugNormalColor";
-        asteroid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *asteroid_loaded =
+            GetRecipe("ComputeAsteroidBelt.AsteroidMaterial");
+        if (!asteroid_loaded)
+            return false;
+        asteroid_recipe = *asteroid_loaded;
         asteroid_recipe.material_ssbo_binding = asteroid_mtl_accessors[0].GetGlobalSSBOBinding();
 
         return true;

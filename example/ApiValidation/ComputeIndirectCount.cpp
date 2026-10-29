@@ -189,9 +189,11 @@ private:
         if (!ecs_context)
             return false;
 
-        cube_recipe.recipe_name = "ComputeIndirectCount.CubeMaterial";
-        cube_recipe.mtl_def_id  = "DebugNormalColor";
-        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("ComputeIndirectCount.CubeMaterial");
+        if (!loaded_recipe)
+            return false;
+        cube_recipe = *loaded_recipe;
         if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 

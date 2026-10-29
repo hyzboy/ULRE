@@ -91,10 +91,11 @@ private:
          || !triangle_data_accessors[0])
             return false;
 
-        triangle_recipe.recipe_name = "AutoMergeMaterialData.PureColor";
-        triangle_recipe.mtl_def_id = "builtin/pure_color";
-        triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("AutoMergeMaterialData.PureColor");
+        if (!loaded_recipe)
+            return false;
+        triangle_recipe = *loaded_recipe;
         if (!(triangle_recipe.material_ssbo_binding = triangle_data_accessors[0].GetGlobalSSBOBinding()).IsValid())
             return false;
 

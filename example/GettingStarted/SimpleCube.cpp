@@ -142,9 +142,10 @@ private:
 
         auto primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity);
         hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity);
-        cube_recipe.recipe_name = "SimpleCube.DebugNormalColor";
-        cube_recipe.mtl_def_id = "DebugNormalColor";
-        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SimpleCube.DebugNormalColor");
+        if (!loaded_recipe)
+            return false;
+        cube_recipe = *loaded_recipe;
         if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
 

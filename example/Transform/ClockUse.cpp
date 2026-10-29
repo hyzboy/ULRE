@@ -108,10 +108,10 @@ private:
          || !tick_data_ssbo_accessor)
             return false;
 
-        clock_recipe.recipe_name = "Clock.PureColor";
-        clock_recipe.mtl_def_id = "builtin/pure_color";
-        clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("Clock.PureColor");
+        if (!loaded_recipe)
+            return false;
+        clock_recipe = *loaded_recipe;
         if (!(clock_recipe.material_ssbo_binding = tick_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);

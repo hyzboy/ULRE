@@ -103,17 +103,12 @@ private:
 
     bool InitMaterialAndPipeline()
     {
-        plane_recipe.recipe_name = "RayPicking.PlaneGrid";
-        plane_recipe.mtl_def_id = "VertexLuminance";
-        plane_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        plane_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
-        plane_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;
-        plane_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
-        plane_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
-        plane_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        line_recipe = plane_recipe;
-        line_recipe.recipe_name = "RayPicking.Line";
-        line_recipe.vertex_node_config = graph::mtl::MakeDefault3DNodeConfig();
+        const mtl::MaterialRecipe *plane_loaded = GetRecipe("RayPicking.PlaneGrid");
+        const mtl::MaterialRecipe *line_loaded = GetRecipe("RayPicking.Line");
+        if (!plane_loaded || !line_loaded)
+            return false;
+        plane_recipe = *plane_loaded;
+        line_recipe = *line_loaded;
         return(true);
     }
 

@@ -76,10 +76,10 @@ private:
         if (!geom_triangle)
             return false;
 
-        triangle_recipe.recipe_name = "AutoInstance.VertexColor";
-        triangle_recipe.mtl_def_id = "VertexColor";
-        triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("AutoInstance.VertexColor");
+        if (!loaded_recipe)
+            return false;
+        triangle_recipe = *loaded_recipe;
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
 
         return true;
