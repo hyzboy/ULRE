@@ -31,7 +31,6 @@
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -111,7 +110,6 @@ private:
     graph::mtl::MaterialRecipe lit_recipe{};
     graph::GlobalSSBODataAccessor material_accessor{};
     graph::ssbo::PBRSurfaceRow    material_row{};
-    Sampler *common_sampler = nullptr;
     TextureManager *texture_manager = nullptr;
 
     std::shared_ptr<MainLightShadowSystem> main_csm;
@@ -208,18 +206,13 @@ private:
             return LogStageFail("CreateSharedResources", "graphics context is null");
 
         auto *gm      = GetManager<GeometryManager>();
-        auto *sm      = GetManager<SamplerManager>();
         auto *tm      = GetManager<TextureManager>();
         auto *device  = gc->GetDevice();
         auto *registry = gc->GetGlobalSSBOBufferRegistry();
-        if (!gm || !sm || !tm || !device || !registry)
-            return LogStageFail("CreateSharedResources", "manager/sampler/device/registry missing");
+        if (!gm || !tm || !device || !registry)
+            return LogStageFail("CreateSharedResources", "manager/device/registry missing");
 
         texture_manager = tm;
-
-        common_sampler = sm->CreateSampler();
-        if (!common_sampler)
-            return LogStageFail("CreateSharedResources", "CreateSampler failed");
 
         // 材质行（设备级全局池）：所有本台架实体共用一行
         material_accessor = registry->GetAccessor<graph::ssbo::PBRSurfaceRow>();
@@ -491,7 +484,14 @@ private:
         if (!child_color_asset)
             return LogStageFail("BindChildScreenTexture", "wrap child color texture failed");
 
-        material_data->SetTextureResource("base_color", child_color_asset, common_sampler);
+        // 只有这块屏幕贴这张图 ⇒ 给它挂一份同源配方覆盖（其余几何继续用无纹理的共享配方）。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        graph::mtl::MaterialRecipe screen_recipe = lit_recipe;
+
+        if (!screen_recipe.AddTexture("base_color", child_color_asset, true))
+            return LogStageFail("BindChildScreenTexture", "bind recipe texture failed");
+
+        material_data->SetRecipe(screen_recipe);
         return true;
     }
 
@@ -719,14 +719,6 @@ public:
         auto *gc = GetGraphicsContext();
         if (!gc)
             return;
-
-        if (common_sampler)
-        {
-            if (auto *sm = gc->GetSamplerManager())
-                sm->Release(common_sampler);
-
-            common_sampler = nullptr;
-        }
 
         if (auto *gm = gc->GetGeometryManager())
         {

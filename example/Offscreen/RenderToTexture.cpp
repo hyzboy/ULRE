@@ -16,7 +16,6 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -119,7 +118,6 @@ private:
 
     MaterialDataAccessor material_data_ssbo_accessor{};
     graph::ssbo::PBRSurfaceRow sphere_material_data{};
-    Sampler *sphere_sampler = nullptr;
     TextureAsset* sphere_base_tex = nullptr;
     TextureAsset* sphere_normal_tex = nullptr;
     TextureAsset* sphere_roughness_tex = nullptr;
@@ -178,13 +176,6 @@ public:
             {
                 if (auto *gm = gc->GetGeometryManager())
                     gm->Release(geometry);
-            }
-
-            if (sphere_sampler)
-            {
-                if (auto *sm = gc->GetSamplerManager())
-                    sm->Release(sphere_sampler);
-                sphere_sampler = nullptr;
             }
         }
 
@@ -290,10 +281,9 @@ public:
             return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
 
         auto *gm = owner->GetManager<GeometryManager>();
-        auto *sm = owner->GetManager<SamplerManager>();
         auto *tm = owner->GetManager<TextureManager>();
         auto *device = gc->GetDevice();
-        if (!gm || !sm || !tm || !device)
+        if (!gm || !tm || !device)
             return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
 
         // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照
@@ -302,15 +292,13 @@ public:
         sphere_material_data.roughness = 0.92f;
         sphere_material_data.normal_scale = 0.35f;
 
-        sphere_sampler = sm->CreateSampler();
-        if (!sphere_sampler)
-            return LogStageFail("OffscreenPass::BuildSphere", "CreateSampler failed");
-
         sphere_base_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         sphere_normal_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
         sphere_roughness_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
         if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
             return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
+
+        // Bindless registration is deferred until ECS systems are ready.
 
         if (!InitMaterialDataSSBO(offscreen->GetWorld()))
             return LogStageFail("OffscreenPass::BuildSphere", "InitMaterialDataSSBO failed");
@@ -330,6 +318,13 @@ public:
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
+        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!sphere_recipe.AddTexture("base_color", sphere_base_tex, true)
+         || !sphere_recipe.AddTexture("normal", sphere_normal_tex, true)
+         || !sphere_recipe.AddTexture("roughness", sphere_roughness_tex, true))
+            return LogStageFail("OffscreenPass::BuildSphere", "bind recipe textures failed");
+
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
         if (!sphere_asset.IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "create offscreen primitive asset failed");
@@ -346,9 +341,7 @@ public:
         transform.SetMobility(Mobility::Static);
 
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
-        material_data_comp->SetTextureResource("base_color", sphere_base_tex, sphere_sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-        material_data_comp->SetTextureResource("normal", sphere_normal_tex, sphere_sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-        material_data_comp->SetTextureResource("roughness", sphere_roughness_tex, sphere_sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+        // 纹理已由配方声明（sphere_recipe.AddTexture），实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(sphere_struct);
@@ -402,7 +395,6 @@ private:
         graph::GlobalSSBODataAccessor;
 
     MaterialDataAccessor cube_material_data_ssbo_accessor{};
-    Sampler *cube_sampler = nullptr;
     graph::ssbo::PBRSurfaceRow cube_material_data{};
 
     /// 材质授权统一走句柄(TextureAsset)：底座直接给 `rt:` URI，其余给文件名。
@@ -466,16 +458,11 @@ private:
         if (!gc)
             return LogStageFail("RenderToTextureApp::CreateCube", "graphics context is null");
 
-        auto *sm = GetManager<SamplerManager>();
         auto *tm = GetManager<TextureManager>();
         auto *gm = GetManager<GeometryManager>();
         auto *device = gc->GetDevice();
-        if (!sm || !tm || !gm || !device)
+        if (!tm || !gm || !device)
             return LogStageFail("RenderToTextureApp::CreateCube", "required managers/device missing");
-
-        cube_sampler = sm->CreateSampler();
-        if (!cube_sampler)
-            return LogStageFail("RenderToTextureApp::CreateCube", "CreateSampler failed");
 
         // 底座 = 离屏 RT 的颜色附件，用 URI 声明式引用；不拿裸纹理、不再 WrapTextureAsset。
         // 句柄在 RT 创建时已由 RenderTargetManager 绑定，此刻「容器就绪、内容未就绪」，
@@ -514,6 +501,13 @@ private:
         if (!(cube_recipe.material_ssbo_binding = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
+        // 底座 = 离屏 RT 的颜色附件（`rtex:` 身份），其余两张是文件纹理。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!cube_recipe.AddTexture("base_color", base_asset, true)
+         || !cube_recipe.AddTexture("normal", normal_asset, true)
+         || !cube_recipe.AddTexture("roughness", roughness_asset, true))
+            return LogStageFail("RenderToTextureApp::CreateCube", "bind recipe textures failed");
+
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         if (!cube_asset.IsValid())
             return LogStageFail("RenderToTextureApp::CreateCube", "create cube primitive asset failed");
@@ -529,9 +523,7 @@ private:
         cube_transform.SetMobility(Mobility::Movable);
 
         cube_prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
-        material_data_comp->SetTextureResource("base_color", base_asset, cube_sampler);
-        material_data_comp->SetTextureResource("normal", normal_asset, cube_sampler);
-        material_data_comp->SetTextureResource("roughness", roughness_asset, cube_sampler);
+        // 纹理已由配方声明（cube_recipe.AddTexture），实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(cube_struct);
@@ -565,17 +557,6 @@ public:
     ~RenderToTextureApp() override
     {
         SAFE_CLEAR(offscreen)
-
-        if (auto *gc = GetGraphicsContext())
-        {
-            if (cube_sampler)
-            {
-                if (auto *sm = gc->GetManager<SamplerManager>())
-                    sm->Release(cube_sampler);
-            }
-        }
-
-        cube_sampler = nullptr;
     }
 
     bool Init() override

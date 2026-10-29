@@ -8,7 +8,6 @@
 #include <hgl/graph/render/RenderTargetDesc.h>
 #include <hgl/graph/module/RenderTargetManager.h>
 #include <hgl/graph/module/GeometryManager.h>
-#include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -153,7 +152,6 @@ private:
     TextureAsset *base_color_asset = nullptr;
     TextureAsset *normal_asset = nullptr;
     TextureAsset *alpha_base_asset = nullptr;
-    Sampler *pbr_sampler = nullptr;
 
     Geometry *builtin_geometries[kBuiltinGeomCount]{};
     PrimitiveAsset builtin_primitives[kBuiltinGeomCount]{};
@@ -891,12 +889,6 @@ private:
             return false;
         }
 
-        auto *sampler_manager = GetManager<SamplerManager>();
-        pbr_sampler = sampler_manager ? sampler_manager->CreateSampler() : nullptr;
-
-        if (!pbr_sampler)
-            return false;
-
         base_color_asset = texture_manager->WrapTextureAsset(base_color_texture);
         normal_asset     = texture_manager->WrapTextureAsset(normal_texture);
         alpha_base_asset = texture_manager->WrapTextureAsset(alpha_base_texture);
@@ -945,6 +937,12 @@ private:
         if (!lit_recipe.material_ssbo_binding.IsValid())
             return false;
 
+        // 纹理是材质原型固有属性 ⇒ 写进配方。地面用 layer 0，散布物体各自按 tex_idx 覆盖。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!lit_recipe.AddTexture("base_color", base_color_asset, true, 0)
+         || !lit_recipe.AddTexture("normal", normal_asset, true, 0))
+            return false;
+
         // A1-4：alpha test 材质——resolve 侧据此路由 ShadowCasterMasked（阴影）
         // 并在片元里 EvalAlpha 丢弃低于阈值的纹素。与 lit 共享材质 SSBO 行。
         alpha_recipe = lit_recipe;
@@ -953,6 +951,11 @@ private:
         alpha_recipe.render_state_overrides.alpha_test = true;
         alpha_recipe.render_state_overrides.has_alpha_cutoff = true;
         alpha_recipe.render_state_overrides.alpha_cutoff = 0.5f;
+
+        // 镂空阴影的 alpha 真值来源（棋盘黑格 alpha=0 ⇒ 影子同图案镂空）
+        if (!alpha_recipe.AddTexture("opacity_mask", alpha_base_asset, true, 0))
+            return false;
+
         return true;
     }
 
@@ -1117,10 +1120,7 @@ private:
         ground_prim = ground_entity->GetContext()->GetOrCreateGeometryData(ground_entity);
         hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity);
         ground_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
-        material_data_comp->SetTextureResource("base_color", base_color_asset, pbr_sampler,
-            hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0); // Concrete_Plain
-        material_data_comp->SetTextureResource("normal", normal_asset, pbr_sampler,
-            hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
+        // 纹理已由配方声明（lit_recipe.AddTexture，layer 0），实体端不再重复绑定
         material_data_comp->SetDataResource(ground_accessor.GetGlobalSSBOBinding());
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -1210,10 +1210,18 @@ private:
             auto prim = e->GetContext()->GetOrCreateGeometryData(e);
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
-            material_data_comp->SetTextureResource("base_color", base_color_asset, pbr_sampler,
-                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, tex_idx);
-            material_data_comp->SetTextureResource("normal", normal_asset, pbr_sampler,
-                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, tex_idx);
+
+            // 每个物体是同一张数组纹理的不同图层 ⇒ 图层号属于配方，挂一份同源配方覆盖。
+            {
+                graph::mtl::MaterialRecipe obj_recipe = lit_recipe;
+
+                if (!obj_recipe.AddTexture("base_color", base_color_asset, true, tex_idx)
+                 || !obj_recipe.AddTexture("normal", normal_asset, true, tex_idx))
+                    return false;
+
+                material_data_comp->SetRecipe(obj_recipe);
+            }
+
             material_data_comp->SetDataResource(material_accessors[mat_idx].GetGlobalSSBOBinding());
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -1249,10 +1257,7 @@ private:
                 prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
-                material_data_comp->SetTextureResource("base_color", alpha_base_asset, pbr_sampler,
-                    hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
-                material_data_comp->SetTextureResource("opacity_mask", alpha_base_asset, pbr_sampler,
-                    hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
+                // 两条绑定都写在 alpha_recipe 里（实体端零纹理调用）。
                 material_data_comp->SetDataResource(material_accessors[0].GetGlobalSSBOBinding());
                 // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
             }
@@ -1529,15 +1534,6 @@ public:
         SAFE_CLEAR(vdm)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
-
-        if (auto *gc = GetGraphicsContext())
-        {
-            if (auto *sm = gc->GetManager<SamplerManager>())
-            {
-                if (pbr_sampler) sm->Release(pbr_sampler);
-            }
-        }
-        pbr_sampler = nullptr;
     }
 
     void Tick(double delta) override

@@ -6,7 +6,6 @@
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/render/RenderTargetDesc.h>
 #include <hgl/graph/module/RenderTargetManager.h>
-#include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -136,7 +135,6 @@ private:
     /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
     TextureAsset *alpha_base_asset = nullptr;
     TextureAsset *white_asset = nullptr;
-    Sampler *pbr_sampler = nullptr;
 
     Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
@@ -463,15 +461,6 @@ public:
         SAFE_CLEAR(vdm)
         SAFE_CLEAR(alpha_base_texture)
         SAFE_CLEAR(white_texture)
-
-        if (auto *gc = GetGraphicsContext())
-        {
-            if (auto *sm = gc->GetManager<SamplerManager>())
-            {
-                if (pbr_sampler) sm->Release(pbr_sampler);
-            }
-        }
-        pbr_sampler = nullptr;
     }
 
     bool InitTextures()
@@ -495,11 +484,6 @@ public:
             GLogError("[AlphaTestShadow] failed to load AlphaChecker/baseColor.Tex2D");
             return false;
         }
-
-        auto *sampler_manager = GetManager<SamplerManager>();
-        pbr_sampler = sampler_manager ? sampler_manager->CreateSampler() : nullptr;
-        if (!pbr_sampler)
-            return false;
 
         white_texture = texture_manager->CreateTexture2DArray(
             "alpha_test_white_array", 256, 256, 1,
@@ -550,12 +534,22 @@ public:
         if (!alpha_recipe.material_ssbo_binding.IsValid())
             return false;
 
+        // 纹理是材质原型固有属性 ⇒ 写进配方。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!alpha_recipe.AddTexture("base_color", alpha_base_asset, true, 0))
+            return false;
+
         // 地面用同一 Lit 定义但不带 alpha_test——实心渲染，影子判读不被
         // 地面自身的镂空干扰。
         ground_recipe = alpha_recipe;
         ground_recipe.recipe_name = "AlphaTestShadow.Ground";
         ground_recipe.render_state_overrides.has_alpha_test = false;
         ground_recipe.render_state_overrides.alpha_test = false;
+
+        // 地面换成纯白纹理（同名 upsert）
+        if (!ground_recipe.AddTexture("base_color", white_asset, true, 0))
+            return false;
+
         return true;
     }
 
@@ -612,8 +606,7 @@ public:
             auto prim = e->GetContext()->GetOrCreateGeometryData(e);
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
-            material_data_comp->SetTextureResource("base_color", white_asset, pbr_sampler,
-                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
+            // 纹理已由配方声明（ground_recipe.AddTexture → white_asset），实体端不再重复绑定
             material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -644,13 +637,19 @@ public:
             auto prim = e->GetContext()->GetOrCreateGeometryData(e);
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
-            material_data_comp->SetTextureResource("base_color", alpha_base_asset, pbr_sampler,
-                hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
+
+            // CubeA 额外绑 opacity_mask（影子镂空）；CubeB 不绑 ⇒ fallback 1.0 ⇒ 影子实心。
+            // 差别只在配方绑定上，所以挂一份配方覆盖，实体端不再出现纹理授权。
             if (bind_opacity[i])
             {
-                material_data_comp->SetTextureResource("opacity_mask", alpha_base_asset, pbr_sampler,
-                    hgl::ecs::MaterialTextureResourceKind::Texture2DArray, 0);
+                graph::mtl::MaterialRecipe masked_recipe = alpha_recipe;
+
+                if (!masked_recipe.AddTexture("opacity_mask", alpha_base_asset, true, 0))
+                    return false;
+
+                material_data_comp->SetRecipe(masked_recipe);
             }
+
             material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
