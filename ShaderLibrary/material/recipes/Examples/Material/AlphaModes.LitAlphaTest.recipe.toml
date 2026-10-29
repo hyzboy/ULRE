@@ -1,0 +1,7 @@
+schema = 1
+name = "AlphaModes.LitAlphaTest"
+material_definition = "Lit"
+
+[render_state]
+alpha_test = true
+alpha_cutoff = 0.5

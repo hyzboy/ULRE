@@ -268,12 +268,31 @@ namespace
             return false;
 
         MaterialRecipeFileData pbr_spheres;
-        return ParseFile(
-                   OS_TEXT("ShaderLibrary/material/recipes/PBRSpheres.recipe.toml"),
-                   pbr_spheres)
-            && pbr_spheres.recipe.recipe_name == "PBRSpheres.Lit"
-            && pbr_spheres.recipe.textures.empty()
-            && pbr_spheres.recipe.render_state_overrides.has_pipeline_config;
+        if (!ParseFile(
+                OS_TEXT("ShaderLibrary/material/recipes/PBRSpheres.recipe.toml"),
+                pbr_spheres)
+         || pbr_spheres.recipe.recipe_name != "PBRSpheres.Lit"
+         || !pbr_spheres.recipe.textures.empty()
+         || !pbr_spheres.recipe.render_state_overrides.has_pipeline_config)
+            return false;
+
+        MaterialRecipeRegistry example_registry;
+        int registered_file_count = 0;
+        int error_count = 0;
+        const bool loaded = example_registry.LoadDirectory(
+                   OS_TEXT("ShaderLibrary/material/recipes/Examples"),
+                   nullptr,
+                   &registered_file_count,
+                   &error_count);
+        if (!loaded || registered_file_count <= 0 || error_count != 0
+         || example_registry.GetCount() != registered_file_count)
+        {
+            GLogError("example recipe registry mismatch: load=%d registered=%d errors=%d stored=%d",
+                      loaded, registered_file_count, error_count,
+                      example_registry.GetCount());
+            return false;
+        }
+        return true;
     }
 }
 

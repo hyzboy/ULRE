@@ -1,0 +1,7 @@
+schema = 1
+name = "CascadeShadowMap.AlphaTest"
+material_definition = "Lit"
+
+[render_state]
+alpha_test = true
+alpha_cutoff = 0.5

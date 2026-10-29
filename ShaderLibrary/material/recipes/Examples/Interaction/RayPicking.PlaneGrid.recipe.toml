@@ -1,0 +1,10 @@
+schema = 1
+name = "RayPicking.PlaneGrid"
+material_definition = "VertexLuminance"
+
+[transform]
+source = "Vec2Position"
+mapping = "LiftXY_XY0"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"

@@ -1,0 +1,6 @@
+schema = 1
+name = "AlphaModes.LitOpaqueBillboard"
+material_definition = "Lit"
+
+[transform]
+orientation = "CameraFacingFree"

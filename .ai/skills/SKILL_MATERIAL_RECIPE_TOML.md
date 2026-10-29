@@ -83,6 +83,8 @@ Entity *entity = RenderableBuilder(world, "Quad")
 
 - `ShaderLibrary/material/recipes/TextureQuad.recipe.toml`：静态文件纹理和 2D 管线覆盖。
 - `ShaderLibrary/material/recipes/PBRSpheres.recipe.toml`：静态材质/变换/管线声明；数组纹理与 layer 由程序生成并在运行时覆盖。
+- `ShaderLibrary/material/recipes/Examples/`：示例程序使用的静态 recipe 声明，按示例类别分目录；纹理句柄、SSBO 绑定和数组层等运行时资源仍在 C++ 中接线。
+- `MaterialErrorFallback` 与 `CoverageVariants` 的压力测试配方保留少量运行时生成：前者需要构造无效/未知输入以验证回退行为，后者阈值及配方数量由压力参数动态决定。
 
 ## 验证
 

@@ -1,0 +1,6 @@
+schema = 1
+name = "AlphaTestShadow.Ground"
+material_definition = "Lit"
+
+[render_state]
+alpha_test = false

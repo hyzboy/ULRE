@@ -1,0 +1,6 @@
+schema = 1
+name = "AlphaModes.LitAlphaDither"
+material_definition = "Lit"
+
+[render_state]
+dither = true
