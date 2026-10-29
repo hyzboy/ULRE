@@ -136,8 +136,10 @@ SOURCE_GROUP("5.Gizmo" FILES ${GIZMO_ALL_FILES})
 
 SET(GEOMETRY_CORE_FILES ${SG_INCLUDE_PATH}/geo/VKGeometry.h
                         ${SG_INCLUDE_PATH}/geo/VKGeometryData.h
+                        ${SG_INCLUDE_PATH}/geo/LoadGeometry.h
                         VKGeometry.cpp
                         VKGeometryData.cpp
+                        geo/GeometryLoader.cpp
                         ${SG_INCLUDE_PATH}/geo/GeometryCreater.h
                         geo/GeometryCreater.cpp
                         ${SG_INCLUDE_PATH}/geo/AttributeCompatibility.h
@@ -149,8 +151,10 @@ SET(GEOMETRY_MESH_FILES ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                         ${SG_INCLUDE_PATH}/mesh/GeometryDrawRange.h
                         ${SG_INCLUDE_PATH}/mesh/Primitive.h
                         ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
+                        ${SG_INCLUDE_PATH}/mesh/LoadStaticMesh.h
                         mesh/Primitive.cpp
-                        mesh/StaticMesh.cpp)
+                        mesh/StaticMesh.cpp
+                        mesh/LoadStaticMesh.cpp)
 
 SOURCE_GROUP("6.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
 

@@ -1,4 +1,5 @@
-﻿#include<hgl/io/FileInputStream.h>
+#include<hgl/graph/geo/LoadGeometry.h>
+#include<hgl/io/FileInputStream.h>
 #include<hgl/type/String.h>
 #include<hgl/type/Smart.h>
 #include<hgl/type/ValueArray.h>

@@ -1,9 +1,8 @@
 ﻿// LoadStaticMesh.cpp — 从 .scene minipack 加载场景树到 StaticMesh
-// 此文件暂存于 example/Geometry/Shared/，与 LoadGeometry.cpp 同处一个共享目录，
-// 由 LoadScene target 与它一起编译（迁入引擎库后可整目录删除）。
-// 等 LoadGeometry 迁入引擎库后，此文件可随之迁移至 src/SceneGraph/mesh/。
+// Core scene loader for StaticMesh asset packs.
 
 #include <hgl/graph/mesh/LoadStaticMesh.h>
+#include <hgl/graph/geo/LoadGeometry.h>
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/math/Matrix.h>      // TranslateMatrix / ToMatrix / ScaleMatrix（TRS→矩阵组合）
 #include <hgl/graph/module/GeometryManager.h>
@@ -22,10 +21,6 @@ DEFINE_LOGGER_MODULE(LoadStaticMesh)
 
 namespace hgl::graph
 {
-
-// LoadGeometry 在同一可执行文件的 LoadGeometry.cpp 中定义
-Geometry *LoadGeometry(VulkanDevice *device, const GeometryVertexFormat &geometry_vertex_format, const OSString &filename);
-Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device, const GeometryVertexFormat &geometry_vertex_format, const void *bytes, const uint32 size, const OSString &debug_name);
 
 namespace
 {
@@ -692,34 +687,29 @@ std::vector<StaticMeshNode> ParseNodeList(
 
 // ---- Public API -------------------------------------------------------------
 
-bool LoadStaticMeshSceneAsPrimitiveAssets(
+/// 解析一个**已打开**的 minipack（内存映射或字节视图）。
+/// @note 本函数在返回前 `delete mpm`（接管所有权），调用方不得再使用该指针。
+static bool BuildSceneFromMiniPack(
     VulkanDevice                     *device,
     GeometryManager                  *geo_mgr,
     const GeometryVertexFormat       &geometry_vertex_format,
     const mtl::MaterialRecipe        *recipe,
+    hgl::io::minipack::MiniPackMemory *mpm,
     const OSString                   &pack_path,
     const OSString                   &base_dir,
     std::vector<PrimitiveAsset>      &out_assets,
     std::vector<StaticMeshNode>      &out_nodes,
     std::vector<int32_t>             &out_root_nodes)
 {
-    using namespace hgl::io::minipack;
     using namespace hgl::math;
 
     out_assets.clear();
     out_nodes.clear();
     out_root_nodes.clear();
 
-    if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !recipe)
+    if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !recipe || !mpm)
     {
         MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: invalid argument"));
-        return false;
-    }
-
-    MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
-    if (!mpm)
-    {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: cannot open pack: ") + pack_path);
         return false;
     }
 
@@ -837,6 +827,7 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
     delete mpm;
 
     out_assets.reserve(geometry_list.size());
+
     for (Geometry *geo : geometry_list)
     {
         if (!geo)
@@ -852,6 +843,58 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
     out_root_nodes = std::move(root_nodes);
 
     return true;
+}
+
+bool LoadStaticMeshSceneAsPrimitiveAssets(
+    VulkanDevice                     *device,
+    GeometryManager                  *geo_mgr,
+    const GeometryVertexFormat       &geometry_vertex_format,
+    const mtl::MaterialRecipe        *recipe,
+    const OSString                   &pack_path,
+    const OSString                   &base_dir,
+    std::vector<PrimitiveAsset>      &out_assets,
+    std::vector<StaticMeshNode>      &out_nodes,
+    std::vector<int32_t>             &out_root_nodes)
+{
+    using namespace hgl::io::minipack;
+
+    MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
+    if (!mpm)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: cannot open pack: ") + pack_path);
+        return false;
+    }
+
+    return BuildSceneFromMiniPack(device,geo_mgr,geometry_vertex_format,recipe,
+                                  mpm,pack_path,base_dir,
+                                  out_assets,out_nodes,out_root_nodes);
+}
+
+bool LoadStaticMeshSceneFromMemory(
+    VulkanDevice                     *device,
+    GeometryManager                  *geo_mgr,
+    const GeometryVertexFormat       &geometry_vertex_format,
+    const mtl::MaterialRecipe        *recipe,
+    const void                       *pack_bytes,
+    const uint32                      pack_size,
+    const OSString                   &pack_name,
+    const OSString                   &base_dir,
+    std::vector<PrimitiveAsset>      &out_assets,
+    std::vector<StaticMeshNode>      &out_nodes,
+    std::vector<int32_t>             &out_root_nodes)
+{
+    using namespace hgl::io::minipack;
+
+    MiniPackMemory *mpm = GetMiniPackMemoryFromBytes(pack_name,pack_bytes,pack_size);
+    if (!mpm)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneFromMemory: cannot parse pack: ") + pack_name);
+        return false;
+    }
+
+    return BuildSceneFromMiniPack(device,geo_mgr,geometry_vertex_format,recipe,
+                                  mpm,pack_name,base_dir,
+                                  out_assets,out_nodes,out_root_nodes);
 }
 
 }//namespace hgl::graph

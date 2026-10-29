@@ -2,6 +2,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/LoadGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -53,10 +54,6 @@ namespace
         return gvf;
     }
 }
-
-namespace hgl::graph{
-Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const OSString &filename);
-}//namespace hgl::graph
 
 constexpr const COLOR TestColor[] =
 {
