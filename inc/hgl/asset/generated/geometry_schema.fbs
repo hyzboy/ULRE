@@ -1,0 +1,142 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// @ulre-codegen begin
+//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。
+//   用途：发行版资产二进制格式。语义是「完整快照」，不是 TOML 那样的增量补丁：
+//         TOML 缺键 = 保留 C++ 类内初始值；FlatBuffers 解码一律覆盖全部字段。
+//   资产结构一律 table（可能含 string / 动态数组）；向量与定长数组用本文件
+//   生成的包装 struct（FlatBuffers 的 table 不允许定长数组字段）。
+// @ulre-codegen end
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace hgl.asset.schema;
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinSphereParams
+table BuiltinSphereParams
+{
+  slices:uint;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinDomeParams
+table BuiltinDomeParams
+{
+  slices:uint;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinCubeParams
+table BuiltinCubeParams
+{
+  segments_x:uint;
+  segments_y:uint;
+  segments_z:uint;
+  ntb:int;
+  tex_coord:bool;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinPlaneGridParams
+table BuiltinPlaneGridParams
+{
+  grid_x:uint;
+  grid_y:uint;
+  sub_x:uint;
+  sub_y:uint;
+  lum:ubyte;
+  sub_lum:ubyte;
+  is_3d:bool;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinCylinderParams
+table BuiltinCylinderParams
+{
+  half_extend:float;
+  radius:float;
+  slices:uint;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinHollowCylinderParams
+table BuiltinHollowCylinderParams
+{
+  half_extend:float;
+  inner_radius:float;
+  outer_radius:float;
+  slices:uint;
+  cap_radial_tiles:float;
+  cap_angular_tiles:float;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinTorusParams
+table BuiltinTorusParams
+{
+  inner_radius:float;
+  outer_radius:float;
+  slices:uint;
+  stacks:uint;
+  uv_scale_x:float;
+  uv_scale_y:float;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinConeParams
+table BuiltinConeParams
+{
+  half_extend:float;
+  radius:float;
+  slices:uint;
+  stacks:uint;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinCapsuleParams
+table BuiltinCapsuleParams
+{
+  half_height:float;
+  radius:float;
+  slices:uint;
+  stacks:uint;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinRectangleParams
+table BuiltinRectangleParams
+{
+  left:float;
+  top:float;
+  width:float;
+  height:float;
+  segments_x:uint;
+  segments_y:uint;
+  ntb:int;
+  tex_coord:bool;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinBoundingBoxParams
+table BuiltinBoundingBoxParams
+{
+  ntb:int;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinHexSphereParams
+table BuiltinHexSphereParams
+{
+  subdivisions:uint;
+  radius:float;
+  uv_scale_x:float;
+  uv_scale_y:float;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinTaperedCapsuleParams
+table BuiltinTaperedCapsuleParams
+{
+  half_height:float;
+  bottom_radius:float;
+  top_radius:float;
+  slices:uint;
+  stacks:uint;
+}
+
+// inc/hgl/graph/asset/GeometryAssetSpec.h -> BuiltinFrustumParams
+table BuiltinFrustumParams
+{
+  bottom_radius:float;
+  top_radius:float;
+  height:float;
+  slices:uint;
+  generate_caps:bool;
+}
+

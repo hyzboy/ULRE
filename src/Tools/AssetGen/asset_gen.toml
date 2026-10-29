@@ -6,12 +6,13 @@
 # 外部定义的枚举（来自第三方头，例如 Vulkan）。按整数序列化，不生成名字表。
 integer_enums = ["VkFormat"]
 
-# ── 分组：一个分组产出一套四个文件 ──────────────────────────────────────────
+# ── 分组：一个分组产出一套文件 ──────────────────────────────────────────────
 [group.Geometry]
-namespace   = "hgl::graph"
-scan        = ["inc/hgl/graph/asset"]
-toml        = "inc/hgl/asset/generated/GeometryToml.gen.h"
-meta        = "inc/hgl/asset/generated/GeometryMeta.gen.h"
-fbs         = "inc/hgl/asset/generated/geometry_schema.fbs"
+namespace     = "hgl::graph"
+scan          = ["inc/hgl/graph/asset"]
+toml          = "inc/hgl/asset/generated/GeometryToml.gen.h"
+meta          = "inc/hgl/asset/generated/GeometryMeta.gen.h"
+fbs_namespace = "hgl.asset.schema"
+fbs           = "inc/hgl/asset/generated/geometry_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/geometry_schema_generated.h"
-flat        = "inc/hgl/asset/generated/GeometryFlat.gen.h"
+flat          = "inc/hgl/asset/generated/GeometryFlat.gen.h"

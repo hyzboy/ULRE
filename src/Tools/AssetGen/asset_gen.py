@@ -843,6 +843,346 @@ def render_toml_header(structs: list[AssetStruct], enums: list[EnumInfo]) -> str
     return "".join(out)
 
 
+# ── FlatBuffers schema 渲染 ─────────────────────────────────────────────────
+FBS_ELEM = {"float": "float", "uint": "uint", "int": "int", "bool": "bool",
+            "double": "double"}
+
+
+def _wrapper_name(elem_fbs: str, count: int) -> str:
+    camel = {
+        "float": "Float", "double": "Double", "uint": "UInt", "int": "Int",
+        "bool": "Bool", "ubyte": "UByte", "ushort": "UShort", "ulong": "ULong",
+        "byte": "Byte", "short": "Short", "long": "Long",
+    }.get(elem_fbs, elem_fbs)
+    return f"{camel}Array{count}"
+
+
+def _vec_struct_name(elem_fbs: str, count: int) -> str:
+    camel = {"float": "Float", "uint": "UInt", "int": "Int"}[elem_fbs]
+    return f"{camel}{count}"
+
+
+def _fbs_elem_of(t: TypeDesc) -> str:
+    if t.category == "scalar":
+        return t.fbs
+    if t.category == "enum":
+        return "int"
+    return ""
+
+
+def collect_fbs_wrappers(structs: list[AssetStruct]) -> tuple[dict, dict]:
+    """扫描所有字段，算出需要生成的向量 struct 与定长数组包装 struct。"""
+    vecs: dict[tuple[str, int], str] = {}
+    arrays: dict[tuple[str, int], str] = {}
+
+    def walk(t: TypeDesc, where: str) -> None:
+        if t.category == "vector":
+            elem = {"float": "float", "uint": "uint", "int": "int"}[t.scalar_class]
+            vecs[(elem, t.components)] = _vec_struct_name(elem, t.components)
+        elif t.category == "array":
+            if t.elem.category == "struct":
+                arrays[(t.elem.gen, int(t.dim))] = _wrapper_name(t.elem.gen, int(t.dim))
+            else:
+                elem = _fbs_elem_of(t.elem)
+                if not elem:
+                    raise GenError(f"{where}: FlatBuffers 不支持该定长数组元素类型")
+                arrays[(elem, int(t.dim))] = _wrapper_name(elem, int(t.dim))
+        elif t.category in ("value_array", "ptr_array"):
+            walk(t.elem, where)
+
+    for info in structs:
+        for prop in info.fields:
+            if prop.serialized:
+                walk(prop.type, f"{info.name}.{prop.name}")
+    return vecs, arrays
+
+
+def render_fbs_schema(group: GroupConfig, structs: list[AssetStruct]) -> str:
+    vecs, arrays = collect_fbs_wrappers(structs)
+
+    out: list[str] = []
+    out.append(
+        "// ─────────────────────────────────────────────────────────────────────────────\n"
+        "// @ulre-codegen begin\n"
+        "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
+        "//   用途：发行版资产二进制格式。语义是「完整快照」，不是 TOML 那样的增量补丁：\n"
+        "//         TOML 缺键 = 保留 C++ 类内初始值；FlatBuffers 解码一律覆盖全部字段。\n"
+        "//   资产结构一律 table（可能含 string / 动态数组）；向量与定长数组用本文件\n"
+        "//   生成的包装 struct（FlatBuffers 的 table 不允许定长数组字段）。\n"
+        "// @ulre-codegen end\n"
+        "// ─────────────────────────────────────────────────────────────────────────────\n"
+        f"\nnamespace {group.fbs_namespace};\n\n"
+    )
+
+    for (elem, count), name in sorted(arrays.items()):
+        out.append(f"struct {name}\n{{\n  v:[{elem}:{count}];\n}}\n\n")
+
+    for (elem, count), name in sorted(vecs.items()):
+        out.append(f"struct {name}\n{{\n")
+        for comp in ["x", "y", "z", "w"][:count]:
+            out.append(f"  {comp}:{elem};\n")
+        out.append("}\n\n")
+
+    for info in structs:
+        out.append(f"// {info.header} -> {info.short_name}\n")
+        out.append(f"table {info.gen_name}\n{{\n")
+        for prop in info.fields:
+            if not prop.serialized:
+                continue
+            t = prop.type
+            if t.category in ("scalar", "enum"):
+                out.append(f"  {prop.toml_key}:{_fbs_elem_of(t)};\n")
+            elif t.category == "string":
+                out.append(f"  {prop.toml_key}:string;\n")
+            elif t.category == "struct":
+                out.append(f"  {prop.toml_key}:{t.gen};\n")
+            elif t.category == "vector":
+                elem = {"float": "float", "uint": "uint", "int": "int"}[t.scalar_class]
+                out.append(f"  {prop.toml_key}:{_vec_struct_name(elem, t.components)};\n")
+            elif t.category == "array":
+                if t.elem.category == "struct":
+                    out.append(f"  {prop.toml_key}:{_wrapper_name(t.elem.gen, int(t.dim))};\n")
+                else:
+                    out.append(f"  {prop.toml_key}:{_wrapper_name(_fbs_elem_of(t.elem), int(t.dim))};\n")
+            elif t.category == "value_array":
+                elem = _fbs_elem_of(t.elem)
+                if not elem:
+                    raise GenError(
+                        f"{info.name}.{prop.toml_key}: ValueArray 的 FlatBuffers 编码只支持"
+                        f"标量与枚举元素（结构元素请改用 ManagedArray）"
+                    )
+                out.append(f"  {prop.toml_key}:[{elem}];\n")
+            elif t.category == "ptr_array":
+                if t.elem.category != "struct":
+                    raise GenError(
+                        f"{info.name}.{prop.toml_key}: ManagedArray 的 FlatBuffers 编码"
+                        f"只支持资产结构元素"
+                    )
+                out.append(f"  {prop.toml_key}:[{t.elem.gen}];\n")
+        out.append("}\n\n")
+
+    return "".join(out)
+
+
+# ── FlatBuffers 编解码桥 ────────────────────────────────────────────────────
+def _fb_type(group: GroupConfig, name: str) -> str:
+    return f"::hgl::asset::schema::{name}"
+
+
+def _string_encode(t: TypeDesc, src: str, var: str) -> tuple[list[str], str]:
+    """返回 (前置语句, CreateString 表达式)。"""
+    if t.cpp == "OSString":
+        return ([f"        const hgl::U8String {var}_u8 = hgl::ToU8String({src});"],
+                f"fbb.CreateString(reinterpret_cast<const char *>({var}_u8.c_str()))")
+    if t.cpp == "U8String":
+        return ([], f"fbb.CreateString(reinterpret_cast<const char *>({src}.c_str()))")
+    return ([], f"fbb.CreateString({src}.c_str())")
+
+
+def _string_decode(t: TypeDesc, src: str, dst: str) -> list[str]:
+    if t.cpp == "OSString":
+        return [f"        if (const auto *s = {src}) {dst} = hgl::ToOSString(s->str().c_str());".replace(
+            "if (const auto *s = ", "if (const ::flatbuffers::String *s = ")]
+    if t.cpp == "U8String":
+        return [
+            f"        if (const ::flatbuffers::String *s = {src}) "
+            f"{dst} = hgl::U8String(reinterpret_cast<const hgl::u8char *>(s->str().c_str()));"
+        ]
+    return [f"        if (const ::flatbuffers::String *s = {src}) {dst} = s->str().c_str();"]
+
+
+def render_flat_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
+    schema_include = group.fbs_generated[len("inc/"):] if group.fbs_generated.startswith("inc/") \
+        else group.fbs_generated
+    out: list[str] = []
+    out.append(
+        "// ─────────────────────────────────────────────────────────────────────────────\n"
+        "// @ulre-codegen begin\n"
+        "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
+        "//   语义：**完整快照**。与 TOML 的「缺键即保留 C++ 缺省值」不同，这里的 Decode\n"
+        "//         会把 schema 里存在的每个字段都写回，缺省值来自类内初始化（Transient\n"
+        "//         字段不进 schema，因此保持类内缺省）。\n"
+        "// @ulre-codegen end\n"
+        "// ─────────────────────────────────────────────────────────────────────────────\n"
+        "#pragma once\n\n"
+        "#include <flatbuffers/flatbuffers.h>\n"
+        "#include <hgl/type/ValueArray.h>\n"
+        "#include <hgl/utf.h>\n"
+        f"#include <{schema_include}>\n"
+    )
+    for header in sorted({s.header for s in structs}):
+        rel = header[len("inc/"):] if header.startswith("inc/") else header
+        out.append(f"#include <{rel}>\n")
+    out.append("\nnamespace hgl::asset::generated\n{\n")
+
+    for info in structs:
+        out.append(
+            f"    inline flatbuffers::Offset<{_fb_type(group, info.gen_name)}>\n"
+            f"    Encode{info.gen_name}(flatbuffers::FlatBufferBuilder &fbb, "
+            f"const {info.fq} &in);\n"
+        )
+    for info in structs:
+        out.append(
+            f"    inline void Decode{info.gen_name}(const {_fb_type(group, info.gen_name)} *t, "
+            f"{info.fq} &out);\n"
+        )
+    out.append("\n")
+
+    for info in structs:
+        pre: list[str] = []
+        adds: list[str] = []
+        preamble: list[str] = []
+
+        for prop in info.fields:
+            if not prop.serialized:
+                continue
+            t = prop.type
+            key = prop.toml_key
+            src = f"in.{prop.name}"
+            if t.category in ("scalar", "enum"):
+                expr = f"static_cast<int32_t>({src})" if t.category == "enum" else src
+                adds.append(f"        b.add_{key}({expr});")
+            elif t.category == "string":
+                var = f"_{info.gen_name}_{key}_str"
+                lines, expr = _string_encode(t, src, var)
+                preamble += lines
+                pre.append(expr)
+                adds.append(f"        b.add_{key}({expr});")
+            elif t.category == "struct":
+                var = f"_{info.gen_name}_{key}_tab"
+                preamble.append(f"        const auto {var} = Encode{t.gen}(fbb, {src});")
+                adds.append(f"        b.add_{key}({var});")
+            elif t.category == "vector":
+                var = f"_{info.gen_name}_{key}_vec"
+                comps = ["x", "y", "z", "w"][:t.components]
+                ctor = ", ".join(f"{src}.{c}" for c in comps)
+                preamble.append(
+                    f"        const {_fb_type(group, _vec_struct_name(_fbs_elem_of_scalar(t), t.components))}"
+                    f" {var}({ctor});"
+                )
+                adds.append(f"        b.add_{key}(&{var});")
+            elif t.category == "array":
+                var = f"_{info.gen_name}_{key}_arr"
+                if t.elem.category == "struct":
+                    raise GenError(
+                        f"{info.name}.{prop.name}: FlatBuffers 暂不支持「资产结构定长数组」"
+                        f"（请改用 ManagedArray）"
+                    )
+                wrapper = _wrapper_name(_fbs_elem_of(t.elem), int(t.dim))
+                preamble.append(f"        const {_fb_type(group, wrapper)} {var}({src});")
+                adds.append(f"        b.add_{key}(&{var});")
+            elif t.category == "value_array":
+                var = f"_{info.gen_name}_{key}_dyn"
+                pre.append(
+                    f"fbb.CreateVector({src}.GetData(), (size_t){src}.GetCount())"
+                )
+                preamble.append(f"        const auto {var} = {pre[-1]};")
+                pre.pop()
+                adds.append(f"        b.add_{key}({var});")
+            elif t.category == "ptr_array":
+                var = f"_{info.gen_name}_{key}_offs"
+                elem_fb = _fb_type(group, t.elem.gen)
+                preamble.append(
+                    f"        hgl::ValueArray<flatbuffers::Offset<{elem_fb}>> {var};"
+                )
+                preamble.append(f"        {var}.Resize({src}.GetCount());")
+                preamble.append(f"        for (int i = 0; i < {src}.GetCount(); ++i)")
+                preamble.append(
+                    f"            {var}.GetData()[i] = Encode{t.elem.gen}(fbb, *{src}[i]);"
+                )
+                adds.append(
+                    f"        b.add_{key}(fbb.CreateVector({var}.GetData(), "
+                    f"(size_t){var}.GetCount()));"
+                )
+
+        out.append(
+            f"    inline flatbuffers::Offset<{_fb_type(group, info.gen_name)}>\n"
+            f"    Encode{info.gen_name}(flatbuffers::FlatBufferBuilder &fbb, "
+            f"const {info.fq} &in)\n    {{\n"
+            f"        // FlatBuffers 要求父表开始前子表/字符串/向量都已建好。\n"
+        )
+        for line in preamble:
+            out.append(line + "\n")
+        out.append(f"        {_fb_type(group, info.gen_name)}Builder b(fbb);\n")
+        for line in adds:
+            out.append(line + "\n")
+        out.append("        return b.Finish();\n    }\n\n")
+
+    for info in structs:
+        out.append(
+            f"    inline void Decode{info.gen_name}(const {_fb_type(group, info.gen_name)} *t, "
+            f"{info.fq} &out)\n    {{\n"
+            f"        if (!t) return;\n"
+        )
+        for prop in info.fields:
+            if not prop.serialized:
+                continue
+            t = prop.type
+            key = prop.toml_key
+            dst = f"out.{prop.name}"
+            if t.category in ("scalar", "enum"):
+                if t.category == "enum":
+                    out.append(f"        {dst} = static_cast<{t.fq}>(t->{key}());\n")
+                else:
+                    out.append(f"        {dst} = t->{key}();\n")
+            elif t.category == "string":
+                for line in _string_decode(t, f"t->{key}()", dst):
+                    out.append(line + "\n")
+            elif t.category == "struct":
+                out.append(f"        Decode{t.gen}(t->{key}(), {dst});\n")
+            elif t.category == "vector":
+                comps = ["x", "y", "z", "w"][:t.components]
+                out.append(f"        if (const auto *v = t->{key}())\n        {{\n")
+                for comp in comps:
+                    out.append(f"            {dst}.{comp} = v->{comp}();\n")
+                out.append("        }\n")
+            elif t.category == "array":
+                wrapper = (f"_wrapper_name" if False else
+                           (_wrapper_name(t.elem.gen, int(t.dim)) if t.elem.category == "struct"
+                            else _wrapper_name(_fbs_elem_of(t.elem), int(t.dim))))
+                out.append(f"        if (const auto *w = t->{key}())\n        {{\n")
+                if t.elem.category in ("scalar", "enum"):
+                    if t.elem.category == "enum":
+                        out.append(f"            for (int i = 0; i < {t.dim}; ++i)\n")
+                        out.append(f"                {dst}[i] = static_cast<{t.elem.fq}>(w->v()->Get(i));\n")
+                    else:
+                        out.append(f"            for (int i = 0; i < {t.dim}; ++i)\n")
+                        out.append(f"                {dst}[i] = w->v()->Get(i);\n")
+                else:
+                    for index in range(int(t.dim)):
+                        out.append(f"            Decode{t.elem.gen}(&w->v()->Get({index}), {dst}[{index}]);\n")
+                out.append("        }\n")
+            elif t.category == "value_array":
+                elem_desc = t.elem
+                out.append(f"        if (const auto *v = t->{key}())\n        {{\n")
+                out.append(f"            {dst}.Clear();\n")
+                out.append(f"            {dst}.Resize((int)v->size());\n")
+                out.append(f"            auto *items = {dst}.GetData();\n")
+                out.append("            for (uint32_t i = 0; i < v->size(); ++i)\n")
+                if elem_desc.category == "enum":
+                    out.append(f"                items[i] = static_cast<{elem_desc.fq}>(v->Get(i));\n")
+                else:
+                    out.append("                items[i] = v->Get(i);\n")
+                out.append("        }\n")
+            elif t.category == "ptr_array":
+                out.append(f"        if (const auto *v = t->{key}())\n        {{\n")
+                out.append(f"            {dst}.Clear();\n")
+                out.append("            for (uint32_t i = 0; i < v->size(); ++i)\n")
+                out.append("            {\n")
+                out.append(f"                auto *item = {dst}.Create();\n")
+                out.append(f"                Decode{t.elem.gen}(v->Get(i), *item);\n")
+                out.append("            }\n")
+                out.append("        }\n")
+        out.append("    }\n\n")
+
+    out.append("} // namespace hgl::asset::generated\n")
+    return "".join(out)
+
+
+def _fbs_elem_of_scalar(t: TypeDesc) -> str:
+    return {"float": "float", "uint": "uint", "int": "int"}[t.scalar_class]
+
+
 # ── 构建 ────────────────────────────────────────────────────────────────────
 @dataclass
 class RawField:
@@ -1049,6 +1389,20 @@ def write_or_check(path: Path, content: str, check_only: bool, report: list[str]
     path.write_text(content, encoding="utf-8", newline="\n")
 
 
+def run_flatc(repo_root: Path, group: GroupConfig, flatc: str) -> None:
+    if not group.fbs_generated:
+        return
+    schema = repo_root / group.fbs_schema
+    outdir = (repo_root / group.fbs_generated).parent
+    outdir.mkdir(parents=True, exist_ok=True)
+    cmd = [flatc, "--cpp", "-o", str(outdir), str(schema)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, errors="ignore")
+    if proc.returncode != 0:
+        raise GenError(
+            f"flatc 失败（{group.fbs_schema}）：{proc.stderr.strip()[:900]}"
+        )
+
+
 def load_groups(config: dict) -> list[GroupConfig]:
     groups: list[GroupConfig] = []
     for name, entry in config.get("group", {}).items():
@@ -1076,6 +1430,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--include-dir", action="append", default=[])
     parser.add_argument("--check", action="store_true", help="只比对不落盘")
     parser.add_argument("--write", action="store_true", help="生成并落盘（默认行为）")
+    parser.add_argument("--flatc", default=os.environ.get("HGL_FLATC", "flatc"))
+    parser.add_argument("--no-flatc", action="store_true",
+                        help="跳过 flatc（只更新 .fbs 与 TOML/Meta，不重新生成二进制桥头）")
     parser.add_argument("--only", default="", help="只生成指定 group（调试用）")
     args = parser.parse_args(argv)
 
@@ -1170,6 +1527,16 @@ def main(argv: list[str]) -> int:
         write_or_check(repo_root / group.meta_header,
                        render_meta_header(group, ordered),
                        args.check, report)
+        if group.fbs_schema:
+            write_or_check(repo_root / group.fbs_schema,
+                           render_fbs_schema(group, ordered),
+                           args.check, report)
+            if not args.check and not args.no_flatc:
+                run_flatc(repo_root, group, args.flatc)
+            if group.flat_header:
+                write_or_check(repo_root / group.flat_header,
+                               render_flat_header(group, ordered),
+                               args.check, report)
         total_structs += len(ordered)
 
     if report:
