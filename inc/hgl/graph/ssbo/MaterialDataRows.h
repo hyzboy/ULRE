@@ -18,7 +18,7 @@ namespace hgl::graph::ssbo
      * GLSL 声明由 ShaderGen 依据 MaterialSSBOLayout 表发射。
      */
 
-    struct HGL_SSBO_BDA PBRSurfaceRow
+    struct HGL_SSBO_ROW PBRSurfaceRow
     {
         Color4f base_color   = Color4f(1.0f);   ///<基础颜色
         float   metallic     = 0.0f;            ///<金属度
@@ -27,12 +27,12 @@ namespace hgl::graph::ssbo
         float   fresnel      = kDefaultLitMaterialFresnel;           ///<菲涅尔
     };//struct PBRSurfaceRow: 32B = 2 blocks
 
-    struct HGL_SSBO_BDA EmissiveSurfaceRow
+    struct HGL_SSBO_ROW EmissiveSurfaceRow
     {
         Color4f color = Color4f(1.0f);          ///<自发光颜色
     };//struct EmissiveSurfaceRow: 16B = 1 block
 
-    struct HGL_SSBO_BDA TransmissionSurfaceRow
+    struct HGL_SSBO_ROW TransmissionSurfaceRow
     {
         uint32 trans_color;                     ///<透射色（打包）
         uint32 reserved0[3];                    ///<补齐至 16B 整倍数
@@ -51,7 +51,7 @@ namespace hgl::graph::ssbo
      * 材质数据是资源级、跨世界共享的，行号必须全局可解析（B4 拍板「路 B」）。
      * 行 0 = 哨兵（「无材质数据」）；池 `reserve_rows = 1` 保证它不被 Acquire。
      */
-    struct HGL_SSBO_BDA MaterialDataRow
+    struct HGL_SSBO_ROW MaterialDataRow
     {
         uint32 surface_type       = 0;              ///< GlobalSSBOType 值（PBR / Emissive / Transmission）
         uint32 surface_ssbo_id    = 0;              ///< 内容池 id（= GlobalSSBOBinding::ssbo_id）

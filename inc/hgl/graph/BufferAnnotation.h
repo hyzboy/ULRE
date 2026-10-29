@@ -35,6 +35,7 @@
     #define HGL_UBO_BDA         [[clang::annotate("hgl::ubo,bda=1,access=readonly")]]
     #define HGL_SSBO            [[clang::annotate("hgl::ssbo")]]
     #define HGL_SSBO_BDA        [[clang::annotate("hgl::ssbo,bda=1,access=readonly")]]
+    #define HGL_SSBO_ROW        [[clang::annotate("hgl::ssbo,bda=1,access=readwrite")]]
     #define HGL_GPU_STRUCT      [[clang::annotate("hgl::struct")]]
     #define HGL_CPU_ONLY        [[clang::annotate("hgl::cpu_only")]]
 #else
@@ -42,6 +43,7 @@
     #define HGL_UBO_BDA
     #define HGL_SSBO
     #define HGL_SSBO_BDA
+    #define HGL_SSBO_ROW
     #define HGL_GPU_STRUCT
     #define HGL_CPU_ONLY
 #endif

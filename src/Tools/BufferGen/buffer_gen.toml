@@ -1,0 +1,133 @@
+# BufferGen 配置（结构 → 派生产物的命名映射）
+#
+# 唯一真源永远是 C++ 结构定义本身（字段名/类型/顺序/偏移由 Clang AST 提取）。
+# 本文件只登记**命名与产物位置**，以及与结构相关但 AST 无法表达的注释说明。
+# 不允许在这里描述任何布局信息 —— 布局一律以 AST / 记录布局为准。
+#
+# 字段含义
+#   name          C++ 结构名（必须与 ubo/ ssbo/ 目录里的注解结构同名）
+#   kind          ubo | ssbo | struct | cpu_only   （可由注解推导，此处可覆盖）
+#   file          生成/校验的 GLSL 相对路径（相对 ShaderLibrary/）；cpu_only 留空
+#   glsl_struct   GLSL 侧普通结构名（缺省 <name>Data）
+#   glsl_ref      GLSL 侧 buffer_reference 块名（缺省 <name>Ref）
+#   ref_member    buffer_reference 块里的成员名（缺省 = glsl_struct 的蛇形名 + s）
+#   ref_array     1 = 块体是「<glsl_struct> <ref_member>[]」数组，0 = 块体逐字段复制
+#   emit_ref      0 = 只生成普通 struct，不生成 buffer_reference 块
+#   note          写进生成文件头部的说明（可重复多行）
+
+schema = 1
+
+# ── UBO ──────────────────────────────────────────────────────────────────────
+[[struct]]
+name = "AmbientEnvInfo"
+kind = "ubo"
+file = "ubo/ambient_env_info.glsl"
+glsl_struct = "AmbientEnvInfoData"
+glsl_ref = "AmbientEnvInfoRef"
+note = "块内只有句柄（env_tex），两端口径一致；地址 = WorldAddresses.addr_ambient_env。"
+
+[[struct]]
+name = "ViewportInfo"
+kind = "ubo"
+file = "ubo/viewport_info.glsl"
+glsl_struct = "ViewportInfoData"
+glsl_ref = "ViewportInfoRef"
+note = "单份 buffer，内容按 pass/RT 覆盖写、地址恒定 ⇒ 全帧槽同址。"
+
+[[struct]]
+name = "ColorPalette"
+kind = "ubo"
+file = "ubo/color_palette.glsl"
+glsl_struct = "ColorPaletteData"
+glsl_ref = "ColorPaletteRef"
+note = "256 项 RGBA8 打包（unpackUnorm4x8 解码），构造期一次写入、长期有效。"
+
+[[struct]]
+name = "ShadowInfo"
+kind = "ubo"
+file = "ubo/shadow_info.glsl"
+glsl_struct = "ShadowInfoData"
+glsl_ref = "ShadowInfoRef"
+note = "按帧槽各一份（ring[i] 对应帧槽 i）。"
+
+[[struct]]
+name = "ShadowCascadeInfo"
+kind = "struct"
+file = "ubo/shadow_info.glsl"
+glsl_struct = "ShadowCascadeInfo"
+emit_ref = 0
+note = "嵌套结构：被 ShadowInfo.cascades[4] 引用，自身不成块。"
+
+# ── 地址表（SSBO，BDA 无绑定无集） ────────────────────────────────────────────
+[[struct]]
+name = "GlobalAddresses"
+kind = "ssbo"
+file = "ubo/global_addresses.glsl"
+glsl_struct = "GlobalAddressesData"
+glsl_ref = "GlobalAddressesRef"
+note = "字段是 64 位 BDA 地址 ⇒ 包含本文件的着色器必须先启用 GL_ARB_gpu_shader_int64 与 GL_EXT_shader_explicit_arithmetic_types_int64；扩展由聚合入口 ubo/scene_ubo.glsl 统一开启。表按 HGL_FRAME_SLOT_TOTAL 多份，pc_root 指向本帧那一槽。"
+
+[[struct]]
+name = "WorldAddresses"
+kind = "ssbo"
+file = "ubo/world_addresses.glsl"
+glsl_struct = "WorldAddressesData"
+glsl_ref = "WorldAddressesRef"
+note = "字段是 64 位 BDA 地址 ⇒ 扩展要求同 GlobalAddresses。表按 HGL_FRAME_SLOT_TOTAL 多份，pc_root 指向本帧那一槽。"
+
+# ── 光源行 ───────────────────────────────────────────────────────────────────
+[[struct]]
+name = "LightRow"
+kind = "ssbo"
+file = "ubo/light_row.glsl"
+glsl_struct = "LightRowData"
+glsl_ref = "LightRowBufferRef"
+ref_member = "lights"
+ref_array = 1
+note = "行步长 64 B 由 C++ 侧 alignas(64) + 显式 _pad 补齐；GLSL 的 scalar layout 不隐式补这个填充 ⇒ 末尾 _pad1[2] 必须保留。行数组下标 = 行号，主方向光恒为行 0。"
+
+# ── 材质行（SSBO arena 内容行 / 组件行） ─────────────────────────────────────
+[[struct]]
+name = "PBRSurfaceRow"
+kind = "ssbo"
+file = "ssbo/pbr_surface_row.glsl"
+glsl_struct = "PBRSurfaceData"
+glsl_ref = "PBRSurfaceRow"
+note = "GlobalSSBOType::PBRSurface 的内容行；行跨度 32 字节 = 8 × 4。"
+
+[[struct]]
+name = "EmissiveSurfaceRow"
+kind = "ssbo"
+file = "ssbo/emissive_surface_row.glsl"
+glsl_struct = "EmissiveSurfaceData"
+glsl_ref = "EmissiveSurfaceRow"
+note = "GlobalSSBOType::EmissiveSurface 的内容行；行跨度 16 字节 = 4 × 4。"
+
+[[struct]]
+name = "TransmissionSurfaceRow"
+kind = "ssbo"
+file = "ssbo/transmission_surface_row.glsl"
+glsl_struct = "TransmissionSurfaceData"
+glsl_ref = "TransmissionSurfaceRow"
+note = "GlobalSSBOType::TransmissionSurface 的内容行；reserved0[3] 是补齐至 16B 整倍数的显式填充，必须保留（scalar layout 不隐式补）。"
+
+[[struct]]
+name = "MaterialDataRow"
+kind = "ssbo"
+file = "ssbo/material_data_row.glsl"
+glsl_struct = "MaterialDataRowData"
+glsl_ref = "MaterialDataRowRef"
+note = "材质数据组件行（GlobalSSBOType::MaterialData）：行内只说「引用哪一行内容」+ 授权位/revision；行 0 = 无材质数据哨兵。当前 shader 侧只经组件行三元组定位内容行，不直接读本行 ⇒ 本文件暂无人包含。"
+
+# ── CPU-only（位于独占目录但不上 GPU；不产出任何派生物） ──────────────────────
+[[struct]]
+name = "EnvironmentInfo"
+kind = "cpu_only"
+
+[[struct]]
+name = "ShadowCascadeCacheState"
+kind = "cpu_only"
+
+[[struct]]
+name = "LitMaterialData"
+kind = "cpu_only"
