@@ -1,6 +1,8 @@
 #include <hgl/ecs/support/RenderableBuilder.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/MaterialData.h>
+#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -76,7 +78,7 @@ namespace hgl::ecs
         if (failed || !entity)
             return *this;
 
-        if (!asset || !asset->IsValid() || variant_index >= asset->GetVariantCount())
+        if (!asset || !asset->IsDeclared() || variant_index >= asset->GetVariantCount())
         {
             Fail("WithPrimitiveAsset");
             return *this;
@@ -92,6 +94,37 @@ namespace hgl::ecs
         geometry_data->SetPrimitiveAsset(asset);
         geometry_data->SetPrimitiveVariantIndex(variant_index);
         return *this;
+    }
+
+    RenderableBuilder &RenderableBuilder::WithPrimitiveAssetPath(
+        const hgl::OSString &primitive_path,
+        const uint32_t variant_index)
+    {
+        if (failed || !entity)
+            return *this;
+
+        hgl::graph::GraphicsContext *gc = world->GetGraphicsContext();
+        if (!gc)
+        {
+            Fail("WithPrimitiveAssetPath: no GraphicsContext");
+            return *this;
+        }
+
+        hgl::graph::PrimitiveAssetRegistry *registry = gc->GetPrimitiveAssetRegistry();
+        if (!registry)
+        {
+            Fail("WithPrimitiveAssetPath: no PrimitiveAssetRegistry");
+            return *this;
+        }
+
+        const hgl::graph::PrimitiveAsset *asset = registry->GetOrLoad(primitive_path);
+        if (!asset)
+        {
+            Fail("WithPrimitiveAssetPath: GetOrLoad");
+            return *this;
+        }
+
+        return WithPrimitiveAsset(asset, variant_index);
     }
 
     RenderableBuilder &RenderableBuilder::WithRecipe(

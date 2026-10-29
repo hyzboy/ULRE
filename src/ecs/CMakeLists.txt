@@ -118,6 +118,13 @@ if(MSVC)
     set_target_properties(TestGeometryAssetFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# TOML PrimitiveAsset parser (geometry + recipe binding).
+add_executable(TestPrimitiveAssetFile tests/TestPrimitiveAssetFile.cpp)
+target_link_libraries(TestPrimitiveAssetFile PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestPrimitiveAssetFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 add_executable(TestComponentRows tests/TestComponentRows.cpp)
 target_link_libraries(TestComponentRows PRIVATE ULRE::Engine)
 if(MSVC)
@@ -226,6 +233,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestGeometryAssetFile
         PROPERTIES LABELS "geometry;asset")
+
+    add_test(
+        NAME TestPrimitiveAssetFile
+        COMMAND TestPrimitiveAssetFile
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestPrimitiveAssetFile
+        PROPERTIES LABELS "geometry;primitive;asset")
 
     add_test(
         NAME TestBoundingBoxStorage

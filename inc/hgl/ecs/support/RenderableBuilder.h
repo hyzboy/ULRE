@@ -43,6 +43,19 @@ namespace hgl::ecs
             const hgl::graph::PrimitiveAsset *asset,
             uint32_t variant_index = 0);
 
+        /**
+         * @brief 按 `*.primitive.toml` 路径装配（几何 + 配方一步到位）。
+         *
+         * 走 `GraphicsContext` 的图元资产注册器：同一个文件只装配一次，之后共享。
+         * 装配出的几何如果是**文件来源**，此时还在 `MetaOnly`/`Loading`，
+         * `PrimitiveState::CanRender` 的几何门禁会拦住该实体，直到流送就绪。
+         *
+         * 失败（文件/配方/几何任一解析失败）⇒ builder 进入失败态，`Build()` 返回 nullptr。
+         */
+        RenderableBuilder &WithPrimitiveAssetPath(
+            const hgl::OSString &primitive_path,
+            uint32_t variant_index = 0);
+
         RenderableBuilder &WithRecipe(
             const hgl::graph::mtl::MaterialRecipe &recipe);
 

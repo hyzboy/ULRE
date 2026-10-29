@@ -2,6 +2,7 @@
 
 #include <hgl/CoreType.h>
 #include <hgl/type/EnumUtil.h>
+#include <hgl/type/StrChar.h>
 
 namespace hgl::graph
 {
@@ -22,4 +23,41 @@ namespace hgl::graph
 
         Error
     };
-}
+
+    /// 名字表（单一真源）：TOML 资产与诊断日志共用，避免各处各写一套 switch。
+    /// 名字与 GLSL/TOML 常见写法一致，大小写不敏感匹配。
+    constexpr const char *PrimitiveTypeName[]=
+    {
+        "points",
+        "lines",
+        "line_strip",
+        "triangles",
+        "triangle_strip",
+        "fan",
+    };
+
+    inline const char *GetPrimitiveTypeName(const PrimitiveType pt)
+    {
+        if(pt<PrimitiveType::BEGIN_RANGE||pt>PrimitiveType::END_RANGE)
+            return "error";
+
+        return PrimitiveTypeName[static_cast<int>(pt)];
+    }
+
+    inline PrimitiveType ParsePrimitiveType(const char *name,const int name_len=0)
+    {
+        if(!name||!*name)
+            return PrimitiveType::Error;
+
+        const int result=::hgl::find_str_in_array<char>(
+            int(PrimitiveType::RANGE_SIZE),
+            (const char **)PrimitiveTypeName,
+            name,
+            name_len);
+
+        if(result<int(PrimitiveType::BEGIN_RANGE)||result>int(PrimitiveType::END_RANGE))
+            return PrimitiveType::Error;
+
+        return static_cast<PrimitiveType>(result);
+    }
+}//namespace hgl::graph
