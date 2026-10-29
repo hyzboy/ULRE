@@ -30,23 +30,10 @@
 #define ShadowPCFSampler 4u
 
 // ── 材质私有数据行（GlobalSSBOType::PBRSurface） ──
-struct PBRSurfaceData
-{
-    vec4  base_color;
-    float metallic;
-    float roughness;
-    float normal_scale;
-    float fresnel;
-};
-layout(buffer_reference, scalar, buffer_reference_align=16) buffer PBRSurfaceRow
-{
-    vec4  base_color;
-    float metallic;
-    float roughness;
-    float normal_scale;
-    float fresnel;
-};
+// 结构本身见 ssbo/pbr_surface_row.glsl（由 C++ 结构 + 注解生成），
+// 本文件只保留**寻址**：这一行从哪里取。
 // 行跨度 32 字节 = 8 × 4，与 PBRSurfaceData 一致。
+#include "ssbo/pbr_surface_row.glsl"
 #define MTL_ROW(i) PBRSurfaceRow(global_addresses.addr_pbr_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(32))
 
 // ── 材质贴图表 ──

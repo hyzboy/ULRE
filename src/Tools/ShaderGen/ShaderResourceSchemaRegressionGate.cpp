@@ -4320,27 +4320,65 @@ namespace
         text.swap(out);
     }
 
-    /// 取 marker 之后第一个 { ... } 块内的「uint64_t <名字>」字段名（保序）。
+    /// 取「声明名 == name，且其后（跳过空白）紧跟 `{`」的记录体（不含花括号本身）。
+    ///
+    /// 为什么要按名字+花括号定位，而不是按 `"struct Xxx"` 文本定位：C++ 侧结构可以带
+    /// 属性宏（`struct alignas(64) HGL_SSBO_BDA LightRow`）或对齐说明符，字面量前缀会漂移；
+    /// GLSL 侧则写成 `buffer XxxRef {`。统一判据 = 名字前后不是标识符字符，且名字后紧跟 `{`，
+    /// 两端都成立。`kLightRowCapacity` / `LightRowBufferRef` 这类别名会被前后缀检查挡掉。
+    static bool FindRecordBody(const std::string &raw_text,
+                               const char *name,
+                               std::string &out_body)
+    {
+        const size_t name_len = std::strlen(name);
+        if (name_len == 0)
+            return false;
+
+        const auto is_ident = [](const char ch)
+        {
+            return std::isalnum(static_cast<unsigned char>(ch)) || ch == '_';
+        };
+
+        for (size_t pos = raw_text.find(name);
+             pos != std::string::npos;
+             pos = raw_text.find(name, pos + 1))
+        {
+            if (pos > 0 && is_ident(raw_text[pos - 1]))
+                continue;
+            const size_t after = pos + name_len;
+            if (after < raw_text.size() && is_ident(raw_text[after]))
+                continue;
+
+            size_t cursor = after;
+            while (cursor < raw_text.size()
+                && std::isspace(static_cast<unsigned char>(raw_text[cursor])))
+                ++cursor;
+
+            if (cursor >= raw_text.size() || raw_text[cursor] != '{')
+                continue;
+
+            const size_t close = raw_text.find('}', cursor);
+            if (close == std::string::npos)
+                return false;
+
+            out_body = raw_text.substr(cursor + 1, close - cursor - 1);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// 取记录体（`FindRecordBody`）内的「uint64_t <名字>」字段名（保序）。
     static std::vector<std::string> ExtractU64Fields(const std::string &raw_text,
-                                                     const char *marker)
+                                                     const char *name)
     {
         std::vector<std::string> fields;
         std::string text = raw_text;
         StripCommentTokens(text);
 
-        const size_t anchor = text.find(marker);
-        if (anchor == std::string::npos)
+        std::string body;
+        if (!FindRecordBody(text, name, body))
             return fields;
-
-        const size_t brace = text.find('{', anchor);
-        if (brace == std::string::npos)
-            return fields;
-
-        const size_t close = text.find('}', brace);
-        if (close == std::string::npos)
-            return fields;
-
-        const std::string body = text.substr(brace + 1, close - brace - 1);
         const char type[] = "uint64_t";
         const size_t type_len = sizeof(type) - 1;
 
@@ -4374,20 +4412,20 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/GlobalAddresses.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/global_addresses.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 GlobalAddresses.h / scene_ubo.glsl（结构对表的两端）");
+                "无法读取 GlobalAddresses.h / ubo/global_addresses.glsl（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
         }
 
         const std::vector<std::string> cpp_fields =
-            ExtractU64Fields(cpp_text, "struct GlobalAddresses");
+            ExtractU64Fields(cpp_text, "GlobalAddresses");
         const std::vector<std::string> glsl_fields =
-            ExtractU64Fields(glsl_text, "buffer GlobalAddressesRef");
+            ExtractU64Fields(glsl_text, "GlobalAddressesRef");
 
         if (cpp_fields.empty() || glsl_fields.empty())
         {
@@ -4437,20 +4475,20 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/WorldAddresses.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/world_addresses.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 WorldAddresses.h / scene_ubo.glsl（结构对表的两端）");
+                "无法读取 WorldAddresses.h / ubo/world_addresses.glsl（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
         }
 
         const std::vector<std::string> cpp_fields =
-            ExtractU64Fields(cpp_text, "struct WorldAddresses");
+            ExtractU64Fields(cpp_text, "WorldAddresses");
         const std::vector<std::string> glsl_fields =
-            ExtractU64Fields(glsl_text, "buffer WorldAddressesRef");
+            ExtractU64Fields(glsl_text, "WorldAddressesRef");
 
         if (cpp_fields.empty() || glsl_fields.empty())
         {
@@ -4935,12 +4973,12 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/LightRow.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/light_row.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 LightRow.h / scene_ubo.glsl（结构对表的两端）");
+                "无法读取 LightRow.h / ubo/light_row.glsl（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
         }
@@ -5243,25 +5281,29 @@ namespace
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/WorldAddresses.h"));
         const std::string global_cpp =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/GlobalAddresses.h"));
-        const std::string glsl =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/scene_ubo.glsl"));
+        const std::string world_glsl =
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/world_addresses.glsl"));
+        const std::string global_glsl =
+            ReadFileText(RepoRootPath("ShaderLibrary/ubo/global_addresses.glsl"));
 
-        if (world_cpp.empty() || global_cpp.empty() || glsl.empty())
+        if (world_cpp.empty() || global_cpp.empty()
+         || world_glsl.empty() || global_glsl.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 WorldAddresses.h / GlobalAddresses.h / scene_ubo.glsl");
+                "无法读取 WorldAddresses.h / GlobalAddresses.h / "
+                "ubo/world_addresses.glsl / ubo/global_addresses.glsl");
             result.passed = result.diagnostics.empty();
             return result;
         }
 
         const std::vector<std::string> world_fields_cpp =
-            ExtractU64Fields(world_cpp, "struct WorldAddresses");
+            ExtractU64Fields(world_cpp, "WorldAddresses");
         const std::vector<std::string> world_fields_glsl =
-            ExtractU64Fields(glsl, "buffer WorldAddressesRef");
+            ExtractU64Fields(world_glsl, "WorldAddressesRef");
         const std::vector<std::string> global_fields_cpp =
-            ExtractU64Fields(global_cpp, "struct GlobalAddresses");
+            ExtractU64Fields(global_cpp, "GlobalAddresses");
         const std::vector<std::string> global_fields_glsl =
-            ExtractU64Fields(glsl, "buffer GlobalAddressesRef");
+            ExtractU64Fields(global_glsl, "GlobalAddressesRef");
 
         const std::vector<std::string> &this_cpp  = world_side ? world_fields_cpp  : global_fields_cpp;
         const std::vector<std::string> &this_glsl = world_side ? world_fields_glsl : global_fields_glsl;
@@ -7742,8 +7784,25 @@ namespace
             ReadFileText(RepoRootPath("ShaderLibrary/domain/root_bindings.glsl"));
         const std::string emissive_bindings =
             ReadFileText(RepoRootPath("ShaderLibrary/domain/emissive_row_bindings.glsl"));
+        // 结构本体已拆到独立文件（由 C++ 结构 + 注解生成）；bindings 只留寻址宏。
+        const std::string emissive_row_glsl =
+            ReadFileText(RepoRootPath("ShaderLibrary/ssbo/emissive_surface_row.glsl"));
+
+        // 本门用**合成源**（root_bindings + emissive bindings 文本直拼），不经过编译器
+        // 的正文拼接 ⇒ 独立结构文件的 `#include` 要在这里就地展开，否则
+        // `GetFinalGLSL()` 里只有一行 #include、看不到结构声明。
+        std::string emissive_bindings_expanded = emissive_bindings;
+        static constexpr char kRowInclude[] = "#include \"ssbo/emissive_surface_row.glsl\"";
+        {
+            const size_t include_pos = emissive_bindings_expanded.find(kRowInclude);
+            if (include_pos != std::string::npos)
+                emissive_bindings_expanded.replace(include_pos,
+                                                   sizeof(kRowInclude) - 1,
+                                                   emissive_row_glsl);
+        }
+
         const std::string emissive_frag_source =
-            root_bindings + "\n" + emissive_bindings;
+            root_bindings + "\n" + emissive_bindings_expanded;
 
         StageSPVCompileConfig config{};
         config.material_private_data = GlobalSSBOType::EmissiveSurface;
@@ -7819,7 +7878,8 @@ namespace
                                          "MaterialInstanceAddressesRef"})
             {
                 if (emissive_bindings.find(required) == std::string::npos
-                 && root_bindings.find(required) == std::string::npos)
+                 && root_bindings.find(required) == std::string::npos
+                 && emissive_row_glsl.find(required) == std::string::npos)
                     result.diagnostics.emplace_back(
                         std::string("库文件缺少材质私有数据行声明：") + required);
             }
