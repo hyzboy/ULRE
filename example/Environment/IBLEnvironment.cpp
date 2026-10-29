@@ -5,7 +5,6 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -118,7 +117,6 @@ private:
     TextureAsset* base_texture = nullptr;
     TextureAsset* normal_texture = nullptr;
     TextureAsset* roughness_texture = nullptr;
-    Sampler* sampler = nullptr;
 
     TextureCube* sky_cube_texture = nullptr;                ///<天空背景环境贴图
     TextureAsset* sky_cube_asset  = nullptr;                ///<天空背景的句柄(材质授权唯一入口)
@@ -223,8 +221,7 @@ private:
     bool InitMaterial()
     {
         auto* texture_manager = GetManager<TextureManager>();
-        auto* sampler_manager = GetManager<SamplerManager>();
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager)
             return false;
 
         base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -256,14 +253,17 @@ private:
         if (!env_brdf_lut)
             return false;
 
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
-            return false;
-
         // 与默认 Lit 材质同一套 PBR 表面：环境光**算法**由环境层决定（见 InitIBLBinding）
         mesh_recipe.recipe_name = "IBLEnvironment.Lit";
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+
+        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!mesh_recipe.AddTexture("base_color", base_texture, true)
+         || !mesh_recipe.AddTexture("normal", normal_texture, true)
+         || !mesh_recipe.AddTexture("roughness", roughness_texture, true))
+            return false;
 
         return true;
     }
@@ -486,7 +486,11 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-            material_data_comp->SetTextureResource("sky_cube", sky_cube_asset, sampler);
+
+            // 立方体天空纹理写在配方里（实体端零纹理调用）
+            if (!sky_recipe.AddTexture("sky_cube", sky_cube_asset, true))
+                return false;
+
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
     #endif//DRAW_SKY_SPHERE
@@ -503,9 +507,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
-            material_data_comp->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-            material_data_comp->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+            // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct = mesh_rows[0].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(floor_struct);

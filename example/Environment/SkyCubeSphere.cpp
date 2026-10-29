@@ -4,7 +4,6 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -55,7 +54,6 @@ private:
 
     TextureCube* sky_cube_texture = nullptr;
     TextureAsset* sky_cube_asset  = nullptr;
-    Sampler*     sampler          = nullptr;
 
 private:
 
@@ -63,9 +61,8 @@ private:
     {
         auto* geometry_manager = GetManager<GeometryManager>();
         auto* texture_manager  = GetManager<TextureManager>();
-        auto* sampler_manager  = GetManager<SamplerManager>();
 
-        if (!geometry_manager || !texture_manager || !sampler_manager)
+        if (!geometry_manager || !texture_manager)
             return false;
 
         // ---- Cubemap 纹理 ----
@@ -81,8 +78,9 @@ private:
         if (!sky_cube_asset)
             return false;
 
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
+        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!sky_recipe.AddTexture("sky_cube", sky_cube_asset, true))
             return false;
 
         // ---- 球体几何(屏幕中央,原点处) ----
@@ -114,7 +112,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !sky_geometry || !sky_cube_texture || !sampler)
+        if (!ecs_context || !sky_geometry || !sky_cube_texture)
             return false;
 
         auto* entity = ecs_context->CreateEntity<Entity>("SkyCubeSphere");
@@ -128,7 +126,7 @@ private:
         transform.SetMobility(Mobility::Static);
 
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-        material_data_comp->SetTextureResource("sky_cube", sky_cube_asset, sampler);
+        // 纹理已由配方声明（sky_recipe.AddTexture），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

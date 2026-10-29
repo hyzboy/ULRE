@@ -5,7 +5,6 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -98,7 +97,6 @@ private:
     TextureAsset* base_texture = nullptr;
     TextureAsset* normal_texture = nullptr;
     TextureAsset* roughness_texture = nullptr;
-    Sampler* sampler = nullptr;
 
     std::vector<std::unique_ptr<MeshEntry>> meshes;
 
@@ -176,8 +174,7 @@ private:
     bool InitMaterial()
     {
         auto* texture_manager = GetManager<TextureManager>();
-        auto* sampler_manager = GetManager<SamplerManager>();
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager)
             return false;
 
         base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -192,8 +189,11 @@ private:
         if (!roughness_texture)
             return false;
 
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
+        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!mesh_recipe.AddTexture("base_color", base_texture, true)
+         || !mesh_recipe.AddTexture("normal", normal_texture, true)
+         || !mesh_recipe.AddTexture("roughness", roughness_texture, true))
             return false;
 
         // Bindless registration is deferred until ECS systems are ready.
@@ -382,9 +382,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
-            material_data_comp->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-            material_data_comp->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+            // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(floor_struct);
@@ -416,9 +414,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
-            material_data_comp->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-            material_data_comp->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
-            material_data_comp->SetTextureResource("roughness", roughness_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true);
+            // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(mesh_struct);
