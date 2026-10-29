@@ -30,8 +30,11 @@ namespace hgl::graph
         Capsule,
         Rectangle,
         BoundingBox,
+        HexSphere,
+        TaperedCapsule,
+        Frustum,
 
-        ENUM_CLASS_RANGE(Sphere, BoundingBox)
+        ENUM_CLASS_RANGE(Sphere, Frustum)
     };
 
     struct BuiltinSphereParams
@@ -124,6 +127,32 @@ namespace hgl::graph
         NTBType ntb = NTBType::None;
     };
 
+    struct BuiltinHexSphereParams
+    {
+        uint32_t subdivisions = 0;
+        float    radius = 1.0f;
+        float    uv_scale_x = 1.0f;
+        float    uv_scale_y = 1.0f;
+    };
+
+    struct BuiltinTaperedCapsuleParams
+    {
+        float    half_height = 1.0f;
+        float    bottom_radius = 0.5f;
+        float    top_radius = 0.5f;
+        uint32_t slices = 16;
+        uint32_t stacks = 8;
+    };
+
+    struct BuiltinFrustumParams
+    {
+        float    bottom_radius = 1.0f;
+        float    top_radius = 0.5f;
+        float    height = 2.0f;
+        uint32_t slices = 16;
+        bool     generate_caps = true;
+    };
+
     struct GeometryAssetSpec
     {
         AnsiString name;
@@ -144,6 +173,9 @@ namespace hgl::graph
             BuiltinCapsuleParams capsule{};
             BuiltinRectangleParams rectangle{};
             BuiltinBoundingBoxParams bounding_box{};
+            BuiltinHexSphereParams hex_sphere{};
+            BuiltinTaperedCapsuleParams tapered_capsule{};
+            BuiltinFrustumParams frustum{};
         } params;
 
         // File

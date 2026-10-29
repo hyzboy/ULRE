@@ -113,6 +113,9 @@ namespace hgl::graph
         case BuiltinShapeKind::Capsule:         return "capsule";
         case BuiltinShapeKind::Rectangle:       return "rectangle";
         case BuiltinShapeKind::BoundingBox:     return "bounding_box";
+        case BuiltinShapeKind::HexSphere:       return "hex_sphere";
+        case BuiltinShapeKind::TaperedCapsule:  return "tapered_capsule";
+        case BuiltinShapeKind::Frustum:         return "frustum";
         default:                                return "unknown";
         }
     }
@@ -134,6 +137,9 @@ namespace hgl::graph
         if (hgl::stricmp(name, "capsule") == 0)         { out_kind = BuiltinShapeKind::Capsule; return true; }
         if (hgl::stricmp(name, "rectangle") == 0)       { out_kind = BuiltinShapeKind::Rectangle; return true; }
         if (hgl::stricmp(name, "bounding_box") == 0)   { out_kind = BuiltinShapeKind::BoundingBox; return true; }
+        if (hgl::stricmp(name, "hex_sphere") == 0)      { out_kind = BuiltinShapeKind::HexSphere; return true; }
+        if (hgl::stricmp(name, "tapered_capsule") == 0) { out_kind = BuiltinShapeKind::TaperedCapsule; return true; }
+        if (hgl::stricmp(name, "frustum") == 0)         { out_kind = BuiltinShapeKind::Frustum; return true; }
 
         return false;
     }
@@ -361,6 +367,44 @@ namespace hgl::graph
                 }
                 break;
             }
+            case BuiltinShapeKind::HexSphere:
+            {
+                out_spec.params.hex_sphere = BuiltinHexSphereParams{};
+                if (params_table)
+                {
+                    out_spec.params.hex_sphere.subdivisions = ReadUInt(*params_table, "subdivisions", 0);
+                    out_spec.params.hex_sphere.radius       = ReadFloat(*params_table, "radius", 1.0f);
+                    out_spec.params.hex_sphere.uv_scale_x   = ReadFloat(*params_table, "uv_scale_x", 1.0f);
+                    out_spec.params.hex_sphere.uv_scale_y   = ReadFloat(*params_table, "uv_scale_y", 1.0f);
+                }
+                break;
+            }
+            case BuiltinShapeKind::TaperedCapsule:
+            {
+                out_spec.params.tapered_capsule = BuiltinTaperedCapsuleParams{};
+                if (params_table)
+                {
+                    out_spec.params.tapered_capsule.half_height   = ReadFloat(*params_table, "half_height", 1.0f);
+                    out_spec.params.tapered_capsule.bottom_radius = ReadFloat(*params_table, "bottom_radius", 0.5f);
+                    out_spec.params.tapered_capsule.top_radius    = ReadFloat(*params_table, "top_radius", 0.5f);
+                    out_spec.params.tapered_capsule.slices        = ReadUInt(*params_table, "slices", 16);
+                    out_spec.params.tapered_capsule.stacks        = ReadUInt(*params_table, "stacks", 8);
+                }
+                break;
+            }
+            case BuiltinShapeKind::Frustum:
+            {
+                out_spec.params.frustum = BuiltinFrustumParams{};
+                if (params_table)
+                {
+                    out_spec.params.frustum.bottom_radius = ReadFloat(*params_table, "bottom_radius", 1.0f);
+                    out_spec.params.frustum.top_radius    = ReadFloat(*params_table, "top_radius", 0.5f);
+                    out_spec.params.frustum.height        = ReadFloat(*params_table, "height", 2.0f);
+                    out_spec.params.frustum.slices        = ReadUInt(*params_table, "slices", 16);
+                    out_spec.params.frustum.generate_caps = ReadBool(*params_table, "generate_caps", true);
+                }
+                break;
+            }
             }
         }
         else if (hgl::stricmp(type_str.c_str(), "file") == 0)
@@ -437,6 +481,182 @@ namespace hgl::graph
         return true;
     }
 
+    Geometry *CreateGeometryFromSpec(GeometryCreater *creater,
+                                    const GeometryAssetSpec &spec)
+    {
+        if (!creater)
+            return nullptr;
+
+        if (spec.kind == GeometryAssetKind::File)
+        {
+            // 文件来源要自己管 VDM/缓冲池，无法塞进外部 creater。
+            // 调用方应改用 (device,bm) 重载或走异步流送。
+            MLogError(GeometryAsset, OS_TEXT("CreateGeometryFromSpec(creater): file-side geometry needs its own VDM, use the device overload"));
+            return nullptr;
+        }
+
+        switch (spec.shape)
+        {
+        case BuiltinShapeKind::Sphere:
+            return inline_geometry::CreateSphere(creater, spec.params.sphere.slices);
+
+        case BuiltinShapeKind::Dome:
+            return inline_geometry::CreateDome(creater, spec.params.dome.slices);
+
+        case BuiltinShapeKind::Cube:
+        {
+            inline_geometry::CubeCreateInfo cci;
+            cci.segments_x = spec.params.cube.segments_x;
+            cci.segments_y = spec.params.cube.segments_y;
+            cci.segments_z = spec.params.cube.segments_z;
+            cci.ntb = spec.params.cube.ntb;
+            cci.tex_coord = spec.params.cube.tex_coord;
+            return inline_geometry::CreateCube(creater, &cci);
+        }
+
+        case BuiltinShapeKind::PlaneGrid:
+        {
+            inline_geometry::PlaneGridCreateInfo pgci;
+            pgci.grid_size.Set(spec.params.plane_grid.grid_x, spec.params.plane_grid.grid_y);
+            pgci.sub_count.Set(spec.params.plane_grid.sub_x, spec.params.plane_grid.sub_y);
+            pgci.lum = spec.params.plane_grid.lum;
+            pgci.sub_lum = spec.params.plane_grid.sub_lum;
+
+            if (spec.params.plane_grid.is_3d)
+                return inline_geometry::CreatePlaneGrid3D(creater, &pgci);
+            else
+                return inline_geometry::CreatePlaneGrid2D(creater, &pgci);
+        }
+
+        case BuiltinShapeKind::PlaneSquare:
+            return inline_geometry::CreatePlaneSqaure(creater);
+
+        case BuiltinShapeKind::Cylinder:
+        {
+            inline_geometry::CylinderCreateInfo cci;
+            cci.halfExtend = spec.params.cylinder.half_extend;
+            cci.radius = spec.params.cylinder.radius;
+            cci.numberSlices = spec.params.cylinder.slices;
+            return inline_geometry::CreateCylinder(creater, &cci);
+        }
+
+        case BuiltinShapeKind::HollowCylinder:
+        {
+            inline_geometry::HollowCylinderCreateInfo hcci;
+            hcci.halfExtend = spec.params.hollow_cylinder.half_extend;
+            hcci.innerRadius = spec.params.hollow_cylinder.inner_radius;
+            hcci.outerRadius = spec.params.hollow_cylinder.outer_radius;
+            hcci.numberSlices = spec.params.hollow_cylinder.slices;
+            hcci.cap_radial_tiles = spec.params.hollow_cylinder.cap_radial_tiles;
+            hcci.cap_angular_tiles = spec.params.hollow_cylinder.cap_angular_tiles;
+            return inline_geometry::CreateHollowCylinder(creater, &hcci);
+        }
+
+        case BuiltinShapeKind::Torus:
+        {
+            inline_geometry::TorusCreateInfo tci;
+            tci.innerRadius = spec.params.torus.inner_radius;
+            tci.outerRadius = spec.params.torus.outer_radius;
+            tci.numberSlices = spec.params.torus.slices;
+            tci.numberStacks = spec.params.torus.stacks;
+            tci.uv_scale = { spec.params.torus.uv_scale_x, spec.params.torus.uv_scale_y };
+            return inline_geometry::CreateTorus(creater, &tci);
+        }
+
+        case BuiltinShapeKind::Cone:
+        {
+            inline_geometry::ConeCreateInfo cci;
+            cci.halfExtend = spec.params.cone.half_extend;
+            cci.radius = spec.params.cone.radius;
+            cci.numberSlices = spec.params.cone.slices;
+            cci.numberStacks = spec.params.cone.stacks;
+            return inline_geometry::CreateCone(creater, &cci);
+        }
+
+        case BuiltinShapeKind::Capsule:
+        {
+            inline_geometry::CapsuleCreateInfo cci;
+            cci.halfHeight = spec.params.capsule.half_height;
+            cci.radius = spec.params.capsule.radius;
+            cci.numberSlices = spec.params.capsule.slices;
+            cci.numberStacks = spec.params.capsule.stacks;
+            return inline_geometry::CreateCapsule(creater, &cci);
+        }
+
+        case BuiltinShapeKind::Rectangle:
+        {
+            inline_geometry::RectangleCreateInfo rci;
+            rci.scope.Set(spec.params.rectangle.left, spec.params.rectangle.top,
+                          spec.params.rectangle.width, spec.params.rectangle.height);
+            rci.segments_x = spec.params.rectangle.segments_x;
+            rci.segments_y = spec.params.rectangle.segments_y;
+            rci.ntb = spec.params.rectangle.ntb;
+            rci.tex_coord = spec.params.rectangle.tex_coord;
+            return inline_geometry::CreateRectangle(creater, &rci);
+        }
+
+        case BuiltinShapeKind::BoundingBox:
+        {
+            inline_geometry::BoundingBoxCreateInfo bbci;
+            bbci.ntb = spec.params.bounding_box.ntb;
+            return inline_geometry::CreateBoundingBox(creater, &bbci);
+        }
+
+        case BuiltinShapeKind::HexSphere:
+        {
+            inline_geometry::HexSphereCreateInfo hsci;
+            hsci.subdivisions = spec.params.hex_sphere.subdivisions;
+            hsci.radius       = spec.params.hex_sphere.radius;
+            hsci.uv_scale     = { spec.params.hex_sphere.uv_scale_x, spec.params.hex_sphere.uv_scale_y };
+            return inline_geometry::CreateHexSphere(creater, &hsci);
+        }
+
+        case BuiltinShapeKind::TaperedCapsule:
+        {
+            inline_geometry::TaperedCapsuleCreateInfo tcci;
+            tcci.halfHeight   = spec.params.tapered_capsule.half_height;
+            tcci.bottomRadius = spec.params.tapered_capsule.bottom_radius;
+            tcci.topRadius    = spec.params.tapered_capsule.top_radius;
+            tcci.numberSlices = spec.params.tapered_capsule.slices;
+            tcci.numberStacks = spec.params.tapered_capsule.stacks;
+            return inline_geometry::CreateTaperedCapsule(creater, &tcci);
+        }
+
+        case BuiltinShapeKind::Frustum:
+        {
+            inline_geometry::FrustumCreateInfo fci;
+            fci.bottom_radius = spec.params.frustum.bottom_radius;
+            fci.top_radius    = spec.params.frustum.top_radius;
+            fci.height        = spec.params.frustum.height;
+            fci.numberSlices  = spec.params.frustum.slices;
+            fci.generate_caps = spec.params.frustum.generate_caps;
+            return inline_geometry::CreateFrustum(creater, &fci);
+        }
+
+        default:
+            return nullptr;
+        }
+    }
+
+    Geometry *CreateGeometryFromAssetFile(GeometryCreater *creater,
+                                          const OSString &toml_filename)
+    {
+        if (!creater || toml_filename.IsEmpty())
+            return nullptr;
+
+        GeometryAssetSpec spec;
+
+        if (!LoadGeometryAssetSpecFromTOML(toml_filename, spec))
+            return nullptr;
+
+        Geometry *geo = CreateGeometryFromSpec(creater, spec);
+
+        if (!geo)
+            MLogError(GeometryAsset, OS_TEXT("CreateGeometryFromAssetFile failed: ") + toml_filename);
+
+        return geo;
+    }
+
     Geometry *CreateGeometryFromSpec(VulkanDevice *device,
                                     BufferManager *bm,
                                     const GeometryAssetSpec &spec,
@@ -454,119 +674,10 @@ namespace hgl::graph
             return LoadGeometry(device, gvf, spec.file_path);
         }
 
-        // Builtin geometry creation via GeometryCreater
+        // 内置几何体：一次性 creater；形状分发与「共享 creater」重载完全同源。
         GeometryCreater creater(device, gvf, bm);
 
-        switch (spec.shape)
-        {
-        case BuiltinShapeKind::Sphere:
-            return inline_geometry::CreateSphere(&creater, spec.params.sphere.slices);
-
-        case BuiltinShapeKind::Dome:
-            return inline_geometry::CreateDome(&creater, spec.params.dome.slices);
-
-        case BuiltinShapeKind::Cube:
-        {
-            inline_geometry::CubeCreateInfo cci;
-            cci.segments_x = spec.params.cube.segments_x;
-            cci.segments_y = spec.params.cube.segments_y;
-            cci.segments_z = spec.params.cube.segments_z;
-            cci.ntb = spec.params.cube.ntb;
-            cci.tex_coord = spec.params.cube.tex_coord;
-            return inline_geometry::CreateCube(&creater, &cci);
-        }
-
-        case BuiltinShapeKind::PlaneGrid:
-        {
-            inline_geometry::PlaneGridCreateInfo pgci;
-            pgci.grid_size.Set(spec.params.plane_grid.grid_x, spec.params.plane_grid.grid_y);
-            pgci.sub_count.Set(spec.params.plane_grid.sub_x, spec.params.plane_grid.sub_y);
-            pgci.lum = spec.params.plane_grid.lum;
-            pgci.sub_lum = spec.params.plane_grid.sub_lum;
-
-            if (spec.params.plane_grid.is_3d)
-                return inline_geometry::CreatePlaneGrid3D(&creater, &pgci);
-            else
-                return inline_geometry::CreatePlaneGrid2D(&creater, &pgci);
-        }
-
-        case BuiltinShapeKind::PlaneSquare:
-            return inline_geometry::CreatePlaneSqaure(&creater);
-
-        case BuiltinShapeKind::Cylinder:
-        {
-            inline_geometry::CylinderCreateInfo cci;
-            cci.halfExtend = spec.params.cylinder.half_extend;
-            cci.radius = spec.params.cylinder.radius;
-            cci.numberSlices = spec.params.cylinder.slices;
-            return inline_geometry::CreateCylinder(&creater, &cci);
-        }
-
-        case BuiltinShapeKind::HollowCylinder:
-        {
-            inline_geometry::HollowCylinderCreateInfo hcci;
-            hcci.halfExtend = spec.params.hollow_cylinder.half_extend;
-            hcci.innerRadius = spec.params.hollow_cylinder.inner_radius;
-            hcci.outerRadius = spec.params.hollow_cylinder.outer_radius;
-            hcci.numberSlices = spec.params.hollow_cylinder.slices;
-            hcci.cap_radial_tiles = spec.params.hollow_cylinder.cap_radial_tiles;
-            hcci.cap_angular_tiles = spec.params.hollow_cylinder.cap_angular_tiles;
-            return inline_geometry::CreateHollowCylinder(&creater, &hcci);
-        }
-
-        case BuiltinShapeKind::Torus:
-        {
-            inline_geometry::TorusCreateInfo tci;
-            tci.innerRadius = spec.params.torus.inner_radius;
-            tci.outerRadius = spec.params.torus.outer_radius;
-            tci.numberSlices = spec.params.torus.slices;
-            tci.numberStacks = spec.params.torus.stacks;
-            tci.uv_scale = { spec.params.torus.uv_scale_x, spec.params.torus.uv_scale_y };
-            return inline_geometry::CreateTorus(&creater, &tci);
-        }
-
-        case BuiltinShapeKind::Cone:
-        {
-            inline_geometry::ConeCreateInfo cci;
-            cci.halfExtend = spec.params.cone.half_extend;
-            cci.radius = spec.params.cone.radius;
-            cci.numberSlices = spec.params.cone.slices;
-            cci.numberStacks = spec.params.cone.stacks;
-            return inline_geometry::CreateCone(&creater, &cci);
-        }
-
-        case BuiltinShapeKind::Capsule:
-        {
-            inline_geometry::CapsuleCreateInfo cci;
-            cci.halfHeight = spec.params.capsule.half_height;
-            cci.radius = spec.params.capsule.radius;
-            cci.numberSlices = spec.params.capsule.slices;
-            cci.numberStacks = spec.params.capsule.stacks;
-            return inline_geometry::CreateCapsule(&creater, &cci);
-        }
-
-        case BuiltinShapeKind::Rectangle:
-        {
-            inline_geometry::RectangleCreateInfo rci;
-            rci.scope.Set(spec.params.rectangle.left, spec.params.rectangle.top,
-                          spec.params.rectangle.width, spec.params.rectangle.height);
-            rci.segments_x = spec.params.rectangle.segments_x;
-            rci.segments_y = spec.params.rectangle.segments_y;
-            rci.ntb = spec.params.rectangle.ntb;
-            rci.tex_coord = spec.params.rectangle.tex_coord;
-            return inline_geometry::CreateRectangle(&creater, &rci);
-        }
-
-        case BuiltinShapeKind::BoundingBox:
-        {
-            inline_geometry::BoundingBoxCreateInfo bbci;
-            bbci.ntb = spec.params.bounding_box.ntb;
-            return inline_geometry::CreateBoundingBox(&creater, &bbci);
-        }
-
-        default:
-            return nullptr;
-        }
+        return CreateGeometryFromSpec(&creater, spec);
     }
 
 }//namespace hgl::graph
