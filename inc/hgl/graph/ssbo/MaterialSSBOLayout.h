@@ -8,15 +8,17 @@
 
 namespace hgl::graph::ssbo
 {
-    constexpr const char EmissiveSurfaceGlobalSSBOGLSL[] = "vec4 color;";
-    constexpr const char PBRSurfaceGlobalSSBOGLSL[] = R"(
-        vec4  base_color;
-        float metallic;
-        float roughness;
-        float normal_scale;
-        float fresnel;
-    )";
-    constexpr const char TransmissionSurfaceGlobalSSBOGLSL[] = "uint trans_color; uint reserved0[3];";
+    // ⚠ 本文件**不再**持有任何 GLSL 文本。
+    //
+    // 材质内容行的 GLSL 声明现在是**派生产物**：
+    //     ShaderLibrary/ssbo/pbr_surface_row.glsl
+    //     ShaderLibrary/ssbo/emissive_surface_row.glsl
+    //     ShaderLibrary/ssbo/transmission_surface_row.glsl
+    //     ShaderLibrary/ssbo/material_data_row.glsl
+    // 由 `src/Tools/BufferGen/buffer_gen.py` 从 C++ 结构 + 注解生成
+    //（`buffer_gen.py --check` 在 CI 里守住漂移）。
+    //
+    // 这里只保留「类型 ↔ 名字 / 行结构映射」这类**纯 C++ 侧**查表。
 
     inline const char *GetGlobalSSBOStructName(const GlobalSSBOType type) noexcept
     {
@@ -62,26 +64,13 @@ namespace hgl::graph::ssbo
         }
     }
 
-    inline const char *GetGlobalSSBOStructGLSL(const GlobalSSBOType type) noexcept
-    {
-        switch (type)
-        {
-        case GlobalSSBOType::EmissiveSurface:     return EmissiveSurfaceGlobalSSBOGLSL;
-        case GlobalSSBOType::PBRSurface:              return PBRSurfaceGlobalSSBOGLSL;
-        case GlobalSSBOType::TransmissionSurface:     return TransmissionSurfaceGlobalSSBOGLSL;
-        default:                                 return nullptr;
-        }
-    }
-
     inline bool TryGetGlobalSSBOLayout(const GlobalSSBOType type,
                                          const char *&struct_name,
-                                         const char *&glsl_codes,
                                          uint32_t &struct_bytes) noexcept
     {
         struct_name = GetGlobalSSBOStructName(type);
-        glsl_codes = GetGlobalSSBOStructGLSL(type);
         struct_bytes = GetGlobalSSBOTypeStructStride(type);
-        return struct_name != nullptr && glsl_codes != nullptr && struct_bytes > 0;
+        return struct_name != nullptr && struct_bytes > 0;
     }
 
 }
