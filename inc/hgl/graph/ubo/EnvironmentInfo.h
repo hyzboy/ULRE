@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/BufferAnnotation.h>
 #include<hgl/graph/ubo/AmbientEnvInfo.h>
 #include<cstdint>
 
@@ -29,7 +30,7 @@ namespace hgl::graph
      * 它**自己的**参数块。
      * 本结构现在只剩 **`ambient_env`**（`ambient_light_provider` 槽参数块）。
      */
-    struct EnvironmentInfo
+    struct HGL_CPU_ONLY EnvironmentInfo
     {
         AmbientEnvInfo  ambient_env;    ///< `ambient_light_provider` 槽参数块（IBL 句柄）
 

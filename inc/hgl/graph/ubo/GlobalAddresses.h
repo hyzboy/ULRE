@@ -2,6 +2,7 @@
 
 #include <hgl/CoreType.h>
 #include <hgl/common/RenderOptions.h>
+#include <hgl/graph/BufferAnnotation.h>
 #include <cstdint>
 
 namespace hgl::graph
@@ -24,7 +25,7 @@ namespace hgl::graph
      *      见 RootAddressPush.h）。
      * 硬规矩：本表内出现世界私有地址 = 回归（配归属契约门）。
      */
-    struct GlobalAddresses
+    struct HGL_SSBO_BDA GlobalAddresses
     {
         // ── 全局字段：对所有帧槽相同（池基址 / 长期有效数据的地址）──
         uint64_t addr_mesh_draw_params_pool = 0;   // MeshDrawParams 池/arena 基址（本批那一块见 pc_root.addr_batch_mesh_draw_params）

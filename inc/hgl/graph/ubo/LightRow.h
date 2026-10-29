@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/BufferAnnotation.h>
 #include<hgl/math/Vector.h>
 #include<hgl/color/Color4f.h>
 #include<cmath>
@@ -58,7 +59,7 @@ namespace hgl::graph
      * 约定：`direction_intensity.xyz` = **指向光源**的方向（与 `pcf_shadow.glsl` 既有约定一致）；
      *      `.w` = 强度。`color_angle.rgb` = 颜色；`.a` = 角径（度，软阴影/天空共用）。
      */
-    struct alignas(64) LightRow
+    struct alignas(64) HGL_SSBO_BDA LightRow
     {
         uint32_t type   = 0;            ///< LightType
         uint32_t flags  = 0;            ///< kLightFlag*

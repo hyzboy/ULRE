@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <hgl/graph/BufferAnnotation.h>
 #include <hgl/CoreType.h>
 
 namespace hgl::graph
@@ -11,7 +12,7 @@ namespace hgl::graph
      * 打包顺序为 LSB=r..MSB=a（即 Color4f::toABGR8()），与 unpackUnorm4x8 的
      * xyzw=(r,g,b,a) 对应。
      */
-    struct ColorPalette
+    struct HGL_UBO_BDA ColorPalette
     {
         static constexpr int kSize = 256;
 

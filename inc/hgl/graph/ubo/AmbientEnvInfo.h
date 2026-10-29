@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/graph/BufferAnnotation.h>
 #include <hgl/math/Vector.h>
 #include <cstddef>
 
@@ -22,7 +23,7 @@ namespace hgl::graph
      * 规则出处：doc/future/sky-domain-and-provider-params-plan.md §2.1（R1 一槽一块一地址 / R2 同族字段）
      * 与 §2.2（本块 = `WorldAddresses.addr_ambient_env`，单份 buffer ⇒ 全帧槽同址）。
      */
-    struct AmbientEnvInfo
+    struct HGL_UBO_BDA AmbientEnvInfo
     {
         /**
          * IBL 环境贴图 bindless 句柄(1-based,0=未绑定):

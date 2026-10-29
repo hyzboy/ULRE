@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/graph/BufferAnnotation.h>
 #include <hgl/math/Vector.h>
 #include <hgl/math/Matrix.h>
 
@@ -32,7 +33,7 @@ namespace hgl::graph
      * cache_valid_rect:
      *   x/y = 当前有效区域左上角（texel），z/w = 有效区域尺寸（texel）
      */
-    struct ShadowCascadeInfo
+    struct HGL_GPU_STRUCT ShadowCascadeInfo
     {
         Matrix4f shadow_vp              = Matrix4f(1.0f);
         Vector4f shadow_params          = Vector4f(0.002f, 1.5f, 0.12f, 0.0f);
@@ -55,7 +56,7 @@ namespace hgl::graph
      * valid 为 0 时必须整级联重建；scene_revision 变化可用于静态场景
      * 变更后的缓存失效。
      */
-    struct ShadowCascadeCacheState
+    struct HGL_CPU_ONLY ShadowCascadeCacheState
     {
         Vector2f snapped_origin     = Vector2f(0.0f);
         Vector2f texel_world_size   = Vector2f(0.0f);
@@ -79,7 +80,7 @@ namespace hgl::graph
      *   - csm_params: x = 当前级联数量，y = CSM flags，z/w = 保留
      *   - cascades: 固定数量的 CSM 级联数据
      */
-    struct ShadowInfo
+    struct HGL_UBO_BDA ShadowInfo
     {
         Matrix4f shadow_vp              = Matrix4f(1.0f);
         Vector4f shadow_params          = Vector4f(0.002f, 1.5f, 0.12f, 0.0f);

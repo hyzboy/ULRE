@@ -2,6 +2,7 @@
 
 #include <hgl/CoreType.h>
 #include <hgl/common/RenderOptions.h>
+#include <hgl/graph/BufferAnnotation.h>
 #include <cstdint>
 
 namespace hgl::graph
@@ -24,7 +25,7 @@ namespace hgl::graph
      * 表按 **HGL_FRAME_SLOT_TOTAL 多份**（每帧只写本帧槽），pc_root 随之指向本帧槽的表地址，
      * 与 GlobalAddresses 的槽机制同形（槽地址 = 基址 + 槽号 × 步长）。
      */
-    struct WorldAddresses
+    struct HGL_SSBO_BDA WorldAddresses
     {
         uint64_t addr_camera_info = 0;          // 相机行表（世界私有；行号 = 相机槽 × 帧槽总数 + 帧槽）
         uint64_t addr_shadow = 0;               // **本世界**的影子数据 ShadowInfo（T6b/P4：已世界私有，不再是 profile 的；
