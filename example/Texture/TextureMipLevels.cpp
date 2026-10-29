@@ -242,13 +242,15 @@ private:
 
     bool InitMaterial()
     {
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("TextureMipLevels.UnlitTexture");
+        if (!loaded_recipe)
+            return false;
+
         for (uint32_t row = 0; row < 3; row++)
         {
             // UnlitTexture：2D 模式专用，只采样 base_color，无光照干扰 → 屏幕上就是资产本身的颜色
-            ruler_recipe[row].recipe_name = "TextureMipLevels.UnlitTexture";
-            ruler_recipe[row].mtl_def_id = "UnlitTexture";
-            ruler_recipe[row].render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-            ruler_recipe[row].vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
+            ruler_recipe[row] = *loaded_recipe;
 
             // 纹理是材质原型固有属性 ⇒ 写进配方；三行共用 layer=0（A 行 2D 会被引擎包成单层数组）
             if (!ruler_recipe[row].AddTexture("base_color", row_texture[row], true, 0))

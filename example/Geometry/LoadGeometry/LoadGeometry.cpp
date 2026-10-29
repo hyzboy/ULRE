@@ -161,15 +161,16 @@ private:
         return true;
     }
 
-    void InitMaterialRecipes()
+    bool InitMaterialRecipes()
     {
-        solid_recipe.recipe_name = "LoadGeometry.DebugNormalColor";
-        solid_recipe.mtl_def_id = "DebugNormalColor";
-        solid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-
-        wire_recipe.recipe_name = "LoadGeometry.Wire";
-        wire_recipe.mtl_def_id = "builtin/pure_color";
-        wire_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_solid =
+            GetRecipe("LoadGeometry.DebugNormalColor");
+        const mtl::MaterialRecipe *loaded_wire = GetRecipe("LoadGeometry.Wire");
+        if (!loaded_solid || !loaded_wire)
+            return false;
+        solid_recipe = *loaded_solid;
+        wire_recipe = *loaded_wire;
+        return true;
     }
 
     bool InitSolidMDP()
@@ -385,7 +386,8 @@ private:
 public:
     bool Init() override
     {
-        InitMaterialRecipes();
+        if (!InitMaterialRecipes())
+            return false;
 
         if(!InitSolidMDP())
             return(false);

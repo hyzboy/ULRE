@@ -135,9 +135,11 @@ public:
         material_data.metallic=0;
         material_data.roughness=0.95f;
         material_data.normal_scale=0.35f;
-        wall_recipe.recipe_name = "WallsFromPolyline.Lit";
-        wall_recipe.mtl_def_id = "Lit";
-        wall_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("WallsFromPolyline.Lit");
+        if (!loaded_recipe)
+            return false;
+        wall_recipe = *loaded_recipe;
 
         auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         auto *buffer_manager = GetManager<BufferManager>();

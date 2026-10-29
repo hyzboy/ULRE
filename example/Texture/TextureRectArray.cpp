@@ -119,12 +119,14 @@ private:
 
     bool InitMaterial()
     {
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("TextureRectArray.UnlitTexture");
+        if (!loaded_recipe)
+            return false;
+
         for(uint32_t i=0;i<TexCount;i++)
         {
-            rect_recipe[i].recipe_name = "TextureRectArray.UnlitTexture";
-            rect_recipe[i].mtl_def_id = "UnlitTexture";
-            rect_recipe[i].render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-            rect_recipe[i].vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
+            rect_recipe[i] = *loaded_recipe;
 
             // 纹理 + 图层都是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理。
             if(!rect_recipe[i].AddTexture("base_color",texture_asset,true,i))

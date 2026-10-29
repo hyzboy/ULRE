@@ -196,10 +196,11 @@ private:
 
     bool InitMaterial()
     {
-        icon_recipe.recipe_name = "TextureArrayStreaming.UnlitTexture";
-        icon_recipe.mtl_def_id  = "UnlitTexture";
-        icon_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        icon_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("TextureArrayStreaming.UnlitTexture");
+        if (!loaded_recipe)
+            return false;
+        icon_recipe = *loaded_recipe;
 
         return true;
     }

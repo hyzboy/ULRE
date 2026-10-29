@@ -236,9 +236,10 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        quad_recipe.recipe_name = "TextureQuad.UnlitTexture";
-        quad_recipe.mtl_def_id = "UnlitTexture";
-        quad_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("TextureQuad.UnlitTexture");
+        if (!loaded_recipe)
+            return false;
+        quad_recipe = *loaded_recipe;
         quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Triangles);
 
         return true;

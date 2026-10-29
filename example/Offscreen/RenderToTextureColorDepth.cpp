@@ -332,9 +332,11 @@ public:
 
         gm->Add(geometry);
 
-        sphere_recipe.recipe_name = "RTTColorDepth.OffscreenSphere";
-        sphere_recipe.mtl_def_id = "Lit";
-        sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe =
+            owner->GetRecipe("RTTColorDepth.OffscreenSphere");
+        if (!loaded_recipe)
+            return LogStageFail("OffscreenPass::BuildSphere", "material recipe not found");
+        sphere_recipe = *loaded_recipe;
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
@@ -416,7 +418,6 @@ struct DisplayCube
 {
     const char *name = nullptr;
     const char *recipe_name = nullptr;  ///< 两个立方体用不同配方名，避免材质缓存互相覆盖
-    const char *mtl_def_id = "UnlitTexture3D";  ///< 两个立方体都是「把离屏附件原样显示」，故都走世界空间无光贴面
     float x_offset = 0.0f;              ///< 世界坐标 X 偏移，用于并排摆放颜色与深度两个立方体
     const char *tag = nullptr;          ///< 日志标签
     const char *uri = nullptr;          ///< 纹理 URI（`rt:<RT 名>:<附件名>`）
@@ -555,9 +556,10 @@ private:
 
         gm->Add(cube.geometry);
 
-        cube.recipe.recipe_name = cube.recipe_name;
-        cube.recipe.mtl_def_id = cube.mtl_def_id;
-        cube.recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe(cube.recipe_name);
+        if (!loaded_recipe)
+            return LogStageFail("App::CreateDisplayCube", "material recipe not found");
+        cube.recipe = *loaded_recipe;
         if (!(cube.recipe.material_ssbo_binding = cube.accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("App::CreateDisplayCube", "register material SSBO binding failed");
 
@@ -613,7 +615,6 @@ private:
         //     看上去和颜色立方体几乎一样（这就是「两个都像在显示 COLOR」的根因）。
         //   · 走 UnlitTexture（2D NDC）顶点通路错，物体位置/尺寸全错。
         // 深度立方体另有一层：深度采样视图已把 R 广播到 RGB，故呈灰度。
-        cubes[1].mtl_def_id  = "UnlitTexture3D";
         cubes[1].tag         = "onscreen_bind_depth";
         cubes[1].uri         = "rt:RTTColorDepth:OffscreenRT:depth";
         cubes[1].x_offset    = +kCubeSpacing;

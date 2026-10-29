@@ -170,9 +170,11 @@ private:
         const OSString pack_path = hgl::ToOSString(scene_path.string());
         const OSString base_dir  = hgl::ToOSString(scene_dir.string());
 
-        scene_recipe.recipe_name = "LoadScene.DebugNormalColor";
-        scene_recipe.mtl_def_id = "DebugNormalColor";
-        scene_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("LoadScene.DebugNormalColor");
+        if (!loaded_recipe)
+            return false;
+        scene_recipe = *loaded_recipe;
         if (!(scene_recipe.material_ssbo_binding = solid.mtl_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid())
             return false;
 

@@ -312,9 +312,11 @@ public:
 
         gm->Add(geometry);
 
-        sphere_recipe.recipe_name = "RenderToTexture.OffscreenSphere";
-        sphere_recipe.mtl_def_id = "Lit";
-        sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_sphere_recipe =
+            owner->GetRecipe("RenderToTexture.OffscreenSphere");
+        if (!loaded_sphere_recipe)
+            return LogStageFail("OffscreenPass::BuildSphere", "material recipe not found");
+        sphere_recipe = *loaded_sphere_recipe;
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
@@ -495,9 +497,11 @@ private:
 
         gm->Add(cube_geometry);
 
-        cube_recipe.recipe_name = "RenderToTexture.Cube";
-        cube_recipe.mtl_def_id = "Lit";
-        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        const mtl::MaterialRecipe *loaded_cube_recipe =
+            GetRecipe("RenderToTexture.Cube");
+        if (!loaded_cube_recipe)
+            return LogStageFail("RenderToTextureApp::CreateCube", "material recipe not found");
+        cube_recipe = *loaded_cube_recipe;
         if (!(cube_recipe.material_ssbo_binding = cube_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
