@@ -18,7 +18,6 @@
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -122,7 +121,6 @@ private:
     /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
     TextureAsset *      base_color_asset = nullptr;
     TextureAsset *      normal_asset = nullptr;
-    Sampler *           sampler = nullptr;
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -168,10 +166,9 @@ private:
 
     bool InitMaterial()
     {
-        auto* sampler_manager = GetManager<SamplerManager>();
-        if (!sampler_manager || !base_color_texture || !normal_texture) {
-            printf("[ERROR] InitMaterial: Failed manager/texture checks - material_mgr=%p sampler_mgr=%p base=%p normal=%p\n",
-                   nullptr, sampler_manager, base_color_texture, normal_texture);
+        if (!base_color_texture || !normal_texture) {
+            printf("[ERROR] InitMaterial: Failed texture checks - base=%p normal=%p\n",
+                   base_color_texture, normal_texture);
             return false;
         }
         sphere_recipe.recipe_name = "PBRSpheres.Lit";
@@ -196,12 +193,6 @@ private:
 
             printf("[T3i] PBR_MULTIBATCH=1：网格后半走第二套配方"
                    "（Lit + 顶点节点=Billboard ⇒ 不同 shader program）⇒ 期望 2 个批\n");
-        }
-
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler) {
-            printf("[ERROR] InitMaterial: Failed to create sampler\n");
-            return false;
         }
 
         return true;
@@ -561,21 +552,18 @@ private:
 
                 prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(
                     use_recipe_b ? &base_primitives_b[col] : &base_primitives[col]);
-                if (!material_data_comp->SetTextureResource(
-                        "base_color",
-                        base_color_asset,
-                        sampler,
-                        hgl::ecs::MaterialTextureResourceKind::
-                            Texture2DArray,
-                        row)
-                 || !material_data_comp->SetTextureResource(
-                        "normal",
-                        normal_asset,
-                        sampler,
-                        hgl::ecs::MaterialTextureResourceKind::
-                            Texture2DArray,
-                        row))
+
+                // 每格的差别只有「数组图层号」= 行号 ⇒ 图层号属于配方，给该实体挂一份配方覆盖。
+                // 采样器由 Bindless 预设统一管理，实体端不再出现任何纹理/sampler 调用。
+                graph::mtl::MaterialRecipe cell_recipe =
+                    use_recipe_b ? sphere_recipe_b : sphere_recipe;
+
+                if (!cell_recipe.AddTexture("base_color", base_color_asset, true, row)
+                 || !cell_recipe.AddTexture("normal", normal_asset, true, row))
                     return false;
+
+                material_data_comp->SetRecipe(cell_recipe);
+
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
                 sphere_struct = sphere_slot_accessors[row][col].GetGlobalSSBOBinding();
                 material_data_comp->SetDataResource(sphere_struct);

@@ -28,7 +28,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -117,7 +116,6 @@ private:
     TextureAsset * base_texture   = nullptr;
     TextureAsset * normal_texture = nullptr;
     TextureAsset * mask_texture   = nullptr;   ///< DitherMask 变体的 alpha 来源（opacity_mask）
-    Sampler *   sampler        = nullptr;
 
     hgl::ecs::TransformAccessor item_transforms[GRID_ROWS][GRID_COLS]{};
 
@@ -132,9 +130,8 @@ private:
     bool InitMaterial()
     {
         auto* texture_manager = GetManager<TextureManager>();
-        auto* sampler_manager = GetManager<SamplerManager>();
 
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager)
             return false;
 
         base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -152,14 +149,16 @@ private:
             return false;
         }
 
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
-            return false;
-
         // ── 基础配方（变体的"原始"形态）──
         opaque_recipe.recipe_name = "CoverageVariants.LitOpaque";
         opaque_recipe.mtl_def_id  = "Lit";
         opaque_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+
+        // 纹理是材质原型固有属性 ⇒ 写进配方。变体配方从它拷贝，因此自动继承这两条绑定。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!opaque_recipe.AddTexture("base_color", base_texture, true)
+         || !opaque_recipe.AddTexture("normal", normal_texture, true))
+            return false;
 
         // ── 变体：同源拷贝 + 覆盖模式（dither）──
         // dither 会进生成的 GLSL（#define HGL_ALPHA_DITHER）⇒ 不同 shader program。
@@ -167,6 +166,11 @@ private:
         dither_recipe.recipe_name = "CoverageVariants.LitDitherMask";
         dither_recipe.render_state_overrides.has_dither = true;
         dither_recipe.render_state_overrides.dither     = true;
+
+        // DitherMask 的 alpha 真值来源：只有这个变体绑 opacity_mask
+        //（Opaque 不绑 ⇒ 未绑 = 1.0 ⇒ dither 不裁剪，即"状态关掉"的那一端）
+        if (!dither_recipe.AddTexture("opacity_mask", mask_texture, true))
+            return false;
 
         // ── A4：N 个「仅 alpha_cutoff 不同」的配方 ──
         // 唯一差异是阈值字面量（composer 落成 `#define HGL_ALPHA_CUTOFF <v>`）⇒ 片元 digest 不同
@@ -192,6 +196,10 @@ private:
                 r.render_state_overrides.alpha_test       = true;
                 r.render_state_overrides.has_alpha_cutoff = true;
                 r.render_state_overrides.alpha_cutoff     = STRESS_CUTOFF_STEP * float(i + 1);
+
+                // 台架实体同样绑 opacity_mask（alpha 真值来源），与改造前的实体级授权一致
+                if (!r.AddTexture("opacity_mask", mask_texture, true))
+                    return false;
             }
 
             printf("[A4] CV_STRESS=%u：%u 个同 def、仅 alpha_cutoff 不同的配方"
@@ -322,11 +330,8 @@ private:
                 geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(&stress_asset[i]);
 
-                if (!material_data->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
-                 || !material_data->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
-                 || !material_data->SetTextureResource("opacity_mask", mask_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
-                    return false;
-
+                // 纹理已由配方声明（stress_recipe[i] 继承 opaque_recipe + 追加 opacity_mask），
+                // 实体端不再重复绑定
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
                 row_resource = stress_rows[i].GetGlobalSSBOBinding();
                 material_data->SetDataResource(row_resource);
@@ -371,16 +376,7 @@ private:
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(
                         (row == 0) ? &opaque_asset : &dither_asset);
 
-                if (!material_data->SetTextureResource("base_color", base_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
-                 || !material_data->SetTextureResource("normal", normal_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
-                    return false;
-
-                // DitherMask 变体：绑 opacity_mask（alpha 真值来源；未绑 = 1.0 ⇒ dither 不裁剪，
-                // 即"状态关掉"的那一端）—— 与 AlphaTestShadow 的 CubeA/CubeB 对照同款作者写法。
-                if (row == 1
-                 && !material_data->SetTextureResource("opacity_mask", mask_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
-                    return false;
-
+                // 纹理已由配方声明（opaque_recipe / dither_recipe 各自持有绑定），实体端不再重复绑定
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
                 row_resource = surface_rows[row][col].GetGlobalSSBOBinding();
                 material_data->SetDataResource(row_resource);

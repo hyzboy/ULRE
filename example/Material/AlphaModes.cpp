@@ -49,7 +49,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/filesystem/Filename.h>
@@ -147,7 +146,6 @@ private:
     MaterialDataAccessor surface_rows[MODE_ROWS][ALPHA_STEPS]{};
 
     TextureAsset* pattern_texture = nullptr;   ///< 单通道 gradient：base_color + opacity_mask
-    Sampler *   sampler = nullptr;
 
     hgl::ecs::TransformAccessor item_transforms[MODE_ROWS][ALPHA_STEPS]{};
 
@@ -162,9 +160,8 @@ private:
     bool InitTextures()
     {
         auto* texture_manager = GetManager<TextureManager>();
-        auto* sampler_manager = GetManager<SamplerManager>();
 
-        if (!texture_manager || !sampler_manager)
+        if (!texture_manager)
             return false;
 
         pattern_texture = texture_manager->CreateTextureAsset(
@@ -176,8 +173,7 @@ private:
             return false;
         }
 
-        sampler = sampler_manager->CreateSampler();
-        return sampler != nullptr;
+        return true;
     }
 
     bool InitMaterial()
@@ -220,6 +216,22 @@ private:
                    "⇒ 自成一批（异 program），接管须能处理多批异 program"
                    "⇒ 期望 ENGAGED batches=5/5（全量）\n");
         }
+
+        // 纹理是材质原型固有属性 ⇒ 每个配方各声明一次（同一张 gradient 同时喂两个槽位，
+        // 有效 alpha = 材质行 base_color.a × opacity_mask 采样）。
+        // 采样器由 Bindless 预设统一管理，材质侧不再创建/传递 Sampler。
+        auto BindPattern = [this](graph::mtl::MaterialRecipe &recipe) -> bool
+        {
+            return recipe.AddTexture("base_color", pattern_texture, true)
+                && recipe.AddTexture("opacity_mask", pattern_texture, true);
+        };
+
+        if (!BindPattern(opaque_recipe)
+         || !BindPattern(blend_recipe)
+         || !BindPattern(alpha_test_recipe)
+         || !BindPattern(dither_recipe)
+         || (partial_enabled && !BindPattern(partial_recipe)))
+            return false;
 
         return true;
     }
@@ -341,12 +353,7 @@ private:
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(
                         as_partial ? &partial_asset : &mode_asset[row]);
 
-                // 同一张单通道 gradient 同时当 base_color（可见图案）与 opacity_mask
-                //（逐像素 alpha 图案）⇒ 有效 alpha = 本列比例 × 纹理采样
-                if (!material_data->SetTextureResource("base_color", pattern_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true)
-                 || !material_data->SetTextureResource("opacity_mask", pattern_texture, sampler, MaterialTextureResourceKind::Texture2D, 0, true))
-                    return false;
-
+                // 纹理（base_color + opacity_mask）已由配方声明，实体端不再重复绑定
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
                 row_resource = surface_rows[row][col].GetGlobalSSBOBinding();
                 material_data->SetDataResource(row_resource);

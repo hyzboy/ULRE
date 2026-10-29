@@ -18,7 +18,6 @@
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -90,7 +89,6 @@ private:
     TextureAsset *near_normal_asset = nullptr;
     TextureAsset *far_base_color_asset = nullptr;
     TextureAsset *far_normal_asset = nullptr;
-    Sampler *sampler = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *sphere_geometry = nullptr;
@@ -166,14 +164,6 @@ private:
 
     bool InitMaterials()
     {
-        auto *sampler_manager = GetManager<SamplerManager>();
-        if (!sampler_manager)
-            return LogFail("InitMaterials", "required manager/device is null");
-
-        sampler = sampler_manager->CreateSampler();
-        if (!sampler)
-            return LogFail("InitMaterials", "failed to create sampler");
-
         auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
@@ -194,11 +184,22 @@ private:
         if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
+        // 纹理是材质原型固有属性 ⇒ 两套配方各自声明，切换时只换配方即可。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        if (!near_recipe.AddTexture("base_color", near_base_color_asset, true)
+         || !near_recipe.AddTexture("normal", near_normal_asset, true))
+            return LogFail("InitMaterials", "near recipe texture binding failed");
+
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
         far_recipe.mtl_def_id = "Lit";
         if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogFail("InitMaterials", "far material SSBO binding failed");
+
+        // 同名 upsert 覆盖成 Far 那对纹理（2D 句柄，身份为 `texid:`）
+        if (!far_recipe.AddTexture("base_color", far_base_color_asset, true)
+         || !far_recipe.AddTexture("normal", far_normal_asset, true))
+            return LogFail("InitMaterials", "far recipe texture binding failed");
 
         return true;
     }
@@ -247,35 +248,7 @@ private:
 
         sphere_material_data->SetRecipe(use_far_material ? far_recipe : near_recipe);
 
-        if (use_far_material)
-        {
-            if (!sphere_material_data->SetTextureResource(
-                    "base_color",
-                    far_base_color_asset,
-                    sampler)
-             || !sphere_material_data->SetTextureResource(
-                    "normal",
-                    far_normal_asset,
-                    sampler))
-                return false;
-        }
-        else
-        {
-            if (!sphere_material_data->SetTextureResource(
-                    "base_color",
-                    near_base_color_asset,
-                    sampler,
-                    hgl::ecs::MaterialTextureResourceKind::
-                        Texture2DArray)
-             || !sphere_material_data->SetTextureResource(
-                    "normal",
-                    near_normal_asset,
-                    sampler,
-                    hgl::ecs::MaterialTextureResourceKind::
-                        Texture2DArray))
-                return false;
-        }
-
+        // 纹理随配方一起切换（两套配方各自持有自己的纹理绑定），实体端不再单独授权纹理
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
         sphere_material_data->SetDataResource(sphere_struct);
