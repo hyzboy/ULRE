@@ -320,7 +320,7 @@ namespace hgl::ecs
             GLogError("[MaterialData] 清空 (Global, MaterialData) 行失败 row=%u", material_row_id);
     }
 
-    void MaterialData::SetDataResource(
+    bool MaterialData::SetDataResource(
         const MaterialDataAuthoringResource &resource)
     {
         if (resource.ssbo_id == 0)
@@ -331,7 +331,7 @@ namespace hgl::ecs
                 ClearMaterialRow();
                 TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource);
             }
-            return;
+            return true;
         }
 
         if (!resource.GetGlobalSSBOBinding().IsValid())
@@ -342,11 +342,11 @@ namespace hgl::ecs
                     resource.ssbo_type),
                 resource.ssbo_id,
                 resource.data_index);
-            return;
+            return false;
         }
 
         if (!EnsureMaterialRow())
-            return;
+            return false;
 
         const hgl::graph::GlobalSSBOBinding binding = resource.GetGlobalSSBOBinding();
 
@@ -362,8 +362,9 @@ namespace hgl::ecs
         {
             GLogError("[MaterialData] 写 (Global, MaterialData) 行失败 row=%u ssbo_id=%u data_index=%u",
                       material_row_id, binding.ssbo_id, binding.data_index);
-            return;
+            return false;
         }
+        return true;
     }
 
     // ── B4-iii-b：世界级旁表取用（键 = 材质行行号）──────────────────────────

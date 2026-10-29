@@ -1,4 +1,5 @@
 #include<hgl/framework/WorkObject.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -14,6 +15,24 @@ namespace hgl
     void WorkObject::SetECSContext(ecs::ECSContext *ctx)
     {
         world = ctx;
+    }
+
+    const graph::mtl::MaterialRecipe *WorkObject::GetRecipe(const char *name)
+    {
+        auto *graphics = GetGraphicsContext();
+        return graphics ? graphics->FindOrLoadMaterialRecipe(name) : nullptr;
+    }
+
+    bool WorkObject::LoadRecipeFile(const OSString &path)
+    {
+        auto *graphics = GetGraphicsContext();
+        return graphics && graphics->LoadMaterialRecipeFile(path);
+    }
+
+    bool WorkObject::LoadRecipeDirectory(const OSString &path)
+    {
+        auto *graphics = GetGraphicsContext();
+        return graphics && graphics->LoadMaterialRecipeDirectory(path);
     }
 
     void WorkObject::SetClearColor(const Color4f &color)

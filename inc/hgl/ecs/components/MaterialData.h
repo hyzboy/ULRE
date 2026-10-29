@@ -4,9 +4,11 @@
 #include<hgl/ecs/support/MaterialAuthoringSideTable.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
-#include<hgl/mtl/MaterialRecipe.h>
+#include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
+#include <hgl/log/Log.h>
 #include<cstdint>
 #include<string>
 
@@ -151,7 +153,40 @@ namespace hgl::ecs
         // ── 材质数据行资源 ──
         /// 授权 / 清空材质数据行（真源写在 (Global, MaterialData) 组件行里；本组件只持行号）。
         /// `resource.ssbo_id == 0` ⇒ 清空（行保留）；其余情况要求 binding 有效（无效即报错拒绝）。
-        void SetDataResource(const MaterialDataAuthoringResource &resource);
+        bool SetDataResource(const MaterialDataAuthoringResource &resource);
+
+        /// Write a typed material row through a caller-owned lease and bind it.
+        /// The accessor must outlive this component's use of the bound row.
+        template<typename T>
+        bool SetMaterialDataRow(
+            hgl::graph::GlobalSSBODataAccessor &accessor,
+            const T &data)
+        {
+            constexpr hgl::graph::GlobalSSBOType type =
+                hgl::graph::ssbo::GlobalRowTypeTraits<T>::TYPE;
+            static_assert(
+                hgl::graph::GetGlobalSSBOTypeStructVersion(type) != 0,
+                "SetMaterialDataRow requires a registered material row type");
+
+            if (!accessor
+             || accessor.GetGlobalSSBOType() != type
+             || accessor.GetRowBytes() != sizeof(T))
+            {
+                GLogError(
+                    "[MaterialData] typed row lease mismatch type=%s bytes=%u expected=%zu",
+                    hgl::graph::GetGlobalSSBOTypeName(type),
+                    accessor.GetRowBytes(),
+                    sizeof(T));
+                return false;
+            }
+
+            if (!accessor.Write(data))
+                return false;
+
+            MaterialDataAuthoringResource resource{};
+            resource = accessor.GetGlobalSSBOBinding();
+            return SetDataResource(resource);
+        }
 
         /// 组件侧授权代数（每次授权状态变化 +1）。**行内 revision 与之同源**（见
         /// `GetAuthoredRowRevision`）——只读行的消费者应当读行，不要读组件副本。

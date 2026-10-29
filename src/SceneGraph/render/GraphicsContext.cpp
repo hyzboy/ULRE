@@ -40,6 +40,48 @@ namespace hgl::graph
         return global_ssbo_registry ? global_ssbo_registry->GetGlobalAddressesAddress(frame_slot) : 0;
     }
 
+    bool GraphicsContext::LoadMaterialRecipeFile(const OSString &path)
+    {
+        return material_recipe_registry_.LoadFile(path, tex_manager);
+    }
+
+    bool GraphicsContext::LoadMaterialRecipeDirectory(
+        const OSString &path,
+        int *out_file_count,
+        int *out_error_count)
+    {
+        return material_recipe_registry_.LoadDirectory(
+            path, tex_manager, out_file_count, out_error_count);
+    }
+
+    const mtl::MaterialRecipe *GraphicsContext::FindMaterialRecipe(
+        const char *name) const
+    {
+        return material_recipe_registry_.FindByName(name);
+    }
+
+    const mtl::MaterialRecipe *GraphicsContext::FindOrLoadMaterialRecipe(
+        const char *name)
+    {
+        if (!name || !name[0])
+            return nullptr;
+
+        if (const mtl::MaterialRecipe *recipe =
+                material_recipe_registry_.FindByName(name))
+            return recipe;
+
+        if (!default_material_recipes_loaded_)
+        {
+            if (!LoadMaterialRecipeDirectory(
+                    OS_TEXT("ShaderLibrary/material/recipes/")))
+                return nullptr;
+
+            default_material_recipes_loaded_ = true;
+        }
+
+        return material_recipe_registry_.FindByName(name);
+    }
+
     bool GraphicsContext::Initialize()
     {
         if (!device)
@@ -170,6 +212,11 @@ namespace hgl::graph
             loaded_file_manager_->Stop();
             SAFE_CLEAR(loaded_file_manager_)
         }
+
+        // Recipe data contains TextureAsset observers owned by TextureManager.
+        // Drop the cache before destroying the module manager that owns them.
+        material_recipe_registry_.Clear();
+        default_material_recipes_loaded_ = false;
 
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
         // GraphModuleManager destructor will call Release() on all modules automatically

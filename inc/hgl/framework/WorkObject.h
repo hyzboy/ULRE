@@ -16,6 +16,7 @@ namespace hgl
         class Camera;
         struct ViewportInfo;
         struct CameraInfo;
+        namespace mtl { struct MaterialRecipe; }
     }
 
     /**
@@ -52,6 +53,11 @@ namespace hgl
         {
             return world ? world->GetGraphicsContext() : nullptr;
         }
+
+        /// Find a loaded material recipe, loading the default recipe directory on first miss.
+        const graph::mtl::MaterialRecipe *GetRecipe(const char *name);
+        bool LoadRecipeFile(const OSString &path);
+        bool LoadRecipeDirectory(const OSString &path);
 
         graph::VulkanDevice *       GetDevice           ()const
         {

@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含14个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、CMCore线程/并发与异步文件IO、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph、**级联阴影CSM**、**ECS架构解耦设计规范**和快速参考。
+本目录包含15个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、CMCore线程/并发与异步文件IO、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph、**级联阴影CSM**、**ECS架构解耦设计规范**、材质配方 TOML 资产规范和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -155,6 +155,25 @@
 离屏图贴到立方体上发灰？   → 本文 §10.8 坑 1（别用 Lit，用 UnlitTexture3D）
 深度图贴上去全是红色？     → 本文 §10.8 坑 2（采样视图要 R->RGB 广播）
 深度图一片黑？             → 本文 §10.8 逆序 Z（d=0 是无限远）
+→ 使用这个SKILL
+```
+
+---
+
+### 0.4.2 [SKILL_MATERIAL_RECIPE_TOML.md](SKILL_MATERIAL_RECIPE_TOML.md)
+**适用：创建、解析或加载声明式 `*.recipe.toml` 材质配方**
+
+- `MaterialDefinition` 与 `MaterialRecipe` 的职责边界
+- Schema 1 字段和枚举命名规则
+- pipeline 全量覆盖、纹理 URI/layer 校验与异步句柄语义
+- Registry 生命周期及运行时动态覆盖方式
+- `GlobalSSBOBinding` 不可序列化的原因与材质数据初值边界
+
+**快速导航：**
+```
+需要从 TOML 创建材质配方？
+要绑定文件纹理或 RenderTarget？
+需要在 TOML 和运行时覆盖间划分字段？
 → 使用这个SKILL
 ```
 
@@ -411,11 +430,12 @@
 
 ```
 .ai/skills/ 目录结构
-├── SKILL_*.md (本集合，14个指南文档)
+├── SKILL_*.md (本集合，15个指南文档)
 │   ├── SKILL_HGL_TYPES_REFERENCE.md  ← HGL类型参考（必读）
 │   ├── SKILL_CMCORETYPE_REFERENCE.md ← CMCoreType底层库完整参考
 │   ├── SKILL_CMCORE_REFERENCE.md     ← CMCore完整参考（线程/时间/队列等）
 │   ├── SKILL_TASK_SYSTEM_AND_ASYNC_IO.md ← 任务架构与优先级异步文件IO
+│   ├── SKILL_MATERIAL_RECIPE_TOML.md ← 材质配方 TOML 资产规范
 │   ├── SKILL_ADD_NEW_RENDER_COMPONENT.md
 │   ├── SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md
 │   ├── SKILL_EXECUTION_PHASE_ORDERING.md
@@ -473,6 +493,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | SKILL_CMCORETYPE_REFERENCE.md | 📊 深 | 10 min | ⭐ | ✓ |
 | SKILL_CMCORE_REFERENCE.md | 📊 深 | 10 min | ⭐ | ✓ |
 | SKILL_TASK_SYSTEM_AND_ASYNC_IO.md | 📘 深 | 20 min | ⭐⭐ | ✓✓ |
+| SKILL_MATERIAL_RECIPE_TOML.md | 📘 深 | 15 min | ⭐⭐ | ✓✓ |
 | SKILL_QUICK_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_ADD_NEW_RENDER_COMPONENT.md | 📘 深 | 20 min | ⭐⭐ | ✓✓ |
 | SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md | 📗 中等 | 15 min | ⭐⭐ | ✓ |

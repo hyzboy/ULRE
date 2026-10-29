@@ -26,6 +26,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/support/RenderableBuilder.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/ShadowProxy.h>
 #include<hgl/ecs/components/CameraControlMode.h>
@@ -171,9 +172,15 @@ private:
                    base_color_texture, normal_texture);
             return false;
         }
-        sphere_recipe.recipe_name = "PBRSpheres.Lit";
-        sphere_recipe.mtl_def_id = "Lit";
-        sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
+        auto *texture_manager = GetManager<TextureManager>();
+        if (!texture_manager)
+            return false;
+
+        const mtl::MaterialRecipe *loaded_recipe =
+            GetRecipe("PBRSpheres.Lit");
+        if (!loaded_recipe)
+            return false;
+        sphere_recipe = *loaded_recipe;
 
         // T3i：第二套配方（同 def ⇒ 同 shader program；不同 pipeline 配置 ⇒ 第二个批）
         multibatch_enabled = (getenv("PBR_MULTIBATCH") != nullptr);
@@ -187,8 +194,8 @@ private:
             //     纹理/数据行）⇒ 那些实体没有渲染项，不是"第二个批"。
             // ⇒ 用**同 def + 不同顶点节点配置**（billboard 朝向 ⇒ 不同 vertex program，
             //   资源/材质行路径完全一致）拿到真正的第二个批。
+            sphere_recipe_b = sphere_recipe;
             sphere_recipe_b.recipe_name = "PBRSpheres.LitBillboard";
-            sphere_recipe_b.mtl_def_id   = "Lit";
             sphere_recipe_b.vertex_node_config.orientation = mtl::OrientationMode::CameraFacingFree;
 
             printf("[T3i] PBR_MULTIBATCH=1：网格后半走第二套配方"
@@ -324,11 +331,6 @@ private:
                 sphere_slot_accessors[row][col] =
                     domain_manager->GetAccessor<ssbo::PBRSurfaceRow>();
                 if (!sphere_slot_accessors[row][col])
-                    return false;
-
-                const ssbo::PBRSurfaceRow material_data =
-                    sphere_material_data[row][col];
-                if (!sphere_slot_accessors[row][col].Write(material_data))
                     return false;
             }
         }
@@ -514,8 +516,27 @@ private:
                 std::string name = "Sphere_M" + std::to_string(col)
                                  + "_R"       + std::to_string(row);
 
-                Entity *e = ecs_world->CreateEntity<Entity>(name);
+                // T3c-3 对照：**(0,0) 那个球是静态实体**（其余全可动）。静态实体的 L2W 行号
+                // 是常量（`1 + slot`）⇒ 写者每帧重下发也不产生脏行（零重传）；可动实体则随帧槽轮转。
+                // 本行只作**行为对照**（位置/画面与其余球一致）；机理判据在探针里（纯数据）。
+                const Mobility mobility = (row == 0 && col == 0) ? Mobility::Static : Mobility::Movable;
+                const bool use_recipe_b = multibatch_enabled && (col >= GRID_SIZE / 2);
+
+                Entity *e = RenderableBuilder(ecs_world, name.c_str())
+                    .WithTransform(glm::vec3(x, y, 0.0f),
+                                   MakeRandomRotation(row, col),
+                                   glm::vec3(1.0f), mobility)
+                    .WithPrimitiveAsset(
+                        use_recipe_b ? &base_primitives_b[col] : &base_primitives[col])
+                    .WithMaterialRow(
+                        sphere_slot_accessors[row][col],
+                        sphere_material_data[row][col])
+                    .Build();
+                if (!e)
+                    return false;
                 sphere_entities[row][col] = e;
+                sphere_transforms[row][col] =
+                    ecs_world->GetTransformByEntity(e->GetEntityID());
 
                 // T3h 判据实体（PBR_SHADOW_FACTS=1 才挂）：两个**非默认阴影事实**
                 // 实体——(2,3) 不接收、(7,4) bias=2.0。本示例无投影光 ⇒ 像素看不出
@@ -524,34 +545,15 @@ private:
                 if (getenv("PBR_SHADOW_FACTS"))
                 {
                     if (row == 2 && col == 3)
-                    {
                         e->AddComponent<ShadowProxy>()->SetReceiveShadow(false);
-                    }
                     else if (row == 7 && col == 4)
-                    {
                         e->AddComponent<ShadowProxy>()->SetBiasMultiplier(2.0f);
-                    }
                 }
 
-                // T3c-3 对照：**(0,0) 那个球是静态实体**（其余全可动）。静态实体的 L2W 行号
-                // 是常量（`1 + slot`）⇒ 写者每帧重下发也不产生脏行（零重传）；可动实体则随帧槽轮转。
-                // 本行只作**行为对照**（位置/画面与其余球一致）；机理判据在探针里（纯数据）。
-                const Mobility mobility = (row == 0 && col == 0) ? Mobility::Static : Mobility::Movable;
-
-                auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(e->GetEntityID(), mobility));
-                sphere_transforms[row][col] = transform;
-                transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
-                transform.SetLocalRotation(MakeRandomRotation(row, col));
-                transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-                transform.SetMobility(mobility);
-
-                auto prim_comp = e->GetContext()->GetOrCreateGeometryData(e);
-                hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
-                // T3i（PBR_MULTIBATCH=1）：后半网格用第二配方 ⇒ 第二个批
-                const bool use_recipe_b = multibatch_enabled && (col >= GRID_SIZE / 2);
-
-                prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(
-                    use_recipe_b ? &base_primitives_b[col] : &base_primitives[col]);
+                hgl::ecs::MaterialData *material_data_comp =
+                    ecs_world->GetOrCreateMaterialData(e);
+                if (!material_data_comp)
+                    return false;
 
                 // 每格的差别只有「数组图层号」= 行号 ⇒ 图层号属于配方，给该实体挂一份配方覆盖。
                 // 采样器由 Bindless 预设统一管理，实体端不再出现任何纹理/sampler 调用。
@@ -563,10 +565,6 @@ private:
                     return false;
 
                 material_data_comp->SetRecipe(cell_recipe);
-
-                hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
-                sphere_struct = sphere_slot_accessors[row][col].GetGlobalSSBOBinding();
-                material_data_comp->SetDataResource(sphere_struct);
                 // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
             }
         }

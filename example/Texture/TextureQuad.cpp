@@ -2,11 +2,10 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/ecs/support/RenderableBuilder.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -67,27 +66,15 @@ private:
     ECSContext *        ecs_world           = nullptr;
     Entity *            quad_entity         = nullptr;
 
-    TextureAsset* texture = nullptr;
-    graph::mtl::MaterialRecipe quad_recipe{};
+    const graph::mtl::MaterialRecipe *quad_recipe = nullptr;
     PrimitiveAsset      quad_asset{};
 
 private:
 
     bool InitMaterial()
     {
-        auto* tex_manager = GetManager<TextureManager>();
-        if (!tex_manager)
-            return false;
-
-        texture = tex_manager->CreateTextureAsset(OS_TEXT("res/image/lena.Tex2D"),true);
-
-        if(!texture)return(false);
-
-        // 纹理是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理，材质侧不再持有。
-        if(!quad_recipe.AddTexture("base_color",texture,true))
-            return(false);
-
-        return(true);
+        quad_recipe = GetRecipe("TextureQuad.UnlitTexture");
+        return quad_recipe != nullptr;
     }
 
     bool InitVBO()
@@ -109,10 +96,7 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-        quad_recipe.recipe_name = "TextureQuad.UnlitTexture";
-        quad_recipe.mtl_def_id = "UnlitTexture";
-        quad_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Triangles);
+        quad_asset = PrimitiveAsset(geometry, quad_recipe, PrimitiveType::Triangles);
 
         return(true);
     }
@@ -123,19 +107,15 @@ private:
         if(!ecs_world)
             return false;
 
-        quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
-        auto quad_transform = ecs_world->GetTransform(ecs_world->CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
-        auto quad_primitive = quad_entity->GetContext()->GetOrCreateGeometryData(quad_entity);
-        // 材质数据层组件（配方/绑定/行号的承载者）——渲染侧需要它存在
-        quad_entity->GetContext()->GetOrCreateMaterialData(quad_entity);
+        quad_entity = RenderableBuilder(ecs_world, "TextureQuad")
+            .WithTransform(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                           glm::vec3(1.0f), Mobility::Static)
+            .WithPrimitiveAsset(&quad_asset)
+            .Build();
+        if (!quad_entity)
+            return false;
 
-        quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-        quad_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        quad_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        quad_transform.SetMobility(Mobility::Static);
-
-        quad_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
-        // 纹理已由配方声明（quad_recipe.AddTexture），实体端不再重复绑定
+        // 纹理与渲染配置来自 TextureQuad.recipe.toml；实体端无需重复绑定。
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

@@ -19,6 +19,7 @@
  */
 
 #include <hgl/vk/VKDevice.h>
+#include <hgl/mtl/MaterialRecipeRegistry.h>
 
 namespace hgl
 {
@@ -85,6 +86,11 @@ namespace hgl::graph
         /// 保证同一物理设备上不会并发读盘。
         LoadedFileManager *loaded_file_manager_ = nullptr;
 
+        /// Recipe data contains non-owning TextureAsset handles; its registry must
+        /// outlive every PrimitiveAsset authored from it and remain device-scoped.
+        mtl::MaterialRecipeRegistry material_recipe_registry_;
+        bool default_material_recipes_loaded_ = false;
+
     public:
         explicit GraphicsContext(VulkanDevice *dev);
         ~GraphicsContext();
@@ -142,6 +148,13 @@ namespace hgl::graph
         EnvironmentManager *GetEnvironmentManager() { return env_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
+
+        bool LoadMaterialRecipeFile(const OSString &path);
+        bool LoadMaterialRecipeDirectory(const OSString &path,
+                                         int *out_file_count = nullptr,
+                                         int *out_error_count = nullptr);
+        const mtl::MaterialRecipe *FindMaterialRecipe(const char *name) const;
+        const mtl::MaterialRecipe *FindOrLoadMaterialRecipe(const char *name);
 
         /// 全局异步文件加载管理器（Initialize 后恒为有效，Shutdown 后为 nullptr）。
         /// 调用方只在主线程使用：Submit/Pump/Collect/Stop 有线程亲和性。
