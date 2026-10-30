@@ -291,7 +291,10 @@ namespace hgl::ecs
             kArenaRows,
             graph::BufferAllocPolicy::Auto,
             "GPUCullSystem.IndirectCommands",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+            // T5：ICB 现在**每桶一条命令、每帧先清零再原子累加实例数** ⇒ 必须带
+            // TRANSFER_DST（`vkCmdFillBuffer` 的 VUID-vkCmdFillBuffer-dstBuffer-00031）。
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+            | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
         );
         if (!indirect_commands_buffer_) return false;
         indirect_commands_addr_ = device_->GetBufferDeviceAddressAligned16(indirect_commands_buffer_->GetBuffer());
@@ -737,6 +740,27 @@ namespace hgl::ecs
                                   VK_ACCESS_2_TRANSFER_WRITE_BIT,
                                   VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
 
+        // ── T5（实例化）：ICB 命令区同 cmd 内清零 ────────────────────────────────
+        // 实例化后 gather **不再按实例整条覆写**命令：`groupCountX/Z` 由同桶线程同值
+        // 幂等写，`groupCountY`（实例数）走 `atomicAdd` ⇒ 上一帧的 Y 若不清零会被累加
+        // 到本帧（多画）。清的是**两个 pass 块的桶区**（`kArenaPasses × kMaxBatches` 条），
+        // 实例行区不在 ICB 里（那是 l2w/mtl/cmds 的地址空间）。
+        // 同一 FillBuffer 纪律：清完必须 TRANSFER→COMPUTE 屏障（批内无隐式序）。
+        {
+            const VkDeviceSize icb_clear_bytes =
+                VkDeviceSize(kArenaPasses) * VkDeviceSize(kMaxBatches) * sizeof(VkDrawMeshTasksIndirectCommandEXT);
+
+            if (icb_clear_bytes > 0)
+            {
+                cmd->FillBuffer(indirect_commands_buffer_->GetVkBuffer(), 0, icb_clear_bytes, 0);
+                cmd->BufferMemoryBarrier2(indirect_commands_buffer_->GetVkBuffer(),
+                                          VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                          VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                                          VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                          VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
+            }
+        }
+
         cmd->BindPipeline(compute_pipeline_);
         cmd->PushConstants(compute_pipeline_->GetPipelineLayout(), &pc, sizeof(pc));
 
@@ -799,24 +823,25 @@ namespace hgl::ecs
         }
     }
 
-    bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index,
+    bool GPUCullSystem::ApplyGPUCullOverrideHook(MaterialBatch *batch,
+                                                 uint32_t bucket_first, uint32_t bucket_count,
+                                                 uint32_t inst_base, uint32_t inst_rows,
                                                  uint32_t pass_index)
     {
         // 调用前提（guard 已在 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 核完）：
-        // opt-in 开 / gather 输出与批行表**同容量契约** / 全 mesh / …
-        // 本函数只做"指向 + 置标志"，不再重复校验 ⇒ 校验与接线分离，口径唯一。
-        // T3i：逐批调用；本批在共享竞技场里的切片从**本帧分区表**取（与标签写值同源）。
+        // gather 输出与桶行表**同容量契约** / 全 mesh / … /
+        // 本函数的入参全部由 guard 装配时算好（桶区间 + 实例区间），这里只做"指向 + 置标志"。
         if (!batch || !indirect_commands_buffer_ || !l2w_out_buffer_
          || !cmds_out_buffer_ || !mtl_out_buffer_ || !batch_counter_buffer_)
             return false;
 
-        if (batch_index >= kMaxBatches || batch_count_[pass_index] == 0)
+        if (pass_index >= kArenaPasses || batch_count_[pass_index] == 0)
             return false;
 
-        const BatchInfoRow &info = batch_info_staging_[BatchBlockBase(pass_index) + batch_index];
-
-        // 切片容量必须容得下本批全部 item（写行最坏情况 = 全可见）：不等 ⇒ 口径冲突
-        if (batch->items.size() > info.capacity)
+        // 桶区间必须整段落在本 pass 的批块内（越界 = 守卫装配 bug，不许静默写出）
+        if (bucket_count == 0
+         || bucket_first + bucket_count > batch_count_[pass_index]
+         || bucket_first + bucket_count > kMaxBatches)
             return false;
 
         // 2026-10-14（批 D）：CPU 侧 per-batch 表构建整族已删 ⇒ 交接帧**没有自有 buffer 要释放**，
@@ -826,22 +851,24 @@ namespace hgl::ecs
 
         // T3i / T4c3c：切片信息（绘制侧的 maxDrawCount / 地址偏移全从这里取）——
         // 写进**本 pass 那一份**，不覆盖另一 pass（批对象跨 pass 共享）。
+        // T5：命令空间 = 块内绝对桶号（ICB/cmds 共用），实例空间 = arena 绝对行号。
         {
             MaterialBatch::GpuSlice &slice = batch->gpu_slice[pass_index];
-            slice.row_base            = info.row_base;
-            slice.capacity            = info.capacity;
-            slice.count_buffer_offset = GetBatchCounterByteOffset(pass_index, batch_index);
+            slice.cmd_base  = BatchBlockBase(pass_index) + bucket_first;
+            slice.cmd_count = bucket_count;
+            slice.inst_base = inst_base;
+            slice.inst_rows = inst_rows;
         }
 
         batch->icb_mesh_tasks                 = indirect_commands_buffer_;
-        // 计数 = **本批**的 GPU 原子计数（末位 overflow 槽不在此列；maxDrawCount 取
-        // 切片容量，实际条数由该计数给出 ⇒ GPU-Driven 动态计数口径不变）
-        batch->icb_count_buffer               = batch_counter_buffer_;
-        // 计数偏移随切片按 pass 存（见上）⇒ 这里不再单写
+        // T5：实例化后**不再用 GPU 动态绘制条数** —— 命令条数 = 本批桶数（CPU 已知），
+        // 桶内实例数由 ICB 的 `groupCountY` 承载（0 实例的桶命令自动无效）。
+        // 计数缓冲仍保留（台架逐桶对拍 + overflow 判据），只是不再当 countBuffer 用。
+        batch->icb_count_buffer               = nullptr;
         batch->mesh_draw_params_buffer        = cmds_out_buffer_;
         batch->l2w_index_buffer               = l2w_out_buffer_;
         batch->material_data_index_rows_buffer = mtl_out_buffer_;
-        // 容量一律从 `gpu_slice[pass].capacity` 取（上面的切片信息）⇒ 不再单抄一份。
+        // 容量一律从 `gpu_slice[pass]` 取（上面的切片信息）⇒ 不再单抄一份。
 
         return true;
     }

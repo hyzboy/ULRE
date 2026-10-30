@@ -80,6 +80,8 @@ namespace hgl::ecs
         uint32_t GetBatchCount() const { return batch_count_[0]; }
 
         /// 本帧第 index 批的竞技场切片。越界 ⇒ false（调用方不得假定容量）。
+        /// T5：参数语义 = **实例空间**（`row_base` = 该桶的实例行起点，`capacity` = 桶容量），
+        /// 与台架 `counters[bucket]`（本桶幸存数）配成一对，逐桶走查仍然成立。
         bool GetBatchLayout(uint32_t pass_index, uint32_t index, uint32_t &row_base, uint32_t &capacity) const
         {
             if (index >= batch_count_[pass_index] || index >= kMaxBatches || pass_index >= kArenaPasses)
@@ -99,7 +101,12 @@ namespace hgl::ecs
         /// · 今（A6-d T4b）：**fail-fast**——超限批一次性 `GLogError` 报因且**本帧不绘制**
         ///   （容量是拍板冻结值，超限 = 项目 bug，不扩容、不静默丢批）。台架 `CV_STRESS=260`
         ///   预期：`ENGAGED 256/260` + 一次报因 + 超出批无绘制。
-        static constexpr uint32_t kMaxBatches      = 256;
+        ///
+        /// ⚠ **T5（实例化渲染）语义变更**：本上限现在是**素材桶（geometry bucket）数**，
+        /// 不再是 MaterialBatch 数 —— 每个（材质批 × 几何体）组合占一行布局。同材质批里
+        /// N 种几何 ⇒ N 个桶 ⇒ N 条实例化 draw（此前是 N 个 item 拉 N 条单实例 draw）。
+        /// ⇒ 上限必须覆盖"整场景的几何种类数"，故由 256 提到 1024。
+        static constexpr uint32_t kMaxBatches      = 1024;
         static constexpr uint32_t kInvalidBatchTag = 0xFFFFFFFFu;   ///< 不属任何批 ⇒ cull 跳过
 
         // ── 容量与按 pass 的块/扇区常量 ──────────────────────────────────────
@@ -151,10 +158,10 @@ namespace hgl::ecs
         /// 收尾：unmap 标签 + 把分区表（batch_count 条）写入当前帧槽 + 记 batch_count
         void EndBatchLayout(uint32_t pass_index, uint32_t batch_count);
 
-        /// 每批计数缓冲（含末位 overflow 槽）：绘制侧把它当 `icb_count_buffer` 用
+        /// 每桶计数缓冲（含末位 overflow 槽）：T5 起**不再当绘制 countBuffer**（绘制条数 =
+        /// 桶数，CPU 已知），只作台架逐桶对拍与 overflow 硬判据用。
         graph::DeviceBuffer *GetBatchCounterBuffer() const { return batch_counter_buffer_; }
-        /// 批 b 的计数在缓冲内的字节偏移（当前帧槽 × pass 块 + 批号）；绘制侧取
-        /// `MaterialBatch::gpu_slice[pass].count_buffer_offset`（T4c3c 起切片按 pass 存）
+        /// 桶 b 的计数在缓冲内的字节偏移（当前帧槽 × pass 块 + 桶号）
         uint32_t GetBatchCounterByteOffset(uint32_t pass_index, uint32_t batch_index) const;
         /// overflow 计数（末位槽）的字节偏移
         uint32_t GetOverflowCounterByteOffset(uint32_t pass_index) const;
@@ -212,7 +219,15 @@ namespace hgl::ecs
         /// @return true = 本帧该批由 GPU gather 输出接管绘制。
         /// T4c3c：`pass_index` 决定切片落**哪个块/扇区**（`BatchBlockBase(pass)`），
         /// 以及写进批的**哪一份**切片（`MaterialBatch::gpu_slice[pass]`）。
-        bool ApplyGPUCullOverrideHook(MaterialBatch *batch, uint32_t batch_index, uint32_t pass_index);
+        ///
+        /// T5（实例化）：一个 MaterialBatch 现在占用**若干连续桶行** `[bucket_first,
+        /// bucket_first+bucket_count)`（每桶 = 一种 `geometry_id`），实例行连续占用
+        /// `[inst_base, inst_base+inst_rows)`。绘制侧据此只发 `bucket_count` 条
+        /// `DrawMeshTasksIndirect`（每条的 `groupCountY` = 该桶幸存数，由 gather 原子累加）。
+        bool ApplyGPUCullOverrideHook(MaterialBatch *batch,
+                                      uint32_t bucket_first, uint32_t bucket_count,
+                                      uint32_t inst_base, uint32_t inst_rows,
+                                      uint32_t pass_index);
 
         // 2026-10-10（审计 §1.1）：`IsOverrideActiveThisFrame()` 已删除 —— 全仓零调用者，且其自注
         //「collect 的 CPU 剔除跳不跳全看它」与实际闸门不符（会误导读者去找错地方）。

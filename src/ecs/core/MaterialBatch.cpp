@@ -35,7 +35,7 @@ namespace hgl::ecs
         items.clear();
         texture_reference_base_addr = 0;
         icb_count_buffer = nullptr;
-        // T4c3c：计数偏移随切片按 pass 存（`gpu_slice[p].count_buffer_offset`）
+        // T4c3c：切片**按 pass 存**（下标 = `RenderPassSlot`）
 
         // 2026-10-14（批 D）：四个 per-batch 表指针一律**非拥有** ⇒ 复位无条件置空（不再有 own_* 分支）。
         icb_mesh_tasks                    = nullptr;
@@ -45,9 +45,10 @@ namespace hgl::ecs
         gpu_driven_override = false;
         for (uint32_t p = 0; p < RenderPassSlot::Count; ++p)   // T4c3c：切片随 override 作废（两 pass 同清）
         {
-            gpu_slice[p].row_base            = 0;
-            gpu_slice[p].capacity            = 0;
-            gpu_slice[p].count_buffer_offset = 0;
+            gpu_slice[p].cmd_base   = 0;
+            gpu_slice[p].cmd_count  = 0;
+            gpu_slice[p].inst_base  = 0;
+            gpu_slice[p].inst_rows  = 0;
         }
     }
 

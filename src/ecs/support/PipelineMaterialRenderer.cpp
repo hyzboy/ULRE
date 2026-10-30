@@ -39,62 +39,40 @@ namespace hgl::ecs
         //——per-draw 段偏移经 mesh_draw_params 参数表查表（rows[gl_DrawID]）
         if (cur_owner_batch && cur_owner_batch->icb_mesh_tasks)
         {
-            // T3i（③ 多批）：GPU 托管批的段偏移/段长 = **本批切片**（CPU 侧不再写 ICB
-            // 与行表 ⇒ `first_indirect_draw_index`/`indirect_draw_count` 只是 items 计数，
-            // 不是段位置）。段偏移 = `row_base × 12B`（ICB 是共享竞技场）；
-            // maxDrawCount = 切片容量，实际条数由本批 GPU 计数给出。
+            // T5（实例化）：绘制条数 = **本批素材桶数**（CPU 已知，`cmd_count`），
+            // 每条命令的实例数（`groupCountY`）由 gather 对本桶幸存实例原子累加。
+            // 桶内 0 幸存 ⇒ `groupCountX` 保持 0（ICB 每帧清零）⇒ 命令自动无效，
+            // 因此**不再需要 GPU 动态 countBuffer**（旧的 `IndirectCount` 口径退役）。
             // T4c3c：切片**按当前 pass** 取（批对象跨 pass 共享，两 pass 各有自己的块/扇区）。
             const MaterialBatch::GpuSlice &slice = cur_owner_batch->GetGpuSlice(cur_pass_index);
-            const int32_t  first     = static_cast<int32_t>(slice.row_base);
-            const uint32_t max_count = slice.capacity;
+            const int32_t  first     = static_cast<int32_t>(slice.cmd_base);
+            const uint32_t cmd_count = slice.cmd_count;
 
             // 诊断接线（`ULRE_DEBUG.toml` 的 `channels.batch/cull = true`）：绘制侧读的槽/切片 —— 与派发侧对照
             if (ULRE_DEBUG_ON(Batch))
-                // 槽 = 偏移 / 2056（每槽 2 pass × 257 行 × 4 B）；此处只打原始偏移，离线换算
-                GLogInfo("[T3i][TRACE] flush first=%d max=%u gpu_driven=%d 计数偏移=%u pass=%u",
-                         first, max_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
-                         slice.count_buffer_offset, cur_pass_index);
+                GLogInfo("[T5][TRACE] flush cmd_base=%d cmds=%u gpu_driven=%d inst_base=%u inst_rows=%u pass=%u",
+                         first, cmd_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
+                         slice.inst_base, slice.inst_rows, cur_pass_index);
 
             if (!engaged_logged_)                       // 批 1.3 C5：每实例闩（原 static 是进程级）
             {
                 engaged_logged_ = true;
 
                 if (ULRE_DEBUG_ON(Batch))
-                    GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u"
-                             u8"（gpu_driven=%d row_base=%u capacity=%u）",
-                             first, max_count,
+                    GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: cmd_base=%d cmds=%u"
+                             u8"（gpu_driven=%d inst_base=%u inst_rows=%u）",
+                             first, cmd_count,
                              cur_owner_batch->gpu_driven_override ? 1 : 0,
-                             slice.row_base, slice.capacity);
+                             slice.inst_base, slice.inst_rows);
             }
 
-            if (cur_owner_batch->icb_count_buffer)
-            {
-                // SSBO DUMP 配套（ULRE_DEBUG.toml 的 channels.culldump = true 才付出同步回读；记录绘制侧真正消费的计数值）
-                if (ULRE_DEBUG_ON(CullDump))
-                {
-                    uint32_t current_count_val = UINT32_MAX;
-                    if (graph::ReadbackBuffer(cur_owner_batch->icb_count_buffer, slice.count_buffer_offset, sizeof(uint32_t), &current_count_val))
-                    {
-                        GLogInfo(u8"[IndirectMeshDraw][COUNT_DUMP] first=%d max=%u gpu_driven=%d 计数偏移=%u (槽=%u pass=%u) => COUNT_IN_BUFFER=%u",
-                                 first, max_count, cur_owner_batch->gpu_driven_override ? 1 : 0,
-                                 slice.count_buffer_offset, slice.count_buffer_offset / 2056, cur_pass_index, current_count_val);
-                    }
-                }
+            if (cmd_count == 0)
+                return;     // 本批本 pass 无桶（未接管/被拒）⇒ 不发命令
 
-                cmd_buf->DrawMeshTasksIndirectCount(
-                    cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
-                    static_cast<VkDeviceSize>(first) * sizeof(VkDrawMeshTasksIndirectCommandEXT),
-                    cur_owner_batch->icb_count_buffer->GetBuffer(),
-                    slice.count_buffer_offset,
-                    max_count);
-            }
-            else
-            {
-                cmd_buf->DrawMeshTasksIndirect(
-                    cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
-                    static_cast<VkDeviceSize>(first) * sizeof(VkDrawMeshTasksIndirectCommandEXT),
-                    max_count);
-            }
+            cmd_buf->DrawMeshTasksIndirect(
+                cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
+                static_cast<VkDeviceSize>(first) * sizeof(VkDrawMeshTasksIndirectCommandEXT),
+                cmd_count);
         }
 
         // 重置间接绘制状态（命令序号累计到本批次已提交段）
@@ -195,9 +173,12 @@ namespace hgl::ecs
                 //（cmds 8B / l2w_index 4B / mtl 16B；row_base % 4 == 0 ⇒ 三者皆 16B 对齐，
                 //  与 shader 侧 buffer_reference_align 声明相符）。非托管批 row_base=0。
                 // T4c3c：切片按当前 pass 取。
-                VkDeviceSize(owner_batch->GetGpuSlice(cur_pass_index).row_base) * 8u,
-                VkDeviceSize(owner_batch->GetGpuSlice(cur_pass_index).row_base) * 4u,
-                VkDeviceSize(owner_batch->GetGpuSlice(cur_pass_index).row_base) * 16u);
+                // T5（实例化）：cmds 用**命令空间**（`cmd_base`，pass 块内绝对桶号，
+                //   对应 `gl_DrawID` 的基准）；l2w_index / mtl 用**实例空间**（arena
+                //   绝对行号）⇒ 那两个偏移恒为 0，着色器里 `gl_InstanceIndex` 即行号。
+                VkDeviceSize(owner_batch->GetGpuSlice(cur_pass_index).cmd_base) * 8u,
+                0,
+                0);
         }
 
         // 批次级描述符覆盖（batch_descriptor_mp）与材质级绑定（BindDescriptorSets(material)）

@@ -450,8 +450,17 @@ namespace hgl::ecs
                 b->items.clear();
         };
 
-        MaterialBatch *pending[GPUCullSystem::kMaxBatches];
-        uint32_t pending_index[GPUCullSystem::kMaxBatches];
+        /// T5：待接管的批（**一个批 = 若干连续桶 + 一段连续实例行**）
+        struct PendingBatch
+        {
+            MaterialBatch *batch        = nullptr;
+            uint32_t       bucket_first = 0;   ///<首个桶在本 pass 块内的编号
+            uint32_t       bucket_count = 0;   ///<桶数（= 本批命令条数）
+            uint32_t       inst_base    = 0;   ///<实例行起点（arena 绝对行号）
+            uint32_t       inst_rows    = 0;   ///<实例行数（= Σ 桶容量，含 4 行对齐浪费）
+        };
+
+        PendingBatch pending[GPUCullSystem::kMaxBatches];
         uint32_t pending_count = 0;
 
         uint32_t next_index = 0;
@@ -464,6 +473,16 @@ namespace hgl::ecs
         uint32_t tagged_items = 0;   // 诊断：本帧打上标签的项数
         uint32_t geometry_batches = 0;
         uint32_t *tags = nullptr;
+
+        // T5 素材桶草稿（**跨批复用**，避免每批每帧堆分配）：桶表 + 项→桶映射。
+        // 桶数 = 本批出现过的几何种类数（典型个位数）；线性查表省掉 map 的分配。
+        std::vector<uint32_t> bucket_geometry;    // 桶 → geometry_id
+        std::vector<uint32_t> bucket_capacity;    // 桶 → 容量（= 该几何体的项数）
+        std::vector<uint32_t> item_bucket;        // 项 → 桶下标（打标签用）
+
+        // A/B 诊断开关（临时）：`ULRE_NO_INSTANCING=1` ⇒ 每项独立成桶（capacity=1），
+        // 等价于改造前的"每项一条单实例命令"。用于与实例化路径做逐像素对拍。
+        static const bool s_no_instancing = (getenv("ULRE_NO_INSTANCING") != nullptr);
 
         for (auto& pair : cache.materialBatches)
         {
@@ -486,12 +505,30 @@ namespace hgl::ecs
             //  本类里同名的那套 mesh per-draw 参数表构建 —— 两者都已不在。）
             const char *why = nullptr;
 
+            // ── T5（实例化渲染）：批内按 `geometry_id` 聚类成**素材桶** ─────────────
+            // 同批内同 `geometry_id` 的项共享**一条实例化 draw**（`groupCountY` = 该桶
+            // 幸存数）。布局行的最小单位由此变成"桶"而不是"整批" ⇒ 一个 MaterialBatch
+            // 占若干连续布局行；绘制侧按 `gpu_slice[pass].cmd_base/cmd_count` 发
+            // `cmd_count` 条命令。
+            //
+            // 聚类是 CPU 端**确定性**的（不依赖 GPU 剔除结果）：桶集合 = 本批出现过的
+            // 几何体种类，帧间稳定（同一 `materialBatches` 键序 + 同一批项集）⇒ 桶号
+            // 稳定、标签稳定、命令表稳定。
+            bucket_geometry.clear();
+            bucket_capacity.clear();
+
             if (next_index >= GPUCullSystem::kMaxBatches)
-                why = "接管批数超 kMaxBatches(256)";
+                why = "接管素材桶数超 kMaxBatches(1024)";
             else
             {
-                for (auto *item : b->items)
+                const size_t item_count = b->items.size();
+
+                item_bucket.resize(item_count);
+
+                for (size_t i = 0; i < item_count; ++i)
                 {
+                    RenderItem *item = b->items[i];
+
                     if (!item)
                     {
                         why = "批内含空项";
@@ -521,6 +558,49 @@ namespace hgl::ecs
                         why = "MeshDrawParams 池行缺失";
                         break;
                     }
+
+                    // 线性扫已建桶：桶数 = 本批几何种类数（典型个位数）⇒ 比对次数
+                    // 远小于每次建 map 的开销，且**无额外分配**。
+                    uint32_t bucket = UINT32_MAX;
+
+                    if (!s_no_instancing)
+                        for (uint32_t k = 0; k < uint32_t(bucket_geometry.size()); ++k)
+                            if (bucket_geometry[k] == ids->geometry_id)
+                            {
+                                bucket = k;
+                                break;
+                            }
+
+                    if (bucket == UINT32_MAX)
+                    {
+                        bucket = uint32_t(bucket_geometry.size());
+                        bucket_geometry.push_back(ids->geometry_id);
+                        bucket_capacity.push_back(0u);
+                    }
+
+                    ++bucket_capacity[bucket];
+                    item_bucket[i] = bucket;
+                }
+
+                if (!why
+                 && next_index + uint32_t(bucket_geometry.size()) > GPUCullSystem::kMaxBatches)
+                {
+                    why = "接管素材桶数超 kMaxBatches(1024)";
+                }
+                else if (!why)
+                {
+                    // 竞技场容量前置校验（实例行连续占用 = Σ 桶容量）：超了就是装配 bug，
+                    // 拒绝整批（fail-fast），不许写出越界行。
+                    const uint32_t sector_begin = GPUCullSystem::ArenaSectorBase(pass_index);
+                    const uint32_t sector_end   = sector_begin + GPUCullSystem::kArenaRowsPerPass;
+
+                    uint32_t need_rows = uint32_t(bucket_geometry.size());   // ≥1 行/桶
+
+                    for (uint32_t cap : bucket_capacity)
+                        need_rows += cap;
+
+                    if (row_cursor + need_rows > sector_end)
+                        why = "竞技场实例行超容量（kArenaRowsPerPass）";
                 }
             }
 
@@ -544,37 +624,54 @@ namespace hgl::ecs
                 }
             }
 
-            const uint32_t index = next_index++;
-            const uint32_t capacity = uint32_t(b->items.size());
+            const uint32_t bucket_total = uint32_t(bucket_geometry.size());
+            const uint32_t bucket_first = next_index;
+            const uint32_t inst_base    = row_cursor;
 
             // A6 前置：把本批的 dispatch 档随行下发（gather 按档选 X 公式）——
             // 线的 X 按段数、组大小 64，其余按顶点数、组大小 192，两值都出自
             // `MeshDispatchGroupSize()` 单一真源（CPU 的 ICB 组装同源 ⇒ 两条账不分叉）。
+            // 同批同 shader ⇒ 档与组大小对整批所有桶同值。
             const bool batch_is_lines =
                 b->key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
-            gpu_cull->SetBatchLayout(pass_index, index, row_cursor, capacity,
-                batch_is_lines ? GPUCullSystem::kBatchTopologyLines
-                               : GPUCullSystem::kBatchTopologyTriangles,
-                MeshDispatchGroupSize(batch_is_lines));
+            const uint32_t topology = batch_is_lines
+                ? GPUCullSystem::kBatchTopologyLines
+                : GPUCullSystem::kBatchTopologyTriangles;
+            const uint32_t group_size = MeshDispatchGroupSize(batch_is_lines);
 
-            for (auto *item : b->items)
+            for (uint32_t k = 0; k < bucket_total; ++k)
             {
-                Entity *owner = item->GetEntity();
-                tags[owner->GetEntityID().index] = index;   // 结构类值：本帧装配、本帧消费
+                const uint32_t capacity = bucket_capacity[k];
+
+                // 布局行 = 一个桶：`row_base` 是**实例行起点**（gather 写 l2w/mtl 用），
+                // capacity = 桶容量（溢出判据 + 台架走查上界）。
+                gpu_cull->SetBatchLayout(pass_index, next_index, row_cursor, capacity,
+                                         topology, group_size);
+                ++next_index;
+
+                // T3i：切片起点按 **4 行对齐** —— 绘制侧把 push 地址加 `row_base × 行字节`
+                // 后仍须满足各引用声明的 16B 对齐（l2w 4B/行、mtl 16B/行）
+                // ⇒ row_base % 4 == 0 是同时满足两者的条件（每桶至多浪费 3 行）。
+                row_cursor = (row_cursor + capacity + 3u) & ~3u;
+                total_items += capacity;
+            }
+
+            for (size_t i = 0; i < b->items.size(); ++i)
+            {
+                Entity *owner = b->items[i]->GetEntity();
+                // 结构类值：本帧装配、本帧消费。标签 = **桶号**（该实体所属几何桶）。
+                tags[owner->GetEntityID().index] = bucket_first + item_bucket[i];
             }
 
             if (s_takeover_trace)
-                tagged_items += capacity;   // 本帧本 pass 打上标签的项数（应 == Σcapacity）
+                tagged_items += uint32_t(b->items.size());   // 诊断：本帧本 pass 打上标签的项数
 
-            pending[pending_count] = b;
-            pending_index[pending_count] = index;
+            pending[pending_count].batch        = b;
+            pending[pending_count].bucket_first = bucket_first;
+            pending[pending_count].bucket_count = bucket_total;
+            pending[pending_count].inst_base    = inst_base;
+            pending[pending_count].inst_rows    = row_cursor - inst_base;
             ++pending_count;
-
-            // T3i：切片起点按 **4 行对齐** —— 绘制侧把 push 地址加 `row_base × 行字节`
-            // 后仍须满足各引用声明的 16B 对齐（cmds 8B/行、l2w 4B/行、mtl 16B/行）
-            // ⇒ row_base % 4 == 0 是唯一同时满足三者的条件（每批至多浪费 3 行）。
-            row_cursor = (row_cursor + capacity + 3u) & ~3u;
-            total_items += capacity;
         }
 
         if (pending_count == 0)
@@ -600,15 +697,20 @@ namespace hgl::ecs
         //     RenderOnce）永久锁死在 undsettled ⇒ 离屏 cmd 只剩 Begin/End。
         // 保留响亮出口：BeginBatchTagWrite 失败（资源问题）与逐批 guard 拒绝。
 
-        // 分区/标签落设备（batch_count = 接管批数）
-        gpu_cull->EndBatchLayout(pass_index, pending_count);
+        // 分区/标签落设备（batch_count = 本 pass 的**素材桶**总数，T5 起语义变更）
+        gpu_cull->EndBatchLayout(pass_index, next_index);
 
         // 接管逐批（原 T4c-ini-2「槽首写不接管」已删，依据见上方护栏删除注释）。
         uint32_t engaged = 0;
 
         for (uint32_t i = 0; i < pending_count; ++i)
         {
-            if (gpu_cull->ApplyGPUCullOverrideHook(pending[i], pending_index[i], pass_index))
+            if (gpu_cull->ApplyGPUCullOverrideHook(pending[i].batch,
+                                                   pending[i].bucket_first,
+                                                   pending[i].bucket_count,
+                                                   pending[i].inst_base,
+                                                   pending[i].inst_rows,
+                                                   pass_index))
                 ++engaged;
         }
 
@@ -624,22 +726,22 @@ namespace hgl::ecs
             gpu_cull_full_frame_ = gpu_cull_override_eval_frame_;
 
         // 正向判据日志（一次性）：证明"绘制真走 gather 表"（T4b 起已无 CPU 账可退，
-        // 本日志仍是"接管真发生"的正面证据）。逐批计数由台架在 cull 之后读。
+        // 本日志仍是"接管真发生"的正面证据）。逐桶计数由台架在 cull 之后读。
         if (s_takeover_trace)
-            GLogInfo("[T3i][TRACE] 世界=%s frame=%u pass=%u 出口=ok 槽=%u 就绪=%d 几何批=%u 辖批=%u items=%u arena_rows=%u "
-                     "标签项=%u 布局容量和=%u（应相等）",
+            GLogInfo("[T5][TRACE] 世界=%s frame=%u pass=%u 出口=ok 槽=%u 几何批=%u 辖批=%u 桶=%u items=%u arena_rows=%u "
+                     "标签项=%u（应 == items）",
                      world ? world->GetName().c_str() : "<null>",
                      world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u,
-                     (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL, 1, geometry_batches,
-                     pending_count, total_items, row_cursor, tagged_items, total_items);
+                     (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL, geometry_batches,
+                     pending_count, next_index, total_items, row_cursor, tagged_items);
 
         if (!gpu_cull_engaged_logged_)
         {
             gpu_cull_engaged_logged_ = true;
-            GLogInfo("[T3i] GPU cull draw override ENGAGED: 世界=%s batches=%u/%u items=%u"
-                     " arena_rows=%u（逐批切片）",
+            GLogInfo("[T5] GPU cull instanced draw ENGAGED: 世界=%s batches=%u/%u buckets=%u items=%u"
+                     " arena_rows=%u（实例化：每条命令承载整桶实例）",
                      world ? world->GetName().c_str() : "<null>",
-                     engaged, geometry_batches, total_items, row_cursor);
+                     engaged, geometry_batches, next_index, total_items, row_cursor);
         }
     }
 

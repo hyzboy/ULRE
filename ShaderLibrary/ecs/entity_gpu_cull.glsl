@@ -16,10 +16,9 @@
 // 输入：实体行表（枚举源，Active/Visible 位）+ 实体 4-ID 表（池口径 id 唯一来源）
 //       L2W 矩阵池（世界私有）/ 相机（世界私有）/ GeometryAABB + MeshDrawParams 池（全局）
 // 输出：可见实体索引表（形态 A 回灌读）+ 幸存计数；
-//       另按幸存 slot gather 写四张 per-batch
-//       行表：icb{X,Y=1,Z=1} / cmds{geometry_id, first_instance=slot} /
-//       l2w_index{EntityGPU.row[Transform]} / mtl_rows{payload,texture,
-//       entity.shadow_bias_multiplier,entity.shadow_receive==0?NoReceive:0}。
+//       另按幸存 slot gather 写 per-batch 行表：**T5 起分为两套编号空间** ——
+//       命令空间（ICB 与 cmds 表，按**素材桶**、一条命令承载整桶实例）与
+//       实例空间（l2w_index 与 mtl 行，按**幸存实例**逐行）。详见写行处的契约注释。
 //       **全部字段读真源、零复制**（X 从 MeshDrawParams 池行现算；材质两位来自
 //       实体 4-ID 表；阴影两位来自实体行事实位——collect 按 CPU D3 同式归一上行，
 //       gather 逐字节照抄，T3h 起 guard 不再要求阴影全默认）。
@@ -145,6 +144,16 @@ struct DrawMeshTasksIndirectCommand
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer DrawIndirectCommandsRef
 {
     DrawMeshTasksIndirectCommand commands[];
+};
+
+// T5（实例化）：ICB 的 **u32 视图**（stride 4、与上面 12 B/条的命令布局同址对齐）。
+// 用途只有一个：对 `groupCountY`（实例数轴）做 `atomicAdd` —— 成员级原子写不能走
+// `DrawIndirectCommandsRef`（那个声明按 16 B 对齐、语义是"整条命令"，原子加会与
+// `groupCountX/Z` 的幂等写混在一个语句里，读起来分不清哪一半是原子）。下标式
+// `cmd × 3 + 1` 与 12 B/条逐字节一致。
+layout(buffer_reference, scalar, buffer_reference_align=4) buffer IndirectCmdU32Ref
+{
+    uint words[];
 };
 
 // 输出（形态 B）：per-batch l2w_index 表。消费点 = 发射体 `ResolveTransformID(iid) →
@@ -375,12 +384,23 @@ void main()
             continue;
         }
 
-        // 契约（§8.5；全部读真源、零复制）：
-        //  · 行号 = 本批切片起点 + 切片内序号 ⇒ 每批 draw 只读自己的幸存者
-        //  · cmds 的 first_instance = **切片内序号**（mesh 侧 gl_InstanceIndex =
-        //    first_instance + wg.y；绘制侧 push 地址已带 row_base 偏移 ⇒ 切片内 0 起）
-        //  · mtl 两位 = 实体行事实位逐字节照抄（T3h 口径不变）
-        const uint row = binfo.row_base + slot;
+        // ── T5（实例化渲染）契约 ────────────────────────────────────────────────
+        // 布局行（`BatchInfoRow`）现在描述的是**素材桶**而非"整批"：同材质批内按
+        // `geometry_id` 聚类，一个桶 = 一种几何 = 一条实例化 draw。
+        //
+        //  · `cmd_index = block_base + batch` —— 命令空间（ICB 与 cmds 表共用，块内
+        //    绝对桶号）。绘制侧把 cmds 的 push 地址加 `cmd_base × 8`、ICB 起点取
+        //    `cmd_base × 12` ⇒ `gl_DrawID` 是桶在**本批**内的相对序号。
+        //  · `inst_row  = binfo.row_base + slot` —— 实例空间（arena 绝对行号，本桶的
+        //    第 slot 个幸存实例）。l2w/mtl 的 push 偏移恒 0 ⇒ `gl_InstanceIndex` 直接
+        //    等于本行号，一条命令用 `groupCountY` 承载整桶实例。
+        //
+        // `groupCountX/Z` 同值幂等写（同桶所有线程写同一个值，无竞争）；
+        // `groupCountY`（实例数）**只能原子累加** —— 清零由 CPU 在 cull cmd 内的
+        // FillBuffer 完成（`GPUCullSystem::Update`），故这里不做初始写。
+        // `cmds[cmd_index]` 同样同值幂等写（geometry_id + 本桶实例行起点）。
+        const uint cmd_index = block_base + batch;
+        const uint inst_row  = binfo.row_base + slot;
 
         const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
         uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
@@ -388,13 +408,18 @@ void main()
             element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段；CPU 侧组数同式，组大小见 MeshDispatchGroupSize）
         const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
 
-        DrawIndirectCommandsRef(pc.indirect_commands_addr).commands[row] =
-            DrawMeshTasksIndirectCommand(group_count_x, 1u, 1u);
+        {
+            DrawIndirectCommandsRef icb = DrawIndirectCommandsRef(pc.indirect_commands_addr);
+            icb.commands[cmd_index].groupCountX = group_count_x;
+            icb.commands[cmd_index].groupCountZ = 1u;
 
-        L2WIndexOutRef(pc.l2w_out_addr).values[row] = transform_id;
+            atomicAdd(IndirectCmdU32Ref(pc.indirect_commands_addr).words[cmd_index * 3u + 1u], 1u);
+        }
 
-        BatchCmdsOutRef(pc.cmds_out_addr).cmds[row] =
-            BatchCmdRow(geometry_id, slot);
+        BatchCmdsOutRef(pc.cmds_out_addr).cmds[cmd_index] =
+            BatchCmdRow(geometry_id, binfo.row_base);
+
+        L2WIndexOutRef(pc.l2w_out_addr).values[inst_row] = transform_id;
 
         // ── T4c3b：4-ID 表按 pass 分半，本块必须读**本 pass 自己那一半** ────────
         // 行内容**不是 pass 无关**：材质/纹理二 ID 由 collect 按 pass 写（`SetRenderIDs`），
@@ -404,7 +429,7 @@ void main()
         const RenderItemDescriptor ids_blk =
             entity_render_ids[blk * pc.max_visible_count + entity_index];
 
-        MtlRowsOutRef(pc.mtl_out_addr).values[row] =
+        MtlRowsOutRef(pc.mtl_out_addr).values[inst_row] =
             MtlRow(ids_blk.material_id,
                    ids_blk.texture_id,
                    entity.shadow_bias_multiplier,

@@ -76,10 +76,20 @@ namespace hgl::ecs
         // GPU-Driven 渲染管线覆盖支持
         bool                                     gpu_driven_override               = false;    ///<该批次是否为 GPU-Driven 托管（ICB / 行表全由剔除输出提供；CPU 侧生成链已删）
 
-        // T3i（③ 多批）：本批在剔除输出**共享竞技场**里的行切片（gather 输出四表共用
-        // 一套 arena，按批分摊）。语义：行 r 的 arena 索引 = pass 切片.row_base + r。
-        // 着色器按此写；绘制侧把 cmds/l2w/mtl 的 push 地址各加 `row_base × 行字节`
-        // ⇒ 着色器内 `gl_DrawID`/`gl_InstanceIndex` 语义不变（切片内 0 起）。
+        // T3i（③ 多批）：本批在剔除输出里的切片。**实例化渲染（T5）起切成两个
+        // 互不相交的编号空间**——它们落在**不同的 GPU 缓冲**上，因此可以各自独立编址：
+        //
+        //   · **命令空间** `cmd_base/cmd_count`：ICB 与 `cmds_out`（每桶一条命令）。
+        //     下标 = pass 块内绝对桶号（`BatchBlockBase(pass) + bucket`）。绘制侧
+        //     `first = cmd_base × 12`、`maxDrawCount = cmd_count`、cmds push 偏移
+        //     `cmd_base × 8` ⇒ 着色器内 `gl_DrawID` 是**桶在块内的相对序号**。
+        //   · **实例空间** `inst_base/inst_rows`：`l2w_out` 与 `mtl_out`（每实例一行）。
+        //     行号是 arena 绝对行号，push 偏移恒为 **0** ⇒ 着色器直接用
+        //     `gl_InstanceIndex` 寻址，一条命令即可承载整桶实例（`groupCountY = 幸存数`）。
+        //
+        // 为什么必须切成两套编号：一条 draw 命令现在承载 N 个实例 ⇒ "每实例一行命令"
+        // 的前提消失，命令行与实例行不可能再共用同一个行号（否则 N 个实例会覆盖掉
+        // 相邻桶的命令行）。
         //
         // T4c3c：切片**按 pass 存**（下标 = `RenderPassSlot`）。
         // 为什么必须按 pass：批对象**跨 pass 共享**（主帧与阴影复用同一张 `materialBatches`
@@ -90,9 +100,10 @@ namespace hgl::ecs
         // 批装配侧的跳过判据读的就是它，与 pass 无关（2026-10-14 批 D 删掉 CPU 侧 ensure/write 后判据点变少）。
         struct GpuSlice
         {
-            uint32_t row_base            = 0;   ///<切片起点（arena 行号）
-            uint32_t capacity            = 0;   ///<切片容量（= 本批 item 数；绘制 maxDrawCount）
-            uint32_t count_buffer_offset = 0;   ///<本 pass 的每批计数偏移（计数块按 pass 分块）
+            uint32_t cmd_base   = 0;   ///<命令空间起点（pass 块内**绝对**桶号；ICB/cmds 行号）
+            uint32_t cmd_count  = 0;   ///<命令条数（= 本批素材桶数；绘制 maxDrawCount）
+            uint32_t inst_base  = 0;   ///<实例空间起点（arena 绝对行号；本批首个桶的实例行）
+            uint32_t inst_rows  = 0;   ///<本批占用的实例行数（= Σ 桶容量）
         };
 
         GpuSlice                                 gpu_slice[RenderPassSlot::Count];
