@@ -132,6 +132,13 @@ if(MSVC)
     set_target_properties(TestGeometryPreset PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# TOML SceneSpec parser: schema, references, type-specific keys, and parent cycles.
+add_executable(TestSceneFile tests/TestSceneFile.cpp)
+target_link_libraries(TestSceneFile PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestSceneFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # Asset reflection codegen: TOML round-trip, metadata table, FlatBuffers round-trip.
 # 纯数据往返，不需要设备/窗口，因此在 CI 里也能跑，用来挡住
 # 「改了 C++ 结构但忘记重新生成」与「生成器改坏了语义」。
@@ -270,6 +277,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestGeometryPreset
         PROPERTIES LABELS "geometry;preset;asset")
+
+    add_test(
+        NAME TestSceneFile
+        COMMAND TestSceneFile
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestSceneFile
+        PROPERTIES LABELS "scene;asset")
 
     add_test(
         NAME TestAssetReflection

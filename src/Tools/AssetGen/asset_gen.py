@@ -1022,10 +1022,12 @@ def _string_encode(t: TypeDesc, src: str, var: str) -> tuple[list[str], str]:
     """返回 (前置语句, CreateString 表达式)。"""
     if t.cpp == "OSString":
         return ([f"        const hgl::U8String {var}_u8 = hgl::ToU8String({src});"],
-                f"fbb.CreateString(reinterpret_cast<const char *>({var}_u8.c_str()))")
+                f"fbb.CreateString(reinterpret_cast<const char *>({var}_u8.c_str() "
+                f"? {var}_u8.c_str() : U8_TEXT(\"\")))")
     if t.cpp == "U8String":
-        return ([], f"fbb.CreateString(reinterpret_cast<const char *>({src}.c_str()))")
-    return ([], f"fbb.CreateString({src}.c_str())")
+        return ([], f"fbb.CreateString(reinterpret_cast<const char *>({src}.c_str() "
+                     f"? {src}.c_str() : U8_TEXT(\"\")))")
+    return ([], f"fbb.CreateString({src}.c_str() ? {src}.c_str() : \"\")")
 
 
 def _string_decode(t: TypeDesc, src: str, dst: str) -> list[str]:

@@ -169,6 +169,12 @@ SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
                             ${SG_INCLUDE_PATH}/asset/GeometryAsset.h
                             ${SG_INCLUDE_PATH}/asset/GeometryAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/PrimitiveAssetSpec.h
+                            ${SG_INCLUDE_PATH}/asset/SceneAssetSpec.h
+                            ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
+                            ${SG_INCLUDE_PATH}/asset/SceneLoader.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneToml.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneMeta.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneFlat.gen.h
                             ${SG_INCLUDE_PATH}/asset/PrimitiveAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/PrimitiveAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/GeometryPreset.h
@@ -181,6 +187,8 @@ SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
                             asset/GeometryAsset.cpp
                             asset/GeometryAssetRegistry.cpp
                             asset/PrimitiveAssetFile.cpp
+                            asset/SceneAssetFile.cpp
+                            asset/SceneLoader.cpp
                             asset/PrimitiveAssetRegistry.cpp
                             asset/GeometryPreset.cpp)
 

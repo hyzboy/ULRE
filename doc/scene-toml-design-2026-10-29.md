@@ -4,11 +4,17 @@
 > 让上层从「手动加载 N 个 TOML、手写 N 段实体构造」变成**一次装载**：
 >
 > ```cpp
-> auto *scene = gc->GetSceneAssetRegistry()->GetOrLoad(OS_TEXT("res/scene/basic_lit_meshes.scene.toml"));
+> auto *scene = gc->GetSceneAssetRegistry()->GetOrLoad(OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
 > scene->Instantiate(world);        // 或异步：SceneStreamingRequest
 > ```
 >
-> 本文只做设计，不含实现。文末给出分阶段落地顺序。
+> 本文定义数据格式与分阶段目标；下方“当前落地范围”记录实现与设计的差异。
+
+### 当前落地范围
+
+- 已实现 `SceneSpec` TOML/FlatBuffers 编解码、严格的场景 TOML 解析校验，以及只支持 `presets:` 的同步 `SceneLoader`。
+- `BasicLitMeshes` 的几何、变换、材质行和纹理覆盖已迁入 `example/Material/BasicLitMeshes.scene.toml`；相机与清屏色仍由示例代码设置。
+- 当前由调用方显式加载 `SceneSpec`、提供 `GeometryCreater` 并持有 `SceneInstance`；`SceneAssetRegistry`、异步几何引用、环境/相机 TOML、Writer/Capture 和 `pack:` 尚未实现。
 
 ---
 
@@ -18,7 +24,7 @@
 
 | 环节 | 现在要写什么 | 问题 |
 |------|-------------|------|
-| 几何 | 13 次 `CreateGeometryPreset(pc, "sphere_64")` 等 | **已**数据化（预设名 → TOML），但名字散在代码里 |
+| 几何 | 12 次 `CreateGeometryPreset(pc, ...)` | **已**数据化（预设名 → TOML），但名字散在代码里 |
 | 材质配方 | `GetRecipe("06b.BasicLit.Lit")` | **已**数据化 |
 | 材质行（SSBO） | `GetAccessor<EmissiveSurfaceRow>()` + `Write()` | 仍是代码，且**每个示例自己分配行** |
 | 纹理覆盖 | `mesh_recipe.AddTexture(...)` | 代码 |
@@ -360,7 +366,7 @@ transform = { position = [0.0, 0.0, 0.0], scale = [0.01, 0.01, 0.01] }
 
 | 阶段 | 内容 | 交付判据 |
 |------|------|---------|
-| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader`（presets 同步路径）+ `SceneAssetRegistry` 挂 `GraphicsContext` | `res/scene/basic_lit_meshes.scene.toml` 一次装载 = 现示例等价的 14 个实体；`TestSceneFile` 覆盖异常输入 |
+| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader`（presets 同步路径）+ `SceneAssetRegistry` 挂 `GraphicsContext` | 解析器、同步加载器和 `BasicLitMeshes` 的 12 个实体场景已落地；`SceneAssetRegistry` 尚未实现 |
 | **V2** | `[[materials]]` 的 codec 表（PBR/Emissive/Transmission 三种）+ `[environment]`/`[camera]` 落地 + `geo:`/`primitive:` 异步路径 | 示例里**没有**一段"自己分配行"的代码 |
 | **V3** | `SceneWriter`（Spec→TOML）+ `SceneCapture`（World→Spec）+ `TestSceneRoundTrip`（写→读→写逐字节一致） | 21 个示例的几何/变换/材质由捕获生成，人只增删节点 |
 | **V4** | `pack:` 引用（二进制场景包作为子树）+ 示例全面切换为「一个 TOML 一条命令」 | `BasicLitMeshes.cpp` 缩到 ~40 行 |
@@ -374,7 +380,7 @@ bool Init() override
 
     auto *gc = GetGraphicsContext();
     auto *scene = gc->GetSceneAssetRegistry()->GetOrLoad(
-        OS_TEXT("res/scene/basic_lit_meshes.scene.toml"));
+        OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
 
     return scene && scene->Instantiate(GetECSContext());
 }
@@ -387,8 +393,8 @@ bool Init() override
 1. **为什么材质行必须场景级**：行是 GPU 池里的**租约**。现在每个示例自己 `GetAccessor` + `Write`，
    示例一多就会出现"谁负责归还"的模糊地带。收进场景后，`SceneAsset` 销毁即归还，
    与 `GeometryAsset` 拥有 `Geometry*` 是同一条纪律。
-2. **为什么 `[[materials]]` 用具名而不是节点内联**：13 个球共享一行是常态，内联会让文件里
-   重复 13 段同样的颜色；具名后是"声明 1 段 + 引用 13 次"。
+2. **为什么 `[[materials]]` 用具名而不是节点内联**：多个节点共享一行是常态，内联会让文件里
+   重复多段相同的颜色；具名后是"声明 1 段 + 多处引用"。
 3. **为什么节点用平铺 + parent**：见 §3.3；TOML 的嵌套数组会把层级写进缩进，重排即大改。
 4. **不要**引入"节点级脚本/条件"：配置里一旦有分支，就等于把 C++ 搬到 TOML 里还失去了调试器。
    需要动态行为时用 ECS 系统的 C++ 代码，场景只描述**初始状态**。

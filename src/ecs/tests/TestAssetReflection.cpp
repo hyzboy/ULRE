@@ -14,6 +14,9 @@
 #include <hgl/asset/generated/PrimitiveFlat.gen.h>
 #include <hgl/asset/generated/PrimitiveMeta.gen.h>
 #include <hgl/asset/generated/PrimitiveToml.gen.h>
+#include <hgl/asset/generated/SceneFlat.gen.h>
+#include <hgl/asset/generated/SceneMeta.gen.h>
+#include <hgl/asset/generated/SceneToml.gen.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
@@ -310,10 +313,50 @@ namespace
             && decoded.extra_variants[0]->purpose == variant->purpose
             && decoded.extra_variants[0]->lod_index == variant->lod_index;
     }
+
+    bool TestSceneFlatBuffersRoundTrip()
+    {
+        SceneSpec source;
+        source.name = "FlatScene";
+        SceneMaterialSpec *material = source.materials.Create();
+        if (!material)
+            return false;
+        material->name = "glow";
+        material->type = SceneMaterialType::EmissiveSurface;
+        material->color = Color4f(0.9f, 0.2f, 0.1f, 1.0f);
+
+        SceneNodeSpec *node = source.nodes.Create();
+        if (!node)
+            return false;
+        node->name = "Mesh";
+        node->geometry = "presets:sphere_64";
+        node->recipe = "Core.PBR.Lit";
+        node->material = "glow";
+        node->transform.position = math::Vector3f(1.0f, 2.0f, 3.0f);
+
+        flatbuffers::FlatBufferBuilder fbb;
+        const auto offset = codec::EncodeSceneSpec(fbb, source);
+        fbb.Finish(offset);
+        const auto *root = flatbuffers::GetRoot<hgl::asset::schema::SceneSpec>(
+            fbb.GetBufferPointer());
+
+        SceneSpec decoded;
+        codec::DecodeSceneSpec(root, decoded);
+        return decoded.schema == source.schema
+            && decoded.name == source.name
+            && decoded.materials.GetCount() == 1
+            && decoded.materials[0]->type == material->type
+            && decoded.materials[0]->color == material->color
+            && decoded.nodes.GetCount() == 1
+            && decoded.nodes[0]->name == node->name
+            && decoded.nodes[0]->material == node->material
+            && decoded.nodes[0]->transform.position == node->transform.position;
+    }
 }//namespace
 
 int main()
 {
+    hgl::logger::InitLogger(OS_TEXT("TestAssetReflection"));
     Check(TestTomlRoundTrip(), "TOML round-trip");
     Check(TestMissingKeyKeepsDefault(), "missing key keeps default / bad type fails");
     Check(TestNumericBounds(), "integer values outside the C++ field range fail");
@@ -323,6 +366,7 @@ int main()
     Check(TestFlatBuffersRoundTrip(), "FlatBuffers round-trip");
     Check(TestPrimitiveSpec(), "primitive variant spec");
     Check(TestPrimitiveFlatBuffersRoundTrip(), "primitive FlatBuffers round-trip");
+    Check(TestSceneFlatBuffersRoundTrip(), "scene FlatBuffers round-trip");
 
     if (g_failed != 0)
     {

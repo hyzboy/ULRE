@@ -1,0 +1,82 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// @ulre-codegen begin
+//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。
+//   用途：发行版资产二进制格式。语义是「完整快照」，不是 TOML 那样的增量补丁：
+//         TOML 缺键 = 保留 C++ 类内初始值；FlatBuffers 解码一律覆盖全部字段。
+//   资产结构一律 table（可能含 string / 动态数组）；向量与定长数组用本文件
+//   生成的包装 struct（FlatBuffers 的 table 不允许定长数组字段）。
+// @ulre-codegen end
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace hgl.asset.schema;
+
+struct Float3
+{
+  x:float;
+  y:float;
+  z:float;
+}
+
+struct Float4
+{
+  x:float;
+  y:float;
+  z:float;
+  w:float;
+}
+
+// inc/hgl/graph/asset/SceneAssetSpec.h -> SceneTransformSpec
+table SceneTransformSpec
+{
+  position:Float3;
+  rotation_axis:Float3;
+  rotation_angle_deg:float;
+  scale:Float3;
+}
+
+// inc/hgl/graph/asset/SceneAssetSpec.h -> SceneTextureSpec
+table SceneTextureSpec
+{
+  name:string;
+  uri:string;
+  required:bool;
+}
+
+// inc/hgl/graph/asset/SceneAssetSpec.h -> SceneMaterialSpec
+table SceneMaterialSpec
+{
+  name:string;
+  type:int;
+  base_color:Float4;
+  metallic:float;
+  roughness:float;
+  normal_scale:float;
+  fresnel:float;
+  color:Float4;
+  trans_color:Float4;
+  textures:[SceneTextureSpec];
+}
+
+// inc/hgl/graph/asset/SceneAssetSpec.h -> SceneNodeSpec
+table SceneNodeSpec
+{
+  name:string;
+  parent:string;
+  geometry:string;
+  recipe:string;
+  material:string;
+  mobility:string;
+  visible:bool;
+  transform:SceneTransformSpec;
+}
+
+// inc/hgl/graph/asset/SceneAssetSpec.h -> SceneSpec
+table SceneSpec
+{
+  schema:uint;
+  name:string;
+  description:string;
+  materials:[SceneMaterialSpec];
+  nodes:[SceneNodeSpec];
+}
+

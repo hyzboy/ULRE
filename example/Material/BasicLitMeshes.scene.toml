@@ -1,0 +1,139 @@
+schema = 1
+name = "BasicLitMeshes"
+description = "Standard built-in shapes arranged around a textured floor."
+
+[[materials]]
+name = "lit_default"
+type = "PBRSurface"
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.08
+roughness = 0.92
+normal_scale = 0.35
+
+[materials.textures]
+base_color = "res/image/Brickwall/Albedo.Tex2D"
+normal = "res/image/Brickwall/Normal.Tex2D"
+roughness = "res/image/Brickwall/Roughness.Tex2D"
+
+[[nodes]]
+name = "Floor"
+geometry = "presets:plane_square"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+
+[nodes.transform]
+position = [0.0, 0.0, 0.0]
+rotation_axis = [0.0, 0.0, 1.0]
+rotation_angle_deg = 45.0
+scale = [1.0, 1.0, 1.0]
+
+[[nodes]]
+name = "Mesh_0"
+geometry = "presets:sphere_64"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [6.5, 0.0, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 0.0
+
+[[nodes]]
+name = "Mesh_1"
+geometry = "presets:dome_64"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [5.475, 3.514, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 32.727272
+
+[[nodes]]
+name = "Mesh_2"
+geometry = "presets:cone"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [2.703, 5.911, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 65.454544
+
+[[nodes]]
+name = "Mesh_3"
+geometry = "presets:cylinder_big"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [-0.925, 6.434, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 98.181816
+
+[[nodes]]
+name = "Mesh_4"
+geometry = "presets:torus_ring"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [-4.213, 4.949, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 130.909088
+
+[[nodes]]
+name = "Mesh_5"
+geometry = "presets:hollow_cylinder_big"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [-6.233, 1.830, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 163.636368
+
+[[nodes]]
+name = "Mesh_6"
+geometry = "presets:hex_sphere"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [-6.233, -1.830, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 196.363632
+
+[[nodes]]
+name = "Mesh_7"
+geometry = "presets:capsule"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [-4.213, -4.949, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 229.090912
+
+[[nodes]]
+name = "Mesh_8"
+geometry = "presets:tapered_capsule"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [-0.925, -6.434, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 261.818176
+
+[[nodes]]
+name = "Mesh_9"
+geometry = "presets:cube"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [2.703, -5.911, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 294.545441
+
+[[nodes]]
+name = "Mesh_10"
+geometry = "presets:frustum"
+recipe = "06b.BasicLit.Lit"
+material = "lit_default"
+mobility = "static"
+transform.position = [5.475, -3.514, 0.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 327.272736

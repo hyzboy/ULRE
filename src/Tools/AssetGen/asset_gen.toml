@@ -20,6 +20,10 @@ aliases = ["surface", "depth_only", "shadow_caster", "picking", "debug"]
 name = "NTBType"
 aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
 
+[[enum]]
+name = "SceneMaterialType"
+aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface"]
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"
@@ -41,3 +45,14 @@ fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/primitive_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/primitive_schema_generated.h"
 flat          = "inc/hgl/asset/generated/PrimitiveFlat.gen.h"
+
+# ── 场景编排规约 ────────────────────────────────────────────────────────────
+[group.Scene]
+namespace     = "hgl::graph"
+scan          = ["inc/hgl/graph/asset/SceneAssetSpec.h"]
+toml          = "inc/hgl/asset/generated/SceneToml.gen.h"
+meta          = "inc/hgl/asset/generated/SceneMeta.gen.h"
+fbs_namespace = "hgl.asset.schema"
+fbs           = "inc/hgl/asset/generated/scene_schema.fbs"
+fbs_generated = "inc/hgl/asset/generated/scene_schema_generated.h"
+flat          = "inc/hgl/asset/generated/SceneFlat.gen.h"

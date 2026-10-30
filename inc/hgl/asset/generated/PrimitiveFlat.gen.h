@@ -26,7 +26,7 @@ namespace hgl::asset::generated
     EncodePrimitiveVariantSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::PrimitiveVariantSpec &in)
     {
         // FlatBuffers 要求父表开始前子表/字符串/向量都已建好。
-        const auto _PrimitiveVariantSpec_recipe_str_offset = fbb.CreateString(in.recipe_name.c_str());
+        const auto _PrimitiveVariantSpec_recipe_str_offset = fbb.CreateString(in.recipe_name.c_str() ? in.recipe_name.c_str() : "");
         ::hgl::asset::schema::PrimitiveVariantSpecBuilder b(fbb);
         b.add_recipe(_PrimitiveVariantSpec_recipe_str_offset);
         b.add_purpose(static_cast<int32_t>(in.purpose));
@@ -38,10 +38,10 @@ namespace hgl::asset::generated
     EncodePrimitiveAssetSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::PrimitiveAssetSpec &in)
     {
         // FlatBuffers 要求父表开始前子表/字符串/向量都已建好。
-        const auto _PrimitiveAssetSpec_name_str_offset = fbb.CreateString(in.name.c_str());
+        const auto _PrimitiveAssetSpec_name_str_offset = fbb.CreateString(in.name.c_str() ? in.name.c_str() : "");
         const hgl::U8String _PrimitiveAssetSpec_geometry_str_u8 = hgl::ToU8String(in.geometry_path);
-        const auto _PrimitiveAssetSpec_geometry_str_offset = fbb.CreateString(reinterpret_cast<const char *>(_PrimitiveAssetSpec_geometry_str_u8.c_str()));
-        const auto _PrimitiveAssetSpec_recipe_str_offset = fbb.CreateString(in.recipe_name.c_str());
+        const auto _PrimitiveAssetSpec_geometry_str_offset = fbb.CreateString(reinterpret_cast<const char *>(_PrimitiveAssetSpec_geometry_str_u8.c_str() ? _PrimitiveAssetSpec_geometry_str_u8.c_str() : U8_TEXT("")));
+        const auto _PrimitiveAssetSpec_recipe_str_offset = fbb.CreateString(in.recipe_name.c_str() ? in.recipe_name.c_str() : "");
         const auto _PrimitiveAssetSpec_extra_variants_vec = fbb.CreateVector<flatbuffers::Offset<::hgl::asset::schema::PrimitiveVariantSpec>>((size_t)in.extra_variants.GetCount(), [&](size_t i, const hgl::graph::PrimitiveAssetSpec *source) { return EncodePrimitiveVariantSpec(fbb, *source->extra_variants[(int)i]); }, &in);
         ::hgl::asset::schema::PrimitiveAssetSpecBuilder b(fbb);
         b.add_name(_PrimitiveAssetSpec_name_str_offset);
