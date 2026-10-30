@@ -198,8 +198,9 @@ private:
         if (!placeholder_asset)
             return false;
 
-        if (!quad_recipe.AddTexture("base_color", placeholder_asset, true))
-            return false;
+        // ⚠ 绑定本体放在 `InitVBO()`（配方从 `.recipe.toml` 整体赋值之后）：
+        // 在这里加会被 `quad_recipe = *loaded_recipe` 覆盖 ⇒ 定义侧 required 纹理缺失
+        // ⇒ 材质整体回退错误棋盘格。
 
         // 预分配 Bindless Handle 并绑定占位纹理
         auto *gc = GetGraphicsContext();
@@ -240,6 +241,11 @@ private:
         if (!loaded_recipe)
             return false;
         quad_recipe = *loaded_recipe;
+
+        // 纹理是材质原型固有属性 ⇒ 写进配方（**必须在配方赋值之后**，否则被整体覆盖）。
+        if (!quad_recipe.AddTexture("base_color", placeholder_asset, true))
+            return false;
+
         quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Triangles);
 
         return true;

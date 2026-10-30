@@ -78,10 +78,9 @@ private:
 
         if(!texture)return(false);
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理，材质侧不再持有。
-        if(!rect_recipe.AddTexture("base_color",texture,true))
-            return(false);
-
+        // ⚠ 纹理绑定**不能写在这里**：`rect_recipe` 要到 `InitVBO()` 才从
+        // `.recipe.toml` 整体赋值（`rect_recipe = *loaded_recipe`）⇒ 先加会被覆盖，
+        // 定义侧 required 纹理缺失 ⇒ 材质整体回退错误棋盘格。绑定点见 `InitVBO()`。
         return(true);
     }
 
@@ -107,6 +106,12 @@ private:
         if (!loaded_recipe)
             return false;
         rect_recipe = *loaded_recipe;
+
+        // 纹理是材质原型固有属性 ⇒ 写进配方（**必须在配方赋值之后**，否则被整体覆盖）；
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有。
+        if (!rect_recipe.AddTexture("base_color", texture, true))
+            return false;
+
         rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 
         return(true);

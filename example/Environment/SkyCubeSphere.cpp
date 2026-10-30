@@ -79,11 +79,6 @@ private:
         if (!sky_cube_asset)
             return false;
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
-        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!sky_recipe.AddTexture("sky_cube", sky_cube_asset, true))
-            return false;
-
         // ---- 球体几何(屏幕中央,原点处) ----
         using namespace inline_geometry;
 
@@ -104,6 +99,18 @@ private:
         if (!loaded_recipe)
             return false;
         sky_recipe = *loaded_recipe;
+
+        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+        //
+        // ⚠ **必须在 `sky_recipe = *loaded_recipe` 之后**：配方赋值是整体覆盖，
+        // 先加纹理再赋值 = 绑定被静默丢掉 ⇒ 定义侧 `sky_cube` 是 required 纹理，
+        // 装配期判据命中 missing_texture_resource ⇒ 整个材质回退错误棋盘格。
+        // 立方体贴图目前**不能**写进 `.recipe.toml`（`TextureAsset` 只建 2D 句柄），
+        // 所以这一条仍由示例侧声明。
+        if (!sky_recipe.AddTexture("sky_cube", sky_cube_asset, true))
+            return false;
+
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
         return true;
