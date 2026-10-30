@@ -666,6 +666,27 @@ namespace hgl::ecs
             if (s_takeover_trace)
                 tagged_items += uint32_t(b->items.size());   // 诊断：本帧本 pass 打上标签的项数
 
+            // 诊断（`ULRE_DEBUG.toml` 的 `channels.batch = true`）：本批的桶构成。
+            // 实例化是否把某些项并进同一条命令，只能从这里看；没有它就只能靠像素差反推
+            // （而带旋转 gizmo 的示例根本无法跨运行对比），排查成本极高。
+            if (s_takeover_trace)
+            {
+                AnsiString bucket_list;
+
+                for (uint32_t k = 0; k < bucket_total; ++k)
+                {
+                    if (k)
+                        bucket_list += ",";
+                    bucket_list += AnsiString::numberOf(bucket_capacity[k]);
+                    bucket_list += "x";
+                    bucket_list += AnsiString::numberOf(bucket_geometry[k]);
+                }
+
+                GLogInfo(u8"[T5][BUCKETS] 批=%s items=%u 桶=%u [%s] 档=%u 组大小=%u",
+                         batch_name, uint32_t(b->items.size()), bucket_total,
+                         bucket_list.c_str(), topology, group_size);
+            }
+
             pending[pending_count].batch        = b;
             pending[pending_count].bucket_first = bucket_first;
             pending[pending_count].bucket_count = bucket_total;
