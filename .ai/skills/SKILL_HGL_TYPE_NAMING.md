@@ -1,7 +1,8 @@
 # HGL 类型与容器命名规范
 
 本规范约束 `CMCoreType/inc/hgl/type` 与 `CMCore/inc/hgl/type` 下的容器与基础类型，
-并为新代码给出统一命名约定。**不做大规模重命名**：既有 API 保持兼容，新代码遵守本规范。
+并为新代码给出统一命名约定。旧的不清晰命名已在本轮重构中删除（不保留 deprecated 别名），
+新代码必须遵守本规范。
 
 ---
 
@@ -15,6 +16,20 @@
 
 判断依据是"是否与标准库同名"：与 STL 同名者保持小写，便于与标准算法/范围 for 互操作；
 容器自有的业务语义 API 使用 PascalCase；底层内存工具函数使用 snake_case。
+
+### 易混淆命名的现行结论
+
+| 曾用名 | 现行名 | 原因 |
+|---|---|---|
+| `SetData()`（PtrArray） | `AdoptRawBuffer()` | 原语义是接管堆内存所有权，不是设置/拷贝数据 |
+| `Unlink*()`（ManagedArray） | `DetachAt()` / `DetachRange()` / `DetachByValue()` / `DetachAll()` | `Unlink` 易联想到链表；新名明确"断开所有权、不 delete" |
+| `Free()`（容器） | `ClearAndDeallocate()` | `Free` 易误解为 `free(this)`，且分不清是否连带释放容量 |
+| `Exchange(a,b)` | `Swap(a,b)` | `Exchange` 易与 `std::atomic::exchange`（换入并返回旧值）混淆 |
+| `Zero()`（PtrArray） | `ResetAll()` | 原语义是给已有元素赋 `T()`，既非清空也非按位清零 |
+| `RepeatAdd(v,n)` | `AppendCopies(v,n)` | 明确"追加 n 个相同副本"，不是"重复上次 Add 动作" |
+| `Change(k,v)`（Map 系列） | `Update(k,v)` | 明确"仅当 key 存在时更新" |
+| `Queue::GetArray()` | 已删除 | 双缓冲队列只暴露写段，极易被当成整条队列 |
+
 
 ---
 
@@ -40,9 +55,11 @@ const size_t b = a.GetTotalBytes();   // 字节数
 |---|---|---|---|
 | `Delete(index[,num])` | 删除并前移后续元素 | O(n) | 是 |
 | `DeleteSwap(index)` | 用尾元素填补被删位置 | O(1) | 否 |
-| `DeleteShift(index[,num])` | `Delete` 的历史别名 | O(n) | 是 |
+| `Remove(value)` | 按值查找后删除 | O(n) | 是 |
+| `RemoveByValue(value)` | Map 系列按 value 反查后删除 | O(n) | — |
 
-新代码不要引入 `DeleteShift`；需要保序用 `Delete`，需要高性能用 `DeleteSwap`。
+需要保序用 `Delete`，需要高性能用 `DeleteSwap`。
+历史上的 `DeleteShift` 与 `DeleteByValue` 已删除，不要再引入。
 
 ---
 
@@ -65,7 +82,8 @@ const size_t b = a.GetTotalBytes();   // 字节数
 | `ManagedArray<T>` | 非平凡类型 | **拥有** `T*`，析构 `delete` |
 
 `ManagedArray` 禁止拷贝（浅拷贝会双重释放），只提供移动语义；需要复制内容请在调用点显式创建对象。
-`PtrArray::SetData()` 只接受 `allocate_raw_memory<T>()` 分配的内存。
+`PtrArray::AdoptRawBuffer()` 只接受 `allocate_raw_memory<T>()` 分配的内存。
+`ManagedArray::DetachAt()` 断开所有权并返回裸指针，调用方负责 `delete`。
 
 ---
 
