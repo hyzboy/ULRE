@@ -19,7 +19,7 @@ namespace hgl::ecs
         {
             const hgl::AnsiString key(name.c_str());
             if (resources.GetValuePointer(key))
-                return resources.Change(key, resource);
+                return resources.Update(key, resource);
             return resources.Add(key, resource);
         }
 
