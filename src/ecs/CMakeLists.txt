@@ -139,6 +139,14 @@ if(MSVC)
     set_target_properties(TestSceneFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# Unified serialization archive: Value tree, Archive dispatch (scalars / strings /
+# enums / vectors / nested structs / Sequence / Mapping / Set / Tree) and TOML codec.
+add_executable(TestSerializeArchive tests/TestSerializeArchive.cpp)
+target_link_libraries(TestSerializeArchive PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestSerializeArchive PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # Asset reflection codegen: TOML round-trip, metadata table, FlatBuffers round-trip.
 # 纯数据往返，不需要设备/窗口，因此在 CI 里也能跑，用来挡住
 # 「改了 C++ 结构但忘记重新生成」与「生成器改坏了语义」。
@@ -285,6 +293,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestSceneFile
         PROPERTIES LABELS "scene;asset")
+
+    add_test(
+        NAME TestSerializeArchive
+        COMMAND TestSerializeArchive
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestSerializeArchive
+        PROPERTIES LABELS "serialize;archive")
 
     add_test(
         NAME TestAssetReflection
