@@ -10,6 +10,7 @@
 // 本用例纯数据往返，不依赖设备/窗口，可在 CI 阻止「框架改坏语义」。
 
 #include <hgl/serialize/Archive.h>
+#include <hgl/serialize/FlatCodec.h>
 #include <hgl/serialize/TomlCodec.h>
 
 #include <hgl/type/FlatTreeContainer.h>
@@ -121,66 +122,66 @@ namespace hgl::serialize
     struct StructSerializer<SampleLeaf>
     {
         static constexpr bool defined = true;
-        static void Do(Archive &ar, SampleLeaf &v);
+
+        template <typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "scalar", v.scalar);
+            ar.Field(2, "direction", v.direction);
+        }
     };
 
     template <>
     struct StructSerializer<SampleNode>
     {
         static constexpr bool defined = true;
-        static void Do(Archive &ar, SampleNode &v);
+
+        template <typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "name", v.name);
+            ar.Field(2, "parent", v.parent);
+        }
     };
 
     template <>
     struct StructSerializer<SampleTreeData>
     {
         static constexpr bool defined = true;
-        static void Do(Archive &ar, SampleTreeData &v);
+
+        template <typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "id", v.id);
+        }
     };
 
     template <>
     struct StructSerializer<SampleAsset>
     {
         static constexpr bool defined = true;
-        static void Do(Archive &ar, SampleAsset &v);
+
+        template <typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "schema", v.schema);
+            ar.Field(2, "name", v.name);
+            ar.Field(3, "uri", v.uri);
+            ar.Field(4, "enabled", v.enabled);
+            ar.Field(5, "count", v.count);
+            ar.Field(6, "big", v.big);
+            ar.Field(7, "ratio", v.ratio);
+            ar.Field(8, "kind", v.kind);
+            ar.Field(9, "position", v.position);
+            ar.Field(10, "tint", v.tint);
+            ar.Field(11, "leaf", v.leaf);
+            ar.Field(12, "weights", v.weights);
+            ar.Field(13, "nodes", v.nodes);
+            ar.Field(14, "counters", v.counters);
+            ar.Field(15, "tags", v.tags);
+            ar.Field(16, "tree", v.tree);
+        }
     };
-
-    inline void StructSerializer<SampleLeaf>::Do(Archive &ar, SampleLeaf &v)
-    {
-        ar.Field(1, "scalar", v.scalar);
-        ar.Field(2, "direction", v.direction);
-    }
-
-    inline void StructSerializer<SampleNode>::Do(Archive &ar, SampleNode &v)
-    {
-        ar.Field(1, "name", v.name);
-        ar.Field(2, "parent", v.parent);
-    }
-
-    inline void StructSerializer<SampleTreeData>::Do(Archive &ar, SampleTreeData &v)
-    {
-        ar.Field(1, "id", v.id);
-    }
-
-    inline void StructSerializer<SampleAsset>::Do(Archive &ar, SampleAsset &v)
-    {
-        ar.Field(1, "schema", v.schema);
-        ar.Field(2, "name", v.name);
-        ar.Field(3, "uri", v.uri);
-        ar.Field(4, "enabled", v.enabled);
-        ar.Field(5, "count", v.count);
-        ar.Field(6, "big", v.big);
-        ar.Field(7, "ratio", v.ratio);
-        ar.Field(8, "kind", v.kind);
-        ar.Field(9, "position", v.position);
-        ar.Field(10, "tint", v.tint);
-        ar.Field(11, "leaf", v.leaf);
-        ar.Field(12, "weights", v.weights);
-        ar.Field(13, "nodes", v.nodes);
-        ar.Field(14, "counters", v.counters);
-        ar.Field(15, "tags", v.tags);
-        ar.Field(16, "tree", v.tree);
-    }
 }//namespace hgl::serialize
 
 namespace
@@ -495,6 +496,143 @@ namespace
 
         return true;
     }
+
+    // ── 用例 7：FlatBuffers 后端往返（通用描述表驱动）─────────────────────
+    //
+    // 这里手工写出 AssetGen 会生成的等价描述表，验证通用 FB 编解码器
+    // （两趟构建、voffset、内联 struct、标量向量、表向量）行为正确。
+    // 未出现在描述表里的字段（Mapping / Set / Tree）在二进制快照中被忽略。
+
+    namespace desc
+    {
+        using hgl::serialize::fb::FieldDesc;
+        using hgl::serialize::fb::FbType;
+        using hgl::serialize::fb::TableDesc;
+
+        inline bool KindFromName(const char *name, int64_t &out)
+        {
+            SampleKind parsed{};
+            if (!EnumTraits<SampleKind>::FromName(name, parsed))
+                return false;
+            out = static_cast<int64_t>(parsed);
+            return true;
+        }
+
+        inline const char *KindToName(const int64_t value)
+        {
+            return EnumTraits<SampleKind>::ToName(static_cast<SampleKind>(value));
+        }
+
+        inline const FieldDesc leaf_fields[] = {
+            {1, "scalar", FbType::Float, 4},
+            {2, "direction", FbType::Struct, 6, FbType::None, 3},
+        };
+        inline const TableDesc leaf = {"SampleLeaf", leaf_fields, 2};
+
+        inline const FieldDesc node_fields[] = {
+            {1, "name", FbType::String, 4},
+            {2, "parent", FbType::Int32, 6},
+        };
+        inline const TableDesc node = {"SampleNode", node_fields, 2};
+
+        inline const FieldDesc asset_fields[] = {
+            {1, "schema", FbType::UInt32, 4},
+            {2, "name", FbType::String, 6},
+            {3, "uri", FbType::String, 8},
+            {4, "enabled", FbType::Bool, 10},
+            {5, "count", FbType::Int32, 12},
+            {6, "big", FbType::UInt64, 14},
+            {7, "ratio", FbType::Double, 16},
+            {8, "kind", FbType::Enum, 18, FbType::None, 0, nullptr,
+             &KindFromName, &KindToName},
+            {9, "position", FbType::Struct, 20, FbType::None, 3},
+            {10, "tint", FbType::Struct, 22, FbType::None, 4},
+            {11, "leaf", FbType::Table, 24, FbType::None, 0, &leaf},
+            {12, "weights", FbType::VectorScalar, 26, FbType::Float},
+            {13, "nodes", FbType::VectorTable, 28, FbType::None, 0, &node},
+        };
+        inline const TableDesc asset = {"SampleAsset", asset_fields, 13};
+    }//namespace desc
+
+    /// 只比较 FB 描述表里覆盖到的字段。
+    bool SameFlatFields(const SampleAsset &a, const SampleAsset &b)
+    {
+        if (a.schema != b.schema) { GLogError(u8"  diff: schema"); return false; }
+        if (hgl::stricmp(a.name.c_str(), b.name.c_str()) != 0) { GLogError(u8"  diff: name"); return false; }
+        if (hgl::stricmp(a.uri.c_str(), b.uri.c_str()) != 0) { GLogError(u8"  diff: uri"); return false; }
+        if (a.enabled != b.enabled) { GLogError(u8"  diff: enabled"); return false; }
+        if (a.count != b.count) { GLogError(u8"  diff: count"); return false; }
+        if (a.big != b.big) { GLogError(u8"  diff: big"); return false; }
+        if (a.ratio != b.ratio) { GLogError(u8"  diff: ratio"); return false; }
+        if (a.kind != b.kind) { GLogError(u8"  diff: kind"); return false; }
+        if (a.position.x != b.position.x || a.position.y != b.position.y
+            || a.position.z != b.position.z) { GLogError(u8"  diff: position"); return false; }
+        if (a.tint.x != b.tint.x || a.tint.y != b.tint.y
+            || a.tint.z != b.tint.z || a.tint.w != b.tint.w) { GLogError(u8"  diff: tint"); return false; }
+        if (a.leaf.scalar != b.leaf.scalar) { GLogError(u8"  diff: leaf.scalar"); return false; }
+        if (a.leaf.direction.y != b.leaf.direction.y) { GLogError(u8"  diff: leaf.direction"); return false; }
+
+        if (a.weights.GetCount() != b.weights.GetCount()) { GLogError(u8"  diff: weights count"); return false; }
+        for (int i = 0; i < a.weights.GetCount(); ++i)
+        {
+            if (a.weights[i] != b.weights[i])
+            { GLogError(u8"  diff: weights[%d]", i); return false; }
+        }
+
+        if (a.nodes.GetCount() != b.nodes.GetCount()) { GLogError(u8"  diff: nodes count"); return false; }
+        for (int i = 0; i < a.nodes.GetCount(); ++i)
+        {
+            if (hgl::stricmp(a.nodes[i]->name.c_str(), b.nodes[i]->name.c_str()) != 0)
+            { GLogError(u8"  diff: nodes[%d].name", i); return false; }
+            if (a.nodes[i]->parent != b.nodes[i]->parent)
+            { GLogError(u8"  diff: nodes[%d].parent", i); return false; }
+        }
+
+        return true;
+    }
+
+    bool TestFlatBuffersRoundTrip()
+    {
+        Fixture fixture;
+
+        Value tree;
+        Archive writer = Archive::ForWrite(tree);
+        StructSerializer<SampleAsset>::Do(writer, fixture.asset);
+        Check(writer.Ok(), "FB 写入前的树构建不应失败");
+
+        flatbuffers::FlatBufferBuilder fbb;
+        hgl::serialize::fb::EncodeToBuffer(fbb, tree, desc::asset);
+        Check(fbb.GetSize() > 0, "FlatBuffers 编码应产出非空缓冲");
+
+        Value decoded_tree;
+        Check(hgl::serialize::fb::DecodeFromBuffer(fbb.GetBufferPointer(),
+                                                  fbb.GetSize(), desc::asset,
+                                                  decoded_tree),
+              "FlatBuffers 解码应成功");
+
+        SampleAsset loaded;
+        Archive reader = Archive::ForRead(decoded_tree);
+        StructSerializer<SampleAsset>::Do(reader, loaded);
+        Check(reader.Ok(), "FB 解码后的树读入结构不应失败");
+        if (!reader.Ok())
+        {
+            GLogError(u8"  失败字段=%s 原因=%s",
+                      reader.FailedField(), reader.ErrorMessage());
+            return false;
+        }
+
+        Check(SameFlatFields(fixture.asset, loaded), "FlatBuffers 往返后字段应一致");
+
+        // 过短的缓冲必须被拒绝（真正的 schema 级校验由调用方用 flatc 生成的
+        // 根类型跑 Verifier，见 DecodeFromBuffer 文档）。
+        Value junk;
+        const uint8_t bogus[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+        Check(!hgl::serialize::fb::DecodeFromBuffer(bogus, sizeof(bogus),
+                                                   desc::asset, junk),
+              "过短缓冲必须被拒绝");
+
+        return true;
+    }
 }//namespace
 
 int main()
@@ -507,6 +645,7 @@ int main()
     TestMissingKeyKeepsDefault();
     TestTypeMismatchFails();
     TestEnumUsesName();
+    TestFlatBuffersRoundTrip();
 
     if (g_failed != 0)
     {
