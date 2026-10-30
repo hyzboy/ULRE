@@ -1,8 +1,11 @@
 #include <hgl/graph/asset/SceneAssetFile.h>
+#include <hgl/asset/generated/SceneFlat.gen.h>
 #include <hgl/asset/generated/SceneToml.gen.h>
 #include <hgl/io/FileInputStream.h>
+#include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/Smart.h>
+#include <flatbuffers/flatbuffers.h>
 #include <toml/toml.hpp>
 
 #include <cmath>
@@ -15,6 +18,26 @@ namespace asset_codec = ::hgl::asset::generated;
 
 namespace hgl::graph
 {
+    namespace
+    {
+        bool ValidateRelationships(const toml::value &root,
+                                   const SceneSpec &spec,
+                                   bool validate_material_key_shape = true);
+    }
+
+    bool LoadSceneSpecFromFile(const OSString &filename,
+                               SceneSpec &out_spec)
+    {
+        if (filename.EndsWithIgnoreCase(OS_TEXT(".toml")))
+            return LoadSceneSpecFromTOML(filename, out_spec);
+        if (filename.EndsWithIgnoreCase(OS_TEXT(".scene.fb")))
+            return LoadSceneSpecFromFlatBuffers(filename, out_spec);
+
+        MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFile: unsupported scene file extension in ")
+                  + filename);
+        return false;
+    }
+
     bool LoadSceneSpecFromTOML(const OSString &filename,
                                SceneSpec &out_spec)
     {
@@ -45,6 +68,121 @@ namespace hgl::graph
         buffer[static_cast<size_t>(size)] = '\0';
         return ParseSceneSpec(buffer.data(), static_cast<size_t>(size),
                               filename.c_str(), out_spec);
+    }
+
+    bool LoadSceneSpecFromFlatBuffers(const OSString &filename,
+                                      SceneSpec &out_spec)
+    {
+        hgl::io::OpenFileInputStream opener(filename);
+        if (!opener)
+        {
+            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: cannot open file ")
+                      + filename);
+            return false;
+        }
+
+        const int64 size = opener->GetSize();
+        if (size <= 0 || size > 64 * 1024 * 1024)
+        {
+            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: invalid file size in ")
+                      + filename);
+            return false;
+        }
+
+        hgl::AutoDeleteArray<uint8> buffer(static_cast<size_t>(size));
+        if (!buffer || opener->Read(buffer.data(), size) != size)
+        {
+            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: read failed in ")
+                      + filename);
+            return false;
+        }
+
+        return ParseSceneSpecFromFlatBuffers(
+            buffer.data(), static_cast<size_t>(size), filename.c_str(), out_spec);
+    }
+
+    bool SaveSceneSpecToFlatBuffers(const SceneSpec &spec,
+                                    const OSString &filename)
+    {
+        if (spec.schema != 1 || spec.name.Length() == 0)
+        {
+            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene specification"));
+            return false;
+        }
+
+        const toml::value validation_table = asset_codec::WriteSceneSpec(spec);
+        if (!ValidateRelationships(validation_table, spec, false))
+        {
+            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene relationships"));
+            return false;
+        }
+
+        flatbuffers::FlatBufferBuilder builder;
+        const auto root = asset_codec::EncodeSceneSpec(builder, spec);
+        builder.Finish(root);
+
+        hgl::AutoDelete<hgl::io::FileOutputStream> output(
+            hgl::io::CreateFileOutputStream(filename));
+        if (!output)
+        {
+            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: cannot create file ")
+                      + filename);
+            return false;
+        }
+
+        if (output->Write(builder.GetBufferPointer(), builder.GetSize())
+            != static_cast<int64>(builder.GetSize()))
+        {
+            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: write failed in ")
+                      + filename);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ParseSceneSpecFromFlatBuffers(const void *data,
+                                       const size_t size,
+                                       const os_char *debug_name,
+                                       SceneSpec &out_spec)
+    {
+        if (!data || size == 0 || size > 64 * 1024 * 1024)
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: invalid buffer in ")
+                      + OSString(debug_name));
+            return false;
+        }
+
+        flatbuffers::Verifier verifier(
+            static_cast<const uint8_t *>(data), size);
+        if (!verifier.VerifyBuffer<hgl::asset::schema::SceneSpec>(nullptr))
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: verification failed in ")
+                      + OSString(debug_name));
+            return false;
+        }
+
+        out_spec.schema = 1;
+        out_spec.name = "";
+        out_spec.description = "";
+        out_spec.materials.Clear();
+        out_spec.nodes.Clear();
+        const auto *root =
+            flatbuffers::GetRoot<hgl::asset::schema::SceneSpec>(data);
+        asset_codec::DecodeSceneSpec(root, out_spec);
+
+        if (out_spec.schema != 1 || out_spec.name.Length() == 0)
+            return false;
+
+        const toml::value validation_table = asset_codec::WriteSceneSpec(out_spec);
+        if (!ValidateRelationships(validation_table, out_spec, false))
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: semantic validation failed in ")
+                      + OSString(debug_name));
+            return false;
+        }
+
+        return true;
     }
 
     namespace
@@ -111,6 +249,19 @@ namespace hgl::graph
             }
         }
 
+        bool IsValidMaterialType(const SceneMaterialType type)
+        {
+            switch (type)
+            {
+            case SceneMaterialType::PBRSurface:
+            case SceneMaterialType::EmissiveSurface:
+            case SceneMaterialType::TransmissionSurface:
+                return true;
+            default:
+                return false;
+            }
+        }
+
         bool NormalizeTextureTables(toml::value &root)
         {
             if (!root.contains("materials") || !root.at("materials").is_array())
@@ -142,7 +293,9 @@ namespace hgl::graph
             return true;
         }
 
-        bool ValidateRelationships(const toml::value &root, const SceneSpec &spec)
+        bool ValidateRelationships(const toml::value &root,
+                                   const SceneSpec &spec,
+                                   const bool validate_material_key_shape)
         {
             for (int i = 0; i < spec.materials.GetCount(); ++i)
             {
@@ -156,7 +309,9 @@ namespace hgl::graph
 
                 const toml::value &source = root.at("materials").as_array()[size_t(i)];
                 if (!HasField(source, "type")
-                    || !ValidateMaterialKeys(source, material.type)
+                    || !IsValidMaterialType(material.type)
+                    || (validate_material_key_shape
+                        && !ValidateMaterialKeys(source, material.type))
                     || !IsFinite(material.base_color)
                     || !IsFinite(material.color)
                     || !IsFinite(material.trans_color))

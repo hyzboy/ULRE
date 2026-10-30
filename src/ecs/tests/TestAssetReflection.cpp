@@ -62,6 +62,17 @@ namespace
             && back.tex_coord == cube.tex_coord;
     }
 
+    bool TestEmptyStringSerialization()
+    {
+        const toml::value ansi = hgl::asset::detail::FromString(AnsiString{});
+        const toml::value utf8 = hgl::asset::detail::FromString(U8String{});
+        const toml::value os = hgl::asset::detail::FromString(OSString{});
+
+        return ansi.is_string() && ansi.as_string().empty()
+            && utf8.is_string() && utf8.as_string().empty()
+            && os.is_string() && os.as_string().empty();
+    }
+
     // ── 2. 缺键保留类内初始值 / 类型不符失败 ────────────────────────────────
     bool TestMissingKeyKeepsDefault()
     {
@@ -358,6 +369,7 @@ int main()
 {
     hgl::logger::InitLogger(OS_TEXT("TestAssetReflection"));
     Check(TestTomlRoundTrip(), "TOML round-trip");
+    Check(TestEmptyStringSerialization(), "empty string serialization");
     Check(TestMissingKeyKeepsDefault(), "missing key keeps default / bad type fails");
     Check(TestNumericBounds(), "integer values outside the C++ field range fail");
     Check(TestEnumNames(), "enum names and aliases");

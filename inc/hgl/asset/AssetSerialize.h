@@ -155,17 +155,25 @@ namespace hgl::asset::detail
 
     inline toml::value FromString(const AnsiString &in)
     {
-        return toml::value(static_cast<toml::value::string_type>(in.c_str()));
+        toml::value::string_type value;
+        if (in.Length() > 0)
+            value.assign(in.c_str(), static_cast<size_t>(in.Length()));
+        return toml::value(std::move(value));
     }
 
     inline toml::value FromString(const U8String &in)
     {
-        return toml::value(static_cast<toml::value::string_type>(
-            reinterpret_cast<const char *>(in.c_str())));
+        toml::value::string_type value;
+        if (in.Length() > 0)
+            value.assign(reinterpret_cast<const char *>(in.c_str()),
+                         static_cast<size_t>(in.Length()));
+        return toml::value(std::move(value));
     }
 
     inline toml::value FromString(const OSString &in)
     {
+        if (in.Length() == 0)
+            return toml::value(toml::value::string_type{});
         return FromString(ToU8String(in));
     }
 

@@ -214,6 +214,8 @@ namespace hgl::graph
         // GlobalSSBOBufferRegistry 行池 —— 必须趁设备与模块还活着时释放。
         ForceReleaseGizmoSystemResources();
 
+        scene_asset_registry_.Clear();
+
         // 先收掉后台加载底座：Stop(Drain) 会等所有已提交读盘结束并同步派发取消回调，
         // 保证此后不再有 IO 线程访问本上下文持有的任何资源。必须早于模块销毁。
         if (loaded_file_manager_)

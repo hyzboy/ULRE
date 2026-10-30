@@ -14,7 +14,8 @@
 
 - 已实现 `SceneSpec` TOML/FlatBuffers 编解码、严格的场景 TOML 解析校验，以及只支持 `presets:` 的同步 `SceneLoader`。
 - `BasicLitMeshes` 的几何、变换、材质行和纹理覆盖已迁入 `example/Material/BasicLitMeshes.scene.toml`；相机与清屏色仍由示例代码设置。
-- 当前由调用方显式加载 `SceneSpec`、提供 `GeometryCreater` 并持有 `SceneInstance`；`SceneAssetRegistry`、异步几何引用、环境/相机 TOML、Writer/Capture 和 `pack:` 尚未实现。
+- `GraphicsContext` 已持有 `SceneAssetRegistry`，按规范化路径缓存场景规格；实例仍由调用方持有，须在世界与图形资源销毁前释放。
+- 异步几何引用、环境/相机 TOML、Writer/Capture 和 `pack:` 尚未实现。
 
 ---
 
@@ -28,7 +29,7 @@
 | 材质配方 | `GetRecipe("06b.BasicLit.Lit")` | **已**数据化 |
 | 材质行（SSBO） | `GetAccessor<EmissiveSurfaceRow>()` + `Write()` | 仍是代码，且**每个示例自己分配行** |
 | 纹理覆盖 | `mesh_recipe.AddTexture(...)` | 代码 |
-| 实体/变换 | 14 段 `CreateEntity` + `SetLocalPosition/Rotation/Scale` | 纯代码，且排列逻辑（绕圈分布）在 C++ 里 |
+| 实体/变换 | 12 段 `CreateEntity` + `SetLocalPosition/Rotation/Scale` | 纯代码，且排列逻辑（绕圈分布）在 C++ 里 |
 | 相机 | `InitCamera()` 手填 yaw/pitch/distance | 纯代码 |
 | 环境 | `EnvironmentManager::Create/Edit` | 纯代码 |
 
@@ -366,7 +367,7 @@ transform = { position = [0.0, 0.0, 0.0], scale = [0.01, 0.01, 0.01] }
 
 | 阶段 | 内容 | 交付判据 |
 |------|------|---------|
-| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader`（presets 同步路径）+ `SceneAssetRegistry` 挂 `GraphicsContext` | 解析器、同步加载器和 `BasicLitMeshes` 的 12 个实体场景已落地；`SceneAssetRegistry` 尚未实现 |
+| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader`（presets 同步路径）+ `SceneAssetRegistry` 挂 `GraphicsContext` | 解析器、同步加载器、设备级注册器和 `BasicLitMeshes` 的 12 个实体场景已落地 |
 | **V2** | `[[materials]]` 的 codec 表（PBR/Emissive/Transmission 三种）+ `[environment]`/`[camera]` 落地 + `geo:`/`primitive:` 异步路径 | 示例里**没有**一段"自己分配行"的代码 |
 | **V3** | `SceneWriter`（Spec→TOML）+ `SceneCapture`（World→Spec）+ `TestSceneRoundTrip`（写→读→写逐字节一致） | 21 个示例的几何/变换/材质由捕获生成，人只增删节点 |
 | **V4** | `pack:` 引用（二进制场景包作为子树）+ 示例全面切换为「一个 TOML 一条命令」 | `BasicLitMeshes.cpp` 缩到 ~40 行 |

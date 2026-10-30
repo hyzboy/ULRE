@@ -22,6 +22,7 @@
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
+#include <hgl/graph/asset/SceneAssetRegistry.h>
 
 namespace hgl
 {
@@ -104,6 +105,9 @@ namespace hgl::graph
         PrimitiveAssetRegistry primitive_asset_registry_;
         bool primitive_asset_registry_ready_ = false;
 
+        /// 场景资产只持有纯数据规格；实例实体及 GPU 资源仍由 SceneInstance/其它注册器管理。
+        SceneAssetRegistry scene_asset_registry_;
+
     public:
         explicit GraphicsContext(VulkanDevice *dev);
         ~GraphicsContext();
@@ -176,6 +180,9 @@ namespace hgl::graph
         /// 图元资产绑定表（几何 + 配方），`GetOrLoad("*.primitive.toml")` 一步装配。
         PrimitiveAssetRegistry *GetPrimitiveAssetRegistry() { return &primitive_asset_registry_; }
         const PrimitiveAssetRegistry *GetPrimitiveAssetRegistry() const { return &primitive_asset_registry_; }
+
+        SceneAssetRegistry *GetSceneAssetRegistry() { return &scene_asset_registry_; }
+        const SceneAssetRegistry *GetSceneAssetRegistry() const { return &scene_asset_registry_; }
 
         /// 全局异步文件加载管理器（Initialize 后恒为有效，Shutdown 后为 nullptr）。
         /// 调用方只在主线程使用：Submit/Pump/Collect/Stop 有线程亲和性。

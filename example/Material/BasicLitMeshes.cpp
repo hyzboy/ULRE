@@ -1,5 +1,6 @@
 #include <hgl/framework/WorkManager.h>
-#include <hgl/graph/asset/SceneAssetFile.h>
+#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/asset/SceneAssetRegistry.h>
 #include <hgl/graph/asset/SceneLoader.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/BufferManager.h>
@@ -36,7 +37,6 @@ private:
     ECSContext *ecs_context = nullptr;
     Entity *camera_entity = nullptr;
     AutoDelete<VertexDataManager> mesh_vdm;
-    SceneSpec scene_spec;
     SceneInstance scene_instance;
 
     bool InitVDM()
@@ -60,17 +60,19 @@ private:
         if (!ecs_context || !InitVDM())
             return false;
 
-        if (!LoadSceneSpecFromTOML(
-                OS_TEXT("example/Material/BasicLitMeshes.scene.toml"),
-                scene_spec))
+        GraphicsContext *graphics = ecs_context->GetGraphicsContext();
+        SceneAssetRegistry *scene_registry =
+            graphics ? graphics->GetSceneAssetRegistry() : nullptr;
+        if (!scene_registry)
+            return false;
+
+        SceneAsset *scene = scene_registry->GetOrLoad(
+            OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
+        if (!scene)
             return false;
 
         GeometryCreater creater(mesh_vdm);
-        return SceneLoader::Instantiate(
-            scene_spec,
-            ecs_context,
-            &creater,
-            scene_instance);
+        return scene->Instantiate(ecs_context, &creater, scene_instance);
     }
 
     bool InitCamera()

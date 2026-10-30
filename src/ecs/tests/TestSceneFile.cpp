@@ -1,4 +1,6 @@
 #include <hgl/graph/asset/SceneAssetFile.h>
+#include <hgl/graph/asset/SceneAssetRegistry.h>
+#include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
@@ -132,12 +134,53 @@ namespace
             && spec.materials[0]->textures.GetCount() == 3
             && spec.nodes.GetCount() == 12;
     }
+
+    bool TestSceneAssetRegistry()
+    {
+        SceneAssetRegistry registry;
+        SceneAsset *first = registry.GetOrLoad(
+            OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
+        SceneAsset *second = registry.GetOrLoad(
+            OS_TEXT("example\\Material\\BasicLitMeshes.scene.toml"));
+
+        return first
+            && first == second
+            && registry.GetCount() == 1
+            && registry.FindByFilename(
+                   OS_TEXT("example/Material/BasicLitMeshes.scene.toml")) == first;
+    }
+
+    bool TestSceneFlatBuffersFile()
+    {
+        const OSString filename =
+            OS_TEXT("build/Testing/Temporary/scene_asset_roundtrip.scene.fb");
+        hgl::filesystem::FileDelete(filename);
+
+        SceneSpec source;
+        if (!Parse(kValidScene, source))
+            return false;
+        if (!SaveSceneSpecToFlatBuffers(source, filename))
+            return false;
+
+        SceneSpec loaded;
+        const bool load_ok = LoadSceneSpecFromFile(filename, loaded);
+        hgl::filesystem::FileDelete(filename);
+        return load_ok
+            && loaded.name == source.name
+            && loaded.materials.GetCount() == source.materials.GetCount()
+            && loaded.materials[0]->textures.GetCount() == 2
+            && loaded.nodes.GetCount() == source.nodes.GetCount();
+    }
 }
 
 int main()
 {
     hgl::logger::InitLogger(OS_TEXT("TestSceneFile"));
-    if (!TestValidScene() || !TestInvalidScenes() || !TestBasicLitMeshesSceneFile())
+    if (!TestValidScene()
+        || !TestInvalidScenes()
+        || !TestBasicLitMeshesSceneFile()
+        || !TestSceneAssetRegistry()
+        || !TestSceneFlatBuffersFile())
     {
         GLogError(u8"=== TestSceneFile: 测试失败 ===");
         return 1;
