@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/graph/asset/SceneAssetSpec.h>
-#include <hgl/type/ValueArray.h>
+#include <hgl/type/ManagedArray.h>
 
 namespace hgl::ecs
 {
@@ -33,7 +33,7 @@ namespace hgl::graph
 
     class SceneAssetRegistry
     {
-        ValueArray<SceneAsset *> assets;
+        ManagedArray<SceneAsset> assets;
 
         SceneAsset *FindByResourceKey(const OSString &resource_key) const;
 

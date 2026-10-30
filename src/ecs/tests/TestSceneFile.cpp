@@ -15,6 +15,17 @@ namespace
         "schema = 1\n"
         "name = \"SceneTest\"\n"
         "\n"
+        "[camera]\n"
+        "mode = \"view_model\"\n"
+        "target = [0.0, 0.0, 0.0]\n"
+        "distance = 14.0\n"
+        "yaw = 45.0\n"
+        "pitch = -20.0\n"
+        "main = true\n"
+        "\n"
+        "[clear_color]\n"
+        "value = [0.18, 0.18, 0.20, 1.0]\n"
+        "\n"
         "[[materials]]\n"
         "name = \"lit\"\n"
         "type = \"PBRSurface\"\n"
@@ -66,6 +77,12 @@ namespace
         if (spec.name != "SceneTest" || spec.schema != 1
             || spec.materials.GetCount() != 3 || spec.nodes.GetCount() != 2)
             return false;
+        if (!spec.camera.enabled
+            || spec.camera.mode != SceneCameraMode::ViewModel
+            || spec.camera.distance != 14.0f
+            || !spec.clear_color.enabled
+            || spec.clear_color.value.x != 0.18f)
+            return false;
         if (spec.materials[0]->type != SceneMaterialType::PBRSurface
             || spec.materials[1]->type != SceneMaterialType::EmissiveSurface
             || spec.materials[2]->type != SceneMaterialType::TransmissionSurface)
@@ -110,6 +127,14 @@ namespace
         constexpr char kWrongVersion[] =
             "schema = 2\nname = \"Bad\"\n"
             "[[nodes]]\nname = \"N\"\ngeometry = \"presets:cube\"\nrecipe = \"R\"\n";
+        constexpr char kInvalidCamera[] =
+            "schema = 1\nname = \"Bad\"\n"
+            "[camera]\nmode = \"not_a_camera\"\n"
+            "[[nodes]]\nname = \"N\"\ngeometry = \"presets:cube\"\nrecipe = \"R\"\n";
+        constexpr char kInvalidClearColor[] =
+            "schema = 1\nname = \"Bad\"\n"
+            "[clear_color]\nvalue = [0.0, 0.0, 0.0, 1.0e999]\n"
+            "[[nodes]]\nname = \"N\"\ngeometry = \"presets:cube\"\nrecipe = \"R\"\n";
 
         SceneSpec spec;
         return !Parse(kUnknownRootKey, spec)
@@ -118,7 +143,9 @@ namespace
             && !Parse(kMissingReference, spec)
             && !Parse(kUnsupportedGeometry, spec)
             && !Parse(kParentCycle, spec)
-            && !Parse(kWrongVersion, spec);
+            && !Parse(kWrongVersion, spec)
+            && !Parse(kInvalidCamera, spec)
+            && !Parse(kInvalidClearColor, spec);
     }
 
     bool TestBasicLitMeshesSceneFile()
@@ -167,6 +194,11 @@ namespace
         hgl::filesystem::FileDelete(filename);
         return load_ok
             && loaded.name == source.name
+            && loaded.camera.enabled == source.camera.enabled
+            && loaded.camera.mode == source.camera.mode
+            && loaded.camera.distance == source.camera.distance
+            && loaded.clear_color.enabled == source.clear_color.enabled
+            && loaded.clear_color.value == source.clear_color.value
             && loaded.materials.GetCount() == source.materials.GetCount()
             && loaded.materials[0]->textures.GetCount() == 2
             && loaded.nodes.GetCount() == source.nodes.GetCount();

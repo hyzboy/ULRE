@@ -41,6 +41,9 @@ namespace hgl
         private:
             ecs::ECSContext *world = nullptr;
             GeometryManager *geometry_manager = nullptr;
+            ecs::EntityID camera_entity_id = ecs::EntityID::Invalid();
+            Color4f previous_clear_color{0.0f, 0.0f, 0.0f, 1.0f};
+            bool clear_color_changed = false;
             ManagedArray<RuntimeMaterial> materials;
             ManagedArray<RuntimeNode> nodes;
 

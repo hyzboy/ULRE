@@ -23,12 +23,18 @@ namespace hgl::asset::generated
     EncodeSceneMaterialSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneMaterialSpec &in);
     inline flatbuffers::Offset<::hgl::asset::schema::SceneNodeSpec>
     EncodeSceneNodeSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneNodeSpec &in);
+    inline flatbuffers::Offset<::hgl::asset::schema::SceneCameraSpec>
+    EncodeSceneCameraSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneCameraSpec &in);
+    inline flatbuffers::Offset<::hgl::asset::schema::SceneClearColorSpec>
+    EncodeSceneClearColorSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneClearColorSpec &in);
     inline flatbuffers::Offset<::hgl::asset::schema::SceneSpec>
     EncodeSceneSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneSpec &in);
     inline void DecodeSceneTransformSpec(const ::hgl::asset::schema::SceneTransformSpec *t, hgl::graph::SceneTransformSpec &out);
     inline void DecodeSceneTextureSpec(const ::hgl::asset::schema::SceneTextureSpec *t, hgl::graph::SceneTextureSpec &out);
     inline void DecodeSceneMaterialSpec(const ::hgl::asset::schema::SceneMaterialSpec *t, hgl::graph::SceneMaterialSpec &out);
     inline void DecodeSceneNodeSpec(const ::hgl::asset::schema::SceneNodeSpec *t, hgl::graph::SceneNodeSpec &out);
+    inline void DecodeSceneCameraSpec(const ::hgl::asset::schema::SceneCameraSpec *t, hgl::graph::SceneCameraSpec &out);
+    inline void DecodeSceneClearColorSpec(const ::hgl::asset::schema::SceneClearColorSpec *t, hgl::graph::SceneClearColorSpec &out);
     inline void DecodeSceneSpec(const ::hgl::asset::schema::SceneSpec *t, hgl::graph::SceneSpec &out);
 
     inline flatbuffers::Offset<::hgl::asset::schema::SceneTransformSpec>
@@ -106,18 +112,54 @@ namespace hgl::asset::generated
         return b.Finish();
     }
 
+    inline flatbuffers::Offset<::hgl::asset::schema::SceneCameraSpec>
+    EncodeSceneCameraSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneCameraSpec &in)
+    {
+        // FlatBuffers 要求父表开始前子表/字符串/向量都已建好。
+        const ::hgl::asset::schema::Float3 _SceneCameraSpec_position_vec(in.position.x, in.position.y, in.position.z);
+        const ::hgl::asset::schema::Float3 _SceneCameraSpec_target_vec(in.target.x, in.target.y, in.target.z);
+        ::hgl::asset::schema::SceneCameraSpecBuilder b(fbb);
+        b.add_enabled(in.enabled);
+        b.add_mode(static_cast<int32_t>(in.mode));
+        b.add_position(&_SceneCameraSpec_position_vec);
+        b.add_target(&_SceneCameraSpec_target_vec);
+        b.add_distance(in.distance);
+        b.add_yaw(in.yaw);
+        b.add_pitch(in.pitch);
+        b.add_fov_deg(in.fov_deg);
+        b.add_near_plane(in.near_plane);
+        b.add_far_plane(in.far_plane);
+        b.add_main(in.main);
+        return b.Finish();
+    }
+
+    inline flatbuffers::Offset<::hgl::asset::schema::SceneClearColorSpec>
+    EncodeSceneClearColorSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneClearColorSpec &in)
+    {
+        // FlatBuffers 要求父表开始前子表/字符串/向量都已建好。
+        const ::hgl::asset::schema::Float4 _SceneClearColorSpec_value_vec(in.value.x, in.value.y, in.value.z, in.value.w);
+        ::hgl::asset::schema::SceneClearColorSpecBuilder b(fbb);
+        b.add_enabled(in.enabled);
+        b.add_value(&_SceneClearColorSpec_value_vec);
+        return b.Finish();
+    }
+
     inline flatbuffers::Offset<::hgl::asset::schema::SceneSpec>
     EncodeSceneSpec(flatbuffers::FlatBufferBuilder &fbb, const hgl::graph::SceneSpec &in)
     {
         // FlatBuffers 要求父表开始前子表/字符串/向量都已建好。
         const auto _SceneSpec_name_str_offset = fbb.CreateString(in.name.c_str() ? in.name.c_str() : "");
         const auto _SceneSpec_description_str_offset = fbb.CreateString(in.description.c_str() ? in.description.c_str() : "");
+        const auto _SceneSpec_camera_tab = EncodeSceneCameraSpec(fbb, in.camera);
+        const auto _SceneSpec_clear_color_tab = EncodeSceneClearColorSpec(fbb, in.clear_color);
         const auto _SceneSpec_materials_vec = fbb.CreateVector<flatbuffers::Offset<::hgl::asset::schema::SceneMaterialSpec>>((size_t)in.materials.GetCount(), [&](size_t i, const hgl::graph::SceneSpec *source) { return EncodeSceneMaterialSpec(fbb, *source->materials[(int)i]); }, &in);
         const auto _SceneSpec_nodes_vec = fbb.CreateVector<flatbuffers::Offset<::hgl::asset::schema::SceneNodeSpec>>((size_t)in.nodes.GetCount(), [&](size_t i, const hgl::graph::SceneSpec *source) { return EncodeSceneNodeSpec(fbb, *source->nodes[(int)i]); }, &in);
         ::hgl::asset::schema::SceneSpecBuilder b(fbb);
         b.add_schema(in.schema);
         b.add_name(_SceneSpec_name_str_offset);
         b.add_description(_SceneSpec_description_str_offset);
+        b.add_camera(_SceneSpec_camera_tab);
+        b.add_clear_color(_SceneSpec_clear_color_tab);
         b.add_materials(_SceneSpec_materials_vec);
         b.add_nodes(_SceneSpec_nodes_vec);
         return b.Finish();
@@ -209,12 +251,53 @@ namespace hgl::asset::generated
         DecodeSceneTransformSpec(t->transform(), out.transform);
     }
 
+    inline void DecodeSceneCameraSpec(const ::hgl::asset::schema::SceneCameraSpec *t, hgl::graph::SceneCameraSpec &out)
+    {
+        if (!t) return;
+        out.enabled = t->enabled();
+        out.mode = static_cast<hgl::graph::SceneCameraMode>(t->mode());
+        if (const auto *v = t->position())
+        {
+            out.position.x = v->x();
+            out.position.y = v->y();
+            out.position.z = v->z();
+        }
+        if (const auto *v = t->target())
+        {
+            out.target.x = v->x();
+            out.target.y = v->y();
+            out.target.z = v->z();
+        }
+        out.distance = t->distance();
+        out.yaw = t->yaw();
+        out.pitch = t->pitch();
+        out.fov_deg = t->fov_deg();
+        out.near_plane = t->near_plane();
+        out.far_plane = t->far_plane();
+        out.main = t->main();
+    }
+
+    inline void DecodeSceneClearColorSpec(const ::hgl::asset::schema::SceneClearColorSpec *t, hgl::graph::SceneClearColorSpec &out)
+    {
+        if (!t) return;
+        out.enabled = t->enabled();
+        if (const auto *v = t->value())
+        {
+            out.value.x = v->x();
+            out.value.y = v->y();
+            out.value.z = v->z();
+            out.value.w = v->w();
+        }
+    }
+
     inline void DecodeSceneSpec(const ::hgl::asset::schema::SceneSpec *t, hgl::graph::SceneSpec &out)
     {
         if (!t) return;
         out.schema = t->schema();
         if (const ::flatbuffers::String *s = t->name()) out.name = s->str().c_str();
         if (const ::flatbuffers::String *s = t->description()) out.description = s->str().c_str();
+        DecodeSceneCameraSpec(t->camera(), out.camera);
+        DecodeSceneClearColorSpec(t->clear_color(), out.clear_color);
         if (const auto *v = t->materials())
         {
             out.materials.Clear();

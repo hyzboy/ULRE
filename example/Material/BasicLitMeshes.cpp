@@ -5,15 +5,9 @@
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GeometryManager.h>
-#include <hgl/graph/module/TextureManager.h>
 #include <hgl/type/Smart.h>
 #include <hgl/vk/VertexDataManager.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/Entity.h>
-#include <hgl/ecs/components/CameraControlMode.h>
-#include <hgl/ecs/systems/tick/CameraSystem.h>
-
-#include <glm/glm.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -35,7 +29,6 @@ class BasicLitMeshesApp : public WorkObject
 {
 private:
     ECSContext *ecs_context = nullptr;
-    Entity *camera_entity = nullptr;
     AutoDelete<VertexDataManager> mesh_vdm;
     SceneInstance scene_instance;
 
@@ -75,27 +68,6 @@ private:
         return scene->Instantiate(ecs_context, &creater, scene_instance);
     }
 
-    bool InitCamera()
-    {
-        if (!ecs_context || !ecs_context->EnsureCameraSystem())
-            return false;
-
-        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
-        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
-        if (!camera)
-            return false;
-
-        camera->control_mode = CameraControlMode::ViewModel;
-        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
-        camera->distance = 14.0f;
-        camera->yaw = 45.0f;
-        camera->pitch = -20.0f;
-        camera->is_main_camera = true;
-        camera->matrix_dirty = true;
-        camera->viewport_info = GetViewportInfo();
-        return true;
-    }
-
 public:
     ~BasicLitMeshesApp()
     {
@@ -107,8 +79,7 @@ public:
 
     bool Init() override
     {
-        SetClearColor(Color4f(0.18f, 0.18f, 0.20f, 1.0f));
-        return InitScene() && InitCamera();
+        return InitScene();
     }
 };
 

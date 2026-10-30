@@ -2,6 +2,17 @@ schema = 1
 name = "BasicLitMeshes"
 description = "Standard built-in shapes arranged around a textured floor."
 
+[camera]
+mode = "view_model"
+target = [0.0, 0.0, 0.0]
+distance = 14.0
+yaw = 45.0
+pitch = -20.0
+main = true
+
+[clear_color]
+value = [0.18, 0.18, 0.20, 1.0]
+
 [[materials]]
 name = "lit_default"
 type = "PBRSurface"

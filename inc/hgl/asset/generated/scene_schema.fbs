@@ -70,12 +70,37 @@ table SceneNodeSpec
   transform:SceneTransformSpec;
 }
 
+// inc/hgl/graph/asset/SceneAssetSpec.h -> SceneCameraSpec
+table SceneCameraSpec
+{
+  enabled:bool;
+  mode:int;
+  position:Float3;
+  target:Float3;
+  distance:float;
+  yaw:float;
+  pitch:float;
+  fov_deg:float;
+  near_plane:float;
+  far_plane:float;
+  main:bool;
+}
+
+// inc/hgl/graph/asset/SceneAssetSpec.h -> SceneClearColorSpec
+table SceneClearColorSpec
+{
+  enabled:bool;
+  value:Float4;
+}
+
 // inc/hgl/graph/asset/SceneAssetSpec.h -> SceneSpec
 table SceneSpec
 {
   schema:uint;
   name:string;
   description:string;
+  camera:SceneCameraSpec;
+  clear_color:SceneClearColorSpec;
   materials:[SceneMaterialSpec];
   nodes:[SceneNodeSpec];
 }

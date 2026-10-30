@@ -51,26 +51,23 @@ namespace hgl::graph
         if (SceneAsset *cached = FindByResourceKey(resource_key))
             return cached;
 
-        SceneAsset *asset = new SceneAsset;
+        SceneAsset *asset = assets.Create();
         if (!asset)
             return nullptr;
 
         if (!LoadSceneSpecFromFile(filename, asset->spec))
         {
-            delete asset;
+            assets.DeleteAt(assets.GetCount() - 1);
             return nullptr;
         }
 
         asset->filename = filename;
         asset->resource_key = resource_key;
-        assets.Add(asset);
         return asset;
     }
 
     void SceneAssetRegistry::Clear()
     {
-        for (SceneAsset *asset : assets)
-            delete asset;
         assets.Clear();
     }
 }

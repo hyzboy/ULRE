@@ -6,6 +6,8 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
+#include <hgl/ecs/components/CameraComponent.h>
+#include <hgl/vk/VKRenderTarget.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/StrChar.h>
 #include <glm/gtc/quaternion.hpp>
@@ -124,6 +126,13 @@ namespace hgl::graph
 
         nodes.Clear();
         materials.Clear();
+        if (world && camera_entity_id.IsValid())
+            world->DestroyEntity(camera_entity_id);
+        camera_entity_id = ecs::EntityID::Invalid();
+        if (clear_color_changed && world)
+            if (auto *render_target = world->GetRenderTarget())
+                render_target->SetClearColor(previous_clear_color);
+        clear_color_changed = false;
         world = nullptr;
         geometry_manager = nullptr;
     }
@@ -327,6 +336,80 @@ namespace hgl::graph
                 return false;
             }
             child_transform.SetParent(parent_transform.GetID());
+        }
+
+        if (spec.camera.enabled)
+        {
+            if (!world->EnsureCameraSystem())
+            {
+                MLogError(SceneLoader, "Instantiate: camera system is unavailable");
+                out_instance.Release();
+                return false;
+            }
+
+            ecs::Entity *camera_entity =
+                world->CreateEntity<ecs::Entity>("SceneCamera");
+            if (!camera_entity)
+            {
+                MLogError(SceneLoader, "Instantiate: camera entity creation failed");
+                out_instance.Release();
+                return false;
+            }
+            out_instance.camera_entity_id = camera_entity->GetEntityID();
+
+            ecs::CameraComponent *camera =
+                world->GetOrCreateCamera(camera_entity, "SceneCamera");
+            if (!camera)
+            {
+                MLogError(SceneLoader, "Instantiate: camera component creation failed");
+                out_instance.Release();
+                return false;
+            }
+
+            switch (spec.camera.mode)
+            {
+            case SceneCameraMode::ViewModel:
+                camera->control_mode = ecs::CameraControlMode::ViewModel;
+                break;
+            case SceneCameraMode::Free:
+                camera->control_mode = ecs::CameraControlMode::Free;
+                break;
+            case SceneCameraMode::LookAt:
+                camera->control_mode = ecs::CameraControlMode::LookAt;
+                break;
+            case SceneCameraMode::FirstPerson:
+                camera->control_mode = ecs::CameraControlMode::FirstPerson;
+                break;
+            default:
+                MLogError(SceneLoader, "Instantiate: unsupported camera mode");
+                out_instance.Release();
+                return false;
+            }
+
+            camera->position = spec.camera.position;
+            camera->target = spec.camera.target;
+            camera->distance = spec.camera.distance;
+            camera->yaw = spec.camera.yaw;
+            camera->pitch = spec.camera.pitch;
+            camera->fov = spec.camera.fov_deg;
+            camera->near_plane = spec.camera.near_plane;
+            camera->far_plane = spec.camera.far_plane;
+            camera->is_main_camera = spec.camera.main;
+            camera->matrix_dirty = true;
+        }
+
+        if (spec.clear_color.enabled)
+        {
+            auto *render_target = world->GetRenderTarget();
+            if (!render_target)
+            {
+                MLogError(SceneLoader, "Instantiate: clear color requires a render target");
+                out_instance.Release();
+                return false;
+            }
+            out_instance.previous_clear_color = render_target->GetClearColor();
+            render_target->SetClearColor(spec.clear_color.value);
+            out_instance.clear_color_changed = true;
         }
 
         return true;

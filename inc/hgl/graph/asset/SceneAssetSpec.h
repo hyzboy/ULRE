@@ -16,6 +16,14 @@ namespace hgl::graph
         TransmissionSurface
     };
 
+    enum class SceneCameraMode : uint8
+    {
+        ViewModel,
+        Free,
+        LookAt,
+        FirstPerson
+    };
+
     struct HGL_ASSET_STRUCT SceneTransformSpec
     {
         hgl::math::Vector3f position{0.0f};
@@ -57,11 +65,34 @@ namespace hgl::graph
         SceneTransformSpec transform;
     };
 
+    struct HGL_ASSET_STRUCT SceneCameraSpec
+    {
+        bool enabled = false;
+        SceneCameraMode mode = SceneCameraMode::ViewModel;
+        hgl::math::Vector3f position{0.0f, 0.0f, 5.0f};
+        hgl::math::Vector3f target{0.0f};
+        float distance = 10.0f;
+        float yaw = 0.0f;
+        float pitch = 0.0f;
+        float fov_deg = 45.0f;
+        float near_plane = 0.1f;
+        float far_plane = 1000.0f;
+        bool main = true;
+    };
+
+    struct HGL_ASSET_STRUCT SceneClearColorSpec
+    {
+        bool enabled = false;
+        Color4f value{0.0f, 0.0f, 0.0f, 1.0f};
+    };
+
     struct HGL_ASSET_STRUCT SceneSpec
     {
         uint32 schema = 1;
         AnsiString name;
         AnsiString description;
+        SceneCameraSpec camera;
+        SceneClearColorSpec clear_color;
         ManagedArray<SceneMaterialSpec> materials;
         ManagedArray<SceneNodeSpec> nodes;
     };

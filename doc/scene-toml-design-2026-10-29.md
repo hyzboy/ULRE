@@ -13,7 +13,7 @@
 ### 当前落地范围
 
 - 已实现 `SceneSpec` TOML/FlatBuffers 编解码、严格的场景 TOML 解析校验，以及只支持 `presets:` 的同步 `SceneLoader`。
-- `BasicLitMeshes` 的几何、变换、材质行和纹理覆盖已迁入 `example/Material/BasicLitMeshes.scene.toml`；相机与清屏色仍由示例代码设置。
+- `BasicLitMeshes` 的几何、变换、材质行、纹理覆盖、相机和清屏色已迁入 `example/Material/BasicLitMeshes.scene.toml`；环境 profile 仍由世界/渲染目标配置。
 - `GraphicsContext` 已持有 `SceneAssetRegistry`，按规范化路径缓存场景规格；实例仍由调用方持有，须在世界与图形资源销毁前释放。
 - 异步几何引用、环境/相机 TOML、Writer/Capture 和 `pack:` 尚未实现。
 

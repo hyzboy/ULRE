@@ -33,6 +33,12 @@ struct SceneMaterialSpecBuilder;
 struct SceneNodeSpec;
 struct SceneNodeSpecBuilder;
 
+struct SceneCameraSpec;
+struct SceneCameraSpecBuilder;
+
+struct SceneClearColorSpec;
+struct SceneClearColorSpecBuilder;
+
 struct SceneSpec;
 struct SceneSpecBuilder;
 
@@ -560,14 +566,210 @@ inline ::flatbuffers::Offset<SceneNodeSpec> CreateSceneNodeSpecDirect(
       transform);
 }
 
+struct SceneCameraSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef SceneCameraSpecBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_ENABLED = 4,
+    VT_MODE = 6,
+    VT_POSITION = 8,
+    VT_TARGET = 10,
+    VT_DISTANCE = 12,
+    VT_YAW = 14,
+    VT_PITCH = 16,
+    VT_FOV_DEG = 18,
+    VT_NEAR_PLANE = 20,
+    VT_FAR_PLANE = 22,
+    VT_MAIN = 24
+  };
+  bool enabled() const {
+    return GetField<uint8_t>(VT_ENABLED, 0) != 0;
+  }
+  int32_t mode() const {
+    return GetField<int32_t>(VT_MODE, 0);
+  }
+  const hgl::asset::schema::Float3 *position() const {
+    return GetStruct<const hgl::asset::schema::Float3 *>(VT_POSITION);
+  }
+  const hgl::asset::schema::Float3 *target() const {
+    return GetStruct<const hgl::asset::schema::Float3 *>(VT_TARGET);
+  }
+  float distance() const {
+    return GetField<float>(VT_DISTANCE, 0.0f);
+  }
+  float yaw() const {
+    return GetField<float>(VT_YAW, 0.0f);
+  }
+  float pitch() const {
+    return GetField<float>(VT_PITCH, 0.0f);
+  }
+  float fov_deg() const {
+    return GetField<float>(VT_FOV_DEG, 0.0f);
+  }
+  float near_plane() const {
+    return GetField<float>(VT_NEAR_PLANE, 0.0f);
+  }
+  float far_plane() const {
+    return GetField<float>(VT_FAR_PLANE, 0.0f);
+  }
+  bool main() const {
+    return GetField<uint8_t>(VT_MAIN, 0) != 0;
+  }
+  template <bool B = false>
+  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint8_t>(verifier, VT_ENABLED, 1) &&
+           VerifyField<int32_t>(verifier, VT_MODE, 4) &&
+           VerifyField<hgl::asset::schema::Float3>(verifier, VT_POSITION, 4) &&
+           VerifyField<hgl::asset::schema::Float3>(verifier, VT_TARGET, 4) &&
+           VerifyField<float>(verifier, VT_DISTANCE, 4) &&
+           VerifyField<float>(verifier, VT_YAW, 4) &&
+           VerifyField<float>(verifier, VT_PITCH, 4) &&
+           VerifyField<float>(verifier, VT_FOV_DEG, 4) &&
+           VerifyField<float>(verifier, VT_NEAR_PLANE, 4) &&
+           VerifyField<float>(verifier, VT_FAR_PLANE, 4) &&
+           VerifyField<uint8_t>(verifier, VT_MAIN, 1) &&
+           verifier.EndTable();
+  }
+};
+
+struct SceneCameraSpecBuilder {
+  typedef SceneCameraSpec Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_enabled(bool enabled) {
+    fbb_.AddElement<uint8_t>(SceneCameraSpec::VT_ENABLED, static_cast<uint8_t>(enabled), 0);
+  }
+  void add_mode(int32_t mode) {
+    fbb_.AddElement<int32_t>(SceneCameraSpec::VT_MODE, mode, 0);
+  }
+  void add_position(const hgl::asset::schema::Float3 *position) {
+    fbb_.AddStruct(SceneCameraSpec::VT_POSITION, position);
+  }
+  void add_target(const hgl::asset::schema::Float3 *target) {
+    fbb_.AddStruct(SceneCameraSpec::VT_TARGET, target);
+  }
+  void add_distance(float distance) {
+    fbb_.AddElement<float>(SceneCameraSpec::VT_DISTANCE, distance, 0.0f);
+  }
+  void add_yaw(float yaw) {
+    fbb_.AddElement<float>(SceneCameraSpec::VT_YAW, yaw, 0.0f);
+  }
+  void add_pitch(float pitch) {
+    fbb_.AddElement<float>(SceneCameraSpec::VT_PITCH, pitch, 0.0f);
+  }
+  void add_fov_deg(float fov_deg) {
+    fbb_.AddElement<float>(SceneCameraSpec::VT_FOV_DEG, fov_deg, 0.0f);
+  }
+  void add_near_plane(float near_plane) {
+    fbb_.AddElement<float>(SceneCameraSpec::VT_NEAR_PLANE, near_plane, 0.0f);
+  }
+  void add_far_plane(float far_plane) {
+    fbb_.AddElement<float>(SceneCameraSpec::VT_FAR_PLANE, far_plane, 0.0f);
+  }
+  void add_main(bool main) {
+    fbb_.AddElement<uint8_t>(SceneCameraSpec::VT_MAIN, static_cast<uint8_t>(main), 0);
+  }
+  explicit SceneCameraSpecBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<SceneCameraSpec> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<SceneCameraSpec>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<SceneCameraSpec> CreateSceneCameraSpec(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    bool enabled = false,
+    int32_t mode = 0,
+    const hgl::asset::schema::Float3 *position = nullptr,
+    const hgl::asset::schema::Float3 *target = nullptr,
+    float distance = 0.0f,
+    float yaw = 0.0f,
+    float pitch = 0.0f,
+    float fov_deg = 0.0f,
+    float near_plane = 0.0f,
+    float far_plane = 0.0f,
+    bool main = false) {
+  SceneCameraSpecBuilder builder_(_fbb);
+  builder_.add_far_plane(far_plane);
+  builder_.add_near_plane(near_plane);
+  builder_.add_fov_deg(fov_deg);
+  builder_.add_pitch(pitch);
+  builder_.add_yaw(yaw);
+  builder_.add_distance(distance);
+  builder_.add_target(target);
+  builder_.add_position(position);
+  builder_.add_mode(mode);
+  builder_.add_main(main);
+  builder_.add_enabled(enabled);
+  return builder_.Finish();
+}
+
+struct SceneClearColorSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef SceneClearColorSpecBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_ENABLED = 4,
+    VT_VALUE = 6
+  };
+  bool enabled() const {
+    return GetField<uint8_t>(VT_ENABLED, 0) != 0;
+  }
+  const hgl::asset::schema::Float4 *value() const {
+    return GetStruct<const hgl::asset::schema::Float4 *>(VT_VALUE);
+  }
+  template <bool B = false>
+  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint8_t>(verifier, VT_ENABLED, 1) &&
+           VerifyField<hgl::asset::schema::Float4>(verifier, VT_VALUE, 4) &&
+           verifier.EndTable();
+  }
+};
+
+struct SceneClearColorSpecBuilder {
+  typedef SceneClearColorSpec Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_enabled(bool enabled) {
+    fbb_.AddElement<uint8_t>(SceneClearColorSpec::VT_ENABLED, static_cast<uint8_t>(enabled), 0);
+  }
+  void add_value(const hgl::asset::schema::Float4 *value) {
+    fbb_.AddStruct(SceneClearColorSpec::VT_VALUE, value);
+  }
+  explicit SceneClearColorSpecBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<SceneClearColorSpec> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<SceneClearColorSpec>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<SceneClearColorSpec> CreateSceneClearColorSpec(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    bool enabled = false,
+    const hgl::asset::schema::Float4 *value = nullptr) {
+  SceneClearColorSpecBuilder builder_(_fbb);
+  builder_.add_value(value);
+  builder_.add_enabled(enabled);
+  return builder_.Finish();
+}
+
 struct SceneSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef SceneSpecBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_SCHEMA = 4,
     VT_NAME = 6,
     VT_DESCRIPTION = 8,
-    VT_MATERIALS = 10,
-    VT_NODES = 12
+    VT_CAMERA = 10,
+    VT_CLEAR_COLOR = 12,
+    VT_MATERIALS = 14,
+    VT_NODES = 16
   };
   uint32_t schema() const {
     return GetField<uint32_t>(VT_SCHEMA, 0);
@@ -577,6 +779,12 @@ struct SceneSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   }
   const ::flatbuffers::String *description() const {
     return GetPointer<const ::flatbuffers::String *>(VT_DESCRIPTION);
+  }
+  const hgl::asset::schema::SceneCameraSpec *camera() const {
+    return GetPointer<const hgl::asset::schema::SceneCameraSpec *>(VT_CAMERA);
+  }
+  const hgl::asset::schema::SceneClearColorSpec *clear_color() const {
+    return GetPointer<const hgl::asset::schema::SceneClearColorSpec *>(VT_CLEAR_COLOR);
   }
   const ::flatbuffers::Vector<::flatbuffers::Offset<hgl::asset::schema::SceneMaterialSpec>> *materials() const {
     return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<hgl::asset::schema::SceneMaterialSpec>> *>(VT_MATERIALS);
@@ -592,6 +800,10 @@ struct SceneSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
            verifier.VerifyString(name()) &&
            VerifyOffset(verifier, VT_DESCRIPTION) &&
            verifier.VerifyString(description()) &&
+           VerifyOffset(verifier, VT_CAMERA) &&
+           verifier.VerifyTable(camera()) &&
+           VerifyOffset(verifier, VT_CLEAR_COLOR) &&
+           verifier.VerifyTable(clear_color()) &&
            VerifyOffset(verifier, VT_MATERIALS) &&
            verifier.VerifyVector(materials()) &&
            verifier.VerifyVectorOfTables(materials()) &&
@@ -615,6 +827,12 @@ struct SceneSpecBuilder {
   void add_description(::flatbuffers::Offset<::flatbuffers::String> description) {
     fbb_.AddOffset(SceneSpec::VT_DESCRIPTION, description);
   }
+  void add_camera(::flatbuffers::Offset<hgl::asset::schema::SceneCameraSpec> camera) {
+    fbb_.AddOffset(SceneSpec::VT_CAMERA, camera);
+  }
+  void add_clear_color(::flatbuffers::Offset<hgl::asset::schema::SceneClearColorSpec> clear_color) {
+    fbb_.AddOffset(SceneSpec::VT_CLEAR_COLOR, clear_color);
+  }
   void add_materials(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<hgl::asset::schema::SceneMaterialSpec>>> materials) {
     fbb_.AddOffset(SceneSpec::VT_MATERIALS, materials);
   }
@@ -637,11 +855,15 @@ inline ::flatbuffers::Offset<SceneSpec> CreateSceneSpec(
     uint32_t schema = 0,
     ::flatbuffers::Offset<::flatbuffers::String> name = 0,
     ::flatbuffers::Offset<::flatbuffers::String> description = 0,
+    ::flatbuffers::Offset<hgl::asset::schema::SceneCameraSpec> camera = 0,
+    ::flatbuffers::Offset<hgl::asset::schema::SceneClearColorSpec> clear_color = 0,
     ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<hgl::asset::schema::SceneMaterialSpec>>> materials = 0,
     ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<hgl::asset::schema::SceneNodeSpec>>> nodes = 0) {
   SceneSpecBuilder builder_(_fbb);
   builder_.add_nodes(nodes);
   builder_.add_materials(materials);
+  builder_.add_clear_color(clear_color);
+  builder_.add_camera(camera);
   builder_.add_description(description);
   builder_.add_name(name);
   builder_.add_schema(schema);
@@ -653,6 +875,8 @@ inline ::flatbuffers::Offset<SceneSpec> CreateSceneSpecDirect(
     uint32_t schema = 0,
     const char *name = nullptr,
     const char *description = nullptr,
+    ::flatbuffers::Offset<hgl::asset::schema::SceneCameraSpec> camera = 0,
+    ::flatbuffers::Offset<hgl::asset::schema::SceneClearColorSpec> clear_color = 0,
     const std::vector<::flatbuffers::Offset<hgl::asset::schema::SceneMaterialSpec>> *materials = nullptr,
     const std::vector<::flatbuffers::Offset<hgl::asset::schema::SceneNodeSpec>> *nodes = nullptr) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
@@ -664,6 +888,8 @@ inline ::flatbuffers::Offset<SceneSpec> CreateSceneSpecDirect(
       schema,
       name__,
       description__,
+      camera,
+      clear_color,
       materials__,
       nodes__);
 }

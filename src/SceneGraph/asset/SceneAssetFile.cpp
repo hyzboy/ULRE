@@ -165,11 +165,16 @@ namespace hgl::graph
         out_spec.schema = 1;
         out_spec.name = "";
         out_spec.description = "";
+        out_spec.camera = SceneCameraSpec{};
+        out_spec.clear_color = SceneClearColorSpec{};
         out_spec.materials.Clear();
         out_spec.nodes.Clear();
         const auto *root =
             flatbuffers::GetRoot<hgl::asset::schema::SceneSpec>(data);
         asset_codec::DecodeSceneSpec(root, out_spec);
+        out_spec.camera.enabled = root->camera() && root->camera()->enabled();
+        out_spec.clear_color.enabled =
+            root->clear_color() && root->clear_color()->enabled();
 
         if (out_spec.schema != 1 || out_spec.name.Length() == 0)
             return false;
@@ -262,6 +267,20 @@ namespace hgl::graph
             }
         }
 
+        bool IsValidCameraMode(const SceneCameraMode mode)
+        {
+            switch (mode)
+            {
+            case SceneCameraMode::ViewModel:
+            case SceneCameraMode::Free:
+            case SceneCameraMode::LookAt:
+            case SceneCameraMode::FirstPerson:
+                return true;
+            default:
+                return false;
+            }
+        }
+
         bool NormalizeTextureTables(toml::value &root)
         {
             if (!root.contains("materials") || !root.at("materials").is_array())
@@ -297,6 +316,30 @@ namespace hgl::graph
                                    const SceneSpec &spec,
                                    const bool validate_material_key_shape)
         {
+            if (spec.camera.enabled
+                && (!IsValidCameraMode(spec.camera.mode)
+                    || !IsFinite(spec.camera.position)
+                    || !IsFinite(spec.camera.target)
+                    || !std::isfinite(spec.camera.distance)
+                    || !std::isfinite(spec.camera.yaw)
+                    || !std::isfinite(spec.camera.pitch)
+                    || !std::isfinite(spec.camera.fov_deg)
+                    || !std::isfinite(spec.camera.near_plane)
+                    || !std::isfinite(spec.camera.far_plane)
+                    || spec.camera.fov_deg <= 0.0f
+                    || spec.camera.fov_deg >= 180.0f
+                    || spec.camera.pitch <= -90.0f
+                    || spec.camera.pitch >= 90.0f
+                    || spec.camera.near_plane <= 0.0f
+                    || spec.camera.far_plane <= spec.camera.near_plane
+                    || ((spec.camera.mode == SceneCameraMode::ViewModel
+                         || spec.camera.mode == SceneCameraMode::LookAt)
+                        && spec.camera.distance <= 0.0f)))
+                return false;
+
+            if (spec.clear_color.enabled && !IsFinite(spec.clear_color.value))
+                return false;
+
             for (int i = 0; i < spec.materials.GetCount(); ++i)
             {
                 const SceneMaterialSpec &material = *spec.materials[i];
@@ -459,7 +502,8 @@ namespace hgl::graph
         }
 
         static const char *const root_keys[] = {
-            "schema", "name", "description", "materials", "nodes"
+            "schema", "name", "description", "camera", "clear_color",
+            "materials", "nodes"
         };
         if (!HasOnlyKeys(root, root_keys, sizeof(root_keys) / sizeof(root_keys[0])))
         {
@@ -471,6 +515,8 @@ namespace hgl::graph
         out_spec.schema = 1;
         out_spec.name = "";
         out_spec.description = "";
+        out_spec.camera = SceneCameraSpec{};
+        out_spec.clear_color = SceneClearColorSpec{};
         out_spec.materials.Clear();
         out_spec.nodes.Clear();
 
@@ -487,6 +533,11 @@ namespace hgl::graph
             return false;
         }
 
+        if (root.contains("camera"))
+            out_spec.camera.enabled = true;
+        if (root.contains("clear_color"))
+            out_spec.clear_color.enabled = true;
+
         static const char *const material_keys[] = {
             "name", "type", "base_color", "metallic", "roughness",
             "normal_scale", "fresnel", "color", "trans_color", "textures"
@@ -498,6 +549,23 @@ namespace hgl::graph
         static const char *const transform_keys[] = {
             "position", "rotation_axis", "rotation_angle_deg", "scale"
         };
+        static const char *const camera_keys[] = {
+            "enabled", "mode", "position", "target", "distance", "yaw",
+            "pitch", "fov_deg", "near_plane", "far_plane", "main"
+        };
+        static const char *const clear_color_keys[] = {"enabled", "value"};
+
+        if ((root.contains("camera")
+             && !HasOnlyKeys(root.at("camera"), camera_keys,
+                             sizeof(camera_keys) / sizeof(camera_keys[0])))
+            || (root.contains("clear_color")
+                && !HasOnlyKeys(root.at("clear_color"), clear_color_keys,
+                                sizeof(clear_color_keys) / sizeof(clear_color_keys[0]))))
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid camera or clear_color table in ")
+                      + OSString(debug_name));
+            return false;
+        }
 
         if (root.contains("materials") && !root.at("materials").is_array())
         {

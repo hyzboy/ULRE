@@ -24,6 +24,10 @@ aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
 name = "SceneMaterialType"
 aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface"]
 
+[[enum]]
+name = "SceneCameraMode"
+aliases = ["view_model", "free", "look_at", "first_person"]
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"
