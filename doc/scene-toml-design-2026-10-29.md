@@ -12,10 +12,10 @@
 
 ### 当前落地范围
 
-- 已实现 `SceneSpec` TOML/FlatBuffers 编解码、严格的场景 TOML 解析校验，以及只支持 `presets:` 的同步 `SceneLoader`。
+- 已实现 `SceneSpec` TOML/FlatBuffers 编解码、严格解析校验，以及支持 `presets:`、异步 `geo:`/`primitive:` 几何引用的 `SceneLoader`。
 - `BasicLitMeshes` 的几何、变换、材质行、纹理覆盖、相机和清屏色已迁入 `example/Material/BasicLitMeshes.scene.toml`；环境 profile 仍由世界/渲染目标配置。
 - `GraphicsContext` 已持有 `SceneAssetRegistry`，按规范化路径缓存场景规格；实例仍由调用方持有，须在世界与图形资源销毁前释放。
-- 异步几何引用、环境/相机 TOML、Writer/Capture 和 `pack:` 尚未实现。
+- 环境 profile TOML、SceneWriter/Capture 和 `pack:` 尚未实现。
 
 ---
 
@@ -367,8 +367,8 @@ transform = { position = [0.0, 0.0, 0.0], scale = [0.01, 0.01, 0.01] }
 
 | 阶段 | 内容 | 交付判据 |
 |------|------|---------|
-| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader`（presets 同步路径）+ `SceneAssetRegistry` 挂 `GraphicsContext` | 解析器、同步加载器、设备级注册器和 `BasicLitMeshes` 的 12 个实体场景已落地 |
-| **V2** | `[[materials]]` 的 codec 表（PBR/Emissive/Transmission 三种）+ `[environment]`/`[camera]` 落地 + `geo:`/`primitive:` 异步路径 | 示例里**没有**一段"自己分配行"的代码 |
+| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader` + `SceneAssetRegistry` 挂 `GraphicsContext` | 解析器、加载器、设备级注册器和 `BasicLitMeshes` 的 12 个实体场景已落地 |
+| **V2** | `[[materials]]` 的 codec 表（PBR/Emissive/Transmission 三种）+ `[environment]` 落地；`[camera]`、`[clear_color]` 与 `geo:`/`primitive:` 异步路径 | 示例里**没有**一段"自己分配行"的代码 |
 | **V3** | `SceneWriter`（Spec→TOML）+ `SceneCapture`（World→Spec）+ `TestSceneRoundTrip`（写→读→写逐字节一致） | 21 个示例的几何/变换/材质由捕获生成，人只增删节点 |
 | **V4** | `pack:` 引用（二进制场景包作为子树）+ 示例全面切换为「一个 TOML 一条命令」 | `BasicLitMeshes.cpp` 缩到 ~40 行 |
 

@@ -162,6 +162,35 @@ namespace
             && spec.nodes.GetCount() == 12;
     }
 
+    bool TestGeometryReferenceKinds()
+    {
+        constexpr char kGeometryAssetScene[] =
+            "schema = 1\nname = \"GeometryAssetScene\"\n"
+            "[[nodes]]\nname = \"Geo\"\n"
+            "geometry = \"geo:../../res/geo/unit_sphere.geo.toml\"\n"
+            "recipe = \"Core.PBR.Lit\"\n";
+        constexpr char kPrimitiveAssetScene[] =
+            "schema = 1\nname = \"PrimitiveAssetScene\"\n"
+            "[[nodes]]\nname = \"Primitive\"\n"
+            "geometry = \"primitive:../../res/primitive/sphere.primitive.toml\"\n";
+        constexpr char kMissingGeometryRecipe[] =
+            "schema = 1\nname = \"MissingRecipe\"\n"
+            "[[nodes]]\nname = \"Geo\"\ngeometry = \"geo:res/geo/unit_sphere.geo.toml\"\n";
+
+        SceneSpec spec;
+        if (!Parse(kGeometryAssetScene, spec)
+            || spec.nodes.GetCount() != 1
+            || spec.nodes[0]->recipe != "Core.PBR.Lit")
+            return false;
+
+        if (!Parse(kPrimitiveAssetScene, spec)
+            || spec.nodes.GetCount() != 1
+            || !spec.nodes[0]->recipe.IsEmpty())
+            return false;
+
+        return !Parse(kMissingGeometryRecipe, spec);
+    }
+
     bool TestSceneAssetRegistry()
     {
         SceneAssetRegistry registry;
@@ -211,6 +240,7 @@ int main()
     if (!TestValidScene()
         || !TestInvalidScenes()
         || !TestBasicLitMeshesSceneFile()
+        || !TestGeometryReferenceKinds()
         || !TestSceneAssetRegistry()
         || !TestSceneFlatBuffersFile())
     {

@@ -1,4 +1,6 @@
 #include <hgl/graph/asset/SceneLoader.h>
+#include <hgl/graph/asset/GeometryAssetRegistry.h>
+#include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/RenderableBuilder.h>
 #include <hgl/graph/asset/GeometryPreset.h>
@@ -6,6 +8,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
+#include <hgl/filesystem/Path.h>
 #include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/log/Log.h>
@@ -22,6 +25,34 @@ namespace hgl::graph
 {
     namespace
     {
+        OSString ResolveScenePath(const OSString &scene_filename,
+                                  const OSString &reference)
+        {
+            if (reference.IsEmpty())
+                return reference;
+
+            const os_char *path = reference.c_str();
+            if (path[0] == os_char('/')
+                || path[0] == os_char('\\')
+                || (reference.Length() >= 2 && path[1] == os_char(':')))
+                return hgl::filesystem::NormalizeFilename(reference);
+
+            if (scene_filename.IsEmpty())
+                return hgl::filesystem::NormalizeFilename(reference);
+
+            hgl::filesystem::Path resolved =
+                hgl::filesystem::Path(scene_filename).GetParent();
+            resolved /= reference;
+            resolved.Normalize();
+            return resolved.ToOSString();
+        }
+
+        bool HasPrefix(const AnsiString &value, const char *prefix)
+        {
+            const char *text = value.c_str();
+            return text && std::strncmp(text, prefix, std::strlen(prefix)) == 0;
+        }
+
         bool CreateMaterial(const SceneMaterialSpec &spec,
                             GlobalSSBOBufferRegistry *registry,
                             SceneInstance::RuntimeMaterial *runtime)
@@ -140,7 +171,8 @@ namespace hgl::graph
     bool SceneLoader::Instantiate(const SceneSpec &spec,
                                   ecs::ECSContext *world,
                                   GeometryCreater *creater,
-                                  SceneInstance &out_instance)
+                                  SceneInstance &out_instance,
+                                  const OSString &scene_filename)
     {
         if (!world || !creater || out_instance.IsInstantiated()
             || spec.schema != 1 || spec.name.IsEmpty())
@@ -181,18 +213,13 @@ namespace hgl::graph
         for (int i = 0; i < spec.nodes.GetCount(); ++i)
         {
             const SceneNodeSpec &node_spec = *spec.nodes[i];
-            if (node_spec.geometry.IsEmpty()
-                || std::strncmp(node_spec.geometry.c_str(), "presets:", 8) != 0
-                || node_spec.geometry.c_str()[8] == '\0')
-            {
-                MLogError(SceneLoader, "Instantiate: V1 only supports non-empty presets: geometry references");
-                out_instance.Release();
-                return false;
-            }
-
-            const mtl::MaterialRecipe *recipe =
-                gc->FindOrLoadMaterialRecipe(node_spec.recipe.c_str());
-            if (!recipe)
+            const bool uses_preset = HasPrefix(node_spec.geometry, "presets:");
+            const bool uses_geometry_asset = HasPrefix(node_spec.geometry, "geo:");
+            const bool uses_primitive_asset = HasPrefix(node_spec.geometry, "primitive:");
+            const mtl::MaterialRecipe *recipe = nullptr;
+            if (!uses_primitive_asset)
+                recipe = gc->FindOrLoadMaterialRecipe(node_spec.recipe.c_str());
+            if (!uses_primitive_asset && !recipe)
             {
                 MLogError(SceneLoader, "Instantiate: material recipe could not be resolved");
                 out_instance.Release();
@@ -208,24 +235,44 @@ namespace hgl::graph
             }
 
             runtime->name = node_spec.name;
-            runtime->geometry = CreateGeometryPreset(creater, node_spec.geometry.c_str() + 8);
-            if (!runtime->geometry)
-            {
-                MLogError(SceneLoader, "Instantiate: geometry preset could not be created");
-                out_instance.Release();
-                return false;
-            }
+            if (recipe)
+                runtime->recipe = *recipe;
 
-            if (geometry_manager->Add(runtime->geometry) < 0)
+            if (uses_preset)
             {
-                MLogError(SceneLoader, "Instantiate: geometry manager rejected generated geometry");
-                geometry_manager->Release(runtime->geometry);
-                runtime->geometry = nullptr;
-                out_instance.Release();
-                return false;
-            }
+                runtime->geometry =
+                    CreateGeometryPreset(creater, node_spec.geometry.c_str() + 8);
+                if (!runtime->geometry)
+                {
+                    MLogError(SceneLoader, "Instantiate: geometry preset could not be created");
+                    out_instance.Release();
+                    return false;
+                }
 
-            runtime->recipe = *recipe;
+                if (geometry_manager->Add(runtime->geometry) < 0)
+                {
+                    MLogError(SceneLoader, "Instantiate: geometry manager rejected generated geometry");
+                    geometry_manager->Release(runtime->geometry);
+                    runtime->geometry = nullptr;
+                    out_instance.Release();
+                    return false;
+                }
+            }
+            else if (uses_geometry_asset)
+            {
+                GeometryAssetRegistry *registry = gc->GetGeometryAssetRegistry();
+                const OSString asset_path = ResolveScenePath(
+                    scene_filename,
+                    ToOSString(AnsiString(node_spec.geometry.c_str() + 4)));
+                runtime->geometry_asset =
+                    registry ? registry->GetOrLoad(asset_path) : nullptr;
+                if (!runtime->geometry_asset)
+                {
+                    MLogError(SceneLoader, "Instantiate: geometry asset could not be loaded");
+                    out_instance.Release();
+                    return false;
+                }
+            }
 
             ecs::RenderableBuilder builder(world, node_spec.name.c_str());
             const ecs::Mobility mobility =
@@ -279,9 +326,13 @@ namespace hgl::graph
                      ++texture_index)
                 {
                     const SceneTextureSpec &texture = *material->textures[texture_index];
+                    OSString texture_uri = texture.uri;
+                    if (texture_uri.StartsWithIgnoreCase(OS_TEXT("tex:")))
+                        texture_uri = OSString(texture_uri.c_str() + 4);
+                    texture_uri = ResolveScenePath(scene_filename, texture_uri);
                     TextureAsset *asset =
                         texture_manager
-                            ? texture_manager->CreateTextureAsset(texture.uri, true)
+                            ? texture_manager->CreateTextureAsset(texture_uri, true)
                             : nullptr;
                     if (!asset
                         || !runtime->recipe.AddTexture(
@@ -296,18 +347,59 @@ namespace hgl::graph
                 builder.WithMaterialDataResource(material->accessor.GetGlobalSSBOBinding());
             }
 
-            runtime->primitive = PrimitiveAsset(runtime->geometry, &runtime->recipe);
-            builder.WithPrimitiveAsset(&runtime->primitive);
-            ecs::Entity *entity = builder.Build();
-            if (!entity)
+            if (uses_primitive_asset)
             {
-                MLogError(SceneLoader, "Instantiate: ECS renderable construction failed");
-                out_instance.Release();
-                return false;
-            }
+                PrimitiveAssetRegistry *registry = gc->GetPrimitiveAssetRegistry();
+                const OSString asset_path = ResolveScenePath(
+                    scene_filename,
+                    ToOSString(AnsiString(node_spec.geometry.c_str() + 10)));
+                const PrimitiveAsset *primitive =
+                    registry ? registry->GetOrLoad(asset_path) : nullptr;
+                if (!primitive)
+                {
+                    MLogError(SceneLoader, "Instantiate: primitive asset could not be instantiated");
+                    out_instance.Release();
+                    return false;
+                }
 
-            runtime->entity_id = entity->GetEntityID();
-            world->SetEntityVisible(runtime->entity_id, node_spec.visible);
+                builder.WithPrimitiveAsset(primitive);
+                ecs::Entity *entity = builder.Build();
+                if (!entity)
+                {
+                    MLogError(SceneLoader, "Instantiate: ECS primitive asset construction failed");
+                    out_instance.Release();
+                    return false;
+                }
+
+                runtime->entity_id = entity->GetEntityID();
+                world->SetEntityVisible(runtime->entity_id, node_spec.visible);
+            }
+            else
+            {
+                runtime->variant.material_recipe = &runtime->recipe;
+                if (runtime->geometry_asset)
+                    runtime->primitive = PrimitiveAsset(
+                        runtime->geometry_asset->GetGeometry(),
+                        runtime->geometry_asset,
+                        &runtime->variant,
+                        1);
+                else
+                    runtime->primitive = PrimitiveAsset(
+                        runtime->geometry, &runtime->recipe);
+                builder.WithPrimitiveAsset(&runtime->primitive);
+
+                ecs::Entity *entity = builder.Build();
+                if (!entity)
+                {
+                    MLogError(SceneLoader, "Instantiate: ECS renderable construction failed");
+                    out_instance.Release();
+                    return false;
+                }
+
+                runtime->entity_id = entity->GetEntityID();
+                world->SetEntityVisible(runtime->entity_id, node_spec.visible);
+                continue;
+            }
         }
 
         for (int i = 0; i < spec.nodes.GetCount(); ++i)

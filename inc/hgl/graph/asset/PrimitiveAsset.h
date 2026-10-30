@@ -154,7 +154,10 @@ namespace hgl::graph
                 && variant_count_ > 0 && variants_ != nullptr && variants_[0].IsValid();
         }
 
-        Geometry *GetGeometry() const { return geometry_; }
+        Geometry *GetGeometry() const
+        {
+            return geometry_asset_ ? geometry_asset_->GetGeometry() : geometry_;
+        }
         const GeometryAsset *GetGeometryAsset() const { return geometry_asset_; }
         PrimitiveType GetPrimitiveType() const { return primitive_type_; }
         uint32_t GetVariantCount() const { return variant_count_; }
@@ -167,7 +170,8 @@ namespace hgl::graph
          */
         bool IsGeometryReady() const
         {
-            return geometry_ && (!geometry_asset_ || geometry_asset_->IsReady());
+            return GetGeometry() != nullptr
+                && (!geometry_asset_ || geometry_asset_->IsReady());
         }
 
         const PrimitiveVariant *GetVariant(const uint32_t index) const

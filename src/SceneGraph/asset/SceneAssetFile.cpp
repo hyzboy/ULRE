@@ -281,6 +281,32 @@ namespace hgl::graph
             }
         }
 
+        bool HasPrefix(const AnsiString &value, const char *prefix)
+        {
+            const char *text = value.c_str();
+            return text && std::strncmp(text, prefix, std::strlen(prefix)) == 0;
+        }
+
+        bool IsValidGeometryReference(const SceneNodeSpec &node)
+        {
+            if (node.geometry.IsEmpty())
+                return false;
+
+            if (HasPrefix(node.geometry, "presets:")
+                || HasPrefix(node.geometry, "geo:"))
+            {
+                return node.geometry.Length() > (HasPrefix(node.geometry, "geo:") ? 4 : 8)
+                    && !node.recipe.IsEmpty();
+            }
+
+            if (HasPrefix(node.geometry, "primitive:"))
+                return node.geometry.Length() > 10
+                    && node.recipe.IsEmpty()
+                    && node.material.IsEmpty();
+
+            return false;
+        }
+
         bool NormalizeTextureTables(toml::value &root)
         {
             if (!root.contains("materials") || !root.at("materials").is_array())
@@ -398,10 +424,8 @@ namespace hgl::graph
             for (int i = 0; i < nodes.GetCount(); ++i)
             {
                 const SceneNodeSpec &node = *nodes[i];
-                if (node.name.IsEmpty() || node.geometry.IsEmpty()
-                    || std::strncmp(node.geometry.c_str(), "presets:", 8) != 0
-                    || std::strlen(node.geometry.c_str()) == 8
-                    || node.recipe.IsEmpty()
+                if (node.name.IsEmpty()
+                    || !IsValidGeometryReference(node)
                     || (hgl::stricmp(node.mobility.c_str(), "static") != 0
                         && hgl::stricmp(node.mobility.c_str(), "movable") != 0)
                     || !IsFinite(node.transform.position)

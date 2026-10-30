@@ -13,7 +13,7 @@ namespace hgl::graph
                                  GeometryCreater *creater,
                                  SceneInstance &out_instance) const
     {
-        return SceneLoader::Instantiate(spec, world, creater, out_instance);
+        return SceneLoader::Instantiate(spec, world, creater, out_instance, filename);
     }
 
     SceneAssetRegistry::~SceneAssetRegistry()

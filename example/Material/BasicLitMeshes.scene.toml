@@ -22,9 +22,9 @@ roughness = 0.92
 normal_scale = 0.35
 
 [materials.textures]
-base_color = "res/image/Brickwall/Albedo.Tex2D"
-normal = "res/image/Brickwall/Normal.Tex2D"
-roughness = "res/image/Brickwall/Roughness.Tex2D"
+base_color = "../../res/image/Brickwall/Albedo.Tex2D"
+normal = "../../res/image/Brickwall/Normal.Tex2D"
+roughness = "../../res/image/Brickwall/Roughness.Tex2D"
 
 [[nodes]]
 name = "Floor"

@@ -2,6 +2,7 @@
 
 #include <hgl/ecs/core/EntityHandle.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
+#include <hgl/graph/asset/GeometryAsset.h>
 #include <hgl/graph/asset/SceneAssetSpec.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/type/ManagedArray.h>
@@ -34,7 +35,9 @@ namespace hgl
                 AnsiString name;
                 ecs::EntityID entity_id = ecs::EntityID::Invalid();
                 Geometry *geometry = nullptr;
+                const GeometryAsset *geometry_asset = nullptr;
                 mtl::MaterialRecipe recipe;
+                PrimitiveVariant variant;
                 PrimitiveAsset primitive;
             };
 
@@ -76,7 +79,8 @@ namespace hgl
             static bool Instantiate(const SceneSpec &spec,
                                     ecs::ECSContext *world,
                                     GeometryCreater *creater,
-                                    SceneInstance &out_instance);
+                                    SceneInstance &out_instance,
+                                    const OSString &scene_filename = {});
         };
     }
 }
