@@ -9,11 +9,26 @@
 //                  帧号推进后 != 2；null 入参被计数。
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
 using namespace hgl;
 using namespace hgl::ecs;
+
+namespace hgl::ecs
+{
+    struct RenderPassSetupTestAccess
+    {
+        static void Run(ECSContext &context, uint32_t slot)
+        {
+            const bool was_active = context.active;
+            context.active = true;
+            context.PrepareRenderPassSetup(slot);
+            context.active = was_active;
+        }
+    };
+}
 
 int main()
 {
@@ -35,7 +50,15 @@ int main()
     }
 
     // 帧号推进 ⇒ 必须重新准备一次
-    ctx.SetFrameIndex(1);
+    ctx.GetRenderFrameCache().renderableCount = 7;
+    RenderPassSetupTestAccess::Run(ctx, 1);
+
+    if (ctx.GetRenderFrameCache().frame_serial != 1
+     || ctx.GetRenderFrameCache().renderableCount != 0)
+    {
+        GLogError(u8"Test Failed: render pass must reset the cache and advance its serial without a Primitive collector");
+        return 1;
+    }
 
     pipeline.PrepareFrame(&ctx);
 
@@ -46,13 +69,30 @@ int main()
         return 1;
     }
 
+    // The same render-target slot can be reused by an offscreen pass.
+    RenderPassSetupTestAccess::Run(ctx, 1);
+    pipeline.PrepareFrame(&ctx);
+    if (ctx.GetRenderFrameCache().frame_serial != 2 || pipeline.GetPrepareFrameCount() != 3)
+    {
+        GLogError(u8"Test Failed: a second pass in the same slot must start a new frame");
+        return 1;
+    }
+
+    // A failed Line initialization must not make subsequent calls in the same frame succeed.
+    LineRenderPipeline line_pipeline(&ctx);
+    if (line_pipeline.PrepareFrame() || line_pipeline.PrepareFrame())
+    {
+        GLogError(u8"Test Failed: unsuccessful Line initialization was cached as success");
+        return 1;
+    }
+
     // 新帧内再调两次仍不重做
     pipeline.PrepareFrame(&ctx);
     pipeline.PrepareFrame(&ctx);
 
-    if (pipeline.GetPrepareFrameCount() != 2)
+    if (pipeline.GetPrepareFrameCount() != 3)
     {
-        GLogError(u8"Test 1 Failed: 新帧内重复调用仍应复用（累计=%u，期望 2）",
+        GLogError(u8"Test 1 Failed: 新帧内重复调用仍应复用（累计=%u，期望 3）",
                   pipeline.GetPrepareFrameCount());
         return 1;
     }
@@ -64,7 +104,7 @@ int main()
         return 1;
     }
 
-    if (pipeline.GetPrepareFrameCount() != 2)
+    if (pipeline.GetPrepareFrameCount() != 3)
     {
         GLogError(u8"Test 1 Failed: null 入参被计数（累计=%u）", pipeline.GetPrepareFrameCount());
         return 1;

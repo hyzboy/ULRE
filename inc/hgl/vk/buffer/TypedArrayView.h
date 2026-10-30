@@ -243,6 +243,32 @@ public:
     TypedArrayView(const TypedArrayView&) = delete;
     TypedArrayView& operator=(const TypedArrayView&) = delete;
 
+    TypedArrayView(TypedArrayView &&other) noexcept
+        : TypedArrayView()
+    {
+        *this = static_cast<TypedArrayView &&>(other);
+    }
+
+    TypedArrayView &operator=(TypedArrayView &&other) noexcept
+    {
+        if (this == &other)
+            return *this;
+
+        UnmapInternal();
+        MoveFrom(static_cast<BufferView &&>(other));
+        buffer_total_count = other.buffer_total_count;
+        buffer_stride = other.buffer_stride;
+        data_access = other.data_access;
+        element_offset = other.element_offset;
+        element_count = other.element_count;
+        other.buffer_total_count = 0;
+        other.buffer_stride = 0;
+        other.data_access = nullptr;
+        other.element_offset = 0;
+        other.element_count = 0;
+        return *this;
+    }
+
      /**
       * CN: 绑定到新的 buffer
       * EN: Bind to new buffer

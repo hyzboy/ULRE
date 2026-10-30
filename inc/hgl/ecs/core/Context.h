@@ -89,6 +89,7 @@ namespace hgl
 
         private:
             OBJECT_LOGGER
+            friend struct RenderPassSetupTestAccess;
 
             // ── T3b：实体行表（`EntityGPU` 的 GPU 派生视图；世界私有）──
             //   **必须声明在 `entity_manager` 之前**：成员按声明逆序析构 ⇒ 表比实体活得久

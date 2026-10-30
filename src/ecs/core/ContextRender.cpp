@@ -848,6 +848,7 @@ namespace hgl::ecs
             // Strict enum order — all CPU work and GPU uploads happen
             // before BeginRenderPass; the render pass only issues draw commands.
             SetFrameIndex(frameIndex);
+            render_frame_cache.BeginFrame();
 
             // ⚠ 变换提交必须在本函数最前段（SetFrameIndex 之后——L2W ring 帧索引刚被推到位；
             // collect/派发之前——见下）。`SubmitTransformUpdates` 是 **L2W 矩阵行**与实体行

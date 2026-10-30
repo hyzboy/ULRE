@@ -35,8 +35,9 @@ StagedBuffer::~StagedBuffer()
         owner->UnregisterGPUBuffer(this);
         if (staging_buffer)
             owner->UntrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer);
-        if (staging_memory)
-            owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory));
+        if (device_buffer)
+            owner->UntrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)device_buffer);
+        // DeviceMemory owns tracking cleanup for both allocations.
     }
 
     if (staging_buffer)

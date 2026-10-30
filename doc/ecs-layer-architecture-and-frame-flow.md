@@ -493,6 +493,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 ## 9. 帧缓存与生命周期
 
+- `ECSContext::PrepareRenderPassSetup` 在每次主帧或离屏 pass 的 collect 之前推进并清空 `RenderFrameCache`；帧边界不依赖 Primitive 系统。Line 渲染缓冲按 `IRenderTarget::GetCurrentFrameIndex()` 分槽，每槽只在对应 RT 等待前次提交完成后复用。
 - `RenderFrameCache`（`inc/hgl/ecs/core/Context.h:48-63`）：`renderItems`（`unique_ptr` 数组，每帧重建）、`materialBatches`（key→`MaterialBatch` 的 map，**跨帧保留对象**只 `Clear()` 内容）、`cameraInfo`、`renderableCount`；实例挂载在 `ECSContext::render_frame_cache`（`inc/hgl/ecs/core/Context.h:128`），经 `GetRenderFrameCache()` 暴露。
 - 跨帧存活的还有：`TransformAssignmentBuffer`（TransformSystem 持有）、`MaterialBatch` 的各类 buffer（`Ensure*` 按 pow2 扩容）、行池（`GlobalSSBOBufferRegistry` / `MaterialTextureReferencePool` 持有）。（另两个 4-ID 存储已随 2026-10-14 整族删除，见文首订正。）
 - 非拥有关系要小心：`MaterialBatch::transform_buffer` 是 TransformSystem 的指针（`inc/hgl/ecs/core/MaterialBatch.h:78` 注释明示勿跨帧缓存系统指针）；`PrimitiveRenderItem` 持 `shared_ptr` 组件句柄（会延长组件寿命到当帧结束）。

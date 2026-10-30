@@ -1986,7 +1986,6 @@ namespace hgl::ecs
 
         auto& cache = world->GetRenderFrameCache();
         cache.cameraInfo = cameraInfo;
-        cache.BeginFrame();
 
         // A7b：本 pass 回退（错误）材质配方合成次数（诊断；默认 0 ⇒ 不打印任何东西，
         // 基线日志逐字不变）。

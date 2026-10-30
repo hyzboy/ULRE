@@ -13,6 +13,7 @@ namespace hgl::ecs
         renderItems.clear();
         ordered_batches.clear();
         renderableCount = 0;
+        cameraInfo = nullptr;
 
         // 清空批次内容，保留对象以供重用
         for (auto& pair : materialBatches)

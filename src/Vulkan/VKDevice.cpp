@@ -258,25 +258,32 @@ void VulkanDevice::TrackTexture(Texture *tex, const ObjectNameBuilder &name, con
     TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)tex->GetDeviceMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
 }
 
-void VulkanDevice::WaitIdle() const
+bool VulkanDevice::WaitIdle() const
+{
+    const VkResult res = WaitIdleResult();
+    return res == VK_SUCCESS || res == VK_ERROR_DEVICE_LOST;
+}
+
+VkResult VulkanDevice::WaitIdleResult() const
 {
     if (!attr || attr->device == VK_NULL_HANDLE)
     {
         GLogError("VulkanDevice::WaitIdle invalid device (attr=%p device=%p)",
                   (void *)attr,
                   attr ? (void *)attr->device : nullptr);
-        return;
+        return VK_ERROR_INITIALIZATION_FAILED;
     }
 
     const VkResult res = vkDeviceWaitIdle(attr->device);
-    if (res != VK_SUCCESS)
-    {
-        const auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
-        GLogError("VulkanDevice::WaitIdle failed res=%d device=%p thread=%llu",
-                  static_cast<int>(res),
-                  (void *)attr->device,
-                  static_cast<unsigned long long>(tid));
-    }
+    if (res == VK_SUCCESS)
+        return VK_SUCCESS;
+
+    const auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+    GLogError("VulkanDevice::WaitIdle failed res=%d device=%p thread=%llu",
+              static_cast<int>(res),
+              (void *)attr->device,
+              static_cast<unsigned long long>(tid));
+    return res;
 }
 
 VkCommandBuffer VulkanDevice::CreateCommandBuffer(VkCommandPool pool, const AnsiString &name)

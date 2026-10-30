@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
+#include <hgl/common/RenderOptions.h>
 #include <hgl/vk/buffer/TypedArrayView.h>
 #include <hgl/mtl/PipelineConfig.h>
 #include <memory>
@@ -79,7 +80,7 @@ namespace hgl::ecs
         ///（见 `inc/hgl/vk/pipeline/VKPipeline.h`；`MakeLineMeshConfig()`：双面 + 深度 test/write）。
         graph::mtl::MaterialPipelineConfig pipeline_config_{};
 
-        // ------- 单 Line buffer（P2：删 4 slot 分组——mesh shader 展开 quad，宽度入 SSBO）-------
+        // ------- Line buffer for one render-target frame slot -------
         struct LineBuffer
         {
             using TransformIDAccessor = hgl::graph::TypedArrayView<hgl::graph::RawDataAccess<uint32_t>>;
@@ -87,6 +88,9 @@ namespace hgl::ecs
 
             uint32_t line_count   = 0;
             uint32_t gpu_capacity = 0;   ///< current VAB capacity in line-count
+            uint32_t failed_capacity = 0;
+            uint32_t retry_delay_frames = 0;
+            uint32_t last_failure_frame = 0;
 
             graph::Geometry*  geometry  = nullptr;
             graph::GeometryDataBuffer* data_buffer = nullptr;
@@ -102,7 +106,9 @@ namespace hgl::ecs
             void Reset();
             void Clear();
             bool EnsureCapacity(uint32_t needed,
-                                graph::VulkanDevice*     dev);
+                                graph::VulkanDevice*     dev,
+                                uint32_t                 frame_serial,
+                                uint32_t                 frame_slot);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
                             uint8_t                     color_index,
@@ -112,7 +118,9 @@ namespace hgl::ecs
             void Draw(graph::RenderCmdBuffer* cmd);
         };
 
-        LineBuffer line_buffer_;
+        // A slot may be reused only after its render target has waited for its previous submission.
+        LineBuffer line_buffers_[HGL_FRAME_SLOT_TOTAL];
+        LineBuffer *current_line_buffer_ = nullptr;
 
         // ------- Per-frame collect state -------
         std::vector<LinesComponent *> collected_;   ///< 本帧收集（池活跃集视图的裸指针；不跨帧缓存对象）

@@ -128,7 +128,10 @@ public:
                 VkDescriptorPool    GetDescriptorPool   ()const {return attr ? attr->desc_pool : VK_NULL_HANDLE;}
 #endif
 
-                void                WaitIdle            ()const;
+                /// Wait for all submitted work. Device loss is treated as quiescent for retirement.
+                bool                WaitIdle            ()const;
+                /// Exact result for callers that must not continue rendering after device loss.
+                VkResult            WaitIdleResult      ()const;
 
 #ifdef _DEBUG
                 DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}

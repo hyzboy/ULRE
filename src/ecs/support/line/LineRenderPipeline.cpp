@@ -103,82 +103,216 @@ namespace hgl::ecs
         SAFE_CLEAR(mesh_draw_params);
         line_count   = 0;
         gpu_capacity = 0;
+        failed_capacity = 0;
+        retry_delay_frames = 0;
+        last_failure_frame = 0;
     }
 
     bool LineRenderPipeline::LineBuffer::EnsureCapacity(
         uint32_t needed,
-        graph::VulkanDevice*     dev)
+        graph::VulkanDevice*     dev,
+        uint32_t                 frame_serial,
+        uint32_t                 frame_slot)
     {
-        if (needed <= gpu_capacity)
-            return true;
-
-        // Round up to granule
-        const uint32_t new_cap = ((needed + LineRenderPipeline::LINES_GRANULE - 1)
-                                          / LineRenderPipeline::LINES_GRANULE)
-                                          * LineRenderPipeline::LINES_GRANULE;
-
-        // Release old resources
-        gpu_capacity = 0;
-        va_pos.Bind(nullptr);
-        va_color.Bind(nullptr);
-        va_transform.Bind(nullptr);
-        va_width.Bind(nullptr);
-        SAFE_CLEAR(data_buffer);
-        SAFE_CLEAR(draw_range);
-        SAFE_CLEAR(geometry);
-
-        // Create new geometry (2 verts per line)
-        const AnsiString name = AnsiString("LineBuffer");
-        geometry = graph::CreateGeometry(dev,
-                         CreateLineGeometryVertexFormat(),
-                         name, new_cap * 2, 0,
-                         graph::IndexType::AUTO, nullptr,
-                         graph::BufferAllocPolicy::StagedUpload);
-        if (!geometry)
+        if ((gpu_capacity == 0) != (geometry == nullptr)
+         || (geometry && (!data_buffer || !draw_range))
+         || (!geometry && (data_buffer || draw_range)))
+        {
+            GLogError("[LineRenderPipeline] LineBuffer state invariant failed (capacity=%u geometry=%p data=%p range=%p)",
+                      gpu_capacity,
+                      static_cast<void *>(geometry),
+                      static_cast<void *>(data_buffer),
+                      static_cast<void *>(draw_range));
             return false;
+        }
+
+        if (needed <= gpu_capacity)
+        {
+            if (geometry
+             && (!va_pos.IsValid() || !va_color.IsValid()
+              || !va_transform.IsValid() || !va_width.IsValid()))
+            {
+                GLogError("[LineRenderPipeline] LineBuffer accessors invalid at existing capacity=%u",
+                          gpu_capacity);
+                return false;
+            }
+            return true;
+        }
+
+        if (!dev)
+        {
+            GLogError("[LineRenderPipeline] Cannot grow LineBuffer without a Vulkan device");
+            return false;
+        }
+
+        // Build replacement resources before touching the live buffer. Geometric growth avoids
+        // repeated reallocations when the visible line count increases gradually.
+        const uint64_t granule = LineRenderPipeline::LINES_GRANULE;
+        // CreateVAB currently computes stride * vertex_count as uint32_t.
+        const uint64_t max_capacity = 0xFFFFFFFFu / (2u * 3u * sizeof(float));
+        const uint64_t required_capacity = needed;
+        const uint64_t rounded_required =
+            ((required_capacity + granule - 1u) / granule) * granule;
+        uint64_t target_capacity = rounded_required;
+
+        if (gpu_capacity)
+        {
+            const uint64_t doubled_capacity = static_cast<uint64_t>(gpu_capacity) * 2u;
+            if (target_capacity < doubled_capacity)
+                target_capacity = doubled_capacity;
+        }
+
+        target_capacity = ((target_capacity + granule - 1u) / granule) * granule;
+        if (target_capacity > max_capacity)
+            target_capacity = rounded_required;
+
+        if (target_capacity > max_capacity)
+        {
+            GLogError("[LineRenderPipeline] LineBuffer capacity overflow: need=%u max=%llu",
+                      needed,
+                      static_cast<unsigned long long>(max_capacity));
+            return false;
+        }
+
+        if (dev->IsDrawPhaseActive())
+        {
+            GLogError("[LineRenderPipeline] Refusing to grow LineBuffer while draw commands are being recorded");
+            return false;
+        }
+
+        const uint32_t new_cap = static_cast<uint32_t>(target_capacity);
+        if (failed_capacity == new_cap
+         && retry_delay_frames > 0
+         && static_cast<uint32_t>(frame_serial - last_failure_frame) < retry_delay_frames)
+            return false;
+
+        auto record_failure = [&]()
+        {
+            if (failed_capacity != new_cap)
+            {
+                failed_capacity = new_cap;
+                retry_delay_frames = 1;
+            }
+            else if (retry_delay_frames < 60)
+            {
+                retry_delay_frames = retry_delay_frames > 30
+                    ? 60
+                    : retry_delay_frames * 2;
+            }
+            last_failure_frame = frame_serial;
+            return false;
+        };
+
+        graph::Geometry* candidate_geometry = graph::CreateGeometry(
+            dev,
+            CreateLineGeometryVertexFormat(),
+            AnsiString("LineBuffer:Slot") + AnsiString::numberOf(frame_slot),
+            new_cap * 2u,
+            0,
+            graph::IndexType::AUTO,
+            nullptr,
+            graph::BufferAllocPolicy::StagedUpload);
+        graph::GeometryDataBuffer* candidate_data_buffer = nullptr;
+        graph::GeometryDrawRange* candidate_draw_range = nullptr;
+
+        auto discard_candidate = [&]()
+        {
+            SAFE_CLEAR(candidate_data_buffer);
+            SAFE_CLEAR(candidate_draw_range);
+            SAFE_CLEAR(candidate_geometry);
+        };
+
+        if (!candidate_geometry)
+        {
+            GLogError("[LineRenderPipeline] Failed to create replacement LineBuffer geometry (capacity=%u)",
+                      new_cap);
+            return record_failure();
+        }
 
         // 顶点输入统一为 SSBO：GeometryDataBuffer 槽位数 = Geometry 语义数
-        const uint32_t semantic_count = geometry->GetGeometryVertexFormat().GetCount();
+        const uint32_t semantic_count = candidate_geometry->GetGeometryVertexFormat().GetCount();
 
-        data_buffer = new graph::GeometryDataBuffer(semantic_count,
-                                                    geometry->GetIBO(),
-                                                    geometry->GetVDM());
-        if (!data_buffer
-         || !data_buffer->Update(geometry))
+        candidate_data_buffer = new graph::GeometryDataBuffer(
+            semantic_count,
+            candidate_geometry->GetIBO(),
+            candidate_geometry->GetVDM());
+        if (!candidate_data_buffer || !candidate_data_buffer->Update(candidate_geometry))
         {
             GLogError("[LineRenderPipeline] GeometryDataBuffer::Update failed");
-            SAFE_CLEAR(data_buffer);
-            SAFE_CLEAR(geometry);
-            return false;
+            discard_candidate();
+            return record_failure();
         }
 
-        draw_range = new graph::GeometryDrawRange();
-        if (!draw_range)
+        candidate_draw_range = new graph::GeometryDrawRange();
+        if (!candidate_draw_range)
         {
-            SAFE_CLEAR(data_buffer);
-            SAFE_CLEAR(geometry);
-            return false;
+            GLogError("[LineRenderPipeline] Failed to create replacement LineBuffer draw range");
+            discard_candidate();
+            return record_failure();
         }
-        draw_range->Set(geometry);
-        draw_range->vertex_count = 0;
+        candidate_draw_range->Set(candidate_geometry);
+        candidate_draw_range->vertex_count = 0;
 
-        const int pos_idx   = geometry->GetVABIndex(graph::VertexSemantic::Position);
-        const int color_idx = geometry->GetVABIndex(graph::VertexSemantic::Color);
-        const int transform_idx = geometry->GetVABIndex(graph::VertexSemantic::TransformID);
-        const int size_idx   = geometry->GetVABIndex(graph::VertexSemantic::Size);
+        const int pos_idx = candidate_geometry->GetVABIndex(graph::VertexSemantic::Position);
+        const int color_idx = candidate_geometry->GetVABIndex(graph::VertexSemantic::Color);
+        const int transform_idx = candidate_geometry->GetVABIndex(graph::VertexSemantic::TransformID);
+        const int size_idx = candidate_geometry->GetVABIndex(graph::VertexSemantic::Size);
 
         if (pos_idx < 0 || color_idx < 0 || transform_idx < 0 || size_idx < 0)
         {
-            SAFE_CLEAR(data_buffer);
-            SAFE_CLEAR(draw_range);
-            SAFE_CLEAR(geometry);
-            return false;
+            GLogError("[LineRenderPipeline] Replacement LineBuffer is missing a required vertex semantic");
+            discard_candidate();
+            return record_failure();
         }
 
-        va_pos.Bind(geometry->GetVAB(pos_idx));
-        va_color.Bind(geometry->GetVAB(color_idx));
-        va_transform.Bind(geometry->GetVAB(transform_idx));
-        va_width.Bind(geometry->GetVAB(size_idx));
+        bool replacement_installed = false;
+        {
+            graph::TypedArrayView3f candidate_va_pos(candidate_geometry->GetVAB(pos_idx));
+            graph::TypedArrayView1u8 candidate_va_color(candidate_geometry->GetVAB(color_idx));
+            TransformIDAccessor candidate_va_transform(candidate_geometry->GetVAB(transform_idx));
+            SizeAccessor candidate_va_width(candidate_geometry->GetVAB(size_idx));
+            const bool pos_valid = candidate_va_pos.IsValid();
+            const bool color_valid = candidate_va_color.IsValid();
+            const bool transform_valid = candidate_va_transform.IsValid();
+            const bool width_valid = candidate_va_width.IsValid();
+            if (!pos_valid || !color_valid || !transform_valid || !width_valid)
+            {
+                GLogError("[LineRenderPipeline] Replacement LineBuffer accessor map failed (pos=%d color=%d transform=%d width=%d)",
+                          pos_valid ? 1 : 0,
+                          color_valid ? 1 : 0,
+                          transform_valid ? 1 : 0,
+                          width_valid ? 1 : 0);
+            }
+            else if (geometry && dev->WaitIdleResult() != VK_SUCCESS)
+            {
+                GLogError("[LineRenderPipeline] Cannot retire old LineBuffer: device did not become idle");
+            }
+            else
+            {
+                va_pos = static_cast<graph::TypedArrayView3f &&>(candidate_va_pos);
+                va_color = static_cast<graph::TypedArrayView1u8 &&>(candidate_va_color);
+                va_transform = static_cast<TransformIDAccessor &&>(candidate_va_transform);
+                va_width = static_cast<SizeAccessor &&>(candidate_va_width);
+
+                SAFE_CLEAR(data_buffer);
+                SAFE_CLEAR(draw_range);
+                SAFE_CLEAR(geometry);
+
+                geometry = candidate_geometry;
+                candidate_geometry = nullptr;
+                data_buffer = candidate_data_buffer;
+                candidate_data_buffer = nullptr;
+                draw_range = candidate_draw_range;
+                candidate_draw_range = nullptr;
+                replacement_installed = true;
+            }
+        }
+
+        if (!replacement_installed)
+        {
+            discard_candidate();
+            return record_failure();
+        }
 
         LinePeriodicLog(s_line_log_ticks[1], "[LineRenderPipeline] LineBuffer after Bind: pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d",
                  va_pos.IsValid() ? 1 : 0,
@@ -186,25 +320,16 @@ namespace hgl::ecs
                  va_transform.IsValid() ? 1 : 0,
                  va_width.IsValid() ? 1 : 0);
 
-        if (!va_pos.IsValid() || !va_color.IsValid() || !va_transform.IsValid() || !va_width.IsValid())
-        {
-            GLogWarning("[LineRenderPipeline] LineBuffer accessor bind failed (pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d)",
-                        va_pos.IsValid() ? 1 : 0,
-                        va_color.IsValid() ? 1 : 0,
-                        va_transform.IsValid() ? 1 : 0,
-                        va_width.IsValid() ? 1 : 0);
-            SAFE_CLEAR(data_buffer);
-            SAFE_CLEAR(draw_range);
-            SAFE_CLEAR(geometry);
-            return false;
-        }
-
         va_pos.Seek(0);
         va_color.Seek(0);
         va_transform.Seek(0);
         va_width.Seek(0);
 
+        line_count = 0;
         gpu_capacity = new_cap;
+        failed_capacity = 0;
+        retry_delay_frames = 0;
+        last_failure_frame = 0;
         return true;
     }
 
@@ -403,19 +528,29 @@ namespace hgl::ecs
         const uint32_t frame = context_->GetRenderFrameCache().frame_serial;
         if (frame == prepared_frame_)
             return true;
-        prepared_frame_ = frame;
+
+        current_line_buffer_ = nullptr;
+        total_line_count_ = 0;
+        const uint32_t slot = context_->GetFrameIndex();
+        if (slot >= HGL_FRAME_SLOT_TOTAL)
+        {
+            GLogError("[LineRenderPipeline] Invalid render frame slot %u (limit=%u)",
+                      slot, static_cast<uint32_t>(HGL_FRAME_SLOT_TOTAL));
+            return false;
+        }
 
         if (!initialized_ && !Initialize())
             return false;
 
         SyncTransformBinding();
 
-        // Reset 单 Line buffer（P2：删 4 slot 分组）
-        line_buffer_.Reset();
+        current_line_buffer_ = &line_buffers_[slot];
+        current_line_buffer_->Reset();
 
         collected_.clear();
         stats_ = LineCollectStats{};
         total_line_count_ = 0;
+        prepared_frame_ = frame;
 
         return true;
     }
@@ -424,6 +559,9 @@ namespace hgl::ecs
     {
         if (!PrepareFrame())
             return;
+
+        collected_.clear();
+        stats_ = LineCollectStats{};
 
         // Build frustum from camera
         bool frustum_valid = false;
@@ -512,6 +650,13 @@ namespace hgl::ecs
             return;
         }
 
+        if (!current_line_buffer_)
+        {
+            GLogError("[LineRenderPipeline] RunBuild skipped: no prepared frame buffer");
+            return;
+        }
+        LineBuffer &line_buffer_ = *current_line_buffer_;
+
         std::shared_ptr<TransformSystem> transform_system_sp = context_ ? context_->GetSystem<TransformSystem>() : nullptr;
         TransformSystem* transform_system = transform_system_sp.get();
         uint32_t static_count = 0;
@@ -540,15 +685,25 @@ namespace hgl::ecs
         uint32_t expected_total = 0;
         for (const auto& comp : collected_)
         {
-            expected_total += static_cast<uint32_t>(comp->lines.size());
+            const size_t component_line_count = comp->lines.size();
+            if (component_line_count > static_cast<size_t>(0xFFFFFFFFu - expected_total))
+            {
+                GLogError("[LineRenderPipeline] Total line count exceeds the supported 32-bit capacity");
+                return;
+            }
+            expected_total += static_cast<uint32_t>(component_line_count);
         }
 
         // Ensure GPU capacity（单 buffer，按总数）
-        if (!line_buffer_.EnsureCapacity(expected_total, device_))
+        const uint32_t frame_serial = context_
+            ? context_->GetRenderFrameCache().frame_serial
+            : 0;
+        if (!line_buffer_.EnsureCapacity(expected_total, device_, frame_serial, context_->GetFrameIndex()))
         {
-            GLogWarning("[LineRenderPipeline] EnsureCapacity failed: need=%u cap=%u",
-                        expected_total,
-                        line_buffer_.gpu_capacity);
+            LinePeriodicLog(s_line_log_ticks[10],
+                            "[LineRenderPipeline] EnsureCapacity failed: need=%u cap=%u",
+                            expected_total,
+                            line_buffer_.gpu_capacity);
             return; // Allocation failure: skip frame
         }
 
@@ -750,6 +905,13 @@ namespace hgl::ecs
             return;
         }
 
+        if (!current_line_buffer_)
+        {
+            GLogError("[LineRenderPipeline] Render skipped: no prepared frame buffer");
+            return;
+        }
+        LineBuffer &line_buffer_ = *current_line_buffer_;
+
         cmd->BindPipeline(pipeline_);
 
         // EDS 1/2/3：pipeline 只保留 shader 部分——Line 材质状态（cull off）渲染侧动态应用。
@@ -815,8 +977,29 @@ namespace hgl::ecs
 
     void LineRenderPipeline::Shutdown()
     {
-        // P2：单 Line buffer（删 4 slot 分组）
-        line_buffer_.Clear();
+        bool has_gpu_resources = false;
+        for (const auto &buffer : line_buffers_)
+            if (buffer.geometry || buffer.mesh_draw_params)
+                has_gpu_resources = true;
+
+        if (has_gpu_resources)
+        {
+            if (!device_)
+            {
+                GLogError("[LineRenderPipeline] Shutdown cannot retire GPU resources without a Vulkan device");
+                return;
+            }
+
+            if (!device_->WaitIdle())
+            {
+                GLogError("[LineRenderPipeline] Shutdown aborted: GPU resources could not be retired safely");
+                return;
+            }
+        }
+
+        current_line_buffer_ = nullptr;
+        for (auto &buffer : line_buffers_)
+            buffer.Clear();
 
         if (auto* gc = context_ ? context_->GetGraphicsContext() : nullptr)
         {
@@ -833,6 +1016,10 @@ namespace hgl::ecs
         pipeline_    = nullptr; // owned by RenderPass
         device_      = nullptr;
         initialized_ = false;
+        prepared_frame_ = UINT32_MAX;
+        collected_.clear();
+        stats_ = LineCollectStats{};
+        total_line_count_ = 0;
         bound_transform_buffer_ = nullptr;
         bound_transform_data_buffer_ = nullptr;
     }

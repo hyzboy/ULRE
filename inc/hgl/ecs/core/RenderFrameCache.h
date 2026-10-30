@@ -27,7 +27,8 @@ namespace hgl::ecs
         const graph::CameraInfo* cameraInfo = nullptr;
         uint32_t renderableCount = 0;
 
-        /// **世界内帧序列号**：`BeginFrame()` 每次调用自增。
+        /// **世界内帧序列号**：每次渲染 pass 准备时，由世界统一调用 `BeginFrame()` 自增；
+        /// 不依赖任何具体的渲染系统是否启用。
         ///
         /// 与 `ECSContext::GetFrameIndex()` **不同** —— 后者是驱动相机的「帧槽号」
         /// （主帧 = 交换链图像号，要 0..N 循环；离屏 pass = 该 RT 的固定槽），
