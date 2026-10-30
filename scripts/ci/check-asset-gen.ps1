@@ -21,15 +21,21 @@
 .PARAMETER Clang
     clang++ 可执行文件。缺省取 $env:HGL_CLANG，再缺省按 PATH 查找 clang++。
 
+.PARAMETER Flatc
+    FlatBuffers flatc 可执行文件。缺省取 $env:HGL_FLATC，再缺省按 PATH 查找 flatc。
+
 .PARAMETER IncludeDir
     额外 include 目录（可重复），例如 D:\vcpkg\installed\x64-windows\include。
 
 .EXAMPLE
-    pwsh scripts/ci/check-asset-gen.ps1 -IncludeDir D:\vcpkg\installed\x64-windows\include
+    pwsh scripts/ci/check-asset-gen.ps1 -Clang C:\LLVM\bin\clang++.exe `
+        -Flatc D:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe `
+        -IncludeDir D:\vcpkg\installed\x64-windows\include
 #>
 param(
     [string]$RepoRoot  = ".",
     [string]$Clang     = "",
+    [string]$Flatc     = "",
     [string[]]$IncludeDir = @()
 )
 
@@ -61,6 +67,19 @@ if ([string]::IsNullOrWhiteSpace($Clang)) {
     Write-Error "[AssetGen] 找不到 clang++。请用 -Clang 指定，或设置环境变量 HGL_CLANG。"
 }
 
+if ([string]::IsNullOrWhiteSpace($Flatc)) {
+    $Flatc = $env:HGL_FLATC
+}
+if ([string]::IsNullOrWhiteSpace($Flatc)) {
+    $found = Get-Command flatc -ErrorAction SilentlyContinue
+    if ($found) {
+        $Flatc = $found.Source
+    }
+}
+if ([string]::IsNullOrWhiteSpace($Flatc)) {
+    Write-Error "[AssetGen] 找不到 flatc。请用 -Flatc 指定，或设置环境变量 HGL_FLATC。"
+}
+
 $extra = @()
 foreach ($dir in $IncludeDir) {
     if (-not [string]::IsNullOrWhiteSpace($dir)) {
@@ -69,6 +88,7 @@ foreach ($dir in $IncludeDir) {
 }
 
 Write-Host "[AssetGen] clang = $Clang"
+Write-Host "[AssetGen] flatc = $Flatc"
 Write-Host "[AssetGen] 生成器单元测试中…"
 & python (Join-Path $repo "src/Tools/AssetGen/test_asset_gen.py")
 if ($LASTEXITCODE -ne 0) {
@@ -77,13 +97,13 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "[AssetGen] 一致性校验中（--check，不落盘）…"
 
-& python $tool --repo-root $repo --clang $Clang --check @extra
+& python $tool --repo-root $repo --clang $Clang --flatc $Flatc --check @extra
 $code = $LASTEXITCODE
 
 if ($code -ne 0) {
     Write-Host ""
     Write-Host "[AssetGen] 派生产物与 C++ 结构不一致。请重新生成后提交：" -ForegroundColor Red
-    Write-Host "    python src/Tools/AssetGen/asset_gen.py --repo-root . --clang `"$Clang`" --write" -ForegroundColor Yellow
+    Write-Host "    python src/Tools/AssetGen/asset_gen.py --repo-root . --clang `"$Clang`" --flatc `"$Flatc`" --write" -ForegroundColor Yellow
     exit $code
 }
 

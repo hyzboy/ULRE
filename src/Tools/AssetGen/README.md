@@ -77,8 +77,15 @@ FlatBuffers。`EditOnly` 不会改变 C++ 结构布局；它是序列化策略�
 python src/Tools/AssetGen/asset_gen.py --repo-root . --clang "C:\Program Files\LLVM\bin\clang++.exe" --write
 
 # 只比对不落盘（CI / 门禁用；有差异返回 1）
-python src/Tools/AssetGen/asset_gen.py --repo-root . --clang "C:\Program Files\LLVM\bin\clang++.exe" --check
+python src/Tools/AssetGen/asset_gen.py --repo-root . --clang "C:\Program Files\LLVM\bin\clang++.exe" --flatc "C:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe" --check
 ```
+
+生成器需要 Clang、Python 3.11+（较旧 Python 需安装 `tomli`）与 FlatBuffers `flatc`。
+`--check` 会把当前 `.fbs` 在临时目录运行 `flatc` 并对比提交的生成头；一致性校验也因此
+能发现过期的 `_schema_generated.h`。生成产物已提交，普通 MSVC 构建不需要 Clang 或
+`flatc`；编译 FlatBuffers 桥/往返测试时仍需要 FlatBuffers 头文件与 CMake package。
+可通过 `--clang`、`--flatc`、`--include-dir` 显式指定工具和头文件目录；也支持
+`HGL_CLANG`、`HGL_FLATC` 与 `HGL_ASSETGEN_INCLUDE_DIRS` 环境变量。
 
 依赖目录：默认 `inc`、`CMCoreType/inc`、`CMCore/inc`、`CMMath/inc`；第三方头（glm、
 flatbuffers）用环境变量追加：

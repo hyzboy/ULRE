@@ -32,6 +32,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -1457,6 +1458,35 @@ def run_flatc(repo_root: Path, group: GroupConfig, flatc: str) -> None:
         )
 
 
+def check_flatc(group: GroupConfig, flatc: str, schema_content: str,
+                report: list[str], generated_path: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix="assetgen-flatc-") as temp_dir:
+        temp_root = Path(temp_dir)
+        schema_path = temp_root / Path(group.fbs_schema).name
+        schema_path.write_text(schema_content, encoding="utf-8", newline="\n")
+        cmd = [flatc, "--cpp", "-o", str(temp_root), str(schema_path)]
+        proc = subprocess.run(cmd, capture_output=True, text=True, errors="ignore")
+        if proc.returncode != 0:
+            raise GenError(
+                f"flatc 失败（{group.fbs_schema}）：{proc.stderr.strip()[:900]}"
+            )
+
+        generated_name = Path(group.fbs_generated).name
+        generated_temp = temp_root / generated_name
+        if not generated_temp.is_file():
+            raise GenError(f"flatc 未生成预期文件：{generated_name}")
+        if not generated_path.is_file():
+            report.append(f"{generated_path}: 缺少 flatc 生成头")
+            return
+
+        expected = generated_path.read_text(encoding="utf-8", errors="ignore")
+        actual = generated_temp.read_text(encoding="utf-8", errors="ignore")
+        if expected.startswith("\ufeff"):
+            expected = expected[1:]
+        if actual != expected:
+            report.append(f"{generated_path}: 与当前 .fbs 的 flatc 输出不一致")
+
+
 def load_groups(config: dict) -> list[GroupConfig]:
     groups: list[GroupConfig] = []
     for name, entry in config.get("group", {}).items():
@@ -1594,11 +1624,21 @@ def main(argv: list[str]) -> int:
                        render_meta_header(group, ordered),
                        args.check, report)
         if group.fbs_schema:
+            fbs_content = render_fbs_schema(group, ordered)
             write_or_check(repo_root / group.fbs_schema,
-                           render_fbs_schema(group, ordered),
+                           fbs_content,
                            args.check, report)
-            if not args.check and not args.no_flatc:
-                run_flatc(repo_root, group, args.flatc)
+            if group.fbs_generated and not args.no_flatc:
+                if args.check:
+                    check_flatc(
+                        group,
+                        args.flatc,
+                        fbs_content,
+                        report,
+                        repo_root / group.fbs_generated,
+                    )
+                else:
+                    run_flatc(repo_root, group, args.flatc)
             if group.flat_header:
                 write_or_check(repo_root / group.flat_header,
                                render_flat_header(group, ordered),
