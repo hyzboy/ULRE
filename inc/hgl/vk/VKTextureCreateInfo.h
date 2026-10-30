@@ -33,7 +33,23 @@ public:
 
     TextureCreateInfo()
     {
-        mem_zero(*this);
+        // 逐成员清零：本结构含非平凡成员 U8String name，不能用 mem_zero(*this)
+        type                    = VkImageViewType(0);
+        extent                  = VkExtent3D{0,0,0};
+        format                  = VK_FORMAT_UNDEFINED;
+        usage                   = 0;
+        mipmap_zero_total_bytes = 0;
+        origin_mipmaps          = 0;
+        target_mipmaps          = 0;
+        aspect                  = 0;
+        tiling                  = ImageTiling(0);
+        image_layout            = VkImageLayout(0);
+        image                   = VK_NULL_HANDLE;
+        memory                  = nullptr;
+        image_view              = nullptr;
+        pixels                  = nullptr;
+        total_bytes             = 0;
+        buffer                  = nullptr;
     }
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img,const U8String &n=U8String((const u8char*)u8"Texture")):TextureCreateInfo()
