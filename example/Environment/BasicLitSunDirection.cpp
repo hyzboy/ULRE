@@ -95,10 +95,6 @@ private:
 
     MeshEntry* floor_mesh = nullptr;
 
-    TextureAsset* base_texture = nullptr;
-    TextureAsset* normal_texture = nullptr;
-    TextureAsset* roughness_texture = nullptr;
-
     std::vector<std::unique_ptr<MeshEntry>> meshes;
 
 private:
@@ -173,31 +169,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* texture_manager = GetManager<TextureManager>();
-        if (!texture_manager)
-            return false;
-
-        base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        if (!base_texture)
-            return false;
-
-        normal_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        if (!normal_texture)
-            return false;
-
-        roughness_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-        if (!roughness_texture)
-            return false;
-
-        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
-        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!mesh_recipe.AddTexture("base_color", base_texture, true)
-         || !mesh_recipe.AddTexture("normal", normal_texture, true)
-         || !mesh_recipe.AddTexture("roughness", roughness_texture, true))
-            return false;
-
-        // Bindless registration is deferred until ECS systems are ready.
-
         graph::ssbo::PBRSurfaceRow material_data{};
         material_data.base_color = Color4f(1.0f);
         material_data.metallic = 0.08f;

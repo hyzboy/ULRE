@@ -77,10 +77,6 @@ private:
     Geometry *          sphere_geometry = nullptr;
     PrimitiveAsset      sphere_asset{};
 
-    TextureAsset * base_texture      = nullptr;
-    TextureAsset * normal_texture    = nullptr;
-    TextureAsset * roughness_texture = nullptr;
-
     hgl::ecs::TransformAccessor sphere_transform;
 
     double elapsed_time = 0.0;
@@ -108,36 +104,11 @@ private:
 
     bool InitMaterial()
     {
-        auto* texture_manager = GetManager<TextureManager>();
-
-        if (!texture_manager)
-            return false;
-
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SimpleSphere.Lit");
         if (!loaded_recipe)
             return false;
         sphere_recipe = *loaded_recipe;
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
-            return false;
-
-        base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        if (!base_texture)
-            return false;
-
-        normal_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        if (!normal_texture)
-            return false;
-
-        roughness_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-        if (!roughness_texture)
-            return false;
-
-        // 纹理绑定属于**材质原型固有属性** ⇒ 写进配方，与具体实体无关。
-        // 句柄此刻只有文件名（MetaOnly），加载由 ECS 的 TextureStreamingSystem 后台完成；
-        // 就绪前 `CanRender` 会拦下所有使用该配方的图元，就绪后自动放行。
-        if (!sphere_recipe.AddTexture("base_color", base_texture, true)
-         || !sphere_recipe.AddTexture("normal", normal_texture, true)
-         || !sphere_recipe.AddTexture("roughness", roughness_texture, true))
             return false;
 
         return true;

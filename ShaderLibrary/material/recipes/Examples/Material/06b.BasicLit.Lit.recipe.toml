@@ -1,3 +1,22 @@
 schema = 1
 name = "06b.BasicLit.Lit"
 material_definition = "Lit"
+
+[[textures]]
+name = "base_color"
+asset = "res/image/Brickwall/Albedo.Tex2D"
+required = true
+auto_mipmaps = true
+
+[[textures]]
+name = "normal"
+asset = "res/image/Brickwall/Normal.Tex2D"
+required = true
+auto_mipmaps = true
+
+[[textures]]
+name = "roughness"
+asset = "res/image/Brickwall/Roughness.Tex2D"
+required = true
+auto_mipmaps = true
+

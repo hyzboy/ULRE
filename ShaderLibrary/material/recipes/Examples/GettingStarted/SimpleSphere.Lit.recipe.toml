@@ -1,3 +1,19 @@
 schema = 1
 name = "SimpleSphere.Lit"
 material_definition = "Lit"
+
+[[textures]]
+name = "base_color"
+asset = "res/image/Brickwall/Albedo.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "normal"
+asset = "res/image/Brickwall/Normal.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "roughness"
+asset = "res/image/Brickwall/Roughness.Tex2D"
+auto_mipmaps = true
+

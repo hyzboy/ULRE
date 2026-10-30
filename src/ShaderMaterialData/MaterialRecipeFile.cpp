@@ -394,20 +394,22 @@ namespace hgl::graph::mtl
                 return false;
             }
 
-            const char *const keys[] = {"name", "asset", "required", "layer"};
+            const char *const keys[] = {"name", "asset", "required", "layer", "auto_mipmaps"};
             for (const toml::value &item : textures.as_array())
             {
-                if (!ValidateKnownKeys(item, keys, 4, error))
+                if (!ValidateKnownKeys(item, keys, 5, error))
                     return false;
 
                 AnsiString name;
                 AnsiString asset;
                 bool required = true;
                 uint32_t layer = 0;
+                bool auto_mipmaps = false;
                 if (!ReadString(item, "name", name, error, true)
                  || !ReadString(item, "asset", asset, error, true)
                  || !ReadBool(item, "required", required, error)
-                 || !ReadUnsigned(item, "layer", layer, error))
+                 || !ReadUnsigned(item, "layer", layer, error)
+                 || !ReadBool(item, "auto_mipmaps", auto_mipmaps, error))
                     return false;
 
                 if (!IsValidMaterialTextureName(name.c_str()))
@@ -429,6 +431,7 @@ namespace hgl::graph::mtl
                 binding.resource_id = asset.c_str();
                 binding.required = required;
                 binding.array_layer = layer;
+                binding.auto_mipmaps = auto_mipmaps;
                 recipe.textures.emplace_back(std::move(binding));
             }
             return true;

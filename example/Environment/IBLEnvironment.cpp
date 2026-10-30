@@ -115,10 +115,6 @@ private:
 
     MeshEntry* floor_mesh = nullptr;
 
-    TextureAsset* base_texture = nullptr;
-    TextureAsset* normal_texture = nullptr;
-    TextureAsset* roughness_texture = nullptr;
-
     TextureCube* sky_cube_texture = nullptr;                ///<天空背景环境贴图
     TextureAsset* sky_cube_asset  = nullptr;                ///<天空背景的句柄(材质授权唯一入口)
 
@@ -223,18 +219,6 @@ private:
         if (!texture_manager)
             return false;
 
-        base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        if (!base_texture)
-            return false;
-
-        normal_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        if (!normal_texture)
-            return false;
-
-        roughness_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-        if (!roughness_texture)
-            return false;
-
         // ---- IBL 资源(TexConv /cube /ibl 产物 + BRDF LUT) ----
         env_irradiance = texture_manager->LoadTextureCube(
             OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube"),
@@ -257,13 +241,6 @@ private:
         if (!loaded_mesh_recipe)
             return false;
         mesh_recipe = *loaded_mesh_recipe;
-
-        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
-        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!mesh_recipe.AddTexture("base_color", base_texture, true)
-         || !mesh_recipe.AddTexture("normal", normal_texture, true)
-         || !mesh_recipe.AddTexture("roughness", roughness_texture, true))
-            return false;
 
         return true;
     }

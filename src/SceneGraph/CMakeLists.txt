@@ -173,9 +173,18 @@ SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/SceneLoader.h
-                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneToml.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/GeometrySerialize.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/GeometryMeta.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/GeometryCodec.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/geometry_schema_generated.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/PrimitiveSerialize.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/PrimitiveMeta.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/PrimitiveCodec.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/primitive_schema_generated.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneSerialize.gen.h
                             ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneMeta.gen.h
-                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneFlat.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/SceneCodec.gen.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/generated/scene_schema_generated.h
                             ${SG_INCLUDE_PATH}/asset/PrimitiveAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/PrimitiveAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/GeometryPreset.h

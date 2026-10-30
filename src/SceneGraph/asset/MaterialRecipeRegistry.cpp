@@ -86,7 +86,8 @@ namespace hgl::graph::mtl
         {
             hgl::graph::TextureAsset *asset =
                 texture_manager->CreateTextureAsset(
-                    ToOSString(binding.resource_id.c_str()));
+                    ToOSString(binding.resource_id.c_str()),
+                    binding.auto_mipmaps);
             if (!asset)
             {
                 GLogError(u8"[MaterialRecipeRegistry] 创建纹理句柄失败: recipe=%s slot=%s resource=%s",

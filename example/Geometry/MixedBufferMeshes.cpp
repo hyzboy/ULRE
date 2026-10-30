@@ -87,20 +87,13 @@ private:
 
     MeshEntry* floor_mesh = nullptr;
 
-    TextureAsset* base_texture = nullptr;
-    TextureAsset* normal_texture = nullptr;
-    TextureAsset* roughness_texture = nullptr;
-
     std::vector<std::unique_ptr<MeshEntry>> meshes;
 
 private:
 
     bool InitMaterial()
     {
-        auto* texture_manager = GetManager<TextureManager>();
-
-        if (!texture_manager
-         || !material_data_ssbo_accessor)
+        if (!material_data_ssbo_accessor)
             return false;
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("06b.BasicLit.Lit");
         if (!loaded_recipe)
@@ -108,28 +101,6 @@ private:
         mesh_recipe = *loaded_recipe;
         if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
             return false;
-
-        base_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        if (!base_texture)
-            return false;
-
-        normal_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        if (!normal_texture)
-            return false;
-
-        roughness_texture = texture_manager->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-        if (!roughness_texture)
-            return false;
-
-        // 纹理是材质原型固有属性 ⇒ 写进配方（所有实体共用一份，实体端零纹理调用）。
-        // 句柄此刻只有文件名，由 ECS 的 TextureStreamingSystem 后台加载，就绪前 CanRender 拦截。
-        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!mesh_recipe.AddTexture("base_color", base_texture, true)
-         || !mesh_recipe.AddTexture("normal", normal_texture, true)
-         || !mesh_recipe.AddTexture("roughness", roughness_texture, true))
-            return false;
-
-        // Bindless registration will be done after ECS systems are ready in InitScene().
 
         return true;
     }

@@ -52,6 +52,7 @@ namespace hgl::graph::mtl
         hgl::graph::TextureAsset *asset = nullptr;
         bool required = false;                     // true 时缺失应触发显式错误
         uint32_t array_layer = 0;                 // Texture2DArray layer; non-array must be zero.
+        bool auto_mipmaps = false;                 // 源无 mip 链时是否自动生成
     };
 
     // 一个 recipe 至多包含一个材质数据绑定。材质数据通过
@@ -771,7 +772,8 @@ namespace hgl::graph::mtl
                                            const std::string &resource_id,
                                            const bool required,
                                            const uint32_t array_layer = 0,
-                                           hgl::graph::TextureAsset *asset = nullptr)
+                                           hgl::graph::TextureAsset *asset = nullptr,
+                                           const bool auto_mipmaps = false)
     {
         if (texture_name.empty())
             return false;
@@ -784,6 +786,7 @@ namespace hgl::graph::mtl
             binding.resource_id = resource_id;
             binding.array_layer = array_layer;
             binding.required = required;
+            binding.auto_mipmaps = auto_mipmaps;
 
             if (asset)
                 binding.asset = asset;
@@ -797,6 +800,7 @@ namespace hgl::graph::mtl
         binding.array_layer = array_layer;
         binding.required = required;
         binding.asset = asset;
+        binding.auto_mipmaps = auto_mipmaps;
         recipe.textures.emplace_back(std::move(binding));
         return true;
     }
@@ -821,7 +825,8 @@ namespace hgl::graph::mtl
             std::string(reinterpret_cast<const char *>(resource_id.c_str()), resource_id.Length()),
             required,
             array_layer,
-            asset);
+            asset,
+            asset->GetAutoMipmaps());
     }
 
     /**
