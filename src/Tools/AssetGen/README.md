@@ -78,6 +78,19 @@ struct HGL_ASSET_STRUCT BuiltinSphereParams
 
 ## 5. 用法
 
+### 一键脚本（推荐，自动探测路径）
+
+```cmd
+# 重新生成并落盘（Windows CMD / 双击直接运行）
+run_assetgen.cmd
+
+# 比对校验模式（不修改文件）
+run_assetgen.cmd -Check
+```
+更多详情与操作指引参见 [`doc/assetgen-rebuild-guide.md`](../../../doc/assetgen-rebuild-guide.md)。
+
+### 手动执行命令
+
 ```powershell
 # 生成（写入）—— 改完 C++ 结构 / 注解 / asset_gen.toml 之后跑这个
 python src/Tools/AssetGen/asset_gen.py --repo-root . `
