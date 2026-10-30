@@ -55,6 +55,13 @@ namespace hgl::graph
         VkPipeline pipeline = VK_NULL_HANDLE;
     };
 
+    enum class PipelineReleaseResult:uint8
+    {
+        StillReferenced = 0,    ///< 仍有其他包装对象在使用，底层句柄未销毁
+        Destroyed,              ///< 引用计数归零，底层 VkPipeline 已被注销并安全销毁
+        NotFound                ///< 缓存中未找到（未受 PipelineResolver 管理）
+    };
+
     class PipelineResolver
     {
     public:
@@ -64,8 +71,8 @@ namespace hgl::graph
         static bool ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result);
 
         /// Release a final pipeline reference held by the resolver cache.
-        /// The caller remains responsible for destroying the VkPipeline handle.
-        static void ReleaseFinalPipeline(VulkanDevice *device, VkPipeline pipeline);
+        /// Destroys the underlying VkPipeline handle and untracks it when the reference count drops to 0.
+        static PipelineReleaseResult ReleaseFinalPipeline(VulkanDevice *device, VkPipeline pipeline);
 
         /// Remove all cached pipelines created for the given device.
         /// Must be called before the device is destroyed.

@@ -421,12 +421,12 @@ namespace hgl::graph
         return true;
     }
 
-    void PipelineResolver::ReleaseFinalPipeline(VulkanDevice *device, VkPipeline pipeline)
+    PipelineReleaseResult PipelineResolver::ReleaseFinalPipeline(VulkanDevice *device, VkPipeline pipeline)
     {
         MutexLock resolver_lock(&g_resolver_mutex);
 
         if(!device || pipeline == VK_NULL_HANDLE)
-            return;
+            return PipelineReleaseResult::NotFound;
 
         ValueArray<FinalPipelineCacheEntry> &cache = GetFinalPipelineCache();
 
@@ -437,12 +437,17 @@ namespace hgl::graph
                 if(cache[i].references > 1)
                 {
                     --cache[i].references;
-                    continue;
+                    return PipelineReleaseResult::StillReferenced;
                 }
 
+                device->UntrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)pipeline);
+                vkDestroyPipeline(*device, pipeline, nullptr);
                 cache.Delete(i);
+                return PipelineReleaseResult::Destroyed;
             }
         }
+
+        return PipelineReleaseResult::NotFound;
     }
 
     void PipelineResolver::ClearCacheForDevice(VulkanDevice *device)
@@ -458,7 +463,19 @@ namespace hgl::graph
         const int count = cache.GetCount();
         for(int i = 0; i < count; ++i)
         {
-            if(cache[i].device != device)
+            if(cache[i].device == device)
+            {
+                if(cache[i].pipeline != VK_NULL_HANDLE)
+                {
+                    GLogWarning("[PipelineResolver] Leaked VkPipeline 0x%llx (references=%u) on device %p being destroyed in ClearCacheForDevice",
+                                (unsigned long long)(uintptr_t)cache[i].pipeline,
+                                cache[i].references,
+                                (void *)device);
+                    device->UntrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)cache[i].pipeline);
+                    vkDestroyPipeline(*device, cache[i].pipeline, nullptr);
+                }
+            }
+            else
             {
                 if(write != i)
                     cache[write] = cache[i];
