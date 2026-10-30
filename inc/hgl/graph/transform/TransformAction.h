@@ -647,7 +647,7 @@ namespace hgl::math
             if(pos<0)
                 return;
 
-            transform_list.DeleteShift(pos);     //使用DeleteShift是为了保持顺序(Delete可能会拿最后一个数据移到前面，而本类需要保持顺序)
+            transform_list.DeleteShift(pos);     // Delete/DeleteShift 均保序；此处用 DeleteShift 表达"保持顺序"的意图
 
             UpdateVersion();
         }
