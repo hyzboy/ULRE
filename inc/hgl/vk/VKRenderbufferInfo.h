@@ -95,7 +95,7 @@ public:
 
     void ClearColor()
     {
-        color_format_list.Free();
+        color_format_list.ClearAndDeallocate();
     }
 
     bool SetDepth(const VkFormat format)

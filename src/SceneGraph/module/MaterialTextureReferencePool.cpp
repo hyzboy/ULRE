@@ -103,7 +103,7 @@ void MaterialTextureReferencePool::Release()
     max_configuration_count = 0;
     live_configuration_count = 0;
     next_allocation_generation = 1;
-    row_generations.Free();
+    row_generations.ClearAndDeallocate();
 }
 
 bool MaterialTextureReferencePool::IsOwnedAllocation(
