@@ -31,24 +31,30 @@ struct HGL_ASSET_STRUCT BuiltinSphereParams
 
 | 产物 | 位置 | 说明 |
 |---|---|---|
-| TOML 读写 | `inc/hgl/asset/generated/<Group>Toml.gen.h` | `Read<Struct>(toml::value, T&)` / `Write<Struct>(const T&)` |
+| 字段遍历（唯一一份） | `inc/hgl/asset/generated/<Group>Serialize.gen.h` | `EnumTraits<T>` + `StructSerializer<T>::Do(Archive&, Self&)`；与格式无关 |
+| 布局描述 + 格式门面 | `inc/hgl/asset/generated/<Group>Codec.gen.h` | FlatBuffers 的 `TableDesc`/`FieldDesc` 表 + `Read*/Write*/Encode*/Decode*` |
 | 属性元数据 | `inc/hgl/asset/generated/<Group>Meta.gen.h` | `PropertyMetaInfo[]` / `ClassMetaInfo` / `GetClassMeta(&obj)` |
 | FlatBuffers schema | `inc/hgl/asset/generated/<group>_schema.fbs` | 发行版二进制格式的契约 |
 | FlatBuffers C++ | `inc/hgl/asset/generated/<group>_schema_generated.h` | `flatc` 产物 |
-| FlatBuffers 桥 | `inc/hgl/asset/generated/<Group>Flat.gen.h` | `Encode<Struct>` / `Decode<Struct>` |
+
+「字段清单/类型/语义」只生成**一次**（`Serialize.gen.h`）；`Codec.gen.h` 里的描述表是
+**纯数据**，格式门面只是把「值树 ↔ 格式」的两步接起来。新增格式后端（如 JSON）时
+只需在 `inc/hgl/serialize/` 加一个 codec，**不需要重新生成本工具的任何产物**。
+详见 `doc/unified-serialization-2026-10-30.md`。
 
 ## 3. 读入语义
 
-**TOML —— 作者格式，增量语义**（与 `BufferToml.gen.h` 完全一致）：
+**TOML —— 作者格式，增量语义**：
 
 - **键缺失** = 保留 C++ 类内初始值（于是生成器不需要解析 C++ 初始化表达式，缺省值
   永远与声明同步）；
 - **键存在但类型 / 长度不符** = 解析失败（返回 `false`，由调用方报出文件与字段）；
 - **枚举**同时接受字符串名（`"normal_tangent"`）与整数值（`1`），写出时优先用名字。
 
-**FlatBuffers —— 发行版格式，完整快照**：schema 里出现的每个字段都会被解码写回；
-`Transient` 字段两边都不出现，`EditOnly` 字段只进入作者侧 TOML、不进入发行版
-FlatBuffers。`EditOnly` 不会改变 C++ 结构布局；它是序列化策略标记，不是条件编译。
+**FlatBuffers —— 发行版格式，完整快照**：schema 里出现的每个标量字段都会被解码写回
+（即使它等于 schema 缺省值、因而没有实际写进缓冲）；`Transient` 字段两边都不出现，
+`EditOnly` 字段只进入作者侧 TOML、不进入发行版 FlatBuffers。`EditOnly` 不会改变 C++
+结构布局；它是序列化策略标记，不是条件编译。
 两种格式的分工是刻意的：TOML 给人改（缺键即缺省），FBS 给机器读（全量快照）。
 
 ## 4. 属性标签
@@ -73,19 +79,30 @@ FlatBuffers。`EditOnly` 不会改变 C++ 结构布局；它是序列化策略�
 ## 5. 用法
 
 ```powershell
-# 生成（写入）
-python src/Tools/AssetGen/asset_gen.py --repo-root . --clang "C:\Program Files\LLVM\bin\clang++.exe" --write
+# 生成（写入）—— 改完 C++ 结构 / 注解 / asset_gen.toml 之后跑这个
+python src/Tools/AssetGen/asset_gen.py --repo-root . `
+  --clang "C:\Program Files\LLVM\bin\clang++.exe" `
+  --flatc "D:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe" `
+  --include-dir "D:\vcpkg\installed\x64-windows\include" `
+  --write
 
 # 只比对不落盘（CI / 门禁用；有差异返回 1）
-python src/Tools/AssetGen/asset_gen.py --repo-root . --clang "C:\Program Files\LLVM\bin\clang++.exe" --flatc "C:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe" --check
+python src/Tools/AssetGen/asset_gen.py --repo-root . `
+  --clang "C:\Program Files\LLVM\bin\clang++.exe" `
+  --flatc "D:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe" `
+  --include-dir "D:\vcpkg\installed\x64-windows\include" `
+  --check
 ```
 
 生成器需要 Clang、Python 3.11+（较旧 Python 需安装 `tomli`）与 FlatBuffers `flatc`。
 `--check` 会把当前 `.fbs` 在临时目录运行 `flatc` 并对比提交的生成头；一致性校验也因此
 能发现过期的 `_schema_generated.h`。生成产物已提交，普通 MSVC 构建不需要 Clang 或
-`flatc`；编译 FlatBuffers 桥/往返测试时仍需要 FlatBuffers 头文件与 CMake package。
+`flatc`；编译 Codec 头与往返测试时仍需要 FlatBuffers 头文件与 CMake package。
 可通过 `--clang`、`--flatc`、`--include-dir` 显式指定工具和头文件目录；也支持
 `HGL_CLANG`、`HGL_FLATC` 与 `HGL_ASSETGEN_INCLUDE_DIRS` 环境变量。
+
+其他开关：`--only <Group>` 只处理一个分组（调试用）；`--no-flatc` 跳过 `flatc`，
+只更新 `.fbs` 与 `Serialize/Codec/Meta` 头（不重生成 `_schema_generated.h`）。
 
 依赖目录：默认 `inc`、`CMCoreType/inc`、`CMCore/inc`、`CMMath/inc`；第三方头（glm、
 flatbuffers）用环境变量追加：
@@ -113,12 +130,12 @@ aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
 [group.Geometry]
 namespace     = "hgl::graph"                            # 结构所在命名空间
 scan          = ["inc/hgl/graph/asset/GeometryAssetSpec.h"]  # 目录或单个头文件
-toml          = "inc/hgl/asset/generated/GeometryToml.gen.h"
+serialize     = "inc/hgl/asset/generated/GeometrySerialize.gen.h"  # 唯一一份字段遍历
+codec         = "inc/hgl/asset/generated/GeometryCodec.gen.h"      # 布局描述 + 格式门面
 meta          = "inc/hgl/asset/generated/GeometryMeta.gen.h"
 fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/geometry_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/geometry_schema_generated.h"
-flat          = "inc/hgl/asset/generated/GeometryFlat.gen.h"
 
 [struct.BuiltinSphereParams]
 asset_kind = "geo"                                       # 元数据里的资产类别
