@@ -38,7 +38,7 @@ inline void debug_out(const char *front,const hgl::ValueArray<VkExtensionPropert
 
     if(extension_count<=0)return;
 
-    VkExtensionProperties *ep=extension_properties.GetData();
+    const VkExtensionProperties *ep=extension_properties.GetData();
     for(int i=0;i<extension_count;i++)
     {
         std::cout<<front<<" Extension Propertyes ["<<i<<"] : "<<ep->extensionName<<" ver: ";
