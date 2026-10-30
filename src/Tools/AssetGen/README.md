@@ -39,12 +39,17 @@ struct HGL_ASSET_STRUCT BuiltinSphereParams
 
 ## 3. 读入语义
 
-与 `BufferToml.gen.h` 完全一致：
+**TOML —— 作者格式，增量语义**（与 `BufferToml.gen.h` 完全一致）：
 
 - **键缺失** = 保留 C++ 类内初始值（于是生成器不需要解析 C++ 初始化表达式，缺省值
   永远与声明同步）；
 - **键存在但类型 / 长度不符** = 解析失败（返回 `false`，由调用方报出文件与字段）；
-- **枚举**同时接受字符串名（`"Normal"`）与整数值（`1`），写出时优先用名字。
+- **枚举**同时接受字符串名（`"normal_tangent"`）与整数值（`1`），写出时优先用名字。
+
+**FlatBuffers —— 发行版格式，完整快照**：schema 里出现的每个字段都会被解码写回；
+`Transient` 字段两边都不出现，`EditOnly` 字段只进入作者侧 TOML、不进入发行版
+FlatBuffers。`EditOnly` 不会改变 C++ 结构布局；它是序列化策略标记，不是条件编译。
+两种格式的分工是刻意的：TOML 给人改（缺键即缺省），FBS 给机器读（全量快照）。
 
 ## 4. 属性标签
 
@@ -54,7 +59,7 @@ struct HGL_ASSET_STRUCT BuiltinSphereParams
 | `EditDefaultsOnly` | 只能在原型/资产上编辑 | 检查器 |
 | `VisibleAnywhere` | 只读展示 | 检查器 |
 | `ReadOnly` | 编辑器只读 | 检查器 |
-| `EditOnly` | 仅编辑器使用，发行版可剔除 | 发行版裁剪 |
+| `EditOnly` | 编辑器 TOML 保留；发行版二进制不包含 | AssetGen |
 | `Transient` | 不参与序列化 | 生成器 |
 | `Category = "X"` | 检查器分组 | 检查器 |
 | `DisplayName = "X"` | 检查器显示名 | 检查器 |
@@ -92,11 +97,18 @@ HGL_ASSETGEN_INCLUDE_DIRS=D:\vcpkg\installed\x64-windows\include
 # 外部定义的枚举（来自第三方头，例如 Vulkan）：按整数序列化，不生成名字表
 integer_enums = ["VkFormat"]
 
+# 枚举的 TOML 拼写别名（按枚举值声明顺序）。解析时别名与 C++ 名都接受
+# （大小写不敏感），写出时优先用别名 —— 既不改已有 TOML 拼写，也不用改 C++ 命名。
+[[enum]]
+name = "NTBType"
+aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
+
 [group.Geometry]
 namespace     = "hgl::graph"                            # 结构所在命名空间
-scan          = ["inc/hgl/graph/asset"]                 # 扫描哪些目录找注解
+scan          = ["inc/hgl/graph/asset/GeometryAssetSpec.h"]  # 目录或单个头文件
 toml          = "inc/hgl/asset/generated/GeometryToml.gen.h"
 meta          = "inc/hgl/asset/generated/GeometryMeta.gen.h"
+fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/geometry_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/geometry_schema_generated.h"
 flat          = "inc/hgl/asset/generated/GeometryFlat.gen.h"
@@ -105,8 +117,11 @@ flat          = "inc/hgl/asset/generated/GeometryFlat.gen.h"
 asset_kind = "geo"                                       # 元数据里的资产类别
 ```
 
-**新增资产结构**：加注解 → 在 `asset_gen.toml` 的某个 `[group.*]` 的 `scan` 目录里 →
-跑工具。同一分组内重名会直接报错（生成函数名会冲突），不做静默改名。
+`scan` 的每一项可以是**目录**（递归扫描）也可以是**单个头文件**。按文件切分是为了让
+同一个目录里的不同资产规约落到不同分组，生成文件不至于混在一起。
+
+**新增资产结构**：加注解 → 把所在头文件加进某个 `[group.*]` 的 `scan` → 跑工具。
+同一分组内重名会直接报错（生成函数名会冲突），不做静默改名。
 
 ## 7. 支持的类型
 

@@ -1,0 +1,30 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// @ulre-codegen begin
+//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。
+//   用途：发行版资产二进制格式。语义是「完整快照」，不是 TOML 那样的增量补丁：
+//         TOML 缺键 = 保留 C++ 类内初始值；FlatBuffers 解码一律覆盖全部字段。
+//   资产结构一律 table（可能含 string / 动态数组）；向量与定长数组用本文件
+//   生成的包装 struct（FlatBuffers 的 table 不允许定长数组字段）。
+// @ulre-codegen end
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace hgl.asset.schema;
+
+// inc/hgl/graph/asset/PrimitiveAssetSpec.h -> PrimitiveVariantSpec
+table PrimitiveVariantSpec
+{
+  recipe:string;
+  purpose:int;
+  lod:ushort;
+}
+
+// inc/hgl/graph/asset/PrimitiveAssetSpec.h -> PrimitiveAssetSpec
+table PrimitiveAssetSpec
+{
+  name:string;
+  geometry:string;
+  recipe:string;
+  primitive_type:int;
+  extra_variants:[PrimitiveVariantSpec];
+}
+

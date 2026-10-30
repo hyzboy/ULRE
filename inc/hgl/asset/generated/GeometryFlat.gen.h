@@ -9,7 +9,6 @@
 #pragma once
 
 #include <flatbuffers/flatbuffers.h>
-#include <hgl/type/ValueArray.h>
 #include <hgl/utf.h>
 #include <hgl/asset/generated/geometry_schema_generated.h>
 #include <hgl/graph/asset/GeometryAssetSpec.h>

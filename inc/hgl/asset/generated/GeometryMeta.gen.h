@@ -13,7 +13,7 @@ namespace hgl::asset::generated
 {
     inline const PropertyMetaInfo Meta_BuiltinSphereParams[] =
     {
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinSphereParams =
@@ -25,7 +25,7 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinDomeParams[] =
     {
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinDomeParams =
@@ -37,11 +37,11 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinCubeParams[] =
     {
-        { "segments_x", "segments_x", "segments_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "segments_y", "segments_y", "segments_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "segments_z", "segments_z", "segments_z", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "ntb", "ntb", "ntb", "Default", "", "NTBType", "hgl::graph::NTBType", nullptr, PropertyKind::Enum, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "tex_coord", "tex_coord", "tex_coord", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "segments_x", "segments_x", "segments_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "segments_y", "segments_y", "segments_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "segments_z", "segments_z", "segments_z", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "ntb", "ntb", "ntb", "Default", "", "NTBType", "hgl::graph::NTBType", nullptr, PropertyKind::Enum, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "tex_coord", "tex_coord", "tex_coord", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinCubeParams =
@@ -53,13 +53,13 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinPlaneGridParams[] =
     {
-        { "grid_x", "grid_x", "grid_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "grid_y", "grid_y", "grid_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "sub_x", "sub_x", "sub_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "sub_y", "sub_y", "sub_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "lum", "lum", "lum", "Default", "", "uint8_t", nullptr, nullptr, PropertyKind::UInt8, PF_Serialized, 16u, 1u, 0u, 0.0, 0.0, 0.0 },
-        { "sub_lum", "sub_lum", "sub_lum", "Default", "", "uint8_t", nullptr, nullptr, PropertyKind::UInt8, PF_Serialized, 17u, 1u, 0u, 0.0, 0.0, 0.0 },
-        { "is_3d", "is_3d", "is_3d", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized, 18u, 2u, 0u, 0.0, 0.0, 0.0 },
+        { "grid_x", "grid_x", "grid_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "grid_y", "grid_y", "grid_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "sub_x", "sub_x", "sub_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "sub_y", "sub_y", "sub_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "lum", "lum", "lum", "Default", "", "uint8_t", nullptr, nullptr, PropertyKind::UInt8, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 16u, 1u, 0u, 0.0, 0.0, 0.0 },
+        { "sub_lum", "sub_lum", "sub_lum", "Default", "", "uint8_t", nullptr, nullptr, PropertyKind::UInt8, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 17u, 1u, 0u, 0.0, 0.0, 0.0 },
+        { "is_3d", "is_3d", "is_3d", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 18u, 2u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinPlaneGridParams =
@@ -71,9 +71,9 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinCylinderParams[] =
     {
-        { "half_extend", "half_extend", "half_extend", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "half_extend", "half_extend", "half_extend", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinCylinderParams =
@@ -85,12 +85,12 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinHollowCylinderParams[] =
     {
-        { "half_extend", "half_extend", "half_extend", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "inner_radius", "inner_radius", "inner_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "outer_radius", "outer_radius", "outer_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "cap_radial_tiles", "cap_radial_tiles", "cap_radial_tiles", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "cap_angular_tiles", "cap_angular_tiles", "cap_angular_tiles", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 20u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "half_extend", "half_extend", "half_extend", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "inner_radius", "inner_radius", "inner_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "outer_radius", "outer_radius", "outer_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "cap_radial_tiles", "cap_radial_tiles", "cap_radial_tiles", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "cap_angular_tiles", "cap_angular_tiles", "cap_angular_tiles", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 20u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinHollowCylinderParams =
@@ -102,12 +102,12 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinTorusParams[] =
     {
-        { "inner_radius", "inner_radius", "inner_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "outer_radius", "outer_radius", "outer_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "uv_scale_x", "uv_scale_x", "uv_scale_x", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "uv_scale_y", "uv_scale_y", "uv_scale_y", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 20u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "inner_radius", "inner_radius", "inner_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "outer_radius", "outer_radius", "outer_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "uv_scale_x", "uv_scale_x", "uv_scale_x", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "uv_scale_y", "uv_scale_y", "uv_scale_y", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 20u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinTorusParams =
@@ -119,10 +119,10 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinConeParams[] =
     {
-        { "half_extend", "half_extend", "half_extend", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "half_extend", "half_extend", "half_extend", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinConeParams =
@@ -134,10 +134,10 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinCapsuleParams[] =
     {
-        { "half_height", "half_height", "half_height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "half_height", "half_height", "half_height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinCapsuleParams =
@@ -149,14 +149,14 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinRectangleParams[] =
     {
-        { "left", "left", "left", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "top", "top", "top", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "width", "width", "width", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "height", "height", "height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "segments_x", "segments_x", "segments_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "segments_y", "segments_y", "segments_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 20u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "ntb", "ntb", "ntb", "Default", "", "NTBType", "hgl::graph::NTBType", nullptr, PropertyKind::Enum, PF_Serialized, 24u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "tex_coord", "tex_coord", "tex_coord", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized, 28u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "left", "left", "left", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "top", "top", "top", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "width", "width", "width", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "height", "height", "height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "segments_x", "segments_x", "segments_x", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "segments_y", "segments_y", "segments_y", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 20u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "ntb", "ntb", "ntb", "Default", "", "NTBType", "hgl::graph::NTBType", nullptr, PropertyKind::Enum, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 24u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "tex_coord", "tex_coord", "tex_coord", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 28u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinRectangleParams =
@@ -168,7 +168,7 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinBoundingBoxParams[] =
     {
-        { "ntb", "ntb", "ntb", "Default", "", "NTBType", "hgl::graph::NTBType", nullptr, PropertyKind::Enum, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "ntb", "ntb", "ntb", "Default", "", "NTBType", "hgl::graph::NTBType", nullptr, PropertyKind::Enum, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinBoundingBoxParams =
@@ -180,10 +180,10 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinHexSphereParams[] =
     {
-        { "subdivisions", "subdivisions", "subdivisions", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "uv_scale_x", "uv_scale_x", "uv_scale_x", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "uv_scale_y", "uv_scale_y", "uv_scale_y", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "subdivisions", "subdivisions", "subdivisions", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "radius", "radius", "radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "uv_scale_x", "uv_scale_x", "uv_scale_x", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "uv_scale_y", "uv_scale_y", "uv_scale_y", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinHexSphereParams =
@@ -195,11 +195,11 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinTaperedCapsuleParams[] =
     {
-        { "half_height", "half_height", "half_height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "bottom_radius", "bottom_radius", "bottom_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "top_radius", "top_radius", "top_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "half_height", "half_height", "half_height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "bottom_radius", "bottom_radius", "bottom_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "top_radius", "top_radius", "top_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "stacks", "stacks", "stacks", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinTaperedCapsuleParams =
@@ -211,11 +211,11 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_BuiltinFrustumParams[] =
     {
-        { "bottom_radius", "bottom_radius", "bottom_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "top_radius", "top_radius", "top_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "height", "height", "height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
-        { "generate_caps", "generate_caps", "generate_caps", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "bottom_radius", "bottom_radius", "bottom_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "top_radius", "top_radius", "top_radius", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "height", "height", "height", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "slices", "slices", "slices", "Default", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, 4u, 0u, 0.0, 0.0, 0.0 },
+        { "generate_caps", "generate_caps", "generate_caps", "Default", "", "bool", nullptr, nullptr, PropertyKind::Bool, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 16u, 4u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_BuiltinFrustumParams =

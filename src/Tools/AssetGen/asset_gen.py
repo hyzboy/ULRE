@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -111,6 +112,8 @@ PF_BITS = {
     "PF_HasStep": 1 << 8,
     "PF_HasAssetRef": 1 << 9,
     "PF_Serialized": 1 << 10,
+    "PF_SerializedToml": 1 << 11,
+    "PF_SerializedFlatBuffers": 1 << 12,
 }
 
 
@@ -190,6 +193,14 @@ class PropertyInfo:
     def serialized(self) -> bool:
         return (self.flags & PF_BITS["PF_Transient"]) == 0
 
+    @property
+    def serialized_toml(self) -> bool:
+        return self.serialized
+
+    @property
+    def serialized_flatbuffers(self) -> bool:
+        return self.serialized and (self.flags & PF_BITS["PF_EditOnly"]) == 0
+
 
 @dataclass
 class AssetStruct:
@@ -214,6 +225,14 @@ class EnumInfo:
     name: str
     fq: str
     values: list[tuple[str, int]] = field(default_factory=list)
+    # 与 `values` 位置对应的 TOML 拼写别名（可选）
+    aliases: list[str] = field(default_factory=list)
+
+    def toml_names(self) -> list[str]:
+        return [
+            self.aliases[i] if i < len(self.aliases) else self.values[i][0]
+            for i in range(len(self.values))
+        ]
 
 
 @dataclass
@@ -390,28 +409,32 @@ def line_tail_doc(line: str) -> str:
 
 
 def find_property_annotation(lines: list[str], line_no: int) -> tuple[list[str], str] | None:
-    """在字段所在行（及后几行）里找 `HGL_PROPERTY(...)`，返回 (标签列表, 该行尾注释)。"""
+    """取本字段声明里的 `HGL_PROPERTY(...)`。
+
+    `HGL_PROPERTY(...)` 可以写在字段同一行的开头，也可以独占一行写在字段上方，
+    因此从字段行开始**向上**收集，遇到 `;` / `{` / `}` 结尾的行（上一条声明或块的
+    边界）就停 —— 这样既支持多行写法，又不会把上一条字段的属性标签抢过来。
+    """
     if line_no <= 0 or line_no > len(lines):
         return None
-    for probe in range(line_no - 1, min(line_no + 7, len(lines))):
-        text = lines[probe]
-        idx = text.find("HGL_PROPERTY")
-        if idx < 0:
-            continue
-        open_at = text.find("(", idx)
-        if open_at < 0:
-            continue
-        buffer = text
-        consumed = probe
-        while True:
-            body = balanced_parens(buffer, open_at)
+
+    collected: list[str] = []
+    for probe in range(line_no - 1, max(-1, line_no - 10), -1):
+        line = lines[probe]
+        collected.insert(0, line)
+        joined = "\n".join(collected)
+
+        if "HGL_PROPERTY" in joined:
+            at = joined.find("HGL_PROPERTY")
+            open_at = joined.find("(", at)
+            body = balanced_parens(joined, open_at) if open_at >= 0 else None
             if body is not None:
-                break
-            consumed += 1
-            if consumed >= len(lines) or consumed > probe + 8:
-                return None
-            buffer = buffer + "\n" + lines[consumed]
-        return split_top_level(body), line_tail_doc(lines[line_no - 1])
+                return split_top_level(body), line_tail_doc(lines[line_no - 1])
+
+        # 字段自己那行天然以 `;` 结束（或带 `///<` 尾注释），不能当作边界；
+        # 边界只对**字段行之上**的行有意义。
+        if probe < line_no - 1 and line.rstrip().endswith((";", "{", "}")):
+            break
     return None
 
 
@@ -464,7 +487,9 @@ def apply_property_tags(prop: PropertyInfo, tags: list[str], tail_doc: str) -> N
                 prop.asset_ref = value
                 prop.flags |= PF_BITS["PF_HasAssetRef"]
             elif key == "Step":
-                prop.step = float(value)
+                prop.step = _parse_finite_number(value, prop.name, key)
+                if prop.step <= 0.0:
+                    raise GenError(f"{prop.name}: Step 必须大于 0")
                 prop.flags |= PF_BITS["PF_HasStep"]
             else:
                 raise GenError(f"{prop.name}: 未知的属性标签 {key}")
@@ -476,8 +501,10 @@ def apply_property_tags(prop: PropertyInfo, tags: list[str], tail_doc: str) -> N
             if fname in ("Range", "Clamp"):
                 if len(args) != 2:
                     raise GenError(f"{prop.name}: {fname} 需要两个参数")
-                prop.range_min = float(args[0])
-                prop.range_max = float(args[1])
+                prop.range_min = _parse_finite_number(args[0], prop.name, fname)
+                prop.range_max = _parse_finite_number(args[1], prop.name, fname)
+                if prop.range_min > prop.range_max:
+                    raise GenError(f"{prop.name}: {fname} 下限不能大于上限")
                 prop.flags |= PF_BITS["PF_HasRange" if fname == "Range" else "PF_HasClamp"]
             else:
                 raise GenError(f"{prop.name}: 未知的属性标签 {fname}")
@@ -486,6 +513,16 @@ def apply_property_tags(prop: PropertyInfo, tags: list[str], tail_doc: str) -> N
             prop.flags |= PF_BITS[FLAG_TAGS[tag]]
             continue
         raise GenError(f"{prop.name}: 未知的属性标签 {tag}")
+
+
+def _parse_finite_number(text: str, prop_name: str, tag_name: str) -> float:
+    try:
+        value = float(text)
+    except ValueError as error:
+        raise GenError(f"{prop_name}: {tag_name} 参数不是有效数字：{text}") from error
+    if not math.isfinite(value):
+        raise GenError(f"{prop_name}: {tag_name} 参数必须是有限数字")
+    return value
 
 
 # ── 字段分类 ────────────────────────────────────────────────────────────────
@@ -499,11 +536,14 @@ class TypeRegistry:
         raw = strip_scopes(cpp_type)
         m = re.match(r"^(?P<base>.*?)\s*\[\s*(?P<dim>\w+)\s*\]$", raw)
         if m:
+            dim = m.group("dim")
+            if not dim.isdigit() or int(dim) <= 0:
+                raise GenError(f"定长数组长度必须是正整数常量：{cpp_type}")
             elem = self.classify(m.group("base"))
             if elem.category not in ("scalar", "string", "enum", "struct"):
                 raise GenError(f"定长数组的元素类型不受支持：{cpp_type}")
             return TypeDesc(category="array", cpp=base_type_name(cpp_type),
-                            fq=m.group("base").strip(), elem=elem, dim=m.group("dim"),
+                            fq=m.group("base").strip(), elem=elem, dim=dim,
                             components=elem.components)
 
         base = base_type_name(raw)
@@ -764,17 +804,25 @@ def render_toml_header(structs: list[AssetStruct], enums: list[EnumInfo]) -> str
     for info in enums:
         out.append(f"    inline const char *AssetEnumName_{info.name}(const {info.fq} v)\n    {{\n")
         out.append("        switch (v)\n        {\n")
-        for name, _value in info.values:
-            out.append(f'        case {info.fq}::{name}: return "{name}";\n')
+        for index, (name, _value) in enumerate(info.values):
+            toml_name = info.toml_names()[index]
+            out.append(f'        case {info.fq}::{name}: return "{toml_name}";\n')
         out.append("        }\n        return nullptr;\n    }\n\n")
 
         out.append(f"    inline bool AssetEnumParse_{info.name}(const char *s, {info.fq} &out)\n    {{\n")
         out.append("        if (!s) return false;\n")
-        for name, _value in info.values:
+        for index, (name, _value) in enumerate(info.values):
+            toml_name = info.toml_names()[index]
             out.append(
-                f'        if (hgl::strcmp(s, "{name}") == 0) '
+                f'        if (hgl::stricmp(s, "{toml_name}") == 0) '
                 f"{{ out = {info.fq}::{name}; return true; }}\n"
             )
+            # 别名与 C++ 名不同时，两种拼写都接受（老 TOML 与新写的都能读）。
+            if toml_name != name:
+                out.append(
+                    f'        if (hgl::stricmp(s, "{name}") == 0) '
+                    f"{{ out = {info.fq}::{name}; return true; }}\n"
+                )
         out.append("        return false;\n    }\n\n")
 
     for info in structs:
@@ -787,7 +835,7 @@ def render_toml_header(structs: list[AssetStruct], enums: list[EnumInfo]) -> str
         out.append(f"    inline bool Read{info.gen_name}(const toml::value &table, {info.fq} &out)\n    {{\n")
         out.append("        if (!table.is_table()) return false;\n")
         for prop in info.fields:
-            if not prop.serialized:
+            if not prop.serialized_toml:
                 continue
             out.append(f'        if (const toml::value *v = detail::Find(table, "{prop.toml_key}"))\n')
             out.append("        {\n")
@@ -800,7 +848,7 @@ def render_toml_header(structs: list[AssetStruct], enums: list[EnumInfo]) -> str
         out.append(f"    inline toml::value Write{info.gen_name}(const {info.fq} &in)\n    {{\n")
         out.append("        toml::table t;\n")
         for prop in info.fields:
-            if not prop.serialized:
+            if not prop.serialized_toml:
                 continue
             src = f"in.{prop.name}"
             t = prop.type
@@ -892,7 +940,7 @@ def collect_fbs_wrappers(structs: list[AssetStruct]) -> tuple[dict, dict]:
 
     for info in structs:
         for prop in info.fields:
-            if prop.serialized:
+            if prop.serialized_flatbuffers:
                 walk(prop.type, f"{info.name}.{prop.name}")
     return vecs, arrays
 
@@ -927,7 +975,7 @@ def render_fbs_schema(group: GroupConfig, structs: list[AssetStruct]) -> str:
         out.append(f"// {info.header} -> {info.short_name}\n")
         out.append(f"table {info.gen_name}\n{{\n")
         for prop in info.fields:
-            if not prop.serialized:
+            if not prop.serialized_flatbuffers:
                 continue
             t = prop.type
             if t.category in ("scalar", "enum"):
@@ -1006,7 +1054,6 @@ def render_flat_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
         "// ─────────────────────────────────────────────────────────────────────────────\n"
         "#pragma once\n\n"
         "#include <flatbuffers/flatbuffers.h>\n"
-        "#include <hgl/type/ValueArray.h>\n"
         "#include <hgl/utf.h>\n"
         f"#include <{schema_include}>\n"
     )
@@ -1034,7 +1081,7 @@ def render_flat_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
         preamble: list[str] = []
 
         for prop in info.fields:
-            if not prop.serialized:
+            if not prop.serialized_flatbuffers:
                 continue
             t = prop.type
             key = prop.toml_key
@@ -1046,8 +1093,9 @@ def render_flat_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
                 var = f"_{info.gen_name}_{key}_str"
                 lines, expr = _string_encode(t, src, var)
                 preamble += lines
-                pre.append(expr)
-                adds.append(f"        b.add_{key}({expr});")
+                offset_var = f"{var}_offset"
+                preamble.append(f"        const auto {offset_var} = {expr};")
+                adds.append(f"        b.add_{key}({offset_var});")
             elif t.category == "struct":
                 var = f"_{info.gen_name}_{key}_tab"
                 preamble.append(f"        const auto {var} = Encode{t.gen}(fbb, {src});")
@@ -1080,20 +1128,14 @@ def render_flat_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
                 pre.pop()
                 adds.append(f"        b.add_{key}({var});")
             elif t.category == "ptr_array":
-                var = f"_{info.gen_name}_{key}_offs"
-                elem_fb = _fb_type(group, t.elem.gen)
+                var = f"_{info.gen_name}_{key}_vec"
                 preamble.append(
-                    f"        hgl::ValueArray<flatbuffers::Offset<{elem_fb}>> {var};"
+                    f"        const auto {var} = fbb.CreateVector<flatbuffers::Offset<"
+                    f"{_fb_type(group, t.elem.gen)}>>((size_t){src}.GetCount(), "
+                    f"[&](size_t i, const {info.fq} *source) "
+                    f"{{ return Encode{t.elem.gen}(fbb, *source->{prop.name}[(int)i]); }}, &in);"
                 )
-                preamble.append(f"        {var}.Resize({src}.GetCount());")
-                preamble.append(f"        for (int i = 0; i < {src}.GetCount(); ++i)")
-                preamble.append(
-                    f"            {var}.GetData()[i] = Encode{t.elem.gen}(fbb, *{src}[i]);"
-                )
-                adds.append(
-                    f"        b.add_{key}(fbb.CreateVector({var}.GetData(), "
-                    f"(size_t){var}.GetCount()));"
-                )
+                adds.append(f"        b.add_{key}({var});")
 
         out.append(
             f"    inline flatbuffers::Offset<{_fb_type(group, info.gen_name)}>\n"
@@ -1115,7 +1157,7 @@ def render_flat_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
             f"        if (!t) return;\n"
         )
         for prop in info.fields:
-            if not prop.serialized:
+            if not prop.serialized_flatbuffers:
                 continue
             t = prop.type
             key = prop.toml_key
@@ -1272,6 +1314,10 @@ def finalize_struct(info: AssetStruct, raw: list[RawField], registry: TypeRegist
             prop.enum_name = prop.type.enum
         if prop.serialized:
             prop.flags |= PF_BITS["PF_Serialized"]
+        if prop.serialized_toml:
+            prop.flags |= PF_BITS["PF_SerializedToml"]
+        if prop.serialized_flatbuffers:
+            prop.flags |= PF_BITS["PF_SerializedFlatBuffers"]
         info.fields.append(prop)
 
 
@@ -1335,13 +1381,21 @@ def collect_enums(clang: Clang, repo_root: Path, header: str, names: set[str],
 
 
 def discover(repo_root: Path, scan_dirs: list[str]) -> list[AssetStruct]:
-    """在配置的目录里找带 `HGL_ASSET_STRUCT` / `HGL_ASSET_CLASS` 注解的结构。"""
+    """找带 `HGL_ASSET_STRUCT` / `HGL_ASSET_CLASS` 注解的结构。
+
+    `scan_dirs` 的每一项可以是目录（递归扫描）也可以是单个头文件 —— 后者让
+    「同一个目录里不同资产的规约」可以分到不同分组，避免生成文件混在一起。
+    """
     found: list[AssetStruct] = []
     for scan_dir in scan_dirs:
-        directory = repo_root / scan_dir
-        if not directory.is_dir():
+        target = repo_root / scan_dir
+        if target.is_file():
+            paths = [target]
+        elif target.is_dir():
+            paths = sorted(target.rglob("*.h"))
+        else:
             continue
-        for path in sorted(directory.rglob("*.h")):
+        for path in paths:
             text = path.read_text(encoding="utf-8", errors="ignore")
             for match in ANNOT_RE.finditer(text):
                 name = match.group("name")
@@ -1456,6 +1510,10 @@ def main(argv: list[str]) -> int:
 
     registry = TypeRegistry()
     registry.integer_enums = set(config.get("integer_enums", []))
+    enum_aliases: dict[str, list[str]] = {
+        entry["name"]: list(entry.get("aliases", []))
+        for entry in config.get("enum", [])
+    }
 
     report: list[str] = []
     total_structs = 0
@@ -1508,6 +1566,14 @@ def main(argv: list[str]) -> int:
                 found_enums[name] = hit
             else:
                 unresolved[name] = headers
+        for name, info in found_enums.items():
+            aliases = enum_aliases.get(name, [])
+            if len(aliases) > len(info.values):
+                raise GenError(
+                    f"asset_gen.toml 给枚举 {name} 的 aliases 比实际枚举值还多"
+                    f"（{len(aliases)} > {len(info.values)}）"
+                )
+            info.aliases = aliases
         registry.enums.update(found_enums)
 
         if unresolved:

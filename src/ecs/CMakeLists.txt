@@ -132,6 +132,20 @@ if(MSVC)
     set_target_properties(TestGeometryPreset PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# Asset reflection codegen: TOML round-trip, metadata table, FlatBuffers round-trip.
+# 纯数据往返，不需要设备/窗口，因此在 CI 里也能跑，用来挡住
+# 「改了 C++ 结构但忘记重新生成」与「生成器改坏了语义」。
+find_package(flatbuffers CONFIG QUIET)
+if(flatbuffers_FOUND)
+    add_executable(TestAssetReflection tests/TestAssetReflection.cpp)
+    target_link_libraries(TestAssetReflection PRIVATE ULRE::Engine flatbuffers::flatbuffers)
+    if(MSVC)
+        set_target_properties(TestAssetReflection PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+    endif()
+else()
+    message(STATUS "flatbuffers 未找到：跳过 TestAssetReflection（含 FlatBuffers 往返用例）")
+endif()
+
 add_executable(TestComponentRows tests/TestComponentRows.cpp)
 target_link_libraries(TestComponentRows PRIVATE ULRE::Engine)
 if(MSVC)
@@ -256,6 +270,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestGeometryPreset
         PROPERTIES LABELS "geometry;preset;asset")
+
+    add_test(
+        NAME TestAssetReflection
+        COMMAND TestAssetReflection
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestAssetReflection
+        PROPERTIES LABELS "asset;reflection;codegen")
 
     add_test(
         NAME TestBoundingBoxStorage

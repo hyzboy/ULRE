@@ -2,17 +2,42 @@
 #
 # 字段清单、类型、顺序、偏移、类内缺省值全部由 Clang AST 与记录布局推导；
 # 这里唯一的人工信息是「输出到哪个文件、属于哪个命名空间」。
+#
+# `scan` 的每一项可以是**目录**（递归扫描）也可以是**单个头文件**。按文件切分
+# 是为了让同一个目录里的不同资产规约落到不同分组，生成文件不至于混在一起。
 
 # 外部定义的枚举（来自第三方头，例如 Vulkan）。按整数序列化，不生成名字表。
 integer_enums = ["VkFormat"]
 
-# ── 分组：一个分组产出一套文件 ──────────────────────────────────────────────
+# ── 枚举的 TOML 拼写别名（可选）─────────────────────────────────────────────
+# 按**枚举值声明顺序**给出别名：解析时别名与 C++ 名都接受（大小写不敏感），
+# 写出时优先用别名。这样既不改动已有的 TOML 拼写，也不用修改 C++ 命名。
+[[enum]]
+name = "PrimitiveVariantPurpose"
+aliases = ["surface", "depth_only", "shadow_caster", "picking", "debug"]
+
+[[enum]]
+name = "NTBType"
+aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
+
+# ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"
-scan          = ["inc/hgl/graph/asset"]
+scan          = ["inc/hgl/graph/asset/GeometryAssetSpec.h"]
 toml          = "inc/hgl/asset/generated/GeometryToml.gen.h"
 meta          = "inc/hgl/asset/generated/GeometryMeta.gen.h"
 fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/geometry_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/geometry_schema_generated.h"
 flat          = "inc/hgl/asset/generated/GeometryFlat.gen.h"
+
+# ── 图元资产：几何 + 材质配方的绑定层 ──────────────────────────────────────
+[group.Primitive]
+namespace     = "hgl::graph"
+scan          = ["inc/hgl/graph/asset/PrimitiveAssetSpec.h"]
+toml          = "inc/hgl/asset/generated/PrimitiveToml.gen.h"
+meta          = "inc/hgl/asset/generated/PrimitiveMeta.gen.h"
+fbs_namespace = "hgl.asset.schema"
+fbs           = "inc/hgl/asset/generated/primitive_schema.fbs"
+fbs_generated = "inc/hgl/asset/generated/primitive_schema_generated.h"
+flat          = "inc/hgl/asset/generated/PrimitiveFlat.gen.h"

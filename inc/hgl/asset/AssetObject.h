@@ -54,8 +54,8 @@ namespace hgl::asset
         PF_VisibleAnywhere  = 1u << 2,   ///< 只读展示
         PF_ReadOnly         = 1u << 3,   ///< 编辑器只读
 
-        /// 仅编辑器使用（辅助线、调试缓存……）。发行版可不编译该字段，因此
-        /// **不进 FlatBuffers 的对外契约**，只在 TOML 的编辑器侧往返。
+        /// 仅编辑器使用（辅助线、调试选项……）。字段仍存在于 C++ 结构中；
+        /// 它进入作者侧 TOML，但不进入 FlatBuffers 发行版契约。
         PF_EditOnly         = 1u << 4,
 
         /// 不参与序列化（运行时句柄、派生缓存）。TOML 与 FlatBuffers 都会跳过。
@@ -66,7 +66,9 @@ namespace hgl::asset
         PF_HasStep          = 1u << 8,   ///< `step` 有效（拖动步长）
         PF_HasAssetRef      = 1u << 9,   ///< `asset_ref` 有效（该字符串是资产引用）
 
-        PF_Serialized       = 1u << 10,  ///< 参与 TOML / FlatBuffers 往返（`Transient` 的补集）
+        PF_Serialized       = 1u << 10,  ///< 至少参与一种持久化格式（`Transient` 的补集）
+        PF_SerializedToml   = 1u << 11,  ///< 参与作者侧 TOML 往返
+        PF_SerializedFlatBuffers = 1u << 12, ///< 进入发行版 FlatBuffers 快照
     };
 
     /// 单个属性的描述。
@@ -142,10 +144,20 @@ namespace hgl::asset
         }
     };
 
-    /// 属性是否参与序列化。
+    /// 属性是否参与至少一种持久化格式；按具体格式判断时使用下方专用查询。
     inline bool IsSerialized(const PropertyMetaInfo &prop)
     {
         return (prop.flags & PF_Serialized) != 0;
+    }
+
+    inline bool IsSerializedToml(const PropertyMetaInfo &prop)
+    {
+        return (prop.flags & PF_SerializedToml) != 0;
+    }
+
+    inline bool IsSerializedFlatBuffers(const PropertyMetaInfo &prop)
+    {
+        return (prop.flags & PF_SerializedFlatBuffers) != 0;
     }
 
     /// 属性是否可编辑（检查器据此决定用可写控件还是只读控件）。

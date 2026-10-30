@@ -16,10 +16,10 @@ namespace hgl::asset::generated
     {
         switch (v)
         {
-        case hgl::graph::NTBType::None: return "None";
-        case hgl::graph::NTBType::Normal: return "Normal";
-        case hgl::graph::NTBType::NormalTangent: return "NormalTangent";
-        case hgl::graph::NTBType::NormalTangentBitangent: return "NormalTangentBitangent";
+        case hgl::graph::NTBType::None: return "none";
+        case hgl::graph::NTBType::Normal: return "normal";
+        case hgl::graph::NTBType::NormalTangent: return "normal_tangent";
+        case hgl::graph::NTBType::NormalTangentBitangent: return "normal_tangent_bitangent";
         }
         return nullptr;
     }
@@ -27,10 +27,14 @@ namespace hgl::asset::generated
     inline bool AssetEnumParse_NTBType(const char *s, hgl::graph::NTBType &out)
     {
         if (!s) return false;
-        if (hgl::strcmp(s, "None") == 0) { out = hgl::graph::NTBType::None; return true; }
-        if (hgl::strcmp(s, "Normal") == 0) { out = hgl::graph::NTBType::Normal; return true; }
-        if (hgl::strcmp(s, "NormalTangent") == 0) { out = hgl::graph::NTBType::NormalTangent; return true; }
-        if (hgl::strcmp(s, "NormalTangentBitangent") == 0) { out = hgl::graph::NTBType::NormalTangentBitangent; return true; }
+        if (hgl::stricmp(s, "none") == 0) { out = hgl::graph::NTBType::None; return true; }
+        if (hgl::stricmp(s, "None") == 0) { out = hgl::graph::NTBType::None; return true; }
+        if (hgl::stricmp(s, "normal") == 0) { out = hgl::graph::NTBType::Normal; return true; }
+        if (hgl::stricmp(s, "Normal") == 0) { out = hgl::graph::NTBType::Normal; return true; }
+        if (hgl::stricmp(s, "normal_tangent") == 0) { out = hgl::graph::NTBType::NormalTangent; return true; }
+        if (hgl::stricmp(s, "NormalTangent") == 0) { out = hgl::graph::NTBType::NormalTangent; return true; }
+        if (hgl::stricmp(s, "normal_tangent_bitangent") == 0) { out = hgl::graph::NTBType::NormalTangentBitangent; return true; }
+        if (hgl::stricmp(s, "NormalTangentBitangent") == 0) { out = hgl::graph::NTBType::NormalTangentBitangent; return true; }
         return false;
     }
 

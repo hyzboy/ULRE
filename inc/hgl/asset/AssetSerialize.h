@@ -22,6 +22,7 @@
 #include <hgl/utf.h>
 
 #include <cstdint>
+#include <float.h>
 
 namespace hgl::asset::detail
 {
@@ -65,6 +66,8 @@ namespace hgl::asset::detail
         double tmp = 0.0;
         if (!AsFloat(v, tmp))
             return false;
+        if (tmp > FLT_MAX || tmp < -FLT_MAX)
+            return false;
         out = static_cast<float>(tmp);
         return true;
     }
@@ -77,6 +80,12 @@ namespace hgl::asset::detail
         const auto raw = v.as_integer();
         if (raw < 0)
             return false;
+        if (sizeof(T) < sizeof(uint64_t))
+        {
+            const uint64_t max_value = (uint64_t(1) << (sizeof(T) * 8)) - 1;
+            if (static_cast<uint64_t>(raw) > max_value)
+                return false;
+        }
         out = static_cast<T>(raw);
         return true;
     }
@@ -86,7 +95,16 @@ namespace hgl::asset::detail
     {
         if (!v.is_integer())
             return false;
-        out = static_cast<T>(v.as_integer());
+        const int64_t raw = v.as_integer();
+        if (sizeof(T) < sizeof(int64_t))
+        {
+            const int bits = static_cast<int>(sizeof(T) * 8);
+            const int64_t min_value = -(int64_t(1) << (bits - 1));
+            const int64_t max_value = (int64_t(1) << (bits - 1)) - 1;
+            if (raw < min_value || raw > max_value)
+                return false;
+        }
+        out = static_cast<T>(raw);
         return true;
     }
 
@@ -158,14 +176,17 @@ namespace hgl::asset::detail
         if (!v.is_array())
             return false;
         const auto &a = v.as_array();
-        if (static_cast<int>(a.size()) != count)
+        if (a.size() != static_cast<size_t>(count))
             return false;
         for (int i = 0; i < count; ++i)
         {
-            double tmp = 0.0;
-            if (!AsFloat(a[static_cast<size_t>(i)], tmp))
+            float parsed = 0.0f;
+            if (!AsFloat(a[static_cast<size_t>(i)], parsed))
                 return false;
-            out[i] = static_cast<float>(tmp);
+        }
+        for (int i = 0; i < count; ++i)
+        {
+            AsFloat(a[static_cast<size_t>(i)], out[i]);
         }
         return true;
     }
@@ -175,24 +196,35 @@ namespace hgl::asset::detail
         if (!v.is_array())
             return false;
         const auto &a = v.as_array();
-        if (static_cast<int>(a.size()) != count)
+        if (a.size() != static_cast<size_t>(count))
             return false;
         for (int i = 0; i < count; ++i)
-            if (!AsBool(a[static_cast<size_t>(i)], out[i]))
+        {
+            bool parsed = false;
+            if (!AsBool(a[static_cast<size_t>(i)], parsed))
                 return false;
+        }
+        for (int i = 0; i < count; ++i)
+            AsBool(a[static_cast<size_t>(i)], out[i]);
         return true;
     }
 
     template <typename T>
-    inline bool AsUnsignedArray(const toml::value &v, T *out, const int count)    {
+    inline bool AsUnsignedArray(const toml::value &v, T *out, const int count)
+    {
         if (!v.is_array())
             return false;
         const auto &a = v.as_array();
-        if (static_cast<int>(a.size()) != count)
+        if (a.size() != static_cast<size_t>(count))
             return false;
         for (int i = 0; i < count; ++i)
-            if (!AsUnsigned(a[static_cast<size_t>(i)], out[i]))
+        {
+            T parsed = 0;
+            if (!AsUnsigned(a[static_cast<size_t>(i)], parsed))
                 return false;
+        }
+        for (int i = 0; i < count; ++i)
+            AsUnsigned(a[static_cast<size_t>(i)], out[i]);
         return true;
     }
 
@@ -202,11 +234,16 @@ namespace hgl::asset::detail
         if (!v.is_array())
             return false;
         const auto &a = v.as_array();
-        if (static_cast<int>(a.size()) != count)
+        if (a.size() != static_cast<size_t>(count))
             return false;
         for (int i = 0; i < count; ++i)
-            if (!AsSigned(a[static_cast<size_t>(i)], out[i]))
+        {
+            T parsed = 0;
+            if (!AsSigned(a[static_cast<size_t>(i)], parsed))
                 return false;
+        }
+        for (int i = 0; i < count; ++i)
+            AsSigned(a[static_cast<size_t>(i)], out[i]);
         return true;
     }
 

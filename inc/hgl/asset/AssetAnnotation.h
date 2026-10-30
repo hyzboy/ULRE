@@ -42,7 +42,7 @@
  * | `EditDefaultsOnly`  | 仅可在原型/资产上编辑 |
  * | `VisibleAnywhere`   | 只读展示 |
  * | `ReadOnly`          | 编辑器只读 |
- * | `EditOnly`          | 仅编辑器使用，发行版可剔除（须放在 `#if HGL_ASSET_EDITOR` 内） |
+ * | `EditOnly`          | 编辑器 TOML 保留；发行版 FlatBuffers 快照排除（不改变 C++ 布局） |
  * | `Transient`         | 不参与序列化（派生缓存、运行时句柄） |
  * | `Category = "X"`    | 检查器分组名 |
  * | `DisplayName = "X"` | 检查器显示名（缺省用字段名） |

@@ -1,4 +1,5 @@
 #include <hgl/graph/asset/PrimitiveAssetFile.h>
+#include <hgl/asset/generated/PrimitiveToml.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
@@ -9,6 +10,10 @@
 #include <cstring>
 
 DEFINE_LOGGER_MODULE(PrimitiveAsset)
+USE_MODULE_LOGGER(PrimitiveAsset)
+
+// 生成物在 hgl::asset::generated；本文件在 hgl::graph 里，用别名避免每次写全限定名。
+namespace asset_codec = ::hgl::asset::generated;
 
 namespace hgl::graph
 {
@@ -166,24 +171,20 @@ namespace hgl::graph
                     return false;
                 }
 
-                std::string variant_recipe;
-                if (!ReadString(item, "recipe", variant_recipe) || variant_recipe.empty())
+                // 逐字段解析（含 `lod` 键名覆盖与 purpose 的枚举名解析）由 AssetGen 生成；
+                // 这里只保留**跨字段策略**：recipe 必填、extra variant 不得复用 surface。
+                *variant = PrimitiveVariantSpec{};
+
+                if (!asset_codec::ReadPrimitiveVariantSpec(item, *variant))
                 {
-                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: variant missing 'recipe' in ") + OSString(debug_name));
+                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: invalid variant entry in ") + OSString(debug_name));
                     return false;
                 }
 
-                variant->recipe_name = AnsiString(variant_recipe.c_str(), static_cast<int>(variant_recipe.size()));
-
-                std::string purpose_str;
-                if (ReadString(item, "purpose", purpose_str))
+                if (variant->recipe_name.IsEmpty())
                 {
-                    if (!ParsePrimitiveVariantPurpose(purpose_str.c_str(), variant->purpose))
-                    {
-                        MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: unknown variant purpose '")
-                                 + ToOSString(purpose_str) + OS_TEXT("' in ") + OSString(debug_name));
-                        return false;
-                    }
+                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: variant missing 'recipe' in ") + OSString(debug_name));
+                    return false;
                 }
 
                 if (variant->purpose == PrimitiveVariantPurpose::Surface)
@@ -193,8 +194,6 @@ namespace hgl::graph
                              + OSString(debug_name));
                     return false;
                 }
-
-                variant->lod_index = static_cast<uint16_t>(ReadUInt(item, "lod", 0));
             }
         }
 
