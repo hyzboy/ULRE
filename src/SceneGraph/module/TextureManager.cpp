@@ -159,8 +159,8 @@ void TextureManager::Release(Texture *tex)
         return;
 
     texture_set.Delete(tex);
-    texture_by_id.DeleteByValue(tex);          ///<从ID映射删除
-    texture_by_filename.DeleteByValue(tex);    ///<从文件名映射删除
+    texture_by_id.RemoveByValue(tex);          ///<从ID映射删除
+    texture_by_filename.RemoveByValue(tex);    ///<从文件名映射删除
 }
 
 Texture *TextureManager::FindTextureByFilename(const OSString &filename)const
@@ -181,7 +181,7 @@ bool TextureManager::RegisterTextureFilename(const OSString &filename,Texture *t
     if(filename.IsEmpty()||!texture)
         return(false);
 
-    // 只登记本管理器名下的纹理：否则 Release(tex) 的 DeleteByValue 清不掉这条映射，
+    // 只登记本管理器名下的纹理：否则 Release(tex) 的 RemoveByValue 清不掉这条映射，
     // 会留下指向已销毁纹理的悬垂条目。
     if(!texture_set.Contains(texture))
         return(false);

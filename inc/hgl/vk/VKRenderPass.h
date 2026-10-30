@@ -57,7 +57,7 @@ protected:
         bool        strip_fragment_shader   = false;///< 本通道形态下是否剥掉片元阶段
         Pipeline *  pipeline                = nullptr;
 
-        /// ValueArray 的 DeleteByValue/Find 需要；语义上不参与判重。
+        /// ValueArray 的 Remove/Find 需要；语义上不参与判重。
         bool operator == (const PipelineMemoEntry &rhs) const
         {
             return pipeline==rhs.pipeline;

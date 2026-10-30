@@ -54,7 +54,7 @@ bool GraphModuleManager::Unregister(GraphModule *gm)
     if(!module_map.ContainsKey(type_hash))
         return(false);
 
-    if(module_list.DeleteByValue(gm)<0)
+    if(!module_list.Remove(gm))
         return(false);
 
     delete gm;

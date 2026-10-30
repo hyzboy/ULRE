@@ -647,7 +647,7 @@ namespace hgl::math
             if(pos<0)
                 return;
 
-            transform_list.DeleteShift(pos);     // Delete/DeleteShift 均保序；此处用 DeleteShift 表达"保持顺序"的意图
+            transform_list.Delete(pos);     // Delete 保序（DeleteSwap 不保序），此处需要保持顺序
 
             UpdateVersion();
         }

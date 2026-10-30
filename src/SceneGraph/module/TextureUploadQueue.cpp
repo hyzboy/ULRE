@@ -691,7 +691,7 @@ namespace hgl::graph
             if (task->on_complete)
                 task->on_complete(task, task->user_data);
 
-            in_flight_tasks_.DeleteByValue(task);
+            in_flight_tasks_.Remove(task);
             completed_tasks_.Add(task);
         }
 
@@ -926,7 +926,7 @@ namespace hgl::graph
             if (task->on_complete)
                 task->on_complete(task, task->user_data);
 
-            in_flight_tasks_.DeleteByValue(task);
+            in_flight_tasks_.Remove(task);
             completed_tasks_.Add(task);
         }
 
