@@ -155,8 +155,8 @@ namespace hgl::ecs
         void SetBatchLayout(uint32_t pass_index, uint32_t batch_index, uint32_t row_base, uint32_t capacity,
                             uint32_t topology, uint32_t group_size);
 
-        /// 收尾：unmap 标签 + 把分区表（batch_count 条）写入当前帧槽 + 记 batch_count
-        void EndBatchLayout(uint32_t pass_index, uint32_t batch_count);
+        /// 收尾：unmap 标签 + 写当前帧槽的分区表；失败时不得接管绘制。
+        bool EndBatchLayout(uint32_t pass_index, uint32_t batch_count);
 
         /// 每桶计数缓冲（含末位 overflow 槽）：T5 起**不再当绘制 countBuffer**（绘制条数 =
         /// 桶数，CPU 已知），只作台架逐桶对拍与 overflow 硬判据用。
@@ -249,6 +249,10 @@ namespace hgl::ecs
         /// 泄漏修复的本体：这些对象**只在这里 new 一次**，`Shutdown()` 显式释放。
         bool CreateDispatchResources();
 
+        /// Wait before either rewriting this slot's CPU inputs or re-recording its command.
+        bool WaitForCullSlot(uint32_t slot);
+        void AbortBatchTagWrite();
+
     private:
         ECSContext* context_ = nullptr;
         graph::VulkanDevice* device_ = nullptr;
@@ -289,6 +293,7 @@ namespace hgl::ecs
         uint32_t batch_count_[kArenaPasses] = {0, 0};
         uint32_t *batch_tag_cpu_ = nullptr;           ///< 当前帧槽标签数组的映射
         uint32_t  batch_tag_cpu_slot_ = UINT32_MAX;   ///< 映射对应的帧槽（换槽重映射）
+        uint32_t  batch_tag_cpu_pass_ = UINT32_MAX;
         uint32_t *batch_counter_cpu_ = nullptr;       ///< 台架读回时的映射
         uint32_t counters_sync_frame_ = 0xFFFFFFFFu;  ///< §9 M6：最近一次 SyncForParityReadback 的帧号（Map 前校验）
 
@@ -306,8 +311,7 @@ namespace hgl::ecs
 
         // ── 派发资源（T3g：生命周期一次化，修每帧 new 队列/命令缓冲的泄漏）──
         // 队列一份：fence 环深度 = 帧槽数（DeviceQueue::Submit 自动轮转 fence）；
-        // 与主帧共用 attr->graphics_queue ⇒ 同队列 FIFO 天然保证
-        // [本帧 cull cmd → 主帧 draw] 的消费序（去 WaitLastSubmitFence 的依据）。
+        // 与绘制共用 attr->graphics_queue；共享输出的重用和消费还必须通过 GPU 内存屏障排序。
         graph::DeviceQueue *cull_queue_ = nullptr;
         // 命令缓冲环：槽号 = frame_index % HGL_FRAME_SLOT_TOTAL。重录前等待该 cmd
         // 上次提交对应的 fence 槽；帧槽与 fence 槽独立记账，避免跳过派发时错配。

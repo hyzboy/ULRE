@@ -9,6 +9,7 @@
 //                  帧号推进后 != 2；null 入参被计数。
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include <hgl/ecs/support/GPUCullSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -83,6 +84,15 @@ int main()
     if (line_pipeline.PrepareFrame() || line_pipeline.PrepareFrame())
     {
         GLogError(u8"Test Failed: unsuccessful Line initialization was cached as success");
+        return 1;
+    }
+
+    GPUCullSystem gpu_cull;
+    if (!gpu_cull.Initialize(&ctx)
+        || gpu_cull.EndBatchLayout(0, 1)
+        || gpu_cull.GetBatchCount() != 0)
+    {
+        GLogError(u8"Test Failed: batch layout must reject a missing tag-write transaction");
         return 1;
     }
 

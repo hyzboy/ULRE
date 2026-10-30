@@ -719,7 +719,8 @@ namespace hgl::ecs
         // 保留响亮出口：BeginBatchTagWrite 失败（资源问题）与逐批 guard 拒绝。
 
         // 分区/标签落设备（batch_count = 本 pass 的**素材桶**总数，T5 起语义变更）
-        gpu_cull->EndBatchLayout(pass_index, next_index);
+        if (!gpu_cull->EndBatchLayout(pass_index, next_index))
+            return;
 
         // 接管逐批（原 T4c-ini-2「槽首写不接管」已删，依据见上方护栏删除注释）。
         uint32_t engaged = 0;

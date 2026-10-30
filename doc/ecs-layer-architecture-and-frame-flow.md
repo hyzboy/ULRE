@@ -494,6 +494,9 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 ## 9. 帧缓存与生命周期
 
 - `ECSContext::PrepareRenderPassSetup` 在每次主帧或离屏 pass 的 collect 之前推进并清空 `RenderFrameCache`；帧边界不依赖 Primitive 系统。Line 渲染缓冲按 `IRenderTarget::GetCurrentFrameIndex()` 分槽，每槽只在对应 RT 等待前次提交完成后复用。
+- `GPUCullSystem` 的 gather、间接命令及可见计数输出在帧槽间共享：剔除与消费绘制必须提交到同一图形队列，且上一轮消费的绘制提交必须先于下一轮剔除提交。剔除前的 GPU 屏障等待此前访问，剔除后的屏障使写入对间接绘制及图形着色器可见；不能仅依赖队列提交顺序。该保守方案会限制跨帧流水线重叠。批标签和布局虽按帧槽分份，CPU 重写前仍须等待该槽上次剔除的 fence；命令缓冲重录使用同一等待。
+- 交换链图像的获取信号量等待阶段与首次颜色布局转换的源阶段共用 `SemaphoreSubmit::SwapchainAcquireStage`；改变图像首次使用阶段时必须同时维护两者的执行依赖。
+- 有桌面、支持所需 Vulkan 功能和 Khronos validation layer 的开发机可配置 `ULRE_ENABLE_GPU_SYNC_VALIDATION_TEST=ON`，编译 `GPUDrivenCull` 后运行 `ctest -R ^GPUCullSyncValidation$`：测试启用 synchronization validation，检查 120 帧实际接管绘制、验证层加载及同步/VUID 错误。
 - `RenderFrameCache`（`inc/hgl/ecs/core/Context.h:48-63`）：`renderItems`（`unique_ptr` 数组，每帧重建）、`materialBatches`（key→`MaterialBatch` 的 map，**跨帧保留对象**只 `Clear()` 内容）、`cameraInfo`、`renderableCount`；实例挂载在 `ECSContext::render_frame_cache`（`inc/hgl/ecs/core/Context.h:128`），经 `GetRenderFrameCache()` 暴露。
 - 跨帧存活的还有：`TransformAssignmentBuffer`（TransformSystem 持有）、`MaterialBatch` 的各类 buffer（`Ensure*` 按 pow2 扩容）、行池（`GlobalSSBOBufferRegistry` / `MaterialTextureReferencePool` 持有）。（另两个 4-ID 存储已随 2026-10-14 整族删除，见文首订正。）
 - 非拥有关系要小心：`MaterialBatch::transform_buffer` 是 TransformSystem 的指针（`inc/hgl/ecs/core/MaterialBatch.h:78` 注释明示勿跨帧缓存系统指针）；`PrimitiveRenderItem` 持 `shared_ptr` 组件句柄（会延长组件寿命到当帧结束）。

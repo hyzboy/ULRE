@@ -6,6 +6,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKQueue.h>
 
 
 namespace hgl::graph
@@ -54,7 +55,10 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
         if(!tex)continue;
 
         barriers[i].sType               =VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        barriers[i].srcStageMask        =VK_PIPELINE_STAGE_2_NONE;
+        // The layout transition must be ordered after the acquire semaphore wait.
+        barriers[i].srcStageMask        =rt->IsSwapchain()
+                                         ?SemaphoreSubmit::SwapchainAcquireStage
+                                         :VK_PIPELINE_STAGE_2_NONE;
         barriers[i].srcAccessMask       =VK_ACCESS_2_NONE;
         barriers[i].dstStageMask        =VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
         barriers[i].dstAccessMask       =VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -473,5 +477,3 @@ void RenderCmdBuffer::DrawMeshTasksIndirectCount(VkBuffer buffer,VkDeviceSize of
 }
 
 }//namespace hgl::graph
-
-

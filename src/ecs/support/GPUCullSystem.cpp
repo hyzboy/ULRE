@@ -101,7 +101,7 @@ namespace hgl::ecs
         // T3i/2β：**必须晚于 RenderBatch 的批装配**——批标签/分区是本帧产物，
         // cull 要与本帧分区、本帧绘制三者同源（在 RenderCollect 会读到上一帧批归属
         // ⇒ 切片错位）。RenderFrameSync 位于"render pass 外、上传之后、绘制之前"，
-        // 且本提交仍早于主帧 cmd 提交 ⇒ 同队列 submission-order 保证绘制可见其写出。
+        // 且本提交仍早于主帧 cmd 提交；输出可见性由派发后的内存屏障保证。
         SetExecutionPhase(ExecutionPhase::RenderFrameSync);
     }
 
@@ -123,7 +123,13 @@ namespace hgl::ecs
         SAFE_CLEAR(cull_queue_);
         for (graph::ComputeCmdBuffer *&cmd : cull_cmds_)
             SAFE_CLEAR(cmd);
+        for (uint32_t i = 0; i < HGL_FRAME_SLOT_TOTAL; ++i)
+        {
+            cull_cmd_submitted_[i] = false;
+            cull_cmd_fence_slots_[i] = 0;
+        }
 
+        AbortBatchTagWrite();
         SAFE_CLEAR(visible_indices_buffer_);
         SAFE_CLEAR(indirect_commands_buffer_);
         SAFE_CLEAR(draw_count_buffer_);
@@ -135,8 +141,6 @@ namespace hgl::ecs
         SAFE_CLEAR(batch_counter_buffer_);
 
         // 映射指针随 buffer 一起失效，必须同时复位（否则重建后仍指向旧映射）
-        batch_tag_cpu_ = nullptr;
-        batch_tag_cpu_slot_ = UINT32_MAX;
         batch_counter_cpu_ = nullptr;
 
         initialized_ = false;
@@ -411,17 +415,40 @@ namespace hgl::ecs
 
     // ── T3i（③ 多批）批标签 / 分区 / 计数 ─────────────────────────────
 
+    void GPUCullSystem::AbortBatchTagWrite()
+    {
+        if (batch_tag_cpu_ && batch_tag_buffer_)
+            batch_tag_buffer_->Unmap();
+        if (batch_tag_cpu_pass_ < kArenaPasses)
+            batch_count_[batch_tag_cpu_pass_] = 0;
+        batch_tag_cpu_ = nullptr;
+        batch_tag_cpu_slot_ = UINT32_MAX;
+        batch_tag_cpu_pass_ = UINT32_MAX;
+    }
+
     uint32_t *GPUCullSystem::BeginBatchTagWrite(uint32_t pass_index)
     {
         if (!batch_tag_buffer_ || !context_ || pass_index >= kArenaPasses)
             return nullptr;
+
+        if (batch_tag_cpu_)
+        {
+            GLogError(u8"[GPUCullSystem] batch tag write already active in slot=%u", batch_tag_cpu_slot_);
+            return nullptr;
+        }
+
+        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+        if (!WaitForCullSlot(slot))
+        {
+            batch_count_[pass_index] = 0;
+            return nullptr;
+        }
 
         // T4c2：本 pass 那一块批分区清零——**必须每帧清**，否则上一帧写过、本帧没写的批
         // 会留下残留行（capacity 非零），被本帧仍有效的标签引用 ⇒ 凭空写行。
         for (uint32_t i = 0; i < kBatchBlockStride; ++i)
             batch_info_staging_[BatchBlockBase(pass_index) + i] = BatchInfoRow{};
 
-        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
         const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
         const VkDeviceSize block_bytes = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
 
@@ -431,10 +458,15 @@ namespace hgl::ecs
                                        + VkDeviceSize(pass_index) * block_bytes,
                                    block_bytes));
         if (!p)
+        {
+            batch_count_[pass_index] = 0;
+            GLogError(u8"[GPUCullSystem] cannot map batch tags slot=%u pass=%u", slot, pass_index);
             return nullptr;
+        }
 
         batch_tag_cpu_ = p;
         batch_tag_cpu_slot_ = slot;
+        batch_tag_cpu_pass_ = pass_index;
 
         // 整表打"无批"初值：本帧未上标签的实体（未接管批 / 未进批）一律被 cull 跳过。
         for (uint32_t i = 0; i < kMaxVisibleEntities; ++i)
@@ -481,41 +513,60 @@ namespace hgl::ecs
         batch_info_staging_[stage_index].group_size = group_size;
     }
 
-    void GPUCullSystem::EndBatchLayout(uint32_t pass_index, uint32_t batch_count)
+    bool GPUCullSystem::EndBatchLayout(uint32_t pass_index, uint32_t batch_count)
     {
+        if (!context_ || pass_index >= kArenaPasses)
+        {
+            GLogError(u8"[GPUCullSystem] cannot finish batch layout: invalid context or pass=%u", pass_index);
+            AbortBatchTagWrite();
+            return false;
+        }
+
+        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+        if (!batch_tag_cpu_ || batch_tag_cpu_slot_ != slot
+            || batch_tag_cpu_pass_ != pass_index || !batch_tag_buffer_)
+        {
+            GLogError(u8"[GPUCullSystem] cannot finish batch layout slot=%u pass=%u mapped_slot=%u mapped_pass=%u",
+                      slot, pass_index, batch_tag_cpu_slot_, batch_tag_cpu_pass_);
+            AbortBatchTagWrite();
+            batch_count_[pass_index] = 0;
+            return false;
+        }
+
         if (batch_count > kMaxBatches)
         {
-            GLogError(u8"[GPUCullSystem] 批数越界：%u > kMaxBatches(%u) ⇒ 钳到上限（超限 = 项目 bug）",
+            GLogError(u8"[GPUCullSystem] 批数越界：%u > kMaxBatches(%u) ⇒ 拒绝写入",
                       batch_count, kMaxBatches);
-            batch_count = kMaxBatches;
+            AbortBatchTagWrite();
+            batch_count_[pass_index] = 0;
+            return false;
         }
-
-        batch_count_[pass_index] = batch_count;
 
         // 1) 标签 unmap（Map 期内已直写；host-visible ⇒ unmap 后对后续提交可见）
-        if (batch_tag_cpu_ && batch_tag_buffer_)
-        {
-            batch_tag_buffer_->Unmap();
-            batch_tag_cpu_ = nullptr;
-            batch_tag_cpu_slot_ = UINT32_MAX;
-        }
+        batch_tag_buffer_->Unmap();
+        batch_tag_cpu_ = nullptr;
+        batch_tag_cpu_slot_ = UINT32_MAX;
+        batch_tag_cpu_pass_ = UINT32_MAX;
 
         // 2) 分区表落**当前帧槽**那一份（T4c2：整张两块一起落——未写的那块是零，
         //    shader 据 `capacity == 0` 跳过该 pass）
-        if (batch_info_buffer_ && context_ && batch_count > 0 && pass_index < kArenaPasses)
+        if (batch_count > 0)
         {
-            const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
             const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
 
-            void *dst = batch_info_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes);
-            if (dst)
+            void *dst = batch_info_buffer_ ? batch_info_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes) : nullptr;
+            if (!dst)
             {
-                std::memcpy(dst, batch_info_staging_,
-                            size_t(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow));
-                batch_info_buffer_->Unmap();
+                batch_count_[pass_index] = 0;
+                GLogError(u8"[GPUCullSystem] cannot map batch layout slot=%u pass=%u", slot, pass_index);
+                return false;
             }
-
+            std::memcpy(dst, batch_info_staging_,
+                        size_t(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow));
+            batch_info_buffer_->Unmap();
         }
+        batch_count_[pass_index] = batch_count;
+        return true;
     }
 
     uint32_t GPUCullSystem::GetBatchCounterByteOffset(uint32_t pass_index, uint32_t batch_index) const
@@ -596,7 +647,12 @@ namespace hgl::ecs
     bool GPUCullSystem::CreateDispatchResources()
     {
         if (cull_queue_)
-            return true;
+        {
+            if (static_cast<VkQueue>(*cull_queue_) == device_->GetGraphicsQueue())
+                return true;
+            GLogError(u8"[GPUCullSystem] cull queue must be the graphics queue");
+            return false;
+        }
 
         // 队列一份：fence 环深度 = 帧槽数；每个命令缓冲单独记住其提交 fence 槽，
         // 重录前等待该槽，而不是假设固定帧数后 GPU 必定完成。
@@ -605,6 +661,11 @@ namespace hgl::ecs
         if (!cull_queue_)
         {
             GLogError(u8"[GPUCullSystem] CreateDispatchResources: CreateQueue failed");
+            return false;
+        }
+        if (static_cast<VkQueue>(*cull_queue_) != device_->GetGraphicsQueue())
+        {
+            GLogError(u8"[GPUCullSystem] cull queue must be the graphics queue");
             return false;
         }
 
@@ -623,6 +684,22 @@ namespace hgl::ecs
 
         GLogInfo(u8"[GPUCullSystem] Dispatch resources created: queue + %u-slot cmd ring",
                  uint32_t(HGL_FRAME_SLOT_TOTAL));
+        return true;
+    }
+
+    bool GPUCullSystem::WaitForCullSlot(uint32_t slot)
+    {
+        if (!cull_cmd_submitted_[slot])
+            return true;
+
+        if (!cull_queue_ || !cull_queue_->WaitFenceAt(cull_cmd_fence_slots_[slot]))
+        {
+            GLogError(u8"[GPUCullSystem] cannot reuse cull slot=%u fence_slot=%u",
+                      slot, cull_cmd_fence_slots_[slot]);
+            return false;
+        }
+
+        cull_cmd_submitted_[slot] = false;
         return true;
     }
 
@@ -666,8 +743,7 @@ namespace hgl::ecs
 
         // Frame-slot reuse must wait for the submission that last used this exact cmd.
         // The queue fence ring can drift from frame slots when dispatches are skipped.
-        if(cull_cmd_submitted_[batch_slot]
-           &&!cull_queue_->WaitFenceAt(cull_cmd_fence_slots_[batch_slot]))
+        if(!WaitForCullSlot(batch_slot))
         {
             GLogError(u8"[GPUCullSystem] refusing to re-record pending command buffer frame=%u slot=%u cmd=%p fence_slot=%u",
                       frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd,
@@ -714,6 +790,14 @@ namespace hgl::ecs
                       frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd);
             return;
         }
+
+        // The output arena is shared by frame slots. CreateQueue uses the graphics
+        // queue, so this dependency also covers earlier draw and cull submissions.
+        cmd->MemoryBarrier2(
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
 
         // ── 计数 GPU 侧清零（T3g：旧版 CPU `Write(&zero)` 是同步上传，去掉）──
         // ⚠ 防坑 1：FillBuffer 属 TRANSFER 阶段（`vkCmdFillBuffer` size=4/offset=0
@@ -767,23 +851,12 @@ namespace hgl::ecs
         uint32_t group_count = (entity_count + kWorkGroupSize - 1) / kWorkGroupSize;
         cmd->Dispatch(group_count, 1, 1);
 
-        // 批内保守屏障：compute 写 → indirect 消费的可见性。
-        // ⚠ 口径纠正：跨 cmd **不能**只靠"同队列 submission order"——那只保证**执行次序**，
-        //   **不建立内存可见性**（Vulkan 同步章：即使同队列、即使提交序在前，内存依赖也须由
-        //   barrier/event/semaphore 建立）。这里能覆盖跨 cmd 的 consumer，靠的是
-        //   **内存 barrier 的作用域按 submission order 向后延伸**（dst 阶段点名了
-        //   `DRAW_INDIRECT`）——**不是**靠"提交序"本身。改这条时别把 dst 阶段删掉。
-        VkMemoryBarrier barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-        vkCmdPipelineBarrier(*cmd,
-                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                            VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-                            0,
-                            1, &barrier,
-                            0, nullptr,
-                            0, nullptr);
+        // Draw commands consume both indirect commands and BDA tables in mesh shaders.
+        cmd->MemoryBarrier2(
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT);
 
         if(!cmd->End())
         {

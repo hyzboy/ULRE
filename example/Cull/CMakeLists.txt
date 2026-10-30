@@ -3,3 +3,16 @@
 # → ICB 接管 + 每批计数）；示例只装配实体与相机，不建 compute / 缓冲 / BDA 地址表。
 
 CreateProject(GPUDrivenCull                 GPUDrivenCull.cpp)
+
+option(ULRE_ENABLE_GPU_SYNC_VALIDATION_TEST "Enable the interactive Vulkan synchronization validation test" OFF)
+if(BUILD_TESTING AND ULRE_ENABLE_GPU_SYNC_VALIDATION_TEST)
+    add_test(NAME GPUCullSyncValidation
+        COMMAND ${CMAKE_COMMAND}
+            "-DEXAMPLE=$<TARGET_FILE:GPUDrivenCull>"
+            "-DRUNTIME_DIR=${ULRE_RUNTIME_PATH}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/GPUCullSyncValidation.cmake")
+    set_tests_properties(GPUCullSyncValidation PROPERTIES
+        LABELS "vulkan;integration"
+        RUN_SERIAL TRUE
+        TIMEOUT 150)
+endif()

@@ -17,6 +17,8 @@ struct VulkanDevAttr;
  */
 struct SemaphoreSubmit
 {
+    static constexpr VkPipelineStageFlags2 SwapchainAcquireStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
     Semaphore *             semaphore  = nullptr;
     uint64_t                value      = 0;
     VkPipelineStageFlags2   stage_mask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
@@ -31,7 +33,7 @@ struct SemaphoreSubmit
     /// 等待项：交换链图像可用（COLOR_ATTACHMENT_OUTPUT）
     static SemaphoreSubmit WaitImage(Semaphore *s)
     {
-        return SemaphoreSubmit{s,0,VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT};
+        return SemaphoreSubmit{s,0,SwapchainAcquireStage};
     }
 
     /// 信号项：默认全部命令完成后可见
