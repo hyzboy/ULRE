@@ -5,4 +5,10 @@ indent_style = space
 indent_size = 4
 insert_final_newline = true
 trim_trailing_whitespace = true
+charset = utf-8
+
+# C/C++ 源文件统一为 UTF-8（MSVC 以 /utf-8 编译，clang/gcc 默认即 UTF-8）。
+# 不强制 BOM：BOM 会妨碍部分工具，且当前仓库大部分文件无 BOM。
+[*.{h,hpp,hxx,c,cc,cpp,cxx,inl}]
+charset = utf-8
 
