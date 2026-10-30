@@ -32,31 +32,31 @@ aliases = ["view_model", "free", "look_at", "first_person"]
 [group.Geometry]
 namespace     = "hgl::graph"
 scan          = ["inc/hgl/graph/asset/GeometryAssetSpec.h"]
-toml          = "inc/hgl/asset/generated/GeometryToml.gen.h"
+serialize     = "inc/hgl/asset/generated/GeometrySerialize.gen.h"
 meta          = "inc/hgl/asset/generated/GeometryMeta.gen.h"
 fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/geometry_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/geometry_schema_generated.h"
-flat          = "inc/hgl/asset/generated/GeometryFlat.gen.h"
+codec         = "inc/hgl/asset/generated/GeometryCodec.gen.h"
 
 # ── 图元资产：几何 + 材质配方的绑定层 ──────────────────────────────────────
 [group.Primitive]
 namespace     = "hgl::graph"
 scan          = ["inc/hgl/graph/asset/PrimitiveAssetSpec.h"]
-toml          = "inc/hgl/asset/generated/PrimitiveToml.gen.h"
+serialize     = "inc/hgl/asset/generated/PrimitiveSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/PrimitiveMeta.gen.h"
 fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/primitive_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/primitive_schema_generated.h"
-flat          = "inc/hgl/asset/generated/PrimitiveFlat.gen.h"
+codec         = "inc/hgl/asset/generated/PrimitiveCodec.gen.h"
 
 # ── 场景编排规约 ────────────────────────────────────────────────────────────
 [group.Scene]
 namespace     = "hgl::graph"
 scan          = ["inc/hgl/graph/asset/SceneAssetSpec.h"]
-toml          = "inc/hgl/asset/generated/SceneToml.gen.h"
+serialize     = "inc/hgl/asset/generated/SceneSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/SceneMeta.gen.h"
 fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/scene_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/scene_schema_generated.h"
-flat          = "inc/hgl/asset/generated/SceneFlat.gen.h"
+codec         = "inc/hgl/asset/generated/SceneCodec.gen.h"

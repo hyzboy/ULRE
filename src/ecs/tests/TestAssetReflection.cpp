@@ -8,15 +8,12 @@
 // 这条用例不依赖设备/窗口，纯数据往返，因此可以在 CI 里挡住
 // 「改了 C++ 结构但忘记重新生成」与「生成器改坏了语义」两类事故。
 #include <hgl/asset/AssetObject.h>
-#include <hgl/asset/generated/GeometryFlat.gen.h>
+#include <hgl/asset/generated/GeometryCodec.gen.h>
 #include <hgl/asset/generated/GeometryMeta.gen.h>
-#include <hgl/asset/generated/GeometryToml.gen.h>
-#include <hgl/asset/generated/PrimitiveFlat.gen.h>
 #include <hgl/asset/generated/PrimitiveMeta.gen.h>
-#include <hgl/asset/generated/PrimitiveToml.gen.h>
-#include <hgl/asset/generated/SceneFlat.gen.h>
+#include <hgl/asset/generated/PrimitiveCodec.gen.h>
+#include <hgl/asset/generated/SceneCodec.gen.h>
 #include <hgl/asset/generated/SceneMeta.gen.h>
-#include <hgl/asset/generated/SceneToml.gen.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
@@ -64,9 +61,23 @@ namespace
 
     bool TestEmptyStringSerialization()
     {
-        const toml::value ansi = hgl::asset::detail::FromString(AnsiString{});
-        const toml::value utf8 = hgl::asset::detail::FromString(U8String{});
-        const toml::value os = hgl::asset::detail::FromString(OSString{});
+        // 空字符串必须产生「空 TOML 字符串」而不是缺键/崩溃：
+        // 走的是统一序列化框架，所以覆盖 AnsiString / U8String / OSString 三种载体。
+        const auto to_value = [](hgl::serialize::Value &node)
+        {
+            return hgl::serialize::ToToml(node);
+        };
+
+        hgl::serialize::Value ansi_node;
+        ansi_node.SetString(AnsiString{});
+        hgl::serialize::Value utf8_node;
+        utf8_node.SetString(U8String{});
+        hgl::serialize::Value os_node;
+        os_node.SetString(OSString{});
+
+        const toml::value ansi = to_value(ansi_node);
+        const toml::value utf8 = to_value(utf8_node);
+        const toml::value os = to_value(os_node);
 
         return ansi.is_string() && ansi.as_string().empty()
             && utf8.is_string() && utf8.as_string().empty()

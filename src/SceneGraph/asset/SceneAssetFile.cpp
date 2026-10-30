@@ -1,6 +1,5 @@
 #include <hgl/graph/asset/SceneAssetFile.h>
-#include <hgl/asset/generated/SceneFlat.gen.h>
-#include <hgl/asset/generated/SceneToml.gen.h>
+#include <hgl/asset/generated/SceneCodec.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>

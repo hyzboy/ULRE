@@ -51,14 +51,14 @@ namespace hgl::asset::generated
         { "fresnel", "fresnel", "fresnel", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 72u, 4u, 0u, 0.0, 0.0, 0.0 },
         { "color", "color", "color", "Default", "", "Color4f", nullptr, nullptr, PropertyKind::Vector4f, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 76u, 16u, 0u, 0.0, 0.0, 0.0 },
         { "trans_color", "trans_color", "trans_color", "Default", "", "Color4f", nullptr, nullptr, PropertyKind::Vector4f, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 92u, 20u, 0u, 0.0, 0.0, 0.0 },
-        { "textures", "textures", "textures", "Default", "", "ManagedArray<SceneTextureSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 112u, 32u, 0u, 0.0, 0.0, 0.0 },
+        { "textures", "textures", "textures", "Default", "", "ManagedArray<SceneTextureSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 112u, 24u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_SceneMaterialSpec =
     {
         "SceneMaterialSpec", "", "",
         Meta_SceneMaterialSpec, (uint32_t)(sizeof(Meta_SceneMaterialSpec) / sizeof(Meta_SceneMaterialSpec[0])),
-        144u, 8u
+        136u, 8u
     };
 
     inline const PropertyMetaInfo Meta_SceneNodeSpec[] =
@@ -122,15 +122,15 @@ namespace hgl::asset::generated
         { "description", "description", "description", "Default", "", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 48u, 40u, 0u, 0.0, 0.0, 0.0 },
         { "camera", "camera", "camera", "Default", "", "SceneCameraSpec", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 88u, 56u, 0u, 0.0, 0.0, 0.0 },
         { "clear_color", "clear_color", "clear_color", "Default", "", "SceneClearColorSpec", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 144u, 24u, 0u, 0.0, 0.0, 0.0 },
-        { "materials", "materials", "materials", "Default", "", "ManagedArray<SceneMaterialSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 168u, 32u, 0u, 0.0, 0.0, 0.0 },
-        { "nodes", "nodes", "nodes", "Default", "", "ManagedArray<SceneNodeSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 200u, 32u, 0u, 0.0, 0.0, 0.0 },
+        { "materials", "materials", "materials", "Default", "", "ManagedArray<SceneMaterialSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 168u, 24u, 0u, 0.0, 0.0, 0.0 },
+        { "nodes", "nodes", "nodes", "Default", "", "ManagedArray<SceneNodeSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 192u, 24u, 0u, 0.0, 0.0, 0.0 },
     };
 
     inline const ClassMetaInfo Class_SceneSpec =
     {
         "SceneSpec", "", "",
         Meta_SceneSpec, (uint32_t)(sizeof(Meta_SceneSpec) / sizeof(Meta_SceneSpec[0])),
-        232u, 8u
+        216u, 8u
     };
 
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::SceneTransformSpec *) { return &Class_SceneTransformSpec; }

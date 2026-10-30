@@ -7,25 +7,28 @@
  * 格式后端。生成代码只认识这一个类型：
  *
  * ```cpp
- * inline void StructSerializer<SceneSpec>::Do(Archive &ar, SceneSpec &v)
+ * template<> struct StructSerializer<SceneSpec>
  * {
- *     ar.Field(1, "schema",      v.schema);
- *     ar.Field(2, "name",        v.name);
- *     ar.Field(3, "camera",      v.camera);        // 嵌套结构：自动递归
- *     ar.Field(7, "materials",   v.materials);     // ManagedArray：自动按容器形态处理
- *     ar.Field(8, "nodes",       v.nodes);
- * }
+ *     static constexpr bool defined = true;
+ *     template<typename Self>
+ *     static void Do(Archive &ar, Self &v)
+ *     {
+ *         ar.Field(1, "schema",    v.schema);
+ *         ar.Field(2, "name",      v.name);
+ *         ar.Field(3, "camera",    v.camera);      // 嵌套结构：自动递归
+ *         ar.Field(7, "materials", v.materials);   // ManagedArray：按容器形态处理
+ *     }
+ * };
  * ```
+ *
+ * ── 为什么 `Do` 是模板（`Self` 而不是 `T &`）────────────────────────────────
+ * `Self` 会被推导成 `T`（读）或 `const T`（写）。这样同一份遍历函数既能写回
+ * 又能只读输出，不需要为「const 版本」再复制一遍字段列表。
  *
  * ── 编解码语义（与既有 TOML / FlatBuffers 契约逐条对齐）────────────────────
  *   · **读**：字段缺失 ⇒ 保留 C++ 类内初始值（不报错）；字段存在但类型/长度
- *     不符 ⇒ 记一次失败，`Ok()` 变 false，调用方可报出字段名；
- *   · **写**：写出全部字段（含等于缺省值的字段），保证 FlatBuffers 是完整快照；
- *     文本后端可选在 `TomlCodec` 层压缩冗余字段。
- *
- * ── 为什么 `Field` 接收非 const 引用 ──────────────────────────────────────
- * 读方向必须能写回，写方向沿用同一个签名即可避免 `const_cast`；生成代码里的
- * 遍历函数统一声明为 `Do(Archive &, T &)`。
+ *     不符 ⇒ 记一次失败，`Ok()` 变 false，并留下字段名；
+ *   · **写**：写出全部字段（含等于缺省值的字段），保证 FlatBuffers 是完整快照。
  */
 
 #include <hgl/serialize/Value.h>
@@ -97,11 +100,20 @@ namespace hgl::serialize
 
         // ── 字段入口 ────────────────────────────────────────────────────────
 
+        /**
+         * 一个字段。`T` 可以是 const 限定（写方向），内部按
+         * `std::remove_cv_t<T>` 查 traits。
+         *
+         * 读方向需要写回，因此在一个**受控位置**去掉 const：调用方永远只在写
+         * 方向传入 const 引用，而写方向本身不会修改任何值。
+         */
         template <typename T>
         void Field(const uint32_t id, const char *name, T &value)
         {
             if (!ok_)
                 return;
+
+            using U = std::remove_cv_t<T>;
 
             if (write_)
             {
@@ -111,7 +123,7 @@ namespace hgl::serialize
                     Fail(name, "无法创建字段节点");
                     return;
                 }
-                WriteValue(*node, value, name);
+                WriteValue(*node, static_cast<const U &>(value), name);
                 return;
             }
 
@@ -121,7 +133,9 @@ namespace hgl::serialize
                 // 缺键不是错误：保留 C++ 类内缺省值（与既有 TOML 语义一致）。
                 if (!node)
                     return;
-                if (!ReadValue(*node, value))
+
+                U &target = const_cast<U &>(value);
+                if (!ReadValue(*node, target))
                     Fail(name, "字段类型或取值不合法");
             }
         }
@@ -137,10 +151,10 @@ namespace hgl::serialize
         }
 
     private:
-        // ── 值 ↔ C++ 的搬运 ─────────────────────────────────────────────────
+        // ── 值 → 树（写方向，只读源对象）────────────────────────────────────
 
         template <typename T>
-        void WriteValue(Value &node, T &value, const char *where)
+        void WriteValue(Value &node, const T &value, const char *where)
         {
             using U = std::remove_cv_t<T>;
 
@@ -205,6 +219,8 @@ namespace hgl::serialize
                               "该类型没有序列化支持：请为它标注 HGL_ASSET_STRUCT 并重新运行 AssetGen");
             }
         }
+
+        // ── 树 → 值（读方向，写回目标对象）──────────────────────────────────
 
         template <typename T>
         bool ReadValue(const Value &node, T &out)
@@ -310,7 +326,7 @@ namespace hgl::serialize
         // ── Sequence ────────────────────────────────────────────────────────
 
         template <typename C>
-        void WriteSequence(Value &node, C &container, const char *where)
+        void WriteSequence(Value &node, const C &container, const char *where)
         {
             using Adapter = typename ContainerTraits<C>::adapter;
 
@@ -324,7 +340,7 @@ namespace hgl::serialize
                     Fail(where, "数组节点分配失败");
                     return;
                 }
-                auto *element = Adapter::At(container, i);
+                const auto *element = Adapter::At(container, i);
                 if (!element)
                     continue;
                 WriteValue(*slot, *element, where);
@@ -363,7 +379,7 @@ namespace hgl::serialize
         }
 
         template <typename C>
-        void WriteMapping(Value &node, C &container, const char *where)
+        void WriteMapping(Value &node, const C &container, const char *where)
         {
             using Traits = ContainerTraits<C>;
             using K = typename Traits::key_type;
@@ -385,8 +401,7 @@ namespace hgl::serialize
                                         Fail(where, "映射字段节点分配失败");
                                         return;
                                     }
-                                    V copy = value;
-                                    WriteValue(*slot, copy, where);
+                                    WriteValue(*slot, value, where);
                                 });
             }
             else
@@ -405,12 +420,10 @@ namespace hgl::serialize
 
                                     Value *key_slot = entry->AddField("key", 0);
                                     Value *val_slot = entry->AddField("value", 0);
-                                    K key_copy = key;
-                                    V value_copy = value;
                                     if (key_slot)
-                                        WriteValue(*key_slot, key_copy, where);
+                                        WriteValue(*key_slot, key, where);
                                     if (val_slot)
-                                        WriteValue(*val_slot, value_copy, where);
+                                        WriteValue(*val_slot, value, where);
                                 });
             }
         }
@@ -482,7 +495,7 @@ namespace hgl::serialize
         // ── Set ─────────────────────────────────────────────────────────────
 
         template <typename C>
-        void WriteSet(Value &node, C &container, const char *where)
+        void WriteSet(Value &node, const C &container, const char *where)
         {
             using Traits = ContainerTraits<C>;
             using T = typename Traits::value_type;
@@ -532,15 +545,14 @@ namespace hgl::serialize
         // ── Tree ────────────────────────────────────────────────────────────
 
         /**
-         * 双拓扑树降级为「扁平节点数组 + parent 索引」。
+         * 双拓扑树降级为「扁平节点数组 + parent 索引」：
          * 文本后端下每个元素是 `{ parent = -1, data = { ... } }`；
-         * 二进制后端下退化为节点表向量（结构由生成 schema 决定）。
+         * 读回时按数组顺序 `CreateNode(value, parent)` 重建层级拓扑。
          */
         template <typename C>
-        void WriteTree(Value &node, C &container, const char *where)
+        void WriteTree(Value &node, const C &container, const char *where)
         {
             using Traits = ContainerTraits<C>;
-            using T = typename Traits::value_type;
 
             node.SetArray();
             const int count = Traits::Count(container);
@@ -559,10 +571,7 @@ namespace hgl::serialize
                 if (parent_slot)
                     parent_slot->SetInt(static_cast<int64_t>(Traits::ParentAt(container, i)));
                 if (data_slot)
-                {
-                    T copy = *Traits::At(container, i);
-                    WriteValue(*data_slot, copy, where);
-                }
+                    WriteValue(*data_slot, *Traits::At(container, i), where);
             }
         }
 

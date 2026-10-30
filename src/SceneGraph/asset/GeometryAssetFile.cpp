@@ -1,7 +1,7 @@
 #include <hgl/graph/asset/GeometryAssetFile.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/geo/LoadGeometry.h>
-#include <hgl/asset/generated/GeometryToml.gen.h>
+#include <hgl/asset/generated/GeometryCodec.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/type/Smart.h>

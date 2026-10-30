@@ -1,5 +1,5 @@
 #include <hgl/graph/asset/PrimitiveAssetFile.h>
-#include <hgl/asset/generated/PrimitiveToml.gen.h>
+#include <hgl/asset/generated/PrimitiveCodec.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
