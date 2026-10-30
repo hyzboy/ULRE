@@ -6,6 +6,8 @@
 
 在编写任何代码前，请先查阅 [SKILL_HGL_TYPES_REFERENCE.md](SKILL_HGL_TYPES_REFERENCE.md)，确保使用HGL自有库而非STL。
 
+容器与基础类型的**命名/const/所有权/删除语义**约定见 [SKILL_HGL_TYPE_NAMING.md](SKILL_HGL_TYPE_NAMING.md)。
+
 ---
 
 ## 🎯 SKILL导航
