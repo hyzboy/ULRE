@@ -2,6 +2,12 @@ schema = 1
 name = "TextureRect.UnlitTexture"
 domain = "UnlitTexture"
 
+[[textures]]
+name = "base_color"
+asset = "file:res/image/lena.Tex2D"
+required = true
+auto_mipmaps = true
+
 [transform]
 source = "Vec2Position"
 mapping = "ZeroOneToNDC"

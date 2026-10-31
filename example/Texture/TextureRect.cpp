@@ -3,8 +3,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/mtl/MaterialResolver.h>
@@ -62,27 +60,10 @@ private:
     ECSContext *        ecs_world           = nullptr;
     Entity *            rect_entity         = nullptr;
 
-    TextureAsset* texture = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
 
 private:
-
-    bool InitMaterial()
-    {
-        auto* tex_manager = GetManager<TextureManager>();
-        if (!tex_manager)
-            return false;
-
-        texture = tex_manager->CreateTextureAsset(OS_TEXT("res/image/lena.Tex2D"),true);
-
-        if(!texture)return(false);
-
-        // ⚠ 纹理绑定**不能写在这里**：`rect_recipe` 要到 `InitVBO()` 才从
-        // `.recipe.toml` 整体赋值（`rect_recipe = *loaded_recipe`）⇒ 先加会被覆盖，
-        // 定义侧 required 纹理缺失 ⇒ 材质整体回退错误棋盘格。绑定点见 `InitVBO()`。
-        return(true);
-    }
 
     bool InitVBO()
     {
@@ -107,11 +88,8 @@ private:
             return false;
         rect_recipe = *loaded_recipe;
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方（**必须在配方赋值之后**，否则被整体覆盖）；
+        // 纹理由配方文件的 `[[textures]]` 声明（`file:res/image/lena.Tex2D`）；
         // 采样器由 Bindless 预设统一管理，材质侧不再持有。
-        if (!rect_recipe.AddTexture("base_color", texture, true))
-            return false;
-
         rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 
         return(true);
@@ -135,7 +113,7 @@ private:
         rect_transform.SetMobility(Mobility::Static);
 
         rect_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(rect_primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
-        // 纹理已由配方声明（rect_recipe.AddTexture），实体端不再重复绑定
+        // 纹理已由配方文件声明（[[textures]] base_color），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;
@@ -144,9 +122,6 @@ private:
 public:
     bool Init() override
     {
-        if(!InitMaterial())
-            return(false);
-
         if(!InitVBO())
             return(false);
 
