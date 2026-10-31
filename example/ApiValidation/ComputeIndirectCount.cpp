@@ -13,6 +13,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
+#include<hgl/mtl/ShaderLibrarySource.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -63,32 +64,9 @@ namespace
 
     static_assert(sizeof(CountPushConstants) == 16, "CountPushConstants 布局必须与 GLSL push_constant block 一致");
 
-    constexpr const char COMPUTE_COUNT_GLSL[] = R"(
-#version 450
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-layout(local_size_x = 1) in;
-
-// 计数值经 BDA 写入：地址由 push constant 下发，无 set 无 binding
-layout(buffer_reference, std430, buffer_reference_align=16) buffer DrawCountRef {
-    uint draw_count;
-};
-
-layout(push_constant) uniform PushConstants {
-    uint max_draws;
-    float cutoff_ratio;
-    uint64_t count_addr;
-} pc;
-
-void main() {
-    uint count = uint(round(float(pc.max_draws) * pc.cutoff_ratio));
-    if (count > pc.max_draws)
-        count = pc.max_draws;
-
-    DrawCountRef counter = DrawCountRef(pc.count_addr);
-    counter.draw_count = count;
-}
-)";
+    // compute 源码在 ShaderLibrary/compute/compute_indirect_count.glsl：改 shader 不用重编译示例，
+    // push constant 布局仍与上面的 C++ 结构靠 static_assert 对拍。
+    constexpr const char COMPUTE_COUNT_GLSL_RELATIVE_PATH[] = "compute/compute_indirect_count.glsl";
 
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
@@ -249,9 +227,14 @@ private:
         if (!gc || !gc->GetMaterialManager())
             return false;
 
+        const AnsiString compute_glsl =
+            mtl::LoadShaderLibrarySourceText(COMPUTE_COUNT_GLSL_RELATIVE_PATH);
+        if (compute_glsl.IsEmpty())
+            return false;
+
         compute_pipeline = gc->GetMaterialManager()->CreateComputePipeline(
             "ComputeIndirectCount.Pipeline",
-            COMPUTE_COUNT_GLSL,
+            compute_glsl,
             sizeof(CountPushConstants)
         );
 
