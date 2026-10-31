@@ -56,6 +56,7 @@ flowchart LR
 | `rcp` | `AssetType::MaterialRecipe` | 材质配方 |
 | `prim` | `AssetType::Primitive` | 图元资产 |
 | `scene` | `AssetType::Scene` | 场景资产 |
+| `mtldata` | `AssetType::MaterialData` | 材质数据块（批量 SSBO 行数据，见 `material-instance-and-data-block.md`） |
 
 拼写的**唯一真源**是 `AssetTypeTable[]`：名字、解析、反查三个方向全部从那张表派生，
 不得再写第二份拼写。
@@ -79,7 +80,9 @@ geo:file:res/geo/unit_cube.geo.toml  几何规约文件（或 .geo minipack）
 geo:@cube  /  geo:cube               省略来源（历史写法 geo:@<name> 原样兼容）
 tex:file:res/image/brick.tex         纹理文件
 tex:rt:Offscreen:color0              渲染目标附件
-rcp:@Lit                             材质配方
+rcp:@Lit                             材质配方（子配方用 parent = "rcp:@Lit" 继承）
+mtldata:file:ShaderLibrary/asset/material_data/pbr_10x10_grid.material_data.toml
+mtldata:@pbr_10x10_grid              材质数据块（批量 SSBO 行数据）
 foo:file:bar.dat                     未注册类型（type 保持 Unknown，type_name 保留原拼写）
 ```
 
@@ -444,3 +447,14 @@ build\out\Windows_64_Release\TestAssetReflection.exe   # FlatBuffers 往返
 `shader-cache\stage\*.spv 的 open file error` 是首次编译前的正常探测；
 `[MaterialRecipeRegistry] ... errors=0` / `[GlslModuleRegistry] ... 0 errors`
 是含 `ERROR` 字样但正常的行，需人工甄别。
+
+---
+
+## 9. 延伸阅读
+
+| 主题 | 文档 |
+|---|---|
+| 材质配方继承（`parent`）、批量材质数据块（`mtldata`）、`WithMaterialDataRow` | `doc/material-instance-and-data-block.md` |
+| 加了 `HGL_ASSET_STRUCT` 之后要重跑什么 | `doc/assetgen-rebuild-guide.md` |
+| 上层统一序列化（Presence / Archive / 三后端） | `doc/unified-serialization-2026-10-30.md` |
+| 表面领域契约与 Recipe 文件契约 | `doc/material-domain-contract-architecture.md` |
