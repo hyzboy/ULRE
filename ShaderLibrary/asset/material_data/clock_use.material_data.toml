@@ -1,0 +1,22 @@
+# ClockUse 示例的材质数据块：行 0 = 表盘（白），行 1..3 = 时针/分针/秒针（红/绿/蓝）。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/clock_use.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "clock_use"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [1.0, 1.0, 1.0, 1.0]
+
+[[rows]]
+color = [1.0, 0.0, 0.0, 1.0]
+
+[[rows]]
+color = [0.0, 1.0, 0.0, 1.0]
+
+[[rows]]
+color = [0.0, 0.0, 1.0, 1.0]
+

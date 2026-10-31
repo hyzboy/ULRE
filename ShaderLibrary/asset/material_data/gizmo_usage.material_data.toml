@@ -1,0 +1,16 @@
+# GizmoUsage 示例的材质数据块：行 0 = 地面网格（白），行 1 = 立方体 Gizmo（轴蓝）。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/gizmo_usage.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "gizmo_usage"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [1.0, 1.0, 1.0, 1.0]
+
+[[rows]]
+color = [0.20784314, 0.46666667, 0.8039216, 1.0]
+

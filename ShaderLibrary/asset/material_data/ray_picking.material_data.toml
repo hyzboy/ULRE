@@ -1,0 +1,16 @@
+# RayPicking 示例的材质数据块：行 0 = 地面（白），行 1 = 拾取射线（黄）。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/ray_picking.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "ray_picking"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [1.0, 1.0, 1.0, 1.0]
+
+[[rows]]
+color = [1.0, 1.0, 0.0, 1.0]
+

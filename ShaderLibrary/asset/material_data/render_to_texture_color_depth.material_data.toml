@@ -1,0 +1,22 @@
+# RenderToTextureColorDepth 示例的材质数据块：行 0 = 离屏场景里的球（天蓝），行 1 = 主场景里的立方体（白）。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/render_to_texture_color_depth.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "render_to_texture_color_depth"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [0.5294118, 0.80784315, 0.92156863, 1.0]
+metallic = 0.08
+roughness = 0.92
+normal_scale = 0.35
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.08
+roughness = 0.92
+normal_scale = 0.35
+

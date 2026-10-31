@@ -1,0 +1,130 @@
+# CoverageVariants 示例的材质数据块：2(行) x 10(列) 行优先，两行只差粗糙度（0.45 / 0.85）。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/coverage_variants.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "coverage_variants"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.45
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.1
+roughness = 0.85
+normal_scale = 0.35
+

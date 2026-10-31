@@ -1,0 +1,178 @@
+# AlphaModes 示例的材质数据块：4(模式) x 7(alpha 档) 行优先，alpha 逐列递减 0.15。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/alpha_modes.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "alpha_modes"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.85]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.7]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.55]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.4]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.25]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.1]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.85]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.7]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.55]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.4]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.25]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.1]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.85]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.7]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.55]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.4]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.25]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.1]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.85]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.7]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.55]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.4]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.25]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 0.1]
+metallic = 0.0
+roughness = 0.75
+normal_scale = 0.0
+

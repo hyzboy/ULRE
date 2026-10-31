@@ -1,0 +1,13 @@
+# SimpleCube 示例的材质数据块：单个 Blender 轴蓝自发光方块。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/simple_cube.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "simple_cube"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [0.20784314, 0.46666667, 0.8039216, 1.0]
+

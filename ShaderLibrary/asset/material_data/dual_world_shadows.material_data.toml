@@ -1,0 +1,16 @@
+# DualWorldShadows 示例的材质数据块：两个世界共用的单行浅灰 PBR。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/dual_world_shadows.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "dual_world_shadows"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [0.78, 0.78, 0.8, 1.0]
+metallic = 0.05
+roughness = 0.85
+normal_scale = 0.0
+

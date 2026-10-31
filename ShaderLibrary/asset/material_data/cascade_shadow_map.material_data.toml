@@ -1,0 +1,76 @@
+# CascadeShadowMap 示例的材质数据块：行 0..9 = 十个 PBR 贴图变体，行 10 = 地面。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/cascade_shadow_map.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "cascade_shadow_map"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.05
+roughness = 0.2
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.15
+roughness = 0.28
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.25
+roughness = 0.36
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.35
+roughness = 0.44
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.45
+roughness = 0.52
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.05
+roughness = 0.6
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.15
+roughness = 0.68
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.25
+roughness = 0.76
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.35
+roughness = 0.84
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.85, 0.85, 0.85, 1.0]
+metallic = 0.45
+roughness = 0.92
+normal_scale = 0.5
+
+[[rows]]
+base_color = [0.6, 0.6, 0.62, 1.0]
+metallic = 0.02
+roughness = 0.85
+normal_scale = 0.4
+

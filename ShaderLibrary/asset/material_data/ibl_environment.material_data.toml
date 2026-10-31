@@ -1,0 +1,40 @@
+# IBLEnvironment 示例的材质数据块：floor / sphere / cube / torus / arrow 五种材质的 PBR 行。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/ibl_environment.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "ibl_environment"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.0
+roughness = 0.9
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 0.12
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 0.45
+normal_scale = 1.0
+
+[[rows]]
+base_color = [0.9, 0.1, 0.1, 1.0]
+metallic = 0.0
+roughness = 0.25
+normal_scale = 1.0
+
+[[rows]]
+base_color = [0.2, 0.4, 0.9, 1.0]
+metallic = 0.0
+roughness = 0.15
+normal_scale = 1.0
+

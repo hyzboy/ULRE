@@ -1,0 +1,19 @@
+# PlaneGrid3D 示例的材质数据块：三条网格线（X/Y/Z 轴）各占一行，行序 = 轴序。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/debug_plane_grid_3d.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "debug_plane_grid_3d"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [0.8666667, 0.22352941, 0.30980393, 1.0]
+
+[[rows]]
+color = [0.4862745, 0.7490196, 0.105882354, 1.0]
+
+[[rows]]
+color = [0.20784314, 0.46666667, 0.8039216, 1.0]
+

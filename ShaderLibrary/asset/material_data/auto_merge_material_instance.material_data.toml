@@ -1,0 +1,46 @@
+# AutoMergeMaterialInstance 示例的材质数据块：12 个三角形各一行，颜色自 COLOR::Blue 起按枚举序递增。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/auto_merge_material_instance.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "auto_merge_material_instance"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [0.0, 0.0, 1.0, 1.0]
+
+[[rows]]
+color = [0.5411765, 0.16862746, 0.8862745, 1.0]
+
+[[rows]]
+color = [0.64705884, 0.16470589, 0.16470589, 1.0]
+
+[[rows]]
+color = [0.87058824, 0.72156864, 0.5294118, 1.0]
+
+[[rows]]
+color = [0.37254903, 0.61960787, 0.627451, 1.0]
+
+[[rows]]
+color = [0.0, 0.8, 0.6, 1.0]
+
+[[rows]]
+color = [0.49803922, 1.0, 0.0, 1.0]
+
+[[rows]]
+color = [1.0, 0.7176471, 0.77254903, 1.0]
+
+[[rows]]
+color = [0.8235294, 0.4117647, 0.11764706, 1.0]
+
+[[rows]]
+color = [1.0, 0.49803922, 0.3137255, 1.0]
+
+[[rows]]
+color = [0.39215687, 0.58431375, 0.92941177, 1.0]
+
+[[rows]]
+color = [1.0, 0.972549, 0.8627451, 1.0]
+

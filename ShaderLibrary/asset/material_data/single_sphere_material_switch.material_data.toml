@@ -1,0 +1,22 @@
+# SingleSphereMaterialSwitch 示例的材质数据块：near / far 两个配方各占一行（内容相同，靠纹理区分）。
+#
+# 本文件是示例原先逐行硬编码的材质 SSBO 数据的唯一来源；示例代码只引用
+# `mtldata:file:ShaderLibrary/asset/material_data/single_sphere_material_switch.material_data.toml`。
+# 行序 = 文件内顺序 = 池内行序（块内第 i 行 == 池行号 first + i）。
+
+schema = 1
+name = "single_sphere_material_switch"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.15
+roughness = 0.25
+normal_scale = 0.35
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.15
+roughness = 0.25
+normal_scale = 0.35
+
