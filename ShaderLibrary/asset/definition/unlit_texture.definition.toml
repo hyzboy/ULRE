@@ -8,4 +8,3 @@ domain = "UnlitTexture"
 
 [resources]
 textures = [{ name = "base_color" }]
-samplers = ["Trilinear"]

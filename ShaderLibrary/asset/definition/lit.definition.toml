@@ -18,4 +18,3 @@ textures = [
     { name = "opacity_mask" },
     { name = "normal" }
 ]
-samplers = ["Trilinear", "Linear", "ShadowPCF"]

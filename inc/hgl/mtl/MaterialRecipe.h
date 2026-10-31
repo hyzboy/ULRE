@@ -516,7 +516,8 @@ namespace hgl::graph::mtl
     struct FallbackMaterialRule
     {
         MaterialErrorKind kind;
-        const char       *definition_id;    ///< 保底材质定义 ID（文件材质；必须是 ShaderLibrary/asset/definition 里存在的）
+        MaterialDomain    domain;           ///< 保底材质**领域**（唯一真源：构建链路只认这一项）
+        const char       *definition_id;    ///< 过渡期遗留：阶段四删除 Definition 后移除
         float             marker_color[4];  ///< 根颜色：标注错误种类
         const char       *marker_name;      ///< 稳定名（日志 / 契约用）
     };
@@ -526,18 +527,21 @@ namespace hgl::graph::mtl
         // 非错误回退：既有保底材质。`GetFallbackMaterialDefinitionID()` 的返回值
         // 就是这一条（门 F.fallback-dimension-neutral 钉住 builtin/pure_color）。
         { MaterialErrorKind::None,
+          MaterialDomain::UnlitSolid,
           "builtin/pure_color",
           { 1.0f, 1.0f, 1.0f, 1.0f },
           "none" },
 
         // 有几何、无材质来源：错误棋盘格（标记色洋红 → 棋盘格两色基色）
         { MaterialErrorKind::MissingMaterialSource,
+          MaterialDomain::ErrorChecker3D,
           "builtin/error_checkerboard_3d",
           { 1.0f, 0.0f, 1.0f, 1.0f },
           "missing_material_source" },
 
         // 材质定义 ID 不可解析（含配置写错）：错误棋盘格（标记色橙 → 棋盘格两色基色）
         { MaterialErrorKind::UnknownMaterialDefinition,
+          MaterialDomain::ErrorChecker3D,
           "builtin/error_checkerboard_3d",
           { 1.0f, 0.5f, 0.0f, 1.0f },
           "unknown_material_definition" },
@@ -550,6 +554,7 @@ namespace hgl::graph::mtl
         // **缺内容**，读者需要看见它 ⇒ 用错误棋盘格标注出来。
         // 判据唯一来源见 `ClassifyMaterialResourceError`（本文件，紧随分类表）。
         { MaterialErrorKind::MissingTextureResource,
+          MaterialDomain::ErrorChecker3D,
           "builtin/error_checkerboard_3d",
           { 0.0f, 1.0f, 1.0f, 1.0f },
           "missing_texture_resource" },
@@ -562,6 +567,7 @@ namespace hgl::graph::mtl
         // 面法线平面着色，看起来「像正常的低模」，问题就被这层伪装掩掉了。所以走错误
         // 棋盘格（黄），而不是静默降级。
         { MaterialErrorKind::MissingVertexNormal,
+          MaterialDomain::ErrorChecker3D,
           "builtin/error_checkerboard_3d",
           { 1.0f, 1.0f, 0.0f, 1.0f },
           "missing_vertex_normal" },
@@ -569,6 +575,7 @@ namespace hgl::graph::mtl
         // 「材质配了纹理 / 要采样纹理，但顶点没有 UV」：贴图会按垃圾 UV 采样（画面表现为
         // 随机花纹，比没贴图更难查）⇒ 错误棋盘格（蓝）。
         { MaterialErrorKind::MissingTextureUV,
+          MaterialDomain::ErrorChecker3D,
           "builtin/error_checkerboard_3d",
           { 0.2f, 0.2f, 1.0f, 1.0f },
           "missing_texture_uv" },
@@ -581,6 +588,10 @@ namespace hgl::graph::mtl
     /// 场景：无图形设备（单元测试）、SSBO 池未就绪或已满。
     inline constexpr const char *kMarkerlessFallbackMaterialDefinitionID =
         "builtin/checkerboard_3d";
+
+    /// 同上，领域形态（阶段三起构建链路只认这一项；定义 ID 阶段四删除）。
+    inline constexpr MaterialDomain kMarkerlessFallbackMaterialDomain =
+        MaterialDomain::Checker3D;
 
     namespace detail
     {
@@ -596,6 +607,11 @@ namespace hgl::graph::mtl
                     return false;
 
                 if (!rule.definition_id || rule.definition_id[0] == '\0')
+                    return false;
+
+                // 保底领域必须落在已闭环领域里：`Custom` 没有契约，构建期无从推导，
+                // 到时候只能靠回退里再回退，必须在这里就拦下。
+                if (rule.domain == MaterialDomain::Custom)
                     return false;
 
                 if (!rule.marker_name || rule.marker_name[0] == '\0')

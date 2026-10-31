@@ -12,4 +12,3 @@ domain = "UnlitTexture3D"
 
 [resources]
 textures = [{ name = "base_color" }]
-samplers = ["Trilinear"]

@@ -200,6 +200,26 @@ namespace hgl::graph::mtl
         // 领域规范默认 Varying 语义掩码（双 Stage 接口契约）：
         // 若资产未手动声明 [vertex] varyings，解析层以此掩码为默认值自动推导。
         InterStageSemanticMask default_varying_semantic_mask = 0;
+
+        // ── 领域规范采样器预设（阶段三：材质定义层归档时从资产上移到契约）──────
+        // 列出该领域材质默认引用的 sampler 预设名（对应 ShaderLibrary/contract/
+        // sampler.toml 的条目）。程序构建侧据此生成 "#define <name>Sampler <idx>u"
+        // 宏；找不到预设名时保底索引 0。
+        //
+        // 为什么给领域默认值：同一领域的材质在「引用了哪几个过滤预设」上通常
+        // 完全一致（硬表面材质一律 Trilinear + Linear + ShadowPCF），逐份资产
+        // 重写一遍只给抄漏留机会——抄漏不报错，只会在运行期静默取到索引 0 的
+        // 采样器，表现为滤波方式莫名其妙。资产仍可显式声明覆盖（位图文本只要
+        // Nearest），覆盖值与默认值不一致不视为契约违规：过滤方式与「布局」
+        // 无关，不影响 layout_hash，故不属于必须收敛的维度。
+        const char *const *samplers = nullptr;
+        int sampler_count = 0;
+
+        // ── 领域规范编译期宏 ───────────────────────────────────────────────────
+        // 该领域默认注入 GLSL 源码的 #define 名（如 Text2D 的 TEXT_SDF_ENABLED）。
+        // 与 samplers 同理：资产可显式声明覆盖，声明空数组即清空默认值。
+        const char *const *compile_defines = nullptr;
+        int compile_define_count = 0;
     };
 
     // 取契约；domain == Custom 或未知时返回 nullptr。
@@ -224,6 +244,18 @@ namespace hgl::graph::mtl
     // 领域规范材质私有数据 SSBO 类型。Custom / 未知领域返回 false。
     bool GetMaterialDomainCanonicalMaterialDataType(
         MaterialDomain domain, GlobalSSBOType &out) noexcept;
+
+    // 领域规范采样器预设名 / 编译期宏名表。Custom / 未知领域或契约未声明时
+    // 返回 nullptr 且 *out_count 归零（调用方按「无预设」处理）。
+    //
+    // 消费方：材质定义解析层在资产**未显式声明** `[resources].samplers` /
+    // `defines` 时用这张表兜底。之所以放在契约里：同领域材质的预设集合
+    // 本来就相同，让每份资产各写一遍只会让「同一领域不同预设」变成
+    // 无法诊断的偶发差异。
+    const char *const *GetMaterialDomainSamplerPresets(
+        MaterialDomain domain, int &out_count) noexcept;
+    const char *const *GetMaterialDomainCompileDefines(
+        MaterialDomain domain, int &out_count) noexcept;
 
     // ── 领域规范模块（阶段四：资产只填领域 + 值 + 图）────────────────────────────
     // 材质 TOML 声明 `domain` 之后，**不必**再写 `material_source_module_name`

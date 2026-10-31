@@ -627,6 +627,10 @@ namespace hgl::graph::mtl
             // `[resources].material_data` 是否被作者显式声明过。
             // 只有「完全没写」才按领域契约兜底；显式写了别的类型要报错，不能悄悄覆盖。
             bool declares_material_data = false;
+            // `[resources].samplers` / `defines` 是否被作者显式声明过。
+            // 同 material_data：没写才按领域契约兜底，写了（哪怕空数组）就照作者来。
+            bool declares_samplers = false;
+            bool declares_defines = false;
             if (root.contains("resources"))
             {
                 ParseTableScope resources_table("resources");
@@ -836,6 +840,7 @@ namespace hgl::graph::mtl
 
                 if (resources.contains("samplers"))
                 {
+                    declares_samplers = true;
                     if (!resources.at("samplers").is_array())
                         return false;
                     for (const auto &item : resources.at("samplers").as_array())
@@ -856,6 +861,7 @@ namespace hgl::graph::mtl
 
                 if (resources.contains("defines"))
                 {
+                    declares_defines = true;
                     if (!resources.at("defines").is_array())
                         return false;
                     for (const auto &item : resources.at("defines").as_array())
@@ -891,6 +897,29 @@ namespace hgl::graph::mtl
             if (has_texture_configuration_settings
              && out.definition.texture_declarations.empty())
                 return false;
+
+            // ── 领域规范采样器预设 / 编译宏兜底（阶段三之三）─────────────────────
+            // 这两组值在同一个领域里通常一致（硬表面一律 Trilinear+Linear+ShadowPCF），
+            // 属于「领域的默认长相」而不是「每份资产的选择」，故从资产上移到契约。
+            // 只在作者完全没写时兜底；显式声明（含空数组）一律以作者为准——过滤方式
+            // 与 layout_hash 无关，不构成必须收敛的维度。
+            if (!declares_samplers)
+            {
+                int preset_count = 0;
+                const char *const *presets =
+                    GetMaterialDomainSamplerPresets(out.definition.domain, preset_count);
+                for (int i = 0; i < preset_count; ++i)
+                    out.definition.sampler_names.emplace_back(presets[i]);
+            }
+
+            if (!declares_defines)
+            {
+                int define_count = 0;
+                const char *const *defines =
+                    GetMaterialDomainCompileDefines(out.definition.domain, define_count);
+                for (int i = 0; i < define_count; ++i)
+                    out.definition.compile_defines.emplace_back(defines[i]);
+            }
 
             if (root.contains("vertex") && root.at("vertex").contains("varyings"))
             {

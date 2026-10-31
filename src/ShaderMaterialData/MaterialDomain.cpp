@@ -197,6 +197,19 @@ namespace hgl::graph::mtl
             return MaterialDomainSemanticBit(semantic);
         }
 
+        // ── 领域规范采样器预设表 ────────────────────────────────────────────────
+        // 名字必须在 ShaderLibrary/contract/sampler.toml 里存在，否则构建侧会
+        // 静默取索引 0（门禁 S.material-domain-sampler-presets-exist 会核对）。
+        constexpr const char *PbrSurfaceSamplers[] = {
+            "Trilinear", "Linear", "ShadowPCF"};
+        constexpr const char *TextureSurfaceSamplers[] = {"Trilinear"};
+        // SDF 文本默认线性过滤；位图形态由资产声明 samplers=["Nearest"] 覆盖。
+        constexpr const char *TextSurfaceSamplers[] = {"Linear"};
+
+        // ── 领域规范编译期宏表 ──────────────────────────────────────────────────
+        // SDF 文本走内部距离场采样，片元模板需要该宏切换阈值逻辑。
+        constexpr const char *TextSurfaceDefines[] = {"TEXT_SDF_ENABLED"};
+
         constexpr InterStageSemanticMask VarSem(const InterStageSemantic semantic) noexcept
         {
             return GetInterStageSemanticMask(semantic);
@@ -220,6 +233,9 @@ namespace hgl::graph::mtl
                     | VarSem(InterStageSemantic::WorldPosition)
                     | VarSem(InterStageSemantic::WorldNormal)
                     | VarSem(InterStageSemantic::UV0),
+                PbrSurfaceSamplers,
+                static_cast<int>(sizeof(PbrSurfaceSamplers)
+                                 / sizeof(PbrSurfaceSamplers[0])),
             },
             {
                 MaterialDomain::Foliage, "Foliage",
@@ -388,6 +404,9 @@ namespace hgl::graph::mtl
                 GlobalSSBOType::PBRSurface,
                 VarSem(InterStageSemantic::DataIndexID)
                     | VarSem(InterStageSemantic::UV0),
+                TextureSurfaceSamplers,
+                static_cast<int>(sizeof(TextureSurfaceSamplers)
+                                 / sizeof(TextureSurfaceSamplers[0])),
             },
             {
                 // 世界空间无光贴面。片元阶段与 UnlitTexture **逐字节相同**——
@@ -413,6 +432,9 @@ namespace hgl::graph::mtl
                 GlobalSSBOType::PBRSurface,
                 VarSem(InterStageSemantic::DataIndexID)
                     | VarSem(InterStageSemantic::UV0),
+                TextureSurfaceSamplers,
+                static_cast<int>(sizeof(TextureSurfaceSamplers)
+                                 / sizeof(TextureSurfaceSamplers[0])),
             },
             {
                 // GPU 文本。顶点必须是 Position + UV0（字形在纹理里）。
@@ -436,6 +458,12 @@ namespace hgl::graph::mtl
                     | VarSem(InterStageSemantic::UV0)
                     | VarSem(InterStageSemantic::StyleID)
                     | VarSem(InterStageSemantic::Color),
+                TextSurfaceSamplers,
+                static_cast<int>(sizeof(TextSurfaceSamplers)
+                                 / sizeof(TextSurfaceSamplers[0])),
+                TextSurfaceDefines,
+                static_cast<int>(sizeof(TextSurfaceDefines)
+                                 / sizeof(TextSurfaceDefines[0])),
             },
 
             // ══ 环境 ════════════════════════════════════════════════════════════
@@ -660,6 +688,32 @@ namespace hgl::graph::mtl
 
         out = contract->material_data_type;
         return true;
+    }
+
+    const char *const *GetMaterialDomainSamplerPresets(
+        const MaterialDomain domain, int &out_count) noexcept
+    {
+        out_count = 0;
+
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        if (!contract || contract->sampler_count <= 0 || !contract->samplers)
+            return nullptr;
+
+        out_count = contract->sampler_count;
+        return contract->samplers;
+    }
+
+    const char *const *GetMaterialDomainCompileDefines(
+        const MaterialDomain domain, int &out_count) noexcept
+    {
+        out_count = 0;
+
+        const MaterialDomainContract *contract = GetMaterialDomainContract(domain);
+        if (!contract || contract->compile_define_count <= 0 || !contract->compile_defines)
+            return nullptr;
+
+        out_count = contract->compile_define_count;
+        return contract->compile_defines;
     }
 
     const char *GetMaterialDomainValidationResultName(

@@ -70,10 +70,8 @@ mode = "CharQuad"
 
 [resources]
 # 槽形态由领域 Text2D 给出（Sampler2DArray / 必绑）。
-# 采样器**过滤**不属领域：SDF 用 Linear、位图用 Nearest，两份定义本就要各写一行。
+# samplers / defines 不写：SDF 形态正是 Text2D 契约的默认值（Linear + TEXT_SDF_ENABLED）。
 textures = [{ name = "base_color" }]
-samplers = ["Linear"]
-defines = ["TEXT_SDF_ENABLED"]
 )TOML";
 
         constexpr const char kTextGpuBitmapSource[] = R"TOML(schema = 4
@@ -94,8 +92,10 @@ mode = "CharQuad"
 
 [resources]
 # 槽形态由领域 Text2D 给出（Sampler2DArray / 必绑）。
+# 位图形态与领域的 SDF 默认值不同：过滤要 Nearest，且不需要 SDF 宏。
 textures = [{ name = "base_color" }]
 samplers = ["Nearest"]
+defines = []
 )TOML";
 
         // 顺序即注册顺序。**ID 绝不能改**：保底链与字体管线按字面量引用它们
