@@ -1,0 +1,11 @@
+# `TextureMipLevels` 示例 C 行：BC7 单层数组，7 级整链。
+#
+# BC7 资产只带 7 级（到 4x4 为止），示例就是要展示「BC7 的链比 RGBA8 短」，
+# 所以级数显式写死 7：交给探针推断会拿到运行时生成策略的级数，不是资产事实。
+
+schema = 1
+name = "mip_levels_bc7"
+mipmaps = 7
+
+[[layers]]
+uri = "file:res/image/mipmaps/MipLevels.BC7.Tex2D"

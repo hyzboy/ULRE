@@ -1,0 +1,13 @@
+# B 行：同一个 RGBA8 资产装成单层数组（9 级整链）。
+#
+# 只有 `asset` 与父配方不同 —— `name` / `required` 从父配方按字段继承，
+# 这正是「一个材质、不同存储形态」的用法。
+
+schema = 1
+name = "TextureMipLevels.ArrayRgba8"
+parent = "rcp:@TextureMipLevels.UnlitTexture"
+domain = "UnlitTexture"
+
+[[textures]]
+name = "base_color"
+asset = "texarray:@mip_levels_rgba8"

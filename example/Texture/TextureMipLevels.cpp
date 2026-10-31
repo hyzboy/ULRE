@@ -1,4 +1,4 @@
-﻿// mipmap 级别测试范例（2D 屏幕空间"级数尺"）：
+// mipmap 级别测试范例（2D 屏幕空间"级数尺"）：
 //
 //   A 行：普通 Texture2D（未压缩 RGBA8，9 级，链来自自产资产 MipLevels.RGBA8.Tex2D）
 //   B 行：Texture2DArray（1 层 x 9 级，同一文件，链由 LoadTexture2DArray 逐层整链拷入
@@ -22,7 +22,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
@@ -57,8 +56,6 @@ namespace
     constexpr float ROW_X_START   = 0.01f;
     constexpr float ROW_GAP_PIXEL = 6.0f;           ///< 方块之间的水平间隙（像素）
 
-    constexpr const os_char *MIP_LEVEL_RGBA8_FILE = OS_TEXT("res/image/mipmaps/MipLevels.RGBA8.Tex2D");
-    constexpr const os_char *MIP_LEVEL_BC7_FILE   = OS_TEXT("res/image/mipmaps/MipLevels.BC7.Tex2D");
 
     GeometryVertexFormat CreateRectGeometryVertexFormat()
     {
@@ -119,14 +116,8 @@ private:
 
     ECSContext *        ecs_world                = nullptr;
 
-    Texture2D *         mip_level_texture_2d     = nullptr;    ///< A 行：RGBA8，9 级
-    Texture2DArray *    mip_level_array_rgba8    = nullptr;    ///< B 行：1 层 x 9 级（RGBA8）
-    Texture2DArray *    mip_level_array_bc7      = nullptr;    ///< C 行：1 层 x 7 级（BC7）
-
-    /// 每行的纹理句柄：材质侧只认句柄，采样器由 Bindless 预设统一管理。
-    TextureAsset *      row_texture[3]{};
-
-    /// 每行一个配方：三行是**三张不同纹理**，纹理身份是配方的固有属性。
+    /// 每行一个配方：三行是**三张不同纹理**，纹理身份是配方的固有属性
+    /// （层清单在 `ShaderLibrary/asset/texarray/mip_levels_*.texarray.toml` 里）。
     graph::mtl::MaterialRecipe  ruler_recipe[3];
     PrimitiveAsset              ruler_asset[3]{};
 
@@ -135,132 +126,86 @@ private:
 
     uint32_t            ruler_viewport_width  = 0;      ///< 当前级数尺是按这个尺寸建的（0 = 还没建）
     uint32_t            ruler_viewport_height = 0;
+    bool                mip_spec_reported     = false;  ///< A 行走异步流式，等三行都就绪后再核对规格
 
 private:
 
-    bool InitTextures()
-    {
-        auto *tex_manager = GetManager<TextureManager>();
-
-        if (!tex_manager)
-            return false;
-
-        // A 行：2D，mip 链来自资产文件（auto_mipmaps=false → 不生成，整链按文件拷入）
-        mip_level_texture_2d = tex_manager->LoadTexture2D(MIP_LEVEL_RGBA8_FILE, false);
-
-        if (!mip_level_texture_2d)
-        {
-            GLogError("InitTextures: load MipLevels.RGBA8.Tex2D failed");
-            return false;
-        }
-
-        // B 行：数组，级数/格式/尺寸全部取自资产本身，再逐层整链拷入
-        mip_level_array_rgba8 = tex_manager->CreateTexture2DArray("mip_level_array_rgba8",
-                                                                 mip_level_texture_2d->GetWidth(),
-                                                                 mip_level_texture_2d->GetHeight(),
-                                                                 1,
-                                                                 mip_level_texture_2d->GetFormat(),
-                                                                 mip_level_texture_2d->GetMipLevel());
-
-        if (!mip_level_array_rgba8)
-        {
-            GLogError("InitTextures: CreateTexture2DArray rgba8 failed");
-            return false;
-        }
-
-        if (!tex_manager->LoadTexture2DArray(mip_level_array_rgba8, 0, MIP_LEVEL_RGBA8_FILE))
-        {
-            GLogError("InitTextures: LoadTexture2DArray rgba8 failed");
-            return false;
-        }
-
-        // C 行：BC7 数组链。先用 2D 路径探出资产的级数/格式，再按同样的规格建数组并整链拷入
-        Texture2D *bc7_probe = tex_manager->LoadTexture2D(MIP_LEVEL_BC7_FILE, false);
-
-        if (!bc7_probe)
-        {
-            GLogError("InitTextures: load Grid2x2.Tex2D (bc7) failed");
-            return false;
-        }
-
-        mip_level_array_bc7 = tex_manager->CreateTexture2DArray("mip_level_array_bc7",
-                                                               bc7_probe->GetWidth(),
-                                                               bc7_probe->GetHeight(),
-                                                               1,
-                                                               bc7_probe->GetFormat(),
-                                                               bc7_probe->GetMipLevel());
-
-        if (!mip_level_array_bc7)
-        {
-            GLogError("InitTextures: CreateTexture2DArray bc7 failed");
-            return false;
-        }
-
-        if (!tex_manager->LoadTexture2DArray(mip_level_array_bc7, 0, MIP_LEVEL_BC7_FILE))
-        {
-            GLogError("InitTextures: LoadTexture2DArray bc7 failed");
-            return false;
-        }
-
-        GLogInfo("[MipTest] A 2D       %ux%u fmt=%u mip_levels=%u  (MipLevels.RGBA8.Tex2D)",
-                 mip_level_texture_2d->GetWidth(), mip_level_texture_2d->GetHeight(),
-                 uint32_t(mip_level_texture_2d->GetFormat()), mip_level_texture_2d->GetMipLevel());
-
-        GLogInfo("[MipTest] B 2DArray  %ux%u layers=%u fmt=%u mip_levels=%u",
-                 mip_level_array_rgba8->GetWidth(), mip_level_array_rgba8->GetHeight(),
-                 mip_level_array_rgba8->GetLayer(),
-                 uint32_t(mip_level_array_rgba8->GetFormat()), mip_level_array_rgba8->GetMipLevel());
-
-        GLogInfo("[MipTest] C 2DArray  %ux%u layers=%u fmt=%u mip_levels=%u  (MipLevels.BC7.Tex2D, BC7)",
-                 mip_level_array_bc7->GetWidth(), mip_level_array_bc7->GetHeight(),
-                 mip_level_array_bc7->GetLayer(),
-                 uint32_t(mip_level_array_bc7->GetFormat()), mip_level_array_bc7->GetMipLevel());
-
-        if (mip_level_texture_2d->GetMipLevel() != 9 ||
-            mip_level_array_rgba8->GetMipLevel() != 9 ||
-            mip_level_array_bc7->GetMipLevel() != 7)
-        {
-            GLogError("InitTextures: mip level count unexpected (2d=%u array=%u bc7array=%u)",
-                      mip_level_texture_2d->GetMipLevel(),
-                      mip_level_array_rgba8->GetMipLevel(),
-                      mip_level_array_bc7->GetMipLevel());
-            return false;
-        }
-
-        // bc7_probe 由 TextureManager 持有（LoadTexture2D 内部 Add 过），只作规格探针用：
-        // 交还管理器释放，不得 delete
-        tex_manager->Release(bc7_probe);
-        bc7_probe = nullptr;
-
-        // 三行纹理各自包成句柄：材质只收句柄，包装句柄的身份自动退回 `texid:<n>`。
-        row_texture[0] = tex_manager->WrapTextureAsset(mip_level_texture_2d);
-        row_texture[1] = tex_manager->WrapTextureAsset(mip_level_array_rgba8);
-        row_texture[2] = tex_manager->WrapTextureAsset(mip_level_array_bc7);
-
-        return row_texture[0] && row_texture[1] && row_texture[2];
-    }
-
     bool InitMaterial()
     {
-        const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("TextureMipLevels.UnlitTexture");
-        if (!loaded_recipe)
-            return false;
+        // 三行 = 三份配方：同一份 UnlitTexture 契约，只有 `asset` 覆盖不同
+        // （B/C 行是父配方的子配方，只写差异）。
+        static const char *row_recipe_name[3] =
+        {
+            "TextureMipLevels.UnlitTexture",    // A 行：RGBA8 2D，9 级
+            "TextureMipLevels.ArrayRgba8",      // B 行：RGBA8 单层数组，9 级
+            "TextureMipLevels.ArrayBc7",        // C 行：BC7 单层数组，7 级
+        };
 
         for (uint32_t row = 0; row < 3; row++)
         {
-            // UnlitTexture：2D 模式专用，只采样 base_color，无光照干扰 → 屏幕上就是资产本身的颜色
-            ruler_recipe[row] = *loaded_recipe;
+            const mtl::MaterialRecipe *loaded_recipe = GetRecipe(row_recipe_name[row]);
 
-            // 纹理是材质原型固有属性 ⇒ 写进配方；三行共用 layer=0（A 行 2D 会被引擎包成单层数组）
-            if (!ruler_recipe[row].AddTexture("base_color", row_texture[row], true, 0))
+            if (!loaded_recipe)
             {
-                GLogError("InitMaterial: AddTexture failed (row=%u)", row);
+                GLogError("InitMaterial: GetRecipe failed (row=%u, name=%s)", row, row_recipe_name[row]);
                 return false;
             }
+
+            // UnlitTexture：2D 模式专用，只采样 base_color，无光照干扰 → 屏幕上就是资产本身的颜色
+            ruler_recipe[row] = *loaded_recipe;
         }
 
         return true;
+    }
+
+    /// 三行纹理都就绪后核对一次 mip 规格。A 行走异步流式装配，Init 时还拿不到纹理，
+    /// 所以核对只能放到第一帧之后做（这也是本示例的存在意义：确认三条链真的不同）。
+    void ReportMipSpecIfReady()
+    {
+        if (mip_spec_reported)
+            return;
+
+        Texture *row_texture[3]{};
+
+        for (uint32_t row = 0; row < 3; row++)
+        {
+            for (const mtl::RecipeTextureBinding &binding : ruler_recipe[row].textures)
+                if (binding.texture_name == "base_color")
+                    row_texture[row] = binding.asset ? binding.asset->GetTexture() : nullptr;
+
+            if (!row_texture[row])
+                return;
+        }
+
+        mip_spec_reported = true;
+
+        auto *texture_2d    = static_cast<Texture2D *>     (row_texture[0]);
+        auto *array_rgba8   = static_cast<Texture2DArray *>(row_texture[1]);
+        auto *array_bc7     = static_cast<Texture2DArray *>(row_texture[2]);
+
+        GLogInfo("[MipTest] A 2D       %ux%u fmt=%u mip_levels=%u  (MipLevels.RGBA8.Tex2D)",
+                 texture_2d->GetWidth(), texture_2d->GetHeight(),
+                 uint32_t(texture_2d->GetFormat()), texture_2d->GetMipLevel());
+
+        GLogInfo("[MipTest] B 2DArray  %ux%u layers=%u fmt=%u mip_levels=%u",
+                 array_rgba8->GetWidth(), array_rgba8->GetHeight(),
+                 array_rgba8->GetLayer(),
+                 uint32_t(array_rgba8->GetFormat()), array_rgba8->GetMipLevel());
+
+        GLogInfo("[MipTest] C 2DArray  %ux%u layers=%u fmt=%u mip_levels=%u  (MipLevels.BC7.Tex2D, BC7)",
+                 array_bc7->GetWidth(), array_bc7->GetHeight(),
+                 array_bc7->GetLayer(),
+                 uint32_t(array_bc7->GetFormat()), array_bc7->GetMipLevel());
+
+        if (texture_2d->GetMipLevel() != 9 ||
+            array_rgba8->GetMipLevel() != 9 ||
+            array_bc7->GetMipLevel() != 7)
+        {
+            GLogError("ReportMipSpec: mip level count unexpected (2d=%u array=%u bc7array=%u)",
+                      texture_2d->GetMipLevel(),
+                      array_rgba8->GetMipLevel(),
+                      array_bc7->GetMipLevel());
+        }
     }
 
     bool InitRow(const uint32_t row, const uint32_t viewport_width, const uint32_t viewport_height)
@@ -401,28 +346,20 @@ public:
 
     void Tick(double) override
     {
+        ReportMipSpecIfReady();
         RebuildRulerIfNeeded();
     }
 
     ~TextureMipLevelsApp()
     {
-        // 所有权单点：mip_level_* 纹理由 TextureManager 持有、句柄归 TextureManager 的句柄表、
+        // 所有权单点：纹理由 TextureManager 持有、句柄归 TextureManager 的句柄表、
         // ecs_world 由框架持有。示例只做观察，析构不得 delete / SAFE_CLEAR ——
         // 否则管理器收尾时会二次 delete（实测 AV @ 0xFEEEFEEE）
-        mip_level_texture_2d  = nullptr;
-        mip_level_array_rgba8 = nullptr;
-        mip_level_array_bc7   = nullptr;
-        row_texture[0]        = nullptr;
-        row_texture[1]        = nullptr;
-        row_texture[2]        = nullptr;
-        ecs_world             = nullptr;
+        ecs_world = nullptr;
     }
 
     bool Init() override
     {
-        if (!InitTextures())
-            return false;
-
         if (!InitMaterial())
             return false;
 

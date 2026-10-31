@@ -2,6 +2,11 @@ schema = 1
 name = "TextureMipLevels.UnlitTexture"
 domain = "UnlitTexture"
 
+[[textures]]
+name = "base_color"
+asset = "file:res/image/mipmaps/MipLevels.RGBA8.Tex2D"
+required = true
+
 [transform]
 source = "Vec2Position"
 mapping = "ZeroOneToNDC"

@@ -1,0 +1,12 @@
+# `TextureMipLevels` 示例 B 行：RGBA8 单层数组，9 级整链。
+#
+# 示例要演示「同一个文件装成 2D 和单层数组后 mip 链一致」，所以层数固定 1、
+# mip 级数显式写死 9 —— 不靠第 0 层探针推断（探针走 auto_mipmaps=true，
+# 级数是运行时生成策略的产物，不是资产事实）。
+
+schema = 1
+name = "mip_levels_rgba8"
+mipmaps = 9
+
+[[layers]]
+uri = "file:res/image/mipmaps/MipLevels.RGBA8.Tex2D"

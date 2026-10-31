@@ -1,0 +1,10 @@
+# C 行：BC7 资产装成单层数组（7 级整链，BC7 的链天然比 RGBA8 短）。
+
+schema = 1
+name = "TextureMipLevels.ArrayBc7"
+parent = "rcp:@TextureMipLevels.UnlitTexture"
+domain = "UnlitTexture"
+
+[[textures]]
+name = "base_color"
+asset = "texarray:@mip_levels_bc7"
