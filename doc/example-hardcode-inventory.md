@@ -182,46 +182,61 @@ r.alpha_cutoff = STRESS_CUTOFF_STEP * (i + 1);
 
 | 文件 | 行数与位置 | 状态 |
 |---|---|---|
-| `ApiValidation/ComputeTransformHierarchy.cpp` | **74 行** | 活跃 |
-| `ApiValidation/ComputeIndirectCount.cpp` | **25 行** | 活跃 |
-| `ApiValidation/ComputeDispatch.cpp` | **23 行** | 活跃 |
-| `ApiValidation/_Obsolete/ComputeAsteroidBelt.cpp` | 129 + 34 行 | `[废弃]` |
+| `ApiValidation/ComputeTransformHierarchy.cpp` | **74 行** | ✅ 已迁移 → `ShaderLibrary/compute/compute_transform_hierarchy.glsl` |
+| `ApiValidation/ComputeIndirectCount.cpp` | **25 行** | ✅ 已迁移 → `ShaderLibrary/compute/compute_indirect_count.glsl` |
+| `ApiValidation/ComputeDispatch.cpp` | **23 行** | ✅ 已迁移 → `ShaderLibrary/compute/compute_dispatch.glsl` |
+| `ApiValidation/_Obsolete/ComputeAsteroidBelt.cpp` | 129 + 34 行 | `[废弃]`，跳过 |
 
-活跃合计 **122 行**内联 GLSL（`R"(...)"` 原始字符串）。
+活跃 **122 行已全部文件化**，`example/` 下非废弃代码中不再有 `R"(...)"` GLSL 字面量。
 
 ### 通道与难度
 
-- **通道**：ShaderLibrary（`.glsl` / `GlslModule`），与材质 shader 同一套加载路径
-- **难度**：★★☆☆☆ —— compute 管线已有 shader 加载能力，只是示例图省事写成字符串
-- **优先级**：**P2**（数量少但收益明确：改 shader 不用重编译示例）
+- **通道**：`ShaderLibrary/compute/*.glsl` + `mtl::LoadShaderLibrarySourceText()`
+  （`inc/hgl/mtl/ShaderLibrarySource.h`，按 `GetShaderLibraryPath()` 解析根）
+- **工期**：★★☆☆☆ —— compute 管线本来就有「直接给源码」这条路径，只是示例图省事写成字符串
+- **优先级**：**P2 ✅ 完成**
+
+### 落地要点（后续新增 compute 示例照此办理）
+
+- 走 `CreateComputePipeline(name, glsl, pc_size)`：GLSL 从文件读入，仍不经 ShaderGen 生成器，
+  因此 `push_constant_size` 必须继续和 C++ 结构用 `static_assert` 对拍。
+- **`.glsl` 文件必须以 `#version` 开头**：glslang 不接受 `#version` 之前出现注释，
+  文件级说明只能放在 `#version` 之后或写进 C++ 侧注释。
+- `GlslModuleRegistry` 扫的是整个 `ShaderLibrary` 根，无模块指令的文件返回 `Skipped`（不报错），
+  所以把纯 compute 源放在 `ShaderLibrary/compute/` 是安全的。
 
 ---
 
 ## 4. 内建几何 C++ 直建残留
 
-上一轮 URI 化后只剩 **8 处（+1 处注释）**：
+**✅ 已清零**。上一轮 URI 化后列出的 9 条，逐条核实后实际只有 1 处是「真在用」：
 
-| 文件 | 行号 | 类型 |
-|---|---|---|
-| `Interaction/GizmoUsage.cpp` | 93 | `inline_geometry::PlaneGridCreateInfo` |
-| `Interaction/GizmoUsage.cpp` | 134 | `inline_geometry::CubeCreateInfo` |
-| `Debug/PlaneGrid3D.cpp` | 88 | `PlaneGridCreateInfo` |
-| `Debug/SimplestAxis.cpp` | 67 | `inline_geometry::AxisCreateInfo` |
-| `Debug/RenderBoundBox.cpp` | 298 | `RoundedBoxCreateInfo`（**已注释掉**） |
-| `Offscreen/RenderToTexture.cpp` | 483 | `inline_geometry::CubeCreateInfo` |
-| `Offscreen/RenderToTextureColorDepth.cpp` | 542 | `inline_geometry::CubeCreateInfo` |
-| `Geometry/LoadGeometry/LoadGeometry.cpp` | 201 | `inline_geometry::BoundingBoxCreateInfo` |
-| `Environment/AtmosphereSkyMinimal.cpp` | 69 | `HexSphereCreateInfo` |
+| 文件 | 原行号 | 类型 | 处理 |
+|---|---|---|---|
+| `Interaction/GizmoUsage.cpp` | 99 | `PlaneGridCreateInfo` | **死代码**（几何走 `geo:builtin:plane_grid_lod`）→ 删 |
+| `Interaction/GizmoUsage.cpp` | 125 | `CubeCreateInfo` | **死代码**（走 `geo:builtin:cube_2x2x2`）→ 删 |
+| `Debug/PlaneGrid3D.cpp` | 94 | `PlaneGridCreateInfo` | **死代码**（走 `geo:builtin:plane_grid_lod`）→ 删 |
+| `Debug/SimplestAxis.cpp` | 67 | `AxisCreateInfo` | **真在用** → 改 `CreateGeometryPreset(pc,"axis")` |
+| `Debug/RenderBoundBox.cpp` | 298 | `RoundedBoxCreateInfo` | 早前已注释 → 保持注释 |
+| `Offscreen/RenderToTexture.cpp` | 427 | `CubeCreateInfo` | **死代码**（走 `geo:builtin:cube`）→ 删 |
+| `Offscreen/RenderToTextureColorDepth.cpp` | 490 | `CubeCreateInfo` | **死代码**（走 `geo:builtin:cube`）→ 删 |
+| `Geometry/LoadGeometry/LoadGeometry.cpp` | 182 | `BoundingBoxCreateInfo` | **死代码**（走 `geo:builtin:bounding_box`）→ 删 |
+| `Environment/AtmosphereSkyMinimal.cpp` | 69 | `HexSphereCreateInfo` | **死代码**（走 `geo:builtin:hex_sphere_sky`）→ 删 |
 
-注意 `CubeCreateInfo` / `PlaneGridCreateInfo` / `AxisCreateInfo` / `BoundingBoxCreateInfo` /
-`HexSphereCreateInfo` **都已经有对应预设文件**（`cube.geo.toml`、`axis.geo.toml`、
-`bounding_box.geo.toml` 等 33 个之一），只是这些示例传了**非默认参数**才没用 URI。
+所谓「传了非默认参数才没用 URI」是个误判：这些示例**早就**改走 `GetGeometry(geo:builtin:...)`，
+只是旧的 `*CreateInfo` 声明+赋参没删干净，参数全是死数据（且与对应 `.geo.toml` 的值一致）。
+所以这一类的改造不是「补预设文件」，而是**删死代码**。
 
-### 通道与难度
+唯一需要真改造的 `SimplestAxis` 用的是共享 `GeometryCreater`（几何要自己 `GeometryManager::Add`），
+`CreateGeometryPreset(creater, name)` 正是为这种场合准备的：参数进文件，GPU 资源归属不变。
 
-- **通道**：`res/geo/presets/<新名>.geo.toml`（新增预设文件，不动代码逻辑）
-- **难度**：★☆☆☆☆ —— 纯新增 TOML 文件 + 改一行 URI
-- **优先级**：**P3**（量很少，主要是"消除最后几处例外"的一致性收益）
+### 通道
+
+- 独立资产（默认）：`GetGeometry("geo:builtin:<preset>")` —— 注册表持有几何
+- 共享 creater（示例批次）：`CreateGeometryPreset(creater, "<preset>")` —— **调用方**持有几何
+- 预设文件：`res/geo/presets/<name>.geo.toml`（33 个）
+
+### 优先级：**P3 ✅ 完成**
 
 ---
 
