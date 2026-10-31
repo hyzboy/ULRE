@@ -1,6 +1,6 @@
 schema = 1
 name = "AlphaModes.LitAlphaDither"
-material_definition = "lit"
+domain = "StandardOpaque"
 
 [render_state]
 dither = true

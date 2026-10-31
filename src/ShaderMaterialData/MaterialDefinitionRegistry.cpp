@@ -387,6 +387,7 @@ bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
     // 残留会让回退材质带上半份旧状态（旧纹理绑定 / 旧 SSBO 行）。
     out_recipe = MaterialRecipe{};
     out_recipe.recipe_name = rule.marker_name;
+    out_recipe.domain      = rule.domain;
     out_recipe.mtl_def_id  = rule.definition_id;
     out_recipe.fallback_error_kind = kind;
     for (uint32_t i = 0; i < 4; ++i)
@@ -397,8 +398,131 @@ bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
     return true;
 }
 
+bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
+                                            MaterialDefinition &out_definition) noexcept
+{
+    const MaterialDomainContract *contract = GetMaterialDomainContract(recipe.domain);
+    if (!contract)
+        return false;
+
+    // 从零合成，绝不继承调用方残留字段（同 BuildFallbackMaterialRecipe 的理由）。
+    out_definition = MaterialDefinition{};
+
+    out_definition.domain = recipe.domain;
+
+    // 身份用领域名：领域内所有配方共享同一顶点 ABI 与片元模板，领域名才是稳定键。
+    // 这两个字符串只服务于日志与门禁的形状索引，不参与任何查表。
+    if (const char *domain_name = GetMaterialDomainName(recipe.domain))
+    {
+        out_definition.definition_id = domain_name;
+        out_definition.definition_name = domain_name;
+    }
+
+    out_definition.vertex_provider_policy =
+        contract->require_allow_derived
+            ? MaterialVertexProviderPolicy::AllowDerived
+            : MaterialVertexProviderPolicy::GeometryOnly;
+
+    GetMaterialDomainCanonicalVertexNodeConfig(
+        recipe.domain, out_definition.vertex_node_config);
+
+    out_definition.material_private_data = contract->material_data_type;
+
+    GetMaterialDomainVertexSemanticRequirements(
+        recipe.domain, out_definition.vertex_semantic_requirements);
+
+    const InterStageSemanticMask default_mask =
+        GetMaterialDomainDefaultVaryingMask(recipe.domain);
+    if (default_mask != 0)
+    {
+        BuildMaterialVertexVaryingFromSemanticMask(
+            default_mask, out_definition.vertex_varying);
+
+        // 调色板顶点色：颜色来自调色板查表而非顶点色属性，且需要 TransformID。
+        if (recipe.domain == MaterialDomain::VertexPalette)
+        {
+            out_definition.vertex_varying.emit_vertex_color = false;
+            out_definition.vertex_varying.emit_vertex_color_from_palette = true;
+            out_definition.vertex_varying.use_transform_id_attr = true;
+        }
+    }
+
+    out_definition.vertex_normal_mode = contract->vertex_normal_mode;
+    out_definition.mesh_shader_mode = contract->mesh_shader_mode;
+
+    if (!contract->no_material_source)
+        out_definition.material_source_module_name =
+            GetMaterialDomainReferenceMaterialSource(recipe.domain);
+    out_definition.ntb_module_name =
+        GetMaterialDomainReferenceNtb(recipe.domain);
+
+    // 表面模块：同一领域可以有多种表面形态（Sky 的 sky_minimal / sky_cube），
+    // 这是配方唯一能自选的模块槽。指针指向配方自身的字符串存储 —— 与 registry
+    // 里指向定义存储的指针同构：只在程序构建期间被消费，配方生命周期覆盖该阶段。
+    if (!recipe.surface_module_name.empty())
+        out_definition.surface_module_name =
+            recipe.surface_module_name.c_str();
+
+    // 纹理槽：领域白名单全集（槽形态由契约给出）。与历史 definition 文件的
+    // 写法逐条一致 —— 那些文件把领域的槽名全列一遍，形态一个都不写。
+    for (int i = 0; i < contract->texture_slot_count; ++i)
+    {
+        const MaterialDomainTextureSlot &slot = contract->texture_slots[i];
+        out_definition.texture_declarations.push_back(
+            {slot.name, slot.sampler, slot.binding_required, slot.channels});
+    }
+
+    int entry_count = 0;
+    const char *const *presets =
+        GetMaterialDomainSamplerPresets(recipe.domain, entry_count);
+    for (int i = 0; i < entry_count; ++i)
+        out_definition.sampler_names.emplace_back(presets[i]);
+
+    entry_count = 0;
+    const char *const *defines =
+        GetMaterialDomainCompileDefines(recipe.domain, entry_count);
+    for (int i = 0; i < entry_count; ++i)
+        out_definition.compile_defines.emplace_back(defines[i]);
+
+    // 渲染状态默认值来自契约；配方的覆盖项由 NormalizeRecipe 落定，这里不预合并。
+    out_definition.default_render_state = contract->default_render_state;
+    return true;
+}
+
+bool ResolveMaterialDefinitionForRecipe(const MaterialRecipe &recipe,
+                                       MaterialDefinition &out_definition) noexcept
+{
+    if (SynthesizeMaterialDefinitionFromRecipe(recipe, out_definition))
+        return true;
+
+    // Custom（未声明领域）：没有契约可依，仍按字符串 ID 查 definition 文件。
+    // 这是历史材质的过渡路径，随 definition 文件层一起删除。
+    return TryGetMaterialDefinitionByID(recipe.mtl_def_id, out_definition);
+}
+
 void NormalizeRecipe(MaterialRecipe &recipe)
 {
+    // 领域已声明 ⇒ 渲染状态默认值来自领域契约，Definition 完全不参与。
+    // 这是 Recipe 直连 Domain 的正路；下面的 Definition 分支只剩过渡期用途
+    // （引擎内部按字符串 ID 直接构造的配方），阶段四随 Definition 一起删除。
+    if (const MaterialDomainContract *contract =
+            GetMaterialDomainContract(recipe.domain))
+    {
+        const ResolvedMaterialRenderState resolved =
+            ResolveMaterialRenderState(contract->default_render_state, recipe);
+
+        // Write resolved values back to render_state_overrides as authoritative.
+        recipe.render_state_overrides.has_alpha_test = true;
+        recipe.render_state_overrides.alpha_test = resolved.alpha_test;
+        recipe.render_state_overrides.has_alpha_cutoff = true;
+        recipe.render_state_overrides.alpha_cutoff = resolved.alpha_cutoff;
+        recipe.render_state_overrides.has_dither = true;
+        recipe.render_state_overrides.dither = resolved.dither;
+        recipe.render_state_overrides.has_pipeline_config = true;
+        recipe.render_state_overrides.pipeline_config = resolved.pipeline_config;
+        return;
+    }
+
     // Canonicalization is intentionally strict: empty or unknown material IDs are
     // not tolerated as a legacy compatibility branch. They resolve to the single
     // file-backed fallback material so every runtime program key remains stable and
@@ -432,7 +556,7 @@ void NormalizeRecipe(MaterialRecipe &recipe)
 
             GLogError(u8"[MaterialFallback] %s: \"%s\" => 回退错误材质 %s"
                       u8"（棋盘格；错误种类 %s，颜色=(%.2f,%.2f,%.2f,%.2f)）",
-                      reason, recipe.mtl_def_id.c_str(), fallback_rule.definition_id,
+                      reason, recipe.recipe_name.c_str(), fallback_rule.definition_id,
                       fallback_rule.marker_name,
                       fallback_rule.marker_color[0], fallback_rule.marker_color[1],
                       fallback_rule.marker_color[2], fallback_rule.marker_color[3]);

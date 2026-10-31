@@ -40,6 +40,11 @@ namespace
     bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
                                              mtl::MaterialDefinition &out_bmi)
     {
+        // 领域配方 ⇒ 定义由领域契约 + 配方当场合成，definition 文件层完全不参与。
+        if (mtl::SynthesizeMaterialDefinitionFromRecipe(request.recipe, out_bmi))
+            return true;
+
+        // ── 以下为 Custom（未声明 domain）的过渡路径，随 definition 文件层一起删除 ──
         const std::string &mtl_def_id = request.recipe.mtl_def_id;
 
         if (mtl::TryGetMaterialDefinitionByID(mtl_def_id, out_bmi))
@@ -763,9 +768,9 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     mtl::MaterialDefinitionBuildRequest resolved_request{};
     if (!ResolveBuildRequest(normalized_request, definition, resolved_request))
     {
-        GLogError(u8"[ShaderProgramManager] material build request resolution failed: recipe=%s definition=%s",
+        GLogError(u8"[ShaderProgramManager] material build request resolution failed: recipe=%s domain=%s",
                   normalized_request.recipe.recipe_name.c_str(),
-                  normalized_request.recipe.mtl_def_id.c_str());
+                  mtl::GetMaterialDomainName(normalized_request.recipe.domain));
         return nullptr;
     }
 

@@ -363,15 +363,17 @@ namespace hgl::ecs
                 // 标记色行拿不到 ⇒ **必须降级到零依赖的灰度棋盘格**：规则表里的
                 // `builtin/error_checkerboard_3d` 声明了 `require Resource MaterialData`，
                 // 没有 binding 会被 ValidateMaterialRecipeForRuntime 判定失败并剔除图元
-                // （退化成第一起回归的报错形态）。降级后配方不需要 payload 行，
-                // program 也会按新 ID 重新解析（三次 BuildResolvedRecipe 走同一条路 ⇒ 一致）。
+                // （退化成第一起回归的报错形态）。降级后配方不需要 payload 行，且切到
+                // Checker3D 领域 ⇒ program 会按新领域重新解析（三次 BuildResolvedRecipe
+                // 走同一条路 ⇒ 一致）。
+                out_recipe.domain = graph::mtl::kMarkerlessFallbackMaterialDomain;
                 out_recipe.mtl_def_id =
                     graph::mtl::kMarkerlessFallbackMaterialDefinitionID;
                 out_recipe.recipe_name = "fallback_without_marker";
                 out_recipe.material_ssbo_binding = graph::GlobalSSBOBinding{};
 
                 GLogWarning(u8"[MaterialFallback] marker row unavailable (no graphics device or pool not ready); degrade to markerless material %s: owner=%s",
-                            out_recipe.mtl_def_id.c_str(), GetOwnerName(primitive_comp));
+                            graph::mtl::kMarkerlessFallbackMaterialDefinitionID, GetOwnerName(primitive_comp));
                 return true;
             }
 
@@ -421,6 +423,20 @@ namespace hgl::ecs
             return facts;
         }
 
+        /// 取配方对应的材质定义：领域配方由领域契约合成，Custom 配方查 definition
+        /// 文件（过渡路径）。两条路径都失败 ⇒ 用回退材质定义，绝不剔除图元。
+        bool ResolveMaterialDefinition(
+            const graph::mtl::MaterialRecipe &recipe,
+            graph::mtl::MaterialDefinition &out_definition)
+        {
+            if (graph::mtl::ResolveMaterialDefinitionForRecipe(recipe, out_definition))
+                return true;
+
+            return graph::mtl::TryGetMaterialDefinitionByID(
+                graph::mtl::GetFallbackMaterialDefinitionID(),
+                out_definition);
+        }
+
         /**
          * A7d：**几何级**材质错误 ⇒ 整条配方换成错误棋盘格。
          *
@@ -441,8 +457,7 @@ namespace hgl::ecs
         {
             graph::mtl::MaterialDefinition definition{};
 
-            if (!graph::mtl::TryGetMaterialDefinitionByID(out_recipe.mtl_def_id,
-                                                          definition))
+            if (!ResolveMaterialDefinition(out_recipe, definition))
                 return;
 
             const graph::mtl::MaterialErrorKind geometry_error =
@@ -457,7 +472,7 @@ namespace hgl::ecs
 
             GLogError(u8"[MaterialFallback] 材质 \"%s\" 与几何顶点格式不匹配（错误种类 %s）"
                       u8"=> 回退错误材质 %s（棋盘格，颜色=(%.2f,%.2f,%.2f,%.2f)）owner=%s",
-                      out_recipe.mtl_def_id.c_str(),
+                      out_recipe.recipe_name.c_str(),
                       rule.marker_name,
                       rule.definition_id,
                       rule.marker_color[0], rule.marker_color[1],
@@ -532,7 +547,7 @@ namespace hgl::ecs
 
             GLogWarning(u8"[MaterialFallback] material error (%s) => fallback material %s color=(%.2f,%.2f,%.2f,%.2f) owner=%s",
                         rule.marker_name,
-                        out_recipe.mtl_def_id.c_str(),
+                        out_recipe.recipe_name.c_str(),
                         rule.marker_color[0], rule.marker_color[1],
                         rule.marker_color[2], rule.marker_color[3],
                         GetOwnerName(primitive_comp));
@@ -600,21 +615,6 @@ namespace hgl::ecs
                     return &binding;
             }
             return nullptr;
-        }
-
-        bool ResolveMaterialDefinition(
-            const graph::mtl::MaterialRecipe &recipe,
-            graph::mtl::MaterialDefinition &out_definition)
-        {
-            if (!recipe.mtl_def_id.empty()
-             && graph::mtl::TryGetMaterialDefinitionByID(
-                    recipe.mtl_def_id,
-                    out_definition))
-                return true;
-
-            return graph::mtl::TryGetMaterialDefinitionByID(
-                graph::mtl::GetFallbackMaterialDefinitionID(),
-                out_definition);
         }
 
         bool ValidateMaterialRecipeForRuntime(
@@ -1125,15 +1125,11 @@ namespace hgl::ecs
         mtl_request.shader_program_purpose =
             graph::mtl::ShaderProgramPurpose::ShadowDepth;
         graph::mtl::MaterialDefinition template_definition{};
-        if (!graph::mtl::TryGetMaterialDefinitionByID(
-                effective_recipe.mtl_def_id, template_definition)
-         && !graph::mtl::TryGetMaterialDefinitionByID(
-                graph::mtl::GetFallbackMaterialDefinitionID(),
-                template_definition))
+        if (!ResolveMaterialDefinition(effective_recipe, template_definition))
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] ShadowCaster cannot select template for material=%s",
-                effective_recipe.mtl_def_id.c_str());
+                effective_recipe.recipe_name.c_str());
             return false;
         }
         if (!graph::SelectCurrentScenePassProfileRequest(
@@ -1142,7 +1138,7 @@ namespace hgl::ecs
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] ShadowCaster template selection failed for material=%s",
-                effective_recipe.mtl_def_id.c_str());
+                effective_recipe.recipe_name.c_str());
             return false;
         }
 
@@ -1151,10 +1147,9 @@ namespace hgl::ecs
         if (!resolved_program)
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] ShadowCaster AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s",
+                "[RenderPrimitiveCollectSystem] ShadowCaster AcquireShaderProgram failed for %s recipe=%s",
                 GetOwnerName(primitive_comp),
-                effective_recipe.recipe_name.c_str(),
-                effective_recipe.mtl_def_id.c_str());
+                effective_recipe.recipe_name.c_str());
             return false;
         }
 
@@ -1307,15 +1302,11 @@ namespace hgl::ecs
         // 环境层（世界）决定用哪个 ambient provider；材质只声明表面。
         mtl_request.ambient_module_name = ambient_provider.c_str();
         graph::mtl::MaterialDefinition template_definition{};
-        if (!graph::mtl::TryGetMaterialDefinitionByID(
-                effective_recipe.mtl_def_id, template_definition)
-         && !graph::mtl::TryGetMaterialDefinitionByID(
-                graph::mtl::GetFallbackMaterialDefinitionID(),
-                template_definition))
+        if (!ResolveMaterialDefinition(effective_recipe, template_definition))
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Cannot select template for material=%s",
-                effective_recipe.mtl_def_id.c_str());
+                effective_recipe.recipe_name.c_str());
             return false;
         }
         if (!graph::SelectCurrentScenePassProfileRequest(
@@ -1324,7 +1315,7 @@ namespace hgl::ecs
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Template selection failed for material=%s",
-                effective_recipe.mtl_def_id.c_str());
+                effective_recipe.recipe_name.c_str());
             return false;
         }
         graph::ShaderProgram *resolved_program =
@@ -1332,10 +1323,9 @@ namespace hgl::ecs
 
         if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s",
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireShaderProgram failed for %s recipe=%s",
                         GetOwnerName(primitive_comp),
-                        effective_recipe.recipe_name.c_str(),
-                        effective_recipe.mtl_def_id.c_str());
+                        effective_recipe.recipe_name.c_str());
             return false;
         }
 
@@ -1658,18 +1648,8 @@ namespace hgl::ecs
 
         graph::mtl::MaterialDefinition texture_definition{};
         graph::mtl::MaterialTextureReferenceLayout texture_layout{};
-        bool has_texture_definition =
-            !effective_recipe.mtl_def_id.empty()
-         && graph::mtl::TryGetMaterialDefinitionByID(
-                effective_recipe.mtl_def_id,
-                texture_definition);
-        if (!has_texture_definition)
-        {
-            has_texture_definition =
-                graph::mtl::TryGetMaterialDefinitionByID(
-                    graph::mtl::GetFallbackMaterialDefinitionID(),
-                    texture_definition);
-        }
+        const bool has_texture_definition =
+            ResolveMaterialDefinition(effective_recipe, texture_definition);
 
         if (!has_texture_definition
          || !graph::mtl::BuildMaterialTextureReferenceLayout(
@@ -1679,8 +1659,7 @@ namespace hgl::ecs
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Materialize failed: texture definition lookup/layout failed for %s definition=%s",
                 GetOwnerName(primitive_comp),
-                effective_recipe.mtl_def_id.empty()
-                    ? "<empty>" : effective_recipe.mtl_def_id.c_str());
+                effective_recipe.recipe_name.c_str());
             return false;
         }
 
@@ -1837,7 +1816,7 @@ namespace hgl::ecs
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration capacity exhausted owner=%s definition=%s",
                         GetOwnerName(primitive_comp),
-                        effective_recipe.mtl_def_id.c_str());
+                        effective_recipe.recipe_name.c_str());
                     return false;
                 }
             }

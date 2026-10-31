@@ -156,48 +156,8 @@ namespace hgl::graph::mtl
         return false;
     }
 
-    enum class MaterialVertexNormalMode : uint8
-    {
-        None = 0,
-        // Emit a vertex normal only when geometry supplies one; providers
-        // must implement their own face-normal fallback otherwise.
-        OptionalFaceFallback
-    };
-
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
-    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp::ParseVertexNormalMode` 的本地表。
-    inline constexpr uint32_t MaterialVertexNormalModeCount =
-        static_cast<uint32_t>(MaterialVertexNormalMode::OptionalFaceFallback) + 1;
-
-    inline const char *GetMaterialVertexNormalModeName(
-        const MaterialVertexNormalMode mode) noexcept
-    {
-        switch (mode)
-        {
-        case MaterialVertexNormalMode::None:                return "None";
-        case MaterialVertexNormalMode::OptionalFaceFallback: return "OptionalFaceFallback";
-        }
-        return "None";
-    }
-
-    inline bool ParseMaterialVertexNormalMode(
-        const char *name, MaterialVertexNormalMode &out) noexcept
-    {
-        if (!name || !name[0])
-            return false;
-
-        for (uint32_t i = 0; i < MaterialVertexNormalModeCount; ++i)
-        {
-            const MaterialVertexNormalMode mode =
-                static_cast<MaterialVertexNormalMode>(i);
-            if (hgl::strcmp(name, GetMaterialVertexNormalModeName(mode)) == 0)
-            {
-                out = mode;
-                return true;
-            }
-        }
-        return false;
-    }
+    // MaterialVertexNormalMode 已随领域契约归档到 MaterialDomain.h
+    // （definition 中间层移除后，它是「领域是否容忍缺顶点法线」的性质）。
 
     inline GlslModuleSemantic GetGlslModuleSemanticFromVertexSemantic(
         const VertexSemantic semantic) noexcept
@@ -668,7 +628,18 @@ namespace hgl::graph::mtl
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）
-        std::string mtl_def_id;                // MaterialDefinition字符串主键（材质标识 / 未来文件名）
+        std::string mtl_def_id;                // 【过渡期遗留】原材质定义字符串主键；阶段四删除
+
+        // 配方直连的材质领域。`Custom` = 未声明（过渡期仍可能由 Definition 解析，
+        // 阶段四之后即视为错误）。领域契约是纹理槽白名单、默认采样器/宏、
+        // 默认渲染状态、顶点语义与规范模块的唯一真源。
+        MaterialDomain domain = MaterialDomain::Custom;
+
+        // 领域声明了 `no_material_source`（如 Sky）时，配方自行指定的表面函数模块名
+        // （会让领域入口在主着色器上分裂出多种形态，如 sky_minimal / sky_cube）。
+        // 其余情况留空：由领域契约的 reference_material_source_module 给出。
+        std::string surface_module_name;
+
         VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
 
         MaterialRenderStateOverrides render_state_overrides;
@@ -709,10 +680,10 @@ namespace hgl::graph::mtl
     };
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
-        const MaterialDefinition &definition,
+        const ResolvedMaterialRenderState &defaults,
         const MaterialRecipe &recipe) noexcept
     {
-        ResolvedMaterialRenderState state = definition.default_render_state;
+        ResolvedMaterialRenderState state = defaults;
 
         const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
         if (overrides.has_alpha_test)
@@ -726,6 +697,13 @@ namespace hgl::graph::mtl
             state.pipeline_config = overrides.pipeline_config;
 
         return state;
+    }
+
+    inline ResolvedMaterialRenderState ResolveMaterialRenderState(
+        const MaterialDefinition &definition,
+        const MaterialRecipe &recipe) noexcept
+    {
+        return ResolveMaterialRenderState(definition.default_render_state, recipe);
     }
 
     /** recipe 是否已经 Normalize（render_state_overrides 被写回为权威值）*/
@@ -1042,7 +1020,9 @@ namespace hgl::graph::mtl
         hgl::hash::FNV1aHasher64 h;
 
         h << recipe.recipe_name
-          << recipe.mtl_def_id;
+          << recipe.mtl_def_id
+          << static_cast<uint32_t>(recipe.domain)
+          << recipe.surface_module_name;
 
         h << recipe.vertex_node_config
           << recipe.render_state_overrides.has_alpha_test

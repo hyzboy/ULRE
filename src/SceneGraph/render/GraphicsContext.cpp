@@ -103,8 +103,8 @@ namespace hgl::graph
         }
         else
         {
-            GLogDebug(u8"[GraphicsContext] 材质配方已解析: recipe=%s definition=%s",
-                      name, recipe->mtl_def_id.c_str());
+            GLogDebug(u8"[GraphicsContext] 材质配方已解析: recipe=%s domain=%s",
+                      name, mtl::GetMaterialDomainName(recipe->domain));
         }
         return recipe;
     }

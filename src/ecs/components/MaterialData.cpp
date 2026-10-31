@@ -450,10 +450,7 @@ namespace hgl::ecs
 
         hgl::graph::mtl::MaterialDefinition definition{};
         const bool has_definition =
-            !out_recipe.mtl_def_id.empty()
-         && hgl::graph::mtl::TryGetMaterialDefinitionByID(
-                out_recipe.mtl_def_id,
-                definition);
+            hgl::graph::mtl::ResolveMaterialDefinitionForRecipe(out_recipe, definition);
 
         // B4-iii-b：具名纹理资源住在**世界级旁表**（键 = 材质行行号）——解析路径读旁表，
         // 组件已无副本。无旁表/无条目 ⇒ 空表（语义 = 没有任何具名纹理授权）。
@@ -580,7 +577,7 @@ namespace hgl::ecs
 
                 GLogError(u8"[MaterialFallback] 材质 \"%s\" 声明为 required 的纹理缺少实际资源 "
                           u8"=> 回退错误材质 %s（棋盘格；错误种类 %s，颜色=(%.2f,%.2f,%.2f,%.2f)）",
-                          out_recipe.mtl_def_id.c_str(), rule.definition_id,
+                          out_recipe.recipe_name.c_str(), rule.definition_id,
                           rule.marker_name,
                           rule.marker_color[0], rule.marker_color[1],
                           rule.marker_color[2], rule.marker_color[3]);

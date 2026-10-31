@@ -1,6 +1,6 @@
 schema = 1
 name = "RayPicking.PlaneGrid"
-material_definition = "vertex_luminance"
+domain = "VertexLuminance"
 
 [transform]
 source = "Vec2Position"

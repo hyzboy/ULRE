@@ -1,6 +1,6 @@
 schema = 1
 name = "AtmosphereSkyMinimal.Sky"
-material_definition = "sky_minimal"
+domain = "Sky"
 
 [render_state.pipeline]
 cull_mode = "None"

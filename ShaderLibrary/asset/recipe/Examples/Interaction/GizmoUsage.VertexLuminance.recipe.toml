@@ -1,6 +1,6 @@
 schema = 1
 name = "GizmoUsage.VertexLuminance"
-material_definition = "vertex_luminance"
+domain = "VertexLuminance"
 
 [transform]
 source = "Vec2Position"

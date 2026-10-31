@@ -16,7 +16,7 @@ namespace
     constexpr char kValidRecipe[] =
         "schema = 1\n"
         "name = \"RecipeParser.Valid\"\n"
-        "material_definition = \"unlit_texture\"\n"
+        "domain = \"UnlitTexture\"\n"
         "\n"
         "[transform]\n"
         "source = \"Vec2Position\"\n"
@@ -84,7 +84,7 @@ namespace
 
         const MaterialRecipe &recipe = data.recipe;
         return recipe.recipe_name == "RecipeParser.Valid"
-            && recipe.mtl_def_id == "unlit_texture"
+            && recipe.domain == MaterialDomain::UnlitTexture
             && recipe.vertex_node_config.input == VertexInputMode::Vec2Position
             && recipe.vertex_node_config.position_mapping == PositionMappingMode::LiftXY_XY0
             && recipe.vertex_node_config.projection == ProjectionMode::OrthoViewport
@@ -106,13 +106,13 @@ namespace
         constexpr char kUnknownKeyRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.UnknownKey\"\n"
-            "material_definition = \"unlit_texture\"\n"
+            "domain = \"UnlitTexture\"\n"
             "matreial_definition = \"typo\"\n";
 
         constexpr char kUnknownNestedKeyRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.UnknownNestedKey\"\n"
-            "material_definition = \"unlit_texture\"\n"
+            "domain = \"UnlitTexture\"\n"
             "\n"
             "[transform]\n"
             "maping = \"LiftXY_XY0\"\n";
@@ -145,7 +145,7 @@ namespace
         constexpr char kInvalidTransformRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.InvalidTransform\"\n"
-            "material_definition = \"unlit_texture\"\n"
+            "domain = \"UnlitTexture\"\n"
             "\n"
             "[transform]\n"
             "projection = \"Orthographic2D\"\n";
@@ -168,7 +168,7 @@ namespace
         constexpr char kPartialPipelineRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.PartialPipeline\"\n"
-            "material_definition = \"unlit_texture\"\n"
+            "domain = \"UnlitTexture\"\n"
             "\n"
             "[render_state.pipeline]\n"
             "cull_mode = \"None\"\n";
@@ -187,7 +187,7 @@ namespace
         constexpr char kMaterialDataRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.MaterialData\"\n"
-            "material_definition = \"lit\"\n"
+            "domain = \"StandardOpaque\"\n"
             "\n"
             "[material_data]\n"
             "roughness = 0.5\n";
@@ -205,7 +205,7 @@ namespace
         constexpr char kRegistryRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.Registry\"\n"
-            "material_definition = \"unlit_texture\"\n";
+            "domain = \"UnlitTexture\"\n";
 
         MaterialRecipeRegistry registry;
         if (!registry.RegisterRecipeSource(
@@ -227,21 +227,32 @@ namespace
                 nullptr))
             return false;
 
-        constexpr char kUnknownDefinition[] =
+        constexpr char kUnknownDomain[] =
             "schema = 1\n"
-            "name = \"RecipeParser.UnknownDefinition\"\n"
-            "material_definition = \"MissingDefinition\"\n";
+            "name = \"RecipeParser.UnknownDomain\"\n"
+            "domain = \"MissingDomain\"\n";
         if (registry.RegisterRecipeSource(
-                OS_TEXT("registry-unknown-definition"),
-                kUnknownDefinition,
-                static_cast<int>(strlen(kUnknownDefinition)),
+                OS_TEXT("registry-unknown-domain"),
+                kUnknownDomain,
+                static_cast<int>(strlen(kUnknownDomain)),
+                nullptr))
+            return false;
+
+        constexpr char kCustomDomain[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.CustomDomain\"\n"
+            "domain = \"Custom\"\n";
+        if (registry.RegisterRecipeSource(
+                OS_TEXT("registry-custom-domain"),
+                kCustomDomain,
+                static_cast<int>(strlen(kCustomDomain)),
                 nullptr))
             return false;
 
         constexpr char kUnknownSlot[] =
             "schema = 1\n"
             "name = \"RecipeParser.UnknownSlot\"\n"
-            "material_definition = \"unlit_texture\"\n"
+            "domain = \"UnlitTexture\"\n"
             "\n"
             "[[textures]]\n"
             "name = \"not_declared\"\n"
@@ -254,7 +265,8 @@ namespace
             return false;
 
         return registry.GetCount() == 1
-            && registry.FindByName("RecipeParser.UnknownDefinition") == nullptr
+            && registry.FindByName("RecipeParser.UnknownDomain") == nullptr
+            && registry.FindByName("RecipeParser.CustomDomain") == nullptr
             && registry.FindByName("RecipeParser.UnknownSlot") == nullptr;
     }
 

@@ -1,6 +1,6 @@
 schema = 1
 name = "Clock.PureColor"
-material_definition = "builtin/pure_color"
+domain = "UnlitSolid"
 
 [transform]
 source = "Vec2Position"

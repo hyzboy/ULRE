@@ -4,6 +4,8 @@
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/GlslModule.h>
+#include <hgl/mtl/MeshShaderMode.h>
+#include <hgl/mtl/PipelineConfig.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/type/String.h>
@@ -92,6 +94,51 @@ namespace hgl::graph::mtl
 
     // 严格解析："StandardOpaque" 等；返回 false 表示未知名字（调用方报错）。
     bool ParseMaterialDomain(const char *name, MaterialDomain &out_domain) noexcept;
+
+    // ── 顶点法线模式 ────────────────────────────────────────────────────────────
+    // 2026-10-20：原定义在 MaterialRecipe.h（材质定义字段）。definition 中间层
+    // 移除后，它是「领域是否容忍缺顶点法线」的性质，随契约一起归档。
+    enum class MaterialVertexNormalMode : uint8
+    {
+        None = 0,
+        // Emit a vertex normal only when geometry supplies one; providers
+        // must implement their own face-normal fallback otherwise.
+        OptionalFaceFallback
+    };
+
+    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    inline constexpr uint32_t MaterialVertexNormalModeCount =
+        static_cast<uint32_t>(MaterialVertexNormalMode::OptionalFaceFallback) + 1;
+
+    inline const char *GetMaterialVertexNormalModeName(
+        const MaterialVertexNormalMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case MaterialVertexNormalMode::None:                return "None";
+        case MaterialVertexNormalMode::OptionalFaceFallback: return "OptionalFaceFallback";
+        }
+        return "None";
+    }
+
+    inline bool ParseMaterialVertexNormalMode(
+        const char *name, MaterialVertexNormalMode &out) noexcept
+    {
+        if (!name || !name[0])
+            return false;
+
+        for (uint32_t i = 0; i < MaterialVertexNormalModeCount; ++i)
+        {
+            const MaterialVertexNormalMode mode =
+                static_cast<MaterialVertexNormalMode>(i);
+            if (hgl::strcmp(name, GetMaterialVertexNormalModeName(mode)) == 0)
+            {
+                out = mode;
+                return true;
+            }
+        }
+        return false;
+    }
 
     // ── 纹理槽语义角色 ──────────────────────────────────────────────────────────
     // 角色是「这个槽在表面计算里代表什么」，不是「槽在哪个绑定位置」。
@@ -220,6 +267,26 @@ namespace hgl::graph::mtl
         // 与 samplers 同理：资产可显式声明覆盖，声明空数组即清空默认值。
         const char *const *compile_defines = nullptr;
         int compile_define_count = 0;
+
+        // ── 领域规范默认渲染状态 ────────────────────────────────────────────────
+        // 配方只填**覆盖项**，其余取这里。放在契约里的理由与 samplers 相同：
+        // 同一领域的渲染状态是领域性质的（Text2D 必须 alpha 混合，否则字形边缘
+        // 变成硬边黑底），不是美工逐份配方该重复选择的参数。
+        //
+        // 未显式填写的条目取聚合默认值（不透明 / 无 alpha 测试），与历史行为一致。
+        ResolvedMaterialRenderState default_render_state{};
+
+        // ── 领域规范顶点法线模式 ────────────────────────────────────────────────
+        // OptionalFaceFallback = 几何没有顶点法线时允许由顶点提供者就地生成面法线
+        // （调试棋盘格一族：它们按位置出格，法线只用于光照输入占位）。
+        // 其余领域取 None —— 缺顶点法线属于几何错误，必须由错误回退接管。
+        MaterialVertexNormalMode vertex_normal_mode = MaterialVertexNormalMode::None;
+
+        // ── 领域规范 mesh shader 模式 ───────────────────────────────────────────
+        // 文本领域用 CharQuad（字形 quad 由 mesh shader 按 SSBO 展开），其余领域
+        // 一律 VertexPassthrough。放在契约里的理由与 samplers 相同：同一领域的
+        // 网格产出方式由领域性质决定，不是逐份配方该选的东西。
+        MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
     };
 
     // 取契约；domain == Custom 或未知时返回 nullptr。

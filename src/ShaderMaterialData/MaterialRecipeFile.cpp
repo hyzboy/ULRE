@@ -441,11 +441,62 @@ namespace hgl::graph::mtl
                                   ParseErrorContext &error)
         {
             static const char *const keys[] = {
-                "schema", "name", "material_definition", "transform",
+                "schema", "name", "domain", "fragment", "transform",
                 "render_state", "textures"
             };
             ParseTableScope scope(error, "root");
-            return ValidateKnownKeys(root, keys, 6, error);
+            return ValidateKnownKeys(root, keys, 7, error);
+        }
+
+        // `domain` 直接写领域契约名（MaterialDomainContract::name）。
+        // 不再支持 `material_definition` 之类的中间名：那层映射正是本次要消灭的东西。
+        bool ParseDomain(const toml::value &root,
+                         MaterialRecipe &recipe,
+                         ParseErrorContext &error)
+        {
+            ParseTableScope scope(error, "root");
+
+            AnsiString name;
+            if (!ReadString(root, "domain", name, error, true))
+                return false;
+
+            if (!ParseMaterialDomain(name.c_str(), recipe.domain))
+            {
+                error.Record("domain", name.c_str(), "未知材质领域");
+                return false;
+            }
+
+            if (recipe.domain == MaterialDomain::Custom)
+            {
+                error.Record("domain", name.c_str(),
+                             "Custom 无契约，配方不得使用");
+                return false;
+            }
+
+            return true;
+        }
+
+        // 领域 `no_material_source`（如 Sky）时，配方可指定自己的表面函数模块，
+        // 由领域入口据此选择主着色器形态（sky_minimal / sky_cube）。
+        bool ParseFragment(const toml::value &root,
+                           MaterialRecipe &recipe,
+                           ParseErrorContext &error)
+        {
+            if (!root.contains("fragment"))
+                return true;
+
+            ParseTableScope scope(error, "fragment");
+            const toml::value &table = root.at("fragment");
+            static const char *const keys[] = {"surface_module_name"};
+            if (!ValidateKnownKeys(table, keys, 1, error))
+                return false;
+
+            AnsiString name;
+            if (!ReadString(table, "surface_module_name", name, error, true))
+                return false;
+
+            recipe.surface_module_name = name.c_str();
+            return true;
         }
     }
 
@@ -493,16 +544,15 @@ namespace hgl::graph::mtl
             else
             {
                 AnsiString name;
-                AnsiString definition_id;
                 if (!ReadString(root, "name", name, error, true)
-                 || !ReadString(root, "material_definition", definition_id, error, true))
+                 || !ParseDomain(root, out_data.recipe, error))
                     result = MaterialRecipeFileParseResult::InvalidValue;
                 else
                 {
                     out_data.recipe.recipe_name = name.c_str();
-                    out_data.recipe.mtl_def_id = definition_id.c_str();
 
-                    if (!ParseTransform(root, out_data.recipe, error)
+                    if (!ParseFragment(root, out_data.recipe, error)
+                     || !ParseTransform(root, out_data.recipe, error)
                      || !ParseRenderState(root, out_data.recipe.render_state_overrides, error)
                      || !ParseTextures(root, out_data.recipe, error))
                         result = error.unknown_key

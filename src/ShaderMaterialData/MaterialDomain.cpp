@@ -205,6 +205,8 @@ namespace hgl::graph::mtl
         constexpr const char *TextureSurfaceSamplers[] = {"Trilinear"};
         // SDF 文本默认线性过滤；位图形态由资产声明 samplers=["Nearest"] 覆盖。
         constexpr const char *TextSurfaceSamplers[] = {"Linear"};
+        // 天空 cube 贴图走三线性过滤（原 sky_cube 定义显式声明，归档到契约）。
+        constexpr const char *SkySamplers[] = {"Trilinear"};
 
         // ── 领域规范编译期宏表 ──────────────────────────────────────────────────
         // SDF 文本走内部距离场采样，片元模板需要该宏切换阈值逻辑。
@@ -213,6 +215,16 @@ namespace hgl::graph::mtl
         constexpr InterStageSemanticMask VarSem(const InterStageSemantic semantic) noexcept
         {
             return GetInterStageSemanticMask(semantic);
+        }
+
+        // 领域规范的 alpha 混合管线配置：从默认值出发只改 alpha_blend，
+        // 其余（cull/depth）保持 MaterialPipelineConfig 的默认值——直接写
+        // `MaterialPipelineConfig{true}` 会把 true 落到首字段 cull_mode 上。
+        constexpr MaterialPipelineConfig MakeAlphaBlendPipeline() noexcept
+        {
+            MaterialPipelineConfig config{};
+            config.alpha_blend = true;
+            return config;
         }
 
         constexpr MaterialDomainContract DomainContracts[] = {
@@ -464,6 +476,12 @@ namespace hgl::graph::mtl
                 TextSurfaceDefines,
                 static_cast<int>(sizeof(TextSurfaceDefines)
                                  / sizeof(TextSurfaceDefines[0])),
+                // 文字必须 alpha 混合：字形边缘是 alpha 覆盖，不混就是硬边黑底。
+                // 位图字（text_gpu_bitmap）同样需要，故这是领域性质而非资产选择。
+                ResolvedMaterialRenderState{false, 0.5f, false,
+                                            MakeAlphaBlendPipeline()},
+                MaterialVertexNormalMode::None,
+                MeshShaderMode::CharQuad,
             },
 
             // ══ 环境 ════════════════════════════════════════════════════════════
@@ -483,6 +501,8 @@ namespace hgl::graph::mtl
                 GlobalSSBOType::PBRSurface,
                 VarSem(InterStageSemantic::DataIndexID)
                     | VarSem(InterStageSemantic::FragDirection),
+                SkySamplers,
+                static_cast<int>(sizeof(SkySamplers) / sizeof(SkySamplers[0])),
             },
 
             // ══ 引擎内部用途 ════════════════════════════════════════════════════
@@ -534,6 +554,10 @@ namespace hgl::graph::mtl
                 {},
                 GlobalSSBOType::PBRSurface,
                 VarSem(InterStageSemantic::WorldPosition),
+                // 采样器/宏/默认渲染状态全部走缺省（位置初始化不能跳字段）。
+                nullptr, 0, nullptr, 0,
+                {},
+                MaterialVertexNormalMode::OptionalFaceFallback,
             },
             {
                 // 材质错误回退：与 Checker3D 同源逻辑但独立模块，
@@ -550,6 +574,10 @@ namespace hgl::graph::mtl
                 GlobalSSBOType::EmissiveSurface,
                 VarSem(InterStageSemantic::DataIndexID)
                     | VarSem(InterStageSemantic::WorldPosition),
+                // 采样器/宏/默认渲染状态全部走缺省（位置初始化不能跳字段）。
+                nullptr, 0, nullptr, 0,
+                {},
+                MaterialVertexNormalMode::OptionalFaceFallback,
             },
         };
 

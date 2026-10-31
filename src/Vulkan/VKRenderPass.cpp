@@ -206,8 +206,8 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
     if(!mtl::TryGetNormalizedRecipeRenderState(recipe, render_state))
     {
         // 唯一取用口（S4b/D4）：未归一化 ⇒ 明确失败，不再有"静默给默认值"的第二条路。
-        GLogError(u8"[RenderPass::CreatePipeline] recipe not normalized (call NormalizeRecipe at the authoring/acquire boundary): '%s'",
-                  recipe.mtl_def_id.c_str());
+        GLogError(u8"[RenderPass::CreatePipeline] recipe not normalized (call NormalizeRecipe at the authoring/acquire boundary): '%s' domain=%s",
+                  recipe.recipe_name.c_str(), mtl::GetMaterialDomainName(recipe.domain));
         return nullptr;
     }
 

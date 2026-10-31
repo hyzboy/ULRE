@@ -1,6 +1,6 @@
 schema = 1
 name = "CoverageVariants.LitDitherMask"
-material_definition = "lit"
+domain = "StandardOpaque"
 
 [render_state]
 dither = true

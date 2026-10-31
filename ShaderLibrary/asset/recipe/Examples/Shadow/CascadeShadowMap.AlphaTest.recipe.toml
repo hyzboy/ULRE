@@ -1,6 +1,6 @@
 schema = 1
 name = "CascadeShadowMap.AlphaTest"
-material_definition = "lit"
+domain = "StandardOpaque"
 
 [render_state]
 alpha_test = true

@@ -131,6 +131,43 @@ bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinit
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 
 /**
+ * 由**配方**合成等效材质定义（阶段三：配方直连领域，definition 文件层退场）。
+ *
+ * 为什么还需要「定义」这个结构体：下游（顶点 ABI 求解、GLSL 拼装、pass profile
+ * 选择、纹理引用布局）消费的是一份**已解析的完整契约**，它描述的正是「这个配方
+ * 会生成怎样的管线」。此前那份结构体从 `.definition.toml` 文件读出来，现在由
+ * 领域契约 + 配方当场算出——信息量相同，但不再有「配方 + 定义」两处真源。
+ *
+ * 合成规则**逐条对应**原 `MaterialDefinitionFile.cpp::ParseDefinition` 的兜底：
+ *   id / name          = 领域名（日志与门禁的稳定字符串索引）
+ *   provider_policy    = contract->require_allow_derived ? AllowDerived : GeometryOnly
+ *   vertex_node_config = contract 规范变换（配方 [transform] 仍优先，由 ABI 求解侧合并）
+ *   vertex requirements= contract 规范语义集
+ *   varyings           = contract 规范 mask（VertexPalette 另有 palette 特化）
+ *   normal_mode        = contract 规范法线模式
+ *   material_data      = contract 规范 SSBO 类型
+ *   texture slots      = contract 白名单全集（槽的 sampler/required/channels 由契约给出）
+ *   samplers / defines = contract 惯例预设
+ *   render_state       = contract 默认状态（配方覆盖项由 NormalizeRecipe 落定）
+ *   模块名             = contract 规范模块；`surface_module_name` 取配方声明（Sky 的
+ *                        surface_sky_cube 这类「同领域多表面形态」的唯一出口）
+ *
+ * @return false = 配方未声明领域（`Custom`）或领域无契约 —— 调用方应回落到
+ *                `TryGetMaterialDefinitionByID`（历史材质的过渡路径）。
+ */
+bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
+                                            MaterialDefinition &out_definition) noexcept;
+
+/**
+ * 取配方对应的材质定义：领域配方由 `SynthesizeMaterialDefinitionFromRecipe`
+ * 合成，`Custom` 配方查 definition 文件（过渡期）。
+ *
+ * **所有**「按配方找定义」的调用点都应走本函数，不要各自判断领域。
+ */
+bool ResolveMaterialDefinitionForRecipe(const MaterialRecipe &recipe,
+                                       MaterialDefinition &out_definition) noexcept;
+
+/**
  * 回退（错误）材质的**定义 ID**：由 `kFallbackMaterialRules`（MaterialRecipe.h）唯一
  * 决定 —— 数据驱动表，不是散落的字面量。
  *   无参重载            = 非错误回退（`MaterialErrorKind::None`）⇒ 纯色 `builtin/pure_color`；

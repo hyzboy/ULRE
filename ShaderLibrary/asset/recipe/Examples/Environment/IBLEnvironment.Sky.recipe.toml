@@ -1,6 +1,9 @@
 schema = 1
 name = "IBLEnvironment.Sky"
-material_definition = "sky_cube"
+domain = "Sky"
+
+[fragment]
+surface_module_name = "surface_sky_cube"
 
 [render_state.pipeline]
 cull_mode = "None"

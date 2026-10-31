@@ -1,6 +1,6 @@
 schema = 1
 name = "TextureQuad.UnlitTexture"
-material_definition = "unlit_texture"
+domain = "UnlitTexture"
 
 [render_state.pipeline]
 cull_mode = "None"

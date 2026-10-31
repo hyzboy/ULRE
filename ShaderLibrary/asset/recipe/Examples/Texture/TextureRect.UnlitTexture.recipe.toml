@@ -1,6 +1,6 @@
 schema = 1
 name = "TextureRect.UnlitTexture"
-material_definition = "unlit_texture"
+domain = "UnlitTexture"
 
 [transform]
 source = "Vec2Position"

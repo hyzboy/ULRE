@@ -1,6 +1,6 @@
 schema = 1
 name = "BasicLitSunDirection.Lit"
-material_definition = "lit"
+domain = "StandardOpaque"
 
 [[textures]]
 name = "base_color"
