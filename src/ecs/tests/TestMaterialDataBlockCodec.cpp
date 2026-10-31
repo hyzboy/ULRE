@@ -20,6 +20,7 @@
 #include <hgl/log/Logger.h>
 #include <hgl/mtl/MaterialDataBlock.h>
 #include <hgl/mtl/MaterialDataBlockFile.h>
+#include <hgl/mtl/MaterialDataBlockFlat.h>
 #include <hgl/serialize/Archive.h>
 #include <hgl/serialize/TomlCodec.h>
 
@@ -392,6 +393,112 @@ namespace
         mtl::MaterialDataBlock block;
         return !mtl::BuildMaterialDataBlock(spec, block);
     }
+
+    /// 双后端一致性：TOML 直通得到的行字节，必须与「TOML → 规约 → FlatBuffers
+    /// → 规约 → 摊平」逐字节相同。这是「批量生成用 FB、调试用手写 TOML」两条
+    /// 路可以互相替换的前提。
+    bool TestFlatBuffersParity()
+    {
+        mtl::MaterialDataBlockFileData direct;
+        MaterialDataBlockSpec spec;
+        if (!Parse(kPbrBlock, direct, &spec))
+            return false;
+
+        ValueArray<uint8> flat;
+        AnsiString error;
+        if (!mtl::EncodeMaterialDataBlockFlat(spec, flat, &error))
+            return false;
+        if (flat.GetCount() <= 0)
+            return false;
+
+        MaterialDataBlockSpec decoded;
+        if (!mtl::DecodeMaterialDataBlockFlat(flat.GetData(),
+                                              static_cast<uint64>(flat.GetCount()),
+                                              decoded, &error))
+            return false;
+
+        // 规约层必须无损（含块名与 target）。
+        if (decoded.name != spec.name || decoded.target != spec.target)
+            return false;
+        if (decoded.rows.GetCount() != spec.rows.GetCount())
+            return false;
+
+        // 物理层必须逐字节相同。
+        mtl::MaterialDataBlock via_flat;
+        if (!mtl::BuildMaterialDataBlock(decoded, via_flat))
+            return false;
+
+        if (via_flat.row_bytes != direct.block.row_bytes
+            || via_flat.GetRowCount() != direct.block.GetRowCount())
+            return false;
+
+        return memcmp(via_flat.GetData(), direct.block.GetData(),
+                      direct.block.GetByteSize()) == 0;
+    }
+
+    /// 一步到位入口：缓冲 → 物理块，结果与两段式完全相同。
+    bool TestFlatBuffersDirectBuild()
+    {
+        mtl::MaterialDataBlockFileData direct;
+        MaterialDataBlockSpec spec;
+        if (!Parse(kPbrBlock, direct, &spec))
+            return false;
+
+        ValueArray<uint8> flat;
+        if (!mtl::EncodeMaterialDataBlockFlat(spec, flat))
+            return false;
+
+        mtl::MaterialDataBlock block;
+        AnsiString error;
+        if (!mtl::BuildMaterialDataBlockFromFlat(flat.GetData(),
+                                                 static_cast<uint64>(flat.GetCount()),
+                                                 block, &error))
+            return false;
+
+        return block.type == direct.block.type
+            && memcmp(block.GetData(), direct.block.GetData(),
+                      direct.block.GetByteSize()) == 0;
+    }
+
+    bool TestFlatBuffersRejects()
+    {
+        mtl::MaterialDataBlockFileData good;
+        MaterialDataBlockSpec spec;
+        if (!Parse(kPbrBlock, good, &spec))
+            return false;
+
+        ValueArray<uint8> flat;
+        if (!mtl::EncodeMaterialDataBlockFlat(spec, flat))
+            return false;
+
+        MaterialDataBlockSpec decoded;
+        AnsiString error;
+
+        // 截断缓冲：校验阶段必须挡住，不能读到越界。
+        const uint64 truncated = static_cast<uint64>(flat.GetCount()) / 2;
+        if (mtl::DecodeMaterialDataBlockFlat(flat.GetData(), truncated, decoded, &error))
+            return false;
+
+        // 根偏移被破坏。
+        ValueArray<uint8> broken = flat;
+        broken.GetData()[0] = 0xFF;
+        broken.GetData()[1] = 0xFF;
+        broken.GetData()[2] = 0xFF;
+        broken.GetData()[3] = 0x7F;
+        if (mtl::DecodeMaterialDataBlockFlat(broken.GetData(),
+                                             static_cast<uint64>(broken.GetCount()),
+                                             decoded, &error))
+            return false;
+
+        // 组装行不是内容行 ⇒ 写出口就拒绝，不把问题推到运行时。
+        MaterialDataBlockSpec bad;
+        bad.schema = 1;
+        bad.name = "bad";
+        bad.target = GlobalSSBOType::MaterialData;
+        bad.rows.Resize(1);
+
+        return !mtl::EncodeMaterialDataBlockFlat(bad, flat, &error);
+    }
 }//namespace
 
 int main()
@@ -407,6 +514,9 @@ int main()
     Check(TestBinaryRejectsBadHeader(), "MDB1 坏头必须被拒绝");
     Check(TestTextRejects(), "文本坏输入必须报错");
     Check(TestBuildRejectsNonContentRow(), "非内容行不能构建数据块");
+    Check(TestFlatBuffersParity(), "TOML / FlatBuffers 双后端行字节一致");
+    Check(TestFlatBuffersDirectBuild(), "缓冲一步摊平");
+    Check(TestFlatBuffersRejects(), "FlatBuffers 坏输入必须被拒绝");
 
     if (g_failed > 0)
     {
