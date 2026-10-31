@@ -34,7 +34,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -64,6 +64,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/dual_world_shadows.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -109,8 +117,7 @@ private:
     PrimitiveAsset ground_asset;
 
     graph::mtl::MaterialRecipe lit_recipe{};
-    graph::GlobalSSBODataAccessor material_accessor{};
-    graph::ssbo::PBRSurfaceRow    material_row{};
+    graph::GlobalSSBOBinding material_accessor{};
     TextureManager *texture_manager = nullptr;
 
     std::shared_ptr<MainLightShadowSystem> main_csm;
@@ -209,29 +216,20 @@ private:
         auto *gm      = GetManager<GeometryManager>();
         auto *tm      = GetManager<TextureManager>();
         auto *device  = gc->GetDevice();
-        auto *registry = gc->GetGlobalSSBOBufferRegistry();
-        if (!gm || !tm || !device || !registry)
-            return LogStageFail("CreateSharedResources", "manager/device/registry missing");
+        if (!gm || !tm || !device)
+            return LogStageFail("CreateSharedResources", "manager/device missing");
 
         texture_manager = tm;
 
-        // 材质行（设备级全局池）：所有本台架实体共用一行
-        material_accessor = registry->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!material_accessor)
-            return LogStageFail("CreateSharedResources", "material row allocator failed");
-
-        material_row.base_color  = Color4f(0.78f, 0.78f, 0.80f, 1.0f);
-        material_row.metallic    = 0.05f;
-        material_row.roughness   = 0.85f;
-        material_row.normal_scale= 0.0f;
-        if (!material_accessor.Write(material_row))
-            return LogStageFail("CreateSharedResources", "material row write failed");
+        // 材质行（设备级全局池）：所有本台架实体共用一行，数值在块文件里
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_accessor))
+            return LogStageFail("CreateSharedResources", "material data block binding failed");
 
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("DualWorldShadows.Lit");
         if (!loaded_recipe)
             return LogStageFail("CreateSharedResources", "material recipe not found");
         lit_recipe = *loaded_recipe;
-        if (!(lit_recipe.material_ssbo_binding = material_accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(lit_recipe.material_ssbo_binding = material_accessor).IsValid())
             return LogStageFail("CreateSharedResources", "material SSBO binding invalid");
 
         // 私有缓冲：每几何一套独立 VDM/缓冲（顶点布局由本处统一指定）
@@ -310,7 +308,7 @@ private:
         if (!material_data)
             return false;
 
-        material_data->SetDataResource(material_accessor.GetGlobalSSBOBinding());
+        material_data->SetDataResource(material_accessor);
 
         if (out_entity)
             *out_entity = entity;

@@ -8,7 +8,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
@@ -39,6 +39,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/ibl_environment.material_data.toml";
+    constexpr uint32 kMeshRowCount = 5;   // floor / sphere / cube / torus / arrow
+}
 
 namespace
 {
@@ -106,11 +114,9 @@ private:
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 #endif//DRAW_GIZMO
 
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
     graph::mtl::MaterialRecipe mesh_recipe{};
-    std::vector<MaterialDataAccessor> mesh_rows;           ///<每个物体一行 PBR 参数
+    /// 每个物体一行 PBR 参数；行数固定，内容在块文件里
+    graph::GlobalSSBOBinding mesh_rows[kMeshRowCount]{};
     VertexDataManager* mesh_vdm = nullptr;
 
     MeshEntry* floor_mesh = nullptr;
@@ -362,36 +368,13 @@ private:
     ///   箭头:蓝色光滑电介质
     bool CreateMeshMaterialRows()
     {
-        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, 0, mesh_rows[0]))
             return false;
 
-        const graph::ssbo::PBRSurfaceRow pbr_rows[5] =
-        {
-            {Color4f(1.0f, 1.0f, 1.0f, 1.0f), 0.00f, 0.90f, 1.0f, 0.5f},   // floor
-            {Color4f(1.0f, 1.0f, 1.0f, 1.0f), 1.00f, 0.12f, 1.0f, 0.5f},   // sphere
-            {Color4f(1.0f, 1.0f, 1.0f, 1.0f), 1.00f, 0.45f, 1.0f, 0.5f},   // cube
-            {Color4f(0.9f, 0.1f, 0.1f, 1.0f), 0.00f, 0.25f, 1.0f, 0.5f},   // torus
-            {Color4f(0.2f, 0.4f, 0.9f, 1.0f), 0.00f, 0.15f, 1.0f, 0.5f},   // arrow
-        };
+        for (uint32_t i = 1; i < kMeshRowCount; ++i)
+            mesh_rows[i] = mesh_rows[0].RowOffset(i);
 
-        mesh_rows.clear();
-
-        for (const auto &row : pbr_rows)
-        {
-            mesh_rows.push_back(domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>());
-
-            if (!mesh_rows.back())
-                return false;
-
-            if (!mesh_rows.back().Write(row))
-                return false;
-
-            if (!mesh_rows.back().GetGlobalSSBOBinding().IsValid())
-                return false;
-        }
-
-        return mesh_rows.size() >= meshes.size();
+        return meshes.size() <= kMeshRowCount;
     }
 
     bool InitSceneEntities()
@@ -438,7 +421,7 @@ private:
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
             // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
-            floor_struct = mesh_rows[0].GetGlobalSSBOBinding();
+            floor_struct = mesh_rows[0];
             material_data_comp->SetDataResource(floor_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -454,7 +437,7 @@ private:
                 continue;
 
             const size_t row_index = index + 1;
-            if (row_index >= mesh_rows.size())
+            if (row_index >= kMeshRowCount)
                 return false;
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
@@ -473,7 +456,7 @@ private:
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
-            mesh_struct = mesh_rows[row_index].GetGlobalSSBOBinding();
+            mesh_struct = mesh_rows[row_index];
             material_data_comp->SetDataResource(mesh_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

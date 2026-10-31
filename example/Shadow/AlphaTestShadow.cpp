@@ -10,6 +10,7 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
@@ -49,6 +50,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/alpha_test_shadow.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -146,7 +155,7 @@ private:
 
     graph::mtl::MaterialRecipe alpha_recipe{};
     graph::mtl::MaterialRecipe ground_recipe{}; // 无 alpha_test：地面实心，避免镂空干扰影子判读
-    graph::GlobalSSBODataAccessor material_accessor{};
+    graph::GlobalSSBOBinding material_accessor{};
 
     // ── D1 契约：深度图镂空自动判读 ─────────────────────────────────────────
     // 判读口径：**相对非零（几何）像素包围盒**的填充率。整图口径不可用——该
@@ -511,30 +520,16 @@ public:
 
     bool InitMaterial()
     {
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
-            return false;
-
         const mtl::MaterialRecipe *alpha_loaded = GetRecipe("AlphaTestShadow.Lit");
         const mtl::MaterialRecipe *ground_loaded = GetRecipe("AlphaTestShadow.Ground");
         if (!alpha_loaded || !ground_loaded)
             return false;
         alpha_recipe = *alpha_loaded;
 
-        material_accessor = domain_manager->GetAccessor<ssbo::PBRSurfaceRow>();
-        if (!material_accessor)
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_accessor))
             return false;
 
-        ssbo::PBRSurfaceRow row{};
-        row.base_color = Color4f(0.9f, 0.9f, 0.9f, 1.0f);
-        row.metallic = 0.02f;
-        row.roughness = 0.5f;
-        row.normal_scale = 0.0f;
-
-        if (!material_accessor.Write(row))
-            return false;
-
-        alpha_recipe.material_ssbo_binding = material_accessor.GetGlobalSSBOBinding();
+        alpha_recipe.material_ssbo_binding = material_accessor;
         if (!alpha_recipe.material_ssbo_binding.IsValid())
             return false;
 
@@ -602,7 +597,7 @@ public:
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
             // 纹理已由配方声明（ground_recipe.AddTexture → white_asset），实体端不再重复绑定
-            material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
+            material_data_comp->SetDataResource(material_accessor);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
@@ -645,7 +640,7 @@ public:
                 material_data_comp->SetRecipe(masked_recipe);
             }
 
-            material_data_comp->SetDataResource(material_accessor.GetGlobalSSBOBinding());
+            material_data_comp->SetDataResource(material_accessor);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 

@@ -25,7 +25,7 @@
 
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/log/Log.h>
 #include<memory>
@@ -43,6 +43,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/ray_picking.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -73,8 +81,6 @@ static float position_data[2][3]=
 
 static uint8 lumiance_data[2]={255,255};
 
-static Color4f white_color(1,1,1,1);
-static Color4f yellow_color(1,1,0,1);
 
 class RayPickingApp:public WorkObject
 {
@@ -89,10 +95,8 @@ private:
     Geometry *          geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-    MaterialDataAccessor plane_material_data_accessor{};
-    MaterialDataAccessor line_material_data_accessor{};
+    graph::GlobalSSBOBinding plane_material_data_accessor{};
+    graph::GlobalSSBOBinding line_material_data_accessor{};
 
     Geometry *          geom_line           =nullptr;
     graph::mtl::MaterialRecipe line_recipe{};
@@ -161,30 +165,12 @@ private:
         if(!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, 0, plane_material_data_accessor)
+         || !GetMaterialDataBinding(MATERIAL_DATA_URI, 1, line_material_data_accessor))
             return false;
 
-        plane_material_data_accessor =
-            domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-        if (!plane_material_data_accessor)
-            return false;
-
-        line_material_data_accessor =
-            domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-        if (!line_material_data_accessor)
-            return false;
-
-        if (!(plane_recipe.material_ssbo_binding = plane_material_data_accessor.GetGlobalSSBOBinding()).IsValid()
-         || !(line_recipe.material_ssbo_binding = line_material_data_accessor.GetGlobalSSBOBinding()).IsValid())
-            return false;
-
-        graph::ssbo::EmissiveSurfaceRow plane_row{};
-        plane_row.color = white_color;
-        graph::ssbo::EmissiveSurfaceRow line_row{};
-        line_row.color = yellow_color;
-        if (!plane_material_data_accessor.Write(plane_row)
-         || !line_material_data_accessor.Write(line_row))
+        if (!(plane_recipe.material_ssbo_binding = plane_material_data_accessor).IsValid()
+         || !(line_recipe.material_ssbo_binding = line_material_data_accessor).IsValid())
             return false;
 
         // === 步骤2: 创建平面网格实体 ===
@@ -202,7 +188,7 @@ private:
             hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContext()->GetOrCreateMaterialData(plane_grid_entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
-            plane_struct = plane_material_data_accessor.GetGlobalSSBOBinding();
+            plane_struct = plane_material_data_accessor;
             material_data_comp->SetDataResource(plane_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -223,7 +209,7 @@ private:
             hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContext()->GetOrCreateMaterialData(ray_line_entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&line_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource line_struct{};
-            line_struct = line_material_data_accessor.GetGlobalSSBOBinding();
+            line_struct = line_material_data_accessor;
             material_data_comp->SetDataResource(line_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }

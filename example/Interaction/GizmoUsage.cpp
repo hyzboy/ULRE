@@ -15,7 +15,7 @@
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/Color.h>
 
@@ -35,6 +35,14 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/gizmo_usage.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -71,14 +79,12 @@ private:
 
     graph::mtl::MaterialRecipe grid_recipe{};
     PrimitiveAsset             grid_asset{};
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-    MaterialDataAccessor grid_mtl_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding grid_mtl_data_ssbo_accessor{};
     Geometry *grid_geometry = nullptr;
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    MaterialDataAccessor cube_mtl_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding cube_mtl_data_ssbo_accessor{};
     Geometry *cube_geometry = nullptr;
 
     std::string debug_cache;
@@ -101,18 +107,7 @@ private:
             if(!grid_geometry)
                 return false;
 
-            auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-            if (!domain_manager)
-                return false;
-
-            grid_mtl_data_ssbo_accessor =
-                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-            if (!grid_mtl_data_ssbo_accessor)
-                return false;
-
-            graph::ssbo::EmissiveSurfaceRow grid_row{};
-            grid_row.color = GetColor4f(COLOR::White, 1.0f);
-            if (!grid_mtl_data_ssbo_accessor.Write(grid_row))
+            if (!GetMaterialDataBinding(MATERIAL_DATA_URI, 0, grid_mtl_data_ssbo_accessor))
                 return false;
 
             const mtl::MaterialRecipe *loaded_grid_recipe =
@@ -120,16 +115,12 @@ private:
             if (!loaded_grid_recipe)
                 return false;
             grid_recipe = *loaded_grid_recipe;
-            if (!(grid_recipe.material_ssbo_binding = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+            if (!(grid_recipe.material_ssbo_binding = grid_mtl_data_ssbo_accessor).IsValid())
                 return false;
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
 
         {
-            auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-            if (!domain_manager)
-                return false;
-
             const GeometryVertexFormat geometry_vertex_format2 = CreateGizmo3DGeometryVertexFormat();
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;
@@ -140,14 +131,7 @@ private:
             if(!cube_geometry)
                 return false;
 
-            cube_mtl_data_ssbo_accessor =
-                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-            if (!cube_mtl_data_ssbo_accessor)
-                return false;
-
-            graph::ssbo::EmissiveSurfaceRow cube_row{};
-            cube_row.color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            if (!cube_mtl_data_ssbo_accessor.Write(cube_row))
+            if (!GetMaterialDataBinding(MATERIAL_DATA_URI, 1, cube_mtl_data_ssbo_accessor))
                 return false;
 
             const mtl::MaterialRecipe *loaded_cube_recipe =
@@ -155,7 +139,7 @@ private:
             if (!loaded_cube_recipe)
                 return false;
             cube_recipe = *loaded_cube_recipe;
-            if (!(cube_recipe.material_ssbo_binding = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+            if (!(cube_recipe.material_ssbo_binding = cube_mtl_data_ssbo_accessor).IsValid())
                 return false;
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }
@@ -179,7 +163,7 @@ private:
         hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContext()->GetOrCreateMaterialData(plane_entity);
         plane_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(plane_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
-        plane_struct = grid_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
+        plane_struct = grid_mtl_data_ssbo_accessor;
         material_data_comp->SetDataResource(plane_struct);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -194,7 +178,7 @@ private:
         hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity);
         cube_primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
-        cube_struct = cube_mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
+        cube_struct = cube_mtl_data_ssbo_accessor;
         cube_material_data_comp->SetDataResource(cube_struct);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
