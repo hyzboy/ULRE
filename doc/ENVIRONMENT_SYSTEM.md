@@ -3,7 +3,7 @@
 > **订正(2026-09-28)**:相机 / 环境 / 地址表断言已按权威文档 `doc/world-addresses-and-camera-model-plan.md`(§1、§3、§4、§7)就地修订,本文改动项:
 > 1. **Scene 集整体退场**:`enum class SceneBinding`、`kSceneBinding*`、`VKGlobalSceneUBOSet`(源文件已删)都不存在,描述符集只剩 **Bindless(0)**;sky / shadow / viewport / camera **不再有 binding**,一律走 BDA 地址;
 > 2. sky / shadow 的**地址发布改按世界**(世界表 `WorldAddresses`,批次 C2)。现状是 `GlobalAddresses`(全局表、无绑定无集、`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B)里的 `addr_sky` / `addr_shadow` 字段,多世界同帧会互踩;**viewport 保持全局**;
-> 3. camera 不再是"场景 UBO 绑定",而是**相机行**——相机是**世界级数据**(世界私有 **16 槽 × 8 帧槽**,0 号槽恒为本世界默认相机),shader 经 `pc_root.camera_row` 读(`ShaderLibrary/ubo/scene_ubo.glsl:149`);
+> 3. camera 不再是"场景 UBO 绑定",而是**相机行**——相机是**世界级数据**(世界私有 **16 槽 × 8 帧槽**,0 号槽恒为本世界默认相机),shader 经 `pc_root.camera_row` 读(`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:149`);
 > 4. `EnvironmentManager` 仍是设备级容器,但 **profile 的所有权 / 生命周期随世界**(世界创建时选/建自己的 profile、销毁时归还,内置 default 可共享;C2);
 > 5. §7 的「Scene 集 6 个 UBO 绑定」表、§9 的「Scene Set 加槽位」流程、§9 末的「Scene Set 仍是设备级单例」全部作废,已就地改写为世界表口径。
 >
@@ -25,12 +25,12 @@
 >    原 `_pad[3]` 显式填充与两条句柄偏移断言一并删除 —— 块内同族字段后它们只是兜底）；
 > ② IBL 句柄归位到它真正的消费者槽：新增 `AmbientEnvInfo`（`ambient_light_provider`，块内只有 `Vector4u env_tex`）
 >    + 世界表 `WorldAddresses.addr_ambient_env` + profile 侧 `ambient_env_ubo` 物化/取址 + `EnvironmentSystem::EditAmbientEnvInfo` 四件套；
-> ③ shader 侧读点从天空块改到新块（`ShaderLibrary/ubo/scene_ubo.glsl` 的 `AmbientEnvInfoRef` + `#define ambient_env`）。
+> ③ shader 侧读点从天空块改到新块（`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl` 的 `AmbientEnvInfoRef` + `#define ambient_env`）。
 > **下文凡把 IBL 句柄算作天空段内容、或写 `SkyInfo.env_tex` / 两段物化只有 `sky_ubo` 的段落，一律读作历史口径。**
 >
 > **④ 追加订正（2026-10-07，`sky` 段整删）**：`SkyInfo` 连同 `addr_sky` 已**整删** —— 它的两个字段
 > （`base_sky_color` / `halo_intensity`）只服务「假大气天空」这一种方法、且**全仓无写者**（唯一调用点是
-> `AtmosphereSkyMinimal` 的一句空 `EditSkyInfo()`）⇒ 取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl`
+> `AtmosphereSkyMinimal` 的一句空 `EditSkyInfo()`）⇒ 取值搬成 `ShaderLibrary/module/provider/sky/sky_atmosphere.glsl`
 > 内常量 `kBaseSkyColor` / `kHaloIntensity`，**外观逐位不变**（八台架/离屏两例/环境两条自检摘要均未变）。
 > `EnvironmentInfo` 现在只剩 `AmbientEnvInfo ambient_env` 一段；世界表 `WorldAddresses` = **72 B（9 字段）**。
 > **下文凡出现 `SkyInfo` / `SkyInfo sky` / `sky_ubo` / `SkyUBO:<profile>` / `EditSkyInfo()` 三件套 /
@@ -232,16 +232,16 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 | 数据 | GLSL 读点 | 地址来源 |
 |---|---|---|
-| camera | `CameraInfoBufferRef(...).cameras[pc_root.camera_row]`(`ShaderLibrary/ubo/scene_ubo.glsl:149`) | 相机行(世界级数据;`pc_root.camera_row` = 行号) |
+| camera | `CameraInfoBufferRef(...).cameras[pc_root.camera_row]`(`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:149`) | 相机行(世界级数据;`pc_root.camera_row` = 行号) |
 | ~~sky~~ | ~~`SkyInfoRef(global_addresses.addr_sky)`~~（2026-10-07 整删） | — |
 | shadow | `ShadowInfoRef(global_addresses.addr_shadow)`(`scene_ubo.glsl:147`) | `GlobalAddresses.addr_shadow` → 本轮改 `world.addr_shadow` |
 | viewport | `ViewportInfoRef(global_addresses.addr_viewport)`(`scene_ubo.glsl:86`) | `GlobalAddresses.addr_viewport`(**保持全局**) |
 
-**没有 Fog 段**(`FogInfo` / `kSceneBindingFog` / `fog_info.glsl` 都不存在)。GLSL 侧声明在 `ShaderLibrary/ubo/scene_ubo.glsl`(`sky` 宏 :74、`viewport` 宏 :86、`global_addresses` 宏 :119、`shadow` 宏 :147、`camera` 宏 :149);`ShaderLibrary/common/descriptor_macros.glsl` 现只生成 `BINDLESS_SET 0`——`CAMERA_BINDING` / `SKY_BINDING` / `SHADOW_BINDING` / `GLOBAL_ADDRESSES_BINDING` 这些宏随 Scene 集退场一并消失。
+**没有 Fog 段**(`FogInfo` / `kSceneBindingFog` / `fog_info.glsl` 都不存在)。GLSL 侧声明在 `ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl`(`sky` 宏 :74、`viewport` 宏 :86、`global_addresses` 宏 :119、`shadow` 宏 :147、`camera` 宏 :149);`ShaderLibrary/contract/descriptor_macros.glsl` 现只生成 `BINDLESS_SET 0`——`CAMERA_BINDING` / `SKY_BINDING` / `SHADOW_BINDING` / `GLOBAL_ADDRESSES_BINDING` 这些宏随 Scene 集退场一并消失。
 
-- `sky/sky_atmosphere.glsl`:`GetMainLightDir`(:17)、`GetMainLightColor`(:22)、`EvalSkyAtmosphere(方向)`(:35);旧文列出的 `GetSkyAmbientColor` **已删**(2026-10):它唯一的调用者是 `forward_lighting.glsl` 里的 `lighting.ambientColor = GetSkyAmbientColor()`,而 `LightingInput.ambientColor` 全树**零读取点**(天空色实际由 `indirect_sky_ambient.glsl` 自己 `EvalSkyAtmosphere(N)` 求),属死字段 + 天空色算两遍;
-- Lit 类材质的编译期开关是 `HGL_USE_SCENE_LIGHTING`(`#define` 现由管线配置头单一真源 `src/ShaderGen/contract/ShaderConfig.cpp:80-87` 的 `EmitShaderConfigDefines` 发射,`FragmentTemplateComposer` 不再自己拼宏;旧文写的 `enable_scene_lighting` 这个名字全树 0 命中);旧文引用的 `ubo/sky_info.glsl` 已不存在,`sky.*` 统一由 `ubo/scene_ubo.glsl` 声明。直接光已拆成**两条独立轴**:漫反射 = `ShaderLibrary/lighting/diffuse_*.glsl`(`EvalDiffuseLight`),高光 = `ShaderLibrary/lighting/specular_*.glsl`(`EvalSpecularLight`),两者都只返回**未调制**辐射项,光源色 × 阴影系数由光照合成槽(`lighting/forward_pbr.glsl` / `lighting/forward_toon.glsl`)统一调制一次;间接光 = `EvalSkyAtmosphere(N) × baseColor × (1-metallic) × ao`(`ShaderLibrary/lighting/indirect_sky_ambient.glsl:23-30`);主光方向/颜色的装配点在 `ShaderLibrary/compositor/forward_lighting.glsl:42-44`。
-- AO 契约:`ambient_occlusion_provider` 槽的模块提供 `float GetAmbientOcclusion(SurfaceInput)`,由 `ShaderLibrary/compositor/forward_lighting.glsl` 乘进 `lighting.ao`。**订正(2026-10,阶段二之二)**:该槽现已进入**全部** forward 光照模板块(`ForwardLitSlots` 与 `ForwardLitUnshadowedSlots` 都是必需槽),`GetAmbientOcclusion` 调用点**无任何宏守卫**,也不需要宏——GLSL 在函数定义处就解析符号,缺实现直接编译失败,所以「调用点条件编译」是错解,正解是补空对象。当前唯一实现 `ao/identity.glsl` 恒返回 1.0 ⇒ 接线后输出逐位不变。
+- `module/provider/sky/sky_atmosphere.glsl`:`GetMainLightDir`(:17)、`GetMainLightColor`(:22)、`EvalSkyAtmosphere(方向)`(:35);旧文列出的 `GetSkyAmbientColor` **已删**(2026-10):它唯一的调用者是 `output_policy_forward.glsl` 里的 `lighting.ambientColor = GetSkyAmbientColor()`,而 `LightingInput.ambientColor` 全树**零读取点**(天空色实际由 `ambient_light_sky.glsl` 自己 `EvalSkyAtmosphere(N)` 求),属死字段 + 天空色算两遍;
+- Lit 类材质的编译期开关是 `HGL_USE_SCENE_LIGHTING`(`#define` 现由管线配置头单一真源 `src/ShaderGen/contract/ShaderConfig.cpp:80-87` 的 `EmitShaderConfigDefines` 发射,`FragmentTemplateComposer` 不再自己拼宏;旧文写的 `enable_scene_lighting` 这个名字全树 0 命中);旧文引用的 `ubo/sky_info.glsl` 已不存在,`sky.*` 统一由 `module/descriptor/ubo/scene_ubo.glsl` 声明。直接光已拆成**两条独立轴**:漫反射 = `ShaderLibrary/lighting/diffuse_*.glsl`(`EvalDiffuseLight`),高光 = `ShaderLibrary/lighting/specular_*.glsl`(`EvalSpecularLight`),两者都只返回**未调制**辐射项,光源色 × 阴影系数由光照合成槽(`module/provider/lighting_model/lighting_model_pbr.glsl` / `module/provider/lighting_model/lighting_model_toon.glsl`)统一调制一次;间接光 = `EvalSkyAtmosphere(N) × baseColor × (1-metallic) × ao`(`ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl:23-30`);主光方向/颜色的装配点在 `ShaderLibrary/module/provider/output_policy/output_policy_forward.glsl:42-44`。
+- AO 契约:`ambient_occlusion_provider` 槽的模块提供 `float GetAmbientOcclusion(SurfaceInput)`,由 `ShaderLibrary/module/provider/output_policy/output_policy_forward.glsl` 乘进 `lighting.ao`。**订正(2026-10,阶段二之二)**:该槽现已进入**全部** forward 光照模板块(`ForwardLitSlots` 与 `ForwardLitUnshadowedSlots` 都是必需槽),`GetAmbientOcclusion` 调用点**无任何宏守卫**,也不需要宏——GLSL 在函数定义处就解析符号,缺实现直接编译失败,所以「调用点条件编译」是错解,正解是补空对象。当前唯一实现 `module/provider/ambient_occlusion/ambient_occlusion_identity.glsl` 恒返回 1.0 ⇒ 接线后输出逐位不变。
 
 ## 8. 现在能做什么(能力清单)
 
@@ -266,7 +266,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
    };
    ```
 
-2. **定义 shader 源**:`inc/hgl/graph/ubo/UBOShaderSources.h` 加 `SBS_FogInfo`(现存量参照 `SBS_ShadowInfo`,`UBOShaderSources.h:44-48`);GLSL 块声明并入 `ShaderLibrary/ubo/scene_ubo.glsl`——**当前整个 `ShaderLibrary/ubo/` 只有这一个文件**,`fog_info.glsl` 不存在。注意布局:vec3/vec2 对齐、需要紧密排布时用 `layout(scalar)`,并用 `static_assert(sizeof(...)==N)` 锁死 CPU 镜像大小(参照 `inc/hgl/graph/ubo/GlobalAddresses.h:27`)。
+2. **定义 shader 源**:`inc/hgl/graph/ubo/UBOShaderSources.h` 加 `SBS_FogInfo`(现存量参照 `SBS_ShadowInfo`,`UBOShaderSources.h:44-48`);GLSL 块声明并入 `ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl`——**当前整个 `ShaderLibrary/ubo/` 只有这一个文件**,`fog_info.glsl` 不存在。注意布局:vec3/vec2 对齐、需要紧密排布时用 `layout(scalar)`,并用 `static_assert(sizeof(...)==N)` 锁死 CPU 镜像大小(参照 `inc/hgl/graph/ubo/GlobalAddresses.h:27`)。
 
 3. **地址进表**(如果它是"每视图"信息):**不要再想 Scene 集槽位——Scene 集已整体退场**(`kSceneBindingFog` / `GlobalSceneUBOSet` / `SceneBinding` 全部不存在)。世界私有的观察者 / 状态(sky / shadow / env 这类)进**世界地址表 `WorldAddresses`**(与全局表同形:8 槽 × 128B;地址经 `pc_root.addr_world_addresses` 解引用,见权威文档 §1 / §4);GLSL 侧照 `sky` 宏写法加 `#define fog FogInfoRef(world.addr_fog)`,并同步「表归属」契约——世界私有地址**不得**再出现在全局表 `GlobalAddresses` 里;
    - 若更适合做材质级数据(每材质不同),则不走世界表,改走材质 SSBO/纹理槽(`TextureSlot`/`SSBOType`)路线,不经过本管理器。
@@ -328,6 +328,6 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 |---|---|
 | sky / shadow 经 Scene Set binding 1 / binding 5 绑定 | **Scene 集整体退场**;sky / shadow 现经 `global_addresses.addr_sky` / `addr_shadow` 解引用,批次 **C2** 之后进**世界表** `WorldAddresses`(shadow 每槽一份 ring) |
 | `GlobalAddressesInfo` 是 7×uint64 的 UBO(Set0/binding4) | `GlobalAddresses` 是 **SSBO**、**无绑定无集**、`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长(`inc/hgl/graph/ubo/GlobalAddresses.h:11-57`) |
-| camera 是"场景 UBO 绑定"/ UBO 池 | camera 是**相机行**;相机属**世界级数据**(世界私有 16 槽 × 8 帧槽,0 号槽恒为本世界默认相机),shader 经 `pc_root.camera_row` 读(`ShaderLibrary/ubo/scene_ubo.glsl:149`) |
+| camera 是"场景 UBO 绑定"/ UBO 池 | camera 是**相机行**;相机属**世界级数据**(世界私有 16 槽 × 8 帧槽,0 号槽恒为本世界默认相机),shader 经 `pc_root.camera_row` 读(`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:149`) |
 | 环境数据"设备级单份"、RT 只持句柄即无争抢 | 数据仍集中管理,但 **profile 的生命周期随世界**(C2),sky / shadow / env **地址发布按世界**;**viewport 保持全局** |
 | `VKGlobalSceneUBOSet` / `kSceneBinding*` / `SceneBinding` | 全部不存在(源文件已删),描述符集只剩 Bindless(0) |

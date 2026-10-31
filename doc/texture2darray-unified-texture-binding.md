@@ -44,7 +44,7 @@
 ### ③ 采样口：只有 `texture2DArray` 一种采样形式
 
 ```glsl
-layout(set=BINDLESS_SET, binding=0) uniform texture2DArray bindless_tex[];   // ShaderLibrary/common/bindless_textures.glsl:34
+layout(set=BINDLESS_SET, binding=0) uniform texture2DArray bindless_tex[];   // ShaderLibrary/module/descriptor/bindless_textures.glsl:34
 layout(set=BINDLESS_SET, binding=1) uniform sampler      bindless_samp[];   // :35
 
 vec4 SampleOptional(uvec2 tex_ref, uint samp_idx, vec2 uv, vec4 fallback)    // :61-66
@@ -55,7 +55,7 @@ vec4 SampleOptional(uvec2 tex_ref, uint samp_idx, vec2 uv, vec4 fallback)    // 
 }
 ```
 
-`Sample2DArray`（`:48-55`）最终展开为 `texture(sampler2DArray(bindless_tex[nonuniformEXT(h-1u)], bindless_samp[nonuniformEXT(s)]), vec3(uv, layer))`。**没有任何按纹理类型分叉的代码。** 集合号 `BINDLESS_SET = 1`（`ShaderLibrary/common/descriptor_macros.glsl:47-49`，数值真源 `inc/hgl/common/DescriptorSetTypeDef.h:34-45`）。
+`Sample2DArray`（`:48-55`）最终展开为 `texture(sampler2DArray(bindless_tex[nonuniformEXT(h-1u)], bindless_samp[nonuniformEXT(s)]), vec3(uv, layer))`。**没有任何按纹理类型分叉的代码。** 集合号 `BINDLESS_SET = 1`（`ShaderLibrary/contract/descriptor_macros.glsl:47-49`，数值真源 `inc/hgl/common/DescriptorSetTypeDef.h:34-45`）。
 
 ### ④ 程序口：程序 key 里没有纹理身份/种类
 
@@ -78,7 +78,7 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 | 每帧 batch | 写每实例地址表 `MaterialInstanceAddresses{payload_address, texture_reference_address}` | `src/ecs/support/PrimitiveBatchPipeline.cpp:828-861` |
 | 描述符集 | 一帧绑一次 Scene(0)/Bindless(1) 两集，per-material 绑定零残留 | `inc/hgl/common/DescriptorSetTypeDef.h:34-45` |
 | GLSL | `MTL_TEX(i)` → `MaterialTextureReferencesRef(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[i].texture_reference_address)` | 发射点 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:205-219` |
-| GPU | `Sample2DArray(handle, sampler, uv, layer)`，`nonuniformEXT` 索引 | `ShaderLibrary/common/bindless_textures.glsl:46-66` |
+| GPU | `Sample2DArray(handle, sampler, uv, layer)`，`nonuniformEXT` 索引 | `ShaderLibrary/module/descriptor/bindless_textures.glsl:46-66` |
 
 ---
 
@@ -198,7 +198,7 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 
 - 行字段数组化：`uvec2 tex_refs[N]`（槽序 = `material.toml` 声明序），配套 `#define SLOT_<name> <i>u`；
 - helper 由 ShaderGen 与 `MTL_TEX` **一起发射**（不要放进 `bindless_textures.glsl`：无纹理引用的材质也 include 该模块，会撞"宏未定义"）；
-- `required` 槽免守卫：模块元数据已带策略（`inc/hgl/mtl/ShaderCodeModule.h:203-209`），收集阶段已保证 required 槽句柄非 0（`RenderPrimitiveCollectSystem.cpp:932-942`）→ 该分支是编译期死代码；
+- `required` 槽免守卫：模块元数据已带策略（`inc/hgl/mtl/GlslModule.h:203-209`），收集阶段已保证 required 槽句柄非 0（`RenderPrimitiveCollectSystem.cpp:932-942`）→ 该分支是编译期死代码；
 - 收益：加一个纹理槽 = toml 一行 + GLSL 一行，且 GLSL 名字与 toml 名字不可能漂移。
 
 ### 6.3 仍可独立清理的死码（与本决策无关，纯零调用点）
@@ -206,7 +206,7 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 | 项 | 位置 | 判据 |
 |---|---|---|
 | `Texture2DArrayLoader` / `Texture1DArrayLoader` / `TextureCubeArrayLoader` | `inc/hgl/graph/texture/TextureLoader.h:220-291` | 全仓零实例化，唯一"使用"在注释里（`src/SceneGraph/texture/VKTexture2DArrayLoader.cpp:7,14`） |
-| `Sample2D()` | `ShaderLibrary/common/bindless_textures.glsl:39-46` | 全 ShaderLibrary 零调用（11 处采样全走 `Sample2DArray`/`SampleOptional`） |
+| `Sample2D()` | `ShaderLibrary/module/descriptor/bindless_textures.glsl:39-46` | 全 ShaderLibrary 零调用（11 处采样全走 `Sample2DArray`/`SampleOptional`） |
 | `SetMaterialTextureArrayLayer()` | `inc/hgl/ecs/components/PrimitiveComponent.h:197` | 零调用点（声明 + 实现各一处） |
 | `VKSamplerType.h` / `VKTextureType.h` | `inc/hgl/vk/` | 零消费者，且 `SamplerImageViewType[]` 15 项对 19 个枚举项本身错位 |
 | `TextureSamplerTypeDef.h` | `inc/hgl/common/` | 零消费者；且 `TextureTypeName[]` 因某一项后**缺逗号**被字面量拼接（实际 11 项对 12 个枚举项）→ `GetTextureTypeName(Texture2DArray)` 返回 `"textureCubeArray"`、`ParseTextureType("texture2DArray")` 返回 `Texture1DArray`、末项越界读 |
@@ -216,7 +216,7 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 ### 6.4 可选增强（不属于本次决策）
 
 - `Texture2DCollection`（N 张同规格纹理但不希望占层号的场景；同时是"每张纹理独立 `TextureID` + 名字、RenderDoc 直读"的路径）；
-- per-declaration sampler 预设（`material.toml` 的 `[resources].textures` 已解析 `filter/wrap/swizzle/anisotropy/...`，见 `src/ShaderMaterialData/MaterialDefinitionFile.cpp:911-917`，但尚未接线到运行期）。〔2026-10-11（S2）：该组 authoring 键**整删**——双端空转（0 材质授权 + 0 消费者），运行期采样器真源在 `ShaderLibrary/sampler.toml`；材质侧再写这些键会被键校验拒绝〕
+- per-declaration sampler 预设（`material.toml` 的 `[resources].textures` 已解析 `filter/wrap/swizzle/anisotropy/...`，见 `src/ShaderMaterialData/MaterialDefinitionFile.cpp:911-917`，但尚未接线到运行期）。〔2026-10-11（S2）：该组 authoring 键**整删**——双端空转（0 材质授权 + 0 消费者），运行期采样器真源在 `ShaderLibrary/contract/sampler.toml`；材质侧再写这些键会被键校验拒绝〕
 
 ---
 
@@ -226,8 +226,8 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 
 | 文件 | 内容 |
 |---|---|
-| `ShaderLibrary/common/bindless_textures.glsl` | 新增 `SampleOptional(uvec2, uint, vec2, vec4)`（`:57-66`），把"句柄 0 判空 + 采样"收口到一处；用法注释同步改写 |
-| `ShaderLibrary/material/pbr_surface_source.glsl` | 4 个 optional 槽 + `EvalMaterialAlpha` 从逐槽 `if` 块塌成**每槽一条语句**（103 → 65 行）；顺带删除 `EvalMaterialAlpha` 中未被使用的 `material_data` 局部 |
+| `ShaderLibrary/module/descriptor/bindless_textures.glsl` | 新增 `SampleOptional(uvec2, uint, vec2, vec4)`（`:57-66`），把"句柄 0 判空 + 采样"收口到一处；用法注释同步改写 |
+| `ShaderLibrary/module/provider/material_source/material_source_pbr_surface.glsl` | 4 个 optional 槽 + `EvalMaterialAlpha` 从逐槽 `if` 块塌成**每槽一条语句**（103 → 65 行）；顺带删除 `EvalMaterialAlpha` 中未被使用的 `material_data` 局部 |
 
 净变化 **2 files, +33 / −58**。零 ShaderGen 改动、零 ABI 改动。
 
@@ -256,8 +256,8 @@ material_output.ao =
 
 | 分类 | 站点 | 处置 |
 |---|---|---|
-| 守卫 + 采样 | `pbr_surface_source.glsl` 4 槽 + `EvalMaterialAlpha` | 收口为 `SampleOptional` |
-| required 槽、本就无守卫 | `texture_source.glsl:21`、`text_source_gpu.glsl:91/125/162` | **不改**（toml `required = true`，套 helper 只是白加判断） |
+| 守卫 + 采样 | `material_source_pbr_surface.glsl` 4 槽 + `EvalMaterialAlpha` | 收口为 `SampleOptional` |
+| required 槽、本就无守卫 | `material_source_texture.glsl:21`、`material_source_text_gpu.glsl:91/125/162` | **不改**（toml `required = true`，套 helper 只是白加判断） |
 | 守卫包着一整块 TBN 数学 | `ntb_derivative_normalmap.glsl:40`、`ntb_tangent_vbo_normalmap.glsl:29` | **保留 `if` + `Sample2DArray`**（已知绑定且需显式层号） |
 
 ### 7.4 验证证据（全部实跑）
@@ -278,10 +278,10 @@ material_output.ao =
 
 - bindless_textures.glsl: 新增 SampleOptional(uvec2, uint, vec2, vec4)，把「句柄 0 判空 + 采样」
   收口到一处；零 ShaderGen 改动、零 ABI 改动
-- pbr_surface_source.glsl: 4 个 optional 槽 + EvalMaterialAlpha 塌成每槽一条语句（103 → 65 行），
+- material_source_pbr_surface.glsl: 4 个 optional 槽 + EvalMaterialAlpha 塌成每槽一条语句（103 → 65 行），
   fallback 统一 vec4(1.0)，与逐槽 if 语义逐位等价（乘 1.0 / ao 初值 1.0 / alpha 缺省 1.0）
 - 顺带删除 EvalMaterialAlpha 中未被使用的 material_data 局部
-- required 槽（texture_source / text_source_gpu）与 NTB 的整块守卫保持原样
+- required 槽（material_source_texture / material_source_text_gpu）与 NTB 的整块守卫保持原样
 ```
 
 ---
@@ -295,7 +295,7 @@ material_output.ao =
 5. **别以"性能"为由去掉可选槽的 `if`**：它是 per-draw uniform 分支且省 fetch（§5.3）；恒采样方案只在分支极敏感或全槽必绑时才划算。
 6. **GLSL 文本进内容哈希**：改动 `ShaderLibrary/**` 会全量失效着色器缓存 → 删掉缓存目录后首次运行即重新编译并回填；`build/cache-hot` 下只有 `.spv`，不要当生成物读。
 7. **结构大小头变更要删 obj / clean-first 重编所有 include 者**（本仓 MSBuild 增量对头文件依赖跟踪不可靠）。
-8. **行尾/编码**：`ShaderLibrary/*.glsl` 与 `doc/*.md` 都是**混行尾**（例：`bindless_textures.glsl` = CRLF，`pbr_surface_source.glsl` = LF-only，`texture_source.glsl` = CRLF），改动前逐文件探测；`git stash push/--pop` 会把 LF 工作区文件重新物化成 CRLF，需归一回原位。
+8. **行尾/编码**：`ShaderLibrary/*.glsl` 与 `doc/*.md` 都是**混行尾**（例：`bindless_textures.glsl` = CRLF，`material_source_pbr_surface.glsl` = LF-only，`material_source_texture.glsl` = CRLF），改动前逐文件探测；`git stash push/--pop` 会把 LF 工作区文件重新物化成 CRLF，需归一回原位。
 
 ---
 

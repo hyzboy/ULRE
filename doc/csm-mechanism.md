@@ -9,12 +9,12 @@
 `EnvironmentSystem`（ECS 系统）持有 `graph::CascadedShadowController`（CSM 数学 + 滚动缓存），
 每帧 `RenderMainLightShadowPass(main_camera, dt)` 逐级联产出「是否需要重绘 / 脏矩形 / 光空间矩阵 /
 偏移」，渲染进各自的级联 RT（`kMaxShadowCascades = 4`），最后把每级联的 `ShadowCascadeInfo`
-写进 `ShadowInfo` UBO，主帧着色器用 `pcf_shadow.glsl` 采样。
+写进 `ShadowInfo` UBO，主帧着色器用 `shadow_pcf.glsl` 采样。
 
 - 控制器：`inc/hgl/graph/render/lighting/CascadedShadowController.h`
 - ECS 门面：`inc/hgl/ecs/systems/render/EnvironmentSystem.h`（实现 `.cpp` 同目录）
 - 数据契约：`inc/hgl/graph/ubo/ShadowInfo.h`（`kMaxShadowCascades = 4`）
-- GLSL：`ShaderLibrary/shadow/pcf_shadow.glsl`（选级 `EvalCascadeChain`）、`ShaderLibrary/ubo/scene_ubo.glsl`（`ShadowInfo`）
+- GLSL：`ShaderLibrary/module/provider/shadow/shadow_pcf.glsl`（选级 `EvalCascadeChain`）、`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl`（`ShadowInfo`）
 - 示例：`example/Shadow/CascadeShadowMap.cpp`（诊断/契约最全）、`example/Shadow/AlphaTestShadow.cpp`（D1/D3/D4 契约）
 - 测试：`TestCSMIncrementalPass`（`TestRenderItemDataStorage` 已于 2026-10-14 随 4-ID 池表整族删除）
 
@@ -47,7 +47,7 @@
 
 **🔒 关键不变量（曾被两次修过，别改回去）**：着色器选级**只**看 `cascade_params.x/y`；
 被屏蔽的级联在它自己的区间里**返回受光**，**绝不允许下沉到更远的级联**
-（`pcf_shadow.glsl::EvalCascadeChain`）。历史提交：`fix(shader): strictly isolate cascade selection by view_depth…`、
+（`shadow_pcf.glsl::EvalCascadeChain`）。历史提交：`fix(shader): strictly isolate cascade selection by view_depth…`、
 `fix(shadow): prevent cascade selection from sinking to farther cascade when masked`。
 
 ## 4. 控制器侧：滚动缓存与整级重建
@@ -188,7 +188,7 @@
 
 ## 9. 改动禁忌（踩过的坑）
 
-- **生成物禁止手改**：`ShaderLibrary/common/descriptor_macros.glsl` 由 `DescriptorMacroGen` 依真源
+- **生成物禁止手改**：`ShaderLibrary/contract/descriptor_macros.glsl` 由 `DescriptorMacroGen` 依真源
   （`DescriptorSetTypeDef.h` 枚举 + `kDescriptorBindingMacros` 表）生成，手改会让内容哈希契约红、
   产物缓存串味（表现为「语义与名字/结构错配」「资源凭空掉行」）。改真源 → `--emit` → `--verify`。
 - **并行有序表是位置耦合**：`names[] ↔ semantic_values[]`、目录行 ↔ 枚举，删中间项会静默错位；必须成对删改。

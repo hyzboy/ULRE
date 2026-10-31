@@ -1,3 +1,18 @@
+> **命名治理已落地（{date}）**：本文若干旧名已按
+> [`doc/material-shader-naming-and-layout.md`](material-shader-naming-and-layout.md) 迁移。
+> 正文属阶段实施记录，保留当时写法，阅读时请按下表换算：
+>
+> | 旧 | 新 |
+> |---|---|
+> | `ShaderLibrary/common/` `ubo/` `ssbo/` `mesh/` `vertex/` `lighting/` `shadow/` `material/` | `ShaderLibrary/module/**`、`contract/`、`topology/`、`asset/**` |
+> | `*.mi.toml`（材质定义） | `asset/definition/*.definition.toml` |
+> | `material/recipes/**/*.recipe.toml` | `asset/recipe/**/*.recipe.toml` |
+> | 定义 id `Lit` / `SkyCube` / `DebugNormalColor` … | `lit` / `sky_cube` / `debug_normal` …（小写 snake_case；`domain` 字段仍 PascalCase） |
+> | `RenderTemplate` / `DomainShaderTemplate` / `ShaderCodeModule` | `PassProfile` / `DomainEntrySource` / `GlslModule` |
+> | `SHADERGEN_CODEGEN_GENERATION` / `ULRE_ENABLE_SHADERGEN` | `MATERIAL_CODEGEN_GENERATION` / `ULRE_ENABLE_SHADER_PROGRAM_BUILD` |
+> | `src/Tools/ShaderGen` | `src/Tools/ShaderTooling` |
+> | 模块名 `indirect_ibl` / `full_shadow` / `forward_pbr` / `s1_ntb` … | `ambient_light_ibl` / `shadow_full` / `lighting_model_pbr` / `stream_ntb` … |
+
 # 彻底废除 ShaderGen 终极架构设计：基于 MaterialDomain 的固定着色器方案
 
 > 状态：**终极架构规范（指导彻底删除 ShaderGen）**

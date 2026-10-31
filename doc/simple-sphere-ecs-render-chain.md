@@ -3,7 +3,7 @@
 > **⚠ 2026-10-14 文卫生订正（B3）**：本链文档里 `PrimitiveComponent` / `MaterialComponent` / `WriteBatchIndexRows` / `AssignTransformIndices` / `EnsureMeshDrawParams`（批处理侧）等均已删（A5 去组件化 / 批 D / A5）⇒ 相关段落按**历史口径**读；现行：几何面 = `GeometryData` + 9 行表（4-ID 由 collect 在「本项进批」判据点发布），材质面 = `MaterialData` (+ `MaterialRuntimeTable`)。
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
 
-> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
+> ⚠ **历史口径（2026-10-07 起）**：本文出现的 `SkyInfo` / `SkyInfo.h` / `addr_sky` / `SkyInfoRef` / `#define sky` / `EditSkyInfo` 已随 **sky 段整删** —— 两个外观字段（`base_sky_color` / `halo_intensity`）全仓无写者，取值搬成 `ShaderLibrary/module/provider/sky/sky_atmosphere.glsl` 常量 `kBaseSkyColor` / `kHaloIntensity`（外观逐位不变）；世界表 `WorldAddresses` = **72 B / 9 字段**，无 `addr_sky`。相关段落读作当时形态。
 
 > ⚠ **历史口径（2026-10-14 起）**：世界表 `WorldAddresses` 里的 **渲染项表地址**（`addr_global_render_items`）与 **DrawItemID 表地址**（`addr_draw_item_ids`）
 > 已随「CPU/GPU 双剔除遗留」**整族删除**（两级存储 + 压缩器 + 绘制期解析 GLSL + 二者地址/接线/契约；世界表 **9 → 7 字段**）。
@@ -16,7 +16,7 @@
 >
 > **订正（2026-09-28）**：本文若干事实已过期，按权威口径 `doc/world-addresses-and-camera-model-plan.md` §7 就地订正（本文件内已修订处）：
 > ① 描述符集只剩 **1 个 Bindless(0)**——Scene(0) 集（6 个 UBO）与其布局器 `VKGlobalSceneUBOSet` **已整体退场**（S3），`inc/hgl/common/DescriptorSetTypeDef.h` 现只有 `DescriptorSetType::Bindless=0`。
-> ② `GlobalAddresses` 是 **SSBO 表**（`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长、**无绑定无集**、基址经 `pc_root.addr_global_addresses`），首字段 `addr_mesh_draw_params_pool`；sky / viewport / shadow / color_palette 亦走该表（`ShaderLibrary/ubo/scene_ubo.glsl:74/86/97/147`）。
+> ② `GlobalAddresses` 是 **SSBO 表**（`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长、**无绑定无集**、基址经 `pc_root.addr_global_addresses`），首字段 `addr_mesh_draw_params_pool`；sky / viewport / shadow / color_palette 亦走该表（`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:74/86/97/147`）。
 > ③ `RootAddresses` push constant 为 **80B**：首字段 `addr_global_addresses`、第二位 `addr_batch_mesh_draw_params`、末位 `camera_row` + `_pad_camera`（`inc/hgl/graph/ShaderBufferSources.h:267-278`）。
 > ④ `MaterialInstanceAddresses` 为 **16B 四字段** `{payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}`（`ShaderBufferSources.h:142-198`）。
 > ⑤ `scene_ubo.glsl` 的 `camera` 宏已漂到 **`:149`**、字段名 **`camera_row`**（原 `:123` / `camera_id`）。
@@ -45,7 +45,7 @@
 关键事实（终态，可复核）：
 
 - **没有任何 per-draw / per-object / per-material 描述符集**，没有 `vkCmdBindVertexBuffers` / `vkCmdBindIndexBuffer`，也没有 vertex input state。
-- 描述符集只剩 **1 个** **Bindless(0)**（全局纹理数组，`ShaderLibrary/common/bindless_textures.glsl:34-38`；`inc/hgl/common/DescriptorSetTypeDef.h:14-24`）——**Scene(0) 集（6 个 UBO：Camera / Sky / Viewport / ColorPalette / GlobalAddresses / Shadow）已整体退场**（S3）：相机 / 调色板 / 全局地址表 / sky / viewport / shadow 全部改走 BDA。由 `GraphicsContext::BindGlobalDescriptorSets` 做设备级绑定（`inc/hgl/graph/core/GraphicsContext.h:142`），每 cmd 首绑一次全局复用。
+- 描述符集只剩 **1 个** **Bindless(0)**（全局纹理数组，`ShaderLibrary/module/descriptor/bindless_textures.glsl:34-38`；`inc/hgl/common/DescriptorSetTypeDef.h:14-24`）——**Scene(0) 集（6 个 UBO：Camera / Sky / Viewport / ColorPalette / GlobalAddresses / Shadow）已整体退场**（S3）：相机 / 调色板 / 全局地址表 / sky / viewport / shadow 全部改走 BDA。由 `GraphicsContext::BindGlobalDescriptorSets` 做设备级绑定（`inc/hgl/graph/core/GraphicsContext.h:142`），每 cmd 首绑一次全局复用。
 - 行表、顶点流、材质行全部 `buffer_reference`（BDA）解引用；地址只有两个载体（见 §6）。
 
 ---
@@ -151,7 +151,7 @@ RenderSubmit             SwapchainSubmitSystem
 
 ### 3.4 材质定义 → program → pipeline
 
-- `ShaderLibrary/material/lit.mi.toml`：只声明 `domain = "StandardOpaque"` + `[vertex] varyings` + `[resources]` 的 6 个槽名与 `samplers=["Trilinear","Linear","ShadowPCF"]`。顶点语义需求（`Position/UV0/Normal`）、表面来源模块、法线标架模块、槽形态（`Sampler2DArray`、是否必绑、`channels=2`）**全部由领域契约给出**——材质实例里不再有 `requirements` / `ubos` / 每槽 `sampler`/`channels`。
+- `ShaderLibrary/asset/definition/lit.definition.toml`：只声明 `domain = "StandardOpaque"` + `[vertex] varyings` + `[resources]` 的 6 个槽名与 `samplers=["Trilinear","Linear","ShadowPCF"]`。顶点语义需求（`Position/UV0/Normal`）、表面来源模块、法线标架模块、槽形态（`Sampler2DArray`、是否必绑、`channels=2`）**全部由领域契约给出**——材质实例里不再有 `requirements` / `ubos` / 每槽 `sampler`/`channels`。
 - ShaderGen 编译成 `program-<hash>`；`RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:610`）取到 program 后 `render_pass->CreatePipeline(program, effective_recipe)`，key = shader stages + 附件格式；**每个 RenderPass 各自持有一份解析结果**（`PrimitiveComponent::resolvedRuntimePipelineMap`，`inc/hgl/ecs/components/PrimitiveComponent.h:130`、:188-202）——同一世界渲到多个 RT（shadow map 等离屏 pass）时各 RT 用各自格式匹配的管线，互不驱逐。
 
 ### 3.5 纹理 → bindless 句柄 + 引用池
@@ -167,7 +167,7 @@ RenderSubmit             SwapchainSubmitSystem
 
 - **16B `RenderItemDescriptor` = `{transform_id, geometry_id, material_id, texture_id}`**（`inc/hgl/graph/render/RenderItemDescriptor.h`，`static_assert(sizeof==16)`）**由每帧 collect 现算**（`RenderPrimitiveCollectSystem`：`transform.GetID()` / 几何行号 / `data_index_row` / 纹理引用行）——**无作者侧槽位、无句柄分配**
 - 唯一发布点 = **实体 4-ID 表**（`EntityRenderIDTable`，世界私有、按 `EntityID.index` 直索引、**按 pass 分半**；地址 `WorldAddresses::addr_entity_render_ids`），写在 collect 的「几何行成立 ⇒ 本项进批」判据块内 ⇒ 表内只留"真会画"的实体
-- 消费者：**GPU 剔除**（`ShaderLibrary/ecs/entity_gpu_cull.glsl` 按 index 读 geometry / material / texture）与 **CPU 批行写入**（`WriteBatchIndexRows` 读本 pass 那一半）；~~旧的两条通道（世界 4-ID 池表 + DrawItemID 二级索引表）及其地址/解析 GLSL 已于 2026-10-14 整族删除~~
+- 消费者：**GPU 剔除**（`ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl` 按 index 读 geometry / material / texture）与 **CPU 批行写入**（`WriteBatchIndexRows` 读本 pass 那一半）；~~旧的两条通道（世界 4-ID 池表 + DrawItemID 二级索引表）及其地址/解析 GLSL 已于 2026-10-14 整族删除~~
 
 ---
 
@@ -241,7 +241,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 
 | 载体 | 内容 | 谁写 | 真源 |
 |---|---|---|---|
-| `GlobalAddresses`（**SSBO 表，无绑定无集**） | `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长：`addr_mesh_draw_params_pool`（**全局几何参数池**，112B 行，按 `geometry_id` 索引）、`addr_pbr_surface`、`addr_emissive_surface`、`addr_transmission_surface`、`addr_color_palette`、`addr_viewport`（**C2 后只剩 6 字段 / 48B**：原 `addr_sky` / `addr_shadow` 已随 C2 迁入**世界表** `WorldAddresses`；`addr_camera_info` 亦在该表（其另两个世界私有地址已随 2026-10-14 两表整删退出，见文首 banner））。全局字段启动写一次；viewport 按帧槽刷 | `GlobalSSBOBufferRegistry::InitializePools`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`；~~`SetSkyAddress`/`SetShadowAddress`~~ 已随 C2 删除） | `inc/hgl/graph/ubo/GlobalAddresses.h`；GLSL `ShaderLibrary/ubo/scene_ubo.glsl` |
+| `GlobalAddresses`（**SSBO 表，无绑定无集**） | `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长：`addr_mesh_draw_params_pool`（**全局几何参数池**，112B 行，按 `geometry_id` 索引）、`addr_pbr_surface`、`addr_emissive_surface`、`addr_transmission_surface`、`addr_color_palette`、`addr_viewport`（**C2 后只剩 6 字段 / 48B**：原 `addr_sky` / `addr_shadow` 已随 C2 迁入**世界表** `WorldAddresses`；`addr_camera_info` 亦在该表（其另两个世界私有地址已随 2026-10-14 两表整删退出，见文首 banner））。全局字段启动写一次；viewport 按帧槽刷 | `GlobalSSBOBufferRegistry::InitializePools`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`；~~`SetSkyAddress`/`SetShadowAddress`~~ 已随 C2 删除） | `inc/hgl/graph/ubo/GlobalAddresses.h`；GLSL `ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl` |
 | `RootAddresses` push constant（`pc_root`） | 9×uint64 + 2×uint32 = **80B**：`addr_global_addresses`（**GlobalAddresses SSBO 表基址**）、`addr_batch_mesh_draw_params`（**本批 `MeshDrawCommand` 表**，8B 行，按 `gl_DrawID` 索引）、`addr_l2w`、`addr_l2w_index`、`addr_mtl_data_addrs`、`addr_texture_references`、`addr_text_char_info/style/instance`、`camera_row` + `_pad_camera` | 每 MaterialBatch 渲染前一次 `graph::PushRootAddresses` | `inc/hgl/graph/ShaderBufferSources.h:267-278`（布局断言 :311-337）；`inc/hgl/graph/RootAddressPush.h`；调用点 `src/ecs/support/PipelineMaterialRenderer.cpp` |
 
 取数表（左列 = 需要什么，右列 = 生成文本 / 源文件）：
@@ -250,16 +250,16 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 |---|---|
 | 本 draw 的几何 id + 首实例 | `geometry_id = MeshDrawCommandsRef(pc_root.addr_batch_mesh_draw_params).cmds[gl_DrawID].geometry_id`；`first_instance` 同行（`src/ShaderGen/meshgen/MeshTemplateEmitter.h:266-268`；结构体与 ref 类型由 `src/ShaderGen/meshgen/MeshShaderVertexAdapter.h:61-74` 从 X 列表发射） |
 | 本 draw 的几何参数行（112B） | `draw_params = MeshDrawParamsRef(global_addresses.addr_mesh_draw_params_pool).rows[geometry_id]`，再用命令行的 `first_instance` 覆写（`MeshTemplateEmitter.h:267-268`；非 VertexPassthrough/LineQuad 模式退化为 `rows[gl_DrawID]`，:272） |
-| 顶点号 | `MeshVertexIndex = group_base_vertex + vid`；索引几何再 `sbo_vertex_index.data[draw_params.index_base + MeshVertexIndex]`（`ShaderLibrary/mesh/vertex_passthrough.glsl.tmpl:16-18`） |
-| Position | `VertexPositionRef(draw_params.addr_position).data[draw_params.vertex_base + VertexIndexID]`（`ShaderLibrary/vertex/s1_position_vec3.glsl:21,27`） |
-| UV | `unpackHalf2x16(VertexUVPackedRef(draw_params.addr_uv).data[draw_params.vertex_base + VertexIndexID])`（`ShaderLibrary/vertex/s1_uv_rg16f.glsl:16,20`） |
-| Normal | RG8 packed uint → octahedral 解码（`ShaderLibrary/vertex/s1_ntb_rg8.glsl:14,20-32`） |
-| 世界变换 | `l2w` 宏 = `LocalToWorldDataRef(pc_root.addr_l2w)`（`ShaderLibrary/common/l2w_ssbo.glsl:21-26`），下标经 `pc_root.addr_l2w_index` 行表 |
+| 顶点号 | `MeshVertexIndex = group_base_vertex + vid`；索引几何再 `sbo_vertex_index.data[draw_params.index_base + MeshVertexIndex]`（`ShaderLibrary/module/stage/stage_body.glsl:54` + `stage_common.glsl:19`，形状 master 见 `ShaderLibrary/topology/*.mesh`） |
+| Position | `VertexPositionRef(draw_params.addr_position).data[draw_params.vertex_base + VertexIndexID]`（`ShaderLibrary/module/vertex/stream_position_vec3.glsl:21,27`） |
+| UV | `unpackHalf2x16(VertexUVPackedRef(draw_params.addr_uv).data[draw_params.vertex_base + VertexIndexID])`（`ShaderLibrary/module/vertex/stream_uv_rg16f.glsl:16,20`） |
+| Normal | RG8 packed uint → octahedral 解码（`ShaderLibrary/module/vertex/stream_ntb_rg8.glsl:14,20-32`） |
+| 世界变换 | `l2w` 宏 = `LocalToWorldDataRef(pc_root.addr_l2w)`（`ShaderLibrary/module/descriptor/l2w_ssbo.glsl:21-26`），下标经 `pc_root.addr_l2w_index` 行表 |
 | 每实例材质行 | `MTL_ROW(i) = PBRSurfaceRowRef(global_addresses.addr_pbr_surface + uint64(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[i].payload_index) * 32)`（发射于 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-297`） |
 | 每实例纹理引用 | `MTL_TEX(i) = MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64(...values[i].texture_reference_index) * 48)`（`MaterialShaderEmitter.cpp:322-325`；`MaterialTextureReferencesRef` 声明 :310-320） |
-| 纹理采样 | `bindless_tex[nonuniformEXT(handle-1)]` + `bindless_samp[采样器常量]`；可选槽走 `SampleOptional`（句柄 0 → fallback）（`ShaderLibrary/common/bindless_textures.glsl:42-58,86-91`）；消费点 `ShaderLibrary/material/pbr_surface_source.glsl:26,43-50` |
+| 纹理采样 | `bindless_tex[nonuniformEXT(handle-1)]` + `bindless_samp[采样器常量]`；可选槽走 `SampleOptional`（句柄 0 → fallback）（`ShaderLibrary/module/descriptor/bindless_textures.glsl:42-58,86-91`）；消费点 `ShaderLibrary/module/provider/material_source/material_source_pbr_surface.glsl:26,43-50` |
 | 相机 / 天空 / 视口 / 阴影 | **全走 BDA**（Scene 集已退场）：`sky = SkyInfoRef(world_addresses.addr_sky)`（C2 起读**世界表**；`scene_ubo.glsl`）、`ambient_env = AmbientEnvInfoRef(world_addresses.addr_ambient_env)`（T1）、`viewport = ViewportInfoRef(global_addresses.addr_viewport)`、`shadow = ShadowInfoRef(world_addresses.addr_shadow)`（C2；T6b/P4 起**世界私有**数据）。**相机已 SSBO 化**：`camera` 宏 = `CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]`（`scene_ubo.glsl:149`） |
-| 4-ID 运行时解析（GPU-Driven 路径） | `ResolveRenderItemDirect(instance_index)` / `ResolveRenderItemIndexed(draw_id)`（`ShaderLibrary/common/RenderItemResolve.glsl:73-83`）；`RENDER_ITEM_INDEXED_FLAG = 0x80000000u` 由 `ResolveRenderItemAuto` 自动分流（:99-125）。`MaterialBatch::uses_render_item_resolve` 决定是否启用该路径（`inc/hgl/ecs/core/MaterialBatch.h:71`）——**订正（2026-09-28）：该开关全仓无处置 true，4-ID GPU 运行时解析当前未启用** |
+| 4-ID 运行时解析（GPU-Driven 路径） | `ResolveRenderItemDirect(instance_index)` / `ResolveRenderItemIndexed(draw_id)`（`ShaderLibrary/module/utility/render_item_resolve.glsl:73-83`）；`RENDER_ITEM_INDEXED_FLAG = 0x80000000u` 由 `ResolveRenderItemAuto` 自动分流（:99-125）。`MaterialBatch::uses_render_item_resolve` 决定是否启用该路径（`inc/hgl/ecs/core/MaterialBatch.h:71`）——**订正（2026-09-28）：该开关全仓无处置 true，4-ID GPU 运行时解析当前未启用** |
 
 约定（`inc/hgl/graph/ShaderBufferSources.h`）：`MeshDrawParams` 头部 6×4B 连续 + 11×8B 连续 = **112B**（断言 :62-88）；`MeshDrawCommand` = 2×uint32 = **8B**（断言 :121-127）；`MaterialInstanceAddresses` = 4×4B = **16B**（`{payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}`，断言 :181-198）；`DrawItem4ID` = 4×uint32 = **16B**（断言 :236-244）；`RootAddresses` = 9×uint64 + 2×uint32 = **80B**（断言 :311-337）。所有 buffer 以 `SHADER_DEVICE_ADDRESS` usage 创建，地址取 `VulkanDevice::GetBufferDeviceAddressAligned16`（非 16B 对齐基址 fail-fast）。
 
@@ -323,7 +323,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 | `MeshDrawParams` 88B（24B 头 + 8×uint64），按 DrawBatch 写行 | 拆成两级：**几何参数行 `MeshDrawParams` 112B**（24B 头 + **11×uint64**，进全局池按 `geometry_id` 索引，几何创建期写一次）+ **命令参数行 `MeshDrawCommand` 8B**（`geometry_id` + `first_instance`，每批 per-DrawBatch 写，按 `gl_DrawID` 索引） | `inc/hgl/graph/ShaderBufferSources.h:16-88`（MDP 断言 112）/:93-127（MDC 断言 8）；`src/SceneGraph/VKGeometry.cpp:112-176`；`src/ecs/support/PrimitiveBatchPipeline.cpp:591-730` |
 | `MaterialBatch::mesh_draw_params_buffer` 是 88B 参数表 | 该成员现在装的是 **`MeshDrawCommand` 表**（容量以「行数」计，`mesh_draw_params_capacity`），表名 `ECS:Batch:MeshDrawCommands` | `inc/hgl/ecs/core/MaterialBatch.h:55-56`；`src/ecs/support/PrimitiveBatchPipeline.cpp:624-640` |
 | `RootAddresses` 56B / 7 张表 | **80B**（9×uint64 + `camera_row` + `_pad_camera`）：首字段 `addr_global_addresses`、第二位 `addr_batch_mesh_draw_params`；`addr_mesh_draw_params` 已一拆为二、名字不再相同，文本从 2 表扩到 3 表 | `inc/hgl/graph/ShaderBufferSources.h:267-278`（断言 :311-337）；`inc/hgl/graph/RootAddressPush.h` |
-| 相机/天空走 UBO（`camera` UBO 直读） | 相机改为 **SSBO 行池**（`GlobalSSBOType::CameraInfo`）+ `pc_root.camera_row` 索引（**订正：行池本轮定稿下沉世界私有（16 槽 × 8 帧槽），非全局 64 行**）；**天空 / 阴影走世界表 `world_addresses.addr_sky` / `addr_shadow`（C2；阴影数据 T6b/P4 起世界私有）、IBL 句柄走 `addr_ambient_env`（T1）、视口走 `global_addresses.addr_viewport`**；**Scene 集（含 Set0/binding0/1）已整体退场，无描述符可挂**（`ApplyResourceLayoutBindings` 现只调 `SyncGlobalAddressesTable`） | `ShaderLibrary/ubo/scene_ubo.glsl:149`；`inc/hgl/graph/ssbo/SSBOTypes.h:20`；`src/ecs/systems/render/RenderSceneUBOSystem.cpp:401` |
+| 相机/天空走 UBO（`camera` UBO 直读） | 相机改为 **SSBO 行池**（`GlobalSSBOType::CameraInfo`）+ `pc_root.camera_row` 索引（**订正：行池本轮定稿下沉世界私有（16 槽 × 8 帧槽），非全局 64 行**）；**天空 / 阴影走世界表 `world_addresses.addr_sky` / `addr_shadow`（C2；阴影数据 T6b/P4 起世界私有）、IBL 句柄走 `addr_ambient_env`（T1）、视口走 `global_addresses.addr_viewport`**；**Scene 集（含 Set0/binding0/1）已整体退场，无描述符可挂**（`ApplyResourceLayoutBindings` 现只调 `SyncGlobalAddressesTable`） | `ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:149`；`inc/hgl/graph/ssbo/SSBOTypes.h:20`；`src/ecs/systems/render/RenderSceneUBOSystem.cpp:401` |
 | 阶段名 `RenderResourceSetup` / `RenderMaterialBind` / `RenderBeginFrame` / `RenderPostProcess` | **枚举中不存在**（4 名全仓 0 命中）。真实相位共 15 项，渲染段为 `RenderSwapchainNextImage → RenderPreBeginFrame → RenderCollect → RenderBatch → RenderBufferCommit → RenderBufferUpload → RenderFrameSync → RenderDrawSubmit → RenderDebug → RenderStat → RenderSubmit` | `inc/hgl/ecs/core/System.h:22-48` |
 | 相位用数字（9/10/11/12/13/14/16）指代 | 数字标签已废弃，一律用 `ExecutionPhase` 枚举名。0-based 序：0 TickInput,1 TickTransform,2 TickCamera,3 TickPostCamera,4 RenderSwapchainNextImage,5 RenderPreBeginFrame,6 RenderCollect,7 RenderBatch,8 RenderBufferCommit,9 RenderBufferUpload,10 RenderFrameSync,11 RenderDrawSubmit,12 RenderDebug,13 RenderStat,14 RenderSubmit | `inc/hgl/ecs/core/System.h:24-48` |
 | `RenderFrameUBOSyncSystem`（`RenderFrameSync` 相位上） | 该类型 0 命中。`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem`（原 `RenderDescriptorBindingSystem`，2026-09-08 改名） | `src/ecs/systems/render/RenderSceneUBOSystem.cpp:99`；`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h:35-43` |

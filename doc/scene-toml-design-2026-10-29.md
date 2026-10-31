@@ -75,7 +75,7 @@ description = "13 个内置形状绕圈摆放"  # 可选
 [environment]                      # 可选：省略 = 沿用世界当前 profile
 profile   = "basic_lit"            # 具名 profile；同名复用
 ibl_texture = "res/image/.../sky.hdr"   # 可选：给出了就建/改该 profile 的 env_tex
-ambient_provider = "indirect_sky_ambient"  # 可选：算法轴（GLSL 模块名）
+ambient_provider = "ambient_light_sky"  # 可选：算法轴（GLSL 模块名）
 
 [camera]                           # 可选：省略 = 用 ViewModel 默认参数
 mode     = "view_model"            # view_model | free | orbit
@@ -193,7 +193,7 @@ base_color = "res/image/checker.png"
 
 ```toml
 [assets]
-recipes  = ["ShaderLibrary/material/recipes/Examples/Material/06b.BasicLit.Lit.recipe.toml"]
+recipes  = ["ShaderLibrary/asset/recipe/Examples/Material/06b.BasicLit.Lit.recipe.toml"]
 primitive_dirs = ["res/primitive"]
 ```
 

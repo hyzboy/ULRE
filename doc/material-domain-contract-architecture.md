@@ -2,7 +2,7 @@
 
 > 状态：阶段一（表面领域契约层）已落地
 > 相关代码：`inc/hgl/mtl/MaterialDomain.h`、`src/ShaderMaterialData/MaterialDomain.cpp`、
-> `ShaderLibrary/common/pass_environment_interface.glsl`
+> `ShaderLibrary/module/interface/pass_environment_interface.glsl`
 
 ---
 
@@ -70,20 +70,20 @@ return EvalPassEnvironment(PassEnvironmentInput(input, surf, materialDataIndex))
 
 | 领域 | 顶点语义契约 | 纹理槽 | 参考模块 | 状态 |
 | :--- | :--- | :--- | :--- | :--- |
-| `StandardOpaque` | `Position` `UV0` `Normal` | `base_color` `roughness` `metallic` `occlusion` `opacity_mask` `normal` | `pbr_surface_source` + `ntb_tangent_vbo_normalmap` | ✅ 已实现 |
-| `UI2D` | `Position` `UV0` | `sprite` | `texture_source` + `ntb_orthonormal` | ✅ 已实现 |
-| `UnlitSolid` | `Position` | **无** | `unlit_source` | ✅ 已实现 |
-| `VertexColor` | `Position` `Color` | **无** | `vertex_color_source` | ✅ 已实现 |
-| `VertexPalette` | `Position` `Color` `TransformID` `Size` | **无** | `vertex_color_source` | ✅ 已实现 |
-| `VertexLuminance` | `Position` `Luminance` | **无** | `luminance_source` | ✅ 已实现 |
-| `UnlitTexture` | `Position` `UV0` | `base_color` | `texture_source` | ✅ 已实现 |
-| `UnlitTexture3D` | `Position` `UV0` | `base_color` | `texture_source` | ✅ 已实现 |
-| `Text2D` | `Position` `UV0` | `base_color` | `text_source_gpu` | ✅ 已实现 |
+| `StandardOpaque` | `Position` `UV0` `Normal` | `base_color` `roughness` `metallic` `occlusion` `opacity_mask` `normal` | `material_source_pbr_surface` + `ntb_tangent_vbo_normalmap` | ✅ 已实现 |
+| `UI2D` | `Position` `UV0` | `sprite` | `material_source_texture` + `ntb_orthonormal` | ✅ 已实现 |
+| `UnlitSolid` | `Position` | **无** | `material_source_unlit` | ✅ 已实现 |
+| `VertexColor` | `Position` `Color` | **无** | `material_source_vertex_color` | ✅ 已实现 |
+| `VertexPalette` | `Position` `Color` `TransformID` `Size` | **无** | `material_source_vertex_color` | ✅ 已实现 |
+| `VertexLuminance` | `Position` `Luminance` | **无** | `material_source_luminance` | ✅ 已实现 |
+| `UnlitTexture` | `Position` `UV0` | `base_color` | `material_source_texture` | ✅ 已实现 |
+| `UnlitTexture3D` | `Position` `UV0` | `base_color` | `material_source_texture` | ✅ 已实现 |
+| `Text2D` | `Position` `UV0` | `base_color` | `material_source_text_gpu` | ✅ 已实现 |
 | `Sky` | `Position` | `sky_cube`（可选） | 无（`no_material_source`） | ✅ 已实现 |
-| `DebugNormal` | `Position` `Normal` | **无** | `debug_normal_source` | ✅ 已实现 |
-| `Checker2D` | `Position` | **无** | `checkerboard_2d_source` | ✅ 已实现 |
-| `Checker3D` | `Position` | **无** | `checkerboard_3d_source` | ✅ 已实现 |
-| `ErrorChecker3D` | `Position` | **无** | `error_checkerboard_3d_source` | ✅ 已实现 |
+| `DebugNormal` | `Position` `Normal` | **无** | `material_source_debug_normal` | ✅ 已实现 |
+| `Checker2D` | `Position` | **无** | `material_source_checkerboard_2d` | ✅ 已实现 |
+| `Checker3D` | `Position` | **无** | `material_source_checkerboard_3d` | ✅ 已实现 |
+| `ErrorChecker3D` | `Position` | **无** | `material_source_error_checkerboard_3d` | ✅ 已实现 |
 | `Foliage` | 待定 | 待定 | — | ⬜ 未实现 |
 | `Terrain` | 待定 | 待定 | — | ⬜ 未实现 |
 | `HumanSkin` | 待定 | 待定 | — | ⬜ 未实现 |
@@ -92,7 +92,7 @@ return EvalPassEnvironment(PassEnvironmentInput(input, surf, materialDataIndex))
 > 表中 17 个非 Custom 领域与 `MaterialDomainContractCount` 一一对应，
 > 有 `static_assert` 强制。加领域必须同时改枚举、契约表、计数三处。
 
-> `UnlitTexture` 与 `UnlitTexture3D` 的片元算法完全相同（同一个 `texture_source`，
+> `UnlitTexture` 与 `UnlitTexture3D` 的片元算法完全相同（同一个 `material_source_texture`，
 > 同一份 `domain/unlit_texture/unlit_texture.frag`），差别只在**顶点通路**：
 > 前者把 `Vec2Position` 直接当 NDC（只配屏幕矩形），后者走标准世界空间投影。
 > 因此「把一张中间缓冲贴到世界物体上」必须用 `UnlitTexture3D`——用 `UnlitTexture`
@@ -214,7 +214,7 @@ ParseMaterialDefinitionFile(.mi.toml)
 
 - `MTL_TEX_<NAME>_CHANNELS` 必须先于 NTB 模块 include（`ntb_tangent_vbo_normalmap`
   靠它判断 BC5 法线）；
-- 阴影 PCF 宏必须早于 `pcf_shadow.glsl` 的 `#ifndef`；
+- 阴影 PCF 宏必须早于 `shadow_pcf.glsl` 的 `#ifndef`；
 - `channels == 0` 的声明必须**整条跳过**（下游用 `#if defined()` 判断，发射成 0 会误判）；
 - `HGL_ALPHA_CUTOFF` 必须保持 `0.500000`（历史上是 `std::to_string(float)`）；
 - `profile == None`（Sky 等）**整段配置都不发射**，这是既有行为而非遗漏。
@@ -225,7 +225,7 @@ ParseMaterialDefinitionFile(.mi.toml)
 
 ## 6. 环境接缝实现（阶段三）
 
-阶段一只定义了 `common/pass_environment_interface.glsl` 契约，阶段三把**模板真正接上去**。
+阶段一只定义了 `module/interface/pass_environment_interface.glsl` 契约，阶段三把**模板真正接上去**。
 
 ### 6.1 调用点彻底收敛
 
@@ -248,16 +248,16 @@ const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, ma
 
 | 环境 | 提供者（由 `output_policy` 槽选中） | 装配 | 算法 |
 | :--- | :--- | :--- | :--- |
-| Forward Lit | `compositor/forward_lighting.glsl` | `BuildForwardLightingInput` | `lighting/forward_pbr.glsl`（`LightingModel` 槽） |
-| 无光 / 平光 | `compositor/flat_lighting.glsl` | `BuildForwardLightingInput`（平光版） | `lighting/forward_flat.glsl` |
+| Forward Lit | `module/provider/output_policy/output_policy_forward.glsl` | `BuildForwardLightingInput` | `module/provider/lighting_model/lighting_model_pbr.glsl`（`LightingModel` 槽） |
+| 无光 / 平光 | `module/provider/output_policy/output_policy_flat.glsl` | `BuildForwardLightingInput`（平光版） | `module/provider/lighting_model/lighting_model_flat.glsl` |
 
 每个提供者只做两件事：`BuildForwardLightingInput(...)` 装配 → `EvalLighting(...)`。
 **环境装配与 BRDF 算法是两层**，本契约不吞掉后者。
 
 ### 6.3 顺带修正的职责倒置
 
-`lighting/forward_flat.glsl` 的 `#include` 原本写在 `fragment/forward_unlit.glsl.tmpl` 里，
-等于「模板认识具体光照算法」。阶段三把它**搬进 `compositor/flat_lighting.glsl`**：
+`module/provider/lighting_model/lighting_model_flat.glsl` 的 `#include` 原本写在 `fragment/forward_unlit.glsl.tmpl` 里，
+等于「模板认识具体光照算法」。阶段三把它**搬进 `module/provider/output_policy/output_policy_flat.glsl`**：
 
 - 模板现在只 `#include "common/pass_environment_interface.glsl"`（契约）+ `{{output_policy_include}}`（环境）；
 - 任何 `lighting/*.glsl` 都只对 `compositor/*.glsl` 可见。
@@ -270,8 +270,8 @@ const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, ma
 
 ### 6.4 模块元数据的连带要求
 
-`flat_lighting.glsl` 新增对 `lighting/forward_flat.glsl` 的 include，因此元数据必须补
-`// @ulre uses forward_flat`。漏写会让 `MI.module-include-declaration-contract`
+`output_policy_flat.glsl` 新增对 `module/provider/lighting_model/lighting_model_flat.glsl` 的 include，因此元数据必须补
+`// @ulre uses lighting_model_flat`。漏写会让 `MI.module-include-declaration-contract`
 报「undeclared #include dependency」——这条门禁是"include 与 `@ulre uses` 必须一致"的
 唯一守卫，改动模块依赖时务必同步。
 
@@ -317,17 +317,17 @@ ParseDefinition
 - 「省略」让 99% 的资产只写 `domain` 就够了；
 - 「禁止自选」守住**同领域 ⇒ 同模块 ⇒ 同 layout ⇒ 可合批**这条推导链。
 
-一旦允许同一 `StandardOpaque` 领域里一个用 `pbr_surface_source`、另一个用自定义
+一旦允许同一 `StandardOpaque` 领域里一个用 `material_source_pbr_surface`、另一个用自定义
 `toon_surface_source`，它们就不是同一个 shader program，合批与缓存键会双双失效——
 那等于把"领域"退化成标签。
 
-### 7.4 示例：`lit.mi.toml` 的收敛前后
+### 7.4 示例：`lit.definition.toml` 的收敛前后
 
 ```toml
 # 收敛前
 domain 缺省               # Custom
 [fragment]
-material_source_module_name = "pbr_surface_source"
+material_source_module_name = "material_source_pbr_surface"
 ntb_module_name             = "ntb_tangent_vbo_normalmap"
 
 # 收敛后
@@ -340,7 +340,7 @@ domain = "StandardOpaque"
 
 ### 7.5 领域边界的第二条：原本"不该进领域"的 13 个材质，最终怎么进的
 
-阶段四只把 `lit.mi.toml` 收进 `StandardOpaque`，其余 13 个一开始标注为
+阶段四只把 `lit.definition.toml` 收进 `StandardOpaque`，其余 13 个一开始标注为
 `domain = "Custom"`。当时的理由是：领域概念描述的是「**模型表面**」——由美术/场景
 提供的资产，其顶点语义与纹理槽必须收敛，才能推导「同领域 ⇒ 同 layout ⇒ 可合批」，
 而这些材质不是模型表面：
@@ -414,7 +414,7 @@ Loaded 14 material TOML definitions (0 errors)
 > `VertexColor` 与 `VertexPalette` 刻意分成两个领域而不是一个：
 > 后者多要求 `TransformID` + `Size`，这是"按顶点变换/查调色板"的硬前提。
 > 合并会让 `vertex_palette_color` 缺属性时仍然通过校验——那正是契约要拦的东西。
-> 代价是两个领域引用同一个 `vertex_color_source` 模块，视觉上"重复"，
+> 代价是两个领域引用同一个 `material_source_vertex_color` 模块，视觉上"重复"，
 > 但契约约束的是输入前提，不是模块归属。
 
 
@@ -429,7 +429,7 @@ Loaded 14 material TOML definitions (0 errors)
 | 8 示例烟测 | 零 error / 零 VUID | TextureQuad / DrawTriangle / MaterialErrorFallback / LineRender / TextDraw / CascadeShadowMap / PBRSpheres / DualWorldShadows |
 | 全量 `ctest` | 183/184 | `BidirectionalMapStressTest` Timeout 为既存问题 |
 
-> `ShaderCodeModuleRegistry::LoadDirectory` 的文件模块数量被门禁**硬编码**校验
+> `GlslModuleRegistry::LoadDirectory` 的文件模块数量被门禁**硬编码**校验
 > （当前 72）。新增任何 `.glsl` 模块都必须同步
 > `ShaderResourceSchemaRegressionGate.cpp` 的 `file_count` / `expected_count`，
 > 否则 `I.glsl-code-module-file-parse` 会失败。

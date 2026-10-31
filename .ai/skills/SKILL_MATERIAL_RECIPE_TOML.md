@@ -13,7 +13,7 @@
 ```toml
 schema = 1
 name = "TextureQuad.UnlitTexture"
-material_definition = "UnlitTexture"
+material_definition = "unlit_texture"
 
 [transform]
 source = "Vec2Position"

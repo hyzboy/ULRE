@@ -44,7 +44,7 @@ Vulkan 层
 | SDF 距离场 | 文件材质 `builtin/text_gpu` | Linear | `TEXT_SDF_ENABLED` | 支持加粗/勾边/阴影特效，smoothstep 抗锯齿 |
 | 原始位图 | 文件材质 `builtin/text_gpu_bitmap` | Nearest | — | 灰度蒙版直接调制，无特效 |
 
-两条路径共用同一个 Fragment Shader 源 `text_source_gpu.glsl`，通过 `TEXT_SDF_ENABLED` 编译宏分流。
+两条路径共用同一个 Fragment Shader 源 `material_source_text_gpu.glsl`，通过 `TEXT_SDF_ENABLED` 编译宏分流。
 
 ### 三表 = DeviceBuffer + 数组视图
 
@@ -221,7 +221,7 @@ struct CharInstance {
 | push constant `RootAddresses`（**80B**） | `global_addresses` 表基址（首字段 `addr_global_addresses`）+ 文本三表 / 本批 mesh_draw_params / L2W / L2WIndex / mtl_data_addrs / texture_references 的设备地址 + `camera_row`（相机行号；旧文写的 `camera_id` 是过期字段名） | 每字体一次，draw 前（`graph::PushRootAddresses`） |
 
 - 唯一集合（Bindless）用 `VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT` 布局，经 `vkCmdBindDescriptorBuffersEXT` + `vkCmdSetDescriptorBufferOffsetsEXT` 绑定——**没有 `vkCmdBindDescriptorSets`、没有 per-material 集、也没有 Scene 集**（原“Scene 集另带 push descriptor 位”的限定随该集退场一并作废）。
-- 文本三表、mesh_draw_params、材质行表全部走 `pc_root` 里的设备地址 + `buffer_reference` 解引用（`ShaderLibrary/common/l2w_ssbo.glsl`、`ShaderLibrary/material/text_source_gpu.glsl`），**不存在 b14/b15/b16 这类绑定号**。
+- 文本三表、mesh_draw_params、材质行表全部走 `pc_root` 里的设备地址 + `buffer_reference` 解引用（`ShaderLibrary/module/descriptor/l2w_ssbo.glsl`、`ShaderLibrary/module/provider/material_source/material_source_text_gpu.glsl`），**不存在 b14/b15/b16 这类绑定号**。
 - `TextRenderPipeline::Render()` 的实际序列：`BindPipeline` → `ApplyPipelineState`（EDS）→ `PushRootAddresses` → `BindGlobalDescriptorSets` → `DrawMeshTasks`（`src/ecs/support/text/TextRenderPipeline.cpp:280-315`）。
 
 ### 5.3 最终绘制调用
@@ -239,7 +239,7 @@ Mesh Shader（由 `MeshTemplateEmitter`（`src/ShaderGen/meshgen/MeshTemplateEmi
 - 从三层 SSBO 读取 CharInstance → TextCharInfo → CharStyle
 - 计算 quad 像素坐标：`metrics × scale` 缩放 + 斜体剪切 + rotation 绕中心旋转 → `viewport.ortho_matrix` 变换到 NDC
 - 生成 6 个顶点（2 三角形）+ UV/颜色/样式ID varying
-- Fragment Shader（`ShaderLibrary/material/text_source_gpu.glsl`）：
+- Fragment Shader（`ShaderLibrary/module/provider/material_source/material_source_text_gpu.glsl`）：
   - **SDF 路径**（`TEXT_SDF_ENABLED`）：解码距离场 `sdf = raw * 2.0 - 1.0`，调用 `EvalTextStyleEffects()` 合成加粗/勾边/阴影效果
   - **位图路径**：直接灰度采样调制文字颜色
 
@@ -247,7 +247,7 @@ Mesh Shader（由 `MeshTemplateEmitter`（`src/ShaderGen/meshgen/MeshTemplateEmi
 
 ## 六、SDF 字体特效
 
-SDF 特效在 `text_source_gpu.glsl` 的 `EvalTextStyleEffects()` 函数中实现，通过 CharStyle SSBO 读取样式参数。
+SDF 特效在 `material_source_text_gpu.glsl` 的 `EvalTextStyleEffects()` 函数中实现，通过 CharStyle SSBO 读取样式参数。
 
 ### CharStyle 40B 布局详解
 
@@ -377,4 +377,4 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | MeshShader 生成（CharQuad 模式） | `src/ShaderGen/meshgen/MeshTemplateEmitter.h`（调度）+ `MeshShaderModeCharQuad.h`（CharQuad 主体） |
 | SDF 材质定义 | `inc/hgl/mtl/BuiltinMaterialDefinitions.h`（内嵌 `builtin/text_gpu`，代码化） |
 | 位图材质定义 | `inc/hgl/mtl/BuiltinMaterialDefinitions.h`（内嵌 `builtin/text_gpu_bitmap`，代码化） |
-| 文本 Fragment 着色器（SDF/Bitmap 双路径） | `ShaderLibrary/material/text_source_gpu.glsl` |
+| 文本 Fragment 着色器（SDF/Bitmap 双路径） | `ShaderLibrary/module/provider/material_source/material_source_text_gpu.glsl` |
