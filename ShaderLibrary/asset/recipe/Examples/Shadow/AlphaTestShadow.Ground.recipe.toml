@@ -4,3 +4,7 @@ domain = "StandardOpaque"
 
 [render_state]
 alpha_test = false
+
+[[textures]]
+name = "base_color"
+asset = "texarray:@alpha_checker_white"

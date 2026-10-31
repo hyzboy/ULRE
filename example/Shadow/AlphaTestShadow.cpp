@@ -7,13 +7,11 @@
 #include <hgl/graph/asset/GeometryPreset.h>
 #include <hgl/graph/render/RenderTargetDesc.h>
 #include <hgl/graph/module/RenderTargetManager.h>
-#include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
-#include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKTextureReadback.h>
 #include <hgl/vk/VKFormat.h>
 #include <hgl/graph/geo/InlineGeometry.h>
@@ -58,9 +56,11 @@ namespace
         "mtldata:file:ShaderLibrary/asset/material_data/alpha_test_shadow.material_data.toml";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 
-    // 两张单层数组的层清单在 texarray 规约里（尺寸/格式从第 0 层文件推导）
-    constexpr const os_char ALPHA_BASE_COLOR_ARRAY_URI[] = OS_TEXT("texarray:@alpha_checker_baseColor");
-    constexpr const os_char WHITE_ARRAY_URI[]           = OS_TEXT("texarray:@alpha_checker_white");
+    // 纹理（base_color / opacity_mask）都在配方文件里声明：
+    //   AlphaTestShadow.Lit.recipe.toml       ⇒ base_color = texarray:@alpha_checker_baseColor
+    //   AlphaTestShadow.LitMasked.recipe.toml ⇒ 继承 Lit，再补 opacity_mask（同一张棋盘）
+    //   AlphaTestShadow.Ground.recipe.toml    ⇒ base_color = texarray:@alpha_checker_white
+    // 层清单仍来自 texarray 规约（尺寸/格式从第 0 层文件推导）。
 }
 
 namespace
@@ -144,9 +144,8 @@ private:
 
     VertexDataManager *vdm = nullptr;
 
-    /// 材质授权统一走句柄：两张数组纹理各有一个 TextureAsset 句柄（Resident，由规约同步装配而成）。
-    TextureAsset *alpha_base_asset = nullptr;
-    TextureAsset *white_asset = nullptr; // 地面用：纯白，影子落点清晰可读
+    /// 材质授权统一走配方：纹理句柄由 `MaterialRecipeRegistry` 按配方文件里的
+    /// `[[textures]]` 自动创建，示例不再持有 TextureAsset 指针。
 
     Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
@@ -478,30 +477,6 @@ public:
         SAFE_CLEAR(vdm)
     }
 
-    bool InitTextures()
-    {
-        auto *texture_manager = GetManager<TextureManager>();
-        if (!texture_manager)
-            return false;
-
-        // 黑白棋盘（白格 r=255 挡光，黑格 r=0 镂空）与地面用纯白，两张各自一份规约。
-        alpha_base_asset = texture_manager->CreateTextureAsset(ALPHA_BASE_COLOR_ARRAY_URI);
-        if (!alpha_base_asset || !alpha_base_asset->GetTexture())
-        {
-            GLogError("[AlphaTestShadow] failed to build alpha_checker_baseColor array");
-            return false;
-        }
-
-        white_asset = texture_manager->CreateTextureAsset(WHITE_ARRAY_URI);
-        if (!white_asset || !white_asset->GetTexture())
-        {
-            GLogError("[AlphaTestShadow] failed to build alpha_checker_white array");
-            return false;
-        }
-
-        return true;
-    }
-
     bool InitMaterial()
     {
         const mtl::MaterialRecipe *alpha_loaded = GetRecipe("AlphaTestShadow.Lit");
@@ -517,18 +492,12 @@ public:
         if (!alpha_recipe.material_ssbo_binding.IsValid())
             return false;
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方。
+        // 纹理随配方一起来：base_color 在 Lit / Ground 各自的文件里声明。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!alpha_recipe.AddTexture("base_color", alpha_base_asset, true, 0))
-            return false;
 
         // 地面用同一 Lit 定义但不带 alpha_test——实心渲染，影子判读不被
         // 地面自身的镂空干扰。
         ground_recipe = *ground_loaded;
-
-        // 地面换成纯白纹理（同名 upsert）
-        if (!ground_recipe.AddTexture("base_color", white_asset, true, 0))
-            return false;
 
         return true;
     }
@@ -580,7 +549,7 @@ public:
             auto prim = e->GetContext()->GetOrCreateGeometryData(e);
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
-            // 纹理已由配方声明（ground_recipe.AddTexture → white_asset），实体端不再重复绑定
+            // 纹理已由配方声明（ground_recipe 的 base_color = 纯白数组），实体端不再重复绑定
             material_data_comp->SetDataResource(material_accessor);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -613,13 +582,17 @@ public:
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
 
             // CubeA 额外绑 opacity_mask（影子镂空）；CubeB 不绑 ⇒ fallback 1.0 ⇒ 影子实心。
-            // 差别只在配方绑定上，所以挂一份配方覆盖，实体端不再出现纹理授权。
+            // 差别只在配方上，所以挂一份配方覆盖，实体端不再出现纹理授权。
             if (bind_opacity[i])
             {
-                graph::mtl::MaterialRecipe masked_recipe = alpha_recipe;
-
-                if (!masked_recipe.AddTexture("opacity_mask", alpha_base_asset, true, 0))
+                const mtl::MaterialRecipe *masked_loaded = GetRecipe("AlphaTestShadow.LitMasked");
+                if (!masked_loaded)
                     return false;
+
+                graph::mtl::MaterialRecipe masked_recipe = *masked_loaded;
+
+                // 配方只带纹理与渲染状态，材质数据行仍要按本块绑一次
+                masked_recipe.material_ssbo_binding = material_accessor;
 
                 material_data_comp->SetRecipe(masked_recipe);
             }
@@ -953,8 +926,6 @@ public:
         // (0.4,0.5,0.76) 当场被模型方向覆盖、从未生效（死代码，本批一并删）。
         light_system->SetMainLightTime(10, 0, 0);
 
-        if (!InitTextures())
-            return false;
         if (!InitVDM())
             return false;
         if (!InitMaterial())

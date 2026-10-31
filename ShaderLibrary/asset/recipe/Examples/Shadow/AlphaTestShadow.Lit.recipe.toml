@@ -5,3 +5,7 @@ domain = "StandardOpaque"
 [render_state]
 alpha_test = true
 alpha_cutoff = 0.5
+
+[[textures]]
+name = "base_color"
+asset = "texarray:@alpha_checker_baseColor"

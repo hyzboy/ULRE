@@ -1,0 +1,10 @@
+schema = 1
+name = "AlphaTestShadow.LitMasked"
+parent = "rcp:@AlphaTestShadow.Lit"
+
+# 只在 Lit 之上多绑一个 opacity_mask（同一张黑白棋盘）：影子按同一张图镂空。
+# 原来在实体循环里 `alpha_recipe` + AddTexture("opacity_mask", ...) 拼出来的
+# 那份配方，现在就是这份文件。
+[[textures]]
+name = "opacity_mask"
+asset = "texarray:@alpha_checker_baseColor"
