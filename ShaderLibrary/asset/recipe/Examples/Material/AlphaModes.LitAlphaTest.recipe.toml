@@ -1,5 +1,6 @@
 schema = 1
 name = "AlphaModes.LitAlphaTest"
+parent = "rcp:@AlphaModes.LitOpaque"
 domain = "StandardOpaque"
 
 [render_state]

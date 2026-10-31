@@ -46,12 +46,8 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
-#include<hgl/filesystem/Filename.h>
-#include<hgl/filesystem/FileSystem.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/color/Color.h>
@@ -109,8 +105,8 @@ namespace
     }
 
     // 颜色/图案纹理（所有格共用一张；单通道 BC4 ⇒ 采样 (r,0,0,1)）：
-    // 既作 base_color（可见图案），也作 opacity_mask（逐像素 alpha 图案）
-    constexpr const os_char * PATTERN_TEXTURE_NAME = OS_TEXT("0.Tex2D");
+    // 既作 base_color（可见图案），也作 opacity_mask（逐像素 alpha 图案）。
+    // 绑定写在 AlphaModes.LitOpaque.recipe.toml 的 `[[textures]]` 里。
 
     const char * MODE_NAME[MODE_ROWS] = { "Opaque", "AlphaBlend", "AlphaTest", "AlphaDither" };
 
@@ -150,8 +146,6 @@ private:
 
     graph::GlobalSSBOBinding surface_rows[MODE_ROWS][ALPHA_STEPS]{};
 
-    TextureAsset* pattern_texture = nullptr;   ///< 单通道 gradient：base_color + opacity_mask
-
     hgl::ecs::TransformAccessor item_transforms[MODE_ROWS][ALPHA_STEPS]{};
 
     std::string dump_tag;
@@ -162,28 +156,10 @@ private:
 
 private:
 
-    bool InitTextures()
-    {
-        auto* texture_manager = GetManager<TextureManager>();
-
-        if (!texture_manager)
-            return false;
-
-        pattern_texture = texture_manager->CreateTextureAsset(
-            filesystem::JoinPathWithFilename(OS_TEXT("res/image/gradient"), PATTERN_TEXTURE_NAME),
-            true);
-        if (!pattern_texture)
-        {
-            printf("[ERROR] InitTextures: failed to load gradient pattern\n");
-            return false;
-        }
-
-        return true;
-    }
-
     bool InitMaterial()
     {
-        // 基础配方：Lit，实心（Opaque 就是它）
+        // 基础配方：Lit，实心（Opaque 就是它）。五种模式的纹理都来自 Opaque 配方，
+        // 变体只声明 parent 与自己的 render_state ⇒ 这里不再 AddTexture。
         const mtl::MaterialRecipe *opaque_loaded = GetRecipe("AlphaModes.LitOpaque");
         const mtl::MaterialRecipe *blend_loaded = GetRecipe("AlphaModes.LitAlphaBlend");
         const mtl::MaterialRecipe *alpha_test_loaded = GetRecipe("AlphaModes.LitAlphaTest");
@@ -212,21 +188,9 @@ private:
                    "⇒ 期望 ENGAGED batches=5/5（全量）\n");
         }
 
-        // 纹理是材质原型固有属性 ⇒ 每个配方各声明一次（同一张 gradient 同时喂两个槽位，
-        // 有效 alpha = 材质行 base_color.a × opacity_mask 采样）。
+        // 纹理是材质原型固有属性 ⇒ 已在配方文件里各声明一次（同一张 gradient 同时喂两个
+        // 槽位，有效 alpha = 材质行 base_color.a × opacity_mask 采样）。
         // 采样器由 Bindless 预设统一管理，材质侧不再创建/传递 Sampler。
-        auto BindPattern = [this](graph::mtl::MaterialRecipe &recipe) -> bool
-        {
-            return recipe.AddTexture("base_color", pattern_texture, true)
-                && recipe.AddTexture("opacity_mask", pattern_texture, true);
-        };
-
-        if (!BindPattern(opaque_recipe)
-         || !BindPattern(blend_recipe)
-         || !BindPattern(alpha_test_recipe)
-         || !BindPattern(dither_recipe)
-         || (partial_enabled && !BindPattern(partial_recipe)))
-            return false;
 
         return true;
     }
@@ -410,7 +374,6 @@ public:
             return false;
         }
 
-        if (!InitTextures())      return false;
         if (!InitMaterial())      return false;
         if (!CreateSurfaceRows()) return false;
         if (!InitScene())         return false;

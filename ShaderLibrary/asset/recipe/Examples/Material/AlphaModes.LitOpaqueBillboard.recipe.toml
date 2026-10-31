@@ -1,5 +1,6 @@
 schema = 1
 name = "AlphaModes.LitOpaqueBillboard"
+parent = "rcp:@AlphaModes.LitOpaque"
 domain = "StandardOpaque"
 
 [transform]

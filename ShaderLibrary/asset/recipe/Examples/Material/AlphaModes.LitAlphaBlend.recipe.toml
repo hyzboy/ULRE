@@ -1,5 +1,6 @@
 schema = 1
 name = "AlphaModes.LitAlphaBlend"
+parent = "rcp:@AlphaModes.LitOpaque"
 domain = "StandardOpaque"
 
 [render_state.pipeline]
