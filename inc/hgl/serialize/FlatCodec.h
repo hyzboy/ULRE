@@ -1252,6 +1252,14 @@ namespace hgl::serialize::fb
         return VerifyTable(verifier, root, meta);
     }
 
+    /// 便捷重载：元数据取 `StructSerializer<T>::Meta()`。
+    template <typename T>
+    inline bool VerifyBuffer(const void *data, const size_t size,
+                             const char *file_identifier = nullptr)
+    {
+        return VerifyBuffer(data, size, *StructSerializer<T>::Meta(), file_identifier);
+    }
+
     // ── 缓冲级入口 ──────────────────────────────────────────────────────────
 
     /// 值树 → 完整 FlatBuffers 缓冲（旧路径：手写描述表）。
@@ -1361,7 +1369,7 @@ namespace hgl::serialize::fb
                                     const char *file_identifier = nullptr,
                                     AnsiString *out_error = nullptr)
     {
-        return EncodeToFlatBuffers<T>(fbb, src, StructSerializer<T>::Meta(),
+        return EncodeToFlatBuffers<T>(fbb, src, *StructSerializer<T>::Meta(),
                                       file_identifier, out_error);
     }
 
@@ -1406,7 +1414,7 @@ namespace hgl::serialize::fb
                                       AnsiString *out_error = nullptr,
                                       AnsiString *out_fail_path = nullptr)
     {
-        return DecodeFromFlatBuffers<T>(data, size, out, StructSerializer<T>::Meta(),
+        return DecodeFromFlatBuffers<T>(data, size, out, *StructSerializer<T>::Meta(),
                                         file_identifier, out_error, out_fail_path);
     }
 
@@ -1441,7 +1449,7 @@ namespace hgl::serialize::fb
                                            AnsiString *out_fail_path = nullptr)
     {
         return VerifyAndDecodeFlatBuffers<T>(data, size, out,
-                                             StructSerializer<T>::Meta(),
+                                             *StructSerializer<T>::Meta(),
                                              file_identifier, out_error, out_fail_path);
     }
 }//namespace hgl::serialize::fb

@@ -8,15 +8,16 @@
 // 这条用例不依赖设备/窗口，纯数据往返，因此可以在 CI 里挡住
 // 「改了 C++ 结构但忘记重新生成」与「生成器改坏了语义」两类事故。
 #include <hgl/asset/AssetObject.h>
-#include <hgl/asset/generated/GeometryCodec.gen.h>
+#include <hgl/asset/generated/GeometrySerialize.gen.h>
 #include <hgl/asset/generated/GeometryMeta.gen.h>
 #include <hgl/asset/generated/PrimitiveMeta.gen.h>
-#include <hgl/asset/generated/PrimitiveCodec.gen.h>
-#include <hgl/asset/generated/SceneCodec.gen.h>
+#include <hgl/asset/generated/PrimitiveSerialize.gen.h>
+#include <hgl/asset/generated/SceneSerialize.gen.h>
 #include <hgl/asset/generated/SceneMeta.gen.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
-
+#include <hgl/serialize/FlatCodec.h>
+#include <hgl/serialize/TomlCodec.h>
 #include <cstring>
 
 using namespace hgl;
@@ -46,10 +47,10 @@ namespace
         cube.ntb = NTBType::NormalTangentBitangent;
         cube.tex_coord = false;
 
-        const toml::value written = codec::WriteBuiltinCubeParams(cube);
+        const toml::value written = hgl::serialize::WriteTomlTable<BuiltinCubeParams>(cube);
 
         BuiltinCubeParams back;
-        if (!codec::ReadBuiltinCubeParams(written, back))
+        if (!hgl::serialize::ReadTomlTable<BuiltinCubeParams>(written, back))
             return false;
 
         return back.segments_x == cube.segments_x
@@ -94,7 +95,7 @@ namespace
         BuiltinTorusParams back;
         back.inner_radius = 99.0f;           // 故意污染，验证「缺键不动」
 
-        if (!codec::ReadBuiltinTorusParams(toml::value(std::move(empty)), back))
+        if (!hgl::serialize::ReadTomlTable<BuiltinTorusParams>(toml::value(std::move(empty)), back))
             return false;
 
         // 缺键 = 保持调用方传进来的值（不重置），这正是「增量补丁」语义。
@@ -110,7 +111,7 @@ namespace
         toml::table bad;
         bad["slices"] = "many";
         BuiltinTorusParams junk;
-        if (codec::ReadBuiltinTorusParams(toml::value(std::move(bad)), junk))
+        if (hgl::serialize::ReadTomlTable<BuiltinTorusParams>(toml::value(std::move(bad)), junk))
             return false;
 
         return true;
@@ -121,12 +122,12 @@ namespace
         toml::table too_large;
         too_large["segments_x"] = static_cast<int64_t>(UINT64_C(0x100000000));
         BuiltinCubeParams cube;
-        if (codec::ReadBuiltinCubeParams(toml::value(std::move(too_large)), cube))
+        if (hgl::serialize::ReadTomlTable<BuiltinCubeParams>(toml::value(std::move(too_large)), cube))
             return false;
 
         toml::table too_small;
         too_small["segments_x"] = static_cast<int64_t>(-1);
-        return !codec::ReadBuiltinCubeParams(toml::value(std::move(too_small)), cube);
+        return !hgl::serialize::ReadTomlTable<BuiltinCubeParams>(toml::value(std::move(too_small)), cube);
     }
 
     // ── 3. 枚举名与别名 ────────────────────────────────────────────────────
@@ -241,14 +242,13 @@ namespace
         frustum.generate_caps = false;
 
         flatbuffers::FlatBufferBuilder fbb;
-        const auto offset = codec::EncodeBuiltinFrustumParams(fbb, frustum);
-        fbb.Finish(offset);
-
-        const auto *root = flatbuffers::GetRoot<hgl::asset::schema::BuiltinFrustumParams>(
-            fbb.GetBufferPointer());
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<BuiltinFrustumParams>(fbb, frustum))
+            return false;
 
         BuiltinFrustumParams back;
-        codec::DecodeBuiltinFrustumParams(root, back);
+        if (!hgl::serialize::fb::DecodeFromFlatBuffers<BuiltinFrustumParams>(
+                fbb.GetBufferPointer(), fbb.GetSize(), back))
+            return false;
 
         return back.bottom_radius == frustum.bottom_radius
             && back.top_radius == frustum.top_radius
@@ -266,7 +266,7 @@ namespace
         variant["lod"] = static_cast<int64_t>(2);
 
         PrimitiveVariantSpec spec;
-        if (!codec::ReadPrimitiveVariantSpec(toml::value(std::move(variant)), spec))
+        if (!hgl::serialize::ReadTomlTable<PrimitiveVariantSpec>(toml::value(std::move(variant)), spec))
             return false;
 
         if (spec.recipe_name != "Core.PBR.DepthOnly")
@@ -288,9 +288,9 @@ namespace
         extra->purpose = PrimitiveVariantPurpose::DepthOnly;
         extra->lod_index = 4;
 
-        const toml::value written = codec::WritePrimitiveAssetSpec(source);
+        const toml::value written = hgl::serialize::WriteTomlTable<PrimitiveAssetSpec>(source);
         PrimitiveAssetSpec decoded;
-        if (!codec::ReadPrimitiveAssetSpec(written, decoded))
+        if (!hgl::serialize::ReadTomlTable<PrimitiveAssetSpec>(written, decoded))
             return false;
 
         return decoded.name == source.name
@@ -319,13 +319,13 @@ namespace
         variant->lod_index = 3;
 
         flatbuffers::FlatBufferBuilder fbb;
-        const auto offset = codec::EncodePrimitiveAssetSpec(fbb, source);
-        fbb.Finish(offset);
-        const auto *root = flatbuffers::GetRoot<hgl::asset::schema::PrimitiveAssetSpec>(
-            fbb.GetBufferPointer());
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<PrimitiveAssetSpec>(fbb, source))
+            return false;
 
         PrimitiveAssetSpec decoded;
-        codec::DecodePrimitiveAssetSpec(root, decoded);
+        if (!hgl::serialize::fb::DecodeFromFlatBuffers<PrimitiveAssetSpec>(
+                fbb.GetBufferPointer(), fbb.GetSize(), decoded))
+            return false;
         return decoded.name == source.name
             && decoded.geometry_path == source.geometry_path
             && decoded.recipe_name == source.recipe_name
@@ -357,13 +357,13 @@ namespace
         node->transform.position = math::Vector3f(1.0f, 2.0f, 3.0f);
 
         flatbuffers::FlatBufferBuilder fbb;
-        const auto offset = codec::EncodeSceneSpec(fbb, source);
-        fbb.Finish(offset);
-        const auto *root = flatbuffers::GetRoot<hgl::asset::schema::SceneSpec>(
-            fbb.GetBufferPointer());
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(fbb, source))
+            return false;
 
         SceneSpec decoded;
-        codec::DecodeSceneSpec(root, decoded);
+        if (!hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(
+                fbb.GetBufferPointer(), fbb.GetSize(), decoded))
+            return false;
         return decoded.schema == source.schema
             && decoded.name == source.name
             && decoded.materials.GetCount() == 1

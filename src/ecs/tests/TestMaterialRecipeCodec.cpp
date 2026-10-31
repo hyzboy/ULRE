@@ -11,12 +11,13 @@
 //
 // 纯数据往返，不依赖设备 / 窗口，因此在 CI 里也能跑。
 #include <hgl/asset/AssetObject.h>
-#include <hgl/asset/generated/MaterialRecipeCodec.gen.h>
+#include <hgl/asset/generated/MaterialRecipeSerialize.gen.h>
 #include <hgl/asset/generated/MaterialRecipeMeta.gen.h>
 #include <hgl/graph/asset/MaterialRecipeSpec.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <hgl/serialize/Archive.h>
+#include <hgl/serialize/FlatCodec.h>
 #include <hgl/serialize/TomlCodec.h>
 
 using namespace hgl;
@@ -171,10 +172,10 @@ namespace
             return false;
 
         // 写成文本快照后再次读回：值、presence、`Key` 覆盖、表数组都要原样。
-        toml::value written = codec::WriteMaterialRecipeSpec(spec);
+        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
 
         MaterialRecipeSpec back;
-        if (!codec::ReadMaterialRecipeSpec(written, back))
+        if (!hgl::serialize::ReadTomlTable<MaterialRecipeSpec>(written, back))
             return false;
 
         const RecipePipelineSpec &back_pipeline = back.render_state.pipeline.value;
@@ -262,7 +263,7 @@ namespace
             return false;
 
         // 写方向：未 present 的键不能出现在快照里，否则往返会膨胀成整份声明。
-        toml::value written = codec::WriteMaterialRecipeSpec(explicit_default);
+        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(explicit_default);
         return written.at("render_state").as_table().at("pipeline").as_table().size() == 3;
     }
 
@@ -289,7 +290,7 @@ namespace
             return false;
 
         // 局部覆盖往返后仍只有 1 个键。
-        toml::value written = codec::WriteMaterialRecipeSpec(spec);
+        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
         return written.at("render_state").as_table().at("pipeline").as_table().size() == 1;
     }
 
@@ -315,9 +316,9 @@ namespace
             return false;
 
         // 空表往返仍是「表存在、零个键」。
-        toml::value written = codec::WriteMaterialRecipeSpec(spec);
+        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
         MaterialRecipeSpec back;
-        if (!codec::ReadMaterialRecipeSpec(written, back))
+        if (!hgl::serialize::ReadTomlTable<MaterialRecipeSpec>(written, back))
             return false;
 
         return back.render_state.pipeline.present
@@ -348,13 +349,13 @@ namespace
         if (spec.fragment.defines.present)
             return false;
 
-        toml::value written = codec::WriteMaterialRecipeSpec(spec);
+        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
         const toml::table &fragment = written.at("fragment").as_table();
         if (fragment.count("samplers") != 1 || fragment.count("defines") != 0)
             return false;
 
         MaterialRecipeSpec back;
-        if (!codec::ReadMaterialRecipeSpec(written, back))
+        if (!hgl::serialize::ReadTomlTable<MaterialRecipeSpec>(written, back))
             return false;
 
         return back.fragment.samplers.present
@@ -517,14 +518,13 @@ namespace
         tex->required = false;
 
         flatbuffers::FlatBufferBuilder fbb;
-        const auto offset = codec::EncodeMaterialRecipeSpec(fbb, source);
-        fbb.Finish(offset);
-
-        const auto *root = flatbuffers::GetRoot<::hgl::asset::schema::MaterialRecipeSpec>(
-            fbb.GetBufferPointer());
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<MaterialRecipeSpec>(fbb, source))
+            return false;
 
         MaterialRecipeSpec back;
-        codec::DecodeMaterialRecipeSpec(root, back);
+        if (!hgl::serialize::fb::DecodeFromFlatBuffers<MaterialRecipeSpec>(
+                fbb.GetBufferPointer(), fbb.GetSize(), back))
+            return false;
 
         const RecipePipelineSpec &pipeline = back.render_state.pipeline.value;
         return back.schema == source.schema

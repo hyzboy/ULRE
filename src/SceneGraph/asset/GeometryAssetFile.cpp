@@ -1,7 +1,8 @@
 #include <hgl/graph/asset/GeometryAssetFile.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/geo/LoadGeometry.h>
-#include <hgl/asset/generated/GeometryCodec.gen.h>
+#include <hgl/asset/generated/GeometrySerialize.gen.h>
+#include <hgl/serialize/TomlCodec.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/type/Smart.h>
@@ -17,7 +18,6 @@ DEFINE_LOGGER_MODULE(GeometryAsset)
 USE_MODULE_LOGGER(GeometryAsset)
 
 // 生成物在 hgl::asset::generated；本文件在 hgl::graph 里，用别名避免每次写全限定名。
-namespace asset_codec = ::hgl::asset::generated;
 
 namespace hgl::graph
 {
@@ -26,19 +26,19 @@ namespace hgl::graph
         /**
          * 读一个内置形状的参数表。
          *
-         * 形状结构**先归零到类内缺省值**，再交给生成出来的 `Read<Shape>Params`：
-         * 生成代码的语义是「键缺失即保留类内初始值」，因此空表 / 缺表都等价于
+         * 形状结构**先归零到类内缺省值**，再交给 `ReadTomlTable<T>`：
+         * 序列化器的语义是「键缺失即保留类内初始值」，因此空表 / 缺表都等价于
          * 「全用缺省」，不需要调用方逐字段写一遍默认值。
          */
-        template <typename T, typename Fn>
-        static bool ReadShapeParams(const toml::value *table, T &dst, Fn reader, const os_char *debug_name)
+        template <typename T>
+        static bool ReadShapeParams(const toml::value *table, T &dst, const os_char *debug_name)
         {
             dst = T{};
 
             if (!table)
                 return true;
 
-            if (reader(*table, dst))
+            if (hgl::serialize::ReadTomlTable<T>(*table, dst))
                 return true;
 
             MLogError(GeometryAsset,
@@ -260,46 +260,46 @@ namespace hgl::graph
             switch (out_spec.shape)
             {
             case BuiltinShapeKind::Sphere:
-                if (!ReadShapeParams(params_table, out_spec.params.sphere, &asset_codec::ReadBuiltinSphereParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.sphere, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Dome:
-                if (!ReadShapeParams(params_table, out_spec.params.dome, &asset_codec::ReadBuiltinDomeParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.dome, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Cube:
-                if (!ReadShapeParams(params_table, out_spec.params.cube, &asset_codec::ReadBuiltinCubeParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.cube, debug_name)) return false;
                 break;
             case BuiltinShapeKind::PlaneGrid:
-                if (!ReadShapeParams(params_table, out_spec.params.plane_grid, &asset_codec::ReadBuiltinPlaneGridParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.plane_grid, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Cylinder:
-                if (!ReadShapeParams(params_table, out_spec.params.cylinder, &asset_codec::ReadBuiltinCylinderParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.cylinder, debug_name)) return false;
                 break;
             case BuiltinShapeKind::HollowCylinder:
-                if (!ReadShapeParams(params_table, out_spec.params.hollow_cylinder, &asset_codec::ReadBuiltinHollowCylinderParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.hollow_cylinder, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Torus:
-                if (!ReadShapeParams(params_table, out_spec.params.torus, &asset_codec::ReadBuiltinTorusParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.torus, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Cone:
-                if (!ReadShapeParams(params_table, out_spec.params.cone, &asset_codec::ReadBuiltinConeParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.cone, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Capsule:
-                if (!ReadShapeParams(params_table, out_spec.params.capsule, &asset_codec::ReadBuiltinCapsuleParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.capsule, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Rectangle:
-                if (!ReadShapeParams(params_table, out_spec.params.rectangle, &asset_codec::ReadBuiltinRectangleParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.rectangle, debug_name)) return false;
                 break;
             case BuiltinShapeKind::BoundingBox:
-                if (!ReadShapeParams(params_table, out_spec.params.bounding_box, &asset_codec::ReadBuiltinBoundingBoxParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.bounding_box, debug_name)) return false;
                 break;
             case BuiltinShapeKind::HexSphere:
-                if (!ReadShapeParams(params_table, out_spec.params.hex_sphere, &asset_codec::ReadBuiltinHexSphereParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.hex_sphere, debug_name)) return false;
                 break;
             case BuiltinShapeKind::TaperedCapsule:
-                if (!ReadShapeParams(params_table, out_spec.params.tapered_capsule, &asset_codec::ReadBuiltinTaperedCapsuleParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.tapered_capsule, debug_name)) return false;
                 break;
             case BuiltinShapeKind::Frustum:
-                if (!ReadShapeParams(params_table, out_spec.params.frustum, &asset_codec::ReadBuiltinFrustumParams, debug_name)) return false;
+                if (!ReadShapeParams(params_table, out_spec.params.frustum, debug_name)) return false;
                 break;
             case BuiltinShapeKind::PlaneSquare:
                 break;

@@ -9,11 +9,11 @@ Clang AST + 记录布局自动提取 —— **不需要逐字段标注**。`HGL_
 
 产出（一律提交进仓库，MSVC 构建不需要 Clang）：
 
-    inc/hgl/asset/generated/<Group>Toml.gen.h            TOML 读写
-    inc/hgl/asset/generated/<Group>Meta.gen.h            属性元数据表（GUI / 文档）
-    inc/hgl/asset/generated/<group>_schema.fbs           FlatBuffers schema
-    inc/hgl/asset/generated/<group>_schema_generated.h   flatc 产物（发行版二进制格式）
-    inc/hgl/asset/generated/<Group>Flat.gen.h            FlatBuffers 编解码桥
+    inc/hgl/asset/generated/<Group>Meta.gen.h            属性元数据表（GUI / 文档 / 序列化驱动）
+    inc/hgl/asset/generated/<Group>Serialize.gen.h       自有 Archive 序列化（StructSerializer<T>）
+
+格式（TOML / FlatBuffers）不生成任何代码：两者都是 `hgl::serialize` 的纯后端，
+由 `ClassMetaInfo` 在运行期驱动。
 
 用法
 ----
@@ -32,7 +32,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -54,29 +53,29 @@ class GenError(RuntimeError):
 
 
 # ── 类型表 ──────────────────────────────────────────────────────────────────
-# C++ 基础类型 → (PropertyKind, 标量类, FlatBuffers 标量)
-SCALAR_TYPES: dict[str, tuple[str, str, str]] = {
-    "bool":     ("Bool",   "bool",  "bool"),
-    "uint8_t":  ("UInt8",  "uint",  "ubyte"),
-    "uint16_t": ("UInt16", "uint",  "ushort"),
-    "uint32_t": ("UInt32", "uint",  "uint"),
-    "uint64_t": ("UInt64", "uint",  "ulong"),
-    "uint8":    ("UInt8",  "uint",  "ubyte"),
-    "uint16":   ("UInt16", "uint",  "ushort"),
-    "uint32":   ("UInt32", "uint",  "uint"),
-    "uint64":   ("UInt64", "uint",  "ulong"),
-    "uint":     ("UInt32", "uint",  "uint"),
-    "int8_t":   ("Int8",   "int",   "byte"),
-    "int16_t":  ("Int16",  "int",   "short"),
-    "int32_t":  ("Int32",  "int",   "int"),
-    "int64_t":  ("Int64",  "int",   "long"),
-    "int8":     ("Int8",   "int",   "byte"),
-    "int16":    ("Int16",  "int",   "short"),
-    "int32":    ("Int32",  "int",   "int"),
-    "int64":    ("Int64",  "int",   "long"),
-    "int":      ("Int32",  "int",   "int"),
-    "float":    ("Float",  "float", "float"),
-    "double":   ("Double", "float", "double"),
+# C++ 基础类型 → (PropertyKind, 标量类)
+SCALAR_TYPES: dict[str, tuple[str, str]] = {
+    "bool":     ("Bool",   "  "),
+    "uint8_t":  ("UInt8",  "  "),
+    "uint16_t": ("UInt16", "  "),
+    "uint32_t": ("UInt32", "  "),
+    "uint64_t": ("UInt64", "  "),
+    "uint8":    ("UInt8",  "  "),
+    "uint16":   ("UInt16", "  "),
+    "uint32":   ("UInt32", "  "),
+    "uint64":   ("UInt64", "  "),
+    "uint":     ("UInt32", "  "),
+    "int8_t":   ("Int8",   "   "),
+    "int16_t":  ("Int16",  "   "),
+    "int32_t":  ("Int32",  "   "),
+    "int64_t":  ("Int64",  "   "),
+    "int8":     ("Int8",   "   "),
+    "int16":    ("Int16",  "   "),
+    "int32":    ("Int32",  "   "),
+    "int64":    ("Int64",  "   "),
+    "int":      ("Int32",  "   "),
+    "float":    ("Float",  " "),
+    "double":   ("Double", " "),
 }
 
 STRING_TYPES = {"AnsiString", "U8String", "UTF8String", "OSString"}
@@ -163,7 +162,6 @@ class TypeDesc:
     kind: str = ""      # PropertyKind 名
     cpp: str = ""       # 基础 C++ 类型（去命名空间）
     fq: str = ""        # 完全限定 C++ 类型
-    fbs: str = ""       # FlatBuffers 元素类型
     scalar_class: str = ""   # float|uint|int|bool
     components: int = 0
     elem: "TypeDesc | None" = None
@@ -252,14 +250,6 @@ class GroupConfig:
     scan: list[str]
     serialize_header: str
     meta_header: str
-    codec_header: str
-    fbs_schema: str
-    fbs_generated: str
-    fbs_namespace: str = "hgl.asset.schema"
-
-    def fbs_schema_type(self, gen_name: str) -> str:
-        """`schema::X` 的完全限定名（命名空间来自 .fbs 文件里的 `namespace`）。"""
-        return f"::{self.fbs_namespace.replace('.', '::')}::{gen_name}"
 
 
 # ── Clang 调用 ──────────────────────────────────────────────────────────────
@@ -575,18 +565,17 @@ class TypeRegistry:
             return inner
 
         if base in SCALAR_TYPES:
-            kind, scalar_class, fbs = SCALAR_TYPES[base]
+            kind, scalar_class = SCALAR_TYPES[base]
             return TypeDesc(category="scalar", kind=kind, cpp=base, fq=raw,
-                            fbs=fbs, scalar_class=scalar_class)
+                            scalar_class=scalar_class)
 
         if base in STRING_TYPES:
-            return TypeDesc(category="string", kind="String", cpp=base, fq=raw, fbs="string")
+            return TypeDesc(category="string", kind="String", cpp=base, fq=raw)
 
         if base in VECTOR_TYPES:
             components, scalar_class = VECTOR_TYPES[base]
             kind = {2: "Vector2f", 3: "Vector3f", 4: "Vector4f"}[components]
             return TypeDesc(category="vector", kind=kind, cpp=base, fq=raw,
-                            fbs=_fbs_vec_type(scalar_class, components),
                             scalar_class=scalar_class, components=components)
 
         if base in CONTAINER_TYPES:
@@ -601,25 +590,20 @@ class TypeRegistry:
         if base in self.structs:
             target = self.structs[base]
             return TypeDesc(category="struct", kind="Struct", cpp=base, fq=target.fq,
-                            fbs=target.gen_name, gen=target.gen_name)
+                            gen=target.gen_name)
 
         if base in self.enums:
             info = self.enums[base]
-            return TypeDesc(category="enum", kind="Enum", cpp=base, fq=info.fq, fbs="int",
+            return TypeDesc(category="enum", kind="Enum", cpp=base, fq=info.fq,
                             enum=info.fq)
 
         if base in self.integer_enums:
-            return TypeDesc(category="enum", kind="Enum", cpp=base, fq=raw, fbs="int")
+            return TypeDesc(category="enum", kind="Enum", cpp=base, fq=raw)
 
         raise GenError(
             f"未知的资产字段类型：{cpp_type}（若是外部枚举请在 asset_gen.toml 的 "
             f"integer_enums 里登记；若是结构请加 HGL_ASSET_STRUCT 注解）"
         )
-
-
-def _fbs_vec_type(scalar_class: str, components: int) -> str:
-    prefix = {"float": "Float", "uint": "UInt", "int": "Int"}[scalar_class]
-    return f"{prefix}{components}"
 
 
 # ── 元数据渲染 ──────────────────────────────────────────────────────────────
@@ -723,141 +707,6 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct],
 
     out.append("} // namespace hgl::asset::generated\n")
     return "".join(out)
-
-
-# ── FlatBuffers schema 渲染 ─────────────────────────────────────────────────
-FBS_ELEM = {"float": "float", "uint": "uint", "int": "int", "bool": "bool",
-            "double": "double"}
-
-
-def _wrapper_name(elem_fbs: str, count: int) -> str:
-    camel = {
-        "float": "Float", "double": "Double", "uint": "UInt", "int": "Int",
-        "bool": "Bool", "ubyte": "UByte", "ushort": "UShort", "ulong": "ULong",
-        "byte": "Byte", "short": "Short", "long": "Long",
-    }.get(elem_fbs, elem_fbs)
-    return f"{camel}Array{count}"
-
-
-def _vec_struct_name(elem_fbs: str, count: int) -> str:
-    camel = {"float": "Float", "uint": "UInt", "int": "Int"}[elem_fbs]
-    return f"{camel}{count}"
-
-
-def _fbs_elem_of(t: TypeDesc) -> str:
-    if t.category == "scalar":
-        return t.fbs
-    if t.category == "enum":
-        return "int"
-    return ""
-
-
-def collect_fbs_wrappers(structs: list[AssetStruct]) -> tuple[dict, dict]:
-    """扫描所有字段，算出需要生成的向量 struct 与定长数组包装 struct。"""
-    vecs: dict[tuple[str, int], str] = {}
-    arrays: dict[tuple[str, int], str] = {}
-
-    def walk(t: TypeDesc, where: str) -> None:
-        if t.category == "vector":
-            elem = {"float": "float", "uint": "uint", "int": "int"}[t.scalar_class]
-            vecs[(elem, t.components)] = _vec_struct_name(elem, t.components)
-        elif t.category == "array":
-            if t.elem.category == "struct":
-                arrays[(t.elem.gen, int(t.dim))] = _wrapper_name(t.elem.gen, int(t.dim))
-            else:
-                elem = _fbs_elem_of(t.elem)
-                if not elem:
-                    raise GenError(f"{where}: FlatBuffers 不支持该定长数组元素类型")
-                arrays[(elem, int(t.dim))] = _wrapper_name(elem, int(t.dim))
-        elif t.category in ("value_array", "ptr_array"):
-            walk(t.elem, where)
-
-    for info in structs:
-        for prop in info.fields:
-            if prop.serialized_flatbuffers:
-                walk(prop.type, f"{info.name}.{prop.name}")
-    return vecs, arrays
-
-
-def render_fbs_schema(group: GroupConfig, structs: list[AssetStruct]) -> str:
-    vecs, arrays = collect_fbs_wrappers(structs)
-
-    out: list[str] = []
-    out.append(
-        "// ─────────────────────────────────────────────────────────────────────────────\n"
-        "// @ulre-codegen begin\n"
-        "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
-        "//   用途：发行版资产二进制格式。语义是「完整快照」，不是 TOML 那样的增量补丁：\n"
-        "//         TOML 缺键 = 保留 C++ 类内初始值；FlatBuffers 解码一律覆盖全部字段。\n"
-        "//   资产结构一律 table（可能含 string / 动态数组）；向量与定长数组用本文件\n"
-        "//   生成的包装 struct（FlatBuffers 的 table 不允许定长数组字段）。\n"
-        "// @ulre-codegen end\n"
-        "// ─────────────────────────────────────────────────────────────────────────────\n"
-        f"\nnamespace {group.fbs_namespace};\n\n"
-    )
-
-    for (elem, count), name in sorted(arrays.items()):
-        out.append(f"struct {name}\n{{\n  v:[{elem}:{count}];\n}}\n\n")
-
-    for (elem, count), name in sorted(vecs.items()):
-        out.append(f"struct {name}\n{{\n")
-        for comp in ["x", "y", "z", "w"][:count]:
-            out.append(f"  {comp}:{elem};\n")
-        out.append("}\n\n")
-
-    for info in structs:
-        out.append(f"// {info.header} -> {info.short_name}\n")
-        out.append(f"table {info.gen_name}\n{{\n")
-        for prop in info.fields:
-            if not prop.serialized_flatbuffers:
-                continue
-            t = prop.type
-            if t.category in ("scalar", "enum"):
-                if t.presence:
-                    out.append(f"  {prop.toml_key}:{_fbs_elem_of(t)} = null;\n")
-                else:
-                    out.append(f"  {prop.toml_key}:{_fbs_elem_of(t)};\n")
-            elif t.category == "string":
-                out.append(f"  {prop.toml_key}:string;\n")
-            elif t.category == "struct":
-                out.append(f"  {prop.toml_key}:{t.gen};\n")
-            elif t.category == "vector":
-                elem = {"float": "float", "uint": "uint", "int": "int"}[t.scalar_class]
-                out.append(f"  {prop.toml_key}:{_vec_struct_name(elem, t.components)};\n")
-            elif t.category == "array":
-                if t.elem.category == "struct":
-                    out.append(f"  {prop.toml_key}:{_wrapper_name(t.elem.gen, int(t.dim))};\n")
-                else:
-                    out.append(f"  {prop.toml_key}:{_wrapper_name(_fbs_elem_of(t.elem), int(t.dim))};\n")
-            elif t.category == "value_array":
-                if t.elem.category == "string":
-                    out.append(f"  {prop.toml_key}:[string];\n")
-                    continue
-                elem = _fbs_elem_of(t.elem)
-                if not elem:
-                    raise GenError(
-                        f"{info.name}.{prop.toml_key}: ValueArray 的 FlatBuffers 编码只支持"
-                        f"标量、枚举与字符串元素（结构元素请改用 ManagedArray）"
-                    )
-                out.append(f"  {prop.toml_key}:[{elem}];\n")
-            elif t.category == "ptr_array":
-                if t.elem.category == "string":
-                    out.append(f"  {prop.toml_key}:[string];\n")
-                    continue
-                if t.elem.category != "struct":
-                    raise GenError(
-                        f"{info.name}.{prop.toml_key}: ManagedArray 的 FlatBuffers 编码"
-                        f"只支持资产结构元素"
-                    )
-                out.append(f"  {prop.toml_key}:[{t.elem.gen}];\n")
-        out.append("}\n\n")
-
-    return "".join(out)
-
-
-# ── FlatBuffers 编解码桥 ────────────────────────────────────────────────────
-def _fbs_elem_of_scalar(t: TypeDesc) -> str:
-    return {"float": "float", "uint": "uint", "int": "int"}[t.scalar_class]
 
 
 # ── 构建 ────────────────────────────────────────────────────────────────────
@@ -1083,61 +932,6 @@ def write_or_check(path: Path, content: str, check_only: bool, report: list[str]
     path.write_text(content, encoding="utf-8", newline="\n")
 
 
-def run_flatc(repo_root: Path, group: GroupConfig, flatc: str) -> None:
-    if not group.fbs_generated:
-        return
-    schema = repo_root / group.fbs_schema
-    outdir = (repo_root / group.fbs_generated).parent
-    outdir.mkdir(parents=True, exist_ok=True)
-    cmd = [flatc, "--cpp", "-o", str(outdir), str(schema)]
-    proc = subprocess.run(cmd, capture_output=True, text=True, errors="ignore")
-    if proc.returncode != 0:
-        raise GenError(
-            f"flatc 失败（{group.fbs_schema}）：{proc.stderr.strip()[:900]}"
-        )
-
-
-def check_flatc(group: GroupConfig, flatc: str, schema_content: str,
-                report: list[str], generated_path: Path) -> None:
-    with tempfile.TemporaryDirectory(prefix="assetgen-flatc-") as temp_dir:
-        temp_root = Path(temp_dir)
-        schema_path = temp_root / Path(group.fbs_schema).name
-        schema_path.write_text(schema_content, encoding="utf-8", newline="\n")
-        cmd = [flatc, "--cpp", "-o", str(temp_root), str(schema_path)]
-        proc = subprocess.run(cmd, capture_output=True, text=True, errors="ignore")
-        if proc.returncode != 0:
-            raise GenError(
-                f"flatc 失败（{group.fbs_schema}）：{proc.stderr.strip()[:900]}"
-            )
-
-        generated_name = Path(group.fbs_generated).name
-        generated_temp = temp_root / generated_name
-        if not generated_temp.is_file():
-            raise GenError(f"flatc 未生成预期文件：{generated_name}")
-        if not generated_path.is_file():
-            report.append(f"{generated_path}: 缺少 flatc 生成头")
-            return
-
-        expected = generated_path.read_text(encoding="utf-8", errors="ignore")
-        actual = generated_temp.read_text(encoding="utf-8", errors="ignore")
-        if expected.startswith("\ufeff"):
-            expected = expected[1:]
-        if actual != expected:
-            report.append(f"{generated_path}: 与当前 .fbs 的 flatc 输出不一致")
-
-
-def fb_scalar_of(t: TypeDesc) -> str:
-    """TypeDesc（标量 / 枚举）→ `FbType::Xxx` 名字。"""
-    if t.category == "enum":
-        return "Enum" if t.enum else "Int32"
-    return {
-        "bool": "Bool",
-        "ubyte": "UInt8", "ushort": "UInt16", "uint": "UInt32", "ulong": "UInt64",
-        "byte": "Int8", "short": "Int16", "int": "Int32", "long": "Int64",
-        "float": "Float", "double": "Double",
-    }[t.fbs]
-
-
 def render_enum_tables(enums: list[EnumInfo]) -> str:
     """枚举名字表：`AssetEnumName_*` / `AssetEnumParse_*` 及其 `int64_t` 适配器。
 
@@ -1256,201 +1050,6 @@ def render_serialize_header(group: GroupConfig, structs: list[AssetStruct],
     return "".join(out)
 
 
-def _codec_split_paths(codec_header: str) -> tuple[str, str]:
-    """`<Group>Codec.gen.h` ⇒ (`<Group>Toml.gen.h`, `<Group>Fbs.gen.h`)。
-
-    拆开的原因是它们的**依赖面完全不同**：TOML 门面只要 `TomlCodec.h`，
-    FlatBuffers 门面要 flatbuffers（本工程里是可选依赖）。数据面（如
-    `ULRE.ShaderMaterialData`）只读 TOML，不该为了一个可选依赖被拖下水。
-    """
-    suffix = "Codec.gen.h"
-    if not codec_header.endswith(suffix):
-        raise GenError(f"codec 配置必须以 {suffix} 结尾：{codec_header}")
-    base = codec_header[: -len(suffix)]
-    return base + "Toml.gen.h", base + "Fbs.gen.h"
-
-
-def _rel_include(path: str) -> str:
-    return path[len("inc/"):] if path.startswith("inc/") else path
-
-
-def _codec_banner(detail: str) -> str:
-    return (
-        "// ─────────────────────────────────────────────────────────────────────────────\n"
-        "// @ulre-codegen begin\n"
-        "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
-        f"//   {detail}\n"
-        "// @ulre-codegen end\n"
-        "// ─────────────────────────────────────────────────────────────────────────────\n"
-        "#pragma once\n\n"
-    )
-
-
-def render_toml_codec_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
-    """生成 `<Group>Toml.gen.h`：TOML ↔ 结构体的格式门面（零 flatbuffers 依赖）。"""
-    out: list[str] = []
-    out.append(_codec_banner(
-        "TOML 格式门面（Read* / Write*）。字段遍历仍然只有 Serialize.gen.h 里那一份，\n"
-        "//   本文件不含任何 FlatBuffers 依赖，数据面可以单独包含它。"))
-    out.append("#include <hgl/serialize/Archive.h>\n")
-    out.append("#include <hgl/serialize/TomlCodec.h>\n")
-    out.append(f"#include <{_rel_include(group.serialize_header)}>\n")
-    out.append("\n")
-    for header in sorted({s.header for s in structs}):
-        out.append(f"#include <{_rel_include(header)}>\n")
-    out.append("\nnamespace hgl::asset::generated\n{\n")
-
-    for info in structs:
-        out.append(f"    inline bool Read{info.gen_name}(const toml::value &table, {info.fq} &out)\n    {{\n")
-        out.append("        hgl::serialize::Value node;\n")
-        out.append("        hgl::serialize::FromToml(table, node);\n")
-        out.append("        hgl::serialize::Archive ar = hgl::serialize::Archive::ForRead(node);\n")
-        out.append(f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, out);\n")
-        out.append("        return ar.Ok();\n    }\n\n")
-
-        out.append(f"    inline toml::value Write{info.gen_name}(const {info.fq} &in)\n    {{\n")
-        out.append("        hgl::serialize::Value node;\n")
-        out.append("        hgl::serialize::Archive ar = hgl::serialize::Archive::ForWrite(node);\n")
-        out.append(f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, in);\n")
-        out.append("        return hgl::serialize::ToToml(node);\n    }\n\n")
-
-    out.append("}//namespace hgl::asset::generated\n")
-    return "".join(out)
-
-
-def render_fbs_codec_header(group: GroupConfig, structs: list[AssetStruct],
-                            enums: list[EnumInfo]) -> str:
-    """生成 `<Group>Fbs.gen.h`：FlatBuffers 布局描述表 + 编解码门面。"""
-    out: list[str] = []
-    out.append(_codec_banner(
-        "FlatBuffers 布局描述（voffset / 内联 struct / 向量元素类型）与编解码门面。\n"
-        "//   字段遍历仍然只有 Serialize.gen.h 里那一份。需要 flatbuffers。"))
-    out.append("#include <hgl/serialize/Archive.h>\n")
-    out.append("#include <hgl/serialize/FlatCodec.h>\n")
-    out.append(f"#include <{_rel_include(group.serialize_header)}>\n")
-    out.append(f"#include <{_rel_include(group.fbs_generated)}>\n")
-    out.append("\n")
-    for header in sorted({s.header for s in structs}):
-        out.append(f"#include <{_rel_include(header)}>\n")
-    out.append("\nnamespace hgl::asset::generated\n{\n")
-    out.append("    namespace fb = hgl::serialize::fb;\n\n")
-
-    # 枚举 ↔ 数值的转发函数（供 FB 描述表挂函数指针）
-    for info in enums:
-        out.append(f"    inline bool {info.name}_FbsFromName(const char *s, int64_t &out)\n    {{\n")
-        out.append(f"        {info.fq} v{{}};\n")
-        out.append(f"        if (!hgl::asset::generated::AssetEnumParse_{info.name}(s, v)) return false;\n")
-        out.append("        out = static_cast<int64_t>(v);\n        return true;\n    }\n\n")
-        out.append(f"    inline const char *{info.name}_FbsToName(const int64_t v)\n    {{\n")
-        out.append(f"        return hgl::asset::generated::AssetEnumName_{info.name}(static_cast<{info.fq}>(v));\n")
-        out.append("    }\n\n")
-
-    # FlatBuffers 布局描述表
-    for info in structs:
-        out.append(f"    inline const fb::FieldDesc {info.gen_name}_fbs_fields[] = {{\n")
-        ordinal = 0
-        for prop in info.fields:
-            if not prop.serialized_flatbuffers:
-                continue
-            ordinal += 1
-            vo = 2 + 2 * ordinal   # FlatBuffers: 第 1 个字段 voffset = 4
-            t = prop.type
-            key = prop.toml_key
-            if t.category in ("scalar", "enum"):
-                # Presence<> 字段在 .fbs 里声明为「可选标量」，描述表也要打上
-                # optional_scalar，编码才会真写 0，解码才会把「没写」当缺席。
-                kind = fb_scalar_of(t)
-                if kind == "Enum":
-                    entry = (
-                        f'{{{ordinal}, "{key}", fb::FbType::Enum, {vo}, fb::FbType::None, 0, '
-                        f'nullptr, &{t.cpp}_FbsFromName, &{t.cpp}_FbsToName}}'
-                    )
-                else:
-                    entry = f'{{{ordinal}, "{key}", fb::FbType::{kind}, {vo}}}'
-                if t.presence:
-                    entry = f"fb::OptScalar({entry})"
-                out.append(f"        {entry},\n")
-            elif t.category == "string":
-                out.append(f'        {{{ordinal}, "{key}", fb::FbType::String, {vo}}},\n')
-            elif t.category == "struct":
-                out.append(f'        {{{ordinal}, "{key}", fb::FbType::Table, {vo}, fb::FbType::None, 0, '
-                           f'&{t.gen}_fbs}},\n')
-            elif t.category == "vector":
-                out.append(f'        {{{ordinal}, "{key}", fb::FbType::Struct, {vo}, fb::FbType::None, '
-                           f'{t.components}}},\n')
-            elif t.category == "value_array":
-                if t.elem.category == "string":
-                    out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorString, {vo}}},\n')
-                    continue
-                elem_kind = fb_scalar_of(t.elem)
-                suffix = (f', nullptr, &{t.elem.cpp}_FbsFromName, &{t.elem.cpp}_FbsToName'
-                          if elem_kind == "Enum" else "")
-                out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorScalar, {vo}, '
-                           f'fb::FbType::{elem_kind}{suffix}}},\n')
-            elif t.category == "ptr_array":
-                if t.elem.category == "string":
-                    out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorString, {vo}}},\n')
-                    continue
-                out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorTable, {vo}, '
-                           f'fb::FbType::None, 0, &{t.elem.gen}_fbs}},\n')
-            else:
-                raise GenError(
-                    f"{info.name}.{prop.name}: FlatBuffers 描述表暂不支持该字段类别 {t.category}"
-                    f"（定长 C 数组请改用 ValueArray / ManagedArray）"
-                )
-        out.append(f"    }};\n")
-        out.append(f"    inline const fb::TableDesc {info.gen_name}_fbs = "
-                   f'{{"{info.gen_name}", {info.gen_name}_fbs_fields, {ordinal}}};\n\n')
-
-    # 格式门面：FlatBuffers
-    for info in structs:
-        schema_type = group.fbs_schema_type(info.gen_name)
-        out.append(
-            f"    inline flatbuffers::Offset<{schema_type}>\n"
-            f"    Encode{info.gen_name}(flatbuffers::FlatBufferBuilder &fbb, const {info.fq} &in)\n"
-            f"    {{\n"
-            f"        hgl::serialize::Value node;\n"
-            f"        hgl::serialize::Archive ar = hgl::serialize::Archive::ForWrite(node);\n"
-            f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, in);\n"
-            f"        return flatbuffers::Offset<{schema_type}>(\n"
-            f"            hgl::serialize::fb::EncodeTable(fbb, node, {info.gen_name}_fbs).o);\n"
-            f"    }}\n\n"
-        )
-
-        out.append(
-            f"    inline void Decode{info.gen_name}(const {schema_type} *root, {info.fq} &out)\n"
-            f"    {{\n"
-            f"        if (!root) return;\n"
-            f"        hgl::serialize::Value node;\n"
-            f"        hgl::serialize::fb::DecodeTable(\n"
-            f"            reinterpret_cast<const flatbuffers::Table *>(root),\n"
-            f"            {info.gen_name}_fbs, node);\n"
-            f"        hgl::serialize::Archive ar = hgl::serialize::Archive::ForRead(node);\n"
-            f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, out);\n"
-            f"    }}\n\n"
-        )
-
-    out.append("}//namespace hgl::asset::generated\n")
-    return "".join(out)
-
-
-def render_codec_header(group: GroupConfig, structs: list[AssetStruct],
-                        enums: list[EnumInfo]) -> str:
-    """生成 `<Group>Codec.gen.h`：TOML + FlatBuffers 两套门面的汇总入口。
-
-    本文件只做 `#include`，不产生任何符号。只需要 TOML 的消费者应直接包含
-    `<Group>Toml.gen.h`（零 flatbuffers 依赖），需要二进制编解码的包含本文件。
-    """
-    toml_header, fbs_header = _codec_split_paths(group.codec_header)
-    out: list[str] = []
-    out.append(_codec_banner(
-        "格式门面汇总入口（TOML + FlatBuffers）。本身不产生符号，只做 include。\n"
-        "//   只要 TOML 的消费者应直接包含 <Group>Toml.gen.h。"))
-    out.append(f"#include <{_rel_include(toml_header)}>\n")
-    out.append(f"#include <{_rel_include(fbs_header)}>\n")
-    return "".join(out)
-
-
 def load_groups(config: dict) -> list[GroupConfig]:
     groups: list[GroupConfig] = []
     for name, entry in config.get("group", {}).items():
@@ -1461,10 +1060,6 @@ def load_groups(config: dict) -> list[GroupConfig]:
                 scan=entry.get("scan", []),
                 serialize_header=entry["serialize"],
                 meta_header=entry["meta"],
-                codec_header=entry["codec"],
-                fbs_schema=entry.get("fbs", ""),
-                fbs_generated=entry.get("fbs_generated", ""),
-                fbs_namespace=entry.get("fbs_namespace", "hgl.asset.schema"),
             )
         )
     return groups
@@ -1478,9 +1073,6 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--include-dir", action="append", default=[])
     parser.add_argument("--check", action="store_true", help="只比对不落盘")
     parser.add_argument("--write", action="store_true", help="生成并落盘（默认行为）")
-    parser.add_argument("--flatc", default=os.environ.get("HGL_FLATC", "flatc"))
-    parser.add_argument("--no-flatc", action="store_true",
-                        help="跳过 flatc（只更新 .fbs 与 TOML/Meta，不重新生成二进制桥头）")
     parser.add_argument("--only", default="", help="只生成指定 group（调试用）")
     args = parser.parse_args(argv)
 
@@ -1622,33 +1214,6 @@ def main(argv: list[str]) -> int:
         write_or_check(repo_root / group.meta_header,
                        render_meta_header(group, ordered, group_enums),
                        args.check, report)
-        if group.fbs_schema:
-            fbs_content = render_fbs_schema(group, ordered)
-            write_or_check(repo_root / group.fbs_schema,
-                           fbs_content,
-                           args.check, report)
-            if group.fbs_generated and not args.no_flatc:
-                if args.check:
-                    check_flatc(
-                        group,
-                        args.flatc,
-                        fbs_content,
-                        report,
-                        repo_root / group.fbs_generated,
-                    )
-                else:
-                    run_flatc(repo_root, group, args.flatc)
-            if group.codec_header:
-                toml_header, fbs_header = _codec_split_paths(group.codec_header)
-                write_or_check(repo_root / toml_header,
-                               render_toml_codec_header(group, ordered),
-                               args.check, report)
-                write_or_check(repo_root / fbs_header,
-                               render_fbs_codec_header(group, ordered, group_enums),
-                               args.check, report)
-                write_or_check(repo_root / group.codec_header,
-                               render_codec_header(group, ordered, group_enums),
-                               args.check, report)
         total_structs += len(ordered)
 
     if report:

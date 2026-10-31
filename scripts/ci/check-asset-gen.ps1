@@ -4,13 +4,10 @@
 
 .DESCRIPTION
     结构（带 `HGL_ASSET_STRUCT` / `HGL_ASSET_CLASS` 注解的头文件）是唯一真源。
-    派生产物——
+    派生产物只有两个——格式（TOML / FlatBuffers）不生成任何代码：
 
-        inc/hgl/asset/generated/*Toml.gen.h             TOML 读写
         inc/hgl/asset/generated/*Meta.gen.h             属性元数据表
-        inc/hgl/asset/generated/*_schema.fbs            FlatBuffers schema
-        inc/hgl/asset/generated/*_schema_generated.h    flatc 产物
-        inc/hgl/asset/generated/*Flat.gen.h             FlatBuffers 编解码桥
+        inc/hgl/asset/generated/*Serialize.gen.h        自有 Archive 序列化
 
     一律由 `src/Tools/AssetGen/asset_gen.py` 生成。本脚本用 `--check` 只比对不落盘：
     任何一侧手改、或改了 C++ 结构却忘了重新生成，都会在这里失败。
@@ -21,21 +18,16 @@
 .PARAMETER Clang
     clang++ 可执行文件。缺省取 $env:HGL_CLANG，再缺省按 PATH 查找 clang++。
 
-.PARAMETER Flatc
-    FlatBuffers flatc 可执行文件。缺省取 $env:HGL_FLATC，再缺省按 PATH 查找 flatc。
-
 .PARAMETER IncludeDir
     额外 include 目录（可重复），例如 D:\vcpkg\installed\x64-windows\include。
 
 .EXAMPLE
     pwsh scripts/ci/check-asset-gen.ps1 -Clang C:\LLVM\bin\clang++.exe `
-        -Flatc D:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe `
         -IncludeDir D:\vcpkg\installed\x64-windows\include
 #>
 param(
     [string]$RepoRoot  = ".",
     [string]$Clang     = "",
-    [string]$Flatc     = "",
     [string[]]$IncludeDir = @()
 )
 
@@ -67,19 +59,6 @@ if ([string]::IsNullOrWhiteSpace($Clang)) {
     Write-Error "[AssetGen] 找不到 clang++。请用 -Clang 指定，或设置环境变量 HGL_CLANG。"
 }
 
-if ([string]::IsNullOrWhiteSpace($Flatc)) {
-    $Flatc = $env:HGL_FLATC
-}
-if ([string]::IsNullOrWhiteSpace($Flatc)) {
-    $found = Get-Command flatc -ErrorAction SilentlyContinue
-    if ($found) {
-        $Flatc = $found.Source
-    }
-}
-if ([string]::IsNullOrWhiteSpace($Flatc)) {
-    Write-Error "[AssetGen] 找不到 flatc。请用 -Flatc 指定，或设置环境变量 HGL_FLATC。"
-}
-
 $extra = @()
 foreach ($dir in $IncludeDir) {
     if (-not [string]::IsNullOrWhiteSpace($dir)) {
@@ -88,7 +67,6 @@ foreach ($dir in $IncludeDir) {
 }
 
 Write-Host "[AssetGen] clang = $Clang"
-Write-Host "[AssetGen] flatc = $Flatc"
 Write-Host "[AssetGen] 生成器单元测试中…"
 & python (Join-Path $repo "src/Tools/AssetGen/test_asset_gen.py")
 if ($LASTEXITCODE -ne 0) {
@@ -97,13 +75,13 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "[AssetGen] 一致性校验中（--check，不落盘）…"
 
-& python $tool --repo-root $repo --clang $Clang --flatc $Flatc --check @extra
+& python $tool --repo-root $repo --clang $Clang --check @extra
 $code = $LASTEXITCODE
 
 if ($code -ne 0) {
     Write-Host ""
     Write-Host "[AssetGen] 派生产物与 C++ 结构不一致。请重新生成后提交：" -ForegroundColor Red
-    Write-Host "    python src/Tools/AssetGen/asset_gen.py --repo-root . --clang `"$Clang`" --flatc `"$Flatc`" --write" -ForegroundColor Yellow
+    Write-Host "    python src/Tools/AssetGen/asset_gen.py --repo-root . --clang `"$Clang`" --write" -ForegroundColor Yellow
     exit $code
 }
 

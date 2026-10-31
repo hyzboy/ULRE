@@ -395,4 +395,52 @@ namespace hgl::serialize
 
         return ToTomlText(root);
     }
+
+    // ── toml::value 表 ⇄ T ──────────────────────────────────────────────────
+    //
+    // 调用方已经自己解析出 TOML DOM（例如要先看顶层键、或同一份 DOM 要喂给
+    // 多个结构）时用这两个入口。它们与 `LoadFromTomlText<T>()` /
+    // `SaveToTomlText<T>()` 完全等价，只是省掉/补回文本这一层。
+    //
+    // 有了它们，生成器就不必再为每个资产结构各生成一份 `Read<X>` / `Write<X>`
+    // 门面 —— 泛型模板已经把「TOML 表 → 值树 → 结构」这条链包住了。
+
+    /**
+     * @brief `toml::value` 表 → `T`。
+     *
+     * @param out_archive 可选输出：序列化阶段的失败详情
+     */
+    template <typename T>
+    inline bool ReadTomlTable(const toml::value &table, T &out,
+                              Archive *out_archive = nullptr)
+    {
+        Value root;
+        FromToml(table, root);
+        return ReadFromValue<T>(root, out, out_archive);
+    }
+
+    /**
+     * @brief `T` → `toml::value` 表。
+     *
+     * @param out_archive 可选输出：序列化阶段的失败详情
+     * @return 成功时返回表；失败返回空表（详情见 `out_archive`）
+     */
+    template <typename T>
+    inline toml::value WriteTomlTable(const T &src, Archive *out_archive = nullptr)
+    {
+        Value root;
+
+        Archive archive = Archive::ForWrite(root);
+        archive.WriteTo(root, src);
+
+        const bool ok = archive.Ok();
+
+        if (out_archive)
+            *out_archive = std::move(archive);
+
+        if (!ok)
+            return toml::value(toml::table{});
+
+        return ToToml(root);
+    }
 }//namespace hgl::serialize

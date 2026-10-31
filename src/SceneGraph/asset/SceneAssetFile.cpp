@@ -1,8 +1,10 @@
 #include <hgl/graph/asset/SceneAssetFile.h>
-#include <hgl/asset/generated/SceneCodec.gen.h>
+#include <hgl/asset/generated/SceneSerialize.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>
+#include <hgl/serialize/FlatCodec.h>
+#include <hgl/serialize/TomlCodec.h>
 #include <hgl/type/Smart.h>
 #include <flatbuffers/flatbuffers.h>
 #include <toml/toml.hpp>
@@ -13,7 +15,6 @@
 DEFINE_LOGGER_MODULE(SceneAsset)
 USE_MODULE_LOGGER(SceneAsset)
 
-namespace asset_codec = ::hgl::asset::generated;
 
 namespace hgl::graph
 {
@@ -109,7 +110,8 @@ namespace hgl::graph
             return false;
         }
 
-        const toml::value validation_table = asset_codec::WriteSceneSpec(spec);
+        const toml::value validation_table =
+            hgl::serialize::WriteTomlTable<SceneSpec>(spec);
         if (!ValidateRelationships(validation_table, spec, false))
         {
             MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene relationships"));
@@ -117,8 +119,11 @@ namespace hgl::graph
         }
 
         flatbuffers::FlatBufferBuilder builder;
-        const auto root = asset_codec::EncodeSceneSpec(builder, spec);
-        builder.Finish(root);
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(builder, spec))
+        {
+            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: serialization failed"));
+            return false;
+        }
 
         hgl::AutoDelete<hgl::io::FileOutputStream> output(
             hgl::io::CreateFileOutputStream(filename));
@@ -152,9 +157,7 @@ namespace hgl::graph
             return false;
         }
 
-        flatbuffers::Verifier verifier(
-            static_cast<const uint8_t *>(data), size);
-        if (!verifier.VerifyBuffer<hgl::asset::schema::SceneSpec>(nullptr))
+        if (!hgl::serialize::fb::VerifyBuffer<SceneSpec>(data, size))
         {
             MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: verification failed in ")
                       + OSString(debug_name));
@@ -168,17 +171,19 @@ namespace hgl::graph
         out_spec.clear_color = SceneClearColorSpec{};
         out_spec.materials.Clear();
         out_spec.nodes.Clear();
-        const auto *root =
-            flatbuffers::GetRoot<hgl::asset::schema::SceneSpec>(data);
-        asset_codec::DecodeSceneSpec(root, out_spec);
-        out_spec.camera.enabled = root->camera() && root->camera()->enabled();
-        out_spec.clear_color.enabled =
-            root->clear_color() && root->clear_color()->enabled();
+        if (!hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(
+                static_cast<const uint8_t *>(data), size, out_spec))
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: decode failed in ")
+                      + OSString(debug_name));
+            return false;
+        }
 
         if (out_spec.schema != 1 || out_spec.name.Length() == 0)
             return false;
 
-        const toml::value validation_table = asset_codec::WriteSceneSpec(out_spec);
+        const toml::value validation_table =
+            hgl::serialize::WriteTomlTable<SceneSpec>(out_spec);
         if (!ValidateRelationships(validation_table, out_spec, false))
         {
             MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: semantic validation failed in ")
@@ -544,7 +549,7 @@ namespace hgl::graph
         out_spec.nodes.Clear();
 
         if (!NormalizeTextureTables(root)
-            || !asset_codec::ReadSceneSpec(root, out_spec)
+            || !hgl::serialize::ReadTomlTable<SceneSpec>(root, out_spec)
             || !root.contains("schema")
             || out_spec.schema != 1
             || out_spec.name.IsEmpty()

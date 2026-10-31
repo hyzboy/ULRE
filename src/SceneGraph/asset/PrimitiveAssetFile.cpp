@@ -1,5 +1,6 @@
 #include <hgl/graph/asset/PrimitiveAssetFile.h>
-#include <hgl/asset/generated/PrimitiveCodec.gen.h>
+#include <hgl/asset/generated/PrimitiveSerialize.gen.h>
+#include <hgl/serialize/TomlCodec.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
@@ -12,8 +13,6 @@
 DEFINE_LOGGER_MODULE(PrimitiveAsset)
 USE_MODULE_LOGGER(PrimitiveAsset)
 
-// 生成物在 hgl::asset::generated；本文件在 hgl::graph 里，用别名避免每次写全限定名。
-namespace asset_codec = ::hgl::asset::generated;
 
 namespace hgl::graph
 {
@@ -175,7 +174,7 @@ namespace hgl::graph
                 // 这里只保留**跨字段策略**：recipe 必填、extra variant 不得复用 surface。
                 *variant = PrimitiveVariantSpec{};
 
-                if (!asset_codec::ReadPrimitiveVariantSpec(item, *variant))
+                if (!hgl::serialize::ReadTomlTable<PrimitiveVariantSpec>(item, *variant))
                 {
                     MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: invalid variant entry in ") + OSString(debug_name));
                     return false;

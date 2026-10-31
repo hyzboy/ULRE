@@ -3,7 +3,8 @@
 #include <hgl/mtl/VkEnumText.h>
 
 #include <hgl/asset/generated/MaterialRecipeMeta.gen.h>
-#include <hgl/asset/generated/MaterialRecipeToml.gen.h>
+#include <hgl/asset/generated/MaterialRecipeSerialize.gen.h>
+#include <hgl/serialize/TomlCodec.h>
 #include <hgl/serialize/Archive.h>
 
 #include <toml/toml.hpp>
