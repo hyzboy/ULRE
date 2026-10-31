@@ -9,9 +9,9 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/mtl/ResolvedPassProfile.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/mtl/SceneRenderTemplateResolver.h>
+#include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
@@ -115,15 +115,15 @@ namespace
         const MaterialDefinition &definition,
         const ShaderProgramPurpose purpose,
         const MaterialRecipe *recipe,
-        RenderTemplateRequest &out_request,
+        PassProfileRequest &out_request,
         const char *ambient_module_name)
     {
         const MaterialRecipe effective_recipe =
             recipe ? *recipe : MaterialRecipe{};
-        return SelectSceneRenderTemplateRequest(
+        return SelectScenePassProfileRequest(
                    definition, purpose, effective_recipe, out_request,
                    ambient_module_name)
-            && AppendMaterialRenderTemplateRoots(definition, out_request);
+            && AppendMaterialPassProfileRoots(definition, out_request);
     }
 
     int CountText(const AnsiString &text, const char *needle)
@@ -267,7 +267,7 @@ namespace
         const Fixture &fixture,
         MaterialProgramBuildCapture *capture,
         MaterialDefinition *out_definition = nullptr,
-        RenderTemplateID *out_template_id = nullptr,
+        PassProfileID *out_profile_id = nullptr,
         void (*definition_mutation)(MaterialDefinition &) = nullptr,
         AnsiString *out_options_text = nullptr,
         AnsiString *out_skip_reason = nullptr,
@@ -334,8 +334,8 @@ namespace
 
         if (out_definition)
             *out_definition = definition;
-        if (out_template_id)
-            *out_template_id = request.render_template_request.template_id;
+        if (out_profile_id)
+            *out_profile_id = request.render_template_request.profile_id;
 
         // 片段阶段物理固定：构建器不再发射片段，请求必须自带最终文本。
         // 后端内部也是这么做的（`DomainShaderBuildBackend::CreateBuildContext`），
@@ -513,12 +513,12 @@ namespace
     {
         MaterialProgramBuildCapture capture{};
         MaterialDefinition definition{};
-        RenderTemplateID template_id = RenderTemplateID::Unknown;
+        PassProfileID profile_id = PassProfileID::Unknown;
         AnsiString options_text;
         AnsiString skip_reason;
         AutoDelete<ShaderBuildContext> context(
             BuildFixtureContext(
-                fixture, &capture, &definition, &template_id, nullptr,
+                fixture, &capture, &definition, &profile_id, nullptr,
                 &options_text, &skip_reason));
         if (!context && skip_reason.Length())
         {

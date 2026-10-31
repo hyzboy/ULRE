@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/MaterialCoverageContract.h>
+#include <hgl/mtl/MaterialCoverageContract.h>
 
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -45,7 +45,7 @@ namespace hgl::graph::mtl
         /// 命中已登记规则则填充 out_contract 并返回 true；
         /// 返回 false 表示未登记，交由调用方走 varying 兜底推导。
         bool ApplyMaterialSourceCoverageRule(
-            const RenderTemplateModuleRoot *material_source_root,
+            const PassProfileModuleRoot *material_source_root,
             MaterialCoverageContract &out_contract) noexcept
         {
             if (!material_source_root
@@ -84,7 +84,7 @@ namespace hgl::graph::mtl
     bool BuildMaterialCoverageContract(
         const MaterialDefinition &definition,
         const MaterialRecipe &recipe,
-        const RenderTemplateRequest &render_template_request,
+        const PassProfileRequest &render_template_request,
         const ShaderProgramPurpose purpose,
         MaterialCoverageContract &out_contract) noexcept
     {
@@ -114,7 +114,7 @@ namespace hgl::graph::mtl
 
         if (out_contract.requires_alpha_evaluation)
         {
-            const RenderTemplateModuleRoot *material_source_root =
+            const PassProfileModuleRoot *material_source_root =
                 render_template_request.FindModuleRoot(
                     ShaderModuleSlotRole::MaterialSourceProvider);
 

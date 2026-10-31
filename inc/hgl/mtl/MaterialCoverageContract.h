@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
-#include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/PassProfile.h>
 #include <string>
 
 namespace hgl::graph::mtl
@@ -30,7 +30,7 @@ namespace hgl::graph::mtl
     bool BuildMaterialCoverageContract(
         const mtl::MaterialDefinition &definition,
         const mtl::MaterialRecipe &recipe,
-        const RenderTemplateRequest &render_template_request,
+        const PassProfileRequest &render_template_request,
         ShaderProgramPurpose purpose,
         MaterialCoverageContract &out_contract) noexcept;
 }

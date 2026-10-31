@@ -21,7 +21,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/CoreType.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include <hgl/mtl/SceneRenderTemplateResolver.h>
+#include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderComputeProgramManifest.h>
@@ -267,9 +267,9 @@ namespace
         request.defer_finalize = true;
         request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
 
-        RenderTemplateValidationDiagnostic template_diagnostic{};
-        if (!ResolveSceneRenderTemplateRequest(
-                RenderTemplateID::ForwardLitShadowedAO,
+        PassProfileValidationDiagnostic template_diagnostic{};
+        if (!ResolveScenePassProfileRequest(
+                PassProfileID::ForwardLitShadowedAO,
                 hgl::graph::ShaderStage::Fragment,
                 MakeIdentityForwardLitProfile(),
                 request.render_template_request, template_diagnostic))
@@ -278,7 +278,7 @@ namespace
             return false;
         }
 
-        if (!AppendMaterialRenderTemplateRoots(
+        if (!AppendMaterialPassProfileRoots(
                 definition, request.render_template_request))
         {
             error = "material render template roots could not be appended";

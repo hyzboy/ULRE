@@ -12,8 +12,8 @@ set(SHADERPROGRAMBUILD_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 # 以下数据面源与头的 CMake 归属已下移到那一层，本清单不再重复列出：
 #   ShaderLibraryPath / VkEnumText / ShaderCacheRoot / ShaderBuildContext /
 #   ShaderCreateInfo(+Map) / ShaderArtifactStore / MaterialDefinitionFile /
-#   MaterialDefinitionRegistry / SamplerPreset / RenderTemplate /
-#   SceneRenderTemplateResolver
+#   MaterialDefinitionRegistry / SamplerPreset / PassProfile /
+#   ScenePassProfileResolver
 # 设备 profile 契约头与 MeshShaderLimits 归 ULRE.ShaderRuntimeContract。
 
 set(SHADERPROGRAMBUILD_COMMON_FILES
@@ -25,8 +25,8 @@ set(SHADERPROGRAMBUILD_COMMON_FILES
 SOURCE_GROUP("Common" FILES ${SHADERPROGRAMBUILD_COMMON_FILES})
 
 set(TEMPLATE_FILES
-    ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ResolvedRenderTemplate.h
-    template/RenderTemplateResolve.cpp)
+    ${SHADERPROGRAMBUILD_INCLUDE_PATH}/ResolvedPassProfile.h
+    template/PassProfileResolve.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
 
 set(SSBO_STRUCT_FILES
@@ -36,7 +36,7 @@ SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
 # ── compile/ ─────────────────────────────────────────────────────────────────
 # ShaderCreateInfo.cpp / ShaderArtifactStore.cpp / SamplerPreset.cpp /
-# MaterialDefinitionRegistry.cpp / SceneRenderTemplateResolver.cpp / RenderTemplate.cpp
+# MaterialDefinitionRegistry.cpp / ScenePassProfileResolver.cpp / PassProfile.cpp
 # 已迁入 ULRE.ShaderMaterialData（数据面，运行时也要）。
 #
 # GLSLCompiler / ShaderReflectionData / TBuiltInResourceCompat 已迁出到

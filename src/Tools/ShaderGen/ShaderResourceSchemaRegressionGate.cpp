@@ -6,7 +6,7 @@
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/mtl/ResolvedPassProfile.h>
 #include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
@@ -27,7 +27,7 @@
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
-#include <hgl/mtl/SceneRenderTemplateResolver.h>
+#include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/ShaderCompilerAPI.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
@@ -1462,15 +1462,15 @@ namespace
             // 不需要（也不该依赖）SPV 编译。
             request.defer_finalize = true;
 
-            RenderTemplateValidationDiagnostic template_diagnostic{};
-            const SceneRenderTemplateProfile scene_profile =
+            PassProfileValidationDiagnostic template_diagnostic{};
+            const ScenePassProfile scene_profile =
                 MakeForwardUnlitProfile();
-            if (!ResolveSceneRenderTemplateRequest(
-                    RenderTemplateID::ForwardUnlit,
+            if (!ResolveScenePassProfileRequest(
+                    PassProfileID::ForwardUnlit,
                     hgl::graph::ShaderStage::Fragment,
                     scene_profile, request.render_template_request,
                     template_diagnostic)
-             || !AppendMaterialRenderTemplateRoots(
+             || !AppendMaterialPassProfileRoots(
                     def, request.render_template_request))
             {
                 return std::unique_ptr<ShaderBuildContext>();
@@ -1845,15 +1845,15 @@ namespace
             // 只到 GLSL 文本为止：本用例断言的是发射文本，不需要 SPV。
             request.defer_finalize = true;
 
-            RenderTemplateValidationDiagnostic template_diagnostic{};
-            const SceneRenderTemplateProfile scene_profile =
+            PassProfileValidationDiagnostic template_diagnostic{};
+            const ScenePassProfile scene_profile =
                 MakeForwardUnlitProfile();
-            if (!ResolveSceneRenderTemplateRequest(
-                    RenderTemplateID::ForwardUnlit,
+            if (!ResolveScenePassProfileRequest(
+                    PassProfileID::ForwardUnlit,
                     hgl::graph::ShaderStage::Fragment,
                     scene_profile, request.render_template_request,
                     template_diagnostic)
-             || !AppendMaterialRenderTemplateRoots(
+             || !AppendMaterialPassProfileRoots(
                     def, request.render_template_request))
                 return std::unique_ptr<ShaderBuildContext>();
 
@@ -2557,19 +2557,19 @@ namespace
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             const GeometryVertexFormat &geometry,
-            const RenderTemplateID template_id,
-            const SceneRenderTemplateProfile &scene_profile)
+            const PassProfileID profile_id,
+            const ScenePassProfile &scene_profile)
         {
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = &geometry;
             request.defer_finalize = true;
-            RenderTemplateValidationDiagnostic template_diagnostic{};
-            if (!ResolveSceneRenderTemplateRequest(
-                    template_id, hgl::graph::ShaderStage::Fragment,
+            PassProfileValidationDiagnostic template_diagnostic{};
+            if (!ResolveScenePassProfileRequest(
+                    profile_id, hgl::graph::ShaderStage::Fragment,
                     scene_profile, request.render_template_request,
                     template_diagnostic)
-             || !AppendMaterialRenderTemplateRoots(
+             || !AppendMaterialPassProfileRoots(
                     definition, request.render_template_request))
             {
                 build_error = "render template request resolution failed";
@@ -2600,15 +2600,15 @@ namespace
         };
         const auto lit_a = build(
             nullptr, lit, lit_geometry_a,
-            RenderTemplateID::ForwardLitShadowedAO,
+            PassProfileID::ForwardLitShadowedAO,
             MakeIdentityForwardLitProfile());
         const auto lit_b = build(
             nullptr, lit, lit_geometry_b,
-            RenderTemplateID::ForwardLitShadowedAO,
+            PassProfileID::ForwardLitShadowedAO,
             MakeIdentityForwardLitProfile());
         const auto color = build(
             nullptr, vertex_color, color_geometry,
-            RenderTemplateID::ForwardUnlit,
+            PassProfileID::ForwardUnlit,
             MakeForwardUnlitProfile());
         contract::PhysicalDeviceProfileLite profile{};
         profile.api_version = contract::MakeVkVersion(1, 4);
@@ -2616,7 +2616,7 @@ namespace
         profile.limits.max_storage_buffer_range = 1ull << 30;
         const auto lit_targeted = build(
             &profile, lit, lit_geometry_a,
-            RenderTemplateID::ForwardLitShadowedAO,
+            PassProfileID::ForwardLitShadowedAO,
             MakeIdentityForwardLitProfile());
 
         if (!lit_a || !lit_b || !color || !lit_targeted
@@ -2797,7 +2797,7 @@ namespace
                 shared_builds.push_back(
                     build(
                         nullptr, definition, lit_geometry_a,
-                        RenderTemplateID::ForwardLitShadowedAO,
+                        PassProfileID::ForwardLitShadowedAO,
                         MakeIdentityForwardLitProfile()));
             }
 
@@ -3213,26 +3213,26 @@ namespace
                      || purpose == ShaderProgramPurpose::ShadowDepth;
                     const bool masked =
                         alpha_test || dither;
-                    const RenderTemplateID template_id = depth_purpose
-                        ? (masked ? RenderTemplateID::ShadowCasterMasked
-                                  : RenderTemplateID::ShadowCasterOpaque)
-                        : RenderTemplateID::ForwardLitShadowedAO;
-                    const SceneRenderTemplateProfile profile = depth_purpose
+                    const PassProfileID profile_id = depth_purpose
+                        ? (masked ? PassProfileID::ShadowCasterMasked
+                                  : PassProfileID::ShadowCasterOpaque)
+                        : PassProfileID::ForwardLitShadowedAO;
+                    const ScenePassProfile profile = depth_purpose
                         ? MakeShadowCasterProfile()
                         : MakeIdentityForwardLitProfile();
-                    RenderTemplateValidationDiagnostic template_diagnostic{};
-                    if (!ResolveSceneRenderTemplateRequest(
-                            template_id, hgl::graph::ShaderStage::Fragment,
+                    PassProfileValidationDiagnostic template_diagnostic{};
+                    if (!ResolveScenePassProfileRequest(
+                            profile_id, hgl::graph::ShaderStage::Fragment,
                             profile, request.render_template_request,
                             template_diagnostic))
                     {
-                        result.diagnostics.emplace_back(std::string("ResolveSceneRenderTemplateRequest failed for ") + GetRenderTemplateName(template_id) + " err=" + std::to_string(int(template_diagnostic.error)));
+                        result.diagnostics.emplace_back(std::string("ResolveScenePassProfileRequest failed for ") + GetPassProfileName(profile_id) + " err=" + std::to_string(int(template_diagnostic.error)));
                         return std::unique_ptr<ShaderBuildContext>();
                     }
-                    if (!AppendMaterialRenderTemplateRoots(
+                    if (!AppendMaterialPassProfileRoots(
                             selected, request.render_template_request))
                     {
-                        result.diagnostics.emplace_back("AppendMaterialRenderTemplateRoots failed");
+                        result.diagnostics.emplace_back("AppendMaterialPassProfileRoots failed");
                         return std::unique_ptr<ShaderBuildContext>();
                     }
                     // 本用例断言的是输出契约 / program link 形状，片段文本不参与。
@@ -3243,7 +3243,7 @@ namespace
                     {
                         result.diagnostics.emplace_back(
                             std::string("ResolveFixedFragmentSource failed for ")
-                            + GetRenderTemplateName(template_id));
+                            + GetPassProfileName(profile_id));
                         return std::unique_ptr<ShaderBuildContext>();
                     }
                     FixedStageInputs fixed_stage;
@@ -3263,7 +3263,7 @@ namespace
                         {
                             result.diagnostics.emplace_back(
                                 std::string("options emission failed for ")
-                                + GetRenderTemplateName(template_id));
+                                + GetPassProfileName(profile_id));
                         }
                         else if (options_text.Length() > 0)
                         {
@@ -3282,7 +3282,7 @@ namespace
                     }
                     else if (!ctx->HasProgramLink())
                     {
-                        result.diagnostics.emplace_back(std::string("HasProgramLink false for ") + GetRenderTemplateName(template_id));
+                        result.diagnostics.emplace_back(std::string("HasProgramLink false for ") + GetPassProfileName(profile_id));
                     }
                     return ctx;
                 };
@@ -3584,19 +3584,19 @@ namespace
             const auto build = [](
                 const MaterialDefinition &definition,
                 const GeometryVertexFormat &geometry,
-                const RenderTemplateID template_id,
-                const SceneRenderTemplateProfile &scene_profile)
+                const PassProfileID profile_id,
+                const ScenePassProfile &scene_profile)
             {
                 MaterialDefinitionBuildRequest request{};
                 request.recipe.mtl_def_id = definition.definition_id;
                 request.geometry_vertex_format = &geometry;
                 request.defer_finalize = true;
-                RenderTemplateValidationDiagnostic template_diagnostic{};
-                if (!ResolveSceneRenderTemplateRequest(
-                        template_id, hgl::graph::ShaderStage::Fragment,
+                PassProfileValidationDiagnostic template_diagnostic{};
+                if (!ResolveScenePassProfileRequest(
+                        profile_id, hgl::graph::ShaderStage::Fragment,
                         scene_profile, request.render_template_request,
                         template_diagnostic)
-                 || !AppendMaterialRenderTemplateRoots(
+                 || !AppendMaterialPassProfileRoots(
                         definition, request.render_template_request))
                     return std::unique_ptr<ShaderBuildContext>();
                 // 本用例断言的是统一骨架的 program link 形状，片段文本不参与。
@@ -3614,10 +3614,10 @@ namespace
                         nullptr, request, definition, nullptr, fixed_stage));
             };
             const auto lit_build = build(
-                lit, lit_geometry, RenderTemplateID::ForwardLitShadowedAO,
+                lit, lit_geometry, PassProfileID::ForwardLitShadowedAO,
                 MakeIdentityForwardLitProfile());
             const auto unlit_build = build(
-                unlit, unlit_geometry, RenderTemplateID::ForwardUnlit,
+                unlit, unlit_geometry, PassProfileID::ForwardUnlit,
                 MakeForwardUnlitProfile());
             if (!lit_build || !unlit_build)
             {
@@ -6058,15 +6058,15 @@ namespace
                     + id);
             }
             MaterialCoverageContract coverage{};
-            RenderTemplateRequest coverage_request{};
-            RenderTemplateValidationDiagnostic coverage_diagnostic{};
-            if (!ResolveSceneRenderTemplateRequest(
-                    RenderTemplateID::ShadowCasterOpaque,
+            PassProfileRequest coverage_request{};
+            PassProfileValidationDiagnostic coverage_diagnostic{};
+            if (!ResolveScenePassProfileRequest(
+                    PassProfileID::ShadowCasterOpaque,
                     hgl::graph::ShaderStage::Fragment,
                     MakeShadowCasterProfile(),
                     coverage_request,
                     coverage_diagnostic)
-             || !AppendMaterialRenderTemplateRoots(
+             || !AppendMaterialPassProfileRoots(
                     *file_definition, coverage_request)
              || !BuildMaterialCoverageContract(
                     *file_definition, MaterialRecipe{}, coverage_request,
@@ -9703,13 +9703,13 @@ void main()
         request.geometry_vertex_format = &geometry;
         request.defer_finalize = true;
         request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
-        RenderTemplateValidationDiagnostic template_diagnostic{};
-        if (!ResolveSceneRenderTemplateRequest(
-                RenderTemplateID::ForwardLitShadowedAO,
+        PassProfileValidationDiagnostic template_diagnostic{};
+        if (!ResolveScenePassProfileRequest(
+                PassProfileID::ForwardLitShadowedAO,
                 hgl::graph::ShaderStage::Fragment,
                 MakeIdentityForwardLitProfile(),
                 request.render_template_request, template_diagnostic)
-         || !AppendMaterialRenderTemplateRoots(
+         || !AppendMaterialPassProfileRoots(
                 definition, request.render_template_request))
         {
             result.diagnostics.emplace_back(
@@ -10202,7 +10202,7 @@ void main()
         const char *definition_id;
         const char *variant_slug;
         ShaderProgramPurpose purpose;
-        RenderTemplateID template_id;
+        PassProfileID profile_id;
         bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
         /// 强制 alpha_test（覆盖材质定义里的渲染状态）。
         ///
@@ -10235,60 +10235,60 @@ void main()
     {
         { "Lit", "lit-forward-opaque",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardLitShadowedAO, true, false },
+          PassProfileID::ForwardLitShadowedAO, true, false },
         { "Lit", "lit-depth-only",
           ShaderProgramPurpose::DepthOnly,
-          RenderTemplateID::ShadowCasterOpaque, true, false },
+          PassProfileID::ShadowCasterOpaque, true, false },
         { "Lit", "lit-shadow-depth",
           ShaderProgramPurpose::ShadowDepth,
-          RenderTemplateID::ShadowCasterOpaque, true, false },
+          PassProfileID::ShadowCasterOpaque, true, false },
         { "Lit", "lit-depth-masked",
           ShaderProgramPurpose::DepthOnly,
-          RenderTemplateID::ShadowCasterMasked, true, true },
+          PassProfileID::ShadowCasterMasked, true, true },
         { "Lit", "lit-shadow-masked",
           ShaderProgramPurpose::ShadowDepth,
-          RenderTemplateID::ShadowCasterMasked, true, true },
+          PassProfileID::ShadowCasterMasked, true, true },
         { "VertexPaletteColor", "vertex-palette-color-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false },
+          PassProfileID::ForwardUnlit, true, false },
         { "VertexColor", "vertex-color-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false },
+          PassProfileID::ForwardUnlit, true, false },
         { "VertexLuminance", "vertex-luminance-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false },
+          PassProfileID::ForwardUnlit, true, false },
         { "UnlitTexture", "unlit-texture-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false,
+          PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Triangles, true },
         { "DebugNormalColor", "debug-normal-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false },
+          PassProfileID::ForwardUnlit, true, false },
         { "SkyCube", "sky-cube-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::Sky, true, false },
+          PassProfileID::Sky, true, false },
         { "SkyMinimal", "sky-minimal-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::Sky, true, false },
+          PassProfileID::Sky, true, false },
         { "builtin/checkerboard_2d", "checkerboard-2d-forward",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false,
+          PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Triangles, true },
         { "builtin/text_gpu", "text-gpu-charquad",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, false, false },
+          PassProfileID::ForwardUnlit, false, false },
         // LineQuad 是第三种 mesh 发射模式，只能由 `primitive_type = Lines` 推出来
         // （材质定义里没有对应字段）。这些用例覆盖 LineQuad 固定拓扑 master 与
         // `mesh/line_quad_body.glsl` 的端点读取路径，避免该独立几何路径退化后漏报。
         { "VertexColor", "vertex-color-lines-quad",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false,
+          PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Lines, false },
         // 2D 位置需要与顶点格式匹配的 2D 映射模块。用 checkerboard_2d
         // （NDCLift）覆盖 VF_V2F 夹具，避免把 Passthrough3D 的 vec3 ABI 错配进来。
         { "builtin/checkerboard_2d", "checkerboard-2d-lines-quad-2d",
           ShaderProgramPurpose::ForwardColor,
-          RenderTemplateID::ForwardUnlit, true, false,
+          PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Lines, true },
     };
 
@@ -10313,17 +10313,17 @@ void main()
         return false;
     }
 
-    static SceneRenderTemplateProfile MakeReflectionCoverageProfile(
-        const RenderTemplateID template_id)
+    static ScenePassProfile MakeReflectionCoverageProfile(
+        const PassProfileID profile_id)
     {
-        switch (template_id)
+        switch (profile_id)
         {
-            case RenderTemplateID::ForwardLitShadowedAO:
-            case RenderTemplateID::ForwardLitShadowedIdentityAO:
+            case PassProfileID::ForwardLitShadowedAO:
+            case PassProfileID::ForwardLitShadowedIdentityAO:
                 return MakeIdentityForwardLitProfile();
-            case RenderTemplateID::ForwardUnlit:
+            case PassProfileID::ForwardUnlit:
                 return MakeForwardUnlitProfile();
-            case RenderTemplateID::Sky:
+            case PassProfileID::Sky:
                 return MakeSkyProfile();
             default:
                 return MakeShadowCasterProfile();
@@ -10366,12 +10366,12 @@ void main()
         request.defer_finalize = true;
         request.shader_program_purpose = variant.purpose;
 
-        RenderTemplateValidationDiagnostic template_diagnostic{};
-        if (!ResolveSceneRenderTemplateRequest(
-                variant.template_id, hgl::graph::ShaderStage::Fragment,
-                MakeReflectionCoverageProfile(variant.template_id),
+        PassProfileValidationDiagnostic template_diagnostic{};
+        if (!ResolveScenePassProfileRequest(
+                variant.profile_id, hgl::graph::ShaderStage::Fragment,
+                MakeReflectionCoverageProfile(variant.profile_id),
                 request.render_template_request, template_diagnostic)
-         || !AppendMaterialRenderTemplateRoots(
+         || !AppendMaterialPassProfileRoots(
                 definition, request.render_template_request))
         {
             diagnostic = std::string("template request resolve failed: ")
@@ -11030,21 +11030,21 @@ void main()
         // 选模板与 profile，并顺带挂上材质模块根。早期这里手写过一份等价
         // 分支，Sky 立刻炸了（SkyCube 没有 NTB provider，路由到 ForwardUnlit
         // 而不是 ForwardLitShadowedAO）——不要再复制这些规则。
-        if (!SelectSceneRenderTemplateRequest(
+        if (!SelectScenePassProfileRequest(
                 definition, shape.purpose, request.recipe,
                 request.render_template_request, nullptr))
         {
-            diagnostic = "SelectSceneRenderTemplateRequest failed";
+            diagnostic = "SelectScenePassProfileRequest failed";
             return false;
         }
 
         // 路由器只负责「选哪个模板 + 哪个 profile」；材质自身的能力
         // （surface / ntb / shadow … 槽）要靠这一步搬进请求，否则
-        // `ValidateRenderTemplateRequest` 会以「槽缺失」拒绝构建。
-        if (!AppendMaterialRenderTemplateRoots(
+        // `ValidatePassProfileRequest` 会以「槽缺失」拒绝构建。
+        if (!AppendMaterialPassProfileRoots(
                 definition, request.render_template_request))
         {
-            diagnostic = "AppendMaterialRenderTemplateRoots failed";
+            diagnostic = "AppendMaterialPassProfileRoots failed";
             return false;
         }
 
@@ -11798,10 +11798,10 @@ void main()
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
             request.defer_finalize = true;
 
-            if (!SelectSceneRenderTemplateRequest(
+            if (!SelectScenePassProfileRequest(
                     definition, ShaderProgramPurpose::ForwardColor, request.recipe,
                     request.render_template_request, nullptr)
-             || !AppendMaterialRenderTemplateRoots(
+             || !AppendMaterialPassProfileRoots(
                     definition, request.render_template_request))
             {
                 std::fprintf(stdout, "[emit-fixed-mesh] %s: template request failed\n",

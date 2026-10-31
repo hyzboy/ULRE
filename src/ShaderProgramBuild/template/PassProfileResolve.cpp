@@ -1,5 +1,5 @@
-#include <hgl/mtl/RenderTemplate.h>
-#include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/mtl/PassProfile.h>
+#include <hgl/mtl/ResolvedPassProfile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -9,38 +9,38 @@
 //
 // 发行形态（ULRE_ENABLE_SHADERGEN=0）里 ShaderLibrary 根本不存在，所以这一侧
 // 跟着 ULRE.ShaderProgramBuild 一起退出构建；运行时的结构校验在
-// src/ShaderMaterialData/RenderTemplate.cpp（同名重载，不吃 registry）。
+// src/ShaderMaterialData/PassProfile.cpp（同名重载，不吃 registry）。
 
 namespace hgl::graph::mtl
 {
     namespace
     {
         bool SetFailure(
-            RenderTemplateValidationDiagnostic &diagnostic,
-            const RenderTemplateValidationError error,
-            const RenderTemplateRequest &request,
+            PassProfileValidationDiagnostic &diagnostic,
+            const PassProfileValidationError error,
+            const PassProfileRequest &request,
             const ShaderModuleSlotRole role = ShaderModuleSlotRole::Unknown,
             const AnsiString &module_name = {}) noexcept
         {
             diagnostic.error = error;
-            diagnostic.template_id = request.template_id;
+            diagnostic.profile_id = request.profile_id;
             diagnostic.role = role;
             diagnostic.module_name = module_name;
             return false;
         }
 
         bool ResolveModuleRoot(
-            const RenderTemplateRequest &request,
-            const RenderTemplateModuleRoot &root,
+            const PassProfileRequest &request,
+            const PassProfileModuleRoot &root,
             const ShaderCodeModuleRegistry &registry,
-            RenderTemplateModuleRoot &out_root,
-            RenderTemplateValidationDiagnostic &diagnostic)
+            PassProfileModuleRoot &out_root,
+            PassProfileValidationDiagnostic &diagnostic)
         {
             const ShaderCodeModuleDefinition *module =
                 registry.FindByName(root.module_name.c_str());
             const ShaderCodeModuleFileData *source =
                 registry.FindFileByName(root.module_name.c_str());
-            const auto fail = [&](const RenderTemplateValidationError error)
+            const auto fail = [&](const PassProfileValidationError error)
             {
                 SetFailure(diagnostic, error, request, root.role, root.module_name);
                 diagnostic.include_path = root.include_path;
@@ -49,11 +49,11 @@ namespace hgl::graph::mtl
                 return false;
             };
             if (!module)
-                return fail(RenderTemplateValidationError::ModuleNotFound);
+                return fail(PassProfileValidationError::ModuleNotFound);
             if (module->slot_role != root.role)
-                return fail(RenderTemplateValidationError::ModuleSlotMismatch);
+                return fail(PassProfileValidationError::ModuleSlotMismatch);
             if (!source)
-                return fail(RenderTemplateValidationError::ModuleSourceMissing);
+                return fail(PassProfileValidationError::ModuleSourceMissing);
 
             const OSString expected = ResolveShaderLibraryModulePath(
                 source->source_root, source->include_path);
@@ -61,7 +61,7 @@ namespace hgl::graph::mtl
                 source->source_root,
                 root.include_path.IsEmpty() ? source->include_path : root.include_path);
             if (expected.IsEmpty() || actual.IsEmpty())
-                return fail(RenderTemplateValidationError::IncludePathNotFound);
+                return fail(PassProfileValidationError::IncludePathNotFound);
 #if HGL_OS == HGL_OS_Windows
             const bool same_file = actual.CaseComp(source->source_path) == 0
                 && expected.CaseComp(source->source_path) == 0;
@@ -70,7 +70,7 @@ namespace hgl::graph::mtl
                 && expected == source->source_path;
 #endif
             if (!same_file)
-                return fail(RenderTemplateValidationError::IncludePathNameMismatch);
+                return fail(PassProfileValidationError::IncludePathNameMismatch);
 
             out_root = root;
             out_root.include_path = source->include_path;
@@ -78,21 +78,21 @@ namespace hgl::graph::mtl
         }
     }
 
-    bool ValidateRenderTemplateRequest(
-        const RenderTemplateRequest &request,
+    bool ValidatePassProfileRequest(
+        const PassProfileRequest &request,
         const ShaderCodeModuleRegistry &module_registry,
-        RenderTemplateValidationDiagnostic &out_diagnostic,
+        PassProfileValidationDiagnostic &out_diagnostic,
         ShaderCodeResourceManifest *out_manifest) noexcept
     {
         // 先做结构校验（数据面），再核 GLSL 模块清单。
-        if (!ValidateRenderTemplateRequest(request, out_diagnostic))
+        if (!ValidatePassProfileRequest(request, out_diagnostic))
             return false;
 
-        const char *root_names[MaxRenderTemplateModuleRoots]{};
+        const char *root_names[MaxPassProfileModuleRoots]{};
         for (uint32 index = 0; index < request.module_root_count; ++index)
         {
-            const RenderTemplateModuleRoot &root = request.module_roots[index];
-            RenderTemplateModuleRoot resolved_root;
+            const PassProfileModuleRoot &root = request.module_roots[index];
+            PassProfileModuleRoot resolved_root;
             if (!ResolveModuleRoot(
                     request, root, module_registry, resolved_root, out_diagnostic))
                 return false;
@@ -112,7 +112,7 @@ namespace hgl::graph::mtl
                 &module_registry))
             return SetFailure(
                 out_diagnostic,
-                RenderTemplateValidationError::ModuleGraphInvalid,
+                PassProfileValidationError::ModuleGraphInvalid,
                 request);
 
         // 能力闭合必须基于整张依赖图（含传递依赖），不能只看 roots——
@@ -126,7 +126,7 @@ namespace hgl::graph::mtl
             if (!definition)
                 return SetFailure(
                     out_diagnostic,
-                    RenderTemplateValidationError::ModuleGraphInvalid,
+                    PassProfileValidationError::ModuleGraphInvalid,
                     request);
             provided_capabilities |= definition->provided_capabilities;
             required_capabilities |= definition->required_capabilities;
@@ -134,36 +134,36 @@ namespace hgl::graph::mtl
         if ((required_capabilities & ~provided_capabilities) != 0)
             return SetFailure(
                 out_diagnostic,
-                RenderTemplateValidationError::MissingModuleCapability,
+                PassProfileValidationError::MissingModuleCapability,
                 request,
                 ShaderModuleSlotRole::Unknown,
                 "");
         return true;
     }
 
-    bool ResolveRenderTemplate(
-        const RenderTemplateRequest &request,
+    bool ResolvePassProfile(
+        const PassProfileRequest &request,
         const ShaderCodeModuleRegistry &module_registry,
-        ResolvedRenderTemplate &out_template,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
+        ResolvedPassProfile &out_profile,
+        PassProfileValidationDiagnostic &out_diagnostic) noexcept
     {
-        out_template = {};
+        out_profile = {};
         // 校验内部已构建整张模块图，此处直接复用——不必再构建一次。
-        if (!ValidateRenderTemplateRequest(
+        if (!ValidatePassProfileRequest(
                 request, module_registry, out_diagnostic,
-                &out_template.manifest))
+                &out_profile.manifest))
             return false;
 
-        const RenderTemplateDefinition *definition =
-            FindRenderTemplate(request.template_id);
-        out_template.definition = definition;
-        out_template.request = request;
-        out_template.module_root_count = request.module_root_count;
+        const PassProfileDefinition *definition =
+            FindPassProfile(request.profile_id);
+        out_profile.definition = definition;
+        out_profile.request = request;
+        out_profile.module_root_count = request.module_root_count;
         for (uint32 index = 0; index < request.module_root_count; ++index)
         {
             if (!ResolveModuleRoot(
                     request, request.module_roots[index], module_registry,
-                    out_template.request.module_roots[index], out_diagnostic))
+                    out_profile.request.module_roots[index], out_diagnostic))
                 return false;
             const ShaderCodeModuleDefinition *module =
                 module_registry.FindByName(
@@ -171,15 +171,15 @@ namespace hgl::graph::mtl
             if (!module)
                 return SetFailure(
                     out_diagnostic,
-                    RenderTemplateValidationError::ModuleNotFound,
+                    PassProfileValidationError::ModuleNotFound,
                     request,
                     request.module_roots[index].role,
                     request.module_roots[index].module_name);
-            out_template.module_roots[index] = module;
+            out_profile.module_roots[index] = module;
         }
         hgl::hash::FNV1aHasher64 hash;
-        hash << out_template.request.GetHash() << out_template.manifest.stable_hash;
-        out_template.stable_hash = hash;
-        return out_template.IsValid();
+        hash << out_profile.request.GetHash() << out_profile.manifest.stable_hash;
+        out_profile.stable_hash = hash;
+        return out_profile.IsValid();
     }
 }

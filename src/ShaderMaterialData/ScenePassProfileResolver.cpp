@@ -1,10 +1,10 @@
-#include <hgl/mtl/SceneRenderTemplateResolver.h>
+#include <hgl/mtl/ScenePassProfileResolver.h>
 
 namespace hgl::graph::mtl
 {
-    SceneRenderTemplateProfile MakeIdentityForwardLitProfile() noexcept
+    ScenePassProfile MakeIdentityForwardLitProfile() noexcept
     {
-        SceneRenderTemplateProfile profile;
+        ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SkyProvider,
             "sky_atmosphere", "sky/sky_atmosphere.glsl");
@@ -37,9 +37,9 @@ namespace hgl::graph::mtl
         return profile;
     }
 
-    SceneRenderTemplateProfile MakeForwardUnlitProfile() noexcept
+    ScenePassProfile MakeForwardUnlitProfile() noexcept
     {
-        SceneRenderTemplateProfile profile;
+        ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
             "material_surface", "surface/material_surface.glsl");
@@ -54,9 +54,9 @@ namespace hgl::graph::mtl
         return profile;
     }
 
-    SceneRenderTemplateProfile MakeSkyProfile() noexcept
+    ScenePassProfile MakeSkyProfile() noexcept
     {
-        SceneRenderTemplateProfile profile;
+        ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SkyProvider,
             "sky_atmosphere", "sky/sky_atmosphere.glsl");
@@ -71,9 +71,9 @@ namespace hgl::graph::mtl
         return profile;
     }
 
-    SceneRenderTemplateProfile MakeShadowCasterProfile() noexcept
+    ScenePassProfile MakeShadowCasterProfile() noexcept
     {
-        SceneRenderTemplateProfile profile;
+        ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
             "material_surface", "surface/material_surface.glsl");
@@ -89,7 +89,7 @@ namespace hgl::graph::mtl
         return profile;
     }
 
-    bool SceneRenderTemplateProfile::AddModule(
+    bool ScenePassProfile::AddModule(
         const ShaderModuleSlotRole role,
         const AnsiString &module_name,
         const AnsiString &include_path) noexcept
@@ -97,7 +97,7 @@ namespace hgl::graph::mtl
         if (role == ShaderModuleSlotRole::Unknown
          || module_name.IsEmpty()
          || include_path.IsEmpty()
-         || module_count >= MaxRenderTemplateModuleRoots)
+         || module_count >= MaxPassProfileModuleRoots)
             return false;
         for (uint32 index = 0; index < module_count; ++index)
         {
@@ -111,33 +111,33 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool ResolveSceneRenderTemplateRequest(
-        const RenderTemplateID template_id,
+    bool ResolveScenePassProfileRequest(
+        const PassProfileID profile_id,
         const ShaderStage stage,
-        const SceneRenderTemplateProfile &profile,
-        RenderTemplateRequest &out_request,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
+        const ScenePassProfile &profile,
+        PassProfileRequest &out_request,
+        PassProfileValidationDiagnostic &out_diagnostic) noexcept
     {
         out_request = {};
-        out_request.template_id = template_id;
+        out_request.profile_id = profile_id;
         out_request.stage = stage;
         out_diagnostic = {};
-        out_diagnostic.template_id = template_id;
-        const RenderTemplateDefinition *definition =
-            FindRenderTemplate(template_id);
+        out_diagnostic.profile_id = profile_id;
+        const PassProfileDefinition *definition =
+            FindPassProfile(profile_id);
         if (!definition)
         {
             out_diagnostic.error =
-                RenderTemplateValidationError::UnknownTemplate;
+                PassProfileValidationError::UnknownTemplate;
             return false;
         }
         if (stage != definition->stage)
         {
             out_diagnostic.error =
-                RenderTemplateValidationError::StageMismatch;
+                PassProfileValidationError::StageMismatch;
             return false;
         }
-        out_request.template_version = definition->version;
+        out_request.profile_version = definition->version;
         for (uint32 index = 0; index < profile.module_count; ++index)
         {
             if (!out_request.AddModuleRoot(
@@ -145,8 +145,8 @@ namespace hgl::graph::mtl
             {
                 out_diagnostic = {};
                 out_diagnostic.error =
-                    RenderTemplateValidationError::DuplicateSlotRole;
-                out_diagnostic.template_id = out_request.template_id;
+                    PassProfileValidationError::DuplicateSlotRole;
+                out_diagnostic.profile_id = out_request.profile_id;
                 out_diagnostic.role = profile.roles[index];
                 out_diagnostic.module_name = profile.module_names[index];
                 return false;

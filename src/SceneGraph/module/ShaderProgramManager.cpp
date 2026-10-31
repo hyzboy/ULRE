@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/module/ShaderProgramManager.h>
+#include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKShaderProgram.h>
@@ -24,7 +24,7 @@
 #include<hgl/mtl/ShaderProgramManifestBackend.h>
 #include<hgl/mtl/ShaderProgramManifestKey.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
-#include<hgl/mtl/SceneRenderTemplateResolver.h>
+#include<hgl/mtl/ScenePassProfileResolver.h>
 #include<hgl/mtl/ShaderCacheRoot.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/utf.h>
@@ -53,13 +53,13 @@ namespace
             mtl::GetFallbackMaterialDefinitionID(), out_bmi);
     }
 
-    bool ResolveRuntimeRenderTemplateRequest(
+    bool ResolveRuntimePassProfileRequest(
         const mtl::MaterialDefinition &definition,
         const mtl::MaterialDefinitionBuildRequest &request,
-        mtl::RenderTemplateRequest &out_request)
+        mtl::PassProfileRequest &out_request)
     {
         (void)request;
-        if (out_request.template_id == mtl::RenderTemplateID::Unknown)
+        if (out_request.profile_id == mtl::PassProfileID::Unknown)
         {
             GLogError(
                 "[ShaderProgramManager] Render template request is not caller-selected: id=%s",
@@ -67,7 +67,7 @@ namespace
             return false;
         }
 
-        if (mtl::AppendMaterialRenderTemplateRoots(definition, out_request))
+        if (mtl::AppendMaterialPassProfileRoots(definition, out_request))
             return true;
 
         GLogError(
@@ -217,15 +217,15 @@ namespace
 
 }//namespace
 
-bool SelectCurrentSceneRenderTemplateRequest(
+bool SelectCurrentScenePassProfileRequest(
     const mtl::MaterialDefinition &definition,
     const mtl::MaterialDefinitionBuildRequest &request,
-    mtl::RenderTemplateRequest &out_request)
+    mtl::PassProfileRequest &out_request)
 {
     // 路由与 ambient 覆盖只有一份实现(ShaderGen),运行时与离线回归共用,
     // 避免 SceneGraph / 工具 / 测试各自复制判定逻辑而逐渐分叉。
     // ambient provider 由环境层给（request.ambient_module_name），不是材质数据。
-    return mtl::SelectSceneRenderTemplateRequest(
+    return mtl::SelectScenePassProfileRequest(
         definition, request.shader_program_purpose, request.recipe,
         out_request, request.ambient_module_name);
 }
@@ -697,7 +697,7 @@ namespace
             return false;
 
         out_resolved_request = request;
-        return ResolveRuntimeRenderTemplateRequest(
+        return ResolveRuntimePassProfileRequest(
             out_definition, out_resolved_request,
             out_resolved_request.render_template_request);
     }

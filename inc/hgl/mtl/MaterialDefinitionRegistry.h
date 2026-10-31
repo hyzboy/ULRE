@@ -13,7 +13,7 @@
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/CanonicalShaderContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/PassProfile.h>
 #include<hgl/mtl/ShaderProgramKey.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
@@ -62,15 +62,15 @@ struct MaterialDefinitionBuildRequest
     const char *ambient_module_name = nullptr;
     // Render preparation supplies this resolved request. The program builder validates
     // and emits it but does not select scene lighting or quality policies.
-    RenderTemplateRequest render_template_request;
+    PassProfileRequest render_template_request;
 };
 
 // Render preparation calls this after selecting the scene template. It copies
 // material capabilities into that request and structurally validates the
 // completed request without selecting quality, scene, or provider policy.
-bool AppendMaterialRenderTemplateRoots(
+bool AppendMaterialPassProfileRoots(
     const MaterialDefinition &definition,
-    RenderTemplateRequest &request) noexcept;
+    PassProfileRequest &request) noexcept;
 
 // Render preparation: selects the scene render template from material data and
 // overwrites the AmbientLightProvider slot with the engine-supplied
@@ -85,11 +85,11 @@ bool AppendMaterialRenderTemplateRoots(
 //
 // Runtime (ShaderProgramManager) and the document/offline regression tools must
 // share this single implementation; do not duplicate the routing rules.
-bool SelectSceneRenderTemplateRequest(
+bool SelectScenePassProfileRequest(
     const MaterialDefinition &definition,
     ShaderProgramPurpose purpose,
     const MaterialRecipe &recipe,
-    RenderTemplateRequest &out_request,
+    PassProfileRequest &out_request,
     const char *ambient_module_name = nullptr);
 
 struct MaterialResolvedVertexABI

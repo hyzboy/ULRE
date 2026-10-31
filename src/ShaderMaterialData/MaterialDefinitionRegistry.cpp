@@ -8,7 +8,7 @@
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
-#include <hgl/mtl/SceneRenderTemplateResolver.h>
+#include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
@@ -23,7 +23,7 @@ namespace hgl::graph::mtl{
 namespace
 {
     bool AddMaterialProviderRoot(
-        RenderTemplateRequest &request,
+        PassProfileRequest &request,
         const ShaderModuleSlotRole role,
         const char *module_name) noexcept
     {
@@ -53,16 +53,16 @@ namespace
     }
 }
 
-bool AppendMaterialRenderTemplateRoots(
+bool AppendMaterialPassProfileRoots(
     const MaterialDefinition &definition,
-    RenderTemplateRequest &request) noexcept
+    PassProfileRequest &request) noexcept
 {
     bool appended = true;
-    switch (request.template_id)
+    switch (request.profile_id)
     {
-    case RenderTemplateID::ForwardLitShadowedAO:
-    case RenderTemplateID::ForwardLitShadowedIdentityAO:
-    case RenderTemplateID::ForwardLitUnshadowedAO:
+    case PassProfileID::ForwardLitShadowedAO:
+    case PassProfileID::ForwardLitShadowedIdentityAO:
+    case PassProfileID::ForwardLitUnshadowedAO:
         appended = AddMaterialProviderRoot(
                        request, ShaderModuleSlotRole::MaterialSourceProvider,
                       definition.material_source_module_name)
@@ -70,19 +70,19 @@ bool AppendMaterialRenderTemplateRoots(
                    request, ShaderModuleSlotRole::NTBProvider,
                    definition.ntb_module_name);
         break;
-    case RenderTemplateID::ForwardUnlit:
-    case RenderTemplateID::ShadowCasterOpaque:
-    case RenderTemplateID::ShadowCasterMasked:
+    case PassProfileID::ForwardUnlit:
+    case PassProfileID::ShadowCasterOpaque:
+    case PassProfileID::ShadowCasterMasked:
         appended = AddMaterialProviderRoot(
             request, ShaderModuleSlotRole::MaterialSourceProvider,
             definition.material_source_module_name);
         break;
-    case RenderTemplateID::Sky:
+    case PassProfileID::Sky:
         if (definition.surface_module_name && definition.surface_module_name[0])
         {
             for (uint32 index = 0; index < request.module_root_count; ++index)
             {
-                RenderTemplateModuleRoot &root = request.module_roots[index];
+                PassProfileModuleRoot &root = request.module_roots[index];
                 if (root.role == ShaderModuleSlotRole::SurfaceProvider)
                 {
                     root.module_name = definition.surface_module_name;
@@ -96,15 +96,15 @@ bool AppendMaterialRenderTemplateRoots(
         break;
     }
 
-    RenderTemplateValidationDiagnostic diagnostic{};
-    return appended && ValidateRenderTemplateRequest(request, diagnostic);
+    PassProfileValidationDiagnostic diagnostic{};
+    return appended && ValidatePassProfileRequest(request, diagnostic);
 }
 
-bool SelectSceneRenderTemplateRequest(
+bool SelectScenePassProfileRequest(
     const MaterialDefinition &definition,
     const ShaderProgramPurpose purpose,
     const MaterialRecipe &recipe,
-    RenderTemplateRequest &out_request,
+    PassProfileRequest &out_request,
     const char *ambient_module_name)
 {
     const bool depth_purpose =
@@ -126,13 +126,13 @@ bool SelectSceneRenderTemplateRequest(
      && definition.material_source_module_name[0];
     const bool has_ntb_provider =
         definition.ntb_module_name && definition.ntb_module_name[0];
-    const RenderTemplateID template_id = depth_purpose
-        ? (masked ? RenderTemplateID::ShadowCasterMasked
-                  : RenderTemplateID::ShadowCasterOpaque)
-        : (has_ntb_provider ? RenderTemplateID::ForwardLitShadowedAO
-           : (has_material_source ? RenderTemplateID::ForwardUnlit
-                                  : RenderTemplateID::Sky));
-    SceneRenderTemplateProfile scene_profile = depth_purpose
+    const PassProfileID profile_id = depth_purpose
+        ? (masked ? PassProfileID::ShadowCasterMasked
+                  : PassProfileID::ShadowCasterOpaque)
+        : (has_ntb_provider ? PassProfileID::ForwardLitShadowedAO
+           : (has_material_source ? PassProfileID::ForwardUnlit
+                                  : PassProfileID::Sky));
+    ScenePassProfile scene_profile = depth_purpose
         ? MakeShadowCasterProfile()
         : (has_ntb_provider ? MakeIdentityForwardLitProfile()
            : (has_material_source ? MakeForwardUnlitProfile()
@@ -143,7 +143,7 @@ bool SelectSceneRenderTemplateRequest(
     // 该选择属于**环境**（`EnvironmentSystem::SetAmbientProvider`），不属于材质：
     // 它与 `ambient_env` 参数块（IBL 句柄）必须由同一个所有者配对。
     // include 路径不来自配置：清空后由模板校验按注册表来源规范化
-    // （RenderTemplate.cpp ResolveModuleRoot），与 surface_module_name 同规则。
+    // （PassProfile.cpp ResolveModuleRoot），与 surface_module_name 同规则。
     if (!depth_purpose
      && ambient_module_name
      && ambient_module_name[0])
@@ -164,7 +164,7 @@ bool SelectSceneRenderTemplateRequest(
                 "[MaterialDefinitionRegistry] ambient provider ignored: id=%s template=%s "
                 "has no ambient_light_provider slot",
                 definition.definition_id.c_str(),
-                GetRenderTemplateName(template_id));
+                GetPassProfileName(profile_id));
     }
 
     // [SkyRoute 诊断] 材质 → 渲染模板路由决策
@@ -183,21 +183,21 @@ bool SelectSceneRenderTemplateRequest(
                      definition.definition_id.c_str(),
                      int(depth_purpose), int(masked),
                      int(has_material_source), int(has_ntb_provider),
-                     GetRenderTemplateName(template_id),
+                     GetPassProfileName(profile_id),
                      slots.c_str());
     }
 
-    RenderTemplateValidationDiagnostic diagnostic{};
+    PassProfileValidationDiagnostic diagnostic{};
     if (scene_profile.module_count > 0
-     && ResolveSceneRenderTemplateRequest(
-            template_id, ShaderStage::Fragment, scene_profile,
+     && ResolveScenePassProfileRequest(
+            profile_id, ShaderStage::Fragment, scene_profile,
             out_request, diagnostic))
         return true;
 
     GLogError(
         "[MaterialDefinitionRegistry] Scene render route selection failed: id=%s error=%s",
         definition.definition_id.c_str(),
-        GetRenderTemplateValidationErrorName(diagnostic.error));
+        GetPassProfileValidationErrorName(diagnostic.error));
     return false;
 }
 

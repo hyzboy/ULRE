@@ -1,18 +1,18 @@
 #pragma once
 
-#include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/PassProfile.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 
 namespace hgl::graph::mtl
 {
     // Immutable composition identity. A composer consumes this resolved form,
     // rather than independently reinterpreting Definition module paths.
-    struct ResolvedRenderTemplate
+    struct ResolvedPassProfile
     {
-        const RenderTemplateDefinition *definition = nullptr;
-        RenderTemplateRequest request;
+        const PassProfileDefinition *definition = nullptr;
+        PassProfileRequest request;
         const ShaderCodeModuleDefinition *module_roots[
-            MaxRenderTemplateModuleRoots]{};
+            MaxPassProfileModuleRoots]{};
         uint32 module_root_count = 0;
         ShaderCodeResourceManifest manifest;
         uint64 stable_hash = 0;
@@ -26,9 +26,9 @@ namespace hgl::graph::mtl
         }
     };
 
-    bool ResolveRenderTemplate(
-        const RenderTemplateRequest &request,
+    bool ResolvePassProfile(
+        const PassProfileRequest &request,
         const ShaderCodeModuleRegistry &module_registry,
-        ResolvedRenderTemplate &out_template,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+        ResolvedPassProfile &out_profile,
+        PassProfileValidationDiagnostic &out_diagnostic) noexcept;
 }

@@ -115,9 +115,9 @@ namespace hgl::graph::mtl
             MaterialProgramAssemblyPlan &plan)
         {
             plan.purpose = request.shader_program_purpose;
-            const RenderTemplateRequest &resolved_request =
+            const PassProfileRequest &resolved_request =
                 request.render_template_request;
-            if (resolved_request.template_id == RenderTemplateID::Unknown)
+            if (resolved_request.profile_id == PassProfileID::Unknown)
             {
                 GLogError(
                    "[MaterialProgramAssembler] Material build requires a resolved render template request: name=%s",
@@ -135,24 +135,24 @@ namespace hgl::graph::mtl
             {
                 if ((plan.purpose == ShaderProgramPurpose::DepthOnly
                   || plan.purpose == ShaderProgramPurpose::ShadowDepth)
-                 && resolved_request.template_id
+                 && resolved_request.profile_id
                      != (plan.coverage.requires_alpha_evaluation
-                          ? RenderTemplateID::ShadowCasterMasked
-                          : RenderTemplateID::ShadowCasterOpaque))
+                          ? PassProfileID::ShadowCasterMasked
+                          : PassProfileID::ShadowCasterOpaque))
                 {
                     GLogError(
                        "[MaterialProgramAssembler] Render template request rejected: name=%s "
                        "template=%s expected=%s",
                        definition.definition_name.c_str(),
-                       GetRenderTemplateName(resolved_request.template_id),
-                       GetRenderTemplateName(plan.coverage.requires_alpha_evaluation
-                           ? RenderTemplateID::ShadowCasterMasked
-                           : RenderTemplateID::ShadowCasterOpaque));
+                       GetPassProfileName(resolved_request.profile_id),
+                       GetPassProfileName(plan.coverage.requires_alpha_evaluation
+                           ? PassProfileID::ShadowCasterMasked
+                           : PassProfileID::ShadowCasterOpaque));
                     return false;
                 }
 
-                RenderTemplateValidationDiagnostic diagnostic{};
-                if (!ResolveRenderTemplate(
+                PassProfileValidationDiagnostic diagnostic{};
+                if (!ResolvePassProfile(
                        resolved_request,
                        GetShaderCodeModuleRegistry(),
                        plan.resolved_render_template,
@@ -162,8 +162,8 @@ namespace hgl::graph::mtl
                        "[MaterialProgramAssembler] Render template resolution failed: name=%s "
                        "template=%s validation=%s role=%s module=%s include=%s expected=%s",
                        definition.definition_name.c_str(),
-                       GetRenderTemplateName(resolved_request.template_id),
-                       GetRenderTemplateValidationErrorName(diagnostic.error),
+                       GetPassProfileName(resolved_request.profile_id),
+                       GetPassProfileValidationErrorName(diagnostic.error),
                        GetShaderModuleSlotRoleName(diagnostic.role),
                        diagnostic.module_name.c_str(),
                        diagnostic.include_path.c_str(),
@@ -385,7 +385,7 @@ namespace hgl::graph::mtl
                  || (plan.depth_purpose
                   && role == ShaderModuleSlotRole::NTBProvider))
                     break;
-                const RenderTemplateModuleRoot *root =
+                const PassProfileModuleRoot *root =
                     plan.resolved_render_template.request.FindModuleRoot(role);
                 if (!root)
                     continue;

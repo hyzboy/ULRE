@@ -1,5 +1,5 @@
-#include <hgl/mtl/SceneRenderTemplateResolver.h>
-#include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/mtl/ScenePassProfileResolver.h>
+#include <hgl/mtl/ResolvedPassProfile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
@@ -84,10 +84,10 @@ namespace
         FixtureDirectory fixtures;
         if (!Check(fixtures.Init(), "create fixture directory"))
             return false;
-        RenderTemplateRequest request;
-        request.template_id = RenderTemplateID::ForwardLitShadowedAO;
-        request.template_version = 1;
-        const auto *definition = FindRenderTemplate(request.template_id);
+        PassProfileRequest request;
+        request.profile_id = PassProfileID::ForwardLitShadowedAO;
+        request.profile_version = 1;
+        const auto *definition = FindPassProfile(request.profile_id);
         for (uint32 i = 0; i < definition->slot_count; ++i)
         {
             const ShaderModuleSlotRole role = definition->slots[i].role;
@@ -111,9 +111,9 @@ namespace
                 filesystem::Path(fixtures.root).GetFilename(), &count, &errors)
                 && errors == 0 && count == 12, "load file-backed providers"))
             return false;
-        ResolvedRenderTemplate canonical;
-        RenderTemplateValidationDiagnostic diagnostic;
-        if (!Check(ResolveRenderTemplate(request, registry, canonical, diagnostic),
+        ResolvedPassProfile canonical;
+        PassProfileValidationDiagnostic diagnostic;
+        if (!Check(ResolvePassProfile(request, registry, canonical, diagnostic),
                 "resolve name-only source/NTB/surface"))
             return false;
         for (uint32 i = 0; i < request.module_root_count; ++i)
@@ -136,47 +136,47 @@ namespace
                 return false;
         }
         ShaderCodeModuleRegistry relocated_registry;
-        ResolvedRenderTemplate relocated_template;
+        ResolvedPassProfile relocated_template;
         if (!Check(relocated_registry.LoadDirectory(relocated.root, &count, &errors)
                 && errors == 0
-                && ResolveRenderTemplate(
+                && ResolvePassProfile(
                     request, relocated_registry, relocated_template, diagnostic)
                 && relocated_template.stable_hash == canonical.stable_hash,
                 "physical library root does not affect stable identity"))
             return false;
 
-        RenderTemplateRequest alias = canonical.request;
+        PassProfileRequest alias = canonical.request;
         alias.module_roots[0].include_path = "common\\..\\module_0.glsl";
-        ResolvedRenderTemplate resolved;
-        if (!Check(ResolveRenderTemplate(alias, registry, resolved, diagnostic)
+        ResolvedPassProfile resolved;
+        if (!Check(ResolvePassProfile(alias, registry, resolved, diagnostic)
                 && resolved.stable_hash == canonical.stable_hash,
                 "dot/backslash aliases preserve canonical identity"))
             return false;
         alias.module_roots[0].include_path = "../module_0.glsl";
-        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::IncludePathNotFound,
+        if (!Check(!ResolvePassProfile(alias, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::IncludePathNotFound,
                 "reject escape above the include root"))
             return false;
         alias.module_roots[0].include_path = "module_1.glsl";
-        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::IncludePathNameMismatch
+        if (!Check(!ResolvePassProfile(alias, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::IncludePathNameMismatch
                 && diagnostic.expected_include_path == "module_0.glsl",
                 "reject name/path mismatch with source context"))
             return false;
         alias.module_roots[0].include_path = "missing.glsl";
-        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::IncludePathNotFound,
+        if (!Check(!ResolvePassProfile(alias, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::IncludePathNotFound,
                 "reject missing include"))
             return false;
         alias = request;
         alias.module_roots[0].module_name = request.module_roots[1].module_name;
-        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::ModuleSlotMismatch,
+        if (!Check(!ResolvePassProfile(alias, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::ModuleSlotMismatch,
                 "reject wrong slot"))
             return false;
         alias.module_roots[0].module_name = "unknown_provider";
-        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::ModuleNotFound,
+        if (!Check(!ResolvePassProfile(alias, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::ModuleNotFound,
                 "reject unknown provider"))
             return false;
 
@@ -195,8 +195,8 @@ namespace
                 && !registry.FindFileByName(original->name),
                 "removed/re-registered names cannot reuse stale provenance"))
             return false;
-        if (!Check(!ResolveRenderTemplate(request, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::ModuleSourceMissing,
+        if (!Check(!ResolvePassProfile(request, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::ModuleSourceMissing,
                 "metadata-only roots have no include source"))
             return false;
         if (!Check(registry.RemoveByName(original->name) && registry.Register(*original),
@@ -219,12 +219,12 @@ namespace
         auto &source_root = alias.module_roots[source_index];
         source_root.module_name = "common_source";
         source_root.include_path = "shared.glsl";
-        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::IncludePathNotFound,
+        if (!Check(!ResolvePassProfile(alias, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::IncludePathNotFound,
                 "common requires an explicit root-relative prefix"))
             return false;
         source_root.include_path = "common/shared.glsl";
-        if (!Check(ResolveRenderTemplate(alias, registry, resolved, diagnostic)
+        if (!Check(ResolvePassProfile(alias, registry, resolved, diagnostic)
                 && resolved.request.module_roots[source_slot_index].include_path
                     == "common/shared.glsl",
                 "explicit common path resolves to its registered source"))
@@ -233,12 +233,12 @@ namespace
                 ModuleText("direct_source", ShaderModuleSlotRole::MaterialSourceProvider)),
                 "write root search collision"))
             return false;
-        if (!Check(ResolveRenderTemplate(alias, registry, resolved, diagnostic),
+        if (!Check(ResolvePassProfile(alias, registry, resolved, diagnostic),
                 "explicit common path is not shadowed by a root basename"))
             return false;
         source_root.include_path = "shared.glsl";
-        if (!Check(!ResolveRenderTemplate(alias, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::IncludePathNameMismatch,
+        if (!Check(!ResolvePassProfile(alias, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::IncludePathNameMismatch,
                 "root basename cannot substitute for a different registered source"))
             return false;
 
@@ -254,8 +254,8 @@ namespace
                 "failed dependency removes source lookup"))
             return false;
         if (!Check(filesystem::FileDelete(first->source_path)
-                && !ResolveRenderTemplate(request, registry, resolved, diagnostic)
-                && diagnostic.error == RenderTemplateValidationError::IncludePathNotFound,
+                && !ResolvePassProfile(request, registry, resolved, diagnostic)
+                && diagnostic.error == PassProfileValidationError::IncludePathNotFound,
                 "removed physical source is rejected"))
             return false;
         registry.Clear();
@@ -412,15 +412,15 @@ namespace
         for (int i = 0; i < 2; ++i)
         {
             MaterialDefinition definition;
-            RenderTemplateRequest request;
-            RenderTemplateValidationDiagnostic diagnostic;
-            ResolvedRenderTemplate resolved;
+            PassProfileRequest request;
+            PassProfileValidationDiagnostic diagnostic;
+            ResolvedPassProfile resolved;
             if (!Check(TryGetMaterialDefinitionByID(ids[i], definition)
-                    && ResolveSceneRenderTemplateRequest(
-                        RenderTemplateID::Sky, hgl::graph::ShaderStage::Fragment,
+                    && ResolveScenePassProfileRequest(
+                        PassProfileID::Sky, hgl::graph::ShaderStage::Fragment,
                         MakeSkyProfile(), request, diagnostic)
-                    && AppendMaterialRenderTemplateRoots(definition, request)
-                    && ResolveRenderTemplate(request, registry, resolved, diagnostic),
+                    && AppendMaterialPassProfileRoots(definition, request)
+                    && ResolvePassProfile(request, registry, resolved, diagnostic),
                     "shared Sky surface binding"))
                 return false;
             const auto *root =
@@ -437,11 +437,11 @@ namespace
 
 int main(int argc, char **argv)
 {
-    if (!logger::InitLogger(OS_TEXT("SceneRenderTemplateResolverRegression")))
+    if (!logger::InitLogger(OS_TEXT("ScenePassProfileResolverRegression")))
         return 20;
     if (argc == 2 && AnsiString(argv[1]) == "--compiler-root")
         return RunCompilerRootRegression() ? 0 : 22;
-    SceneRenderTemplateProfile profile;
+    ScenePassProfile profile;
     if (!profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider, "material_surface",
             "surface/material_surface.glsl")
@@ -458,13 +458,13 @@ int main(int argc, char **argv)
             "ntb/ntb_none.glsl"))
         return 1;
 
-    RenderTemplateRequest request;
-    RenderTemplateValidationDiagnostic diagnostic{};
-    if (!ResolveSceneRenderTemplateRequest(
-            RenderTemplateID::ForwardUnlit, hgl::graph::ShaderStage::Fragment,
+    PassProfileRequest request;
+    PassProfileValidationDiagnostic diagnostic{};
+    if (!ResolveScenePassProfileRequest(
+            PassProfileID::ForwardUnlit, hgl::graph::ShaderStage::Fragment,
             profile, request, diagnostic))
         return 2;
-    if (request.template_id != RenderTemplateID::ForwardUnlit
+    if (request.profile_id != PassProfileID::ForwardUnlit
      || request.module_root_count != 4)
         return 3;
     ShaderCodeModuleRegistry registry;
@@ -472,40 +472,40 @@ int main(int argc, char **argv)
     if (!registry.LoadDirectory(ToOSString(GetShaderLibraryPath()), nullptr, &load_errors)
      || load_errors != 0)
         return 5;
-    ResolvedRenderTemplate resolved{};
-    if (!ResolveRenderTemplate(request, registry, resolved, diagnostic)
+    ResolvedPassProfile resolved{};
+    if (!ResolvePassProfile(request, registry, resolved, diagnostic)
      || !resolved.IsValid()
      || resolved.request.module_roots[0].include_path
             != "surface/material_surface.glsl")
         return 6;
     // 片段模板组装（FragmentTemplateComposer）已随「无生成器」终态删除：
     // 片段阶段的编排不再由本工具验证，改由领域固定主着色器文件本体承担。
-    const SceneRenderTemplateProfile sky_profile = MakeSkyProfile();
+    const ScenePassProfile sky_profile = MakeSkyProfile();
     if (sky_profile.module_count != 2
      || sky_profile.roles[0] != ShaderModuleSlotRole::SkyProvider)
         return 9;
-    const SceneRenderTemplateProfile shadow_profile =
+    const ScenePassProfile shadow_profile =
         MakeShadowCasterProfile();
     if (shadow_profile.module_count != 3
      || shadow_profile.roles[0] != ShaderModuleSlotRole::SurfaceProvider)
         return 10;
-    RenderTemplateRequest shadow_request;
-    if (!ResolveSceneRenderTemplateRequest(
-            RenderTemplateID::ShadowCasterMasked,
+    PassProfileRequest shadow_request;
+    if (!ResolveScenePassProfileRequest(
+            PassProfileID::ShadowCasterMasked,
             hgl::graph::ShaderStage::Fragment, shadow_profile,
             shadow_request, diagnostic)
-     || shadow_request.template_id != RenderTemplateID::ShadowCasterMasked)
+     || shadow_request.profile_id != PassProfileID::ShadowCasterMasked)
         return 11;
-    RenderTemplateRequest opaque_request;
-    if (!ResolveSceneRenderTemplateRequest(
-            RenderTemplateID::ShadowCasterOpaque,
+    PassProfileRequest opaque_request;
+    if (!ResolveScenePassProfileRequest(
+            PassProfileID::ShadowCasterOpaque,
             hgl::graph::ShaderStage::Fragment,
             MakeShadowCasterProfile(), opaque_request, diagnostic)
-     || opaque_request.template_id != RenderTemplateID::ShadowCasterOpaque)
+     || opaque_request.profile_id != PassProfileID::ShadowCasterOpaque)
         return 12;
 
-    SceneRenderTemplateProfile duplicate;
-    SceneRenderTemplateProfile missing_path;
+    ScenePassProfile duplicate;
+    ScenePassProfile missing_path;
     if (missing_path.AddModule(
             ShaderModuleSlotRole::SurfaceProvider, "material_surface"))
         return 8;

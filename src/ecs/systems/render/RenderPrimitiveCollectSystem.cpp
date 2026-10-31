@@ -1116,7 +1116,7 @@ namespace hgl::ecs
                 == MaterialAuthoredGenerationOf(primitive_comp))
             return true;
 
-        // purpose 固定为 ShadowDepth：SelectCurrentSceneRenderTemplateRequest
+        // purpose 固定为 ShadowDepth：SelectCurrentScenePassProfileRequest
         // 依此分派 ShadowCasterOpaque/Masked（按 recipe 的 alpha_test）。
         graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
         mtl_request.recipe = effective_recipe;
@@ -1136,7 +1136,7 @@ namespace hgl::ecs
                 effective_recipe.mtl_def_id.c_str());
             return false;
         }
-        if (!graph::SelectCurrentSceneRenderTemplateRequest(
+        if (!graph::SelectCurrentScenePassProfileRequest(
                 template_definition, mtl_request,
                 mtl_request.render_template_request))
         {
@@ -1318,7 +1318,7 @@ namespace hgl::ecs
                 effective_recipe.mtl_def_id.c_str());
             return false;
         }
-        if (!graph::SelectCurrentSceneRenderTemplateRequest(
+        if (!graph::SelectCurrentScenePassProfileRequest(
                 template_definition, mtl_request,
                 mtl_request.render_template_request))
         {

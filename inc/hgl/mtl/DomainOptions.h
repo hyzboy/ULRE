@@ -130,7 +130,7 @@ namespace hgl::graph::mtl
     }
 
     /// 由「是否深度 pass + 材质源模块名 + NTB provider 模块名」判定 profile。
-    /// 与 `SelectSceneRenderTemplateRequest` 的模板路由同口径：
+    /// 与 `SelectScenePassProfileRequest` 的模板路由同口径：
     ///   深度 → ShadowCaster；有 NTB → ForwardLit；有材质源 → ForwardUnlit；否则 Sky。
     DomainOptionsProfile ResolveDomainOptionsProfile(
         bool depth_purpose,

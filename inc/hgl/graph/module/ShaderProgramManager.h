@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/ShaderProgramLinkCache.h>
@@ -17,7 +17,7 @@ namespace mtl
 {
     struct MaterialDefinitionBuildRequest;
     struct MaterialDefinition;
-    struct RenderTemplateRequest;
+    struct PassProfileRequest;
 }//namespace mtl
 
 namespace mtl
@@ -31,10 +31,10 @@ using ShaderProgramID = int;
 
 // SceneGraph policy for the existing material provider shapes. Callers that
 // need a route selected from material data use this before acquiring a program.
-bool SelectCurrentSceneRenderTemplateRequest(
+bool SelectCurrentScenePassProfileRequest(
     const mtl::MaterialDefinition &definition,
     const mtl::MaterialDefinitionBuildRequest &request,
-    mtl::RenderTemplateRequest &out_request);
+    mtl::PassProfileRequest &out_request);
 
 GRAPH_MODULE_CLASS(ShaderProgramManager)
 {

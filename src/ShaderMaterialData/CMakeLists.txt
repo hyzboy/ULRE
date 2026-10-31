@@ -52,10 +52,10 @@ set(SHADERMATERIALDATA_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/DomainShaderTemplate.h
     DomainShaderTemplate.cpp
     # ── 渲染模板解析 ──
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/RenderTemplate.h
-    RenderTemplate.cpp
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/SceneRenderTemplateResolver.h
-    SceneRenderTemplateResolver.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/PassProfile.h
+    PassProfile.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/ScenePassProfileResolver.h
+    ScenePassProfileResolver.cpp
     # ── SPV 产物库 ──
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderArtifactStore.h
     ShaderArtifactStore.cpp

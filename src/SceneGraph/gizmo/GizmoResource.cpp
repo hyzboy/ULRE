@@ -4,7 +4,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
-#include<hgl/mtl/SceneRenderTemplateResolver.h>
+#include<hgl/mtl/ScenePassProfileResolver.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>

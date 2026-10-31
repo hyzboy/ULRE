@@ -162,27 +162,27 @@ endif()
 
 ####################################################################################################
 
-add_executable(SceneRenderTemplateResolverRegression
-    SceneRenderTemplateResolverRegression.cpp)
+add_executable(ScenePassProfileResolverRegression
+    ScenePassProfileResolverRegression.cpp)
 
-target_link_libraries(SceneRenderTemplateResolverRegression
+target_link_libraries(ScenePassProfileResolverRegression
     PRIVATE ULRE.ShaderProgramBuild
             CMCore
             CMCoreType)
 
-SetupToolTarget(SceneRenderTemplateResolverRegression)
+SetupToolTarget(ScenePassProfileResolverRegression)
 
 if(BUILD_TESTING)
     add_test(
         NAME scene_render_template_resolver_regression
-        COMMAND SceneRenderTemplateResolverRegression
+        COMMAND ScenePassProfileResolverRegression
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         scene_render_template_resolver_regression
         PROPERTIES LABELS "shadergen;template")
     add_test(
         NAME shader_include_root_regression
-        COMMAND SceneRenderTemplateResolverRegression --compiler-root
+        COMMAND ScenePassProfileResolverRegression --compiler-root
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         shader_include_root_regression

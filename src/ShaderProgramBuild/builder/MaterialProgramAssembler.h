@@ -12,7 +12,7 @@
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
-#include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/mtl/ResolvedPassProfile.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph::mtl
@@ -84,7 +84,7 @@ namespace hgl::graph::mtl
             mtl::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;
 
-        ResolvedRenderTemplate resolved_render_template;
+        ResolvedPassProfile resolved_render_template;
         uint64 resolved_template_hash = 0;
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;

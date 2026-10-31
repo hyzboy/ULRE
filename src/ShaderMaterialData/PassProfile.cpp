@@ -1,4 +1,4 @@
-#include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/PassProfile.h>
 
 // 渲染模板的「数据面」：静态模板表、名字表、请求容器、以及不依赖模块清单的
 // 结构校验。发行形态（ULRE_ENABLE_SHADERGEN=0）同样需要这些能力——选模板、
@@ -6,18 +6,18 @@
 //
 // 与 ULRE.ShaderProgramBuild 的分界线：任何需要读 ShaderLibrary 里的 GLSL 模块清单
 // （ShaderCodeModuleRegistry / ShaderCodeResourceManifest）才能做的校验与解析，
-// 都留在 src/ShaderProgramBuild/template/RenderTemplateResolve.cpp。
+// 都留在 src/ShaderProgramBuild/template/PassProfileResolve.cpp。
 
 namespace hgl::graph::mtl
 {
     namespace
     {
-        // 数组顺序 = fragment #include 发射顺序（契约见 RenderTemplate.h）。
+        // 数组顺序 = fragment #include 发射顺序（契约见 PassProfile.h）。
         // SurfaceProvider 恒排末位：material_surface.glsl 调用
         // EvalMaterialSource / EvalMaterialAlpha / GetNTB，必须后于
         // MaterialSourceProvider 与 NTBProvider 声明。
 
-        constexpr RenderTemplateSlot ForwardLitSlots[] =
+        constexpr PassProfileSlot ForwardLitSlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::DiffuseLightProvider },
@@ -35,12 +35,12 @@ namespace hgl::graph::mtl
         // MaterialSourceProvider 在 ForwardLit 的固定 include 表里是必需槽：
         // 主着色器已物理 include material_surface.glsl 并调用其 EvalSurface，
         // 缺了 provider 就会在链接期才炸，所以表里保持 required=true。
-        // 必需性判定的唯一执行点 = ValidateSceneRenderTemplateRequest。
+        // 必需性判定的唯一执行点 = ValidateScenePassProfileRequest。
         //
         // AmbientOcclusionProvider 在所有 forward 光照模板里都是必需槽：
         // forward_lighting.glsl 无条件接线 `GetAmbientOcclusion`，“本模板不做 AO”
         // 由恒等实现 identity_ao 表达，而不是条件编译。
-        constexpr RenderTemplateSlot ForwardLitUnshadowedSlots[] =
+        constexpr PassProfileSlot ForwardLitUnshadowedSlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::DiffuseLightProvider },
@@ -57,7 +57,7 @@ namespace hgl::graph::mtl
         // NTBProvider 是必需槽：material_surface.glsl 无条件调用 GetNTB（GLSL 在
         // 函数定义处就要解析符号，与调用点是否可达无关）。“不需要法线扰动”由空对象
         // ntb/ntb_none.glsl 表达。
-        constexpr RenderTemplateSlot ForwardUnlitSlots[] =
+        constexpr PassProfileSlot ForwardUnlitSlots[] =
         {
             { ShaderModuleSlotRole::OutputPolicy },
             { ShaderModuleSlotRole::MaterialSourceProvider },
@@ -68,7 +68,7 @@ namespace hgl::graph::mtl
         // OutputPolicy 仅参与校验、不发射：WriteMaterialOutput 由领域主着色器
         // 直接书写，不经任何拼装。
         // NTBProvider 必需的理由同上（surface 模块要解析 GetNTB）。
-        constexpr RenderTemplateSlot ShadowCasterOpaqueSlots[] =
+        constexpr PassProfileSlot ShadowCasterOpaqueSlots[] =
         {
             { ShaderModuleSlotRole::MaterialSourceProvider, false },
             { ShaderModuleSlotRole::NTBProvider },
@@ -76,7 +76,7 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::OutputPolicy }
         };
 
-        constexpr RenderTemplateSlot ShadowCasterMaskedSlots[] =
+        constexpr PassProfileSlot ShadowCasterMaskedSlots[] =
         {
             { ShaderModuleSlotRole::MaterialSourceProvider },
             { ShaderModuleSlotRole::NTBProvider },
@@ -88,39 +88,39 @@ namespace hgl::graph::mtl
         // AppendOutputDeclarations 内联生成，不存在可 #include 的输出策略模块。
         // 保留该 slot 会强制每个 profile 提供一个永不发射的模块，声明闭包随之
         // 把 forward_lighting 与 lighting_interface 算进去（过近似）。
-        constexpr RenderTemplateSlot SkySlots[] =
+        constexpr PassProfileSlot SkySlots[] =
         {
             { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::SurfaceProvider }
         };
 
-        constexpr RenderTemplateDefinition Templates[] =
+        constexpr PassProfileDefinition Templates[] =
         {
-            { RenderTemplateID::ForwardLitShadowedAO,
+            { PassProfileID::ForwardLitShadowedAO,
               "forward_lit_shadowed_ao", ShaderStage::Fragment, 1,
               ForwardLitSlots, uint32(sizeof(ForwardLitSlots) / sizeof(ForwardLitSlots[0])) },
-            { RenderTemplateID::ForwardLitShadowedIdentityAO,
+            { PassProfileID::ForwardLitShadowedIdentityAO,
               "forward_lit_shadowed_identity_ao", ShaderStage::Fragment, 1,
               ForwardLitSlots, uint32(sizeof(ForwardLitSlots) / sizeof(ForwardLitSlots[0])) },
-            { RenderTemplateID::ForwardLitUnshadowedAO,
+            { PassProfileID::ForwardLitUnshadowedAO,
               "forward_lit_unshadowed_ao", ShaderStage::Fragment, 1,
               ForwardLitUnshadowedSlots, uint32(sizeof(ForwardLitUnshadowedSlots) / sizeof(ForwardLitUnshadowedSlots[0])) },
-            { RenderTemplateID::ForwardUnlit,
+            { PassProfileID::ForwardUnlit,
               "forward_unlit", ShaderStage::Fragment, 1,
               ForwardUnlitSlots, uint32(sizeof(ForwardUnlitSlots) / sizeof(ForwardUnlitSlots[0])) },
-            { RenderTemplateID::ShadowCasterOpaque,
+            { PassProfileID::ShadowCasterOpaque,
               "shadow_caster_opaque", ShaderStage::Fragment, 1,
               ShadowCasterOpaqueSlots, uint32(sizeof(ShadowCasterOpaqueSlots) / sizeof(ShadowCasterOpaqueSlots[0])) },
-            { RenderTemplateID::ShadowCasterMasked,
+            { PassProfileID::ShadowCasterMasked,
               "shadow_caster_masked", ShaderStage::Fragment, 1,
               ShadowCasterMaskedSlots, uint32(sizeof(ShadowCasterMaskedSlots) / sizeof(ShadowCasterMaskedSlots[0])) },
-            { RenderTemplateID::Sky,
+            { PassProfileID::Sky,
               "sky", ShaderStage::Fragment, 1,
               SkySlots, uint32(sizeof(SkySlots) / sizeof(SkySlots[0])) }
         };
 
         bool HasSlot(
-            const RenderTemplateDefinition &definition,
+            const PassProfileDefinition &definition,
             const ShaderModuleSlotRole role) noexcept
         {
             for (uint32 index = 0; index < definition.slot_count; ++index)
@@ -132,27 +132,27 @@ namespace hgl::graph::mtl
         }
 
         bool SetFailure(
-            RenderTemplateValidationDiagnostic &diagnostic,
-            const RenderTemplateValidationError error,
-            const RenderTemplateRequest &request,
+            PassProfileValidationDiagnostic &diagnostic,
+            const PassProfileValidationError error,
+            const PassProfileRequest &request,
             const ShaderModuleSlotRole role = ShaderModuleSlotRole::Unknown,
             const AnsiString &module_name = {}) noexcept
         {
             diagnostic.error = error;
-            diagnostic.template_id = request.template_id;
+            diagnostic.profile_id = request.profile_id;
             diagnostic.role = role;
             diagnostic.module_name = module_name;
             return false;
         }
     }
 
-    bool RenderTemplateRequest::AddModuleRoot(
+    bool PassProfileRequest::AddModuleRoot(
         const ShaderModuleSlotRole role,
         const AnsiString &module_name) noexcept
     {
         if (role == ShaderModuleSlotRole::Unknown
          || module_name.IsEmpty()
-         || module_root_count >= MaxRenderTemplateModuleRoots
+         || module_root_count >= MaxPassProfileModuleRoots
          || FindModuleRoot(role))
             return false;
 
@@ -162,7 +162,7 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    const RenderTemplateModuleRoot *RenderTemplateRequest::FindModuleRoot(
+    const PassProfileModuleRoot *PassProfileRequest::FindModuleRoot(
         const ShaderModuleSlotRole role) const noexcept
     {
         for (uint32 index = 0; index < module_root_count; ++index)
@@ -173,10 +173,10 @@ namespace hgl::graph::mtl
         return nullptr;
     }
 
-    uint64 RenderTemplateRequest::GetHash() const noexcept
+    uint64 PassProfileRequest::GetHash() const noexcept
     {
         hgl::hash::FNV1aHasher64 hash;
-        hash << template_id << stage << template_version << module_root_count;
+        hash << profile_id << stage << profile_version << module_root_count;
         for (uint32 index = 0; index < module_root_count; ++index)
         {
             hash << module_roots[index].role;
@@ -190,9 +190,9 @@ namespace hgl::graph::mtl
         return hash;
     }
 
-    const char *GetRenderTemplateName(const RenderTemplateID id) noexcept
+    const char *GetPassProfileName(const PassProfileID id) noexcept
     {
-        const RenderTemplateDefinition *definition = FindRenderTemplate(id);
+        const PassProfileDefinition *definition = FindPassProfile(id);
         return definition ? definition->name : "unknown";
     }
 
@@ -216,35 +216,35 @@ namespace hgl::graph::mtl
         }
     }
 
-    const char *GetRenderTemplateValidationErrorName(
-        const RenderTemplateValidationError error) noexcept
+    const char *GetPassProfileValidationErrorName(
+        const PassProfileValidationError error) noexcept
     {
         switch (error)
         {
-        case RenderTemplateValidationError::None: return "None";
-        case RenderTemplateValidationError::UnknownTemplate: return "UnknownTemplate";
-        case RenderTemplateValidationError::StageMismatch: return "StageMismatch";
-        case RenderTemplateValidationError::VersionMismatch: return "VersionMismatch";
-        case RenderTemplateValidationError::EmptyModuleRoot: return "EmptyModuleRoot";
-        case RenderTemplateValidationError::UnknownSlotRole: return "UnknownSlotRole";
-        case RenderTemplateValidationError::UnexpectedSlotRole: return "UnexpectedSlotRole";
-        case RenderTemplateValidationError::DuplicateSlotRole: return "DuplicateSlotRole";
-        case RenderTemplateValidationError::MissingRequiredSlot: return "MissingRequiredSlot";
-        case RenderTemplateValidationError::ModuleNotFound: return "ModuleNotFound";
-        case RenderTemplateValidationError::ModuleSlotMismatch: return "ModuleSlotMismatch";
-        case RenderTemplateValidationError::MissingModuleCapability: return "MissingModuleCapability";
-        case RenderTemplateValidationError::ModuleGraphInvalid: return "ModuleGraphInvalid";
-        case RenderTemplateValidationError::ModuleSourceMissing: return "ModuleSourceMissing";
-        case RenderTemplateValidationError::IncludePathNotFound: return "IncludePathNotFound";
-        case RenderTemplateValidationError::IncludePathNameMismatch: return "IncludePathNameMismatch";
+        case PassProfileValidationError::None: return "None";
+        case PassProfileValidationError::UnknownTemplate: return "UnknownTemplate";
+        case PassProfileValidationError::StageMismatch: return "StageMismatch";
+        case PassProfileValidationError::VersionMismatch: return "VersionMismatch";
+        case PassProfileValidationError::EmptyModuleRoot: return "EmptyModuleRoot";
+        case PassProfileValidationError::UnknownSlotRole: return "UnknownSlotRole";
+        case PassProfileValidationError::UnexpectedSlotRole: return "UnexpectedSlotRole";
+        case PassProfileValidationError::DuplicateSlotRole: return "DuplicateSlotRole";
+        case PassProfileValidationError::MissingRequiredSlot: return "MissingRequiredSlot";
+        case PassProfileValidationError::ModuleNotFound: return "ModuleNotFound";
+        case PassProfileValidationError::ModuleSlotMismatch: return "ModuleSlotMismatch";
+        case PassProfileValidationError::MissingModuleCapability: return "MissingModuleCapability";
+        case PassProfileValidationError::ModuleGraphInvalid: return "ModuleGraphInvalid";
+        case PassProfileValidationError::ModuleSourceMissing: return "ModuleSourceMissing";
+        case PassProfileValidationError::IncludePathNotFound: return "IncludePathNotFound";
+        case PassProfileValidationError::IncludePathNameMismatch: return "IncludePathNameMismatch";
         }
         return "Unknown";
     }
 
-    const RenderTemplateDefinition *FindRenderTemplate(
-        const RenderTemplateID id) noexcept
+    const PassProfileDefinition *FindPassProfile(
+        const PassProfileID id) noexcept
     {
-        for (const RenderTemplateDefinition &definition : Templates)
+        for (const PassProfileDefinition &definition : Templates)
         {
             if (definition.id == id)
                 return &definition;
@@ -253,52 +253,52 @@ namespace hgl::graph::mtl
     }
 
     // 只做「请求 vs 模板表」的结构校验：不碰 GLSL 模块清单，发行形态可用。
-    bool ValidateRenderTemplateRequest(
-        const RenderTemplateRequest &request,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
+    bool ValidatePassProfileRequest(
+        const PassProfileRequest &request,
+        PassProfileValidationDiagnostic &out_diagnostic) noexcept
     {
         out_diagnostic = {};
-        const RenderTemplateDefinition *definition =
-            FindRenderTemplate(request.template_id);
+        const PassProfileDefinition *definition =
+            FindPassProfile(request.profile_id);
         if (!definition)
             return SetFailure(
                 out_diagnostic,
-                RenderTemplateValidationError::UnknownTemplate,
+                PassProfileValidationError::UnknownTemplate,
                 request);
 
         if (request.stage != definition->stage)
             return SetFailure(
                 out_diagnostic,
-                RenderTemplateValidationError::StageMismatch,
+                PassProfileValidationError::StageMismatch,
                 request);
 
-        if (request.template_version != definition->version)
+        if (request.profile_version != definition->version)
             return SetFailure(
                 out_diagnostic,
-                RenderTemplateValidationError::VersionMismatch,
+                PassProfileValidationError::VersionMismatch,
                 request);
 
         for (uint32 index = 0; index < request.module_root_count; ++index)
         {
-            const RenderTemplateModuleRoot &root =
+            const PassProfileModuleRoot &root =
                 request.module_roots[index];
             if (root.role == ShaderModuleSlotRole::Unknown)
                 return SetFailure(
                     out_diagnostic,
-                    RenderTemplateValidationError::UnknownSlotRole,
+                    PassProfileValidationError::UnknownSlotRole,
                     request,
                     root.role,
                     root.module_name);
             if (root.module_name.IsEmpty())
                 return SetFailure(
                     out_diagnostic,
-                    RenderTemplateValidationError::EmptyModuleRoot,
+                    PassProfileValidationError::EmptyModuleRoot,
                     request,
                     root.role);
             if (!HasSlot(*definition, root.role))
                 return SetFailure(
                     out_diagnostic,
-                    RenderTemplateValidationError::UnexpectedSlotRole,
+                    PassProfileValidationError::UnexpectedSlotRole,
                     request,
                     root.role,
                     root.module_name);
@@ -307,7 +307,7 @@ namespace hgl::graph::mtl
                 if (request.module_roots[previous].role == root.role)
                     return SetFailure(
                         out_diagnostic,
-                        RenderTemplateValidationError::DuplicateSlotRole,
+                        PassProfileValidationError::DuplicateSlotRole,
                         request,
                         root.role,
                         root.module_name);
@@ -316,11 +316,11 @@ namespace hgl::graph::mtl
 
         for (uint32 index = 0; index < definition->slot_count; ++index)
         {
-            const RenderTemplateSlot &slot = definition->slots[index];
+            const PassProfileSlot &slot = definition->slots[index];
             if (slot.required && !request.FindModuleRoot(slot.role))
                 return SetFailure(
                     out_diagnostic,
-                    RenderTemplateValidationError::MissingRequiredSlot,
+                    PassProfileValidationError::MissingRequiredSlot,
                     request,
                     slot.role);
         }

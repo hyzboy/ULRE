@@ -11,7 +11,7 @@ namespace hgl::graph::mtl
     // 不可在此 include——该头经 ShaderCodeModule.h 反向依赖本文件，会形成环。
     struct ShaderCodeResourceManifest;
 
-    enum class RenderTemplateID : uint8
+    enum class PassProfileID : uint8
     {
         Unknown = 0,
         ForwardLitShadowedAO,
@@ -54,43 +54,43 @@ namespace hgl::graph::mtl
     // ForwardLit profile（9 个 scene 模块）+ MaterialSource + NTB = 11，
     // 留 5 个余量，避免 AddModuleRoot() 静默失败（其返回值在 profile
     // 构造处未被检查）。直接光已拆成 diffuse/specular 两个槽（10 → 11）。
-    constexpr uint32 MaxRenderTemplateModuleRoots = 16;
+    constexpr uint32 MaxPassProfileModuleRoots = 16;
 
-    struct RenderTemplateModuleRoot
+    struct PassProfileModuleRoot
     {
         ShaderModuleSlotRole role = ShaderModuleSlotRole::Unknown;
         AnsiString module_name;
         AnsiString include_path;
     };
 
-    struct RenderTemplateRequest
+    struct PassProfileRequest
     {
-        RenderTemplateID template_id = RenderTemplateID::Unknown;
+        PassProfileID profile_id = PassProfileID::Unknown;
         ShaderStage stage = ShaderStage::Fragment;
-        uint32 template_version = 0;
-        RenderTemplateModuleRoot module_roots[
-            MaxRenderTemplateModuleRoots]{};
+        uint32 profile_version = 0;
+        PassProfileModuleRoot module_roots[
+            MaxPassProfileModuleRoots]{};
         uint32 module_root_count = 0;
 
         bool AddModuleRoot(
             ShaderModuleSlotRole role,
             const AnsiString &module_name) noexcept;
 
-        const RenderTemplateModuleRoot *FindModuleRoot(
+        const PassProfileModuleRoot *FindModuleRoot(
             ShaderModuleSlotRole role) const noexcept;
 
         uint64 GetHash() const noexcept;
     };
 
-    struct RenderTemplateSlot
+    struct PassProfileSlot
     {
         ShaderModuleSlotRole role = ShaderModuleSlotRole::Unknown;
         bool required = true;
     };
 
-    struct RenderTemplateDefinition
+    struct PassProfileDefinition
     {
-        RenderTemplateID id = RenderTemplateID::Unknown;
+        PassProfileID id = PassProfileID::Unknown;
         const char *name = nullptr;
         ShaderStage stage = ShaderStage::Fragment;
         uint32 version = 0;
@@ -108,11 +108,11 @@ namespace hgl::graph::mtl
         /// OutputPolicy：WriteMaterialOutput 由模板内联生成），该 slot 排在
         /// 数组末尾并在定义处注明。Sky 曾同样声明 OutputPolicy，已在收声明闭包
         /// 过近似时整删——声明一个永不发射的模块只会让声明键跟着无关文件失效。
-        const RenderTemplateSlot *slots = nullptr;
+        const PassProfileSlot *slots = nullptr;
         uint32 slot_count = 0;
     };
 
-    enum class RenderTemplateValidationError : uint8
+    enum class PassProfileValidationError : uint8
     {
         None = 0,
         UnknownTemplate,
@@ -132,38 +132,38 @@ namespace hgl::graph::mtl
         ,IncludePathNameMismatch
     };
 
-    struct RenderTemplateValidationDiagnostic
+    struct PassProfileValidationDiagnostic
     {
-        RenderTemplateValidationError error =
-            RenderTemplateValidationError::None;
-        RenderTemplateID template_id = RenderTemplateID::Unknown;
+        PassProfileValidationError error =
+            PassProfileValidationError::None;
+        PassProfileID profile_id = PassProfileID::Unknown;
         ShaderModuleSlotRole role = ShaderModuleSlotRole::Unknown;
         AnsiString module_name;
         AnsiString include_path;
         AnsiString expected_include_path;
     };
 
-    const char *GetRenderTemplateName(RenderTemplateID id) noexcept;
+    const char *GetPassProfileName(PassProfileID id) noexcept;
 
     const char *GetShaderModuleSlotRoleName(ShaderModuleSlotRole role) noexcept;
-    const char *GetRenderTemplateValidationErrorName(
-        RenderTemplateValidationError error) noexcept;
+    const char *GetPassProfileValidationErrorName(
+        PassProfileValidationError error) noexcept;
 
-    const RenderTemplateDefinition *FindRenderTemplate(
-        RenderTemplateID id) noexcept;
+    const PassProfileDefinition *FindPassProfile(
+        PassProfileID id) noexcept;
 
-    bool ValidateRenderTemplateRequest(
-        const RenderTemplateRequest &request,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+    bool ValidatePassProfileRequest(
+        const PassProfileRequest &request,
+        PassProfileValidationDiagnostic &out_diagnostic) noexcept;
 
     /// 校验渲染模板请求（含模块图与能力闭合）。
     ///
     /// out_manifest 可选：校验过程必须构建整张模块依赖图，调用方（如
-    /// ResolveRenderTemplate）若同样需要该 manifest，可传入以避免重复构建。
-    bool ValidateRenderTemplateRequest(
-        const RenderTemplateRequest &request,
+    /// ResolvePassProfile）若同样需要该 manifest，可传入以避免重复构建。
+    bool ValidatePassProfileRequest(
+        const PassProfileRequest &request,
         const ShaderCodeModuleRegistry &module_registry,
-        RenderTemplateValidationDiagnostic &out_diagnostic,
+        PassProfileValidationDiagnostic &out_diagnostic,
         ShaderCodeResourceManifest *out_manifest = nullptr) noexcept;
 
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/CoreType.h>
-#include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/PassProfile.h>
 #include <hgl/type/StrChar.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -322,7 +322,7 @@ namespace hgl::graph::mtl
         const ShaderCodeModuleDependency *dependencies = nullptr;
         uint32 dependency_count = 0;
 
-        // A root selected by RenderTemplateRequest occupies exactly one slot.
+        // A root selected by PassProfileRequest occupies exactly one slot.
         // Dependency-only utility modules retain Unknown.
         ShaderModuleSlotRole slot_role = ShaderModuleSlotRole::Unknown;
         uint32 provided_capabilities = 0;
