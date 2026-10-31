@@ -13,6 +13,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
+#include<hgl/mtl/ShaderLibrarySource.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
@@ -37,30 +38,9 @@ namespace
 
     static_assert(sizeof(DispatchPushConstants) == 16, "DispatchPushConstants 布局必须与 GLSL push_constant block 一致");
 
-    constexpr const char COMPUTE_GLSL[] = R"(
-#version 450
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-layout(local_size_x = 64) in;
-
-// 缓冲区地址经 push constant 下发（BDA），无 set 无 binding
-layout(buffer_reference, std430, buffer_reference_align=16) buffer FloatArrayRef { float data[]; };
-
-layout(push_constant) uniform PushConstants {
-    uint64_t in_addr;
-    uint64_t out_addr;
-} pc;
-
-void main()
-{
-    const uint idx = gl_GlobalInvocationID.x;
-
-    FloatArrayRef in_buf  = FloatArrayRef(pc.in_addr);
-    FloatArrayRef out_buf = FloatArrayRef(pc.out_addr);
-
-    out_buf.data[idx] = in_buf.data[idx] * in_buf.data[idx];
-}
-)";
+    // compute 源码在 ShaderLibrary/compute/compute_dispatch.glsl：改 shader 不用重编译示例，
+    // push constant 布局仍与上面的 C++ 结构靠 static_assert 对拍。
+    constexpr const char COMPUTE_GLSL_RELATIVE_PATH[] = "compute/compute_dispatch.glsl";
 }
 
 class ComputeDispatchApp: public WorkObject
@@ -173,9 +153,15 @@ public:
         if (!input_buffer || !output_buffer)
             return false;
 
-        // 直接源码创建 compute 管线（编译 GLSL → ShaderModule → ComputePipeline）
+        // 直接源码创建 compute 管线（编译 GLSL → ShaderModule → ComputePipeline）。
+        // 源码从 ShaderLibrary 读入，走的仍是「直接给源码」这条路径（不经 ShaderGen 生成器）。
+        const AnsiString compute_glsl =
+            mtl::LoadShaderLibrarySourceText(COMPUTE_GLSL_RELATIVE_PATH);
+        if (compute_glsl.IsEmpty())
+            return false;
+
         compute_pipeline = gc->GetMaterialManager()->CreateComputePipeline("ComputeDispatch.Squares",
-                                                                           COMPUTE_GLSL,
+                                                                           compute_glsl,
                                                                            sizeof(DispatchPushConstants));
         if (!compute_pipeline)
             return false;
