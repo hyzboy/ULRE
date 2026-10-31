@@ -6,9 +6,9 @@
 
 namespace hgl::graph::mtl
 {
-    class ShaderCodeModuleRegistry;
+    class GlslModuleRegistry;
     // 仅作指针参数使用；完整定义见 ShaderCodeResourceManifest.h。
-    // 不可在此 include——该头经 ShaderCodeModule.h 反向依赖本文件，会形成环。
+    // 不可在此 include——该头经 GlslModule.h 反向依赖本文件，会形成环。
     struct ShaderCodeResourceManifest;
 
     enum class PassProfileID : uint8
@@ -162,7 +162,7 @@ namespace hgl::graph::mtl
     /// ResolvePassProfile）若同样需要该 manifest，可传入以避免重复构建。
     bool ValidatePassProfileRequest(
         const PassProfileRequest &request,
-        const ShaderCodeModuleRegistry &module_registry,
+        const GlslModuleRegistry &module_registry,
         PassProfileValidationDiagnostic &out_diagnostic,
         ShaderCodeResourceManifest *out_manifest = nullptr) noexcept;
 

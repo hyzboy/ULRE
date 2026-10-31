@@ -1,6 +1,6 @@
 #include <hgl/mtl/PassProfile.h>
 #include <hgl/mtl/ResolvedPassProfile.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 
@@ -32,13 +32,13 @@ namespace hgl::graph::mtl
         bool ResolveModuleRoot(
             const PassProfileRequest &request,
             const PassProfileModuleRoot &root,
-            const ShaderCodeModuleRegistry &registry,
+            const GlslModuleRegistry &registry,
             PassProfileModuleRoot &out_root,
             PassProfileValidationDiagnostic &diagnostic)
         {
-            const ShaderCodeModuleDefinition *module =
+            const GlslModuleDefinition *module =
                 registry.FindByName(root.module_name.c_str());
-            const ShaderCodeModuleFileData *source =
+            const GlslModuleFileData *source =
                 registry.FindFileByName(root.module_name.c_str());
             const auto fail = [&](const PassProfileValidationError error)
             {
@@ -80,7 +80,7 @@ namespace hgl::graph::mtl
 
     bool ValidatePassProfileRequest(
         const PassProfileRequest &request,
-        const ShaderCodeModuleRegistry &module_registry,
+        const GlslModuleRegistry &module_registry,
         PassProfileValidationDiagnostic &out_diagnostic,
         ShaderCodeResourceManifest *out_manifest) noexcept
     {
@@ -121,7 +121,7 @@ namespace hgl::graph::mtl
         uint32 required_capabilities = 0;
         for (uint32 index = 0; index < manifest->code_module_count; ++index)
         {
-            const ShaderCodeModuleDefinition *definition =
+            const GlslModuleDefinition *definition =
                 module_registry.FindByName(manifest->code_module_names[index]);
             if (!definition)
                 return SetFailure(
@@ -143,7 +143,7 @@ namespace hgl::graph::mtl
 
     bool ResolvePassProfile(
         const PassProfileRequest &request,
-        const ShaderCodeModuleRegistry &module_registry,
+        const GlslModuleRegistry &module_registry,
         ResolvedPassProfile &out_profile,
         PassProfileValidationDiagnostic &out_diagnostic) noexcept
     {
@@ -165,7 +165,7 @@ namespace hgl::graph::mtl
                     request, request.module_roots[index], module_registry,
                     out_profile.request.module_roots[index], out_diagnostic))
                 return false;
-            const ShaderCodeModuleDefinition *module =
+            const GlslModuleDefinition *module =
                 module_registry.FindByName(
                     request.module_roots[index].module_name.c_str());
             if (!module)

@@ -7,7 +7,7 @@
 #include<hgl/mtl/StageSPVCompiler.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/mtl/ShaderCodeModuleRegistry.h>
+#include<hgl/mtl/GlslModuleRegistry.h>
 #include<hgl/mtl/ShaderLibraryPath.h>
 #include<hgl/log/Log.h>
 #include<hgl/type/String.h>
@@ -171,7 +171,7 @@ namespace
             {
                 const auto &requirement = definition.vertex_semantic_requirements[i];
                 const VertexSemantic semantic =
-                    GetVertexSemanticFromShaderCodeModuleSemantic(requirement.semantic);
+                    GetVertexSemanticFromGlslModuleSemantic(requirement.semantic);
                 switch (semantic)
                 {
                 case VertexSemantic::TexCoord: need_uv = true; break;

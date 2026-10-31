@@ -63,7 +63,7 @@ namespace hgl::ecs
         static_assert(offsetof(CullPushConstants, batch_block_stride) == 104, "T4c2 pc 段偏移");
         static_assert(offsetof(CullPushConstants, batch_count_shadow) == 108, "batch_count_shadow pc 段偏移");
 
-        // 引擎合规文件读取（先例：ShaderCodeModuleRegistry::LoadFileContent ——
+        // 引擎合规文件读取（先例：GlslModuleRegistry::LoadFileContent ——
         // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
         //
         // 只在开发形态存在：发行包不带 .glsl，无从读取。整个函数一起 #if 掉，

@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
-#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/GlslModule.h>
 #include <hgl/type/ValueArray.h>
 
 namespace hgl::graph::mtl
 {
-    class ShaderCodeModuleRegistry;
+    class GlslModuleRegistry;
     constexpr uint32 MaxShaderCodeResourceManifestCodeModules = 64u;
 
     // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
@@ -31,14 +31,14 @@ namespace hgl::graph::mtl
         const char *code_module_names[MaxShaderCodeResourceManifestCodeModules]{};
         uint32 code_module_count = 0;
 
-        ValueArray<ShaderCodeModuleTextureReferenceRequirement>
+        ValueArray<GlslModuleTextureReferenceRequirement>
             texture_references;
         uint32 texture_reference_count = 0;
 
         // Union of the sampler preset requirements declared by every
         // contributing module. A material must declare each required preset
         // in its own `[resources].samplers` list.
-        ValueArray<ShaderCodeModuleSamplerReferenceRequirement>
+        ValueArray<GlslModuleSamplerReferenceRequirement>
             sampler_references;
         uint32 sampler_reference_count = 0;
 
@@ -59,7 +59,7 @@ namespace hgl::graph::mtl
         const char *const *root_module_names,
         uint32 root_module_count,
         ShaderCodeResourceManifest &manifest,
-        const ShaderCodeModuleRegistry *registry = nullptr) noexcept;
+        const GlslModuleRegistry *registry = nullptr) noexcept;
 
     struct MaterialDefinition;
     bool ValidateShaderCodeResourceManifestTextureReferences(

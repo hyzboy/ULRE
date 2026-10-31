@@ -5,7 +5,7 @@
 // 装 module root、算 stable_hash 都要在运行时完成。
 //
 // 与 ULRE.ShaderProgramBuild 的分界线：任何需要读 ShaderLibrary 里的 GLSL 模块清单
-// （ShaderCodeModuleRegistry / ShaderCodeResourceManifest）才能做的校验与解析，
+// （GlslModuleRegistry / ShaderCodeResourceManifest）才能做的校验与解析，
 // 都留在 src/ShaderProgramBuild/template/PassProfileResolve.cpp。
 
 namespace hgl::graph::mtl

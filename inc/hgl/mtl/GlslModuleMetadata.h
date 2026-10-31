@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
 
 namespace hgl::graph::mtl
 {
@@ -10,7 +10,7 @@ namespace hgl::graph::mtl
     // 「依赖满足性」三项（MissingDependency / MissingConflictTarget /
     // DependencyCycle）与模块冲突两项（SelfConflict / DuplicateConflict）已删除：
     // 它们与真实装配路径重复，权威判据是
-    //   ① `ShaderCodeModuleRegistry` 加载期 incomplete 模块剔除（发现缺失即丢弃）
+    //   ① `GlslModuleRegistry` 加载期 incomplete 模块剔除（发现缺失即丢弃）
     //   ② `BuildShaderCodeResourceManifest` 的 DFS（UnknownCodeModule / CodeModuleCycle）
     //   ③ 最终「拼出的 GLSL 能否编译」（`SPV.generated-interface` 16 变体断言）
 #define HGL_GLSL_CODE_MODULE_METADATA_VALIDATION_ERROR_LIST \
@@ -24,30 +24,30 @@ namespace hgl::graph::mtl
     HGL_ERROR(SelfDependency) \
     HGL_ERROR(AmbiguousProviderPriority)
 
-    enum class ShaderCodeModuleMetadataValidationError : uint8
+    enum class GlslModuleMetadataValidationError : uint8
     {
 #define HGL_ERROR(name) name,
         HGL_GLSL_CODE_MODULE_METADATA_VALIDATION_ERROR_LIST
 #undef HGL_ERROR
     };
 
-    struct ShaderCodeModuleMetadataValidationDiagnostic
+    struct GlslModuleMetadataValidationDiagnostic
     {
-        ShaderCodeModuleMetadataValidationError error =
-            ShaderCodeModuleMetadataValidationError::None;
+        GlslModuleMetadataValidationError error =
+            GlslModuleMetadataValidationError::None;
         AnsiString module_name;
         AnsiString related_module_name;
-        ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
+        GlslModuleSemantic semantic = GlslModuleSemantic::Unknown;
     };
 
-    const char *GetShaderCodeModuleMetadataValidationErrorName(
-        ShaderCodeModuleMetadataValidationError error) noexcept;
+    const char *GetGlslModuleMetadataValidationErrorName(
+        GlslModuleMetadataValidationError error) noexcept;
 
-    bool ValidateShaderCodeModuleMetadata(
-        const ShaderCodeModuleDefinition &definition,
-        ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic) noexcept;
+    bool ValidateGlslModuleMetadata(
+        const GlslModuleDefinition &definition,
+        GlslModuleMetadataValidationDiagnostic &out_diagnostic) noexcept;
 
-    bool ValidateShaderCodeModuleRegistryMetadata(
-        const ShaderCodeModuleRegistry &registry,
-        ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic) noexcept;
+    bool ValidateGlslModuleRegistryMetadata(
+        const GlslModuleRegistry &registry,
+        GlslModuleMetadataValidationDiagnostic &out_diagnostic) noexcept;
 }

@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/MaterialDomain.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 
@@ -372,11 +372,11 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseSemantic(const std::string &name, ShaderCodeModuleSemantic &out)
+        bool ParseSemantic(const std::string &name, GlslModuleSemantic &out)
         {
-            // T1：语义名字单一真源 ShaderCodeModule.h（GetShaderCodeModuleSemanticName/
-            // ParseShaderCodeModuleSemantic）——此处不再维护平行表。
-            return ParseShaderCodeModuleSemantic(name.c_str(), out);
+            // T1：语义名字单一真源 GlslModule.h（GetGlslModuleSemanticName/
+            // ParseGlslModuleSemantic）——此处不再维护平行表。
+            return ParseGlslModuleSemantic(name.c_str(), out);
         }
 
         bool ParseGlobalSSBOType(const std::string &name, GlobalSSBOType &out)
@@ -600,15 +600,15 @@ namespace hgl::graph::mtl
                             RecordParseFailure("requirements", "", "数组元素必须是顶点语义名字符串");
                             return false;
                         }
-                        ShaderCodeModuleSemantic semantic;
+                        GlslModuleSemantic semantic;
                         if (!ParseSemantic(item.as_string(), semantic))
                         {
                             RecordParseFailure("requirements", item.as_string().c_str(),
-                                               "未知顶点语义名（见 ShaderCodeModule.h 的 GetShaderCodeModuleSemanticName）");
+                                               "未知顶点语义名（见 GlslModule.h 的 GetGlslModuleSemanticName）");
                             return false;
                         }
-                        ShaderCodeModuleSemanticRequirement requirement;
-                        requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
+                        GlslModuleSemanticRequirement requirement;
+                        requirement.source = GlslModuleCapabilitySource::ProducedSemantic;
                         requirement.semantic = semantic;
                         out.definition.vertex_semantic_requirements.Add(requirement);
                     }

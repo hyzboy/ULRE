@@ -11,7 +11,7 @@ namespace hgl::graph::mtl
     {
         const PassProfileDefinition *definition = nullptr;
         PassProfileRequest request;
-        const ShaderCodeModuleDefinition *module_roots[
+        const GlslModuleDefinition *module_roots[
             MaxPassProfileModuleRoots]{};
         uint32 module_root_count = 0;
         ShaderCodeResourceManifest manifest;
@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
 
     bool ResolvePassProfile(
         const PassProfileRequest &request,
-        const ShaderCodeModuleRegistry &module_registry,
+        const GlslModuleRegistry &module_registry,
         ResolvedPassProfile &out_profile,
         PassProfileValidationDiagnostic &out_diagnostic) noexcept;
 }

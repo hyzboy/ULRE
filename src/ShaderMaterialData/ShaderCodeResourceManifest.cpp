@@ -1,6 +1,6 @@
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
-#include <hgl/mtl/ShaderCodeModuleMetadata.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
+#include <hgl/mtl/GlslModuleMetadata.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -29,7 +29,7 @@ namespace hgl::graph::mtl
 
         bool AddTextureReference(
             ShaderCodeResourceManifest &manifest,
-            const ShaderCodeModuleTextureReferenceRequirement &incoming)
+            const GlslModuleTextureReferenceRequirement &incoming)
         {
             if (!incoming.texture_name || !incoming.texture_name[0])
             {
@@ -64,7 +64,7 @@ namespace hgl::graph::mtl
 
         bool AddSamplerReference(
             ShaderCodeResourceManifest &manifest,
-            const ShaderCodeModuleSamplerReferenceRequirement &incoming)
+            const GlslModuleSamplerReferenceRequirement &incoming)
         {
             if (!incoming.sampler_name || !incoming.sampler_name[0])
             {
@@ -94,9 +94,9 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        const ShaderCodeModuleDefinition *FindModuleByName(
+        const GlslModuleDefinition *FindModuleByName(
             const char *name,
-            const ShaderCodeModuleRegistry *registry) noexcept
+            const GlslModuleRegistry *registry) noexcept
         {
             if (!registry || !name || !*name)
                 return nullptr;
@@ -106,7 +106,7 @@ namespace hgl::graph::mtl
 
         bool AddModule(
             const char *name,
-            const ShaderCodeModuleRegistry *registry,
+            const GlslModuleRegistry *registry,
             uint64 *visited_ids,
             VisitState *states,
             uint32 &visited_count,
@@ -136,7 +136,7 @@ namespace hgl::graph::mtl
                 ++visited_count;
             }
 
-            const ShaderCodeModuleDefinition *definition = FindModuleByName(name, registry);
+            const GlslModuleDefinition *definition = FindModuleByName(name, registry);
             if (!definition)
             {
                 manifest.error = ShaderCodeResourceManifestError::UnknownCodeModule;
@@ -200,7 +200,7 @@ namespace hgl::graph::mtl
 
         void BuildStableHash(
             ShaderCodeResourceManifest &manifest,
-            const ShaderCodeModuleRegistry *registry)
+            const GlslModuleRegistry *registry)
         {
             hgl::hash::FNV1aHasher64 h;
             // code modules identified by name.
@@ -210,7 +210,7 @@ namespace hgl::graph::mtl
                 const char *const name = manifest.code_module_names[i];
                 const auto *definition = FindModuleByName(name, registry);
                 h << name
-                  << (definition ? GetShaderCodeModuleDefinitionHash(*definition) : 0);
+                  << (definition ? GetGlslModuleDefinitionHash(*definition) : 0);
             }
 
             h << manifest.texture_reference_count;
@@ -229,7 +229,7 @@ namespace hgl::graph::mtl
         const char *const *root_module_names,
         const uint32 root_module_count,
         ShaderCodeResourceManifest &manifest,
-        const ShaderCodeModuleRegistry *registry) noexcept
+        const GlslModuleRegistry *registry) noexcept
     {
         manifest = ShaderCodeResourceManifest{};
         if (!root_module_names && root_module_count > 0)

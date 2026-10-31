@@ -1,5 +1,5 @@
-﻿#include <hgl/mtl/ShaderCodeModuleRegistry.h>
-#include <hgl/mtl/ShaderCodeModuleMetadata.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
+#include <hgl/mtl/GlslModuleMetadata.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 
 #include <hgl/filesystem/FileSystem.h>
@@ -42,9 +42,9 @@ namespace hgl::graph::mtl
         }
     }
 
-    bool ShaderCodeModuleRegistry::Register(const ShaderCodeModuleDefinition &definition)
+    bool GlslModuleRegistry::Register(const GlslModuleDefinition &definition)
     {
-        if (!IsValidShaderCodeModuleDefinition(definition))
+        if (!IsValidGlslModuleDefinition(definition))
             return false;
 
         if (FindByName(definition.name))
@@ -54,7 +54,7 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool ShaderCodeModuleRegistry::LoadDirectory(const OSString &directory,
+    bool GlslModuleRegistry::LoadDirectory(const OSString &directory,
                                                int *out_file_count,
                                                int *out_error_count)
     {
@@ -66,7 +66,7 @@ namespace hgl::graph::mtl
             OSString current_path;
             if (!filesystem::GetCurrentPath(current_path))
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Cannot resolve scan root");
+                GLogError(u8"[GlslModuleRegistry] Cannot resolve scan root");
                 return false;
             }
             source_root = filesystem::NormalizeFilename(
@@ -85,7 +85,7 @@ namespace hgl::graph::mtl
         const int scan_count = hgl::filesystem::GetFileInfoList(file_list, source_root, true, true, true);
         if (scan_count < 0)
         {
-            GLogError(u8"[ShaderCodeModuleRegistry] Failed to scan code-module directory: %ls",
+            GLogError(u8"[GlslModuleRegistry] Failed to scan code-module directory: %ls",
                       directory.c_str());
             return false;
         }
@@ -107,7 +107,7 @@ namespace hgl::graph::mtl
 
             const OSString full_name(file_info.fullname);
 
-            ShaderCodeModuleFileData *data = file_data.Create();
+            GlslModuleFileData *data = file_data.Create();
             if (!data)
             {
                 ++error_count;
@@ -116,26 +116,26 @@ namespace hgl::graph::mtl
 
             if (!LoadFileContent(full_name, data->glsl_code))
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Failed to read code-module file: %ls",
+                GLogError(u8"[GlslModuleRegistry] Failed to read code-module file: %ls",
                           full_name.c_str());
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
                 continue;
             }
 
-            const ShaderCodeModuleParseResult result =
-                ParseShaderCodeModuleFile(data->glsl_code.c_str(), data->glsl_code.Length(), *data);
+            const GlslModuleParseResult result =
+                ParseGlslModuleFile(data->glsl_code.c_str(), data->glsl_code.Length(), *data);
 
-            if (result == ShaderCodeModuleParseResult::Skipped)
+            if (result == GlslModuleParseResult::Skipped)
             {
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 continue;
             }
 
-            if (result != ShaderCodeModuleParseResult::OK)
+            if (result != GlslModuleParseResult::OK)
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Code-module metadata parse failed: file=%ls error=%s",
-                          full_name.c_str(), GetShaderCodeModuleParseResultName(result));
+                GLogError(u8"[GlslModuleRegistry] Code-module metadata parse failed: file=%ls error=%s",
+                          full_name.c_str(), GetGlslModuleParseResultName(result));
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
                 continue;
@@ -145,7 +145,7 @@ namespace hgl::graph::mtl
             {
                 // @ulre name 是必填身份——模块身份统一为 name（T2 起），
                 // 不接受"文件名即名字"的隐式特例
-                GLogError(u8"[ShaderCodeModuleRegistry] Code-module metadata missing @ulre name: file=%ls",
+                GLogError(u8"[GlslModuleRegistry] Code-module metadata missing @ulre name: file=%ls",
                           full_name.c_str());
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
@@ -154,7 +154,7 @@ namespace hgl::graph::mtl
 
             if (FindByName(data->name.c_str()))
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Duplicate code-module name: %s (file=%ls)",
+                GLogError(u8"[GlslModuleRegistry] Duplicate code-module name: %s (file=%ls)",
                           data->name.c_str(), full_name.c_str());
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
@@ -214,7 +214,7 @@ namespace hgl::graph::mtl
 
             if (!Register(data->definition))
             {
-                GLogError(u8"[ShaderCodeModuleRegistry] Failed to register code module: %s",
+                GLogError(u8"[GlslModuleRegistry] Failed to register code module: %s",
                           data->name.c_str());
                 file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
@@ -228,7 +228,7 @@ namespace hgl::graph::mtl
         // now-complete registry and store dependency/conflict names.
         for (int i = 0; i < file_data.GetCount(); ++i)
         {
-            ShaderCodeModuleFileData *data = file_data[i];
+            GlslModuleFileData *data = file_data[i];
             if (!data || data->metadata_resolution_valid)
                 continue;
 
@@ -238,17 +238,17 @@ namespace hgl::graph::mtl
             for (int k = 0; k < pending_count; ++k)
             {
                 const AnsiString &dependency_name = data->pending_module_requirements[k];
-                const ShaderCodeModuleDefinition *dependency = FindByName(dependency_name.c_str());
+                const GlslModuleDefinition *dependency = FindByName(dependency_name.c_str());
                 if (!dependency)
                 {
-                    GLogError(u8"[ShaderCodeModuleRegistry] Unresolved code-module dependency: module=%s depends_on=%s",
+                    GLogError(u8"[GlslModuleRegistry] Unresolved code-module dependency: module=%s depends_on=%s",
                               data->name.c_str(), dependency_name.c_str());
                     ++error_count;
                     data->metadata_resolution_valid = false;
                     continue;
                 }
 
-                ShaderCodeModuleDependency resolved_dependency{};
+                GlslModuleDependency resolved_dependency{};
                 resolved_dependency.module_name = dependency->name;
                 data->dependencies.Add(resolved_dependency);
             }
@@ -266,15 +266,15 @@ namespace hgl::graph::mtl
             // 已注册模块，都必须在 uses 里自证。
             {
                 AnsiStringList include_paths;
-                CollectShaderCodeModuleIncludePaths(
+                CollectGlslModuleIncludePaths(
                     data->glsl_code.c_str(), data->glsl_code.Length(), include_paths);
 
                 for (int k = 0; k < include_paths.GetCount(); ++k)
                 {
-                    const ShaderCodeModuleFileData *included = nullptr;
+                    const GlslModuleFileData *included = nullptr;
                     for (int m = 0; m < file_data.GetCount(); ++m)
                     {
-                        const ShaderCodeModuleFileData *candidate = file_data[m];
+                        const GlslModuleFileData *candidate = file_data[m];
                         if (!candidate || candidate == data)
                             continue;
                         if (!FindByName(candidate->name.c_str()))
@@ -303,7 +303,7 @@ namespace hgl::graph::mtl
                     if (declared)
                         continue;
 
-                    GLogError(u8"[ShaderCodeModuleRegistry] Undeclared code-module dependency: module=%s includes=%s (@ulre uses %s missing)",
+                    GLogError(u8"[GlslModuleRegistry] Undeclared code-module dependency: module=%s includes=%s (@ulre uses %s missing)",
                               data->name.c_str(),
                               include_paths[k].c_str(),
                               included->name.c_str());
@@ -315,7 +315,7 @@ namespace hgl::graph::mtl
 
         for (int i = 0; i < file_data.GetCount(); ++i)
         {
-            ShaderCodeModuleFileData *data = file_data[i];
+            GlslModuleFileData *data = file_data[i];
             if (!data || data->metadata_resolution_valid)
                 continue;
 
@@ -331,7 +331,7 @@ namespace hgl::graph::mtl
 
             for (int i = 0; i < file_data.GetCount(); ++i)
             {
-                ShaderCodeModuleFileData *data = file_data[i];
+                GlslModuleFileData *data = file_data[i];
                 if (!data || !FindByName(data->name.c_str()))
                     continue;
 
@@ -365,11 +365,11 @@ namespace hgl::graph::mtl
         // 生产侧收尾校验：单条定义的自述完整性 + 同优先级 provider 歧义。
         // 缺失依赖 / 缺失冲突目标已在上面的 incomplete 剔除环里处理；
         // 依赖环由 `BuildShaderCodeResourceManifest` 的 DFS 报 `CodeModuleCycle`。
-        ShaderCodeModuleMetadataValidationDiagnostic validation_diagnostic{};
-        if (!ValidateShaderCodeModuleRegistryMetadata(
+        GlslModuleMetadataValidationDiagnostic validation_diagnostic{};
+        if (!ValidateGlslModuleRegistryMetadata(
                 *this, validation_diagnostic))
         {
-            GLogError(u8"[ShaderCodeModuleRegistry] Metadata validation failed: "
+            GLogError(u8"[GlslModuleRegistry] Metadata validation failed: "
                       u8"module=%s related=%s error=%u",
                       validation_diagnostic.module_name.c_str(),
                       validation_diagnostic.related_module_name.c_str(),
@@ -382,13 +382,13 @@ namespace hgl::graph::mtl
         if (out_error_count)
             *out_error_count = error_count;
 
-        GLogInfo(u8"[ShaderCodeModuleRegistry] Loaded %d code modules from %s (%d errors)",
+        GLogInfo(u8"[GlslModuleRegistry] Loaded %d code modules from %s (%d errors)",
                  file_count, directory.c_str(), error_count);
 
         return true;
     }
 
-    const ShaderCodeModuleDefinition *ShaderCodeModuleRegistry::FindByName(const char *name) const
+    const GlslModuleDefinition *GlslModuleRegistry::FindByName(const char *name) const
     {
         if (!name || !*name)
             return nullptr;
@@ -402,22 +402,22 @@ namespace hgl::graph::mtl
         return nullptr;
     }
 
-    const ShaderCodeModuleFileData *ShaderCodeModuleRegistry::FindFileByName(
+    const GlslModuleFileData *GlslModuleRegistry::FindFileByName(
         const char *name) const
     {
-        const ShaderCodeModuleDefinition *definition = FindByName(name);
+        const GlslModuleDefinition *definition = FindByName(name);
         if (!definition)
             return nullptr;
         for (int index = 0; index < file_data.GetCount(); ++index)
         {
-            const ShaderCodeModuleFileData *data = file_data[index];
+            const GlslModuleFileData *data = file_data[index];
             if (&data->definition == definition)
                 return data;
         }
         return nullptr;
     }
 
-    bool ShaderCodeModuleRegistry::RemoveByName(const char *name)
+    bool GlslModuleRegistry::RemoveByName(const char *name)
     {
         if (!name || !*name)
             return false;
@@ -435,7 +435,7 @@ namespace hgl::graph::mtl
         return false;
     }
 
-    const ShaderCodeModuleDefinition *ShaderCodeModuleRegistry::GetModuleByIndex(const int index) const
+    const GlslModuleDefinition *GlslModuleRegistry::GetModuleByIndex(const int index) const
     {
         const int count = modules.GetCount();
         if (index < 0 || index >= count)
@@ -444,9 +444,9 @@ namespace hgl::graph::mtl
         return modules[index];
     }
 
-    ShaderCodeModuleRegistry &GetShaderCodeModuleRegistry()
+    GlslModuleRegistry &GetGlslModuleRegistry()
     {
-        static ShaderCodeModuleRegistry registry;
+        static GlslModuleRegistry registry;
         static bool loaded = false;
         if (!loaded)
         {

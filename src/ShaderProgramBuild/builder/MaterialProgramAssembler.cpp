@@ -22,7 +22,7 @@
 #include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include "builder/MaterialResourceManifestBuilder.h"
 #include "builder/MaterialProgramAssembler.h"
@@ -86,7 +86,7 @@ namespace hgl::graph::mtl
                  i >= 0;
                  --i)
             {
-                if (GetVertexSemanticFromShaderCodeModuleSemantic(
+                if (GetVertexSemanticFromGlslModuleSemantic(
                         definition.vertex_semantic_requirements[i].semantic)
                     != semantic)
                     continue;
@@ -154,7 +154,7 @@ namespace hgl::graph::mtl
                 PassProfileValidationDiagnostic diagnostic{};
                 if (!ResolvePassProfile(
                        resolved_request,
-                       GetShaderCodeModuleRegistry(),
+                       GetGlslModuleRegistry(),
                        plan.resolved_render_template,
                        diagnostic))
                 {
@@ -195,7 +195,7 @@ namespace hgl::graph::mtl
                     const auto &requirement =
                         definition.vertex_semantic_requirements[i];
                     const VertexSemantic semantic =
-                        GetVertexSemanticFromShaderCodeModuleSemantic(
+                        GetVertexSemanticFromGlslModuleSemantic(
                             requirement.semantic);
                     if (IsMaterialVertexSemanticRequiredForVarying(
                             semantic, plan.effective_vertex_varying))
@@ -370,7 +370,7 @@ namespace hgl::graph::mtl
                 manifest_definition.code_module_requirements.clear();
             const char *provider_root_names[2]{};
             uint32 provider_root_count = 0;
-            const ShaderCodeModuleRegistry &module_registry = GetShaderCodeModuleRegistry();
+            const GlslModuleRegistry &module_registry = GetGlslModuleRegistry();
             const bool include_coverage_providers =
                 !plan.depth_purpose
              || plan.coverage.requires_alpha_evaluation;
@@ -389,7 +389,7 @@ namespace hgl::graph::mtl
                     plan.resolved_render_template.request.FindModuleRoot(role);
                 if (!root)
                     continue;
-                const ShaderCodeModuleDefinition *provider =
+                const GlslModuleDefinition *provider =
                     module_registry.FindByName(root->module_name.c_str());
                 if (!provider)
                 {

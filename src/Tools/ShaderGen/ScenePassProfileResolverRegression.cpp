@@ -1,6 +1,6 @@
 #include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/mtl/ResolvedPassProfile.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/ShaderCompilerAPI.h>
@@ -105,7 +105,7 @@ namespace
                 "write common search fixture"))
             return false;
 
-        ShaderCodeModuleRegistry registry;
+        GlslModuleRegistry registry;
         int count = 0, errors = 0;
         if (!Check(registry.LoadDirectory(
                 filesystem::Path(fixtures.root).GetFilename(), &count, &errors)
@@ -135,7 +135,7 @@ namespace
                     "copy relocated provider"))
                 return false;
         }
-        ShaderCodeModuleRegistry relocated_registry;
+        GlslModuleRegistry relocated_registry;
         ResolvedPassProfile relocated_template;
         if (!Check(relocated_registry.LoadDirectory(relocated.root, &count, &errors)
                 && errors == 0
@@ -180,15 +180,15 @@ namespace
                 "reject unknown provider"))
             return false;
 
-        const ShaderCodeModuleFileData *first = registry.FindFileByName(
+        const GlslModuleFileData *first = registry.FindFileByName(
             request.module_roots[0].module_name.c_str());
         if (!Check(registry.LoadDirectory(fixtures.root, &count, &errors)
                 && count == 0 && errors == 12
                 && registry.FindFileByName(first->name.c_str()) == first,
                 "duplicate scan preserves original provenance"))
             return false;
-        const ShaderCodeModuleDefinition *original = &first->definition;
-        ShaderCodeModuleDefinition metadata_only = *original;
+        const GlslModuleDefinition *original = &first->definition;
+        GlslModuleDefinition metadata_only = *original;
         if (!Check(registry.RemoveByName(original->name)
                 && !registry.FindFileByName(original->name)
                 && registry.Register(metadata_only)
@@ -405,7 +405,7 @@ namespace
             "schema 4 provider names");
     }
 
-    bool RunSurfaceBindingRegression(const ShaderCodeModuleRegistry &registry)
+    bool RunSurfaceBindingRegression(const GlslModuleRegistry &registry)
     {
         const char *ids[] = { "SkyCube", "SkyMinimal" };
         const char *names[] = { "sky_cube_surface", "sky_minimal_surface" };
@@ -467,7 +467,7 @@ int main(int argc, char **argv)
     if (request.profile_id != PassProfileID::ForwardUnlit
      || request.module_root_count != 4)
         return 3;
-    ShaderCodeModuleRegistry registry;
+    GlslModuleRegistry registry;
     int load_errors = 0;
     if (!registry.LoadDirectory(ToOSString(GetShaderLibraryPath()), nullptr, &load_errors)
      || load_errors != 0)

@@ -34,7 +34,7 @@
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/DomainShaderTemplate.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
@@ -220,8 +220,8 @@ namespace hgl::graph::mtl
             if (!root->include_path.IsEmpty())
                 return root->include_path.c_str();
 
-            const ShaderCodeModuleFileData *source =
-                GetShaderCodeModuleRegistry().FindFileByName(
+            const GlslModuleFileData *source =
+                GetGlslModuleRegistry().FindFileByName(
                     root->module_name.c_str());
             if (!source || source->include_path.IsEmpty())
                 return nullptr;

@@ -11,12 +11,12 @@ namespace hgl::graph::mtl
     // fragment, or shared shader generation paths.
     //
     // Module identity is the unique `name` string (registered by name in the
-    // ShaderCodeModuleRegistry; the contract layer derives stable IDs from it as
+    // GlslModuleRegistry; the contract layer derives stable IDs from it as
     // FNV1a(name)). There is deliberately no numeric ID track: file-backed
     // modules are discovered by directory scan and dependencies/conflicts
     // reference targets by name, resolved against the registry.
 
-    enum class ShaderCodeModuleKind : uint8
+    enum class GlslModuleKind : uint8
     {
         Shared = 0,
         Surface,
@@ -27,34 +27,34 @@ namespace hgl::graph::mtl
     };
 
     // ── Kind 名字注册表（单一真源；T1 口径：同上面的 Semantic 一处式）────
-    inline constexpr uint32 ShaderCodeModuleKindCount =
-        static_cast<uint32>(ShaderCodeModuleKind::FragmentShader) + 1;
+    inline constexpr uint32 GlslModuleKindCount =
+        static_cast<uint32>(GlslModuleKind::FragmentShader) + 1;
 
-    inline const char *GetShaderCodeModuleKindName(
-        const ShaderCodeModuleKind kind) noexcept
+    inline const char *GetGlslModuleKindName(
+        const GlslModuleKind kind) noexcept
     {
         switch (kind)
         {
-        case ShaderCodeModuleKind::Shared:         return "Shared";
-        case ShaderCodeModuleKind::Surface:        return "Surface";
-        case ShaderCodeModuleKind::Position:       return "Position";
-        case ShaderCodeModuleKind::Transform:      return "Transform";
-        case ShaderCodeModuleKind::Utility:        return "Utility";
-        case ShaderCodeModuleKind::FragmentShader: return "FragmentShader";
+        case GlslModuleKind::Shared:         return "Shared";
+        case GlslModuleKind::Surface:        return "Surface";
+        case GlslModuleKind::Position:       return "Position";
+        case GlslModuleKind::Transform:      return "Transform";
+        case GlslModuleKind::Utility:        return "Utility";
+        case GlslModuleKind::FragmentShader: return "FragmentShader";
         }
         return "Shared";
     }
 
-    inline bool ParseShaderCodeModuleKind(
-        const char *name, ShaderCodeModuleKind &out_kind) noexcept
+    inline bool ParseGlslModuleKind(
+        const char *name, GlslModuleKind &out_kind) noexcept
     {
         if (!name || !name[0])
             return false;
 
-        for (uint32 i = 0; i < ShaderCodeModuleKindCount; ++i)
+        for (uint32 i = 0; i < GlslModuleKindCount; ++i)
         {
-            const ShaderCodeModuleKind kind = static_cast<ShaderCodeModuleKind>(i);
-            if (hgl::strcmp(name, GetShaderCodeModuleKindName(kind)) == 0)
+            const GlslModuleKind kind = static_cast<GlslModuleKind>(i);
+            if (hgl::strcmp(name, GetGlslModuleKindName(kind)) == 0)
             {
                 out_kind = kind;
                 return true;
@@ -63,7 +63,7 @@ namespace hgl::graph::mtl
         return false;
     }
 
-    enum class ShaderCodeModuleSemantic : uint16
+    enum class GlslModuleSemantic : uint16
     {
         Unknown = 0,
         Position,
@@ -88,74 +88,74 @@ namespace hgl::graph::mtl
     // 全部模块 0 引用，名表 switch 同步收敛）。
 
     // ── 语义名字注册表（单一真源，T1）───────────────────────────────
-    // ShaderCodeModuleSemantic 的字符串名字只在本处定义一次：
-    //   GetShaderCodeModuleSemanticName：枚举 → 名字（switch）
-    //   ParseShaderCodeModuleSemantic：名字 → 枚举（线性查表，跳过 Unknown）
+    // GlslModuleSemantic 的字符串名字只在本处定义一次：
+    //   GetGlslModuleSemanticName：枚举 → 名字（switch）
+    //   ParseGlslModuleSemantic：名字 → 枚举（线性查表，跳过 Unknown）
     // 新增语义只需改枚举 + 本 switch 一处。
-    inline constexpr uint32 ShaderCodeModuleSemanticCount =
-        static_cast<uint32>(ShaderCodeModuleSemantic::Size) + 1;
+    inline constexpr uint32 GlslModuleSemanticCount =
+        static_cast<uint32>(GlslModuleSemantic::Size) + 1;
 
-    inline const char *GetShaderCodeModuleSemanticName(
-        const ShaderCodeModuleSemantic semantic) noexcept
+    inline const char *GetGlslModuleSemanticName(
+        const GlslModuleSemantic semantic) noexcept
     {
         switch (semantic)
         {
-        case ShaderCodeModuleSemantic::Unknown:       return "Unknown";
-        case ShaderCodeModuleSemantic::Position:      return "Position";
-        case ShaderCodeModuleSemantic::UV0:           return "UV0";
-        case ShaderCodeModuleSemantic::Color:         return "Color";
-        case ShaderCodeModuleSemantic::Normal:        return "Normal";
-        case ShaderCodeModuleSemantic::Tangent:       return "Tangent";
-        case ShaderCodeModuleSemantic::Binormal:      return "Binormal";
-        case ShaderCodeModuleSemantic::WorldPosition: return "WorldPosition";
-        case ShaderCodeModuleSemantic::WorldNormal:   return "WorldNormal";
-        case ShaderCodeModuleSemantic::WorldTangent:  return "WorldTangent";
-        case ShaderCodeModuleSemantic::WorldBinormal: return "WorldBinormal";
-        case ShaderCodeModuleSemantic::Luminance:     return "Luminance";
-        case ShaderCodeModuleSemantic::Camera:        return "Camera";
-        case ShaderCodeModuleSemantic::Viewport:      return "Viewport";
-        case ShaderCodeModuleSemantic::SkyLight:      return "SkyLight";
-        case ShaderCodeModuleSemantic::MaterialData:  return "MaterialData";
-        case ShaderCodeModuleSemantic::TransformID:   return "TransformID";
-        case ShaderCodeModuleSemantic::Size:          return "Size";
+        case GlslModuleSemantic::Unknown:       return "Unknown";
+        case GlslModuleSemantic::Position:      return "Position";
+        case GlslModuleSemantic::UV0:           return "UV0";
+        case GlslModuleSemantic::Color:         return "Color";
+        case GlslModuleSemantic::Normal:        return "Normal";
+        case GlslModuleSemantic::Tangent:       return "Tangent";
+        case GlslModuleSemantic::Binormal:      return "Binormal";
+        case GlslModuleSemantic::WorldPosition: return "WorldPosition";
+        case GlslModuleSemantic::WorldNormal:   return "WorldNormal";
+        case GlslModuleSemantic::WorldTangent:  return "WorldTangent";
+        case GlslModuleSemantic::WorldBinormal: return "WorldBinormal";
+        case GlslModuleSemantic::Luminance:     return "Luminance";
+        case GlslModuleSemantic::Camera:        return "Camera";
+        case GlslModuleSemantic::Viewport:      return "Viewport";
+        case GlslModuleSemantic::SkyLight:      return "SkyLight";
+        case GlslModuleSemantic::MaterialData:  return "MaterialData";
+        case GlslModuleSemantic::TransformID:   return "TransformID";
+        case GlslModuleSemantic::Size:          return "Size";
         default:                                    return "Unknown";
         }
     }
 
-    inline bool ParseShaderCodeModuleSemantic(
+    inline bool ParseGlslModuleSemantic(
         const char *name,
-        ShaderCodeModuleSemantic &out_semantic) noexcept
+        GlslModuleSemantic &out_semantic) noexcept
     {
         if (!name || !name[0])
         {
-            out_semantic = ShaderCodeModuleSemantic::Unknown;
+            out_semantic = GlslModuleSemantic::Unknown;
             return false;
         }
 
         // 跳过 Unknown（旧解析表均不含它——"Unknown" 解析失败保持旧行为）
-        for (uint32 i = 1; i < ShaderCodeModuleSemanticCount; ++i)
+        for (uint32 i = 1; i < GlslModuleSemanticCount; ++i)
         {
-            const ShaderCodeModuleSemantic semantic =
-                static_cast<ShaderCodeModuleSemantic>(i);
-            if (hgl::strcmp(name, GetShaderCodeModuleSemanticName(semantic)) == 0)
+            const GlslModuleSemantic semantic =
+                static_cast<GlslModuleSemantic>(i);
+            if (hgl::strcmp(name, GetGlslModuleSemanticName(semantic)) == 0)
             {
                 out_semantic = semantic;
                 return true;
             }
         }
 
-        out_semantic = ShaderCodeModuleSemantic::Unknown;
+        out_semantic = GlslModuleSemantic::Unknown;
         return false;
     }
 
-    enum class ShaderCodeModuleCapabilitySource : uint8
+    enum class GlslModuleCapabilitySource : uint8
     {
         GeometryAttribute = 0,
         Resource,
         ProducedSemantic
     };
 
-    enum class ShaderCodeModuleNumericClass : uint32
+    enum class GlslModuleNumericClass : uint32
     {
         None = 0,
         Float = 1u << 0,
@@ -189,13 +189,13 @@ namespace hgl::graph::mtl
     };
 
 
-    struct ShaderCodeModuleDependency
+    struct GlslModuleDependency
     {
         const char *module_name = nullptr;      // 依赖目标模块名（注册表唯一键）
     };
 
-    inline bool operator==(const ShaderCodeModuleDependency &lhs,
-                           const ShaderCodeModuleDependency &rhs) noexcept
+    inline bool operator==(const GlslModuleDependency &lhs,
+                           const GlslModuleDependency &rhs) noexcept
     {
         const bool same_name = lhs.module_name == rhs.module_name
             || (lhs.module_name && rhs.module_name
@@ -203,19 +203,19 @@ namespace hgl::graph::mtl
         return same_name;
     }
 
-    struct ShaderCodeModuleSemanticRequirement
+    struct GlslModuleSemanticRequirement
     {
-        ShaderCodeModuleCapabilitySource source = ShaderCodeModuleCapabilitySource::GeometryAttribute;
-        ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
-        uint32 numeric_class_mask = static_cast<uint32>(ShaderCodeModuleNumericClass::Any);
+        GlslModuleCapabilitySource source = GlslModuleCapabilitySource::GeometryAttribute;
+        GlslModuleSemantic semantic = GlslModuleSemantic::Unknown;
+        uint32 numeric_class_mask = static_cast<uint32>(GlslModuleNumericClass::Any);
         uint8 min_component_count = 0;
         uint8 max_component_count = 0;
     };
 
     // ValueArray<T> instantiates its virtual Find() for every concrete T, which
     // requires an equality operator.
-    inline bool operator==(const ShaderCodeModuleSemanticRequirement &lhs,
-                           const ShaderCodeModuleSemanticRequirement &rhs) noexcept
+    inline bool operator==(const GlslModuleSemanticRequirement &lhs,
+                           const GlslModuleSemanticRequirement &rhs) noexcept
     {
         return lhs.source == rhs.source
             && lhs.semantic == rhs.semantic
@@ -230,7 +230,7 @@ namespace hgl::graph::mtl
     // only on the semantic fields.
     inline hgl::hash::FNV1aHasher64 &operator<<(
         hgl::hash::FNV1aHasher64 &h,
-        const ShaderCodeModuleSemanticRequirement &v) noexcept
+        const GlslModuleSemanticRequirement &v) noexcept
     {
         h << v.source
           << v.semantic
@@ -242,7 +242,7 @@ namespace hgl::graph::mtl
 
     // Name-keyed texture dependency consumed through MTL_TEX(). The name must
     // resolve to a MaterialDefinition texture declaration before compilation.
-    struct ShaderCodeModuleTextureReferenceRequirement
+    struct GlslModuleTextureReferenceRequirement
     {
         const char *texture_name = nullptr;
         uint32 stage_flags = 0;
@@ -251,8 +251,8 @@ namespace hgl::graph::mtl
     };
 
     inline bool operator==(
-        const ShaderCodeModuleTextureReferenceRequirement &lhs,
-        const ShaderCodeModuleTextureReferenceRequirement &rhs) noexcept
+        const GlslModuleTextureReferenceRequirement &lhs,
+        const GlslModuleTextureReferenceRequirement &rhs) noexcept
     {
         const bool same_name = lhs.texture_name == rhs.texture_name
             || (lhs.texture_name && rhs.texture_name
@@ -265,7 +265,7 @@ namespace hgl::graph::mtl
 
     inline hgl::hash::FNV1aHasher64 &operator<<(
         hgl::hash::FNV1aHasher64 &h,
-        const ShaderCodeModuleTextureReferenceRequirement &v) noexcept
+        const GlslModuleTextureReferenceRequirement &v) noexcept
     {
         h << v.texture_name
           << v.stage_flags
@@ -279,15 +279,15 @@ namespace hgl::graph::mtl
     // it is declared by the module itself so the module does not rely on the
     // material file happening to list the same preset. `required == false`
     // marks a preset used only on a conditional (material #define) code path.
-    struct ShaderCodeModuleSamplerReferenceRequirement
+    struct GlslModuleSamplerReferenceRequirement
     {
         const char *sampler_name = nullptr;
         bool required = true;
     };
 
     inline bool operator==(
-        const ShaderCodeModuleSamplerReferenceRequirement &lhs,
-        const ShaderCodeModuleSamplerReferenceRequirement &rhs) noexcept
+        const GlslModuleSamplerReferenceRequirement &lhs,
+        const GlslModuleSamplerReferenceRequirement &rhs) noexcept
     {
         const bool same_name = lhs.sampler_name == rhs.sampler_name
             || (lhs.sampler_name && rhs.sampler_name
@@ -297,29 +297,29 @@ namespace hgl::graph::mtl
 
     inline hgl::hash::FNV1aHasher64 &operator<<(
         hgl::hash::FNV1aHasher64 &h,
-        const ShaderCodeModuleSamplerReferenceRequirement &v) noexcept
+        const GlslModuleSamplerReferenceRequirement &v) noexcept
     {
         h << v.sampler_name
           << v.required;
         return h;
     }
 
-    struct ShaderCodeModuleDefinition
+    struct GlslModuleDefinition
     {
         const char *name = nullptr;
         const char *glsl_code = nullptr;
 
         // Capability metadata for file-backed/provider modules. Existing
         // all real modules carry kind/semantic fields.
-        ShaderCodeModuleKind kind = ShaderCodeModuleKind::Shared;
-        const ShaderCodeModuleSemanticRequirement *semantic_requirements = nullptr;
+        GlslModuleKind kind = GlslModuleKind::Shared;
+        const GlslModuleSemanticRequirement *semantic_requirements = nullptr;
         uint32 semantic_requirement_count = 0;
-        const ShaderCodeModuleSemantic *semantic_provides = nullptr;
+        const GlslModuleSemantic *semantic_provides = nullptr;
         uint32 semantic_provide_count = 0;
         int32 priority = 0;
         uint32 flags = 0;
 
-        const ShaderCodeModuleDependency *dependencies = nullptr;
+        const GlslModuleDependency *dependencies = nullptr;
         uint32 dependency_count = 0;
 
         // A root selected by PassProfileRequest occupies exactly one slot.
@@ -328,19 +328,19 @@ namespace hgl::graph::mtl
         uint32 provided_capabilities = 0;
         uint32 required_capabilities = 0;
 
-        const ShaderCodeModuleTextureReferenceRequirement
+        const GlslModuleTextureReferenceRequirement
             *texture_reference_requirements = nullptr;
         uint32 texture_reference_requirement_count = 0;
 
-        const ShaderCodeModuleSamplerReferenceRequirement
+        const GlslModuleSamplerReferenceRequirement
             *sampler_reference_requirements = nullptr;
         uint32 sampler_reference_requirement_count = 0;
     };
 
-    uint64 GetShaderCodeModuleDefinitionHash(
-        const ShaderCodeModuleDefinition &definition) noexcept;
+    uint64 GetGlslModuleDefinitionHash(
+        const GlslModuleDefinition &definition) noexcept;
 
-    inline bool IsValidShaderCodeModuleDefinition(const ShaderCodeModuleDefinition &definition) noexcept
+    inline bool IsValidGlslModuleDefinition(const GlslModuleDefinition &definition) noexcept
     {
         if (!definition.name || !*definition.name || !definition.glsl_code)
             return false;
@@ -360,7 +360,7 @@ namespace hgl::graph::mtl
         for (uint32 i = 0; i < definition.semantic_requirement_count; ++i)
         {
             const auto &requirement = definition.semantic_requirements[i];
-            if (requirement.semantic == ShaderCodeModuleSemantic::Unknown
+            if (requirement.semantic == GlslModuleSemantic::Unknown
              || requirement.numeric_class_mask == 0
              || (requirement.max_component_count != 0
               && requirement.min_component_count > requirement.max_component_count))

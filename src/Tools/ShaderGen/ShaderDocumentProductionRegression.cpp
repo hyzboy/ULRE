@@ -22,7 +22,7 @@
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/ShaderCompilerAPI.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -38,7 +38,7 @@ namespace
 {
     bool VerifyPayloadModuleIdentity()
     {
-        auto &registry = GetShaderCodeModuleRegistry();
+        auto &registry = GetGlslModuleRegistry();
         const char *source_names[] = { "texture_source", "pbr_surface_source" };
         const char *material_ids[] = { "UnlitTexture", "Lit" };
         for (int i = 0; i < 2; ++i)
@@ -47,7 +47,7 @@ namespace
             const auto *source = registry.FindByName(source_names[i]);
             if (!source || !TryGetMaterialDefinitionByID(material_ids[i], definition))
                 return false;
-            ShaderCodeModuleDefinition named = *source;
+            GlslModuleDefinition named = *source;
             named.name = "payload_test_identity_not_a_filename";
             if (!registry.Register(named))
                 return false;
@@ -549,7 +549,7 @@ namespace
         if (fixture.ambient_module_name && fixture.ambient_module_name[0])
         {
             const char *name = fixture.ambient_module_name;
-            const auto *source = GetShaderCodeModuleRegistry().FindFileByName(name);
+            const auto *source = GetGlslModuleRegistry().FindFileByName(name);
             if (!source
              || CountText(options_text,
                     (AnsiString("#include \"") + source->include_path + "\"")

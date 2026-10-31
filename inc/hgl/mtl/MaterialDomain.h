@@ -3,7 +3,7 @@
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
-#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/GlslModule.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/type/String.h>
@@ -144,7 +144,7 @@ namespace hgl::graph::mtl
         const char *name;
 
         // 该领域的**规范表面来源模块**与**规范法线标架模块**
-        // （ShaderCodeModuleRegistry 里的模块名，不是文件路径）。
+        // （GlslModuleRegistry 里的模块名，不是文件路径）。
         //
         // 为什么用模块名而不是主着色器文件路径：顶点侧由 `[transform]`+
         // `[vertex]` 解析出 mesh options；片元侧由 DomainShaderTemplate 按领域与
@@ -250,7 +250,7 @@ namespace hgl::graph::mtl
     // Custom / 未知领域返回 false：没有契约可依，必须由资产显式声明。
     bool GetMaterialDomainVertexSemanticRequirements(
         MaterialDomain domain,
-        ValueArray<ShaderCodeModuleSemanticRequirement> &out) noexcept;
+        ValueArray<GlslModuleSemanticRequirement> &out) noexcept;
 
     // ── 校验结果 ────────────────────────────────────────────────────────────────
     enum class MaterialDomainValidationResult : uint8

@@ -22,10 +22,10 @@
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/InterStageVaryingOptions.h>
-#include <hgl/mtl/ShaderCodeModule.h>
-#include <hgl/mtl/ShaderCodeModuleFile.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
-#include <hgl/mtl/ShaderCodeModuleMetadata.h>
+#include <hgl/mtl/GlslModule.h>
+#include <hgl/mtl/GlslModuleFile.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
+#include <hgl/mtl/GlslModuleMetadata.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/ShaderCompilerAPI.h>
@@ -191,8 +191,8 @@ namespace
     ///
     /// 刻意写成「门自己持有的常量」而不是去问被测代码：这条断言的价值就是
     /// 在模块被误删/误加时硬失败，跟着实现走就等于没测。历史上每次增删模块
-    /// 都在这里改一行并留下理由，变更记录见 `RunShaderCodeModuleRegistryCase`。
-    constexpr int kShaderCodeModuleCount = 84;
+    /// 都在这里改一行并留下理由，变更记录见 `RunGlslModuleRegistryCase`。
+    constexpr int kGlslModuleCount = 84;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)
@@ -3079,13 +3079,13 @@ namespace
 
             for (uint32_t i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
-                const ShaderCodeModuleSemanticRequirement &requirement =
+                const GlslModuleSemanticRequirement &requirement =
                     definition.vertex_semantic_requirements[i];
 
                 // 只看**几何输入**（GeometryAttribute）：ProducedSemantic 是着色器内部
                 // 产出（例如 WorldPosition），不依赖顶点数据，任何几何都满足。
-                if (requirement.source == ShaderCodeModuleCapabilitySource::GeometryAttribute
-                 && requirement.semantic != ShaderCodeModuleSemantic::Position)
+                if (requirement.source == GlslModuleCapabilitySource::GeometryAttribute
+                 && requirement.semantic != GlslModuleSemantic::Position)
                     result.diagnostics.emplace_back(std::string("fallback definition for ") + label
                         + " must not require vertex attributes beyond Position: " + definition_id);
             }
@@ -6393,7 +6393,7 @@ namespace
                 "Sky must reject a surface provider without a fixed fragment master");
 
         // ── ① 契约表自检 + 引用模块存在性 ────────────────────────────────────
-        ShaderCodeModuleRegistry registry;
+        GlslModuleRegistry registry;
         int module_file_count = 0;
         int module_error_count = 0;
         const bool registry_ok = registry.LoadDirectory(
@@ -7272,7 +7272,7 @@ namespace
         GateResult result;
         result.name = "H1.provider-resource-manifest";
 
-        ShaderCodeModuleRegistry registry;
+        GlslModuleRegistry registry;
 
         int file_count = 0;
         int error_count = 0;
@@ -7402,23 +7402,23 @@ namespace
         return result;
     }
 
-    static GateResult RunShaderCodeModuleFileCase()
+    static GateResult RunGlslModuleFileCase()
     {
         GateResult result;
         result.name = "I.glsl-code-module-file-parse";
 
         auto expect_parse = [&result](const char *content,
-                                      const ShaderCodeModuleParseResult expected,
+                                      const GlslModuleParseResult expected,
                                       const char *label)
         {
-            ShaderCodeModuleFileData data;
-            const ShaderCodeModuleParseResult actual =
-                ParseShaderCodeModuleFile(content, int(std::strlen(content)), data);
+            GlslModuleFileData data;
+            const GlslModuleParseResult actual =
+                ParseGlslModuleFile(content, int(std::strlen(content)), data);
             if (actual != expected)
             {
                 result.diagnostics.emplace_back(std::string(label) + ": got "
-                    + GetShaderCodeModuleParseResultName(actual)
-                    + " expected " + GetShaderCodeModuleParseResultName(expected));
+                    + GetGlslModuleParseResultName(actual)
+                    + " expected " + GetGlslModuleParseResultName(expected));
                 return false;
             }
             return true;
@@ -7438,16 +7438,16 @@ namespace
             "// @ulre uses s2_lift_xy0\n"
             "// @ulre end\n";
         {
-            ShaderCodeModuleFileData data;
-            const ShaderCodeModuleParseResult parse =
-                ParseShaderCodeModuleFile(full_meta, int(std::strlen(full_meta)), data);
-            if (parse != ShaderCodeModuleParseResult::OK)
+            GlslModuleFileData data;
+            const GlslModuleParseResult parse =
+                ParseGlslModuleFile(full_meta, int(std::strlen(full_meta)), data);
+            if (parse != GlslModuleParseResult::OK)
                 result.diagnostics.emplace_back("full-metadata parse failed");
             else
             {
                 if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
                     result.diagnostics.emplace_back("full-metadata name mismatch");
-                if (data.kind != ShaderCodeModuleKind::Utility)
+                if (data.kind != GlslModuleKind::Utility)
                     result.diagnostics.emplace_back("full-metadata kind mismatch");
                 if (data.priority != 10)
                     result.diagnostics.emplace_back("full-metadata priority mismatch");
@@ -7456,24 +7456,24 @@ namespace
                 else
                 {
                     const auto &normal_req = data.semantic_requirements[0];
-                    if (normal_req.source != ShaderCodeModuleCapabilitySource::GeometryAttribute
-                     || normal_req.semantic != ShaderCodeModuleSemantic::Normal
-                     || normal_req.numeric_class_mask != uint32_t(ShaderCodeModuleNumericClass::Float)
+                    if (normal_req.source != GlslModuleCapabilitySource::GeometryAttribute
+                     || normal_req.semantic != GlslModuleSemantic::Normal
+                     || normal_req.numeric_class_mask != uint32_t(GlslModuleNumericClass::Float)
                      || normal_req.min_component_count != 3
                      || normal_req.max_component_count != 3)
                         result.diagnostics.emplace_back("full-metadata require[0] mismatch");
 
                     const auto &tangent_req = data.semantic_requirements[1];
-                    if (tangent_req.source != ShaderCodeModuleCapabilitySource::GeometryAttribute
-                     || tangent_req.semantic != ShaderCodeModuleSemantic::Tangent
-                     || tangent_req.numeric_class_mask != uint32_t(ShaderCodeModuleNumericClass::Any)
+                    if (tangent_req.source != GlslModuleCapabilitySource::GeometryAttribute
+                     || tangent_req.semantic != GlslModuleSemantic::Tangent
+                     || tangent_req.numeric_class_mask != uint32_t(GlslModuleNumericClass::Any)
                      || tangent_req.min_component_count != 0
                      || tangent_req.max_component_count != 0)
                         result.diagnostics.emplace_back("full-metadata require[1] mismatch");
                 }
                 if (data.semantic_provides.GetCount() != 2
-                 || data.semantic_provides[0] != ShaderCodeModuleSemantic::Normal
-                 || data.semantic_provides[1] != ShaderCodeModuleSemantic::Tangent)
+                 || data.semantic_provides[0] != GlslModuleSemantic::Normal
+                 || data.semantic_provides[1] != GlslModuleSemantic::Tangent)
                     result.diagnostics.emplace_back("full-metadata provide mismatch");
                 if (data.texture_reference_requirements.GetCount() != 1
                  || !data.texture_reference_requirements[0].texture_name
@@ -7494,24 +7494,24 @@ namespace
             }
         }
 
-        expect_parse("// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::OK, "minimal");
-        expect_parse("void main() {}\n", ShaderCodeModuleParseResult::Skipped, "no-metadata");
-        expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::MissingBegin, "missing-begin");
-        expect_parse("// @ulre begin\n// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::DuplicateBegin, "duplicate-begin");
-        expect_parse("// @ulre begin\n// @ulre name x\n", ShaderCodeModuleParseResult::MissingEnd, "missing-end");
-        expect_parse("// @ulre begin\n// @ulre nope 1\n// @ulre end\n", ShaderCodeModuleParseResult::UnknownDirective, "unknown-directive");
-        expect_parse("// @ulre begin\n// @ulre name a\n// @ulre name b\n// @ulre end\n", ShaderCodeModuleParseResult::DuplicateDirective, "duplicate-directive");
-        expect_parse("// @ulre begin\n// @ulre kind\n// @ulre end\n", ShaderCodeModuleParseResult::MissingDirectiveArgument, "missing-argument");
-        expect_parse("// @ulre begin\n// @ulre kind NoSuchKind\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidKind, "invalid-kind");
-        expect_parse("// @ulre begin\n// @ulre provide NoSuchSemantic\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidSemantic, "invalid-semantic");
-        expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidSource, "invalid-source");
-        expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
-        expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumber, "invalid-number");
-        expect_parse("// @ulre begin\n// @ulre texture_reference invalid-name Fragment\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidResource, "invalid-texture-reference");
-        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", ShaderCodeModuleParseResult::UnknownDirective, "conflicts-directive-removed");
+        expect_parse("// @ulre begin\n// @ulre end\n", GlslModuleParseResult::OK, "minimal");
+        expect_parse("void main() {}\n", GlslModuleParseResult::Skipped, "no-metadata");
+        expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", GlslModuleParseResult::MissingBegin, "missing-begin");
+        expect_parse("// @ulre begin\n// @ulre begin\n// @ulre end\n", GlslModuleParseResult::DuplicateBegin, "duplicate-begin");
+        expect_parse("// @ulre begin\n// @ulre name x\n", GlslModuleParseResult::MissingEnd, "missing-end");
+        expect_parse("// @ulre begin\n// @ulre nope 1\n// @ulre end\n", GlslModuleParseResult::UnknownDirective, "unknown-directive");
+        expect_parse("// @ulre begin\n// @ulre name a\n// @ulre name b\n// @ulre end\n", GlslModuleParseResult::DuplicateDirective, "duplicate-directive");
+        expect_parse("// @ulre begin\n// @ulre kind\n// @ulre end\n", GlslModuleParseResult::MissingDirectiveArgument, "missing-argument");
+        expect_parse("// @ulre begin\n// @ulre kind NoSuchKind\n// @ulre end\n", GlslModuleParseResult::InvalidKind, "invalid-kind");
+        expect_parse("// @ulre begin\n// @ulre provide NoSuchSemantic\n// @ulre end\n", GlslModuleParseResult::InvalidSemantic, "invalid-semantic");
+        expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", GlslModuleParseResult::InvalidSource, "invalid-source");
+        expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", GlslModuleParseResult::InvalidNumericClass, "invalid-numclass");
+        expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", GlslModuleParseResult::InvalidNumber, "invalid-number");
+        expect_parse("// @ulre begin\n// @ulre texture_reference invalid-name Fragment\n// @ulre end\n", GlslModuleParseResult::InvalidResource, "invalid-texture-reference");
+        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", GlslModuleParseResult::UnknownDirective, "conflicts-directive-removed");
 
         // Registry scan of the real ShaderLibrary directory.
-        ShaderCodeModuleRegistry registry;
+        GlslModuleRegistry registry;
 
         int file_count = 0;
         int error_count = 0;
@@ -7530,29 +7530,29 @@ namespace
             // 超薄架构阶段二之二：新增 ntb_none 空对象（81 → 82）。
             // 顶点色统一阶段：新增 s1_color_default 空对象（82 → 83）。
             // 网格阶段收口 Layer 2a：新增 s1_stream_defaults 空对象（83 → 84）。
-            // 计数常量已收敛到 `kShaderCodeModuleCount`（文件顶部），增删模块时
+            // 计数常量已收敛到 `kGlslModuleCount`（文件顶部），增删模块时
             // 只改那一处并在此追加一行理由。
-            if (file_count != kShaderCodeModuleCount)
+            if (file_count != kGlslModuleCount)
                 result.diagnostics.emplace_back("LoadDirectory expected "
-                    + std::to_string(kShaderCodeModuleCount)
+                    + std::to_string(kGlslModuleCount)
                     + " file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            if (registry.GetCount() != kShaderCodeModuleCount)
+            if (registry.GetCount() != kGlslModuleCount)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
 
-            ShaderCodeModuleMetadataValidationDiagnostic metadata_diagnostic{};
-            if (!ValidateShaderCodeModuleRegistryMetadata(
+            GlslModuleMetadataValidationDiagnostic metadata_diagnostic{};
+            if (!ValidateGlslModuleRegistryMetadata(
                     registry, metadata_diagnostic))
             {
                 result.diagnostics.emplace_back(
                     "formal metadata validation failed: error="
                     + std::string(
-                        GetShaderCodeModuleMetadataValidationErrorName(
+                        GetGlslModuleMetadataValidationErrorName(
                             metadata_diagnostic.error))
                     + " module="
                     + std::string(metadata_diagnostic.module_name.c_str())
@@ -7565,9 +7565,9 @@ namespace
         const auto *lift = registry.FindByName("s2_lift_xy0");
         if (!lift)
             result.diagnostics.emplace_back("s2_lift_xy0 not found by name");
-        else if (lift->kind != ShaderCodeModuleKind::Position
+        else if (lift->kind != GlslModuleKind::Position
               || lift->semantic_requirement_count != 1
-              || lift->semantic_requirements[0].semantic != ShaderCodeModuleSemantic::Position
+              || lift->semantic_requirements[0].semantic != GlslModuleSemantic::Position
               || lift->semantic_requirements[0].min_component_count != 2
               || lift->semantic_requirements[0].max_component_count != 2)
             result.diagnostics.emplace_back("s2_lift_xy0 capability metadata mismatch");
@@ -7575,22 +7575,22 @@ namespace
         const auto *surface_interface = registry.FindByName("surface_interface");
         if (!surface_interface)
             result.diagnostics.emplace_back("surface_interface not found by name");
-        else if (surface_interface->kind != ShaderCodeModuleKind::Shared)
+        else if (surface_interface->kind != GlslModuleKind::Shared)
             result.diagnostics.emplace_back("surface_interface kind mismatch");
 
         // 单趟发射改造（2026-09）：compositor 骨架降级为发射器常量，
         // skeleton key 为 "forward_surface" / "depth_only" / "forward_sky"。
 
         const auto *forward_input = registry.FindByName("forward_lighting");
-        if (!forward_input || forward_input->kind != ShaderCodeModuleKind::Utility)
+        if (!forward_input || forward_input->kind != GlslModuleKind::Utility)
             result.diagnostics.emplace_back("forward_lighting input assembly module is missing or has wrong kind");
 
         const auto *forward_algorithm = registry.FindByName("forward_pbr");
-        if (!forward_algorithm || forward_algorithm->kind != ShaderCodeModuleKind::Utility)
+        if (!forward_algorithm || forward_algorithm->kind != GlslModuleKind::Utility)
             result.diagnostics.emplace_back("forward_pbr lighting algorithm module is missing or has wrong kind");
 
         const auto *alternate_algorithm = registry.FindByName("forward_flat");
-        if (!alternate_algorithm || alternate_algorithm->kind != ShaderCodeModuleKind::Utility)
+        if (!alternate_algorithm || alternate_algorithm->kind != GlslModuleKind::Utility)
             result.diagnostics.emplace_back("forward_flat alternate lighting algorithm is missing or has wrong kind");
 
         // 超薄架构阶段一：直接光拆成两条正交轴，每条轴都必须有“真实实现 + 空对象”。
@@ -7605,7 +7605,7 @@ namespace
                     std::string(name) + " slot module is missing");
                 return;
             }
-            if (module->kind != ShaderCodeModuleKind::Utility)
+            if (module->kind != GlslModuleKind::Utility)
                 result.diagnostics.emplace_back(
                     std::string(name) + " kind mismatch (expected Utility)");
             if (std::strcmp(GetShaderModuleSlotRoleName(module->slot_role),
@@ -7634,36 +7634,36 @@ namespace
         return result;
     }
 
-    static GateResult RunShaderCodeModuleMetadataValidationCase()
+    static GateResult RunGlslModuleMetadataValidationCase()
     {
         GateResult result;
         result.name = "I1.glsl-code-module-metadata-validation";
 
         const auto make_definition = [](
-            const char *name) -> ShaderCodeModuleDefinition
+            const char *name) -> GlslModuleDefinition
         {
-            ShaderCodeModuleDefinition definition{};
+            GlslModuleDefinition definition{};
             definition.name = name;
             definition.glsl_code = "// metadata validation";
-            definition.kind = ShaderCodeModuleKind::Utility;
+            definition.kind = GlslModuleKind::Utility;
             return definition;
         };
 
         {
-            const ShaderCodeModuleSemantic duplicate_provides[] =
+            const GlslModuleSemantic duplicate_provides[] =
             {
-                ShaderCodeModuleSemantic::Position,
-                ShaderCodeModuleSemantic::Position
+                GlslModuleSemantic::Position,
+                GlslModuleSemantic::Position
             };
-            ShaderCodeModuleDefinition definition =
+            GlslModuleDefinition definition =
                 make_definition("duplicate_provide");
             definition.semantic_provides = duplicate_provides;
             definition.semantic_provide_count = 2;
 
-            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
-            if (ValidateShaderCodeModuleMetadata(definition, diagnostic)
+            GlslModuleMetadataValidationDiagnostic diagnostic{};
+            if (ValidateGlslModuleMetadata(definition, diagnostic)
              || diagnostic.error
-                    != ShaderCodeModuleMetadataValidationError::DuplicateProvide)
+                    != GlslModuleMetadataValidationError::DuplicateProvide)
             {
                 result.diagnostics.emplace_back(
                     "duplicate provide metadata must be rejected");
@@ -7673,15 +7673,15 @@ namespace
         {
             // 依赖环的权威判据是装配期 DFS（`BuildShaderCodeResourceManifest`），
             // 不是元数据静态校验 —— 元数据层不再重复检测。
-            ShaderCodeModuleDefinition first =
+            GlslModuleDefinition first =
                 make_definition("cycle_first");
-            ShaderCodeModuleDefinition second =
+            GlslModuleDefinition second =
                 make_definition("cycle_second");
-            const ShaderCodeModuleDependency first_dependencies[] =
+            const GlslModuleDependency first_dependencies[] =
             {
                 {second.name}
             };
-            const ShaderCodeModuleDependency second_dependencies[] =
+            const GlslModuleDependency second_dependencies[] =
             {
                 {first.name}
             };
@@ -7690,7 +7690,7 @@ namespace
             second.dependencies = second_dependencies;
             second.dependency_count = 1;
 
-            ShaderCodeModuleRegistry registry;
+            GlslModuleRegistry registry;
             ShaderCodeResourceManifest manifest{};
             const char *roots[] = {first.name};
             if (!registry.Register(first)
@@ -7704,16 +7704,16 @@ namespace
             }
 
             const char *missing_roots[] = {"cycle_first_missing_probe"};
-            ShaderCodeModuleDefinition orphan =
+            GlslModuleDefinition orphan =
                 make_definition(missing_roots[0]);
-            const ShaderCodeModuleDependency orphan_dependencies[] =
+            const GlslModuleDependency orphan_dependencies[] =
             {
                 {"no_such_module"}
             };
             orphan.dependencies = orphan_dependencies;
             orphan.dependency_count = 1;
 
-            ShaderCodeModuleRegistry orphan_registry;
+            GlslModuleRegistry orphan_registry;
             ShaderCodeResourceManifest orphan_manifest{};
             if (!orphan_registry.Register(orphan)
              || BuildShaderCodeResourceManifest(
@@ -7727,26 +7727,26 @@ namespace
         }
 
         {
-            const ShaderCodeModuleSemantic position[] =
+            const GlslModuleSemantic position[] =
             {
-                ShaderCodeModuleSemantic::Position
+                GlslModuleSemantic::Position
             };
-            ShaderCodeModuleDefinition first =
+            GlslModuleDefinition first =
                 make_definition("ambiguous_first");
-            ShaderCodeModuleDefinition second =
+            GlslModuleDefinition second =
                 make_definition("ambiguous_second");
             first.semantic_provides = position;
             first.semantic_provide_count = 1;
             second.semantic_provides = position;
             second.semantic_provide_count = 1;
 
-            ShaderCodeModuleRegistry registry;
-            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
+            GlslModuleRegistry registry;
+            GlslModuleMetadataValidationDiagnostic diagnostic{};
             if (!registry.Register(first)
              || !registry.Register(second)
-             || ValidateShaderCodeModuleRegistryMetadata(registry, diagnostic)
+             || ValidateGlslModuleRegistryMetadata(registry, diagnostic)
              || diagnostic.error
-                    != ShaderCodeModuleMetadataValidationError::
+                    != GlslModuleMetadataValidationError::
                         AmbiguousProviderPriority)
             {
                 result.diagnostics.emplace_back(
@@ -7755,12 +7755,12 @@ namespace
         }
 
         {
-            ShaderCodeModuleDefinition base =
+            GlslModuleDefinition base =
                 make_definition("metadata_hash");
-            ShaderCodeModuleDefinition changed = base;
+            GlslModuleDefinition changed = base;
             changed.priority = 10;
-            if (GetShaderCodeModuleDefinitionHash(base)
-                == GetShaderCodeModuleDefinitionHash(changed))
+            if (GetGlslModuleDefinitionHash(base)
+                == GetGlslModuleDefinitionHash(changed))
             {
                 result.diagnostics.emplace_back(
                     "module metadata changes must affect definition hash");
@@ -8665,7 +8665,7 @@ void main()
         result.name = "MI.module-invariants";
 
         // 1. Real ShaderLibrary scan: names unique, stable IDs unique.
-        ShaderCodeModuleRegistry registry;
+        GlslModuleRegistry registry;
         int file_count = 0;
         int error_count = 0;
         if (!registry.LoadDirectory(
@@ -8728,7 +8728,7 @@ void main()
         GateResult result;
         result.name = "MI.sampler-reference-contract";
 
-        ShaderCodeModuleRegistry registry;
+        GlslModuleRegistry registry;
         int file_count = 0;
         int error_count = 0;
         if (!registry.LoadDirectory(
@@ -8756,7 +8756,7 @@ void main()
             return result;
         }
 
-        const auto declares = [](const ShaderCodeModuleDefinition &definition,
+        const auto declares = [](const GlslModuleDefinition &definition,
                                  const char *preset)
         {
             for (uint32_t i = 0;
@@ -8859,7 +8859,7 @@ void main()
         // 3. 声明→材质校验器：required 缺失必须失败并报出名字，optional 放行。
         {
             ShaderCodeResourceManifest manifest;
-            ShaderCodeModuleSamplerReferenceRequirement required_sampler;
+            GlslModuleSamplerReferenceRequirement required_sampler;
             required_sampler.sampler_name = "Trilinear";
             required_sampler.required = true;
             if (manifest.sampler_references.Add(required_sampler) < 0)
@@ -8934,7 +8934,7 @@ void main()
                 "float x; // #include \"common/trailing.glsl\"\n";
 
             hgl::AnsiStringList paths;
-            const int collected = CollectShaderCodeModuleIncludePaths(
+            const int collected = CollectGlslModuleIncludePaths(
                 kProbe, static_cast<int>(sizeof(kProbe) - 1), paths);
 
             if (collected != 2 || paths.GetCount() != 2)
@@ -8947,7 +8947,7 @@ void main()
                     "include scanner collected unexpected paths");
         }
 
-        ShaderCodeModuleRegistry registry;
+        GlslModuleRegistry registry;
         int file_count = 0;
         int error_count = 0;
         if (!registry.LoadDirectory(
@@ -10962,7 +10962,7 @@ void main()
         // 手抄一遍只会给「抄漏」留机会：漏了 UV0，`ResolveVertexABI` 直接失败
         // （实测 UnlitTexture 就是这么挂的），而不是给出清晰的诊断。
         {
-            hgl::ValueArray<ShaderCodeModuleSemanticRequirement> requirements;
+            hgl::ValueArray<GlslModuleSemanticRequirement> requirements;
             if (!GetMaterialDomainVertexSemanticRequirements(
                     definition.domain, requirements))
             {
@@ -10989,9 +10989,9 @@ void main()
 
             for (const SemanticFormat &entry : kExtraSemantics)
             {
-                const ShaderCodeModuleSemantic wanted =
-                    GetShaderCodeModuleSemanticFromVertexSemantic(entry.semantic);
-                if (wanted == ShaderCodeModuleSemantic::Unknown)
+                const GlslModuleSemantic wanted =
+                    GetGlslModuleSemanticFromVertexSemantic(entry.semantic);
+                if (wanted == GlslModuleSemantic::Unknown)
                     continue;
 
                 bool required = false;
@@ -11985,8 +11985,8 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunMaterialLibraryContractCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
-    if (run_glsl) results.push_back(RunShaderCodeModuleFileCase());
-    if (run_glsl) results.push_back(RunShaderCodeModuleMetadataValidationCase());
+    if (run_glsl) results.push_back(RunGlslModuleFileCase());
+    if (run_glsl) results.push_back(RunGlslModuleMetadataValidationCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_interface) results.push_back(RunDepthVaryingMaskParityCase());
     if (run_interface) results.push_back(RunCharQuadWorkgroupContractCase());

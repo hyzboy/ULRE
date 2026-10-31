@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/ShaderCodeModuleMetadata.h>
+#include <hgl/mtl/GlslModuleMetadata.h>
 
 #include <hgl/type/StrChar.h>
 
@@ -9,12 +9,12 @@ namespace hgl::graph::mtl
     namespace
     {
         bool SetMetadataFailure(
-            ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic,
-            const ShaderCodeModuleMetadataValidationError error,
+            GlslModuleMetadataValidationDiagnostic &out_diagnostic,
+            const GlslModuleMetadataValidationError error,
             const char *module_name,
             const char *related_module_name = nullptr,
-            const ShaderCodeModuleSemantic semantic =
-                ShaderCodeModuleSemantic::Unknown) noexcept
+            const GlslModuleSemantic semantic =
+                GlslModuleSemantic::Unknown) noexcept
         {
             out_diagnostic.error = error;
             out_diagnostic.module_name = module_name ? module_name : "";
@@ -30,13 +30,13 @@ namespace hgl::graph::mtl
         }
 
         bool IsValidRequirement(
-            const ShaderCodeModuleSemanticRequirement &requirement) noexcept
+            const GlslModuleSemanticRequirement &requirement) noexcept
         {
             return requirement.source >=
-                    ShaderCodeModuleCapabilitySource::GeometryAttribute
+                    GlslModuleCapabilitySource::GeometryAttribute
                 && requirement.source <=
-                    ShaderCodeModuleCapabilitySource::ProducedSemantic
-                && requirement.semantic != ShaderCodeModuleSemantic::Unknown
+                    GlslModuleCapabilitySource::ProducedSemantic
+                && requirement.semantic != GlslModuleSemantic::Unknown
                 && requirement.numeric_class_mask != 0
                 && requirement.min_component_count <= 4
                 && requirement.max_component_count <= 4
@@ -52,18 +52,18 @@ namespace hgl::graph::mtl
         }
 
         bool IsProviderCandidate(
-            const ShaderCodeModuleDefinition &definition) noexcept
+            const GlslModuleDefinition &definition) noexcept
         {
             return definition.semantic_provide_count > 0
-                && definition.kind != ShaderCodeModuleKind::Surface
-                && definition.kind != ShaderCodeModuleKind::FragmentShader;
+                && definition.kind != GlslModuleKind::Surface
+                && definition.kind != GlslModuleKind::FragmentShader;
         }
     }
 
-    const char *GetShaderCodeModuleMetadataValidationErrorName(
-        const ShaderCodeModuleMetadataValidationError error) noexcept
+    const char *GetGlslModuleMetadataValidationErrorName(
+        const GlslModuleMetadataValidationError error) noexcept
     {
-#define HGL_ERROR(name) case ShaderCodeModuleMetadataValidationError::name: return #name;
+#define HGL_ERROR(name) case GlslModuleMetadataValidationError::name: return #name;
         switch (error)
         {
             HGL_GLSL_CODE_MODULE_METADATA_VALIDATION_ERROR_LIST
@@ -72,17 +72,17 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    bool ValidateShaderCodeModuleMetadata(
-        const ShaderCodeModuleDefinition &definition,
-        ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic) noexcept
+    bool ValidateGlslModuleMetadata(
+        const GlslModuleDefinition &definition,
+        GlslModuleMetadataValidationDiagnostic &out_diagnostic) noexcept
     {
         out_diagnostic = {};
         out_diagnostic.module_name = definition.name ? definition.name : "";
 
-        if (!IsValidShaderCodeModuleDefinition(definition))
+        if (!IsValidGlslModuleDefinition(definition))
             return SetMetadataFailure(
                 out_diagnostic,
-                ShaderCodeModuleMetadataValidationError::InvalidDefinition,
+                GlslModuleMetadataValidationError::InvalidDefinition,
                 definition.name);
 
         if (!HasValidArray(
@@ -101,7 +101,7 @@ namespace hgl::graph::mtl
         {
             return SetMetadataFailure(
                 out_diagnostic,
-                ShaderCodeModuleMetadataValidationError::InvalidArray,
+                GlslModuleMetadataValidationError::InvalidArray,
                 definition.name);
         }
 
@@ -109,26 +109,26 @@ namespace hgl::graph::mtl
              i < definition.semantic_requirement_count;
              ++i)
         {
-            const ShaderCodeModuleSemanticRequirement &requirement =
+            const GlslModuleSemanticRequirement &requirement =
                 definition.semantic_requirements[i];
             if (!IsValidRequirement(requirement))
                 return SetMetadataFailure(
                     out_diagnostic,
-                    ShaderCodeModuleMetadataValidationError::InvalidRequirement,
+                    GlslModuleMetadataValidationError::InvalidRequirement,
                     definition.name,
                     nullptr,
                     requirement.semantic);
 
             for (uint32 j = 0; j < i; ++j)
             {
-                const ShaderCodeModuleSemanticRequirement &other =
+                const GlslModuleSemanticRequirement &other =
                     definition.semantic_requirements[j];
                 if (requirement.source == other.source
                  && requirement.semantic == other.semantic)
                 {
                     return SetMetadataFailure(
                         out_diagnostic,
-                        ShaderCodeModuleMetadataValidationError::
+                        GlslModuleMetadataValidationError::
                             DuplicateRequirement,
                         definition.name,
                         nullptr,
@@ -139,12 +139,12 @@ namespace hgl::graph::mtl
 
         for (uint32 i = 0; i < definition.semantic_provide_count; ++i)
         {
-            const ShaderCodeModuleSemantic semantic =
+            const GlslModuleSemantic semantic =
                 definition.semantic_provides[i];
-            if (semantic == ShaderCodeModuleSemantic::Unknown)
+            if (semantic == GlslModuleSemantic::Unknown)
                 return SetMetadataFailure(
                     out_diagnostic,
-                    ShaderCodeModuleMetadataValidationError::InvalidRequirement,
+                    GlslModuleMetadataValidationError::InvalidRequirement,
                     definition.name);
 
             for (uint32 j = 0; j < i; ++j)
@@ -152,7 +152,7 @@ namespace hgl::graph::mtl
                 if (semantic == definition.semantic_provides[j])
                     return SetMetadataFailure(
                         out_diagnostic,
-                        ShaderCodeModuleMetadataValidationError::DuplicateProvide,
+                        GlslModuleMetadataValidationError::DuplicateProvide,
                         definition.name,
                         nullptr,
                         semantic);
@@ -164,13 +164,13 @@ namespace hgl::graph::mtl
         for (uint32 i = 0; i < dependency_count; ++i)
         {
             // 内联访问：边界由循环条件保证（i 恒 < dependency_count）
-            const ShaderCodeModuleDependency &dependency =
+            const GlslModuleDependency &dependency =
                 definition.dependencies[i];
 
             if (SameName(dependency.module_name, definition.name))
                 return SetMetadataFailure(
                     out_diagnostic,
-                    ShaderCodeModuleMetadataValidationError::SelfDependency,
+                    GlslModuleMetadataValidationError::SelfDependency,
                     definition.name,
                     dependency.module_name);
 
@@ -181,7 +181,7 @@ namespace hgl::graph::mtl
                 {
                     return SetMetadataFailure(
                         out_diagnostic,
-                        ShaderCodeModuleMetadataValidationError::
+                        GlslModuleMetadataValidationError::
                             DuplicateDependency,
                         definition.name,
                         dependency.module_name);
@@ -192,9 +192,9 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool ValidateShaderCodeModuleRegistryMetadata(
-        const ShaderCodeModuleRegistry &registry,
-        ShaderCodeModuleMetadataValidationDiagnostic &out_diagnostic) noexcept
+    bool ValidateGlslModuleRegistryMetadata(
+        const GlslModuleRegistry &registry,
+        GlslModuleMetadataValidationDiagnostic &out_diagnostic) noexcept
     {
         out_diagnostic = {};
 
@@ -202,10 +202,10 @@ namespace hgl::graph::mtl
         // 缺失依赖 / 环 / 缺失冲突目标由装配期负责（见头文件注释）。
         for (int index = 0; index < registry.GetCount(); ++index)
         {
-            const ShaderCodeModuleDefinition *definition =
+            const GlslModuleDefinition *definition =
                 registry.GetModuleByIndex(index);
             if (!definition
-             || !ValidateShaderCodeModuleMetadata(
+             || !ValidateGlslModuleMetadata(
                     *definition, out_diagnostic))
                 return false;
         }
@@ -214,7 +214,7 @@ namespace hgl::graph::mtl
              left_index < registry.GetCount();
              ++left_index)
         {
-            const ShaderCodeModuleDefinition *left =
+            const GlslModuleDefinition *left =
                 registry.GetModuleByIndex(left_index);
             if (!left || !IsProviderCandidate(*left))
                 continue;
@@ -223,7 +223,7 @@ namespace hgl::graph::mtl
                  right_index < registry.GetCount();
                  ++right_index)
             {
-                const ShaderCodeModuleDefinition *right =
+                const GlslModuleDefinition *right =
                     registry.GetModuleByIndex(right_index);
                 if (!right
                  || !IsProviderCandidate(*right)
@@ -243,7 +243,7 @@ namespace hgl::graph::mtl
                         {
                             return SetMetadataFailure(
                                 out_diagnostic,
-                                ShaderCodeModuleMetadataValidationError::
+                                GlslModuleMetadataValidationError::
                                     AmbiguousProviderPriority,
                                 left->name,
                                 right->name,

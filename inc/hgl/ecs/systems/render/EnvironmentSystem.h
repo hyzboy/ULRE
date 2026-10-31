@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
@@ -61,7 +61,7 @@ namespace hgl
             // 材质只声明表面（`material_source_module_name` / `ntb_module_name`），
             // 不再声明 ambient ⇒ 同一套 PBR 材质在任何环境下都能用。
             //
-            // `module_name` = ShaderCodeModuleRegistry 注册名（`@ulre name`）。
+            // `module_name` = GlslModuleRegistry 注册名（`@ulre name`）。
             // 空串 = 回到场景渲染模板默认 provider（`indirect_sky_ambient`）。
             // 返回 false = 环境管理不可用 / profile 无效（未做任何修改）。
             // ⚠ 换模块**必须**同时确认 `ambient_env` 已给有效句柄（IBL 模块采样它）：

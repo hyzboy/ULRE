@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 namespace hgl::graph::mtl {}
 
@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
     // 中间至少 3 字节 padding，其取值取决于栈上残留。声明键一旦吃到 padding，
     // 「同一输入」在不同调用路径下可能算出不同的键（缓存永不命中），更糟的是
     // 让键的语义变得不可解释。缓存键只能依赖语义字段。
-    // 同款处理见 ShaderCodeModule.h 的 ShaderCodeModuleSemanticRequirement。
+    // 同款处理见 GlslModule.h 的 GlslModuleSemanticRequirement。
     inline hgl::hash::FNV1aHasher64 &operator<<(
         hgl::hash::FNV1aHasher64 &h,
         const InterStageSemanticContractEntry &v) noexcept

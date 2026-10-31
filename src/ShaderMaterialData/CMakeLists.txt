@@ -4,7 +4,7 @@
 # ShaderCreateInfo 的纯数据成员、采样器预设表。它零 GLSL 文本发射、零 glslang，
 # 因此发行形态（ULRE_ENABLE_SHADERGEN=0）也照常链接。
 #
-# ShaderCodeModule* 与 ShaderCodeResourceManifest 是材质/着色器元数据，归本层；
+# GlslModule* 与 ShaderCodeResourceManifest 是材质/着色器元数据，归本层；
 # 物理阶段源解析、options 生成及 SPIR-V 编译则由 ULRE.ShaderProgramBuild 消费。
 # 跨界的唯一**构建行为**通道是 inc/hgl/mtl/ShaderProgramBuildBackend.h —— 这个接缝
 # 头的接口吃本层的材质定义 / 构建请求，所以它连同槽位 .cpp 都归本层。
@@ -25,14 +25,14 @@ set(SHADERMATERIALDATA_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialVertexVaryingConfig.h
     # ── GLSL code-module 描述、元数据与文件注册表（纯数据/资源闭包）──
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModule.h
-    ShaderCodeModule.cpp
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModuleFile.h
-    ShaderCodeModuleFile.cpp
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModuleMetadata.h
-    ShaderCodeModuleMetadata.cpp
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeModuleRegistry.h
-    ShaderCodeModuleRegistry.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/GlslModule.h
+    GlslModule.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/GlslModuleFile.h
+    GlslModuleFile.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/GlslModuleMetadata.h
+    GlslModuleMetadata.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/GlslModuleRegistry.h
+    GlslModuleRegistry.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCodeResourceManifest.h
     ShaderCodeResourceManifest.cpp
     # ── 表面领域契约（Fixed-Code Domain Shaders 的单一真源）──

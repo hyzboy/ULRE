@@ -14,10 +14,10 @@
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/GlslModule.h>
 #include <hgl/log/Log.h>
 #include <hgl/mtl/ShaderCacheRoot.h>
-#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/type/StdString.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/common/DebugChannel.h>
@@ -608,8 +608,8 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 static bool MaterialSourceRequiresMaterialDataRow(
     const char *module_name, bool &out_required) noexcept
 {
-    const ShaderCodeModuleDefinition *module =
-        GetShaderCodeModuleRegistry().FindByName(module_name);
+    const GlslModuleDefinition *module =
+        GetGlslModuleRegistry().FindByName(module_name);
     if (!module)
     {
         GLogError(u8"[StageSPVCompiler] Material source module not registered: %s",
@@ -620,11 +620,11 @@ static bool MaterialSourceRequiresMaterialDataRow(
     out_required = false;
     for (uint32 i = 0; i < module->semantic_requirement_count; ++i)
     {
-        const ShaderCodeModuleSemanticRequirement &requirement =
+        const GlslModuleSemanticRequirement &requirement =
             module->semantic_requirements[i];
 
-        if (requirement.source == ShaderCodeModuleCapabilitySource::Resource
-         && requirement.semantic == ShaderCodeModuleSemantic::MaterialData)
+        if (requirement.source == GlslModuleCapabilitySource::Resource
+         && requirement.semantic == GlslModuleSemantic::MaterialData)
         {
             out_required = true;
             break;

@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/ShaderCodeModuleFile.h>
+#include <hgl/mtl/GlslModuleFile.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/vk/VK.h>
 
@@ -183,19 +183,19 @@ namespace hgl::graph::mtl
             return out_mask != 0;
         }
 
-        ShaderCodeModuleSemantic ParseSemantic(const char *token) noexcept
+        GlslModuleSemantic ParseSemantic(const char *token) noexcept
         {
-            // T1：语义名字单一真源 ShaderCodeModule.h——此处不再维护平行 if-else 表。
-            ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
-            ParseShaderCodeModuleSemantic(token, semantic);
+            // T1：语义名字单一真源 GlslModule.h——此处不再维护平行 if-else 表。
+            GlslModuleSemantic semantic = GlslModuleSemantic::Unknown;
+            ParseGlslModuleSemantic(token, semantic);
             return semantic;    // 解析失败返回 Unknown（旧行为一致）
         }
 
-        bool ParseSource(const char *token, ShaderCodeModuleCapabilitySource &out_source) noexcept
+        bool ParseSource(const char *token, GlslModuleCapabilitySource &out_source) noexcept
         {
-            if (std::strcmp(token, "GeometryAttribute") == 0) out_source = ShaderCodeModuleCapabilitySource::GeometryAttribute;
-            else if (std::strcmp(token, "Resource") == 0) out_source = ShaderCodeModuleCapabilitySource::Resource;
-            else if (std::strcmp(token, "ProducedSemantic") == 0) out_source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
+            if (std::strcmp(token, "GeometryAttribute") == 0) out_source = GlslModuleCapabilitySource::GeometryAttribute;
+            else if (std::strcmp(token, "Resource") == 0) out_source = GlslModuleCapabilitySource::Resource;
+            else if (std::strcmp(token, "ProducedSemantic") == 0) out_source = GlslModuleCapabilitySource::ProducedSemantic;
             else return false;
             return true;
         }
@@ -220,15 +220,15 @@ namespace hgl::graph::mtl
                 part[length] = 0;
 
                 if (std::strcmp(part, "Float") == 0)
-                    mask |= uint32(ShaderCodeModuleNumericClass::Float);
+                    mask |= uint32(GlslModuleNumericClass::Float);
                 else if (std::strcmp(part, "SignedInteger") == 0)
-                    mask |= uint32(ShaderCodeModuleNumericClass::SignedInteger);
+                    mask |= uint32(GlslModuleNumericClass::SignedInteger);
                 else if (std::strcmp(part, "UnsignedInteger") == 0)
-                    mask |= uint32(ShaderCodeModuleNumericClass::UnsignedInteger);
+                    mask |= uint32(GlslModuleNumericClass::UnsignedInteger);
                 else if (std::strcmp(part, "Normalized") == 0)
-                    mask |= uint32(ShaderCodeModuleNumericClass::Normalized);
+                    mask |= uint32(GlslModuleNumericClass::Normalized);
                 else if (std::strcmp(part, "Packed") == 0)
-                    mask |= uint32(ShaderCodeModuleNumericClass::Packed);
+                    mask |= uint32(GlslModuleNumericClass::Packed);
                 else if (std::strcmp(part, "Any") == 0)
                     any_parsed = true;
                 else
@@ -243,7 +243,7 @@ namespace hgl::graph::mtl
                 return false;
 
             out_mask = any_parsed
-                ? uint32(ShaderCodeModuleNumericClass::Any)
+                ? uint32(GlslModuleNumericClass::Any)
                 : mask;
             return true;
         }
@@ -308,38 +308,38 @@ namespace hgl::graph::mtl
         }
     }
 
-    const char *GetShaderCodeModuleParseResultName(const ShaderCodeModuleParseResult result) noexcept
+    const char *GetGlslModuleParseResultName(const GlslModuleParseResult result) noexcept
     {
         switch (result)
         {
-            case ShaderCodeModuleParseResult::Skipped: return "Skipped";
-            case ShaderCodeModuleParseResult::OK: return "OK";
-            case ShaderCodeModuleParseResult::MissingBegin: return "MissingBegin";
-            case ShaderCodeModuleParseResult::DuplicateBegin: return "DuplicateBegin";
-            case ShaderCodeModuleParseResult::MissingEnd: return "MissingEnd";
-            case ShaderCodeModuleParseResult::UnknownDirective: return "UnknownDirective";
-            case ShaderCodeModuleParseResult::DuplicateDirective: return "DuplicateDirective";
-            case ShaderCodeModuleParseResult::MissingDirectiveArgument: return "MissingDirectiveArgument";
-            case ShaderCodeModuleParseResult::InvalidKind: return "InvalidKind";
-            case ShaderCodeModuleParseResult::InvalidSemantic: return "InvalidSemantic";
-            case ShaderCodeModuleParseResult::InvalidSource: return "InvalidSource";
-            case ShaderCodeModuleParseResult::InvalidNumericClass: return "InvalidNumericClass";
-            case ShaderCodeModuleParseResult::InvalidNumber: return "InvalidNumber";
-            case ShaderCodeModuleParseResult::InvalidResource: return "InvalidResource";
-            case ShaderCodeModuleParseResult::InvalidStage: return "InvalidStage";
-            case ShaderCodeModuleParseResult::InvalidSlotRole: return "InvalidSlotRole";
-            case ShaderCodeModuleParseResult::InvalidCapability: return "InvalidCapability";
-            case ShaderCodeModuleParseResult::InvalidDependency: return "InvalidDependency";
+            case GlslModuleParseResult::Skipped: return "Skipped";
+            case GlslModuleParseResult::OK: return "OK";
+            case GlslModuleParseResult::MissingBegin: return "MissingBegin";
+            case GlslModuleParseResult::DuplicateBegin: return "DuplicateBegin";
+            case GlslModuleParseResult::MissingEnd: return "MissingEnd";
+            case GlslModuleParseResult::UnknownDirective: return "UnknownDirective";
+            case GlslModuleParseResult::DuplicateDirective: return "DuplicateDirective";
+            case GlslModuleParseResult::MissingDirectiveArgument: return "MissingDirectiveArgument";
+            case GlslModuleParseResult::InvalidKind: return "InvalidKind";
+            case GlslModuleParseResult::InvalidSemantic: return "InvalidSemantic";
+            case GlslModuleParseResult::InvalidSource: return "InvalidSource";
+            case GlslModuleParseResult::InvalidNumericClass: return "InvalidNumericClass";
+            case GlslModuleParseResult::InvalidNumber: return "InvalidNumber";
+            case GlslModuleParseResult::InvalidResource: return "InvalidResource";
+            case GlslModuleParseResult::InvalidStage: return "InvalidStage";
+            case GlslModuleParseResult::InvalidSlotRole: return "InvalidSlotRole";
+            case GlslModuleParseResult::InvalidCapability: return "InvalidCapability";
+            case GlslModuleParseResult::InvalidDependency: return "InvalidDependency";
             default: return "Unknown";
         }
     }
 
-    ShaderCodeModuleParseResult ParseShaderCodeModuleFile(const char *content,
+    GlslModuleParseResult ParseGlslModuleFile(const char *content,
                                                       const int content_size,
-                                                      ShaderCodeModuleFileData &out_data) noexcept
+                                                      GlslModuleFileData &out_data) noexcept
     {
         if (!content || content_size <= 0)
-            return ShaderCodeModuleParseResult::Skipped;
+            return GlslModuleParseResult::Skipped;
 
         const char *end = content + content_size;
         const char *cursor = content;
@@ -372,75 +372,75 @@ namespace hgl::graph::mtl
                 if (!after_keyword || !token[0])
                 {
                     if (!in_block)
-                        return ShaderCodeModuleParseResult::MissingBegin;
-                    return ShaderCodeModuleParseResult::UnknownDirective;
+                        return GlslModuleParseResult::MissingBegin;
+                    return GlslModuleParseResult::UnknownDirective;
                 }
 
                 if (std::strcmp(token, "begin") == 0)
                 {
                     if (in_block)
-                        return ShaderCodeModuleParseResult::DuplicateBegin;
+                        return GlslModuleParseResult::DuplicateBegin;
                     in_block = true;
                 }
                 else if (std::strcmp(token, "end") == 0)
                 {
                     if (!in_block)
-                        return ShaderCodeModuleParseResult::MissingBegin;
+                        return GlslModuleParseResult::MissingBegin;
                     in_block = false;
                     saw_end = true;
                 }
                 else if (!in_block)
                 {
-                    return ShaderCodeModuleParseResult::MissingBegin;
+                    return GlslModuleParseResult::MissingBegin;
                 }
                 else if (std::strcmp(token, "name") == 0)
                 {
                     if (!out_data.name.IsEmpty())
-                        return ShaderCodeModuleParseResult::DuplicateDirective;
+                        return GlslModuleParseResult::DuplicateDirective;
 
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
+                        return GlslModuleParseResult::MissingDirectiveArgument;
                     out_data.name = AnsiString(token);
                 }
                 else if (std::strcmp(token, "kind") == 0)
                 {
                     if (saw_kind)
-                        return ShaderCodeModuleParseResult::DuplicateDirective;
+                        return GlslModuleParseResult::DuplicateDirective;
 
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
+                        return GlslModuleParseResult::MissingDirectiveArgument;
 
-                    ShaderCodeModuleKind kind;
-                    if (!ParseShaderCodeModuleKind(token, kind))
-                        return ShaderCodeModuleParseResult::InvalidKind;
+                    GlslModuleKind kind;
+                    if (!ParseGlslModuleKind(token, kind))
+                        return GlslModuleParseResult::InvalidKind;
                     out_data.kind = kind;
                     saw_kind = true;
                 }
                 else if (std::strcmp(token, "priority") == 0)
                 {
                     if (saw_priority)
-                        return ShaderCodeModuleParseResult::DuplicateDirective;
+                        return GlslModuleParseResult::DuplicateDirective;
 
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
+                        return GlslModuleParseResult::MissingDirectiveArgument;
 
                     int value = 0;
                     if (!ParseSignedInt(token, value))
-                        return ShaderCodeModuleParseResult::InvalidNumber;
+                        return GlslModuleParseResult::InvalidNumber;
                     out_data.priority = value;
                     saw_priority = true;
                 }
                 else if (std::strcmp(token, "slot") == 0)
                 {
                     if (out_data.slot_role != ShaderModuleSlotRole::Unknown)
-                        return ShaderCodeModuleParseResult::DuplicateDirective;
+                        return GlslModuleParseResult::DuplicateDirective;
                     const char *next =
                         ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !ParseSlotRole(token, out_data.slot_role))
-                        return ShaderCodeModuleParseResult::InvalidSlotRole;
+                        return GlslModuleParseResult::InvalidSlotRole;
                 }
                 else if (std::strcmp(token, "provides_capability") == 0
                       || std::strcmp(token, "requires_capability") == 0)
@@ -451,34 +451,34 @@ namespace hgl::graph::mtl
                     const char *next =
                         ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !ParseCapabilityMask(token, capabilities))
-                        return ShaderCodeModuleParseResult::InvalidCapability;
+                        return GlslModuleParseResult::InvalidCapability;
                     uint32 &target =
                         provides
                             ? out_data.provided_capabilities
                             : out_data.required_capabilities;
                     if (target != 0)
-                        return ShaderCodeModuleParseResult::DuplicateDirective;
+                        return GlslModuleParseResult::DuplicateDirective;
                     target = capabilities;
                 }
                 else if (std::strcmp(token, "texture_reference") == 0)
                 {
-                    ShaderCodeModuleTextureReferenceRequirement
+                    GlslModuleTextureReferenceRequirement
                         requirement;
                     const char *next =
                         ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !IsValidMaterialTextureName(token))
-                        return ShaderCodeModuleParseResult::InvalidResource;
+                        return GlslModuleParseResult::InvalidResource;
 
                     AnsiString *texture_name =
                         out_data.texture_reference_name_storage.Create();
                     if (!texture_name)
-                        return ShaderCodeModuleParseResult::InvalidResource;
+                        return GlslModuleParseResult::InvalidResource;
                     *texture_name = token;
                     requirement.texture_name = texture_name->c_str();
 
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseStageFlags(token, requirement.stage_flags))
-                        return ShaderCodeModuleParseResult::InvalidStage;
+                        return GlslModuleParseResult::InvalidStage;
 
                     while ((next =
                                 ReadToken(next, line_end, token, sizeof(token)))
@@ -488,23 +488,23 @@ namespace hgl::graph::mtl
                                 token,
                                 requirement.required,
                                 requirement.allow_fallback))
-                            return ShaderCodeModuleParseResult::InvalidResource;
+                            return GlslModuleParseResult::InvalidResource;
                     }
                     out_data.texture_reference_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "sampler_reference") == 0)
                 {
                     // <sampler-preset-name> [required|optional]
-                    ShaderCodeModuleSamplerReferenceRequirement requirement;
+                    GlslModuleSamplerReferenceRequirement requirement;
                     const char *next =
                         ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !IsValidMaterialTextureName(token))
-                        return ShaderCodeModuleParseResult::InvalidResource;
+                        return GlslModuleParseResult::InvalidResource;
 
                     AnsiString *sampler_name =
                         out_data.sampler_reference_name_storage.Create();
                     if (!sampler_name)
-                        return ShaderCodeModuleParseResult::InvalidResource;
+                        return GlslModuleParseResult::InvalidResource;
                     *sampler_name = token;
                     requirement.sampler_name = sampler_name->c_str();
 
@@ -514,34 +514,34 @@ namespace hgl::graph::mtl
                         if (std::strcmp(token, "optional") == 0)
                             requirement.required = false;
                         else if (std::strcmp(token, "required") != 0)
-                            return ShaderCodeModuleParseResult::InvalidResource;
+                            return GlslModuleParseResult::InvalidResource;
                     }
                     out_data.sampler_reference_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "require") == 0)
                 {
-                    ShaderCodeModuleSemanticRequirement requirement;
+                    GlslModuleSemanticRequirement requirement;
 
                     // <source> <semantic> [<numclass> [<min> [<max>]]]
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
+                        return GlslModuleParseResult::MissingDirectiveArgument;
                     if (!ParseSource(token, requirement.source))
-                        return ShaderCodeModuleParseResult::InvalidSource;
+                        return GlslModuleParseResult::InvalidSource;
 
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
+                        return GlslModuleParseResult::MissingDirectiveArgument;
                     requirement.semantic = ParseSemantic(token);
-                    if (requirement.semantic == ShaderCodeModuleSemantic::Unknown)
-                        return ShaderCodeModuleParseResult::InvalidSemantic;
+                    if (requirement.semantic == GlslModuleSemantic::Unknown)
+                        return GlslModuleParseResult::InvalidSemantic;
 
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (next && token[0])
                     {
                         uint32 mask = 0;
                         if (!ParseNumericClassMask(token, mask))
-                            return ShaderCodeModuleParseResult::InvalidNumericClass;
+                            return GlslModuleParseResult::InvalidNumericClass;
                         requirement.numeric_class_mask = mask;
 
                         next = ReadToken(next, line_end, token, sizeof(token));
@@ -549,7 +549,7 @@ namespace hgl::graph::mtl
                         {
                             uint32 min_components = 0;
                             if (!ParseUnsignedInt(token, min_components))
-                                return ShaderCodeModuleParseResult::InvalidNumber;
+                                return GlslModuleParseResult::InvalidNumber;
                             requirement.min_component_count = uint8(min_components);
 
                             next = ReadToken(next, line_end, token, sizeof(token));
@@ -557,7 +557,7 @@ namespace hgl::graph::mtl
                             {
                                 uint32 max_components = 0;
                                 if (!ParseUnsignedInt(token, max_components))
-                                    return ShaderCodeModuleParseResult::InvalidNumber;
+                                    return GlslModuleParseResult::InvalidNumber;
                                 requirement.max_component_count = uint8(max_components);
                             }
                         }
@@ -569,24 +569,24 @@ namespace hgl::graph::mtl
                 {
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
+                        return GlslModuleParseResult::MissingDirectiveArgument;
 
-                    const ShaderCodeModuleSemantic semantic = ParseSemantic(token);
-                    if (semantic == ShaderCodeModuleSemantic::Unknown)
-                        return ShaderCodeModuleParseResult::InvalidSemantic;
+                    const GlslModuleSemantic semantic = ParseSemantic(token);
+                    if (semantic == GlslModuleSemantic::Unknown)
+                        return GlslModuleParseResult::InvalidSemantic;
                     out_data.semantic_provides.Add(semantic);
                 }
                 else if (std::strcmp(token, "uses") == 0)
                 {
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
+                        return GlslModuleParseResult::MissingDirectiveArgument;
 
                     out_data.pending_module_requirements.Add(AnsiString(token));
                 }
                 else
                 {
-                    return ShaderCodeModuleParseResult::UnknownDirective;
+                    return GlslModuleParseResult::UnknownDirective;
                 }
             }
 
@@ -594,15 +594,15 @@ namespace hgl::graph::mtl
         }
 
         if (!saw_any_ulre)
-            return ShaderCodeModuleParseResult::Skipped;
+            return GlslModuleParseResult::Skipped;
 
         if (in_block)
-            return ShaderCodeModuleParseResult::MissingEnd;
+            return GlslModuleParseResult::MissingEnd;
 
-        return ShaderCodeModuleParseResult::OK;
+        return GlslModuleParseResult::OK;
     }
 
-    int CollectShaderCodeModuleIncludePaths(const char *content,
+    int CollectGlslModuleIncludePaths(const char *content,
                                            const int content_size,
                                            AnsiStringList &out_paths) noexcept
     {

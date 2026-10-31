@@ -606,7 +606,7 @@ namespace hgl::graph::mtl
 
     bool GetMaterialDomainVertexSemanticRequirements(
         const MaterialDomain domain,
-        ValueArray<ShaderCodeModuleSemanticRequirement> &out) noexcept
+        ValueArray<GlslModuleSemanticRequirement> &out) noexcept
     {
         out.Clear();
 
@@ -623,8 +623,8 @@ namespace hgl::graph::mtl
 
             // 契约位里存在、但模块语义表没有对应项的（AO / Rotation）不能变成
             // 一条需求——那会生成一条语义为 Unknown 的垃圾需求。当前无领域使用。
-            if (GetShaderCodeModuleSemanticFromVertexSemantic(semantic)
-                == ShaderCodeModuleSemantic::Unknown)
+            if (GetGlslModuleSemanticFromVertexSemantic(semantic)
+                == GlslModuleSemantic::Unknown)
                 continue;
 
             out.Add(MakeMaterialVertexSemanticRequirement(semantic));
@@ -711,9 +711,9 @@ namespace hgl::graph::mtl
         uint32 declared_mask = 0;
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
         {
-            const ShaderCodeModuleSemantic semantic =
+            const GlslModuleSemantic semantic =
                 definition.vertex_semantic_requirements[i].semantic;
-            const VertexSemantic mapped = GetVertexSemanticFromShaderCodeModuleSemantic(semantic);
+            const VertexSemantic mapped = GetVertexSemanticFromGlslModuleSemantic(semantic);
             if (mapped != VertexSemantic::Unknown)
                 declared_mask |= MaterialDomainSemanticBit(mapped);
         }

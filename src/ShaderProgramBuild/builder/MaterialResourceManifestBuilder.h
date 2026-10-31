@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /// MaterialResourceManifestBuilder.h — 材质 code-module 资源清单构建（单一职责）
 ///
@@ -8,7 +8,7 @@
 /// viewport / sky / shadow 走 global_addresses，纹理与采样器走 bindless ⇒ 唯一集合 = bindless。
 
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
-#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/GlslModule.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
 #include <cstring>
@@ -29,7 +29,7 @@ namespace hgl::graph::mtl::resource_manifest_builder
         ShaderCodeResourceManifest &manifest,
         const char *const *extra_roots = nullptr,
         const uint32 extra_root_count = 0,
-        const ShaderCodeModuleRegistry *registry = nullptr)
+        const GlslModuleRegistry *registry = nullptr)
     {
         const char *roots[MaxShaderCodeResourceManifestCodeModules]{};
         uint32 root_count = 0;

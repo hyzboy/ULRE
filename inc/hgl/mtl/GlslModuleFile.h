@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/GlslModule.h>
 #include <hgl/type/String.h>
 #include <hgl/type/StringList.h>
 #include <hgl/type/ManagedArray.h>
@@ -14,7 +14,7 @@ namespace hgl::graph::mtl
      * Metadata lives in a `// @ulre begin ... // @ulre end` comment block near
      * the top of the file. Files without any `// @ulre` line are skipped.
      */
-    enum class ShaderCodeModuleParseResult : uint8
+    enum class GlslModuleParseResult : uint8
     {
         Skipped = 0,            // no @ulre metadata found; not a module file
         OK,
@@ -36,17 +36,17 @@ namespace hgl::graph::mtl
         InvalidDependency
     };
 
-    const char *GetShaderCodeModuleParseResultName(ShaderCodeModuleParseResult result) noexcept;
+    const char *GetGlslModuleParseResultName(GlslModuleParseResult result) noexcept;
 
     /**
      * Parsed data for one file-backed GLSL code module.
      *
-     * The embedded ShaderCodeModuleDefinition points into the sibling members
+     * The embedded GlslModuleDefinition points into the sibling members
      * (name / glsl_code / semantic arrays), so an instance must be stored at a
      * stable address (e.g. inside a ManagedArray) and its string/array members
      * must not be mutated after the definition pointers are taken.
      */
-    struct ShaderCodeModuleFileData
+    struct GlslModuleFileData
     {
         AnsiString name;
         AnsiString glsl_code;
@@ -60,25 +60,25 @@ namespace hgl::graph::mtl
         // by pass 2 after all files are registered. Names are the identity.
         AnsiStringList pending_module_requirements;
 
-        ValueArray<ShaderCodeModuleSemanticRequirement> semantic_requirements;
-        ValueArray<ShaderCodeModuleSemantic> semantic_provides;
-        ValueArray<ShaderCodeModuleTextureReferenceRequirement>
+        ValueArray<GlslModuleSemanticRequirement> semantic_requirements;
+        ValueArray<GlslModuleSemantic> semantic_provides;
+        ValueArray<GlslModuleTextureReferenceRequirement>
             texture_reference_requirements;
         ManagedArray<AnsiString> texture_reference_name_storage;
-        ValueArray<ShaderCodeModuleSamplerReferenceRequirement>
+        ValueArray<GlslModuleSamplerReferenceRequirement>
             sampler_reference_requirements;
         ManagedArray<AnsiString> sampler_reference_name_storage;
 
-        ShaderCodeModuleKind kind = ShaderCodeModuleKind::Shared;
+        GlslModuleKind kind = GlslModuleKind::Shared;
         int32 priority = 0;
         uint32 flags = 0;
         ShaderModuleSlotRole slot_role = ShaderModuleSlotRole::Unknown;
         uint32 provided_capabilities = 0;
         uint32 required_capabilities = 0;
         bool metadata_resolution_valid = false;
-        ValueArray<ShaderCodeModuleDependency> dependencies;
+        ValueArray<GlslModuleDependency> dependencies;
 
-        ShaderCodeModuleDefinition definition;
+        GlslModuleDefinition definition;
     };
 
     /**
@@ -94,9 +94,9 @@ namespace hgl::graph::mtl
      *                     glsl_code is NOT assigned here; the caller owns the
      *                     content and should copy it into out_data.glsl_code.
      */
-    ShaderCodeModuleParseResult ParseShaderCodeModuleFile(const char *content,
+    GlslModuleParseResult ParseGlslModuleFile(const char *content,
                                                       int content_size,
-                                                      ShaderCodeModuleFileData &out_data) noexcept;
+                                                      GlslModuleFileData &out_data) noexcept;
 
     /**
      * 收集 GLSL 正文里所有 `#include "..."` / `#include <...>` 目标。
@@ -109,7 +109,7 @@ namespace hgl::graph::mtl
      * @param out_paths    追加写入的目标路径列表（返回本次新增条数）。
      * @return 本次新增的 include 目标数量。
      */
-    int CollectShaderCodeModuleIncludePaths(const char *content,
+    int CollectGlslModuleIncludePaths(const char *content,
                                            int content_size,
                                            AnsiStringList &out_paths) noexcept;
 
