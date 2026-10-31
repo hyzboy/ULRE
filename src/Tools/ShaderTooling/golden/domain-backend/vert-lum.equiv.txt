@@ -1,4 +1,4 @@
-# DH.domain-backend-equivalence shape=vert-lum definition=VertexLuminance purpose=0 alpha_test=0
+# DH.domain-backend-equivalence shape=vert-lum definition=vertex_luminance purpose=0 alpha_test=0
 entrypoint=main
 inputs=3 outputs=1 push_constants=1 subpass=0
 in  loc=5 name=fragVertexColor base=3 vec=4 col=1

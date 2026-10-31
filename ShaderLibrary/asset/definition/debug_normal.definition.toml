@@ -1,7 +1,7 @@
 schema = 4
-id = "DebugNormalColor"
+id = "debug_normal"
 
-# 材质实例：只填领域 + 资源 + 数值。
+# 材质定义：只填领域 + 资源 + 数值。
 # 顶点语义需求（Position/Normal）、顶点提供策略、表面来源模块、
 # material_data 类型全部由领域 DebugNormal 的契约给出。
 domain = "DebugNormal"

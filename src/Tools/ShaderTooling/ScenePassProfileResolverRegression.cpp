@@ -407,7 +407,7 @@ namespace
 
     bool RunSurfaceBindingRegression(const GlslModuleRegistry &registry)
     {
-        const char *ids[] = { "SkyCube", "SkyMinimal" };
+        const char *ids[] = { "sky_cube", "sky_minimal" };
         const char *names[] = { "surface_sky_cube", "surface_sky_minimal" };
         for (int i = 0; i < 2; ++i)
         {

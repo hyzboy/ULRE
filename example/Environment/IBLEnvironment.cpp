@@ -76,7 +76,7 @@ namespace
  * 三张纹理以 bindless 句柄形式写入 ambient_env(ambient_light_provider 槽参数块,场景全局环境数据),
  * 并把该槽的 **ambient provider 模块**设为 `indirect_ibl`
  * (EnvironmentSystem::SetAmbientProvider —— 环境光算法由环境层决定,不再由材质声明)。
- * 场内物体是不同金属度/粗糙度的 PBR 材质("Lit"),便于对比 IBL 在不同表面上的表现。
+ * 场内物体是不同金属度/粗糙度的 PBR 材质("lit"),便于对比 IBL 在不同表面上的表现。
  */
 class IBLEnvironmentApp : public WorkObject
 {

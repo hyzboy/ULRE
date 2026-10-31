@@ -1,4 +1,4 @@
-# DH.domain-backend-equivalence shape=fwd-alpha definition=Lit purpose=0 alpha_test=1
+# DH.domain-backend-equivalence shape=fwd-alpha definition=lit purpose=0 alpha_test=1
 entrypoint=main
 inputs=5 outputs=1 push_constants=1 subpass=0
 in  loc=5 name=fragVertexColor base=3 vec=4 col=1

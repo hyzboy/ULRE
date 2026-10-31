@@ -40,7 +40,7 @@ namespace
     {
         auto &registry = GetGlslModuleRegistry();
         const char *source_names[] = { "material_source_texture", "material_source_pbr_surface" };
-        const char *material_ids[] = { "UnlitTexture", "Lit" };
+        const char *material_ids[] = { "unlit_texture", "lit" };
         for (int i = 0; i < 2; ++i)
         {
             MaterialDefinition definition;
@@ -1144,9 +1144,9 @@ int main(const int argc, char **argv)
     {
         { "pure-color-forward", "builtin/pure_color",
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
-        { "checkerboard-2d-forward", "builtin/checkerboard_2d",
+        { "checkerboard-2d-forward", "checkerboard_2d",
           ShaderProgramPurpose::ForwardColor, true, true, false, false },
-        { "checkerboard-2d-alpha", "builtin/checkerboard_2d",
+        { "checkerboard-2d-alpha", "checkerboard_2d",
           ShaderProgramPurpose::ForwardColor, true, true, false, true },
         { "checkerboard-3d-face-forward", "builtin/checkerboard_3d",
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
@@ -1158,13 +1158,13 @@ int main(const int argc, char **argv)
         // 回退材质能正常出 SPV（它是所有材质错误的兜底渲染路径）。
         { "error-checkerboard-3d-forward", "builtin/error_checkerboard_3d",
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
-        { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
+        { "sky-cube", "sky_cube", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
+        { "sky-minimal", "sky_minimal", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         // IBL 环境光照：ambient provider 由**环境层**选（不是材质），
         // 验证它在 smoke 路径(ctest)下确实替换掉默认 indirect_sky_ambient。
-        { "lit-ibl", "Lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-ibl", "lit", ShaderProgramPurpose::ForwardColor,
           true, false, false, false, "ambient_light_ibl" }
     };
     static const Fixture full_fixtures[] =
@@ -1175,17 +1175,17 @@ int main(const int argc, char **argv)
           ShaderProgramPurpose::DepthOnly, true, false, false, false },
         { "pure-color-shadow", "builtin/pure_color",
           ShaderProgramPurpose::ShadowDepth, true, false, false, false },
-        { "checkerboard-2d-forward", "builtin/checkerboard_2d",
+        { "checkerboard-2d-forward", "checkerboard_2d",
           ShaderProgramPurpose::ForwardColor, true, true, false, false },
-        { "checkerboard-2d-depth", "builtin/checkerboard_2d",
+        { "checkerboard-2d-depth", "checkerboard_2d",
           ShaderProgramPurpose::DepthOnly, true, true, false, false },
-        { "checkerboard-2d-alpha", "builtin/checkerboard_2d",
+        { "checkerboard-2d-alpha", "checkerboard_2d",
           ShaderProgramPurpose::ForwardColor, true, true, false, true },
         // 蒙版阴影/depth：HGL_COVERAGE_ONLY + HGL_ALPHA_* 同时成立——FS 只求
         // EvalAlpha 并 discard，不发 EvalSurface。此前 fixture 表只有非 alpha 的
         // depth/shadow 用例，这条路径（ShadowCasterMasked）在端到端回归里完全没有
         // 覆盖，ShadowCaster 模板一旦写错不会被任何用例发现。
-        { "checkerboard-2d-alpha-depth", "builtin/checkerboard_2d",
+        { "checkerboard-2d-alpha-depth", "checkerboard_2d",
           ShaderProgramPurpose::DepthOnly, true, true, false, true },
         { "checkerboard-3d-face-forward", "builtin/checkerboard_3d",
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
@@ -1205,24 +1205,24 @@ int main(const int argc, char **argv)
           ShaderProgramPurpose::ShadowDepth, true, false, true, true },
         { "checkerboard-3d-normal-alpha", "builtin/checkerboard_3d",
           ShaderProgramPurpose::ForwardColor, true, false, true, true },
-        { "lit-forward", "Lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-forward", "lit", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         // PBR 域的 alpha 前向 + 蒙版阴影。这两条此前只有 Checker2D/Checker3D
         // 覆盖，而 PBR 走的是不同的材质源（material_source_pbr_surface）+ NTB 组合。
         // 删除 ShaderGen 后 domain/standard_opaque/*.frag 需要它们作为等价基线。
-        { "lit-forward-alpha", "Lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-forward-alpha", "lit", ShaderProgramPurpose::ForwardColor,
           true, false, false, true },
-        { "lit-shadow-alpha", "Lit", ShaderProgramPurpose::ShadowDepth,
+        { "lit-shadow-alpha", "lit", ShaderProgramPurpose::ShadowDepth,
           true, false, false, true },
-        { "lit-shadow", "Lit", ShaderProgramPurpose::ShadowDepth,
+        { "lit-shadow", "lit", ShaderProgramPurpose::ShadowDepth,
           true, false, false, false },
         { "text-gpu-charquad", "builtin/text_gpu",
           ShaderProgramPurpose::ForwardColor, false, false, false, false },
-        { "sky-minimal", "SkyMinimal", ShaderProgramPurpose::ForwardColor,
+        { "sky-minimal", "sky_minimal", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
+        { "sky-cube", "sky_cube", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        { "lit-ibl", "Lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-ibl", "lit", ShaderProgramPurpose::ForwardColor,
           true, false, false, false, "ambient_light_ibl" },
         // DrawTriangle 的真实形状：`VertexColor` 域 + `VF_V2I16` 像素坐标
         // + recipe 层 2D 节点配置（`Make2DNodeConfigOrtho`）。
@@ -1235,7 +1235,7 @@ int main(const int argc, char **argv)
         //      （3 分量）与 s1 的 2 分量冲突，构建直接失败；
         //   ③ 该形状必须在固定 mesh 源目录里有一份 `.mesh`，否则
         //      ShaderGen 删除后这个域没有 mesh 阶段。
-        { "vert-color-2d-int16", "VertexColor",
+        { "vert-color-2d-int16", "vertex_color",
           ShaderProgramPurpose::ForwardColor, true, false, false, false,
           nullptr, VF_V2I16, true }
     };

@@ -1,6 +1,6 @@
 schema = 1
 name = "AtmosphereSkyAmbient.Lit"
-material_definition = "Lit"
+material_definition = "lit"
 
 [[textures]]
 name = "base_color"

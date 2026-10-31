@@ -1,7 +1,7 @@
 schema = 4
-id = "builtin/checkerboard_2d"
+id = "checkerboard_2d"
 
-# 材质实例：只填领域 + 资源 + 数值。
+# 材质定义：只填领域 + 资源 + 数值。
 # 顶点语义需求（Position）、顶点提供策略、表面来源模块全部由领域
 # Checker2D 的契约给出——资产再抄一遍只会与契约分叉。
 domain = "Checker2D"

@@ -1,6 +1,6 @@
 schema = 1
 name = "DrawTriangle.VertexColor"
-material_definition = "VertexColor"
+material_definition = "vertex_color"
 
 [transform]
 source = "Vec2Position"

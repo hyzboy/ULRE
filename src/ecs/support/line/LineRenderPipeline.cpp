@@ -479,7 +479,7 @@ namespace hgl::ecs
 
         // ------- Create material -------
         graph::mtl::MaterialRecipe recipe{};
-        recipe.mtl_def_id = "VertexPaletteColor";
+        recipe.mtl_def_id = "vertex_palette";
 
         auto* mat_mgr = gc->GetMaterialManager();
         if (!mat_mgr)

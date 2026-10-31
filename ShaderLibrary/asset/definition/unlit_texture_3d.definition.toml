@@ -1,7 +1,7 @@
 schema = 4
-id = "UnlitTexture3D"
+id = "unlit_texture_3d"
 
-# 材质实例：只填领域 + 资源 + 数值。
+# 材质定义：只填领域 + 资源 + 数值。
 # 与 `unlit_texture` 的唯一区别是领域：那边是 2D NDC 贴面（屏幕矩形），
 # 这边是世界空间 3D 几何（Position 经相机投影）。片元阶段的算法完全一致
 # ——采样 base_color 后直出，不经任何光照。

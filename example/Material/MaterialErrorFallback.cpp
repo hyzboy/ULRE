@@ -10,13 +10,13 @@
 //   #3 未知 ID   mtl_def_id = "NotExist/Material"  UnknownMaterialDefinition → 橙棋盘格
 //   #4 拼错 ID   mtl_def_id = "builtin/checkerbord_3d"（少一个 'a'）
 //                                                  UnknownMaterialDefinition → 橙棋盘格
-//   #5 大小写不符 mtl_def_id = "lit"（真实定义是 "Lit"）
+//   #5 大小写不符 mtl_def_id = "Lit"（真实定义是 "lit"）
 //                                                  UnknownMaterialDefinition → 橙棋盘格
-//   #6 缺纹理     mtl_def_id = "UnlitTexture"（该定义声明 base_color required=true），
+//   #6 缺纹理     mtl_def_id = "unlit_texture"（该定义声明 base_color required=true），
 //                 但配方不给任何纹理资源            MissingTextureResource     → 青棋盘格
-//   #7 缺顶点法线 mtl_def_id = "Lit"，几何顶点只有 Position+TexCoord（**没有 Normal**）
+//   #7 缺顶点法线 mtl_def_id = "lit"，几何顶点只有 Position+TexCoord（**没有 Normal**）
 //                                                  MissingVertexNormal        → 黄棋盘格
-//   #8 缺纹理UV   mtl_def_id = "Lit"，几何顶点只有 Position+Normal（**没有 TexCoord**）
+//   #8 缺纹理UV   mtl_def_id = "lit"，几何顶点只有 Position+Normal（**没有 TexCoord**）
 //                                                  MissingTextureUV           → 蓝棋盘格
 //
 // #7/#8 的语义（用户 2026-10-24 两次拍板，后者覆盖前者）：
@@ -45,11 +45,11 @@
 //                      （棋盘格；错误种类 missing_material_source，颜色=(1.00,0.00,1.00,1.00)）
 //   [MaterialFallback] 材质定义 ID 无法解析: "NotExist/Material" => 回退错误材质 ...
 //                      （棋盘格；错误种类 unknown_material_definition，颜色=(1.00,0.50,0.00,1.00)）
-//   [MaterialFallback] 材质 "UnlitTexture" 声明为 required 的纹理缺少实际资源 => ...
+//   [MaterialFallback] 材质 "unlit_texture" 声明为 required 的纹理缺少实际资源 => ...
 //                      （棋盘格；错误种类 missing_texture_resource，颜色=(0.00,1.00,1.00,1.00)）
-//   [MaterialFallback] 材质 "Lit" 与几何顶点格式不匹配（错误种类 missing_vertex_normal）
+//   [MaterialFallback] 材质 "lit" 与几何顶点格式不匹配（错误种类 missing_vertex_normal）
 //                      => 回退错误材质 ... （棋盘格，颜色=(1.00,1.00,0.00,1.00)）
-//   [MaterialFallback] 材质 "Lit" 与几何顶点格式不匹配（错误种类 missing_texture_uv）
+//   [MaterialFallback] 材质 "lit" 与几何顶点格式不匹配（错误种类 missing_texture_uv）
 //                      => 回退错误材质 ... （棋盘格，颜色=(0.20,0.20,1.00,1.00)）
 //
 // 环境变量：
@@ -139,22 +139,22 @@ namespace
           "builtin ID 拼写错（少一个 'a'）—— 最容易犯的错",
           false, false, false },
 
-        { "05_CaseMismatch", "EF.CaseMismatch", "lit",
+        { "05_CaseMismatch", "EF.CaseMismatch", "Lit",
           "UnknownMaterialDefinition", "橙(1.00,0.50,0.00)",
-          "大小写不符：真实定义是 \"Lit\"（ID 区分大小写）",
+          "大小写不符：真实定义是 \"lit\"（ID 区分大小写）",
           false, false, false },
 
-        { "06_MissingTexture", "EF.MissingTexture", "UnlitTexture",
+        { "06_MissingTexture", "EF.MissingTexture", "unlit_texture",
           "MissingTextureResource",   "青(0.00,1.00,1.00)",
           "材质定义声明 base_color required=true，但配方一个纹理资源都没给",
           false, false, false },
 
-        { "07_NoVertexNormal", "EF.NoVertexNormal", "Lit",
+        { "07_NoVertexNormal", "EF.NoVertexNormal", "lit",
           "MissingVertexNormal",      "黄(1.00,1.00,0.00)",
           "几何只有 Position+TexCoord（无 Normal）⇒ 法线数据坏了，不能伪装成平面着色",
           true,  false, true },
 
-        { "08_NoTexCoord", "EF.NoTexCoord", "Lit",
+        { "08_NoTexCoord", "EF.NoTexCoord", "lit",
           "MissingTextureUV",         "蓝(0.20,0.20,1.00)",
           "几何只有 Position+Normal（无 TexCoord）⇒ 贴图会按垃圾 UV 采样",
           false, true,  true },

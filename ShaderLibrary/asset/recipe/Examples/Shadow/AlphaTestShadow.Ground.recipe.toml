@@ -1,6 +1,6 @@
 schema = 1
 name = "AlphaTestShadow.Ground"
-material_definition = "Lit"
+material_definition = "lit"
 
 [render_state]
 alpha_test = false

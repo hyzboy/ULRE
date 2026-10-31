@@ -1,7 +1,7 @@
 schema = 4
-id = "Lit"
+id = "lit"
 
-# 材质实例：只填领域 + 资源 + 数值。
+# 材质定义：只填领域 + 资源 + 数值。
 # 顶点语义需求（Position/UV0/Normal）、Varying（根据领域契约自动推导）、
 # 顶点提供策略、表面来源模块、法线标架模块全部由领域 StandardOpaque 契约给出。
 domain = "StandardOpaque"

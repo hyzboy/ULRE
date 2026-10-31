@@ -1,6 +1,6 @@
 schema = 1
 name = "BasicLitSunDirection.Sky"
-material_definition = "SkyMinimal"
+material_definition = "sky_minimal"
 
 [render_state.pipeline]
 cull_mode = "None"

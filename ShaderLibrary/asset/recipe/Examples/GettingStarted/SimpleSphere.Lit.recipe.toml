@@ -1,6 +1,6 @@
 schema = 1
 name = "SimpleSphere.Lit"
-material_definition = "Lit"
+material_definition = "lit"
 
 [[textures]]
 name = "base_color"

@@ -1,6 +1,6 @@
 schema = 1
 name = "TextureRectArray.UnlitTexture"
-material_definition = "UnlitTexture"
+material_definition = "unlit_texture"
 
 [transform]
 source = "Vec2Position"

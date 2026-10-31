@@ -1,6 +1,6 @@
 schema = 1
 name = "AlphaModes.LitOpaqueBillboard"
-material_definition = "Lit"
+material_definition = "lit"
 
 [transform]
 orientation = "CameraFacingFree"

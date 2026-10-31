@@ -1,6 +1,6 @@
 schema = 1
 name = "AlphaModes.LitAlphaBlend"
-material_definition = "Lit"
+material_definition = "lit"
 
 [render_state.pipeline]
 cull_mode = "Back"

@@ -1,6 +1,6 @@
 schema = 1
 name = "SkyCubeSphere.Sky"
-material_definition = "SkyCube"
+material_definition = "sky_cube"
 
 [render_state.pipeline]
 cull_mode = "Front"

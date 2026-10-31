@@ -1109,7 +1109,7 @@ namespace
         // position-first contract while Phase 4 is introduced incrementally.
         static const char *material_ids[] = {
             "builtin/pure_color",
-            "builtin/checkerboard_2d",
+            "checkerboard_2d",
             "builtin/checkerboard_3d",
             "builtin/error_checkerboard_3d",
             "builtin/text_gpu",
@@ -1142,7 +1142,7 @@ namespace
             "builtin/pure_color",
             "builtin/text_gpu",
             "builtin/text_gpu_bitmap",
-            "builtin/checkerboard_2d",
+            "checkerboard_2d",
             "builtin/checkerboard_3d",
             "builtin/error_checkerboard_3d"
         };
@@ -1806,7 +1806,7 @@ namespace
         result.name = "L0.draw-triangle-vertex-color-2d";
 
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID("VertexColor", definition))
+        if (!TryGetMaterialDefinitionByID("vertex_color", definition))
         {
             result.diagnostics.emplace_back("missing definition: VertexColor");
             result.passed = false;
@@ -2536,8 +2536,8 @@ namespace
 
         MaterialDefinition lit{};
         MaterialDefinition vertex_color{};
-        if (!TryGetMaterialDefinitionByID("Lit", lit)
-         || !TryGetMaterialDefinitionByID("VertexColor", vertex_color))
+        if (!TryGetMaterialDefinitionByID("lit", lit)
+         || !TryGetMaterialDefinitionByID("vertex_color", vertex_color))
         {
             result.diagnostics.emplace_back(
                 "cache identity material definitions unavailable");
@@ -3029,7 +3029,7 @@ namespace
             { "builtin/pure_color" },
             { "builtin/text_gpu" },
             { "builtin/text_gpu_bitmap" },
-            { "builtin/checkerboard_2d" },
+            { "checkerboard_2d" },
             { "builtin/checkerboard_3d" },
             { "builtin/error_checkerboard_3d" }
         };
@@ -3144,8 +3144,8 @@ namespace
         NormalizeRecipe(canonical_recipe);
 
         MaterialDefinition ordinary{};
-        if (!TryGetMaterialDefinitionByID("Lit", ordinary)
-         || ordinary.definition_id != "Lit")
+        if (!TryGetMaterialDefinitionByID("lit", ordinary)
+         || ordinary.definition_id != "lit")
         {
             result.diagnostics.emplace_back(
                 "ordinary material lookup must resolve the TOML definition");
@@ -3179,7 +3179,7 @@ namespace
         result.name = "V1.material-output-contract";
 
         MaterialDefinition lit{};
-        if (!TryGetMaterialDefinitionByID("Lit", lit))
+        if (!TryGetMaterialDefinitionByID("lit", lit))
             {
                 result.diagnostics.emplace_back(
                     "Lit definition unavailable for output contract");
@@ -3536,12 +3536,12 @@ namespace
         };
         static const ExpectedSource expected_sources[] =
         {
-            {"VertexPaletteColor", "material_source_vertex_color"},
-            {"VertexColor", "material_source_vertex_color"},
-            {"VertexLuminance", "material_source_luminance"},
-            {"UnlitTexture", "material_source_texture"},
-            {"DebugNormalColor", "material_source_debug_normal"},
-            {"Lit", "material_source_pbr_surface"},
+            {"vertex_palette", "material_source_vertex_color"},
+            {"vertex_color", "material_source_vertex_color"},
+            {"vertex_luminance", "material_source_luminance"},
+            {"unlit_texture", "material_source_texture"},
+            {"debug_normal", "material_source_debug_normal"},
+            {"lit", "material_source_pbr_surface"},
             {"builtin/pure_color", "material_source_unlit"},
             {"builtin/text_gpu", "material_source_text_gpu"}
         };
@@ -3564,8 +3564,8 @@ namespace
 
         MaterialDefinition lit{};
         MaterialDefinition unlit{};
-        if (!TryGetMaterialDefinitionByID("Lit", lit)
-         || !TryGetMaterialDefinitionByID("UnlitTexture", unlit))
+        if (!TryGetMaterialDefinitionByID("lit", lit)
+         || !TryGetMaterialDefinitionByID("unlit_texture", unlit))
         {
             result.diagnostics.emplace_back(
                 "unified skeleton build definitions unavailable");
@@ -5954,12 +5954,12 @@ namespace
         else
         {
             const char *expected_ids[] = {
-                "Lit", "SkyMinimal", "SkyCube",
-                "DebugNormalColor",
-                "VertexColor", "UnlitTexture", "UnlitTexture3D",
-                "VertexLuminance", "VertexPaletteColor",
+                "lit", "sky_minimal", "sky_cube",
+                "debug_normal",
+                "vertex_color", "unlit_texture", "unlit_texture_3d",
+                "vertex_luminance", "vertex_palette",
                 "builtin/pure_color",
-                "builtin/checkerboard_2d",
+                "checkerboard_2d",
                 "builtin/checkerboard_3d",
                 "builtin/error_checkerboard_3d",
                 "builtin/text_gpu", "builtin/text_gpu_bitmap"
@@ -5972,13 +5972,13 @@ namespace
             }
 
         const char *bulk_ids[] = {
-            "Lit", "SkyMinimal", "SkyCube",
-            "DebugNormalColor", "VertexColor",
-            "UnlitTexture",
-            "VertexLuminance",
-            "VertexPaletteColor",
+            "lit", "sky_minimal", "sky_cube",
+            "debug_normal", "vertex_color",
+            "unlit_texture",
+            "vertex_luminance",
+            "vertex_palette",
             "builtin/pure_color",
-            "builtin/checkerboard_2d",
+            "checkerboard_2d",
             "builtin/checkerboard_3d",
             "builtin/error_checkerboard_3d",
             "builtin/text_gpu", "builtin/text_gpu_bitmap"
@@ -7112,7 +7112,7 @@ namespace
                 MaterialDomain::UnlitSolid, true, "material_source_unlit"
             },
             {
-                "VertexColor",
+                "vertex_color",
                 "schema = 4\n"
                 "id = \"DomainOkVertexColor\"\n"
                 "name = \"DomainOkVertexColor\"\n"
@@ -7136,7 +7136,7 @@ namespace
                 MaterialDomain::VertexPalette, true, "material_source_vertex_color"
             },
             {
-                "VertexLuminance",
+                "vertex_luminance",
                 "schema = 4\n"
                 "id = \"DomainOkVertexLum\"\n"
                 "name = \"DomainOkVertexLum\"\n"
@@ -7313,9 +7313,9 @@ namespace
                 };
             MaterialDefinition lit_definition{};
             MaterialDefinition unlit_definition{};
-            if (!TryGetMaterialDefinitionByID("Lit", lit_definition)
+            if (!TryGetMaterialDefinitionByID("lit", lit_definition)
              || !TryGetMaterialDefinitionByID(
-                    "UnlitTexture",
+                    "unlit_texture",
                     unlit_definition))
             {
                 result.diagnostics.emplace_back(
@@ -9396,7 +9396,7 @@ void main()
         // 发行形态取到不匹配的 SPV —— 这种错误在运行时完全不报错。
         {
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID("Lit", definition))
+            if (!TryGetMaterialDefinitionByID("lit", definition))
                 result.diagnostics.emplace_back(
                     "material definition unavailable: Lit");
             else
@@ -9683,7 +9683,7 @@ void main()
             : "PM.release-manifest-lookup";
 
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID("Lit", definition))
+        if (!TryGetMaterialDefinitionByID("lit", definition))
         {
             result.diagnostics.emplace_back(
                 "material definition unavailable: Lit");
@@ -10233,44 +10233,44 @@ void main()
     /// 两张快照（结构、发射顺序）共用此表——矩阵只有一份，新增材质不会漏测其中一张。
     static const ReflectionCoverageVariant kReflectionCoverageVariants[] =
     {
-        { "Lit", "lit-forward-opaque",
+        { "lit", "lit-forward-opaque",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardLitShadowedAO, true, false },
-        { "Lit", "lit-depth-only",
+        { "lit", "lit-depth-only",
           ShaderProgramPurpose::DepthOnly,
           PassProfileID::ShadowCasterOpaque, true, false },
-        { "Lit", "lit-shadow-depth",
+        { "lit", "lit-shadow-depth",
           ShaderProgramPurpose::ShadowDepth,
           PassProfileID::ShadowCasterOpaque, true, false },
-        { "Lit", "lit-depth-masked",
+        { "lit", "lit-depth-masked",
           ShaderProgramPurpose::DepthOnly,
           PassProfileID::ShadowCasterMasked, true, true },
-        { "Lit", "lit-shadow-masked",
+        { "lit", "lit-shadow-masked",
           ShaderProgramPurpose::ShadowDepth,
           PassProfileID::ShadowCasterMasked, true, true },
-        { "VertexPaletteColor", "vertex-palette-color-forward",
+        { "vertex_palette", "vertex-palette-color-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "VertexColor", "vertex-color-forward",
+        { "vertex_color", "vertex-color-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "VertexLuminance", "vertex-luminance-forward",
+        { "vertex_luminance", "vertex-luminance-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "UnlitTexture", "unlit-texture-forward",
+        { "unlit_texture", "unlit-texture-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Triangles, true },
-        { "DebugNormalColor", "debug-normal-forward",
+        { "debug_normal", "debug-normal-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "SkyCube", "sky-cube-forward",
+        { "sky_cube", "sky-cube-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::Sky, true, false },
-        { "SkyMinimal", "sky-minimal-forward",
+        { "sky_minimal", "sky-minimal-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::Sky, true, false },
-        { "builtin/checkerboard_2d", "checkerboard-2d-forward",
+        { "checkerboard_2d", "checkerboard-2d-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Triangles, true },
@@ -10280,13 +10280,13 @@ void main()
         // LineQuad 是第三种 mesh 发射模式，只能由 `primitive_type = Lines` 推出来
         // （材质定义里没有对应字段）。这些用例覆盖 LineQuad 固定拓扑 master 与
         // `module/stage/line_quad_body.glsl` 的端点读取路径，避免该独立几何路径退化后漏报。
-        { "VertexColor", "vertex-color-lines-quad",
+        { "vertex_color", "vertex-color-lines-quad",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Lines, false },
         // 2D 位置需要与顶点格式匹配的 2D 映射模块。用 checkerboard_2d
         // （NDCLift）覆盖 VF_V2F 夹具，避免把 Passthrough3D 的 vec3 ABI 错配进来。
-        { "builtin/checkerboard_2d", "checkerboard-2d-lines-quad-2d",
+        { "checkerboard_2d", "checkerboard-2d-lines-quad-2d",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Lines, true },
@@ -10852,21 +10852,21 @@ void main()
     /// 新增条目一律追加到末尾。
     static const DomainBackendEquivShape kDomainBackendEquivShapes[] =
     {
-        { "fwd",          "Lit",     ShaderProgramPurpose::ForwardColor, false },
-        { "fwd-alpha",    "Lit",     ShaderProgramPurpose::ForwardColor, true  },
-        { "shadow",       "Lit",     ShaderProgramPurpose::ShadowDepth,  false },
-        { "shadow-alpha", "Lit",     ShaderProgramPurpose::ShadowDepth,  true  },
-        { "sky",          "SkyCube", ShaderProgramPurpose::ForwardColor, false },
-        { "unlit-tex",    "UnlitTexture", ShaderProgramPurpose::ForwardColor, false },
-        { "vert-color",   "VertexColor",  ShaderProgramPurpose::ForwardColor, false },
-        { "vert-lum",     "VertexLuminance", ShaderProgramPurpose::ForwardColor, false },
-        { "vert-pal",     "VertexPaletteColor", ShaderProgramPurpose::ForwardColor, false },
+        { "fwd",          "lit",     ShaderProgramPurpose::ForwardColor, false },
+        { "fwd-alpha",    "lit",     ShaderProgramPurpose::ForwardColor, true  },
+        { "shadow",       "lit",     ShaderProgramPurpose::ShadowDepth,  false },
+        { "shadow-alpha", "lit",     ShaderProgramPurpose::ShadowDepth,  true  },
+        { "sky",          "sky_cube", ShaderProgramPurpose::ForwardColor, false },
+        { "unlit-tex",    "unlit_texture", ShaderProgramPurpose::ForwardColor, false },
+        { "vert-color",   "vertex_color",  ShaderProgramPurpose::ForwardColor, false },
+        { "vert-lum",     "vertex_luminance", ShaderProgramPurpose::ForwardColor, false },
+        { "vert-pal",     "vertex_palette", ShaderProgramPurpose::ForwardColor, false },
         { "unlit-solid",  "builtin/pure_color", ShaderProgramPurpose::ForwardColor, false },
-        { "checker-2d",   "builtin/checkerboard_2d", ShaderProgramPurpose::ForwardColor, false },
+        { "checker-2d",   "checkerboard_2d", ShaderProgramPurpose::ForwardColor, false },
         { "checker-3d",   "builtin/checkerboard_3d", ShaderProgramPurpose::ForwardColor, false },
         { "err-check-3d", "builtin/error_checkerboard_3d", ShaderProgramPurpose::ForwardColor, false },
         { "text-gpu",     "builtin/text_gpu", ShaderProgramPurpose::ForwardColor, false },
-        { "debug-normal", "DebugNormalColor", ShaderProgramPurpose::ForwardColor, false },
+        { "debug-normal", "debug_normal", ShaderProgramPurpose::ForwardColor, false },
     };
 
     /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。
@@ -11558,13 +11558,13 @@ void main()
 
     static const CacheIdentityEmitShape kCacheIdentityEmitShapes[] =
     {
-        { "cache-lit-abi-a",   "Lit",         &kCacheIdentityLitGeometryA },
-        { "cache-lit-abi-b",   "Lit",         &kCacheIdentityLitGeometryB },
-        { "cache-lit-abi-std", "Lit",         &kCacheIdentityLitGeometryStandard },
-        { "cache-color",       "VertexColor", &kCacheIdentityColorGeometry },
+        { "cache-lit-abi-a",   "lit",         &kCacheIdentityLitGeometryA },
+        { "cache-lit-abi-b",   "lit",         &kCacheIdentityLitGeometryB },
+        { "cache-lit-abi-std", "lit",         &kCacheIdentityLitGeometryStandard },
+        { "cache-color",       "vertex_color", &kCacheIdentityColorGeometry },
         { "load-geometry-wire", "builtin/pure_color",
           &kCacheIdentityPureColorGeometry, PrimitiveType::Lines },
-        { "plane-grid-luminance-wire", "VertexLuminance",
+        { "plane-grid-luminance-wire", "vertex_luminance",
           &kCacheIdentityLuminanceGeometry, PrimitiveType::Lines },
     };
 

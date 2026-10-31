@@ -1,6 +1,6 @@
 schema = 1
 name = "PBRSpheres.LitBillboard"
-material_definition = "Lit"
+material_definition = "lit"
 
 [transform]
 orientation = "CameraFacingFree"

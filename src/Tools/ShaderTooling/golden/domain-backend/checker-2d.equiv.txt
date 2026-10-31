@@ -1,4 +1,4 @@
-# DH.domain-backend-equivalence shape=checker-2d definition=builtin/checkerboard_2d purpose=0 alpha_test=0
+# DH.domain-backend-equivalence shape=checker-2d definition=checkerboard_2d purpose=0 alpha_test=0
 entrypoint=main
 inputs=1 outputs=1 push_constants=1 subpass=0
 in  loc=5 name=fragVertexColor base=3 vec=4 col=1

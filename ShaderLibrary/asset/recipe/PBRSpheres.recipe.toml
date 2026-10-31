@@ -1,6 +1,6 @@
 schema = 1
-name = "PBRSpheres.Lit"
-material_definition = "Lit"
+name = "PBRSpheres"
+material_definition = "lit"
 
 [transform]
 source = "Vec3Position"

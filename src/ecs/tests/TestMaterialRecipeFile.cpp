@@ -82,7 +82,7 @@ namespace
 
         const MaterialRecipe &recipe = data.recipe;
         return recipe.recipe_name == "RecipeParser.Valid"
-            && recipe.mtl_def_id == "UnlitTexture"
+            && recipe.mtl_def_id == "unlit_texture"
             && recipe.vertex_node_config.input == VertexInputMode::Vec2Position
             && recipe.vertex_node_config.position_mapping == PositionMappingMode::LiftXY_XY0
             && recipe.vertex_node_config.projection == ProjectionMode::OrthoViewport
