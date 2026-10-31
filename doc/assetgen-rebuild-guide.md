@@ -8,17 +8,18 @@
 
 > **C++ 头文件中的结构体声明是唯一真源（Single Source of Truth）。**
 
-所有派生产物（字段遍历、编解码描述表、属性元数据、FlatBuffers schema 及 flatc 头文件）均由 `asset_gen.py` 根据 Clang AST 自动化提取并生成，**严禁手动编辑生成的代码文件**。
+所有派生产物（字段遍历、属性元数据与枚举名表）均由 `asset_gen.py` 根据 Clang AST 自动化提取并生成，**严禁手动编辑生成的代码文件**。
+
+序列化格式本身**不是**派生产物：TOML 与 FlatBuffers 都是 `inc/hgl/serialize/` 里的
+通用后端（`TomlCodec.h` / `FlatCodec.h`），由 `Serialize.gen.h` 产出的值树驱动。
+新增一种格式（如 JSON）时只需要加一个 codec，生成器与已提交的产物都不用动。
 
 ### 派生产物一览
 
 | 产物 | 生成路径 | 用途 |
 |---|---|---|
 | **唯一字段遍历** | `inc/hgl/asset/generated/<Group>Serialize.gen.h` | 声明顺序遍历所有字段，与具体序列化格式无关 |
-| **编解码门面 & 描述表** | `inc/hgl/asset/generated/<Group>Codec.gen.h` | FlatBuffers `TableDesc` 纯数据表及 TOML/FBS 统一读写门面 |
-| **属性元数据表** | `inc/hgl/asset/generated/<Group>Meta.gen.h` | 供编辑器属性检查器（Inspector GUI）、文档导出使用 |
-| **FlatBuffers 契约** | `inc/hgl/asset/generated/<group>_schema.fbs` | 发行版二进制资产契约 |
-| **flatc 派生 C++ 头** | `inc/hgl/asset/generated/<group>_schema_generated.h` | `flatc` 编译得到的底层二进制结构代码 |
+| **属性元数据表** | `inc/hgl/asset/generated/<Group>Meta.gen.h` | 供编辑器属性检查器（Inspector GUI）、文档导出与键名校验使用 |
 
 ---
 
@@ -41,22 +42,20 @@
 1. **Python 3.11+**：必须包含标准库 `tomllib`（若使用 Python 3.10 及以下需安装 `pip install tomli`）。
 2. **LLVM Clang (`clang++`)**：用于解析 C++ 结构体并提取 AST。
    - 默认推荐安装于 `C:\Program Files\LLVM\bin\clang++.exe`。
-3. **FlatBuffers 编译器 (`flatc`)**：用于将 `.fbs` 编译为 C++ 头文件。
-   - 通常位于 vcpkg 目录：`D:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe`。
-4. **第三方 Include 头文件**：
+3. **第三方 Include 头文件**：
    - glm、flatbuffers：位于 vcpkg 头文件目录（如 `D:\vcpkg\installed\x64-windows\include`）。
    - Vulkan SDK：位于 `%VULKAN_SDK%\Include`。
 
 > 💡 **提示**：仓库提供的批处理和 PowerShell 脚本已配置智能路径探测，只要工具安装在标准路径或配置了环境变量，通常无需手动配置任何路径。
+> 生成器**不需要** `flatc`，也不再产出 `.fbs`。
 
 ### 支持的环境变量（可选配置）
 
 | 环境变量 | 说明 |
 |---|---|
 | `HGL_CLANG` | 指定 `clang++.exe` 的绝对路径 |
-| `HGL_FLATC` | 指定 `flatc.exe` 的绝对路径 |
 | `HGL_ASSETGEN_INCLUDE_DIRS` | 额外的 include 目录（多个路径用分号 `;` 分隔） |
-| `VCPKG_ROOT` | vcpkg 安装根目录（用于自动定位 flatc 和 include） |
+| `VCPKG_ROOT` | vcpkg 安装根目录（用于自动定位 include） |
 | `VULKAN_SDK` | Vulkan SDK 根目录 |
 
 ---
@@ -100,17 +99,18 @@ run_assetgen.cmd -Only Geometry
 ```powershell
 python src/Tools/AssetGen/asset_gen.py --repo-root . `
   --clang "C:\Program Files\LLVM\bin\clang++.exe" `
-  --flatc "D:\vcpkg\installed\x64-windows\tools\flatbuffers\flatc.exe" `
   --include-dir "D:\vcpkg\installed\x64-windows\include" `
   --include-dir "D:\VulkanSDK\1.4.363.0\Include" `
   --write
 ```
 
 常用参数说明：
-- `--write`：将生成的代码覆盖写回文件（默认如果不带 `--write` 和 `--check` 只会打印摘要）。
+- `--write`：将生成的代码覆盖写回文件（默认行为）。
 - `--check`：比对生成内容与已有文件，如有差异返回退出码 1，不修改硬盘文件。
 - `--only <GroupName>`：仅处理特定的分组名称（对应 `asset_gen.toml` 中的 `[group.<Name>]`）。
-- `--no-flatc`：仅更新 `.fbs` 与 C++ 序列化头，跳过调用 `flatc` 编译。
+
+> CI 门禁请走包装器 `scripts/run-assetgen.ps1`（它负责补齐 Vulkan / glm 等 include 路径）：
+> `pwsh -NoProfile -File scripts\run-assetgen.ps1 -Check -Clang "C:\clang\bin\clang++.exe"`。
 
 ---
 
@@ -144,9 +144,9 @@ git diff inc/hgl/asset/generated/
 
 ## 6. 常见问题与排查
 
-### 1. 报错 `找不到 clang++` 或 `找不到 flatc`
+### 1. 报错 `找不到 clang++`
 - **原因**：工具未安装在默认路径，且未加入 `PATH` 或环境变量。
-- **解决**：在命令中添加 `-Clang "你的路径\clang++.exe" -Flatc "你的路径\flatc.exe"`，或配置环境变量 `HGL_CLANG` / `HGL_FLATC`。
+- **解决**：在命令中添加 `-Clang "你的路径\clang++.exe"`，或配置环境变量 `HGL_CLANG`。
 
 ### 2. 报错 `'glm/glm.hpp' file not found`
 - **原因**：Clang 解析头文件时找不到第三方库头文件。

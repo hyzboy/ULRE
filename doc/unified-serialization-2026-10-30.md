@@ -1,5 +1,13 @@
 # 统一序列化框架（Unified Serialize Archive）
 
+> **落地状态（2026-11）**：本文描述的框架已全部实现，且比当初的设计更进一步 ——
+> 生成器现在**只产两份与格式无关的文件**（`<Group>Meta.gen.h` / `<Group>Serialize.gen.h`），
+> 不再产出 `<Group>Toml.gen.h`、`<Group>Flat.gen.h`、`<Group>Codec.gen.h`、`.fbs`
+> 与 `flatc` 头。下文凡出现这些名字，都是「改造前」的历史形态（保留作背景说明）；
+> 现行口径以 `src/Tools/AssetGen/README.md` 与 `inc/hgl/serialize/` 为准。
+> 4 个资产文件（场景 / 几何 / 图元 / 材质配方）已全部改走
+> `FromTomlText` → `Value` → `ReadFromValue` 的单一路径，源码里不再出现 `toml::value`。
+
 ## 1. 问题
 
 改造前，AssetGen 为同一个资产结构生成 **两套** 编解码实现：
@@ -28,7 +36,7 @@ C++ 结构声明（唯一真源，HGL_ASSET_STRUCT + HGL_PROPERTY）
         │  Clang AST
         ▼
 <Group>Serialize.gen.h        唯一一份字段遍历：StructSerializer<T>::Do(Archive&, Self&)
-<Group>Codec.gen.h            FlatBuffers 布局描述表 + 格式门面
+<Group>Meta.gen.h             属性元数据（键名表 / 枚举名表 / GUI 元数据）
         │
         ▼
 hgl::serialize::Archive  ──►  hgl::serialize::Value（有序值树）
@@ -56,7 +64,7 @@ hgl::serialize::Archive  ──►  hgl::serialize::Value（有序值树）
 | `inc/hgl/serialize/Container.h` | HGL 容器的四类抽象形态与降级适配 |
 | `inc/hgl/serialize/Archive.h` | 统一游标：`ar.Field(id, name, v)`，读写同源 |
 | `inc/hgl/serialize/TomlCodec.h` | `Value ↔ toml::value`（含文本解析/输出） |
-| `inc/hgl/serialize/FlatCodec.h` | `Value ↔ FlatBuffers`（描述表驱动，两趟构建） |
+| `inc/hgl/serialize/FlatCodec.h` | `Value ↔ FlatBuffers`（`ClassMetaInfo` 驱动，两趟构建，自带 Verifier） |
 
 ## 4. 容器抽象形态与后端降级
 
@@ -82,24 +90,21 @@ hgl::serialize::Archive  ──►  hgl::serialize::Value（有序值树）
 | 写 | 输出全部字段，保证 FlatBuffers 是完整快照 |
 
 `Presence<T>` 字段是「完整快照」的例外：它记录的是「作者是否显式设置过」，快照化会丢掉
-这一位。生成器把这类标量声明为 FlatBuffers **可选标量**（`.fbs` 的 `= null` +
-描述表 `optional_scalar`），编码无条件写入、解码「没写即缺席」。
+这一位。`Archive::Field(id, name, value)` 在写方向直接跳过 `present == false` 的字段，
+读方向按「值树里有没有这个键」回填 `present` —— 后端与生成器都不需要自己判断三态。
 
 枚举在值树里以**名字字符串**保存（`EnumTraits<T>::ToName`），因此 TOML 输出可读；
-FlatBuffers 侧通过描述表挂的 `EnumFromNameFn` / `EnumToNameFn` 双向转换，
-整数写法的历史数据仍可读。
+FlatBuffers 侧由 `FlatCodec` 按 `ClassMetaInfo` 里的枚举宽度转成整数，
+整数写法的历史数据仍可读（`integer_enums` 登记的类型则只走整数）。
 
 ## 6. 校验
 
-通用表没有 flatc 生成的 `Verify()` 成员，`FlatCodec` 无法复现 schema 级校验。
-需要强校验时调用方先用已有生成头的根类型跑一次：
-
-```cpp
-flatbuffers::Verifier verifier(data, size);
-if (!verifier.VerifyBuffer<hgl::asset::schema::SceneSpec>(nullptr)) return false;
-// 再走通用解码
-hgl::serialize::fb::DecodeFromBuffer(data, size, SceneSpec_fbs, node);
-```
+FlatBuffers 侧不需要 `.fbs`，也不需要 `flatc`：`FlatCodec` 自带与 `flatc` `Verify()`
+等价的校验（偏移、向量长度、字符串范围全部落在缓冲内），入口是
+`hgl::serialize::fb::VerifyBuffer<T>` / `VerifyAndDecodeFlatBuffers<T>`。
+键名严格性由 `ClassMetaInfo` 驱动：`hgl::serialize::ValidateKeysByMeta` 递归下钻
+一层表 / 表数组 / 子表，发现未登记键就报出分层路径，因此资产文件里不需要任何手写
+键名白名单。
 
 ## 7. 使用示例
 
@@ -136,14 +141,25 @@ template<> struct StructSerializer<hgl::graph::SceneTransformSpec>
 使用：
 
 ```cpp
-// TOML
-hgl::graph::SceneSpec spec;
-asset_codec::ReadSceneSpec(toml_value, spec);          // 缺键保留缺省值
-const toml::value out = asset_codec::WriteSceneSpec(spec);
+// 作者格式（TOML）：先转成自有值树，再按生成的字段遍历读入
+hgl::serialize::Value root;
+hgl::serialize::FromTomlText(text, len, root);
 
-// FlatBuffers
-const auto root = asset_codec::EncodeSceneSpec(fbb, spec);
-asset_codec::DecodeSceneSpec(root, spec);
+hgl::graph::SceneSpec spec;                       // 缺键保留类内缺省值
+hgl::serialize::Archive ar;
+hgl::serialize::ReadFromValue(root, spec, &ar);   // 失败时 ar.FailedPath() 给出全路径
+
+// 发行版格式（FlatBuffers）：同一个 spec，两行搞定
+hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(fbb, spec);
+hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(data, size, spec);
+```
+
+键名严格性：
+
+```cpp
+AnsiString bad_path, bad_key;
+if (!hgl::serialize::ValidateKeysByMeta(root, Class_SceneSpec, AnsiString(), bad_path, bad_key))
+    Report(bad_path, bad_key);        // 未登记的键 ⇒ 分层路径 + 键名
 ```
 
 ## 8. 门禁
