@@ -5,12 +5,16 @@
 //      Set / Tree 的双向遍历；
 //   3. TOML 后端：Value ↔ toml::value 往返，文本输出可再解析；
 //   4. 缺键语义：读方向缺字段必须保留 C++ 类内缺省值而不是报错；
-//   5. 类型不符：必须失败并给出字段名。
+//   5. 类型不符：必须失败并给出字段名；
+//   6. 严格键校验：`ValidateKeysByMeta` 按 `ClassMetaInfo` 递归判键名合法性
+//      （大小写敏感、数组不进路径）；
+//   7. 整体入口：`ReadFromValue` / `WriteToValue` 把一个节点整体当成 `T` 读写。
 //
 // 本用例纯数据往返，不依赖设备/窗口，可在 CI 阻止「框架改坏语义」。
 
 #include <hgl/serialize/Archive.h>
 #include <hgl/serialize/FlatCodec.h>
+#include <hgl/serialize/MetaSchema.h>
 #include <hgl/serialize/TomlCodec.h>
 
 #include <hgl/type/FlatTreeContainer.h>
@@ -591,6 +595,204 @@ namespace
         return true;
     }
 
+    // ── 用例 9/10 的元数据样板（等价于 AssetGen 产物里的 `Meta.gen.h`）──────
+
+    namespace meta_fixture
+    {
+        using namespace hgl::asset;
+
+        const PropertyMetaInfo kLeafProps[] = {
+            { "scalar",    nullptr, "Scalar",    "Default", "", "float",
+              nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml, 0, 4, 0, 0.0, 0.0, 0.0, nullptr },
+            { "direction", nullptr, "Direction", "Default", "", "hgl::math::Vector3f",
+              nullptr, nullptr, PropertyKind::Vector3f, PF_Serialized | PF_SerializedToml, 4, 12, 0, 0.0, 0.0, 0.0, nullptr },
+        };
+
+        const ClassMetaInfo kLeafMeta = {
+            "SampleLeaf", "", "", kLeafProps, 2,
+            static_cast<uint32_t>(sizeof(SampleLeaf)),
+            static_cast<uint32_t>(alignof(SampleLeaf)),
+        };
+
+        const PropertyMetaInfo kRootProps[] = {
+            { "name",  nullptr, "Name",  "Default", "", "AnsiString",
+              nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml, 0, 0, 0, 0.0, 0.0, 0.0, nullptr },
+            { "count", nullptr, "Count", "Default", "", "int32_t",
+              nullptr, nullptr, PropertyKind::Int32, PF_Serialized | PF_SerializedToml, 0, 4, 0, 0.0, 0.0, 1.0, nullptr },
+            { "leaf",  nullptr, "Leaf",  "Default", "", "SampleLeaf",
+              nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml, 0, 0, 0, 0.0, 0.0, 0.0, &kLeafMeta },
+            { "items", "variants", "Items", "Default", "", "hgl::ManagedArray<SampleLeaf>",
+              nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml, 0, 0, 0, 0.0, 0.0, 0.0, &kLeafMeta },
+        };
+
+        const ClassMetaInfo kRootMeta = {
+            "SampleRoot", "", "", kRootProps, 4,
+            static_cast<uint32_t>(sizeof(SampleAsset)),
+            static_cast<uint32_t>(alignof(SampleAsset)),
+        };
+    }//namespace meta_fixture
+
+    // ── 用例 9：`FindFieldExact` / `FindByPath` ─────────────────────────────
+
+    bool TestFindByPathAndExact()
+    {
+        Value root;
+        root.SetTable();
+
+        Value *render_state = root.AddField("render_state", 0);
+        render_state->SetTable();
+        Value *pipeline = render_state->AddField("pipeline", 0);
+        pipeline->SetTable();
+        Value *cull_mode = pipeline->AddField("cull_mode", 0);
+        cull_mode->SetString(AnsiString("Back"));
+
+        Value *textures = root.AddField("textures", 0);
+        textures->SetArray();
+        Value *first = textures->AddElement();
+        first->SetTable();
+        Value *texture_name = first->AddField("name", 0);
+        texture_name->SetString(AnsiString("albedo"));
+
+        Check(root.FindByPath("render_state.pipeline.cull_mode") == cull_mode,
+              "FindByPath 应逐层下钻");
+        Check(root.FindByPath("render_state") == render_state, "FindByPath 单段");
+        Check(root.FindByPath("textures.name") == texture_name,
+              "FindByPath 遇到表数组不下标，取首个命中的元素");
+        Check(root.FindByPath("") == &root, "FindByPath 空路径返回自身");
+        Check(root.FindByPath("render_state.missing") == nullptr,
+              "FindByPath 缺键返回 nullptr");
+        Check(root.FindByPath("missing.cull_mode") == nullptr,
+              "FindByPath 首段缺键返回 nullptr");
+
+        Check(root.FindFieldExact("textures") == textures, "FindFieldExact 应命中");
+        Check(root.FindFieldExact("Textures") == nullptr,
+              "FindFieldExact 必须大小写敏感");
+        Check(root.FindField("Textures") == textures,
+              "FindField 保持大小写不敏感的既有语义");
+
+        return true;
+    }
+
+    // ── 用例 10：`ValidateKeysByMeta` 严格键校验 ────────────────────────────
+
+    bool TestValidateKeysByMeta()
+    {
+        AnsiString path;
+        AnsiString key;
+
+        {
+            // 全部键都被认领：嵌套表与表数组都要下钻成功。
+            Value root;
+            root.SetTable();
+            root.AddField("name", 0)->SetString(AnsiString("Demo"));
+            root.AddField("count", 0)->SetInt(3);
+
+            Value *leaf = root.AddField("leaf", 0);
+            leaf->SetTable();
+            leaf->AddField("scalar", 0)->SetFloat(1.0f);
+
+            Value *items = root.AddField("variants", 0);
+            items->SetArray();
+            Value *item = items->AddElement();
+            item->SetTable();
+            item->AddField("scalar", 0)->SetFloat(2.0f);
+
+            Check(ValidateKeysByMeta(root, meta_fixture::kRootMeta, AnsiString(""), path, key),
+                  "合法树必须通过严格键校验");
+            Check(path.IsEmpty() && key.IsEmpty(), "通过时不给诊断信息");
+        }
+
+        {
+            // 嵌套表里的拼写错误：报错路径必须指向那张子表。
+            Value root;
+            root.SetTable();
+            Value *leaf = root.AddField("leaf", 0);
+            leaf->SetTable();
+            leaf->AddField("scalr", 0)->SetFloat(1.0f);
+
+            Check(!ValidateKeysByMeta(root, meta_fixture::kRootMeta, AnsiString(""), path, key),
+                  "嵌套表里的未知键必须失败");
+            Check(hgl::stricmp(key.c_str(), "scalr") == 0, "必须报出未知键名");
+            Check(hgl::stricmp(path.c_str(), "leaf") == 0, "必须报出出错表路径");
+        }
+
+        {
+            // 表数组元素里的未知键：数组不进路径。
+            Value root;
+            root.SetTable();
+            Value *items = root.AddField("variants", 0);
+            items->SetArray();
+            Value *item = items->AddElement();
+            item->SetTable();
+            item->AddField("scalar_typo", 0)->SetFloat(1.0f);
+
+            Check(!ValidateKeysByMeta(root, meta_fixture::kRootMeta, AnsiString(""), path, key),
+                  "表数组元素里的未知键必须失败");
+            Check(hgl::stricmp(key.c_str(), "scalar_typo") == 0, "必须报出未知键名");
+            Check(hgl::stricmp(path.c_str(), "variants") == 0, "数组不进路径");
+        }
+
+        {
+            // 键名大小写不符：`Name` 不等于 `name`。
+            Value root;
+            root.SetTable();
+            root.AddField("Name", 0)->SetString(AnsiString("Demo"));
+
+            Check(!ValidateKeysByMeta(root, meta_fixture::kRootMeta, AnsiString(""), path, key),
+                  "键名大小写不符必须失败");
+            Check(hgl::stricmp(key.c_str(), "Name") == 0, "必须报出原始键名");
+            Check(path.IsEmpty(), "顶层失败时表路径为空");
+        }
+
+        {
+            // 顶层键名走 `toml_key` 覆盖（`items` → `variants`）也要被认出。
+            Value root;
+            root.SetTable();
+            root.AddField("variants", 0)->SetArray();
+
+            Check(ValidateKeysByMeta(root, meta_fixture::kRootMeta, AnsiString(""), path, key),
+                  "toml_key 覆盖的键必须被认领");
+        }
+
+        return true;
+    }
+
+    // ── 用例 11：`ReadFromValue` / `WriteToValue` 整体入口 ───────────────────
+
+    bool TestWholeValueEntry()
+    {
+        SampleAsset source;
+        source.schema = 42;
+        source.name = "Whole";
+        source.count = -9;
+        source.kind = SampleKind::Third;
+        source.position = hgl::math::Vector3f(7.0f, 8.0f, 9.0f);
+
+        Value tree;
+        Check(WriteToValue(source, tree), "WriteToValue 应成功");
+        Check(tree.IsTable(), "WriteToValue 产出应为表");
+
+        SampleAsset loaded;
+        Archive read_archive;
+        Check(ReadFromValue(tree, loaded, &read_archive), "ReadFromValue 应成功");
+        Check(read_archive.Ok(), "ReadFromValue 的 Archive 应无失败");
+        Check(loaded.schema == source.schema && loaded.count == source.count,
+              "整体入口标量往返");
+        Check(loaded.kind == source.kind, "整体入口枚举往返");
+        Check(hgl::stricmp(loaded.name.c_str(), source.name.c_str()) == 0,
+              "整体入口字符串往返");
+
+        // 类型不符必须失败，并把字段名带回诊断。
+        tree.FindField("count")->SetString(AnsiString("nope"));
+        SampleAsset broken;
+        Archive failed_archive;
+        Check(!ReadFromValue(tree, broken, &failed_archive), "类型不符必须失败");
+        Check(hgl::stricmp(failed_archive.FailedField(), "count") == 0,
+              "必须报出失败字段名");
+
+        return true;
+    }
+
     bool TestFlatBuffersRoundTrip()
     {
         Fixture fixture;
@@ -645,6 +847,9 @@ int main()
     TestMissingKeyKeepsDefault();
     TestTypeMismatchFails();
     TestEnumUsesName();
+    TestFindByPathAndExact();
+    TestValidateKeysByMeta();
+    TestWholeValueEntry();
     TestFlatBuffersRoundTrip();
 
     if (g_failed != 0)

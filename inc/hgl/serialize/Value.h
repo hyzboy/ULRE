@@ -42,6 +42,7 @@
 #include <hgl/utf.h>
 
 #include <cstdint>
+#include <cstring>
 
 namespace hgl::serialize
 {
@@ -155,6 +156,22 @@ namespace hgl::serialize
         /// 按名字查表；`name` 为空时退回按 id 查。
         const Value *FindField(const char *name, uint32_t id = 0) const;
         Value *FindField(const char *name, uint32_t id = 0);
+
+        /// 按名字查表，**大小写敏感**（`FindField` 是大小写不敏感的）。
+        /// 严格键校验必须用它：作者把 `cull_mode` 写成 `Cull_Mode` 要报未知键，
+        /// 而不是被静默接受。
+        const Value *FindFieldExact(const char *name) const;
+        Value *FindFieldExact(const char *name);
+
+        /**
+         * @brief 按点分路径取节点，形如 `"render_state.pipeline.cull_mode"`。
+         *
+         * 表数组（`[[textures]]`）不下标：遇到数组时依次尝试每个元素，返回第一个
+         * 能命中剩余路径的结果 —— 与 `Archive::FailedPath()`「数组不下标」的约定
+         * 一致，用于把失败路径还原成作者写的原始节点（诊断时取原始字符串）。
+         */
+        const Value *FindByPath(const char *dot_path) const;
+        Value *FindByPath(const char *dot_path);
 
         const char *GetFieldName(int index) const;
         uint32_t GetFieldId(int index) const;
@@ -483,6 +500,80 @@ namespace hgl::serialize
     {
         return const_cast<Value *>(
             static_cast<const Value *>(this)->FindField(name, id));
+    }
+
+    inline const Value *Value::FindFieldExact(const char *name) const
+    {
+        if (kind_ != ValueKind::Table || !name || !name[0])
+            return nullptr;
+
+        const int count = keys_.GetCount();
+        for (int i = 0; i < count; ++i)
+        {
+            const AnsiString *key = keys_.At(i);
+            const char *candidate = key ? key->c_str() : nullptr;
+            if (candidate && std::strcmp(candidate, name) == 0)
+                return children_[i];
+        }
+        return nullptr;
+    }
+
+    inline Value *Value::FindFieldExact(const char *name)
+    {
+        return const_cast<Value *>(
+            static_cast<const Value *>(this)->FindFieldExact(name));
+    }
+
+    inline const Value *Value::FindByPath(const char *dot_path) const
+    {
+        if (!dot_path || !dot_path[0])
+            return this;
+
+        // 数组不进路径：任取第一个能命中剩余路径的元素。
+        if (kind_ == ValueKind::Array)
+        {
+            const int count = children_.GetCount();
+            for (int i = 0; i < count; ++i)
+            {
+                const Value *child = children_[i];
+                const Value *found = child ? child->FindByPath(dot_path) : nullptr;
+                if (found)
+                    return found;
+            }
+            return nullptr;
+        }
+
+        if (kind_ != ValueKind::Table)
+            return nullptr;
+
+        const char *dot = std::strchr(dot_path, '.');
+        const char *tail = dot ? dot + 1 : nullptr;
+        const int head_length = dot ? static_cast<int>(dot - dot_path)
+                                    : static_cast<int>(std::strlen(dot_path));
+
+        const int count = keys_.GetCount();
+        for (int i = 0; i < count; ++i)
+        {
+            const AnsiString *key = keys_.At(i);
+            const char *candidate = key ? key->c_str() : nullptr;
+            if (!candidate)
+                continue;
+
+            if (static_cast<int>(std::strlen(candidate)) != head_length
+             || std::strncmp(candidate, dot_path, static_cast<size_t>(head_length)) != 0)
+                continue;
+
+            const Value *child = children_[i];
+            return child ? child->FindByPath(tail) : nullptr;
+        }
+
+        return nullptr;
+    }
+
+    inline Value *Value::FindByPath(const char *dot_path)
+    {
+        return const_cast<Value *>(
+            static_cast<const Value *>(this)->FindByPath(dot_path));
     }
 
     inline const char *Value::GetFieldName(const int index) const

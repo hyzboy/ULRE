@@ -41,6 +41,11 @@ namespace hgl::asset
         ValueArray,  ///< `hgl::ValueArray<T>`（值语义动态数组）
         PtrArray,    ///< `hgl::ManagedArray<T>`（指针语义动态数组，TOML 里是表数组）
 
+        /// 「没有类别」。只用于 `PropertyMetaInfo::elem_kind`（非容器字段的占位），
+        /// 刻意放在 `ENUM_CLASS_RANGE` 之外 —— 它不是一种可赋给 `kind` 的取值，
+        /// `RangeCheck<PropertyKind>(None)` 应当为 false。
+        None,
+
         ENUM_CLASS_RANGE(Bool, PtrArray)
     };
 
@@ -69,7 +74,23 @@ namespace hgl::asset
         PF_Serialized       = 1u << 10,  ///< 至少参与一种持久化格式（`Transient` 的补集）
         PF_SerializedToml   = 1u << 11,  ///< 参与作者侧 TOML 往返
         PF_SerializedFlatBuffers = 1u << 12, ///< 进入发行版 FlatBuffers 快照
+
+        /**
+         * 字段是 `hgl::serialize::Presence<T>`（三态：缺席 / 显式写缺省值 / 显式写非缺省值）。
+         *
+         * 树形后端（TOML）天然能表达三态 —— 键不出现就是缺席；但 FlatBuffers 的
+         * 标量字段「不写」与「写 0」在字节上是同一件事，因此二进制后端必须知道
+         * 哪些标量字段属于 `Presence<T>`，才能对它们**总是**真写入 `voffset`。
+         * 非标量字段（表 / 向量）的缺席由「树里没有这个节点」自然表达，无需此位。
+         */
+        PF_Presence         = 1u << 13,
     };
+
+    /// `kind == Enum` 时由生成器提供的名字表：名字 → 数值（TOML 文本后端与诊断用）。
+    using EnumParseFn  = bool (*)(const char *name, int64_t &out);
+
+    /// `kind == Enum` 时由生成器提供的名字表：数值 → 名字（写出与诊断用）。
+    using EnumToNameFn = const char *(*)(int64_t value);
 
     /// 单个属性的描述。
     struct PropertyMetaInfo
@@ -100,6 +121,16 @@ namespace hgl::asset
         /// `kind` 为 `Struct`/`ValueArray`/`PtrArray` 且元素是资产结构时，指向该
         /// 结构的元数据（检查器展开子项、严格键校验递归都靠它）；否则 nullptr。
         const struct ClassMetaInfo *struct_meta;
+
+        /// 容器（`ValueArray`/`PtrArray`）的元素类别；非容器字段为 `None`。
+        /// FlatBuffers 后端据此决定向量元素是标量、字符串还是子表。
+        PropertyKind elem_kind = PropertyKind::None;
+
+        /// `kind == Enum` 时的名字表；其它类别为 nullptr。
+        EnumParseFn  enum_parse   = nullptr;
+
+        /// `kind == Enum` 时的名字表；其它类别为 nullptr。
+        EnumToNameFn enum_to_name = nullptr;
     };
 
     /// 单个资产结构的描述。
@@ -162,6 +193,25 @@ namespace hgl::asset
     inline bool IsSerializedFlatBuffers(const PropertyMetaInfo &prop)
     {
         return (prop.flags & PF_SerializedFlatBuffers) != 0;
+    }
+
+    /// 属性是否声明为 `hgl::serialize::Presence<T>`（三态字段）。
+    inline bool IsPresenceProperty(const PropertyMetaInfo &prop)
+    {
+        return (prop.flags & PF_Presence) != 0;
+    }
+
+    /// 属性是否是数组容器（`ValueArray` / `PtrArray`）。
+    inline bool IsArrayProperty(const PropertyMetaInfo &prop)
+    {
+        return prop.kind == PropertyKind::ValueArray
+            || prop.kind == PropertyKind::PtrArray;
+    }
+
+    /// 属性在文本后端（TOML/JSON）里的键名。
+    inline const char *TomlKeyOf(const PropertyMetaInfo &prop)
+    {
+        return prop.toml_key ? prop.toml_key : prop.name;
     }
 
     /// 属性是否可编辑（检查器据此决定用可写控件还是只读控件）。

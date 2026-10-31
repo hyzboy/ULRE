@@ -37,6 +37,7 @@
 
 #include <cstdint>
 #include <type_traits>
+#include <utility>
 
 namespace hgl::serialize
 {
@@ -240,6 +241,27 @@ namespace hgl::serialize
             ok_ = false;
             failed_field_ = AnsiString(field ? field : "");
             error_ = AnsiString(reason ? reason : "");
+        }
+
+        // ── 整体入口（`ReadFromValue` / `WriteToValue` 的实现基础）───────────
+        //
+        // 字段级入口是 `Field(id, name, value)`，整体入口则是「把这个节点本身
+        // 当成一个 `T`」：读方向等价于 `StructSerializer<T>::Do(ar, out)`，写方向
+        // 等价于把 `T` 摊成一张表。资产文件的顶层读写（TOML/FlatBuffers 两条
+        // 后端都只产出 `Value` 树）走的就是这两个。
+
+        /// 把一个值树节点整体读成 `T`（内部按 traits / `StructSerializer<T>` 分派）。
+        template <typename T>
+        bool ReadFrom(const Value &node, T &out)
+        {
+            return ReadValue(node, out);
+        }
+
+        /// 把 `T` 整体写成值树节点（写方向，`node` 原有内容被覆盖）。
+        template <typename T>
+        void WriteTo(Value &node, const T &value)
+        {
+            WriteValue(node, value, "");
         }
 
     private:
@@ -742,4 +764,45 @@ namespace hgl::serialize
         AnsiString path_;
         AnsiString error_;
     };
+
+    // ── 整体读写的自由函数外壳 ──────────────────────────────────────────────
+
+    /**
+     * @brief 把一个值树节点整体读成 `T`。
+     *
+     * 资产文件的解析只跟这个函数（和 `WriteToValue`）打交道：后端（TOML /
+     * FlatBuffers）只负责「文本或字节 ↔ `Value` 树」，不认任何具体资产类型；
+     * 字段名、类型、缺键语义、枚举拼写表全部由生成的 `StructSerializer<T>` 单点决定。
+     *
+     * @param node    输入树（通常是根表）
+     * @param out     目标对象；读失败时可能已被部分写入
+     * @param archive 可选输出：失败详情（`FailedField()` / `FailedPath()` /
+     *                `ErrorMessage()`）。传入时先被重置。
+     * @return 全部字段都读成功时返回 true
+     */
+    template <typename T>
+    inline bool ReadFromValue(const Value &node, T &out, Archive *archive = nullptr)
+    {
+        Archive local = Archive::ForRead(node);
+        const bool ok = local.ReadFrom(node, out);
+
+        if (archive)
+            *archive = std::move(local);
+
+        return ok;
+    }
+
+    /**
+     * @brief 把 `T` 整体写成值树（`node` 被重置成一张表）。
+     *
+     * `Presence<T>` 字段在缺席时**不会**写出，因此「只写与默认不同的键」的资产
+     * 往返一次仍是同样的最小形态。
+     */
+    template <typename T>
+    inline bool WriteToValue(const T &value, Value &node)
+    {
+        Archive archive = Archive::ForWrite(node);
+        archive.WriteTo(node, value);
+        return archive.Ok();
+    }
 }//namespace hgl::serialize
