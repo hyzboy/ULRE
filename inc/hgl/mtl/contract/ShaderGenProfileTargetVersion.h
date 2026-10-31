@@ -89,7 +89,20 @@ namespace hgl::graph::mtl::contract
     //      · `ShaderProgramArtifactMetadata` 9→2、两份 manifest 升 v2。
     //      GLSL 文本与 SPV 字节不变，但**所有键值、缓存文件名、清单格式全变**，
     //      旧产物既不会被命中也不会被读出，必须换代重烘。
-    constexpr uint32_t MATERIAL_CODEGEN_GENERATION = 15;
+    // 16：命名与目录治理（doc/material-shader-naming-and-layout.md）落地——
+    //      · `ShaderLibrary` 顶层 19 目录收敛为 asset/contract/domain/module/topology
+    //        五类，模块文件迁移带槽位前缀（`material_source_*`、`diffuse_light_*`、
+    //        `ambient_light_*`、`output_policy_*`、`surface_*` 等）；
+    //      · 定义资产 `*.mi.toml` → `asset/definition/*.definition.toml`，配方
+    //        `material/recipes/*` → `asset/recipe/*`，采样器契约 → `contract/sampler.toml`；
+    //      · C++ 侧 RenderTemplate/DomainShaderTemplate/ShaderCodeModule 三个旧名
+    //        改为 PassProfile/DomainEntrySource/GlslModule。
+    //     GLSL 文本内容与 SPV 指令不变（只改 include 路径与 `@ulre name`），但
+    //     `glsl_module_graph_hash` 吃 `@ulre name`、`#include` 路径又进模块图，
+    //     所有 stage/program 键值全变；且定义资产 id 由 PascalCase 改为小写
+    //     snake_case（`builtin/` 前缀仅保留给源码内嵌定义），烘焙清单里旧 id
+    //     查不到定义。必须换代重烘。
+    constexpr uint32_t MATERIAL_CODEGEN_GENERATION = 16;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，
