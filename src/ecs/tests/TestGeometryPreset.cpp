@@ -15,6 +15,9 @@ namespace
     constexpr const char *kPresetNames[] =
     {
         "plane_square",
+        "quad",
+        "plane_grid",
+        "axis",
         "sphere_12",
         "sphere_24",
         "sphere_48",

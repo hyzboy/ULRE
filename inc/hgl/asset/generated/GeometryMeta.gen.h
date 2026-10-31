@@ -111,6 +111,7 @@ namespace hgl::asset::generated
     extern const ClassMetaInfo Class_BuiltinConeParams;
     extern const ClassMetaInfo Class_BuiltinCapsuleParams;
     extern const ClassMetaInfo Class_BuiltinRectangleParams;
+    extern const ClassMetaInfo Class_BuiltinAxisParams;
     extern const ClassMetaInfo Class_BuiltinBoundingBoxParams;
     extern const ClassMetaInfo Class_BuiltinHexSphereParams;
     extern const ClassMetaInfo Class_BuiltinTaperedCapsuleParams;
@@ -274,6 +275,18 @@ namespace hgl::asset::generated
         32u, 4u
     };
 
+    inline const PropertyMetaInfo Meta_BuiltinAxisParams[] =
+    {
+        { "size", "size", "size", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+    };
+
+    inline const ClassMetaInfo Class_BuiltinAxisParams =
+    {
+        "BuiltinAxisParams", "", "",
+        Meta_BuiltinAxisParams, (uint32_t)(sizeof(Meta_BuiltinAxisParams) / sizeof(Meta_BuiltinAxisParams[0])),
+        4u, 4u
+    };
+
     inline const PropertyMetaInfo Meta_BuiltinBoundingBoxParams[] =
     {
         { "ntb", "ntb", "ntb", "Default", "", "NTBType", "hgl::graph::NTBType", nullptr, PropertyKind::Enum, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_NTBType, &AssetEnumName64_NTBType },
@@ -357,17 +370,18 @@ namespace hgl::asset::generated
         { "cone", "cone", "cone", "Default", "", "BuiltinConeParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 108u, 16u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinConeParams, PropertyKind::None, nullptr, nullptr },
         { "capsule", "capsule", "capsule", "Default", "", "BuiltinCapsuleParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 124u, 16u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinCapsuleParams, PropertyKind::None, nullptr, nullptr },
         { "rectangle", "rectangle", "rectangle", "Default", "", "BuiltinRectangleParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 140u, 32u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinRectangleParams, PropertyKind::None, nullptr, nullptr },
-        { "bounding_box", "bounding_box", "bounding_box", "Default", "", "BuiltinBoundingBoxParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 172u, 4u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinBoundingBoxParams, PropertyKind::None, nullptr, nullptr },
-        { "hex_sphere", "hex_sphere", "hex_sphere", "Default", "", "BuiltinHexSphereParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 176u, 16u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinHexSphereParams, PropertyKind::None, nullptr, nullptr },
-        { "tapered_capsule", "tapered_capsule", "tapered_capsule", "Default", "", "BuiltinTaperedCapsuleParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 192u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinTaperedCapsuleParams, PropertyKind::None, nullptr, nullptr },
-        { "frustum", "frustum", "frustum", "Default", "", "BuiltinFrustumParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 212u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinFrustumParams, PropertyKind::None, nullptr, nullptr },
+        { "axis", "axis", "axis", "Default", "", "BuiltinAxisParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 172u, 4u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinAxisParams, PropertyKind::None, nullptr, nullptr },
+        { "bounding_box", "bounding_box", "bounding_box", "Default", "", "BuiltinBoundingBoxParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 176u, 4u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinBoundingBoxParams, PropertyKind::None, nullptr, nullptr },
+        { "hex_sphere", "hex_sphere", "hex_sphere", "Default", "", "BuiltinHexSphereParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 180u, 16u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinHexSphereParams, PropertyKind::None, nullptr, nullptr },
+        { "tapered_capsule", "tapered_capsule", "tapered_capsule", "Default", "", "BuiltinTaperedCapsuleParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 196u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinTaperedCapsuleParams, PropertyKind::None, nullptr, nullptr },
+        { "frustum", "frustum", "frustum", "Default", "", "BuiltinFrustumParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 216u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinFrustumParams, PropertyKind::None, nullptr, nullptr },
     };
 
     inline const ClassMetaInfo Class_GeometryBuiltinParamsSpec =
     {
         "GeometryBuiltinParamsSpec", "", "`[builtin.<shape>]` 各形状参数子表。 `[builtin.sphere]` 这类**表名由 `shape` 字段的值决定**的写法，静态反射无法 表达；这里把 14 张子表展开成 14 个固定键（键名 = TOML 表名），由 `ReadFromValue` 一次读全 —— 出现几张贴就读几张，没写的表全是类内缺省值， 消费侧按 `shape` 直接取对应成员即可（不需要「先挑表再读」）。",
         Meta_GeometryBuiltinParamsSpec, (uint32_t)(sizeof(Meta_GeometryBuiltinParamsSpec) / sizeof(Meta_GeometryBuiltinParamsSpec[0])),
-        232u, 4u
+        236u, 4u
     };
 
     inline const PropertyMetaInfo Meta_GeometryAssetSpec[] =
@@ -398,6 +412,7 @@ namespace hgl::asset::generated
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinConeParams *) { return &Class_BuiltinConeParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinCapsuleParams *) { return &Class_BuiltinCapsuleParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinRectangleParams *) { return &Class_BuiltinRectangleParams; }
+    inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinAxisParams *) { return &Class_BuiltinAxisParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinBoundingBoxParams *) { return &Class_BuiltinBoundingBoxParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinHexSphereParams *) { return &Class_BuiltinHexSphereParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinTaperedCapsuleParams *) { return &Class_BuiltinTaperedCapsuleParams; }

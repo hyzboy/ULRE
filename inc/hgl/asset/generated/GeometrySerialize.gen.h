@@ -214,6 +214,19 @@ namespace hgl::serialize
         { return &hgl::asset::generated::Class_BuiltinRectangleParams; }
     };
 
+    template<> struct StructSerializer<hgl::graph::BuiltinAxisParams>
+    {
+        static constexpr bool defined = true;
+
+        template<typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "size", v.size);
+        }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinAxisParams; }
+    };
+
     template<> struct StructSerializer<hgl::graph::BuiltinBoundingBoxParams>
     {
         static constexpr bool defined = true;
@@ -307,10 +320,11 @@ namespace hgl::serialize
             ar.Field(8, "cone", v.cone);
             ar.Field(9, "capsule", v.capsule);
             ar.Field(10, "rectangle", v.rectangle);
-            ar.Field(11, "bounding_box", v.bounding_box);
-            ar.Field(12, "hex_sphere", v.hex_sphere);
-            ar.Field(13, "tapered_capsule", v.tapered_capsule);
-            ar.Field(14, "frustum", v.frustum);
+            ar.Field(11, "axis", v.axis);
+            ar.Field(12, "bounding_box", v.bounding_box);
+            ar.Field(13, "hex_sphere", v.hex_sphere);
+            ar.Field(14, "tapered_capsule", v.tapered_capsule);
+            ar.Field(15, "frustum", v.frustum);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_GeometryBuiltinParamsSpec; }

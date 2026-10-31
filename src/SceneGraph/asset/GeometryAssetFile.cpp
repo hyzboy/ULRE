@@ -75,6 +75,7 @@ namespace hgl::graph
         case BuiltinShapeKind::HexSphere:       return "hex_sphere";
         case BuiltinShapeKind::TaperedCapsule:  return "tapered_capsule";
         case BuiltinShapeKind::Frustum:         return "frustum";
+        case BuiltinShapeKind::Axis:            return "axis";
         default:                                return "unknown";
         }
     }
@@ -99,6 +100,7 @@ namespace hgl::graph
         if (hgl::stricmp(name, "hex_sphere") == 0)      { out_kind = BuiltinShapeKind::HexSphere; return true; }
         if (hgl::stricmp(name, "tapered_capsule") == 0) { out_kind = BuiltinShapeKind::TaperedCapsule; return true; }
         if (hgl::stricmp(name, "frustum") == 0)         { out_kind = BuiltinShapeKind::Frustum; return true; }
+        if (hgl::stricmp(name, "axis") == 0)            { out_kind = BuiltinShapeKind::Axis; return true; }
 
         return false;
     }
@@ -410,6 +412,13 @@ namespace hgl::graph
             fci.numberSlices  = spec.params.frustum.slices;
             fci.generate_caps = spec.params.frustum.generate_caps;
             return inline_geometry::CreateFrustum(creater, &fci);
+        }
+
+        case BuiltinShapeKind::Axis:
+        {
+            inline_geometry::AxisCreateInfo aci;
+            aci.size = spec.params.axis.size;
+            return inline_geometry::CreateAxis(creater, &aci);
         }
 
         default:

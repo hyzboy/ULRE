@@ -176,8 +176,10 @@ SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
                             ${SG_INCLUDE_PATH}/asset/PrimitiveAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/PrimitiveAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/GeometryPreset.h
+                            ${ROOT_INCLUDE_PATH}/hgl/asset/AssetURI.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/asset/MaterialRecipeAsset.h
                             ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipeRegistry.h
+                            asset/AssetURI.cpp
                             asset/MaterialRecipeAsset.cpp
                             asset/MaterialRecipeRegistry.cpp
                             asset/TextureAsset.cpp

@@ -34,8 +34,9 @@ namespace hgl::graph
         HexSphere,
         TaperedCapsule,
         Frustum,
+        Axis,
 
-        ENUM_CLASS_RANGE(Sphere, Frustum)
+        ENUM_CLASS_RANGE(Sphere, Axis)
     };
 
     /**
@@ -192,6 +193,11 @@ namespace hgl::graph
         bool tex_coord = true;
     };
 
+    struct HGL_ASSET_STRUCT BuiltinAxisParams
+    {
+        float size = 1.0f;
+    };
+
     struct HGL_ASSET_STRUCT BuiltinBoundingBoxParams
     {
         NTBType ntb = NTBType::None;
@@ -261,6 +267,8 @@ namespace hgl::graph
         BuiltinCapsuleParams        capsule;
         /// `[builtin.rectangle]`
         BuiltinRectangleParams      rectangle;
+        /// `[builtin.axis]`
+        BuiltinAxisParams           axis;
         /// `[builtin.bounding_box]`
         BuiltinBoundingBoxParams    bounding_box;
         /// `[builtin.hex_sphere]`
