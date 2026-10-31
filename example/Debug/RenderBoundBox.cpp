@@ -19,7 +19,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
@@ -65,32 +65,16 @@ namespace
     }
 }
 
-constexpr const COLOR TestColor[]=
+// 颜色数值已搬到数据块文件；这里只保留行数（门禁测试会核对文件行数与它一致）
+constexpr const size_t COLOR_COUNT = 16;
+
+namespace
 {
-    COLOR::MozillaCharcoal,
-    COLOR::MozillaSand,
-
-    COLOR::BlenderAxisRed,
-    COLOR::BlenderAxisGreen,
-    COLOR::BlenderAxisBlue,
-
-    COLOR::BananaYellow,
-    COLOR::CherryBlossomPink,
-
-    COLOR::SkyBlue,
-    COLOR::GrassGreen,
-    COLOR::BloodRed,
-
-    COLOR::Lavender,
-    COLOR::Mint,
-    COLOR::Coral,
-
-    COLOR::DarkOrange,
-    COLOR::DarkTurquoise,
-    COLOR::DarkViolet,
-};
-
-constexpr const size_t COLOR_COUNT=sizeof(TestColor)/sizeof(COLOR);
+    // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/render_bound_box.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;
+}
 
 class RenderBoundBoxApp:public WorkObject
 {
@@ -98,10 +82,7 @@ private:
 
     struct MaterialData
     {
-        using MaterialDataAccessor =
-            graph::GlobalSSBODataAccessor;
-
-        MaterialDataAccessor material_data_ssbo_accessors[COLOR_COUNT]{};
+        graph::GlobalSSBOBinding material_data_ssbo_accessors[COLOR_COUNT]{};
     };
 
     struct MeshEntry
@@ -152,23 +133,14 @@ private:
         if (!md)
             return false;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        graph::GlobalSSBOBinding first{};
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
             return false;
 
+        // 同一数据块内的相邻行：基行 + 序号，不必逐行查 URI
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         for (uint32_t i = 0; i < color_count; ++i)
-        {
-            md->material_data_ssbo_accessors[i] =
-                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-            if (!md->material_data_ssbo_accessors[i])
-                return false;
-
-            graph::ssbo::EmissiveSurfaceRow material_data{};
-            material_data.color = GetColor4f(TestColor[i], 1.0f);
-            if (!md->material_data_ssbo_accessors[i].Write(material_data))
-                return false;
-        }
+            md->material_data_ssbo_accessors[i] = first.RowOffset(i);
 
         return true;
     }
@@ -189,7 +161,7 @@ private:
         if (!InitMaterialForDBS(&solid))
             return false;
 
-        return (solid_recipe.material_ssbo_binding = solid.material_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid();
+        return (solid_recipe.material_ssbo_binding = solid.material_data_ssbo_accessors[0]).IsValid();
     }
 
     bool InitWireMDP()
@@ -197,7 +169,7 @@ private:
         if (!InitMaterialForDBS(&wire))
             return false;
 
-        return (wire_recipe.material_ssbo_binding = wire.material_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid();
+        return (wire_recipe.material_ssbo_binding = wire.material_data_ssbo_accessors[0]).IsValid();
     }
 
     bool InitVDM()
@@ -376,7 +348,7 @@ private:
             floor_mesh->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(floor_mesh->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct =
-                solid.material_data_ssbo_accessors[floor_mesh->color_index].GetGlobalSSBOBinding();
+                solid.material_data_ssbo_accessors[floor_mesh->color_index];
             material_data_comp->SetDataResource(floor_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -408,7 +380,7 @@ private:
             rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct =
-                solid.material_data_ssbo_accessors[rm->color_index].GetGlobalSSBOBinding();
+                solid.material_data_ssbo_accessors[rm->color_index];
             material_data_comp->SetDataResource(mesh_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -451,7 +423,7 @@ private:
 
             bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
-            bbox_struct = wire.material_data_ssbo_accessors[5].GetGlobalSSBOBinding();
+            bbox_struct = wire.material_data_ssbo_accessors[5];
             material_data_comp->SetDataResource(bbox_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

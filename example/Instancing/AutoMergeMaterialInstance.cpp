@@ -15,7 +15,7 @@
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -56,6 +56,14 @@ constexpr float position_data[VERTEX_COUNT*2]=
 constexpr uint DRAW_OBJECT_COUNT=12;
 constexpr double TRI_ROTATE_ANGLE=360.0/DRAW_OBJECT_COUNT;
 
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/auto_merge_material_instance.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;
+}
+
 //#define USE_MATERIAL_FILE   true        //是否使用材质文件
 
 class AutoMergeMaterialInstanceApp:public WorkObject
@@ -70,11 +78,8 @@ private:
     graph::mtl::MaterialRecipe triangle_recipe{};
     PrimitiveAsset triangle_asset{};
 
-    // MI 结构体 SSBO
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
-    MaterialDataAccessor triangle_data_accessors[DRAW_OBJECT_COUNT]{};
+    // MI 结构体 SSBO：每行来自数据块文件，代码里只有基行 + 序号
+    graph::GlobalSSBOBinding triangle_data_accessors[DRAW_OBJECT_COUNT]{};
 
     // 每个三角形的数据
     struct TriangleData
@@ -96,7 +101,7 @@ private:
         if (!loaded_recipe)
             return false;
         triangle_recipe = *loaded_recipe;
-        if (!(triangle_recipe.material_ssbo_binding = triangle_data_accessors[0].GetGlobalSSBOBinding()).IsValid())
+        if (!(triangle_recipe.material_ssbo_binding = triangle_data_accessors[0]).IsValid())
             return false;
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
@@ -176,7 +181,7 @@ private:
             hgl::ecs::MaterialData *material_data_comp = triangles[i].entity->GetContext()->GetOrCreateMaterialData(triangles[i].entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tri_struct{};
-            tri_struct = triangle_data_accessors[i].GetGlobalSSBOBinding();
+            tri_struct = triangle_data_accessors[i];
             material_data_comp->SetDataResource(tri_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -193,7 +198,7 @@ private:
     }
 
     /**
-     * 创建 EmissiveSurface 结构体行并写入共享材质数据 SSBO。
+     * 从数据块文件取 EmissiveSurface 行（块内相邻行 = 基行 + 序号）。
      */
     bool InitMISSBO()
     {
@@ -202,22 +207,13 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        graph::GlobalSSBOBinding first{};
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
             return false;
 
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            triangle_data_accessors[i] =
-                domain_manager->GetAccessor<ssbo::EmissiveSurfaceRow>();
-            if (!triangle_data_accessors[i])
-                return false;
-
-            ssbo::EmissiveSurfaceRow material_data{};
-            material_data.color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-            if (!triangle_data_accessors[i].Write(material_data))
-                return false;
-
+            triangle_data_accessors[i] = first.RowOffset(i);
             triangles[i].entity = nullptr;
         }
 

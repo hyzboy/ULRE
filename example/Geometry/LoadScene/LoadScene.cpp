@@ -3,7 +3,7 @@
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
@@ -59,22 +59,16 @@ namespace
     }
 }
 
-constexpr const COLOR TestColor[] =
+// 颜色数值已搬到数据块文件；这里只保留行数（门禁测试会核对文件行数与它一致）
+constexpr const size_t COLOR_COUNT = 8;
+
+namespace
 {
-    COLOR::MozillaCharcoal,
-    COLOR::MozillaSand,
-
-    COLOR::BlenderAxisRed,
-    COLOR::BlenderAxisGreen,
-    COLOR::BlenderAxisBlue,
-
-    COLOR::BananaYellow,
-    COLOR::CherryBlossomPink,
-
-    COLOR::SkyBlue,
-};
-
-constexpr const size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
+    // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/load_scene.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;
+}
 
 class LoadSceneApp:public WorkObject
 {
@@ -90,11 +84,8 @@ private:
 
     struct MaterialData
     {
-        using MaterialDataAccessor =
-            graph::GlobalSSBODataAccessor;
-
         GeometryVertexFormat geometry_vertex_format;
-        MaterialDataAccessor mtl_data_ssbo_accessors[COLOR_COUNT]{};
+        graph::GlobalSSBOBinding mtl_data_ssbo_accessors[COLOR_COUNT]{};
     };
 
     MaterialData solid;
@@ -119,23 +110,14 @@ private:
         if (!md)
             return false;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        graph::GlobalSSBOBinding first{};
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
             return false;
 
+        // 同一数据块内的相邻行：基行 + 序号，不必逐行查 URI
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         for (uint32_t i = 0; i < color_count; ++i)
-        {
-            md->mtl_data_ssbo_accessors[i] =
-                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-            if (!md->mtl_data_ssbo_accessors[i])
-                return false;
-
-            graph::ssbo::EmissiveSurfaceRow material_data{};
-            material_data.color = GetColor4f(TestColor[i], 1.0f);
-            if (!md->mtl_data_ssbo_accessors[i].Write(material_data))
-                return false;
-        }
+            md->mtl_data_ssbo_accessors[i] = first.RowOffset(i);
 
         return true;
     }
@@ -175,7 +157,7 @@ private:
         if (!loaded_recipe)
             return false;
         scene_recipe = *loaded_recipe;
-        if (!(scene_recipe.material_ssbo_binding = solid.mtl_data_ssbo_accessors[0].GetGlobalSSBOBinding()).IsValid())
+        if (!(scene_recipe.material_ssbo_binding = solid.mtl_data_ssbo_accessors[0]).IsValid())
             return false;
 
         return LoadStaticMeshSceneAsPrimitiveAssets(
@@ -236,7 +218,7 @@ private:
                 se.primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(se.primitive_comp->GetOwnerID())->SetPrimitiveAsset(&asset);
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource scene_struct{};
                 scene_struct =
-                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT].GetGlobalSSBOBinding();
+                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT];
                 material_data_comp->SetDataResource(scene_struct);
                 // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

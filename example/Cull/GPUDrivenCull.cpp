@@ -32,6 +32,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialResolver.h>
@@ -91,7 +92,16 @@ namespace
         COLOR::SkyBlue,
     };
 
-    constexpr const size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
+    // 颜色数值已搬到数据块文件；这里只保留颜色种数（块文件 64 行 = 8 色循环）
+    constexpr const size_t COLOR_COUNT = 8;
+}
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/gpu_driven_cull.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 
 class GPUDrivenCullApp : public WorkObject
@@ -101,15 +111,13 @@ private:
     ECSContext * ecs_context   = nullptr;
     Entity *     camera_entity = nullptr;
 
-    using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
-
     Geometry *                   cube_geometry = nullptr;
     PrimitiveAsset               cube_asset{};
     graph::mtl::MaterialRecipe   cube_recipe{};
 
     // 每实体一行材质行（同配方、不同颜色）——**行不同不成批**：批键 = {program, pipeline}，
     // 行只影响 per-item 材质绑定 ⇒ 仍是 **1 个批**（CoverageVariants 已验证同一现象）。
-    MaterialDataAccessor color_rows[CUBE_COUNT]{};
+    graph::GlobalSSBOBinding color_rows[CUBE_COUNT]{};
 
     bool  static_camera = false;
     float orbit_speed   = 18.0f;
@@ -133,28 +141,20 @@ private:
 
     bool InitMaterial()
     {
-        auto * domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        graph::GlobalSSBOBinding first{};
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
             return false;
 
+        // 同一数据块内的相邻行：基行 + 序号，不必逐行查 URI
         for (uint i = 0; i < CUBE_COUNT; ++i)
-        {
-            color_rows[i] = domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-            if (!color_rows[i])
-                return false;
-
-            graph::ssbo::EmissiveSurfaceRow row{};
-            row.color = GetColor4f(TestColor[i % COLOR_COUNT], 1.0f);
-            if (!color_rows[i].Write(row))
-                return false;
-        }
+            color_rows[i] = first.RowOffset(i);
 
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("GPUDrivenCull.Cube");
         if (!loaded_recipe)
             return false;
         cube_recipe = *loaded_recipe;
 
-        if (!(cube_recipe.material_ssbo_binding = color_rows[0].GetGlobalSSBOBinding()).IsValid())
+        if (!(cube_recipe.material_ssbo_binding = color_rows[0]).IsValid())
             return false;
 
         return true;
@@ -218,7 +218,7 @@ private:
                 geometry_data->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
 
             MaterialData::MaterialDataAuthoringResource row_resource{};
-            row_resource = color_rows[i].GetGlobalSSBOBinding();
+            row_resource = color_rows[i];
             material_data->SetDataResource(row_resource);
         }
 
