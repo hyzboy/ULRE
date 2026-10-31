@@ -1,6 +1,6 @@
 // DomainOptions 回归门
 //
-// 与 src/Tools/ShaderGen/ 下的工具不同，本 target **只链接 ULRE.ShaderMaterialData**：
+// 与 src/Tools/ShaderTooling/ 下的工具不同，本 target **只链接 ULRE.ShaderMaterialData**：
 // 它断言的是「frag_options.glsl 的发射与生成器无关」——即使 ShaderGen 被物理删除，
 // 这条用例也必须照常构建、照常通过。
 //

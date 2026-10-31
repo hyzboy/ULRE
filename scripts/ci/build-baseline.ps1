@@ -22,7 +22,7 @@ param(
 #
 # 为什么必须分层（本仓 738 个 target / 183 个 ctest 用例）：
 #   A 层 = ULRE 自有的 src/ + example/ + inc/ + ShaderLibrary/ 产物，以及 ULRE 自有测试
-#          （ctest 标签 ecs / csm / shadergen，共 25 个用例）
+#          （ctest 标签 ecs / csm / shader_tooling，共 25 个用例）
 #   B 层 = CMCore / CMMath / CMAudio / CM2D / CMUtil / CMCoreType / CMAssetsManage 等
 #          submodule 上游仓库的 examples 与 tests（共 158 个用例）
 # 上游（B 层）若有断点属另一条任务线，登记不阻塞 ——
@@ -35,7 +35,7 @@ param(
 #
 # 判据（A 层全绿才算过，退出码 0）：
 #   1) 全量构建中**不存在归属于 A 层路径**的编译/链接错误；
-#   2) ctest -L "ecs|csm|shadergen" 全部通过（0 failed）。
+#   2) ctest -L "ecs|csm|shader_tooling" 全部通过（0 failed）。
 # B 层错误只统计、写入 summary.md，不影响退出码。
 #
 # 用法：
@@ -77,7 +77,7 @@ $bLayerTops = @(
 )
 
 # ULRE 自有测试标签
-$ulreLabelRegex = "ecs|csm|shadergen"
+$ulreLabelRegex = "ecs|csm|shader_tooling"
 
 Write-Host "=============================================================="
 Write-Host "ULRE 构建基线（A 层）"

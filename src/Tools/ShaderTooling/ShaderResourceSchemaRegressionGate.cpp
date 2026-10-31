@@ -11166,7 +11166,7 @@ void main()
                     std::string(header) + NormalizeDumpEOL(golden_text) + size_line;
 
                 const std::string golden_path = RepoRootPath(
-                    (std::string("src/Tools/ShaderGen/golden/domain-backend/")
+                    (std::string("src/Tools/ShaderTooling/golden/domain-backend/")
                      + shape.label + ".equiv.txt").c_str());
 
                 CompareAgainstGolden(

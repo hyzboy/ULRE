@@ -50,7 +50,7 @@ if(BUILD_TESTING)
 
     set_tests_properties(
         VerifyDescriptorMacros
-        PROPERTIES LABELS "shadergen;baseline")
+        PROPERTIES LABELS "shader_tooling;baseline")
 endif()
 
 # 构建期校验（不止 ctest）：生成物一旦与真源漂移即构建失败。
@@ -82,7 +82,7 @@ if(BUILD_TESTING)
 
     set_tests_properties(
         VerifyInterStageLocations
-        PROPERTIES LABELS "shadergen;baseline")
+        PROPERTIES LABELS "shader_tooling;baseline")
 endif()
 
 add_custom_target(interstage_locations_verify ALL
@@ -106,7 +106,7 @@ if(BUILD_TESTING)
 
     set_tests_properties(
         VerifyVertexLoaderConsistency
-        PROPERTIES LABELS "shadergen;baseline")
+        PROPERTIES LABELS "shader_tooling;baseline")
 endif()
 
 ####################################################################################################
@@ -136,7 +136,7 @@ if(BUILD_TESTING)
 
     set_tests_properties(
         shader_resource_schema_regression_gate
-        PROPERTIES LABELS "shadergen;baseline"
+        PROPERTIES LABELS "shader_tooling;baseline"
                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
     # 每个分组单独成一个 ctest 用例，供 -L <group> 定向运行；全部检查由
@@ -155,7 +155,7 @@ if(BUILD_TESTING)
             COMMAND ShaderResourceSchemaRegressionGate ${regression_group})
         set_tests_properties(
             shader_resource_schema_regression_gate.${regression_group}
-            PROPERTIES LABELS "shadergen;baseline;${regression_group}"
+            PROPERTIES LABELS "shader_tooling;baseline;${regression_group}"
                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     endforeach()
 endif()
@@ -179,14 +179,14 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         scene_render_template_resolver_regression
-        PROPERTIES LABELS "shadergen;template")
+        PROPERTIES LABELS "shader_tooling;template")
     add_test(
         NAME shader_include_root_regression
         COMMAND ScenePassProfileResolverRegression --compiler-root
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         shader_include_root_regression
-        PROPERTIES LABELS "shadergen;compiler")
+        PROPERTIES LABELS "shader_tooling;compiler")
 endif()
 
 ####################################################################################################
@@ -210,7 +210,7 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         shader_document_production_regression
-        PROPERTIES LABELS "shadergen;document;production")
+        PROPERTIES LABELS "shader_tooling;document;production")
 endif()
 
 ####################################################################################################

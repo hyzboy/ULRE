@@ -13,7 +13,7 @@ add_subdirectory(DomainOptions)
 # 着色器/材质程序回归工具：直接链接 ULRE.ShaderProgramBuild，发行形态
 # （ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）下不构建。
 IF(ULRE_ENABLE_SHADER_PROGRAM_BUILD)
-    add_subdirectory(ShaderGen)
+    add_subdirectory(ShaderTooling)
 ENDIF()
 
 # TexConv 纹理转换工具（子模块）：依赖 ImageMagick(Magick++) 与 AMD Compressonator；

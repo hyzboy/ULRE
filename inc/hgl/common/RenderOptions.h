@@ -148,7 +148,7 @@
  *
  * 本开关管**三件事**：
  *  1) 链接图：`ULRE::Engine` 里是否含 `ULRE.ShaderProgramBuild`；`ULRE::Runtime` 永不含它。
- *  2) 构建图：`src/ShaderProgramBuild`、`src/Tools/ShaderGen`（回归门）、`example/` 是否参与构建。
+ *  2) 构建图：`src/ShaderProgramBuild`、`src/Tools/ShaderTooling`（回归门）、`example/` 是否参与构建。
  *  3) 运行期：`AppFramework` 是否调用 `graph::InitShaderCompiler()` / `CloseShaderCompiler()`。
  *
  * ⚠ 值为 0 时**运行时仍然会算 ShaderProgramKey**（那是找 SPV 的身份，不是编译）——
