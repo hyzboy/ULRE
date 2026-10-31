@@ -82,6 +82,14 @@ namespace
     // 必须横向用 Y、纵向用 Z。摆在 XY 平面上是"地板"（X 是屏幕纵深）。
 }
 
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/coverage_variants.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;
+}
+
 class CoverageVariantsApp : public WorkObject
 {
 private:
@@ -89,6 +97,7 @@ private:
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
 
+    // CV_STRESS 台架行数由运行期决定，无法固化进文件 ⇒ 仍用 RAII 行租约访问器
     using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
 
     // 一种配方 + 它的覆盖变体（变体 = 同源拷贝 + 覆盖字段）
@@ -110,7 +119,7 @@ private:
     PrimitiveAsset  opaque_asset{};
     PrimitiveAsset  dither_asset{};
 
-    MaterialDataAccessor surface_rows[GRID_ROWS][GRID_COLS]{};
+    graph::GlobalSSBOBinding surface_rows[GRID_ROWS][GRID_COLS]{};
 
     TextureAsset * base_texture   = nullptr;
     TextureAsset * normal_texture = nullptr;
@@ -212,30 +221,19 @@ private:
 
     bool CreateSurfaceRows()
     {
+        graph::GlobalSSBOBinding first{};
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
+            return false;
+
+        // 行序 == 文件行序（row-major）：基行 + row * GRID_COLS + col
+        // 两行只差粗糙度（dither 行更粗：噪点镂空在粗糙面上更容易看清），数值全在块文件里
+        for (uint row = 0; row < GRID_ROWS; ++row)
+            for (uint col = 0; col < GRID_COLS; ++col)
+                surface_rows[row][col] = first.RowOffset(row * GRID_COLS + col);
+
         auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
         if (!domain_manager)
             return false;
-
-        for (uint row = 0; row < GRID_ROWS; ++row)
-        {
-            for (uint col = 0; col < GRID_COLS; ++col)
-            {
-                surface_rows[row][col] = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-                if (!surface_rows[row][col])
-                    return false;
-
-                graph::ssbo::PBRSurfaceRow material_data{};
-                material_data.base_color   = Color4f(0.72f, 0.72f, 0.72f, 1.0f);
-                material_data.normal_scale = 0.35f;
-
-                // 两行只差粗糙度：dither 行更粗（噪点镂空在粗糙面上更容易看清）
-                material_data.metallic  = 0.10f;
-                material_data.roughness = (row == 0) ? 0.45f : 0.85f;
-
-                if (!surface_rows[row][col].Write(material_data))
-                    return false;
-            }
-        }
 
         // A4：台架实体各占一行（cutoff 不同 ⇒ 颜色/粗糙度统一，便于逐像素对照）
         for (uint i = 0; i < stress_count; ++i)
@@ -278,7 +276,7 @@ private:
     bool InitScene()
     {
         // 配方绑定材质数据行池（行本身 per-entity，绑定只是"池身份"）
-        if (!(opaque_recipe.material_ssbo_binding = surface_rows[0][0].GetGlobalSSBOBinding()).IsValid())
+        if (!(opaque_recipe.material_ssbo_binding = surface_rows[0][0]).IsValid())
             return false;
 
         dither_recipe.material_ssbo_binding = opaque_recipe.material_ssbo_binding;
@@ -373,7 +371,7 @@ private:
 
                 // 纹理已由配方声明（opaque_recipe / dither_recipe 各自持有绑定），实体端不再重复绑定
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
-                row_resource = surface_rows[row][col].GetGlobalSSBOBinding();
+                row_resource = surface_rows[row][col];
                 material_data->SetDataResource(row_resource);
             }
         }

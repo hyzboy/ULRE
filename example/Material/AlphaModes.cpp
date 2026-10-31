@@ -48,7 +48,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -118,14 +118,20 @@ namespace
     constexpr float ALPHA_TEST_CUTOFF = 0.5f;
 }
 
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/alpha_modes.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;
+}
+
 class AlphaModesApp : public WorkObject
 {
 private:
 
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
-
-    using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
 
     // 一份基础配方 + 三种变体（第一种 = 基础配方本身）
     graph::mtl::MaterialRecipe opaque_recipe{};
@@ -142,7 +148,7 @@ private:
     Geometry *      cube_geometry = nullptr;
     PrimitiveAsset  mode_asset[MODE_ROWS]{};
 
-    MaterialDataAccessor surface_rows[MODE_ROWS][ALPHA_STEPS]{};
+    graph::GlobalSSBOBinding surface_rows[MODE_ROWS][ALPHA_STEPS]{};
 
     TextureAsset* pattern_texture = nullptr;   ///< 单通道 gradient：base_color + opacity_mask
 
@@ -227,29 +233,15 @@ private:
 
     bool CreateSurfaceRows()
     {
-        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        graph::GlobalSSBOBinding first{};
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
             return false;
 
+        // 行序 == 文件行序（row-major：模式行 × alpha 档）：基行 + row * ALPHA_STEPS + col。
+        // 每行 base_color = 白 + 该档 alpha（数值全在块文件里）
         for (uint row = 0; row < MODE_ROWS; ++row)
-        {
             for (uint col = 0; col < ALPHA_STEPS; ++col)
-            {
-                surface_rows[row][col] = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-                if (!surface_rows[row][col])
-                    return false;
-
-                // 基础色 = 白（RGB 交给纹理），**alpha = 该列的混合比例**（= 有效 alpha 的比例项）
-                graph::ssbo::PBRSurfaceRow material_data{};
-                material_data.base_color   = Color4f(1.0f, 1.0f, 1.0f, AlphaAt(col));
-                material_data.metallic     = 0.0f;
-                material_data.roughness    = 0.75f;
-                material_data.normal_scale = 0.0f;
-
-                if (!surface_rows[row][col].Write(material_data))
-                    return false;
-            }
-        }
+                surface_rows[row][col] = first.RowOffset(row * ALPHA_STEPS + col);
 
         return true;
     }
@@ -273,7 +265,7 @@ private:
 
     bool InitScene()
     {
-        if (!(opaque_recipe.material_ssbo_binding = surface_rows[0][0].GetGlobalSSBOBinding()).IsValid())
+        if (!(opaque_recipe.material_ssbo_binding = surface_rows[0][0]).IsValid())
             return false;
 
         blend_recipe.material_ssbo_binding      = opaque_recipe.material_ssbo_binding;
@@ -334,7 +326,7 @@ private:
 
                 // 纹理（base_color + opacity_mask）已由配方声明，实体端不再重复绑定
                 hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
-                row_resource = surface_rows[row][col].GetGlobalSSBOBinding();
+                row_resource = surface_rows[row][col];
                 material_data->SetDataResource(row_resource);
 
             }
