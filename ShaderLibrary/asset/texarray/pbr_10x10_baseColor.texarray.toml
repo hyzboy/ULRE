@@ -1,0 +1,40 @@
+# 10 层 baseColor 数组：`PBRSpheres`（10x10 球阵）与 `CascadeShadowMap`（10 种地面）
+# 原先共用的 `PBR_FOLDER_NAME[10]` + 逐层 `baseColor.Tex2D` 组装循环。
+#
+# 两个示例的文件夹顺序完全一致，所以这里是**同一份**规约 —— 两边引用
+# `texarray:@pbr_10x10_baseColor` 会拿到同一张数组纹理，不重复上传。
+#
+# `width`/`height`/`format` 故意不写：从第 0 层文件读出来，避免第二份真源。
+
+schema = 1
+name = "pbr_10x10_baseColor"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Plain/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Planks/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Tiles/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/Fresco_Decor_Wallpaper/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Brown_Leather/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Cobblestone_Color/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Large_Square_Pattern/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Sandstone_Blocks/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Sidewalk_Brick_Floor/baseColor.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Square_Floor_Pattern/baseColor.Tex2D"

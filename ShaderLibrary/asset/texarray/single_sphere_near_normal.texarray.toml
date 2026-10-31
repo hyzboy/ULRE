@@ -1,0 +1,7 @@
+# `SingleSphereMaterialSwitch` 的 near 材质：单层 normal 数组（与 baseColor 同一文件夹）。
+
+schema = 1
+name = "single_sphere_near_normal"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Plain/normal.Tex2D"

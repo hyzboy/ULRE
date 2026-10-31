@@ -1,0 +1,38 @@
+# 10 层 normal 数组：与 `pbr_10x10_baseColor` 同一批文件夹。
+#
+# 唯一例外是 `Fresco_Decor_Wallpaper`：它的法线贴图叫 `Normal.Tex2D`（首字母大写），
+# 其余九个是 `normal.Tex2D`。原代码用「先试小写、不存在再试大写」兜这一点，
+# 现在这条差异直接体现在层清单里 —— 文件不存在会在装配时报错，不会静默少一层。
+
+schema = 1
+name = "pbr_10x10_normal"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Plain/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Planks/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Tiles/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/Fresco_Decor_Wallpaper/Normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Brown_Leather/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Cobblestone_Color/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Large_Square_Pattern/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Sandstone_Blocks/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Sidewalk_Brick_Floor/normal.Tex2D"
+
+[[layers]]
+uri = "file:res/image/pbr/TH_Square_Floor_Pattern/normal.Tex2D"

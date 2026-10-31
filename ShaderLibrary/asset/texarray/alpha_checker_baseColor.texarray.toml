@@ -1,0 +1,15 @@
+# 单层黑白棋盘 baseColor 数组（RGBA8 UNORM，256x256）：alpha test 镂空的遮罩来源。
+# 白格 alpha=1 挡光、黑格 alpha=0 镂空。
+#
+# `CascadeShadowMap` 与 `AlphaTestShadow` 原先各建一张同样的 256x256/1 层数组，
+# 现在共用这一份规约。
+#
+# `mipmaps = 1` 是**必要**覆盖：这张纹理只作 alpha 判定，缩小采样时若走 mip 链
+# 会把黑白混成灰、镂空边缘糊掉。默认（0）会跟着第 0 层文件的 mip 数走，不行。
+
+schema = 1
+name = "alpha_checker_baseColor"
+mipmaps = 1
+
+[[layers]]
+uri = "file:res/image/pbr/AlphaChecker/baseColor.Tex2D"

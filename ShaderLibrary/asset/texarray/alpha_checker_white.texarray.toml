@@ -1,0 +1,12 @@
+# 单层纯白数组（RGBA8 UNORM，256x256）：`AlphaTestShadow` 的地面用。
+# 地面要完整接收阴影，纯白不会有 alpha test 镂空，影子落点最清晰。
+#
+# 不能与 `alpha_checker_baseColor` 合并：棋盘那张的黑格 alpha=0，铺到地面上
+# 会连带把地面自己镂空掉。两张必须分开。
+
+schema = 1
+name = "alpha_checker_white"
+mipmaps = 1
+
+[[layers]]
+uri = "file:res/image/pbr/AlphaChecker/white.Tex2D"

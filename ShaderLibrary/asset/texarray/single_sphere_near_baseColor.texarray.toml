@@ -1,0 +1,10 @@
+# `SingleSphereMaterialSwitch` 的 near 材质：单层 baseColor 数组。
+#
+# near 配方走 2D 数组（材质里按 `layer` 采样），far 配方走单张 2D 纹理
+# （同一份文件的平铺语义）。所以两张纹理都在，但只有 near 这张需要数组规约。
+
+schema = 1
+name = "single_sphere_near_baseColor"
+
+[[layers]]
+uri = "file:res/image/pbr/Concrete_Plain/baseColor.Tex2D"
