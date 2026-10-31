@@ -13,9 +13,8 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/graph/ssbo/LitMaterialData.h>
+#include<hgl/graph/asset/MaterialDataBlockAsset.h>
 
-#include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -86,10 +85,12 @@ constexpr const os_char *PBR_FOLDER_NAME[GRID_SIZE]=
     OS_TEXT("TH_Square_Floor_Pattern")
 };
 
-// Base albedo for all spheres (classic gray PBR test chart color)
-static constexpr float BASE_COLOR_R = 0.72f;
-static constexpr float BASE_COLOR_G = 0.72f;
-static constexpr float BASE_COLOR_B = 0.72f;
+// 批量材质数据行的**唯一**来源：文件化的数据块（100 行 PBRSurface，行优先）。
+// 原来这里是一个 CreateLitMaterialData() 双循环硬编码（含统一底色 0.72 灰），现在
+// 改成一份可被离线工具读写、也可被别的示例复用的资产文件 —— 示例代码里不再出现
+// 任何逐行参数。
+static constexpr const char * PBR_GRID_DATA_PATH =
+    "ShaderLibrary/asset/material_data/pbr_10x10_grid.material_data.toml";
 
 class PBRSpheresApp : public WorkObject
 {
@@ -104,9 +105,6 @@ private:
     uint32_t      perf_frame_seen = 0;    ///< 已计帧数（240 帧一窗打印）
     double        perf_total_us = 0.0;    ///< Tick 全帧 CPU 时间累计（每 240 帧一窗打印）
 
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
     graph::mtl::MaterialRecipe sphere_recipe{};
 
     // T3i（③ 多批/混材质）判据（PBR_MULTIBATCH=1）：网格后半（col >= GRID_SIZE/2）
@@ -116,7 +114,6 @@ private:
     graph::mtl::MaterialRecipe sphere_recipe_b{};
     PrimitiveAsset base_primitives_b[GRID_SIZE]{};
     bool multibatch_enabled = false;
-    MaterialDataAccessor sphere_slot_accessors[GRID_SIZE][GRID_SIZE]{};
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
 
@@ -128,8 +125,8 @@ private:
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
     PrimitiveAsset      base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
-    // One MI per cell: col controls metallic, row controls roughness
-    ssbo::PBRSurfaceRow sphere_material_data[GRID_SIZE][GRID_SIZE]{};
+    /// 网格全部 100 个球的材质数据都来自这一块（col→metallic，row→roughness）
+    graph::mtl::MaterialDataBlockAsset * sphere_data_block = nullptr;
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
@@ -289,54 +286,59 @@ private:
         return base_color_asset && normal_asset;
     }
 
-    bool CreateLitMaterialData()
-    {
-        for (uint row = 0; row < GRID_SIZE; ++row)
-        {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-            {
-                // col  → metallic:  0.0 → 1.0
-                // row  → roughness: 0.05 → 1.0  (avoid perfectly smooth mirrors at 0)
-                float metallic  = float(col) / float(GRID_SIZE - 1);
-                float roughness = 0.05f + float(row) / float(GRID_SIZE - 1) * 0.95f;
-
-                ssbo::PBRSurfaceRow d{};
-                d.base_color = Color4f(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
-                d.metallic   = metallic;
-                d.roughness  = roughness;
-                d.normal_scale = 0.35f;
-
-                auto &store = sphere_material_data[row][col];
-                store.base_color = d.base_color;
-                store.metallic = d.metallic;
-                store.roughness = d.roughness;
-                store.normal_scale = d.normal_scale;
-
-            }
-        }
-
-        return true;
-    }
-
-    bool InitMaterialDataSSBO()
+    /**
+     * 把 10×10 网格的材质数据块装上显存。
+     *
+     * 数据本身**不在代码里**：块来自 `PBR_GRID_DATA_PATH` 指定的文件，读入后整块
+     * 一次上传（块内第 i 行 == 池行号 first + i，行号连续 ⇒ 行号可由
+     * `row * GRID_SIZE + col` 直接算出，无需逐格保存访问器）。
+     */
+    bool InitMaterialDataBlock()
     {
         if (!ecs_world)
-            return false;
-
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
-            return false;
-
-        for (uint row = 0; row < GRID_SIZE; ++row)
         {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-            {
-                sphere_slot_accessors[row][col] =
-                    domain_manager->GetAccessor<ssbo::PBRSurfaceRow>();
-                if (!sphere_slot_accessors[row][col])
-                    return false;
-            }
+            printf("[ERROR] InitMaterialDataBlock: No ecs_world\n");
+            return false;
         }
+
+        auto *graphics = GetGraphicsContext();
+        if (!graphics)
+        {
+            printf("[ERROR] InitMaterialDataBlock: No GraphicsContext\n");
+            return false;
+        }
+
+        auto *blocks = graphics->GetMaterialDataBlockRegistry();
+        auto *pool   = GetManager<GlobalSSBOBufferRegistry>();
+        if (!blocks || !pool)
+        {
+            printf("[ERROR] InitMaterialDataBlock: No MaterialDataBlockRegistry/pool\n");
+            return false;
+        }
+
+        sphere_data_block =
+            blocks->GetOrLoadURI(ToOSString(PBR_GRID_DATA_PATH));
+        if (!sphere_data_block)
+        {
+            printf("[ERROR] InitMaterialDataBlock: load failed: %s\n",
+                   PBR_GRID_DATA_PATH);
+            return false;
+        }
+
+        if (!sphere_data_block->Upload(pool))
+        {
+            printf("[ERROR] InitMaterialDataBlock: upload failed: %s\n",
+                   sphere_data_block->GetFailureReason().c_str());
+            return false;
+        }
+
+        if (sphere_data_block->GetRowCount() != GRID_SIZE * GRID_SIZE)
+        {
+            printf("[ERROR] InitMaterialDataBlock: row count %u != %u\n",
+                   sphere_data_block->GetRowCount(), GRID_SIZE * GRID_SIZE);
+            return false;
+        }
+
         return true;
     }
 
@@ -423,11 +425,20 @@ private:
             return false;
         }
 
-        if (!InitMaterialDataSSBO())
+        if (!InitMaterialDataBlock())
             return false;
 
-        if (!(sphere_recipe.material_ssbo_binding = sphere_slot_accessors[0][0].GetGlobalSSBOBinding()).IsValid())
+        // 配方的 material SSBO 绑定 = 数据块所在池 + 块首行；具体球的行走 per-entity 4-ID 表。
+        const graph::GlobalSSBOBinding block_binding{
+            sphere_data_block->GetGlobalSSBOType(),
+            sphere_data_block->GetSSBOId(),
+            sphere_data_block->RowIDAt(0)};
+
+        if (!(sphere_recipe.material_ssbo_binding = block_binding).IsValid())
+        {
+            printf("[ERROR] InitECS: invalid material SSBO binding\n");
             return false;
+        }
 
         // T3i：第二配方共用同一 material SSBO 绑定（数据行差异由 per-entity 4-ID 表承载）
         if (multibatch_enabled)
@@ -463,9 +474,9 @@ private:
                                    glm::vec3(1.0f), mobility)
                     .WithPrimitiveAsset(
                         use_recipe_b ? &base_primitives_b[col] : &base_primitives[col])
-                    .WithMaterialRow(
-                        sphere_slot_accessors[row][col],
-                        sphere_material_data[row][col])
+                    .WithMaterialDataRow(
+                        ToOSString(PBR_GRID_DATA_PATH),
+                        row * GRID_SIZE + col)
                     .Build();
                 if (!e)
                     return false;
@@ -585,9 +596,6 @@ public:
             return false;
 
         if (!InitMaterial())
-            return false;
-
-        if (!CreateLitMaterialData())
             return false;
 
         if (!InitVDM())

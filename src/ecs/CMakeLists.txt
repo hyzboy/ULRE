@@ -147,6 +147,14 @@ if(MSVC)
     set_target_properties(TestMaterialRecipeInheritance PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 示例用数据块文件（`pbr_10x10_grid.material_data.toml`）：形状 + 逐行数值与生成公式
+# 一致 + 演示源码不再逐行硬编码。
+add_executable(TestPbrGridDataBlock tests/TestPbrGridDataBlock.cpp)
+target_link_libraries(TestPbrGridDataBlock PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestPbrGridDataBlock PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # TOML GeometryAsset parser schema and diagnostics.
 add_executable(TestGeometryAssetFile tests/TestGeometryAssetFile.cpp)
 target_link_libraries(TestGeometryAssetFile PRIVATE ULRE::Engine)
@@ -342,6 +350,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestRenderableBuilderDataRow
         PROPERTIES LABELS "ecs;material_data;asset" TIMEOUT 120)
+
+    add_test(
+        NAME TestPbrGridDataBlock
+        COMMAND TestPbrGridDataBlock
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestPbrGridDataBlock
+        PROPERTIES LABELS "ecs;material_data;example" TIMEOUT 120)
 
     add_test(
         NAME TestMaterialRuntimeTable
