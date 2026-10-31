@@ -183,17 +183,17 @@ namespace hgl::asset::generated
     inline const PropertyMetaInfo Meta_RecipeTextureSpec[] =
     {
         { "texture_name", "name", "texture_name", "Texture", "TOML/GLSL 纹理名（snake_case，如 \"base_color\"）", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
-        { "resource_id", "asset", "resource_id", "Texture", "资源标识（路径 / 资产 ID / 逻辑名）", "AnsiString", nullptr, "tex", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 40u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
-        { "required", "required", "required", "Texture", "true 时缺失应触发显式错误", "bool", nullptr, nullptr, PropertyKind::Bool, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 80u, 4u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
-        { "layer", "layer", "layer", "Texture", "Texture2DArray 层号；非数组纹理必须为 0", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_EditAnywhere | PF_HasRange | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 84u, 4u, 0u, 0.0, 31.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
-        { "auto_mipmaps", "auto_mipmaps", "auto_mipmaps", "Texture", "源无 mip 链时是否自动生成", "bool", nullptr, nullptr, PropertyKind::Bool, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 88u, 8u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "resource_id", "asset", "resource_id", "Texture", "资源标识（路径 / 资产 ID / 逻辑名）", "hgl::serialize::Presence<AnsiString>", nullptr, "tex", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, 40u, (uint32_t)sizeof(AnsiString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "required", "required", "required", "Texture", "缺键取 `true`：缺失应触发显式错误", "hgl::serialize::Presence<bool>", nullptr, nullptr, PropertyKind::Bool, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, 88u, (uint32_t)sizeof(bool), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "layer", "layer", "layer", "Texture", "缺键取 0；非数组纹理必须为 0", "hgl::serialize::Presence<uint32_t>", nullptr, nullptr, PropertyKind::UInt32, PF_EditAnywhere | PF_HasRange | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, 92u, (uint32_t)sizeof(uint32_t), 0u, 0.0, 31.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "auto_mipmaps", "auto_mipmaps", "auto_mipmaps", "Texture", "缺键取 `false`", "hgl::serialize::Presence<bool>", nullptr, nullptr, PropertyKind::Bool, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, 100u, (uint32_t)sizeof(bool), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
     };
 
     inline const ClassMetaInfo Class_RecipeTextureSpec =
     {
-        "RecipeTextureSpec", "", "一条纹理解析声明（`[[textures]]` 表）。纯输入，不含任何运行时句柄。",
+        "RecipeTextureSpec", "", "一条纹理解析声明（`[[textures]]` 表）。纯输入，不含任何运行时句柄。 除 `texture_name`（合并键）外全部是 `Presence<T>`：这既是「配方只写与领域 默认不同的键」的落地方式，也是**继承时逐字段覆盖**的前提 —— 子配方只想换 `asset` 时，父配方给的 `layer` / `auto_mipmaps` 不会被静默丢掉。",
         Meta_RecipeTextureSpec, (uint32_t)(sizeof(Meta_RecipeTextureSpec) / sizeof(Meta_RecipeTextureSpec[0])),
-        96u, 8u
+        104u, 8u
     };
 
     inline const PropertyMetaInfo Meta_RecipePipelineSpec[] =

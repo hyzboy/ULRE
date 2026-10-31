@@ -414,10 +414,18 @@ namespace hgl::graph::mtl
 
                 RecipeTextureBinding binding{};
                 binding.texture_name = item->texture_name.c_str();
-                binding.resource_id = item->resource_id.c_str();
-                binding.required = item->required;
-                binding.array_layer = item->layer;
-                binding.auto_mipmaps = item->auto_mipmaps;
+                binding.resource_id  = item->resource_id.present
+                                     ? item->resource_id.value.c_str()
+                                     : "";
+                binding.required     = item->required.present
+                                     ? item->required.value
+                                     : true;
+                binding.array_layer  = item->layer.present
+                                     ? item->layer.value
+                                     : 0u;
+                binding.auto_mipmaps = item->auto_mipmaps.present
+                                     ? item->auto_mipmaps.value
+                                     : false;
                 recipe.textures.emplace_back(std::move(binding));
             }
 
@@ -461,6 +469,20 @@ namespace hgl::graph::mtl
 
             return true;
         }
+
+        /// 根表里是否写了一个非空的 `parent`（差量配方标记）
+        bool HasDeclaredParent(const hgl::serialize::Value &root)
+        {
+            if (!root.IsTable())
+                return false;
+
+            const hgl::serialize::Value *node = root.FindFieldExact("parent");
+            if (!node || !node->IsString())
+                return false;
+
+            const U8String &text = node->GetString();
+            return !text.IsEmpty();
+        }
     }
 
     const char *GetMaterialRecipeFileParseResultName(
@@ -474,6 +496,19 @@ namespace hgl::graph::mtl
         case MaterialRecipeFileParseResult::UnknownKey: return "UnknownKey";
         }
         return "Invalid";
+    }
+
+    bool BuildMaterialRecipe(const MaterialRecipeSpec &spec,
+                             MaterialRecipe &out_recipe) noexcept
+    {
+        MaterialRecipe built;
+        ParseErrorContext error;
+
+        if (!BuildRecipe(spec, built, error))
+            return false;
+
+        out_recipe = std::move(built);
+        return true;
     }
 
     MaterialRecipeFileParseResult ParseMaterialRecipeFile(
@@ -526,8 +561,11 @@ namespace hgl::graph::mtl
             error.Record("name", nullptr, "缺少必需字符串");
             result = MaterialRecipeFileParseResult::InvalidValue;
         }
-        else if (!root.FindFieldExact("domain"))
+        else if (!root.FindFieldExact("domain")
+              && !HasDeclaredParent(root))
         {
+            // `domain` 只有在**自足配方**里才是必需的；写了 `parent` 的差量配方
+            // 允许完全不声明领域，从父配方继承（见 MaterialRecipeInherit.h）。
             error.Record("domain", nullptr, "缺少必需字符串");
             result = MaterialRecipeFileParseResult::InvalidValue;
         }
@@ -545,8 +583,25 @@ namespace hgl::graph::mtl
                 error.RecordIn(bad_path, bad_key.c_str(), nullptr, "未知键");
                 result = MaterialRecipeFileParseResult::UnknownKey;
             }
-            else if (!ReadSpec(root, spec, error)
-                  || !BuildRecipe(spec, out_data.recipe, error))
+            else if (!ReadSpec(root, spec, error))
+            {
+                result = MaterialRecipeFileParseResult::InvalidValue;
+            }
+            else if (!spec.parent.IsEmpty())
+            {
+                // 差量配方（有 `parent`）：`domain` 之类的键**允许缺省**，从父继承，
+                // 因此这里无法（也不该）定型运行时配方 —— 只把名字先记下来供注册表
+                // 查名，真正构建交给 `MaterialRecipeRegistry` 合并后调
+                // `BuildMaterialRecipe`。
+                if (spec.name.IsEmpty())
+                {
+                    error.Record("name", nullptr, "必须是非空字符串");
+                    result = MaterialRecipeFileParseResult::InvalidValue;
+                }
+                else
+                    out_data.recipe.recipe_name = spec.name.c_str();
+            }
+            else if (!BuildRecipe(spec, out_data.recipe, error))
             {
                 result = MaterialRecipeFileParseResult::InvalidValue;
             }

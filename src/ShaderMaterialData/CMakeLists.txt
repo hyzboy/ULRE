@@ -17,6 +17,8 @@ set(SHADERMATERIALDATA_FILES
     MaterialResolver.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipeFile.h
     MaterialRecipeFile.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipeInherit.h
+    MaterialRecipeInherit.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialVertexVaryingConfig.h
     # ── GLSL code-module 描述、元数据与文件注册表（纯数据/资源闭包）──

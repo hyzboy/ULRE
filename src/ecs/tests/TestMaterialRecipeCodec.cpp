@@ -162,13 +162,18 @@ namespace
             && pipeline.line_width.value == 2.5f
             && spec.textures.GetCount() == 2
             && spec.textures[0]->texture_name == "base_color"
-            && spec.textures[0]->resource_id == "res/image/lena.Tex2D"
-            && spec.textures[0]->required
-            && spec.textures[0]->layer == 2
-            && spec.textures[0]->auto_mipmaps
+            && spec.textures[0]->resource_id.present
+            && spec.textures[0]->resource_id.value == "res/image/lena.Tex2D"
+            && spec.textures[0]->required.present
+            && spec.textures[0]->required.value
+            && spec.textures[0]->layer.present
+            && spec.textures[0]->layer.value == 2
+            && spec.textures[0]->auto_mipmaps.present
+            && spec.textures[0]->auto_mipmaps.value
             && spec.textures[1]->texture_name == "normal"
-            && !spec.textures[1]->required
-            && spec.textures[1]->layer == 0;
+            && spec.textures[1]->required.present
+            && !spec.textures[1]->required.value
+            && !spec.textures[1]->layer.present;
 
         if (!read_ok)
             return false;
@@ -199,7 +204,12 @@ namespace
             && back_pipeline.depth_write.present
             && back.textures.GetCount() == 2
             && back.textures[0]->texture_name == "base_color"
+            && back.textures[0]->resource_id.value == "res/image/lena.Tex2D"
+            && back.textures[0]->layer.value == 2
+            && back.textures[0]->auto_mipmaps.value
             && back.textures[1]->texture_name == "normal"
+            && back.textures[1]->required.present
+            && !back.textures[1]->required.value
             // `Key` 覆盖：字段名是 `input`，写出去必须是 `source`。
             && written.at("transform").as_table().count("source") == 1
             && written.at("transform").as_table().count("input") == 0
@@ -556,10 +566,16 @@ namespace
             && !pipeline.wireframe.present
             && back.textures.GetCount() == 2
             && back.textures[0]->texture_name == "base_color"
-            && back.textures[0]->layer == 3
-            && back.textures[0]->auto_mipmaps
+            && back.textures[0]->resource_id.value == "res/image/lena.Tex2D"
+            && back.textures[0]->layer.present
+            && back.textures[0]->layer.value == 3
+            && back.textures[0]->auto_mipmaps.present
+            && back.textures[0]->auto_mipmaps.value
             && back.textures[1]->texture_name == "normal"
-            && !back.textures[1]->required;
+            && back.textures[1]->required.present
+            && !back.textures[1]->required.value
+            && !back.textures[1]->layer.present
+            && !back.textures[1]->auto_mipmaps.present;
     }
 
     // ── 7. 元数据：struct_meta 递归接线 ────────────────────────────────────
@@ -621,6 +637,8 @@ namespace
 
 int main()
 {
+    hgl::logger::InitLogger(OS_TEXT("TestMaterialRecipeCodec"));
+
     Check(TestFullTextRoundTrip(), "完整字段文本往返");
     Check(TestPresenceTriState(), "Presence 三态");
     Check(TestPartialPipeline(), "pipeline 局部覆盖");

@@ -111,6 +111,13 @@ if(MSVC)
     set_target_properties(TestMaterialRecipeFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
+add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
+target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestMaterialRecipeInheritance PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # TOML GeometryAsset parser schema and diagnostics.
 add_executable(TestGeometryAssetFile tests/TestGeometryAssetFile.cpp)
 target_link_libraries(TestGeometryAssetFile PRIVATE ULRE::Engine)
@@ -288,6 +295,14 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestMaterialRecipeFile
+        PROPERTIES LABELS "material;recipe")
+
+    add_test(
+        NAME TestMaterialRecipeInheritance
+        COMMAND TestMaterialRecipeInheritance
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMaterialRecipeInheritance
         PROPERTIES LABELS "material;recipe")
 
     add_test(

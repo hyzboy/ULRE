@@ -1,4 +1,5 @@
 #include <hgl/mtl/MaterialRecipeRegistry.h>
+#include <hgl/mtl/MaterialRecipeInherit.h>
 #include <hgl/mtl/MaterialResolver.h>
 #include <hgl/mtl/DomainEntrySource.h>
 
@@ -241,6 +242,11 @@ namespace hgl::graph::mtl
                 ++error_count;
         }
 
+        // 目录是批次边界：扫完整目录后再收尾，父子配方同目录内谁先扫到都无所谓。
+        const int unresolved = FinalizePending();
+        file_count -= unresolved;
+        error_count += unresolved;
+
         if (out_file_count)
             *out_file_count = file_count;
         if (out_error_count)
@@ -285,18 +291,179 @@ namespace hgl::graph::mtl
 
         asset->SetSource(source_label);
 
-        if (!ResolveAndValidate(*asset, texture_manager))
+        // 名字取注册时定下的值：`ResolvePending` 可能摘掉别的记录（含本条的失败态），
+        // 之后指针不再可信，只按名字回查。
+        const AnsiString recipe_name = asset->GetAssetName();
+
+        ResolvePending(texture_manager);
+
+        const MaterialRecipeAsset *resolved = FindAssetByName(recipe_name.c_str());
+        if (!resolved)
         {
-            GLogError(u8"[MaterialRecipeRegistry] 配方校验失败: source=%ls recipe=%s domain=%s",
-                      source_label,
-                      asset->GetRecipe().recipe_name.c_str(),
-                      GetMaterialDomainName(asset->GetRecipe().domain));
-            files.DeleteAt(files.GetCount() - 1);
+            GLogError(u8"[MaterialRecipeRegistry] 配方不可用（已摘除）: source=%ls recipe=%s",
+                      source_label, recipe_name.c_str());
             return false;
         }
 
-        asset->MarkReady();
+        if (!resolved->IsReady())
+        {
+            // 有 `parent` 但父配方还没注册。留在表里，等父配方就绪后由多轮推进
+            // 或 `FinalizePending` 收尾（见头文件「加载顺序与差量继承」）。
+            const AnsiString &parent_text = resolved->GetSpec().parent;
+            GLogWarning(u8"[MaterialRecipeRegistry] 配方等待父配方: source=%ls recipe=%s parent=%s",
+                        source_label,
+                        recipe_name.c_str(),
+                        parent_text.IsEmpty() ? "" : parent_text.c_str());
+        }
+
         return true;
+    }
+
+    int MaterialRecipeRegistry::ResolveOne(
+        MaterialRecipeAsset &asset,
+        hgl::graph::TextureManager *texture_manager)
+    {
+        const MaterialRecipeSpec &own_spec = asset.GetSpec();
+        const char *parent_text = own_spec.parent.c_str();
+
+        if (parent_text && parent_text[0])
+        {
+            MaterialRecipeParentRef parent_ref;
+            if (!ParseMaterialRecipeParentRef(parent_text, parent_ref) || parent_ref.IsNone())
+            {
+                GLogError(u8"[MaterialRecipeRegistry] 父配方引用非法: recipe=%s parent=%s",
+                          own_spec.name.c_str(), parent_text);
+                asset.MarkFailed("parent 引用写法非法");
+                return -1;
+            }
+
+            const MaterialRecipeAsset *parent =
+                (parent_ref.kind == MaterialRecipeParentRefKind::ByPath)
+                    ? FindAssetByPath(parent_ref.path)
+                    : FindAssetByName(parent_ref.name.c_str());
+
+            if (!parent || !parent->IsReady())
+                return 0;   // 父配方还没就绪（可能根本不存在，收尾时统一判定）
+
+            MaterialRecipeSpec merged;
+            MergeMaterialRecipeSpec(parent->GetSpec(), own_spec, merged);
+
+            if (!asset.ApplyInheritedSpec(std::move(merged)))
+            {
+                GLogError(u8"[MaterialRecipeRegistry] 合并父配方后无法构建配方: recipe=%s parent=%s",
+                          own_spec.name.c_str(), parent_text);
+                asset.MarkFailed("合并父配方后无法构建运行时配方");
+                return -1;
+            }
+        }
+
+        if (!ResolveAndValidate(asset, texture_manager))
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 配方校验失败: recipe=%s domain=%s",
+                      asset.GetRecipe().recipe_name.c_str(),
+                      GetMaterialDomainName(asset.GetRecipe().domain));
+            asset.MarkFailed("纹理槽与领域契约不符");
+            return -1;
+        }
+
+        asset.MarkReady();
+        return 1;
+    }
+
+    int MaterialRecipeRegistry::ResolvePending(hgl::graph::TextureManager *texture_manager)
+    {
+        int ready_count = 0;
+        bool progressed = true;
+
+        while (progressed)
+        {
+            progressed = false;
+
+            for (int i = 0; i < files.GetCount(); ++i)
+            {
+                MaterialRecipeAsset *asset = files[i];
+                if (!asset || asset->GetState() != MaterialRecipeAssetState::Parsed)
+                    continue;
+
+                if (ResolveOne(*asset, texture_manager) > 0)
+                {
+                    ++ready_count;
+                    progressed = true;
+                }
+            }
+        }
+
+        // 失败的句柄立刻摘掉：表里只留「已就绪」和「等父配方」两种，
+        // `FindAssetByName` 因此永远不会返回一个用不了的配方。
+        for (int i = files.GetCount() - 1; i >= 0; --i)
+        {
+            const MaterialRecipeAsset *asset = files[i];
+            if (asset && asset->GetState() == MaterialRecipeAssetState::Failed)
+                files.DeleteAt(i);
+        }
+
+        return ready_count;
+    }
+
+    bool MaterialRecipeRegistry::HasParentCycle(const MaterialRecipeAsset &asset) const
+    {
+        // 沿 `parent` 走，最多走「表内记录数 + 1」步：无环链的长度不可能超过记录数，
+        // 走满即说明必有重复 —— 不需要额外的 visited 集合。
+        const int step_limit = files.GetCount() + 1;
+        const MaterialRecipeAsset *cursor = &asset;
+
+        for (int step = 0; step < step_limit; ++step)
+        {
+            const MaterialRecipeSpec &spec = cursor->GetSpec();
+            const char *parent_text = spec.parent.c_str();
+            if (!parent_text || !parent_text[0])
+                return false;
+
+            MaterialRecipeParentRef parent_ref;
+            if (!ParseMaterialRecipeParentRef(parent_text, parent_ref) || parent_ref.IsNone())
+                return false;
+
+            cursor = (parent_ref.kind == MaterialRecipeParentRefKind::ByPath)
+                         ? FindAssetByPath(parent_ref.path)
+                         : FindAssetByName(parent_ref.name.c_str());
+
+            if (!cursor)
+                return false;   // 父不存在 ≠ 成环
+        }
+
+        return true;
+    }
+
+    int MaterialRecipeRegistry::FinalizePending()
+    {
+        int failed_count = 0;
+
+        // 先只标记、不摘除：环判定要能看见完整的父链，摘除会让「成环」退化成「缺失」。
+        for (int i = 0; i < files.GetCount(); ++i)
+        {
+            MaterialRecipeAsset *asset = files[i];
+            if (!asset || asset->GetState() != MaterialRecipeAssetState::Parsed)
+                continue;
+
+            const bool cycle = HasParentCycle(*asset);
+            const AnsiString &parent_text = asset->GetSpec().parent;
+            GLogError(u8"[MaterialRecipeRegistry] 配方无法继承: recipe=%s parent=%s reason=%s",
+                      asset->GetAssetName().c_str(),
+                      parent_text.IsEmpty() ? "" : parent_text.c_str(),
+                      cycle ? "父链成环" : "父配方缺失或解析失败");
+
+            asset->MarkFailed(cycle ? "父链成环" : "父配方缺失或解析失败");
+            ++failed_count;
+        }
+
+        for (int i = files.GetCount() - 1; i >= 0; --i)
+        {
+            const MaterialRecipeAsset *asset = files[i];
+            if (asset && asset->GetState() == MaterialRecipeAssetState::Failed)
+                files.DeleteAt(i);
+        }
+
+        return failed_count;
     }
 
     const MaterialRecipeAsset *MaterialRecipeRegistry::FindAssetByName(
@@ -335,6 +502,10 @@ namespace hgl::graph::mtl
     {
         const MaterialRecipeAsset *asset = FindAssetByName(recipe_name);
 
-        return asset ? &asset->GetRecipe() : nullptr;
+        // 等待父配方的句柄（`Parsed`）还没有可信的运行时配方，不能对外给出。
+        if (!asset || !asset->IsReady())
+            return nullptr;
+
+        return &asset->GetRecipe();
     }
 }

@@ -26,6 +26,7 @@
  * ```toml
  * schema = 1
  * name = "Core.PBR.Lit"
+ * parent = "rcp:@Core.PBR.Base"   # 可选：父配方（差量继承，见 MaterialRecipeInherit.h）
  * domain = "StandardOpaque"
  *
  * [fragment]
@@ -59,22 +60,26 @@
 namespace hgl::graph::mtl
 {
     /// 一条纹理解析声明（`[[textures]]` 表）。纯输入，不含任何运行时句柄。
+    ///
+    /// 除 `texture_name`（合并键）外全部是 `Presence<T>`：这既是「配方只写与领域
+    /// 默认不同的键」的落地方式，也是**继承时逐字段覆盖**的前提 —— 子配方只想换
+    /// `asset` 时，父配方给的 `layer` / `auto_mipmaps` 不会被静默丢掉。
     struct HGL_ASSET_STRUCT RecipeTextureSpec
     {
         HGL_PROPERTY(EditAnywhere, Category = "Texture", Key = "name")
         AnsiString  texture_name;                   ///<TOML/GLSL 纹理名（snake_case，如 "base_color"）
 
         HGL_PROPERTY(EditAnywhere, Category = "Texture", Key = "asset", AssetRef = "tex")
-        AnsiString  resource_id;                    ///<资源标识（路径 / 资产 ID / 逻辑名）
+        hgl::serialize::Presence<AnsiString> resource_id;   ///<资源标识（路径 / 资产 ID / 逻辑名）
 
         HGL_PROPERTY(EditAnywhere, Category = "Texture")
-        bool        required = true;                ///<true 时缺失应触发显式错误
+        hgl::serialize::Presence<bool>       required;      ///<缺键取 `true`：缺失应触发显式错误
 
         HGL_PROPERTY(EditAnywhere, Category = "Texture", Range(0, 31))
-        uint32_t    layer = 0;                      ///<Texture2DArray 层号；非数组纹理必须为 0
+        hgl::serialize::Presence<uint32_t>   layer;         ///<缺键取 0；非数组纹理必须为 0
 
         HGL_PROPERTY(EditAnywhere, Category = "Texture")
-        bool        auto_mipmaps = false;           ///<源无 mip 链时是否自动生成
+        hgl::serialize::Presence<bool>       auto_mipmaps;  ///<缺键取 `false`
     };
 
     /**

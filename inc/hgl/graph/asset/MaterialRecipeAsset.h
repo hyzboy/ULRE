@@ -130,6 +130,19 @@ namespace hgl::graph::mtl
         /// 记录来源与身份（`label` 为路径或 `<memory>`）
         void SetSource(const os_char *label);
 
+        /**
+         * 差量继承合并后回填：替换规约并**重建**运行时配方。
+         *
+         * 只在 `MaterialRecipeRegistry` 解析出 `parent` 并完成合并时调用。为什么必须
+         * 重建而不是增量修补：`MaterialRecipe` 是 `BuildRecipe` 压平后的结果（管线
+         * 覆盖变成位掩码、采样器/宏变成最终表），没有任何位置能表达「这一项来自父」，
+         * 因此合并只能进规约，配方整体重建一次。
+         *
+         * @return `false` = 合并后的规约仍无法构建（缺 `domain`、领域无入口源等），
+         *         调用方应把句柄标为 `Failed`
+         */
+        bool ApplyInheritedSpec(MaterialRecipeSpec &&merged_spec);
+
         /// 校验通过：`Parsed` ⇒ `Ready`
         void MarkReady() noexcept;
 

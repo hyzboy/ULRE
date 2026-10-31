@@ -3,6 +3,7 @@
 #include <hgl/asset/generated/MaterialRecipeMeta.gen.h>
 #include <hgl/graph/asset/TextureAsset.h>
 #include <hgl/filesystem/Path.h>
+#include <hgl/mtl/MaterialRecipeFile.h>
 #include <hgl/utf.h>
 
 namespace hgl::graph::mtl
@@ -59,8 +60,22 @@ namespace hgl::graph::mtl
         resource_id += ToU8String(source_path);
     }
 
-    void MaterialRecipeAsset::MarkReady() noexcept
+    bool MaterialRecipeAsset::ApplyInheritedSpec(MaterialRecipeSpec &&merged_spec)
     {
+        MaterialRecipe rebuilt;
+        if (!BuildMaterialRecipe(merged_spec, rebuilt))
+            return false;
+
+        spec   = std::move(merged_spec);
+        recipe = std::move(rebuilt);
+
+        if (!recipe.recipe_name.empty())
+            asset_name = recipe.recipe_name;
+
+        return true;
+    }
+
+    void MaterialRecipeAsset::MarkReady() noexcept    {
         if (state == MaterialRecipeAssetState::Ready)
             return;
 
