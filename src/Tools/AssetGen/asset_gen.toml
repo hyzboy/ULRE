@@ -28,6 +28,28 @@ aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface"]
 name = "SceneCameraMode"
 aliases = ["view_model", "free", "look_at", "first_person"]
 
+# ── 外部枚举：拼写表已有唯一真源，生成器只转发 ──────────────────────────────
+# Vulkan 三枚举的名字↔值真源是 `inc/hgl/mtl/VkEnumText.h`（去前缀 CamelCase、
+# 精确匹配）。材质 TOML 的历史拼写完全由那张表决定，所以这里只声明「去哪转发」，
+# 不复制任何字面量——一个枚举的名字↔值全仓仍然只有一份实现。
+[[enum]]
+name        = "VkCullModeFlags"
+fq          = "::VkCullModeFlags"
+extern_from = "hgl::graph::mtl::ParseVkCullMode"
+extern_to   = "hgl::graph::mtl::GetVkCullModeName"
+
+[[enum]]
+name        = "VkCompareOp"
+fq          = "::VkCompareOp"
+extern_from = "hgl::graph::mtl::ParseVkCompareOp"
+extern_to   = "hgl::graph::mtl::GetVkCompareOpName"
+
+[[enum]]
+name        = "VkBlendFactor"
+fq          = "::VkBlendFactor"
+extern_from = "hgl::graph::mtl::ParseVkBlendFactor"
+extern_to   = "hgl::graph::mtl::GetVkBlendFactorName"
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"
@@ -60,3 +82,17 @@ fbs_namespace = "hgl.asset.schema"
 fbs           = "inc/hgl/asset/generated/scene_schema.fbs"
 fbs_generated = "inc/hgl/asset/generated/scene_schema_generated.h"
 codec         = "inc/hgl/asset/generated/SceneCodec.gen.h"
+
+# ── 材质配方规约 ────────────────────────────────────────────────────────────
+# `ShaderLibrary/asset/recipe/**/*.recipe.toml` 的字段契约真源。跨字段业务校验
+# （schema 版本、领域是否已实现、surface_module_name 的适用范围、纹理名合法性）
+# 不属于「字段规约」，仍由 MaterialRecipeFile.cpp 承担。
+[group.MaterialRecipe]
+namespace     = "hgl::graph::mtl"
+scan          = ["inc/hgl/graph/asset/MaterialRecipeSpec.h"]
+serialize     = "inc/hgl/asset/generated/MaterialRecipeSerialize.gen.h"
+meta          = "inc/hgl/asset/generated/MaterialRecipeMeta.gen.h"
+fbs_namespace = "hgl.asset.schema"
+fbs           = "inc/hgl/asset/generated/material_recipe_schema.fbs"
+fbs_generated = "inc/hgl/asset/generated/material_recipe_schema_generated.h"
+codec         = "inc/hgl/asset/generated/MaterialRecipeCodec.gen.h"

@@ -96,6 +96,10 @@ namespace hgl::asset
         double       range_min;
         double       range_max;
         double       step;
+
+        /// `kind` 为 `Struct`/`ValueArray`/`PtrArray` 且元素是资产结构时，指向该
+        /// 结构的元数据（检查器展开子项、严格键校验递归都靠它）；否则 nullptr。
+        const struct ClassMetaInfo *struct_meta;
     };
 
     /// 单个资产结构的描述。

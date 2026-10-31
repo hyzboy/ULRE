@@ -383,6 +383,22 @@ namespace hgl::serialize::fb
                 has_offset[i] = 1;
                 break;
             }
+            case FbType::VectorString:
+            {
+                const int count = value->GetElementCount();
+                ValueArray<flatbuffers::Offset<flatbuffers::String>> items;
+                for (int k = 0; k < count; ++k)
+                {
+                    const char *text = "";
+                    if (const Value *item = value->GetElement(k))
+                        text = reinterpret_cast<const char *>(item->GetString().c_str());
+                    items.Add(fbb.CreateString(text ? text : ""));
+                }
+                offsets[i] = flatbuffers::Offset<void>(
+                    fbb.CreateVector(items.GetData(), static_cast<size_t>(count)).o);
+                has_offset[i] = 1;
+                break;
+            }
             case FbType::VectorTable:
             {
                 if (!field.table || !value->IsArray())
@@ -688,6 +704,23 @@ namespace hgl::serialize::fb
                     break;
                 }
                 break;
+            case FbType::VectorString:
+            {
+                const auto *vec = t->GetPointer<const flatbuffers::Vector<
+                    flatbuffers::Offset<flatbuffers::String>> *>(field.voffset);
+                slot->SetArray();
+                if (vec)
+                {
+                    for (uint32_t k = 0; k < vec->size(); ++k)
+                    {
+                        const flatbuffers::String *text = vec->Get(k);
+                        Value *item = slot->AddElement();
+                        if (item)
+                            item->SetString(text ? text->c_str() : "");
+                    }
+                }
+                break;
+            }
             case FbType::VectorTable:
             {
                 const auto *vec = t->GetPointer<const flatbuffers::Vector<

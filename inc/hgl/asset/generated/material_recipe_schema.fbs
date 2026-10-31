@@ -1,0 +1,77 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// @ulre-codegen begin
+//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。
+//   用途：发行版资产二进制格式。语义是「完整快照」，不是 TOML 那样的增量补丁：
+//         TOML 缺键 = 保留 C++ 类内初始值；FlatBuffers 解码一律覆盖全部字段。
+//   资产结构一律 table（可能含 string / 动态数组）；向量与定长数组用本文件
+//   生成的包装 struct（FlatBuffers 的 table 不允许定长数组字段）。
+// @ulre-codegen end
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace hgl.asset.schema;
+
+// inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipeTextureSpec
+table RecipeTextureSpec
+{
+  name:string;
+  asset:string;
+  required:bool;
+  layer:uint;
+  auto_mipmaps:bool;
+}
+
+// inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipePipelineSpec
+table RecipePipelineSpec
+{
+  cull_mode:int;
+  depth_test:bool;
+  depth_write:bool;
+  depth_compare_op:int;
+  alpha_blend:bool;
+  blend_src:int;
+  blend_dst:int;
+  dynamic_line_width:bool;
+  overlay:bool;
+  wireframe:bool;
+  line_width:float;
+}
+
+// inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipeRenderStateSpec
+table RecipeRenderStateSpec
+{
+  alpha_test:bool;
+  alpha_cutoff:float;
+  dither:bool;
+  pipeline:RecipePipelineSpec;
+}
+
+// inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipeFragmentSpec
+table RecipeFragmentSpec
+{
+  surface_module_name:string;
+  samplers:[string];
+  defines:[string];
+}
+
+// inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipeTransformSpec
+table RecipeTransformSpec
+{
+  source:int;
+  mapping:int;
+  orientation:int;
+  scale:int;
+  projection:int;
+}
+
+// inc/hgl/graph/asset/MaterialRecipeSpec.h -> MaterialRecipeSpec
+table MaterialRecipeSpec
+{
+  schema:uint;
+  name:string;
+  domain:int;
+  fragment:RecipeFragmentSpec;
+  transform:RecipeTransformSpec;
+  render_state:RecipeRenderStateSpec;
+  textures:[RecipeTextureSpec];
+}
+

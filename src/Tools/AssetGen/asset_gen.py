@@ -170,6 +170,7 @@ class TypeDesc:
     dim: str | None = None
     enum: str | None = None
     gen: str = ""       # 生成函数名后缀（struct 用）
+    presence: bool = False  # 由 `hgl::serialize::Presence<T>` 包装（记录「键是否出现」）
 
 
 @dataclass
@@ -228,6 +229,9 @@ class EnumInfo:
     values: list[tuple[str, int]] = field(default_factory=list)
     # 与 `values` 位置对应的 TOML 拼写别名（可选）
     aliases: list[str] = field(default_factory=list)
+    # 外部枚举（如 Vulkan）：名字↔值已有唯一真源，生成器只转发、不复制拼写表。
+    extern_from: str = ""
+    extern_to: str = ""
 
     def toml_names(self) -> list[str]:
         return [
@@ -553,6 +557,18 @@ class TypeRegistry:
 
         base = base_type_name(raw)
 
+        if base == "Presence":
+            args = inner_template_args(raw)
+            if len(args) != 1:
+                raise GenError(f"hgl::serialize::Presence 必须只有一个模板参数：{cpp_type}")
+            inner = self.classify(args[0])
+            if inner.presence:
+                raise GenError(f"Presence 不能嵌套：{cpp_type}")
+            if inner.category == "array":
+                raise GenError(f"Presence 不支持定长 C 数组字段：{cpp_type}")
+            inner.presence = True
+            return inner
+
         if base in SCALAR_TYPES:
             kind, scalar_class, fbs = SCALAR_TYPES[base]
             return TypeDesc(category="scalar", kind=kind, cpp=base, fq=raw,
@@ -623,6 +639,12 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
         out.append(f"#include <{rel}>\n")
     out.append("\nnamespace hgl::asset::generated\n{\n")
 
+    # 属性表的 `struct_meta` 要指向子结构的 `ClassMetaInfo`，而结构之间可以互相
+    # 引用（A 的子表是 B、B 的子表是 A），所以先统一前向声明一次。
+    for info in structs:
+        out.append(f"    extern const ClassMetaInfo Class_{info.gen_name};\n")
+    out.append("\n")
+
     for info in structs:
         table = f"Meta_{info.gen_name}"
         out.append(f"    inline const PropertyMetaInfo {table}[] =\n    {{\n")
@@ -635,14 +657,21 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
             asset_ref = f'"{c_escape(prop.asset_ref)}"' if prop.asset_ref else "nullptr"
             fixed_len = int(prop.type.dim) if prop.type.dim and prop.type.dim.isdigit() else 0
             kind = prop.type.kind or "String"
+            elem = prop.type
+            while elem.elem is not None and elem.category in ("value_array", "ptr_array"):
+                elem = elem.elem
+            struct_meta = f"&Class_{elem.gen}" if elem.category == "struct" and elem.gen else "nullptr"
+            # `Presence<T>` 是「值 + 是否出现」的包装；元数据描述的是里面的真实类型。
+            size_literal = (f"(uint32_t)sizeof({prop.type.fq})"
+                            if prop.type.presence else f"{prop.size}u")
             out.append(
                 f'        {{ "{c_escape(prop.name)}", "{c_escape(prop.toml_key)}", '
                 f'"{c_escape(prop.display_name)}", "{c_escape(prop.category)}", '
                 f'"{c_escape(prop.tooltip)}", "{c_escape(prop.cpp_type)}", '
                 f"{enum_name}, {asset_ref}, "
                 f"PropertyKind::{kind}, {flags_literal}, "
-                f"{prop.offset}u, {prop.size}u, {fixed_len}u, "
-                f"{prop.range_min}, {prop.range_max}, {prop.step} }},\n"
+                f"{prop.offset}u, {size_literal}, {fixed_len}u, "
+                f"{prop.range_min}, {prop.range_max}, {prop.step}, {struct_meta} }},\n"
             )
         out.append("    };\n\n")
         out.append(
@@ -767,14 +796,20 @@ def render_fbs_schema(group: GroupConfig, structs: list[AssetStruct]) -> str:
                 else:
                     out.append(f"  {prop.toml_key}:{_wrapper_name(_fbs_elem_of(t.elem), int(t.dim))};\n")
             elif t.category == "value_array":
+                if t.elem.category == "string":
+                    out.append(f"  {prop.toml_key}:[string];\n")
+                    continue
                 elem = _fbs_elem_of(t.elem)
                 if not elem:
                     raise GenError(
                         f"{info.name}.{prop.toml_key}: ValueArray 的 FlatBuffers 编码只支持"
-                        f"标量与枚举元素（结构元素请改用 ManagedArray）"
+                        f"标量、枚举与字符串元素（结构元素请改用 ManagedArray）"
                     )
                 out.append(f"  {prop.toml_key}:[{elem}];\n")
             elif t.category == "ptr_array":
+                if t.elem.category == "string":
+                    out.append(f"  {prop.toml_key}:[string];\n")
+                    continue
                 if t.elem.category != "struct":
                     raise GenError(
                         f"{info.name}.{prop.toml_key}: ManagedArray 的 FlatBuffers 编码"
@@ -908,6 +943,11 @@ def _walk_type_names(cpp_type: str) -> list[str]:
     m = re.match(r"^(?P<base>.*?)\s*\[\s*(?P<dim>\w+)\s*\]$", raw)
     if m:
         return _walk_type_names(m.group("base"))
+    if base_type_name(raw) == "Presence":
+        # 只是「键是否出现过」的包装，要探测的是里面的真实类型
+        for arg in inner_template_args(raw):
+            names += _walk_type_names(arg)
+        return names
     if "<" in raw:
         for arg in inner_template_args(raw):
             names += _walk_type_names(arg)
@@ -1085,6 +1125,13 @@ def render_serialize_header(structs: list[AssetStruct], enums: list[EnumInfo]) -
 
     # 枚举名表（TOML 与 FB 的描述表都复用这一份）
     for info in enums:
+        if info.extern_from and info.extern_to:
+            # 外部枚举（Vulkan …）：拼写表已经有唯一真源，这里只转发，不复制。
+            out.append(f"    inline const char *AssetEnumName_{info.name}(const {info.fq} v)\n"
+                       f"    {{ return {info.extern_to}(v); }}\n\n")
+            out.append(f"    inline bool AssetEnumParse_{info.name}(const char *s, {info.fq} &out)\n"
+                       f"    {{ return {info.extern_from}(s, out); }}\n\n")
+            continue
         out.append(f"    inline const char *AssetEnumName_{info.name}(const {info.fq} v)\n    {{\n")
         out.append("        switch (v)\n        {\n")
         for index, (name, _value) in enumerate(info.values):
@@ -1207,12 +1254,18 @@ def render_codec_header(group: GroupConfig, structs: list[AssetStruct],
                 out.append(f'        {{{ordinal}, "{key}", fb::FbType::Struct, {vo}, fb::FbType::None, '
                            f'{t.components}}},\n')
             elif t.category == "value_array":
+                if t.elem.category == "string":
+                    out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorString, {vo}}},\n')
+                    continue
                 elem_kind = fb_scalar_of(t.elem)
                 suffix = (f', nullptr, &{t.elem.cpp}_FbsFromName, &{t.elem.cpp}_FbsToName'
                           if elem_kind == "Enum" else "")
                 out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorScalar, {vo}, '
                            f'fb::FbType::{elem_kind}{suffix}}},\n')
             elif t.category == "ptr_array":
+                if t.elem.category == "string":
+                    out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorString, {vo}}},\n')
+                    continue
                 out.append(f'        {{{ordinal}, "{key}", fb::FbType::VectorTable, {vo}, '
                            f'fb::FbType::None, 0, &{t.elem.gen}_fbs}},\n')
             else:
@@ -1330,6 +1383,23 @@ def main(argv: list[str]) -> int:
         for entry in config.get("enum", [])
     }
 
+    # 外部枚举：名字↔值已在本仓另有唯一真源（如 VkEnumText.h 的 Vulkan 拼写表）。
+    # 生成器只输出转发，避免把同一张拼写表复制出第二份。
+    extern_enums: dict[str, EnumInfo] = {}
+    for entry in config.get("enum", []):
+        extern_from = entry.get("extern_from", "")
+        if not extern_from:
+            continue
+        if not entry.get("extern_to"):
+            raise GenError(f"asset_gen.toml: 枚举 {entry['name']} 声明了 extern_from 却缺 extern_to")
+        extern_enums[entry["name"]] = EnumInfo(
+            name=entry["name"],
+            fq=entry.get("fq") or f"::{entry['name']}",
+            extern_from=extern_from,
+            extern_to=entry["extern_to"],
+        )
+    registry.enums.update(extern_enums)
+
     report: list[str] = []
     total_structs = 0
 
@@ -1400,10 +1470,23 @@ def main(argv: list[str]) -> int:
         for info in discovered:
             finalize_struct(info, raw_map[info.name], registry)
 
+        # 只为本分组实际用到的外部枚举生成转发与 EnumTraits，避免跨分组重复定义。
+        group_enums = list(found_enums.values())
+        seen_extern: set[str] = set()
+        for info in discovered:
+            for prop in info.fields:
+                t = prop.type
+                if t.category != "enum" or t.cpp not in extern_enums:
+                    continue
+                if t.cpp in seen_extern:
+                    continue
+                seen_extern.add(t.cpp)
+                group_enums.append(extern_enums[t.cpp])
+
         ordered = _order_for_emission(discovered)
 
         write_or_check(repo_root / group.serialize_header,
-                       render_serialize_header(ordered, list(found_enums.values())),
+                       render_serialize_header(ordered, group_enums),
                        args.check, report)
         write_or_check(repo_root / group.meta_header,
                        render_meta_header(group, ordered),
@@ -1426,8 +1509,7 @@ def main(argv: list[str]) -> int:
                     run_flatc(repo_root, group, args.flatc)
             if group.codec_header:
                 write_or_check(repo_root / group.codec_header,
-                               render_codec_header(group, ordered,
-                                                   list(found_enums.values())),
+                               render_codec_header(group, ordered, group_enums),
                                args.check, report)
         total_structs += len(ordered)
 

@@ -46,6 +46,48 @@ namespace hgl::serialize
         Write,
     };
 
+    /**
+     * @brief 「这个键在输入里出现过吗」的显式载体。
+     *
+     * `Archive` 的缺键语义是「保留 C++ 类内缺省值」——这对增量覆盖是对的，但
+     * 有些资产需要区分三种情况：
+     *
+     *   · 缺键            → 不覆盖下游（继承既有配置）
+     *   · 显式写成缺省值  → 覆盖成缺省值
+     *   · 显式写成别的值  → 覆盖成该值
+     *
+     * 后两者在 `T` 里长得一样，光靠值无法区分，所以把「出现过」单独存成一个
+     * 不落盘的标志。写方向（快照）不需要这个区分：`present` 不会被写出。
+     *
+     * ```cpp
+     * struct HGL_ASSET_STRUCT OverrideSpec
+     * {
+     *     hgl::serialize::Presence<bool> alpha_test;   // 缺键 ⇒ present == false
+     * };
+     * ```
+     */
+    template <typename T>
+    struct Presence
+    {
+        T               value{};                        ///< 键不出现时保留的缺省值
+        mutable bool    present = false;                ///< 输入里是否出现过这个键
+
+        Presence() = default;
+        Presence(const T &v) : value(v), present(true) {}   ///< 赋值即视为「显式给出」
+
+        Presence &operator=(const T &v)
+        {
+            value = v;
+            present = true;
+            return *this;
+        }
+
+        const T &operator*() const noexcept { return value; }
+        T       &operator*()       noexcept { return value; }
+        const T *operator->() const noexcept { return &value; }
+        T       *operator->()       noexcept { return &value; }
+    };
+
     class Archive
     {
     public:
@@ -138,6 +180,31 @@ namespace hgl::serialize
                 if (!ReadValue(*node, target))
                     Fail(name, "字段类型或取值不合法");
             }
+        }
+
+        /**
+         * `Presence<T>` 字段：在普通字段处理之外，额外记录「输入里有没有这个键」。
+         *
+         * 比通用 `Field` 更特化，因此生成代码里对 `Presence<T>` 字段的调用自动
+         * 落到这里，字段声明处无需任何额外标注。
+         */
+        template <typename T>
+        void Field(const uint32_t id, const char *name, const Presence<T> &value)
+        {
+            if (write_)
+            {
+                // 没出现过的键不写出：这样「只写与默认不同的键」的资产写出去还是
+                // 同样的最小形态，往返一次不会膨胀成整份显式声明。
+                if (!value.present)
+                    return;
+            }
+            else
+            {
+                value.present = (read_ && read_->FindField(name, id) != nullptr);
+            }
+
+            // 值本身走普通字段处理；`present` 是输入侧的观察结果，不属于快照内容。
+            Field(id, name, value.value);
         }
 
         /// 手动上报一次失败（供业务层补充跨字段校验）。
