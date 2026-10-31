@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/graph/asset/MaterialRecipeSpec.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/type/String.h>
 
@@ -40,5 +41,6 @@ namespace hgl::graph::mtl
     MaterialRecipeFileParseResult ParseMaterialRecipeFile(
         const char *content,
         int content_size,
-        MaterialRecipeFileData &out_data) noexcept;
+        MaterialRecipeFileData &out_data,
+        MaterialRecipeSpec *out_spec = nullptr) noexcept;
 }

@@ -173,6 +173,9 @@ namespace hgl::graph
         const mtl::MaterialRecipe *FindMaterialRecipe(const char *name) const;
         const mtl::MaterialRecipe *FindOrLoadMaterialRecipe(const char *name);
 
+        /// 配方资产句柄（规约 + 运行时结果 + 身份 + 纹理就绪度）
+        const mtl::MaterialRecipeAsset *FindMaterialRecipeAsset(const char *name) const;
+
         /// 几何资产句柄表（`Initialize` 成功后可用；设备级，拥有句柄及其 Geometry）。
         GeometryAssetRegistry *GetGeometryAssetRegistry() { return &geometry_asset_registry_; }
         const GeometryAssetRegistry *GetGeometryAssetRegistry() const { return &geometry_asset_registry_; }

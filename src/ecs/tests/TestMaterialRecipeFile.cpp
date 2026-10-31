@@ -364,6 +364,44 @@ namespace
         if (!recipe || !IsRecipeNormalized(*recipe))
             return false;
 
+        // 句柄层：注册表表项是 `MaterialRecipeAsset`，同一份指针要能同时给出
+        // 身份、规约与运行时结果（三个视角，一张表）。
+        const MaterialRecipeAsset *asset =
+            registry.FindAssetByName("RecipeParser.Registry");
+        if (!asset
+         || asset->GetState() != MaterialRecipeAssetState::Ready
+         || !asset->IsReady()
+         || &asset->GetRecipe() != recipe)
+            return false;
+
+        if (strcmp(asset->GetAssetName().c_str(), "RecipeParser.Registry") != 0
+         || strcmp(asset->GetSpec().name.c_str(), "RecipeParser.Registry") != 0)
+            return false;
+
+        if (asset->GetResourceId() != U8String(u8"rcp:@RecipeParser.Registry"))
+        {
+            GLogError(u8"配方资产身份不符: %s",
+                      reinterpret_cast<const char *>(asset->GetResourceId().c_str()));
+            return false;
+        }
+
+        // 内存注册的标签就是字面量来源，可按来源反查。
+        if (asset->GetSourcePath() != OS_TEXT("registry-test")
+         || registry.FindAssetByPath(OS_TEXT("registry-test")) != asset
+         || registry.FindAssetByPath(OS_TEXT("registry-nonexistent")) != nullptr)
+            return false;
+
+        // `AssetObject` 契约：反射描述取规约表，且必须真的带属性。
+        const hgl::asset::ClassMetaInfo *meta = asset->GetClassMetaInfo();
+        if (!meta || !meta->name || strcmp(meta->name, "MaterialRecipeSpec") != 0
+         || meta->property_count <= 0
+         || meta->struct_size != sizeof(MaterialRecipeSpec))
+            return false;
+
+        // 无纹理 ⇒ 就绪度聚合恒为真（异步轴在纹理句柄上，这里只做汇总）。
+        if (!asset->AreTexturesResident() || asset->GetPendingTextureCount() != 0)
+            return false;
+
         if (registry.RegisterRecipeSource(
                 OS_TEXT("registry-duplicate"),
                 kRegistryRecipe,

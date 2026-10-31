@@ -61,6 +61,12 @@ namespace hgl::graph
         return material_recipe_registry_.FindByName(name);
     }
 
+    const mtl::MaterialRecipeAsset *GraphicsContext::FindMaterialRecipeAsset(
+        const char *name) const
+    {
+        return material_recipe_registry_.FindAssetByName(name);
+    }
+
     const mtl::MaterialRecipe *GraphicsContext::FindOrLoadMaterialRecipe(
         const char *name)
     {

@@ -567,13 +567,17 @@ namespace hgl::graph::mtl
     MaterialRecipeFileParseResult ParseMaterialRecipeFile(
         const char *content,
         const int content_size,
-        MaterialRecipeFileData &out_data) noexcept
+        MaterialRecipeFileData &out_data,
+        MaterialRecipeSpec *out_spec) noexcept
     {
         out_data = MaterialRecipeFileData{};
+        if (out_spec)
+            *out_spec = MaterialRecipeSpec{};
         if (!content || content_size <= 0)
             return MaterialRecipeFileParseResult::Skipped;
 
         ParseErrorContext error;
+        MaterialRecipeSpec spec;
         MaterialRecipeFileParseResult result = MaterialRecipeFileParseResult::OK;
         try
         {
@@ -608,12 +612,10 @@ namespace hgl::graph::mtl
             {
                 result = MaterialRecipeFileParseResult::UnknownKey;
             }
-            else
+            else if (!ReadSpec(root, spec, error)
+                  || !BuildRecipe(root, spec, out_data.recipe, error))
             {
-                MaterialRecipeSpec spec;
-                if (!ReadSpec(root, spec, error)
-                 || !BuildRecipe(root, spec, out_data.recipe, error))
-                    result = MaterialRecipeFileParseResult::InvalidValue;
+                result = MaterialRecipeFileParseResult::InvalidValue;
             }
         }
         catch (const toml::syntax_error &exception)
@@ -646,6 +648,8 @@ namespace hgl::graph::mtl
             out_data.parse_error.detail = error.detail;
             out_data.parse_error.line = error.line;
         }
+        else if (out_spec)
+            *out_spec = std::move(spec);
 
         return result;
     }

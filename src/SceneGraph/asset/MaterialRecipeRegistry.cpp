@@ -39,61 +39,63 @@ namespace hgl::graph::mtl
     }
 
     bool MaterialRecipeRegistry::ResolveAndValidate(
-        MaterialRecipeFileData &data,
+        MaterialRecipeAsset &asset,
         hgl::graph::TextureManager *texture_manager)
     {
+        MaterialRecipe &recipe = asset.EditRecipe();
+
         // 配方自带 `domain` ⇒ 纹理槽按**领域契约**校验（契约是唯一真源）。
         const MaterialDomainContract *contract =
-            GetMaterialDomainContract(data.recipe.domain);
+            GetMaterialDomainContract(recipe.domain);
 
         if (!contract)
         {
             GLogError(u8"[MaterialRecipeRegistry] 配方未声明有效领域: recipe=%s domain=%s",
-                      data.recipe.recipe_name.c_str(),
-                      GetMaterialDomainName(data.recipe.domain));
+                      recipe.recipe_name.c_str(),
+                      GetMaterialDomainName(recipe.domain));
             return false;
         }
 
         // 契约存在 ≠ 能编出着色器：入口源表里没有的领域只有「应该长什么样」，
         // 没有主着色器。加载期就拒绝，避免运行期才在构建里失败。
-        if (!HasMaterialDomainEntrySource(data.recipe.domain))
+        if (!HasMaterialDomainEntrySource(recipe.domain))
         {
             GLogError(u8"[MaterialRecipeRegistry] 该领域尚无固定主着色器入口: recipe=%s domain=%s",
-                      data.recipe.recipe_name.c_str(),
+                      recipe.recipe_name.c_str(),
                       contract->name);
             return false;
         }
 
         // 表面模块只有 `no_material_source` 领域可用，且必须是入口源认得的形态。
-        if (!data.recipe.surface_module_name.empty())
+        if (!recipe.surface_module_name.empty())
         {
             DomainEntrySource probe{};
             if (!contract->no_material_source
-             || !ResolveDomainEntrySource(data.recipe.domain,
+             || !ResolveDomainEntrySource(recipe.domain,
                                           ShaderProgramPurpose::ForwardColor,
                                           false,
                                           probe,
-                                          data.recipe.surface_module_name.c_str()))
+                                          recipe.surface_module_name.c_str()))
             {
                 GLogError(u8"[MaterialRecipeRegistry] 配方表面模块不可用: recipe=%s surface=%s domain=%s",
-                          data.recipe.recipe_name.c_str(),
-                          data.recipe.surface_module_name.c_str(),
+                          recipe.recipe_name.c_str(),
+                          recipe.surface_module_name.c_str(),
                           contract->name);
                 return false;
             }
         }
 
-        for (RecipeTextureBinding &binding : data.recipe.textures)
+        for (RecipeTextureBinding &binding : recipe.textures)
         {
             MaterialDomainTextureSlot domain_slot{};
 
             const MaterialDomainTextureSlot *slot =
-                FindMaterialDomainTextureSlot(data.recipe.domain,
+                FindMaterialDomainTextureSlot(recipe.domain,
                                               binding.texture_name.c_str());
             if (!slot)
             {
                 GLogError(u8"[MaterialRecipeRegistry] 配方纹理槽不在领域契约内: recipe=%s slot=%s domain=%s",
-                          data.recipe.recipe_name.c_str(),
+                          recipe.recipe_name.c_str(),
                           binding.texture_name.c_str(),
                           contract->name);
                 return false;
@@ -106,7 +108,7 @@ namespace hgl::graph::mtl
              && !IsMaterialTextureArraySampler(sampler_type))
             {
                 GLogError(u8"[MaterialRecipeRegistry] 非数组纹理不能指定非零 layer: recipe=%s slot=%s layer=%u",
-                          data.recipe.recipe_name.c_str(),
+                          recipe.recipe_name.c_str(),
                           binding.texture_name.c_str(),
                           binding.array_layer);
                 return false;
@@ -117,53 +119,53 @@ namespace hgl::graph::mtl
             if (domain_slot.must_declare && binding.resource_id.empty())
             {
                 GLogError(u8"[MaterialRecipeRegistry] 领域契约要求该槽必须给出资源: recipe=%s slot=%s domain=%s",
-                          data.recipe.recipe_name.c_str(),
+                          recipe.recipe_name.c_str(),
                           binding.texture_name.c_str(),
                           contract->name);
                 return false;
             }
         }
 
-        if (!data.recipe.textures.empty() && !texture_manager)
+        if (!recipe.textures.empty() && !texture_manager)
         {
             GLogError(u8"[MaterialRecipeRegistry] 配方声明纹理但没有 TextureManager: recipe=%s",
-                      data.recipe.recipe_name.c_str());
+                      recipe.recipe_name.c_str());
             return false;
         }
 
-        for (RecipeTextureBinding &binding : data.recipe.textures)
+        for (RecipeTextureBinding &binding : recipe.textures)
         {
-            hgl::graph::TextureAsset *asset =
+            hgl::graph::TextureAsset *texture_asset =
                 texture_manager->CreateTextureAsset(
                     ToOSString(binding.resource_id.c_str()),
                     binding.auto_mipmaps);
-            if (!asset)
+            if (!texture_asset)
             {
                 GLogError(u8"[MaterialRecipeRegistry] 创建纹理句柄失败: recipe=%s slot=%s resource=%s",
-                          data.recipe.recipe_name.c_str(),
+                          recipe.recipe_name.c_str(),
                           binding.texture_name.c_str(),
                           binding.resource_id.c_str());
                 return false;
             }
 
-            if (!data.recipe.AddTexture(binding.texture_name,
-                                        asset,
-                                        binding.required,
-                                        binding.array_layer))
+            if (!recipe.AddTexture(binding.texture_name,
+                                   texture_asset,
+                                   binding.required,
+                                   binding.array_layer))
             {
                 GLogError(u8"[MaterialRecipeRegistry] 无法绑定纹理句柄: recipe=%s slot=%s",
-                          data.recipe.recipe_name.c_str(),
+                          recipe.recipe_name.c_str(),
                           binding.texture_name.c_str());
                 return false;
             }
         }
 
-        NormalizeRecipe(data.recipe);
-        if (!IsRecipeNormalized(data.recipe))
+        NormalizeRecipe(recipe);
+        if (!IsRecipeNormalized(recipe))
         {
             GLogError(u8"[MaterialRecipeRegistry] 配方规范化失败: recipe=%s domain=%s",
-                      data.recipe.recipe_name.c_str(),
-                      GetMaterialDomainName(data.recipe.domain));
+                      recipe.recipe_name.c_str(),
+                      GetMaterialDomainName(recipe.domain));
             return false;
         }
         return true;
@@ -254,53 +256,50 @@ namespace hgl::graph::mtl
         const int content_size,
         hgl::graph::TextureManager *texture_manager)
     {
-        MaterialRecipeFileData *data = files.Create();
-        if (!data)
-        {
-            GLogError(u8"[MaterialRecipeRegistry] 无法分配配方记录: source=%ls",
-                      label ? label : OS_TEXT("<memory>"));
-            return false;
-        }
+        const os_char *source_label = label ? label : OS_TEXT("<memory>");
 
+        MaterialRecipeFileData data;
+        MaterialRecipeSpec spec;
         const MaterialRecipeFileParseResult parse_result =
-            ParseMaterialRecipeFile(content, content_size, *data);
+            ParseMaterialRecipeFile(content, content_size, data, &spec);
         if (parse_result != MaterialRecipeFileParseResult::OK)
         {
-            LogRecipeParseFailure(
-                label ? label : OS_TEXT("<memory>"),
-                parse_result,
-                data->parse_error);
-            files.DeleteAt(files.GetCount() - 1);
+            LogRecipeParseFailure(source_label, parse_result, data.parse_error);
             return false;
         }
 
-        for (int i = 0; i < files.GetCount() - 1; ++i)
+        if (FindAssetByName(data.recipe.recipe_name.c_str()))
         {
-            const MaterialRecipeFileData *existing = files[i];
-            if (existing
-             && existing->recipe.recipe_name == data->recipe.recipe_name)
-            {
-                GLogError(u8"[MaterialRecipeRegistry] 配方名称重复: %s (source=%ls)",
-                          data->recipe.recipe_name.c_str(),
-                          label ? label : OS_TEXT("<memory>"));
-                files.DeleteAt(files.GetCount() - 1);
-                return false;
-            }
+            GLogError(u8"[MaterialRecipeRegistry] 配方名称重复: %s (source=%ls)",
+                      data.recipe.recipe_name.c_str(),
+                      source_label);
+            return false;
         }
 
-        if (!ResolveAndValidate(*data, texture_manager))
+        MaterialRecipeAsset *asset = files.Create(data, std::move(spec));
+        if (!asset)
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 无法分配配方记录: source=%ls", source_label);
+            return false;
+        }
+
+        asset->SetSource(source_label);
+
+        if (!ResolveAndValidate(*asset, texture_manager))
         {
             GLogError(u8"[MaterialRecipeRegistry] 配方校验失败: source=%ls recipe=%s domain=%s",
-                      label ? label : OS_TEXT("<memory>"),
-                      data->recipe.recipe_name.c_str(),
-                      GetMaterialDomainName(data->recipe.domain));
+                      source_label,
+                      asset->GetRecipe().recipe_name.c_str(),
+                      GetMaterialDomainName(asset->GetRecipe().domain));
             files.DeleteAt(files.GetCount() - 1);
             return false;
         }
+
+        asset->MarkReady();
         return true;
     }
 
-    const MaterialRecipe *MaterialRecipeRegistry::FindByName(
+    const MaterialRecipeAsset *MaterialRecipeRegistry::FindAssetByName(
         const char *recipe_name) const
     {
         if (!recipe_name || !recipe_name[0])
@@ -308,10 +307,34 @@ namespace hgl::graph::mtl
 
         for (int i = 0; i < files.GetCount(); ++i)
         {
-            const MaterialRecipeFileData *data = files[i];
-            if (data && data->recipe.recipe_name == recipe_name)
-                return &data->recipe;
+            const MaterialRecipeAsset *asset = files[i];
+            if (asset && asset->GetRecipe().recipe_name == recipe_name)
+                return asset;
         }
         return nullptr;
+    }
+
+    const MaterialRecipeAsset *MaterialRecipeRegistry::FindAssetByPath(
+        const OSString &path) const
+    {
+        if (path.IsEmpty())
+            return nullptr;
+
+        for (int i = 0; i < files.GetCount(); ++i)
+        {
+            const MaterialRecipeAsset *asset = files[i];
+            if (asset && !asset->GetSourcePath().IsEmpty()
+             && asset->GetSourcePath() == path)
+                return asset;
+        }
+        return nullptr;
+    }
+
+    const MaterialRecipe *MaterialRecipeRegistry::FindByName(
+        const char *recipe_name) const
+    {
+        const MaterialRecipeAsset *asset = FindAssetByName(recipe_name);
+
+        return asset ? &asset->GetRecipe() : nullptr;
     }
 }
