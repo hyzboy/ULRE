@@ -40,12 +40,15 @@ namespace
     {
         auto &registry = GetGlslModuleRegistry();
         const char *source_names[] = { "material_source_texture", "material_source_pbr_surface" };
-        const char *material_ids[] = { "unlit_texture", "lit" };
+        const MaterialDomain material_domains[] = {
+            MaterialDomain::UnlitTexture, MaterialDomain::StandardOpaque };
         for (int i = 0; i < 2; ++i)
         {
             MaterialDefinition definition;
+            MaterialRecipe recipe{};
+            recipe.domain = material_domains[i];
             const auto *source = registry.FindByName(source_names[i]);
-            if (!source || !TryGetMaterialDefinitionByID(material_ids[i], definition))
+            if (!source || !SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
                 return false;
             GlslModuleDefinition named = *source;
             named.name = "payload_test_identity_not_a_filename";
@@ -80,7 +83,7 @@ namespace
     struct Fixture
     {
         const char *name;
-        const char *material_id;
+        MaterialDomain domain;
         ShaderProgramPurpose purpose;
         bool requires_geometry;
         bool vec2_position;
@@ -243,7 +246,9 @@ namespace
         const Fixture &fixture, AnsiString *out_reason)
     {
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
+        MaterialRecipe recipe{};
+        recipe.domain = fixture.domain;
+        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
             return false;
 
         DomainEntrySource probe;
@@ -274,11 +279,13 @@ namespace
         const char *fixed_mesh_source = nullptr)
     {
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
+        MaterialRecipe recipe{};
+        recipe.domain = fixture.domain;
+        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
         {
             GLogError(
-                "[ShaderDocumentProductionRegression] fixture=%s cannot resolve material=%s",
-                fixture.name, fixture.material_id);
+                "[ShaderDocumentProductionRegression] fixture=%s cannot resolve domain=%s",
+                fixture.name, GetMaterialDomainName(fixture.domain));
             return nullptr;
         }
 
@@ -310,7 +317,7 @@ namespace
         }
 
         MaterialDefinitionBuildRequest request{};
-        request.recipe.mtl_def_id = definition.definition_id;
+        request.recipe.domain = definition.domain;
         if (fixture.recipe_2d_node_config)
             request.recipe.vertex_node_config = Make2DNodeConfigOrtho(false);
         request.recipe.render_state_overrides.has_alpha_test = fixture.alpha_test;
@@ -632,11 +639,13 @@ namespace
     bool VerifyCacheHitPostCheck()
     {
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID("builtin/pure_color", definition))
+        MaterialRecipe recipe{};
+        recipe.domain = MaterialDomain::UnlitSolid;
+        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] cache-hit probe cannot "
-                "resolve material=builtin/pure_color");
+                "resolve domain=UnlitSolid");
             return false;
         }
 
@@ -658,7 +667,7 @@ namespace
             -> ShaderBuildContext *
         {
             MaterialDefinitionBuildRequest request{};
-            request.recipe.mtl_def_id = definition.definition_id;
+            request.recipe.domain = definition.domain;
             request.geometry_vertex_format = &geometry;
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
             request.shader_artifact_store = &store;
@@ -1142,87 +1151,87 @@ int main(const int argc, char **argv)
 
     static const Fixture smoke_fixtures[] =
     {
-        { "pure-color-forward", "builtin/pure_color",
+        { "pure-color-forward", MaterialDomain::UnlitSolid,
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
-        { "checkerboard-2d-forward", "checkerboard_2d",
+        { "checkerboard-2d-forward", MaterialDomain::Checker2D,
           ShaderProgramPurpose::ForwardColor, true, true, false, false },
-        { "checkerboard-2d-alpha", "checkerboard_2d",
+        { "checkerboard-2d-alpha", MaterialDomain::Checker2D,
           ShaderProgramPurpose::ForwardColor, true, true, false, true },
-        { "checkerboard-3d-face-forward", "builtin/checkerboard_3d",
+        { "checkerboard-3d-face-forward", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
-        { "checkerboard-3d-normal-forward", "builtin/checkerboard_3d",
+        { "checkerboard-3d-normal-forward", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ForwardColor, true, false, true, false },
-        { "checkerboard-3d-normal-depth", "builtin/checkerboard_3d",
+        { "checkerboard-3d-normal-depth", MaterialDomain::Checker3D,
           ShaderProgramPurpose::DepthOnly, true, false, true, false },
         // 错误棋盘格（读标记色行）：验证带 `require Resource MaterialData` 的
         // 回退材质能正常出 SPV（它是所有材质错误的兜底渲染路径）。
-        { "error-checkerboard-3d-forward", "builtin/error_checkerboard_3d",
+        { "error-checkerboard-3d-forward", MaterialDomain::ErrorChecker3D,
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
-        { "sky-cube", "sky_cube", ShaderProgramPurpose::ForwardColor,
+        { "sky-cube", MaterialDomain::Sky, ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        { "sky-minimal", "sky_minimal", ShaderProgramPurpose::ForwardColor,
+        { "sky-minimal", MaterialDomain::Sky, ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         // IBL 环境光照：ambient provider 由**环境层**选（不是材质），
         // 验证它在 smoke 路径(ctest)下确实替换掉默认 indirect_sky_ambient。
-        { "lit-ibl", "lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-ibl", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ForwardColor,
           true, false, false, false, "ambient_light_ibl" }
     };
     static const Fixture full_fixtures[] =
     {
-        { "pure-color-forward", "builtin/pure_color",
+        { "pure-color-forward", MaterialDomain::UnlitSolid,
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
-        { "pure-color-depth", "builtin/pure_color",
+        { "pure-color-depth", MaterialDomain::UnlitSolid,
           ShaderProgramPurpose::DepthOnly, true, false, false, false },
-        { "pure-color-shadow", "builtin/pure_color",
+        { "pure-color-shadow", MaterialDomain::UnlitSolid,
           ShaderProgramPurpose::ShadowDepth, true, false, false, false },
-        { "checkerboard-2d-forward", "checkerboard_2d",
+        { "checkerboard-2d-forward", MaterialDomain::Checker2D,
           ShaderProgramPurpose::ForwardColor, true, true, false, false },
-        { "checkerboard-2d-depth", "checkerboard_2d",
+        { "checkerboard-2d-depth", MaterialDomain::Checker2D,
           ShaderProgramPurpose::DepthOnly, true, true, false, false },
-        { "checkerboard-2d-alpha", "checkerboard_2d",
+        { "checkerboard-2d-alpha", MaterialDomain::Checker2D,
           ShaderProgramPurpose::ForwardColor, true, true, false, true },
         // 蒙版阴影/depth：HGL_COVERAGE_ONLY + HGL_ALPHA_* 同时成立——FS 只求
         // EvalAlpha 并 discard，不发 EvalSurface。此前 fixture 表只有非 alpha 的
         // depth/shadow 用例，这条路径（ShadowCasterMasked）在端到端回归里完全没有
         // 覆盖，ShadowCaster 模板一旦写错不会被任何用例发现。
-        { "checkerboard-2d-alpha-depth", "checkerboard_2d",
+        { "checkerboard-2d-alpha-depth", MaterialDomain::Checker2D,
           ShaderProgramPurpose::DepthOnly, true, true, false, true },
-        { "checkerboard-3d-face-forward", "builtin/checkerboard_3d",
+        { "checkerboard-3d-face-forward", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ForwardColor, true, false, false, false },
-        { "checkerboard-3d-face-depth", "builtin/checkerboard_3d",
+        { "checkerboard-3d-face-depth", MaterialDomain::Checker3D,
           ShaderProgramPurpose::DepthOnly, true, false, false, false },
-        { "checkerboard-3d-face-shadow", "builtin/checkerboard_3d",
+        { "checkerboard-3d-face-shadow", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ShadowDepth, true, false, false, false },
-        { "checkerboard-3d-face-alpha", "builtin/checkerboard_3d",
+        { "checkerboard-3d-face-alpha", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ForwardColor, true, false, false, true },
-        { "checkerboard-3d-normal-forward", "builtin/checkerboard_3d",
+        { "checkerboard-3d-normal-forward", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ForwardColor, true, false, true, false },
-        { "checkerboard-3d-normal-depth", "builtin/checkerboard_3d",
+        { "checkerboard-3d-normal-depth", MaterialDomain::Checker3D,
           ShaderProgramPurpose::DepthOnly, true, false, true, false },
-        { "checkerboard-3d-normal-shadow", "builtin/checkerboard_3d",
+        { "checkerboard-3d-normal-shadow", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ShadowDepth, true, false, true, false },
-        { "checkerboard-3d-normal-alpha-shadow", "builtin/checkerboard_3d",
+        { "checkerboard-3d-normal-alpha-shadow", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ShadowDepth, true, false, true, true },
-        { "checkerboard-3d-normal-alpha", "builtin/checkerboard_3d",
+        { "checkerboard-3d-normal-alpha", MaterialDomain::Checker3D,
           ShaderProgramPurpose::ForwardColor, true, false, true, true },
-        { "lit-forward", "lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-forward", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         // PBR 域的 alpha 前向 + 蒙版阴影。这两条此前只有 Checker2D/Checker3D
         // 覆盖，而 PBR 走的是不同的材质源（material_source_pbr_surface）+ NTB 组合。
         // 删除 ShaderGen 后 domain/standard_opaque/*.frag 需要它们作为等价基线。
-        { "lit-forward-alpha", "lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-forward-alpha", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ForwardColor,
           true, false, false, true },
-        { "lit-shadow-alpha", "lit", ShaderProgramPurpose::ShadowDepth,
+        { "lit-shadow-alpha", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ShadowDepth,
           true, false, false, true },
-        { "lit-shadow", "lit", ShaderProgramPurpose::ShadowDepth,
+        { "lit-shadow", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ShadowDepth,
           true, false, false, false },
-        { "text-gpu-charquad", "builtin/text_gpu",
+        { "text-gpu-charquad", MaterialDomain::Text2D,
           ShaderProgramPurpose::ForwardColor, false, false, false, false },
-        { "sky-minimal", "sky_minimal", ShaderProgramPurpose::ForwardColor,
+        { "sky-minimal", MaterialDomain::Sky, ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        { "sky-cube", "sky_cube", ShaderProgramPurpose::ForwardColor,
+        { "sky-cube", MaterialDomain::Sky, ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
-        { "lit-ibl", "lit", ShaderProgramPurpose::ForwardColor,
+        { "lit-ibl", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ForwardColor,
           true, false, false, false, "ambient_light_ibl" },
         // DrawTriangle 的真实形状：`VertexColor` 域 + `VF_V2I16` 像素坐标
         // + recipe 层 2D 节点配置（`Make2DNodeConfigOrtho`）。
@@ -1235,7 +1244,7 @@ int main(const int argc, char **argv)
         //      （3 分量）与 s1 的 2 分量冲突，构建直接失败；
         //   ③ 该形状必须在固定 mesh 源目录里有一份 `.mesh`，否则
         //      ShaderGen 删除后这个域没有 mesh 阶段。
-        { "vert-color-2d-int16", "vertex_color",
+        { "vert-color-2d-int16", MaterialDomain::VertexColor,
           ShaderProgramPurpose::ForwardColor, true, false, false, false,
           nullptr, VF_V2I16, true }
     };

@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -554,7 +554,7 @@ namespace hgl::ecs
             out_recipe.material_ssbo_binding = material_ssbo_binding;
         }
 
-        // 数据层边界规范化：写回 mtl_def_id 权威值与解析后的渲染状态，
+        // 数据层边界规范化：写回领域契约默认值与解析后的渲染状态，
         // 下游（acquire / 管线创建）不再重复。
         hgl::graph::mtl::NormalizeRecipe(out_recipe);
 
@@ -577,7 +577,8 @@ namespace hgl::ecs
 
                 GLogError(u8"[MaterialFallback] 材质 \"%s\" 声明为 required 的纹理缺少实际资源 "
                           u8"=> 回退错误材质 %s（棋盘格；错误种类 %s，颜色=(%.2f,%.2f,%.2f,%.2f)）",
-                          out_recipe.recipe_name.c_str(), rule.definition_id,
+                          out_recipe.recipe_name.c_str(),
+                          hgl::graph::mtl::GetMaterialDomainName(rule.domain),
                           rule.marker_name,
                           rule.marker_color[0], rule.marker_color[1],
                           rule.marker_color[2], rule.marker_color[3]);

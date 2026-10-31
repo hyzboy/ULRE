@@ -361,19 +361,17 @@ namespace hgl::ecs
             if (row == graph::ActiveRowPool::InvalidRowID)
             {
                 // 标记色行拿不到 ⇒ **必须降级到零依赖的灰度棋盘格**：规则表里的
-                // `builtin/error_checkerboard_3d` 声明了 `require Resource MaterialData`，
+                // `ErrorChecker3D` 领域声明了 `require Resource MaterialData`，
                 // 没有 binding 会被 ValidateMaterialRecipeForRuntime 判定失败并剔除图元
                 // （退化成第一起回归的报错形态）。降级后配方不需要 payload 行，且切到
                 // Checker3D 领域 ⇒ program 会按新领域重新解析（三次 BuildResolvedRecipe
                 // 走同一条路 ⇒ 一致）。
                 out_recipe.domain = graph::mtl::kMarkerlessFallbackMaterialDomain;
-                out_recipe.mtl_def_id =
-                    graph::mtl::kMarkerlessFallbackMaterialDefinitionID;
                 out_recipe.recipe_name = "fallback_without_marker";
                 out_recipe.material_ssbo_binding = graph::GlobalSSBOBinding{};
 
-                GLogWarning(u8"[MaterialFallback] marker row unavailable (no graphics device or pool not ready); degrade to markerless material %s: owner=%s",
-                            graph::mtl::kMarkerlessFallbackMaterialDefinitionID, GetOwnerName(primitive_comp));
+                GLogWarning(u8"[MaterialFallback] marker row unavailable (no graphics device or pool not ready); degrade to markerless domain %s: owner=%s",
+                            graph::mtl::GetMaterialDomainName(out_recipe.domain), GetOwnerName(primitive_comp));
                 return true;
             }
 
@@ -423,8 +421,8 @@ namespace hgl::ecs
             return facts;
         }
 
-        /// 取配方对应的材质定义：领域配方由领域契约合成，Custom 配方查 definition
-        /// 文件（过渡路径）。两条路径都失败 ⇒ 用回退材质定义，绝不剔除图元。
+        /// 取配方对应的材质定义：由领域契约 + 配方合成。失败（配方无有效领域）⇒
+        /// 用回退领域合成，绝不剔除图元。
         bool ResolveMaterialDefinition(
             const graph::mtl::MaterialRecipe &recipe,
             graph::mtl::MaterialDefinition &out_definition)
@@ -432,9 +430,13 @@ namespace hgl::ecs
             if (graph::mtl::ResolveMaterialDefinitionForRecipe(recipe, out_definition))
                 return true;
 
-            return graph::mtl::TryGetMaterialDefinitionByID(
-                graph::mtl::GetFallbackMaterialDefinitionID(),
-                out_definition);
+            graph::mtl::MaterialRecipe fallback_recipe;
+            if (!graph::mtl::BuildFallbackMaterialRecipe(
+                    fallback_recipe, graph::mtl::MaterialErrorKind::MissingMaterialSource))
+                return false;
+
+            return graph::mtl::SynthesizeMaterialDefinitionFromRecipe(
+                fallback_recipe, out_definition);
         }
 
         /**
@@ -474,7 +476,7 @@ namespace hgl::ecs
                       u8"=> 回退错误材质 %s（棋盘格，颜色=(%.2f,%.2f,%.2f,%.2f)）owner=%s",
                       out_recipe.recipe_name.c_str(),
                       rule.marker_name,
-                      rule.definition_id,
+                      graph::mtl::GetMaterialDomainName(rule.domain),
                       rule.marker_color[0], rule.marker_color[1],
                       rule.marker_color[2], rule.marker_color[3],
                       GetOwnerName(primitive_comp));

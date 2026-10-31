@@ -1,6 +1,4 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
-#include<hgl/mtl/MaterialDefinitionFile.h>
-#include<hgl/mtl/BuiltinMaterialDefinitions.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
@@ -30,26 +28,6 @@ namespace
         if (!module_name || !module_name[0])
             return true;
         return request.AddModuleRoot(role, AnsiString(module_name));
-    }
-
-    bool TryGetMaterialDefinitionByIDInternal(
-        const char *mtl_def_id,
-        MaterialDefinition &out_definition)
-    {
-        if (!mtl_def_id || !mtl_def_id[0])
-            return false;
-
-        const MaterialDefinitionFileRegistry &file_registry =
-            GetMaterialDefinitionFileRegistry();
-        const MaterialDefinition *file_definition =
-            file_registry.FindByID(mtl_def_id);
-        if (file_definition)
-        {
-            out_definition = *file_definition;
-            return true;
-        }
-
-        return false;
     }
 }
 
@@ -281,100 +259,6 @@ MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     return varying;
 }
 
-bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition)
-{
-    return TryGetMaterialDefinitionByIDInternal(mtl_def_id.c_str(), out_definition);
-}
-
-MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
-{
-    static MaterialDefinitionFileRegistry registry;
-    static bool loaded = false;
-    if (!loaded)
-    {
-        // ① 先注册**内嵌** builtin 定义（阶段三之三）。
-        //
-        // 顺序理由：保底链（kFallbackMaterialRules / 字体管线）按字面量引用这些 ID。
-        // 它们必须先于资产目录就位 —— 资产目录缺失、读不出、单份写错，都不能让
-        // "错误材质"本身也拿不到。内嵌源码仍走同一条解析 + 领域校验管线，所以
-        // MaterialDomainContract 依旧是唯一真源。
-        int builtin_count = 0;
-        for (int i = 0; i < mtl::GetBuiltinMaterialDefinitionCount(); ++i)
-        {
-            const mtl::BuiltinMaterialDefinitionSource *source =
-                mtl::GetBuiltinMaterialDefinitionSource(i);
-            if (!source || !source->schema4_source || !source->definition_id)
-                continue;
-
-            if (!registry.RegisterDefinitionSource(
-                    source->source_label, source->schema4_source,
-                    static_cast<int>(strlen(source->schema4_source))))
-            {
-                // 内嵌定义解析不出来 = 引擎内部错误（源码与领域契约脱节），
-                // 与"某份资产写错"性质不同，不可降级 ⇒ 进程级致命。
-                GLogFatal("[MaterialDefinitionRegistry] 内嵌 builtin 材质定义注册失败: %ls。这是引擎内部错误"
-                          "（内嵌源码与领域契约不一致），保底材质不可依赖，进程不可继续。",
-                          source->source_label);
-                std::abort();
-            }
-
-            // 内嵌源码声明的 id 必须与登记 ID 一致，否则保底链会指向一个不存在的定义。
-            if (!registry.FindByID(source->definition_id))
-            {
-                GLogFatal("[MaterialDefinitionRegistry] 内嵌 builtin 材质定义 ID 不一致: 期望 \"%s\""
-                          "（标签 %ls），注册后查不到该 ID。",
-                          source->definition_id, source->source_label);
-                std::abort();
-            }
-            ++builtin_count;
-        }
-
-        // ② 再扫描资产目录（用户 / 项目可写的 *.definition.toml）。
-        int file_count = 0;
-        int error_count = 0;
-        const hgl::filesystem::Path material_path =
-            hgl::filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
-            / OSString(OS_TEXT("asset"))
-            / OSString(OS_TEXT("definition"));
-
-        if (!material_path.IsDirectory())
-        {
-            GLogFatal("[MaterialDefinitionRegistry] Missing required ShaderLibrary/asset/definition directory: %s. File-backed schema-4 material definitions are mandatory.",
-                      material_path.ToOSString().c_str());
-            std::abort();
-        }
-
-        if (!registry.LoadDirectory(
-                material_path.ToOSString(), &file_count, &error_count))
-        {
-            GLogFatal("[MaterialDefinitionRegistry] Material TOML directory unavailable; no material definitions are available from %s. This is a hard failure.",
-                      material_path.ToOSString().c_str());
-            std::abort();
-        }
-
-        // 口径（2026-10-11 用户）：**单份材质写错（例如 sampler 配错）= LOG 报错**，不是进程级致命；
-        // 出错的那份不注册 ⇒ 引用它的配方落到错误材质路径
-        // （MaterialErrorKind::UnknownMaterialDefinition ⇒ 保底材质 + 按颜色标错误种类）。
-        // 只有「资产库不可用」（目录缺失 / 读不出 / 零份可解析）才是 fatal —— 内嵌 builtin
-        // 定义已经保证 registry 非空，所以这里判的是**资产份数**，不是 registry.GetCount()。
-        if (file_count == 0)
-        {
-            GLogFatal("[MaterialDefinitionRegistry] ShaderLibrary/asset/definition is empty or invalid (%d files, %d errors, %d parsed definitions, %d builtin). File-backed schema-4 materials are required.",
-                      file_count, error_count, registry.GetCount(), builtin_count);
-            std::abort();
-        }
-
-        if (error_count > 0)
-            GLogError("[MaterialDefinitionRegistry] %d 份材质定义加载失败（逐份原因见上）——这些定义不注册，"
-                      "引用它们的配方会走错误材质路径。", error_count);
-
-        GLogInfo("[MaterialDefinitionRegistry] Loaded %d material TOML definitions (%d errors) + %d builtin definitions",
-                 file_count, error_count, builtin_count);
-        loaded = true;
-    }
-    return registry;
-}
-
 bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
                                  const MaterialErrorKind kind)
 {
@@ -388,7 +272,6 @@ bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
     out_recipe = MaterialRecipe{};
     out_recipe.recipe_name = rule.marker_name;
     out_recipe.domain      = rule.domain;
-    out_recipe.mtl_def_id  = rule.definition_id;
     out_recipe.fallback_error_kind = kind;
     for (uint32_t i = 0; i < 4; ++i)
         out_recipe.fallback_marker_color[i] = rule.marker_color[i];
@@ -472,17 +355,28 @@ bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
             {slot.name, slot.sampler, slot.binding_required, slot.channels});
     }
 
+    // 采样器预设 / 编译宏：契约给惯例预设，配方可**整表替换**（不是追加 ——
+    // 「同一领域不同形态」的差别正在于替换，例如 Text2D 的 SDF 形态给 Linear +
+    // TEXT_SDF_ENABLED，位图形态必须换成 Nearest + 空表）。
     int entry_count = 0;
     const char *const *presets =
         GetMaterialDomainSamplerPresets(recipe.domain, entry_count);
-    for (int i = 0; i < entry_count; ++i)
-        out_definition.sampler_names.emplace_back(presets[i]);
+
+    if (recipe.has_sampler_names)
+        out_definition.sampler_names = recipe.sampler_names;
+    else
+        for (int i = 0; i < entry_count; ++i)
+            out_definition.sampler_names.emplace_back(presets[i]);
 
     entry_count = 0;
     const char *const *defines =
         GetMaterialDomainCompileDefines(recipe.domain, entry_count);
-    for (int i = 0; i < entry_count; ++i)
-        out_definition.compile_defines.emplace_back(defines[i]);
+
+    if (recipe.has_compile_defines)
+        out_definition.compile_defines = recipe.compile_defines;
+    else
+        for (int i = 0; i < entry_count; ++i)
+            out_definition.compile_defines.emplace_back(defines[i]);
 
     // 渲染状态默认值来自契约；配方的覆盖项由 NormalizeRecipe 落定，这里不预合并。
     out_definition.default_render_state = contract->default_render_state;
@@ -492,71 +386,40 @@ bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
 bool ResolveMaterialDefinitionForRecipe(const MaterialRecipe &recipe,
                                        MaterialDefinition &out_definition) noexcept
 {
-    if (SynthesizeMaterialDefinitionFromRecipe(recipe, out_definition))
-        return true;
-
-    // Custom（未声明领域）：没有契约可依，仍按字符串 ID 查 definition 文件。
-    // 这是历史材质的过渡路径，随 definition 文件层一起删除。
-    return TryGetMaterialDefinitionByID(recipe.mtl_def_id, out_definition);
+    // 唯一路径：领域契约 + 配方当场合成。配方没有契约（`Custom` / 未知领域值）
+    // 时 NormalizeRecipe 已经把它改写成保底领域配方 —— 走到这里的配方必有契约。
+    return SynthesizeMaterialDefinitionFromRecipe(recipe, out_definition);
 }
 
 void NormalizeRecipe(MaterialRecipe &recipe)
 {
-    // 领域已声明 ⇒ 渲染状态默认值来自领域契约，Definition 完全不参与。
-    // 这是 Recipe 直连 Domain 的正路；下面的 Definition 分支只剩过渡期用途
-    // （引擎内部按字符串 ID 直接构造的配方），阶段四随 Definition 一起删除。
-    if (const MaterialDomainContract *contract =
-            GetMaterialDomainContract(recipe.domain))
+    const MaterialDomainContract *contract = GetMaterialDomainContract(recipe.domain);
+
+    if (!contract)
     {
-        const ResolvedMaterialRenderState resolved =
-            ResolveMaterialRenderState(contract->default_render_state, recipe);
+        // 无契约只有两种成因，都必须出声并把配方改写为保底领域配方：
+        //   · `Custom`（未声明领域）= 无材质来源       ⇒ MissingMaterialSource
+        //   · 其它非法枚举值       = 领域不可解析       ⇒ UnknownMaterialDomain
+        // 改写后配方与普通配方走同一条合成路径（`BuildFallbackMaterialRecipe` 内部
+        // 会再次调用本函数，届时领域已有契约，递归一层即终止）。
+        const MaterialErrorKind error_kind =
+            (recipe.domain == MaterialDomain::Custom)
+                ? MaterialErrorKind::MissingMaterialSource
+                : MaterialErrorKind::UnknownMaterialDomain;
 
-        // Write resolved values back to render_state_overrides as authoritative.
-        recipe.render_state_overrides.has_alpha_test = true;
-        recipe.render_state_overrides.alpha_test = resolved.alpha_test;
-        recipe.render_state_overrides.has_alpha_cutoff = true;
-        recipe.render_state_overrides.alpha_cutoff = resolved.alpha_cutoff;
-        recipe.render_state_overrides.has_dither = true;
-        recipe.render_state_overrides.dither = resolved.dither;
-        recipe.render_state_overrides.has_pipeline_config = true;
-        recipe.render_state_overrides.pipeline_config = resolved.pipeline_config;
-        return;
-    }
-
-    // Canonicalization is intentionally strict: empty or unknown material IDs are
-    // not tolerated as a legacy compatibility branch. They resolve to the single
-    // file-backed fallback material so every runtime program key remains stable and
-    // traceable to a concrete material definition.
-    //
-    // A7b：**材质错误**分类（数据驱动：ClassifyMaterialErrorKind + kFallbackMaterialRules）：
-    //   · 空 ID   = 无材质来源          ⇒ MissingMaterialSource
-    //   · 未知 ID = 定义 ID 不可解析     ⇒ UnknownMaterialDefinition
-    // 两者都落到保底材质，并把**错误种类与根颜色**记在配方上（根颜色用于标注错误种类）。
-    MaterialErrorKind error_kind = MaterialErrorKind::None;
-
-    if (recipe.mtl_def_id.empty())
-        error_kind = MaterialErrorKind::MissingMaterialSource;
-
-    MaterialDefinition definition{};
-    if (!TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition))
-    {
-        if (error_kind == MaterialErrorKind::None)
-            error_kind = MaterialErrorKind::UnknownMaterialDefinition;
-
-        // 报错口径（2026-10-14 用户）：材质未知/写错 **直接报错**，不静默。单份定义写错
-        // （采样器 / 顶点输入名等配错）在**加载期**已 GLogError（那份定义不注册）；这里覆盖
-        // **另一条**到达路径：配方引用的材质定义 ID 无法解析（作者写了不存在的 ID / 数据层
-        // 覆盖指向不存在的材质）。本行是这条路径的**唯一出声点** —— ECS 侧把它当"构建成功"
-        // 处理（只计数，不再报一次），否则同一事件会出两条日志。
+        // 报错口径（2026-10-14 用户）：材质未知/写错 **直接报错**，不静默。本行是这条
+        // 路径的唯一出声点 —— ECS 侧把它当"构建成功"处理（只计数，不再报一次），
+        // 否则同一事件会出两条日志。
         {
             const FallbackMaterialRule &fallback_rule = GetFallbackMaterialRule(error_kind);
             const char *reason = (error_kind == MaterialErrorKind::MissingMaterialSource)
-                                     ? "无材质来源（空 ID）"
-                                     : "材质定义 ID 无法解析";
+                                     ? "未声明材质领域（domain 缺失）"
+                                     : "材质领域无契约（domain 非法）";
 
             GLogError(u8"[MaterialFallback] %s: \"%s\" => 回退错误材质 %s"
-                      u8"（棋盘格；错误种类 %s，颜色=(%.2f,%.2f,%.2f,%.2f)）",
-                      reason, recipe.recipe_name.c_str(), fallback_rule.definition_id,
+                      u8"（领域；错误种类 %s，颜色=(%.2f,%.2f,%.2f,%.2f)）",
+                      reason, recipe.recipe_name.c_str(),
+                      GetMaterialDomainName(fallback_rule.domain),
                       fallback_rule.marker_name,
                       fallback_rule.marker_color[0], fallback_rule.marker_color[1],
                       fallback_rule.marker_color[2], fallback_rule.marker_color[3]);
@@ -565,14 +428,13 @@ void NormalizeRecipe(MaterialRecipe &recipe)
         if (!BuildFallbackMaterialRecipe(recipe, error_kind))
             return;
 
-        if (!TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition))
-            return;
+        contract = GetMaterialDomainContract(recipe.domain);
+        if (!contract)
+            return;     // 保底领域本身没契约 = 引擎内部错误，规则表 static_assert 已拦
     }
 
-    recipe.mtl_def_id = definition.definition_id;
-
     const ResolvedMaterialRenderState resolved =
-        ResolveMaterialRenderState(definition, recipe);
+        ResolveMaterialRenderState(contract->default_render_state, recipe);
 
     // Write resolved values back to render_state_overrides as authoritative.
     recipe.render_state_overrides.has_alpha_test = true;

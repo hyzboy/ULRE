@@ -53,7 +53,7 @@ namespace
 {
     struct Expectation
     {
-        std::string definition_id;
+        std::string domain;
         uint64 program_digest = 0;
         uint64 lookup_key = 0;
         uint64 mesh_stage_digest = 0;
@@ -96,9 +96,9 @@ namespace
                 return std::strtoull(value.c_str(), nullptr, 10);
             };
 
-            if (key == "definition_id")
+            if (key == "domain")
             {
-                out.definition_id = value;
+                out.domain = value;
                 ++seen;
             }
             else if (key == "program_digest")
@@ -143,7 +143,7 @@ namespace
             }
         }
 
-        out.has_all = seen == 9 && !out.definition_id.empty();
+        out.has_all = seen == 9 && !out.domain.empty();
         if (!out.has_all)
         {
             std::fprintf(stderr,
@@ -250,6 +250,7 @@ namespace
     /// 与烘焙侧（回归门 RunProgramManifestLookupCase）逐字段相同的请求构造。
     /// 两侧一旦漂移，键对不上就会在这里炸出来 —— 这正是本探针要守的东西。
     bool BuildProbeRequest(
+        const MaterialRecipe &recipe,
         const MaterialDefinition &definition,
         MaterialDefinitionBuildRequest &request,
         std::string &error)
@@ -261,8 +262,7 @@ namespace
         };
 
         request = MaterialDefinitionBuildRequest{};
-        request.recipe.mtl_def_id = definition.definition_id;
-        NormalizeRecipe(request.recipe);
+        request.recipe = recipe;
         request.geometry_vertex_format = &geometry;
         request.defer_finalize = true;
         request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
@@ -317,18 +317,31 @@ namespace
             return 1;
         }
 
-        MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID(expected.definition_id, definition))
+        MaterialDomain domain = MaterialDomain::Custom;
+        if (!ParseMaterialDomain(expected.domain.c_str(), domain))
         {
             std::fprintf(stderr,
-                         "[FAIL] material definition unavailable at runtime: %s\n",
-                         expected.definition_id.c_str());
+                         "[FAIL] expectation domain is not a known material domain: %s\n",
+                         expected.domain.c_str());
+            return 1;
+        }
+
+        MaterialRecipe recipe{};
+        recipe.domain = domain;
+        NormalizeRecipe(recipe);
+
+        MaterialDefinition definition{};
+        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
+        {
+            std::fprintf(stderr,
+                         "[FAIL] material definition could not be synthesized: %s\n",
+                         expected.domain.c_str());
             return 1;
         }
 
         MaterialDefinitionBuildRequest request{};
         std::string build_error;
-        if (!BuildProbeRequest(definition, request, build_error))
+        if (!BuildProbeRequest(recipe, definition, request, build_error))
         {
             std::fprintf(stderr, "[FAIL] %s\n", build_error.c_str());
             return 1;
@@ -528,7 +541,7 @@ namespace
 
         std::printf("[PASS] runtime-form-probe: release form resolved '%s' from a "
                     "read-only baked cache (program=%llu)\n",
-                    expected.definition_id.c_str(),
+                    expected.domain.c_str(),
                     static_cast<unsigned long long>(expected.program_digest));
         return 0;
     }
@@ -552,7 +565,7 @@ int main(const int argc, char **argv)
                      "expectation.txt, produced by\n"
                      "  ShaderResourceSchemaRegressionGate emit-release-cache <dir>\n"
                      "Must be run with the working directory containing ShaderLibrary/ "
-                     "(material definitions are release-form data).\n");
+                     "(material recipes are release-form data).\n");
         return 2;
     }
 
@@ -567,11 +580,11 @@ int main(const int argc, char **argv)
     }
 
     if (!std::filesystem::is_directory(
-            std::filesystem::path("ShaderLibrary") / "asset" / "definition"))
+            std::filesystem::path("ShaderLibrary") / "asset" / "recipe"))
     {
         std::fprintf(stderr,
-                     "[FAIL] ShaderLibrary/asset/definition not found under the working "
-                     "directory; release form ships material definitions as data.\n");
+                     "[FAIL] ShaderLibrary/asset/recipe not found under the working "
+                     "directory; release form ships material recipes as data.\n");
         return 2;
     }
 

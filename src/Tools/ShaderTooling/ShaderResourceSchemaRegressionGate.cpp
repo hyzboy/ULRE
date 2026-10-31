@@ -1,6 +1,4 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include <hgl/mtl/MaterialDefinitionFile.h>
-#include <hgl/mtl/BuiltinMaterialDefinitions.h>
 #include <hgl/mtl/MaterialDomain.h>
 #include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/DomainOptions.h>
@@ -51,6 +49,7 @@
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
 #include "ShaderProgramBuild/compile/ShaderProgramBuildBackendInstall.h"
+#include <hgl/mtl/MaterialRecipeFile.h>
 
 #include <algorithm>
 #include <cctype>
@@ -946,6 +945,18 @@ namespace
         return true;
     }
 
+    /// 领域 → 合成材质定义。
+    ///
+    /// definition 中间层（`.definition.toml`）移除后，「按 ID 取定义」一律换成
+    /// 「按领域合成定义」：契约来自 `MaterialDomainContract`，配方只负责覆盖。
+    static bool SynthesizeDomainDefinition(const MaterialDomain domain,
+                                           MaterialDefinition &out_definition)
+    {
+        MaterialRecipe recipe{};
+        recipe.domain = domain;
+        return SynthesizeMaterialDefinitionFromRecipe(recipe, out_definition);
+    }
+
     static GateResult RunMaterialVertexABICharacterizationCase()
     {
         GateResult result;
@@ -1105,27 +1116,29 @@ namespace
             }
         }
 
-        // Every special-purpose file definition must expose the legacy
+        // Every special-purpose domain must expose the legacy
         // position-first contract while Phase 4 is introduced incrementally.
-        static const char *material_ids[] = {
-            "builtin/pure_color",
-            "checkerboard_2d",
-            "builtin/checkerboard_3d",
-            "builtin/error_checkerboard_3d",
-            "builtin/text_gpu",
-            "builtin/text_gpu_bitmap"
+        static const MaterialDomain special_domains[] = {
+            MaterialDomain::UnlitSolid,
+            MaterialDomain::Checker2D,
+            MaterialDomain::Checker3D,
+            MaterialDomain::ErrorChecker3D,
+            MaterialDomain::Text2D
         };
-        for (const char *id : material_ids)
+        for (const MaterialDomain domain : special_domains)
         {
+            const char * domain_name = GetMaterialDomainName(domain);
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(id, definition))
+            if (!SynthesizeDomainDefinition(domain, definition))
             {
-                result.diagnostics.emplace_back(std::string("missing file definition: ") + id);
+                result.diagnostics.emplace_back(
+                    std::string("missing domain definition: ") + domain_name);
                 continue;
             }
             if (definition.vertex_semantic_requirements.IsEmpty())
             {
-                result.diagnostics.emplace_back(std::string("invalid file vertex ABI: ") + id);
+                result.diagnostics.emplace_back(
+                    std::string("invalid domain vertex ABI: ") + domain_name);
             }
         }
 
@@ -1138,33 +1151,35 @@ namespace
         GateResult result;
         result.name = "L.material-semantic-abi-parity";
 
-        static const char *definition_ids[] = {
-            "builtin/pure_color",
-            "builtin/text_gpu",
-            "builtin/text_gpu_bitmap",
-            "checkerboard_2d",
-            "builtin/checkerboard_3d",
-            "builtin/error_checkerboard_3d"
+        static const MaterialDomain abi_domains[] = {
+            MaterialDomain::UnlitSolid,
+            MaterialDomain::Text2D,
+            MaterialDomain::Checker2D,
+            MaterialDomain::Checker3D,
+            MaterialDomain::ErrorChecker3D
         };
 
-        for (const char *id : definition_ids)
+        for (const MaterialDomain domain : abi_domains)
         {
+            const char * domain_name = GetMaterialDomainName(domain);
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(id, definition))
+            if (!SynthesizeDomainDefinition(domain, definition))
             {
-                result.diagnostics.emplace_back(std::string("missing migrated definition: ") + id);
+                result.diagnostics.emplace_back(
+                    std::string("missing migrated domain: ") + domain_name);
                 continue;
             }
 
             if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
             {
-                result.diagnostics.emplace_back(std::string("unexpected provider policy: ") + id);
+                result.diagnostics.emplace_back(
+                    std::string("unexpected provider policy: ") + domain_name);
                 continue;
             }
 
             if (definition.vertex_semantic_requirements.IsEmpty())
                 result.diagnostics.emplace_back(
-                    std::string("empty semantic-only ABI: ") + id);
+                    std::string("empty semantic-only ABI: ") + domain_name);
         }
 
         result.passed = result.diagnostics.empty();
@@ -1440,15 +1455,18 @@ namespace
         GateResult result;
         result.name = "L0.charquad-workgroup-contract";
 
+        MaterialRecipe recipe{};
+        recipe.domain = MaterialDomain::Text2D;
+
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID("builtin/text_gpu", definition))
+        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
         {
-            result.diagnostics.emplace_back("missing definition: builtin/text_gpu");
+            result.diagnostics.emplace_back("missing domain definition: Text2D");
             result.passed = false;
             return result;
         }
 
-        const auto build = [](const contract::PhysicalDeviceProfileLite *profile,
+        const auto build = [&recipe](const contract::PhysicalDeviceProfileLite *profile,
                               const MaterialDefinition &def,
                               const char *mesh_source_override,
                               FixedFragmentSource *out_fixed = nullptr,
@@ -1456,7 +1474,7 @@ namespace
             -> std::unique_ptr<ShaderBuildContext>
         {
             MaterialDefinitionBuildRequest request{};
-            request.recipe.mtl_def_id = def.definition_id;
+            request.recipe = recipe;
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
             // 只到 GLSL 文本为止：本用例断言的是发射文本里的 local_size_x，
             // 不需要（也不该依赖）SPV 编译。
@@ -1805,8 +1823,11 @@ namespace
         GateResult result;
         result.name = "L0.draw-triangle-vertex-color-2d";
 
+        MaterialRecipe recipe{};
+        recipe.domain = MaterialDomain::VertexColor;
+
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID("vertex_color", definition))
+        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
         {
             result.diagnostics.emplace_back("missing definition: VertexColor");
             result.passed = false;
@@ -1828,7 +1849,7 @@ namespace
         // 否则「形状对了但顶点格式选错」会静默通过。
         hgl::AnsiString mesh_options_text;
 
-        const auto build = [&geometry, &mesh_options_text](
+        const auto build = [&geometry, &mesh_options_text, &recipe](
                                const MaterialDefinition &def,
                                const VertexShaderNodeConfig &node_cfg,
                                const GeometryVertexFormat *gvf)
@@ -1837,7 +1858,7 @@ namespace
             mesh_options_text.Clear();
 
             MaterialDefinitionBuildRequest request{};
-            request.recipe.mtl_def_id = def.definition_id;
+            request.recipe = recipe;
             request.recipe.vertex_node_config = node_cfg;
             request.recipe.render_state_overrides.has_alpha_test = false;
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
@@ -2536,8 +2557,8 @@ namespace
 
         MaterialDefinition lit{};
         MaterialDefinition vertex_color{};
-        if (!TryGetMaterialDefinitionByID("lit", lit)
-         || !TryGetMaterialDefinitionByID("vertex_color", vertex_color))
+        if (!SynthesizeDomainDefinition(MaterialDomain::StandardOpaque, lit)
+         || !SynthesizeDomainDefinition(MaterialDomain::VertexColor, vertex_color))
         {
             result.diagnostics.emplace_back(
                 "cache identity material definitions unavailable");
@@ -2561,7 +2582,7 @@ namespace
             const ScenePassProfile &scene_profile)
         {
             MaterialDefinitionBuildRequest request{};
-            request.recipe.mtl_def_id = definition.definition_id;
+            request.recipe.domain = definition.domain;
             request.geometry_vertex_format = &geometry;
             request.defer_finalize = true;
             PassProfileValidationDiagnostic template_diagnostic{};
@@ -3014,37 +3035,36 @@ namespace
         return result;
     }
 
-    static GateResult RunMaterialRegistryCoverageCase()
+    /// 领域覆盖：契约表是「领域 → 顶点 ABI / 片元模板」的唯一真源。
+    ///
+    /// definition 文件消失后，没有注册表可以「漏登记」；本用例改为遍历全部领域值，
+    /// 断言每个领域都能当场合成出一份带名字的定义（`Custom` 无契约，按设计不入表）。
+    static GateResult RunMaterialDomainCoverageCase()
     {
         GateResult result;
-        result.name = "E.material-registry-coverage";
+        result.name = "E.material-domain-coverage";
 
-        struct ExpectedEntry
+        for (uint32_t index = 1; index < MaterialDomainContractCount; ++index)
         {
-            const char *definition_id;
-        };
+            const MaterialDomain domain = static_cast<MaterialDomain>(index);
+            const char *domain_name = GetMaterialDomainName(domain);
 
-        static const ExpectedEntry expected[] =
-        {
-            { "builtin/pure_color" },
-            { "builtin/text_gpu" },
-            { "builtin/text_gpu_bitmap" },
-            { "checkerboard_2d" },
-            { "builtin/checkerboard_3d" },
-            { "builtin/error_checkerboard_3d" }
-        };
-
-        for (const auto &entry : expected)
-        {
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(entry.definition_id, definition))
+            if (!SynthesizeDomainDefinition(domain, definition))
             {
-                result.diagnostics.emplace_back(std::string("Missing material definition: ") + entry.definition_id);
+                result.diagnostics.emplace_back(
+                    std::string("Missing domain contract: ") + domain_name);
                 continue;
             }
 
             if (definition.definition_name.empty())
-                result.diagnostics.emplace_back(std::string("Empty material definition name: ") + entry.definition_id);
+                result.diagnostics.emplace_back(
+                    std::string("Empty domain definition name: ") + domain_name);
+
+            if (definition.definition_id != domain_name)
+                result.diagnostics.emplace_back(
+                    std::string("Domain definition identity is not the domain"
+                                " name: ") + domain_name);
         }
 
         result.passed = result.diagnostics.empty();
@@ -3052,8 +3072,8 @@ namespace
     }
 
     /// 回退材质必须"任何几何都能画"（数据驱动：遍历整张回退规则表 + 标记行不可得时的
-    /// 降级材质，新增种类自动纳入）：
-    ///   ① 定义 ID 必须能在材质库里解析（打字错 = 兜底路径整条失效）；
+    /// 降级领域，新增种类自动纳入）：
+    ///   ① 规则表里的领域必须能合成出定义（写错领域 = 兜底路径整条失效）；
     ///   ② 顶点需求只允许 GeometryAttribute/Position（不得依赖 UV/法线/颜色等可选属性）；
     ///      `Resource` 源需求（要材质数据行）不在本条约束内 —— 回退路径由
     ///      AttachFallbackMarkerColor 提供该行；
@@ -3063,19 +3083,22 @@ namespace
         GateResult result;
         result.name = "S.material-fallback-definitions-exist";
 
-        const auto check_definition = [&result](const char *label, const char *definition_id)
+        const auto check_definition = [&result](const char *label,
+                                                const MaterialDomain domain)
         {
+            const char *domain_name = GetMaterialDomainName(domain);
+
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(definition_id, definition))
+            if (!SynthesizeDomainDefinition(domain, definition))
             {
-                result.diagnostics.emplace_back(std::string("fallback definition for ") + label
-                    + " is not registered: " + definition_id);
+                result.diagnostics.emplace_back(std::string("fallback domain for ") + label
+                    + " has no contract: " + domain_name);
                 return;
             }
 
             if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
-                result.diagnostics.emplace_back(std::string("fallback definition for ") + label
-                    + " must use GeometryOnly provider policy: " + definition_id);
+                result.diagnostics.emplace_back(std::string("fallback domain for ") + label
+                    + " must use GeometryOnly provider policy: " + domain_name);
 
             for (uint32_t i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
@@ -3086,8 +3109,8 @@ namespace
                 // 产出（例如 WorldPosition），不依赖顶点数据，任何几何都满足。
                 if (requirement.source == GlslModuleCapabilitySource::GeometryAttribute
                  && requirement.semantic != GlslModuleSemantic::Position)
-                    result.diagnostics.emplace_back(std::string("fallback definition for ") + label
-                        + " must not require vertex attributes beyond Position: " + definition_id);
+                    result.diagnostics.emplace_back(std::string("fallback domain for ") + label
+                        + " must not require vertex attributes beyond Position: " + domain_name);
             }
         };
 
@@ -3097,58 +3120,84 @@ namespace
             const FallbackMaterialRule &rule = GetFallbackMaterialRule(kind);
 
             check_definition((std::string("kind '") + rule.marker_name + "'").c_str(),
-                             rule.definition_id);
+                             rule.domain);
         }
 
-        // 标记行不可得时的降级材质：与规则表同样的约束（它是最后一道兜底）。
+        // 标记行不可得时的降级领域：与规则表同样的约束（它是最后一道兜底）。
         check_definition("markerless degrade",
-                         kMarkerlessFallbackMaterialDefinitionID);
+                         kMarkerlessFallbackMaterialDomain);
 
         result.passed = result.diagnostics.empty();
         return result;
     }
 
+    /// 材质身份：定义身份必须**只由领域决定**。
+    ///
+    /// definition 文件时代身份来自用户随手写的 `id = "..."`，同一个领域的多份文件
+    /// 可以各自命名（`lit` / `pbr_sphere` / …），缓存与日志里出现两个名字指同一份
+    /// ABI。现在身份就是领域名，本用例钉住三件事：
+    ///   ① 合成结果的 id/name 都等于领域名；
+    ///   ② 配方里塞任何用户名字都不改变身份（身份不吃 recipe_name）；
+    ///   ③ 历史的 definition ID 字符串不再是合法领域名（`ParseMaterialDomain` 拒绝），
+    ///      否则残留的 `.material.toml` 会静默解析成 `Custom`。
     static GateResult RunMaterialDefinitionIdentityCase()
     {
         GateResult result;
         result.name = "R1.material-definition-identity";
 
-        MaterialDefinition pure_color{};
-        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
+        const auto check_identity = [&result](const MaterialDomain domain)
         {
-            result.diagnostics.emplace_back(
-                "PureColor canonical definition is missing");
-        }
-        else
-        {
-            if (pure_color.definition_id != "builtin/pure_color")
+            const char *domain_name = GetMaterialDomainName(domain);
+
+            MaterialRecipe recipe{};
+            recipe.recipe_name = "user_supplied_name";
+            recipe.domain = domain;
+
+            MaterialDefinition definition{};
+            if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
             {
                 result.diagnostics.emplace_back(
-                    "PureColor canonical definition identity changed");
+                    std::string("domain definition is missing: ") + domain_name);
+                return;
             }
-        }
 
-        MaterialDefinition text{};
-        if (!TryGetMaterialDefinitionByID("builtin/text_gpu", text))
-        {
-            result.diagnostics.emplace_back("Text canonical definition is missing");
-        }
-        else if (text.definition_id != "builtin/text_gpu")
-        {
-            result.diagnostics.emplace_back(
-                "Text canonical definition identity changed");
-        }
+            if (definition.definition_id != domain_name
+             || definition.definition_name != domain_name)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("definition identity is not the domain name: ")
+                    + domain_name);
+            }
 
-        MaterialRecipe canonical_recipe{};
-        canonical_recipe.mtl_def_id = "builtin/text_gpu";
-        NormalizeRecipe(canonical_recipe);
+            if (definition.domain != domain)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("synthesized definition lost its domain: ")
+                    + domain_name);
+            }
+        };
 
-        MaterialDefinition ordinary{};
-        if (!TryGetMaterialDefinitionByID("lit", ordinary)
-         || ordinary.definition_id != "lit")
+        check_identity(MaterialDomain::UnlitSolid);
+        check_identity(MaterialDomain::Text2D);
+        check_identity(MaterialDomain::StandardOpaque);
+
+        // 历史定义 ID：`builtin/pure_color`、`lit` 之类曾经是合法主键，现在必须
+        // 被领域解析器拒绝 —— 它们只可能来自遗留的 definition 引用。
+        static const char *retired_definition_ids[] = {
+            "builtin/pure_color",
+            "builtin/text_gpu",
+            "builtin/checkerboard_3d",
+            "builtin/error_checkerboard_3d",
+            "checkerboard_2d",
+            "lit"
+        };
+        for (const char *retired : retired_definition_ids)
         {
-            result.diagnostics.emplace_back(
-                "ordinary material lookup must resolve the TOML definition");
+            MaterialDomain parsed = MaterialDomain::Custom;
+            if (ParseMaterialDomain(retired, parsed))
+                result.diagnostics.emplace_back(
+                    std::string("retired definition id still parses as a domain: ")
+                    + retired);
         }
 
         result.passed = result.diagnostics.empty();
@@ -3161,9 +3210,9 @@ namespace
         result.name = "T.unified-material-baseline";
 
         MaterialDefinition pure_color{};
-        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
+        if (!SynthesizeDomainDefinition(MaterialDomain::UnlitSolid, pure_color))
         {
-            result.diagnostics.emplace_back("canonical PureColor must exist");
+            result.diagnostics.emplace_back("canonical UnlitSolid must exist");
         }
         else if (pure_color.material_private_data != GlobalSSBOType::EmissiveSurface
                || pure_color.vertex_semantic_requirements.GetCount() != 1)
@@ -3179,10 +3228,10 @@ namespace
         result.name = "V1.material-output-contract";
 
         MaterialDefinition lit{};
-        if (!TryGetMaterialDefinitionByID("lit", lit))
+        if (!SynthesizeDomainDefinition(MaterialDomain::StandardOpaque, lit))
             {
                 result.diagnostics.emplace_back(
-                    "Lit definition unavailable for output contract");
+                    "domain definition unavailable for output contract");
             }
             else
             {
@@ -3199,7 +3248,7 @@ namespace
                 {
                     MaterialDefinition selected = lit;
                     MaterialDefinitionBuildRequest request{};
-                    request.recipe.mtl_def_id = selected.definition_id;
+                    request.recipe.domain = selected.domain;
                     request.recipe.render_state_overrides.has_alpha_test = true;
                     request.recipe.render_state_overrides.alpha_test = alpha_test;
                     request.recipe.render_state_overrides.has_dither = true;
@@ -3531,41 +3580,40 @@ namespace
 
         struct ExpectedSource
         {
-            const char *definition_id;
+            MaterialDomain domain;
             const char *source_module;
         };
         static const ExpectedSource expected_sources[] =
         {
-            {"vertex_palette", "material_source_vertex_color"},
-            {"vertex_color", "material_source_vertex_color"},
-            {"vertex_luminance", "material_source_luminance"},
-            {"unlit_texture", "material_source_texture"},
-            {"debug_normal", "material_source_debug_normal"},
-            {"lit", "material_source_pbr_surface"},
-            {"builtin/pure_color", "material_source_unlit"},
-            {"builtin/text_gpu", "material_source_text_gpu"}
+            {MaterialDomain::VertexPalette, "material_source_vertex_color"},
+            {MaterialDomain::VertexColor, "material_source_vertex_color"},
+            {MaterialDomain::VertexLuminance, "material_source_luminance"},
+            {MaterialDomain::UnlitTexture, "material_source_texture"},
+            {MaterialDomain::DebugNormal, "material_source_debug_normal"},
+            {MaterialDomain::StandardOpaque, "material_source_pbr_surface"},
+            {MaterialDomain::UnlitSolid, "material_source_unlit"},
+            {MaterialDomain::Text2D, "material_source_text_gpu"}
         };
 
         for (const ExpectedSource &expected : expected_sources)
         {
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(
-                    expected.definition_id, definition)
+            if (!SynthesizeDomainDefinition(expected.domain, definition)
              || !definition.material_source_module_name
              || std::strcmp(
                     definition.material_source_module_name,
                     expected.source_module) != 0)
             {
                 result.diagnostics.emplace_back(
-                    std::string("definition did not use unified skeleton: ")
-                    + expected.definition_id);
+                    std::string("domain did not use unified skeleton: ")
+                    + GetMaterialDomainName(expected.domain));
             }
         }
 
         MaterialDefinition lit{};
         MaterialDefinition unlit{};
-        if (!TryGetMaterialDefinitionByID("lit", lit)
-         || !TryGetMaterialDefinitionByID("unlit_texture", unlit))
+        if (!SynthesizeDomainDefinition(MaterialDomain::StandardOpaque, lit)
+         || !SynthesizeDomainDefinition(MaterialDomain::UnlitTexture, unlit))
         {
             result.diagnostics.emplace_back(
                 "unified skeleton build definitions unavailable");
@@ -3588,7 +3636,7 @@ namespace
                 const ScenePassProfile &scene_profile)
             {
                 MaterialDefinitionBuildRequest request{};
-                request.recipe.mtl_def_id = definition.definition_id;
+                request.recipe.domain = definition.domain;
                 request.geometry_vertex_format = &geometry;
                 request.defer_finalize = true;
                 PassProfileValidationDiagnostic template_diagnostic{};
@@ -3711,9 +3759,9 @@ namespace
         result.name = "V.unified-purecolor-fragment";
 
         MaterialDefinition pure_color{};
-        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
+        if (!SynthesizeDomainDefinition(MaterialDomain::UnlitSolid, pure_color))
         {
-            result.diagnostics.emplace_back("unified PureColor definition is unavailable");
+            result.diagnostics.emplace_back("unified UnlitSolid definition is unavailable");
             result.passed = false;
             return result;
         }
@@ -3756,13 +3804,16 @@ namespace
         GateResult result;
         result.name = "U.unified-material-contract";
 
-        if (std::strcmp("builtin/pure_color", "builtin/pure_color") != 0)
-            result.diagnostics.emplace_back("canonical PureColor ID changed unexpectedly");
+        // 领域身份必须由契约给出：UnlitSolid 的 id 就是领域名，不再是手写的
+        // `builtin/pure_color`（那个字符串随 definition 文件一起消失）。
+        if (std::strcmp(GetMaterialDomainName(MaterialDomain::UnlitSolid),
+                        "UnlitSolid") != 0)
+            result.diagnostics.emplace_back("canonical UnlitSolid domain name changed unexpectedly");
 
         MaterialDefinition pure_color{};
-        if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
+        if (!SynthesizeDomainDefinition(MaterialDomain::UnlitSolid, pure_color))
         {
-            result.diagnostics.emplace_back("canonical PureColor definition missing during contract phase");
+            result.diagnostics.emplace_back("canonical UnlitSolid definition missing during contract phase");
         }
         else
         {
@@ -4062,7 +4113,7 @@ namespace
         }
 
         MaterialRecipe normalized_recipe{};
-        normalized_recipe.mtl_def_id = "builtin/pure_color";
+        normalized_recipe.domain = MaterialDomain::UnlitSolid;
         NormalizeRecipe(normalized_recipe);
         if (!TryGetNormalizedRecipeRenderState(normalized_recipe, from_recipe))
         {
@@ -4072,10 +4123,10 @@ namespace
         else
         {
             MaterialDefinition pure_color{};
-            if (!TryGetMaterialDefinitionByID("builtin/pure_color", pure_color))
+            if (!SynthesizeDomainDefinition(MaterialDomain::UnlitSolid, pure_color))
             {
                 result.diagnostics.emplace_back(
-                    "builtin/pure_color definition is missing");
+                    "UnlitSolid domain definition is missing");
             }
             else
             {
@@ -4123,12 +4174,14 @@ namespace
 
     static bool HasLegacySchemaToken(const std::string &text) noexcept
     {
+        // 配方格式的当前 schema 就是 1，因此 1 **不是**遗留值；已退役的
+        // 材质定义 schema 是 2/3/4，历史占位是 0。
         static const char *tokens[] = {
             "schema = 0", "schema=0",
-            "schema = 1", "schema=1",
             "schema = 2", "schema=2",
             "schema = 3", "schema=3",
-            "schema \t=\t 2", "schema \t=\t 1"
+            "schema = 4", "schema=4",
+            "schema \t=\t 2", "schema \t=\t 3", "schema \t=\t 4"
         };
         for (const char *token : tokens)
         {
@@ -4145,13 +4198,24 @@ namespace
 
         const std::string root = GetShaderLibraryPath("ShaderLibrary");
         const std::filesystem::path material_dir =
+            std::filesystem::path(root) / "asset" / "recipe";
+
+        // 阶段四（Definition 层删除）：材质库只有一个来源 —— 配方资产。
+        // 已退役的 `asset/definition/` 若被重新加回来，说明有人把中间层复活了。
+        const std::filesystem::path retired_dir =
             std::filesystem::path(root) / "asset" / "definition";
+        if (std::filesystem::exists(retired_dir))
+        {
+            result.diagnostics.emplace_back(
+                "retired ShaderLibrary/asset/definition directory must not exist: "
+                + retired_dir.string());
+        }
 
         if (!std::filesystem::exists(material_dir)
          || !std::filesystem::is_directory(material_dir))
         {
             result.diagnostics.emplace_back(
-                "missing required ShaderLibrary/asset/definition directory: "
+                "missing required ShaderLibrary/asset/recipe directory: "
                 + material_dir.string());
             result.passed = false;
             return result;
@@ -4171,7 +4235,7 @@ namespace
         catch (const std::filesystem::filesystem_error &)
         {
             result.diagnostics.emplace_back(
-                "failed to inspect ShaderLibrary/asset/definition tree");
+                "failed to inspect ShaderLibrary/asset/recipe tree");
             result.passed = false;
             return result;
         }
@@ -4179,7 +4243,7 @@ namespace
         if (material_files.empty())
         {
             result.diagnostics.emplace_back(
-                "ShaderLibrary/asset/definition contains no .definition.toml files");
+                "ShaderLibrary/asset/recipe contains no .recipe.toml files");
             result.passed = false;
             return result;
         }
@@ -4194,19 +4258,20 @@ namespace
                 continue;
             }
 
-            // 阶段四：材质资产统一为材质定义格式 `*.definition.toml`。
+            // 材质资产统一为配方格式 `*.recipe.toml`。
             // 这里刻意不再「跳过不认识的后缀」——目录里出现别的 .toml 就是违规，
-            // 否则旧 `*.material.toml` / `*.mi.toml` 会被静默忽略（加载器也不会读它）。
-            constexpr const char kMaterialInstanceSuffix[] = ".definition.toml";
-            constexpr std::size_t kMaterialInstanceSuffixLength =
-                sizeof(kMaterialInstanceSuffix) - 1;
-            if (path.size() < kMaterialInstanceSuffixLength
-             || path.compare(path.size() - kMaterialInstanceSuffixLength,
-                             kMaterialInstanceSuffixLength,
-                             kMaterialInstanceSuffix) != 0)
+            // 否则旧 `*.material.toml` / `*.mi.toml` / `*.definition.toml` 会被静默忽略
+            // （加载器也不会读它）。
+            constexpr const char kMaterialRecipeSuffix[] = ".recipe.toml";
+            constexpr std::size_t kMaterialRecipeSuffixLength =
+                sizeof(kMaterialRecipeSuffix) - 1;
+            if (path.size() < kMaterialRecipeSuffixLength
+             || path.compare(path.size() - kMaterialRecipeSuffixLength,
+                             kMaterialRecipeSuffixLength,
+                             kMaterialRecipeSuffix) != 0)
             {
                 result.diagnostics.emplace_back(
-                    "material asset must use the .definition.toml suffix: " + path);
+                    "material asset must use the .recipe.toml suffix: " + path);
                 continue;
             }
 
@@ -4216,11 +4281,11 @@ namespace
                     "legacy schema is forbidden in material file: " + path);
             }
 
-            if (text.find("schema = 4") == std::string::npos
-             && text.find("schema=4") == std::string::npos)
+            if (text.find("schema = 1") == std::string::npos
+             && text.find("schema=1") == std::string::npos)
             {
                 result.diagnostics.emplace_back(
-                    "material file must use schema 4 only: " + path);
+                    "material recipe must use schema 1 only: " + path);
             }
 
             // 领域必须是显式声明，不允许靠缺省值蒙混。
@@ -5397,704 +5462,106 @@ namespace
         return result;
     }
 
-    // 阶段三之三：材质定义有**两个**来源 —— 内嵌 builtin（C++ 代码）与资产目录
-    // （阶段四起为 `.definition.toml`）。这里复刻运行时的注册顺序（先内嵌、后目录），
-    // 因为后续比对要求 registry 拿到的是完整集合。
-    static int RegisterBuiltinMaterialDefinitions(MaterialDefinitionFileRegistry &registry)
-    {
-        int count = 0;
-        for (int i = 0; i < GetBuiltinMaterialDefinitionCount(); ++i)
-        {
-            const BuiltinMaterialDefinitionSource *source =
-                GetBuiltinMaterialDefinitionSource(i);
-            if (!source || !source->schema4_source)
-                continue;
-            if (registry.RegisterDefinitionSource(
-                    source->source_label, source->schema4_source,
-                    static_cast<int>(std::strlen(source->schema4_source))))
-                ++count;
-        }
-        return count;
-    }
-
-    static GateResult RunMaterialDefinitionFileSchemaCase()
+    /// 顶点 ABI 解析：定义 → 顶点输入模块（闭环位置格式 + 反向硬拒绝）。
+    ///
+    /// 这些断言原先挂在「解析一份 `LitFile` 定义文件」上。definition 文件消失后
+    /// 定义由领域契约当场合成，被测对象换成 `SynthesizeDomainDefinition` 产出的
+    /// `StandardOpaque` 定义 + 显式覆盖 `vertex_node_config` —— 断言的对象
+    /// （`BuildResolvedMaterialVertexABI`）与定义从哪来无关。
+    static GateResult RunMaterialVertexABIResolutionCase()
     {
         GateResult result;
-        result.name = "S.material-definition-file-schema";
+        result.name = "K.material-vertex-abi-resolution";
 
-        const char material_file[] =
-            "schema = 4\n"
-            "id = \"LitFile\"\n"
-            "name = \"LitFile\"\n"
-            "provider_policy = \"AllowDerived\"\n"
-            "[transform]\n"
-            "source = \"Vec3Position\"\n"
-            "mapping = \"Passthrough3D\"\n"
-            "orientation = \"World\"\n"
-            "scale = \"World\"\n"
-            "projection = \"WorldCameraVP\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_pbr_surface\"\n"
-            "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-            "[render_state]\n"
-            "alpha_test = true\n"
-            "alpha_cutoff = 0.25\n"
-            "[vertex]\n"
-            "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-            "varyings = [\"emit_world_pos\", \"emit_world_normal\", \"emit_uv0\"]\n"
-            "[resources]\n"
-            "";
-
-        MaterialDefinitionFileData data;
-        const auto parse = ParseMaterialDefinitionFile(
-            material_file, static_cast<int>(std::strlen(material_file)), data);
-        if (parse != MaterialDefinitionFileParseResult::OK)
+        MaterialDefinition definition{};
+        if (!SynthesizeDomainDefinition(MaterialDomain::StandardOpaque, definition))
         {
             result.diagnostics.emplace_back(
-                std::string("material schema parse failed: ")
-                + GetMaterialDefinitionFileParseResultName(parse));
+                "StandardOpaque domain definition is unavailable");
+            result.passed = false;
+            return result;
         }
-        else
-        {
-            const auto &definition = data.definition;
-            if (definition.definition_id != "LitFile"
-             || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
-             || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
-             || definition.vertex_semantic_requirements.GetCount() != 3
-             || definition.texture_configuration_max_count
-                    != DefaultMaterialTextureConfigurationCapacity
-             || !ResolveMaterialRenderState(
-                    definition, MaterialRecipe{}).alpha_test)
-            {
-                result.diagnostics.emplace_back("material schema fields mismatch");
-            }
 
-            const GeometryVertexFormat allow_derived_geometry{
-                {VertexSemantic::Position, VF_V3F},
+        // 契约给的是 3 分量直通位置：三维几何必须选到 vec3 模块。
+        definition.vertex_node_config.position_mapping =
+            PositionMappingMode::Passthrough3D;
+
+        const GeometryVertexFormat allow_derived_geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal, VF_V3F}
+        };
+        MaterialDefinitionBuildRequest allow_derived_request{};
+        allow_derived_request.geometry_vertex_format = &allow_derived_geometry;
+        MaterialResolvedVertexABI allow_derived_abi{};
+        if (!BuildResolvedMaterialVertexABI(
+                definition, allow_derived_request, allow_derived_abi)
+         || allow_derived_abi.vertex_input_glsl.IsEmpty()
+         || allow_derived_abi.position_format != VK_FORMAT_R32G32B32_SFLOAT)
+        {
+            result.diagnostics.emplace_back(
+                "AllowDerived material definition must build a SSBO vertex ABI");
+        }
+
+        // 打包 int16x2 位置（4B/顶点）必须映射到 vec2i 模块——这是三对闭环格式之一。
+        // 该格式产出 `vec2 Position`，因此只能配 2D 映射的材质；`LitFile` 是
+        // Passthrough3D（要 3 分量），直接配它会被生成期硬门拦下。
+        MaterialDefinition packed_position_definition = definition;
+        packed_position_definition.vertex_node_config.position_mapping =
+            PositionMappingMode::PixelToLocal;
+
+        const GeometryVertexFormat packed_position_geometry{
+            {VertexSemantic::Position, VF_V2I16},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal, VF_V3F}
+        };
+        MaterialDefinitionBuildRequest packed_position_request{};
+        packed_position_request.geometry_vertex_format = &packed_position_geometry;
+        MaterialResolvedVertexABI packed_position_abi{};
+        if (!BuildResolvedMaterialVertexABI(
+                packed_position_definition, packed_position_request, packed_position_abi)
+         || packed_position_abi.position_format != VK_FORMAT_R16G16_SINT
+         || !std::strstr(packed_position_abi.vertex_input_glsl.c_str(),
+                         "stream_position_vec2i.glsl"))
+        {
+            result.diagnostics.emplace_back(
+                "packed int16x2 position must resolve to the vec2i module");
+        }
+
+        // 反向：分量数不匹配时必须硬失败（历史上这种组合会静默产出一份编不过的 GLSL，
+        // glslang 再把错误指向 s2 模块，定位成本极高）。
+        MaterialResolvedVertexABI mismatch_abi{};
+        MaterialDefinitionBuildRequest mismatch_request{};
+        mismatch_request.geometry_vertex_format = &packed_position_geometry;
+        if (BuildResolvedMaterialVertexABI(
+                definition, mismatch_request, mismatch_abi))
+        {
+            result.diagnostics.emplace_back(
+                "vec2 position with Passthrough3D mapping must be rejected");
+        }
+
+        // 未闭环位置格式必须被拒绝，而不是挑一个"同义"模块凑合：
+        // R16G16_SFLOAT(4B) 曾被当成 Vec2Position（读 8B），R32G32B32A32_SFLOAT(16B)
+        // 曾被当成 Vec3Position（读 12B），两者都产出顶点全体错位的着色器。
+        const VkFormat unsupported_position_formats[] = {
+            VF_V2HF, VF_V2I, VF_V2U, VF_V2U16, VF_V4F
+        };
+        for (const VkFormat unsupported_format : unsupported_position_formats)
+        {
+            const GeometryVertexFormat unsupported_geometry{
+                {VertexSemantic::Position, unsupported_format},
                 {VertexSemantic::TexCoord, VF_V2F},
                 {VertexSemantic::Normal, VF_V3F}
             };
-            MaterialDefinitionBuildRequest allow_derived_request{};
-            allow_derived_request.geometry_vertex_format = &allow_derived_geometry;
-            MaterialResolvedVertexABI allow_derived_abi{};
-            if (!BuildResolvedMaterialVertexABI(
-                    definition, allow_derived_request, allow_derived_abi)
-             || allow_derived_abi.vertex_input_glsl.IsEmpty()
-             || allow_derived_abi.position_format != VK_FORMAT_R32G32B32_SFLOAT)
+            MaterialDefinitionBuildRequest unsupported_request{};
+            unsupported_request.geometry_vertex_format = &unsupported_geometry;
+            MaterialResolvedVertexABI unsupported_abi{};
+            if (BuildResolvedMaterialVertexABI(definition, unsupported_request, unsupported_abi))
             {
                 result.diagnostics.emplace_back(
-                    "AllowDerived material definition must build a SSBO vertex ABI");
+                    std::string("unsupported vertex position format must be rejected: VkFormat=")
+                    + std::to_string(static_cast<int>(unsupported_format)));
             }
-
-            // 打包 int16x2 位置（4B/顶点）必须映射到 vec2i 模块——这是三对闭环格式之一。
-            // 该格式产出 `vec2 Position`，因此只能配 2D 映射的材质；`LitFile` 是
-            // Passthrough3D（要 3 分量），直接配它会被生成期硬门拦下。
-            MaterialDefinition packed_position_definition = definition;
-            packed_position_definition.vertex_node_config.position_mapping =
-                PositionMappingMode::PixelToLocal;
-
-            const GeometryVertexFormat packed_position_geometry{
-                {VertexSemantic::Position, VF_V2I16},
-                {VertexSemantic::TexCoord, VF_V2F},
-                {VertexSemantic::Normal, VF_V3F}
-            };
-            MaterialDefinitionBuildRequest packed_position_request{};
-            packed_position_request.geometry_vertex_format = &packed_position_geometry;
-            MaterialResolvedVertexABI packed_position_abi{};
-            if (!BuildResolvedMaterialVertexABI(
-                    packed_position_definition, packed_position_request, packed_position_abi)
-             || packed_position_abi.position_format != VK_FORMAT_R16G16_SINT
-             || !std::strstr(packed_position_abi.vertex_input_glsl.c_str(),
-                             "stream_position_vec2i.glsl"))
-            {
-                result.diagnostics.emplace_back(
-                    "packed int16x2 position must resolve to the vec2i module");
-            }
-
-            // 反向：分量数不匹配时必须硬失败（历史上这种组合会静默产出一份编不过的 GLSL，
-            // glslang 再把错误指向 s2 模块，定位成本极高）。
-            MaterialResolvedVertexABI mismatch_abi{};
-            MaterialDefinitionBuildRequest mismatch_request{};
-            mismatch_request.geometry_vertex_format = &packed_position_geometry;
-            if (BuildResolvedMaterialVertexABI(
-                    definition, mismatch_request, mismatch_abi))
-            {
-                result.diagnostics.emplace_back(
-                    "vec2 position with Passthrough3D mapping must be rejected");
-            }
-
-            // 未闭环位置格式必须被拒绝，而不是挑一个"同义"模块凑合：
-            // R16G16_SFLOAT(4B) 曾被当成 Vec2Position（读 8B），R32G32B32A32_SFLOAT(16B)
-            // 曾被当成 Vec3Position（读 12B），两者都产出顶点全体错位的着色器。
-            const VkFormat unsupported_position_formats[] = {
-                VF_V2HF, VF_V2I, VF_V2U, VF_V2U16, VF_V4F
-            };
-            for (const VkFormat unsupported_format : unsupported_position_formats)
-            {
-                const GeometryVertexFormat unsupported_geometry{
-                    {VertexSemantic::Position, unsupported_format},
-                    {VertexSemantic::TexCoord, VF_V2F},
-                    {VertexSemantic::Normal, VF_V3F}
-                };
-                MaterialDefinitionBuildRequest unsupported_request{};
-                unsupported_request.geometry_vertex_format = &unsupported_geometry;
-                MaterialResolvedVertexABI unsupported_abi{};
-                if (BuildResolvedMaterialVertexABI(definition, unsupported_request, unsupported_abi))
-                {
-                    result.diagnostics.emplace_back(
-                        std::string("unsupported vertex position format must be rejected: VkFormat=")
-                        + std::to_string(static_cast<int>(unsupported_format)));
-                }
-            }
-        }
-
-        const char texture_layout_file[] =
-            "schema = 4\n"
-            "id = \"TextureLayoutFile\"\n"
-            "name = \"TextureLayoutFile\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_texture\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\", \"UV0\"]\n"
-            "[resources]\n"
-            "textures = [\n"
-            "    { name = \"base_color\", sampler = \"Sampler2DArray\", required = true },\n"
-            "    { name = \"detail_mask\", sampler = \"Sampler2D\", required = false }\n"
-            "]\n"
-            "[resources.texture_configurations]\n"
-            "max_count = 37\n";
-        MaterialDefinitionFileData texture_layout_data;
-        if (ParseMaterialDefinitionFile(
-                texture_layout_file,
-                static_cast<int>(std::strlen(texture_layout_file)),
-                texture_layout_data)
-                != MaterialDefinitionFileParseResult::OK)
-        {
-            result.diagnostics.emplace_back(
-                "schema 3 texture-reference layout file must parse");
-        }
-        else
-        {
-            const MaterialDefinition &definition =
-                texture_layout_data.definition;
-            MaterialTextureReferenceLayout layout{};
-            if (!BuildMaterialTextureReferenceLayout(definition, layout)
-             || definition.texture_declarations.size() != 2
-             || definition.texture_configuration_max_count != 37
-             || layout.reference_count != 2
-             || layout.row_stride != 16
-             || layout.max_configuration_count != 37
-             || layout.layout_hash == 0
-             || FindMaterialTextureDeclaration(
-                    definition, "base_color") != 0
-             || FindMaterialTextureDeclaration(
-                    definition, "detail_mask") != 1
-             || FindMaterialTextureDeclaration(
-                    definition, "missing_texture") != -1
-             || !IsMaterialTextureArraySampler(
-                    definition.texture_declarations[0].sampler_type)
-             || IsMaterialTextureArraySampler(
-                    definition.texture_declarations[1].sampler_type)
-)
-            {
-                result.diagnostics.emplace_back(
-                    "texture-reference layout fields mismatch");
-            }
-
-            MaterialDefinition changed_capacity = definition;
-            changed_capacity.texture_configuration_max_count = 91;
-            MaterialTextureReferenceLayout changed_layout{};
-            if (!BuildMaterialTextureReferenceLayout(
-                    changed_capacity, changed_layout)
-             || changed_layout.layout_hash != layout.layout_hash
-             || changed_layout.row_stride != layout.row_stride
-             || changed_layout.max_configuration_count != 91)
-            {
-                result.diagnostics.emplace_back(
-                    "texture configuration capacity must not alter shader ABI");
-            }
-
-            const uint64_t pool_key =
-                MaterialTextureReferencePool::MakePoolKey(
-                    definition, layout);
-            const uint64_t changed_capacity_pool_key =
-                MaterialTextureReferencePool::MakePoolKey(
-                    changed_capacity, changed_layout);
-            MaterialDefinition different_definition = definition;
-            different_definition.definition_id = "OtherTextureLayoutFile";
-            const uint64_t different_definition_pool_key =
-                MaterialTextureReferencePool::MakePoolKey(
-                    different_definition, layout);
-            MaterialTextureConfigurationAllocation empty_allocation{};
-            if (pool_key == 0
-             || changed_capacity_pool_key == 0
-             || different_definition_pool_key == 0
-             || pool_key == changed_capacity_pool_key
-             || pool_key == different_definition_pool_key
-             || empty_allocation.IsValid())
-            {
-                result.diagnostics.emplace_back(
-                    "texture-reference pool identity or empty allocation is invalid");
-            }
-
-        }
-
-        const char invalid_texture_configuration_file[] =
-            "schema = 4\n"
-            "id = \"InvalidTextureConfiguration\"\n"
-            "name = \"InvalidTextureConfiguration\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_texture\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\", \"UV0\"]\n"
-            "[resources]\n"
-            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true }]\n"
-            "[resources.texture_configurations]\n"
-            "max_count = 0\n";
-        MaterialDefinitionFileData invalid_texture_configuration_data;
-        if (ParseMaterialDefinitionFile(
-                invalid_texture_configuration_file,
-                static_cast<int>(std::strlen(
-                    invalid_texture_configuration_file)),
-                invalid_texture_configuration_data)
-                != MaterialDefinitionFileParseResult::InvalidValue)
-        {
-            result.diagnostics.emplace_back(
-                "zero texture configuration capacity must be rejected");
-        }
-
-        const char duplicate_texture_name_file[] =
-            "schema = 4\n"
-            "id = \"DuplicateTextureName\"\n"
-            "name = \"DuplicateTextureName\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_texture\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\", \"UV0\"]\n"
-            "[resources]\n"
-            "textures = [\n"
-            "    { name = \"base_color\", sampler = \"Sampler2D\", required = true },\n"
-            "    { name = \"base_color\", sampler = \"Sampler2D\", required = false }\n"
-            "]\n";
-        MaterialDefinitionFileData duplicate_texture_name_data;
-        if (ParseMaterialDefinitionFile(
-                duplicate_texture_name_file,
-                static_cast<int>(std::strlen(duplicate_texture_name_file)),
-                duplicate_texture_name_data)
-                != MaterialDefinitionFileParseResult::InvalidValue)
-        {
-            result.diagnostics.emplace_back(
-                "duplicate material texture names must be rejected");
-        }
-
-        // S2（2026-10-11）：材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）整删
-        // —— 这些 authoring 键现在是**未知键**，必须被 ValidateTextureDeclarationKeys 拒绝。
-        // （原先此处测的是"swizzle 值非法"，机制换了、意图保留：畸形纹理声明不得静默通过。）
-        const char retired_sampling_key_file[] =
-            "schema = 4\n"
-            "id = \"RetiredSamplingKey\"\n"
-            "name = \"RetiredSamplingKey\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_texture\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\", \"UV0\"]\n"
-            "[resources]\n"
-            "textures = [{ name = \"base_color\", sampler = \"Sampler2D\", required = true, swizzle = \"BGR1\" }]\n";
-        MaterialDefinitionFileData retired_sampling_key_data;
-        if (ParseMaterialDefinitionFile(
-                retired_sampling_key_file,
-                static_cast<int>(std::strlen(retired_sampling_key_file)),
-                retired_sampling_key_data)
-                != MaterialDefinitionFileParseResult::InvalidValue)
-        {
-            result.diagnostics.emplace_back(
-                "retired texture sampling keys must be rejected as unknown keys");
-        }
-
-        const char unknown_table_file[] =
-            "schema = 4\n"
-            "id = \"UnknownTable\"\n"
-            "name = \"UnknownTable\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_unlit\"\n"
-            "[unknown]\n"
-            "value = true\n"
-            "[vertex]\n"
-            "requirements = [\"Position\"]\n";
-        MaterialDefinitionFileData unknown_table_data;
-        if (ParseMaterialDefinitionFile(
-                unknown_table_file,
-                static_cast<int>(std::strlen(unknown_table_file)),
-                unknown_table_data)
-                != MaterialDefinitionFileParseResult::UnknownKey)
-        {
-            result.diagnostics.emplace_back(
-                "unknown material table must be rejected");
-        }
-
-        const char invalid_file[] =
-            "schema = 4\n"
-            "id = \"Broken\"\n"
-            "name = \"Broken\"\n"
-            "source = \"file\"\n"
-            "bootstrap = \"None\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_unlit\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\"]\n";
-        MaterialDefinitionFileData invalid_data;
-        if (ParseMaterialDefinitionFile(
-                invalid_file, static_cast<int>(std::strlen(invalid_file)), invalid_data)
-                != MaterialDefinitionFileParseResult::UnknownKey)
-        {
-            result.diagnostics.emplace_back(
-                "removed source/bootstrap metadata must be rejected");
-        }
-
-        // 阶段四：领域材质不再需要抄写 `name` / `provider_policy` / `[fragment]` /
-        // `[vertex] requirements` —— 全部由领域契约给出。这条探针钉死
-        // 「推导结果 == 契约」：抄漏不会报错，只会在运行期拿缺属性的几何喂管线。
-        {
-            const char derived_source[] =
-                "schema = 4\n"
-                "id = \"DerivedVertexColor\"\n"
-                "domain = \"VertexColor\"\n"
-                "[vertex]\n"
-                "varyings = [\"emit_vertex_color\"]\n";
-
-            MaterialDefinitionFileData derived_data;
-            const auto derived_parse = ParseMaterialDefinitionFile(
-                derived_source,
-                static_cast<int>(std::strlen(derived_source)),
-                derived_data);
-            if (derived_parse != MaterialDefinitionFileParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("domain-derived material parse failed: ")
-                    + GetMaterialDefinitionFileParseResultName(derived_parse)
-                    + " table=\"" + derived_data.parse_error.table
-                    + "\" key=\"" + derived_data.parse_error.key
-                    + "\" value=\"" + derived_data.parse_error.value
-                    + "\" detail=\"" + derived_data.parse_error.detail + "\"");
-            }
-            else
-            {
-                const auto &derived = derived_data.definition;
-                if (derived.definition_name != "DerivedVertexColor")
-                {
-                    result.diagnostics.emplace_back(
-                        "omitted name must default to the definition id");
-                }
-                if (derived.vertex_provider_policy
-                        != MaterialVertexProviderPolicy::GeometryOnly)
-                {
-                    result.diagnostics.emplace_back(
-                        "omitted provider_policy must follow the domain contract");
-                }
-                if (!HasMaterialVertexSemanticRequirement(derived, VertexSemantic::Position)
-                 || !HasMaterialVertexSemanticRequirement(derived, VertexSemantic::Color)
-                 || derived.vertex_semantic_requirements.GetCount() != 2)
-                {
-                    result.diagnostics.emplace_back(
-                        "omitted requirements must equal the domain contract mask");
-                }
-                if (!derived.material_source_module_name
-                 || std::strcmp(derived.material_source_module_name,
-                                "material_source_vertex_color") != 0)
-                {
-                    result.diagnostics.emplace_back(
-                        "omitted [fragment] must be filled from the domain contract");
-                }
-            }
-
-            // 反向探针：非领域材质没有契约可依，缺 `provider_policy` 必须带键名报错。
-            const char custom_no_policy_source[] =
-                "schema = 4\n"
-                "id = \"CustomNoPolicy\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\"]\n";
-
-            MaterialDefinitionFileData custom_no_policy_data;
-            const auto custom_no_policy_parse = ParseMaterialDefinitionFile(
-                custom_no_policy_source,
-                static_cast<int>(std::strlen(custom_no_policy_source)),
-                custom_no_policy_data);
-            if (custom_no_policy_parse == MaterialDefinitionFileParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    "non-domain material without provider_policy must be rejected");
-            }
-            else if (custom_no_policy_data.parse_error.key != "provider_policy")
-            {
-                result.diagnostics.emplace_back(
-                    "non-domain provider_policy rejection must report key "
-                    "\"provider_policy\", got \""
-                    + custom_no_policy_data.parse_error.key + "\"");
-            }
-
-            // 推导结果**不得**与 `varyings` 取交集：领域契约的语义位是顶点 ABI
-            // （同领域必须同布局才能共享 layout/合批），`varyings` 只决定着色器
-            // 发什么插值。DebugNormal 契约要求 Position+Normal，这份材质虽然不发
-            // world normal，Normal 仍必须留在需求里 —— 否则它的顶点布局会与同领域
-            // 其它材质分叉，领域契约校验会直接拒绝（这条探针就是那次拒绝的锚点）。
-            const char trimmed_source[] =
-                "schema = 4\n"
-                "id = \"DerivedKeepAbi\"\n"
-                "domain = \"DebugNormal\"\n"
-                "[vertex]\n"
-                "varyings = [\"emit_data_index_id\"]\n";
-
-            MaterialDefinitionFileData trimmed_data;
-            const auto trimmed_parse = ParseMaterialDefinitionFile(
-                trimmed_source,
-                static_cast<int>(std::strlen(trimmed_source)),
-                trimmed_data);
-            if (trimmed_parse != MaterialDefinitionFileParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("domain-ABI material parse failed: ")
-                    + GetMaterialDefinitionFileParseResultName(trimmed_parse)
-                    + " table=\"" + trimmed_data.parse_error.table
-                    + "\" key=\"" + trimmed_data.parse_error.key
-                    + "\" value=\"" + trimmed_data.parse_error.value
-                    + "\" detail=\"" + trimmed_data.parse_error.detail + "\"");
-            }
-            else
-            {
-                const auto &trimmed = trimmed_data.definition;
-                if (trimmed.vertex_semantic_requirements.GetCount() != 2
-                 || !HasMaterialVertexSemanticRequirement(
-                        trimmed, VertexSemantic::Position)
-                 || !HasMaterialVertexSemanticRequirement(
-                        trimmed, VertexSemantic::Normal))
-                {
-                    result.diagnostics.emplace_back(
-                        "derived requirements must keep the full domain ABI mask "
-                        "regardless of the declared varyings");
-                }
-            }
-        }
-
-        // 反向探针：非领域材质没有契约可依，缺 `requirements` 必须带键名报错
-        // （历史行为是静默 return false，写错只能靠猜）。
-        const char custom_source[] =
-            "schema = 4\n"
-            "id = \"CustomNoRequirements\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_pbr_surface\"\n"
-            "[resources]\n";
-
-        MaterialDefinitionFileData custom_data;
-        const auto custom_parse = ParseMaterialDefinitionFile(
-            custom_source,
-            static_cast<int>(std::strlen(custom_source)),
-            custom_data);
-        if (custom_parse == MaterialDefinitionFileParseResult::OK)
-        {
-            result.diagnostics.emplace_back(
-                "non-domain material without requirements must be rejected");
-        }
-        else if (custom_data.parse_error.key != "requirements")
-        {
-            result.diagnostics.emplace_back(
-                "non-domain requirements rejection must report key "
-                "\"requirements\", got \""
-                + custom_data.parse_error.key + "\"");
-        }
-
-        MaterialDefinitionFileRegistry registry;
-        const int builtin_count = RegisterBuiltinMaterialDefinitions(registry);
-        if (builtin_count != 5)
-        {
-            result.diagnostics.emplace_back(
-                "expected 5 embedded builtin material definitions, got "
-                + std::to_string(builtin_count));
-        }
-
-        // 内嵌定义**不得**依赖资产目录：只喂内嵌源码的独立 registry 也必须能解析
-        // 五个保底 ID。这是"保底物的可依赖性高于被兜底物"的机器化判据 ——
-        // 谁把它们挪回 .definition.toml 资产目录，这条断言立刻变红。
-        {
-            MaterialDefinitionFileRegistry builtin_only;
-            RegisterBuiltinMaterialDefinitions(builtin_only);
-            static const char *fallback_ids[] = {
-                "builtin/pure_color",
-                "builtin/checkerboard_3d",
-                "builtin/error_checkerboard_3d",
-                "builtin/text_gpu",
-                "builtin/text_gpu_bitmap"
-            };
-            for (const char *id : fallback_ids)
-            {
-                if (!builtin_only.FindByID(id))
-                    result.diagnostics.emplace_back(
-                        std::string("builtin definition must not depend on the asset "
-                                    "directory: ") + id);
-            }
-        }
-
-        int file_count = 0;
-        int error_count = 0;
-        if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
-                                    &file_count, &error_count)
-         || file_count != 10
-         || error_count != 0)
-        {
-            result.diagnostics.emplace_back("material file registry bulk load failed");
-        }
-        else
-        {
-            const char *expected_ids[] = {
-                "lit", "sky_minimal", "sky_cube",
-                "debug_normal",
-                "vertex_color", "unlit_texture", "unlit_texture_3d",
-                "vertex_luminance", "vertex_palette",
-                "builtin/pure_color",
-                "checkerboard_2d",
-                "builtin/checkerboard_3d",
-                "builtin/error_checkerboard_3d",
-                "builtin/text_gpu", "builtin/text_gpu_bitmap"
-            };
-            for (const char *id : expected_ids)
-            {
-                if (!registry.FindByID(id))
-                    result.diagnostics.emplace_back(
-                        std::string("missing bulk material definition: ") + id);
-            }
-
-        const char *bulk_ids[] = {
-            "lit", "sky_minimal", "sky_cube",
-            "debug_normal", "vertex_color",
-            "unlit_texture",
-            "vertex_luminance",
-            "vertex_palette",
-            "builtin/pure_color",
-            "checkerboard_2d",
-            "builtin/checkerboard_3d",
-            "builtin/error_checkerboard_3d",
-            "builtin/text_gpu", "builtin/text_gpu_bitmap"
-        };
-        for (const char *id : bulk_ids)
-        {
-            const MaterialDefinition *file_definition = registry.FindByID(id);
-            MaterialDefinition registry_definition{};
-            if (!file_definition
-             || !TryGetMaterialDefinitionByID(id, registry_definition))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("bulk file lookup failed: ") + id);
-                continue;
-            }
-
-            if (HashResolvedMaterialRenderState(
-                    ResolveMaterialRenderState(
-                        *file_definition, MaterialRecipe{}))
-                    != HashResolvedMaterialRenderState(
-                        ResolveMaterialRenderState(
-                            registry_definition, MaterialRecipe{}))
-             || file_definition->vertex_provider_policy != registry_definition.vertex_provider_policy
-             || file_definition->vertex_semantic_requirements.GetCount()
-                    != registry_definition.vertex_semantic_requirements.GetCount()
-             || file_definition->material_private_data
-                    != registry_definition.material_private_data
-             || file_definition->texture_declarations.size()
-                    != registry_definition.texture_declarations.size()
-             || file_definition->texture_configuration_max_count
-                    != registry_definition.texture_configuration_max_count)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("bulk file definition contract mismatch: ") + id);
-                continue;
-            }
-
-            for (int i = 0; i < file_definition->vertex_semantic_requirements.GetCount(); ++i)
-            {
-                if (!(file_definition->vertex_semantic_requirements[i]
-                    == registry_definition.vertex_semantic_requirements[i]))
-                {
-                    result.diagnostics.emplace_back(
-                        std::string("bulk semantic mismatch: ") + id);
-                    break;
-                }
-            }
-
-            if (VertexNodeConfigResolver::IsScreenLike(file_definition->vertex_node_config)
-             && (file_definition->vertex_node_config.input != VertexInputMode::Vec2Position
-              || file_definition->vertex_node_config.position_mapping != PositionMappingMode::NDCLift
-              || file_definition->vertex_node_config.projection != ProjectionMode::LocalToWorldOnly))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("2D file node config mismatch: ") + id);
-            }
-
-            const ResolvedMaterialRenderState render_state =
-                ResolveMaterialRenderState(
-                    *file_definition, MaterialRecipe{});
-            const bool is_text_material =
-                std::strcmp(id, "builtin/text_gpu") == 0
-             || std::strcmp(id, "builtin/text_gpu_bitmap") == 0;
-            if (is_text_material)
-            {
-                if (!render_state.pipeline_config.alpha_blend)
-                    result.diagnostics.emplace_back(
-                        std::string("text material alpha blend mismatch: ")
-                        + id);
-                continue;
-            }
-            if (render_state.alpha_test || render_state.dither
-             || render_state.pipeline_config.alpha_blend)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("opaque material render state mismatch: ")
-                    + id);
-            }
-            MaterialCoverageContract coverage{};
-            PassProfileRequest coverage_request{};
-            PassProfileValidationDiagnostic coverage_diagnostic{};
-            if (!ResolveScenePassProfileRequest(
-                    PassProfileID::ShadowCasterOpaque,
-                    hgl::graph::ShaderStage::Fragment,
-                    MakeShadowCasterProfile(),
-                    coverage_request,
-                    coverage_diagnostic)
-             || !AppendMaterialPassProfileRoots(
-                    *file_definition, coverage_request)
-             || !BuildMaterialCoverageContract(
-                    *file_definition, MaterialRecipe{}, coverage_request,
-                    ShaderProgramPurpose::ShadowDepth, coverage)
-             || coverage.requires_alpha_evaluation)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("opaque material shadow coverage mismatch: ")
-                    + id);
-            }
-        }
-
-        const char *text_ids[] = {
-            "builtin/text_gpu", "builtin/text_gpu_bitmap"
-        };
-        for (const char *id : text_ids)
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(id, definition)
-             || !ResolveMaterialRenderState(
-                    definition, MaterialRecipe{}).pipeline_config.alpha_blend)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("text material alpha blend state missing: ")
-                    + id);
-            }
-        }
-
         }
 
         result.passed = result.diagnostics.empty();
@@ -6103,71 +5570,87 @@ namespace
 
     /// 解析失败细节回传（2026-10-12 用户口径）：材质配置写错必须能 LOG 到"表/键/值/行号"级别
     /// —— 发售口径是全预编译 SPV、届时不再有 shader 合成器，配置错误只能靠日志定位。
-    /// 三个子项分别覆盖：枚举/名字值写错、键名写错、TOML 语法错。
-    static GateResult RunMaterialDefinitionParseDetailCase()
+    ///
+    /// definition 文件消失后，材质作者的唯一输入是 `.material.toml`（配方），所以
+    /// 探针喂的是配方文本；子项覆盖：领域名写错（键+值）、未知键（键名）、
+    /// 表内枚举值写错（表+键+值）、TOML 语法错（行号）。
+    static GateResult RunMaterialRecipeParseDetailCase()
     {
         GateResult result;
-        result.name = "S.material-definition-parse-detail";
+        result.name = "S.material-recipe-parse-detail";
 
-        // ① 采样器类型名写错：必须报到 键 + 值（本次口径的原始触发场景）
-        const char bad_sampler_file[] =
-            "schema = 4\n"
-            "id = \"ParseDetailBadSampler\"\n"
-            "name = \"ParseDetailBadSampler\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_unlit\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\"]\n"
-            "[resources]\n"
-            "textures = [{ name = \"base_color\", sampler = \"SamplerBogus\", required = false }]\n";
-        MaterialDefinitionFileData bad_sampler_data;
-        if (ParseMaterialDefinitionFile(
-                bad_sampler_file, static_cast<int>(std::strlen(bad_sampler_file)),
-                bad_sampler_data) != MaterialDefinitionFileParseResult::InvalidValue)
+        // ① 领域名写错：必须报到 键 + 值（本次口径的原始触发场景）
+        const char bad_domain_file[] =
+            "schema = 1\n"
+            "name = \"ParseDetailBadDomain\"\n"
+            "domain = \"StandradOpaque\"\n";
+        MaterialRecipeFileData bad_domain_data;
+        if (ParseMaterialRecipeFile(
+                bad_domain_file, static_cast<int>(std::strlen(bad_domain_file)),
+                bad_domain_data) != MaterialRecipeFileParseResult::InvalidValue)
         {
             result.diagnostics.emplace_back(
-                "bogus sampler name must fail the material definition parse");
+                "bogus domain name must fail the material recipe parse");
         }
-        else if (bad_sampler_data.parse_error.key != "sampler"
-              || bad_sampler_data.parse_error.value != "SamplerBogus")
+        else if (std::strcmp(bad_domain_data.parse_error.key.c_str(), "domain") != 0
+              || std::strcmp(bad_domain_data.parse_error.value.c_str(), "StandradOpaque") != 0)
         {
-            result.diagnostics.emplace_back(std::string("bogus sampler name must report key+value, got key='")
-                + bad_sampler_data.parse_error.key + "' value='"
-                + bad_sampler_data.parse_error.value + "' (table='"
-                + bad_sampler_data.parse_error.table + "')");
+            result.diagnostics.emplace_back(std::string("bogus domain name must report key+value, got key='")
+                + bad_domain_data.parse_error.key.c_str() + "' value='"
+                + bad_domain_data.parse_error.value.c_str() + "' (table='"
+                + bad_domain_data.parse_error.table.c_str() + "')");
         }
 
         // ② 未知键：必须报到键名（键白名单是"作者笔误 / 已删字段残留"的第一道闸）
         const char unknown_key_file[] =
-            "schema = 4\n"
-            "id = \"ParseDetailUnknownKey\"\n"
+            "schema = 1\n"
             "name = \"ParseDetailUnknownKey\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "bogus_root_key = 1\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_unlit\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\"]\n";
-        MaterialDefinitionFileData unknown_key_data;
-        if (ParseMaterialDefinitionFile(
+            "domain = \"UnlitSolid\"\n"
+            "bogus_root_key = 1\n";
+        MaterialRecipeFileData unknown_key_data;
+        if (ParseMaterialRecipeFile(
                 unknown_key_file, static_cast<int>(std::strlen(unknown_key_file)),
-                unknown_key_data) != MaterialDefinitionFileParseResult::UnknownKey)
+                unknown_key_data) != MaterialRecipeFileParseResult::UnknownKey)
         {
             result.diagnostics.emplace_back("unknown root key must be rejected as UnknownKey");
         }
-        else if (unknown_key_data.parse_error.key != "bogus_root_key")
+        else if (std::strcmp(unknown_key_data.parse_error.key.c_str(), "bogus_root_key") != 0)
         {
             result.diagnostics.emplace_back(std::string("unknown root key must report its name, got '")
-                + unknown_key_data.parse_error.key + "'");
+                + unknown_key_data.parse_error.key.c_str() + "'");
         }
 
-        // ③ TOML 语法错误：必须报出行号（作者最常见的失效模式之一）
-        const char syntax_error_file[] = "schema = 4\nid = \"Unterminated\n";
-        MaterialDefinitionFileData syntax_error_data;
-        if (ParseMaterialDefinitionFile(
+        // ③ 表内枚举值写错：必须报到 表 + 键 + 值（子表名写错是第二高频形态）
+        const char bad_transform_file[] =
+            "schema = 1\n"
+            "name = \"ParseDetailBadTransform\"\n"
+            "domain = \"UnlitSolid\"\n"
+            "[transform]\n"
+            "mapping = \"Passthrough9D\"\n";
+        MaterialRecipeFileData bad_transform_data;
+        if (ParseMaterialRecipeFile(
+                bad_transform_file, static_cast<int>(std::strlen(bad_transform_file)),
+                bad_transform_data) != MaterialRecipeFileParseResult::InvalidValue)
+        {
+            result.diagnostics.emplace_back(
+                "bogus transform mapping must fail the material recipe parse");
+        }
+        else if (std::strcmp(bad_transform_data.parse_error.table.c_str(), "transform") != 0
+              || std::strcmp(bad_transform_data.parse_error.key.c_str(), "mapping") != 0
+              || std::strcmp(bad_transform_data.parse_error.value.c_str(), "Passthrough9D") != 0)
+        {
+            result.diagnostics.emplace_back(std::string("bogus transform mapping must report table+key+value, got table='")
+                + bad_transform_data.parse_error.table.c_str() + "' key='"
+                + bad_transform_data.parse_error.key.c_str() + "' value='"
+                + bad_transform_data.parse_error.value.c_str() + "'");
+        }
+
+        // ④ TOML 语法错误：必须报出行号（作者最常见的失效模式之一）
+        const char syntax_error_file[] = "schema = 1\nname = \"Unterminated\n";
+        MaterialRecipeFileData syntax_error_data;
+        if (ParseMaterialRecipeFile(
                 syntax_error_file, static_cast<int>(std::strlen(syntax_error_file)),
-                syntax_error_data) != MaterialDefinitionFileParseResult::InvalidValue)
+                syntax_error_data) != MaterialRecipeFileParseResult::InvalidValue)
         {
             result.diagnostics.emplace_back("broken TOML must fail the parse");
         }
@@ -6179,6 +5662,7 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
 
     // 表面领域契约（MaterialDomain.h）的门禁。
     //
@@ -6499,749 +5983,6 @@ namespace
             }
         }
 
-        // ── ② 合法材质必须通过 ────────────────────────────────────────────────
-        const char good_file[] =
-            "schema = 4\n"
-            "id = \"DomainGoodStandardOpaque\"\n"
-            "name = \"DomainGoodStandardOpaque\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "domain = \"StandardOpaque\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_pbr_surface\"\n"
-            "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-            "[resources]\n"
-            "textures = [\n"
-            "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-            "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-            "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-            "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-            "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-            "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-            "]\n";
-        MaterialDefinitionFileData good_data;
-        const MaterialDefinitionFileParseResult good_result =
-            ParseMaterialDefinitionFile(
-                good_file, static_cast<int>(std::strlen(good_file)), good_data);
-        if (good_result != MaterialDefinitionFileParseResult::OK)
-        {
-            result.diagnostics.emplace_back(
-                std::string("a conforming StandardOpaque material must parse, got ")
-                + GetMaterialDefinitionFileParseResultName(good_result)
-                + " key='" + good_data.parse_error.key
-                + "' detail='" + good_data.parse_error.detail + "'");
-        }
-        else if (good_data.definition.domain != MaterialDomain::StandardOpaque)
-        {
-            result.diagnostics.emplace_back(
-                "parsed material lost its domain (expected StandardOpaque)");
-        }
-
-        // ── ③ 未声明 domain = Custom = 不校验（向后兼容）─────────────────────
-        // 这个材质缺 base_color 槽、缺 Normal 语义，对 StandardOpaque 是违规，
-        // 但 Custom 不做契约校验 ⇒ 必须通过。任何「无条件套契约」的改动都会
-        // 在这里炸出来。
-        const char custom_file[] =
-            "schema = 4\n"
-            "id = \"DomainCustomLoose\"\n"
-            "name = \"DomainCustomLoose\"\n"
-            "provider_policy = \"GeometryOnly\"\n"
-            "[fragment]\n"
-            "material_source_module_name = \"material_source_unlit\"\n"
-            "[vertex]\n"
-            "requirements = [\"Position\"]\n";
-        MaterialDefinitionFileData custom_data;
-        if (ParseMaterialDefinitionFile(
-                custom_file, static_cast<int>(std::strlen(custom_file)), custom_data)
-            != MaterialDefinitionFileParseResult::OK)
-        {
-            result.diagnostics.emplace_back(
-                "a material without 'domain' must stay exempt from contract checks");
-        }
-        else if (custom_data.definition.domain != MaterialDomain::Custom)
-        {
-            result.diagnostics.emplace_back(
-                "missing 'domain' must default to MaterialDomain::Custom");
-        }
-
-        // ── ④ 负向：逐条契约违规都必须被拒 ──────────────────────────────────
-        struct DomainViolationProbe
-        {
-            const char *label;
-            const char *content;
-        };
-
-        const DomainViolationProbe probes[] = {
-            {
-                "missing required vertex semantic (Normal)",
-                "schema = 4\n"
-                "id = \"DomainBadVertex\"\n"
-                "name = \"DomainBadVertex\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                "texture slot outside the domain whitelist",
-                "schema = 4\n"
-                "id = \"DomainBadSlot\"\n"
-                "name = \"DomainBadSlot\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"splat_map\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                "missing a must-declare texture slot",
-                "schema = 4\n"
-                "id = \"DomainBadMissingSlot\"\n"
-                "name = \"DomainBadMissingSlot\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                // 阶段四改成违规：领域已给出规范模块，资产**不得**自选别的来源模块。
-                "self-chosen material source module",
-                "schema = 4\n"
-                "id = \"DomainBadWrongSource\"\n"
-                "name = \"DomainBadWrongSource\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"checkerboard_3d_source\"\n"
-                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                "self-chosen ntb module",
-                "schema = 4\n"
-                "id = \"DomainBadWrongNtb\"\n"
-                "name = \"DomainBadWrongNtb\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "ntb_module_name = \"ntb_orthonormal\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                "unknown domain name",
-                "schema = 4\n"
-                "id = \"DomainBadUnknown\"\n"
-                "name = \"DomainBadUnknown\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"NoSuchDomain\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-            },
-            {
-                // 无槽领域（UnlitSolid 等）必须拒绝一切纹理声明。
-                "texture on a domain that declares no slot at all",
-                "schema = 4\n"
-                "id = \"DomainBadSlotonSless\"\n"
-                "name = \"DomainBadSlotonSless\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"UnlitSolid\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                // 无光表面族的顶点语义是封闭的：VertexColor 少了 Color 就
-                // 不该被当成顶点色材质放行。
-                "missing Color on a vertex-color domain",
-                "schema = 4\n"
-                "id = \"DomainBadVertexColor\"\n"
-                "name = \"DomainBadVertexColor\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"VertexColor\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\"]\n"
-            },
-            {
-                // VertexPalette 比 VertexColor 多要求 TransformID/Size：
-                // 这份契约存在的意义就是拦住「以为自己是调色板其实缺属性」。
-                "palette domain missing TransformID",
-                "schema = 4\n"
-                "id = \"DomainBadPalette\"\n"
-                "name = \"DomainBadPalette\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"VertexPalette\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"Color\", \"Size\"]\n"
-            },
-            {
-                // no_material_source 领域的反向约束：自己不写来源模块是正确写法，
-                // 但写了任何模块名都是错配（这条与 ③ 的正向兜底成对）。
-                "source module declared on a domain that has none",
-                "schema = 4\n"
-                "id = \"DomainBadSkySource\"\n"
-                "name = \"DomainBadSkySource\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"Sky\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_unlit\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\"]\n"
-            },
-            {
-                // `[transform]` 由领域决定：StandardOpaque 是 3D 通路，
-                // 写 2D NDC 变换会让同一领域的材质走不同顶点管线，
-                // 合批/layout 共享立刻失效——必须拒绝而不是静默接受。
-                "self-chosen vertex transform on a 3D domain",
-                "schema = 4\n"
-                "id = \"DomainBadTransform\"\n"
-                "name = \"DomainBadTransform\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[transform]\n"
-                "source = \"Vec2Position\"\n"
-                "mapping = \"NDCLift\"\n"
-                "orientation = \"World\"\n"
-                "scale = \"World\"\n"
-                "projection = \"LocalToWorldOnly\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                // 阶段三之二：槽形态（采样器种类）由领域决定。
-                // 同一领域里换成 Sampler2D 会让引用行布局与采样方式都分叉，
-                // 合批共享立刻失效——必须拒绝而不是静默接受。
-                "self-chosen sampler on a domain texture slot",
-                "schema = 4\n"
-                "id = \"DomainBadSlotSampler\"\n"
-                "name = \"DomainBadSlotSampler\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2D\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                // 绑定必要性同理：领域说 optional，资产不能自行改成必绑
-                // （否则同一领域里「缺图就报错」与「缺图用中性值」两种运行语义并存）。
-                "self-chosen binding policy on a domain texture slot",
-                "schema = 4\n"
-                "id = \"DomainBadSlotRequired\"\n"
-                "name = \"DomainBadSlotRequired\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = true },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-            {
-                // 通道数直接决定 shader 是否注入 MTL_TEX_<NAME>_CHANNELS 与 Z 还原逻辑。
-                // normal 契约固定 2 通道，资产改成 4 就是另一种解码方式。
-                "self-chosen channel count on a domain texture slot",
-                "schema = 4\n"
-                "id = \"DomainBadSlotChannels\"\n"
-                "name = \"DomainBadSlotChannels\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false, channels = 4 }\n"
-                "]\n"
-            },
-            {
-                // material_data.type 决定 shader 按哪个结构读 payload 行。
-                // StandardOpaque 规范为 PBRSurface，换成 EmissiveSurface 会让
-                // 片元侧按错误的结构解码同一行字节——运行期不报错，只是数值全错。
-                "self-chosen material_data type",
-                "schema = 4\n"
-                "id = \"DomainBadMaterialData\"\n"
-                "name = \"DomainBadMaterialData\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "material_source_module_name = \"material_source_pbr_surface\"\n"
-                "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "material_data = { type = \"EmissiveSurface\" }\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n"
-            },
-        };
-
-        for (const DomainViolationProbe &probe : probes)
-        {
-            MaterialDefinitionFileData data;
-            const MaterialDefinitionFileParseResult parse_result =
-                ParseMaterialDefinitionFile(
-                    probe.content, static_cast<int>(std::strlen(probe.content)), data);
-            if (parse_result == MaterialDefinitionFileParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("domain contract let through a violation: ") + probe.label);
-                continue;
-            }
-
-            // 报错必须落在 domain 这个键上，而不是飘去别的键——
-            // 否则作者按提示改半天也修不好。
-            if (data.parse_error.key != "domain")
-            {
-                result.diagnostics.emplace_back(
-                    std::string("violation '") + probe.label
-                    + "' must be reported on key 'domain', got '"
-                    + data.parse_error.key + "'");
-            }
-            if (data.parse_error.detail.empty())
-            {
-                result.diagnostics.emplace_back(
-                    std::string("violation '") + probe.label
-                    + "' must carry a human-readable detail");
-            }
-        }
-
-        // ── ③ 领域规范模块兜底（阶段四）───────────────────────────────────────
-        // 资产只写 `domain` + 数值 + 贴图，两个模块名都省略 ⇒ 必须由领域契约填上，
-        // 且填进来的必须正是契约里的规范名。这条与 ② 的 mismatch 探针成对：
-        // 一个管「省略要能补上」，一个管「写了不能乱写」。
-        {
-            const char *minimal_domain_material =
-                "schema = 4\n"
-                "id = \"DomainMinimal\"\n"
-                "name = \"DomainMinimal\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"StandardOpaque\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"roughness\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"metallic\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"occlusion\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"opacity_mask\", sampler = \"Sampler2DArray\", required = false },\n"
-                "  { name = \"normal\", sampler = \"Sampler2DArray\", required = false }\n"
-                "]\n";
-
-            MaterialDefinitionFileData data;
-            const MaterialDefinitionFileParseResult parse_result = ParseMaterialDefinitionFile(
-                minimal_domain_material,
-                static_cast<int>(std::strlen(minimal_domain_material)), data);
-            if (parse_result != MaterialDefinitionFileParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    "minimal domain material (no module names) must parse, got: "
-                    + std::string(data.parse_error.key) + " / "
-                    + data.parse_error.detail.c_str());
-            }
-            else
-            {
-                const char *expect_source = GetMaterialDomainReferenceMaterialSource(
-                    MaterialDomain::StandardOpaque);
-                const char *expect_ntb = GetMaterialDomainReferenceNtb(
-                    MaterialDomain::StandardOpaque);
-
-                if (!expect_source || !expect_ntb)
-                {
-                    result.diagnostics.emplace_back(
-                        "StandardOpaque contract must declare both reference modules");
-                }
-                else
-                {
-                    if (std::string(data.definition.material_source_module_name
-                                    ? data.definition.material_source_module_name : "")
-                        != expect_source)
-                        result.diagnostics.emplace_back(
-                            std::string("derived material source module must be '")
-                            + expect_source + "', got '"
-                            + (data.definition.material_source_module_name
-                                   ? data.definition.material_source_module_name : "<null>")
-                            + "'");
-                    if (std::string(data.definition.ntb_module_name
-                                    ? data.definition.ntb_module_name : "")
-                        != expect_ntb)
-                        result.diagnostics.emplace_back(
-                            std::string("derived ntb module must be '") + expect_ntb
-                            + "', got '"
-                            + (data.definition.ntb_module_name
-                                   ? data.definition.ntb_module_name : "<null>")
-                            + "'");
-
-                    // `[transform]` 同理：缺省必须由领域契约填成规范变换。
-                    if (!IsDefault3DNodeConfig(data.definition.vertex_node_config))
-                        result.diagnostics.emplace_back(
-                            "omitted [transform] on StandardOpaque must derive the domain "
-                            "canonical 3D transform");
-                }
-            }
-        }
-
-        // ── ③b 非 3D 领域的顶点变换同样由领域契约给出 ──────────────────────────
-        // 这条单独钉住「契约里的 canonical_vertex_node_config 不是摆设」：
-        // 只测 StandardOpaque（= 默认值）的话，漏填契约也照样通过。
-        //
-        // 阶段三之二起这条同时钉住「最小形态」：纹理只写 name，
-        // 不写 [transform]、不写 material_data —— 槽形态与数据类型全部由领域给出。
-        {
-            const char *text_material =
-                "schema = 4\n"
-                "id = \"DomainMinimalText\"\n"
-                "name = \"DomainMinimalText\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"Text2D\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\"]\n"
-                "[resources]\n"
-                "textures = [{ name = \"base_color\" }]\n";
-
-            MaterialDefinitionFileData data;
-            const MaterialDefinitionFileParseResult parse_result = ParseMaterialDefinitionFile(
-                text_material, static_cast<int>(std::strlen(text_material)), data);
-            if (parse_result != MaterialDefinitionFileParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    "minimal Text2D material (only the texture name) must parse, got: "
-                    + std::string(data.parse_error.key) + " / "
-                    + data.parse_error.detail.c_str());
-            }
-            else
-            {
-                VertexShaderNodeConfig expect{};
-                const MaterialDomainTextureSlot *slot =
-                    FindMaterialDomainTextureSlot(MaterialDomain::Text2D, "base_color");
-
-                if (!GetMaterialDomainCanonicalVertexNodeConfig(
-                        MaterialDomain::Text2D, expect))
-                {
-                    result.diagnostics.emplace_back(
-                        "Text2D contract must expose a canonical vertex transform");
-                }
-                else if (!IsSameVertexNodeConfig(
-                             data.definition.vertex_node_config, expect))
-                {
-                    result.diagnostics.emplace_back(
-                        "omitted [transform] on Text2D must derive the domain canonical "
-                        "transform (expected PixelToLocal / OrthoViewport)");
-                }
-                else if (data.definition.vertex_node_config.projection
-                         != ProjectionMode::OrthoViewport)
-                {
-                    result.diagnostics.emplace_back(
-                        "Text2D canonical transform must project through the viewport ortho");
-                }
-                else if (!slot)
-                {
-                    result.diagnostics.emplace_back(
-                        "Text2D contract must expose the base_color texture slot");
-                }
-                else if (data.definition.texture_declarations.size() != 1)
-                {
-                    result.diagnostics.emplace_back(
-                        "minimal Text2D material must end up with exactly one texture slot");
-                }
-                else
-                {
-                    const MaterialTextureDeclaration &declared =
-                        data.definition.texture_declarations.front();
-                    if (declared.sampler_type != slot->sampler)
-                    {
-                        result.diagnostics.emplace_back(
-                            "omitted sampler must derive the domain slot sampler");
-                    }
-                    else if (declared.required != slot->binding_required)
-                    {
-                        result.diagnostics.emplace_back(
-                            "omitted required must derive the domain slot binding policy");
-                    }
-                    else if (declared.channels != slot->channels)
-                    {
-                        result.diagnostics.emplace_back(
-                            "omitted channels must derive the domain slot channel count");
-                    }
-                }
-
-                GlobalSSBOType expect_type = GlobalSSBOType::MeshDrawParams;
-                if (!GetMaterialDomainCanonicalMaterialDataType(
-                        MaterialDomain::Text2D, expect_type))
-                {
-                    result.diagnostics.emplace_back(
-                        "Text2D contract must expose a canonical material_data type");
-                }
-                else if (data.definition.material_private_data != expect_type)
-                {
-                    result.diagnostics.emplace_back(
-                        "omitted [resources].material_data must derive the domain type");
-                }
-            }
-        }
-
-        // ── ⑤ 无光表面族：合法材质必须通过（防误杀）───────────────────────────
-        // ④ 全是「必须被拒」的探针。新加的领域若契约写得太严
-        // （比如给无槽领域凭空要求一个纹理槽，或多要一个顶点语义），
-        // 只会表现为「仓库材质全部加载失败」——那是最难定位的一种回归。
-        // 所以这里正面钉住每个新领域的最小合法形态。
-        struct DomainAcceptProbe
-        {
-            const char *label;
-            const char *content;
-            MaterialDomain expect_domain;
-            bool expect_source_derived;   // true = 解析后应从契约兜底得到来源模块
-            const char *expect_source;
-        };
-
-        const DomainAcceptProbe accept_probes[] = {
-            {
-                "UnlitSolid (no texture at all)",
-                "schema = 4\n"
-                "id = \"DomainOkUnlitSolid\"\n"
-                "name = \"DomainOkUnlitSolid\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"UnlitSolid\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\"]\n",
-                MaterialDomain::UnlitSolid, true, "material_source_unlit"
-            },
-            {
-                "vertex_color",
-                "schema = 4\n"
-                "id = \"DomainOkVertexColor\"\n"
-                "name = \"DomainOkVertexColor\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"VertexColor\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"Color\"]\n",
-                MaterialDomain::VertexColor, true, "material_source_vertex_color"
-            },
-            {
-                "VertexPalette (four semantics)",
-                "schema = 4\n"
-                "id = \"DomainOkVertexPalette\"\n"
-                "name = \"DomainOkVertexPalette\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"VertexPalette\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"Color\", \"TransformID\", \"Size\"]\n",
-                MaterialDomain::VertexPalette, true, "material_source_vertex_color"
-            },
-            {
-                "vertex_luminance",
-                "schema = 4\n"
-                "id = \"DomainOkVertexLum\"\n"
-                "name = \"DomainOkVertexLum\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"VertexLuminance\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"Luminance\"]\n",
-                MaterialDomain::VertexLuminance, true, "material_source_luminance"
-            },
-            {
-                "Text2D",
-                "schema = 4\n"
-                "id = \"DomainOkText2D\"\n"
-                "name = \"DomainOkText2D\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"Text2D\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"UV0\"]\n"
-                "[resources]\n"
-                "textures = [\n"
-                "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = true }\n"
-                "]\n",
-                MaterialDomain::Text2D, true, "material_source_text_gpu"
-            },
-            {
-                // Sky 是 no_material_source：来源模块必须**保持为空**，
-                // 不能被兜底逻辑塞进一个不存在的规范名。
-                "Sky (no material source by design)",
-                "schema = 4\n"
-                "id = \"DomainOkSky\"\n"
-                "name = \"DomainOkSky\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"Sky\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\"]\n",
-                MaterialDomain::Sky, false, nullptr
-            },
-            {
-                "Checker2D (no TexCoord required)",
-                "schema = 4\n"
-                "id = \"DomainOkChecker2D\"\n"
-                "name = \"DomainOkChecker2D\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"Checker2D\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\"]\n",
-                MaterialDomain::Checker2D, true, "material_source_checkerboard_2d"
-            },
-            {
-                "DebugNormal",
-                "schema = 4\n"
-                "id = \"DomainOkDebugNormal\"\n"
-                "name = \"DomainOkDebugNormal\"\n"
-                "provider_policy = \"GeometryOnly\"\n"
-                "domain = \"DebugNormal\"\n"
-                "[fragment]\n"
-                "[vertex]\n"
-                "requirements = [\"Position\", \"Normal\"]\n",
-                MaterialDomain::DebugNormal, true, "material_source_debug_normal"
-            },
-        };
-
-        for (const DomainAcceptProbe &probe : accept_probes)
-        {
-            MaterialDefinitionFileData data;
-            const MaterialDefinitionFileParseResult parse_result =
-                ParseMaterialDefinitionFile(
-                    probe.content, static_cast<int>(std::strlen(probe.content)), data);
-            if (parse_result != MaterialDefinitionFileParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("domain contract rejected a legal material: ") + probe.label
-                    + " ('" + data.parse_error.key + "': " + data.parse_error.detail.c_str()
-                    + ")");
-                continue;
-            }
-
-            if (data.definition.domain != probe.expect_domain)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("legal material lost its domain: ") + probe.label);
-            }
-
-            const char *derived = data.definition.material_source_module_name;
-            if (probe.expect_source_derived)
-            {
-                if (!derived || std::strcmp(derived, probe.expect_source) != 0)
-                    result.diagnostics.emplace_back(
-                        std::string("legal material must derive source module '")
-                        + probe.expect_source + "' for " + probe.label + ", got '"
-                        + (derived ? derived : "<null>") + "'");
-            }
-            else if (derived && *derived)
-            {
-                // no_material_source 领域：兜底逻辑不得凭空注入来源模块。
-                result.diagnostics.emplace_back(
-                    std::string("no-source domain must not derive a source module, ")
-                    + probe.label + " got '" + derived + "'");
-            }
-        }
-
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -7260,8 +6001,8 @@ namespace
         if (gvf_2d.GetVertexInputHash() == gvf_3d.GetVertexInputHash())
             result.diagnostics.emplace_back(
                 "Geometry formats with different dimensions must remain distinct");
-        if (std::strcmp(GetFallbackMaterialDefinitionID(), "builtin/pure_color") != 0)
-            result.diagnostics.emplace_back("all Geometry dimensions must use unified PureColor fallback");
+        if (kMarkerlessFallbackMaterialDomain != MaterialDomain::Checker3D)
+            result.diagnostics.emplace_back("all Geometry dimensions must use unified Checker3D fallback");
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -7313,9 +6054,9 @@ namespace
                 };
             MaterialDefinition lit_definition{};
             MaterialDefinition unlit_definition{};
-            if (!TryGetMaterialDefinitionByID("lit", lit_definition)
-             || !TryGetMaterialDefinitionByID(
-                    "unlit_texture",
+            if (!SynthesizeDomainDefinition(MaterialDomain::StandardOpaque, lit_definition)
+             || !SynthesizeDomainDefinition(
+                    MaterialDomain::UnlitTexture,
                     unlit_definition))
             {
                 result.diagnostics.emplace_back(
@@ -9396,9 +8137,9 @@ void main()
         // 发行形态取到不匹配的 SPV —— 这种错误在运行时完全不报错。
         {
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID("lit", definition))
+            if (!SynthesizeDomainDefinition(MaterialDomain::StandardOpaque, definition))
                 result.diagnostics.emplace_back(
-                    "material definition unavailable: Lit");
+                    "domain definition unavailable: StandardOpaque");
             else
             {
                 const GeometryVertexFormat geometry{
@@ -9412,7 +8153,7 @@ void main()
                 };
 
                 MaterialDefinitionBuildRequest base{};
-                base.recipe.mtl_def_id = definition.definition_id;
+                base.recipe.domain = definition.domain;
                 NormalizeRecipe(base.recipe);
                 base.geometry_vertex_format = &geometry;
                 base.defer_finalize = true;
@@ -9631,7 +8372,7 @@ void main()
             return false;
 
         const ShaderProgramKey program_key = entry.program_link.BuildKey();
-        out << "definition_id=" << definition.definition_id.c_str() << "\n"
+        out << "domain=" << GetMaterialDomainName(definition.domain) << "\n"
             << "program_digest=" << program_key.GetDigest() << "\n"
             << "lookup_key=" << entry.lookup_key << "\n"
             << "mesh_stage_digest=" << program_key.mesh_stage_digest << "\n"
@@ -9683,10 +8424,10 @@ void main()
             : "PM.release-manifest-lookup";
 
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID("lit", definition))
+        if (!SynthesizeDomainDefinition(MaterialDomain::StandardOpaque, definition))
         {
             result.diagnostics.emplace_back(
-                "material definition unavailable: Lit");
+                "domain definition unavailable: StandardOpaque");
             result.passed = false;
             return result;
         }
@@ -9698,7 +8439,7 @@ void main()
         };
 
         MaterialDefinitionBuildRequest request{};
-        request.recipe.mtl_def_id = definition.definition_id;
+        request.recipe.domain = definition.domain;
         NormalizeRecipe(request.recipe);
         request.geometry_vertex_format = &geometry;
         request.defer_finalize = true;
@@ -10199,7 +8940,8 @@ void main()
 
     struct ReflectionCoverageVariant
     {
-        const char *definition_id;
+        /// 身份只由领域决定：矩阵按领域取定义，配方/资产不再携带定义 ID。
+        MaterialDomain domain;
         const char *variant_slug;
         ShaderProgramPurpose purpose;
         PassProfileID profile_id;
@@ -10233,60 +8975,60 @@ void main()
     /// 两张快照（结构、发射顺序）共用此表——矩阵只有一份，新增材质不会漏测其中一张。
     static const ReflectionCoverageVariant kReflectionCoverageVariants[] =
     {
-        { "lit", "lit-forward-opaque",
+        { MaterialDomain::StandardOpaque, "lit-forward-opaque",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardLitShadowedAO, true, false },
-        { "lit", "lit-depth-only",
+        { MaterialDomain::StandardOpaque, "lit-depth-only",
           ShaderProgramPurpose::DepthOnly,
           PassProfileID::ShadowCasterOpaque, true, false },
-        { "lit", "lit-shadow-depth",
+        { MaterialDomain::StandardOpaque, "lit-shadow-depth",
           ShaderProgramPurpose::ShadowDepth,
           PassProfileID::ShadowCasterOpaque, true, false },
-        { "lit", "lit-depth-masked",
+        { MaterialDomain::StandardOpaque, "lit-depth-masked",
           ShaderProgramPurpose::DepthOnly,
           PassProfileID::ShadowCasterMasked, true, true },
-        { "lit", "lit-shadow-masked",
+        { MaterialDomain::StandardOpaque, "lit-shadow-masked",
           ShaderProgramPurpose::ShadowDepth,
           PassProfileID::ShadowCasterMasked, true, true },
-        { "vertex_palette", "vertex-palette-color-forward",
+        { MaterialDomain::VertexPalette, "vertex-palette-color-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "vertex_color", "vertex-color-forward",
+        { MaterialDomain::VertexColor, "vertex-color-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "vertex_luminance", "vertex-luminance-forward",
+        { MaterialDomain::VertexLuminance, "vertex-luminance-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "unlit_texture", "unlit-texture-forward",
+        { MaterialDomain::UnlitTexture, "unlit-texture-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Triangles, true },
-        { "debug_normal", "debug-normal-forward",
+        { MaterialDomain::DebugNormal, "debug-normal-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
-        { "sky_cube", "sky-cube-forward",
+        { MaterialDomain::Sky, "sky-cube-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::Sky, true, false },
-        { "sky_minimal", "sky-minimal-forward",
+        { MaterialDomain::Sky, "sky-minimal-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::Sky, true, false },
-        { "checkerboard_2d", "checkerboard-2d-forward",
+        { MaterialDomain::Checker2D, "checkerboard-2d-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Triangles, true },
-        { "builtin/text_gpu", "text-gpu-charquad",
+        { MaterialDomain::Text2D, "text-gpu-charquad",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, false, false },
         // LineQuad 是第三种 mesh 发射模式，只能由 `primitive_type = Lines` 推出来
         // （材质定义里没有对应字段）。这些用例覆盖 LineQuad 固定拓扑 master 与
         // `module/stage/line_quad_body.glsl` 的端点读取路径，避免该独立几何路径退化后漏报。
-        { "vertex_color", "vertex-color-lines-quad",
+        { MaterialDomain::VertexColor, "vertex-color-lines-quad",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Lines, false },
         // 2D 位置需要与顶点格式匹配的 2D 映射模块。用 checkerboard_2d
         // （NDCLift）覆盖 VF_V2F 夹具，避免把 Passthrough3D 的 vec3 ABI 错配进来。
-        { "checkerboard_2d", "checkerboard-2d-lines-quad-2d",
+        { MaterialDomain::Checker2D, "checkerboard-2d-lines-quad-2d",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Lines, true },
@@ -10338,9 +9080,10 @@ void main()
         hgl::AnsiString *out_common_options = nullptr)
     {
         MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
+        if (!SynthesizeDomainDefinition(variant.domain, definition))
         {
-            diagnostic = std::string("definition unavailable: ") + variant.definition_id;
+            diagnostic = std::string("domain definition unavailable: ")
+                + GetMaterialDomainName(variant.domain);
             return nullptr;
         }
 
@@ -10353,7 +9096,7 @@ void main()
         }
 
         MaterialDefinitionBuildRequest request{};
-        request.recipe.mtl_def_id = definition.definition_id;
+        request.recipe.domain = definition.domain;
         request.primitive_type = variant.primitive_type;
         request.geometry_vertex_format =
             variant.has_geometry
@@ -10842,9 +9585,12 @@ void main()
     struct DomainBackendEquivShape
     {
         const char *label;
-        const char *definition_id;
+        MaterialDomain domain;
         ShaderProgramPurpose purpose;
         bool alpha_test;
+        // 领域内可选的表面模块形态（配方唯一能自选的模块槽）：Sky 的
+        // sky_minimal / sky_cube 差别只在这里，golden 的反射形状随之不同。
+        const char *surface_module_name = nullptr;
     };
 
     /// 等价矩阵：每个形状 = 「某个材质定义 + 某个 pass」的编译单元。
@@ -10852,21 +9598,22 @@ void main()
     /// 新增条目一律追加到末尾。
     static const DomainBackendEquivShape kDomainBackendEquivShapes[] =
     {
-        { "fwd",          "lit",     ShaderProgramPurpose::ForwardColor, false },
-        { "fwd-alpha",    "lit",     ShaderProgramPurpose::ForwardColor, true  },
-        { "shadow",       "lit",     ShaderProgramPurpose::ShadowDepth,  false },
-        { "shadow-alpha", "lit",     ShaderProgramPurpose::ShadowDepth,  true  },
-        { "sky",          "sky_cube", ShaderProgramPurpose::ForwardColor, false },
-        { "unlit-tex",    "unlit_texture", ShaderProgramPurpose::ForwardColor, false },
-        { "vert-color",   "vertex_color",  ShaderProgramPurpose::ForwardColor, false },
-        { "vert-lum",     "vertex_luminance", ShaderProgramPurpose::ForwardColor, false },
-        { "vert-pal",     "vertex_palette", ShaderProgramPurpose::ForwardColor, false },
-        { "unlit-solid",  "builtin/pure_color", ShaderProgramPurpose::ForwardColor, false },
-        { "checker-2d",   "checkerboard_2d", ShaderProgramPurpose::ForwardColor, false },
-        { "checker-3d",   "builtin/checkerboard_3d", ShaderProgramPurpose::ForwardColor, false },
-        { "err-check-3d", "builtin/error_checkerboard_3d", ShaderProgramPurpose::ForwardColor, false },
-        { "text-gpu",     "builtin/text_gpu", ShaderProgramPurpose::ForwardColor, false },
-        { "debug-normal", "debug_normal", ShaderProgramPurpose::ForwardColor, false },
+        { "fwd",          MaterialDomain::StandardOpaque, ShaderProgramPurpose::ForwardColor, false },
+        { "fwd-alpha",    MaterialDomain::StandardOpaque, ShaderProgramPurpose::ForwardColor, true  },
+        { "shadow",       MaterialDomain::StandardOpaque, ShaderProgramPurpose::ShadowDepth,  false },
+        { "shadow-alpha", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ShadowDepth,  true  },
+        { "sky",          MaterialDomain::Sky,            ShaderProgramPurpose::ForwardColor, false,
+          "surface_sky_cube" },
+        { "unlit-tex",    MaterialDomain::UnlitTexture,   ShaderProgramPurpose::ForwardColor, false },
+        { "vert-color",   MaterialDomain::VertexColor,    ShaderProgramPurpose::ForwardColor, false },
+        { "vert-lum",     MaterialDomain::VertexLuminance, ShaderProgramPurpose::ForwardColor, false },
+        { "vert-pal",     MaterialDomain::VertexPalette,  ShaderProgramPurpose::ForwardColor, false },
+        { "unlit-solid",  MaterialDomain::UnlitSolid,     ShaderProgramPurpose::ForwardColor, false },
+        { "checker-2d",   MaterialDomain::Checker2D,      ShaderProgramPurpose::ForwardColor, false },
+        { "checker-3d",   MaterialDomain::Checker3D,      ShaderProgramPurpose::ForwardColor, false },
+        { "err-check-3d", MaterialDomain::ErrorChecker3D, ShaderProgramPurpose::ForwardColor, false },
+        { "text-gpu",     MaterialDomain::Text2D,         ShaderProgramPurpose::ForwardColor, false },
+        { "debug-normal", MaterialDomain::DebugNormal,    ShaderProgramPurpose::ForwardColor, false },
     };
 
     /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。
@@ -10935,7 +9682,7 @@ void main()
     /// 两条路径共用的构建请求。几何格式由调用方持有（request 只存指针）。
     static bool BuildDomainEquivRequest(
         const DomainBackendEquivShape &shape,
-        const MaterialDefinition &definition,
+        MaterialDefinition &definition,
         GeometryVertexFormat &geometry,
         MaterialDefinitionBuildRequest &request,
         std::string &diagnostic)
@@ -11018,13 +9765,25 @@ void main()
             }
         }
 
-        request.recipe.mtl_def_id = definition.definition_id;
+        request.recipe.domain = definition.domain;
+        if (shape.surface_module_name)
+            request.recipe.surface_module_name = shape.surface_module_name;
         request.recipe.render_state_overrides.has_alpha_test = shape.alpha_test;
         request.recipe.render_state_overrides.alpha_test = shape.alpha_test;
         request.recipe.render_state_overrides.has_alpha_cutoff = shape.alpha_test;
         request.recipe.render_state_overrides.alpha_cutoff = 0.5f;
         request.geometry_vertex_format = &geometry;
         request.shader_program_purpose = shape.purpose;
+
+        // 配方填齐后**重新合成**定义：`definition.surface_module_name` 是指针，
+        // 指向配方内部的字符串存储。上面那份是 `SynthesizeDomainDefinition` 用
+        // 临时配方合成的，临时配方出作用域后指针就悬空了。以请求里这份长命配方
+        // 为准重建，才和引擎侧的「配方 → 定义」时序一致。
+        if (!SynthesizeMaterialDefinitionFromRecipe(request.recipe, definition))
+        {
+            diagnostic = "SynthesizeMaterialDefinitionFromRecipe(request.recipe) failed";
+            return false;
+        }
 
         // 模板选择**必须**走引擎的路由器：它按「深度？/有 NTB？/有材质源？」
         // 选模板与 profile，并顺带挂上材质模块根。早期这里手写过一份等价
@@ -11067,12 +9826,12 @@ void main()
         for (const DomainBackendEquivShape &shape : kDomainBackendEquivShapes)
         {
             const std::string label = std::string(shape.label)
-                                    + " (" + shape.definition_id + ")";
+                                    + " (" + GetMaterialDomainName(shape.domain) + ")";
 
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(shape.definition_id, definition))
+            if (!SynthesizeDomainDefinition(shape.domain, definition))
             {
-                result.diagnostics.emplace_back(label + ": definition unavailable");
+                result.diagnostics.emplace_back(label + ": domain definition unavailable");
                 continue;
             }
 
@@ -11155,8 +9914,8 @@ void main()
                 char header[256];
                 std::snprintf(header, sizeof(header),
                               "# DH.domain-backend-equivalence shape=%s"
-                              " definition=%s purpose=%d alpha_test=%d\n",
-                              shape.label, shape.definition_id,
+                              " domain=%s purpose=%d alpha_test=%d\n",
+                              shape.label, GetMaterialDomainName(shape.domain),
                               int(shape.purpose), shape.alpha_test ? 1 : 0);
                 char size_line[64];
                 std::snprintf(size_line, sizeof(size_line),
@@ -11252,12 +10011,12 @@ void main()
         for (const DomainBackendEquivShape *shape : shapes)
         {
             const std::string label = std::string(shape->label)
-                                    + " (" + shape->definition_id + ")";
+                                    + " (" + GetMaterialDomainName(shape->domain) + ")";
 
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(shape->definition_id, definition))
+            if (!SynthesizeDomainDefinition(shape->domain, definition))
             {
-                result.diagnostics.emplace_back(label + ": definition unavailable");
+                result.diagnostics.emplace_back(label + ": domain definition unavailable");
                 continue;
             }
 
@@ -11551,20 +10310,20 @@ void main()
     struct CacheIdentityEmitShape
     {
         const char *label;
-        const char *definition_id;
+        MaterialDomain domain;
         const GeometryVertexFormat *geometry;
         PrimitiveType primitive_type = PrimitiveType::Triangles;
     };
 
     static const CacheIdentityEmitShape kCacheIdentityEmitShapes[] =
     {
-        { "cache-lit-abi-a",   "lit",         &kCacheIdentityLitGeometryA },
-        { "cache-lit-abi-b",   "lit",         &kCacheIdentityLitGeometryB },
-        { "cache-lit-abi-std", "lit",         &kCacheIdentityLitGeometryStandard },
-        { "cache-color",       "vertex_color", &kCacheIdentityColorGeometry },
-        { "load-geometry-wire", "builtin/pure_color",
+        { "cache-lit-abi-a",   MaterialDomain::StandardOpaque, &kCacheIdentityLitGeometryA },
+        { "cache-lit-abi-b",   MaterialDomain::StandardOpaque, &kCacheIdentityLitGeometryB },
+        { "cache-lit-abi-std", MaterialDomain::StandardOpaque, &kCacheIdentityLitGeometryStandard },
+        { "cache-color",       MaterialDomain::VertexColor,    &kCacheIdentityColorGeometry },
+        { "load-geometry-wire", MaterialDomain::UnlitSolid,
           &kCacheIdentityPureColorGeometry, PrimitiveType::Lines },
-        { "plane-grid-luminance-wire", "vertex_luminance",
+        { "plane-grid-luminance-wire", MaterialDomain::VertexLuminance,
           &kCacheIdentityLuminanceGeometry, PrimitiveType::Lines },
     };
 
@@ -11716,9 +10475,9 @@ void main()
         for (const DomainBackendEquivShape &shape : kDomainBackendEquivShapes)
         {
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(shape.definition_id, definition))
+            if (!SynthesizeDomainDefinition(shape.domain, definition))
             {
-                std::fprintf(stdout, "[emit-fixed-mesh] %s: definition unavailable\n",
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: domain definition unavailable\n",
                              shape.label);
                 ++failed;
                 continue;
@@ -11783,16 +10542,16 @@ void main()
         for (const CacheIdentityEmitShape &shape : kCacheIdentityEmitShapes)
         {
             MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(shape.definition_id, definition))
+            if (!SynthesizeDomainDefinition(shape.domain, definition))
             {
-                std::fprintf(stdout, "[emit-fixed-mesh] %s: definition unavailable\n",
+                std::fprintf(stdout, "[emit-fixed-mesh] %s: domain definition unavailable\n",
                              shape.label);
                 ++failed;
                 continue;
             }
 
             MaterialDefinitionBuildRequest request{};
-            request.recipe.mtl_def_id = definition.definition_id;
+            request.recipe.domain = definition.domain;
             request.geometry_vertex_format = shape.geometry;
             request.primitive_type = shape.primitive_type;
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
@@ -11965,7 +10724,7 @@ int main(const int argc, char **argv)
     }
 
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
-    if (run_materialization) results.push_back(RunMaterialRegistryCoverageCase());
+    if (run_materialization) results.push_back(RunMaterialDomainCoverageCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionIdentityCase());
     if (run_materialization) results.push_back(RunMaterialFallbackDefinitionCase());
     if (run_pipeline) results.push_back(RunUnifiedMaterialBaselineCase());
@@ -11979,8 +10738,8 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunAuthoritativeMaterialCacheIdentityCase());
     if (run_descriptor) results.push_back(RunGlobalSSBOBindingKeyCase());
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
-    if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
-    if (run_materialization) results.push_back(RunMaterialDefinitionParseDetailCase());
+    if (run_materialization) results.push_back(RunMaterialVertexABIResolutionCase());
+    if (run_materialization) results.push_back(RunMaterialRecipeParseDetailCase());
     if (run_materialization) results.push_back(RunMaterialDomainContractCase());
     if (run_materialization) results.push_back(RunMaterialLibraryContractCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());

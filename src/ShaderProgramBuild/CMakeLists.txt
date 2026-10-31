@@ -11,7 +11,7 @@ set(SHADERPROGRAMBUILD_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 # （ULRE.ShaderMaterialData）由下层目标持有：
 # 以下数据面源与头的 CMake 归属已下移到那一层，本清单不再重复列出：
 #   ShaderLibraryPath / VkEnumText / ShaderCacheRoot / ShaderBuildContext /
-#   ShaderCreateInfo(+Map) / ShaderArtifactStore / MaterialDefinitionFile /
+#   ShaderCreateInfo(+Map) / ShaderArtifactStore / MaterialRecipeFile /
 #   MaterialDefinitionRegistry / SamplerPreset / PassProfile /
 #   ScenePassProfileResolver
 # 设备 profile 契约头与 MeshShaderLimits 归 ULRE.ShaderRuntimeContract。

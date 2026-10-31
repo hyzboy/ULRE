@@ -119,7 +119,7 @@ namespace hgl::graph
                     const auto &accessor = gr->color_row_accessors[c];
                     recipe = mtl::MaterialRecipe{};
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
-                    recipe.mtl_def_id = "builtin/pure_color";
+                    recipe.domain = mtl::MaterialDomain::UnlitSolid;
                     recipe.textures.clear();
                     recipe.material_ssbo_binding =
                         accessor.GetGlobalSSBOBinding();

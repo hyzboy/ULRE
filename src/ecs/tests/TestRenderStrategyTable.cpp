@@ -289,16 +289,19 @@ int main(int argc, char** argv)
 
     // ─────────────────────────────────────────────────────────────
     // Test 6: A7b 回退（错误）材质规则表
-    //   · 定义 ID 与根颜色都来自 kFallbackMaterialRules（数据驱动、有界枚举）；
+    //   · 保底**领域**与根颜色都来自 kFallbackMaterialRules（数据驱动、有界枚举）；
     //   · 每个错误种类的根颜色**两两不同** —— 否则“按颜色标注错误种类”不成立；
     //   · 分类表（事实 ⇒ 种类）与规则表一致：无材质来源 ⇒ MissingMaterialSource，
     //     有材质来源 ⇒ None（非材质错误，不得被标成错误色）。
+    // 定义层移除后：规则表只给**领域**，材质定义由 (领域契约 + 配方) 当场合成，
+    // 因此这里不再有“定义 ID 一致”这条断言，改为断言“规则表的领域都落在已闭环领域”。
     // ─────────────────────────────────────────────────────────────
     {
         // 无参回退 = 非错误回退，仍是既有保底材质（与门 F.fallback-dimension-neutral 同一判据）
-        if (std::strcmp(GetFallbackMaterialDefinitionID(),"builtin/pure_color") != 0)
+        if (GetFallbackMaterialRule(MaterialErrorKind::None).domain
+                != MaterialDomain::UnlitSolid)
         {
-            GLogError(u8"Test 6 Failed: 无参回退材质定义 ID 不再是 builtin/pure_color");
+            GLogError(u8"Test 6 Failed: 无参回退材质领域不再是 UnlitSolid");
             return 15;
         }
 
@@ -313,21 +316,16 @@ int main(int argc, char** argv)
                 return 15;
             }
 
-            if (!rule.definition_id || rule.definition_id[0] == '\0')
+            // 保底领域必须有契约（`Custom` 没有契约 ⇒ 回退里再回退，必须在此拦下）
+            if (rule.domain == MaterialDomain::Custom)
             {
-                GLogError(u8"Test 6 Failed: 种类 %u 没有回退材质定义 ID", i);
+                GLogError(u8"Test 6 Failed: 种类 %u 没有保底领域", i);
                 return 15;
             }
 
             if (!rule.marker_name || rule.marker_name[0] == '\0')
             {
                 GLogError(u8"Test 6 Failed: 种类 %u 没有稳定名", i);
-                return 15;
-            }
-
-            if (std::strcmp(GetFallbackMaterialDefinitionID(kind),rule.definition_id) != 0)
-            {
-                GLogError(u8"Test 6 Failed: 种类 %u 的两个取用口给出的定义 ID 不一致", i);
                 return 15;
             }
 
@@ -342,29 +340,21 @@ int main(int argc, char** argv)
         }
 
         // 保底外观（2026-10-12 用户拍板）：非错误默认 = 纯色；**材质错误 = 棋盘格**
-        if (std::strcmp(GetFallbackMaterialRule(MaterialErrorKind::None).definition_id,
-                        "builtin/pure_color") != 0)
+        // 2026-10-24：错误棋盘格另立一份**读标记色**的领域（两色由 marker_color 派生）；
+        // 标记行不可得时降级到零依赖的灰度版 kMarkerlessFallbackMaterialDomain。
+        if (GetFallbackMaterialRule(MaterialErrorKind::MissingMaterialSource).domain
+                != MaterialDomain::ErrorChecker3D
+         || GetFallbackMaterialRule(MaterialErrorKind::UnknownMaterialDomain).domain
+                != MaterialDomain::ErrorChecker3D)
         {
-            GLogError(u8"Test 6 Failed: 非错误回退必须仍是纯色 builtin/pure_color");
-            return 15;
-        }
-
-        // 2026-10-24：错误棋盘格另立一份**读标记色**的定义（两色由 marker_color 派生）；
-        // 标记行不可得时降级到零依赖的灰度版 kMarkerlessFallbackMaterialDefinitionID。
-        if (std::strcmp(GetFallbackMaterialDefinitionID(MaterialErrorKind::MissingMaterialSource),
-                        "builtin/error_checkerboard_3d") != 0
-         || std::strcmp(GetFallbackMaterialDefinitionID(MaterialErrorKind::UnknownMaterialDefinition),
-                        "builtin/error_checkerboard_3d") != 0)
-        {
-            GLogError(u8"Test 6 Failed: 材质错误必须走错误棋盘格 builtin/error_checkerboard_3d"
+            GLogError(u8"Test 6 Failed: 材质错误必须走错误棋盘格领域 ErrorChecker3D"
                       u8"（配置写错 ⇒ LOG + 棋盘格错误材质路径，两色由 marker_color 派生）");
             return 15;
         }
 
-        if (std::strcmp(kMarkerlessFallbackMaterialDefinitionID,
-                        "builtin/checkerboard_3d") != 0)
+        if (kMarkerlessFallbackMaterialDomain != MaterialDomain::Checker3D)
         {
-            GLogError(u8"Test 6 Failed: 标记行不可得时的降级材质必须是零依赖的 builtin/checkerboard_3d");
+            GLogError(u8"Test 6 Failed: 标记行不可得时的降级领域必须是零依赖的 Checker3D");
             return 15;
         }
 
@@ -407,50 +397,68 @@ int main(int argc, char** argv)
         }
 
         // 分类表落在规则表的定义域内（分类结果必须有规则可查）
-        const FallbackMaterialRule &rule =
-            GetFallbackMaterialRule(MaterialErrorKind::MissingMaterialSource);
-        const FallbackMaterialRule &none_rule =
-            GetFallbackMaterialRule(MaterialErrorKind::None);
-
-        if (std::strcmp(rule.marker_name,"missing_material_source") != 0
-         || std::strcmp(none_rule.definition_id,"builtin/pure_color") != 0)
+        if (std::strcmp(GetFallbackMaterialRule(MaterialErrorKind::MissingMaterialSource)
+                            .marker_name,
+                        "missing_material_source") != 0)
         {
-            GLogError(u8"Test 6 Failed: 规则表稳定名/非错误回退定义 ID 与契约不符");
+            GLogError(u8"Test 6 Failed: 规则表稳定名与契约不符");
             return 15;
         }
 
-        // 运行期替换（**行为面**，不只是规则表）：引用不存在的材质定义 ID ⇒ 配方被换成
-        // 棋盘格保底材质 + 错误种类 = UnknownMaterialDefinition。用户口径（2026-10-14）：
-        // 材质未知 ⇒ 报错（mtl 侧 GLogError）+ 运行时走错误材质路径。这条路径曾长期**静默**
-        //（ECS 侧当"构建成功"），故用断言钉住"换过了"而不只是"表里有"。
+        // 运行期替换（**行为面**，不只是规则表）：领域不可解析 ⇒ 配方被换成错误棋盘格
+        // 保底配方 + 错误种类。用户口径（2026-10-14）：材质未知 ⇒ 报错（mtl 侧 GLogError）
+        // + 运行时走错误材质路径。这条路径曾长期**静默**（ECS 侧当"构建成功"），
+        // 故用断言钉住"换过了"而不只是"表里有"。
         {
+            // ① 未声明领域（`Custom` = 无材质来源）
+            graph::mtl::MaterialRecipe bare_recipe{};
+            bare_recipe.recipe_name = "no_domain_recipe";
+
+            graph::mtl::NormalizeRecipe(bare_recipe);
+
+            if (bare_recipe.fallback_error_kind
+                    != graph::mtl::MaterialErrorKind::MissingMaterialSource)
+            {
+                GLogError(u8"Test 6 Failed: 未声明领域未被分类为 MissingMaterialSource"
+                          u8"（回退分类静默化？）kind=%u",
+                          static_cast<uint32_t>(bare_recipe.fallback_error_kind));
+                return 15;
+            }
+
+            if (bare_recipe.domain != graph::mtl::MaterialDomain::ErrorChecker3D)
+            {
+                GLogError(u8"Test 6 Failed: 未声明领域未回退到错误棋盘格领域（实际 %s）",
+                          graph::mtl::GetMaterialDomainName(bare_recipe.domain));
+                return 15;
+            }
+
+            // ② 领域非法（枚举值不可解析）
             graph::mtl::MaterialRecipe bogus_recipe{};
-            bogus_recipe.mtl_def_id = "no/such_material_definition";
+            bogus_recipe.domain = static_cast<graph::mtl::MaterialDomain>(255);
 
             graph::mtl::NormalizeRecipe(bogus_recipe);
 
             if (bogus_recipe.fallback_error_kind
-                    != graph::mtl::MaterialErrorKind::UnknownMaterialDefinition)
+                    != graph::mtl::MaterialErrorKind::UnknownMaterialDomain)
             {
-                GLogError(u8"Test 6 Failed: 未知材质定义 ID 未被分类为 UnknownMaterialDefinition"
+                GLogError(u8"Test 6 Failed: 非法领域未被分类为 UnknownMaterialDomain"
                           u8"（回退分类静默化？）kind=%u",
                           static_cast<uint32_t>(bogus_recipe.fallback_error_kind));
                 return 15;
             }
 
-            if (std::strcmp(bogus_recipe.mtl_def_id.c_str(),
-                            "builtin/error_checkerboard_3d") != 0)
+            if (bogus_recipe.domain != graph::mtl::MaterialDomain::ErrorChecker3D)
             {
-                GLogError(u8"Test 6 Failed: 未知材质定义 ID 未回退到错误棋盘格（实际 %s）",
-                          bogus_recipe.mtl_def_id.c_str());
+                GLogError(u8"Test 6 Failed: 非法领域未回退到错误棋盘格领域（实际 %s）",
+                          graph::mtl::GetMaterialDomainName(bogus_recipe.domain));
                 return 15;
             }
         }
 
-        GLogInfo(u8"Test 6 Passed: 回退材质规则表 %u 行（定义 ID + 根颜色两两不同 + 稳定名），"
+        GLogInfo(u8"Test 6 Passed: 回退材质规则表 %u 行（保底领域 + 根颜色两两不同 + 稳定名），"
                  u8"分类表：无来源 ⇒ MissingMaterialSource、有来源 ⇒ None；"
-                 u8"未知定义 ID ⇒ 配方被换成 builtin/error_checkerboard_3d（行为断言），"
-                 u8"标记行不可得时降级 builtin/checkerboard_3d。",
+                 u8"领域不可解析 ⇒ 配方被换成 ErrorChecker3D 错误棋盘格（行为断言），"
+                 u8"标记行不可得时降级 Checker3D。",
                  static_cast<uint32_t>(MATERIAL_ERROR_KIND_COUNT));
     }
 
@@ -550,10 +558,10 @@ int main(int argc, char** argv)
             const FallbackMaterialRule &rule =
                 GetFallbackMaterialRule(MaterialErrorKind::MissingTextureResource);
 
-            if (std::strcmp(rule.definition_id, "builtin/error_checkerboard_3d") != 0)
+            if (rule.domain != MaterialDomain::ErrorChecker3D)
             {
                 GLogError(u8"Test 7 Failed: MissingTextureResource 没有回退到错误棋盘格（实际 %s）",
-                          rule.definition_id);
+                          GetMaterialDomainName(rule.domain));
                 return 16;
             }
 
@@ -729,10 +737,10 @@ int main(int argc, char** argv)
             const FallbackMaterialRule &normal_rule =
                 GetFallbackMaterialRule(MaterialErrorKind::MissingVertexNormal);
 
-            if (std::strcmp(normal_rule.definition_id, "builtin/error_checkerboard_3d") != 0)
+            if (normal_rule.domain != MaterialDomain::ErrorChecker3D)
             {
                 GLogError(u8"Test 8 Failed: MissingVertexNormal 没有回退到错误棋盘格（实际 %s）",
-                          normal_rule.definition_id);
+                          GetMaterialDomainName(normal_rule.domain));
                 return 17;
             }
 
@@ -746,10 +754,10 @@ int main(int argc, char** argv)
             const FallbackMaterialRule &uv_rule =
                 GetFallbackMaterialRule(MaterialErrorKind::MissingTextureUV);
 
-            if (std::strcmp(uv_rule.definition_id, "builtin/error_checkerboard_3d") != 0)
+            if (uv_rule.domain != MaterialDomain::ErrorChecker3D)
             {
                 GLogError(u8"Test 8 Failed: MissingTextureUV 没有回退到错误棋盘格（实际 %s）",
-                          uv_rule.definition_id);
+                          GetMaterialDomainName(uv_rule.domain));
                 return 17;
             }
 

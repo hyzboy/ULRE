@@ -208,15 +208,14 @@ namespace hgl::graph::mtl
 
     struct MaterialDefinition
     {
-        // ── Layer 1: MaterialDefinition = Capability Superset ─────────────────────────
-        // 描述一个材质"能做什么"，由 schema-3 MaterialDefinition 文件提供。
-        // 包含静态资源能力声明和渲染选项包络。
-        // 不含任何运行时句柄或 Vulkan 对象。
+        // ── 构建期合成输入：DomainContract + MaterialRecipe ──────────────────────────
+        // 由领域契约和配方合成的临时构建数据，不对应持久化文件或注册表。
+        // 包含领域能力、静态资源声明和渲染选项包络，不含运行时句柄或 Vulkan 对象。
         // ─────────────────────────────────────────────────────────────────────────────
 
         // Part-A: 基础语义/元信息
-        std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
-        std::string definition_name;                                 // 人类可读名称
+        std::string definition_id;                                   // 合成领域身份（日志/内部索引）
+        std::string definition_name;                                 // 合成领域名称
 
         // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataName）。
         // GlobalSSBOType：统一的全局 SSBO 池类型（材质表面字段与 MeshDrawParams 共用）。
@@ -224,11 +223,11 @@ namespace hgl::graph::mtl
 
         // Part-B0: 表面领域（Fixed-Code Domain Shaders）。
         // `domain = "StandardOpaque"` → 解析期按领域契约校验顶点语义与纹理槽
-        // （见 <hgl/mtl/MaterialDomain.h>）。缺省 Custom = 不做契约校验，
-        // 保持 schema-4 历史材质的完全向后兼容。
+        // （见 <hgl/mtl/MaterialDomain.h>）。Custom 没有领域契约，配方解析与规范化
+        // 会将其作为无效输入处理。
         MaterialDomain domain = MaterialDomain::Custom;
 
-        // Part-B4: TOML-defined texture-reference declarations.
+        // Part-B4: 由领域契约合成的 texture-reference declarations.
         // 无纹理材质（PureColor、VertexColor 等）此列表为空。
         // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
         std::vector<MaterialTextureDeclaration> texture_declarations;
@@ -415,8 +414,8 @@ namespace hgl::graph::mtl
 
     // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────
     // 描述"这次渲染想要什么"。由上层作者按需填写，不含 Vulkan 句柄。
-    // mtl_def_id 是唯一与 MaterialDefinition 对接的字段。
-    // 调用 mtl::NormalizeRecipe() 后，definition 的默认资源与渲染状态会被合入此结构。
+    // 配方声明的 `domain`（领域）决定顶点 ABI、纹理槽与片元模板；领域契约是唯一真源。
+    // 调用 mtl::NormalizeRecipe() 后，领域契约的默认资源与渲染状态会被合入此结构。
     // ─────────────────────────────────────────────────────────────────────────────
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是材质 runtime 的上游输入。
     // ─────────────────────────────────────────────────────────────
@@ -426,7 +425,7 @@ namespace hgl::graph::mtl
     // 必须用保底材质渲染出来，并由**根颜色**标注错误种类。
     //
     // 本表是回退材质的唯一判据（数据驱动、有界枚举）：
-    //   kind → 保底材质定义 ID（注册目录里的文件材质）+ 根颜色（RGBA）+ 稳定名。
+    //   kind → 保底材质**领域** + 根颜色（RGBA）+ 稳定名。
     // 根颜色经 `MaterialRecipe::fallback_marker_color` 落到材质数据行
     // （`EmissiveSurface.color`）——与 `builtin/pure_color` 完全同一条下发路径，
     // 不新建并行机制。新增错误种类 = 加一行；下面的 static_assert 自动纳入检查。
@@ -441,30 +440,30 @@ namespace hgl::graph::mtl
     //
     // 标记色（2026-10-24 完成，原 TODO ①）：本表的 `marker_color` 经材质数据行
     //   （`EmissiveSurface.color`）下发，由 `error_checkerboard_3d_source.glsl` 读回，
-    //   作为棋盘格**两色的基色**（暗格 12% / 亮格 90%）⇒ 洋红 = 无材质来源、
-    //   橙 = 材质定义 ID 无法解析、青 = 声明 required 却没给纹理、黄 = 几何缺顶点法线、
+    //   作为棋盘格**两色的基色**（暗格 12% / 亮格 90%）⇒ 洋红 = 配方未声明领域、
+    //   橙 = 领域无契约、青 = 声明 required 却没给纹理、黄 = 几何缺顶点法线、
     //   蓝 = 几何缺纹理 UV，肉眼可直接分辨错误种类。
-    //   为什么另立一个材质而不是改 `builtin/checkerboard_3d`：那个定义必须保持
+    //   为什么另立一个材质而不是改 `builtin/checkerboard_3d`：那个领域必须保持
     //   **零资源依赖**（不读 payload 行 ⇒ 不需要 `material_ssbo_binding`），它是回退链
     //   的最后一环。带标记色的版本声明 `require Resource MaterialData`，只有在回退路径
-    //   拿到 marker 行时才成立；拿不到时 `AttachFallbackMarkerColor` 会把配方降级回
-    //   `builtin/checkerboard_3d`（灰度、零依赖）⇒ 兜底永不失效。
+    //   拿到 marker 行时才成立；拿不到时 `AttachFallbackMarkerColor` 会把配方降级到
+    //   `Checker3D`（灰度、零依赖）⇒ 兜底永不失效。
     //
     // TODO(未来·2D/3D 分派)：② **2D/3D 必须区分**：2D 走 NDC/UV、3D 走面空间/三平面
     //   （沿用两者现有采样差异）⇒ 标记色要分别落到两套着色器，不能共用一套；届时回退
-    //   规则表还需按绘制维度分派（现在全部错误种类共用 3D 版 ⇒ 仍是维度无关的单一 ID）。
-    //     ③ 门/契约：门 F 仍断言无参回退 ID == `builtin/pure_color`（未动）；
-    //        门 case `S.material-fallback-definitions-exist` 自动遍历本表校验
-    //        "定义已注册 + 只依赖 Position + GeometryOnly"（换 ID 写错它会兜底报红）。
+    //   规则表还需按绘制维度分派（现在全部错误种类共用 3D 版 ⇒ 仍是维度无关的单一领域）。
+    //     ③ 门/契约：门 F 仍断言无参回退领域 == `UnlitSolid`（未动）；门 case
+    //        `S.material-fallback-domains-exist` 自动遍历本表校验
+    //        "领域有契约 + 只依赖 Position + GeometryOnly"（换领域写错它会兜底报红）。
     //   可肉眼验证的触发场景：`example/Material/MaterialErrorFallback.cpp`
     //   （2026-10-24 新增；此前跑遍全部示例触发 0 次，该路径只有契约测试覆盖）。
     // ─────────────────────────────────────────────────────────────
     enum class MaterialErrorKind : uint32_t
     {
         None = 0,                   ///< 无错误：正常配方（根颜色不参与着色）
-        MissingMaterialSource,      ///< 有几何，但**无任何材质来源**（数据层配方与 asset 默认配方皆无）
-        UnknownMaterialDefinition,  ///< 有材质来源，但其材质定义 ID 无法解析（落到同一保底材质）
-        MissingTextureResource,     ///< 材质定义声明了 `required` 纹理，但配方里没有实际纹理资源
+        MissingMaterialSource,      ///< 有几何，但**无任何材质来源**（配方未声明领域 ⇒ `Custom`）
+        UnknownMaterialDomain,      ///< 声明了领域，但该领域没有契约（数据层写坏 / 未知枚举值）
+        MissingTextureResource,     ///< 领域契约声明了 `required` 纹理，但配方里没有实际纹理资源
         MissingVertexNormal,        ///< 材质要顶点法线光照（顶点法线 / NTB 模块），但几何顶点格式没有 Normal
         MissingTextureUV,           ///< 材质要纹理坐标（UV0），但几何顶点格式没有 TexCoord
         Count,
@@ -477,34 +476,29 @@ namespace hgl::graph::mtl
     {
         MaterialErrorKind kind;
         MaterialDomain    domain;           ///< 保底材质**领域**（唯一真源：构建链路只认这一项）
-        const char       *definition_id;    ///< 过渡期遗留：阶段四删除 Definition 后移除
         float             marker_color[4];  ///< 根颜色：标注错误种类
         const char       *marker_name;      ///< 稳定名（日志 / 契约用）
     };
 
     inline constexpr FallbackMaterialRule kFallbackMaterialRules[MATERIAL_ERROR_KIND_COUNT] =
     {
-        // 非错误回退：既有保底材质。`GetFallbackMaterialDefinitionID()` 的返回值
-        // 就是这一条（门 F.fallback-dimension-neutral 钉住 builtin/pure_color）。
+        // 非错误回退：既有保底材质（`UnlitSolid` 纯色，门 F.fallback-dimension-neutral 钉住）。
         { MaterialErrorKind::None,
           MaterialDomain::UnlitSolid,
-          "builtin/pure_color",
           { 1.0f, 1.0f, 1.0f, 1.0f },
           "none" },
 
         // 有几何、无材质来源：错误棋盘格（标记色洋红 → 棋盘格两色基色）
         { MaterialErrorKind::MissingMaterialSource,
           MaterialDomain::ErrorChecker3D,
-          "builtin/error_checkerboard_3d",
           { 1.0f, 0.0f, 1.0f, 1.0f },
           "missing_material_source" },
 
-        // 材质定义 ID 不可解析（含配置写错）：错误棋盘格（标记色橙 → 棋盘格两色基色）
-        { MaterialErrorKind::UnknownMaterialDefinition,
+        // 领域无契约（配置写错 / 未知领域）：错误棋盘格（标记色橙 → 棋盘格两色基色）
+        { MaterialErrorKind::UnknownMaterialDomain,
           MaterialDomain::ErrorChecker3D,
-          "builtin/error_checkerboard_3d",
           { 1.0f, 0.5f, 0.0f, 1.0f },
-          "unknown_material_definition" },
+          "unknown_material_domain" },
 
         // 声明为 `required` 的纹理在配方里没有实际资源（写漏 / 资源 ID 为空）：
         // 错误棋盘格（标记色青 → 棋盘格两色基色）。
@@ -515,7 +509,6 @@ namespace hgl::graph::mtl
         // 判据唯一来源见 `ClassifyMaterialResourceError`（本文件，紧随分类表）。
         { MaterialErrorKind::MissingTextureResource,
           MaterialDomain::ErrorChecker3D,
-          "builtin/error_checkerboard_3d",
           { 0.0f, 1.0f, 1.0f, 1.0f },
           "missing_texture_resource" },
 
@@ -528,7 +521,6 @@ namespace hgl::graph::mtl
         // 棋盘格（黄），而不是静默降级。
         { MaterialErrorKind::MissingVertexNormal,
           MaterialDomain::ErrorChecker3D,
-          "builtin/error_checkerboard_3d",
           { 1.0f, 1.0f, 0.0f, 1.0f },
           "missing_vertex_normal" },
 
@@ -536,26 +528,21 @@ namespace hgl::graph::mtl
         // 随机花纹，比没贴图更难查）⇒ 错误棋盘格（蓝）。
         { MaterialErrorKind::MissingTextureUV,
           MaterialDomain::ErrorChecker3D,
-          "builtin/error_checkerboard_3d",
           { 0.2f, 0.2f, 1.0f, 1.0f },
           "missing_texture_uv" },
     };
 
-    /// 标记色行**不可得**时的降级保底材质：零资源依赖的灰度棋盘格。
-    /// 与规则表的 `definition_id` 只差 fragment 模块（那份读标记色行，从而声明了
+    /// 标记色行**不可得**时的降级保底领域：零资源依赖的灰度棋盘格。
+    /// 与规则表的领域只差 fragment 模块（后者读标记色行，从而声明了
     /// `require Resource MaterialData`）⇒ 回退路径一旦拿不到 marker 行就必须退回这里，
     /// 否则"声明要 payload 行却没有 binding"会让图元被运行期校验剔除。
     /// 场景：无图形设备（单元测试）、SSBO 池未就绪或已满。
-    inline constexpr const char *kMarkerlessFallbackMaterialDefinitionID =
-        "builtin/checkerboard_3d";
-
-    /// 同上，领域形态（阶段三起构建链路只认这一项；定义 ID 阶段四删除）。
     inline constexpr MaterialDomain kMarkerlessFallbackMaterialDomain =
         MaterialDomain::Checker3D;
 
     namespace detail
     {
-        /// 规则表自检：① 每个 kind 恰好一条规则且与枚举**同序** ② 定义 ID / 名字非空
+        /// 规则表自检：① 每个 kind 恰好一条规则且与枚举**同序** ② 名字非空
         /// ③ 根颜色四通道都在 [0,1]（越界值会写进 SSBO 行，属坏数据）
         constexpr bool CheckFallbackMaterialRules()
         {
@@ -564,9 +551,6 @@ namespace hgl::graph::mtl
                 const FallbackMaterialRule &rule = kFallbackMaterialRules[i];
 
                 if (static_cast<uint32_t>(rule.kind) != i)
-                    return false;
-
-                if (!rule.definition_id || rule.definition_id[0] == '\0')
                     return false;
 
                 // 保底领域必须落在已闭环领域里：`Custom` 没有契约，构建期无从推导，
@@ -588,7 +572,7 @@ namespace hgl::graph::mtl
     }
 
     static_assert(detail::CheckFallbackMaterialRules(),
-                  "回退（错误）材质规则表不自洽：kind 与枚举不同序/缺规则、定义 ID 或名字为空、根颜色越界");
+                  "回退（错误）材质规则表不自洽：kind 与枚举不同序/缺规则、名字为空、根颜色越界");
 
     inline const FallbackMaterialRule &GetFallbackMaterialRule(
         const MaterialErrorKind kind) noexcept
@@ -628,17 +612,25 @@ namespace hgl::graph::mtl
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）
-        std::string mtl_def_id;                // 【过渡期遗留】原材质定义字符串主键；阶段四删除
 
-        // 配方直连的材质领域。`Custom` = 未声明（过渡期仍可能由 Definition 解析，
-        // 阶段四之后即视为错误）。领域契约是纹理槽白名单、默认采样器/宏、
-        // 默认渲染状态、顶点语义与规范模块的唯一真源。
+        // 配方直连的材质领域。`Custom` = 未声明 ⇒ 材质错误（无契约可推导）。
+        // 领域契约是纹理槽白名单、默认采样器/宏、默认渲染状态、顶点语义与规范模块
+        // 的唯一真源。
         MaterialDomain domain = MaterialDomain::Custom;
 
         // 领域声明了 `no_material_source`（如 Sky）时，配方自行指定的表面函数模块名
         // （会让领域入口在主着色器上分裂出多种形态，如 sky_minimal / sky_cube）。
         // 其余情况留空：由领域契约的 reference_material_source_module 给出。
         std::string surface_module_name;
+
+        // 采样器 / 编译宏的**配方级覆盖**（可选）。
+        // 不覆盖（`has_* == false`）⇒ 用领域契约预设；覆盖（`has_* == true`）⇒
+        // 整表替换契约预设（空表 = 全部清空，这是 Text2D 位图形态需要的写法：
+        // 位图不解 SDF，必须去掉契约的 `TEXT_SDF_ENABLED`）。
+        bool                     has_sampler_names = false;
+        std::vector<std::string> sampler_names;
+        bool                     has_compile_defines = false;
+        std::vector<std::string> compile_defines;
 
         VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
 
@@ -945,7 +937,7 @@ namespace hgl::graph::mtl
      * 判据：不容忍面法线兜底，**且**要法线光照 —— 声明了 Normal/Tangent/Bitangent
      * 任一语义，或挂了法线贴图模块（`ntb_module_name`）。
      *
-     * 为什么不看 `normal_mode`：`lit.definition.toml` 的 `normal_mode` 是默认 `None`，
+     * 为什么不看 `normal_mode`：StandardOpaque 领域的规范 `normal_mode` 是 `None`，
      * 却声明了 `Normal` + `ntb_tangent_vbo_normalmap` ⇒ 它缺顶点法线时 `stream_ntb*.glsl`
      * 会从没上传的 SSBO 槽读垃圾值（画面随机明暗，比没光更坏）。
      */
@@ -1020,9 +1012,19 @@ namespace hgl::graph::mtl
         hgl::hash::FNV1aHasher64 h;
 
         h << recipe.recipe_name
-          << recipe.mtl_def_id
           << static_cast<uint32_t>(recipe.domain)
           << recipe.surface_module_name;
+
+        // 采样器 / 宏覆盖会改变发射出的 GLSL（`#define XSampler 1u`）⇒ 属于变体身份。
+        h << recipe.has_sampler_names
+          << static_cast<uint32_t>(recipe.sampler_names.size());
+        for (const std::string &name : recipe.sampler_names)
+            h << name;
+
+        h << recipe.has_compile_defines
+          << static_cast<uint32_t>(recipe.compile_defines.size());
+        for (const std::string &define : recipe.compile_defines)
+            h << define;
 
         h << recipe.vertex_node_config
           << recipe.render_state_overrides.has_alpha_test
@@ -1078,7 +1080,7 @@ namespace hgl::graph::mtl
      *   · coverage：alpha_test / alpha_cutoff / dither（宏 + varying 需求 + 模板路由）
      *   · alpha_blend（决定片元是否写出 alpha —— plan.alpha_to_output）
      *   · vertex_node_config
-     * 定义身份（definition_id）由调用方折叠，这里不重复。
+     * 合成领域身份由调用方折叠，这里不重复。
      *
      * 一律**不进**变体键的字段及理由：
      *   · recipe_name / 贴图 resource_id、array_layer / SSBO 行绑定
@@ -1102,6 +1104,17 @@ namespace hgl::graph::mtl
         hgl::hash::FNV1aHasher64 h;
 
         h << recipe.vertex_node_config;
+
+        // 配方级覆盖直接生成 `#define <name>Sampler <idx>u` / `#define <X>` ⇒ 改变 GLSL 文本。
+        h << recipe.has_sampler_names
+          << static_cast<uint32_t>(recipe.sampler_names.size());
+        for (const std::string &name : recipe.sampler_names)
+            h << name;
+
+        h << recipe.has_compile_defines
+          << static_cast<uint32_t>(recipe.compile_defines.size());
+        for (const std::string &define : recipe.compile_defines)
+            h << define;
 
         h << resolved_state.alpha_test
           << resolved_state.alpha_cutoff

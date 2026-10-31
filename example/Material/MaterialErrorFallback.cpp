@@ -3,21 +3,26 @@
 // 演示「材质配置写错 ⇒ 材质系统回退到错误棋盘格」：**不同错误种类用不同标记色**，
 // 屏幕上肉眼就能分辨是哪一类配置错了。
 //
+// 定义层（`.definition.toml`）已整体移除：配方（recipe）里直接声明 `domain`，
+// 材质定义由「领域契约 + 配方」当场合成，所以本示例的错误来源一律是**领域**写错，
+// 不再是「材质定义 ID 引用不到」。
+//
 // 场景（引擎世界是 Z-up；9 个球体按 3 行 3 列铺开，相机从 -X 侧看）：
-//   #0 对照     引用 builtin/checkerboard_3d      正常                → 灰度棋盘格
-//   #1 空定义 ID  mtl_def_id = ""                  MissingMaterialSource     → 洋红棋盘格
-//   #2 无材质来源 不设 asset 配方                    MissingMaterialSource     → 洋红棋盘格
-//   #3 未知 ID   mtl_def_id = "NotExist/Material"  UnknownMaterialDefinition → 橙棋盘格
-//   #4 拼错 ID   mtl_def_id = "builtin/checkerbord_3d"（少一个 'a'）
-//                                                  UnknownMaterialDefinition → 橙棋盘格
-//   #5 大小写不符 mtl_def_id = "Lit"（真实定义是 "lit"）
-//                                                  UnknownMaterialDefinition → 橙棋盘格
-//   #6 缺纹理     mtl_def_id = "unlit_texture"（该定义声明 base_color required=true），
-//                 但配方不给任何纹理资源            MissingTextureResource     → 青棋盘格
-//   #7 缺顶点法线 mtl_def_id = "lit"，几何顶点只有 Position+TexCoord（**没有 Normal**）
-//                                                  MissingVertexNormal        → 黄棋盘格
-//   #8 缺纹理UV   mtl_def_id = "lit"，几何顶点只有 Position+Normal（**没有 TexCoord**）
-//                                                  MissingTextureUV           → 蓝棋盘格
+//   #0 对照        domain = "Checker3D"              正常                    → 灰度棋盘格
+//   #1 未声明领域   配方在，但 domain 不写（Custom）   MissingMaterialSource   → 洋红棋盘格
+//   #2 无材质来源   不设 asset 配方                    MissingMaterialSource   → 洋红棋盘格
+//   #3 未知领域名   domain = "NotExistDomain"         UnknownMaterialDomain   → 橙棋盘格
+//   #4 拼错领域名   domain = "StandradOpaque"（少一个 'd'）
+//                                                    UnknownMaterialDomain   → 橙棋盘格
+//   #5 大小写不符   domain = "standardopaque"（真实是 "StandardOpaque"）
+//                                                    UnknownMaterialDomain   → 橙棋盘格
+//   #6 缺纹理       domain = "UnlitTexture"（该领域 base_color
+//                   binding_required=true），但配方不给任何纹理资源
+//                                                    MissingTextureResource   → 青棋盘格
+//   #7 缺顶点法线   domain = "StandardOpaque"，几何顶点只有 Position+TexCoord（**没有 Normal**）
+//                                                    MissingVertexNormal      → 黄棋盘格
+//   #8 缺纹理UV     domain = "StandardOpaque"，几何顶点只有 Position+Normal（**没有 TexCoord**）
+//                                                    MissingTextureUV         → 蓝棋盘格
 //
 // #7/#8 的语义（用户 2026-10-24 两次拍板，后者覆盖前者）：
 //   初版口径是「材质要法线光照、顶点没 NTB ⇒ 三角形平面渲染，这是引擎支持的**正常光照
@@ -25,7 +30,7 @@
 //   法线数据坏了这件事就被完全掩掉了；缺 UV 则按垃圾 UV 采样，表现为随机花纹，比没贴图
 //   更难查。**两类都必须肉眼一眼可见** ⇒ 一律回退错误棋盘格，只用颜色区分种类。
 //
-//   这两类与 #1~#6 的区别：**材质定义与配方都合法**，错在**几何顶点格式与材质需求对不上**
+//   这两类与 #1~#6 的区别：**领域契约与配方都合法**，错在**几何顶点格式与材质需求对不上**
 //   （网格做错了 / 顶点格式选错了），数据层拿不到 `geometry_vertex_format`，所以判在
 //   ECS 渲染层（`RenderPrimitiveCollectSystem::ApplyGeometryErrorFallback`），判据本身是
 //   `MaterialRecipe.h::ClassifyMaterialGeometryError`（纯函数，可被契约测试覆盖）。
@@ -34,29 +39,31 @@
 //   ② 调用方没提供几何顶点格式的路径（离线/测试）兜底。
 //
 // 回退机制与本表的定义中枢见 `inc/hgl/mtl/MaterialRecipe.h`：
-//   · `kFallbackMaterialRules`      —— 错误种类 → 保底材质定义 ID + 标记色 + 稳定名
-//   · `kMarkerlessFallbackMaterialDefinitionID` —— 标记色行拿不到时的零依赖降级
+//   · `kFallbackMaterialRules`      —— 错误种类 → 保底**领域** + 标记色 + 稳定名
+//   · `kMarkerlessFallbackMaterialDomain` —— 标记色行拿不到时的零依赖降级领域
 // 运行期把标记色挂到配方上的唯一入口是
-// `RenderPrimitiveCollectSystem::AttachFallbackMarkerColor`（走与 builtin/pure_color
+// `RenderPrimitiveCollectSystem::AttachFallbackMarkerColor`（走与保底纯色配方
 // 完全相同的 `EmissiveSurface.color` → `recipe.material_ssbo_binding` 路径）。
 //
 // 期望日志（每个错误实体一条）：
-//   [MaterialFallback] 无材质来源（空 ID）: "" => 回退错误材质 builtin/error_checkerboard_3d
-//                      （棋盘格；错误种类 missing_material_source，颜色=(1.00,0.00,1.00,1.00)）
-//   [MaterialFallback] 材质定义 ID 无法解析: "NotExist/Material" => 回退错误材质 ...
-//                      （棋盘格；错误种类 unknown_material_definition，颜色=(1.00,0.50,0.00,1.00)）
-//   [MaterialFallback] 材质 "unlit_texture" 声明为 required 的纹理缺少实际资源 => ...
+//   [MaterialFallback] 未声明材质领域（domain 缺失）: "EF.UnknownDomain" => 回退错误材质
+//                      ErrorChecker3D（领域；错误种类 missing_material_source，
+//                      颜色=(1.00,0.00,1.00,1.00)）
+//   [MaterialFallback] 材质领域无契约（domain 非法）: "EF.UnknownDomain" => 回退错误材质
+//                      ErrorChecker3D（领域；错误种类 unknown_material_domain，
+//                      颜色=(1.00,0.50,0.00,1.00)）
+//   [MaterialFallback] 材质 "UnlitTexture" 声明为 required 的纹理缺少实际资源 => ...
 //                      （棋盘格；错误种类 missing_texture_resource，颜色=(0.00,1.00,1.00,1.00)）
-//   [MaterialFallback] 材质 "lit" 与几何顶点格式不匹配（错误种类 missing_vertex_normal）
+//   [MaterialFallback] 材质 "StandardOpaque" 与几何顶点格式不匹配（错误种类 missing_vertex_normal）
 //                      => 回退错误材质 ... （棋盘格，颜色=(1.00,1.00,0.00,1.00)）
-//   [MaterialFallback] 材质 "lit" 与几何顶点格式不匹配（错误种类 missing_texture_uv）
+//   [MaterialFallback] 材质 "StandardOpaque" 与几何顶点格式不匹配（错误种类 missing_texture_uv）
 //                      => 回退错误材质 ... （棋盘格，颜色=(0.20,0.20,1.00,1.00)）
 //
 // 环境变量：
 //   EF_FRAMES=N   跑 N 帧后退出（CI / 抓日志用）
 //
 // 注意：必须从仓库根目录启动（否则 ShaderLibrary 定位失败，材质库为空 ⇒ 所有材质
-// 都落到 UnknownMaterialDefinition，连对照实体也会变橙）。
+// 都落到 UnknownMaterialDomain，连对照实体也会变橙）。
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -65,7 +72,8 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialDomain.h>
+#include<hgl/mtl/PipelineConfig.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
@@ -98,12 +106,20 @@ namespace
     static_assert(kCaseColumns > 0 && kCaseRows > 0, "错误材质示例必须是网格布局");
     static_assert(kCaseColumns * kCaseRows == kCaseCount, "列 × 行必须等于示例数量");
 
+    /// 领域名解析失败时写入的越界枚举值：引擎按下标取契约必定失败 ⇒ UnknownMaterialDomain。
+    constexpr graph::mtl::MaterialDomain kUnresolvableMaterialDomain =
+        static_cast<graph::mtl::MaterialDomain>(255);
+
     /// 每个演示例子的说明（只用于日志对照表）。
     struct ErrorCaseDesc
     {
         const char             *entity_name;
         const char             *recipe_name;
-        const char             *mtl_def_id;         ///< nullptr = 不设 asset 配方（无材质来源）
+        /// 领域名三态：
+        ///   nullptr      —— 不设 asset 配方（无材质来源）；
+        ///   ""           —— 配方在，但**不声明领域**（Custom ⇒ MissingMaterialSource）；
+        ///   其它字符串    —— 按名字解析；解析失败 ⇒ 非法领域值（UnknownMaterialDomain）。
+        const char             *domain_name;
         const char             *expected_kind;
         const char             *expected_color;
         const char             *why;
@@ -114,14 +130,14 @@ namespace
 
     constexpr ErrorCaseDesc kErrorCases[kCaseCount] =
     {
-        { "00_Control",     "EF.Control",  "builtin/checkerboard_3d",
+        { "00_Control",     "EF.Control",  "Checker3D",
           "None",                     "灰度(0.00/0.35)",
-          "对照组：正常引用零依赖棋盘格（不读标记色）",
+          "对照组：正常声明零依赖棋盘格领域（不读标记色）",
           false, false, false },
 
-        { "01_EmptyID",     "EF.EmptyID",  "",
+        { "01_EmptyDomain", "EF.EmptyDomain",  "",
           "MissingMaterialSource",    "洋红(1.00,0.00,1.00)",
-          "配方里 mtl_def_id 留空 ⇒ 无材质来源",
+          "配方里不声明领域（domain 留空）⇒ 无材质来源",
           false, false, false },
 
         { "02_NoSource",    "EF.NoSource", nullptr,
@@ -129,38 +145,38 @@ namespace
           "asset 的 PrimitiveVariant 为空 ⇒ 数据层与 asset 都没有配方",
           false, false, false },
 
-        { "03_UnknownID",   "EF.UnknownID", "NotExist/Material",
-          "UnknownMaterialDefinition", "橙(1.00,0.50,0.00)",
-          "材质定义 ID 在材质库里不存在",
+        { "03_UnknownDomain", "EF.UnknownDomain", "NotExistDomain",
+          "UnknownMaterialDomain",    "橙(1.00,0.50,0.00)",
+          "领域名在契约表里不存在",
           false, false, false },
 
-        { "04_TypoID",      "EF.TypoID",   "builtin/checkerbord_3d",
-          "UnknownMaterialDefinition", "橙(1.00,0.50,0.00)",
-          "builtin ID 拼写错（少一个 'a'）—— 最容易犯的错",
+        { "04_TypoDomain",  "EF.TypoDomain",   "StandradOpaque",
+          "UnknownMaterialDomain",    "橙(1.00,0.50,0.00)",
+          "领域名拼写错（少一个 'd'）—— 最容易犯的错",
           false, false, false },
 
-        { "05_CaseMismatch", "EF.CaseMismatch", "Lit",
-          "UnknownMaterialDefinition", "橙(1.00,0.50,0.00)",
-          "大小写不符：真实定义是 \"lit\"（ID 区分大小写）",
+        { "05_CaseMismatch", "EF.CaseMismatch", "standardopaque",
+          "UnknownMaterialDomain",    "橙(1.00,0.50,0.00)",
+          "大小写不符：真实领域名是 \"StandardOpaque\"（领域名区分大小写）",
           false, false, false },
 
-        { "06_MissingTexture", "EF.MissingTexture", "unlit_texture",
+        { "06_MissingTexture", "EF.MissingTexture", "UnlitTexture",
           "MissingTextureResource",   "青(0.00,1.00,1.00)",
-          "材质定义声明 base_color required=true，但配方一个纹理资源都没给",
+          "领域契约声明 base_color binding_required=true，但配方一个纹理资源都没给",
           false, false, false },
 
-        { "07_NoVertexNormal", "EF.NoVertexNormal", "lit",
+        { "07_NoVertexNormal", "EF.NoVertexNormal", "StandardOpaque",
           "MissingVertexNormal",      "黄(1.00,1.00,0.00)",
           "几何只有 Position+TexCoord（无 Normal）⇒ 法线数据坏了，不能伪装成平面着色",
           true,  false, true },
 
-        { "08_NoTexCoord", "EF.NoTexCoord", "lit",
+        { "08_NoTexCoord", "EF.NoTexCoord", "StandardOpaque",
           "MissingTextureUV",         "蓝(0.20,0.20,1.00)",
           "几何只有 Position+Normal（无 TexCoord）⇒ 贴图会按垃圾 UV 采样",
           false, true,  true },
     };
 
-    /// 常规球体：Position + TexCoord + Normal（`UnlitTexture` 要 UV0，`Lit` 要 Normal）。
+    /// 常规球体：Position + TexCoord + Normal（`UnlitTexture` 要 UV0，`StandardOpaque` 要 Normal）。
     GeometryVertexFormat CreatePositionTexCoordNormalGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -171,7 +187,7 @@ namespace
         return gvf;
     }
 
-    /// 「顶点没有法线数据」演示专用：只有 Position + TexCoord（Lit 还要 UV0）。
+    /// 「顶点没有法线数据」演示专用：只有 Position + TexCoord（StandardOpaque 还要 UV0）。
     GeometryVertexFormat CreatePositionTexCoordGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -181,7 +197,7 @@ namespace
         return gvf;
     }
 
-    /// 「顶点没有 UV」演示专用：只有 Position + Normal（Lit 要 Normal，缺 TexCoord）。
+    /// 「顶点没有 UV」演示专用：只有 Position + Normal（StandardOpaque 要 Normal，缺 TexCoord）。
     GeometryVertexFormat CreatePositionNormalGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -211,7 +227,7 @@ private:
 
 private:
 
-    /// 「材质要法线光照但顶点没有 NTB」演示所需的 PBR 数据行（Lit 的私有数据资源）。
+    /// 「材质要法线光照但顶点没有 NTB」演示所需的 PBR 数据行（StandardOpaque 的私有数据资源）。
     bool InitMaterialDataSSBO()
     {
         auto * domain_manager = GetManager<GlobalSSBOBufferRegistry>();
@@ -285,12 +301,12 @@ private:
         return true;
     }
 
-    /// 组装第 index 个例子的配方 + asset（`mtl_def_id == nullptr` 时**不设**配方）。
+    /// 组装第 index 个例子的配方 + asset（`domain_name == nullptr` 时**不设**配方）。
     void BuildCaseAsset(const int index)
     {
         const ErrorCaseDesc & desc = kErrorCases[index];
 
-        if (!desc.mtl_def_id)
+        if (!desc.domain_name)
         {
             // 无材质来源：变体清单为空 ⇒ GeometryData 的 asset 默认配方为 nullptr，
             // 数据层也没有覆盖 ⇒ 分类为 MissingMaterialSource。
@@ -301,19 +317,31 @@ private:
         graph::mtl::MaterialRecipe & recipe = recipes[index];
 
         recipe.recipe_name = desc.recipe_name;
-        recipe.mtl_def_id  = desc.mtl_def_id;
         recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
 
-        // Lit 的材质私有数据（PBRSurface）走材质数据行 —— 与其它 Lit 示例同一条路径。
-        // 注意：这里**故意不设任何纹理**（Lit 的 6 张纹理全是 required=false）⇒
+        // #01：配方存在但不声明领域 ⇒ 无契约 ⇒ MissingMaterialSource。
+        // #03~#05：领域名解析失败时故意写入**越界枚举值**，等价于「引用了不存在的领域」，
+        //           引擎按下标取契约必定失败 ⇒ UnknownMaterialDomain。
+        if (desc.domain_name && desc.domain_name[0])
+        {
+            graph::mtl::MaterialDomain domain = graph::mtl::MaterialDomain::Custom;
+
+            if (!graph::mtl::ParseMaterialDomain(desc.domain_name, domain))
+                domain = kUnresolvableMaterialDomain;
+
+            recipe.domain = domain;
+        }
+
+        // StandardOpaque 的材质私有数据（PBRSurface）走材质数据行 —— 与其它 PBR 示例同一条路径。
+        // 注意：这里**故意不设任何纹理**（该领域 6 张纹理全是 binding_required=false）⇒
         // 不触发 MissingTextureResource 判定；#07/#08 要验证的是**几何侧**错配，
         // 所以配方本身必须完全合法。
         if (desc.use_pbr_surface_row)
             recipe.material_ssbo_binding =
                 material_data_ssbo_accessor.GetGlobalSSBOBinding();
 
-        // #06：故意**不**给 base_color 纹理资源 —— UnlitTexture 声明了
-        // `required = true`，缺资源 ⇒ 数据层分类为 MissingTextureResource ⇒ 青棋盘格。
+        // #06：故意**不**给 base_color 纹理资源 —— UnlitTexture 契约里该槽声明为
+        // `binding_required = true`，缺资源 ⇒ 数据层分类为 MissingTextureResource ⇒ 青棋盘格。
         assets[index] = PrimitiveAsset(geoms[index], &recipe, PrimitiveType::Triangles);
     }
 
@@ -402,10 +430,11 @@ private:
         {
             const ErrorCaseDesc & desc = kErrorCases[i];
 
-            GLogInfo(u8"[MaterialErrorFallback]   #%d %-16s mtl_def_id=%-28s 期望种类=%-26s 期望颜色=%s  /* %s */",
+            GLogInfo(u8"[MaterialErrorFallback]   #%d %-16s domain=%-20s 期望种类=%-24s 期望颜色=%s  /* %s */",
                      i,
                      desc.entity_name,
-                     desc.mtl_def_id ? desc.mtl_def_id : "<无 asset 配方>",
+                     desc.domain_name ? (desc.domain_name[0] ? desc.domain_name : "<未声明领域>")
+                                      : "<无 asset 配方>",
                      desc.expected_kind,
                      desc.expected_color,
                      desc.why);

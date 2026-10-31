@@ -422,11 +422,17 @@ namespace hgl::ecs
         }
 
         graph::mtl::MaterialRecipe recipe{};
-        // SDF 与原始位图走不同解码路径，按字体源开关选择对应材质定义，
-        // 修正原"原始位图也走 SDF 解码路径"的错配。
-        recipe.mtl_def_id = font_source->IsSDFEnabled()
-            ? "builtin/text_gpu"           // schema-3 file: SDF distance-field decode
-            : "builtin/text_gpu_bitmap";   // schema-3 file: raw bitmap sampling
+        // SDF 与原始位图走不同解码路径：**领域相同（Text2D）**，差别只在采样器预设与
+        // 编译宏 —— 即「同一领域的两种表面形态」，由配方覆盖项表达（整表替换契约预设）。
+        recipe.domain = graph::mtl::MaterialDomain::Text2D;
+        if (!font_source->IsSDFEnabled())
+        {
+            // 位图形态：最近邻采样、无 SDF 解码宏。
+            recipe.has_sampler_names = true;
+            recipe.sampler_names = { "Nearest" };
+            recipe.has_compile_defines = true;
+            recipe.compile_defines.clear();
+        }
         recipe.render_state_overrides.pipeline_config = graph::mtl::MakeSolid2DConfig();
 
         material_manager = graphics_context->GetMaterialManager();
@@ -483,13 +489,14 @@ namespace hgl::ecs
         resources.bindless_atlas_handle = atlas_handle;
 
         graph::mtl::MaterialDefinition text_definition{};
-        if (!graph::mtl::TryGetMaterialDefinitionByID(
-                recipe.mtl_def_id,
+        if (!graph::mtl::ResolveMaterialDefinitionForRecipe(
+                recipe,
                 text_definition))
         {
             GLogError(
-                "[TextRenderPipeline] Text material definition lookup failed: %s",
-                recipe.mtl_def_id.c_str());
+                "[TextRenderPipeline] Text material definition lookup failed: recipe=%s domain=%s",
+                recipe.recipe_name.c_str(),
+                graph::mtl::GetMaterialDomainName(recipe.domain));
             return nullptr;
         }
 

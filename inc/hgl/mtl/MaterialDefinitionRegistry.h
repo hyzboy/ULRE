@@ -38,12 +38,10 @@ struct MaterialCoverageContract;
 
 namespace hgl::graph::mtl{
 
-class MaterialDefinitionFileRegistry;
-
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
 // 描述"构建此帧 ShaderProgram 时的额外上下文"。包含 recipe（Layer 2）加上
 // 构建期上下文（几何格式、Program Purpose、天光策略等）。
-// recipe.mtl_def_id 是材质标识的唯一来源；此结构不再持有独立的 mtl_def_id 字段。
+// 材质标识的唯一来源是 recipe（`domain` + `recipe_name`）；此结构不另持标识字段。
 // ─────────────────────────────────────────────────────────────────────────────
 struct MaterialDefinitionBuildRequest
 {
@@ -125,20 +123,14 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
     return ResolveMaterialVertexSemanticFormat(gvf, VertexSemantic::Position, fallback_format);
 }
 
-// Material definition registry. Every definition is loaded from a schema-4
-// TOML file; there is no native material-definition fallback.
-bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
-MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
-
 /**
- * 由**配方**合成等效材质定义（阶段三：配方直连领域，definition 文件层退场）。
+ * 由**配方**合成等效材质定义（配方直连领域；definition 文件层已删除）。
  *
  * 为什么还需要「定义」这个结构体：下游（顶点 ABI 求解、GLSL 拼装、pass profile
  * 选择、纹理引用布局）消费的是一份**已解析的完整契约**，它描述的正是「这个配方
- * 会生成怎样的管线」。此前那份结构体从 `.definition.toml` 文件读出来，现在由
- * 领域契约 + 配方当场算出——信息量相同，但不再有「配方 + 定义」两处真源。
+ * 会生成怎样的管线」。这份结构体现由领域契约 + 配方当场算出，不存在第二处真源。
  *
- * 合成规则**逐条对应**原 `MaterialDefinitionFile.cpp::ParseDefinition` 的兜底：
+ * 合成规则：
  *   id / name          = 领域名（日志与门禁的稳定字符串索引）
  *   provider_policy    = contract->require_allow_derived ? AllowDerived : GeometryOnly
  *   vertex_node_config = contract 规范变换（配方 [transform] 仍优先，由 ABI 求解侧合并）
@@ -147,20 +139,19 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
  *   normal_mode        = contract 规范法线模式
  *   material_data      = contract 规范 SSBO 类型
  *   texture slots      = contract 白名单全集（槽的 sampler/required/channels 由契约给出）
- *   samplers / defines = contract 惯例预设
+ *   samplers / defines = 配方 `sampler_names` / `compile_defines` **整表替换**契约预设，
+ *                        未声明则用 contract 惯例预设
  *   render_state       = contract 默认状态（配方覆盖项由 NormalizeRecipe 落定）
  *   模块名             = contract 规范模块；`surface_module_name` 取配方声明（Sky 的
  *                        surface_sky_cube 这类「同领域多表面形态」的唯一出口）
  *
- * @return false = 配方未声明领域（`Custom`）或领域无契约 —— 调用方应回落到
- *                `TryGetMaterialDefinitionByID`（历史材质的过渡路径）。
+ * @return false = 配方未声明领域（`Custom`）或领域无契约。
  */
 bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
                                             MaterialDefinition &out_definition) noexcept;
 
 /**
- * 取配方对应的材质定义：领域配方由 `SynthesizeMaterialDefinitionFromRecipe`
- * 合成，`Custom` 配方查 definition 文件（过渡期）。
+ * 取配方对应的材质定义。
  *
  * **所有**「按配方找定义」的调用点都应走本函数，不要各自判断领域。
  */
@@ -168,30 +159,14 @@ bool ResolveMaterialDefinitionForRecipe(const MaterialRecipe &recipe,
                                        MaterialDefinition &out_definition) noexcept;
 
 /**
- * 回退（错误）材质的**定义 ID**：由 `kFallbackMaterialRules`（MaterialRecipe.h）唯一
- * 决定 —— 数据驱动表，不是散落的字面量。
- *   无参重载            = 非错误回退（`MaterialErrorKind::None`）⇒ 纯色 `builtin/pure_color`；
- *   错误种类            ⇒ 棋盘格 `builtin/checkerboard_3d`（2026-10-12 用户拍板：
- *                         材质配置写错只 LOG 报错，渲染走错误材质路径 = 棋盘格）。
- * 回退材质的硬约束（门 case `S.material-fallback-definitions-exist` 自动遍历本表校验）：
- * 定义必须已注册、顶点需求只依赖 Position、`provider_policy = GeometryOnly`
- * ⇒ 任意几何都画得出来。
- */
-inline const char *GetFallbackMaterialDefinitionID(const MaterialErrorKind kind)
-{
-    return GetFallbackMaterialRule(kind).definition_id;
-}
-
-inline const char *GetFallbackMaterialDefinitionID()
-{
-    return GetFallbackMaterialDefinitionID(MaterialErrorKind::None);
-}
-
-/**
  * 合成**回退（错误）材质**配方（A7b）：
- *   定义 ID 与根颜色都取自 `kFallbackMaterialRules`（表驱动），随后走既有的
- *   `NormalizeRecipe`（同一套定义默认值与渲染状态规范化）—— 因此回退配方与普通
+ *   领域与根颜色都取自 `kFallbackMaterialRules`（表驱动），随后走既有的
+ *   `NormalizeRecipe`（同一套契约默认值与渲染状态规范化）—— 因此回退配方与普通
  *   配方在下游**没有任何分支差异**，不需要兼容层。
+ *
+ * 回退材质的硬约束（门 case `S.material-fallback-domains-exist` 自动遍历规则表校验）：
+ * 领域必须有契约、顶点需求只依赖 Position、`provider_policy = GeometryOnly`
+ * ⇒ 任意几何都画得出来。
  *
  * @param kind `MaterialErrorKind::None` 时返回 false（调用方按“非材质错误”处理）。
  */
@@ -200,8 +175,9 @@ bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
 
 /**
  * Normalize a MaterialRecipe in-place:
- *   1. Fills mtl_def_id from the matched MaterialDefinition if it is unset.
- *   2. Applies definition defaults and resolved render state to the recipe.
+ *   1. 取配方 `domain` 的领域契约；无契约（`Custom` / 非法值）⇒ 记错误种类、
+ *      整份改写成保底领域配方（`BuildFallbackMaterialRecipe`）。
+ *   2. Applies contract defaults and resolved render state to the recipe.
  *
  * This is the canonical pre-processing step that must be called before the recipe is stored
  * in a primitive render path or passed to RenderSceneUBOSystem.  It is idempotent.

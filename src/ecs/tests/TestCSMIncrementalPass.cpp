@@ -76,6 +76,44 @@ static std::string ReadRepoTextFile(const char *rel)
     return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 }
 
+// ─────────────────────────────────────────────────────────────
+// GLSL 聚合入口的 include 跟随
+//
+// ShaderLibrary 下的 `#include "…"` 一律以 **ShaderLibrary 根**为基准（物理固定，
+// 由 shader 编译器按同一口径解析）。所以「文件里有这一条」的判据不能只看聚合入口
+// 那一份文本：把内容拆进子文件是合法重构，而锚点本意是"整个聚合体里有这一条"。
+// 直查未命中时沿 include 递归找 depth 层，命中即算存在（`forbidden` 不走这里）。
+// ─────────────────────────────────────────────────────────────
+static bool SourceOrIncludesContain(const std::string &text, const char *needle, int depth)
+{
+    if (text.find(needle) != std::string::npos)
+        return true;
+
+    if (depth <= 0)
+        return false;
+
+    static const std::string kMarker = "#include \"";
+    static const std::string kRoot   = "ShaderLibrary/";
+
+    for (size_t pos = text.find(kMarker); pos != std::string::npos;
+         pos = text.find(kMarker, pos + kMarker.size()))
+    {
+        const size_t begin = pos + kMarker.size();
+        const size_t end   = text.find('"', begin);
+
+        if (end == std::string::npos)
+            break;
+
+        const std::string child =
+            ReadRepoTextFile((kRoot + text.substr(begin, end - begin)).c_str());
+
+        if (!child.empty() && SourceOrIncludesContain(child, needle, depth - 1))
+            return true;
+    }
+
+    return false;
+}
+
 static std::string TrimAsciiBlanks(const std::string &s)
 {
     size_t b = 0;
@@ -1908,7 +1946,14 @@ int main(int argc, char** argv)
                     src.Strcat(chunk, static_cast<int>(got));
             }
 
-            const bool hit = src.Contains(k.needle);
+            // ShaderLibrary 的 GLSL 聚合入口会 `#include` 子文件：锚点按「整体」判，
+            // 见 SourceOrIncludesContain 的说明。`forbidden` 只查本文件（禁复活不得放宽）。
+            const bool hit =
+                k.forbidden
+                    ? src.Contains(k.needle)
+                    : SourceOrIncludesContain(
+                          std::string(src.c_str(), static_cast<size_t>(src.Length())),
+                          k.needle, 2);
             if (k.forbidden ? hit : !hit)
             {
                 GLogError(k.forbidden
@@ -2055,11 +2100,11 @@ int main(int argc, char** argv)
               "材质侧的 6 项采样器类型枚举已于 2026-10-11 S3b 收敛掉：类型与名字表唯一真源 = "
               "inc/hgl/common/TextureSamplerTypeDef.h 的 SamplerType（两套枚举数值不同，会让哈希与名字映射各说一套）",
               true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "static_cast<GLSLSamplerType>",
               "按索引序把名字映射成枚举值的解析器已删（枚举一改即静默错位）：改走 ParseSamplerType（大小写不敏感、未知名 ⇒ Error）",
               true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParsePolicy(", "MaterialVertexProviderPolicy 的名字表已归位到枚举定义处（MaterialRecipe.h，2026-10-11 S3b-2）："
               "解析文件里不得再有本地单向解析器", true },
             { "GlslModuleFile.cpp", OS_TEXT("src/ShaderMaterialData/GlslModuleFile.cpp"),
@@ -2072,7 +2117,7 @@ int main(int argc, char** argv)
               "double_sided 全链已删，不得复活", true },
             { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
               "double_sided", "同上（S4b/D2）：overrides / 取用口 / 哈希输入里都不得再有它", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "double_sided", "同上（S4b/D2）：render_state 段不再解析该键（写入 ⇒ 未知键报错）", true },
             { "VKRenderPass.cpp", OS_TEXT("src/Vulkan/VKRenderPass.cpp"),
               "double_sided", "同上（S4b/D2）：管线创建侧不再有该值的 cull NONE 覆盖分支", true },
@@ -2081,7 +2126,7 @@ int main(int argc, char** argv)
               "src/Vulkan/VKString.{h,cpp}（Vk<->文本注册表，9 个枚举 + DynamicState 大表）已于 2026-10-11 整删"
               "（全仓 0 消费者）：Vk 枚举文本名的唯一真源 = inc/hgl/mtl/VkEnumText.h，不得再引入第二套注册表",
               true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "LessOrEqual",
               "Vk 枚举文本名单一真源 = inc/hgl/mtl/VkEnumText.h（S3a 收敛，2026-10-11）："
               "解析文件里不得再出现枚举名字面量，也不得再手写 name<->value 表",
@@ -2090,8 +2135,8 @@ int main(int argc, char** argv)
               "ClampToEdge",
               "同上：contract/sampler.toml 的 filter/mipmap_mode/address_mode/compare_op 一律走 VkEnumText.h",
               true },
-            { "MaterialDefinitionFile.cpp",
-              OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp",
+              OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "key != \"swizzle\"",
               "材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）已于 2026-10-11 S2 整删："
               "双端空转（0 材质授权 + 0 消费者），运行期采样器真源 = ShaderLibrary/contract/sampler.toml 预设表；"
@@ -4684,10 +4729,10 @@ int main(int argc, char** argv)
               "inline constexpr uint32_t kNoMaterialRow = 0;",
               "材质行 0 哨兵的具名权威丢失" },
             // ⑩ B1/S3b-3（2026-10-14）：顶点节点枚举的名字表归位到枚举定义旁
-            //    （原先 6 个枚举全仓无 Get*Name，名字只活在 MaterialDefinitionFile.cpp 的本地单向表里）。
+            //    （原先 6 个枚举全仓无 Get*Name，名字只活在已删除的材质定义解析器本地单向表里）。
             { "VertexShaderNodeConfig.h", OS_TEXT("inc/hgl/mtl/VertexShaderNodeConfig.h"),
               "inline const char *GetVertexInputModeName(const VertexInputMode mode) noexcept",
-              "顶点输入模式的名字表未归位（应随枚举定义同址，MaterialDefinitionFile.cpp 不得再有本地表）" },
+              "顶点输入模式的名字表未归位（应随枚举定义同址，解析文件不得再有本地表）" },
             { "VertexShaderNodeConfig.h", OS_TEXT("inc/hgl/mtl/VertexShaderNodeConfig.h"),
               "inline const char *GetPositionMappingModeName(const PositionMappingMode mode) noexcept",
               "位置映射模式的名字表未归位" },
@@ -4700,24 +4745,24 @@ int main(int argc, char** argv)
             { "VertexShaderNodeConfig.h", OS_TEXT("inc/hgl/mtl/VertexShaderNodeConfig.h"),
               "inline const char *GetProjectionModeName(const ProjectionMode mode) noexcept",
               "投影模式的名字表未归位" },
-            { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
-              "inline const char *GetMaterialVertexNormalModeName(", 
-              "顶点法线模式的名字表未归位（S3b-3 与 S3b-2 同址口径）" },
+            { "MaterialDomain.h", OS_TEXT("inc/hgl/mtl/MaterialDomain.h"),
+              "inline const char *GetMaterialVertexNormalModeName(",
+              "顶点法线模式的名字表未归位（S3b-3 与 S3b-2 同址口径；阶段二/三随领域枚举归位）" },
             // 禁复活：名字↔值不得再出现第二处（本地单向解析器）
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseVertexInput(", "本地单向顶点输入解析器复活（名字表已归位到 VertexShaderNodeConfig.h）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseMapping(", "本地单向位置映射解析器复活（应走 ParsePositionMappingMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseOrientation(", "本地单向朝向解析器复活（应走 ParseOrientationMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseScale(", "本地单向缩放解析器复活（应走 ParseScaleMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseProjection(", "本地单向投影解析器复活（应走 ParseProjectionMode）", true },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseVertexNormalMode(", "本地单向法线模式解析器复活（应走 ParseMaterialVertexNormalMode）", true },
             // ⑪ 材质错误口径（2026-10-14 用户）：材质未知/写错 ⇒ **直接报错**，运行时走错误材质 = 棋盘格。
-            //    加载期（单份定义写错）与运行期（配方引用的定义 ID 无法解析）两条路径都要出声；
+            //    加载期（单份配方写错）与运行期（配方声明的领域不可解析）两条路径都要出声；
             //    后者曾长期静默（mtl 侧换成保底材质 + ECS 侧当"构建成功"）。
             { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionRegistry.cpp"),
               "u8\"[MaterialFallback] %s: \\\"%s\\\" => 回退错误材质 %s\"",
@@ -4728,16 +4773,16 @@ int main(int argc, char** argv)
             // ⑫ B2（2026-10-14）：材质定义解析失败的诊断必须带**全路径**（render_state.pipeline.cull_mode）。
             //    机制 = 表路径栈 + RAII 作用域（ParseTableScope）；原「粘性单值 SetParseTable」只被键校验器
             //    调用 ⇒ 值解析失败时路径为空、或继承陈旧表名（指错位置）⇒ 禁复活。
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
-              "ParseTableScope render_state_table(\"render_state\");",
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
+              "ParseTableScope scope(error, \"render_state\");",
               "解析失败的诊断表路径栈丢失（值解析失败会报不出 render_state 层）" },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
-              "ParseTableScope pipeline_table(\"pipeline\");",
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
+              "ParseTableScope scope(error, \"render_state.pipeline\");",
               "pipeline 子层未压栈（cull_mode 一类失败会丢掉 render_state.pipeline 前缀）" },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
-              "ParseTableScope texture_item_table(\"textures\", texture_index);",
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
+              "ParseTableScope scope(error, \"textures\");",
               "数组元素的索引路径丢失（纹理声明出错应报 resources.textures[i].<key>）" },
-            { "MaterialDefinitionFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "SetParseTable(", "粘性单值表名 setter 复活（路径会变成陈旧值/空 ⇒ 指错位置）", true },
         };
 
@@ -4778,7 +4823,7 @@ int main(int argc, char** argv)
               "kFallbackMaterialRules",
               "回退（错误）材质规则表缺失（定义 ID / 根颜色退化成散落字面量）" },
             { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
-              "UnknownMaterialDefinition",
+              "UnknownMaterialDomain",
               "回退规则表没有错误种类维（只剩单一颜色，无法按颜色标注错误种类）" },
             { "MaterialRecipe.h", OS_TEXT("inc/hgl/mtl/MaterialRecipe.h"),
               "ClassifyMaterialErrorKind",
@@ -4848,8 +4893,8 @@ int main(int argc, char** argv)
               "BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe",
               "回退配方合成 API 缺失（回退材质无权威出处）" },
             { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionRegistry.cpp"),
-              "MaterialErrorKind::UnknownMaterialDefinition",
-              "定义 ID 不可解析不再被分类（该类错误丢失种类与颜色）" },
+              "MaterialErrorKind::UnknownMaterialDomain",
+              "领域不可解析不再被分类（该类错误丢失种类与颜色）" },
 
             // ⑥ 禁复活：无材质来源又变回“跳过 + 告警”，或材质来源又成收集判据
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
@@ -5248,7 +5293,7 @@ int main(int argc, char** argv)
             { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
               "addr_geometry_aabb",
               "全局地址表没有 AABB 池基址（shader 无法寻址 AABB 表）" },
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
+            { "global_addresses.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ssbo/global_addresses.glsl"),
               "addr_geometry_aabb",
               "GLSL 侧 GlobalAddressesRef 缺字段（C++ 加了 GLSL 漏加 ⇒ 解引用错地址）" },
 
@@ -5507,7 +5552,7 @@ int main(int argc, char** argv)
               "ENUM_CLASS_RANGE(MeshDrawParams, MaterialData)",
               "GlobalSSBOType 未登记 MaterialData（设备级组件行类型缺失）" },
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
-              "struct MaterialDataRow", "材质数据组件行结构缺失" },
+              "struct HGL_SSBO_ROW MaterialDataRow", "材质数据组件行结构缺失" },
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
               "kMaterialDataFlagAuthoredDataResource", "组件行的「已授权数据行」位缺失" },
 
@@ -6450,15 +6495,15 @@ int main(int argc, char** argv)
               "uint64_t addr_lights = 0;",
               "T6b：光源行表的地址字段（世界私有；行 0 = 主方向光）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
+            { "world_addresses.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ssbo/world_addresses.glsl"),
               "uint64_t addr_lights;",
               "T6b：GLSL 侧地址表镜像（漏加 = shader 解引用错地址 / 读不到光源）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
+            { "light_row.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ssbo/light_row.glsl"),
               "struct LightRowData",
               "T6b：光源行的 GLSL 镜像（门 W.light-row-struct-parity 逐字段对拍的另一端）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
+            { "scene_ubo_bindings.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo_bindings.glsl"),
               "#define light_rows LightRowBufferRef(world_addresses.addr_lights).lights",
               "T6b：光源行的取址宏（行数组本体；下标 = 行号）" },
 
@@ -6790,8 +6835,8 @@ int main(int argc, char** argv)
               "        uint64_t addr_ambient_env = 0;",
               "T1：世界表缺 addr_ambient_env 字段（块无地址 ⇒ 消费者拿不到）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
-              "    uint64_t addr_ambient_env;          // 环境光 provider 参数块（世界私有；单份 ⇒ 全帧槽同址；T1 归位）",
+            { "world_addresses.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ssbo/world_addresses.glsl"),
+              "    uint64_t addr_ambient_env;",
               "T1：GLSL 世界表镜像缺 addr_ambient_env（结构漂移 = 其后字段全部错位读）" },
 
             { "ShaderResourceSchemaRegressionGate.cpp", OS_TEXT("src/Tools/ShaderTooling/ShaderResourceSchemaRegressionGate.cpp"),

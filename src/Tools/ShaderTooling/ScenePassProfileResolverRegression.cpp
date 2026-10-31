@@ -4,7 +4,6 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/ShaderCompilerAPI.h>
-#include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
@@ -353,69 +352,32 @@ namespace
         return true;
     }
 
-    bool RunMaterialSchemaRegression()
-    {
-        const AnsiString header =
-            "id = \"identity_fixture\"\nname = \"Identity\"\n"
-            "provider_policy = \"GeometryOnly\"\n[vertex]\nrequirements = [\"Position\"]\n";
-        const char *invalid_fragments[] = {
-            "material_source_module = \"module/provider/material_source/material_source_unlit.glsl\"\n",
-            "ntb_module = \"ntb/normal.glsl\"\n",
-            "surface_module_name = \"sky_cube_surface\"\nsurface_module_include = \"sky/cube.glsl\"\n",
-            "ambient_module_name = \"indirect_ibl\"\n",
-            "material_source_module_name = \"\"\n",
-            "ntb_module_name = \"\"\n",
-            "surface_module_name = \"\"\n",
-            "material_source_module_name = 42\n",
-            "ntb_module_name = true\n",
-            "surface_module_name = []\n",
-            "material_source_module_name = \"material_source_unlit\"\nmaterial_source_module_include = \"x.glsl\"\n"
-        };
-        for (const char *fragment : invalid_fragments)
-        {
-            MaterialDefinitionFileData parsed;
-            const AnsiString text =
-                AnsiString("schema = 4\n") + header + "[fragment]\n" + fragment;
-            if (!Check(ParseMaterialDefinitionFile(text.c_str(), text.Length(), parsed)
-                    != MaterialDefinitionFileParseResult::OK
-                    && !parsed.parse_error.IsEmpty()
-                    && !parsed.parse_error.key.empty(),
-                    "invalid provider fields report the key"))
-                return false;
-        }
-        const char *invalid_schemas[] = { "", "schema = 3\n", "schema = 2\n",
-            "schema = \"4\"\n", "schema = true\n" };
-        for (const char *schema : invalid_schemas)
-        {
-            MaterialDefinitionFileData parsed;
-            const AnsiString text = AnsiString(schema) + header;
-            if (!Check(ParseMaterialDefinitionFile(text.c_str(), text.Length(), parsed)
-                    != MaterialDefinitionFileParseResult::OK, "reject non-schema-4 material"))
-                return false;
-        }
-        MaterialDefinitionFileData parsed;
-        const AnsiString valid = AnsiString("schema = 4\n") + header
-            + "[fragment]\nmaterial_source_module_name = \"source_identity\"\n"
-            "ntb_module_name = \"ntb_identity\"\nsurface_module_name = \"surface_identity\"\n";
-        return Check(ParseMaterialDefinitionFile(valid.c_str(), valid.Length(), parsed)
-                == MaterialDefinitionFileParseResult::OK
-            && AnsiString(parsed.definition.material_source_module_name) == "source_identity"
-            && AnsiString(parsed.definition.ntb_module_name) == "ntb_identity"
-            && AnsiString(parsed.definition.surface_module_name) == "surface_identity",
-            "schema 4 provider names");
-    }
-
     bool RunSurfaceBindingRegression(const GlslModuleRegistry &registry)
     {
-        const char *ids[] = { "sky_cube", "sky_minimal" };
-        const char *names[] = { "surface_sky_cube", "surface_sky_minimal" };
-        for (int i = 0; i < 2; ++i)
+        // Sky 领域的表面来源只有一个出口：配方级 surface_module_name 覆盖。
+        // 不写 ⇒ 沿用 MakeSkyProfile 默认的 surface_sky_minimal（不是领域契约给的）。
+        struct SurfaceCase
         {
+            const char *surface_module_name;    // nullptr = 不覆盖
+            const char *expected_name;
+        };
+        const SurfaceCase cases[] =
+        {
+            { "surface_sky_cube",    "surface_sky_cube"    },
+            { nullptr,               "surface_sky_minimal" },
+        };
+        for (const SurfaceCase & c : cases)
+        {
+            MaterialRecipe recipe;
+            recipe.domain = MaterialDomain::Sky;
+            if (c.surface_module_name)
+                recipe.surface_module_name = c.surface_module_name;
+
             MaterialDefinition definition;
             PassProfileRequest request;
             PassProfileValidationDiagnostic diagnostic;
             ResolvedPassProfile resolved;
-            if (!Check(TryGetMaterialDefinitionByID(ids[i], definition)
+            if (!Check(SynthesizeMaterialDefinitionFromRecipe(recipe, definition)
                     && ResolveScenePassProfileRequest(
                         PassProfileID::Sky, hgl::graph::ShaderStage::Fragment,
                         MakeSkyProfile(), request, diagnostic)
@@ -425,8 +387,8 @@ namespace
                 return false;
             const auto *root =
                 resolved.request.FindModuleRoot(ShaderModuleSlotRole::SurfaceProvider);
-            const auto *source = registry.FindFileByName(names[i]);
-            if (!Check(root && source && root->module_name == names[i]
+            const auto *source = registry.FindFileByName(c.expected_name);
+            if (!Check(root && source && root->module_name == c.expected_name
                     && root->include_path == source->include_path,
                     "SkyCube override and SkyMinimal default use canonical sources"))
                 return false;
@@ -517,6 +479,5 @@ int main(int argc, char **argv)
             "surface/b.glsl"))
         return 4;
     return RunProviderIdentityRegression()
-        && RunMaterialSchemaRegression()
         && RunSurfaceBindingRegression(registry) ? 0 : 21;
 }

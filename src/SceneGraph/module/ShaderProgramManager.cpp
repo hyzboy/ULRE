@@ -23,7 +23,6 @@
 #include<hgl/mtl/ShaderProgramBuildBackend.h>
 #include<hgl/mtl/ShaderProgramManifestBackend.h>
 #include<hgl/mtl/ShaderProgramManifestKey.h>
-#include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/mtl/ScenePassProfileResolver.h>
 #include<hgl/mtl/ShaderCacheRoot.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -40,23 +39,22 @@ namespace
     bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
                                              mtl::MaterialDefinition &out_bmi)
     {
-        // 领域配方 ⇒ 定义由领域契约 + 配方当场合成，definition 文件层完全不参与。
+        // 唯一路径：领域契约 + 配方当场合成。
         if (mtl::SynthesizeMaterialDefinitionFromRecipe(request.recipe, out_bmi))
             return true;
 
-        // ── 以下为 Custom（未声明 domain）的过渡路径，随 definition 文件层一起删除 ──
-        const std::string &mtl_def_id = request.recipe.mtl_def_id;
+        // 走到这里说明配方没有可用领域（`Custom` / 非法值）。`NormalizeRecipe` 本该
+        // 在此之前就把它改写为保底领域配方；仍未改写 = 上游漏了规范化，必须出声。
+        GLogError(u8"[ShaderProgramManager] 配方无有效材质领域: recipe=%s domain=%s — 回退保底领域 %s",
+                  request.recipe.recipe_name.c_str(),
+                  mtl::GetMaterialDomainName(request.recipe.domain),
+                  mtl::GetMaterialDomainName(mtl::GetFallbackMaterialRule(mtl::MaterialErrorKind::None).domain));
 
-        if (mtl::TryGetMaterialDefinitionByID(mtl_def_id, out_bmi))
-            return true;
+        mtl::MaterialRecipe fallback_recipe;
+        if (!mtl::BuildFallbackMaterialRecipe(fallback_recipe, mtl::MaterialErrorKind::MissingMaterialSource))
+            return false;
 
-        // 显式诊断：材质 ID 配置错误不应静默消失（fallback 只是运行时安全网）
-        GLogError(u8"[ShaderProgramManager] material definition not found: recipe=%s definition=%s — falling back to %s",
-                  request.recipe.recipe_name.c_str(), mtl_def_id.c_str(),
-                  mtl::GetFallbackMaterialDefinitionID());
-
-        return mtl::TryGetMaterialDefinitionByID(
-            mtl::GetFallbackMaterialDefinitionID(), out_bmi);
+        return mtl::SynthesizeMaterialDefinitionFromRecipe(fallback_recipe, out_bmi);
     }
 
     bool ResolveRuntimePassProfileRequest(
@@ -178,7 +176,7 @@ namespace
         return true;
     }
 
-    // 进程级单例（与 GetMaterialDefinitionFileRegistry 同一模式）。
+    // 进程级单例。
     // 模式由环境变量 ULRE_SHADER_CACHE_MODE 控制：
     //   readonly —— 只读（发布形态：只接受缓存目录里已有的 SPV 产物，
     //              缓存 miss 即材质构建失败，用于验证缓存覆盖完整性）；
@@ -238,7 +236,6 @@ bool SelectCurrentScenePassProfileRequest(
 
 GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
 {
-    (void)mtl::GetMaterialDefinitionFileRegistry();
 }
 
 void ShaderProgramManager::Release()

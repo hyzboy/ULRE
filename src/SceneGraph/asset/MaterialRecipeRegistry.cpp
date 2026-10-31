@@ -41,61 +41,36 @@ namespace hgl::graph::mtl
         MaterialRecipeFileData &data,
         hgl::graph::TextureManager *texture_manager)
     {
-        // 配方自带 `domain` ⇒ 纹理槽按**领域契约**校验，Definition 不参与。
-        // 只有过渡期按字符串 ID 构造的配方（domain == Custom）才走定义分支。
+        // 配方自带 `domain` ⇒ 纹理槽按**领域契约**校验（契约是唯一真源）。
         const MaterialDomainContract *contract =
             GetMaterialDomainContract(data.recipe.domain);
 
-        MaterialDefinition definition{};
         if (!contract)
         {
-            if (!TryGetMaterialDefinitionByID(data.recipe.mtl_def_id, definition))
-            {
-                GLogError(u8"[MaterialRecipeRegistry] 配方引用了未知材质定义: recipe=%s definition=%s",
-                          data.recipe.recipe_name.c_str(),
-                          data.recipe.mtl_def_id.c_str());
-                return false;
-            }
+            GLogError(u8"[MaterialRecipeRegistry] 配方未声明有效领域: recipe=%s domain=%s",
+                      data.recipe.recipe_name.c_str(),
+                      GetMaterialDomainName(data.recipe.domain));
+            return false;
         }
 
         for (RecipeTextureBinding &binding : data.recipe.textures)
         {
             MaterialDomainTextureSlot domain_slot{};
 
-            SamplerType sampler_type = SamplerType::Sampler2D;
-            if (contract)
+            const MaterialDomainTextureSlot *slot =
+                FindMaterialDomainTextureSlot(data.recipe.domain,
+                                              binding.texture_name.c_str());
+            if (!slot)
             {
-                const MaterialDomainTextureSlot *slot =
-                    FindMaterialDomainTextureSlot(data.recipe.domain,
-                                                  binding.texture_name.c_str());
-                if (!slot)
-                {
-                    GLogError(u8"[MaterialRecipeRegistry] 配方纹理槽不在领域契约内: recipe=%s slot=%s domain=%s",
-                              data.recipe.recipe_name.c_str(),
-                              binding.texture_name.c_str(),
-                              contract->name);
-                    return false;
-                }
-
-                domain_slot  = *slot;
-                sampler_type = slot->sampler;
+                GLogError(u8"[MaterialRecipeRegistry] 配方纹理槽不在领域契约内: recipe=%s slot=%s domain=%s",
+                          data.recipe.recipe_name.c_str(),
+                          binding.texture_name.c_str(),
+                          contract->name);
+                return false;
             }
-            else
-            {
-                const int declaration_index =
-                    FindMaterialTextureDeclaration(definition, binding.texture_name);
-                if (declaration_index < 0)
-                {
-                    GLogError(u8"[MaterialRecipeRegistry] 配方纹理槽未在材质定义中声明: recipe=%s slot=%s definition=%s",
-                              data.recipe.recipe_name.c_str(),
-                              binding.texture_name.c_str(),
-                              data.recipe.mtl_def_id.c_str());
-                    return false;
-                }
 
-                sampler_type = definition.texture_declarations[
-                    static_cast<size_t>(declaration_index)].sampler_type;
-            }
+            domain_slot = *slot;
+            const SamplerType sampler_type = slot->sampler;
 
             if (binding.array_layer != 0
              && !IsMaterialTextureArraySampler(sampler_type))

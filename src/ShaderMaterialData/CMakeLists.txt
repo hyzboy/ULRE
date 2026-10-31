@@ -12,16 +12,11 @@
 # 头清单归属判据：本层有对应 .cpp，或本层源文件直接包含该头。
 
 set(SHADERMATERIALDATA_FILES
-    # ── 材质定义与注册表 ──
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDefinitionFile.h
-    MaterialDefinitionFile.cpp
+    # ── 材质配方、配方→领域合成与领域契约 ──
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDefinitionRegistry.h
     MaterialDefinitionRegistry.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipeFile.h
     MaterialRecipeFile.cpp
-    # 内嵌 builtin 材质定义（保底链的单一真源，不依赖资产目录）。
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/BuiltinMaterialDefinitions.h
-    BuiltinMaterialDefinitions.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialVertexVaryingConfig.h
     # ── GLSL code-module 描述、元数据与文件注册表（纯数据/资源闭包）──
@@ -37,7 +32,7 @@ set(SHADERMATERIALDATA_FILES
     ShaderCodeResourceManifest.cpp
     # ── 表面领域契约（Fixed-Code Domain Shaders 的单一真源）──
     # 只做「声明 → 契约校验」这一件事：零 GLSL 发射、零着色器编译，
-    # 因此发行形态也必须链接（与 MaterialDefinitionFile 同层）。
+    # 因此发行形态也必须链接（与 MaterialRecipeFile 同层）。
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDomain.h
     MaterialDomain.cpp
     # 主着色器的唯一可变输入（generated/frag_options.glsl）。它**发射 GLSL 文本**，
@@ -83,7 +78,7 @@ set(SHADERMATERIALDATA_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderComputeProgramManifest.h
     ShaderComputeProgramManifest.cpp
     # ── 管线状态与顶点模式枚举（下层/运行时强依赖，程序构建侧仅作为上层消费者）──
-    # 归属判据：MaterialRecipe.h / MaterialDefinitionFile.cpp 直接用它们，而
+    # 归属判据：MaterialRecipe.h / MaterialDomain.cpp 直接用它们，而
     # VKPipeline.h（Vulkan 层）持有 MaterialPipelineConfig 成员 —— 这些消费者都在
     # 本层或本层之下，程序构建侧只是上层的顺带使用者。
     ${ROOT_INCLUDE_PATH}/hgl/mtl/PipelineConfig.h
