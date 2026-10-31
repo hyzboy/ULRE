@@ -71,7 +71,7 @@ private:
     struct MeshEntry
     {
         Geometry* geometry = nullptr;
-        // Geometry 由 GeometryManager 唯一持有，本结构只做观察（勿在此 delete）
+        // Geometry 由 GeometryAssetRegistry 持有，本结构只做观察（勿在此 delete）
         PrimitiveAsset asset{};
     };
 
@@ -150,12 +150,6 @@ private:
         if (!geometry)
             return nullptr;
 
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!geometry_manager)
-            return nullptr;
-
-        geometry_manager->Add(geometry);
-
         auto mesh = std::make_unique<MeshEntry>();
         mesh->geometry = geometry;
         mesh->asset = PrimitiveAsset(geometry, &mesh_recipe, PrimitiveType::Triangles);
@@ -170,29 +164,23 @@ private:
     {
         using namespace inline_geometry;
 
-        // 创建并登记一个 mesh 条目：按数据源构造 GeometryCreater（VDM 池切片 /
-        // 私有独立缓冲）→ 生成几何 → CreateMeshEntry() 打包资产并注册。
-        // 本示例前 7 个几何走 VDM、后 7 个走私有缓冲（同一材质 batch 内两种数据源
+        // 创建并登记一个 mesh 条目：按数据源选择顶点池 —— VDM 池切片走共享创建器，
+        // 私有独立缓冲走注册器默认路径（每几何一套私有 VDM/缓冲）。
+        // 几何统一按 URI 取得，CreateMeshEntry() 只做资产打包。
+        // 本示例前 7 个几何走 VDM、后 5 个走私有缓冲（同一材质 batch 内两种数据源
         // 混绘——本示例的验证主题）。
-        auto create_mesh = [this](MeshBufferSource source, auto&& generator) -> MeshEntry*
+        auto create_mesh = [this](MeshBufferSource source, const char *uri) -> MeshEntry*
         {
             Geometry* geometry = nullptr;
 
             if (source == MeshBufferSource::VDM)
             {
-                auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
-                if (pc)
-                    geometry = generator(pc.get());
+                geometry = GetGeometry(uri);
             }
             else
             {
-                auto *device = GetDevice();
-                if (!device)
-                    return nullptr;
-
-                auto pc = std::make_unique<GeometryCreater>(device, CreateStandardGeometryVertexFormat());
-                if (pc)
-                    geometry = generator(pc.get());
+                static const GeometryVertexFormat private_format = CreateStandardGeometryVertexFormat();
+                geometry = GetGeometry(uri, &private_format);
             }
 
             if (!geometry)
@@ -202,112 +190,82 @@ private:
         };
 
 
-        // ===== VDM 池组：共享 VertexDataManager 大缓冲（7 个，段偏移寻址） =====
         {
-            floor_mesh = create_mesh(MeshBufferSource::VDM, [](GeometryCreater* pc)
+            GeometryCreater pc(mesh_vdm);
+            SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
+
+            // ===== VDM 池组：共享 VertexDataManager 大缓冲（7 个，段偏移寻址） =====
             {
-                return CreateGeometryPreset(pc, "plane_square");
-            });
-            if (!floor_mesh)
-                return false;
+                floor_mesh = create_mesh(MeshBufferSource::VDM, "geo:builtin:plane_square");
+                if (!floor_mesh)
+                    return false;
+            }
+
+            {
+                if (!create_mesh(MeshBufferSource::VDM, "geo:builtin:sphere_64"))
+                    return false;
+            }
+
+            {
+                if (!create_mesh(MeshBufferSource::VDM, "geo:builtin:dome_64"))
+                    return false;
+            }
+
+            {
+
+                if (!create_mesh(MeshBufferSource::VDM, "geo:builtin:cone"))
+                    return false;
+            }
+
+            {
+
+                if (!create_mesh(MeshBufferSource::VDM, "geo:builtin:cylinder_big"))
+                    return false;
+            }
+
+            {
+
+                if (!create_mesh(MeshBufferSource::VDM, "geo:builtin:torus_ring"))
+                    return false;
+            }
+
+            {
+
+                if (!create_mesh(MeshBufferSource::VDM, "geo:builtin:hollow_cylinder_big"))
+                    return false;
+            }
+
+
         }
 
-        {
-            if (!create_mesh(MeshBufferSource::VDM, [](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "sphere_64");
-            }))
-                return false;
-        }
-
-        {
-            if (!create_mesh(MeshBufferSource::VDM, [](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "dome_64");
-            }))
-                return false;
-        }
-
+        // ===== 私有缓冲组：每几何独立 VAB/IBO（5 个，偏移恒 0） =====
         {
 
-            if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "cone");
-            }))
-                return false;
-        }
-
-        {
-
-            if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "cylinder_big");
-            }))
-                return false;
-        }
-
-        {
-
-            if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "torus_ring");
-            }))
-                return false;
-        }
-
-        {
-
-            if (!create_mesh(MeshBufferSource::VDM, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "hollow_cylinder_big");
-            }))
-                return false;
-        }
-
-
-        // ===== 私有缓冲组：每几何独立 VAB/IBO（7 个，偏移恒 0） =====
-        {
-
-            if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "hex_sphere");
-            }))
+            if (!create_mesh(MeshBufferSource::Private, "geo:builtin:hex_sphere"))
                 return false;
         }
 
         {
 
-            if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "capsule");
-            }))
+            if (!create_mesh(MeshBufferSource::Private, "geo:builtin:capsule"))
                 return false;
         }
 
         {
 
-            if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "tapered_capsule");
-            }))
+            if (!create_mesh(MeshBufferSource::Private, "geo:builtin:tapered_capsule"))
                 return false;
         }
 
         {
 
-            if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "cube");
-            }))
+            if (!create_mesh(MeshBufferSource::Private, "geo:builtin:cube"))
                 return false;
         }
 
         {
 
-            if (!create_mesh(MeshBufferSource::Private, [&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "frustum");
-            }))
+            if (!create_mesh(MeshBufferSource::Private, "geo:builtin:frustum"))
                 return false;
         }
 
@@ -447,10 +405,10 @@ private:
 public:
     ~MixedBufferMeshesApp()
     {
-        // GeometryDataVDM releases its ranges through mesh_vdm when GeometryManager
-        // destroys the geometries, so clear that owner before releasing the manager.
-        if (auto* geometry_manager = GetManager<GeometryManager>())
-            geometry_manager->Release();
+        // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
+
         SAFE_CLEAR(mesh_vdm)
     }
 

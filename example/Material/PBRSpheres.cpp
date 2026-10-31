@@ -365,66 +365,26 @@ private:
 
     bool CreateBuiltinGeometries()
     {
-        using namespace inline_geometry;
-
-        auto create_geometry = [this](auto &&creator) -> Geometry *
+        static const char *geometry_uri[GEOMETRY_VARIANT_COUNT] =
         {
-            auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
-            if (!pc)
-                return nullptr;
-
-            return creator(pc.get());
+            "geo:builtin:sphere_64",
+            "geo:builtin:dome_64",
+            "geo:builtin:cone",
+            "geo:builtin:cylinder",
+            "geo:builtin:torus",
+            "geo:builtin:hollow_cylinder",
+            "geo:builtin:hex_sphere",
+            "geo:builtin:capsule",
+            "geo:builtin:tapered_capsule_wide",
+            "geo:builtin:cube",
         };
 
-        builtin_geometries[0] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "sphere_64");
-        });
+        // 共享顶点池：一批几何写进同一个 VertexDataManager（混合缓冲的前提）
+        GeometryCreater pc(mesh_vdm);
+        SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
 
-        builtin_geometries[1] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "dome_64");
-        });
-
-        builtin_geometries[2] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "cone");
-        });
-
-        builtin_geometries[3] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "cylinder");
-        });
-
-        builtin_geometries[4] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "torus");
-        });
-
-        builtin_geometries[5] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "hollow_cylinder");
-        });
-
-        builtin_geometries[6] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "hex_sphere");
-        });
-
-        builtin_geometries[7] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "capsule");
-        });
-
-        builtin_geometries[8] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "tapered_capsule_wide");
-        });
-
-        builtin_geometries[9] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "cube");
-        });
+        for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
+            builtin_geometries[i] = GetGeometry(geometry_uri[i]);
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
@@ -608,10 +568,9 @@ public:
 
     ~PBRSpheresApp()
     {
-        for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
-        {
-            SAFE_CLEAR(builtin_geometries[i])
-        }
+        // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
 
         SAFE_CLEAR(mesh_vdm)
         SAFE_CLEAR(base_color_texture)

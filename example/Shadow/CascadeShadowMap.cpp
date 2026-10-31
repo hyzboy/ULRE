@@ -976,46 +976,20 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geom = [this](auto &&creator) -> Geometry *
-        {
-            auto pc = std::make_unique<GeometryCreater>(vdm);
-            return pc ? creator(pc.get()) : nullptr;
-        };
+        // 共享顶点池：全部几何写进同一个 VertexDataManager
+        GeometryCreater pc(vdm);
+        SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
 
-        builtin_geometries[0] = create_geom([](GeometryCreater *pc) { return CreateGeometryPreset(pc, "sphere_64"); });
-        builtin_geometries[1] = create_geom([](GeometryCreater *pc) { return CreateGeometryPreset(pc, "dome_64"); });
-        builtin_geometries[2] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "cone");
-        });
-        builtin_geometries[3] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "cylinder");
-        });
-        builtin_geometries[4] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "torus");
-        });
-        builtin_geometries[5] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "hollow_cylinder");
-        });
-        builtin_geometries[6] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "hex_sphere");
-        });
-        builtin_geometries[7] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "capsule");
-        });
-        builtin_geometries[8] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "tapered_capsule_wide");
-        });
-        builtin_geometries[9] = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "cube");
-        });
+        builtin_geometries[0] = GetGeometry("geo:builtin:sphere_64");
+        builtin_geometries[1] = GetGeometry("geo:builtin:dome_64");
+        builtin_geometries[2] = GetGeometry("geo:builtin:cone");
+        builtin_geometries[3] = GetGeometry("geo:builtin:cylinder");
+        builtin_geometries[4] = GetGeometry("geo:builtin:torus");
+        builtin_geometries[5] = GetGeometry("geo:builtin:hollow_cylinder");
+        builtin_geometries[6] = GetGeometry("geo:builtin:hex_sphere");
+        builtin_geometries[7] = GetGeometry("geo:builtin:capsule");
+        builtin_geometries[8] = GetGeometry("geo:builtin:tapered_capsule_wide");
+        builtin_geometries[9] = GetGeometry("geo:builtin:cube");
 
         for (uint32_t i = 0; i < kBuiltinGeomCount; ++i)
         {
@@ -1024,10 +998,7 @@ private:
             builtin_primitives[i] = PrimitiveAsset(builtin_geometries[i], &lit_recipe, PrimitiveType::Triangles);
         }
 
-        ground_geometry = create_geom([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "plane_square");
-        });
+        ground_geometry = GetGeometry("geo:builtin:plane_square");
         if (!ground_geometry)
             return false;
 
@@ -1498,11 +1469,10 @@ private:
 public:
     ~CascadeShadowMapApp() override
     {
-        for (uint32_t i = 0; i < kBuiltinGeomCount; ++i)
-        {
-            SAFE_CLEAR(builtin_geometries[i])
-        }
-        SAFE_CLEAR(ground_geometry)
+        // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
+
         SAFE_CLEAR(vdm)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)

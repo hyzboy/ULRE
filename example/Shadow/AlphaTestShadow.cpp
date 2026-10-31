@@ -457,8 +457,13 @@ private:
 public:
     ~AlphaTestShadowApp() override
     {
-        SAFE_CLEAR(ground_geometry)
-        SAFE_CLEAR(cube_geometry)
+        // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
+
+        ground_geometry = nullptr;
+        cube_geometry = nullptr;
+
         SAFE_CLEAR(vdm)
         SAFE_CLEAR(alpha_base_texture)
         SAFE_CLEAR(white_texture)
@@ -566,14 +571,12 @@ public:
     {
         using namespace inline_geometry;
 
-        {
-            auto pc = std::make_unique<GeometryCreater>(vdm);
-            cube_geometry = pc ? CreateGeometryPreset(pc.get(), "cube") : nullptr;
-        }
-        {
-            auto pc = std::make_unique<GeometryCreater>(vdm);
-            ground_geometry = pc ? CreateGeometryPreset(pc.get(), "plane_square") : nullptr;
-        }
+        // 共享顶点池：两个几何写进同一个 VertexDataManager
+        GeometryCreater pc(vdm);
+        SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
+
+        cube_geometry = GetGeometry("geo:builtin:cube");
+        ground_geometry = GetGeometry("geo:builtin:plane_square");
 
         if (!cube_geometry || !ground_geometry)
             return false;

@@ -85,7 +85,7 @@ private:
     struct MeshEntry
     {
         Geometry* geometry = nullptr;
-        // Geometry 由 GeometryManager 唯一持有，本结构只做观察（勿在此 delete）
+        // Geometry 由 GeometryAssetRegistry 持有，本结构只做观察（勿在此 delete）
         PrimitiveAsset asset{};
     };
 
@@ -169,10 +169,8 @@ private:
         if (!ecs_context)
             return false;
 
-        auto* geometry_manager = GetManager<GeometryManager>();
         auto* texture_manager  = GetManager<TextureManager>();
-        auto* device = GetDevice();
-        if (!geometry_manager || !texture_manager || !device)
+        if (!texture_manager)
             return false;
 
         // ---- 天空背景:sky_34 全景 cubemap ----
@@ -188,20 +186,11 @@ private:
         if (!sky_cube_asset)
             return false;
 
-        using namespace inline_geometry;
-
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreateSkyCubeGeometryVertexFormat());
-        if (!pc)
-            return false;
-
-
-        sky_geometry = CreateGeometryPreset(pc.get(), "hex_sphere_sky");
+        // 天空球：独立的顶点布局（非标准几何格式）⇒ 走 format_override
+        const GeometryVertexFormat sky_format = CreateSkyCubeGeometryVertexFormat();
+        sky_geometry = GetGeometry("geo:builtin:hex_sphere_sky", &sky_format);
         if (!sky_geometry)
             return false;
-
-        geometry_manager->Add(sky_geometry);
 
         const mtl::MaterialRecipe *loaded_sky_recipe = GetRecipe("IBLEnvironment.Sky");
         if (!loaded_sky_recipe)
@@ -302,12 +291,6 @@ private:
         if (!geometry)
             return nullptr;
 
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!geometry_manager)
-            return nullptr;
-
-        geometry_manager->Add(geometry);
-
         auto mesh = std::make_unique<MeshEntry>();
         mesh->geometry = geometry;
         mesh->asset = PrimitiveAsset(geometry, &mesh_recipe, PrimitiveType::Triangles);
@@ -322,20 +305,12 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto&& creator) -> Geometry*
-        {
-            auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
-            if (!pc)
-                return nullptr;
-
-            return creator(pc.get());
-        };
+        // 共享顶点池：一批几何写进同一个 VertexDataManager
+        GeometryCreater pc(mesh_vdm);
+        SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
 
         {
-            auto geom = create_geometry([](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "plane_square");
-            });
+            auto geom = GetGeometry("geo:builtin:plane_square");
             if (!geom)
                 return false;
 
@@ -345,30 +320,21 @@ private:
         }
 
         {
-            auto geom = create_geometry([](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "sphere_64");
-            });
+            auto geom = GetGeometry("geo:builtin:sphere_64");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "cube_2x2x2");
-            });
+            auto geom = GetGeometry("geo:builtin:cube_2x2x2");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "torus_ring");
-            });
+            auto geom = GetGeometry("geo:builtin:torus_ring");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
@@ -604,10 +570,10 @@ public:
 
     ~IBLEnvironmentApp()
     {
-        // GeometryDataVDM releases its ranges through mesh_vdm when GeometryManager
-        // destroys the geometries, so clear that owner before releasing the manager.
-        if (auto* geometry_manager = GetManager<GeometryManager>())
-            geometry_manager->Release();
+        // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
+
         SAFE_CLEAR(mesh_vdm)
     }
 

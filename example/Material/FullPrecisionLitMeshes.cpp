@@ -132,12 +132,6 @@ private:
         if (!geometry)
             return nullptr;
 
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!geometry_manager)
-            return nullptr;
-
-        geometry_manager->Add(geometry);
-
         auto mesh = std::make_unique<MeshEntry>();
         mesh->geometry = geometry;
         mesh->asset = PrimitiveAsset(geometry, &mesh_recipe, PrimitiveType::Triangles);
@@ -152,20 +146,12 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](auto&& creator) -> Geometry*
-        {
-            auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
-            if (!pc)
-                return nullptr;
-
-            return creator(pc.get());
-        };
+        // 共享顶点池：一批几何写进同一个 VertexDataManager
+        GeometryCreater pc(mesh_vdm);
+        SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
 
         {
-            auto geom = create_geometry([](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "plane_square");
-            });
+            auto geom = GetGeometry("geo:builtin:plane_square");
             if (!geom)
                 return false;
 
@@ -175,109 +161,76 @@ private:
         }
 
         {
-            auto geom = create_geometry([](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "sphere_64");
-            });
+            auto geom = GetGeometry("geo:builtin:sphere_64");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
-            auto geom = create_geometry([](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "dome_64");
-            });
+            auto geom = GetGeometry("geo:builtin:dome_64");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "cone");
-            });
+            auto geom = GetGeometry("geo:builtin:cone");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "cylinder_big");
-            });
+            auto geom = GetGeometry("geo:builtin:cylinder_big");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "torus_ring");
-            });
+            auto geom = GetGeometry("geo:builtin:torus_ring");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "hollow_cylinder_big");
-            });
+            auto geom = GetGeometry("geo:builtin:hollow_cylinder_big");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "hex_sphere");
-            });
+            auto geom = GetGeometry("geo:builtin:hex_sphere");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "capsule");
-            });
+            auto geom = GetGeometry("geo:builtin:capsule");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "tapered_capsule");
-            });
+            auto geom = GetGeometry("geo:builtin:tapered_capsule");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "cube");
-            });
+            auto geom = GetGeometry("geo:builtin:cube");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
 
         {
 
-            auto geom = create_geometry([&](GeometryCreater* pc)
-            {
-                return CreateGeometryPreset(pc, "frustum");
-            });
+            auto geom = GetGeometry("geo:builtin:frustum");
             if (!geom || !CreateMeshEntry(geom))
                 return false;
         }
@@ -410,10 +363,10 @@ private:
 public:
     ~FullPrecisionLitMeshesApp()
     {
-        // GeometryDataVDM releases its ranges through mesh_vdm when GeometryManager
-        // destroys the geometries, so clear that owner before releasing the manager.
-        if (auto* geometry_manager = GetManager<GeometryManager>())
-            geometry_manager->Release();
+        // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
+
         SAFE_CLEAR(mesh_vdm)
     }
 

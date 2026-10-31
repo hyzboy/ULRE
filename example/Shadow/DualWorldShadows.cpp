@@ -234,46 +234,24 @@ private:
         if (!(lit_recipe.material_ssbo_binding = material_accessor.GetGlobalSSBOBinding()).IsValid())
             return LogStageFail("CreateSharedResources", "material SSBO binding invalid");
 
-        auto create_geometry = [&](auto &&creator) -> Geometry *
+        // 私有缓冲：每几何一套独立 VDM/缓冲（顶点布局由本处统一指定）
+        const GeometryVertexFormat shape_format = CreateStandardGeometryVertexFormat();
+        auto create_geometry = [&](const char *uri) -> Geometry *
         {
-            auto pc = std::make_unique<GeometryCreater>(device, CreateStandardGeometryVertexFormat());
-            return pc ? creator(pc.get()) : nullptr;
+            return GetGeometry(uri, &shape_format);
         };
 
-        shape_geometry[0] = create_geometry([](GeometryCreater *pc)
-        {
-            inline_geometry::CubeCreateInfo cci;
-            cci.segments_x = 1; cci.segments_y = 1; cci.segments_z = 1;
-            return CreateGeometryPreset(pc, "cube");
-        });
-        shape_geometry[1] = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "sphere_48");
-        });
-        shape_geometry[2] = create_geometry([](GeometryCreater *pc)
-        {
-            inline_geometry::CylinderCreateInfo cci;
-            cci.radius = 0.8f; cci.halfExtend = 1.2f; cci.numberSlices = 32;
-            return CreateGeometryPreset(pc, "cylinder_thin");
-        });
-        shape_geometry[3] = create_geometry([](GeometryCreater *pc)
-        {
-            inline_geometry::TorusCreateInfo tci;
-            tci.innerRadius = 0.6f; tci.outerRadius = 1.1f;
-            tci.numberSlices = 64; tci.numberStacks = 20;
-            return CreateGeometryPreset(pc, "torus_small");
-        });
-        ground_geometry = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "plane_square");
-        });
+        shape_geometry[0] = create_geometry("geo:builtin:cube");
+        shape_geometry[1] = create_geometry("geo:builtin:sphere_48");
+        shape_geometry[2] = create_geometry("geo:builtin:cylinder_thin");
+        shape_geometry[3] = create_geometry("geo:builtin:torus_small");
+        ground_geometry = create_geometry("geo:builtin:plane_square");
 
         for (uint32_t i = 0; i < 4; ++i)
         {
             if (!shape_geometry[i])
                 return LogStageFail("CreateSharedResources", "shape geometry creation failed");
 
-            gm->Add(shape_geometry[i]);
             shape_asset[i] = PrimitiveAsset(shape_geometry[i], &lit_recipe, PrimitiveType::Triangles);
             if (!shape_asset[i].IsValid())
                 return LogStageFail("CreateSharedResources", "shape primitive asset invalid");
@@ -282,20 +260,15 @@ private:
         if (!ground_geometry)
             return LogStageFail("CreateSharedResources", "ground geometry creation failed");
 
-        gm->Add(ground_geometry);
         ground_asset = PrimitiveAsset(ground_geometry, &lit_recipe, PrimitiveType::Triangles);
         if (!ground_asset.IsValid())
             return LogStageFail("CreateSharedResources", "ground primitive asset invalid");
 
         // 展示离屏世界画面的屏幕（主世界里的 Static 四边形；Static ⇒ 不进 cascade 0 的 caster 集）
-        child_screen_geometry = create_geometry([](GeometryCreater *pc)
-        {
-            return CreateGeometryPreset(pc, "plane_square");
-        });
+        child_screen_geometry = create_geometry("geo:builtin:plane_square");
         if (!child_screen_geometry)
             return LogStageFail("CreateSharedResources", "screen geometry creation failed");
 
-        gm->Add(child_screen_geometry);
         child_screen_asset = PrimitiveAsset(child_screen_geometry, &lit_recipe, PrimitiveType::Triangles);
         if (!child_screen_asset.IsValid())
             return LogStageFail("CreateSharedResources", "screen primitive asset invalid");
@@ -722,16 +695,14 @@ public:
         if (!gc)
             return;
 
-        if (auto *gm = gc->GetGeometryManager())
-        {
-            for (auto *&g : shape_geometry)
-            {
-                if (g) { gm->Release(g); g = nullptr; }
-            }
+        // 几何由 GeometryAssetRegistry 持有，此处只清空观察指针
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
 
-            if (ground_geometry)       { gm->Release(ground_geometry);       ground_geometry = nullptr; }
-            if (child_screen_geometry) { gm->Release(child_screen_geometry); child_screen_geometry = nullptr; }
-        }
+        for (auto *&g : shape_geometry)
+            g = nullptr;
+        ground_geometry = nullptr;
+        child_screen_geometry = nullptr;
     }
 };
 
