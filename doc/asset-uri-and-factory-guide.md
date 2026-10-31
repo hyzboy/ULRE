@@ -83,6 +83,7 @@ tex:rt:Offscreen:color0              渲染目标附件
 rcp:@Lit                             材质配方（子配方用 parent = "rcp:@Lit" 继承）
 mtldata:file:ShaderLibrary/asset/material_data/pbr_10x10_grid.material_data.toml
 mtldata:@pbr_10x10_grid              材质数据块（批量 SSBO 行数据）
+texarray:@pbr_10x10_baseColor        纹理数组（层清单在 ShaderLibrary/asset/texarray/，见 2.6）
 foo:file:bar.dat                     未注册类型（type 保持 Unknown，type_name 保留原拼写）
 ```
 
@@ -118,6 +119,37 @@ OSString n = AssetURI::Normalize("geo:builtin:cube");   // Parse + ToString
 
 > 判定方法只有 `IsValid()` / `HasType()` / `HasSource()` / `IsBuiltin()` / `IsFile()`。
 > **没有** `IsRenderTarget()` —— 判 RT 直接比较 `uri.source == AssetSourceKind::RenderTarget`。
+
+### 2.6 纹理数组：`texarray:`
+
+纹理数组是**纹理的子方案**（`TextureURIKind::TextureArray`），不是新的 `AssetType`：
+它仍然是一个 `TextureAsset` 句柄，仍然进 `CreateTextureAsset` 的统一分派。
+
+```
+texarray:@pbr_10x10_baseColor                        ShaderLibrary/asset/texarray/<name>.texarray.toml
+texarray:file:ShaderLibrary/asset/texarray/x.texarray.toml
+```
+
+规约文件（`ShaderLibrary/asset/texarray/*.texarray.toml`）只描述**层清单**：
+
+```toml
+schema = 1
+name = "alpha_checker_baseColor"
+mipmaps = 1                              # 可选覆盖；0/缺省 = 跟随第 0 层文件的 mip 数
+
+[[layers]]
+uri = "file:res/image/pbr/AlphaChecker/baseColor.Tex2D"
+```
+
+约定：
+
+- **规约故意不写 width / height / format** —— 从第 0 层文件探针读出，只允许覆盖 `mipmaps`。
+- 层名缺省取「父目录名/文件名主干」（`Concrete_Plain/baseColor`）；只取主干会让 10 层同名撞车。
+- 层 URI 写 `file:` 前缀，装配前由 `TextureManager` 剥成裸路径再读盘。
+- 不支持 `rt:` 层，不支持嵌套数组；层数上限 `kTextureArrayMaxLayers = 64`。
+- 数组装配是**同步**的：`CreateTextureAsset("texarray:...")` 返回时 `GetTexture()` 即可绑定。
+  与文件纹理不同（文件句柄创建后是 `MetaOnly`，走 `TextureStreamingSystem` 异步；
+  需要立刻可用的场合显式调用 `TextureAsset::LoadPayload()`）。
 
 ---
 

@@ -155,6 +155,14 @@ if(MSVC)
     set_target_properties(TestPbrGridDataBlock PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 示例用纹理数组规约（`*.texarray.toml`）：六个文件按台账解析 + 缺省层名带父目录
+# + 坏输入整张拒绝 + `texarray:` URI 映射 + 示例不再手工装配 2D 数组。
+add_executable(TestTextureArraySpec tests/TestTextureArraySpec.cpp)
+target_link_libraries(TestTextureArraySpec PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestTextureArraySpec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # 手工建实体示例的行绑定入口：`GetRowBinding` / `GetGlobalSSBOBindingAt` /
 # `WorkObject::GetMaterialDataBinding` 三层契约（失败不写 out、先上传再取行号）。
 add_executable(TestMaterialDataRowBinding tests/TestMaterialDataRowBinding.cpp)
@@ -389,6 +397,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestPbrGridDataBlock
         PROPERTIES LABELS "ecs;material_data;example" TIMEOUT 120)
+
+    add_test(
+        NAME TestTextureArraySpec
+        COMMAND TestTextureArraySpec
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestTextureArraySpec
+        PROPERTIES LABELS "ecs;texture;example" TIMEOUT 120)
 
     add_test(
         NAME TestMaterialRuntimeTable
