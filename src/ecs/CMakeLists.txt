@@ -155,6 +155,21 @@ if(MSVC)
     set_target_properties(TestPbrGridDataBlock PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 手工建实体示例的行绑定入口：`GetRowBinding` / `GetGlobalSSBOBindingAt` /
+# `WorkObject::GetMaterialDataBinding` 三层契约（失败不写 out、先上传再取行号）。
+add_executable(TestMaterialDataRowBinding tests/TestMaterialDataRowBinding.cpp)
+target_link_libraries(TestMaterialDataRowBinding PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestMaterialDataRowBinding PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
+# 阶段 A 台账门禁：示例的材质数据块文件集合 / 块名 / 行类型 / 行数 / 抽样行值。
+add_executable(TestExampleMaterialDataBlocks tests/TestExampleMaterialDataBlocks.cpp)
+target_link_libraries(TestExampleMaterialDataBlocks PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestExampleMaterialDataBlocks PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # TOML GeometryAsset parser schema and diagnostics.
 add_executable(TestGeometryAssetFile tests/TestGeometryAssetFile.cpp)
 target_link_libraries(TestGeometryAssetFile PRIVATE ULRE::Engine)
@@ -350,6 +365,22 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestRenderableBuilderDataRow
         PROPERTIES LABELS "ecs;material_data;asset" TIMEOUT 120)
+
+    add_test(
+        NAME TestMaterialDataRowBinding
+        COMMAND TestMaterialDataRowBinding
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMaterialDataRowBinding
+        PROPERTIES LABELS "ecs;material_data;example" TIMEOUT 120)
+
+    add_test(
+        NAME TestExampleMaterialDataBlocks
+        COMMAND TestExampleMaterialDataBlocks
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestExampleMaterialDataBlocks
+        PROPERTIES LABELS "ecs;material_data;example" TIMEOUT 120)
 
     add_test(
         NAME TestPbrGridDataBlock
