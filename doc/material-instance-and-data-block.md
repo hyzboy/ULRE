@@ -348,7 +348,37 @@ $env:PBR_FRAMES='12'; .\build\out\Windows_64_Release\PBRSpheres.exe
 
 ---
 
-## 9. 已知坑（本轮踩过的）
+## 9. 像素验收：A/B 对拍（证明「逐行生效」）
+
+单测只能证明文件数值对、能上传成功，**证不到「第 i 个球真的读第 i 行」**。
+这一步用 `PBR_DUMP` 做 A/B 对拍，10 分钟能跑完：
+
+```powershell
+# A：真数据（metallic 按列 0→1，roughness 按行 0.05→1）
+$env:PBR_DUMP='rowdata'; .\build\out\Windows_64_Release\PBRSpheres.exe
+
+# B：把 100 行全改成 metallic=0.5 / roughness=0.5（临时改，跑完 git checkout 还原）
+#    正则替换 [[rows]] 里的两个字段即可
+
+$env:PBR_DUMP='uniform'; .\build\out\Windows_64_Release\PBRSpheres.exe
+```
+
+两次 dump 都是 `pbrdump_<tag>_1280x720_A2BGR10UN.raw`（`A2BGR10` packed：
+`R=b0-9` / `G=b10-19` / `B=b20-29`）。逐像素比对：
+差异像素占比与最大通道差就是判据。
+
+**本轮实测**：差异 `107204 / 921600`（11.63%），最大通道差 `0.660`，
+差异包围盒 `x=[280,999] y=[263,527]` —— 恰好是球阵在屏幕上的投影范围。
+⇒ 逐行数据确实进入了每个球自己的着色。
+
+反之若换上统一数据后画面几乎不变，说明行号没进 `MaterialData` 组件、
+或全部读到了同一行（先查 §10 表格「实体建出来但颜色全一样」一条）。
+
+> 注意：`pbrdump_*.raw` 落在仓库根目录，验收后删除，别提交。
+
+---
+
+## 10. 已知坑（本轮踩过的）
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
