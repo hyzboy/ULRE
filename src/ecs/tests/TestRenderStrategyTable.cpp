@@ -553,6 +553,54 @@ int main(int argc, char** argv)
             }
         }
 
+        // Sky 的默认和显式解析式表面不采样纹理；cube 表面仍必须绑定 sky_cube。
+        {
+            MaterialRecipe sky{};
+            sky.domain = MaterialDomain::Sky;
+            ResolvedMaterial sky_definition{};
+            if (!ResolveMaterialFromRecipe(sky, sky_definition)
+             || ClassifyMaterialResourceError(sky_definition, sky) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 7 Failed: 默认解析式天空不应要求立方纹理");
+                return 16;
+            }
+
+            sky.surface_module_name = "surface_sky_minimal";
+            if (!ResolveMaterialFromRecipe(sky, sky_definition)
+             || ClassifyMaterialResourceError(sky_definition, sky) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 7 Failed: 显式解析式天空不应要求立方纹理");
+                return 16;
+            }
+
+            RecipeTextureBinding cube;
+            cube.texture_name = "sky_cube";
+            cube.required = true;
+            sky.textures.push_back(cube);
+            if (ClassifyMaterialResourceError(sky_definition, sky) != MaterialErrorKind::MissingTextureResource)
+            {
+                GLogError(u8"Test 7 Failed: 解析式天空显式要求的纹理缺资源时必须报错");
+                return 16;
+            }
+            sky.textures.clear();
+
+            sky.surface_module_name = "surface_sky_cube";
+            if (!ResolveMaterialFromRecipe(sky, sky_definition)
+             || ClassifyMaterialResourceError(sky_definition, sky) != MaterialErrorKind::MissingTextureResource)
+            {
+                GLogError(u8"Test 7 Failed: 立方天空缺少 sky_cube 时必须报错");
+                return 16;
+            }
+
+            cube.resource_id = "cubefile:sky.TexCube";
+            sky.textures.push_back(cube);
+            if (ClassifyMaterialResourceError(sky_definition, sky) != MaterialErrorKind::None)
+            {
+                GLogError(u8"Test 7 Failed: 立方天空已绑定 sky_cube 仍报错");
+                return 16;
+            }
+        }
+
         // 规则表：新种类必须是错误棋盘格 + 青色标记（与示例的肉眼对照表一致）
         {
             const FallbackMaterialRule &rule =

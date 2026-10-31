@@ -366,13 +366,18 @@ bool ResolveMaterialFromRecipe(const MaterialRecipe &recipe,
         out_definition.surface_module_name =
             recipe.surface_module_name.c_str();
 
-    // 纹理槽：领域白名单全集（槽形态由契约给出）。与已删除的 definition 资产层
-    // 写法逐条一致 —— 那些文件把领域的槽名全列一遍，形态一个都不写。
+    // 纹理槽：保留领域白名单全集，解析式天空不采样立方纹理，但立方天空仍要求绑定。
     for (int i = 0; i < contract->texture_slot_count; ++i)
     {
         const MaterialDomainTextureSlot &slot = contract->texture_slots[i];
+        const bool procedural_sky =
+            recipe.domain == MaterialDomain::Sky
+            && (recipe.surface_module_name.empty()
+                || recipe.surface_module_name == "surface_sky_minimal");
+        const bool required = slot.binding_required
+            && !(procedural_sky && std::strcmp(slot.name, "sky_cube") == 0);
         out_definition.texture_declarations.push_back(
-            {slot.name, slot.sampler, slot.binding_required, slot.channels});
+            {slot.name, slot.sampler, required, slot.channels});
     }
 
     // 采样器预设 / 编译宏：契约给惯例预设，配方可**整表替换**（不是追加 ——
