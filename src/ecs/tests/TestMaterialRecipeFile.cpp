@@ -163,23 +163,77 @@ namespace
             && data.parse_error.value == "Orthographic2D";
     }
 
-    bool CheckPartialPipelineRejected()
+    // `[render_state.pipeline]` 是局部覆盖：只写与默认不同的键，未写的字段保持
+    // 契约默认值。显式写出的 false / 0 / None 必须真正生效（不能当「没写」）。
+    bool CheckPartialPipelineOverride()
     {
         constexpr char kPartialPipelineRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.PartialPipeline\"\n"
             "domain = \"UnlitTexture\"\n"
             "\n"
+            "[transform]\n"
+            "source = \"Vec2Position\"\n"
+            "mapping = \"LiftXY_XY0\"\n"
+            "orientation = \"World\"\n"
+            "scale = \"World\"\n"
+            "projection = \"OrthoViewport\"\n"
+            "\n"
             "[render_state.pipeline]\n"
             "cull_mode = \"None\"\n";
 
         MaterialRecipeFileData data;
-        return ParseMaterialRecipeFile(
-                   kPartialPipelineRecipe,
-                   static_cast<int>(strlen(kPartialPipelineRecipe)),
-                   data)
-            == MaterialRecipeFileParseResult::InvalidValue
-            && !data.parse_error.IsEmpty();
+        if (!Parse(kPartialPipelineRecipe, data))
+            return false;
+
+        const MaterialRenderStateOverrides &parsed = data.recipe.render_state_overrides;
+        if (!parsed.has_pipeline_config)
+            return false;
+        if (parsed.pipeline_config_mask
+         != static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::CullMode))
+            return false;
+
+        // 契约默认（Back / depth_test=true / depth_write=true / GreaterOrEqual）只被 cull 一项覆盖。
+        const ResolvedMaterialRenderState defaults{};
+        const ResolvedMaterialRenderState merged =
+            ResolveMaterialRenderState(defaults, data.recipe);
+        if (merged.pipeline_config.cull_mode != VK_CULL_MODE_NONE
+         || !merged.pipeline_config.depth_test
+         || !merged.pipeline_config.depth_write
+         || merged.pipeline_config.depth_compare_op != VK_COMPARE_OP_GREATER_OR_EQUAL
+         || merged.pipeline_config.overlay)
+            return false;
+
+        // 显式 false / 非默认数值：与「没写」必须区分开。
+        constexpr char kExplicitValues[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.ExplicitPipelineValues\"\n"
+            "domain = \"UnlitTexture\"\n"
+            "\n"
+            "[render_state.pipeline]\n"
+            "depth_write = false\n"
+            "alpha_blend = false\n"
+            "overlay = true\n"
+            "line_width = 2.5\n";
+
+        MaterialRecipeFileData explicit_data;
+        if (!Parse(kExplicitValues, explicit_data))
+            return false;
+
+        // 基准故意把 alpha_blend / depth_write 设成相反值，才能证明「写 false 真的盖下去了」。
+        ResolvedMaterialRenderState base{};
+        base.pipeline_config.alpha_blend = true;
+        base.pipeline_config.depth_write = true;
+        base.pipeline_config.line_width = 1.0f;
+
+        const ResolvedMaterialRenderState explicit_merged =
+            ResolveMaterialRenderState(base, explicit_data.recipe);
+        return !explicit_merged.pipeline_config.depth_write
+            && !explicit_merged.pipeline_config.alpha_blend
+            && explicit_merged.pipeline_config.overlay
+            && explicit_merged.pipeline_config.line_width == 2.5f
+            && explicit_merged.pipeline_config.depth_test
+            && explicit_merged.pipeline_config.cull_mode == VK_CULL_MODE_BACK_BIT;
     }
 
     bool CheckMaterialDataIsRuntimeOnly()
@@ -371,13 +425,26 @@ namespace
          || texture_quad.recipe.textures[0].resource_id != "res/image/lena.Tex2D")
             return false;
 
+        // overlay 配方只写与默认不同的键，其余保持默认。
+        const MaterialPipelineConfig &quad_pipeline =
+            texture_quad.recipe.render_state_overrides.pipeline_config;
+        if (!texture_quad.recipe.render_state_overrides.has_pipeline_config
+         || quad_pipeline.cull_mode != VK_CULL_MODE_NONE
+         || quad_pipeline.depth_test
+         || quad_pipeline.depth_write
+         || quad_pipeline.depth_compare_op != VK_COMPARE_OP_ALWAYS
+         || !quad_pipeline.overlay
+         || quad_pipeline.alpha_blend)
+            return false;
+
+        // PBRSpheres 与契约/结构体默认完全一致 ⇒ 整块 `[render_state.pipeline]` 已删掉。
         MaterialRecipeFileData pbr_spheres;
         if (!ParseFile(
                 OS_TEXT("ShaderLibrary/asset/recipe/PBRSpheres.recipe.toml"),
                 pbr_spheres)
          || pbr_spheres.recipe.recipe_name != "PBRSpheres.Lit"
          || !pbr_spheres.recipe.textures.empty()
-         || !pbr_spheres.recipe.render_state_overrides.has_pipeline_config)
+         || pbr_spheres.recipe.render_state_overrides.has_pipeline_config)
             return false;
 
         hgl::graph::TextureManager texture_manager(nullptr);
@@ -449,9 +516,9 @@ int main(int argc, char **argv)
         GLogError(u8"TestMaterialRecipeFile failed: invalid transform diagnostic");
         return 3;
     }
-    if (!CheckPartialPipelineRejected())
+    if (!CheckPartialPipelineOverride())
     {
-        GLogError(u8"TestMaterialRecipeFile failed: incomplete pipeline rejection");
+        GLogError(u8"TestMaterialRecipeFile failed: partial pipeline override");
         return 4;
     }
     if (!CheckMaterialDataIsRuntimeOnly())

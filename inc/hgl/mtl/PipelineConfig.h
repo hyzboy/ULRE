@@ -71,6 +71,58 @@ namespace hgl::graph::mtl
     }
 
     /**
+     * `MaterialPipelineConfig` 的**字段存在性**位掩码。
+     *
+     * 配方里的 `[render_state.pipeline]` 是**局部覆盖**：作者只写与默认不同的键，
+     * 未写的字段保留契约/结构体默认值。掩码记录「哪些字段被显式声明过」，
+     * 是唯一能让 `false` / `0` / `None` 这类合法取值与「没写」区分开的机制
+     * （不能拿字段值本身当哨兵）。
+     */
+    enum class MaterialPipelineField : uint16_t
+    {
+        CullMode         = 1u << 0,
+        DepthTest        = 1u << 1,
+        DepthWrite       = 1u << 2,
+        DepthCompareOp   = 1u << 3,
+        AlphaBlend       = 1u << 4,
+        BlendSrc         = 1u << 5,
+        BlendDst         = 1u << 6,
+        LineWidth        = 1u << 7,
+        DynamicLineWidth = 1u << 8,
+        Overlay          = 1u << 9,
+        Wireframe        = 1u << 10,
+    };
+
+    using MaterialPipelineFieldMask = uint16_t;
+
+    /** 全部 11 个字段都显式声明（= 整份配置替换）*/
+    constexpr MaterialPipelineFieldMask kMaterialPipelineAllFields = 0x7FFu;
+
+    inline bool MaterialPipelineHas(const MaterialPipelineFieldMask mask,
+                                    const MaterialPipelineField field) noexcept
+    {
+        return (mask & static_cast<MaterialPipelineFieldMask>(field)) != 0;
+    }
+
+    /** 按掩码把 `over` 中**已声明**的字段盖到 `base` 上（`mask == 0` ⇒ 不动）*/
+    inline void MergeMaterialPipelineConfig(MaterialPipelineConfig &base,
+                                            const MaterialPipelineConfig &over,
+                                            const MaterialPipelineFieldMask mask) noexcept
+    {
+        if (MaterialPipelineHas(mask, MaterialPipelineField::CullMode        )) base.cull_mode          = over.cull_mode;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::DepthTest       )) base.depth_test         = over.depth_test;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::DepthWrite      )) base.depth_write        = over.depth_write;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::DepthCompareOp  )) base.depth_compare_op   = over.depth_compare_op;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::AlphaBlend      )) base.alpha_blend        = over.alpha_blend;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::BlendSrc        )) base.blend_src          = over.blend_src;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::BlendDst        )) base.blend_dst          = over.blend_dst;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::LineWidth       )) base.line_width         = over.line_width;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::DynamicLineWidth)) base.dynamic_line_width = over.dynamic_line_width;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::Overlay         )) base.overlay            = over.overlay;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::Wireframe       )) base.wireframe          = over.wireframe;
+    }
+
+    /**
      * The single render-state payload consumed by both shader generation and
      * Vulkan pipeline creation.  Material definitions provide the defaults;
      * recipes are resolved into this value before either backend is called.
@@ -93,6 +145,19 @@ namespace hgl::graph::mtl
         bool dither = false;
         bool has_pipeline_config = false;
         MaterialPipelineConfig pipeline_config;
+        /**
+         * `pipeline_config` 中**哪些字段被显式声明**。
+         *
+         * `0` = 没有逐字段信息：`pipeline_config` 当作**整份配置**使用
+         *      （C++ 侧直接赋值 / `NormalizeRecipe` 回写的既有用法）。
+         * `kMaterialPipelineAllFields` = 同样整份替换，但语义上是「全写了」。
+         * 其余值 = 局部覆盖，只盖已声明的位。
+         *
+         * ⚠ 掩码**不进** `HashMaterialRecipe`：归一化后掩码恒为 `0`、字段值已是
+         * 合成后的权威值，值集合本身就足以构成身份；把掩码折进哈希只会让
+         * 「同一份状态、不同书写方式」分裂成不同键。
+         */
+        MaterialPipelineFieldMask pipeline_config_mask = 0;
     };
 
     // ── 便捷构造器（每个都返回完整可用的配置，作者可在其上再任意修改字段）──

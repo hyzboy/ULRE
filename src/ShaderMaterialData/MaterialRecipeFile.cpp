@@ -324,47 +324,98 @@ namespace hgl::graph::mtl
                 return false;
             }
 
+            // 每个键都是**可选**的：只写与默认不同的项，未写的字段保留契约默认值。
             MaterialPipelineConfig &config = overrides.pipeline_config;
-            AnsiString value;
-            if (!ReadString(table, "cull_mode", value, error, true)
-             || !ParseVkCullMode(value.c_str(), config.cull_mode))
-            {
-                error.Record("cull_mode", value.c_str(), "缺少或未知剔除模式");
-                return false;
-            }
-            if (!ReadBool(table, "depth_test", config.depth_test, error, true)
-             || !ReadBool(table, "depth_write", config.depth_write, error, true))
-                return false;
-            if (!ReadString(table, "depth_compare_op", value, error, true)
-             || !ParseVkCompareOp(value.c_str(), config.depth_compare_op))
-            {
-                error.Record("depth_compare_op", value.c_str(), "缺少或未知深度比较操作");
-                return false;
-            }
-            if (!ReadBool(table, "alpha_blend", config.alpha_blend, error, true))
-                return false;
-            if (!ReadString(table, "blend_src", value, error, true)
-             || !ParseVkBlendFactor(value.c_str(), config.blend_src))
-            {
-                error.Record("blend_src", value.c_str(), "缺少或未知源混合因子");
-                return false;
-            }
-            if (!ReadString(table, "blend_dst", value, error, true)
-             || !ParseVkBlendFactor(value.c_str(), config.blend_dst))
-            {
-                error.Record("blend_dst", value.c_str(), "缺少或未知目标混合因子");
-                return false;
-            }
-            if (!ReadBool(table, "dynamic_line_width", config.dynamic_line_width, error, true)
-             || !ReadBool(table, "overlay", config.overlay, error, true)
-             || !ReadBool(table, "wireframe", config.wireframe, error, true)
-             || !ReadFloat(table, "line_width", config.line_width, error, true))
-                return false;
+            MaterialPipelineFieldMask &mask = overrides.pipeline_config_mask;
+            mask = 0;
 
-            if (config.line_width <= 0.0f)
+            AnsiString value;
+            if (table.contains("cull_mode"))
             {
-                error.Record("line_width", nullptr, "必须大于 0");
-                return false;
+                if (!ReadString(table, "cull_mode", value, error)
+                 || !ParseVkCullMode(value.c_str(), config.cull_mode))
+                {
+                    error.Record("cull_mode", value.c_str(), "未知剔除模式");
+                    return false;
+                }
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::CullMode);
+            }
+            if (table.contains("depth_test"))
+            {
+                if (!ReadBool(table, "depth_test", config.depth_test, error))
+                    return false;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthTest);
+            }
+            if (table.contains("depth_write"))
+            {
+                if (!ReadBool(table, "depth_write", config.depth_write, error))
+                    return false;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthWrite);
+            }
+            if (table.contains("depth_compare_op"))
+            {
+                if (!ReadString(table, "depth_compare_op", value, error)
+                 || !ParseVkCompareOp(value.c_str(), config.depth_compare_op))
+                {
+                    error.Record("depth_compare_op", value.c_str(), "未知深度比较操作");
+                    return false;
+                }
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthCompareOp);
+            }
+            if (table.contains("alpha_blend"))
+            {
+                if (!ReadBool(table, "alpha_blend", config.alpha_blend, error))
+                    return false;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::AlphaBlend);
+            }
+            if (table.contains("blend_src"))
+            {
+                if (!ReadString(table, "blend_src", value, error)
+                 || !ParseVkBlendFactor(value.c_str(), config.blend_src))
+                {
+                    error.Record("blend_src", value.c_str(), "未知源混合因子");
+                    return false;
+                }
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::BlendSrc);
+            }
+            if (table.contains("blend_dst"))
+            {
+                if (!ReadString(table, "blend_dst", value, error)
+                 || !ParseVkBlendFactor(value.c_str(), config.blend_dst))
+                {
+                    error.Record("blend_dst", value.c_str(), "未知目标混合因子");
+                    return false;
+                }
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::BlendDst);
+            }
+            if (table.contains("dynamic_line_width"))
+            {
+                if (!ReadBool(table, "dynamic_line_width", config.dynamic_line_width, error))
+                    return false;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DynamicLineWidth);
+            }
+            if (table.contains("overlay"))
+            {
+                if (!ReadBool(table, "overlay", config.overlay, error))
+                    return false;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::Overlay);
+            }
+            if (table.contains("wireframe"))
+            {
+                if (!ReadBool(table, "wireframe", config.wireframe, error))
+                    return false;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::Wireframe);
+            }
+            if (table.contains("line_width"))
+            {
+                if (!ReadFloat(table, "line_width", config.line_width, error))
+                    return false;
+                if (config.line_width <= 0.0f)
+                {
+                    error.Record("line_width", nullptr, "必须大于 0");
+                    return false;
+                }
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::LineWidth);
             }
 
             overrides.has_pipeline_config = true;

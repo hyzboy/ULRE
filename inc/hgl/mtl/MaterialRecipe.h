@@ -651,8 +651,16 @@ namespace hgl::graph::mtl
             state.alpha_cutoff = overrides.alpha_cutoff;
         if (overrides.has_dither)
             state.dither = overrides.dither;
-        if (overrides.has_pipeline_config
-         || overrides.pipeline_config != MaterialPipelineConfig{})
+
+        // 管线配置是**局部覆盖**：掩码非空且非全字段 ⇒ 只盖已声明的字段；
+        // 掩码为 0（C++ 直接赋值 / NormalizeRecipe 回写）或全字段 ⇒ 整份替换。
+        if (overrides.pipeline_config_mask != 0
+         && overrides.pipeline_config_mask != kMaterialPipelineAllFields)
+            MergeMaterialPipelineConfig(state.pipeline_config,
+                                        overrides.pipeline_config,
+                                        overrides.pipeline_config_mask);
+        else if (overrides.has_pipeline_config
+              || overrides.pipeline_config != MaterialPipelineConfig{})
             state.pipeline_config = overrides.pipeline_config;
 
         return state;

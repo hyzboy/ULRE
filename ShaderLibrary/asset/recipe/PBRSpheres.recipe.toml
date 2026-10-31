@@ -8,16 +8,3 @@ mapping = "Passthrough3D"
 orientation = "World"
 scale = "World"
 projection = "WorldCameraVP"
-
-[render_state.pipeline]
-cull_mode = "Back"
-depth_test = true
-depth_write = true
-depth_compare_op = "GreaterOrEqual"
-alpha_blend = false
-blend_src = "SrcAlpha"
-blend_dst = "OneMinusSrcAlpha"
-dynamic_line_width = false
-overlay = false
-wireframe = false
-line_width = 1.0

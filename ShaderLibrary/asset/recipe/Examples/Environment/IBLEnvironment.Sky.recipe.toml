@@ -7,13 +7,4 @@ surface_module_name = "surface_sky_cube"
 
 [render_state.pipeline]
 cull_mode = "None"
-depth_test = true
 depth_write = false
-depth_compare_op = "GreaterOrEqual"
-alpha_blend = false
-blend_src = "SrcAlpha"
-blend_dst = "OneMinusSrcAlpha"
-dynamic_line_width = false
-overlay = false
-wireframe = false
-line_width = 1.0

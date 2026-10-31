@@ -457,6 +457,8 @@ void NormalizeRecipe(MaterialRecipe &recipe)
     recipe.render_state_overrides.dither = resolved.dither;
     recipe.render_state_overrides.has_pipeline_config = true;
     recipe.render_state_overrides.pipeline_config = resolved.pipeline_config;
+    // 回写的是**合完的整份**配置，局部掩码到此失效（否则会被再合一次）。
+    recipe.render_state_overrides.pipeline_config_mask = 0;
 }
 
 }//namespace hgl::graph::mtl
