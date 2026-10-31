@@ -172,14 +172,11 @@ private:
 
     bool CreateBoundingBoxMesh()
     {
-        using namespace inline_geometry;
-
         auto* device = GetDevice();
         if (!device)
             return false;
 
         const GeometryVertexFormat geometry_vertex_format = CreatePureColorGeometryVertexFormat();
-        inline_geometry::BoundingBoxCreateInfo bbci;
 
         bbox_geometry = GetGeometry("geo:builtin:bounding_box", &geometry_vertex_format);
         if(!bbox_geometry)

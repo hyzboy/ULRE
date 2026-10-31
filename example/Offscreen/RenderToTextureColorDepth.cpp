@@ -487,9 +487,6 @@ private:
             return LogStageFail("App::CreateDisplayCube", "InitMaterialDataSSBO failed");
 
         const GeometryVertexFormat geometry_vertex_format2 = CreateStandardGeometryVertexFormat();
-        inline_geometry::CubeCreateInfo cci{};
-        cci.tex_coord = true;
-        cci.ntb = NTBType::Normal;
 
         cube.geometry = GetGeometry("geo:builtin:cube", &geometry_vertex_format2);
         if (!cube.geometry)

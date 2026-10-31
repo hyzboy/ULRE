@@ -96,12 +96,7 @@ private:
             return false;
 
         {
-            inline_geometry::PlaneGridCreateInfo pgci;
-            pgci.grid_size.Set(32, 32);
-            pgci.sub_count.Set(8, 8);
-            pgci.lum = 180;
-            pgci.sub_lum = 255;
-
+            // 网格参数（32×32、sub 8×8、亮度 180/255）全部在 res/geo/presets/plane_grid_lod.geo.toml 里
             const GeometryVertexFormat geometry_vertex_format = CreateVertexLuminance2DGeometryVertexFormat();
             grid_geometry = GetGeometry("geo:builtin:plane_grid_lod", &geometry_vertex_format);
             if(!grid_geometry)
@@ -122,11 +117,8 @@ private:
 
         {
             const GeometryVertexFormat geometry_vertex_format2 = CreateGizmo3DGeometryVertexFormat();
-            inline_geometry::CubeCreateInfo cci;
-            cci.segments_x = 2;
-            cci.segments_y = 2;
-            cci.segments_z = 2;
 
+            // 分段数（2×2×2）在 res/geo/presets/cube_2x2x2.geo.toml 里
             cube_geometry = GetGeometry("geo:builtin:cube_2x2x2", &geometry_vertex_format2);
             if(!cube_geometry)
                 return false;

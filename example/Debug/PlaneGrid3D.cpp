@@ -89,16 +89,7 @@ private:
         if (!device)
             return false;
 
-        using namespace inline_geometry;
-
-        struct PlaneGridCreateInfo pgci;
-
-        pgci.grid_size.Set(32,32);
-        pgci.sub_count.Set(8,8);
-
-        pgci.lum=180;
-        pgci.sub_lum=255;
-
+        // 网格参数（32×32、sub 8×8、亮度 180/255）全在 res/geo/presets/plane_grid_lod.geo.toml 里
         GeometryVertexFormat plane_grid_gvf{
             {VertexSemantic::Position,  VF_V2F},
             {VertexSemantic::Luminance, VF_V1UN8},

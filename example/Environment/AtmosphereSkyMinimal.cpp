@@ -63,13 +63,8 @@ private:
         if (!device)
             return false;
 
-        using namespace inline_geometry;
-
+        // subdivisions=3、radius=256 全在 res/geo/presets/hex_sphere_sky.geo.toml 里
         const GeometryVertexFormat geometry_vertex_format = CreateSkyMinimalGeometryVertexFormat();
-        struct HexSphereCreateInfo hsci;
-
-        hsci.subdivisions=3;
-        hsci.radius=256;
 
         prim_sky_sphere=GetGeometry("geo:builtin:hex_sphere_sky", &geometry_vertex_format);
         return prim_sky_sphere;
