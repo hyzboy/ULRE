@@ -340,7 +340,7 @@ material_data->SetTextureResource("base_color", other_asset,
   做的就是 `WrapTextureAsset(texture)` 之后转发到同一个入口；配方侧 `AddTexture` 只是
   `UpsertRecipeTextureBinding(recipe, name, asset->GetResourceId(), ..., asset)` 的语法糖。
 - **材质侧没有采样器参数**（2026-10-29 起彻底移除，不是「忽略」而是**不存在**）：
-  Vulkan Bindless 下采样器由 `sampler.toml` 的预设集中写在 `binding=1` 的 `samplers[]`，
+  Vulkan Bindless 下采样器由 `contract/sampler.toml` 的预设集中写在 `binding=1` 的 `samplers[]`，
   着色器按预设名索引采样。全仓 `example/` 已无 `CreateSampler()` 调用。
 - 已同步加载好的纹理（离屏 RT 颜色纹理、立方体贴图）也用 `WrapTextureAsset()` 包成
   句柄再授权 —— 这样「材质里的纹理」永远只有一个类型，不存在「有的条目是裸指针、有的是句柄」。

@@ -34,7 +34,7 @@ namespace hgl::ecs
     /// 驱动异步加载，等就绪后再让图元进入可渲染状态。
     ///
     /// **没有 `sampler` 字段（2026-10-29 解耦）**：Vulkan 侧是 Bindless —— 采样器由
-    /// `sampler.toml` 的预设集中写入 `binding=1` 的 `samplers[]`，片元着色器按预设名字
+    /// `contract/sampler.toml` 的预设集中写入 `binding=1` 的 `samplers[]`，片元着色器按预设名字
     /// 索引采样；材质侧传进来的 `Sampler*` 从未进入任何描述符（旧描述符时代残留）。
     /// 因此本结构只表达「哪张纹理」，采样状态不是每纹理的授权数据。
     struct MaterialTextureAuthoringResource

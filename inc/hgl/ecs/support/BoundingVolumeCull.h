@@ -18,7 +18,7 @@ namespace hgl::ecs
      * 世界矩阵中的最大轴向缩放（三轴列向量长度取最大者）——**公式的唯一定义点**。
      *
      * **不做退化保护**：退化（scale == 0）时返回 0.0。这是与 GPU 剔除逐字同式的形态，
-     * GLSL 镜像在 `ShaderLibrary/ecs/entity_gpu_cull.glsl`（`float scale = max(length(...), ...)`），
+     * GLSL 镜像在 `ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl`（`float scale = max(length(...), ...)`），
      * 改这里必须同步改那里（两边都不带保护时才能互为参考对拍）。
      */
     inline float GetMaxWorldScaleRaw(const glm::mat4 &world_matrix)

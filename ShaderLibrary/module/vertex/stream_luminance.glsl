@@ -1,0 +1,29 @@
+// @ulre begin
+// @ulre name stream_luminance
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre provide Luminance
+// @ulre end
+// Stage 1: 顶点亮度从独立 SSBO 读取（VF_V1UN8——1B/顶点）
+// 打包布局：4 个亮度字节/uint（VAB stride 1 紧凑——uint 数组按 4B 对齐读）
+// 注：glslang 不支持 uint8_t 数组（8bit storage 转换失败）——uint 打包解码
+// 提供 LoadLuminance()，由 s1_position_* 的 LoadVertexData 调用
+#ifndef S1_LUMINANCE_GLSL
+#define S1_LUMINANCE_GLSL
+
+// BDA：亮度基址由 MeshDrawParams 行 addr_luminance 携带（VertexLuminanceRef 由
+// MeshShaderVertexAdapter 集中声明），读法不变
+#define sbo_vertex_luminance VertexLuminanceRef(draw_params.addr_luminance)
+
+float Luminance;
+
+#define S1_STREAM_LUMINANCE 1
+
+void LoadLuminance()
+{
+    const uint vidx = draw_params.vertex_base + VertexIndexID;
+    const uint packed = sbo_vertex_luminance.data[vidx >> 2];
+    Luminance = float((packed >> ((vidx & 3u) * 8u)) & 0xFFu) / 255.0;
+}
+
+#endif // S1_LUMINANCE_GLSL

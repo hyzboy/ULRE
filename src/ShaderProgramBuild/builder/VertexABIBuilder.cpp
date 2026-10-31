@@ -1,4 +1,4 @@
-// VertexABIBuilder.cpp — 顶点 ABI 求解（s1_* 模块选择 + VkFormat→GLSL 类型映射）
+// VertexABIBuilder.cpp — 顶点 ABI 求解（stream_* 模块选择 + VkFormat→GLSL 类型映射）
 //
 // 从 MaterialDefinitionRegistry.cpp 拆分（5 职责之一：vertex_abi）。
 // 公开声明已随生成期入口一并收进 StageSPVCompiler.h（数据面头不再挂生成期能力）。
@@ -23,7 +23,7 @@ namespace
     // 因此新增压缩格式只需在表里加一行，不需要在发射逻辑里加分支。
     //
     // 表顺序 = 发射顺序：数据流必须整体排在位置模块之前。位置模块内部 include 的
-    // `vertex/s1_stream_defaults.glsl` 用 `#ifndef S1_STREAM_*` 补空实现，数据模块
+    // `module/vertex/stream_defaults.glsl` 用 `#ifndef S1_STREAM_*` 补空实现，数据模块
     // 若排在它后面，自己定义的 `LoadXxx()` 会与已展开的空 stub 撞成重复定义。
     enum class VertexStreamSlot
     {
@@ -39,37 +39,37 @@ namespace
     {
         VertexStreamSlot slot;
         VkFormat format;          ///< VK_FORMAT_UNDEFINED = 该流的默认（无格式偏好）实现
-        const char *module_name;  ///< ShaderLibrary/vertex/<name>.glsl
+        const char *module_name;  ///< ShaderLibrary/module/vertex/<name>.glsl
     };
 
     constexpr VertexStreamModuleEntry VERTEX_STREAM_MODULES[] =
     {
         // UV：按属性格式选解码模块（格式=模块，RG16F 发行版独立一模块）
-        { VertexStreamSlot::UV, VK_FORMAT_R16G16_SFLOAT, "s1_uv_rg16f" },
-        { VertexStreamSlot::UV, VK_FORMAT_UNDEFINED,     "s1_uv" },
+        { VertexStreamSlot::UV, VK_FORMAT_R16G16_SFLOAT, "stream_uv_rg16f" },
+        { VertexStreamSlot::UV, VK_FORMAT_UNDEFINED,     "stream_uv" },
 
         // NTB：按 Normal 属性格式选（发行版压缩格式各一模块）
-        { VertexStreamSlot::NTB, VK_FORMAT_R8G8_UNORM,    "s1_ntb_rg8" },
-        { VertexStreamSlot::NTB, VK_FORMAT_R16G16_SFLOAT, "s1_ntb_rg16f" },
-        { VertexStreamSlot::NTB, PF_A2BGR10UN,            "s1_ntb_a2bgr10" },
-        { VertexStreamSlot::NTB, VK_FORMAT_UNDEFINED,     "s1_ntb" },
+        { VertexStreamSlot::NTB, VK_FORMAT_R8G8_UNORM,    "stream_ntb_rg8" },
+        { VertexStreamSlot::NTB, VK_FORMAT_R16G16_SFLOAT, "stream_ntb_rg16f" },
+        { VertexStreamSlot::NTB, PF_A2BGR10UN,            "stream_ntb_a2bgr10" },
+        { VertexStreamSlot::NTB, VK_FORMAT_UNDEFINED,     "stream_ntb" },
 
         // 顶点色：调色板索引（VertexPalette 域）/ 直读 / 无属性时补白
-        { VertexStreamSlot::Color, VK_FORMAT_R8_UINT,   "s1_palette_index" },
-        { VertexStreamSlot::Color, VK_FORMAT_UNDEFINED, "s1_color" },
+        { VertexStreamSlot::Color, VK_FORMAT_R8_UINT,   "stream_palette_index" },
+        { VertexStreamSlot::Color, VK_FORMAT_UNDEFINED, "stream_color" },
 
-        { VertexStreamSlot::Luminance,   VK_FORMAT_UNDEFINED, "s1_luminance" },
-        { VertexStreamSlot::TransformID, VK_FORMAT_UNDEFINED, "s1_transform_id" },
-        { VertexStreamSlot::Size,        VK_FORMAT_UNDEFINED, "s1_size" },
+        { VertexStreamSlot::Luminance,   VK_FORMAT_UNDEFINED, "stream_luminance" },
+        { VertexStreamSlot::TransformID, VK_FORMAT_UNDEFINED, "stream_transform_id" },
+        { VertexStreamSlot::Size,        VK_FORMAT_UNDEFINED, "stream_size" },
     };
 
     // 无顶点色属性时的补白模块。它不装载任何流（不定义 S1_STREAM_*），只提供
     // 常量白的 `GetVertexColor()`，因此不进上表、也不受 LoadXxx 调用序列约束。
-    constexpr const char *COLOR_DEFAULT_MODULE = "s1_color_default";
+    constexpr const char *COLOR_DEFAULT_MODULE = "stream_color_default";
 
     // ── 位置流解码模块表 ────────────────────────────────────────────────────
     // 位置流的「几何属性格式 ↔ 解码模块 ↔ 分量数」是一体的：stride 与符号由
-    // s1_position_* 模块内部硬编码（vec3 = 12B compact、vec2 = 8B、
+    // stream_position_* 模块内部硬编码（vec3 = 12B compact、vec2 = 8B、
     // vec2i = 4B packed int16x2），C++ 侧换个别名就等于换了 ABI，而生成器毫不知情。
     //
     // 这里曾经接受过一串"看起来同义"的格式别名：
@@ -84,14 +84,14 @@ namespace
     {
         VkFormat format;            ///< 几何 Position 属性格式（精确匹配）
         uint32_t component_count;   ///< 该模块隐含的分量数（Stage 2 position_mapping 对账用）
-        const char *module_name;    ///< ShaderLibrary/vertex/<name>.glsl
+        const char *module_name;    ///< ShaderLibrary/module/vertex/<name>.glsl
     };
 
     constexpr PositionModuleEntry POSITION_MODULE_TABLE[] =
     {
-        { VK_FORMAT_R32G32B32_SFLOAT, 3u, "s1_position_vec3"  },
-        { VK_FORMAT_R32G32_SFLOAT,    2u, "s1_position_vec2"  },
-        { VK_FORMAT_R16G16_SINT,      2u, "s1_position_vec2i" },
+        { VK_FORMAT_R32G32B32_SFLOAT, 3u, "stream_position_vec3"  },
+        { VK_FORMAT_R32G32_SFLOAT,    2u, "stream_position_vec2"  },
+        { VK_FORMAT_R16G16_SINT,      2u, "stream_position_vec2i" },
     };
 
     const PositionModuleEntry *FindPositionModule(VkFormat format)
@@ -105,7 +105,7 @@ namespace
 
     bool AppendVertexModuleInclude(const char *module_name, AnsiString &out_glsl)
     {
-        out_glsl += "#include \"vertex/";
+        out_glsl += "#include \"module/vertex/";
         out_glsl += module_name;
         out_glsl += ".glsl\"\n";
         return true;
@@ -152,12 +152,12 @@ namespace
         if (!request.geometry_vertex_format)
             return false;
 
-        // SSBO 顶点输入：顶点输入由下方 s1_* 模块选择完成，无 provider 图。
+        // SSBO 顶点输入：顶点输入由下方 stream_* 模块选择完成，无 provider 图。
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
         out_vertex_input_glsl.Clear();
         out_position_format = VK_FORMAT_UNDEFINED;
 
-        // SSBO 顶点输入：C++ 只做"选择"——按需求语义选 s1_* 模块，
+        // SSBO 顶点输入：C++ 只做"选择"——按需求语义选 stream_* 模块，
         // 读取代码在模块内（gl_VertexIndex），无 VBO attribute 布局。
         {
             const GeometryVertexAttributeFormat *position_attribute =
@@ -249,7 +249,7 @@ namespace
                 // input=None 表示不读外部顶点位置（CharQuad 一类自持 SSBO），格式对本路径无意义
                 if (definition.vertex_node_config.input != VertexInputMode::None)
                 {
-                    GLogError(u8"顶点位置格式没有对应的 s1_position_* 解码模块：VkFormat=%d（definition=%s）",
+                    GLogError(u8"顶点位置格式没有对应的 stream_position_* 解码模块：VkFormat=%d（definition=%s）",
                               static_cast<int>(out_position_format), definition.definition_id.c_str());
                     return false;
                 }

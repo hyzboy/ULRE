@@ -39,7 +39,7 @@ namespace
     bool VerifyPayloadModuleIdentity()
     {
         auto &registry = GetGlslModuleRegistry();
-        const char *source_names[] = { "texture_source", "pbr_surface_source" };
+        const char *source_names[] = { "material_source_texture", "material_source_pbr_surface" };
         const char *material_ids[] = { "UnlitTexture", "Lit" };
         for (int i = 0; i < 2; ++i)
         {
@@ -53,7 +53,7 @@ namespace
                 return false;
             definition.material_source_module_name = named.name;
 
-            // 副本的模块名故意既不含 "texture_source" 也不含 "pbr_surface_source"：
+            // 副本的模块名故意既不含 "material_source_texture" 也不含 "material_source_pbr_surface"：
             // payload 行需求必须由模块注解（`require Resource MaterialData`）决定，
             // 而不是由名字子串反推。
             bool has_payload = false;
@@ -541,7 +541,7 @@ namespace
 
         const ShaderLinkSpec &link = context->GetProgramLink();
         // Sky 的 surface 选择已经从「文档里合成」变成「主着色器里写死」：domain
-        // master 自带 `#include "material/sky_cube_surface.glsl"`，不再由定义挑。
+        // master 自带 `#include "module/provider/surface/surface_sky_cube.glsl"`，不再由定义挑。
         // 因此这里不再有「文档是否 include 了所选 surface」这回事 —— 该不变量由
         // 门禁的 `DH.*` 域等价与 `verify-domain-master-shaders.ps1` 覆盖。
         // 环境光 provider 仍然可选，但它现在写在 `frag_options.glsl` 里；片段文本已
@@ -891,7 +891,7 @@ namespace
         { "compile_defines", true, true,
           [](MaterialDefinition &d)
           { d.compile_defines.push_back("HGL_PROBE_SENSITIVITY"); } },
-        // sampler_names → `#define <name>Sampler <idx>u`，idx 来自 sampler.toml
+        // sampler_names → `#define <name>Sampler <idx>u`，idx 来自 contract/sampler.toml
         // 的预设顺序，本身不在任何声明源文本里。
         { "sampler_names", true, true,
           [](MaterialDefinition &d)
@@ -1112,7 +1112,7 @@ int main(const int argc, char **argv)
 
     const hgl::filesystem::Path sampler_toml =
         hgl::filesystem::Path(ToOSString(GetShaderLibraryPath()))
-        / OSString(OS_TEXT("sampler.toml"));
+        / OSString(OS_TEXT("contract/sampler.toml"));
     if (!SamplerPresetLibrary::Instance().Load(sampler_toml.ToOSString()))
     {
         GLogError(
@@ -1165,7 +1165,7 @@ int main(const int argc, char **argv)
         // IBL 环境光照：ambient provider 由**环境层**选（不是材质），
         // 验证它在 smoke 路径(ctest)下确实替换掉默认 indirect_sky_ambient。
         { "lit-ibl", "Lit", ShaderProgramPurpose::ForwardColor,
-          true, false, false, false, "indirect_ibl" }
+          true, false, false, false, "ambient_light_ibl" }
     };
     static const Fixture full_fixtures[] =
     {
@@ -1208,7 +1208,7 @@ int main(const int argc, char **argv)
         { "lit-forward", "Lit", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         // PBR 域的 alpha 前向 + 蒙版阴影。这两条此前只有 Checker2D/Checker3D
-        // 覆盖，而 PBR 走的是不同的材质源（pbr_surface_source）+ NTB 组合。
+        // 覆盖，而 PBR 走的是不同的材质源（material_source_pbr_surface）+ NTB 组合。
         // 删除 ShaderGen 后 domain/standard_opaque/*.frag 需要它们作为等价基线。
         { "lit-forward-alpha", "Lit", ShaderProgramPurpose::ForwardColor,
           true, false, false, true },
@@ -1223,12 +1223,12 @@ int main(const int argc, char **argv)
         { "sky-cube", "SkyCube", ShaderProgramPurpose::ForwardColor,
           true, false, false, false },
         { "lit-ibl", "Lit", ShaderProgramPurpose::ForwardColor,
-          true, false, false, false, "indirect_ibl" },
+          true, false, false, false, "ambient_light_ibl" },
         // DrawTriangle 的真实形状：`VertexColor` 域 + `VF_V2I16` 像素坐标
         // + recipe 层 2D 节点配置（`Make2DNodeConfigOrtho`）。
         //
         // 它守三件事：
-        //   ① `R16G16_SINT` 必须选到 `vertex/s1_position_vec2i.glsl`（4B
+        //   ① `R16G16_SINT` 必须选到 `module/vertex/stream_position_vec2i.glsl`（4B
         //      packed int16x2），不是浮点 vec2 的 8B 版本；
         //   ② `ResolveVertexABI` 的 `vertex_node_config` 回写（阶段 4.4
         //      缺陷）——去掉回写后 ABI 读 definition 的 `Passthrough3D`

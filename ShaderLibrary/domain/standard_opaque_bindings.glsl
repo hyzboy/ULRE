@@ -17,7 +17,7 @@
 #define HGL_DOMAIN_STANDARD_OPAQUE_BINDINGS_GLSL
 
 // ── 采样器预设索引 ──
-// 数值是 sampler.toml 里的**全局**预设序号（SamplerPresetLibrary::GetIndex），
+// 数值是 contract/sampler.toml 里的**全局**预设序号（SamplerPresetLibrary::GetIndex），
 // 不是本 domain 内的序号。写错不会报错，会静默按 Nearest 采样。
 //
 // ⚠ 这三个 `#define` 原本由 `BuildSamplerMacros(definition->sampler_names)`
@@ -30,10 +30,10 @@
 #define ShadowPCFSampler 4u
 
 // ── 材质私有数据行（GlobalSSBOType::PBRSurface） ──
-// 结构本身见 ssbo/pbr_surface_row.glsl（由 C++ 结构 + 注解生成），
+// 结构本身见 module/descriptor/ssbo/pbr_surface_row.glsl（由 C++ 结构 + 注解生成），
 // 本文件只保留**寻址**：这一行从哪里取。
 // 行跨度 32 字节 = 8 × 4，与 PBRSurfaceData 一致。
-#include "ssbo/pbr_surface_row.glsl"
+#include "module/descriptor/ssbo/pbr_surface_row.glsl"
 #define MTL_ROW(i) PBRSurfaceRow(global_addresses.addr_pbr_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(32))
 
 // ── 材质贴图表 ──

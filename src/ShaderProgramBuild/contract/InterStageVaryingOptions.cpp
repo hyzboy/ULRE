@@ -34,7 +34,7 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        /// `ShaderLibrary/common/interstage_varying.glsl` 已经实现了哪些语义。
+        /// `ShaderLibrary/module/stage/interstage_varying.glsl` 已经实现了哪些语义。
         ///
         /// 这不是第二份 location/类型名单（那是注册表），而是「GLSL 侧是否已经
         /// 接上」的接线状态。置位但没接线的语义必须在构建期失败 —— 否则会发出

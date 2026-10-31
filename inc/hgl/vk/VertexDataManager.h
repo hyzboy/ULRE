@@ -21,7 +21,7 @@ class BufferManager;
  * 顶点偏移计算（VBO 与 SSBO 顶点输入统一语义）：
  * - VBO 模式（传统 attribute fetch）：硬件自动用 firstVertex + 索引取顶点——
  *   shader 无需任何处理（attribute 已按绝对顶点寻址）。
- * - SSBO 顶点输入模式（MeshShader 方向，s1_* 模块）：
+ * - SSBO 顶点输入模式（MeshShader 方向，stream_* 模块）：
  *   Vulkan 的 gl_VertexIndex（SPIR-V VertexIndex）在 indexed draw 中 =
  *   BaseVertex + index buffer 值（firstVertex 自动含入！）——
  *   shader 直接 data[gl_VertexIndex] 即 VDM 大 buffer 的绝对顶点号，

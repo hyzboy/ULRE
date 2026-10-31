@@ -7,7 +7,7 @@ namespace hgl::graph::mtl
     /**
      * 引擎自带（非用户资产）的材质定义。
      *
-     * 为什么这些定义必须**代码化**而不是留在 ShaderLibrary/material/*.mi.toml：
+     * 为什么这些定义必须**代码化**而不是留在 ShaderLibrary/asset/definition/*.definition.toml：
      *
      *   1. 它们是**保底链**（MaterialRecipe.h 的 kFallbackMaterialRules）。保底材质一旦
      *      因为资产缺失 / 被误删 / 写错而解析不出来，错误处理本身就会再失败一次 ——
@@ -18,7 +18,7 @@ namespace hgl::graph::mtl
      *      形态与 material_data 类型推入 MaterialDomainContract）。资产文件里剩下的只有
      *      领域 + 顶点语义 + 变体开关，属于"引擎内部知识"，写进 C++ 才算放在正确的地方。
      *
-     * 代码化的**边界**：内嵌的仍然是完整 schema-4 源码，注册时走**与 .mi.toml
+     * 代码化的**边界**：内嵌的仍然是完整 schema-4 源码，注册时走**与 .definition.toml
      * 完全相同**的解析 + 领域校验管线（ParseMaterialDefinitionFile）。这样做是为了让
      * MaterialDomainContract 保持唯一真源 —— 若改为在 C++ 里手工拼 MaterialDefinition
      * 结构体，领域契约就得在第二处复述一遍（material_source_module_name / ntb_module_name /

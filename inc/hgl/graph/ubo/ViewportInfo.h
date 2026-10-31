@@ -13,7 +13,7 @@ namespace hgl::graph
      * 视口 / 正交投影参数块。
      *
      * ⚠ 数据成员必须全 public：本结构是 GPU ABI 的**唯一真源**（`HGL_UBO_BDA`），
-     *   生成器据此产出 `ShaderLibrary/ubo/ViewportInfo.glsl` 与 TOML 读写。
+     *   生成器据此产出 `ShaderLibrary/module/descriptor/ubo/ViewportInfo.glsl` 与 TOML 读写。
      *   私有成员会让它失去 standard-layout ⇒ 无法保证与 GLSL scalar 布局逐字段同偏移。
      *   成员函数不影响布局/平凡复制，可以保留。
      */

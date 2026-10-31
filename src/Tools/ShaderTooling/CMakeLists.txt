@@ -46,7 +46,7 @@ SetupToolTarget(DescriptorMacroGen)
 if(BUILD_TESTING)
     add_test(
         NAME VerifyDescriptorMacros
-        COMMAND DescriptorMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/descriptor_macros.glsl)
+        COMMAND DescriptorMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/descriptor_macros.glsl)
 
     set_tests_properties(
         VerifyDescriptorMacros
@@ -56,7 +56,7 @@ endif()
 # 构建期校验（不止 ctest）：生成物一旦与真源漂移即构建失败。
 # 真源 = inc/hgl/common/DescriptorSetTypeDef.h 的 kDescriptorBindingMacros 规范表（SceneBinding 枚举已随集退场）。
 add_custom_target(descriptor_macros_verify ALL
-    COMMAND $<TARGET_FILE:DescriptorMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/descriptor_macros.glsl
+    COMMAND $<TARGET_FILE:DescriptorMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/descriptor_macros.glsl
     DEPENDS DescriptorMacroGen
     COMMENT "校验 descriptor_macros.glsl 与真源一致")
 
@@ -78,7 +78,7 @@ SetupToolTarget(InterStageLocationMacroGen)
 if(BUILD_TESTING)
     add_test(
         NAME VerifyInterStageLocations
-        COMMAND InterStageLocationMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/interstage_locations.glsl)
+        COMMAND InterStageLocationMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/interstage_locations.glsl)
 
     set_tests_properties(
         VerifyInterStageLocations
@@ -86,7 +86,7 @@ if(BUILD_TESTING)
 endif()
 
 add_custom_target(interstage_locations_verify ALL
-    COMMAND $<TARGET_FILE:InterStageLocationMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/interstage_locations.glsl
+    COMMAND $<TARGET_FILE:InterStageLocationMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/interstage_locations.glsl
     DEPENDS InterStageLocationMacroGen
     COMMENT "校验 interstage_locations.glsl 与 ShaderSemanticRegistry 一致")
 
@@ -102,7 +102,7 @@ SetupToolTarget(VertexLoaderConsistency)
 if(BUILD_TESTING)
     add_test(
         NAME VerifyVertexLoaderConsistency
-        COMMAND VertexLoaderConsistency ${CMAKE_SOURCE_DIR}/ShaderLibrary/vertex)
+        COMMAND VertexLoaderConsistency ${CMAKE_SOURCE_DIR}/ShaderLibrary/module/vertex)
 
     set_tests_properties(
         VerifyVertexLoaderConsistency

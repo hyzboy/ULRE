@@ -2,7 +2,7 @@
 // Text2D 域 · ForwardColor pass 的**物理固定**主着色器。
 //
 // 字形四边形（mesh 阶段 s1_text_char_quad 出几何）：表面来源固定是
-// `material/text_source_gpu.glsl`，它按 `TEXT_SDF_ENABLED` 走 SDF 距离场
+// `module/provider/material_source/material_source_text_gpu.glsl`，它按 `TEXT_SDF_ENABLED` 走 SDF 距离场
 // 或原始位图两条**既存分支**——该宏来自材质定义的 `defines`，由
 // frag_options.glsl 发放，不在本文件里判断。
 //
@@ -17,21 +17,21 @@
 #include "domain/root_bindings.glsl"
 #include "domain/text_2d_bindings.glsl"
 #include "generated/frag_options.glsl"
-#include "common/descriptor_macros.glsl"
-#include "ubo/scene_ubo.glsl"
-#include "common/surface_interface.glsl"
-#include "common/pass_environment_interface.glsl"
-#include "compositor/flat_lighting.glsl"
-#include "material/text_source_gpu.glsl"
-#include "ntb/ntb_none.glsl"
-#include "surface/material_surface.glsl"
-#include "common/alpha_compositor.glsl"
-// 阶段间 varying 的输入声明来自 `common/interstage_varying.glsl` 的片段段：
+#include "contract/descriptor_macros.glsl"
+#include "module/descriptor/ubo/scene_ubo.glsl"
+#include "module/interface/surface_interface.glsl"
+#include "module/interface/pass_environment_interface.glsl"
+#include "module/provider/output_policy/output_policy_flat.glsl"
+#include "module/provider/material_source/material_source_text_gpu.glsl"
+#include "module/provider/ntb/ntb_none.glsl"
+#include "module/provider/surface/surface_material.glsl"
+#include "module/interface/alpha_compositor.glsl"
+// 阶段间 varying 的输入声明来自 `module/stage/interstage_varying.glsl` 的片段段：
 // 置位哪些语义由 `generated/common_options.glsl` 的 `HGL_VARYING_*` 决定，与网格
 // 阶段读的是同一个宏集合，两端口径不可能分叉。派生量（viewDir / screenPos /
 // 面法线兜底）仍在本文件里按领域赋值。
 #define HGL_FRAGMENT_INPUT_VARYINGS
-#include "common/interstage_varying.glsl"
+#include "module/stage/interstage_varying.glsl"
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }
 

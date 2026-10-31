@@ -631,7 +631,7 @@ int main(int argc, char** argv)
         }
 
         // ④ 只要法线贴图模块（ntb_module_name）、不声明 Normal 语义 ⇒ 仍然必须要顶点法线
-        //    （`s1_ntb*.glsl` 会按 ABI 读 Normal 槽 —— `Lit` 就是这种写法）
+        //    （`stream_ntb*.glsl` 会按 ABI 读 Normal 槽 —— `Lit` 就是这种写法）
         {
             MaterialDefinition definition{};
             definition.ntb_module_name = "ntb_tangent_vbo_normalmap";

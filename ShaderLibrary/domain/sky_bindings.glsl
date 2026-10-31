@@ -8,7 +8,7 @@
 #ifndef HGL_DOMAIN_SKY_BINDINGS_GLSL
 #define HGL_DOMAIN_SKY_BINDINGS_GLSL
 
-// 采样器预设索引（sampler.toml 全局序号）。天空盒只有 trilinear 一档。
+// 采样器预设索引（contract/sampler.toml 全局序号）。天空盒只有 trilinear 一档。
 #define TrilinearSampler 2u
 
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef

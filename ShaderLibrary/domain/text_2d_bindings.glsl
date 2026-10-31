@@ -6,14 +6,14 @@
 // 所以这里只有一张单元素贴图表，没有 `MTL_ROW`。
 //
 // ── 为什么两个采样器宏都发 ──
-// `material/text_source_gpu.glsl` 按 `TEXT_SDF_ENABLED` 二选一：
+// `module/provider/material_source/material_source_text_gpu.glsl` 按 `TEXT_SDF_ENABLED` 二选一：
 //   定义 → SDF 距离场路径，走 `LinearSampler`；
 //   未定义 → 原始位图路径，走 `NearestSampler`。
 // 该宏来自材质定义的 `defines`（`builtin/text_gpu` 有、`builtin/text_gpu_bitmap`
 // 没有），因此**过滤方式属于定义而非领域**，物理文件里必须同时提供两个索引。
 // 多出来的那个宏没有消费者，不产生任何代码。
 //
-// ⚠ 数值是 sampler.toml 里的**全局**预设序号（Nearest=0, Linear=1），
+// ⚠ 数值是 contract/sampler.toml 里的**全局**预设序号（Nearest=0, Linear=1），
 // 不是本领域内的序号。
 #ifndef HGL_DOMAIN_TEXT_2D_BINDINGS_GLSL
 #define HGL_DOMAIN_TEXT_2D_BINDINGS_GLSL

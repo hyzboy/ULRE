@@ -8,8 +8,8 @@
 本工具读取 **Clang AST**（字段名/类型/顺序）与 **记录布局**
 （`-fdump-record-layouts-complete`：偏移/尺寸/对齐），产出：
 
-    ShaderLibrary/ubo/*.glsl       结构本体（struct + buffer_reference 块）
-    ShaderLibrary/ssbo/*.glsl      同上
+    ShaderLibrary/module/descriptor/ubo/*.glsl       结构本体（struct + buffer_reference 块）
+    ShaderLibrary/module/descriptor/ssbo/*.glsl      同上
     inc/hgl/graph/generated/BufferToml.gen.h    toml11 读写
     inc/hgl/graph/generated/buffer_schema.fbs   FlatBuffers schema
 

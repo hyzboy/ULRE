@@ -62,7 +62,7 @@ namespace hgl::graph::mtl
         uint8 location_width = 0;
         uint32 stable_location = InvalidShaderSemanticLocation;
 
-        /// 稳定 ABI 在 GLSL 侧的宏名（`ShaderLibrary/common/interstage_locations.glsl`
+        /// 稳定 ABI 在 GLSL 侧的宏名（`ShaderLibrary/contract/interstage_locations.glsl`
         /// 的 `#define`）。C++ 侧不得再手写这张名字→location 的对照，
         /// 一律经 GetInterStageSemanticLocationMacro() 取用。
         const char *location_macro = nullptr;

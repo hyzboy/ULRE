@@ -110,7 +110,7 @@ inline void EncodeOctahedralNormal(float nx, float ny, float nz, float &out_p, f
  * 输入 normals：count 个顶点的 float×3 连续数组（顶点 i 的法线 = normals[i*3..i*3+2]；
  *               无需预先单位化——内部归一化）
  * 输出 out_rg8：每顶点 2B（out_rg8[2i]=p、out_rg8[2i+1]=q）——R8G8_UNORM VAB 布局，
- *               与 GPU 端 s1_ntb_rg8 解码（低字节 p、高字节 q）逐字节一致
+ *               与 GPU 端 stream_ntb_rg8 解码（低字节 p、高字节 q）逐字节一致
  */
 inline void EncodeNormalsToRG8(const float *normals, const int count, uint8_t *out_rg8)
 {

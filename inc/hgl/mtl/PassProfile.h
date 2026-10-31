@@ -40,7 +40,7 @@ namespace hgl::graph::mtl
         OutputPolicy,
         MaterialSourceProvider,
         NTBProvider,
-        /// 天光数据源（如 sky/sky_atmosphere.glsl）。
+        /// 天光数据源（如 module/provider/sky/sky_atmosphere.glsl）。
         /// 与 AmbientLightProvider 是两条独立数据链：Ambient 承担间接光
         /// （indirect_sky_ambient），天光提供太阳方向与大气参数，被
         /// ambient 模块与 sky surface 共同消费，故不能复用同一 slot。
@@ -100,7 +100,7 @@ namespace hgl::graph::mtl
         /// 重排会改变生成的 GLSL 文本 → program hash 变化 → SPV 缓存失效。
         ///
         /// 硬约束：SurfaceProvider 必须排在 MaterialSourceProvider 与
-        /// NTBProvider 之后——surface/material_surface.glsl 直接调用
+        /// NTBProvider 之后——module/provider/surface/surface_material.glsl 直接调用
         /// EvalMaterialSource / EvalMaterialAlpha / GetNTB，GLSL 要求被调函数
         /// 先于调用点声明。
         ///

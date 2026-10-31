@@ -71,7 +71,7 @@ namespace hgl { namespace graph { namespace layout {
                               // 竖排 vrotate 字符 = 90
     };  // 12 bytes (alignas(4) 强制，与 GPU std430 一致)
 
-    // ── 布局断言：CPU 结构与 GLSL 真源（ShaderLibrary/vertex/s1_text_char_quad.glsl）
+    // ── 布局断言：CPU 结构与 GLSL 真源（ShaderLibrary/module/vertex/stream_text_char_quad.glsl）
     // 的 std430 布局逐字段对应——改任何一侧的字段顺序/宽度必须同步另一侧，
     // 否则 GPU 端逐实例错位（stride 不匹配）。
     // sizeof 断言之外补字段级连续性断言（抓调序/加字段/改宽度——sizeof 不变时

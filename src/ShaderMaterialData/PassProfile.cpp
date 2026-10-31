@@ -56,7 +56,7 @@ namespace hgl::graph::mtl
 
         // NTBProvider 是必需槽：material_surface.glsl 无条件调用 GetNTB（GLSL 在
         // 函数定义处就要解析符号，与调用点是否可达无关）。“不需要法线扰动”由空对象
-        // ntb/ntb_none.glsl 表达。
+        // module/provider/ntb/ntb_none.glsl 表达。
         constexpr PassProfileSlot ForwardUnlitSlots[] =
         {
             { ShaderModuleSlotRole::OutputPolicy },

@@ -275,7 +275,7 @@ namespace hgl::graph::mtl
     }
 
     // Name-keyed sampler preset dependency. The name resolves against
-    // sampler.toml (e.g. "Trilinear" => the module may use TrilinearSampler);
+    // contract/sampler.toml (e.g. "Trilinear" => the module may use TrilinearSampler);
     // it is declared by the module itself so the module does not rely on the
     // material file happening to list the same preset. `required == false`
     // marks a preset used only on a conditional (material #define) code path.

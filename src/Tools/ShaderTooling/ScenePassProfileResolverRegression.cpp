@@ -359,7 +359,7 @@ namespace
             "id = \"identity_fixture\"\nname = \"Identity\"\n"
             "provider_policy = \"GeometryOnly\"\n[vertex]\nrequirements = [\"Position\"]\n";
         const char *invalid_fragments[] = {
-            "material_source_module = \"material/unlit_source.glsl\"\n",
+            "material_source_module = \"module/provider/material_source/material_source_unlit.glsl\"\n",
             "ntb_module = \"ntb/normal.glsl\"\n",
             "surface_module_name = \"sky_cube_surface\"\nsurface_module_include = \"sky/cube.glsl\"\n",
             "ambient_module_name = \"indirect_ibl\"\n",
@@ -369,7 +369,7 @@ namespace
             "material_source_module_name = 42\n",
             "ntb_module_name = true\n",
             "surface_module_name = []\n",
-            "material_source_module_name = \"unlit_source\"\nmaterial_source_module_include = \"x.glsl\"\n"
+            "material_source_module_name = \"material_source_unlit\"\nmaterial_source_module_include = \"x.glsl\"\n"
         };
         for (const char *fragment : invalid_fragments)
         {
@@ -408,7 +408,7 @@ namespace
     bool RunSurfaceBindingRegression(const GlslModuleRegistry &registry)
     {
         const char *ids[] = { "SkyCube", "SkyMinimal" };
-        const char *names[] = { "sky_cube_surface", "sky_minimal_surface" };
+        const char *names[] = { "surface_sky_cube", "surface_sky_minimal" };
         for (int i = 0; i < 2; ++i)
         {
             MaterialDefinition definition;
@@ -443,19 +443,19 @@ int main(int argc, char **argv)
         return RunCompilerRootRegression() ? 0 : 22;
     ScenePassProfile profile;
     if (!profile.AddModule(
-            ShaderModuleSlotRole::SurfaceProvider, "material_surface",
-            "surface/material_surface.glsl")
+            ShaderModuleSlotRole::SurfaceProvider, "surface_material",
+            "module/provider/surface/surface_material.glsl")
      || !profile.AddModule(
-            ShaderModuleSlotRole::OutputPolicy, "flat_lighting",
-            "compositor/flat_lighting.glsl")
+            ShaderModuleSlotRole::OutputPolicy, "output_policy_flat",
+            "module/provider/output_policy/output_policy_flat.glsl")
      || !profile.AddModule(
-            ShaderModuleSlotRole::MaterialSourceProvider, "unlit_source",
-            "material/unlit_source.glsl")
+            ShaderModuleSlotRole::MaterialSourceProvider, "material_source_unlit",
+            "module/provider/material_source/material_source_unlit.glsl")
      // NTBProvider 是 ForwardUnlit 的必需槽（material_surface.glsl 无条件调用
      // GetNTB），不需要法线扰动的模板用空对象 ntb_none 补位。
      || !profile.AddModule(
             ShaderModuleSlotRole::NTBProvider, "ntb_none",
-            "ntb/ntb_none.glsl"))
+            "module/provider/ntb/ntb_none.glsl"))
         return 1;
 
     PassProfileRequest request;
@@ -476,7 +476,7 @@ int main(int argc, char **argv)
     if (!ResolvePassProfile(request, registry, resolved, diagnostic)
      || !resolved.IsValid()
      || resolved.request.module_roots[0].include_path
-            != "surface/material_surface.glsl")
+            != "module/provider/surface/surface_material.glsl")
         return 6;
     // 片段模板组装（FragmentTemplateComposer）已随「无生成器」终态删除：
     // 片段阶段的编排不再由本工具验证，改由领域固定主着色器文件本体承担。
@@ -507,7 +507,7 @@ int main(int argc, char **argv)
     ScenePassProfile duplicate;
     ScenePassProfile missing_path;
     if (missing_path.AddModule(
-            ShaderModuleSlotRole::SurfaceProvider, "material_surface"))
+            ShaderModuleSlotRole::SurfaceProvider, "surface_material"))
         return 8;
     if (!duplicate.AddModule(
             ShaderModuleSlotRole::SurfaceProvider, "surface/a",

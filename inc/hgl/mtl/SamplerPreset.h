@@ -17,7 +17,7 @@ namespace hgl::graph::mtl
     /**
      * 全局 Sampler 预设库（进程内单例，统一注册机制的唯一权威）。
      *
-     * 数据源：ShaderLibrary/sampler.toml（单一 array-of-tables，出现顺序即索引）。
+     * 数据源：ShaderLibrary/contract/sampler.toml（单一 array-of-tables，出现顺序即索引）。
      * 全链路以名字为键：
      *   运行时   BindlessTextureManager::RegisterSamplers 按序 vkCreateSampler 写 binding=1
      *   ShaderGen StageSPVCompiler 生成 "#define <name>Sampler <idx>u" 宏
@@ -32,7 +32,7 @@ namespace hgl::graph::mtl
     public:
         static SamplerPresetLibrary &Instance();
 
-        /** 解析 sampler.toml。失败返回 false（保留上次成功内容）。 */
+        /** 解析 contract/sampler.toml。失败返回 false（保留上次成功内容）。 */
         bool Load(const OSString &path);
 
         void Clear();

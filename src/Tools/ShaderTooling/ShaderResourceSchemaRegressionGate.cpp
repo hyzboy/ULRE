@@ -243,7 +243,7 @@ namespace
 
     /// 固定网格主着色器的根目录。
     ///
-    /// 只有 `mesh/shape/`：三种几何模式（VertexPassthrough / LineQuad /
+    /// 只有 `topology/`：三种几何模式（VertexPassthrough / LineQuad /
     /// CharQuad）的全部形状 master 都在这里，形状名即文件名。`mesh/fixed/`
     /// 那套哈希命名（`<shape_key>.mesh`）已随生成器残留一起删除——它是
     /// 「按顶点格式算形状键再查表」的遗物，形状数随格式表组合爆炸。
@@ -251,7 +251,7 @@ namespace
     LoadFixedMeshMasters()
     {
         std::vector<std::pair<std::string, std::string>> masters;
-        for (const char *suffix : {"ShaderLibrary/mesh/shape"})
+        for (const char *suffix : {"ShaderLibrary/topology"})
         {
             const std::filesystem::path root(RepoRootPath(suffix));
             const std::string prefix = root.filename().string() + "/";
@@ -443,7 +443,7 @@ namespace
     ///
     /// 迁移前这条判据必须对 14 个 `.mesh` 各跑一遍：每个 varying 组合各有一份
     /// master，「声明对不对」实际上是在检查「文件名有没有被手抄错」。接口集中到
-    /// `common/interstage_varying.glsl` 之后，同一批不变量只需检查**一份文件**，
+    /// `module/stage/interstage_varying.glsl` 之后，同一批不变量只需检查**一份文件**，
     /// 而且检查对象从「某个组合碰巧写了什么」变成「注册表里每条**已接线**语义
     /// 是否两端成对、location / 类型 / 插值 / 维数是否与注册表与调度契约一致」。
     ///
@@ -454,20 +454,20 @@ namespace
     static void AuditUnifiedInterStageVarying(GateResult &result)
     {
         const std::string source = ReadFileText(
-            RepoRootPath("ShaderLibrary/common/interstage_varying.glsl"));
+            RepoRootPath("ShaderLibrary/module/stage/interstage_varying.glsl"));
         if (source.empty())
         {
             result.diagnostics.emplace_back(
-                "common/interstage_varying.glsl is missing or empty");
+                "module/stage/interstage_varying.glsl is missing or empty");
             return;
         }
 
         const std::string writer = ReadFileText(
-            RepoRootPath("ShaderLibrary/common/interstage_varying_writer.glsl"));
+            RepoRootPath("ShaderLibrary/module/stage/interstage_varying_writer.glsl"));
         if (writer.empty())
         {
             result.diagnostics.emplace_back(
-                "common/interstage_varying_writer.glsl is missing or empty");
+                "module/stage/interstage_varying_writer.glsl is missing or empty");
             return;
         }
 
@@ -496,7 +496,7 @@ namespace
             || mesh_marker > frag_marker)
         {
             result.diagnostics.emplace_back(
-                "common/interstage_varying.glsl 必须依次含"
+                "module/stage/interstage_varying.glsl 必须依次含"
                 " 网格段 (#if defined(HGL_MESH_OUTPUT_VARYINGS)) 与"
                 " 片段段 (#if defined(HGL_FRAGMENT_INPUT_VARYINGS))");
             return;
@@ -544,7 +544,7 @@ namespace
             if (mesh_block.empty() && frag_block.empty())
             {
                 AddCappedDiagnostic(
-                    result, std::string("common/interstage_varying.glsl: ")
+                    result, std::string("module/stage/interstage_varying.glsl: ")
                         + varying_macro + " 已接线，两段却都没有声明 "
                         + symbol);
                 continue;
@@ -552,7 +552,7 @@ namespace
             if (mesh_block.empty() || frag_block.empty())
             {
                 AddCappedDiagnostic(
-                    result, std::string("common/interstage_varying.glsl: ")
+                    result, std::string("module/stage/interstage_varying.glsl: ")
                         + varying_macro + " 只在"
                         + (mesh_block.empty() ? "片段段" : "网格段")
                         + "声明了 " + symbol + "，另一端缺失（接口必须成对）");
@@ -590,7 +590,7 @@ namespace
                     != flat))
             {
                 AddCappedDiagnostic(
-                    result, std::string("common/interstage_varying.glsl 网格段: ")
+                    result, std::string("module/stage/interstage_varying.glsl 网格段: ")
                         + varying_macro + " 的声明必须是 `layout(location="
                         + info->location_macro + ") "
                         + (flat ? "perprimitiveEXT " : "") + "out "
@@ -608,7 +608,7 @@ namespace
                     != flat))
             {
                 AddCappedDiagnostic(
-                    result, std::string("common/interstage_varying.glsl 片段段: ")
+                    result, std::string("module/stage/interstage_varying.glsl 片段段: ")
                         + varying_macro + " 的声明必须是 `layout(location="
                         + info->location_macro + ") "
                         + (flat ? "flat perprimitiveEXT " : "") + "in "
@@ -619,7 +619,7 @@ namespace
             if (!IsVaryingWritten(writer_text, symbol))
             {
                 AddCappedDiagnostic(
-                    result, std::string("common/interstage_varying_writer.glsl: ")
+                    result, std::string("module/stage/interstage_varying_writer.glsl: ")
                         + symbol + " 声明了却从未写入");
             }
         }
@@ -667,7 +667,7 @@ namespace
             if (!emittable)
             {
                 AddCappedDiagnostic(
-                    result, "common/interstage_varying.glsl 含死开关 "
+                    result, "module/stage/interstage_varying.glsl 含死开关 "
                         + macro + "（发射器永远不会定义它）");
             }
         }
@@ -727,7 +727,7 @@ namespace
     /// 生成器删除之后，同一批不变量必须改成对**库里实际文本**的直接断言。
     ///
     /// **阶段间 varying 的声明审计已经不在这里**：接口集中到
-    /// `common/interstage_varying.glsl` 之后，同一批不变量只剩一份检查对象，
+    /// `module/stage/interstage_varying.glsl` 之后，同一批不变量只剩一份检查对象，
     /// 见 AuditUnifiedInterStageVarying()。本函数现在只看主着色器自身的结构：
     ///
     /// ① 拓扑契约 `layout(triangles, max_vertices = N, max_primitives = M)` 是字面量
@@ -760,12 +760,12 @@ namespace
             // `layout(in)` 只能靠人对齐。集中到统一文件后，master 对接口一无所知；
             // 这里断言这个形态不再被回退，并顺带确认它确实处在网格段（否则统一文件
             // 会 `#error`，但报错点在 include 里，不如在这里指出文件名）。
-            if (text.find("#include \"common/interstage_varying.glsl\"")
+            if (text.find("#include \"module/stage/interstage_varying.glsl\"")
                 == std::string::npos)
             {
                 AddCappedDiagnostic(
                     result, name + ": 形状 master 必须 include"
-                                  " common/interstage_varying.glsl（接口声明"
+                                  " module/stage/interstage_varying.glsl（接口声明"
                                   "只能有这一处真源）");
             }
             if (text.find("HGL_MESH_OUTPUT_VARYINGS") == std::string::npos)
@@ -859,7 +859,7 @@ namespace
             // 直接引入 Stage2/Stage3（否则与 options 里的重复定义打架）；拓扑专用源
             // （CharQuad / LineQuad）仍自带模块，按原来的规则查。
             const bool char_quad =
-                text.find("#include \"vertex/s1_text_char_quad.glsl\"")
+                text.find("#include \"module/vertex/stream_text_char_quad.glsl\"")
                 != std::string::npos;
             const size_t options_include =
                 text.find("#include \"generated/mesh_options.glsl\"");
@@ -1899,16 +1899,16 @@ namespace
                     : std::string();
 
                 // ── ② 位置解码模块必须是 packed int16x2 那一份 ──
-                if (glsl.find("#include \"vertex/s1_position_vec2i.glsl\"")
+                if (glsl.find("#include \"module/vertex/stream_position_vec2i.glsl\"")
                         == std::string::npos)
                 {
                     result.diagnostics.emplace_back(
-                        "R16G16_SINT 没有选到 vertex/s1_position_vec2i.glsl"
+                        "R16G16_SINT 没有选到 module/vertex/stream_position_vec2i.glsl"
                         "（4B packed int16x2 与 8B float vec2 是两个 ABI）");
                 }
-                if (glsl.find("#include \"vertex/s1_position_vec2.glsl\"")
+                if (glsl.find("#include \"module/vertex/stream_position_vec2.glsl\"")
                         != std::string::npos
-                 || glsl.find("#include \"vertex/s1_position_vec3.glsl\"")
+                 || glsl.find("#include \"module/vertex/stream_position_vec3.glsl\"")
                         != std::string::npos)
                 {
                     result.diagnostics.emplace_back(
@@ -1916,13 +1916,13 @@ namespace
                 }
 
                 // ── ③ 映射必须取 recipe 的 PixelToLocal，而不是 definition 的 Passthrough3D ──
-                if (glsl.find("#include \"vertex/s2_pixel_to_local.glsl\"")
+                if (glsl.find("#include \"module/vertex/position_pixel_to_local.glsl\"")
                         == std::string::npos)
                 {
                     result.diagnostics.emplace_back(
                         "网格阶段没有使用 recipe 的 s2_pixel_to_local 映射");
                 }
-                if (glsl.find("#include \"vertex/s2_passthrough3d.glsl\"")
+                if (glsl.find("#include \"module/vertex/position_passthrough3d.glsl\"")
                         != std::string::npos)
                 {
                     result.diagnostics.emplace_back(
@@ -1934,7 +1934,7 @@ namespace
                 // mesh 阶段可编译。按内容比对（而不是按形状键硬编码文件名），
                 // 重新捕获时只需替换文件，门禁仍然有效。
                 //
-                // 形状主着色器只在 `mesh/shape/` 下（`mesh/fixed/` 已删除）。
+                // 形状主着色器只在 `topology/` 下（`mesh/fixed/` 已删除）。
                 bool matched = false;
                 {
                     // 生产文本就是形状 master 本身（options 摘要已迁出文本），
@@ -1943,7 +1943,7 @@ namespace
 
                     const std::filesystem::path dirs[1] =
                     {
-                        RepoRootPath("ShaderLibrary/mesh/shape")
+                        RepoRootPath("ShaderLibrary/topology")
                     };
                     try
                     {
@@ -1969,13 +1969,13 @@ namespace
                     catch (const std::filesystem::filesystem_error &)
                     {
                         result.diagnostics.emplace_back(
-                            "cannot enumerate ShaderLibrary/mesh/shape");
+                            "cannot enumerate ShaderLibrary/topology");
                     }
                 }
                 if (!matched)
                 {
                     result.diagnostics.emplace_back(
-                        "ShaderLibrary/mesh/shape 没有与该形状一致的 .mesh"
+                        "ShaderLibrary/topology 没有与该形状一致的 .mesh"
                         "（删除 ShaderGen 后该域将无 mesh 阶段可用）");
                 }
             }
@@ -2006,11 +2006,11 @@ namespace
                     const std::string glsl = mesh_options_text.c_str()
                         ? std::string(mesh_options_text.c_str())
                         : std::string();
-                    if (glsl.find("#include \"vertex/s1_position_vec2.glsl\"") == std::string::npos)
+                    if (glsl.find("#include \"module/vertex/stream_position_vec2.glsl\"") == std::string::npos)
                         result.diagnostics.emplace_back("AutoInstance 没有选到 s1_position_vec2.glsl");
-                    if (glsl.find("#include \"vertex/s2_ndc_lift.glsl\"") == std::string::npos)
+                    if (glsl.find("#include \"module/vertex/position_ndc_lift.glsl\"") == std::string::npos)
                         result.diagnostics.emplace_back("AutoInstance 没有选到 s2_ndc_lift.glsl");
-                    if (glsl.find("#include \"vertex/s3_l2w_only.glsl\"") == std::string::npos)
+                    if (glsl.find("#include \"module/vertex/transform_l2w_only.glsl\"") == std::string::npos)
                         result.diagnostics.emplace_back("AutoInstance 没有选到 s3_l2w_only.glsl");
                 }
             }
@@ -2857,7 +2857,7 @@ namespace
                     &lit_geometry_a,
                     nullptr,
                     ShaderProgramPurpose::ForwardColor,
-                    "indirect_ibl");
+                    "ambient_light_ibl");
             const uint64_t context_ambient_empty =
                 HashMaterialProgramBuildContext(
                     PrimitiveType::Triangles,
@@ -2871,7 +2871,7 @@ namespace
                     &lit_geometry_a,
                     nullptr,
                     ShaderProgramPurpose::DepthOnly,
-                    "indirect_ibl");
+                    "ambient_light_ibl");
             const uint64_t context_depth =
                 HashMaterialProgramBuildContext(
                     PrimitiveType::Triangles,
@@ -3536,14 +3536,14 @@ namespace
         };
         static const ExpectedSource expected_sources[] =
         {
-            {"VertexPaletteColor", "vertex_color_source"},
-            {"VertexColor", "vertex_color_source"},
-            {"VertexLuminance", "luminance_source"},
-            {"UnlitTexture", "texture_source"},
-            {"DebugNormalColor", "debug_normal_source"},
-            {"Lit", "pbr_surface_source"},
-            {"builtin/pure_color", "unlit_source"},
-            {"builtin/text_gpu", "text_source_gpu"}
+            {"VertexPaletteColor", "material_source_vertex_color"},
+            {"VertexColor", "material_source_vertex_color"},
+            {"VertexLuminance", "material_source_luminance"},
+            {"UnlitTexture", "material_source_texture"},
+            {"DebugNormalColor", "material_source_debug_normal"},
+            {"Lit", "material_source_pbr_surface"},
+            {"builtin/pure_color", "material_source_unlit"},
+            {"builtin/text_gpu", "material_source_text_gpu"}
         };
 
         for (const ExpectedSource &expected : expected_sources)
@@ -3633,10 +3633,10 @@ namespace
                     unlit_build->GetStageShader(
                         ShaderStage::Fragment)->GetFinalGLSL();
                 if (lit_fs.find(
-                        "#include \"lighting/forward_pbr.glsl\"")
+                        "#include \"module/provider/lighting_model/lighting_model_pbr.glsl\"")
                         == std::string::npos
                  || lit_fs.find(
-                        "#include \"compositor/forward_lighting.glsl\"")
+                        "#include \"module/provider/output_policy/output_policy_forward.glsl\"")
                         == std::string::npos
                  || lit_fs.find(
                         "EvalSurface(si, materialDataIndex)")
@@ -3652,10 +3652,10 @@ namespace
                 // 文档），而是**结构性的**：Lit 走 forward_pbr + forward_lighting
                 // 合成器，无光照领域走 flat_lighting 且完全不含光照模块。
                 if (unlit_fs.find(
-                        "#include \"compositor/flat_lighting.glsl\"")
+                        "#include \"module/provider/output_policy/output_policy_flat.glsl\"")
                         == std::string::npos
                  || unlit_fs.find(
-                        "#include \"common/surface_interface.glsl\"")
+                        "#include \"module/interface/surface_interface.glsl\"")
                         == std::string::npos
                  || unlit_fs.find(
                         "EvalSurface(si, materialDataIndex)")
@@ -3663,10 +3663,10 @@ namespace
                  || unlit_fs.find("EvalPassEnvironment(")
                         == std::string::npos
                  || unlit_fs.find(
-                        "#include \"compositor/forward_lighting.glsl\"")
+                        "#include \"module/provider/output_policy/output_policy_forward.glsl\"")
                         != std::string::npos
                  || unlit_fs.find(
-                        "#include \"lighting/forward_pbr.glsl\"")
+                        "#include \"module/provider/lighting_model/lighting_model_pbr.glsl\"")
                         != std::string::npos)
                 {
                     result.diagnostics.emplace_back(
@@ -3675,14 +3675,14 @@ namespace
                 // AO 槽必须真的被消费：provider 的 #include 排在 compositor 之前
                 // （否则 GetAmbientOcclusion 未声明即调用）。此前该槽只 include
                 // 不调用，属死契约。
-                // 注：调用点在 compositor/forward_lighting.glsl 文件内部，
+                // 注：调用点在 module/provider/output_policy/output_policy_forward.glsl 文件内部，
                 // 不会出现在组装后的模板正文里，故此处不查调用点文本。
                 // 「是否调用」已不再由宏表达（HGL_USE_AMBIENT_OCCLUSION_PROVIDER
                 // 已删除，forward_lighting 无条件接线），故这里只钉 include 顺序。
                 const size_t ao_include =
-                    lit_fs.find("#include \"ao/identity.glsl\"");
+                    lit_fs.find("#include \"module/provider/ambient_occlusion/ambient_occlusion_identity.glsl\"");
                 const size_t output_include =
-                    lit_fs.find("#include \"compositor/forward_lighting.glsl\"");
+                    lit_fs.find("#include \"module/provider/output_policy/output_policy_forward.glsl\"");
                 if (ao_include == std::string::npos
                  || output_include == std::string::npos
                  || ao_include > output_include)
@@ -3721,7 +3721,7 @@ namespace
         if (!pure_color.material_source_module_name
          || std::strcmp(
                 pure_color.material_source_module_name,
-                "unlit_source") != 0)
+                "material_source_unlit") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
         // 片段阶段由领域主着色器物理固定：PureColor 走 UnlitSolid，那份
@@ -3737,14 +3737,14 @@ namespace
         }
         else
         {
-            if (unlit_fs.find("#include \"material/unlit_source.glsl\"")
+            if (unlit_fs.find("#include \"module/provider/material_source/material_source_unlit.glsl\"")
                 == std::string::npos)
                 result.diagnostics.emplace_back(
-                    "unlit_solid.frag does not use material/unlit_source.glsl");
-            if (unlit_fs.find("#include \"compositor/flat_lighting.glsl\"")
+                    "unlit_solid.frag does not use module/provider/material_source/material_source_unlit.glsl");
+            if (unlit_fs.find("#include \"module/provider/output_policy/output_policy_flat.glsl\"")
                 == std::string::npos)
                 result.diagnostics.emplace_back(
-                    "unlit_solid.frag does not use compositor/flat_lighting.glsl");
+                    "unlit_solid.frag does not use module/provider/output_policy/output_policy_flat.glsl");
         }
 
         result.passed = result.diagnostics.empty();
@@ -4145,13 +4145,13 @@ namespace
 
         const std::string root = GetShaderLibraryPath("ShaderLibrary");
         const std::filesystem::path material_dir =
-            std::filesystem::path(root) / "material";
+            std::filesystem::path(root) / "asset" / "definition";
 
         if (!std::filesystem::exists(material_dir)
          || !std::filesystem::is_directory(material_dir))
         {
             result.diagnostics.emplace_back(
-                "missing required ShaderLibrary/material directory: "
+                "missing required ShaderLibrary/asset/definition directory: "
                 + material_dir.string());
             result.passed = false;
             return result;
@@ -4171,7 +4171,7 @@ namespace
         catch (const std::filesystem::filesystem_error &)
         {
             result.diagnostics.emplace_back(
-                "failed to inspect ShaderLibrary/material tree");
+                "failed to inspect ShaderLibrary/asset/definition tree");
             result.passed = false;
             return result;
         }
@@ -4179,7 +4179,7 @@ namespace
         if (material_files.empty())
         {
             result.diagnostics.emplace_back(
-                "ShaderLibrary/material contains no .mi.toml files");
+                "ShaderLibrary/asset/definition contains no .definition.toml files");
             result.passed = false;
             return result;
         }
@@ -4194,10 +4194,10 @@ namespace
                 continue;
             }
 
-            // 阶段四：材质资产统一为材质实例格式 `*.mi.toml`。
+            // 阶段四：材质资产统一为材质定义格式 `*.definition.toml`。
             // 这里刻意不再「跳过不认识的后缀」——目录里出现别的 .toml 就是违规，
-            // 否则旧 `*.material.toml` 会被静默忽略（加载器也不会读它）。
-            constexpr const char kMaterialInstanceSuffix[] = ".mi.toml";
+            // 否则旧 `*.material.toml` / `*.mi.toml` 会被静默忽略（加载器也不会读它）。
+            constexpr const char kMaterialInstanceSuffix[] = ".definition.toml";
             constexpr std::size_t kMaterialInstanceSuffixLength =
                 sizeof(kMaterialInstanceSuffix) - 1;
             if (path.size() < kMaterialInstanceSuffixLength
@@ -4206,7 +4206,7 @@ namespace
                              kMaterialInstanceSuffix) != 0)
             {
                 result.diagnostics.emplace_back(
-                    "material asset must use the .mi.toml suffix: " + path);
+                    "material asset must use the .definition.toml suffix: " + path);
                 continue;
             }
 
@@ -4412,12 +4412,12 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/GlobalAddresses.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/global_addresses.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ssbo/global_addresses.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 GlobalAddresses.h / ubo/global_addresses.glsl（结构对表的两端）");
+                "无法读取 GlobalAddresses.h / module/descriptor/ssbo/global_addresses.glsl（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
         }
@@ -4475,12 +4475,12 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/WorldAddresses.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/world_addresses.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ssbo/world_addresses.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 WorldAddresses.h / ubo/world_addresses.glsl（结构对表的两端）");
+                "无法读取 WorldAddresses.h / module/descriptor/ssbo/world_addresses.glsl（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
         }
@@ -4739,7 +4739,7 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/ecs/support/GPUCullSystem.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ecs/entity_gpu_cull.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
@@ -4837,7 +4837,7 @@ namespace
     }
 
     /// C++ EntityGPU（inc/hgl/ecs/core/EntityGPU.h）与 GLSL 侧 EntityGPUData
-    /// （ShaderLibrary/ecs/entity_gpu.glsl）必须逐字段同序同型同长度（§7.4 / §8.3-③）。
+    /// （ShaderLibrary/module/descriptor/ecs/entity_gpu.glsl）必须逐字段同序同型同长度（§7.4 / §8.3-③）。
     /// 为什么必须门禁：这是 128 B 行的 GPU 镜像 —— 漂移 = 剔除着色器按错步长解引用
     /// 实体行（W.world-addresses-struct-parity 同族的静默错位坑）。
     /// 两端唯一容许的形状差 = GLSL 行尾**显式**填充 `_pad`（scalar layout 下 GLSL
@@ -4852,7 +4852,7 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/ecs/core/EntityGPU.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ecs/entity_gpu.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ecs/entity_gpu.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
@@ -4959,7 +4959,7 @@ namespace
     }
 
     /// C++ `LightRow`（inc/hgl/graph/ubo/LightRow.h）与 GLSL 侧 `LightRowData`
-    /// （ShaderLibrary/ubo/scene_ubo.glsl）必须逐字段同序同型同长度（T6b）。
+    /// （ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl）必须逐字段同序同型同长度（T6b）。
     /// 为什么必须门禁：这是光源的 64 B GPU 行 —— 漂移 = 光照按错偏移取值（方向/颜色/强度
     /// 静默变垃圾，画面偏暗或光从侧面来，而没有任何报错）。
     /// 手法与 E.entity-gpu-struct-parity 同（逐行取块器），差别两条：
@@ -4973,12 +4973,12 @@ namespace
         const std::string cpp_text =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/LightRow.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/light_row.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ssbo/light_row.glsl"));
 
         if (cpp_text.empty() || glsl_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 LightRow.h / ubo/light_row.glsl（结构对表的两端）");
+                "无法读取 LightRow.h / module/descriptor/ssbo/light_row.glsl（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
         }
@@ -5083,7 +5083,7 @@ namespace
         const std::string cpu_text =
             ReadFileText(RepoRootPath("inc/hgl/graph/ShaderBufferSources.h"));
         const std::string glsl_text =
-            ReadFileText(RepoRootPath("ShaderLibrary/ecs/entity_gpu_cull.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"));
 
         if (cpu_text.empty() || glsl_text.empty())
         {
@@ -5282,16 +5282,16 @@ namespace
         const std::string global_cpp =
             ReadFileText(RepoRootPath("inc/hgl/graph/ubo/GlobalAddresses.h"));
         const std::string world_glsl =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/world_addresses.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ssbo/world_addresses.glsl"));
         const std::string global_glsl =
-            ReadFileText(RepoRootPath("ShaderLibrary/ubo/global_addresses.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ssbo/global_addresses.glsl"));
 
         if (world_cpp.empty() || global_cpp.empty()
          || world_glsl.empty() || global_glsl.empty())
         {
             result.diagnostics.emplace_back(
                 "无法读取 WorldAddresses.h / GlobalAddresses.h / "
-                "ubo/world_addresses.glsl / ubo/global_addresses.glsl");
+                "module/descriptor/ssbo/world_addresses.glsl / module/descriptor/ssbo/global_addresses.glsl");
             result.passed = result.diagnostics.empty();
             return result;
         }
@@ -5398,7 +5398,7 @@ namespace
     }
 
     // 阶段三之三：材质定义有**两个**来源 —— 内嵌 builtin（C++ 代码）与资产目录
-    // （阶段四起为 `.mi.toml`）。这里复刻运行时的注册顺序（先内嵌、后目录），
+    // （阶段四起为 `.definition.toml`）。这里复刻运行时的注册顺序（先内嵌、后目录），
     // 因为后续比对要求 registry 拿到的是完整集合。
     static int RegisterBuiltinMaterialDefinitions(MaterialDefinitionFileRegistry &registry)
     {
@@ -5434,7 +5434,7 @@ namespace
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"pbr_surface_source\"\n"
+            "material_source_module_name = \"material_source_pbr_surface\"\n"
             "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
             "[render_state]\n"
             "alpha_test = true\n"
@@ -5505,7 +5505,7 @@ namespace
                     packed_position_definition, packed_position_request, packed_position_abi)
              || packed_position_abi.position_format != VK_FORMAT_R16G16_SINT
              || !std::strstr(packed_position_abi.vertex_input_glsl.c_str(),
-                             "s1_position_vec2i.glsl"))
+                             "stream_position_vec2i.glsl"))
             {
                 result.diagnostics.emplace_back(
                     "packed int16x2 position must resolve to the vec2i module");
@@ -5554,7 +5554,7 @@ namespace
             "name = \"TextureLayoutFile\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"texture_source\"\n"
+            "material_source_module_name = \"material_source_texture\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -5646,7 +5646,7 @@ namespace
             "name = \"InvalidTextureConfiguration\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"texture_source\"\n"
+            "material_source_module_name = \"material_source_texture\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -5671,7 +5671,7 @@ namespace
             "name = \"DuplicateTextureName\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"texture_source\"\n"
+            "material_source_module_name = \"material_source_texture\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -5699,7 +5699,7 @@ namespace
             "name = \"RetiredSamplingKey\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"texture_source\"\n"
+            "material_source_module_name = \"material_source_texture\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\"]\n"
             "[resources]\n"
@@ -5721,7 +5721,7 @@ namespace
             "name = \"UnknownTable\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"unlit_source\"\n"
+            "material_source_module_name = \"material_source_unlit\"\n"
             "[unknown]\n"
             "value = true\n"
             "[vertex]\n"
@@ -5745,7 +5745,7 @@ namespace
             "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"unlit_source\"\n"
+            "material_source_module_name = \"material_source_unlit\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n";
         MaterialDefinitionFileData invalid_data;
@@ -5806,7 +5806,7 @@ namespace
                 }
                 if (!derived.material_source_module_name
                  || std::strcmp(derived.material_source_module_name,
-                                "vertex_color_source") != 0)
+                                "material_source_vertex_color") != 0)
                 {
                     result.diagnostics.emplace_back(
                         "omitted [fragment] must be filled from the domain contract");
@@ -5818,7 +5818,7 @@ namespace
                 "schema = 4\n"
                 "id = \"CustomNoPolicy\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\"]\n";
 
@@ -5890,7 +5890,7 @@ namespace
             "id = \"CustomNoRequirements\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"pbr_surface_source\"\n"
+            "material_source_module_name = \"material_source_pbr_surface\"\n"
             "[resources]\n";
 
         MaterialDefinitionFileData custom_data;
@@ -5922,7 +5922,7 @@ namespace
 
         // 内嵌定义**不得**依赖资产目录：只喂内嵌源码的独立 registry 也必须能解析
         // 五个保底 ID。这是"保底物的可依赖性高于被兜底物"的机器化判据 ——
-        // 谁把它们挪回 .mi.toml 资产目录，这条断言立刻变红。
+        // 谁把它们挪回 .definition.toml 资产目录，这条断言立刻变红。
         {
             MaterialDefinitionFileRegistry builtin_only;
             RegisterBuiltinMaterialDefinitions(builtin_only);
@@ -6116,7 +6116,7 @@ namespace
             "name = \"ParseDetailBadSampler\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"unlit_source\"\n"
+            "material_source_module_name = \"material_source_unlit\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n"
             "[resources]\n"
@@ -6146,7 +6146,7 @@ namespace
             "provider_policy = \"GeometryOnly\"\n"
             "bogus_root_key = 1\n"
             "[fragment]\n"
-            "material_source_module_name = \"unlit_source\"\n"
+            "material_source_module_name = \"material_source_unlit\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n";
         MaterialDefinitionFileData unknown_key_data;
@@ -6200,14 +6200,14 @@ namespace
                 "SkyCubeSphere must use its explicit front-face culling config");
 
         const std::string color_identity = ReadFileText(
-            RepoRootPath("ShaderLibrary/vertex/s1_color_default.glsl"));
+            RepoRootPath("ShaderLibrary/module/vertex/stream_color_default.glsl"));
         if (color_identity.find("vec4 GetVertexColor() { return vec4(1.0); }")
                 == std::string::npos)
             result.diagnostics.emplace_back(
                 "default vertex-color provider must return the white multiplicative identity");
 
         const std::string surface_interface = ReadFileText(
-            RepoRootPath("ShaderLibrary/surface/material_surface.glsl"));
+            RepoRootPath("ShaderLibrary/module/provider/surface/surface_material.glsl"));
         if (surface_interface.find(
                 "surface.baseColor = material.baseColor * si.vertexColor.rgb;")
                 == std::string::npos
@@ -6217,9 +6217,9 @@ namespace
             result.diagnostics.emplace_back(
                 "common surface contract must apply vertex color exactly once to RGB and alpha");
 
-        const std::string vertex_color_source = ReadFileText(
-            RepoRootPath("ShaderLibrary/material/vertex_color_source.glsl"));
-        if (vertex_color_source.find("materialResult.baseColor = vec3(1.0);")
+        const std::string vertex_color_module_text = ReadFileText(
+            RepoRootPath("ShaderLibrary/module/provider/material_source/material_source_vertex_color.glsl"));
+        if (vertex_color_module_text.find("materialResult.baseColor = vec3(1.0);")
                 == std::string::npos)
             result.diagnostics.emplace_back(
                 "VertexColor domain must rely on the common vertex-color multiplier, not multiply it twice");
@@ -6229,7 +6229,7 @@ namespace
         // 迁移前 13 份领域 `.frag` 各自手抄 `layout(in …)`：网格写出什么与片段读
         // 什么只能靠人对齐，而 checker_3d / error_checker_3d 还给 WorldNormal 挂了
         // 一个与接口无关的 `HGL_MATERIAL_HAS_VERTEX_NORMAL` 开关。现在声明只有一
-        // 处——`common/interstage_varying.glsl` 的片段段，开关是
+        // 处——`module/stage/interstage_varying.glsl` 的片段段，开关是
         // `generated/common_options.glsl` 的 `HGL_VARYING_*`，与网格侧同一份。
         // 契约因此变成三条可机检的事实：
         //   ① 领域 `.frag` 里不再出现任何阶段间 varying 的手写声明；
@@ -6238,7 +6238,7 @@ namespace
         //   ③ 统一文件把 WorldNormal 声明挂在 `HGL_VARYING_WORLD_NORMAL` 之下，
         //      且两个「有则消费」的领域仍在消费 `fragWorldNormal`。
         const std::string interstage_source = ReadFileText(
-            RepoRootPath("ShaderLibrary/common/interstage_varying.glsl"));
+            RepoRootPath("ShaderLibrary/module/stage/interstage_varying.glsl"));
 
         // 「这一行是阶段间输入声明」：`layout(location=…)` 起头且带 `in` 记号。
         // 输出附件用 `out`，因此两者不会混。
@@ -6295,7 +6295,7 @@ namespace
                     result.diagnostics.emplace_back(
                         path
                         + " declares an inter-stage varying inline; the only "
-                          "definition point is common/interstage_varying.glsl");
+                          "definition point is module/stage/interstage_varying.glsl");
 
                 if (line_end == std::string::npos)
                     break;
@@ -6305,13 +6305,13 @@ namespace
             const bool routes_through_unified_file =
                 source.find("#define HGL_FRAGMENT_INPUT_VARYINGS")
                     != std::string::npos
-             && source.find("#include \"common/interstage_varying.glsl\"")
+             && source.find("#include \"module/stage/interstage_varying.glsl\"")
                     != std::string::npos;
             if (!routes_through_unified_file)
                 result.diagnostics.emplace_back(
                     path
                     + " must define HGL_FRAGMENT_INPUT_VARYINGS and include "
-                      "common/interstage_varying.glsl instead of declaring "
+                      "module/stage/interstage_varying.glsl instead of declaring "
                       "inter-stage varyings itself");
         }
         if (audited_fragments < 12)
@@ -6334,7 +6334,7 @@ namespace
             if (conditional.find(std::string("vec3 ") + normal_info->shader_symbol)
                     == std::string::npos)
                 result.diagnostics.emplace_back(
-                    "common/interstage_varying.glsl must declare fragWorldNormal "
+                    "module/stage/interstage_varying.glsl must declare fragWorldNormal "
                     "under HGL_VARYING_WORLD_NORMAL");
 
             // 「有则消费」的两个领域：接口给了就必须用上，否则顶点法线会静默退化
@@ -6375,7 +6375,7 @@ namespace
                 ShaderProgramPurpose::ForwardColor,
                 false,
                 sky_cube_template,
-                "sky_cube_surface")
+                "surface_sky_cube")
          || std::strcmp(
                 sky_cube_template.relative_path.c_str(),
                 "domain/sky/sky.frag") != 0)
@@ -6507,7 +6507,7 @@ namespace
             "provider_policy = \"GeometryOnly\"\n"
             "domain = \"StandardOpaque\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"pbr_surface_source\"\n"
+            "material_source_module_name = \"material_source_pbr_surface\"\n"
             "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
@@ -6548,7 +6548,7 @@ namespace
             "name = \"DomainCustomLoose\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[fragment]\n"
-            "material_source_module_name = \"unlit_source\"\n"
+            "material_source_module_name = \"material_source_unlit\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n";
         MaterialDefinitionFileData custom_data;
@@ -6581,7 +6581,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\"]\n"
                 "[resources]\n"
@@ -6602,7 +6602,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
                 "[resources]\n"
@@ -6624,7 +6624,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
                 "[resources]\n"
@@ -6663,7 +6663,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "ntb_module_name = \"ntb_orthonormal\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
@@ -6685,7 +6685,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"NoSuchDomain\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
             },
@@ -6741,7 +6741,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"Sky\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"unlit_source\"\n"
+                "material_source_module_name = \"material_source_unlit\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\"]\n"
             },
@@ -6762,7 +6762,7 @@ namespace
                 "scale = \"World\"\n"
                 "projection = \"LocalToWorldOnly\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
@@ -6787,7 +6787,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
@@ -6811,7 +6811,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
@@ -6835,7 +6835,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
@@ -6860,7 +6860,7 @@ namespace
                 "provider_policy = \"GeometryOnly\"\n"
                 "domain = \"StandardOpaque\"\n"
                 "[fragment]\n"
-                "material_source_module_name = \"pbr_surface_source\"\n"
+                "material_source_module_name = \"material_source_pbr_surface\"\n"
                 "ntb_module_name = \"ntb_tangent_vbo_normalmap\"\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
@@ -7109,7 +7109,7 @@ namespace
                 "[fragment]\n"
                 "[vertex]\n"
                 "requirements = [\"Position\"]\n",
-                MaterialDomain::UnlitSolid, true, "unlit_source"
+                MaterialDomain::UnlitSolid, true, "material_source_unlit"
             },
             {
                 "VertexColor",
@@ -7121,7 +7121,7 @@ namespace
                 "[fragment]\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"Color\"]\n",
-                MaterialDomain::VertexColor, true, "vertex_color_source"
+                MaterialDomain::VertexColor, true, "material_source_vertex_color"
             },
             {
                 "VertexPalette (four semantics)",
@@ -7133,7 +7133,7 @@ namespace
                 "[fragment]\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"Color\", \"TransformID\", \"Size\"]\n",
-                MaterialDomain::VertexPalette, true, "vertex_color_source"
+                MaterialDomain::VertexPalette, true, "material_source_vertex_color"
             },
             {
                 "VertexLuminance",
@@ -7145,7 +7145,7 @@ namespace
                 "[fragment]\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"Luminance\"]\n",
-                MaterialDomain::VertexLuminance, true, "luminance_source"
+                MaterialDomain::VertexLuminance, true, "material_source_luminance"
             },
             {
                 "Text2D",
@@ -7161,7 +7161,7 @@ namespace
                 "textures = [\n"
                 "  { name = \"base_color\", sampler = \"Sampler2DArray\", required = true }\n"
                 "]\n",
-                MaterialDomain::Text2D, true, "text_source_gpu"
+                MaterialDomain::Text2D, true, "material_source_text_gpu"
             },
             {
                 // Sky 是 no_material_source：来源模块必须**保持为空**，
@@ -7187,7 +7187,7 @@ namespace
                 "[fragment]\n"
                 "[vertex]\n"
                 "requirements = [\"Position\"]\n",
-                MaterialDomain::Checker2D, true, "checkerboard_2d_source"
+                MaterialDomain::Checker2D, true, "material_source_checkerboard_2d"
             },
             {
                 "DebugNormal",
@@ -7199,7 +7199,7 @@ namespace
                 "[fragment]\n"
                 "[vertex]\n"
                 "requirements = [\"Position\", \"Normal\"]\n",
-                MaterialDomain::DebugNormal, true, "debug_normal_source"
+                MaterialDomain::DebugNormal, true, "material_source_debug_normal"
             },
         };
 
@@ -7287,9 +7287,9 @@ namespace
                 "provider registry directory scan reported parse errors");
         }
 
-        const auto *pbr_2d = registry.FindByName("pbr_surface_source");
+        const auto *pbr_2d = registry.FindByName("material_source_pbr_surface");
         const auto *ntb_2d = registry.FindByName("ntb_tangent_vbo_normalmap");
-        const auto *unlit = registry.FindByName("texture_source");
+        const auto *unlit = registry.FindByName("material_source_texture");
         if (!pbr_2d || !ntb_2d || !unlit)
         {
             result.diagnostics.emplace_back("provider metadata modules are missing");
@@ -7435,7 +7435,7 @@ namespace
             "// @ulre provide Normal\n"
             "// @ulre provide Tangent\n"
             "// @ulre texture_reference normal Fragment optional fallback\n"
-            "// @ulre uses s2_lift_xy0\n"
+            "// @ulre uses position_lift_xy0\n"
             "// @ulre end\n";
         {
             GlslModuleFileData data;
@@ -7489,7 +7489,7 @@ namespace
                         "full-metadata texture-reference mismatch");
                 }
                 if (data.pending_module_requirements.GetCount() != 1
-                 || std::strcmp(data.pending_module_requirements[0].c_str(), "s2_lift_xy0") != 0)
+                 || std::strcmp(data.pending_module_requirements[0].c_str(), "position_lift_xy0") != 0)
                     result.diagnostics.emplace_back("full-metadata uses mismatch");
             }
         }
@@ -7562,7 +7562,7 @@ namespace
             }
         }
 
-        const auto *lift = registry.FindByName("s2_lift_xy0");
+        const auto *lift = registry.FindByName("position_lift_xy0");
         if (!lift)
             result.diagnostics.emplace_back("s2_lift_xy0 not found by name");
         else if (lift->kind != GlslModuleKind::Position
@@ -7581,15 +7581,15 @@ namespace
         // 单趟发射改造（2026-09）：compositor 骨架降级为发射器常量，
         // skeleton key 为 "forward_surface" / "depth_only" / "forward_sky"。
 
-        const auto *forward_input = registry.FindByName("forward_lighting");
+        const auto *forward_input = registry.FindByName("output_policy_forward");
         if (!forward_input || forward_input->kind != GlslModuleKind::Utility)
             result.diagnostics.emplace_back("forward_lighting input assembly module is missing or has wrong kind");
 
-        const auto *forward_algorithm = registry.FindByName("forward_pbr");
+        const auto *forward_algorithm = registry.FindByName("lighting_model_pbr");
         if (!forward_algorithm || forward_algorithm->kind != GlslModuleKind::Utility)
             result.diagnostics.emplace_back("forward_pbr lighting algorithm module is missing or has wrong kind");
 
-        const auto *alternate_algorithm = registry.FindByName("forward_flat");
+        const auto *alternate_algorithm = registry.FindByName("lighting_model_flat");
         if (!alternate_algorithm || alternate_algorithm->kind != GlslModuleKind::Utility)
             result.diagnostics.emplace_back("forward_flat alternate lighting algorithm is missing or has wrong kind");
 
@@ -7615,19 +7615,19 @@ namespace
                     + slot_name + ")");
         };
 
-        for (const char *name : { "diffuse_lambert", "diffuse_burley",
-                                  "diffuse_toon", "diffuse_none" })
+        for (const char *name : { "diffuse_light_lambert", "diffuse_light_burley",
+                                  "diffuse_light_toon", "diffuse_light_none" })
             require_slot_module(name, "diffuse_light_provider");
-        for (const char *name : { "specular_cook_torrance", "specular_toon_step",
-                                  "specular_none" })
+        for (const char *name : { "specular_light_cook_torrance", "specular_light_toon_step",
+                                  "specular_light_none" })
             require_slot_module(name, "specular_light_provider");
-        require_slot_module("indirect_none", "ambient_light_provider");
-        require_slot_module("forward_toon", "lighting_model");
-        require_slot_module("full_shadow", "shadow_provider");
+        require_slot_module("ambient_light_none", "ambient_light_provider");
+        require_slot_module("lighting_model_toon", "lighting_model");
+        require_slot_module("shadow_full", "shadow_provider");
         // 超薄架构阶段二之二：NTB / AO 变成「必需槽 + 空对象补位」，
         // 用空对象替掉编译期开关（HGL_USE_NTB_PROVIDER / HGL_USE_AMBIENT_OCCLUSION_PROVIDER）。
         require_slot_module("ntb_none", "ntb_provider");
-        require_slot_module("identity_ao", "ambient_occlusion_provider");
+        require_slot_module("ambient_occlusion_identity", "ambient_occlusion_provider");
 
 
         result.passed = result.diagnostics.empty();
@@ -7786,13 +7786,13 @@ namespace
             ReadFileText(RepoRootPath("ShaderLibrary/domain/emissive_row_bindings.glsl"));
         // 结构本体已拆到独立文件（由 C++ 结构 + 注解生成）；bindings 只留寻址宏。
         const std::string emissive_row_glsl =
-            ReadFileText(RepoRootPath("ShaderLibrary/ssbo/emissive_surface_row.glsl"));
+            ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ssbo/emissive_surface_row.glsl"));
 
         // 本门用**合成源**（root_bindings + emissive bindings 文本直拼），不经过编译器
         // 的正文拼接 ⇒ 独立结构文件的 `#include` 要在这里就地展开，否则
         // `GetFinalGLSL()` 里只有一行 #include、看不到结构声明。
         std::string emissive_bindings_expanded = emissive_bindings;
-        static constexpr char kRowInclude[] = "#include \"ssbo/emissive_surface_row.glsl\"";
+        static constexpr char kRowInclude[] = "#include \"module/descriptor/ssbo/emissive_surface_row.glsl\"";
         {
             const size_t include_pos = emissive_bindings_expanded.find(kRowInclude);
             if (include_pos != std::string::npos)
@@ -8020,7 +8020,7 @@ namespace
         // 按「有没有纹理声明」反推会把它们全部误杀。
         MaterialDefinition vertex_color_definition{};
         vertex_color_definition.definition_id = "MaterialPayloadFreeVertexColor";
-        vertex_color_definition.material_source_module_name = "vertex_color_source";
+        vertex_color_definition.material_source_module_name = "material_source_vertex_color";
         vertex_color_definition.vertex_varying.emit_data_index_id = false;
 
         StageSPVCompilerInput vertex_color_compiler_input{
@@ -8077,10 +8077,10 @@ namespace
         }
 
         // 反向守卫：同样没有纹理声明，但材质源显式声明了 MaterialData
-        // （pbr_surface_source）⇒ payload 行需求必须为真，别把判据放宽成恒假。
+        // （material_source_pbr_surface）⇒ payload 行需求必须为真，别把判据放宽成恒假。
         MaterialDefinition pbr_definition{};
         pbr_definition.definition_id = "MaterialPayloadDeclaredNoTexture";
-        pbr_definition.material_source_module_name = "pbr_surface_source";
+        pbr_definition.material_source_module_name = "material_source_pbr_surface";
         pbr_definition.vertex_varying.emit_data_index_id = true;
 
         StageSPVCompilerInput pbr_compiler_input{
@@ -8133,7 +8133,7 @@ namespace
 
         static const char kMeshSource[] =
             "#version 460\n"
-            "#include \"common/descriptor_macros.glsl\"\n"
+            "#include \"contract/descriptor_macros.glsl\"\n"
             "layout(location=0) in vec2 Position;\n"
             "void main(){gl_Position=vec4(Position,L2W_SET,L2W_BINDING);}\n";
         static const char kFragSource[] =
@@ -8177,7 +8177,7 @@ namespace
         else
         {
             const std::string &source = mesh->GetFinalGLSL();
-            if (source.find("#include \"common/descriptor_macros.glsl\"")
+            if (source.find("#include \"contract/descriptor_macros.glsl\"")
                 == std::string::npos)
                 result.diagnostics.emplace_back("descriptor_macros include is missing");
 
@@ -8285,18 +8285,18 @@ namespace
 
         auto &lib = SamplerPresetLibrary::Instance();
 
-        // 1. 加载 sampler.toml（统一注册机制唯一数据源）。
+        // 1. 加载 contract/sampler.toml（统一注册机制唯一数据源）。
         const std::string root = GetShaderLibraryPath();
         const hgl::filesystem::Path sampler_toml(
-            hgl::ToOSString(root + "/sampler.toml"));
+            hgl::ToOSString(root + "/contract/sampler.toml"));
         if (!lib.Load(sampler_toml.ToOSString()))
         {
-            result.diagnostics.emplace_back("sampler.toml load failed");
+            result.diagnostics.emplace_back("contract/sampler.toml load failed");
             result.passed = false;
             return result;
         }
 
-        // 2. 名字→索引一致（顺序 = sampler.toml 数组顺序）。
+        // 2. 名字→索引一致（顺序 = contract/sampler.toml 数组顺序）。
         struct NameIndex
         {
             const char *name;
@@ -8329,7 +8329,7 @@ namespace
         }
 
         // 3. 未知名 / 空名 / 空指针 → 显式无效（~0u）——调用方必须处理，
-        //    不再静默保底 0（=Nearest）掩盖 sampler.toml 顺序错位。
+        //    不再静默保底 0（=Nearest）掩盖 contract/sampler.toml 顺序错位。
         if (lib.GetIndex("DoesNotExistSampler") != ~0u)
             result.diagnostics.emplace_back("unknown name must yield invalid index");
         if (lib.GetIndex("") != ~0u)
@@ -8647,7 +8647,7 @@ void main()
         // MV.fixed-mesh-varying-invariants
         //
         // 原 MV.mesh-varying-writability（生成器可写性表测试）的终态替代：
-        // 在完全物理固定的网格主着色器库（ShaderLibrary/mesh/shape/*.mesh）上，
+        // 在完全物理固定的网格主着色器库（ShaderLibrary/topology/*.mesh）上，
         // 直接断言所有 varying 声明、调度契约、真实写入及 Stage2/3 组合不变量。
         // ══════════════════════════════════════════════════════════════════════
         static GateResult RunFixedMeshVaryingInvariantsCase()
@@ -8749,9 +8749,9 @@ void main()
 
         auto &lib = SamplerPresetLibrary::Instance();
         if (lib.GetCount() == 0
-         && !lib.Load(hgl::ToOSString(GetShaderLibraryPath() + "/sampler.toml")))
+         && !lib.Load(hgl::ToOSString(GetShaderLibraryPath() + "/contract/sampler.toml")))
         {
-            result.diagnostics.emplace_back("sampler.toml load failed");
+            result.diagnostics.emplace_back("contract/sampler.toml load failed");
             result.passed = false;
             return result;
         }
@@ -8784,7 +8784,7 @@ void main()
             if (!definition || !definition->name || !definition->glsl_code)
                 continue;
 
-            // 1. 声明的预设必须真实存在于 sampler.toml。
+            // 1. 声明的预设必须真实存在于 contract/sampler.toml。
             for (uint32_t j = 0;
                  j < definition->sampler_reference_requirement_count;
                  ++j)
@@ -8929,8 +8929,8 @@ void main()
             static constexpr char kProbe[] =
                 "// #include \"common/commented_out.glsl\"\n"
                 "/* #include \"common/block_comment.glsl\" */\n"
-                "#include \"ubo/scene_ubo.glsl\"\n"
-                "  #include <common/descriptor_macros.glsl>\n"
+                "#include \"module/descriptor/ubo/scene_ubo.glsl\"\n"
+                "  #include <contract/descriptor_macros.glsl>\n"
                 "float x; // #include \"common/trailing.glsl\"\n";
 
             hgl::AnsiStringList paths;
@@ -8941,8 +8941,8 @@ void main()
                 result.diagnostics.emplace_back(
                     "include scanner must ignore commented includes (expected 2, got "
                     + std::to_string(collected) + ")");
-            else if (!(paths[0] == "ubo/scene_ubo.glsl")
-                  || !(paths[1] == "common/descriptor_macros.glsl"))
+            else if (!(paths[0] == "module/descriptor/ubo/scene_ubo.glsl")
+                  || !(paths[1] == "contract/descriptor_macros.glsl"))
                 result.diagnostics.emplace_back(
                     "include scanner collected unexpected paths");
         }
@@ -8993,15 +8993,15 @@ void main()
 
         static const ExpectedEdge kExpectedEdges[] =
         {
-            { "indirect_sky_ambient", "sky_atmosphere",
+            { "ambient_light_sky", "sky_atmosphere",
               "sky ambient provider pulls the atmosphere model in by #include" },
-            { "sky_minimal_surface", "sky_atmosphere",
+            { "surface_sky_minimal", "sky_atmosphere",
               "sky surface provider pulls the atmosphere model in by #include" },
             { "sky_atmosphere", "scene_ubo",
               "atmosphere reads main light / sky rows from the global tables" },
-            { "indirect_ibl", "bindless_textures",
+            { "ambient_light_ibl", "bindless_textures",
               "IBL provider samples env maps through bindless textures" },
-            { "material_surface", "ntb_interface",
+            { "surface_material", "ntb_interface",
               "surface provider branches on the NTB provider contract" },
             { "ntb_tangent_vbo_normalmap", "ntb_orthonormal",
               "NTB provider falls back to ntb_orthonormal on UV-degenerate frames" },
@@ -9011,7 +9011,7 @@ void main()
               "scene data declarations depend on the standard descriptor macros" },
             { "entity_gpu_cull", "entity_gpu",
               "GPU cull reads the entity row mirror" },
-            { "entity_gpu_cull", "RenderItemResolve",
+            { "entity_gpu_cull", "render_item_resolve",
               "GPU cull resolves render items through RenderItemResolve" },
         };
 
@@ -9035,7 +9035,7 @@ void main()
         //    sky_atmosphere 必须出现在 code_module_names 里（P4 之前它是
         //    被 include 编进去、却在图里完全不可见的模块）。
         {
-            const char *roots[] = { "sky_minimal_surface" };
+            const char *roots[] = { "surface_sky_minimal" };
             ShaderCodeResourceManifest manifest{};
             if (!BuildShaderCodeResourceManifest(
                     roots, 1, manifest, &registry))
@@ -9948,7 +9948,7 @@ void main()
         std::string glsl_source;
         const std::filesystem::path glsl_path =
             std::filesystem::path(GetShaderLibraryPath().c_str())
-            / "ecs" / "entity_gpu_cull.glsl";
+            / "module" / "descriptor" / "ecs" / "entity_gpu_cull.glsl";
         if (!ReadGoldenFile(glsl_path.string(), glsl_source)
          || glsl_source.empty())
         {
@@ -10279,7 +10279,7 @@ void main()
           PassProfileID::ForwardUnlit, false, false },
         // LineQuad 是第三种 mesh 发射模式，只能由 `primitive_type = Lines` 推出来
         // （材质定义里没有对应字段）。这些用例覆盖 LineQuad 固定拓扑 master 与
-        // `mesh/line_quad_body.glsl` 的端点读取路径，避免该独立几何路径退化后漏报。
+        // `module/stage/line_quad_body.glsl` 的端点读取路径，避免该独立几何路径退化后漏报。
         { "VertexColor", "vertex-color-lines-quad",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
@@ -10304,7 +10304,7 @@ void main()
         if (lib.GetCount() != 0)
             return true;
 
-        const std::string path = GetShaderLibraryPath() + "/sampler.toml";
+        const std::string path = GetShaderLibraryPath() + "/contract/sampler.toml";
         const hgl::filesystem::Path sampler_toml(hgl::ToOSString(path));
         if (lib.Load(sampler_toml.ToOSString()))
             return true;
@@ -10423,11 +10423,11 @@ void main()
     {
         out.clear();
 
-        // 形状主着色器（`mesh/shape/*.mesh`）是唯一的固定源：形状名即文件名，
+        // 形状主着色器（`topology/*.mesh`）是唯一的固定源：形状名即文件名，
         // 三种几何模式（VertexPassthrough / LineQuad / CharQuad）全在此目录。
         const std::filesystem::path dirs[1] =
         {
-            RepoRootPath("ShaderLibrary/mesh/shape")
+            RepoRootPath("ShaderLibrary/topology")
         };
 
         try
@@ -10666,7 +10666,7 @@ void main()
                 {
                     result.diagnostics.emplace_back(
                         label + ": mesh stage has no source in "
-                        "ShaderLibrary/mesh/shape 下没有对应形状 master"
+                        "ShaderLibrary/topology 下没有对应形状 master"
                         "（形状 master 需人工按形状新增，见 plan.md 阶段七-2）");
                 }
 
@@ -11643,7 +11643,7 @@ void main()
 
         ++missing;
         std::fprintf(stdout,
-                     "[missing] %s: 网格阶段文本在 ShaderLibrary/mesh/shape 下没有"
+                     "[missing] %s: 网格阶段文本在 ShaderLibrary/topology 下没有"
                      "对应 master（形状 master 需人工按形状新增）\n",
                      label);
         return false;
@@ -11919,7 +11919,7 @@ int main(const int argc, char **argv)
     const char *selected_group = argc == 2 ? argv[1] : "all";
 
     // `emit-fixed-mesh` 不是回归组，而是覆盖率探针：一次跑完三张矩阵，
-    // 逐形状点名 `ShaderLibrary/mesh/shape` 下有没有对应的形状 master。
+    // 逐形状点名 `ShaderLibrary/topology` 下有没有对应的形状 master。
     // 它与门禁共用同一张变体表，形状定义只有一份——覆盖检查与验证不可能互相漂移。
     if (std::strcmp(selected_group, "emit-fixed-mesh") == 0)
     {

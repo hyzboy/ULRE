@@ -1,6 +1,6 @@
 // checker_3d_bindings.glsl — Checker3D 域**有意为空**的数据布局。
 //
-// 与 Checker2D 同族：图案由 `material/checkerboard_3d_source.glsl` 按
+// 与 Checker2D 同族：图案由 `module/provider/material_source/material_source_checkerboard_3d.glsl` 按
 // **世界坐标**算出，不读材质私有数据行、不读贴图 ⇒ 没有 `MTL_ROW`、
 // 没有贴图表、没有采样器宏。
 //

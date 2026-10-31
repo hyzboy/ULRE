@@ -570,7 +570,7 @@ int main(const int argc, char **argv)
             std::filesystem::path("ShaderLibrary") / "material"))
     {
         std::fprintf(stderr,
-                     "[FAIL] ShaderLibrary/material not found under the working "
+                     "[FAIL] ShaderLibrary/asset/definition not found under the working "
                      "directory; release form ships material definitions as data.\n");
         return 2;
     }

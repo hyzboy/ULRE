@@ -1,7 +1,7 @@
 // unlit_texture_bindings.glsl — UnlitTexture（无光单图）域的数据布局，物理固定。
 //
 // UnlitTexture 只有一张图，且**不读材质私有数据行**：颜色完全来自
-// `material/texture_source.glsl` 对 base_color 的采样。因此这里的贴图表只有
+// `module/provider/material_source/material_source_texture.glsl` 对 base_color 的采样。因此这里的贴图表只有
 // 一个元素（跨度 16 = uvec2 + 对齐），也没有 `MTL_ROW`。
 //
 // ⚠ 槽位顺序 = `DomainContracts[]` 里 UnlitTexture 的 UnlitTextureSlots

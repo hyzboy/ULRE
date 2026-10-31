@@ -40,7 +40,7 @@ namespace
  * 使用 sky_34_cubemap_2k.TexCube(Cubemap 纹理)作为天空球材质，
  * 在屏幕中央渲染一个由 CubeMap 纹理贴图的球体。
  *
- * 材质："SkyCube"(ShaderLibrary/material/sky_cube.mi.toml)
+ * 材质："SkyCube"(ShaderLibrary/asset/definition/sky_cube.definition.toml)
  *       以 normalize(world_pos) 为方向采样 samplerCube。
  */
 class SkyCubeSphereApp : public WorkObject

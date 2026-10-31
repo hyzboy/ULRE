@@ -11,7 +11,7 @@ namespace hgl::graph::mtl
     {
         hgl::hash::FNV1aHasher64 h;
 
-        // 材质源身份：决定用到哪些 .mi.toml / 模块源。
+        // 材质源身份：决定用到哪些 .definition.toml / 模块源。
         h << definition.definition_id;
 
         // 着色器**变体**维度（不是配方实例维度）。

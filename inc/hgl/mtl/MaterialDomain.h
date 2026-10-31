@@ -34,7 +34,7 @@
 //
 // 领域只描述**表面**：几何形态（顶点语义）、表面数据来源（纹理槽语义）。
 // 领域**绝不**描述光照算法、GI、天光、阴影、Pass 输出格式——那些属于
-// RenderPass / 环境层，通过 `ShaderLibrary/common/pass_environment.glsl`
+// RenderPass / 环境层，通过 `ShaderLibrary/module/interface/pass_environment_interface.glsl`
 // 的入口契约注入。因此同一个 `StandardOpaque` 表面既可用于 Forward Pass，
 // 也可用于 GBuffer / Shadow(Depth-only) Pass，无需任何材质改动。
 //
@@ -154,7 +154,7 @@ namespace hgl::graph::mtl
         // 门禁会核对这两个名字在模块注册表里确实存在，防止契约指向空气。
         // 领域尚未实现时两者置 nullptr（门禁跳过核对）——不要为凑数填一个
         // 「大致能用」的模块名，那会掩盖真实的缺失。
-        const char *reference_material_source_module;  // 例：pbr_surface_source；nullptr = 未实现
+        const char *reference_material_source_module;  // 例：material_source_pbr_surface；nullptr = 未实现
         const char *reference_ntb_module;              // 例：ntb_tangent_vbo_normalmap；nullptr = 未实现
 
         // `[vertex] requirements` 必须包含的语义（bitmask，按 VertexSemantic 位）。

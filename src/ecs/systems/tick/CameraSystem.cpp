@@ -599,7 +599,7 @@ namespace hgl::ecs
 
                 // 派生量与非矩阵字段一律委托给与主相机路径同一份实现，禁止在本分支
                 // 另写一份：view_line / camera_world_pos 是阴影级联选级的输入
-                // （ShaderLibrary/shadow/pcf_shadow.glsl EvalPCFShadow），
+                // （ShaderLibrary/module/provider/shadow/shadow_pcf.glsl EvalPCFShadow），
                 // camera_facing_* 是 billboard 的输入（orient_camera_facing.glsl），
                 // 两条路径曾各自实现而漂移。
                 graph::RefreshCameraInfoDerived(&camera->camera_info);

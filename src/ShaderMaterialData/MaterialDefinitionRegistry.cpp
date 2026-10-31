@@ -329,16 +329,17 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
             ++builtin_count;
         }
 
-        // ② 再扫描资产目录（用户 / 项目可写的 .mi.toml）。
+        // ② 再扫描资产目录（用户 / 项目可写的 *.definition.toml）。
         int file_count = 0;
         int error_count = 0;
         const hgl::filesystem::Path material_path =
             hgl::filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
-            / OSString(OS_TEXT("material"));
+            / OSString(OS_TEXT("asset"))
+            / OSString(OS_TEXT("definition"));
 
         if (!material_path.IsDirectory())
         {
-            GLogFatal("[MaterialDefinitionRegistry] Missing required ShaderLibrary/material directory: %s. File-backed schema-4 material definitions are mandatory.",
+            GLogFatal("[MaterialDefinitionRegistry] Missing required ShaderLibrary/asset/definition directory: %s. File-backed schema-4 material definitions are mandatory.",
                       material_path.ToOSString().c_str());
             std::abort();
         }
@@ -358,7 +359,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         // 定义已经保证 registry 非空，所以这里判的是**资产份数**，不是 registry.GetCount()。
         if (file_count == 0)
         {
-            GLogFatal("[MaterialDefinitionRegistry] ShaderLibrary/material is empty or invalid (%d files, %d errors, %d parsed definitions, %d builtin). File-backed schema-4 materials are required.",
+            GLogFatal("[MaterialDefinitionRegistry] ShaderLibrary/asset/definition is empty or invalid (%d files, %d errors, %d parsed definitions, %d builtin). File-backed schema-4 materials are required.",
                       file_count, error_count, registry.GetCount(), builtin_count);
             std::abort();
         }

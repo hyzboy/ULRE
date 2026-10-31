@@ -7,7 +7,7 @@
 // ── Vk 枚举 ↔ 引擎文本名：材质 / 采样器 TOML 的唯一解析真源 ───────────────
 // 覆盖：
 //   材质 TOML  pipeline.cull_mode / pipeline.depth_compare_op / pipeline.blend_src|blend_dst
-//   sampler.toml mag_filter / min_filter / mipmap_mode / address_mode / compare_op
+//   contract/sampler.toml mag_filter / min_filter / mipmap_mode / address_mode / compare_op
 //
 // 口径（T1：一个枚举的名字↔值只有一份实现）：
 //   ① 拼写以本表为唯一真源，**精确匹配**（与历史解析器一致，不再让 "Nearest"/"LessOrEqual"

@@ -381,7 +381,7 @@ ShaderBuildContext *CompileMaterialStages(
     if (!config.fixed_mesh_source || !config.fixed_mesh_source[0])
     {
         c.Fail("mesh stage requires a fixed GLSL source "
-               "(ShaderLibrary/mesh/shape/<shape_name>.mesh)");
+               "(ShaderLibrary/topology/<shape_name>.mesh)");
         return FailCompile(c);
     }
     if (!config.fixed_fragment_source || !config.fixed_fragment_source[0])
@@ -582,10 +582,10 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
         const uint32_t idx = SamplerPresetLibrary::Instance().GetIndex(name.c_str());
         if (idx == ~0u)
         {
-            // sampler.toml 无此名字——不生成宏，shader 编译会因未定义
+            // contract/sampler.toml 无此名字——不生成宏，shader 编译会因未定义
             // 宏显式失败（vs 静默错位成 Nearest）
             GLogError(u8"[StageSPVCompiler] sampler preset not found: %s — "
-                      u8"check sampler.toml ordering",
+                      u8"check contract/sampler.toml ordering",
                       name.c_str());
             continue;
         }
@@ -599,12 +599,12 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 }
 
 // 材质源是否读取 payload 行（MTL_ROW）——由模块元数据判定，而不是靠模块名
-// 里是否含 "texture_source" 反推（旧实现的 std::strstr 会误命中任何名字里
+// 里是否含 "material_source_texture" 反推（旧实现的 std::strstr 会误命中任何名字里
 // 含该子串的模块，且无法表达新模块的诉求）。
 //
 // 判定依据：模块注解声明 `require Resource MaterialData`，即它会读材质数据行。
-//   有（如 pbr_surface_source，用 MTL_ROW）→ true
-//   无（如 texture_source，只用 MTL_TEX）  → false
+//   有（如 material_source_pbr_surface，用 MTL_ROW）→ true
+//   无（如 material_source_texture，只用 MTL_TEX）  → false
 static bool MaterialSourceRequiresMaterialDataRow(
     const char *module_name, bool &out_required) noexcept
 {

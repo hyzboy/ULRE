@@ -80,9 +80,9 @@ namespace hgl::graph::mtl
             if (domain == MaterialDomain::Sky)
             {
                 if (!surface_module_name || !surface_module_name[0]
-                 || std::strcmp(surface_module_name, "sky_minimal_surface") == 0)
+                 || std::strcmp(surface_module_name, "surface_sky_minimal") == 0)
                     stage_name = "sky_minimal.frag";
-                else if (std::strcmp(surface_module_name, "sky_cube_surface") == 0)
+                else if (std::strcmp(surface_module_name, "surface_sky_cube") == 0)
                     stage_name = entry->forward_file;
                 else
                     return false;

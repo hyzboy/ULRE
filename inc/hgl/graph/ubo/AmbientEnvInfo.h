@@ -12,7 +12,7 @@ namespace hgl::graph
      * 环境光 provider 槽（`ambient_light_provider`）的参数块。
      *
      * 为什么独立成块（T1 归位）：块里的句柄的**唯一读者**是
-     * `ShaderLibrary/lighting/indirect_ibl.glsl` —— 一个 `@ulre slot ambient_light_provider`
+     * `ShaderLibrary/module/provider/ambient_light/ambient_light_ibl.glsl` —— 一个 `@ulre slot ambient_light_provider`
      * 模块，与天空外观（`sky_provider`）本就是**两个不同的 provider 槽**。
      * 它原先住在 `SkyInfo` 里（Scene 集时代的历史遗留），也正是那里必须挂显式填充写死偏移的原因：
      * 一端 16 对齐、一端 scalar 布局 ⇒ 句柄被挤到不同偏移 ⇒ shader 拿句柄 0 采样 ⇒ IBL 静默发黑。
@@ -31,12 +31,12 @@ namespace hgl::graph
          *   y = Specular Prefiltered Cubemap
          *   z = BRDF LUT(2D,(NdotV,roughness) → (scale,bias))
          *   w = 预留
-         * 由 IBL ambient 光照模块(lighting/indirect_ibl.glsl)经 ambient_env.env_tex 采样。
+         * 由 IBL ambient 光照模块(module/provider/ambient_light/ambient_light_ibl.glsl)经 ambient_env.env_tex 采样。
          */
         Vector4u    env_tex = Vector4u(0);
     };
 
-    // GPU ABI：布局是 C++↔GLSL 的契约（镜像见 ShaderLibrary/ubo/scene_ubo.glsl 的 AmbientEnvInfoRef）
+    // GPU ABI：布局是 C++↔GLSL 的契约（镜像见 ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl 的 AmbientEnvInfoRef）
     static_assert(sizeof(AmbientEnvInfo) == 16, "AmbientEnvInfo 必须恰为 16 字节（块内只有 uvec4）");
     static_assert(offsetof(AmbientEnvInfo, env_tex) == 0, "env_tex 必须是块首字段（两端同型 uvec4）");
 }

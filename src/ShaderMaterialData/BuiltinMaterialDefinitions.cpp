@@ -12,7 +12,7 @@ namespace hgl::graph::mtl
         // 领域校验管线，领域契约因此仍是唯一真源（见头文件说明）。
         //
         // 与资产文件的唯一差别是注释口径：这些定义不属于资产，注释里不再出现
-        // 「作者可填 / 资产只填」之类的话，避免读者误以为它们可被 .mi.toml 覆盖。
+        // 「作者可填 / 资产只填」之类的话，避免读者误以为它们可被 .definition.toml 覆盖。
 
         constexpr const char kPureColorSource[] = R"TOML(schema = 4
 id = "builtin/pure_color"

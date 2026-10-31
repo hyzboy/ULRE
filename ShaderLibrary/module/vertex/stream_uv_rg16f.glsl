@@ -1,0 +1,28 @@
+// @ulre begin
+// @ulre name stream_uv_rg16f
+// @ulre kind Utility
+// @ulre priority 8
+// @ulre provide UV0
+// @ulre end
+// Stage 1: UV 从独立 SSBO 读取——RG16F 压缩格式（发行版——half×2，4B/顶点）
+// 数据：UV 半浮点打包（每顶点 1 个 uint——低 16 位 u、高 16 位 v）
+// 解码：unpackHalf2x16（GLSL 内置——精确还原 half）
+// 布局注意：每顶点恰好 4B → uint data[] 4B stride 天然匹配（同 RG16F 法线模式）
+#ifndef S1_UV_RG16F_GLSL
+#define S1_UV_RG16F_GLSL
+
+// 流在位标记：告知 s1_stream_defaults 本流已提供 LoadUV()
+#define S1_STREAM_UV 1
+
+// BDA：UV 基址由 MeshDrawParams 行 addr_uv 携带（VertexUVPackedRef 由
+// MeshShaderVertexAdapter 集中声明）——packed uint 4B stride 读法不变
+#define sbo_vertex_uv VertexUVPackedRef(draw_params.addr_uv)
+
+vec2 TexCoord;
+
+void LoadUV()
+{
+    TexCoord = unpackHalf2x16(sbo_vertex_uv.data[draw_params.vertex_base + VertexIndexID]);
+}
+
+#endif // S1_UV_RG16F_GLSL

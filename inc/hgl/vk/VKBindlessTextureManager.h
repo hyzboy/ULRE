@@ -28,7 +28,7 @@ namespace hgl::graph
      * 直接由 CPU 写入描述符，零 Pool 开销与驱动验证消耗。
      *
      * RegisterTexture 返回纯 tex_handle（1-based，0=无效）；
-     * RegisterSamplers 按 ShaderLibrary/sampler.toml 的顺序一次性创建全部 sampler，
+     * RegisterSamplers 按 ShaderLibrary/contract/sampler.toml 的顺序一次性创建全部 sampler，
      * GLSL 侧以编译期 "#define <name>Sampler <idx>u" 引用，SSBO 只存纯 tex_handle。
      */
     class BindlessTextureManager

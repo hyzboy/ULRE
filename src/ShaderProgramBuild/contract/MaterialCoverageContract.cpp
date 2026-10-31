@@ -17,7 +17,7 @@ namespace hgl::graph::mtl
         // 文件不应牵动 C++。
         //
         // 注意：这组需求与模块自身的 `require` 注解是两回事。后者是模块运行
-        // 所需，这里是「求 alpha 需要什么」。例如 debug_normal_source 运行需要
+        // 所需，这里是「求 alpha 需要什么」。例如 material_source_debug_normal 运行需要
         // WorldNormal/MaterialData，但它的 alpha 是常量，一条都不需要——所以它
         // 必须显式登记，以区别于「未登记」时的兜底推导。
         struct MaterialSourceCoverageRule
@@ -33,13 +33,13 @@ namespace hgl::graph::mtl
         const MaterialSourceCoverageRule kMaterialSourceCoverageRules[] =
         {
             // 模块注册名              DataIndexID  UV0    Color  材质数据行  纹理
-            { "pbr_surface_source",     true,       true,  false, false,      true  },
-            { "texture_source",         true,       true,  false, false,      true  },
-            { "vertex_color_source",    false,      false, true,  false,      false },
-            { "unlit_source",           true,       false, false, true,       false },
-            { "luminance_source",       true,       false, false, true,       false },
+            { "material_source_pbr_surface",     true,       true,  false, false,      true  },
+            { "material_source_texture",         true,       true,  false, false,      true  },
+            { "material_source_vertex_color",    false,      false, true,  false,      false },
+            { "material_source_unlit",           true,       false, false, true,       false },
+            { "material_source_luminance",       true,       false, false, true,       false },
             // alpha 为常量，不需要任何 interstage 语义
-            { "debug_normal_source",    false,      false, false, false,      false },
+            { "material_source_debug_normal",    false,      false, false, false,      false },
         };
 
         /// 命中已登记规则则填充 out_contract 并返回 true；

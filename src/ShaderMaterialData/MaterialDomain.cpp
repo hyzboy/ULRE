@@ -205,7 +205,7 @@ namespace hgl::graph::mtl
         constexpr MaterialDomainContract DomainContracts[] = {
             {
                 MaterialDomain::StandardOpaque, "StandardOpaque",
-                "pbr_surface_source", "ntb_tangent_vbo_normalmap",
+                "material_source_pbr_surface", "ntb_tangent_vbo_normalmap",
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::Normal)
                     | Sem(VertexSemantic::TexCoord),
                 StandardOpaqueSlots,
@@ -224,7 +224,7 @@ namespace hgl::graph::mtl
             {
                 MaterialDomain::Foliage, "Foliage",
                 // 尚未实现：植被需要透射/双面法线/风力顶点位移，不能直接复用
-                // pbr_surface_source。Phase 3/4 落地 foliage_surface_source 时补齐。
+                // material_source_pbr_surface。Phase 3/4 落地 foliage_surface_source 时补齐。
                 nullptr, nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::Normal)
                     | Sem(VertexSemantic::TexCoord),
@@ -258,7 +258,7 @@ namespace hgl::graph::mtl
             },
             {
                 MaterialDomain::UI2D, "UI2D",
-                "texture_source", "ntb_orthonormal",
+                "material_source_texture", "ntb_orthonormal",
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::TexCoord),
                 UI2DSlots,
                 static_cast<int>(sizeof(UI2DSlots) / sizeof(UI2DSlots[0])),
@@ -273,7 +273,7 @@ namespace hgl::graph::mtl
             {
                 MaterialDomain::HumanSkin, "HumanSkin",
                 // 尚未实现：皮肤需要 SSS/预积分曲率查表，不能直接复用
-                // pbr_surface_source。Phase 3/4 落地 skin_surface_source 时补齐。
+                // material_source_pbr_surface。Phase 3/4 落地 skin_surface_source 时补齐。
                 nullptr, nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::Normal)
                     | Sem(VertexSemantic::TexCoord),
@@ -307,7 +307,7 @@ namespace hgl::graph::mtl
                 // 纹理槽表为空 —— 见 ValidateMaterialDefinitionDomain 的
                 // 「本领域不接受任何纹理槽」分支。
                 MaterialDomain::UnlitSolid, "UnlitSolid",
-                "unlit_source", nullptr,
+                "material_source_unlit", nullptr,
                 Sem(VertexSemantic::Position),
                 nullptr,
                 0,
@@ -324,7 +324,7 @@ namespace hgl::graph::mtl
                 // 按顶点变换的形态属于 VertexPalette，那是另一份契约。
                 // 领域的价值就在于这种「多一个语义就是另一个领域」的硬边界。
                 MaterialDomain::VertexColor, "VertexColor",
-                "vertex_color_source", nullptr,
+                "material_source_vertex_color", nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::Color),
                 nullptr,
                 0,
@@ -338,11 +338,11 @@ namespace hgl::graph::mtl
                 // 调色板顶点色：Color + TransformID + Size 四语义齐全。
                 //   · TransformID 选调色板/变换矩阵；
                 //   · Size 是该顶点的尺度参数（与变换矩阵一同参与构造）。
-                // 表面来源模块与 VertexColor 相同（vertex_color_source），
+                // 表面来源模块与 VertexColor 相同（material_source_vertex_color），
                 // 差别在顶点侧能力（varyings 里的 use_transform_id_attr /
                 // emit_vertex_color_from_palette），领域只负责钉死前提条件。
                 MaterialDomain::VertexPalette, "VertexPalette",
-                "vertex_color_source", nullptr,
+                "material_source_vertex_color", nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::Color)
                     | Sem(VertexSemantic::TransformID) | Sem(VertexSemantic::Size),
                 nullptr,
@@ -356,7 +356,7 @@ namespace hgl::graph::mtl
             {
                 // 顶点亮度：逐顶点亮度索引，片元侧查调色板。无颜色顶点流。
                 MaterialDomain::VertexLuminance, "VertexLuminance",
-                "luminance_source", nullptr,
+                "material_source_luminance", nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::Luminance),
                 nullptr,
                 0,
@@ -372,7 +372,7 @@ namespace hgl::graph::mtl
                 // 无光单图。与 UI2D 的区别：UI2D 是图集精灵（Sampler2DArray +
                 // Sprite 角色，语义是界面元素），这里是普通的贴面颜色。
                 MaterialDomain::UnlitTexture, "UnlitTexture",
-                "texture_source", nullptr,
+                "material_source_texture", nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::TexCoord),
                 UnlitTextureSlots,
                 static_cast<int>(sizeof(UnlitTextureSlots)
@@ -392,7 +392,7 @@ namespace hgl::graph::mtl
             {
                 // 世界空间无光贴面。片元阶段与 UnlitTexture **逐字节相同**——
                 // 复用同一份固定主着色器（`domain/unlit_texture/unlit_texture.frag`）
-                // 与同一个来源模块（`texture_source`），差异只在顶点通路：
+                // 与同一个来源模块（`material_source_texture`），差异只在顶点通路：
                 // UnlitTexture 是 2D NDC（只配给屏幕矩形），本领域走标准 3D
                 // （Position 经相机投影），因此可以直接贴到任意世界几何上。
                 //
@@ -401,7 +401,7 @@ namespace hgl::graph::mtl
                 // 用 UnlitTexture 又会被当成 NDC 顶点处理。调试视图（深度/法线/
                 // 中间缓冲显示）与以后的面片类需求都落在这个领域。
                 MaterialDomain::UnlitTexture3D, "UnlitTexture3D",
-                "texture_source", nullptr,
+                "material_source_texture", nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::TexCoord),
                 UnlitTextureSlots,
                 static_cast<int>(sizeof(UnlitTextureSlots)
@@ -417,9 +417,9 @@ namespace hgl::graph::mtl
             {
                 // GPU 文本。顶点必须是 Position + UV0（字形在纹理里）。
                 // SDF 与位图两种形态共用：它们的差别只在材质数值与采样器类型，
-                // 表面来源模块是同一个 text_source_gpu。
+                // 表面来源模块是同一个 material_source_text_gpu。
                 MaterialDomain::Text2D, "Text2D",
-                "text_source_gpu", nullptr,
+                "material_source_text_gpu", nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::TexCoord),
                 Text2DSlots,
                 static_cast<int>(sizeof(Text2DSlots) / sizeof(Text2DSlots[0])),
@@ -462,7 +462,7 @@ namespace hgl::graph::mtl
                 // 调试法线可视化：顶点法线直接映射到颜色，唯一需要 Normal 的
                 // 无光领域。
                 MaterialDomain::DebugNormal, "DebugNormal",
-                "debug_normal_source", nullptr,
+                "material_source_debug_normal", nullptr,
                 Sem(VertexSemantic::Position) | Sem(VertexSemantic::Normal),
                 nullptr,
                 0,
@@ -479,7 +479,7 @@ namespace hgl::graph::mtl
                 // 2D 棋盘格（屏幕/局部空间出格）。**不要求 UV0**：
                 // 现有材质用 Vec2 位置直接出格，多要一个语义就会误杀它。
                 MaterialDomain::Checker2D, "Checker2D",
-                "checkerboard_2d_source", nullptr,
+                "material_source_checkerboard_2d", nullptr,
                 Sem(VertexSemantic::Position),
                 nullptr,
                 0,
@@ -497,7 +497,7 @@ namespace hgl::graph::mtl
             {
                 // 3D 棋盘格：按世界位置出格，需要世界位置 varying 而非 UV。
                 MaterialDomain::Checker3D, "Checker3D",
-                "checkerboard_3d_source", nullptr,
+                "material_source_checkerboard_3d", nullptr,
                 Sem(VertexSemantic::Position),
                 nullptr,
                 0,
@@ -511,7 +511,7 @@ namespace hgl::graph::mtl
                 // 材质错误回退：与 Checker3D 同源逻辑但独立模块，
                 // 因为它要额外携带 data_index_id 以便定位出错的材质行。
                 MaterialDomain::ErrorChecker3D, "ErrorChecker3D",
-                "error_checkerboard_3d_source", nullptr,
+                "material_source_error_checkerboard_3d", nullptr,
                 Sem(VertexSemantic::Position),
                 nullptr,
                 0,

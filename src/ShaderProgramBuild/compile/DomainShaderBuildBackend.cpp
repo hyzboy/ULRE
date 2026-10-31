@@ -191,14 +191,14 @@ namespace hgl::graph::mtl
         }
 
         /// 模板里是否真的挂了 shadow provider 槽。只有挂了的主着色器才会
-        /// include `shadow/pcf_shadow.glsl`，也只有它需要 PCF 宏。
+        /// include `module/provider/shadow/shadow_pcf.glsl`，也只有它需要 PCF 宏。
         bool HasShadowProviderSlot(const MaterialDefinitionBuildRequest &request) noexcept
         {
             return request.render_template_request.FindModuleRoot(
                        ShaderModuleSlotRole::ShadowProvider) != nullptr;
         }
 
-        /// 环境光 provider 的 include 路径（`lighting/indirect_sky_ambient.glsl`）。
+        /// 环境光 provider 的 include 路径（`module/provider/ambient_light/ambient_light_sky.glsl`）。
         /// 主着色器的固定 include 表里不含 ambient 模块，必须由 options 带进来。
         ///
         /// 注意 include 路径**未必已被填好**：环境层覆盖 ambient 模块名时
@@ -268,7 +268,7 @@ namespace hgl::graph::mtl
             input.face_normal_fallback = ResolveFaceNormalFallback(definition, request);
             input.vertex_normal_present = ResolveVertexNormalPresent(definition, request);
 
-            // compile_defines（`.mi.toml` 的 `defines`）→ 逐条 `#define <name> 1`。
+            // compile_defines（`.definition.toml` 的 `defines`）→ 逐条 `#define <name> 1`。
             // 只在本函数内活着：EmitDomainOptions 同步读完，不留悬垂指针。
             std::vector<const char *> definition_defines;
             definition_defines.reserve(definition.compile_defines.size());
@@ -341,8 +341,8 @@ namespace hgl::graph::mtl
                 "#\n"
                 "# 三份 options 与主着色器的对应关系：\n"
                 "#   ShaderLibrary/domain/<领域>/<主着色器>.frag  #include \"generated/frag_options.glsl\"\n"
-                "#   ShaderLibrary/mesh/*.mesh                    #include \"generated/mesh_options.glsl\"\n"
-                "#   ShaderLibrary/mesh/*.mesh + domain/*/*.frag  #include \"generated/common_options.glsl\"\n"
+                "#   ShaderLibrary/topology/*.mesh                    #include \"generated/mesh_options.glsl\"\n"
+                "#   ShaderLibrary/topology/*.mesh + domain/*/*.frag  #include \"generated/common_options.glsl\"\n"
                 "#\n"
                 "# common_options.glsl 是阶段间 varying 的唯一开关源（HGL_VARYING_*）：\n"
                 "# 网格阶段据它声明并写出 out 数组，片段阶段据它声明 in 并解包。\n"

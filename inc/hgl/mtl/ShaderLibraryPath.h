@@ -31,7 +31,7 @@ namespace hgl::graph::mtl
     }
 
     /// 环境变量覆盖项：优先级高于 requested_path 与向上搜索。
-    /// 指向的目录必须本身是 ShaderLibrary 根（含 material/ 子目录）。
+    /// 指向的目录必须本身是 ShaderLibrary 根（含 domain/ 与 module/ 子目录）。
     inline constexpr const wchar_t *kShaderLibraryPathEnvironmentVariable =
         L"ULRE_SHADERLIBRARY_PATH";
 
@@ -46,7 +46,8 @@ namespace hgl::graph::mtl
     inline bool IsShaderLibraryRoot(const hgl::filesystem::Path &path)
     {
         return path.IsDirectory()
-            && (path / OSString(OS_TEXT("material"))).IsDirectory();
+            && (path / OSString(OS_TEXT("domain"))).IsDirectory()
+            && (path / OSString(OS_TEXT("module"))).IsDirectory();
     }
 
     inline std::string GetShaderLibraryPath(const char *requested_path = nullptr)

@@ -14,10 +14,10 @@
 #ifndef HGL_DOMAIN_EMISSIVE_ROW_BINDINGS_GLSL
 #define HGL_DOMAIN_EMISSIVE_ROW_BINDINGS_GLSL
 
-#include "ssbo/emissive_surface_row.glsl"
+#include "module/descriptor/ssbo/emissive_surface_row.glsl"
 
 // ── 材质私有数据行（GlobalSSBOType::EmissiveSurface） ──
-// 结构本身见 ssbo/emissive_surface_row.glsl（由 C++ 结构 + 注解生成），
+// 结构本身见 module/descriptor/ssbo/emissive_surface_row.glsl（由 C++ 结构 + 注解生成），
 // 本文件只保留**寻址**：这一行从哪里取。
 // 行跨度 16 字节 = 4 × 4，与 EmissiveSurfaceData 一致。
 #define MTL_ROW(i) EmissiveSurfaceRow(global_addresses.addr_emissive_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(16))

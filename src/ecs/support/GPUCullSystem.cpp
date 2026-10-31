@@ -234,7 +234,7 @@ namespace hgl::ecs
         // 开发形态：GLSL 单源是唯一事实源，现编并顺手把 SPV 烘焙进 shader-cache。
         // 加载着色器源码（ShaderLibrary 单源路径，禁绝对路径）
         const std::string shader_path =
-            graph::mtl::GetShaderLibraryPath() + "/ecs/entity_gpu_cull.glsl";
+            graph::mtl::GetShaderLibraryPath() + "/module/descriptor/ecs/entity_gpu_cull.glsl";
         AnsiString shader_source = LoadShaderSource(shader_path);
         if (shader_source.IsEmpty())
         {

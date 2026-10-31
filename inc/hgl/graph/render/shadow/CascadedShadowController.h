@@ -123,7 +123,7 @@ namespace hgl::graph
         //
         // 该值写入 ShadowCascadeInfo::shadow_params.w（原本保留未用，std140 ABI
         // 不变），每级写同一个值，shader 读级联 0。shader 侧还有编译期宏
-        // HGL_SHADOW_NORMAL_OFFSET 作为总开关（见 ShaderLibrary/shadow/pcf_shadow.glsl）。
+        // HGL_SHADOW_NORMAL_OFFSET 作为总开关（见 ShaderLibrary/module/provider/shadow/shadow_pcf.glsl）。
         float normal_offset_world = 0.0f;
         float pcf_radius = 1.5f;
         float darkness = 0.12f;

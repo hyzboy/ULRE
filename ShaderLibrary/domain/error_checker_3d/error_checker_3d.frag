@@ -3,7 +3,7 @@
 //
 // 错误回退棋盘格（黄/黑）：材质定义/几何/纹理任一校验失败时，ECS 渲染层把整条
 // 配方换成该领域，用来「让问题看得见」。表面来源固定是
-// `material/error_checkerboard_3d_source.glsl`。
+// `module/provider/material_source/material_source_error_checkerboard_3d.glsl`。
 //
 // 与 Checker3D 的差别仅两处：
 //   · 它**要**材质私有数据行（`fragDataIndexID`，location 0）——错误色与
@@ -16,21 +16,21 @@
 #include "domain/root_bindings.glsl"
 #include "domain/emissive_row_bindings.glsl"
 #include "generated/frag_options.glsl"
-#include "common/descriptor_macros.glsl"
-#include "ubo/scene_ubo.glsl"
-#include "common/surface_interface.glsl"
-#include "common/pass_environment_interface.glsl"
-#include "compositor/flat_lighting.glsl"
-#include "material/error_checkerboard_3d_source.glsl"
-#include "ntb/ntb_none.glsl"
-#include "surface/material_surface.glsl"
-#include "common/alpha_compositor.glsl"
-// 阶段间 varying 的输入声明来自 `common/interstage_varying.glsl` 的片段段：
+#include "contract/descriptor_macros.glsl"
+#include "module/descriptor/ubo/scene_ubo.glsl"
+#include "module/interface/surface_interface.glsl"
+#include "module/interface/pass_environment_interface.glsl"
+#include "module/provider/output_policy/output_policy_flat.glsl"
+#include "module/provider/material_source/material_source_error_checkerboard_3d.glsl"
+#include "module/provider/ntb/ntb_none.glsl"
+#include "module/provider/surface/surface_material.glsl"
+#include "module/interface/alpha_compositor.glsl"
+// 阶段间 varying 的输入声明来自 `module/stage/interstage_varying.glsl` 的片段段：
 // 置位哪些语义由 `generated/common_options.glsl` 的 `HGL_VARYING_*` 决定，与网格
 // 阶段读的是同一个宏集合，两端口径不可能分叉。派生量（viewDir / screenPos /
 // 面法线兜底）仍在本文件里按领域赋值。
 #define HGL_FRAGMENT_INPUT_VARYINGS
-#include "common/interstage_varying.glsl"
+#include "module/stage/interstage_varying.glsl"
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value; }
 

@@ -819,7 +819,7 @@ namespace hgl::ecs
                 // 其次配方级 `RecipeTextureBinding::asset`（材质原型固有属性，多数场景只用这条）。
                 // 未就绪的句柄（只有文件名 / RT 尚未出图）不该走到这里 —— `CanRender` 会先把图元
                 // 拦下；走到这里说明就绪判定与收集判定脱节，直接报错更容易定位。
-                // 采样器不参与判据：Bindless 预设（`sampler.toml` → `samplers[]`）统一管理。
+                // 采样器不参与判据：Bindless 预设（`contract/sampler.toml` → `samplers[]`）统一管理。
                 graph::TextureAsset *binding_asset =
                     resource ? resource->asset : binding.asset;
                 graph::Texture *resource_texture =

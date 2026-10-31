@@ -1236,12 +1236,12 @@ int main(int argc, char** argv)
         //   4) 公式仍是 tan(θ) 加权且被 MAX 夹住 —— 被"简化"成角度无关的常量偏移
         //      会让正面被推离遮挡体（peter-panning 立刻回来），这条就是那道闸门。
         {
-            static const OSString kShaderPath = OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl");
+            static const OSString kShaderPath = OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl");
 
             hgl::io::OpenFileInputStream fis(kShaderPath);
             if (!fis)
             {
-                GLogError(u8"Test 7C Failed: cannot open ShaderLibrary/shadow/pcf_shadow.glsl "
+                GLogError(u8"Test 7C Failed: cannot open ShaderLibrary/module/provider/shadow/shadow_pcf.glsl "
                           u8"(run this test from the repository root)");
                 return 7;
             }
@@ -2088,13 +2088,13 @@ int main(int argc, char** argv)
               true },
             { "SamplerPreset.cpp", OS_TEXT("src/ShaderMaterialData/SamplerPreset.cpp"),
               "ClampToEdge",
-              "同上：sampler.toml 的 filter/mipmap_mode/address_mode/compare_op 一律走 VkEnumText.h",
+              "同上：contract/sampler.toml 的 filter/mipmap_mode/address_mode/compare_op 一律走 VkEnumText.h",
               true },
             { "MaterialDefinitionFile.cpp",
               OS_TEXT("src/ShaderMaterialData/MaterialDefinitionFile.cpp"),
               "key != \"swizzle\"",
               "材质侧纹理采样选项（filter/wrap/swizzle/anisotropy/lod/compare_op）已于 2026-10-11 S2 整删："
-              "双端空转（0 材质授权 + 0 消费者），运行期采样器真源 = ShaderLibrary/sampler.toml 预设表；"
+              "双端空转（0 材质授权 + 0 消费者），运行期采样器真源 = ShaderLibrary/contract/sampler.toml 预设表；"
               "要恢复必须先有真实消费者与授权方",
               true },
             { "Shadow/CMakeLists.txt", OS_TEXT("example/Shadow/CMakeLists.txt"),
@@ -2103,7 +2103,7 @@ int main(int argc, char** argv)
               "其独占材质 shadow_receiver* 与 ShadowMap 采样器预设同批删除）——要恢复单张阴影图请把 "
               "CascadeShadowMap 的 cascade_count 设为 1，勿重建双路线",
               true },
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "#define shadow ",
               "单词级宏名会整词改写同名局部变量（实测击穿 material/shadow_receiver_source.glsl 的"
               " `const float shadow = ...` ⇒ 'const' : no qualifiers allowed for function return，"
@@ -2298,38 +2298,38 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "SetShadowFacts(", "阴影事实不上 EntityGPU 行 ⇒ 后两跳全断（旋钮无声失效）" },
-            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
               "entity.shadow_receive == 0u ? 1u : 0u",
               "剔除端不再把接收开关抄进 per-draw 行（着色端读到的永远是默认值）" },
-            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
               "entity.shadow_bias_multiplier,",
               "剔除端不再把偏差倍率抄进 per-draw 行（着色端读到的永远是默认值）" },
 
             // ④ 片元端读取 + 早退 + 缩放
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "GetShadowReceiveParams(data_index)",
               "片元端不再读接收侧参数（row 里的值没人消费）" },
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[data_index]",
               "接收侧参数不是从 per-draw 行读的（dataIndex 与行号必须一致）" },
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE",
               "片元端不再判定接收标志位（receive_shadow 不生效）" },
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "if (!receive_params.receive)",
               "不接收阴影的图元没有早退——仍会采样/选级，开关只影响噪音" },
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "shadow_info.cascades[c].shadow_params.x * bias_scale",
               "级联路径的深度 bias 不再乘局部倍率（bias_multiplier 只改法线偏移）" },
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "* receive_params.bias_multiplier",
               "法线偏移/采样调用不再带局部倍率（bias_multiplier 半途丢失）" },
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "return EvalPCFShadowAt(sample_pos, surface.worldPos);",
               "阴影采样退回无倍率调用（bias_multiplier 无法到达采样点）", true },
 
             // ⑤ 参数真的到达合成器（dataIndex 从 FS 模板一路传到 provider）
-            { "forward_lighting.glsl", OS_TEXT("ShaderLibrary/compositor/forward_lighting.glsl"),
+            { "forward_lighting.glsl", OS_TEXT("ShaderLibrary/module/provider/output_policy/output_policy_forward.glsl"),
               "GetShadowFactor(si, data_index)",
               "合成器不再把 per-draw 行号传给阴影 provider（旋钮在最后一步断链）" },
             { "forward_lit.frag", OS_TEXT("ShaderLibrary/domain/standard_opaque/forward_lit.frag"),
@@ -3313,7 +3313,7 @@ int main(int argc, char** argv)
 
         // ④ 着色器源码契约：wrap 必须逐级由 cache_offset 驱动，且保留非滚动的 clamp 分支
         {
-            const OSString kPcf(OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"));
+            const OSString kPcf(OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"));
             const SourceContract seam_contracts[] =
             {
                 { "pcf_shadow.glsl", kPcf, "shadow_info.cascades[c].cache_offset.x != 0.0",
@@ -3852,7 +3852,7 @@ int main(int argc, char** argv)
               "addr_draw_item_ids",
               "世界表不许再挂二级索引表地址（该表已删）",
               true },
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "addr_global_render_items",
               "GLSL 世界表镜像不许再挂 4-ID 池表地址",
               true },
@@ -3872,7 +3872,7 @@ int main(int argc, char** argv)
               "SetRenderItem4ID",
               "采集侧不许再写 4-ID 池（世界唯一发布点 = 实体 4-ID 表）",
               true },
-            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
               "ResolveRenderItem",
               "剔除侧不许再引用已删的绘制期 4-ID 解析函数",
               true },
@@ -5248,7 +5248,7 @@ int main(int argc, char** argv)
             { "GlobalAddresses.h", OS_TEXT("inc/hgl/graph/ubo/GlobalAddresses.h"),
               "addr_geometry_aabb",
               "全局地址表没有 AABB 池基址（shader 无法寻址 AABB 表）" },
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "addr_geometry_aabb",
               "GLSL 侧 GlobalAddressesRef 缺字段（C++ 加了 GLSL 漏加 ⇒ 解引用错地址）" },
 
@@ -5279,7 +5279,7 @@ int main(int argc, char** argv)
             { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
               "sizeof(MeshDrawParams) == 104",
               "行宽断言不是 104 B（9×4B 头 + 4B 填充 + 8×uint64）" },
-            { "stage_body.glsl", OS_TEXT("ShaderLibrary/mesh/stage_body.glsl"),
+            { "stage_body.glsl", OS_TEXT("ShaderLibrary/module/stage/stage_body.glsl"),
               "draw_params.is_indexed != 0u",
               "非索引/索引路径不再按 is_indexed 择一取元素数（读数退化）" },
             // 注：text/line 的「元素数口径」已整体移交 Test 34（含禁复活）——本用例只管行宽/data_* 面。
@@ -5291,7 +5291,7 @@ int main(int argc, char** argv)
             // ⑤ 禁复活
             { "ShaderBufferSources.h", OS_TEXT("inc/hgl/graph/ShaderBufferSources.h"),
               "M(total_vertices,", "total_vertices 复活（绘制元素数又混装成一个字段）", true },
-            { "stage_body.glsl", OS_TEXT("ShaderLibrary/mesh/stage_body.glsl"),
+            { "stage_body.glsl", OS_TEXT("ShaderLibrary/module/stage/stage_body.glsl"),
               "draw_params.total_vertices", "网格阶段主体又读混装字段", true },
             { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
               "sizeof(mtl::GeometryAABB),  16384u, 1u",
@@ -5349,7 +5349,7 @@ int main(int argc, char** argv)
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
               "db.draw_key.DrawElementCount()",
               "ICB 组数不得回到取自 draw 行键（T4c4 起 CPU 绘制链已整体删除）", true },
-            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
               "(element_count + binfo.group_size - 1u) / binfo.group_size",
               "ICB 组数只在 gather 内按元素数/组大小算出（GPU 侧唯一出处）" },
             { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/PrimitiveBatchPipeline.cpp"),
@@ -5614,19 +5614,19 @@ int main(int argc, char** argv)
     {
         const SourceContract kElementCountContracts[] =
         {
-            { "line_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/line_quad_body.glsl"),
+            { "line_quad_body.glsl", OS_TEXT("ShaderLibrary/module/stage/line_quad_body.glsl"),
               "const uint total_elements = (draw_params.is_indexed != 0u)",
               "线段着色器未按元素数（索引路径取 index_count）取数" },
-            { "line_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/line_quad_body.glsl"),
+            { "line_quad_body.glsl", OS_TEXT("ShaderLibrary/module/stage/line_quad_body.glsl"),
               "draw_params.vertex_count >> 1u",
               "线段着色器又直接读 vertex_count 算线数（少 3 倍：只画 4 条线）", true },
-            { "char_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/char_quad_body.glsl"),
+            { "char_quad_body.glsl", OS_TEXT("ShaderLibrary/module/stage/char_quad_body.glsl"),
               "const uint total_elements = (draw_params.is_indexed != 0u)",
               "文本着色器未按元素数取数" },
-            { "char_quad_body.glsl", OS_TEXT("ShaderLibrary/mesh/char_quad_body.glsl"),
+            { "char_quad_body.glsl", OS_TEXT("ShaderLibrary/module/stage/char_quad_body.glsl"),
               "const uint total_chars = draw_params.vertex_count;",
               "文本着色器又直接读 vertex_count（索引几何会少画）", true },
-            { "stage_body.glsl", OS_TEXT("ShaderLibrary/mesh/stage_body.glsl"),
+            { "stage_body.glsl", OS_TEXT("ShaderLibrary/module/stage/stage_body.glsl"),
               "const uint total_vertices = (draw_params.is_indexed != 0u)",
               "顶点直通着色器不再按元素数取数（基准口径丢失）" },
         };
@@ -6118,7 +6118,7 @@ int main(int argc, char** argv)
               "counters = gpu_cull->MapCurrentBatchCounters(0u /*pass: 主帧*/);",
               "§9 M6：台架读回路径的 Map 调用点（与上一条成对：删任一即红）" },
 
-            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/ecs/entity_gpu_cull.glsl"),
+            { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
               "(aabb_center.w >= 0.0) && (i < 6)",
               "§9 M7：GeometryAABB center.w<0 的「始终可见」哨兵必须被 GPU 消费者兑现（2D 几何/V2F 靠它不被零 extents 静默剔空；写者 = RefreshGeometryAABBRow）" },
 
@@ -6450,15 +6450,15 @@ int main(int argc, char** argv)
               "uint64_t addr_lights = 0;",
               "T6b：光源行表的地址字段（世界私有；行 0 = 主方向光）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "uint64_t addr_lights;",
               "T6b：GLSL 侧地址表镜像（漏加 = shader 解引用错地址 / 读不到光源）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "struct LightRowData",
               "T6b：光源行的 GLSL 镜像（门 W.light-row-struct-parity 逐字段对拍的另一端）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "#define light_rows LightRowBufferRef(world_addresses.addr_lights).lights",
               "T6b：光源行的取址宏（行数组本体；下标 = 行号）" },
 
@@ -6562,49 +6562,49 @@ int main(int argc, char** argv)
               "2026-10-07 禁复活：天空参数块不得作为 profile 载体字段复活",
               true },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "float halo_intensity;",
               "2026-10-07 禁复活：天空外观标量的 GLSL 镜像不得复活（取值已是 sky_atmosphere.glsl 内常量）",
               true },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "sky.sun_direction",
               "T6b 禁复活：天空镜像不得再有光源方向（两端漂移 = 静默读垃圾光照）",
               true },
 
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "const vec3  L         = normalize(main_light.direction_intensity.xyz);",
               "T6b：法线偏移的光方向改读光源行 0（阴影域读光，单向）" },
 
-            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/shadow/pcf_shadow.glsl"),
+            { "pcf_shadow.glsl", OS_TEXT("ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"),
               "sky.sun_direction",
               "T6b 禁复活：阴影接收侧不得回读天空里的方向",
               true },
 
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "vec3 GetMainLightDir()",
               "T6b：主光取用口改名（读光源行，不再叫 Sky*）" },
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "return max(main_light.color_angle.rgb * main_light.direction_intensity.w, vec3(0.05));",
               "T6b：主光颜色 × 强度取自光行（颜色 color_angle.rgb / 强度 direction_intensity.w）" },
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "sky.sun_direction",
               "T6b 禁复活：天光模块不得回读天空里的方向",
               true },
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "provides_capability",
               "禁复活：sky 槽只提供天空外观/主光方向，不提供环境光 —— 声明 ambient_diffuse 会掩盖 ambient provider 放错的诊断",
               true },
 
-            { "sky_minimal_surface.glsl", OS_TEXT("ShaderLibrary/surface/sky_minimal_surface.glsl"),
+            { "sky_minimal_surface.glsl", OS_TEXT("ShaderLibrary/module/provider/surface/surface_sky_minimal.glsl"),
               "float sun_rad = radians(main_light.color_angle.a);",
               "T6b：日盘角径取自光行 color_angle.a（天空不再持有角径）" },
 
-            { "sky_minimal_surface.glsl", OS_TEXT("ShaderLibrary/surface/sky_minimal_surface.glsl"),
+            { "sky_minimal_surface.glsl", OS_TEXT("ShaderLibrary/module/provider/surface/surface_sky_minimal.glsl"),
               "sky.sun_color",
               "T6b 禁复活：日盘颜色取自光行（天空不再持有颜色）",
               true },
@@ -6613,7 +6613,7 @@ int main(int argc, char** argv)
               "inline SunLightSample EvaluateSunLight(float hour, float minute, float second)",
               "T6b：太阳时刻模型收在光源域（默认主光与默认光晕同源，避免双份模型）" },
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "vec3 mie = main_light.color_angle.rgb * mie_phase * kHaloIntensity;",
               "T6b：Mie 光晕色读主光色；2026-10-07：强度乘子改为 shader 内常量（天空块整删）" },
 
@@ -6777,11 +6777,11 @@ int main(int argc, char** argv)
               "static_assert(sizeof(AmbientEnvInfo) == 16,",
               "T1：新块尺寸契约丢失（块内只有 uvec4 ⇒ 16 B，不需要显式填充）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer AmbientEnvInfoRef",
               "T1：GLSL 侧缺 ambient_env 参数块镜像（两端不同步 = 静默读垃圾句柄）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "#define ambient_env AmbientEnvInfoRef(world_addresses.addr_ambient_env)",
               "T1：ambient_env 宏丢失（块 = 结构 + 镜像 + 宏三件套，缺一消费者就拿不到）" },
 
@@ -6790,7 +6790,7 @@ int main(int argc, char** argv)
               "        uint64_t addr_ambient_env = 0;",
               "T1：世界表缺 addr_ambient_env 字段（块无地址 ⇒ 消费者拿不到）" },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "    uint64_t addr_ambient_env;          // 环境光 provider 参数块（世界私有；单份 ⇒ 全帧槽同址；T1 归位）",
               "T1：GLSL 世界表镜像缺 addr_ambient_env（结构漂移 = 其后字段全部错位读）" },
 
@@ -6836,7 +6836,7 @@ int main(int argc, char** argv)
               "environment_system->MarkAmbientEnvDirty();",
               "T1：真实写者（唯一 IBL 示例）未改到新入口" },
 
-            { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/lighting/indirect_ibl.glsl"),
+            { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/module/provider/ambient_light/ambient_light_ibl.glsl"),
               "SampleCubeArray(ambient_env.env_tex.x, TrilinearSampler, vec4(N, 0.0)).rgb;",
               "T1：唯一读者未改读新块（只改一半 = 两端不同源）" },
 
@@ -6851,23 +6851,23 @@ int main(int argc, char** argv)
               "T1 禁复活：同族字段块不需要显式填充（填充只是兜底，不是解法）",
               true },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "sky.env_tex",
               "T1 禁复活：shader 不得再回读天空块里的句柄",
               true },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "_pad[3]",
               "T1 禁复活：天空镜像的显式填充（句柄迁出后不再需要）",
               true },
 
-            { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/lighting/indirect_ibl.glsl"),
+            { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/module/provider/ambient_light/ambient_light_ibl.glsl"),
               "sky.env_tex",
               "T1 禁复活：IBL 模块不得再读 sky 的句柄",
               true },
 
             // ⑥ 2026-10-07：**sky 段整删**（`SkyInfo` / `addr_sky` / GLSL 镜像与宏 / 编辑入口 / 发布侧）
-            //    两个外观字段取值搬成 `sky/sky_atmosphere.glsl` 内常量 ⇒ 全仓外观逐位不变。
+            //    两个外观字段取值搬成 `module/provider/sky/sky_atmosphere.glsl` 内常量 ⇒ 全仓外观逐位不变。
             { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "#include<hgl/graph/ubo/SkyInfo.h>",
               "2026-10-07 禁复活：SkyInfo.h 已删除，参数块载体不得再包含它",
@@ -6878,12 +6878,12 @@ int main(int argc, char** argv)
               "2026-10-07 禁复活：世界表不得再有 sky 地址字段（表 = 9×uint64 = 72 B）",
               true },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "readonly buffer SkyInfoRef",
               "2026-10-07 禁复活：GLSL 侧天空块镜像不得复活",
               true },
 
-            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/ubo/scene_ubo.glsl"),
+            { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "#define sky ",
               "2026-10-07 禁复活：天空块消费者宏不得复活",
               true },
@@ -6908,15 +6908,15 @@ int main(int argc, char** argv)
               "2026-10-07 禁复活：世界表发布侧不得再写 sky 地址",
               true },
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "const vec3  kBaseSkyColor  = vec3(0.1, 0.3, 0.6);",
               "2026-10-07：天空底色常量（原 SkyInfo::base_sky_color 取值 —— 外观逐位不变的前提）" },
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "const float kHaloIntensity = 0.1;",
               "2026-10-07：光晕强度常量（原 SkyInfo::halo_intensity 取值）" },
 
-            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/sky/sky_atmosphere.glsl"),
+            { "sky_atmosphere.glsl", OS_TEXT("ShaderLibrary/module/provider/sky/sky_atmosphere.glsl"),
               "sky.",
               "2026-10-07 禁复活：天空模块不得回读已删的天空块成员（外观 = 光行 + 常量）",
               true },

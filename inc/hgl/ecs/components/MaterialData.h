@@ -121,7 +121,7 @@ namespace hgl::ecs
         /// （`WrapTextureAsset` 不接管纹理所有权，纹理仍归 `TextureManager`）。
         /// 它不构成第二条行为路径 —— 落库的同样是一个 `TextureAsset*`。
         ///
-        /// 采样器由 Vulkan Bindless 预设（`sampler.toml` → `samplers[]`）统一管理，
+        /// 采样器由 Vulkan Bindless 预设（`contract/sampler.toml` → `samplers[]`）统一管理，
         /// 材质侧**不存在**采样器参数（2026-10-29 起彻底移除）。
         bool SetTextureResource(const std::string &name,
                                 hgl::graph::Texture *texture,

@@ -1,26 +1,26 @@
 /// VertexLoaderConsistency — 顶点流装载入口一致性校验
 ///
-/// 背景：`s1_position_{vec2,vec2i,vec3}.glsl` 的 `LoadVertexData()` 无条件顺序调用
-/// 各数据流入口 `LoadXxx()`；未装载该流的材质由 `vertex/s1_stream_defaults.glsl`
+/// 背景：`stream_position_{vec2,vec2i,vec3}.glsl` 的 `LoadVertexData()` 无条件顺序调用
+/// 各数据流入口 `LoadXxx()`；未装载该流的材质由 `module/vertex/stream_defaults.glsl`
 /// 用同名空函数补齐（空对象模式）。**漏调一个 LoadXxx() = 该属性静默不赋值**
 /// （几何/其它属性正常，只有该属性为 0）——历史事故：AutoInstance 全黑 =
-/// s1_position_vec2 漏了顶点色装载。
+/// stream_position_vec2 漏了顶点色装载。
 ///
 /// 旧实现在预处理期用 `#ifdef HGL_*_LOADER` 守卫展开装载宏，那批宏已全部删除；
 /// 本工具随之改为校验新的三边关系，规则**全部从 GLSL 文本推导，不维护任何
 /// 平行清单**（位置模块名单除外——它本就是「谁在调用」的登记处）：
 ///
 ///   ① 每个流模块（定义 `void LoadXxx()` 的文件）必须自述且仅自述一个
-///      `#define S1_STREAM_<NAME>` 守卫；同守卫的多个提供者（如 s1_color 与
-///      s1_palette_index 互斥二选一）必须提供**同名**入口函数。
-///   ② `s1_stream_defaults.glsl` 必须为每个守卫提供 `#ifndef <守卫>` +
+///      `#define S1_STREAM_<NAME>` 守卫；同守卫的多个提供者（如 stream_color 与
+///      stream_palette_index 互斥二选一）必须提供**同名**入口函数。
+///   ② `stream_defaults.glsl` 必须为每个守卫提供 `#ifndef <守卫>` +
 ///      同名空函数；且不得留下无人提供的死 stub。
 ///   ③ 三个位置模块的 `LoadXxx();` 调用序列必须**同集合、同顺序**——
 ///      这条就是替代旧 `#ifdef` 对称性检查的那一条。
 ///   ④ 位置模块调用的每个入口都必须在 defaults 里有 stub（漏 stub 时缺该流的
 ///      材质会编译失败而不是静默为 0，但漏 stub 本身仍是错误）。
 ///
-/// 用法：VertexLoaderConsistency <ShaderLibrary/vertex 目录>
+/// 用法：VertexLoaderConsistency <ShaderLibrary/module/vertex 目录>
 /// 已接入 ctest（VerifyVertexLoaderConsistency）。
 
 #include <cctype>
@@ -37,13 +37,13 @@ namespace
     // 位置模块（流入口调用点）——文件名固定，新增位置模块须在此登记
     constexpr const char *POSITION_MODULES[] =
     {
-        "s1_position_vec2.glsl",
-        "s1_position_vec2i.glsl",
-        "s1_position_vec3.glsl",
+        "stream_position_vec2.glsl",
+        "stream_position_vec2i.glsl",
+        "stream_position_vec3.glsl",
     };
 
     // 缺流空实现模块（stub 提供点）
-    constexpr const char *DEFAULTS_MODULE = "s1_stream_defaults.glsl";
+    constexpr const char *DEFAULTS_MODULE = "stream_defaults.glsl";
 
     // 流在位守卫前缀（数据模块自述，defaults 据此决定要不要补 stub）
     constexpr const char *STREAM_GUARD_PREFIX = "S1_STREAM_";
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
     if (argc < 2)
     {
         std::fprintf(stderr,
-            "usage: VertexLoaderConsistency <ShaderLibrary/vertex 目录>\n");
+            "usage: VertexLoaderConsistency <ShaderLibrary/module/vertex 目录>\n");
         return 3;
     }
 
@@ -311,7 +311,7 @@ int main(int argc, char **argv)
     {
         std::fprintf(stderr,
             "[VertexLoaderConsistency] 位置模块数不符: 实测 %d，登记 %d\n"
-            "  → 新增/删除 s1_position_* 后须同步本工具的 POSITION_MODULES\n",
+            "  → 新增/删除 stream_position_* 后须同步本工具的 POSITION_MODULES\n",
             position_module_seen, expected_position_modules);
         ++fail;
     }
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
         ++fail;
     }
 
-    // ① 同一守卫的多个提供者必须提供同名入口（s1_color / s1_palette_index 这类互斥二选一）
+    // ① 同一守卫的多个提供者必须提供同名入口（stream_color / stream_palette_index 这类互斥二选一）
     for (size_t i = 0; i < providers.size(); ++i)
     {
         for (size_t j = i + 1; j < providers.size(); ++j)

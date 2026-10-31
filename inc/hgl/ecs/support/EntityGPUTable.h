@@ -35,7 +35,7 @@ namespace hgl
          *      **`SetTransformRow`（Transform 槽的\**另一权威** = 变换上传路径，不是 `component_rows[Transform]`）**、
          *      `SetShadowFacts`（阴影事实上行；写者 = collect 的进批判据点）
          *   ③ GPU SSBO `EntityGPU` 行（**按世界地址槽切份**；只传脏行，写者 = 上传播径）
-         *   ④ GLSL 只读镜像（`ShaderLibrary/ecs/entity_gpu_cull.glsl`；实际只读 `flags` 与 `row[Transform]`）
+         *   ④ GLSL 只读镜像（`ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl`；实际只读 `flags` 与 `row[Transform]`）
          *   ⇒ 本表是**派生视图**，不新增真值；`row[Transform]` 是链上唯一的"两个权威"点。
          *   ⚠ `EntityGPU::type[16]` 是**有意冗余**（槽号已蕴含类型；保 shader 判空写法与 `offsetof` 断言）——**别当冗余删**。
          *   守门：`VerifyAfterWrite()`（debug 面，开关 = 台帐 `ULRE_ECS_DEBUG_API`）在①三个写入点核 ②↔① 的 15 槽。

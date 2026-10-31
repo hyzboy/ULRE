@@ -35,7 +35,7 @@ namespace hgl::ecs
         // 也在同批删除 —— 行号现在只活在变换侧算式与 GPU 剔除写的 per-batch 表里）。
         // 它的读取点（CPU 批行写入）与写入端的消费者随批 D / T4c4 删除后**只写不读** ⇒ 字段连同赋值
         // 整删（实测把赋值改成常量，示例帧摘要逐位不变）。行号现在只活在变换侧算式与 GPU 剔除的
-        // `l2w_index` 表里（`ShaderLibrary/ecs/entity_gpu_cull.glsl:390`）。
+        // `l2w_index` 表里（`ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl:390`）。
 
         bool isVisible = true;                   // Visibility flag
 

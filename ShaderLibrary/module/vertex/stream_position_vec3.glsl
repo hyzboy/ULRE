@@ -1,0 +1,40 @@
+// @ulre begin
+// @ulre name stream_position_vec3
+// @ulre kind Position
+// @ulre priority 10
+// @ulre uses stream_defaults
+// @ulre provide Position
+// @ulre end
+// Stage 1: 顶点位置从 SSBO 读取（MeshShader 方向——顶点输入统一为 SSBO）
+// 需要 VERTEX_SET / VERTEX_POSITION_BINDING 宏（descriptor_macros.glsl 提供默认值）
+// 接口约定：声明全局 Position + LoadVertexData()（s2/s3 模块读 Position）
+// include 顺序：本模块须在各数据流模块之后（LoadVertexData 调用它们的 LoadXxx()）
+// 注意：Vulkan gl_VertexIndex 已包含 firstVertex（BaseVertex）——
+//       data[gl_VertexIndex] 即绝对顶点号（VDM 大 buffer 段偏移自动含入）
+// 布局注意：顶点 Position buffer 是 VAB 格式（12B/顶点紧凑）——std430 默认
+//       vec3 数组 stride 16B 会错位，必须用 scalar 布局（GL_EXT_scalar_block_layout）
+#ifndef S1_POSITION_VEC3_GLSL
+#define S1_POSITION_VEC3_GLSL
+
+// BDA：位置基址由 MeshDrawParams 行 addr_position 携带（VertexPositionRef
+// 由 MeshShaderVertexAdapter 集中声明）——vec3 data[] 12B 紧凑 stride 与
+// VAB 布局逐字节一致，读法不变
+#define sbo_vertex_position VertexPositionRef(draw_params.addr_position)
+
+// 缺流空实现必须先于 LoadVertexData 可见
+#include "module/vertex/stream_defaults.glsl"
+
+vec3 Position;
+
+void LoadVertexData()
+{
+    Position = sbo_vertex_position.data[draw_params.vertex_base + VertexIndexID];
+    LoadUV();
+    LoadNTB();
+    LoadColor();
+    LoadLuminance();
+    LoadTransformID();
+    LoadSize();
+}
+
+#endif // S1_POSITION_VEC3_GLSL

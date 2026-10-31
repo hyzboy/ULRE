@@ -17,7 +17,7 @@ namespace hgl::graph::mtl
     //
     // 现在两端都从本文件发出去的宏里取开关：
     //
-    //   `ShaderLibrary/common/interstage_varying.glsl` 里每条语义形如
+    //   `ShaderLibrary/module/stage/interstage_varying.glsl` 里每条语义形如
     //     #if defined(HGL_VARYING_WORLD_POS)
     //     layout(location=HGL_LOCATION_WORLD_POS) out vec3 fragWorldPos[N];   // mesh
     //     layout(location=HGL_LOCATION_WORLD_POS) in  vec3 fragWorldPos;      // frag

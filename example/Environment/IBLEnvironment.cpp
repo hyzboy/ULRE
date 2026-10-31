@@ -273,7 +273,7 @@ private:
 
         // 环境光**算法**（ambient_light_provider 槽的 GLSL 模块）同样由环境层决定：
         // 与上面写入的句柄配对 —— 选 IBL 模块就必须给句柄，否则采样 0 句柄静默发黑。
-        if (!environment_system->SetAmbientProvider("indirect_ibl"))
+        if (!environment_system->SetAmbientProvider("ambient_light_ibl"))
             return false;
 
         return true;

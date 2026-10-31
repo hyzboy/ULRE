@@ -24,7 +24,7 @@ namespace hgl::graph
      *   z = 静态链末级(max_distance)淡出带宽 / 动态层(级联 0)边界淡出带宽（占本级深度区间的比例），
      *   w = 相邻级联交界带宽度（世界单位米，0 = 硬切换）。
      *       shader 侧选级**只**看 x/y：被屏蔽的级联在它自己的区间里返回受光，
-     *       不允许下沉到更远的级联（见 ShaderLibrary/shadow/pcf_shadow.glsl::EvalCascadeChain）。
+     *       不允许下沉到更远的级联（见 ShaderLibrary/module/provider/shadow/shadow_pcf.glsl::EvalCascadeChain）。
      * cache_origin:
      *   x/y = 光空间中已 snap 的缓存原点，z/w = 每个 texel 对应的光空间尺寸
      *         （z = 每个纹素的世界尺寸，normal-offset 若要做"纹素相对"变体可用）

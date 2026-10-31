@@ -73,7 +73,7 @@ namespace hgl::graph
         if (!default_material_recipes_loaded_)
         {
             if (!LoadMaterialRecipeDirectory(
-                    OS_TEXT("ShaderLibrary/material/recipes/")))
+                    OS_TEXT("ShaderLibrary/asset/recipe/")))
                 return nullptr;
 
             default_material_recipes_loaded_ = true;
@@ -150,12 +150,12 @@ namespace hgl::graph
         if (!bindless_texture_manager_->Init(device))
             return false;
 
-        // 统一 Sampler 注册：解析 sampler.toml → 按序 vkCreateSampler 写 binding=1。
+        // 统一 Sampler 注册：解析 contract/sampler.toml → 按序 vkCreateSampler 写 binding=1。
         // 此处与 ShaderGen 的 SamplerPresetLibrary 同源，保证 name→index 唯一一致。
         {
             const hgl::filesystem::Path sampler_toml =
                 hgl::filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
-                / OSString(OS_TEXT("sampler.toml"));
+                / OSString(OS_TEXT("contract/sampler.toml"));
 
             auto &preset_lib = mtl::SamplerPresetLibrary::Instance();
             if (preset_lib.Load(sampler_toml.ToOSString()))
@@ -171,7 +171,7 @@ namespace hgl::graph
             }
             else
             {
-                GLogWarning("[GraphicsContext] sampler.toml 加载失败，sampler 将不可用");
+                GLogWarning("[GraphicsContext] contract/sampler.toml 加载失败，sampler 将不可用");
             }
         }
 

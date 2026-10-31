@@ -39,12 +39,12 @@ struct alignas(64) HGL_SSBO_BDA LightRow
 
 | 产物 | 位置 | 说明 |
 |---|---|---|
-| GLSL 结构本体 | `ShaderLibrary/ubo/*.glsl`、`ShaderLibrary/ssbo/*.glsl` | 每个结构（或一组相关结构）一个文件，带 include guard |
+| GLSL 结构本体 | `ShaderLibrary/module/descriptor/ubo/*.glsl`、`ShaderLibrary/module/descriptor/ssbo/*.glsl` | 每个结构（或一组相关结构）一个文件，带 include guard |
 | TOML 读写 | `inc/hgl/graph/generated/BufferToml.gen.h` | `Read<Struct>(toml::value, T&)` / `Write<Struct>(const T&)` |
 | FlatBuffers schema | `inc/hgl/graph/generated/buffer_schema.fbs` | `table`（块/行）/ `struct`（嵌套定长） |
 
 **不生成**「地址从哪来」：`#define shadow_info ShadowInfoRef(world_addresses.addr_shadow)`
-这类寻址胶水是设计决策，写在 `ShaderLibrary/ubo/scene_ubo_bindings.glsl` 里手工维护。
+这类寻址胶水是设计决策，写在 `ShaderLibrary/module/descriptor/ubo/scene_ubo_bindings.glsl` 里手工维护。
 拆开的好处是重新生成永远不会覆盖寻址逻辑。
 
 ## 3. 数据来源
@@ -82,7 +82,7 @@ python src/Tools/BufferGen/buffer_gen.py --repo-root . --clang "C:\Program Files
 [[struct]]
 name = "LightRow"                 # C++ 结构名
 kind = "ssbo"                     # ubo | ssbo | struct | cpu_only
-file = "ubo/light_row.glsl"       # 相对 ShaderLibrary/
+file = "module/descriptor/ssbo/light_row.glsl"       # 相对 ShaderLibrary/
 glsl_struct = "LightRowData"      # GLSL 普通结构名
 glsl_ref = "LightRowBufferRef"    # GLSL buffer_reference 块名
 ref_member = "lights"             # 块体为数组时的成员名

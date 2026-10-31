@@ -48,7 +48,7 @@ namespace hgl::graph
         Binding     ///< #define <name> <绑定号>          如 VERTEX_POSITION_BINDING 4
     };
 
-    /// 描述符宏规范——ShaderLibrary/common/descriptor_macros.glsl 生成器的唯一输入。
+    /// 描述符宏规范——ShaderLibrary/contract/descriptor_macros.glsl 生成器的唯一输入。
     /// 每行对应生成文件中的一个 #define（含其上的注释）；数组行序即输出行序。
     ///
     /// 宏名与 Binding 枚举名不做机械推导（历史拼写不规则：TRANSFORMID/CHARINFO），

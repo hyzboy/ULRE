@@ -276,7 +276,7 @@ namespace hgl::graph::mtl
             DefaultMaterialTextureConfigurationCapacity;
 
         // Part-B5: Sampler 预设能力声明（统一注册机制）。
-        // 列出此材质在 GLSL 中实际用到的 sampler 预设名（对应 ShaderLibrary/sampler.toml）。
+        // 列出此材质在 GLSL 中实际用到的 sampler 预设名（对应 ShaderLibrary/contract/sampler.toml）。
         // 程序构建侧据此生成 "#define <name>Sampler <idx>u" 宏；名字缺失时保底索引 0。
         std::vector<std::string> sampler_names;
 
@@ -516,7 +516,7 @@ namespace hgl::graph::mtl
     struct FallbackMaterialRule
     {
         MaterialErrorKind kind;
-        const char       *definition_id;    ///< 保底材质定义 ID（文件材质；必须是 ShaderLibrary/material 里存在的）
+        const char       *definition_id;    ///< 保底材质定义 ID（文件材质；必须是 ShaderLibrary/asset/definition 里存在的）
         float             marker_color[4];  ///< 根颜色：标注错误种类
         const char       *marker_name;      ///< 稳定名（日志 / 契约用）
     };
@@ -951,8 +951,8 @@ namespace hgl::graph::mtl
      * 判据：不容忍面法线兜底，**且**要法线光照 —— 声明了 Normal/Tangent/Bitangent
      * 任一语义，或挂了法线贴图模块（`ntb_module_name`）。
      *
-     * 为什么不看 `normal_mode`：`lit.mi.toml` 的 `normal_mode` 是默认 `None`，
-     * 却声明了 `Normal` + `ntb_tangent_vbo_normalmap` ⇒ 它缺顶点法线时 `s1_ntb*.glsl`
+     * 为什么不看 `normal_mode`：`lit.definition.toml` 的 `normal_mode` 是默认 `None`，
+     * 却声明了 `Normal` + `ntb_tangent_vbo_normalmap` ⇒ 它缺顶点法线时 `stream_ntb*.glsl`
      * 会从没上传的 SSBO 槽读垃圾值（画面随机明暗，比没光更坏）。
      */
     inline bool MaterialRequiresVertexNormal(

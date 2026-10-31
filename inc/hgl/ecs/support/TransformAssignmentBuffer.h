@@ -48,7 +48,7 @@ namespace hgl::ecs
      *   · **动态**第 `slot` 个对象在行 `GetDynamicBaseIndex() + slot`（预算基址，随帧槽轮转）。
      *
      * 读侧：`TransformSystem`（写者）、线路径（`LineRenderPipeline`，自己的同一算式）与 GPU 剔除写出的
-     * per-batch `l2w_index` 表（`ShaderLibrary/ecs/entity_gpu_cull.glsl`）。
+     * per-batch `l2w_index` 表（`ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl`）。
      */
     constexpr uint32_t kIdentityL2WSlot    = 0;   ///< 行 0 = 单位矩阵
     constexpr uint32_t kFirstObjectL2WSlot = 1;   ///< 静态首对象 = 行 1

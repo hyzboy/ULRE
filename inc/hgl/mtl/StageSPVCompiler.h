@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 ///
 /// 使用 CompileMaterialStages 编译阶段源：两个阶段都**物理固定**，
 /// `StageSPVCompileConfig::fixed_mesh_source` 与 `fixed_fragment_source`
-/// 是硬前置（网格阶段=ShaderLibrary/mesh/shape/<shape_name>.mesh，片段阶段=领域主
+/// 是硬前置（网格阶段=ShaderLibrary/topology/<shape_name>.mesh，片段阶段=领域主
 /// 着色器），它们本身就是最终编译单元。
 /// 内部流程：
 ///   1. 求解层构建契约/schema（描述符分配器已随 BDA 化退役）
@@ -54,7 +54,7 @@ struct StageSPVCompileConfig
     // 片段阶段的最终 GLSL 就是这份文本（领域固定主着色器）。硬前置。
     // 见 `MaterialDefinitionBuildRequest::fixed_fragment_source`。
     const char *fixed_fragment_source = nullptr;
-    // 完整 mesh stage GLSL 直通（ShaderLibrary/mesh/shape/<shape_name>.mesh）。硬前置。
+    // 完整 mesh stage GLSL 直通（ShaderLibrary/topology/<shape_name>.mesh）。硬前置。
     const char *fixed_mesh_source = nullptr;
 };
 

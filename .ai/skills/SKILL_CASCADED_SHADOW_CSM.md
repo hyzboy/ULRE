@@ -16,7 +16,7 @@
 | `inc/hgl/graph/render/lighting/CascadedShadowController.h` | `CascadedShadowConfig`（配置）、`CascadeUpdateResult`（逐帧更新决策输出）、`ShadowDirtyRect`、控制器声明 |
 | `src/SceneGraph/render/lighting/CascadedShadowController.cpp` | `CalculateSplitDistances`、`CalculateCascadeBounds`（拟合+锚定，**核心**）、`Update`（失效判定树+UBO 回写） |
 | `inc/hgl/graph/ubo/ShadowInfo.h` | `kMaxShadowCascades=4`、`ShadowCascadeInfo`（176B）、`ShadowInfo`（832B）、`ShadowCascadeCacheState`（CPU 侧，不上传） |
-| `ShaderLibrary/shadow/pcf_shadow.glsl` | `EvalCascadePCF`、`EvalCascadeShadowAt`、`EvalCascadeChain`、`EvalPCFShadow`（选级 + 动静合并） |
+| `ShaderLibrary/module/provider/shadow/shadow_pcf.glsl` | `EvalCascadePCF`、`EvalCascadeShadowAt`、`EvalCascadeChain`、`EvalPCFShadow`（选级 + 动静合并） |
 | `src/ShaderGen/template/FragmentTemplateComposer.cpp` | 发射 `HGL_SHADOW_PCF_POISSON_TAPS` 宏（仅当模板含 ShadowProvider 槽） |
 | `example/Shadow/CascadeShadowMap.cpp` | 参考用法：4 张 D32F 离屏 RT、`light_camera` 覆写矩阵、F1 之外只有 `[`/`]` 调 bias |
 | `example/Shadow/AlphaTestShadow.cpp` | alpha test 镂空阴影最小用例（masked vs fallback-opaque 对照）+ `DumpCascadeDepth` 级联深度读回报证工具 |
@@ -673,7 +673,7 @@ reversed-Z 下"值越大越靠近光源"。因此：
 正面就一起被推离遮挡体 ⇒ peter-panning。而 acne 的深度误差本身正比于 `tan(θ)`（表面在
 一个纹素跨度内沿光轴的高度变化），所以缺的是**按角度加权**的偏移。
 
-实现集中在 `ShaderLibrary/shadow/pcf_shadow.glsl`：
+实现集中在 `ShaderLibrary/module/provider/shadow/shadow_pcf.glsl`：
 
 | 项 | 值 / 位置 |
 |----|-----------|
@@ -758,7 +758,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 
 ## 6. Poisson PCF 开关
 
-`ShaderLibrary/shadow/pcf_shadow.glsl` 顶部：
+`ShaderLibrary/module/provider/shadow/shadow_pcf.glsl` 顶部：
 
 ```glsl
 #ifndef HGL_SHADOW_PCF_POISSON_TAPS

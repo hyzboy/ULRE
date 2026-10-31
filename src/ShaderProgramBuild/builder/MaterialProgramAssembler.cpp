@@ -458,14 +458,14 @@ namespace hgl::graph::mtl
         // 名字 = 几何模式前缀 + 拓扑容量，**仅此两项**。
         //
         // 输出接口（哪些 varying、location、插值）由
-        // `common/interstage_varying.glsl` 与 `generated/common_options.glsl`
+        // `module/stage/interstage_varying.glsl` 与 `generated/common_options.glsl`
         // 共同决定，与挑哪份 `.mesh` 无关，因此每种几何模式只剩一份主着色器：
         // `tri_192.mesh` / `linequad_256.mesh` / `charquad_256.mesh`。
         // 迁移前名字里还带 varying token 串（`linequad_256_dataid_lum` 之类），
         // 于是「材质要传什么」被物化成了磁盘文件，且名字必须与文件逐字对齐 ——
         // 拼错就是一次运行期「主着色器加载失败」。
         //
-        // 名字就是 `ShaderLibrary/mesh/shape/<名>.mesh` 的文件名。容量进名字是
+        // 名字就是 `ShaderLibrary/topology/<名>.mesh` 的文件名。容量进名字是
         // 为了让「layout 行的 max_vertices」与文件名保持同一份事实：改了拓扑容量
         // 就必须同时改文件名与文件内容，不可能只改一半。
         AnsiString BuildMeshShapeName(
@@ -616,7 +616,7 @@ namespace hgl::graph::mtl
             }
             else
             {
-                // ── 主路径：形状名 → ShaderLibrary/mesh/shape/<形状名>.mesh ──
+                // ── 主路径：形状名 → ShaderLibrary/topology/<形状名>.mesh ──
                 //
                 // 三种几何模式（VertexPassthrough / LineQuad / CharQuad）走**同
                 // 一条**路径：只按「模式 + 拓扑容量」算出形状名，加载唯一的拓扑
@@ -631,7 +631,7 @@ namespace hgl::graph::mtl
                 const AnsiString shape_name = BuildMeshShapeName(
                     plan.mesh_shader_mode, capacity.max_vertices);
                 const AnsiString master_include_path =
-                    AnsiString("mesh/shape/") + shape_name + AnsiString(".mesh");
+                    AnsiString("topology/") + shape_name + AnsiString(".mesh");
 
                 AnsiString master_source;
                 if (!LoadShaderLibraryModule(master_include_path, master_source))
@@ -705,7 +705,7 @@ namespace hgl::graph::mtl
                 // ── CharQuad 不消费 options ────────────────────────────────
                 //
                 // CharQuad 的顶点 ABI 求解器在 `VertexInputMode::None` 上直接
-                // 返回（没有 s1_*/s2_*/s3_* 三段），options 只能是空文件；而主
+                // 返回（没有 stream_*/position_*/transform_* 三段），options 只能是空文件；而主
                 // 着色器自持全部 SSBO 与 2D 变换链（直接乘 viewport.ortho_matrix），
                 // 也不需要它们。发一份空 options 只会多一次磁盘写入，故跳过。
                 if (!IsCharQuadMode(plan.mesh_shader_mode))
@@ -995,7 +995,7 @@ namespace hgl::graph::mtl
             // ── 面法线降级（顶点缺法线，但材质要法线光照）────────────────────
             //
             // 顶点格式没有 Normal 语义时，绝不能保留 Normal/Tangent/Bitangent 需求：
-            // `s1_ntb*.glsl` 会按 ABI 从顶点 SSBO 的 Normal 槽取数，而那条通道根本没上传
+            // `stream_ntb*.glsl` 会按 ABI 从顶点 SSBO 的 Normal 槽取数，而那条通道根本没上传
             // ⇒ 读到的是别的顶点数据/垃圾值（画面表现为随机明暗，比没光更坏）。
             // 因此三者一并剥掉，法线改由**片段着色器用屏幕空间导数求三角形面法线**
             //（`HGL_MATERIAL_FACE_NORMAL_FALLBACK`，在对应 Domain 的片元 master 中由 options 控制）。
@@ -1073,7 +1073,7 @@ namespace hgl::graph::mtl
         // 同一个 stage key，然后复用对方编译出的 SPV —— 静默、且看起来完全正常。
         //
         // sampler 名必须连带解析后的索引一起折：宏体是 `#define XSampler 7u`，
-        // 换一行 sampler.toml 就整体错位。
+        // 换一行 contract/sampler.toml 就整体错位。
         // ═══════════════════════════════════════════════════════════════════
         uint64 ComputeInjectedSourceHash(const MaterialDefinition &definition)
         {
@@ -1171,7 +1171,7 @@ namespace hgl::graph::mtl
             // 不同，也必须是不同的 stage。
             //
             // `interstage_varying_options_digest` 同样必须在这里：片段主着色器
-            // `#include "common/interstage_varying.glsl"`，它按 `HGL_VARYING_*`
+            // `#include "module/stage/interstage_varying.glsl"`，它按 `HGL_VARYING_*`
             // 声明输入 —— 那是**阶段间接口**，不是片段 options 的子集。漏掉它，
             // 同 domain + 同 fragment options + 不同 varying 集合会撞键，第二个
             // 材质直接复用第一个的 SPV（接口与 pipeline 不匹配）。

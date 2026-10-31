@@ -260,7 +260,7 @@ namespace
     {
         MaterialRecipeFileData texture_quad;
         if (!ParseFile(
-                OS_TEXT("ShaderLibrary/material/recipes/TextureQuad.recipe.toml"),
+                OS_TEXT("ShaderLibrary/asset/recipe/TextureQuad.recipe.toml"),
                 texture_quad)
          || texture_quad.recipe.recipe_name != "TextureQuad.UnlitTexture"
          || texture_quad.recipe.textures.size() != 1
@@ -269,7 +269,7 @@ namespace
 
         MaterialRecipeFileData pbr_spheres;
         if (!ParseFile(
-                OS_TEXT("ShaderLibrary/material/recipes/PBRSpheres.recipe.toml"),
+                OS_TEXT("ShaderLibrary/asset/recipe/PBRSpheres.recipe.toml"),
                 pbr_spheres)
          || pbr_spheres.recipe.recipe_name != "PBRSpheres.Lit"
          || !pbr_spheres.recipe.textures.empty()
@@ -280,7 +280,7 @@ namespace
         int registered_file_count = 0;
         int error_count = 0;
         const bool loaded = example_registry.LoadDirectory(
-                   OS_TEXT("ShaderLibrary/material/recipes/Examples"),
+                   OS_TEXT("ShaderLibrary/asset/recipe/Examples"),
                    nullptr,
                    &registered_file_count,
                    &error_count);

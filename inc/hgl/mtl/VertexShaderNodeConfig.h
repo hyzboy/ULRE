@@ -94,10 +94,10 @@ namespace hgl::graph::mtl
 
     // Stage 2 映射模块**输入**使用的 Position 分量数。
     //
-    // 与 s2_*.glsl 顶部的 `// @ulre require GeometryAttribute Position Float N N`
+    // 与 position_*.glsl 顶部的 `// @ulre require GeometryAttribute Position Float N N`
     // 一一对应（Passthrough3D → 3，其余抬升类映射 → 2）。
     //
-    // 为什么需要它：Stage 1 的 `s1_position_*` 由几何格式（VkFormat）决定，
+    // 为什么需要它：Stage 1 的 `stream_position_*` 由几何格式（VkFormat）决定，
     // Stage 2 的映射由材质 `position_mapping` 决定——两个所有者，彼此不可见。
     // 两边不一致时产出的是「能生成、编不过」的 GLSL
     // （例如 `vec4(vec3, 0.0, 1.0)` 五分量构造、`vec4(vec2, 1.0)` 三分量构造），

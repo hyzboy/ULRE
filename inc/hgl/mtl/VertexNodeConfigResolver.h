@@ -12,10 +12,10 @@ namespace hgl::graph::mtl
     {
         /// 位置映射的分量数是否与 Stage 1 顶点输入模块一致。
         ///
-        /// Stage 1 的 `s1_position_*` 由几何 VkFormat 决定，Stage 2 的映射由材质
+        /// Stage 1 的 `stream_position_*` 由几何 VkFormat 决定，Stage 2 的映射由材质
         /// `position_mapping` 决定——两个所有者，彼此不可见。分量数不一致时生成器会
         /// 「成功」产出一份编不过的 GLSL（构造参数个数不匹配），错误还会指向 s2 模块，
-        /// 极易误判。因此在发射期硬门，口径与 s2_*.glsl 的
+        /// 极易误判。因此在发射期硬门，口径与 position_*.glsl 的
         /// `@ulre require GeometryAttribute Position Float N N` 同源。
         ///
         /// context：出错时指认来源（definition_id / mesh mode name）。
@@ -39,13 +39,13 @@ namespace hgl::graph::mtl
         {
             switch (cfg.position_mapping)
             {
-            case PositionMappingMode::LiftXY_XY0:      return "vertex/s2_lift_xy0.glsl";
-            case PositionMappingMode::LiftXY_X0Y:      return "vertex/s2_lift_x0y.glsl";
-            case PositionMappingMode::LiftXY_0XY:      return "vertex/s2_lift_0xy.glsl";
-            case PositionMappingMode::NDCLift:          return "vertex/s2_ndc_lift.glsl";
-            case PositionMappingMode::ZeroOneToNDC:     return "vertex/s2_zeroone_to_ndc.glsl";
-            case PositionMappingMode::PixelToLocal:     return "vertex/s2_pixel_to_local.glsl";
-            case PositionMappingMode::Passthrough3D:    return "vertex/s2_passthrough3d.glsl";
+            case PositionMappingMode::LiftXY_XY0:      return "module/vertex/position_lift_xy0.glsl";
+            case PositionMappingMode::LiftXY_X0Y:      return "module/vertex/position_lift_x0y.glsl";
+            case PositionMappingMode::LiftXY_0XY:      return "module/vertex/position_lift_0xy.glsl";
+            case PositionMappingMode::NDCLift:          return "module/vertex/position_ndc_lift.glsl";
+            case PositionMappingMode::ZeroOneToNDC:     return "module/vertex/position_zeroone_to_ndc.glsl";
+            case PositionMappingMode::PixelToLocal:     return "module/vertex/position_pixel_to_local.glsl";
+            case PositionMappingMode::Passthrough3D:    return "module/vertex/position_passthrough3d.glsl";
             default:                                    return nullptr;   // 未映射的枚举值 = 映射缺失，调用方必须硬失败而非静默兜底
             }
         }
@@ -56,18 +56,18 @@ namespace hgl::graph::mtl
              || cfg.orientation == OrientationMode::CameraFacingAxisY)
             {
                 return cfg.scale == ScaleMode::FixedPixelSize
-                    ? "vertex/s3_camera_facing_fixed_pixels.glsl"
-                    : "vertex/s3_camera_facing_world.glsl";
+                    ? "module/vertex/transform_camera_facing_fixed_pixels.glsl"
+                    : "module/vertex/transform_camera_facing_world.glsl";
             }
 
             switch (cfg.projection)
             {
-            case ProjectionMode::LocalToWorldOnly:      return "vertex/s3_l2w_only.glsl";
-            case ProjectionMode::OrthoViewport:          return "vertex/s3_ortho_viewport.glsl";
-            case ProjectionMode::OrthoThenLocalToWorld:  return "vertex/s3_ortho_then_l2w.glsl";
-            case ProjectionMode::ClipPassthrough:        return "vertex/s3_clip_passthrough.glsl";
+            case ProjectionMode::LocalToWorldOnly:      return "module/vertex/transform_l2w_only.glsl";
+            case ProjectionMode::OrthoViewport:          return "module/vertex/transform_ortho_viewport.glsl";
+            case ProjectionMode::OrthoThenLocalToWorld:  return "module/vertex/transform_ortho_then_l2w.glsl";
+            case ProjectionMode::ClipPassthrough:        return "module/vertex/transform_clip_passthrough.glsl";
             case ProjectionMode::WorldCameraVP:
-            default:                                    return "vertex/s3_world_camera_vp.glsl";
+            default:                                    return "module/vertex/transform_world_camera_vp.glsl";
             }
         }
 

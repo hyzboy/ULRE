@@ -5,8 +5,8 @@
 .DESCRIPTION
     结构（`inc/hgl/graph/ubo/*.h`、`inc/hgl/graph/ssbo/*.h`）是唯一真源。派生产物——
 
-        ShaderLibrary/ubo/*.glsl
-        ShaderLibrary/ssbo/*.glsl
+        ShaderLibrary/module/descriptor/ubo/*.glsl
+        ShaderLibrary/module/descriptor/ssbo/*.glsl
         inc/hgl/graph/generated/BufferToml.gen.h
         inc/hgl/graph/generated/buffer_schema.fbs
 

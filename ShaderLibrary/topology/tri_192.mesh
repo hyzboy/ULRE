@@ -1,0 +1,54 @@
+#version 460
+// ShaderLibrary/topology/tri_192.mesh
+//
+// 网格阶段「物理固定」主着色器 · 三角形直通（VertexPassthrough 192/64）。
+//
+// 这是**唯一**一份三角形形状 master。曾经每个 varying 组合各一份
+// （tri_192_plain / tri_192_pos / tri_192_dataid_pos_nrm_uv …），
+// 于是「材质要什么」这件事在磁盘上被物化成了 10 个文件，而文件名与片段的
+// `layout(in)` 之间只能靠人对齐。现在：
+//
+//   · 输出 varying 由 `common/interstage_varying.glsl` 用 `HGL_VARYING_*` 开关
+//     声明（唯一的接口定义处，片段侧读的是同一个文件的另一半）；
+//   · 开关来自 `generated/common_options.glsl`，由 C++ 按材质的阶段间语义 mask
+//     发射（inc/hgl/mtl/InterStageVaryingOptions.h）；
+//   · 写出集中在 `common/interstage_varying_writer.glsl`。
+//
+// 因此本文件对「材质要传什么」完全无知：换材质只换 options，不换 .mesh。
+// 顶点格式 / 位置映射（s1_* / s2_* / s3_*）同理，也由 options 注入，词表见
+// inc/hgl/mtl/DomainOptions.h::EmitMeshOptions。
+//
+// 拓扑容量（192 顶点 / 64 图元 / 64 线程）是 CPU 侧派发契约，必须以字面量写在
+// layout 行里（ValidateMeshSourceTopology 逐字解析），同时以宏的形式供 varying
+// 数组维数使用 —— 两处是同一份事实，改一处必须改另一处。
+//
+// include 顺序是硬契约（见 mesh/stage_body.glsl）：
+//   容量宏 → 公共头 → 拓扑 layout → 公共体 → varying 开关 → varying 声明
+//   → options → 写出 → 主体
+//
+// 容量宏必须排在 `common/interstage_varying.glsl` 之前：这份文件的网格段用它
+// 作 out 数组维数（`[ULRE_MESH_MAX_VERTS]` / `[ULRE_MESH_MAX_PRIMITIVES]`）。
+// 放在 `#version` 之后即可，不依赖任何被 include 的头。
+//
+// 改本文件前请先读 doc/shadergen-elimination-domain-fixed-architecture.md。
+
+#define ULRE_MESH_MAX_VERTS 192u
+#define ULRE_MESH_MAX_PRIMITIVES 64u
+#define ULRE_MESH_INVOCATIONS 64u
+#define HGL_MESH_OUTPUT_VARYINGS
+
+#include "module/stage/stage_common_head.glsl"
+
+layout(local_size_x = 64) in;
+layout(triangles, max_vertices = 192, max_primitives = 64) out;
+#include "module/stage/stage_common.glsl"
+
+#include "generated/common_options.glsl"
+#include "module/stage/interstage_varying.glsl"
+
+// 唯一可变输入：顶点解码 + 位置映射 + 变换
+#include "generated/mesh_options.glsl"
+
+#include "module/stage/interstage_varying_writer.glsl"
+
+#include "module/stage/stage_body.glsl"

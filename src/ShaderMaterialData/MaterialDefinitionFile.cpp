@@ -1371,9 +1371,9 @@ namespace hgl::graph::mtl
             if (!file.is_file)
                 continue;
             const OSString name(file.name);
-            // 阶段四：材质资产统一为材质实例格式 `*.mi.toml`（旧 `*.material.toml`
-            // 是「母材质定义文件」，它随领域契约化而废止——不再扫描）。
-            if (!name.EndsWith(OS_TEXT(".mi.toml")))
+            // 阶段四：材质资产统一为材质定义格式 `*.definition.toml`（旧 `*.material.toml`
+            // 与新 `*.mi.toml` 均已废止——不再扫描）。
+            if (!name.EndsWith(OS_TEXT(".definition.toml")))
                 continue;
             if (LoadFile(OSString(file.fullname)))
                 ++file_count;

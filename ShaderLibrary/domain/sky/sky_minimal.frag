@@ -8,18 +8,18 @@
 #include "domain/root_bindings.glsl"
 #include "domain/sky_bindings.glsl"
 #include "generated/frag_options.glsl"
-#include "common/descriptor_macros.glsl"
-#include "ubo/scene_ubo.glsl"
-#include "sky/sky_atmosphere.glsl"
-#include "common/surface_interface.glsl"
-#include "surface/sky_minimal_surface.glsl"
-#include "common/alpha_compositor.glsl"
-// 阶段间 varying 的输入声明来自 `common/interstage_varying.glsl` 的片段段：
+#include "contract/descriptor_macros.glsl"
+#include "module/descriptor/ubo/scene_ubo.glsl"
+#include "module/provider/sky/sky_atmosphere.glsl"
+#include "module/interface/surface_interface.glsl"
+#include "module/provider/surface/surface_sky_minimal.glsl"
+#include "module/interface/alpha_compositor.glsl"
+// 阶段间 varying 的输入声明来自 `module/stage/interstage_varying.glsl` 的片段段：
 // 置位哪些语义由 `generated/common_options.glsl` 的 `HGL_VARYING_*` 决定，与网格
 // 阶段读的是同一个宏集合，两端口径不可能分叉。派生量（viewDir / screenPos /
 // 面法线兜底）仍在本文件里按领域赋值。
 #define HGL_FRAGMENT_INPUT_VARYINGS
-#include "common/interstage_varying.glsl"
+#include "module/stage/interstage_varying.glsl"
 layout(location=0) out vec4 outColor;
 void WriteMaterialOutput(vec4 value) { outColor = value * fragVertexColor; }
 

@@ -7,33 +7,33 @@ namespace hgl::graph::mtl
         ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SkyProvider,
-            "sky_atmosphere", "sky/sky_atmosphere.glsl");
+            "sky_atmosphere", "module/provider/sky/sky_atmosphere.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
-            "material_surface", "surface/material_surface.glsl");
+            "surface_material", "module/provider/surface/surface_material.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::DiffuseLightProvider,
-            "diffuse_lambert", "lighting/diffuse_lambert.glsl");
+            "diffuse_light_lambert", "module/provider/diffuse_light/diffuse_light_lambert.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::SpecularLightProvider,
-            "specular_cook_torrance",
-            "lighting/specular_cook_torrance.glsl");
+            "specular_light_cook_torrance",
+            "module/provider/specular_light/specular_light_cook_torrance.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::ShadowProvider,
-            "pcf_shadow", "shadow/pcf_shadow.glsl");
+            "shadow_pcf", "module/provider/shadow/shadow_pcf.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::AmbientLightProvider,
-            "indirect_sky_ambient",
-            "lighting/indirect_sky_ambient.glsl");
+            "ambient_light_sky",
+            "module/provider/ambient_light/ambient_light_sky.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::AmbientOcclusionProvider,
-            "identity_ao", "ao/identity.glsl");
+            "ambient_occlusion_identity", "module/provider/ambient_occlusion/ambient_occlusion_identity.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::LightingModel,
-            "forward_pbr", "lighting/forward_pbr.glsl");
+            "lighting_model_pbr", "module/provider/lighting_model/lighting_model_pbr.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
-            "forward_lighting", "compositor/forward_lighting.glsl");
+            "output_policy_forward", "module/provider/output_policy/output_policy_forward.glsl");
         return profile;
     }
 
@@ -42,15 +42,15 @@ namespace hgl::graph::mtl
         ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
-            "material_surface", "surface/material_surface.glsl");
+            "surface_material", "module/provider/surface/surface_material.glsl");
         // material_surface 无条件调用 GetNTB，故 NTB 是必需槽；unlit 不需要法线
         // 扰动，用空对象补位（返回以世界法线为 N 的正交基）。
         profile.AddModule(
             ShaderModuleSlotRole::NTBProvider,
-            "ntb_none", "ntb/ntb_none.glsl");
+            "ntb_none", "module/provider/ntb/ntb_none.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
-            "flat_lighting", "compositor/flat_lighting.glsl");
+            "output_policy_flat", "module/provider/output_policy/output_policy_flat.glsl");
         return profile;
     }
 
@@ -59,10 +59,10 @@ namespace hgl::graph::mtl
         ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SkyProvider,
-            "sky_atmosphere", "sky/sky_atmosphere.glsl");
+            "sky_atmosphere", "module/provider/sky/sky_atmosphere.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
-            "sky_minimal_surface", "surface/sky_minimal_surface.glsl");
+            "surface_sky_minimal", "module/provider/surface/surface_sky_minimal.glsl");
         // 刻意不提供 OutputPolicy：Sky 骨架的 WriteMaterialOutput 由领域主
         // 着色器直接书写，
         // forward_lighting 一个字节都不会出现在生成的 GLSL 里。给它一个 root
@@ -76,16 +76,16 @@ namespace hgl::graph::mtl
         ScenePassProfile profile;
         profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider,
-            "material_surface", "surface/material_surface.glsl");
+            "surface_material", "module/provider/surface/surface_material.glsl");
         // 阴影 pass 只用 EvalAlpha，从不读法线；但 material_surface.glsl 的定义里
         // 无条件调用 GetNTB（GLSL 定义处即解析符号），所以仍需一个实现补位。
         profile.AddModule(
             ShaderModuleSlotRole::NTBProvider,
-            "ntb_none", "ntb/ntb_none.glsl");
+            "ntb_none", "module/provider/ntb/ntb_none.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
-            "forward_lighting",
-            "compositor/forward_lighting.glsl");
+            "output_policy_forward",
+            "module/provider/output_policy/output_policy_forward.glsl");
         return profile;
     }
 
