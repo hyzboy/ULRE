@@ -132,6 +132,13 @@ if(MSVC)
     set_target_properties(TestAssetURI PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# Asset factory: self-registering type -> loader table + unregistered-type fallback.
+add_executable(TestAssetFactory tests/TestAssetFactory.cpp)
+target_link_libraries(TestAssetFactory PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestAssetFactory PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # Geometry preset library: every shape name used by examples must resolve to a TOML.
 add_executable(TestGeometryPreset tests/TestGeometryPreset.cpp)
 target_link_libraries(TestGeometryPreset PRIVATE ULRE::Engine)
@@ -306,6 +313,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestAssetURI
         PROPERTIES LABELS "asset;uri")
+
+    add_test(
+        NAME TestAssetFactory
+        COMMAND TestAssetFactory
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestAssetFactory
+        PROPERTIES LABELS "asset;factory")
 
     add_test(
         NAME TestGeometryPreset
