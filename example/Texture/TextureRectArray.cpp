@@ -3,8 +3,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/filesystem/Filename.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/mtl/MaterialResolver.h>
@@ -36,15 +34,8 @@ namespace
     }
 }
 
-constexpr const os_char *tex_filename[]=
-{
-    OS_TEXT("001-online resume.Tex2D"),
-    OS_TEXT("002-salary.Tex2D"),
-    OS_TEXT("003-application.Tex2D"),
-    OS_TEXT("004-job interview.Tex2D")
-};
-
-constexpr const size_t TexCount=sizeof(tex_filename)/sizeof(os_char *);
+/// 四格：层清单在 `ShaderLibrary/asset/texarray/freepik_icons.texarray.toml` 里
+constexpr const size_t TexCount=4;
 
 constexpr const float rect_right=1.0f/float(TexCount);
 
@@ -74,9 +65,6 @@ private:
 
     ECSContext *        ecs_world           = nullptr;
 
-    Texture2DArray *    texture             = nullptr;
-    /// 材质授权统一走句柄：上面的数组纹理有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
-    TextureAsset *      texture_asset       = nullptr;
     /// 每格一个配方：四格是同一张数组纹理的不同 layer，图层号是配方的固有属性。
     graph::mtl::MaterialRecipe rect_recipe[TexCount];
     PrimitiveAsset      rect_asset[TexCount];
@@ -87,35 +75,6 @@ private:
     }render_obj[TexCount]{};
 
 private:
-
-    bool InitTexture()
-    {
-        auto* tex_manager = GetManager<TextureManager>();
-        if (!tex_manager)
-            return false;
-
-        texture = tex_manager->CreateTexture2DArray("freepik icons",
-                                512,512,            ///<纹理尺寸
-                                TexCount,           ///<纹理层数
-                                PF_BC7UN,           ///<纹理格式
-                                1);             ///<mip级别数：1 = 只用 0 级（资产自带完整链）
-
-        if(!texture)return(false);
-
-        OSString filename;
-
-        for(uint i=0;i<TexCount;i++)
-        {
-            filename=filesystem::JoinPathWithFilename(OS_TEXT("res/image/icon/freepik"),tex_filename[i]);
-
-            if(!tex_manager->LoadTexture2DArray(texture,i,filename))
-                return(false);
-        }
-
-        texture_asset=tex_manager->WrapTextureAsset(texture);
-
-        return(texture_asset!=nullptr);
-    }
 
     bool InitMaterial()
     {
@@ -128,9 +87,12 @@ private:
         {
             rect_recipe[i] = *loaded_recipe;
 
-            // 纹理 + 图层都是材质原型固有属性 ⇒ 写进配方；采样器由 Bindless 预设统一管理。
-            if(!rect_recipe[i].AddTexture("base_color",texture_asset,true,i))
-                return(false);
+            // 纹理由配方文件声明（`texarray:@freepik_icons`）；四格之间唯一的差别是图层号，
+            // 而图层号属于「同一张纹理的不同用法」，配方里留 0，由示例按格子改写。
+            // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
+            for(graph::mtl::RecipeTextureBinding &binding:rect_recipe[i].textures)
+                if(binding.texture_name=="base_color")
+                    binding.array_layer=i;
         }
 
         return(true);
@@ -197,9 +159,6 @@ public:
     TextureRectArrayApp() = default;
     bool Init() override
     {
-        if(!InitTexture())
-            return(false);
-
         if(!InitMaterial())
             return(false);
 

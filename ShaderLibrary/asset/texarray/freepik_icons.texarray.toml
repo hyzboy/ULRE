@@ -1,0 +1,22 @@
+# `TextureRectArray` 示例的四格图标数组（512x512，BC7，4 层）。
+#
+# 原先这四层在 `TextureRectArray.cpp` 里是 `tex_filename[]` 常量表 + 手工
+# `CreateTexture2DArray` + `LoadTexture2DArray` 逐层填；现在清单搬到这里，
+# 代码只剩 `texarray:@freepik_icons` 一个 URI。
+#
+# 尺寸/格式/mip 都不写：它们由第 0 层文件探针得出，写进来就是第二份真源。
+
+schema = 1
+name = "freepik_icons"
+
+[[layers]]
+uri = "file:res/image/icon/freepik/001-online resume.Tex2D"
+
+[[layers]]
+uri = "file:res/image/icon/freepik/002-salary.Tex2D"
+
+[[layers]]
+uri = "file:res/image/icon/freepik/003-application.Tex2D"
+
+[[layers]]
+uri = "file:res/image/icon/freepik/004-job interview.Tex2D"

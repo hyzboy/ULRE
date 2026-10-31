@@ -2,6 +2,11 @@ schema = 1
 name = "TextureRectArray.UnlitTexture"
 domain = "UnlitTexture"
 
+[[textures]]
+name = "base_color"
+asset = "texarray:@freepik_icons"
+required = true
+
 [transform]
 source = "Vec2Position"
 mapping = "ZeroOneToNDC"
