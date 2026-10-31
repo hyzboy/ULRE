@@ -1,7 +1,12 @@
 schema = 1
 name = "CascadeShadowMap.AlphaTest"
-domain = "StandardOpaque"
+parent = "rcp:@CascadeShadowMap.Lit"
 
 [render_state]
 alpha_test = true
 alpha_cutoff = 0.5
+
+# 镂空阴影的 alpha 真值来源（棋盘黑格 alpha=0 ⇒ 影子同图案镂空）
+[[textures]]
+name = "opacity_mask"
+asset = "texarray:@alpha_checker_baseColor"

@@ -1,3 +1,13 @@
 schema = 1
 name = "CascadeShadowMap.Lit"
 domain = "StandardOpaque"
+
+# 层清单在 texarray 规约里；`array_layer` 只是默认值，散布物体各自按自己的
+# 图层号在 C++ 侧覆盖这一项。
+[[textures]]
+name = "base_color"
+asset = "texarray:@pbr_10x10_baseColor"
+
+[[textures]]
+name = "normal"
+asset = "texarray:@pbr_10x10_normal"

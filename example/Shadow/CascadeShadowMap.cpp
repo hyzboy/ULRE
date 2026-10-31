@@ -9,14 +9,12 @@
 #include <hgl/graph/render/RenderTargetDesc.h>
 #include <hgl/graph/module/RenderTargetManager.h>
 #include <hgl/graph/module/GeometryManager.h>
-#include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
 #include <hgl/graph/camera/ReversedZProj.h>
-#include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKTextureReadback.h>
 #include <hgl/graph/geo/InlineGeometry.h>
 #include <hgl/graph/geo/GeometryCreater.h>
@@ -91,11 +89,10 @@ namespace
     //   ShaderLibrary/asset/texarray/pbr_10x10_normal.texarray.toml
     // 那两张数组与 PBRSpheres 示例共用同一份规约（文件夹顺序完全一致）。
     //
-    // 数组纹理 URI（`texarray:@<name>` → `ShaderLibrary/asset/texarray/<name>.texarray.toml`）
-    constexpr const os_char kBaseColorArrayURI[]  = OS_TEXT("texarray:@pbr_10x10_baseColor");
-    constexpr const os_char kNormalArrayURI[]     = OS_TEXT("texarray:@pbr_10x10_normal");
-    // alpha test 物体的 1 层黑白棋盘（RGBA8 UNORM 256x256，mip=1）与 AlphaTestShadow 共用
-    constexpr const os_char kAlphaBaseArrayURI[]  = OS_TEXT("texarray:@alpha_checker_baseColor");
+    // 三张数组的 URI 现在写在配方文件里：
+    //   CascadeShadowMap.Lit.recipe.toml       ⇒ base_color / normal（pbr_10x10_*）
+    //   CascadeShadowMap.AlphaTest.recipe.toml ⇒ 继承 Lit，再补 opacity_mask（棋盘）
+    // alpha test 物体的 1 层黑白棋盘与 AlphaTestShadow 共用同一份 texarray 规约。
 
     uint32_t HashU32(uint32_t a, uint32_t b, uint32_t salt)
     {
@@ -153,11 +150,9 @@ private:
 
     VertexDataManager *vdm = nullptr;
 
-    /// 材质授权统一走句柄（`Resident`：数组层由 `texarray:` 规约一次性装配完成）。
-    /// 不再另存 `Texture2DArray*` —— 纹理归 `TextureManager` 所有，句柄就是唯一入口。
-    TextureAsset *base_color_asset = nullptr;   ///<10 层 baseColor 数组
-    TextureAsset *normal_asset     = nullptr;   ///<10 层 normal 数组
-    TextureAsset *alpha_base_asset = nullptr;   ///<1 层黑白棋盘（alpha test 物体专用）
+    /// 材质授权统一走配方：三张数组纹理的句柄由 `MaterialRecipeRegistry` 按配方文件
+    /// 里的 `[[textures]]` 自动创建（`Resident`：数组层由 `texarray:` 规约一次性装配）。
+    /// 不再另存 `Texture2DArray*` / `TextureAsset*` —— 纹理归 `TextureManager` 所有。
 
     Geometry *builtin_geometries[kBuiltinGeomCount]{};
     PrimitiveAsset builtin_primitives[kBuiltinGeomCount]{};
@@ -816,40 +811,6 @@ private:
         return SaveGrayTga(MakeDumpName(stem, M, M, "r8", "tga").c_str(), gray.data(), M, M);
     }
 
-    bool InitTextures()
-    {
-        auto *texture_manager = GetManager<TextureManager>();
-        if (!texture_manager)
-            return false;
-
-        // 三张数组纹理全部来自 `texarray:` 规约：层清单、层数、尺寸/格式推导都不在代码里。
-        // 装配失败（缺层/尺寸不一致/规约写错）会在 `BuildTextureArray` 里报具体层号。
-        base_color_asset = texture_manager->CreateTextureAsset(kBaseColorArrayURI);
-        if (!base_color_asset || !base_color_asset->GetTexture())
-        {
-            GLogError("InitTextures: Failed to build baseColor array (%s)", kBaseColorArrayURI);
-            return false;
-        }
-
-        normal_asset = texture_manager->CreateTextureAsset(kNormalArrayURI);
-        if (!normal_asset || !normal_asset->GetTexture())
-        {
-            GLogError("InitTextures: Failed to build normal array (%s)", kNormalArrayURI);
-            return false;
-        }
-
-        // A1-4：alpha test 物体专用 baseColor（1 层 RGBA8 UNORM 棋盘，黑格
-        // alpha=0）。ShadowCasterMasked 的 EvalAlpha 采样该纹理丢黑格。
-        alpha_base_asset = texture_manager->CreateTextureAsset(kAlphaBaseArrayURI);
-        if (!alpha_base_asset || !alpha_base_asset->GetTexture())
-        {
-            GLogError("InitTextures: Failed to build alpha checker array (%s)", kAlphaBaseArrayURI);
-            return false;
-        }
-
-        return true;
-    }
-
     bool InitMaterial()
     {
         const mtl::MaterialRecipe *lit_loaded = GetRecipe("CascadeShadowMap.Lit");
@@ -873,21 +834,12 @@ private:
         if (!lit_recipe.material_ssbo_binding.IsValid())
             return false;
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方。地面用 layer 0，散布物体各自按 tex_idx 覆盖。
+        // 纹理是材质原型固有属性 ⇒ 三张数组都在配方文件里声明（层号默认 0）。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!lit_recipe.AddTexture("base_color", base_color_asset, true, 0)
-         || !lit_recipe.AddTexture("normal", normal_asset, true, 0))
-            return false;
 
         // A1-4：alpha test 材质——resolve 侧据此路由 ShadowCasterMasked（阴影）
         // 并在片元里 EvalAlpha 丢弃低于阈值的纹素。与 lit 共享材质 SSBO 行。
         alpha_recipe = *alpha_loaded;
-
-        // 镂空阴影的 alpha 真值来源（棋盘黑格 alpha=0 ⇒ 影子同图案镂空）
-        if (!alpha_recipe.AddTexture("base_color", base_color_asset, true, 0)
-         || !alpha_recipe.AddTexture("normal", normal_asset, true, 0)
-         || !alpha_recipe.AddTexture("opacity_mask", alpha_base_asset, true, 0))
-            return false;
 
         return true;
     }
@@ -996,7 +948,7 @@ private:
         ground_prim = ground_entity->GetContext()->GetOrCreateGeometryData(ground_entity);
         hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity);
         ground_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
-        // 纹理已由配方声明（lit_recipe.AddTexture，layer 0），实体端不再重复绑定
+        // 纹理已由配方文件声明，实体端不再重复绑定
         material_data_comp->SetDataResource(ground_accessor);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -1087,13 +1039,12 @@ private:
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
 
-            // 每个物体是同一张数组纹理的不同图层 ⇒ 图层号属于配方，挂一份同源配方覆盖。
+            // 每个物体是同一张数组纹理的不同图层 ⇒ 只覆盖配方里各纹理槽的 array_layer。
             {
                 graph::mtl::MaterialRecipe obj_recipe = lit_recipe;
 
-                if (!obj_recipe.AddTexture("base_color", base_color_asset, true, tex_idx)
-                 || !obj_recipe.AddTexture("normal", normal_asset, true, tex_idx))
-                    return false;
+                for (graph::mtl::RecipeTextureBinding &binding : obj_recipe.textures)
+                    binding.array_layer = tex_idx;
 
                 material_data_comp->SetRecipe(obj_recipe);
             }
@@ -1591,8 +1542,6 @@ public:
         // 这里只调模型，方向/颜色与旧实现**逐值相同**。
         light_system->SetMainLightTime(9, 30, 0);
 
-        if (!InitTextures())
-            return false;
         if (!InitMaterial())
             return false;
         if (!InitVDM())
