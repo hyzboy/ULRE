@@ -53,11 +53,12 @@ namespace hgl::serialize
         template<typename Self>
         static void Do(Archive &ar, Self &v)
         {
-            ar.Field(1, "name", v.name);
-            ar.Field(2, "geometry", v.geometry_path);
-            ar.Field(3, "recipe", v.recipe_name);
-            ar.Field(4, "primitive_type", v.primitive_type);
-            ar.Field(5, "extra_variants", v.extra_variants);
+            ar.Field(1, "schema", v.schema);
+            ar.Field(2, "name", v.name);
+            ar.Field(3, "geometry", v.geometry_path);
+            ar.Field(4, "recipe", v.recipe_name);
+            ar.Field(5, "primitive_type", v.primitive_type);
+            ar.Field(6, "variants", v.extra_variants);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_PrimitiveAssetSpec; }

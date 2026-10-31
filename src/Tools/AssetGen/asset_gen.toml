@@ -104,6 +104,17 @@ extern_from    = "hgl::graph::mtl::ParseProjectionMode"
 extern_to      = "hgl::graph::mtl::GetProjectionModeName"
 extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
 
+# `PrimitiveType` 的拼写表（`points` / `line_strip` / `triangle_strip` …）已经是
+# `PrimitiveType.h` 里的 `PrimitiveTypeName[]`，而且被 GLSL 与诊断日志共用。
+# 若让生成器按 C++ 枚举名自动造表，得到的是 `LineStrip`，与 TOML 契约不一致
+# （`stricmp` 能救 `triangles`，救不了 `line_strip`），所以这里只转发。
+[[enum]]
+name           = "PrimitiveType"
+fq             = "hgl::graph::PrimitiveType"
+extern_from    = "hgl::graph::ParsePrimitiveTypeName"
+extern_to      = "hgl::graph::GetPrimitiveTypeName"
+extern_include = "hgl/common/PrimitiveType.h"
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"

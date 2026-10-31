@@ -1,13 +1,12 @@
 #include <hgl/graph/asset/PrimitiveAssetFile.h>
 #include <hgl/asset/generated/PrimitiveSerialize.gen.h>
 #include <hgl/serialize/TomlCodec.h>
+#include <hgl/serialize/Value.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
 #include <hgl/utf.h>
 
-#include <toml/toml.hpp>
-#include <string>
 #include <cstring>
 
 DEFINE_LOGGER_MODULE(PrimitiveAsset)
@@ -16,183 +15,147 @@ USE_MODULE_LOGGER(PrimitiveAsset)
 
 namespace hgl::graph
 {
-    namespace
-    {
-        bool ReadBool(const toml::value &table, const char *key, bool def_val)
-        {
-            if (!table.contains(key))
-                return def_val;
-            const auto &v = table.at(key);
-            return v.is_boolean() ? v.as_boolean() : def_val;
-        }
 
-        uint32_t ReadUInt(const toml::value &table, const char *key, uint32_t def_val)
-        {
-            if (!table.contains(key))
-                return def_val;
-            const auto &v = table.at(key);
-            if (!v.is_integer())
-                return def_val;
-            const int64_t val = v.as_integer();
-            return (val >= 0) ? static_cast<uint32_t>(val) : def_val;
-        }
-
-        bool ReadString(const toml::value &table, const char *key, std::string &out)
-        {
-            if (!table.contains(key))
-                return false;
-            const auto &v = table.at(key);
-            if (!v.is_string())
-                return false;
-            out = v.as_string();
-            return true;
-        }
-    }//namespace
-
+    /// 这两个函数是 `PrimitiveVariantPurpose` 的对外名字入口。拼写表本身由
+    /// `asset_gen.toml` 的 `[[enum]] aliases` 唯一描述，再经 AssetGen 落进
+    /// `PrimitiveMeta.gen.h`；这里只转发，避免同一张表在两个地方各写一份。
     const char *GetPrimitiveVariantPurposeName(const PrimitiveVariantPurpose purpose)
     {
-        switch (purpose)
-        {
-        case PrimitiveVariantPurpose::Surface:      return "surface";
-        case PrimitiveVariantPurpose::DepthOnly:    return "depth_only";
-        case PrimitiveVariantPurpose::ShadowCaster: return "shadow_caster";
-        case PrimitiveVariantPurpose::Picking:      return "picking";
-        case PrimitiveVariantPurpose::Debug:        return "debug";
-        default:                                    return "surface";
-        }
+        const char *name =
+            hgl::asset::generated::AssetEnumName_PrimitiveVariantPurpose(purpose);
+
+        // 越界值（含 `ENUM_CLASS_RANGE` 之外的整型强转）沿用「回落到 surface」的旧口径。
+        return name ? name : "surface";
     }
 
     bool ParsePrimitiveVariantPurpose(const char *name, PrimitiveVariantPurpose &out_purpose)
     {
-        if (!name || !*name)
-            return false;
-
-        if (hgl::stricmp(name, "surface") == 0)        { out_purpose = PrimitiveVariantPurpose::Surface;      return true; }
-        if (hgl::stricmp(name, "depth_only") == 0)     { out_purpose = PrimitiveVariantPurpose::DepthOnly;    return true; }
-        if (hgl::stricmp(name, "shadow_caster") == 0)  { out_purpose = PrimitiveVariantPurpose::ShadowCaster; return true; }
-        if (hgl::stricmp(name, "picking") == 0)        { out_purpose = PrimitiveVariantPurpose::Picking;      return true; }
-        if (hgl::stricmp(name, "debug") == 0)          { out_purpose = PrimitiveVariantPurpose::Debug;        return true; }
-
-        return false;
+        return hgl::asset::generated::AssetEnumParse_PrimitiveVariantPurpose(name, out_purpose);
     }
 
     bool ParsePrimitiveAssetSpec(const char *content, size_t size,
                                  const os_char *debug_name,
                                  PrimitiveAssetSpec &out_spec)
     {
+        // 先归零：同一个 `out_spec` 连续解析多份文件时，上一次的 `extra_variants`
+        // 之类的容器内容不能残留下来冒充本次输入。归零放在最前面，失败返回时
+        // `out_spec` 也是一份干净的、纯类内缺省值的对象。
+        out_spec = PrimitiveAssetSpec{};
+
         if (!content || size == 0)
         {
             MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: empty content for ") + OSString(debug_name));
             return false;
         }
 
-        toml::value root;
-        try
-        {
-            root = toml::parse_str(std::string(content, size));
-        }
-        catch (const toml::exception &e)
+        hgl::serialize::Value          root;
+        hgl::serialize::TomlParseError toml_error;
+
+        if (!hgl::serialize::FromTomlText(content, size, root, &toml_error))
         {
             MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: TOML parse error in ")
-                     + OSString(debug_name) + OS_TEXT(": ") + ToOSString(e.what()));
+                     + OSString(debug_name) + OS_TEXT(": ") + ToOSString(toml_error.Format().c_str()));
             return false;
         }
 
-        if (!root.is_table())
+        if (!root.IsTable())
         {
             MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: root is not a table in ") + OSString(debug_name));
             return false;
         }
 
-        const uint32_t schema = ReadUInt(root, "schema", 0);
-        if (schema != 1)
+        // `schema` 单独先看：它决定这张字段表还能不能按当前契约解释，报错也要有
+        // 独立措辞。缺键时 `schema_node` 为空，与「写了别的版本」同样被挡住。
         {
-            MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: unsupported schema in ") + OSString(debug_name));
-            return false;
-        }
+            const hgl::serialize::Value *schema_node = root.FindFieldExact("schema");
+            int64_t                      schema_value = 0;
 
-        std::string name_str;
-        if (ReadString(root, "name", name_str))
-            out_spec.name = AnsiString(name_str.c_str(), static_cast<int>(name_str.size()));
-
-        std::string geometry_str;
-        if (!ReadString(root, "geometry", geometry_str) || geometry_str.empty())
-        {
-            MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: missing 'geometry' in ") + OSString(debug_name));
-            return false;
-        }
-        out_spec.geometry_path = ToOSString(geometry_str);
-
-        std::string recipe_str;
-        if (!ReadString(root, "recipe", recipe_str) || recipe_str.empty())
-        {
-            MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: missing 'recipe' in ") + OSString(debug_name));
-            return false;
-        }
-        out_spec.recipe_name = AnsiString(recipe_str.c_str(), static_cast<int>(recipe_str.size()));
-
-        std::string primitive_str;
-        if (ReadString(root, "primitive_type", primitive_str))
-        {
-            out_spec.primitive_type = ParsePrimitiveType(primitive_str.c_str());
-
-            if (out_spec.primitive_type == PrimitiveType::Error)
+            if (!schema_node || !schema_node->GetInt(schema_value) || schema_value != 1)
             {
-                MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: unknown primitive_type '")
-                         + ToOSString(primitive_str) + OS_TEXT("' in ") + OSString(debug_name));
+                MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: unsupported schema in ") + OSString(debug_name));
                 return false;
             }
         }
 
-        if (root.contains("variants"))
+        // `variants` 必须是数组。这条比通用的「字段类型不合法」更具体，所以前置。
         {
-            const toml::value &variants = root.at("variants");
+            const hgl::serialize::Value *variants_node = root.FindFieldExact("variants");
 
-            if (!variants.is_array())
+            if (variants_node && !variants_node->IsArray())
             {
                 MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: 'variants' must be an array in ") + OSString(debug_name));
                 return false;
             }
+        }
 
-            for (const toml::value &item : variants.as_array())
+        // 逐字段解析（`geometry` / `recipe` 的键名覆盖、`lod`、`purpose` 与
+        // `primitive_type` 的枚举拼写、`[[variants]]` 的数组展开）全部来自
+        // `PrimitiveSerialize.gen.h` —— 本文件不再认识任何键名。
+        {
+            hgl::serialize::Archive archive;
+
+            if (!hgl::serialize::ReadFromValue(root, out_spec, &archive))
             {
-                if (!item.is_table())
+                const AnsiString failed_path(archive.FailedPath());
+
+                if (failed_path == "primitive_type")
                 {
-                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: variant entry must be a table in ") + OSString(debug_name));
-                    return false;
+                    const hgl::serialize::Value *node = root.FindFieldExact("primitive_type");
+                    const hgl::u8char         *raw = (node && node->IsString())
+                                                     ? node->GetString().c_str()
+                                                     : U8_TEXT("");
+
+                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: unknown primitive_type '")
+                             + ToOSString(reinterpret_cast<const char *>(raw)) + OS_TEXT("' in ") + OSString(debug_name));
+                }
+                else if (failed_path.StartsWith("variants"))
+                {
+                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: invalid variant entry at '")
+                             + ToOSString(failed_path.c_str()) + OS_TEXT("' in ") + OSString(debug_name));
+                }
+                else
+                {
+                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: field '")
+                             + ToOSString(failed_path.c_str()) + OS_TEXT("' is invalid (")
+                             + ToOSString(archive.ErrorMessage()) + OS_TEXT(") in ") + OSString(debug_name));
                 }
 
-                PrimitiveVariantSpec *variant = out_spec.extra_variants.Create();
+                return false;
+            }
+        }
 
-                if (!variant)
-                {
-                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: out of memory for variants in ") + OSString(debug_name));
-                    return false;
-                }
+        // 以下全是**跨字段策略**，不属于「字段规约」，因此仍留在解析层。
+        if (out_spec.geometry_path.IsEmpty())
+        {
+            MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: missing 'geometry' in ") + OSString(debug_name));
+            return false;
+        }
 
-                // 逐字段解析（含 `lod` 键名覆盖与 purpose 的枚举名解析）由 AssetGen 生成；
-                // 这里只保留**跨字段策略**：recipe 必填、extra variant 不得复用 surface。
-                *variant = PrimitiveVariantSpec{};
+        if (out_spec.recipe_name.IsEmpty())
+        {
+            MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: missing 'recipe' in ") + OSString(debug_name));
+            return false;
+        }
 
-                if (!hgl::serialize::ReadTomlTable<PrimitiveVariantSpec>(item, *variant))
-                {
-                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: invalid variant entry in ") + OSString(debug_name));
-                    return false;
-                }
+        for (int i = 0; i < out_spec.extra_variants.GetCount(); i++)
+        {
+            const PrimitiveVariantSpec *variant = out_spec.extra_variants.At(i);
 
-                if (variant->recipe_name.IsEmpty())
-                {
-                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: variant missing 'recipe' in ") + OSString(debug_name));
-                    return false;
-                }
+            if (!variant)
+                continue;
 
-                if (variant->purpose == PrimitiveVariantPurpose::Surface)
-                {
-                    // Surface 变体就是主配方，重复声明会与 recipe 打架
-                    MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: extra variant must not use surface purpose in ")
-                             + OSString(debug_name));
-                    return false;
-                }
+            if (variant->recipe_name.IsEmpty())
+            {
+                MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: variant missing 'recipe' in ") + OSString(debug_name));
+                return false;
+            }
+
+            if (variant->purpose == PrimitiveVariantPurpose::Surface)
+            {
+                // Surface 变体就是主配方，重复声明会与 recipe 打架
+                MLogError(PrimitiveAsset, OS_TEXT("ParsePrimitiveAssetSpec: extra variant must not use surface purpose in ")
+                         + OSString(debug_name));
+                return false;
             }
         }
 

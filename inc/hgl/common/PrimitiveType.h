@@ -60,4 +60,18 @@ namespace hgl::graph
 
         return static_cast<PrimitiveType>(result);
     }
+
+    /// 与 `ParsePrimitiveType` 共用同一张拼写表，只把结果口径改成「out 参数 + bool」。
+    /// 这是 AssetGen 生成的 `AssetEnumParse_PrimitiveType` 的直接转发目标：有了它，
+    /// 枚举的 TOML 拼写就仍然只有 `PrimitiveTypeName[]` 一份实现。
+    inline bool ParsePrimitiveTypeName(const char *name,PrimitiveType &out_type)
+    {
+        const PrimitiveType result=ParsePrimitiveType(name);
+
+        if(result==PrimitiveType::Error)
+            return false;
+
+        out_type=result;
+        return true;
+    }
 }//namespace hgl::graph

@@ -44,6 +44,12 @@ namespace hgl::graph
      */
     struct HGL_ASSET_STRUCT PrimitiveAssetSpec
     {
+        /// 版本号。当前只接受 1，判断留在解析层（这是跨字段业务规则）。
+        /// 缺省值取 0 而不是 1：这样「键不存在」与「写错版本」都能被同一个
+        /// `schema != 1` 判定挡住，不会因为缺省值而静默放行。
+        HGL_PROPERTY(EditAnywhere, Category = "Identity", Range(1, 1))
+        uint32_t    schema = 0;
+
         HGL_PROPERTY(EditAnywhere, Category = "Identity")
         AnsiString  name;
 
@@ -56,7 +62,9 @@ namespace hgl::graph
         HGL_PROPERTY(EditAnywhere, Category = "Binding")
         PrimitiveType primitive_type = PrimitiveType::Triangles;
 
-        HGL_PROPERTY(EditAnywhere, Category = "Binding")
+        /// TOML 里的键是 `[[variants]]`，字段名是 `extra_variants` —— 用 `Key`
+        /// 覆盖键名，既保住「主变体不在这个数组里」的语义，也不改 TOML 契约。
+        HGL_PROPERTY(EditAnywhere, Category = "Binding", Key = "variants")
         hgl::ManagedArray<PrimitiveVariantSpec> extra_variants;  ///<除主变体外的其它用途(拥有)
 
         bool IsValid() const { return !geometry_path.IsEmpty() && !recipe_name.IsEmpty(); }
