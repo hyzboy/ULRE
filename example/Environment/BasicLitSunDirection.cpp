@@ -8,7 +8,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
@@ -34,6 +34,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/basic_lit_sun_direction.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -86,11 +94,8 @@ private:
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 #endif//DRAW_GIZMO
 
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
     graph::mtl::MaterialRecipe mesh_recipe{};
-    MaterialDataAccessor material_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding material_data_ssbo_accessor{};
     VertexDataManager* mesh_vdm = nullptr;
 
     MeshEntry* floor_mesh = nullptr;
@@ -156,29 +161,16 @@ private:
 
     bool InitMaterial()
     {
-        graph::ssbo::PBRSurfaceRow material_data{};
-        material_data.base_color = Color4f(1.0f);
-        material_data.metallic = 0.08f;
-        material_data.roughness = 0.92f;
-        material_data.normal_scale = 0.35f;
         const mtl::MaterialRecipe *loaded_mesh_recipe =
             GetRecipe("BasicLitSunDirection.Lit");
         if (!loaded_mesh_recipe)
             return false;
         mesh_recipe = *loaded_mesh_recipe;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_data_ssbo_accessor))
             return false;
 
-        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!material_data_ssbo_accessor)
-            return false;
-
-        if (!material_data_ssbo_accessor.Write(material_data))
-            return false;
-
-        return (mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid();
+        return (mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor).IsValid();
     }
 
     bool InitVDM()
@@ -307,7 +299,7 @@ private:
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
             // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
-            floor_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
+            floor_struct = material_data_ssbo_accessor;
             material_data_comp->SetDataResource(floor_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -339,7 +331,7 @@ private:
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
-            mesh_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
+            mesh_struct = material_data_ssbo_accessor;
             material_data_comp->SetDataResource(mesh_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

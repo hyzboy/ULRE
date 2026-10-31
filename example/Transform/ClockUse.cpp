@@ -17,7 +17,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/log/Log.h>
@@ -35,6 +35,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/clock_use.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -76,11 +84,8 @@ private:
     Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
-    MaterialDataAccessor tick_data_ssbo_accessor{};
-    MaterialDataAccessor hand_data_ssbo_accessors[3]{};
+    graph::GlobalSSBOBinding tick_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding hand_data_ssbo_accessors[3]{};
 
     // 刻度数据
     struct TickData
@@ -105,14 +110,14 @@ private:
     bool InitMaterial()
     {
         if (!geometry
-         || !tick_data_ssbo_accessor)
+         || !tick_data_ssbo_accessor.IsValid())
             return false;
 
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("Clock.PureColor");
         if (!loaded_recipe)
             return false;
         clock_recipe = *loaded_recipe;
-        if (!(clock_recipe.material_ssbo_binding = tick_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(clock_recipe.material_ssbo_binding = tick_data_ssbo_accessor).IsValid())
             return false;
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
@@ -154,37 +159,11 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, tick_data_ssbo_accessor))
             return false;
 
-        tick_data_ssbo_accessor =
-            domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-        if (!tick_data_ssbo_accessor)
-            return false;
-
-        graph::ssbo::EmissiveSurfaceRow tick_material_data{};
-        tick_material_data.color = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-        if (!tick_data_ssbo_accessor.Write(tick_material_data))
-            return false;
-
-        Color4f hand_colors[3] = {
-            Color4f(1.0f, 0.0f, 0.0f, 1.0f),
-            Color4f(0.0f, 1.0f, 0.0f, 1.0f),
-            Color4f(0.0f, 0.0f, 1.0f, 1.0f)
-        };
         for (uint i = 0; i < 3; ++i)
-        {
-            hand_data_ssbo_accessors[i] =
-                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-            if (!hand_data_ssbo_accessors[i])
-                return false;
-
-            graph::ssbo::EmissiveSurfaceRow hand_material_data{};
-            hand_material_data.color = hand_colors[i];
-            if (!hand_data_ssbo_accessors[i].Write(hand_material_data))
-                return false;
-        }
+            hand_data_ssbo_accessors[i] = tick_data_ssbo_accessor.RowOffset(i + 1);
 
         return true;
     }
@@ -233,7 +212,7 @@ private:
             hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tick_struct{};
-            tick_struct = tick_data_ssbo_accessor.GetGlobalSSBOBinding();
+            tick_struct = tick_data_ssbo_accessor;
             material_data_comp->SetDataResource(tick_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -267,7 +246,7 @@ private:
             hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity);
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource hand_struct{};
-            hand_struct = hand_data_ssbo_accessors[i].GetGlobalSSBOBinding();
+            hand_struct = hand_data_ssbo_accessors[i];
             material_data_comp->SetDataResource(hand_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

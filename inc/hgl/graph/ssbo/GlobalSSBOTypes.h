@@ -138,6 +138,27 @@ namespace hgl::graph
                 && ssbo_id != 0
                 && data_index != uint32_t(-1);
         }
+
+        /**
+         * @brief 同一数据块内的相邻行：块内第 n 行 = 基行 + n。
+         *
+         * 一个块文件里的多行常常对应"同一种材质、不同颜色"的一批实体，
+         * 它们只差一个行号，靠这个函数从一次 `GetMaterialDataBinding()` 展开即可，
+         * 不必逐行再查一次 URI。越界由调用方负责（与 `GetRowBinding` 同一契约）。
+         */
+        constexpr GlobalSSBOBinding RowOffset(const uint32_t delta) const noexcept
+        {
+            GlobalSSBOBinding result = *this;
+            result.data_index += delta;
+            return result;
+        }
+
+        /// 有效性判定与 `IsValid()` 同一语义；显式 bool 只为让 `if (!binding)` 这类
+        /// 判空写法（迁移前 `if (!accessor)`）不用逐处改成 `!x.IsValid()`。
+        explicit constexpr operator bool() const noexcept
+        {
+            return IsValid();
+        }
     };
 
     struct GlobalSSBOConfig

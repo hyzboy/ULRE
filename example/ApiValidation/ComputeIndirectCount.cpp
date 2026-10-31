@@ -14,7 +14,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialResolver.h>
@@ -41,6 +41,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/compute_indirect_count.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -131,7 +139,7 @@ private:
     Geometry             *geometry = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    GlobalSSBODataAccessor   mtl_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding mtl_data_ssbo_accessor{};
 
     DeviceBuffer     *count_buffer     = nullptr;
     ComputePipeline  *compute_pipeline = nullptr;
@@ -161,17 +169,7 @@ private:
 
     bool InitMISSBO()
     {
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
-            return false;
-
-        mtl_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-        if (!mtl_data_ssbo_accessor)
-            return false;
-
-        graph::ssbo::EmissiveSurfaceRow material_data{};
-        material_data.color = GetColor4f(COLOR::Cyan, 1.0f);
-        return mtl_data_ssbo_accessor.Write(material_data);
+        return GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, mtl_data_ssbo_accessor);
     }
 
     bool InitECSScene()
@@ -185,7 +183,7 @@ private:
         if (!loaded_recipe)
             return false;
         cube_recipe = *loaded_recipe;
-        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(cube_recipe.material_ssbo_binding = mtl_data_ssbo_accessor).IsValid())
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
@@ -206,7 +204,7 @@ private:
             hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};
-            named_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
+            named_struct = mtl_data_ssbo_accessor;
             material_data_comp->SetDataResource(named_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }

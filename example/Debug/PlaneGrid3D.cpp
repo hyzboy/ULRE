@@ -5,7 +5,7 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -38,15 +38,21 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/debug_plane_grid_3d.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
+
 class PlaneGrid3DApp:public WorkObject
 {
 private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-    MaterialDataAccessor material_data_accessors[3]{};
+    graph::GlobalSSBOBinding material_data_accessors[3]{};
 
     Geometry *         geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_grid_recipe{};
@@ -139,25 +145,25 @@ private:
         if (!loaded_recipe)
             return false;
         plane_grid_recipe = *loaded_recipe;
-        if (!(plane_grid_recipe.material_ssbo_binding = material_data_accessors[0].GetGlobalSSBOBinding()).IsValid())
+        if (!(plane_grid_recipe.material_ssbo_binding = material_data_accessors[0]).IsValid())
             return false;
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add(
                 "PlaneXY",
-                material_data_accessors[0].GetGlobalSSBOBinding(),
+                material_data_accessors[0],
                 glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
         const float rot90 = glm::radians(90.0f);
         if(!Add(
                 "PlaneYZ",
-                material_data_accessors[1].GetGlobalSSBOBinding(),
+                material_data_accessors[1],
                 glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
         if(!Add(
                 "PlaneXZ",
-                material_data_accessors[2].GetGlobalSSBOBinding(),
+                material_data_accessors[2],
                 glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 
@@ -169,25 +175,11 @@ private:
         if (!ecs_context)
             return false;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_data_accessors[0]))
             return false;
 
-        Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
-        for (uint32_t i = 0; i < 3; ++i)
-        {
-            material_data_accessors[i] =
-                domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();
-            if (!material_data_accessors[i])
-                return false;
-
-            graph::ssbo::EmissiveSurfaceRow row{};
-            row.color = grid_color;
-            if (!material_data_accessors[i].Write(row))
-                return false;
-
-            grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
-        }
+        for (uint32_t i = 1; i < 3; ++i)
+            material_data_accessors[i] = material_data_accessors[0].RowOffset(i);
 
         return true;
     }

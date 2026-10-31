@@ -12,7 +12,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialResolver.h>
@@ -35,6 +35,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/atmosphere_sky_ambient.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -72,10 +80,7 @@ private:
 
     graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
-    MaterialDataAccessor material_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding material_data_ssbo_accessor{};
 
     Geometry* prim_sky_sphere = nullptr;
     PrimitiveAsset sky_asset{};
@@ -86,14 +91,14 @@ private:
 
     bool InitMaterial()
     {
-        if (!material_data_ssbo_accessor)
+        if (!material_data_ssbo_accessor.IsValid())
             return false;
 
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("AtmosphereSkyAmbient.Lit");
         if (!loaded_recipe)
             return false;
         mesh_recipe = *loaded_recipe;
-        if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(mesh_recipe.material_ssbo_binding = material_data_ssbo_accessor).IsValid())
             return false;
 
         return true;
@@ -101,24 +106,7 @@ private:
 
     bool InitMaterialDataSSBO()
     {
-        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
-            return false;
-
-        graph::ssbo::PBRSurfaceRow material_data{};
-        material_data.base_color   = Color4f(1.0f);
-        material_data.metallic     = 0.08f;
-        material_data.roughness    = 0.92f;
-        material_data.normal_scale = 0.35f;
-
-        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!material_data_ssbo_accessor)
-            return false;
-
-        if (!material_data_ssbo_accessor.Write(material_data))
-            return false;
-
-        return true;
+        return GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_data_ssbo_accessor);
     }
 
     bool CreateRenderObjects()
@@ -220,7 +208,7 @@ private:
             // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
 
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
-            mesh_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
+            mesh_struct = material_data_ssbo_accessor;
             material_data_comp->SetDataResource(mesh_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
