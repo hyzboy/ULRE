@@ -57,6 +57,10 @@ namespace
     constexpr char   MATERIAL_DATA_URI[] =
         "mtldata:file:ShaderLibrary/asset/material_data/alpha_test_shadow.material_data.toml";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
+
+    // 两张单层数组的层清单在 texarray 规约里（尺寸/格式从第 0 层文件推导）
+    constexpr const os_char ALPHA_BASE_COLOR_ARRAY_URI[] = OS_TEXT("texarray:@alpha_checker_baseColor");
+    constexpr const os_char WHITE_ARRAY_URI[]           = OS_TEXT("texarray:@alpha_checker_white");
 }
 
 namespace
@@ -139,12 +143,10 @@ private:
     std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
 
     VertexDataManager *vdm = nullptr;
-    Texture2DArray *alpha_base_texture = nullptr;
-    Texture2DArray *white_texture = nullptr; // 地面用：纯白，影子落点清晰可读
 
-    /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
+    /// 材质授权统一走句柄：两张数组纹理各有一个 TextureAsset 句柄（Resident，由规约同步装配而成）。
     TextureAsset *alpha_base_asset = nullptr;
-    TextureAsset *white_asset = nullptr;
+    TextureAsset *white_asset = nullptr; // 地面用：纯白，影子落点清晰可读
 
     Geometry *ground_geometry = nullptr;
     PrimitiveAsset ground_primitive{};
@@ -474,8 +476,6 @@ public:
         cube_geometry = nullptr;
 
         SAFE_CLEAR(vdm)
-        SAFE_CLEAR(alpha_base_texture)
-        SAFE_CLEAR(white_texture)
     }
 
     bool InitTextures()
@@ -484,38 +484,22 @@ public:
         if (!texture_manager)
             return false;
 
-        // 黑白棋盘（RGBA8 UNORM）：白格 r=255 挡光，黑格 r=0 镂空
-        alpha_base_texture = texture_manager->CreateTexture2DArray(
-            "alpha_test_baseColor_array", 256, 256, 1,
-            VK_FORMAT_R8G8B8A8_UNORM, 1);
-        if (!alpha_base_texture)
-            return false;
-
-        if (!texture_manager->LoadTexture2DArray(
-                alpha_base_texture, 0,
-                filesystem::JoinPathWithFilename(
-                    OS_TEXT("res/image/pbr/AlphaChecker"), OS_TEXT("baseColor.Tex2D"))))
+        // 黑白棋盘（白格 r=255 挡光，黑格 r=0 镂空）与地面用纯白，两张各自一份规约。
+        alpha_base_asset = texture_manager->CreateTextureAsset(ALPHA_BASE_COLOR_ARRAY_URI);
+        if (!alpha_base_asset || !alpha_base_asset->GetTexture())
         {
-            GLogError("[AlphaTestShadow] failed to load AlphaChecker/baseColor.Tex2D");
+            GLogError("[AlphaTestShadow] failed to build alpha_checker_baseColor array");
             return false;
         }
 
-        white_texture = texture_manager->CreateTexture2DArray(
-            "alpha_test_white_array", 256, 256, 1,
-            VK_FORMAT_R8G8B8A8_UNORM, 1);
-        if (!white_texture)
+        white_asset = texture_manager->CreateTextureAsset(WHITE_ARRAY_URI);
+        if (!white_asset || !white_asset->GetTexture())
+        {
+            GLogError("[AlphaTestShadow] failed to build alpha_checker_white array");
             return false;
+        }
 
-        if (!texture_manager->LoadTexture2DArray(
-                white_texture, 0,
-                filesystem::JoinPathWithFilename(
-                    OS_TEXT("res/image/pbr/AlphaChecker"), OS_TEXT("white.Tex2D"))))
-            return false;
-
-        alpha_base_asset = texture_manager->WrapTextureAsset(alpha_base_texture);
-        white_asset      = texture_manager->WrapTextureAsset(white_texture);
-
-        return alpha_base_asset && white_asset;
+        return true;
     }
 
     bool InitMaterial()

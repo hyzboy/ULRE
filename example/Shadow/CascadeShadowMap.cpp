@@ -86,19 +86,16 @@ namespace
     constexpr float kShadowBiasWorld         = -0.20f; // 米；负值 = 贴合遮挡体（避免过负导致 Cube/球受光面自遮挡；运行时可用 [ / ] 调）
     constexpr float kShadowTuneStepWorld     = 0.05f;  // 运行时微调步长（两种参数共用，米）
 
-    constexpr const os_char *PBR_FOLDER_NAME[kPBRTextureCount] =
-    {
-        OS_TEXT("Concrete_Plain"),
-        OS_TEXT("Concrete_Planks"),
-        OS_TEXT("Concrete_Tiles"),
-        OS_TEXT("Fresco_Decor_Wallpaper"),
-        OS_TEXT("TH_Brown_Leather"),
-        OS_TEXT("TH_Cobblestone_Color"),
-        OS_TEXT("TH_Large_Square_Pattern"),
-        OS_TEXT("TH_Sandstone_Blocks"),
-        OS_TEXT("TH_Sidewalk_Brick_Floor"),
-        OS_TEXT("TH_Square_Floor_Pattern")
-    };
+    // 10 种 PBR 地面材质的贴图顺序（层号 → 文件夹）搬到了 texarray 规约里：
+    //   ShaderLibrary/asset/texarray/pbr_10x10_baseColor.texarray.toml
+    //   ShaderLibrary/asset/texarray/pbr_10x10_normal.texarray.toml
+    // 那两张数组与 PBRSpheres 示例共用同一份规约（文件夹顺序完全一致）。
+    //
+    // 数组纹理 URI（`texarray:@<name>` → `ShaderLibrary/asset/texarray/<name>.texarray.toml`）
+    constexpr const os_char kBaseColorArrayURI[]  = OS_TEXT("texarray:@pbr_10x10_baseColor");
+    constexpr const os_char kNormalArrayURI[]     = OS_TEXT("texarray:@pbr_10x10_normal");
+    // alpha test 物体的 1 层黑白棋盘（RGBA8 UNORM 256x256，mip=1）与 AlphaTestShadow 共用
+    constexpr const os_char kAlphaBaseArrayURI[]  = OS_TEXT("texarray:@alpha_checker_baseColor");
 
     uint32_t HashU32(uint32_t a, uint32_t b, uint32_t salt)
     {
@@ -155,14 +152,12 @@ private:
     std::shared_ptr<MainLightShadowSystem> main_light_shadow_system;
 
     VertexDataManager *vdm = nullptr;
-    Texture2DArray *base_color_texture = nullptr;
-    Texture2DArray *normal_texture = nullptr;
-    Texture2DArray *alpha_base_texture = nullptr; // A1-4: alpha test 物体专用（1 层 RGBA8 棋盘）
 
-    /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
-    TextureAsset *base_color_asset = nullptr;
-    TextureAsset *normal_asset = nullptr;
-    TextureAsset *alpha_base_asset = nullptr;
+    /// 材质授权统一走句柄（`Resident`：数组层由 `texarray:` 规约一次性装配完成）。
+    /// 不再另存 `Texture2DArray*` —— 纹理归 `TextureManager` 所有，句柄就是唯一入口。
+    TextureAsset *base_color_asset = nullptr;   ///<10 层 baseColor 数组
+    TextureAsset *normal_asset     = nullptr;   ///<10 层 normal 数组
+    TextureAsset *alpha_base_asset = nullptr;   ///<1 层黑白棋盘（alpha test 物体专用）
 
     Geometry *builtin_geometries[kBuiltinGeomCount]{};
     PrimitiveAsset builtin_primitives[kBuiltinGeomCount]{};
@@ -827,84 +822,32 @@ private:
         if (!texture_manager)
             return false;
 
-        auto BuildFilePair = [](const OSString &folder, OSString &base, OSString &normal) -> bool
+        // 三张数组纹理全部来自 `texarray:` 规约：层清单、层数、尺寸/格式推导都不在代码里。
+        // 装配失败（缺层/尺寸不一致/规约写错）会在 `BuildTextureArray` 里报具体层号。
+        base_color_asset = texture_manager->CreateTextureAsset(kBaseColorArrayURI);
+        if (!base_color_asset || !base_color_asset->GetTexture())
         {
-            base = filesystem::JoinPathWithFilename(folder, OS_TEXT("baseColor.Tex2D"));
-            normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("normal.Tex2D"));
-            if (!filesystem::FileExist(normal))
-                normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
-
-            return filesystem::FileExist(base) && filesystem::FileExist(normal);
-        };
-
-        OSString first_folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"), PBR_FOLDER_NAME[0]);
-        OSString first_base, first_normal;
-        if (!BuildFilePair(first_folder, first_base, first_normal))
-        {
-            GLogError("InitTextures: Failed to find texture pair for folder[0]");
+            GLogError("InitTextures: Failed to build baseColor array (%s)", kBaseColorArrayURI);
             return false;
         }
 
-        Texture2D *probe_base = texture_manager->LoadTexture2D(first_base, true);
-        Texture2D *probe_normal = texture_manager->LoadTexture2D(first_normal, true);
-        if (!probe_base || !probe_normal)
+        normal_asset = texture_manager->CreateTextureAsset(kNormalArrayURI);
+        if (!normal_asset || !normal_asset->GetTexture())
         {
-            GLogError("InitTextures: Failed to load probe textures");
+            GLogError("InitTextures: Failed to build normal array (%s)", kNormalArrayURI);
             return false;
-        }
-
-        base_color_texture = texture_manager->CreateTexture2DArray("csm_pbr_baseColor_array",
-                                                                   probe_base->GetWidth(),
-                                                                   probe_base->GetHeight(),
-                                                                   kPBRTextureCount,
-                                                                   probe_base->GetFormat(),
-                                                                   probe_base->GetMipLevel());
-        normal_texture = texture_manager->CreateTexture2DArray("csm_pbr_normal_array",
-                                                               probe_normal->GetWidth(),
-                                                               probe_normal->GetHeight(),
-                                                               kPBRTextureCount,
-                                                               probe_normal->GetFormat(),
-                                                               probe_normal->GetMipLevel());
-
-        SAFE_CLEAR(probe_base)
-        SAFE_CLEAR(probe_normal)
-
-        if (!base_color_texture || !normal_texture)
-            return false;
-
-        for (uint32_t layer = 0; layer < kPBRTextureCount; ++layer)
-        {
-            OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"), PBR_FOLDER_NAME[layer]);
-            OSString base_file, normal_file;
-            if (BuildFilePair(folder, base_file, normal_file))
-            {
-                texture_manager->LoadTexture2DArray(base_color_texture, layer, base_file);
-                texture_manager->LoadTexture2DArray(normal_texture, layer, normal_file);
-            }
         }
 
         // A1-4：alpha test 物体专用 baseColor（1 层 RGBA8 UNORM 棋盘，黑格
         // alpha=0）。ShadowCasterMasked 的 EvalAlpha 采样该纹理丢黑格。
-        alpha_base_texture = texture_manager->CreateTexture2DArray(
-            "csm_alpha_baseColor_array", 256, 256, 1,
-            VK_FORMAT_R8G8B8A8_UNORM, 1);
-        if (!alpha_base_texture)
-            return false;
-
-        if (!texture_manager->LoadTexture2DArray(
-                alpha_base_texture, 0,
-                filesystem::JoinPathWithFilename(
-                    OS_TEXT("res/image/pbr/AlphaChecker"), OS_TEXT("baseColor.Tex2D"))))
+        alpha_base_asset = texture_manager->CreateTextureAsset(kAlphaBaseArrayURI);
+        if (!alpha_base_asset || !alpha_base_asset->GetTexture())
         {
-            GLogError("InitTextures: Failed to load alpha checker texture");
+            GLogError("InitTextures: Failed to build alpha checker array (%s)", kAlphaBaseArrayURI);
             return false;
         }
 
-        base_color_asset = texture_manager->WrapTextureAsset(base_color_texture);
-        normal_asset     = texture_manager->WrapTextureAsset(normal_texture);
-        alpha_base_asset = texture_manager->WrapTextureAsset(alpha_base_texture);
-
-        return base_color_asset && normal_asset && alpha_base_asset;
+        return true;
     }
 
     bool InitMaterial()
@@ -1464,8 +1407,6 @@ public:
             registry->Clear();
 
         SAFE_CLEAR(vdm)
-        SAFE_CLEAR(base_color_texture)
-        SAFE_CLEAR(normal_texture)
     }
 
     void Tick(double delta) override

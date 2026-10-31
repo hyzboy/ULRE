@@ -70,20 +70,15 @@ static constexpr float SPHERE_SPACING = 2.5f;  // center-to-center distance
 // 10 built-in geometries, one per column
 static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 
-// PBR material folders under res/image/pbr (currently uses first folder as Standard texture set)
-constexpr const os_char *PBR_FOLDER_NAME[GRID_SIZE]=
-{
-    OS_TEXT("Concrete_Plain"),
-    OS_TEXT("Concrete_Planks"),
-    OS_TEXT("Concrete_Tiles"),
-    OS_TEXT("Fresco_Decor_Wallpaper"),
-    OS_TEXT("TH_Brown_Leather"),
-    OS_TEXT("TH_Cobblestone_Color"),
-    OS_TEXT("TH_Large_Square_Pattern"),
-    OS_TEXT("TH_Sandstone_Blocks"),
-    OS_TEXT("TH_Sidewalk_Brick_Floor"),
-    OS_TEXT("TH_Square_Floor_Pattern")
-};
+// 10 种 PBR 材质的贴图顺序（层号 → 文件夹）搬到了 texarray 规约里：
+//   ShaderLibrary/asset/texarray/pbr_10x10_baseColor.texarray.toml
+//   ShaderLibrary/asset/texarray/pbr_10x10_normal.texarray.toml
+// 与本示例共用同一份规约的还有 CascadeShadowMap（文件夹顺序完全一致）⇒ 同一张数组
+// 纹理，不重复上传。原来这里的 `PBR_FOLDER_NAME[10]` 常量表已删除。
+//
+// 数组纹理 URI（`texarray:@<name>` → `ShaderLibrary/asset/texarray/<name>.texarray.toml`）
+static constexpr const os_char PBR_BASE_COLOR_ARRAY_URI[] = OS_TEXT("texarray:@pbr_10x10_baseColor");
+static constexpr const os_char PBR_NORMAL_ARRAY_URI[]     = OS_TEXT("texarray:@pbr_10x10_normal");
 
 // 批量材质数据行的**唯一**来源：文件化的数据块（100 行 PBRSurface，行优先）。
 // 原来这里是一个 CreateLitMaterialData() 双循环硬编码（含统一底色 0.72 灰），现在
@@ -114,8 +109,6 @@ private:
     graph::mtl::MaterialRecipe sphere_recipe_b{};
     PrimitiveAsset base_primitives_b[GRID_SIZE]{};
     bool multibatch_enabled = false;
-    Texture2DArray *    base_color_texture = nullptr;
-    Texture2DArray *    normal_texture = nullptr;
 
     /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
     TextureAsset *      base_color_asset = nullptr;
@@ -165,9 +158,9 @@ private:
 
     bool InitMaterial()
     {
-        if (!base_color_texture || !normal_texture) {
+        if (!base_color_asset || !normal_asset) {
             printf("[ERROR] InitMaterial: Failed texture checks - base=%p normal=%p\n",
-                   base_color_texture, normal_texture);
+                   (void*)base_color_asset, (void*)normal_asset);
             return false;
         }
         auto *texture_manager = GetManager<TextureManager>();
@@ -213,77 +206,23 @@ private:
             return false;
         }
 
-        auto BuildFilePair = [](const OSString &folder, OSString &base, OSString &normal) -> bool
-        {
-            base = filesystem::JoinPathWithFilename(folder, OS_TEXT("baseColor.Tex2D"));
-            normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("normal.Tex2D"));
-            if (!filesystem::FileExist(normal))
-                normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
-
-            return filesystem::FileExist(base)
-                && filesystem::FileExist(normal);
-        };
-
-        OSString first_folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"), PBR_FOLDER_NAME[0]);
-        OSString first_base, first_normal;
-        if (!BuildFilePair(first_folder, first_base, first_normal)) {
-            printf("[ERROR] InitTextures: Failed to find texture pair for folder[0]\n");
+        // 两张数组纹理全部来自 `texarray:` 规约：层清单、层数、尺寸/格式推导都不在代码里。
+        // 装配失败（缺层/尺寸不一致/规约写错）会在 `BuildTextureArray` 里报具体层号。
+        // 原来这里约 70 行的「探针加载 + CreateTexture2DArray + 逐层 BuildFilePair/Load2DArray」
+        // 已删除；`Normal.Tex2D`（首字母大写）的差异现在显式写在规约的层清单里。
+        base_color_asset = texture_manager->CreateTextureAsset(PBR_BASE_COLOR_ARRAY_URI);
+        if (!base_color_asset || !base_color_asset->GetTexture()) {
+            printf("[ERROR] InitTextures: Failed to build baseColor array (texarray:@pbr_10x10_baseColor)\n");
             return false;
         }
 
-        Texture2D *probe_base = texture_manager->LoadTexture2D(first_base, true);
-        Texture2D *probe_normal = texture_manager->LoadTexture2D(first_normal, true);
-        if (!probe_base || !probe_normal) {
-            printf("[ERROR] InitTextures: Failed to load probe textures - base=%p normal=%p\n",
-                   probe_base, probe_normal);
+        normal_asset = texture_manager->CreateTextureAsset(PBR_NORMAL_ARRAY_URI);
+        if (!normal_asset || !normal_asset->GetTexture()) {
+            printf("[ERROR] InitTextures: Failed to build normal array (texarray:@pbr_10x10_normal)\n");
             return false;
         }
 
-        base_color_texture = texture_manager->CreateTexture2DArray("pbr_baseColor_array",
-                                                                   probe_base->GetWidth(),
-                                                                   probe_base->GetHeight(),
-                                                                   GRID_SIZE,
-                                                                   probe_base->GetFormat(),
-                                                                   probe_base->GetMipLevel());
-        normal_texture = texture_manager->CreateTexture2DArray("pbr_normal_array",
-                                                                 probe_normal->GetWidth(),
-                                                                 probe_normal->GetHeight(),
-                                                                 GRID_SIZE,
-                                                                 probe_normal->GetFormat(),
-                                                                 probe_normal->GetMipLevel());
-
-        SAFE_CLEAR(probe_base)
-        SAFE_CLEAR(probe_normal)
-
-        if (!base_color_texture || !normal_texture) {
-            printf("[ERROR] InitTextures: Failed to create Texture2DArray - base_color=%p normal=%p\n",
-                   base_color_texture, normal_texture);
-            return false;
-        }
-
-        for (uint32_t layer = 0; layer < GRID_SIZE; ++layer)
-        {
-            OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"), PBR_FOLDER_NAME[layer]);
-            OSString base_file, normal_file;
-            if (!BuildFilePair(folder, base_file, normal_file)) {
-                printf("[ERROR] InitTextures: Layer %u - Failed to find texture pair for PBR_FOLDER_NAME[%u]\n", layer, layer);
-                return false;
-            }
-
-            if (!texture_manager->LoadTexture2DArray(base_color_texture, layer, base_file)) {
-                printf("[ERROR] InitTextures: Layer %u - Failed to load baseColor texture\n", layer);
-                return false;
-            }
-            if (!texture_manager->LoadTexture2DArray(normal_texture, layer, normal_file)) {
-                printf("[ERROR] InitTextures: Layer %u - Failed to load normal texture\n", layer);
-                return false;
-            }
-        }
-
-        base_color_asset = texture_manager->WrapTextureAsset(base_color_texture);
-        normal_asset     = texture_manager->WrapTextureAsset(normal_texture);
-
-        return base_color_asset && normal_asset;
+        return true;
     }
 
     /**
@@ -584,8 +523,6 @@ public:
             registry->Clear();
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(base_color_texture)
-        SAFE_CLEAR(normal_texture)
     }
 
     bool Init() override

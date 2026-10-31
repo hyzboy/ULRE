@@ -65,7 +65,16 @@ namespace
     }
 }
 
-constexpr const os_char PBR_FOLDER[] = OS_TEXT("Concrete_Plain");
+// near 材质的两张单层数组来自 texarray 规约：
+//   ShaderLibrary/asset/texarray/single_sphere_near_baseColor.texarray.toml
+//   ShaderLibrary/asset/texarray/single_sphere_near_normal.texarray.toml
+// far 材质仍用同一份文件的**单张 2D 纹理**（配方按平铺语义采样，不需要数组）。
+// 原来这里的 `PBR_FOLDER` 常量与 `BuildTexturePair` 探测函数已删除。
+constexpr const os_char NEAR_BASE_COLOR_ARRAY_URI[] = OS_TEXT("texarray:@single_sphere_near_baseColor");
+constexpr const os_char NEAR_NORMAL_ARRAY_URI[]     = OS_TEXT("texarray:@single_sphere_near_normal");
+constexpr const os_char FAR_BASE_COLOR_FILE_URI[]   = OS_TEXT("res/image/pbr/Concrete_Plain/baseColor.Tex2D");
+constexpr const os_char FAR_NORMAL_FILE_URI[]       = OS_TEXT("res/image/pbr/Concrete_Plain/normal.Tex2D");
+
 static constexpr float SWITCH_NEAR_ENTER_DISTANCE = 7.0f;   // far->near
 static constexpr float SWITCH_FAR_ENTER_DISTANCE = 9.0f;    // near->far
 
@@ -87,11 +96,6 @@ private:
     graph::GlobalSSBOBinding near_material_data_ssbo_accessor{};
     graph::GlobalSSBOBinding far_material_data_ssbo_accessor{};
 
-    Texture2DArray *near_base_color_array = nullptr;
-    Texture2DArray *near_normal_array = nullptr;
-    Texture2D *far_base_color_texture = nullptr;
-    Texture2D *far_normal_texture = nullptr;
-
     /// 材质授权统一走句柄：上面四张纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
     TextureAsset *near_base_color_asset = nullptr;
     TextureAsset *near_normal_asset = nullptr;
@@ -112,60 +116,31 @@ private:
         return false;
     }
 
-    bool BuildTexturePair(OSString &base, OSString &normal) const
-    {
-        const OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"), PBR_FOLDER);
-        base = filesystem::JoinPathWithFilename(folder, OS_TEXT("baseColor.Tex2D"));
-        normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("normal.Tex2D"));
-        if (!filesystem::FileExist(normal))
-            normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
-
-        return filesystem::FileExist(base) && filesystem::FileExist(normal);
-    }
-
     bool InitTextures()
     {
         auto *texture_manager = GetManager<TextureManager>();
         if (!texture_manager)
             return LogFail("InitTextures", "texture manager is null");
 
-        OSString base_file;
-        OSString normal_file;
-        if (!BuildTexturePair(base_file, normal_file))
-            return LogFail("InitTextures", "missing baseColor/normal texture pair");
+        // near：两张单层数组（层清单在 texarray 规约里，尺寸/格式从第 0 层文件推导）
+        near_base_color_asset = texture_manager->CreateTextureAsset(NEAR_BASE_COLOR_ARRAY_URI);
+        if (!near_base_color_asset || !near_base_color_asset->GetTexture())
+            return LogFail("InitTextures", "failed to build baseColor array for near material");
 
-        far_base_color_texture = texture_manager->LoadTexture2D(base_file, true);
-        far_normal_texture = texture_manager->LoadTexture2D(normal_file, true);
-        if (!far_base_color_texture || !far_normal_texture)
-            return LogFail("InitTextures", "failed to load 2D textures for far material");
+        near_normal_asset = texture_manager->CreateTextureAsset(NEAR_NORMAL_ARRAY_URI);
+        if (!near_normal_asset || !near_normal_asset->GetTexture())
+            return LogFail("InitTextures", "failed to build normal array for near material");
 
-        near_base_color_array = texture_manager->CreateTexture2DArray("single_sphere_base_array",
-                                                                       far_base_color_texture->GetWidth(),
-                                                                       far_base_color_texture->GetHeight(),
-                                                                       1,
-                                                                       far_base_color_texture->GetFormat(),
-                                                                       far_base_color_texture->GetMipLevel());
-        near_normal_array = texture_manager->CreateTexture2DArray("single_sphere_normal_array",
-                                                                   far_normal_texture->GetWidth(),
-                                                                   far_normal_texture->GetHeight(),
-                                                                   1,
-                                                                   far_normal_texture->GetFormat(),
-                                                                   far_normal_texture->GetMipLevel());
-        if (!near_base_color_array || !near_normal_array)
-            return LogFail("InitTextures", "failed to create 2DArray textures");
+        // far：同一份文件按单张 2D 纹理加载（走文件 URI，缓存与 near 层共用同一份 Texture2D）。
+        // 文件来源的句柄创建后处于 MetaOnly，需显式 LoadPayload() 同步读盘 —— 远距材质
+        // 在第 1 帧就可能被切到，不能等 TextureStreamingSystem 异步完成。
+        far_base_color_asset = texture_manager->CreateTextureAsset(FAR_BASE_COLOR_FILE_URI, true);
+        if (!far_base_color_asset || !far_base_color_asset->LoadPayload())
+            return LogFail("InitTextures", "failed to load baseColor texture for far material");
 
-        if (!texture_manager->LoadTexture2DArray(near_base_color_array, 0, base_file))
-            return LogFail("InitTextures", "failed to load baseColor into array layer 0");
-        if (!texture_manager->LoadTexture2DArray(near_normal_array, 0, normal_file))
-            return LogFail("InitTextures", "failed to load normal into array layer 0");
-
-        near_base_color_asset  = texture_manager->WrapTextureAsset(near_base_color_array);
-        near_normal_asset      = texture_manager->WrapTextureAsset(near_normal_array);
-        far_base_color_asset   = texture_manager->WrapTextureAsset(far_base_color_texture);
-        far_normal_asset       = texture_manager->WrapTextureAsset(far_normal_texture);
-
-        if (!near_base_color_asset || !near_normal_asset || !far_base_color_asset || !far_normal_asset)
-            return LogFail("InitTextures", "failed to wrap texture assets");
+        far_normal_asset = texture_manager->CreateTextureAsset(FAR_NORMAL_FILE_URI, true);
+        if (!far_normal_asset || !far_normal_asset->LoadPayload())
+            return LogFail("InitTextures", "failed to load normal texture for far material");
 
         return true;
     }
@@ -256,7 +231,7 @@ private:
 
     bool InitRenderResources()
     {
-        if (!near_base_color_array || !near_normal_array || !far_base_color_texture || !far_normal_texture)
+        if (!near_base_color_asset || !near_normal_asset || !far_base_color_asset || !far_normal_asset)
             return LogFail("InitRenderResources", "required material/texture is null");
 
         if (!near_material_data_ssbo_accessor
@@ -354,11 +329,6 @@ public:
             registry->Clear();
 
         SAFE_CLEAR(mesh_vdm)
-
-        SAFE_CLEAR(near_base_color_array)
-        SAFE_CLEAR(near_normal_array)
-        SAFE_CLEAR(far_base_color_texture)
-        SAFE_CLEAR(far_normal_texture)
     }
 
     bool Init() override
