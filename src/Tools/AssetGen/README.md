@@ -32,10 +32,16 @@ struct HGL_ASSET_STRUCT BuiltinSphereParams
 | 产物 | 位置 | 说明 |
 |---|---|---|
 | 字段遍历（唯一一份） | `inc/hgl/asset/generated/<Group>Serialize.gen.h` | `EnumTraits<T>` + `StructSerializer<T>::Do(Archive&, Self&)`；与格式无关 |
-| 布局描述 + 格式门面 | `inc/hgl/asset/generated/<Group>Codec.gen.h` | FlatBuffers 的 `TableDesc`/`FieldDesc` 表 + `Read*/Write*/Encode*/Decode*` |
+| 布局描述 + 二进制门面 | `inc/hgl/asset/generated/<Group>Fbs.gen.h` | FlatBuffers 的 `TableDesc`/`FieldDesc` 表 + `Encode*/Decode*` |
+| TOML 门面 | `inc/hgl/asset/generated/<Group>Toml.gen.h` | `Read*/Write*`；**不依赖 FlatBuffers** |
+| 汇总入口 | `inc/hgl/asset/generated/<Group>Codec.gen.h` | 只 include 上面两个；消费方一般 include 这个 |
 | 属性元数据 | `inc/hgl/asset/generated/<Group>Meta.gen.h` | `PropertyMetaInfo[]` / `ClassMetaInfo` / `GetClassMeta(&obj)` |
 | FlatBuffers schema | `inc/hgl/asset/generated/<group>_schema.fbs` | 发行版二进制格式的契约 |
 | FlatBuffers C++ | `inc/hgl/asset/generated/<group>_schema_generated.h` | `flatc` 产物 |
+
+TOML 与 FlatBuffers 的门面**刻意分文件**：只要 TOML 的模块（例如 `ULRE.ShaderMaterialData`）
+不必为了读作者格式而链接 FlatBuffers。`<Group>Codec.gen.h` 仅为兼容既有 include 保留，
+不承载实质内容；新代码按需要 include `Toml` 或 `Fbs`。
 
 「字段清单/类型/语义」只生成**一次**（`Serialize.gen.h`）；`Codec.gen.h` 里的描述表是
 **纯数据**，格式门面只是把「值树 ↔ 格式」的两步接起来。新增格式后端（如 JSON）时
@@ -179,3 +185,77 @@ asset_kind = "geo"                                       # 元数据里的资产
 | `hgl::ManagedArray<T>` | 表数组 | `[table]` |
 
 不在表里的类型会**直接报错**（拒绝静默降级），而不是悄悄生成错误的代码。
+
+## 8. 枚举拼写的唯一真源
+
+TOML 里写的是**人能读的名字**（`"OrthoViewport"`、`"None"`），而拼写表若在引擎侧已有
+运行期公开函数（`GetProjectionModeName` / `ParseProjectionMode` …），生成器**不得**再
+自带一份字面量表 —— 那等于制造第二个真源，改一处漏一处时两遍读法就会分叉。
+
+`asset_gen.toml` 因此支持三种「不相交」的枚举来源：
+
+```toml
+# ① 纯整数（第三方枚举，例如 Vulkan）：按整数序列化，不生成名字表
+integer_enums = ["VkFormat"]
+
+# ② 生成器自带拼写表（引擎侧没有公开函数时才用）
+[[enum]]
+name    = "NTBType"
+aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
+
+# ③ 转发到引擎真源：生成的名字/解析函数只是转发调用
+[[enum]]
+name           = "ProjectionMode"
+extern_from    = "::hgl::mtl::GetProjectionModeName"
+extern_to      = "::hgl::mtl::ParseProjectionMode"
+extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
+
+# ③' 类型名与枚举真名不一致时（typedef 到整数的 Flags 类）用中介类型
+[[enum]]
+name            = "VkCullModeFlagBits"
+extern_mediator = "::VkCullModeFlags"
+extern_from     = "::hgl::graph::mtl::GetVkCullModeName"
+extern_to       = "::hgl::graph::mtl::ParseVkCullMode"
+extern_include  = "hgl/mtl/VkEnumText.h"
+```
+
+`extern_mediator` 用于 `VkCullModeFlags` 这类「值域是枚举、类型是整数的 typedef」：
+`EnumTraits` 若挂在整数 typedef 上会误伤所有同宽整数字段，所以转发函数先做一次
+显式转换。三处配置缺任一项，`main()` 会直接报错而不是生成半成品。
+
+**口径后果**：转发到 `Parse*` 之后，接受哪些拼写完全由引擎侧决定（当前是
+`hgl::strcmp` 精确匹配，大小写敏感）。生成器不再提供「别名大小写不敏感」这一层
+宽容，这既是治「两份真源」，也意味着**小写拼写会被拒**。
+
+## 9. 在引擎里使用生成产物
+
+`MaterialRecipeSpec`（`inc/hgl/graph/asset/MaterialRecipeSpec.h`）是当前最完整的
+范例：7 个字段、含嵌套子表、`ManagedArray` 表数组和 `Presence<T>` 三态覆盖。
+
+解析侧不再手写字段抽取：
+
+```cpp
+// 一步：生成 codec 读作者格式（TOML）
+Archive data_archive = Archive::ForRead(toml_value, /*open_scope=*/true);
+StructSerializer<MaterialRecipeSpec>::Do(data_archive, spec);
+if (!data_archive.Ok())
+    Report(data_archive.FailedPath());   // "render_state.pipeline.cull_mode"
+```
+
+`Archive::FailedPath()` 在递归下钻时**当场**拼出失败键的完整路径，不依赖任何调用顺序
+上的粘性状态 —— 「值解析失败时报错指错表」这类 bug 因此在结构上不可能出现。
+
+**对象侧**则由 `hgl::asset::AssetObject` 承担统一身份：`MaterialRecipeAsset`
+（`inc/hgl/graph/asset/MaterialRecipeAsset.h`）是它的首个派生类，一个对象同时给出
+规约（`GetSpec()`）、运行时结果（`GetRecipe()`）与身份/来源
+（`GetAssetName()` / `GetResourceId()` / `GetSourcePath()`），并把
+`GetClassMetaInfo()` 指向生成的 `Class_MaterialRecipeSpec`，于是检查器、文档导出和
+通用 diff 都无需为它另写描述表。
+
+新增一种资产句柄时的推荐做法：
+
+1. 规约结构加 `HGL_ASSET_STRUCT` 注解，登记进某个 `[group.*]`，跑一次生成器；
+2. 句柄继承 `AssetObject`，`GetClassMetaInfo()` 直接返回生成的 `Class_<Spec>`；
+3. 状态机**只描述这个资产真正需要区分的阶段** —— 不要为了统一而复制
+   `MetaObject`/`PayloadState` 的六态；异步加载能力应当由它实际持有的子句柄
+   （纹理、网格…）承担，句柄本身只做聚合（例：`AreTexturesResident()`）。

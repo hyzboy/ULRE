@@ -4770,18 +4770,22 @@ int main(int argc, char** argv)
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
               "if (out_recipe.fallback_error_kind != graph::mtl::MaterialErrorKind::None)",
               "ECS 侧未统计「构建成功但配方已被换成错误材质」这条（回退取数口丢失）" },
-            // ⑫ B2（2026-10-14）：材质定义解析失败的诊断必须带**全路径**（render_state.pipeline.cull_mode）。
-            //    机制 = 表路径栈 + RAII 作用域（ParseTableScope）；原「粘性单值 SetParseTable」只被键校验器
-            //    调用 ⇒ 值解析失败时路径为空、或继承陈旧表名（指错位置）⇒ 禁复活。
+            // ⑫ B2（2026-10-14，2026-11 改判）：材质配方解析失败的诊断必须带**全路径**
+            //    （render_state.pipeline.cull_mode）。原实现靠「表路径栈 + RAII 作用域」
+            //    （ParseTableScope）在**调用侧**维护位置；配方解析改由生成 codec 驱动后，
+            //    位置改由 `Archive::FailedPath()` 在递归下钻时**当场拼出**，不再有任何
+            //    依赖调用顺序的粘性状态 —— 这是更强的机制（不可能出现「忘了压栈」）。
+            //    运行期断言见 TestMaterialRecipeFile 的 CheckNestedPipelineDiagnostic
+            //    （嵌套表内枚举解析失败 ⇒ table=render_state.pipeline / key=cull_mode）。
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
-              "ParseTableScope scope(error, \"render_state\");",
-              "解析失败的诊断表路径栈丢失（值解析失败会报不出 render_state 层）" },
+              "SplitTablePath(AnsiString(archive.FailedPath()), table, key);",
+              "失败路径不再被切成「表 + 键」（诊断会退化成整条路径或空表名）" },
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
-              "ParseTableScope scope(error, \"render_state.pipeline\");",
-              "pipeline 子层未压栈（cull_mode 一类失败会丢掉 render_state.pipeline 前缀）" },
+              "const toml::value *node = FindTomlNode(root, archive.FailedPath());",
+              "失败键的原始字符串回填丢失（诊断里的 value 列会变空）" },
+            // 禁复活：调用侧粘性路径栈。这类机制在「值解析失败」时路径为空或继承陈旧表名。
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
-              "ParseTableScope scope(error, \"textures\");",
-              "数组元素的索引路径丢失（纹理声明出错应报 resources.textures[i].<key>）" },
+              "ParseTableScope", "调用侧粘性表路径栈复活（值解析失败时会指错表）", true },
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "SetParseTable(", "粘性单值表名 setter 复活（路径会变成陈旧值/空 ⇒ 指错位置）", true },
         };

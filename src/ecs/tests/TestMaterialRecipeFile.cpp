@@ -163,6 +163,45 @@ namespace
             && data.parse_error.value == "Orthographic2D";
     }
 
+    // 值解析失败发生在**嵌套表内部**时，诊断必须带上完整路径（`render_state.pipeline`），
+    // 而不是退化成空表名或上一层的陈旧表名 —— 否则报错会指错位置。这是 codec 读完字段
+    // 才发现失败的那一类：键校验（按生成元数据递归）认得出 `cull_mode` 是合法键，
+    // 只有把 `NotACullMode` 解析成 `VkCullModeFlagBits` 时才会失败，失败路径由
+    // `Archive::FailedPath()` 在递归下钻时逐层拼出，不依赖任何粘性状态。
+    bool CheckNestedPipelineDiagnostic()
+    {
+        constexpr char kNestedRecipe[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.NestedDiagnostic\"\n"
+            "domain = \"StandardOpaque\"\n"
+            "\n"
+            "[render_state.pipeline]\n"
+            "cull_mode = \"NotACullMode\"\n";
+
+        MaterialRecipeFileData data;
+        const MaterialRecipeFileParseResult result =
+            ParseMaterialRecipeFile(
+                kNestedRecipe,
+                static_cast<int>(strlen(kNestedRecipe)),
+                data);
+
+        if (result != MaterialRecipeFileParseResult::InvalidValue)
+            return false;
+
+        if (data.parse_error.table != "render_state.pipeline"
+         || data.parse_error.key != "cull_mode"
+         || data.parse_error.value != "NotACullMode")
+        {
+            GLogError(u8"嵌套失败诊断路径不符: table=%s key=%s value=%s",
+                      data.parse_error.table.c_str(),
+                      data.parse_error.key.c_str(),
+                      data.parse_error.value.c_str());
+            return false;
+        }
+
+        return true;
+    }
+
     // `[render_state.pipeline]` 是局部覆盖：只写与默认不同的键，未写的字段保持
     // 契约默认值。显式写出的 false / 0 / None 必须真正生效（不能当「没写」）。
     bool CheckPartialPipelineOverride()
@@ -583,6 +622,11 @@ int main(int argc, char **argv)
     {
         GLogError(u8"TestMaterialRecipeFile failed: [fragment] override parsing");
         return 9;
+    }
+    if (!CheckNestedPipelineDiagnostic())
+    {
+        GLogError(u8"TestMaterialRecipeFile failed: nested table diagnostic path");
+        return 10;
     }
 
     GLogInfo(u8"TestMaterialRecipeFile passed");
