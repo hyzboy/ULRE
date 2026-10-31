@@ -9,6 +9,7 @@
 
 #include <hgl/serialize/Archive.h>
 #include <hgl/graph/asset/MaterialRecipeSpec.h>
+#include <hgl/mtl/VkEnumText.h>
 
 namespace hgl::asset::generated
 {
@@ -174,11 +175,16 @@ namespace hgl::asset::generated
         return false;
     }
 
-    inline const char *AssetEnumName_VkCullModeFlags(const ::VkCullModeFlags v)
-    { return hgl::graph::mtl::GetVkCullModeName(v); }
+    inline const char *AssetEnumName_VkCullModeFlagBits(const ::VkCullModeFlagBits v)
+    { return hgl::graph::mtl::GetVkCullModeName(static_cast<::VkCullModeFlags>(v)); }
 
-    inline bool AssetEnumParse_VkCullModeFlags(const char *s, ::VkCullModeFlags &out)
-    { return hgl::graph::mtl::ParseVkCullMode(s, out); }
+    inline bool AssetEnumParse_VkCullModeFlagBits(const char *s, ::VkCullModeFlagBits &out)
+    {
+        ::VkCullModeFlags tmp = static_cast<::VkCullModeFlags>(out);
+        if (!hgl::graph::mtl::ParseVkCullMode(s, tmp)) return false;
+        out = static_cast<::VkCullModeFlagBits>(tmp);
+        return true;
+    }
 
     inline const char *AssetEnumName_VkCompareOp(const ::VkCompareOp v)
     { return hgl::graph::mtl::GetVkCompareOpName(v); }
@@ -250,13 +256,13 @@ namespace hgl::serialize
         { return hgl::asset::generated::AssetEnumParse_MaterialDomain(s, out); }
     };
 
-    template<> struct EnumTraits<::VkCullModeFlags>
+    template<> struct EnumTraits<::VkCullModeFlagBits>
     {
         static constexpr bool defined = true;
-        static const char *ToName(::VkCullModeFlags v)
-        { return hgl::asset::generated::AssetEnumName_VkCullModeFlags(v); }
-        static bool FromName(const char *s, ::VkCullModeFlags &out)
-        { return hgl::asset::generated::AssetEnumParse_VkCullModeFlags(s, out); }
+        static const char *ToName(::VkCullModeFlagBits v)
+        { return hgl::asset::generated::AssetEnumName_VkCullModeFlagBits(v); }
+        static bool FromName(const char *s, ::VkCullModeFlagBits &out)
+        { return hgl::asset::generated::AssetEnumParse_VkCullModeFlagBits(s, out); }
     };
 
     template<> struct EnumTraits<::VkCompareOp>

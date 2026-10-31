@@ -57,6 +57,11 @@ struct HGL_ASSET_STRUCT BuiltinSphereParams
 结构布局；它是序列化策略标记，不是条件编译。
 两种格式的分工是刻意的：TOML 给人改（缺键即缺省），FBS 给机器读（全量快照）。
 
+例外是 `Presence<T>` 字段：它表达的是「作者是否显式设置过」，全量快照会摧毁这个信息。
+生成器因此把这类标量写成 FlatBuffers 的**可选标量**（`.fbs` 里的 `= null`，描述表标记
+`optional_scalar`）：编码时即使值等于缺省值也真写进缓冲，解码时「没写」就如实还原成
+`present == false`。
+
 ## 4. 属性标签
 
 | 标签 | 含义 | 谁消费 |

@@ -68,7 +68,18 @@ namespace hgl::serialize::fb
         const TableDesc *table = nullptr; ///< Table / VectorTable 的子表描述
         EnumFromNameFn enum_from_name = nullptr; ///< Enum 专用
         EnumToNameFn enum_to_name = nullptr;     ///< Enum 专用
+        /// 标量字段是否为「可选标量」（对应 Spec 里的 Presence<T>）。
+        /// 为 true 时：编码即使是 0 也必须真写进缓冲，解码则“没写即缺席”，
+        /// 从而保留 Presence 三态语义；普通标量仍走「完整快照」覆盖。
+        bool optional_scalar = false;
     };
+
+    /// 把即 Present<> 对应的标量字段标记为「可选标量」（生成代码用）。
+    constexpr FieldDesc OptScalar(FieldDesc field)
+    {
+        field.optional_scalar = true;
+        return field;
+    }
 
     struct TableDesc
     {
@@ -303,6 +314,19 @@ namespace hgl::serialize::fb
             node.GetInt(raw);
             return raw;
         }
+
+        /// 标量写入：普通字段按 schema 缺省值省略（FlatBuffers 惯例）；
+        /// 可选标量（Presence<> 字段）必须无条件写入，否则「显式设为缺省值」
+        /// 与「从未设置」在缓冲里无法区分。
+        template <typename T>
+        inline void AddScalar(flatbuffers::FlatBufferBuilder &fbb, const FieldDesc &field,
+                              const T value, const T def)
+        {
+            if (field.optional_scalar)
+                fbb.template AddElement<T>(field.voffset, value);
+            else
+                fbb.template AddElement<T>(field.voffset, value, def);
+        }
     }//namespace detail
 
     // ── 编码 ────────────────────────────────────────────────────────────────
@@ -439,21 +463,21 @@ namespace hgl::serialize::fb
             {
                 bool b = false;
                 value->GetBool(b);
-                fbb.AddElement<uint8_t>(field.voffset, b ? 1u : 0u, 0);
+                detail::AddScalar<uint8_t>(fbb, field, static_cast<uint8_t>(b ? 1u : 0u), 0);
                 break;
             }
             case FbType::Int8:
             {
                 int64_t raw = 0;
                 value->GetInt(raw);
-                fbb.AddElement<int8_t>(field.voffset, static_cast<int8_t>(raw), 0);
+                detail::AddScalar<int8_t>(fbb, field, static_cast<int8_t>(raw), 0);
                 break;
             }
             case FbType::Int16:
             {
                 int64_t raw = 0;
                 value->GetInt(raw);
-                fbb.AddElement<int16_t>(field.voffset, static_cast<int16_t>(raw), 0);
+                detail::AddScalar<int16_t>(fbb, field, static_cast<int16_t>(raw), 0);
                 break;
             }
             case FbType::Int32:
@@ -462,56 +486,56 @@ namespace hgl::serialize::fb
                 const int64_t raw = field.type == FbType::Enum
                                         ? detail::ResolveEnumValue(*value, field)
                                         : [&] { int64_t v = 0; value->GetInt(v); return v; }();
-                fbb.AddElement<int32_t>(field.voffset, static_cast<int32_t>(raw), 0);
+                detail::AddScalar<int32_t>(fbb, field, static_cast<int32_t>(raw), 0);
                 break;
             }
             case FbType::Int64:
             {
                 int64_t raw = 0;
                 value->GetInt(raw);
-                fbb.AddElement<int64_t>(field.voffset, raw, 0);
+                detail::AddScalar<int64_t>(fbb, field, raw, 0);
                 break;
             }
             case FbType::UInt8:
             {
                 uint64_t raw = 0;
                 value->GetUInt(raw);
-                fbb.AddElement<uint8_t>(field.voffset, static_cast<uint8_t>(raw), 0);
+                detail::AddScalar<uint8_t>(fbb, field, static_cast<uint8_t>(raw), 0);
                 break;
             }
             case FbType::UInt16:
             {
                 uint64_t raw = 0;
                 value->GetUInt(raw);
-                fbb.AddElement<uint16_t>(field.voffset, static_cast<uint16_t>(raw), 0);
+                detail::AddScalar<uint16_t>(fbb, field, static_cast<uint16_t>(raw), 0);
                 break;
             }
             case FbType::UInt32:
             {
                 uint64_t raw = 0;
                 value->GetUInt(raw);
-                fbb.AddElement<uint32_t>(field.voffset, static_cast<uint32_t>(raw), 0);
+                detail::AddScalar<uint32_t>(fbb, field, static_cast<uint32_t>(raw), 0);
                 break;
             }
             case FbType::UInt64:
             {
                 uint64_t raw = 0;
                 value->GetUInt(raw);
-                fbb.AddElement<uint64_t>(field.voffset, raw, 0);
+                detail::AddScalar<uint64_t>(fbb, field, raw, 0);
                 break;
             }
             case FbType::Float:
             {
                 double raw = 0.0;
                 value->GetDouble(raw);
-                fbb.AddElement<float>(field.voffset, static_cast<float>(raw), 0.0f);
+                detail::AddScalar<float>(fbb, field, static_cast<float>(raw), 0.0f);
                 break;
             }
             case FbType::Double:
             {
                 double raw = 0.0;
                 value->GetDouble(raw);
-                fbb.AddElement<double>(field.voffset, raw, 0.0);
+                detail::AddScalar<double>(fbb, field, raw, 0.0);
                 break;
             }
             case FbType::Struct:
@@ -559,13 +583,15 @@ namespace hgl::serialize::fb
             // 与 TOML 的「缺键保留类内初始值」不同：FlatBuffers 是**完整快照**。
             // 标量字段即使等于 schema 缺省值（因此没写进缓冲）也必须覆盖目标，
             // 否则 C++ 类内初始值会盖过 schema 缺省值。
+            // 例外是 Presence<> 字段（optional_scalar）：它本身表达「用户是否显式设置」，
+            // 没写进缓冲就是缺席，必须如实反映到值树里（不给值树建键）。
             const bool is_scalar_field =
                 field.type != FbType::String && field.type != FbType::Table
                 && field.type != FbType::Struct && field.type != FbType::VectorScalar
                 && field.type != FbType::VectorString && field.type != FbType::VectorTable
                 && field.type != FbType::None;
 
-            if (!present && !is_scalar_field)
+            if (!present && (!is_scalar_field || field.optional_scalar))
                 continue;
 
             Value *slot = out.AddField(field.name, field.id);

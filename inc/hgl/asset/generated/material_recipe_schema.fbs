@@ -23,25 +23,25 @@ table RecipeTextureSpec
 // inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipePipelineSpec
 table RecipePipelineSpec
 {
-  cull_mode:int;
-  depth_test:bool;
-  depth_write:bool;
-  depth_compare_op:int;
-  alpha_blend:bool;
-  blend_src:int;
-  blend_dst:int;
-  dynamic_line_width:bool;
-  overlay:bool;
-  wireframe:bool;
-  line_width:float;
+  cull_mode:int = null;
+  depth_test:bool = null;
+  depth_write:bool = null;
+  depth_compare_op:int = null;
+  alpha_blend:bool = null;
+  blend_src:int = null;
+  blend_dst:int = null;
+  dynamic_line_width:bool = null;
+  overlay:bool = null;
+  wireframe:bool = null;
+  line_width:float = null;
 }
 
 // inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipeRenderStateSpec
 table RecipeRenderStateSpec
 {
-  alpha_test:bool;
-  alpha_cutoff:float;
-  dither:bool;
+  alpha_test:bool = null;
+  alpha_cutoff:float = null;
+  dither:bool = null;
   pipeline:RecipePipelineSpec;
 }
 
@@ -56,11 +56,11 @@ table RecipeFragmentSpec
 // inc/hgl/graph/asset/MaterialRecipeSpec.h -> RecipeTransformSpec
 table RecipeTransformSpec
 {
-  source:int;
-  mapping:int;
-  orientation:int;
-  scale:int;
-  projection:int;
+  source:int = null;
+  mapping:int = null;
+  orientation:int = null;
+  scale:int = null;
+  projection:int = null;
 }
 
 // inc/hgl/graph/asset/MaterialRecipeSpec.h -> MaterialRecipeSpec

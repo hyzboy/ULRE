@@ -33,22 +33,29 @@ aliases = ["view_model", "free", "look_at", "first_person"]
 # 精确匹配）。材质 TOML 的历史拼写完全由那张表决定，所以这里只声明「去哪转发」，
 # 不复制任何字面量——一个枚举的名字↔值全仓仍然只有一份实现。
 [[enum]]
-name        = "VkCullModeFlags"
-fq          = "::VkCullModeFlags"
+name        = "VkCullModeFlagBits"
+fq          = "::VkCullModeFlagBits"
 extern_from = "hgl::graph::mtl::ParseVkCullMode"
 extern_to   = "hgl::graph::mtl::GetVkCullModeName"
+# `VkCullModeFlags` 只是 `uint32_t` 的 typedef，若直接拿它挂 EnumTraits 会退化
+# 成 `EnumTraits<uint32_t>` 特化、误伤所有 uint32 字段；所以这里用真正的枚举
+# `VkCullModeFlagBits`，转发时经中转型换到拼写表要求的 `VkCullModeFlags`。
+extern_mediator = "::VkCullModeFlags"
+extern_include  = "hgl/mtl/VkEnumText.h"
 
 [[enum]]
 name        = "VkCompareOp"
 fq          = "::VkCompareOp"
 extern_from = "hgl::graph::mtl::ParseVkCompareOp"
 extern_to   = "hgl::graph::mtl::GetVkCompareOpName"
+extern_include = "hgl/mtl/VkEnumText.h"
 
 [[enum]]
 name        = "VkBlendFactor"
 fq          = "::VkBlendFactor"
 extern_from = "hgl::graph::mtl::ParseVkBlendFactor"
 extern_to   = "hgl::graph::mtl::GetVkBlendFactorName"
+extern_include = "hgl/mtl/VkEnumText.h"
 
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]

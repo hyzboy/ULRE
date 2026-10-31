@@ -81,6 +81,10 @@ hgl::serialize::Archive  ──►  hgl::serialize::Value（有序值树）
 | 读（FlatBuffers） | **完整快照**：标量字段一律覆盖（即使等于 schema 缺省值、未写进缓冲）；指针类字段缺失则保留类内初始值 |
 | 写 | 输出全部字段，保证 FlatBuffers 是完整快照 |
 
+`Presence<T>` 字段是「完整快照」的例外：它记录的是「作者是否显式设置过」，快照化会丢掉
+这一位。生成器把这类标量声明为 FlatBuffers **可选标量**（`.fbs` 的 `= null` +
+描述表 `optional_scalar`），编码无条件写入、解码「没写即缺席」。
+
 枚举在值树里以**名字字符串**保存（`EnumTraits<T>::ToName`），因此 TOML 输出可读；
 FlatBuffers 侧通过描述表挂的 `EnumFromNameFn` / `EnumToNameFn` 双向转换，
 整数写法的历史数据仍可读。

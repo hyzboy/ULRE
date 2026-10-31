@@ -232,6 +232,11 @@ class EnumInfo:
     # 外部枚举（如 Vulkan）：名字↔值已有唯一真源，生成器只转发、不复制拼写表。
     extern_from: str = ""
     extern_to: str = ""
+    # 转发目标所在的头文件（`hgl/...` 相对 `inc/`），必须声明，否则生成的转发调用无法编译。
+    extern_include: str = ""
+    # 转发目标接受的参数类型（`extern_from` 的 out 参数 / `extern_to` 的入参）。
+    # 只有在真源函数签名与本枚举类型不同（如 `VkCullModeFlagBits` ↔ `VkCullModeFlags`）时才需要。
+    extern_mediator: str = ""
 
     def toml_names(self) -> list[str]:
         return [
@@ -782,7 +787,10 @@ def render_fbs_schema(group: GroupConfig, structs: list[AssetStruct]) -> str:
                 continue
             t = prop.type
             if t.category in ("scalar", "enum"):
-                out.append(f"  {prop.toml_key}:{_fbs_elem_of(t)};\n")
+                if t.presence:
+                    out.append(f"  {prop.toml_key}:{_fbs_elem_of(t)} = null;\n")
+                else:
+                    out.append(f"  {prop.toml_key}:{_fbs_elem_of(t)};\n")
             elif t.category == "string":
                 out.append(f"  {prop.toml_key}:string;\n")
             elif t.category == "struct":
@@ -1121,12 +1129,27 @@ def render_serialize_header(structs: list[AssetStruct], enums: list[EnumInfo]) -
     for header in sorted({s.header for s in structs}):
         rel = header[len("inc/"):] if header.startswith("inc/") else header
         out.append(f"#include <{rel}>\n")
+    # 外部枚举的转发目标（如 `VkEnumText.h`）：生成代码直接调用它，必须显式包含。
+    for rel in sorted({i.extern_include for i in enums if i.extern_include}):
+        out.append(f"#include <{rel}>\n")
     out.append("\nnamespace hgl::asset::generated\n{\n")
 
     # 枚举名表（TOML 与 FB 的描述表都复用这一份）
     for info in enums:
         if info.extern_from and info.extern_to:
             # 外部枚举（Vulkan …）：拼写表已经有唯一真源，这里只转发，不复制。
+            if info.extern_mediator:
+                # 真源函数的参数类型 ≠ 本枚举类型：先转换再调用。
+                out.append(f"    inline const char *AssetEnumName_{info.name}(const {info.fq} v)\n"
+                           f"    {{ return {info.extern_to}(static_cast<{info.extern_mediator}>(v)); }}\n\n")
+                out.append(f"    inline bool AssetEnumParse_{info.name}(const char *s, {info.fq} &out)\n"
+                           "    {\n"
+                           f"        {info.extern_mediator} tmp = static_cast<{info.extern_mediator}>(out);\n"
+                           f"        if (!{info.extern_from}(s, tmp)) return false;\n"
+                           f"        out = static_cast<{info.fq}>(tmp);\n"
+                           "        return true;\n"
+                           "    }\n\n")
+                continue
             out.append(f"    inline const char *AssetEnumName_{info.name}(const {info.fq} v)\n"
                        f"    {{ return {info.extern_to}(v); }}\n\n")
             out.append(f"    inline bool AssetEnumParse_{info.name}(const char *s, {info.fq} &out)\n"
@@ -1237,14 +1260,19 @@ def render_codec_header(group: GroupConfig, structs: list[AssetStruct],
             t = prop.type
             key = prop.toml_key
             if t.category in ("scalar", "enum"):
+                # Presence<> 字段在 .fbs 里声明为「可选标量」，描述表也要打上
+                # optional_scalar，编码才会真写 0，解码才会把「没写」当缺席。
                 kind = fb_scalar_of(t)
                 if kind == "Enum":
-                    out.append(
-                        f'        {{{ordinal}, "{key}", fb::FbType::Enum, {vo}, fb::FbType::None, 0, '
-                        f'nullptr, &{t.cpp}_FbsFromName, &{t.cpp}_FbsToName}},\n'
+                    entry = (
+                        f'{{{ordinal}, "{key}", fb::FbType::Enum, {vo}, fb::FbType::None, 0, '
+                        f'nullptr, &{t.cpp}_FbsFromName, &{t.cpp}_FbsToName}}'
                     )
                 else:
-                    out.append(f'        {{{ordinal}, "{key}", fb::FbType::{kind}, {vo}}},\n')
+                    entry = f'{{{ordinal}, "{key}", fb::FbType::{kind}, {vo}}}'
+                if t.presence:
+                    entry = f"fb::OptScalar({entry})"
+                out.append(f"        {entry},\n")
             elif t.category == "string":
                 out.append(f'        {{{ordinal}, "{key}", fb::FbType::String, {vo}}},\n')
             elif t.category == "struct":
@@ -1392,11 +1420,16 @@ def main(argv: list[str]) -> int:
             continue
         if not entry.get("extern_to"):
             raise GenError(f"asset_gen.toml: 枚举 {entry['name']} 声明了 extern_from 却缺 extern_to")
+        if not entry.get("extern_include"):
+            raise GenError(f"asset_gen.toml: 枚举 {entry['name']} 声明了 extern_from 却缺 extern_include"
+                           "（生成代码要直接调用转发目标，必须知道它在哪个头文件里）")
         extern_enums[entry["name"]] = EnumInfo(
             name=entry["name"],
             fq=entry.get("fq") or f"::{entry['name']}",
             extern_from=extern_from,
             extern_to=entry["extern_to"],
+            extern_include=entry["extern_include"],
+            extern_mediator=entry.get("extern_mediator", ""),
         )
     registry.enums.update(extern_enums)
 

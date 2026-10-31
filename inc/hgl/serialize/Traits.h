@@ -94,6 +94,23 @@ namespace hgl::serialize
         static bool FromName(const char *, T &) { return false; }
     };
 
+    // ── `Presence<T>` 识别 ──────────────────────────────────────────────────
+
+    template <typename T>
+    struct Presence;
+
+    /// 判断一个字段类型是不是 `Presence<T>` 包装。`Archive::Field` 靠它决定
+    /// 是否要额外维护「键是否出现过」这一信息。
+    template <typename T>
+    struct IsPresence : std::false_type
+    {
+    };
+
+    template <typename T>
+    struct IsPresence<Presence<T>> : std::true_type
+    {
+    };
+
     // ── 结构体 ──────────────────────────────────────────────────────────────
 
     /**

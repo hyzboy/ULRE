@@ -161,6 +161,20 @@ else()
     message(STATUS "flatbuffers 未找到：跳过 TestAssetReflection（含 FlatBuffers 往返用例）")
 endif()
 
+# 材质配方规约（`*.recipe.toml`）的字段契约：`Presence<T>` 三态、枚举拼写、
+# 字符串数组 presence、局部覆盖往返与 FlatBuffers 往返。
+# 与 TestAssetReflection 一样是纯数据用例，用来挡住「改了 Spec 但忘记重新生成」
+# 与「生成器改坏了 Presence 语义」。
+if(flatbuffers_FOUND)
+    add_executable(TestMaterialRecipeCodec tests/TestMaterialRecipeCodec.cpp)
+    target_link_libraries(TestMaterialRecipeCodec PRIVATE ULRE::Engine flatbuffers::flatbuffers)
+    if(MSVC)
+        set_target_properties(TestMaterialRecipeCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+    endif()
+else()
+    message(STATUS "flatbuffers 未找到：跳过 TestMaterialRecipeCodec（含 FlatBuffers 往返用例）")
+endif()
+
 add_executable(TestComponentRows tests/TestComponentRows.cpp)
 target_link_libraries(TestComponentRows PRIVATE ULRE::Engine)
 if(MSVC)
@@ -309,6 +323,16 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestAssetReflection
         PROPERTIES LABELS "asset;reflection;codegen")
+
+    if(flatbuffers_FOUND)
+        add_test(
+            NAME TestMaterialRecipeCodec
+            COMMAND TestMaterialRecipeCodec
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+        set_tests_properties(
+            TestMaterialRecipeCodec
+            PROPERTIES LABELS "asset;recipe;codegen")
+    endif()
 
     add_test(
         NAME TestBoundingBoxStorage

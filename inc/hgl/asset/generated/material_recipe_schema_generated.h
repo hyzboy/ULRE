@@ -152,38 +152,38 @@ struct RecipePipelineSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table
     VT_WIREFRAME = 22,
     VT_LINE_WIDTH = 24
   };
-  int32_t cull_mode() const {
-    return GetField<int32_t>(VT_CULL_MODE, 0);
+  ::flatbuffers::Optional<int32_t> cull_mode() const {
+    return GetOptional<int32_t, int32_t>(VT_CULL_MODE);
   }
-  bool depth_test() const {
-    return GetField<uint8_t>(VT_DEPTH_TEST, 0) != 0;
+  ::flatbuffers::Optional<bool> depth_test() const {
+    return GetOptional<uint8_t, bool>(VT_DEPTH_TEST);
   }
-  bool depth_write() const {
-    return GetField<uint8_t>(VT_DEPTH_WRITE, 0) != 0;
+  ::flatbuffers::Optional<bool> depth_write() const {
+    return GetOptional<uint8_t, bool>(VT_DEPTH_WRITE);
   }
-  int32_t depth_compare_op() const {
-    return GetField<int32_t>(VT_DEPTH_COMPARE_OP, 0);
+  ::flatbuffers::Optional<int32_t> depth_compare_op() const {
+    return GetOptional<int32_t, int32_t>(VT_DEPTH_COMPARE_OP);
   }
-  bool alpha_blend() const {
-    return GetField<uint8_t>(VT_ALPHA_BLEND, 0) != 0;
+  ::flatbuffers::Optional<bool> alpha_blend() const {
+    return GetOptional<uint8_t, bool>(VT_ALPHA_BLEND);
   }
-  int32_t blend_src() const {
-    return GetField<int32_t>(VT_BLEND_SRC, 0);
+  ::flatbuffers::Optional<int32_t> blend_src() const {
+    return GetOptional<int32_t, int32_t>(VT_BLEND_SRC);
   }
-  int32_t blend_dst() const {
-    return GetField<int32_t>(VT_BLEND_DST, 0);
+  ::flatbuffers::Optional<int32_t> blend_dst() const {
+    return GetOptional<int32_t, int32_t>(VT_BLEND_DST);
   }
-  bool dynamic_line_width() const {
-    return GetField<uint8_t>(VT_DYNAMIC_LINE_WIDTH, 0) != 0;
+  ::flatbuffers::Optional<bool> dynamic_line_width() const {
+    return GetOptional<uint8_t, bool>(VT_DYNAMIC_LINE_WIDTH);
   }
-  bool overlay() const {
-    return GetField<uint8_t>(VT_OVERLAY, 0) != 0;
+  ::flatbuffers::Optional<bool> overlay() const {
+    return GetOptional<uint8_t, bool>(VT_OVERLAY);
   }
-  bool wireframe() const {
-    return GetField<uint8_t>(VT_WIREFRAME, 0) != 0;
+  ::flatbuffers::Optional<bool> wireframe() const {
+    return GetOptional<uint8_t, bool>(VT_WIREFRAME);
   }
-  float line_width() const {
-    return GetField<float>(VT_LINE_WIDTH, 0.0f);
+  ::flatbuffers::Optional<float> line_width() const {
+    return GetOptional<float, float>(VT_LINE_WIDTH);
   }
   template <bool B = false>
   bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
@@ -208,37 +208,37 @@ struct RecipePipelineSpecBuilder {
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
   void add_cull_mode(int32_t cull_mode) {
-    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_CULL_MODE, cull_mode, 0);
+    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_CULL_MODE, cull_mode);
   }
   void add_depth_test(bool depth_test) {
-    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_DEPTH_TEST, static_cast<uint8_t>(depth_test), 0);
+    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_DEPTH_TEST, static_cast<uint8_t>(depth_test));
   }
   void add_depth_write(bool depth_write) {
-    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_DEPTH_WRITE, static_cast<uint8_t>(depth_write), 0);
+    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_DEPTH_WRITE, static_cast<uint8_t>(depth_write));
   }
   void add_depth_compare_op(int32_t depth_compare_op) {
-    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_DEPTH_COMPARE_OP, depth_compare_op, 0);
+    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_DEPTH_COMPARE_OP, depth_compare_op);
   }
   void add_alpha_blend(bool alpha_blend) {
-    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_ALPHA_BLEND, static_cast<uint8_t>(alpha_blend), 0);
+    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_ALPHA_BLEND, static_cast<uint8_t>(alpha_blend));
   }
   void add_blend_src(int32_t blend_src) {
-    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_BLEND_SRC, blend_src, 0);
+    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_BLEND_SRC, blend_src);
   }
   void add_blend_dst(int32_t blend_dst) {
-    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_BLEND_DST, blend_dst, 0);
+    fbb_.AddElement<int32_t>(RecipePipelineSpec::VT_BLEND_DST, blend_dst);
   }
   void add_dynamic_line_width(bool dynamic_line_width) {
-    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_DYNAMIC_LINE_WIDTH, static_cast<uint8_t>(dynamic_line_width), 0);
+    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_DYNAMIC_LINE_WIDTH, static_cast<uint8_t>(dynamic_line_width));
   }
   void add_overlay(bool overlay) {
-    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_OVERLAY, static_cast<uint8_t>(overlay), 0);
+    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_OVERLAY, static_cast<uint8_t>(overlay));
   }
   void add_wireframe(bool wireframe) {
-    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_WIREFRAME, static_cast<uint8_t>(wireframe), 0);
+    fbb_.AddElement<uint8_t>(RecipePipelineSpec::VT_WIREFRAME, static_cast<uint8_t>(wireframe));
   }
   void add_line_width(float line_width) {
-    fbb_.AddElement<float>(RecipePipelineSpec::VT_LINE_WIDTH, line_width, 0.0f);
+    fbb_.AddElement<float>(RecipePipelineSpec::VT_LINE_WIDTH, line_width);
   }
   explicit RecipePipelineSpecBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -253,29 +253,29 @@ struct RecipePipelineSpecBuilder {
 
 inline ::flatbuffers::Offset<RecipePipelineSpec> CreateRecipePipelineSpec(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    int32_t cull_mode = 0,
-    bool depth_test = false,
-    bool depth_write = false,
-    int32_t depth_compare_op = 0,
-    bool alpha_blend = false,
-    int32_t blend_src = 0,
-    int32_t blend_dst = 0,
-    bool dynamic_line_width = false,
-    bool overlay = false,
-    bool wireframe = false,
-    float line_width = 0.0f) {
+    ::flatbuffers::Optional<int32_t> cull_mode = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<bool> depth_test = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<bool> depth_write = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<int32_t> depth_compare_op = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<bool> alpha_blend = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<int32_t> blend_src = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<int32_t> blend_dst = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<bool> dynamic_line_width = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<bool> overlay = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<bool> wireframe = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<float> line_width = ::flatbuffers::nullopt) {
   RecipePipelineSpecBuilder builder_(_fbb);
-  builder_.add_line_width(line_width);
-  builder_.add_blend_dst(blend_dst);
-  builder_.add_blend_src(blend_src);
-  builder_.add_depth_compare_op(depth_compare_op);
-  builder_.add_cull_mode(cull_mode);
-  builder_.add_wireframe(wireframe);
-  builder_.add_overlay(overlay);
-  builder_.add_dynamic_line_width(dynamic_line_width);
-  builder_.add_alpha_blend(alpha_blend);
-  builder_.add_depth_write(depth_write);
-  builder_.add_depth_test(depth_test);
+  if(line_width) { builder_.add_line_width(*line_width); }
+  if(blend_dst) { builder_.add_blend_dst(*blend_dst); }
+  if(blend_src) { builder_.add_blend_src(*blend_src); }
+  if(depth_compare_op) { builder_.add_depth_compare_op(*depth_compare_op); }
+  if(cull_mode) { builder_.add_cull_mode(*cull_mode); }
+  if(wireframe) { builder_.add_wireframe(*wireframe); }
+  if(overlay) { builder_.add_overlay(*overlay); }
+  if(dynamic_line_width) { builder_.add_dynamic_line_width(*dynamic_line_width); }
+  if(alpha_blend) { builder_.add_alpha_blend(*alpha_blend); }
+  if(depth_write) { builder_.add_depth_write(*depth_write); }
+  if(depth_test) { builder_.add_depth_test(*depth_test); }
   return builder_.Finish();
 }
 
@@ -287,14 +287,14 @@ struct RecipeRenderStateSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Ta
     VT_DITHER = 8,
     VT_PIPELINE = 10
   };
-  bool alpha_test() const {
-    return GetField<uint8_t>(VT_ALPHA_TEST, 0) != 0;
+  ::flatbuffers::Optional<bool> alpha_test() const {
+    return GetOptional<uint8_t, bool>(VT_ALPHA_TEST);
   }
-  float alpha_cutoff() const {
-    return GetField<float>(VT_ALPHA_CUTOFF, 0.0f);
+  ::flatbuffers::Optional<float> alpha_cutoff() const {
+    return GetOptional<float, float>(VT_ALPHA_CUTOFF);
   }
-  bool dither() const {
-    return GetField<uint8_t>(VT_DITHER, 0) != 0;
+  ::flatbuffers::Optional<bool> dither() const {
+    return GetOptional<uint8_t, bool>(VT_DITHER);
   }
   const hgl::asset::schema::RecipePipelineSpec *pipeline() const {
     return GetPointer<const hgl::asset::schema::RecipePipelineSpec *>(VT_PIPELINE);
@@ -316,13 +316,13 @@ struct RecipeRenderStateSpecBuilder {
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
   void add_alpha_test(bool alpha_test) {
-    fbb_.AddElement<uint8_t>(RecipeRenderStateSpec::VT_ALPHA_TEST, static_cast<uint8_t>(alpha_test), 0);
+    fbb_.AddElement<uint8_t>(RecipeRenderStateSpec::VT_ALPHA_TEST, static_cast<uint8_t>(alpha_test));
   }
   void add_alpha_cutoff(float alpha_cutoff) {
-    fbb_.AddElement<float>(RecipeRenderStateSpec::VT_ALPHA_CUTOFF, alpha_cutoff, 0.0f);
+    fbb_.AddElement<float>(RecipeRenderStateSpec::VT_ALPHA_CUTOFF, alpha_cutoff);
   }
   void add_dither(bool dither) {
-    fbb_.AddElement<uint8_t>(RecipeRenderStateSpec::VT_DITHER, static_cast<uint8_t>(dither), 0);
+    fbb_.AddElement<uint8_t>(RecipeRenderStateSpec::VT_DITHER, static_cast<uint8_t>(dither));
   }
   void add_pipeline(::flatbuffers::Offset<hgl::asset::schema::RecipePipelineSpec> pipeline) {
     fbb_.AddOffset(RecipeRenderStateSpec::VT_PIPELINE, pipeline);
@@ -340,15 +340,15 @@ struct RecipeRenderStateSpecBuilder {
 
 inline ::flatbuffers::Offset<RecipeRenderStateSpec> CreateRecipeRenderStateSpec(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    bool alpha_test = false,
-    float alpha_cutoff = 0.0f,
-    bool dither = false,
+    ::flatbuffers::Optional<bool> alpha_test = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<float> alpha_cutoff = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<bool> dither = ::flatbuffers::nullopt,
     ::flatbuffers::Offset<hgl::asset::schema::RecipePipelineSpec> pipeline = 0) {
   RecipeRenderStateSpecBuilder builder_(_fbb);
   builder_.add_pipeline(pipeline);
-  builder_.add_alpha_cutoff(alpha_cutoff);
-  builder_.add_dither(dither);
-  builder_.add_alpha_test(alpha_test);
+  if(alpha_cutoff) { builder_.add_alpha_cutoff(*alpha_cutoff); }
+  if(dither) { builder_.add_dither(*dither); }
+  if(alpha_test) { builder_.add_alpha_test(*alpha_test); }
   return builder_.Finish();
 }
 
@@ -443,20 +443,20 @@ struct RecipeTransformSpec FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Tabl
     VT_SCALE = 10,
     VT_PROJECTION = 12
   };
-  int32_t source() const {
-    return GetField<int32_t>(VT_SOURCE, 0);
+  ::flatbuffers::Optional<int32_t> source() const {
+    return GetOptional<int32_t, int32_t>(VT_SOURCE);
   }
-  int32_t mapping() const {
-    return GetField<int32_t>(VT_MAPPING, 0);
+  ::flatbuffers::Optional<int32_t> mapping() const {
+    return GetOptional<int32_t, int32_t>(VT_MAPPING);
   }
-  int32_t orientation() const {
-    return GetField<int32_t>(VT_ORIENTATION, 0);
+  ::flatbuffers::Optional<int32_t> orientation() const {
+    return GetOptional<int32_t, int32_t>(VT_ORIENTATION);
   }
-  int32_t scale() const {
-    return GetField<int32_t>(VT_SCALE, 0);
+  ::flatbuffers::Optional<int32_t> scale() const {
+    return GetOptional<int32_t, int32_t>(VT_SCALE);
   }
-  int32_t projection() const {
-    return GetField<int32_t>(VT_PROJECTION, 0);
+  ::flatbuffers::Optional<int32_t> projection() const {
+    return GetOptional<int32_t, int32_t>(VT_PROJECTION);
   }
   template <bool B = false>
   bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
@@ -475,19 +475,19 @@ struct RecipeTransformSpecBuilder {
   ::flatbuffers::FlatBufferBuilder &fbb_;
   ::flatbuffers::uoffset_t start_;
   void add_source(int32_t source) {
-    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_SOURCE, source, 0);
+    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_SOURCE, source);
   }
   void add_mapping(int32_t mapping) {
-    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_MAPPING, mapping, 0);
+    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_MAPPING, mapping);
   }
   void add_orientation(int32_t orientation) {
-    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_ORIENTATION, orientation, 0);
+    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_ORIENTATION, orientation);
   }
   void add_scale(int32_t scale) {
-    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_SCALE, scale, 0);
+    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_SCALE, scale);
   }
   void add_projection(int32_t projection) {
-    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_PROJECTION, projection, 0);
+    fbb_.AddElement<int32_t>(RecipeTransformSpec::VT_PROJECTION, projection);
   }
   explicit RecipeTransformSpecBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -502,17 +502,17 @@ struct RecipeTransformSpecBuilder {
 
 inline ::flatbuffers::Offset<RecipeTransformSpec> CreateRecipeTransformSpec(
     ::flatbuffers::FlatBufferBuilder &_fbb,
-    int32_t source = 0,
-    int32_t mapping = 0,
-    int32_t orientation = 0,
-    int32_t scale = 0,
-    int32_t projection = 0) {
+    ::flatbuffers::Optional<int32_t> source = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<int32_t> mapping = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<int32_t> orientation = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<int32_t> scale = ::flatbuffers::nullopt,
+    ::flatbuffers::Optional<int32_t> projection = ::flatbuffers::nullopt) {
   RecipeTransformSpecBuilder builder_(_fbb);
-  builder_.add_projection(projection);
-  builder_.add_scale(scale);
-  builder_.add_orientation(orientation);
-  builder_.add_mapping(mapping);
-  builder_.add_source(source);
+  if(projection) { builder_.add_projection(*projection); }
+  if(scale) { builder_.add_scale(*scale); }
+  if(orientation) { builder_.add_orientation(*orientation); }
+  if(mapping) { builder_.add_mapping(*mapping); }
+  if(source) { builder_.add_source(*source); }
   return builder_.Finish();
 }
 

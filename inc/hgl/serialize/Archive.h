@@ -157,7 +157,29 @@ namespace hgl::serialize
 
             using U = std::remove_cv_t<T>;
 
-            if (write_)
+            // `Presence<T>` 字段：在普通字段处理之外，额外记录「输入里有没有这
+            // 个键」。放在这里而不是单独重载，是因为 `Field(T&)` 与
+            // `Field(const Presence<T>&)` 的重载排序在 MSVC 上并不稳定。
+            if constexpr (IsPresence<U>::value)
+            {
+                if (write_)
+                {
+                    // 没出现过的键不写出：这样「只写与默认不同的键」的资产写出
+                    // 去还是同样的最小形态，往返一次不会膨胀成整份显式声明。
+                    if (!value.present)
+                        return;
+                }
+                else if (read_)
+                {
+                    value.present = (read_->FindField(name, id) != nullptr);
+                }
+
+                // 值本身走普通字段处理；`present` 是输入侧的观察结果，不属于
+                // 快照内容。
+                Field(id, name, value.value);
+                return;
+            }
+            else if (write_)
             {
                 Value *node = write_->AddField(name, id);
                 if (!node)
@@ -168,8 +190,7 @@ namespace hgl::serialize
                 WriteValue(*node, static_cast<const U &>(value), name);
                 return;
             }
-
-            if (read_)
+            else if (read_)
             {
                 const Value *node = read_->FindField(name, id);
                 // 缺键不是错误：保留 C++ 类内缺省值（与既有 TOML 语义一致）。
@@ -180,31 +201,6 @@ namespace hgl::serialize
                 if (!ReadValue(*node, target))
                     Fail(name, "字段类型或取值不合法");
             }
-        }
-
-        /**
-         * `Presence<T>` 字段：在普通字段处理之外，额外记录「输入里有没有这个键」。
-         *
-         * 比通用 `Field` 更特化，因此生成代码里对 `Presence<T>` 字段的调用自动
-         * 落到这里，字段声明处无需任何额外标注。
-         */
-        template <typename T>
-        void Field(const uint32_t id, const char *name, const Presence<T> &value)
-        {
-            if (write_)
-            {
-                // 没出现过的键不写出：这样「只写与默认不同的键」的资产写出去还是
-                // 同样的最小形态，往返一次不会膨胀成整份显式声明。
-                if (!value.present)
-                    return;
-            }
-            else
-            {
-                value.present = (read_ && read_->FindField(name, id) != nullptr);
-            }
-
-            // 值本身走普通字段处理；`present` 是输入侧的观察结果，不属于快照内容。
-            Field(id, name, value.value);
         }
 
         /// 手动上报一次失败（供业务层补充跨字段校验）。
@@ -300,6 +296,9 @@ namespace hgl::serialize
             }
             else if constexpr (std::is_same_v<U, bool>)
             {
+                // TOML 里 `1` 不是布尔：布尔字段只接受布尔节点，与既有解析器口径一致。
+                if (!node.IsBool())
+                    return false;
                 return node.GetBool(out);
             }
             else if constexpr (std::is_enum_v<U>)
@@ -308,6 +307,10 @@ namespace hgl::serialize
             }
             else if constexpr (std::is_integral_v<U>)
             {
+                // 布尔不是数字：避免 `field = true` 被静默当成 1。
+                if (node.IsBool())
+                    return false;
+
                 if constexpr (std::is_signed_v<U>)
                 {
                     int64_t raw = 0;
@@ -342,6 +345,10 @@ namespace hgl::serialize
             }
             else if constexpr (std::is_floating_point_v<U>)
             {
+                // 布尔不是数字：避免 `field = true` 被静默当成 1.0。
+                if (node.IsBool())
+                    return false;
+
                 double raw = 0.0;
                 if (!node.GetDouble(raw))
                     return false;

@@ -86,7 +86,7 @@ namespace hgl::graph::mtl
     struct HGL_ASSET_STRUCT RecipePipelineSpec
     {
         HGL_PROPERTY(EditAnywhere, Category = "Pipeline")
-        hgl::serialize::Presence<VkCullModeFlags> cull_mode;
+        hgl::serialize::Presence<VkCullModeFlagBits> cull_mode;
 
         HGL_PROPERTY(EditAnywhere, Category = "Pipeline")
         hgl::serialize::Presence<bool> depth_test;

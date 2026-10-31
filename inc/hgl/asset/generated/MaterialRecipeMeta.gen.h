@@ -36,7 +36,7 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_RecipePipelineSpec[] =
     {
-        { "cull_mode", "cull_mode", "cull_mode", "Pipeline", "", "hgl::serialize::Presence<VkCullModeFlags>", "::VkCullModeFlags", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, (uint32_t)sizeof(::VkCullModeFlags), 0u, 0.0, 0.0, 0.0, nullptr },
+        { "cull_mode", "cull_mode", "cull_mode", "Pipeline", "", "hgl::serialize::Presence<VkCullModeFlagBits>", "::VkCullModeFlagBits", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, (uint32_t)sizeof(::VkCullModeFlagBits), 0u, 0.0, 0.0, 0.0, nullptr },
         { "depth_test", "depth_test", "depth_test", "Pipeline", "", "hgl::serialize::Presence<bool>", nullptr, nullptr, PropertyKind::Bool, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, (uint32_t)sizeof(bool), 0u, 0.0, 0.0, 0.0, nullptr },
         { "depth_write", "depth_write", "depth_write", "Pipeline", "", "hgl::serialize::Presence<bool>", nullptr, nullptr, PropertyKind::Bool, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 10u, (uint32_t)sizeof(bool), 0u, 0.0, 0.0, 0.0, nullptr },
         { "depth_compare_op", "depth_compare_op", "depth_compare_op", "Pipeline", "", "hgl::serialize::Presence<VkCompareOp>", "::VkCompareOp", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 12u, (uint32_t)sizeof(::VkCompareOp), 0u, 0.0, 0.0, 0.0, nullptr },

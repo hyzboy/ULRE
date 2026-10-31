@@ -96,17 +96,17 @@ namespace hgl::asset::generated
         return hgl::asset::generated::AssetEnumName_MaterialDomain(static_cast<hgl::graph::mtl::MaterialDomain>(v));
     }
 
-    inline bool VkCullModeFlags_FbsFromName(const char *s, int64_t &out)
+    inline bool VkCullModeFlagBits_FbsFromName(const char *s, int64_t &out)
     {
-        ::VkCullModeFlags v{};
-        if (!hgl::asset::generated::AssetEnumParse_VkCullModeFlags(s, v)) return false;
+        ::VkCullModeFlagBits v{};
+        if (!hgl::asset::generated::AssetEnumParse_VkCullModeFlagBits(s, v)) return false;
         out = static_cast<int64_t>(v);
         return true;
     }
 
-    inline const char *VkCullModeFlags_FbsToName(const int64_t v)
+    inline const char *VkCullModeFlagBits_FbsToName(const int64_t v)
     {
-        return hgl::asset::generated::AssetEnumName_VkCullModeFlags(static_cast<::VkCullModeFlags>(v));
+        return hgl::asset::generated::AssetEnumName_VkCullModeFlagBits(static_cast<::VkCullModeFlagBits>(v));
     }
 
     inline bool VkCompareOp_FbsFromName(const char *s, int64_t &out)
@@ -145,24 +145,24 @@ namespace hgl::asset::generated
     inline const fb::TableDesc RecipeTextureSpec_fbs = {"RecipeTextureSpec", RecipeTextureSpec_fbs_fields, 5};
 
     inline const fb::FieldDesc RecipePipelineSpec_fbs_fields[] = {
-        {1, "cull_mode", fb::FbType::Enum, 4, fb::FbType::None, 0, nullptr, &VkCullModeFlags_FbsFromName, &VkCullModeFlags_FbsToName},
-        {2, "depth_test", fb::FbType::Bool, 6},
-        {3, "depth_write", fb::FbType::Bool, 8},
-        {4, "depth_compare_op", fb::FbType::Enum, 10, fb::FbType::None, 0, nullptr, &VkCompareOp_FbsFromName, &VkCompareOp_FbsToName},
-        {5, "alpha_blend", fb::FbType::Bool, 12},
-        {6, "blend_src", fb::FbType::Enum, 14, fb::FbType::None, 0, nullptr, &VkBlendFactor_FbsFromName, &VkBlendFactor_FbsToName},
-        {7, "blend_dst", fb::FbType::Enum, 16, fb::FbType::None, 0, nullptr, &VkBlendFactor_FbsFromName, &VkBlendFactor_FbsToName},
-        {8, "dynamic_line_width", fb::FbType::Bool, 18},
-        {9, "overlay", fb::FbType::Bool, 20},
-        {10, "wireframe", fb::FbType::Bool, 22},
-        {11, "line_width", fb::FbType::Float, 24},
+        fb::OptScalar({1, "cull_mode", fb::FbType::Enum, 4, fb::FbType::None, 0, nullptr, &VkCullModeFlagBits_FbsFromName, &VkCullModeFlagBits_FbsToName}),
+        fb::OptScalar({2, "depth_test", fb::FbType::Bool, 6}),
+        fb::OptScalar({3, "depth_write", fb::FbType::Bool, 8}),
+        fb::OptScalar({4, "depth_compare_op", fb::FbType::Enum, 10, fb::FbType::None, 0, nullptr, &VkCompareOp_FbsFromName, &VkCompareOp_FbsToName}),
+        fb::OptScalar({5, "alpha_blend", fb::FbType::Bool, 12}),
+        fb::OptScalar({6, "blend_src", fb::FbType::Enum, 14, fb::FbType::None, 0, nullptr, &VkBlendFactor_FbsFromName, &VkBlendFactor_FbsToName}),
+        fb::OptScalar({7, "blend_dst", fb::FbType::Enum, 16, fb::FbType::None, 0, nullptr, &VkBlendFactor_FbsFromName, &VkBlendFactor_FbsToName}),
+        fb::OptScalar({8, "dynamic_line_width", fb::FbType::Bool, 18}),
+        fb::OptScalar({9, "overlay", fb::FbType::Bool, 20}),
+        fb::OptScalar({10, "wireframe", fb::FbType::Bool, 22}),
+        fb::OptScalar({11, "line_width", fb::FbType::Float, 24}),
     };
     inline const fb::TableDesc RecipePipelineSpec_fbs = {"RecipePipelineSpec", RecipePipelineSpec_fbs_fields, 11};
 
     inline const fb::FieldDesc RecipeRenderStateSpec_fbs_fields[] = {
-        {1, "alpha_test", fb::FbType::Bool, 4},
-        {2, "alpha_cutoff", fb::FbType::Float, 6},
-        {3, "dither", fb::FbType::Bool, 8},
+        fb::OptScalar({1, "alpha_test", fb::FbType::Bool, 4}),
+        fb::OptScalar({2, "alpha_cutoff", fb::FbType::Float, 6}),
+        fb::OptScalar({3, "dither", fb::FbType::Bool, 8}),
         {4, "pipeline", fb::FbType::Table, 10, fb::FbType::None, 0, &RecipePipelineSpec_fbs},
     };
     inline const fb::TableDesc RecipeRenderStateSpec_fbs = {"RecipeRenderStateSpec", RecipeRenderStateSpec_fbs_fields, 4};
@@ -175,11 +175,11 @@ namespace hgl::asset::generated
     inline const fb::TableDesc RecipeFragmentSpec_fbs = {"RecipeFragmentSpec", RecipeFragmentSpec_fbs_fields, 3};
 
     inline const fb::FieldDesc RecipeTransformSpec_fbs_fields[] = {
-        {1, "source", fb::FbType::Enum, 4, fb::FbType::None, 0, nullptr, &VertexInputMode_FbsFromName, &VertexInputMode_FbsToName},
-        {2, "mapping", fb::FbType::Enum, 6, fb::FbType::None, 0, nullptr, &PositionMappingMode_FbsFromName, &PositionMappingMode_FbsToName},
-        {3, "orientation", fb::FbType::Enum, 8, fb::FbType::None, 0, nullptr, &OrientationMode_FbsFromName, &OrientationMode_FbsToName},
-        {4, "scale", fb::FbType::Enum, 10, fb::FbType::None, 0, nullptr, &ScaleMode_FbsFromName, &ScaleMode_FbsToName},
-        {5, "projection", fb::FbType::Enum, 12, fb::FbType::None, 0, nullptr, &ProjectionMode_FbsFromName, &ProjectionMode_FbsToName},
+        fb::OptScalar({1, "source", fb::FbType::Enum, 4, fb::FbType::None, 0, nullptr, &VertexInputMode_FbsFromName, &VertexInputMode_FbsToName}),
+        fb::OptScalar({2, "mapping", fb::FbType::Enum, 6, fb::FbType::None, 0, nullptr, &PositionMappingMode_FbsFromName, &PositionMappingMode_FbsToName}),
+        fb::OptScalar({3, "orientation", fb::FbType::Enum, 8, fb::FbType::None, 0, nullptr, &OrientationMode_FbsFromName, &OrientationMode_FbsToName}),
+        fb::OptScalar({4, "scale", fb::FbType::Enum, 10, fb::FbType::None, 0, nullptr, &ScaleMode_FbsFromName, &ScaleMode_FbsToName}),
+        fb::OptScalar({5, "projection", fb::FbType::Enum, 12, fb::FbType::None, 0, nullptr, &ProjectionMode_FbsFromName, &ProjectionMode_FbsToName}),
     };
     inline const fb::TableDesc RecipeTransformSpec_fbs = {"RecipeTransformSpec", RecipeTransformSpec_fbs_fields, 5};
 
