@@ -1,5 +1,7 @@
 #include <hgl/mtl/MaterialRecipeFile.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
+#include <hgl/graph/module/TextureManager.h>
+#include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -14,7 +16,7 @@ namespace
     constexpr char kValidRecipe[] =
         "schema = 1\n"
         "name = \"RecipeParser.Valid\"\n"
-        "material_definition = \"UnlitTexture\"\n"
+        "material_definition = \"unlit_texture\"\n"
         "\n"
         "[transform]\n"
         "source = \"Vec2Position\"\n"
@@ -104,13 +106,13 @@ namespace
         constexpr char kUnknownKeyRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.UnknownKey\"\n"
-            "material_definition = \"UnlitTexture\"\n"
+            "material_definition = \"unlit_texture\"\n"
             "matreial_definition = \"typo\"\n";
 
         constexpr char kUnknownNestedKeyRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.UnknownNestedKey\"\n"
-            "material_definition = \"UnlitTexture\"\n"
+            "material_definition = \"unlit_texture\"\n"
             "\n"
             "[transform]\n"
             "maping = \"LiftXY_XY0\"\n";
@@ -143,7 +145,7 @@ namespace
         constexpr char kInvalidTransformRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.InvalidTransform\"\n"
-            "material_definition = \"UnlitTexture\"\n"
+            "material_definition = \"unlit_texture\"\n"
             "\n"
             "[transform]\n"
             "projection = \"Orthographic2D\"\n";
@@ -166,7 +168,7 @@ namespace
         constexpr char kPartialPipelineRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.PartialPipeline\"\n"
-            "material_definition = \"UnlitTexture\"\n"
+            "material_definition = \"unlit_texture\"\n"
             "\n"
             "[render_state.pipeline]\n"
             "cull_mode = \"None\"\n";
@@ -185,7 +187,7 @@ namespace
         constexpr char kMaterialDataRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.MaterialData\"\n"
-            "material_definition = \"Lit\"\n"
+            "material_definition = \"lit\"\n"
             "\n"
             "[material_data]\n"
             "roughness = 0.5\n";
@@ -203,7 +205,7 @@ namespace
         constexpr char kRegistryRecipe[] =
             "schema = 1\n"
             "name = \"RecipeParser.Registry\"\n"
-            "material_definition = \"UnlitTexture\"\n";
+            "material_definition = \"unlit_texture\"\n";
 
         MaterialRecipeRegistry registry;
         if (!registry.RegisterRecipeSource(
@@ -239,7 +241,7 @@ namespace
         constexpr char kUnknownSlot[] =
             "schema = 1\n"
             "name = \"RecipeParser.UnknownSlot\"\n"
-            "material_definition = \"UnlitTexture\"\n"
+            "material_definition = \"unlit_texture\"\n"
             "\n"
             "[[textures]]\n"
             "name = \"not_declared\"\n"
@@ -276,23 +278,51 @@ namespace
          || !pbr_spheres.recipe.render_state_overrides.has_pipeline_config)
             return false;
 
+        hgl::graph::TextureManager texture_manager(nullptr);
         MaterialRecipeRegistry example_registry;
+        if (!example_registry.LoadFile(
+                OS_TEXT("ShaderLibrary/asset/recipe/PBRSpheres.recipe.toml"), &texture_manager)
+         || !example_registry.FindByName("PBRSpheres.Lit")
+         || !example_registry.LoadFile(
+                OS_TEXT("ShaderLibrary/asset/recipe/TextureQuad.recipe.toml"), &texture_manager)
+         || !example_registry.FindByName("TextureQuad.UnlitTexture"))
+        {
+            example_registry.Clear();
+            texture_manager.Release();
+            return false;
+        }
+
         int registered_file_count = 0;
         int error_count = 0;
         const bool loaded = example_registry.LoadDirectory(
                    OS_TEXT("ShaderLibrary/asset/recipe/Examples"),
-                   nullptr,
+                   &texture_manager,
                    &registered_file_count,
                    &error_count);
-        if (!loaded || registered_file_count <= 0 || error_count != 0
-         || example_registry.GetCount() != registered_file_count)
+        const bool valid = loaded && registered_file_count > 0 && error_count == 0
+                        && example_registry.GetCount() == registered_file_count + 2;
+        if (!valid)
         {
             GLogError("example recipe registry mismatch: load=%d registered=%d errors=%d stored=%d",
                       loaded, registered_file_count, error_count,
                       example_registry.GetCount());
-            return false;
         }
-        return true;
+        example_registry.Clear();
+        texture_manager.Release();
+        return valid;
+    }
+
+    bool CheckLookupFailures()
+    {
+        hgl::graph::GraphicsContext graphics(nullptr);
+        if (graphics.LoadMaterialRecipeDirectory(
+                OS_TEXT("ShaderLibrary/asset/recipe/__missing_recipe_directory__")))
+            return false;
+        if (graphics.FindOrLoadMaterialRecipe("") != nullptr)
+            return false;
+        if (!graphics.FindOrLoadMaterialRecipe("PBRSpheres.Lit"))
+            return false;
+        return graphics.FindOrLoadMaterialRecipe("RecipeParser.Nonexistent") == nullptr;
     }
 }
 
@@ -336,6 +366,11 @@ int main(int argc, char **argv)
     {
         GLogError(u8"TestMaterialRecipeFile failed: example TOML asset parsing");
         return 7;
+    }
+    if (!CheckLookupFailures())
+    {
+        GLogError(u8"TestMaterialRecipeFile failed: lookup failure diagnostics");
+        return 8;
     }
 
     GLogInfo(u8"TestMaterialRecipeFile passed");

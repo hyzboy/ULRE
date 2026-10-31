@@ -18,6 +18,7 @@
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/type/StdString.h>
+#include <hgl/log/Log.h>
 
 #include "../gizmo/GizmoInternal.h"
 
@@ -64,7 +65,10 @@ namespace hgl::graph
         const char *name)
     {
         if (!name || !name[0])
+        {
+            GLogError(u8"[GraphicsContext] 无法查找材质配方：名称为空");
             return nullptr;
+        }
 
         if (const mtl::MaterialRecipe *recipe =
                 material_recipe_registry_.FindByName(name))
@@ -72,14 +76,37 @@ namespace hgl::graph
 
         if (!default_material_recipes_loaded_)
         {
-            if (!LoadMaterialRecipeDirectory(
-                    OS_TEXT("ShaderLibrary/asset/recipe/")))
+            const OSString recipe_directory =
+                (filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
+                 / OSString(OS_TEXT("asset/recipe"))).ToOSString();
+            int loaded_count = 0;
+            int error_count = 0;
+            if (!LoadMaterialRecipeDirectory(recipe_directory, &loaded_count, &error_count))
+            {
+                GLogError(u8"[GraphicsContext] 加载默认材质配方目录失败: recipe=%s directory=%ls",
+                          name, recipe_directory.c_str());
                 return nullptr;
+            }
+
+            if (error_count)
+                GLogWarning(u8"[GraphicsContext] 部分材质配方加载失败: directory=%ls loaded=%d errors=%d",
+                            recipe_directory.c_str(), loaded_count, error_count);
 
             default_material_recipes_loaded_ = true;
         }
 
-        return material_recipe_registry_.FindByName(name);
+        const mtl::MaterialRecipe *recipe = material_recipe_registry_.FindByName(name);
+        if (!recipe)
+        {
+            GLogError(u8"[GraphicsContext] 材质配方未找到: recipe=%s registered=%d",
+                      name, material_recipe_registry_.GetCount());
+        }
+        else
+        {
+            GLogDebug(u8"[GraphicsContext] 材质配方已解析: recipe=%s definition=%s",
+                      name, recipe->mtl_def_id.c_str());
+        }
+        return recipe;
     }
 
     bool GraphicsContext::Initialize()

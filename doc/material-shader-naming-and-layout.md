@@ -261,6 +261,8 @@
 
 ### 5.3 配方名（R7）
 
+> **后续修正**：`PBRSpheres.Lit` 和 `TextureQuad.UnlitTexture` 是示例及外部资产使用的配方名，迁移时改名导致查找失败。现已恢复这两个名称，文件名保留不变，作为文件名与 `name` 不一致的两个例外。以下为原迁移计划与历史记录。
+
 - **强制**：62 个配方的 `name` 必须等于文件名去 `.recipe.toml`。修 2 个例外：
   - `recipes/PBRSpheres.recipe.toml`：`name` `PBRSpheres.Lit` → `PBRSpheres`
   - `recipes/TextureQuad.recipe.toml`：`name` `TextureQuad.UnlitTexture` → `TextureQuad`

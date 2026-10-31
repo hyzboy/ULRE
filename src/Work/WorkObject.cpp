@@ -8,6 +8,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/time/Time.h>
+#include<hgl/log/Log.h>
 //#include<iostream>
 
 namespace hgl
@@ -20,7 +21,13 @@ namespace hgl
     const graph::mtl::MaterialRecipe *WorkObject::GetRecipe(const char *name)
     {
         auto *graphics = GetGraphicsContext();
-        return graphics ? graphics->FindOrLoadMaterialRecipe(name) : nullptr;
+        if (!graphics)
+        {
+            GLogError(u8"[WorkObject] 无法查找材质配方：GraphicsContext 未就绪 recipe=%s",
+                      name ? name : "<null>");
+            return nullptr;
+        }
+        return graphics->FindOrLoadMaterialRecipe(name);
     }
 
     bool WorkObject::LoadRecipeFile(const OSString &path)

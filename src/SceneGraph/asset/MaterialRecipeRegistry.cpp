@@ -2,6 +2,7 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 
 #include <hgl/filesystem/FileSystem.h>
+#include <hgl/filesystem/Path.h>
 #include <hgl/graph/asset/TextureAsset.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/io/FileInputStream.h>
@@ -110,7 +111,14 @@ namespace hgl::graph::mtl
         }
 
         NormalizeRecipe(data.recipe);
-        return IsRecipeNormalized(data.recipe);
+        if (!IsRecipeNormalized(data.recipe))
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 配方规范化失败: recipe=%s definition=%s",
+                      data.recipe.recipe_name.c_str(),
+                      data.recipe.mtl_def_id.c_str());
+            return false;
+        }
+        return true;
     }
 
     bool MaterialRecipeRegistry::LoadFile(
@@ -152,11 +160,22 @@ namespace hgl::graph::mtl
         int *out_file_count,
         int *out_error_count)
     {
+        if (!hgl::filesystem::Path(directory).IsDirectory())
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 配方目录不存在或不可访问: %ls",
+                      directory.c_str());
+            return false;
+        }
+
         hgl::ValueArray<hgl::filesystem::FileInfo> file_list;
         const int scan_count = hgl::filesystem::GetFileInfoList(
             file_list, directory, true, true, true);
         if (scan_count < 0)
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 配方目录扫描失败: %ls (result=%d)",
+                      directory.c_str(), scan_count);
             return false;
+        }
 
         int file_count = 0;
         int error_count = 0;
@@ -176,6 +195,8 @@ namespace hgl::graph::mtl
             *out_file_count = file_count;
         if (out_error_count)
             *out_error_count = error_count;
+        GLogInfo(u8"[MaterialRecipeRegistry] 配方目录加载完成: directory=%ls loaded=%d errors=%d total=%d",
+                 directory.c_str(), file_count, error_count, files.GetCount());
         return true;
     }
 
@@ -187,7 +208,11 @@ namespace hgl::graph::mtl
     {
         MaterialRecipeFileData *data = files.Create();
         if (!data)
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 无法分配配方记录: source=%ls",
+                      label ? label : OS_TEXT("<memory>"));
             return false;
+        }
 
         const MaterialRecipeFileParseResult parse_result =
             ParseMaterialRecipeFile(content, content_size, *data);
@@ -217,6 +242,10 @@ namespace hgl::graph::mtl
 
         if (!ResolveAndValidate(*data, texture_manager))
         {
+            GLogError(u8"[MaterialRecipeRegistry] 配方校验失败: source=%ls recipe=%s definition=%s",
+                      label ? label : OS_TEXT("<memory>"),
+                      data->recipe.recipe_name.c_str(),
+                      data->recipe.mtl_def_id.c_str());
             files.DeleteAt(files.GetCount() - 1);
             return false;
         }

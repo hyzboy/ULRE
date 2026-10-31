@@ -46,8 +46,9 @@ namespace
             return true;
 
         // 显式诊断：材质 ID 配置错误不应静默消失（fallback 只是运行时安全网）
-        GLogError(u8"[ShaderProgramManager] material definition not found: %s — falling back to %s",
-                  mtl_def_id.c_str(), mtl::GetFallbackMaterialDefinitionID());
+        GLogError(u8"[ShaderProgramManager] material definition not found: recipe=%s definition=%s — falling back to %s",
+                  request.recipe.recipe_name.c_str(), mtl_def_id.c_str(),
+                  mtl::GetFallbackMaterialDefinitionID());
 
         return mtl::TryGetMaterialDefinitionByID(
             mtl::GetFallbackMaterialDefinitionID(), out_bmi);
@@ -761,7 +762,12 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     mtl::MaterialDefinition definition{};
     mtl::MaterialDefinitionBuildRequest resolved_request{};
     if (!ResolveBuildRequest(normalized_request, definition, resolved_request))
+    {
+        GLogError(u8"[ShaderProgramManager] material build request resolution failed: recipe=%s definition=%s",
+                  normalized_request.recipe.recipe_name.c_str(),
+                  normalized_request.recipe.mtl_def_id.c_str());
         return nullptr;
+    }
 
     const mtl::contract::PhysicalDeviceProfileLite *profile =
         GetPhysicalDeviceProfile();
@@ -787,7 +793,8 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         // 发行形态且尚未装 Manifest 后端时走到这里：明确报错，不能静默降级，
         // 否则会让「换个设备就少一批材质」变成难以定位的现象。
         GLogError("[ShaderProgramManager] No shader program build backend installed; "
-                  "cannot build program for material id=%s name=%s",
+                  "cannot build program for recipe=%s material id=%s name=%s",
+                  normalized_request.recipe.recipe_name.c_str(),
                   definition.definition_id.c_str(),
                   definition.definition_name.c_str());
         return nullptr;
@@ -797,7 +804,8 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         build_backend->CreateBuildContext(profile, definition, resolved_request);
     if (!ctx)
     {
-        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
+        GLogError("[ShaderProgramManager] Material definition build failed: recipe=%s id=%s name=%s",
+                  normalized_request.recipe.recipe_name.c_str(),
                   definition.definition_id.c_str(),
                   definition.definition_name.c_str());
         return nullptr;
@@ -830,7 +838,8 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     if (!build_backend->FinalizeBuildContext(ctx))
     {
         GLogError(
-            "[ShaderProgramManager] Material build finalization failed: id=%s",
+            "[ShaderProgramManager] Material build finalization failed: recipe=%s id=%s",
+            normalized_request.recipe.recipe_name.c_str(),
             definition.definition_id.c_str());
         return nullptr;
     }
@@ -847,6 +856,10 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     ShaderProgram *program = this->AcquireShaderProgram(program_key, ctx);
     if (program)
         RecordVariantProgramKey(variant_key, program_key);
+    else
+        GLogError(u8"[ShaderProgramManager] shader program creation failed: recipe=%s definition=%s",
+                  normalized_request.recipe.recipe_name.c_str(),
+                  definition.definition_id.c_str());
 
     return program;
 }
