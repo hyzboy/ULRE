@@ -181,6 +181,9 @@ ${SG_INCLUDE_PATH}/asset/GeometryAssetObject.h
                             ${ROOT_INCLUDE_PATH}/hgl/asset/AssetFactory.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/asset/MaterialRecipeAsset.h
                             ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipeRegistry.h
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/asset/MaterialDataBlockAsset.h
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/asset/MaterialDataBlockRegistry.h
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/asset/MaterialDataBlockObject.h
                             asset/AssetURI.cpp
                             asset/AssetFactory.cpp
                             asset/MaterialRecipeAsset.cpp
@@ -192,6 +195,9 @@ ${SG_INCLUDE_PATH}/asset/GeometryAssetObject.h
                             asset/GeometryAsset.cpp
                             asset/GeometryAssetRegistry.cpp
 asset/GeometryAssetObject.cpp
+                            asset/MaterialDataBlockAsset.cpp
+                            asset/MaterialDataBlockRegistry.cpp
+                            asset/MaterialDataBlockObject.cpp
                             asset/PrimitiveAssetFile.cpp
                             asset/SceneAssetFile.cpp
                             asset/SceneAssetRegistry.cpp

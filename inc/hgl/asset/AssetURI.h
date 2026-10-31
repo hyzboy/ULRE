@@ -20,8 +20,9 @@ namespace hgl::asset
         MaterialRecipe,     ///<`rcp`   —— 材质配方（`MaterialRecipeAsset`）
         Primitive,          ///<`prim`  —— 图元资产（`PrimitiveAsset`）
         Scene,              ///<`scene` —— 场景资产
+        MaterialData,       ///<`mtldata`—— 材质数据块（`MaterialDataBlockAsset`）
 
-        ENUM_CLASS_RANGE(Geometry, Scene)
+        ENUM_CLASS_RANGE(Geometry, MaterialData)
     };
 
     /**
@@ -55,6 +56,7 @@ namespace hgl::asset
         { AssetType::MaterialRecipe, "rcp",   "material_recipe" },
         { AssetType::Primitive,      "prim",  "primitive"       },
         { AssetType::Scene,          "scene", "scene"           },
+        { AssetType::MaterialData,   "mtldata", "material_data"  },
     };
 
     struct AssetSourceKindDesc

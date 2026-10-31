@@ -125,6 +125,13 @@ if(MSVC)
     set_target_properties(TestGlobalSSBORowRange PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 材质数据块资产层：三种文件形态 → 同一句柄、坏输入留在表里、无设备上传软失败。
+add_executable(TestMaterialDataBlockAsset tests/TestMaterialDataBlockAsset.cpp)
+target_link_libraries(TestMaterialDataBlockAsset PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestMaterialDataBlockAsset PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
 add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
@@ -311,6 +318,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestGlobalSSBORowRange
         PROPERTIES LABELS "ecs;material_data" TIMEOUT 120)
+
+    add_test(
+        NAME TestMaterialDataBlockAsset
+        COMMAND TestMaterialDataBlockAsset
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMaterialDataBlockAsset
+        PROPERTIES LABELS "ecs;material_data;asset" TIMEOUT 120)
 
     add_test(
         NAME TestMaterialRuntimeTable
