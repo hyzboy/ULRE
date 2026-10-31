@@ -372,15 +372,15 @@ namespace hgl::graph::mtl
         // 读不到不算错：第一次烘焙时文件还不存在。代际不符则整体重建 ——
         // 旧代数的条目与当前 layout 约定不保证兼容。
         if (manifest.Load(path)
-            && manifest.GetCodegenGeneration() != contract::SHADERGEN_CODEGEN_GENERATION)
+            && manifest.GetCodegenGeneration() != contract::MATERIAL_CODEGEN_GENERATION)
         {
             GLogWarning("[ShaderComputeManifest] codegen generation %u != %u; rebuilding manifest",
                         manifest.GetCodegenGeneration(),
-                        contract::SHADERGEN_CODEGEN_GENERATION);
+                        contract::MATERIAL_CODEGEN_GENERATION);
             manifest.Clear();
         }
 
-        manifest.SetStamps(effective_compiler_hash, contract::SHADERGEN_CODEGEN_GENERATION);
+        manifest.SetStamps(effective_compiler_hash, contract::MATERIAL_CODEGEN_GENERATION);
 
         if (!manifest.Upsert(entry))
             return true;   // 原样命中，不需要重写
@@ -418,11 +418,11 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        if (manifest.GetCodegenGeneration() != contract::SHADERGEN_CODEGEN_GENERATION)
+        if (manifest.GetCodegenGeneration() != contract::MATERIAL_CODEGEN_GENERATION)
         {
             GLogError("[ShaderComputeManifest] codegen generation mismatch: manifest=%u runtime=%u (%s)",
                       manifest.GetCodegenGeneration(),
-                      contract::SHADERGEN_CODEGEN_GENERATION,
+                      contract::MATERIAL_CODEGEN_GENERATION,
                       program_name);
             return false;
         }

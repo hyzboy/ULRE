@@ -9199,7 +9199,7 @@ void main()
         // ── 1. 磁盘往返 ──
         ShaderProgramManifest source;
         constexpr hgl::uint64 kProfileHash = 0x1234'5678'9ABC'DEF0ull;
-        source.SetStamps(kProfileHash, contract::SHADERGEN_CODEGEN_GENERATION);
+        source.SetStamps(kProfileHash, contract::MATERIAL_CODEGEN_GENERATION);
 
         for (hgl::uint32 i = 1; i <= 4; ++i)
         {
@@ -9274,7 +9274,7 @@ void main()
 
             ShaderProgramManifest reject_source;
             reject_source.SetStamps(kProfileHash,
-                                    contract::SHADERGEN_CODEGEN_GENERATION);
+                                    contract::MATERIAL_CODEGEN_GENERATION);
             if (reject_source.Upsert(illegal))
                 result.diagnostics.emplace_back(
                     "Upsert accepted a payload-row-without-runtime-rows entry");
@@ -9367,7 +9367,7 @@ void main()
         }
 
         if (loaded.GetCompilerProfileHash() != kProfileHash
-         || loaded.GetCodegenGeneration() != contract::SHADERGEN_CODEGEN_GENERATION
+         || loaded.GetCodegenGeneration() != contract::MATERIAL_CODEGEN_GENERATION
          || loaded.GetEntryCount() != source.GetEntryCount())
             result.diagnostics.emplace_back("manifest stamps/entry count lost in roundtrip");
 
@@ -10029,7 +10029,7 @@ void main()
                 result.diagnostics.emplace_back(
                     "compute manifest must hold exactly one entry after re-baking");
             else if (manifest.GetCodegenGeneration()
-                        != contract::SHADERGEN_CODEGEN_GENERATION)
+                        != contract::MATERIAL_CODEGEN_GENERATION)
                 result.diagnostics.emplace_back(
                     "compute manifest carried a stale codegen generation");
         }

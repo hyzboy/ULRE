@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 namespace hgl::graph::mtl {}
 
@@ -89,7 +89,7 @@ namespace hgl::graph::mtl::contract
     //      · `ShaderProgramArtifactMetadata` 9→2、两份 manifest 升 v2。
     //      GLSL 文本与 SPV 字节不变，但**所有键值、缓存文件名、清单格式全变**，
     //      旧产物既不会被命中也不会被读出，必须换代重烘。
-    constexpr uint32_t SHADERGEN_CODEGEN_GENERATION = 15;
+    constexpr uint32_t MATERIAL_CODEGEN_GENERATION = 15;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何
     // SPV 缓存键：SPIR-V 是平台中立字节码，设备量只影响 glslang 的校验门槛，
@@ -119,7 +119,7 @@ namespace hgl::graph::mtl::contract
 
         h << vulkan_version
           << spv_version
-          << SHADERGEN_CODEGEN_GENERATION;
+          << MATERIAL_CODEGEN_GENERATION;
 
         return h;
     }

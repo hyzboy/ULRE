@@ -59,7 +59,7 @@ namespace hgl::graph::mtl
                 return false;
 
             if (state.manifest.GetCodegenGeneration()
-                != contract::SHADERGEN_CODEGEN_GENERATION)
+                != contract::MATERIAL_CODEGEN_GENERATION)
             {
                 if (!state.stale_warned)
                 {
@@ -67,7 +67,7 @@ namespace hgl::graph::mtl
                     GLogWarning("[ShaderProgramManifest] codegen generation mismatch: "
                                 "manifest=%u runtime=%u; manifest ignored",
                                 state.manifest.GetCodegenGeneration(),
-                                contract::SHADERGEN_CODEGEN_GENERATION);
+                                contract::MATERIAL_CODEGEN_GENERATION);
                 }
                 state.manifest.Clear();
                 return false;
@@ -256,13 +256,13 @@ namespace hgl::graph::mtl
             return false;
 
         const uint64 profile_hash = contract::GetShaderCompilerProfileHash(profile);
-        if (state.manifest.GetCodegenGeneration() != contract::SHADERGEN_CODEGEN_GENERATION
+        if (state.manifest.GetCodegenGeneration() != contract::MATERIAL_CODEGEN_GENERATION
          || state.manifest.GetCompilerProfileHash() != profile_hash)
         {
             // 章不同说明这份清单来自另一代生成器/另一个编译目标 —— 它的键与当前
             // 运行时算出的键不在同一空间，整体作废重来，不做局部合并。
             state.manifest.Clear();
-            state.manifest.SetStamps(profile_hash, contract::SHADERGEN_CODEGEN_GENERATION);
+            state.manifest.SetStamps(profile_hash, contract::MATERIAL_CODEGEN_GENERATION);
         }
 
         if (!state.manifest.Upsert(entry))
