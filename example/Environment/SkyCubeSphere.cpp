@@ -1,11 +1,9 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
@@ -61,10 +59,9 @@ private:
 
     bool InitSkyCubeResource()
     {
-        auto* geometry_manager = GetManager<GeometryManager>();
         auto* texture_manager  = GetManager<TextureManager>();
 
-        if (!geometry_manager || !texture_manager)
+        if (!texture_manager)
             return false;
 
         // ---- Cubemap 纹理 ----
@@ -83,18 +80,11 @@ private:
         // ---- 球体几何(屏幕中央,原点处) ----
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(
-            GetDevice(),
-            CreateSkyCubeGeometryVertexFormat());
-        if (!pc)
-            return false;
+        const GeometryVertexFormat geometry_vertex_format = CreateSkyCubeGeometryVertexFormat();
 
-
-        sky_geometry = CreateGeometryPreset(pc.get(), "hex_sphere_far");
+        sky_geometry = GetGeometry("geo:builtin:hex_sphere_far", &geometry_vertex_format);
         if (!sky_geometry)
             return false;
-
-        geometry_manager->Add(sky_geometry);
 
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SkyCubeSphere.Sky");
         if (!loaded_recipe)

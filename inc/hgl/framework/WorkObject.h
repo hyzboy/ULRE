@@ -16,6 +16,8 @@ namespace hgl
         class Camera;
         class Geometry;
         class GeometryAsset;
+        class GeometryAssetRegistry;
+    class GeometryVertexFormat;
         struct ViewportInfo;
         struct CameraInfo;
         namespace mtl { struct MaterialRecipe; }
@@ -65,18 +67,24 @@ namespace hgl
          * `geo:builtin:cube` / `builtin:cube` / `geo:file:res/geo/x.geo.toml` / 裸路径，
          * 语义见 `GeometryAssetRegistry::GetOrLoadURI`。
          *
+         * `format_override` 为空时用预设自带的顶点格式（`GetStandardGeometryVertexFormat`）；
+         * 需要 Position/TexCoord/Normal 之外的语义（顶点色、gizmo 专用布局等）时传入。
+         *
          * 返回的句柄由 `GraphicsContext` 的几何资产注册器持有，**不要**
          * `GeometryManager::Add()`（那是另一条所有权线，会双销毁）。
          */
-        const graph::GeometryAsset *GetGeometryAsset(const char *uri);
+        const graph::GeometryAsset *GetGeometryAsset(const char *uri,
+                                                    const graph::GeometryVertexFormat *format_override=nullptr);
 
         /**
          * @brief `GetGeometryAsset()` 的裸几何便捷入口。
          *
          * 生命周期跟随注册器：**不要**自己 delete，也不要交给 `GeometryManager`。
+         * `format_override` 语义同 `GetGeometryAsset()`。
          * 返回的几何可能是异步流送的载体，`file:` 来源需要渲染门禁判断是否就绪。
          */
-        graph::Geometry *GetGeometry(const char *uri);
+        graph::Geometry *GetGeometry(const char *uri,
+                                      const graph::GeometryVertexFormat *format_override=nullptr);
         bool LoadRecipeFile(const OSString &path);
         bool LoadRecipeDirectory(const OSString &path);
 
@@ -85,6 +93,10 @@ namespace hgl
             auto *gc = GetGraphicsContext();
             return gc ? gc->GetDevice() : nullptr;
         }
+
+        /// 几何资产注册器（设备级；`GetGeometry` / `GetGeometryAsset` 的真身）。
+        /// 需要挂共享顶点池创建器时用 `graph::SharedCreaterScope`。
+        graph::GeometryAssetRegistry * GetGeometryAssetRegistry()const;
         template<typename T> T *    GetManager          ()const
         {
             auto *gc = GetGraphicsContext();

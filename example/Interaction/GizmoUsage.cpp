@@ -10,11 +10,9 @@
 #include<hgl/graph/gizmo/TransformGizmoSystem.h>
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/MaterialResolver.h>
-#include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -87,9 +85,8 @@ private:
 
     bool InitSceneResources()
     {
-        auto *geometry_manager = GetManager<GeometryManager>();
         auto *device = GetDevice();
-        if(!geometry_manager || !device)
+        if (!device)
             return false;
 
         {
@@ -99,15 +96,10 @@ private:
             pgci.lum = 180;
             pgci.sub_lum = 255;
 
-            auto pc = std::make_unique<GeometryCreater>(
-                device,
-                CreateVertexLuminance2DGeometryVertexFormat());
-
-            grid_geometry = CreateGeometryPreset(pc.get(), "plane_grid_lod");
+            const GeometryVertexFormat geometry_vertex_format = CreateVertexLuminance2DGeometryVertexFormat();
+            grid_geometry = GetGeometry("geo:builtin:plane_grid_lod", &geometry_vertex_format);
             if(!grid_geometry)
                 return false;
-
-            geometry_manager->Add(grid_geometry);
 
             auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
             if (!domain_manager)
@@ -138,20 +130,15 @@ private:
             if (!domain_manager)
                 return false;
 
-            auto pc = std::make_unique<GeometryCreater>(
-                device,
-                CreateGizmo3DGeometryVertexFormat());
-
+            const GeometryVertexFormat geometry_vertex_format2 = CreateGizmo3DGeometryVertexFormat();
             inline_geometry::CubeCreateInfo cci;
             cci.segments_x = 2;
             cci.segments_y = 2;
             cci.segments_z = 2;
 
-            cube_geometry = CreateGeometryPreset(pc.get(), "cube_2x2x2");
+            cube_geometry = GetGeometry("geo:builtin:cube_2x2x2", &geometry_vertex_format2);
             if(!cube_geometry)
                 return false;
-
-            geometry_manager->Add(cube_geometry);
 
             cube_mtl_data_ssbo_accessor =
                 domain_manager->GetAccessor<graph::ssbo::EmissiveSurfaceRow>();

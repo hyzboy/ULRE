@@ -9,10 +9,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
-#include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -77,27 +74,12 @@ private:
 
     bool CreateCubeGeometry()
     {
-        using namespace inline_geometry;
+        // 几何走 AssetURI：builtin 预设由 GeometryPresetLibrary 建好并常驻，
+        // 句柄所有权在 GeometryAssetRegistry，这里不接管、不销毁。
+        const GeometryVertexFormat gvf = CreateGizmo3DGeometryVertexFormat();
 
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!geometry_manager)
-            return false;
-
-        auto* device = GetDevice();
-        if (!device)
-            return false;
-
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreateGizmo3DGeometryVertexFormat());
-
-        geometry = CreateGeometryPreset(pc.get(), "cube");
-
-        if(!geometry)
-            return false;
-
-        geometry_manager->Add(geometry);
-        return true;
+        geometry = GetGeometry("geo:builtin:cube", &gvf);
+        return geometry != nullptr;
     }
 
     bool InitMISSBO()
@@ -180,8 +162,7 @@ private:
 public:
     ~SimpleCubeApp()
     {
-        // geometry 已在 CreateCubeGeometry() 里交给 GeometryManager（唯一持有者），
-        // 这里再 delete 就是双重释放；由 manager 的 Clear() 负责销毁。
+        // geometry 由 GeometryAssetRegistry 持有，这里不能 delete，也不交给 GeometryManager。
     }
 
     bool Init() override

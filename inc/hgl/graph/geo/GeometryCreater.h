@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // VKBufferMap.h is transitively included via VKVertexAttribBuffer.h below.
 // Direct include removed — new code should use VKTypedArrayView.h directly.
@@ -193,6 +193,12 @@ public:
 
             void            SetBufferPolicy(const BufferAllocPolicy policy){buffer_policy=policy;}
             const BufferAllocPolicy GetBufferPolicy()const{return buffer_policy;}
+
+            /// 创建期确定的顶点布局（共享 VDM 时也有效）
+            const GeometryVertexFormat & GetVertexFormat()const{return geometry_vertex_format;}
+
+            /// 是否挂在共享 `VertexDataManager` 上（false 表示每几何私有缓冲）
+            const bool      UsesVDM()const{return vdm!=nullptr;}
 
             void            Clear();                                                                                        ///<清除创建器数据
 

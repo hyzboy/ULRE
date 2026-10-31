@@ -7,11 +7,9 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/graph/module/GeometryManager.h>
 #include<memory>
 
 #include<hgl/ecs/core/Context.h>
@@ -70,21 +68,13 @@ private:
     bool CreateRenderObject()
     {
         auto* device = GetDevice();
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!device || !geometry_manager)
+        if (!device)
             return false;
 
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreateSkyMinimalGeometryVertexFormat());
-
-
-        prim_sky_sphere = CreateGeometryPreset(pc.get(), "hex_sphere_sky");
-        if (prim_sky_sphere)
-            geometry_manager->Add(prim_sky_sphere);
-
+        const GeometryVertexFormat geometry_vertex_format = CreateSkyMinimalGeometryVertexFormat();
+        prim_sky_sphere = GetGeometry("geo:builtin:hex_sphere_sky", &geometry_vertex_format);
         return prim_sky_sphere != nullptr;
     }
 

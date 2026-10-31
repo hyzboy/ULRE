@@ -14,7 +14,6 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
@@ -25,7 +24,7 @@
 
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
@@ -281,10 +280,9 @@ public:
         if (!gc)
             return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
 
-        auto *gm = owner->GetManager<GeometryManager>();
         auto *tm = owner->GetManager<TextureManager>();
         auto *device = gc->GetDevice();
-        if (!gm || !tm || !device)
+        if (!tm || !device)
             return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
 
         // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照
@@ -304,14 +302,10 @@ public:
         if (!InitMaterialDataSSBO(offscreen->GetWorld()))
             return LogStageFail("OffscreenPass::BuildSphere", "InitMaterialDataSSBO failed");
 
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreateStandardGeometryVertexFormat());
-        geometry = CreateGeometryPreset(pc.get(), "sphere_64");
+        const GeometryVertexFormat geometry_vertex_format = CreateStandardGeometryVertexFormat();
+        geometry = owner->GetGeometry("geo:builtin:sphere_64", &geometry_vertex_format);
         if (!geometry)
             return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
-
-        gm->Add(geometry);
 
         const mtl::MaterialRecipe *loaded_sphere_recipe =
             owner->GetRecipe("RenderToTexture.OffscreenSphere");
@@ -485,18 +479,14 @@ private:
         if (!InitMaterialDataSSBO())
             return LogStageFail("RenderToTextureApp::CreateCube", "InitMaterialDataSSBO failed");
 
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreateStandardGeometryVertexFormat());
+        const GeometryVertexFormat geometry_vertex_format2 = CreateStandardGeometryVertexFormat();
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
         cci.ntb = NTBType::Normal;
 
-        Geometry *cube_geometry = CreateGeometryPreset(pc.get(), "cube");
+        Geometry *cube_geometry = GetGeometry("geo:builtin:cube", &geometry_vertex_format2);
         if (!cube_geometry)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreateCube geometry failed");
-
-        gm->Add(cube_geometry);
 
         const mtl::MaterialRecipe *loaded_cube_recipe =
             GetRecipe("RenderToTexture.Cube");

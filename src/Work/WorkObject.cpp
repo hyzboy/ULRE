@@ -33,7 +33,8 @@ namespace hgl
         return graphics->FindOrLoadMaterialRecipe(name);
     }
 
-    const graph::GeometryAsset *WorkObject::GetGeometryAsset(const char *uri)
+    const graph::GeometryAsset *WorkObject::GetGeometryAsset(const char *uri,
+                                                             const graph::GeometryVertexFormat *format_override)
     {
         auto *graphics = GetGraphicsContext();
         if (!graphics)
@@ -49,14 +50,21 @@ namespace hgl
             return nullptr;
         }
 
-        return graphics->GetGeometryAssetRegistry()->GetOrLoadURI(ToOSString(uri));
+        return graphics->GetGeometryAssetRegistry()->GetOrLoadURI(ToOSString(uri), format_override);
     }
 
-    graph::Geometry *WorkObject::GetGeometry(const char *uri)
+    graph::Geometry *WorkObject::GetGeometry(const char *uri,
+                                             const graph::GeometryVertexFormat *format_override)
     {
-        const graph::GeometryAsset *asset = GetGeometryAsset(uri);
+        const graph::GeometryAsset *asset = GetGeometryAsset(uri, format_override);
 
         return asset ? asset->GetGeometry() : nullptr;
+    }
+
+    graph::GeometryAssetRegistry *WorkObject::GetGeometryAssetRegistry()const
+    {
+        auto *graphics = GetGraphicsContext();
+        return graphics ? graphics->GetGeometryAssetRegistry() : nullptr;
     }
 
     bool WorkObject::LoadRecipeFile(const OSString &path)

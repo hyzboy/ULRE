@@ -29,10 +29,8 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -166,23 +164,20 @@ private:
     {
         using namespace inline_geometry;
 
-        auto * geometry_manager = GetManager<GeometryManager>();
         auto * device           = GetDevice();
         auto * ssbo_registry    = GetManager<GlobalSSBOBufferRegistry>();
 
-        if (!geometry_manager || !device || !ssbo_registry)
+        if (!device || !ssbo_registry)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, CreateCubeGeometryVertexFormat());
-
-        cube_geometry = CreateGeometryPreset(pc.get(), "cube");
+        const GeometryVertexFormat geometry_vertex_format = CreateCubeGeometryVertexFormat();
+        cube_geometry = GetGeometry("geo:builtin:cube", &geometry_vertex_format);
         if (!cube_geometry)
             return false;
 
         // 池行必须就位：剔除与绘制都按 geometry_id 索引 MeshDrawParams 行
         //（与 GeometryAABB **一号双表**，行号 = geometry_id）。
         cube_geometry->EnsureMeshDrawParams(ssbo_registry, device);
-        geometry_manager->Add(cube_geometry);
 
         if (cube_geometry->GetGeometryID() == 0)
         {
@@ -286,7 +281,7 @@ public:
 
     ~GPUDrivenCullApp()
     {
-        // cube_geometry 已交给 GeometryManager（唯一持有者），此处不再 delete。
+        // cube_geometry 由 GeometryAssetRegistry 持有，此处不再 delete，也不交给 GeometryManager。
     }
 
     bool Init() override

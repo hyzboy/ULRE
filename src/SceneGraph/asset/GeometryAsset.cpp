@@ -2,6 +2,7 @@
 #include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/asset/GeometryAssetFile.h>
 #include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/log/Log.h>
 #include<hgl/utf.h>
 
@@ -47,10 +48,15 @@ namespace hgl::graph
         // 内置几何体：纯内存计算，没有可等待的 IO，直接建。
         if(spec.kind==GeometryAssetKind::Builtin)
         {
-            Geometry *geo=CreateGeometryFromSpec(device,
-                                                 buffer_manager,
-                                                 spec,
-                                                 &vertex_format);
+            // 共享顶点池优先：布局由创建器决定，写进它自己那套 VDM/缓冲。
+            GeometryCreater *creater=registry?registry->GetSharedCreater():nullptr;
+
+            Geometry *geo=creater
+                ?CreateGeometryFromSpec(creater,spec)
+                :CreateGeometryFromSpec(device,
+                                        buffer_manager,
+                                        spec,
+                                        &vertex_format);
 
             if(!geo)
             {
@@ -104,9 +110,15 @@ namespace hgl::graph
 
         spec = new_spec;
 
-        vertex_format = format_override
-            ? *format_override
-            : GetStandardGeometryVertexFormat(spec.NormalFormat());
+        // 共享顶点池时布局由创建器决定，`format_override` / `NormalFormat()` 都不作数
+        // （`CreateGeometryFromSpec(creater,spec)` 会忽略规约里的 `[vertex_format]`）。
+        GeometryCreater *creater=registry?registry->GetSharedCreater():nullptr;
+
+        vertex_format = creater
+            ? creater->GetVertexFormat()
+            : (format_override
+                ? *format_override
+                : GetStandardGeometryVertexFormat(spec.NormalFormat()));
 
         if(vertex_format.GetCount()==0)
         {

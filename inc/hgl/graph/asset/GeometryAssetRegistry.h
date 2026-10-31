@@ -7,6 +7,7 @@ namespace hgl::graph
 {
     class VulkanDevice;
     class BufferManager;
+    class GeometryCreater;
 
     /**
      * 几何资产注册器 —— 句柄表的**唯一真值**（对标 `TextureManager` 的纹理句柄表）。
@@ -30,6 +31,8 @@ namespace hgl::graph
         VulkanDevice *  device          = nullptr;      ///<不拥有
         BufferManager * buffer_manager  = nullptr;      ///<不拥有，可为空
 
+        GeometryCreater *shared_creater = nullptr;      ///<不拥有，可为空（共享顶点池）
+
         ValueArray<GeometryAsset *> assets;             ///<句柄表(拥有)
 
     private:
@@ -51,6 +54,22 @@ namespace hgl::graph
         void SetTargets(VulkanDevice *dev,BufferManager *bm){device=dev;buffer_manager=bm;}
         VulkanDevice *  GetDevice       ()const{return device;}
         BufferManager * GetBufferManager()const{return buffer_manager;}
+
+        /**
+         * @brief 绑定共享顶点池创建器（`GeometryCreater(VertexDataManager*)` 那种）。
+         *
+         * 内置几何体默认走 `CreateGeometryFromSpec(device,bm,...)`，每个几何各建一套私有
+         * VDM/缓冲。想让一批几何共享同一个 `VertexDataManager`（混合缓冲、合并批次等），
+         * 就先把创建器绑上来，之后的 URI 创建会改走
+         * `CreateGeometryFromSpec(creater,spec)` —— 此时**顶点布局由创建器决定**，
+         * `format_override` 只影响句柄记录的 `GetVertexFormat()`。
+         *
+         * 生命周期：本表**不拥有**创建器。创建器必须比它所创建的几何活得久；
+         * 卸载前调用 `SetSharedCreater(nullptr)` 只是解除绑定，不会回收已建的几何 ——
+         * 顺序应当是先 `Clear()`（销毁几何），再销毁创建器。
+         */
+        void            SetSharedCreater(GeometryCreater *c){shared_creater=c;}
+        GeometryCreater *GetSharedCreater()const{return shared_creater;}
 
     public:     // 装配入口
 
@@ -117,4 +136,43 @@ namespace hgl::graph
         /// 销毁全部句柄（含其 Geometries）。设备销毁前必须调用。
         void Clear();
     };//class GeometryAssetRegistry
+
+    /**
+     * @brief RAII 作用域：把共享顶点池创建器临时绑到注册器上，析构自动还原。
+     *
+     * 示例里创建器往往只是某个函数内的临时对象（`GeometryCreater pc(vdm);`），
+     * 而注册器是设备级的，不能长期持有它。用本作用域包住「建几何」的那几行即可：
+     *
+     * ```cpp
+     * GeometryCreater pc(vdm);
+     * SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
+     * geom = GetGeometry("geo:builtin:cube");   // 写进共享顶点池
+     * ```
+     */
+    class SharedCreaterScope
+    {
+    private:
+
+        GeometryAssetRegistry * registry = nullptr;
+        GeometryCreater *       previous = nullptr;
+
+    public:
+
+        SharedCreaterScope(GeometryAssetRegistry *reg,GeometryCreater *creater)
+            :registry(reg)
+            ,previous(reg?reg->GetSharedCreater():nullptr)
+        {
+            if(registry)
+                registry->SetSharedCreater(creater);
+        }
+
+        ~SharedCreaterScope()
+        {
+            if(registry)
+                registry->SetSharedCreater(previous);
+        }
+
+        SharedCreaterScope(const SharedCreaterScope &)=delete;
+        SharedCreaterScope &operator=(const SharedCreaterScope &)=delete;
+    };//class SharedCreaterScope
 }//namespace hgl::graph

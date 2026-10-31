@@ -2,7 +2,7 @@
 // This example demonstrates rendering a sphere with ECS and driving the camera via ViewModel mode
 //
 // 本范例展示了：
-// 1. 使用 CreateSphere 创建球体几何体（私有顶点缓冲——每几何独立 VAB/IBO）
+// 1. 用几何资产 URI（geo:builtin:sphere_64）加载球体几何体
 // 2. 使用 Lit(PBR) 材质绘制球体（材质数据行 PBRSurfaceRow + 纹理）
 //    纹理绑定声明在材质配方里（MaterialRecipe::AddTexture），只给文件名/句柄，
 //    由 ECS 的 TextureStreamingSystem 后台加载，就绪后自动渲染
@@ -12,10 +12,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
-#include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -46,15 +43,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    GeometryVertexFormat CreateStandardGeometryVertexFormat()
-    {
-        GeometryVertexFormat gvf{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::TexCoord, VF_V2HF},   // UV RG16F（half×2——4B/顶点）
-            {VertexSemantic::Normal,   VF_V2UN8},   // RG8 最小格式（octahedral uint8——2B/顶点）
-        };
-        return gvf;
-    }
 
     constexpr uint SPHERE_SLICES = 64;              // 球体切片数
     constexpr float SPHERE_ROTATE_SPEED = 0.35f;    // 球体自转角速度（弧度/秒）
@@ -116,27 +104,9 @@ private:
 
     bool CreateSphereGeometry()
     {
-        using namespace inline_geometry;
-
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!geometry_manager)
-            return false;
-
-        auto* device = GetDevice();
-        if (!device)
-            return false;
-
-        // 私有顶点缓冲路径：每几何独立 VAB/IBO（非 VDM 共享池）
-        auto geometry_creater = std::make_unique<GeometryCreater>(
-            device,
-            CreateStandardGeometryVertexFormat());
-
-        sphere_geometry = CreateGeometryPreset(geometry_creater.get(), "sphere_64");
-        if (!sphere_geometry)
-            return false;
-
-        geometry_manager->Add(sphere_geometry);
-        return true;
+        // 走几何资产 URI：内置球体预设 sphere_64，默认即标准顶点格式
+        sphere_geometry = GetGeometry("geo:builtin:sphere_64");
+        return sphere_geometry != nullptr;
     }
 
     bool InitECS()

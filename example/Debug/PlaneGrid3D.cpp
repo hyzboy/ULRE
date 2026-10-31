@@ -3,10 +3,8 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialResolver.h>
@@ -82,8 +80,7 @@ private:
     bool CreateRenderObject()
     {
         auto* device = GetDevice();
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!device || !geometry_manager)
+        if (!device)
             return false;
 
         using namespace inline_geometry;
@@ -101,14 +98,7 @@ private:
             {VertexSemantic::Luminance, VF_V1UN8},
         };
 
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            plane_grid_gvf);
-
-        geom_plane_grid=CreateGeometryPreset(pc.get(), "plane_grid_lod");
-        if (geom_plane_grid)
-            geometry_manager->Add(geom_plane_grid);
-
+        geom_plane_grid=GetGeometry("geo:builtin:plane_grid_lod", &plane_grid_gvf);
         return geom_plane_grid;
     }
 
@@ -308,7 +298,6 @@ public:
                 ulre_example::InstallFrameDigestHook(rt, expect, "PGSELF");
             }
         }
-
 
         if (!pg_dump_tag.empty() && ++pg_dump_frame == 8)
         {

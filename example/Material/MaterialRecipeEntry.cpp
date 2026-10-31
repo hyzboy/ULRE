@@ -18,10 +18,8 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -89,24 +87,16 @@ private:
     {
         using namespace inline_geometry;
 
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!geometry_manager)
-            return false;
-
         auto* device = GetDevice();
         if (!device)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreateGizmo3DGeometryVertexFormat());
-
-        geometry = CreateGeometryPreset(pc.get(), "cube_2x3x4");
+        const GeometryVertexFormat geometry_vertex_format = CreateGizmo3DGeometryVertexFormat();
+        geometry = GetGeometry("geo:builtin:cube_2x3x4", &geometry_vertex_format);
 
         if(!geometry)
             return false;
 
-        geometry_manager->Add(geometry);
         return true;
     }
 
@@ -186,7 +176,7 @@ private:
 public:
     ~MaterialRecipeEntryApp()
     {
-        // geometry 已交给 GeometryManager（唯一持有者），此处不再 delete。
+        // geometry 由 GeometryAssetRegistry 持有，此处不再 delete，也不交给 GeometryManager。
     }
 
     bool Init() override

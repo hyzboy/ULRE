@@ -1,11 +1,9 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/LoadGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -196,19 +194,16 @@ private:
         using namespace inline_geometry;
 
         auto* device = GetDevice();
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!device || !geometry_manager)
+        if (!device)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, CreatePureColorGeometryVertexFormat());
-
+        const GeometryVertexFormat geometry_vertex_format = CreatePureColorGeometryVertexFormat();
         inline_geometry::BoundingBoxCreateInfo bbci;
 
-        bbox_geometry = CreateGeometryPreset(pc.get(), "bounding_box");
+        bbox_geometry = GetGeometry("geo:builtin:bounding_box", &geometry_vertex_format);
         if(!bbox_geometry)
             return false;
 
-        geometry_manager->Add(bbox_geometry);
         bbox_asset = PrimitiveAsset(bbox_geometry, &wire_recipe, PrimitiveType::Lines);
         return bbox_asset.IsValid();
     }

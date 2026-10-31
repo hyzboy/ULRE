@@ -10,10 +10,8 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -149,18 +147,15 @@ private:
     {
         using namespace inline_geometry;
 
-        auto *geometry_manager = GetManager<GeometryManager>();
         auto *device = GetDevice();
-        if (!geometry_manager || !device)
+        if (!device)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, CreateGizmo3DGeometryVertexFormat());
-
-        geometry = CreateGeometryPreset(pc.get(), "cube");
+        const GeometryVertexFormat geometry_vertex_format = CreateGizmo3DGeometryVertexFormat();
+        geometry = GetGeometry("geo:builtin:cube", &geometry_vertex_format);
         if (!geometry)
             return false;
 
-        geometry_manager->Add(geometry);
         return true;
     }
 

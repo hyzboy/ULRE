@@ -44,10 +44,8 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -260,21 +258,16 @@ private:
     {
         using namespace inline_geometry;
 
-        auto* geometry_manager = GetManager<GeometryManager>();
         auto* device           = GetDevice();
 
-        if (!geometry_manager || !device)
+        if (!device)
             return false;
 
-        auto geometry_creater = std::make_unique<GeometryCreater>(
-            device,
-            CreateStandardGeometryVertexFormat());
-
-        cube_geometry = CreateGeometryPreset(geometry_creater.get(), "cube");
+        const GeometryVertexFormat geometry_vertex_format = CreateStandardGeometryVertexFormat();
+        cube_geometry = GetGeometry("geo:builtin:cube", &geometry_vertex_format);
         if (!cube_geometry)
             return false;
 
-        geometry_manager->Add(cube_geometry);
         return true;
     }
 
@@ -409,7 +402,7 @@ public:
 
     ~AlphaModesApp()
     {
-        // cube_geometry 已交给 GeometryManager（唯一持有者），此处不再 delete。
+        // cube_geometry 由 GeometryAssetRegistry 持有，此处不再 delete，也不交给 GeometryManager。
     }
 
     bool Init() override
@@ -483,7 +476,6 @@ public:
                 ulre_example::InstallFrameDigestHook(rt, expect, "AMSELF");
             }
         }
-
 
         if (!dump_tag.empty() && ++dump_frame == 8)
         {
