@@ -2,9 +2,6 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -52,31 +49,10 @@ private:
     graph::mtl::MaterialRecipe sky_recipe{};
     PrimitiveAsset             sky_asset{};
 
-    TextureCube* sky_cube_texture = nullptr;
-    TextureAsset* sky_cube_asset  = nullptr;
-
 private:
 
     bool InitSkyCubeResource()
     {
-        auto* texture_manager  = GetManager<TextureManager>();
-
-        if (!texture_manager)
-            return false;
-
-        // ---- Cubemap 纹理 ----
-        sky_cube_texture = texture_manager->LoadTextureCube(
-            OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexCube"),
-            false);
-
-        if (!sky_cube_texture)
-            return false;
-
-        // 同步加载后的立方体贴图同样包成句柄：材质授权只走 TextureAsset 一种形式。
-        sky_cube_asset = texture_manager->WrapTextureAsset(sky_cube_texture);
-        if (!sky_cube_asset)
-            return false;
-
         // ---- 球体几何(屏幕中央,原点处) ----
         using namespace inline_geometry;
 
@@ -91,17 +67,9 @@ private:
             return false;
         sky_recipe = *loaded_recipe;
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 立方体贴图由配方文件的 `[[textures]] asset = "cubefile:..."` 声明，
+        // 示例侧不再持有 TextureAsset（实体端零纹理调用）。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        //
-        // ⚠ **必须在 `sky_recipe = *loaded_recipe` 之后**：配方赋值是整体覆盖，
-        // 先加纹理再赋值 = 绑定被静默丢掉 ⇒ 定义侧 `sky_cube` 是 required 纹理，
-        // 装配期判据命中 missing_texture_resource ⇒ 整个材质回退错误棋盘格。
-        // 立方体贴图目前**不能**写进 `.recipe.toml`（`TextureAsset` 只建 2D 句柄），
-        // 所以这一条仍由示例侧声明。
-        if (!sky_recipe.AddTexture("sky_cube", sky_cube_asset, true))
-            return false;
-
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -109,7 +77,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !sky_geometry || !sky_cube_texture)
+        if (!ecs_context || !sky_geometry)
             return false;
 
         auto* entity = ecs_context->CreateEntity<Entity>("SkyCubeSphere");
@@ -123,7 +91,7 @@ private:
         transform.SetMobility(Mobility::Static);
 
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-        // 纹理已由配方声明（sky_recipe.AddTexture），实体端不再重复绑定
+        // 纹理已由配方文件声明（[[textures]] sky_cube），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

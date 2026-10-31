@@ -4,7 +4,6 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -121,9 +120,6 @@ private:
 
     MeshEntry* floor_mesh = nullptr;
 
-    TextureCube* sky_cube_texture = nullptr;                ///<天空背景环境贴图
-    TextureAsset* sky_cube_asset  = nullptr;                ///<天空背景的句柄(材质授权唯一入口)
-
     TextureCube* env_irradiance  = nullptr;                 ///<IBL 漫反射辐照度
     TextureCube* env_prefilter   = nullptr;                 ///<IBL 镜面预滤波
     Texture2D*   env_brdf_lut    = nullptr;                 ///<BRDF LUT
@@ -175,24 +171,8 @@ private:
         if (!ecs_context)
             return false;
 
-        auto* texture_manager  = GetManager<TextureManager>();
-        if (!texture_manager)
-            return false;
-
-        // ---- 天空背景:sky_34 全景 cubemap ----
-        sky_cube_texture = texture_manager->LoadTextureCube(
-            OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexCube"),
-            false);
-
-        if (!sky_cube_texture)
-            return false;
-
-        // 同步加载的立方体贴图同样包成句柄：材质授权只走 TextureAsset 一种形式。
-        sky_cube_asset = texture_manager->WrapTextureAsset(sky_cube_texture);
-        if (!sky_cube_asset)
-            return false;
-
-        // 天空球：独立的顶点布局（非标准几何格式）⇒ 走 format_override
+        // 天空球的立方体贴图由配方文件的 `[[textures]] asset = "cubefile:..."` 声明；
+        // 下面的 IBL 三张图是 bindless 环境贴图（不是材质纹理），仍由示例加载。
         const GeometryVertexFormat sky_format = CreateSkyCubeGeometryVertexFormat();
         sky_geometry = GetGeometry("geo:builtin:hex_sphere_sky", &sky_format);
         if (!sky_geometry)
@@ -399,9 +379,7 @@ private:
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
 
-            // 立方体天空纹理写在配方里（实体端零纹理调用）
-            if (!sky_recipe.AddTexture("sky_cube", sky_cube_asset, true))
-                return false;
+            // 立方体天空纹理写在配方文件里（[[textures]] sky_cube），实体端零纹理调用
 
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -419,7 +397,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&floor_mesh->asset);
-            // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
+            // 纹理已由配方文件声明（[[textures]]），实体端不再重复绑定
             hgl::ecs::MaterialData::MaterialDataAuthoringResource floor_struct{};
             floor_struct = mesh_rows[0];
             material_data_comp->SetDataResource(floor_struct);

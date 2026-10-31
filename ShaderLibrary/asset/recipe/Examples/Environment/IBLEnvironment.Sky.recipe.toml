@@ -2,6 +2,11 @@ schema = 1
 name = "IBLEnvironment.Sky"
 domain = "Sky"
 
+[[textures]]
+name = "sky_cube"
+asset = "cubefile:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexCube"
+required = true
+
 [fragment]
 surface_module_name = "surface_sky_cube"
 
