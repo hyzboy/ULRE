@@ -4,10 +4,11 @@
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/serialize/FlatCodec.h>
+#include <hgl/serialize/MetaSchema.h>
 #include <hgl/serialize/TomlCodec.h>
 #include <hgl/type/Smart.h>
+#include <hgl/utf.h>
 #include <flatbuffers/flatbuffers.h>
-#include <toml/toml.hpp>
 
 #include <cmath>
 #include <cstring>
@@ -20,9 +21,7 @@ namespace hgl::graph
 {
     namespace
     {
-        bool ValidateRelationships(const toml::value &root,
-                                   const SceneSpec &spec,
-                                   bool validate_material_key_shape = true);
+        bool ValidateRelationships(const SceneSpec &spec);
     }
 
     bool LoadSceneSpecFromFile(const OSString &filename,
@@ -110,9 +109,9 @@ namespace hgl::graph
             return false;
         }
 
-        const toml::value validation_table =
-            hgl::serialize::WriteTomlTable<SceneSpec>(spec);
-        if (!ValidateRelationships(validation_table, spec, false))
+        // 语义校验只看 `SceneSpec` 本身。旧实现先 `WriteTomlTable` 造一张假表再回头
+        // 从表里取值做校验，等于让「能否落盘」依赖 TOML 编码器；现在这条依赖没有了。
+        if (!ValidateRelationships(spec))
         {
             MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene relationships"));
             return false;
@@ -164,13 +163,9 @@ namespace hgl::graph
             return false;
         }
 
-        out_spec.schema = 1;
-        out_spec.name = "";
-        out_spec.description = "";
-        out_spec.camera = SceneCameraSpec{};
-        out_spec.clear_color = SceneClearColorSpec{};
-        out_spec.materials.Clear();
-        out_spec.nodes.Clear();
+        // 归零放在最前面：连续解码多份缓冲时，上一次的 `materials` / `nodes` 不能残留。
+        out_spec = SceneSpec{};
+
         if (!hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(
                 static_cast<const uint8_t *>(data), size, out_spec))
         {
@@ -180,11 +175,13 @@ namespace hgl::graph
         }
 
         if (out_spec.schema != 1 || out_spec.name.Length() == 0)
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: invalid schema or name in ")
+                      + OSString(debug_name));
             return false;
+        }
 
-        const toml::value validation_table =
-            hgl::serialize::WriteTomlTable<SceneSpec>(out_spec);
-        if (!ValidateRelationships(validation_table, out_spec, false))
+        if (!ValidateRelationships(out_spec))
         {
             MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: semantic validation failed in ")
                       + OSString(debug_name));
@@ -204,16 +201,20 @@ namespace hgl::graph
             return false;
         }
 
-        bool HasOnlyKeys(const toml::value &value,
+        bool HasOnlyKeys(const hgl::serialize::Value &value,
                          const char *const *allowed,
                          const size_t count)
         {
-            if (!value.is_table())
+            if (!value.IsTable())
                 return false;
 
-            for (const auto &entry : value.as_table())
-                if (!IsAllowedKey(entry.first.c_str(), allowed, count))
+            const int field_count = value.GetFieldCount();
+            for (int i = 0; i < field_count; ++i)
+            {
+                const char *key = value.GetFieldName(i);
+                if (!key || !IsAllowedKey(key, allowed, count))
                     return false;
+            }
 
             return true;
         }
@@ -230,12 +231,12 @@ namespace hgl::graph
                 && std::isfinite(value.z);
         }
 
-        bool HasField(const toml::value &table, const char *field)
-        {
-            return table.is_table() && table.contains(field);
-        }
-
-        bool ValidateMaterialKeys(const toml::value &table,
+        /// 按材质类型分派的**键形**校验。
+        ///
+        /// `ValidateKeysByMeta` 只能校验「这些键是不是 `SceneMaterialSpec` 的字段」，
+        /// 而 `SceneMaterialSpec` 是三种材质的并集，所以它分不清「EmissiveSurface
+        /// 写了 metallic」。这条按类型收窄的规则属于场景语义，留在这里。
+        bool ValidateMaterialKeys(const hgl::serialize::Value &table,
                                   const SceneMaterialType type)
         {
             static const char *const pbr[] = {
@@ -311,40 +312,99 @@ namespace hgl::graph
             return false;
         }
 
-        bool NormalizeTextureTables(toml::value &root)
+        /// 把 `[materials.textures]` 的「槽位名 = uri」简写展开成 `[[materials.textures]]`
+        /// 的 `{name, uri}` 数组。必须在键校验之前跑：简写形态下 `textures` 是表，键是
+        /// 槽位名（`base_color`），`SceneTextureSpec` 里没有这些属性，键校验会直接判错。
+        bool NormalizeTextureTables(hgl::serialize::Value &root)
         {
-            if (!root.contains("materials") || !root.at("materials").is_array())
+            hgl::serialize::Value *materials = root.FindFieldExact("materials");
+            if (!materials || !materials->IsArray())
                 return true;
 
-            for (auto &material : root.as_table()["materials"].as_array())
+            const int material_count = materials->GetElementCount();
+            for (int i = 0; i < material_count; ++i)
             {
-                if (!material.is_table() || !material.contains("textures"))
+                hgl::serialize::Value *material = materials->GetElement(i);
+                if (!material || !material->IsTable())
                     continue;
 
-                toml::value &textures = material.as_table()["textures"];
-                if (!textures.is_table())
+                hgl::serialize::Value *textures = material->FindFieldExact("textures");
+                if (!textures || !textures->IsTable())
                     continue;
 
-                toml::array normalized;
-                for (const auto &entry : textures.as_table())
+                const int slot_count = textures->GetFieldCount();
+                for (int j = 0; j < slot_count; ++j)
                 {
-                    if (!entry.second.is_string())
+                    const hgl::serialize::Value *uri = textures->GetFieldValue(j);
+                    if (!uri || !uri->IsString())
+                        return false;
+                }
+
+                hgl::serialize::Value normalized;
+                normalized.SetArray();
+
+                for (int j = 0; j < slot_count; ++j)
+                {
+                    const char                *slot = textures->GetFieldName(j);
+                    const hgl::serialize::Value *uri = textures->GetFieldValue(j);
+
+                    if (!slot || !slot[0] || !uri)
                         return false;
 
-                    toml::table texture;
-                    texture["name"] = entry.first;
-                    texture["uri"] = entry.second;
-                    normalized.push_back(toml::value(texture));
+                    hgl::serialize::Value *entry = normalized.AddElement();
+                    if (!entry)
+                        return false;
+
+                    entry->SetTable();
+
+                    hgl::serialize::Value *name_field = entry->AddField("name", 0);
+                    hgl::serialize::Value *uri_field = entry->AddField("uri", 0);
+                    if (!name_field || !uri_field)
+                        return false;
+
+                    name_field->SetString(slot);
+                    uri_field->SetString(uri->GetString());
                 }
-                textures = toml::value(normalized);
+
+                textures->CopyFrom(normalized);
             }
 
             return true;
         }
 
-        bool ValidateRelationships(const toml::value &root,
-                                   const SceneSpec &spec,
-                                   const bool validate_material_key_shape)
+        /// 材质表的**按类型**键形校验。旧实现在 `ValidateRelationships` 里靠后端原生表
+        /// 定位每张材质源表；现在键名知识已经全部上移到 `ClassMetaInfo`，这里只剩
+        /// 「这张表的类型与键集合是否自洽」这一条场景策略，因此只吃值树。
+        bool ValidateMaterialTables(const hgl::serialize::Value &root,
+                                    const SceneSpec &spec)
+        {
+            const hgl::serialize::Value *materials = root.FindFieldExact("materials");
+
+            if (!materials)
+                return spec.materials.GetCount() == 0;
+
+            if (!materials->IsArray()
+                || materials->GetElementCount() != spec.materials.GetCount())
+                return false;
+
+            for (int i = 0; i < spec.materials.GetCount(); ++i)
+            {
+                const hgl::serialize::Value *source = materials->GetElement(i);
+
+                // `type` 有类内缺省值，缺键会静默落到 PBRSurface；作者侧要求显式写出。
+                if (!source || !source->IsTable() || !source->FindFieldExact("type"))
+                    return false;
+
+                if (!ValidateMaterialKeys(*source, spec.materials[i]->type))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// 纯 `SceneSpec` 语义校验：相机参数、清屏色、材质的引用与取值、节点图。
+        /// 不碰任何后端类型，TOML 与 FlatBuffers 两条路径共用同一份规则。
+        bool ValidateRelationships(const SceneSpec &spec)
         {
             if (spec.camera.enabled
                 && (!IsValidCameraMode(spec.camera.mode)
@@ -380,47 +440,22 @@ namespace hgl::graph
                     if (material.name == spec.materials[j]->name)
                         return false;
 
-                const toml::value &source = root.at("materials").as_array()[size_t(i)];
-                if (!HasField(source, "type")
-                    || !IsValidMaterialType(material.type)
-                    || (validate_material_key_shape
-                        && !ValidateMaterialKeys(source, material.type))
+                if (!IsValidMaterialType(material.type)
                     || !IsFinite(material.base_color)
                     || !IsFinite(material.color)
                     || !IsFinite(material.trans_color))
                     return false;
 
-                if (source.contains("textures"))
+                for (int j = 0; j < material.textures.GetCount(); ++j)
                 {
-                    const toml::value &textures = source.at("textures");
-                    if (!textures.is_array())
+                    const SceneTextureSpec &texture = *material.textures[j];
+
+                    if (texture.name.IsEmpty() || texture.uri.IsEmpty())
                         return false;
-                    const auto &texture_array = textures.as_array();
-                    for (size_t texture_index = 0;
-                         texture_index < texture_array.size();
-                         ++texture_index)
-                    {
-                        const auto &texture = texture_array[texture_index];
-                        static const char *const texture_keys[] = {"name", "uri", "required"};
-                        if (!HasOnlyKeys(texture, texture_keys,
-                                         sizeof(texture_keys) / sizeof(texture_keys[0])))
-                            return false;
 
-                        if (!texture.contains("name")
-                            || !texture.at("name").is_string()
-                            || texture.at("name").as_string().empty()
-                            || !texture.contains("uri")
-                            || !texture.at("uri").is_string()
-                            || texture.at("uri").as_string().empty())
+                    for (int k = 0; k < j; ++k)
+                        if (texture.name == material.textures[k]->name)
                             return false;
-
-                        for (size_t previous_index = 0;
-                             previous_index < texture_index;
-                             ++previous_index)
-                            if (texture_array[previous_index].at("name").as_string()
-                                == texture.at("name").as_string())
-                                return false;
-                    }
                 }
             }
 
@@ -503,6 +538,8 @@ namespace hgl::graph
                         const os_char *debug_name,
                         SceneSpec &out_spec)
     {
+        out_spec = SceneSpec{};
+
         if (!content || size == 0)
         {
             MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: empty content in ") + OSString(debug_name));
@@ -516,125 +553,134 @@ namespace hgl::graph
             return false;
         }
 
-        AnsiString terminated_content(content, static_cast<int>(size));
-        toml::value root;
-        try
-        {
-            root = toml::parse_str(terminated_content.c_str());
-        }
-        catch (const toml::exception &e)
+        hgl::serialize::Value          root;
+        hgl::serialize::TomlParseError toml_error;
+
+        if (!hgl::serialize::FromTomlText(content, size, root, &toml_error))
         {
             MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: TOML parse error in ")
-                      + OSString(debug_name) + OS_TEXT(": ") + ToOSString(e.what()));
+                      + OSString(debug_name) + OS_TEXT(": ")
+                      + ToOSString(toml_error.Format().c_str()));
             return false;
         }
 
-        static const char *const root_keys[] = {
-            "schema", "name", "description", "camera", "clear_color",
-            "materials", "nodes"
-        };
-        if (!HasOnlyKeys(root, root_keys, sizeof(root_keys) / sizeof(root_keys[0])))
+        if (!root.IsTable())
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: root must be a table with known keys in ")
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: root is not a table in ")
                       + OSString(debug_name));
             return false;
         }
 
-        out_spec.schema = 1;
-        out_spec.name = "";
-        out_spec.description = "";
-        out_spec.camera = SceneCameraSpec{};
-        out_spec.clear_color = SceneClearColorSpec{};
-        out_spec.materials.Clear();
-        out_spec.nodes.Clear();
-
-        if (!NormalizeTextureTables(root)
-            || !hgl::serialize::ReadTomlTable<SceneSpec>(root, out_spec)
-            || !root.contains("schema")
-            || out_spec.schema != 1
-            || out_spec.name.IsEmpty()
-            || !root.contains("nodes")
-            || !root.at("nodes").is_array())
+        // `schema` 先单独看：它决定这张字段表还能不能按当前契约解释。
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid schema or required fields in ")
+            const hgl::serialize::Value *schema_node = root.FindFieldExact("schema");
+            int64_t                      schema_value = 0;
+
+            if (!schema_node || !schema_node->GetInt(schema_value) || schema_value != 1)
+            {
+                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: unsupported schema in ")
+                          + OSString(debug_name));
+                return false;
+            }
+        }
+
+        // `nodes` 没有类内缺省值，必须显式给出且是数组。
+        {
+            const hgl::serialize::Value *nodes_node = root.FindFieldExact("nodes");
+
+            if (!nodes_node || !nodes_node->IsArray())
+            {
+                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: missing 'nodes' array in ")
+                          + OSString(debug_name));
+                return false;
+            }
+        }
+
+        // `materials` 可以整体省略，但一旦出现就必须是数组。
+        {
+            const hgl::serialize::Value *materials_node = root.FindFieldExact("materials");
+
+            if (materials_node && !materials_node->IsArray())
+            {
+                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: materials must be an array in ")
+                          + OSString(debug_name));
+                return false;
+            }
+        }
+
+        // 必须在键校验之前：`[materials.textures]` 的槽位名在 `SceneTextureSpec` 里
+        // 并不存在，展开成数组之后键校验看到的才是 `name` / `uri` / `required`。
+        if (!NormalizeTextureTables(root))
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid material textures table in ")
                       + OSString(debug_name));
             return false;
         }
 
-        if (root.contains("camera"))
+        // 严格键校验的唯一真源是生成的 `ClassMetaInfo`。一层表、表数组、子表全靠
+        // `toml_key` + `struct_meta` 递归判定，本文件不再持有任何键名白名单。
+        {
+            AnsiString bad_path;
+            AnsiString bad_key;
+
+            if (!hgl::serialize::ValidateKeysByMeta(
+                    root, hgl::asset::generated::Class_SceneSpec,
+                    AnsiString(), bad_path, bad_key))
+            {
+                if (bad_path.IsEmpty())
+                {
+                    MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: unknown key '")
+                              + ToOSString(bad_key.c_str()) + OS_TEXT("' in ")
+                              + OSString(debug_name));
+                }
+                else
+                {
+                    MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: unknown key '")
+                              + ToOSString(bad_key.c_str()) + OS_TEXT("' at '")
+                              + ToOSString(bad_path.c_str()) + OS_TEXT("' in ")
+                              + OSString(debug_name));
+                }
+                return false;
+            }
+        }
+
+        // 逐字段解析全部来自 `SceneSerialize.gen.h`：本文件不认识任何键名、
+        // 也不认识任何枚举拼写。
+        {
+            hgl::serialize::Archive archive;
+
+            if (!hgl::serialize::ReadFromValue(root, out_spec, &archive))
+            {
+                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: field '")
+                          + ToOSString(archive.FailedPath()) + OS_TEXT("' is invalid (")
+                          + ToOSString(archive.ErrorMessage()) + OS_TEXT(") in ")
+                          + OSString(debug_name));
+                return false;
+            }
+        }
+
+        if (out_spec.name.IsEmpty())
+        {
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: missing 'name' in ")
+                      + OSString(debug_name));
+            return false;
+        }
+
+        // `enabled` 的含义是「作者写了这张表」，与表里的 `enabled` 键无关。
+        if (root.FindFieldExact("camera"))
             out_spec.camera.enabled = true;
-        if (root.contains("clear_color"))
+        if (root.FindFieldExact("clear_color"))
             out_spec.clear_color.enabled = true;
 
-        static const char *const material_keys[] = {
-            "name", "type", "base_color", "metallic", "roughness",
-            "normal_scale", "fresnel", "color", "trans_color", "textures"
-        };
-        static const char *const node_keys[] = {
-            "name", "parent", "geometry", "recipe", "material",
-            "mobility", "visible", "transform"
-        };
-        static const char *const transform_keys[] = {
-            "position", "rotation_axis", "rotation_angle_deg", "scale"
-        };
-        static const char *const camera_keys[] = {
-            "enabled", "mode", "position", "target", "distance", "yaw",
-            "pitch", "fov_deg", "near_plane", "far_plane", "main"
-        };
-        static const char *const clear_color_keys[] = {"enabled", "value"};
-
-        if ((root.contains("camera")
-             && !HasOnlyKeys(root.at("camera"), camera_keys,
-                             sizeof(camera_keys) / sizeof(camera_keys[0])))
-            || (root.contains("clear_color")
-                && !HasOnlyKeys(root.at("clear_color"), clear_color_keys,
-                                sizeof(clear_color_keys) / sizeof(clear_color_keys[0]))))
+        // 以下全是**跨字段策略**，不属于「字段规约」，因此留在解析层。
+        if (!ValidateMaterialTables(root, out_spec))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid camera or clear_color table in ")
+            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid material table in ")
                       + OSString(debug_name));
             return false;
         }
 
-        if (root.contains("materials") && !root.at("materials").is_array())
-        {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: materials must be an array in ")
-                      + OSString(debug_name));
-            return false;
-        }
-
-        if (root.contains("materials"))
-        {
-            const auto &materials = root.at("materials").as_array();
-            for (size_t i = 0; i < materials.size(); ++i)
-                if (!HasOnlyKeys(materials[i], material_keys, sizeof(material_keys) / sizeof(material_keys[0])))
-                {
-                    MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid material table in ")
-                              + OSString(debug_name));
-                    return false;
-                }
-        }
-
-        const auto &nodes = root.at("nodes").as_array();
-        for (size_t i = 0; i < nodes.size(); ++i)
-        {
-            if (!HasOnlyKeys(nodes[i], node_keys, sizeof(node_keys) / sizeof(node_keys[0])))
-            {
-                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid node table in ")
-                          + OSString(debug_name));
-                return false;
-            }
-            const auto &node = nodes[i];
-            if (node.contains("transform")
-                && !HasOnlyKeys(node.at("transform"), transform_keys,
-                                sizeof(transform_keys) / sizeof(transform_keys[0])))
-            {
-                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid transform table in ")
-                          + OSString(debug_name));
-                return false;
-            }
-        }
-
-        if (!ValidateRelationships(root, out_spec))
+        if (!ValidateRelationships(out_spec))
         {
             MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid material/node reference, type, or transform in ")
                       + OSString(debug_name));

@@ -4795,7 +4795,22 @@ int main(int argc, char** argv)
             { "GeometryAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/GeometryAssetFile.cpp"),
               "toml::value", "几何资产 toml11 结构层复活（结构解析必须只走生成的 StructSerializer<T>）", true },
             { "GeometryAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/GeometryAssetFile.cpp"),
-              "toml::parse_str", "直接调用 toml11 解析器复活（文本入口只能走 FromTomlText）", true },            // 禁复活：调用侧粘性路径栈。这类机制在「值解析失败」时路径为空或继承陈旧表名。
+              "toml::parse_str", "直接调用 toml11 解析器复活（文本入口只能走 FromTomlText）", true },
+            // 禁复活：场景资产的 toml11 结构层与 6 张手写键名白名单表已全部收归生成的
+            // `ClassMetaInfo`（`ValidateKeysByMeta` 递归下钻），语义校验只吃 `SceneSpec`。
+            { "SceneAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/SceneAssetFile.cpp"),
+              "toml::value", "场景资产 toml11 结构层复活（结构解析必须只走生成的 StructSerializer<T>）", true },
+            { "SceneAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/SceneAssetFile.cpp"),
+              "toml::parse_str", "直接调用 toml11 解析器复活（文本入口只能走 FromTomlText）", true },
+            // 正例：键校验必须走生成的 `Class_SceneSpec`，语义校验必须只吃 `SceneSpec`
+            // （带 `toml::value &root` 参数的老签名一旦复活，两条路径又会各写一份规则）。
+            { "SceneAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/SceneAssetFile.cpp"),
+              "root, hgl::asset::generated::Class_SceneSpec,",
+              "场景键校验未走生成元数据（手写键名白名单会重新长出来）" },
+            { "SceneAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/SceneAssetFile.cpp"),
+              "bool ValidateRelationships(const SceneSpec &spec)",
+              "场景语义校验重新耦合后端类型（TOML 与 FlatBuffers 两条路径会各写一份规则）" },
+            // 禁复活：调用侧粘性路径栈。这类机制在「值解析失败」时路径为空或继承陈旧表名。
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseTableScope", "调用侧粘性表路径栈复活（值解析失败时会指错表）", true },
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
