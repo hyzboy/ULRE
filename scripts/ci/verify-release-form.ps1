@@ -92,28 +92,48 @@ function Invoke-Verification
     {
         Write-Step "[1/5] configure dev + prod trees"
 
-        $devCache = Join-Path $devPath "CMakeCache.txt"
-        $extraArgs = @("-A", "x64")
-        if (Test-Path $devCache)
+        $toolchain = $null
+        foreach ($cache in @((Join-Path $devPath "CMakeCache.txt"), (Join-Path $prodPath "CMakeCache.txt")))
         {
-            $tc = Select-String -Path $devCache -Pattern '^CMAKE_TOOLCHAIN_FILE:FILEPATH=(.*)$' | Select-Object -First 1
-            if ($tc -and $tc.Matches.Groups[1].Value)
+            if (Test-Path $cache)
             {
-                $extraArgs += "-DCMAKE_TOOLCHAIN_FILE=$($tc.Matches.Groups[1].Value)"
+                $tc = Select-String -Path $cache -Pattern '^CMAKE_TOOLCHAIN_FILE:FILEPATH=(.*)$' | Select-Object -First 1
+                if ($tc -and $tc.Matches.Groups[1].Value)
+                {
+                    $toolchain = $tc.Matches.Groups[1].Value
+                    break
+                }
             }
         }
 
-        if (-not (Test-Path (Join-Path $devPath "CMakeCache.txt")))
+        # 缓存里若残留旧选项名（ULRE_ENABLE_SHADERGEN）或取值不符，必须重新配置：
+        # 否则 -SkipConfigure 会让发行树静默带上生成器产物。
+        function Test-CacheFlag([string]$tree, [string]$expected)
+        {
+            $cache = Join-Path $tree "CMakeCache.txt"
+            if (-not (Test-Path $cache)) { return $false }
+            $hit = Select-String -Path $cache -Pattern '^ULRE_ENABLE_SHADER_PROGRAM_BUILD:BOOL=(ON|OFF)$' | Select-Object -First 1
+            return [bool]($hit -and $hit.Matches.Groups[1].Value -eq $expected)
+        }
+
+        function Get-ConfigureArgs([string]$tree)
+        {
+            if (-not (Test-Path (Join-Path $tree "CMakeCache.txt"))) { return @("-A", "x64") }
+            if ($toolchain) { return @("-DCMAKE_TOOLCHAIN_FILE=$toolchain") }
+            return @()
+        }
+
+        if (-not (Test-CacheFlag $devPath "ON"))
         {
             if (-not (Invoke-Logged "configure dev tree (ULRE_ENABLE_SHADER_PROGRAM_BUILD=ON)" {
-                        cmake -S $repoRoot -B $devPath -DULRE_ENABLE_SHADER_PROGRAM_BUILD=ON @extraArgs }))
+                        cmake -S $repoRoot -B $devPath -DULRE_ENABLE_SHADER_PROGRAM_BUILD=ON @(Get-ConfigureArgs $devPath) }))
             { return }
         }
 
-        if (-not (Test-Path (Join-Path $prodPath "CMakeCache.txt")))
+        if (-not (Test-CacheFlag $prodPath "OFF"))
         {
             if (-not (Invoke-Logged "configure prod tree (ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF)" {
-                        cmake -S $repoRoot -B $prodPath -DULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF @extraArgs }))
+                        cmake -S $repoRoot -B $prodPath -DULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF @(Get-ConfigureArgs $prodPath) }))
             { return }
         }
     }

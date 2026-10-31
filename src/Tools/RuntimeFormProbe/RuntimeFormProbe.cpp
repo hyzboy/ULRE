@@ -567,7 +567,7 @@ int main(const int argc, char **argv)
     }
 
     if (!std::filesystem::is_directory(
-            std::filesystem::path("ShaderLibrary") / "material"))
+            std::filesystem::path("ShaderLibrary") / "asset" / "definition"))
     {
         std::fprintf(stderr,
                      "[FAIL] ShaderLibrary/asset/definition not found under the working "
