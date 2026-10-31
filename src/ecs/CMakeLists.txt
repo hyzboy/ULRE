@@ -111,6 +111,13 @@ if(MSVC)
     set_target_properties(TestMaterialRecipeFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 材质数据块：授权行 → 物理行摊平、MDB1 二进制往返、坏输入拒绝。
+add_executable(TestMaterialDataBlockCodec tests/TestMaterialDataBlockCodec.cpp)
+target_link_libraries(TestMaterialDataBlockCodec PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestMaterialDataBlockCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
 add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
@@ -281,6 +288,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialVariantTable
         PROPERTIES LABELS "ecs;material_variant")
+
+    add_test(
+        NAME TestMaterialDataBlockCodec
+        COMMAND TestMaterialDataBlockCodec
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMaterialDataBlockCodec
+        PROPERTIES LABELS "ecs;material_data" TIMEOUT 120)
 
     add_test(
         NAME TestMaterialRuntimeTable

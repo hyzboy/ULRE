@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/type/EnumUtil.h>
+#include <hgl/type/String.h>
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 
@@ -45,6 +46,32 @@ namespace hgl::graph
     }
     static_assert(GlobalSSBOTypeNameTableComplete(),
         "GetGlobalSSBOTypeName 必须覆盖 GlobalSSBOType 的全部枚举项（漏 case 会静默返回 Unknown）");
+
+    /**
+     * 名字 → 类型（大小写不敏感）。
+     *
+     * 名字↔值的唯一真源仍是上面的 `GetGlobalSSBOTypeName`：本函数**遍历全枚举**
+     * 反查，不另立一张字面量表，新增类型时自动可用。找不到返回 `false` 且
+     * `out` 不变。
+     */
+    inline bool ParseGlobalSSBOType(const char *text, GlobalSSBOType &out) noexcept
+    {
+        if (!text || !text[0])
+            return false;
+
+        for (uint32_t i = 0; i < GlobalSSBOTypeCount; ++i)
+        {
+            const auto type = static_cast<GlobalSSBOType>(i);
+
+            if (hgl::stricmp(text, GetGlobalSSBOTypeName(type)) == 0)
+            {
+                out = type;
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     inline constexpr uint32_t GetGlobalSSBOTypeStructVersion(const GlobalSSBOType type) noexcept
     {

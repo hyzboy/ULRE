@@ -139,6 +139,15 @@ extern_from    = "hgl::graph::ParseVertexNormalFormat"
 extern_to      = "hgl::graph::GetVertexNormalFormatName"
 extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
 
+# 全局 SSBO 池类型：名字表在 `GlobalSSBOTypes.h`（`GetGlobalSSBOTypeName` 还要被
+# 覆盖性断言与诊断日志共用），所以这里只转发，别处再造一份 `PBRSurface` 字面量。
+[[enum]]
+name           = "GlobalSSBOType"
+fq             = "hgl::graph::GlobalSSBOType"
+extern_from    = "hgl::graph::ParseGlobalSSBOType"
+extern_to      = "hgl::graph::GetGlobalSSBOTypeName"
+extern_include = "hgl/graph/ssbo/GlobalSSBOTypes.h"
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"
@@ -169,3 +178,14 @@ namespace     = "hgl::graph::mtl"
 scan          = ["inc/hgl/graph/asset/MaterialRecipeSpec.h"]
 serialize     = "inc/hgl/asset/generated/MaterialRecipeSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/MaterialRecipeMeta.gen.h"
+
+# ── 材质数据块规约 ──────────────────────────────────────────────────────────
+# `*.material_data.toml` 的字段契约真源：批量 SSBO 材质行（PBR 网格、自发光一组
+# 等）从「示例里的双重循环」搬进可授权文件。跨字段业务校验（schema 版本、target
+# 必须是内容行类型、本 target 用不到的键必须报错、行数上限）仍由
+# `src/ShaderMaterialData/MaterialDataBlockFile.cpp` 承担。
+[group.MaterialDataBlock]
+namespace     = "hgl::graph"
+scan          = ["inc/hgl/graph/asset/MaterialDataBlockSpec.h"]
+serialize     = "inc/hgl/asset/generated/MaterialDataBlockSerialize.gen.h"
+meta          = "inc/hgl/asset/generated/MaterialDataBlockMeta.gen.h"
