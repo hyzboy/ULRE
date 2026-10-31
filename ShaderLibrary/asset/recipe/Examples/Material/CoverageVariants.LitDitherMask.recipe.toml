@@ -1,6 +1,14 @@
 schema = 1
 name = "CoverageVariants.LitDitherMask"
+parent = "rcp:@CoverageVariants.LitOpaque"
 domain = "StandardOpaque"
 
 [render_state]
 dither = true
+
+# base_color / normal 由父配方继承（按 name 逐字段合并），这里只补 alpha 真值来源。
+# Lit 定义的 alpha 只来自 opacity_mask（base_color.a 不参与）。
+[[textures]]
+name = "opacity_mask"
+asset = "res/image/pbr/AlphaChecker/baseColor.Tex2D"
+auto_mipmaps = true
