@@ -375,7 +375,7 @@ namespace hgl::graph::mtl
         MaterialDomainValidationResult result) noexcept;
 
     // 契约校验。失败时 `out_detail` 给出「哪个槽/哪个语义 + 期望什么」，
-    // 直接用于解析期诊断（与 MaterialDefinitionFileData::ParseErrorDetail 配套）。
+    // 直接用于配方解析期诊断（与 MaterialRecipeFileParseError 配套）。
     // Custom 领域恒返回 OK。
     MaterialDomainValidationResult ValidateMaterialDefinitionDomain(
         const MaterialDefinition &definition,

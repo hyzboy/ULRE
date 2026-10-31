@@ -93,15 +93,14 @@ namespace hgl::graph::mtl::contract
     //      · `ShaderLibrary` 顶层 19 目录收敛为 asset/contract/domain/module/topology
     //        五类，模块文件迁移带槽位前缀（`material_source_*`、`diffuse_light_*`、
     //        `ambient_light_*`、`output_policy_*`、`surface_*` 等）；
-    //      · 定义资产 `*.mi.toml` → `asset/definition/*.definition.toml`，配方
-    //        `material/recipes/*` → `asset/recipe/*`，采样器契约 → `contract/sampler.toml`；
+    //      · 配方资产 `material/recipes/*` → `asset/recipe/*`，采样器契约
+    //        → `contract/sampler.toml`；后续已删除 Definition 持久化资产层；
     //      · C++ 侧 RenderTemplate/DomainShaderTemplate/ShaderCodeModule 三个旧名
     //        改为 PassProfile/DomainEntrySource/GlslModule。
     //     GLSL 文本内容与 SPV 指令不变（只改 include 路径与 `@ulre name`），但
     //     `glsl_module_graph_hash` 吃 `@ulre name`、`#include` 路径又进模块图，
-    //     所有 stage/program 键值全变；且定义资产 id 由 PascalCase 改为小写
-    //     snake_case（`builtin/` 前缀仅保留给源码内嵌定义），烘焙清单里旧 id
-    //     查不到定义。必须换代重烘。
+    //     所有 stage/program 键值全变；当前缓存身份由领域契约与配方数据确定，
+    //     不再依赖 Definition 资产 ID。
     constexpr uint32_t MATERIAL_CODEGEN_GENERATION = 16;
 
     // 物理设备量（vendor/device/api_version/limits/features）**不得**折进任何

@@ -3,6 +3,23 @@
 > 状态：阶段一（表面领域契约层）已落地
 > 相关代码：`inc/hgl/mtl/MaterialDomain.h`、`src/ShaderMaterialData/MaterialDomain.cpp`、
 > `ShaderLibrary/module/interface/pass_environment_interface.glsl`
+>
+> **当前架构更新（2026-10）**：材质文件解析与三层数据流章节记录的是 Definition
+> 文件仍存在时的历史设计，不再作为当前资产流程规范。现在由
+> `MaterialRecipeFile` 解析 `.recipe.toml`，Recipe 直接声明 `domain`，随后由
+> `MaterialDomainContract` 校验并合成构建期 `MaterialDefinition`；没有
+> `.definition.toml` 文件层或 Definition 注册表。下文领域契约及固定着色器原则仍适用。
+
+## 当前 Recipe 文件契约
+
+材质资产使用 `schema = 1` 的 `.recipe.toml`，并显式声明 `name` 与 `domain`。
+配方可用 `[fragment]` 选择表面模块，也可声明 `[transform]`、`[render_state]`
+与 `[[textures]]` 等实例数据；领域固定的顶点 ABI、纹理槽形态和默认编译能力由
+`MaterialDomainContract` 给出，不应在文件中复制为另一份契约。
+
+`ParseMaterialRecipeFile` 的结构化诊断保留 `table`、`key`、`value`、`detail`
+和源文件行号 `line`。测试遇到非法值或未知键时，应验证解析结果类别及这些诊断字段，
+而不只检查整体失败状态，方便资产作者直接定位错误。
 
 ---
 

@@ -268,7 +268,7 @@ namespace hgl::graph::mtl
             input.face_normal_fallback = ResolveFaceNormalFallback(definition, request);
             input.vertex_normal_present = ResolveVertexNormalPresent(definition, request);
 
-            // compile_defines（`.definition.toml` 的 `defines`）→ 逐条 `#define <name> 1`。
+            // compile_defines（领域默认值或配方覆盖）→ 逐条 `#define <name> 1`。
             // 只在本函数内活着：EmitDomainOptions 同步读完，不留悬垂指针。
             std::vector<const char *> definition_defines;
             definition_defines.reserve(definition.compile_defines.size());

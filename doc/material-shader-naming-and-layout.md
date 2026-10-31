@@ -1,8 +1,10 @@
 # 材质与 Shader 命名审查及 ShaderLibrary 归类迁移方案
 
-> **状态：提案（PROPOSAL）——未经批准不执行任何改名、移动或提交。**
-> 本文只描述「现在叫什么、为什么有问题、改成什么、要改哪些引用」。
-> 获批后按 §10 分阶段实施，每阶段独立提交。
+> **状态：历史审查与命名迁移记录；命名迁移已落地，材质 Definition 中间层随后已删除。**
+> 本文早期提案与表格用于追溯当时的命名决策，不再是当前资产布局的规范。
+> 当前材质资产只有 `ShaderLibrary/asset/recipe/**/*.recipe.toml`，配方直接声明
+> `domain`；`MaterialDomainContract` 提供领域能力与槽契约。构建期的
+> `MaterialDefinition` 是由契约和配方合成的临时产物，不对应文件、注册表或持久化层。
 
 - 审查基线：分支 `feature/gpu-driven-instanced-rendering`，HEAD `dbe7d10a2`
 - 审查范围：`ShaderLibrary/**`（git 跟踪 204 个文件）+ `inc/hgl/mtl/**` + `src/ShaderMaterialData/**` + `src/SceneGraph/**` 相关符号 + 全工程引用面
@@ -130,13 +132,13 @@
 
 ## 2. 术语表（定稿后写入 `doc/`，作为唯一词表）
 
-| 概念 | 现用词 | 建议定名 | 定义 | 当前载体 |
+| 概念 | 历史用词 | 当前定名 | 定义 | 当前载体 |
 |---|---|---|---|---|
 | 表面领域 | `MaterialDomain` | **Domain** | 引擎固定的一套「表面能做什么 + 必填语义 + 纹理槽」契约，用户不能新增 | `inc/hgl/mtl/MaterialDomain.h` |
 | 领域契约 | `MaterialDomainContract` / `DomainContracts[]` | **DomainContract** | Domain 的数据化描述 | `src/ShaderMaterialData/MaterialDomain.cpp` |
 | 领域入口着色器 | `kDomainDirs` / `.frag` | **DomainEntry** | 每 Domain 的固定 `.frag`/深度 `.frag` | `ShaderLibrary/domain/**` |
-| 材质定义 | `MaterialDefinition` / `.mi.toml` | **MaterialDefinition** | Domain + 默认渲染状态 + 纹理槽 + 变体能力的可序列化包，引擎/项目提供 | `asset/definition/*.definition.toml` |
-| 用户配方 | `MaterialRecipe` / `.recipe.toml` | **Recipe**（≡ UE 的 MaterialInstance） | 选一个 MaterialDefinition + 绑资源 + 覆盖数值 | `asset/recipe/**` |
+| 构建期合成数据 | `MaterialDefinition` | **MaterialDefinition**（仅内部临时结构） | 由 DomainContract + Recipe 合成的构建输入，不是资产层或注册层 | 内存 |
+| 用户配方 | `MaterialRecipe` / `.recipe.toml` | **Recipe** | 直接选一个 Domain + 绑资源 + 覆盖配方参数 | `asset/recipe/**` |
 | GLSL 代码模块 | `ShaderCodeModule` | **GlslModule** | 带 `@ulre` 元数据、经注册表校验的 `.glsl` | `ShaderLibrary/module/**` |
 | SPIR-V 模块 | `ShaderModule` | **SpirvModule**（或保留 `ShaderModule`） | Vulkan 模块对象 | `inc/hgl/vk/VKShaderModule.h` |
 | 槽位 | `ShaderModuleSlotRole` | **Slot** | pass 内一个可替换的算法/数据接入点（11 个有效 role） | `RenderTemplate.h:26` |
@@ -144,7 +146,7 @@
 | pass 组合契约 | `RenderTemplateID` / `SceneRenderTemplateProfile` | **PassProfile** | 「这个 pass 由哪些 Slot 组成」 | `RenderTemplate.h` / `SceneRenderTemplateResolver.cpp` |
 | 着色器程序 | `ShaderProgram` / `ShaderProgramManifest` | **ShaderProgram** | 一次编译产物（Stage 集合 + 变体键） | `src/ShaderProgramBuild` |
 | 阶段 | `ShaderStage` | **Stage** | `Vertex/Mesh/Fragment` | — |
-| 内置 / 兜底 | `builtin` / `fallback` / `kFallbackMaterialRules` | **Builtin** / **Fallback** | Builtin = 引擎内嵌定义；Fallback = 报错材质 | `BuiltinMaterialDefinitions.cpp` |
+| 内置 / 兜底 | `builtin` / `fallback` / `kFallbackMaterialRules` | **Builtin** / **Fallback** | Builtin = 引擎内建实现；Fallback = 报错材质 | `MaterialRecipe.h` |
 
 **已废弃、不得再出现的词**：`mi`（指定义）、`indirect_*`（指 ambient_light）、`s1_/s2_/s3_`、`forward_*`（指 lighting_model 或 output_policy）、`Template`（指 pass profile 或路径解析器）、`ShaderGen`（指现存工具）。
 

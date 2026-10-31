@@ -17,6 +17,10 @@
 
 > 本文是**设计正文**（为什么这样设计）。实施进度、提交链、验证状态、下一步动作与
 > 环境坑请看配套的 **`doc/ultra-thin-implementation-status.md`**（交接文档）。
+>
+> **当前材质链路（2026-10）**：本文早期 `MaterialInstance`/`.mi.toml` 方案及
+> Definition 相关细节仅作历史记录。现行文件为 `.recipe.toml`，Recipe 直接声明
+> `domain`，然后由领域契约校验并合成构建期输入；不存在持久化 Definition 层。
 
 ## 1. 架构愿景与核心理念
 

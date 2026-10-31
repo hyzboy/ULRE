@@ -18,6 +18,11 @@
 > 状态：**终极架构规范（指导彻底删除 ShaderGen）**
 > 核心命题：**彻底废除 C++ Shader 生成器与 AST 拼装，主着色器走向纯物理固定 GLSL，C++ 仅输出极简 frag_options.glsl**
 > 日期：2026-10-25
+>
+> **材质资产链路更新（2026-10-31）**：Recipe 已直接声明 Domain，`asset/definition/`
+> 及 `.definition.toml` 已删除。表中历史 `.mi.toml` / Definition 示例不再是当前资产
+> 布局；现行资产统一为 `asset/recipe/**/*.recipe.toml`。构建期 `MaterialDefinition`
+> 只是从 Recipe 与 DomainContract 合成的临时结构，不是文件抽象层。
 
 ---
 

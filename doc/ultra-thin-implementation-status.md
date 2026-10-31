@@ -21,6 +21,11 @@
 > 本文保留作为阶段一至阶段六的落地历史台账与环境坑参考。
 
 > **用途**：把「Domain 即 Master Material」重构的**全部计划现状**固化下来，供新会话零上下文接续。
+>
+> **历史状态更新（2026-10-31）**：本文记录的 `.mi.toml` 资产阶段已被后续命名治理取代；
+> 当前所有用户材质资产均为 `.recipe.toml` 并直接指定 `domain`。持久化
+> `MaterialDefinition` 及 `asset/definition/` 已删除，现有同名 C++ 类型只作为构建期合成结果。
+> 本文其余提交链与实施细节保留为历史记录，不代表当前工作区或分支状态。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
 > **最后更新**：阶段六收尾 + SPV 反射方向重审（分支 `feature/ultra-thin-stage5-shadergen-emission-cleanup`）。**四阶段全部完成，`.material.toml` 已废除；拼接顺序已有 golden 安全网（16 变体，含 3 种 mesh 发射模式）；四条 emission 通路全部走 `.tmpl`；mesh 侧拼接债经复查确认已清空，STL 残留清理判定为需整体迁移、刻意不做。2026-10-25 已在 ShaderGen 编译桥接中暴露 SPIR-V 反射并加入端到端门禁，并已接入**第一个真实消费者**：compute 模块烘焙的 push-constant 范围由反射结果决定（见 §10.3）；per-material descriptor-layout 假设经地面核查**没有靶子**，`ShaderDocument` 与 `GenericMaterialBuilder` 两个候选经面积实测**判定不做**。**

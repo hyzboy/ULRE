@@ -254,9 +254,9 @@ namespace hgl::graph::mtl
         if (input.alpha_output)
             AppendDefine(text_buffer, "HGL_ALPHA_OUTPUT", 1u);
 
-        // ── 材质定义自带宏 ──────────────────────────────────────────────────
-        // 定义在 `.definition.toml` 的 `defines` 里，旧路径由 BuildCompileDefineDocument
-        // 逐条写成 `#define <name> 1`（值恒为 1，不是 key=value 形式）。
+        // ── 配方覆盖或领域默认宏 ────────────────────────────────────────────
+        // 宏默认值来自领域契约，配方可覆盖；逐条写成 `#define <name> 1`
+        //（值恒为 1，不是 key=value 形式）。
         if (input.definition_defines)
         {
             for (uint32 index = 0; index < input.definition_define_count; ++index)

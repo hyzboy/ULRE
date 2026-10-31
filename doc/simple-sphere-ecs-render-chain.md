@@ -14,6 +14,10 @@
 > 目的：以单个最小示例为剖面，记录「作者侧 API → 每帧 CPU 物化 → 一条 vkCmd 提交 → shader BDA 取数」的完整链路与行号证据。全部 path:line 在本基线核实；**符号名是稳定锚点，行号随重构漂移**，引用时按 `file:line` + 符号名双锚。
 > 本文只描述现状，不含改造建议。
 >
+> **材质链路更新（2026-10-31）**：本文中关于 `mtl_def_id`、`.definition.toml`
+> 与按 Definition 建立纹理引用池的描述均为历史口径。当前 Recipe 直接声明 `domain`，
+> 领域契约与 Recipe 合成构建期材质输入；持久化 Definition 资产层已经删除。
+>
 > **订正（2026-09-28）**：本文若干事实已过期，按权威口径 `doc/world-addresses-and-camera-model-plan.md` §7 就地订正（本文件内已修订处）：
 > ① 描述符集只剩 **1 个 Bindless(0)**——Scene(0) 集（6 个 UBO）与其布局器 `VKGlobalSceneUBOSet` **已整体退场**（S3），`inc/hgl/common/DescriptorSetTypeDef.h` 现只有 `DescriptorSetType::Bindless=0`。
 > ② `GlobalAddresses` 是 **SSBO 表**（`HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长、**无绑定无集**、基址经 `pc_root.addr_global_addresses`），首字段 `addr_mesh_draw_params_pool`；sky / viewport / shadow / color_palette 亦走该表（`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:74/86/97/147`）。
@@ -151,7 +155,7 @@ RenderSubmit             SwapchainSubmitSystem
 
 ### 3.4 材质定义 → program → pipeline
 
-- `ShaderLibrary/asset/definition/lit.definition.toml`：只声明 `domain = "StandardOpaque"` + `[vertex] varyings` + `[resources]` 的 6 个槽名与 `samplers=["Trilinear","Linear","ShadowPCF"]`。顶点语义需求（`Position/UV0/Normal`）、表面来源模块、法线标架模块、槽形态（`Sampler2DArray`、是否必绑、`channels=2`）**全部由领域契约给出**——材质实例里不再有 `requirements` / `ubos` / 每槽 `sampler`/`channels`。
+- 当前对应配方为 `ShaderLibrary/asset/recipe/PBRSpheres.recipe.toml`：直接声明 `domain = "StandardOpaque"`；顶点语义需求（`Position/UV0/Normal`）、表面来源模块、法线标架模块、槽形态（`Sampler2DArray`、是否必绑、`channels=2`）**全部由领域契约给出**。本文件其余旧 Definition 链路段落应按历史口径阅读。
 - ShaderGen 编译成 `program-<hash>`；`RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:610`）取到 program 后 `render_pass->CreatePipeline(program, effective_recipe)`，key = shader stages + 附件格式；**每个 RenderPass 各自持有一份解析结果**（`PrimitiveComponent::resolvedRuntimePipelineMap`，`inc/hgl/ecs/components/PrimitiveComponent.h:130`、:188-202）——同一世界渲到多个 RT（shadow map 等离屏 pass）时各 RT 用各自格式匹配的管线，互不驱逐。
 
 ### 3.5 纹理 → bindless 句柄 + 引用池
