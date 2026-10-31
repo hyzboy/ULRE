@@ -116,6 +116,21 @@ namespace hgl::graph
             return(info);
         }
 
+        if(HasPrefixNoCase(uri,OS_TEXT("texarray:")))
+        {
+            info.kind=TextureURIKind::TextureArray;
+
+            const OSString rest=uri.SubString(9);      // 跳过 "texarray:"
+
+            // 只接受 `@<name>` 或 `file:<path>`；其余形态留空 → !IsValid()
+            if(!rest.IsEmpty()
+             &&(rest.c_str()[0]==kTextureURIArrayNamePrefix
+                ||HasPrefixNoCase(rest,kTextureURIArrayFilePrefix)))
+                info.path=rest;
+
+            return(info);
+        }
+
         // 无已知 scheme：按文件路径处理
         info.kind=TextureURIKind::File;
         info.path=uri;
@@ -123,10 +138,39 @@ namespace hgl::graph
         return(info);
     }
 
+    bool TextureURI::IsArrayByName()const
+    {
+        return kind==TextureURIKind::TextureArray
+            && !path.IsEmpty()
+            && path.c_str()[0]==kTextureURIArrayNamePrefix;
+    }
+
+    OSString TextureURI::GetArrayName()const
+    {
+        if(!IsArrayByName())
+            return OSString();
+
+        return path.SubString(1);
+    }
+
+    OSString TextureURI::GetArraySpecPath()const
+    {
+        if(kind!=TextureURIKind::TextureArray)
+            return OSString();
+
+        if(HasPrefixNoCase(path,kTextureURIArrayFilePrefix))
+            return path.SubString(5);
+
+        return OSString();
+    }
+
     OSString TextureURI::ToString()const
     {
         if(kind==TextureURIKind::RenderTarget)
             return OSString(OS_TEXT("rt:"))+path+OSString(OS_TEXT(":"))+attachment;
+
+        if(kind==TextureURIKind::TextureArray)
+            return OSString(OS_TEXT("texarray:"))+path;
 
         return OSString(OS_TEXT("file:"))+path;
     }

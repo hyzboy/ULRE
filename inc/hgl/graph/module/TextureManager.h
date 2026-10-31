@@ -147,6 +147,14 @@ public: // Load
     bool                LoadTexture2DArray(Texture2DArray *,const uint32_t layer,const OSString &);
     bool                GenerateTexture2DArrayMipmaps(Texture2DArray *,const uint32_t layer);
 
+    /**
+     * @brief 按层装配规约建一张 2D 数组（同步完成装配并上传）。
+     *
+     * 尺寸/格式取自**第 0 层**，因此规约里不写；任一层失败整张数组作废（尺寸格式已定死，
+     * 缺层的采样结果不可信）。成功返回的数组已进 `texture_set`（由管理器拥有）。
+     */
+    Texture2DArray *    BuildTextureArray(const TextureArraySpec &spec);
+
 public: // Async Upload Queue
 
     TextureUploadQueue *GetUploadQueue() { return upload_queue; }
@@ -192,6 +200,14 @@ public: // TextureAsset
      * 因此附件重建后不需要任何一方重新装配材质。
      */
     TextureAsset *GetOrCreateRenderTargetAsset(const OSString &target,const OSString &attachment);
+
+    /**
+     * @brief 按层装配规约取/建一张 2D 数组句柄。
+     *
+     * 同一 URI 文本只建一个句柄；装配（读 TOML + 逐层上传）在**第一次调用时就完成**，
+     * 因此返回的句柄已经是 `Resident`。装配失败返回 `nullptr`（不建半成品句柄）。
+     */
+    TextureAsset *GetOrCreateTextureArrayAsset(const TextureURI &uri);
 
     /// 按 (target, attachment) 查已有句柄（不做规范化，名字与 `RenderTargetDesc::name` 一致）
     TextureAsset *FindRenderTargetAsset(const OSString &target,const OSString &attachment)const;

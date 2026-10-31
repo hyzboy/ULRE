@@ -26,6 +26,7 @@ namespace hgl::graph
         content_ready   =false;
         async_requested =false;
         async_request_id=0;
+        array_uri       =OSString();
     }
 
     bool TextureAsset::OnLoadPayload()
@@ -35,10 +36,11 @@ namespace hgl::graph
 
         if(source_kind!=TextureURIKind::File)
         {
-            // RenderTarget 来源没有「磁盘负载」可读，只能等 RenderTargetManager 绑定。
-            GLogError(OS_TEXT("[TextureAsset] 非文件来源的句柄不支持同步加载（rt:%s:%s）"),
-                      rt_target.c_str(),
-                      rt_attachment.c_str());
+            // RenderTarget / TextureArray 来源没有「单张文件」可读：
+            // RT 等 RenderTargetManager 绑定，数组在创建时就装配完了。
+            GLogError(OS_TEXT("[TextureAsset] 非文件来源的句柄不支持同步加载（kind=%u, %s）"),
+                      static_cast<uint>(source_kind),
+                      GetMeta().source_path.c_str());
             return(false);
         }
 
@@ -142,6 +144,42 @@ namespace hgl::graph
         payload_state=PayloadState::Resident;
 
         return(true);
+    }
+
+    bool TextureAsset::SetupFromTextureArray(const TextureArraySpec &spec,const OSString &uri_text)
+    {
+        if(spec.layers.GetCount()<=0||spec.name.IsEmpty())
+        {
+            GLogError(u8"[TextureAsset] SetupFromTextureArray 收到空规约");
+            return(false);
+        }
+
+        if(!tex_manager)
+        {
+            GLogError(u8"[TextureAsset] SetupFromTextureArray 时未绑定 TextureManager（%s）",
+                      spec.name.c_str());
+            return(false);
+        }
+
+        if(!Init())
+            return(false);
+
+        source_kind=TextureURIKind::TextureArray;
+        array_uri  =uri_text;
+
+        meta.source_path=ResolveTextureArraySpecPath(TextureURI::Parse(uri_text));
+        meta.asset_type =OS_TEXT("Texture2DArray");
+
+        // 数组层是一次性上传的：装配完就定死，没有「先给句柄、稍后填内容」的中间态。
+        Texture2DArray *array=tex_manager->BuildTextureArray(spec);
+
+        if(!array)
+        {
+            FailAsyncLoad("数组层装配失败");
+            return(false);
+        }
+
+        return(CommitAsyncTexture(array));
     }
 
     void TextureAsset::MarkAsyncRequested(const uint64 request_id)
@@ -281,6 +319,18 @@ namespace hgl::graph
                     id+=U8String(u8":");
                     id+=ToU8String(rt_attachment);
                     return id;
+                }
+
+                break;
+            }
+            case TextureURIKind::TextureArray:
+            {
+                if(!array_uri.IsEmpty())
+                {
+                    // 直接复用规范化 URI（`texarray:@name` / `texarray:file:path`）：
+                    // 同一份规约换写法（@name 与 file: 指向同一文件）会得到两个身份，
+                    // 这是有意的 —— 那是两条不同的引用，不假装等价。
+                    return ToU8String(array_uri);
                 }
 
                 break;

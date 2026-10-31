@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
@@ -284,6 +284,81 @@ bool TextureManager::LoadTexture2DArray(Texture2DArray *ta,const uint32_t layer,
     return(true);
 }
 
+    namespace
+    {
+        /**
+         * 层 URI 允许写成 `file:<path>`，也允许直接写裸路径；真正打开文件前统一取解析后的
+         * `path`。（`rt:` 与嵌套数组在规约解析阶段就已经被拒绝了，这里不会再出现。）
+         */
+        OSString ResolveTextureArrayLayerFilename(const OSString &uri)
+        {
+            const TextureURI parsed=TextureURI::Parse(uri);
+
+            if(parsed.IsValid()&&!parsed.path.IsEmpty())
+                return parsed.path;
+
+            return uri;
+        }
+    }//namespace
+
+Texture2DArray *TextureManager::BuildTextureArray(const TextureArraySpec &spec)
+{
+    const int layer_count=spec.layers.GetCount();
+
+    if(layer_count<=0)
+    {
+        GLogError("[TextureManager] BuildTextureArray 规约为空：%s",spec.name.c_str());
+        return(nullptr);
+    }
+
+    // 尺寸与格式只能从**第 0 层**读出来（规约里故意不写，避免第二份真源）。
+    // 第 0 层加载后留在 texture_by_filename 里复用：删掉它会让缓存指向已释放对象。
+    Texture2D *probe=LoadTexture2D(ResolveTextureArrayLayerFilename(spec.layers[0]->uri),true);
+
+    if(!probe)
+    {
+        GLogError("[TextureManager] BuildTextureArray 首层加载失败：%s (%ls)",
+                  spec.name.c_str(),spec.layers[0]->uri.c_str());
+        return(nullptr);
+    }
+
+    const uint32_t    width =probe->GetWidth();
+    const uint32_t    height=probe->GetHeight();
+    const VkFormat    format=probe->GetFormat();
+    const uint32_t    mips  =spec.mipmaps>0
+                            ? spec.mipmaps
+                            : probe->GetMipLevel();
+
+    Texture2DArray *array=CreateTexture2DArray(spec.name,
+                                               width,height,
+                                               static_cast<uint32_t>(layer_count),
+                                               format,mips);
+
+    if(!array)
+    {
+        GLogError("[TextureManager] BuildTextureArray 建数组失败：%s %ux%u layers=%d",
+                  spec.name.c_str(),width,height,layer_count);
+        return(nullptr);
+    }
+
+    for(int i=0;i<layer_count;i++)
+    {
+        if(LoadTexture2DArray(array,static_cast<uint32_t>(i),
+                             ResolveTextureArrayLayerFilename(spec.layers[i]->uri)))
+            continue;
+
+        // 层失败没有「部分可用」的说法：尺寸/格式已经定死，缺层的数组采样结果不可信。
+        GLogError("[TextureManager] BuildTextureArray 第 %d/%d 层加载失败：%s (%ls)",
+                  i,layer_count,spec.name.c_str(),spec.layers[i]->uri.c_str());
+        return(nullptr);
+    }
+
+    GLogInfo("[TextureManager] 纹理数组装配完成：%s %ux%u layers=%d mip_levels=%u",
+             spec.name.c_str(),width,height,layer_count,array->GetMipLevel());
+
+    return(array);
+}
+
 TextureCube *CreateTextureCubeFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps);
 
 TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_mipmaps)
@@ -447,6 +522,9 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
     if(uri.IsRenderTarget())
         return(GetOrCreateRenderTargetAsset(uri.path,uri.attachment));
 
+    if(uri.IsTextureArray())
+        return(GetOrCreateTextureArrayAsset(uri));
+
     // 规范化键 ⇒ "res/a.Tex2D"、"res\\a.Tex2D"、"RES/./a.Tex2D" 归到同一个句柄。
     // 线性扫描是有意选择：句柄只在材质装配期创建，规模是几十到几百，
     // 换成哈希表还要为 OSString 造一套哈希，收益不成比例。
@@ -456,13 +534,58 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
     {
         TextureAsset *exist=texture_assets[i];
 
-        if(exist && !exist->IsRenderTarget() && MakeLoadedFileKey(exist->GetFilename())==key)
+        if(exist && !exist->IsRenderTarget() && !exist->IsTextureArray()
+                 && MakeLoadedFileKey(exist->GetFilename())==key)
             return(exist);
     }
 
     TextureAsset *asset=new TextureAsset(this);
 
     if(!asset->SetupFromFilename(uri.path,auto_mipmaps))
+    {
+        delete asset;
+        return(nullptr);
+    }
+
+    texture_assets.Add(asset);
+
+    return(asset);
+}
+
+TextureAsset *TextureManager::GetOrCreateTextureArrayAsset(const TextureURI &uri)
+{
+    const OSString uri_text=uri.ToString();
+
+    for(int i=0;i<texture_assets.GetCount();++i)
+    {
+        TextureAsset *exist=texture_assets[i];
+
+        if(exist && exist->IsTextureArray() && exist->GetTextureArrayURI()==uri_text)
+            return(exist);
+    }
+
+    const OSString spec_path=ResolveTextureArraySpecPath(uri);
+
+    if(spec_path.IsEmpty())
+    {
+        GLogError(OS_TEXT("[TextureManager] 纹理数组 URI 无法解析出规约路径：%s"),uri.raw.c_str());
+        return(nullptr);
+    }
+
+    TextureArraySpec            spec;
+    TextureArraySpecParseError  spec_error;
+
+    if(ParseTextureArraySpecFile(spec_path,spec,&spec_error)!=TextureArraySpecParseResult::OK)
+    {
+        GLogError(OS_TEXT("[TextureManager] 纹理数组规约解析失败：%s（%s）"),
+                  spec_path.c_str(),
+                  ToU8String(spec_error.Format()).c_str());
+        return(nullptr);
+    }
+
+    TextureAsset *asset=new TextureAsset(this);
+
+    if(!asset->SetupFromTextureArray(spec,uri_text))
     {
         delete asset;
         return(nullptr);

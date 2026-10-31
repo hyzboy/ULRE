@@ -163,6 +163,7 @@ SOURCE_GROUP("6.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
 SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
                             ${SG_INCLUDE_PATH}/asset/TextureAsset.h
                             ${SG_INCLUDE_PATH}/asset/TextureURI.h
+                            ${SG_INCLUDE_PATH}/asset/TextureArraySpec.h
                             ${SG_INCLUDE_PATH}/asset/RenderTargetAsset.h
                             ${SG_INCLUDE_PATH}/asset/GeometryAssetSpec.h
                             ${SG_INCLUDE_PATH}/asset/GeometryAssetFile.h
@@ -190,6 +191,7 @@ ${SG_INCLUDE_PATH}/asset/GeometryAssetObject.h
                             asset/MaterialRecipeRegistry.cpp
                             asset/TextureAsset.cpp
                             asset/TextureURI.cpp
+                            asset/TextureArraySpec.cpp
                             asset/RenderTargetAsset.cpp
                             asset/GeometryAssetFile.cpp
                             asset/GeometryAsset.cpp

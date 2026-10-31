@@ -1,5 +1,6 @@
 #pragma once
 
+#include<hgl/graph/asset/TextureArraySpec.h>
 #include<hgl/graph/asset/TextureURI.h>
 #include<hgl/object/MetaObject.h>
 #include<hgl/object/RefObject.h>
@@ -65,6 +66,7 @@ namespace hgl::graph
         TextureURIKind      source_kind     = TextureURIKind::File;
         OSString            rt_target;                      ///<RenderTarget 来源：目标名
         OSString            rt_attachment;                  ///<RenderTarget 来源：附件名
+        OSString            array_uri;                      ///<TextureArray 来源：规范化 URI（身份用）
         bool                content_ready = false;          ///<内容就绪(RT:已按此目标画过一帧)
 
     protected:  // MetaObject 双层契约
@@ -93,6 +95,18 @@ namespace hgl::graph
          */
         bool SetupFromRenderTarget(const OSString &target,const OSString &attachment);
 
+        /**
+         * @brief 按层装配规约建一张 2D 数组。
+         *
+         * 与文件来源不同，数组**不是一张文件贴图**：它由 N 张文件按顺序拼成一列，
+         * 必须在创建时一次性装配完成（层内容之后不再改写），因此这里直接完成装配并
+         * 把句柄推进 `Resident`。装配失败 ⇒ `LoadFailed`，`GetTexture()==nullptr`。
+         *
+         * @param spec     已解析成功的规约（层数/层 URI/可选 mip 覆盖）
+         * @param uri_text 规范化 URI 文本（`texarray:@name` 或 `texarray:file:path`），作句柄身份
+         */
+        bool SetupFromTextureArray(const TextureArraySpec &spec,const OSString &uri_text);
+
     public:     // 只读观察
 
         TextureManager * GetTextureManager()const{return tex_manager;}
@@ -104,8 +118,12 @@ namespace hgl::graph
 
         TextureURIKind   GetSourceKind    ()const{return source_kind;}
         bool             IsRenderTarget   ()const{return source_kind==TextureURIKind::RenderTarget;}
+        bool             IsTextureArray   ()const{return source_kind==TextureURIKind::TextureArray;}
         const OSString & GetRenderTargetName()const{return rt_target;}
         const OSString & GetRenderTargetAttachment()const{return rt_attachment;}
+
+        /// TextureArray 来源的规范化 URI 文本
+        const OSString & GetTextureArrayURI()const{return array_uri;}
 
         /**
          * @brief 资源**身份**（材质配方绑定 / bindless 去重键的唯一来源）。

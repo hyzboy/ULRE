@@ -12,6 +12,7 @@ namespace hgl::graph
     {
         File = 0,       ///< 磁盘文件（`file:<path>`，无 scheme 时默认按此处理）
         RenderTarget,   ///< 某个 RenderTarget 的附件（`rt:<target>[:<attachment>]`）
+        TextureArray,   ///< 由层装配规约构建的 2D 数组（`texarray:@<name>` / `texarray:file:<path>`）
     };
 
     /// `rt:` 缺省附件名：首个颜色附件
@@ -22,6 +23,18 @@ namespace hgl::graph
 
     inline constexpr os_char kTextureURISchemeFile[]          = OS_TEXT("file");
     inline constexpr os_char kTextureURISchemeRenderTarget[]  = OS_TEXT("rt");
+    inline constexpr os_char kTextureURISchemeTextureArray[]  = OS_TEXT("texarray");
+
+    /**
+     * `texarray:` 的两种写法（`path` 里保留原始标记，便于回写与去重）：
+     * - `texarray:@<name>`：按**已注册**的数组名取（对应 `<name>.texarray.toml`）；
+     * - `texarray:file:<path>`：直接给规约文件路径。
+     *
+     * `@` 前缀与数据块那一层（`mtldata:@<name>`）保持一致，避免「名字」和「路径」
+     * 在同一个字段里混着猜。
+     */
+    inline constexpr os_char kTextureURIArrayNamePrefix          = OS_TEXT('@');
+    inline constexpr os_char kTextureURIArrayFilePrefix[]        = OS_TEXT("file:");
 
     /**
      * 解析后的纹理 URI。
@@ -35,6 +48,8 @@ namespace hgl::graph
      *   算分隔 —— 因为 RT 名常沿用 `resource_prefix`（如 `RenderToTexture:OffscreenRT`），
      *   名字里带冒号是常态。因此 `rt:A:B:color0` = 名 `A:B` + 附件 `color0`，
      *   而 `rt:A:B` = 名 `A:B` + 缺省 `color0`。
+     * - `texarray:@<name>` / `texarray:file:<path>`：2D 数组，来源是层装配规约文件。
+     *   这种纹理**不是一张文件贴图**，而是一组层拼出来的对象，因此单独一个 kind。
      *
      * 注意 `C:\path\to\texture.Tex2D` 这类盘符不会被误判成 scheme：
      * 只有 `file`/`rt` 两个已知 scheme 才生效，其余形如 `<prefix>:...` 的一律按文件路径处理。
@@ -49,6 +64,16 @@ namespace hgl::graph
         bool IsValid       ()const{return !path.IsEmpty();}
         bool IsFile        ()const{return kind==TextureURIKind::File;}
         bool IsRenderTarget()const{return kind==TextureURIKind::RenderTarget;}
+        bool IsTextureArray()const{return kind==TextureURIKind::TextureArray;}
+
+        /// `texarray:@<name>` 形态（按名字取已注册的数组）
+        bool IsArrayByName()const;
+
+        /// `texarray:@<name>` → `<name>`；其它形态返回空
+        OSString GetArrayName()const;
+
+        /// `texarray:file:<path>` → `<path>`；按名字形态返回空
+        OSString GetArraySpecPath()const;
 
         /// 规范化的 URI 文本（用于日志与去重键）
         OSString ToString()const;
