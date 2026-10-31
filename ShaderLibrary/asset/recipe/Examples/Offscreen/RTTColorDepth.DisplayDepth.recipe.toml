@@ -1,3 +1,8 @@
 schema = 1
 name = "RTTColorDepth.DisplayDepth"
 domain = "UnlitTexture3D"
+
+# 贴离屏世界的深度附件（R 已广播到 RGB，呈灰度）。
+[[textures]]
+name = "base_color"
+asset = "rt:RTTColorDepth:OffscreenRT:depth"

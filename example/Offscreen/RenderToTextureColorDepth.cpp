@@ -16,8 +16,6 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -149,9 +147,6 @@ private:
     graph::mtl::MaterialRecipe sphere_recipe{};
 
     graph::GlobalSSBOBinding material_data_ssbo_accessor{};
-    TextureAsset* sphere_base_tex = nullptr;
-    TextureAsset* sphere_normal_tex = nullptr;
-    TextureAsset* sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
     hgl::ecs::GeometryData *sphere_primitive_comp = nullptr;
 
@@ -289,18 +284,12 @@ public:
         if (!gc)
             return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
 
-        auto *tm = owner->GetManager<TextureManager>();
         auto *device = gc->GetDevice();
-        if (!tm || !device)
-            return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
+        if (!device)
+            return LogStageFail("OffscreenPass::BuildSphere", "required device missing");
 
-        // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照（材质数值在数据块文件里）
-
-        sphere_base_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        sphere_normal_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        sphere_roughness_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-        if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
-            return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
+        // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照（材质数值在数据块文件里，
+        // 三张砖墙贴图在 RTTColorDepth.OffscreenSphere 配方文件里声明）
 
         if (!InitMaterialDataSSBO(owner))
             return LogStageFail("OffscreenPass::BuildSphere", "InitMaterialDataSSBO failed");
@@ -318,12 +307,8 @@ public:
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 纹理是材质原型固有属性 —— 已在 RTTColorDepth.OffscreenSphere 配方文件里声明。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!sphere_recipe.AddTexture("base_color", sphere_base_tex, true)
-         || !sphere_recipe.AddTexture("normal", sphere_normal_tex, true)
-         || !sphere_recipe.AddTexture("roughness", sphere_roughness_tex, true))
-            return LogStageFail("OffscreenPass::BuildSphere", "bind recipe textures failed");
 
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
         if (!sphere_asset.IsValid())
@@ -341,7 +326,7 @@ public:
         transform.SetMobility(Mobility::Static);
 
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
-        // 纹理已由配方声明（sphere_recipe.AddTexture），实体端不再重复绑定
+        // 纹理已由配方文件声明，实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor;
         material_data_comp->SetDataResource(sphere_struct);
@@ -407,9 +392,8 @@ struct DisplayCube
 
     graph::GlobalSSBOBinding accessor{};
 
-    /// 材质授权统一走句柄：离屏颜色/深度附件的 TextureAsset（RT 创建时已绑定）。
-    /// 示例不再持有裸纹理 —— 就绪判定（含离屏内容是否已画出）由 ECS 侧统一负责。
-    TextureAsset *texture_asset = nullptr;
+    /// 材质授权统一走配方文件（离屏附件用 `rt:` URI），示例不持有纹理句柄 ——
+    /// 就绪判定（含离屏内容是否已画出）由 ECS 侧统一负责。
 
     Entity *entity = nullptr;
     hgl::ecs::TransformAccessor transform;
@@ -499,11 +483,6 @@ private:
         if (!gm || !device)
             return LogStageFail("App::CreateDisplayCube", "required managers/device missing");
 
-        if (!cube.texture_asset)
-            return LogStageFail("App::CreateDisplayCube", "offscreen texture asset is null");
-
-        // base_color 乘数保持白色：纹理内容原样进入光照（材质数值在数据块文件里）
-
         if (!InitMaterialDataSSBO(cube))
             return LogStageFail("App::CreateDisplayCube", "InitMaterialDataSSBO failed");
 
@@ -525,10 +504,9 @@ private:
         if (!(cube.recipe.material_ssbo_binding = cube.accessor).IsValid())
             return LogStageFail("App::CreateDisplayCube", "register material SSBO binding failed");
 
-        // 唯一区别：配方绑定的离屏纹理不同（颜色 / 深度）——`rtex:` 身份，`CanRender` 负责等内容就绪。
-        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!cube.recipe.AddTexture("base_color", cube.texture_asset, true))
-            return LogStageFail("App::CreateDisplayCube", "bind recipe texture failed");
+        // 两个立方体唯一的区别是配方文件里 base_color 指向的离屏附件不同（颜色 / 深度）；
+        // `rt:` 身份，`CanRender` 负责等离屏内容就绪。
+        // base_color 乘数保持白色：纹理内容原样进入光照（材质数值在数据块文件里）。
 
         cube.asset = PrimitiveAsset(cube.geometry, &cube.recipe, PrimitiveType::Triangles);
         if (!cube.asset.IsValid())
@@ -545,7 +523,7 @@ private:
         cube.transform.SetMobility(Mobility::Movable);
 
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube.asset);
-        // 纹理已由配方声明（cube.recipe.AddTexture），实体端不再重复绑定
+        // 纹理已由配方文件声明，实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube.accessor;
         material_data_comp->SetDataResource(cube_struct);
@@ -581,21 +559,10 @@ private:
         cubes[1].uri         = "rt:RTTColorDepth:OffscreenRT:depth";
         cubes[1].x_offset    = +kCubeSpacing;
 
-        auto *texture_manager = GetManager<TextureManager>();
-        if (!texture_manager)
-            return LogStageFail("App::CreateDisplayCubes", "texture manager unavailable");
-
-        // 只用 URI 声明"要哪个附件"，不拿裸纹理、不再 WrapTextureAsset：
-        // 句柄在 RT 创建时已由 RenderTargetManager 绑定，此刻「容器就绪、内容未就绪」，
-        // ECS 的 CanRender 会拦住两个立方体，直到离屏 pass 真正画出内容。
-        cubes[0].texture_asset = texture_manager->CreateTextureAsset(OS_TEXT("rt:RTTColorDepth:OffscreenRT:color0"));
-        cubes[1].texture_asset = texture_manager->CreateTextureAsset(OS_TEXT("rt:RTTColorDepth:OffscreenRT:depth"));
-
-        if (!cubes[0].texture_asset)
-            return LogStageFail("App::CreateDisplayCubes", "offscreen color texture asset unavailable");
-
-        if (!cubes[1].texture_asset)
-            return LogStageFail("App::CreateDisplayCubes", "offscreen depth texture asset unavailable");
+        // 只用 URI 声明"要哪个附件"（写在 RTTColorDepth.DisplayColor / DisplayDepth 配方文件里），
+        // 不拿裸纹理、不再 WrapTextureAsset：句柄在 RT 创建时已由 RenderTargetManager 绑定，
+        // 此刻「容器就绪、内容未就绪」，ECS 的 CanRender 会拦住两个立方体，
+        // 直到离屏 pass 真正画出内容。
 
         for (DisplayCube &cube : cubes)
         {
@@ -611,9 +578,6 @@ public:
     ~RenderToTextureColorDepthApp() override
     {
         SAFE_CLEAR(offscreen)
-
-        for (DisplayCube &cube : cubes)
-            cube.texture_asset = nullptr;
     }
 
     bool Init() override

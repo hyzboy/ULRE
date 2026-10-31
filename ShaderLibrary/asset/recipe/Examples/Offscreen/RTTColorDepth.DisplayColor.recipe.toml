@@ -1,3 +1,9 @@
 schema = 1
 name = "RTTColorDepth.DisplayColor"
 domain = "UnlitTexture3D"
+
+# 贴离屏世界的颜色附件：`rt:<RT名>:<附件名>`。句柄由 MaterialRecipeRegistry
+# 在配方加载时创建，RenderTargetManager 建 RT 时按名字接上（无排序约定）。
+[[textures]]
+name = "base_color"
+asset = "rt:RTTColorDepth:OffscreenRT:color0"
