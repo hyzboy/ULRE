@@ -34,7 +34,8 @@ namespace hgl::graph
         if(texture)
             return(true);
 
-        if(source_kind!=TextureURIKind::File)
+        if(source_kind!=TextureURIKind::File
+         &&source_kind!=TextureURIKind::CubeFile)
         {
             // RenderTarget / TextureArray 来源没有「单张文件」可读：
             // RT 等 RenderTargetManager 绑定，数组在创建时就装配完了。
@@ -51,13 +52,19 @@ namespace hgl::graph
             return(false);
         }
 
-        texture=tex_manager->LoadTexture2D(meta.source_path,auto_mipmaps);
+        texture=(source_kind==TextureURIKind::CubeFile)
+              ? (Texture *)tex_manager->LoadTextureCube(meta.source_path,auto_mipmaps)
+              : (Texture *)tex_manager->LoadTexture2D(meta.source_path,auto_mipmaps);
 
         if(!texture)
         {
             GLogError(OS_TEXT("[TextureAsset] 纹理加载失败：%s"),meta.source_path.c_str());
             return(false);
         }
+
+        // 同步路径同样要置「内容就绪」：否则 `IsReady()` 恒为 false（它要求
+        // `texture && content_ready`），句柄会被渲染门禁永久判为未就绪。
+        content_ready=true;
 
         return(true);
     }
@@ -97,6 +104,23 @@ namespace hgl::graph
 
         if(uri.IsRenderTarget())
             return SetupFromRenderTarget(uri.path,uri.attachment);
+
+        if(uri.IsCubeFile())
+        {
+            // 立方体贴图与 2D 走不同的加载器（`LoadTextureCube`），因此在这里就定住来源类型。
+            source_kind         =TextureURIKind::CubeFile;
+            meta.source_path    =uri.path;
+            meta.asset_type     =OS_TEXT("TextureCube");
+            this->auto_mipmaps  =auto_mipmaps;
+
+            if(!Init())
+                return(false);
+
+            // 异步链路（`TextureStreamingSystem`）只服务 2D，没有 cube 的上传任务类型；
+            // 而天空盒这类贴图数量极少、一次性用到底，所以在这里同步装完，
+            // 句柄立刻进入 Resident ⇒ 流式系统看到 `IsReady()` 会直接跳过，不会误当 2D 读。
+            return(LoadPayload());
+        }
 
         source_kind         =TextureURIKind::File;
         meta.source_path    =uri.path;
@@ -302,6 +326,18 @@ namespace hgl::graph
                 if(!meta.source_path.IsEmpty())
                 {
                     U8String id(u8"texfile:");
+
+                    id+=ToU8String(meta.source_path);
+                    return id;
+                }
+
+                break;
+            }
+            case TextureURIKind::CubeFile:
+            {
+                if(!meta.source_path.IsEmpty())
+                {
+                    U8String id(u8"texcubefile:");
 
                     id+=ToU8String(meta.source_path);
                     return id;

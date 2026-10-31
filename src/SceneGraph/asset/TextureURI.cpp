@@ -76,6 +76,15 @@ namespace hgl::graph
             return(info);
         }
 
+        // 必须在 `file:` 之后判：`cubefile:` 不以 `file:` 开头，顺序其实无关，
+        // 但保持「2D 文件优先」的读法更省心。
+        if(HasPrefixNoCase(uri,OS_TEXT("cubefile:")))
+        {
+            info.kind=TextureURIKind::CubeFile;
+            info.path=uri.SubString(9);      // 跳过 "cubefile:"
+            return(info);
+        }
+
         if(HasPrefixNoCase(uri,OS_TEXT("rt:")))
         {
             info.kind=TextureURIKind::RenderTarget;
@@ -171,6 +180,9 @@ namespace hgl::graph
 
         if(kind==TextureURIKind::TextureArray)
             return OSString(OS_TEXT("texarray:"))+path;
+
+        if(kind==TextureURIKind::CubeFile)
+            return OSString(OS_TEXT("cubefile:"))+path;
 
         return OSString(OS_TEXT("file:"))+path;
     }

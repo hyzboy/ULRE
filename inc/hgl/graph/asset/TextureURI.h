@@ -13,6 +13,7 @@ namespace hgl::graph
         File = 0,       ///< 磁盘文件（`file:<path>`，无 scheme 时默认按此处理）
         RenderTarget,   ///< 某个 RenderTarget 的附件（`rt:<target>[:<attachment>]`）
         TextureArray,   ///< 由层装配规约构建的 2D 数组（`texarray:@<name>` / `texarray:file:<path>`）
+        CubeFile,       ///< 立方体贴图文件（`cubefile:<path>`，供 `sky_cube` 这类 TextureCube 槽位）
     };
 
     /// `rt:` 缺省附件名：首个颜色附件
@@ -24,6 +25,7 @@ namespace hgl::graph
     inline constexpr os_char kTextureURISchemeFile[]          = OS_TEXT("file");
     inline constexpr os_char kTextureURISchemeRenderTarget[]  = OS_TEXT("rt");
     inline constexpr os_char kTextureURISchemeTextureArray[]  = OS_TEXT("texarray");
+    inline constexpr os_char kTextureURISchemeCubeFile[]      = OS_TEXT("cubefile");
 
     /**
      * `texarray:` 的两种写法（`path` 里保留原始标记，便于回写与去重）：
@@ -50,21 +52,29 @@ namespace hgl::graph
      *   而 `rt:A:B` = 名 `A:B` + 缺省 `color0`。
      * - `texarray:@<name>` / `texarray:file:<path>`：2D 数组，来源是层装配规约文件。
      *   这种纹理**不是一张文件贴图**，而是一组层拼出来的对象，因此单独一个 kind。
+     * - `cubefile:<path>`：立方体贴图文件（`.CubeTexture`）。同样是「一张文件」，
+     *   但对象类型是 `TextureCube`，与 2D 走的是不同的加载器，因此单独一个 kind。
+     *   注意它**不能**简写成裸路径 —— 裸路径一律按 2D 处理。
      *
      * 注意 `C:\path\to\texture.Tex2D` 这类盘符不会被误判成 scheme：
-     * 只有 `file`/`rt` 两个已知 scheme 才生效，其余形如 `<prefix>:...` 的一律按文件路径处理。
+     * 只有 `file`/`rt`/`texarray`/`cubefile` 几个已知 scheme 才生效，
+     * 其余形如 `<prefix>:...` 的一律按文件路径处理。
      */
     struct TextureURI
     {
         TextureURIKind  kind    = TextureURIKind::File;
         OSString        raw;            ///< 原始输入
-        OSString        path;           ///< File: 文件路径 / RenderTarget: RenderTarget 名
+        OSString        path;           ///< File/CubeFile: 文件路径 / RenderTarget: RenderTarget 名
         OSString        attachment;     ///< RenderTarget: 附件名（File 时为空）
 
         bool IsValid       ()const{return !path.IsEmpty();}
         bool IsFile        ()const{return kind==TextureURIKind::File;}
+        bool IsCubeFile    ()const{return kind==TextureURIKind::CubeFile;}
         bool IsRenderTarget()const{return kind==TextureURIKind::RenderTarget;}
         bool IsTextureArray()const{return kind==TextureURIKind::TextureArray;}
+
+        /// 是否是「磁盘上的单张文件」来源（2D 或立方体贴图）
+        bool IsDiskFile    ()const{return kind==TextureURIKind::File||kind==TextureURIKind::CubeFile;}
 
         /// `texarray:@<name>` 形态（按名字取已注册的数组）
         bool IsArrayByName()const;

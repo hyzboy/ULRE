@@ -528,20 +528,21 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
     // 规范化键 ⇒ "res/a.Tex2D"、"res\\a.Tex2D"、"RES/./a.Tex2D" 归到同一个句柄。
     // 线性扫描是有意选择：句柄只在材质装配期创建，规模是几十到几百，
     // 换成哈希表还要为 OSString 造一套哈希，收益不成比例。
+    // 判等要连 source_kind 一起看：同一路径用 `file:` 和 `cubefile:` 引用是两张不同的纹理。
     const OSString key=MakeLoadedFileKey(uri.path);
 
     for(int i=0;i<texture_assets.GetCount();++i)
     {
         TextureAsset *exist=texture_assets[i];
 
-        if(exist && !exist->IsRenderTarget() && !exist->IsTextureArray()
+        if(exist && exist->GetSourceKind()==uri.kind
                  && MakeLoadedFileKey(exist->GetFilename())==key)
             return(exist);
     }
 
     TextureAsset *asset=new TextureAsset(this);
 
-    if(!asset->SetupFromFilename(uri.path,auto_mipmaps))
+    if(!asset->SetupFromFilename(uri.raw,auto_mipmaps))
     {
         delete asset;
         return(nullptr);
