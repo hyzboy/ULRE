@@ -627,13 +627,15 @@ def c_escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def render_meta_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
+def render_meta_header(group: GroupConfig, structs: list[AssetStruct],
+                       enums: list[EnumInfo]) -> str:
     out: list[str] = []
     out.append(
         "// ─────────────────────────────────────────────────────────────────────────────\n"
         "// @ulre-codegen begin\n"
         "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
-        "//   属性元数据表：供检查器 GUI、文档导出与通用批量工具消费。\n"
+        "//   属性元数据表：供检查器 GUI、文档导出、严格键校验与通用格式后端消费。\n"
+        "//   它是「结构长什么样」的**唯一运行期真源**，与格式无关。\n"
         "// @ulre-codegen end\n"
         "// ─────────────────────────────────────────────────────────────────────────────\n"
         "#pragma once\n\n"
@@ -642,7 +644,14 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
     for header in sorted({s.header for s in structs}):
         rel = header[len("inc/"):] if header.startswith("inc/") else header
         out.append(f"#include <{rel}>\n")
+    # 外部枚举的转发目标（如 `VkEnumText.h`）：生成代码直接调用它，必须显式包含。
+    for rel in sorted({i.extern_include for i in enums if i.extern_include}):
+        out.append(f"#include <{rel}>\n")
     out.append("\nnamespace hgl::asset::generated\n{\n")
+    out.append(render_enum_tables(enums))
+
+    # `prop.enum_name` 存的是枚举完全限定名；适配器函数名用的是生成器里登记的短名。
+    enum_fn_by_fq = {info.fq: info.name for info in enums}
 
     # 属性表的 `struct_meta` 要指向子结构的 `ClassMetaInfo`，而结构之间可以互相
     # 引用（A 的子表是 B、B 的子表是 A），所以先统一前向声明一次。
@@ -666,9 +675,25 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
             while elem.elem is not None and elem.category in ("value_array", "ptr_array"):
                 elem = elem.elem
             struct_meta = f"&Class_{elem.gen}" if elem.category == "struct" and elem.gen else "nullptr"
+            # 容器元素的类别：FlatBuffers 后端据此决定向量元素是标量、字符串还是子表。
+            if prop.type.category in ("value_array", "ptr_array"):
+                elem_kind = f"PropertyKind::{elem.kind or 'String'}"
+            else:
+                elem_kind = "PropertyKind::None"
+            if prop.type.category == "enum" and prop.type.enum:
+                fn = enum_fn_by_fq.get(prop.type.enum, base_type_name(prop.type.enum))
+                enum_parse = f"&AssetEnumParse64_{fn}"
+                enum_to_name = f"&AssetEnumName64_{fn}"
+            else:
+                enum_parse = "nullptr"
+                enum_to_name = "nullptr"
             # `Presence<T>` 是「值 + 是否出现」的包装；元数据描述的是里面的真实类型。
             size_literal = (f"(uint32_t)sizeof({prop.type.fq})"
                             if prop.type.presence else f"{prop.size}u")
+            if prop.type.presence:
+                names = [n for n in names if n != "PF_None"]
+                names.append("PF_Presence")
+                flags_literal = " | ".join(names)
             out.append(
                 f'        {{ "{c_escape(prop.name)}", "{c_escape(prop.toml_key)}", '
                 f'"{c_escape(prop.display_name)}", "{c_escape(prop.category)}", '
@@ -676,7 +701,8 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
                 f"{enum_name}, {asset_ref}, "
                 f"PropertyKind::{kind}, {flags_literal}, "
                 f"{prop.offset}u, {size_literal}, {fixed_len}u, "
-                f"{prop.range_min}, {prop.range_max}, {prop.step}, {struct_meta} }},\n"
+                f"{prop.range_min}, {prop.range_max}, {prop.step}, {struct_meta}, "
+                f"{elem_kind}, {enum_parse}, {enum_to_name} }},\n"
             )
         out.append("    };\n\n")
         out.append(
@@ -1112,29 +1138,15 @@ def fb_scalar_of(t: TypeDesc) -> str:
     }[t.fbs]
 
 
-def render_serialize_header(structs: list[AssetStruct], enums: list[EnumInfo]) -> str:
-    """生成 `<Group>Serialize.gen.h`：唯一一份字段遍历（EnumTraits + StructSerializer）。"""
-    out: list[str] = []
-    out.append(
-        "// ─────────────────────────────────────────────────────────────────────────────\n"
-        "// @ulre-codegen begin\n"
-        "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
-        "//   这是**唯一一份**字段遍历代码：它只说「哪个字段、什么名字、什么 id」，\n"
-        "//   不关心落到 TOML 还是 FlatBuffers。新增格式后端不需要重新生成任何东西。\n"
-        "// @ulre-codegen end\n"
-        "// ─────────────────────────────────────────────────────────────────────────────\n"
-        "#pragma once\n\n"
-        "#include <hgl/serialize/Archive.h>\n"
-    )
-    for header in sorted({s.header for s in structs}):
-        rel = header[len("inc/"):] if header.startswith("inc/") else header
-        out.append(f"#include <{rel}>\n")
-    # 外部枚举的转发目标（如 `VkEnumText.h`）：生成代码直接调用它，必须显式包含。
-    for rel in sorted({i.extern_include for i in enums if i.extern_include}):
-        out.append(f"#include <{rel}>\n")
-    out.append("\nnamespace hgl::asset::generated\n{\n")
+def render_enum_tables(enums: list[EnumInfo]) -> str:
+    """枚举名字表：`AssetEnumName_*` / `AssetEnumParse_*` 及其 `int64_t` 适配器。
 
-    # 枚举名表（TOML 与 FB 的描述表都复用这一份）
+    这些表是**元数据**（名字↔值），不是序列化逻辑，所以落在 `Meta.gen.h`；
+    依赖方向因此固定为 `Serialize.gen.h` → `Meta.gen.h`（单向，不成环）。
+    """
+    out: list[str] = []
+
+    # 枚举名表（TOML 文本、FlatBuffers 枚举、反射适配器都复用这一份）
     for info in enums:
         if info.extern_from and info.extern_to:
             # 外部枚举（Vulkan …）：拼写表已经有唯一真源，这里只转发，不复制。
@@ -1175,9 +1187,46 @@ def render_serialize_header(structs: list[AssetStruct], enums: list[EnumInfo]) -
                     f"{{ out = {info.fq}::{name}; return true; }}\n"
                 )
         out.append("        return false;\n    }\n\n")
-    out.append("}//namespace hgl::asset::generated\n\n")
 
-    out.append("namespace hgl::serialize\n{\n")
+    # `PropertyMetaInfo::enum_parse` / `enum_to_name` 走 `int64_t`（反射层不认识具体枚举
+    # 类型），这里为每个枚举补一对薄适配器；真正的拼写表仍然只有上面那一份。
+    for info in enums:
+        out.append(f"    inline const char *AssetEnumName64_{info.name}(const int64_t v)\n"
+                   f"    {{ return AssetEnumName_{info.name}(static_cast<{info.fq}>(v)); }}\n\n")
+        out.append(f"    inline bool AssetEnumParse64_{info.name}(const char *s, int64_t &out)\n"
+                   "    {\n"
+                   f"        {info.fq} tmp{{}};\n"
+                   f"        if (!AssetEnumParse_{info.name}(s, tmp)) return false;\n"
+                   "        out = static_cast<int64_t>(tmp);\n"
+                   "        return true;\n"
+                   "    }\n\n")
+
+    return "".join(out)
+
+
+def render_serialize_header(group: GroupConfig, structs: list[AssetStruct],
+                            enums: list[EnumInfo]) -> str:
+    """生成 `<Group>Serialize.gen.h`：唯一一份字段遍历（EnumTraits + StructSerializer）。"""
+    out: list[str] = []
+    out.append(
+        "// ─────────────────────────────────────────────────────────────────────────────\n"
+        "// @ulre-codegen begin\n"
+        "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
+        "//   这是**唯一一份**字段遍历代码：它只说「哪个字段、什么名字、什么 id」，\n"
+        "//   不关心落到 TOML 还是 FlatBuffers。新增格式后端不需要重新生成任何东西。\n"
+        "// @ulre-codegen end\n"
+        "// ─────────────────────────────────────────────────────────────────────────────\n"
+        "#pragma once\n\n"
+        "#include <hgl/serialize/Archive.h>\n"
+    )
+    for header in sorted({s.header for s in structs}):
+        rel = header[len("inc/"):] if header.startswith("inc/") else header
+        out.append(f"#include <{rel}>\n")
+    # 枚举拼写表与 `ClassMetaInfo` 都在 Meta.gen.h 里；本文件只做「字段遍历」。
+    rel = group.meta_header
+    rel = rel[len("inc/"):] if rel.startswith("inc/") else rel
+    out.append(f"#include <{rel}>\n")
+    out.append("\nnamespace hgl::serialize\n{\n")
     for info in enums:
         out.append(f"    template<> struct EnumTraits<{info.fq}>\n    {{\n")
         out.append("        static constexpr bool defined = true;\n")
@@ -1198,7 +1247,10 @@ def render_serialize_header(structs: list[AssetStruct], enums: list[EnumInfo]) -
                 continue
             field_id += 1
             out.append(f'            ar.Field({field_id}, "{prop.toml_key}", v.{prop.name});\n')
-        out.append("        }\n    };\n\n")
+        out.append("        }\n")
+        out.append(f"        static const hgl::asset::ClassMetaInfo *Meta()\n"
+                   f"        {{ return &hgl::asset::generated::Class_{info.gen_name}; }}\n")
+        out.append("    };\n\n")
 
     out.append("}//namespace hgl::serialize\n")
     return "".join(out)
@@ -1565,10 +1617,10 @@ def main(argv: list[str]) -> int:
         ordered = _order_for_emission(discovered)
 
         write_or_check(repo_root / group.serialize_header,
-                       render_serialize_header(ordered, group_enums),
+                       render_serialize_header(group, ordered, group_enums),
                        args.check, report)
         write_or_check(repo_root / group.meta_header,
-                       render_meta_header(group, ordered),
+                       render_meta_header(group, ordered, group_enums),
                        args.check, report)
         if group.fbs_schema:
             fbs_content = render_fbs_schema(group, ordered)

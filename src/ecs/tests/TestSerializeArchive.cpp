@@ -835,6 +835,217 @@ namespace
 
         return true;
     }
+
+    // ── 用例 13：`ClassMetaInfo` 驱动的 FlatBuffers（反射即布局）──────────────
+    //
+    // 与用例 12 的区别：这里**不写任何描述表**，字段 id / 键名 / voffset 全部由
+    // 反射元数据推导 —— 这正是 `HGL_ASSET_STRUCT` + AssetGen 产物的真实路径。
+    // 用同一份值树分别走「手写描述表」和「反射推导」两条路，缓冲必须逐字节相同。
+
+    namespace fbmeta
+    {
+        using namespace hgl::asset;
+
+        /// 「既进 TOML 又进 FlatBuffers」的常规标志组合。
+        constexpr uint32_t kBoth = PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers;
+
+        /// 「只进 TOML」：值树里有键，但不写进二进制（映射 / 集合 / 树）。
+        constexpr uint32_t kTomlOnly = PF_Serialized | PF_SerializedToml;
+
+        const PropertyMetaInfo kLeafProps[] = {
+            { "scalar",    nullptr, "scalar",    "Default", "", "float",
+              nullptr, nullptr, PropertyKind::Float, kBoth, 0, 4, 0, 0.0, 0.0, 0.0, nullptr },
+            { "direction", nullptr, "direction", "Default", "", "hgl::math::Vector3f",
+              nullptr, nullptr, PropertyKind::Vector3f, kBoth, 4, 12, 0, 0.0, 0.0, 0.0, nullptr },
+        };
+
+        const ClassMetaInfo kLeafMeta = {
+            "SampleLeaf", "", "", kLeafProps, 2,
+            static_cast<uint32_t>(sizeof(SampleLeaf)),
+            static_cast<uint32_t>(alignof(SampleLeaf)),
+        };
+
+        const PropertyMetaInfo kNodeProps[] = {
+            { "name",   nullptr, "name",   "Default", "", "AnsiString",
+              nullptr, nullptr, PropertyKind::String, kBoth, 0, 0, 0, 0.0, 0.0, 0.0, nullptr },
+            { "parent", nullptr, "parent", "Default", "", "int32_t",
+              nullptr, nullptr, PropertyKind::Int32, kBoth, 0, 4, 0, 0.0, 0.0, 0.0, nullptr },
+        };
+
+        const ClassMetaInfo kNodeMeta = {
+            "SampleNode", "", "", kNodeProps, 2,
+            static_cast<uint32_t>(sizeof(SampleNode)),
+            static_cast<uint32_t>(alignof(SampleNode)),
+        };
+
+        const PropertyMetaInfo kAssetProps[] = {
+            { "schema",   nullptr,  "schema",   "Default", "", "uint32_t",
+              nullptr, nullptr, PropertyKind::UInt32, kBoth, 0, 4, 0, 0.0, 0.0, 0.0, nullptr },
+            { "name",     nullptr,  "name",     "Default", "", "AnsiString",
+              nullptr, nullptr, PropertyKind::String, kBoth, 0, 0, 0, 0.0, 0.0, 0.0, nullptr },
+            { "uri",      nullptr,  "uri",      "Default", "", "OSString",
+              nullptr, nullptr, PropertyKind::String, kBoth, 0, 0, 0, 0.0, 0.0, 0.0, nullptr },
+            { "enabled",  nullptr,  "enabled",  "Default", "", "bool",
+              nullptr, nullptr, PropertyKind::Bool, kBoth, 0, 1, 0, 0.0, 0.0, 0.0, nullptr },
+            { "count",    nullptr,  "count",    "Default", "", "int32_t",
+              nullptr, nullptr, PropertyKind::Int32, kBoth, 0, 4, 0, 0.0, 0.0, 0.0, nullptr },
+            { "big",      nullptr,  "big",      "Default", "", "uint64_t",
+              nullptr, nullptr, PropertyKind::UInt64, kBoth, 0, 8, 0, 0.0, 0.0, 0.0, nullptr },
+            { "ratio",    nullptr,  "ratio",    "Default", "", "double",
+              nullptr, nullptr, PropertyKind::Double, kBoth, 0, 8, 0, 0.0, 0.0, 0.0, nullptr },
+            { "kind",     nullptr,  "kind",     "Default", "", "SampleKind", "SampleKind",
+              nullptr, PropertyKind::Enum, kBoth, 0, 4, 0, 0.0, 0.0, 0.0, nullptr,
+              PropertyKind::None, &desc::KindFromName, &desc::KindToName },
+            { "position", nullptr,  "position", "Default", "", "hgl::math::Vector3f",
+              nullptr, nullptr, PropertyKind::Vector3f, kBoth, 0, 12, 0, 0.0, 0.0, 0.0, nullptr },
+            { "tint",     nullptr,  "tint",     "Default", "", "Color4f",
+              nullptr, nullptr, PropertyKind::Vector4f, kBoth, 0, 16, 0, 0.0, 0.0, 0.0, nullptr },
+            { "leaf",     nullptr,  "leaf",     "Default", "", "SampleLeaf",
+              nullptr, nullptr, PropertyKind::Struct, kBoth, 0, 0, 0, 0.0, 0.0, 0.0, &kLeafMeta },
+            { "weights",  nullptr,  "weights",  "Default", "", "hgl::ValueArray<float>",
+              nullptr, nullptr, PropertyKind::ValueArray, kBoth, 0, 0, 0, 0.0, 0.0, 0.0, nullptr,
+              PropertyKind::Float },
+            { "nodes",    nullptr,  "nodes",    "Default", "", "hgl::ManagedArray<SampleNode>",
+              nullptr, nullptr, PropertyKind::PtrArray, kBoth, 0, 0, 0, 0.0, 0.0, 0.0, &kNodeMeta,
+              PropertyKind::Struct },
+            { "counters", nullptr,  "counters", "Default", "", "hgl::OrderedMap<AnsiString,int32_t>",
+              nullptr, nullptr, PropertyKind::Struct, kTomlOnly, 0, 0, 0, 0.0, 0.0, 0.0, nullptr },
+            { "tags",     nullptr,  "tags",     "Default", "", "hgl::OrderedSet<int32_t>",
+              nullptr, nullptr, PropertyKind::Struct, kTomlOnly, 0, 0, 0, 0.0, 0.0, 0.0, nullptr },
+            { "tree",     nullptr,  "tree",     "Default", "", "hgl::FlatTreeContainer<SampleTreeData>",
+              nullptr, nullptr, PropertyKind::Struct, kTomlOnly, 0, 0, 0, 0.0, 0.0, 0.0, nullptr },
+        };
+
+        const ClassMetaInfo kAssetMeta = {
+            "SampleAsset", "", "", kAssetProps, 16,
+            static_cast<uint32_t>(sizeof(SampleAsset)),
+            static_cast<uint32_t>(alignof(SampleAsset)),
+        };
+    }//namespace fbmeta
+
+    bool TestFlatBuffersMetaDriven()
+    {
+        Fixture fixture;
+
+        // ① 反射推导编码
+        flatbuffers::FlatBufferBuilder meta_fbb;
+        AnsiString encode_error;
+        Check(hgl::serialize::fb::EncodeToFlatBuffers<SampleAsset>(
+                  meta_fbb, fixture.asset, fbmeta::kAssetMeta, nullptr, &encode_error),
+              "反射驱动编码应成功");
+        if (!encode_error.IsEmpty())
+            GLogError(u8"  编码诊断=%s", encode_error.c_str());
+
+        // ② 与手写描述表的产物逐字节对比：两条路必须推导出同一布局
+        flatbuffers::FlatBufferBuilder desc_fbb;
+        Value tree;
+        Archive writer = Archive::ForWrite(tree);
+        StructSerializer<SampleAsset>::Do(writer, fixture.asset);
+        hgl::serialize::fb::EncodeToBuffer(desc_fbb, tree, desc::asset);
+
+        Check(meta_fbb.GetSize() == desc_fbb.GetSize(), "反射与描述表产出的缓冲长度应一致");
+        if (meta_fbb.GetSize() == desc_fbb.GetSize())
+            Check(memcmp(meta_fbb.GetBufferPointer(), desc_fbb.GetBufferPointer(),
+                         meta_fbb.GetSize()) == 0,
+                  "反射与描述表产出的缓冲应逐字节相同");
+
+        // ③ 校验通过 + 解码往返
+        const size_t size = meta_fbb.GetSize();
+        Check(hgl::serialize::fb::VerifyBuffer(meta_fbb.GetBufferPointer(), size,
+                                               fbmeta::kAssetMeta),
+              "合法缓冲应通过反射校验");
+
+        SampleAsset loaded;
+        AnsiString decode_error;
+        Check(hgl::serialize::fb::VerifyAndDecodeFlatBuffers<SampleAsset>(
+                  meta_fbb.GetBufferPointer(), size, loaded, fbmeta::kAssetMeta,
+                  nullptr, &decode_error),
+              "校验并解码应成功");
+        if (!decode_error.IsEmpty())
+            GLogError(u8"  解码诊断=%s", decode_error.c_str());
+        Check(SameFlatFields(fixture.asset, loaded), "反射驱动往返后字段应一致");
+
+        // ④ 坏缓冲：越界根偏移必须被拒，且不得解码出半个结构
+        uint8_t broken[2048];
+        Check(size > 0 && size < sizeof(broken), "缓冲应装得进本地副本");
+        memcpy(broken, meta_fbb.GetBufferPointer(), size);
+        broken[0] = 0xFF;
+        broken[1] = 0xFF;
+        broken[2] = 0xFF;
+        broken[3] = 0x7F;
+        Check(!hgl::serialize::fb::VerifyBuffer(broken, size, fbmeta::kAssetMeta),
+              "越界根偏移必须校验失败");
+        SampleAsset rejected;
+        Check(!hgl::serialize::fb::VerifyAndDecodeFlatBuffers<SampleAsset>(
+                  broken, size, rejected, fbmeta::kAssetMeta),
+              "校验失败的缓冲不得解码");
+
+        // ⑤ 截断缓冲同样必须被拒
+        Check(!hgl::serialize::fb::VerifyBuffer(meta_fbb.GetBufferPointer(), 8,
+                                                fbmeta::kAssetMeta),
+              "截断缓冲必须校验失败");
+
+        return true;
+    }
+
+    // ── 用例 14：TOML 文本入口 —— 错误行号 + 类型化往返 ─────────────────────
+    //
+    // `FromTomlText` 之前只报「解析失败」；现在必须带 1 起的行号，否则用户在几百行
+    // 的材质文件里根本定位不到错在哪。`SaveToTomlText` / `LoadFromTomlText` 则把
+    // 「结构 ⇄ 文本」压成一个调用，调用方不再自己 `Archive` + `Value` 两头跑。
+
+    bool TestTomlTextEntry()
+    {
+        // ① 语法错误必须带行号（1 起）
+        const char *broken = "schema = 1\nname = \"ok\"\nbad = = 2\n";
+        Value broken_tree;
+        TomlParseError parse_error;
+        Check(!FromTomlText(broken, std::strlen(broken), broken_tree, &parse_error),
+              "语法错误必须解析失败");
+        Check(parse_error.line == 3, "语法错误行号应为第 3 行");
+        Check(!parse_error.title.IsEmpty() || !parse_error.detail.IsEmpty(),
+              "语法错误应带描述");
+        GLogInfo(u8"  TOML 语法错误诊断: %s", parse_error.Format().c_str());
+
+        // ② 结构 → 文本 → 结构，字段双向一致
+        SampleAsset source;
+        source.schema = 7;
+        source.name = "FromText";
+        source.count = -3;
+        source.kind = SampleKind::Second;
+        source.position = hgl::math::Vector3f(1.5f, 2.5f, 3.5f);
+        source.weights.Add(0.25f);
+        source.weights.Add(0.75f);
+
+        const AnsiString text = SaveToTomlText<SampleAsset>(source);
+        Check(!text.IsEmpty(), "SaveToTomlText 应产出非空文本");
+
+        SampleAsset loaded;
+        Archive read_archive;
+        Check(LoadFromTomlText<SampleAsset>(text.c_str(), loaded, &read_archive),
+              "LoadFromTomlText 应成功");
+        if (!read_archive.Ok())
+            GLogError(u8"  失败字段=%s 原因=%s", read_archive.FailedField(),
+                      read_archive.ErrorMessage());
+
+        Check(loaded.schema == source.schema, "文本往返 schema");
+        Check(hgl::stricmp(loaded.name.c_str(), source.name.c_str()) == 0, "文本往返 name");
+        Check(loaded.count == source.count, "文本往返 count");
+        Check(loaded.kind == source.kind, "文本往返枚举");
+        Check(loaded.position.z == source.position.z, "文本往返向量");
+        Check(loaded.weights.GetCount() == source.weights.GetCount(), "文本往返数组长度");
+        Check(loaded.weights.GetCount() == 2 && loaded.weights[1] == 0.75f,
+              "文本往返数组内容");
+
+        // ③ 坏文本走类型化入口也必须失败，且行号仍可用
+        TomlParseError entry_error;
+        SampleAsset untouched;
+        Check(!LoadFromTomlText<SampleAsset>("===", untouched, nullptr, &entry_error),
+              "坏文本的类型化入口必须失败");
+        Check(entry_error.line >= 1, "类型化入口也应给出行号");
+
+        return true;
+    }
 }//namespace
 
 int main()
@@ -851,6 +1062,8 @@ int main()
     TestValidateKeysByMeta();
     TestWholeValueEntry();
     TestFlatBuffersRoundTrip();
+    TestFlatBuffersMetaDriven();
+    TestTomlTextEntry();
 
     if (g_failed != 0)
     {

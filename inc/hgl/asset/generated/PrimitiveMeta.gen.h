@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // @ulre-codegen begin
 //   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。
-//   属性元数据表：供检查器 GUI、文档导出与通用批量工具消费。
+//   属性元数据表：供检查器 GUI、文档导出、严格键校验与通用格式后端消费。
+//   它是「结构长什么样」的**唯一运行期真源**，与格式无关。
 // @ulre-codegen end
 // ─────────────────────────────────────────────────────────────────────────────
 #pragma once
@@ -11,14 +12,93 @@
 
 namespace hgl::asset::generated
 {
+    inline const char *AssetEnumName_PrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose v)
+    {
+        switch (v)
+        {
+        case hgl::graph::PrimitiveVariantPurpose::Surface: return "surface";
+        case hgl::graph::PrimitiveVariantPurpose::DepthOnly: return "depth_only";
+        case hgl::graph::PrimitiveVariantPurpose::ShadowCaster: return "shadow_caster";
+        case hgl::graph::PrimitiveVariantPurpose::Picking: return "picking";
+        case hgl::graph::PrimitiveVariantPurpose::Debug: return "debug";
+        }
+        return nullptr;
+    }
+
+    inline bool AssetEnumParse_PrimitiveVariantPurpose(const char *s, hgl::graph::PrimitiveVariantPurpose &out)
+    {
+        if (!s) return false;
+        if (hgl::stricmp(s, "surface") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Surface; return true; }
+        if (hgl::stricmp(s, "Surface") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Surface; return true; }
+        if (hgl::stricmp(s, "depth_only") == 0) { out = hgl::graph::PrimitiveVariantPurpose::DepthOnly; return true; }
+        if (hgl::stricmp(s, "DepthOnly") == 0) { out = hgl::graph::PrimitiveVariantPurpose::DepthOnly; return true; }
+        if (hgl::stricmp(s, "shadow_caster") == 0) { out = hgl::graph::PrimitiveVariantPurpose::ShadowCaster; return true; }
+        if (hgl::stricmp(s, "ShadowCaster") == 0) { out = hgl::graph::PrimitiveVariantPurpose::ShadowCaster; return true; }
+        if (hgl::stricmp(s, "picking") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Picking; return true; }
+        if (hgl::stricmp(s, "Picking") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Picking; return true; }
+        if (hgl::stricmp(s, "debug") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Debug; return true; }
+        if (hgl::stricmp(s, "Debug") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Debug; return true; }
+        return false;
+    }
+
+    inline const char *AssetEnumName_PrimitiveType(const hgl::graph::PrimitiveType v)
+    {
+        switch (v)
+        {
+        case hgl::graph::PrimitiveType::Points: return "Points";
+        case hgl::graph::PrimitiveType::Lines: return "Lines";
+        case hgl::graph::PrimitiveType::LineStrip: return "LineStrip";
+        case hgl::graph::PrimitiveType::Triangles: return "Triangles";
+        case hgl::graph::PrimitiveType::TriangleStrip: return "TriangleStrip";
+        case hgl::graph::PrimitiveType::Fan: return "Fan";
+        case hgl::graph::PrimitiveType::Error: return "Error";
+        }
+        return nullptr;
+    }
+
+    inline bool AssetEnumParse_PrimitiveType(const char *s, hgl::graph::PrimitiveType &out)
+    {
+        if (!s) return false;
+        if (hgl::stricmp(s, "Points") == 0) { out = hgl::graph::PrimitiveType::Points; return true; }
+        if (hgl::stricmp(s, "Lines") == 0) { out = hgl::graph::PrimitiveType::Lines; return true; }
+        if (hgl::stricmp(s, "LineStrip") == 0) { out = hgl::graph::PrimitiveType::LineStrip; return true; }
+        if (hgl::stricmp(s, "Triangles") == 0) { out = hgl::graph::PrimitiveType::Triangles; return true; }
+        if (hgl::stricmp(s, "TriangleStrip") == 0) { out = hgl::graph::PrimitiveType::TriangleStrip; return true; }
+        if (hgl::stricmp(s, "Fan") == 0) { out = hgl::graph::PrimitiveType::Fan; return true; }
+        if (hgl::stricmp(s, "Error") == 0) { out = hgl::graph::PrimitiveType::Error; return true; }
+        return false;
+    }
+
+    inline const char *AssetEnumName64_PrimitiveVariantPurpose(const int64_t v)
+    { return AssetEnumName_PrimitiveVariantPurpose(static_cast<hgl::graph::PrimitiveVariantPurpose>(v)); }
+
+    inline bool AssetEnumParse64_PrimitiveVariantPurpose(const char *s, int64_t &out)
+    {
+        hgl::graph::PrimitiveVariantPurpose tmp{};
+        if (!AssetEnumParse_PrimitiveVariantPurpose(s, tmp)) return false;
+        out = static_cast<int64_t>(tmp);
+        return true;
+    }
+
+    inline const char *AssetEnumName64_PrimitiveType(const int64_t v)
+    { return AssetEnumName_PrimitiveType(static_cast<hgl::graph::PrimitiveType>(v)); }
+
+    inline bool AssetEnumParse64_PrimitiveType(const char *s, int64_t &out)
+    {
+        hgl::graph::PrimitiveType tmp{};
+        if (!AssetEnumParse_PrimitiveType(s, tmp)) return false;
+        out = static_cast<int64_t>(tmp);
+        return true;
+    }
+
     extern const ClassMetaInfo Class_PrimitiveVariantSpec;
     extern const ClassMetaInfo Class_PrimitiveAssetSpec;
 
     inline const PropertyMetaInfo Meta_PrimitiveVariantSpec[] =
     {
-        { "recipe_name", "recipe", "recipe_name", "Variant", "材质配方名（注册器按名解析）", "AnsiString", nullptr, "recipe", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 40u, 0u, 0.0, 0.0, 0.0, nullptr },
-        { "purpose", "purpose", "purpose", "Variant", "", "PrimitiveVariantPurpose", "hgl::graph::PrimitiveVariantPurpose", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 40u, 2u, 0u, 0.0, 0.0, 0.0, nullptr },
-        { "lod_index", "lod", "lod_index", "Variant", "", "uint16_t", nullptr, nullptr, PropertyKind::UInt16, PF_EditAnywhere | PF_HasRange | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 42u, 6u, 0u, 0.0, 15.0, 0.0, nullptr },
+        { "recipe_name", "recipe", "recipe_name", "Variant", "材质配方名（注册器按名解析）", "AnsiString", nullptr, "recipe", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "purpose", "purpose", "purpose", "Variant", "", "PrimitiveVariantPurpose", "hgl::graph::PrimitiveVariantPurpose", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 40u, 2u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_PrimitiveVariantPurpose, &AssetEnumName64_PrimitiveVariantPurpose },
+        { "lod_index", "lod", "lod_index", "Variant", "", "uint16_t", nullptr, nullptr, PropertyKind::UInt16, PF_EditAnywhere | PF_HasRange | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 42u, 6u, 0u, 0.0, 15.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
     };
 
     inline const ClassMetaInfo Class_PrimitiveVariantSpec =
@@ -30,11 +110,11 @@ namespace hgl::asset::generated
 
     inline const PropertyMetaInfo Meta_PrimitiveAssetSpec[] =
     {
-        { "name", "name", "name", "Identity", "", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 40u, 0u, 0.0, 0.0, 0.0, nullptr },
-        { "geometry_path", "geometry", "geometry_path", "Binding", "几何资产路径", "OSString", nullptr, "geo", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 40u, 40u, 0u, 0.0, 0.0, 0.0, nullptr },
-        { "recipe_name", "recipe", "recipe_name", "Binding", "主(Surface)变体配方名", "AnsiString", nullptr, "recipe", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 80u, 40u, 0u, 0.0, 0.0, 0.0, nullptr },
-        { "primitive_type", "primitive_type", "primitive_type", "Binding", "", "PrimitiveType", "hgl::graph::PrimitiveType", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 120u, 8u, 0u, 0.0, 0.0, 0.0, nullptr },
-        { "extra_variants", "extra_variants", "extra_variants", "Binding", "除主变体外的其它用途(拥有)", "hgl::ManagedArray<PrimitiveVariantSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 128u, 24u, 0u, 0.0, 0.0, 0.0, &Class_PrimitiveVariantSpec },
+        { "name", "name", "name", "Identity", "", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "geometry_path", "geometry", "geometry_path", "Binding", "几何资产路径", "OSString", nullptr, "geo", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 40u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "recipe_name", "recipe", "recipe_name", "Binding", "主(Surface)变体配方名", "AnsiString", nullptr, "recipe", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 80u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "primitive_type", "primitive_type", "primitive_type", "Binding", "", "PrimitiveType", "hgl::graph::PrimitiveType", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 120u, 8u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_PrimitiveType, &AssetEnumName64_PrimitiveType },
+        { "extra_variants", "extra_variants", "extra_variants", "Binding", "除主变体外的其它用途(拥有)", "hgl::ManagedArray<PrimitiveVariantSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 128u, 24u, 0u, 0.0, 0.0, 0.0, &Class_PrimitiveVariantSpec, PropertyKind::Struct, nullptr, nullptr },
     };
 
     inline const ClassMetaInfo Class_PrimitiveAssetSpec =

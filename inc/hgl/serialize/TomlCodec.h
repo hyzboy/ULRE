@@ -18,14 +18,61 @@
  * | Table      | table（有序键，与声明顺序一致） |
  */
 
+#include <hgl/serialize/Archive.h>
 #include <hgl/serialize/Value.h>
 
 #include <toml/toml.hpp>
 
 #include <cstdint>
+#include <cstring>
+#include <string>
 
 namespace hgl::serialize
 {
+    /**
+     * @brief TOML 解析失败详情。
+     *
+     * 后端只负责「文本 → 值树」，但解析失败时**必须**把行号带出来 —— 资产文件动辄
+     * 数百行，只报「解析失败」等于没报。行号约定 **1 起**，0 表示无法定位。
+     */
+    struct TomlParseError
+    {
+        int line = 0;         ///< 出错行（1 起，0 = 未知）
+        AnsiString title;     ///< 错误类别（toml11 的 title，如 `syntax error`）
+        AnsiString detail;    ///< 该行的具体说明
+
+        /// 拼成一句可直接展示的诊断文本。
+        AnsiString Format() const
+        {
+            AnsiString result;
+
+            if (line > 0)
+            {
+                result += AnsiString("第 ");
+                result += AnsiString::numberOf(line);
+                result += AnsiString(" 行：");
+            }
+
+            if (detail.Length() == 0)
+            {
+                result += (title.Length() > 0) ? title : AnsiString("TOML 语法错误");
+                return result;
+            }
+
+            result += detail;
+
+            // 具体说明与类别不同时补上类别，否则「第 3 行：bad = = 2」看不出为什么错。
+            if (title.Length() > 0 && hgl::stricmp(title.c_str(), detail.c_str()) != 0)
+            {
+                result += AnsiString("（");
+                result += title;
+                result += AnsiString("）");
+            }
+
+            return result;
+        }
+    };
+
     // ── TOML → Value ────────────────────────────────────────────────────────
 
     inline void FromToml(const toml::value &src, Value &out);
@@ -89,21 +136,133 @@ namespace hgl::serialize
         out.SetNull();
     }
 
-    /// 便捷入口：解析文本 → Value 树。
-    inline bool FromTomlText(const char *text, Value &out)
+    /**
+     * @brief 把 toml11 的语法错误折叠成一句诊断。
+     *
+     * toml11 的 `what()` 是一整块带竖线箭头和源码片段的格式化文本，直接塞进资产
+     * 文件的错误信息里会把日志冲垮。这里只取**第一条**错误的标题、行号与该行说明。
+     */
+    inline void FillTomlSyntaxError(const toml::syntax_error &err, TomlParseError &out)
     {
+        out.line = 0;
+        out.title.Clear();
+        out.detail.Clear();
+
+        const auto &errors = err.errors();
+        if (errors.empty())
+        {
+            out.detail = AnsiString(err.what());
+            return;
+        }
+
+        const toml::error_info &info = errors.front();
+
+        // toml11 的 `title()` 形如 `toml::parse_value: `，末尾冒号空格只是拼接痕迹。
+        std::string title = info.title();
+        while (!title.empty() && (title.back() == ':' || title.back() == ' '))
+            title.pop_back();
+
+        out.title = AnsiString(title.c_str());
+
+        if (!info.locations().empty())
+        {
+            const auto &location = info.locations().front();
+            out.line = static_cast<int>(location.first.first_line_number());
+
+            // 第二项常常只是占位符 `here`，真正有信息量的是出错那一行的源码。
+            const std::string &message = location.second;
+            if (!message.empty() && message != "here")
+                out.detail = AnsiString(message.c_str());
+            else if (location.first.is_ok() && location.first.num_lines() > 0)
+                out.detail = AnsiString(location.first.first_line().c_str());
+        }
+
+        if (out.detail.Length() == 0 && !info.suffix().empty())
+            out.detail = AnsiString(info.suffix().c_str());
+
+        if (out.detail.Length() == 0)
+            out.detail = out.title;
+    }
+
+    /// 便捷入口：解析文本 → Value 树（不取诊断详情）。
+    inline bool FromTomlText(const char *text, Value &out);
+
+    /**
+     * @brief 解析文本 → Value 树，失败时给出行号。
+     *
+     * @param text      文本起点
+     * @param size      字节数（允许文本里出现 `\0`）
+     * @param out       目标值树；失败时内容未定义
+     * @param out_error 可选输出：解析失败详情
+     */
+    inline bool FromTomlText(const char *text, const size_t size, Value &out,
+                             TomlParseError *out_error = nullptr)
+    {
+        if (out_error)
+            *out_error = TomlParseError{};
+
+        if (!text)
+        {
+            if (out_error)
+                out_error->detail = AnsiString("TOML 文本为空");
+            return false;
+        }
+
         try
         {
             // 注意：toml11 的 `parse(const char*)` 把参数当作**文件名**；
             // 解析内容必须走 `parse_str`。
-            const toml::value parsed = toml::parse_str(std::string(text ? text : ""));
+            const toml::value parsed =
+                toml::parse_str(std::string(text, size));
             FromToml(parsed, out);
             return true;
+        }
+        catch (const toml::syntax_error &err)
+        {
+            if (out_error)
+                FillTomlSyntaxError(err, *out_error);
+            return false;
         }
         catch (...)
         {
             return false;
         }
+    }
+
+    inline bool FromTomlText(const char *text, Value &out)
+    {
+        return FromTomlText(text, text ? std::strlen(text) : 0u, out, nullptr);
+    }
+
+    /**
+     * @brief 文本 → `T`：解析成值树后立刻整体读成结构。
+     *
+     * 这是资产文件读取的**唯一**入口。文本层只产出值树；字段名、类型、缺键语义、
+     * 枚举拼写表全部来自生成的 `StructSerializer<T>`，本函数不认任何具体资产类型。
+     *
+     * @param out_archive 可选输出：序列化阶段（而非解析阶段）的失败详情
+     * @param out_error   可选输出：TOML 解析阶段的失败详情
+     */
+    template <typename T>
+    inline bool LoadFromTomlText(const char *text, const size_t size, T &out,
+                                 Archive *out_archive = nullptr,
+                                 TomlParseError *out_error = nullptr)
+    {
+        Value root;
+        if (!FromTomlText(text, size, root, out_error))
+            return false;
+
+        return ReadFromValue<T>(root, out, out_archive);
+    }
+
+    /// 便捷重载：以 NUL 结尾的文本。
+    template <typename T>
+    inline bool LoadFromTomlText(const char *text, T &out,
+                                 Archive *out_archive = nullptr,
+                                 TomlParseError *out_error = nullptr)
+    {
+        return LoadFromTomlText<T>(text, text ? std::strlen(text) : 0u, out,
+                                   out_archive, out_error);
     }
 
     // ── Value → TOML ────────────────────────────────────────────────────────
@@ -210,5 +369,30 @@ namespace hgl::serialize
             text.Clear();
         }
         return text;
+    }
+
+    /**
+     * @brief `T` → TOML 文本：整体写成值树后一次格式化。
+     *
+     * @param out_archive 可选输出：序列化阶段的失败详情
+     * @return 成功时返回文本；失败返回空串（详情见 `out_archive`）
+     */
+    template <typename T>
+    inline AnsiString SaveToTomlText(const T &src, Archive *out_archive = nullptr)
+    {
+        Value root;
+
+        Archive archive = Archive::ForWrite(root);
+        archive.WriteTo(root, src);
+
+        const bool ok = archive.Ok();
+
+        if (out_archive)
+            *out_archive = std::move(archive);
+
+        if (!ok)
+            return AnsiString();
+
+        return ToTomlText(root);
     }
 }//namespace hgl::serialize

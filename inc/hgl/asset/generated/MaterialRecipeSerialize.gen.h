@@ -9,72 +9,7 @@
 
 #include <hgl/serialize/Archive.h>
 #include <hgl/graph/asset/MaterialRecipeSpec.h>
-#include <hgl/mtl/MaterialDomain.h>
-#include <hgl/mtl/VertexShaderNodeConfig.h>
-#include <hgl/mtl/VkEnumText.h>
-
-namespace hgl::asset::generated
-{
-    inline const char *AssetEnumName_VkCullModeFlagBits(const ::VkCullModeFlagBits v)
-    { return hgl::graph::mtl::GetVkCullModeName(static_cast<::VkCullModeFlags>(v)); }
-
-    inline bool AssetEnumParse_VkCullModeFlagBits(const char *s, ::VkCullModeFlagBits &out)
-    {
-        ::VkCullModeFlags tmp = static_cast<::VkCullModeFlags>(out);
-        if (!hgl::graph::mtl::ParseVkCullMode(s, tmp)) return false;
-        out = static_cast<::VkCullModeFlagBits>(tmp);
-        return true;
-    }
-
-    inline const char *AssetEnumName_VkCompareOp(const ::VkCompareOp v)
-    { return hgl::graph::mtl::GetVkCompareOpName(v); }
-
-    inline bool AssetEnumParse_VkCompareOp(const char *s, ::VkCompareOp &out)
-    { return hgl::graph::mtl::ParseVkCompareOp(s, out); }
-
-    inline const char *AssetEnumName_VkBlendFactor(const ::VkBlendFactor v)
-    { return hgl::graph::mtl::GetVkBlendFactorName(v); }
-
-    inline bool AssetEnumParse_VkBlendFactor(const char *s, ::VkBlendFactor &out)
-    { return hgl::graph::mtl::ParseVkBlendFactor(s, out); }
-
-    inline const char *AssetEnumName_VertexInputMode(const hgl::graph::mtl::VertexInputMode v)
-    { return hgl::graph::mtl::GetVertexInputModeName(v); }
-
-    inline bool AssetEnumParse_VertexInputMode(const char *s, hgl::graph::mtl::VertexInputMode &out)
-    { return hgl::graph::mtl::ParseVertexInputMode(s, out); }
-
-    inline const char *AssetEnumName_PositionMappingMode(const hgl::graph::mtl::PositionMappingMode v)
-    { return hgl::graph::mtl::GetPositionMappingModeName(v); }
-
-    inline bool AssetEnumParse_PositionMappingMode(const char *s, hgl::graph::mtl::PositionMappingMode &out)
-    { return hgl::graph::mtl::ParsePositionMappingMode(s, out); }
-
-    inline const char *AssetEnumName_OrientationMode(const hgl::graph::mtl::OrientationMode v)
-    { return hgl::graph::mtl::GetOrientationModeName(v); }
-
-    inline bool AssetEnumParse_OrientationMode(const char *s, hgl::graph::mtl::OrientationMode &out)
-    { return hgl::graph::mtl::ParseOrientationMode(s, out); }
-
-    inline const char *AssetEnumName_ScaleMode(const hgl::graph::mtl::ScaleMode v)
-    { return hgl::graph::mtl::GetScaleModeName(v); }
-
-    inline bool AssetEnumParse_ScaleMode(const char *s, hgl::graph::mtl::ScaleMode &out)
-    { return hgl::graph::mtl::ParseScaleMode(s, out); }
-
-    inline const char *AssetEnumName_ProjectionMode(const hgl::graph::mtl::ProjectionMode v)
-    { return hgl::graph::mtl::GetProjectionModeName(v); }
-
-    inline bool AssetEnumParse_ProjectionMode(const char *s, hgl::graph::mtl::ProjectionMode &out)
-    { return hgl::graph::mtl::ParseProjectionMode(s, out); }
-
-    inline const char *AssetEnumName_MaterialDomain(const hgl::graph::mtl::MaterialDomain v)
-    { return hgl::graph::mtl::GetMaterialDomainName(v); }
-
-    inline bool AssetEnumParse_MaterialDomain(const char *s, hgl::graph::mtl::MaterialDomain &out)
-    { return hgl::graph::mtl::ParseMaterialDomain(s, out); }
-
-}//namespace hgl::asset::generated
+#include <hgl/asset/generated/MaterialRecipeMeta.gen.h>
 
 namespace hgl::serialize
 {
@@ -172,6 +107,8 @@ namespace hgl::serialize
             ar.Field(4, "layer", v.layer);
             ar.Field(5, "auto_mipmaps", v.auto_mipmaps);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_RecipeTextureSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::mtl::RecipePipelineSpec>
@@ -193,6 +130,8 @@ namespace hgl::serialize
             ar.Field(10, "wireframe", v.wireframe);
             ar.Field(11, "line_width", v.line_width);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_RecipePipelineSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::mtl::RecipeRenderStateSpec>
@@ -207,6 +146,8 @@ namespace hgl::serialize
             ar.Field(3, "dither", v.dither);
             ar.Field(4, "pipeline", v.pipeline);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_RecipeRenderStateSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::mtl::RecipeFragmentSpec>
@@ -220,6 +161,8 @@ namespace hgl::serialize
             ar.Field(2, "samplers", v.samplers);
             ar.Field(3, "defines", v.defines);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_RecipeFragmentSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::mtl::RecipeTransformSpec>
@@ -235,6 +178,8 @@ namespace hgl::serialize
             ar.Field(4, "scale", v.scale);
             ar.Field(5, "projection", v.projection);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_RecipeTransformSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::mtl::MaterialRecipeSpec>
@@ -252,6 +197,8 @@ namespace hgl::serialize
             ar.Field(6, "render_state", v.render_state);
             ar.Field(7, "textures", v.textures);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_MaterialRecipeSpec; }
     };
 
 }//namespace hgl::serialize

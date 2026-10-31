@@ -9,36 +9,7 @@
 
 #include <hgl/serialize/Archive.h>
 #include <hgl/graph/asset/GeometryAssetSpec.h>
-
-namespace hgl::asset::generated
-{
-    inline const char *AssetEnumName_NTBType(const hgl::graph::NTBType v)
-    {
-        switch (v)
-        {
-        case hgl::graph::NTBType::None: return "none";
-        case hgl::graph::NTBType::Normal: return "normal";
-        case hgl::graph::NTBType::NormalTangent: return "normal_tangent";
-        case hgl::graph::NTBType::NormalTangentBitangent: return "normal_tangent_bitangent";
-        }
-        return nullptr;
-    }
-
-    inline bool AssetEnumParse_NTBType(const char *s, hgl::graph::NTBType &out)
-    {
-        if (!s) return false;
-        if (hgl::stricmp(s, "none") == 0) { out = hgl::graph::NTBType::None; return true; }
-        if (hgl::stricmp(s, "None") == 0) { out = hgl::graph::NTBType::None; return true; }
-        if (hgl::stricmp(s, "normal") == 0) { out = hgl::graph::NTBType::Normal; return true; }
-        if (hgl::stricmp(s, "Normal") == 0) { out = hgl::graph::NTBType::Normal; return true; }
-        if (hgl::stricmp(s, "normal_tangent") == 0) { out = hgl::graph::NTBType::NormalTangent; return true; }
-        if (hgl::stricmp(s, "NormalTangent") == 0) { out = hgl::graph::NTBType::NormalTangent; return true; }
-        if (hgl::stricmp(s, "normal_tangent_bitangent") == 0) { out = hgl::graph::NTBType::NormalTangentBitangent; return true; }
-        if (hgl::stricmp(s, "NormalTangentBitangent") == 0) { out = hgl::graph::NTBType::NormalTangentBitangent; return true; }
-        return false;
-    }
-
-}//namespace hgl::asset::generated
+#include <hgl/asset/generated/GeometryMeta.gen.h>
 
 namespace hgl::serialize
 {
@@ -60,6 +31,8 @@ namespace hgl::serialize
         {
             ar.Field(1, "slices", v.slices);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinSphereParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinDomeParams>
@@ -71,6 +44,8 @@ namespace hgl::serialize
         {
             ar.Field(1, "slices", v.slices);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinDomeParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinCubeParams>
@@ -86,6 +61,8 @@ namespace hgl::serialize
             ar.Field(4, "ntb", v.ntb);
             ar.Field(5, "tex_coord", v.tex_coord);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinCubeParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinPlaneGridParams>
@@ -103,6 +80,8 @@ namespace hgl::serialize
             ar.Field(6, "sub_lum", v.sub_lum);
             ar.Field(7, "is_3d", v.is_3d);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinPlaneGridParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinCylinderParams>
@@ -116,6 +95,8 @@ namespace hgl::serialize
             ar.Field(2, "radius", v.radius);
             ar.Field(3, "slices", v.slices);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinCylinderParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinHollowCylinderParams>
@@ -132,6 +113,8 @@ namespace hgl::serialize
             ar.Field(5, "cap_radial_tiles", v.cap_radial_tiles);
             ar.Field(6, "cap_angular_tiles", v.cap_angular_tiles);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinHollowCylinderParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinTorusParams>
@@ -148,6 +131,8 @@ namespace hgl::serialize
             ar.Field(5, "uv_scale_x", v.uv_scale_x);
             ar.Field(6, "uv_scale_y", v.uv_scale_y);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinTorusParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinConeParams>
@@ -162,6 +147,8 @@ namespace hgl::serialize
             ar.Field(3, "slices", v.slices);
             ar.Field(4, "stacks", v.stacks);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinConeParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinCapsuleParams>
@@ -176,6 +163,8 @@ namespace hgl::serialize
             ar.Field(3, "slices", v.slices);
             ar.Field(4, "stacks", v.stacks);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinCapsuleParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinRectangleParams>
@@ -194,6 +183,8 @@ namespace hgl::serialize
             ar.Field(7, "ntb", v.ntb);
             ar.Field(8, "tex_coord", v.tex_coord);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinRectangleParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinBoundingBoxParams>
@@ -205,6 +196,8 @@ namespace hgl::serialize
         {
             ar.Field(1, "ntb", v.ntb);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinBoundingBoxParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinHexSphereParams>
@@ -219,6 +212,8 @@ namespace hgl::serialize
             ar.Field(3, "uv_scale_x", v.uv_scale_x);
             ar.Field(4, "uv_scale_y", v.uv_scale_y);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinHexSphereParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinTaperedCapsuleParams>
@@ -234,6 +229,8 @@ namespace hgl::serialize
             ar.Field(4, "slices", v.slices);
             ar.Field(5, "stacks", v.stacks);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinTaperedCapsuleParams; }
     };
 
     template<> struct StructSerializer<hgl::graph::BuiltinFrustumParams>
@@ -249,6 +246,8 @@ namespace hgl::serialize
             ar.Field(4, "slices", v.slices);
             ar.Field(5, "generate_caps", v.generate_caps);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_BuiltinFrustumParams; }
     };
 
 }//namespace hgl::serialize

@@ -9,56 +9,7 @@
 
 #include <hgl/serialize/Archive.h>
 #include <hgl/graph/asset/SceneAssetSpec.h>
-
-namespace hgl::asset::generated
-{
-    inline const char *AssetEnumName_SceneMaterialType(const hgl::graph::SceneMaterialType v)
-    {
-        switch (v)
-        {
-        case hgl::graph::SceneMaterialType::PBRSurface: return "PBRSurface";
-        case hgl::graph::SceneMaterialType::EmissiveSurface: return "EmissiveSurface";
-        case hgl::graph::SceneMaterialType::TransmissionSurface: return "TransmissionSurface";
-        }
-        return nullptr;
-    }
-
-    inline bool AssetEnumParse_SceneMaterialType(const char *s, hgl::graph::SceneMaterialType &out)
-    {
-        if (!s) return false;
-        if (hgl::stricmp(s, "PBRSurface") == 0) { out = hgl::graph::SceneMaterialType::PBRSurface; return true; }
-        if (hgl::stricmp(s, "EmissiveSurface") == 0) { out = hgl::graph::SceneMaterialType::EmissiveSurface; return true; }
-        if (hgl::stricmp(s, "TransmissionSurface") == 0) { out = hgl::graph::SceneMaterialType::TransmissionSurface; return true; }
-        return false;
-    }
-
-    inline const char *AssetEnumName_SceneCameraMode(const hgl::graph::SceneCameraMode v)
-    {
-        switch (v)
-        {
-        case hgl::graph::SceneCameraMode::ViewModel: return "view_model";
-        case hgl::graph::SceneCameraMode::Free: return "free";
-        case hgl::graph::SceneCameraMode::LookAt: return "look_at";
-        case hgl::graph::SceneCameraMode::FirstPerson: return "first_person";
-        }
-        return nullptr;
-    }
-
-    inline bool AssetEnumParse_SceneCameraMode(const char *s, hgl::graph::SceneCameraMode &out)
-    {
-        if (!s) return false;
-        if (hgl::stricmp(s, "view_model") == 0) { out = hgl::graph::SceneCameraMode::ViewModel; return true; }
-        if (hgl::stricmp(s, "ViewModel") == 0) { out = hgl::graph::SceneCameraMode::ViewModel; return true; }
-        if (hgl::stricmp(s, "free") == 0) { out = hgl::graph::SceneCameraMode::Free; return true; }
-        if (hgl::stricmp(s, "Free") == 0) { out = hgl::graph::SceneCameraMode::Free; return true; }
-        if (hgl::stricmp(s, "look_at") == 0) { out = hgl::graph::SceneCameraMode::LookAt; return true; }
-        if (hgl::stricmp(s, "LookAt") == 0) { out = hgl::graph::SceneCameraMode::LookAt; return true; }
-        if (hgl::stricmp(s, "first_person") == 0) { out = hgl::graph::SceneCameraMode::FirstPerson; return true; }
-        if (hgl::stricmp(s, "FirstPerson") == 0) { out = hgl::graph::SceneCameraMode::FirstPerson; return true; }
-        return false;
-    }
-
-}//namespace hgl::asset::generated
+#include <hgl/asset/generated/SceneMeta.gen.h>
 
 namespace hgl::serialize
 {
@@ -92,6 +43,8 @@ namespace hgl::serialize
             ar.Field(3, "rotation_angle_deg", v.rotation_angle_deg);
             ar.Field(4, "scale", v.scale);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_SceneTransformSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::SceneTextureSpec>
@@ -105,6 +58,8 @@ namespace hgl::serialize
             ar.Field(2, "uri", v.uri);
             ar.Field(3, "required", v.required);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_SceneTextureSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::SceneMaterialSpec>
@@ -125,6 +80,8 @@ namespace hgl::serialize
             ar.Field(9, "trans_color", v.trans_color);
             ar.Field(10, "textures", v.textures);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_SceneMaterialSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::SceneNodeSpec>
@@ -143,6 +100,8 @@ namespace hgl::serialize
             ar.Field(7, "visible", v.visible);
             ar.Field(8, "transform", v.transform);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_SceneNodeSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::SceneCameraSpec>
@@ -164,6 +123,8 @@ namespace hgl::serialize
             ar.Field(10, "far_plane", v.far_plane);
             ar.Field(11, "main", v.main);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_SceneCameraSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::SceneClearColorSpec>
@@ -176,6 +137,8 @@ namespace hgl::serialize
             ar.Field(1, "enabled", v.enabled);
             ar.Field(2, "value", v.value);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_SceneClearColorSpec; }
     };
 
     template<> struct StructSerializer<hgl::graph::SceneSpec>
@@ -193,6 +156,8 @@ namespace hgl::serialize
             ar.Field(6, "materials", v.materials);
             ar.Field(7, "nodes", v.nodes);
         }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_SceneSpec; }
     };
 
 }//namespace hgl::serialize
