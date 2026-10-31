@@ -19,7 +19,7 @@
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 
 #include<hgl/graph/module/EnvironmentManager.h>
@@ -75,6 +75,15 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/render_to_texture_color_depth.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW_SPHERE = 0;
+    constexpr uint32 MATERIAL_DATA_ROW_CUBE   = 1;
+}
 
 namespace
 {
@@ -138,11 +147,8 @@ private:
     Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
 
-    MaterialDataAccessor material_data_ssbo_accessor{};
-    graph::ssbo::PBRSurfaceRow sphere_material_data{};
+    graph::GlobalSSBOBinding material_data_ssbo_accessor{};
     TextureAsset* sphere_base_tex = nullptr;
     TextureAsset* sphere_normal_tex = nullptr;
     TextureAsset* sphere_roughness_tex = nullptr;
@@ -157,30 +163,11 @@ private:
 
 private:
 
-    bool InitMaterialDataSSBO(ECSContext *world)
+    bool InitMaterialDataSSBO(WorkObject *owner)
     {
-        GLogInfo("[RTTColorDepth][OffscreenPass::InitMaterialDataSSBO] begin world=%p", (void *)world);
-        if (!world)
-            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "invalid input pointers");
-
-        auto *gc = world->GetGraphicsContext();
-        if (!gc && render_context)
-            gc = render_context->GetGraphicsContext();
-
-        if (!gc)
-            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "graphics context is null");
-
-        auto *domain_manager = gc->GetGlobalSSBOBufferRegistry();
-        if (!domain_manager)
-            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "resource domain manager is null");
-
-        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!material_data_ssbo_accessor)
-            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "CreateSSBO failed");
-
-        const graph::ssbo::PBRSurfaceRow material_data = sphere_material_data;
-        if (!material_data_ssbo_accessor.Write(material_data))
-            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "write material data failed");
+        if (!owner->GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW_SPHERE,
+                                          material_data_ssbo_accessor))
+            return LogStageFail("OffscreenPass::InitMaterialDataSSBO", "material data block binding failed");
 
         LogStage("OffscreenPass::InitMaterialDataSSBO", "success");
         return true;
@@ -307,11 +294,7 @@ public:
         if (!tm || !device)
             return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
 
-        // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照
-        sphere_material_data.base_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        sphere_material_data.metallic = 0.08f;
-        sphere_material_data.roughness = 0.92f;
-        sphere_material_data.normal_scale = 0.35f;
+        // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照（材质数值在数据块文件里）
 
         sphere_base_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         sphere_normal_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
@@ -319,7 +302,7 @@ public:
         if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
             return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
 
-        if (!InitMaterialDataSSBO(offscreen->GetWorld()))
+        if (!InitMaterialDataSSBO(owner))
             return LogStageFail("OffscreenPass::BuildSphere", "InitMaterialDataSSBO failed");
 
         const GeometryVertexFormat geometry_vertex_format = CreateStandardGeometryVertexFormat();
@@ -332,7 +315,7 @@ public:
         if (!loaded_recipe)
             return LogStageFail("OffscreenPass::BuildSphere", "material recipe not found");
         sphere_recipe = *loaded_recipe;
-        if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
         // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
@@ -360,7 +343,7 @@ public:
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
         // 纹理已由配方声明（sphere_recipe.AddTexture），实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
-        sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
+        sphere_struct = material_data_ssbo_accessor;
         material_data_comp->SetDataResource(sphere_struct);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -422,9 +405,7 @@ struct DisplayCube
     PrimitiveAsset asset;
     graph::mtl::MaterialRecipe recipe{};
 
-    using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
-    MaterialDataAccessor accessor{};
-    graph::ssbo::PBRSurfaceRow material_data{};
+    graph::GlobalSSBOBinding accessor{};
 
     /// 材质授权统一走句柄：离屏颜色/深度附件的 TextureAsset（RT 创建时已绑定）。
     /// 示例不再持有裸纹理 —— 就绪判定（含离屏内容是否已画出）由 ECS 侧统一负责。
@@ -476,16 +457,8 @@ private:
 
     bool InitMaterialDataSSBO(DisplayCube &cube)
     {
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
-            return LogStageFail("App::InitMaterialDataSSBO", "resource domain manager is null");
-
-        cube.accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!cube.accessor)
-            return LogStageFail("App::InitMaterialDataSSBO", "CreateSSBO failed");
-
-        if (!cube.accessor.Write(cube.material_data))
-            return LogStageFail("App::InitMaterialDataSSBO", "write material data failed");
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW_CUBE, cube.accessor))
+            return LogStageFail("App::InitMaterialDataSSBO", "material data block binding failed");
 
         return true;
     }
@@ -529,11 +502,7 @@ private:
         if (!cube.texture_asset)
             return LogStageFail("App::CreateDisplayCube", "offscreen texture asset is null");
 
-        // base_color 乘数保持白色：纹理内容原样进入光照
-        cube.material_data.base_color = Color4f(1.0f);
-        cube.material_data.metallic = 0.08f;
-        cube.material_data.roughness = 0.92f;
-        cube.material_data.normal_scale = 0.35f;
+        // base_color 乘数保持白色：纹理内容原样进入光照（材质数值在数据块文件里）
 
         if (!InitMaterialDataSSBO(cube))
             return LogStageFail("App::CreateDisplayCube", "InitMaterialDataSSBO failed");
@@ -553,7 +522,7 @@ private:
         if (!loaded_recipe)
             return LogStageFail("App::CreateDisplayCube", "material recipe not found");
         cube.recipe = *loaded_recipe;
-        if (!(cube.recipe.material_ssbo_binding = cube.accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(cube.recipe.material_ssbo_binding = cube.accessor).IsValid())
             return LogStageFail("App::CreateDisplayCube", "register material SSBO binding failed");
 
         // 唯一区别：配方绑定的离屏纹理不同（颜色 / 深度）——`rtex:` 身份，`CanRender` 负责等内容就绪。
@@ -578,7 +547,7 @@ private:
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube.asset);
         // 纹理已由配方声明（cube.recipe.AddTexture），实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
-        cube_struct = cube.accessor.GetGlobalSSBOBinding();
+        cube_struct = cube.accessor;
         material_data_comp->SetDataResource(cube_struct);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

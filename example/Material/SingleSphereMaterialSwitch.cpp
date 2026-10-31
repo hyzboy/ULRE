@@ -22,7 +22,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/color/ColorPacking.h>
 #include<hgl/log/Log.h>
@@ -42,6 +42,15 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/single_sphere_material_switch.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW_NEAR = 0;
+    constexpr uint32 MATERIAL_DATA_ROW_FAR  = 1;
+}
 
 namespace
 {
@@ -72,14 +81,11 @@ private:
     hgl::ecs::GeometryData *sphere_primitive_component = nullptr;
     hgl::ecs::MaterialData *sphere_material_data = nullptr;
 
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    MaterialDataAccessor near_material_data_ssbo_accessor{};
-    MaterialDataAccessor far_material_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding near_material_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding far_material_data_ssbo_accessor{};
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -166,19 +172,9 @@ private:
 
     bool InitMaterials()
     {
-        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
-            return LogFail("InitMaterials", "domain manager null");
-
-        near_material_data_ssbo_accessor =
-            domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!near_material_data_ssbo_accessor)
-            return LogFail("InitMaterials", "SSBO allocation failed");
-
-        far_material_data_ssbo_accessor =
-            domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!far_material_data_ssbo_accessor)
-            return LogFail("InitMaterials", "SSBO allocation failed");
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW_NEAR, near_material_data_ssbo_accessor)
+         || !GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW_FAR,  far_material_data_ssbo_accessor))
+            return LogFail("InitMaterials", "material data block binding failed");
 
         const mtl::MaterialRecipe *near_loaded_recipe =
             GetRecipe("06e.SingleSphereSwitch.Near");
@@ -187,7 +183,7 @@ private:
         if (!near_loaded_recipe || !far_loaded_recipe)
             return LogFail("InitMaterials", "material recipe not found");
         near_recipe = *near_loaded_recipe;
-        if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor).IsValid())
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
         // 纹理是材质原型固有属性 ⇒ 两套配方各自声明，切换时只换配方即可。
@@ -197,7 +193,7 @@ private:
             return LogFail("InitMaterials", "near recipe texture binding failed");
 
         far_recipe = *far_loaded_recipe;
-        if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
+        if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor).IsValid())
             return LogFail("InitMaterials", "far material SSBO binding failed");
 
         // 同名 upsert 覆盖成 Far 那对纹理（2D 句柄，身份为 `texid:`）
@@ -253,7 +249,7 @@ private:
 
         // 纹理随配方一起切换（两套配方各自持有自己的纹理绑定），实体端不再单独授权纹理
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
-        sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
+        sphere_struct = material_data_ssbo_accessor;
         sphere_material_data->SetDataResource(sphere_struct);
         return true;
     }
@@ -266,16 +262,6 @@ private:
         if (!near_material_data_ssbo_accessor
          || !far_material_data_ssbo_accessor)
             return LogFail("InitRenderResources", "SSBO not allocated");
-
-        graph::ssbo::PBRSurfaceRow material_data{};
-        material_data.base_color = Color4f(0.72f, 0.72f, 0.72f, 1.0f);
-        material_data.metallic = 0.15f;
-        material_data.roughness = 0.25f;
-        material_data.normal_scale = 0.35f;
-
-        if (!near_material_data_ssbo_accessor.Write(material_data)
-         || !far_material_data_ssbo_accessor.Write(material_data))
-            return LogFail("InitRenderResources", "write material data failed");
 
         sphere_asset = PrimitiveAsset(sphere_geometry, &near_recipe, PrimitiveType::Triangles);
 

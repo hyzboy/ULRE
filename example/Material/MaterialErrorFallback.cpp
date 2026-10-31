@@ -75,7 +75,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDomain.h>
 #include<hgl/mtl/PipelineConfig.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/color/Color.h>
@@ -96,6 +96,14 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
+    constexpr char   MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/material_error_fallback.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
+}
 
 namespace
 {
@@ -215,13 +223,11 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
 
-    using MaterialDataAccessor = graph::GlobalSSBODataAccessor;
-
     Geometry *     geoms[kCaseCount]   = {};
     graph::mtl::MaterialRecipe recipes[kCaseCount] = {};
     PrimitiveAsset assets[kCaseCount]  = {};
 
-    MaterialDataAccessor material_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding material_data_ssbo_accessor{};
 
     uint32_t exit_frames = 0;
     uint32_t frame_seen  = 0;
@@ -231,29 +237,7 @@ private:
     /// 「材质要法线光照但顶点没有 NTB」演示所需的 PBR 数据行（StandardOpaque 的私有数据资源）。
     bool InitMaterialDataSSBO()
     {
-        auto * domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-
-        if (!domain_manager)
-        {
-            GLogError(u8"[MaterialErrorFallback] 没有 SSBO 注册表");
-            return false;
-        }
-
-        material_data_ssbo_accessor =
-            domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-
-        if (!material_data_ssbo_accessor)
-        {
-            GLogError(u8"[MaterialErrorFallback] 取不到 PBRSurfaceRow 访问器");
-            return false;
-        }
-
-        graph::ssbo::PBRSurfaceRow material_data{};
-        material_data.base_color = Color4f(0.85f, 0.72f, 0.45f, 1.0f);
-        material_data.metallic   = 0.05f;
-        material_data.roughness  = 0.85f;
-
-        return material_data_ssbo_accessor.Write(material_data);
+        return GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_data_ssbo_accessor);
     }
 
     bool CreateGeometries()
@@ -332,7 +316,7 @@ private:
         // 所以配方本身必须完全合法。
         if (desc.use_pbr_surface_row)
             recipe.material_ssbo_binding =
-                material_data_ssbo_accessor.GetGlobalSSBOBinding();
+                material_data_ssbo_accessor;
 
         // #06：故意**不**给 base_color 纹理资源 —— UnlitTexture 契约里该槽声明为
         // `binding_required = true`，缺资源 ⇒ 数据层分类为 MissingTextureResource ⇒ 青棋盘格。
