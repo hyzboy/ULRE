@@ -191,11 +191,12 @@ namespace hgl::serialize
         {
             ar.Field(1, "schema", v.schema);
             ar.Field(2, "name", v.name);
-            ar.Field(3, "domain", v.domain);
-            ar.Field(4, "fragment", v.fragment);
-            ar.Field(5, "transform", v.transform);
-            ar.Field(6, "render_state", v.render_state);
-            ar.Field(7, "textures", v.textures);
+            ar.Field(3, "parent", v.parent);
+            ar.Field(4, "domain", v.domain);
+            ar.Field(5, "fragment", v.fragment);
+            ar.Field(6, "transform", v.transform);
+            ar.Field(7, "render_state", v.render_state);
+            ar.Field(8, "textures", v.textures);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_MaterialRecipeSpec; }

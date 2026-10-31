@@ -192,6 +192,27 @@ namespace hgl::graph::mtl
         HGL_PROPERTY(EditAnywhere, Category = "Identity")
         AnsiString  name;
 
+        /**
+         * 父配方引用。空 ⇒ 无父（自足配方，行为与引入继承之前完全一致）。
+         *
+         * 支持的写法（都由 `hgl::asset::ParseAssetURI` 归一化）：
+         * - `rcp:@Core.PBR.Lit`  —— 按配方名引用（最常用）
+         * - `rcp:file:res/material/core_pbr.recipe.toml`
+         * - `Core.PBR.Lit`       —— 省略类型/来源，按名解析
+         *
+         * 语义是 **UE Material Instance 式的差量继承**：本文件只写与父不同
+         * 的键，未写的键（`Presence<T>::present == false`）从父继承。详见
+         * `src/ShaderMaterialData/MaterialRecipeInherit.cpp`。
+         */
+        HGL_PROPERTY(EditAnywhere, Category = "Identity", AssetRef = "rcp")
+        AnsiString  parent;
+
+        /**
+         * 领域。`Custom` 表示「本文件未声明」：有父时从父继承，无父时是错误。
+         *
+         * 之所以不包 `Presence`：`MaterialDomain::Custom` 本身就是「未声明」这个
+         * 取值，再加一层 present 位只会多出一种写不出正确语义的中间态。
+         */
         HGL_PROPERTY(EditAnywhere, Category = "Identity")
         MaterialDomain domain = MaterialDomain::Custom;
 

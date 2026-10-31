@@ -267,18 +267,19 @@ namespace hgl::asset::generated
     {
         { "schema", "schema", "schema", "Identity", "", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_EditAnywhere | PF_HasRange | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 8u, 0u, 1.0, 1.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
         { "name", "name", "name", "Identity", "", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
-        { "domain", "domain", "domain", "Identity", "", "MaterialDomain", "hgl::graph::mtl::MaterialDomain", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 48u, 8u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_MaterialDomain, &AssetEnumName64_MaterialDomain },
-        { "fragment", "fragment", "fragment", "Fragment", "", "RecipeFragmentSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 56u, 104u, 0u, 0.0, 0.0, 0.0, &Class_RecipeFragmentSpec, PropertyKind::None, nullptr, nullptr },
-        { "transform", "transform", "transform", "Transform", "", "RecipeTransformSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 160u, 12u, 0u, 0.0, 0.0, 0.0, &Class_RecipeTransformSpec, PropertyKind::None, nullptr, nullptr },
-        { "render_state", "render_state", "render_state", "RenderState", "", "RecipeRenderStateSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 172u, 76u, 0u, 0.0, 0.0, 0.0, &Class_RecipeRenderStateSpec, PropertyKind::None, nullptr, nullptr },
-        { "textures", "textures", "textures", "Texture", "", "hgl::ManagedArray<RecipeTextureSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 248u, 24u, 0u, 0.0, 0.0, 0.0, &Class_RecipeTextureSpec, PropertyKind::Struct, nullptr, nullptr },
+        { "parent", "parent", "parent", "Identity", "", "AnsiString", nullptr, "rcp", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 48u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "domain", "domain", "domain", "Identity", "", "MaterialDomain", "hgl::graph::mtl::MaterialDomain", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 88u, 8u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_MaterialDomain, &AssetEnumName64_MaterialDomain },
+        { "fragment", "fragment", "fragment", "Fragment", "", "RecipeFragmentSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 96u, 104u, 0u, 0.0, 0.0, 0.0, &Class_RecipeFragmentSpec, PropertyKind::None, nullptr, nullptr },
+        { "transform", "transform", "transform", "Transform", "", "RecipeTransformSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 200u, 12u, 0u, 0.0, 0.0, 0.0, &Class_RecipeTransformSpec, PropertyKind::None, nullptr, nullptr },
+        { "render_state", "render_state", "render_state", "RenderState", "", "RecipeRenderStateSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 212u, 76u, 0u, 0.0, 0.0, 0.0, &Class_RecipeRenderStateSpec, PropertyKind::None, nullptr, nullptr },
+        { "textures", "textures", "textures", "Texture", "", "hgl::ManagedArray<RecipeTextureSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 288u, 24u, 0u, 0.0, 0.0, 0.0, &Class_RecipeTextureSpec, PropertyKind::Struct, nullptr, nullptr },
     };
 
     inline const ClassMetaInfo Class_MaterialRecipeSpec =
     {
         "MaterialRecipeSpec", "", "一份材质配方文件的完整字段规约。 与运行时的 `MaterialRecipe`（`inc/hgl/mtl/MaterialRecipe.h`）刻意分开： `MaterialRecipe` 带运行时句柄（`TextureAsset*`、SSBO 绑定）与已解析的 `VertexShaderNodeConfig`，不是纯数据也算不出稳定哈希；本结构是纯 POD， 只回答「文件里写了什么」。",
         Meta_MaterialRecipeSpec, (uint32_t)(sizeof(Meta_MaterialRecipeSpec) / sizeof(Meta_MaterialRecipeSpec[0])),
-        272u, 8u
+        312u, 8u
     };
 
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::mtl::RecipeTextureSpec *) { return &Class_RecipeTextureSpec; }

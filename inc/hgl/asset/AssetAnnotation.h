@@ -50,7 +50,7 @@
  * | `Range(min, max)`   | 软范围（滑块上下限） |
  * | `Clamp(min, max)`   | 硬范围（超出即拒绝） |
  * | `Step = v`          | 拖动步长 |
- * | `AssetRef = "geo"`  | 该字符串字段是资产引用（`geo`/`primitive`/`recipe`/`tex`/`pack`） |
+ * | `AssetRef = "geo"`  | 该字符串字段是资产引用（`geo`/`tex`/`rcp`/`prim`/`scene`） |
  * | `Key = "k"`         | 键名覆盖（缺省用字段名）；一个字段只有一个键 —— 「表名由某个字段的值决定」的写法（如 `[builtin.sphere]`）要展开成固定键的结构，见 `GeometryBuiltinParamsSpec` |
  *
  * ── 非 Clang 编译器 ─────────────────────────────────────────────────────────

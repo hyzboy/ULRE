@@ -70,6 +70,7 @@ namespace
     constexpr char kFullRecipe[] =
         "schema = 1\n"
         "name = \"RecipeCodec.Full\"\n"
+        "parent = \"RecipeCodec.Base\"\n"
         "domain = \"UnlitTexture\"\n"
         "\n"
         "[fragment]\n"
@@ -124,6 +125,7 @@ namespace
         const bool read_ok =
                spec.schema == 1
             && spec.name == "RecipeCodec.Full"
+            && spec.parent == "RecipeCodec.Base"
             && spec.domain == MaterialDomain::UnlitTexture
             && spec.fragment.surface_module_name == "custom_surface"
             && spec.fragment.samplers.present
@@ -181,6 +183,7 @@ namespace
         const RecipePipelineSpec &back_pipeline = back.render_state.pipeline.value;
         return back.schema == spec.schema
             && back.name == spec.name
+            && back.parent == spec.parent
             && back.domain == spec.domain
             && back.fragment.surface_module_name == "custom_surface"
             && back.fragment.samplers.present
@@ -478,6 +481,7 @@ namespace
         MaterialRecipeSpec source;
         source.schema = 1;
         source.name = "RecipeCodec.Flat";
+        source.parent = "RecipeCodec.Base";
         source.domain = MaterialDomain::StandardOpaque;
         source.fragment.surface_module_name = "flat_surface";
 
@@ -529,6 +533,7 @@ namespace
         const RecipePipelineSpec &pipeline = back.render_state.pipeline.value;
         return back.schema == source.schema
             && back.name == source.name
+            && back.parent == source.parent
             && back.domain == MaterialDomain::StandardOpaque
             && back.fragment.surface_module_name == "flat_surface"
             && back.fragment.samplers.present
@@ -571,14 +576,23 @@ namespace
     bool TestMetaStructLinks()
     {
         const ClassMetaInfo &recipe = codec::Class_MaterialRecipeSpec;
-        if (recipe.property_count != 7)
+        if (recipe.property_count != 8)
             return false;
 
+        const PropertyMetaInfo *parent = FindProperty(recipe, "parent");
         const PropertyMetaInfo *fragment = FindProperty(recipe, "fragment");
         const PropertyMetaInfo *transform = FindProperty(recipe, "transform");
         const PropertyMetaInfo *render_state = FindProperty(recipe, "render_state");
         const PropertyMetaInfo *textures = FindProperty(recipe, "textures");
-        if (!fragment || !transform || !render_state || !textures)
+        if (!parent || !fragment || !transform || !render_state || !textures)
+            return false;
+
+        // `parent` 是资产引用字符串：无子结构、必须带 `AssetRef` 且前缀为 `rcp`。
+        if (parent->struct_meta != nullptr)
+            return false;
+        if (parent->kind != PropertyKind::String)
+            return false;
+        if (!parent->asset_ref || AnsiString(parent->asset_ref) != "rcp")
             return false;
 
         if (fragment->struct_meta != &codec::Class_RecipeFragmentSpec)
