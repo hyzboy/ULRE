@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /**
  * GraphicsContext - 图形系统资源管理
@@ -23,6 +23,7 @@
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/asset/SceneAssetRegistry.h>
+#include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 
 namespace hgl
 {
@@ -108,6 +109,11 @@ namespace hgl::graph
         /// 场景资产只持有纯数据规格；实例实体及 GPU 资源仍由 SceneInstance/其它注册器管理。
         SceneAssetRegistry scene_asset_registry_;
 
+        /// 材质数据块注册表（`mtldata:` URI → 句柄）。整块上传需要全局池，
+        /// 因此必须在模块（含 `GlobalSSBOBufferRegistry`）销毁之前清空，
+        /// 否则句柄析构时无处归还行区间。
+        mtl::MaterialDataBlockRegistry material_data_block_registry_;
+
     public:
         explicit GraphicsContext(VulkanDevice *dev);
         ~GraphicsContext();
@@ -186,6 +192,11 @@ namespace hgl::graph
 
         SceneAssetRegistry *GetSceneAssetRegistry() { return &scene_asset_registry_; }
         const SceneAssetRegistry *GetSceneAssetRegistry() const { return &scene_asset_registry_; }
+
+        /// 材质数据块表（`mtldata:@<name>` / `mtldata:file:<path>` 进，`MaterialDataBlockAsset*` 出）。
+        /// 设备起来之后 `UploadAll(GetGlobalSSBOBufferRegistry())` 才会真正上船。
+        mtl::MaterialDataBlockRegistry *GetMaterialDataBlockRegistry() { return &material_data_block_registry_; }
+        const mtl::MaterialDataBlockRegistry *GetMaterialDataBlockRegistry() const { return &material_data_block_registry_; }
 
         /// 全局异步文件加载管理器（Initialize 后恒为有效，Shutdown 后为 nullptr）。
         /// 调用方只在主线程使用：Submit/Pump/Collect/Stop 有线程亲和性。
@@ -296,3 +307,4 @@ namespace hgl::graph
     }
 
 } // namespace hgl::graph
+

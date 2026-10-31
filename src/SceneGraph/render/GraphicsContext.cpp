@@ -279,6 +279,10 @@ namespace hgl::graph
             geometry_asset_registry_ready_ = false;
         }
 
+        // 材质数据块的句柄持有全局池的行区间租约，析构时要把行号还回去
+        // ⇒ 必须在模块（含 GlobalSSBOBufferRegistry）销毁之前清空。
+        material_data_block_registry_.Clear();
+
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
         // GraphModuleManager destructor will call Release() on all modules automatically
         // This ensures proper cleanup order

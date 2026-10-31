@@ -4,6 +4,8 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
+#include <hgl/graph/asset/MaterialDataBlockRegistry.h>
+#include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/asset/AssetURI.h>
 #include <hgl/log/Log.h>
 
@@ -219,6 +221,58 @@ namespace hgl::ecs
         resource = binding;
         material_data->SetDataResource(resource);
         return *this;
+    }
+
+    RenderableBuilder &RenderableBuilder::WithMaterialDataRow(
+        const hgl::OSString &block_uri,
+        uint32_t row_index)
+    {
+        if (failed || !entity)
+            return *this;
+
+        hgl::graph::GraphicsContext *gc = world->GetGraphicsContext();
+        if (!gc)
+        {
+            Fail("WithMaterialDataRow: no GraphicsContext");
+            return *this;
+        }
+
+        hgl::graph::mtl::MaterialDataBlockRegistry *blocks =
+            gc->GetMaterialDataBlockRegistry();
+        hgl::graph::GlobalSSBOBufferRegistry *pool =
+            gc->GetGlobalSSBOBufferRegistry();
+        if (!blocks || !pool)
+        {
+            Fail("WithMaterialDataRow: no MaterialDataBlockRegistry");
+            return *this;
+        }
+
+        hgl::graph::mtl::MaterialDataBlockAsset *block = blocks->GetOrLoadURI(block_uri);
+        if (!block)
+        {
+            Fail("WithMaterialDataRow: GetOrLoadURI");
+            return *this;
+        }
+
+        // 整块上传是幂等的：已经上船的块直接返回 true，只有新块才真占地。
+        if (!block->Upload(pool))
+        {
+            Fail("WithMaterialDataRow: Upload");
+            return *this;
+        }
+
+        if (row_index >= block->GetRowCount())
+        {
+            Fail("WithMaterialDataRow: row index out of range");
+            return *this;
+        }
+
+        hgl::graph::GlobalSSBOBinding binding{};
+        binding.ssbo_type  = block->GetGlobalSSBOType();
+        binding.ssbo_id    = block->GetSSBOId();
+        binding.data_index = block->RowIDAt(row_index);
+
+        return WithMaterialDataResource(binding);
     }
 
     Entity *RenderableBuilder::Build()

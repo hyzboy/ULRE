@@ -78,6 +78,30 @@ namespace hgl::ecs
         RenderableBuilder &WithMaterialDataResource(
             const hgl::graph::GlobalSSBOBinding &binding);
 
+        /**
+         * @brief 按 `mtldata` URI 引用**数据块内的一行**（批量材质示例的行绑定入口）。
+         *
+         * 这是把「几百行 SSBO 数据」从 C++ 双循环里搬出来之后的落点：
+         *
+         * @code
+         * builder.WithGeometry(u8"geo:builtin:sphere", recipe)
+         *        .WithMaterialDataRow(u8"mtldata:file:res/material/pbr_grid.material_data.toml", i);
+         * @endcode
+         *
+         * 语义与 `WithMaterialRow(accessor, data)` 的区别：那条是**自己造一行**（数据在
+         * 调用方内存里，行号由调用方租约管理），这条是**引用别人造好的一行**（数据在
+         * 数据块文件里，块由注册表拥有并整块上传）。同一块的同一行可以被任意多个实体
+         * 共享，而块本身只上传一次。
+         *
+         * 配方与数据行互不干扰：`WithRecipe` 决定用哪个 shader 变体与配方覆盖，
+         * `WithMaterialDataRow` 只提供 SSBO 行内容。
+         *
+         * 失败（URI/类型不符 / 无数据块注册表 / 行号越界 / 未上传）⇒ builder 进入失败态。
+         */
+        RenderableBuilder &WithMaterialDataRow(
+            const hgl::OSString &block_uri,
+            uint32_t row_index = 0);
+
         template<typename T>
         RenderableBuilder &WithMaterialRow(
             hgl::graph::GlobalSSBODataAccessor &accessor,

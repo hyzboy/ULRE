@@ -132,6 +132,14 @@ if(MSVC)
     set_target_properties(TestMaterialDataBlockAsset PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 批量材质的行绑定入口：数据块行 → 池行号 → GlobalSSBOBinding 的组合契约，
+# 以及 builder 源码里「先上传再判越界」的顺序契约。
+add_executable(TestRenderableBuilderDataRow tests/TestRenderableBuilderDataRow.cpp)
+target_link_libraries(TestRenderableBuilderDataRow PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestRenderableBuilderDataRow PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
 add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
@@ -325,6 +333,14 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestMaterialDataBlockAsset
+        PROPERTIES LABELS "ecs;material_data;asset" TIMEOUT 120)
+
+    add_test(
+        NAME TestRenderableBuilderDataRow
+        COMMAND TestRenderableBuilderDataRow
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestRenderableBuilderDataRow
         PROPERTIES LABELS "ecs;material_data;asset" TIMEOUT 120)
 
     add_test(
