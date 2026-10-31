@@ -287,6 +287,16 @@ namespace hgl::graph::mtl
         // 一律 VertexPassthrough。放在契约里的理由与 samplers 相同：同一领域的
         // 网格产出方式由领域性质决定，不是逐份配方该选的东西。
         MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
+
+        // ── 领域规范顶点色来源 ──────────────────────────────────────────────────
+        // 顶点色并非一律来自 `Color` 顶点流：调色板一族（VertexPalette）的颜色是
+        // `color_palette.color[ColorIndex]` 查表结果，顶点流只提供索引。
+        //
+        // 这决定两件顶点侧的事：`Color` 语义是否由调色板查表满足、顶点 ABI 要不要
+        // 额外要求 `TransformID` 属性。两者都是领域性质（同领域所有配方一致），
+        // 不是配方可选项，所以放在契约里而不是散落在合成代码的领域分支。
+        bool emit_vertex_color_from_palette = false;
+        bool use_transform_id_attr = false;
     };
 
     // 取契约；domain == Custom 或未知时返回 nullptr。
@@ -351,34 +361,4 @@ namespace hgl::graph::mtl
         MaterialDomain domain,
         ValueArray<GlslModuleSemanticRequirement> &out) noexcept;
 
-    // ── 校验结果 ────────────────────────────────────────────────────────────────
-    enum class MaterialDomainValidationResult : uint8
-    {
-        OK = 0,
-        UnknownDomain,              // domain 名不认识
-        NoContract,                 // 非 Custom 但契约表里没有（内部错误，非「视为通过」）
-        MissingVertexSemantic,      // requirements 缺少契约要求的顶点语义
-        UndeclaredRequiredTexture,  // 契约要求声明的纹理槽在材质里缺失
-        UnexpectedTextureSlot,      // 材质声明了契约白名单之外的纹理槽
-        VertexProviderPolicyMismatch, // 顶点提供策略与契约不符
-        MissingMaterialSource,      // 契约要求 material_source_module_name，但材质未声明
-        MaterialSourceModuleMismatch, // 材质自选表面来源模块，与领域规范模块不符
-        NtbModuleMismatch,          // 材质自选法线标架模块，与领域规范模块不符
-        TransformMismatch,          // 材质自选顶点变换，与领域规范变换不符
-        TextureSlotMismatch,        // 材质显式声明的纹理槽形态（采样器/绑定/通道数）与领域规范不符
-        MaterialDataTypeMismatch,   // 材质显式声明的 material_data 类型与领域规范不符
-
-        ENUM_CLASS_RANGE(OK, MaterialDataTypeMismatch)
-    };
-
-    const char *GetMaterialDomainValidationResultName(
-        MaterialDomainValidationResult result) noexcept;
-
-    // 契约校验。失败时 `out_detail` 给出「哪个槽/哪个语义 + 期望什么」，
-    // 直接用于配方解析期诊断（与 MaterialRecipeFileParseError 配套）。
-    // Custom 领域恒返回 OK。
-    MaterialDomainValidationResult ValidateMaterialDefinitionDomain(
-        const MaterialDefinition &definition,
-        MaterialDomain domain,
-        AnsiString &out_detail) noexcept;
 }// namespace hgl::graph::mtl

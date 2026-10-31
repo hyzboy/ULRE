@@ -342,13 +342,15 @@ bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
         BuildMaterialVertexVaryingFromSemanticMask(
             default_mask, out_definition.vertex_varying);
 
-        // 调色板顶点色：颜色来自调色板查表而非顶点色属性，且需要 TransformID。
-        if (recipe.domain == MaterialDomain::VertexPalette)
+        // 顶点色来源由契约钉死：调色板一族查表出色、并需要 TransformID 属性。
+        // 这里**不按领域名判断**，否则新增同类领域就得回来改这段合成代码。
+        if (contract->emit_vertex_color_from_palette)
         {
             out_definition.vertex_varying.emit_vertex_color = false;
             out_definition.vertex_varying.emit_vertex_color_from_palette = true;
-            out_definition.vertex_varying.use_transform_id_attr = true;
         }
+        if (contract->use_transform_id_attr)
+            out_definition.vertex_varying.use_transform_id_attr = true;
     }
 
     out_definition.vertex_normal_mode = contract->vertex_normal_mode;

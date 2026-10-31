@@ -200,6 +200,96 @@ namespace
             == MaterialRecipeFileParseResult::UnknownKey;
     }
 
+    bool CheckFragmentOverrides()
+    {
+        // `[fragment]` 的 samplers/defines 覆盖必须能从数据表达，
+        // 空数组表示「清空」而非「不覆盖」。
+        constexpr char kOverrides[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.FragmentOverrides\"\n"
+            "domain = \"UnlitTexture\"\n"
+            "\n"
+            "[fragment]\n"
+            "samplers = [\"nearest\"]\n"
+            "defines = [\"TEXT_GPU_BITMAP\"]\n";
+
+        MaterialRecipeFileData data;
+        if (!Parse(kOverrides, data))
+            return false;
+        if (!data.recipe.has_sampler_names
+         || data.recipe.sampler_names.size() != 1
+         || data.recipe.sampler_names[0] != "nearest"
+         || !data.recipe.has_compile_defines
+         || data.recipe.compile_defines.size() != 1
+         || data.recipe.compile_defines[0] != "TEXT_GPU_BITMAP")
+            return false;
+
+        constexpr char kCleared[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.FragmentCleared\"\n"
+            "domain = \"UnlitTexture\"\n"
+            "\n"
+            "[fragment]\n"
+            "samplers = []\n";
+
+        MaterialRecipeFileData cleared;
+        if (!Parse(kCleared, cleared))
+            return false;
+        if (!cleared.recipe.has_sampler_names || !cleared.recipe.sampler_names.empty())
+            return false;
+        if (cleared.recipe.has_compile_defines)
+            return false;
+
+        // 表面模块只在 no_material_source 领域（当前仅 Sky）有效
+        constexpr char kSurfaceOnWrongDomain[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.SurfaceOnWrongDomain\"\n"
+            "domain = \"UnlitTexture\"\n"
+            "\n"
+            "[fragment]\n"
+            "surface_module_name = \"surface_sky_cube\"\n";
+
+        const MaterialRecipeFileParseResult wrong_domain =
+            ParseMaterialRecipeFile(
+                kSurfaceOnWrongDomain,
+                static_cast<int>(strlen(kSurfaceOnWrongDomain)),
+                data);
+        if (wrong_domain != MaterialRecipeFileParseResult::InvalidValue
+         || data.parse_error.table != "fragment"
+         || data.parse_error.key != "surface_module_name")
+            return false;
+
+        // 领域正确但形态名不存在也必须失败，而不是静默忽略
+        constexpr char kUnknownSurface[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.UnknownSurface\"\n"
+            "domain = \"Sky\"\n"
+            "\n"
+            "[fragment]\n"
+            "surface_module_name = \"surface_missing\"\n";
+
+        const MaterialRecipeFileParseResult unknown_surface =
+            ParseMaterialRecipeFile(
+                kUnknownSurface,
+                static_cast<int>(strlen(kUnknownSurface)),
+                data);
+        if (unknown_surface != MaterialRecipeFileParseResult::InvalidValue
+         || data.parse_error.key != "surface_module_name")
+            return false;
+
+        constexpr char kKnownSurface[] =
+            "schema = 1\n"
+            "name = \"RecipeParser.KnownSurface\"\n"
+            "domain = \"Sky\"\n"
+            "\n"
+            "[fragment]\n"
+            "surface_module_name = \"surface_sky_cube\"\n";
+
+        MaterialRecipeFileData sky;
+        return Parse(kKnownSurface, sky)
+            && sky.recipe.surface_module_name == "surface_sky_cube";
+    }
+
     bool CheckRegistryNormalizationAndDuplicate()
     {
         constexpr char kRegistryRecipe[] =
@@ -383,6 +473,11 @@ int main(int argc, char **argv)
     {
         GLogError(u8"TestMaterialRecipeFile failed: lookup failure diagnostics");
         return 8;
+    }
+    if (!CheckFragmentOverrides())
+    {
+        GLogError(u8"TestMaterialRecipeFile failed: [fragment] override parsing");
+        return 9;
     }
 
     GLogInfo(u8"TestMaterialRecipeFile passed");

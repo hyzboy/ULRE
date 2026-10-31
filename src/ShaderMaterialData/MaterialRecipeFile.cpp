@@ -118,6 +118,42 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        // 字符串数组读取：用于「整表替换」语义的覆盖项。
+        // 键缺失 ⇒ out_present = false（不覆盖，仍取契约预设）；
+        // 键存在 ⇒ out_present = true，空数组表示**清空**（不是「不覆盖」）。
+        bool ReadStringArray(const toml::value &table,
+                             const char *key,
+                             std::vector<std::string> &out,
+                             bool &out_present,
+                             ParseErrorContext &error)
+        {
+            out_present = false;
+            if (!table.is_table() || !table.contains(key))
+                return true;
+
+            const toml::value &value = table.at(key);
+            if (!value.is_array())
+            {
+                error.Record(key, nullptr, "必须是字符串数组");
+                return false;
+            }
+
+            std::vector<std::string> items;
+            for (const toml::value &item : value.as_array())
+            {
+                if (!item.is_string())
+                {
+                    error.Record(key, nullptr, "数组元素必须是字符串");
+                    return false;
+                }
+                items.push_back(item.as_string());
+            }
+
+            out = std::move(items);
+            out_present = true;
+            return true;
+        }
+
         bool ReadBool(const toml::value &table,
                       const char *key,
                       bool &out,
@@ -486,8 +522,13 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        // 领域 `no_material_source`（如 Sky）时，配方可指定自己的表面函数模块，
-        // 由领域入口据此选择主着色器形态（sky_minimal / sky_cube）。
+        // `[fragment]`：片元阶段的两类可选意图 ——
+        //   surface_module_name：no_material_source 领域的表面形态选择
+        //   samplers / defines：采样器预设与编译宏的整表替换
+        //
+        // 后者必须能从数据表达：位图字形（text_gpu_bitmap）与 SDF 字形领域相同，
+        // 差别只在「最近邻采样 + 不解 SDF」。只允许 C++ 侧写这两个覆盖项，等于
+        // 让同一种形态在数据里无法复现（RuntimeFormProbe / 回归门禁都只能走代码路径）。
         bool ParseFragment(const toml::value &root,
                            MaterialRecipe &recipe,
                            ParseErrorContext &error)
@@ -497,13 +538,24 @@ namespace hgl::graph::mtl
 
             ParseTableScope scope(error, "fragment");
             const toml::value &table = root.at("fragment");
-            static const char *const keys[] = {"surface_module_name"};
-            if (!ValidateKnownKeys(table, keys, 1, error))
+            static const char *const keys[] = {
+                "surface_module_name", "samplers", "defines"
+            };
+            if (!ValidateKnownKeys(table, keys, 3, error))
+                return false;
+
+            if (!ReadStringArray(table, "samplers",
+                                 recipe.sampler_names, recipe.has_sampler_names, error)
+             || !ReadStringArray(table, "defines",
+                                 recipe.compile_defines, recipe.has_compile_defines, error))
                 return false;
 
             AnsiString name;
-            if (!ReadString(table, "surface_module_name", name, error, true))
+            if (!ReadString(table, "surface_module_name", name, error))
                 return false;
+
+            if (name.IsEmpty())
+                return true;
 
             // 只有 `no_material_source` 领域（当前仅 Sky）存在「同领域多表面形态」。
             // 其他领域写了这个名字只会被入口源静默忽略 —— 那是拼写错误或无意义配置。

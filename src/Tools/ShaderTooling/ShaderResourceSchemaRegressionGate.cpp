@@ -9751,9 +9751,12 @@ void main()
                     }
                 }
 
+                // Color 的格式取决于**顶点色来源**：调色板查表形态传的是 1 字节索引，
+                // 不是 RGBA 颜色。判据取自合成后的 varyings（契约驱动），不按领域名，
+                // 否则新增同类领域时这里会静默沿用 RGBA 格式。
                 const VkFormat format =
                     entry.semantic == VertexSemantic::Color
-                     && definition.domain == MaterialDomain::VertexPalette
+                     && definition.vertex_varying.emit_vertex_color_from_palette
                         ? VK_FORMAT_R8_UINT
                         : entry.format;
 

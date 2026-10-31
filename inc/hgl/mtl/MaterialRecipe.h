@@ -118,44 +118,6 @@ namespace hgl::graph::mtl
         AllowDerived
     };
 
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
-    //   GetMaterialVertexProviderPolicyName：枚举 → 名字（switch）
-    //   ParseMaterialVertexProviderPolicy：名字 → 枚举（线性查表）
-    // 新增策略只需改枚举 + 本 switch 一处（名字表随之自动覆盖）。
-    inline constexpr uint32_t MaterialVertexProviderPolicyCount =
-        static_cast<uint32_t>(MaterialVertexProviderPolicy::AllowDerived) + 1;
-
-    inline const char *GetMaterialVertexProviderPolicyName(
-        const MaterialVertexProviderPolicy policy) noexcept
-    {
-        switch (policy)
-        {
-        case MaterialVertexProviderPolicy::Auto:         return "Auto";
-        case MaterialVertexProviderPolicy::GeometryOnly: return "GeometryOnly";
-        case MaterialVertexProviderPolicy::AllowDerived: return "AllowDerived";
-        }
-        return "Auto";
-    }
-
-    inline bool ParseMaterialVertexProviderPolicy(
-        const char *name, MaterialVertexProviderPolicy &out_policy) noexcept
-    {
-        if (!name || !name[0])
-            return false;
-
-        for (uint32_t i = 0; i < MaterialVertexProviderPolicyCount; ++i)
-        {
-            const MaterialVertexProviderPolicy policy =
-                static_cast<MaterialVertexProviderPolicy>(i);
-            if (hgl::strcmp(name, GetMaterialVertexProviderPolicyName(policy)) == 0)
-            {
-                out_policy = policy;
-                return true;
-            }
-        }
-        return false;
-    }
-
     // MaterialVertexNormalMode 已随领域契约归档到 MaterialDomain.h
     // （definition 中间层移除后，它是「领域是否容忍缺顶点法线」的性质）。
 
