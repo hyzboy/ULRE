@@ -386,7 +386,7 @@ namespace hgl::graph::mtl
                 {},
                 MaterialVertexNormalMode::None,
                 MeshShaderMode::VertexPassthrough,
-                true,   // emit_vertex_color_from_palette：颜色查调色板，不 emit Color 属性
+                true,   // emit_vertex_color_from_palette：Color 流是调色板索引(R8_UINT)，不是 RGBA
                 true,   // use_transform_id_attr：顶点 ABI 需要 TransformID
             },
             {

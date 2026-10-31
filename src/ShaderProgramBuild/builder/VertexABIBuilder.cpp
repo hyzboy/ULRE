@@ -205,13 +205,13 @@ namespace
                 return false;
 
             // Vertex color is a universal mesh input contract. Its provider is
-            // selected from authored domain/geometry facts, never inferred from
-            // the flattened Color semantic mask.
-            if (definition.domain == MaterialDomain::VertexPalette)
+            // selected from authored domain facts, never inferred from the
+            // flattened Color semantic mask.
+            if (definition.vertex_varying.emit_vertex_color_from_palette)
             {
                 if (!color_attribute || color_attribute->format != VK_FORMAT_R8_UINT)
                 {
-                    GLogError(u8"VertexPalette requires an R8_UINT palette-index color stream: definition=%s",
+                    GLogError(u8"调色板顶点色需要 R8_UINT 索引颜色流: definition=%s",
                               definition.definition_id.c_str());
                     return false;
                 }

@@ -9100,7 +9100,7 @@ void main()
         request.primitive_type = variant.primitive_type;
         request.geometry_vertex_format =
             variant.has_geometry
-                ? (definition.domain == MaterialDomain::VertexPalette
+                ? (definition.vertex_varying.emit_vertex_color_from_palette
                        ? &kReflectionCoveragePaletteGeometry
                        : (variant.vec2_position
                               ? &kReflectionCoverageGeometry2D
