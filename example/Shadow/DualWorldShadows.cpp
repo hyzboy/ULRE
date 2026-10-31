@@ -439,9 +439,10 @@ private:
 
     bool BindChildScreenTexture()
     {
-        // 屏幕实体读子世界 RT 的颜色纹理（引擎的材质纹理引用链负责注册/去重）
-        Texture2D *child_color = child ? child->GetColorTexture(0) : nullptr;
-        if (!child_color)
+        // 屏幕实体读子世界 RT 的颜色纹理。离屏颜色附件没有文件名，但它在 URI 层与
+        // 磁盘纹理完全同类：`rt:<目标名>:<附件名>` —— 因此这块绑定也能写进配方
+        // （DualWorldShadows.Screen），C++ 侧不再手工 Wrap + AddTexture。
+        if (!child || !child->GetColorTexture(0))
             return LogStageFail("BindChildScreenTexture", "child color texture is null");
 
         if (!child_screen_entity)
@@ -451,18 +452,15 @@ private:
         if (!material_data)
             return LogStageFail("BindChildScreenTexture", "screen material data missing");
 
-        // 离屏 RT 的颜色纹理是「现成纹理」，没有文件名：包成句柄后仍走统一的句柄入口，
-        // 材质侧只认 TextureAsset，不存在第二条行为路径。
-        TextureAsset *child_color_asset = texture_manager->WrapTextureAsset(child_color);
-        if (!child_color_asset)
-            return LogStageFail("BindChildScreenTexture", "wrap child color texture failed");
-
-        // 只有这块屏幕贴这张图 ⇒ 给它挂一份同源配方覆盖（其余几何继续用无纹理的共享配方）。
+        // 只有这块屏幕贴这张图 ⇒ 给它挂一份派生配方（其余几何继续用无纹理的共享配方）。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        graph::mtl::MaterialRecipe screen_recipe = lit_recipe;
+        const mtl::MaterialRecipe *screen_loaded = GetRecipe("DualWorldShadows.Screen");
+        if (!screen_loaded)
+            return LogStageFail("BindChildScreenTexture", "screen recipe not found");
 
-        if (!screen_recipe.AddTexture("base_color", child_color_asset, true))
-            return LogStageFail("BindChildScreenTexture", "bind recipe texture failed");
+        graph::mtl::MaterialRecipe screen_recipe = *screen_loaded;
+        if (!(screen_recipe.material_ssbo_binding = lit_recipe.material_ssbo_binding).IsValid())
+            return LogStageFail("BindChildScreenTexture", "screen recipe SSBO binding invalid");
 
         material_data->SetRecipe(screen_recipe);
         return true;

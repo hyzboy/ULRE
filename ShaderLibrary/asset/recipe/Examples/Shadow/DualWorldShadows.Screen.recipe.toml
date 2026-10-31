@@ -1,0 +1,13 @@
+schema = 1
+name = "DualWorldShadows.Screen"
+parent = "rcp:@DualWorldShadows.Lit"
+
+# 屏幕显示子世界的离屏颜色附件。RT 与磁盘文件在 URI 层完全同类：
+#   `rt:<RenderTargetDesc.name>:<attachment>`
+# 这里的名字是 `OffscreenWorldDesc.resource_prefix`（离屏 RT 名带冒号，
+# 解析器从尾部找最后一个冒号以区分附件名）。
+# 句柄在配方加载时创建、由 `RenderTargetManager` 建 RT 时按名字接上，
+# 因此这里不需要任何「先有 RT 还是先有材质」的排序约定。
+[[textures]]
+name = "base_color"
+asset = "rt:DualWorldShadows:ChildRT:color0"
