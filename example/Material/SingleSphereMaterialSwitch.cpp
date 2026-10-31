@@ -19,7 +19,6 @@
 #include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
@@ -65,15 +64,12 @@ namespace
     }
 }
 
-// near 材质的两张单层数组来自 texarray 规约：
-//   ShaderLibrary/asset/texarray/single_sphere_near_baseColor.texarray.toml
-//   ShaderLibrary/asset/texarray/single_sphere_near_normal.texarray.toml
-// far 材质仍用同一份文件的**单张 2D 纹理**（配方按平铺语义采样，不需要数组）。
-// 原来这里的 `PBR_FOLDER` 常量与 `BuildTexturePair` 探测函数已删除。
-constexpr const os_char NEAR_BASE_COLOR_ARRAY_URI[] = OS_TEXT("texarray:@single_sphere_near_baseColor");
-constexpr const os_char NEAR_NORMAL_ARRAY_URI[]     = OS_TEXT("texarray:@single_sphere_near_normal");
-constexpr const os_char FAR_BASE_COLOR_FILE_URI[]   = OS_TEXT("res/image/pbr/Concrete_Plain/baseColor.Tex2D");
-constexpr const os_char FAR_NORMAL_FILE_URI[]       = OS_TEXT("res/image/pbr/Concrete_Plain/normal.Tex2D");
+// 两套材质的纹理都在配方文件里声明：
+//   ShaderLibrary/asset/recipe/Examples/Material/06e.SingleSphereSwitch.Near.recipe.toml
+//     ⇒ texarray 数组 URI（规约：ShaderLibrary/asset/texarray/single_sphere_near_*.texarray.toml）
+//   ShaderLibrary/asset/recipe/Examples/Material/06e.SingleSphereSwitch.Far.recipe.toml
+//     ⇒ 同一份文件的**单张 2D 纹理**（配方按平铺语义采样，不需要数组）
+// 原来这里的 `PBR_FOLDER` 常量、`BuildTexturePair` 探测函数与四个纹理 URI 常量已删除。
 
 static constexpr float SWITCH_NEAR_ENTER_DISTANCE = 7.0f;   // far->near
 static constexpr float SWITCH_FAR_ENTER_DISTANCE = 9.0f;    // near->far
@@ -96,11 +92,8 @@ private:
     graph::GlobalSSBOBinding near_material_data_ssbo_accessor{};
     graph::GlobalSSBOBinding far_material_data_ssbo_accessor{};
 
-    /// 材质授权统一走句柄：上面四张纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
-    TextureAsset *near_base_color_asset = nullptr;
-    TextureAsset *near_normal_asset = nullptr;
-    TextureAsset *far_base_color_asset = nullptr;
-    TextureAsset *far_normal_asset = nullptr;
+    /// 材质授权统一走配方：纹理句柄由 `MaterialRecipeRegistry` 按配方文件里的
+    /// `[[textures]]` 自动创建，示例不再持有 TextureAsset 指针。
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *sphere_geometry = nullptr;
@@ -118,29 +111,17 @@ private:
 
     bool InitTextures()
     {
-        auto *texture_manager = GetManager<TextureManager>();
-        if (!texture_manager)
-            return LogFail("InitTextures", "texture manager is null");
+        // near/far 两套纹理都在配方文件的 `[[textures]]` 里声明（near 走 texarray 数组 URI，
+        // far 走文件 URI）。far 的句柄由注册表创建后停在 MetaOnly，而远距材质在第 1 帧
+        // 就可能被切到，不能等 TextureStreamingSystem 异步完成 ⇒ 这里显式同步读盘。
 
-        // near：两张单层数组（层清单在 texarray 规约里，尺寸/格式从第 0 层文件推导）
-        near_base_color_asset = texture_manager->CreateTextureAsset(NEAR_BASE_COLOR_ARRAY_URI);
-        if (!near_base_color_asset || !near_base_color_asset->GetTexture())
-            return LogFail("InitTextures", "failed to build baseColor array for near material");
-
-        near_normal_asset = texture_manager->CreateTextureAsset(NEAR_NORMAL_ARRAY_URI);
-        if (!near_normal_asset || !near_normal_asset->GetTexture())
-            return LogFail("InitTextures", "failed to build normal array for near material");
-
-        // far：同一份文件按单张 2D 纹理加载（走文件 URI，缓存与 near 层共用同一份 Texture2D）。
-        // 文件来源的句柄创建后处于 MetaOnly，需显式 LoadPayload() 同步读盘 —— 远距材质
-        // 在第 1 帧就可能被切到，不能等 TextureStreamingSystem 异步完成。
-        far_base_color_asset = texture_manager->CreateTextureAsset(FAR_BASE_COLOR_FILE_URI, true);
-        if (!far_base_color_asset || !far_base_color_asset->LoadPayload())
-            return LogFail("InitTextures", "failed to load baseColor texture for far material");
-
-        far_normal_asset = texture_manager->CreateTextureAsset(FAR_NORMAL_FILE_URI, true);
-        if (!far_normal_asset || !far_normal_asset->LoadPayload())
-            return LogFail("InitTextures", "failed to load normal texture for far material");
+        for (mtl::RecipeTextureBinding &binding : far_recipe.textures)
+        {
+            if (!binding.asset)
+                return LogFail("InitTextures", "far recipe texture handle is null");
+            if (!binding.asset->LoadPayload() || !binding.asset->GetTexture())
+                return LogFail("InitTextures", "failed to load far material texture");
+        }
 
         return true;
     }
@@ -161,20 +142,12 @@ private:
         if (!(near_recipe.material_ssbo_binding = near_material_data_ssbo_accessor).IsValid())
             return LogFail("InitMaterials", "near material SSBO binding failed");
 
-        // 纹理是材质原型固有属性 ⇒ 两套配方各自声明，切换时只换配方即可。
-        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!near_recipe.AddTexture("base_color", near_base_color_asset, true)
-         || !near_recipe.AddTexture("normal", near_normal_asset, true))
-            return LogFail("InitMaterials", "near recipe texture binding failed");
-
         far_recipe = *far_loaded_recipe;
         if (!(far_recipe.material_ssbo_binding = far_material_data_ssbo_accessor).IsValid())
             return LogFail("InitMaterials", "far material SSBO binding failed");
 
-        // 同名 upsert 覆盖成 Far 那对纹理（2D 句柄，身份为 `texid:`）
-        if (!far_recipe.AddTexture("base_color", far_base_color_asset, true)
-         || !far_recipe.AddTexture("normal", far_normal_asset, true))
-            return LogFail("InitMaterials", "far recipe texture binding failed");
+        // 纹理是材质原型固有属性 ⇒ 两套配方各自在文件里声明，切换时只换配方即可。
+        // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
 
         return true;
     }
@@ -231,9 +204,6 @@ private:
 
     bool InitRenderResources()
     {
-        if (!near_base_color_asset || !near_normal_asset || !far_base_color_asset || !far_normal_asset)
-            return LogFail("InitRenderResources", "required material/texture is null");
-
         if (!near_material_data_ssbo_accessor
          || !far_material_data_ssbo_accessor)
             return LogFail("InitRenderResources", "SSBO not allocated");
@@ -335,9 +305,9 @@ public:
     {
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
 
-        if (!InitTextures())
-            return false;
         if (!InitMaterials())
+            return false;
+        if (!InitTextures())
             return false;
         if (!InitGeometry())
             return false;

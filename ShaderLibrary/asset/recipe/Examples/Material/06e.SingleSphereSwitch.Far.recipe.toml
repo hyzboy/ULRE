@@ -1,3 +1,14 @@
 schema = 1
 name = "06e.SingleSphereSwitch.Far"
 domain = "StandardOpaque"
+
+# far：同一份 PBR 文件的单张 2D 纹理（配方按平铺语义采样，不需要数组）
+[[textures]]
+name = "base_color"
+asset = "res/image/pbr/Concrete_Plain/baseColor.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "normal"
+asset = "res/image/pbr/Concrete_Plain/normal.Tex2D"
+auto_mipmaps = true

@@ -1,3 +1,12 @@
 schema = 1
 name = "06e.SingleSphereSwitch.Near"
 domain = "StandardOpaque"
+
+# near：两张单层纹理数组（规约见 ShaderLibrary/asset/texarray/single_sphere_near_*.texarray.toml）
+[[textures]]
+name = "base_color"
+asset = "texarray:@single_sphere_near_baseColor"
+
+[[textures]]
+name = "normal"
+asset = "texarray:@single_sphere_near_normal"
