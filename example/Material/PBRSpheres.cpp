@@ -17,7 +17,6 @@
 
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -76,9 +75,8 @@ static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 // 与本示例共用同一份规约的还有 CascadeShadowMap（文件夹顺序完全一致）⇒ 同一张数组
 // 纹理，不重复上传。原来这里的 `PBR_FOLDER_NAME[10]` 常量表已删除。
 //
-// 数组纹理 URI（`texarray:@<name>` → `ShaderLibrary/asset/texarray/<name>.texarray.toml`）
-static constexpr const os_char PBR_BASE_COLOR_ARRAY_URI[] = OS_TEXT("texarray:@pbr_10x10_baseColor");
-static constexpr const os_char PBR_NORMAL_ARRAY_URI[]     = OS_TEXT("texarray:@pbr_10x10_normal");
+// 两张数组纹理现在**只**在配方文件里出现（`[[textures]] asset = "texarray:@..."`），
+// 示例代码不再持有 URI 常量、不再 CreateTextureAsset。
 
 // 批量材质数据行的**唯一**来源：文件化的数据块（100 行 PBRSurface，行优先）。
 // 原来这里是一个 CreateLitMaterialData() 双循环硬编码（含统一底色 0.72 灰），现在
@@ -109,10 +107,6 @@ private:
     graph::mtl::MaterialRecipe sphere_recipe_b{};
     PrimitiveAsset base_primitives_b[GRID_SIZE]{};
     bool multibatch_enabled = false;
-
-    /// 材质授权统一走句柄：上面的数组纹理各有一个 TextureAsset 句柄（Resident，只因文件同步装配而成）。
-    TextureAsset *      base_color_asset = nullptr;
-    TextureAsset *      normal_asset = nullptr;
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
@@ -158,15 +152,6 @@ private:
 
     bool InitMaterial()
     {
-        if (!base_color_asset || !normal_asset) {
-            printf("[ERROR] InitMaterial: Failed texture checks - base=%p normal=%p\n",
-                   (void*)base_color_asset, (void*)normal_asset);
-            return false;
-        }
-        auto *texture_manager = GetManager<TextureManager>();
-        if (!texture_manager)
-            return false;
-
         const mtl::MaterialRecipe *loaded_recipe =
             GetRecipe("PBRSpheres.Lit");
         if (!loaded_recipe)
@@ -193,33 +178,6 @@ private:
 
             printf("[T3i] PBR_MULTIBATCH=1：网格后半走第二套配方"
                    "（Lit + 顶点节点=Billboard ⇒ 不同 shader program）⇒ 期望 2 个批\n");
-        }
-
-        return true;
-    }
-
-    bool InitTextures()
-    {
-        auto* texture_manager = GetManager<TextureManager>();
-        if (!texture_manager) {
-            printf("[ERROR] InitTextures: No texture_manager\n");
-            return false;
-        }
-
-        // 两张数组纹理全部来自 `texarray:` 规约：层清单、层数、尺寸/格式推导都不在代码里。
-        // 装配失败（缺层/尺寸不一致/规约写错）会在 `BuildTextureArray` 里报具体层号。
-        // 原来这里约 70 行的「探针加载 + CreateTexture2DArray + 逐层 BuildFilePair/Load2DArray」
-        // 已删除；`Normal.Tex2D`（首字母大写）的差异现在显式写在规约的层清单里。
-        base_color_asset = texture_manager->CreateTextureAsset(PBR_BASE_COLOR_ARRAY_URI);
-        if (!base_color_asset || !base_color_asset->GetTexture()) {
-            printf("[ERROR] InitTextures: Failed to build baseColor array (texarray:@pbr_10x10_baseColor)\n");
-            return false;
-        }
-
-        normal_asset = texture_manager->CreateTextureAsset(PBR_NORMAL_ARRAY_URI);
-        if (!normal_asset || !normal_asset->GetTexture()) {
-            printf("[ERROR] InitTextures: Failed to build normal array (texarray:@pbr_10x10_normal)\n");
-            return false;
         }
 
         return true;
@@ -441,13 +399,13 @@ private:
                     return false;
 
                 // 每格的差别只有「数组图层号」= 行号 ⇒ 图层号属于配方，给该实体挂一份配方覆盖。
-                // 采样器由 Bindless 预设统一管理，实体端不再出现任何纹理/sampler 调用。
+                // 纹理本身由配方文件声明（texarray:@pbr_10x10_*），采样器由 Bindless 预设统一管理。
                 graph::mtl::MaterialRecipe cell_recipe =
                     use_recipe_b ? sphere_recipe_b : sphere_recipe;
 
-                if (!cell_recipe.AddTexture("base_color", base_color_asset, true, row)
-                 || !cell_recipe.AddTexture("normal", normal_asset, true, row))
-                    return false;
+                for (graph::mtl::RecipeTextureBinding &binding : cell_recipe.textures)
+                    if (binding.texture_name == "base_color" || binding.texture_name == "normal")
+                        binding.array_layer = row;
 
                 material_data_comp->SetRecipe(cell_recipe);
                 // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
@@ -528,9 +486,6 @@ public:
     bool Init() override
     {
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
-
-        if (!InitTextures())
-            return false;
 
         if (!InitMaterial())
             return false;

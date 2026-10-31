@@ -2,5 +2,15 @@ schema = 1
 name = "PBRSpheres.LitBillboard"
 domain = "StandardOpaque"
 
+[[textures]]
+name = "base_color"
+asset = "texarray:@pbr_10x10_baseColor"
+required = true
+
+[[textures]]
+name = "normal"
+asset = "texarray:@pbr_10x10_normal"
+required = true
+
 [transform]
 orientation = "CameraFacingFree"
