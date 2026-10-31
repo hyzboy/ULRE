@@ -707,6 +707,17 @@ BufferGen 调用：`python src\Tools\BufferGen\buffer_gen.py --repo-root . --cla
 2. `RuntimeFormProbe` 的库根探测仍写死 `ShaderLibrary/material`（只改了报错文案），导致发行形态运行期 EXIT=2 → 改为 `ShaderLibrary/asset/definition`。
 3. `build_probe_nosg/src/ShaderProgramBuild/*.vcxproj` 是上面第 1 条造成的陈旧残留，CMake 不会自动清理，需手工删除后重新验证。
 
+### 9.7.3 本轮明确**未处理**的残留（已知、非本轮引入）
+
+| 残留 | 位置 | 为什么留 |
+|---|---|---|
+| `src/ShaderGen/**` 路径（该目录已随更早的生成器瘦身整体消失，实现现落在 `src/ShaderProgramBuild/**`） | `doc/ENVIRONMENT_SYSTEM.md`、`doc/GUI_Text_Render_Pipeline.md`、`doc/deprecated/**`、`doc/future/**`、`doc/backlog.md`、`.ai/skills/SKILL_CASCADED_SHADOW_CSM.md` | **专属文档准确性任务**：`EmitShaderConfigDefines`、`MeshTemplateEmitter`、`FragmentTemplateComposer` 等符号在代码里已 0 命中，改名救不了，需按现行 `src/ShaderProgramBuild` / `DomainOptions` 重新表述。本轮只做改名与迁移 |
+| `src/Tools/ShaderGen/**` 路径 | `doc/backlog.md:137,334`、`doc/build-and-module-structure-audit-2026-10.md`、`doc/deprecated/**`、`doc/future/**` | 均是**历史记录/审计快照**，按 §9.6 不加改写 |
+| 5 个 `ShaderGen*` 契约头/实现文件名 | 见 §4.4 | 语义属「物理设备/契约」，不在本轮命名轴 |
+| 配方文件名里的旧定义名后缀（约 40 个） | `ShaderLibrary/asset/recipe/Examples/**` | Q1=B：会破坏 `example/**/*.scene.toml` 与用户 `res/**` 的场景引用 |
+| 示例配方仍在引擎库内 | `ShaderLibrary/asset/recipe/Examples/**`（60 个） | Q6=B：搬出涉及装载路径与扫描约定，另开任务 |
+| `RenderTemplateID` 枚举值仍带 `Shadowed`/`AO` 轴信息 | `inc/hgl/mtl/PassProfile.h` | Q3=A：属结构改动（拆轴成独立槽位组合），另开任务 |
+
 ### 9.8 可回滚性
 - P1 纯符号重命名：`git revert` 安全。
 - P2/P3 必须**同一提交**内完成（迁移 + include + 路径真源 + 门禁），否则树不可构建。**不可拆分**。
