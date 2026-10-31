@@ -68,6 +68,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
+#include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -257,45 +258,38 @@ private:
 
     bool CreateGeometries()
     {
-        auto * device           = GetDevice();
-        auto * geometry_manager = GetManager<GeometryManager>();
-
-        if (!device || !geometry_manager)
+        if (!GetDevice())
         {
-            GLogError(u8"[MaterialErrorFallback] 没有 Vulkan 设备或几何管理器");
+            GLogError(u8"[MaterialErrorFallback] 没有 Vulkan 设备");
             return false;
         }
 
-        GeometryCreater standard_creater(device,
-                                        CreatePositionTexCoordNormalGeometryVertexFormat());
-        GeometryCreater no_normal_creater(device,
-                                         CreatePositionTexCoordGeometryVertexFormat());
-        GeometryCreater no_texcoord_creater(device,
-                                           CreatePositionNormalGeometryVertexFormat());
+        // 三种顶点布局对应三种"缺字段"场景；每几何一套私有缓冲 ⇒ 走 format_override
+        static const GeometryVertexFormat standard_format  = CreatePositionTexCoordNormalGeometryVertexFormat();
+        static const GeometryVertexFormat no_normal_format  = CreatePositionTexCoordGeometryVertexFormat();
+        static const GeometryVertexFormat no_texcoord_format = CreatePositionNormalGeometryVertexFormat();
 
         for (int i = 0; i < kCaseCount; ++i)
         {
             const bool no_normal   = kErrorCases[i].omit_vertex_normal;
             const bool no_texcoord = kErrorCases[i].omit_vertex_texcoord;
 
-            GeometryCreater * creater = &standard_creater;
+            const GeometryVertexFormat * format = &standard_format;
 
             if (no_normal)
-                creater = &no_normal_creater;
+                format = &no_normal_format;
             else if (no_texcoord)
-                creater = &no_texcoord_creater;
+                format = &no_texcoord_format;
 
             // 缺法线的演示用低面数球体：只是为了能看清 cross(dFdx,dFdy) 真的按三角形
             // 出法线（错误棋盘格的三平面投影不受面数影响）。
-            geoms[i] = CreateGeometryPreset(creater, no_normal ? "sphere_12" : "sphere_24");
+            geoms[i] = GetGeometry(no_normal ? "geo:builtin:sphere_12" : "geo:builtin:sphere_24", format);
 
             if (!geoms[i])
             {
                 GLogError(u8"[MaterialErrorFallback] 创建球体失败：index=%d", i);
                 return false;
             }
-
-            geometry_manager->Add(geoms[i]);
         }
 
         return true;
@@ -448,7 +442,12 @@ public:
 
     ~MaterialErrorFallbackApp()
     {
-        // geoms[] 已逐个交给 GeometryManager（唯一持有者），此处不再 delete。
+        // geoms[] 由 GeometryAssetRegistry 持有，此处不再 delete，改为清空注册器。
+        for (int i = 0; i < kCaseCount; ++i)
+            geoms[i] = nullptr;
+
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
     }
 
     bool Init() override

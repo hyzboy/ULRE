@@ -14,6 +14,7 @@
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
+#include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -236,171 +237,45 @@ private:
     {
         using namespace inline_geometry;
 
-        auto create_geometry = [this](const char *label, auto &&creator) -> Geometry *
+        // 共享顶点池：全部网格写进同一个 VertexDataManager
+        GeometryCreater pc(mesh_vdm);
+        SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
+
+        static const char *geometry_uri[] =
         {
-            GLogInfo("[RenderBoundBox] CreateGeometry START: %s", label);
-
-            auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
-            if (!pc)
-            {
-                GLogError("[RenderBoundBox] CreateGeometry FAIL: GeometryCreater null (%s)", label);
-                return nullptr;
-            }
-
-            Geometry *geom = creator(pc.get());
-            if (!geom)
-            {
-                GLogError("[RenderBoundBox] CreateGeometry FAIL: returned null (%s)", label);
-                return nullptr;
-            }
-
-            GLogInfo("[RenderBoundBox] CreateGeometry OK: %s geom=%p", label, (void *)geom);
-            return geom;
+            "geo:builtin:plane_square",
+            "geo:builtin:sphere_64",
+            "geo:builtin:dome_64",
+            "geo:builtin:cone",
+            "geo:builtin:cylinder_big",
+            "geo:builtin:torus_ring",
+            "geo:builtin:hollow_cylinder_big",
+            "geo:builtin:hex_sphere",
+            "geo:builtin:capsule",
+            "geo:builtin:tapered_capsule",
+            "geo:builtin:cube_2x2x2",
+            "geo:builtin:frustum",
         };
 
+        static constexpr int geometry_count = int(sizeof(geometry_uri) / sizeof(geometry_uri[0]));
+
+        for (int i = 0; i < geometry_count; ++i)
         {
-            auto geom = create_geometry("Plane", [](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "plane_square");
-            });
+            Geometry *geom = GetGeometry(geometry_uri[i]);
             if (!geom)
-                return false;
-
-            floor_mesh = CreateMeshEntry(geom, 0);
-            if (!floor_mesh)
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Sphere", [](GeometryCreater *pc)
             {
-                return CreateGeometryPreset(pc, "sphere_64");
-            });
-            if (!geom)
+                GLogError("[RenderBoundBox] CreateGeometry FAIL: %s", geometry_uri[i]);
+                return false;
+            }
+
+            GLogInfo("[RenderBoundBox] CreateGeometry OK: %s geom=%p", geometry_uri[i], (void *)geom);
+
+            MeshEntry *entry = CreateMeshEntry(geom, i);
+            if (!entry)
                 return false;
 
-            if (!CreateMeshEntry(geom, 1))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Dome", [](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "dome_64");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 2))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Cone", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "cone");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 3))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Cylinder", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "cylinder_big");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 4))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Torus", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "torus_ring");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 5))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("HollowCylinder", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "hollow_cylinder_big");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 6))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("HexSphere", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "hex_sphere");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 7))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Capsule", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "capsule");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 8))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("TaperedCapsule", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "tapered_capsule");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 9))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Cube", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "cube_2x2x2");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 10))
-                return false;
-        }
-
-        {
-            auto geom = create_geometry("Frustum", [&](GeometryCreater *pc)
-            {
-                return CreateGeometryPreset(pc, "frustum");
-            });
-            if (!geom)
-                return false;
-
-            if (!CreateMeshEntry(geom, 11))
-                return false;
+            if (i == 0)
+                floor_mesh = entry;
         }
 
         // Arrow is not part of the *.geo.toml shape schema yet -> disabled (same as RoundedBox below)
@@ -446,24 +321,14 @@ private:
 
     bool CreateBoundingBoxMesh()
     {
-        auto* device = GetDevice();
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!device || !geometry_manager)
-            return false;
-
         using namespace inline_geometry;
 
-        auto pc = std::make_unique<GeometryCreater>(
-            device,
-            CreatePureColorGeometryVertexFormat());
-
-        inline_geometry::BoundingBoxCreateInfo bbci;
-        bbox_geometry = CreateGeometryPreset(pc.get(), "bounding_box");
-
-        if(!bbox_geometry)
+        // 线框盒：独立的纯色顶点布局（非标准几何格式）⇒ 走 format_override
+        const GeometryVertexFormat bbox_format = CreatePureColorGeometryVertexFormat();
+        bbox_geometry = GetGeometry("geo:builtin:bounding_box", &bbox_format);
+        if (!bbox_geometry)
             return false;
 
-        geometry_manager->Add(bbox_geometry);
         bbox_asset = PrimitiveAsset(bbox_geometry, &wire_recipe, PrimitiveType::Lines);
         return bbox_asset.IsValid();
     }
@@ -623,6 +488,12 @@ public:
     {
         render_mesh.clear();
         floor_mesh = nullptr;
+
+        // 几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
+
+        bbox_geometry = nullptr;
 
         SAFE_CLEAR(mesh_vdm)
     }

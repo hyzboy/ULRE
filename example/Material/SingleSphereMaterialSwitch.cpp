@@ -11,6 +11,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
+#include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialResolver.h>
@@ -220,12 +221,11 @@ private:
         if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U32))
             return LogFail("InitGeometry", "failed to init vertex data manager");
 
-        GeometryCreater *pc = new GeometryCreater(mesh_vdm);
-        if (!pc)
-            return LogFail("InitGeometry", "failed to create geometry creator");
+        // 共享顶点池：几何写进 mesh_vdm，由 GeometryAssetRegistry 按 URI 取得
+        GeometryCreater pc(mesh_vdm);
+        SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
 
-        sphere_geometry = CreateGeometryPreset(pc, "sphere_64");
-        delete pc;
+        sphere_geometry = GetGeometry("geo:builtin:sphere_64");
         if (!sphere_geometry)
             return LogFail("InitGeometry", "failed to create sphere geometry");
 
@@ -361,7 +361,12 @@ public:
 
     ~SingleSphereMaterialSwitchApp()
     {
-        SAFE_CLEAR(sphere_geometry)
+        // 几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
+        sphere_geometry = nullptr;
+
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
+
         SAFE_CLEAR(mesh_vdm)
 
         SAFE_CLEAR(near_base_color_array)

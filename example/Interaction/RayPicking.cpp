@@ -13,6 +13,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
+#include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/camera/Camera.h>
@@ -115,33 +116,15 @@ private:
 
     bool CreateGeometry()
     {
-        auto* device = GetDevice();
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!device || !geometry_manager)
-            return false;
-
         using namespace inline_geometry;
 
-        // === 创建平面网格几何体 ===
+        // === 创建平面网格几何体（2D 亮度布局 —— 非标准几何格式 ⇒ format_override）===
         {
-            auto pc = std::make_unique<GeometryCreater>(
-                device,
-                CreateVertexLuminance2DGeometryVertexFormat());
+            const GeometryVertexFormat plane_format = CreateVertexLuminance2DGeometryVertexFormat();
+            geom_plane_grid = GetGeometry("geo:builtin:plane_grid_pick", &plane_format);
+            if (!geom_plane_grid)
+                return false;
 
-            struct PlaneGridCreateInfo pgci;
-
-            pgci.grid_size.Set(32,32);
-            pgci.sub_count.Set(8,8);
-
-            pgci.lum=128;
-            pgci.sub_lum=196;
-
-            geom_plane_grid=CreateGeometryPreset(pc.get(), "plane_grid_pick");
-
-            if(!geom_plane_grid)
-                return(false);
-
-            geometry_manager->Add(geom_plane_grid);
             plane_asset = PrimitiveAsset(geom_plane_grid, &plane_recipe, PrimitiveType::Lines);
         }
 
@@ -282,7 +265,13 @@ private:
 public:
     ~RayPickingApp()
     {
-        // geom_plane_grid / geom_line 已交给 GeometryManager（唯一持有者），此处不再 delete。
+        // geom_plane_grid 由 GeometryAssetRegistry 持有，geom_line 由 GeometryManager 持有，
+        // 此处只销毁注册器里的那批几何（先于设备/模块析构）。
+        geom_plane_grid = nullptr;
+        geom_line = nullptr;
+
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
     }
 
     bool Init() override

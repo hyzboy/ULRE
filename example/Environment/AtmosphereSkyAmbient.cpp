@@ -5,6 +5,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
+#include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
@@ -122,69 +123,42 @@ private:
 
     bool CreateRenderObjects()
     {
-        auto* geometry_manager = GetManager<GeometryManager>();
-        if (!geometry_manager)
-            return false;
-
         using namespace inline_geometry;
 
-        auto create_geometry = [&](const GeometryVertexFormat& gvf, auto&& creator) -> Geometry*
-        {
-            auto pc = std::make_unique<GeometryCreater>(GetDevice(), gvf);
-            if (!pc)
-                return nullptr;
-            return creator(pc.get());
-        };
+        // ── 天空球（SkyMinimal——仅 Position）：独立顶点布局 ⇒ 走 format_override ──
 
-        // ── 天空球（SkyMinimal——仅 Position）──
-
-        prim_sky_sphere = create_geometry(CreateSkyGeometryVertexFormat(),
-            [&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "hex_sphere_sky"); });
+        const GeometryVertexFormat sky_format = CreateSkyGeometryVertexFormat();
+        prim_sky_sphere = GetGeometry("geo:builtin:hex_sphere_sky", &sky_format);
         if (!prim_sky_sphere)
             return false;
 
-        geometry_manager->Add(prim_sky_sphere);
         sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
 
-        // ── 物体群（Lit——sky ambient 间接光）──
-        const GeometryVertexFormat mesh_gvf = CreateMeshGeometryVertexFormat();
+        // ── 物体群（Lit——sky ambient 间接光）：私有缓冲 + 各自统一布局 ──
 
-        auto add_mesh = [&](auto&& creator) -> bool
+        static const GeometryVertexFormat mesh_format = CreateMeshGeometryVertexFormat();
+
+        static const char *mesh_uri[] =
         {
-            auto geom = create_geometry(mesh_gvf, creator);
+            "geo:builtin:sphere_48",
+            "geo:builtin:cube",
+            "geo:builtin:cone_low",
+            "geo:builtin:torus_low",
+            "geo:builtin:capsule",
+        };
+
+        static constexpr int mesh_count = int(sizeof(mesh_uri) / sizeof(mesh_uri[0]));
+
+        for (int i = 0; i < mesh_count; ++i)
+        {
+            Geometry *geom = GetGeometry(mesh_uri[i], &mesh_format);
             if (!geom)
                 return false;
-
-            geometry_manager->Add(geom);
 
             auto mesh = std::make_unique<MeshEntry>();
             mesh->geometry = geom;
             mesh->asset = PrimitiveAsset(geom, &mesh_recipe, PrimitiveType::Triangles);
             meshes.push_back(std::move(mesh));
-            return true;
-        };
-
-        if (!add_mesh([](GeometryCreater* pc) { return CreateGeometryPreset(pc, "sphere_48"); }))
-            return false;
-
-        {
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "cube"); }))
-                return false;
-        }
-
-        {
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "cone_low"); }))
-                return false;
-        }
-
-        {
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "torus_low"); }))
-                return false;
-        }
-
-        {
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateGeometryPreset(pc, "capsule"); }))
-                return false;
         }
 
         return true;
@@ -307,6 +281,12 @@ public:
 
     ~AtmosphereSkyAmbientApp()
     {
+        // 几何由 GeometryAssetRegistry 持有
+        meshes.clear();
+        prim_sky_sphere = nullptr;
+
+        if (auto *registry = GetGeometryAssetRegistry())
+            registry->Clear();
     }
 
     bool Init() override
