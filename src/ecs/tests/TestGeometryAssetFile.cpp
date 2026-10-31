@@ -96,7 +96,7 @@ namespace
         if (spec.kind != GeometryAssetKind::Builtin) return false;
         if (spec.shape != BuiltinShapeKind::Sphere) return false;
         if (spec.params.sphere.slices != 48) return false;
-        if (spec.normal_format != VF_V2UN8) return false;
+        if (spec.NormalFormat() != VF_V2UN8) return false;
 
         return true;
     }
@@ -176,7 +176,7 @@ namespace
         if (spec.name != "StanfordBunny") return false;
         if (spec.kind != GeometryAssetKind::File) return false;
         if (spec.file_path != OS_TEXT("res/mesh/bunny.geo")) return false;
-        if (spec.normal_format != VF_V3SN16) return false;
+        if (spec.NormalFormat() != VF_V3SN16) return false;
 
         return true;
     }

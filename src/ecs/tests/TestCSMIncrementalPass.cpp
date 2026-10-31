@@ -4790,7 +4790,12 @@ int main(int argc, char** argv)
               "toml::value", "toml11 结构层复活（结构解析必须只走生成的 StructSerializer<T>）", true },
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "toml::parse_str", "直接调用 toml11 解析器复活（文本入口只能走 FromTomlText）", true },
-            // 禁复活：调用侧粘性路径栈。这类机制在「值解析失败」时路径为空或继承陈旧表名。
+            // 禁复活：几何资产的 toml11 结构层与手工表遍历已全部收归生成的
+            // `StructSerializer<GeometryAssetSpec>`（`[builtin.<shape>]` 展开成 14 个固定键）。
+            { "GeometryAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/GeometryAssetFile.cpp"),
+              "toml::value", "几何资产 toml11 结构层复活（结构解析必须只走生成的 StructSerializer<T>）", true },
+            { "GeometryAssetFile.cpp", OS_TEXT("src/SceneGraph/asset/GeometryAssetFile.cpp"),
+              "toml::parse_str", "直接调用 toml11 解析器复活（文本入口只能走 FromTomlText）", true },            // 禁复活：调用侧粘性路径栈。这类机制在「值解析失败」时路径为空或继承陈旧表名。
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseTableScope", "调用侧粘性表路径栈复活（值解析失败时会指错表）", true },
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),

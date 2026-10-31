@@ -72,7 +72,7 @@ namespace hgl::graph
          *
          * 内置几何体（`kind == Builtin`）在本次调用内就完成 GPU 创建并转入 `Resident`；
          * 外部文件（`kind == File`）只记录路径，停在 `MetaOnly` 等流送系统驱动。
-         * `format_override` 给空则按 `spec.normal_format` 生成标准布局。
+         * `format_override` 给空则按 `spec.NormalFormat()` 生成标准布局。
          */
         bool SetupFromSpec(const GeometryAssetSpec &spec,
                            const GeometryVertexFormat *format_override = nullptr);

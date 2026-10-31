@@ -106,7 +106,7 @@ namespace hgl::graph
 
         vertex_format = format_override
             ? *format_override
-            : GetStandardGeometryVertexFormat(spec.normal_format);
+            : GetStandardGeometryVertexFormat(spec.NormalFormat());
 
         if(vertex_format.GetCount()==0)
         {

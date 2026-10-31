@@ -9,6 +9,7 @@
 
 #include <hgl/asset/AssetObject.h>
 #include <hgl/graph/asset/GeometryAssetSpec.h>
+#include <hgl/graph/asset/GeometryAssetSpec.h>
 
 namespace hgl::asset::generated
 {
@@ -38,6 +39,24 @@ namespace hgl::asset::generated
         return false;
     }
 
+    inline const char *AssetEnumName_VertexNormalFormat(const hgl::graph::VertexNormalFormat v)
+    { return hgl::graph::GetVertexNormalFormatName(v); }
+
+    inline bool AssetEnumParse_VertexNormalFormat(const char *s, hgl::graph::VertexNormalFormat &out)
+    { return hgl::graph::ParseVertexNormalFormat(s, out); }
+
+    inline const char *AssetEnumName_GeometryAssetKind(const hgl::graph::GeometryAssetKind v)
+    { return hgl::graph::GetGeometryAssetKindName(v); }
+
+    inline bool AssetEnumParse_GeometryAssetKind(const char *s, hgl::graph::GeometryAssetKind &out)
+    { return hgl::graph::ParseGeometryAssetKind(s, out); }
+
+    inline const char *AssetEnumName_BuiltinShapeKind(const hgl::graph::BuiltinShapeKind v)
+    { return hgl::graph::GetBuiltinShapeKindName(v); }
+
+    inline bool AssetEnumParse_BuiltinShapeKind(const char *s, hgl::graph::BuiltinShapeKind &out)
+    { return hgl::graph::ParseBuiltinShapeKind(s, out); }
+
     inline const char *AssetEnumName64_NTBType(const int64_t v)
     { return AssetEnumName_NTBType(static_cast<hgl::graph::NTBType>(v)); }
 
@@ -45,6 +64,39 @@ namespace hgl::asset::generated
     {
         hgl::graph::NTBType tmp{};
         if (!AssetEnumParse_NTBType(s, tmp)) return false;
+        out = static_cast<int64_t>(tmp);
+        return true;
+    }
+
+    inline const char *AssetEnumName64_VertexNormalFormat(const int64_t v)
+    { return AssetEnumName_VertexNormalFormat(static_cast<hgl::graph::VertexNormalFormat>(v)); }
+
+    inline bool AssetEnumParse64_VertexNormalFormat(const char *s, int64_t &out)
+    {
+        hgl::graph::VertexNormalFormat tmp{};
+        if (!AssetEnumParse_VertexNormalFormat(s, tmp)) return false;
+        out = static_cast<int64_t>(tmp);
+        return true;
+    }
+
+    inline const char *AssetEnumName64_GeometryAssetKind(const int64_t v)
+    { return AssetEnumName_GeometryAssetKind(static_cast<hgl::graph::GeometryAssetKind>(v)); }
+
+    inline bool AssetEnumParse64_GeometryAssetKind(const char *s, int64_t &out)
+    {
+        hgl::graph::GeometryAssetKind tmp{};
+        if (!AssetEnumParse_GeometryAssetKind(s, tmp)) return false;
+        out = static_cast<int64_t>(tmp);
+        return true;
+    }
+
+    inline const char *AssetEnumName64_BuiltinShapeKind(const int64_t v)
+    { return AssetEnumName_BuiltinShapeKind(static_cast<hgl::graph::BuiltinShapeKind>(v)); }
+
+    inline bool AssetEnumParse64_BuiltinShapeKind(const char *s, int64_t &out)
+    {
+        hgl::graph::BuiltinShapeKind tmp{};
+        if (!AssetEnumParse_BuiltinShapeKind(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
@@ -63,6 +115,9 @@ namespace hgl::asset::generated
     extern const ClassMetaInfo Class_BuiltinHexSphereParams;
     extern const ClassMetaInfo Class_BuiltinTaperedCapsuleParams;
     extern const ClassMetaInfo Class_BuiltinFrustumParams;
+    extern const ClassMetaInfo Class_GeometryVertexFormatSpec;
+    extern const ClassMetaInfo Class_GeometryBuiltinParamsSpec;
+    extern const ClassMetaInfo Class_GeometryAssetSpec;
 
     inline const PropertyMetaInfo Meta_BuiltinSphereParams[] =
     {
@@ -278,6 +333,61 @@ namespace hgl::asset::generated
         20u, 4u
     };
 
+    inline const PropertyMetaInfo Meta_GeometryVertexFormatSpec[] =
+    {
+        { "normal", "normal", "normal", "Format", "法线顶点格式；接受短名 v2un8 / VF_ 宏名 / Vulkan 原名", "VertexNormalFormat", "hgl::graph::VertexNormalFormat", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 1u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_VertexNormalFormat, &AssetEnumName64_VertexNormalFormat },
+    };
+
+    inline const ClassMetaInfo Class_GeometryVertexFormatSpec =
+    {
+        "GeometryVertexFormatSpec", "", "`[vertex_format]` 表：顶点法线格式覆盖（可选，整表缺省即用类内缺省值）。",
+        Meta_GeometryVertexFormatSpec, (uint32_t)(sizeof(Meta_GeometryVertexFormatSpec) / sizeof(Meta_GeometryVertexFormatSpec[0])),
+        1u, 1u
+    };
+
+    inline const PropertyMetaInfo Meta_GeometryBuiltinParamsSpec[] =
+    {
+        { "sphere", "sphere", "sphere", "Default", "", "BuiltinSphereParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 4u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinSphereParams, PropertyKind::None, nullptr, nullptr },
+        { "dome", "dome", "dome", "Default", "", "BuiltinDomeParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 4u, 4u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinDomeParams, PropertyKind::None, nullptr, nullptr },
+        { "cube", "cube", "cube", "Default", "", "BuiltinCubeParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinCubeParams, PropertyKind::None, nullptr, nullptr },
+        { "plane_grid", "plane_grid", "plane_grid", "Default", "", "BuiltinPlaneGridParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 28u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinPlaneGridParams, PropertyKind::None, nullptr, nullptr },
+        { "cylinder", "cylinder", "cylinder", "Default", "", "BuiltinCylinderParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 48u, 12u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinCylinderParams, PropertyKind::None, nullptr, nullptr },
+        { "hollow_cylinder", "hollow_cylinder", "hollow_cylinder", "Default", "", "BuiltinHollowCylinderParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 60u, 24u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinHollowCylinderParams, PropertyKind::None, nullptr, nullptr },
+        { "torus", "torus", "torus", "Default", "", "BuiltinTorusParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 84u, 24u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinTorusParams, PropertyKind::None, nullptr, nullptr },
+        { "cone", "cone", "cone", "Default", "", "BuiltinConeParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 108u, 16u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinConeParams, PropertyKind::None, nullptr, nullptr },
+        { "capsule", "capsule", "capsule", "Default", "", "BuiltinCapsuleParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 124u, 16u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinCapsuleParams, PropertyKind::None, nullptr, nullptr },
+        { "rectangle", "rectangle", "rectangle", "Default", "", "BuiltinRectangleParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 140u, 32u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinRectangleParams, PropertyKind::None, nullptr, nullptr },
+        { "bounding_box", "bounding_box", "bounding_box", "Default", "", "BuiltinBoundingBoxParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 172u, 4u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinBoundingBoxParams, PropertyKind::None, nullptr, nullptr },
+        { "hex_sphere", "hex_sphere", "hex_sphere", "Default", "", "BuiltinHexSphereParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 176u, 16u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinHexSphereParams, PropertyKind::None, nullptr, nullptr },
+        { "tapered_capsule", "tapered_capsule", "tapered_capsule", "Default", "", "BuiltinTaperedCapsuleParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 192u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinTaperedCapsuleParams, PropertyKind::None, nullptr, nullptr },
+        { "frustum", "frustum", "frustum", "Default", "", "BuiltinFrustumParams", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 212u, 20u, 0u, 0.0, 0.0, 0.0, &Class_BuiltinFrustumParams, PropertyKind::None, nullptr, nullptr },
+    };
+
+    inline const ClassMetaInfo Class_GeometryBuiltinParamsSpec =
+    {
+        "GeometryBuiltinParamsSpec", "", "`[builtin.<shape>]` 各形状参数子表。 `[builtin.sphere]` 这类**表名由 `shape` 字段的值决定**的写法，静态反射无法 表达；这里把 14 张子表展开成 14 个固定键（键名 = TOML 表名），由 `ReadFromValue` 一次读全 —— 出现几张贴就读几张，没写的表全是类内缺省值， 消费侧按 `shape` 直接取对应成员即可（不需要「先挑表再读」）。",
+        Meta_GeometryBuiltinParamsSpec, (uint32_t)(sizeof(Meta_GeometryBuiltinParamsSpec) / sizeof(Meta_GeometryBuiltinParamsSpec[0])),
+        232u, 4u
+    };
+
+    inline const PropertyMetaInfo Meta_GeometryAssetSpec[] =
+    {
+        { "schema", "schema", "schema", "Identity", "格式版本，当前只接受 1", "uint32_t", nullptr, nullptr, PropertyKind::UInt32, PF_EditAnywhere | PF_HasRange | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 0u, 8u, 0u, 1.0, 1.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "name", "name", "name", "Identity", "资产名（缺省取文件名主干）", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 8u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "kind", "type", "kind", "Source", "builtin 参数化 / file 读盘", "GeometryAssetKind", "hgl::graph::GeometryAssetKind", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 48u, 1u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_GeometryAssetKind, &AssetEnumName64_GeometryAssetKind },
+        { "shape", "shape", "shape", "Source", "仅 builtin：内置形状", "BuiltinShapeKind", "hgl::graph::BuiltinShapeKind", nullptr, PropertyKind::Enum, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 49u, 3u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_BuiltinShapeKind, &AssetEnumName64_BuiltinShapeKind },
+        { "params", "builtin", "params", "Source", "仅 builtin：形状参数子表", "GeometryBuiltinParamsSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 52u, 236u, 0u, 0.0, 0.0, 0.0, &Class_GeometryBuiltinParamsSpec, PropertyKind::None, nullptr, nullptr },
+        { "file_path", "file", "file_path", "Source", "仅 file：几何资产路径", "OSString", nullptr, "geo", PropertyKind::String, PF_EditAnywhere | PF_HasAssetRef | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 288u, 40u, 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "vertex_format", "vertex_format", "vertex_format", "Format", "顶点格式覆盖（可选）", "GeometryVertexFormatSpec", nullptr, nullptr, PropertyKind::Struct, PF_EditAnywhere | PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, 328u, 8u, 0u, 0.0, 0.0, 0.0, &Class_GeometryVertexFormatSpec, PropertyKind::None, nullptr, nullptr },
+    };
+
+    inline const ClassMetaInfo Class_GeometryAssetSpec =
+    {
+        "GeometryAssetSpec", "", "@brief 几何资产规约（`.geo.toml` / `.geo` 的唯一真源） TOML 形状： ```toml schema = 1 name   = \"unit_sphere\" type   = \"builtin\"    # 或 \"file\" shape  = \"sphere\"     # 仅 builtin file   = \"x.geometry\" # 仅 file [builtin.sphere] slices = 64 [vertex_format] normal = \"VF_V2UN8\" ``` 字段顺序即 TOML 键序；`kind` / `params` / `file_path` 的键名由 `Key` 覆盖。",
+        Meta_GeometryAssetSpec, (uint32_t)(sizeof(Meta_GeometryAssetSpec) / sizeof(Meta_GeometryAssetSpec[0])),
+        336u, 8u
+    };
+
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinSphereParams *) { return &Class_BuiltinSphereParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinDomeParams *) { return &Class_BuiltinDomeParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinCubeParams *) { return &Class_BuiltinCubeParams; }
@@ -292,4 +402,7 @@ namespace hgl::asset::generated
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinHexSphereParams *) { return &Class_BuiltinHexSphereParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinTaperedCapsuleParams *) { return &Class_BuiltinTaperedCapsuleParams; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::BuiltinFrustumParams *) { return &Class_BuiltinFrustumParams; }
+    inline const ClassMetaInfo *GetClassMeta(const hgl::graph::GeometryVertexFormatSpec *) { return &Class_GeometryVertexFormatSpec; }
+    inline const ClassMetaInfo *GetClassMeta(const hgl::graph::GeometryBuiltinParamsSpec *) { return &Class_GeometryBuiltinParamsSpec; }
+    inline const ClassMetaInfo *GetClassMeta(const hgl::graph::GeometryAssetSpec *) { return &Class_GeometryAssetSpec; }
 } // namespace hgl::asset::generated

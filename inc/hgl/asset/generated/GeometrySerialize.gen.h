@@ -22,6 +22,33 @@ namespace hgl::serialize
         { return hgl::asset::generated::AssetEnumParse_NTBType(s, out); }
     };
 
+    template<> struct EnumTraits<hgl::graph::VertexNormalFormat>
+    {
+        static constexpr bool defined = true;
+        static const char *ToName(hgl::graph::VertexNormalFormat v)
+        { return hgl::asset::generated::AssetEnumName_VertexNormalFormat(v); }
+        static bool FromName(const char *s, hgl::graph::VertexNormalFormat &out)
+        { return hgl::asset::generated::AssetEnumParse_VertexNormalFormat(s, out); }
+    };
+
+    template<> struct EnumTraits<hgl::graph::GeometryAssetKind>
+    {
+        static constexpr bool defined = true;
+        static const char *ToName(hgl::graph::GeometryAssetKind v)
+        { return hgl::asset::generated::AssetEnumName_GeometryAssetKind(v); }
+        static bool FromName(const char *s, hgl::graph::GeometryAssetKind &out)
+        { return hgl::asset::generated::AssetEnumParse_GeometryAssetKind(s, out); }
+    };
+
+    template<> struct EnumTraits<hgl::graph::BuiltinShapeKind>
+    {
+        static constexpr bool defined = true;
+        static const char *ToName(hgl::graph::BuiltinShapeKind v)
+        { return hgl::asset::generated::AssetEnumName_BuiltinShapeKind(v); }
+        static bool FromName(const char *s, hgl::graph::BuiltinShapeKind &out)
+        { return hgl::asset::generated::AssetEnumParse_BuiltinShapeKind(s, out); }
+    };
+
     template<> struct StructSerializer<hgl::graph::BuiltinSphereParams>
     {
         static constexpr bool defined = true;
@@ -248,6 +275,64 @@ namespace hgl::serialize
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_BuiltinFrustumParams; }
+    };
+
+    template<> struct StructSerializer<hgl::graph::GeometryVertexFormatSpec>
+    {
+        static constexpr bool defined = true;
+
+        template<typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "normal", v.normal);
+        }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_GeometryVertexFormatSpec; }
+    };
+
+    template<> struct StructSerializer<hgl::graph::GeometryBuiltinParamsSpec>
+    {
+        static constexpr bool defined = true;
+
+        template<typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "sphere", v.sphere);
+            ar.Field(2, "dome", v.dome);
+            ar.Field(3, "cube", v.cube);
+            ar.Field(4, "plane_grid", v.plane_grid);
+            ar.Field(5, "cylinder", v.cylinder);
+            ar.Field(6, "hollow_cylinder", v.hollow_cylinder);
+            ar.Field(7, "torus", v.torus);
+            ar.Field(8, "cone", v.cone);
+            ar.Field(9, "capsule", v.capsule);
+            ar.Field(10, "rectangle", v.rectangle);
+            ar.Field(11, "bounding_box", v.bounding_box);
+            ar.Field(12, "hex_sphere", v.hex_sphere);
+            ar.Field(13, "tapered_capsule", v.tapered_capsule);
+            ar.Field(14, "frustum", v.frustum);
+        }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_GeometryBuiltinParamsSpec; }
+    };
+
+    template<> struct StructSerializer<hgl::graph::GeometryAssetSpec>
+    {
+        static constexpr bool defined = true;
+
+        template<typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "schema", v.schema);
+            ar.Field(2, "name", v.name);
+            ar.Field(3, "type", v.kind);
+            ar.Field(4, "shape", v.shape);
+            ar.Field(5, "builtin", v.params);
+            ar.Field(6, "file", v.file_path);
+            ar.Field(7, "vertex_format", v.vertex_format);
+        }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_GeometryAssetSpec; }
     };
 
 }//namespace hgl::serialize

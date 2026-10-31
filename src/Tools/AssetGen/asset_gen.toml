@@ -115,6 +115,30 @@ extern_from    = "hgl::graph::ParsePrimitiveTypeName"
 extern_to      = "hgl::graph::GetPrimitiveTypeName"
 extern_include = "hgl/common/PrimitiveType.h"
 
+# `GeometryAssetSpec` 的三个枚举拼写同样不是 C++ 枚举名（`builtin` / `plane_grid`
+# / `v2un8`），而且法线格式还要兼容历史的 `VF_` 宏名与 Vulkan 原名，所以统一只
+# 转发到 `GeometryAssetSpec.h` 里的解析函数。
+[[enum]]
+name           = "GeometryAssetKind"
+fq             = "hgl::graph::GeometryAssetKind"
+extern_from    = "hgl::graph::ParseGeometryAssetKind"
+extern_to      = "hgl::graph::GetGeometryAssetKindName"
+extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
+
+[[enum]]
+name           = "BuiltinShapeKind"
+fq             = "hgl::graph::BuiltinShapeKind"
+extern_from    = "hgl::graph::ParseBuiltinShapeKind"
+extern_to      = "hgl::graph::GetBuiltinShapeKindName"
+extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
+
+[[enum]]
+name           = "VertexNormalFormat"
+fq             = "hgl::graph::VertexNormalFormat"
+extern_from    = "hgl::graph::ParseVertexNormalFormat"
+extern_to      = "hgl::graph::GetVertexNormalFormatName"
+extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"

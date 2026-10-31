@@ -9,123 +9,52 @@
 #include <hgl/log/Log.h>
 #include <hgl/utf.h>
 
-#include <toml/toml.hpp>
-#include <string>
-#include <cstring>
-#include <type_traits>
-
 DEFINE_LOGGER_MODULE(GeometryAsset)
 USE_MODULE_LOGGER(GeometryAsset)
 
-// 生成物在 hgl::asset::generated；本文件在 hgl::graph 里，用别名避免每次写全限定名。
+// 字段遍历代码全部在 `GeometrySerialize.gen.h` 里（`hgl::asset::generated`），
+// 本文件只保留枚举拼写、文本入口与跨字段策略。
 
 namespace hgl::graph
 {
     namespace
     {
         /**
-         * 读一个内置形状的参数表。
-         *
-         * 形状结构**先归零到类内缺省值**，再交给 `ReadTomlTable<T>`：
-         * 序列化器的语义是「键缺失即保留类内初始值」，因此空表 / 缺表都等价于
-         * 「全用缺省」，不需要调用方逐字段写一遍默认值。
+         * 失败键的原始写法（如 `"hypercube"`）只对诊断有价值：值树丢掉了「作者
+         * 写了什么」这一层，按失败路径回原节点把它取出来。
          */
-        template <typename T>
-        static bool ReadShapeParams(const toml::value *table, T &dst, const os_char *debug_name)
+        AnsiString OriginalText(const hgl::serialize::Value &root, const char *path)
         {
-            dst = T{};
+            const hgl::serialize::Value *node = root.FindByPath(path);
 
-            if (!table)
-                return true;
+            if (!node || !node->IsString())
+                return AnsiString();
 
-            if (hgl::serialize::ReadTomlTable<T>(*table, dst))
-                return true;
-
-            MLogError(GeometryAsset,
-                      OS_TEXT("ParseGeometryAssetSpec: invalid shape parameter value/type in ")
-                      + OSString(debug_name));
-            return false;
-        }
-
-        bool ReadBool(const toml::value &table, const char *key, bool def_val)
-        {
-            if (!table.contains(key))
-                return def_val;
-            const auto &v = table.at(key);
-            return v.is_boolean() ? v.as_boolean() : def_val;
-        }
-
-        uint32_t ReadUInt(const toml::value &table, const char *key, uint32_t def_val)
-        {
-            if (!table.contains(key))
-                return def_val;
-            const auto &v = table.at(key);
-            if (!v.is_integer())
-                return def_val;
-            const int64_t val = v.as_integer();
-            return val >= 0 ? static_cast<uint32_t>(val) : def_val;
-        }
-
-        float ReadFloat(const toml::value &table, const char *key, float def_val)
-        {
-            if (!table.contains(key))
-                return def_val;
-            const auto &v = table.at(key);
-            if (v.is_floating())
-                return static_cast<float>(v.as_floating());
-            if (v.is_integer())
-                return static_cast<float>(v.as_integer());
-            return def_val;
-        }
-
-        bool ReadString(const toml::value &table, const char *key, std::string &out)
-        {
-            if (!table.contains(key))
-                return false;
-            const auto &v = table.at(key);
-            if (!v.is_string())
-                return false;
-            out = v.as_string();
-            return true;
-        }
-
-        bool ParseNormalFormat(const char *text, VkFormat &out_fmt)
-        {
-            if (!text || !*text)
-                return false;
-
-            // 接受三种写法：引擎短名（v2un8）、VF_ 宏名（VF_V2UN8）、Vulkan 后缀名（r8g8_unorm）
-            if (hgl::stricmp(text, "v2un8") == 0
-             || hgl::stricmp(text, "vf_v2un8") == 0
-             || hgl::stricmp(text, "r8g8_unorm") == 0)
-            {
-                out_fmt = VF_V2UN8;
-                return true;
-            }
-            if (hgl::stricmp(text, "v2hf") == 0
-             || hgl::stricmp(text, "vf_v2hf") == 0
-             || hgl::stricmp(text, "r16g16_sfloat") == 0)
-            {
-                out_fmt = VF_V2HF;
-                return true;
-            }
-            if (hgl::stricmp(text, "v3f") == 0
-             || hgl::stricmp(text, "vf_v3f") == 0
-             || hgl::stricmp(text, "r32g32b32_sfloat") == 0)
-            {
-                out_fmt = VF_V3F;
-                return true;
-            }
-            if (hgl::stricmp(text, "v3sn16") == 0
-             || hgl::stricmp(text, "vf_v3sn16") == 0
-             || hgl::stricmp(text, "r16g16b16_snorm") == 0)
-            {
-                out_fmt = VF_V3SN16;
-                return true;
-            }
-            return false;
+            const U8String &text = node->GetString();
+            return AnsiString(reinterpret_cast<const char *>(text.c_str()), text.Length());
         }
     }//namespace
+
+    const char *GetGeometryAssetKindName(GeometryAssetKind kind)
+    {
+        switch (kind)
+        {
+        case GeometryAssetKind::Builtin:    return "builtin";
+        case GeometryAssetKind::File:       return "file";
+        default:                            return "unknown";
+        }
+    }
+
+    bool ParseGeometryAssetKind(const char *name, GeometryAssetKind &out_kind)
+    {
+        if (!name || !*name)
+            return false;
+
+        if (hgl::stricmp(name, "builtin") == 0) { out_kind = GeometryAssetKind::Builtin; return true; }
+        if (hgl::stricmp(name, "file") == 0)    { out_kind = GeometryAssetKind::File;    return true; }
+
+        return false;
+    }
 
     const char *GetBuiltinShapeKindName(BuiltinShapeKind kind)
     {
@@ -166,7 +95,7 @@ namespace hgl::graph
         if (hgl::stricmp(name, "cone") == 0)            { out_kind = BuiltinShapeKind::Cone; return true; }
         if (hgl::stricmp(name, "capsule") == 0)         { out_kind = BuiltinShapeKind::Capsule; return true; }
         if (hgl::stricmp(name, "rectangle") == 0)       { out_kind = BuiltinShapeKind::Rectangle; return true; }
-        if (hgl::stricmp(name, "bounding_box") == 0)   { out_kind = BuiltinShapeKind::BoundingBox; return true; }
+        if (hgl::stricmp(name, "bounding_box") == 0)    { out_kind = BuiltinShapeKind::BoundingBox; return true; }
         if (hgl::stricmp(name, "hex_sphere") == 0)      { out_kind = BuiltinShapeKind::HexSphere; return true; }
         if (hgl::stricmp(name, "tapered_capsule") == 0) { out_kind = BuiltinShapeKind::TaperedCapsule; return true; }
         if (hgl::stricmp(name, "frustum") == 0)         { out_kind = BuiltinShapeKind::Frustum; return true; }
@@ -189,154 +118,106 @@ namespace hgl::graph
 
     bool ParseGeometryAssetSpec(const char *content, size_t size, const os_char *debug_name, GeometryAssetSpec &out_spec)
     {
+        // 先归零：解析器会被复用在同一个 `out_spec` 上，上一次的 `Presence` 记录
+        // （哪几张 `[builtin.<shape>]` 表存在过）不能残留下来冒充本次输入。
+        out_spec = GeometryAssetSpec{};
+
         if (!content || size == 0)
         {
             MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: empty content for ") + OSString(debug_name));
             return false;
         }
 
-        toml::value root;
-        try
+        hgl::serialize::Value          root;
+        hgl::serialize::TomlParseError toml_error;
+
+        if (!hgl::serialize::FromTomlText(content, size, root, &toml_error))
         {
-            root = toml::parse_str(std::string(content, size));
-        }
-        catch (const toml::exception &e)
-        {
-            MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: TOML parse error in ") + OSString(debug_name) + OS_TEXT(": ") + ToOSString(e.what()));
+            MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: TOML parse error in ")
+                     + OSString(debug_name) + OS_TEXT(": ") + ToOSString(toml_error.Format().c_str()));
             return false;
         }
 
-        if (!root.is_table())
+        if (!root.IsTable())
         {
             MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: root is not a table in ") + OSString(debug_name));
             return false;
         }
 
-        const uint32_t schema = ReadUInt(root, "schema", 0);
-        if (schema != 1)
+        // `schema` 单独先看：它决定这张字段表还能不能按当前契约解释，报错也要有
+        // 独立措辞。缺键时 `schema_node` 为空，与「写了别的版本」同样被挡住。
         {
-            MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unsupported schema in ") + OSString(debug_name));
-            return false;
-        }
+            const hgl::serialize::Value *schema_node  = root.FindFieldExact("schema");
+            int64_t                      schema_value = 0;
 
-        std::string name_str;
-        if (ReadString(root, "name", name_str))
-            out_spec.name = AnsiString(name_str.c_str(), static_cast<int>(name_str.size()));
-
-        std::string type_str;
-        if (!ReadString(root, "type", type_str))
-            type_str = "builtin";
-
-        if (hgl::stricmp(type_str.c_str(), "builtin") == 0)
-        {
-            out_spec.kind = GeometryAssetKind::Builtin;
-
-            std::string shape_str;
-            if (!ReadString(root, "shape", shape_str))
+            if (!schema_node || !schema_node->GetInt(schema_value) || schema_value != 1)
             {
-                MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: missing 'shape' for builtin geometry in ") + OSString(debug_name));
+                MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unsupported schema in ") + OSString(debug_name));
                 return false;
             }
+        }
 
-            if (!ParseBuiltinShapeKind(shape_str.c_str(), out_spec.shape))
+        // 逐字段解析（`type` / `builtin` / `file` 的键名覆盖、形状与顶点格式的拼写、
+        // `[builtin.<shape>]` 各子表的展开）全部来自 `GeometrySerialize.gen.h` ——
+        // 本文件不再认识任何键名。
+        {
+            hgl::serialize::Archive archive;
+
+            if (!hgl::serialize::ReadFromValue(root, out_spec, &archive))
             {
-                MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unknown shape '") + ToOSString(shape_str) + OS_TEXT("' in ") + OSString(debug_name));
+                const AnsiString failed_path(archive.FailedPath());
+                const AnsiString raw_text(OriginalText(root, failed_path.c_str()));
+
+                if (failed_path == "type")
+                {
+                    MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unknown type '")
+                             + ToOSString(raw_text.c_str()) + OS_TEXT("' in ") + OSString(debug_name));
+                }
+                else if (failed_path == "shape")
+                {
+                    MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unknown shape '")
+                             + ToOSString(raw_text.c_str()) + OS_TEXT("' in ") + OSString(debug_name));
+                }
+                else if (failed_path.StartsWith("vertex_format"))
+                {
+                    MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unknown normal vertex format '")
+                             + ToOSString(raw_text.c_str()) + OS_TEXT("' in ") + OSString(debug_name));
+                }
+                else if (failed_path.StartsWith("builtin"))
+                {
+                    MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: invalid shape parameter value/type at '")
+                             + ToOSString(failed_path.c_str()) + OS_TEXT("' in ") + OSString(debug_name));
+                }
+                else
+                {
+                    MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: field '")
+                             + ToOSString(failed_path.c_str()) + OS_TEXT("' is invalid (")
+                             + ToOSString(archive.ErrorMessage()) + OS_TEXT(") in ") + OSString(debug_name));
+                }
+
                 return false;
             }
-
-            // Check if there is a shape parameter table [builtin.<shape>]
-            const toml::value *params_table = nullptr;
-            if (root.contains("builtin") && root.at("builtin").is_table())
-            {
-                const auto &builtin_tbl = root.at("builtin");
-                if (builtin_tbl.contains(shape_str) && builtin_tbl.at(shape_str).is_table())
-                    params_table = &builtin_tbl.at(shape_str);
-            }
-
-            // Each builtin shape's parameter struct carries HGL_ASSET_STRUCT, so the
-            // per-field parsing is generated by AssetGen
-            // (inc/hgl/asset/generated/GeometryToml.gen.h). What stays here is only
-            // "which shape was selected" plus diagnostics with the file name.
-            switch (out_spec.shape)
-            {
-            case BuiltinShapeKind::Sphere:
-                if (!ReadShapeParams(params_table, out_spec.params.sphere, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Dome:
-                if (!ReadShapeParams(params_table, out_spec.params.dome, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Cube:
-                if (!ReadShapeParams(params_table, out_spec.params.cube, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::PlaneGrid:
-                if (!ReadShapeParams(params_table, out_spec.params.plane_grid, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Cylinder:
-                if (!ReadShapeParams(params_table, out_spec.params.cylinder, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::HollowCylinder:
-                if (!ReadShapeParams(params_table, out_spec.params.hollow_cylinder, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Torus:
-                if (!ReadShapeParams(params_table, out_spec.params.torus, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Cone:
-                if (!ReadShapeParams(params_table, out_spec.params.cone, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Capsule:
-                if (!ReadShapeParams(params_table, out_spec.params.capsule, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Rectangle:
-                if (!ReadShapeParams(params_table, out_spec.params.rectangle, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::BoundingBox:
-                if (!ReadShapeParams(params_table, out_spec.params.bounding_box, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::HexSphere:
-                if (!ReadShapeParams(params_table, out_spec.params.hex_sphere, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::TaperedCapsule:
-                if (!ReadShapeParams(params_table, out_spec.params.tapered_capsule, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::Frustum:
-                if (!ReadShapeParams(params_table, out_spec.params.frustum, debug_name)) return false;
-                break;
-            case BuiltinShapeKind::PlaneSquare:
-                break;
-            }
         }
-        else if (hgl::stricmp(type_str.c_str(), "file") == 0)
+
+        // 以下全是**跨字段策略**（`type` 决定哪条分支必填哪些键），不属于字段规约。
+        if (out_spec.kind == GeometryAssetKind::File)
         {
-            out_spec.kind = GeometryAssetKind::File;
-            std::string file_str;
-            if (!ReadString(root, "file", file_str))
+            if (out_spec.file_path.IsEmpty())
             {
                 MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: missing 'file' attribute for file geometry in ") + OSString(debug_name));
                 return false;
             }
-            out_spec.file_path = ToOSString(file_str);
-        }
-        else
-        {
-            MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unknown type '") + ToOSString(type_str) + OS_TEXT("' in ") + OSString(debug_name));
-            return false;
+
+            return true;
         }
 
-        // Vertex format overrides
-        if (root.contains("vertex_format") && root.at("vertex_format").is_table())
+        // builtin：`shape` 必填。类内缺省值（球体）不能顶替作者的声明 —— 静默变成
+        // 球体比报错更难查。`[builtin.<shape>]` 的那张表读没读到不影响这条判断：
+        // 表不存在时该形状的参数全是类内缺省值。
+        if (!root.FindFieldExact("shape"))
         {
-            const auto &vf_tbl = root.at("vertex_format");
-            std::string normal_fmt_str;
-            if (ReadString(vf_tbl, "normal", normal_fmt_str)
-             || ReadString(vf_tbl, "normal_format", normal_fmt_str))
-            {
-                if (!ParseNormalFormat(normal_fmt_str.c_str(), out_spec.normal_format))
-                {
-                    MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: unknown normal vertex format '")
-                             + ToOSString(normal_fmt_str) + OS_TEXT("' in ") + OSString(debug_name));
-                    return false;
-                }
-            }
+            MLogError(GeometryAsset, OS_TEXT("ParseGeometryAssetSpec: missing 'shape' for builtin geometry in ") + OSString(debug_name));
+            return false;
         }
 
         return true;
@@ -565,7 +446,7 @@ namespace hgl::graph
 
         const GeometryVertexFormat gvf = gvf_override
             ? *gvf_override
-            : GetStandardGeometryVertexFormat(spec.normal_format);
+            : GetStandardGeometryVertexFormat(spec.NormalFormat());
 
         if (spec.kind == GeometryAssetKind::File)
         {
