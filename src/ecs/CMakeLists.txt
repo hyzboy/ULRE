@@ -118,6 +118,13 @@ if(MSVC)
     set_target_properties(TestMaterialDataBlockCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 全局 SSBO 连续行区间与数据块整段上传（块→视图零拷贝、未就绪时 fail-closed、分配策略契约）。
+add_executable(TestGlobalSSBORowRange tests/TestGlobalSSBORowRange.cpp)
+target_link_libraries(TestGlobalSSBORowRange PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestGlobalSSBORowRange PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
 add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
@@ -295,6 +302,14 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestMaterialDataBlockCodec
+        PROPERTIES LABELS "ecs;material_data" TIMEOUT 120)
+
+    add_test(
+        NAME TestGlobalSSBORowRange
+        COMMAND TestGlobalSSBORowRange
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestGlobalSSBORowRange
         PROPERTIES LABELS "ecs;material_data" TIMEOUT 120)
 
     add_test(

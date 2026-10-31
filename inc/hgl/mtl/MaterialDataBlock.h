@@ -84,4 +84,15 @@ namespace hgl::graph::mtl
             return row_bytes > 0 && row_count > 0 && rows != nullptr;
         }
     };
+
+    /// 拥有型块 → 零拷贝视图（上传口统一收视图，两种来源走同一条路）。
+    inline MaterialDataBlockView MakeBlockView(const MaterialDataBlock &block) noexcept
+    {
+        MaterialDataBlockView view;
+        view.type      = block.type;
+        view.row_bytes = block.row_bytes;
+        view.row_count = block.GetRowCount();
+        view.rows      = block.IsValid() ? block.payload.GetData() : nullptr;
+        return view;
+    }
 }//namespace hgl::graph::mtl

@@ -6,6 +6,7 @@
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
+#include <hgl/mtl/MaterialDataBlock.h>
 #include <hgl/vk/buffer/ActiveRowPool.h>
 #include <hgl/vk/buffer/ActiveRowLease.h>
 #include <hgl/vk/buffer/StructView.h>
@@ -19,6 +20,7 @@ namespace hgl::graph
 class DeviceBuffer;
 class IGPUBuffer;
 class GlobalSSBOBufferRegistry;
+class GlobalSSBORowRangeLease;
 
 /**
  * GlobalSSBODataAccessor —— 全局 SSBO 行的 RAII 访问器。
@@ -189,6 +191,74 @@ public:
         return pool ? pool->IsActive(id) : false;
     }
 
+    // ---- 连续行区间（批量数据块专用）----
+    //
+    // 单行接口（Acquire/Write）刻意保持不动；批量走下面这组：一次拿一整段**连续**
+    // 行号，块内第 i 行 ⇒ 池行号 `first + i`（调用方不需要持有行号表）。
+
+    /// 申请 count 行连续区间，返回首行号；失败返回 InvalidRowID（全有或全无）。
+    uint32_t AcquireRowRange(GlobalSSBOType type, uint32_t count)
+    {
+        auto *pool = GetPool(type);
+        return pool ? pool->AcquireRun(count) : ActiveRowPool::InvalidRowID;
+    }
+
+    /// 归还连续区间。
+    bool ReleaseRowRange(GlobalSSBOType type, uint32_t first, uint32_t count)
+    {
+        auto *pool = GetPool(type);
+        return pool ? pool->ReleaseRun(first, count) : false;
+    }
+
+    /// 把 count 行原始字节写入区间起点，并整段标脏（一次 MarkDirty，不是 count 次）。
+    bool WriteRowRange(GlobalSSBOType type, uint32_t first, const void *data, uint32_t count)
+    {
+        auto *pool = GetPool(type);
+        if (!pool || !data || count == 0)
+            return false;
+
+        const uint32_t row_bytes = pool->GetRowBytes();
+        if (static_cast<uint64_t>(first) + count > pool->GetRowCapacity())
+            return false;
+
+        void *dst = pool->RowCPU(first);
+        if (!dst)
+            return false;
+
+        memcpy(dst, data, static_cast<size_t>(row_bytes) * count);
+        return pool->CommitRun(first, count);
+    }
+
+    /// 类型化批量写：行宽必须与 T 完全一致（否则跨池强转 = 静默写坏相邻行）。
+    template<typename T>
+    bool WriteRowRange(GlobalSSBOType type, uint32_t first, const T *rows, uint32_t count)
+    {
+        const auto *pool = GetPool(type);
+        if (!pool || !rows || count == 0)
+            return false;
+
+        if (pool->GetRowBytes() != sizeof(T))
+        {
+            GLogError("[GlobalSSBOBufferRegistry] WriteRowRange row-size mismatch: type=%s expected=%zu actual=%u",
+                      GetGlobalSSBOTypeName(type), sizeof(T), pool->GetRowBytes());
+            return false;
+        }
+
+        return WriteRowRange(type, first, static_cast<const void *>(rows), count);
+    }
+
+    /// RAII 版本：拿到即占用，离开作用域整段归还。
+    GlobalSSBORowRangeLease AcquireRowRangeLease(GlobalSSBOType type, uint32_t count);
+
+    /**
+     * @brief 把一个物理数据块整块上传：申请区间 → 校验行宽 → 整段拷贝 → 整段标脏。
+     *
+     * 「文件里的数据块」和「池里的行」之间唯一的口径检查点：块的 `type` 决定进哪个池，
+     * 块的 `row_bytes` 必须等于池行宽。任何一项不符都不写，避免按错误行距铺满整池。
+     */
+    bool UploadMaterialDataBlock(const mtl::MaterialDataBlockView &view,
+                                 GlobalSSBORowRangeLease &out_lease);
+
     DeviceBuffer *GetBuffer(GlobalSSBOType type) const
     {
         const auto *pool = GetPool(type);
@@ -341,6 +411,116 @@ public:
         return total;
     }
 };
+
+/**
+ * GlobalSSBORowRangeLease —— 「一整段连续行」的 RAII 租约。
+ *
+ * 与 `GlobalSSBODataAccessor` 的分工：accessor 管**一行**（单个材质/绘制参数），
+ * 本类管**一整段连续行**（批量数据块）。区间连续是硬保证 —— 块内第 i 行恒为
+ * `GetFirstRow() + i`，调用方不必持有行号表。
+ *
+ * 语义：构造即占用，析构整段归还；`Release()` 幂等，可提前归还。
+ */
+class GlobalSSBORowRangeLease
+{
+    GlobalSSBOBufferRegistry *registry = nullptr;
+    GlobalSSBOType type = GlobalSSBOType::PBRSurface;
+    uint32_t first = ActiveRowPool::InvalidRowID;
+    uint32_t count = 0;
+
+    GlobalSSBORowRangeLease(GlobalSSBOBufferRegistry *in_registry,
+                            const GlobalSSBOType in_type,
+                            const uint32_t in_first,
+                            const uint32_t in_count)
+        : registry(in_registry)
+        , type(in_type)
+        , first(in_first)
+        , count(in_count)
+    {
+    }
+
+    void MoveFrom(GlobalSSBORowRangeLease &other) noexcept
+    {
+        registry = other.registry;
+        type = other.type;
+        first = other.first;
+        count = other.count;
+
+        other.registry = nullptr;
+        other.first = ActiveRowPool::InvalidRowID;
+        other.count = 0;
+    }
+
+    friend class GlobalSSBOBufferRegistry;
+
+public:
+    GlobalSSBORowRangeLease() = default;
+    ~GlobalSSBORowRangeLease() { Release(); }
+
+    GlobalSSBORowRangeLease(const GlobalSSBORowRangeLease &) = delete;
+    GlobalSSBORowRangeLease &operator=(const GlobalSSBORowRangeLease &) = delete;
+
+    GlobalSSBORowRangeLease(GlobalSSBORowRangeLease &&other) noexcept { MoveFrom(other); }
+    GlobalSSBORowRangeLease &operator=(GlobalSSBORowRangeLease &&other) noexcept
+    {
+        if (this != &other)
+        {
+            Release();
+            MoveFrom(other);
+        }
+        return *this;
+    }
+
+    bool IsValid() const
+    {
+        return registry && first != ActiveRowPool::InvalidRowID && count != 0;
+    }
+
+    explicit operator bool() const { return IsValid(); }
+
+    uint32_t GetFirstRow() const { return first; }
+    uint32_t GetRowCount() const { return count; }
+    uint32_t GetLastRow() const { return IsValid() ? first + count - 1 : ActiveRowPool::InvalidRowID; }
+
+    GlobalSSBOType GetGlobalSSBOType() const { return type; }
+
+    uint32_t GetSSBOId() const
+    {
+        const auto *pool = registry ? registry->GetPool(type) : nullptr;
+        return pool ? pool->GetSSBOId() : 0;
+    }
+
+    /// 块内第 index 行的池行号（越界返回 InvalidRowID）。
+    uint32_t RowIDAt(const uint32_t index) const
+    {
+        return (IsValid() && index < count) ? first + index : ActiveRowPool::InvalidRowID;
+    }
+
+    void Release()
+    {
+        if (registry && first != ActiveRowPool::InvalidRowID && count != 0)
+            registry->ReleaseRowRange(type, first, count);
+
+        registry = nullptr;
+        first = ActiveRowPool::InvalidRowID;
+        count = 0;
+    }
+};
+
+inline GlobalSSBORowRangeLease GlobalSSBOBufferRegistry::AcquireRowRangeLease(const GlobalSSBOType type,
+                                                                             const uint32_t count)
+{
+    const uint32_t first = AcquireRowRange(type, count);
+
+    if (first == ActiveRowPool::InvalidRowID)
+    {
+        GLogError("[GlobalSSBOBufferRegistry] AcquireRowRangeLease failed: type=%s count=%u capacity=%u",
+                  GetGlobalSSBOTypeName(type), count, GetCapacity(type));
+        return {};
+    }
+
+    return GlobalSSBORowRangeLease(this, type, first, count);
+}
 
 
 } // namespace hgl::graph

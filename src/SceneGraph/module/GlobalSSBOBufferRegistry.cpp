@@ -362,6 +362,57 @@ bool GlobalSSBOBufferRegistry::WriteGeometryAABB(const uint32_t id,const mtl::Ge
     return pool->CommitRow(id);
 }
 
+bool GlobalSSBOBufferRegistry::UploadMaterialDataBlock(const mtl::MaterialDataBlockView &view,
+                                                      GlobalSSBORowRangeLease &out_lease)
+{
+    out_lease.Release();
+
+    if (!view.IsValid())
+    {
+        GLogError("[GlobalSSBOBufferRegistry] UploadMaterialDataBlock 拒绝：数据块视图非法"
+                  "（type=%s row_bytes=%u rows=%u）",
+                  GetGlobalSSBOTypeName(view.type), view.row_bytes, view.row_count);
+        return false;
+    }
+
+    auto *pool = GetPool(view.type);
+    if (!pool || !pool->IsReady())
+    {
+        GLogError("[GlobalSSBOBufferRegistry] UploadMaterialDataBlock 拒绝：%s 行池未就绪",
+                  GetGlobalSSBOTypeName(view.type));
+        return false;
+    }
+
+    // 行距不符 = 按错误步长铺满行区（它会静默写坏相邻内容行，画面只是「颜色不对」）。
+    // 这是「文件里的块」与「池里的行」之间唯一的口径检查点 ⇒ 在这里 fail-fast。
+    if (view.row_bytes != pool->GetRowBytes())
+    {
+        GLogError("[GlobalSSBOBufferRegistry] UploadMaterialDataBlock 行距不符：type=%s"
+                  " 块=%u 池=%u",
+                  GetGlobalSSBOTypeName(view.type), view.row_bytes, pool->GetRowBytes());
+        return false;
+    }
+
+    GlobalSSBORowRangeLease lease = AcquireRowRangeLease(view.type, view.row_count);
+    if (!lease)
+        return false;
+
+    if (!WriteRowRange(view.type, lease.GetFirstRow(), view.rows, view.row_count))
+    {
+        // 写失败 ⇒ 区间已经没用了，别把半截数据留在池里。
+        lease.Release();
+        return false;
+    }
+
+    out_lease = std::move(lease);
+
+    if (ULRE_DEBUG_ON(Upload))
+        GLogInfo("[GlobalSSBOBufferRegistry] MaterialDataBlock 上传 type=%s rows=%u first_row=%u row_bytes=%u",
+                 GetGlobalSSBOTypeName(view.type), view.row_count, out_lease.GetFirstRow(), view.row_bytes);
+
+    return true;
+}
+
 const mtl::MeshDrawParams *GlobalSSBOBufferRegistry::GetMeshDrawParamsRow(const uint32_t geometry_id) const
 {
     // B4-ii：三个专用读口=泛型口薄包装（行 0 是「无」哨兵 ⇒ 专用口显式挡掉，泛型口只挡越界）

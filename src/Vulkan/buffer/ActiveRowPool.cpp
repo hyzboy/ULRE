@@ -220,6 +220,123 @@ bool ActiveRowPool::Release(const RowID id)
     return ids.Release(&raw_id) == 1;
 }
 
+ActiveRowPool::RowID ActiveRowPool::AcquireRun(const uint32_t count)
+{
+    if (!IsReady())
+    {
+        GLogError("[ActiveRowPool] AcquireRun failed: pool not ready (ssbo_id=%u)", ssbo_id);
+        return InvalidRowID;
+    }
+
+    if (count == 0 || count > row_capacity || row_capacity > static_cast<uint32_t>(INT_MAX))
+    {
+        GLogError("[ActiveRowPool] AcquireRun rejected: ssbo_id=%u count=%u capacity=%u",
+                  ssbo_id, count, row_capacity);
+        return InvalidRowID;
+    }
+
+    // 连续性只能来自「水位之后全新编号」。Idle 复用得到的是零散行号 ⇒ 本接口永不复用。
+    const int64_t watermark = static_cast<int64_t>(ids.GetHistoryMaxId());
+    if (watermark + static_cast<int64_t>(count) > static_cast<int64_t>(row_capacity))
+    {
+        GLogError("[ActiveRowPool] AcquireRun exceeded capacity: ssbo_id=%u watermark=%lld count=%u capacity=%u",
+                  ssbo_id, static_cast<long long>(watermark), count, row_capacity);
+        return InvalidRowID;
+    }
+
+    const RowID first = static_cast<RowID>(watermark);
+    constexpr uint32_t kBatchSize = 512;
+
+    for (uint32_t done = 0; done < count; )
+    {
+        const uint32_t remaining = count - done;
+        const uint32_t batch = (remaining > kBatchSize) ? kBatchSize : remaining;
+        int created[kBatchSize];
+
+        if (ids.CreateActive(created, static_cast<int>(batch)) != static_cast<int>(batch))
+        {
+            ReleaseRun(first, done);
+            GLogError("[ActiveRowPool] AcquireRun failed: CreateActive(ssbo_id=%u first=%u batch=%u)",
+                      ssbo_id, static_cast<uint32_t>(first), batch);
+            return InvalidRowID;
+        }
+
+        // 编号必须恰好是 [first+done, first+done+batch)：漂移说明行号空间已被他人动过，
+        // 「块内下标 = 行号 - first」的前提不成立 ⇒ 整段回滚，不交付半截区间。
+        for (uint32_t i = 0; i < batch; ++i)
+        {
+            if (created[i] != static_cast<int>(first + done + i))
+            {
+                ReleaseRun(first, done + batch);
+                GLogError("[ActiveRowPool] AcquireRun: 行号不连续 created[%u]=%d 期望=%u (ssbo_id=%u)",
+                          i, created[i], static_cast<uint32_t>(first + done + i), ssbo_id);
+                return InvalidRowID;
+            }
+        }
+
+        done += batch;
+    }
+
+    return first;
+}
+
+bool ActiveRowPool::ReleaseRun(const RowID first, const uint32_t count)
+{
+    if (count == 0
+     || first == InvalidRowID
+     || static_cast<uint64_t>(first) + count > static_cast<uint64_t>(row_capacity))
+    {
+        GLogError("[ActiveRowPool] ReleaseRun rejected: ssbo_id=%u first=%u count=%u capacity=%u",
+                  ssbo_id, static_cast<uint32_t>(first), count, row_capacity);
+        return false;
+    }
+
+    uint32_t released = 0;
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        const RowID id = first + i;
+        if (id > static_cast<RowID>(INT_MAX))
+            break;
+
+        const int raw_id = static_cast<int>(id);
+        released += static_cast<uint32_t>(ids.Release(&raw_id));
+    }
+
+    return released == count;
+}
+
+bool ActiveRowPool::CommitRun(const RowID first, const uint32_t count)
+{
+    auto *gpu_buffer = GetGPUBuffer();
+
+    if (!gpu_buffer
+     || count == 0
+     || first == InvalidRowID
+     || static_cast<uint64_t>(first) + count > static_cast<uint64_t>(row_capacity))
+    {
+        ++commit_reject_count;
+
+        GLogError("[ActiveRowPool] CommitRun rejected invalid range: ssbo_id=%u first=%u count=%u capacity=%u",
+                  ssbo_id, static_cast<uint32_t>(first), count, row_capacity);
+        return false;
+    }
+
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        if (!IsActive(first + i))
+        {
+            ++commit_reject_count;
+
+            GLogError("[ActiveRowPool] CommitRun rejected inactive row: ssbo_id=%u id=%u (first=%u count=%u)",
+                      ssbo_id, static_cast<uint32_t>(first + i), static_cast<uint32_t>(first), count);
+            return false;
+        }
+    }
+
+    gpu_buffer->MarkDirty(VkDeviceSize(first) * row_bytes, VkDeviceSize(count) * row_bytes);
+    return true;
+}
+
 bool ActiveRowPool::IsActive(const RowID id) const
 {
     return id != InvalidRowID

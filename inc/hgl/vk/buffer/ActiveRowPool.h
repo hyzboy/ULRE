@@ -95,6 +95,23 @@ public:
     bool  IsActive(RowID id) const;
 
     /**
+     * 连续行批量申请：成功返回首行号，区间 `[first, first+count)` **保证连续**。
+     *
+     * 只走「水位之后全新分配」（`CreateActive`），**永不复用 Idle** —— 复用会破坏
+     * 连续性。因此典型用途是「启动/加载期一次性拿一整块」，而不是逐行流式申请。
+     *
+     * 全有或全无：容量不足或编号偏移时整段回滚，绝不留下半截区间。
+     */
+    RowID AcquireRun(uint32_t count);
+
+    /// 批量归还一个连续区间（非活跃行静默跳过；返回是否**全部**归还成功）。
+    bool  ReleaseRun(RowID first, uint32_t count);
+
+    /// 整段标脏（提交粒度从「一行」放大到「count 行」，一次 MarkDirty）。
+    /// 判据与 CommitRow 一致：越界 / 任一行未 Active ⇒ 拒绝并计入拒绝数。
+    bool  CommitRun(RowID first, uint32_t count);
+
+    /**
      * 把行号空间 [0, row_capacity) 全部置为 Active。
      *
      * 用于**行空间完全由调用方静态划分**的池（如 CameraInfo：相机 × 帧槽）。
