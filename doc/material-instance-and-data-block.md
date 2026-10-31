@@ -255,6 +255,55 @@ builder->WithMaterialDataRow(ToOSString(PBR_GRID_DATA_PATH), row * GRID_SIZE + c
 也就是说：配方管池/块身份，实体行管「这个实例取哪一行」——
 「同一配方 100 个不同数据行」就是这么成立的。
 
+### 5.4 手工路径：没有 builder 时怎么拿到行
+
+不是所有示例都走 `RenderableBuilder`。手工 `AddEntity` + 自己设
+`MaterialData` 的示例（`CascadeShadowMap`、`GPUDrivenCull`、`AlphaModes` …）
+以前是「向全局池要一行 + 自己 `Write` 结构体」，数值全在 C++ 里。现在改成
+「一个 URI + 一个行号」，三层入口各管一段：
+
+| 入口 | 位置 | 管什么 |
+|---|---|---|
+| `GlobalSSBORowRangeLease::GetGlobalSSBOBindingAt(i)` | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h` | 池层：把「池内偏移」换成 `GlobalSSBOBinding` |
+| `GlobalSSBOBinding::RowOffset(delta)` | `inc/hgl/graph/ssbo/GlobalSSBOTypes.h` | 值层：同块相邻行（纯算术，无副作用） |
+| `WorkObject::GetMaterialDataBinding(uri, row, out)` | `inc/hgl/framework/WorkObject.h` | 门面层：URI → 块 → 上传 → 行绑定 |
+
+```cpp
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 行号
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/cascade_shadow_map.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;   // 块内首行
+}
+
+// 改造前：向池要行 + 逐字段写结构体
+// auto *mgr = GetManager<GlobalSSBOBufferRegistry>();
+// material_accessors[i] = mgr->GetAccessor<ssbo::PBRSurfaceRow>();
+// ssbo::PBRSurfaceRow row{};
+// row.roughness = 0.2f + 0.08f * i;
+// material_accessors[i].Write(row);
+
+// 改造后：取基行，其余行按块内偏移推导
+graph::GlobalSSBOBinding first{};
+if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
+    return false;
+
+for (uint32_t i = 0; i < kPBRTextureCount; ++i)
+    material_accessors[i] = first.RowOffset(i);
+```
+
+**`GlobalSSBODataAccessor` 与 `GlobalSSBOBinding` 不能混用**，区别是所有权：
+
+- `GlobalSSBODataAccessor : ActiveRowLease` —— **RAII 行租约**，析构即归还行。
+  只用于「行数由运行期决定」的场景（`CoverageVariants` 的 `stress_rows[512]`
+  行数来自 `CV_STRESS` 环境变量）。
+- `GlobalSSBOBinding` —— 纯值三元组 `{type, ssbo_id, data_index}`，**不持有**行。
+  文件化数据块用它：行由数据块持有，绑定永远有效。
+
+一个示例可以两种并存：文件化的部分用 `Binding`，运行期的部分用 `Accessor`
+（`CoverageVariants` 就是这么写的，两段代码都留了注释说明边界）。
+
 ---
 
 ## 6. 落点约定
@@ -319,7 +368,7 @@ builder->WithMaterialDataRow(ToOSString(PBR_GRID_DATA_PATH), row * GRID_SIZE + c
 pwsh -NoProfile -File scripts\run-assetgen.ps1 -Check -Clang "C:\clang\bin\clang++.exe"
 
 # 相关单元测试（均在仓库根 E:\ULRE 运行，依赖相对路径）
-ctest --test-dir build -C Release -R "TestMaterialDataBlockCodec|TestGlobalSSBORowRange|TestMaterialDataBlockAsset|TestRenderableBuilderDataRow|TestPbrGridDataBlock|TestMaterialRecipeFile|TestMaterialRecipeInheritance|TestMaterialRecipeCodec" --output-on-failure
+ctest --test-dir build -C Release -R "TestMaterialDataBlockCodec|TestGlobalSSBORowRange|TestMaterialDataBlockAsset|TestRenderableBuilderDataRow|TestMaterialDataRowBinding|TestExampleMaterialDataBlocks|TestPbrGridDataBlock|TestMaterialRecipeFile|TestMaterialRecipeInheritance|TestMaterialRecipeCodec" --output-on-failure
 ```
 
 | 测试 | 守什么 |
@@ -328,6 +377,8 @@ ctest --test-dir build -C Release -R "TestMaterialDataBlockCodec|TestGlobalSSBOR
 | `TestGlobalSSBORowRange` | 连续区间语义 + 租约无效态 fail-closed + 源码契约（**无需图形设备**） |
 | `TestMaterialDataBlockAsset` | `mtldata` 门面：解析 / 查表 / 状态机 / 失败原因 |
 | `TestRenderableBuilderDataRow` | 块内行 → `GlobalSSBOBinding` 组合、越界一律 `InvalidRowID` |
+| `TestMaterialDataRowBinding` | 手工路径三层入口（`GetGlobalSSBOBindingAt` / `RowOffset` / `GetMaterialDataBinding`）的契约 |
+| `TestExampleMaterialDataBlocks` | 示例数据块台账：29 个块文件的名称 / 行类型 / 行数 / 抽样数值（多一个少一个都红） |
 | `TestPbrGridDataBlock` | 示例用数据文件的形状 + **100 行数值与原生成公式一致** + 演示源码不再逐行硬编码 |
 | `TestMaterialRecipeInheritance` | `parent` 差量合并口径 + 两阶段加载 + 循环检测 |
 | `TestMaterialRecipeCodec` | `parent` 字段的编解码往返 |

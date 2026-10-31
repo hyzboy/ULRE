@@ -7,6 +7,11 @@
 > 统计口径：`example/` 下 **52 个活跃 `.cpp` / 16,277 行**，不含 `*_Obsolete`（3 个文件）。
 > 涉及废弃文件时会单独标注 `[废弃]`，不计入合计。
 
+> **状态（2026-11）**：**第 1 类（材质 SSBO 数据行）已迁移完毕**。28 个示例块文件
+> 落在 `ShaderLibrary/asset/material_data/`，示例里不再出现任何逐行 `Write`；
+> 门禁见 `src/ecs/tests/TestExampleMaterialDataBlocks.cpp`（台账：块名 / 行类型 /
+> 行数 / 抽样数值）。第 2~6 类仍按本文盘点原样待办。
+
 ---
 
 ## 0. 基线
