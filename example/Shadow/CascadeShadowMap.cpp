@@ -11,7 +11,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/BufferManager.h>
-#include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
@@ -130,6 +130,16 @@ namespace
     }
 }
 
+namespace
+{
+    // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/cascade_shadow_map.material_data.toml";
+    constexpr uint32_t MATERIAL_DATA_ROW = 0;
+    // 地面行紧跟在 10 个 PBR 纹理行之后（同一数据块）
+    constexpr uint32_t MATERIAL_DATA_ROW_GROUND = kPBRTextureCount;
+}
+
 class CascadeShadowMapApp final : public WorkObject
 {
 private:
@@ -168,8 +178,8 @@ private:
 
     graph::mtl::MaterialRecipe lit_recipe{};
     graph::mtl::MaterialRecipe alpha_recipe{}; // A1-4: alpha_test=true → ShadowCasterMasked 路由
-    graph::GlobalSSBODataAccessor material_accessors[kPBRTextureCount]{};
-    graph::GlobalSSBODataAccessor ground_accessor{};
+    graph::GlobalSSBOBinding material_accessors[kPBRTextureCount]{};
+    graph::GlobalSSBOBinding ground_accessor{};
 
     // 静态太阳光方向（指向场景地面）
 
@@ -905,38 +915,18 @@ private:
             return false;
         lit_recipe = *lit_loaded;
 
-        auto *domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
+        graph::GlobalSSBOBinding first{};
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
             return false;
 
+        // 逐纹理一张材质行：块内相邻行 = 基行 + 序号
         for (uint32_t i = 0; i < kPBRTextureCount; ++i)
-        {
-            material_accessors[i] = domain_manager->GetAccessor<ssbo::PBRSurfaceRow>();
-            if (!material_accessors[i])
-                return false;
+            material_accessors[i] = first.RowOffset(i);
 
-            ssbo::PBRSurfaceRow row{};
-            row.base_color = Color4f(0.85f, 0.85f, 0.85f, 1.0f);
-            row.metallic = 0.05f + 0.1f * static_cast<float>(i % 5);
-            row.roughness = 0.2f + 0.08f * static_cast<float>(i);
-            row.normal_scale = 0.5f;
-
-            if (!material_accessors[i].Write(row))
-                return false;
-        }
-
-        ground_accessor = domain_manager->GetAccessor<ssbo::PBRSurfaceRow>();
-        if (!ground_accessor)
+        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW_GROUND, ground_accessor))
             return false;
 
-        ssbo::PBRSurfaceRow ground_row{};
-        ground_row.base_color = Color4f(0.6f, 0.6f, 0.62f, 1.0f);
-        ground_row.metallic = 0.02f;
-        ground_row.roughness = 0.85f;
-        ground_row.normal_scale = 0.4f;
-        ground_accessor.Write(ground_row);
-
-        lit_recipe.material_ssbo_binding = material_accessors[0].GetGlobalSSBOBinding();
+        lit_recipe.material_ssbo_binding = material_accessors[0];
         if (!lit_recipe.material_ssbo_binding.IsValid())
             return false;
 
@@ -1064,7 +1054,7 @@ private:
         hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContext()->GetOrCreateMaterialData(ground_entity);
         ground_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
         // 纹理已由配方声明（lit_recipe.AddTexture，layer 0），实体端不再重复绑定
-        material_data_comp->SetDataResource(ground_accessor.GetGlobalSSBOBinding());
+        material_data_comp->SetDataResource(ground_accessor);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         auto ground_shadow = ground_entity->AddComponent<ShadowProxy>();
@@ -1165,7 +1155,7 @@ private:
                 material_data_comp->SetRecipe(obj_recipe);
             }
 
-            material_data_comp->SetDataResource(material_accessors[mat_idx].GetGlobalSSBOBinding());
+            material_data_comp->SetDataResource(material_accessors[mat_idx]);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
 
@@ -1201,7 +1191,7 @@ private:
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。
                 // 两条绑定都写在 alpha_recipe 里（实体端零纹理调用）。
-                material_data_comp->SetDataResource(material_accessors[0].GetGlobalSSBOBinding());
+                material_data_comp->SetDataResource(material_accessors[0]);
                 // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
             }
         }
