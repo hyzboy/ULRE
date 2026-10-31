@@ -4,6 +4,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -58,15 +59,13 @@ private:
         if (!device || !geometry_manager)
             return false;
 
-        using namespace inline_geometry;
-
         auto pc = std::make_unique<GeometryCreater>(
             device,
             CreateVertexColor3DGeometryVertexFormat());
 
-        inline_geometry::AxisCreateInfo aci;
-
-        geom_axis=CreateAxis(pc.get(),&aci);
+        // 形状参数（size 等）在 res/geo/presets/axis.geo.toml 里；
+        // 顶点布局仍由这里的 creater 决定（共享 creater 的建法不变）。
+        geom_axis=CreateGeometryPreset(pc.get(),"axis");
         if (geom_axis)
             geometry_manager->Add(geom_axis);
 
