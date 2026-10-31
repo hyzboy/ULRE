@@ -124,9 +124,6 @@ private:
     graph::mtl::MaterialRecipe sphere_recipe{};
 
     graph::GlobalSSBOBinding material_data_ssbo_accessor{};
-    TextureAsset* sphere_base_tex = nullptr;
-    TextureAsset* sphere_normal_tex = nullptr;
-    TextureAsset* sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
     hgl::ecs::GeometryData *sphere_primitive_comp = nullptr;
 
@@ -259,18 +256,11 @@ public:
         if (!gc)
             return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
 
-        auto *tm = owner->GetManager<TextureManager>();
         auto *device = gc->GetDevice();
-        if (!tm || !device)
-            return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
+        if (!device)
+            return LogStageFail("OffscreenPass::BuildSphere", "device missing");
 
         // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照（材质数值在数据块文件里）
-
-        sphere_base_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
-        sphere_normal_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        sphere_roughness_tex = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-        if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
-            return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
 
         // Bindless registration is deferred until ECS systems are ready.
 
@@ -290,12 +280,8 @@ public:
         if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor).IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
-        // 纹理是材质原型固有属性 ⇒ 写进配方（实体端零纹理调用）。
+        // 纹理是材质原型固有属性 ⇒ 写在配方文件里（实体端零纹理调用）。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!sphere_recipe.AddTexture("base_color", sphere_base_tex, true)
-         || !sphere_recipe.AddTexture("normal", sphere_normal_tex, true)
-         || !sphere_recipe.AddTexture("roughness", sphere_roughness_tex, true))
-            return LogStageFail("OffscreenPass::BuildSphere", "bind recipe textures failed");
 
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
         if (!sphere_asset.IsValid())
@@ -313,7 +299,7 @@ public:
         transform.SetMobility(Mobility::Static);
 
         prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
-        // 纹理已由配方声明（sphere_recipe.AddTexture），实体端不再重复绑定
+        // 纹理已由配方文件声明，实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor;
         material_data_comp->SetDataResource(sphere_struct);
@@ -366,11 +352,8 @@ private:
 
     graph::GlobalSSBOBinding cube_material_data_ssbo_accessor{};
 
-    /// 材质授权统一走句柄(TextureAsset)：底座直接给 `rt:` URI，其余给文件名。
-    /// 就绪判定（含离屏内容是否已画出）由 ECS 侧统一负责，示例不再持有裸纹理。
-    TextureAsset *base_asset = nullptr;
-    TextureAsset *normal_asset = nullptr;
-    TextureAsset *roughness_asset = nullptr;
+    /// 材质授权统一走配方文件：底座是 `rt:` URI，其余是文件 URI，
+    /// 就绪判定（含离屏内容是否已画出）由 ECS 侧统一负责，示例不再持有纹理句柄。
 
     hgl::ecs::TransformAccessor cube_transform;
     float cube_theta = 0.0f;
@@ -427,21 +410,15 @@ private:
         if (!gc)
             return LogStageFail("RenderToTextureApp::CreateCube", "graphics context is null");
 
-        auto *tm = GetManager<TextureManager>();
         auto *gm = GetManager<GeometryManager>();
         auto *device = gc->GetDevice();
-        if (!tm || !gm || !device)
+        if (!gm || !device)
             return LogStageFail("RenderToTextureApp::CreateCube", "required managers/device missing");
 
-        // 底座 = 离屏 RT 的颜色附件，用 URI 声明式引用；不拿裸纹理、不再 WrapTextureAsset。
-        // 句柄在 RT 创建时已由 RenderTargetManager 绑定，此刻「容器就绪、内容未就绪」，
-        // ECS 的 CanRender 会拦住立方体，直到离屏 pass 真正画出内容。
-        base_asset      = tm->CreateTextureAsset(OS_TEXT("rt:RenderToTexture:OffscreenRT:color0"));
-        normal_asset    = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        roughness_asset = tm->CreateTextureAsset(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-
-        if (!base_asset || !normal_asset || !roughness_asset)
-            return LogStageFail("RenderToTextureApp::CreateCube", "create texture asset failed");
+        // 三张贴图（含离屏 RT 颜色附件）全部在 RenderToTexture.Cube 配方文件里声明。
+        // RT 句柄在配方加载时创建、RT 创建时由 RenderTargetManager 按名字绑定，
+        // 此刻「容器就绪、内容未就绪」，ECS 的 CanRender 会拦住立方体，
+        // 直到离屏 pass 真正画出内容。
 
         if (!InitMaterialDataSSBO())
             return LogStageFail("RenderToTextureApp::CreateCube", "InitMaterialDataSSBO failed");
@@ -463,12 +440,8 @@ private:
         if (!(cube_recipe.material_ssbo_binding = cube_material_data_ssbo_accessor).IsValid())
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
-        // 底座 = 离屏 RT 的颜色附件（`rtex:` 身份），其余两张是文件纹理。
+        // 底座 = 离屏 RT 的颜色附件（`rt:` URI），其余两张是文件纹理 —— 都在配方文件里。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        if (!cube_recipe.AddTexture("base_color", base_asset, true)
-         || !cube_recipe.AddTexture("normal", normal_asset, true)
-         || !cube_recipe.AddTexture("roughness", roughness_asset, true))
-            return LogStageFail("RenderToTextureApp::CreateCube", "bind recipe textures failed");
 
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         if (!cube_asset.IsValid())
@@ -485,7 +458,7 @@ private:
         cube_transform.SetMobility(Mobility::Movable);
 
         cube_prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(cube_prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
-        // 纹理已由配方声明（cube_recipe.AddTexture），实体端不再重复绑定
+        // 纹理已由配方文件声明，实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_material_data_ssbo_accessor;
         material_data_comp->SetDataResource(cube_struct);
