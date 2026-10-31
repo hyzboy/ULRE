@@ -5,6 +5,20 @@
 本项目是自研游戏引擎，拥有完整的自有基础库（字符串、集合、IO、线程、哈希等）。
 **Agent生成代码时必须使用HGL库，严禁引入STL头文件和类型。**
 
+### 📌 唯一作用域例外：`src/Tools/TexConv`
+
+`src/Tools/TexConv`（纹理转换工具链）是**唯一**允许、且**必须**使用 C++ 标准库的子树。
+该工具需要脱离引擎独立发布（单 exe + 若干 DLL），为做到「CLI/GUI/核心零 hgl 依赖」，其中
+`cli/`、`common/`、`core/`、`gui/`、`enc_amd/`、`enc_intel/`、`tests/` 一律使用 STL 与 CRT：
+`std::string` / `std::vector` / `std::filesystem`、`new` / `delete`、`FILE*`、`printf` 等。
+
+- 该子树内**禁止**引入 `<hgl/...>` 头文件。唯一例外是 `image/`（`TexImage.dll`）——
+  它是 hgl 与外部世界的边界层，负责衔接 ImageMagick 与 hgl 的日志/字符串/文件系统。
+- 在 `src/Tools/TexConv/image/` 之外的该工具文件中若出现 `#include <hgl/...>`，
+  视为缺陷，应改为等价的 STL/CRT 实现。
+
+除上述子树外，以下规范原样生效。
+
 ---
 
 ## 📐 渲染坐标与投影约定（必须遵守）
