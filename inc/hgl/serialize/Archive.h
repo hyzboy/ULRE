@@ -132,12 +132,27 @@ namespace hgl::serialize
             return failed_field_.c_str() ? failed_field_.c_str() : "";
         }
 
+        /**
+         * @brief 首个失败字段的**完整表路径**，形如 `render_state.pipeline.cull_mode`。
+         *
+         * `FailedField()` 只给叶子键名，调用方若要报「错在哪张表」就得自己按
+         * `ClassMetaInfo` 反查，而反查在「两张表有同名键」时会失准。这里在递归
+         * 下钻时就把父级路径拼上，于是 `表路径 = FailedPath() 去掉最后一段`。
+         *
+         * 数组（`[[textures]]`）不下标：元素里的失败报成 `textures.name`。
+         */
+        const char *FailedPath() const
+        {
+            return failed_path_.c_str() ? failed_path_.c_str() : "";
+        }
+
         /// 清空失败状态（用于复用同一个 Archive 处理多份输入）。
         void ResetStatus()
         {
             ok_ = true;
             error_.Clear();
             failed_field_.Clear();
+            failed_path_.Clear();
         }
 
         // ── 字段入口 ────────────────────────────────────────────────────────
@@ -198,8 +213,22 @@ namespace hgl::serialize
                     return;
 
                 U &target = const_cast<U &>(value);
-                if (!ReadValue(*node, target))
+
+                // 递归下钻期间把当前字段名接进路径：嵌套结构 / 数组里的失败
+                // 才能拼出 `render_state.pipeline.cull_mode` 这样的完整表路径。
+                const AnsiString saved_path = path_;
+                path_ = JoinPath(saved_path, name);
+
+                const bool read_ok = ReadValue(*node, target);
+                path_ = saved_path;
+
+                if (!read_ok)
+                {
                     Fail(name, "字段类型或取值不合法");
+                    // 子层已经写好路径时不再覆盖（否则会丢掉下钻深度）。
+                    if (failed_path_.IsEmpty())
+                        failed_path_ = JoinPath(saved_path, name);
+                }
             }
         }
 
@@ -214,6 +243,17 @@ namespace hgl::serialize
         }
 
     private:
+        /// 拼接失败路径：父级为空时不加分隔符（顶层字段就是键名本身）。
+        static AnsiString JoinPath(const AnsiString &parent, const char *child)
+        {
+            if (parent.IsEmpty() || !child || !child[0])
+                return AnsiString(child ? child : "");
+
+            AnsiString joined = parent + ".";
+            joined = joined + child;
+            return joined;
+        }
+
         // ── 值 → 树（写方向，只读源对象）────────────────────────────────────
 
         template <typename T>
@@ -317,7 +357,9 @@ namespace hgl::serialize
                     if (!node.GetInt(raw))
                         return false;
                     // 窄化前先做范围检查，避免静默截断。
-                    if (sizeof(U) < sizeof(int64_t))
+                    // `if constexpr` 不只是优化：宽类型（8 字节）时下面的移位位数
+                    // 会等于/超过位宽，普通 `if` 仍会实例化语句体并触发 C4293。
+                    if constexpr (sizeof(U) < sizeof(int64_t))
                     {
                         const int bits = static_cast<int>(sizeof(U) * 8);
                         const int64_t min_v = -(int64_t(1) << (bits - 1));
@@ -333,7 +375,7 @@ namespace hgl::serialize
                     uint64_t raw = 0;
                     if (!node.GetUInt(raw))
                         return false;
-                    if (sizeof(U) < sizeof(uint64_t))
+                    if constexpr (sizeof(U) < sizeof(uint64_t))
                     {
                         const uint64_t max_v = (uint64_t(1) << (sizeof(U) * 8)) - 1;
                         if (raw > max_v)
@@ -381,10 +423,15 @@ namespace hgl::serialize
                     return false;
                 Archive sub;
                 sub.read_ = &node;
+                sub.path_ = path_;
                 StructSerializer<U>::Do(sub, out);
                 if (!sub.ok_)
                 {
                     Fail(sub.failed_field_.c_str(), sub.error_.c_str());
+                    // `sub` 的路径已含父级前缀，直接继承，不在父层重拼。
+                    failed_path_ = sub.failed_path_;
+                    if (failed_path_.IsEmpty())
+                        failed_path_ = path_;
                     return false;
                 }
                 return true;
@@ -691,6 +738,8 @@ namespace hgl::serialize
         const Value *read_ = nullptr;
         bool ok_ = true;
         AnsiString failed_field_;
+        AnsiString failed_path_;
+        AnsiString path_;
         AnsiString error_;
     };
 }//namespace hgl::serialize

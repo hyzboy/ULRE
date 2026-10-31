@@ -365,7 +365,10 @@ namespace
     // ── 4. 枚举拼写 ────────────────────────────────────────────────────────
     bool TestEnumSpelling()
     {
-        // 内部枚举（MaterialDomain / VertexInputMode / ...）走 `stricmp`，大小写不敏感。
+        // 枚举拼写表只有一份真源：`AssetGen` 的 `[[enum]]` 配置把引擎枚举
+        // **转发**到 `ParseMaterialDomain` / `ParseVertexInputMode` /
+        // `ParseProjectionMode` / `ParseVkCullMode` 等真源函数，生成器不再自带
+        // 字面量表。因此口径与真源一致：`strcmp`，大小写敏感。
         constexpr char kLowerCase[] =
             "schema = 1\n"
             "name = \"RecipeCodec.LowerCase\"\n"
@@ -374,8 +377,21 @@ namespace
             "source = \"vec2position\"\n"
             "projection = \"orthoviewport\"\n";
 
+        MaterialRecipeSpec rejected_case;
+        if (ReadText(kLowerCase, rejected_case))
+            return false;
+
+        // 规范拼写必须通过；未写的可选字段保持缺席（presence 只由「写没写」决定）。
+        constexpr char kCanonical[] =
+            "schema = 1\n"
+            "name = \"RecipeCodec.Canonical\"\n"
+            "domain = \"UnlitTexture\"\n"
+            "[transform]\n"
+            "source = \"Vec2Position\"\n"
+            "projection = \"OrthoViewport\"\n";
+
         MaterialRecipeSpec spec;
-        if (!ReadText(kLowerCase, spec))
+        if (!ReadText(kCanonical, spec))
             return false;
         if (spec.domain != MaterialDomain::UnlitTexture)
             return false;
@@ -386,7 +402,7 @@ namespace
         if (spec.transform.orientation.present || spec.transform.scale.present)
             return false;
 
-        // 外部枚举（转发到 `VkEnumText`）走 `strcmp`：拼写必须与真源逐字一致。
+        // 外部枚举（转发到 `VkEnumText`）走的也是 `strcmp`：拼写必须与真源逐字一致。
         constexpr char kBadCase[] =
             "schema = 1\n"
             "name = \"RecipeCodec.BadCase\"\n"

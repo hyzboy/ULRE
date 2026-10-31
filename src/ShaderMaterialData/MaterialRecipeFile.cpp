@@ -2,9 +2,12 @@
 #include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/VkEnumText.h>
 
+#include <hgl/asset/generated/MaterialRecipeMeta.gen.h>
+#include <hgl/asset/generated/MaterialRecipeToml.gen.h>
+#include <hgl/serialize/Archive.h>
+
 #include <toml/toml.hpp>
 
-#include <cfloat>
 #include <cmath>
 #include <cstring>
 
@@ -12,551 +15,245 @@ namespace hgl::graph::mtl
 {
     namespace
     {
+        // 诊断上下文：一次解析只记录**第一个**失败，字段与既有
+        // `MaterialRecipeFileParseError` 一一对应，调用方与日志格式不变。
         struct ParseErrorContext
         {
-            const char *active_table = "root";
             AnsiString table = "root";
             AnsiString key;
             AnsiString value;
             AnsiString detail;
             int line = 0;
             bool recorded = false;
-            bool unknown_key = false;
 
-            void Record(const char *in_key,
-                        const char *in_value,
-                        const char *in_detail)
+            /// 表内失败：`table_path` 用 `FailedPath()` 的写法（`render_state.pipeline`）。
+            void RecordIn(const AnsiString &table_path,
+                          const char *in_key,
+                          const char *in_value,
+                          const char *in_detail)
             {
                 if (recorded)
                     return;
 
-                table = active_table ? active_table : "root";
+                table = table_path.IsEmpty() ? AnsiString("root") : table_path;
                 key = in_key ? in_key : "";
                 value = in_value ? in_value : "";
                 detail = in_detail ? in_detail : "";
                 recorded = true;
             }
+
+            /// 顶层（表路径 = root）失败。
+            void Record(const char *in_key, const char *in_value, const char *in_detail)
+            {
+                RecordIn(AnsiString("root"), in_key, in_value, in_detail);
+            }
         };
 
-        class ParseTableScope
+        AnsiString JoinPath(const AnsiString &parent, const char *child)
         {
-            ParseErrorContext &context;
-            const char *previous;
+            if (!child || !child[0])
+                return parent;
+            if (parent.IsEmpty())
+                return AnsiString(child);
+            return parent + "." + child;
+        }
 
-        public:
-            ParseTableScope(ParseErrorContext &in_context, const char *name)
-                : context(in_context), previous(in_context.active_table)
+        // `render_state.pipeline.cull_mode` ⇒ 表 "render_state.pipeline" + 键 "cull_mode"。
+        void SplitTablePath(const AnsiString &path, AnsiString &table, AnsiString &key)
+        {
+            key = path;
+            table = "root";
+
+            if (path.IsEmpty())
+                return;
+
+            const char *begin = path.c_str();
+            const char *last_dot = nullptr;
+            for (const char *cursor = begin; cursor[0]; ++cursor)
             {
-                context.active_table = name;
+                if (cursor[0] == '.')
+                    last_dot = cursor;
             }
 
-            ~ParseTableScope()
-            {
-                context.active_table = previous;
-            }
-        };
+            if (!last_dot)
+                return;
 
-        bool ValidateKnownKeys(const toml::value &table,
-                               const char *const *allowed,
-                               const uint32_t allowed_count,
+            table = AnsiString(begin, static_cast<int>(last_dot - begin));
+            key = AnsiString(last_dot + 1);
+        }
+
+        // 按 TOML 路径取节点，只用于把作者的原始写法（如 "Orthographic2D"）带回诊断。
+        // 表数组（`[[textures]]`）不进路径，遇到时取第一个能命中剩余路径的元素。
+        const toml::value *FindTomlNode(const toml::value &node, const char *path)
+        {
+            if (!path || !path[0])
+                return &node;
+
+            if (node.is_array())
+            {
+                for (const toml::value &item : node.as_array())
+                {
+                    const toml::value *found = FindTomlNode(item, path);
+                    if (found)
+                        return found;
+                }
+                return nullptr;
+            }
+
+            if (!node.is_table())
+                return nullptr;
+
+            const char *dot = strchr(path, '.');
+            const int head_length =
+                dot ? static_cast<int>(dot - path) : static_cast<int>(strlen(path));
+            const char *tail = dot ? dot + 1 : nullptr;
+
+            for (const auto &pair : node.as_table())
+            {
+                const char *candidate = pair.first.c_str();
+                if (candidate && static_cast<int>(strlen(candidate)) == head_length
+                 && strncmp(candidate, path, static_cast<size_t>(head_length)) == 0)
+                    return FindTomlNode(pair.second, tail);
+            }
+
+            return nullptr;
+        }
+
+        // 生成 codec 的错误措辞是通用的「字段类型或取值不合法」；枚举键的真实原因
+        // 只有「拼写不在真源表里」，这里按键给出与旧解析器一致的措辞。
+        const char *DetailForFailedKey(const char *key, const char *fallback)
+        {
+            struct Entry
+            {
+                const char *key;
+                const char *detail;
+            };
+
+            static constexpr Entry kEntries[] = {
+                { "cull_mode",        "未知剔除模式"     },
+                { "depth_compare_op", "未知深度比较操作" },
+                { "blend_src",        "未知源混合因子"   },
+                { "blend_dst",        "未知目标混合因子" },
+                { "source",           "未知顶点输入模式" },
+                { "mapping",          "未知位置映射模式" },
+                { "orientation",      "未知朝向模式"     },
+                { "scale",            "未知缩放模式"     },
+                { "projection",       "未知投影模式"     },
+                { "domain",           "未知材质领域"     },
+            };
+
+            if (key && key[0])
+            {
+                for (const Entry &entry : kEntries)
+                {
+                    if (strcmp(entry.key, key) == 0)
+                        return entry.detail;
+                }
+            }
+
+            return fallback;
+        }
+
+        void ApplyCodecFailure(const hgl::serialize::Archive &archive,
+                               const toml::value &root,
                                ParseErrorContext &error)
         {
-            if (!table.is_table())
+            AnsiString table;
+            AnsiString key;
+            SplitTablePath(AnsiString(archive.FailedPath()), table, key);
+
+            const char *raw_value = nullptr;
+            AnsiString raw_text;
+            const toml::value *node = FindTomlNode(root, archive.FailedPath());
+            if (node && node->is_string())
             {
-                error.Record(nullptr, nullptr, "必须是表");
-                return false;
+                raw_text = node->as_string().c_str();
+                raw_value = raw_text.c_str();
             }
 
-            for (const auto &pair : table.as_table())
+            error.RecordIn(table, key.c_str(), raw_value,
+                           DetailForFailedKey(key.c_str(), archive.ErrorMessage()));
+        }
+
+        // 严格键校验的唯一真源是生成的 `ClassMetaInfo`（`toml_key` + `struct_meta`
+        // 递归指针）。这里只判「键名是否合法」，取值/形态错误交给生成的 codec。
+        bool ValidateKeysByMeta(const toml::value &node,
+                                const hgl::asset::ClassMetaInfo &meta,
+                                const AnsiString &path,
+                                ParseErrorContext &error)
+        {
+            if (node.is_array())
             {
-                bool known = false;
-                for (uint32_t i = 0; i < allowed_count; ++i)
+                for (const toml::value &item : node.as_array())
                 {
-                    if (pair.first == allowed[i])
+                    if (!ValidateKeysByMeta(item, meta, path, error))
+                        return false;
+                }
+                return true;
+            }
+
+            if (!node.is_table())
+                return true;
+
+            for (const auto &pair : node.as_table())
+            {
+                const char *input_key = pair.first.c_str();
+                const hgl::asset::PropertyMetaInfo *property = nullptr;
+                for (uint32_t i = 0; i < meta.property_count; ++i)
+                {
+                    const hgl::asset::PropertyMetaInfo &candidate = meta.properties[i];
+                    const char *toml_key = candidate.toml_key ? candidate.toml_key : candidate.name;
+                    if (toml_key && input_key && strcmp(toml_key, input_key) == 0)
                     {
-                        known = true;
+                        property = &candidate;
                         break;
                     }
                 }
 
-                if (!known)
+                if (!property)
                 {
-                    error.unknown_key = true;
-                    error.Record(pair.first.c_str(), nullptr, "未知键");
+                    error.RecordIn(path, input_key, nullptr, "未知键");
                     return false;
                 }
+
+                if (property->struct_meta
+                 && !ValidateKeysByMeta(pair.second, *property->struct_meta,
+                                        JoinPath(path, input_key), error))
+                    return false;
             }
+
             return true;
         }
 
-        bool ReadString(const toml::value &table,
-                        const char *key,
-                    AnsiString &out,
-                        ParseErrorContext &error,
-                        const bool required = false)
+        // 字段抽取只走生成的 codec：字段名、类型、缺键语义、枚举拼写表全部由
+        // `MaterialRecipeSpec` + `AssetGen` 产物单点决定。
+        bool ReadSpec(const toml::value &root,
+                      MaterialRecipeSpec &spec,
+                      ParseErrorContext &error)
         {
-            if (!table.is_table() || !table.contains(key))
-            {
-                if (required)
-                    error.Record(key, nullptr, "缺少必需字符串");
-                return !required;
-            }
+            hgl::serialize::Value node;
+            hgl::serialize::FromToml(root, node);
 
-            const toml::value &value = table.at(key);
-            if (!value.is_string())
-            {
-                error.Record(key, nullptr, "必须是字符串");
-                return false;
-            }
-
-            out = value.as_string();
-            if (required && out.IsEmpty())
-            {
-                error.Record(key, "", "必须是非空字符串");
-                return false;
-            }
-            return true;
-        }
-
-        // 字符串数组读取：用于「整表替换」语义的覆盖项。
-        // 键缺失 ⇒ out_present = false（不覆盖，仍取契约预设）；
-        // 键存在 ⇒ out_present = true，空数组表示**清空**（不是「不覆盖」）。
-        bool ReadStringArray(const toml::value &table,
-                             const char *key,
-                             std::vector<std::string> &out,
-                             bool &out_present,
-                             ParseErrorContext &error)
-        {
-            out_present = false;
-            if (!table.is_table() || !table.contains(key))
+            hgl::serialize::Archive archive = hgl::serialize::Archive::ForRead(node);
+            hgl::serialize::StructSerializer<MaterialRecipeSpec>::Do(archive, spec);
+            if (archive.Ok())
                 return true;
 
-            const toml::value &value = table.at(key);
-            if (!value.is_array())
-            {
-                error.Record(key, nullptr, "必须是字符串数组");
-                return false;
-            }
-
-            std::vector<std::string> items;
-            for (const toml::value &item : value.as_array())
-            {
-                if (!item.is_string())
-                {
-                    error.Record(key, nullptr, "数组元素必须是字符串");
-                    return false;
-                }
-                items.push_back(item.as_string());
-            }
-
-            out = std::move(items);
-            out_present = true;
-            return true;
-        }
-
-        bool ReadBool(const toml::value &table,
-                      const char *key,
-                      bool &out,
-                      ParseErrorContext &error,
-                      const bool required = false)
-        {
-            if (!table.is_table() || !table.contains(key))
-            {
-                if (required)
-                    error.Record(key, nullptr, "缺少必需布尔值");
-                return !required;
-            }
-
-            const toml::value &value = table.at(key);
-            if (!value.is_boolean())
-            {
-                error.Record(key, nullptr, "必须是布尔值");
-                return false;
-            }
-
-            out = value.as_boolean();
-            return true;
-        }
-
-        bool ReadFloat(const toml::value &table,
-                       const char *key,
-                       float &out,
-                       ParseErrorContext &error,
-                       const bool required = false)
-        {
-            if (!table.is_table() || !table.contains(key))
-            {
-                if (required)
-                    error.Record(key, nullptr, "缺少必需数值");
-                return !required;
-            }
-
-            const toml::value &value = table.at(key);
-            double number = 0.0;
-            if (value.is_floating())
-                number = value.as_floating();
-            else if (value.is_integer())
-                number = static_cast<double>(value.as_integer());
-            else
-            {
-                error.Record(key, nullptr, "必须是数值");
-                return false;
-            }
-
-            if (!std::isfinite(number)
-             || number > static_cast<double>(FLT_MAX)
-             || number < -static_cast<double>(FLT_MAX))
-            {
-                error.Record(key, nullptr, "数值超出有限 float 范围");
-                return false;
-            }
-
-            out = static_cast<float>(number);
-            return true;
-        }
-
-        bool ReadUnsigned(const toml::value &table,
-                          const char *key,
-                          uint32_t &out,
-                          ParseErrorContext &error)
-        {
-            if (!table.is_table() || !table.contains(key))
-                return true;
-
-            const toml::value &value = table.at(key);
-            if (!value.is_integer())
-            {
-                error.Record(key, nullptr, "必须是非负整数");
-                return false;
-            }
-
-            const int64 number = value.as_integer();
-            if (number < 0 || static_cast<uint64_t>(number) > hgl::HGL_U32_MAX)
-            {
-                error.Record(key, nullptr, "超出 uint32 范围");
-                return false;
-            }
-
-            out = static_cast<uint32_t>(number);
-            return true;
-        }
-
-        bool ParseTransform(const toml::value &root,
-                            MaterialRecipe &recipe,
-                            ParseErrorContext &error)
-        {
-            if (!root.contains("transform"))
-                return true;
-
-            ParseTableScope scope(error, "transform");
-            const toml::value &table = root.at("transform");
-            static const char *const keys[] = {
-                "source", "mapping", "orientation", "scale", "projection"
-            };
-            if (!ValidateKnownKeys(table, keys, 5, error))
-                return false;
-
-            AnsiString value;
-            if (table.contains("source"))
-            {
-                if (!ReadString(table, "source", value, error)
-                 || !ParseVertexInputMode(value.c_str(), recipe.vertex_node_config.input))
-                {
-                    error.Record("source", value.c_str(), "未知顶点输入模式");
-                    return false;
-                }
-            }
-            if (table.contains("mapping"))
-            {
-                if (!ReadString(table, "mapping", value, error)
-                 || !ParsePositionMappingMode(value.c_str(), recipe.vertex_node_config.position_mapping))
-                {
-                    error.Record("mapping", value.c_str(), "未知位置映射模式");
-                    return false;
-                }
-            }
-            if (table.contains("orientation"))
-            {
-                if (!ReadString(table, "orientation", value, error)
-                 || !ParseOrientationMode(value.c_str(), recipe.vertex_node_config.orientation))
-                {
-                    error.Record("orientation", value.c_str(), "未知朝向模式");
-                    return false;
-                }
-            }
-            if (table.contains("scale"))
-            {
-                if (!ReadString(table, "scale", value, error)
-                 || !ParseScaleMode(value.c_str(), recipe.vertex_node_config.scale))
-                {
-                    error.Record("scale", value.c_str(), "未知缩放模式");
-                    return false;
-                }
-            }
-            if (table.contains("projection"))
-            {
-                if (!ReadString(table, "projection", value, error)
-                 || !ParseProjectionMode(value.c_str(), recipe.vertex_node_config.projection))
-                {
-                    error.Record("projection", value.c_str(), "未知投影模式");
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        bool ParsePipeline(const toml::value &table,
-                           MaterialRenderStateOverrides &overrides,
-                           ParseErrorContext &error)
-        {
-            static const char *const keys[] = {
-                "cull_mode", "depth_test", "depth_write", "depth_compare_op",
-                "alpha_blend", "blend_src", "blend_dst", "dynamic_line_width",
-                "overlay", "wireframe", "line_width"
-            };
-            ParseTableScope scope(error, "render_state.pipeline");
-            if (!ValidateKnownKeys(table, keys, 11, error))
-                return false;
-
-            if (table.as_table().empty())
-            {
-                error.Record(nullptr, nullptr, "pipeline 表不能为空");
-                return false;
-            }
-
-            // 每个键都是**可选**的：只写与默认不同的项，未写的字段保留契约默认值。
-            MaterialPipelineConfig &config = overrides.pipeline_config;
-            MaterialPipelineFieldMask &mask = overrides.pipeline_config_mask;
-            mask = 0;
-
-            AnsiString value;
-            if (table.contains("cull_mode"))
-            {
-                if (!ReadString(table, "cull_mode", value, error)
-                 || !ParseVkCullMode(value.c_str(), config.cull_mode))
-                {
-                    error.Record("cull_mode", value.c_str(), "未知剔除模式");
-                    return false;
-                }
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::CullMode);
-            }
-            if (table.contains("depth_test"))
-            {
-                if (!ReadBool(table, "depth_test", config.depth_test, error))
-                    return false;
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthTest);
-            }
-            if (table.contains("depth_write"))
-            {
-                if (!ReadBool(table, "depth_write", config.depth_write, error))
-                    return false;
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthWrite);
-            }
-            if (table.contains("depth_compare_op"))
-            {
-                if (!ReadString(table, "depth_compare_op", value, error)
-                 || !ParseVkCompareOp(value.c_str(), config.depth_compare_op))
-                {
-                    error.Record("depth_compare_op", value.c_str(), "未知深度比较操作");
-                    return false;
-                }
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthCompareOp);
-            }
-            if (table.contains("alpha_blend"))
-            {
-                if (!ReadBool(table, "alpha_blend", config.alpha_blend, error))
-                    return false;
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::AlphaBlend);
-            }
-            if (table.contains("blend_src"))
-            {
-                if (!ReadString(table, "blend_src", value, error)
-                 || !ParseVkBlendFactor(value.c_str(), config.blend_src))
-                {
-                    error.Record("blend_src", value.c_str(), "未知源混合因子");
-                    return false;
-                }
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::BlendSrc);
-            }
-            if (table.contains("blend_dst"))
-            {
-                if (!ReadString(table, "blend_dst", value, error)
-                 || !ParseVkBlendFactor(value.c_str(), config.blend_dst))
-                {
-                    error.Record("blend_dst", value.c_str(), "未知目标混合因子");
-                    return false;
-                }
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::BlendDst);
-            }
-            if (table.contains("dynamic_line_width"))
-            {
-                if (!ReadBool(table, "dynamic_line_width", config.dynamic_line_width, error))
-                    return false;
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DynamicLineWidth);
-            }
-            if (table.contains("overlay"))
-            {
-                if (!ReadBool(table, "overlay", config.overlay, error))
-                    return false;
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::Overlay);
-            }
-            if (table.contains("wireframe"))
-            {
-                if (!ReadBool(table, "wireframe", config.wireframe, error))
-                    return false;
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::Wireframe);
-            }
-            if (table.contains("line_width"))
-            {
-                if (!ReadFloat(table, "line_width", config.line_width, error))
-                    return false;
-                if (config.line_width <= 0.0f)
-                {
-                    error.Record("line_width", nullptr, "必须大于 0");
-                    return false;
-                }
-                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::LineWidth);
-            }
-
-            overrides.has_pipeline_config = true;
-            return true;
-        }
-
-        bool ParseRenderState(const toml::value &root,
-                              MaterialRenderStateOverrides &overrides,
-                              ParseErrorContext &error)
-        {
-            if (!root.contains("render_state"))
-                return true;
-
-            ParseTableScope scope(error, "render_state");
-            const toml::value &table = root.at("render_state");
-            static const char *const keys[] = {
-                "alpha_test", "alpha_cutoff", "dither", "pipeline"
-            };
-            if (!ValidateKnownKeys(table, keys, 4, error))
-                return false;
-
-            if (table.contains("alpha_test"))
-            {
-                if (!ReadBool(table, "alpha_test", overrides.alpha_test, error))
-                    return false;
-                overrides.has_alpha_test = true;
-            }
-            if (table.contains("alpha_cutoff"))
-            {
-                if (!ReadFloat(table, "alpha_cutoff", overrides.alpha_cutoff, error))
-                    return false;
-                if (overrides.alpha_cutoff < 0.0f || overrides.alpha_cutoff > 1.0f)
-                {
-                    error.Record("alpha_cutoff", nullptr, "必须在 [0, 1] 范围内");
-                    return false;
-                }
-                overrides.has_alpha_cutoff = true;
-            }
-            if (table.contains("dither"))
-            {
-                if (!ReadBool(table, "dither", overrides.dither, error))
-                    return false;
-                overrides.has_dither = true;
-            }
-            if (table.contains("pipeline")
-             && !ParsePipeline(table.at("pipeline"), overrides, error))
-                return false;
-
-            return true;
-        }
-
-        bool ParseTextures(const toml::value &root,
-                           MaterialRecipe &recipe,
-                           ParseErrorContext &error)
-        {
-            if (!root.contains("textures"))
-                return true;
-
-            ParseTableScope scope(error, "textures");
-            const toml::value &textures = root.at("textures");
-            if (!textures.is_array())
-            {
-                error.Record(nullptr, nullptr, "必须是纹理表数组");
-                return false;
-            }
-
-            const char *const keys[] = {"name", "asset", "required", "layer", "auto_mipmaps"};
-            for (const toml::value &item : textures.as_array())
-            {
-                if (!ValidateKnownKeys(item, keys, 5, error))
-                    return false;
-
-                AnsiString name;
-                AnsiString asset;
-                bool required = true;
-                uint32_t layer = 0;
-                bool auto_mipmaps = false;
-                if (!ReadString(item, "name", name, error, true)
-                 || !ReadString(item, "asset", asset, error, true)
-                 || !ReadBool(item, "required", required, error)
-                 || !ReadUnsigned(item, "layer", layer, error)
-                 || !ReadBool(item, "auto_mipmaps", auto_mipmaps, error))
-                    return false;
-
-                if (!IsValidMaterialTextureName(name.c_str()))
-                {
-                    error.Record("name", name.c_str(), "非法纹理槽名称");
-                    return false;
-                }
-                for (const RecipeTextureBinding &existing : recipe.textures)
-                {
-                    if (existing.texture_name == name.c_str())
-                    {
-                        error.Record("name", name.c_str(), "纹理槽重复");
-                        return false;
-                    }
-                }
-
-                RecipeTextureBinding binding{};
-                binding.texture_name = name.c_str();
-                binding.resource_id = asset.c_str();
-                binding.required = required;
-                binding.array_layer = layer;
-                binding.auto_mipmaps = auto_mipmaps;
-                recipe.textures.emplace_back(std::move(binding));
-            }
-            return true;
-        }
-
-        bool ValidateTopLevelKeys(const toml::value &root,
-                                  ParseErrorContext &error)
-        {
-            static const char *const keys[] = {
-                "schema", "name", "domain", "fragment", "transform",
-                "render_state", "textures"
-            };
-            ParseTableScope scope(error, "root");
-            return ValidateKnownKeys(root, keys, 7, error);
+            ApplyCodecFailure(archive, root, error);
+            return false;
         }
 
         // `domain` 直接写领域契约名（MaterialDomainContract::name）。
         // 不再支持 `material_definition` 之类的中间名：那层映射正是本次要消灭的东西。
-        bool ParseDomain(const toml::value &root,
+        bool ApplyDomain(const MaterialRecipeSpec &spec,
                          MaterialRecipe &recipe,
                          ParseErrorContext &error)
         {
-            ParseTableScope scope(error, "root");
+            recipe.domain = spec.domain;
 
-            AnsiString name;
-            if (!ReadString(root, "domain", name, error, true))
-                return false;
-
-            if (!ParseMaterialDomain(name.c_str(), recipe.domain))
+            if (spec.domain == MaterialDomain::Custom)
             {
-                error.Record("domain", name.c_str(), "未知材质领域");
-                return false;
-            }
-
-            if (recipe.domain == MaterialDomain::Custom)
-            {
-                error.Record("domain", name.c_str(),
+                error.Record("domain", GetMaterialDomainName(spec.domain),
                              "Custom 无契约，配方不得使用");
                 return false;
             }
@@ -565,12 +262,32 @@ namespace hgl::graph::mtl
             // 只有契约、没有固定主着色器入口；在加载期就拒绝，别把错误留到运行时。
             if (!HasMaterialDomainEntrySource(recipe.domain))
             {
-                error.Record("domain", name.c_str(),
+                error.Record("domain", GetMaterialDomainName(spec.domain),
                              "该领域尚无固定主着色器入口（未实现）");
                 return false;
             }
 
             return true;
+        }
+
+        template <typename Array>
+        void ApplyStringOverride(const hgl::serialize::Presence<Array> &source,
+                                 std::vector<std::string> &target,
+                                 bool &target_present)
+        {
+            if (!source.present)
+                return;
+
+            // 出现过 ⇒ 整表替换（空数组 = 清空），与「不写这一行」语义完全不同。
+            target_present = true;
+            target.clear();
+
+            for (int i = 0; i < source.value.GetCount(); ++i)
+            {
+                AnsiString *slot = source.value[i];
+                if (slot)
+                    target.emplace_back(slot->c_str());
+            }
         }
 
         // `[fragment]`：片元阶段的两类可选意图 ——
@@ -580,42 +297,26 @@ namespace hgl::graph::mtl
         // 后者必须能从数据表达：位图字形（text_gpu_bitmap）与 SDF 字形领域相同，
         // 差别只在「最近邻采样 + 不解 SDF」。只允许 C++ 侧写这两个覆盖项，等于
         // 让同一种形态在数据里无法复现（RuntimeFormProbe / 回归门禁都只能走代码路径）。
-        bool ParseFragment(const toml::value &root,
+        bool ApplyFragment(const MaterialRecipeSpec &spec,
                            MaterialRecipe &recipe,
                            ParseErrorContext &error)
         {
-            if (!root.contains("fragment"))
-                return true;
+            ApplyStringOverride(spec.fragment.samplers,
+                                recipe.sampler_names, recipe.has_sampler_names);
+            ApplyStringOverride(spec.fragment.defines,
+                                recipe.compile_defines, recipe.has_compile_defines);
 
-            ParseTableScope scope(error, "fragment");
-            const toml::value &table = root.at("fragment");
-            static const char *const keys[] = {
-                "surface_module_name", "samplers", "defines"
-            };
-            if (!ValidateKnownKeys(table, keys, 3, error))
-                return false;
-
-            if (!ReadStringArray(table, "samplers",
-                                 recipe.sampler_names, recipe.has_sampler_names, error)
-             || !ReadStringArray(table, "defines",
-                                 recipe.compile_defines, recipe.has_compile_defines, error))
-                return false;
-
-            AnsiString name;
-            if (!ReadString(table, "surface_module_name", name, error))
-                return false;
-
+            const AnsiString &name = spec.fragment.surface_module_name;
             if (name.IsEmpty())
                 return true;
 
             // 只有 `no_material_source` 领域（当前仅 Sky）存在「同领域多表面形态」。
             // 其他领域写了这个名字只会被入口源静默忽略 —— 那是拼写错误或无意义配置。
-            const MaterialDomainContract *contract =
-                GetMaterialDomainContract(recipe.domain);
+            const MaterialDomainContract *contract = GetMaterialDomainContract(recipe.domain);
             if (!contract || !contract->no_material_source)
             {
-                error.Record("surface_module_name", name.c_str(),
-                             "只有 no_material_source 领域可以声明表面模块");
+                error.RecordIn("fragment", "surface_module_name", name.c_str(),
+                               "只有 no_material_source 领域可以声明表面模块");
                 return false;
             }
 
@@ -625,12 +326,227 @@ namespace hgl::graph::mtl
                                           ShaderProgramPurpose::ForwardColor,
                                           false, probe, name.c_str()))
             {
-                error.Record("surface_module_name", name.c_str(),
-                             "该领域没有对应的表面形态着色器");
+                error.RecordIn("fragment", "surface_module_name", name.c_str(),
+                               "该领域没有对应的表面形态着色器");
                 return false;
             }
 
             recipe.surface_module_name = name.c_str();
+            return true;
+        }
+
+        bool ApplyRenderState(const toml::value &root,
+                              const MaterialRecipeSpec &spec,
+                              MaterialRecipe &recipe,
+                              ParseErrorContext &error)
+        {
+            const RecipeRenderStateSpec &state = spec.render_state;
+            MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
+
+            if (state.alpha_test.present)
+            {
+                overrides.has_alpha_test = true;
+                overrides.alpha_test = state.alpha_test.value;
+            }
+
+            if (state.alpha_cutoff.present)
+            {
+                const float cutoff = state.alpha_cutoff.value;
+                if (!std::isfinite(cutoff))
+                {
+                    error.RecordIn("render_state", "alpha_cutoff", nullptr,
+                                   "数值超出有限 float 范围");
+                    return false;
+                }
+                if (cutoff < 0.0f || cutoff > 1.0f)
+                {
+                    error.RecordIn("render_state", "alpha_cutoff", nullptr,
+                                   "必须在 [0, 1] 范围内");
+                    return false;
+                }
+
+                overrides.has_alpha_cutoff = true;
+                overrides.alpha_cutoff = cutoff;
+            }
+
+            if (state.dither.present)
+            {
+                overrides.has_dither = true;
+                overrides.dither = state.dither.value;
+            }
+
+            if (!state.pipeline.present)
+                return true;
+
+            // 「表在、但一个键都没写」是书写错误：局部覆盖必须有覆盖项。
+            const toml::value *pipeline_node = FindTomlNode(root, "render_state.pipeline");
+            if (pipeline_node && pipeline_node->is_table()
+             && pipeline_node->as_table().empty())
+            {
+                error.RecordIn("render_state.pipeline", nullptr, nullptr,
+                               "pipeline 表不能为空");
+                return false;
+            }
+
+            // 每个键都是**可选**的：只写与默认不同的项，未写的字段保留契约默认值；
+            // `present` ⇒ 掩码对应位置 1，这是「显式写成默认值」与「没写」的唯一区分。
+            const RecipePipelineSpec &pipeline = state.pipeline.value;
+            MaterialPipelineConfig &config = overrides.pipeline_config;
+            MaterialPipelineFieldMask &mask = overrides.pipeline_config_mask;
+
+            overrides.has_pipeline_config = true;
+            mask = 0;
+
+            if (pipeline.cull_mode.present)
+            {
+                config.cull_mode = pipeline.cull_mode.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::CullMode);
+            }
+            if (pipeline.depth_test.present)
+            {
+                config.depth_test = pipeline.depth_test.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthTest);
+            }
+            if (pipeline.depth_write.present)
+            {
+                config.depth_write = pipeline.depth_write.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthWrite);
+            }
+            if (pipeline.depth_compare_op.present)
+            {
+                config.depth_compare_op = pipeline.depth_compare_op.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DepthCompareOp);
+            }
+            if (pipeline.alpha_blend.present)
+            {
+                config.alpha_blend = pipeline.alpha_blend.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::AlphaBlend);
+            }
+            if (pipeline.blend_src.present)
+            {
+                config.blend_src = pipeline.blend_src.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::BlendSrc);
+            }
+            if (pipeline.blend_dst.present)
+            {
+                config.blend_dst = pipeline.blend_dst.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::BlendDst);
+            }
+            if (pipeline.dynamic_line_width.present)
+            {
+                config.dynamic_line_width = pipeline.dynamic_line_width.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::DynamicLineWidth);
+            }
+            if (pipeline.overlay.present)
+            {
+                config.overlay = pipeline.overlay.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::Overlay);
+            }
+            if (pipeline.wireframe.present)
+            {
+                config.wireframe = pipeline.wireframe.value;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::Wireframe);
+            }
+            if (pipeline.line_width.present)
+            {
+                const float width = pipeline.line_width.value;
+                if (!std::isfinite(width))
+                {
+                    error.RecordIn("render_state.pipeline", "line_width", nullptr,
+                                   "数值超出有限 float 范围");
+                    return false;
+                }
+                if (width <= 0.0f)
+                {
+                    error.RecordIn("render_state.pipeline", "line_width", nullptr,
+                                   "必须大于 0");
+                    return false;
+                }
+
+                config.line_width = width;
+                mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::LineWidth);
+            }
+
+            return true;
+        }
+
+        bool ApplyTextures(const MaterialRecipeSpec &spec,
+                           MaterialRecipe &recipe,
+                           ParseErrorContext &error)
+        {
+            const hgl::ManagedArray<RecipeTextureSpec> &textures = spec.textures;
+            const int count = textures.GetCount();
+            for (int i = 0; i < count; ++i)
+            {
+                const RecipeTextureSpec *item = textures[i];
+                if (!item)
+                    continue;
+
+                if (!IsValidMaterialTextureName(item->texture_name.c_str()))
+                {
+                    error.RecordIn("textures", "name", item->texture_name.c_str(),
+                                   "非法纹理槽名称");
+                    return false;
+                }
+
+                for (const RecipeTextureBinding &existing : recipe.textures)
+                {
+                    if (existing.texture_name == item->texture_name.c_str())
+                    {
+                        error.RecordIn("textures", "name", item->texture_name.c_str(),
+                                       "纹理槽重复");
+                        return false;
+                    }
+                }
+
+                RecipeTextureBinding binding{};
+                binding.texture_name = item->texture_name.c_str();
+                binding.resource_id = item->resource_id.c_str();
+                binding.required = item->required;
+                binding.array_layer = item->layer;
+                binding.auto_mipmaps = item->auto_mipmaps;
+                recipe.textures.emplace_back(std::move(binding));
+            }
+
+            return true;
+        }
+
+        // 规约 → 运行时配方。字段取值已在 `ReadSpec` 里定型，这里只做**跨字段**
+        // 业务校验与「局部覆盖」的落地（`has_*` + 位掩码）。
+        bool BuildRecipe(const toml::value &root,
+                         const MaterialRecipeSpec &spec,
+                         MaterialRecipe &recipe,
+                         ParseErrorContext &error)
+        {
+            if (spec.name.IsEmpty())
+            {
+                error.Record("name", "", "必须是非空字符串");
+                return false;
+            }
+
+            recipe.recipe_name = spec.name.c_str();
+
+            if (!ApplyDomain(spec, recipe, error)
+             || !ApplyFragment(spec, recipe, error))
+                return false;
+
+            const RecipeTransformSpec &transform = spec.transform;
+            VertexShaderNodeConfig &node_config = recipe.vertex_node_config;
+            if (transform.input.present)
+                node_config.input = transform.input.value;
+            if (transform.position_mapping.present)
+                node_config.position_mapping = transform.position_mapping.value;
+            if (transform.orientation.present)
+                node_config.orientation = transform.orientation.value;
+            if (transform.scale.present)
+                node_config.scale = transform.scale.value;
+            if (transform.projection.present)
+                node_config.projection = transform.projection.value;
+
+            if (!ApplyRenderState(root, spec, recipe, error)
+             || !ApplyTextures(spec, recipe, error))
+                return false;
+
             return true;
         }
     }
@@ -676,26 +592,28 @@ namespace hgl::graph::mtl
                 error.Record("schema", nullptr, "必须存在且等于 1");
                 result = MaterialRecipeFileParseResult::InvalidValue;
             }
+            else if (!root.contains("name"))
+            {
+                error.Record("name", nullptr, "缺少必需字符串");
+                result = MaterialRecipeFileParseResult::InvalidValue;
+            }
+            else if (!root.contains("domain"))
+            {
+                error.Record("domain", nullptr, "缺少必需字符串");
+                result = MaterialRecipeFileParseResult::InvalidValue;
+            }
+            else if (!ValidateKeysByMeta(root,
+                                         hgl::asset::generated::Class_MaterialRecipeSpec,
+                                         AnsiString(), error))
+            {
+                result = MaterialRecipeFileParseResult::UnknownKey;
+            }
             else
             {
-                AnsiString name;
-                if (!ReadString(root, "name", name, error, true)
-                 || !ParseDomain(root, out_data.recipe, error))
+                MaterialRecipeSpec spec;
+                if (!ReadSpec(root, spec, error)
+                 || !BuildRecipe(root, spec, out_data.recipe, error))
                     result = MaterialRecipeFileParseResult::InvalidValue;
-                else
-                {
-                    out_data.recipe.recipe_name = name.c_str();
-
-                    if (!ParseFragment(root, out_data.recipe, error)
-                     || !ParseTransform(root, out_data.recipe, error)
-                     || !ParseRenderState(root, out_data.recipe.render_state_overrides, error)
-                     || !ParseTextures(root, out_data.recipe, error))
-                        result = error.unknown_key
-                            ? MaterialRecipeFileParseResult::UnknownKey
-                            : MaterialRecipeFileParseResult::InvalidValue;
-                    else if (!ValidateTopLevelKeys(root, error))
-                        result = MaterialRecipeFileParseResult::UnknownKey;
-                }
             }
         }
         catch (const toml::syntax_error &exception)

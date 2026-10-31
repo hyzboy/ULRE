@@ -57,6 +57,53 @@ extern_from = "hgl::graph::mtl::ParseVkBlendFactor"
 extern_to   = "hgl::graph::mtl::GetVkBlendFactorName"
 extern_include = "hgl/mtl/VkEnumText.h"
 
+# ── 引擎侧枚举：名字↔值真源各自在自己的头文件里，生成器只转发 ────────────────
+# 与上面 Vulkan 三枚举同一个理由：领域名与变换模式名是**运行期公开契约**
+# （`GetMaterialDomainName` / `ParseProjectionMode` 等被别处直接调用），
+# 这里再复制一份字面量表就等于制造第二个真源。转发同时保住了原来的
+# 大小写敏感的精确匹配口径。
+[[enum]]
+name           = "MaterialDomain"
+fq             = "hgl::graph::mtl::MaterialDomain"
+extern_from    = "hgl::graph::mtl::ParseMaterialDomain"
+extern_to      = "hgl::graph::mtl::GetMaterialDomainName"
+extern_include = "hgl/mtl/MaterialDomain.h"
+
+[[enum]]
+name           = "VertexInputMode"
+fq             = "hgl::graph::mtl::VertexInputMode"
+extern_from    = "hgl::graph::mtl::ParseVertexInputMode"
+extern_to      = "hgl::graph::mtl::GetVertexInputModeName"
+extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
+
+[[enum]]
+name           = "PositionMappingMode"
+fq             = "hgl::graph::mtl::PositionMappingMode"
+extern_from    = "hgl::graph::mtl::ParsePositionMappingMode"
+extern_to      = "hgl::graph::mtl::GetPositionMappingModeName"
+extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
+
+[[enum]]
+name           = "OrientationMode"
+fq             = "hgl::graph::mtl::OrientationMode"
+extern_from    = "hgl::graph::mtl::ParseOrientationMode"
+extern_to      = "hgl::graph::mtl::GetOrientationModeName"
+extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
+
+[[enum]]
+name           = "ScaleMode"
+fq             = "hgl::graph::mtl::ScaleMode"
+extern_from    = "hgl::graph::mtl::ParseScaleMode"
+extern_to      = "hgl::graph::mtl::GetScaleModeName"
+extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
+
+[[enum]]
+name           = "ProjectionMode"
+fq             = "hgl::graph::mtl::ProjectionMode"
+extern_from    = "hgl::graph::mtl::ParseProjectionMode"
+extern_to      = "hgl::graph::mtl::GetProjectionModeName"
+extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"

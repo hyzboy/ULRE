@@ -1204,37 +1204,82 @@ def render_serialize_header(structs: list[AssetStruct], enums: list[EnumInfo]) -
     return "".join(out)
 
 
-def render_codec_header(group: GroupConfig, structs: list[AssetStruct],
-                        enums: list[EnumInfo]) -> str:
-    """生成 `<Group>Codec.gen.h`：FlatBuffers 布局描述表 + 格式门面。
+def _codec_split_paths(codec_header: str) -> tuple[str, str]:
+    """`<Group>Codec.gen.h` ⇒ (`<Group>Toml.gen.h`, `<Group>Fbs.gen.h`)。
 
-    门面函数（Read/Write/Encode/Decode）只是把「值树 ↔ 格式」的两步接起来，
-    真正的字段遍历在 `<Group>Serialize.gen.h` 里，只有一份。
+    拆开的原因是它们的**依赖面完全不同**：TOML 门面只要 `TomlCodec.h`，
+    FlatBuffers 门面要 flatbuffers（本工程里是可选依赖）。数据面（如
+    `ULRE.ShaderMaterialData`）只读 TOML，不该为了一个可选依赖被拖下水。
     """
-    schema_include = group.fbs_generated[len("inc/"):] if group.fbs_generated.startswith("inc/") \
-        else group.fbs_generated
-    serialize_include = group.serialize_header[len("inc/"):] \
-        if group.serialize_header.startswith("inc/") else group.serialize_header
+    suffix = "Codec.gen.h"
+    if not codec_header.endswith(suffix):
+        raise GenError(f"codec 配置必须以 {suffix} 结尾：{codec_header}")
+    base = codec_header[: -len(suffix)]
+    return base + "Toml.gen.h", base + "Fbs.gen.h"
 
-    out: list[str] = []
-    out.append(
+
+def _rel_include(path: str) -> str:
+    return path[len("inc/"):] if path.startswith("inc/") else path
+
+
+def _codec_banner(detail: str) -> str:
+    return (
         "// ─────────────────────────────────────────────────────────────────────────────\n"
         "// @ulre-codegen begin\n"
         "//   由 src/Tools/AssetGen/asset_gen.py 生成，请勿手工修改。\n"
-        "//   这里是**布局描述**（FlatBuffers 的 voffset / 内联 struct / 向量元素类型）\n"
-        "//   与格式门面。字段遍历仍然只有 Serialize.gen.h 里那一份。\n"
+        f"//   {detail}\n"
         "// @ulre-codegen end\n"
         "// ─────────────────────────────────────────────────────────────────────────────\n"
         "#pragma once\n\n"
-        "#include <hgl/serialize/Archive.h>\n"
-        "#include <hgl/serialize/TomlCodec.h>\n"
-        "#include <hgl/serialize/FlatCodec.h>\n"
-        f"#include <{serialize_include}>\n"
-        f"#include <{schema_include}>\n"
     )
+
+
+def render_toml_codec_header(group: GroupConfig, structs: list[AssetStruct]) -> str:
+    """生成 `<Group>Toml.gen.h`：TOML ↔ 结构体的格式门面（零 flatbuffers 依赖）。"""
+    out: list[str] = []
+    out.append(_codec_banner(
+        "TOML 格式门面（Read* / Write*）。字段遍历仍然只有 Serialize.gen.h 里那一份，\n"
+        "//   本文件不含任何 FlatBuffers 依赖，数据面可以单独包含它。"))
+    out.append("#include <hgl/serialize/Archive.h>\n")
+    out.append("#include <hgl/serialize/TomlCodec.h>\n")
+    out.append(f"#include <{_rel_include(group.serialize_header)}>\n")
+    out.append("\n")
     for header in sorted({s.header for s in structs}):
-        rel = header[len("inc/"):] if header.startswith("inc/") else header
-        out.append(f"#include <{rel}>\n")
+        out.append(f"#include <{_rel_include(header)}>\n")
+    out.append("\nnamespace hgl::asset::generated\n{\n")
+
+    for info in structs:
+        out.append(f"    inline bool Read{info.gen_name}(const toml::value &table, {info.fq} &out)\n    {{\n")
+        out.append("        hgl::serialize::Value node;\n")
+        out.append("        hgl::serialize::FromToml(table, node);\n")
+        out.append("        hgl::serialize::Archive ar = hgl::serialize::Archive::ForRead(node);\n")
+        out.append(f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, out);\n")
+        out.append("        return ar.Ok();\n    }\n\n")
+
+        out.append(f"    inline toml::value Write{info.gen_name}(const {info.fq} &in)\n    {{\n")
+        out.append("        hgl::serialize::Value node;\n")
+        out.append("        hgl::serialize::Archive ar = hgl::serialize::Archive::ForWrite(node);\n")
+        out.append(f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, in);\n")
+        out.append("        return hgl::serialize::ToToml(node);\n    }\n\n")
+
+    out.append("}//namespace hgl::asset::generated\n")
+    return "".join(out)
+
+
+def render_fbs_codec_header(group: GroupConfig, structs: list[AssetStruct],
+                            enums: list[EnumInfo]) -> str:
+    """生成 `<Group>Fbs.gen.h`：FlatBuffers 布局描述表 + 编解码门面。"""
+    out: list[str] = []
+    out.append(_codec_banner(
+        "FlatBuffers 布局描述（voffset / 内联 struct / 向量元素类型）与编解码门面。\n"
+        "//   字段遍历仍然只有 Serialize.gen.h 里那一份。需要 flatbuffers。"))
+    out.append("#include <hgl/serialize/Archive.h>\n")
+    out.append("#include <hgl/serialize/FlatCodec.h>\n")
+    out.append(f"#include <{_rel_include(group.serialize_header)}>\n")
+    out.append(f"#include <{_rel_include(group.fbs_generated)}>\n")
+    out.append("\n")
+    for header in sorted({s.header for s in structs}):
+        out.append(f"#include <{_rel_include(header)}>\n")
     out.append("\nnamespace hgl::asset::generated\n{\n")
     out.append("    namespace fb = hgl::serialize::fb;\n\n")
 
@@ -1305,23 +1350,7 @@ def render_codec_header(group: GroupConfig, structs: list[AssetStruct],
         out.append(f"    inline const fb::TableDesc {info.gen_name}_fbs = "
                    f'{{"{info.gen_name}", {info.gen_name}_fbs_fields, {ordinal}}};\n\n')
 
-    # 格式门面：TOML
-    for info in structs:
-        out.append(f"    inline bool Read{info.gen_name}(const toml::value &table, {info.fq} &out)\n    {{\n")
-        out.append("        hgl::serialize::Value node;\n")
-        out.append("        hgl::serialize::FromToml(table, node);\n")
-        out.append("        hgl::serialize::Archive ar = hgl::serialize::Archive::ForRead(node);\n")
-        out.append(f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, out);\n")
-        out.append("        return ar.Ok();\n    }\n\n")
-
-        out.append(f"    inline toml::value Write{info.gen_name}(const {info.fq} &in)\n    {{\n")
-        out.append("        hgl::serialize::Value node;\n")
-        out.append("        hgl::serialize::Archive ar = hgl::serialize::Archive::ForWrite(node);\n")
-        out.append(f"        hgl::serialize::StructSerializer<{info.fq}>::Do(ar, in);\n")
-        out.append("        return hgl::serialize::ToToml(node);\n    }\n\n")
-
     # 格式门面：FlatBuffers
-    fb_type = f"::hgl::asset::schema::{info.gen_name}" if False else None
     for info in structs:
         schema_type = group.fbs_schema_type(info.gen_name)
         out.append(
@@ -1350,6 +1379,23 @@ def render_codec_header(group: GroupConfig, structs: list[AssetStruct],
         )
 
     out.append("}//namespace hgl::asset::generated\n")
+    return "".join(out)
+
+
+def render_codec_header(group: GroupConfig, structs: list[AssetStruct],
+                        enums: list[EnumInfo]) -> str:
+    """生成 `<Group>Codec.gen.h`：TOML + FlatBuffers 两套门面的汇总入口。
+
+    本文件只做 `#include`，不产生任何符号。只需要 TOML 的消费者应直接包含
+    `<Group>Toml.gen.h`（零 flatbuffers 依赖），需要二进制编解码的包含本文件。
+    """
+    toml_header, fbs_header = _codec_split_paths(group.codec_header)
+    out: list[str] = []
+    out.append(_codec_banner(
+        "格式门面汇总入口（TOML + FlatBuffers）。本身不产生符号，只做 include。\n"
+        "//   只要 TOML 的消费者应直接包含 <Group>Toml.gen.h。"))
+    out.append(f"#include <{_rel_include(toml_header)}>\n")
+    out.append(f"#include <{_rel_include(fbs_header)}>\n")
     return "".join(out)
 
 
@@ -1541,6 +1587,13 @@ def main(argv: list[str]) -> int:
                 else:
                     run_flatc(repo_root, group, args.flatc)
             if group.codec_header:
+                toml_header, fbs_header = _codec_split_paths(group.codec_header)
+                write_or_check(repo_root / toml_header,
+                               render_toml_codec_header(group, ordered),
+                               args.check, report)
+                write_or_check(repo_root / fbs_header,
+                               render_fbs_codec_header(group, ordered, group_enums),
+                               args.check, report)
                 write_or_check(repo_root / group.codec_header,
                                render_codec_header(group, ordered, group_enums),
                                args.check, report)

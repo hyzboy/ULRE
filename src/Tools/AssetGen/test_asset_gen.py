@@ -63,6 +63,27 @@ class AssetGenTests(unittest.TestCase):
         with self.assertRaises(asset_gen.GenError):
             registry.classify("float[0]")
 
+    def test_codec_header_splits_into_toml_and_fbs(self) -> None:
+        toml_header, fbs_header = asset_gen._codec_split_paths(
+            "inc/hgl/asset/generated/FooCodec.gen.h")
+        self.assertEqual(toml_header, "inc/hgl/asset/generated/FooToml.gen.h")
+        self.assertEqual(fbs_header, "inc/hgl/asset/generated/FooFbs.gen.h")
+
+    def test_codec_header_requires_expected_suffix(self) -> None:
+        with self.assertRaises(asset_gen.GenError):
+            asset_gen._codec_split_paths("inc/hgl/asset/generated/Foo.gen.h")
+
+    def test_toml_facade_has_no_flatbuffers_dependency(self) -> None:
+        generated = Path(__file__).resolve().parents[3] / "inc" / "hgl" / "asset" / "generated"
+        toml_headers = sorted(generated.glob("*Toml.gen.h"))
+        if not toml_headers:
+            self.skipTest("生成产物尚未落盘")
+
+        for header in toml_headers:
+            text = header.read_text(encoding="utf-8")
+            for token in ("flatbuffers", "FlatCodec", "FbType", "Offset<"):
+                self.assertNotIn(token, text, f"{header.name} 不应依赖 {token}")
+
 
 if __name__ == "__main__":
     unittest.main()
