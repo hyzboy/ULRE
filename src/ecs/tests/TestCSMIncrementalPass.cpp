@@ -4780,9 +4780,16 @@ int main(int argc, char** argv)
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "SplitTablePath(AnsiString(archive.FailedPath()), table, key);",
               "失败路径不再被切成「表 + 键」（诊断会退化成整条路径或空表名）" },
+            // 2026-11 起配方解析彻底脱离 toml11 结构层：文本只由
+            // `hgl::serialize::FromTomlText` 转成自有 `Value` 树，原始写法从树上回填。
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
-              "const toml::value *node = FindTomlNode(root, archive.FailedPath());",
+              "const hgl::serialize::Value *node = root.FindByPath(archive.FailedPath());",
               "失败键的原始字符串回填丢失（诊断里的 value 列会变空）" },
+            // 禁复活：格式绑定结构解析。结构信息只允许来自生成的 `StructSerializer<T>`。
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
+              "toml::value", "toml11 结构层复活（结构解析必须只走生成的 StructSerializer<T>）", true },
+            { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
+              "toml::parse_str", "直接调用 toml11 解析器复活（文本入口只能走 FromTomlText）", true },
             // 禁复活：调用侧粘性路径栈。这类机制在「值解析失败」时路径为空或继承陈旧表名。
             { "MaterialRecipeFile.cpp", OS_TEXT("src/ShaderMaterialData/MaterialRecipeFile.cpp"),
               "ParseTableScope", "调用侧粘性表路径栈复活（值解析失败时会指错表）", true },

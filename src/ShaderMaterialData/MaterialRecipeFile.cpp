@@ -4,10 +4,10 @@
 
 #include <hgl/asset/generated/MaterialRecipeMeta.gen.h>
 #include <hgl/asset/generated/MaterialRecipeSerialize.gen.h>
-#include <hgl/serialize/TomlCodec.h>
 #include <hgl/serialize/Archive.h>
-
-#include <toml/toml.hpp>
+#include <hgl/serialize/MetaSchema.h>
+#include <hgl/serialize/TomlCodec.h>
+#include <hgl/serialize/Value.h>
 
 #include <cmath>
 #include <cstring>
@@ -50,15 +50,6 @@ namespace hgl::graph::mtl
             }
         };
 
-        AnsiString JoinPath(const AnsiString &parent, const char *child)
-        {
-            if (!child || !child[0])
-                return parent;
-            if (parent.IsEmpty())
-                return AnsiString(child);
-            return parent + "." + child;
-        }
-
         // `render_state.pipeline.cull_mode` ⇒ 表 "render_state.pipeline" + 键 "cull_mode"。
         void SplitTablePath(const AnsiString &path, AnsiString &table, AnsiString &key)
         {
@@ -81,43 +72,6 @@ namespace hgl::graph::mtl
 
             table = AnsiString(begin, static_cast<int>(last_dot - begin));
             key = AnsiString(last_dot + 1);
-        }
-
-        // 按 TOML 路径取节点，只用于把作者的原始写法（如 "Orthographic2D"）带回诊断。
-        // 表数组（`[[textures]]`）不进路径，遇到时取第一个能命中剩余路径的元素。
-        const toml::value *FindTomlNode(const toml::value &node, const char *path)
-        {
-            if (!path || !path[0])
-                return &node;
-
-            if (node.is_array())
-            {
-                for (const toml::value &item : node.as_array())
-                {
-                    const toml::value *found = FindTomlNode(item, path);
-                    if (found)
-                        return found;
-                }
-                return nullptr;
-            }
-
-            if (!node.is_table())
-                return nullptr;
-
-            const char *dot = strchr(path, '.');
-            const int head_length =
-                dot ? static_cast<int>(dot - path) : static_cast<int>(strlen(path));
-            const char *tail = dot ? dot + 1 : nullptr;
-
-            for (const auto &pair : node.as_table())
-            {
-                const char *candidate = pair.first.c_str();
-                if (candidate && static_cast<int>(strlen(candidate)) == head_length
-                 && strncmp(candidate, path, static_cast<size_t>(head_length)) == 0)
-                    return FindTomlNode(pair.second, tail);
-            }
-
-            return nullptr;
         }
 
         // 生成 codec 的错误措辞是通用的「字段类型或取值不合法」；枚举键的真实原因
@@ -155,87 +109,45 @@ namespace hgl::graph::mtl
             return fallback;
         }
 
+        /// 值树里的原始文本（`u8char` 与 `char` 是同一编码，仅类型名不同）。
+        AnsiString ToAnsiText(const hgl::serialize::Value &node)
+        {
+            if (!node.IsString())
+                return AnsiString();
+
+            const U8String &text = node.GetString();
+            if (text.Length() <= 0)
+                return AnsiString();
+
+            return AnsiString(reinterpret_cast<const char *>(text.c_str()),
+                              text.Length());
+        }
+
         void ApplyCodecFailure(const hgl::serialize::Archive &archive,
-                               const toml::value &root,
+                               const hgl::serialize::Value &root,
                                ParseErrorContext &error)
         {
             AnsiString table;
             AnsiString key;
             SplitTablePath(AnsiString(archive.FailedPath()), table, key);
 
-            const char *raw_value = nullptr;
-            AnsiString raw_text;
-            const toml::value *node = FindTomlNode(root, archive.FailedPath());
-            if (node && node->is_string())
-            {
-                raw_text = node->as_string().c_str();
-                raw_value = raw_text.c_str();
-            }
+            // 失败键的原始写法（如 "NotACullMode"）只在诊断里有价值：值树已经
+            // 丢掉「作者写了什么」这一层，按 `FailedPath()` 回到原节点取出来。
+            const hgl::serialize::Value *node = root.FindByPath(archive.FailedPath());
+            const AnsiString raw_text = node ? ToAnsiText(*node) : AnsiString();
 
-            error.RecordIn(table, key.c_str(), raw_value,
+            error.RecordIn(table, key.c_str(),
+                           raw_text.IsEmpty() ? nullptr : raw_text.c_str(),
                            DetailForFailedKey(key.c_str(), archive.ErrorMessage()));
         }
 
-        // 严格键校验的唯一真源是生成的 `ClassMetaInfo`（`toml_key` + `struct_meta`
-        // 递归指针）。这里只判「键名是否合法」，取值/形态错误交给生成的 codec。
-        bool ValidateKeysByMeta(const toml::value &node,
-                                const hgl::asset::ClassMetaInfo &meta,
-                                const AnsiString &path,
-                                ParseErrorContext &error)
-        {
-            if (node.is_array())
-            {
-                for (const toml::value &item : node.as_array())
-                {
-                    if (!ValidateKeysByMeta(item, meta, path, error))
-                        return false;
-                }
-                return true;
-            }
-
-            if (!node.is_table())
-                return true;
-
-            for (const auto &pair : node.as_table())
-            {
-                const char *input_key = pair.first.c_str();
-                const hgl::asset::PropertyMetaInfo *property = nullptr;
-                for (uint32_t i = 0; i < meta.property_count; ++i)
-                {
-                    const hgl::asset::PropertyMetaInfo &candidate = meta.properties[i];
-                    const char *toml_key = candidate.toml_key ? candidate.toml_key : candidate.name;
-                    if (toml_key && input_key && strcmp(toml_key, input_key) == 0)
-                    {
-                        property = &candidate;
-                        break;
-                    }
-                }
-
-                if (!property)
-                {
-                    error.RecordIn(path, input_key, nullptr, "未知键");
-                    return false;
-                }
-
-                if (property->struct_meta
-                 && !ValidateKeysByMeta(pair.second, *property->struct_meta,
-                                        JoinPath(path, input_key), error))
-                    return false;
-            }
-
-            return true;
-        }
-
-        // 字段抽取只走生成的 codec：字段名、类型、缺键语义、枚举拼写表全部由
-        // `MaterialRecipeSpec` + `AssetGen` 产物单点决定。
-        bool ReadSpec(const toml::value &root,
+        // 字段抽取只走生成的 `StructSerializer<T>`：字段名、类型、缺键语义、枚举
+        // 拼写表全部由 `MaterialRecipeSpec` + `AssetGen` 产物单点决定。
+        bool ReadSpec(const hgl::serialize::Value &root,
                       MaterialRecipeSpec &spec,
                       ParseErrorContext &error)
         {
-            hgl::serialize::Value node;
-            hgl::serialize::FromToml(root, node);
-
-            hgl::serialize::Archive archive = hgl::serialize::Archive::ForRead(node);
+            hgl::serialize::Archive archive = hgl::serialize::Archive::ForRead(root);
             hgl::serialize::StructSerializer<MaterialRecipeSpec>::Do(archive, spec);
             if (archive.Ok())
                 return true;
@@ -336,8 +248,7 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ApplyRenderState(const toml::value &root,
-                              const MaterialRecipeSpec &spec,
+        bool ApplyRenderState(const MaterialRecipeSpec &spec,
                               MaterialRecipe &recipe,
                               ParseErrorContext &error)
         {
@@ -379,23 +290,12 @@ namespace hgl::graph::mtl
             if (!state.pipeline.present)
                 return true;
 
-            // 「表在、但一个键都没写」是书写错误：局部覆盖必须有覆盖项。
-            const toml::value *pipeline_node = FindTomlNode(root, "render_state.pipeline");
-            if (pipeline_node && pipeline_node->is_table()
-             && pipeline_node->as_table().empty())
-            {
-                error.RecordIn("render_state.pipeline", nullptr, nullptr,
-                               "pipeline 表不能为空");
-                return false;
-            }
-
             // 每个键都是**可选**的：只写与默认不同的项，未写的字段保留契约默认值；
             // `present` ⇒ 掩码对应位置 1，这是「显式写成默认值」与「没写」的唯一区分。
             const RecipePipelineSpec &pipeline = state.pipeline.value;
             MaterialPipelineConfig &config = overrides.pipeline_config;
             MaterialPipelineFieldMask &mask = overrides.pipeline_config_mask;
 
-            overrides.has_pipeline_config = true;
             mask = 0;
 
             if (pipeline.cull_mode.present)
@@ -468,6 +368,18 @@ namespace hgl::graph::mtl
                 mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::LineWidth);
             }
 
+            // 「表在、但一个键都没写」是书写错误：局部覆盖必须有覆盖项。
+            // `RecipePipelineSpec` 的 11 个字段全是 `Presence<T>`，于是「一个
+            // `present` 都没有」就是「空表」，与 `[render_state.pipeline]` 是否
+            // 由 TOML 解析成空表无关。
+            if (mask == 0)
+            {
+                error.RecordIn("render_state.pipeline", nullptr, nullptr,
+                               "pipeline 表不能为空");
+                return false;
+            }
+
+            overrides.has_pipeline_config = true;
             return true;
         }
 
@@ -514,8 +426,7 @@ namespace hgl::graph::mtl
 
         // 规约 → 运行时配方。字段取值已在 `ReadSpec` 里定型，这里只做**跨字段**
         // 业务校验与「局部覆盖」的落地（`has_*` + 位掩码）。
-        bool BuildRecipe(const toml::value &root,
-                         const MaterialRecipeSpec &spec,
+        bool BuildRecipe(const MaterialRecipeSpec &spec,
                          MaterialRecipe &recipe,
                          ParseErrorContext &error)
         {
@@ -544,7 +455,7 @@ namespace hgl::graph::mtl
             if (transform.projection.present)
                 node_config.projection = transform.projection.value;
 
-            if (!ApplyRenderState(root, spec, recipe, error)
+            if (!ApplyRenderState(spec, recipe, error)
              || !ApplyTextures(spec, recipe, error))
                 return false;
 
@@ -580,65 +491,65 @@ namespace hgl::graph::mtl
         ParseErrorContext error;
         MaterialRecipeSpec spec;
         MaterialRecipeFileParseResult result = MaterialRecipeFileParseResult::OK;
-        try
-        {
-            const toml::value root = toml::parse_str(
-                std::string(content, static_cast<size_t>(content_size)));
 
-            if (!root.is_table())
+        // 文本 → 值树只走 `hgl::serialize` 的 TOML 后端：本文件不再见到任何
+        // toml11 类型，结构解析全部由生成的 `StructSerializer<T>` 驱动。
+        hgl::serialize::Value root;
+        hgl::serialize::TomlParseError toml_error;
+        const bool parsed =
+            hgl::serialize::FromTomlText(content, static_cast<size_t>(content_size),
+                                         root, &toml_error);
+
+        const hgl::serialize::Value *schema_node =
+            parsed ? root.FindFieldExact("schema") : nullptr;
+        int64_t schema_value = 0;
+
+        if (!parsed)
+        {
+            error.line = toml_error.line;
+            error.detail = toml_error.detail.IsEmpty() ? toml_error.title
+                                                       : toml_error.detail;
+            result = MaterialRecipeFileParseResult::InvalidValue;
+        }
+        else if (!root.IsTable())
+        {
+            error.Record(nullptr, nullptr, "根节点必须是表");
+            result = MaterialRecipeFileParseResult::InvalidValue;
+        }
+        else if (!schema_node || !schema_node->GetInt(schema_value) || schema_value != 1)
+        {
+            error.Record("schema", nullptr, "必须存在且等于 1");
+            result = MaterialRecipeFileParseResult::InvalidValue;
+        }
+        else if (!root.FindFieldExact("name"))
+        {
+            error.Record("name", nullptr, "缺少必需字符串");
+            result = MaterialRecipeFileParseResult::InvalidValue;
+        }
+        else if (!root.FindFieldExact("domain"))
+        {
+            error.Record("domain", nullptr, "缺少必需字符串");
+            result = MaterialRecipeFileParseResult::InvalidValue;
+        }
+        else
+        {
+            // 严格键校验的唯一真源是生成的 `ClassMetaInfo`（`toml_key` +
+            // `struct_meta` 递归指针）。这里只判「键名是否合法」，取值/形态错误
+            // 交给生成的序列化。
+            AnsiString bad_path;
+            AnsiString bad_key;
+            if (!hgl::serialize::ValidateKeysByMeta(
+                    root, hgl::asset::generated::Class_MaterialRecipeSpec,
+                    AnsiString(), bad_path, bad_key))
             {
-                error.Record(nullptr, nullptr, "根节点必须是表");
-                result = MaterialRecipeFileParseResult::InvalidValue;
-            }
-            else if (!root.contains("schema")
-                  || !root.at("schema").is_integer()
-                  || root.at("schema").as_integer() != 1)
-            {
-                error.Record("schema", nullptr, "必须存在且等于 1");
-                result = MaterialRecipeFileParseResult::InvalidValue;
-            }
-            else if (!root.contains("name"))
-            {
-                error.Record("name", nullptr, "缺少必需字符串");
-                result = MaterialRecipeFileParseResult::InvalidValue;
-            }
-            else if (!root.contains("domain"))
-            {
-                error.Record("domain", nullptr, "缺少必需字符串");
-                result = MaterialRecipeFileParseResult::InvalidValue;
-            }
-            else if (!ValidateKeysByMeta(root,
-                                         hgl::asset::generated::Class_MaterialRecipeSpec,
-                                         AnsiString(), error))
-            {
+                error.RecordIn(bad_path, bad_key.c_str(), nullptr, "未知键");
                 result = MaterialRecipeFileParseResult::UnknownKey;
             }
             else if (!ReadSpec(root, spec, error)
-                  || !BuildRecipe(root, spec, out_data.recipe, error))
+                  || !BuildRecipe(spec, out_data.recipe, error))
             {
                 result = MaterialRecipeFileParseResult::InvalidValue;
             }
-        }
-        catch (const toml::syntax_error &exception)
-        {
-            if (!exception.errors().empty())
-            {
-                const toml::error_info &info = exception.errors().front();
-                if (!info.locations().empty())
-                {
-                    error.line = static_cast<int>(
-                        info.locations().front().first.first_line_number());
-                    error.detail = info.locations().front().second;
-                }
-                else
-                    error.detail = info.title();
-            }
-            result = MaterialRecipeFileParseResult::InvalidValue;
-        }
-        catch (const toml::exception &exception)
-        {
-            error.Record(nullptr, nullptr, exception.what());
-            result = MaterialRecipeFileParseResult::InvalidValue;
         }
 
         if (result != MaterialRecipeFileParseResult::OK)
