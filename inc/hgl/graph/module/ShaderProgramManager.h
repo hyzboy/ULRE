@@ -131,7 +131,7 @@ public: //Compute
     /** 编译 compute GLSL 源码并创建 ShaderModule（按 name 缓存，与 graphics 模块同一缓存）。
      *  push_constant_size 是 CPU 侧预期布局大小；开发形态从 SPV 反射实际范围并要求二者一致，
      *  再把反射值登记进缓存清单。它不参与 ShaderModule 创建。生成器不在编译
-     *  （ULRE_ENABLE_SHADERGEN=0）时硬失败。 */
+     *  （ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）时硬失败。 */
     const ShaderModule *CreateComputeShaderModule(const AnsiString &shader_module_name,
                                                   const AnsiString &glsl_source,
                                                   const uint32_t push_constant_size = 0);

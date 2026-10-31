@@ -1,7 +1,7 @@
 param(
     # 开发形态构建树：含 ShaderResourceSchemaRegressionGate（只能在生成器 ON 的树里构建）
     [string]$DevBuildDir  = "build",
-    # 发行形态构建树：ULRE_ENABLE_SHADERGEN=OFF，树内不存在 ULRE.ShaderProgramBuild
+    # 发行形态构建树：ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF，树内不存在 ULRE.ShaderProgramBuild
     [string]$ProdBuildDir = "build_probe_nosg",
     [string]$Config       = "Debug",
     [int]$Jobs            = 8,
@@ -105,15 +105,15 @@ function Invoke-Verification
 
         if (-not (Test-Path (Join-Path $devPath "CMakeCache.txt")))
         {
-            if (-not (Invoke-Logged "configure dev tree (ULRE_ENABLE_SHADERGEN=ON)" {
-                        cmake -S $repoRoot -B $devPath -DULRE_ENABLE_SHADERGEN=ON @extraArgs }))
+            if (-not (Invoke-Logged "configure dev tree (ULRE_ENABLE_SHADER_PROGRAM_BUILD=ON)" {
+                        cmake -S $repoRoot -B $devPath -DULRE_ENABLE_SHADER_PROGRAM_BUILD=ON @extraArgs }))
             { return }
         }
 
         if (-not (Test-Path (Join-Path $prodPath "CMakeCache.txt")))
         {
-            if (-not (Invoke-Logged "configure prod tree (ULRE_ENABLE_SHADERGEN=OFF)" {
-                        cmake -S $repoRoot -B $prodPath -DULRE_ENABLE_SHADERGEN=OFF @extraArgs }))
+            if (-not (Invoke-Logged "configure prod tree (ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF)" {
+                        cmake -S $repoRoot -B $prodPath -DULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF @extraArgs }))
             { return }
         }
     }

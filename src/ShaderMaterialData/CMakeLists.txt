@@ -2,7 +2,7 @@
 #
 # 这一层是运行时真正需要的：TOML 材质定义装载/材质配方解析、渲染模板解析、SPV 产物库、
 # ShaderCreateInfo 的纯数据成员、采样器预设表。它零 GLSL 文本发射、零 glslang，
-# 因此发行形态（ULRE_ENABLE_SHADERGEN=0）也照常链接。
+# 因此发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）也照常链接。
 #
 # GlslModule* 与 ShaderCodeResourceManifest 是材质/着色器元数据，归本层；
 # 物理阶段源解析、options 生成及 SPIR-V 编译则由 ULRE.ShaderProgramBuild 消费。
@@ -43,7 +43,7 @@ set(SHADERMATERIALDATA_FILES
     # 主着色器的唯一可变输入（generated/frag_options.glsl）。它**发射 GLSL 文本**，
     # 是本层「零 GLSL 文本发射」表述的唯一例外，但边界仍然干净：发射的是一份
     # 十几行的宏表（兼作 program 身份），不是可执行着色器源码 —— 本层依旧零
-    # glslang、零模板拼装，发行形态（ULRE_ENABLE_SHADERGEN=0）照常链接。
+    # glslang、零模板拼装，发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）照常链接。
     ${ROOT_INCLUDE_PATH}/hgl/mtl/DomainOptions.h
     DomainOptionsEmitter.cpp
     # ── 领域主着色器模板表（领域 + pass → 固定 .frag 文件）──

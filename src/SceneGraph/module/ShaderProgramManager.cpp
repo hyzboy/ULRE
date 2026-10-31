@@ -5,11 +5,11 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/common/ShaderStageDef.h>
-// 生成器开关（`#if ULRE_ENABLE_SHADERGEN`）的唯一定义处：ON 时头内默认 1，
+// 生成器开关（`#if ULRE_ENABLE_SHADER_PROGRAM_BUILD`）的唯一定义处：ON 时头内默认 1，
 // OFF 时 CMake 全局下发 0。必须显式包含，不能靠间接包含 —— 否则开发形态会
 // 误判为 0，把 compute 的现编路径整条摘掉。
 #include<hgl/common/RenderOptions.h>
-#if ULRE_ENABLE_SHADERGEN
+#if ULRE_ENABLE_SHADER_PROGRAM_BUILD
 #include <hgl/ShaderCompilerAPI.h>
 #endif
 #include<hgl/graph/core/GraphicsContext.h>
@@ -363,7 +363,7 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
     if(ShaderModule *cached=shader_module_cache.FindName(ShaderStage::Compute,shader_module_name))
         return(cached);
 
-#if ULRE_ENABLE_SHADERGEN
+#if ULRE_ENABLE_SHADER_PROGRAM_BUILD
     mtl::ShaderCreateInfo sci(ShaderStage::Compute);
 
     sci.SetFinalGLSL(glsl_source.c_str());
@@ -403,7 +403,7 @@ const ShaderModule *ShaderProgramManager::CreateComputeShaderModule(const AnsiSt
 #else
     // 发行形态没有 GLSL→SPV 编译器。走到这里说明调用方还在用源码接口，
     // 应当改调 CreateComputePipelineFromCache。
-    GLogError(u8"[ShaderProgramManager] 生成器已编译出构建（ULRE_ENABLE_SHADERGEN=0），"
+    GLogError(u8"[ShaderProgramManager] 生成器已编译出构建（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0），"
                 u8"无法在运行时编译 compute GLSL：%s",shader_module_name.c_str());
     return(nullptr);
 #endif

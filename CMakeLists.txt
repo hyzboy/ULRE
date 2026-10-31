@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.28)
 cmake_policy(VERSION 3.28)
 
 PROJECT(ULRE)
@@ -56,14 +56,14 @@ if(ULRE_ENABLE_QT)
 endif()
 
 # ── 发行形态：是否把材质程序构建与阶段编译接入开发引擎 ─────────────────────────────
-# ULRE_ENABLE_SHADERGEN 保留为既有配置名。ON（默认）构建 src/ShaderProgramBuild、
+# ULRE_ENABLE_SHADER_PROGRAM_BUILD 保留为既有配置名。ON（默认）构建 src/ShaderProgramBuild、
 # 回归工具和示例；OFF 则只保留读取预烘焙 SPV 的运行时。
 # C++ 侧同名宏登记在 inc/hgl/common/RenderOptions.h §2b，值域只有 0/1，判断写 `#if`。
-option(ULRE_ENABLE_SHADERGEN "Build and link material program compilation support" ON)
+option(ULRE_ENABLE_SHADER_PROGRAM_BUILD "Build and link material program compilation support" ON)
 
-if(NOT ULRE_ENABLE_SHADERGEN)
+if(NOT ULRE_ENABLE_SHADER_PROGRAM_BUILD)
     # 全工程统一下发 0（不按配置区分），避免同一头在不同 TU 看到不同值。
-    add_compile_definitions(ULRE_ENABLE_SHADERGEN=0)
+    add_compile_definitions(ULRE_ENABLE_SHADER_PROGRAM_BUILD=0)
 endif()
 
 # ULRE_RUNTIME：运行时真正需要的一切，**不含** ULRE.ShaderProgramBuild。
@@ -94,7 +94,7 @@ SET(ULRE_RUNTIME
             ${Vulkan_LIBRARIES}
 )
 
-# ULRE_PROGRAM_BUILD：材质程序组装/阶段编译侧，只在 ULRE_ENABLE_SHADERGEN=ON 时存在。
+# ULRE_PROGRAM_BUILD：材质程序组装/阶段编译侧，只在 ULRE_ENABLE_SHADER_PROGRAM_BUILD=ON 时存在。
 #
 # **必须整库链接（WHOLE_ARCHIVE），不能用普通静态库链接。**
 # Windows 下 add_cm_library 产出的是静态库，链接器只从 .lib 中取「被引用符号」所在的 .obj。
@@ -105,11 +105,11 @@ SET(ULRE_RUNTIME
 # 没有烘焙缓存，必然 miss，所有图元因 "unresolved runtime pipeline" 被跳过）。
 # 实证：SimpleSphere.exe 中搜不到 AssembleMaterialProgram / frag_options.glsl，
 # 却能搜到 "No shader program build backend installed"。
-# 注意发行形态（ULRE_ENABLE_SHADERGEN=OFF）没有这个目标，钩子保持为空是**正确**行为：
+# 注意发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）没有这个目标，钩子保持为空是**正确**行为：
 # 那时由 EnsureShaderProgramManifestBackend() 装 manifest 后端读预烘焙缓存。
 # 只对聚合入口做整库链接；直接 PRIVATE 链接 ULRE.ShaderProgramBuild 且确实调用了构建 API 的
 # 工具/回归门不受影响（它们本来就按需取 TU）。
-IF(ULRE_ENABLE_SHADERGEN)
+IF(ULRE_ENABLE_SHADER_PROGRAM_BUILD)
     SET(ULRE_PROGRAM_BUILD "$<LINK_LIBRARY:WHOLE_ARCHIVE,ULRE.ShaderProgramBuild>")
 ELSE()
     SET(ULRE_PROGRAM_BUILD "")
@@ -155,8 +155,8 @@ add_library(ULRE::Engine ALIAS ULRE_Engine)
 add_subdirectory(src)
 
 # example/ 示例需要材质程序构建能力（MaterialDefinitionRegistry / 模板解析等），
-# 发行形态（ULRE_ENABLE_SHADERGEN=OFF）下没有它们可链接的目标，故一并退出构建。
-IF(ULRE_ENABLE_SHADERGEN)
+# 发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）下没有它们可链接的目标，故一并退出构建。
+IF(ULRE_ENABLE_SHADER_PROGRAM_BUILD)
     add_subdirectory(example)
 ENDIF()
 

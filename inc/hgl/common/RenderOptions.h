@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RenderOptions.h —— **ULRE 编译期开关总台账**（2026-10-13 起）
  *
  * 本项目一切「编译期开关 / 容量常量」集中在此声明与定默认值：要找某个开关、想知道它默认
@@ -143,8 +143,8 @@
  * **发行版是 0**：产品只打包预烘焙的 SPV，运行时不需要生成器，也不需要 glslang。
  * 开发形态是 1：一切按需现编，改 GLSL 立刻生效。
  *
- * 打开/关闭：`cmake -DULRE_ENABLE_SHADERGEN=OFF`（根 `CMakeLists.txt` 的 option；OFF 时
- * 该 option 会 `add_compile_definitions(ULRE_ENABLE_SHADERGEN=0)`，全工程一致，不按配置区分）。
+ * 打开/关闭：`cmake -DULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF`（根 `CMakeLists.txt` 的 option；OFF 时
+ * 该 option 会 `add_compile_definitions(ULRE_ENABLE_SHADER_PROGRAM_BUILD=0)`，全工程一致，不按配置区分）。
  *
  * 本开关管**三件事**：
  *  1) 链接图：`ULRE::Engine` 里是否含 `ULRE.ShaderProgramBuild`；`ULRE::Runtime` 永不含它。
@@ -154,8 +154,8 @@
  * ⚠ 值为 0 时**运行时仍然会算 ShaderProgramKey**（那是找 SPV 的身份，不是编译）——
  *   「不算键」是另一件事，见 §4 处置记录与 shadergen-decoupling 设计文档。
  */
-#ifndef ULRE_ENABLE_SHADERGEN
-#define ULRE_ENABLE_SHADERGEN 1
+#ifndef ULRE_ENABLE_SHADER_PROGRAM_BUILD
+#define ULRE_ENABLE_SHADER_PROGRAM_BUILD 1
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════════

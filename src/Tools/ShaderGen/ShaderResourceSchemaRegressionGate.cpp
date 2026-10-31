@@ -9671,7 +9671,7 @@ void main()
 
     /// keep_artifacts=true 时不清空 store_root，并把本次烘焙的期望值（含清单与两
     /// stage SPV 的完整校验值）留在磁盘上 —— 供发行形态探针（RuntimeFormProbe，
-    /// ULRE_ENABLE_SHADERGEN=0 构建）跨进程消费，证明「生成器烘焙 → 无生成器运行时
+    /// ULRE_ENABLE_SHADER_PROGRAM_BUILD=0 构建）跨进程消费，证明「生成器烘焙 → 无生成器运行时
     /// 查表」这条链路成立。
     static GateResult RunProgramManifestLookupCase(
         const std::filesystem::path &store_root,
@@ -11854,7 +11854,7 @@ int main(const int argc, char **argv)
 {
     // 发行形态夹具烘焙模式：argc==3 且 argv[1]=="emit-release-cache"。
     // 产物（manifest + 两 stage SPV + expectation.txt）留给 RuntimeFormProbe
-    // 在 ULRE_ENABLE_SHADERGEN=0 构建里消费。
+    // 在 ULRE_ENABLE_SHADER_PROGRAM_BUILD=0 构建里消费。
     if (argc == 3 && std::strcmp(argv[1], "emit-release-cache") == 0)
     {
         if (!InitShaderCompiler())

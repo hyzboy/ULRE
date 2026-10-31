@@ -3,7 +3,7 @@
 // MaterialDefinitionRegistry.h —— 材质定义的**数据面**入口（装载/查询/规范化）。
 //
 // 本头只描述「读材质定义 + 组装构建请求」这些运行时也要做的事，因此它可以被
-// 发行形态（ULRE_ENABLE_SHADERGEN=0）单独编译。
+// 发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）单独编译。
 //
 // 生成期入口（ComputeMaterialProgramKey / BuildResolvedMaterialVertexABI）**不在这里**：
 // 它们要么发射 GLSL，要么要读 ShaderLibrary/*.glsl 的声明闭包，只有构建期才知道怎么做。

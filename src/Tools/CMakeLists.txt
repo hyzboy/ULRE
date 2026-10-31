@@ -11,8 +11,8 @@ add_subdirectory(RuntimeFormProbe)
 add_subdirectory(DomainOptions)
 
 # 着色器/材质程序回归工具：直接链接 ULRE.ShaderProgramBuild，发行形态
-# （ULRE_ENABLE_SHADERGEN=OFF）下不构建。
-IF(ULRE_ENABLE_SHADERGEN)
+# （ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）下不构建。
+IF(ULRE_ENABLE_SHADER_PROGRAM_BUILD)
     add_subdirectory(ShaderGen)
 ENDIF()
 

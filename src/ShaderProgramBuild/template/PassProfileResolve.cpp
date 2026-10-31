@@ -7,7 +7,7 @@
 // 渲染模板的「生成期面」：只有这里才需要读 ShaderLibrary 里的 GLSL 模块清单，
 // 用来核对 module root 的 include 路径、构建整张模块图、闭合能力声明。
 //
-// 发行形态（ULRE_ENABLE_SHADERGEN=0）里 ShaderLibrary 根本不存在，所以这一侧
+// 发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）里 ShaderLibrary 根本不存在，所以这一侧
 // 跟着 ULRE.ShaderProgramBuild 一起退出构建；运行时的结构校验在
 // src/ShaderMaterialData/PassProfile.cpp（同名重载，不吃 registry）。
 

@@ -22,7 +22,7 @@
 #include <hgl/type/Smart.h>
 #include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
-// 生成器开关（`#if ULRE_ENABLE_SHADERGEN`）的唯一定义处：ON 时头内默认 1，
+// 生成器开关（`#if ULRE_ENABLE_SHADER_PROGRAM_BUILD`）的唯一定义处：ON 时头内默认 1，
 // OFF 时 CMake 全局下发 0。必须显式包含，不能靠间接包含。
 #include <hgl/common/RenderOptions.h>
 #include <hgl/time/Time.h>
@@ -68,7 +68,7 @@ namespace hgl::ecs
         //
         // 只在开发形态存在：发行包不带 .glsl，无从读取。整个函数一起 #if 掉，
         // 免得 OFF 形态留下一个「永远没人调用」的内部链接函数。
-    #if ULRE_ENABLE_SHADERGEN
+    #if ULRE_ENABLE_SHADER_PROGRAM_BUILD
         AnsiString LoadShaderSource(const std::string &path)
         {
             hgl::io::OpenFileInputStream opener(hgl::ToOSString(path.c_str()));
@@ -92,7 +92,7 @@ namespace hgl::ecs
             buffer[size_t(size)] = 0;
             return AnsiString(buffer.data(), int(size));
         }
-    #endif//ULRE_ENABLE_SHADERGEN
+    #endif//ULRE_ENABLE_SHADER_PROGRAM_BUILD
     }
 
     GPUCullSystem::GPUCullSystem()
@@ -230,7 +230,7 @@ namespace hgl::ecs
 
         const AnsiString kProgramName("GPUCullSystem.Pipeline");
 
-    #if ULRE_ENABLE_SHADERGEN
+    #if ULRE_ENABLE_SHADER_PROGRAM_BUILD
         // 开发形态：GLSL 单源是唯一事实源，现编并顺手把 SPV 烘焙进 shader-cache。
         // 加载着色器源码（ShaderLibrary 单源路径，禁绝对路径）
         const std::string shader_path =

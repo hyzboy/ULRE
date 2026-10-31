@@ -10,7 +10,7 @@
 // **本模块不认识任何「构建后端」**：材质程序构建侧（ULRE.ShaderProgramBuild）或直通后端要装进
 // 运行时接缝（inc/hgl/mtl/ShaderProgramBuildBackend.h）时，通过
 // SetShaderCompilerLifecycleHooks() 注册一对钩子，由插件就绪 / 关闭时回调。
-// 这样编译器模块对上层零反向依赖，发行形态（ULRE_ENABLE_SHADERGEN=OFF）
+// 这样编译器模块对上层零反向依赖，发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）
 // 也能照常把它编进运行时。
 
 #pragma once

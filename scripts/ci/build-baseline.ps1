@@ -9,7 +9,7 @@ param(
     [switch]$SkipConfigure,
     [switch]$SkipBuild,
     [switch]$SkipTest,
-    # 发行形态验收：ULRE_ENABLE_SHADERGEN=OFF 的第二棵树能否只链 ULRE::Runtime 就跑通
+    # 发行形态验收：ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF 的第二棵树能否只链 ULRE::Runtime 就跑通
     # 烘焙好的 shader-cache。默认关闭 —— 它要额外一棵构建树，耗时不可忽略，且 cutter
     # 回归频率低于常规基线。改动 ULRE::Runtime 边界 / ShaderMaterialData / 清单格式
     # 时必须打开。
@@ -275,7 +275,7 @@ if (-not $SkipTest) {
 # 编号用 [extra] 而不占用 [n/5]，因为前面 5 个阶段是每次都要跑的，这一节按需开启。
 $reasons = @()
 if ($VerifyReleaseForm) {
-    Write-Host "[extra] 发行形态验收（ULRE_ENABLE_SHADERGEN=OFF 树）"
+    Write-Host "[extra] 发行形态验收（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF 树）"
     $verifyScript = Join-Path $scriptDir "verify-release-form.ps1"
     $verifyLog    = Join-Path $LogDir "verify-release-form-$Config-$stamp.log"
     & pwsh -NoProfile -File $verifyScript -DevBuildDir $buildDirName -Config $Config -Jobs $Jobs 2>&1 |
@@ -318,7 +318,7 @@ if ($reasons.Count -gt 0) {
 [void]$md.AppendLine("| 通过 | $ctestPassed |")
 [void]$md.AppendLine("| 失败 | $ctestFailed |")
 [void]$md.AppendLine("")
-[void]$md.AppendLine("| 发行形态验收（ULRE_ENABLE_SHADERGEN=OFF） | 值 |")
+[void]$md.AppendLine("| 发行形态验收（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF） | 值 |")
 [void]$md.AppendLine("|---|---|")
 [void]$md.AppendLine("| 是否执行 | $([bool]$VerifyReleaseForm) |")
 [void]$md.AppendLine("| 结果 | $(if (-not $VerifyReleaseForm) { '未执行' } elseif ($verifyRc -eq 0) { 'PASS' } else { "FAIL (rc=$verifyRc)" }) |")

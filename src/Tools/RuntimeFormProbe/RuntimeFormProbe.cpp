@@ -536,10 +536,10 @@ namespace
 
 int main(const int argc, char **argv)
 {
-#if ULRE_ENABLE_SHADERGEN
+#if ULRE_ENABLE_SHADER_PROGRAM_BUILD
     std::fprintf(stderr,
-                 "[WARN] built with ULRE_ENABLE_SHADERGEN=1; this probe is meant for "
-                 "the release form (ULRE_ENABLE_SHADERGEN=OFF).\n");
+                 "[WARN] built with ULRE_ENABLE_SHADER_PROGRAM_BUILD=1; this probe is meant for "
+                 "the release form (ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF).\n");
 #endif
 
     if (argc != 2)

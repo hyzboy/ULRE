@@ -1,7 +1,7 @@
 #include <hgl/mtl/PassProfile.h>
 
 // 渲染模板的「数据面」：静态模板表、名字表、请求容器、以及不依赖模块清单的
-// 结构校验。发行形态（ULRE_ENABLE_SHADERGEN=0）同样需要这些能力——选模板、
+// 结构校验。发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）同样需要这些能力——选模板、
 // 装 module root、算 stable_hash 都要在运行时完成。
 //
 // 与 ULRE.ShaderProgramBuild 的分界线：任何需要读 ShaderLibrary 里的 GLSL 模块清单

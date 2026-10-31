@@ -1,4 +1,4 @@
-﻿#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
+#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：HGL_VK_DESCRIPTOR_POOL_FALLBACK）
 #include<hgl/platform/Vulkan.h>
 #include<hgl/platform/Window.h>
 #include<hgl/vk/VKDevice.h>
@@ -996,9 +996,9 @@ VulkanDevice *VulkanDeviceCreater::Create()
         OutputPhysicalDeviceCaps(physical_device);
     #endif//_DEBUG
 
-    // 把设备极限推给 GLSL 编译器做校验门槛。发行形态（ULRE_ENABLE_SHADERGEN=0）没有
+    // 把设备极限推给 GLSL 编译器做校验门槛。发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）没有
     // 编译器可推，整段消失；设备极限本身仍留在 PhysicalDeviceProfile 里给能力门槛用。
-#if ULRE_ENABLE_SHADERGEN
+#if ULRE_ENABLE_SHADER_PROGRAM_BUILD
     mtl::SetShaderCompilerPhysicalDeviceProfile(physical_device->GetPhysicalDeviceProfile());
 #endif
 

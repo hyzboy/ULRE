@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 namespace hgl::graph::mtl {}
 
@@ -22,7 +22,7 @@ class ShaderCreateInfo
 public:
 
     /** 释放 `SPVData` 的回调。SPV 内存归编译器插件所有，所以释放必须由生成器提供；
-     *  发行形态（ULRE_ENABLE_SHADERGEN=0）没有生成器 ⇒ 该指针为 null，
+     *  发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）没有生成器 ⇒ 该指针为 null，
      *  此时 `spv_data` 恒为 null（只走 `cached_spv_data` 路径）。 */
     using SPVReleaser = void (*)(SPVData *);
 
