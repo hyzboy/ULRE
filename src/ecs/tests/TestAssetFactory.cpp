@@ -9,9 +9,12 @@
  *   · allow_fallback=false ⇒ 空指针 + Fallback（供「必须真读到」的场合）
  *   · default_type 补齐省略类型段的 URI
  *   · 批量加载顺序对齐、单项失败不中断
+ *   · 真实几何加载器的注册/摘除与失败路径
  */
 
 #include<hgl/asset/AssetFactory.h>
+#include<hgl/graph/asset/GeometryAssetObject.h>
+#include<hgl/graph/asset/GeometryAssetRegistry.h>
 
 #include<hgl/log/Log.h>
 #include<hgl/log/Logger.h>
@@ -284,6 +287,46 @@ namespace
         f.Clear();
     }
 
+    // ── 真实几何加载器：注册/摘除与失败路径（不需要 GPU）────────────────────
+
+    void TestGeometryLoaderWiring()
+    {
+        AssetFactory &f = AssetFactory::Instance();
+        f.Clear();
+
+        Check(!f.IsRegistered(AssetType::Geometry), "初始状态不应有几何加载器");
+
+        // 空注册器 ⇒ 等同于摘除，返回 false 且不留下加载器
+        Check(!hgl::graph::RegisterGeometryAssetLoader(nullptr), "绑空注册器应返回 false");
+        Check(!f.IsRegistered(AssetType::Geometry), "绑空注册器后不应登记加载器");
+
+        // 有注册器但未绑设备 ⇒ 加载器被装上，但解析必然失败（ParseFailed）
+        hgl::graph::GeometryAssetRegistry registry;
+        Check(!registry.GetDevice(), "测试用注册器不应有设备");
+
+        Check(hgl::graph::RegisterGeometryAssetLoader(&registry), "绑注册器应成功");
+        Check(f.IsRegistered(AssetType::Geometry), "绑注册器后应登记几何加载器");
+
+        AssetLoadStatus status = AssetLoadStatus::Ok;
+        AssetObjectPtr object = f.Create(OS_TEXT("geo:builtin:cube"), AssetLoadOptions{}, &status);
+
+        Check(!object, "无设备时几何加载应失败");
+        Check(status == AssetLoadStatus::ParseFailed, "无设备时的状态应为 ParseFailed");
+
+        Check(hgl::graph::UnregisterGeometryAssetLoader(), "摘除加载器应成功");
+        Check(!f.IsRegistered(AssetType::Geometry), "摘除后不应再登记加载器");
+
+        // 摘除之后同样的 URI 会走降级路径
+        object = f.Create(OS_TEXT("geo:builtin:cube"), AssetLoadOptions{}, &status);
+
+        Check(object && status == AssetLoadStatus::Fallback, "摘除后应降级为 GenericAssetObject");
+        Check(dynamic_cast<GenericAssetObject *>((AssetObject *)object) != nullptr,
+              "降级结果应是 GenericAssetObject");
+
+        hgl::graph::UnregisterGeometryAssetLoader();
+        f.Clear();
+    }
+
     void TestBatchOverwrites()
     {
         AssetFactory &f = AssetFactory::Instance();
@@ -316,6 +359,7 @@ int main(int, char **)
     TestDefaultType();
     TestBatch();
     TestBatchOverwrites();
+    TestGeometryLoaderWiring();
 
     if (g_fail == 0)
     {

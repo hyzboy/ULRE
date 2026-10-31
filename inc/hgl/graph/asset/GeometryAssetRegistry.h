@@ -78,6 +78,27 @@ namespace hgl::graph
         GeometryAsset * CreateUniqueFromSpec(const GeometryAssetSpec &spec,
                                              const GeometryVertexFormat *format_override=nullptr);
 
+        /**
+         * @brief 按 `AssetURI` 取（无则建）句柄 —— 与纹理完全对称的定位入口。
+         *
+         * 接受的全部写法（类型段可省，省略时按 `AssetType::Geometry` 补齐）：
+         *
+         * ```
+         * geo:builtin:cube            预设名（走 GeometryPresetLibrary）
+         * geo:file:res/geo/x.geo.toml 规约文件或 .geo minipack
+         * builtin:cube                「省略类型」形式，等价于第一行
+         * file:res/geo/x.geo.toml     「省略类型」形式，等价于第二行
+         * res/geo/x.geo.toml          裸路径（等价于 file:）
+         * ```
+         *
+         * `builtin:` 走内存规约 ⇒ 创建即 `Resident`，没有流送窗口；
+         * `file:` 走读盘 ⇒ 可能停在 `MetaOnly`/`Loading`，由渲染门禁拦截。
+         *
+         * 失败（预设不存在、规约非法、读盘失败）⇒ 返回 nullptr。
+         */
+        GeometryAsset * GetOrLoadURI(const OSString &uri,
+                                     const GeometryVertexFormat *format_override=nullptr);
+
     public:     // 查询
 
         GeometryAsset * FindByUri(const U8String &resource_id)const{return FindByResourceId(resource_id);}

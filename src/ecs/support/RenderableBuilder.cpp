@@ -3,6 +3,8 @@
 #include <hgl/ecs/components/MaterialData.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
+#include <hgl/graph/asset/GeometryAssetRegistry.h>
+#include <hgl/asset/AssetURI.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -125,6 +127,56 @@ namespace hgl::ecs
         }
 
         return WithPrimitiveAsset(asset, variant_index);
+    }
+
+    RenderableBuilder &RenderableBuilder::WithGeometry(
+        const hgl::OSString &geometry_uri,
+        const hgl::graph::mtl::MaterialRecipe &recipe,
+        const hgl::graph::PrimitiveType primitive_type)
+    {
+        if (failed || !entity)
+            return *this;
+
+        if (geometry_uri.IsEmpty() || recipe.recipe_name.empty())
+        {
+            Fail("WithGeometry: empty uri or recipe name");
+            return *this;
+        }
+
+        hgl::graph::GraphicsContext *gc = world->GetGraphicsContext();
+        if (!gc)
+        {
+            Fail("WithGeometry: no GraphicsContext");
+            return *this;
+        }
+
+        hgl::graph::PrimitiveAssetRegistry *registry = gc->GetPrimitiveAssetRegistry();
+        if (!registry)
+        {
+            Fail("WithGeometry: no PrimitiveAssetRegistry");
+            return *this;
+        }
+
+        // 资源 id 必须同时编码「几何 + 配方」：只按几何去重会让同几何不同配方的
+        // 实体共享到第一个配方。`name` 非空 ⇒ 注册器用 `prm:@<name>` 作 id。
+        hgl::graph::PrimitiveAssetSpec spec;
+
+        spec.name  = hgl::asset::AssetURISegmentToAnsi(geometry_uri);
+        spec.name += "@";
+        spec.name += recipe.recipe_name.c_str();
+
+        spec.geometry_path  = geometry_uri;
+        spec.recipe_name    = recipe.recipe_name.c_str();
+        spec.primitive_type = primitive_type;
+
+        const hgl::graph::PrimitiveAsset *asset = registry->GetOrCreate(spec);
+        if (!asset)
+        {
+            Fail("WithGeometry: PrimitiveAssetRegistry::GetOrCreate");
+            return *this;
+        }
+
+        return WithPrimitiveAsset(asset).WithRecipe(recipe);
     }
 
     RenderableBuilder &RenderableBuilder::WithRecipe(

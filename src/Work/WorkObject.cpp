@@ -4,10 +4,13 @@
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/asset/GeometryAssetRegistry.h>
+#include<hgl/graph/asset/GeometryAsset.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/time/Time.h>
+#include<hgl/utf.h>
 #include<hgl/log/Log.h>
 //#include<iostream>
 
@@ -28,6 +31,32 @@ namespace hgl
             return nullptr;
         }
         return graphics->FindOrLoadMaterialRecipe(name);
+    }
+
+    const graph::GeometryAsset *WorkObject::GetGeometryAsset(const char *uri)
+    {
+        auto *graphics = GetGraphicsContext();
+        if (!graphics)
+        {
+            GLogError(u8"[WorkObject] 无法解析几何 URI：GraphicsContext 未就绪 uri=%s",
+                      uri ? uri : "<null>");
+            return nullptr;
+        }
+
+        if (!uri || !uri[0])
+        {
+            GLogError(u8"[WorkObject] 无法解析几何 URI：URI 为空");
+            return nullptr;
+        }
+
+        return graphics->GetGeometryAssetRegistry()->GetOrLoadURI(ToOSString(uri));
+    }
+
+    graph::Geometry *WorkObject::GetGeometry(const char *uri)
+    {
+        const graph::GeometryAsset *asset = GetGeometryAsset(uri);
+
+        return asset ? asset->GetGeometry() : nullptr;
     }
 
     bool WorkObject::LoadRecipeFile(const OSString &path)

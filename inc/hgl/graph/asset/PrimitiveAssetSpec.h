@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/common/PrimitiveType.h>
 #include <hgl/asset/AssetAnnotation.h>
@@ -41,6 +41,18 @@ namespace hgl::graph
      * recipe  = "Core.PBR.DepthOnly"
      * purpose = "depth_only"
      * ```
+     *
+     * `geometry` 是 `AssetURI`，接受以下全部写法（类型段省略时按几何补齐）：
+     *
+     * ```
+     * res/geo/sphere_64.geo.toml      裸路径
+     * file:res/geo/sphere_64.geo.toml 显式文件来源
+     * geo:file:res/geo/x.geo.toml     显式类型 + 来源
+     * builtin:cube                    内置预设（走 GeometryPresetLibrary）
+     * geo:builtin:cube                同上，写全类型
+     * ```
+     *
+     * 相对路径按**本 TOML 文件所在目录**解析；`builtin:` 是预设名，不做路径解析。
      */
     struct HGL_ASSET_STRUCT PrimitiveAssetSpec
     {
@@ -54,7 +66,7 @@ namespace hgl::graph
         AnsiString  name;
 
         HGL_PROPERTY(EditAnywhere, Category = "Binding", AssetRef = "geo", Key = "geometry")
-        OSString    geometry_path;                              ///<几何资产路径
+        OSString    geometry_path;                              ///<几何资产定位（`AssetURI`，见上）
 
         HGL_PROPERTY(EditAnywhere, Category = "Binding", AssetRef = "recipe", Key = "recipe")
         AnsiString  recipe_name;                                ///<主(Surface)变体配方名

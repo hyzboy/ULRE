@@ -56,6 +56,22 @@ namespace hgl::ecs
             const hgl::OSString &primitive_path,
             uint32_t variant_index = 0);
 
+        /**
+         * @brief 用「几何 `AssetURI` + 材质配方」一步装配，几何由注册器持有。
+         *
+         * 几何 URI 的全部写法见 `GeometryAssetRegistry::GetOrLoadURI`：
+         * `geo:builtin:cube` / `builtin:cube` / `geo:file:res/geo/x.geo.toml` / 裸路径。
+         *
+         * 装配出的 `PrimitiveAsset` 由 `PrimitiveAssetRegistry` 持有并去重，实体只拿裸指针
+         * —— 与 `WithPrimitiveAssetPath` 同一所有权模型，调用方**不要**自己 delete。
+         *
+         * 失败（URI 解析失败 / 几何加载失败 / 配方不在注册器里）⇒ builder 进入失败态。
+         */
+        RenderableBuilder &WithGeometry(
+            const hgl::OSString &geometry_uri,
+            const hgl::graph::mtl::MaterialRecipe &recipe,
+            hgl::graph::PrimitiveType primitive_type = hgl::graph::PrimitiveType::Triangles);
+
         RenderableBuilder &WithRecipe(
             const hgl::graph::mtl::MaterialRecipe &recipe);
 

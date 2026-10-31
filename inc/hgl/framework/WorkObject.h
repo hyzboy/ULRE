@@ -14,6 +14,8 @@ namespace hgl
     {
         class RenderContext;
         class Camera;
+        class Geometry;
+        class GeometryAsset;
         struct ViewportInfo;
         struct CameraInfo;
         namespace mtl { struct MaterialRecipe; }
@@ -56,6 +58,25 @@ namespace hgl
 
         /// Find a loaded material recipe, loading the default recipe directory on first miss.
         const graph::mtl::MaterialRecipe *GetRecipe(const char *name);
+
+        /**
+         * @brief 按 `AssetURI` 取几何句柄（无则建）。
+         *
+         * `geo:builtin:cube` / `builtin:cube` / `geo:file:res/geo/x.geo.toml` / 裸路径，
+         * 语义见 `GeometryAssetRegistry::GetOrLoadURI`。
+         *
+         * 返回的句柄由 `GraphicsContext` 的几何资产注册器持有，**不要**
+         * `GeometryManager::Add()`（那是另一条所有权线，会双销毁）。
+         */
+        const graph::GeometryAsset *GetGeometryAsset(const char *uri);
+
+        /**
+         * @brief `GetGeometryAsset()` 的裸几何便捷入口。
+         *
+         * 生命周期跟随注册器：**不要**自己 delete，也不要交给 `GeometryManager`。
+         * 返回的几何可能是异步流送的载体，`file:` 来源需要渲染门禁判断是否就绪。
+         */
+        graph::Geometry *GetGeometry(const char *uri);
         bool LoadRecipeFile(const OSString &path);
         bool LoadRecipeDirectory(const OSString &path);
 

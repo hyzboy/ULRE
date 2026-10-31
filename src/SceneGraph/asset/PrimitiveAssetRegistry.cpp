@@ -1,6 +1,7 @@
 #include<hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include<hgl/graph/asset/PrimitiveAssetFile.h>
 #include<hgl/graph/asset/GeometryAssetRegistry.h>
+#include<hgl/asset/AssetURI.h>
 #include<hgl/mtl/MaterialRecipeRegistry.h>
 #include<hgl/filesystem/Path.h>
 #include<hgl/log/Log.h>
@@ -57,7 +58,9 @@ namespace hgl::graph
             return(nullptr);
         }
 
-        GeometryAsset *geometry_asset=geometry_registry->GetOrLoad(spec.geometry_path);
+        // 走 URI 门面：`geo:builtin:cube` / `builtin:cube` / `geo:file:...` / 裸路径
+        // 全部在这里合流，规约层不需要知道自己写的是哪种来源。
+        GeometryAsset *geometry_asset=geometry_registry->GetOrLoadURI(spec.geometry_path);
 
         if(!geometry_asset)
         {
@@ -161,7 +164,18 @@ namespace hgl::graph
         const OSString base_dir=
             (hgl::filesystem::Path(filename).GetParent()).ToOSString();
 
-        spec.geometry_path=ResolveRelative(base_dir,spec.geometry_path);
+        // 只有「路径来源」才按 TOML 目录解析相对路径；`builtin:` 是名字不是路径。
+        // 重写走 target 段再拼回去，这样 `geo:file:x` / `file:x` 都不会把前缀
+        // 卷进相对路径解析里。
+        const asset::AssetURI geometry_uri=asset::AssetURI::Parse(spec.geometry_path);
+
+        if(!geometry_uri.IsBuiltin())
+        {
+            spec.geometry_path=asset::AssetURI::MakeAssetURI(
+                geometry_uri.type,
+                geometry_uri.source,
+                ResolveRelative(base_dir,geometry_uri.target));
+        }
 
         Entry *entry=BuildEntry(spec,resource_id);
 

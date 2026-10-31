@@ -1,5 +1,7 @@
 #include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/asset/GeometryAssetFile.h>
+#include<hgl/graph/asset/GeometryPreset.h>
+#include<hgl/asset/AssetURI.h>
 #include<hgl/framework/LoadedFile.h>
 #include<hgl/log/Log.h>
 #include<hgl/utf.h>
@@ -146,6 +148,53 @@ namespace hgl::graph
         assets.Add(asset);
 
         return asset;
+    }
+
+    GeometryAsset *GeometryAssetRegistry::GetOrLoadURI(const OSString &uri,
+                                                      const GeometryVertexFormat *format_override)
+    {
+        if(uri.IsEmpty())
+        {
+            GLogError(u8"[GeometryAssetRegistry] GetOrLoadURI 收到空 URI");
+            return(nullptr);
+        }
+
+        const asset::AssetURI parsed = asset::AssetURI::Parse(uri,asset::AssetType::Geometry);
+
+        // 类型段写的是别的资产（`tex:...`）⇒ 走错门了，明确报错而不是当路径去读盘。
+        if(parsed.HasType() && parsed.type != asset::AssetType::Geometry)
+        {
+            GLogError(u8"[GeometryAssetRegistry] URI 类型不是几何：%s（实际 gtype=\"%s\"）",
+                      asset::AssetURISegmentToAnsi(uri).c_str(),
+                      asset::GetAssetTypeName(parsed.type));
+            return(nullptr);
+        }
+
+        if(parsed.IsBuiltin())
+        {
+            const GeometryAssetSpec *spec = GeometryPresetLibrary::Instance().Get(
+                asset::AssetURISegmentToAnsi(parsed.target));
+
+            if(!spec)
+            {
+                GLogError(u8"[GeometryAssetRegistry] 内置几何预设不存在：%s",
+                          asset::AssetURISegmentToAnsi(parsed.target).c_str());
+                return(nullptr);
+            }
+
+            // 内置几何是内存规约 ⇒ 建出来即 Resident，没有流送窗口。
+            return GetOrCreateFromSpec(*spec,format_override);
+        }
+
+        if(parsed.source == asset::AssetSourceKind::RenderTarget)
+        {
+            GLogError(u8"[GeometryAssetRegistry] 几何不支持 rt: 来源：%s",
+                      asset::AssetURISegmentToAnsi(uri).c_str());
+            return(nullptr);
+        }
+
+        // 其余全部按路径处理：`file:` 显式来源与裸路径在这里合流。
+        return GetOrLoad(parsed.target,format_override);
     }
 
     int GeometryAssetRegistry::GetPendingCount()const
