@@ -3,9 +3,10 @@
 //
 // 本范例展示了：
 // 1. 用几何资产 URI（geo:builtin:sphere_64）加载球体几何体
-// 2. 使用 Lit(PBR) 材质绘制球体（材质数据行 PBRSurfaceRow + 纹理）
+// 2. 使用 Lit(PBR) 材质绘制球体（材质数据行 + 纹理）
 //    纹理绑定声明在材质配方里（MaterialRecipe::AddTexture），只给文件名/句柄，
 //    由 ECS 的 TextureStreamingSystem 后台加载，就绪后自动渲染
+//    材质数据行不再硬编码，改为引用 mtldata 数据块文件的第 0 行
 // 3. 使用TransformAccessor管理空间变换
 // 4. 使用 GeometryData 管理渲染图元
 // 5. CameraSystem配置为ViewModel控制模式
@@ -15,8 +16,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
-#include<hgl/graph/ssbo/MaterialDataRows.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialResolver.h>
 
@@ -46,6 +46,11 @@ namespace
 
     constexpr uint SPHERE_SLICES = 64;              // 球体切片数
     constexpr float SPHERE_ROTATE_SPEED = 0.35f;    // 球体自转角速度（弧度/秒）
+
+    // 材质数据行的唯一来源；示例代码里不再出现任何一个材质数值
+    constexpr char MATERIAL_DATA_URI[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/simple_sphere.material_data.toml";
+    constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 
 class SimpleSphereApp:public WorkObject
@@ -56,11 +61,8 @@ private:
     Entity *      sphere_entity  =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    using MaterialDataAccessor =
-        graph::GlobalSSBODataAccessor;
-
     graph::mtl::MaterialRecipe sphere_recipe{};
-    MaterialDataAccessor       material_data_ssbo_accessor{};
+    graph::GlobalSSBOBinding   material_binding{};
 
     Geometry *          sphere_geometry = nullptr;
     PrimitiveAsset      sphere_asset{};
@@ -71,23 +73,10 @@ private:
 
 private:
 
-    bool InitMaterialDataSSBO()
+    /// 一行 URI + 行号换一个可绑定行；数据块内容全在文件里
+    bool InitMaterialDataBinding()
     {
-        auto* domain_manager = GetManager<GlobalSSBOBufferRegistry>();
-        if (!domain_manager)
-            return false;
-
-        material_data_ssbo_accessor = domain_manager->GetAccessor<graph::ssbo::PBRSurfaceRow>();
-        if (!material_data_ssbo_accessor)
-            return false;
-
-        graph::ssbo::PBRSurfaceRow material_data{};
-        material_data.base_color   = Color4f(1.0f);
-        material_data.metallic     = 0.08f;
-        material_data.roughness    = 0.92f;
-        material_data.normal_scale = 0.35f;
-
-        return material_data_ssbo_accessor.Write(material_data);
+        return GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_binding);
     }
 
     bool InitMaterial()
@@ -96,10 +85,9 @@ private:
         if (!loaded_recipe)
             return false;
         sphere_recipe = *loaded_recipe;
-        if (!(sphere_recipe.material_ssbo_binding = material_data_ssbo_accessor.GetGlobalSSBOBinding()).IsValid())
-            return false;
+        sphere_recipe.material_ssbo_binding = material_binding;
 
-        return true;
+        return material_binding.IsValid();
     }
 
     bool CreateSphereGeometry()
@@ -131,7 +119,7 @@ private:
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
 
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
-        sphere_struct = material_data_ssbo_accessor.GetGlobalSSBOBinding();
+        sphere_struct = material_binding;
         material_data_comp->SetDataResource(sphere_struct);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
@@ -165,7 +153,7 @@ public:
     {
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
-        if(!InitMaterialDataSSBO())
+        if(!InitMaterialDataBinding())
             return false;
 
         if(!InitMaterial())
