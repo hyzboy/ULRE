@@ -678,7 +678,7 @@ bool MaterialDefinitionRequiresPayloadRow(
 
     bool surface_requires = false;
     if (!MaterialProviderRequiresPayloadRow(
-            material_definition->surface_module_name,
+            material_definition->surface_module_name.c_str(),
             surface_requires))
         return false;
 

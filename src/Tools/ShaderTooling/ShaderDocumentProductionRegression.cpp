@@ -254,7 +254,7 @@ namespace
         DomainEntrySource probe;
         if (ResolveDomainEntrySource(
                 definition.domain, fixture.purpose, fixture.alpha_test, probe,
-                definition.surface_module_name))
+                definition.surface_module_name.c_str()))
             return false;
 
         if (out_reason)

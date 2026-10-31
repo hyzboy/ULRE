@@ -124,4 +124,9 @@ namespace hgl::graph::mtl
 
         return kDomainEntrySources[index].domain;
     }
+
+    bool HasMaterialDomainEntrySource(const MaterialDomain domain) noexcept
+    {
+        return FindDomainEntry(domain) != nullptr;
+    }
 }//namespace hgl::graph::mtl

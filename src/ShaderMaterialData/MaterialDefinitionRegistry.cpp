@@ -56,7 +56,7 @@ bool AppendMaterialPassProfileRoots(
             definition.material_source_module_name);
         break;
     case PassProfileID::Sky:
-        if (definition.surface_module_name && definition.surface_module_name[0])
+        if (!definition.surface_module_name.IsEmpty())
         {
             for (uint32 index = 0; index < request.module_root_count; ++index)
             {
@@ -104,6 +104,25 @@ bool SelectScenePassProfileRequest(
      && definition.material_source_module_name[0];
     const bool has_ntb_provider =
         definition.ntb_module_name && definition.ntb_module_name[0];
+
+    // 「无 material_source 且无 ntb」只有 `no_material_source` 领域（Sky）可以走
+    // Sky 模板。其他领域落到这里等于「该领域还没有主着色器入口」——静默渲染成
+    // 一片天空，比直接失败更难发现。
+    if (!depth_purpose && !has_ntb_provider && !has_material_source)
+    {
+        const MaterialDomainContract *contract =
+            GetMaterialDomainContract(definition.domain);
+        if (!contract || !contract->no_material_source)
+        {
+            GLogError(
+                "[MaterialDefinitionRegistry] 领域没有主着色器入口，拒绝回退到 Sky 模板: "
+                "id=%s domain=%s",
+                definition.definition_id.c_str(),
+                contract ? contract->name : "(无契约)");
+            return false;
+        }
+    }
+
     const PassProfileID profile_id = depth_purpose
         ? (masked ? PassProfileID::ShadowCasterMasked
                   : PassProfileID::ShadowCasterOpaque)
@@ -294,7 +313,9 @@ bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
     out_definition.domain = recipe.domain;
 
     // 身份用领域名：领域内所有配方共享同一顶点 ABI 与片元模板，领域名才是稳定键。
-    // 这两个字符串只服务于日志与门禁的形状索引，不参与任何查表。
+    // 注意：`definition_id` 会被 `ComputeMaterialProgramManifestKey` 与
+    // `MaterialTextureReferencePool::MakePoolKey` 当作哈希输入，**不是**纯日志字段；
+    // 改动取值等于改动烘焙缓存身份，必须同步重烘并跑发行形态一致性门禁。
     if (const char *domain_name = GetMaterialDomainName(recipe.domain))
     {
         out_definition.definition_id = domain_name;
@@ -340,8 +361,8 @@ bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
         GetMaterialDomainReferenceNtb(recipe.domain);
 
     // 表面模块：同一领域可以有多种表面形态（Sky 的 sky_minimal / sky_cube），
-    // 这是配方唯一能自选的模块槽。指针指向配方自身的字符串存储 —— 与 registry
-    // 里指向定义存储的指针同构：只在程序构建期间被消费，配方生命周期覆盖该阶段。
+    // 这是配方唯一能自选的模块槽。**拷贝**配方字符串（不自持借用），合成结果
+    // 因此可以安全地活得比 `recipe` 更久，也不受其移动/改写影响。
     if (!recipe.surface_module_name.empty())
         out_definition.surface_module_name =
             recipe.surface_module_name.c_str();
@@ -381,14 +402,6 @@ bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
     // 渲染状态默认值来自契约；配方的覆盖项由 NormalizeRecipe 落定，这里不预合并。
     out_definition.default_render_state = contract->default_render_state;
     return true;
-}
-
-bool ResolveMaterialDefinitionForRecipe(const MaterialRecipe &recipe,
-                                       MaterialDefinition &out_definition) noexcept
-{
-    // 唯一路径：领域契约 + 配方当场合成。配方没有契约（`Custom` / 未知领域值）
-    // 时 NormalizeRecipe 已经把它改写成保底领域配方 —— 走到这里的配方必有契约。
-    return SynthesizeMaterialDefinitionFromRecipe(recipe, out_definition);
 }
 
 void NormalizeRecipe(MaterialRecipe &recipe)

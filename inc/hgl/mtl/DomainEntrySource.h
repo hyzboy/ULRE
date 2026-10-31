@@ -58,6 +58,13 @@ namespace hgl::graph::mtl
     /// 按序号取已实现领域（0..GetDomainEntrySourceCount()-1）。
     MaterialDomain GetDomainEntrySourceDomainAt(int index) noexcept;
 
+    /// 该领域是否已经实现固定主着色器（= 在入口源表里）。
+    ///
+    /// 契约表（`MaterialDomainContract`）声明的是「这个领域**应该**长什么样」，
+    /// 入口源表声明的是「这个领域**现在能不能**编出着色器」。两者不同步时，
+    /// 配方加载期就应该拒绝，而不是等到运行时构建失败。
+    bool HasMaterialDomainEntrySource(MaterialDomain domain) noexcept;
+
     /// 深度 pass 判定（purpose != ForwardColor）。领域入口源解析与 options profile
     /// 路由必须用同一个判定，否则会解析出文件却在里面写错宏。
     inline constexpr bool IsDomainDepthPurpose(

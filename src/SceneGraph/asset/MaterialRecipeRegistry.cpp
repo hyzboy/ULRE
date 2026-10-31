@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/DomainEntrySource.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
@@ -51,6 +52,35 @@ namespace hgl::graph::mtl
                       data.recipe.recipe_name.c_str(),
                       GetMaterialDomainName(data.recipe.domain));
             return false;
+        }
+
+        // 契约存在 ≠ 能编出着色器：入口源表里没有的领域只有「应该长什么样」，
+        // 没有主着色器。加载期就拒绝，避免运行期才在构建里失败。
+        if (!HasMaterialDomainEntrySource(data.recipe.domain))
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 该领域尚无固定主着色器入口: recipe=%s domain=%s",
+                      data.recipe.recipe_name.c_str(),
+                      contract->name);
+            return false;
+        }
+
+        // 表面模块只有 `no_material_source` 领域可用，且必须是入口源认得的形态。
+        if (!data.recipe.surface_module_name.empty())
+        {
+            DomainEntrySource probe{};
+            if (!contract->no_material_source
+             || !ResolveDomainEntrySource(data.recipe.domain,
+                                          ShaderProgramPurpose::ForwardColor,
+                                          false,
+                                          probe,
+                                          data.recipe.surface_module_name.c_str()))
+            {
+                GLogError(u8"[MaterialRecipeRegistry] 配方表面模块不可用: recipe=%s surface=%s domain=%s",
+                          data.recipe.recipe_name.c_str(),
+                          data.recipe.surface_module_name.c_str(),
+                          contract->name);
+                return false;
+            }
         }
 
         for (RecipeTextureBinding &binding : data.recipe.textures)

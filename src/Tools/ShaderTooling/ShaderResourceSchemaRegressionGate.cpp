@@ -4172,25 +4172,6 @@ namespace
         return false;
     }
 
-    static bool HasLegacySchemaToken(const std::string &text) noexcept
-    {
-        // 配方格式的当前 schema 就是 1，因此 1 **不是**遗留值；已退役的
-        // 材质定义 schema 是 2/3/4，历史占位是 0。
-        static const char *tokens[] = {
-            "schema = 0", "schema=0",
-            "schema = 2", "schema=2",
-            "schema = 3", "schema=3",
-            "schema = 4", "schema=4",
-            "schema \t=\t 2", "schema \t=\t 3", "schema \t=\t 4"
-        };
-        for (const char *token : tokens)
-        {
-            if (text.find(token) != std::string::npos)
-                return true;
-        }
-        return false;
-    }
-
     static GateResult RunMaterialLibraryContractCase()
     {
         GateResult result;
@@ -4275,29 +4256,36 @@ namespace
                 continue;
             }
 
-            if (HasLegacySchemaToken(text))
+            // 用**真实解析器**判定内容，而不是文本子串：
+            //   * 子串扫描会把注释里的 `domain = ...` 也当成声明（假阴性）；
+            //   * 只要有人改写引号风格或换行，`schema = 1` 的字面匹配立刻误报（假阳性）；
+            //   * 领域是否存在、是否已实现主着色器、表面模块是否可用，这些判断
+            //     只有解析器 + 领域表知道，在门禁里再抄一份必然漂移。
+            MaterialRecipeFileData recipe_data{};
+            const MaterialRecipeFileParseResult parse_result =
+                ParseMaterialRecipeFile(text.c_str(),
+                                        static_cast<int>(text.size()),
+                                        recipe_data);
+            if (parse_result != MaterialRecipeFileParseResult::OK)
             {
+                // schema 必须为 1、领域必须显式声明且非 Custom、不得有未知键、
+                // 表面模块必须属于该领域的固定形态 —— 全部由解析器一次判掉。
                 result.diagnostics.emplace_back(
-                    "legacy schema is forbidden in material file: " + path);
+                    "material recipe rejected by parser ["
+                    + std::string(GetMaterialRecipeFileParseResultName(parse_result))
+                    + "] line=" + std::to_string(recipe_data.parse_error.line)
+                    + " table=" + std::string(recipe_data.parse_error.table.c_str())
+                    + " key=" + std::string(recipe_data.parse_error.key.c_str())
+                    + " value=" + std::string(recipe_data.parse_error.value.c_str())
+                    + " detail=" + std::string(recipe_data.parse_error.detail.c_str())
+                    + ": " + path);
             }
-
-            if (text.find("schema = 1") == std::string::npos
-             && text.find("schema=1") == std::string::npos)
+            else if (!HasMaterialDomainEntrySource(recipe_data.recipe.domain))
             {
                 result.diagnostics.emplace_back(
-                    "material recipe must use schema 1 only: " + path);
-            }
-
-            // 领域必须是显式声明，不允许靠缺省值蒙混。
-            // 非模型表面材质（调试/UI/天空等）同样要写 domain = "Custom"，
-            // 这样「已定性为非领域」与「漏填」在文本层就能区分开。
-            if (text.find("domain =") == std::string::npos
-             && text.find("domain=") == std::string::npos)
-            {
-                result.diagnostics.emplace_back(
-                    "material file must declare an explicit domain key "
-                    "(use \"Custom\" for engine-internal non-surface materials): "
-                    + path);
+                    "material recipe domain has no fixed master shader entry: "
+                    + path + " domain="
+                    + GetMaterialDomainName(recipe_data.recipe.domain));
             }
 
             if (ContainsAnyToken(text, {
@@ -8967,6 +8955,12 @@ void main()
         /// （`VertexNodeConfigResolver::CheckPositionComponentCount`），
         /// 而不是产出一份编不过的 GLSL。
         bool vec2_position = false;
+        /// 表面模块（仅 `no_material_source` 领域有效）。
+        ///
+        /// Sky 的两个变体若不在这里分叉，就会解析出同一个默认主着色器
+        /// （`sky_minimal.frag`）——两条用例其实是同一条，`sky_cube` 那条
+        /// 等于没有覆盖。
+        const char *surface_module_name = nullptr;
     };
 
     /// 快照矩阵：四条发射路径（ForwardLit / ForwardUnlit / ShadowCaster / Sky）
@@ -9008,7 +9002,8 @@ void main()
           PassProfileID::ForwardUnlit, true, false },
         { MaterialDomain::Sky, "sky-cube-forward",
           ShaderProgramPurpose::ForwardColor,
-          PassProfileID::Sky, true, false },
+          PassProfileID::Sky, true, false,
+          PrimitiveType::Triangles, false, "surface_sky_cube" },
         { MaterialDomain::Sky, "sky-minimal-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::Sky, true, false },
@@ -9094,6 +9089,11 @@ void main()
             definition.default_render_state.alpha_test = true;
             definition.default_render_state.alpha_cutoff = 0.5f;
         }
+
+        // 表面形态必须在 `AppendMaterialPassProfileRoots` / 固定片段解析之前落定，
+        // 否则 Sky 的 cube 变体会静默退回默认的 sky_minimal 主着色器。
+        if (variant.surface_module_name)
+            definition.surface_module_name = variant.surface_module_name;
 
         MaterialDefinitionBuildRequest request{};
         request.recipe.domain = definition.domain;
@@ -9775,10 +9775,10 @@ void main()
         request.geometry_vertex_format = &geometry;
         request.shader_program_purpose = shape.purpose;
 
-        // 配方填齐后**重新合成**定义：`definition.surface_module_name` 是指针，
-        // 指向配方内部的字符串存储。上面那份是 `SynthesizeDomainDefinition` 用
-        // 临时配方合成的，临时配方出作用域后指针就悬空了。以请求里这份长命配方
-        // 为准重建，才和引擎侧的「配方 → 定义」时序一致。
+        // 配方填齐后**重新合成**定义：`shape.surface_module_name` 是在首次合成
+        // 之后才写进 `request.recipe` 的，定义必须随之刷新。（历史上这里还有第二个
+        // 理由——`definition.surface_module_name` 借用配方指针、悬空——那个已经
+        // 修掉了：定义自持字符串，生命周期不再耦合配方。）
         if (!SynthesizeMaterialDefinitionFromRecipe(request.recipe, definition))
         {
             diagnostic = "SynthesizeMaterialDefinitionFromRecipe(request.recipe) failed";

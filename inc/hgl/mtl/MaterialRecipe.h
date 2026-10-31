@@ -263,7 +263,10 @@ namespace hgl::graph::mtl
         // Surface provider capability(Sky 渲染模板专用):声明后覆盖 Sky profile
         // 默认的 sky_minimal_surface,让纯 Surface 材质提供自己的天空采样。
         // 名字必须匹配 @ulre name；include 路径由注册表来源解析。
-        const char *surface_module_name = nullptr;
+        //
+        // 自持存储（不是借用配方的 `c_str()`）：合成结果必须能独立于 `MaterialRecipe`
+        // 存活——配方可能是临时对象、可能被移动或改写字符串，借用指针会静默悬垂。
+        AnsiString surface_module_name;
         // NTB provider capability. Render preparation maps it into the
         // caller-selected NTBProvider template root.
         const char *ntb_module_name = nullptr;

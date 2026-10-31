@@ -427,7 +427,7 @@ namespace hgl::ecs
             const graph::mtl::MaterialRecipe &recipe,
             graph::mtl::MaterialDefinition &out_definition)
         {
-            if (graph::mtl::ResolveMaterialDefinitionForRecipe(recipe, out_definition))
+            if (graph::mtl::SynthesizeMaterialDefinitionFromRecipe(recipe, out_definition))
                 return true;
 
             graph::mtl::MaterialRecipe fallback_recipe;

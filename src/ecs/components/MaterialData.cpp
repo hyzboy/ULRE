@@ -450,7 +450,7 @@ namespace hgl::ecs
 
         hgl::graph::mtl::MaterialDefinition definition{};
         const bool has_definition =
-            hgl::graph::mtl::ResolveMaterialDefinitionForRecipe(out_recipe, definition);
+            hgl::graph::mtl::SynthesizeMaterialDefinitionFromRecipe(out_recipe, definition);
 
         // B4-iii-b：具名纹理资源住在**世界级旁表**（键 = 材质行行号）——解析路径读旁表，
         // 组件已无副本。无旁表/无条目 ⇒ 空表（语义 = 没有任何具名纹理授权）。

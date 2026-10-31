@@ -131,7 +131,8 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
  * 会生成怎样的管线」。这份结构体现由领域契约 + 配方当场算出，不存在第二处真源。
  *
  * 合成规则：
- *   id / name          = 领域名（日志与门禁的稳定字符串索引）
+ *   id / name          = 领域名（人类可读标识；**同时**是 manifest key 与纹理池 key
+ *                        的哈希输入，改取值等于改烘焙缓存身份）
  *   provider_policy    = contract->require_allow_derived ? AllowDerived : GeometryOnly
  *   vertex_node_config = contract 规范变换（配方 [transform] 仍优先，由 ABI 求解侧合并）
  *   vertex requirements= contract 规范语义集
@@ -145,18 +146,12 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
  *   模块名             = contract 规范模块；`surface_module_name` 取配方声明（Sky 的
  *                        surface_sky_cube 这类「同领域多表面形态」的唯一出口）
  *
+ * 这是**唯一**的「配方 → 定义」入口：没有第二条按领域分支的路径，也没有持久化层。
+ *
  * @return false = 配方未声明领域（`Custom`）或领域无契约。
  */
 bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
                                             MaterialDefinition &out_definition) noexcept;
-
-/**
- * 取配方对应的材质定义。
- *
- * **所有**「按配方找定义」的调用点都应走本函数，不要各自判断领域。
- */
-bool ResolveMaterialDefinitionForRecipe(const MaterialRecipe &recipe,
-                                       MaterialDefinition &out_definition) noexcept;
 
 /**
  * 合成**回退（错误）材质**配方（A7b）：

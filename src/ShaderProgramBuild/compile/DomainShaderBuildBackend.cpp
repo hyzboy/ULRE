@@ -621,7 +621,7 @@ namespace hgl::graph::mtl
             DomainEntrySource domain_template;
             if (!ResolveDomainEntrySource(
                     domain, purpose, masked_coverage, domain_template,
-                    definition.surface_module_name))
+                    definition.surface_module_name.c_str()))
             {
                 DomainBuildFailed(
                     u8"[DomainBackend] 领域 %d 没有对应的固定主着色器"

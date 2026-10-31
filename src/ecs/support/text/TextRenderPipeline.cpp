@@ -489,7 +489,7 @@ namespace hgl::ecs
         resources.bindless_atlas_handle = atlas_handle;
 
         graph::mtl::MaterialDefinition text_definition{};
-        if (!graph::mtl::ResolveMaterialDefinitionForRecipe(
+        if (!graph::mtl::SynthesizeMaterialDefinitionFromRecipe(
                 recipe,
                 text_definition))
         {

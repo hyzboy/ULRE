@@ -1,4 +1,5 @@
 #include <hgl/mtl/MaterialRecipeFile.h>
+#include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/VkEnumText.h>
 
 #include <toml/toml.hpp>
@@ -473,6 +474,15 @@ namespace hgl::graph::mtl
                 return false;
             }
 
+            // 有契约 ≠ 能编出着色器。Foliage / Terrain / UI2D / HumanSkin 目前
+            // 只有契约、没有固定主着色器入口；在加载期就拒绝，别把错误留到运行时。
+            if (!HasMaterialDomainEntrySource(recipe.domain))
+            {
+                error.Record("domain", name.c_str(),
+                             "该领域尚无固定主着色器入口（未实现）");
+                return false;
+            }
+
             return true;
         }
 
@@ -494,6 +504,28 @@ namespace hgl::graph::mtl
             AnsiString name;
             if (!ReadString(table, "surface_module_name", name, error, true))
                 return false;
+
+            // 只有 `no_material_source` 领域（当前仅 Sky）存在「同领域多表面形态」。
+            // 其他领域写了这个名字只会被入口源静默忽略 —— 那是拼写错误或无意义配置。
+            const MaterialDomainContract *contract =
+                GetMaterialDomainContract(recipe.domain);
+            if (!contract || !contract->no_material_source)
+            {
+                error.Record("surface_module_name", name.c_str(),
+                             "只有 no_material_source 领域可以声明表面模块");
+                return false;
+            }
+
+            // 拿真实入口源解析当裁判，而不是在这里维护第二份名字白名单。
+            DomainEntrySource probe{};
+            if (!ResolveDomainEntrySource(recipe.domain,
+                                          ShaderProgramPurpose::ForwardColor,
+                                          false, probe, name.c_str()))
+            {
+                error.Record("surface_module_name", name.c_str(),
+                             "该领域没有对应的表面形态着色器");
+                return false;
+            }
 
             recipe.surface_module_name = name.c_str();
             return true;
