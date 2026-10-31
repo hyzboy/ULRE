@@ -317,7 +317,7 @@ namespace hgl::graph::mtl
 
         // Mesh shader 模式（来自 TOML [mesh_shader] 段；缺省 = VertexPassthrough）
         MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
-        uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 EmitMeshTemplateDocument 默认值
+        uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 EmitMeshShaderDocument 默认值
 
     };
 

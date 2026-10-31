@@ -147,7 +147,7 @@ namespace hgl::graph::mtl
         // （GlslModuleRegistry 里的模块名，不是文件路径）。
         //
         // 为什么用模块名而不是主着色器文件路径：顶点侧由 `[transform]`+
-        // `[vertex]` 解析出 mesh options；片元侧由 DomainShaderTemplate 按领域与
+        // `[vertex]` 解析出 mesh options；片元侧由 DomainEntrySource 按领域与
         // pass 选择 ShaderLibrary/domain/ 下的固定 `.frag`。契约钉死的是
         // 「用哪个表面来源模块」，文件选路由独立的领域模板表完成。
         //

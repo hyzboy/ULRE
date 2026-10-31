@@ -7,7 +7,7 @@
 namespace hgl::graph::mtl
 {
     // ═══════════════════════════════════════════════════════════════════════════
-    // 领域主着色器模板表
+    // 领域入口源表（Domain Entry Source）
     // ═══════════════════════════════════════════════════════════════════════════
     //
     // 一个 `MaterialDomain` × pass × 固定表面变体 = 一份**物理固定**的 GLSL 编译单元
@@ -23,7 +23,7 @@ namespace hgl::graph::mtl
     // 静默回退会让「忘了写主着色器」变成一个能跑但算法不对的 shader——那比直接
     // 失败更难发现。
 
-    struct DomainShaderTemplate
+    struct DomainEntrySource
     {
         MaterialDomain domain = MaterialDomain::Custom;
 
@@ -45,20 +45,20 @@ namespace hgl::graph::mtl
     /// 前向 pass 的文件名**逐领域不同**（StandardOpaque → `forward_lit.frag`）。
     /// Sky 另有两个固定表面实现：默认 `sky_minimal_surface` 与显式
     /// `sky_cube_surface`，通过表面模块名选择独立 master；不支持的提供者硬失败。
-    bool ResolveDomainShaderTemplate(
+    bool ResolveDomainEntrySource(
         MaterialDomain domain,
         ShaderProgramPurpose purpose,
         bool masked_coverage,
-        DomainShaderTemplate &out_template,
+        DomainEntrySource &out_entry_source,
         const char *surface_module_name = nullptr) noexcept;
 
     /// 已实现固定主着色器的领域个数（供门禁穷举核对「表里每项文件都存在」）。
-    int GetDomainShaderTemplateCount() noexcept;
+    int GetDomainEntrySourceCount() noexcept;
 
-    /// 按序号取已实现领域（0..GetDomainShaderTemplateCount()-1）。
-    MaterialDomain GetDomainShaderTemplateDomainAt(int index) noexcept;
+    /// 按序号取已实现领域（0..GetDomainEntrySourceCount()-1）。
+    MaterialDomain GetDomainEntrySourceDomainAt(int index) noexcept;
 
-    /// 深度 pass 判定（purpose != ForwardColor）。领域模板解析与 options profile
+    /// 深度 pass 判定（purpose != ForwardColor）。领域入口源解析与 options profile
     /// 路由必须用同一个判定，否则会解析出文件却在里面写错宏。
     inline constexpr bool IsDomainDepthPurpose(
         const ShaderProgramPurpose purpose) noexcept

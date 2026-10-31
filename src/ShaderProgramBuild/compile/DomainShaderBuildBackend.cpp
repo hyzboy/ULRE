@@ -32,7 +32,7 @@
 #include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/DomainOptions.h>
-#include <hgl/mtl/DomainShaderTemplate.h>
+#include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/mtl/ShaderCacheRoot.h>
@@ -446,7 +446,7 @@ namespace hgl::graph::mtl
         }
         /// 读领域主着色器源文件（`ShaderLibrary/domain/<领域>/<文件>.frag`）。
         bool LoadDomainMasterShader(
-            const DomainShaderTemplate &domain_template,
+            const DomainEntrySource &domain_template,
             AnsiString &out_source)
         {
             const std::string library_root = GetShaderLibraryPath();
@@ -618,8 +618,8 @@ namespace hgl::graph::mtl
             const bool masked_coverage =
                 render_state.alpha_test || render_state.dither;
 
-            DomainShaderTemplate domain_template;
-            if (!ResolveDomainShaderTemplate(
+            DomainEntrySource domain_template;
+            if (!ResolveDomainEntrySource(
                     domain, purpose, masked_coverage, domain_template,
                     definition.surface_module_name))
             {

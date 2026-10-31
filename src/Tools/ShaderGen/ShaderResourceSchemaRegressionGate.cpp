@@ -2,7 +2,7 @@
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/BuiltinMaterialDefinitions.h>
 #include <hgl/mtl/MaterialDomain.h>
-#include <hgl/mtl/DomainShaderTemplate.h>
+#include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/VkEnumText.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -6357,8 +6357,8 @@ namespace
             }
         }
 
-        DomainShaderTemplate sky_minimal_template;
-        if (!ResolveDomainShaderTemplate(
+        DomainEntrySource sky_minimal_template;
+        if (!ResolveDomainEntrySource(
                 MaterialDomain::Sky,
                 ShaderProgramPurpose::ForwardColor,
                 false,
@@ -6369,8 +6369,8 @@ namespace
             result.diagnostics.emplace_back(
                 "SkyMinimal must resolve the fixed fragment that includes its no-texture surface");
 
-        DomainShaderTemplate sky_cube_template;
-        if (!ResolveDomainShaderTemplate(
+        DomainEntrySource sky_cube_template;
+        if (!ResolveDomainEntrySource(
                 MaterialDomain::Sky,
                 ShaderProgramPurpose::ForwardColor,
                 false,
@@ -6382,8 +6382,8 @@ namespace
             result.diagnostics.emplace_back(
                 "SkyCube must retain its cubemap fixed fragment");
 
-        DomainShaderTemplate unsupported_sky_template;
-        if (ResolveDomainShaderTemplate(
+        DomainEntrySource unsupported_sky_template;
+        if (ResolveDomainEntrySource(
                 MaterialDomain::Sky,
                 ShaderProgramPurpose::ForwardColor,
                 false,

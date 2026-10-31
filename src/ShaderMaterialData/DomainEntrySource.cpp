@@ -1,4 +1,4 @@
-#include <hgl/mtl/DomainShaderTemplate.h>
+#include <hgl/mtl/DomainEntrySource.h>
 
 #include <cstdio>
 #include <cstring>
@@ -12,7 +12,7 @@ namespace hgl::graph::mtl
             MaterialDomain domain;
             const char *dir_name;       ///< ShaderLibrary/domain/ 下的子目录名
             const char *forward_file;   ///< 前向 pass 的主着色器文件名
-            bool supports_depth;        ///< 是否参与深度/阴影 pass
+            bool supports_depth_purpose;        ///< 是否参与深度/阴影 pass
         };
 
         /// 已实现固定主着色器的领域。新增领域 = 在此加一行 + 提供对应 .frag 文件；
@@ -26,7 +26,7 @@ namespace hgl::graph::mtl
         /// 一个领域**允许**指向另一个领域的目录与文件（VertexPalette 复用
         /// vertex_color）：两者片元阶段逐字节相同，差异只在顶点语义，而顶点语义
         /// 由 `DomainContracts[]` 驱动顶点阶段，与本表无关。
-        constexpr DomainDirEntry kDomainDirs[] =
+        constexpr DomainDirEntry kDomainEntrySources[] =
         {
             { MaterialDomain::StandardOpaque,    "standard_opaque",    "forward_lit.frag", true  },
             { MaterialDomain::Sky,               "sky",                "sky.frag",         false },
@@ -47,27 +47,27 @@ namespace hgl::graph::mtl
         };
 
         constexpr int kDomainDirCount =
-            static_cast<int>(sizeof(kDomainDirs) / sizeof(kDomainDirs[0]));
+            static_cast<int>(sizeof(kDomainEntrySources) / sizeof(kDomainEntrySources[0]));
 
         const DomainDirEntry *FindDomainEntry(const MaterialDomain domain) noexcept
         {
             for (int i = 0; i < kDomainDirCount; ++i)
-                if (kDomainDirs[i].domain == domain)
-                    return &kDomainDirs[i];
+                if (kDomainEntrySources[i].domain == domain)
+                    return &kDomainEntrySources[i];
 
             return nullptr;
         }
     }//namespace
 
-    bool ResolveDomainShaderTemplate(
+    bool ResolveDomainEntrySource(
         const MaterialDomain domain,
         const ShaderProgramPurpose purpose,
         const bool masked_coverage,
-        DomainShaderTemplate &out_template,
+        DomainEntrySource &out_entry_source,
         const char *surface_module_name) noexcept
     {
-        out_template.domain = MaterialDomain::Custom;
-        out_template.relative_path.Clear();
+        out_entry_source.domain = MaterialDomain::Custom;
+        out_entry_source.relative_path.Clear();
 
         const DomainDirEntry *entry = FindDomainEntry(domain);
         if (!entry)
@@ -96,7 +96,7 @@ namespace hgl::graph::mtl
         else
         {
             // 天空不进深度/阴影 pass：给它一份深度主着色器只会掩盖调用方错误。
-            if (!entry->supports_depth)
+            if (!entry->supports_depth_purpose)
                 return false;
 
             stage_name = masked_coverage
@@ -107,21 +107,21 @@ namespace hgl::graph::mtl
         char buffer[128];
         snprintf(buffer, sizeof(buffer), "domain/%s/%s", entry->dir_name, stage_name);
 
-        out_template.domain = domain;
-        out_template.relative_path = buffer;
+        out_entry_source.domain = domain;
+        out_entry_source.relative_path = buffer;
         return true;
     }
 
-    int GetDomainShaderTemplateCount() noexcept
+    int GetDomainEntrySourceCount() noexcept
     {
         return kDomainDirCount;
     }
 
-    MaterialDomain GetDomainShaderTemplateDomainAt(const int index) noexcept
+    MaterialDomain GetDomainEntrySourceDomainAt(const int index) noexcept
     {
         if (index < 0 || index >= kDomainDirCount)
             return MaterialDomain::Custom;
 
-        return kDomainDirs[index].domain;
+        return kDomainEntrySources[index].domain;
     }
 }//namespace hgl::graph::mtl

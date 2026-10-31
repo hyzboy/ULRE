@@ -4,7 +4,7 @@
 
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
-#include <hgl/mtl/DomainShaderTemplate.h>
+#include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/StageSPVCompiler.h>
@@ -234,8 +234,8 @@ namespace
     /// options 里，因此断言必须落在它上面。
     /// 该夹具是否因「领域缺少本 purpose 的固定主着色器」而无法构建。
     ///
-    /// 这不是夹具失败，而是域主着色器表的**覆盖缺口**：`kDomainDirs[]` 里只有
-    /// `standard_opaque` 声明了 `supports_depth`，其余 11 个领域没有 depth/shadow
+    /// 这不是夹具失败，而是域主着色器表的**覆盖缺口**：`kDomainEntrySources[]` 里只有
+    /// `standard_opaque` 声明了 `supports_depth_purpose`，其余 11 个领域没有 depth/shadow
     /// 主着色器。缺口必须在 `[SKIP]` 里显式留痕，不能当成通过——静默跳过会让
     /// 「领域深度能力」这个真实回归永久隐形。补齐主着色器后这里的触发条件应当
     /// 变得不可达（见 plan.md 阶段六）。
@@ -246,8 +246,8 @@ namespace
         if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
             return false;
 
-        DomainShaderTemplate probe;
-        if (ResolveDomainShaderTemplate(
+        DomainEntrySource probe;
+        if (ResolveDomainEntrySource(
                 definition.domain, fixture.purpose, fixture.alpha_test, probe,
                 definition.surface_module_name))
             return false;
