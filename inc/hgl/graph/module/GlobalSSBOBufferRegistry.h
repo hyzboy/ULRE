@@ -233,6 +233,11 @@ public:
     template<typename T>
     bool WriteRowRange(GlobalSSBOType type, uint32_t first, const T *rows, uint32_t count)
     {
+        // 块视图的行指针是 `const uint8 *`。若让它悄悄绑到这个模板，T 会被推成 uint8，
+        // 而行距检查必然失败 —— 那是运行期才能发现的蠢错，这里直接变成编译期错误。
+        static_assert(sizeof(T) > 1,
+                      "按行批量写不支持 1 字节行宽；整块字节写请显式转成 const void *");
+
         const auto *pool = GetPool(type);
         if (!pool || !rows || count == 0)
             return false;

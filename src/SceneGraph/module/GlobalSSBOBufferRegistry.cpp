@@ -397,7 +397,8 @@ bool GlobalSSBOBufferRegistry::UploadMaterialDataBlock(const mtl::MaterialDataBl
     if (!lease)
         return false;
 
-    if (!WriteRowRange(view.type, lease.GetFirstRow(), view.rows, view.row_count))
+    if (!WriteRowRange(view.type, lease.GetFirstRow(),
+                       static_cast<const void *>(view.rows), view.row_count))
     {
         // 写失败 ⇒ 区间已经没用了，别把半截数据留在池里。
         lease.Release();
