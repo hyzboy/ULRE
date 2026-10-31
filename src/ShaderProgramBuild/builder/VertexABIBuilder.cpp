@@ -1,9 +1,9 @@
 // VertexABIBuilder.cpp — 顶点 ABI 求解（stream_* 模块选择 + VkFormat→GLSL 类型映射）
 //
-// 从 MaterialDefinitionRegistry.cpp 拆分（5 职责之一：vertex_abi）。
+// 从 MaterialResolver.cpp 拆分（5 职责之一：vertex_abi）。
 // 公开声明已随生成期入口一并收进 StageSPVCompiler.h（数据面头不再挂生成期能力）。
 
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/StageSPVCompiler.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -135,8 +135,8 @@ namespace
     }
 
     bool BuildResolvedVertexABI(
-        const MaterialDefinition &definition,
-        const MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        const MaterialBuildRequest &request,
         VkFormat &out_position_format,
         AnsiString &out_vertex_input_glsl)
     {
@@ -212,7 +212,7 @@ namespace
                 if (!color_attribute || color_attribute->format != VK_FORMAT_R8_UINT)
                 {
                     GLogError(u8"调色板顶点色需要 R8_UINT 索引颜色流: definition=%s",
-                              definition.definition_id.c_str());
+                              definition.domain_name.c_str());
                     return false;
                 }
 
@@ -250,7 +250,7 @@ namespace
                 if (definition.vertex_node_config.input != VertexInputMode::None)
                 {
                     GLogError(u8"顶点位置格式没有对应的 stream_position_* 解码模块：VkFormat=%d（definition=%s）",
-                              static_cast<int>(out_position_format), definition.definition_id.c_str());
+                              static_cast<int>(out_position_format), definition.domain_name.c_str());
                     return false;
                 }
             }
@@ -261,7 +261,7 @@ namespace
                 // 在发射期硬门，别让错误漂到 glslang 里。
                 if (!VertexNodeConfigResolver::CheckPositionComponentCount(
                         definition.vertex_node_config, position_module->component_count,
-                        definition.definition_id.c_str()))
+                        definition.domain_name.c_str()))
                     return false;
 
                 AppendVertexModuleInclude(position_module->module_name, out_vertex_input_glsl);
@@ -285,8 +285,8 @@ VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, Ve
 }
 
 bool BuildResolvedMaterialVertexABI(
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
+    const ResolvedMaterial &definition,
+    const MaterialBuildRequest &request,
     MaterialResolvedVertexABI &out_abi)
 {
     return BuildResolvedVertexABI(definition, request, out_abi.position_format,

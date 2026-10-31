@@ -12,12 +12,12 @@ MaterialTextureReferencePool::~MaterialTextureReferencePool()
 }
 
 bool MaterialTextureReferencePool::Matches(
-    const mtl::MaterialDefinition &definition,
+    const mtl::ResolvedMaterial &definition,
     const mtl::MaterialTextureReferenceLayout &layout) const noexcept
 {
     return pool_key != 0
         && pool_key == MakePoolKey(definition, layout)
-        && definition_id == definition.definition_id.c_str()
+        && domain_name == definition.domain_name.c_str()
         && layout_hash == layout.layout_hash
         && reference_count == layout.reference_count
         && row_pool.GetRowBytes() == layout.row_stride
@@ -26,7 +26,7 @@ bool MaterialTextureReferencePool::Matches(
 
 bool MaterialTextureReferencePool::Initialize(
     VulkanDevice *device,
-    const mtl::MaterialDefinition &definition,
+    const mtl::ResolvedMaterial &definition,
     const mtl::MaterialTextureReferenceLayout &layout)
 {
     if (row_pool.IsReady() || !device || !layout.HasReferences()
@@ -54,7 +54,7 @@ bool MaterialTextureReferencePool::Initialize(
 
     const AnsiString buffer_name =
         AnsiString("MaterialTextureReferences:")
-        + AnsiString(definition.definition_id.c_str());
+        + AnsiString(definition.domain_name.c_str());
 
     if (!row_pool.Create(device,
                          buffer_name,
@@ -71,7 +71,7 @@ bool MaterialTextureReferencePool::Initialize(
         return false;
     }
 
-    definition_id = definition.definition_id.c_str();
+    domain_name = definition.domain_name.c_str();
     pool_key = key;
     layout_hash = layout.layout_hash;
     reference_count = layout.reference_count;
@@ -82,7 +82,7 @@ bool MaterialTextureReferencePool::Initialize(
 
     GLogInfo(
         "[MaterialTextureReferencePool] created definition=%s references=%u row_stride=%u capacity=%u bytes=%llu",
-        definition_id.c_str(),
+        domain_name.c_str(),
         reference_count,
         layout.row_stride,
         max_configuration_count,
@@ -96,7 +96,7 @@ void MaterialTextureReferencePool::Release()
     row_view.Detach();
     row_pool.Reset();
 
-    definition_id = "";
+    domain_name = "";
     pool_key = 0;
     layout_hash = 0;
     reference_count = 0;
@@ -131,7 +131,7 @@ bool MaterialTextureReferencePool::Acquire(
     {
         GLogError(
             "[MaterialTextureReferencePool] acquire rejected: pool not ready definition=%s",
-            definition_id.c_str());
+            domain_name.c_str());
         return false;
     }
 
@@ -140,7 +140,7 @@ bool MaterialTextureReferencePool::Acquire(
     {
         GLogError(
             "[MaterialTextureReferencePool] exhausted definition=%s live=%u capacity=%u",
-            definition_id.c_str(),
+            domain_name.c_str(),
             live_configuration_count,
             max_configuration_count);
         return false;

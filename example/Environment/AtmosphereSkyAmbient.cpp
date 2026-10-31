@@ -14,7 +14,7 @@
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>

@@ -21,7 +21,7 @@
 //
 // 所有纹理（2D / 2DArray）统一注册为 texture2DArray[]（2D 为单层）；
 // sampler 进独立 sampler[] 池（binding=1，由 SamplerPresetLibrary 按序注册）。
-// MTL_TEX() returns the MaterialDefinition-specific uvec2 reference row:
+// MTL_TEX() returns the ResolvedMaterial-specific uvec2 reference row:
 // .x is the bindless descriptor index and .y is the Texture2DArray layer.
 
 #ifndef BINDLESS_TEXTURES_GLSL

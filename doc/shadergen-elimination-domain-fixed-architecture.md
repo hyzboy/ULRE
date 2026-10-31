@@ -21,7 +21,7 @@
 >
 > **材质资产链路更新（2026-10-31）**：Recipe 已直接声明 Domain，`asset/definition/`
 > 及 `.definition.toml` 已删除。表中历史 `.mi.toml` / Definition 示例不再是当前资产
-> 布局；现行资产统一为 `asset/recipe/**/*.recipe.toml`。构建期 `MaterialDefinition`
+> 布局；现行资产统一为 `asset/recipe/**/*.recipe.toml`。构建期 `ResolvedMaterial`
 > 只是从 Recipe 与 DomainContract 合成的临时结构，不是文件抽象层。
 
 ---
@@ -155,7 +155,7 @@ ShaderLibrary/domain/sky/sky.frag                             ForwardColor（天
    留下半截文本。
 
 `HGL_MATERIAL_HAS_VERTEX_NORMAL` **不在本协议内**：它描述顶点格式而非 recipe，走
-`MaterialDefinition::compile_defines` 那条独立通道（`MaterialShaderEmitter::BuildCompileDefineDocument`）。
+`ResolvedMaterial::compile_defines` 那条独立通道（`MaterialShaderEmitter::BuildCompileDefineDocument`）。
 
 回归门：`DomainOptionsRegression`（独立 target，只链接 `ULRE.ShaderMaterialData`，
 ShaderGen 删除后照常构建）26 条断言；`--write-options <dir>` 供等价性脚本直接消费发射结果。
@@ -658,7 +658,7 @@ layout(location=5) in vec4 fragVertexColor;
        `ShaderGenProgramBuildBackend`（含两个 `CreateMaterialFromDefinition` 重载与
        `ULRE_SHADER_BUILD_BACKEND` 选择器）。`MaterialShaderEmitter` **未整份删除，
        而是并入 `MaterialShaderCompiler.cpp`**：只有 `BuildCodeModuleDocument` 真死，
-       `DumpShaderGenGLSL` / `BuildSamplerMacros` / `MaterialDefinitionRequiresPayloadRow`
+       `DumpShaderGenGLSL` / `BuildSamplerMacros` / `ResolvedMaterialRequiresPayloadRow`
        / `BuildMaterialStageDocument`（网格阶段仍需要 SSBO 声明与 FS 索引表）全活。
        `RenderTemplateResolve.cpp` 实测不可删（`resolved_template_hash` 是缓存键的一维，
        且门禁仍有模板解析用例），留到阶段六随构建器一起处理。
@@ -1282,7 +1282,7 @@ std::string("... (last error: ") + GetLastBuildGenericMaterialError().c_str() + 
 - `inc/hgl/mtl/MaterialShaderCompiler.h`：
   - `MaterialShaderDocumentCapture` 简化为 `MaterialShaderBuildCapture`（仅包含 `mesh_source_shape_key` 与 `mesh_source_was_fixed`）。
   - `BuildMaterialStageDocuments` 统一收敛为三参数版本 `(profile, input, config)`，原 5 参数文档版本彻底废除。
-  - 公开 `MaterialDefinitionRequiresPayloadRow` 声明（编译期直判信号）。
+  - 公开 `ResolvedMaterialRequiresPayloadRow` 声明（编译期直判信号）。
 - `src/ShaderGen/builder/GenericMaterialBuilder.h/.cpp`：
   - 移除 `mesh_source_document` 成员与相关组装逻辑；顶点输入声明直接保留为 `resolved_vertex_input_glsl` 纯文本。
   - 形状键哈希精确保持历史 byte sequence（以字面量 `5` 代表原 `ShaderDocumentBlockKind::Module`），保证 19 份已落盘的 `.mesh` 文件名 100% 幂等。
@@ -1292,7 +1292,7 @@ std::string("... (last error: ") + GetLastBuildGenericMaterialError().c_str() + 
 ### 3. 测试工具改造与不变量转移
 
 - `ShaderDocumentProductionRegression.cpp`：
-  - 移除所有旧 `ShaderDocument` 断言与块序列化比对，转为直接验证固定阶段与 `MaterialDefinitionRequiresPayloadRow`。
+  - 移除所有旧 `ShaderDocument` 断言与块序列化比对，转为直接验证固定阶段与 `ResolvedMaterialRequiresPayloadRow`。
 - `ShaderResourceSchemaRegressionGate.cpp`：
   - 原 `MV.mesh-varying-writability`（生成器可写性表测试）改造为 `MV.fixed-mesh-varying-invariants`：使用 `AuditFixedMeshMasters` 对 `ShaderLibrary/mesh/fixed/*.mesh` 全量物理文件进行静态语法与结构审查（验证 stable location、GLSL 类型、`perprimitiveEXT` 约束、调度契约维数、真实写入性、Stage2/3 组合约束）。
   - `X.transform-graph-composition` 改为直接遍历 `PositionMappingMode` 与 `ProjectionMode` 枚举，断言 `VertexNodeConfigResolver` 映射的物理模块文件存在并保持阶段键区分度。
@@ -1746,7 +1746,7 @@ vec2 GetLineSize() { return vec2(1.0, 1.0); }
 
 `TextDraw` 首轮仍报 `cannot load fixed mesh master: shape=charquad_256_dataid_uv_color`。
 根因不是命名算错，而是 **`builtin/text_gpu_bitmap` 的 varying 集合本身就没有 `emit_style_id`**
-（`BuiltinMaterialDefinitions.cpp:90`），于是形状名自然少了 `style` 令牌。
+（`BuiltinResolvedMaterials.cpp:90`），于是形状名自然少了 `style` 令牌。
 补 `charquad_256_dataid_uv_color.mesh`（钩子里丢弃 `style_id`）后通过。
 
 这恰好演示了形状命名的**正确行为**：varying 集合不同 ⇒ 形状名不同 ⇒ 必须是另一份 master 文件。

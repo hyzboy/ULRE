@@ -23,7 +23,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/io/LoadStringList.h>
 #include<hgl/utf.h>
 #include<hgl/log/Log.h>

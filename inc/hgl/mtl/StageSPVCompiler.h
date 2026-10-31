@@ -16,7 +16,7 @@ namespace hgl::graph::mtl {}
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/ShaderCodeResourceManifest.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include <string>
@@ -44,7 +44,7 @@ struct StageSPVCompileConfig
     // runtime SSBO enum.
     GlobalSSBOType material_private_data = GlobalSSBOType::PBRSurface;
     // Optional: definition view for texture-reference validation + 运行时数据行需求直判。
-    const mtl::MaterialDefinition *material_definition = nullptr;
+    const mtl::ResolvedMaterial *material_definition = nullptr;
     // Optional unified stage/link contract. When supplied, the compiler
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderLinkSpec *program_link = nullptr;
@@ -52,7 +52,7 @@ struct StageSPVCompileConfig
     ShaderArtifactStore *artifact_store = nullptr;
     bool defer_finalize = false; // 生成 GLSL/契约后返回，SPV 编译推迟（生产主路径先查 program 缓存）
     // 片段阶段的最终 GLSL 就是这份文本（领域固定主着色器）。硬前置。
-    // 见 `MaterialDefinitionBuildRequest::fixed_fragment_source`。
+    // 见 `MaterialBuildRequest::fixed_fragment_source`。
     const char *fixed_fragment_source = nullptr;
     // 完整 mesh stage GLSL 直通（ShaderLibrary/topology/<shape_name>.mesh）。硬前置。
     const char *fixed_mesh_source = nullptr;
@@ -65,7 +65,7 @@ bool FinalizeShaderBuildContext(
 
 // ── 生成期入口（构建上下文 / 声明键 / 顶点 ABI）──────────────────────────────
 // 这些函数要么发射网格阶段 GLSL，要么读 ShaderLibrary/*.glsl 的声明闭包。
-// 它们原先声明在 MaterialDefinitionRegistry.h（数据面）里，会把「发行形态用不到的
+// 它们原先声明在 MaterialResolver.h（数据面）里，会把「发行形态用不到的
 // 生成期能力」挂在数据面的头文件上；现在收到本头，数据面只留纯数据能力。
 // 实现位置：MaterialProgramAssembler.cpp / VertexABIBuilder.cpp。
 
@@ -74,8 +74,8 @@ bool FinalizeShaderBuildContext(
  * a program/cache. This is the explicit Phase 4.4 switched-path payload.
  */
 bool BuildResolvedMaterialVertexABI(
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
+    const ResolvedMaterial &definition,
+    const MaterialBuildRequest &request,
     MaterialResolvedVertexABI &out_abi);
 
 /**
@@ -102,9 +102,9 @@ void DumpStageGLSL(const char *stage, const AnsiString &text);
 /**
  * 判定材质定义是否需要 payload 行（MTL_ROW）。
  */
-bool MaterialDefinitionRequiresPayloadRow(
+bool ResolvedMaterialRequiresPayloadRow(
     GlobalSSBOType material_private_data,
-    const MaterialDefinition *material_definition,
+    const ResolvedMaterial *material_definition,
     bool &out_required) noexcept;
 
 /**

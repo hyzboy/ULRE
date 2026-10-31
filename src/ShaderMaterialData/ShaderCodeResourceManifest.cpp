@@ -255,7 +255,7 @@ namespace hgl::graph::mtl
 
     bool ValidateShaderCodeResourceManifestTextureReferences(
         const ShaderCodeResourceManifest &manifest,
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const char **out_invalid_texture_name) noexcept
     {
         if (out_invalid_texture_name)
@@ -293,7 +293,7 @@ namespace hgl::graph::mtl
 
     bool ValidateShaderCodeResourceManifestSamplerReferences(
         const ShaderCodeResourceManifest &manifest,
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const char **out_missing_sampler_name) noexcept
     {
         if (out_missing_sampler_name)

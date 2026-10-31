@@ -200,7 +200,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
         return(nullptr);
 
     // recipe 必须已完成 NormalizeRecipe（组件/acquire 边界负责），此处直接从
-    // 规范化 overrides 重建渲染状态，不再反查 MaterialDefinition——Vulkan 层
+    // 规范化 overrides 重建渲染状态，不再反查 ResolvedMaterial——Vulkan 层
     // 由此不依赖材质注册表。
     mtl::ResolvedMaterialRenderState render_state{};
     if(!mtl::TryGetNormalizedRecipeRenderState(recipe, render_state))

@@ -20,7 +20,7 @@
 
 #include <hgl/common/RenderOptions.h>
 #include <hgl/CoreType.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -251,8 +251,8 @@ namespace
     /// 两侧一旦漂移，键对不上就会在这里炸出来 —— 这正是本探针要守的东西。
     bool BuildProbeRequest(
         const MaterialRecipe &recipe,
-        const MaterialDefinition &definition,
-        MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        MaterialBuildRequest &request,
         std::string &error)
     {
         static const GeometryVertexFormat geometry{
@@ -261,7 +261,7 @@ namespace
             {VertexSemantic::Normal,   VF_V3F}
         };
 
-        request = MaterialDefinitionBuildRequest{};
+        request = MaterialBuildRequest{};
         request.recipe = recipe;
         request.geometry_vertex_format = &geometry;
         request.defer_finalize = true;
@@ -330,8 +330,8 @@ namespace
         recipe.domain = domain;
         NormalizeRecipe(recipe);
 
-        MaterialDefinition definition{};
-        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
+        ResolvedMaterial definition{};
+        if (!ResolveMaterialFromRecipe(recipe, definition))
         {
             std::fprintf(stderr,
                          "[FAIL] material definition could not be synthesized: %s\n",
@@ -339,7 +339,7 @@ namespace
             return 1;
         }
 
-        MaterialDefinitionBuildRequest request{};
+        MaterialBuildRequest request{};
         std::string build_error;
         if (!BuildProbeRequest(recipe, definition, request, build_error))
         {
@@ -422,7 +422,7 @@ namespace
 
         // 未命中的 ambient provider：发行形态必须硬失败，不能悄悄回落任何东西。
         {
-            MaterialDefinitionBuildRequest miss = request;
+            MaterialBuildRequest miss = request;
             miss.ambient_module_name = "AmbientVertexGlobalColor";
 
             std::unique_ptr<ShaderBuildContext> miss_context(

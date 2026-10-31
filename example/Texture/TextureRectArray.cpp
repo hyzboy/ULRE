@@ -7,7 +7,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/math/Vector.h>
 
 // ECS headers

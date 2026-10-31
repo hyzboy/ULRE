@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
     };
 
     bool BuildMaterialCoverageContract(
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialRecipe &recipe,
         const PassProfileRequest &render_template_request,
         ShaderProgramPurpose purpose,

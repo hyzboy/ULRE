@@ -56,7 +56,7 @@ namespace hgl::graph::mtl
     };
 
     // 全局 GLSL 模块注册表单例（懒加载，首次调用时扫描 ShaderLibrary）。
-    // 原挂在 MaterialDefinitionRegistry 上（生命周期被材质注册表"劫持"）——
+    // 原挂在 MaterialResolver 上（生命周期被材质注册表"劫持"）——
     // 2026-08-31 下沉回 glsl_module 自身，材质注册表只保留自己的文件注册表。
     GlslModuleRegistry &GetGlslModuleRegistry();
 }

@@ -104,15 +104,15 @@ namespace hgl::graph::mtl
         {
             ShaderBuildContext *CreateBuildContext(
                 const contract::PhysicalDeviceProfileLite *profile,
-                const MaterialDefinition &definition,
-                const MaterialDefinitionBuildRequest &request) override
+                const ResolvedMaterial &definition,
+                const MaterialBuildRequest &request) override
             {
                 ShaderArtifactStore *store = State().store;
                 if (!store || !LoadManifest(store))
                 {
                     GLogError("[ShaderProgramManifest] no manifest available for id=%s "
                               "(release form requires a baked shader-cache)",
-                              definition.definition_id.c_str());
+                              definition.domain_name.c_str());
                     return nullptr;
                 }
 
@@ -126,7 +126,7 @@ namespace hgl::graph::mtl
                 {
                     GLogError("[ShaderProgramManifest] missing program entry: id=%s key=0x%llx "
                               "purpose=%u ambient=%s entries=%u",
-                              definition.definition_id.c_str(),
+                              definition.domain_name.c_str(),
                               static_cast<unsigned long long>(lookup_key),
                               static_cast<uint32>(request.shader_program_purpose),
                               request.ambient_module_name ? request.ambient_module_name : "<default>",
@@ -140,7 +140,7 @@ namespace hgl::graph::mtl
                 if (!store->LoadProgramMetadata(link, metadata))
                 {
                     GLogError("[ShaderProgramManifest] program metadata missing: id=%s program=%s",
-                              definition.definition_id.c_str(),
+                              definition.domain_name.c_str(),
                               link.BuildKey().ToString().c_str());
                     return nullptr;
                 }
@@ -173,7 +173,7 @@ namespace hgl::graph::mtl
                      || !stage_info->SetCachedSPVData(spv.GetData(), spv.GetCount()))
                     {
                         GLogError("[ShaderProgramManifest] stage SPV missing: id=%s stage=%s",
-                                  definition.definition_id.c_str(),
+                                  definition.domain_name.c_str(),
                                   stage_keys[i]->ToString().c_str());
                         delete ctx;
                         return nullptr;

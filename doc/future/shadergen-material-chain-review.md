@@ -2,7 +2,7 @@
 
 
 > **快照**：HEAD = `73fa8ddae`（2026-10-11）；工作区在 `src/ShaderGen`、`inc/hgl/mtl`、`inc/hgl/ecs/**Material*`、`ShaderLibrary` 面**干净**。
-> **范围**：`ShaderLibrary/material/*.toml`（15 份）→ `MaterialDefinitionRegistry` → `ShaderProgramManager::AcquireShaderProgram`
+> **范围**：`ShaderLibrary/material/*.toml`（15 份）→ `MaterialResolver` → `ShaderProgramManager::AcquireShaderProgram`
 > → `BuildGenericMaterial`（5 相位）→ `CompileMaterial`（7 步）→ `ShaderBuildContext` → `FinalizeShaderBuildContext`（SPV 缓存/glslang）
 > → `ShaderProgram`；ECS 侧 `RenderPrimitiveCollectSystem` → `MaterialData::BuildResolvedRecipe` + `MaterialVariantTable::Intern`
 > + `MaterialRuntimeTable::Intern`/`AssignSlotRow` → 共享行/slot → `PipelineMaterialRenderer`。
@@ -34,7 +34,7 @@
 
 | # | 位置 | 事实（机制） | 判据 |
 |---|---|---|---|
-| A1 | `src/ShaderGen/builder/DefinitionDescriptorBuilder.h:14-27` | `BuildDescriptorsFromDefinition(const MaterialDefinition &definition)` **忽略入参**（`(void)definition`）**恒返回空 vector**；函数名承诺"从 definition 构建描述符" | 函数体只有 `(void)definition; std::vector<...> descriptors; return descriptors;` |
+| A1 | `src/ShaderGen/builder/DefinitionDescriptorBuilder.h:14-27` | `BuildDescriptorsFromDefinition(const ResolvedMaterial &definition)` **忽略入参**（`(void)definition`）**恒返回空 vector**；函数名承诺"从 definition 构建描述符" | 函数体只有 `(void)definition; std::vector<...> descriptors; return descriptors;` |
 | A2 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp:387-408` | Phase 3 仍为它保留一步：`plan.descriptors = BuildDescriptorsFromDefinition(...)` → `BuildDescriptorContract(...)` + 失败路径 + 日志 | 该 Phase 的产物恒为空契约 |
 | A3 | `src/ShaderGen/contract/DescriptorContract.cpp:56-99 / 133-158 / 160-202 / 250-295` | `AppendEntry`（语义推导、`LocalToWorldIndex`/`MaterialPrivateData` 特判）、`BuildEffectiveDescriptorContract` 的条目改写循环、`ValidateDescriptorContract` 的两两碰撞检查、`GetDescriptorContractHash` 的排序+逐字段哈希 —— **全部在空 vector 上运行**；哈希对构建键只贡献常量（`module_manifest_hash` ⊕ 空 entries hash） | 输入恒空 ⇒ 循环体不可达 |
 | A4 | `src/ShaderGen/compile/MaterialShaderCompiler.cpp:301` | 注释"**契约恒 Scene UBO 条目**"与事实**相反**：`git grep -n "DescriptorSemantic::Scene\|DescriptorSetType::Scene" -- src inc` = **0 命中**（唯一同名物是无关的 `RenderSceneUBOSystem`） | 0 命中 |
@@ -56,7 +56,7 @@
 | # | 位置 | 事实 | 判据 |
 |---|---|---|---|
 | B1 | `inc/hgl/mtl/MaterialRecipe.h:107-180` | 结构（17 字段：filter×3 / wrap×3 / swizzle×4 / compare / lod×3 / anisotropy / 2×has_*）+ `operator==` + `HashMaterialTextureSamplingOptions` ≈ **75 行** | 定义处 |
-| B2 | `src/ShaderMaterialData/MaterialDefinitionFile.cpp:493-710` | TOML 解析（`mag_filter`/`min_filter`/`mipmap_mode`/`u`/`v`/`w`/`r`/`g`/`b`/`a`/`compare_op`/`mip_lod_bias`/`min_lod`/`max_lod`/`max_anisotropy`/`anisotropy`/`swizzle` 等逐键 if-else）≈ **220 行** | 解析处 |
+| B2 | `src/ShaderMaterialData/ResolvedMaterialFile.cpp:493-710` | TOML 解析（`mag_filter`/`min_filter`/`mipmap_mode`/`u`/`v`/`w`/`r`/`g`/`b`/`a`/`compare_op`/`mip_lod_bias`/`min_lod`/`max_lod`/`max_anisotropy`/`anisotropy`/`swizzle` 等逐键 if-else）≈ **220 行** | 解析处 |
 | B3 | **消费者 = 0** | `git grep -nw sampling -- src inc example ShaderLibrary` = 30 处 → 门 23 + 解析 3 + 声明 1 + GLSL/文本里无关词的注释 3 | 运行时绑定链（`RenderPrimitiveCollectSystem`、`MaterialData`）、GLSL 发射（`MaterialShaderEmitter` 的纹理通道宏只读 `channels`）、`VkSampler` 创建（`SamplerPresetLibrary` 读**另一个文件** `ShaderLibrary/sampler.toml`）都不读它 |
 | B4 | **授权面 = 0** | 15 份材质 TOML 中 `sampling` / `anisotropy` / `swizzle` / `compare_op` 各 **0 个文件**（只有 `channels` 3 个文件在用，且那是另一条通路） | 逐键 `grep -l <key> ShaderLibrary/material/*.toml \| wc -l` = 0 |
 
@@ -69,16 +69,16 @@
 
 | 枚举 | 实现 A | 实现 B（同语义第二份） | 备注 |
 |---|---|---|---|
-| `VkCompareOp` | `src/ShaderMaterialData/MaterialDefinitionFile.cpp:112-133`（`ParseCompareOp`，8 项） | `src/ShaderMaterialData/SamplerPreset.cpp:34-45`（`ParseCompareOp`，8 项） | **同名同语义两份实现** |
-| 纹理 filter | `MaterialDefinitionFile.cpp:394-409`（`ParseTextureFilterMode` → `MaterialTextureFilterMode`，2 项） | `SamplerPreset.cpp:14-17`（`ParseFilter` → `VkFilter`，1 分支+默认） | 取值空间重叠、真源分离 |
-| 纹理 wrap | `MaterialDefinitionFile.cpp:411-435`（`ParseTextureWrapMode`，5 项） | `SamplerPreset.cpp:25-32`（`ParseAddressMode`，4 显式 + default） | 同上 |
-| 采样器类型名 | `MaterialDefinitionFile.cpp:377-392`（`ParseSampler`，6 项索引序） | `inc/hgl/mtl/MaterialRecipe.h:54-66`（`ToGLSLSamplerTypeName`，**零调用**）；另与 `inc/hgl/common/TextureSamplerTypeDef.h:105-152`（`SamplerTypeName` 数组 + `ParseSamplerType`）重叠 | **同一枚举反/正/第三方三张表** |
-| 纹理 compare | `MaterialDefinitionFile.cpp:464-491`（`ParseTextureCompareOp` → `MaterialTextureCompareOp`，8 项） | 上面两处 `VkCompareOp` 解析（第三份） | 三个平行实现 |
+| `VkCompareOp` | `src/ShaderMaterialData/ResolvedMaterialFile.cpp:112-133`（`ParseCompareOp`，8 项） | `src/ShaderMaterialData/SamplerPreset.cpp:34-45`（`ParseCompareOp`，8 项） | **同名同语义两份实现** |
+| 纹理 filter | `ResolvedMaterialFile.cpp:394-409`（`ParseTextureFilterMode` → `MaterialTextureFilterMode`，2 项） | `SamplerPreset.cpp:14-17`（`ParseFilter` → `VkFilter`，1 分支+默认） | 取值空间重叠、真源分离 |
+| 纹理 wrap | `ResolvedMaterialFile.cpp:411-435`（`ParseTextureWrapMode`，5 项） | `SamplerPreset.cpp:25-32`（`ParseAddressMode`，4 显式 + default） | 同上 |
+| 采样器类型名 | `ResolvedMaterialFile.cpp:377-392`（`ParseSampler`，6 项索引序） | `inc/hgl/mtl/MaterialRecipe.h:54-66`（`ToGLSLSamplerTypeName`，**零调用**）；另与 `inc/hgl/common/TextureSamplerTypeDef.h:105-152`（`SamplerTypeName` 数组 + `ParseSamplerType`）重叠 | **同一枚举反/正/第三方三张表** |
+| 纹理 compare | `ResolvedMaterialFile.cpp:464-491`（`ParseTextureCompareOp` → `MaterialTextureCompareOp`，8 项） | 上面两处 `VkCompareOp` 解析（第三份） | 三个平行实现 |
 
 **T1 单一真源注册表的覆盖盲区**（`枚举定义处` 提供 `Get*Name`/`Parse*` 的模式已用于
 `ShaderCodeModuleSemantic`、`GlobalSSBOType`、`ShaderModuleSlotRole`、`DescriptorSemantic`）：
 **未纳入** `GLSLSamplerType`〔S3b 待办：与 `inc/hgl/common/TextureSamplerTypeDef.h` 的 `SamplerType` 收敛〕、~~`MaterialTextureFilterMode`~~、~~`MaterialTextureWrapMode`~~、~~`MaterialTextureCompareOp`~~〔三者已随 S2 整删，2026-10-11〕、
-`MaterialVertexProviderPolicy`（`MaterialDefinitionFile.cpp:58-74` 只有单向解析）、`ShaderCodeModuleKind`（`ShaderCodeModuleFile.cpp:153-163` 单向）、
+`MaterialVertexProviderPolicy`（`ResolvedMaterialFile.cpp:58-74` 只有单向解析）、`ShaderCodeModuleKind`（`ShaderCodeModuleFile.cpp:153-163` 单向）、
 `MeshShaderMode`（`inc/hgl/mtl/MeshShaderMode.h:18-29` 单向）⇒ 与既定口径（T1/T2 之后"名字表收敛到枚举定义处"）不一致。
 
 ### D. 双份真值（中）
@@ -87,10 +87,10 @@
 |---|---|---|---|---|
 | D1 | "模板的哪些槽是必需的" | `inc/hgl/mtl/RenderTemplate.h:83` `required` 字段（默认 true；`RenderTemplate.cpp:54` 有唯一显式 false），在 `FragmentTemplateComposer.cpp:355` **已生效** | `FragmentTemplateComposer.cpp:493-500` 按模板**硬编码**必需槽（ForwardUnlit 三项 / Sky 两项） | 否。硬编码与表当前对 ForwardUnlit 恰好同集合 ⇒ 冗余；与 `ShadowCasterOpaque` 的 `MaterialSourceProvider=false` 不一致的风险已存在 |
 | D2 | 剔除方向 | `ResolvedMaterialRenderState.double_sided`（`PipelineConfig.h:59`） | `MaterialPipelineConfig.cull_mode`（`PipelineConfig.h:17`） | 否。TOML 可同时给、无一致性校验；最终 `src/Vulkan/VKRenderPass.cpp:166-168` 用 `double_sided` 覆盖成 `VK_CULL_MODE_NONE`。**两种键在 15 份材质 TOML 里均 0 授权** ⇒ 目前仅代码可达（`RenderPrimitiveCollectSystem.cpp:1110` 注释承认"仅 double_sided/cull 变化"也要重建 program 身份） |
-| D3 | 顶点节点配置 | `MaterialDefinition.vertex_node_config`（`MaterialRecipe.h:322`） | `MaterialRecipe.vertex_node_config`（`:633`）+ `BuildRequest.vertex_node_config_override` | 否。优先级 request > recipe(非默认) > definition(非默认)，判"作者是否设置"用 `IsDefault3DNodeConfig`（`VertexShaderNodeConfig.h:85-92`）⇒ **默认值即缺席**的隐式三态 |
+| D3 | 顶点节点配置 | `ResolvedMaterial.vertex_node_config`（`MaterialRecipe.h:322`） | `MaterialRecipe.vertex_node_config`（`:633`）+ `BuildRequest.vertex_node_config_override` | 否。优先级 request > recipe(非默认) > definition(非默认)，判"作者是否设置"用 `IsDefault3DNodeConfig`（`VertexShaderNodeConfig.h:85-92`）⇒ **默认值即缺席**的隐式三态 |
 | D4 | "recipe 已归一化" | `IsRecipeNormalized`（`MaterialRecipe.h:693-701`，5 个 `has_*` 全真） | 消费侧纪律两套：`VKRenderPass.cpp:149-154` **报错拒绝**未归一化 recipe；`MaterialRecipe.h:678-690` `GetNormalizedRecipeRenderState` 对未归一化 recipe **静默返回全零** | 否。同一不变量，一个 fail-fast、一个静默给错值 |
 | D5 | 回退材质定义 ID | `kFallbackMaterialRules`（`MaterialRecipe.h:540-560`，唯一权威 + `static_assert` 自检） | 门 `ShaderResourceSchemaRegressionGate.cpp:435/465/4052-4069/4224` 独立硬钉字面量 | 否。档内注释自述"换外观必然要动这两处" |
-| D6 | TOML 允许键集合 | 解析器实际读取的键（`MaterialDefinitionFile.cpp:738-1068`） | 白名单 `ValidateMaterialDefinitionKeys`（`:1113-1174`） | 否。手工逐项对应（`:1112` 注释自述）；漏改白名单 ⇒ UnknownKey 拒绝（**有**保护，但需双维护） |
+| D6 | TOML 允许键集合 | 解析器实际读取的键（`ResolvedMaterialFile.cpp:738-1068`） | 白名单 `ValidateResolvedMaterialKeys`（`:1113-1174`） | 否。手工逐项对应（`:1112` 注释自述）；漏改白名单 ⇒ UnknownKey 拒绝（**有**保护，但需双维护） |
 
 ### E. 特例（低–中）
 
@@ -141,9 +141,9 @@
 **2026-10-11 处置**：F-3 六项已全部处理（5 删 1 改）+ 门里三处同族硬编码改引用契约常量 + 1 条"必须存在"针 / 3 条禁复活针；`ShaderArtifactContract.h` 路径订正为 `inc/hgl/mtl/…` —— 见 §14。
 
 **F-4 死参数（名不符实）**
-`ApplyBaseMaterialInfoDefaults(MaterialRecipe&, const MaterialDefinition&, const bool overwrite_existing = false)`
+`ApplyBaseMaterialInfoDefaults(MaterialRecipe&, const ResolvedMaterial&, const bool overwrite_existing = false)`
 （`inc/hgl/mtl/MaterialRecipe.h:746-752`）：**函数体从不读 `overwrite_existing`**，行为恒为"仅当 `mtl_def_id` 为空才填"；
-唯一调用点 `MaterialDefinitionRegistry.cpp:296` 传 `false` ⇒ 参数既无用也无第二取值，名字承诺的"覆盖已有"不存在。
+唯一调用点 `MaterialResolver.cpp:296` 传 `false` ⇒ 参数既无用也无第二取值，名字承诺的"覆盖已有"不存在。
 
 ### G. 隐式顺序协议（中）
 
@@ -192,7 +192,7 @@ grep -n "MaterialMeshIndexTables" src/ShaderGen/compile/MaterialShaderEmitter.cp
 | 批 | 任务 | 判据（红的样子） | 依赖 / 备注 |
 |---|---|---|---|
 | **S1** | **A 层收敛**：`ValidateDefinitionCapabilitySubset` + `requires_runtime_data_rows` 保留为唯一两条；删 `BuildDescriptorsFromDefinition` / `DescriptorContract`（含 `AppendEntry` / `BuildEffective*` / `BuildResourceSchemaFromContract` / `GetDescriptorContractHash` / `HasDescriptorSemantic` / `input.descriptor_entries*`）与 `plan.descriptors` 字段 | 全仓 grep 上述符号 = 0；`GenericMaterialBuilder` Phase 3 只剩 manifest + 验证；门的 58 处描述符断言同批收敛（保留"必须为空"反证针：往 definition 声明一条描述符 ⇒ 编译失败） | 改动面含 `inc/hgl/mtl/*` 公共头 ⇒ 先 purge 依赖 TU 再全量重编；`MaterialShaderCompiler.cpp:301` 错误注释同批改 |
-| **S2** | **B 层整体删除**：`MaterialTextureSamplingOptions`（结构 + hash + `operator==`）+ `MaterialTextureDeclaration::sampling` + `MaterialDefinitionFile.cpp:493-710` 解析块 + `ParseTextureFilterMode/WrapMode/CompareOp`（**已核**：`MaterialTextureCompareOp` 仅出现在 `MaterialRecipe.h` 与 `MaterialDefinitionFile.cpp:466-473`，**没有**独立通路——真是源的 compare 走 `ShaderLibrary/sampler.toml:57` → `SamplerPreset.cpp:34` 的 `VkCompareOp`） | 15 份材质 TOML 无 `sampling` 键（已成立）；删后门用例同批收敛；`git grep -nw sampling` 只剩无关注释 | `channels` **不在**本批范围（活：3 份 TOML 授权 + 纹理通道宏消费者） |
+| **S2** | **B 层整体删除**：`MaterialTextureSamplingOptions`（结构 + hash + `operator==`）+ `MaterialTextureDeclaration::sampling` + `ResolvedMaterialFile.cpp:493-710` 解析块 + `ParseTextureFilterMode/WrapMode/CompareOp`（**已核**：`MaterialTextureCompareOp` 仅出现在 `MaterialRecipe.h` 与 `ResolvedMaterialFile.cpp:466-473`，**没有**独立通路——真是源的 compare 走 `ShaderLibrary/sampler.toml:57` → `SamplerPreset.cpp:34` 的 `VkCompareOp`） | 15 份材质 TOML 无 `sampling` 键（已成立）；删后门用例同批收敛；`git grep -nw sampling` 只剩无关注释 | `channels` **不在**本批范围（活：3 份 TOML 授权 + 纹理通道宏消费者） |
 | **S3** | **C 层平行解析表收敛**：`ParseCompareOp` 合一份；filter/wrap 的名字↔值收敛到枚举定义处（T1 模式：`Get*Name` + `Parse*`）；补 `GLSLSamplerType`/`MaterialVertexProviderPolicy`/`ShaderCodeModuleKind`/`MeshShaderMode` 的注册表 | 每个枚举的 name→value 只有 1 处实现（`git grep -c` 计数）；`ToGLSLSamplerTypeName` 要么被用、要么删；门用例同步 | 与 T1/T2 既定口径一致，可独立成批 |
 | **S4** | **D 层去双真值**：D1（删硬编码必需槽，改读表 + 表里显式标 required）；D2（`double_sided` 与 `cull_mode` 二选一，另一条删或加一致性校验；TOML 侧两者 0 授权 ⇒ 可直接收敛）；D4（`GetNormalizedRecipeRenderState` 加同 `VKRenderPass` 的 fail-fast 或删除该口）；F-4 死参数删除。**〔2026-10-12 全部完成：F-4 并入并完成（`694ab2002`）、S4a=D1（§19.6）、S4b-D4（§19.7）、S4b-D2（§19.8）〕** | 删 D1 后：把某模板槽设为 `required=false` 且不提供 ⇒ 不再被硬编码判死；D4 反证：传未归一化 recipe ⇒ 报错而非静默全零 | D2/D4 触及 recipe/normalize 语义，建议单独一批并附反证 |
 | **S5** | **F 层逐符号删除**（F-1 五字段 / F-2 二十三个零调用函数 / F-3 类型与常量 / F-4 已并入 S4） | 每个符号：`git grep -nw <sym> -- src inc example` 归 0（注释与测试针同批改写为"禁复活"） | 与 §1.2/§1.3 那一轮的删除纪律完全同构；`ShaderArtifactSPVExtension` 处置前先核 `".spv"` 是否有别处硬写（若有 ⇒ 改为用常量而非删） | **〔2026-10-11 已完成：F-1 §12 / F-2 §13 / F-3 §14 / F-4 §15，见 §16 小结〕**
@@ -398,12 +398,12 @@ buffer_reference 表达式。`material/shadow_receiver_source.glsl:233` 的 `con
 | 档 | 净删 | 内容 |
 |---|---|---|
 | `inc/hgl/mtl/MaterialRecipe.h` | −112 | `MaterialTextureFilterMode/WrapMode/Swizzle/CompareOp` 4 枚举 + `MaterialTextureSamplingOptions` + `operator==` + `HashMaterialTextureSamplingOptions` + `MaterialTextureDeclaration::sampling` 字段 |
-| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | −334 | `ParseTextureFilterMode/WrapMode/CompareOp/Swizzle/SwizzleOptions/TextureSamplingOptions` 6 个函数 + 调用点 + `ValidateTextureDeclarationKeys` 里 9 个 authoring 键 |
+| `src/ShaderMaterialData/ResolvedMaterialFile.cpp` | −334 | `ParseTextureFilterMode/WrapMode/CompareOp/Swizzle/SwizzleOptions/TextureSamplingOptions` 6 个函数 + 调用点 + `ValidateTextureDeclarationKeys` 里 9 个 authoring 键 |
 | 门 `ShaderResourceSchemaRegressionGate.cpp` | −96/+新 1 用例 | 采样 TOML 输入、`S.material-definition-file-schema` 的采样断言、`changed_sampling` ABI 用例；2 处聚合初始化改 3 元 |
 | `doc/texture2darray-unified-texture-binding.md:216` | 标注 | dated 订正：该组 authoring 键整删，材质侧再写会被键校验拒绝 |
 
 **意图不丢**：原先那条"非法 swizzle **值**必须被拒"的用例**改造成**"已退役 authoring **键**必须被键校验拒绝"
-（机制换了、意图保留：畸形纹理声明不得静默通过）+ 一条禁复活针（`MaterialDefinitionFile.cpp` 不得再出现 `key != "swizzle"`）。
+（机制换了、意图保留：畸形纹理声明不得静默通过）+ 一条禁复活针（`ResolvedMaterialFile.cpp` 不得再出现 `key != "swizzle"`）。
 
 **反证（判据有牙）**：把 `key != "swizzle"` 放回白名单 ⇒ 门精确报
 `[FAIL] S.material-definition-file-schema — retired texture sampling keys must be rejected as unknown keys`；还原后 42 PASS。
@@ -429,7 +429,7 @@ cook `38/0`；`PBRSpheres` 15s 0 错误；`CascadeShadowMap` 12s 0 错误。
 
 ## 10. S3a 执行记录：Vk 枚举 name↔value 收敛为单一真源（2026-10-11）
 
-**靶**：ShaderGen 侧 **7 份手写 Vk 枚举解析器**——`MaterialDefinitionFile.cpp` 的 `ParseCullMode`/`ParseCompareOp`/`ParseBlendFactor`
+**靶**：ShaderGen 侧 **7 份手写 Vk 枚举解析器**——`ResolvedMaterialFile.cpp` 的 `ParseCullMode`/`ParseCompareOp`/`ParseBlendFactor`
 与 `SamplerPreset.cpp` 的 `ParseFilter`/`ParseMipmapMode`/`ParseAddressMode`/`ParseCompareOp`（其中 `ParseCompareOp` 是**同名同语义两份**，§C 首行）。
 判据：一个枚举的名字↔值只有 1 处实现，且**未知名必须失败**（不得静默落默认值）。
 
@@ -438,10 +438,10 @@ cook `38/0`；`PBRSpheres` 15s 0 错误；`CascadeShadowMap` 12s 0 错误。
 | 项 | 内容 |
 |---|---|
 | **新增** `inc/hgl/mtl/VkEnumText.h`（单一真源，154 行） | 6 张表 + 6 对 `ParseVk*`/`GetVk*Name`：`VkCullModeFlags`/`VkCompareOp`/`VkBlendFactor`（材质 TOML）与 `VkFilter`/`VkSamplerMipmapMode`/`VkSamplerAddressMode`（sampler.toml）。拼写只此一份、精确匹配；未知名/空名 ⇒ `false` |
-| `MaterialDefinitionFile.cpp` | 删 3 个解析器（−69 行），4 处调用改 `ParseVk*(value.c_str(), …)`；语义等价（本来就是未知名即失败） |
+| `ResolvedMaterialFile.cpp` | 删 3 个解析器（−69 行），4 处调用改 `ParseVk*(value.c_str(), …)`；语义等价（本来就是未知名即失败） |
 | `SamplerPreset.cpp` | 删 4 个解析器（−32 行），4 处调用改严格解析：未知名 ⇒ 打印 `非法 <key>: <值>` 并 `return false`（原先静默落 Linear/Repeat/Never） |
 | 门 | 新增 `C.vk-enum-text`：**for 遍历全部 6 张表**（正查命中且值一致 + 反查非空；新增条目自动纳入，不手列断言）+ 8 条未知名/空名必须被拒 |
-| 禁复活针 | `MaterialDefinitionFile.cpp` 不得含 `LessOrEqual`；`SamplerPreset.cpp` 不得含 `ClampToEdge`（防名字字面量散回解析文件） |
+| 禁复活针 | `ResolvedMaterialFile.cpp` 不得含 `LessOrEqual`；`SamplerPreset.cpp` 不得含 `ClampToEdge`（防名字字面量散回解析文件） |
 
 ### 10.2 验收（实测）
 
@@ -661,10 +661,10 @@ BlendFactor/BlendOp/DynamicState）的 name↔value 注册表，含 `VkEnum2Stri
 
 ## 15. F-4 执行记录：死参数（复核后升级为「删整个函数 + 调用点」）+ **S5 / F 层收官**（2026-10-11）
 
-**靶**：`ApplyBaseMaterialInfoDefaults(MaterialRecipe &, const MaterialDefinition &, const bool overwrite_existing = false)`
+**靶**：`ApplyBaseMaterialInfoDefaults(MaterialRecipe &, const ResolvedMaterial &, const bool overwrite_existing = false)`
 （§F-4 记为"死参数：函数体从不读 `overwrite_existing`，唯一调用点传 `false`"；函数实际在 `MaterialRecipe.h:604`，行号漂移）。
 
-**复核发现（比评审结论更强）**：唯一调用点在 `MaterialDefinitionRegistry.cpp:296`，而**紧邻的上一行**已经
+**复核发现（比评审结论更强）**：唯一调用点在 `MaterialResolver.cpp:296`，而**紧邻的上一行**已经
 `recipe.mtl_def_id = definition.definition_id;`。函数体是：
 
 ```cpp
@@ -680,7 +680,7 @@ if (recipe.mtl_def_id.empty())
 | 位置 | 改动 |
 |---|---|
 | `inc/hgl/mtl/MaterialRecipe.h` | 删函数本体（8 行，含 `overwrite_existing` 形参） |
-| `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp` | 删调用行（保留其上一行的直接赋值——那才是真正的来源） |
+| `src/ShaderMaterialData/MaterialResolver.cpp` | 删调用行（保留其上一行的直接赋值——那才是真正的来源） |
 | `TestCSMIncrementalPass.cpp` | 新增 1 条禁复活针（文案写明"先证恒 no-op 再删，不是删参数了事"） |
 
 ### 15.2 验收（实测）
@@ -718,7 +718,7 @@ if (recipe.mtl_def_id.empty())
 
 ### 17.1 实测到的真实现状（与口径相反）
 
-任何一份材质 TOML 配置写错，整个进程**立即中止**：`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:213`
+任何一份材质 TOML 配置写错，整个进程**立即中止**：`src/ShaderMaterialData/MaterialResolver.cpp:213`
 把 `error_count > 0` 也当成致命条件，命中即 `GLogFatal(...) + std::abort()`。
 指纹：cdb 抓到 `code c0000409 / Subcode 0x7 FAST_FAIL_FATAL_APP_EXIT`；因为 stdout 还压在缓冲里，
 **门与 cooker 表现为"零输出 + 非零 rc"的静默早退**（此前 §14 反证时踩到过这个现象，当时误以为是工具偶发）。
@@ -727,12 +727,12 @@ if (recipe.mtl_def_id.empty())
 
 | 位置 | 改动 |
 |---|---|
-| `MaterialDefinitionFileRegistry::LoadFile` | 三类失败各自 LOG：`打不开 / 文件为空 / 读取失败`；**解析失败**打 `材质定义解析失败: <完整路径> (<ParseResultName>)`；**ID 重复**打 `材质定义 ID 重复: <ID> (file=<完整路径>)` |
-| `MaterialDefinitionFileRegistry::LoadDirectory` | 有失败时补一行汇总：`材质库加载完成：成功 N 份、失败 M 份（失败项不注册 ⇒ 引用者走错误材质路径）` |
-| `MaterialDefinitionRegistry` | **fatal 条件收窄**：只有"整库不可用"（`file_count == 0 || 已解析 == 0`）才 `GLogFatal + abort`；单份失败 ⇒ `GLogError` + 跳过 |
+| `ResolvedMaterialFileRegistry::LoadFile` | 三类失败各自 LOG：`打不开 / 文件为空 / 读取失败`；**解析失败**打 `材质定义解析失败: <完整路径> (<ParseResultName>)`；**ID 重复**打 `材质定义 ID 重复: <ID> (file=<完整路径>)` |
+| `ResolvedMaterialFileRegistry::LoadDirectory` | 有失败时补一行汇总：`材质库加载完成：成功 N 份、失败 M 份（失败项不注册 ⇒ 引用者走错误材质路径）` |
+| `MaterialResolver` | **fatal 条件收窄**：只有"整库不可用"（`file_count == 0 || 已解析 == 0`）才 `GLogFatal + abort`；单份失败 ⇒ `GLogError` + 跳过 |
 | `ShaderCodeModuleRegistry`（同族） | 5 处日志的**路径**格式串 `%s` → `%ls`（`OSString` 是宽字符；此前只打出首字符，例如 `E`） |
 
-链路语义（落地后）：写错的材质**不注册** ⇒ 引用它的配方分类为 `MaterialErrorKind::UnknownMaterialDefinition`
+链路语义（落地后）：写错的材质**不注册** ⇒ 引用它的配方分类为 `MaterialErrorKind::UnknownResolvedMaterial`
 ⇒ 走 `kFallbackMaterialRules` 的保底材质 + 标记色（现状见 §17.4-a）。
 
 ### 17.3 验证（实测）
@@ -746,7 +746,7 @@ if (recipe.mtl_def_id.empty())
 **探针（把 `lit.material.toml` 的 `sampler` 改成 `"SamplerBogus"`）**：
 
 - 日志（完整路径 + 原因，路径修 `%ls` 后正确）：
-  `[MaterialDefinitionFileRegistry] 材质定义解析失败: E:\ULRE\ShaderLibrary\material\lit.material.toml (InvalidValue)`
+  `[ResolvedMaterialFileRegistry] 材质定义解析失败: E:\ULRE\ShaderLibrary\material\lit.material.toml (InvalidValue)`
   → `材质库加载完成：成功 13 份、失败 1 份（失败项不注册 ⇒ 引用者走错误材质路径）`
   → `[ShaderGen] 1 份材质定义加载失败（逐份原因见上）——这些定义不注册，引用它们的配方会走错误材质路径。`
 - 门：**不再静默早退** ⇒ 35 PASS / 8 FAIL，其中 `[FAIL] S.material-definition-file-schema — material file registry bulk load failed`（可读的红），其余用例照跑。
@@ -759,7 +759,7 @@ if (recipe.mtl_def_id.empty())
 - **a. 保底材质接棋盘格**：**已完成（§18.2）** —— 两条错误种类改用 `builtin/checkerboard_3d`（只依赖 Position +
   GeometryOnly ⇒ 任意几何可画），`None` 仍为 `builtin/pure_color`；新增门 case `S.material-fallback-definitions-exist`。
   标记色仍不可见（棋盘格源不读 MaterialData），按用户口径**只留 TODO**（`MaterialRecipe.h` 规则表上方注释）。
-- **b. 日志粒度到键/值**：**已完成（§18.3）** —— `ParseMaterialDefinitionFile` 回传 表/键/值/行号，
+- **b. 日志粒度到键/值**：**已完成（§18.3）** —— `ParseResolvedMaterialFile` 回传 表/键/值/行号，
   日志报到配置项级别；顺带补了纹理声明形态、`material_data` 形态两个静默失败洞。
 - **c. S3b-2 注册表归位**：**已完成（§18.1）** —— 三个盲区归位到枚举定义旁 + 2 条禁复活针；
 - **本档剩余项去哪找**：S4 / S3b-3 / 棋盘格上色 与 ECS 待拍板、既存红已统一折进 `doc/backlog.md` 的「当前未结项索引」（2026-10-12）——本档不再单独维护清单。
@@ -770,13 +770,13 @@ if (recipe.mtl_def_id.empty())
 ## 18. 三个任务：S3b-2 注册表归位 / 错误材质接棋盘格 / 解析失败回传细节（2026-10-12，用户拍板）
 
 用户当轮三项指令（原文）：①「棋盘格就先不管颜色吧！改让它支持颜色的事未来再说，现在仅留个注释说明未来要做就行了」
-②「那就增加 ParseMaterialDefinitionFile 回传细节吧」③「S3b-2 可以做了」。执行顺序：S3b-2 → 棋盘格 → 解析细节（前一项独立、后两项都动公共头）。
+②「那就增加 ParseResolvedMaterialFile 回传细节吧」③「S3b-2 可以做了」。执行顺序：S3b-2 → 棋盘格 → 解析细节（前一项独立、后两项都动公共头）。
 
 ### 18.1 S3b-2：三个注册表盲区归位（名字↔值只此一处）
 
 | 枚举 | 归位处（枚举定义旁） | 删掉的本地单向解析器 |
 |---|---|---|
-| `MaterialVertexProviderPolicy` | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialDefinitionFile.cpp::ParsePolicy` |
+| `MaterialVertexProviderPolicy` | `inc/hgl/mtl/MaterialRecipe.h` | `ResolvedMaterialFile.cpp::ParsePolicy` |
 | `ShaderCodeModuleKind` | `inc/hgl/mtl/ShaderCodeModule.h` | `ShaderCodeModuleFile.cpp::ParseKind` |
 | `MeshShaderMode` | `inc/hgl/mtl/MeshShaderMode.h` | 无（`ParseMeshShaderMode` 原地重写为走 `GetMeshShaderModeName`） |
 
@@ -785,14 +785,14 @@ if (recipe.mtl_def_id.empty())
 判据：`git grep -n "ParsePolicy(\|ParseKind("` 只剩 2 条**禁复活针**（`TestCSMIncrementalPass.cpp`）⇒ 本地单向解析器不得回来。
 反证：把 `ParseKind(` 重新写进 `ShaderCodeModuleFile.cpp` ⇒ `Test 11 Failed: ShaderCodeModuleKind 的名字表已归位到枚举定义处（…，2026-10-11 S3b-2） -- 'ParseKind(' 重新出现（禁复活）`。
 
-**本轮新发现（S3b-3 待办，同一形态，本次未动）**：`MaterialDefinitionFile.cpp` 里还有 **5 个本地单向解析器**
+**本轮新发现（S3b-3 待办，同一形态，本次未动）**：`ResolvedMaterialFile.cpp` 里还有 **5 个本地单向解析器**
 （`ParseVertexInput`/`ParseMapping`/`ParseOrientation`/`ParseScale`/`ParseProjection` + `ParseVertexNormalMode`）
 对 `VertexInputMode`/`MappingMode`/`OrientationMode`/`ScaleMode`/`ProjectionMode`/`MaterialVertexNormalMode` 做单向映射，
 这 6 个枚举**全仓没有 `Get*Name`**（`git grep -c Get*Name` = 0）⇒ 名字只存在于这些本地表里。归位需要动各自枚举所在的头
 （其中几个属 `hgl::graph` 顶点节点侧，blast radius 比 S3b-2 大），故另起一批做。
 
 
-**诊断表前缀（B2，2026-10-14 落地）**：`MaterialDefinitionFile.cpp` 的解析失败诊断原本用**粘性单值**表名，
+**诊断表前缀（B2，2026-10-14 落地）**：`ResolvedMaterialFile.cpp` 的解析失败诊断原本用**粘性单值**表名，
 且 `SetParseTable` 只被键校验器调用 ⇒ **值解析失败**（如 `cull_mode` 拼错）报出来的只有键名、没有所属表，
 更糟的是校验器先跑、其表名会**残留**给后面的值解析（报出**错误的位置**）。改法：
   · `ParseErrorContext` 换成**表路径栈**（`PushTable`/`PopTable`/`BuildTablePath`）+ RAII 作用域 `ParseTableScope`
@@ -812,12 +812,12 @@ if (recipe.mtl_def_id.empty())
 `ScaleMode` / `ProjectionMode`（注意实际枚举名是 `PositionMappingMode`，不是评审档写的 `MappingMode`）
 ＋ `inc/hgl/mtl/MaterialRecipe.h` 的 `MaterialVertexNormalMode`；每个都是
 `*Count = static_cast<uint32_t>(末值) + 1` + `Get*Name`（switch）+ `Parse*`（线性查表 `*Count` 格，
-名字只在 `Get*Name` 里写一份 ⇒ 新增枚举值自动纳入）。`MaterialDefinitionFile.cpp` 的 6 个本地单向解析器
+名字只在 `Get*Name` 里写一份 ⇒ 新增枚举值自动纳入）。`ResolvedMaterialFile.cpp` 的 6 个本地单向解析器
 （含 `ParseVertexNormalMode` 的 if 链）**整删**，6 个调用点改走归位后的 `Parse*`（`std::string` ⇒ `.c_str()`）。
 空串语义保持原样（这 6 个键都是 `ReadRequiredString`/必填 ⇒ 一律 `false`，无缺省降级）。
 针 12 条（Test 25 组⑩）：6 存在性（`Get*Name` 声明形态，含头文件同址）+ 6 禁复活
 （`ParseVertexInput(` / `ParseMapping(` / `ParseOrientation(` / `ParseScale(` / `ParseProjection(` /
-`ParseVertexNormalMode(` 不得回到 `MaterialDefinitionFile.cpp`；新调用名的 `Parse*Mode(` 不撞子串）。
+`ParseVertexNormalMode(` 不得回到 `ResolvedMaterialFile.cpp`；新调用名的 `Parse*Mode(` 不撞子串）。
 承重反证：把 `GetVertexInputModeName` 的 `"Vec3Position"` 改成别的串 ⇒ 门报错
 （`ShaderLibrary/material/*.material.toml` 的 `source` 键就是按这个名字解析的）⇒ 名字表是真源而非装饰。
 
@@ -829,14 +829,14 @@ if (recipe.mtl_def_id.empty())
 
 **报错与运行时回退（2026-10-14 落地，用户口径：材质未知/写错 ⇒ 直接报错，运行时走错误材质 = 棋盘格）**：
 两条到达路径的**出声点**：
-  · **加载期**（单份定义写错，例如采样器 / 顶点输入名配错）⇒ `MaterialDefinitionFileRegistry::LoadFile`
+  · **加载期**（单份定义写错，例如采样器 / 顶点输入名配错）⇒ `ResolvedMaterialFileRegistry::LoadFile`
     的 `GLogError`（"材质定义解析失败" + 表/键/值/行号）；该份**不注册** ⇒ 引用它的配方落到回退路径。
   · **运行期**（配方引用的材质定义 ID 无法解析：作者写了不存在的 ID）⇒ 此前**静默**（`NormalizeRecipe`
     悄悄把 ID 换成保底材质、ECS 侧当"构建成功"）⇒ 现补 `GLogError("[MaterialFallback] 材质定义 ID 无法解析: "%s" => 
     回退错误材质 %s …")`，**唯一出声点**；ECS 侧那条（`BuildResolvedRecipe` 构建失败⇒按种类合成回退）继续用
     既有 `[MaterialFallback]` 告警，不重复。ECS 侧同时把「构建成功但配方已被换成错误材质」计入每帧回退计数
     （取数口）。
-  · 行为断言：`TestRenderStrategyTable` Test 6 新增——伪造 `mtl_def_id` ⇒ 分类 = `UnknownMaterialDefinition`
+  · 行为断言：`TestRenderStrategyTable` Test 6 新增——伪造 `mtl_def_id` ⇒ 分类 = `UnknownResolvedMaterial`
     且配方 ID 被换成 `builtin/checkerboard_3d`（此前只钉规则表，没钉**替换行为**）。
   · 端到端正证（2026-10-14）：把 `GPUDrivenCull` 的 `cube_recipe.mtl_def_id` 临时改成 `"no/such_material_probe"`
     ⇒ 运行日志出现上述报错行（129 条，每帧一次，与既有回退告警同口径）、帧摘要由 `0x90E0745C2C7B8599`
@@ -866,12 +866,12 @@ if (recipe.mtl_def_id.empty())
 按用户口径**只留 TODO**（`MaterialRecipe.h` 规则表上方注释）：未来 ① 两套 checkerboard 源读 EmissiveSurface 标记色；
 ② 2D/3D 分派（届时回退 ID 需按绘制维度区分）；③ 门/契约同步。
 
-### 18.3 `ParseMaterialDefinitionFile` 回传失败细节（表 / 键 / 值 / 行号）
+### 18.3 `ParseResolvedMaterialFile` 回传失败细节（表 / 键 / 值 / 行号）
 
 **动因**（用户口径）：发售用全预编译 SPV、不再有 shader 合成器 ⇒ 材质配置写错只能靠**日志**定位，
 所以失败必须报到"哪个表、哪个键、什么值"，而不是只说"某文件解析失败"。
 
-机制（`MaterialDefinitionFile.h` 新增 `MaterialDefinitionFileData::ParseErrorDetail`：
+机制（`ResolvedMaterialFile.h` 新增 `ResolvedMaterialFileData::ParseErrorDetail`：
 `table`/`key`/`value`/`detail`/`line`）：
 
 - 解析器内部失败点极多且都以 `return false` 收敛 ⇒ **不逐点改**，而是引入**诊断上下文** `ParseErrorContext`
@@ -892,10 +892,10 @@ if (recipe.mtl_def_id.empty())
   与 `material_data` 的形态检查原先直接 `return false` ⇒ 现在逐项报到键级
   （例如缺 `required` 现在报 `resources.textures.required（必须有布尔 required（显式声明，不取默认值））`）。
 
-日志形态（`MaterialDefinitionFileRegistry::LoadFile`）：
+日志形态（`ResolvedMaterialFileRegistry::LoadFile`）：
 
 ```
-[#10][MaterialDefinitionFile.cpp:1084] [MaterialDefinitionFileRegistry] 材质定义解析失败:
+[#10][ResolvedMaterialFile.cpp:1084] [ResolvedMaterialFileRegistry] 材质定义解析失败:
   E:\ULRE\ShaderLibrary\material\lit.material.toml (InvalidValue) resources.textures.sampler = "SamplerBogus"
   (未知采样器类型名（见 inc/hgl/common/TextureSamplerTypeDef.h）)
 ```
@@ -973,10 +973,10 @@ if (recipe.mtl_def_id.empty())
 | `cull_mode`（管线键，粒度更细） | `inc/hgl/mtl/PipelineConfig.h:17`（`MaterialPipelineConfig`，默认 `VK_CULL_MODE_BACK_BIT`） |
 | `double_sided`（覆盖键） | `PipelineConfig.h:68-69`（overrides 的 `has_double_sided` / 值）、`:59`（`ResolvedMaterialRenderState.double_sided`） |
 | 覆盖点（两者汇合处） | `src/Vulkan/VKRenderPass.cpp:170-172`：`if (render_state.double_sided) render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;` |
-| 解析/键 | `src/ShaderMaterialData/MaterialDefinitionFile.cpp`（render_state 段含 `double_sided`；pipeline 段含 `cull_mode`） |
+| 解析/键 | `src/ShaderMaterialData/ResolvedMaterialFile.cpp`（render_state 段含 `double_sided`；pipeline 段含 `cull_mode`） |
 | 哈希输入 | `inc/hgl/mtl/MaterialRecipe.h:669-671`：`h << overrides.has_double_sided << overrides.double_sided` |
 | 门用例 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp:2451-2484`（5 处） |
-| 影响面 | `double_sided` 共 **8 档**：`MaterialRecipe.h`(6) / `PipelineConfig.h`(4) / `MaterialDefinitionFile.cpp`(4) / `MaterialDefinitionRegistry.cpp`(2) / 门(5) / `VKRenderPass.cpp`(2) / `RenderPrimitiveCollectSystem.cpp`(1) |
+| 影响面 | `double_sided` 共 **8 档**：`MaterialRecipe.h`(6) / `PipelineConfig.h`(4) / `ResolvedMaterialFile.cpp`(4) / `MaterialResolver.cpp`(2) / 门(5) / `VKRenderPass.cpp`(2) / `RenderPrimitiveCollectSystem.cpp`(1) |
 | TOML 授权 | `grep -rn "double_sided\|cull_mode" ShaderLibrary/` ⇒ **0**（只有代码可达 ⇒ 收敛成本极低） |
 | **保留**（独立规则，不动） | `VKRenderPass.cpp:166-168`「Lines 图元强制 cull off」——按**图元类型**而非材质语义 |
 
@@ -1103,12 +1103,12 @@ Composer 里不得再出现按模板 ID 硬编码的必需槽判断
 |---|---|
 | `inc/hgl/mtl/PipelineConfig.h` | 删 `ResolvedMaterialRenderState.double_sided`、`MaterialRenderStateOverrides.has_double_sided/double_sided`、`HashResolvedMaterialRenderState` 对应输入 |
 | `inc/hgl/mtl/MaterialRecipe.h` | 删覆盖应用分支、`IsRecipeNormalized` 合取项、`TryGetNormalizedRecipeRenderState` 的赋值、`HashMaterialRecipe` 两个输入 |
-| `MaterialDefinitionFile.cpp` | 删 `render_state.double_sided` 解析块 + 键白名单条目 ⇒ **写该键 = 未知键报错** |
-| `MaterialDefinitionRegistry.cpp` | 删归一化写回两行 |
+| `ResolvedMaterialFile.cpp` | 删 `render_state.double_sided` 解析块 + 键白名单条目 ⇒ **写该键 = 未知键报错** |
+| `MaterialResolver.cpp` | 删归一化写回两行 |
 | `src/Vulkan/VKRenderPass.cpp` | 删「double_sided ⇒ cull NONE」覆盖分支（**Lines 图元**那条按图元类型的独立规则保留） |
 | `VKCommandBufferRender.cpp` / `RenderPrimitiveCollectSystem.cpp` | 两处注释改写，**不复述被删符号** |
 | 门 `Y1.resolved-material-render-state` | 5 处断言改写成 **`cull_mode`**（定义默认 `NONE` + 覆盖为 `BACK_BIT`），三条原意图逐条保留；D4 块的等价断言去掉该合取项 |
-| `TestCSMIncrementalPass.cpp` | **4 条禁复活针**（PipelineConfig.h / MaterialRecipe.h / MaterialDefinitionFile.cpp / VKRenderPass.cpp） |
+| `TestCSMIncrementalPass.cpp` | **4 条禁复活针**（PipelineConfig.h / MaterialRecipe.h / ResolvedMaterialFile.cpp / VKRenderPass.cpp） |
 
 **⚠️ 哈希变化声明**：`HashMaterialRecipe` / `HashResolvedMaterialRenderState` 的输入集合变了 ⇒ **所有**配方的
 program 身份键都会变（一次性冷缓存重建；首次运行会重编 stage GLSL）。这是设计内的键空间收敛，**不是回归**。
@@ -1127,7 +1127,7 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 ```
 ② 解析键（材质 TOML 写 `[render_state]` + `double_sided = false`）：
 ```
-[MaterialDefinitionFileRegistry] 材质定义解析失败:
+[ResolvedMaterialFileRegistry] 材质定义解析失败:
   E:\ULRE\ShaderLibrary\material\lit.material.toml (UnknownKey)
   render_state.double_sided (未知键（拼写错误或已删字段残留）)
 ```
@@ -1189,7 +1189,7 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 |---|---|
 | 新增 | `inc/hgl/common/DebugChannel.h`、`doc/debug-log-channels.md` |
 | 门统一（旧环境变量门 → 通道） | `inc/hgl/ecs/support/PerfTimer.h`、`src/ecs/support/CPUCullReferenceSystem.cpp`、`src/ecs/support/GPUCullSystem.cpp`、`src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp`、`src/ecs/support/text/TextRenderPipeline.cpp`、`src/ecs/systems/render/MainLightShadowSystem.cpp`、`src/ecs/core/ContextRender.cpp`、`src/Vulkan/VKQueue.cpp`、`src/ShaderGen/compile/MaterialShaderEmitter.cpp`（`.h` 同步注释）、`src/ShaderGen/compile/MaterialShaderCompiler.cpp` |
-| 高频无门日志补门 | `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp`（`[SkyRoute]`→`route`）、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`（`[ArenaTrace]`/`[MaterialTextureReferences]`→`binding`）、`src/ecs/systems/render/LineStatsSystem.cpp`（`line`）、`src/ecs/systems/render/ColorPaletteSystem.cpp` + `src/ecs/systems/render/RenderBufferUploadSystem.cpp` + `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`（`upload`）、`src/Vulkan/VKRenderPass.cpp` + `src/Vulkan/pipeline/VKPipelineResolver.cpp`（`pipeline`） |
+| 高频无门日志补门 | `src/ShaderMaterialData/MaterialResolver.cpp`（`[SkyRoute]`→`route`）、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`（`[ArenaTrace]`/`[MaterialTextureReferences]`→`binding`）、`src/ecs/systems/render/LineStatsSystem.cpp`（`line`）、`src/ecs/systems/render/ColorPaletteSystem.cpp` + `src/ecs/systems/render/RenderBufferUploadSystem.cpp` + `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`（`upload`）、`src/Vulkan/VKRenderPass.cpp` + `src/Vulkan/pipeline/VKPipelineResolver.cpp`（`pipeline`） |
 | 顺带修规范违规 | `src/ecs/systems/tick/TransformSystem.cpp`：两处 `std::cout`（析构期）改为 `ULRE_DEBUG_ON(transform)` + `GLogInfo`；两处 `#if HGL_TRANSFORM_DEBUG_LOGGING` 改运行时判定 |
 
 `TransformSystem` 那个宏值得一提：`HGL_TRANSFORM_DEBUG_LOGGING` 在全仓**从未定义**，`#if` 恒假 ⇒ 那两段日志实际上**从未输出过**；改成运行时门之后是本批**首次变为可用**。
@@ -1264,7 +1264,7 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 
 **为什么不用注入式（把解析后的掩码从 main 传下去）**：`ULRE.Vulkan` 是最底层的库（`src/CMakeLists.txt` 构建序 `Vulkan → … → ecs`），它自己就要用 `vksync` 通道；注入需要改 Vulkan 的初始化签名并让所有示例/测试跟着改，收益只是省一次头文件包含，不划算。
 
-**toml11 的代价（实测，接受）**：`inc/toml/toml.hpp`（v4.4.0，header-only，约 600 KB）由 `DebugChannel.h` 直接 include，传染到 19 个 include 点。增量编译实测：`ULRE.Vulkan` 11 s、`ULRE.ECS` 54 s（41 个 TU）、其余三库合计 12 s。此前全仓只有 `MaterialDefinitionFile.cpp`、`SamplerPreset.cpp` 两个 TU 用它。**（§20.10 已把这笔代价关进 `src/Debug/DebugChannel.cpp` 一个 TU。）**
+**toml11 的代价（实测，接受）**：`inc/toml/toml.hpp`（v4.4.0，header-only，约 600 KB）由 `DebugChannel.h` 直接 include，传染到 19 个 include 点。增量编译实测：`ULRE.Vulkan` 11 s、`ULRE.ECS` 54 s（41 个 TU）、其余三库合计 12 s。此前全仓只有 `ResolvedMaterialFile.cpp`、`SamplerPreset.cpp` 两个 TU 用它。**（§20.10 已把这笔代价关进 `src/Debug/DebugChannel.cpp` 一个 TU。）**
 
 **验收（本机实测，全部通过）**
 
@@ -1293,7 +1293,7 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 | 项 | 拆分前 | 拆分后 |
 |---|---|---|
 | `inc/hgl/common/DebugChannel.h` | 583 行，含 toml11 / 日志 / IO / 文件系统头 + 全部 `inline` 实现 + `namespace detail` | 约 130 行，**只有** `Channel` 枚举、`kChannelCount`、`Bit()`、`kDebugConfigFilename`、`ChannelInfo`、8 个函数**声明**、`ULRE_DEBUG_ON` 宏；只 include `<cstdint>` + `<hgl/type/String.h>` |
-| 实现位置 | 头内 `inline` | `src/Debug/DebugChannel.cpp`（**唯一**携带 toml11 的 TU，此前全仓只有 `MaterialDefinitionFile.cpp`、`SamplerPreset.cpp` 用它） |
+| 实现位置 | 头内 `inline` | `src/Debug/DebugChannel.cpp`（**唯一**携带 toml11 的 TU，此前全仓只有 `ResolvedMaterialFile.cpp`、`SamplerPreset.cpp` 用它） |
 | 承载符号的构建目标 | 无（header-only） | 新增 `ULRE.Debug`（`src/Debug/CMakeLists.txt`，STATIC，只 PUBLIC 链 `CMCore`） |
 | 消费方 Payload | 全部 TU 吃 toml11 | 只有 `ULRE.Debug` 一个 TU 吃 |
 

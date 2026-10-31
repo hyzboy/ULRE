@@ -48,7 +48,7 @@ struct MaterialTextureConfigurationAllocation
  */
 class MaterialTextureReferencePool
 {
-    AnsiString definition_id;
+    AnsiString domain_name;
     uint64_t pool_key = 0;
     uint64_t layout_hash = 0;
     uint32_t reference_count = 0;
@@ -73,10 +73,10 @@ public:
         const MaterialTextureReferencePool &) = delete;
 
     static uint64_t MakePoolKey(
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialTextureReferenceLayout &layout) noexcept
     {
-        if (definition.definition_id.empty()
+        if (definition.domain_name.empty()
          || layout.layout_hash == 0
          || !layout.HasReferences()
          || layout.row_stride == 0
@@ -84,18 +84,18 @@ public:
             return 0;
 
         hgl::hash::FNV1aHasher64 hasher;
-        hasher << definition.definition_id
+        hasher << definition.domain_name
                << layout.layout_hash
                << layout.max_configuration_count;
         return hasher;
     }
 
     bool Matches(
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialTextureReferenceLayout &layout) const noexcept;
     bool Initialize(
         VulkanDevice *device,
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialTextureReferenceLayout &layout);
     void Release();
 

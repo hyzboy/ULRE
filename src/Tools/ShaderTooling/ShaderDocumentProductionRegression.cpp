@@ -6,7 +6,7 @@
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/mtl/StageSPVCompiler.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ResolvedPassProfile.h>
@@ -44,11 +44,11 @@ namespace
             MaterialDomain::UnlitTexture, MaterialDomain::StandardOpaque };
         for (int i = 0; i < 2; ++i)
         {
-            MaterialDefinition definition;
+            ResolvedMaterial definition;
             MaterialRecipe recipe{};
             recipe.domain = material_domains[i];
             const auto *source = registry.FindByName(source_names[i]);
-            if (!source || !SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
+            if (!source || !ResolveMaterialFromRecipe(recipe, definition))
                 return false;
             GlslModuleDefinition named = *source;
             named.name = "payload_test_identity_not_a_filename";
@@ -60,7 +60,7 @@ namespace
             // payload 行需求必须由模块注解（`require Resource MaterialData`）决定，
             // 而不是由名字子串反推。
             bool has_payload = false;
-            const bool queried = MaterialDefinitionRequiresPayloadRow(
+            const bool queried = ResolvedMaterialRequiresPayloadRow(
                 definition.material_private_data, &definition, has_payload);
             registry.RemoveByName(named.name);
             if (!queried || has_payload != (i == 1))
@@ -70,7 +70,7 @@ namespace
             }
 
             definition.material_source_module_name = "missing_payload_provider";
-            if (MaterialDefinitionRequiresPayloadRow(
+            if (ResolvedMaterialRequiresPayloadRow(
                     definition.material_private_data, &definition, has_payload))
             {
                 GLogError(u8"Unknown payload provider must fail with a diagnostic");
@@ -115,7 +115,7 @@ namespace
     };
 
     bool ResolveFixtureTemplateRequest(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const ShaderProgramPurpose purpose,
         const MaterialRecipe *recipe,
         PassProfileRequest &out_request,
@@ -245,10 +245,10 @@ namespace
     bool FixtureNeedsMissingDomainMaster(
         const Fixture &fixture, AnsiString *out_reason)
     {
-        MaterialDefinition definition{};
+        ResolvedMaterial definition{};
         MaterialRecipe recipe{};
         recipe.domain = fixture.domain;
-        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
+        if (!ResolveMaterialFromRecipe(recipe, definition))
             return false;
 
         DomainEntrySource probe;
@@ -271,17 +271,17 @@ namespace
     ShaderBuildContext *BuildFixtureContext(
         const Fixture &fixture,
         MaterialProgramBuildCapture *capture,
-        MaterialDefinition *out_definition = nullptr,
+        ResolvedMaterial *out_definition = nullptr,
         PassProfileID *out_profile_id = nullptr,
-        void (*definition_mutation)(MaterialDefinition &) = nullptr,
+        void (*definition_mutation)(ResolvedMaterial &) = nullptr,
         AnsiString *out_options_text = nullptr,
         AnsiString *out_skip_reason = nullptr,
         const char *fixed_mesh_source = nullptr)
     {
-        MaterialDefinition definition{};
+        ResolvedMaterial definition{};
         MaterialRecipe recipe{};
         recipe.domain = fixture.domain;
-        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
+        if (!ResolveMaterialFromRecipe(recipe, definition))
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] fixture=%s cannot resolve domain=%s",
@@ -316,7 +316,7 @@ namespace
                 return nullptr;
         }
 
-        MaterialDefinitionBuildRequest request{};
+        MaterialBuildRequest request{};
         request.recipe.domain = definition.domain;
         if (fixture.recipe_2d_node_config)
             request.recipe.vertex_node_config = Make2DNodeConfigOrtho(false);
@@ -519,7 +519,7 @@ namespace
     bool RunFixture(const Fixture &fixture)
     {
         MaterialProgramBuildCapture capture{};
-        MaterialDefinition definition{};
+        ResolvedMaterial definition{};
         PassProfileID profile_id = PassProfileID::Unknown;
         AnsiString options_text;
         AnsiString skip_reason;
@@ -638,10 +638,10 @@ namespace
     ///   3) 篡改 Mesh 源摘要：Mesh miss 并重新编译，Fragment 仍命中
     bool VerifyCacheHitPostCheck()
     {
-        MaterialDefinition definition{};
+        ResolvedMaterial definition{};
         MaterialRecipe recipe{};
         recipe.domain = MaterialDomain::UnlitSolid;
-        if (!SynthesizeMaterialDefinitionFromRecipe(recipe, definition))
+        if (!ResolveMaterialFromRecipe(recipe, definition))
         {
             GLogError(
                 "[ShaderDocumentProductionRegression] cache-hit probe cannot "
@@ -666,7 +666,7 @@ namespace
         auto build_once = [&](ShaderProgramArtifactMetadata &out_metadata)
             -> ShaderBuildContext *
         {
-            MaterialDefinitionBuildRequest request{};
+            MaterialBuildRequest request{};
             request.recipe.domain = definition.domain;
             request.geometry_vertex_format = &geometry;
             request.shader_program_purpose = ShaderProgramPurpose::ForwardColor;
@@ -889,21 +889,21 @@ namespace
         const char *name;
         bool affects_fragment;
         bool affects_mesh;
-        void (*mutate)(MaterialDefinition &);
+        void (*mutate)(ResolvedMaterial &);
     };
 
-    // MaterialDefinition 里由 emitter 直接写进 GLSL 的注入项。
+    // ResolvedMaterial 里由 emitter 直接写进 GLSL 的注入项。
     // 它们只能靠 ComputeInjectedSourceHash 显式折进 stage 键，是 stage 键最脆弱的一段。
     const DefinitionSensitivityCase definition_sensitivity_cases[] =
     {
         // compile_defines → `#define <name> 1`，逐条写进 Define 块。
         { "compile_defines", true, true,
-          [](MaterialDefinition &d)
+          [](ResolvedMaterial &d)
           { d.compile_defines.push_back("HGL_PROBE_SENSITIVITY"); } },
         // sampler_names → `#define <name>Sampler <idx>u`，idx 来自 contract/sampler.toml
         // 的预设顺序，本身不在任何声明源文本里。
         { "sampler_names", true, true,
-          [](MaterialDefinition &d)
+          [](ResolvedMaterial &d)
           { d.sampler_names.push_back("Linear"); } },
     };
 

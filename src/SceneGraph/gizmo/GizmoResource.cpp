@@ -1,7 +1,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/ScenePassProfileResolver.h>

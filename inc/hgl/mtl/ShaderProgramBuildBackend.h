@@ -17,7 +17,7 @@
  *   两套实现**先到先得**，后装的不覆盖先装的。
  *
  * 归属（为什么在数据面而不是契约层）：
- *   接口签名吃 `MaterialDefinitionBuildRequest` / `MaterialDefinition` / `ShaderBuildContext`，
+ *   接口签名吃 `MaterialBuildRequest` / `ResolvedMaterial` / `ShaderBuildContext`，
  *   这些类型都属于本层（ULRE.ShaderMaterialData）。放在契约层会逼着 Contract 反向依赖
  *   材质定义与构建期请求，与「契约层零运行时依赖」相冲突。
  *
@@ -29,7 +29,7 @@
  */
 #pragma once
 
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 
 namespace hgl::graph::mtl
 {
@@ -42,8 +42,8 @@ namespace hgl::graph::mtl
         /** 全量构建：发射 GLSL、建立 program link / artifact metadata，产出可用的构建上下文。 */
         virtual ShaderBuildContext *CreateBuildContext(
             const contract::PhysicalDeviceProfileLite *profile,
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request) = 0;
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request) = 0;
 
         /** 收尾：把构建上下文里的每个阶段变成真正可用的 SPV（编译或读缓存）。 */
         virtual bool FinalizeBuildContext(ShaderBuildContext *ctx) = 0;

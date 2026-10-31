@@ -5,7 +5,7 @@
 ///   2. 使用 SetFinalGLSL；Finalize 时独立读取 stage 缓存并只编译 miss
 
 #include <hgl/mtl/StageSPVCompiler.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
@@ -35,9 +35,9 @@
 
 namespace hgl::graph::mtl {
 // 发射层（文件末尾）里的判定函数，供本文件较早的调用点前向可见。
-bool MaterialDefinitionRequiresPayloadRow(
+bool ResolvedMaterialRequiresPayloadRow(
     GlobalSSBOType material_private_data,
-    const MaterialDefinition *material_definition,
+    const ResolvedMaterial *material_definition,
     bool &out_required) noexcept;
 
 namespace
@@ -323,7 +323,7 @@ static bool CreateBuildContext(
 
 // ── Step 3a: 解析有效材质私有数据 SSBO 类型（编译配置单一声明）──────────────
 // 一个材质只有一个私有数据 SSBO（MaterialPrivateData，名字固定
-// DefaultMaterialPrivateDataName），类型由 MaterialDefinition/CompileConfig
+// DefaultMaterialPrivateDataName），类型由 ResolvedMaterial/CompileConfig
 // 传入，不再从 provider manifest 推导。
 static bool ResolveEffectiveMaterialPrivateData(
     const StageSPVCompileConfig &config,
@@ -485,7 +485,7 @@ ShaderBuildContext *CompileMaterialStages(
     // 判据与发射层同源（模块元数据 `require Resource MaterialData`），在此折成
     // 程序级信号，运行期不再按定义反推。
     bool requires_recipe_payload_row = false;
-    if (!MaterialDefinitionRequiresPayloadRow(
+    if (!ResolvedMaterialRequiresPayloadRow(
             effective_material_private_data,
             config.material_definition,
             requires_recipe_payload_row))
@@ -517,7 +517,7 @@ ShaderBuildContext *CompileMaterialStages(
 // 发射层（原 MaterialShaderEmitter.cpp，2026 阶段5.2-g 并入本文件）
 //
 // 纯函数、零决策。无生成器终态下仍有消费者的只剩：
-// DumpStageGLSL / BuildSamplerMacros / MaterialDefinitionRequiresPayloadRow。
+// DumpStageGLSL / BuildSamplerMacros / ResolvedMaterialRequiresPayloadRow。
 // 文档拼装与序列化（BuildMaterialStageDocument 及其全部子步骤）已随文档层删除。
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -647,9 +647,9 @@ static bool MaterialProviderRequiresPayloadRow(
     return MaterialSourceRequiresMaterialDataRow(module_name, out_required);
 }
 
-bool MaterialDefinitionRequiresPayloadRow(
+bool ResolvedMaterialRequiresPayloadRow(
     const GlobalSSBOType material_private_data,
-    const MaterialDefinition *material_definition,
+    const ResolvedMaterial *material_definition,
     bool &out_required) noexcept
 {
     out_required = false;

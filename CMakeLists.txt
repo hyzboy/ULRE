@@ -154,7 +154,7 @@ add_library(ULRE::Engine ALIAS ULRE_Engine)
 
 add_subdirectory(src)
 
-# example/ 示例需要材质程序构建能力（MaterialDefinitionRegistry / 模板解析等），
+# example/ 示例需要材质程序构建能力（MaterialResolver / 模板解析等），
 # 发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）下没有它们可链接的目标，故一并退出构建。
 IF(ULRE_ENABLE_SHADER_PROGRAM_BUILD)
     add_subdirectory(example)

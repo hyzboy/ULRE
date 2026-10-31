@@ -25,7 +25,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/asset/TextureAsset.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/log/Log.h>
 

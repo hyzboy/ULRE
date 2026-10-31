@@ -50,7 +50,7 @@
 
 namespace hgl::graph::mtl
 {
-    struct MaterialDefinition;
+    struct ResolvedMaterial;
 
     // ── 领域枚举 ────────────────────────────────────────────────────────────────
     // Custom = 未声明领域（历史材质），不做契约校验。

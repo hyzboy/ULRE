@@ -5,14 +5,14 @@
 namespace hgl::graph::mtl
 {
     uint64 ComputeMaterialProgramManifestKey(
-        const MaterialDefinition &definition,
-        const MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        const MaterialBuildRequest &request,
         const contract::PhysicalDeviceProfileLite *profile) noexcept
     {
         hgl::hash::FNV1aHasher64 h;
 
         // 合成材质源身份：由领域契约与配方表面模块决定所用模块源。
-        h << definition.definition_id;
+        h << definition.domain_name;
 
         // 着色器**变体**维度（不是配方实例维度）。
         //
@@ -37,7 +37,7 @@ namespace hgl::graph::mtl
         // 解析后的渲染模板请求：模板 ID / 版本 / 各槽位模块名与 include 路径。
         //
         // 这才是「实际用了哪份 fragment 源码」的权威描述。此前只靠
-        // definition_id + ambient_module_name 间接推导，一旦调用方显式指定了
+        // domain_name + ambient_module_name 间接推导，一旦调用方显式指定了
         // 模板（离线工具、回归夹具、probe）或环境层换了 ambient provider，
         // 两套不同源码就能算出同一个键 ⇒ 发行期取到不匹配的 SPV。
         // 必须吃**已解析**的请求（ResolveBuildRequest 的产物），不是调用方原始输入。

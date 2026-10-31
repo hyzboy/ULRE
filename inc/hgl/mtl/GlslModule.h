@@ -241,7 +241,7 @@ namespace hgl::graph::mtl
     }
 
     // Name-keyed texture dependency consumed through MTL_TEX(). The name must
-    // resolve to a MaterialDefinition texture declaration before compilation.
+    // resolve to a ResolvedMaterial texture declaration before compilation.
     struct GlslModuleTextureReferenceRequirement
     {
         const char *texture_name = nullptr;

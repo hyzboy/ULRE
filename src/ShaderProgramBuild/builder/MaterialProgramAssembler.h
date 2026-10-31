@@ -26,13 +26,13 @@ namespace hgl::graph::mtl
 
 namespace hgl::graph::mtl
 {
-    struct MaterialDefinition;
-    struct MaterialDefinitionBuildRequest;
+    struct ResolvedMaterial;
+    struct MaterialBuildRequest;
 
     /// 物理固定阶段的编译输入。
     ///
     /// 这两个阶段不是"生成出来的"：片段永远由领域主着色器固定，网格通常由
-    /// 构建器按形状加载固定源。把它们的输入从 `MaterialDefinitionBuildRequest`
+    /// 构建器按形状加载固定源。把它们的输入从 `MaterialBuildRequest`
     /// 里分出来，是为了让构建请求只描述"这次构建的上下文"，而固定阶段的
     /// 字节由后端显式传入——请求里少四个只有领域后端认识的字段。
     struct FixedStageInputs
@@ -88,7 +88,7 @@ namespace hgl::graph::mtl
         uint64 resolved_template_hash = 0;
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;
-        MaterialDefinition vertex_definition;
+        ResolvedMaterial vertex_definition;
 
         // Phase 2: vertex ABI
         VertexShaderNodeConfig vertex_node_config;
@@ -124,16 +124,16 @@ namespace hgl::graph::mtl
         uint64 interstage_varying_options_digest = 0;
 
         // Phase 5: program link + compile config
-        MaterialDefinition contract_definition;
+        ResolvedMaterial contract_definition;
         mtl::ShaderLinkSpec program_link;
     };
 
-    /// 统一 generic 材质编译入口（原 MaterialDefinitionRegistry.cpp 中
+    /// 统一 generic 材质编译入口（原 MaterialResolver.cpp 中
     /// AssembleMaterialProgram 的相位化版本）。返回编译好的 ShaderBuildContext*。
     mtl::ShaderBuildContext *AssembleMaterialProgram(
         const mtl::contract::PhysicalDeviceProfileLite *profile,
-        const MaterialDefinitionBuildRequest &request,
-        const MaterialDefinition &definition,
+        const MaterialBuildRequest &request,
+        const ResolvedMaterial &definition,
         MaterialProgramBuildCapture *build_capture,
         const FixedStageInputs &fixed);
 

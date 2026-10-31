@@ -375,6 +375,6 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | RenderCmdBuffer | `inc/hgl/vk/VKCommandBuffer.h` |
 | DrawMeshTasks 实现 | `src/Vulkan/VKCommandBufferRender.cpp` |
 | MeshShader 生成（CharQuad 模式） | `src/ShaderGen/meshgen/MeshTemplateEmitter.h`（调度）+ `MeshShaderModeCharQuad.h`（CharQuad 主体） |
-| SDF 材质定义 | `inc/hgl/mtl/BuiltinMaterialDefinitions.h`（内嵌 `builtin/text_gpu`，代码化） |
-| 位图材质定义 | `inc/hgl/mtl/BuiltinMaterialDefinitions.h`（内嵌 `builtin/text_gpu_bitmap`，代码化） |
+| SDF 材质定义 | `inc/hgl/mtl/BuiltinResolvedMaterials.h`（内嵌 `builtin/text_gpu`，代码化） |
+| 位图材质定义 | `inc/hgl/mtl/BuiltinResolvedMaterials.h`（内嵌 `builtin/text_gpu_bitmap`，代码化） |
 | 文本 Fragment 着色器（SDF/Bitmap 双路径） | `ShaderLibrary/module/provider/material_source/material_source_text_gpu.glsl` |

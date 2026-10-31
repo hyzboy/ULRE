@@ -10,7 +10,7 @@
  *    这正是 `ULRE_ENABLE_SHADER_PROGRAM_BUILD=0` 下运行时还能算出来的全部维度。
  *
  * 2. **完整决定 program key**：生成器读到的输入恰好就是这些（材质源与模块源由
- *    `definition_id` 与渲染模板请求决定，其余由配方/请求决定，磁盘上的
+ *    `domain_name` 与渲染模板请求决定，其余由配方/请求决定，磁盘上的
  *    ShaderLibrary 在一份烘焙产物内固定）。少折任一维度，就可能取到不匹配的 SPV。
  *
  * 3. **只含变体维度，不含实例维度**：配方按 `HashMaterialRecipeShaderVariant`
@@ -26,12 +26,12 @@
 #pragma once
 
 #include <hgl/CoreType.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 
 namespace hgl::graph::mtl
 {
     uint64 ComputeMaterialProgramManifestKey(
-        const MaterialDefinition &definition,
-        const MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        const MaterialBuildRequest &request,
         const contract::PhysicalDeviceProfileLite *profile) noexcept;
 }//namespace hgl::graph::mtl

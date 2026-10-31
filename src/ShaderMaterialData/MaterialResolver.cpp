@@ -1,4 +1,4 @@
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
@@ -32,7 +32,7 @@ namespace
 }
 
 bool AppendMaterialPassProfileRoots(
-    const MaterialDefinition &definition,
+    const ResolvedMaterial &definition,
     PassProfileRequest &request) noexcept
 {
     bool appended = true;
@@ -79,7 +79,7 @@ bool AppendMaterialPassProfileRoots(
 }
 
 bool SelectScenePassProfileRequest(
-    const MaterialDefinition &definition,
+    const ResolvedMaterial &definition,
     const ShaderProgramPurpose purpose,
     const MaterialRecipe &recipe,
     PassProfileRequest &out_request,
@@ -115,9 +115,9 @@ bool SelectScenePassProfileRequest(
         if (!contract || !contract->no_material_source)
         {
             GLogError(
-                "[MaterialDefinitionRegistry] 领域没有主着色器入口，拒绝回退到 Sky 模板: "
+                "[MaterialResolver] 领域没有主着色器入口，拒绝回退到 Sky 模板: "
                 "id=%s domain=%s",
-                definition.definition_id.c_str(),
+                definition.domain_name.c_str(),
                 contract ? contract->name : "(无契约)");
             return false;
         }
@@ -158,9 +158,9 @@ bool SelectScenePassProfileRequest(
         }
         if (!ambient_applied)
             GLogWarning(
-                "[MaterialDefinitionRegistry] ambient provider ignored: id=%s template=%s "
+                "[MaterialResolver] ambient provider ignored: id=%s template=%s "
                 "has no ambient_light_provider slot",
-                definition.definition_id.c_str(),
+                definition.domain_name.c_str(),
                 GetPassProfileName(profile_id));
     }
 
@@ -177,7 +177,7 @@ bool SelectScenePassProfileRequest(
         }
         if (ULRE_DEBUG_ON(Route))
             GLogInfo("[SkyRoute] id=%s depth=%d masked=%d has_mtl_src=%d has_ntb=%d -> template=%s slots(%s)",
-                     definition.definition_id.c_str(),
+                     definition.domain_name.c_str(),
                      int(depth_purpose), int(masked),
                      int(has_material_source), int(has_ntb_provider),
                      GetPassProfileName(profile_id),
@@ -192,15 +192,15 @@ bool SelectScenePassProfileRequest(
         return true;
 
     GLogError(
-        "[MaterialDefinitionRegistry] Scene render route selection failed: id=%s error=%s",
-        definition.definition_id.c_str(),
+        "[MaterialResolver] Scene render route selection failed: id=%s error=%s",
+        definition.domain_name.c_str(),
         GetPassProfileValidationErrorName(diagnostic.error));
     return false;
 }
 
 VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request) noexcept
+    const ResolvedMaterial &definition,
+    const MaterialBuildRequest &request) noexcept
 {
     // 1. request 显式覆盖
     if (request.has_vertex_node_config_override)
@@ -249,7 +249,7 @@ uint64 HashMaterialProgramBuildContext(
 }
 
 MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
-    const MaterialDefinition &definition,
+    const ResolvedMaterial &definition,
     const mtl::ShaderProgramPurpose purpose,
     const mtl::MaterialCoverageContract &coverage) noexcept
 {
@@ -300,27 +300,24 @@ bool BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe,
     return true;
 }
 
-bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
-                                            MaterialDefinition &out_definition) noexcept
+bool ResolveMaterialFromRecipe(const MaterialRecipe &recipe,
+                               ResolvedMaterial &out_definition) noexcept
 {
     const MaterialDomainContract *contract = GetMaterialDomainContract(recipe.domain);
     if (!contract)
         return false;
 
     // 从零合成，绝不继承调用方残留字段（同 BuildFallbackMaterialRecipe 的理由）。
-    out_definition = MaterialDefinition{};
+    out_definition = ResolvedMaterial{};
 
     out_definition.domain = recipe.domain;
 
     // 身份用领域名：领域内所有配方共享同一顶点 ABI 与片元模板，领域名才是稳定键。
-    // 注意：`definition_id` 会被 `ComputeMaterialProgramManifestKey` 与
+    // 注意：`domain_name` 会被 `ComputeMaterialProgramManifestKey` 与
     // `MaterialTextureReferencePool::MakePoolKey` 当作哈希输入，**不是**纯日志字段；
     // 改动取值等于改动烘焙缓存身份，必须同步重烘并跑发行形态一致性门禁。
-    if (const char *domain_name = GetMaterialDomainName(recipe.domain))
-    {
-        out_definition.definition_id = domain_name;
-        out_definition.definition_name = domain_name;
-    }
+    if (const char *resolved_domain_name = GetMaterialDomainName(recipe.domain))
+        out_definition.domain_name = resolved_domain_name;
 
     out_definition.vertex_provider_policy =
         contract->require_allow_derived
@@ -369,7 +366,7 @@ bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
         out_definition.surface_module_name =
             recipe.surface_module_name.c_str();
 
-    // 纹理槽：领域白名单全集（槽形态由契约给出）。与历史 definition 文件的
+    // 纹理槽：领域白名单全集（槽形态由契约给出）。与已删除的 definition 资产层
     // 写法逐条一致 —— 那些文件把领域的槽名全列一遍，形态一个都不写。
     for (int i = 0; i < contract->texture_slot_count; ++i)
     {

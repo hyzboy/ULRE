@@ -11,7 +11,7 @@
 #pragma once
 
 #include <hgl/mtl/MaterialDomain.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph::mtl
@@ -38,8 +38,8 @@ namespace hgl::graph::mtl
     /// shadow pcf / face normal fallback / 渲染状态各自都有独立分支），漂移之后
     /// 的等价性结论就没有意义了。
     bool EmitDomainOptionsForDefinition(
-        const MaterialDefinition &definition,
-        const MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        const MaterialBuildRequest &request,
         MaterialDomain domain,
         ShaderProgramPurpose purpose,
         AnsiString &out_text);
@@ -79,8 +79,8 @@ namespace hgl::graph::mtl
     ///
     /// 失败原因见 `GetLastDomainShaderBuildBackendError()`。
     bool ResolveFixedFragmentSource(
-        const MaterialDefinition &definition,
-        const MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        const MaterialBuildRequest &request,
         FixedFragmentSource &out_source);
 
     /// 工具/门禁用：用**生产同一条**编译路径把固定片段编成 SPV。

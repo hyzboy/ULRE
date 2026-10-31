@@ -27,7 +27,7 @@
 #include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
@@ -423,11 +423,11 @@ namespace hgl::ecs
 
         /// 取配方对应的材质定义：由领域契约 + 配方合成。失败（配方无有效领域）⇒
         /// 用回退领域合成，绝不剔除图元。
-        bool ResolveMaterialDefinition(
+        bool ResolveResolvedMaterial(
             const graph::mtl::MaterialRecipe &recipe,
-            graph::mtl::MaterialDefinition &out_definition)
+            graph::mtl::ResolvedMaterial &out_definition)
         {
-            if (graph::mtl::SynthesizeMaterialDefinitionFromRecipe(recipe, out_definition))
+            if (graph::mtl::ResolveMaterialFromRecipe(recipe, out_definition))
                 return true;
 
             graph::mtl::MaterialRecipe fallback_recipe;
@@ -435,7 +435,7 @@ namespace hgl::ecs
                     fallback_recipe, graph::mtl::MaterialErrorKind::MissingMaterialSource))
                 return false;
 
-            return graph::mtl::SynthesizeMaterialDefinitionFromRecipe(
+            return graph::mtl::ResolveMaterialFromRecipe(
                 fallback_recipe, out_definition);
         }
 
@@ -457,9 +457,9 @@ namespace hgl::ecs
         void ApplyGeometryErrorFallback(Entity *primitive_comp,
                                         graph::mtl::MaterialRecipe &out_recipe)
         {
-            graph::mtl::MaterialDefinition definition{};
+            graph::mtl::ResolvedMaterial definition{};
 
-            if (!ResolveMaterialDefinition(out_recipe, definition))
+            if (!ResolveResolvedMaterial(out_recipe, definition))
                 return;
 
             const graph::mtl::MaterialErrorKind geometry_error =
@@ -518,7 +518,7 @@ namespace hgl::ecs
                 // A7b ②：构建"成功"，但 mtl 侧可能已把**无法解析的材质定义 ID** 换成保底材质
                 // （`NormalizeRecipe` 的分类结果记在 `fallback_error_kind` 上），A7d 也可能刚
                 // 换了配方 ⇒ 计入回退次数。
-                // 报错由各自的判定点承担（见 MaterialDefinitionRegistry.cpp / 上面的
+                // 报错由各自的判定点承担（见 MaterialResolver.cpp / 上面的
                 // ApplyGeometryErrorFallback），这里**不重复出声**；该位同时是"这帧真的走了
                 // 错误材质"的取数口（配合上面的每帧汇总行）。
                 if (out_recipe.fallback_error_kind != graph::mtl::MaterialErrorKind::None)
@@ -622,7 +622,7 @@ namespace hgl::ecs
         bool ValidateMaterialRecipeForRuntime(
             const graph::mtl::MaterialRecipe &recipe,
             const graph::ShaderProgram *material_program,
-            const graph::mtl::MaterialDefinition &definition,
+            const graph::mtl::ResolvedMaterial &definition,
             const char *owner_name)
         {
             if (!material_program)
@@ -674,7 +674,7 @@ namespace hgl::ecs
                         "[MaterialBinding] Undeclared texture owner=%s texture=%s definition=%s",
                         owner_name ? owner_name : "<null>",
                         binding.texture_name.c_str(),
-                        definition.definition_id.c_str());
+                        definition.domain_name.c_str());
                     return false;
                 }
 
@@ -747,7 +747,7 @@ namespace hgl::ecs
                     GLogError(
                         "[MaterialBinding] Program requires runtime rows but material SSBO binding is invalid owner=%s definition=%s ssbo_id=%u data_index=%u",
                         owner_name ? owner_name : "<null>",
-                        definition.definition_id.c_str(),
+                        definition.domain_name.c_str(),
                         private_binding.ssbo_id,
                         private_binding.data_index);
                     return false;
@@ -762,7 +762,7 @@ namespace hgl::ecs
                     GLogError(
                         "[MaterialBinding] Material SSBO type mismatch owner=%s definition=%s expected=%s actual=%s",
                         owner_name ? owner_name : "<null>",
-                        definition.definition_id.c_str(),
+                        definition.domain_name.c_str(),
                         graph::GetGlobalSSBOTypeName(
                             definition.material_private_data),
                         graph::GetGlobalSSBOTypeName(
@@ -783,8 +783,8 @@ namespace hgl::ecs
             if (!world || !primitive_comp || !material_program)
                 return false;
 
-            graph::mtl::MaterialDefinition definition{};
-            if (!ResolveMaterialDefinition(active_recipe, definition)
+            graph::mtl::ResolvedMaterial definition{};
+            if (!ResolveResolvedMaterial(active_recipe, definition)
              || !ValidateMaterialRecipeForRuntime(
                     active_recipe,
                     material_program,
@@ -1120,14 +1120,14 @@ namespace hgl::ecs
 
         // purpose 固定为 ShadowDepth：SelectCurrentScenePassProfileRequest
         // 依此分派 ShadowCasterOpaque/Masked（按 recipe 的 alpha_test）。
-        graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+        graph::mtl::MaterialBuildRequest mtl_request{};
         mtl_request.recipe = effective_recipe;
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
         mtl_request.shader_program_purpose =
             graph::mtl::ShaderProgramPurpose::ShadowDepth;
-        graph::mtl::MaterialDefinition template_definition{};
-        if (!ResolveMaterialDefinition(effective_recipe, template_definition))
+        graph::mtl::ResolvedMaterial template_definition{};
+        if (!ResolveResolvedMaterial(effective_recipe, template_definition))
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] ShadowCaster cannot select template for material=%s",
@@ -1296,15 +1296,15 @@ namespace hgl::ecs
 
         // SceneGraph owns the existing provider-shape routing policy. It
         // selects a concrete template request before ShaderGen is invoked.
-        graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+        graph::mtl::MaterialBuildRequest mtl_request{};
         mtl_request.recipe = effective_recipe;
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
         mtl_request.shader_program_purpose = effective_purpose;
         // 环境层（世界）决定用哪个 ambient provider；材质只声明表面。
         mtl_request.ambient_module_name = ambient_provider.c_str();
-        graph::mtl::MaterialDefinition template_definition{};
-        if (!ResolveMaterialDefinition(effective_recipe, template_definition))
+        graph::mtl::ResolvedMaterial template_definition{};
+        if (!ResolveResolvedMaterial(effective_recipe, template_definition))
         {
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Cannot select template for material=%s",
@@ -1648,10 +1648,10 @@ namespace hgl::ecs
             ? texture_graphics_context->GetSSBOBufferRegistry()
             : nullptr;
 
-        graph::mtl::MaterialDefinition texture_definition{};
+        graph::mtl::ResolvedMaterial texture_definition{};
         graph::mtl::MaterialTextureReferenceLayout texture_layout{};
         const bool has_texture_definition =
-            ResolveMaterialDefinition(effective_recipe, texture_definition);
+            ResolveResolvedMaterial(effective_recipe, texture_definition);
 
         if (!has_texture_definition
          || !graph::mtl::BuildMaterialTextureReferenceLayout(
@@ -1870,7 +1870,7 @@ namespace hgl::ecs
                 GLogInfo(
                     "[MaterialTextureReferences] owner=%s definition=%s row=%u references=%u gpu=0x%llx",
                     GetOwnerName(primitive_comp),
-                    texture_definition.definition_id.c_str(),
+                    texture_definition.domain_name.c_str(),
                     new_allocation.row_index,
                     texture_layout.reference_count,
                     static_cast<unsigned long long>(

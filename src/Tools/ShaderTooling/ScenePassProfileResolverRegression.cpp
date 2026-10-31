@@ -4,7 +4,7 @@
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/ShaderCompilerAPI.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -373,11 +373,11 @@ namespace
             if (c.surface_module_name)
                 recipe.surface_module_name = c.surface_module_name;
 
-            MaterialDefinition definition;
+            ResolvedMaterial definition;
             PassProfileRequest request;
             PassProfileValidationDiagnostic diagnostic;
             ResolvedPassProfile resolved;
-            if (!Check(SynthesizeMaterialDefinitionFromRecipe(recipe, definition)
+            if (!Check(ResolveMaterialFromRecipe(recipe, definition)
                     && ResolveScenePassProfileRequest(
                         PassProfileID::Sky, hgl::graph::ShaderStage::Fragment,
                         MakeSkyProfile(), request, diagnostic)

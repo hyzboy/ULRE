@@ -55,7 +55,7 @@
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>

@@ -16,7 +16,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/ScenePassProfileResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -442,7 +442,7 @@ namespace hgl::ecs
         guard.material_manager = material_manager;
 
         {
-            graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+            graph::mtl::MaterialBuildRequest mtl_request{};
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = graph::PrimitiveType::Triangles;
             // CharQuad mode: no geometry_vertex_format needed (self-declares SSBOs)
@@ -488,8 +488,8 @@ namespace hgl::ecs
 
         resources.bindless_atlas_handle = atlas_handle;
 
-        graph::mtl::MaterialDefinition text_definition{};
-        if (!graph::mtl::SynthesizeMaterialDefinitionFromRecipe(
+        graph::mtl::ResolvedMaterial text_definition{};
+        if (!graph::mtl::ResolveMaterialFromRecipe(
                 recipe,
                 text_definition))
         {

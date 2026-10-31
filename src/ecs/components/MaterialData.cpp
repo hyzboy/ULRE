@@ -4,7 +4,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -448,9 +448,9 @@ namespace hgl::ecs
         if (asset_default_recipe && override_recipe)
             out_recipe = *override_recipe;
 
-        hgl::graph::mtl::MaterialDefinition definition{};
+        hgl::graph::mtl::ResolvedMaterial definition{};
         const bool has_definition =
-            hgl::graph::mtl::SynthesizeMaterialDefinitionFromRecipe(out_recipe, definition);
+            hgl::graph::mtl::ResolveMaterialFromRecipe(out_recipe, definition);
 
         // B4-iii-b：具名纹理资源住在**世界级旁表**（键 = 材质行行号）——解析路径读旁表，
         // 组件已无副本。无旁表/无条目 ⇒ 空表（语义 = 没有任何具名纹理授权）。

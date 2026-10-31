@@ -4,11 +4,11 @@
 > 本文早期提案与表格用于追溯当时的命名决策，不再是当前资产布局的规范。
 > 当前材质资产只有 `ShaderLibrary/asset/recipe/**/*.recipe.toml`，配方直接声明
 > `domain`；`MaterialDomainContract` 提供领域能力与槽契约。构建期的
-> `MaterialDefinition` 是由契约和配方合成的临时产物，不对应文件、注册表或持久化层。
+> `ResolvedMaterial` 是由契约和配方合成的临时产物，不对应文件、注册表或持久化层。
 
 - 审查基线：分支 `feature/gpu-driven-instanced-rendering`，HEAD `dbe7d10a2`
 - 审查范围：`ShaderLibrary/**`（git 跟踪 204 个文件）+ `inc/hgl/mtl/**` + `src/ShaderMaterialData/**` + `src/SceneGraph/**` 相关符号 + 全工程引用面
-- 本轮不改行为：仍保持 **Domain（引擎） → MaterialDefinition（`.mi.toml`） → Recipe（用户配方）** 三层，只改名字与位置
+- 本轮不改行为：仍保持 **Domain（引擎） → ResolvedMaterial（`.mi.toml`） → Recipe（用户配方）** 三层，只改名字与位置
 
 ---
 
@@ -20,7 +20,7 @@
 | 模块身份 | 逐个读取文件头 `// @ulre name/kind/slot/provides_capability` |
 | 域契约 | `src/ShaderMaterialData/MaterialDomain.cpp` `DomainContracts[]` |
 | 域固定源 | `src/ShaderMaterialData/DomainShaderTemplate.cpp` `kDomainDirs[]` + `ResolveDomainShaderTemplate()` |
-| 资产 ID | 10 个 `*.mi.toml` 的 `id`/`domain` 字段 + 5 个 `BuiltinMaterialDefinitions.cpp` 内嵌定义 |
+| 资产 ID | 10 个 `*.mi.toml` 的 `id`/`domain` 字段 + 5 个 `BuiltinResolvedMaterials.cpp` 内嵌定义 |
 | 配方 | 62 个 `*.recipe.toml` 的 `schema`/`name`/`material_definition` |
 | 槽位 | `inc/hgl/mtl/RenderTemplate.h` `ShaderModuleSlotRole`（12 个有效 role） |
 | 槽位装配 | `src/ShaderMaterialData/SceneRenderTemplateResolver.cpp` 四个 `Make*Profile()` |
@@ -37,7 +37,7 @@
 - `ShaderLibrary/material/*.mi.toml` 的 10 个文件，`id` 是 `Lit`、`UnlitTexture`…，`domain` 是 `StandardOpaque`…，内容是 **能力声明 + 默认渲染状态 + 纹理槽表**，即「材质定义」。
 - 真正承载「某个具体材质实例」的是 `.recipe.toml`。
 - `mi` 极易被读成 Material Instance，正好反过来。用户提出「`mi.toml` 像是多了一层」的直觉即来自这里。
-- 证据：`src/ShaderMaterialData/MaterialDefinitionFile.cpp:1374-1376` 才把它叫 `.mi.toml`；`MaterialDefinitionRegistry.cpp:332` 注释写「资产目录（用户/项目可写的 .mi.toml）」——同一层被两种称呼。
+- 证据：`src/ShaderMaterialData/ResolvedMaterialFile.cpp:1374-1376` 才把它叫 `.mi.toml`；`MaterialResolver.cpp:332` 注释写「资产目录（用户/项目可写的 .mi.toml）」——同一层被两种称呼。
 - **改**：`.mi.toml` → `.definition.toml`；`ShaderLibrary/material/` 拆开（见 D2）。
 
 ### D2 —— `ShaderLibrary/material/` 混装三种完全不同的东西
@@ -112,7 +112,7 @@
 | 词法 | 例子 | 来源 |
 |---|---|---|
 | PascalCase，无前缀 | `Lit`、`UnlitTexture`、`SkyCube`、`VertexPaletteColor` | 10 个 `*.mi.toml` 里 9 个 |
-| snake_case + `builtin/` | `builtin/pure_color`、`builtin/checkerboard_2d`、`builtin/checkerboard_3d`、`builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap` | 1 个 `.mi.toml` + 5 个 `BuiltinMaterialDefinitions.cpp` |
+| snake_case + `builtin/` | `builtin/pure_color`、`builtin/checkerboard_2d`、`builtin/checkerboard_3d`、`builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap` | 1 个 `.mi.toml` + 5 个 `BuiltinResolvedMaterials.cpp` |
 - `builtin/` 含义也混：有的是「代码内嵌」，有的是「文件资产但极简」。
 - 文件名与 `id` 一律不同：`lit.mi.toml` → `id = "Lit"`，`checkerboard_2d.mi.toml` → `id = "builtin/checkerboard_2d"`。
 
@@ -137,7 +137,7 @@
 | 表面领域 | `MaterialDomain` | **Domain** | 引擎固定的一套「表面能做什么 + 必填语义 + 纹理槽」契约，用户不能新增 | `inc/hgl/mtl/MaterialDomain.h` |
 | 领域契约 | `MaterialDomainContract` / `DomainContracts[]` | **DomainContract** | Domain 的数据化描述 | `src/ShaderMaterialData/MaterialDomain.cpp` |
 | 领域入口着色器 | `kDomainDirs` / `.frag` | **DomainEntry** | 每 Domain 的固定 `.frag`/深度 `.frag` | `ShaderLibrary/domain/**` |
-| 构建期合成数据 | `MaterialDefinition` | **MaterialDefinition**（仅内部临时结构） | 由 DomainContract + Recipe 合成的构建输入，不是资产层或注册层 | 内存 |
+| 构建期合成数据 | `ResolvedMaterial` | **ResolvedMaterial**（仅内部临时结构） | 由 DomainContract + Recipe 合成的构建输入，不是资产层或注册层 | 内存 |
 | 用户配方 | `MaterialRecipe` / `.recipe.toml` | **Recipe** | 直接选一个 Domain + 绑资源 + 覆盖配方参数 | `asset/recipe/**` |
 | GLSL 代码模块 | `ShaderCodeModule` | **GlslModule** | 带 `@ulre` 元数据、经注册表校验的 `.glsl` | `ShaderLibrary/module/**` |
 | SPIR-V 模块 | `ShaderModule` | **SpirvModule**（或保留 `ShaderModule`） | Vulkan 模块对象 | `inc/hgl/vk/VKShaderModule.h` |
@@ -163,7 +163,7 @@
 | **R5** | 全部 GLSL 与文件名用 `lower_snake_case`；`@ulre name` 与文件名去掉扩展名后**必须完全一致**（当前 `RenderItemResolve` 不满足） |
 | **R6** | 资产 `id` 统一 `lower_snake_case`；`builtin` = 仅「引擎内嵌（C++ 字符串）」；文件资产一律不带 `builtin/` 前缀 |
 | **R7** | 资产文件名 == `id`（去 `builtin/` 前缀、去扩展名）；配方文件名 == `name` 字段 |
-| **R8** | C++ 中一个词只指一件事：`PassProfile`（槽位组合）/ `DomainEntry`（域入口源）/ `GlslModule`（GLSL 模块）/ `MaterialDefinition` / `Recipe`；`Template` 只保留在无歧义的模板函数语义里 |
+| **R8** | C++ 中一个词只指一件事：`PassProfile`（槽位组合）/ `DomainEntry`（域入口源）/ `GlslModule`（GLSL 模块）/ `ResolvedMaterial` / `Recipe`；`Template` 只保留在无歧义的模板函数语义里 |
 | **R9** | `vertex/` 去掉数字前缀，改为语义前缀：`s1_*`→`stream_*`（顶点流解码）、`s2_*`→`position_*`（位置映射）、`s3_*`→`transform_*`（变换/投影） |
 
 ---
@@ -212,7 +212,7 @@
 
 ### 4.3 保持不变（明确列出，避免实施时误改）
 
-`MaterialDomain`、`MaterialDomainContract`、`MaterialDomainTextureRole`、`MaterialDomainTextureSlot`、`MaterialDefinition`、`MaterialRecipe`、`ShaderModuleSlotRole`、`ShaderProgramPurpose`、`GlobalSSBOType`、`MaterialVertexProviderPolicy`、`DescriptorMacroGen`、`InterStageLocationMacroGen`、`*_interface` 系列模块名。
+`MaterialDomain`、`MaterialDomainContract`、`MaterialDomainTextureRole`、`MaterialDomainTextureSlot`、`ResolvedMaterial`、`MaterialRecipe`、`ShaderModuleSlotRole`、`ShaderProgramPurpose`、`GlobalSSBOType`、`MaterialVertexProviderPolicy`、`DescriptorMacroGen`、`InterStageLocationMacroGen`、`*_interface` 系列模块名。
 
 ### 4.4 本轮明确不改名的 `ShaderGen*` 符号
 
@@ -232,7 +232,7 @@
 `*.recipe.toml` 已识别键：
 `schema`、`name`、`material_definition`、`textures`（`name`/`asset`/`required`/`layer`/`auto_mipmaps`）、`render_state`（`alpha_test`/`alpha_cutoff`/`dither`/`pipeline`）、`vertex`（`requirements`/`varyings`/`transform`/`projection`/`orientation`/`scale`/`root`/`source`/`name`）、`wireframe`、`line_width`、`dynamic_line_width`、`overlay`。
 
-**三个已被明确拒绝的 legacy 键**（`MaterialDefinitionFile.cpp:1028-1039`，报错文案已写清替代）：`material_source_module`、`ntb_module`、`surface_module_include`、`ambient_module_name`。→ 已符合 R8，不动。
+**三个已被明确拒绝的 legacy 键**（`ResolvedMaterialFile.cpp:1028-1039`，报错文案已写清替代）：`material_source_module`、`ntb_module`、`surface_module_include`、`ambient_module_name`。→ 已符合 R8，不动。
 
 ### 5.2 资产 ID（R6/R7）
 
@@ -249,7 +249,7 @@
 | `material/sky_minimal.mi.toml` | `SkyMinimal` | Sky | `asset/definition/sky_minimal.definition.toml` | `sky_minimal` |
 | `material/checkerboard_2d.mi.toml` | `builtin/checkerboard_2d` | Checker2D | `asset/definition/checkerboard_2d.definition.toml` | `checkerboard_2d`（去 `builtin/`） |
 
-代码内嵌（`src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，5 个）—— **保留 `builtin/` 前缀**，因为它们不是文件资产：
+代码内嵌（`src/ShaderMaterialData/BuiltinResolvedMaterials.cpp`，5 个）—— **保留 `builtin/` 前缀**，因为它们不是文件资产：
 
 | 现 `id` | 新 `id` | Domain | 备注 |
 |---|---|---|---|
@@ -637,7 +637,7 @@ include 路径是 **ShaderLibrary 根相对**，不是文件相对。所有 `#in
 | `example/**/*.scene.toml`（已跟踪） | `recipe = "06b.BasicLit.Lit"` 等 | §5.3 若只改 `name` 后缀为「不做」，则**不受影响**；但配方的 `material_definition` 改名不影响场景文件 |
 | `res/**`（**未跟踪**，用户资产） | 同上 | **警告**：任何 recipe `name` 变更都会破坏用户本地场景；这是 §5.3「可选」默认不做的原因 |
 | `MaterialRecipeRegistry.cpp:19` | 按 `.recipe.toml` 后缀扫描目录 | 后缀不变，安全 |
-| `MaterialDefinitionFile.cpp:1376` | 按 `.mi.toml` 后缀扫描 | **必须改** |
+| `ResolvedMaterialFile.cpp:1376` | 按 `.mi.toml` 后缀扫描 | **必须改** |
 
 ### 9.5 缓存与烘焙
 - `MATERIAL_CODEGEN_GENERATION`（P1d 由 `SHADERGEN_CODEGEN_GENERATION` 改名）`15` → `16`，强制已烘焙 SPV/manifest 失效，避免「旧缓存 + 新模块名」拼出错程序。
@@ -734,7 +734,7 @@ BufferGen 调用：`python src\Tools\BufferGen\buffer_gen.py --repo-root . --cla
 | # | 问题 | 选项 | 建议 |
 |---|---|---|---|
 | **Q1** | 是否去掉配方名里的定义名后缀（`06b.BasicLit.Lit` → `06b.BasicLit`，约 40 个文件 + 场景引用）？ | A 做 / B 不做 | **B 不做**：纯美观，且会破坏 `example/**/*.scene.toml` 和用户 `res/**` |
-| **Q2** | `.mi.toml` → `.definition.toml` 是否可接受？还是改用 `.material.toml`（与更早命名一致）？ | A `.definition.toml` / B `.material.toml` / C 不改 | **A**：与 `MaterialDefinition` 类型同名，词义最准 |
+| **Q2** | `.mi.toml` → `.definition.toml` 是否可接受？还是改用 `.material.toml`（与更早命名一致）？ | A `.definition.toml` / B `.material.toml` / C 不改 | **A**：与 `ResolvedMaterial` 类型同名，词义最准 |
 | **Q3** | `RenderTemplateID` 枚举值（`ForwardLitShadowedAO`…）是否也拆轴（阴影/AO 从名字里拿掉，变成独立槽位组合）？ | A 本轮不动 / B 一并改 | **A**：属于结构改动，不是改名，另开任务 |
 | **Q4** | `src/Tools/ShaderGen` → `src/Tools/ShaderTooling`，回归目标一并改名？ | A 全改 / B 只改目录 / C 不动 | **A**：目录与目标名一致才不误导 |
 | **Q5** | 当前工作树有用户自有改动/未跟踪文件（`CMScript`、`res`、`src/Tools/GLTFConvert` 未跟踪；`src/Tools/TexConv` 已修改）。执行 P0..P6 期间是否允许我保持它们不动、只在干净区域操作？ | A 允许（不动它们） / B 先由用户处理 | **A**：我不会触碰这四处，但 `git status` 永远不会完全干净，需接受「按路径白名单操作」 |

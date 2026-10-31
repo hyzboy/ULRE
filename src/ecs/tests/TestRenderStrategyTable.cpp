@@ -2,7 +2,7 @@
 #include <hgl/ecs/support/RenderStrategyTable.h>
 #include <hgl/ecs/support/RenderStrategyParity.h>
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <cstring>
@@ -470,7 +470,7 @@ int main(int argc, char** argv)
     {
         using namespace graph::mtl;
 
-        MaterialDefinition definition{};
+        ResolvedMaterial definition{};
 
         MaterialRecipe recipe{};
 
@@ -520,7 +520,7 @@ int main(int argc, char** argv)
 
         // ⑤ 声明 required=false ⇒ 缺绑定属正常，不得报错
         {
-            MaterialDefinition optional_definition{};
+            ResolvedMaterial optional_definition{};
             MaterialTextureDeclaration declaration;
             declaration.name     = "emissive";
             declaration.required = false;
@@ -537,7 +537,7 @@ int main(int argc, char** argv)
 
         // ⑥ 反向判据：定义侧没有声明，但配方侧自己标了 required 且资源为空 ⇒ 仍是错误
         {
-            MaterialDefinition bare_definition{};
+            ResolvedMaterial bare_definition{};
             MaterialRecipe bad_recipe{};
 
             RecipeTextureBinding binding;
@@ -590,7 +590,7 @@ int main(int argc, char** argv)
 
         // ① 不知道顶点格式 ⇒ 一律不判定（宁可不报，避免离线/测试路径误伤）
         {
-            MaterialDefinition definition{};
+            ResolvedMaterial definition{};
             definition.vertex_semantic_requirements.Add(
                 MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::Normal));
 
@@ -607,7 +607,7 @@ int main(int argc, char** argv)
         // ② 要顶点法线 + 格式没有 Normal ⇒ MissingVertexNormal
         //    ③ 要顶点法线 + 格式有 Normal ⇒ 不是错误
         {
-            MaterialDefinition definition{};
+            ResolvedMaterial definition{};
             definition.vertex_semantic_requirements.Add(
                 MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::Normal));
 
@@ -641,7 +641,7 @@ int main(int argc, char** argv)
         // ④ 只要法线贴图模块（ntb_module_name）、不声明 Normal 语义 ⇒ 仍然必须要顶点法线
         //    （`stream_ntb*.glsl` 会按 ABI 读 Normal 槽 —— `Lit` 就是这种写法）
         {
-            MaterialDefinition definition{};
+            ResolvedMaterial definition{};
             definition.ntb_module_name = "ntb_tangent_vbo_normalmap";
 
             if (!MaterialRequiresVertexNormal(definition))
@@ -654,7 +654,7 @@ int main(int argc, char** argv)
         // ⑤ `normal_mode = OptionalFaceFallback` 的材质**容忍**面法线兜底 ⇒ 缺法线不是错误
         //    （回退棋盘格自身就是这个模式，它必须能在任何几何上画出来）
         {
-            MaterialDefinition definition{};
+            ResolvedMaterial definition{};
             definition.vertex_normal_mode = MaterialVertexNormalMode::OptionalFaceFallback;
 
             if (MaterialRequiresVertexNormal(definition))
@@ -682,7 +682,7 @@ int main(int argc, char** argv)
 
         // ⑥ 要 UV0 + 格式没有 TexCoord ⇒ MissingTextureUV；有 TexCoord ⇒ 不是错误
         {
-            MaterialDefinition definition{};
+            ResolvedMaterial definition{};
             definition.vertex_semantic_requirements.Add(
                 MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::TexCoord));
 
@@ -715,7 +715,7 @@ int main(int argc, char** argv)
 
         // ⑦ 两种错配同时成立只报一个（图元只有一个标记色，不可叠加）⇒ 法线优先
         {
-            MaterialDefinition definition{};
+            ResolvedMaterial definition{};
             definition.vertex_semantic_requirements.Add(
                 MakeMaterialVertexSemanticRequirement(graph::VertexSemantic::Normal));
             definition.vertex_semantic_requirements.Add(

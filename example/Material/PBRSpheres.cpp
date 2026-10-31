@@ -11,7 +11,7 @@
 #include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ssbo/LitMaterialData.h>
 

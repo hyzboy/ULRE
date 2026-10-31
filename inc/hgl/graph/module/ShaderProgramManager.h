@@ -15,8 +15,8 @@ class ComputePipeline;
 
 namespace mtl
 {
-    struct MaterialDefinitionBuildRequest;
-    struct MaterialDefinition;
+    struct MaterialBuildRequest;
+    struct ResolvedMaterial;
     struct PassProfileRequest;
 }//namespace mtl
 
@@ -32,8 +32,8 @@ using ShaderProgramID = int;
 // SceneGraph policy for the existing material provider shapes. Callers that
 // need a route selected from material data use this before acquiring a program.
 bool SelectCurrentScenePassProfileRequest(
-    const mtl::MaterialDefinition &definition,
-    const mtl::MaterialDefinitionBuildRequest &request,
+    const mtl::ResolvedMaterial &definition,
+    const mtl::MaterialBuildRequest &request,
     mtl::PassProfileRequest &out_request);
 
 GRAPH_MODULE_CLASS(ShaderProgramManager)
@@ -174,7 +174,7 @@ private:
 public: //ShaderProgram
 
     ShaderProgram *AcquireShaderProgram(
-        const mtl::MaterialDefinitionBuildRequest &request);
+        const mtl::MaterialBuildRequest &request);
 
 };//class ShaderProgramManager
 

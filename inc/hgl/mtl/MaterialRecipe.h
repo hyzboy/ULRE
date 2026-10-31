@@ -58,7 +58,7 @@ namespace hgl::graph::mtl
     // 一个 recipe 至多包含一个材质数据绑定。材质数据通过
     // GlobalSSBOBinding 的类型、物理 SSBO 和行 ID 定位。
 
-    // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
+    // 纹理槽位能力声明（由 ResolvedMaterial 显式列出）。
     // 无纹理材质此列表为空。
 
     // 采样器类型直接复用 hgl::graph::SamplerType —— 唯一真源与名字表在
@@ -168,7 +168,7 @@ namespace hgl::graph::mtl
 
     // MaterialVertexVaryingConfig — see <hgl/mtl/MaterialVertexVaryingConfig.h>
 
-    struct MaterialDefinition
+    struct ResolvedMaterial
     {
         // ── 构建期合成输入：DomainContract + MaterialRecipe ──────────────────────────
         // 由领域契约和配方合成的临时构建数据，不对应持久化文件或注册表。
@@ -176,8 +176,10 @@ namespace hgl::graph::mtl
         // ─────────────────────────────────────────────────────────────────────────────
 
         // Part-A: 基础语义/元信息
-        std::string definition_id;                                   // 合成领域身份（日志/内部索引）
-        std::string definition_name;                                 // 合成领域名称
+        // `domain_name` 是合成身份，也是人类可读的领域名：同一个键既用于日志/诊断，
+        // 也是 `ComputeMaterialProgramManifestKey` 与 `MaterialTextureReferencePool::MakePoolKey`
+        // 的哈希输入。改取值 = 改烘焙缓存身份。
+        std::string domain_name;
 
         // Part-B: 材质私有数据 SSBO（单一声明，名字为 DefaultMaterialPrivateDataName）。
         // GlobalSSBOType：统一的全局 SSBO 池类型（材质表面字段与 MeshDrawParams 共用）。
@@ -302,7 +304,7 @@ namespace hgl::graph::mtl
     }
 
     inline int FindMaterialTextureDeclaration(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const std::string &name) noexcept
     {
         for (size_t i = 0; i < definition.texture_declarations.size(); ++i)
@@ -314,7 +316,7 @@ namespace hgl::graph::mtl
     }
 
     inline bool BuildMaterialTextureReferenceLayout(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         MaterialTextureReferenceLayout &out_layout) noexcept
     {
         out_layout = {};
@@ -657,7 +659,7 @@ namespace hgl::graph::mtl
     }
 
     inline ResolvedMaterialRenderState ResolveMaterialRenderState(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const MaterialRecipe &recipe) noexcept
     {
         return ResolveMaterialRenderState(definition.default_render_state, recipe);
@@ -795,7 +797,7 @@ namespace hgl::graph::mtl
      * 命中即 `BuildFallbackMaterialRecipe` 换成错误棋盘格（标记色青）。
      */
     inline MaterialErrorKind ClassifyMaterialResourceError(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const MaterialRecipe &recipe) noexcept
     {
         for (const auto &declaration : definition.texture_declarations)
@@ -839,7 +841,7 @@ namespace hgl::graph::mtl
 
     /// 定义是否声明了某条顶点语义需求（`requirements = [...]` 里的项）。
     inline bool HasMaterialVertexSemanticRequirement(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const VertexSemantic semantic) noexcept
     {
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
@@ -890,7 +892,7 @@ namespace hgl::graph::mtl
      * `cross(dFdx,dFdy)` 分支 ⇒ **缺顶点法线不是错误**，它们必须能在任何几何上画出来。
      */
     inline bool MaterialToleratesFaceNormalFallback(
-        const MaterialDefinition &definition) noexcept
+        const ResolvedMaterial &definition) noexcept
     {
         return definition.vertex_normal_mode
             == MaterialVertexNormalMode::OptionalFaceFallback;
@@ -907,7 +909,7 @@ namespace hgl::graph::mtl
      * 会从没上传的 SSBO 槽读垃圾值（画面随机明暗，比没光更坏）。
      */
     inline bool MaterialRequiresVertexNormal(
-        const MaterialDefinition &definition) noexcept
+        const ResolvedMaterial &definition) noexcept
     {
         if (MaterialToleratesFaceNormalFallback(definition))
             return false;
@@ -923,7 +925,7 @@ namespace hgl::graph::mtl
     /// 定义是否**要法线光照**（含容忍面法线兜底者）：决定要不要输出世界法线 varying。
     /// `= 必须要顶点法线 ∨ 容忍面法线兜底`（后者也要 `si.worldNormal` 有个确定来源）。
     inline bool MaterialWantsNormalLighting(
-        const MaterialDefinition &definition) noexcept
+        const ResolvedMaterial &definition) noexcept
     {
         return MaterialRequiresVertexNormal(definition)
             || MaterialToleratesFaceNormalFallback(definition);
@@ -931,7 +933,7 @@ namespace hgl::graph::mtl
 
     /// 定义是否**要纹理坐标**（声明了 `UV0` 需求）。缺 UV 时贴图会按垃圾 UV 采样。
     inline bool MaterialRequiresTextureCoordinate(
-        const MaterialDefinition &definition) noexcept
+        const ResolvedMaterial &definition) noexcept
     {
         return HasMaterialVertexSemanticRequirement(definition, VertexSemantic::TexCoord);
     }
@@ -957,7 +959,7 @@ namespace hgl::graph::mtl
      * 图元剔除，见 `ValidateMaterialRecipeForRuntime`。
      */
     inline MaterialErrorKind ClassifyMaterialGeometryError(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const MaterialGeometryFacts &facts) noexcept
     {
         if (!facts.has_geometry_format)

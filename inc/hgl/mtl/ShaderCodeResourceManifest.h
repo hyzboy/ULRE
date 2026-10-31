@@ -61,10 +61,10 @@ namespace hgl::graph::mtl
         ShaderCodeResourceManifest &manifest,
         const GlslModuleRegistry *registry = nullptr) noexcept;
 
-    struct MaterialDefinition;
+    struct ResolvedMaterial;
     bool ValidateShaderCodeResourceManifestTextureReferences(
         const ShaderCodeResourceManifest &manifest,
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const char **out_invalid_texture_name = nullptr) noexcept;
 
     // A module's required sampler preset must be declared by the material that
@@ -73,7 +73,7 @@ namespace hgl::graph::mtl
     // preset name through `out_missing_sampler_name` on failure.
     bool ValidateShaderCodeResourceManifestSamplerReferences(
         const ShaderCodeResourceManifest &manifest,
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         const char **out_missing_sampler_name = nullptr) noexcept;
 
     const char *GetShaderCodeResourceManifestErrorName(ShaderCodeResourceManifestError error) noexcept;

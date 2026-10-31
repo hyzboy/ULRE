@@ -38,7 +38,7 @@
 ```
 [开发形态树 build/]
   ShaderResourceSchemaRegressionGate emit-release-cache build/release-cache-fixture
-      └─ 用真实 MaterialDefinition + 真实请求装配 → 生成 stage SPV
+      └─ 用真实 ResolvedMaterial + 真实请求装配 → 生成 stage SPV
       └─ RecordShaderProgramManifestEntry → <fixture>/shader-cache/program_manifest.pmf
       └─ WriteManifestExpectation         → <fixture>/shader-cache/expectation.txt
                                               （固化 8 个字段：program/lookup/stage digest、

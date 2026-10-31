@@ -2,7 +2,7 @@
 
 ## 用途与边界
 
-`*.recipe.toml` 描述某个材质实例的静态声明：MaterialDefinition ID、可选顶点节点配置、渲染状态覆盖和纹理资源 URI。它不替代 `*.mi.toml`：MI 文件定义材质能力、资源槽契约和领域；recipe 文件选择定义并提供具体绑定。
+`*.recipe.toml` 描述某个材质实例的静态声明：ResolvedMaterial ID、可选顶点节点配置、渲染状态覆盖和纹理资源 URI。它不替代 `*.mi.toml`：MI 文件定义材质能力、资源槽契约和领域；recipe 文件选择定义并提供具体绑定。
 
 `MaterialRecipeFile` 的解析器位于 `ULRE.ShaderMaterialData`；依赖 `TextureManager` 的 `MaterialRecipeRegistry` 位于 `ULRE.SceneGraph`。Registry 通过 `LoadFile` / `LoadDirectory` 解析文件、校验定义引用及纹理槽、创建 TextureAsset 句柄并调用 `NormalizeRecipe`。纹理文件由 `TextureStreamingSystem` 延迟异步加载；`rt:` URI 由 RenderTarget 管理器解析。
 
@@ -54,7 +54,7 @@ layer = 0
 - `[render_state]` 的 `alpha_test`、`alpha_cutoff`、`dither` 可分别覆盖；cutoff 必须在 `[0,1]`。
 - 如果声明 `[render_state.pipeline]`，必须填写完整的 pipeline 配置。当前 `MaterialRenderStateOverrides` 把 pipeline 作为一个整体覆盖值，没有逐字段 presence mask；要求完整值避免省略字段时意外覆盖材质定义默认值。
 - 每个 `[[textures]]` 必须有非空 `name` 与 `asset`。`asset` 可为文件路径或 `rt:<target>[:<attachment>]`；`required` 默认为 `true`，`layer` 默认为 `0`。层号只能用于数组纹理槽。
-- 纹理槽必须存在于引用的 MaterialDefinition；名称重复、未知槽和不合法数组层会在注册时失败。
+- 纹理槽必须存在于引用的 ResolvedMaterial；名称重复、未知槽和不合法数组层会在注册时失败。
 
 ## 加载与运行时覆盖
 

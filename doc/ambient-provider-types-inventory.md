@@ -6,7 +6,7 @@
 > 前置背景：Ambient 的**算法选择权已从材质上移到引擎/环境层**
 > （`3569db6a3`、`e406b003b`、`f76abee7f`、`c5c5291a0`），材质 TOML 写
 > `ambient_module_name` 会被显式拒绝并引导改用 `EnvironmentSystem::SetAmbientProvider()`
-> （`src/ShaderMaterialData/MaterialDefinitionFile.cpp:837-840`）。
+> （`src/ShaderMaterialData/ResolvedMaterialFile.cpp:837-840`）。
 
 ---
 
@@ -160,7 +160,7 @@ ECSContext::GetAmbientProviderName()
         ↓
 RenderPrimitiveCollectSystem（src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:483-489, :1151）
         ↓
-MaterialDefinitionBuildRequest.ambient_module_name
+MaterialBuildRequest.ambient_module_name
         ↓
 SelectScenePassProfileRequest(..., ambient_module_name)   // 唯一实现，运行时与离线工具共用
         ↓

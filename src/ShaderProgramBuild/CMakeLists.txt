@@ -12,7 +12,7 @@ set(SHADERPROGRAMBUILD_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 # 以下数据面源与头的 CMake 归属已下移到那一层，本清单不再重复列出：
 #   ShaderLibraryPath / VkEnumText / ShaderCacheRoot / ShaderBuildContext /
 #   ShaderCreateInfo(+Map) / ShaderArtifactStore / MaterialRecipeFile /
-#   MaterialDefinitionRegistry / SamplerPreset / PassProfile /
+#   MaterialResolver / SamplerPreset / PassProfile /
 #   ScenePassProfileResolver
 # 设备 profile 契约头与 MeshShaderLimits 归 ULRE.ShaderRuntimeContract。
 
@@ -36,7 +36,7 @@ SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
 # ── compile/ ─────────────────────────────────────────────────────────────────
 # ShaderCreateInfo.cpp / ShaderArtifactStore.cpp / SamplerPreset.cpp /
-# MaterialDefinitionRegistry.cpp / ScenePassProfileResolver.cpp / PassProfile.cpp
+# MaterialResolver.cpp / ScenePassProfileResolver.cpp / PassProfile.cpp
 # 已迁入 ULRE.ShaderMaterialData（数据面，运行时也要）。
 #
 # GLSLCompiler / ShaderReflectionData / TBuiltInResourceCompat 已迁出到

@@ -1,7 +1,7 @@
 # ULRE.ShaderMaterialData —— 材质/着色器「数据面」。
 #
-# 这一层是运行时真正需要的：TOML 材质定义装载/材质配方解析、渲染模板解析、SPV 产物库、
-# ShaderCreateInfo 的纯数据成员、采样器预设表。它零 GLSL 文本发射、零 glslang，
+# 这一层是运行时真正需要的：TOML 材质配方解析、配方→ResolvedMaterial 解析、渲染模板解析、
+# SPV 产物库、ShaderCreateInfo 的纯数据成员、采样器预设表。它零 GLSL 文本发射、零 glslang，
 # 因此发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）也照常链接。
 #
 # GlslModule* 与 ShaderCodeResourceManifest 是材质/着色器元数据，归本层；
@@ -13,8 +13,8 @@
 
 set(SHADERMATERIALDATA_FILES
     # ── 材质配方、配方→领域合成与领域契约 ──
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDefinitionRegistry.h
-    MaterialDefinitionRegistry.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialResolver.h
+    MaterialResolver.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipeFile.h
     MaterialRecipeFile.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h

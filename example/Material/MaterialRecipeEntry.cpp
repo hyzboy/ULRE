@@ -25,7 +25,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/color/Color.h>

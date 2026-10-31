@@ -25,14 +25,14 @@
 
 位置：
 
-- `inc/hgl/mtl/MaterialDefinitionRegistry.h`
+- `inc/hgl/mtl/MaterialResolver.h`
 - `src/ShaderGen/builder/GenericMaterialBuilder.cpp`
 - `inc/hgl/mtl/RenderTemplate.h`
 
 职责：
 
 - 解析 `MaterialRecipe`
-- 选定 `MaterialDefinition`
+- 选定 `ResolvedMaterial`
 - 解析模板请求 / module roots / render template
 - 生成 `ShaderResourceSchema`
 - 构造 `ShaderLinkSpec` / descriptor contract / program identity
@@ -156,7 +156,7 @@ Ambient name/include 暂时沿用；将其移交动态环境策略不在本轮�
 - 一次生成需要唯一 `source_document` 和唯一 `final_document`
 - `program hash` 和 `stage hash` 必须来自最终 GLSL 和最终 metadata
 - 诊断引擎不能在生产路径里写入 `artifact_store`
-- `MaterialDefinitionRegistry` 的生产路径应当是 file-backed + schema-3-only
+- `MaterialResolver` 的生产路径应当是 file-backed + schema-3-only
 
 ## 6. 最终落地建议
 

@@ -93,7 +93,7 @@ namespace hgl::graph::mtl
         bool vertex_normal_present = false;
 
         // ── 材质定义自带的 compile_defines ──────────────────────────────────
-        /// 指向 `MaterialDefinition::compile_defines` 的元素数组，逐条发射成
+        /// 指向 `ResolvedMaterial::compile_defines` 的元素数组，逐条发射成
         /// `#define <name> 1`。旧路径由 `BuildCompileDefineDocument` 在收尾阶段
         /// 注入，现在同样是 options 的唯一产地（例：Text2D 的 TEXT_SDF_ENABLED
         /// 决定 `material_source_text_gpu.glsl` 走 SDF 还是位图分支）。
@@ -103,7 +103,7 @@ namespace hgl::graph::mtl
         uint32 definition_define_count = 0;
 
         // ── 纹理通道覆盖 ────────────────────────────────────────────────────
-        /// 指向 `MaterialDefinition::texture_declarations` 的元素数组。
+        /// 指向 `ResolvedMaterial::texture_declarations` 的元素数组。
         /// 不走容器类型：本层只读这块连续内存（`declaration_count` 个元素）。
         const MaterialTextureDeclaration *texture_declarations = nullptr;
         uint32 texture_declaration_count = 0;

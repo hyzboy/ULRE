@@ -19,7 +19,7 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include<hgl/mtl/ShaderComputeProgramManifest.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/ShaderProgramBuildBackend.h>
 #include<hgl/mtl/ShaderProgramManifestBackend.h>
 #include<hgl/mtl/ShaderProgramManifestKey.h>
@@ -36,11 +36,11 @@ namespace hgl::graph{
 
 namespace
 {
-    bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
-                                             mtl::MaterialDefinition &out_bmi)
+    bool ResolveMaterialForRequest(const mtl::MaterialBuildRequest &request,
+                                             mtl::ResolvedMaterial &out_bmi)
     {
         // 唯一路径：领域契约 + 配方当场合成。
-        if (mtl::SynthesizeMaterialDefinitionFromRecipe(request.recipe, out_bmi))
+        if (mtl::ResolveMaterialFromRecipe(request.recipe, out_bmi))
             return true;
 
         // 走到这里说明配方没有可用领域（`Custom` / 非法值）。`NormalizeRecipe` 本该
@@ -54,12 +54,12 @@ namespace
         if (!mtl::BuildFallbackMaterialRecipe(fallback_recipe, mtl::MaterialErrorKind::MissingMaterialSource))
             return false;
 
-        return mtl::SynthesizeMaterialDefinitionFromRecipe(fallback_recipe, out_bmi);
+        return mtl::ResolveMaterialFromRecipe(fallback_recipe, out_bmi);
     }
 
     bool ResolveRuntimePassProfileRequest(
-        const mtl::MaterialDefinition &definition,
-        const mtl::MaterialDefinitionBuildRequest &request,
+        const mtl::ResolvedMaterial &definition,
+        const mtl::MaterialBuildRequest &request,
         mtl::PassProfileRequest &out_request)
     {
         (void)request;
@@ -67,7 +67,7 @@ namespace
         {
             GLogError(
                 "[ShaderProgramManager] Render template request is not caller-selected: id=%s",
-                definition.definition_id.c_str());
+                definition.domain_name.c_str());
             return false;
         }
 
@@ -76,7 +76,7 @@ namespace
 
         GLogError(
             "[ShaderProgramManager] Render template request completion failed: id=%s",
-            definition.definition_id.c_str());
+            definition.domain_name.c_str());
         return false;
     }
 
@@ -222,8 +222,8 @@ namespace
 }//namespace
 
 bool SelectCurrentScenePassProfileRequest(
-    const mtl::MaterialDefinition &definition,
-    const mtl::MaterialDefinitionBuildRequest &request,
+    const mtl::ResolvedMaterial &definition,
+    const mtl::MaterialBuildRequest &request,
     mtl::PassProfileRequest &out_request)
 {
     // 路由与 ambient 覆盖只有一份实现(ShaderGen),运行时与离线回归共用,
@@ -692,11 +692,11 @@ namespace
     // 纯算键早退与全量构建**必须**吃同一份解析结果，否则两条路径会在
     // render template roots 上分叉，算出不同的 program key。
     bool ResolveBuildRequest(
-        const mtl::MaterialDefinitionBuildRequest &request,
-        mtl::MaterialDefinition &out_definition,
-        mtl::MaterialDefinitionBuildRequest &out_resolved_request)
+        const mtl::MaterialBuildRequest &request,
+        mtl::ResolvedMaterial &out_definition,
+        mtl::MaterialBuildRequest &out_resolved_request)
     {
-        if (!ResolveMaterialDefinitionForRequest(request, out_definition))
+        if (!ResolveMaterialForRequest(request, out_definition))
             return false;
 
         out_resolved_request = request;
@@ -716,8 +716,8 @@ namespace
     void RecordBakedProgramManifestEntry(
         mtl::ShaderArtifactStore *artifact_store,
         const mtl::contract::PhysicalDeviceProfileLite *profile,
-        const mtl::MaterialDefinition &definition,
-        const mtl::MaterialDefinitionBuildRequest &resolved_request,
+        const mtl::ResolvedMaterial &definition,
+        const mtl::MaterialBuildRequest &resolved_request,
         const mtl::ShaderBuildContext *ctx)
     {
         if (!artifact_store || !ctx || !ctx->HasProgramLink())
@@ -738,21 +738,21 @@ namespace
         {
             GLogWarning("[ShaderProgramManager] failed to record shader program manifest entry: "
                         "id=%s key=0x%llx",
-                        definition.definition_id.c_str(),
+                        definition.domain_name.c_str(),
                         static_cast<unsigned long long>(baked_entry.lookup_key));
         }
     }
 }//namespace
 
 ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
-    const mtl::MaterialDefinitionBuildRequest &request)
+    const mtl::MaterialBuildRequest &request)
 {
     // Ensure recipe defaults are filled in before lookup, in case the caller skipped normalization.
     // This call is idempotent; primitive render paths will have already normalized.
     mtl::MaterialRecipe normalized_recipe = request.recipe;
     mtl::NormalizeRecipe(normalized_recipe);
 
-    mtl::MaterialDefinitionBuildRequest normalized_request = request;
+    mtl::MaterialBuildRequest normalized_request = request;
     normalized_request.recipe = normalized_recipe;
     normalized_request.defer_finalize = true;
     // 接通跨进程 SPV 磁盘缓存：FinalizeShaderBuildContext 先查缓存，未命中
@@ -761,8 +761,8 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     // AssembleMaterialProgram 两者恒备（回归门已全变体验证）。
     normalized_request.shader_artifact_store = GetRuntimeShaderArtifactStore();
 
-    mtl::MaterialDefinition definition{};
-    mtl::MaterialDefinitionBuildRequest resolved_request{};
+    mtl::ResolvedMaterial definition{};
+    mtl::MaterialBuildRequest resolved_request{};
     if (!ResolveBuildRequest(normalized_request, definition, resolved_request))
     {
         GLogError(u8"[ShaderProgramManager] material build request resolution failed: recipe=%s domain=%s",
@@ -797,8 +797,8 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         GLogError("[ShaderProgramManager] No shader program build backend installed; "
                   "cannot build program for recipe=%s material id=%s name=%s",
                   normalized_request.recipe.recipe_name.c_str(),
-                  definition.definition_id.c_str(),
-                  definition.definition_name.c_str());
+                  definition.domain_name.c_str(),
+                  definition.domain_name.c_str());
         return nullptr;
     }
 
@@ -808,8 +808,8 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     {
         GLogError("[ShaderProgramManager] Material definition build failed: recipe=%s id=%s name=%s",
                   normalized_request.recipe.recipe_name.c_str(),
-                  definition.definition_id.c_str(),
-                  definition.definition_name.c_str());
+                  definition.domain_name.c_str(),
+                  definition.domain_name.c_str());
         return nullptr;
     }
 
@@ -817,7 +817,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     {
         GLogError(
             "[ShaderProgramManager] Material build produced incomplete program identity: id=%s",
-            definition.definition_id.c_str());
+            definition.domain_name.c_str());
         return nullptr;
     }
     const mtl::ShaderProgramKey program_key =
@@ -842,7 +842,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         GLogError(
             "[ShaderProgramManager] Material build finalization failed: recipe=%s id=%s",
             normalized_request.recipe.recipe_name.c_str(),
-            definition.definition_id.c_str());
+            definition.domain_name.c_str());
         return nullptr;
     }
 
@@ -861,7 +861,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     else
         GLogError(u8"[ShaderProgramManager] shader program creation failed: recipe=%s definition=%s",
                   normalized_request.recipe.recipe_name.c_str(),
-                  definition.definition_id.c_str());
+                  definition.domain_name.c_str());
 
     return program;
 }

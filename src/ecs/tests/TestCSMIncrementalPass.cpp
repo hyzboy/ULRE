@@ -2085,7 +2085,7 @@ int main(int argc, char** argv)
               "ResourceClass",
               "ResourceClass/ResourceRequirement 已于 2026-10-11 F-3 删除（0 消费者，描述符契约层退役的遗留）",
               true },
-            { "MaterialDefinitionRegistry.h", OS_TEXT("inc/hgl/mtl/MaterialDefinitionRegistry.h"),
+            { "MaterialResolver.h", OS_TEXT("inc/hgl/mtl/MaterialResolver.h"),
               "GlslModuleCapabilityResolver",
               "能力解析残留链路已于 2026-10-11 整条删除（生产路径恒空，仅测试在用）："
               "GlslModuleCapabilityResolver.h/.cpp 已移除，任何头文件不得再 include 或引用该名字",
@@ -4764,7 +4764,7 @@ int main(int argc, char** argv)
             // ⑪ 材质错误口径（2026-10-14 用户）：材质未知/写错 ⇒ **直接报错**，运行时走错误材质 = 棋盘格。
             //    加载期（单份配方写错）与运行期（配方声明的领域不可解析）两条路径都要出声；
             //    后者曾长期静默（mtl 侧换成保底材质 + ECS 侧当"构建成功"）。
-            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionRegistry.cpp"),
+            { "MaterialResolver.cpp", OS_TEXT("src/ShaderMaterialData/MaterialResolver.cpp"),
               "u8\"[MaterialFallback] %s: \\\"%s\\\" => 回退错误材质 %s\"",
               "未知材质定义 ID 的唯一报错点丢失（该路径曾静默：mtl 侧替换 + ECS 侧当成功）" },
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp"),
@@ -4889,10 +4889,10 @@ int main(int argc, char** argv)
               "回退守卫的参考实现不再是“事实求反”（对拍可能退化成恒真）" },
 
             // ⑤ 回退规则表对每个错误种类都有定义 ID（收集侧拿到的必须有定义可查）
-            { "MaterialDefinitionRegistry.h", OS_TEXT("inc/hgl/mtl/MaterialDefinitionRegistry.h"),
+            { "MaterialResolver.h", OS_TEXT("inc/hgl/mtl/MaterialResolver.h"),
               "BuildFallbackMaterialRecipe(MaterialRecipe &out_recipe",
               "回退配方合成 API 缺失（回退材质无权威出处）" },
-            { "MaterialDefinitionRegistry.cpp", OS_TEXT("src/ShaderMaterialData/MaterialDefinitionRegistry.cpp"),
+            { "MaterialResolver.cpp", OS_TEXT("src/ShaderMaterialData/MaterialResolver.cpp"),
               "MaterialErrorKind::UnknownMaterialDomain",
               "领域不可解析不再被分类（该类错误丢失种类与颜色）" },
 

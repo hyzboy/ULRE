@@ -56,7 +56,7 @@ const SSBOBufferBinding *SSBOBufferRegistry::Find(const mtl::SSBOAddress &addres
 
 MaterialTextureReferencePool *
     SSBOBufferRegistry::FindMaterialTextureReferencePool(
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialTextureReferenceLayout &layout)
 {
     for (int i = 0;
@@ -151,7 +151,7 @@ void SSBOBufferRegistry::Release()
 }
 
 bool SSBOBufferRegistry::AcquireMaterialTextureConfiguration(
-    const mtl::MaterialDefinition &definition,
+    const mtl::ResolvedMaterial &definition,
     const mtl::MaterialTextureReferenceLayout &layout,
     MaterialTextureConfigurationAllocation &out_allocation)
 {
@@ -160,7 +160,7 @@ bool SSBOBufferRegistry::AcquireMaterialTextureConfiguration(
     {
         GLogError(
             "[MaterialTextureReferencePool] allocation rejected: definition=%s has no texture references",
-            definition.definition_id.c_str());
+            definition.domain_name.c_str());
         return false;
     }
 
@@ -176,7 +176,7 @@ bool SSBOBufferRegistry::AcquireMaterialTextureConfiguration(
         {
             GLogError(
                 "[MaterialTextureReferencePool] initialization failed: definition=%s layout_hash=%llu references=%u row_stride=%u capacity=%u",
-                definition.definition_id.c_str(),
+                definition.domain_name.c_str(),
                 static_cast<unsigned long long>(layout.layout_hash),
                 layout.reference_count,
                 layout.row_stride,
@@ -220,7 +220,7 @@ bool SSBOBufferRegistry::IsMaterialTextureConfigurationValid(
 }
 
 uint64_t SSBOBufferRegistry::GetMaterialTextureConfigurationZeroRowAddress(
-    const mtl::MaterialDefinition &definition,
+    const mtl::ResolvedMaterial &definition,
     const mtl::MaterialTextureReferenceLayout &layout)
 {
     MaterialTextureReferencePool *pool =

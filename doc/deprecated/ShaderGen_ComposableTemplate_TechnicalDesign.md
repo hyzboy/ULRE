@@ -29,8 +29,8 @@
 | `GenericMaterialBuilder` | **已落地**,同名 | `src/ShaderGen/builder/GenericMaterialBuilder.h/.cpp` |
 | `MaterialShaderEmitter` | **已落地**,同名(生成 Material ABI / 纹理引用行 + `MTL_TEX(i)` 宏) | `src/ShaderGen/compile/MaterialShaderEmitter.h/.cpp`(`MTL_TEX` 展开见 `MaterialShaderEmitter.cpp:306-324`) |
 | ~~`ShaderCooker`~~ | **已移除**(2026-10):离线 cook 任务线废弃,`src/Tools/ShaderGen/ShaderCooker.cpp` 与 `ShaderCookSmoke` 测试一并删除 | — |
-| `AppendMaterialRenderTemplateRoots` | **已落地**,同名 | `inc/hgl/mtl/MaterialDefinitionRegistry.h:61-63` |
-| ECS/render preparation 只选 template ID + roots | **已落地**:`MaterialDefinitionRegistry` 提供 profile/roots,规则集中在 `SceneRenderTemplateResolver` 的 `Make*Profile()` | `inc/hgl/mtl/SceneRenderTemplateResolver.h:22-25` |
+| `AppendMaterialRenderTemplateRoots` | **已落地**,同名 | `inc/hgl/mtl/MaterialResolver.h:61-63` |
+| ECS/render preparation 只选 template ID + roots | **已落地**:`MaterialResolver` 提供 profile/roots,规则集中在 `SceneRenderTemplateResolver` 的 `Make*Profile()` | `inc/hgl/mtl/SceneRenderTemplateResolver.h:22-25` |
 
 回归/验收夹具(对应 §9):`src/Tools/ShaderGen/ShaderDocumentRegression.cpp`、`ShaderDocumentProductionRegression.cpp`、`SceneRenderTemplateResolverRegression.cpp`、`ShaderResourceSchemaRegressionGate.cpp`。
 
@@ -51,7 +51,7 @@
 
 本方案面向固定 Vulkan 前向渲染器，不实现 Shader Graph，不支持任意材质代码改变 shader
 控制流。ECS/render preparation 根据实际渲染状态、场景和质量配置选择完整场景模板及其
-scene module roots，再把 MaterialDefinition 提供的 material provider capability 通过
+scene module roots，再把 ResolvedMaterial 提供的 material provider capability 通过
 `AppendMaterialRenderTemplateRoots` 追加到该模板；ShaderGen 只递归展开依赖、汇总资源、
 验证并组合为可审计的 `ShaderDocument`，再离线编译为 SPV。
 

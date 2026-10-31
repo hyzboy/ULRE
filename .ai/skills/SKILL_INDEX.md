@@ -165,7 +165,7 @@
 ### 0.4.2 [SKILL_MATERIAL_RECIPE_TOML.md](SKILL_MATERIAL_RECIPE_TOML.md)
 **适用：创建、解析或加载声明式 `*.recipe.toml` 材质配方**
 
-- `MaterialDefinition` 与 `MaterialRecipe` 的职责边界
+- `ResolvedMaterial` 与 `MaterialRecipe` 的职责边界
 - Schema 1 字段和枚举命名规则
 - pipeline 全量覆盖、纹理 URI/layer 校验与异步句柄语义
 - Registry 生命周期及运行时动态覆盖方式

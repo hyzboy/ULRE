@@ -17,7 +17,7 @@
 #include <hgl/graph/mesh/GeometryDataBuffer.h>
 #include <hgl/graph/mesh/GeometryDrawRange.h>
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/mtl/ScenePassProfileResolver.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderProgram.h>
@@ -486,7 +486,7 @@ namespace hgl::ecs
             return false;
 
         {
-            graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+            graph::mtl::MaterialBuildRequest mtl_request{};
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = graph::PrimitiveType::Lines;
             mtl_request.geometry_vertex_format = &line_gvf;

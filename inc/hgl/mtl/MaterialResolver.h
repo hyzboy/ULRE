@@ -1,9 +1,9 @@
 #pragma once
 
-// MaterialDefinitionRegistry.h —— 材质定义的**数据面**入口（装载/查询/规范化）。
+// MaterialResolver.h —— 材质**数据面**入口（配方 → ResolvedMaterial / 构建请求）。
 //
-// 本头只描述「读材质定义 + 组装构建请求」这些运行时也要做的事，因此它可以被
-// 发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）单独编译。
+// 本头只描述「读配方 + 解析为 ResolvedMaterial + 组装构建请求」这些运行时也要做的事，
+// 因此它可以被发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=0）单独编译。
 //
 // 生成期入口（ComputeMaterialProgramKey / BuildResolvedMaterialVertexABI）**不在这里**：
 // 它们要么发射 GLSL，要么要读 ShaderLibrary/*.glsl 的声明闭包，只有构建期才知道怎么做。
@@ -38,12 +38,12 @@ struct MaterialCoverageContract;
 
 namespace hgl::graph::mtl{
 
-// ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
+// ── Layer 3: MaterialBuildRequest = Build Context ──────────────────
 // 描述"构建此帧 ShaderProgram 时的额外上下文"。包含 recipe（Layer 2）加上
 // 构建期上下文（几何格式、Program Purpose、天光策略等）。
 // 材质标识的唯一来源是 recipe（`domain` + `recipe_name`）；此结构不另持标识字段。
 // ─────────────────────────────────────────────────────────────────────────────
-struct MaterialDefinitionBuildRequest
+struct MaterialBuildRequest
 {
     MaterialRecipe recipe;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
@@ -67,7 +67,7 @@ struct MaterialDefinitionBuildRequest
 // material capabilities into that request and structurally validates the
 // completed request without selecting quality, scene, or provider policy.
 bool AppendMaterialPassProfileRoots(
-    const MaterialDefinition &definition,
+    const ResolvedMaterial &definition,
     PassProfileRequest &request) noexcept;
 
 // Render preparation: selects the scene render template from material data and
@@ -84,7 +84,7 @@ bool AppendMaterialPassProfileRoots(
 // Runtime (ShaderProgramManager) and the document/offline regression tools must
 // share this single implementation; do not duplicate the routing rules.
 bool SelectScenePassProfileRequest(
-    const MaterialDefinition &definition,
+    const ResolvedMaterial &definition,
     ShaderProgramPurpose purpose,
     const MaterialRecipe &recipe,
     PassProfileRequest &out_request,
@@ -97,11 +97,11 @@ struct MaterialResolvedVertexABI
 };
 
 VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request) noexcept;
+    const ResolvedMaterial &definition,
+    const MaterialBuildRequest &request) noexcept;
 
 MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
-    const MaterialDefinition &definition,
+    const ResolvedMaterial &definition,
     mtl::ShaderProgramPurpose purpose,
     const mtl::MaterialCoverageContract &coverage) noexcept;
 
@@ -124,14 +124,14 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
 }
 
 /**
- * 由**配方**合成等效材质定义（配方直连领域；definition 文件层已删除）。
+ * 由**配方**解析出 `ResolvedMaterial`（配方直连领域；不存在 Definition 文件层）。
  *
- * 为什么还需要「定义」这个结构体：下游（顶点 ABI 求解、GLSL 拼装、pass profile
+ * 为什么需要这个中间结构体：下游（顶点 ABI 求解、GLSL 拼装、pass profile
  * 选择、纹理引用布局）消费的是一份**已解析的完整契约**，它描述的正是「这个配方
  * 会生成怎样的管线」。这份结构体现由领域契约 + 配方当场算出，不存在第二处真源。
  *
- * 合成规则：
- *   id / name          = 领域名（人类可读标识；**同时**是 manifest key 与纹理池 key
+ * 解析规则：
+ *   domain_name        = 领域名（人类可读标识；**同时**是 manifest key 与纹理池 key
  *                        的哈希输入，改取值等于改烘焙缓存身份）
  *   provider_policy    = contract->require_allow_derived ? AllowDerived : GeometryOnly
  *   vertex_node_config = contract 规范变换（配方 [transform] 仍优先，由 ABI 求解侧合并）
@@ -146,12 +146,12 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
  *   模块名             = contract 规范模块；`surface_module_name` 取配方声明（Sky 的
  *                        surface_sky_cube 这类「同领域多表面形态」的唯一出口）
  *
- * 这是**唯一**的「配方 → 定义」入口：没有第二条按领域分支的路径，也没有持久化层。
+ * 这是**唯一**的「配方 → ResolvedMaterial」入口：没有第二条按领域分支的路径，也没有持久化层。
  *
  * @return false = 配方未声明领域（`Custom`）或领域无契约。
  */
-bool SynthesizeMaterialDefinitionFromRecipe(const MaterialRecipe &recipe,
-                                            MaterialDefinition &out_definition) noexcept;
+bool ResolveMaterialFromRecipe(const MaterialRecipe &recipe,
+                               ResolvedMaterial &out_definition) noexcept;
 
 /**
  * 合成**回退（错误）材质**配方（A7b）：

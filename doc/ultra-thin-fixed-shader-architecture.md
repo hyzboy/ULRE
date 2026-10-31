@@ -331,7 +331,7 @@ varyings = ["emit_data_index_id"]
    字形路径，由 `TextRenderPipeline` 按字体数据源二选一。
 
 > 现状（阶段三之三 + 阶段四）：上述 5 份定义已**全部代码化**，内嵌在
-> `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，不再有对应的
+> `src/ShaderMaterialData/BuiltinResolvedMaterials.cpp`，不再有对应的
 > `.mi.toml`，也不再依赖磁盘。内嵌的仍是**完整 schema-4 源码文本**，走与资产
 > **完全同一条**解析 + 领域校验管线——代码化消灭的是「对磁盘文件的依赖」，不是
 > 「对校验管线的依赖」。
@@ -348,7 +348,7 @@ varyings = ["emit_data_index_id"]
   发行形态的 `ULRE_ENABLE_SHADERGEN=OFF` 是独立的链接/打包边界，**不计作开发期减化成果**。
   对反射的窄结论也仅限「用 SPV 推导 per-material descriptor-set-layout」：该布局输出不存在；不据此否决反射替代其他编译期派生状态的可能。2026-10-25 已打通 `GLSLCompiler.dll` 的 `ParseSPV` + `CreateShaderFlat`，新增 `ShaderReflectionData`；compute 烘焙用反射 push-constant extent 校验 CPU ABI 并写入 manifest；门禁覆盖 stage I/O、UBO set/binding、push constant 与 BDA 反射边界。尚未替换材质代码生成逻辑。审计范围与下一步候选见 `doc/ultra-thin-implementation-status.md` §10.3。
 - ❌ **废除磁盘 `*.mi.toml` 母材质定义文件**：不再通过 TOML 配置模块引用和 NTB 策略。
-- ❌ **废除 `MaterialDefinitionFileRegistry`**：将其简化为 `MaterialInstanceRegistry`。
+- ❌ **废除 `ResolvedMaterialFileRegistry`**：将其简化为 `MaterialInstanceRegistry`。
 
 ### 7.2 C++ 保留与增强清单（保留项）
 - ✅ **`MaterialDomain` 枚举与 `DomainContracts`**：作为引擎母材质唯一权威真源。
@@ -558,11 +558,11 @@ varyings = ["emit_data_index_id"]
 3. ✅ **保底链代码化**。`builtin/pure_color`、`builtin/checkerboard_3d`、
    `builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap`
    五份定义从 `ShaderLibrary/material/*.mi.toml` 移入 C++：
-   新增 `inc/hgl/mtl/BuiltinMaterialDefinitions.h` +
-   `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`（内嵌 schema-4 源码表），
-   `MaterialDefinitionFileRegistry` 新增 `RegisterDefinitionSource()`
+   新增 `inc/hgl/mtl/BuiltinResolvedMaterials.h` +
+   `src/ShaderMaterialData/BuiltinResolvedMaterials.cpp`（内嵌 schema-4 源码表），
+   `ResolvedMaterialFileRegistry` 新增 `RegisterDefinitionSource()`
    （与 `LoadFile` 共用解析 + 领域校验 + 重复 ID 检测，`LoadFile` 改为委托它），
-   `GetMaterialDefinitionFileRegistry()` 改为**先注册内嵌、再扫资产目录**，
+   `GetResolvedMaterialFileRegistry()` 改为**先注册内嵌、再扫资产目录**，
    五个文件随之删除（目录内剩 9 份资产定义）。
    加载日志变为 `Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions`；
    空库判据从 `file_count == 0 || registry.GetCount() == 0` 改为只看 `file_count`
@@ -578,7 +578,7 @@ varyings = ["emit_data_index_id"]
    > 内部知识。
    > **代码化的边界**：内嵌的仍是完整 schema-4 源码，注册时走与 `.mi.toml`
    > **完全相同**的解析 + 领域校验管线。若改为在 C++ 里手工拼
-   > `MaterialDefinition` 结构体，领域契约就得在第二处复述一遍
+   > `ResolvedMaterial` 结构体，领域契约就得在第二处复述一遍
    > （`material_source_module_name` / `ntb_module_name` / `vertex_node_config` /
    > 纹理槽形态…），那正是本架构要消灭的重复。代码化消灭的是「对磁盘文件的
    > 依赖」，不是「对校验管线的依赖」。

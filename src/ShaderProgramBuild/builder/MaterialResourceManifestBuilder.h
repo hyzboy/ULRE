@@ -25,7 +25,7 @@ namespace hgl::graph::mtl::resource_manifest_builder
     }
 
     inline bool BuildMaterialShaderCodeResourceManifest(
-        const MaterialDefinition &definition,
+        const ResolvedMaterial &definition,
         ShaderCodeResourceManifest &manifest,
         const char *const *extra_roots = nullptr,
         const uint32 extra_root_count = 0,

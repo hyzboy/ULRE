@@ -18,7 +18,7 @@ namespace hgl::graph::mtl
         /// 极易误判。因此在发射期硬门，口径与 position_*.glsl 的
         /// `@ulre require GeometryAttribute Position Float N N` 同源。
         ///
-        /// context：出错时指认来源（definition_id / mesh mode name）。
+        /// context：出错时指认来源（domain_name / mesh mode name）。
         static bool CheckPositionComponentCount(const VertexShaderNodeConfig &cfg,
                                                 const uint32_t s1_component_count,
                                                 const char *context) noexcept

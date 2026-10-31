@@ -25,9 +25,9 @@
 
 | 层 | 结构 | 含义 | 来源 |
 |---|---|---|---|
-| Layer 1 | `MaterialDefinition` | 材质**能做什么**（能力超集） | `lit.mi.toml` 解析 |
+| Layer 1 | `ResolvedMaterial` | 材质**能做什么**（能力超集） | `lit.mi.toml` 解析 |
 | Layer 2 | `MaterialRecipe` | 这次渲染**要什么**（实例输入） | 应用代码（SimpleSphere） |
-| Layer 3 | `MaterialDefinitionBuildRequest` | 构建上下文（recipe + 几何 + purpose + 模板） | 渲染系统组装 |
+| Layer 3 | `MaterialBuildRequest` | 构建上下文（recipe + 几何 + purpose + 模板） | 渲染系统组装 |
 
 `recipe.mtl_def_id` 是两层之间**唯一的连接键**——示例代码里 `"Lit"` 这个字符串就是通往 toml 文件的全部线索。
 
@@ -41,9 +41,9 @@
 
 `MaterialRecipe` 结构本身（`inc/hgl/mtl/MaterialRecipe.h:499`）不含任何 GLSL 或 Vulkan 对象——它纯粹是声明式输入。
 
-## 二、反向：lit.mi.toml → MaterialDefinition
+## 二、反向：lit.mi.toml → ResolvedMaterial
 
-进程内第一次有代码碰材质注册表时（`ShaderProgramManager` 构造函数和 `GetMaterialDefinitionFileRegistry()`，`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:184`），会惰性扫描 `ShaderLibrary/material/` 下所有 `*.mi.toml`，每个文件经 `ParseMaterialDefinitionFile`（`src/ShaderMaterialData/MaterialDefinitionFile.cpp:1211`，用 tomlpp 解析）变成一个 `MaterialDefinition`。
+进程内第一次有代码碰材质注册表时（`ShaderProgramManager` 构造函数和 `GetResolvedMaterialFileRegistry()`，`src/ShaderMaterialData/MaterialResolver.cpp:184`），会惰性扫描 `ShaderLibrary/material/` 下所有 `*.mi.toml`，每个文件经 `ParseResolvedMaterialFile`（`src/ShaderMaterialData/ResolvedMaterialFile.cpp:1211`，用 tomlpp 解析）变成一个 `ResolvedMaterial`。
 
 `lit.mi.toml` 的每个字段去向：
 
@@ -59,15 +59,15 @@
 | `[resources].textures`（6 个，normal 带 `channels = 2`） | `texture_declarations` → **逐名**生成 GLSL 纹理引用结构体（见第五节） |
 | `[resources].samplers = [Trilinear, Linear, ShadowMap, ShadowPCF]` | `sampler_names` → 生成 `#define TrilinearSampler <idx>` 之类的 bindless 采样器索引宏（`BuildSamplerMacros`，`src/ShaderGen/compile/MaterialShaderEmitter.cpp:112`） |
 
-解析带键白名单校验：任何不认识的键都是硬失败（`ValidateMaterialDefinitionKeys`），防止"作者以为配置生效实际被忽略"。
+解析带键白名单校验：任何不认识的键都是硬失败（`ValidateResolvedMaterialKeys`），防止"作者以为配置生效实际被忽略"。
 
 ## 三、运行时触发：ECS → ShaderProgramManager
 
 每帧 `RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:389`）做脏检查后：
 
 1. `BuildResolvedRecipe` 从 PrimitiveComponent 收集有效 recipe；
-2. `TryGetMaterialDefinitionByID("Lit")` 拿到定义；
-3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**——判定只有一份实现：`mtl::SelectSceneRenderTemplateRequest`（`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp`，运行时与文档生产回归工具共用），SceneGraph 侧仅转发。Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderMaterialData/SceneRenderTemplateResolver.cpp`）：
+2. `TryGetResolvedMaterialByID("Lit")` 拿到定义；
+3. `SelectCurrentSceneRenderTemplateRequest`（`src/SceneGraph/module/ShaderProgramManager.cpp`）做**路由决策**——判定只有一份实现：`mtl::SelectSceneRenderTemplateRequest`（`src/ShaderMaterialData/MaterialResolver.cpp`，运行时与文档生产回归工具共用），SceneGraph 侧仅转发。Lit 有 `ntb_module_name` → 选 `ForwardLitShadowedAO` 模板，并填 `MakeIdentityForwardLitProfile()` 的场景槽位（`src/ShaderMaterialData/SceneRenderTemplateResolver.cpp`）：
    - Surface → `surface/material_surface.glsl`
    - 直接光 · 漫反射 → `lighting/diffuse_lambert.glsl`（`diffuse_light_provider` 槽）
    - 直接光 · 高光 → `lighting/specular_cook_torrance.glsl`（`specular_light_provider` 槽）
@@ -124,11 +124,11 @@ ShaderLibrary 根目录。所有 include 都写库根相对路径（如 `common/
 
 ```
 SimpleSphere.cpp                          lit.mi.toml
-  sphere_recipe.mtl_def_id="Lit"  ──查找──▶ MaterialDefinitionFileRegistry
-  PBRSurfaceRow(base_color…)              (ParseMaterialDefinitionFile)
+  sphere_recipe.mtl_def_id="Lit"  ──查找──▶ ResolvedMaterialFileRegistry
+  PBRSurfaceRow(base_color…)              (ParseResolvedMaterialFile)
   SetMaterialTextureResource(…)                  │ id/transform/fragment/vertex/resources
       │                                          ▼
-      ▼                                   MaterialDefinition (Layer 1)
+      ▼                                   ResolvedMaterial (Layer 1)
 PrimitiveComponent ──每帧──▶ RenderPrimitiveCollectSystem
       │ BuildResolvedRecipe → MaterialRecipe (Layer 2)
       ▼
@@ -140,7 +140,7 @@ SelectCurrentSceneRenderTemplateRequest
 ShaderProgramManager::AcquireShaderProgram
       │ NormalizeRecipe (Layer 2 合并 Layer 1 默认值)
       ▼
-MaterialDefinitionBuildRequest (Layer 3: recipe + GVF + purpose + RenderTemplateRequest)
+MaterialBuildRequest (Layer 3: recipe + GVF + purpose + RenderTemplateRequest)
       ▼
 BuildGenericMaterial (ShaderGen)
   ├─ Phase1 ResolvePurposeAndCoverage (coverage/varying/stage-interface)
@@ -154,7 +154,7 @@ BuildGenericMaterial (ShaderGen)
 
 ## 八、结论
 
-`SimpleSphere.cpp` 只声明 `"Lit"` 这个字符串和一行 32B 的 PBR 数据；`lit.mi.toml` 在首次访问时被解析成 `MaterialDefinition` 提供能力声明（材质源模块、法线模块、纹理声明、varying）；每帧渲染收集系统把两者合成 Layer 3 构建请求，`BuildGenericMaterial` 按"场景模板槽位 + 材质能力槽位"拼出由 `#include` 和 BDA 宏组成的完整 GLSL 文档，最后 glslang 编译为 SPV——toml 的每一个字段（包括 `channels = 2` 这样的细节）都能在最终 shader 里找到确切落点。
+`SimpleSphere.cpp` 只声明 `"Lit"` 这个字符串和一行 32B 的 PBR 数据；`lit.mi.toml` 在首次访问时被解析成 `ResolvedMaterial` 提供能力声明（材质源模块、法线模块、纹理声明、varying）；每帧渲染收集系统把两者合成 Layer 3 构建请求，`BuildGenericMaterial` 按"场景模板槽位 + 材质能力槽位"拼出由 `#include` 和 BDA 宏组成的完整 GLSL 文档，最后 glslang 编译为 SPV——toml 的每一个字段（包括 `channels = 2` 这样的细节）都能在最终 shader 里找到确切落点。
 
 ## 附：调试入口
 

@@ -46,7 +46,7 @@ private:
     SSBOBufferBinding *FindMutable(const mtl::SSBOAddress &address);
     const SSBOBufferBinding *Find(const mtl::SSBOAddress &address) const;
     MaterialTextureReferencePool *FindMaterialTextureReferencePool(
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialTextureReferenceLayout &layout);
     MaterialTextureReferencePool *FindMaterialTextureReferencePool(
         const MaterialTextureConfigurationAllocation &allocation);
@@ -70,11 +70,11 @@ public:
 
     /**
      * Returns one dynamically-sized texture-reference configuration row from
-     * the pool owned by this MaterialDefinition/layout pair. Row zero remains
+     * the pool owned by this ResolvedMaterial/layout pair. Row zero remains
      * permanently reserved as a safe all-zero fallback.
      */
     bool AcquireMaterialTextureConfiguration(
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialTextureReferenceLayout &layout,
         MaterialTextureConfigurationAllocation &out_allocation);
 
@@ -89,7 +89,7 @@ public:
     bool IsMaterialTextureConfigurationValid(
         const MaterialTextureConfigurationAllocation &allocation);
     uint64_t GetMaterialTextureConfigurationZeroRowAddress(
-        const mtl::MaterialDefinition &definition,
+        const mtl::ResolvedMaterial &definition,
         const mtl::MaterialTextureReferenceLayout &layout);
 
     /**

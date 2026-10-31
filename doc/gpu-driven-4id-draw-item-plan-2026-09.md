@@ -347,7 +347,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 2. `MaterialRecipe`：多项 asset 列表收敛为唯一 `GlobalSSBOBinding material_ssbo_binding`（`inc/hgl/mtl/MaterialRecipe.h:508`）——**类型已由 `MaterialSSBOBinding` 改名 `GlobalSSBOBinding`**（旧类型名 0 命中；字段名 `material_ssbo_binding` 保留）。
 3. `MaterialComponent`：删除 resolved binding 缓存与过渡期查询 API（`inc/hgl/ecs/components/MaterialComponent.h:53` 仅余 `cached_effective_recipe` + `cached_effective_recipe_hash`）。
 4. `RenderPrimitiveCollectSystem`：直接消费 recipe binding（`MaterializeRecipeRowsForPrimitive` :653，`TryGetRowBuffer` :750），无多键物化过渡层。
-5. 编译期 schema/契约/provider manifest：`MaterialDefinition.material_private_data` 现为 `GlobalSSBOType` 直选（`MaterialRecipe.h:299`），provider metadata 不再参与 payload 合并（`ResolveEffectiveMaterialPrivateData` 仅此相关）。
+5. 编译期 schema/契约/provider manifest：`ResolvedMaterial.material_private_data` 现为 `GlobalSSBOType` 直选（`MaterialRecipe.h:299`），provider metadata 不再参与 payload 合并（`ResolveEffectiveMaterialPrivateData` 仅此相关）。
 6. `MakeRecipeSSBOId(local_id)` 只保留通用 recipe SSBO identity 生成（`SSBOTypes.h:89`），配合 `MakeECSSSBOId`/`IsECSSSBOId`/`GetSSBOIdLocalPart` 命名空间。
 
 **验收（已达成）**：编译 + gate + 全仓 grep 确认旧材质 slot 字段、多键 vector 和 slot-keyed authoring API 均无残留（`MaterialSSBOBinding`/`MaterialSSBOBufferRegistry`/`MaterialSSBODataAccessor`/`GetMaterialDataAccessor` 全 0 命中）。
@@ -422,7 +422,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 | 池转发头 | `inc/hgl/graph/module/MeshDrawParamsPool.h` | 4 行，只 include 上者 |
 | 通用域注册 | `inc/hgl/graph/module/SSBOBufferRegistry.h` | `SSBOBufferBinding`(:16)、`domain_map`(:29)、纹理引用池(:31/48-52)、`RegisterBuffer`(:60)、`GetNullRowAddress`(:113) |
 | 纹理引用池 | `inc/hgl/graph/module/MaterialTextureReferencePool.h` + `.cpp` | `Acquire/Write/Retire/CollectRetired`(:102-110)、`MakePoolKey`(:75)、`row_generations`(:61)、retire 延迟(:15) |
-| 纹理引用结构 | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialTextureReference`(:182)、`MaterialTextureReferenceLayout`(:207)、`BuildMaterialTextureReferenceLayout`(:415)、`DefaultMaterialTextureConfigurationCapacity`(:68)、`MaterialTextureSamplingOptions`(:107)、`MaterialDefinition.material_private_data`(:299) | 〔2026-10-11：`MaterialTextureSamplingOptions` 已整删（双端空转，无授权+无消费者）——本条作废，见 `doc/future/shadergen-material-chain-review.md` §9〕
+| 纹理引用结构 | `inc/hgl/mtl/MaterialRecipe.h` | `MaterialTextureReference`(:182)、`MaterialTextureReferenceLayout`(:207)、`BuildMaterialTextureReferenceLayout`(:415)、`DefaultMaterialTextureConfigurationCapacity`(:68)、`MaterialTextureSamplingOptions`(:107)、`ResolvedMaterial.material_private_data`(:299) | 〔2026-10-11：`MaterialTextureSamplingOptions` 已整删（双端空转，无授权+无消费者）——本条作废，见 `doc/future/shadergen-material-chain-review.md` §9〕
 | 行租约 | `inc/hgl/vk/buffer/ActiveRowPool.h` / `ActiveRowLease.h` / `ActiveRowView.h` | `Acquire`(:92)、`ReleaseDeferred`(:102)、`RowGPU`(:134)、`RowCPU`(:127)、`CommitRow`(:142) |
 | 全局地址表 | `inc/hgl/graph/ubo/GlobalAddresses.h` | `struct GlobalAddresses`(:27-46)、`kGlobalAddressesSlotCount`(:49)、`kGlobalAddressesSlotStride=128`(:53) |
 | MeshDrawParams | `inc/hgl/graph/ShaderBufferSources.h` | `HGL_MESH_DRAW_PARAMS_FIELD_LIST`(:16-33)、**112B** 断言(:85/:88)、`MeshDrawCommand`(:93-127)、`MaterialInstanceAddresses`(:142-198，**16B 四字段**)、`DrawItem4ID`(:200-244)、`GeometryAABB`(:246-256) |

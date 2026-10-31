@@ -19,7 +19,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/log/Log.h>
 #include<ctime>
 #include<cmath>

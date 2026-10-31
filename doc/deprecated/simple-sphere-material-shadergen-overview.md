@@ -41,7 +41,7 @@ SimpleSphere.cpp
     +-- Texture / Sampler resources
           |
           v
-MaterialDefinitionRegistry
+MaterialResolver
           |
           +-- ShaderLibrary/material/lit.mi.toml
           |
@@ -178,7 +178,7 @@ SimpleSphereApp
     -> PrimitiveComponent
     -> PrimitiveAsset
     -> MaterialRecipe
-    -> MaterialDefinition / Shader Program
+    -> ResolvedMaterial / Shader Program
 ```
 
 `SimpleSphere.cpp` 没有直接调用 `MaterialShaderCompiler`。Shader 解析、生成和编译在材质程序解析或首次使用时由下游渲染系统触发。
@@ -223,8 +223,8 @@ name                                     <- 缺省等于 id
 
 ```text
 MaterialRecipe.h
-MaterialDefinitionFile.h
-MaterialDefinitionRegistry.h
+ResolvedMaterialFile.h
+MaterialResolver.h
 ```
 
 负责：
@@ -240,7 +240,7 @@ MaterialDefinitionRegistry.h
 | --- | --- |
 | `ShaderLibrary/material/*.mi.toml` | 所有材质定义，包括 fallback、纯色、文本和错误棋盘格；解析器只接受 `schema = 4`，三种材质 provider 仅使用 `*_module_name` 注册名，路径由注册表提供 |
 
-`TryGetMaterialDefinitionByID` 只查询 `MaterialDefinitionFileRegistry`。fallback 直接使用 `builtin/pure_color` 文件定义；如果材质目录缺失，系统会显式报错，不再回退到 C++ 内嵌定义。
+`TryGetResolvedMaterialByID` 只查询 `ResolvedMaterialFileRegistry`。fallback 直接使用 `builtin/pure_color` 文件定义；如果材质目录缺失，系统会显式报错，不再回退到 C++ 内嵌定义。
 
 错误棋盘格定义为：
 
@@ -341,11 +341,11 @@ src/ShaderMaterialData/
 主要文件：
 
 ```text
-MaterialDefinitionFile.cpp
-MaterialDefinitionRegistry.cpp
+ResolvedMaterialFile.cpp
+MaterialResolver.cpp
 ```
 
-`MaterialDefinitionFile.cpp` 只解析普通 File 材质的 schema 3 TOML，将以下内容转换为内部定义：
+`ResolvedMaterialFile.cpp` 只解析普通 File 材质的 schema 3 TOML，将以下内容转换为内部定义：
 
 - 材质 ID；
 - transform 配置；
@@ -395,8 +395,8 @@ src/ShaderGen/template/
 
 ```text
 GeometryVertexFormat
-MaterialDefinition.vertex.requirements
-MaterialDefinition.vertex.varyings
+ResolvedMaterial.vertex.requirements
+ResolvedMaterial.vertex.varyings
 transform 配置
 shader mode
 ```
@@ -514,7 +514,7 @@ debug_normal_color.mi.toml
 
 保底链上的五个 builtin 定义（`builtin/pure_color`、`builtin/checkerboard_3d`、
 `builtin/error_checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap`）已代码化，
-内嵌在 `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp`，不再有对应的 `.mi.toml`。
+内嵌在 `src/ShaderMaterialData/BuiltinResolvedMaterials.cpp`，不再有对应的 `.mi.toml`。
 
 它们使用相同的 ShaderGen 框架，但提供不同的材质 source、顶点需求、输出策略或模板能力。
 

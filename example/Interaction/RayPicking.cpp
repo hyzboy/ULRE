@@ -19,7 +19,7 @@
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialResolver.h>
 #include<hgl/vk/VertexDataManager.h>
 
 #include<hgl/graph/module/GeometryManager.h>

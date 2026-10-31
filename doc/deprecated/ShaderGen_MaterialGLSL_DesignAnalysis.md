@@ -32,10 +32,10 @@
 
 ```
 ┌─ L1 作者层（声明意图）──────────────────────────────────────────┐
-│  MaterialDefinition（能力超集，.mi.toml 文件）            │
+│  ResolvedMaterial（能力超集，.mi.toml 文件）            │
 │  MaterialRecipe（实例输入：mtl_def_id + 纹理/SSBO 绑定 + 状态覆盖）│
 ├─ L2 构建请求层 ─────────────────────────────────────────────────┤
-│  MaterialDefinitionBuildRequest = Recipe + 几何格式 + purpose + 设备 │
+│  MaterialBuildRequest = Recipe + 几何格式 + purpose + 设备 │
 ├─ L3 生成层（src/ShaderGen）─────────────────────────────────────┤
 │  BuildGenericMaterial：契约推导 → MS 组装 → FS 组装 → BDA 行声明 │
 │  （VertexABIBuilder / MeshTemplateEmitter /                     │
@@ -81,8 +81,8 @@
 
 - `recipe_hash`（recipe 内容 FNV）与 `build_context_hash`
   （`HashMaterialProgramBuildContext` = primitive_type + 几何格式 + 设备 profile，
-  `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:113`）→ 任一变化即 `program_dirty`；
-- 构造 `MaterialDefinitionBuildRequest`（把 `PrimitiveVariantPurpose` 转成
+  `src/ShaderMaterialData/MaterialResolver.cpp:113`）→ 任一变化即 `program_dirty`；
+- 构造 `MaterialBuildRequest`（把 `PrimitiveVariantPurpose` 转成
   `ShaderProgramPurpose`：DepthOnly/ShadowCaster 覆盖默认 ForwardColor）；
 - 调 `ShaderProgramManager::AcquireShaderProgram(request)`。
 
@@ -97,11 +97,11 @@
 这是整条链的枢纽，按序执行：
 
 1. **解析 definition**：`mtl_def_id="Lit"` → `ShaderLibrary/material/lit.mi.toml`
-   （文件注册表懒加载整目录，`src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:184`）→ 得到
-   `MaterialDefinition`：`[transform]` 五元组（source/mapping/orientation/scale/projection）、
+   （文件注册表懒加载整目录，`src/ShaderMaterialData/MaterialResolver.cpp:184`）→ 得到
+   `ResolvedMaterial`：`[transform]` 五元组（source/mapping/orientation/scale/projection）、
    `[fragment]` provider 模块路径、`[pipeline]` family/profile 与可选 `[render_state]`、
    `[vertex]` 语义需求 + varyings、`[resources]` UBO/采样器声明
-   （`src/ShaderMaterialData/MaterialDefinitionFile.cpp:343-1030` 逐字段解析）。
+   （`src/ShaderMaterialData/ResolvedMaterialFile.cpp:343-1030` 逐字段解析）。
 2. **目的派发**：`pass → ShaderProgramPurpose`；DepthOnly 会**裁剪**——把 fragment
    语义需求缩到 `IsVertexSemanticRequiredForVarying` 允许集、清掉 provider 根、
    剔除不需要的描述符（Phase 1 `ResolvePurposeAndCoverage`，src/ShaderGen/builder/GenericMaterialBuilder.cpp:117-238），
@@ -123,13 +123,13 @@
    ——从 definition 的 UBO 需求 + provider 根（material_source/ntb 模块）的
    `@ulre` 纹理引用声明聚合资源元数据，再 `BuildDescriptorsFromDefinition`
    （src/ShaderGen/builder/DefinitionDescriptorBuilder.h:20）生成 `SerializedDescriptorEntry[]`。
-   材质 payload 类型只来自 `MaterialDefinition.material_private_data`
+   材质 payload 类型只来自 `ResolvedMaterial.material_private_data`
    （inc/hgl/mtl/MaterialRecipe.h:299），通过 BDA 行访问，不由 provider 元数据声明。
 6. **网格着色器组装**：`EmitMeshTemplateDocument`（src/ShaderGen/meshgen/MeshTemplateEmitter.h）
    按 `vertex_node_config` 五元组把 vertex/ 下的 s1/s2/s3 模块拼成完整 mesh shader。
 7. **片段着色器组装**：render preparation 先由
    `SceneRenderTemplateResolver` 选择 scene `RenderTemplateRequest`，再调用
-   `AppendMaterialRenderTemplateRoots` 将 MaterialDefinition 的 material provider
+   `AppendMaterialRenderTemplateRoots` 将 ResolvedMaterial 的 material provider
    capabilities 追加到该模板。`FragmentTemplateComposer::Compose` 按模板 slots、
    coverage 和 output contract 直接写入 `ShaderDocument`，随后序列化 GLSL。
 8. **编译**：`CompileMaterial`（src/ShaderGen/compile/MaterialShaderCompiler.cpp:459）——
@@ -165,14 +165,14 @@
 
 ### 原理 1：三层"意图"分离（Definition / Recipe / Request）
 
-- `MaterialDefinition` = **能力超集**（"这个材质能做什么"），纯静态声明，
+- `ResolvedMaterial` = **能力超集**（"这个材质能做什么"），纯静态声明，
   可被任意 recipe 复用（inc/hgl/mtl/MaterialRecipe.h:285）；
 - `MaterialRecipe` = **本次渲染意图**（"这次要什么"），`mtl_def_id` 是唯一对接点
   （MaterialRecipe.h:499-509，mtl_def_id 在 :502）；
-- `MaterialDefinitionBuildRequest` = **构建期上下文**（几何格式/设备/purpose，
-  inc/hgl/mtl/MaterialDefinitionRegistry.h:41-56）。
+- `MaterialBuildRequest` = **构建期上下文**（几何格式/设备/purpose，
+  inc/hgl/mtl/MaterialResolver.h:41-56）。
 
-`NormalizeRecipe`（src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:244）是三层间的合流点：
+`NormalizeRecipe`（src/ShaderMaterialData/MaterialResolver.cpp:244）是三层间的合流点：
 把 definition 的默认状态解析进 recipe，且**解析结果写回 `render_state_overrides`
 成为权威值**——之后所有下游（哈希、管线状态）只读 recipe，不再回看 definition。
 
@@ -194,7 +194,7 @@ ShaderLibrary 的每个 `.glsl` 头部有一段 `// @ulre begin/end` 注释块�
 
 解析器产出 `ShaderCodeModuleDefinition`（名字、GLSL 源码指针、能力需求数组、
 纹理引用、采样器预设引用、依赖和冲突）。provider 不再声明材质 payload SSBO；
-材质 payload 类型只来自 `MaterialDefinition.material_private_data`，
+材质 payload 类型只来自 `ResolvedMaterial.material_private_data`，
 BDA 行声明由编译器统一发射。`@ulre ssbo` 已删除并会被解析器拒绝为未知 directive。
 注册表来源收敛为两条：显式注册（`Register`）+ **目录递归扫描**
 （`LoadDirectory`，src/ShaderGen/glsl_module/ShaderCodeModuleRegistry.cpp:57-373，
@@ -356,7 +356,7 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 
 - `BuildGenericMaterial` 现为约 105 行的单函数
   （src/ShaderGen/builder/GenericMaterialBuilder.cpp:702-806；原
-  MaterialDefinitionRegistry.cpp:218-603 已拆出 5 个 Phase 辅助函数 +
+  MaterialResolver.cpp:218-603 已拆出 5 个 Phase 辅助函数 +
   `VertexABIBuilder` / `DefinitionDescriptorBuilder` / `MaterialShaderEmitter`），
   仍承担目的裁剪/契约推导/资源清单/组装/哈希全流程的编排，是继续拆分的候选点；
 - 模块身份已单轨化：`ShaderCodeModuleID` 数字 ID 枚举与运行时自增 ID 均已删除，
@@ -375,8 +375,8 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | 层 | 文件 | 职责 |
 |---|---|---|
 | L1 | `inc/hgl/mtl/MaterialRecipe.h` | Definition/Recipe 数据结构、渲染状态解析 |
-| L1 | `inc/hgl/mtl/MaterialDefinitionFile.h` + `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | .mi.toml 解析 |
-| L1 | `inc/hgl/mtl/MaterialDefinitionRegistry.h` + `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp` | 材质定义文件注册表 + NormalizeRecipe / 构建上下文哈希 |
+| L1 | `inc/hgl/mtl/ResolvedMaterialFile.h` + `src/ShaderMaterialData/ResolvedMaterialFile.cpp` | .mi.toml 解析 |
+| L1 | `inc/hgl/mtl/MaterialResolver.h` + `src/ShaderMaterialData/MaterialResolver.cpp` | 材质定义文件注册表 + NormalizeRecipe / 构建上下文哈希 |
 | L1 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp` | BuildGenericMaterial 五阶段主流程（702-806） |
 | L2 | `inc/hgl/mtl/ShaderBuildContext.h` | 编译产物容器（全局资源契约/Stage Map/链接规格） |
 | L3 | `src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp` | @ulre 元数据解析 |

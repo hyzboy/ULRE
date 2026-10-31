@@ -24,7 +24,7 @@
 >
 > **历史状态更新（2026-10-31）**：本文记录的 `.mi.toml` 资产阶段已被后续命名治理取代；
 > 当前所有用户材质资产均为 `.recipe.toml` 并直接指定 `domain`。持久化
-> `MaterialDefinition` 及 `asset/definition/` 已删除，现有同名 C++ 类型只作为构建期合成结果。
+> `ResolvedMaterial` 及 `asset/definition/` 已删除，现有同名 C++ 类型只作为构建期合成结果。
 > 本文其余提交链与实施细节保留为历史记录，不代表当前工作区或分支状态。
 > **配套文档**：`doc/ultra-thin-fixed-shader-architecture.md`（架构设计正文，8 节，权威设计）。
 > 本文只记录**进度、提交、验证结果、下一步动作、踩过的坑**，不重复设计论证。
@@ -149,7 +149,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 | `inc/hgl/mtl/MaterialDomain.h` | `MaterialDomainContract` 加第 10 字段 `canonical_vertex_node_config`；`MaterialDomainValidationResult` 加 `TransformMismatch`；新增 `GetMaterialDomainCanonicalVertexNodeConfig()` |
 | `inc/hgl/mtl/VertexShaderNodeConfig.h` | 新增 `IsSameVertexNodeConfig(a, b)` |
 | `src/ShaderMaterialData/MaterialDomain.cpp` | 3 个非 3D 领域填规范值；校验器新增「3c. 顶点变换」段（详细报文，提示删除 `[transform]` 表） |
-| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | `[transform]` 缺省时从契约兜底；Custom 保留结构体默认 |
+| `src/ShaderMaterialData/ResolvedMaterialFile.cpp` | `[transform]` 缺省时从契约兜底；Custom 保留结构体默认 |
 | 14 个 `ShaderLibrary/material/*.material.toml` | **整块删除 `[transform]`**（98 行） |
 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | 加 1 条负向探针（3D 领域自选 2D 变换必须被拒）+ 2 处正向断言 + ③b 段 Text2D 兜底断言 |
 
@@ -164,7 +164,7 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 |---|---|
 | `inc/hgl/mtl/MaterialDomain.h` | `MaterialDomainTextureSlot` 3 → 6 字段（`sampler` / `binding_required` / `channels`）；`MaterialDomainContract` 加第 11 字段 `material_data_type`；`MaterialDomainValidationResult` 加 `TextureSlotMismatch` / `MaterialDataTypeMismatch`；新增 `FindMaterialDomainTextureSlot()` / `GetMaterialDomainCanonicalMaterialDataType()` |
 | `src/ShaderMaterialData/MaterialDomain.cpp` | 6 张槽表按新形态重写（`normal` 固定 `channels = 2`；`Sky.sky_cube` 是唯一的 `SamplerCube` 且 `must_declare = false` + `binding_required = true`）；16 个契约逐条填 `material_data_type`；校验器第 4 段重写为「白名单 + 形态」单遍扫描，新增第 5 段「材质数据类型」；加编译期 `static_assert` 守卫 surface 族 |
-| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | `sampler` / `required` / `channels` 缺省时从契约兜底，槽名不在任何契约内则显式报错；新增 `declares_material_data` 标记，`[resources].material_data` 整块缺失时从契约兜底（显式非规范值保留给校验器报错）；`sampler` / `channels` 的类型错误现在也落键级诊断 |
+| `src/ShaderMaterialData/ResolvedMaterialFile.cpp` | `sampler` / `required` / `channels` 缺省时从契约兜底，槽名不在任何契约内则显式报错；新增 `declares_material_data` 标记，`[resources].material_data` 整块缺失时从契约兜底（显式非规范值保留给校验器报错）；`sampler` / `channels` 的类型错误现在也落键级诊断 |
 | 9 个 `ShaderLibrary/material/*.material.toml` | 删除可上移字段：`lit` 的 6 个槽收成 `{ name = "..." }`；4 个无光材质删除 `material_data = { type = "EmissiveSurface" }`；`[resources].samplers` 全部保留 |
 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | 加 4 条负向探针（自选采样器种类 / 自选绑定必要性 / 自选通道数 / 自选 `material_data` 类型）；③b 的 Text2D 探针从「无 `[transform]`」升级为「纹理只写 `name`」，同时断言变换、槽形态、数据类型三者都由契约兜底 |
 
@@ -176,16 +176,16 @@ C++ 端只做三件事：**资产是否匹配 Domain 的校验**、**生成一�
 
 **为什么必须做**：`builtin/pure_color`、`builtin/error_checkerboard_3d`、`builtin/checkerboard_3d`、`builtin/text_gpu`、`builtin/text_gpu_bitmap` 这五个 ID **就是保底链本身**（`inc/hgl/mtl/MaterialRecipe.h` 的 `kFallbackMaterialRules` 与 `src/ecs/support/text/TextRenderPipeline.cpp:425-426` 按字面量引用）。保底物一旦因为资产被误删 / 改名 / 写坏而解析不出来，错误处理就会**再失败一次** —— 保底物的可依赖性必须高于它所要兜底的东西。这五个材质在阶段三之一 / 之二之后也已没有任何可供作者调整的自由度。
 
-**代码化的边界（关键设计决定）**：内嵌的仍是**完整 schema-4 源码文本**（`R"TOML(...)TOML"`），注册时走与 `.material.toml` **完全同一条**解析 + 领域校验管线。**没有**改成在 C++ 里手工拼 `MaterialDefinition` 结构体 —— 那样领域契约就得在第二处复述一遍（`material_source_module_name` / `ntb_module_name` / `vertex_node_config` / 纹理槽形态 / `material_data_type`…），正是本架构要消灭的重复。**代码化消灭的是「对磁盘文件的依赖」，不是「对校验管线的依赖」。**
+**代码化的边界（关键设计决定）**：内嵌的仍是**完整 schema-4 源码文本**（`R"TOML(...)TOML"`），注册时走与 `.material.toml` **完全同一条**解析 + 领域校验管线。**没有**改成在 C++ 里手工拼 `ResolvedMaterial` 结构体 —— 那样领域契约就得在第二处复述一遍（`material_source_module_name` / `ntb_module_name` / `vertex_node_config` / 纹理槽形态 / `material_data_type`…），正是本架构要消灭的重复。**代码化消灭的是「对磁盘文件的依赖」，不是「对校验管线的依赖」。**
 
 **实现**：
 | 文件 | 改动 |
 |---|---|
-| `inc/hgl/mtl/BuiltinMaterialDefinitions.h` | **新增**。`BuiltinMaterialDefinitionSource { source_label / definition_id / schema4_source }` + `GetBuiltinMaterialDefinitionCount()` / `GetBuiltinMaterialDefinitionSource(int)` / `FindBuiltinMaterialDefinitionSource(const char*)` |
-| `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp` | **新增**。5 份 `constexpr const char[]` schema-4 源码 + `kBuiltinSources[]` 表（顺序即加载顺序） |
-| `inc/hgl/mtl/MaterialDefinitionFile.h` | `MaterialDefinitionFileRegistry` 新增 `RegisterDefinitionSource(label, content, content_size)` |
-| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | `LoadFile` 改为「读文件 → 委托 `RegisterDefinitionSource`」；解析 / 领域校验 / 重复 ID 检测只保留一份。日志键 `path`→`label`、`file=`→`source=` |
-| `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp` | `GetMaterialDefinitionFileRegistry()` 改为两段式：先注册 5 个内嵌（失败即 `GLogFatal` + `abort`，属引擎内部错误，不可降级），再扫资产目录（单文件解析失败仍 `GLogError` + 跳过）。空库判据从 `file_count == 0 \|\| registry.GetCount() == 0` 收窄为只看 `file_count`（内嵌保证 `GetCount() != 0`）。日志变为 `Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions` |
+| `inc/hgl/mtl/BuiltinResolvedMaterials.h` | **新增**。`BuiltinResolvedMaterialSource { source_label / definition_id / schema4_source }` + `GetBuiltinResolvedMaterialCount()` / `GetBuiltinResolvedMaterialSource(int)` / `FindBuiltinResolvedMaterialSource(const char*)` |
+| `src/ShaderMaterialData/BuiltinResolvedMaterials.cpp` | **新增**。5 份 `constexpr const char[]` schema-4 源码 + `kBuiltinSources[]` 表（顺序即加载顺序） |
+| `inc/hgl/mtl/ResolvedMaterialFile.h` | `ResolvedMaterialFileRegistry` 新增 `RegisterDefinitionSource(label, content, content_size)` |
+| `src/ShaderMaterialData/ResolvedMaterialFile.cpp` | `LoadFile` 改为「读文件 → 委托 `RegisterDefinitionSource`」；解析 / 领域校验 / 重复 ID 检测只保留一份。日志键 `path`→`label`、`file=`→`source=` |
+| `src/ShaderMaterialData/MaterialResolver.cpp` | `GetResolvedMaterialFileRegistry()` 改为两段式：先注册 5 个内嵌（失败即 `GLogFatal` + `abort`，属引擎内部错误，不可降级），再扫资产目录（单文件解析失败仍 `GLogError` + 跳过）。空库判据从 `file_count == 0 \|\| registry.GetCount() == 0` 收窄为只看 `file_count`（内嵌保证 `GetCount() != 0`）。日志变为 `Loaded 9 material TOML definitions (0 errors) + 5 builtin definitions` |
 | `src/ShaderMaterialData/CMakeLists.txt` | 加入两个新文件 |
 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | `S.material-definition-file-schema` 改为复刻运行时两段式注册：断言内嵌数 == 5、**只喂内嵌源码的独立 registry 必须能解析全部 5 个保底 ID**、资产目录 `file_count == 9`、合并后 14 个 ID 全部可解析 |
 | 5 个 `ShaderLibrary/material/*.material.toml` | **删除**（目录内剩 9 份资产定义 + 9 个 GLSL） |
@@ -225,8 +225,8 @@ samplers = ["Trilinear", "Linear", "ShadowPCF"]
 | `inc/hgl/mtl/MaterialDomain.h` / `src/ShaderMaterialData/MaterialDomain.cpp` | 新增 `GetMaterialDomainVertexSemanticRequirements()`：把契约的 `required_vertex_semantic_mask` 翻译成 `ShaderCodeModuleSemanticRequirement` 数组（`AO` / `Rotation` 无正向映射，跳过） |
 | `inc/hgl/mtl/MaterialRecipe.h` | `GetShaderCodeModuleSemanticFromVertexSemantic()` 补上漏掉的 `VertexSemantic::Size` → `ShaderCodeModuleSemantic::Size`；`IsMaterialVertexSemanticRequiredForVarying()` 从 `.cpp` 的匿名命名空间提升为**公开 inline**，成为「语义 ↔ varying」的唯一真源 |
 | `src/ShaderGen/builder/GenericMaterialBuilder.cpp` | 删除本地那份 `IsVertexSemanticRequiredForVarying()`，改调 `MaterialRecipe.h` 的公开版本（深度 pass 重过滤行为不变） |
-| `src/ShaderMaterialData/MaterialDefinitionFile.cpp` | `name` / `provider_policy` / `[fragment]` / `[vertex] requirements` 四项改为**领域材质可缺省**；缺省走契约兜底，非领域材质（Custom）缺任何一项都带**键级诊断**报错。`LoadDirectory()` 的扩展名过滤 `.material.toml` → `.mi.toml` |
-| `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp` | 5 份内嵌源码同步降维（去掉 `provider_policy` / `[fragment]` / `requirements`；`name` 仅在确实不同于 `id` 时保留） |
+| `src/ShaderMaterialData/ResolvedMaterialFile.cpp` | `name` / `provider_policy` / `[fragment]` / `[vertex] requirements` 四项改为**领域材质可缺省**；缺省走契约兜底，非领域材质（Custom）缺任何一项都带**键级诊断**报错。`LoadDirectory()` 的扩展名过滤 `.material.toml` → `.mi.toml` |
+| `src/ShaderMaterialData/BuiltinResolvedMaterials.cpp` | 5 份内嵌源码同步降维（去掉 `provider_policy` / `[fragment]` / `requirements`；`name` 仅在确实不同于 `id` 时保留） |
 | 9 个 `ShaderLibrary/material/*.mi.toml` | `git mv` 改名 + 全部重写为降维形态；`sky_cube` 保留 `[fragment] surface_module_name`（legacy 但仍在用） |
 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | ① 库契约 case 的扩展名检查从「静默 `continue`」改为**正向断言**（任何非 `.mi.toml` 文件立刻红）；② 新增**正向推导探针** `DerivedVertexColor`（不写 name / provider_policy / fragment / requirements，断言四项全部由契约填对）；③ 新增**反向探针** `CustomNoPolicy`（Custom 缺 `provider_policy` 必须报 `key == "provider_policy"`）、`CustomNoRequirements`（缺 `requirements` 必须报 `key == "requirements"`）；④ 新增 **ABI 不变式探针** `DerivedKeepAbi` |
 | `example/Environment/SkyCubeSphere.cpp` + 约 45 处文档引用 | `.material.toml` → `.mi.toml` |
@@ -388,7 +388,7 @@ masked `ShadowCaster` 是同一类漏，属于「改坏了也没人会报」。
 | `StructureDumpVariant` | 追加 `PrimitiveType primitive_type = Triangles` 与 `bool vec2_position = false`（追加在末尾，前 14 个变体的位置初始化不受影响） |
 | `kStructureDumpGeometry2D` | 新增：`Position` 用 `VF_V2F`。共享表恒为 `VF_V3F`，不换表就永远走不到 vec2 分叉 |
 | `kStructureDumpVariants[]` | 14 → **16**：`vertex-color-lines-quad`（vec3）、`vertex-color-lines-quad-2d`（vec2） |
-| `BuildStructureDumpVariant()` | 把 `variant.primitive_type` 写进 `MaterialDefinitionBuildRequest`，几何表按 `vec2_position` 二选一 |
+| `BuildStructureDumpVariant()` | 把 `variant.primitive_type` 写进 `MaterialBuildRequest`，几何表按 `vec2_position` 二选一 |
 
 两份 golden 的差异已实测确认覆盖真实分叉，不是冗余副本：
 
@@ -433,7 +433,7 @@ masked `ShadowCaster` 是同一类漏，属于「改坏了也没人会报」。
 
 1. `MaterialDomainTextureSlot`（`inc/hgl/mtl/MaterialDomain.h`）扩字段：`sampler` / `required` / `channels`；`MaterialDomainContract` 加 `material_data_type`。
 2. `src/ShaderMaterialData/MaterialDomain.cpp` 的 `DomainContracts[]` 逐条填值（16 个领域）。
-3. `src/ShaderMaterialData/MaterialDefinitionFile.cpp`：解析 `[resources].textures` 时，资产只写 `name` 即可，其余从契约兜底；若资产显式写了不一致的值 → 校验失败。
+3. `src/ShaderMaterialData/ResolvedMaterialFile.cpp`：解析 `[resources].textures` 时，资产只写 `name` 即可，其余从契约兜底；若资产显式写了不一致的值 → 校验失败。
 4. `MaterialDomainValidationResult` 新增枚举（如 `TextureSlotMismatch` / `MaterialDataTypeMismatch`）+ `GetMaterialDomainValidationResultName()` 加 case。
 5. **注意**：校验失败必须把 `parse_error.key` 记成 `"domain"`，否则门禁报 "must be reported on key 'domain'"。
 6. 14 个 TOML 删掉可上移的字段；**保留 `[resources].samplers`**。
@@ -449,7 +449,7 @@ masked `ShadowCaster` 是同一类漏，属于「改坏了也没人会报」。
 ### 6.5 阶段四 —— 收尾（✅ 已实施，见 §4.6）
 
 - 资产降维为 `.mi.toml`（只写 Domain 名 + 资源 + 数值）。✅
-- 废除 `.material.toml` 与 `MaterialDefinitionFile` 里已无意义的解析分支。✅
+- 废除 `.material.toml` 与 `ResolvedMaterialFile` 里已无意义的解析分支。✅
 - 清理旧 ShaderGen 字符串拼接代码。⬜ **未做**，见 §10.2 —— 它是独立的、范围较大的重构，与资产迁移无耦合，混进本阶段会让 diff 无法审阅。
 - 顺手清 3 处过期文档（见 §10）。✅
 
@@ -463,12 +463,12 @@ masked `ShadowCaster` 是同一类漏，属于「改坏了也没人会报」。
 |---|---|
 | 领域契约（16 个）唯一真源 | `inc/hgl/mtl/MaterialDomain.h` / `src/ShaderMaterialData/MaterialDomain.cpp` |
 | 顶点变换枚举与比较 | `inc/hgl/mtl/VertexShaderNodeConfig.h` |
-| 资产 TOML 解析与兜底 | `src/ShaderMaterialData/MaterialDefinitionFile.cpp` |
-| 保底链内嵌定义（5 个 builtin，不依赖磁盘） | `inc/hgl/mtl/BuiltinMaterialDefinitions.h` / `src/ShaderMaterialData/BuiltinMaterialDefinitions.cpp` |
-| 保底链规则表（ID 硬编码处） | `inc/hgl/mtl/MaterialRecipe.h` 的 `kFallbackMaterialRules` / `GetFallbackMaterialDefinitionID()` |
+| 资产 TOML 解析与兜底 | `src/ShaderMaterialData/ResolvedMaterialFile.cpp` |
+| 保底链内嵌定义（5 个 builtin，不依赖磁盘） | `inc/hgl/mtl/BuiltinResolvedMaterials.h` / `src/ShaderMaterialData/BuiltinResolvedMaterials.cpp` |
+| 保底链规则表（ID 硬编码处） | `inc/hgl/mtl/MaterialRecipe.h` 的 `kFallbackMaterialRules` / `GetFallbackResolvedMaterialID()` |
 | 槽表（12 role） | `src/ShaderMaterialData/RenderTemplate.cpp` |
 | 模板 profile | `src/ShaderMaterialData/SceneRenderTemplateResolver.cpp` |
-| 模板选路（depth / lit / unlit / sky） | `src/ShaderMaterialData/MaterialDefinitionRegistry.cpp:128-138` |
+| 模板选路（depth / lit / unlit / sky） | `src/ShaderMaterialData/MaterialResolver.cpp:128-138` |
 | 固定片元主着色器 | `ShaderLibrary/domain/<domain>/*.frag`，由 `ResolveDomainShaderTemplate()` 按领域 / pass 选择；Sky 与 ShadowCaster 有显式变体 |
 | 管线配置头（`#include` 一半） | `inc/hgl/mtl/PipelineConfigEmitter.h` / `src/ShaderGen/template/PipelineConfigEmitter.cpp` |
 | 能力名解析静态表 | `src/ShaderGen/glsl_module/ShaderCodeModuleFile.cpp:152`（`ParseCapabilityMask()`，**新增能力名必须同时加行**） |
@@ -576,7 +576,7 @@ Case 名与职责：
   **35 个文件仍 include 禁列头，`std::` 出现 436 次**。分目录：`src/ShaderGen` 29 文件 / 283 处、
   `src/ShaderMaterialData` 7 文件 / 62 处、`inc/hgl/mtl` 19 文件 / 91 处。热点 Top6：
   `ShaderCodeModuleFile.cpp` 50、`FragmentTemplateComposer.cpp` 39、`MaterialShaderEmitter.cpp` 38、
-  `ShaderStructureDump.cpp` 25、`MeshShaderTemplate.cpp` 24、`MaterialDefinitionFile.cpp` 31（`ShaderMaterialData` 侧）；
+  `ShaderStructureDump.cpp` 25、`MeshShaderTemplate.cpp` 24、`ResolvedMaterialFile.cpp` 31（`ShaderMaterialData` 侧）；
   公共头侧 `ShaderGenPhysicalDeviceProfileJson.h` 23、`MaterialRecipe.h` 20、`ShaderLibraryPath.h` 11。
   前提条件已满足：mesh 侧三种发射模式都有 emission golden 兜底（§5.3），替换 `std::string` 累加器若改变任何拼接顺序会立刻变红。
   **但它不是「纯机械替换」** —— 实测最小目标 `MeshShaderTemplate.cpp` 就卡在第一个依赖上：

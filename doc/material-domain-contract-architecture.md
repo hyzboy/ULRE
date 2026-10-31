@@ -7,7 +7,7 @@
 > **当前架构更新（2026-10）**：材质文件解析与三层数据流章节记录的是 Definition
 > 文件仍存在时的历史设计，不再作为当前资产流程规范。现在由
 > `MaterialRecipeFile` 解析 `.recipe.toml`，Recipe 直接声明 `domain`，随后由
-> `MaterialDomainContract` 校验并合成构建期 `MaterialDefinition`；没有
+> `MaterialDomainContract` 校验并合成构建期 `ResolvedMaterial`；没有
 > `.definition.toml` 文件层或 Definition 注册表。下文领域契约及固定着色器原则仍适用。
 
 ## 当前 Recipe 文件契约
@@ -151,7 +151,7 @@ ShaderGen 按**声明顺序**排布材质引用行。调整契约表里既有领
 
 ### 3.4 `Custom` 是逃生口，不是默认值
 
-材质 TOML 不写 `domain` 键 → `MaterialDomain::Custom` → `ValidateMaterialDefinitionDomain`
+材质 TOML 不写 `domain` 键 → `MaterialDomain::Custom` → `ValidateResolvedMaterialDomain`
 **直接返回 OK**，不做任何校验。
 
 这是刻意的向后兼容设计：schema-4 的历史材质一夜之间全部变成非法是不可接受的。
@@ -161,7 +161,7 @@ ShaderGen 按**声明顺序**排布材质引用行。调整契约表里既有领
 - 仓库内 14 个材质**全部**已落在具体领域，`Custom` 计数为零；
 - 新增材质默认应当选一个已有领域，只有"确实说不出这是哪种表面"时才允许临时用 `Custom`。
 
-> ⚠ 实现细节：`ValidateMaterialDefinitionDomain` 对 `Custom` 返回
+> ⚠ 实现细节：`ValidateResolvedMaterialDomain` 对 `Custom` 返回
 > `MaterialDomainValidationResult::OK` 而**不是** `NoContract`。调用方只把 `OK` 当通过，
 > 返回 `NoContract` 会让每一个既有材质都变成解析失败（曾因此让整个门禁崩溃，
 > 定位成本极高）。`NoContract` 的语义是"非 Custom 但契约表里查不到"，属内部错误。
@@ -171,10 +171,10 @@ ShaderGen 按**声明顺序**排布材质引用行。调整契约表里既有领
 ## 4. 校验流程
 
 ```
-ParseMaterialDefinitionFile(.mi.toml)
+ParseResolvedMaterialFile(.mi.toml)
   ├─ ParseDefinition                 ← 解析 domain 键（缺省 = Custom）
-  ├─ ValidateMaterialDefinitionKeys  ← 顶层键白名单（含 "domain"）
-  └─ ValidateMaterialDefinitionDomain
+  ├─ ValidateResolvedMaterialKeys  ← 顶层键白名单（含 "domain"）
+  └─ ValidateResolvedMaterialDomain
        ├─ Custom            → OK（豁免，仅限临时实验）
        ├─ 顶点语义 bitmask  → definition.vertex_requirements 必须覆盖
        ├─ 顶点提供策略      → provider_policy 必须允许派生
@@ -198,7 +198,7 @@ ParseMaterialDefinitionFile(.mi.toml)
 3. 实现 Foliage 的 `material_source_provider` 与 `ntb_provider` 模块。
 4. 让门禁的 `D.material-domain-contract` 自检自然覆盖新行。
 
-**绝对不要**为了让某个特例材质过校验而去改 `ValidateMaterialDefinitionDomain`
+**绝对不要**为了让某个特例材质过校验而去改 `ValidateResolvedMaterialDomain`
 的判断逻辑——那会让契约退化成"什么都没有"。
 
 ---
@@ -314,12 +314,12 @@ const vec4 finalColor = EvalPassEnvironment(PassEnvironmentInput(si, surface, ma
 ```
 ParseDefinition
   → ValidateKnownKeys
-  → ValidateMaterialDefinitionDomain   ← 看作者原始声明，判"自选算法"
+  → ValidateResolvedMaterialDomain   ← 看作者原始声明，判"自选算法"
   → ApplyDomainModuleDefaults          ← 只有这里才填空缺
 ```
 
 顺序不能反：`ApplyDomainModuleDefaults` 若先跑，作者显式写错的模块名会被静默覆盖，
-`ValidateMaterialDefinitionDomain` 就再也发现不了「这个资产在自选光照算法」。
+`ValidateResolvedMaterialDomain` 就再也发现不了「这个资产在自选光照算法」。
 
 兜底规则本身很短：
 

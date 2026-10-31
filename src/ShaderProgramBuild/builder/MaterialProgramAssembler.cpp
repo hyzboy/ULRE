@@ -1,13 +1,13 @@
 /// MaterialProgramAssembler.cpp — phase-split generic material compilation.
 ///
 /// This file is the behavior-preserving decomposition of the former
-/// AssembleMaterialProgram function in MaterialDefinitionRegistry.cpp. Every
+/// AssembleMaterialProgram function in MaterialResolver.cpp. Every
 /// statement executes in the original order; intermediate values travel via
 /// MaterialProgramAssemblyPlan. Do not reorder statements here — stage keys and
 /// resource contracts depend on the exact hash input sequence.
 
 #include <hgl/mtl/contract/ShaderGenContract.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/StageSPVCompiler.h>
@@ -79,7 +79,7 @@ namespace hgl::graph::mtl
 
         /// 去掉某条顶点语义需求（面法线降级用）。
         bool RemoveVertexSemanticRequirement(
-            MaterialDefinition &definition,
+            ResolvedMaterial &definition,
             const VertexSemantic semantic) noexcept
         {
             for (int i = definition.vertex_semantic_requirements.GetCount() - 1;
@@ -100,18 +100,18 @@ namespace hgl::graph::mtl
         /// 委托 mtl 层单一口径（`MaterialRecipe.h::HasMaterialVertexSemanticRequirement`）：
         /// 同一个判据还被 ECS 渲染层（几何错配判定）与契约测试使用，不能各写一份。
         bool HasVertexSemanticRequirement(
-            const MaterialDefinition &definition,
+            const ResolvedMaterial &definition,
             const VertexSemantic semantic) noexcept
         {
             return HasMaterialVertexSemanticRequirement(definition, semantic);
         }
 
         // Phase 1 — purpose / coverage / varying / stage interface
-        // (originally MaterialDefinitionRegistry.cpp:235-305)
+        // (originally MaterialResolver.cpp:235-305)
         // ═══════════════════════════════════════════════════════════════════
         bool ResolvePurposeAndCoverage(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
             MaterialProgramAssemblyPlan &plan)
         {
             plan.purpose = request.shader_program_purpose;
@@ -121,7 +121,7 @@ namespace hgl::graph::mtl
             {
                 GLogError(
                    "[MaterialProgramAssembler] Material build requires a resolved render template request: name=%s",
-                   definition.definition_name.c_str());
+                   definition.domain_name.c_str());
                 return false;
             }
             if (!BuildMaterialCoverageContract(
@@ -143,7 +143,7 @@ namespace hgl::graph::mtl
                     GLogError(
                        "[MaterialProgramAssembler] Render template request rejected: name=%s "
                        "template=%s expected=%s",
-                       definition.definition_name.c_str(),
+                       definition.domain_name.c_str(),
                        GetPassProfileName(resolved_request.profile_id),
                        GetPassProfileName(plan.coverage.requires_alpha_evaluation
                            ? PassProfileID::ShadowCasterMasked
@@ -161,7 +161,7 @@ namespace hgl::graph::mtl
                     GLogError(
                        "[MaterialProgramAssembler] Render template resolution failed: name=%s "
                        "template=%s validation=%s role=%s module=%s include=%s expected=%s",
-                       definition.definition_name.c_str(),
+                       definition.domain_name.c_str(),
                        GetPassProfileName(resolved_request.profile_id),
                        GetPassProfileValidationErrorName(diagnostic.error),
                        GetShaderModuleSlotRoleName(diagnostic.role),
@@ -215,7 +215,7 @@ namespace hgl::graph::mtl
             {
                 GLogError(
                     "[MaterialProgramAssembler] Material stage interface build failed: name=%s error=%s",
-                    definition.definition_name.c_str(),
+                    definition.domain_name.c_str(),
                     GetMaterialStageInterfaceErrorName(
                         stage_interface_diagnostic.error));
                 return false;
@@ -226,11 +226,11 @@ namespace hgl::graph::mtl
 
         // ═══════════════════════════════════════════════════════════════════
         // Phase 2 — resolved vertex ABI
-        // (originally MaterialDefinitionRegistry.cpp:307-338)
+        // (originally MaterialResolver.cpp:307-338)
         // ═══════════════════════════════════════════════════════════════════
         bool ResolveVertexABI(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
             MaterialProgramAssemblyPlan &plan)
         {
             plan.vertex_node_config =
@@ -254,7 +254,7 @@ namespace hgl::graph::mtl
                         plan.vertex_definition, request, resolved_abi))
                 {
                     GLogError("[MaterialProgramAssembler] Resolved vertex ABI build failed: name=%s",
-                              definition.definition_name.c_str());
+                              definition.domain_name.c_str());
                     return false;
                 }
                 plan.resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl;
@@ -284,7 +284,7 @@ namespace hgl::graph::mtl
         // ═══════════════════════════════════════════════════════════════════
         bool ResolveMeshStageMode(
             const contract::PhysicalDeviceProfileLite *profile,
-            const MaterialDefinition &definition,
+            const ResolvedMaterial &definition,
             MaterialProgramAssemblyPlan &plan)
         {
             // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
@@ -312,7 +312,7 @@ namespace hgl::graph::mtl
                         "[MaterialProgramAssembler] CharQuad 线程数契约被破坏：definition=%s "
                         "mesh_shader_max_invocations=%u 必须为 %u"
                         "（CPU dispatch 固定按该常量算组数，改小会整段漏字）",
-                        definition.definition_id.c_str(),
+                        definition.domain_name.c_str(),
                         static_cast<unsigned>(declared),
                         static_cast<unsigned>(TEXT_CHARQUAD_MAX_INVOCATIONS));
                     return false;
@@ -327,7 +327,7 @@ namespace hgl::graph::mtl
                         "[MaterialProgramAssembler] CharQuad 线程数契约无法兑现：definition=%s "
                         "设备能力上限折算后 group_size=%u < %u"
                         "（CPU dispatch 固定按 %u 算组数，退让会整段漏字）",
-                        definition.definition_id.c_str(),
+                        definition.domain_name.c_str(),
                         static_cast<unsigned>(clamped),
                         static_cast<unsigned>(TEXT_CHARQUAD_MAX_INVOCATIONS),
                         static_cast<unsigned>(TEXT_CHARQUAD_MAX_INVOCATIONS));
@@ -358,14 +358,14 @@ namespace hgl::graph::mtl
 
         // ═══════════════════════════════════════════════════════════════════
         // Phase 3 — resource manifest
-        // (originally MaterialDefinitionRegistry.cpp:339-438)
+        // (originally MaterialResolver.cpp:339-438)
         // ═══════════════════════════════════════════════════════════════════
         bool BuildResourceContract(
-            const MaterialDefinition &definition,
+            const ResolvedMaterial &definition,
             MaterialProgramAssemblyPlan &plan)
         {
             plan.manifest = ShaderCodeResourceManifest{};
-            MaterialDefinition manifest_definition = definition;
+            ResolvedMaterial manifest_definition = definition;
             if (plan.depth_purpose)
                 manifest_definition.code_module_requirements.clear();
             const char *provider_root_names[2]{};
@@ -405,7 +405,7 @@ namespace hgl::graph::mtl
                     provider_root_names, provider_root_count, &module_registry))
             {
                 GLogError("[MaterialProgramAssembler] Generic material resource manifest failed: name=%s",
-                          definition.definition_name.c_str());
+                          definition.domain_name.c_str());
                 return false;
             }
             const char *invalid_texture_reference = nullptr;
@@ -416,7 +416,7 @@ namespace hgl::graph::mtl
             {
                 GLogError(
                     "[MaterialProgramAssembler] Provider texture reference is not declared by material: material=%s texture=%s",
-                    definition.definition_name.c_str(),
+                    definition.domain_name.c_str(),
                     invalid_texture_reference
                         ? invalid_texture_reference
                         : "<invalid>");
@@ -430,7 +430,7 @@ namespace hgl::graph::mtl
             {
                 GLogError(
                     "[MaterialProgramAssembler] Provider sampler preset is not declared by material: material=%s sampler=%s",
-                    definition.definition_name.c_str(),
+                    definition.domain_name.c_str(),
                     missing_sampler_reference
                         ? missing_sampler_reference
                         : "<invalid>");
@@ -439,7 +439,7 @@ namespace hgl::graph::mtl
             if (!plan.manifest.IsValid())
             {
                 GLogError("[MaterialProgramAssembler] Generic material resource contract failed: name=%s error=%s",
-                          definition.definition_name.c_str(),
+                          definition.domain_name.c_str(),
                           GetShaderCodeResourceManifestErrorName(plan.manifest.error));
                 return false;
             }
@@ -450,7 +450,7 @@ namespace hgl::graph::mtl
 
         // ═══════════════════════════════════════════════════════════════════
         // Phase 4 — vertex + fragment stage sources
-        // (originally MaterialDefinitionRegistry.cpp:439-531)
+        // (originally MaterialResolver.cpp:439-531)
         // ═══════════════════════════════════════════════════════════════════
 
         // 网格阶段「物理固定」主着色器名
@@ -598,8 +598,8 @@ namespace hgl::graph::mtl
         }
 
         bool GenerateStageSources(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
             const FixedStageInputs &fixed,
             MaterialProgramBuildCapture *build_capture,
             MaterialProgramAssemblyPlan &plan)
@@ -642,7 +642,7 @@ namespace hgl::graph::mtl
                     GLogError(
                         "[MaterialProgramAssembler] Generic material build cannot load fixed mesh master: "
                         "name=%s shape=%s path=%s mode=%u invocations=%u",
-                        definition.definition_name.c_str(),
+                        definition.domain_name.c_str(),
                         shape_name.c_str(),
                         master_include_path.c_str(),
                         static_cast<unsigned>(plan.mesh_shader_mode),
@@ -684,7 +684,7 @@ namespace hgl::graph::mtl
                     GLogError(
                         "[MaterialProgramAssembler] Generic material build failed to emit interstage varying options: "
                         "name=%s shape=%s mask=0x%08x",
-                        definition.definition_name.c_str(),
+                        definition.domain_name.c_str(),
                         shape_name.c_str(),
                         static_cast<unsigned>(mask));
                     return false;
@@ -731,7 +731,7 @@ namespace hgl::graph::mtl
                         GLogError(
                             "[MaterialProgramAssembler] Generic material build failed to emit mesh options: "
                             "name=%s shape=%s mapping=%s stage3=%s",
-                            definition.definition_name.c_str(),
+                            definition.domain_name.c_str(),
                             shape_name.c_str(),
                             VertexNodeConfigResolver::GetMappingModulePath(
                                 plan.vertex_node_config),
@@ -775,7 +775,7 @@ namespace hgl::graph::mtl
                     "fixed fragment source is required (fragment stage is physically fixed)";
                 GLogError(
                     "[MaterialProgramAssembler] Generic material build has no fixed fragment source: name=%s",
-                    definition.definition_name.c_str());
+                    definition.domain_name.c_str());
                 return false;
             }
 
@@ -936,7 +936,7 @@ namespace hgl::graph::mtl
 
         /// 校验并归一化输出附件契约。
         bool BuildFragmentOutputContract(
-            const MaterialDefinition &definition,
+            const ResolvedMaterial &definition,
             MaterialProgramAssemblyPlan &plan)
         {
             if (!BuildOutputContract(plan.purpose, plan.output_contract))
@@ -945,7 +945,7 @@ namespace hgl::graph::mtl
                     "BuildOutputContract failed";
                 GLogError(
                     "[MaterialProgramAssembler] Material output contract build failed: name=%s",
-                    definition.definition_name.c_str());
+                    definition.domain_name.c_str());
                 return false;
             }
 
@@ -966,9 +966,9 @@ namespace hgl::graph::mtl
         ///   · 顶点格式有 Normal ⇒ 走顶点法线（补齐 Normal 需求 + `HGL_MATERIAL_HAS_VERTEX_NORMAL`）；
         ///   · 顶点格式没有 Normal ⇒ 面法线降级（剥 N/T/B 需求 + `HGL_MATERIAL_FACE_NORMAL_FALLBACK`）。
         bool PrepareResolvedDefinition(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
-            MaterialDefinition &out_resolved_definition)
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
+            ResolvedMaterial &out_resolved_definition)
         {
             out_resolved_definition = definition;
 
@@ -1029,7 +1029,7 @@ namespace hgl::graph::mtl
                     u8"[MaterialProgramAssembler] 材质 %s 必须要顶点法线（normal_mode=%s，ntb_module=%s），但几何"
                     u8"顶点格式缺少 Normal 语义 => 兜底降级为三角形面法线光照（cross(dFdx,dFdy)）。"
                     u8"这是**几何顶点格式错配**，正常应已由 ECS 渲染层回退为错误棋盘格",
-                    definition.definition_id.c_str(),
+                    definition.domain_name.c_str(),
                     GetMaterialVertexNormalModeName(definition.vertex_normal_mode),
                     definition.ntb_module_name ? definition.ntb_module_name : "");
             }
@@ -1048,7 +1048,7 @@ namespace hgl::graph::mtl
 
         ProgramLinkHashes ComputeProgramLinkHashes(
             const contract::PhysicalDeviceProfileLite *profile,
-            const MaterialDefinitionBuildRequest &request,
+            const MaterialBuildRequest &request,
             const MaterialProgramAssemblyPlan &plan)
         {
             ProgramLinkHashes hashes;
@@ -1075,7 +1075,7 @@ namespace hgl::graph::mtl
         // sampler 名必须连带解析后的索引一起折：宏体是 `#define XSampler 7u`，
         // 换一行 contract/sampler.toml 就整体错位。
         // ═══════════════════════════════════════════════════════════════════
-        uint64 ComputeInjectedSourceHash(const MaterialDefinition &definition)
+        uint64 ComputeInjectedSourceHash(const ResolvedMaterial &definition)
         {
             hgl::hash::FNV1aHasher64 hasher;
 
@@ -1119,8 +1119,8 @@ namespace hgl::graph::mtl
         // ═══════════════════════════════════════════════════════════════════
         bool AssembleProgramLinkFromSource(
             const contract::PhysicalDeviceProfileLite *profile,
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
             const FixedStageInputs &fixed,
             MaterialProgramAssemblyPlan &plan)
         {
@@ -1201,7 +1201,7 @@ namespace hgl::graph::mtl
                     "fixed fragment interface hash is required when the fragment stage is physically fixed";
                 GLogError(
                     "[MaterialProgramAssembler] Generic material build has no fixed fragment interface hash: name=%s",
-                    definition.definition_name.c_str());
+                    definition.domain_name.c_str());
                 return false;
             }
 
@@ -1229,19 +1229,19 @@ namespace hgl::graph::mtl
 
         // ═══════════════════════════════════════════════════════════════════
         // Phase 5 — compiler input / link spec
-        // (originally MaterialDefinitionRegistry.cpp:533-596)
+        // (originally MaterialResolver.cpp:533-596)
         // ═══════════════════════════════════════════════════════════════════
         bool FinalizeProgramLink(
             const contract::PhysicalDeviceProfileLite *profile,
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
             const FixedStageInputs &fixed,
             MaterialProgramAssemblyPlan &plan,
             StageSPVCompilerInput &out_compiler_input,
             StageSPVCompileConfig &out_config)
         {
             out_compiler_input = StageSPVCompilerInput{
-                definition.definition_name.c_str(),
+                definition.domain_name.c_str(),
                 request.primitive_type
             };
             StageSPVCompileConfig &config = out_config;
@@ -1287,22 +1287,22 @@ namespace hgl::graph::mtl
 
     // ═══════════════════════════════════════════════════════════════════════
     // AssembleMaterialProgram — orchestration
-    // (originally MaterialDefinitionRegistry.cpp:218-603)
+    // (originally MaterialResolver.cpp:218-603)
     // ═══════════════════════════════════════════════════════════════════════
     ShaderBuildContext *AssembleMaterialProgram(
         const contract::PhysicalDeviceProfileLite *profile,
-        const MaterialDefinitionBuildRequest &request,
-        const MaterialDefinition &definition,
+        const MaterialBuildRequest &request,
+        const ResolvedMaterial &definition,
         MaterialProgramBuildCapture *build_capture,
         const FixedStageInputs &fixed)
     {
         s_last_material_program_assembly_error.Clear();
-        MaterialDefinition resolved_definition;
+        ResolvedMaterial resolved_definition;
         if (!PrepareResolvedDefinition(definition, request, resolved_definition))
         {
             s_last_material_program_assembly_error = "semantic_contract invalid";
             GLogError("[MaterialProgramAssembler] Generic material contract invalid: name=%s semantic_requirements=%d",
-                      definition.definition_name.c_str(),
+                      definition.domain_name.c_str(),
                       resolved_definition.vertex_semantic_requirements.GetCount());
             return nullptr;
         }
@@ -1381,7 +1381,7 @@ namespace hgl::graph::mtl
         {
             s_last_material_program_assembly_error = "CompileMaterialStages failed";
             GLogError("[MaterialProgramAssembler] Generic material compilation failed: name=%s",
-                      definition.definition_name.c_str());
+                      definition.domain_name.c_str());
             return nullptr;
         }
 

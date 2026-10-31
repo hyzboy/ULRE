@@ -30,7 +30,7 @@
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/StageSPVCompiler.h>
-#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/MaterialResolver.h>
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -164,8 +164,8 @@ namespace hgl::graph::mtl
         /// （`MaterialWantsNormalLighting` + 顶点格式），两处必须一致：那边决定
         /// 顶点阶段是否剥掉 N/T/B 需求，这边决定片段阶段要不要 dFdx/dFdy。
         bool ResolveFaceNormalFallback(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request) noexcept
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request) noexcept
         {
             if (!request.geometry_vertex_format
              || !MaterialWantsNormalLighting(definition))
@@ -179,8 +179,8 @@ namespace hgl::graph::mtl
         /// 口径直接对齐 `MaterialProgramAssembler::PrepareResolvedDefinition` ——
         /// 那里两条路各自 push 一个 compile_define，这里必须发同样的宏。
         bool ResolveVertexNormalPresent(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request) noexcept
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request) noexcept
         {
             if (!request.geometry_vertex_format
              || !MaterialWantsNormalLighting(definition))
@@ -192,7 +192,7 @@ namespace hgl::graph::mtl
 
         /// 模板里是否真的挂了 shadow provider 槽。只有挂了的主着色器才会
         /// include `module/provider/shadow/shadow_pcf.glsl`，也只有它需要 PCF 宏。
-        bool HasShadowProviderSlot(const MaterialDefinitionBuildRequest &request) noexcept
+        bool HasShadowProviderSlot(const MaterialBuildRequest &request) noexcept
         {
             return request.render_template_request.FindModuleRoot(
                        ShaderModuleSlotRole::ShadowProvider) != nullptr;
@@ -208,7 +208,7 @@ namespace hgl::graph::mtl
         /// 按模块名回查注册表，否则任何 ambient 覆盖（例如 indirect_ibl）都会以
         /// 「模板没有 AmbientLightProvider 槽」为由误判失败。
         const char *GetAmbientIncludePath(
-            const MaterialDefinitionBuildRequest &request) noexcept
+            const MaterialBuildRequest &request) noexcept
         {
             const PassProfileModuleRoot *root =
                 request.render_template_request.FindModuleRoot(
@@ -230,8 +230,8 @@ namespace hgl::graph::mtl
         }
 
         bool BuildDomainOptions(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
             const MaterialDomain domain,
             const ShaderProgramPurpose purpose,
             AnsiString &out_text)
@@ -253,7 +253,7 @@ namespace hgl::graph::mtl
                         u8"[DomainBackend] 领域 %d 需要 ForwardLit options，但渲染模板没有"
                         u8" AmbientLightProvider 槽（材质 %s）",
                         static_cast<int>(domain),
-                        definition.definition_id.c_str());
+                        definition.domain_name.c_str());
                     return false;
                 }
             }
@@ -598,8 +598,8 @@ namespace hgl::graph::mtl
         /// 只算文本，不落盘：目录名要同时覆盖片段与网格两份 options，而网格那份
         /// 由 `AssembleMaterialProgram` 产出，落盘留给调用方在拿到两份之后一次做完。
         bool ResolveFixedFragmentStage(
-            const MaterialDefinition &definition,
-            const MaterialDefinitionBuildRequest &request,
+            const ResolvedMaterial &definition,
+            const MaterialBuildRequest &request,
             FixedFragmentStage &out_stage)
         {
             const MaterialDomain domain = definition.domain;
@@ -629,7 +629,7 @@ namespace hgl::graph::mtl
                     static_cast<int>(domain),
                     static_cast<int>(purpose),
                     masked_coverage ? 1 : 0,
-                    definition.definition_id.c_str());
+                    definition.domain_name.c_str());
                 return false;
             }
 
@@ -694,8 +694,8 @@ namespace hgl::graph::mtl
 
             ShaderBuildContext *CreateBuildContext(
                 const contract::PhysicalDeviceProfileLite *profile,
-                const MaterialDefinition &definition,
-                const MaterialDefinitionBuildRequest &request) override
+                const ResolvedMaterial &definition,
+                const MaterialBuildRequest &request) override
             {
                 g_last_domain_build_error.Clear();
 
@@ -711,7 +711,7 @@ namespace hgl::graph::mtl
                 // definition_hash 直接吃这份真正会被编译的文本。
                 // 仍要 `defer_finalize`：SPV 编译必须等 include 根设对，那一步
                 // 由本后端在第 3 步做（见 CompileFixedStage）。
-                MaterialDefinitionBuildRequest deferred_request = request;
+                MaterialBuildRequest deferred_request = request;
                 deferred_request.defer_finalize = true;
 
                 FixedStageInputs fixed_stage;
@@ -729,7 +729,7 @@ namespace hgl::graph::mtl
                 if (!ctx)
                 {
                     DomainBuildFailed(u8"[DomainBackend] 网格阶段构建失败：材质 %s（%s）",
-                        definition.definition_id.c_str(),
+                        definition.domain_name.c_str(),
                         GetLastMaterialProgramAssemblyError().c_str());
                     return nullptr;
                 }
@@ -785,8 +785,8 @@ namespace hgl::graph::mtl
     }
 
     bool EmitDomainOptionsForDefinition(
-        const MaterialDefinition &definition,
-        const MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        const MaterialBuildRequest &request,
         const MaterialDomain domain,
         const ShaderProgramPurpose purpose,
         AnsiString &out_text)
@@ -795,8 +795,8 @@ namespace hgl::graph::mtl
     }
 
     bool ResolveFixedFragmentSource(
-        const MaterialDefinition &definition,
-        const MaterialDefinitionBuildRequest &request,
+        const ResolvedMaterial &definition,
+        const MaterialBuildRequest &request,
         FixedFragmentSource &out_source)
     {
         FixedFragmentStage fixed;
