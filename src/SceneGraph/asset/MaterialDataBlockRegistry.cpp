@@ -421,6 +421,49 @@ namespace hgl::graph::mtl
         return FindAssetByPath(parsed.target);
     }
 
+    bool MaterialDataBlockRegistry::GetRowBinding(GlobalSSBOBufferRegistry *pool,
+                                                  const OSString            &uri,
+                                                  const uint32               row_index,
+                                                  GlobalSSBOBinding         &out)
+    {
+        if (!pool)
+        {
+            GLogError(u8"[MaterialDataBlockRegistry] GetRowBinding 未提供 SSBO 池：%ls", uri.c_str());
+            return false;
+        }
+
+        MaterialDataBlockAsset *asset = GetOrLoadURI(uri);
+        if (!asset)
+            return false;
+
+        if (asset->IsFailed())
+        {
+            GLogError(u8"[MaterialDataBlockRegistry] GetRowBinding 数据块处于失败态：%ls (%s)",
+                      uri.c_str(), asset->GetFailureReason().c_str());
+            return false;
+        }
+
+        // 整块上传幂等：已上船的块直接返回 true。
+        if (!asset->Upload(pool))
+        {
+            GLogError(u8"[MaterialDataBlockRegistry] GetRowBinding 上传失败：%ls (%s)",
+                      uri.c_str(), asset->GetFailureReason().c_str());
+            return false;
+        }
+
+        const GlobalSSBOBinding binding = asset->GetRowLease().GetGlobalSSBOBindingAt(row_index);
+
+        if (!binding.IsValid())
+        {
+            GLogError(u8"[MaterialDataBlockRegistry] GetRowBinding 行号越界：%ls row=%u rows=%u",
+                      uri.c_str(), row_index, asset->GetRowCount());
+            return false;
+        }
+
+        out = binding;
+        return true;
+    }
+
     MaterialDataBlockAsset *MaterialDataBlockRegistry::FindByName(const char *name)
     {
         if (!name || !name[0])

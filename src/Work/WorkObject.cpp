@@ -6,6 +6,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/asset/GeometryAsset.h>
+#include<hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -65,6 +66,33 @@ namespace hgl
     {
         auto *graphics = GetGraphicsContext();
         return graphics ? graphics->GetGeometryAssetRegistry() : nullptr;
+    }
+
+    bool WorkObject::GetMaterialDataBinding(const char *uri, const uint32_t row_index,
+                                            graph::GlobalSSBOBinding &out)
+    {
+        if (!uri || !uri[0])
+        {
+            GLogError(u8"[WorkObject] 无法解析数据块 URI：URI 为空");
+            return false;
+        }
+
+        auto *graphics = GetGraphicsContext();
+        if (!graphics)
+        {
+            GLogError(u8"[WorkObject] 无法解析数据块 URI：GraphicsContext 未就绪 uri=%s", uri);
+            return false;
+        }
+
+        auto *blocks = graphics->GetMaterialDataBlockRegistry();
+        if (!blocks)
+        {
+            GLogError(u8"[WorkObject] 无法解析数据块 URI：MaterialDataBlockRegistry 未就绪 uri=%s", uri);
+            return false;
+        }
+
+        return blocks->GetRowBinding(GetManager<graph::GlobalSSBOBufferRegistry>(),
+                                     ToOSString(uri), row_index, out);
     }
 
     bool WorkObject::LoadRecipeFile(const OSString &path)

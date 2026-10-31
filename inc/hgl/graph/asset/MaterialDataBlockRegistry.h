@@ -91,6 +91,24 @@ namespace hgl::graph::mtl
          */
         MaterialDataBlockAsset *GetOrLoadURI(const OSString &uri);
 
+        /**
+         * URI + 行号 ⇒ 全局绑定（`GetOrLoadURI` + 整块上传 + 取该行号）。
+         *
+         * 这是给**手工建实体**的示例准备的：它们不走 `RenderableBuilder`，但要设
+         * `MaterialRecipe::material_ssbo_binding` 和 `MaterialData::SetDataResource()`，
+         * 需要的恰好就是一个 `GlobalSSBOBinding`。
+         *
+         * @param pool        全局池；块首次在此上传（同一块重复调用只上传一次）
+         * @param uri         数据块 URI（写法同 `GetOrLoadURI`）
+         * @param row_index   块内行号（从 0 起；越界即失败）
+         * @param out         成功时写入；**失败时保持不动**
+         * @return 拿到有效绑定为 `true`
+         */
+        bool GetRowBinding(GlobalSSBOBufferRegistry *pool,
+                           const OSString            &uri,
+                           uint32                     row_index,
+                           GlobalSSBOBinding         &out);
+
         /// 按块名查（`spec.name`；无名块查不到）
         MaterialDataBlockAsset *FindByName(const char *name);
 

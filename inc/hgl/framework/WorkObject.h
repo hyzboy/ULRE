@@ -20,6 +20,7 @@ namespace hgl
     class GeometryVertexFormat;
         struct ViewportInfo;
         struct CameraInfo;
+        struct GlobalSSBOBinding;
         namespace mtl { struct MaterialRecipe; }
     }
 
@@ -85,6 +86,28 @@ namespace hgl
          */
         graph::Geometry *GetGeometry(const char *uri,
                                       const graph::GeometryVertexFormat *format_override=nullptr);
+
+        /**
+         * @brief 按 `mtldata` URI + 行号取材质数据行的全局绑定。
+         *
+         * 这是**手工建实体**示例的入口：它们不走 `RenderableBuilder`，但要给
+         * `MaterialRecipe::material_ssbo_binding` 和 `MaterialData::SetDataResource()`
+         * 各填一个 `GlobalSSBOBinding` —— 一个 URI + 一个行号就够，数据本身在文件里。
+         *
+         * @code
+         * GlobalSSBOBinding binding{};
+         * if (!GetMaterialDataBinding("mtldata:@sphere", 0, binding)) return false;
+         * recipe.material_ssbo_binding = binding;
+         * ...
+         * material_data_comp->SetDataResource(binding);
+         * @endcode
+         *
+         * 数据块首次使用时整块上传（同一块重复调用只上传一次）。URI 写法见
+         * `MaterialDataBlockRegistry::GetOrLoadURI`。失败时 `out` 保持不动并返回 false。
+         */
+        bool GetMaterialDataBinding(const char *uri, uint32_t row_index,
+                                    graph::GlobalSSBOBinding &out);
+
         bool LoadRecipeFile(const OSString &path);
         bool LoadRecipeDirectory(const OSString &path);
 

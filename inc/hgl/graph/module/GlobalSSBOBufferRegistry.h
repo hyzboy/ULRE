@@ -501,6 +501,18 @@ public:
         return (IsValid() && index < count) ? first + index : ActiveRowPool::InvalidRowID;
     }
 
+    /// 块内第 index 行的全局绑定（供手工建实体路径直接赋给 MaterialRecipe）。
+    /// 越界或租约失效返回默认构造的无效绑定。
+    GlobalSSBOBinding GetGlobalSSBOBindingAt(const uint32_t index) const
+    {
+        const uint32_t row = RowIDAt(index);
+
+        if (row == ActiveRowPool::InvalidRowID)
+            return {};
+
+        return {type, GetSSBOId(), row};
+    }
+
     void Release()
     {
         if (registry && first != ActiveRowPool::InvalidRowID && count != 0)
