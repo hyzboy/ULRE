@@ -199,16 +199,40 @@ hgl::serialize::LoadAssetObjectFromBytes(asset, data, size);
 这类格式专用虚接口**。加一个后端要改一次资产派生代码，等于把「格式无关」这层
 结构又破了。新增后端只需在 `ArchiveFile.h` 里多一个 `case`，资产代码零改动。
 
+### 7.2 内置预设：产物在仓库，生成器在工具工程
+
+内置预设（`ShaderLibrary/asset/environment/*.env`）是**作者侧产物**，引擎只读。
+生成器因此**不在**运行时库里：
+
+| 位置 | 角色 |
+|---|---|
+| `src/Tools/BuiltinAssets/`（`BuiltinAssetExport`） | 离线生成器：预设数据 + `PresetWriter`（拼路径 + 调 `ArchiveFile.h`） |
+| `ShaderLibrary/asset/environment/*.{env,env.toml}` | 产物，运行时唯一入口 |
+| `hgl::graph::EnvironmentAsset` | 只提供字段表与 `Serialize()`，**不含任何内置数据** |
+
+生成器仍只走统一通路（`AssetObject::Serialize()` → `Archive` → Codec），所以同一份预设
+「两种格式」不是两套代码：两次 `SaveAssetObjectToFile()`，差别只在文件名后缀。
+
+```powershell
+# 改完预设数据后重新生成（工作目录 = 仓库根）
+BuiltinAssetExport --out ShaderLibrary/asset
+```
+
+`TestEnvironmentCodec` 第 9 节校验仓库里那 5 份预设「TOML 与 FlatBuffers 同源且字段
+一致」—— 忘记重跑生成器会直接被这条门禁指出。未来其它内置元素（几何 / 材质预设…）
+在 `BuiltinAssetExport` 的 `kGroups` 里加一组即可。
+
 ## 8. 门禁
 
 | 目标 | 覆盖内容 |
 |---|---|
 | `TestSerializeArchive` | 值树、四类容器、TOML 往返与文本闭环、FB 往返、缺键/类型不符语义 |
 | `TestAssetReflection` | 真实资产结构的 TOML + FlatBuffers 往返、元数据表与布局一致 |
-| `TestEnvironmentCodec` | 环境规格双格式往返 + `ArchiveFile.h` 门面（文本/字节/文件、无后缀拒绝） |
+| `TestEnvironmentCodec` | 环境规格双格式往返 + `ArchiveFile.h` 门面（文本/字节/文件、无后缀拒绝）+ 仓库内置 5 份预设两份格式一致 |
 | `TestEnvironmentAssetURI` | `env:` URI、目录装载、二进制 `.env` 与缓存命中 |
 | `TestSceneFile` / `TestGeometryAssetFile` / `TestPrimitiveAssetFile` | 文件级读写与语义校验 |
 | `asset_gen.py --check` | 「改了 C++ 结构但忘记重新生成」 |
+| `BuiltinAssetExport`（工具工程） | 「改了内置预设数据但忘记重新导出产物」 |
 
 ## 9. 后续
 

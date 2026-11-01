@@ -22,6 +22,10 @@
  * 写入都在那里发生）。所以本类可以在没有图形设备的进程里安全存在（离线校验、工具）。
  *
  * 生命周期：句柄由 `EnvironmentAssetRegistry` 的表拥有并销毁。线程约定：主线程。
+ *
+ * 内置预设（`ShaderLibrary/asset/environment/*.env`）由**工具工程**
+ * `src/Tools/BuiltinAssets`（可执行 `BuiltinAssetExport`）生成 —— 生成器不在运行时库里，
+ * 本类只负责「字段表 + 序列化通路」，不定义任何内置数据。
  */
 
 #include <hgl/asset/AssetObject.h>
@@ -90,18 +94,4 @@ namespace hgl::graph
         /// 记录来源并生成身份（`label` 为路径或空）
         void SetSource(const os_char *label);
     };//class EnvironmentAsset
-
-    /**
-     * @brief 构建标准环境预设并通过 EnvironmentAsset 导出到指定目录。
-     *
-     * 严禁手写拼接 TOML 字符串或硬编码 FlatBuffers 二进制数据。
-     *
-     * @param output_dir    输出目录
-     * @param export_toml   是否导出 .env.toml（作者侧文本格式）
-     * @param export_flat   是否导出 .env（FlatBuffers 二进制格式）
-     * @return 成功导出的预设数量
-     */
-    int ExportDefaultEnvironmentPresets(const OSString &output_dir,
-                                        bool export_toml = true,
-                                        bool export_flat = true);
 }//namespace hgl::graph

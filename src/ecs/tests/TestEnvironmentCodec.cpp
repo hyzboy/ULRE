@@ -618,16 +618,13 @@ namespace
         return true;
     }
 
-    // ── 9. 通过 AssetObject 导出与全量双格式校验默认预设 ─────────────────────
-    bool TestExportAndVerifyDefaultPresets()
+    // ── 9. 仓库内置预设的双格式一致性校验 ───────────────────────────────────
+    //
+    // 产物由工具工程 `src/Tools/BuiltinAssets`（`BuiltinAssetExport`）生成，生成器
+    // 不在运行时库内 —— 本测试只校验「仓库里那 5 份预设两份格式同源且可读」。
+    bool TestVerifyShippedDefaultPresets()
     {
         const OSString preset_dir = OS_TEXT("ShaderLibrary/asset/environment");
-        const int exported_count = ExportDefaultEnvironmentPresets(preset_dir, true, true);
-        if (exported_count != 5)
-        {
-            GLogError(u8"ExportDefaultEnvironmentPresets 导出数量不符: 实际 %d, 预期 5", exported_count);
-            return false;
-        }
 
         const os_char *preset_names[] = {
             OS_TEXT("sky_atmosphere"),
@@ -695,7 +692,7 @@ int main()
     Check(TestMetaStructLinks(), "元数据接线");
     Check(TestFlatBuffersRoundTrip(), "FlatBuffers 往返");
     Check(TestAssetObjectPolymorphicIO(), "AssetObject 多态序列化虚接口");
-    Check(TestExportAndVerifyDefaultPresets(), "预设资产通过 AssetObject 导出与双格式校验");
+    Check(TestVerifyShippedDefaultPresets(), "仓库内置预设双格式一致性");
 
     if (g_failed > 0)
     {
