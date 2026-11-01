@@ -17,8 +17,9 @@
 // 三张环境纹理经 ambient_env 参数块(ambient_light_provider 槽,世界表 addr_ambient_env)
 // 的 env_tex 句柄下发(0=未绑定→黑色,
 // 此时物体仅剩直接光,行为与未加载 IBL 探针一致)。
-// 注:当前 prefilter cubemap 为单一粗糙度(0.5)烘焙,粗糙度变化仅通过
-//     BRDF LUT 的缩放体现,不做 mip 链模糊过渡。
+// prefilter cubemap 带完整 mip 链:第 i 级 = 粗糙度 i/(级数-1) 的 GGX 预卷积
+// (TexConv 侧 PrefilterRoughness 定同一映射),故按 lod = roughness*(级数-1) 采样,
+// 级数由 env_tex.w 下发(0/1 → 只有一级,退化为固定粗糙度,与旧行为等价)。
 #ifndef INDIRECT_IBL_GLSL
 #define INDIRECT_IBL_GLSL
 
@@ -51,8 +52,14 @@ vec3 EvalIndirectLighting(
     const vec2 env_brdf =
         Sample2D(ambient_env.env_tex.z, LinearSampler, vec2(NdotV, lighting.roughness)).rg;
 
+    // 粗糙度 → mip LOD:第 i 级烘的是 roughness = i/(级数-1)，与烘焙端同一映射。
+    // w=0/1 表示只有第 0 级(固定粗糙度)，此时 max(...,1u)-1 = 0，lod 恒 0。
+    const float prefilter_last_lod = float(max(ambient_env.env_tex.w, 1u) - 1u);
+    const float prefilter_lod =
+        clamp(lighting.roughness, 0.0, 1.0) * prefilter_last_lod;
+
     const vec3 prefiltered =
-        SampleCubeArray(ambient_env.env_tex.y, TrilinearSampler, vec4(R, 0.0)).rgb;
+        SampleCubeArrayLod(ambient_env.env_tex.y, TrilinearSampler, R, prefilter_lod).rgb;
 
     const vec3 specular = prefiltered * (F0 * env_brdf.x + env_brdf.y);
 

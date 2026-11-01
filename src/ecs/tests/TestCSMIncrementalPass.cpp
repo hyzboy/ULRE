@@ -6916,6 +6916,17 @@ int main(int argc, char** argv)
               "SampleCubeArray(ambient_env.env_tex.x, TrilinearSampler, vec4(N, 0.0)).rgb;",
               "T1：唯一读者未改读新块（只改一半 = 两端不同源）" },
 
+            // 2026-11-01：prefilter cubemap 改多级烘焙 —— 镜面项按 roughness→LOD 采样。
+            // 映射两端必须互逆：TexConv 第 i 级 = i/(级数-1)，shader lod = roughness*(级数-1)，
+            // 级数由 env_tex.w 下发。少一半就退回「固定粗糙度」，多级烘焙等于白做。
+            { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/module/provider/ambient_light/ambient_light_ibl.glsl"),
+              "SampleCubeArrayLod(ambient_env.env_tex.y, TrilinearSampler, R, prefilter_lod).rgb;",
+              "prefilter 多级烘焙：镜面项必须按粗糙度取 LOD（不能恒取第 0 级）" },
+
+            { "IBLEnvironment.cpp", OS_TEXT("example/Environment/IBLEnvironment.cpp"),
+              "math::Vector4u(irr_handle, pre_handle, lut_handle, prefilter_mips)",
+              "prefilter 多级烘焙：env_tex.w 必须下发 prefilter 的 mip 级数" },
+
             // ⑤ 旧形态禁复活
             { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
               "env_tex",

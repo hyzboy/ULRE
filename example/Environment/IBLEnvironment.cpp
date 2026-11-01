@@ -243,7 +243,12 @@ private:
         if (!ambient_env)
             return false;
 
-        ambient_env->env_tex = math::Vector4u(irr_handle, pre_handle, lut_handle, 0);
+        // w = prefilter cubemap 的 mip 级数：shader 用 lod = roughness*(w-1) 取级，
+        // 与 TexConv 的「第 i 级 = 粗糙度 i/(级数-1)」互逆。级数取自贴图自身头部，
+        // 重烘出不同级数无需改这里；单级贴图(w<=1)退化为固定粗糙度采样。
+        const uint32_t prefilter_mips = env_prefilter->GetMipLevel();
+
+        ambient_env->env_tex = math::Vector4u(irr_handle, pre_handle, lut_handle, prefilter_mips);
         environment_system->MarkAmbientEnvDirty();
 
         // 环境光**算法**（ambient_light_provider 槽的 GLSL 模块）同样由环境层决定：

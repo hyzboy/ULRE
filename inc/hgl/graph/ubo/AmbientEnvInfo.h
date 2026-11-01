@@ -28,10 +28,13 @@ namespace hgl::graph
         /**
          * IBL 环境贴图 bindless 句柄(1-based,0=未绑定):
          *   x = Diffuse Irradiance Cubemap
-         *   y = Specular Prefiltered Cubemap
+         *   y = Specular Prefiltered Cubemap(带粗糙度 mip 链)
          *   z = BRDF LUT(2D,(NdotV,roughness) → (scale,bias))
-         *   w = 预留
+         *   w = Prefiltered Cubemap 的 mip 级数(0/1 = 只有一级,退化为固定粗糙度)
          * 由 IBL ambient 光照模块(module/provider/ambient_light/ambient_light_ibl.glsl)经 ambient_env.env_tex 采样。
+         *
+         * w 是 shader 把 roughness 换算成 LOD 的唯一依据:lod = roughness * (w-1)，与烘焙端
+         * TexConv `PrefilterRoughness` 的「第 i 级 = i/(级数-1)」互逆，两端必须同时改。
          */
         Vector4u    env_tex = Vector4u(0);
     };

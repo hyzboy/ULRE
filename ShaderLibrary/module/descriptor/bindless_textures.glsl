@@ -79,6 +79,18 @@ vec4 SampleCubeArray(uint tex_handle, uint samp_idx, vec4 dir_layer)
                    dir_layer);
 }
 
+// Cubemap 显式 LOD 采样：mip 级由调用方给出（IBL prefilter cubemap 的粗糙度→LOD 映射）。
+// 注意 samplerCubeArray 的采样坐标恒为 vec4（xyz = 方向，w = array layer，单张 Cubemap 传 0），
+// 所以 LOD 不能塞进坐标分量，只能用 textureLod 的第 3 参数，否则粗糙度会被当成 layer。
+vec4 SampleCubeArrayLod(uint tex_handle, uint samp_idx, vec3 dir, float lod)
+{
+    if (tex_handle == 0u)
+        return vec4(0.0);
+    return textureLod(samplerCubeArray(bindless_cube_array[nonuniformEXT(tex_handle - 1u)],
+                                       bindless_samp[nonuniformEXT(samp_idx)]),
+                      vec4(dir, 0.0), lod);
+}
+
 // 可选纹理槽统一取样：引用行句柄为 0（未绑定）时返回 fallback，
 // 否则按 (handle, sampler, uv, layer) 取样。
 // 与手写的 "if (ref.x != 0u) { ... Sample2DArray(ref.x, ...) }" 语义等价，
