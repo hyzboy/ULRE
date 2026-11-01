@@ -1,6 +1,11 @@
 add_subdirectory(MiniPack)
 add_subdirectory(GLTFConvert)
 
+# 内置元素（预设）资产导出工具：**开发期生成器**，产出 `ShaderLibrary/asset/` 下的
+# 预设文件。它不链运行时的任何生成器，也不被任何运行时 target 依赖 —— 发行包里
+# 只留产物、不留这段代码。见 src/Tools/BuiltinAssets/README.md。
+add_subdirectory(BuiltinAssets)
+
 # 发行形态探针：只链接 ULRE::Runtime，两种形态下都构建 ——
 # 它在 ON 树里编译也是在为 OFF 树做同样的工作，且能让「运行时反向依赖生成器」
 # 在开发形态就暴露成链接错误，而不是等到打发行包时才发现。
