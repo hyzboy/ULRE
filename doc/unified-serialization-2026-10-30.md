@@ -65,6 +65,7 @@ hgl::serialize::Archive  ──►  hgl::serialize::Value（有序值树）
 | `inc/hgl/serialize/Archive.h` | 统一游标：`ar.Field(id, name, v)`，读写同源 |
 | `inc/hgl/serialize/TomlCodec.h` | `Value ↔ toml::value`（含文本解析/输出） |
 | `inc/hgl/serialize/FlatCodec.h` | `Value ↔ FlatBuffers`（`ClassMetaInfo` 驱动，两趟构建，自带 Verifier） |
+| `inc/hgl/serialize/ArchiveFile.h` | **文件门面**：按文件名后缀选后端，资产落盘/读盘唯一入口 |
 
 ## 4. 容器抽象形态与后端降级
 
@@ -162,12 +163,50 @@ if (!hgl::serialize::ValidateKeysByMeta(root, Class_SceneSpec, AnsiString(), bad
     Report(bad_path, bad_key);        // 未登记的键 ⇒ 分层路径 + 键名
 ```
 
+### 7.1 落盘：`ArchiveFile.h`
+
+上一节的编解码是**内存**动作。文件读写全部收敛到 `ArchiveFile.h`，调用方只给
+文件名，**不**自己判断用哪个后端：
+
+```cpp
+// 资产对象（多态）：派生类只实现 Serialize(Archive&)，这里按后缀选后端
+hgl::graph::EnvironmentAsset asset(spec);
+hgl::serialize::SaveAssetObjectToFile(asset, OS_TEXT("sky34_cube_ibl.env"));        // FlatBuffers
+hgl::serialize::SaveAssetObjectToFile(asset, OS_TEXT("sky34_cube_ibl.env.toml"));   // TOML
+
+hgl::graph::EnvironmentAsset back;
+hgl::serialize::LoadAssetObjectFromFile(back, OS_TEXT("sky34_cube_ibl.env"));
+
+// 值语义结构：同一套后端，模板化
+hgl::serialize::SaveStructToFile(spec, OS_TEXT("probe.env"));
+hgl::serialize::LoadStructFromFile(OS_TEXT("probe.env"), spec);
+
+// 不落盘：文本 / 字节缓冲
+hgl::serialize::SaveAssetObjectToText(asset, out_text);
+hgl::serialize::LoadAssetObjectFromBytes(asset, data, size);
+```
+
+| 入口 | 说明 |
+|---|---|
+| `ResolveArchiveFormatByExtension()` | `.toml` ⇒ TOML，其余**带**后缀 ⇒ FlatBuffers，**无**后缀 ⇒ 直接失败（不猜） |
+| `WriteAssetObjectValue()` / `ReadAssetObjectValue()` | 多态核心：`obj.Serialize(ar)` 由虚函数分派，字段表来自 `GetClassMetaInfo()` |
+| `SaveAssetObjectToText/Bytes/File`、`LoadAssetObjectFrom*` | 资产级门面 |
+| `SaveStructToFile<T>` / `LoadStructFromFile<T>` | 值语义结构门面（`StructSerializer<T>` 必须已生成） |
+| `SaveValueToBytes()` / `LoadValueFromBytes()` | 值树 ⇄ FlatBuffers 缓冲（读侧**先** `VerifyBuffer`） |
+| `DescribeArchiveFailure()` | 把 `path=` / `field=` / `detail=` 拼成一行可读原因 |
+
+红线：**不要在资产类里加 `SaveToToml` / `SaveToFlat` / `LoadFromToml` / `LoadFromFlat`
+这类格式专用虚接口**。加一个后端要改一次资产派生代码，等于把「格式无关」这层
+结构又破了。新增后端只需在 `ArchiveFile.h` 里多一个 `case`，资产代码零改动。
+
 ## 8. 门禁
 
 | 目标 | 覆盖内容 |
 |---|---|
 | `TestSerializeArchive` | 值树、四类容器、TOML 往返与文本闭环、FB 往返、缺键/类型不符语义 |
 | `TestAssetReflection` | 真实资产结构的 TOML + FlatBuffers 往返、元数据表与布局一致 |
+| `TestEnvironmentCodec` | 环境规格双格式往返 + `ArchiveFile.h` 门面（文本/字节/文件、无后缀拒绝） |
+| `TestEnvironmentAssetURI` | `env:` URI、目录装载、二进制 `.env` 与缓存命中 |
 | `TestSceneFile` / `TestGeometryAssetFile` / `TestPrimitiveAssetFile` | 文件级读写与语义校验 |
 | `asset_gen.py --check` | 「改了 C++ 结构但忘记重新生成」 |
 
