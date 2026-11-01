@@ -13,7 +13,8 @@ DEFINE_LOGGER_MODULE(GeometryAsset)
 USE_MODULE_LOGGER(GeometryAsset)
 
 // 字段遍历代码全部在 `GeometrySerialize.gen.h` 里（`hgl::asset::generated`），
-// 本文件只保留枚举拼写、文本入口与跨字段策略。
+// 枚举拼写表在各枚举定义处的 `HGL_ENUM_BEGIN` 登记块里，本文件只保留文本入口与
+// 跨字段策略。
 
 namespace hgl::graph
 {
@@ -34,89 +35,6 @@ namespace hgl::graph
             return AnsiString(reinterpret_cast<const char *>(text.c_str()), text.Length());
         }
     }//namespace
-
-    const char *GetGeometryAssetKindName(GeometryAssetKind kind)
-    {
-        switch (kind)
-        {
-        case GeometryAssetKind::Builtin:    return "builtin";
-        case GeometryAssetKind::File:       return "file";
-        default:                            return "unknown";
-        }
-    }
-
-    bool ParseGeometryAssetKind(const char *name, GeometryAssetKind &out_kind)
-    {
-        if (!name || !*name)
-            return false;
-
-        if (hgl::stricmp(name, "builtin") == 0) { out_kind = GeometryAssetKind::Builtin; return true; }
-        if (hgl::stricmp(name, "file") == 0)    { out_kind = GeometryAssetKind::File;    return true; }
-
-        return false;
-    }
-
-    const char *GetBuiltinShapeKindName(BuiltinShapeKind kind)
-    {
-        switch (kind)
-        {
-        case BuiltinShapeKind::Sphere:          return "sphere";
-        case BuiltinShapeKind::Dome:            return "dome";
-        case BuiltinShapeKind::Cube:            return "cube";
-        case BuiltinShapeKind::PlaneGrid:       return "plane_grid";
-        case BuiltinShapeKind::PlaneSquare:     return "plane_square";
-        case BuiltinShapeKind::Cylinder:        return "cylinder";
-        case BuiltinShapeKind::HollowCylinder:  return "hollow_cylinder";
-        case BuiltinShapeKind::Torus:           return "torus";
-        case BuiltinShapeKind::Cone:            return "cone";
-        case BuiltinShapeKind::Capsule:         return "capsule";
-        case BuiltinShapeKind::Rectangle:       return "rectangle";
-        case BuiltinShapeKind::BoundingBox:     return "bounding_box";
-        case BuiltinShapeKind::HexSphere:       return "hex_sphere";
-        case BuiltinShapeKind::TaperedCapsule:  return "tapered_capsule";
-        case BuiltinShapeKind::Frustum:         return "frustum";
-        case BuiltinShapeKind::Axis:            return "axis";
-        default:                                return "unknown";
-        }
-    }
-
-    bool ParseBuiltinShapeKind(const char *name, BuiltinShapeKind &out_kind)
-    {
-        if (!name || !*name)
-            return false;
-
-        if (hgl::stricmp(name, "sphere") == 0)          { out_kind = BuiltinShapeKind::Sphere; return true; }
-        if (hgl::stricmp(name, "dome") == 0)            { out_kind = BuiltinShapeKind::Dome; return true; }
-        if (hgl::stricmp(name, "cube") == 0)            { out_kind = BuiltinShapeKind::Cube; return true; }
-        if (hgl::stricmp(name, "plane_grid") == 0)      { out_kind = BuiltinShapeKind::PlaneGrid; return true; }
-        if (hgl::stricmp(name, "plane_square") == 0)    { out_kind = BuiltinShapeKind::PlaneSquare; return true; }
-        if (hgl::stricmp(name, "cylinder") == 0)        { out_kind = BuiltinShapeKind::Cylinder; return true; }
-        if (hgl::stricmp(name, "hollow_cylinder") == 0) { out_kind = BuiltinShapeKind::HollowCylinder; return true; }
-        if (hgl::stricmp(name, "torus") == 0)           { out_kind = BuiltinShapeKind::Torus; return true; }
-        if (hgl::stricmp(name, "cone") == 0)            { out_kind = BuiltinShapeKind::Cone; return true; }
-        if (hgl::stricmp(name, "capsule") == 0)         { out_kind = BuiltinShapeKind::Capsule; return true; }
-        if (hgl::stricmp(name, "rectangle") == 0)       { out_kind = BuiltinShapeKind::Rectangle; return true; }
-        if (hgl::stricmp(name, "bounding_box") == 0)    { out_kind = BuiltinShapeKind::BoundingBox; return true; }
-        if (hgl::stricmp(name, "hex_sphere") == 0)      { out_kind = BuiltinShapeKind::HexSphere; return true; }
-        if (hgl::stricmp(name, "tapered_capsule") == 0) { out_kind = BuiltinShapeKind::TaperedCapsule; return true; }
-        if (hgl::stricmp(name, "frustum") == 0)         { out_kind = BuiltinShapeKind::Frustum; return true; }
-        if (hgl::stricmp(name, "axis") == 0)            { out_kind = BuiltinShapeKind::Axis; return true; }
-
-        return false;
-    }
-
-    bool ParseNTBType(const char *name, NTBType &out_ntb)
-    {
-        if (!name || !*name)
-            return false;
-
-        if (hgl::stricmp(name, "none") == 0)                     { out_ntb = NTBType::None; return true; }
-        if (hgl::stricmp(name, "normal") == 0)                   { out_ntb = NTBType::Normal; return true; }
-        if (hgl::stricmp(name, "normal_tangent") == 0)           { out_ntb = NTBType::NormalTangent; return true; }
-        if (hgl::stricmp(name, "normal_tangent_bitangent") == 0) { out_ntb = NTBType::NormalTangentBitangent; return true; }
-
-        return false;
-    }
 
     bool ParseGeometryAssetSpec(const char *content, size_t size, const os_char *debug_name, GeometryAssetSpec &out_spec)
     {

@@ -16,30 +16,10 @@
 namespace hgl::asset::generated
 {
     inline const char *AssetEnumName_NTBType(const hgl::graph::NTBType v)
-    {
-        switch (v)
-        {
-        case hgl::graph::NTBType::None: return "none";
-        case hgl::graph::NTBType::Normal: return "normal";
-        case hgl::graph::NTBType::NormalTangent: return "normal_tangent";
-        case hgl::graph::NTBType::NormalTangentBitangent: return "normal_tangent_bitangent";
-        }
-        return nullptr;
-    }
+    { return hgl::graph::GetNTBTypeName(v); }
 
     inline bool AssetEnumParse_NTBType(const char *s, hgl::graph::NTBType &out)
-    {
-        if (!s) return false;
-        if (hgl::stricmp(s, "none") == 0) { out = hgl::graph::NTBType::None; return true; }
-        if (hgl::stricmp(s, "None") == 0) { out = hgl::graph::NTBType::None; return true; }
-        if (hgl::stricmp(s, "normal") == 0) { out = hgl::graph::NTBType::Normal; return true; }
-        if (hgl::stricmp(s, "Normal") == 0) { out = hgl::graph::NTBType::Normal; return true; }
-        if (hgl::stricmp(s, "normal_tangent") == 0) { out = hgl::graph::NTBType::NormalTangent; return true; }
-        if (hgl::stricmp(s, "NormalTangent") == 0) { out = hgl::graph::NTBType::NormalTangent; return true; }
-        if (hgl::stricmp(s, "normal_tangent_bitangent") == 0) { out = hgl::graph::NTBType::NormalTangentBitangent; return true; }
-        if (hgl::stricmp(s, "NormalTangentBitangent") == 0) { out = hgl::graph::NTBType::NormalTangentBitangent; return true; }
-        return false;
-    }
+    { return hgl::graph::ParseNTBType(s, out); }
 
     inline const char *AssetEnumName_VertexNormalFormat(const hgl::graph::VertexNormalFormat v)
     { return hgl::graph::GetVertexNormalFormatName(v); }

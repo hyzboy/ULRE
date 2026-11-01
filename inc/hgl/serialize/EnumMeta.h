@@ -81,15 +81,16 @@ namespace hgl::serialize
      * `HGL_ENUM_ITEM_NAME(NAME, "plane_grid", DESC)` 让两者分开：
      * C++ 继续用 `PlaneGrid`，配置文件继续写 `plane_grid`。
      *
-     * `alt` 是**只参与读入**的备用拼写（通常是 C++ 子名），可为 nullptr。
-     * 读入时 `name` 与 `alt` 都会被尝试，所以新旧配置都能读。
+     * `alt` 是**只参与读入**的备用拼写（通常是 C++ 子名），可为 nullptr；多个备用
+     * 拼写用 `|` 分隔（见 `HGL_ENUM_ITEM_ALIAS`）。读入时 `name` 与 `alt` 都会被
+     * 尝试，所以新旧配置都能读。
      */
     struct EnumItemMeta
     {
         const char *name;             ///< 序列化名（Archive 写出的文本）
         int64_t     value;            ///< 数值
         const char *desc;             ///< UTF-8 说明，可为 nullptr
-        const char *alt{nullptr};     ///< 备用解析名，可为 nullptr；不参与写出
+        const char *alt{nullptr};     ///< 备用解析名（`|` 分隔的列表），不参与写出
     };
 
     /**
@@ -245,6 +246,42 @@ namespace hgl::serialize
                     return false;
             }
         }
+
+        /// 备用拼写列表比较：`alts` 是用 `|` 分隔的多个写法
+        /// （如 `"VF_V2UN8|r8g8_unorm"`），空段与首尾空白自动忽略。
+        inline bool EqualsAltList(const char *text, std::size_t text_length,
+                                  const char *alts) noexcept
+        {
+            if (!alts)
+                return false;
+
+            while (*alts)
+            {
+                const char *begin = alts;
+
+                while (*begin == ' ' || *begin == '\t' || *begin == '|')
+                    ++begin;
+
+                if (!*begin)
+                    return false;
+
+                const char *end = begin;
+                while (*end && *end != '|')
+                    ++end;
+
+                const char *tail = end;
+                while (tail > begin && (tail[-1] == ' ' || tail[-1] == '\t'))
+                    --tail;
+
+                if (tail != begin
+                    && EqualsLoose(text, text_length, begin, static_cast<std::size_t>(tail - begin)))
+                    return true;
+
+                alts = end;
+            }
+
+            return false;
+        }
     }// namespace detail
 
     // ── 查询 ────────────────────────────────────────────────────────────────
@@ -341,8 +378,7 @@ namespace hgl::serialize
                 }
 
                 if (item.alt
-                    && detail::EqualsLoose(cursor, length, item.alt,
-                                           static_cast<std::size_t>(hgl::strlen(item.alt))))
+                    && detail::EqualsAltList(cursor, length, item.alt))
                 {
                     out = static_cast<T>(item.value);
                     return true;
@@ -610,6 +646,18 @@ namespace hgl::serialize
 #define HGL_ENUM_ITEM_NAME(NAME, STR, DESC)                                    \
     {STR, static_cast<int64_t>(Self::NAME), DESC, #NAME},
 
+/**
+ * @brief 登记一个枚举项，同时指定序列化名与**多个**备用拼写。
+ *
+ * `ALTS` 是用 `|` 分隔的字符串字面量，只在读入时参与匹配，写出仍然用 `STR`。
+ * 适用于「历史写法不止一种」的枚举（如法线格式的 `VF_` 宏名与 Vulkan 原名）：
+ * @code
+ *   HGL_ENUM_ITEM_ALIAS(V2UN8, "v2un8", "VF_V2UN8|r8g8_unorm", "压缩法线")
+ * @endcode
+ */
+#define HGL_ENUM_ITEM_ALIAS(NAME, STR, ALTS, DESC)                             \
+    {STR, static_cast<int64_t>(Self::NAME), DESC, ALTS},
+
 /// 普通枚举登记块结束。`TYPE` 需与 `HGL_ENUM_BEGIN` 一致，用于校验登记位置。
 #define HGL_ENUM_END(TYPE)                                                     \
     };                                                                         \
@@ -651,6 +699,10 @@ namespace hgl::serialize
 /// 登记一个标记位，同时指定序列化名（语义同 `HGL_ENUM_ITEM_NAME`）。
 #define HGL_FLAG_ITEM_NAME(NAME, STR, DESC)                                    \
     {STR, static_cast<int64_t>(Self::NAME), DESC, #NAME},
+
+/// 登记一个标记位，同时指定序列化名与多个备用拼写（语义同 `HGL_ENUM_ITEM_ALIAS`）。
+#define HGL_FLAG_ITEM_ALIAS(NAME, STR, ALTS, DESC)                             \
+    {STR, static_cast<int64_t>(Self::NAME), DESC, ALTS},
 
 /// 按位标记登记块结束。`TYPE` 需与 `HGL_FLAGS_BEGIN` 一致。
 #define HGL_FLAGS_END(TYPE)                                                    \

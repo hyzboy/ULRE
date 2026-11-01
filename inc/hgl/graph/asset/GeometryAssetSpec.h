@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/type/String.h>
+#include <hgl/serialize/EnumMeta.h>
 #include <hgl/asset/AssetAnnotation.h>
 #include <hgl/graph/geo/InlineGeometry.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
@@ -11,6 +12,7 @@ namespace hgl::graph
     class BufferManager;
     class Geometry;
 
+    /// TOML 里写 `kind = "builtin"` / `"file"`；登记块在文件末尾。
     enum class GeometryAssetKind : uint8_t
     {
         Builtin = 0,
@@ -42,9 +44,9 @@ namespace hgl::graph
     /**
      * @brief 顶点法线格式（几何资产 `[vertex_format] normal` 的契约枚举）
      *
-     * 拼写表唯一真源 = 下面的 `VertexNormalFormatTable`：一行同时给出 C++ 枚举、
-     * TOML 短名、引擎宏名、Vulkan 原名与落地的 `VkFormat`。名字 / 解析 / 格式转换
-     * 三个方向**全部**由这一张表派生，不得再写第二份。
+     * 名字 / 解析的**唯一真源**是本文件末尾的 `HGL_ENUM_BEGIN(hgl::graph::VertexNormalFormat)`
+     * 登记块：写出用短名（`v2un8`），读入时短名、历史 `VF_` 宏名与 Vulkan 原名都接受。
+     * 下面的 `VertexNormalFormatTable` 只负责「枚举 → `VkFormat`」这一件事。
      */
     enum class VertexNormalFormat : uint8_t
     {
@@ -59,18 +61,15 @@ namespace hgl::graph
     struct VertexNormalFormatDesc
     {
         VertexNormalFormat format;          ///<枚举值
-        const char        *short_name;      ///<TOML 写的短名
-        const char        *macro_name;      ///<引擎宏名（历史写法，兼容读入）
-        const char        *vk_format_name;  ///<Vulkan 原名（历史写法，兼容读入）
         VkFormat           vk_format;       ///<顶点布局实际使用的格式
     };
 
     inline constexpr VertexNormalFormatDesc VertexNormalFormatTable[] =
     {
-        { VertexNormalFormat::V2UN8,  "v2un8",  "VF_V2UN8",  "r8g8_unorm",       VF_V2UN8  },
-        { VertexNormalFormat::V2HF,   "v2hf",   "VF_V2HF",   "r16g16_sfloat",    VF_V2HF   },
-        { VertexNormalFormat::V3F,    "v3f",    "VF_V3F",    "r32g32b32_sfloat", VF_V3F    },
-        { VertexNormalFormat::V3SN16, "v3sn16", "VF_V3SN16", "r16g16b16_snorm",  VF_V3SN16 },
+        { VertexNormalFormat::V2UN8,  VF_V2UN8  },
+        { VertexNormalFormat::V2HF,   VF_V2HF   },
+        { VertexNormalFormat::V3F,    VF_V3F    },
+        { VertexNormalFormat::V3SN16, VF_V3SN16 },
     };
 
     inline VkFormat ToVkFormat(VertexNormalFormat format)
@@ -82,30 +81,16 @@ namespace hgl::graph
         return VF_V2UN8;
     }
 
+    /// 拼写真源在 `VertexNormalFormat` 的登记块里。
     inline const char *GetVertexNormalFormatName(VertexNormalFormat format)
     {
-        for (const VertexNormalFormatDesc &desc : VertexNormalFormatTable)
-            if (desc.format == format)
-                return desc.short_name;
-
-        return "unknown";
+        const char *name = hgl::serialize::EnumNameOf(format);
+        return name ? name : "unknown";
     }
 
     inline bool ParseVertexNormalFormat(const char *text, VertexNormalFormat &out_format)
     {
-        if (!text || !*text)
-            return false;
-
-        for (const VertexNormalFormatDesc &desc : VertexNormalFormatTable)
-            if (hgl::stricmp(text, desc.short_name) == 0
-             || hgl::stricmp(text, desc.macro_name) == 0
-             || hgl::stricmp(text, desc.vk_format_name) == 0)
-            {
-                out_format = desc.format;
-                return true;
-            }
-
-        return false;
+        return hgl::serialize::EnumParse(text, out_format);
     }
 
     struct HGL_ASSET_STRUCT BuiltinSphereParams
@@ -335,10 +320,71 @@ namespace hgl::graph
                                     const GeometryAssetSpec &spec,
                                     const GeometryVertexFormat *gvf_override = nullptr);
 
-    const char *GetBuiltinShapeKindName(BuiltinShapeKind kind);
-    bool ParseBuiltinShapeKind(const char *name, BuiltinShapeKind &out_kind);
-    const char *GetGeometryAssetKindName(GeometryAssetKind kind);
-    bool ParseGeometryAssetKind(const char *name, GeometryAssetKind &out_kind);
-    bool ParseNTBType(const char *name, NTBType &out_ntb);
+    /// 拼写 / 解析的真源都在文件末尾的登记块里，这里只做转发。
+    inline const char *GetBuiltinShapeKindName(BuiltinShapeKind kind)
+    {
+        const char *name = hgl::serialize::EnumNameOf(kind);
+        return name ? name : "unknown";
+    }
+
+    inline bool ParseBuiltinShapeKind(const char *name, BuiltinShapeKind &out_kind)
+    {
+        return hgl::serialize::EnumParse(name, out_kind);
+    }
+
+    inline const char *GetGeometryAssetKindName(GeometryAssetKind kind)
+    {
+        const char *name = hgl::serialize::EnumNameOf(kind);
+        return name ? name : "unknown";
+    }
+
+    inline bool ParseGeometryAssetKind(const char *name, GeometryAssetKind &out_kind)
+    {
+        return hgl::serialize::EnumParse(name, out_kind);
+    }
+
+    inline bool ParseNTBType(const char *name, NTBType &out_ntb)
+    {
+        return hgl::serialize::EnumParse(name, out_ntb);
+    }
+
+    inline const char *GetNTBTypeName(NTBType ntb)
+    {
+        const char *name = hgl::serialize::EnumNameOf(ntb);
+        return name ? name : "unknown";
+    }
 
 }//namespace hgl::graph
+
+// ── 枚举登记（拼写与 GUI 说明的唯一真源）─────────────────────────────────────
+
+HGL_ENUM_BEGIN(hgl::graph::GeometryAssetKind)
+    HGL_ENUM_ITEM_NAME(Builtin, "builtin", "内置程序化几何")
+    HGL_ENUM_ITEM_NAME(File,    "file",    "外部几何文件")
+HGL_ENUM_END(hgl::graph::GeometryAssetKind)
+
+HGL_ENUM_BEGIN(hgl::graph::BuiltinShapeKind)
+    HGL_ENUM_ITEM_NAME(Sphere,         "sphere",          "球体")
+    HGL_ENUM_ITEM_NAME(Dome,           "dome",            "半球屋顶")
+    HGL_ENUM_ITEM_NAME(Cube,           "cube",            "立方体")
+    HGL_ENUM_ITEM_NAME(PlaneGrid,      "plane_grid",      "网格平面")
+    HGL_ENUM_ITEM_NAME(PlaneSquare,    "plane_square",    "方形平面")
+    HGL_ENUM_ITEM_NAME(Cylinder,       "cylinder",        "圆柱")
+    HGL_ENUM_ITEM_NAME(HollowCylinder, "hollow_cylinder", "空心圆柱")
+    HGL_ENUM_ITEM_NAME(Torus,          "torus",           "圆环")
+    HGL_ENUM_ITEM_NAME(Cone,           "cone",            "圆锥")
+    HGL_ENUM_ITEM_NAME(Capsule,        "capsule",         "胶囊")
+    HGL_ENUM_ITEM_NAME(Rectangle,      "rectangle",       "矩形")
+    HGL_ENUM_ITEM_NAME(BoundingBox,    "bounding_box",    "包围盒线框")
+    HGL_ENUM_ITEM_NAME(HexSphere,      "hex_sphere",      "六面体球")
+    HGL_ENUM_ITEM_NAME(TaperedCapsule, "tapered_capsule", "锥形胶囊")
+    HGL_ENUM_ITEM_NAME(Frustum,        "frustum",         "视锥线框")
+    HGL_ENUM_ITEM_NAME(Axis,           "axis",            "坐标轴")
+HGL_ENUM_END(hgl::graph::BuiltinShapeKind)
+
+HGL_ENUM_BEGIN(hgl::graph::VertexNormalFormat)
+    HGL_ENUM_ITEM_ALIAS(V2UN8,  "v2un8",  "VF_V2UN8|r8g8_unorm",       "8 位压缩法线（缺省）")
+    HGL_ENUM_ITEM_ALIAS(V2HF,   "v2hf",   "VF_V2HF|r16g16_sfloat",     "半精度浮点法线")
+    HGL_ENUM_ITEM_ALIAS(V3F,    "v3f",    "VF_V3F|r32g32b32_sfloat",   "全精度浮点法线")
+    HGL_ENUM_ITEM_ALIAS(V3SN16, "v3sn16", "VF_V3SN16|r16g16b16_snorm", "16 位有符号归一化法线")
+HGL_ENUM_END(hgl::graph::VertexNormalFormat)

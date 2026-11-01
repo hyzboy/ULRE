@@ -17,10 +17,6 @@ name = "PrimitiveVariantPurpose"
 aliases = ["surface", "depth_only", "shadow_caster", "picking", "debug"]
 
 [[enum]]
-name = "NTBType"
-aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
-
-[[enum]]
 name = "SceneMaterialType"
 aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface"]
 
@@ -137,6 +133,15 @@ name           = "VertexNormalFormat"
 fq             = "hgl::graph::VertexNormalFormat"
 extern_from    = "hgl::graph::ParseVertexNormalFormat"
 extern_to      = "hgl::graph::GetVertexNormalFormatName"
+extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
+
+# `NTBType` 的拼写表在 `InlineGeometry.h` 的 `HGL_ENUM_BEGIN` 登记块里，
+# 转发函数与其它几何枚举一样挂在 `GeometryAssetSpec.h`。
+[[enum]]
+name           = "NTBType"
+fq             = "hgl::graph::NTBType"
+extern_from    = "hgl::graph::ParseNTBType"
+extern_to      = "hgl::graph::GetNTBTypeName"
 extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
 
 # 全局 SSBO 池类型：名字表在 `GlobalSSBOTypes.h`（`GetGlobalSSBOTypeName` 还要被

@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/math/Vector.h>
+#include<hgl/serialize/EnumMeta.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/Size2.h>
 #include<hgl/color/Color4f.h>
@@ -818,3 +819,12 @@ namespace hgl::graph
 
     }//namespace inline_geometry
 }//namespace hgl::graph
+
+// ── 枚举登记（拼写与 GUI 说明的唯一真源）─────────────────────────────────────
+
+HGL_ENUM_BEGIN(hgl::graph::NTBType)
+    HGL_ENUM_ITEM_NAME(None,                  "none",                     "不生成法线/切线")
+    HGL_ENUM_ITEM_NAME(Normal,                "normal",                   "只生成法线")
+    HGL_ENUM_ITEM_NAME(NormalTangent,         "normal_tangent",           "法线+切线（切线含 w 分量）")
+    HGL_ENUM_ITEM_NAME(NormalTangentBitangent, "normal_tangent_bitangent", "法线+切线+副法线")
+HGL_ENUM_END(hgl::graph::NTBType)
