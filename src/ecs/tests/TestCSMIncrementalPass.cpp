@@ -6908,9 +6908,17 @@ int main(int argc, char** argv)
               "T1：编辑入口未指向新段（转发到别处 = 双真源）" },
 
             // ④ 唯一消费者
+            //
+            // 2026-11（阶段 4）：写者入口上移到 `SetupSkyEnvironment()` 托管 —— 示例不再
+            // 直接改 ambient_env 段，改由唯一托管入口在装配时标脏。门因此盯**两处**：
+            // 示例必须走托管入口，托管入口内部必须真标脏（否则"改了数据不落 GPU"的老坑复活）。
             { "IBLEnvironment.cpp", OS_TEXT("example/Environment/IBLEnvironment.cpp"),
-              "environment_system->MarkAmbientEnvDirty();",
-              "T1：真实写者（唯一 IBL 示例）未改到新入口" },
+              "environment_system->SetupSkyEnvironment(",
+              "T1：真实写者（唯一 IBL 示例）未改到托管入口" },
+
+            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+              "MarkAmbientEnvDirty();",
+              "T1：托管入口未标脏（ambient_env 改数据不落 GPU ⇒ shader 读旧句柄）" },
 
             { "indirect_ibl.glsl", OS_TEXT("ShaderLibrary/module/provider/ambient_light/ambient_light_ibl.glsl"),
               "SampleCubeArray(ambient_env.env_tex.x, TrilinearSampler, vec4(N, 0.0)).rgb;",
@@ -6923,8 +6931,8 @@ int main(int argc, char** argv)
               "SampleCubeArrayLod(ambient_env.env_tex.y, TrilinearSampler, R, prefilter_lod).rgb;",
               "prefilter 多级烘焙：镜面项必须按粗糙度取 LOD（不能恒取第 0 级）" },
 
-            { "IBLEnvironment.cpp", OS_TEXT("example/Environment/IBLEnvironment.cpp"),
-              "math::Vector4u(irr_handle, pre_handle, lut_handle, prefilter_mips)",
+            { "EnvironmentSystem.cpp", OS_TEXT("src/ecs/systems/render/EnvironmentSystem.cpp"),
+              "math::Vector4u(irradiance_handle,",
               "prefilter 多级烘焙：env_tex.w 必须下发 prefilter 的 mip 级数" },
 
             // ⑤ 旧形态禁复活
