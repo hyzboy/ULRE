@@ -91,6 +91,43 @@ namespace
     };
 }//namespace
 
+// ── HGL_ENUM_* / HGL_FLAGS_* 登记样张 ──────────────────────────────────────
+//
+// 刻意声明在具名命名空间里，再用完全限定名在全局作用域登记 —— 与引擎里
+// `hgl::graph::SkyMode` 这类真实用法一致，顺带验证「登记块必须在全局作用域、
+// TYPE 必须写完全限定名」这条硬约定在本工程里确实可用。
+
+namespace archive_test
+{
+    enum class WeatherMode : uint8_t
+    {
+        Clear,
+        Rain,
+        Snow,
+    };
+
+    enum class PostFxFlags : uint32_t
+    {
+        None     = 0,
+        Bloom    = 1u << 0,
+        Tonemap  = 1u << 1,
+        Vignette = 1u << 2,
+    };
+}// namespace archive_test
+
+HGL_ENUM_BEGIN(archive_test::WeatherMode)
+    HGL_ENUM_ITEM(Clear, "晴天")
+    HGL_ENUM_ITEM(Rain, "雨天")
+    HGL_ENUM_ITEM(Snow, "雪天")
+HGL_ENUM_END(archive_test::WeatherMode)
+
+HGL_FLAGS_BEGIN(archive_test::PostFxFlags)
+    HGL_FLAG_ITEM(None, "无后期")
+    HGL_FLAG_ITEM(Bloom, "泛光")
+    HGL_FLAG_ITEM(Tonemap, "色调映射")
+    HGL_FLAG_ITEM(Vignette, "暗角")
+HGL_FLAGS_END(archive_test::PostFxFlags)
+
 // ── 生成的遍历（手工书写，等价于 AssetGen 产物）────────────────────────────
 
 namespace hgl::serialize
@@ -1046,6 +1083,145 @@ namespace
 
         return true;
     }
+
+    // ── 用例 N：HGL_ENUM_* 登记 —— 名字 / 说明 / 序列化一次写好 ────────────
+
+    bool TestEnumMacroRegistration()
+    {
+        using archive_test::WeatherMode;
+
+        // ① 名字与 GUI 说明都由登记表直接给出，没有第二份硬编码表
+        Check(hgl::stricmp(EnumNameOf(WeatherMode::Rain), "Rain") == 0,
+              "HGL_ENUM_ITEM 应自动生成登记名");
+        Check(hgl::stricmp(EnumDescOf(WeatherMode::Rain), "雨天") == 0,
+              "HGL_ENUM_ITEM 应自动保存 GUI 说明");
+        Check(EnumNameOf(static_cast<WeatherMode>(200)) == nullptr,
+              "未登记的值不应有名字");
+
+        // ② 名字 → 值：大小写不敏感，数字写法也接受
+        WeatherMode parsed = WeatherMode::Clear;
+        Check(EnumParse("snow", parsed) && parsed == WeatherMode::Snow,
+              "EnumParse 应大小写不敏感");
+        Check(EnumParse("1", parsed) && parsed == WeatherMode::Rain,
+              "EnumParse 应接受十进制数字");
+        Check(!EnumParse("Nope", parsed), "未知名字应解析失败");
+
+        // ③ GUI 项表：下拉框直接遍历，顺序即登记顺序
+        Check(EnumItemCount<WeatherMode>() == 3, "登记项数量");
+        const EnumItemMeta *item = EnumItemAt<WeatherMode>(2);
+        Check(item != nullptr && hgl::stricmp(item->name, "Snow") == 0,
+              "EnumItemAt 顺序");
+        Check(EnumItemAt<WeatherMode>(3) == nullptr, "EnumItemAt 越界应返回 nullptr");
+
+        // ④ Archive 往返：写名字、读名字
+        Value tree;
+        Archive writer = Archive::ForWrite(tree);
+        WeatherMode mode = WeatherMode::Snow;
+        writer.Field(1, "mode", mode);
+        Check(writer.Ok(), "写入宏登记的枚举");
+
+        const Value *node = tree.FindField("mode");
+        Check(node != nullptr && node->IsString(), "枚举应写成字符串名");
+
+        WeatherMode loaded = WeatherMode::Clear;
+        Archive reader = Archive::ForRead(tree);
+        reader.Field(1, "mode", loaded);
+        Check(reader.Ok() && loaded == WeatherMode::Snow, "枚举名读回");
+
+        // ⑤ TOML 文本往返
+        const AnsiString text = ToTomlText(tree);
+        Value reparsed;
+        Check(FromTomlText(text.c_str(), reparsed), "宏登记枚举的 TOML 文本应可再解析");
+        WeatherMode from_text = WeatherMode::Clear;
+        Archive text_reader = Archive::ForRead(reparsed);
+        text_reader.Field(1, "mode", from_text);
+        Check(text_reader.Ok() && from_text == WeatherMode::Snow, "TOML 文本往返枚举");
+
+        return true;
+    }
+
+    // ── 用例 N+1：HGL_FLAGS_* 登记 —— 名字数组 / 位运算 / 宽松读入 ─────────
+
+    bool TestFlagsMacroRegistration()
+    {
+        using archive_test::PostFxFlags;
+
+        const PostFxFlags combo = PostFxFlags::Bloom | PostFxFlags::Vignette;
+
+        // ① 位运算：标记枚举的运算符由 EnumMeta.h 统一提供
+        Check(HasFlag(combo, PostFxFlags::Bloom), "HasFlag 命中");
+        Check(!HasFlag(combo, PostFxFlags::Tonemap), "HasFlag 未命中");
+        Check((combo & PostFxFlags::Vignette) == PostFxFlags::Vignette, "按位与");
+        Check((combo ^ PostFxFlags::Bloom) == PostFxFlags::Vignette, "按位异或");
+        Check((combo | PostFxFlags::Tonemap) == static_cast<PostFxFlags>(0x7u),
+              "按位或");
+
+        // ② 说明同样来自登记表
+        Check(hgl::stricmp(EnumDescOf(PostFxFlags::Tonemap), "色调映射") == 0,
+              "标记项也应带 GUI 说明");
+
+        // ③ 写：展开成名字数组
+        Value tree;
+        Archive writer = Archive::ForWrite(tree);
+        PostFxFlags flags = combo;
+        writer.Field(1, "post_fx", flags);
+        Check(writer.Ok(), "写入按位标记");
+
+        const Value *node = tree.FindField("post_fx");
+        Check(node != nullptr && node->IsArray(), "按位标记应写成名字数组");
+        if (node != nullptr && node->IsArray())
+        {
+            Check(node->GetElementCount() == 2, "标记数组元素数量");
+
+            const Value *first = node->GetElement(0);
+            Check(first != nullptr && first->IsString()
+                      && hgl::stricmp(
+                             reinterpret_cast<const char *>(first->GetString().c_str()),
+                             "Bloom")
+                             == 0,
+                  "标记数组首项应按登记顺序为 Bloom");
+        }
+
+        // ④ 读：名字数组
+        PostFxFlags loaded = PostFxFlags::None;
+        Archive reader = Archive::ForRead(tree);
+        reader.Field(1, "post_fx", loaded);
+        Check(reader.Ok() && loaded == combo, "标记数组读回");
+
+        // ⑤ 读：管道分隔文本（作者手写配置的常见形态）
+        Value piped;
+        piped.SetString("Bloom | Vignette");
+        PostFxFlags from_pipe = PostFxFlags::None;
+        Check(LoadEnum(piped, from_pipe) && from_pipe == combo, "应接受 | 分隔文本");
+
+        // ⑥ 读：原始位掩码
+        Value raw;
+        raw.SetUInt(static_cast<uint64_t>(combo));
+        PostFxFlags from_number = PostFxFlags::None;
+        Check(LoadEnum(raw, from_number) && from_number == combo, "应接受原始位掩码");
+
+        // ⑦ 0 值写成它的登记名，而不是空数组
+        Value zero;
+        StoreEnum(zero, PostFxFlags::None);
+        Check(zero.IsArray() && zero.GetElementCount() == 1, "0 值应写成单项数组");
+        if (zero.IsArray() && zero.GetElementCount() == 1)
+        {
+            const Value *only = zero.GetElement(0);
+            Check(only != nullptr && only->IsString()
+                      && hgl::stricmp(
+                             reinterpret_cast<const char *>(only->GetString().c_str()),
+                             "None")
+                             == 0,
+                  "0 值应写成登记名 None");
+        }
+
+        // ⑧ 含未登记位时必须退回整数，绝不能静默丢位
+        Value unknown;
+        StoreEnum(unknown, static_cast<PostFxFlags>(1u << 7));
+        Check(unknown.IsInteger(), "未登记位应退回整数形式");
+
+        return true;
+    }
 }//namespace
 
 int main()
@@ -1064,6 +1240,8 @@ int main()
     TestFlatBuffersRoundTrip();
     TestFlatBuffersMetaDriven();
     TestTomlTextEntry();
+    TestEnumMacroRegistration();
+    TestFlagsMacroRegistration();
 
     if (g_failed != 0)
     {
