@@ -8,7 +8,9 @@
  * TOML / FlatBuffers / 未来的 JSON 后端都复用同一套。
  *
  * ── 扩展点 ────────────────────────────────────────────────────────────────
- *   · `EnumTraits<T>`       —— 枚举 ↔ 字符串名；由 AssetGen 生成特化；
+ *   · `EnumTraits<T>`       —— 枚举 ↔ 字符串名；手写枚举用 `HGL_ENUM_BEGIN` /
+ *                             `HGL_FLAGS_BEGIN`（见 `EnumMeta.h`）登记，资产结构
+ *                             引用的枚举由 AssetGen 生成特化；
  *   · `StructSerializer<T>` —— 结构体字段遍历；由 AssetGen 生成特化；
  *   · `VectorTraits<T>`     —— 定长数值向量；本文件已覆盖 GLM 向量与其派生颜色类。
  *
@@ -17,6 +19,7 @@
  */
 
 #include <hgl/serialize/Value.h>
+#include <hgl/serialize/EnumMeta.h>
 
 #include <hgl/type/String.h>
 #include <hgl/math/VectorTypes.h>
@@ -83,15 +86,24 @@ namespace hgl::serialize
 
     // ── 枚举 ────────────────────────────────────────────────────────────────
 
-    /// 枚举 ↔ 字符串名。AssetGen 为每个被引用的枚举生成特化。
+    /**
+     * 枚举 ↔ 字符串名。
+     *
+     * 两条来源共用一个入口：
+     *   · 手写枚举用 `HGL_ENUM_BEGIN` / `HGL_FLAGS_BEGIN`（见 `EnumMeta.h`）登记，
+     *     下面的默认实现会自动转发到 `EnumMeta<T>`，不需要再写特化；
+     *   · AssetGen 为资产结构引用的枚举生成显式特化，行为保持不变。
+     */
     template <typename T>
     struct EnumTraits
     {
-        static constexpr bool defined = false;
+        static constexpr bool defined = EnumMeta<T>::defined;
 
-        static const char *ToName(T) { return nullptr; }
+        static constexpr bool is_flags = EnumMeta<T>::is_flags;
 
-        static bool FromName(const char *, T &) { return false; }
+        static const char *ToName(T value) { return EnumNameOf(value); }
+
+        static bool FromName(const char *name, T &out) { return EnumParse(name, out); }
     };
 
     // ── `Presence<T>` 识别 ──────────────────────────────────────────────────
@@ -197,9 +209,147 @@ namespace hgl::serialize
 
     // ── 枚举搬运 ────────────────────────────────────────────────────────────
 
+    /**
+     * @brief 写入按位标记：展开成名字数组。
+     *
+     * 若值里含**未登记的位**，退回整数写入 —— 宁可写成数字，也不能把位丢掉。
+     * 值为 0 时写出其登记名（通常是 `["None"]`），没有值为 0 的登记项则写空数组。
+     */
+    template <typename T>
+    inline void StoreFlags(Value &node, const T &value)
+    {
+        constexpr int max_items = 64;
+
+        const EnumItemMeta *items[max_items];
+        const int           count = EnumFlagsToItems(value, items, max_items);
+
+        if (count < 0)
+        {
+            if constexpr (std::is_signed_v<std::underlying_type_t<T>>)
+                node.SetInt(static_cast<int64_t>(value));
+            else
+                node.SetUInt(static_cast<uint64_t>(value));
+
+            return;
+        }
+
+        node.SetArray();
+
+        for (int i = 0; i < count; ++i)
+        {
+            Value *slot = node.AddElement();
+
+            if (slot)
+                slot->SetString(items[i]->name);
+        }
+    }
+
+    namespace detail
+    {
+        /// 把一段文本（允许含 `|` / `,` 分隔）按位或进 `raw`。
+        template <typename T>
+        inline bool LoadFlagsText(const char *text, std::size_t length, int64_t &raw) noexcept
+        {
+            if (!text)
+                return false;
+
+            if (length == 0)
+                return true;
+
+            T value{};
+
+            if (!EnumParseFlags<T>(text, length, value))
+                return false;
+
+            raw |= static_cast<int64_t>(value);
+            return true;
+        }
+    }// namespace detail
+
+    /**
+     * @brief 读入按位标记。
+     *
+     * 接受三种写法，覆盖作者手写、旧格式与程序生成：
+     *   · 数组 —— `["DoubleSided","AlphaTest"]`，元素可以是名字或整数；
+     *   · 字符串 —— `"DoubleSided | AlphaTest"`，分隔符 `|` 或 `,`；
+     *   · 整数 —— 原始位掩码。
+     */
+    template <typename T>
+    inline bool LoadFlags(const Value &node, T &out)
+    {
+        if (node.IsArray())
+        {
+            int64_t     raw = 0;
+            const int   count = node.GetElementCount();
+
+            for (int i = 0; i < count; ++i)
+            {
+                const Value *element = node.GetElement(i);
+
+                if (!element)
+                    return false;
+
+                if (element->IsString())
+                {
+                    const U8String &utf8 = element->GetString();
+                    const char     *text = reinterpret_cast<const char *>(utf8.c_str());
+
+                    if (!detail::LoadFlagsText<T>(text, static_cast<std::size_t>(utf8.Length()), raw))
+                        return false;
+                }
+                else if (element->IsInteger())
+                {
+                    int64_t part = 0;
+
+                    if (!element->GetInt(part))
+                        return false;
+
+                    raw |= part;
+                }
+                else
+                    return false;
+            }
+
+            out = static_cast<T>(raw);
+            return true;
+        }
+
+        if (node.IsString())
+        {
+            const U8String &utf8 = node.GetString();
+            const char     *text = reinterpret_cast<const char *>(utf8.c_str());
+            int64_t         raw = 0;
+
+            if (!detail::LoadFlagsText<T>(text, static_cast<std::size_t>(utf8.Length()), raw))
+                return false;
+
+            out = static_cast<T>(raw);
+            return true;
+        }
+
+        if (node.IsInteger())
+        {
+            int64_t raw = 0;
+
+            if (!node.GetInt(raw))
+                return false;
+
+            out = static_cast<T>(raw);
+            return true;
+        }
+
+        return false;
+    }
+
     template <typename T>
     inline void StoreEnum(Value &node, const T &value)
     {
+        if constexpr (EnumMeta<T>::defined && EnumMeta<T>::is_flags)
+        {
+            StoreFlags(node, value);
+            return;
+        }
+
         if constexpr (EnumTraits<T>::defined)
         {
             const char *name = EnumTraits<T>::ToName(value);
@@ -219,6 +369,9 @@ namespace hgl::serialize
     template <typename T>
     inline bool LoadEnum(const Value &node, T &out)
     {
+        if constexpr (EnumMeta<T>::defined && EnumMeta<T>::is_flags)
+            return LoadFlags(node, out);
+
         if (node.IsString())
         {
             if constexpr (EnumTraits<T>::defined)
