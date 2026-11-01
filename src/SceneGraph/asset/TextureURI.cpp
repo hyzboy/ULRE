@@ -40,6 +40,24 @@ namespace hgl::graph
             return(true);
         }
 
+        bool HasSuffixNoCase(const OSString &str,const os_char *suffix)
+        {
+            int suffix_len=0;
+            while(suffix[suffix_len])
+                ++suffix_len;
+
+            const int len=str.Length();
+            if(len<suffix_len)
+                return(false);
+
+            const os_char *data=str.c_str()+len-suffix_len;
+            for(int i=0;i<suffix_len;i++)
+                if(LowerChar(data[i])!=LowerChar(suffix[i]))
+                    return(false);
+
+            return(true);
+        }
+
         /**
          * 这段文本是不是一个合法的附件名（`color` / `color<N>` / `depth`）。
          *
@@ -152,6 +170,12 @@ namespace hgl::graph
         return kind==TextureURIKind::TextureArray
             && !path.IsEmpty()
             && path.c_str()[0]==kTextureURIArrayNamePrefix;
+    }
+
+    bool TextureURI::IsOctahedralFile()const
+    {
+        return kind==TextureURIKind::File
+            && HasSuffixNoCase(path,OS_TEXT(".TexOct"));
     }
 
     OSString TextureURI::GetArrayName()const

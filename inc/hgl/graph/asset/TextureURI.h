@@ -73,6 +73,10 @@ namespace hgl::graph
         bool IsRenderTarget()const{return kind==TextureURIKind::RenderTarget;}
         bool IsTextureArray()const{return kind==TextureURIKind::TextureArray;}
 
+        /// Octahedral projection is identified by the .TexOct file extension,
+        /// independently of the underlying 2D texture storage.
+        bool IsOctahedralFile()const;
+
         /// 是否是「磁盘上的单张文件」来源（2D 或立方体贴图）
         bool IsDiskFile    ()const{return kind==TextureURIKind::File||kind==TextureURIKind::CubeFile;}
 

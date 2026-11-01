@@ -273,6 +273,17 @@ namespace
         Check(!plain.IsTextureArray(), "裸路径不是数组");
         Check(!rt.IsTextureArray(), "rt: 不是数组");
 
+        const graph::TextureURI octa = graph::TextureURI::Parse(OS_TEXT("file:res/image/sky.TexOct"));
+        const graph::TextureURI octa_upper = graph::TextureURI::Parse(OS_TEXT("C:\\image\\sky.TEXOCT"));
+        const graph::TextureURI cube_octa = graph::TextureURI::Parse(OS_TEXT("cubefile:res/image/sky.TexOct"));
+        const graph::TextureURI rt_octa = graph::TextureURI::Parse(OS_TEXT("rt:sky.TexOct"));
+        const graph::TextureURI suffix = graph::TextureURI::Parse(OS_TEXT("res/image/sky.TexOct.backup"));
+        Check(octa.IsOctahedralFile() && octa_upper.IsOctahedralFile(),
+              ".TexOct 文件按扩展名识别 Octahedral，大小写不敏感");
+        Check(!plain.IsOctahedralFile() && !cube_octa.IsOctahedralFile()
+              && !rt_octa.IsOctahedralFile() && !suffix.IsOctahedralFile(),
+              "普通纹理、立方纹理、RT 和非末尾扩展名不视为 Octahedral 文件");
+
         Check(named.IsValid() && named.IsArrayByName()
               && named.GetArrayName() == OS_TEXT("pbr_10x10_baseColor"),
               "@name 的 GetArrayName() 只留名字");
