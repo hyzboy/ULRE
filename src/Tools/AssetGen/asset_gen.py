@@ -583,8 +583,12 @@ class TypeRegistry:
             if len(args) != 1:
                 raise GenError(f"容器类型必须有且只有一个模板参数：{cpp_type}")
             elem = self.classify(args[0])
+            # 元数据里 `fq` 会原样进入 `sizeof(...)`，而模板实参在 AST 里是**按原样拼写**
+            # 返回的（`ValueArray<Foo>`），落到 `hgl::asset::generated` 作用域里解析不了
+            # 非 `hgl::` 命名空间的 `Foo`。所以容器的 fq 由元素 fq 重建，而不是抄原文。
+            fq = f"hgl::{base}<{elem.fq}>"
             return TypeDesc(category="value_array" if base == "ValueArray" else "ptr_array",
-                            kind=CONTAINER_TYPES[base], cpp=base, fq=raw, elem=elem,
+                            kind=CONTAINER_TYPES[base], cpp=base, fq=fq, elem=elem,
                             components=elem.components)
 
         if base in self.structs:
@@ -623,6 +627,7 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct],
         "// @ulre-codegen end\n"
         "// ─────────────────────────────────────────────────────────────────────────────\n"
         "#pragma once\n\n"
+        "#include <cstddef>\n\n"
         "#include <hgl/asset/AssetObject.h>\n"
     )
     for header in sorted({s.header for s in structs}):
@@ -672,8 +677,15 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct],
                 enum_parse = "nullptr"
                 enum_to_name = "nullptr"
             # `Presence<T>` 是「值 + 是否出现」的包装；元数据描述的是里面的真实类型。
+            #
+            # 偏移与尺寸一律用编译期表达式，**不**写 Clang 记录布局算出的常量：
+            # 布局常量取决于编译配置（MSVC 的 `std::string` 在 Debug 下比 Clang
+            # 默认环境大 16 字节），写死会让含字符串字段的结构在另一种配置下
+            # 偏移全错。`sizeof(decltype(...))` / `offsetof` 由当前编译器自己算。
+            offset_literal = f"(uint32_t)offsetof({info.fq}, {prop.name})"
             size_literal = (f"(uint32_t)sizeof({prop.type.fq})"
-                            if prop.type.presence else f"{prop.size}u")
+                            if prop.type.presence
+                            else f"(uint32_t)sizeof(decltype({info.fq}::{prop.name}))")
             if prop.type.presence:
                 names = [n for n in names if n != "PF_None"]
                 names.append("PF_Presence")
@@ -684,7 +696,7 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct],
                 f'"{c_escape(prop.tooltip)}", "{c_escape(prop.cpp_type)}", '
                 f"{enum_name}, {asset_ref}, "
                 f"PropertyKind::{kind}, {flags_literal}, "
-                f"{prop.offset}u, {size_literal}, {fixed_len}u, "
+                f"{offset_literal}, {size_literal}, {fixed_len}u, "
                 f"{prop.range_min}, {prop.range_max}, {prop.step}, {struct_meta}, "
                 f"{elem_kind}, {enum_parse}, {enum_to_name} }},\n"
             )
@@ -695,7 +707,7 @@ def render_meta_header(group: GroupConfig, structs: list[AssetStruct],
             f'        "{c_escape(info.short_name)}", "{c_escape(info.asset_kind)}", '
             f'"{c_escape(info.doc)}",\n'
             f"        {table}, (uint32_t)(sizeof({table}) / sizeof({table}[0])),\n"
-            f"        {info.size}u, {info.align}u\n"
+            f"        (uint32_t)sizeof({info.fq}), (uint32_t)alignof({info.fq})\n"
             f"    }};\n\n"
         )
 
