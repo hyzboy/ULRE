@@ -334,7 +334,27 @@ namespace hgl::ecs
         return true;
     }
 
+    bool EnvironmentSystem::SetupSkyEnvironment(const OSString &env_uri)
+    {
+        graph::EnvironmentAsset *asset = environment_registry.GetOrLoadURI(env_uri);
+
+        if (!asset)
+        {
+            // 失败时不破坏现有环境：`GetOrLoadURI()` 在装载/校验阶段就返回空，
+            // 一个像素都还没动过。
+            GLogError(u8"[EnvironmentSystem] 环境资产装载失败: %ls (%s)",
+                      env_uri.c_str(), environment_registry.GetLastError().c_str());
+            return false;
+        }
+
+        SkyEnvironmentConfig config;
+        ApplyEnvironmentSpec(asset->GetSpec(), config);
+
+        return SetupSkyEnvironment(config);
+    }
+
     bool EnvironmentSystem::SetupSkyEnvironment(const SkyEnvironmentConfig &config)
+
     {
         if (!context)
         {

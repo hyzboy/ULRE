@@ -21,8 +21,9 @@ namespace hgl::asset
         Primitive,          ///<`prim`  —— 图元资产（`PrimitiveAsset`）
         Scene,              ///<`scene` —— 场景资产
         MaterialData,       ///<`mtldata`—— 材质数据块（`MaterialDataBlockAsset`）
+        Environment,        ///<`env`   —— 环境配置（`EnvironmentAsset`）
 
-        ENUM_CLASS_RANGE(Geometry, MaterialData)
+        ENUM_CLASS_RANGE(Geometry, Environment)
     };
 
     /**
@@ -57,6 +58,7 @@ namespace hgl::asset
         { AssetType::Primitive,      "prim",  "primitive"       },
         { AssetType::Scene,          "scene", "scene"           },
         { AssetType::MaterialData,   "mtldata", "material_data"  },
+        { AssetType::Environment,    "env",     "environment"    },
     };
 
     struct AssetSourceKindDesc

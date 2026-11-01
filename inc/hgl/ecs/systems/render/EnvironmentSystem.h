@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/EntityHandle.h>
 #include<hgl/ecs/systems/render/SkyEnvironmentConfig.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/graph/asset/EnvironmentAssetRegistry.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/type/String.h>
 #include<memory>
@@ -57,6 +58,10 @@ namespace hgl
 
             /// 本次托管的完整配置（阶段 3 的太阳耦合 / SH 重算要回读）。
             SkyEnvironmentConfig sky_config;
+
+            /// `env:` URI 的解析缓存（`SetupSkyEnvironment(uri)` 用；`env:@Name` 依赖它）。
+            /// 生命周期跟随本系统，因此同一份资产在反复热切之间只解析一次。
+            graph::EnvironmentAssetRegistry environment_registry;
 
             graph::EnvProfileID ResolveProfileID() const;
             graph::EnvironmentManager *ResolveManager();
@@ -137,6 +142,23 @@ namespace hgl
             // 重复调用等价于「先 `DestroySkyEnvironment()` 再建」，便于运行期热切环境。
             // 失败时不留下半个状态（要么全套就位，要么回到未托管）。
             bool SetupSkyEnvironment(const SkyEnvironmentConfig &config);
+
+            /**
+             * 用 `env:` URI 建立天空 + 天光。
+             *
+             * ```
+             * env:file:res/env/sky_34.env.toml   落盘文件
+             * env:@Sky34                         表内名字（此前 `RegisterFromToml` 载入过）
+             * res/env/sky_34.env.toml            省略类型段，按文件处理
+             * ```
+             *
+             * 内部只做三件事：查表（带缓存）→ `ApplyEnvironmentSpec()` 映射成
+             * `SkyEnvironmentConfig` → 调上面的重载。因此语义、日志、失败清理与直接
+             * 传配置**完全一致**，URI 只是一个可序列化的入口。
+             *
+             * 失败（文件不存在 / 解析失败 / 校验不过）时不改变现有环境，返回 false。
+             */
+            bool SetupSkyEnvironment(const OSString &env_uri);
 
             /// 反向清理：销毁天空实体、把 `ambient_env` 清零、provider 回到模板默认。
             void DestroySkyEnvironment();

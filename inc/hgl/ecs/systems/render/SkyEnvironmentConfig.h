@@ -137,4 +137,17 @@ namespace hgl::ecs
         /// 该配置是否要产出 SH9 天光（`sh_auto` 或显式系数非零）。
         bool WantsSkySH() const { return sh_auto || !IsSHZero(); }
     };
+
+    /**
+     * 用环境资产规约（`*.env.toml`）**局部覆盖**一份配置。
+     *
+     * 覆盖语义完全由 `Presence<T>` 决定：文件里出现过的键写进来，没出现的键保留
+     * `cfg` 的现值。因此传入一个缺省构造的 `SkyEnvironmentConfig` 得到的就是
+     * 「文件写法 + 引擎缺省值」的合并结果；传入已有配置则等价于「在现有配置上打补丁」。
+     *
+     * `spec.name` / `spec.description` / `spec.schema` 不参与覆盖 —— 那是资产身份的
+     * 元数据，不是运行时行为。`sh9.bands` 只在给了系数时整组覆盖（不做逐条合并），
+     * 且 `sh9.auto_generate == true` 时下游会忽略它们。
+     */
+    void ApplyEnvironmentSpec(const graph::EnvironmentSpec &spec, SkyEnvironmentConfig &cfg);
 }//namespace hgl::ecs

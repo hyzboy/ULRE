@@ -148,6 +148,14 @@ if(MSVC)
     set_target_properties(TestEnvironmentCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 环境资产表（`env:` URI）：身份 / 按名查询 / 缓存 / 扩展名与类型门禁
+# + `ApplyEnvironmentSpec` 的 `Presence` 局部覆盖语义。
+add_executable(TestEnvironmentAssetURI tests/TestEnvironmentAssetURI.cpp)
+target_link_libraries(TestEnvironmentAssetURI PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestEnvironmentAssetURI PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
 add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
@@ -443,6 +451,14 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestEnvironmentCodec
+        PROPERTIES LABELS "environment;asset")
+
+    add_test(
+        NAME TestEnvironmentAssetURI
+        COMMAND TestEnvironmentAssetURI
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestEnvironmentAssetURI
         PROPERTIES LABELS "environment;asset")
 
     add_test(
