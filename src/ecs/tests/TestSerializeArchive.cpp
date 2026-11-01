@@ -113,6 +113,22 @@ namespace archive_test
         Tonemap  = 1u << 1,
         Vignette = 1u << 2,
     };
+
+    /// 序列化名与 C++ 子名刻意不一致：验证 `HGL_ENUM_ITEM_NAME`。
+    enum class ShapeKind : uint8_t
+    {
+        PlaneGrid,
+        BoundingBox,
+        HexSphere,
+    };
+
+    /// 同样使用显式序列化名的按位标记。
+    enum class DirtFlags : uint32_t
+    {
+        None        = 0,
+        DoubleSided = 1u << 0,
+        AlphaTest   = 1u << 1,
+    };
 }// namespace archive_test
 
 HGL_ENUM_BEGIN(archive_test::WeatherMode)
@@ -127,6 +143,18 @@ HGL_FLAGS_BEGIN(archive_test::PostFxFlags)
     HGL_FLAG_ITEM(Tonemap, "色调映射")
     HGL_FLAG_ITEM(Vignette, "暗角")
 HGL_FLAGS_END(archive_test::PostFxFlags)
+
+HGL_ENUM_BEGIN(archive_test::ShapeKind)
+    HGL_ENUM_ITEM_NAME(PlaneGrid, "plane_grid", "网格平面")
+    HGL_ENUM_ITEM_NAME(BoundingBox, "bounding_box", "包围盒")
+    HGL_ENUM_ITEM_NAME(HexSphere, "hex_sphere", "六边形球")
+HGL_ENUM_END(archive_test::ShapeKind)
+
+HGL_FLAGS_BEGIN(archive_test::DirtFlags)
+    HGL_FLAG_ITEM(None, "无标记")
+    HGL_FLAG_ITEM_NAME(DoubleSided, "double_sided", "关闭背面剔除")
+    HGL_FLAG_ITEM_NAME(AlphaTest, "alpha_test", "Alpha 截断测试")
+HGL_FLAGS_END(archive_test::DirtFlags)
 
 // ── 生成的遍历（手工书写，等价于 AssetGen 产物）────────────────────────────
 
@@ -1222,6 +1250,90 @@ namespace
 
         return true;
     }
+
+    // ── 用例 N+2：显式序列化名 + 下划线/大小写容错 ────────────────────────
+
+    bool TestEnumExplicitWireName()
+    {
+        using archive_test::DirtFlags;
+        using archive_test::ShapeKind;
+
+        // ① 写出的是显式指定的蛇形名，不是 C++ 子名
+        Check(hgl::stricmp(EnumNameOf(ShapeKind::PlaneGrid), "plane_grid") == 0,
+              "HGL_ENUM_ITEM_NAME 应让 EnumNameOf 返回显式序列化名");
+
+        // ② C++ 子名仍可作为备用拼写读回
+        ShapeKind parsed = ShapeKind::HexSphere;
+        Check(EnumParse("plane_grid", parsed) && parsed == ShapeKind::PlaneGrid,
+              "应接受蛇形拼写");
+        Check(EnumParse("PlaneGrid", parsed) && parsed == ShapeKind::PlaneGrid,
+              "应接受 C++ 驼峰拼写");
+        Check(EnumParse("PLANE-GRID", parsed) && parsed == ShapeKind::PlaneGrid,
+              "应忽略大小写与 - 分隔符");
+        Check(EnumParse("plane grid", parsed) == false,
+              "空格不是分隔符，不应被接受");
+
+        // ③ 写进树里的字面量就是蛇形名
+        Value tree;
+        Archive writer = Archive::ForWrite(tree);
+        ShapeKind kind = ShapeKind::BoundingBox;
+        writer.Field(1, "shape", kind);
+        Check(writer.Ok(), "写入显式命名枚举");
+
+        const Value *node = tree.FindField("shape");
+        Check(node != nullptr && node->IsString(), "显式命名枚举应写成字符串");
+        if (node != nullptr && node->IsString())
+            Check(hgl::stricmp(reinterpret_cast<const char *>(node->GetString().c_str()),
+                               "bounding_box")
+                      == 0,
+                  "写出的文本应为 bounding_box");
+
+        ShapeKind loaded = ShapeKind::PlaneGrid;
+        Archive reader = Archive::ForRead(tree);
+        reader.Field(1, "shape", loaded);
+        Check(reader.Ok() && loaded == ShapeKind::BoundingBox, "显式命名枚举读回");
+
+        // ④ 按位标记同样支持显式序列化名
+        const DirtFlags combo = DirtFlags::DoubleSided | DirtFlags::AlphaTest;
+
+        Value flag_tree;
+        Archive flag_writer = Archive::ForWrite(flag_tree);
+        DirtFlags flags = combo;
+        flag_writer.Field(1, "dirt", flags);
+        Check(flag_writer.Ok(), "写入显式命名标记");
+
+        const Value *flag_node = flag_tree.FindField("dirt");
+        Check(flag_node != nullptr && flag_node->IsArray(), "显式命名标记应为数组");
+        if (flag_node != nullptr && flag_node->IsArray()
+            && flag_node->GetElementCount() == 2)
+        {
+            const Value *first = flag_node->GetElement(0);
+            Check(first != nullptr && first->IsString()
+                      && hgl::stricmp(
+                             reinterpret_cast<const char *>(first->GetString().c_str()),
+                             "double_sided")
+                             == 0,
+                  "标记项应写出显式序列化名");
+        }
+        else
+        {
+            Check(false, "标记项数组长度应为 2");
+        }
+
+        DirtFlags flag_loaded = DirtFlags::None;
+        Archive flag_reader = Archive::ForRead(flag_tree);
+        flag_reader.Field(1, "dirt", flag_loaded);
+        Check(flag_reader.Ok() && flag_loaded == combo, "显式命名标记读回");
+
+        // ⑤ 手写文本用 C++ 子名也应该能读
+        Value cpp_named;
+        cpp_named.SetString("DoubleSided | AlphaTest");
+        DirtFlags from_cpp = DirtFlags::None;
+        Check(LoadEnum(cpp_named, from_cpp) && from_cpp == combo,
+              "标记读入应同时接受 C++ 子名");
+
+        return true;
+    }
 }//namespace
 
 int main()
@@ -1242,6 +1354,7 @@ int main()
     TestTomlTextEntry();
     TestEnumMacroRegistration();
     TestFlagsMacroRegistration();
+    TestEnumExplicitWireName();
 
     if (g_failed != 0)
     {

@@ -27,6 +27,14 @@
  *       HGL_ENUM_ITEM(None,        "关闭天光")
  *   HGL_ENUM_END(SkyMode)
  *
+ *   // 序列化名与 C++ 子名不同时（TOML 习惯蛇形），用 _NAME 变体
+ *   enum class BuiltinShapeKind : uint8_t { PlaneGrid, BoundingBox };
+ *
+ *   HGL_ENUM_BEGIN(BuiltinShapeKind)
+ *       HGL_ENUM_ITEM_NAME(PlaneGrid,   "plane_grid",   "网格平面")
+ *       HGL_ENUM_ITEM_NAME(BoundingBox, "bounding_box", "包围盒")
+ *   HGL_ENUM_END(BuiltinShapeKind)
+ *
  *   // 按位标记：序列化为名字数组，读入时按位或
  *   enum class SurfaceFlags : uint32_t
  *   {
@@ -65,12 +73,23 @@ namespace hgl::serialize
 {
     // ── 元信息数据结构 ──────────────────────────────────────────────────────
 
-    /// 单个枚举项的元信息：C++ 名（即序列化时写入的文本）、数值、GUI 说明。
+    /**
+     * 单个枚举项的元信息。
+     *
+     * `name` 是**序列化名** —— Archive 写出的文本就是它。默认等于 C++ 枚举子名；
+     * 需要 TOML 蛇形拼写（`plane_grid`）这类与 C++ 风格不一致的写法时，用
+     * `HGL_ENUM_ITEM_NAME(NAME, "plane_grid", DESC)` 让两者分开：
+     * C++ 继续用 `PlaneGrid`，配置文件继续写 `plane_grid`。
+     *
+     * `alt` 是**只参与读入**的备用拼写（通常是 C++ 子名），可为 nullptr。
+     * 读入时 `name` 与 `alt` 都会被尝试，所以新旧配置都能读。
+     */
     struct EnumItemMeta
     {
-        const char *name;   ///< 登记名，默认就是 C++ 枚举子名
-        int64_t     value;  ///< 数值
-        const char *desc;   ///< UTF-8 说明，可为 nullptr
+        const char *name;             ///< 序列化名（Archive 写出的文本）
+        int64_t     value;            ///< 数值
+        const char *desc;             ///< UTF-8 说明，可为 nullptr
+        const char *alt{nullptr};     ///< 备用解析名，可为 nullptr；不参与写出
     };
 
     /**
@@ -173,6 +192,59 @@ namespace hgl::serialize
             out = negative ? -static_cast<int64_t>(value) : static_cast<int64_t>(value);
             return true;
         }
+
+        /// 大小写不敏感地取下一个「有效字符」，跳过 `_` 与 `-`。
+        ///
+        /// 让 `plane_grid`、`PlaneGrid`、`plane-grid` 归一到同一串，
+        /// 于是 TOML 蛇形拼写与 C++ 驼峰拼写不需要各自登记一份名字。
+        inline bool NextLooseChar(const char *text, std::size_t length,
+                                  std::size_t &index, char &out) noexcept
+        {
+            while (index < length)
+            {
+                char ch = text[index++];
+
+                if (ch == '_' || ch == '-')
+                    continue;
+
+                if (ch >= 'A' && ch <= 'Z')
+                    ch = static_cast<char>(ch - 'A' + 'a');
+
+                out = ch;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// 忽略大小写与 `_` / `-` 的全文比较。
+        inline bool EqualsLoose(const char *left, std::size_t left_length,
+                                const char *right, std::size_t right_length) noexcept
+        {
+            if (!left || !right)
+                return false;
+
+            std::size_t left_index = 0;
+            std::size_t right_index = 0;
+
+            for (;;)
+            {
+                char left_ch = 0;
+                char right_ch = 0;
+
+                const bool has_left = NextLooseChar(left, left_length, left_index, left_ch);
+                const bool has_right = NextLooseChar(right, right_length, right_index, right_ch);
+
+                if (has_left != has_right)
+                    return false;
+
+                if (!has_left)
+                    return true;
+
+                if (left_ch != right_ch)
+                    return false;
+            }
+        }
     }// namespace detail
 
     // ── 查询 ────────────────────────────────────────────────────────────────
@@ -237,8 +309,11 @@ namespace hgl::serialize
     /**
      * @brief 解析单个枚举名。
      *
-     * 名字比较**大小写不敏感**；同时接受十进制与 `0x` 十六进制数字字面量，
-     * 便于手写配置用数字表达、也便于读到旧格式数据。
+     * 名字比较**大小写不敏感**，并且忽略 `_` 与 `-`：`plane_grid`、`PlaneGrid`
+     * 与 `plane-grid` 都能命中同一个登记项。同时接受十进制与 `0x` 十六进制
+     * 数字字面量，便于手写配置用数字表达、也便于读到旧格式数据。
+     *
+     * 每个登记项的 `name` 与 `alt` 都会被尝试，`name` 优先。
      */
     template <typename T>
     inline bool EnumParse(const char *text, std::size_t length, T &out) noexcept
@@ -257,13 +332,17 @@ namespace hgl::serialize
             for (std::size_t i = 0; i < EnumMeta<T>::Count; ++i)
             {
                 const EnumItemMeta &item = EnumMeta<T>::Items[i];
-                const std::size_t   name_length =
-                    static_cast<std::size_t>(hgl::strlen(item.name));
 
-                if (name_length != length)
-                    continue;
+                if (detail::EqualsLoose(cursor, length, item.name,
+                                        static_cast<std::size_t>(hgl::strlen(item.name))))
+                {
+                    out = static_cast<T>(item.value);
+                    return true;
+                }
 
-                if (hgl::stricmp(cursor, length, item.name, name_length) == 0)
+                if (item.alt
+                    && detail::EqualsLoose(cursor, length, item.alt,
+                                           static_cast<std::size_t>(hgl::strlen(item.alt))))
                 {
                     out = static_cast<T>(item.value);
                     return true;
@@ -514,8 +593,22 @@ namespace hgl::serialize
             static constexpr const ::hgl::serialize::EnumItemMeta Items[] = {
 
 /// 登记一个枚举项：`NAME` 为枚举子名，`DESC` 为 UTF-8 GUI 说明（可为 nullptr）。
+/// 序列化名与 C++ 子名一致。
 #define HGL_ENUM_ITEM(NAME, DESC)                                              \
-    {#NAME, static_cast<int64_t>(Self::NAME), DESC},
+    {#NAME, static_cast<int64_t>(Self::NAME), DESC, nullptr},
+
+/**
+ * @brief 登记一个枚举项，同时指定**序列化名**。
+ *
+ * `NAME` 仍是 C++ 子名（`Self::NAME` / 备用解析名），`STR` 是写进文件的文本，
+ * 用于 TOML 蛇形拼写这类与 C++ 风格不一致的场景：
+ * @code
+ *   HGL_ENUM_ITEM_NAME(PlaneGrid, "plane_grid", "网格平面")
+ * @endcode
+ * 读入时 `STR` 与 `#NAME` 都接受（且忽略大小写与 `_`/`-`）。
+ */
+#define HGL_ENUM_ITEM_NAME(NAME, STR, DESC)                                    \
+    {STR, static_cast<int64_t>(Self::NAME), DESC, #NAME},
 
 /// 普通枚举登记块结束。`TYPE` 需与 `HGL_ENUM_BEGIN` 一致，用于校验登记位置。
 #define HGL_ENUM_END(TYPE)                                                     \
@@ -553,7 +646,11 @@ namespace hgl::serialize
 
 /// 登记一个标记位：`NAME` 为枚举子名，`DESC` 为 UTF-8 GUI 说明（可为 nullptr）。
 #define HGL_FLAG_ITEM(NAME, DESC)                                              \
-    {#NAME, static_cast<int64_t>(Self::NAME), DESC},
+    {#NAME, static_cast<int64_t>(Self::NAME), DESC, nullptr},
+
+/// 登记一个标记位，同时指定序列化名（语义同 `HGL_ENUM_ITEM_NAME`）。
+#define HGL_FLAG_ITEM_NAME(NAME, STR, DESC)                                    \
+    {STR, static_cast<int64_t>(Self::NAME), DESC, #NAME},
 
 /// 按位标记登记块结束。`TYPE` 需与 `HGL_FLAGS_BEGIN` 一致。
 #define HGL_FLAGS_END(TYPE)                                                    \
