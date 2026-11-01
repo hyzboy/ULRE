@@ -116,6 +116,9 @@ namespace hgl::graph
             if(!Init())
                 return(false);
 
+            if(!tex_manager->GetDevice())
+                return(true);
+
             // 异步链路（`TextureStreamingSystem`）只服务 2D，没有 cube 的上传任务类型；
             // 而天空盒这类贴图数量极少、一次性用到底，所以在这里同步装完，
             // 句柄立刻进入 Resident ⇒ 流式系统看到 `IsReady()` 会直接跳过，不会误当 2D 读。
@@ -193,6 +196,13 @@ namespace hgl::graph
 
         meta.source_path=ResolveTextureArraySpecPath(TextureURI::Parse(uri_text));
         meta.asset_type =OS_TEXT("Texture2DArray");
+
+        if(!tex_manager->GetDevice())
+        {
+            // 无 GPU 设备环境（离线配方校验/资产工具）保留句柄元数据并处于 MetaOnly
+            payload_state=PayloadState::MetaOnly;
+            return(true);
+        }
 
         // 数组层是一次性上传的：装配完就定死，没有「先给句柄、稍后填内容」的中间态。
         Texture2DArray *array=tex_manager->BuildTextureArray(spec);

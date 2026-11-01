@@ -8,7 +8,7 @@
 namespace hgl::graph{
 DeviceBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size,const void *data)
 {
-    if(size<=0)
+    if(size<=0||!GetDevice())
         return(nullptr);
 
     return GetDevice()->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);

@@ -75,6 +75,7 @@ namespace hgl::graph
 
         RenderPassManager *rp_manager = nullptr;
         TextureManager *tex_manager = nullptr;
+        TextureManager *fallback_tex_manager_ = nullptr;
         RenderTargetManager *rt_manager = nullptr;
         ShaderProgramManager *material_manager = nullptr;
         BufferManager *buffer_manager = nullptr;
@@ -155,7 +156,7 @@ namespace hgl::graph
 
         // 模块管理器访问
         RenderPassManager *GetRenderPassManager() { return rp_manager; }
-        TextureManager *GetTextureManager() { return tex_manager; }
+        TextureManager *GetTextureManager();
         ShaderProgramManager *GetMaterialManager() { return material_manager; }
         BufferManager *GetBufferManager() { return buffer_manager; }
         SamplerManager *GetSamplerManager() { return sampler_manager; }

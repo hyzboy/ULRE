@@ -41,9 +41,18 @@ namespace hgl::graph
         return global_ssbo_registry ? global_ssbo_registry->GetGlobalAddressesAddress(frame_slot) : 0;
     }
 
+    TextureManager *GraphicsContext::GetTextureManager()
+    {
+        if (tex_manager)
+            return tex_manager;
+        if (!fallback_tex_manager_)
+            fallback_tex_manager_ = new TextureManager(this);
+        return fallback_tex_manager_;
+    }
+
     bool GraphicsContext::LoadMaterialRecipeFile(const OSString &path)
     {
-        return material_recipe_registry_.LoadFile(path, tex_manager);
+        return material_recipe_registry_.LoadFile(path, GetTextureManager());
     }
 
     bool GraphicsContext::LoadMaterialRecipeDirectory(
@@ -52,7 +61,7 @@ namespace hgl::graph
         int *out_error_count)
     {
         return material_recipe_registry_.LoadDirectory(
-            path, tex_manager, out_file_count, out_error_count);
+            path, GetTextureManager(), out_file_count, out_error_count);
     }
 
     const mtl::MaterialRecipe *GraphicsContext::FindMaterialRecipe(
@@ -133,6 +142,8 @@ namespace hgl::graph
         tex_manager = module_manager->GetOrCreate<TextureManager>();
         if (!tex_manager)
             return false;
+
+        SAFE_CLEAR(fallback_tex_manager_)
 
         sampler_manager = module_manager->GetOrCreate<SamplerManager>();
         if (!sampler_manager)
@@ -269,6 +280,8 @@ namespace hgl::graph
         // Drop the cache before destroying the module manager that owns them.
         material_recipe_registry_.Clear();
         default_material_recipes_loaded_ = false;
+
+        SAFE_CLEAR(fallback_tex_manager_)
 
         // 几何资产句柄拥有各自的 Geometry，几何析构会向 MeshDrawParams 池归还行号，
         // 因此必须在模块（含 GlobalSSBOBufferRegistry / GeometryManager）销毁之前清空。

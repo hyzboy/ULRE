@@ -515,12 +515,13 @@ namespace
             return false;
 
         // PBRSpheres 与契约/结构体默认完全一致 ⇒ 整块 `[render_state.pipeline]` 已删掉。
+        // 两张 PBR 数组纹理（base_color / normal）在配方内声明（走 texarray 规约）。
         MaterialRecipeFileData pbr_spheres;
         if (!ParseFile(
                 OS_TEXT("ShaderLibrary/asset/recipe/PBRSpheres.recipe.toml"),
                 pbr_spheres)
          || pbr_spheres.recipe.recipe_name != "PBRSpheres.Lit"
-         || !pbr_spheres.recipe.textures.empty()
+         || pbr_spheres.recipe.textures.size() != 2
          || pbr_spheres.recipe.render_state_overrides.has_pipeline_config)
             return false;
 

@@ -18,7 +18,7 @@ template<> Texture2D *VkTextureLoader<Texture2D,Texture2DLoader>::OnCreateTextur
 
 Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps)
 {
-    if(!tm||filename.IsEmpty())
+    if(!tm||!tm->GetDevice()||filename.IsEmpty())
         return(nullptr);
 
     VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps,filename);

@@ -16,7 +16,7 @@ template<> TextureCube *VkTextureLoader<TextureCube,TextureCubeLoader>::OnCreate
 
 TextureCube *CreateTextureCubeFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps)
 {
-    if(!tm||filename.IsEmpty())
+    if(!tm||!tm->GetDevice()||filename.IsEmpty())
         return(nullptr);
 
     VkTextureLoader<TextureCube,TextureCubeLoader> loader(tm,auto_mipmaps,filename);
