@@ -5,7 +5,9 @@
 //   3. 坏输入一律**整张拒绝**并给出定位（缺 schema / 空 layers / rt: 层 / 嵌套数组 /
 //      层名重复 / 未知键 / 超层数），不返回半成品；
 //   4. `texarray:` URI → 规约文件路径的映射（`@name` / `file:` / 非数组→空）；
-//   5. 四个迁移过的示例源码里已经没有裸 `CreateTexture2DArray` 与文件夹名数组。
+//   5. 四个迁移过的示例源码里已经没有裸 `CreateTexture2DArray` 与文件夹名数组，
+//      且其 `texarray:` 引用可以出现在**配套配方文件**里（示例只留"每格图层号 = 行号"
+//      这类运行期差异）。
 //
 // 第 5 条是这次迁移的验收线：数组的手工装配流程（探针 → 建空数组 → 逐层填）必须
 // 只出现在 `TextureManager::BuildTextureArray` 里。
@@ -341,23 +343,57 @@ namespace
     /// 5. 迁移过的示例不再手工装配数组。
     bool TestExampleSources()
     {
-        const char *files[] =
+        struct ExampleEntry
         {
-            "example/Shadow/CascadeShadowMap.cpp",
-            "example/Material/PBRSpheres.cpp",
-            "example/Material/SingleSphereMaterialSwitch.cpp",
-            "example/Shadow/AlphaTestShadow.cpp",
+            const char *cpp_file;
+            const char *recipe_files[3];
         };
 
-        const int count = int(sizeof(files) / sizeof(files[0]));
+        const ExampleEntry targets[] =
+        {
+            {
+                "example/Shadow/CascadeShadowMap.cpp",
+                {
+                    "ShaderLibrary/asset/recipe/Examples/Shadow/CascadeShadowMap.Lit.recipe.toml",
+                    "ShaderLibrary/asset/recipe/Examples/Shadow/CascadeShadowMap.AlphaTest.recipe.toml",
+                    nullptr
+                }
+            },
+            {
+                "example/Material/PBRSpheres.cpp",
+                {
+                    "ShaderLibrary/asset/recipe/PBRSpheres.recipe.toml",
+                    "ShaderLibrary/asset/recipe/Examples/Material/PBRSpheres.LitBillboard.recipe.toml",
+                    nullptr
+                }
+            },
+            {
+                "example/Material/SingleSphereMaterialSwitch.cpp",
+                {
+                    "ShaderLibrary/asset/recipe/Examples/Material/06e.SingleSphereSwitch.Near.recipe.toml",
+                    nullptr,
+                    nullptr
+                }
+            },
+            {
+                "example/Shadow/AlphaTestShadow.cpp",
+                {
+                    "ShaderLibrary/asset/recipe/Examples/Shadow/AlphaTestShadow.Lit.recipe.toml",
+                    "ShaderLibrary/asset/recipe/Examples/Shadow/AlphaTestShadow.Ground.recipe.toml",
+                    nullptr
+                }
+            },
+        };
+
+        const int count = int(sizeof(targets) / sizeof(targets[0]));
 
         for (int i = 0; i < count; ++i)
         {
             AnsiString src;
-            if (!ReadText(ToOSString(files[i]), src))
+            if (!ReadText(ToOSString(targets[i].cpp_file), src))
             {
                 GLogError(u8"TestTextureArraySpec: 读不到示例源码（需在仓库根目录运行）: %s",
-                          files[i]);
+                          targets[i].cpp_file);
                 return false;
             }
 
@@ -367,29 +403,46 @@ namespace
             if (strstr(text, "CreateTexture2DArray") != nullptr)
             {
                 GLogError(u8"TestTextureArraySpec: %s 里还有裸 CreateTexture2DArray",
-                          files[i]);
+                          targets[i].cpp_file);
                 return false;
             }
 
             if (strstr(text, "LoadTexture2DArray") != nullptr)
             {
                 GLogError(u8"TestTextureArraySpec: %s 里还有逐层 LoadTexture2DArray",
-                          files[i]);
+                          targets[i].cpp_file);
                 return false;
             }
 
             if (strstr(text, "PBR_FOLDER") != nullptr)
             {
                 GLogError(u8"TestTextureArraySpec: %s 里还有文件夹名数组 PBR_FOLDER",
-                          files[i]);
+                          targets[i].cpp_file);
                 return false;
             }
 
-            // 数组句柄必须来自 texarray 规约
-            if (strstr(text, "texarray:@") == nullptr)
+            // 数组句柄必须来自 texarray 规约（代码中直接引用，或在其关联的配方文件 [[textures]] 中引用）
+            bool has_texarray = (strstr(text, "texarray:@") != nullptr);
+            if (!has_texarray)
             {
-                GLogError(u8"TestTextureArraySpec: %s 没有引用任何 texarray 规约",
-                          files[i]);
+                for (int r = 0; r < 3 && targets[i].recipe_files[r] != nullptr; ++r)
+                {
+                    AnsiString recipe_text;
+                    if (ReadText(ToOSString(targets[i].recipe_files[r]), recipe_text))
+                    {
+                        if (strstr(recipe_text.c_str(), "texarray:@") != nullptr)
+                        {
+                            has_texarray = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!has_texarray)
+            {
+                GLogError(u8"TestTextureArraySpec: %s 与其关联配方均未引用任何 texarray 规约",
+                          targets[i].cpp_file);
                 return false;
             }
         }
