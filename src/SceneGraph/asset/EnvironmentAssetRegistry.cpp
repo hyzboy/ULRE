@@ -4,6 +4,7 @@
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
+#include <hgl/graph/asset/EnvironmentAssetFlat.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/serialize/TomlCodec.h>
@@ -23,10 +24,21 @@ namespace hgl::graph
         /// 当前唯一支持的 `schema` 版本
         constexpr uint32 kEnvironmentSchemaVersion = 1;
 
+        bool IsEnvironmentFlatFile(const OSString &name)
+        {
+            return name.EndsWith(OS_TEXT(".env.fb"))
+                || name.EndsWith(OS_TEXT(".env"));
+        }
+
         bool IsEnvironmentTomlFile(const OSString &name)
         {
             return name.EndsWith(OS_TEXT(".env.toml"))
                 || name.EndsWith(OS_TEXT(".environment.toml"));
+        }
+
+        bool IsEnvironmentFile(const OSString &name)
+        {
+            return IsEnvironmentFlatFile(name) || IsEnvironmentTomlFile(name);
         }
 
         /// 读整个文件到字节缓冲（`AutoDeleteArray` 自带 +1 尾巴，TOML 需要 '\0'）
@@ -202,6 +214,48 @@ namespace hgl::graph
         return asset;
     }
 
+    EnvironmentAsset *EnvironmentAssetRegistry::RegisterFromFlat(const os_char *label,
+                                                                 const uint8   *data,
+                                                                 const uint64   size)
+    {
+        last_error.Clear();
+
+        if (!data || size == 0)
+        {
+            last_error = "environment flat: 数据为空";
+            GLogError(u8"[EnvironmentAssetRegistry] %s", last_error.c_str());
+            return nullptr;
+        }
+
+        EnvironmentSpec spec;
+        if (!DecodeEnvironmentFlat(data, size, spec, &last_error))
+        {
+            GLogError(u8"[EnvironmentAssetRegistry] FlatBuffers 解码失败: %ls (%s)",
+                      label ? label : OS_TEXT("<memory>"), last_error.c_str());
+            return nullptr;
+        }
+
+        if (!Validate(spec, last_error))
+        {
+            GLogError(u8"[EnvironmentAssetRegistry] 环境配置校验失败: %ls (%s)",
+                      label ? label : OS_TEXT("<memory>"), last_error.c_str());
+            return nullptr;
+        }
+
+        EnvironmentAsset *asset = Attach(std::move(spec), label);
+
+        if (asset)
+            GLogInfo(u8"[EnvironmentAssetRegistry] 环境已加载(FlatBuffers): %ls name=%s mode=%s",
+                     label ? label : OS_TEXT("<memory>"),
+                     asset->GetEnvironmentName().c_str(),
+                     hgl::asset::generated::AssetEnumName_SkyMode(
+                         asset->GetSpec().ambient.mode.present
+                             ? asset->GetSpec().ambient.mode.value
+                             : SkyMode::SHLightOnly));
+
+        return asset;
+    }
+
     EnvironmentAsset *EnvironmentAssetRegistry::LoadFile(const OSString &path)
     {
         last_error.Clear();
@@ -213,9 +267,12 @@ namespace hgl::graph
             return nullptr;
         }
 
-        if (!IsEnvironmentTomlFile(path))
+        const bool is_flat = IsEnvironmentFlatFile(path);
+        const bool is_toml = IsEnvironmentTomlFile(path);
+
+        if (!is_flat && !is_toml)
         {
-            last_error  = "environment: 不是环境配置文件（需 .env.toml）：";
+            last_error  = "environment: 不是支持的环境资产文件（需 .env / .env.fb / .env.toml）：";
             last_error += AnsiString(reinterpret_cast<const char *>(ToU8String(path).c_str()));
             GLogError(u8"[EnvironmentAssetRegistry] %s", last_error.c_str());
             return nullptr;
@@ -228,6 +285,11 @@ namespace hgl::graph
         {
             last_error = "environment: 读取失败";
             return nullptr;
+        }
+
+        if (is_flat)
+        {
+            return RegisterFromFlat(path.c_str(), buffer.data(), static_cast<uint64>(size));
         }
 
         return RegisterFromToml(path.c_str(), reinterpret_cast<const char *>(buffer.data()),
@@ -270,7 +332,7 @@ namespace hgl::graph
         {
             const hgl::filesystem::FileInfo &file = file_list[i];
 
-            if (!file.is_file || !IsEnvironmentTomlFile(OSString(file.name)))
+            if (!file.is_file || !IsEnvironmentFile(OSString(file.name)))
                 continue;
 
             if (LoadFile(OSString(file.fullname)))
@@ -342,13 +404,24 @@ namespace hgl::graph
             return nullptr;
         }
 
-        if (EnvironmentAsset *cached = FindAssetByPath(parsed.target))
+        OSString target_path = parsed.target;
+        if (!hgl::filesystem::FileExist(target_path))
+        {
+            if (hgl::filesystem::FileExist(target_path + OS_TEXT(".env")))
+                target_path += OS_TEXT(".env");
+            else if (hgl::filesystem::FileExist(target_path + OS_TEXT(".env.fb")))
+                target_path += OS_TEXT(".env.fb");
+            else if (hgl::filesystem::FileExist(target_path + OS_TEXT(".env.toml")))
+                target_path += OS_TEXT(".env.toml");
+        }
+
+        if (EnvironmentAsset *cached = FindAssetByPath(target_path))
             return cached;
 
-        LoadFile(parsed.target);
+        LoadFile(target_path);
 
         // 读盘成功但句柄为空的唯一可能是解析/校验失败，`last_error` 已由上层写好
-        return FindAssetByPath(parsed.target);
+        return FindAssetByPath(target_path);
     }
 
     EnvironmentAsset *EnvironmentAssetRegistry::FindByName(const char *name) const

@@ -14,7 +14,10 @@
 #include <hgl/asset/AssetObject.h>
 #include <hgl/asset/generated/EnvironmentMeta.gen.h>
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/graph/asset/EnvironmentAssetFlat.h>
 #include <hgl/graph/asset/EnvironmentAssetSpec.h>
+#include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <hgl/serialize/TomlCodec.h>
@@ -406,6 +409,145 @@ namespace
 #undef REQUIRE
         return true;
     }
+
+    // ── 7. FlatBuffers 往返 ────────────────────────────────────────────────
+    bool TestFlatBuffersRoundTrip()
+    {
+        EnvironmentSpec spec;
+        if (!ReadText(kFullEnvironment, spec))
+            return false;
+
+        // 加 3 条 band 验证结构数组
+        spec.sh9.bands.present = true;
+        EnvironmentSH9BandSpec b0{0.1f, 0.2f, 0.3f};
+        EnvironmentSH9BandSpec b1{0.4f, 0.5f, 0.6f};
+        EnvironmentSH9BandSpec b2{0.7f, 0.8f, 0.9f};
+        spec.sh9.bands.value.Add(b0);
+        spec.sh9.bands.value.Add(b1);
+        spec.sh9.bands.value.Add(b2);
+
+        ValueArray<uint8> buffer;
+        AnsiString error;
+
+        if (!EncodeEnvironmentFlat(spec, buffer, &error))
+        {
+            GLogError(u8"EncodeEnvironmentFlat 失败: %s", error.c_str());
+            return false;
+        }
+
+        if (buffer.IsEmpty())
+            return false;
+
+        EnvironmentSpec back;
+        if (!DecodeEnvironmentFlat(buffer.GetData(), buffer.GetCount(), back, &error))
+        {
+            GLogError(u8"DecodeEnvironmentFlat 失败: %s", error.c_str());
+            return false;
+        }
+
+        if (back.schema != spec.schema)
+            return false;
+        if (back.name != spec.name)
+            return false;
+        if (back.description != spec.description)
+            return false;
+        if (back.visual.recipe.value != spec.visual.recipe.value)
+            return false;
+        if (back.visual.geometry.value != spec.visual.geometry.value)
+            return false;
+        if (!Nearly(back.visual.scale.value, spec.visual.scale.value))
+            return false;
+        if (back.visual.track_camera.value != spec.visual.track_camera.value)
+            return false;
+        if (back.ambient.mode.value != spec.ambient.mode.value)
+            return false;
+        if (back.ambient.provider.value != spec.ambient.provider.value)
+            return false;
+        if (back.ibl.irradiance.value != spec.ibl.irradiance.value)
+            return false;
+        if (back.ibl.prefilter.value != spec.ibl.prefilter.value)
+            return false;
+        if (back.ibl.brdf_lut.value != spec.ibl.brdf_lut.value)
+            return false;
+        if (back.ldr.mode.value != spec.ldr.mode.value)
+            return false;
+        if (!Nearly(back.ldr.exposure_base.value, spec.ldr.exposure_base.value))
+            return false;
+        if (!Nearly(back.ldr.sun_scale.value, spec.ldr.sun_scale.value))
+            return false;
+        if (!Nearly(back.ldr.min_ambient.value, spec.ldr.min_ambient.value))
+            return false;
+        if (back.sh9.auto_generate.value != spec.sh9.auto_generate.value)
+            return false;
+        if (back.sh9.track_sun.value != spec.sh9.track_sun.value)
+            return false;
+        if (!Nearly(back.sh9.sun_irradiance_scale.value, spec.sh9.sun_irradiance_scale.value))
+            return false;
+        if (!Nearly(back.sh9.exposure.value, spec.sh9.exposure.value))
+            return false;
+        if (!back.sh9.bands.present || back.sh9.bands.value.GetCount() != 3)
+            return false;
+        if (!Nearly(back.sh9.bands.value[1].r, 0.4f))
+            return false;
+
+        // 文件读写往返
+        const OSString tmp_path = OS_TEXT("build/test_env_roundtrip.env");
+        if (!SaveEnvironmentSpecToFlatBuffers(spec, tmp_path))
+        {
+            GLogError(u8"SaveEnvironmentSpecToFlatBuffers 失败");
+            return false;
+        }
+
+        EnvironmentSpec file_back;
+        if (!LoadEnvironmentSpecFromFlatBuffers(tmp_path, file_back))
+        {
+            GLogError(u8"LoadEnvironmentSpecFromFlatBuffers 失败");
+            return false;
+        }
+
+        const bool ok = file_back.name == spec.name
+                     && file_back.ambient.mode.value == spec.ambient.mode.value
+                     && file_back.sh9.bands.value.GetCount() == 3;
+
+        hgl::filesystem::FileDelete(tmp_path);
+        return ok;
+    }
+
+    // ── 8. 预设资产 FlatBuffers 二进制验证 ─────────────────────────────────
+    bool VerifyPresetAssets()
+    {
+        const os_char *preset_names[] = {
+            OS_TEXT("sky_atmosphere"),
+            OS_TEXT("sky34_cube_ibl"),
+            OS_TEXT("sky34_oct_ibl"),
+            OS_TEXT("sky34_lambert_dome"),
+            OS_TEXT("sky34_sh9"),
+        };
+
+        for (const os_char *base_name : preset_names)
+        {
+            const OSString env_path = OSString(OS_TEXT("ShaderLibrary/asset/environment/"))
+                                    + OSString(base_name) + OS_TEXT(".env");
+
+            EnvironmentSpec loaded;
+            if (!LoadEnvironmentSpecFromFlatBuffers(env_path, loaded))
+            {
+                GLogError(u8"验证载入预设二进制 .env 失败: %ls", env_path.c_str());
+                return false;
+            }
+
+            if (loaded.schema != 1 || loaded.name.IsEmpty())
+            {
+                GLogError(u8"预设二进制 .env 内容校验失败: %ls", env_path.c_str());
+                return false;
+            }
+
+            GLogInfo(u8"预设二进制 .env 验证通过: %ls (name=%s)",
+                     env_path.c_str(), loaded.name.c_str());
+        }
+
+        return true;
+    }
 }//namespace
 
 int main()
@@ -418,6 +560,8 @@ int main()
     Check(TestBandsArray(), "SH9 bands 数组");
     Check(TestTypeMismatchRejected(), "类型不符必须失败");
     Check(TestMetaStructLinks(), "元数据接线");
+    Check(TestFlatBuffersRoundTrip(), "FlatBuffers 往返");
+    Check(VerifyPresetAssets(), "预设资产二进制校验");
 
     if (g_failed > 0)
     {

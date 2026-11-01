@@ -69,7 +69,15 @@ namespace hgl::graph
          */
         EnvironmentAsset *RegisterFromToml(const os_char *label, const char *content, const int size);
 
-        /// 读文件并注册（`.env.toml`）。返回 `nullptr` 表示失败。
+        /**
+         * 从二进制 FlatBuffers 缓冲注册一份环境配置（`.env.fb` / `.env`）。
+         *
+         * `label` 只用于报错与身份（不会读盘），可以传 `nullptr`。
+         * 返回 `nullptr` 表示失败，原因见 `GetLastError()`。
+         */
+        EnvironmentAsset *RegisterFromFlat(const os_char *label, const uint8 *data, const uint64 size);
+
+        /// 读文件并注册（`.env` / `.env.fb` / `.env.toml`）。返回 `nullptr` 表示失败。
         EnvironmentAsset *LoadFile(const OSString &path);
 
         /**

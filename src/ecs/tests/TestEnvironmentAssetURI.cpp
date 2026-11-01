@@ -10,13 +10,17 @@
 //   7. 跨字段业务规则（`schema` 版本、`sh9.bands` 条数）在解析层被拦下。
 //
 // 需要真实的文件读写（第 4 条），但**不需要**设备 / 窗口，因此 CI 里也能跑。
+#include <hgl/asset/AssetFactory.h>
 #include <hgl/asset/AssetURI.h>
 #include <hgl/ecs/systems/render/SkyEnvironmentConfig.h>
 #include <hgl/filesystem/FileSystem.h>
+#include <hgl/graph/asset/EnvironmentAssetFlat.h>
+#include <hgl/graph/asset/EnvironmentAssetObject.h>
 #include <hgl/graph/asset/EnvironmentAssetRegistry.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
+#include <hgl/serialize/TomlCodec.h>
 #include <hgl/utf.h>
 
 using namespace hgl;
@@ -163,9 +167,9 @@ int main(int, char **)
     {
         EnvironmentAssetRegistry registry;
 
-        Check(registry.GetOrLoadURI(OS_TEXT("res/env/bogus.toml")) == nullptr,
-              "非 .env.toml 扩展名应被拒绝");
-        Check(registry.GetLastError().Contains(".env.toml"),
+        Check(registry.GetOrLoadURI(OS_TEXT("res/env/bogus.txt")) == nullptr,
+              "非环境资产扩展名应被拒绝");
+        Check(registry.GetLastError().Contains(".env"),
               "失败原因应指明需要的扩展名");
 
         GLogInfo(u8"[4] 扩展名门禁 OK");
@@ -313,14 +317,19 @@ int main(int, char **)
 
     // ── 8. 目录入口：`env:@Name` 的前提 ────────────────────────────────────
     {
-        const OSString dir = OS_TEXT("build/env_uri_probe");
-
+        const OSString dir = OS_TEXT("build/env_uri_dir_probe");
+        hgl::filesystem::FileDelete(dir + OS_TEXT("/dir_a.env.toml"));
+        hgl::filesystem::FileDelete(dir + OS_TEXT("/dir_probe.env.toml"));
+        hgl::filesystem::FileDelete(dir + OS_TEXT("/dir_b.txt"));
         hgl::filesystem::MakePath(dir);
+
         Check(WriteProbeFile(dir + OS_TEXT("/dir_a.env.toml"), kDirEnvironment),
               "目录用例的临时文件应写入成功");
+        Check(WriteProbeFile(dir + OS_TEXT("/dir_probe.env.toml"), kNamedEnvironment),
+              "目录用例的第二个文件应写入成功");
 
         // 同一目录里再放一个非 `.env.toml` 文件：目录扫描必须跳过它
-        Check(WriteProbeFile(dir + OS_TEXT("/dir_b.toml"), kNamedEnvironment),
+        Check(WriteProbeFile(dir + OS_TEXT("/dir_b.txt"), kNamedEnvironment),
               "干扰文件应写入成功");
 
         EnvironmentAssetRegistry registry;
@@ -328,7 +337,7 @@ int main(int, char **)
         int loaded = 0;
         int errors = 0;
         Check(registry.LoadDirectory(dir, &loaded, &errors), "LoadDirectory 应成功");
-        Check(loaded == 2, "目录里两个 .env.toml 都应装入（probe.env.toml + dir_a）");
+        Check(loaded == 2, "目录里两个 .env.toml 都应装入（dir_probe.env.toml + dir_a）");
         Check(errors == 0, "目录装载不应有错误");
 
         // 这才是目录入口存在的理由：名字能被 `env:@Name` 命中
@@ -343,7 +352,69 @@ int main(int, char **)
               "不存在的目录应失败");
         Check(registry.GetCount() == before, "失败的目录扫描不应改动已有记录");
 
+        hgl::filesystem::FileDelete(dir + OS_TEXT("/dir_a.env.toml"));
+        hgl::filesystem::FileDelete(dir + OS_TEXT("/dir_probe.env.toml"));
+        hgl::filesystem::FileDelete(dir + OS_TEXT("/dir_b.txt"));
+
         GLogInfo(u8"[8] 目录入口 OK");
+    }
+
+    // ── 9. 二进制 .env 资产装载与自动补齐 ──────────────────────────────────────
+    {
+        const OSString dir = OS_TEXT("build/env_uri_bin_probe");
+        hgl::filesystem::FileDelete(dir + OS_TEXT("/probe_bin.env"));
+        hgl::filesystem::MakePath(dir);
+        const OSString bin_path = dir + OS_TEXT("/probe_bin.env");
+
+        EnvironmentSpec spec;
+        hgl::serialize::LoadFromTomlText<EnvironmentSpec>(kNamedEnvironment, spec);
+        spec.name = "Sky34.ProbeBin";
+
+        Check(SaveEnvironmentSpecToFlatBuffers(spec, bin_path), "二进制 .env 写入应成功");
+
+        EnvironmentAssetRegistry registry;
+        EnvironmentAsset *bin_asset = registry.GetOrLoadURI(bin_path);
+        Check(bin_asset != nullptr, "二进制 .env 装载应成功");
+        if (bin_asset)
+        {
+            Check(bin_asset->GetEnvironmentName() == "Sky34.ProbeBin", "二进制资产名应匹配");
+            Check(bin_asset->GetSpec().ambient.mode.value == SkyMode::CubeMapIBL, "模式应匹配");
+        }
+
+        // 无扩展名自动补齐
+        const OSString no_ext_path = dir + OS_TEXT("/probe_bin");
+        EnvironmentAsset *cached = registry.GetOrLoadURI(no_ext_path);
+        Check(cached == bin_asset, "无扩展名 URI 应能自动补齐到 .env 并命中");
+
+        GLogInfo(u8"[9] 二进制 .env 资产与自动补齐 OK");
+    }
+
+    // ── 10. AssetFactory 加载器与外壳对象 ────────────────────────────────────
+    {
+        EnvironmentAssetRegistry registry;
+        EnvironmentAsset *asset = registry.RegisterFromToml(
+            OS_TEXT("<mem>"), kNamedEnvironment, static_cast<int>(hgl::strlen(kNamedEnvironment)));
+        Check(asset != nullptr, "注册内存配置应成功");
+
+        Check(RegisterEnvironmentAssetLoader(&registry), "RegisterEnvironmentAssetLoader 应成功");
+
+        const AssetURI uri = AssetURI::Parse(OS_TEXT("env:@Sky34.Probe"), AssetType::Environment);
+        SharedPtr<AssetObject> obj = AssetFactory::Instance().Create(uri);
+        Check(obj.get() != nullptr, "AssetFactory::Create 应返回对象");
+
+        if (obj)
+        {
+            EnvironmentAssetObject *env_obj = dynamic_cast<EnvironmentAssetObject *>(obj.get());
+            Check(env_obj != nullptr, "返回对象应为 EnvironmentAssetObject");
+            if (env_obj)
+            {
+                Check(env_obj->GetEnvironmentAsset() == asset, "外壳持有的环境资产指针应匹配");
+                Check(env_obj->GetAssetName() == "Sky34.Probe", "AssetName 应为 Sky34.Probe");
+            }
+        }
+
+        UnregisterEnvironmentAssetLoader();
+        GLogInfo(u8"[10] AssetFactory 集成 OK");
     }
 
     if (g_failed)

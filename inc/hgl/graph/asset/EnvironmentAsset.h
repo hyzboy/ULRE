@@ -8,8 +8,8 @@
  * 环境资产把这段数据变成**有身份、可加载、可 diff** 的一份文件：
  *
  * ```
- * env:file:res/env/sky_34_cube_ibl.env.toml   ← 落盘形态（人写 / 版本管理）
- * env:@Sky34CubeIBL                           ← 表内名字引用（文件里的 name =）
+ * env:file:ShaderLibrary/asset/environment/sky34_cube_ibl.env   ← 自有二进制资产形态（FlatBuffers）
+ * env:@Sky34.CubeMapIBL                                         ← 表内名字引用（资产里的 name =）
  * ```
  *
  * | 层 | 类型 | 回答的问题 |
