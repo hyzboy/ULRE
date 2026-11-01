@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/type/EnumUtil.h>
+#include <hgl/serialize/EnumMeta.h>
 #include <cstring>
 
 namespace hgl::graph::mtl
@@ -16,41 +17,22 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(Vec2Position, None)
     };
 
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
-    //   GetVertexInputModeName：枚举 → 名字（switch）
-    //   ParseVertexInputMode：名字 → 枚举（线性查表）
-    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
-    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
+    //   GetVertexInputModeName：枚举 → 名字
+    //   ParseVertexInputMode：名字 → 枚举
+    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
     inline constexpr uint32_t VertexInputModeCount =
         static_cast<uint32_t>(VertexInputMode::None) + 1;
 
     inline const char *GetVertexInputModeName(const VertexInputMode mode) noexcept
     {
-        switch (mode)
-        {
-        case VertexInputMode::Vec2Position: return "Vec2Position";
-        case VertexInputMode::Vec3Position: return "Vec3Position";
-        case VertexInputMode::Vec2IntPosition: return "Vec2IntPosition";
-        case VertexInputMode::None:           return "None";
-        }
-        return "Vec3Position";
+        const char *name = hgl::serialize::EnumNameOf(mode);
+        return name ? name : "Vec3Position";
     }
 
     inline bool ParseVertexInputMode(const char *name, VertexInputMode &out) noexcept
     {
-        if (!name || !name[0])
-            return false;
-
-        for (uint32_t i = 0; i < VertexInputModeCount; ++i)
-        {
-            const VertexInputMode mode = static_cast<VertexInputMode>(i);
-            if (std::strcmp(name, GetVertexInputModeName(mode)) == 0)
-            {
-                out = mode;
-                return true;
-            }
-        }
-        return false;
+        return hgl::serialize::EnumParse(name, out);
     }
 
 
@@ -69,27 +51,17 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(Passthrough3D, PixelToLocal)
     };
 
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
-    //   GetPositionMappingModeName：枚举 → 名字（switch）
-    //   ParsePositionMappingMode：名字 → 枚举（线性查表）
-    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
-    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
+    //   GetPositionMappingModeName：枚举 → 名字
+    //   ParsePositionMappingMode：名字 → 枚举
+    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
     inline constexpr uint32_t PositionMappingModeCount =
         static_cast<uint32_t>(PositionMappingMode::PixelToLocal) + 1;
 
     inline const char *GetPositionMappingModeName(const PositionMappingMode mode) noexcept
     {
-        switch (mode)
-        {
-        case PositionMappingMode::Passthrough3D: return "Passthrough3D";
-        case PositionMappingMode::LiftXY_XY0: return "LiftXY_XY0";
-        case PositionMappingMode::LiftXY_X0Y: return "LiftXY_X0Y";
-        case PositionMappingMode::LiftXY_0XY: return "LiftXY_0XY";
-        case PositionMappingMode::NDCLift: return "NDCLift";
-        case PositionMappingMode::ZeroOneToNDC: return "ZeroOneToNDC";
-        case PositionMappingMode::PixelToLocal: return "PixelToLocal";
-        }
-        return "Passthrough3D";
+        const char *name = hgl::serialize::EnumNameOf(mode);
+        return name ? name : "Passthrough3D";
     }
 
     // Stage 2 映射模块**输入**使用的 Position 分量数。
@@ -110,19 +82,7 @@ namespace hgl::graph::mtl
 
     inline bool ParsePositionMappingMode(const char *name, PositionMappingMode &out) noexcept
     {
-        if (!name || !name[0])
-            return false;
-
-        for (uint32_t i = 0; i < PositionMappingModeCount; ++i)
-        {
-            const PositionMappingMode mode = static_cast<PositionMappingMode>(i);
-            if (std::strcmp(name, GetPositionMappingModeName(mode)) == 0)
-            {
-                out = mode;
-                return true;
-            }
-        }
-        return false;
+        return hgl::serialize::EnumParse(name, out);
     }
 
 
@@ -136,40 +96,22 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(World, CameraFacingAxisY)
     };
 
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
-    //   GetOrientationModeName：枚举 → 名字（switch）
-    //   ParseOrientationMode：名字 → 枚举（线性查表）
-    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
-    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
+    //   GetOrientationModeName：枚举 → 名字
+    //   ParseOrientationMode：名字 → 枚举
+    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
     inline constexpr uint32_t OrientationModeCount =
         static_cast<uint32_t>(OrientationMode::CameraFacingAxisY) + 1;
 
     inline const char *GetOrientationModeName(const OrientationMode mode) noexcept
     {
-        switch (mode)
-        {
-        case OrientationMode::World:         return "World";
-        case OrientationMode::CameraFacingFree: return "CameraFacingFree";
-        case OrientationMode::CameraFacingAxisY: return "CameraFacingAxisY";
-        }
-        return "World";
+        const char *name = hgl::serialize::EnumNameOf(mode);
+        return name ? name : "World";
     }
 
     inline bool ParseOrientationMode(const char *name, OrientationMode &out) noexcept
     {
-        if (!name || !name[0])
-            return false;
-
-        for (uint32_t i = 0; i < OrientationModeCount; ++i)
-        {
-            const OrientationMode mode = static_cast<OrientationMode>(i);
-            if (std::strcmp(name, GetOrientationModeName(mode)) == 0)
-            {
-                out = mode;
-                return true;
-            }
-        }
-        return false;
+        return hgl::serialize::EnumParse(name, out);
     }
 
 
@@ -182,39 +124,22 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(World, FixedPixelSize)
     };
 
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
-    //   GetScaleModeName：枚举 → 名字（switch）
-    //   ParseScaleMode：名字 → 枚举（线性查表）
-    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
-    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
+    //   GetScaleModeName：枚举 → 名字
+    //   ParseScaleMode：名字 → 枚举
+    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
     inline constexpr uint32_t ScaleModeCount =
         static_cast<uint32_t>(ScaleMode::FixedPixelSize) + 1;
 
     inline const char *GetScaleModeName(const ScaleMode mode) noexcept
     {
-        switch (mode)
-        {
-        case ScaleMode::World:               return "World";
-        case ScaleMode::FixedPixelSize: return "FixedPixelSize";
-        }
-        return "World";
+        const char *name = hgl::serialize::EnumNameOf(mode);
+        return name ? name : "World";
     }
 
     inline bool ParseScaleMode(const char *name, ScaleMode &out) noexcept
     {
-        if (!name || !name[0])
-            return false;
-
-        for (uint32_t i = 0; i < ScaleModeCount; ++i)
-        {
-            const ScaleMode mode = static_cast<ScaleMode>(i);
-            if (std::strcmp(name, GetScaleModeName(mode)) == 0)
-            {
-                out = mode;
-                return true;
-            }
-        }
-        return false;
+        return hgl::serialize::EnumParse(name, out);
     }
 
 
@@ -230,42 +155,22 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(WorldCameraVP, ClipPassthrough)
     };
 
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
-    //   GetProjectionModeName：枚举 → 名字（switch）
-    //   ParseProjectionMode：名字 → 枚举（线性查表）
-    // 新增模式只需改枚举 + 本 switch（名字表随之自动覆盖）。
-    // 2026-10-14（S3b-3）：原为 `MaterialDefinitionFile.cpp` 的本地单向表（名字只在那里活着）。
+    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
+    //   GetProjectionModeName：枚举 → 名字
+    //   ParseProjectionMode：名字 → 枚举
+    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
     inline constexpr uint32_t ProjectionModeCount =
         static_cast<uint32_t>(ProjectionMode::ClipPassthrough) + 1;
 
     inline const char *GetProjectionModeName(const ProjectionMode mode) noexcept
     {
-        switch (mode)
-        {
-        case ProjectionMode::WorldCameraVP: return "WorldCameraVP";
-        case ProjectionMode::LocalToWorldOnly: return "LocalToWorldOnly";
-        case ProjectionMode::OrthoViewport: return "OrthoViewport";
-        case ProjectionMode::OrthoThenLocalToWorld: return "OrthoThenLocalToWorld";
-        case ProjectionMode::ClipPassthrough: return "ClipPassthrough";
-        }
-        return "WorldCameraVP";
+        const char *name = hgl::serialize::EnumNameOf(mode);
+        return name ? name : "WorldCameraVP";
     }
 
     inline bool ParseProjectionMode(const char *name, ProjectionMode &out) noexcept
     {
-        if (!name || !name[0])
-            return false;
-
-        for (uint32_t i = 0; i < ProjectionModeCount; ++i)
-        {
-            const ProjectionMode mode = static_cast<ProjectionMode>(i);
-            if (std::strcmp(name, GetProjectionModeName(mode)) == 0)
-            {
-                out = mode;
-                return true;
-            }
-        }
-        return false;
+        return hgl::serialize::EnumParse(name, out);
     }
 
 
@@ -347,3 +252,40 @@ namespace hgl::graph::mtl
     }
 
 } // namespace hgl::graph::mtl
+// ── 枚举登记（拼写与 GUI 说明的唯一真源）─────────────────────────────────────
+
+HGL_ENUM_BEGIN(hgl::graph::mtl::VertexInputMode)
+    HGL_ENUM_ITEM(Vec2Position,   "layout(location=0) in vec2 Position")
+    HGL_ENUM_ITEM(Vec3Position,   "layout(location=0) in vec3 Position")
+    HGL_ENUM_ITEM(Vec2IntPosition,"layout(location=0) in ivec2 Position（整数，如文字像素坐标）")
+    HGL_ENUM_ITEM(None,           "无外部顶点输入（CharQuad 等自持全部 SSBO）")
+HGL_ENUM_END(hgl::graph::mtl::VertexInputMode)
+
+HGL_ENUM_BEGIN(hgl::graph::mtl::PositionMappingMode)
+    HGL_ENUM_ITEM(Passthrough3D, "vec4(Position,1.0)，标准 3D")
+    HGL_ENUM_ITEM(LiftXY_XY0,    "2D→3D 抬升，Z=0")
+    HGL_ENUM_ITEM(LiftXY_X0Y,    "2D→3D 抬升，贴地，Y 向上")
+    HGL_ENUM_ITEM(LiftXY_0XY,    "2D→3D 抬升，X=0")
+    HGL_ENUM_ITEM(NDCLift,       "输入已是 NDC XY，直接升维")
+    HGL_ENUM_ITEM(ZeroOneToNDC,  "[0,1] 映射到 [-1,1] 后再升维")
+    HGL_ENUM_ITEM(PixelToLocal,  "像素坐标直接作为本地坐标传递")
+HGL_ENUM_END(hgl::graph::mtl::PositionMappingMode)
+
+HGL_ENUM_BEGIN(hgl::graph::mtl::OrientationMode)
+    HGL_ENUM_ITEM(World,              "应用 LocalToWorld 矩阵（标准 3D / 2D L2W）")
+    HGL_ENUM_ITEM(CameraFacingFree,   "Billboard：朝向相机，无轴约束")
+    HGL_ENUM_ITEM(CameraFacingAxisY,  "Billboard：朝向相机，Y 轴固定")
+HGL_ENUM_END(hgl::graph::mtl::OrientationMode)
+
+HGL_ENUM_BEGIN(hgl::graph::mtl::ScaleMode)
+    HGL_ENUM_ITEM(World,          "世界空间缩放（普通 L2W 缩放）")
+    HGL_ENUM_ITEM(FixedPixelSize, "固定像素大小（UI/HUD billboard）")
+HGL_ENUM_END(hgl::graph::mtl::ScaleMode)
+
+HGL_ENUM_BEGIN(hgl::graph::mtl::ProjectionMode)
+    HGL_ENUM_ITEM(WorldCameraVP,          "camera.vp * world_pos（标准 3D 透视/正射）")
+    HGL_ENUM_ITEM(LocalToWorldOnly,       "l2w * local_pos（无相机投影）")
+    HGL_ENUM_ITEM(OrthoViewport,          "viewport.ortho_matrix * local_pos（2D Ortho）")
+    HGL_ENUM_ITEM(OrthoThenLocalToWorld,  "l2w * (viewport.ortho_matrix * local_pos)")
+    HGL_ENUM_ITEM(ClipPassthrough,        "已在 clip 空间，直接输出")
+HGL_ENUM_END(hgl::graph::mtl::ProjectionMode)

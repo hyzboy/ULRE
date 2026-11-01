@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/CoreType.h>
+#include <hgl/serialize/EnumMeta.h>
 
 #include <cstdint>
 #include <cstring>
@@ -15,24 +16,18 @@ namespace hgl::graph::mtl
         CharQuad,            // 每线程 1 字符实例 → quad（6 顶点 2 三角形）
     };
 
-    // ── 名字注册表（单一真源；T1 口径：名字↔值只此一处）──────────────
+    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
     inline constexpr uint32 MeshShaderModeCount =
         static_cast<uint32>(MeshShaderMode::CharQuad) + 1;
 
     inline const char *GetMeshShaderModeName(const MeshShaderMode mode) noexcept
     {
-        switch (mode)
-        {
-        case MeshShaderMode::VertexPassthrough: return "VertexPassthrough";
-        case MeshShaderMode::LineQuad:          return "LineQuad";
-        case MeshShaderMode::CharQuad:          return "CharQuad";
-        }
-        return "VertexPassthrough";
+        const char *name = hgl::serialize::EnumNameOf(mode);
+        return name ? name : "VertexPassthrough";
     }
 
     // TOML 值 → 枚举。空串 = VertexPassthrough（缺省语义）；
     // 未知值返回 false（拼写错误 = 显式解析失败，而非静默降级到默认模式）。
-    // 名字只在 GetMeshShaderModeName 里写一份（新增模式改枚举 + 那个 switch）。
     inline bool ParseMeshShaderMode(const char *name, MeshShaderMode &out) noexcept
     {
         if (!name || !name[0])
@@ -41,16 +36,7 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        for (uint32 i = 0; i < MeshShaderModeCount; ++i)
-        {
-            const MeshShaderMode mode = static_cast<MeshShaderMode>(i);
-            if (std::strcmp(name, GetMeshShaderModeName(mode)) == 0)
-            {
-                out = mode;
-                return true;
-            }
-        }
-        return false;
+        return hgl::serialize::EnumParse(name, out);
     }
 
     // ── 模式辅助（C4：CharQuad 特判集中于此，调用方不再散写枚举比较）──
@@ -75,3 +61,10 @@ namespace hgl::graph::mtl
         return (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 2u : 1u;
     }
 }
+// ── 枚举登记（拼写与 GUI 说明的唯一真源）─────────────────────────────────────
+
+HGL_ENUM_BEGIN(hgl::graph::mtl::MeshShaderMode)
+    HGL_ENUM_ITEM(VertexPassthrough, "每线程 1 顶点（默认，模拟 VS）")
+    HGL_ENUM_ITEM(LineQuad,          "每线程 1 线段 → quad")
+    HGL_ENUM_ITEM(CharQuad,          "每线程 1 字符实例 → quad（6 顶点 2 三角形）")
+HGL_ENUM_END(hgl::graph::mtl::MeshShaderMode)

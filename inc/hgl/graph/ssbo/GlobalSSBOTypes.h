@@ -2,6 +2,7 @@
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/type/String.h>
+#include <hgl/serialize/EnumMeta.h>
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 
@@ -14,63 +15,28 @@ namespace hgl::graph
         return type >= GlobalSSBOType::BEGIN_RANGE && type <= GlobalSSBOType::END_RANGE;
     }
 
-    /// 未覆盖类型的名字哨兵（`GetGlobalSSBOTypeName` 的 default 出口）。
-    /// 单独命名是为了让下面的 constexpr 覆盖性断言能**按指针**判定「这个类型没被覆盖」——
-    /// switch + default 漏 case 编译期不报，只会在这里静默显形。
+    /// 未覆盖类型的名字哨兵（`GetGlobalSSBOTypeName` 的未登记出口）。
     inline constexpr const char *kUnknownGlobalSSBOTypeName = "UnknownGlobalSSBO";
 
-    inline constexpr const char *GetGlobalSSBOTypeName(const GlobalSSBOType type) noexcept
+    /// 拼写真源 = 本文件末尾的 `HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)` 登记块。
+    inline const char *GetGlobalSSBOTypeName(const GlobalSSBOType type) noexcept
     {
-        switch (type)
-        {
-        case GlobalSSBOType::MeshDrawParams:        return "MeshDrawParams";
-        case GlobalSSBOType::PBRSurface:           return "PBRSurface";
-        case GlobalSSBOType::EmissiveSurface:      return "EmissiveSurface";
-        case GlobalSSBOType::TransmissionSurface:  return "TransmissionSurface";
-        case GlobalSSBOType::GeometryAABB:         return "GeometryAABB";
-        case GlobalSSBOType::MaterialData:         return "MaterialData";
-        default:                                   return kUnknownGlobalSSBOTypeName;
-        }
+        const char *name = hgl::serialize::EnumNameOf(type);
+        return name ? name : kUnknownGlobalSSBOTypeName;
     }
 
-    /// 类型名表必须覆盖**全部**枚举项（遍历全枚举，不手列清单 ⇒ 新增类型时自动被要求补 case）。
-    constexpr bool GlobalSSBOTypeNameTableComplete() noexcept
-    {
-        for (uint32_t i = 0; i < GlobalSSBOTypeCount; ++i)
-        {
-            if (GetGlobalSSBOTypeName(static_cast<GlobalSSBOType>(i)) == kUnknownGlobalSSBOTypeName)
-                return false;
-        }
-
-        return true;
-    }
-    static_assert(GlobalSSBOTypeNameTableComplete(),
-        "GetGlobalSSBOTypeName 必须覆盖 GlobalSSBOType 的全部枚举项（漏 case 会静默返回 Unknown）");
+    /// 类型名表必须覆盖**全部**枚举项：登记块项数与 `GlobalSSBOTypeCount` 对不上时
+    /// 编译期直接失败（断言写在本文件末尾的登记块之后——先断言会抢先实例化空登记表）。
 
     /**
      * 名字 → 类型（大小写不敏感）。
      *
-     * 名字↔值的唯一真源仍是上面的 `GetGlobalSSBOTypeName`：本函数**遍历全枚举**
-     * 反查，不另立一张字面量表，新增类型时自动可用。找不到返回 `false` 且
-     * `out` 不变。
+     * 名字↔值的唯一真源是上面的登记块，本函数只转发，不另立一张字面量表。
+     * 找不到返回 `false` 且 `out` 不变。
      */
     inline bool ParseGlobalSSBOType(const char *text, GlobalSSBOType &out) noexcept
     {
-        if (!text || !text[0])
-            return false;
-
-        for (uint32_t i = 0; i < GlobalSSBOTypeCount; ++i)
-        {
-            const auto type = static_cast<GlobalSSBOType>(i);
-
-            if (hgl::stricmp(text, GetGlobalSSBOTypeName(type)) == 0)
-            {
-                out = type;
-                return true;
-            }
-        }
-
-        return false;
+        return hgl::serialize::EnumParse(text, out);
     }
 
     inline constexpr uint32_t GetGlobalSSBOTypeStructVersion(const GlobalSSBOType type) noexcept
@@ -170,3 +136,16 @@ namespace hgl::graph
         uint32_t reserve_rows;
     };
 }
+// ── 枚举登记（拼写与 GUI 说明的唯一真源）─────────────────────────────────────
+
+HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)
+    HGL_ENUM_ITEM(MeshDrawParams,        "网格绘制参数行")
+    HGL_ENUM_ITEM(PBRSurface,            "PBR 表面材质字段行")
+    HGL_ENUM_ITEM(EmissiveSurface,       "自发光表面材质字段行")
+    HGL_ENUM_ITEM(TransmissionSurface,   "透射表面材质字段行")
+    HGL_ENUM_ITEM(GeometryAABB,          "几何本地 AABB（与 MeshDrawParams 同 ID 索引的平行表）")
+    HGL_ENUM_ITEM(MaterialData,          "材质数据组件行")
+HGL_ENUM_END(hgl::graph::GlobalSSBOType)
+
+static_assert(::hgl::serialize::EnumMeta<::hgl::graph::GlobalSSBOType>::Count == ::hgl::graph::GlobalSSBOTypeCount,
+    "GetGlobalSSBOTypeName 必须覆盖 GlobalSSBOType 的全部枚举项（漏登记会静默返回 Unknown）");
