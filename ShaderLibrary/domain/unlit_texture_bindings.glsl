@@ -10,6 +10,8 @@
 #define HGL_DOMAIN_UNLIT_TEXTURE_BINDINGS_GLSL
 
 #define TrilinearSampler 2u
+#define TrilinearClampSampler 7u
+
 
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
 {

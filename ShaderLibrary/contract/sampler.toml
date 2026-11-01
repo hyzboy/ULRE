@@ -70,3 +70,11 @@ mag_filter = "Linear"
 min_filter = "Linear"
 mipmap_mode = "Linear"
 address_mode = "ClampToEdge"
+
+[[samplers]]
+name = "TrilinearClamp"
+mag_filter = "Linear"
+min_filter = "Linear"
+mipmap_mode = "Linear"
+address_mode = "ClampToEdge"
+

@@ -180,7 +180,7 @@ namespace hgl::graph::mtl
 
         const bool shadow_pass = (input.profile == DomainOptionsProfile::ShadowCaster);
 
-        // 环境光 provider 是 options 里的**唯一**一行 include（字面路径，见头文件）。
+        // 环境光 provider 是 options 里的**第一行** include（字面路径，见头文件）。
         // ForwardLit 少了它 → 主着色器里 EvalAmbientLight 未定义 → 编译期才炸，
         // 所以这里提前拦住。
         if (input.profile == DomainOptionsProfile::ForwardLit
@@ -275,13 +275,33 @@ namespace hgl::graph::mtl
         }
 
         // ── 环境光 provider ─────────────────────────────────────────────────
-        // 放在最后：主着色器里 frag_options.glsl 位于 bindings 之后、其它公共契约之前，
+        // 主着色器里 frag_options.glsl 位于 bindings 之后、其它公共契约之前，
         // 该模块只定义 EvalAmbientLight 一个函数，位置不影响编译产物。
         if (input.profile == DomainOptionsProfile::ForwardLit)
         {
             text_buffer += "#include \"";
             text_buffer += input.ambient_include_path;
             text_buffer += "\"\n";
+        }
+
+        // ── 材质源贴图的投影表示 ────────────────────────────────────────────
+        // 主着色器的 `SampleMaterialColor` 永远只调 `SampleMaterialProjected`，
+        // 方向/uv 到采样坐标的换算放在这里选中的那份模块里：
+        //   2D        → 直接用 uv0（`material_source_texture` 自己的默认 include，
+        //               此处不重复发射，保持纯 2D 材质的历史字节）
+        //   cubemap   → uv 反算方向 → samplerCubeArray
+        //   八面体    → 方向 → 八面体逆映射 uv → 2D 采样
+        // 深度 pass 没有材质源槽 ⇒ 不发射。
+        if (!shadow_pass
+         && input.material_source_projection != MaterialTextureProjection::Texture2D)
+        {
+            const char *projection_include =
+                GetMaterialTextureProjectionIncludePath(
+                    input.material_source_projection);
+            if (!IsValidModulePath(projection_include))
+                return false;
+
+            AppendInclude(text_buffer, projection_include);
         }
 
         out_options_glsl = text_buffer;

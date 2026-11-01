@@ -268,6 +268,21 @@ namespace hgl::graph::mtl
             input.face_normal_fallback = ResolveFaceNormalFallback(definition, request);
             input.vertex_normal_present = ResolveVertexNormalPresent(definition, request);
 
+            // 材质源贴图的投影表示（2D / cubemap / 八面体展开图）。
+            // 只有**经 material_source_texture 采样**的模板才走 SampleMaterialProjected；
+            // PBR 系的材质源模块自己按语义采样，塞一份用不到的投影实现进去只会给
+            // 那些程序凭空多挂一个模块（并可能触发它们的资源闭包校验）。
+            // 注意 `material_source_module_name` 是 `const char *`（模块名的**规范
+            // 字符串**，不是 AnsiString）：写成 `== "..."` 是指针比较，恒为假。
+            if (input.profile == DomainOptionsProfile::ForwardUnlit
+             && definition.material_source_module_name
+             && hgl::strcmp(definition.material_source_module_name,
+                            "material_source_texture") == 0)
+            {
+                input.material_source_projection =
+                    ResolveMaterialSourceProjection(request.recipe);
+            }
+
             // compile_defines（领域默认值或配方覆盖）→ 逐条 `#define <name> 1`。
             // 只在本函数内活着：EmitDomainOptions 同步读完，不留悬垂指针。
             std::vector<const char *> definition_defines;

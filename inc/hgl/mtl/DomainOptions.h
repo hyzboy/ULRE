@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/MaterialRecipe.h>
+#include <hgl/mtl/MaterialTextureProjection.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph::mtl
@@ -48,8 +49,12 @@ namespace hgl::graph::mtl
     // 顺带记一条 glslang 硬约束：`#include` 不接受宏展开（`#define X "a.glsl"` +
     // `#include X` 会报 "must be followed by a header name"），所以只能是字面路径。
     //
-    // 输出形态：只含 `#define` 行与至多一行 `#include`，无注释、无空行——
-    // 因为这段文本同时充当 program 身份的一部分。
+    // 同理，材质源贴图的**投影表示**（2D / cubemap / 八面体展开图）也不是宏能表达的：
+    // 主着色器只调 `SampleMaterialTexel`，谁是它的实现由这里多发的一行 `#include` 决定。
+    // 这是 options 里的第二行（也是最后一行）include，位置固定在 ambient 之后。
+    //
+    // 输出形态：只含 `#define` 行与末尾至多两行 `#include`（ambient / 投影），
+    // 无注释、无空行——因为这段文本同时充当 program 身份的一部分。
 
     /// 主着色器的宏族。语义与旧的 `ShaderConfigProfile` 相同，但**刻意不复用**：
     /// 这是运行时可用的数据契约，不反向依赖程序构建模块。
@@ -64,6 +69,14 @@ namespace hgl::graph::mtl
     struct DomainOptionsInput
     {
         DomainOptionsProfile profile = DomainOptionsProfile::None;
+
+        /// 材质源 `base_color` 槽贴图的**投影表示**（2D / cubemap / 八面体展开图）。
+        /// 主着色器里 `SampleMaterialColor` 的调用点不随投影变化——变的是它调的
+        /// `SampleMaterialTexel` 由哪个模块提供，所以投影只表现为 options 末尾多出
+        /// 的那一行 `#include`（见 `MaterialTextureProjection.h`）。
+        /// 深度/阴影 pass 不采样材质源 ⇒ 保持 Texture2D 即可（不发射）。
+        MaterialTextureProjection material_source_projection =
+            MaterialTextureProjection::Texture2D;
 
         /// 主着色器固定 include 表里**不含** ambient 模块，故 ForwardLit 必填。
         /// 形如 `"module/provider/ambient_light/ambient_light_sky.glsl"`；ForwardUnlit / ShadowCaster

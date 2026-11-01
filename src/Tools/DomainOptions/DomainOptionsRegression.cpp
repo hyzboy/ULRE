@@ -6,7 +6,8 @@
 //
 // 用例覆盖：四种 profile 的逐字节文本、纯度（只含 #define / #include）、
 // 数字格式（float 六位小数）、channels==0 跳过、非法槽名拒绝、
-// ForwardLit 缺 ambient 路径拒绝、profile 路由与渲染状态映射；
+// ForwardLit 缺 ambient 路径拒绝、材质源贴图投影表示（2D 不发 / cubemap 与八面体各发一行）、
+// profile 路由与渲染状态映射；
 // 以及 mesh_options.glsl 的逐字节文本与纯度（严格只含 #include 模块行）。
 
 #include <hgl/mtl/DomainOptions.h>
@@ -327,6 +328,35 @@ namespace
                   "#define HGL_ALPHA_TEST 1\n"
                   "#define HGL_ALPHA_CUTOFF 0.500000\n",
                   unlit);
+
+        // 材质源贴图的投影表示：2D 走 material_source_texture 自带的默认 include，
+        // 所以 options 里**一行都不发**（保持纯 2D 材质的历史字节）；cubemap 与
+        // 八面体展开图各发一行 include，位置在所有 #define 之后。
+        DomainOptionsInput cube = unlit;
+        cube.material_source_projection = MaterialTextureProjection::CubeMap;
+
+        CheckText("unlit: cubemap projection appends one include",
+                  "#define HGL_ALPHA_TEST 1\n"
+                  "#define HGL_ALPHA_CUTOFF 0.500000\n"
+                  "#include \"module/provider/material_source/texture_projection/texture_projection_cube.glsl\"\n",
+                  cube);
+
+        DomainOptionsInput oct = unlit;
+        oct.material_source_projection = MaterialTextureProjection::Octahedral;
+
+        CheckText("unlit: octahedral projection appends one include",
+                  "#define HGL_ALPHA_TEST 1\n"
+                  "#define HGL_ALPHA_CUTOFF 0.500000\n"
+                  "#include \"module/provider/material_source/texture_projection/texture_projection_octahedral.glsl\"\n",
+                  oct);
+
+        DomainOptionsInput flat = unlit;
+        flat.material_source_projection = MaterialTextureProjection::Texture2D;
+
+        CheckText("unlit: 2D projection emits no include (default lives in the module)",
+                  "#define HGL_ALPHA_TEST 1\n"
+                  "#define HGL_ALPHA_CUTOFF 0.500000\n",
+                  flat);
     }
 
     void RunRejections()

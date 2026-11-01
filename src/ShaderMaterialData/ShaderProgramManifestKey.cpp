@@ -1,5 +1,7 @@
 #include <hgl/mtl/ShaderProgramManifestKey.h>
 
+#include <hgl/mtl/DomainEntrySource.h>
+#include <hgl/mtl/MaterialTextureProjection.h>
 #include <hgl/util/hash/FNV1a.h>
 
 namespace hgl::graph::mtl
@@ -33,6 +35,19 @@ namespace hgl::graph::mtl
                 profile,
                 request.shader_program_purpose,
                 request.ambient_module_name);
+
+        // 材质源贴图的**投影表示**（2D / cubemap / 八面体展开图）也是变体维度：
+        // 它改的是 frag_options 末尾那行 include，即选中的 `SampleMaterialProjected`
+        // 实现不同 ⇒ SPIR-V 不同。折进的是**投影枚举**而不是 resource_id ——
+        // 指向同一投影的两个不同文件必须共享同一份 SPV（与上面"键不得依赖贴图
+        // 绑定"一致：绑定换文件但投影不变时键不动）。
+        // 条件与 DomainShaderBuildBackend::BuildDomainOptions 完全一致：只有经
+        // material_source_texture 采样的前向无光照材质才会发射那行 include。
+        if (!IsDomainDepthPurpose(request.shader_program_purpose)
+         && definition.material_source_module_name == "material_source_texture")
+        {
+            h << static_cast<uint32>(ResolveMaterialSourceProjection(request.recipe));
+        }
 
         // 解析后的渲染模板请求：模板 ID / 版本 / 各槽位模块名与 include 路径。
         //

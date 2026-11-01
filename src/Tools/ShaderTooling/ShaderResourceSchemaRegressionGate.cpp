@@ -191,7 +191,7 @@ namespace
     /// 刻意写成「门自己持有的常量」而不是去问被测代码：这条断言的价值就是
     /// 在模块被误删/误加时硬失败，跟着实现走就等于没测。历史上每次增删模块
     /// 都在这里改一行并留下理由，变更记录见 `RunGlslModuleRegistryCase`。
-    constexpr int kGlslModuleCount = 84;
+    constexpr int kGlslModuleCount = 88;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)
@@ -6258,6 +6258,9 @@ namespace
             // 超薄架构阶段二之二：新增 ntb_none 空对象（81 → 82）。
             // 顶点色统一阶段：新增 s1_color_default 空对象（82 → 83）。
             // 网格阶段收口 Layer 2a：新增 s1_stream_defaults 空对象（83 → 84）。
+            // 材质源投影阶段：新增 texture_projection_{2d,cube,octahedral,equirect}
+            // （84 → 88）；同名同签名的 SampleMaterialProjected 由
+            // frag_options 选其一，主着色器不出现投影分支。
             // 计数常量已收敛到 `kGlslModuleCount`（文件顶部），增删模块时
             // 只改那一处并在此追加一行理由。
             if (file_count != kGlslModuleCount)
@@ -7039,6 +7042,7 @@ namespace
             { "ShadowPCF",      4u },
             { "Terrain",        5u },
             { "UI",             6u },
+            { "TrilinearClamp", 7u },
         };
         if (lib.GetCount() != uint32_t(std::size(expected)))
         {
@@ -7103,6 +7107,12 @@ namespace
             && (pcf->compareEnable != VK_TRUE
              || pcf->addressModeU != VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE))
             result.diagnostics.emplace_back("ShadowPCF compare/clamp mismatch");
+
+        const VkSamplerCreateInfo *clamp = lib.GetCreateInfo(7);
+        if (clamp
+            && (clamp->addressModeU != VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+             || clamp->mipmapMode != VK_SAMPLER_MIPMAP_MODE_LINEAR))
+            result.diagnostics.emplace_back("TrilinearClamp addressMode/mipmap mismatch");
 
         // 6. sampler 宏注入（name→idx 与运行时 binding=1 数组下标一致）。
         const std::vector<std::string> names =

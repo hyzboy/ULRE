@@ -202,7 +202,8 @@ namespace hgl::graph::mtl
         // 静默取索引 0（门禁 S.material-domain-sampler-presets-exist 会核对）。
         constexpr const char *PbrSurfaceSamplers[] = {
             "Trilinear", "Linear", "ShadowPCF"};
-        constexpr const char *TextureSurfaceSamplers[] = {"Trilinear"};
+        constexpr const char *TextureSurfaceSamplers[] = {
+            "Trilinear", "TrilinearClamp"};
         // SDF 文本默认线性过滤；位图形态由资产声明 samplers=["Nearest"] 覆盖。
         constexpr const char *TextSurfaceSamplers[] = {"Linear"};
         // 天空 cube 贴图走三线性过滤（原 sky_cube 定义显式声明，归档到契约）。
