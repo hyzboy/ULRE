@@ -241,34 +241,96 @@ namespace hgl::ecs
 
     void EnvironmentSystem::SetDefaultSkyGradientSH()
     {
+        // 没有显式烘焙数据时的兜底：无论配置里写的是什么，都按默认解析天空重算一次。
+        sky_config.sh_auto = true;
+        WriteSkySHFromMainLight();
+    }
+
+    bool EnvironmentSystem::UpdateSkySHFromSun()
+    {
+        if (!sky_config.sh_auto || !sky_config.sh_track_sun)
+            return false;
+
+        return WriteSkySHFromMainLight();
+    }
+
+    bool EnvironmentSystem::WriteSkySHFromMainLight()
+    {
         auto *info = EditAmbientEnvInfo();
         if (!info)
         {
             GLogWarning(u8"[EnvironmentSystem] 没有 ambient_env 参数块，SH 系数未写入");
-            return;
+            return false;
         }
 
-        // 天空梯度 L(ω) = c0 + c1·(ω·ẑ) → SH9 系数。
-        // 按 `ambient_light_sh.glsl` 的余弦卷积常数反解，使 GPU 端求出的辐照度恰为
-        // ∫L·max(n·ω,0)dω = π·c0 + (2π/3)·c1·(n·ẑ) —— 解析真值，可与 IBL 版直接比亮度。
-        constexpr float PI = 3.14159265358979323846f;
-        constexpr float kConvolveL0 = 0.886227f;    // ambient_light_sh 中 l=0 的余弦卷积常数
-        constexpr float kConvolveL1 = 1.023327f;    // ambient_light_sh 中 l=1 的余弦卷积常数
+        // 主方向光 = 光源行 0（`kMainLightRowIndex`）。光源表可能还没初始化
+        //（`Ensure()` 尚未被任何光源调用触发），此时按"正顶太阳、零强度"合成：
+        // 天光只剩天空渐变，不会因为"没有光源系统"而黑屏。
+        math::Vector4f sun_dir(0.0f, 0.0f, 1.0f, 0.0f);
+        math::Vector4f sun_color(1.0f, 0.98f, 0.95f, 1.0f);
+        float sun_intensity = 0.0f;
 
-        const math::Vector3f c0(0.60f, 0.65f, 0.75f);   // 上下平均辐亮度（偏冷的天空色）
-        const math::Vector3f c1(0.25f, 0.28f, 0.34f);   // 垂直梯度；c1 ≤ c0 才能保证地平线下非负
+        if (context)
+        {
+            const graph::LightRow *row =
+                context->GetLightRowTable().Row(graph::kMainLightRowIndex);
 
-        const math::Vector3f A = c0 * (PI / kConvolveL0);
-        const math::Vector3f B = c1 * ((2.0f * PI / 3.0f) / kConvolveL1);
+            if (row)
+            {
+                sun_dir       = row->direction_intensity;
+                sun_color     = row->color_angle;
+                sun_intensity = row->direction_intensity.w;
+            }
+        }
 
-        for (int i = 0; i < 9; ++i)
-            info->sh[i] = math::Vector4f(0.0f);
+        // 光"没变"就跳过：静态光场景不会有任何重算与标脏。
+        // 方向按分量比较（方向光的 `.xyz` 本身就是单位向量，不必归一化），
+        // 同时比颜色与强度 —— 白天到夜里强度会从 1 掉到 0，只盯方向的话
+        // 「太阳没动、只是被调暗」这种场景天光会一直停在亮的那一版。
+        const float dx = sun_dir.x - sky_last_sun_dir.x;
+        const float dy = sun_dir.y - sky_last_sun_dir.y;
+        const float dz = sun_dir.z - sky_last_sun_dir.z;
 
-        // Z-up 下标约定：idx0 = Y00 常量，idx2 = Y10 ∝ z（见 AmbientEnvInfo::sh）
-        info->sh[0] = math::Vector4f(A.x, A.y, A.z, 0.0f);
-        info->sh[2] = math::Vector4f(B.x, B.y, B.z, 0.0f);
+        const float dr = sun_color.x - sky_last_sun_color.x;
+        const float dg = sun_color.y - sky_last_sun_color.y;
+        const float db = sun_color.z - sky_last_sun_color.z;
+
+        const float di = sun_intensity - sky_last_sun_intensity;
+
+        const float delta = dx * dx + dy * dy + dz * dz
+                          + dr * dr + dg * dg + db * db
+                          + di * di;
+
+        const bool sun_changed = delta > (1.0f / 4096.0f);
+
+        if (sky_sh_written && !sun_changed)
+            return false;
+
+        // 仰角正弦：Z-up 世界里就是单位太阳方向的 z 分量。
+        const float len = sqrtf(sun_dir.x * sun_dir.x + sun_dir.y * sun_dir.y + sun_dir.z * sun_dir.z);
+        const float elevation_sin = (len > 1e-6f) ? (sun_dir.z / len) : 1.0f;
+
+        graph::SkySH9Params params = sky_config.sh_params;
+
+        // 三段色随仰角走：日落变暖、夜里变暗 —— 这是"天光自动跟着太阳调"的核心。
+        graph::EvaluateSkyGradientForSun(elevation_sin,
+                                         params.zenith_color,
+                                         params.horizon_color,
+                                         params.ground_color);
+
+        params.sun_direction  = sun_dir;
+        params.sun_color      = sun_color;
+        params.sun_irradiance = sun_intensity * sky_config.sh_sun_irradiance_scale;
+
+        graph::ComputeSkySH9(params, info->sh);
+
+        sky_last_sun_dir       = sun_dir;
+        sky_last_sun_color     = sun_color;
+        sky_last_sun_intensity = sun_intensity;
+        sky_sh_written         = true;
 
         MarkAmbientEnvDirty();
+        return true;
     }
 
     bool EnvironmentSystem::SetupSkyEnvironment(const SkyEnvironmentConfig &config)
@@ -448,7 +510,34 @@ namespace hgl::ecs
                        sky_config.ldr_sun_scale,
                        sky_config.ldr_min_ambient);
 
-        // ── 4. 天光算法（模块槽），与数据轴配对选择 ──
+        // ── 4. SH9 天光数据（与 IBL 句柄**并行**而非互斥）──
+        //
+        // `ambient_light_sh` 只认 `sh[9]`，所以无论最终选哪个 provider，都把它写好：
+        // 调用方在 IBL / SH 之间热切时不需要重新 Setup，也不会切到一组陈旧（甚至全 0）系数。
+        if (sky_config.sh_auto)
+        {
+            // 解析合成：三段色 × 太阳方向 ⇒ 闭式 SH 投影（太阳从行 0 现取）。
+            WriteSkySHFromMainLight();
+        }
+        else if (!sky_config.IsSHZero())
+        {
+            // 重新取一次指针：上面的 `SetLDRExposure()` 也走过 `EditAmbientEnvInfo()`。
+            if (auto *sh_info = EditAmbientEnvInfo())
+            {
+                for (int i = 0; i < 9; ++i)
+                    sh_info->sh[i] = sky_config.sh[i];
+            }
+
+            // 显式系数也参与"太阳动了要不要重算"的记账，避免之后的 Update 把它覆盖掉。
+            sky_sh_written = true;
+        }
+        else if (!irradiance_handle && !prefilter_handle
+                 && sky_config.mode != SkyMode::Atmosphere)
+        {
+            SetDefaultSkyGradientSH();      // 既无 IBL 也无显式系数 ⇒ 兜底成解析天空梯度，避免黑球
+        }
+
+        // ── 5. 天光算法（模块槽），与数据轴配对选择 ──
         AnsiString provider(sky_config.ambient_provider);
 
         if (provider.IsEmpty())
@@ -471,9 +560,6 @@ namespace hgl::ecs
             else
             {
                 provider = AnsiString("ambient_light_sh");
-
-                if (sky_config.IsSHZero())
-                    SetDefaultSkyGradientSH();      // 无烘焙数据时兜底成解析天空梯度，避免黑球
             }
         }
 
@@ -485,6 +571,8 @@ namespace hgl::ecs
         }
 
         MarkAmbientEnvDirty();
+
+        sky_managed = true;
 
         GLogInfo(u8"[EnvironmentSystem] 天空就绪：mode=%s recipe=%s provider=%s ldr=%d mips=%u",
                  GetSkyModeName(sky_config.mode),
@@ -513,6 +601,12 @@ namespace hgl::ecs
         sky_irradiance_tex = nullptr;
         sky_prefilter_tex  = nullptr;
 
+        sky_managed     = false;
+        sky_sh_written  = false;
+        sky_last_sun_dir       = math::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+        sky_last_sun_color     = math::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+        sky_last_sun_intensity = 0.0f;
+
         // 天光数据轴清零：句柄全 0 + SH 全 0 + 关闭 LDR 调制。
         if (auto *info = EditAmbientEnvInfo())
         {
@@ -536,10 +630,16 @@ namespace hgl::ecs
     {
         (void)delta_time;
 
-        if (sky_entity_id == EntityID::Invalid() || !context)
+        if (!sky_managed || !context)
             return;
 
-        if (!sky_config.track_camera)
+        // ── 太阳耦合：天光随主光源重算 ──
+        // 天空视觉（`sky_atmosphere.glsl`）与 LDR 曝光调制（`ambient_light_ibl*.glsl`）
+        // 都在 GPU 侧直接读光源行 0，逐帧自动跟手；只有 SH9 系数是 CPU 侧合成，
+        // 太阳移动时必须在这里重算，否则日落了天光还是白的。
+        UpdateSkySHFromSun();
+
+        if (!sky_config.track_camera || sky_entity_id == EntityID::Invalid())
             return;
 
         // 天空是无视差的"无限远"背景：把它的世界位置钉到主相机。

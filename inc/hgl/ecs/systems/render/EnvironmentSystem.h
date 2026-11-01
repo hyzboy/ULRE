@@ -66,6 +66,21 @@ namespace hgl
             /// `mip_out` 回填实际 mip 级数，`tex_out` 回填非拥有的纹理指针（都可为空）。
             uint32 LoadSkyTexture(const OSString &uri, uint32 *mip_out, const graph::Texture **tex_out);
 
+            /// 上一次参与 SH 合成的太阳快照（方向 / 颜色 / 强度）：三者都没变就不重算、不标脏。
+            math::Vector4f sky_last_sun_dir = math::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+            math::Vector4f sky_last_sun_color = math::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+            float sky_last_sun_intensity = 0.0f;
+
+            /// 是否已经写过一次 SH（首次必须写；之后只在太阳动了才写）。
+            bool sky_sh_written = false;
+
+            /// 是否处于托管状态（可能没有视觉天空实体：`SHLightOnly` 只托管天光）。
+            bool sky_managed = false;
+
+            /// 读主光源行 0 + `sky_config.sh_params` 重算 9 个 SH 系数并写入 `ambient_env`。
+            /// 没有 `ambient_env` 参数块时返回 false（未做任何修改）。
+            bool WriteSkySHFromMainLight();
+
         public:
 
             EnvironmentSystem(const std::string &name = "EnvironmentSystem");
@@ -126,8 +141,8 @@ namespace hgl
             /// 反向清理：销毁天空实体、把 `ambient_env` 清零、provider 回到模板默认。
             void DestroySkyEnvironment();
 
-            /// 是否处于天空托管状态（= 有一个由本系统创建的天空实体）。
-            bool HasSkyEnvironment() const { return sky_entity_id != EntityID::Invalid(); }
+            /// 是否处于天空托管状态（`SHLightOnly` 只有天光、没有视觉天空实体，同样算托管）。
+            bool HasSkyEnvironment() const { return sky_managed; }
 
             /// 天空实体 ID（未托管 = `EntityID::Invalid()`）。
             EntityID GetSkyEntityID() const { return sky_entity_id; }
@@ -135,10 +150,19 @@ namespace hgl
             /**
              * 写入一组**解析天空梯度** SH9 系数（上冷亮、下暗），仅供没有烘焙数据时兜底。
              *
-             * 系数取「上下平均辐亮度 `c0` + 垂直梯度 `c1`」，并按 `ambient_light_sh.glsl`
-             * 的余弦卷积常数反解，使 GPU 端求出的辐照度是解析真值（便于与 IBL 版对比亮度）。
+             * 走 `graph::ComputeSkySH9()`：天空被建模成「天顶→地平线线性渐变 +
+             * 下半球地面色 + 太阳方向辐照度」，取闭式 SH 投影。太阳方向 / 颜色 / 强度
+             * 取自光源行 0，所以结果与当前光照一致（不是一组写死的常数）。
              */
             void SetDefaultSkyGradientSH();
+
+            /**
+             * 按当前主光源重算 SH9 天光（`sh_auto` 且 `sh_track_sun` 时由 `Update()` 调）。
+             *
+             * 太阳方向变化小于阈值时不重算、不标脏（静态光场景零开销）。
+             * @return 是否真的重写了系数
+             */
+            bool UpdateSkySHFromSun();
 
             /// 逐帧把天空实体的世界位置钉到主相机（`track_camera` 生效时才动）。
             void Update(float delta_time) override;

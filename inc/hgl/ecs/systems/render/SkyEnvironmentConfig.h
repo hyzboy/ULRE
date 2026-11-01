@@ -2,6 +2,7 @@
 
 #include<hgl/type/String.h>
 #include<hgl/math/Vector.h>
+#include<hgl/graph/sky/SkySH9.h>
 
 namespace hgl::ecs
 {
@@ -113,10 +114,28 @@ namespace hgl::ecs
         /**
          * SH9 天光系数（L2 辐照度表示，下标约定见 `AmbientEnvInfo::sh`，Z-up）。
          *
-         * 全 0 且最终选择的是 SH 路径时，`SetupSkyEnvironment()` 会填一组**解析天空梯度**
-         * 系数（上冷亮、下暗的默认天光）——保证"不烘焙任何贴图也能出图"，而不是黑球。
+         * 只在 `sh_auto == false`（显式给系数）时被使用。`sh_auto == true` 时这组值被
+         * 忽略，改由 `sh_params` 现算 —— 显式系数适合"已经离线算好"的场景。
          */
         Vector4f sh[9] = {};
+
+        /**
+         * 是否由 `EnvironmentSystem` 用**解析合成器**（`graph::ComputeSkySH9`）生成 SH9。
+         *
+         * 打开后，即使一张 IBL 贴图都没烘焙，场景也有与太阳方向物理一致的低频天光：
+         * 天空被建模成「天顶→地平线线性渐变 + 下半球地面色 + 太阳方向辐照度」，
+         * 其 SH 投影是闭式的（只有 idx0 / idx2 / idx6 + 太阳项的 9 项）。
+         */
+        bool sh_auto = true;
+
+        /// `sh_auto` 为真时随主光源（光源行 0）变化重算 ⇒ 日落时天光自己变暖变暗。
+        bool sh_track_sun = true;
+
+        /// 解析合成参数。三段色的**亮度量级**、`exposure` 都在这里调。
+        graph::SkySH9Params sh_params;
+
+        /// 太阳辐照度标定：`sun_irradiance = 主光强度 × 本值`；0 = 天光不含太阳项。
+        float sh_sun_irradiance_scale = 0.35f;
 
         SkyAmbientLDR ldr = SkyAmbientLDR::Auto;
         float ldr_exposure_base   = 2.5f;   ///< 基准曝光倍率
@@ -142,5 +161,8 @@ namespace hgl::ecs
 
         /// SH 系数是否全 0（= 未显式提供）。
         bool IsSHZero() const;
+
+        /// 该配置是否要产出 SH9 天光（`sh_auto` 或显式系数非零）。
+        bool WantsSkySH() const { return sh_auto || !IsSHZero(); }
     };
 }//namespace hgl::ecs
