@@ -43,6 +43,8 @@ namespace ulre_example
         uint32_t    distinct_byte_values  = 0;      ///< 期望侧 = **下限**（不空转守卫）
         uint64_t    fnv1a64               = 0;
         const char *format_name           = "unknown";
+        float       mean_luma             = 0.0f;   ///< 平均相对亮度（Rec.709，0..1）
+        float       max_luma              = 0.0f;   ///< 最大相对亮度（0..1）
     };
 
     /// 是否把**像素摘要**（`fnv1a64`）计入判据：**Debug 钉 / Release 不钉**。
@@ -59,6 +61,80 @@ namespace ulre_example
     #else
     inline constexpr bool kFrameDigestPinPixels = true;
     #endif
+
+    /// 格式感知的亮度统计（Rec.709 相对亮度，0..1）。
+    ///
+    /// 为什么不满足于 `distinct` / `fnv`：那两个量抓得住「整帧只剩清屏色」，抓不住
+    /// 「间接光 provider 接错 ⇒ 环境光整体变暗」这类**全局变暗**——像素依然全不同、
+    /// 摘要依然稳定，只是画面暗了。平均亮度是这类事故唯一有分辨力的量。
+    /// 实测用例：`ambient_light_ibl` 与 `ambient_light_ibl_oct` 是同一套公式的两种纹理
+    /// 寻址，两条路径的平均亮度必须**相当**（差异只应来自投影重采样，量级几个百分点）。
+    ///
+    /// 只解 UNORM 打包格式；其它格式退化成**字节均值**（仍是可比单调量，只是不是物理亮度）。
+    inline void AccumulateLuma(const std::vector<uint8_t> & pixels,
+                               const hgl::graph::TextureReadbackInfo & info,
+                               double & sum, float & max)
+    {
+        auto luma = [](float r, float g, float b) { return 0.2126f * r + 0.7152f * g + 0.0722f * b; };
+
+        sum = 0.0;
+        max = 0.0f;
+
+        const size_t count = pixels.size();
+
+        switch (info.format)
+        {
+            case PF_A2BGR10UN:
+            case PF_A2RGB10UN:
+            {
+                const uint32_t * p = reinterpret_cast<const uint32_t *>(pixels.data());
+                const size_t n = count / 4;
+
+                for (size_t i = 0; i < n; ++i)
+                {
+                    const uint32_t v  = p[i];
+                    const float    c0 = float( v        & 1023u) / 1023.0f;
+                    const float    c1 = float((v >> 10) & 1023u) / 1023.0f;
+                    const float    c2 = float((v >> 20) & 1023u) / 1023.0f;
+
+                    // A2BGR10 = B/G/R 低位在前；A2RGB10 反之
+                    const float y = (info.format == PF_A2BGR10UN) ? luma(c2, c1, c0)
+                                                                  : luma(c0, c1, c2);
+                    sum += y;
+                    if (y > max) max = y;
+                }
+                return;
+            }
+            case PF_RGBA8UN:
+            case PF_BGRA8UN:
+            {
+                const size_t n = count / 4;
+
+                for (size_t i = 0; i < n; ++i)
+                {
+                    const uint8_t * q  = pixels.data() + i * 4;
+                    const float     c0 = float(q[0]) / 255.0f;
+                    const float     c1 = float(q[1]) / 255.0f;
+                    const float     c2 = float(q[2]) / 255.0f;
+
+                    const float y = (info.format == PF_RGBA8UN) ? luma(c0, c1, c2)
+                                                                : luma(c2, c1, c0);
+                    sum += y;
+                    if (y > max) max = y;
+                }
+                return;
+            }
+            default:
+                break;
+        }
+
+        for (const uint8_t b : pixels)
+        {
+            const float y = float(b) / 255.0f;
+            sum += y;
+            if (y > max) max = y;
+        }
+    }
 
     /// 单帧摘要（对**打包字节**算；与 `*_DUMP` 落盘字节同源）
     inline bool ComputeFrameDigest(hgl::graph::IRenderTarget * rt, FrameDigest & out)
@@ -90,6 +166,13 @@ namespace ulre_example
         out.distinct_byte_values = distinct;
         out.fnv1a64              = hasher;
         out.format_name          = hgl::graph::GetVulkanFormatName(info.format);
+
+        double luma_sum = 0.0;
+        AccumulateLuma(pixels, info, luma_sum, out.max_luma);
+
+        const double pixel_count = double(info.width) * double(info.height);
+        out.mean_luma = (pixel_count > 0.0) ? float(luma_sum / pixel_count) : 0.0f;
+
         return true;
     }
 
@@ -140,11 +223,12 @@ namespace ulre_example
                     ++s_pf_diff;
                 }
 
-                printf("[%s] frame=%u image=%u %ux%u distinct=%u fnv1a64=0x%016llX%s\n",
+                printf("[%s] frame=%u image=%u %ux%u distinct=%u luma=%.4f fnv1a64=0x%016llX%s\n",
                                        tag, s_pf_frame,
                                        static_cast<unsigned>(rt->GetCurrentFrameIndex()),
                                        actual.width, actual.height,
                                        actual.distinct_byte_values,
+                                       actual.mean_luma,
                                        static_cast<unsigned long long>(actual.fnv1a64),
                                        differs ? "  <== 与首帧不同" : "");
                 fflush(stdout);
@@ -175,9 +259,10 @@ namespace ulre_example
                          && (actual.distinct_byte_values >= expected.distinct_byte_values)
                          && pixels_ok;
 
-            printf("[%s] %ux%u %s  bytes=%zu  distinct_byte_values=%u  fnv1a64=0x%016llX\n",
+            printf("[%s] %ux%u %s  bytes=%zu  distinct_byte_values=%u  mean_luma=%.4f  max_luma=%.4f  fnv1a64=0x%016llX\n",
                    tag, actual.width, actual.height, actual.format_name, actual.bytes,
                    actual.distinct_byte_values,
+                   actual.mean_luma, actual.max_luma,
                    static_cast<unsigned long long>(actual.fnv1a64));
 
             printf("[%s] %s（期望 %ux%u distinct>=%u fnv=0x%016llX）\n",

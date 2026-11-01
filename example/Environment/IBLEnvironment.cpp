@@ -66,6 +66,21 @@ namespace
         };
         return gvf;
     }
+
+    /**
+     * `IBLENV_OCT=1`：改用八面体展开（`.TexOct`）环境图 + `ambient_light_ibl_oct`
+     * provider。
+     *
+     * 两条路径的 split-sum 公式、`lod = roughness × (mip-1)` 映射、LDR 曝光调制
+     * **完全同一套**，唯一差别是纹理寻址（硬件立方体 vs 方向→八面体 uv）。
+     * 因此这个开关同时是 `ambient_light_ibl_oct` 模块的现场判据：同一场景同一组
+     * 材质参数，两条路径的亮度/颜色必须高度接近。
+     */
+    bool UseOctahedralEnv()
+    {
+        static const bool s_oct = (getenv("IBLENV_OCT") != nullptr);
+        return s_oct;
+    }
 }
 
 #define DRAW_SKY_SPHERE
@@ -79,6 +94,10 @@ namespace
  *   * <env>_irradiance.TexCube  漫反射辐照度(按世界法线采样)
  *   * <env>_prefilter.TexCube   镜面预滤波(按反射向量采样)
  *   * brdflut.Tex2D             BRDF LUT((NdotV,roughness) → scale/bias)
+ *
+ * 加 `IBLENV_OCT=1` 则前两张换成 TexConv `/octa /ibl` 产出的八面体展开版
+ * (`<env>_irradiance.TexOct` / `<env>_prefilter.TexOct`),ambient provider 相应切到
+ * `ambient_light_ibl_oct`——光照公式/粗糙度映射/LDR 曝光全不变,只换纹理寻址。
  *
  * 三张纹理以 bindless 句柄形式写入 ambient_env(ambient_light_provider 槽参数块,场景全局环境数据),
  * 并把该槽的 **ambient provider 模块**设为 `indirect_ibl`
@@ -120,8 +139,8 @@ private:
 
     MeshEntry* floor_mesh = nullptr;
 
-    TextureCube* env_irradiance  = nullptr;                 ///<IBL 漫反射辐照度
-    TextureCube* env_prefilter   = nullptr;                 ///<IBL 镜面预滤波
+    Texture*     env_irradiance  = nullptr;                 ///<IBL 漫反射辐照度（CubeMap 或八面体展开）
+    Texture*     env_prefilter   = nullptr;                 ///<IBL 镜面预滤波（同上）
     Texture2D*   env_brdf_lut    = nullptr;                 ///<BRDF LUT
 
     std::vector<std::unique_ptr<MeshEntry>> meshes;
@@ -194,16 +213,28 @@ private:
         if (!texture_manager)
             return false;
 
-        // ---- IBL 资源(TexConv /cube /ibl 产物 + BRDF LUT) ----
-        env_irradiance = texture_manager->LoadTextureCube(
-            OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube"),
-            false);
+        // ---- IBL 资源(TexConv /cube 或 /octa /ibl 产物 + BRDF LUT) ----
+        // `.TexCube` 与 `.TexOct` 是同一批烘焙数据的两种投影；八面体版是 2D 容器
+        // （单层、带完整 mip 链），因此走 LoadTexture2D 而不是 LoadTextureCube。
+        const bool octahedral = UseOctahedralEnv();
+
+        env_irradiance = octahedral
+            ? static_cast<Texture *>(texture_manager->LoadTexture2D(
+                  OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexOct"),
+                  false))
+            : static_cast<Texture *>(texture_manager->LoadTextureCube(
+                  OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube"),
+                  false));
         if (!env_irradiance)
             return false;
 
-        env_prefilter = texture_manager->LoadTextureCube(
-            OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube"),
-            false);
+        env_prefilter = octahedral
+            ? static_cast<Texture *>(texture_manager->LoadTexture2D(
+                  OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexOct"),
+                  false))
+            : static_cast<Texture *>(texture_manager->LoadTextureCube(
+                  OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube"),
+                  false));
         if (!env_prefilter)
             return false;
 
@@ -243,9 +274,10 @@ private:
         if (!ambient_env)
             return false;
 
-        // w = prefilter cubemap 的 mip 级数：shader 用 lod = roughness*(w-1) 取级，
+        // w = prefilter 贴图的 mip 级数：shader 用 lod = roughness*(w-1) 取级，
         // 与 TexConv 的「第 i 级 = 粗糙度 i/(级数-1)」互逆。级数取自贴图自身头部，
         // 重烘出不同级数无需改这里；单级贴图(w<=1)退化为固定粗糙度采样。
+        // CubeMap 与八面体版级数一致（同一批烘焙数据），故这里不必区分格式。
         const uint32_t prefilter_mips = env_prefilter->GetMipLevel();
 
         ambient_env->env_tex = math::Vector4u(irr_handle, pre_handle, lut_handle, prefilter_mips);
@@ -255,7 +287,11 @@ private:
 
         // 环境光**算法**（ambient_light_provider 槽的 GLSL 模块）同样由环境层决定：
         // 与上面写入的句柄配对 —— 选 IBL 模块就必须给句柄，否则采样 0 句柄静默发黑。
-        if (!environment_system->SetAmbientProvider("ambient_light_ibl"))
+        // 句柄槽位(x=irradiance / y=prefilter / z=BRDF LUT / w=mip 数)两版完全一致，
+        // 所以这里只换模块名，材质与光照模型一行都不用改。
+        if (!environment_system->SetAmbientProvider(UseOctahedralEnv()
+                ? "ambient_light_ibl_oct"
+                : "ambient_light_ibl"))
             return false;
 
         return true;
@@ -505,7 +541,8 @@ public:
         WorkObject::Tick(delta_time);
 
         // IBLENV_SELFCHECK=1：**帧摘要自检**（T0 判据前置；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
+        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, 平均亮度, FNV-1a 64} 比对下方内联常量：
+        // PASS 退出 0 / FAIL 退出 1。
         // 为什么本例必须有它：IBL 句柄（env_tex）是八台架摘要的**盲区**（只有本示例把 indirect_ibl
         // 选为 ambient_light_provider）⇒ 句柄错位这种静默发黑事故只有这条判据有分辨力。
         // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
@@ -515,7 +552,13 @@ public:
         static constexpr uint32_t kSelfW           = 1280;
         static constexpr uint32_t kSelfH           = 720;
         static constexpr uint32_t kSelfMinDistinct = 256;   // 不空转守卫（恒定图会 FAIL）
-        static constexpr uint64_t kSelfFNV         = 0x54295E44E3C1677Cull;  // LDR 曝光度与太阳高度角调制生效后基线（Debug 配置）
+
+        // 两条寻址路径各自的基线（同一场景 / 同一组材质参数 / 同一套 LDR 曝光调制）。
+        // 八面体版是另一张图、另一套采样 ⇒ 摘要必然不同，亮度只应差投影重采样那几个百分点
+        // （实测 mean_luma 0.6934 Cube vs 0.7085 Oct，差 2.2%）；两侧都钉住，
+        // 「provider 接错 / 句柄错位 / 采样规则坏掉」在任一模式下都会翻红。
+        static constexpr uint64_t kSelfFNV_Cube      = 0x54295E44E3C1677Cull;  // CubeMap（Debug）
+        static constexpr uint64_t kSelfFNV_Octahedral = 0x942421F7437CC76Full; // 八面体（Debug）
 
         if (s_selfcheck && ++s_self_frame == 8)
         {
@@ -530,7 +573,7 @@ public:
             expect.width                = kSelfW;
             expect.height               = kSelfH;
             expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = kSelfFNV;
+            expect.fnv1a64              = UseOctahedralEnv() ? kSelfFNV_Octahedral : kSelfFNV_Cube;
 
             ulre_example::InstallFrameDigestHook(rt, expect, "IBLSELF");
         }

@@ -191,7 +191,9 @@ namespace
     /// 刻意写成「门自己持有的常量」而不是去问被测代码：这条断言的价值就是
     /// 在模块被误删/误加时硬失败，跟着实现走就等于没测。历史上每次增删模块
     /// 都在这里改一行并留下理由，变更记录见 `RunGlslModuleRegistryCase`。
-    constexpr int kGlslModuleCount = 88;
+    /// 89 = 88 + `ambient_light_ibl_oct`（八面体展开版 IBL 天光 provider，
+    /// 与 `ambient_light_ibl` 同构、只换纹理寻址方式）。
+    constexpr int kGlslModuleCount = 89;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)

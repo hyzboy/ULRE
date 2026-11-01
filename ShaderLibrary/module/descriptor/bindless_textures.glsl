@@ -75,6 +75,17 @@ vec4 Sample2DArrayGrad(uint tex_handle, uint samp_idx, vec2 uv, float layer, vec
                        vec3(uv, layer), dPdx, dPdy);
 }
 
+// 2DArray 显式 LOD 采样：mip 级由调用方给出（八面体展开 IBL 的粗糙度→LOD 映射）。
+// 与 SampleCubeArrayLod 对称——Octahedral 投影是 2D 纹理，LOD 不能混进 uv/layer。
+vec4 Sample2DArrayLod(uint tex_handle, uint samp_idx, vec2 uv, float layer, float lod)
+{
+    if (tex_handle == 0u)
+        return vec4(0.0);
+    return textureLod(sampler2DArray(bindless_tex[nonuniformEXT(tex_handle - 1u)],
+                                     bindless_samp[nonuniformEXT(samp_idx)]),
+                      vec3(uv, layer), lod);
+}
+
 
 // 硬件深度比较采样（ShadowPCFSampler + sampler2DArrayShadow）：
 // GPU 纹理单元在单个 tap 内完成 2x2 双线性百分比比较过滤（Hardware PCF）

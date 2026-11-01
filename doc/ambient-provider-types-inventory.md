@@ -16,18 +16,19 @@
 
 | 槽位（`ShaderModuleSlotRole`） | 角色名（`GetShaderModuleSlotRoleName`） | 现役模块 | 种类数 |
 |---|---|---|---|
-| `AmbientLightProvider` | `ambient_light_provider` | `ambient_light_sky` / `ambient_light_ibl` | **2** |
+| `AmbientLightProvider` | `ambient_light_provider` | `ambient_light_sky` / `ambient_light_ibl` / `ambient_light_ibl_oct` | **3** |
 | `AmbientOcclusionProvider` | `ambient_occlusion_provider` | `ambient_occlusion_identity` | 1（恒等占位） |
 | `SkyProvider` | `sky_provider` | `sky_atmosphere` | 1 |
 | `OutputPolicy` | `output_policy` | `output_policy_forward` / `output_policy_flat` | 2（后者**无 ambient**） |
 
 因此「Ambient 种类」的准确口径是：
-**2 种间接光算法** + 1 种 AO（恒 1.0）+ 1 条 flat 路径（完全不算环境光）。
+**3 种间接光算法** + 1 种 AO（恒 1.0）+ 1 条 flat 路径（完全不算环境光）。
 
-全库仅这两个模块声明 `@ulre slot ambient_light_provider`：
+全库仅这三个模块声明 `@ulre slot ambient_light_provider`：
 
 ```
 ShaderLibrary/module/provider/ambient_light/ambient_light_ibl.glsl
+ShaderLibrary/module/provider/ambient_light/ambient_light_ibl_oct.glsl
 ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl
 ```
 
@@ -49,7 +50,25 @@ ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl
 | **未就绪行为** | 总有颜色（天空是程序化的） | `env_tex.x==0 && env_tex.y==0` → **返回 `vec3(0)`** |
 | **是否模板默认** | ✅ 是（`src/ShaderMaterialData/ScenePassProfileResolver.cpp:21-24`） | ❌ 需显式设置 |
 | **示例** | `example/Environment/AtmosphereSkyAmbient.cpp`（不调 API，走默认） | `example/Environment/IBLEnvironment.cpp:296`（`SetAmbientProvider("ambient_light_ibl")`） |
-| **GPU 参数块** | 无专属块，复用 `scene_ubo` | 专属块 `AmbientEnvInfo`（`inc/hgl/graph/ubo/AmbientEnvInfo.h`，16 字节、单份 buffer、`WorldAddresses::addr_ambient_env`） |
+| **GPU 参数块** | 无专属块，复用 `scene_ubo` | 专属块 `AmbientEnvInfo`（`inc/hgl/graph/ubo/AmbientEnvInfo.h`，32 字节、单份 buffer、`WorldAddresses::addr_ambient_env`） |
+
+### `ambient_light_ibl_oct`：同一套 IBL 的八面体寻址变体
+
+`ambient_light_ibl_oct` 与 `ambient_light_ibl` **逐项同构**（同样的 split-sum 公式、
+同样的 `lod = roughness × (w-1)` 粗糙度→mip 映射、同样一整套 `ldr_param` LDR 曝光调制、
+同样的 `AmbientEnvInfo` 块与槽位语义），唯一差别是**纹理寻址方式**：
+
+| 维度 | `ambient_light_ibl`（CubeMap） | `ambient_light_ibl_oct`（八面体展开） |
+|---|---|---|
+| 资源扩展名 | `.TexCube`（TexConv `/cube`、`/ibl`） | `.TexOct`（TexConv `/octa`、`/octa /ibl`） |
+| 采样入口 | `SampleCubeArray` / `SampleCubeArrayLod`（硬件立方体寻址） | `Sample2DArrayLod`（方向 → 八面体 uv → 普通 2D 寻址） |
+| sampler | `Trilinear` + `Linear` | `TrilinearClamp` + `Linear`（Clamp 避免展开图外边界污染） |
+| LOD 传递 | `textureLod` 第 3 参数 | `textureLod` 第 4 参数（uv 只有 2 分量，layer 独占第 3） |
+| 逆映射 | 无（硬件完成） | `IBL_OctahedralEncodeDirection()`，必须与 TexConv `ProjectFloatCubeToOctahedral` 逐项对齐 |
+
+`env_tex` 的 x/y/z/w 槽位在两版之间**完全一致**，所以环境层只换
+`SetAmbientProvider()` 的模块名 + 换两张贴图即可，Lit 类材质一行都不用改。
+
 
 ### 关键边界：两者是并列替代，不是降级链
 
@@ -75,7 +94,7 @@ vec3 EvalIndirectLighting(LightingInput lighting);
 ## 三、能力轴现状（`provides/requires_capability`）
 
 ```
-provides ambient_diffuse|ambient_specular   ← ambient_light_sky, ambient_light_ibl
+provides ambient_diffuse|ambient_specular   ← ambient_light_sky, ambient_light_ibl, ambient_light_ibl_oct
 provides ambient_diffuse                    ← sky_atmosphere（但它占 sky_provider 槽）
 provides ambient_occlusion                  ← ambient_occlusion_identity
 requires ...|direct_light|ambient_diffuse   ← lighting_model_pbr（全库唯一 requires 点）
@@ -83,7 +102,7 @@ requires ...|direct_light|ambient_diffuse   ← lighting_model_pbr（全库唯�
 
 ### 观察点 1：`ambient_specular` 无任何消费者
 
-全库 `ambient_specular` 只有 `provides` 两处，`lighting_model_pbr` 的
+全库 `ambient_specular` 只有 `provides` 三处，`lighting_model_pbr` 的
 `requires_capability`（`ShaderLibrary/module/provider/lighting_model/lighting_model_pbr.glsl:6`）只到
 `ambient_diffuse`。能力闭合只做 `required ⊆ provided`，因此这条能力轴
 目前是「声明但无人索取」，实际闭合只走 diffuse。
