@@ -17,6 +17,6 @@ IF(ULRE_ENABLE_SHADER_PROGRAM_BUILD)
 ENDIF()
 
 # TexConv 纹理转换工具（子模块）：依赖 ImageMagick(Magick++) 与 AMD Compressonator；
-# Intel ISPC 编码器需要 ISPCTextureCompressor 的 kernel*.obj，产物缺失时在
-# TexConv/CMakeLists.txt 内自动关闭（/Intel 明确报错，默认走 AMD）。
+# Intel ISPC 编码器需要 ispc.exe，找不到时在 enc_intel/CMakeLists.txt 内跳过该插件
+# （/Intel 明确报错；未指定后端时回落 AMD 并告警一次）。
 add_subdirectory(TexConv)
