@@ -31,6 +31,11 @@ struct UInt4
   v: [uint:4];
 }
 
+struct Float4
+{
+  v: [float:4];
+}
+
 struct Float16
 {
   v: [float:16];
@@ -51,11 +56,6 @@ struct UInt256
   v: [uint:256];
 }
 
-struct Float4
-{
-  v: [float:4];
-}
-
 struct ShadowCascadeInfo4
 {
   v: [ShadowCascadeInfo:4];
@@ -65,6 +65,7 @@ struct ShadowCascadeInfo4
 table AmbientEnvInfo
 {
   env_tex: UInt4;
+  ldr_param: Float4;
 }
 
 // inc/hgl/graph/ubo/ViewportInfo.h → ViewportInfo

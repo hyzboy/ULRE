@@ -155,6 +155,10 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsignedArray(*v, &out.env_tex.x, 4)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "ldr_param"))
+        {
+            if (!detail::AsFloatArray(*v, &out.ldr_param.x, 4)) return false;
+        }
         return true;
     }
 
@@ -451,6 +455,7 @@ namespace hgl::graph::generated
     {
         toml::table t;
         t["env_tex"] = detail::FromIntegerArray(&in.env_tex.x, 4);
+        t["ldr_param"] = detail::FromFloatArray(&in.ldr_param.x, 4);
         return toml::value(std::move(t));
     }
 

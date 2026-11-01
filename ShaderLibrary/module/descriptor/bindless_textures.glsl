@@ -57,6 +57,25 @@ vec4 Sample2DArray(uint tex_handle, uint samp_idx, vec2 uv, float layer)
                    vec3(uv, layer));
 }
 
+vec4 Sample2DGrad(uint tex_handle, uint samp_idx, vec2 uv, vec2 dPdx, vec2 dPdy)
+{
+    if (tex_handle == 0u)
+        return vec4(0.0);
+    return textureGrad(sampler2DArray(bindless_tex[nonuniformEXT(tex_handle - 1u)],
+                                      bindless_samp[nonuniformEXT(samp_idx)]),
+                       vec3(uv, 0.0), dPdx, dPdy);
+}
+
+vec4 Sample2DArrayGrad(uint tex_handle, uint samp_idx, vec2 uv, float layer, vec2 dPdx, vec2 dPdy)
+{
+    if (tex_handle == 0u)
+        return vec4(0.0);
+    return textureGrad(sampler2DArray(bindless_tex[nonuniformEXT(tex_handle - 1u)],
+                                      bindless_samp[nonuniformEXT(samp_idx)]),
+                       vec3(uv, layer), dPdx, dPdy);
+}
+
+
 // 硬件深度比较采样（ShadowPCFSampler + sampler2DArrayShadow）：
 // GPU 纹理单元在单个 tap 内完成 2x2 双线性百分比比较过滤（Hardware PCF）
 float Sample2DArrayShadow(uint tex_handle, uint samp_idx, vec2 uv, float layer, float ref_depth)
@@ -101,5 +120,13 @@ vec4 SampleOptional(uvec2 tex_ref, uint samp_idx, vec2 uv, vec4 fallback)
         ? fallback
         : Sample2DArray(tex_ref.x, samp_idx, uv, float(tex_ref.y));
 }
+
+vec4 SampleOptionalGrad(uvec2 tex_ref, uint samp_idx, vec2 uv, vec2 dPdx, vec2 dPdy, vec4 fallback)
+{
+    return tex_ref.x == 0u
+        ? fallback
+        : Sample2DArrayGrad(tex_ref.x, samp_idx, uv, float(tex_ref.y), dPdx, dPdy);
+}
+
 
 #endif // BINDLESS_TEXTURES_GLSL

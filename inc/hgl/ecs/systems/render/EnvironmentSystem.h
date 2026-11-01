@@ -53,6 +53,15 @@ namespace hgl
             //（读写都走 `EditAmbientEnvInfo()` + `MarkAmbientEnvDirty()`）。
             void MarkAmbientEnvDirty();
 
+            /**
+             * 配置 LDR 环境光曝光与太阳光强度动态调制（仅对 LDR 生效）
+             * @param enable 是否启用 LDR 曝光调制
+             * @param base_exposure 基准曝光倍率（默认 2.5f）
+             * @param sun_scale 太阳高度角与光强调制权重（默认 1.0f）
+             * @param min_ambient 夜间 / 太阳落山后的最低环境光保底比例（默认 0.05f）
+             */
+            void SetLDRExposure(bool enable, float base_exposure = 2.5f, float sun_scale = 1.0f, float min_ambient = 0.05f);
+
             // ── ambient provider **模块选择**（2026-10-14：从材质 TOML 上移到环境层）──
             //
             // 环境光有两条正交的轴，本系统是它们的**作者侧统一入口**：

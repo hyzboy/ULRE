@@ -249,6 +249,8 @@ private:
         const uint32_t prefilter_mips = env_prefilter->GetMipLevel();
 
         ambient_env->env_tex = math::Vector4u(irr_handle, pre_handle, lut_handle, prefilter_mips);
+        // 配置 LDR 曝光度与太阳光强度动态调制（仅对 LDR 生效）
+        environment_system->SetLDRExposure(true, 2.5f, 1.0f, 0.05f);
         environment_system->MarkAmbientEnvDirty();
 
         // 环境光**算法**（ambient_light_provider 槽的 GLSL 模块）同样由环境层决定：
@@ -513,7 +515,7 @@ public:
         static constexpr uint32_t kSelfW           = 1280;
         static constexpr uint32_t kSelfH           = 720;
         static constexpr uint32_t kSelfMinDistinct = 256;   // 不空转守卫（恒定图会 FAIL）
-        static constexpr uint64_t kSelfFNV         = 0xF420BEB0153C2E12ull;  // 重录：帧守卫修复后（离屏/IBL 世界真正逐帧装配）实测；FRAMEDIGEST_PERFRAME=60 帧全一致
+        static constexpr uint64_t kSelfFNV         = 0x54295E44E3C1677Cull;  // LDR 曝光度与太阳高度角调制生效后基线（Debug 配置）
 
         if (s_selfcheck && ++s_self_frame == 8)
         {

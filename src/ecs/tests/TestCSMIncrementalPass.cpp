@@ -6850,8 +6850,8 @@ int main(int argc, char** argv)
               "T1：环境光 provider 参数块缺句柄字段（IBL 三句柄的唯一住处）" },
 
             { "AmbientEnvInfo.h", OS_TEXT("inc/hgl/graph/ubo/AmbientEnvInfo.h"),
-              "static_assert(sizeof(AmbientEnvInfo) == 16,",
-              "T1：新块尺寸契约丢失（块内只有 uvec4 ⇒ 16 B，不需要显式填充）" },
+              "static_assert(sizeof(AmbientEnvInfo) == 32,",
+              "T1：新块尺寸契约丢失（块内 uvec4 env_tex + vec4 ldr_param ⇒ 32 B）" },
 
             { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer AmbientEnvInfoRef",

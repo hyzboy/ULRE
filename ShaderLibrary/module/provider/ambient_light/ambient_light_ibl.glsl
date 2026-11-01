@@ -63,7 +63,34 @@ vec3 EvalIndirectLighting(
 
     const vec3 specular = prefiltered * (F0 * env_brdf.x + env_brdf.y);
 
-    return (diffuse + specular) * lighting.ao;
+    vec3 ambient = (diffuse + specular) * lighting.ao;
+
+    // LDR 曝光度与太阳光强度动态调制（仅在 ldr_param.x > 0 时对 LDR 生效）
+    //   ldr_param.x = is_ldr 开关（>0.0 启用）
+    //   ldr_param.y = exposure_base 基准曝光倍率
+    //   ldr_param.z = sun_scale 太阳高度角与光强调制权重
+    //   ldr_param.w = min_ambient 最低环境光保底比例
+    if (ambient_env.ldr_param.x > 0.0)
+    {
+        const float base_exposure = max(ambient_env.ldr_param.y, 0.0);
+        const float sun_scale = ambient_env.ldr_param.z;
+        const float min_ambient = clamp(ambient_env.ldr_param.w, 0.0, 1.0);
+
+        // 主方向光数据取自光源行 0（main_light）
+        // 世界坐标系约定为 Z-up：sun_dir.z 即为太阳仰角正弦值（天顶 1.0，地平线 0.0，黑夜 < 0.0）
+        const float dir_len = length(main_light.direction_intensity.xyz);
+        const float sun_elevation = (dir_len > 1e-4)
+            ? clamp(main_light.direction_intensity.z / dir_len, 0.0, 1.0)
+            : 0.0;
+        const float sun_intensity = max(main_light.direction_intensity.w, 0.0);
+
+        const float sun_factor = sun_elevation * sun_intensity;
+        const float exposure = base_exposure * (min_ambient + sun_factor * sun_scale);
+
+        ambient *= exposure;
+    }
+
+    return ambient;
 }
 
 #endif // INDIRECT_IBL_GLSL

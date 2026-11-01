@@ -37,9 +37,19 @@ namespace hgl::graph
          * TexConv `PrefilterRoughness` 的「第 i 级 = i/(级数-1)」互逆，两端必须同时改。
          */
         Vector4u    env_tex = Vector4u(0);
+
+        /**
+         * LDR IBL 曝光与太阳光强度动态调制参数：
+         *   x = is_ldr (0.0 = HDR/关闭调制, >0.0 = LDR 模式生效)
+         *   y = exposure_base (基准曝光倍率，默认建议 2.5f ~ 3.0f)
+         *   z = sun_scale (太阳高度角与光强调制权重，默认 1.0f)
+         *   w = min_ambient (夜间 / 太阳落山后的最低环境光保底比例，默认 0.05f)
+         */
+        Vector4f    ldr_param = Vector4f(0.0f);
     };
 
     // GPU ABI：布局是 C++↔GLSL 的契约（镜像见 ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl 的 AmbientEnvInfoRef）
-    static_assert(sizeof(AmbientEnvInfo) == 16, "AmbientEnvInfo 必须恰为 16 字节（块内只有 uvec4）");
+    static_assert(sizeof(AmbientEnvInfo) == 32, "AmbientEnvInfo 必须恰为 32 字节（uvec4 env_tex + vec4 ldr_param）");
     static_assert(offsetof(AmbientEnvInfo, env_tex) == 0, "env_tex 必须是块首字段（两端同型 uvec4）");
+    static_assert(offsetof(AmbientEnvInfo, ldr_param) == 16, "ldr_param 必须在偏移 16");
 }

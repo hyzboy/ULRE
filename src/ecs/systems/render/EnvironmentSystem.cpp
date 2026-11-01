@@ -71,6 +71,18 @@ namespace hgl::ecs
             manager->MarkDirty(ResolveProfileID());
     }
 
+    void EnvironmentSystem::SetLDRExposure(bool enable, float base_exposure, float sun_scale, float min_ambient)
+    {
+        if (auto *info = EditAmbientEnvInfo())
+        {
+            info->ldr_param.x = enable ? 1.0f : 0.0f;
+            info->ldr_param.y = base_exposure;
+            info->ldr_param.z = sun_scale;
+            info->ldr_param.w = min_ambient;
+            MarkAmbientEnvDirty();
+        }
+    }
+
     // ── ambient provider 模块选择（算法轴）──
     //  与 `EditAmbientEnvInfo()`（数据轴）配对：环境决定"用哪个算法 + 喂什么数据"。
     bool EnvironmentSystem::SetAmbientProvider(const AnsiString &module_name)
