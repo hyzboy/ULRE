@@ -5329,7 +5329,7 @@ int main(int argc, char** argv)
               "GLSL 侧 GlobalAddressesRef 缺字段（C++ 加了 GLSL 漏加 ⇒ 解引用错地址）" },
 
             // ③ 成对写入 + 哨兵
-            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/VKGeometry.cpp"),
+            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/geo/VKGeometry.cpp"),
               "mesh_draw_params_pool->WriteGeometryAABB(geometry_id,aabb)",
               "AABB 行的唯一写入口被绕过（写入点散落 ⇒ 短路路径/来源变化会漏写）" },
             { "VKGeometry.h", OS_TEXT("inc/hgl/graph/geo/VKGeometry.h"),
@@ -5341,7 +5341,7 @@ int main(int argc, char** argv)
             { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
               "sentinel.center[3] = kAlwaysVisibleRadius",
               "行 0 哨兵未写入（缺 AABB 的图元可能被割掉）" },
-            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/VKGeometry.cpp"),
+            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/geo/VKGeometry.cpp"),
               "写 GeometryAABB 行失败",
               "AABB 写入失败不再留痕（半写的一号双表会静默）" },
 
@@ -5360,7 +5360,7 @@ int main(int argc, char** argv)
               "非索引/索引路径不再按 is_indexed 择一取元素数（读数退化）" },
             // 注：text/line 的「元素数口径」已整体移交 Test 34（含禁复活）——本用例只管行宽/data_* 面。
 
-            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/VKGeometry.cpp"),
+            { "VKGeometry.cpp", OS_TEXT("src/SceneGraph/geo/VKGeometry.cpp"),
               "params.data_index_count",
               "几何侧未填 data_*（容量字段恒 0 ⇒ 下游拿不到缓冲区容量）" },
 
