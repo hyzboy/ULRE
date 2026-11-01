@@ -15,6 +15,7 @@
 #include <hgl/asset/generated/EnvironmentMeta.gen.h>
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
 #include <hgl/filesystem/FileSystem.h>
+#include <hgl/graph/asset/EnvironmentAsset.h>
 #include <hgl/graph/asset/EnvironmentAssetFlat.h>
 #include <hgl/graph/asset/EnvironmentAssetSpec.h>
 #include <hgl/io/FileInputStream.h>
@@ -513,9 +514,98 @@ namespace
         return ok;
     }
 
-    // ── 8. 预设资产 FlatBuffers 二进制验证 ─────────────────────────────────
-    bool VerifyPresetAssets()
+    // ── 8. AssetObject 多态序列化虚接口验证 ────────────────────────────────
+    bool TestAssetObjectPolymorphicIO()
     {
+        EnvironmentAsset env_asset;
+        AssetObject *obj = &env_asset;
+
+        if (!obj->ImportToml(kFullEnvironment, sizeof(kFullEnvironment) - 1))
+        {
+            GLogError(u8"AssetObject::ImportToml 失败");
+            return false;
+        }
+
+        if (obj->GetAssetName() != "Sky34.CubeIBL")
+        {
+            GLogError(u8"AssetObject::GetAssetName 不符: %s", obj->GetAssetName().c_str());
+            return false;
+        }
+
+        AnsiString toml_text;
+        if (!obj->ExportToml(toml_text) || toml_text.IsEmpty())
+        {
+            GLogError(u8"AssetObject::ExportToml 失败");
+            return false;
+        }
+
+        ValueArray<uint8> flat_bytes;
+        if (!obj->ExportFlat(flat_bytes) || flat_bytes.IsEmpty())
+        {
+            GLogError(u8"AssetObject::ExportFlat 失败");
+            return false;
+        }
+
+        EnvironmentAsset back_asset;
+        AssetObject *back_obj = &back_asset;
+        if (!back_obj->ImportFlat(flat_bytes.GetData(), flat_bytes.GetCount()))
+        {
+            GLogError(u8"AssetObject::ImportFlat 失败");
+            return false;
+        }
+
+        if (back_asset.GetSpec().name != "Sky34.CubeIBL"
+         || back_asset.GetSpec().ambient.mode.value != SkyMode::CubeMapIBL)
+        {
+            GLogError(u8"AssetObject 反序列化数据不匹配");
+            return false;
+        }
+
+        const OSString tmp_toml = OS_TEXT("build/test_poly.env.toml");
+        const OSString tmp_flat = OS_TEXT("build/test_poly.env");
+
+        if (!obj->SaveToFile(tmp_toml))
+        {
+            GLogError(u8"AssetObject::SaveToFile(.env.toml) 失败");
+            return false;
+        }
+
+        EnvironmentAsset from_toml_asset;
+        if (!from_toml_asset.LoadFromFile(tmp_toml) || from_toml_asset.GetSpec().name != "Sky34.CubeIBL")
+        {
+            GLogError(u8"AssetObject::LoadFromFile(.env.toml) 失败");
+            return false;
+        }
+
+        if (!obj->SaveToFile(tmp_flat))
+        {
+            GLogError(u8"AssetObject::SaveToFile(.env) 失败");
+            return false;
+        }
+
+        EnvironmentAsset from_flat_asset;
+        if (!from_flat_asset.LoadFromFile(tmp_flat) || from_flat_asset.GetSpec().name != "Sky34.CubeIBL")
+        {
+            GLogError(u8"AssetObject::LoadFromFile(.env) 失败");
+            return false;
+        }
+
+        hgl::filesystem::FileDelete(tmp_toml);
+        hgl::filesystem::FileDelete(tmp_flat);
+        return true;
+    }
+
+    // ── 9. 通过 AssetObject 导出与全量双格式校验默认预设 ─────────────────────
+    bool TestExportAndVerifyDefaultPresets()
+    {
+        const OSString preset_dir = OS_TEXT("ShaderLibrary/asset/environment");
+        const int exported_count = ExportDefaultEnvironmentPresets(preset_dir, true, true);
+        if (exported_count != 5)
+        {
+            GLogError(u8"ExportDefaultEnvironmentPresets 导出数量不符: 实际 %d, 预期 5", exported_count);
+            return false;
+        }
+
         const os_char *preset_names[] = {
             OS_TEXT("sky_atmosphere"),
             OS_TEXT("sky34_cube_ibl"),
@@ -526,24 +616,44 @@ namespace
 
         for (const os_char *base_name : preset_names)
         {
-            const OSString env_path = OSString(OS_TEXT("ShaderLibrary/asset/environment/"))
-                                    + OSString(base_name) + OS_TEXT(".env");
+            const OSString toml_path = preset_dir + OS_TEXT("/") + OSString(base_name) + OS_TEXT(".env.toml");
+            const OSString flat_path = preset_dir + OS_TEXT("/") + OSString(base_name) + OS_TEXT(".env");
 
-            EnvironmentSpec loaded;
-            if (!LoadEnvironmentSpecFromFlatBuffers(env_path, loaded))
+            EnvironmentAsset toml_asset;
+            if (!toml_asset.LoadFromFile(toml_path))
             {
-                GLogError(u8"验证载入预设二进制 .env 失败: %ls", env_path.c_str());
+                GLogError(u8"加载预设 .env.toml 失败: %ls", toml_path.c_str());
                 return false;
             }
 
-            if (loaded.schema != 1 || loaded.name.IsEmpty())
+            EnvironmentAsset flat_asset;
+            if (!flat_asset.LoadFromFile(flat_path))
             {
-                GLogError(u8"预设二进制 .env 内容校验失败: %ls", env_path.c_str());
+                GLogError(u8"加载预设 .env 失败: %ls", flat_path.c_str());
                 return false;
             }
 
-            GLogInfo(u8"预设二进制 .env 验证通过: %ls (name=%s)",
-                     env_path.c_str(), loaded.name.c_str());
+            if (toml_asset.GetSpec().schema != 1 || flat_asset.GetSpec().schema != 1)
+            {
+                GLogError(u8"预设 schema 校验失败: %ls", base_name);
+                return false;
+            }
+
+            if (toml_asset.GetSpec().name != flat_asset.GetSpec().name)
+            {
+                GLogError(u8"预设 TOML 与 FlatBuffers 名字不一致: toml=%s flat=%s",
+                          toml_asset.GetSpec().name.c_str(), flat_asset.GetSpec().name.c_str());
+                return false;
+            }
+
+            if (toml_asset.GetSpec().ambient.mode.value != flat_asset.GetSpec().ambient.mode.value)
+            {
+                GLogError(u8"预设 TOML 与 FlatBuffers ambient.mode 不一致: %ls", base_name);
+                return false;
+            }
+
+            GLogInfo(u8"预设双格式校验通过: %ls (name=%s)",
+                     base_name, toml_asset.GetSpec().name.c_str());
         }
 
         return true;
@@ -561,7 +671,8 @@ int main()
     Check(TestTypeMismatchRejected(), "类型不符必须失败");
     Check(TestMetaStructLinks(), "元数据接线");
     Check(TestFlatBuffersRoundTrip(), "FlatBuffers 往返");
-    Check(VerifyPresetAssets(), "预设资产二进制校验");
+    Check(TestAssetObjectPolymorphicIO(), "AssetObject 多态序列化虚接口");
+    Check(TestExportAndVerifyDefaultPresets(), "预设资产通过 AssetObject 导出与双格式校验");
 
     if (g_failed > 0)
     {

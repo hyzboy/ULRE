@@ -22,6 +22,7 @@
 
 #include <hgl/type/String.h>
 #include <hgl/type/EnumUtil.h>
+#include <hgl/type/ValueArray.h>
 
 #include <cstdint>
 
@@ -241,5 +242,49 @@ namespace hgl::asset
 
         /// 资产名（可空；由派生类决定语义，例如 `*.geo.toml` 的 `name`）。
         virtual const AnsiString &GetAssetName() const = 0;
+
+        // ── 序列化与文件持久化统一虚接口 ──────────────────────────────────────
+        //
+        // 派生类可根据支持的格式重载相应接口，默认返回 false 表示不支持该格式。
+
+        /// 将资产序列化为 TOML 文件（作者侧文本格式）
+        virtual bool SaveToToml(const OSString &/*filename*/) const { return false; }
+
+        /// 将资产序列化为 FlatBuffers 二进制文件（发行版格式）
+        virtual bool SaveToFlat(const OSString &/*filename*/) const { return false; }
+
+        /// 从 TOML 文件反序列化加载资产
+        virtual bool LoadFromToml(const OSString &/*filename*/) { return false; }
+
+        /// 从 FlatBuffers 二进制文件反序列化加载资产
+        virtual bool LoadFromFlat(const OSString &/*filename*/) { return false; }
+
+        /// 导出为 TOML 文本字符串
+        virtual bool ExportToml(AnsiString &/*out_text*/) const { return false; }
+
+        /// 导出为 FlatBuffers 二进制字节缓冲
+        virtual bool ExportFlat(ValueArray<uint8> &/*out_bytes*/) const { return false; }
+
+        /// 从 TOML 文本解析载入
+        virtual bool ImportToml(const char */*content*/, size_t /*size*/) { return false; }
+
+        /// 从 FlatBuffers 二进制数据解析载入
+        virtual bool ImportFlat(const uint8 */*data*/, size_t /*size*/) { return false; }
+
+        /// 根据文件扩展名自动分派保存格式（.toml 走 SaveToToml，其余走 SaveToFlat）
+        virtual bool SaveToFile(const OSString &filename) const
+        {
+            if (filename.EndsWithIgnoreCase(OS_TEXT(".toml")))
+                return SaveToToml(filename);
+            return SaveToFlat(filename);
+        }
+
+        /// 根据文件扩展名自动分派加载格式（.toml 走 LoadFromToml，其余走 LoadFromFlat）
+        virtual bool LoadFromFile(const OSString &filename)
+        {
+            if (filename.EndsWithIgnoreCase(OS_TEXT(".toml")))
+                return LoadFromToml(filename);
+            return LoadFromFlat(filename);
+        }
     };
 }//namespace hgl::asset

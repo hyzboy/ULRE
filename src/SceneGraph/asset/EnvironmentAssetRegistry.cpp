@@ -180,27 +180,23 @@ namespace hgl::graph
             return nullptr;
         }
 
-        EnvironmentSpec spec;
-        hgl::serialize::Archive archive;
-        hgl::serialize::TomlParseError toml_error;
-
-        if (!hgl::serialize::LoadFromTomlText<EnvironmentSpec>(
-                content, static_cast<size_t>(size), spec, &archive, &toml_error))
+        EnvironmentAsset temp_asset;
+        if (!temp_asset.ImportToml(content, static_cast<size_t>(size)))
         {
-            last_error = MakeParseFailureReason(archive, toml_error);
-            GLogError(u8"[EnvironmentAssetRegistry] 环境配置解析失败: %ls (%s)",
-                      label ? label : OS_TEXT("<memory>"), last_error.c_str());
+            last_error = "environment toml: 解析失败";
+            GLogError(u8"[EnvironmentAssetRegistry] 环境配置解析失败: %ls",
+                      label ? label : OS_TEXT("<memory>"));
             return nullptr;
         }
 
-        if (!Validate(spec, last_error))
+        if (!Validate(temp_asset.GetSpec(), last_error))
         {
             GLogError(u8"[EnvironmentAssetRegistry] 环境配置校验失败: %ls (%s)",
                       label ? label : OS_TEXT("<memory>"), last_error.c_str());
             return nullptr;
         }
 
-        EnvironmentAsset *asset = Attach(std::move(spec), label);
+        EnvironmentAsset *asset = Attach(std::move(const_cast<EnvironmentSpec&>(temp_asset.GetSpec())), label);
 
         if (asset)
             GLogInfo(u8"[EnvironmentAssetRegistry] 环境已加载: %ls name=%s mode=%s",
@@ -227,22 +223,23 @@ namespace hgl::graph
             return nullptr;
         }
 
-        EnvironmentSpec spec;
-        if (!DecodeEnvironmentFlat(data, size, spec, &last_error))
+        EnvironmentAsset temp_asset;
+        if (!temp_asset.ImportFlat(data, static_cast<size_t>(size)))
         {
-            GLogError(u8"[EnvironmentAssetRegistry] FlatBuffers 解码失败: %ls (%s)",
-                      label ? label : OS_TEXT("<memory>"), last_error.c_str());
+            last_error = "environment flat: FlatBuffers 解码失败";
+            GLogError(u8"[EnvironmentAssetRegistry] FlatBuffers 解码失败: %ls",
+                      label ? label : OS_TEXT("<memory>"));
             return nullptr;
         }
 
-        if (!Validate(spec, last_error))
+        if (!Validate(temp_asset.GetSpec(), last_error))
         {
             GLogError(u8"[EnvironmentAssetRegistry] 环境配置校验失败: %ls (%s)",
                       label ? label : OS_TEXT("<memory>"), last_error.c_str());
             return nullptr;
         }
 
-        EnvironmentAsset *asset = Attach(std::move(spec), label);
+        EnvironmentAsset *asset = Attach(std::move(const_cast<EnvironmentSpec&>(temp_asset.GetSpec())), label);
 
         if (asset)
             GLogInfo(u8"[EnvironmentAssetRegistry] 环境已加载(FlatBuffers): %ls name=%s mode=%s",
@@ -278,22 +275,34 @@ namespace hgl::graph
             return nullptr;
         }
 
-        AutoDeleteArray<uint8> buffer;
-        int64 size = 0;
-
-        if (!ReadWholeFile(path, buffer, size))
+        EnvironmentAsset temp_asset;
+        if (!temp_asset.LoadFromFile(path))
         {
-            last_error = "environment: 读取失败";
+            last_error = "environment: LoadFromFile 失败: ";
+            last_error += AnsiString(reinterpret_cast<const char *>(ToU8String(path).c_str()));
+            GLogError(u8"[EnvironmentAssetRegistry] %s", last_error.c_str());
             return nullptr;
         }
 
-        if (is_flat)
+        if (!Validate(temp_asset.GetSpec(), last_error))
         {
-            return RegisterFromFlat(path.c_str(), buffer.data(), static_cast<uint64>(size));
+            GLogError(u8"[EnvironmentAssetRegistry] 环境配置校验失败: %ls (%s)",
+                      path.c_str(), last_error.c_str());
+            return nullptr;
         }
 
-        return RegisterFromToml(path.c_str(), reinterpret_cast<const char *>(buffer.data()),
-                                static_cast<int>(size));
+        EnvironmentAsset *asset = Attach(std::move(const_cast<EnvironmentSpec&>(temp_asset.GetSpec())), path.c_str());
+
+        if (asset)
+            GLogInfo(u8"[EnvironmentAssetRegistry] 环境已加载: %ls name=%s mode=%s",
+                     path.c_str(),
+                     asset->GetEnvironmentName().c_str(),
+                     hgl::asset::generated::AssetEnumName_SkyMode(
+                         asset->GetSpec().ambient.mode.present
+                             ? asset->GetSpec().ambient.mode.value
+                             : SkyMode::SHLightOnly));
+
+        return asset;
     }
 
     bool EnvironmentAssetRegistry::LoadDirectory(const OSString &directory,

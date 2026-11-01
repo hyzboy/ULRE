@@ -49,6 +49,8 @@ namespace hgl::graph
 
     public:
 
+        EnvironmentAsset() = default;
+        explicit EnvironmentAsset(const EnvironmentSpec &in_spec);
         explicit EnvironmentAsset(EnvironmentSpec &&in_spec);
 
         ~EnvironmentAsset() override = default;
@@ -62,9 +64,22 @@ namespace hgl::graph
 
         const AnsiString &GetAssetName() const override { return asset_name; }
 
+        bool SaveToToml(const OSString &filename) const override;
+        bool SaveToFlat(const OSString &filename) const override;
+        bool LoadFromToml(const OSString &filename) override;
+        bool LoadFromFlat(const OSString &filename) override;
+
+        bool ExportToml(AnsiString &out_text) const override;
+        bool ExportFlat(ValueArray<uint8> &out_bytes) const override;
+        bool ImportToml(const char *content, size_t size) override;
+        bool ImportFlat(const uint8 *data, size_t size) override;
+
     public:     // 只读观察
 
         const EnvironmentSpec &GetSpec() const { return spec; }
+        EnvironmentSpec &GetSpec() { return spec; }
+        void SetSpec(const EnvironmentSpec &in_spec);
+        void SetSpec(EnvironmentSpec &&in_spec);
 
         const OSString &GetSourcePath() const { return source_path; }
 
@@ -78,4 +93,18 @@ namespace hgl::graph
         /// 记录来源并生成身份（`label` 为路径或空）
         void SetSource(const os_char *label);
     };//class EnvironmentAsset
+
+    /**
+     * @brief 构建标准环境预设并通过 EnvironmentAsset 导出到指定目录。
+     *
+     * 严禁手写拼接 TOML 字符串或硬编码 FlatBuffers 二进制数据。
+     *
+     * @param output_dir    输出目录
+     * @param export_toml   是否导出 .env.toml（作者侧文本格式）
+     * @param export_flat   是否导出 .env（FlatBuffers 二进制格式）
+     * @return 成功导出的预设数量
+     */
+    int ExportDefaultEnvironmentPresets(const OSString &output_dir,
+                                        bool export_toml = true,
+                                        bool export_flat = true);
 }//namespace hgl::graph

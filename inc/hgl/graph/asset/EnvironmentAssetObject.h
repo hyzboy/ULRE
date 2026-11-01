@@ -47,6 +47,15 @@ namespace hgl::graph
 
         const AnsiString &GetAssetName() const override { return asset_name; }
 
+        bool SaveToToml(const OSString &filename) const override { return asset ? asset->SaveToToml(filename) : false; }
+        bool SaveToFlat(const OSString &filename) const override { return asset ? asset->SaveToFlat(filename) : false; }
+        bool LoadFromToml(const OSString &filename) override { return asset ? asset->LoadFromToml(filename) : false; }
+        bool LoadFromFlat(const OSString &filename) override { return asset ? asset->LoadFromFlat(filename) : false; }
+        bool ExportToml(AnsiString &out_text) const override { return asset ? asset->ExportToml(out_text) : false; }
+        bool ExportFlat(ValueArray<uint8> &out_bytes) const override { return asset ? asset->ExportFlat(out_bytes) : false; }
+        bool ImportToml(const char *content, size_t size) override { return asset ? asset->ImportToml(content, size) : false; }
+        bool ImportFlat(const uint8 *data, size_t size) override { return asset ? asset->ImportFlat(data, size) : false; }
+
         /// 底层句柄（不拥有；不要在外部 delete）
         EnvironmentAsset *GetEnvironmentAsset() const { return asset; }
 
