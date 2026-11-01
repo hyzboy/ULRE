@@ -16,11 +16,11 @@
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/graph/asset/EnvironmentAsset.h>
-#include <hgl/graph/asset/EnvironmentAssetFlat.h>
 #include <hgl/graph/asset/EnvironmentAssetSpec.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
+#include <hgl/serialize/ArchiveFile.h>
 #include <hgl/serialize/TomlCodec.h>
 
 using namespace hgl;
@@ -430,9 +430,9 @@ namespace
         ValueArray<uint8> buffer;
         AnsiString error;
 
-        if (!EncodeEnvironmentFlat(spec, buffer, &error))
+        if (!hgl::serialize::SaveStructToBytes(spec, buffer, &error))
         {
-            GLogError(u8"EncodeEnvironmentFlat 失败: %s", error.c_str());
+            GLogError(u8"SaveStructToBytes 失败: %s", error.c_str());
             return false;
         }
 
@@ -440,9 +440,11 @@ namespace
             return false;
 
         EnvironmentSpec back;
-        if (!DecodeEnvironmentFlat(buffer.GetData(), buffer.GetCount(), back, &error))
+        if (!hgl::serialize::LoadStructFromBytes(buffer.GetData(),
+                                                 static_cast<size_t>(buffer.GetCount()),
+                                                 back, &error))
         {
-            GLogError(u8"DecodeEnvironmentFlat 失败: %s", error.c_str());
+            GLogError(u8"LoadStructFromBytes 失败: %s", error.c_str());
             return false;
         }
 
@@ -491,18 +493,19 @@ namespace
         if (!Nearly(back.sh9.bands.value[1].r, 0.4f))
             return false;
 
-        // 文件读写往返
+        // 文件读写往返（格式由后缀决定，与 `EnvironmentAsset` 走同一条通路）
         const OSString tmp_path = OS_TEXT("build/test_env_roundtrip.env");
-        if (!SaveEnvironmentSpecToFlatBuffers(spec, tmp_path))
+        if (!hgl::serialize::SaveStructToFile(spec, tmp_path, hgl::serialize::ArchiveFormat::Auto, &error))
         {
-            GLogError(u8"SaveEnvironmentSpecToFlatBuffers 失败");
+            GLogError(u8"SaveStructToFile(.env) 失败: %s", error.c_str());
             return false;
         }
 
         EnvironmentSpec file_back;
-        if (!LoadEnvironmentSpecFromFlatBuffers(tmp_path, file_back))
+        if (!hgl::serialize::LoadStructFromFile(tmp_path, file_back,
+                                                hgl::serialize::ArchiveFormat::Auto, &error))
         {
-            GLogError(u8"LoadEnvironmentSpecFromFlatBuffers 失败");
+            GLogError(u8"LoadStructFromFile(.env) 失败: %s", error.c_str());
             return false;
         }
 
@@ -514,15 +517,21 @@ namespace
         return ok;
     }
 
-    // ── 8. AssetObject 多态序列化虚接口验证 ────────────────────────────────
+    // ── 8. AssetObject 统一序列化（值树 + 文件门面）验证 ────────────────────
+    //
+    // 关键断言：`AssetObject` 只暴露 `Serialize(Archive&)` 一个虚接口；文本与二进制
+    // 都由 `ArchiveFile.h` 的通用门面完成，派生类里没有任何格式代码。
     bool TestAssetObjectPolymorphicIO()
     {
         EnvironmentAsset env_asset;
         AssetObject *obj = &env_asset;
 
-        if (!obj->ImportToml(kFullEnvironment, sizeof(kFullEnvironment) - 1))
+        AnsiString error;
+
+        if (!hgl::serialize::LoadAssetObjectFromText(*obj, kFullEnvironment,
+                                                     sizeof(kFullEnvironment) - 1, &error))
         {
-            GLogError(u8"AssetObject::ImportToml 失败");
+            GLogError(u8"LoadAssetObjectFromText 失败: %s", error.c_str());
             return false;
         }
 
@@ -533,24 +542,24 @@ namespace
         }
 
         AnsiString toml_text;
-        if (!obj->ExportToml(toml_text) || toml_text.IsEmpty())
+        if (!hgl::serialize::SaveAssetObjectToText(*obj, toml_text, &error) || toml_text.IsEmpty())
         {
-            GLogError(u8"AssetObject::ExportToml 失败");
+            GLogError(u8"SaveAssetObjectToText 失败: %s", error.c_str());
             return false;
         }
 
         ValueArray<uint8> flat_bytes;
-        if (!obj->ExportFlat(flat_bytes) || flat_bytes.IsEmpty())
+        if (!hgl::serialize::SaveAssetObjectToBytes(*obj, flat_bytes, &error) || flat_bytes.IsEmpty())
         {
-            GLogError(u8"AssetObject::ExportFlat 失败");
+            GLogError(u8"SaveAssetObjectToBytes 失败: %s", error.c_str());
             return false;
         }
 
         EnvironmentAsset back_asset;
-        AssetObject *back_obj = &back_asset;
-        if (!back_obj->ImportFlat(flat_bytes.GetData(), flat_bytes.GetCount()))
+        if (!hgl::serialize::LoadAssetObjectFromBytes(back_asset, flat_bytes.GetData(),
+                                                      static_cast<size_t>(flat_bytes.GetCount()), &error))
         {
-            GLogError(u8"AssetObject::ImportFlat 失败");
+            GLogError(u8"LoadAssetObjectFromBytes 失败: %s", error.c_str());
             return false;
         }
 
@@ -564,29 +573,43 @@ namespace
         const OSString tmp_toml = OS_TEXT("build/test_poly.env.toml");
         const OSString tmp_flat = OS_TEXT("build/test_poly.env");
 
-        if (!obj->SaveToFile(tmp_toml))
+        if (!hgl::serialize::SaveAssetObjectToFile(*obj, tmp_toml,
+                                                   hgl::serialize::ArchiveFormat::Auto, &error))
         {
-            GLogError(u8"AssetObject::SaveToFile(.env.toml) 失败");
+            GLogError(u8"SaveAssetObjectToFile(.env.toml) 失败: %s", error.c_str());
             return false;
         }
 
         EnvironmentAsset from_toml_asset;
-        if (!from_toml_asset.LoadFromFile(tmp_toml) || from_toml_asset.GetSpec().name != "Sky34.CubeIBL")
+        if (!hgl::serialize::LoadAssetObjectFromFile(from_toml_asset, tmp_toml,
+                                                     hgl::serialize::ArchiveFormat::Auto, &error)
+         || from_toml_asset.GetSpec().name != "Sky34.CubeIBL")
         {
-            GLogError(u8"AssetObject::LoadFromFile(.env.toml) 失败");
+            GLogError(u8"LoadAssetObjectFromFile(.env.toml) 失败: %s", error.c_str());
             return false;
         }
 
-        if (!obj->SaveToFile(tmp_flat))
+        if (!hgl::serialize::SaveAssetObjectToFile(*obj, tmp_flat,
+                                                   hgl::serialize::ArchiveFormat::Auto, &error))
         {
-            GLogError(u8"AssetObject::SaveToFile(.env) 失败");
+            GLogError(u8"SaveAssetObjectToFile(.env) 失败: %s", error.c_str());
             return false;
         }
 
         EnvironmentAsset from_flat_asset;
-        if (!from_flat_asset.LoadFromFile(tmp_flat) || from_flat_asset.GetSpec().name != "Sky34.CubeIBL")
+        if (!hgl::serialize::LoadAssetObjectFromFile(from_flat_asset, tmp_flat,
+                                                     hgl::serialize::ArchiveFormat::Auto, &error)
+         || from_flat_asset.GetSpec().name != "Sky34.CubeIBL")
         {
-            GLogError(u8"AssetObject::LoadFromFile(.env) 失败");
+            GLogError(u8"LoadAssetObjectFromFile(.env) 失败: %s", error.c_str());
+            return false;
+        }
+
+        // 无后缀必须直接被拒（不允许「猜一个格式」）
+        if (hgl::serialize::SaveAssetObjectToFile(*obj, OS_TEXT("build/test_poly_noext"), 
+                                                  hgl::serialize::ArchiveFormat::Auto, &error))
+        {
+            GLogError(u8"无后缀文件名本应被拒绝");
             return false;
         }
 
@@ -620,14 +643,14 @@ namespace
             const OSString flat_path = preset_dir + OS_TEXT("/") + OSString(base_name) + OS_TEXT(".env");
 
             EnvironmentAsset toml_asset;
-            if (!toml_asset.LoadFromFile(toml_path))
+            if (!hgl::serialize::LoadAssetObjectFromFile(toml_asset, toml_path))
             {
                 GLogError(u8"加载预设 .env.toml 失败: %ls", toml_path.c_str());
                 return false;
             }
 
             EnvironmentAsset flat_asset;
-            if (!flat_asset.LoadFromFile(flat_path))
+            if (!hgl::serialize::LoadAssetObjectFromFile(flat_asset, flat_path))
             {
                 GLogError(u8"加载预设 .env 失败: %ls", flat_path.c_str());
                 return false;

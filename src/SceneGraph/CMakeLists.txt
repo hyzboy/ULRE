@@ -186,7 +186,6 @@ ${SG_INCLUDE_PATH}/asset/GeometryAssetObject.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/asset/MaterialDataBlockRegistry.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/asset/MaterialDataBlockObject.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/asset/EnvironmentAsset.h
-                            ${ROOT_INCLUDE_PATH}/hgl/graph/asset/EnvironmentAssetFlat.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/asset/EnvironmentAssetRegistry.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/asset/EnvironmentAssetObject.h
                             asset/AssetURI.cpp

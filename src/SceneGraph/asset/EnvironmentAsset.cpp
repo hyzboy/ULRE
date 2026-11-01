@@ -1,13 +1,9 @@
 #include <hgl/graph/asset/EnvironmentAsset.h>
-#include <hgl/graph/asset/EnvironmentAssetFlat.h>
 #include <hgl/asset/generated/EnvironmentMeta.gen.h>
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
-#include <hgl/serialize/TomlCodec.h>
-#include <hgl/io/FileInputStream.h>
-#include <hgl/io/FileOutputStream.h>
+#include <hgl/serialize/ArchiveFile.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
-#include <hgl/type/Smart.h>
 #include <hgl/log/Log.h>
 #include <hgl/utf.h>
 
@@ -58,111 +54,15 @@ namespace hgl::graph
         return &hgl::asset::generated::Class_EnvironmentSpec;
     }
 
-    bool EnvironmentAsset::ExportToml(AnsiString &out_text) const
+    bool EnvironmentAsset::Serialize(hgl::serialize::Archive &ar)
     {
-        hgl::serialize::Archive archive;
-        out_text = hgl::serialize::SaveToTomlText(spec, &archive);
-        return !out_text.IsEmpty();
-    }
+        hgl::serialize::StructSerializer<EnvironmentSpec>::Do(ar, spec);
 
-    bool EnvironmentAsset::ExportFlat(ValueArray<uint8> &out_bytes) const
-    {
-        AnsiString error;
-        return EncodeEnvironmentFlat(spec, out_bytes, &error);
-    }
-
-    bool EnvironmentAsset::ImportToml(const char *content, size_t size)
-    {
-        if (!content || size == 0)
+        if (!ar.Ok())
             return false;
 
-        EnvironmentSpec new_spec;
-        hgl::serialize::Archive archive;
-        hgl::serialize::TomlParseError toml_error;
-        if (!hgl::serialize::LoadFromTomlText<EnvironmentSpec>(
-                content, size, new_spec, &archive, &toml_error))
-            return false;
-
-        spec = std::move(new_spec);
+        // 读方向可能改掉 `name`；名字是资产身份的一部分，必须跟着同步。
         asset_name = spec.name;
-        return true;
-    }
-
-    bool EnvironmentAsset::ImportFlat(const uint8 *data, size_t size)
-    {
-        if (!data || size < FLATBUFFERS_MIN_BUFFER_SIZE)
-            return false;
-
-        EnvironmentSpec new_spec;
-        AnsiString error;
-        if (!DecodeEnvironmentFlat(data, size, new_spec, &error))
-            return false;
-
-        spec = std::move(new_spec);
-        asset_name = spec.name;
-        return true;
-    }
-
-    bool EnvironmentAsset::SaveToToml(const OSString &filename) const
-    {
-        AnsiString text;
-        if (!ExportToml(text))
-            return false;
-
-        hgl::io::FileOutputStream *fos = hgl::io::CreateFileOutputStream(filename);
-        if (!fos)
-            return false;
-
-        const int64 written = fos->Write(text.c_str(), text.Length());
-        delete fos;
-        return written == text.Length();
-    }
-
-    bool EnvironmentAsset::SaveToFlat(const OSString &filename) const
-    {
-        return SaveEnvironmentSpecToFlatBuffers(spec, filename);
-    }
-
-    bool EnvironmentAsset::LoadFromToml(const OSString &filename)
-    {
-        hgl::io::OpenFileInputStream opener(filename);
-        if (!opener)
-            return false;
-
-        const int64 size = opener->GetSize();
-        if (size <= 0 || size > 16 * 1024 * 1024)
-            return false;
-
-        AutoDeleteArray<char> buffer(static_cast<size_t>(size) + 1);
-        if (opener->Read(buffer.data(), size) != size)
-            return false;
-        buffer[static_cast<size_t>(size)] = '\0';
-
-        if (!ImportToml(buffer.data(), static_cast<size_t>(size)))
-            return false;
-
-        SetSource(filename.c_str());
-        return true;
-    }
-
-    bool EnvironmentAsset::LoadFromFlat(const OSString &filename)
-    {
-        hgl::io::OpenFileInputStream opener(filename);
-        if (!opener)
-            return false;
-
-        const int64 size = opener->GetSize();
-        if (size < FLATBUFFERS_MIN_BUFFER_SIZE || size > 64 * 1024 * 1024)
-            return false;
-
-        AutoDeleteArray<uint8> buffer(static_cast<size_t>(size));
-        if (opener->Read(buffer.data(), size) != size)
-            return false;
-
-        if (!ImportFlat(buffer.data(), static_cast<size_t>(size)))
-            return false;
-
-        SetSource(filename.c_str());
         return true;
     }
 
@@ -203,6 +103,33 @@ namespace hgl::graph
 
         int count = 0;
 
+        // 保存一律走统一序列化门面（`ArchiveFile.h`）：格式由文件名后缀决定，
+        // 这里既不认识 TOML 也不认识 FlatBuffers。加新后端时本函数不用改。
+        auto SavePreset = [&](EnvironmentAsset &asset, const os_char *stem) -> bool
+        {
+            AnsiString error;
+
+            if (export_toml
+             && !hgl::serialize::SaveAssetObjectToFile(
+                    asset, MakeFilePath(stem, OS_TEXT(".env.toml")),
+                    hgl::serialize::ArchiveFormat::Auto, &error))
+            {
+                GLogError(u8"[EnvironmentPreset] 导出 TOML 失败: %s", error.c_str());
+                return false;
+            }
+
+            if (export_flat
+             && !hgl::serialize::SaveAssetObjectToFile(
+                    asset, MakeFilePath(stem, OS_TEXT(".env")),
+                    hgl::serialize::ArchiveFormat::Auto, &error))
+            {
+                GLogError(u8"[EnvironmentPreset] 导出 FlatBuffers 失败: %s", error.c_str());
+                return false;
+            }
+
+            return true;
+        };
+
         // 1. Sky.Atmosphere
         {
             EnvironmentSpec spec;
@@ -217,12 +144,7 @@ namespace hgl::graph
             spec.sh9.track_sun = true;
 
             EnvironmentAsset asset(std::move(spec));
-            bool ok = true;
-            if (export_toml)
-                ok = ok && asset.SaveToToml(MakeFilePath(OS_TEXT("sky_atmosphere"), OS_TEXT(".env.toml")));
-            if (export_flat)
-                ok = ok && asset.SaveToFlat(MakeFilePath(OS_TEXT("sky_atmosphere"), OS_TEXT(".env")));
-            if (ok) ++count;
+            if (SavePreset(asset, OS_TEXT("sky_atmosphere"))) ++count;
         }
 
         // 2. Sky34.CubeMapIBL
@@ -245,12 +167,7 @@ namespace hgl::graph
             spec.sh9.track_sun = true;
 
             EnvironmentAsset asset(std::move(spec));
-            bool ok = true;
-            if (export_toml)
-                ok = ok && asset.SaveToToml(MakeFilePath(OS_TEXT("sky34_cube_ibl"), OS_TEXT(".env.toml")));
-            if (export_flat)
-                ok = ok && asset.SaveToFlat(MakeFilePath(OS_TEXT("sky34_cube_ibl"), OS_TEXT(".env")));
-            if (ok) ++count;
+            if (SavePreset(asset, OS_TEXT("sky34_cube_ibl"))) ++count;
         }
 
         // 3. Sky34.OctahedralIBL
@@ -273,12 +190,7 @@ namespace hgl::graph
             spec.sh9.track_sun = true;
 
             EnvironmentAsset asset(std::move(spec));
-            bool ok = true;
-            if (export_toml)
-                ok = ok && asset.SaveToToml(MakeFilePath(OS_TEXT("sky34_oct_ibl"), OS_TEXT(".env.toml")));
-            if (export_flat)
-                ok = ok && asset.SaveToFlat(MakeFilePath(OS_TEXT("sky34_oct_ibl"), OS_TEXT(".env")));
-            if (ok) ++count;
+            if (SavePreset(asset, OS_TEXT("sky34_oct_ibl"))) ++count;
         }
 
         // 4. Sky34.LambertDome
@@ -301,12 +213,7 @@ namespace hgl::graph
             spec.sh9.track_sun = true;
 
             EnvironmentAsset asset(std::move(spec));
-            bool ok = true;
-            if (export_toml)
-                ok = ok && asset.SaveToToml(MakeFilePath(OS_TEXT("sky34_lambert_dome"), OS_TEXT(".env.toml")));
-            if (export_flat)
-                ok = ok && asset.SaveToFlat(MakeFilePath(OS_TEXT("sky34_lambert_dome"), OS_TEXT(".env")));
-            if (ok) ++count;
+            if (SavePreset(asset, OS_TEXT("sky34_lambert_dome"))) ++count;
         }
 
         // 5. Sky34.SH9
@@ -325,12 +232,7 @@ namespace hgl::graph
             spec.sh9.track_sun = true;
 
             EnvironmentAsset asset(std::move(spec));
-            bool ok = true;
-            if (export_toml)
-                ok = ok && asset.SaveToToml(MakeFilePath(OS_TEXT("sky34_sh9"), OS_TEXT(".env.toml")));
-            if (export_flat)
-                ok = ok && asset.SaveToFlat(MakeFilePath(OS_TEXT("sky34_sh9"), OS_TEXT(".env")));
-            if (ok) ++count;
+            if (SavePreset(asset, OS_TEXT("sky34_sh9"))) ++count;
         }
 
         return count;

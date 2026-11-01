@@ -4,11 +4,8 @@
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
-#include <hgl/graph/asset/EnvironmentAssetFlat.h>
-#include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
-#include <hgl/serialize/TomlCodec.h>
-#include <hgl/type/Smart.h>
+#include <hgl/serialize/ArchiveFile.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/utf.h>
 
@@ -39,67 +36,6 @@ namespace hgl::graph
         bool IsEnvironmentFile(const OSString &name)
         {
             return IsEnvironmentFlatFile(name) || IsEnvironmentTomlFile(name);
-        }
-
-        /// 读整个文件到字节缓冲（`AutoDeleteArray` 自带 +1 尾巴，TOML 需要 '\0'）
-        bool ReadWholeFile(const OSString &path, AutoDeleteArray<uint8> &out_buffer, int64 &out_size)
-        {
-            out_size = 0;
-
-            hgl::io::OpenFileInputStream opener(path);
-            if (!opener)
-            {
-                GLogError(u8"[EnvironmentAssetRegistry] 文件打不开: %ls", path.c_str());
-                return false;
-            }
-
-            const int64 size = opener->GetSize();
-            if (size <= 0 || size > INT_MAX)
-            {
-                GLogError(u8"[EnvironmentAssetRegistry] 文件大小无效: %ls (%lld)",
-                          path.c_str(), static_cast<long long>(size));
-                return false;
-            }
-
-            if (!out_buffer.alloc(static_cast<size_t>(size) + 1))
-            {
-                GLogError(u8"[EnvironmentAssetRegistry] 文件缓冲分配失败: %ls (%lld)",
-                          path.c_str(), static_cast<long long>(size));
-                return false;
-            }
-
-            if (opener->Read(out_buffer.data(), size) != size)
-            {
-                GLogError(u8"[EnvironmentAssetRegistry] 文件读取失败: %ls", path.c_str());
-                return false;
-            }
-
-            out_buffer[static_cast<size_t>(size)] = 0;
-            out_size = size;
-            return true;
-        }
-
-        /// 把「TOML 语法错」与「字段序列化错」拼成一句可直接展示的原因
-        AnsiString MakeParseFailureReason(const hgl::serialize::Archive &archive,
-                                          const hgl::serialize::TomlParseError &toml_error)
-        {
-            AnsiString reason("environment toml: ");
-
-            if (toml_error.line > 0 || !toml_error.title.IsEmpty())
-            {
-                reason += toml_error.Format();
-                return reason;
-            }
-
-            if (archive.FailedPath()[0])
-                reason += AnsiString(" path=") + archive.FailedPath();
-            else if (archive.FailedField()[0])
-                reason += AnsiString(" field=") + archive.FailedField();
-
-            if (archive.ErrorMessage()[0])
-                reason += AnsiString(" detail=") + archive.ErrorMessage();
-
-            return reason;
         }
     }//namespace
 
@@ -181,11 +117,14 @@ namespace hgl::graph
         }
 
         EnvironmentAsset temp_asset;
-        if (!temp_asset.ImportToml(content, static_cast<size_t>(size)))
+        AnsiString reason;
+        if (!hgl::serialize::LoadAssetObjectFromText(temp_asset, content,
+                                                     static_cast<size_t>(size), &reason))
         {
-            last_error = "environment toml: 解析失败";
-            GLogError(u8"[EnvironmentAssetRegistry] 环境配置解析失败: %ls",
-                      label ? label : OS_TEXT("<memory>"));
+            last_error = "environment toml: 解析失败: ";
+            last_error += reason;
+            GLogError(u8"[EnvironmentAssetRegistry] 环境配置解析失败: %ls (%s)",
+                      label ? label : OS_TEXT("<memory>"), last_error.c_str());
             return nullptr;
         }
 
@@ -224,11 +163,14 @@ namespace hgl::graph
         }
 
         EnvironmentAsset temp_asset;
-        if (!temp_asset.ImportFlat(data, static_cast<size_t>(size)))
+        AnsiString reason;
+        if (!hgl::serialize::LoadAssetObjectFromBytes(temp_asset, data,
+                                                      static_cast<size_t>(size), &reason))
         {
-            last_error = "environment flat: FlatBuffers 解码失败";
-            GLogError(u8"[EnvironmentAssetRegistry] FlatBuffers 解码失败: %ls",
-                      label ? label : OS_TEXT("<memory>"));
+            last_error = "environment flat: 解码失败: ";
+            last_error += reason;
+            GLogError(u8"[EnvironmentAssetRegistry] FlatBuffers 解码失败: %ls (%s)",
+                      label ? label : OS_TEXT("<memory>"), last_error.c_str());
             return nullptr;
         }
 
@@ -276,10 +218,15 @@ namespace hgl::graph
         }
 
         EnvironmentAsset temp_asset;
-        if (!temp_asset.LoadFromFile(path))
+        AnsiString reason;
+        if (!hgl::serialize::LoadAssetObjectFromFile(temp_asset, path,
+                                                     hgl::serialize::ArchiveFormat::Auto, &reason))
         {
-            last_error = "environment: LoadFromFile 失败: ";
+            last_error = "environment: 装载失败: ";
             last_error += AnsiString(reinterpret_cast<const char *>(ToU8String(path).c_str()));
+            last_error += " (";
+            last_error += reason;
+            last_error += ")";
             GLogError(u8"[EnvironmentAssetRegistry] %s", last_error.c_str());
             return nullptr;
         }

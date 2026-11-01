@@ -64,15 +64,12 @@ namespace hgl::graph
 
         const AnsiString &GetAssetName() const override { return asset_name; }
 
-        bool SaveToToml(const OSString &filename) const override;
-        bool SaveToFlat(const OSString &filename) const override;
-        bool LoadFromToml(const OSString &filename) override;
-        bool LoadFromFlat(const OSString &filename) override;
-
-        bool ExportToml(AnsiString &out_text) const override;
-        bool ExportFlat(ValueArray<uint8> &out_bytes) const override;
-        bool ImportToml(const char *content, size_t size) override;
-        bool ImportFlat(const uint8 *data, size_t size) override;
+        /**
+         * 字段遍历（读写同源）。实现只有一行 —— 真正的字段表由
+         * `EnvironmentSerialize.gen.h` 里的 `StructSerializer<EnvironmentSpec>::Do()`
+         * 提供，物理格式由 `ArchiveFile.h` 按文件名后缀在基类之外分派。
+         */
+        bool Serialize(hgl::serialize::Archive &ar) override;
 
     public:     // 只读观察
 

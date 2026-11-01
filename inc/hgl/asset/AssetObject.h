@@ -26,6 +26,11 @@
 
 #include <cstdint>
 
+namespace hgl::serialize
+{
+    class Archive;
+}//namespace hgl::serialize
+
 namespace hgl::asset
 {
     /// 属性在 TOML / 检查器里的值类别。
@@ -243,48 +248,26 @@ namespace hgl::asset
         /// 资产名（可空；由派生类决定语义，例如 `*.geo.toml` 的 `name`）。
         virtual const AnsiString &GetAssetName() const = 0;
 
-        // ── 序列化与文件持久化统一虚接口 ──────────────────────────────────────
+        // ── 序列化统一虚接口 ──────────────────────────────────────────────────
         //
-        // 派生类可根据支持的格式重载相应接口，默认返回 false 表示不支持该格式。
+        // **只此一个**。不要在这里加 `SaveToToml` / `LoadFromFlat` 之类格式专用
+        // 的兄弟接口：物理格式（TOML / FlatBuffers）由
+        // `<hgl/serialize/ArchiveFile.h>` 按文件名后缀在基类之外分派，派生类只需
+        // 关心「有哪些字段」。字段遍历本身也不该手写 —— 由 `HGL_ASSET_STRUCT` /
+        // `HGL_PROPERTY` 注解经 AssetGen 生成，派生类里的实现应当只有一行：
+        //
+        // ```cpp
+        // bool XxxAsset::Serialize(hgl::serialize::Archive &ar)
+        // {
+        //     hgl::serialize::StructSerializer<XxxSpec>::Do(ar, spec);
+        //     return true;
+        // }
+        // ```
+        //
+        // 默认返回 `false` = 「本类型尚未接入统一序列化」，`AssetObject` 的可选性
+        // 因此得以保持：不需要存档的派生类什么都不用写。
 
-        /// 将资产序列化为 TOML 文件（作者侧文本格式）
-        virtual bool SaveToToml(const OSString &/*filename*/) const { return false; }
-
-        /// 将资产序列化为 FlatBuffers 二进制文件（发行版格式）
-        virtual bool SaveToFlat(const OSString &/*filename*/) const { return false; }
-
-        /// 从 TOML 文件反序列化加载资产
-        virtual bool LoadFromToml(const OSString &/*filename*/) { return false; }
-
-        /// 从 FlatBuffers 二进制文件反序列化加载资产
-        virtual bool LoadFromFlat(const OSString &/*filename*/) { return false; }
-
-        /// 导出为 TOML 文本字符串
-        virtual bool ExportToml(AnsiString &/*out_text*/) const { return false; }
-
-        /// 导出为 FlatBuffers 二进制字节缓冲
-        virtual bool ExportFlat(ValueArray<uint8> &/*out_bytes*/) const { return false; }
-
-        /// 从 TOML 文本解析载入
-        virtual bool ImportToml(const char */*content*/, size_t /*size*/) { return false; }
-
-        /// 从 FlatBuffers 二进制数据解析载入
-        virtual bool ImportFlat(const uint8 */*data*/, size_t /*size*/) { return false; }
-
-        /// 根据文件扩展名自动分派保存格式（.toml 走 SaveToToml，其余走 SaveToFlat）
-        virtual bool SaveToFile(const OSString &filename) const
-        {
-            if (filename.EndsWithIgnoreCase(OS_TEXT(".toml")))
-                return SaveToToml(filename);
-            return SaveToFlat(filename);
-        }
-
-        /// 根据文件扩展名自动分派加载格式（.toml 走 LoadFromToml，其余走 LoadFromFlat）
-        virtual bool LoadFromFile(const OSString &filename)
-        {
-            if (filename.EndsWithIgnoreCase(OS_TEXT(".toml")))
-                return LoadFromToml(filename);
-            return LoadFromFlat(filename);
-        }
+        /// 在一次 `Archive` 游标上遍历本类型的全部可序列化字段（读写同源）。
+        virtual bool Serialize(hgl::serialize::Archive &/*ar*/) { return false; }
     };
 }//namespace hgl::asset

@@ -12,14 +12,15 @@
 // 需要真实的文件读写（第 4 条），但**不需要**设备 / 窗口，因此 CI 里也能跑。
 #include <hgl/asset/AssetFactory.h>
 #include <hgl/asset/AssetURI.h>
+#include <hgl/asset/generated/EnvironmentSerialize.gen.h>
 #include <hgl/ecs/systems/render/SkyEnvironmentConfig.h>
 #include <hgl/filesystem/FileSystem.h>
-#include <hgl/graph/asset/EnvironmentAssetFlat.h>
 #include <hgl/graph/asset/EnvironmentAssetObject.h>
 #include <hgl/graph/asset/EnvironmentAssetRegistry.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
+#include <hgl/serialize/ArchiveFile.h>
 #include <hgl/serialize/TomlCodec.h>
 #include <hgl/utf.h>
 
@@ -370,7 +371,10 @@ int main(int, char **)
         hgl::serialize::LoadFromTomlText<EnvironmentSpec>(kNamedEnvironment, spec);
         spec.name = "Sky34.ProbeBin";
 
-        Check(SaveEnvironmentSpecToFlatBuffers(spec, bin_path), "二进制 .env 写入应成功");
+        EnvironmentAsset probe_asset(spec);
+        Check(hgl::serialize::SaveAssetObjectToFile(probe_asset, bin_path,
+                                                    hgl::serialize::ArchiveFormat::Auto),
+              "二进制 .env 写入应成功");
 
         EnvironmentAssetRegistry registry;
         EnvironmentAsset *bin_asset = registry.GetOrLoadURI(bin_path);
