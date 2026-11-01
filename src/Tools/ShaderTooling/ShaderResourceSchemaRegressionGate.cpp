@@ -193,7 +193,8 @@ namespace
     /// 都在这里改一行并留下理由，变更记录见 `RunGlslModuleRegistryCase`。
     /// 89 = 88 + `ambient_light_ibl_oct`（八面体展开版 IBL 天光 provider，
     /// 与 `ambient_light_ibl` 同构、只换纹理寻址方式）。
-    constexpr int kGlslModuleCount = 89;
+    /// 90 = 89 + `ambient_light_sh`（SH9 球谐天光 provider，唯一不读贴图的间接光实现）。
+    constexpr int kGlslModuleCount = 90;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)

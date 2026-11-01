@@ -81,6 +81,46 @@ namespace
         static const bool s_oct = (getenv("IBLENV_OCT") != nullptr);
         return s_oct;
     }
+
+    /**
+     * `IBLENV_SH=1`：改用 SH9 球谐天光 + `ambient_light_sh` provider。
+     *
+     * 第三条路径的数据源与前两条**完全不同**：不读任何贴图、不注册 bindless 句柄，
+     * 只把 9 个 vec4 系数写进 `ambient_env.sh`。这是 `ambient_light_sh` 模块的现场判据
+     * ——它证明「零烘焙 / 零贴图」的间接光路径能真的出图，且方向性（上亮下暗）生效。
+     */
+    bool UseSHAmbient()
+    {
+        static const bool s_sh = (getenv("IBLENV_SH") != nullptr);
+        return s_sh;
+    }
+
+    /**
+     * 天空梯度 L(ω) = c0 + c1·(ω·ẑ) → SH9 系数。
+     *
+     * 这样填充的意义：GPU 端 `EvalSHAnalyticIrradiance` 求出的正好是
+     * `∫ L(ω)·max(n·ω,0) dω = π·c0 + (2π/3)·c1·(n·ẑ)`，即**解析真值**而非随手凑的数
+     * ⇒ 可与 IBL 版的辐照度亮度直接对比（差太远就说明系数或下标约定错了）。
+     * 系数写入位置严格按 `AmbientEnvInfo::sh` 的下标约定（Z-up：idx0 常量、idx2 ∝ z）。
+     */
+    void FillSkyGradientSH(AmbientEnvInfo &info)
+    {
+        constexpr float PI = 3.14159265358979323846f;
+        constexpr float kConvolveL0 = 0.886227f;    // ambient_light_sh 中 l=0 的余弦卷积常数
+        constexpr float kConvolveL1 = 1.023327f;    // ambient_light_sh 中 l=1 的余弦卷积常数
+
+        const math::Vector3f c0(0.60f, 0.65f, 0.75f);   // 上下平均辐亮度（偏冷的天空色）
+        const math::Vector3f c1(0.25f, 0.28f, 0.34f);   // 垂直梯度；c1 ≤ c0 才能保证地平线下非负
+
+        const math::Vector3f A = c0 * (PI / kConvolveL0);
+        const math::Vector3f B = c1 * ((2.0f * PI / 3.0f) / kConvolveL1);
+
+        for (int i = 0; i < 9; ++i)
+            info.sh[i] = math::Vector4f(0.0f);
+
+        info.sh[0] = math::Vector4f(A.x, A.y, A.z, 0.0f);
+        info.sh[2] = math::Vector4f(B.x, B.y, B.z, 0.0f);
+    }
 }
 
 #define DRAW_SKY_SPHERE
@@ -98,6 +138,10 @@ namespace
  * 加 `IBLENV_OCT=1` 则前两张换成 TexConv `/octa /ibl` 产出的八面体展开版
  * (`<env>_irradiance.TexOct` / `<env>_prefilter.TexOct`),ambient provider 相应切到
  * `ambient_light_ibl_oct`——光照公式/粗糙度映射/LDR 曝光全不变,只换纹理寻址。
+ *
+ * 加 `IBLENV_SH=1` 则**一张贴图都不读**：ambient provider 切到 `ambient_light_sh`，
+ * 只往 `ambient_env.sh[9]` 填一组解析天空梯度系数 ⇒ 用来验证「零烘焙、零贴图」的
+ * 低频天光路径确实能出图（而不是退化成黑球）。
  *
  * 三张纹理以 bindless 句柄形式写入 ambient_env(ambient_light_provider 槽参数块,场景全局环境数据),
  * 并把该槽的 **ambient provider 模块**设为 `indirect_ibl`
@@ -256,6 +300,20 @@ private:
     {
         if (!environment_system)
             return false;
+
+        // SH 版：不注册任何贴图 / 不碰 bindless，只填 sh[9]。
+        // 这条早退本身就是判据的一半——若 shader 偷偷采样了 env_tex，句柄全 0 会直接发黑。
+        if (UseSHAmbient())
+        {
+            auto *ambient_env = environment_system->EditAmbientEnvInfo();
+            if (!ambient_env)
+                return false;
+
+            FillSkyGradientSH(*ambient_env);
+            environment_system->MarkAmbientEnvDirty();
+
+            return environment_system->SetAmbientProvider("ambient_light_sh");
+        }
 
         auto* gc  = GetGraphicsContext();
         auto* btm = gc ? gc->GetBindlessTextureManager() : nullptr;
@@ -553,12 +611,14 @@ public:
         static constexpr uint32_t kSelfH           = 720;
         static constexpr uint32_t kSelfMinDistinct = 256;   // 不空转守卫（恒定图会 FAIL）
 
-        // 两条寻址路径各自的基线（同一场景 / 同一组材质参数 / 同一套 LDR 曝光调制）。
+        // 三条寻址/求值路径各自的基线（同一场景 / 同一组材质参数 / 同一套 LDR 曝光调制）。
         // 八面体版是另一张图、另一套采样 ⇒ 摘要必然不同，亮度只应差投影重采样那几个百分点
-        // （实测 mean_luma 0.6934 Cube vs 0.7085 Oct，差 2.2%）；两侧都钉住，
+        // （实测 mean_luma 0.6934 Cube vs 0.7085 Oct，差 2.2%）；SH 版则换了整套算法（低频解析），
+        // 亮度量级应接近但绝不会相同。三侧都钉住，
         // 「provider 接错 / 句柄错位 / 采样规则坏掉」在任一模式下都会翻红。
         static constexpr uint64_t kSelfFNV_Cube      = 0x54295E44E3C1677Cull;  // CubeMap（Debug）
         static constexpr uint64_t kSelfFNV_Octahedral = 0x942421F7437CC76Full; // 八面体（Debug）
+        static constexpr uint64_t kSelfFNV_SH         = 0x079D318B8728A100ull; // SH9 解析梯度（Debug；mean_luma 0.6917）
 
         if (s_selfcheck && ++s_self_frame == 8)
         {
@@ -573,7 +633,9 @@ public:
             expect.width                = kSelfW;
             expect.height               = kSelfH;
             expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = UseOctahedralEnv() ? kSelfFNV_Octahedral : kSelfFNV_Cube;
+            expect.fnv1a64              = UseSHAmbient()         ? kSelfFNV_SH
+                                        : UseOctahedralEnv()      ? kSelfFNV_Octahedral
+                                                                  : kSelfFNV_Cube;
 
             ulre_example::InstallFrameDigestHook(rt, expect, "IBLSELF");
         }

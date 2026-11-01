@@ -16,19 +16,20 @@
 
 | 槽位（`ShaderModuleSlotRole`） | 角色名（`GetShaderModuleSlotRoleName`） | 现役模块 | 种类数 |
 |---|---|---|---|
-| `AmbientLightProvider` | `ambient_light_provider` | `ambient_light_sky` / `ambient_light_ibl` / `ambient_light_ibl_oct` | **3** |
+| `AmbientLightProvider` | `ambient_light_provider` | `ambient_light_sky` / `ambient_light_ibl` / `ambient_light_ibl_oct` / `ambient_light_sh` | **4** |
 | `AmbientOcclusionProvider` | `ambient_occlusion_provider` | `ambient_occlusion_identity` | 1（恒等占位） |
 | `SkyProvider` | `sky_provider` | `sky_atmosphere` | 1 |
 | `OutputPolicy` | `output_policy` | `output_policy_forward` / `output_policy_flat` | 2（后者**无 ambient**） |
 
 因此「Ambient 种类」的准确口径是：
-**3 种间接光算法** + 1 种 AO（恒 1.0）+ 1 条 flat 路径（完全不算环境光）。
+**4 种间接光算法** + 1 种 AO（恒 1.0）+ 1 条 flat 路径（完全不算环境光）。
 
-全库仅这三个模块声明 `@ulre slot ambient_light_provider`：
+全库仅这四个模块声明 `@ulre slot ambient_light_provider`：
 
 ```
 ShaderLibrary/module/provider/ambient_light/ambient_light_ibl.glsl
 ShaderLibrary/module/provider/ambient_light/ambient_light_ibl_oct.glsl
+ShaderLibrary/module/provider/ambient_light/ambient_light_sh.glsl
 ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl
 ```
 
@@ -37,7 +38,7 @@ ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl
 
 ---
 
-## 二、两种 `ambient_light_provider` 的实质差异
+## 二、`ambient_light_provider` 各实现的实质差异
 
 | 维度 | `ambient_light_sky` | `ambient_light_ibl` |
 |---|---|---|
@@ -50,7 +51,7 @@ ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl
 | **未就绪行为** | 总有颜色（天空是程序化的） | `env_tex.x==0 && env_tex.y==0` → **返回 `vec3(0)`** |
 | **是否模板默认** | ✅ 是（`src/ShaderMaterialData/ScenePassProfileResolver.cpp:21-24`） | ❌ 需显式设置 |
 | **示例** | `example/Environment/AtmosphereSkyAmbient.cpp`（不调 API，走默认） | `example/Environment/IBLEnvironment.cpp:296`（`SetAmbientProvider("ambient_light_ibl")`） |
-| **GPU 参数块** | 无专属块，复用 `scene_ubo` | 专属块 `AmbientEnvInfo`（`inc/hgl/graph/ubo/AmbientEnvInfo.h`，32 字节、单份 buffer、`WorldAddresses::addr_ambient_env`） |
+| **GPU 参数块** | 无专属块，复用 `scene_ubo` | 专属块 `AmbientEnvInfo`（`inc/hgl/graph/ubo/AmbientEnvInfo.h`，176 字节、单份 buffer、`WorldAddresses::addr_ambient_env`） |
 
 ### `ambient_light_ibl_oct`：同一套 IBL 的八面体寻址变体
 
@@ -68,6 +69,25 @@ ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl
 
 `env_tex` 的 x/y/z/w 槽位在两版之间**完全一致**，所以环境层只换
 `SetAmbientProvider()` 的模块名 + 换两张贴图即可，Lit 类材质一行都不用改。
+
+### `ambient_light_sh`：SH9 球谐天光（唯一不读贴图的间接光）
+
+第三套数据源完全不同：只读 `AmbientEnvInfo.sh[9]`（9 个 `vec4`，系数由 CPU 逐帧
+按太阳方向/强度与大气色合成），**不需要任何纹理、烘焙或 bindless 句柄**。
+
+| 维度 | `ambient_light_ibl` / `_oct` | `ambient_light_sh` |
+|---|---|---|
+| 数据源 | `env_tex`（3 张贴图句柄 + mip 数） | `sh[9]`（L2 球谐系数） |
+| 方向分辨力 | 高（按 mip 的预卷积代价换取） | 只有低频（l ≤ 2，约 9 个自由度） |
+| 镜面 | `prefiltered × (F0·brdf.x + brdf.y)` | **无**（`provides_capability ambient_diffuse`，唯一不带 `ambient_specular` 的实现） |
+| 烘焙成本 | 需要离线 TexConv 烘焙 | **零**（系数运行期合成） |
+| LDR 曝光调制 | 吃 `ldr_param` | **不吃**（系数已按当前光照合成，再乘会双重计权） |
+| 未就绪行为 | 句柄全 0 → `vec3(0)` | 系数全 0 → `vec3(0)` |
+
+求值用 Ramamoorthi & Hanrahan 的解析卷积：把入射辐亮度投影到 9 个基函数后，
+余弦核的球面积分对每个基函数只是一个常数缩放，逐像素 9 次乘加即可。
+基函数按本引擎 **Z-up** 约定排列（`sh[2] ∝ z` 是「向上」项），下标映射与
+`AmbientEnvInfo::sh` 的注释一一对应 —— 顺序改一侧必须两侧同改。
 
 
 ### 关键边界：两者是并列替代，不是降级链
@@ -95,6 +115,7 @@ vec3 EvalIndirectLighting(LightingInput lighting);
 
 ```
 provides ambient_diffuse|ambient_specular   ← ambient_light_sky, ambient_light_ibl, ambient_light_ibl_oct
+provides ambient_diffuse                    ← ambient_light_sh（唯一无需镜面项的间接光实现）
 provides ambient_diffuse                    ← sky_atmosphere（但它占 sky_provider 槽）
 provides ambient_occlusion                  ← ambient_occlusion_identity
 requires ...|direct_light|ambient_diffuse   ← lighting_model_pbr（全库唯一 requires 点）
@@ -105,7 +126,8 @@ requires ...|direct_light|ambient_diffuse   ← lighting_model_pbr（全库唯�
 全库 `ambient_specular` 只有 `provides` 三处，`lighting_model_pbr` 的
 `requires_capability`（`ShaderLibrary/module/provider/lighting_model/lighting_model_pbr.glsl:6`）只到
 `ambient_diffuse`。能力闭合只做 `required ⊆ provided`，因此这条能力轴
-目前是「声明但无人索取」，实际闭合只走 diffuse。
+目前是「声明但无人索取」，实际闭合只走 diffuse。这也是 `ambient_light_sh`
+可以只声明 `ambient_diffuse` 而不破坏任何模板的原因。
 
 ### 观察点 2（待验证疑点）：`sky_atmosphere` 也 provides `ambient_diffuse`
 
@@ -145,8 +167,9 @@ float GetAmbientOcclusion(SurfaceInput surface)
 |---|---|---|
 | `indirect_simple_ambient`（常量环境光） | **代码已删** | 全库只剩 `ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl:14` 一行注释「替换 indirect_simple_ambient」 |
 
-即目前**没有「常量 ambient」这一档**：最低画质档就是程序化天空光，
-仍要跑 `EvalSkyAtmosphere`。
+即目前**没有「常量 ambient」这一档**：成本最低的现役档是 `ambient_light_sh`
+（9 次乘加、零贴图、零烘焙），再上一档就是程序化天空光（要跑整份
+`EvalSkyAtmosphere`）。
 
 另需区分：`ShaderLibrary/module/provider/surface/surface_sky_cube.glsl` 是 `surface_provider`
 （天空盒 cubemap 外观），**不参与环境光计算**。
@@ -163,7 +186,7 @@ float GetAmbientOcclusion(SurfaceInput surface)
 `BuildForwardLightingInput` 把 `mainLightColor`、`reflectionColor` 置 0、
 `shadowFactor` 置 1，`lighting.ao` 只从 `surface.ao` 透传，不做间接光合成。
 
-因此 flat 是「第 3 种环境光策略」—— 即**无环境光**。
+因此 flat 是「第 5 种环境光策略」—— 即**无环境光**。
 
 ---
 
@@ -199,8 +222,9 @@ PassProfile 的 AmbientLightProvider 槽 → 变体键 / program 身份
    等值短路，然后把字符串存进 `p->ambient_module_name`。非法模块名要拖到模板解析
    （`ValidatePassProfileRequest`）才报错，错误发现点偏远。
 2. **AO 只有 `ambient_occlusion_identity`**，无任何真实 AO 算法，槽位是契约占位。
-3. **缺少「无 ambient / 常量 ambient」廉价档** —— 低画质只能退到天空光，
-   仍要承担 `sky_atmosphere` 的完整大气模型成本。
+3. **缺少「常量 ambient」廉价档** —— `ambient_light_sh` 补上了「零贴图成本」这一档，
+   但仍需 CPU 逐帧合成系数；真正恒定的单色 ambient 仍无实现（低画质退路是 SH 全 0
+   或天空光）。
 4. **`ambient_specular` 能力轴空转** —— 有 `provides` 无 `requires`。
 5. **`sky_atmosphere` 的 `ambient_diffuse` 声明**是否会让能力闭合掩盖「缺 ambient
    provider」的模板，待验证（见 §三 观察点 2）。

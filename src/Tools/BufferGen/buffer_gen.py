@@ -592,6 +592,38 @@ TOML_HELPERS = r'''    namespace detail
             return toml::value(static_cast<toml::value::floating_type>(v));
         }
 
+        inline bool AsFloatVectorArray(const toml::value &v, float *out, const int count, const int comps)
+        {
+            if (!v.is_array()) return false;
+            const auto &a = v.as_array();
+            if (static_cast<int>(a.size()) != count) return false;
+            for (int i = 0; i < count; ++i)
+                if (!AsFloatArray(a[size_t(i)], out + size_t(i) * size_t(comps), comps)) return false;
+            return true;
+        }
+
+        template <typename T>
+        inline bool AsUnsignedVectorArray(const toml::value &v, T *out, const int count, const int comps)
+        {
+            if (!v.is_array()) return false;
+            const auto &a = v.as_array();
+            if (static_cast<int>(a.size()) != count) return false;
+            for (int i = 0; i < count; ++i)
+                if (!AsUnsignedArray(a[size_t(i)], out + size_t(i) * size_t(comps), comps)) return false;
+            return true;
+        }
+
+        template <typename T>
+        inline bool AsSignedVectorArray(const toml::value &v, T *out, const int count, const int comps)
+        {
+            if (!v.is_array()) return false;
+            const auto &a = v.as_array();
+            if (static_cast<int>(a.size()) != count) return false;
+            for (int i = 0; i < count; ++i)
+                if (!AsSignedArray(a[size_t(i)], out + size_t(i) * size_t(comps), comps)) return false;
+            return true;
+        }
+
         template <typename T>
         inline toml::value FromInteger(const T v)
         {
@@ -614,6 +646,23 @@ TOML_HELPERS = r'''    namespace detail
             a.reserve(size_t(count));
             for (int i = 0; i < count; ++i)
                 a.push_back(FromInteger(src[i]));
+            return toml::value(std::move(a));
+        }
+
+        // 向量定长数组（如 vec4 sh[9]）：外层按元素个数、内层按分量个数。
+        template <typename T>
+        inline toml::value FromVectorArray(const T *src, const int count, const int comps)
+        {
+            toml::array a;
+            a.reserve(size_t(count));
+            for (int i = 0; i < count; ++i)
+            {
+                toml::array c;
+                c.reserve(size_t(comps));
+                for (int k = 0; k < comps; ++k)
+                    c.push_back(FromInteger(src[size_t(i) * size_t(comps) + size_t(k)]));
+                a.push_back(toml::value(std::move(c)));
+            }
             return toml::value(std::move(a));
         }
     } // namespace detail
@@ -645,6 +694,15 @@ def toml_read_field(info: StructInfo, fld: FieldInfo, indent: str) -> list[str]:
             lines.append(f'{indent}    if (!detail::AsUnsignedArray(*v, {target}, {count})) return false;')
         elif glsl == "int":
             lines.append(f'{indent}    if (!detail::AsSignedArray(*v, {target}, {count})) return false;')
+        elif glsl in ("vec2", "vec3", "vec4"):
+            comps = {"vec2": 2, "vec3": 3, "vec4": 4}[glsl]
+            lines.append(f'{indent}    if (!detail::AsFloatVectorArray(*v, &{target}[0].x, {count}, {comps})) return false;')
+        elif glsl in ("uvec2", "uvec3", "uvec4"):
+            comps = {"uvec2": 2, "uvec3": 3, "uvec4": 4}[glsl]
+            lines.append(f'{indent}    if (!detail::AsUnsignedVectorArray(*v, &{target}[0].x, {count}, {comps})) return false;')
+        elif glsl in ("ivec2", "ivec3", "ivec4"):
+            comps = {"ivec2": 2, "ivec3": 3, "ivec4": 4}[glsl]
+            lines.append(f'{indent}    if (!detail::AsSignedVectorArray(*v, &{target}[0].x, {count}, {comps})) return false;')
         else:
             raise GenError(f"{info.name}.{key}: 暂不支持 {glsl} 数组的 TOML 读写")
     elif fld.is_nested:
@@ -697,6 +755,9 @@ def toml_write_field(info: StructInfo, fld: FieldInfo, indent: str) -> list[str]
             return [f'{indent}t["{key}"] = detail::FromFloatArray({src}, {count});']
         if glsl in ("uint", "uint64_t", "int", "int64_t"):
             return [f'{indent}t["{key}"] = detail::FromIntegerArray({src}, {count});']
+        if glsl in ("vec2", "vec3", "vec4", "uvec2", "uvec3", "uvec4", "ivec2", "ivec3", "ivec4"):
+            comps = int(glsl[-1])
+            return [f'{indent}t["{key}"] = detail::FromVectorArray(&{src}[0].x, {count}, {comps});']
         raise GenError(f"{info.name}.{key}: 暂不支持 {glsl} 数组的 TOML 写出")
     if fld.is_nested:
         return [f'{indent}t["{key}"] = toml::value(Write{base_type_name(fld.cpp_type)}({src}));']
@@ -831,7 +892,19 @@ def render_fbs(structs: list[StructInfo]) -> str:
             if fld.is_pad:
                 continue
             if fld.array_dim:
-                lines.append(f"  {fld.name}: {wrapper_name(fbs_field_type(fld), fld.array_dim)};\n")
+                decl = fbs_field_type(fld)
+                if decl.startswith("[") and decl.endswith("]"):
+                    # 向量定长数组（如 vec4 sh[9]）：内层先包向量，外层再包长度。
+                    # 外层不能沿用「元素名 + 长度」的拼法（Float4 + 9 会读成 49），
+                    # 故显式用 <内层包装名>Array<长度>。
+                    elem, comps = decl[1:-1].split(":")
+                    inner = wrapper_name(elem, comps)
+                    key = (inner, fld.array_dim)
+                    wrappers.setdefault(key, f"{inner}Array{fld.array_dim}")
+                    decl = wrappers[key]
+                else:
+                    decl = wrapper_name(decl, fld.array_dim)
+                lines.append(f"  {fld.name}: {decl};\n")
                 continue
             decl = fbs_field_type(fld)
             if decl.startswith("[") and decl.endswith("]"):

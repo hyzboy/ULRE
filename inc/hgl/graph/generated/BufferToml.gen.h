@@ -96,6 +96,38 @@ namespace hgl::graph::generated
             return toml::value(static_cast<toml::value::floating_type>(v));
         }
 
+        inline bool AsFloatVectorArray(const toml::value &v, float *out, const int count, const int comps)
+        {
+            if (!v.is_array()) return false;
+            const auto &a = v.as_array();
+            if (static_cast<int>(a.size()) != count) return false;
+            for (int i = 0; i < count; ++i)
+                if (!AsFloatArray(a[size_t(i)], out + size_t(i) * size_t(comps), comps)) return false;
+            return true;
+        }
+
+        template <typename T>
+        inline bool AsUnsignedVectorArray(const toml::value &v, T *out, const int count, const int comps)
+        {
+            if (!v.is_array()) return false;
+            const auto &a = v.as_array();
+            if (static_cast<int>(a.size()) != count) return false;
+            for (int i = 0; i < count; ++i)
+                if (!AsUnsignedArray(a[size_t(i)], out + size_t(i) * size_t(comps), comps)) return false;
+            return true;
+        }
+
+        template <typename T>
+        inline bool AsSignedVectorArray(const toml::value &v, T *out, const int count, const int comps)
+        {
+            if (!v.is_array()) return false;
+            const auto &a = v.as_array();
+            if (static_cast<int>(a.size()) != count) return false;
+            for (int i = 0; i < count; ++i)
+                if (!AsSignedArray(a[size_t(i)], out + size_t(i) * size_t(comps), comps)) return false;
+            return true;
+        }
+
         template <typename T>
         inline toml::value FromInteger(const T v)
         {
@@ -118,6 +150,23 @@ namespace hgl::graph::generated
             a.reserve(size_t(count));
             for (int i = 0; i < count; ++i)
                 a.push_back(FromInteger(src[i]));
+            return toml::value(std::move(a));
+        }
+
+        // 向量定长数组（如 vec4 sh[9]）：外层按元素个数、内层按分量个数。
+        template <typename T>
+        inline toml::value FromVectorArray(const T *src, const int count, const int comps)
+        {
+            toml::array a;
+            a.reserve(size_t(count));
+            for (int i = 0; i < count; ++i)
+            {
+                toml::array c;
+                c.reserve(size_t(comps));
+                for (int k = 0; k < comps; ++k)
+                    c.push_back(FromInteger(src[size_t(i) * size_t(comps) + size_t(k)]));
+                a.push_back(toml::value(std::move(c)));
+            }
             return toml::value(std::move(a));
         }
     } // namespace detail
@@ -158,6 +207,10 @@ namespace hgl::graph::generated
         if (const toml::value *v = detail::Find(table, "ldr_param"))
         {
             if (!detail::AsFloatArray(*v, &out.ldr_param.x, 4)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "sh"))
+        {
+            if (!detail::AsFloatVectorArray(*v, &out.sh[0].x, 9, 4)) return false;
         }
         return true;
     }
@@ -456,6 +509,7 @@ namespace hgl::graph::generated
         toml::table t;
         t["env_tex"] = detail::FromIntegerArray(&in.env_tex.x, 4);
         t["ldr_param"] = detail::FromFloatArray(&in.ldr_param.x, 4);
+        t["sh"] = detail::FromVectorArray(&in.sh[0].x, 9, 4);
         return toml::value(std::move(t));
     }
 

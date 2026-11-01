@@ -6835,7 +6835,7 @@ int main(int argc, char** argv)
     // Test 47: T1 契约 —— 天空 / 环境光**参数块归位**（IBL 句柄离开天空块）
     //
     // 判据五类：
-    // ① 新块就位：`AmbientEnvInfo`（块内只有句柄）+ GLSL 镜像 `AmbientEnvInfoRef` + 宏 `ambient_env`；
+    // ① 新块就位：`AmbientEnvInfo`（块内只有 16B 对齐字段）+ GLSL 镜像 `AmbientEnvInfoRef` + 宏 `ambient_env`；
     // ② 地址接线五处：世界表字段 / GLSL 镜像字段 / 门归属登记 / 发布（写者接上）/ 夹具同步；
     // ③ 写者入口：`EnvironmentSystem` 四件套 + profile 侧物化/取址/脏标记都覆盖新段；
     // ④ 唯一消费者改读新块；
@@ -6850,8 +6850,8 @@ int main(int argc, char** argv)
               "T1：环境光 provider 参数块缺句柄字段（IBL 三句柄的唯一住处）" },
 
             { "AmbientEnvInfo.h", OS_TEXT("inc/hgl/graph/ubo/AmbientEnvInfo.h"),
-              "static_assert(sizeof(AmbientEnvInfo) == 32,",
-              "T1：新块尺寸契约丢失（块内 uvec4 env_tex + vec4 ldr_param ⇒ 32 B）" },
+              "static_assert(sizeof(AmbientEnvInfo) == 176,",
+              "T1：新块尺寸契约丢失（块内 uvec4 env_tex + vec4 ldr_param + vec4 sh[9] ⇒ 176 B）" },
 
             { "scene_ubo.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl"),
               "layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer AmbientEnvInfoRef",
@@ -7064,7 +7064,7 @@ int main(int argc, char** argv)
                                                                          sizeof(kProviderBlockRelocationContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 47 Passed: T1 归位契约成立 —— IBL 句柄已迁出天空块：AmbientEnvInfo（块内只有句柄）"
+        GLogInfo(u8"Test 47 Passed: T1 归位契约成立 —— IBL 句柄已迁出天空块：AmbientEnvInfo（块内只有 16B 对齐字段）"
                  u8" + GLSL 镜像/宏 + 世界表 addr_ambient_env（字段/镜像/门登记/发布/夹具五处接线；"
                  u8"2026-10-07 起夹具 = 72 B / 9 字段）"
                  u8" + EnvironmentSystem 四件套与 profile 侧物化/取址/脏标记 + 唯一读者间接光照模块改读新块；"

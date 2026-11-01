@@ -36,6 +36,11 @@ struct Float4
   v: [float:4];
 }
 
+struct Float4Array9
+{
+  v: [Float4:9];
+}
+
 struct Float16
 {
   v: [float:16];
@@ -66,6 +71,7 @@ table AmbientEnvInfo
 {
   env_tex: UInt4;
   ldr_param: Float4;
+  sh: Float4Array9;
 }
 
 // inc/hgl/graph/ubo/ViewportInfo.h → ViewportInfo

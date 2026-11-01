@@ -24,7 +24,7 @@ kind = "ubo"
 file = "module/descriptor/ubo/ambient_env_info.glsl"
 glsl_struct = "AmbientEnvInfoData"
 glsl_ref = "AmbientEnvInfoRef"
-note = "块内只有句柄（env_tex），两端口径一致；地址 = WorldAddresses.addr_ambient_env。"
+note = "块内全为 16 字节对齐字段（env_tex / ldr_param / sh[9]），两端口径一致；地址 = WorldAddresses.addr_ambient_env。"
 
 [[struct]]
 name = "ViewportInfo"
