@@ -607,6 +607,19 @@ namespace hgl::ecs
             return world ? world->GetAmbientProviderName() : empty;
         }
 
+        // provider 名按“长度 + 字节内容”显式哈希：不依赖字符串类型到 `operator<<`
+        // 的重载选择（隐式转换/字节表示差异会让不同名字算出同一个哈希）。
+        uint64_t HashAmbientProviderModule(const AnsiString &name)
+        {
+            const char *text = name.c_str();
+            const size_t length = text ? strlen(text) : 0;
+            hgl::hash::FNV1aHasher64 hasher;
+            hasher << static_cast<uint32>(length);
+            if (length > 0)
+                hasher.AppendBytes(text, length);
+            return hasher;
+        }
+
         const graph::mtl::RecipeTextureBinding *FindRecipeTextureBinding(
             const graph::mtl::MaterialRecipe &recipe,
             const std::string &texture_name) noexcept
@@ -1981,6 +1994,34 @@ namespace hgl::ecs
         // A4：材质运行期表（世界私有）——共享行 = 可共享的材质绑定；slot = 每实例状态。
         MaterialRuntimeTable *runtime_table = world->GetMaterialRuntimeTable();
 
+        // 天光算法热切兜底：ambient provider 名是 program 身份的一部分
+        // （EnsureForwardProgram 把它折进 build context），但它不在材质授权代里，
+        // 单看 slot.program_dirty / 授权代判不出"世界换了天光算法"，A3 快路径会
+        // 直接返回旧 program。名字一变就把全体 slot 的 program 置脏，让每个实例都
+        // 重算一次 build context。每帧代价 = 一次名字哈希比较。
+        //
+        // 只在**前向 pass** 比对并推进快照：depth/shadow 的 program 身份不含 provider
+        // （`HashMaterialProgramBuildContext` 对 depth 目的不折入），若让阴影 pass 吃掉
+        // 这次"变化"，它解析完会顺手把共享的 `program_dirty` 清回 false，前向 pass 就
+        // 再也看不到 provider 变过 —— 表现为热切天光算法后前向材质仍用旧 program。
+        bool ambient_provider_changed = false;
+        if (!world->IsCurrentPassShadow())
+        {
+            const AnsiString &ambient_provider_now = ResolveAmbientProviderModule(world);
+            const uint64_t ambient_provider_hash =
+                HashAmbientProviderModule(ambient_provider_now);
+
+            ambient_provider_changed =
+                !ambient_provider_snapshot_valid
+                || ambient_provider_snapshot_hash != ambient_provider_hash;
+
+            if (ambient_provider_changed)
+            {
+                ambient_provider_snapshot_hash = ambient_provider_hash;
+                ambient_provider_snapshot_valid = true;
+            }
+        }
+
         // P1-1: Global frame-level materialize gating.
         //
         // PrepareActivePlanResources and MaterializeRecipeRowsForPrimitive are
@@ -2061,6 +2102,11 @@ namespace hgl::ecs
             // **共享行**（绑定）。这里取/建 slot，再经行取 program 与缓存哈希。
             MaterialRuntimeSlot &material_slot =
                 world->GetOrCreateMaterialRuntimeSlot(entity);
+
+            // 天光算法热切：provider 变 ⇒ program 身份变，快路径必须失效（见 Update 开头）。
+            if (ambient_provider_changed)
+                material_slot.program_dirty = true;
+
             const MaterialRuntimeRow *material_row = runtime_table
                 ? runtime_table->Get(material_slot.row)
                 : nullptr;
@@ -2205,6 +2251,10 @@ namespace hgl::ecs
                 MaterialRuntimeSlot &material_slot =
                     world->GetOrCreateMaterialRuntimeSlot(entity);
                 material_slot_ptr = &material_slot;
+
+                // 天光算法热切：provider 变 ⇒ program 身份变，快路径必须失效（见 Update 开头）。
+                if (ambient_provider_changed)
+                    material_slot.program_dirty = true;
 
                 if (!EnsureMaterialProgramForPrimitive(geometryComp->GetOwner(), material_slot))
                 {
