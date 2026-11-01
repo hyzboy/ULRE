@@ -371,7 +371,7 @@ bool GlobalSSBOBufferRegistry::UploadMaterialDataBlock(const mtl::MaterialDataBl
     {
         GLogError("[GlobalSSBOBufferRegistry] UploadMaterialDataBlock 拒绝：数据块视图非法"
                   "（type=%s row_bytes=%u rows=%u）",
-                  GetGlobalSSBOTypeName(view.type), view.row_bytes, view.row_count);
+                  hgl::serialize::EnumNameOf(view.type), view.row_bytes, view.row_count);
         return false;
     }
 
@@ -379,7 +379,7 @@ bool GlobalSSBOBufferRegistry::UploadMaterialDataBlock(const mtl::MaterialDataBl
     if (!pool || !pool->IsReady())
     {
         GLogError("[GlobalSSBOBufferRegistry] UploadMaterialDataBlock 拒绝：%s 行池未就绪",
-                  GetGlobalSSBOTypeName(view.type));
+                  hgl::serialize::EnumNameOf(view.type));
         return false;
     }
 
@@ -389,7 +389,7 @@ bool GlobalSSBOBufferRegistry::UploadMaterialDataBlock(const mtl::MaterialDataBl
     {
         GLogError("[GlobalSSBOBufferRegistry] UploadMaterialDataBlock 行距不符：type=%s"
                   " 块=%u 池=%u",
-                  GetGlobalSSBOTypeName(view.type), view.row_bytes, pool->GetRowBytes());
+                  hgl::serialize::EnumNameOf(view.type), view.row_bytes, pool->GetRowBytes());
         return false;
     }
 
@@ -409,7 +409,7 @@ bool GlobalSSBOBufferRegistry::UploadMaterialDataBlock(const mtl::MaterialDataBl
 
     if (ULRE_DEBUG_ON(Upload))
         GLogInfo("[GlobalSSBOBufferRegistry] MaterialDataBlock 上传 type=%s rows=%u first_row=%u row_bytes=%u",
-                 GetGlobalSSBOTypeName(view.type), view.row_count, out_lease.GetFirstRow(), view.row_bytes);
+                 hgl::serialize::EnumNameOf(view.type), view.row_count, out_lease.GetFirstRow(), view.row_bytes);
 
     return true;
 }

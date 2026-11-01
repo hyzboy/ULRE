@@ -100,7 +100,7 @@ namespace hgl::graph::mtl
 
         GLogInfo(u8"[MaterialDataBlockAsset] 数据块已上传: %s type=%s rows=%u first=%u ssbo=%u",
                  asset_name.c_str(),
-                 GetGlobalSSBOTypeName(block.type),
+                 hgl::serialize::EnumNameOf(block.type),
                  block.GetRowCount(),
                  row_lease.GetFirstRow(),
                  row_lease.GetSSBOId());

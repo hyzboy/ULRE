@@ -83,8 +83,8 @@ namespace hgl::graph
         bool IsValid() const { return !geometry_path.IsEmpty() && !recipe_name.IsEmpty(); }
     };
 
-    const char *GetPrimitiveVariantPurposeName(PrimitiveVariantPurpose purpose);
-    bool        ParsePrimitiveVariantPurpose(const char *name, PrimitiveVariantPurpose &out_purpose);
+    // 名字↔值的唯一真源 = 文件末尾的 `HGL_ENUM_BEGIN(hgl::graph::PrimitiveVariantPurpose)`
+    // 登记块（见 `hgl::serialize::EnumNameOf` / `EnumParse`）。
 }//namespace hgl::graph
 
 // ── 枚举登记（拼写与 GUI 说明的唯一真源）─────────────────────────────────────

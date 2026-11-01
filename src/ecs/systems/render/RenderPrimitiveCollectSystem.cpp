@@ -787,9 +787,9 @@ namespace hgl::ecs
                         "[MaterialBinding] Material SSBO type mismatch owner=%s definition=%s expected=%s actual=%s",
                         owner_name ? owner_name : "<null>",
                         definition.domain_name.c_str(),
-                        graph::GetGlobalSSBOTypeName(
+                        hgl::serialize::EnumNameOf(
                             definition.material_private_data),
-                        graph::GetGlobalSSBOTypeName(
+                        hgl::serialize::EnumNameOf(
                             private_binding.ssbo_type));
                     return false;
                 }
@@ -1616,7 +1616,7 @@ namespace hgl::ecs
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer missing for %s type=%s ssbo_id=%u",
                         GetOwnerName(primitive_comp),
-                        graph::GetGlobalSSBOTypeName(
+                        hgl::serialize::EnumNameOf(
                             asset_binding.ssbo_type),
                         asset_binding.ssbo_id);
                     return false;
@@ -1628,7 +1628,7 @@ namespace hgl::ecs
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: inactive material row ID for %s type=%s ssbo_id=%u data_index=%u",
                         GetOwnerName(primitive_comp),
-                        graph::GetGlobalSSBOTypeName(
+                        hgl::serialize::EnumNameOf(
                             asset_binding.ssbo_type),
                         asset_binding.ssbo_id,
                         asset_binding.data_index);
@@ -1644,9 +1644,9 @@ namespace hgl::ecs
                     GLogError(
                         "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer invalid for %s type=%s buffer_type=%s ssbo_id=%u data_index=%u capacity=%u row_bytes=%u",
                         GetOwnerName(primitive_comp),
-                        graph::GetGlobalSSBOTypeName(
+                        hgl::serialize::EnumNameOf(
                             asset_binding.ssbo_type),
-                        graph::GetGlobalSSBOTypeName(
+                        hgl::serialize::EnumNameOf(
                             material_buffer.global_ssbo_type),
                         asset_binding.ssbo_id,
                         asset_binding.data_index,

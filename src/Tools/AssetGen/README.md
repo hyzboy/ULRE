@@ -190,28 +190,38 @@ asset_kind = "geo"                                       # 元数据里的资产
 ## 8. 枚举拼写的唯一真源
 
 TOML 里写的是**人能读的名字**（`"OrthoViewport"`、`"None"`），而拼写表若在引擎侧已有
-运行期公开函数（`GetProjectionModeName` / `ParseProjectionMode` …），生成器**不得**再
-自带一份字面量表 —— 那等于制造第二个真源，改一处漏一处时两遍读法就会分叉。
+真源，生成器**不得**再自带一份字面量表 —— 那等于制造第二个真源，改一处漏一处时两遍
+读法就会分叉。更进一步：生成器也**不生成转发壳**。若真源已经是
+`hgl::serialize::EnumMeta` 的登记块，`AssetEnumName_*` / `AssetEnumParse_*` 这种
+「只调一行的包装」纯属第三层重复，直接删掉。
 
-`asset_gen.toml` 因此支持三种「不相交」的枚举来源：
+`asset_gen.toml` 因此支持四种「不相交」的枚举来源：
 
 ```toml
 # ① 纯整数（第三方枚举，例如 Vulkan）：按整数序列化，不生成名字表
 integer_enums = ["VkFormat"]
 
-# ② 生成器自带拼写表（引擎侧没有公开函数时才用）
+# ② 生成器自带拼写表（引擎侧既无登记块也无公开函数时才用）
 [[enum]]
-name    = "NTBType"
-aliases = ["none", "normal", "normal_tangent", "normal_tangent_bitangent"]
+name    = "SkyMode"
+aliases = ["atmosphere", "cubemap_ibl", "octahedral_ibl", "lambert_dome", "sh9_only", "none"]
 
-# ③ 转发到引擎真源：生成的名字/解析函数只是转发调用
+# ③ 首选：真源就是枚举定义旁的 `HGL_ENUM_BEGIN` 登记块
 [[enum]]
 name           = "ProjectionMode"
-extern_from    = "::hgl::mtl::GetProjectionModeName"
-extern_to      = "::hgl::mtl::ParseProjectionMode"
-extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
+fq             = "hgl::graph::mtl::ProjectionMode"
+enum_meta      = true
+extern_include = "hgl/mtl/VertexShaderNodeConfig.h"   # 只为了让生成的 Meta.gen.h 看得见登记块
 
-# ③' 类型名与枚举真名不一致时（typedef 到整数的 Flags 类）用中介类型
+# ④ 真源是普通函数（Vulkan 拼写表 / 保留历史 TOML 拼写的枚举）
+[[enum]]
+name           = "PrimitiveType"
+fq             = "hgl::graph::PrimitiveType"
+extern_from    = "hgl::graph::ParsePrimitiveTypeName"
+extern_to      = "hgl::graph::GetPrimitiveTypeName"
+extern_include = "hgl/common/PrimitiveType.h"
+
+# ④' 类型名与枚举真名不一致时（typedef 到整数的 Flags 类）用中介类型
 [[enum]]
 name            = "VkCullModeFlagBits"
 extern_mediator = "::VkCullModeFlags"
@@ -222,11 +232,29 @@ extern_include  = "hgl/mtl/VkEnumText.h"
 
 `extern_mediator` 用于 `VkCullModeFlags` 这类「值域是枚举、类型是整数的 typedef」：
 `EnumTraits` 若挂在整数 typedef 上会误伤所有同宽整数字段，所以转发函数先做一次
-显式转换。三处配置缺任一项，`main()` 会直接报错而不是生成半成品。
+显式转换。④ / ④' 的任一必填项缺失时，`main()` 会直接报错而不是生成半成品。
 
-**口径后果**：转发到 `Parse*` 之后，接受哪些拼写完全由引擎侧决定（当前是
-`hgl::strcmp` 精确匹配，大小写敏感）。生成器不再提供「别名大小写不敏感」这一层
-宽容，这既是治「两份真源」，也意味着**小写拼写会被拒**。
+### `enum_meta = true`（③）生成什么
+
+- **不生成** `AssetEnumName_<X>` / `AssetEnumParse_<X>` —— 取名字直接用
+  `hgl::serialize::EnumNameOf(v)`，解析直接用 `hgl::serialize::EnumParse(text, out)`。
+- **不生成** `EnumTraits<X>` 特化 —— `inc/hgl/serialize/Traits.h` 的缺省模板已经
+  把 `defined` / `ToName` / `FromName` 直达 `EnumMeta<X>`。
+- 只生成 `AssetEnumName64_<X>` / `AssetEnumParse64_<X>` 两个 `int64_t` 反射适配器：
+  `PropertyMetaInfo` 存的是裸函数指针，需要同签名，适配器内部再调 `EnumNameOf` /
+  `EnumParse`。这两个是**反射 ABI 所需**，不是可删的转发壳。
+- 必须写 `fq`（登记块用全限定类型名），且**禁止**同时写 `extern_from` / `extern_to`
+  —— 一个枚举只能有一种真源形态，冲突时 `main()` 直接报错。
+
+### 口径后果
+
+- ③（`EnumMeta`）的解析是**宽松**的：忽略大小写、忽略 `_` / `-`，并额外接受十进制与
+  `0x` 十六进制字面量；写出永远用登记块里的 `ITEM_NAME`（蛇形），历史拼写走
+  `ITEM_ALIAS` 的 `|` 分隔备用列表。
+- ④（转发到函数）的解析接受哪些拼写完全由引擎侧决定（`VkEnumText.h` 与
+  `ParsePrimitiveTypeName` 当前是 `hgl::stricmp`，`ParseMaterialDomain` 是
+  `hgl::strcmp` 精确匹配）—— 这些枚举**故意**保留自己的口径，不为了统一而改历史
+  TOML 契约。
 
 ## 9. 在引擎里使用生成产物
 

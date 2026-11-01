@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/ComponentRow.h>
 #include<hgl/ecs/support/MaterialAuthoringSideTable.h>
@@ -174,7 +174,7 @@ namespace hgl::ecs
             {
                 GLogError(
                     "[MaterialData] typed row lease mismatch type=%s bytes=%u expected=%zu",
-                    hgl::graph::GetGlobalSSBOTypeName(type),
+                    hgl::serialize::EnumNameOf(type),
                     accessor.GetRowBytes(),
                     sizeof(T));
                 return false;

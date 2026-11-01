@@ -245,7 +245,7 @@ public:
         if (pool->GetRowBytes() != sizeof(T))
         {
             GLogError("[GlobalSSBOBufferRegistry] WriteRowRange row-size mismatch: type=%s expected=%zu actual=%u",
-                      GetGlobalSSBOTypeName(type), sizeof(T), pool->GetRowBytes());
+                      hgl::serialize::EnumNameOf(type), sizeof(T), pool->GetRowBytes());
             return false;
         }
 
@@ -290,7 +290,7 @@ public:
             // 三条件逐项打出：否则「未就绪」只能靠猜（initialized / 池就绪 / SSBO id）
             GLogError("[GlobalSSBOBufferRegistry] Accessor requested before ready: type=%s"
                       "（initialized=%d pool=%p IsReady=%d ssbo_id=%u）",
-                      GetGlobalSSBOTypeName(type),
+                      hgl::serialize::EnumNameOf(type),
                       initialized ? 1 : 0, (const void *)pool,
                       pool ? (pool->IsReady() ? 1 : 0) : 0,
                       pool ? pool->GetSSBOId() : 0u);
@@ -309,7 +309,7 @@ public:
         {
             GLogError(
                 "[GlobalSSBOBufferRegistry] Material accessor row-size mismatch: type=%s expected=%u actual=%zu",
-                GetGlobalSSBOTypeName(ssbo::GlobalRowTypeTraits<T>::TYPE),
+                hgl::serialize::EnumNameOf(ssbo::GlobalRowTypeTraits<T>::TYPE),
                 accessor.GetRowBytes(),
                 sizeof(T));
             return {};
@@ -532,7 +532,7 @@ inline GlobalSSBORowRangeLease GlobalSSBOBufferRegistry::AcquireRowRangeLease(co
     if (first == ActiveRowPool::InvalidRowID)
     {
         GLogError("[GlobalSSBOBufferRegistry] AcquireRowRangeLease failed: type=%s count=%u capacity=%u",
-                  GetGlobalSSBOTypeName(type), count, GetCapacity(type));
+                  hgl::serialize::EnumNameOf(type), count, GetCapacity(type));
         return {};
     }
 

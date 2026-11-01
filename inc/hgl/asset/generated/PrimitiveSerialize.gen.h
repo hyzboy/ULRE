@@ -13,15 +13,6 @@
 
 namespace hgl::serialize
 {
-    template<> struct EnumTraits<hgl::graph::PrimitiveVariantPurpose>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::PrimitiveVariantPurpose v)
-        { return hgl::asset::generated::AssetEnumName_PrimitiveVariantPurpose(v); }
-        static bool FromName(const char *s, hgl::graph::PrimitiveVariantPurpose &out)
-        { return hgl::asset::generated::AssetEnumParse_PrimitiveVariantPurpose(s, out); }
-    };
-
     template<> struct EnumTraits<hgl::graph::PrimitiveType>
     {
         static constexpr bool defined = true;

@@ -81,17 +81,8 @@ namespace hgl::graph
         return VF_V2UN8;
     }
 
-    /// 拼写真源在 `VertexNormalFormat` 的登记块里。
-    inline const char *GetVertexNormalFormatName(VertexNormalFormat format)
-    {
-        const char *name = hgl::serialize::EnumNameOf(format);
-        return name ? name : "unknown";
-    }
-
-    inline bool ParseVertexNormalFormat(const char *text, VertexNormalFormat &out_format)
-    {
-        return hgl::serialize::EnumParse(text, out_format);
-    }
+    // 名字↔值的唯一真源 = 文件末尾的 `HGL_ENUM_BEGIN(hgl::graph::VertexNormalFormat)`
+    // 登记块（见 `hgl::serialize::EnumNameOf` / `EnumParse`）。
 
     struct HGL_ASSET_STRUCT BuiltinSphereParams
     {
@@ -320,39 +311,9 @@ namespace hgl::graph
                                     const GeometryAssetSpec &spec,
                                     const GeometryVertexFormat *gvf_override = nullptr);
 
-    /// 拼写 / 解析的真源都在文件末尾的登记块里，这里只做转发。
-    inline const char *GetBuiltinShapeKindName(BuiltinShapeKind kind)
-    {
-        const char *name = hgl::serialize::EnumNameOf(kind);
-        return name ? name : "unknown";
-    }
-
-    inline bool ParseBuiltinShapeKind(const char *name, BuiltinShapeKind &out_kind)
-    {
-        return hgl::serialize::EnumParse(name, out_kind);
-    }
-
-    inline const char *GetGeometryAssetKindName(GeometryAssetKind kind)
-    {
-        const char *name = hgl::serialize::EnumNameOf(kind);
-        return name ? name : "unknown";
-    }
-
-    inline bool ParseGeometryAssetKind(const char *name, GeometryAssetKind &out_kind)
-    {
-        return hgl::serialize::EnumParse(name, out_kind);
-    }
-
-    inline bool ParseNTBType(const char *name, NTBType &out_ntb)
-    {
-        return hgl::serialize::EnumParse(name, out_ntb);
-    }
-
-    inline const char *GetNTBTypeName(NTBType ntb)
-    {
-        const char *name = hgl::serialize::EnumNameOf(ntb);
-        return name ? name : "unknown";
-    }
+    // 名字↔值的唯一真源 = 文件末尾的 `HGL_ENUM_BEGIN` 登记块
+    // （`BuiltinShapeKind` / `GeometryAssetKind` / `NTBType`），
+    // 取名字用 `hgl::serialize::EnumNameOf`，解析用 `hgl::serialize::EnumParse`。
 
 }//namespace hgl::graph
 

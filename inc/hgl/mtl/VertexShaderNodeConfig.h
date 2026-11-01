@@ -17,23 +17,8 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(Vec2Position, None)
     };
 
-    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
-    //   GetVertexInputModeName：枚举 → 名字
-    //   ParseVertexInputMode：名字 → 枚举
-    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
-    inline constexpr uint32_t VertexInputModeCount =
-        static_cast<uint32_t>(VertexInputMode::None) + 1;
-
-    inline const char *GetVertexInputModeName(const VertexInputMode mode) noexcept
-    {
-        const char *name = hgl::serialize::EnumNameOf(mode);
-        return name ? name : "Vec3Position";
-    }
-
-    inline bool ParseVertexInputMode(const char *name, VertexInputMode &out) noexcept
-    {
-        return hgl::serialize::EnumParse(name, out);
-    }
+    // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块；
+    // 取名字用 `hgl::serialize::EnumNameOf`，解析用 `hgl::serialize::EnumParse`。
 
 
     // Stage 2 — 物体空间位置映射策略
@@ -51,18 +36,7 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(Passthrough3D, PixelToLocal)
     };
 
-    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
-    //   GetPositionMappingModeName：枚举 → 名字
-    //   ParsePositionMappingMode：名字 → 枚举
-    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
-    inline constexpr uint32_t PositionMappingModeCount =
-        static_cast<uint32_t>(PositionMappingMode::PixelToLocal) + 1;
-
-    inline const char *GetPositionMappingModeName(const PositionMappingMode mode) noexcept
-    {
-        const char *name = hgl::serialize::EnumNameOf(mode);
-        return name ? name : "Passthrough3D";
-    }
+    // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块（见 `EnumNameOf` / `EnumParse`）。
 
     // Stage 2 映射模块**输入**使用的 Position 分量数。
     //
@@ -80,11 +54,6 @@ namespace hgl::graph::mtl
         return mode == PositionMappingMode::Passthrough3D ? 3u : 2u;
     }
 
-    inline bool ParsePositionMappingMode(const char *name, PositionMappingMode &out) noexcept
-    {
-        return hgl::serialize::EnumParse(name, out);
-    }
-
 
     // Stage 3a — 朝向策略
     enum class OrientationMode : uint8_t
@@ -96,23 +65,7 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(World, CameraFacingAxisY)
     };
 
-    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
-    //   GetOrientationModeName：枚举 → 名字
-    //   ParseOrientationMode：名字 → 枚举
-    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
-    inline constexpr uint32_t OrientationModeCount =
-        static_cast<uint32_t>(OrientationMode::CameraFacingAxisY) + 1;
-
-    inline const char *GetOrientationModeName(const OrientationMode mode) noexcept
-    {
-        const char *name = hgl::serialize::EnumNameOf(mode);
-        return name ? name : "World";
-    }
-
-    inline bool ParseOrientationMode(const char *name, OrientationMode &out) noexcept
-    {
-        return hgl::serialize::EnumParse(name, out);
-    }
+    // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块（见 `EnumNameOf` / `EnumParse`）。
 
 
     // Stage 3b — 缩放策略
@@ -124,23 +77,7 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(World, FixedPixelSize)
     };
 
-    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
-    //   GetScaleModeName：枚举 → 名字
-    //   ParseScaleMode：名字 → 枚举
-    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
-    inline constexpr uint32_t ScaleModeCount =
-        static_cast<uint32_t>(ScaleMode::FixedPixelSize) + 1;
-
-    inline const char *GetScaleModeName(const ScaleMode mode) noexcept
-    {
-        const char *name = hgl::serialize::EnumNameOf(mode);
-        return name ? name : "World";
-    }
-
-    inline bool ParseScaleMode(const char *name, ScaleMode &out) noexcept
-    {
-        return hgl::serialize::EnumParse(name, out);
-    }
+    // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块（见 `EnumNameOf` / `EnumParse`）。
 
 
     // Stage 3c — 投影策略
@@ -155,23 +92,7 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(WorldCameraVP, ClipPassthrough)
     };
 
-    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
-    //   GetProjectionModeName：枚举 → 名字
-    //   ParseProjectionMode：名字 → 枚举
-    // 新增模式只需改枚举 + 登记块，两向转换自动覆盖。
-    inline constexpr uint32_t ProjectionModeCount =
-        static_cast<uint32_t>(ProjectionMode::ClipPassthrough) + 1;
-
-    inline const char *GetProjectionModeName(const ProjectionMode mode) noexcept
-    {
-        const char *name = hgl::serialize::EnumNameOf(mode);
-        return name ? name : "WorldCameraVP";
-    }
-
-    inline bool ParseProjectionMode(const char *name, ProjectionMode &out) noexcept
-    {
-        return hgl::serialize::EnumParse(name, out);
-    }
+    // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块（见 `EnumNameOf` / `EnumParse`）。
 
 
     // 顶点 Shader PCG 节点配置：三阶段五参数

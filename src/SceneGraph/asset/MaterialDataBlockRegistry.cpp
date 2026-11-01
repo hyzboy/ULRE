@@ -166,7 +166,7 @@ namespace hgl::graph::mtl
         GLogInfo(u8"[MaterialDataBlockRegistry] 数据块已加载: %ls name=%s type=%s rows=%u row_bytes=%u",
                  source_label,
                  asset->GetSpec().name.c_str(),
-                 GetGlobalSSBOTypeName(asset->GetGlobalSSBOType()),
+                 hgl::serialize::EnumNameOf(asset->GetGlobalSSBOType()),
                  asset->GetRowCount(),
                  asset->GetRowBytes());
 
@@ -218,7 +218,7 @@ namespace hgl::graph::mtl
 
         GLogInfo(u8"[MaterialDataBlockRegistry] 数据块二进制已加载（无授权形态）: %ls type=%s rows=%u row_bytes=%u",
                  source_label,
-                 GetGlobalSSBOTypeName(asset->GetGlobalSSBOType()),
+                 hgl::serialize::EnumNameOf(asset->GetGlobalSSBOType()),
                  asset->GetRowCount(),
                  asset->GetRowBytes());
 

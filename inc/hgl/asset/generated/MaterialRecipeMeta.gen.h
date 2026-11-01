@@ -40,36 +40,6 @@ namespace hgl::asset::generated
     inline bool AssetEnumParse_VkBlendFactor(const char *s, ::VkBlendFactor &out)
     { return hgl::graph::mtl::ParseVkBlendFactor(s, out); }
 
-    inline const char *AssetEnumName_VertexInputMode(const hgl::graph::mtl::VertexInputMode v)
-    { return hgl::graph::mtl::GetVertexInputModeName(v); }
-
-    inline bool AssetEnumParse_VertexInputMode(const char *s, hgl::graph::mtl::VertexInputMode &out)
-    { return hgl::graph::mtl::ParseVertexInputMode(s, out); }
-
-    inline const char *AssetEnumName_PositionMappingMode(const hgl::graph::mtl::PositionMappingMode v)
-    { return hgl::graph::mtl::GetPositionMappingModeName(v); }
-
-    inline bool AssetEnumParse_PositionMappingMode(const char *s, hgl::graph::mtl::PositionMappingMode &out)
-    { return hgl::graph::mtl::ParsePositionMappingMode(s, out); }
-
-    inline const char *AssetEnumName_OrientationMode(const hgl::graph::mtl::OrientationMode v)
-    { return hgl::graph::mtl::GetOrientationModeName(v); }
-
-    inline bool AssetEnumParse_OrientationMode(const char *s, hgl::graph::mtl::OrientationMode &out)
-    { return hgl::graph::mtl::ParseOrientationMode(s, out); }
-
-    inline const char *AssetEnumName_ScaleMode(const hgl::graph::mtl::ScaleMode v)
-    { return hgl::graph::mtl::GetScaleModeName(v); }
-
-    inline bool AssetEnumParse_ScaleMode(const char *s, hgl::graph::mtl::ScaleMode &out)
-    { return hgl::graph::mtl::ParseScaleMode(s, out); }
-
-    inline const char *AssetEnumName_ProjectionMode(const hgl::graph::mtl::ProjectionMode v)
-    { return hgl::graph::mtl::GetProjectionModeName(v); }
-
-    inline bool AssetEnumParse_ProjectionMode(const char *s, hgl::graph::mtl::ProjectionMode &out)
-    { return hgl::graph::mtl::ParseProjectionMode(s, out); }
-
     inline const char *AssetEnumName_MaterialDomain(const hgl::graph::mtl::MaterialDomain v)
     { return hgl::graph::mtl::GetMaterialDomainName(v); }
 
@@ -110,56 +80,56 @@ namespace hgl::asset::generated
     }
 
     inline const char *AssetEnumName64_VertexInputMode(const int64_t v)
-    { return AssetEnumName_VertexInputMode(static_cast<hgl::graph::mtl::VertexInputMode>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::mtl::VertexInputMode>(v)); }
 
     inline bool AssetEnumParse64_VertexInputMode(const char *s, int64_t &out)
     {
         hgl::graph::mtl::VertexInputMode tmp{};
-        if (!AssetEnumParse_VertexInputMode(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
 
     inline const char *AssetEnumName64_PositionMappingMode(const int64_t v)
-    { return AssetEnumName_PositionMappingMode(static_cast<hgl::graph::mtl::PositionMappingMode>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::mtl::PositionMappingMode>(v)); }
 
     inline bool AssetEnumParse64_PositionMappingMode(const char *s, int64_t &out)
     {
         hgl::graph::mtl::PositionMappingMode tmp{};
-        if (!AssetEnumParse_PositionMappingMode(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
 
     inline const char *AssetEnumName64_OrientationMode(const int64_t v)
-    { return AssetEnumName_OrientationMode(static_cast<hgl::graph::mtl::OrientationMode>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::mtl::OrientationMode>(v)); }
 
     inline bool AssetEnumParse64_OrientationMode(const char *s, int64_t &out)
     {
         hgl::graph::mtl::OrientationMode tmp{};
-        if (!AssetEnumParse_OrientationMode(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
 
     inline const char *AssetEnumName64_ScaleMode(const int64_t v)
-    { return AssetEnumName_ScaleMode(static_cast<hgl::graph::mtl::ScaleMode>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::mtl::ScaleMode>(v)); }
 
     inline bool AssetEnumParse64_ScaleMode(const char *s, int64_t &out)
     {
         hgl::graph::mtl::ScaleMode tmp{};
-        if (!AssetEnumParse_ScaleMode(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
 
     inline const char *AssetEnumName64_ProjectionMode(const int64_t v)
-    { return AssetEnumName_ProjectionMode(static_cast<hgl::graph::mtl::ProjectionMode>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::mtl::ProjectionMode>(v)); }
 
     inline bool AssetEnumParse64_ProjectionMode(const char *s, int64_t &out)
     {
         hgl::graph::mtl::ProjectionMode tmp{};
-        if (!AssetEnumParse_ProjectionMode(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }

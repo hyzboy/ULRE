@@ -49,11 +49,11 @@ extern_from = "hgl::graph::mtl::ParseVkBlendFactor"
 extern_to   = "hgl::graph::mtl::GetVkBlendFactorName"
 extern_include = "hgl/mtl/VkEnumText.h"
 
-# ── 引擎侧枚举：名字↔值真源各自在自己的头文件里，生成器只转发 ────────────────
-# 与上面 Vulkan 三枚举同一个理由：领域名与变换模式名是**运行期公开契约**
-# （`GetMaterialDomainName` / `ParseProjectionMode` 等被别处直接调用），
-# 这里再复制一份字面量表就等于制造第二个真源。转发同时保住了原来的
-# 大小写敏感的精确匹配口径。
+# ── 引擎侧枚举：真源是枚举定义旁的 `HGL_ENUM_BEGIN` 登记块 ───────────────────
+# `enum_meta = true` 表示「名字↔值真源 = `hgl::serialize::EnumMeta` 登记块」：
+# 生成器**不生成**任何 `AssetEnumName_*` / `AssetEnumParse_*` 转发，也不生成
+# `EnumTraits` 特化（`Traits.h` 的缺省模板已直达 `EnumMeta<T>`）。
+# `extern_include` 只用来让生成的 Meta.gen.h 能看见那个登记块。
 [[enum]]
 name           = "MaterialDomain"
 fq             = "hgl::graph::mtl::MaterialDomain"
@@ -64,36 +64,31 @@ extern_include = "hgl/mtl/MaterialDomain.h"
 [[enum]]
 name           = "VertexInputMode"
 fq             = "hgl::graph::mtl::VertexInputMode"
-extern_from    = "hgl::graph::mtl::ParseVertexInputMode"
-extern_to      = "hgl::graph::mtl::GetVertexInputModeName"
+enum_meta      = true
 extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
 
 [[enum]]
 name           = "PositionMappingMode"
 fq             = "hgl::graph::mtl::PositionMappingMode"
-extern_from    = "hgl::graph::mtl::ParsePositionMappingMode"
-extern_to      = "hgl::graph::mtl::GetPositionMappingModeName"
+enum_meta      = true
 extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
 
 [[enum]]
 name           = "OrientationMode"
 fq             = "hgl::graph::mtl::OrientationMode"
-extern_from    = "hgl::graph::mtl::ParseOrientationMode"
-extern_to      = "hgl::graph::mtl::GetOrientationModeName"
+enum_meta      = true
 extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
 
 [[enum]]
 name           = "ScaleMode"
 fq             = "hgl::graph::mtl::ScaleMode"
-extern_from    = "hgl::graph::mtl::ParseScaleMode"
-extern_to      = "hgl::graph::mtl::GetScaleModeName"
+enum_meta      = true
 extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
 
 [[enum]]
 name           = "ProjectionMode"
 fq             = "hgl::graph::mtl::ProjectionMode"
-extern_from    = "hgl::graph::mtl::ParseProjectionMode"
-extern_to      = "hgl::graph::mtl::GetProjectionModeName"
+enum_meta      = true
 extern_include = "hgl/mtl/VertexShaderNodeConfig.h"
 
 # `PrimitiveType` 的拼写表（`points` / `line_strip` / `triangle_strip` …）已经是
@@ -108,54 +103,47 @@ extern_to      = "hgl::graph::GetPrimitiveTypeName"
 extern_include = "hgl/common/PrimitiveType.h"
 
 # `PrimitiveVariantPurpose` 的 TOML 拼写是蛇形（`depth_only` / `shadow_caster`），
-# 名字↔值真源在 `PrimitiveAssetSpec.h` 末尾的 `HGL_ENUM_BEGIN` 登记块，这里只转发。
+# 名字↔值真源在 `PrimitiveAssetSpec.h` 末尾的 `HGL_ENUM_BEGIN` 登记块。
 [[enum]]
 name           = "PrimitiveVariantPurpose"
 fq             = "hgl::graph::PrimitiveVariantPurpose"
-extern_from    = "hgl::graph::ParsePrimitiveVariantPurpose"
-extern_to      = "hgl::graph::GetPrimitiveVariantPurposeName"
+enum_meta      = true
 extern_include = "hgl/graph/asset/PrimitiveAssetSpec.h"
 
 # `GeometryAssetSpec` 的三个枚举拼写同样不是 C++ 枚举名（`builtin` / `plane_grid`
-# / `v2un8`），而且法线格式还要兼容历史的 `VF_` 宏名与 Vulkan 原名，所以统一只
-# 转发到 `GeometryAssetSpec.h` 里的解析函数。
+# / `v2un8`），法线格式还要兼容历史的 `VF_` 宏名与 Vulkan 原名 —— 全部写在
+# `GeometryAssetSpec.h` 末尾的 `HGL_ENUM_BEGIN` 登记块（`ITEM_NAME` / `ITEM_ALIAS`）里。
 [[enum]]
 name           = "GeometryAssetKind"
 fq             = "hgl::graph::GeometryAssetKind"
-extern_from    = "hgl::graph::ParseGeometryAssetKind"
-extern_to      = "hgl::graph::GetGeometryAssetKindName"
+enum_meta      = true
 extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
 
 [[enum]]
 name           = "BuiltinShapeKind"
 fq             = "hgl::graph::BuiltinShapeKind"
-extern_from    = "hgl::graph::ParseBuiltinShapeKind"
-extern_to      = "hgl::graph::GetBuiltinShapeKindName"
+enum_meta      = true
 extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
 
 [[enum]]
 name           = "VertexNormalFormat"
 fq             = "hgl::graph::VertexNormalFormat"
-extern_from    = "hgl::graph::ParseVertexNormalFormat"
-extern_to      = "hgl::graph::GetVertexNormalFormatName"
+enum_meta      = true
 extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
 
-# `NTBType` 的拼写表在 `InlineGeometry.h` 的 `HGL_ENUM_BEGIN` 登记块里，
-# 转发函数与其它几何枚举一样挂在 `GeometryAssetSpec.h`。
+# `NTBType` 的登记块在 `InlineGeometry.h`（`GeometryAssetSpec.h` 已传递包含）。
 [[enum]]
 name           = "NTBType"
 fq             = "hgl::graph::NTBType"
-extern_from    = "hgl::graph::ParseNTBType"
-extern_to      = "hgl::graph::GetNTBTypeName"
-extern_include = "hgl/graph/asset/GeometryAssetSpec.h"
+enum_meta      = true
+extern_include = "hgl/graph/geo/InlineGeometry.h"
 
-# 全局 SSBO 池类型：名字表在 `GlobalSSBOTypes.h`（`GetGlobalSSBOTypeName` 还要被
-# 覆盖性断言与诊断日志共用），所以这里只转发，别处再造一份 `PBRSurface` 字面量。
+# 全局 SSBO 池类型：名字表在 `GlobalSSBOTypes.h` 末尾的登记块，
+# 与末尾的项数 `static_assert` 共用同一份真源。
 [[enum]]
 name           = "GlobalSSBOType"
 fq             = "hgl::graph::GlobalSSBOType"
-extern_from    = "hgl::graph::ParseGlobalSSBOType"
-extern_to      = "hgl::graph::GetGlobalSSBOTypeName"
+enum_meta      = true
 extern_include = "hgl/graph/ssbo/GlobalSSBOTypes.h"
 
 # 天空模式与 LDR 策略：定义在 `EnvironmentAssetSpec.h`（环境资产规约的真源），

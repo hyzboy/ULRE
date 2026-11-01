@@ -338,7 +338,7 @@ namespace hgl::ecs
         {
             GLogError(
                 "[MaterialData] Material data resource rejected missing active row ID type=%s ssbo_id=%u data_index=%u",
-                hgl::graph::GetGlobalSSBOTypeName(
+                hgl::serialize::EnumNameOf(
                     resource.ssbo_type),
                 resource.ssbo_id,
                 resource.data_index);

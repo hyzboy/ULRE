@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -29,7 +29,7 @@ namespace hgl::graph::mtl
 
             GLogError(u8"位置映射与顶点位置输入不匹配：position_mapping=%s 需要 Position 分量数 %u，"
                       u8"而 Stage 1 输入模块提供 %u 个分量（%s）",
-                      GetPositionMappingModeName(cfg.position_mapping),
+                      hgl::serialize::EnumNameOf(cfg.position_mapping),
                       required, s1_component_count,
                       context ? context : "");
             return false;

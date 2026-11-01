@@ -40,51 +40,6 @@ namespace hgl::serialize
         { return hgl::asset::generated::AssetEnumParse_VkBlendFactor(s, out); }
     };
 
-    template<> struct EnumTraits<hgl::graph::mtl::VertexInputMode>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::mtl::VertexInputMode v)
-        { return hgl::asset::generated::AssetEnumName_VertexInputMode(v); }
-        static bool FromName(const char *s, hgl::graph::mtl::VertexInputMode &out)
-        { return hgl::asset::generated::AssetEnumParse_VertexInputMode(s, out); }
-    };
-
-    template<> struct EnumTraits<hgl::graph::mtl::PositionMappingMode>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::mtl::PositionMappingMode v)
-        { return hgl::asset::generated::AssetEnumName_PositionMappingMode(v); }
-        static bool FromName(const char *s, hgl::graph::mtl::PositionMappingMode &out)
-        { return hgl::asset::generated::AssetEnumParse_PositionMappingMode(s, out); }
-    };
-
-    template<> struct EnumTraits<hgl::graph::mtl::OrientationMode>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::mtl::OrientationMode v)
-        { return hgl::asset::generated::AssetEnumName_OrientationMode(v); }
-        static bool FromName(const char *s, hgl::graph::mtl::OrientationMode &out)
-        { return hgl::asset::generated::AssetEnumParse_OrientationMode(s, out); }
-    };
-
-    template<> struct EnumTraits<hgl::graph::mtl::ScaleMode>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::mtl::ScaleMode v)
-        { return hgl::asset::generated::AssetEnumName_ScaleMode(v); }
-        static bool FromName(const char *s, hgl::graph::mtl::ScaleMode &out)
-        { return hgl::asset::generated::AssetEnumParse_ScaleMode(s, out); }
-    };
-
-    template<> struct EnumTraits<hgl::graph::mtl::ProjectionMode>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::mtl::ProjectionMode v)
-        { return hgl::asset::generated::AssetEnumName_ProjectionMode(v); }
-        static bool FromName(const char *s, hgl::graph::mtl::ProjectionMode &out)
-        { return hgl::asset::generated::AssetEnumParse_ProjectionMode(s, out); }
-    };
-
     template<> struct EnumTraits<hgl::graph::mtl::MaterialDomain>
     {
         static constexpr bool defined = true;

@@ -13,15 +13,6 @@
 
 namespace hgl::serialize
 {
-    template<> struct EnumTraits<hgl::graph::GlobalSSBOType>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::GlobalSSBOType v)
-        { return hgl::asset::generated::AssetEnumName_GlobalSSBOType(v); }
-        static bool FromName(const char *s, hgl::graph::GlobalSSBOType &out)
-        { return hgl::asset::generated::AssetEnumParse_GlobalSSBOType(s, out); }
-    };
-
     template<> struct StructSerializer<hgl::graph::MaterialDataRowSpec>
     {
         static constexpr bool defined = true;

@@ -251,7 +251,7 @@ namespace hgl::graph
 
         // 无名内置几何体：退回形状名兜底。同一份 `GeometryAssetSpec` 的两次请求
         // 本来就该各自独立建几何，因此这里只要求「同一个句柄内稳定」。
-        id+=ToU8String(AnsiString(GetBuiltinShapeKindName(spec.shape)));
+        id+=ToU8String(AnsiString(hgl::serialize::EnumNameOf(spec.shape)));
         return id;
     }
 }//namespace hgl::graph

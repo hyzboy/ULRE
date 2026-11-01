@@ -12,73 +12,50 @@
 #include <hgl/asset/AssetObject.h>
 #include <hgl/graph/asset/GeometryAssetSpec.h>
 #include <hgl/graph/asset/GeometryAssetSpec.h>
+#include <hgl/graph/geo/InlineGeometry.h>
 
 namespace hgl::asset::generated
 {
-    inline const char *AssetEnumName_NTBType(const hgl::graph::NTBType v)
-    { return hgl::graph::GetNTBTypeName(v); }
-
-    inline bool AssetEnumParse_NTBType(const char *s, hgl::graph::NTBType &out)
-    { return hgl::graph::ParseNTBType(s, out); }
-
-    inline const char *AssetEnumName_VertexNormalFormat(const hgl::graph::VertexNormalFormat v)
-    { return hgl::graph::GetVertexNormalFormatName(v); }
-
-    inline bool AssetEnumParse_VertexNormalFormat(const char *s, hgl::graph::VertexNormalFormat &out)
-    { return hgl::graph::ParseVertexNormalFormat(s, out); }
-
-    inline const char *AssetEnumName_GeometryAssetKind(const hgl::graph::GeometryAssetKind v)
-    { return hgl::graph::GetGeometryAssetKindName(v); }
-
-    inline bool AssetEnumParse_GeometryAssetKind(const char *s, hgl::graph::GeometryAssetKind &out)
-    { return hgl::graph::ParseGeometryAssetKind(s, out); }
-
-    inline const char *AssetEnumName_BuiltinShapeKind(const hgl::graph::BuiltinShapeKind v)
-    { return hgl::graph::GetBuiltinShapeKindName(v); }
-
-    inline bool AssetEnumParse_BuiltinShapeKind(const char *s, hgl::graph::BuiltinShapeKind &out)
-    { return hgl::graph::ParseBuiltinShapeKind(s, out); }
-
     inline const char *AssetEnumName64_NTBType(const int64_t v)
-    { return AssetEnumName_NTBType(static_cast<hgl::graph::NTBType>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::NTBType>(v)); }
 
     inline bool AssetEnumParse64_NTBType(const char *s, int64_t &out)
     {
         hgl::graph::NTBType tmp{};
-        if (!AssetEnumParse_NTBType(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
 
     inline const char *AssetEnumName64_VertexNormalFormat(const int64_t v)
-    { return AssetEnumName_VertexNormalFormat(static_cast<hgl::graph::VertexNormalFormat>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::VertexNormalFormat>(v)); }
 
     inline bool AssetEnumParse64_VertexNormalFormat(const char *s, int64_t &out)
     {
         hgl::graph::VertexNormalFormat tmp{};
-        if (!AssetEnumParse_VertexNormalFormat(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
 
     inline const char *AssetEnumName64_GeometryAssetKind(const int64_t v)
-    { return AssetEnumName_GeometryAssetKind(static_cast<hgl::graph::GeometryAssetKind>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::GeometryAssetKind>(v)); }
 
     inline bool AssetEnumParse64_GeometryAssetKind(const char *s, int64_t &out)
     {
         hgl::graph::GeometryAssetKind tmp{};
-        if (!AssetEnumParse_GeometryAssetKind(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
 
     inline const char *AssetEnumName64_BuiltinShapeKind(const int64_t v)
-    { return AssetEnumName_BuiltinShapeKind(static_cast<hgl::graph::BuiltinShapeKind>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::BuiltinShapeKind>(v)); }
 
     inline bool AssetEnumParse64_BuiltinShapeKind(const char *s, int64_t &out)
     {
         hgl::graph::BuiltinShapeKind tmp{};
-        if (!AssetEnumParse_BuiltinShapeKind(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }

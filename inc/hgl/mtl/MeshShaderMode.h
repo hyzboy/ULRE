@@ -16,28 +16,9 @@ namespace hgl::graph::mtl
         CharQuad,            // 每线程 1 字符实例 → quad（6 顶点 2 三角形）
     };
 
-    // ── 名字注册表（单一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块）──
-    inline constexpr uint32 MeshShaderModeCount =
-        static_cast<uint32>(MeshShaderMode::CharQuad) + 1;
-
-    inline const char *GetMeshShaderModeName(const MeshShaderMode mode) noexcept
-    {
-        const char *name = hgl::serialize::EnumNameOf(mode);
-        return name ? name : "VertexPassthrough";
-    }
-
-    // TOML 值 → 枚举。空串 = VertexPassthrough（缺省语义）；
-    // 未知值返回 false（拼写错误 = 显式解析失败，而非静默降级到默认模式）。
-    inline bool ParseMeshShaderMode(const char *name, MeshShaderMode &out) noexcept
-    {
-        if (!name || !name[0])
-        {
-            out = MeshShaderMode::VertexPassthrough;
-            return true;
-        }
-
-        return hgl::serialize::EnumParse(name, out);
-    }
+    // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块（见 `EnumNameOf` / `EnumParse`）。
+    // 解析口径：空串 = 缺省 `VertexPassthrough` 由调用方自行判定，未知值一律解析失败
+    // （拼写错误 = 显式失败，而非静默降级到默认模式）。
 
     // ── 模式辅助（C4：CharQuad 特判集中于此，调用方不再散写枚举比较）──
     inline bool IsCharQuadMode(const MeshShaderMode mode) noexcept

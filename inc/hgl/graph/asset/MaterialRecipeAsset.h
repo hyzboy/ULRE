@@ -52,11 +52,7 @@ namespace hgl::graph::mtl
      */
     using MaterialRecipeAssetState = hgl::asset::AssetState;
 
-    /// 状态名。等价于 `hgl::serialize::EnumNameOf`，保留是为了不打断既有调用点。
-    inline const char *GetMaterialRecipeAssetStateName(MaterialRecipeAssetState state) noexcept
-    {
-        return hgl::serialize::EnumNameOf(state);
-    }
+    /// 状态名请直接用 `hgl::serialize::EnumNameOf`（登记块在 `AssetObject.h`）。
 
     /**
      * 一份材质配方的资产句柄。

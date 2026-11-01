@@ -15,29 +15,9 @@ namespace hgl::graph
         return type >= GlobalSSBOType::BEGIN_RANGE && type <= GlobalSSBOType::END_RANGE;
     }
 
-    /// 未覆盖类型的名字哨兵（`GetGlobalSSBOTypeName` 的未登记出口）。
-    inline constexpr const char *kUnknownGlobalSSBOTypeName = "UnknownGlobalSSBO";
-
-    /// 拼写真源 = 本文件末尾的 `HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)` 登记块。
-    inline const char *GetGlobalSSBOTypeName(const GlobalSSBOType type) noexcept
-    {
-        const char *name = hgl::serialize::EnumNameOf(type);
-        return name ? name : kUnknownGlobalSSBOTypeName;
-    }
-
-    /// 类型名表必须覆盖**全部**枚举项：登记块项数与 `GlobalSSBOTypeCount` 对不上时
-    /// 编译期直接失败（断言写在本文件末尾的登记块之后——先断言会抢先实例化空登记表）。
-
-    /**
-     * 名字 → 类型（大小写不敏感）。
-     *
-     * 名字↔值的唯一真源是上面的登记块，本函数只转发，不另立一张字面量表。
-     * 找不到返回 `false` 且 `out` 不变。
-     */
-    inline bool ParseGlobalSSBOType(const char *text, GlobalSSBOType &out) noexcept
-    {
-        return hgl::serialize::EnumParse(text, out);
-    }
+    // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)`
+    // 登记块；取名字用 `hgl::serialize::EnumNameOf`，解析用 `hgl::serialize::EnumParse`。
+    // 登记块项数与 `GlobalSSBOTypeCount` 的一致性由末尾的 `static_assert` 编译期守住。
 
     inline constexpr uint32_t GetGlobalSSBOTypeStructVersion(const GlobalSSBOType type) noexcept
     {
@@ -148,4 +128,4 @@ HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)
 HGL_ENUM_END(hgl::graph::GlobalSSBOType)
 
 static_assert(::hgl::serialize::EnumMeta<::hgl::graph::GlobalSSBOType>::Count == ::hgl::graph::GlobalSSBOTypeCount,
-    "GetGlobalSSBOTypeName 必须覆盖 GlobalSSBOType 的全部枚举项（漏登记会静默返回 Unknown）");
+    "GlobalSSBOType 登记块必须覆盖全部枚举项（漏登记会让 EnumNameOf 静默返回 nullptr）");

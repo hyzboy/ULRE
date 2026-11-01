@@ -379,10 +379,14 @@ namespace
     // ── 4. 枚举拼写 ────────────────────────────────────────────────────────
     bool TestEnumSpelling()
     {
-        // 枚举拼写表只有一份真源：`AssetGen` 的 `[[enum]]` 配置把引擎枚举
-        // **转发**到 `ParseMaterialDomain` / `ParseVertexInputMode` /
-        // `ParseProjectionMode` / `ParseVkCullMode` 等真源函数，生成器不再自带
-        // 字面量表。因此口径与真源一致：`strcmp`，大小写敏感。
+        // 枚举拼写表只有一份真源，且**没有中间转发层**：
+        //   · `MaterialDomain` / `PrimitiveType` / Vulkan 三枚举的真源是普通函数
+        //     （`ParseMaterialDomain` / `ParsePrimitiveTypeName` / `ParseVkCullMode`），
+        //     生成器只调它们，不自带字面量表；
+        //   · 顶点节点那批枚举的真源是 `HGL_ENUM_BEGIN` 登记块，调用方直接用
+        //     `hgl::serialize::EnumParse` / `EnumNameOf`。
+        // 因此口径与真源一致：`strcmp`，大小写敏感（`domain` 先于 `transform` 解析，
+        // 小写 `unlittexture` 在 `ParseMaterialDomain` 处就被拒）。
         constexpr char kLowerCase[] =
             "schema = 1\n"
             "name = \"RecipeCodec.LowerCase\"\n"

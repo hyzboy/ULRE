@@ -235,6 +235,11 @@ class EnumInfo:
     # 转发目标接受的参数类型（`extern_from` 的 out 参数 / `extern_to` 的入参）。
     # 只有在真源函数签名与本枚举类型不同（如 `VkCullModeFlagBits` ↔ `VkCullModeFlags`）时才需要。
     extern_mediator: str = ""
+    # 真源是 `HGL_ENUM_BEGIN` / `HGL_ENUM_END` 登记块（`hgl::serialize::EnumMeta`）。
+    # 这类枚举**不生成**任何名字/解析转发函数，也不生成 `EnumTraits` 特化：
+    # `Traits.h` 的缺省 `EnumTraits<T>` 已经直达 `EnumMeta<T>`，多一层转发就是多一份
+    # 「用户要手工删掉的兼容壳」。
+    via_enum_meta: bool = False
 
     def toml_names(self) -> list[str]:
         return [
@@ -954,6 +959,10 @@ def render_enum_tables(enums: list[EnumInfo]) -> str:
 
     # 枚举名表（TOML 文本、FlatBuffers 枚举、反射适配器都复用这一份）
     for info in enums:
+        if info.via_enum_meta:
+            # 真源是 `HGL_ENUM_BEGIN` 登记块：直接 `EnumNameOf` / `EnumParse`，
+            # 这里连转发都不生成（否则就是用户要手工删掉的兼容壳）。
+            continue
         if info.extern_from and info.extern_to:
             # 外部枚举（Vulkan …）：拼写表已经有唯一真源，这里只转发，不复制。
             if info.extern_mediator:
@@ -997,6 +1006,19 @@ def render_enum_tables(enums: list[EnumInfo]) -> str:
     # `PropertyMetaInfo::enum_parse` / `enum_to_name` 走 `int64_t`（反射层不认识具体枚举
     # 类型），这里为每个枚举补一对薄适配器；真正的拼写表仍然只有上面那一份。
     for info in enums:
+        if info.via_enum_meta:
+            # 元数据表需要**普通函数指针**，`EnumNameOf<T>` / `EnumParse<T>` 是模板，
+            # 无法直接取地址 ⇒ 这一层 int64_t 适配器是反射边界，不是重复真源。
+            out.append(f"    inline const char *AssetEnumName64_{info.name}(const int64_t v)\n"
+                       f"    {{ return hgl::serialize::EnumNameOf(static_cast<{info.fq}>(v)); }}\n\n")
+            out.append(f"    inline bool AssetEnumParse64_{info.name}(const char *s, int64_t &out)\n"
+                       "    {\n"
+                       f"        {info.fq} tmp{{}};\n"
+                       "        if (!hgl::serialize::EnumParse(s, tmp)) return false;\n"
+                       "        out = static_cast<int64_t>(tmp);\n"
+                       "        return true;\n"
+                       "    }\n\n")
+            continue
         out.append(f"    inline const char *AssetEnumName64_{info.name}(const int64_t v)\n"
                    f"    {{ return AssetEnumName_{info.name}(static_cast<{info.fq}>(v)); }}\n\n")
         out.append(f"    inline bool AssetEnumParse64_{info.name}(const char *s, int64_t &out)\n"
@@ -1034,6 +1056,10 @@ def render_serialize_header(group: GroupConfig, structs: list[AssetStruct],
     out.append(f"#include <{rel}>\n")
     out.append("\nnamespace hgl::serialize\n{\n")
     for info in enums:
+        if info.via_enum_meta:
+            # `Traits.h` 的缺省 `EnumTraits<T>` 已把 ToName/FromName 直达 `EnumMeta<T>`
+            # （登记块就在枚举定义旁），再特化一份转发纯属多余。
+            continue
         out.append(f"    template<> struct EnumTraits<{info.fq}>\n    {{\n")
         out.append("        static constexpr bool defined = true;\n")
         out.append(f"        static const char *ToName({info.fq} v)\n")
@@ -1113,10 +1139,27 @@ def main(argv: list[str]) -> int:
         for entry in config.get("enum", [])
     }
 
-    # 外部枚举：名字↔值已在本仓另有唯一真源（如 VkEnumText.h 的 Vulkan 拼写表）。
-    # 生成器只输出转发，避免把同一张拼写表复制出第二份。
+    # 外部枚举：名字↔值已在本仓另有唯一真源。生成器只输出转发，避免把同一张拼写表
+    # 复制出第二份。两种形态：
+    #   · `enum_meta = true`：真源是 `HGL_ENUM_BEGIN` 登记块 ⇒ 连转发都不生成；
+    #   · `extern_from` / `extern_to`：真源是普通函数（如 `VkEnumText.h`）⇒ 生成薄转发。
     extern_enums: dict[str, EnumInfo] = {}
     for entry in config.get("enum", []):
+        if entry.get("enum_meta"):
+            if not entry.get("fq"):
+                raise GenError(f"asset_gen.toml: 枚举 {entry['name']} 声明了 enum_meta 却缺 fq"
+                               "（生成代码要按完全限定名实例化 EnumNameOf<T>）")
+            if entry.get("extern_from") or entry.get("extern_to"):
+                raise GenError(f"asset_gen.toml: 枚举 {entry['name']} 同时声明了 enum_meta 与"
+                               " extern_from/extern_to（只能选一种真源形态）")
+            extern_enums[entry["name"]] = EnumInfo(
+                name=entry["name"],
+                fq=entry["fq"],
+                extern_include=entry.get("extern_include", "hgl/serialize/EnumMeta.h"),
+                via_enum_meta=True,
+            )
+            continue
+
         extern_from = entry.get("extern_from", "")
         if not extern_from:
             continue

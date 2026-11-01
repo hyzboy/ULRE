@@ -365,7 +365,7 @@ namespace hgl::graph::mtl
             }
             else if (!IsContentRowType(spec.target))
             {
-                error.Record("target", GetGlobalSSBOTypeName(spec.target),
+                error.Record("target", hgl::serialize::EnumNameOf(spec.target),
                              "该类型不是材质内容行（无可摊平的行布局）");
                 result = MaterialDataBlockParseResult::InvalidValue;
             }

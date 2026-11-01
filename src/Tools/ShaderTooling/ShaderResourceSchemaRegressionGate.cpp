@@ -3901,10 +3901,10 @@ namespace
             cfg.position_mapping = mapping;
             require_module(
                 VertexNodeConfigResolver::GetMappingModulePath(cfg),
-                GetPositionMappingModeName(mapping));
+                hgl::serialize::EnumNameOf(mapping));
             if (GetPositionMappingComponentCount(mapping) == 0)
                 result.diagnostics.emplace_back(
-                    std::string(GetPositionMappingModeName(mapping))
+                    std::string(hgl::serialize::EnumNameOf(mapping))
                     + ": 位置分量数不能为 0");
         }
 
@@ -3916,7 +3916,7 @@ namespace
             cfg.projection = projection;
             require_module(
                 VertexNodeConfigResolver::GetStage3ModulePath(cfg),
-                GetProjectionModeName(projection));
+                hgl::serialize::EnumNameOf(projection));
         }
 
         // 相机朝向是 Stage3 的另一条分叉（不看 projection），必须单独覆盖。

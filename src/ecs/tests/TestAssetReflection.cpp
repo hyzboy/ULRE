@@ -134,23 +134,28 @@ namespace
     bool TestEnumNames()
     {
         // 写出用 TOML 别名（历史拼写），读入接受别名与 C++ 名两种大小写。
-        if (toml::value::string_type(codec::AssetEnumName_NTBType(NTBType::NormalTangent))
-            != "normal_tangent")
+        // 名字↔值的唯一真源是枚举定义旁的 `HGL_ENUM_BEGIN` 登记块
+        // （`hgl::serialize::EnumMeta`）；序列化层与测试都直接用它，
+        // 生成器不再造 `AssetEnumName_*` / `AssetEnumParse_*` 转发壳。
+        const auto name_is = [](const char *actual, const char *expected)
+        {
+            return actual && std::strcmp(actual, expected) == 0;
+        };
+
+        if (!name_is(hgl::serialize::EnumNameOf(NTBType::NormalTangent), "normal_tangent"))
             return false;
 
         NTBType parsed = NTBType::None;
-        if (!codec::AssetEnumParse_NTBType("NormalTangent", parsed) || parsed != NTBType::NormalTangent)
+        if (!hgl::serialize::EnumParse("NormalTangent", parsed) || parsed != NTBType::NormalTangent)
             return false;
-        if (!codec::AssetEnumParse_NTBType("normal_tangent", parsed) || parsed != NTBType::NormalTangent)
+        if (!hgl::serialize::EnumParse("normal_tangent", parsed) || parsed != NTBType::NormalTangent)
             return false;
 
-        if (toml::value::string_type(
-                codec::AssetEnumName_PrimitiveVariantPurpose(PrimitiveVariantPurpose::DepthOnly))
-            != "depth_only")
+        if (!name_is(hgl::serialize::EnumNameOf(PrimitiveVariantPurpose::DepthOnly), "depth_only"))
             return false;
 
         PrimitiveVariantPurpose purpose = PrimitiveVariantPurpose::Surface;
-        if (!codec::AssetEnumParse_PrimitiveVariantPurpose("depth_only", purpose)
+        if (!hgl::serialize::EnumParse("depth_only", purpose)
             || purpose != PrimitiveVariantPurpose::DepthOnly)
             return false;
 

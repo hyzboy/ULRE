@@ -257,11 +257,8 @@ namespace hgl::asset
         ENUM_CLASS_RANGE(Unloaded, Failed)
     };
 
-    /// 状态名（诊断 / 日志 / 检查器用）。
-    inline const char *GetAssetStateName(const AssetState state) noexcept
-    {
-        return hgl::serialize::EnumNameOf(state);
-    }
+    /// 状态名的唯一真源是文末的 `HGL_ENUM_BEGIN(hgl::asset::AssetState)` 登记块
+    /// （见 `hgl::serialize::EnumNameOf` / `EnumParse`）。
 
     /**
      * 资产对象基类 —— **可选**的多态外壳。

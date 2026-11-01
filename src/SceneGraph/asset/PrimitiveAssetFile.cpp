@@ -16,22 +16,6 @@ USE_MODULE_LOGGER(PrimitiveAsset)
 namespace hgl::graph
 {
 
-    /// 这两个函数是 `PrimitiveVariantPurpose` 的对外名字入口。拼写表本身由
-    /// `PrimitiveAssetSpec.h` 末尾的 `HGL_ENUM_BEGIN` 登记块唯一描述；这里只转发，
-    /// 避免同一张表在两个地方各写一份。
-    const char *GetPrimitiveVariantPurposeName(const PrimitiveVariantPurpose purpose)
-    {
-        const char *name = hgl::serialize::EnumNameOf(purpose);
-
-        // 越界值（含 `ENUM_CLASS_RANGE` 之外的整型强转）沿用「回落到 surface」的旧口径。
-        return name ? name : "surface";
-    }
-
-    bool ParsePrimitiveVariantPurpose(const char *name, PrimitiveVariantPurpose &out_purpose)
-    {
-        return hgl::serialize::EnumParse(name, out_purpose);
-    }
-
     bool ParsePrimitiveAssetSpec(const char *content, size_t size,
                                  const os_char *debug_name,
                                  PrimitiveAssetSpec &out_spec)

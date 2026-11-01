@@ -54,11 +54,7 @@ namespace hgl::graph::mtl
     /// 本别名只为保持既有调用点与文档表述不变而存在，**不要**再往这里加项。
     using MaterialDataBlockAssetState = hgl::asset::AssetState;
 
-    /// 状态名。等价于 `hgl::serialize::EnumNameOf`，保留是为了不打断既有调用点。
-    inline const char *GetMaterialDataBlockAssetStateName(MaterialDataBlockAssetState state) noexcept
-    {
-        return hgl::serialize::EnumNameOf(state);
-    }
+    /// 状态名请直接用 `hgl::serialize::EnumNameOf`（登记块在 `AssetObject.h`）。
 
     /**
      * 一份材质数据块的资产句柄。

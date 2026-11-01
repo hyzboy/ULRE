@@ -13,42 +13,6 @@
 
 namespace hgl::serialize
 {
-    template<> struct EnumTraits<hgl::graph::NTBType>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::NTBType v)
-        { return hgl::asset::generated::AssetEnumName_NTBType(v); }
-        static bool FromName(const char *s, hgl::graph::NTBType &out)
-        { return hgl::asset::generated::AssetEnumParse_NTBType(s, out); }
-    };
-
-    template<> struct EnumTraits<hgl::graph::VertexNormalFormat>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::VertexNormalFormat v)
-        { return hgl::asset::generated::AssetEnumName_VertexNormalFormat(v); }
-        static bool FromName(const char *s, hgl::graph::VertexNormalFormat &out)
-        { return hgl::asset::generated::AssetEnumParse_VertexNormalFormat(s, out); }
-    };
-
-    template<> struct EnumTraits<hgl::graph::GeometryAssetKind>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::GeometryAssetKind v)
-        { return hgl::asset::generated::AssetEnumName_GeometryAssetKind(v); }
-        static bool FromName(const char *s, hgl::graph::GeometryAssetKind &out)
-        { return hgl::asset::generated::AssetEnumParse_GeometryAssetKind(s, out); }
-    };
-
-    template<> struct EnumTraits<hgl::graph::BuiltinShapeKind>
-    {
-        static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::BuiltinShapeKind v)
-        { return hgl::asset::generated::AssetEnumName_BuiltinShapeKind(v); }
-        static bool FromName(const char *s, hgl::graph::BuiltinShapeKind &out)
-        { return hgl::asset::generated::AssetEnumParse_BuiltinShapeKind(s, out); }
-    };
-
     template<> struct StructSerializer<hgl::graph::BuiltinSphereParams>
     {
         static constexpr bool defined = true;

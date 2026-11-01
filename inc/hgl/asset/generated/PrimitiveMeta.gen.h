@@ -16,12 +16,6 @@
 
 namespace hgl::asset::generated
 {
-    inline const char *AssetEnumName_PrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose v)
-    { return hgl::graph::GetPrimitiveVariantPurposeName(v); }
-
-    inline bool AssetEnumParse_PrimitiveVariantPurpose(const char *s, hgl::graph::PrimitiveVariantPurpose &out)
-    { return hgl::graph::ParsePrimitiveVariantPurpose(s, out); }
-
     inline const char *AssetEnumName_PrimitiveType(const hgl::graph::PrimitiveType v)
     { return hgl::graph::GetPrimitiveTypeName(v); }
 
@@ -29,12 +23,12 @@ namespace hgl::asset::generated
     { return hgl::graph::ParsePrimitiveTypeName(s, out); }
 
     inline const char *AssetEnumName64_PrimitiveVariantPurpose(const int64_t v)
-    { return AssetEnumName_PrimitiveVariantPurpose(static_cast<hgl::graph::PrimitiveVariantPurpose>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::PrimitiveVariantPurpose>(v)); }
 
     inline bool AssetEnumParse64_PrimitiveVariantPurpose(const char *s, int64_t &out)
     {
         hgl::graph::PrimitiveVariantPurpose tmp{};
-        if (!AssetEnumParse_PrimitiveVariantPurpose(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }

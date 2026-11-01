@@ -15,19 +15,13 @@
 
 namespace hgl::asset::generated
 {
-    inline const char *AssetEnumName_GlobalSSBOType(const hgl::graph::GlobalSSBOType v)
-    { return hgl::graph::GetGlobalSSBOTypeName(v); }
-
-    inline bool AssetEnumParse_GlobalSSBOType(const char *s, hgl::graph::GlobalSSBOType &out)
-    { return hgl::graph::ParseGlobalSSBOType(s, out); }
-
     inline const char *AssetEnumName64_GlobalSSBOType(const int64_t v)
-    { return AssetEnumName_GlobalSSBOType(static_cast<hgl::graph::GlobalSSBOType>(v)); }
+    { return hgl::serialize::EnumNameOf(static_cast<hgl::graph::GlobalSSBOType>(v)); }
 
     inline bool AssetEnumParse64_GlobalSSBOType(const char *s, int64_t &out)
     {
         hgl::graph::GlobalSSBOType tmp{};
-        if (!AssetEnumParse_GlobalSSBOType(s, tmp)) return false;
+        if (!hgl::serialize::EnumParse(s, tmp)) return false;
         out = static_cast<int64_t>(tmp);
         return true;
     }
