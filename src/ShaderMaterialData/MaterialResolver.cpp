@@ -136,7 +136,7 @@ bool SelectScenePassProfileRequest(
                                   : MakeSkyProfile()));
 
     // 引擎/环境层选定的 ambient provider 模块覆盖 Lit profile 默认的
-    // indirect_sky_ambient（程序化天空环境光）——如 IBL 环境光照。
+    // `ambient_light_none`（空对象）——如 IBL 环境光照、SH9 球谐、解析天空。
     // 该选择属于**环境**（`EnvironmentSystem::SetAmbientProvider`），不属于材质：
     // 它与 `ambient_env` 参数块（IBL 句柄）必须由同一个所有者配对。
     // include 路径不来自配置：清空后由模板校验按注册表来源规范化

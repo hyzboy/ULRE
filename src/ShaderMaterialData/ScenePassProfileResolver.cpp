@@ -21,10 +21,13 @@ namespace hgl::graph::mtl
         profile.AddModule(
             ShaderModuleSlotRole::ShadowProvider,
             "shadow_pcf", "module/provider/shadow/shadow_pcf.glsl");
+        // 天光槽的**规范默认值 = 空对象**：Lit 材质永远有一个 ambient provider，
+        // 但默认那个恒返回 0。"要不要天光"于是只是一次模块名的替换
+        // （`EnvironmentSystem::SetAmbientProvider`），而不是有无槽位的结构差异。
         profile.AddModule(
             ShaderModuleSlotRole::AmbientLightProvider,
-            "ambient_light_sky",
-            "module/provider/ambient_light/ambient_light_sky.glsl");
+            kAmbientLightProviderNone,
+            "module/provider/ambient_light/ambient_light_none.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::AmbientOcclusionProvider,
             "ambient_occlusion_identity", "module/provider/ambient_occlusion/ambient_occlusion_identity.glsl");

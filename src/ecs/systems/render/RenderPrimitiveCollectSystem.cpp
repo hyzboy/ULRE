@@ -28,6 +28,7 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialResolver.h>
+#include<hgl/mtl/ScenePassProfileResolver.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
@@ -600,11 +601,21 @@ namespace hgl::ecs
         // ambient provider 模块（`ambient_light_provider` 槽）由**世界/环境层**决定：
         // `EnvironmentSystem::SetAmbientProvider` → `EnvironmentManager::Profile::ambient_module_name`
         // → `ECSContext::GetAmbientProviderName()`。材质不再声明它 —— 环境光的算法与
-        // 参数块（`ambient_env`）必须由同一个所有者配对。空串 = 模板默认 provider。
+        // 参数块（`ambient_env`）必须由同一个所有者配对。
+        //
+        // 世界没配环境（名字为空）时**规范化为 `ambient_light_none`**，而不是把空串
+        // 透传给材质解析器：空串会让 `SelectScenePassProfileRequest()` 跳过覆盖、
+        // 落到模板默认值 —— 那等于"没配环境 ⇒ 用某个算法"，是隐式行为。这里显式
+        // 声明"没有天光"，前向材质仍有天光项参与计算（恒零），不出现 `#if` 分支。
         const AnsiString &ResolveAmbientProviderModule(ECSContext *world)
         {
-            static const AnsiString empty;
-            return world ? world->GetAmbientProviderName() : empty;
+            static const AnsiString none(graph::mtl::kAmbientLightProviderNone);
+
+            if (!world)
+                return none;
+
+            const AnsiString &name = world->GetAmbientProviderName();
+            return name.IsEmpty() ? none : name;
         }
 
         // provider 名按“长度 + 字节内容”显式哈希：不依赖字符串类型到 `operator<<`

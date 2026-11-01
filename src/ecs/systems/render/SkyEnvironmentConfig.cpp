@@ -11,6 +11,7 @@ namespace hgl::ecs
             case SkyMode::OctahedralIBL:   return "OctahedralIBL";
             case SkyMode::LambertDome:     return "LambertDome";
             case SkyMode::SHLightOnly:     return "SHLightOnly";
+            case SkyMode::None:            return "None";
         }
 
         return "Unknown";
@@ -29,6 +30,7 @@ namespace hgl::ecs
             case SkyMode::LambertDome:     return "geo:builtin:dome_64";
 
             case SkyMode::SHLightOnly:     return nullptr;
+            case SkyMode::None:            return nullptr;
         }
 
         return nullptr;

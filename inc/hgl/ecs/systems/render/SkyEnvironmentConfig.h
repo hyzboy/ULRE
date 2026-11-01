@@ -45,6 +45,15 @@ namespace hgl::ecs
 
         /// 不建视觉天空实体（可选纯色/留空），只用 SH9 球谐做天光。
         SHLightOnly,
+
+        /// **什么都没有**：不建视觉天空、不喂 IBL / SH 数据，天光 provider 钉到
+        /// `ambient_light_none`（Null Object，恒零）。
+        ///
+        /// 存在的意义是让"没有环境"成为一个**可以写下来的显式配置**，而不是靠
+        /// "不调用 `SetupSkyEnvironment()`"来表达 —— 环境资产化之后，一份 `.env`
+        /// 文件必须能自描述"这个环境就是没有天光"。前向材质仍然有 `ambient_light_provider`
+        /// 槽参与编译，光照累加式一行不变，没有 `#if`。
+        None,
     };
 
     /// 模式名（诊断 / 日志用）。

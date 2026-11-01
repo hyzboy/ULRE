@@ -11,6 +11,7 @@
 #include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/MaterialTextureProjection.h>
+#include<hgl/mtl/ScenePassProfileResolver.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/utf.h>
@@ -353,6 +354,36 @@ namespace hgl::ecs
 
         sky_config = config;
 
+        // ── 0. `None`：显式声明"没有天空、也没有天光" ──
+        //
+        // 走一条早退路径而不是让下面的步骤各自判一次：`DestroySkyEnvironment()`
+        // 已经把数据轴（`env_tex` / `ldr_param` / `sh`）清零，这里只需要把算法轴
+        // 钉到空对象 provider。前向材质仍然编译出 `ambient_light_provider` 槽，
+        // `EvalIndirectLighting()` 恒返回 0 —— "没有天光"是一条数据，不是一条分支。
+        if (sky_config.mode == SkyMode::None)
+        {
+            if (sky_config.HasSkyVisual() || sky_config.HasIBLData())
+                GLogWarning(u8"[EnvironmentSystem] mode=None 忽略 sky_recipe/IBL 贴图：该模式只声明无天光");
+
+            const AnsiString provider(graph::mtl::kAmbientLightProviderNone);
+
+            if (!SetAmbientProvider(provider))
+            {
+                GLogError(u8"[EnvironmentSystem] ambient provider 切换失败：%s", provider.c_str());
+                DestroySkyEnvironment();
+                return false;
+            }
+
+            MarkAmbientEnvDirty();
+
+            sky_managed = true;
+
+            GLogInfo(u8"[EnvironmentSystem] 天空就绪：mode=%s provider=%s（无天光）",
+                     GetSkyModeName(sky_config.mode), provider.c_str());
+
+            return true;
+        }
+
         // ── 1. 视觉天空实体（可缺省：只想要天光时配方留空）──
         if (sky_config.HasSkyVisual())
         {
@@ -619,9 +650,11 @@ namespace hgl::ecs
             MarkAmbientEnvDirty();
         }
 
-        // 算法轴回到模板默认（空 = 不覆盖 recipe 里声明的 provider）。
-        if (!GetAmbientProvider().IsEmpty())
-            SetAmbientProvider(AnsiString());
+        // 算法轴回到规范兜底（`ambient_light_none`），而不是清成空串：空串等于
+        // "让模板自己猜"，前向材质的 program 身份也会跟着落到"不折入 provider"
+        // 的那一档，与"显式无天光"分裂成两个 program。
+        if (GetAmbientProvider() != AnsiString(graph::mtl::kAmbientLightProviderNone))
+            SetAmbientProvider(AnsiString(graph::mtl::kAmbientLightProviderNone));
 
         sky_config = SkyEnvironmentConfig{};
     }
