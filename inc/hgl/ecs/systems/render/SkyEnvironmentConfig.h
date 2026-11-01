@@ -3,10 +3,16 @@
 #include<hgl/type/String.h>
 #include<hgl/math/Vector.h>
 #include<hgl/graph/sky/SkySH9.h>
+#include<hgl/graph/asset/EnvironmentAssetSpec.h>
 
 namespace hgl::ecs
 {
     using namespace hgl::math;
+
+    // 天空模式与 LDR 策略的**唯一定义**在环境资产规约里（`*.env.toml` 要按名写出它们），
+    // 这里只做转出，避免同一个枚举出现两份定义、两份拼写表。
+    using graph::SkyMode;
+    using graph::SkyAmbientLDR;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 统一天空 + 天光管理的**输入契约**
@@ -26,35 +32,9 @@ namespace hgl::ecs
     //   `[[textures]] asset`：配方句柄与 `resource_id` 在装载时焊死，改写会让渲染侧每帧
     //   剔除（`DeferredResource` identity mismatch）。投影实现本身由 C++ 侧按资源后缀
     //   选择（`.TexCube` / `.TexOct` / 其余 2D），主着色器与表面模块没有任何分支。
-
-    /// 天空外观来源。只决定"默认用哪个几何体"，不决定天光算法。
-    enum class SkyMode : unsigned char
-    {
-        /// 程序化假大气天空（`surface_sky_minimal` 解析大气，不吃贴图）+ 廉价天光。
-        Atmosphere = 0,
-
-        /// 全天球 + 立方体贴图背景（配方内 `asset = "cubefile:....TexCube"`）。
-        CubeMapIBL,
-
-        /// 全天球 + 八面体展开图背景（配方内 `asset = "....TexOct"`，仍是 2D 容器）。
-        OctahedralIBL,
-
-        /// 半球穹顶（`geo:builtin:dome_64`）+ Lambert Azimuthal 方位投影 2D 贴图，
-        /// 顶点自带 UV（几何体 UV 即投影结果，材质侧纯 2D 采样）。
-        LambertDome,
-
-        /// 不建视觉天空实体（可选纯色/留空），只用 SH9 球谐做天光。
-        SHLightOnly,
-
-        /// **什么都没有**：不建视觉天空、不喂 IBL / SH 数据，天光 provider 钉到
-        /// `ambient_light_none`（Null Object，恒零）。
-        ///
-        /// 存在的意义是让"没有环境"成为一个**可以写下来的显式配置**，而不是靠
-        /// "不调用 `SetupSkyEnvironment()`"来表达 —— 环境资产化之后，一份 `.env`
-        /// 文件必须能自描述"这个环境就是没有天光"。前向材质仍然有 `ambient_light_provider`
-        /// 槽参与编译，光照累加式一行不变，没有 `#if`。
-        None,
-    };
+    //
+    // 枚举 `SkyMode` / `SkyAmbientLDR` 的定义已随环境资产规约迁到
+    // `hgl/graph/asset/EnvironmentAssetSpec.h`，本头把它们转出到 `hgl::ecs`。
 
     /// 模式名（诊断 / 日志用）。
     const char *GetSkyModeName(SkyMode mode) noexcept;
@@ -65,23 +45,6 @@ namespace hgl::ecs
     /// 该模式的天空几何体是否自带 UV（半球穹顶 = 是，全天球 = 否）。
     /// 顶点流按此选择：带 UV 的几何体声明 `Position|TexCoord`，否则只声明 `Position`。
     bool SkyModeGeometryHasUV(SkyMode mode) noexcept;
-
-    /**
-     * LDR 曝光调制策略。
-     *
-     * IBL 天光对 **HDR 烘焙图**来说是物理正确的亮度；同一批数据存成 LDR（unorm）后
-     * 少了高光动态范围，场景会明显偏暗。所以"是否提亮"必须由**数据本身的动态范围**
-     * 决定，而不是全局开关。
-     */
-    enum class SkyAmbientLDR : unsigned char
-    {
-        /// 按实际装载出来的贴图格式判定：浮点格式 → 关闭；unorm 格式 → 开启。
-        Auto = 0,
-        /// 强制 HDR 语义（`ldr_param.x = 0`），不做任何提亮。
-        Off,
-        /// 强制 LDR 曝光调制（太阳高度角联动）。
-        On,
-    };
 
     /**
      * 天空 + 天光的完整配置。

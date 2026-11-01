@@ -148,6 +148,17 @@ extern_from    = "hgl::graph::ParseGlobalSSBOType"
 extern_to      = "hgl::graph::GetGlobalSSBOTypeName"
 extern_include = "hgl/graph/ssbo/GlobalSSBOTypes.h"
 
+# 天空模式与 LDR 策略：定义在 `EnvironmentAssetSpec.h`（环境资产规约的真源），
+# 拼写表由生成器按别名表构造 —— 这两个枚举同时被 `SkyEnvironmentConfig.h` 转出到
+# `hgl::ecs`，全仓仍然只有一份定义。
+[[enum]]
+name = "SkyMode"
+aliases = ["atmosphere", "cubemap_ibl", "octahedral_ibl", "lambert_dome", "sh9_only", "none"]
+
+[[enum]]
+name = "SkyAmbientLDR"
+aliases = ["auto", "off", "on"]
+
 # ── 几何资产：内置几何体参数 ────────────────────────────────────────────────
 [group.Geometry]
 namespace     = "hgl::graph"
@@ -189,3 +200,13 @@ namespace     = "hgl::graph"
 scan          = ["inc/hgl/graph/asset/MaterialDataBlockSpec.h"]
 serialize     = "inc/hgl/asset/generated/MaterialDataBlockSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/MaterialDataBlockMeta.gen.h"
+
+# ── 环境资产规约 ────────────────────────────────────────────────────────────
+# `*.env.toml` 的字段契约真源：把「画什么天 + 用什么天光」从示例里的硬编码搬进
+# 可授权文件。跨字段业务规则（schema 版本、`sh9.bands` 必须正好 9 条、只在
+# `auto_generate == false` 时有意义、贴图后缀与 mode 的匹配）仍由解析层承担。
+[group.Environment]
+namespace     = "hgl::graph"
+scan          = ["inc/hgl/graph/asset/EnvironmentAssetSpec.h"]
+serialize     = "inc/hgl/asset/generated/EnvironmentSerialize.gen.h"
+meta          = "inc/hgl/asset/generated/EnvironmentMeta.gen.h"

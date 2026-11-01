@@ -140,6 +140,14 @@ if(MSVC)
     set_target_properties(TestRenderableBuilderDataRow PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
 endif()
 
+# 环境资产规约（`*.env.toml`）：五组字段往返 + `Presence` 三态 + 枚举拼写别名
+# + `[[sh9.bands]]` 顺序 + 元数据 struct_meta/elem_kind 接线。
+add_executable(TestEnvironmentCodec tests/TestEnvironmentCodec.cpp)
+target_link_libraries(TestEnvironmentCodec PRIVATE ULRE::Engine)
+if(MSVC)
+    set_target_properties(TestEnvironmentCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+endif()
+
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
 add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
@@ -428,6 +436,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialRecipeInheritance
         PROPERTIES LABELS "material;recipe")
+
+    add_test(
+        NAME TestEnvironmentCodec
+        COMMAND TestEnvironmentCodec
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestEnvironmentCodec
+        PROPERTIES LABELS "environment;asset")
 
     add_test(
         NAME TestGeometryAssetFile
