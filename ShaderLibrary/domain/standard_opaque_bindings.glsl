@@ -28,6 +28,12 @@
 #define TrilinearSampler 2u
 #define LinearSampler 1u
 #define ShadowPCFSampler 4u
+// `TrilinearClamp`（ClampToEdge + 三线性）供 `ambient_light_ibl_oct` 采样八面体展开图：
+// 八面体图外边界之外是无效纹素，必须 ClampToEdge；显式 LOD 采样又要三线性 mip。
+// 索引 7 = contract/sampler.toml 里 TrilinearClamp 的位置（与 sky_bindings.glsl 同值）。
+// 漏掉这一行时八面体 IBL 在本域编不过（`TrilinearClampSampler` 未声明），
+// Cubemap 版只用到 Trilinear/Linear 所以一直没暴露。
+#define TrilinearClampSampler 7u
 
 // ── 材质私有数据行（GlobalSSBOType::PBRSurface） ──
 // 结构本身见 module/descriptor/ssbo/pbr_surface_row.glsl（由 C++ 结构 + 注解生成），
