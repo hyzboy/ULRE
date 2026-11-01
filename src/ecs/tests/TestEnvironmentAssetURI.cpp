@@ -58,6 +58,14 @@ namespace
         "[ldr]\n"
         "exposure_base = 7.0\n";
 
+    /// 目录用例的第二个文件：名字必须唯一，否则同目录内会撞名
+    constexpr char kDirEnvironment[] =
+        "schema = 1\n"
+        "name = \"Sky34.ProbeDir\"\n"
+        "\n"
+        "[visual]\n"
+        "recipe = \"IBLEnvironment.Sky\"\n";
+
     /// 写一个临时 `.env.toml`（内容与 `kNamedEnvironment` 相同，但故意不带 name）
     bool WriteProbeFile(const OSString &path, const char *content)
     {
@@ -301,6 +309,41 @@ int main(int, char **)
         Check(registry.GetCount() == 0, "失败不应留下记录");
 
         GLogInfo(u8"[7] 跨字段业务规则 OK");
+    }
+
+    // ── 8. 目录入口：`env:@Name` 的前提 ────────────────────────────────────
+    {
+        const OSString dir = OS_TEXT("build/env_uri_probe");
+
+        hgl::filesystem::MakePath(dir);
+        Check(WriteProbeFile(dir + OS_TEXT("/dir_a.env.toml"), kDirEnvironment),
+              "目录用例的临时文件应写入成功");
+
+        // 同一目录里再放一个非 `.env.toml` 文件：目录扫描必须跳过它
+        Check(WriteProbeFile(dir + OS_TEXT("/dir_b.toml"), kNamedEnvironment),
+              "干扰文件应写入成功");
+
+        EnvironmentAssetRegistry registry;
+
+        int loaded = 0;
+        int errors = 0;
+        Check(registry.LoadDirectory(dir, &loaded, &errors), "LoadDirectory 应成功");
+        Check(loaded == 2, "目录里两个 .env.toml 都应装入（probe.env.toml + dir_a）");
+        Check(errors == 0, "目录装载不应有错误");
+
+        // 这才是目录入口存在的理由：名字能被 `env:@Name` 命中
+        Check(registry.GetOrLoadURI(OS_TEXT("env:@Sky34.Probe")) != nullptr,
+              "目录装载后 env:@Name 应可解析");
+        Check(registry.GetOrLoadURI(OS_TEXT("env:@Sky34.ProbeDir")) != nullptr,
+              "同目录第二个环境也应可解析");
+
+        // 不存在的目录：明确失败，且不改动已注册内容
+        const int before = registry.GetCount();
+        Check(!registry.LoadDirectory(OS_TEXT("build/env_uri_probe_missing")),
+              "不存在的目录应失败");
+        Check(registry.GetCount() == before, "失败的目录扫描不应改动已有记录");
+
+        GLogInfo(u8"[8] 目录入口 OK");
     }
 
     if (g_failed)

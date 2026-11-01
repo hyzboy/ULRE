@@ -353,6 +353,13 @@ namespace hgl::ecs
         return SetupSkyEnvironment(config);
     }
 
+    bool EnvironmentSystem::LoadEnvironmentDirectory(const OSString &directory,
+                                                     int *out_file_count,
+                                                     int *out_error_count)
+    {
+        return environment_registry.LoadDirectory(directory, out_file_count, out_error_count);
+    }
+
     bool EnvironmentSystem::SetupSkyEnvironment(const SkyEnvironmentConfig &config)
 
     {

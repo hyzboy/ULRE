@@ -160,6 +160,29 @@ namespace hgl
              */
             bool SetupSkyEnvironment(const OSString &env_uri);
 
+            /**
+             * 预载一个目录里的所有 `.env.toml`（不递归），使 `env:@<name>` 可用。
+             *
+             * `env:@Name` 只能命中**已注册**条目，而名字写在文件里、无法从 URI 反推路径。
+             * 因此「按名字引用」需要先有这一次目录入口（通常开机做一次）：
+             *
+             * ```cpp
+             * env->LoadEnvironmentDirectory(OS_TEXT("ShaderLibrary/asset/environment"));
+             * env->SetupSkyEnvironment(OS_TEXT("env:@Sky34.CubeMapIBL"));
+             * ```
+             *
+             * 目录不存在返回 false；单文件失败只计数不影响其它文件。
+             */
+            bool LoadEnvironmentDirectory(const OSString &directory,
+                                          int *out_file_count = nullptr,
+                                          int *out_error_count = nullptr);
+
+            /// 本系统持有的 `env:` URI 资产表（诊断 / 外部注册入口）。
+            graph::EnvironmentAssetRegistry &GetEnvironmentRegistry()
+            {
+                return environment_registry;
+            }
+
             /// 反向清理：销毁天空实体、把 `ambient_env` 清零、provider 回到模板默认。
             void DestroySkyEnvironment();
 

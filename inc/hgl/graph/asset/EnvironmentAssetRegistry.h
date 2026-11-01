@@ -72,6 +72,18 @@ namespace hgl::graph
         /// 读文件并注册（`.env.toml`）。返回 `nullptr` 表示失败。
         EnvironmentAsset *LoadFile(const OSString &path);
 
+        /**
+         * 扫描目录里所有 `.env.toml` 并注册（不递归）。
+         *
+         * 存在的理由：`env:@<name>` 只能命中**已注册**的条目，而名字分散在文件里，
+         * 没法从 URI 反推路径。想要"按名字引用"就得先有一次目录入口。目录本身
+         * 不存在或空目录不算失败（返回 `true`、数量为 0），单文件失败计入
+         * `out_error_count` 但不会中断整批。
+         */
+        bool LoadDirectory(const OSString &directory,
+                           int *out_file_count = nullptr,
+                           int *out_error_count = nullptr);
+
     public:     // 查询
 
         /**

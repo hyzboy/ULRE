@@ -2,10 +2,13 @@
 
 #include <hgl/asset/AssetURI.h>
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/filesystem/Path.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/serialize/TomlCodec.h>
 #include <hgl/type/Smart.h>
+#include <hgl/type/ValueArray.h>
 #include <hgl/utf.h>
 
 #include <climits>
@@ -229,6 +232,63 @@ namespace hgl::graph
 
         return RegisterFromToml(path.c_str(), reinterpret_cast<const char *>(buffer.data()),
                                 static_cast<int>(size));
+    }
+
+    bool EnvironmentAssetRegistry::LoadDirectory(const OSString &directory,
+                                                 int *out_file_count,
+                                                 int *out_error_count)
+    {
+        last_error.Clear();
+
+        if (out_file_count)
+            *out_file_count = 0;
+
+        if (out_error_count)
+            *out_error_count = 0;
+
+        if (directory.IsEmpty() || !hgl::filesystem::Path(directory).IsDirectory())
+        {
+            last_error  = "environment: 目录不存在或不可访问: ";
+            last_error += hgl::asset::AssetURISegmentToAnsi(directory);
+            GLogError(u8"[EnvironmentAssetRegistry] %s", last_error.c_str());
+            return false;
+        }
+
+        hgl::ValueArray<hgl::filesystem::FileInfo> file_list;
+
+        if (hgl::filesystem::GetFileInfoList(file_list, directory, false, true, false) < 0)
+        {
+            last_error = "environment: 目录扫描失败";
+            GLogError(u8"[EnvironmentAssetRegistry] %s（%ls）", last_error.c_str(), directory.c_str());
+            return false;
+        }
+
+        int file_count  = 0;
+        int error_count = 0;
+
+        for (int i = 0; i < file_list.GetCount(); ++i)
+        {
+            const hgl::filesystem::FileInfo &file = file_list[i];
+
+            if (!file.is_file || !IsEnvironmentTomlFile(OSString(file.name)))
+                continue;
+
+            if (LoadFile(OSString(file.fullname)))
+                ++file_count;
+            else
+                ++error_count;
+        }
+
+        if (out_file_count)
+            *out_file_count = file_count;
+
+        if (out_error_count)
+            *out_error_count = error_count;
+
+        GLogInfo(u8"[EnvironmentAssetRegistry] 环境目录加载完成: directory=%ls loaded=%d errors=%d total=%d",
+                 directory.c_str(), file_count, error_count, assets.GetCount());
+
+        return true;
     }
 
     EnvironmentAsset *EnvironmentAssetRegistry::GetOrLoadURI(const OSString &uri)

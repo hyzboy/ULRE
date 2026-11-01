@@ -8,10 +8,15 @@
 // 观察每种模式如何自己跟着太阳走（大气的高光与地平线过渡、LDR IBL 的曝光调制、
 // SH9 系数的重算都是引擎侧自动的，示例一行都不写）。
 //
+// 五种组合**不在代码里**：它们是 `ShaderLibrary/asset/environment/` 下的五份
+// `*.env.toml`（`name` 分别是 `Sky.Atmosphere` / `Sky34.CubeMapIBL` /
+// `Sky34.OctahedralIBL` / `Sky34.LambertDome` / `Sky34.SH9`）。示例开机扫一次目录，
+// 切换时只传一个 `env:@<name>` —— 这就是"环境配置资产化"：加一套新天空不用改代码。
+//
 // 为什么切换是**一次 API 调用**：`SetupSkyEnvironment()` 会先拆掉上一套（天空实体、
 // 句柄、provider 槽）再按新配置重建 ⇒ 换模式不会留下过期实体或悬空句柄。示例需要
-// 描述的只是"要哪一份配方 + 要哪种天光"，几何体、顶点流、实体、Mobility、
-// HDR/LDR 判定、SH9 系数合成、provider 名全在托管层里。
+// 描述的只是一个 URI，几何体、顶点流、实体、Mobility、HDR/LDR 判定、SH9 系数合成、
+// provider 名全在托管层与资产文件里。
 //
 // 自检（`SKYSHOW_CYCLE=1`）：无窗口交互下跑一遍完整热切链 —— 每模式 4 帧，第 4 帧
 // 取一次帧摘要；五份摘要必须**两两不同**（抓"切换悄悄失败、画面还停在上一个模式"）
@@ -61,47 +66,31 @@ namespace
 
 namespace
 {
-    /// 天光数据的来源。与视觉天空**互相独立**：同一个穹顶背景可以配 cube 天光，
-    /// 同一个 cubemap 背景也可以配 SH9 天光。
-    enum class AmbientSource : unsigned char
+    /// 一套可热切的环境资产。示例只认识 **URI**：配方 / 几何体 / 投影形态（cube 还是
+    /// 八面体）/ LDR 曝光策略 / provider 全在 `*.env.toml` 里，示例不再逐个字段赋值。
+    ///
+    /// 这就是「环境配置资产化」的意义：换一套天空 + 天光 = 换一个字符串，而不是在
+    /// 代码里重新拼 `SkyEnvironmentConfig`。整套预设放在
+    /// `ShaderLibrary/asset/environment/`（见 `kEnvAssetDirectory`）。
+    struct SkyEnvPreset
     {
-        Auto = 0,   ///< 交给托管层按模式推断（`Atmosphere` → `ambient_light_sky`）
-        CubeIBL,    ///< `.TexCube` 辐照度 + 预滤波 ⇒ `ambient_light_ibl`
-        OctIBL,     ///< `.TexOct` 同一批数据 ⇒ `ambient_light_ibl_oct`
-        SH,         ///< 零贴图 SH9 ⇒ `ambient_light_sh`（系数由解析合成器现算）
-    };
-
-    /// 一套可热切的"视觉天空 + 天光"组合。
-    struct SkyModePreset
-    {
-        SkyMode       mode;
-        const char  * label;         ///< 菜单名（仅诊断日志）
-        const char  * recipe;        ///< 视觉天空配方（空 = 不建天空实体）
-        const char  * geometry_uri;  ///< 几何体覆盖；nullptr = 按 `mode` 取默认
-        float         scale;         ///< 0 = 托管层默认（全天球 1.0 / 穹顶 4.0）
-        AmbientSource ambient;
+        const char * label;     ///< 菜单名（仅诊断日志）
+        const os_char * env_uri;///< `env:@<name>`：按资产文件里的 `name` 引用
     };
 
     constexpr int kModeCount = 5;
 
-    /// `LambertDome` 的几何体是半球穹顶（基准半径 1），要当背景用必须放大到相机之外；
-    /// 其余模式是半径 256 的全天球，scale 1.0 就够包住整个场景。
-    constexpr float kDomeBackgroundScale = 100.0f;
+    /// 预设资产目录（开机扫一次，之后 `env:@Name` 才能命中）。
+    constexpr os_char kEnvAssetDirectory[] = OS_TEXT("ShaderLibrary/asset/environment");
 
-    const SkyModePreset kPresets[kModeCount] =
+    const SkyEnvPreset kPresets[kModeCount] =
     {
-        { SkyMode::Atmosphere,    "大气（解析）",   "AtmosphereSkyAmbient.Sky",   nullptr, 1.0f,                  AmbientSource::Auto    },
-        { SkyMode::CubeMapIBL,    "Cubemap IBL",    "IBLEnvironment.Sky",         nullptr, 1.0f,                  AmbientSource::CubeIBL },
-        { SkyMode::OctahedralIBL, "八面体 IBL",     "IBLEnvironmentSkyOct.Sky",   nullptr, 1.0f,                  AmbientSource::OctIBL  },
-        { SkyMode::LambertDome,   "Lambert 穹顶",   "SkyLambertDome.Unlit",       nullptr, kDomeBackgroundScale,    AmbientSource::CubeIBL },
-        { SkyMode::SHLightOnly,   "SH9 球谐天光",   "IBLEnvironment.Sky",         "geo:builtin:hex_sphere_sky", 1.0f, AmbientSource::SH      },
+        { "大气（解析）",   OS_TEXT("env:@Sky.Atmosphere")      },
+        { "Cubemap IBL",    OS_TEXT("env:@Sky34.CubeMapIBL")    },
+        { "八面体 IBL",     OS_TEXT("env:@Sky34.OctahedralIBL") },
+        { "Lambert 穹顶",   OS_TEXT("env:@Sky34.LambertDome")   },
+        { "SH9 球谐天光",   OS_TEXT("env:@Sky34.SH9")           },
     };
-
-    /// 同一批烘焙数据的两种投影展开（只差目录后缀名）。
-    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-    constexpr os_char IBL_TEX_IRR_OCT[]  = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexOct");
-    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
-    constexpr os_char IBL_TEX_PRE_OCT[]  = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexOct");
 
     /// 自检：每模式跑几帧才取摘要（第 1 帧在建实体 + 新配方首帧编译，画面还不稳）。
     constexpr uint32 kCycleFramesPerMode = 10;
@@ -268,75 +257,30 @@ private:
     }
 
     /**
-     * 把一档预设翻译成配置并交给托管层。
+     * 把一档预设交给托管层。
      *
-     * 示例侧的唯一职责是"选配方 + 选天光来源"：投影形态（`.TexCube` / `.TexOct` /
-     * `.Tex2D`）由配方里的输入文件决定，provider 名由托管层按 prefilter 后缀推断，
-     * HDR/LDR 由装载出来的格式判定 —— 三者都不在这里写死。
+     * 示例侧现在只剩一行：`SetupSkyEnvironment(uri)`。投影形态（`.TexCube` / `.TexOct`）、
+     * provider 名、HDR/LDR 策略、几何体与 scale 全在资产文件里 —— 这正是"环境配置
+     * 资产化"要达到的效果：加一套新的天空组合不需要改示例。
      */
     bool ApplySkyMode(int index)
     {
         if (!environment_system || index < 0 || index >= kModeCount)
             return false;
 
-        const SkyModePreset & preset = kPresets[index];
+        const SkyEnvPreset & preset = kPresets[index];
 
-        SkyEnvironmentConfig config;
-
-        config.mode         = preset.mode;
-        config.sky_recipe   = preset.recipe;
-        config.sky_scale    = preset.scale;
-        config.track_camera = true;     // 无视差背景：天空实体逐帧跟随主相机
-
-        if (preset.geometry_uri)
-            config.sky_geometry_uri = preset.geometry_uri;
-
-        // SH9 始终现算：这样在 IBL 档里临时把 provider 换成 `ambient_light_sh`
-        // 立刻就有与太阳一致的低频天光，不会切到一组陈旧（甚至全 0）系数。
-        config.sh_auto      = true;
-        config.sh_track_sun = true;
-
-        switch (preset.ambient)
+        if (!environment_system->SetupSkyEnvironment(OSString(preset.env_uri)))
         {
-            case AmbientSource::CubeIBL:
-                config.irradiance_texture = IBL_TEX_IRR_CUBE;
-                config.prefilter_texture  = IBL_TEX_PRE_CUBE;
-                break;
-
-            case AmbientSource::OctIBL:
-                config.irradiance_texture = IBL_TEX_IRR_OCT;
-                config.prefilter_texture  = IBL_TEX_PRE_OCT;
-                break;
-
-            case AmbientSource::SH:
-                config.ambient_provider = "ambient_light_sh";
-                break;
-
-            case AmbientSource::Auto:
-            default:
-                break;
-        }
-
-        if (preset.ambient == AmbientSource::CubeIBL || preset.ambient == AmbientSource::OctIBL)
-        {
-            // 这批烘焙图是 unorm 量化版：显式开启 LDR 曝光调制（与 `Auto` 的判定同值，
-            // 写出来是为了让三个调制系数的口径可见）。HDR 烘焙图留 `Auto` 即可。
-            config.ldr               = SkyAmbientLDR::On;
-            config.ldr_exposure_base = 2.5f;
-            config.ldr_sun_scale     = 1.0f;
-            config.ldr_min_ambient   = 0.05f;
-        }
-
-        if (!environment_system->SetupSkyEnvironment(config))
-        {
-            GLogError(u8"[SkyShowcase] 模式 %d（%s）装配失败", index + 1, preset.label);
+            GLogError(u8"[SkyShowcase] 模式 %d（%s）装配失败：%ls",
+                      index + 1, preset.label, preset.env_uri);
             return false;
         }
 
         current_mode = index;
 
-        GLogInfo(u8"[SkyShowcase] 模式 %d/%d → %s（数字键 1~%d 切换，鼠标拖 Gizmo 旋转太阳）",
-                 index + 1, kModeCount, preset.label, kModeCount);
+        GLogInfo(u8"[SkyShowcase] 模式 %d/%d → %s（%ls；数字键 1~%d 切换，鼠标拖 Gizmo 旋转太阳）",
+                 index + 1, kModeCount, preset.label, preset.env_uri, kModeCount);
 
         return true;
     }
@@ -374,6 +318,22 @@ private:
 
         sun_gizmo_system->SetLightSystem(light_system.get());
         sun_gizmo_system->SetGizmoPosition(math::Vector3f(0.0f, 0.0f, 0.0f));
+
+        // `env:@Name` 只能命中已注册条目，所以先把预设目录扫一次（每进程一次即可）。
+        {
+            int loaded = 0;
+            int errors = 0;
+
+            if (!environment_system->LoadEnvironmentDirectory(kEnvAssetDirectory, &loaded, &errors))
+            {
+                GLogError(u8"[SkyShowcase] 环境预设目录加载失败：%ls", kEnvAssetDirectory);
+                return false;
+            }
+
+            if (loaded < kModeCount || errors > 0)
+                GLogWarning(u8"[SkyShowcase] 环境预设数量异常：loaded=%d errors=%d（期望 %d 个全成功）",
+                            loaded, errors, kModeCount);
+        }
 
         if (!ApplySkyMode(StartMode()))
             return false;
