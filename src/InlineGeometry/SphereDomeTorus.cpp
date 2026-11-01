@@ -139,15 +139,21 @@ namespace hgl::graph::inline_geometry
                 const float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
                 const float z = cos(angleStep * (double) i);
 
-                // 纹理坐标
-                const float tex_x = (float) j / (float) numberSlices;
-                const float tex_y = 1.0f - (float) i / (float) numberParallels;
+                // 纹理坐标：Lambert Azimuthal 等面积方位投影（半球圆盘）
+                // 逆投影：x_2d = x / sqrt(1 + z), y_2d = y / sqrt(1 + z)
+                // 映射到 [0, 1]^2 贴图空间：
+                // u = x_2d * 0.5 + 0.5
+                // v = y_2d * 0.5 + 0.5
+                const float denom = 2.0f * sqrt(1.0f + z);
+                const float tex_x = (denom > 0.0f) ? (x / denom + 0.5f) : 0.5f;
+                const float tex_y = (denom > 0.0f) ? (y / denom + 0.5f) : 0.5f;
 
                 // 切线（使用四元数计算）
                 float tx = 0.0f, ty = 0.0f, tz = 0.0f;
                 if(builder.HasTangents())
                 {
-                    Quatf quat = QuatFromAxisAngle(360.0f * tex_x, AxisVector::Y);
+                    const float azimuthAngle = 360.0f * (float) j / (float) numberSlices;
+                    Quatf quat = QuatFromAxisAngle(azimuthAngle, AxisVector::Y);
                     Matrix4f matrix = ToMatrix(quat);
                     Vector3f tangentVec = TransformDirection(matrix, helpVector);
                     tx = tangentVec.x;
