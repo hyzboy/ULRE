@@ -17,12 +17,11 @@ namespace hgl::graph
 {
 
     /// 这两个函数是 `PrimitiveVariantPurpose` 的对外名字入口。拼写表本身由
-    /// `asset_gen.toml` 的 `[[enum]] aliases` 唯一描述，再经 AssetGen 落进
-    /// `PrimitiveMeta.gen.h`；这里只转发，避免同一张表在两个地方各写一份。
+    /// `PrimitiveAssetSpec.h` 末尾的 `HGL_ENUM_BEGIN` 登记块唯一描述；这里只转发，
+    /// 避免同一张表在两个地方各写一份。
     const char *GetPrimitiveVariantPurposeName(const PrimitiveVariantPurpose purpose)
     {
-        const char *name =
-            hgl::asset::generated::AssetEnumName_PrimitiveVariantPurpose(purpose);
+        const char *name = hgl::serialize::EnumNameOf(purpose);
 
         // 越界值（含 `ENUM_CLASS_RANGE` 之外的整型强转）沿用「回落到 surface」的旧口径。
         return name ? name : "surface";
@@ -30,7 +29,7 @@ namespace hgl::graph
 
     bool ParsePrimitiveVariantPurpose(const char *name, PrimitiveVariantPurpose &out_purpose)
     {
-        return hgl::asset::generated::AssetEnumParse_PrimitiveVariantPurpose(name, out_purpose);
+        return hgl::serialize::EnumParse(name, out_purpose);
     }
 
     bool ParsePrimitiveAssetSpec(const char *content, size_t size,

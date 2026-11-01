@@ -12,37 +12,15 @@
 #include <hgl/asset/AssetObject.h>
 #include <hgl/graph/asset/PrimitiveAssetSpec.h>
 #include <hgl/common/PrimitiveType.h>
+#include <hgl/graph/asset/PrimitiveAssetSpec.h>
 
 namespace hgl::asset::generated
 {
     inline const char *AssetEnumName_PrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose v)
-    {
-        switch (v)
-        {
-        case hgl::graph::PrimitiveVariantPurpose::Surface: return "surface";
-        case hgl::graph::PrimitiveVariantPurpose::DepthOnly: return "depth_only";
-        case hgl::graph::PrimitiveVariantPurpose::ShadowCaster: return "shadow_caster";
-        case hgl::graph::PrimitiveVariantPurpose::Picking: return "picking";
-        case hgl::graph::PrimitiveVariantPurpose::Debug: return "debug";
-        }
-        return nullptr;
-    }
+    { return hgl::graph::GetPrimitiveVariantPurposeName(v); }
 
     inline bool AssetEnumParse_PrimitiveVariantPurpose(const char *s, hgl::graph::PrimitiveVariantPurpose &out)
-    {
-        if (!s) return false;
-        if (hgl::stricmp(s, "surface") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Surface; return true; }
-        if (hgl::stricmp(s, "Surface") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Surface; return true; }
-        if (hgl::stricmp(s, "depth_only") == 0) { out = hgl::graph::PrimitiveVariantPurpose::DepthOnly; return true; }
-        if (hgl::stricmp(s, "DepthOnly") == 0) { out = hgl::graph::PrimitiveVariantPurpose::DepthOnly; return true; }
-        if (hgl::stricmp(s, "shadow_caster") == 0) { out = hgl::graph::PrimitiveVariantPurpose::ShadowCaster; return true; }
-        if (hgl::stricmp(s, "ShadowCaster") == 0) { out = hgl::graph::PrimitiveVariantPurpose::ShadowCaster; return true; }
-        if (hgl::stricmp(s, "picking") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Picking; return true; }
-        if (hgl::stricmp(s, "Picking") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Picking; return true; }
-        if (hgl::stricmp(s, "debug") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Debug; return true; }
-        if (hgl::stricmp(s, "Debug") == 0) { out = hgl::graph::PrimitiveVariantPurpose::Debug; return true; }
-        return false;
-    }
+    { return hgl::graph::ParsePrimitiveVariantPurpose(s, out); }
 
     inline const char *AssetEnumName_PrimitiveType(const hgl::graph::PrimitiveType v)
     { return hgl::graph::GetPrimitiveTypeName(v); }

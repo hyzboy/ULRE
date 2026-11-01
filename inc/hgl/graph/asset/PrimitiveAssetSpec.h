@@ -2,6 +2,7 @@
 
 #include <hgl/common/PrimitiveType.h>
 #include <hgl/asset/AssetAnnotation.h>
+#include <hgl/serialize/EnumMeta.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/type/ManagedArray.h>
 #include <hgl/type/String.h>
@@ -85,3 +86,13 @@ namespace hgl::graph
     const char *GetPrimitiveVariantPurposeName(PrimitiveVariantPurpose purpose);
     bool        ParsePrimitiveVariantPurpose(const char *name, PrimitiveVariantPurpose &out_purpose);
 }//namespace hgl::graph
+
+// ── 枚举登记（拼写与 GUI 说明的唯一真源）─────────────────────────────────────
+
+HGL_ENUM_BEGIN(hgl::graph::PrimitiveVariantPurpose)
+    HGL_ENUM_ITEM_NAME(Surface,      "surface",       "表面渲染变体（默认）")
+    HGL_ENUM_ITEM_NAME(DepthOnly,    "depth_only",    "仅深度变体（阴影/深度预填）")
+    HGL_ENUM_ITEM_NAME(ShadowCaster, "shadow_caster", "投影体变体")
+    HGL_ENUM_ITEM_NAME(Picking,      "picking",       "拾取变体（ID 写入）")
+    HGL_ENUM_ITEM_NAME(Debug,        "debug",         "调试变体")
+HGL_ENUM_END(hgl::graph::PrimitiveVariantPurpose)

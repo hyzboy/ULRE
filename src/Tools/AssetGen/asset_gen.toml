@@ -13,10 +13,6 @@ integer_enums = ["VkFormat"]
 # 按**枚举值声明顺序**给出别名：解析时别名与 C++ 名都接受（大小写不敏感），
 # 写出时优先用别名。这样既不改动已有的 TOML 拼写，也不用修改 C++ 命名。
 [[enum]]
-name = "PrimitiveVariantPurpose"
-aliases = ["surface", "depth_only", "shadow_caster", "picking", "debug"]
-
-[[enum]]
 name = "SceneMaterialType"
 aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface"]
 
@@ -110,6 +106,15 @@ fq             = "hgl::graph::PrimitiveType"
 extern_from    = "hgl::graph::ParsePrimitiveTypeName"
 extern_to      = "hgl::graph::GetPrimitiveTypeName"
 extern_include = "hgl/common/PrimitiveType.h"
+
+# `PrimitiveVariantPurpose` 的 TOML 拼写是蛇形（`depth_only` / `shadow_caster`），
+# 名字↔值真源在 `PrimitiveAssetSpec.h` 末尾的 `HGL_ENUM_BEGIN` 登记块，这里只转发。
+[[enum]]
+name           = "PrimitiveVariantPurpose"
+fq             = "hgl::graph::PrimitiveVariantPurpose"
+extern_from    = "hgl::graph::ParsePrimitiveVariantPurpose"
+extern_to      = "hgl::graph::GetPrimitiveVariantPurposeName"
+extern_include = "hgl/graph/asset/PrimitiveAssetSpec.h"
 
 # `GeometryAssetSpec` 的三个枚举拼写同样不是 C++ 枚举名（`builtin` / `plane_grid`
 # / `v2un8`），而且法线格式还要兼容历史的 `VF_` 宏名与 Vulkan 原名，所以统一只
