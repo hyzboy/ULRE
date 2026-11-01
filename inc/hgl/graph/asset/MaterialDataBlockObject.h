@@ -57,7 +57,7 @@ namespace hgl::graph::mtl
         const hgl::asset::AssetURI &GetURI() const { return uri; }
 
         /// 已上船才算真能用（`Parsed` 只是数据读进来了）
-        bool IsReady() const { return asset && asset->IsUploaded(); }
+        bool IsReady() const override { return asset && asset->IsUploaded(); }
     };
 
     /**

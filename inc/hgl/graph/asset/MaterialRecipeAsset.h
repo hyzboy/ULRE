@@ -44,17 +44,19 @@
 
 namespace hgl::graph::mtl
 {
-    /// 配方资产的装配阶段（见文件头「为什么状态机只有三态」）
-    enum class MaterialRecipeAssetState : uint8
+    /**
+     * 配方资产的装配阶段。
+     *
+     * 已上移为通用的 `hgl::asset::AssetState`（见 `inc/hgl/asset/AssetObject.h`）：
+     * 本别名只为保持既有调用点与文档表述不变而存在，**不要**再往这里加项。
+     */
+    using MaterialRecipeAssetState = hgl::asset::AssetState;
+
+    /// 状态名。等价于 `hgl::serialize::EnumNameOf`，保留是为了不打断既有调用点。
+    inline const char *GetMaterialRecipeAssetStateName(MaterialRecipeAssetState state) noexcept
     {
-        Parsed = 0,     ///<字段已解析，领域契约与纹理槽**尚未**校验
-        Ready,          ///<校验通过，可参与渲染
-        Failed,         ///<校验失败，`GetFailureReason()` 给出原因
-
-        ENUM_CLASS_RANGE(Parsed, Failed)
-    };
-
-    const char *GetMaterialRecipeAssetStateName(MaterialRecipeAssetState state) noexcept;
+        return hgl::serialize::EnumNameOf(state);
+    }
 
     /**
      * 一份材质配方的资产句柄。
@@ -113,7 +115,9 @@ namespace hgl::graph::mtl
 
         MaterialRecipeAssetState GetState() const { return state; }
 
-        bool IsReady() const { return state == MaterialRecipeAssetState::Ready; }
+        MaterialRecipeAssetState GetAssetState() const override { return state; }
+
+        bool IsReady() const override { return state == MaterialRecipeAssetState::Ready; }
 
         const AnsiString &GetFailureReason() const { return failure_reason; }
 

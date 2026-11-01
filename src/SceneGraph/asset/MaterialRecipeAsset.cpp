@@ -8,19 +8,6 @@
 
 namespace hgl::graph::mtl
 {
-    const char *GetMaterialRecipeAssetStateName(MaterialRecipeAssetState state) noexcept
-    {
-        switch (state)
-        {
-            case MaterialRecipeAssetState::Parsed: return "Parsed";
-            case MaterialRecipeAssetState::Ready:  return "Ready";
-            case MaterialRecipeAssetState::Failed: return "Failed";
-            default:
-                break;
-        }
-        return "Unknown";
-    }
-
     MaterialRecipeAsset::MaterialRecipeAsset(const MaterialRecipeFileData &data,
                                              MaterialRecipeSpec            &&parsed_spec)
         : spec(std::move(parsed_spec)),

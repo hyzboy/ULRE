@@ -49,16 +49,16 @@
 namespace hgl::graph::mtl
 {
     /// 数据块资产的装配阶段（见文件头「状态只有三态」）
-    enum class MaterialDataBlockAssetState : uint8
+    ///
+    /// 已上移为通用的 `hgl::asset::AssetState`（见 `inc/hgl/asset/AssetObject.h`）：
+    /// 本别名只为保持既有调用点与文档表述不变而存在，**不要**再往这里加项。
+    using MaterialDataBlockAssetState = hgl::asset::AssetState;
+
+    /// 状态名。等价于 `hgl::serialize::EnumNameOf`，保留是为了不打断既有调用点。
+    inline const char *GetMaterialDataBlockAssetStateName(MaterialDataBlockAssetState state) noexcept
     {
-        Parsed = 0,     ///<数据已就绪（含已上传但未成功的「等池」情形按 `IsUploaded()` 区分）
-        Ready,          ///<已落入 GPU 池，行区间可用
-        Failed,         ///<解析失败，`GetFailureReason()` 给出原因
-
-        ENUM_CLASS_RANGE(Parsed, Failed)
-    };
-
-    const char *GetMaterialDataBlockAssetStateName(MaterialDataBlockAssetState state) noexcept;
+        return hgl::serialize::EnumNameOf(state);
+    }
 
     /**
      * 一份材质数据块的资产句柄。
@@ -125,9 +125,9 @@ namespace hgl::graph::mtl
 
         MaterialDataBlockAssetState GetState() const { return state; }
 
-        bool IsReady() const { return state == MaterialDataBlockAssetState::Ready; }
+        MaterialDataBlockAssetState GetAssetState() const override { return state; }
 
-        bool IsFailed() const { return state == MaterialDataBlockAssetState::Failed; }
+        bool IsReady() const override { return state == MaterialDataBlockAssetState::Ready; }
 
         bool IsUploaded() const { return row_lease.IsValid(); }
 

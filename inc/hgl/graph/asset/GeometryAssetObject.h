@@ -69,7 +69,7 @@ namespace hgl::graph
         const asset::AssetURI &GetURI() const { return uri; }
 
         /// 几何是否已就绪可画（`file:` 来源可能还在流送）
-        bool IsReady() const { return asset && asset->IsReady(); }
+        bool IsReady() const override { return asset && asset->IsReady(); }
     };
 
     /**

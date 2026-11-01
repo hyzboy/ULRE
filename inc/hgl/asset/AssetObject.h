@@ -23,6 +23,7 @@
 #include <hgl/type/String.h>
 #include <hgl/type/EnumUtil.h>
 #include <hgl/type/ValueArray.h>
+#include <hgl/serialize/EnumMeta.h>
 
 #include <cstdint>
 
@@ -228,6 +229,41 @@ namespace hgl::asset
     }
 
     /**
+     * 资产句柄的**装配阶段** —— 所有 `AssetObject` 派生类共用的唯一状态机。
+     *
+     * 为什么上移到这里：`MaterialRecipeAssetState` 与 `MaterialDataBlockAssetState`
+     * 曾经各自定义了一份 `{Parsed, Ready, Failed}`，字面相同、语义相同、连诊断文案
+     * 都一模一样。每加一种资产就要再抄一遍，等于把「同一条就绪度契约」复制 N 份。
+     *
+     * ```
+     * Unloaded ──开始装载──> Loading ──数据到手──> Parsed ──校验/上船通过──> Ready
+     *                            └──────失败──────> Failed <──校验/上船失败────┘
+     * ```
+     *
+     * 三态是**最小公共集**，不是每种资产都会走满：纯文本解析的配方资产从 `Parsed`
+     * 起步（没有可挂起的装载阶段）；需要读盘/上传的资产则从 `Unloaded`/`Loading` 起步。
+     *
+     * 异步轴**不**在这里：真正的在途进度属于具体资源的载荷（如
+     * `TextureAsset::GetPayloadState()`），本状态只回答「这个句柄现在能不能用」。
+     */
+    enum class AssetState : uint8_t
+    {
+        Unloaded = 0,   ///<尚未开始装载
+        Loading,        ///<装载/解析在途
+        Parsed,         ///<数据已解析，领域契约与外部依赖**尚未**校验
+        Ready,          ///<校验通过，可参与渲染
+        Failed,         ///<装载或校验失败，诊断文案见具体类
+
+        ENUM_CLASS_RANGE(Unloaded, Failed)
+    };
+
+    /// 状态名（诊断 / 日志 / 检查器用）。
+    inline const char *GetAssetStateName(const AssetState state) noexcept
+    {
+        return hgl::serialize::EnumNameOf(state);
+    }
+
+    /**
      * 资产对象基类 —— **可选**的多态外壳。
      *
      * 只在「需要把不同类型资产放进同一个容器/句柄表」的场合继承它（例如场景加载器
@@ -247,6 +283,21 @@ namespace hgl::asset
 
         /// 资产名（可空；由派生类决定语义，例如 `*.geo.toml` 的 `name`）。
         virtual const AnsiString &GetAssetName() const = 0;
+
+        // ── 就绪度统一契约 ────────────────────────────────────────────────────
+        //
+        // 唯一的状态源是 `GetAssetState()`。`IsReady()` / `IsFailed()` 只有一个
+        // 实现，派生类不要各自再写一遍 —— 那正是本状态机上移要消灭的重复。
+        // 不需要异步装载的派生类什么都不用覆盖，默认停在 `Unloaded`。
+
+        /// 当前装配阶段（未覆盖 ⇒ `Unloaded`）。
+        virtual AssetState GetAssetState() const { return AssetState::Unloaded; }
+
+        /// 可参与渲染。
+        virtual bool IsReady() const { return GetAssetState() == AssetState::Ready; }
+
+        /// 装载或校验失败。
+        bool IsFailed() const { return GetAssetState() == AssetState::Failed; }
 
         // ── 序列化统一虚接口 ──────────────────────────────────────────────────
         //
@@ -271,3 +322,17 @@ namespace hgl::asset
         virtual bool Serialize(hgl::serialize::Archive &/*ar*/) { return false; }
     };
 }//namespace hgl::asset
+
+// ── `AssetState` 登记 ───────────────────────────────────────────────────────
+//
+// 登记块必须写在全局作用域（见 `<hgl/serialize/EnumMeta.h>` 的硬性约定），
+// 因此放在命名空间之外。此后 `EnumNameOf` / `EnumParse` / Archive 文本后端
+// 都能直接处理这个枚举，不需要任何手写名字表。
+
+HGL_ENUM_BEGIN(hgl::asset::AssetState)
+    HGL_ENUM_ITEM(Unloaded, "尚未开始装载")
+    HGL_ENUM_ITEM(Loading, "装载在途")
+    HGL_ENUM_ITEM(Parsed, "数据已解析，尚未校验")
+    HGL_ENUM_ITEM(Ready, "校验通过，可参与渲染")
+    HGL_ENUM_ITEM(Failed, "装载或校验失败")
+HGL_ENUM_END(hgl::asset::AssetState)

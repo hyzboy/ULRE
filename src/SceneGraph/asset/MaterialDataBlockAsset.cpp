@@ -9,19 +9,6 @@
 
 namespace hgl::graph::mtl
 {
-    const char *GetMaterialDataBlockAssetStateName(MaterialDataBlockAssetState state) noexcept
-    {
-        switch (state)
-        {
-            case MaterialDataBlockAssetState::Parsed: return "Parsed";
-            case MaterialDataBlockAssetState::Ready:  return "Ready";
-            case MaterialDataBlockAssetState::Failed: return "Failed";
-            default:
-                break;
-        }
-        return "Unknown";
-    }
-
     MaterialDataBlockAsset::MaterialDataBlockAsset(MaterialDataBlockFileData &&in_data,
                                                    MaterialDataBlockSpec      &&in_spec,
                                                    const bool                   in_has_spec)
