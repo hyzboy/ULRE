@@ -2,6 +2,11 @@
 // ① 天空球向内显示（SkyMinimal——Position 方向即法线）
 // ② 低画质间接光 ambient：物体世界法线采样同一算法（EvalSkyAtmosphere）
 //    ——无 GI/IBL 探针时 sky ambient 参与 PBR 计算（indirect_sky_ambient）
+//
+// 天空实体与天光 provider 都**不再在此手工装配**：一句
+// `EnvironmentSystem::SetupSkyEnvironment({mode = Atmosphere, sky_recipe = ...})`
+// 就够了 —— 几何体、顶点流、实体、provider 槽、SH9 兜底全由环境系统决定。
+// 本示例因此只保留"要哪些配方 / 放哪些物体"这一层。
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
@@ -23,6 +28,7 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/render/LightSystem.h>
 
 #include<glm/glm.hpp>
@@ -46,14 +52,12 @@ namespace
 
 namespace
 {
-    // 天空球：只有 Position（球体——法线由 Position 方向推导，不存 Normal）
-    GeometryVertexFormat CreateSkyGeometryVertexFormat()
-    {
-        return GeometryVertexFormat{
-            {VertexSemantic::Position, VF_V3F},
-        };
-    }
+    /// 天空外观配方（解析大气，不吃任何贴图）。投影/几何体由 `SkyMode::Atmosphere` 决定。
+    constexpr char SKY_RECIPE_NAME[] = "AtmosphereSkyAmbient.Sky";
+}
 
+namespace
+{
     // 物体：发行矩阵（Position V3F + UV RG16F + Normal RG8——无切线）
     GeometryVertexFormat CreateMeshGeometryVertexFormat()
     {
@@ -78,12 +82,10 @@ private:
         PrimitiveAsset asset{};
     };
 
-    graph::mtl::MaterialRecipe sky_recipe{};
     graph::mtl::MaterialRecipe mesh_recipe{};
     graph::GlobalSSBOBinding material_data_ssbo_accessor{};
 
-    Geometry* prim_sky_sphere = nullptr;
-    PrimitiveAsset sky_asset{};
+    std::shared_ptr<EnvironmentSystem> environment_system;   ///< 天空实体 + 天光 provider 的唯一装配者
 
     std::vector<std::unique_ptr<MeshEntry>> meshes;
 
@@ -113,16 +115,8 @@ private:
     {
         using namespace inline_geometry;
 
-        // ── 天空球（SkyMinimal——仅 Position）：独立顶点布局 ⇒ 走 format_override ──
-
-        const GeometryVertexFormat sky_format = CreateSkyGeometryVertexFormat();
-        prim_sky_sphere = GetGeometry("geo:builtin:hex_sphere_sky", &sky_format);
-        if (!prim_sky_sphere)
-            return false;
-
-        sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
-
         // ── 物体群（Lit——sky ambient 间接光）：私有缓冲 + 各自统一布局 ──
+        //  天空球不在这里建：它由 `SetupSkyEnvironment()` 按 `SkyMode` 选几何体与顶点流。
 
         static const GeometryVertexFormat mesh_format = CreateMeshGeometryVertexFormat();
 
@@ -152,33 +146,27 @@ private:
         return true;
     }
 
-    bool InitRecipes()
+    /**
+     * 天空 + 天光一行托管。
+     *
+     * `Atmosphere` + 空 IBL 数据 ⇒ 视觉天空走 `surface_sky_minimal` 解析大气，
+     * 天光 provider 自动选 `ambient_light_sky`（同一算法采样世界法线）；
+     * SH9 由 `sh_auto` 现算 —— 即使以后把 provider 热切到 `ambient_light_sh`，
+     * 也已经有与太阳方向一致的系数，不会黑。
+     */
+    bool InitSkyEnvironment()
     {
-        if (!prim_sky_sphere)
-            return false;
+        SkyEnvironmentConfig config;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("AtmosphereSkyAmbient.Sky");
-        if (!loaded_recipe)
-            return false;
-        sky_recipe = *loaded_recipe;
+        config.mode        = SkyMode::Atmosphere;
+        config.sky_recipe  = SKY_RECIPE_NAME;
 
-        return true;
+        return environment_system->SetupSkyEnvironment(config);
     }
 
     bool InitSceneEntities()
     {
-        // 天空球（固定原点）
-        auto* sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
-        auto sky_transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), Mobility::Static));
-        auto sky_prim = sky_entity->GetContext()->GetOrCreateGeometryData(sky_entity);
-
-        sky_transform.SetLocalPosition(glm::vec3(0.0f));
-        sky_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        sky_transform.SetLocalScale(glm::vec3(1.0f));
-        sky_transform.SetMobility(Mobility::Static);
-
-        sky_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(sky_prim->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-        // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
+        // 天空球已由 `SetupSkyEnvironment()` 建成 `SkyEnvironment` 实体（含几何体与材质）
 
         // 物体群（环绕分布——法线方向各不相同 → sky ambient 方向采样差异可见）
         const size_t count = meshes.size();
@@ -224,6 +212,12 @@ private:
         if (!ecs_context)
             return false;
 
+        environment_system = ecs_context->GetSystem<EnvironmentSystem>();
+        if (!environment_system)
+            environment_system = ecs_context->RegisterSystem<EnvironmentSystem>();
+        if (!environment_system)
+            return false;
+
         auto light_system = ecs_context->GetSystem<LightSystem>();
         if (!light_system)
             light_system = ecs_context->RegisterSystem<LightSystem>();
@@ -236,6 +230,9 @@ private:
             const glm::vec3 sun_dir = glm::normalize(glm::vec3(0.35f, 0.55f, 0.76f));
             light_system->SetMainLightDirection(math::Vector3f(sun_dir.x, sun_dir.y, sun_dir.z));
         }
+
+        if (!InitSkyEnvironment())
+            return false;
 
         if (!InitSceneEntities())
             return false;
@@ -271,7 +268,6 @@ public:
     {
         // 几何由 GeometryAssetRegistry 持有
         meshes.clear();
-        prim_sky_sphere = nullptr;
 
         if (auto *registry = GetGeometryAssetRegistry())
             registry->Clear();
@@ -286,9 +282,6 @@ public:
             return false;
 
         if (!CreateRenderObjects())
-            return false;
-
-        if (!InitRecipes())
             return false;
 
         ecs_context = GetECSContext();
