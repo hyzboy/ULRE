@@ -1,0 +1,23 @@
+schema = 1
+name = "SkyLambertDome.Unlit"
+domain = "UnlitTexture3D"
+
+# 天空顶示例：无光照、纯纹理。
+#
+# 输入是使用 Lambert Azimuthal 等面积方位投影烘焙的 2D 天空半球贴图
+# （`*.Tex2D`，2D 正方形贴图）。
+#
+# 领域同为 UnlitTexture3D（走 3D 空间顶点视图变换）；C++ 材质侧按资源后缀
+# 判定投影类型，由于是 `.Tex2D`，自动命中 MaterialTextureProjection::Texture2D，
+# 直接以几何体顶点提供的 UV 采样 2D 纹理，无额外着色器分支。
+[[textures]]
+name = "base_color"
+asset = "file:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.Tex2D"
+required = true
+
+[render_state.pipeline]
+# 天空顶既可以从外部观察（模型视角），也可以从内部观察（天空穹顶视角）。
+# 设为 None 可使内外表面均可见。
+cull_mode = "None"
+depth_test = true
+depth_write = true

@@ -20,24 +20,31 @@ using namespace hgl::ecs;
 
 namespace
 {
-    GeometryVertexFormat CreateSkyCubeGeometryVertexFormat()
+    GeometryVertexFormat CreateBallGeometryVertexFormat()
     {
+        // UnlitTexture3D 的契约要求 Position|TexCoord：UV0 既是贴图坐标，
+        // 也是 Cubemap / 八面体投影反算方向的唯一输入（见
+        // ShaderLibrary/module/provider/material_source/texture_projection/）。
+        // sphere_64（经纬度 UV 球）在经度接缝处做了双顶点拆分，可避免插值撕裂。
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
         };
         return gvf;
     }
 }
 
 /**
- * Cubemap 天空球示例：
+ * Cubemap 球体示例：
  *
- * 使用 sky_34_cubemap_2k.TexCube(Cubemap 纹理)作为天空球材质，
- * 在屏幕中央渲染一个由 CubeMap 纹理贴图的球体。
+ * 使用 sky_34_cubemap_2k.TexCube(Cubemap 纹理) 作为材质，在场景中央渲染一个
+ * 由 Cubemap 贴图的球体（看外表面，不是天空球内壁）。
  *
- * 材质："SkyCubeSphere.Sky"(ShaderLibrary/asset/recipe/Examples/Environment/
- *       SkyCubeSphere.Sky.recipe.toml)
- *       以 normalize(world_pos) 为方向采样 samplerCube。
+ * 材质："SkyCubeSphere.Unlit"(ShaderLibrary/asset/recipe/Examples/Environment/
+ *       SkyCubeSphere.Unlit.recipe.toml)
+ *       领域 UnlitTexture3D：无光照、纯纹理；球体等距柱状 uv 反算方向后
+ *       采样 samplerCubeArray。投影实现由 frag_options 按资源类型选中，
+ *       主着色器不变。
  */
 class SkyCubeSphereApp : public WorkObject
 {
@@ -53,16 +60,16 @@ private:
 
     bool InitSkyCubeResource()
     {
-        // ---- 球体几何(屏幕中央,原点处) ----
+        // 球体几何(原点处，半径 4) —— 相机距离 16，完整可见
         using namespace inline_geometry;
 
-        const GeometryVertexFormat geometry_vertex_format = CreateSkyCubeGeometryVertexFormat();
+        const GeometryVertexFormat geometry_vertex_format = CreateBallGeometryVertexFormat();
 
-        sky_geometry = GetGeometry("geo:builtin:hex_sphere_far", &geometry_vertex_format);
+        sky_geometry = GetGeometry("geo:builtin:sphere_64", &geometry_vertex_format);
         if (!sky_geometry)
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SkyCubeSphere.Sky");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SkyCubeSphere.Unlit");
         if (!loaded_recipe)
             return false;
         sky_recipe = *loaded_recipe;
@@ -71,7 +78,6 @@ private:
         // 示例侧不再持有 TextureAsset（实体端零纹理调用）。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
-
         return true;
     }
 
@@ -87,11 +93,11 @@ private:
 
         transform.SetLocalPosition(glm::vec3(0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform.SetLocalScale(glm::vec3(1.0f));
+        transform.SetLocalScale(glm::vec3(4.0f));
         transform.SetMobility(Mobility::Static);
 
         primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
-        // 纹理已由配方文件声明（[[textures]] sky_cube），实体端不再重复绑定
+        // 纹理已由配方文件声明（[[textures]] base_color），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

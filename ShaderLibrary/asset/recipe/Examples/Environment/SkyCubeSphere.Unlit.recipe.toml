@@ -1,0 +1,22 @@
+schema = 1
+name = "SkyCubeSphere.Unlit"
+domain = "UnlitTexture3D"
+
+# 场景内普通球体，无光照、纯纹理。
+#
+# 输入是 **Cubemap**（`cubefile:` → TextureCube），因此 C++ 侧会把
+# `MaterialTextureProjection::CubeMap` 折进 frag_options，选中
+# `texture_projection_cube` 那份 `SampleMaterialProjected` 实现；
+# 主着色器（unlit_texture.frag / material_source_texture.glsl）保持字节不变，
+# 也不出现任何投影相关的 #if 分支。
+[[textures]]
+name = "base_color"
+asset = "cubefile:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexCube"
+required = true
+
+[render_state.pipeline]
+# 球体要看**外**表面：HexSphere 的绕序是"从外侧看顺时针为正面"，
+# 所以要剔除背面（旧 Sky 版本写的是 Front —— 那是画天空球内壁的取法）。
+cull_mode = "Back"
+depth_test = true
+depth_write = true

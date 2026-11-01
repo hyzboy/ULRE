@@ -1,0 +1,19 @@
+schema = 1
+name = "SkyCubeSphereOct.Unlit"
+domain = "UnlitTexture3D"
+
+# 与 SkyCubeSphere.Unlit **只差输入文件**：同一份 cubemap 的八面体展开版
+# （`*.TexOct`，2D 正方形贴图）。
+#
+# 引擎侧不需要任何新 Domain / 新槽位：C++ 侧按资源后缀判定投影类型
+# （`MaterialTextureProjection::Octahedral`），在 frag_options 里选中
+# `texture_projection_octahedral`，shader 采样点与调用方式完全不变。
+[[textures]]
+name = "base_color"
+asset = "file:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexOct"
+required = true
+
+[render_state.pipeline]
+cull_mode = "Back"
+depth_test = true
+depth_write = true

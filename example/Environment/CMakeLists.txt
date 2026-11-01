@@ -9,3 +9,8 @@ CreateProject(BasicLitSunDirection              BasicLitSunDirection.cpp)
 CreateProject(IBLEnvironment                    IBLEnvironment.cpp)
 
 CreateProject(SkyCubeSphere                     SkyCubeSphere.cpp)
+
+CreateProject(SkyCubeSphereOct                  SkyCubeSphereOct.cpp)
+
+CreateProject(SkyLambertDome                    SkyLambertDome.cpp)
+
