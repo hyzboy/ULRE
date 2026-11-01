@@ -282,6 +282,16 @@ namespace hgl::graph::mtl
                 input.material_source_projection =
                     ResolveMaterialSourceProjection(request.recipe);
             }
+            // Sky 域（profile==None，没有 define 块/ambient）同样要吃投影：几何只
+            // 提供片元方向，`surface_sky_cube` 把方向编成等距柱状 uv 后交给统一的
+            // `SampleMaterialProjected`，所以按天空槽后缀挑一份实现。
+            // 未声明 surface 的纯程序化天空不采样贴图，不吃这份 include。
+            else if (input.profile == DomainOptionsProfile::None
+                  && definition.surface_module_name == "surface_sky_cube")
+            {
+                input.material_source_projection =
+                    ResolveMaterialSourceProjection(request.recipe);
+            }
 
             // compile_defines（领域默认值或配方覆盖）→ 逐条 `#define <name> 1`。
             // 只在本函数内活着：EmitDomainOptions 同步读完，不留悬垂指针。

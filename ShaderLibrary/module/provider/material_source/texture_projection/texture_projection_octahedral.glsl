@@ -47,9 +47,9 @@ vec2 MaterialOctahedralEncodeDirection(vec3 direction)
     return MaterialOctahedralEncodeDirectionLocal(direction, direction);
 }
 
-vec4 SampleMaterialProjected(uvec2 texture_reference, vec2 equirectUv)
+// 方向直接入参的变体：Sky 域已经握有 fragDirection，不必往返编码。
+vec4 SampleMaterialProjectedDirection(uvec2 texture_reference, vec3 direction)
 {
-    const vec3 direction = MaterialEquirectUvToDirection(equirectUv);
     const vec3 ddir_dx = dFdx(direction);
     const vec3 ddir_dy = dFdy(direction);
 
@@ -67,6 +67,12 @@ vec4 SampleMaterialProjected(uvec2 texture_reference, vec2 equirectUv)
                              float(texture_reference.y),
                              dPdx,
                              dPdy);
+}
+
+vec4 SampleMaterialProjected(uvec2 texture_reference, vec2 equirectUv)
+{
+    return SampleMaterialProjectedDirection(
+        texture_reference, MaterialEquirectUvToDirection(equirectUv));
 }
 
 #endif // MATERIAL_TEXTURE_PROJECTION_GLSL

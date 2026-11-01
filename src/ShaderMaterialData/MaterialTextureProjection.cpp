@@ -61,9 +61,21 @@ namespace hgl::graph::mtl
 
     MaterialTextureProjection ResolveMaterialSourceProjection(const MaterialRecipe &recipe) noexcept
     {
+        // 两个槽共用这套判定：
+        //   base_color ← 无光单图材质源（`material_source_texture`）
+        //   sky_cube   ← Sky 域的贴图形态（`surface_sky_cube`）
+        // 两者都是"领域里唯一被采样的那张贴图"，投影语义完全一样（同一份
+        // `SampleMaterialProjected`）。`base_color` 优先：真出现两个槽同时存在
+        // 的配方（目前没有），材质源的投影仍是它自己那一张决定的。
         for (const RecipeTextureBinding &binding : recipe.textures)
         {
             if (binding.texture_name == MaterialSourceTextureSlotName)
+                return ResolveMaterialTextureProjection(binding.resource_id.c_str());
+        }
+
+        for (const RecipeTextureBinding &binding : recipe.textures)
+        {
+            if (binding.texture_name == SkyTextureSlotName)
                 return ResolveMaterialTextureProjection(binding.resource_id.c_str());
         }
 

@@ -60,7 +60,7 @@ namespace hgl::graph::mtl
     /// 这是运行时可用的数据契约，不反向依赖程序构建模块。
     enum class DomainOptionsProfile : unsigned char
     {
-        None = 0,       ///< Sky 等无 define 块的主着色器：整段不发射（不是遗漏）
+        None = 0,       ///< Sky 等无 define 块的主着色器：不发射任何宏/ambient（投影 include 除外）
         ForwardLit,     ///< 前向着色（有场景光照 + 环境光 provider）
         ForwardUnlit,   ///< 前向无光照（flat_lighting）
         ShadowCaster,   ///< 深度/阴影 pass：位移写深度，可选 alpha 覆盖判定
@@ -151,7 +151,7 @@ namespace hgl::graph::mtl
         const char *ntb_provider_module_name) noexcept;
 
     /// 发射 frag_options.glsl 文本。
-/// 成功时**整体覆盖** `out_options_glsl`（profile==None ⇒ 空串）；
+/// 成功时**整体覆盖** `out_options_glsl`（profile==None ⇒ 只剩投影 include 或空串）；
 /// 返回 false 时 `out_options_glsl` 保持调用前的原值。
     /// 返回 false = 输入不自洽（例如 ForwardLit 缺 ambient 路径、槽名字符非法）。
     bool EmitDomainOptions(

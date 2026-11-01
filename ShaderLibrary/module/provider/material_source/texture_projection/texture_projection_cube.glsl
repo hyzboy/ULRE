@@ -20,12 +20,18 @@
 
 #include "module/provider/material_source/texture_projection/texture_projection_equirect.glsl"
 
-vec4 SampleMaterialProjected(uvec2 texture_reference, vec2 equirectUv)
+// 方向直接入参的变体：Sky 域已经握有 fragDirection，不必往返编码。
+vec4 SampleMaterialProjectedDirection(uvec2 texture_reference, vec3 direction)
 {
-    const vec3 direction = MaterialEquirectUvToDirection(equirectUv);
     return SampleCubeArray(texture_reference.x,
                            TrilinearSampler,
                            vec4(direction, 0.0));
+}
+
+vec4 SampleMaterialProjected(uvec2 texture_reference, vec2 equirectUv)
+{
+    return SampleMaterialProjectedDirection(
+        texture_reference, MaterialEquirectUvToDirection(equirectUv));
 }
 
 #endif // MATERIAL_TEXTURE_PROJECTION_GLSL

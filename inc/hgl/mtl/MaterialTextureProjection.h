@@ -39,13 +39,20 @@ namespace hgl::graph::mtl
     /// 消费它；PBR 的多槽材质源仍然是纯 uv 采样，不参与投影选择。
     inline constexpr const char *MaterialSourceTextureSlotName = "base_color";
 
+    /// Sky 域的贴图槽名。它同样走投影选择（`surface_sky_cube` 调
+    /// `SampleMaterialProjected`），因此天空背景换 Cube / 八面体 / 2D 展开图只换资源，
+    /// 不换领域、不换表面模块、不换主着色器。
+    /// 纯解析大气（`surface_sky_minimal`）没有这个槽，自然保持 Texture2D。
+    inline constexpr const char *SkyTextureSlotName = "sky_cube";
+
     /// 由资源的 `resource_id` 判定投影表示（大小写不敏感的后缀判定）：
     ///   `.TexCube` → CubeMap；`.TexOct` → Octahedral；其余（含空串 / 资产 ID / 图集）→ Texture2D。
     /// 前缀（`file:` / `cubefile:` / `texfile:` / `texcubefile:`）不参与判定：
     /// 前缀决定"怎么装载"，后缀决定"装载出来是什么形态"，两者是独立事实。
     MaterialTextureProjection ResolveMaterialTextureProjection(const char *resource_id) noexcept;
 
-    /// 从配方取 `base_color` 槽的投影表示。配方没有该槽 ⇒ Texture2D（历史行为）。
+    /// 从配方取 `base_color` / `sky_cube` 槽的投影表示。配方没有这两个槽 ⇒ Texture2D
+    /// （历史行为：纯 2D 材质与纯解析天空都不发射投影 include）。
     ///
     /// 只看 `resource_id`。用**句柄**（`RecipeTextureBinding::asset`）绑定且没有
     /// `resource_id` 的配方一律判为 Texture2D —— 句柄路径拿到的是 OSString，跨平台

@@ -206,8 +206,11 @@ namespace hgl::graph::mtl
             "Trilinear", "TrilinearClamp"};
         // SDF 文本默认线性过滤；位图形态由资产声明 samplers=["Nearest"] 覆盖。
         constexpr const char *TextSurfaceSamplers[] = {"Linear"};
-        // 天空 cube 贴图走三线性过滤（原 sky_cube 定义显式声明，归档到契约）。
-        constexpr const char *SkySamplers[] = {"Trilinear"};
+        // 天空槽现在可承载三种投影形态：`.TexCube`（cubemap）、`.TexOct`（八面体
+        // 展开图）与普通 `.Tex2D`（等距柱状展开图）。后两者是 2D 贴图，八面体
+        // 展开图必须 ClampToEdge 才不会在对极纹素边界被邻近列污染，故预设同时
+        // 声明 Trilinear 与 TrilinearClamp（与 UnlitTexture 域同一张表）。
+        constexpr const char *SkySamplers[] = {"Trilinear", "TrilinearClamp"};
 
         // ── 领域规范编译期宏表 ──────────────────────────────────────────────────
         // SDF 文本走内部距离场采样，片元模板需要该宏切换阈值逻辑。

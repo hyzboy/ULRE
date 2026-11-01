@@ -146,6 +146,27 @@ namespace hgl::graph::mtl
             out += module_path;
             out += "\"\n";
         }
+
+        // 材质源 / 天空贴图的**投影表示**选中的那一行 `#include`。
+        //   2D        → 不发（主着色器自己的默认 include 就是 2D 实现）
+        //   cubemap   → uv/方向 → samplerCubeArray
+        //   八面体    → 方向 → 八面体逆映射 uv → 2D 采样
+        // 两个领域共用这一段：无光单图材质源（`base_color`）与天空贴图形态
+        // （`sky_cube`）调的是同一个 `SampleMaterialProjected`。
+        bool EmitTextureProjectionInclude(const MaterialTextureProjection projection,
+                                          AnsiString &text_buffer)
+        {
+            if (projection == MaterialTextureProjection::Texture2D)
+                return true;
+
+            const char *projection_include =
+                GetMaterialTextureProjectionIncludePath(projection);
+            if (!IsValidModulePath(projection_include))
+                return false;
+
+            AppendInclude(text_buffer, projection_include);
+            return true;
+        }
     }// namespace
 
     DomainOptionsProfile ResolveDomainOptionsProfile(
@@ -169,12 +190,21 @@ namespace hgl::graph::mtl
         const DomainOptionsInput &input,
         AnsiString &out_options_glsl)
     {
-        // 无 define 块的主着色器族（Sky 等）：整段不发射。
+        // 无 define 块的主着色器族（Sky 等）：宏与 ambient include 整段不发射。
         // 这不是遗漏 —— Sky 的固定 include 表既无 ambient 槽也无阴影/alpha 通路，
         // 补上这些宏只会让"宏存在即非零"的 #if defined() 误判。
+        // 但它**确实**消费投影：贴图形态的天空表面（`surface_sky_cube`）调的是与
+        // 无光单图材质源同一个 `SampleMaterialProjected`，所以这类配方仍要补那一行
+        // include —— 否则换 Cube/八面体天空就只剩默认 2D 实现，天空会变成"按经纬
+        // 展开图直接采样"的错误画面。
         if (input.profile == DomainOptionsProfile::None)
         {
-            out_options_glsl.Clear();
+            AnsiString projection_only;
+            if (!EmitTextureProjectionInclude(
+                    input.material_source_projection, projection_only))
+                return false;
+
+            out_options_glsl = projection_only;
             return true;
         }
 
@@ -286,23 +316,12 @@ namespace hgl::graph::mtl
 
         // ── 材质源贴图的投影表示 ────────────────────────────────────────────
         // 主着色器的 `SampleMaterialColor` 永远只调 `SampleMaterialProjected`，
-        // 方向/uv 到采样坐标的换算放在这里选中的那份模块里：
-        //   2D        → 直接用 uv0（`material_source_texture` 自己的默认 include，
-        //               此处不重复发射，保持纯 2D 材质的历史字节）
-        //   cubemap   → uv 反算方向 → samplerCubeArray
-        //   八面体    → 方向 → 八面体逆映射 uv → 2D 采样
+        // 方向/uv 到采样坐标的换算放在这里选中的那份模块里。
         // 深度 pass 没有材质源槽 ⇒ 不发射。
         if (!shadow_pass
-         && input.material_source_projection != MaterialTextureProjection::Texture2D)
-        {
-            const char *projection_include =
-                GetMaterialTextureProjectionIncludePath(
-                    input.material_source_projection);
-            if (!IsValidModulePath(projection_include))
-                return false;
-
-            AppendInclude(text_buffer, projection_include);
-        }
+         && !EmitTextureProjectionInclude(
+                input.material_source_projection, text_buffer))
+            return false;
 
         out_options_glsl = text_buffer;
         return true;

@@ -315,6 +315,29 @@ namespace
         sky.alpha_test = true;
 
         CheckText("sky: None profile emits nothing at all", "", sky);
+
+        // 天空背景贴图的投影表示：与 UnlitTexture 域共用同一对函数
+        // （`SampleMaterialProjected` / `SampleMaterialProjectedDirection`），
+        // 所以 options 这里的形态必须与 `RunForwardUnlit` 完全一致 —— None 档
+        // 没有 #define 块，include 就是整份 options 的全部内容。
+        DomainOptionsInput sky_cube = sky;
+        sky_cube.material_source_projection = MaterialTextureProjection::CubeMap;
+
+        CheckText("sky: cubemap projection is the whole options text",
+                  "#include \"module/provider/material_source/texture_projection/texture_projection_cube.glsl\"\n",
+                  sky_cube);
+
+        DomainOptionsInput sky_oct = sky;
+        sky_oct.material_source_projection = MaterialTextureProjection::Octahedral;
+
+        CheckText("sky: octahedral projection is the whole options text",
+                  "#include \"module/provider/material_source/texture_projection/texture_projection_octahedral.glsl\"\n",
+                  sky_oct);
+
+        DomainOptionsInput sky_2d = sky;
+        sky_2d.material_source_projection = MaterialTextureProjection::Texture2D;
+
+        CheckText("sky: 2D projection emits no include", "", sky_2d);
     }
 
     void RunForwardUnlit()

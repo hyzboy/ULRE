@@ -1,0 +1,21 @@
+schema = 1
+name = "IBLEnvironmentSkyOct.Sky"
+domain = "Sky"
+
+# 与 IBLEnvironment.Sky **只差输入文件**：同一份 cubemap 的八面体展开版
+# （`*.TexOct`，2D 正方形贴图 ⇒ `file:` 前缀）。
+#
+# 天空程序本身不感知格式：C++ 侧按槽资源后缀判定投影
+# （`MaterialTextureProjection::Octahedral`），在 frag_options 里选中
+# `texture_projection_octahedral`，`surface_sky_cube` 的采样点与调用方式不变。
+[[textures]]
+name = "sky_cube"
+asset = "file:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexOct"
+required = true
+
+[fragment]
+surface_module_name = "surface_sky_cube"
+
+[render_state.pipeline]
+cull_mode = "None"
+depth_write = false

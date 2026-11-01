@@ -96,6 +96,19 @@ namespace
     }
 
     /**
+     * `IBLENV_SKY_OCT=1`：天空**背景**换用八面体展开图（`IBLEnvironmentSkyOct.Sky`）。
+     *
+     * 与 `IBLENV_OCT` 是两件独立的事：那个换的是环境 IBL（天光辐照/预过滤）的贴图
+     * 形态，这个换的是背景天空球的贴图形态。两者都走 `texture_projection_*`，
+     * 区别仅在消费端 —— 前者是 `ambient_light_ibl*`，后者是 `surface_sky_cube`。
+     */
+    bool UseSkyOct()
+    {
+        static const bool s_sky_oct = (getenv("IBLENV_SKY_OCT") != nullptr);
+        return s_sky_oct;
+    }
+
+    /**
      * 天空梯度 L(ω) = c0 + c1·(ω·ẑ) → SH9 系数。
      *
      * 这样填充的意义：GPU 端 `EvalSHAnalyticIrradiance` 求出的正好是
@@ -241,10 +254,20 @@ private:
         if (!sky_geometry)
             return false;
 
-        const mtl::MaterialRecipe *loaded_sky_recipe = GetRecipe("IBLEnvironment.Sky");
+        // 天空贴图有两种投影配方，**只差 `[[textures]]` 的输入文件**：
+        //   · `IBLEnvironment.Sky`      → `.TexCube`（立方体贴图）
+        //   · `IBLEnvironmentSkyOct.Sky`→ `.TexOct`（八面体展开图，2D）
+        // 领域、表面模块、槽名、主着色器全都相同：投影实现由 C++ 侧按资源后缀选，
+        // 天空程序自己不认识格式。`IBLENV_SKY_OCT=1` 只是切到八面体那一份。
+        const char *sky_recipe_name = UseSkyOct()
+            ? "IBLEnvironmentSkyOct.Sky"
+            : "IBLEnvironment.Sky";
+
+        const mtl::MaterialRecipe *loaded_sky_recipe = GetRecipe(sky_recipe_name);
         if (!loaded_sky_recipe)
             return false;
         sky_recipe = *loaded_sky_recipe;
+
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -619,6 +642,11 @@ public:
         static constexpr uint64_t kSelfFNV_Cube      = 0x54295E44E3C1677Cull;  // CubeMap（Debug）
         static constexpr uint64_t kSelfFNV_Octahedral = 0x942421F7437CC76Full; // 八面体（Debug）
         static constexpr uint64_t kSelfFNV_SH         = 0x079D318B8728A100ull; // SH9 解析梯度（Debug；mean_luma 0.6917）
+        // 天空背景八面体（`IBLENV_SKY_OCT`）：环境 IBL 仍是 cube，**只有背景天空球**换投影。
+        // 亮度应与 Cube 基线几乎一致（同一张 enviroment 数据的两种展开，mean_luma 实测同为 0.6934），
+        // 差异只在重采样细节 ⇒ 这条基线同时是「天空背景投影没接错」的判据。
+        // 三个开关混用（如 SKY_OCT+OCT）未钉基线：一次只开一个，各自对照。
+        static constexpr uint64_t kSelfFNV_SkyOct    = 0xFF878ABE60D2BACBull;  // 天空背景八面体（Debug）
 
         if (s_selfcheck && ++s_self_frame == 8)
         {
@@ -633,7 +661,8 @@ public:
             expect.width                = kSelfW;
             expect.height               = kSelfH;
             expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = UseSHAmbient()         ? kSelfFNV_SH
+            expect.fnv1a64              = UseSkyOct()           ? kSelfFNV_SkyOct
+                                        : UseSHAmbient()          ? kSelfFNV_SH
                                         : UseOctahedralEnv()      ? kSelfFNV_Octahedral
                                                                   : kSelfFNV_Cube;
 
