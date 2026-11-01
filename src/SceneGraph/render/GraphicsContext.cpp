@@ -143,7 +143,17 @@ namespace hgl::graph
         if (!tex_manager)
             return false;
 
-        SAFE_CLEAR(fallback_tex_manager_)
+        // 无设备期用过的兜底 TextureManager 必须连同它名下的配方句柄一起退役：
+        // `MaterialRecipe::textures[].asset` 是裸观察指针，句柄表随 fallback 销毁后
+        // 这些指针即悬垂。清空注册器 + 复位懒加载标记 ⇒ 下一次 lookup 会用真设备的
+        // TextureManager 重新读一遍默认配方目录（默认目录之外按需手工加载的配方会被
+        // 丢弃，这是从"无设备"进入"有设备"时唯一安全的取舍）。
+        if (fallback_tex_manager_)
+        {
+            material_recipe_registry_.Clear();
+            default_material_recipes_loaded_ = false;
+            SAFE_CLEAR(fallback_tex_manager_)
+        }
 
         sampler_manager = module_manager->GetOrCreate<SamplerManager>();
         if (!sampler_manager)
