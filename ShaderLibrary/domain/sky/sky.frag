@@ -41,6 +41,8 @@ void main()
     si.viewDir = fragDirection;
     si.screenPos = vec2(0.0);
     si.luminance = 0.0;
-    SurfaceOutput so = EvalSurface(si, 0u);
+    si.styleID = 0u;
+    const uint materialDataIndex = fragDataIndexID;
+    SurfaceOutput so = EvalSurface(si, materialDataIndex);
     WriteMaterialOutput(HGLComposeColor(vec4(so.baseColor, so.alpha)));
 }
