@@ -44,6 +44,16 @@ namespace hgl::graph::mtl
     // 不会指向被其它线程改写中的缓冲。
     static thread_local AnsiString s_last_material_program_assembly_error;
 
+    // ── ShaderLibrary 依赖闭包哈希缓存 ────────────────────────────────
+    // 原为 ComputeShaderLibraryDependencyHash 的函数内 static；提升为文件级
+    // 以便提供显式清空接口（库热替换后必须失效，见头文件注释）。
+    static hgl::Mutex s_dependency_hash_mutex;
+    static hgl::UnorderedMap<uint64, uint64> s_dependency_hash_cache;
+
+    /// 容量上限：键为「最终文档 + 根」的内容哈希，材质变体持续新增时
+    //  缓存无限增长；触顶即全清（缓存只是加速器，重建无正确性代价）。
+    constexpr int s_dependency_hash_cache_capacity = 4096;
+
     namespace
     {
         // 设备能力推导：group size ≤ min(max_mesh_work_group_size_x,
@@ -914,9 +924,6 @@ namespace hgl::graph::mtl
             if (!document || length == 0)
                 return 0;
 
-            static hgl::Mutex dependency_hash_mutex;
-            static hgl::UnorderedMap<uint64, uint64> dependency_hash_cache;
-
             const OSString root = GetShaderIncludeRoot();
             hgl::hash::FNV1aHasher64 key_hasher;
             key_hasher << HashFinalShaderSource(document, length);
@@ -924,11 +931,14 @@ namespace hgl::graph::mtl
             const uint64 document_hash = key_hasher;
 
             {
-                hgl::MutexLock lock(&dependency_hash_mutex);
+                hgl::MutexLock lock(&s_dependency_hash_mutex);
 
                 uint64 cached_hash = 0;
-                if (dependency_hash_cache.Get(document_hash, cached_hash))
+                if (s_dependency_hash_cache.Get(document_hash, cached_hash))
                     return cached_hash;
+
+                if (s_dependency_hash_cache.GetCount() >= s_dependency_hash_cache_capacity)
+                    s_dependency_hash_cache.Clear();
             }
 
             hgl::hash::FNV1aHasher64 hasher;
@@ -938,8 +948,8 @@ namespace hgl::graph::mtl
             const uint64 dependency_hash = hasher;
 
             {
-                hgl::MutexLock lock(&dependency_hash_mutex);
-                dependency_hash_cache.Add(document_hash, dependency_hash);
+                hgl::MutexLock lock(&s_dependency_hash_mutex);
+                s_dependency_hash_cache.Add(document_hash, dependency_hash);
             }
 
             return dependency_hash;
@@ -1294,6 +1304,12 @@ namespace hgl::graph::mtl
     const AnsiString &GetLastMaterialProgramAssemblyError()
     {
         return s_last_material_program_assembly_error;
+    }
+
+    void ClearShaderLibraryDependencyHashCache()
+    {
+        hgl::MutexLock lock(&s_dependency_hash_mutex);
+        s_dependency_hash_cache.Clear();
     }
 
     // ═══════════════════════════════════════════════════════════════════════

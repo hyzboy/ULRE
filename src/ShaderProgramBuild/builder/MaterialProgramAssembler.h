@@ -138,4 +138,10 @@ namespace hgl::graph::mtl
         const FixedStageInputs &fixed);
 
     const AnsiString &GetLastMaterialProgramAssemblyError();
+
+    /// 清空「最终文档 -> ShaderLibrary 依赖闭包哈希」进程级缓存。
+    /// ShaderLibrary 内容被热替换后必须调用，否则旧闭包哈希会让新库
+    /// 编出与缓存键相同的 compile_inputs_hash，错误命中旧产物。
+    /// 缓存只是加速器：清空后按需重算，无正确性代价。
+    void ClearShaderLibraryDependencyHashCache();
 }
