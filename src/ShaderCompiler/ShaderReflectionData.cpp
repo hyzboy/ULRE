@@ -76,8 +76,8 @@ namespace hgl::graph::mtl
 
     const ShaderReflectionDescriptor *ShaderReflectionData::FindDescriptor(
         const uint32_t descriptor_type,
-        const uint8_t set,
-        const uint8_t binding) const noexcept
+        const uint32_t set,
+        const uint32_t binding) const noexcept
     {
         if (descriptor_type >= SF_DESCRIPTOR_TYPE_COUNT)
             return nullptr;

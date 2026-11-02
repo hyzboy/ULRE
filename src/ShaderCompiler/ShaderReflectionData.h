@@ -29,11 +29,14 @@ namespace hgl::graph::mtl
 
     struct ShaderReflectionDescriptor
     {
+        // 与 SPVParseFlat.h::SFDescriptor(v3) 字节一致（Extract 里 memcpy 直转，
+        // sizeof 断言兜底）：set/binding/array_size u8→u16，消除绑定号静默截断。
         char name[SF_NAME_MAX_LENGTH]{};
-        uint8_t set = 0;
-        uint8_t binding = 0;
+        uint16_t set = 0;
+        uint16_t binding = 0;
+        uint16_t array_size = 0;
         uint8_t descriptor_type = 0;
-        uint8_t array_size = 0;
+        uint8_t reserved = 0;
 
         bool operator==(const ShaderReflectionDescriptor &rhs) const noexcept
         {
@@ -90,8 +93,8 @@ namespace hgl::graph::mtl
 
         const ShaderReflectionDescriptor *FindDescriptor(
             uint32_t descriptor_type,
-            uint8_t set,
-            uint8_t binding) const noexcept;
+            uint32_t set,
+            uint32_t binding) const noexcept;
 
         bool GetPushConstantEnd(uint32_t &out_end) const noexcept;
     };
