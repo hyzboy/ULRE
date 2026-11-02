@@ -40,73 +40,11 @@ namespace hgl::graph
         return DescriptSetTypeName[(size_t)type];
     }
 
-    /// 宏类别：DescriptorMacroGen 生成器按此决定 #define 的输出形态
-    enum class DescriptorMacroKind
-    {
-        SetIndex,   ///< #define <name> <集合序号>        如 BINDLESS_SET 0
-        SetAlias,   ///< #define <name> <alias_target>    （PerObject 别名宏已随集退场，暂无可选项）
-        Binding     ///< #define <name> <绑定号>          如 VERTEX_POSITION_BINDING 4
-    };
+    /// 注：`descriptor_macros.glsl` 已改由 ShaderConstGen 生成（真源
+    /// `inc/hgl/shader/contract/PipelineContract.h` 的 `DescriptorSetId`），
+    /// 原先为此服务的 `kDescriptorBindingMacros` 规范表与
+    /// `EmitDescriptorBindingDefines()` 已删除 —— 一张只为"能生成"而存在的
+    /// 常量表就是第二真源。集合号与 GLSL 宏的相等性由生成的
+    /// `inc/hgl/shader/generated/ShaderConstantsParity.gen.h` 用 static_assert 守住。
 
-    /// 描述符宏规范——ShaderLibrary/contract/descriptor_macros.glsl 生成器的唯一输入。
-    /// 每行对应生成文件中的一个 #define（含其上的注释）；数组行序即输出行序。
-    ///
-    /// 宏名与 Binding 枚举名不做机械推导（历史拼写不规则：TRANSFORMID/CHARINFO），
-    /// 一律在此表显式给出；修改绑定号只改枚举，宏文本只改本表，再重新生成 .glsl。
-    ///
-    /// blank_before/blank_after_comment 用于逐字节复刻现行手写文件的空行布局
-    ///（该文件文本经模块系统拼入 FinalGLSL 参与内容哈希，格式必须稳定）。
-    struct DescriptorBindingMacroSpec
-    {
-        DescriptorMacroKind kind;
-        DescriptorSetType set_type;    ///< 宏归属集合（SetIndex 行其值即宏值；Binding 行为绑定所在集合）
-        const char *name;              ///< SetIndex/SetAlias：集合宏名；Binding：绑定宏名
-        const char *alias_target;      ///< 仅 SetAlias：目标集合宏名；其余 nullptr
-        int binding;                   ///< 仅 Binding：绑定号（取自 Binding 枚举）；其余 -1
-        const char *comment;           ///< 输出在该宏之前的注释（可含 '\n' 表多行，行内自带 "//"；nullptr 表示无）
-        bool blank_before        = true;  ///< 本条目之前输出一个空行（连续绑定宏块为 false）
-        bool blank_after_comment = false; ///< 注释之后再输出一个空行（区块标题历史格式，仅 3 处）
-    };
-
-    /// 与 descriptor_macros.glsl 一一对应（该 .glsl 为 DescriptorMacroGen 生成物）。
-    constexpr const DescriptorBindingMacroSpec kDescriptorBindingMacros[]=
-    {
-        {DescriptorMacroKind::SetIndex,DescriptorSetType::Bindless, "BINDLESS_SET",              nullptr,                                   -1,
-            "// ── Descriptor Set 索引 ──",                            true, true},
-    };
-
-    /// 统一发射所有描述符集/绑定宏（由 C++ 单源表 kDescriptorBindingMacros 驱动）
-    template <typename StringType>
-    inline void EmitDescriptorBindingDefines(StringType &out)
-    {
-        for (const auto &spec : kDescriptorBindingMacros)
-        {
-            out += "#ifndef ";
-            out += spec.name;
-            out += "\n#define ";
-            out += spec.name;
-            out += " ";
-
-            char num_buf[32];
-            switch (spec.kind)
-            {
-            case DescriptorMacroKind::SetIndex:
-                snprintf(num_buf, sizeof(num_buf), "%d", int(spec.set_type));
-                out += num_buf;
-                break;
-
-            case DescriptorMacroKind::SetAlias:
-                if (spec.alias_target)
-                    out += spec.alias_target;
-                break;
-
-            case DescriptorMacroKind::Binding:
-                snprintf(num_buf, sizeof(num_buf), "%d", spec.binding);
-                out += num_buf;
-                break;
-            }
-
-            out += "\n#endif\n";
-        }
-    }
 }//namespace hgl::graph

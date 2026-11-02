@@ -1,14 +1,14 @@
 /// @file PipelineContract.h
 /// 渲染管线物理布局契约（描述符集序号 / 阶段间插值 location）的 C++ 真源。
 ///
-/// 这两组数字此前分别由两个单功能工具从**别处**读取后写出 GLSL：
-///   * `BINDLESS_SET` ← `inc/hgl/common/DescriptorSetTypeDef.h` 的 `kDescriptorBindingMacros`
-///     （`DescriptorMacroGen`）
-///   * `HGL_LOCATION_*` ← `ShaderSemanticRegistry` 运行期表（`InterStageLocationMacroGen`）
+/// 这两组数字此前分别由两个单功能 C++ 工具生成（`DescriptorMacroGen` /
+/// `InterStageLocationMacroGen`），各自的真源还都不在这里：前者是一张只为
+/// "能生成"而存在的 `kDescriptorBindingMacros` 规范表，后者是**运行期**注册表
+/// `ShaderSemanticRegistry` —— 都不是编译器可静态断言的形态，GLSL 侧的漂移
+/// 只能靠生成器逐字节对拍发现。
 ///
-/// 前者是一张只为了"能生成"而存在的常量表，后者是**运行期**注册表——两者都不是
-/// 编译期可静态断言的形态，所以 GLSL 侧的漂移只能靠生成器逐字节对拍发现。
-/// 现在把数值本身提升为本文件的编译期枚举：生成物、运行期表、门禁断言全部指向它。
+/// 现在数值本身提升为本文件的编译期枚举：GLSL 生成物、运行期注册表的
+/// `stable_location`、以及编译期对拍断言全部指向它。两个旧工具已删除。
 
 #pragma once
 

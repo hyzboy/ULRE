@@ -25,9 +25,16 @@ src/Tools/ShaderConstGen/shader_const_gen.py
         ├─→ ShaderLibrary/contract/sampler_presets.glsl     采样器预设宏
         ├─→ ShaderLibrary/contract/engine_constants.glsl    槽位数 / 遍数 / 拓扑 / 哨兵 / 阴影位 / SDF
         ├─→ ShaderLibrary/contract/lighting_constants.glsl  LightRow 的 type / flags / shadow_kind
+        ├─→ ShaderLibrary/contract/descriptor_macros.glsl   描述符集序号（原 DescriptorMacroGen 的产出）
+        ├─→ ShaderLibrary/contract/interstage_locations.glsl 阶段间 location（原 InterStageLocationMacroGen）
         └─→ inc/hgl/shader/generated/ShaderConstantsParity.gen.h
                                                             与遗留常量的 static_assert
 ```
+
+原 `DescriptorMacroGen` / `InterStageLocationMacroGen` 两个单功能 C++ 生成器已删除：
+它们的产物现在由本生成器统一负责（真源分别是 `PipelineContract.h` 的
+`DescriptorSetId` 与 `ShaderStageLocationId`，后者也被运行期
+`ShaderSemanticRegistry` 的 `stable_location` 引用）。
 
 `engine_constants.glsl` 会被域绑定表与 ECS 描述块无条件 `#include`，所以只放
 「全局安全」的常量；`lighting_constants.glsl` 目前没有 GLSL 消费者，单独成文件，
@@ -68,10 +75,15 @@ static_assert(static_cast<int64_t>(contract::BatchTopology::Lines)
 
 ### 2. 与手写 GLSL 对拍（生成期）
 
-`[[verify_glsl]]` 逐条检查手写 GLSL 里的 `#define` 与契约枚举同值。
-这些文件（`descriptor_macros.glsl`、`interstage_locations.glsl`、各 domain 绑定表）
-是 shader **内容哈希**的参与者，重写会一次性失效全量着色器缓存，
-因此现阶段只对拍、不改写。
+`[[verify_glsl]]` 逐条检查手写 GLSL 里的 `#define` / `const` 声明与契约枚举同值。
+目前只剩两类真正"手写"的常量需要这样盯：
+
+- `shadow_pcf.glsl` 的两个档位兜底宏（`EmitDomainOptions` 会按材质配置覆盖，
+  生成全局默认值反而会破坏「0 = 走 3x3 盒式」的可调语义）；
+- `compute/compute_transform_hierarchy.glsl` 的 `const uint INVALID_HANDLE`
+  （示例按路径直接加载，不走 `@ulre` 模块系统）。
+
+`[[require_include]]` 则反过来钉住"必须 include 生成物"的文件，防止有人把数字内联回去。
 
 ### 3. 与 `sampler.toml` 的顺序对拍（生成期）
 

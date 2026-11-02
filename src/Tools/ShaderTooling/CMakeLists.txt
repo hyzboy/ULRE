@@ -32,63 +32,10 @@ SetupToolTarget(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
-# descriptor_macros.glsl 生成器（真源：inc/hgl/common/DescriptorSetTypeDef.h）
-add_executable(DescriptorMacroGen
-    DescriptorMacroGen.cpp)
-
-target_link_libraries(DescriptorMacroGen
-    PRIVATE ULRE.ShaderProgramBuild
-            CMCore
-            CMCoreType)
-
-SetupToolTarget(DescriptorMacroGen)
-
-if(BUILD_TESTING)
-    add_test(
-        NAME VerifyDescriptorMacros
-        COMMAND DescriptorMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/descriptor_macros.glsl)
-
-    set_tests_properties(
-        VerifyDescriptorMacros
-        PROPERTIES LABELS "shader_tooling;baseline")
-endif()
-
-# 构建期校验（不止 ctest）：生成物一旦与真源漂移即构建失败。
-# 真源 = inc/hgl/common/DescriptorSetTypeDef.h 的 kDescriptorBindingMacros 规范表（SceneBinding 枚举已随集退场）。
-add_custom_target(descriptor_macros_verify ALL
-    COMMAND $<TARGET_FILE:DescriptorMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/descriptor_macros.glsl
-    DEPENDS DescriptorMacroGen
-    COMMENT "校验 descriptor_macros.glsl 与真源一致")
-
-####################################################################################################
-
-# interstage_locations.glsl 生成器（真源：ShaderSemanticRegistry 规范表）
-# stable_location 进 program 缓存键，GLSL 侧数值单边漂移不会被编译期抓到（两个 stage
-# 都用宏、各自仍自洽），故生成物必须与注册表逐条相等，构建期强制校验。
-add_executable(InterStageLocationMacroGen
-    InterStageLocationMacroGen.cpp)
-
-target_link_libraries(InterStageLocationMacroGen
-    PRIVATE ULRE.ShaderProgramBuild
-            CMCore
-            CMCoreType)
-
-SetupToolTarget(InterStageLocationMacroGen)
-
-if(BUILD_TESTING)
-    add_test(
-        NAME VerifyInterStageLocations
-        COMMAND InterStageLocationMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/interstage_locations.glsl)
-
-    set_tests_properties(
-        VerifyInterStageLocations
-        PROPERTIES LABELS "shader_tooling;baseline")
-endif()
-
-add_custom_target(interstage_locations_verify ALL
-    COMMAND $<TARGET_FILE:InterStageLocationMacroGen> --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/contract/interstage_locations.glsl
-    DEPENDS InterStageLocationMacroGen
-    COMMENT "校验 interstage_locations.glsl 与 ShaderSemanticRegistry 一致")
+# descriptor_macros.glsl / interstage_locations.glsl 的生成器已退场：
+# 两者现在都是 ShaderConstGen（src/Tools/ShaderConstGen/）的产物，真源是
+# inc/hgl/shader/contract/ 的契约枚举；构建期由 CMake 目标
+# ULRE_CodeGen_ShaderConst 自动重跑，不再需要单功能 C++ 可执行文件与 --verify 门。
 
 ####################################################################################################
 
@@ -124,7 +71,10 @@ target_include_directories(ShaderResourceSchemaRegressionGate
     PRIVATE ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)
 
 SetupToolTarget(ShaderResourceSchemaRegressionGate)
-add_dependencies(ShaderResourceSchemaRegressionGate descriptor_macros_verify)
+
+# 本门禁 include 了 ShaderConstGen 生成的 `ShaderConstantsParity.gen.h`，
+# 且运行期读取生成的 GLSL 契约文件 ⇒ 必须先跑完代码生成。
+ulre_codegen_bind(ShaderResourceSchemaRegressionGate)
 
 target_compile_definitions(ShaderResourceSchemaRegressionGate
     PRIVATE ULRE_REPO_ROOT="${CMAKE_SOURCE_DIR}")

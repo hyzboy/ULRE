@@ -1,13 +1,28 @@
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 
 #include <hgl/graph/geo/GeometryVertexFormat.h>
+#include <hgl/shader/contract/PipelineContract.h>
 #include <cstring>
 
 namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
+
+    /// 契约枚举在 hgl::shader::contract（与 hgl::graph::mtl::contract 是不同分支），
+    /// 这里起短名以免整表被全限定名淹没。
+    namespace shader_contract = ::hgl::shader::contract;
+
     namespace
     {
+        /// 稳定 location 的数值真源 = inc/hgl/shader/contract/PipelineContract.h 的
+        /// `ShaderStageLocationId`（GLSL 侧由 ShaderConstGen 生成为
+        /// ShaderLibrary/contract/interstage_locations.glsl）。本表**不再写数字**：
+        /// 加语义只改契约枚举，两侧同时到位。
+        constexpr uint32 LocationOf(const shader_contract::ShaderStageLocationId id) noexcept
+        {
+            return static_cast<uint32>(id);
+        }
+
         constexpr ShaderSemanticValueShape FloatShape(const uint8 component_count)
         {
             return {ShaderSemanticScalarType::Float, component_count};
@@ -21,16 +36,16 @@ namespace hgl::graph::mtl
         constexpr InterStageSemanticInfo InterStageSemanticRegistry[] =
         {
             {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation, nullptr},
-            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0, "HGL_LOCATION_DATA_INDEX_ID"},
-            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 1, "HGL_LOCATION_WORLD_POS"},
-            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 2, "HGL_LOCATION_WORLD_NORMAL"},
-            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 3, "HGL_LOCATION_UV0"},
-            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 5, "HGL_LOCATION_VERTEX_COLOR"},
-            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 6, "HGL_LOCATION_FRAG_DIRECTION"},
-            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 7, "HGL_LOCATION_LUMINANCE"},
-            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 8, "HGL_LOCATION_WORLD_TANGENT"},
-            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 9, "HGL_LOCATION_WORLD_BINORMAL"},
-            {InterStageSemantic::StyleID,        "fragStyleID",        UIntShape(1),  InterStageInterpolation::Flat,   1, 4, "HGL_LOCATION_STYLE_ID"}
+            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, LocationOf(shader_contract::ShaderStageLocationId::DataIndexID),   "HGL_LOCATION_DATA_INDEX_ID"},
+            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::WorldPos),      "HGL_LOCATION_WORLD_POS"},
+            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::WorldNormal),   "HGL_LOCATION_WORLD_NORMAL"},
+            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::UV0),           "HGL_LOCATION_UV0"},
+            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::VertexColor),   "HGL_LOCATION_VERTEX_COLOR"},
+            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::FragDirection), "HGL_LOCATION_FRAG_DIRECTION"},
+            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::Luminance),     "HGL_LOCATION_LUMINANCE"},
+            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::WorldTangent),  "HGL_LOCATION_WORLD_TANGENT"},
+            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, LocationOf(shader_contract::ShaderStageLocationId::WorldBinormal), "HGL_LOCATION_WORLD_BINORMAL"},
+            {InterStageSemantic::StyleID,        "fragStyleID",        UIntShape(1),  InterStageInterpolation::Flat,   1, LocationOf(shader_contract::ShaderStageLocationId::StyleID),       "HGL_LOCATION_STYLE_ID"}
         };
 
         constexpr uint32 InterStageSemanticRegistryCount =

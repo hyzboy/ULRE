@@ -188,9 +188,10 @@
 
 ## 9. 改动禁忌（踩过的坑）
 
-- **生成物禁止手改**：`ShaderLibrary/contract/descriptor_macros.glsl` 由 `DescriptorMacroGen` 依真源
-  （`DescriptorSetTypeDef.h` 枚举 + `kDescriptorBindingMacros` 表）生成，手改会让内容哈希契约红、
-  产物缓存串味（表现为「语义与名字/结构错配」「资源凭空掉行」）。改真源 → `--emit` → `--verify`。
+- **生成物禁止手改**：`ShaderLibrary/contract/descriptor_macros.glsl` 由 `ShaderConstGen` 依真源
+  （`inc/hgl/shader/contract/PipelineContract.h` 的 `DescriptorSetId` 枚举）生成，手改会让内容哈希
+  契约红、产物缓存串味（表现为「语义与名字/结构错配」「资源凭空掉行」）。改真源 →
+  `python src/Tools/ShaderConstGen/shader_const_gen.py --repo-root . --write`。
 - **并行有序表是位置耦合**：`names[] ↔ semantic_values[]`、目录行 ↔ 枚举，删中间项会静默错位；必须成对删改。
 - **别用行号定位补丁目标**（编辑途中文件会偏移）；本仓 CRLF，多行补丁易失配，优先单行锚点或带断言的字节级替换。
 - 提交：`git add -u -- <dirs>` 后**不带 pathspec** 提交（`git commit -F msg -- <paths>` 会漏文件）；
