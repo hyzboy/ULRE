@@ -21,7 +21,7 @@
 | `example/Shadow/CascadeShadowMap.cpp` | 参考用法：4 张 D32F 离屏 RT、`light_camera` 覆写矩阵、F1 之外只有 `[`/`]` 调 bias |
 | `example/Shadow/AlphaTestShadow.cpp` | alpha test 镂空阴影最小用例（masked vs fallback-opaque 对照）+ `DumpCascadeDepth` 级联深度读回报证工具 |
 | `doc/archive/alpha-test-shadow-masked-caster-fix-chain-2026-09-26.md` | ShadowCasterMasked 修复链全记录（7 层因果、两级寻址、取证方法） |
-| `src/ecs/support/TestCSMIncrementalPass.cpp` | 契约测试（Test 1-4 渲染选项、Test 5A 重绘预算、Test 5B 矩阵恒定性+覆盖率、Test 5C 旋转恒定性、Test 6A-D 逐级联 bias） |
+| `src/ecs/tests/TestCSMIncrementalPass.cpp` | 契约测试（Test 1-4 渲染选项、Test 5A 重绘预算、Test 5B 矩阵恒定性+覆盖率、Test 5C 旋转恒定性、Test 6A-D 逐级联 bias） |
 | `doc/archive/shadow-ubo-inflight-overwrite.md` | 拖拽时阴影逐帧左右/远近跳：单份 ShadowInfo 被在途帧覆写，以及分槽修复 |
 
 相关但不在本 SKILL 范围：`RenderPassRequest`（脏矩形/scissor 翻译）、`Mobility`（动静标志）、
@@ -823,7 +823,7 @@ ATS_SELFCHECK=1 ATS_D3_NOKNOB=1 ./build/out/Windows_64_Debug/AlphaTestShadow.exe
 
 ## 8. 契约测试
 
-`src/ecs/support/TestCSMIncrementalPass.cpp`（target 名 = 文件名，输出到
+`src/ecs/tests/TestCSMIncrementalPass.cpp`（target 名 = 文件名，输出到
 `build/out/Windows_<arch>_<cfg>/TestCSMIncrementalPass.exe`，必须从仓库根运行）：
 
 | 测试 | 契约 | 期望输出 |

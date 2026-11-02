@@ -652,7 +652,7 @@ node 也在跑同一批工程。⇒ 全部是**并发假象**，不是上游缺�
 
 | 模块 | 原行数 | 处置 | 理由 |
 |---|---|---|---|
-| `src/ecs` | 472 | ✅ 改为 `GLOB_RECURSE` + `source_group(TREE)`，249 行 | 22 份清单基本是 2 文件级的桩，分组名里的执行阶段序号另有唯一台帐 `.ai/skills/SKILL_EXECUTION_PHASE_ORDERING.md` |
+| `src/ecs` | 472 | ✅ 改为 `GLOB_RECURSE` + `source_group(TREE)`，249 行〔2026-11-02 再改为 `ECS_GROUP_DIRS` 显式登记 + 非递归 glob，见文末补记〕 | 22 份清单基本是 2 文件级的桩，分组名里的执行阶段序号另有唯一台帐 `.ai/skills/SKILL_EXECUTION_PHASE_ORDERING.md` |
 | `src/Vulkan` | 311 | ❌ 不改 | 清单按 Vulkan 对象域分组（`Core`/`Device\Instance`/`Device\PhysicalDevice`/`Buffer`/`Pipeline`/…），是架构地图而非目录镜像；且 `VK_DEVICE_PLATFORM_FILES` 是 Win32/Android/iOS/Mac/Wayland/XCB **六选一**的互斥源，裸扫描会把六份平台后端全捞进来 |
 | `src/SceneGraph` | 280 | ❌ 不改 | 分组名带数字分层前缀（`1.Core`/`4.Rendering`/`8.Font`/`9.Vulkan`），编码了架构层次；`FONT_PLATFORM_FILES` 同样是 Win32/FreeType 互斥 |
 | `src/ShaderGen` | 174 | ❌ 不改 | 分组是逻辑域（`Document`/`Template`/`Compile`/`GLSL Module`/`Contract`/`MeshGen`/`Builder`），与磁盘目录并非一一对应 |
@@ -670,6 +670,20 @@ node 也在跑同一批工程。⇒ 全部是**并发假象**，不是上游缺�
 连带改动一处契约测试：`src/ecs/tests/TestCSMIncrementalPass.cpp` 的 T6b「新头必须进构建注册」原本 grep `CMakeLists.txt` 里的头文件名，GLOB 之后该**判据**失效但**契约意图**（新写的头/源必须真的进构建）仍有效，故把判据升级为断言含 `file(GLOB_RECURSE ECS_HEADERS CONFIGURE_DEPENDS`，而不是删测试。
 
 > 生成器时序提醒：`CONFIGURE_DEPENDS` 下**删除**源文件时，CMake 会正确从 `.vcxproj` 移除，但同一次构建仍可能报 `C1083: Cannot open source file`（MSBuild 在重新生成前已加载旧工程）。重跑一次即绿，不要误判为配置错误。
+
+### 补记（2026-11-02）：`src/ecs` 从 `source_group(TREE)` 改为目录台帐
+
+阶段 2 的 `source_group(TREE <dir> PREFIX ECS)` 让分组完全跟随磁盘目录，代价是**分组名只能是目录名**，且 `ECS` 与 `ECS\include` 两棵树把同名 `.h` / `.cpp` 拆开。2026-11-02 的处置：
+
+1. **物理目录先分类**：`support/` 根目录清空，按职能拆 `cull` / `transform` / `storage` / `material` / `pipeline`（`line` / `primitive` / `text` 原地不动）；`core/` 拆出 `entity/` 与 `render/`；`systems/render/` 按 `ExecutionPhase` 拆 `frame` / `collect` / `buffer` / `light_shadow` / `streaming`。`inc/hgl/ecs` 与 `src/ecs` 完全镜像。
+2. **分组改由 `ECS_GROUP_DIRS` 显式登记**（`目录:IDE 组名` 一行一条），glob 从 `GLOB_RECURSE` 改为 **非递归 `GLOB`** —— 每条只管辖本层目录，子目录必须自己登记。
+3. **兜底判据**：未登记的目录不会静默漏编译 —— 全量递归 `ECS_SOURCES` / `ECS_HEADERS` 仍负责构建，未进任何分组的文件落到 `ECS\Ungrouped` 并在配置期 `message(WARNING)` 点名。
+4. **测试目标收口**：新增 `add_ecs_test(name src [EXTRA_SOURCES ...] [LIBS ...])`，统一链接 `ULRE::Engine`、调试工作目录、`FOLDER "ULRE/Tests/ECS"`；35 个测试目标由逐条 4 行样板降为一行。
+
+行数：测试目标段由 ~250 行降到 ~40 行（35 个 `add_executable` / `target_link_libraries` / `VS_DEBUGGER_WORKING_DIRECTORY` 四行样板 → 一行 `add_ecs_test()`）。验证：全量 Debug 构建 0 error，`ctest -L ecs` 19/19、`ctest -L csm` 1/1。
+
+> 教训沉淀：`GLOB_RECURSE` + `TREE` 适合「目录已经有语义」的模块；目录还是平的（22 份清单摊在一起）时，先分类目录再谈自动分组，否则 `source_group(TREE)` 只是把 22 份清单换成 1 个巨型组。
+
 
 ---
 

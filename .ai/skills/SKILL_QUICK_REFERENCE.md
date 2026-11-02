@@ -40,7 +40,7 @@
    □ 遵循命名约定
 
 □ 5. 注册系统 (5 min)
-   □ 在 src/ecs/core/DefaultSystemsCP.cpp 的Setup()中注册
+   □ 在 src/ecs/core/DefaultSystems.cpp 的Setup()中注册
    □ 使用 RegisterRenderSystem<MySystem>()
 
 □ 6. 更新自适应检测 (可选, 5 min)
@@ -79,7 +79,7 @@ namespace hgl::ecs {
 
 ### 最小System
 ```cpp
-// inc/hgl/ecs/systems/render/MyElementSystem.h
+// inc/hgl/ecs/systems/render/<phase>/MyElementSystem.h
 #include <hgl/ecs/core/System.h>
 
 namespace hgl::ecs {
@@ -91,7 +91,7 @@ namespace hgl::ecs {
     };
 }
 
-// src/ecs/systems/render/MyElementSystem.cpp
+// src/ecs/systems/render/<phase>/MyElementSystem.cpp
 #include <hgl/ecs/systems/render/MyElementSystem.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/MyElementComponent.h>
@@ -120,7 +120,7 @@ namespace hgl::ecs {
 
 ### 注册System
 ```cpp
-// src/ecs/core/DefaultSystemsCP.cpp
+// src/ecs/core/DefaultSystems.cpp
 void DefaultSystemsCP::Setup(ECSContext& context) {
     // ... 现有系统 ...
     context.RegisterRenderSystem<MyElementSystem>();
@@ -308,7 +308,7 @@ context->InvalidateAdaptiveRenderGraph();  // 重新生成
 修改现有文件：
 ├── inc/hgl/ecs/core/System.h
 │   └── 添加新ExecutionPhase值
-├── src/ecs/core/DefaultSystemsCP.cpp
+├── src/ecs/core/DefaultSystems.cpp
 │   └── 在Setup()中注册
 ├── inc/hgl/ecs/core/render/RenderGraph.h
 │   └── SceneStats添加bool字段 (可选)
@@ -364,7 +364,7 @@ if (has_component)
 - `SKILL_RENDERGRAPH_USAGE.md` - 图配置和预设
 
 源码参考：
-- `inc/hgl/ecs/core/Component.h` - Component基类
+- `inc/hgl/ecs/core/entity/ComponentRow.h` - Component基类
 - `inc/hgl/ecs/core/System.h` - System基类和ExecutionPhase
 - `inc/hgl/ecs/core/Context.h` - ECSContext API
 - `inc/hgl/ecs/core/render/RenderGraph.h` - RenderGraph数据结构

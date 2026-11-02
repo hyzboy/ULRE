@@ -82,6 +82,25 @@ inc/hgl/ecs/
 └ tests/      Test*/Probe*（判据与探针源；2026-10-14 由 support/ 迁出）
 ```
 
+**目录即架构层，也是 IDE 分组**（2026-11-02 重组）：`inc/hgl/ecs/` 与 `src/ecs/` 完全镜像，同名 `.h` / `.cpp` 落在同一目录、进同一个 `source_group`，查找实现不需要跨两棵树。新增文件的落位规则：
+
+| 层 | 目录 | 放什么 |
+|---|---|---|
+| 组件 | `components/` | 只有数据的行式组件（继承 `ComponentRow`，无虚函数） |
+| 核心 | `core/` | 世界与调度：`Context*` / `System` / `SystemGroup` / `DefaultSystems` |
+| | `core/entity/` | `Object` / `ComponentRow` / `Entity` / `EntityHandle` / `EntityGPU` / `EntityManager` |
+| | `core/render/` | 图与帧描述：`RenderGraph` / `RenderFrameCache` / `RenderPassRequest` / `RenderItem` / `PrimitiveRenderItem` / `MaterialBatch` / `ScenePipelineMode` / `ShaderProgramPipelineKey` |
+| 系统 | `systems/tick/` | 相位早于 `RenderSwapchainNextImage` 的系统 |
+| | `systems/render/frame/` | 帧边界：`RenderSystemCore` / `SwapchainNextImage` / `RenderTarget` / `SwapchainSubmit` |
+| | `systems/render/collect/` | `RenderCollect` 与 `RenderStat`：`RenderPrimitiveCollect` / `LineStats` |
+| | `systems/render/buffer/` | `RenderBufferCommit` / `RenderBufferUpload` / `RenderFrameSync` 三类 UBO 与上传系统 |
+| | `systems/render/light_shadow/` | `RenderPreBeginFrame` 中的光照/阴影/环境/调色 |
+| | `systems/render/streaming/` | 几何与纹理流式加载 |
+| 支撑 | `support/{cull,transform,storage,material,pipeline,line,primitive,text}/` | 存储、查找表、剔除、管线基类与三条子管线 |
+| 测试 | `tests/` | 独立可执行目标；CMake 统一走 `add_ecs_test()`，归入解决方案文件夹 `ULRE/Tests/ECS` |
+
+`src/ecs/CMakeLists.txt` 的 `ECS_GROUP_DIRS` 是分组的**唯一台帐**：每条只管本层目录（非递归 glob），新增子目录必须登记一行。漏登记的文件照样参与编译，但会落到 IDE 分组 `ECS\Ungrouped` 并在配置期触发 `message(WARNING)` 点名 —— 不会静默漏进构建。
+
 两个互相独立的循环（帧入口 `src/Work/WorkManager.cpp:74`）：
 
 | 循环 | 入口 | 遍历对象 | 内容 |
@@ -137,7 +156,7 @@ CreateEntity<T>(args...)                       inc/hgl/ecs/core/Context.h:369-38
 GetAllEntities(out)                            inc/hgl/ecs/core/Context.h:410
 ```
 
-`Context::CreateChildEntity(parent, desc)` 这类 API **不存在**（全仓 0 命中；只有 `src/SceneGraph/gizmo/GizmoUnified.AssetVisual.inl` 里的局部助手 `CreateChildEntityWithTransform`，非 ECSContext API）。层级用 `TransformComponent` 自带 API 组装（`inc/hgl/ecs/components/TransformComponent.h:145-154`）：`SetParent(EntityID)` / `GetParent()` / `AddChild` / `RemoveChild` / `GetChildren()`。
+`Context::CreateChildEntity(parent, desc)` 这类 API **不存在**（全仓 0 命中；只有 `src/SceneGraph/gizmo/GizmoUnified.AssetVisual.inl` 里的局部助手 `CreateChildEntityWithTransform`，非 ECSContext API）。层级**没有组件承载**（见 §2.1 表格：`TransformComponent` 已删）：父链在 `TransformDataStorage`（`inc/hgl/ecs/support/transform/TransformDataStorage.h`）里，入口 `SetParent` / `GetParent` / `AddChild` / `RemoveChild` / `GetChildCount` / `GetChild`，句柄侧走 `TransformAccessor::GetParent()`。
 
 `Transform` 的**旁路索引**是 `ECSContext` 自己的槽位名单 `static_transforms` / `movable_transforms`（`inc/hgl/ecs/core/Context.h:165-166`，`std::vector<TransformID>`，**槽位表、含空洞** `INVALID_TRANSFORM_ID`）：写入点是变换槽的申请 / 迁移（`(isMovable ? movable_transforms : static_transforms)[slot] = id`，`src/ecs/core/Context.cpp` 的 `AcquireTransformSlot` 路径与 `MigrateTransform`）——Tick 系统靠它们做到「只遍历 movable」，**遍历必须走 `ForEachMovableTransform` / `ForEachStaticTransform`**（内部跳洞）。旧的 `RegisterTransformComponent` / `MigrateTransformComponent` / `UnregisterTransformComponent` **全仓 0 命中**（按组件登记的旁路索引已随组件化退场）。
 

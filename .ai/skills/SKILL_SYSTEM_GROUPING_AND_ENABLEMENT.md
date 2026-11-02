@@ -337,4 +337,4 @@ context->Render(delta_time, custom_graph);
 - `src/ecs/core/render/RenderGraph.cpp` - 自适应图实现 (~280行)
 - `inc/hgl/ecs/core/System.h` - System基类、ExecutionPhase定义
 - `inc/hgl/ecs/core/Context.h` - GetSystemsByElementType()、SetElementTypeSystemsEnabled()
-- `src/ecs/core/DefaultSystemsCP.cpp` - 系统注册示例
+- `src/ecs/core/DefaultSystems.cpp` - 系统注册示例

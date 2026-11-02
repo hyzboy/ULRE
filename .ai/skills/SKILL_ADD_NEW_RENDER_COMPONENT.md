@@ -1,5 +1,15 @@
 # SKILL: 添加新的RenderComponent和对应系统
 
+> ⚠️ **2026-11-02 复核结论：目录已同步，API 示例已过期。**
+> - **目录**：`src/ecs` / `inc/hgl/ecs` 已按架构层重组。渲染系统按 `ExecutionPhase` 落在
+>   `systems/render/{frame,collect,buffer,light_shadow,streaming}/`；新增子目录必须在
+>   `src/ecs/CMakeLists.txt` 的 `ECS_GROUP_DIRS` 登记一行（漏登记会落 `ECS\Ungrouped` 并在配置期告警）。
+>   落位规则见 `doc/ecs-layer-architecture-and-frame-flow.md` §1。
+> - **API**：下文示例仍用已删除的 `Component` 基类 / `COMPONENT_HEADER` / `std::string` /
+>   `std::shared_ptr` / `ExecutionPhase::RenderPostProcess`（该相位不存在）——**照抄会编译失败**。
+>   现行写法以 `inc/hgl/ecs/core/System.h`、`inc/hgl/ecs/core/entity/ComponentRow.h` 与
+>   `inc/hgl/ecs/systems/render/*/` 里的真实系统为准。
+
 ## 目标
 为游戏添加新的渲染元素类型（如SkySphere、Particle、Decal、Terrain等），并自动集成到自适应RenderGraph中。
 
@@ -66,7 +76,7 @@ namespace hgl::ecs {
 创建**至少一个**核心System（多数情况需要多个）：
 
 ```cpp
-// inc/hgl/ecs/systems/render/MyElementRenderSystem.h
+// inc/hgl/ecs/systems/render/<phase>/MyElementRenderSystem.h
 #pragma once
 #include<hgl/ecs/core/System.h>
 
@@ -85,8 +95,8 @@ namespace hgl::ecs {
 ```
 
 ```cpp
-// src/ecs/systems/render/MyElementRenderSystem.cpp
-#include<hgl/ecs/systems/render/MyElementRenderSystem.h>
+// src/ecs/systems/render/<phase>/MyElementRenderSystem.cpp
+#include<hgl/ecs/systems/render/<phase>/MyElementRenderSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/MyElementComponent.h>
 
@@ -276,7 +286,7 @@ public:
     Quality quality = Quality::High;
 };
 
-// inc/hgl/ecs/systems/render/SkySphereRenderSystem.h
+// inc/hgl/ecs/systems/render/<phase>/SkySphereRenderSystem.h
 class SkySphereRenderSystem : public System {
 public:
     SkySphereRenderSystem(const std::string& name = "SkySphereRenderSystem");
@@ -286,7 +296,7 @@ private:
     std::shared_ptr<SkySphereRenderer> renderer;
 };
 
-// src/ecs/systems/render/SkySphereRenderSystem.cpp
+// src/ecs/systems/render/<phase>/SkySphereRenderSystem.cpp
 SkySphereRenderSystem::SkySphereRenderSystem(const std::string& name)
     : System(name) {
     SetSystemType(SystemType::RenderSubmit);
@@ -333,7 +343,7 @@ A:
 
 ## 参考资源
 
-- `inc/hgl/ecs/components/PrimitiveComponent.h` - Component示例
+- `inc/hgl/ecs/components/GeometryData.h` - Component示例
 - `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` - 多系统示例
 - `src/ecs/core/render/RenderGraph.cpp` - 自适应图实现
 - `inc/hgl/ecs/core/System.h` - ExecutionPhase定义

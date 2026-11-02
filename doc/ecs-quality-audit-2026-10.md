@@ -4,6 +4,11 @@
 > 方法：四路并行（我方 + 三个子代理）。
 > 本档为**只读审计**结论汇总；除本档自身外未修改任何代码。
 >
+> ⚠️ **目录布局订正（2026-11-02）**：本文是 2026-10 的审计快照，**行号与"文件数"均为当时值**。
+> `inc/hgl/ecs` 与 `src/ecs` 已按架构层重组（`support/` 分 8 个子目录、`core/` 拆 `entity` + `render`、
+> `systems/render/` 按 `ExecutionPhase` 拆 5 组），文内**路径已同步到新布局**，但行号不再校准；
+> 现行布局与落位规则见 `doc/ecs-layer-architecture-and-frame-flow.md` §1。
+>
 > 标注约定：
 > - `✅复核` = 我方亲自读源码复核过（非仅采信子代理 grep）
 > - `S1` = systems/components 分组、`S2` = core 分组、`S3` = support 分组、`M` = 我方
