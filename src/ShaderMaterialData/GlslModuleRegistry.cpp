@@ -5,6 +5,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
+#include <hgl/sync/Mutex.h>
 #include <hgl/type/Smart.h>
 #include <hgl/utf.h>
 
@@ -446,12 +447,21 @@ namespace hgl::graph::mtl
 
     GlslModuleRegistry &GetGlslModuleRegistry()
     {
+        // 单例对象本身由 C++11 magic static 保证线程安全构造；不安全的
+        // 是「首次调用扫描目录」这步复合操作：loaded 检查与 LoadDirectory
+        // 无锁时，并发首调会让追加式容器把整目录重复注册（条目翻倍、
+        // file_data 白白多占一份且互相覆盖语义不明）。锁内完成首扫。
         static GlslModuleRegistry registry;
+        static hgl::Mutex load_mutex;
         static bool loaded = false;
-        if (!loaded)
+
         {
-            registry.LoadDirectory(ToOSString(mtl::GetShaderLibraryPath()));
-            loaded = true;
+            hgl::MutexLock lock(&load_mutex);
+            if (!loaded)
+            {
+                registry.LoadDirectory(ToOSString(mtl::GetShaderLibraryPath()));
+                loaded = true;
+            }
         }
         return registry;
     }

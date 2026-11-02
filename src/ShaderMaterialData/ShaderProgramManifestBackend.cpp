@@ -2,6 +2,7 @@
 
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/log/Log.h>
+#include <hgl/sync/Mutex.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
@@ -23,34 +24,60 @@ namespace hgl::graph::mtl
             bool profile_warned = false;
         };
 
-        ManifestState &State()
+        /// 覆盖清单状态表的读改写。内部 StateFor/FindState/LoadManifest/
+        /// WarnIfProfileMismatch 一律不加锁（hgl::Mutex 不可重入），
+        /// 由各公开入口在边界处持锁。
+        hgl::Mutex g_manifest_mutex;
+
+        /// 每个 store 一份独立状态：多 store（多 artifact 根）交替调用不再
+        /// 互相顶掉清空、反复重读盘。store 数量很少，线性查找即可；
+        /// 卸载时整表释放——否则 store 析构后地址复用会错误命中旧表。
+        hgl::ValueArray<ManifestState *> g_manifest_states;
+
+        /// 持锁下：查找某 store 的状态，没有则返回 nullptr（不创建）
+        ManifestState *FindStateFor(ShaderArtifactStore *store)
         {
-            static ManifestState state;
-            return state;
+            for (int i = 0; i < g_manifest_states.GetCount(); ++i)
+            {
+                if (g_manifest_states[i]->store == store)
+                    return g_manifest_states[i];
+            }
+            return nullptr;
+        }
+
+        /// 持锁下：查找某 store 的状态，没有则创建
+        ManifestState &StateFor(ShaderArtifactStore *store)
+        {
+            if (ManifestState *found = FindStateFor(store))
+                return *found;
+            ManifestState *state = new ManifestState();
+            state->store = store;
+            g_manifest_states.Add(state);
+            return *state;
+        }
+
+        /// 持锁下：释放全部状态缓冲
+        void ReleaseAllStates()
+        {
+            for (int i = 0; i < g_manifest_states.GetCount(); ++i)
+                delete g_manifest_states[i];
+            g_manifest_states.Clear();
         }
 
         /// 绑定到某个 store 的清单。首次调用读盘；读不到只代表「还没有条目」，
-        /// 记录路径仍然可用（第一次烘焙会建出文件）。
+        /// 记录路径仍然可用（第一次烘焙会建出文件）。须持锁调用。
         bool LoadManifest(ShaderArtifactStore *store)
         {
-            ManifestState &state = State();
+            if (!store)
+                return false;
 
-            if (state.store != store)
-            {
-                state.store = store;
-                state.manifest.Clear();
-                state.path = store
-                    ? MakeShaderProgramManifestPath(store->GetRootPath())
-                    : OSString();
-                state.load_attempted = false;
-                state.stale_warned = false;
-                state.profile_warned = false;
-            }
+            ManifestState &state = StateFor(store);
 
             if (state.load_attempted)
                 return !state.manifest.IsEmpty();
 
             state.load_attempted = true;
+            state.path = MakeShaderProgramManifestPath(store->GetRootPath());
 
             if (state.path.IsEmpty())
                 return false;
@@ -102,12 +129,22 @@ namespace hgl::graph::mtl
 
         class ManifestShaderProgramBuildBackend final : public ShaderProgramBuildBackend
         {
+            /// Ensure 时装绑的 store；CreateBuildContext 不再依赖「最近一次
+            /// Record 用的 store」这种全局游标（多 store 时会被顶掉）。
+            ShaderArtifactStore *bound_store = nullptr;
+
+        public:
+            void SetBoundStore(ShaderArtifactStore *store) { bound_store = store; }
+            ShaderArtifactStore *GetBoundStore() const { return bound_store; }
+
             ShaderBuildContext *CreateBuildContext(
                 const contract::PhysicalDeviceProfileLite *profile,
                 const ResolvedMaterial &definition,
                 const MaterialBuildRequest &request) override
             {
-                ShaderArtifactStore *store = State().store;
+                hgl::MutexLock lock(&g_manifest_mutex);
+
+                ShaderArtifactStore *store = bound_store;
                 if (!store || !LoadManifest(store))
                 {
                     GLogError("[ShaderProgramManifest] no manifest available for id=%s "
@@ -116,7 +153,7 @@ namespace hgl::graph::mtl
                     return nullptr;
                 }
 
-                ManifestState &state = State();
+                ManifestState &state = StateFor(store);
                 WarnIfProfileMismatch(state, profile);
 
                 const uint64 lookup_key =
@@ -224,21 +261,24 @@ namespace hgl::graph::mtl
         if (!store)
             return false;
 
+        hgl::MutexLock lock(&g_manifest_mutex);
         LoadManifest(store);
-        SetShaderProgramBuildBackend(GetBackendInstance());
+        ManifestShaderProgramBuildBackend *backend = GetBackendInstance();
+        backend->SetBoundStore(store);
+        SetShaderProgramBuildBackend(backend);
         return true;
     }
 
     void UninstallShaderProgramManifestBackend()
     {
+        hgl::MutexLock lock(&g_manifest_mutex);
         if (GetShaderProgramBuildBackend() == GetBackendInstance())
             SetShaderProgramBuildBackend(nullptr);
 
-        ManifestState &state = State();
-        state.manifest.Clear();
-        state.store = nullptr;
-        state.path.Clear();
-        state.load_attempted = false;
+        GetBackendInstance()->SetBoundStore(nullptr);
+        // 释放全部按 store 独立持有的清单缓冲：store 随后可能析构，
+        // 残留状态表会让地址复用错误命中旧清单。
+        ReleaseAllStates();
     }
 
     bool RecordShaderProgramManifestEntry(
@@ -249,9 +289,10 @@ namespace hgl::graph::mtl
         if (!store || store->GetCacheMode() == ShaderCacheMode::ReadOnly)
             return false;
 
-        ManifestState &state = State();
+        hgl::MutexLock lock(&g_manifest_mutex);
         LoadManifest(store);
 
+        ManifestState &state = StateFor(store);
         if (state.path.IsEmpty())
             return false;
 
@@ -280,6 +321,9 @@ namespace hgl::graph::mtl
 
     uint32 GetShaderProgramManifestEntryCount()
     {
-        return State().manifest.GetEntryCount();
+        hgl::MutexLock lock(&g_manifest_mutex);
+        ShaderArtifactStore *store = GetBackendInstance()->GetBoundStore();
+        const ManifestState *state = store ? FindStateFor(store) : nullptr;
+        return state ? state->manifest.GetEntryCount() : 0;
     }
 }//namespace hgl::graph::mtl

@@ -4,6 +4,7 @@
 #include <hgl/asset/generated/SamplerPresetSerialize.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
+#include <hgl/sync/Mutex.h>
 #include <hgl/serialize/TomlCodec.h>
 #include <hgl/type/Smart.h>
 
@@ -13,16 +14,23 @@ namespace hgl::graph::mtl
 {
     namespace
     {
+        /// 全局采样器库写锁：并发 Load()/Clear() 串行化，防止双写损坏容器。
+        /// 读侧（GetIndex/GetCount/GetCreateInfo）保持无锁：假定「编译并发期
+        /// 库不变」——Load 只在引擎初始化或单线程工具阶段调用（现状如此，
+        /// 头文件注释已声明该契约）。
+        hgl::Mutex g_sampler_library_write_mutex;
     }//anonymous namespace
 
     SamplerPresetLibrary &SamplerPresetLibrary::Instance()
     {
+        // C++11 函数级 static（magic static）构造本身线程安全，无需额外加锁。
         static SamplerPresetLibrary instance;
         return instance;
     }
 
     void SamplerPresetLibrary::Clear()
     {
+        hgl::MutexLock lock(&g_sampler_library_write_mutex);
         infos_.clear();
         name_to_index_.Clear();
     }
@@ -54,6 +62,9 @@ namespace hgl::graph::mtl
 
     bool SamplerPresetLibrary::Load(const OSString &path)
     {
+        // 写锁罩住整函数：临时容器构建 + 末尾成员替换与并发 Load/Clear 互斥。
+        hgl::MutexLock write_lock(&g_sampler_library_write_mutex);
+
         hgl::io::OpenFileInputStream opener(path);
         if (!opener)
         {
