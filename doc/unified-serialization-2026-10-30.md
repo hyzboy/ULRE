@@ -4,7 +4,7 @@
 > 生成器现在**只产两份与格式无关的文件**（`<Group>Meta.gen.h` / `<Group>Serialize.gen.h`），
 > 不再产出 `<Group>Toml.gen.h`、`<Group>Flat.gen.h`、`<Group>Codec.gen.h`、`.fbs`
 > 与 `flatc` 头。下文凡出现这些名字，都是「改造前」的历史形态（保留作背景说明）；
-> 现行口径以 `src/Tools/AssetGen/README.md` 与 `inc/hgl/serialize/` 为准。
+> 现行口径以 `src/Tools/AssetGen/README.md` 与 `hgl/serialize/` 为准。
 > 4 个资产文件（场景 / 几何 / 图元 / 材质配方）已全部改走
 > `FromTomlText` → `Value` → `ReadFromValue` 的单一路径，源码里不再出现 `toml::value`。
 
@@ -57,15 +57,35 @@ hgl::serialize::Archive  ──►  hgl::serialize::Value（有序值树）
 
 ## 3. 头文件布局
 
+> **物理位置（2026-12 下沉）**：反射与归档内核已迁到公共库 `CMAssetsManage`，
+> 编解码后端留在主仓。`#include <hgl/serialize/...>` / `<hgl/asset/...>` 形态**未变**，
+> 只是物理目录从 `inc/` 变成两个 `inc/`：
+>
+> | 归属 | 物理目录 | 文件 |
+> |---|---|---|
+> | `CMAssetsManage`（公共库） | `CMAssetsManage/inc/hgl/serialize/` | `Value.h`、`Container.h`、`EnumMeta.h`、`Archive.h`、`Traits.h`、`MetaSchema.h` |
+> | `CMAssetsManage`（公共库） | `CMAssetsManage/inc/hgl/asset/` | `AssetObject.h`、`AssetAnnotation.h`（`HGL_ASSET_STRUCT` / `HGL_PROPERTY` 宏） |
+> | ULRE 主仓 | `inc/hgl/serialize/` | `TomlCodec.h`、`FlatCodec.h`、`ArchiveFile.h` |
+> | ULRE 主仓 | `inc/hgl/asset/generated/` | `*.gen.h`（AssetGen 产物，ULRE 领域结构专属） |
+>
+> 分割依据是**第三方依赖**：内核只依赖 `CMCore` / `CMCoreType` / `CMMath`；两个后端
+> 分别引入 vendored 的 `inc/toml/toml.hpp` 与 vcpkg 的 flatbuffers，
+> 搬进公共库会让它反向依赖主仓头文件搜索路径。依赖方向保持
+> `CMCoreType ← CMMath ← hgl/serialize(内核) ← hgl/serialize(后端) ← 具体资产`。
+
 | 文件 | 职责 |
 |---|---|
-| `inc/hgl/serialize/Value.h` | 通用值树：Null / Bool / Int / UInt / Float / Double / String / Array / **有序** Table |
-| `inc/hgl/serialize/Traits.h` | 标量、HGL 字符串、枚举名、数学向量；`EnumTraits<T>` / `StructSerializer<T>` 扩展点 |
-| `inc/hgl/serialize/Container.h` | HGL 容器的四类抽象形态与降级适配 |
-| `inc/hgl/serialize/Archive.h` | 统一游标：`ar.Field(id, name, v)`，读写同源 |
-| `inc/hgl/serialize/TomlCodec.h` | `Value ↔ toml::value`（含文本解析/输出） |
-| `inc/hgl/serialize/FlatCodec.h` | `Value ↔ FlatBuffers`（`ClassMetaInfo` 驱动，两趟构建，自带 Verifier） |
-| `inc/hgl/serialize/ArchiveFile.h` | **文件门面**：按文件名后缀选后端，资产落盘/读盘唯一入口 |
+| `hgl/serialize/Value.h` | 通用值树：Null / Bool / Int / UInt / Float / Double / String / Array / **有序** Table |
+| `hgl/serialize/Traits.h` | 标量、HGL 字符串、枚举名、数学向量；`EnumTraits<T>` / `StructSerializer<T>` 扩展点 |
+| `hgl/serialize/Container.h` | HGL 容器的四类抽象形态与降级适配 |
+| `hgl/serialize/Archive.h` | 统一游标：`ar.Field(id, name, v)`，读写同源 |
+| `hgl/serialize/EnumMeta.h` | `HGL_ENUM_BEGIN` / `HGL_ENUM_ITEM` 登记块与 `EnumMeta<T>` 名字↔值真源 |
+| `hgl/serialize/MetaSchema.h` | `ClassMetaInfo` 自省入口（`AssetObject` 的属性表） |
+| `hgl/asset/AssetObject.h` | `PropertyMetaInfo` / `ClassMetaInfo` / `PropertyValue` + `AssetState` |
+| `hgl/asset/AssetAnnotation.h` | `HGL_ASSET_STRUCT` / `HGL_ASSET_CLASS` / `HGL_PROPERTY` 注解宏 |
+| `hgl/serialize/TomlCodec.h` | `Value ↔ toml::value`（含文本解析/输出） |
+| `hgl/serialize/FlatCodec.h` | `Value ↔ FlatBuffers`（`ClassMetaInfo` 驱动，两趟构建，自带 Verifier） |
+| `hgl/serialize/ArchiveFile.h` | **文件门面**：按文件名后缀选后端，资产落盘/读盘唯一入口 |
 
 ## 4. 容器抽象形态与后端降级
 

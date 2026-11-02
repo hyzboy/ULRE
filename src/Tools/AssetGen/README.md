@@ -10,6 +10,16 @@ TOML 与 FlatBuffers **不生成代码**：它们是 `hgl::serialize` 的两个�
 （`inc/hgl/serialize/TomlCodec.h` / `FlatCodec.h`），由 `Value` 值树驱动。
 本工具不参与编译产物，只在需要时手动（或 CI 里）运行。
 
+> **`hgl/serialize` 的物理位置已分裂成两处**（`#include <hgl/serialize/...>` 形态不变）：
+>
+> | 部分 | 位置 | 内容 |
+> |---|---|---|
+> | 反射与归档内核 | `CMAssetsManage/inc/hgl/serialize/` | `Value.h`、`Container.h`、`EnumMeta.h`、`Archive.h`、`Traits.h`、`MetaSchema.h`（同处还有 `CMAssetsManage/inc/hgl/asset/AssetObject.h`、`AssetAnnotation.h`） |
+> | 编解码后端 | `inc/hgl/serialize/`（本仓） | `TomlCodec.h`、`FlatCodec.h`、`ArchiveFile.h`；前者引入 vendored 的 `inc/toml/toml.hpp`，后者引入 vcpkg 的 flatbuffers |
+>
+> 因此本工具的默认 include 根包含 `CMAssetsManage/inc` —— 结构头里的
+> `#include <hgl/asset/AssetAnnotation.h>` / `<hgl/serialize/Archive.h>` 靠它解析。
+
 ## 1. 一条规则
 
 > C++ 结构是唯一真源；派生物一律由工具生成，不允许手改。
@@ -96,7 +106,8 @@ Serialize.gen.h ──► Archive ──► Value 树 ──┬──► TomlCod
 ### CMake 构建期自动再生成（默认开启）
 
 `cmake/codegen.cmake` 已把本工具接进构建：`inc/**`、`CMCoreType/inc/**`、
-`CMCore/inc/**`、`CMMath/inc/**` 下的头文件、`asset_gen.py` 或 `asset_gen.toml`
+`CMCore/inc/**`、`CMMath/inc/**`、`CMAssetsManage/inc/**` 下的头文件、
+`asset_gen.py` 或 `asset_gen.toml`
 任一变化时，会在编译消费生成头的 target 之前自动重跑并写盘，无需手动执行脚本。
 
 - `-DULRE_ENABLE_CLANG_CODEGEN=OFF` 关闭（默认 `ON`）
@@ -144,8 +155,8 @@ pwsh -NoProfile -File scripts\run-assetgen.ps1 -Check -Clang "C:\clang\bin\clang
 
 其他开关：`--only <Group>` 只处理一个分组（调试用）。
 
-依赖目录：默认 `inc`、`CMCoreType/inc`、`CMCore/inc`、`CMMath/inc`；第三方头（glm、
-flatbuffers）用环境变量追加：
+依赖目录：默认 `inc`、`CMCoreType/inc`、`CMCore/inc`、`CMMath/inc`、`CMAssetsManage/inc`；
+第三方头（glm、flatbuffers）用环境变量追加：
 
 ```
 HGL_ASSETGEN_INCLUDE_DIRS=D:\vcpkg\installed\x64-windows\include

@@ -40,7 +40,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - py<3.11
     import tomli as tomllib  # type: ignore
 
-DEFAULT_INCLUDE_DIRS = ("inc", "CMCoreType/inc", "CMCore/inc", "CMMath/inc")
+DEFAULT_INCLUDE_DIRS = ("inc", "CMCoreType/inc", "CMCore/inc", "CMMath/inc", "CMAssetsManage/inc")
 
 # `struct HGL_ASSET_STRUCT Name` / `class HGL_ASSET_CLASS Name`
 ANNOT_RE = re.compile(

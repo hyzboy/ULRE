@@ -69,7 +69,7 @@
 
 依赖的输入面：
 
-- `inc/**`、`CMCoreType/inc/**`、`CMCore/inc/**`、`CMMath/inc/**` 下的头文件
+- `inc/**`、`CMCoreType/inc/**`、`CMCore/inc/**`、`CMMath/inc/**`、`CMAssetsManage/inc/**` 下的头文件
 - `src/Tools/AssetGen/asset_gen.py`
 - `src/Tools/AssetGen/asset_gen.toml`
 
