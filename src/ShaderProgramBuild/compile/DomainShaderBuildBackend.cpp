@@ -107,7 +107,8 @@ namespace hgl::graph::mtl
             else
                 out_text.Clear();
 
-            delete[] static_cast<uint8 *>(file_data);
+            // LoadFileToMemory 分配的是 char[]：配对 char* 释放（uint8* 双关为 UB）。
+            delete[] static_cast<char *>(file_data);
             return true;
         }
 

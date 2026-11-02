@@ -172,7 +172,9 @@ namespace hgl::graph::mtl
         }
         while (false);
 
-        delete[] static_cast<uint8 *>(file_data);
+        // LoadFileToMemory 以 new char[] 分配：必须配对 char* 释放，
+        // 转成 uint8* 再 delete[] 是指针类型双关 UB。
+        delete[] static_cast<char *>(file_data);
         if (!success)
             out_spv.Clear();
 
@@ -315,7 +317,8 @@ namespace hgl::graph::mtl
         }
         while (false);
 
-        delete[] static_cast<uint8 *>(file_data);
+        // 同 LoadStageSPV：char[] 配对释放，禁止 uint8* 双关 delete[]。
+        delete[] static_cast<char *>(file_data);
         if (!success)
             out_metadata = {};
         return success;

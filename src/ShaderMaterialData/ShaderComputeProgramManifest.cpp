@@ -189,7 +189,8 @@ namespace hgl::graph::mtl
         }
         while (false);
 
-        delete[] static_cast<uint8 *>(file_data);
+        // LoadFileToMemory 分配的是 char[]：配对 char* 释放（uint8* 双关为 UB）。
+        delete[] static_cast<char *>(file_data);
 
         if (!success)
             Clear();
