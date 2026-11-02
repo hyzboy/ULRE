@@ -92,8 +92,7 @@ SOURCE_GROUP("Builder" FILES ${BUILDER_FILES})
 # 本清单不再重复列出 ShaderGenContract / PhysicalDeviceProfile{Adapter,Json} /
 # ProfileTargetVersion 四头，避免同一头被两个目标重复登记。
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
+# include 路径全部挂在目标上（include_directories 会污染本目录后续所有目标）。
 add_cm_library(ULRE.ShaderProgramBuild "ULRE"
     ${SHADERPROGRAMBUILD_INCLUDE_PATH}
 
@@ -111,6 +110,7 @@ target_link_libraries(ULRE.ShaderProgramBuild PUBLIC ULRE.ShaderRuntimeContract
                                                     ULRE.ShaderCompiler
                                                     ULRE.Debug)
 
+# 仅本模块目录内的相对 include。ShaderCompiler 模块私有头与插件契约头
+# （SPVParseFlat.h）由 ULRE.ShaderCompiler 的 PUBLIC 接口传播，不再硬编码路径。
 target_include_directories(ULRE.ShaderProgramBuild PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/ShaderCompiler
-    ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)
+    ${CMAKE_CURRENT_SOURCE_DIR})

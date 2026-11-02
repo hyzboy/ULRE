@@ -13,8 +13,9 @@
 # 约束：
 #   1. 只收「编译/反射」本身，不收任何构建后端实现（后端通过钩子安装）
 #   2. 公共 API 只在 inc/hgl/ShaderCompilerAPI.h，本目录其余头是模块私有
-#   3. SPVParseFlat.h 属于插件源码（src/Tools/GLSLCompiler），此处只 PRIVATE 引用，
-#      不复制——flat 格式的 ABI 单一真源在插件侧
+#   3. SPVParseFlat.h 属于插件源码（src/Tools/GLSLCompiler），不复制——flat 格式的
+#      ABI 单一真源在插件侧；本模块经 PUBLIC 接口把该路径传播给引用
+#      ShaderReflectionData.h 的消费者（ShaderProgramBuild / ShaderTooling 门禁）
 
 set(SHADERCOMPILER_FILES
     GLSLCompiler.cpp
@@ -32,5 +33,8 @@ target_link_libraries(ULRE.ShaderCompiler PUBLIC ULRE.ShaderRuntimeContract
                                                  ULRE.Debug)
 
 # SPVParseFlat.h 只在插件源码目录里有一份（flat 文件格式的单一真源）。
-target_include_directories(ULRE.ShaderCompiler PRIVATE
+# 模块私有头（ShaderReflectionData.h 等）与插件契约头经 PUBLIC 接口传播，
+# 消费者（ULRE.ShaderProgramBuild / 门禁工具）链接后即获得，无需硬编码路径。
+target_include_directories(ULRE.ShaderCompiler PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)

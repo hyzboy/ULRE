@@ -67,8 +67,7 @@ target_link_libraries(ShaderResourceSchemaRegressionGate
             CMCore
             CMMath
             CMCoreType)
-target_include_directories(ShaderResourceSchemaRegressionGate
-    PRIVATE ${CMAKE_SOURCE_DIR}/src/Tools/GLSLCompiler)
+# SPVParseFlat.h / ShaderReflectionData.h 路径经 ULRE.ShaderCompiler PUBLIC 接口传播。
 
 SetupToolTarget(ShaderResourceSchemaRegressionGate)
 
