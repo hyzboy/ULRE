@@ -43,6 +43,11 @@
 #include "ShaderProgramBuild/builder/MaterialProgramAssembler.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/graph/font/CharQuadConfig.h>
+
+// 契约枚举 ↔ 遗留 C++ 常量的编译期对拍（由 ShaderConstGen 生成）。
+// 放在门禁 TU 里：这些 static_assert 需要 GPUCullSystem / EntityGPU / LightRow 等
+// 重头文件，普通编译单元不该为此付代价。
+#include <hgl/shader/generated/ShaderConstantsParity.gen.h>
 #include "VertexBuilderCommon.h"
 #include "StageBuildContextTest.h"
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
@@ -4719,6 +4724,24 @@ namespace
         return defines;
     }
 
+    /// 结构长度宏的两处来源：GLSL 文件本体 + ShaderConstGen 生成物。
+    /// `ENTITY_GPU_SLOT_COUNT` 等已收敛为 `inc/hgl/shader/contract/*.h` 的契约常量
+    /// （GLSL 侧由 ShaderLibrary/contract/engine_constants.glsl 提供），文件本体只剩
+    /// `#include`，所以查找表必须并上生成物。本文件内的定义优先。
+    static std::vector<std::pair<std::string, size_t>> CollectDefineConstantsWithContract(
+        const std::string &comment_stripped_text)
+    {
+        auto defines = CollectDefineConstants(comment_stripped_text);
+
+        std::string contract_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/contract/engine_constants.glsl"));
+        StripCommentTokens(contract_text);
+        for (auto &entry : CollectDefineConstants(contract_text))
+            defines.push_back(std::move(entry));
+
+        return defines;
+    }
+
     /// 字段的存储尺寸（本结构词汇表内）：uint=4 / uint8=1；数组 = 元素 × 长度。
     /// dim 为字面量直接用；为宏名则查 defines（CollectDefineConstants 产出）。
     static bool StructFieldStorageSize(const StructFieldEntry &field,
@@ -4991,7 +5014,7 @@ namespace
         // GLSL 总存储尺寸必须恰为 128 B（数组步长契约：88 载荷 + 显式 _pad）
         std::string glsl_stripped = glsl_text;
         StripCommentTokens(glsl_stripped);
-        const auto glsl_defines = CollectDefineConstants(glsl_stripped);
+        const auto glsl_defines = CollectDefineConstantsWithContract(glsl_stripped);
         size_t glsl_bytes = 0;
         for (const StructFieldEntry &f : glsl_fields)
         {
@@ -5101,7 +5124,7 @@ namespace
         // GLSL 总存储必须恰为 64 B（行步长契约；不写行尾 `_pad1[2]` 会得 48 B）
         std::string glsl_stripped = glsl_text;
         StripCommentTokens(glsl_stripped);
-        const auto glsl_defines = CollectDefineConstants(glsl_stripped);
+        const auto glsl_defines = CollectDefineConstantsWithContract(glsl_stripped);
         size_t glsl_bytes = 0;
         for (const StructFieldEntry &f : glsl_fields)
         {
@@ -5264,7 +5287,7 @@ namespace
         // 步长契约：载荷 + _pad == 128（池行 sizeof；scalar layout 无隐式填充）
         std::string glsl_stripped = glsl_text;
         StripCommentTokens(glsl_stripped);
-        const auto glsl_defines = CollectDefineConstants(glsl_stripped);
+        const auto glsl_defines = CollectDefineConstantsWithContract(glsl_stripped);
 
         size_t glsl_bytes = 0;
         for (const StructFieldEntry &f : glsl_fields_all)

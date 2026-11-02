@@ -1,29 +1,31 @@
 # ============================================================================
 # codegen.cmake —— Clang AST 派生产物的构建期再生成
 #
-# 背景：
-#   inc/hgl/asset/generated/*.gen.h 由 src/Tools/AssetGen/asset_gen.py 通过
-#   clang++ 的 AST（-ast-dump=json / -fdump-record-layouts-complete）生成。
-#   产物提交在仓库里，所以**只用 MSVC 的构建永远不需要 Clang**；但一旦改了带
-#   HGL_ASSET_STRUCT / HGL_ASSET_CLASS 注解的结构体，或改了 asset_gen.toml，
-#   就必须重跑生成器，否则 .gen.h 与 C++ 真源脱节。
+# 两个生成器，同一套策略（改真源 ⇒ 构建前自动重跑 ⇒ 生成物落回源码树）：
 #
-# 本模块把这一步接进 CMake：输入头文件 / 生成器 / 配置任一变化时，在**编译任何
-# 消费生成头的 target 之前**自动重跑 asset_gen.py。
+#   AssetGen        inc/hgl/asset/generated/*.gen.h
+#                   ← 带 HGL_ASSET_STRUCT / HGL_ASSET_CLASS 注解的结构
+#   ShaderConstGen  ShaderLibrary/contract/*.glsl
+#                   inc/hgl/shader/generated/ShaderConstantsParity.gen.h
+#                   ← 带 HGL_SHADER_ENUM 注解的契约枚举
+#
+# 产物提交在仓库里，所以**只用 MSVC 的构建永远不需要 Clang**；但一旦改了真源，
+# 就必须重跑生成器，否则生成物与真源脱节。
 #
 # 设计约束：
 #   * 可选可降级：找不到 Python 3.11+ 或 clang++ 时只打 STATUS 并跳过，
-#     不破坏「只用已提交 .gen.h」的构建；要用硬门禁请设
+#     不破坏「只用已提交生成物」的构建；要用硬门禁请设
 #     -DULRE_REQUIRE_CLANG_CODEGEN=ON。
 #   * 幂等：生成器内容未变时不写盘，不会造成无谓重编译。
-#   * 产物仍落在源码树（与现状一致），因此 `#include <hgl/asset/generated/...>`
-#     的写法不用改。
+#   * 产物仍落在源码树（与现状一致），因此 include 写法不用改。
 # ============================================================================
 
 option(ULRE_ENABLE_CLANG_CODEGEN
-       "构建期自动运行 Clang AST 代码生成（AssetGen）" ON)
+       "构建期自动运行 Clang AST 代码生成（AssetGen / ShaderConstGen）" ON)
 option(ULRE_REQUIRE_CLANG_CODEGEN
        "ULRE_ENABLE_CLANG_CODEGEN=ON 但缺少 Python/Clang 时直接报错" OFF)
+option(ULRE_ENABLE_SHADER_CONST_CODEGEN
+       "构建期自动运行 ShaderConstGen（C++ 契约枚举 → GLSL 宏 + static_assert 头）" ON)
 
 set(ULRE_CLANGXX "" CACHE FILEPATH
     "Clang-AST 代码生成使用的 clang++（留空自动探测，也可用环境变量 HGL_CLANG）")
@@ -207,9 +209,53 @@ function(ulre_codegen_configure)
     foreach(_d IN LISTS _includes)
         message(STATUS "[CodeGen]   include: ${_d}")
     endforeach()
+
+    # ── ShaderConstGen：C++ 契约枚举 → GLSL 宏 + static_assert 头 ─────────────
+    # 输入面 = 契约头 + 生成器自身 + 策略 toml + 被对拍的 GLSL 与 sampler.toml。
+    # 生成物落在源码树（ShaderLibrary/contract/、inc/hgl/shader/generated/），
+    # 与 AssetGen 同策略：提交在仓库里，MSVC-only 构建不需要 clang。
+    if(ULRE_ENABLE_SHADER_CONST_CODEGEN)
+        set(_const_tool "${_root}/src/Tools/ShaderConstGen/shader_const_gen.py")
+        set(_const_cfg  "${_root}/src/Tools/ShaderConstGen/shader_const_gen.toml")
+        set(_const_contracts "${_root}/inc/hgl/shader/contract")
+        if(NOT EXISTS "${_const_tool}" OR NOT EXISTS "${_const_cfg}")
+            message(STATUS "[CodeGen] 跳过 ShaderConstGen：找不到生成器或策略 toml")
+        else()
+            file(GLOB_RECURSE _const_inputs CONFIGURE_DEPENDS
+                 "${_const_contracts}/*.h"
+                 "${_root}/src/Tools/ShaderConstGen/*.py"
+                 "${_root}/ShaderLibrary/*.glsl"
+                 "${_root}/ShaderLibrary/contract/*.toml")
+
+            # 注意不要强制 PYTHONIOENCODING=utf-8：生成器输出含中文，
+            # 强制 UTF-8 会让 GBK 控制台（MSBuild 默认）显示成乱码。
+            # clang AST 的解码在 Python 内部显式指定 UTF-8，与 stdout 编码无关。
+            add_custom_command(
+                OUTPUT "${_stamp_dir}/shader_const.stamp"
+                COMMAND "${_python}" "${_const_tool}"
+                        --repo-root "${_root}"
+                        --config   "${_const_cfg}"
+                        --clang    "${_clang}"
+                        --write
+                COMMAND "${CMAKE_COMMAND}" -E touch "${_stamp_dir}/shader_const.stamp"
+                DEPENDS "${_const_tool}" "${_const_cfg}" ${_const_inputs}
+                COMMENT "[CodeGen] ShaderConstGen：扫描 HGL_SHADER_ENUM 契约枚举，刷新 GLSL 宏与 parity 头"
+                VERBATIM)
+
+            add_custom_target(ULRE_CodeGen_ShaderConst
+                DEPENDS "${_stamp_dir}/shader_const.stamp"
+                SOURCES "${_const_tool}" "${_const_cfg}")
+            set_target_properties(ULRE_CodeGen_ShaderConst PROPERTIES FOLDER "CodeGen")
+
+            list(APPEND ULRE_CODEGEN_TARGET ULRE_CodeGen_ShaderConst)
+            message(STATUS "[CodeGen] ShaderConstGen 构建期再生成已启用")
+        endif()
+    endif()
+
+    set(ULRE_CODEGEN_TARGET "${ULRE_CODEGEN_TARGET}" PARENT_SCOPE)
 endfunction()
 
-# 把代码生成挂到消费生成头的 target 之前；不存在的 target 静默跳过。
+# 把代码生成挂到消费生成物的 target 之前；不存在的 target 静默跳过。
 function(ulre_codegen_bind)
     if(NOT ULRE_CODEGEN_AVAILABLE OR NOT ULRE_CODEGEN_TARGET)
         return()

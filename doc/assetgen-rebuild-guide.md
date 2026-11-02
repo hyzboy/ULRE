@@ -78,6 +78,7 @@
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `ULRE_ENABLE_CLANG_CODEGEN` | `ON` | 是否启用构建期再生成 |
+| `ULRE_ENABLE_SHADER_CONST_CODEGEN` | `ON` | 是否启用 ShaderConstGen（C++ 契约枚举 → GLSL 宏 + parity 头） |
 | `ULRE_REQUIRE_CLANG_CODEGEN` | `OFF` | `ON` 时缺少 Python/Clang 直接报错，而不是静默跳过 |
 | `ULRE_CLANGXX` | 空 | 指定 `clang++`（也可用环境变量 `HGL_CLANG`） |
 | `ULRE_CODEGEN_PYTHON` | 空 | 指定 Python 3.11+ 解释器 |
@@ -87,9 +88,24 @@
 # 关闭构建期再生成（仍可用第 5 节的脚本手动生成）
 cmake -S . -B build -DULRE_ENABLE_CLANG_CODEGEN=OFF
 
+# 只关 ShaderConstGen，保留 AssetGen
+cmake -S . -B build -DULRE_ENABLE_SHADER_CONST_CODEGEN=OFF
+
 # 严格模式：工具缺失直接失败，避免 CI 上悄悄跳过
 cmake -S . -B build -DULRE_REQUIRE_CLANG_CODEGEN=ON
 ```
+
+### 第二个生成器：ShaderConstGen
+
+同一个 `cmake/codegen.cmake` 还挂了 `ShaderConstGen`（见
+`src/Tools/ShaderConstGen/README.md`），把 `inc/hgl/shader/contract/*.h` 里带
+`HGL_SHADER_ENUM` 注解的**契约枚举**派生为：
+
+- `ShaderLibrary/contract/{sampler_presets,engine_constants,lighting_constants}.glsl`
+- `inc/hgl/shader/generated/ShaderConstantsParity.gen.h`（编译期 `static_assert`）
+
+它的输入面是契约头 + `shader_const_gen.py` / `.toml` + `ShaderLibrary/**/*.glsl`
++ `ShaderLibrary/contract/*.toml`；改契约枚举或 `sampler.toml` 顺序都会触发重跑。
 
 > 未安装 Python 3.11+/Clang 时该步骤会自动跳过并打印 STATUS 提示：仓库里已提交的
 > `inc/hgl/asset/generated/*.gen.h` 仍可正常编译。生成器内容未变时不写盘，

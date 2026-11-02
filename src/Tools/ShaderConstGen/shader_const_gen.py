@@ -541,6 +541,14 @@ def diff_hint(rel: str, old: str, new: str) -> str:
 
 
 def main(argv: list[str]) -> int:
+    # 消息含中文：控制台若是 GBK（MSBuild / 传统 cmd 的默认），无法编码的字符不该炸掉
+    # 生成过程，退化成 '?' 即可。
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     ap = argparse.ArgumentParser(description="C++ ↔ GLSL 数值契约生成器")
     ap.add_argument("--repo-root", default=".")
     ap.add_argument("--config", default=DEFAULT_CONFIG)

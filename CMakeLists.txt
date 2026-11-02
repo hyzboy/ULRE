@@ -32,10 +32,12 @@ include(math)
 include(vulkan)
 include(use_cm_module)
 
-# ── Clang AST 代码生成（AssetGen）构建期再生成 ──────────────────────────────
-# inc/hgl/asset/generated/*.gen.h 是提交进仓库的派生产物，只用 MSVC 构建不需要 Clang。
-# 这里把它们接到构建里：注解结构体 / asset_gen.toml / 生成器任一变化时，先重跑
-# asset_gen.py 再编译消费方，避免生成头与 C++ 真源脱节。
+# ── Clang AST 代码生成构建期再生成 ─────────────────────────────────────────
+# 两个生成器的产物都提交进仓库，只用 MSVC 构建不需要 Clang：
+#   AssetGen        → inc/hgl/asset/generated/*.gen.h
+#   ShaderConstGen  → ShaderLibrary/contract/*.glsl + ShaderConstantsParity.gen.h
+# 注解结构体/枚举、生成器、策略 toml 任一变化时，先重跑再编译消费方，
+# 避免生成物与 C++ 真源脱节。
 # 缺少 Python 3.11+ 或 clang++ 时自动跳过；-DULRE_ENABLE_CLANG_CODEGEN=OFF 可彻底关闭。
 set(ULRE_CODEGEN_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/codegen.cmake)
