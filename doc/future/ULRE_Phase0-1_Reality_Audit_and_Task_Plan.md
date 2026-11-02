@@ -162,14 +162,14 @@ se.transform->SetLocalScale(glm::vec3(glm::length(worldMatrix[0]), ...));
 ### 1.6 Task 1.1「废弃 `ActiveRowLease`」→ **方向错（路径搞错了）**
 
 - `ActiveRowLease` 在 `inc/hgl/vk/buffer/ActiveRowLease.h`，是**通用行租约**；唯一派生使用者是 `GlobalSSBODataAccessor`（`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:32-41`）= **材质行访问**。
-- transform 路径完全不经过它：`inc/hgl/ecs/support/TransformDataStorage.h` 里没有任何租约对象，行号由 `TransformSystem::RefreshHandleOrder`（`src/ecs/systems/tick/TransformSystem.cpp:438-479`）+ `TransformAssignmentBuffer` 管。
+- transform 路径完全不经过它：`inc/hgl/ecs/support/transform/TransformDataStorage.h` 里没有任何租约对象，行号由 `TransformSystem::RefreshHandleOrder`（`src/ecs/systems/tick/TransformSystem.cpp:438-479`）+ `TransformAssignmentBuffer` 管。
 
 **结论**：删它等于砍掉材质行访问，与本文档目标无关。**禁止列入本阶段**。
 
 ### 1.7 引子「48 字节 `TransformTRS`（GPU std430 对齐）」→ **CPU 侧真源已经是 TRS；GPU 侧没有消费者**
 
-- 局部真源**已经**是 TRS：`inc/hgl/ecs/support/TransformDataStorage.h:42-44` 的 `positions`/`rotations`/`scales` 三组 SOA 数组；`glm::mat4 local_matrices`（`:31`）只是**懒更新派生缓存**（`UpdateLocalMatrix` `:139-150`，`local_dirty` 门控）。
-- GPU 侧全是 mat4：`ShaderLibrary/common/l2w_ssbo.glsl:18` 注释「mat4 数组（scalar 布局 stride 64B，与 CPU `Matrix4f` 逐字节一致）」、取数点 `ShaderLibrary/vertex/helpers/orient_world.glsl:17/25` 的 `l2w.mats[TransformID]`；CPU 写者 `src/ecs/support/TransformAssignmentBuffer.cpp:254` / `:352` 直接读 `storage.GetWorldMatrix(handle)`。
+- 局部真源**已经**是 TRS：`inc/hgl/ecs/support/transform/TransformDataStorage.h:42-44` 的 `positions`/`rotations`/`scales` 三组 SOA 数组；`glm::mat4 local_matrices`（`:31`）只是**懒更新派生缓存**（`UpdateLocalMatrix` `:139-150`，`local_dirty` 门控）。
+- GPU 侧全是 mat4：`ShaderLibrary/common/l2w_ssbo.glsl:18` 注释「mat4 数组（scalar 布局 stride 64B，与 CPU `Matrix4f` 逐字节一致）」、取数点 `ShaderLibrary/vertex/helpers/orient_world.glsl:17/25` 的 `l2w.mats[TransformID]`；CPU 写者 `src/ecs/support/transform/TransformAssignmentBuffer.cpp:254` / `:352` 直接读 `storage.GetWorldMatrix(handle)`。
 - 所以新建 48B TRS SSBO **没有任何消费者**（不是"为将来准备"，是当场死结构），且新增一张 C++↔GLSL 并行表就多一处结构漂移风险。
 
 **结论**：GPU 侧不引入 TRS（见 §6 不做清单）。CPU 侧"消灭局部 `Matrix4f`"才是真话题，但要区分**真源 vs 缓存**（T6/T7）。
@@ -187,7 +187,7 @@ se.transform->SetLocalScale(glm::vec3(glm::length(worldMatrix[0]), ...));
 ### 1.9 Task 1.3「`TransformAccessor` 只含 4 字节 id + 全局 `g_CurrentTransformStorage`」→ **方向错（破坏多世界）**
 
 - 现状：组件持 `storageHandle` + `bound_storage`（`inc/hgl/ecs/components/TransformComponent.h:43-44`），storage 由**世界**（`ECSContext`）持有，`GetStorage()`（`:805`）带共享 storage 回退。
-- 文档的全局单例与现状冲突：L2W/行表是**每世界私有**（`inc/hgl/ecs/support/TransformAssignmentBuffer.h:36-40` 注释：世界私有设施、不进 `SSBOBufferRegistry`），地址分 GlobalAddresses（跨世界资源池）/ WorldAddresses（世界私有）两档。全局 `g_CurrentTransformStorage` 会直接退回"两个世界同帧互相踩"的老坑（C1/C2/C3 三轮才修完）。
+- 文档的全局单例与现状冲突：L2W/行表是**每世界私有**（`inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h:36-40` 注释：世界私有设施、不进 `SSBOBufferRegistry`），地址分 GlobalAddresses（跨世界资源池）/ WorldAddresses（世界私有）两档。全局 `g_CurrentTransformStorage` 会直接退回"两个世界同帧互相踩"的老坑（C1/C2/C3 三轮才修完）。
 
 **结论**：Accessor 若做，句柄**必须携带世界上下文**（`{world*, id}` 或"世界号高位 + 行号"）；全局裸指针禁止。
 
@@ -196,8 +196,8 @@ se.transform->SetLocalScale(glm::vec3(glm::length(worldMatrix[0]), ...));
 | 项 | 实测 |
 |---|---|
 | 4-ID 描述符 | **已存在**：`inc/hgl/graph/render/RenderItemDescriptor.h:19-31`（`transform_id/geometry_id/material_id/texture_id`，16B + `static_assert`）⇒ GPU 侧 ID 闭环已成立（原文档说的 `PipelineID` 实际是 `texture_id`） |
-| `Entity` | **OOP**：`inc/hgl/ecs/core/Entity.h:21-33` `class Entity : public Object` + `UnorderedMap<std::size_t, std::shared_ptr<Component>>` ⇒ 每实体一次堆分配 + 每组件一次堆分配 + vptr |
-| `EntityID` 代数 | **已成立**：`inc/hgl/ecs/core/EntityHandle.h:11-19` 已含 `index` + `generation`，"防僵尸句柄"这一半已有基础 |
+| `Entity` | **OOP**：`inc/hgl/ecs/core/entity/Entity.h:21-33` `class Entity : public Object` + `UnorderedMap<std::size_t, std::shared_ptr<Component>>` ⇒ 每实体一次堆分配 + 每组件一次堆分配 + vptr |
+| `EntityID` 代数 | **已成立**：`inc/hgl/ecs/core/entity/EntityHandle.h:11-19` 已含 `index` + `generation`，"防僵尸句柄"这一半已有基础 |
 | `.ulrescene` / `SceneHeader` / `LoadSceneBlit` | **0 命中**（唯一 `SceneHeader` 命中是 GLTFConvert 的 MiniPack 条目名，`export/SceneExportPack.cpp:435`） |
 | 组件侧 | `PrimitiveComponent`/`RenderableComponent`/`MaterialComponent` 仍在，且 `MaterialComponent` 不是纯数据（承载 recipe、`shadow_retry_frames` 影子重试状态机、程序解析失败降级——见 `doc/ecs-layer-architecture-and-frame-flow.md` 与技能 `ulre-ecs-layer` 的 D9 条）⇒ 不能按"纯数据表迁移"处理，必须最后动 |
 
@@ -830,11 +830,11 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
 
 - **爆炸半径（已量化）**：75 文件 / 347 处、`AddComponent<...TransformComponent>` 74 处、示例 30+ 文件。
 - **顺序**：① 引入 `TransformID`（= 现有 `HandleID` 语义）+ 带世界上下文的 `TransformAccessor`；② 组件瘦身为"只有 id"（去掉三份副本、`cachedWorldMatrix`、`child_ids` 容器）；③ 示例批量改调用点；④ 删 `inc/hgl/ecs/components/TransformComponent.h` + `src/ecs/components/TransformComponent.cpp`。
-- **隐藏工作量（必须预先评估）**：**组开关 = 组件计数**（`Context::RegisterComponentInstance` 自动装组/开开关，见技能 `ulre-ecs-layer` 不变量）⇒ 删掉组件类会连带改系统组的激活条件；`RenderItem::GetTransform()` 返回 `shared_ptr<TransformComponent>`（`inc/hgl/ecs/core/RenderItem.h:51`）也要一起换成 ID。
+- **隐藏工作量（必须预先评估）**：**组开关 = 组件计数**（`Context::RegisterComponentInstance` 自动装组/开开关，见技能 `ulre-ecs-layer` 不变量）⇒ 删掉组件类会连带改系统组的激活条件；`RenderItem::GetTransform()` 返回 `shared_ptr<TransformComponent>`（`inc/hgl/ecs/core/render/RenderItem.h:51`）也要一起换成 ID。
 - **验收**：每步 build + 四个测试 + 门 + 5 个代表性示例 0 VUID；`grep -rn TransformComponent src inc example` 最终**零命中**（用户会逐文件复查是否删干净）。
 - **状态：✅ 已完成（T8-1..T8-5，本地未提交）**
-  - `TransformID`（`inc/hgl/ecs/support/TransformID.h`）= **世界内**变换行号（非全局 ID；`Mobility`、`TransformChange`/`ToChangeMask` 一并搬到这里）；
-  - `TransformAccessor`（`inc/hgl/ecs/support/TransformAccessor.{h,cpp}`）= 值类型薄句柄（storage + 行号 + context），**全 const**（句柄语义：const 指手柄不能换座，指向的行仍可变）、零副本；局部 TRS 直落存储、world 由父链组合；`fixed-pixel` 状态入存储、算法在访问器；
+  - `TransformID`（`inc/hgl/ecs/support/transform/TransformID.h`）= **世界内**变换行号（非全局 ID；`Mobility`、`TransformChange`/`ToChangeMask` 一并搬到这里）；
+  - `TransformAccessor`（`inc/hgl/ecs/support/transform/TransformAccessor.h`）= 值类型薄句柄（storage + 行号 + context），**全 const**（句柄语义：const 指手柄不能换座，指向的行仍可变）、零副本；局部 TRS 直落存储、world 由父链组合；`fixed-pixel` 状态入存储、算法在访问器；
   - `TransformComponent.{h,cpp}` 已 `git rm`；`grep -rn TransformComponent src inc example` **零命中**（仅 doc 保留历史记录）；`RenderItem::GetTransform()` 返回访问器；`Context` 的变换列表改 `TransformID` 向量 + 实体级 API（`CreateTransform/GetTransform/GetTransformByEntity/GetTransformID/DestroyTransform`）；
   - 组开关：**有变换出现即自动装 `TransformSystem`**（`Context::RegisterTransform`），不再依赖"组件计数"；
   - **搬迁中发现并修掉一个真 bug**：访问器 setter 原先只写存储、不累积 `change_masks`，而 `TransformSystem::ShouldUpdateTransform` 以掩码为硬判据 ⇒ 只经访问器写入的行（连同子孙）**永不上传 GPU**；现由 `TransformAccessor::MarkLocalChanged` 统一记账（版本 +1、掩码累积、逐行 bump 子孙 WorldMatrix）；
@@ -862,7 +862,7 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
 ### T11 64B `Entity` + `.ulrescene` 直载（阶段三）
 
 - **依赖**：T8/T9（组件 ID 化）+ T10（容量/行号冻结）。
-- **范围**：`inc/hgl/ecs/core/Entity.h` 重写为 `alignas(64)` 键值表（16B 元数据 + 48B 属性区）、`SceneHeader` 对齐 + StringPool 外置、Blit 加载器（Windows 上 `mmap` 不可直接照抄：需 `CreateFileMapping`/一次性 `fread`，且**不能直接 alias 文件页进 GPU 可写缓冲**，静态段仍要拷一次）。
+- **范围**：`inc/hgl/ecs/core/entity/Entity.h` 重写为 `alignas(64)` 键值表（16B 元数据 + 48B 属性区）、`SceneHeader` 对齐 + StringPool 外置、Blit 加载器（Windows 上 `mmap` 不可直接照抄：需 `CreateFileMapping`/一次性 `fread`，且**不能直接 alias 文件页进 GPU 可写缓冲**，静态段仍要拷一次）。
 - **验收**：离线导出工具 + 直载器；场景还原时间与显存直推链路（度量并记录）。
 
 ---
@@ -968,10 +968,10 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 | # | 评审意见 | 现状（本仓实测） | 处置 |
 |---|---------|-----------------|------|
 | R1 | `TransformComponent` 过渡期外壳的双轨风险（老路径建的实体 `entity_rows` 无 owner ⇒ `GetTransformByEntity` 无效） | 组件已 `git rm`，`grep -rn TransformComponent src inc example` **零命中**，双轨不存在。但**该类风险真的发生过**，且比评审列的更宽——见 8.3 | ✅ 已解决；其"类"已扩写为 T9 的强制前置检查 |
-| R2 | `Allocate()` 动态扩容 ⇒ 行号漂移 = Phase 3 最大前置阻塞 | 成立：`TransformAssignmentBuffer::EnsureCapacity` + `"L2W recreated"`（`src/ecs/support/TransformAssignmentBuffer.cpp:163`、`:511`）确实重建 GPU buffer | ✅ 采纳 → T10 具体化（8.2） |
+| R2 | `Allocate()` 动态扩容 ⇒ 行号漂移 = Phase 3 最大前置阻塞 | 成立：`TransformAssignmentBuffer::EnsureCapacity` + `"L2W recreated"`（`src/ecs/support/transform/TransformAssignmentBuffer.cpp:163`、`:511`）确实重建 GPU buffer | ✅ 采纳 → T10 具体化（8.2） |
 | R3 | 347 处引用 / 75 文件，迁移体量大；建议脚本生成清单分批改 | 引用面已归零（本批 84 文件迁完：示例 42 + gizmo 17 + 引擎侧）；**但"脚本批量替换"实测有害**——同名成员（`transform`）、带前缀表达式（`gizmo->root_transform`）、inline→外部定义的 const 变化会反复生成新错误，最终必须"逐文件读→改→编译" | ✅ 已解决（方法上否掉脚本建议） |
 | R4 | `MaterialComponent` 不是纯数据（recipe/重试/降级）⇒ 不能按纯数据表迁移 | 成立：`inc/hgl/ecs/components/MaterialComponent.h` 含 `recipe_hash`、`cached_normalized_recipe`、`shadow_cached_normalized_recipe` 等运行期状态 | ✅ 采纳 → T9 的 Material 分两层（8.2） |
-| R5 | `BoundingBoxComponent` 仍 OOP，视锥剔除无法向量化 | 成立：`src/ecs/support/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 均逐实体 `GetComponent<BoundingBoxComponent>()` | ✅ 采纳并**前置**：BoundingBox 连续化排在其余组件 ID 化之前（热路径） |
+| R5 | `BoundingBoxComponent` 仍 OOP，视锥剔除无法向量化 | 成立：`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 均逐实体 `GetComponent<BoundingBoxComponent>()` | ✅ 采纳并**前置**：BoundingBox 连续化排在其余组件 ID 化之前（热路径） |
 | R6 | 层级求值"版本号漏传"风险 ⇒ 建议封装统一入口 | **已落地**：`TransformAccessor::MarkLocalChanged` 就是该统一入口（版本 +1 + 掩码累积 + 逐行 bump 子孙 `WorldMatrix`），并有 Test 15（13 源码契约 + 6 行为）与 Test 8 护栏 | ✅ 已解决（与建议同向） |
 | R7 | `Context.h` 691 行过重 ⇒ 拆 Public/Impl | 事实成立（689 行、30+ include） | ⏸ **延后**：T11（64B Entity）会重写该文件的实体/组件部分，先拆必返工 |
 | R8 | `eval_order` 构建是 O(n²) ⇒ 改 Kahn | 部分成立：实现是"节点 × 层深"，实测 `ComputeTransformHierarchy` 场景 **212 节点 / 8 层**（自检 `max_diff ≤ 1.9e-06`）⇒ 现值 O(8n)，非瓶颈 | ⏸ 延后（低优先、非阻塞）；若改，Kahn 顺带得到天然环检测 |
@@ -1031,16 +1031,16 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 0. **前置检查（强制）**：删组件类前，逐条对照 `git show HEAD:<被删文件>` 里的每个 `ctx->` / `owner_context->` / `storage->` 调用，把"对世界的副作用"全部搬走（T8 血泪：Mobility 换边 / 子表维护 / 销毁回收）。
 0.5 **泛化地基（v2 约束 §1/§2，趁只有 Transform 一个消费者时做最省）**：① 类型 → (scope, arena, 行宽) **静态表**；② 句柄 **revision 校验**（泛化现有 `versions`，释放/重分配时 bump；句柄仍 24 B）；③ **CPU 权威 / GPU 派生视图**的存储布局（版本号增量同步，单写者）。
    - **状态：✅ ①②已落地（2026-09-30，commit `034f7486d`）**
-     - `inc/hgl/ecs/support/ComponentTypeTable.h`（新）：`ComponentType`(5 类) + `ComponentScope`(Global/World，静态) + 静态表；**表与枚举同序由 `static_assert` 强制，漏登记表项 = 编译错误**（该检查当场抓到"漏 `None=0` 占位"的疏漏）。其余四类的 scope/行宽标注为待定稿（现记 World 作保守默认）。
+     - `inc/hgl/ecs/support/storage/ComponentTypeTable.h`（新）：`ComponentType`(5 类) + `ComponentScope`(Global/World，静态) + 静态表；**表与枚举同序由 `static_assert` 强制，漏登记表项 = 编译错误**（该检查当场抓到"漏 `None=0` 占位"的疏漏）。其余四类的 scope/行宽标注为待定稿（现记 World 作保守默认）。
      - 存储新增 `generations`（行账目第 19 条 ⇒ 探针现报 **279 B/行**）；**世代编码：0 = 死/未分配，正奇数 = 活；复用须 +2 保持奇数（ABA 免疫）**。
      - `TransformAccessor` 建柄时捕获世代（用掉原 4 B 填充 ⇒ **仍 24 B**）；`IsValid()` = 存世 + id 有效 + **世代非零且与行一致** ⇒ 释放后旧柄与"死行上的新柄"都无效。
      - **Test 10「句柄失效契约」**：活柄有效 / 释放即失效 / 死行新柄也失效 / 空柄写入被忽略；**反证已做**（抽掉 `Deallocate` 的世代归零 ⇒ Test 10 精确报"行释放后旧句柄仍报有效（悬垂写入窗口）"、`rc=12`）。
      - 验证：build 0 error/0 warning；三测试 rc=0；门 rc=0；四个示例 0 真 error 行；探针"各数组元素数 == 行数：是"。
      - ⚠ 过程记录：改存储**成员布局**后必须清 `build/**/*.dir/Debug` 再编——陈旧 obj 会造成 TU ABI 错位（本次表现是 `TestCSMIncrementalPass` 段错误 rc=139，清 obj 后消失；用"临时退回旧 `IsValid`"的受控二分排除了悬垂解引用假设）。
      - ⏳ ③ CPU 权威/GPU 派生的**存储布局**尚未动（它跟各组件 ID 化一起做）。
-1. `BoundingBoxComponent` → `BoundingBoxDataStorage` 连续化（评审 R5：剔除是热路径；当前 `src/ecs/support/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 全是逐实体 OOP）⇒ `PrimitiveCullSystem` 改连续数组批处理。
+1. `BoundingBoxComponent` → `BoundingBoxDataStorage` 连续化（评审 R5：剔除是热路径；当前 `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:176`、`src/ecs/support/line/LineRenderPipeline.cpp:454`、`src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:37` 全是逐实体 OOP）⇒ `PrimitiveCullSystem` 改连续数组批处理。
    - **状态：✅ 已完成（2026-10-01）**
-     - **存储**：`inc/hgl/ecs/support/BoundingBoxDataStorage.h` 重写为世界私有 SoA 行存储（并行 `hgl::ValueArray`）：`local_min/local_max/world_min/world_max`(各 `glm::vec3`) + `world_valid`(uint8) + `owners`(EntityID) + `generations`(uint32) + `entity_rows` 反查表 ⇒ **每行 77 B**（旧的 `std::vector<vec3>` 实现是 64 B，但**没有世代/owner 反查**，且句柄走 free list 复用 ⇒ ABA 隐患）。
+     - **存储**：`inc/hgl/ecs/support/cull/BoundingBoxDataStorage.h` 重写为世界私有 SoA 行存储（并行 `hgl::ValueArray`）：`local_min/local_max/world_min/world_max`(各 `glm::vec3`) + `world_valid`(uint8) + `owners`(EntityID) + `generations`(uint32) + `entity_rows` 反查表 ⇒ **每行 77 B**（旧的 `std::vector<vec3>` 实现是 64 B，但**没有世代/owner 反查**，且句柄走 free list 复用 ⇒ ABA 隐患）。
      - **句柄**：新增 `BoundingBoxAccessor`（值类型，`static_assert(sizeof==24)`），建柄捕获世代、`IsValid()` 三重判据 ⇒ 与 Transform 完全同范式。**〔2026-10-11：现值 16 B，批 1.2 A4〕**
      - **世界接入**：`Context.h/.cpp` 加 `bounding_box_storage` 与 `GetBoundingBoxByEntity/GetOrCreateBoundingBox/DestroyBoundingBox`；`DestroyEntity` 追加行回收（T8 教训：销毁必回收行）。
      - **删组件**：`BoundingBoxComponent.{h,cpp}` 已 `git rm`（含它的**全局静态共享存储** `sharedStorage` —— 违反 v2 §1 世界私有/单一真源）；`GetSerializationType()`（零调用者）与 `IsDirty/ClearDirty/dirtyFlags`（零消费者）一并删除。全仓 `grep BoundingBoxComponent inc src example` = **0**。
@@ -1084,13 +1084,13 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
     - **独立复核（我方清 obj 重编）**：build 0 error、非 C4715 警告 0；7 个测试 rc=0；门 rc=0；`SimpleSphere`/`PBRSpheres`/`CascadeShadowMap`/`RenderToTexture`/`GizmoUsage` 各 8 秒 0 真 error，且 **A1 对拍仍 0 不一致**（PBRSpheres collect=81600、CSM collect=176700、Gizmo collect=23100）；旧模式 grep 全仓 0（唯一命中是 `src/Tools/TexConv/CUBEMAP_SKY_MATERIAL_NOTES.md` 里一句过期文档）；diff 规模小（例：SimpleSphere 6/5、PBRSpheres 7/6）⇒ 无行尾/BOM 翻转。
     - **额外补验（子代理无法编译的两个目标）**：`example/Geometry/ExtrudedPolygonTest.cpp`、`WallsFromPolyline.cpp` 在 `example/Geometry/CMakeLists.txt` 里被注释（第 19 行 `WallsFromPolyline_Texture.cpp` 因**文件不存在**而被注释，整行启用会导致 CMake configure 失败）⇒ 临时只启用这两个目标**实测编译 rc=0、0 error、exe 产出**，随后把 CMakeLists 原样还原（0 diff）。
     - **⚠ 已知语义变化（需在 A3/A5 收口）**：① 纹理授权的"依材质定义声明校验（kind/array_layer/一致性）"从**授权期推迟到解析期**（`SetTextureResource` 只做结构校验：名字合法 + 纹理/采样器非空；声明一致性校验在 `BuildResolvedRecipe` 里，happy path 行为不变）；② `SetMaterialRecipe` 的**立即**管线失效改为渲染侧发现 `recipe_hash` 失配时失效（更精确、时机晚一帧）；③ `SetPrimitiveAsset` 的代数 bump 改为经 owner→Context 查 `MaterialData`（组件→组件的过渡查询，**A5 拆 Geometry 时应改为显式关系或去掉**）。
-  A3 **材质 Variant 层** — ✅ **已完成（2026-10-01，含一次键粒度 bug 修复）**：`inc/hgl/ecs/support/MaterialVariantTable.h/.cpp`（表由 `ECSContext` 持有 + `GetMaterialVariantTable()`；容量 4096、超限 fail-fast 且**只告警一次**）+ `MaterialComponent` 的两个 program 槽换成**变体 ID**（`forward_variant` / `shadow_variant`），旧字段（`program`/`program_build_context_hash`/`shadow_program`/`shadow_program_build_context_hash`/`shadow_retry_frames`）**同批删净**（grep 残留 0）；`retry_frames` 随变体记录（D9 阈值/告警/降频判定逐字保持）。
+  A3 **材质 Variant 层** — ✅ **已完成（2026-10-01，含一次键粒度 bug 修复）**：`inc/hgl/ecs/support/material/MaterialVariantTable.h/.cpp`（表由 `ECSContext` 持有 + `GetMaterialVariantTable()`；容量 4096、超限 fail-fast 且**只告警一次**）+ `MaterialComponent` 的两个 program 槽换成**变体 ID**（`forward_variant` / `shadow_variant`），旧字段（`program`/`program_build_context_hash`/`shadow_program`/`shadow_program_build_context_hash`/`shadow_retry_frames`）**同批删净**（grep 残留 0）；`retry_frames` 随变体记录（D9 阈值/告警/降频判定逐字保持）。
     - **⚠ 首版键粒度 bug（已修，教训留档）**：首版键只用 `build_context_hash`（primitive_type/顶点格式/设备 profile/purpose）⇒ **不含材质 recipe**，而 program 真身份还取决于 fragment stage digest ⇒ **不同材质在同图元类型下撞同一条变体记录、program 后写覆盖**（4 个示例每例只有一种 `mtl_def_id` ⇒ 对拍全绿也测不出来）。
       - 修法：键 = `{ program_build_context, recipe_hash }`（**两维全同才算同一变体**；索引直接以结构为键 + 键哈希，碰撞由 `operator==` 兜住）。选 `recipe_hash` 而非 `ShaderProgramKey` 摘要的理由：已构造的 `ShaderProgramKey` 只在 acquire 成功后拿得到，而阴影侧登记必须早于 acquire（否则模板选择/编译失败路径的 `retry_frames` 归属全丢）；且 A3 之前"是否需重解析"本来就同时比对 `recipe_hash` 与 `build_context_hash` —— 那对组合就是真身份。
       - **对照反证**：把键退化成单维（等价修前）⇒ 新用例 `Test 7` 精确失败（`rc=16`、"同 build context、不同 recipe 身份落到了同一条变体记录（ID=0）——不同材质的 program 会互相覆盖"）；恢复两维 ⇒ `rc=0`、Test 7 Passed（两个 ID、记录互不串味）。同一用例"旧键失败/新键通过"成对留档。
     - **独立复核（我方清 obj 重编）**：build 0 error、非 C4715 警告 0；`TestMaterialVariantTable`/`TestRenderStrategyTable`/`TestComponentMask`/`TestVisibilityStorage`/`TestBoundingBoxStorage`/`TestTransformFlatStorage`/`TestRenderItemDataStorage`/`TestCSMIncrementalPass` 全 rc=0；门 rc=0（42 PASS/0 FAIL）；`PBRSpheres`/`CascadeShadowMap`/`ShadowMap`/`RenderToTexture` 各 8 秒 0 真 error 且 **A1 对拍仍 0 不一致**（88800 / 175800 / 25200 / 900）；`MaterialComponent` 里 `shadow_program|program_build_context_hash|shadow_retry_frames` 残留 **0**；diff 规模小（收集系统 214/52、MaterialComponent 26/19）⇒ 无整文件行尾翻转。
     - **遗留（已标注去处）**：① 键选 `recipe_hash` 的代价 = 两条 recipe 恰好生成同一 program 时会有两条记录指向同一 program（**多分裂、无害、受 4096 约束**）；若要精确到 program，A4 可换键第二维为 `ShaderProgramKey` 摘要，但需同步改阴影 Intern 时序。② `retry_frames` 仍在共享记录上 ⇒ 同键健康兄弟会持续清零失败者计数，可能掩盖 D9 的 masked 失败告警/降频（**只影响诊断**）⇒ **A4 把重试/降频状态移到每实例侧**。③ `MaterialVariantRecord::pending/failed` 已定义但本步不写（写会跨实体污染），留 A4/A5。④ 真实"多材质 + 同图元类型"场景未在窗口示例层复现，该 bug 的回归钉只在单元测试 Test 7 + 对照反证上。
-  A4 **材质 Runtime 层（共享行 + 每实例选择器 + 持久差异才 CoW）** — ✅ **已完成（2026-10-01）**：新增世界私有 `inc/hgl/ecs/support/MaterialRuntimeTable.h/.cpp`：
+  A4 **材质 Runtime 层（共享行 + 每实例选择器 + 持久差异才 CoW）** — ✅ **已完成（2026-10-01）**：新增世界私有 `inc/hgl/ecs/support/material/MaterialRuntimeTable.h/.cpp`：
     - **共享行** `MaterialRuntimeRow`（intern by `MaterialRuntimeKey{program_build_context, recipe_hash, data_index_row}` + refcount + **CoW `DetachOwned`** + 行号按世代复用 `+2`）；承载**只由"授权态 + 图元/设备静态属性"决定**的东西：两份变体 ID、材质 SSBO 行与 CPU/GPU 地址、纹理配置池行所有权与地址/hash、已解析配方缓存。
     - **每实例** `MaterialRuntimeSlot`（按实体稀疏）：行引用 + `pass_selector`/`lod_selector`/`dither_enabled` + **`shadow_retry_frames`（A3 遗留收口：D9 重试/降频从共享变体记录迁到此处）** + 两份授权代跟踪副本 + dirty/valid/epoch。
     - 可观测：`GetSharedRowCount/GetOwnedRowCount/GetFreeRowCount/GetOverflowWarnCount`；容量 4096 fail-fast 且只告警一次。世界访问器 `GetMaterialRuntimeTable()` / `GetOrCreateMaterialRuntimeSlot(EntityID)`（注释标注 stage B 换值句柄）；`DestroyEntity` 回收 slot。
@@ -1111,7 +1111,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
       - 其他申报：`ShadowMap` 示例不设 `req.is_shadow_pass`（既有行为，其日志无 S6-COLLECT 行，非回归）；gizmo 三个 `Mode::SetVisible(bool)` 本步之前就无调用者（死 API，未删以免扩大面）；`ExtrudedPolygonTest`/`WallsFromPolyline` 仍被注释，子代理按 A2 同法临时启用两目标实测编译 rc=0 后把 CMakeLists 原样还原。
     - **A5b（进行中，已派）** → ✅ **已完成（2026-10-01）**：
       - **删三个类**：`PrimitiveComponent.{h,cpp}`、`RenderableComponent.h`、`InstancedPrimitiveComponent.{h,cpp}`（`git rm` + CMake 摘除）；全仓引用 **316 行/69 文件 → 0**。`ShadowComponent` → **`ShadowProxy`**（`git mv` 保历史，引用 65 处，旧名 0）。
-      - **新 `inc/hgl/ecs/support/PrimitiveState.h/.cpp`**（自由函数，不新造组件）：`CanRender(const Entity*)`、`HasAnyMaterialSource(const Entity*)` + 阴影缺省五件套 `GetShadowProxy/CanCastShadow/GetShadowMaxDistance/CanReceiveShadow/GetShadowBiasMultiplier` ⇒ **"未挂载 ⇒ 可投射/可接收/距离 0/倍率 1.0"的缺省约定收敛到唯一一处**（`ShadowProxy.h:52-62` + `ShadowProxy.cpp:14-52`），不再有第二份拷贝。
+      - **新 `inc/hgl/ecs/support/pipeline/PrimitiveState.h/.cpp`**（自由函数，不新造组件）：`CanRender(const Entity*)`、`HasAnyMaterialSource(const Entity*)` + 阴影缺省五件套 `GetShadowProxy/CanCastShadow/GetShadowMaxDistance/CanReceiveShadow/GetShadowBiasMultiplier` ⇒ **"未挂载 ⇒ 可投射/可接收/距离 0/倍率 1.0"的缺省约定收敛到唯一一处**（`ShadowProxy.h:52-62` + `ShadowProxy.cpp:14-52`），不再有第二份拷贝。
       - **字段归位（12 项，逐条给依据）**：每实例状态 → `MaterialRuntimeSlot`（管线解析结果 `runtime_pipeline_pass/runtime_pipeline`、`render_item_handle`、实例数三件套、L2W/L2WIndex/MeshDrawParams/MaterialDataRows 缓冲、Indirect 缓冲与 offset、`is_gpu_driven/is_indirect`）；**共享行未承载任何每实例状态**（授权态仍只在 `MaterialData`/`GeometryData`/共享行）；`resolvedRuntimePipelineMap` 收窄为"只记当前 pass 的解析结果"（**不存 program 指针**——地址复用会误判）；`render_item_descriptor` 不再缓存（直写世界 `RenderItemDataStorage`，避免第二份真值）；`overridePipeline`、`positionSourceSpec`、`transformPolicySpec` **删除**（前者路径改走 `GetPipelineForRenderPass`/`RenderPass::CreatePipeline`；后两者删除前已无活跃引用）。
       - **A5a 隐式不变量解除**：`OnAttach` 自动补 `GeometryData` 随类删除消失 ⇒ 41 个示例改为**作者显式建库**（`CreateEntity → GetOrCreateGeometryData → SetPrimitiveAsset →（需要时）GetOrCreateMaterialData`，共 62 处 `GetOrCreateGeometryData`）。
       - **实测证据（我方清 obj 重编）**：build **rc=0 / 0 error / 4 条既有 C4715**；**10 个测试 rc=0**（含本步新增 `TestBoundingVolumeCull` —— 首个覆盖包围体剔除数学的测试）+ 门 rc=0；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage`/`AutoMergeMaterialInstance` 各 8 秒 **0 真 error + 对拍不一致行数 0**；`CSM_PASS_LOG=1` 探针唯一值组 `rows=19/60/61 shared=同 rows owned=0 slots=20/104/105` **与 A5a 基线逐条一致**（存储语义未漂移）；三类 grep **0**、`ShadowComponent` **0**、`ShadowProxy` 65 处、已删头文件 0。
@@ -1121,7 +1121,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
     原口径（保留备查）：`Geometry`（引用资源行 + draw range + 变体索引）/ `MaterialBinding`（→Data/Variant/Runtime）/ `ShadowProxy`（现 `ShadowComponent` 正名）/ LOD 钩子；同时删两处 OOP 缓存（`cached_shadow_component`、`PrimitiveComponent.cpp:643` 的 `bound_render_item_storage`）⇒ **删 `PrimitiveComponent`/`RenderableComponent`/`InstancedPrimitiveComponent`**。
    - **★ 追加靶子（2026-10-01 侦察发现）**：现在"可见性"语义有**三份真值** —— ① 实体级 `VisibilityDataStorage`（读侧 `RenderPrimitiveCollectSystem.cpp:1348/:1458`、`LineRenderPipeline.cpp:441`）；② `RenderableComponent::visible`（`PrimitiveComponent` 继承；读侧同文件 `:1344/:1446/:1448`、`PrimitiveComponent.cpp`、`GizmoUnified.AssetVisual.inl`、示例）；③ `LinesComponent::visible`（读侧 `LineRenderPipeline.cpp:431`）。渲染剔除实际是 **① OR ②** / **③ OR ①**。本项要**收敛成一份真值**：实体级 `visible` 作为唯一可见性真值，组件侧只保留"能力/可渲染性"语义（如 `CanRender()`、几何有效性），同义字段删除或改名，不留双写。另需确认**阴影收集链**是否也应查可见性（当前未见）。
   A6 **`CameraComponent`**（独立；注意深层虚继承）— ✅ **代码已落地并通过我方独立复核（2026-10-01）**：
-    - **真实改动**（`git status` 地面真值）：**16 文件 / +832 −477** —— `inc/hgl/ecs/components/CameraComponent.h`、`src/ecs/components/CameraComponent.cpp`、`inc/hgl/ecs/core/Context.h`+`.cpp`、`inc/hgl/ecs/support/CameraInfoStorage.h`+`.cpp`、`inc/hgl/ecs/support/CameraSlotGuard.h`+`.cpp`、`inc/hgl/ecs/systems/tick/CameraSystem.h`+`.cpp`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`src/ecs/support/{PipelineMaterialRenderer,line/LineRenderPipeline,text/TextRenderPipeline}.cpp`、`src/ecs/systems/render/EnvironmentSystem.cpp`、`src/ecs/tests/TestCSMIncrementalPass.cpp`。
+    - **真实改动**（`git status` 地面真值）：**16 文件 / +832 −477** —— `inc/hgl/ecs/components/CameraComponent.h`、`src/ecs/components/CameraComponent.cpp`、`inc/hgl/ecs/core/Context.h`+`.cpp`、`inc/hgl/ecs/support/storage/CameraInfoStorage.h`+`.cpp`、`inc/hgl/ecs/support/storage/CameraSlotGuard.h`+`.cpp`、`inc/hgl/ecs/systems/tick/CameraSystem.h`+`.cpp`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`src/ecs/support/{PipelineMaterialRenderer,line/LineRenderPipeline,text/TextRenderPipeline}.cpp`、`src/ecs/systems/render/light_shadow/EnvironmentSystem.cpp`、`src/ecs/tests/TestCSMIncrementalPass.cpp`。
     - **新 API（世界级、终态形状）**：`ECSContext::GetCamera(slot)` / `GetDefaultCamera()` / `GetCameraSlot(camera)`（`Context.h:445` 等），契约测试落在 **`TestCSMIncrementalPass.cpp:1232/:1259/:3472/:3705-3770`**（断言消息即"世界级访问器必须与三级解析同一落点"）。
     - **地址档口径**：`GlobalAddresses.h:18` 注明"地址归口口径（三档，定稿见 `doc/world-addresses-and-camera-model-plan.md`）"，`:55-59` 给出 **相机行号 ↔ 帧槽**映射（`camera_row = 槽号*槽总数 + 帧槽`；`GlobalAddressesSlotFromCameraRow(row) = row % kGlobalAddressesSlotCount`）；`CameraSlotGuard.h` 是"**系统内建相机**的槽宿主（RAII 持有）"⇒ 与"0 号槽恒为默认相机 + 系统提供默认相机"的定稿模型一致。`WorldAddresses.h` 位于 `inc/hgl/graph/ubo/`。
     - **实测证据（我方清 obj 重编，13 目标）**：build **rc=0 / 0 error / 4 条既有 C4715**；**10 个测试 rc=0**（含 A6 新增的相机契约）+ 门 **rc=0**；`PBRSpheres`/`CascadeShadowMap`/`GizmoUsage`/`LineRender`/`RayPicking` 各 8 秒 **0 真 error + 对拍不一致行 0**；`CSM_PASS_LOG=1` 探针唯一值组与 A5b 基线**逐字一致**（`rows=19/60/61 shared=同值 owned=0 slots=20/104/105`）。
@@ -1173,7 +1173,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 ### 9.2 T10 容量与行号冻结（T11 的强前置）
 
 1. `TransformDataStorage::Initialize(max_statics, max_dynamics)` 预分配 + 分区 `[0, static_count)`；`Allocate()` 超限 **fail-fast**（与"材质行 arena 1024 上限不扩容"同一口径）。**v2 约束下更准确的说法**：**按 (scope, 类型) 各自的 arena 声明式预算** + 预分配；超限给**一次性明确告警**（"预算没调够 ⇒ 行号已移动 ⇒ 固化 ID/存档失效"）；**不引入 Editor/Release 分支**（Editor 例外永远开着）。
-2. 去掉 `TransformAssignmentBuffer` 的 `"L2W recreated"` 路径（`src/ecs/support/TransformAssignmentBuffer.cpp:511`）。
+2. 去掉 `TransformAssignmentBuffer` 的 `"L2W recreated"` 路径（`src/ecs/support/transform/TransformAssignmentBuffer.cpp:511`）。
 3. **行字节瘦身**：`fixed_pixel`（32 B/行）与 `children`（24–32 B/行，绝大多数为空）改**稀疏侧表**（fixed-pixel 只有 gizmo 行需要；子表用 CSR：`child_offset/child_count` + 共享 child pool）⇒ 每行从 ≈267 B 回到 ≈211 B（只留 owners/change_masks/versions/两标志）。
 4. 探针与 3 同步复核行字节（口径一致后再冻结）。
 
@@ -1184,7 +1184,7 @@ build/out/Windows_64_Debug/TestCSMIncrementalPass.exe                # 期望全
 > **顺序变更**：场景直载推迟到**全部 Component ID 化 + 访问器完成**、以及**子场景树的快速插入/展开**等问题解决之后再谈。
 > 也就是说 T9 之后先做子场景树（插入/展开/局部重排）相关的设计，T11 顺位往后；本节的实现要点先原样保留备查。
 
-`inc/hgl/ecs/core/Entity.h` 重写为 GPU 派生视图 **`EntityGPU`：`flags(4) + type[16](16) + row[16](64) + work_flags(4) = 88 B` ⇒ `alignas(64)` ⇒ 128 B**（16 槽 × (类型 1 B + 行号 4 B)；**`persistent_id` 已删**；旧文档"64 B Entity"作废）；CPU 侧权威为 `EntityRecord`。`SceneHeader` 对齐 + StringPool 外置、离线 Cooker、Windows 侧用 `CreateFileMapping`/一次性 `fread`（**不可** alias 文件页进可写 GPU 缓冲，静态段仍要拷一次）、DMA 一次推 GPU。
+`inc/hgl/ecs/core/entity/Entity.h` 重写为 GPU 派生视图 **`EntityGPU`：`flags(4) + type[16](16) + row[16](64) + work_flags(4) = 88 B` ⇒ `alignas(64)` ⇒ 128 B**（16 槽 × (类型 1 B + 行号 4 B)；**`persistent_id` 已删**；旧文档"64 B Entity"作废）；CPU 侧权威为 `EntityRecord`。`SceneHeader` 对齐 + StringPool 外置、离线 Cooker、Windows 侧用 `CreateFileMapping`/一次性 `fread`（**不可** alias 文件页进可写 GPU 缓冲，静态段仍要拷一次）、DMA 一次推 GPU。
 
 - 验收：离线导出工具 + 直载器；场景还原时间与显存直推链路（度量并记录）。
 
@@ -1293,5 +1293,5 @@ build **0 error** → 门 **42 PASS / 0 FAIL** → 三测试 **rc=0** → 示例
   ② 让 `EntityID` 版跳过解析 ⇒ **rc=28**（“GetGeometryData 的 EntityID 版与 Entity* 版不是同一落点”）；
   两处均 sha256 **逐字节还原**后全绿（rc=0）
 - 行尾/BOM：改动 57 文件中 3 个 LF-only 文件保持 LF（`inc/hgl/ecs/core/Context.h`、
-  `src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`），
+  `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`、`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp`），
   其余保持各自 BOM+CRLF，无 `MIXED`、逐文件 BOM 与 HEAD 一致

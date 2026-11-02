@@ -129,18 +129,18 @@ void DefaultSystemsCP::Setup(ECSContext& context) {
 
 ### 自动检测
 ```cpp
-// src/ecs/core/RenderGraph.cpp - 在GatherSceneStats()中添加
+// src/ecs/core/render/RenderGraph.cpp - 在GatherSceneStats()中添加
 std::vector<std::shared_ptr<MyElementComponent>> elements;
 context->GetComponents<MyElementComponent>(elements);
 stats.hasMyElement = !elements.empty();
 
-// inc/hgl/ecs/core/RenderGraph.h
+// inc/hgl/ecs/core/render/RenderGraph.h
 struct SceneStats {
     // ... 现有字段 ...
     bool hasMyElement = false;
 };
 
-// src/ecs/core/RenderGraph.cpp - 在CreateAdaptiveRenderGraph()中添加
+// src/ecs/core/render/RenderGraph.cpp - 在CreateAdaptiveRenderGraph()中添加
 context->SetElementTypeSystemsEnabled("MyElement", stats.hasMyElement);
 ```
 
@@ -310,9 +310,9 @@ context->InvalidateAdaptiveRenderGraph();  // 重新生成
 │   └── 添加新ExecutionPhase值
 ├── src/ecs/core/DefaultSystemsCP.cpp
 │   └── 在Setup()中注册
-├── inc/hgl/ecs/core/RenderGraph.h
+├── inc/hgl/ecs/core/render/RenderGraph.h
 │   └── SceneStats添加bool字段 (可选)
-├── src/ecs/core/RenderGraph.cpp
+├── src/ecs/core/render/RenderGraph.cpp
 │   ├── GatherSceneStats()添加检测 (可选)
 │   └── CreateAdaptiveRenderGraph()添加启用 (可选)
 ```
@@ -367,5 +367,5 @@ if (has_component)
 - `inc/hgl/ecs/core/Component.h` - Component基类
 - `inc/hgl/ecs/core/System.h` - System基类和ExecutionPhase
 - `inc/hgl/ecs/core/Context.h` - ECSContext API
-- `inc/hgl/ecs/core/RenderGraph.h` - RenderGraph数据结构
-- `src/ecs/core/RenderGraph.cpp` - RenderGraph实现
+- `inc/hgl/ecs/core/render/RenderGraph.h` - RenderGraph数据结构
+- `src/ecs/core/render/RenderGraph.cpp` - RenderGraph实现

@@ -6,45 +6,92 @@
 option(ULRE_ECS_DEBUG_API "在所有构建配置里强制打开 ECS 调试/校验面（OFF = 交给 RenderOptions.h 台帐：Debug 开 / Release 关）" OFF)
 option(ULRE_ENABLE_CPU_CULL_PARITY_TEST "注册 CPU 剔除参考台架（每 60 帧 GPU 读回对拍）；默认关，生产管线不付那笔 stall" OFF)
 
-# ── 源文件清单：目录递归扫描 ──────────────────────────────────────────────────
-# 阶段 2（CMake 模块化）改造：此前是 22 份手工清单（ECS_CORE_FILES、17 份
-# ECS_SYS_*_FILES、4 份 ECS_SUPPORT*_FILES）共 260 行，增删一个 .cpp 都要手改，
-# 且已经开始漂移 —— 实测有 10 个头文件被代码 include 却没进清单，IDE 里看不到。
-# 改为按目录扫描：
-#   - components/ core/ support/ systems/ 下的 .cpp 全部进库（tests/ 除外）；
-#   - inc/hgl/ecs 下的 .h 全部列为工程文件（只为 IDE 组织，不参与编译）。
-# 已核对：本目录扫描出的 .cpp 集合与旧清单**完全一致（67 个）**，编译产物不变。
-# CONFIGURE_DEPENDS 让 cmake --build 在文件增删时自动重跑 configure，新增源文件
-# 不必再手动 configure。
+# ── 源文件收集：按架构层递归扫描 ──────────────────────────────────────────────
+# 实现文件进入 ULRE.ECS；公开头文件同样登记到目标，只为 IDE 提供完整视图。
+# 物理目录即架构层：components / core / systems/{tick,render} / support/<职能>。
+# CONFIGURE_DEPENDS 使增删文件后自动重新 configure。
 file(GLOB_RECURSE ECS_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/components/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/support/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/systems/*.cpp
-)
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/systems/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/support/*.cpp")
 file(GLOB_RECURSE ECS_HEADERS CONFIGURE_DEPENDS
-    ${ECS_INCLUDE_PATH}/*.h
-)
+    "${ECS_INCLUDE_PATH}/components/*.h"
+    "${ECS_INCLUDE_PATH}/core/*.h"
+    "${ECS_INCLUDE_PATH}/systems/*.h"
+    "${ECS_INCLUDE_PATH}/support/*.h")
 
-# VS 解决方案分组跟随目录结构（source_group(TREE)），不再手写 22 条。
-# 代价：分组名里原先编码的**执行阶段序号**（00/01/02/05/06B/…/27）随之消失。
-# 那套顺序的唯一台帐是 `.ai/skills/SKILL_EXECUTION_PHASE_ORDERING.md`，此处留一份
-# 索引便于对照：
-#   00 RenderSystemCore → 01 TickInput_InputSystem → 02 TickTransform_TransformSystem
-#   → 05 TickCamera_CameraSystem → 06B TickTransform_LineBoundsUpdateSystem
-#   → 07 RenderSwapchainNextImage_SwapchainNextImageSystem
-#   → 08 RenderPreBeginFrame_RenderTargetSystem
-#   → 09A RenderPreBeginFrame_MainLightShadowSystem
-#   → 09B RenderPreBeginFrame_ColorPaletteSystem
-#   → 09C RenderPreBeginFrame_LightSystem
-#   → 09 RenderPreBeginFrame_EnvironmentSystem
-#   → 13B RenderBufferCommit_ViewUBOCommitSystem
-#   → 14 RenderBufferUpload_RenderBufferUploadSystem
-#   → 15B RenderFrameSync_RenderSceneUBOSystem
-#   → 16 RenderCollect_RenderPrimitiveCollectSystem
-#   → 26B RenderStat_LineStatsSystem → 27 RenderSubmit_SwapchainSubmitSystem
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "ECS" FILES ${ECS_SOURCES})
-source_group(TREE ${ECS_INCLUDE_PATH} PREFIX "ECS\\include" FILES ${ECS_HEADERS})
+# Tests 是可执行目标（见文件后半），此处只收集其源文件用于 IDE 分组。
+file(GLOB_RECURSE ECS_TEST_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h")
+
+# ── IDE 分组：物理目录 → 可读组名 ────────────────────────────────────────────
+# 头文件与实现文件按同一目录落到同一组，不再分 `ECS` / `ECS\include` 两棵树。
+# 每条只管辖本层目录（不递归）：子目录自己登记一条。漏登记的文件落到
+# `ECS\Ungrouped` 并告警，不会从构建里消失。
+set(ECS_GROUP_DIRS
+    "components:Components"
+    "core:Core"
+    "core/entity:Core\\Entity"
+    "core/render:Core\\Render"
+    "systems/tick:Systems\\Tick"
+    "systems/render:Systems\\Render"
+    "systems/render/frame:Systems\\Render\\Frame"
+    "systems/render/collect:Systems\\Render\\Collect"
+    "systems/render/buffer:Systems\\Render\\Buffer"
+    "systems/render/light_shadow:Systems\\Render\\LightShadow"
+    "systems/render/streaming:Systems\\Render\\Streaming"
+    "support/cull:Support\\Culling"
+    "support/transform:Support\\Transform"
+    "support/storage:Support\\Storage"
+    "support/material:Support\\Material"
+    "support/pipeline:Support\\Pipeline"
+    "support/line:Support\\Line"
+    "support/primitive:Support\\Primitive"
+    "support/text:Support\\Text")
+
+set(ECS_GROUPED_FILES)
+foreach(entry IN LISTS ECS_GROUP_DIRS)
+    string(FIND "${entry}" ":" sep)
+    string(SUBSTRING "${entry}" 0 ${sep} rel_dir)
+    math(EXPR sep "${sep} + 1")
+    string(SUBSTRING "${entry}" ${sep} -1 group_name)
+
+    file(GLOB _ecs_group_src CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/${rel_dir}/*.cpp")
+    file(GLOB _ecs_group_hdr CONFIGURE_DEPENDS
+        "${ECS_INCLUDE_PATH}/${rel_dir}/*.h")
+
+    if(_ecs_group_src)
+        source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/${rel_dir}"
+            PREFIX "ECS\\${group_name}" FILES ${_ecs_group_src})
+        list(APPEND ECS_GROUPED_FILES ${_ecs_group_src})
+    endif()
+    if(_ecs_group_hdr)
+        source_group(TREE "${ECS_INCLUDE_PATH}/${rel_dir}"
+            PREFIX "ECS\\${group_name}" FILES ${_ecs_group_hdr})
+        list(APPEND ECS_GROUPED_FILES ${_ecs_group_hdr})
+    endif()
+endforeach()
+
+# 兜底：未登记目录里的文件照样编译，只在 IDE 里落到 Ungrouped 并给出告警。
+set(ECS_UNGROUPED_FILES)
+foreach(_ecs_file IN LISTS ECS_SOURCES ECS_HEADERS)
+    list(FIND ECS_GROUPED_FILES "${_ecs_file}" _ecs_idx)
+    if(_ecs_idx EQUAL -1)
+        list(APPEND ECS_UNGROUPED_FILES "${_ecs_file}")
+    endif()
+endforeach()
+if(ECS_UNGROUPED_FILES)
+    list(LENGTH ECS_UNGROUPED_FILES _ecs_ungrouped_count)
+    message(WARNING
+        "ULRE.ECS: ${_ecs_ungrouped_count} 个文件所在目录未登记到 ECS_GROUP_DIRS，"
+        "已归入 IDE 分组 ECS\\Ungrouped：${ECS_UNGROUPED_FILES}")
+    source_group("ECS\\Ungrouped" FILES ${ECS_UNGROUPED_FILES})
+endif()
+
+source_group("ECS\\Tests" FILES ${ECS_TEST_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
 ${ECS_SOURCES} ${ECS_HEADERS})
@@ -62,198 +109,111 @@ if(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
     target_compile_definitions(ULRE.ECS PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
 endif()
 
-add_executable(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
-target_link_libraries(TestTransformFlatStorage PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestTransformFlatStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+# ── ECS 测试台架 ──────────────────────────────────────────────────────────────
+# 统一收口：链接 ULRE::Engine、调试工作目录指向运行期目录、解决方案归入 ULRE/Tests/ECS，
+# 避免每个测试目标重复三行样板。
+#   EXTRA_SOURCES：额外参与编译的源文件；LIBS：额外链接的库。
+function(add_ecs_test target_name source_file)
+    cmake_parse_arguments(ECS_TEST "" "" "EXTRA_SOURCES;LIBS" ${ARGN})
+    add_executable(${target_name} ${source_file} ${ECS_TEST_EXTRA_SOURCES})
+    target_link_libraries(${target_name} PRIVATE ULRE::Engine ${ECS_TEST_LIBS})
+    set_target_properties(${target_name} PROPERTIES FOLDER "ULRE/Tests/ECS")
+    if(MSVC)
+        set_target_properties(${target_name} PROPERTIES
+            VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+    endif()
+endfunction()
 
-add_executable(TestCSMIncrementalPass tests/TestCSMIncrementalPass.cpp)
-target_link_libraries(TestCSMIncrementalPass PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestCSMIncrementalPass PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
+
+add_ecs_test(TestCSMIncrementalPass tests/TestCSMIncrementalPass.cpp)
 
 # 包围盒 SoA 存储 + 值类型句柄（组件 → BoundingBoxDataStorage/BoundingBoxAccessor 改造）
-add_executable(TestBoundingBoxStorage tests/TestBoundingBoxStorage.cpp)
-target_link_libraries(TestBoundingBoxStorage PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestBoundingBoxStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestBoundingBoxStorage tests/TestBoundingBoxStorage.cpp)
 
 # 渲染策略判定表（A1；A7a 起为收集/阴影能力的**唯一判据**）
-add_executable(TestRenderStrategyTable tests/TestRenderStrategyTable.cpp support/RenderStrategyParity.cpp)
-target_link_libraries(TestRenderStrategyTable PRIVATE ULRE::Engine)
+add_ecs_test(TestRenderStrategyTable tests/TestRenderStrategyTable.cpp
+    EXTRA_SOURCES support/pipeline/RenderStrategyParity.cpp)
 # 测试目标强制开对拍（默认值 / 打开方式见 inc/hgl/common/RenderOptions.h §2）
 target_compile_definitions(TestRenderStrategyTable PRIVATE ULRE_STRATEGY_PARITY_ENABLED=1)
-if(MSVC)
-    set_target_properties(TestRenderStrategyTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
 
 # A3 材质变体表（静态键去重 + 预算制 fail-fast）
-add_executable(TestMaterialVariantTable tests/TestMaterialVariantTable.cpp)
-target_link_libraries(TestMaterialVariantTable PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestMaterialVariantTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestMaterialVariantTable tests/TestMaterialVariantTable.cpp)
 
 # A4 材质运行期表（共享行 interned + CoW + refcount + 世代 + 每实例 slot）
-add_executable(TestMaterialRuntimeTable tests/TestMaterialRuntimeTable.cpp)
-target_link_libraries(TestMaterialRuntimeTable PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestMaterialRuntimeTable PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestMaterialRuntimeTable tests/TestMaterialRuntimeTable.cpp)
 
 # TOML MaterialRecipe parser schema and diagnostics.
-add_executable(TestMaterialRecipeFile tests/TestMaterialRecipeFile.cpp)
-target_link_libraries(TestMaterialRecipeFile PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestMaterialRecipeFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestMaterialRecipeFile tests/TestMaterialRecipeFile.cpp)
 
 # 材质数据块：授权行 → 物理行摊平、MDB1 二进制往返、坏输入拒绝。
-add_executable(TestMaterialDataBlockCodec tests/TestMaterialDataBlockCodec.cpp)
-target_link_libraries(TestMaterialDataBlockCodec PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestMaterialDataBlockCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestMaterialDataBlockCodec tests/TestMaterialDataBlockCodec.cpp)
 
 # 全局 SSBO 连续行区间与数据块整段上传（块→视图零拷贝、未就绪时 fail-closed、分配策略契约）。
-add_executable(TestGlobalSSBORowRange tests/TestGlobalSSBORowRange.cpp)
-target_link_libraries(TestGlobalSSBORowRange PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestGlobalSSBORowRange PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestGlobalSSBORowRange tests/TestGlobalSSBORowRange.cpp)
 
 # 材质数据块资产层：三种文件形态 → 同一句柄、坏输入留在表里、无设备上传软失败。
-add_executable(TestMaterialDataBlockAsset tests/TestMaterialDataBlockAsset.cpp)
-target_link_libraries(TestMaterialDataBlockAsset PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestMaterialDataBlockAsset PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestMaterialDataBlockAsset tests/TestMaterialDataBlockAsset.cpp)
 
 # 批量材质的行绑定入口：数据块行 → 池行号 → GlobalSSBOBinding 的组合契约，
 # 以及 builder 源码里「先上传再判越界」的顺序契约。
-add_executable(TestRenderableBuilderDataRow tests/TestRenderableBuilderDataRow.cpp)
-target_link_libraries(TestRenderableBuilderDataRow PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestRenderableBuilderDataRow PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestRenderableBuilderDataRow tests/TestRenderableBuilderDataRow.cpp)
 
 # 环境资产规约（`*.env.toml`）：五组字段往返 + `Presence` 三态 + 枚举拼写别名
 # + `[[sh9.bands]]` 顺序 + 元数据 struct_meta/elem_kind 接线。
-add_executable(TestEnvironmentCodec tests/TestEnvironmentCodec.cpp)
-target_link_libraries(TestEnvironmentCodec PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestEnvironmentCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestEnvironmentCodec tests/TestEnvironmentCodec.cpp)
 
 # 环境资产表（`env:` URI）：身份 / 按名查询 / 缓存 / 扩展名与类型门禁
 # + `ApplyEnvironmentSpec` 的 `Presence` 局部覆盖语义。
-add_executable(TestEnvironmentAssetURI tests/TestEnvironmentAssetURI.cpp)
-target_link_libraries(TestEnvironmentAssetURI PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestEnvironmentAssetURI PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestEnvironmentAssetURI tests/TestEnvironmentAssetURI.cpp)
 
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
-add_executable(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
-target_link_libraries(TestMaterialRecipeInheritance PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestMaterialRecipeInheritance PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 
 # 示例用数据块文件（`pbr_10x10_grid.material_data.toml`）：形状 + 逐行数值与生成公式
 # 一致 + 演示源码不再逐行硬编码。
-add_executable(TestPbrGridDataBlock tests/TestPbrGridDataBlock.cpp)
-target_link_libraries(TestPbrGridDataBlock PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestPbrGridDataBlock PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestPbrGridDataBlock tests/TestPbrGridDataBlock.cpp)
 
 # 示例用纹理数组规约（`*.texarray.toml`）：六个文件按台账解析 + 缺省层名带父目录
 # + 坏输入整张拒绝 + `texarray:` URI 映射 + 示例不再手工装配 2D 数组。
-add_executable(TestTextureArraySpec tests/TestTextureArraySpec.cpp)
-target_link_libraries(TestTextureArraySpec PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestTextureArraySpec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestTextureArraySpec tests/TestTextureArraySpec.cpp)
 
 # 手工建实体示例的行绑定入口：`GetRowBinding` / `GetGlobalSSBOBindingAt` /
 # `WorkObject::GetMaterialDataBinding` 三层契约（失败不写 out、先上传再取行号）。
-add_executable(TestMaterialDataRowBinding tests/TestMaterialDataRowBinding.cpp)
-target_link_libraries(TestMaterialDataRowBinding PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestMaterialDataRowBinding PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestMaterialDataRowBinding tests/TestMaterialDataRowBinding.cpp)
 
 # 阶段 A 台账门禁：示例的材质数据块文件集合 / 块名 / 行类型 / 行数 / 抽样行值。
-add_executable(TestExampleMaterialDataBlocks tests/TestExampleMaterialDataBlocks.cpp)
-target_link_libraries(TestExampleMaterialDataBlocks PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestExampleMaterialDataBlocks PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestExampleMaterialDataBlocks tests/TestExampleMaterialDataBlocks.cpp)
 
 # TOML GeometryAsset parser schema and diagnostics.
-add_executable(TestGeometryAssetFile tests/TestGeometryAssetFile.cpp)
-target_link_libraries(TestGeometryAssetFile PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestGeometryAssetFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestGeometryAssetFile tests/TestGeometryAssetFile.cpp)
 
 # TOML PrimitiveAsset parser (geometry + recipe binding).
-add_executable(TestPrimitiveAssetFile tests/TestPrimitiveAssetFile.cpp)
-target_link_libraries(TestPrimitiveAssetFile PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestPrimitiveAssetFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestPrimitiveAssetFile tests/TestPrimitiveAssetFile.cpp)
 
 # Unified asset URI: text -> (type, source, target) segment contract.
-add_executable(TestAssetURI tests/TestAssetURI.cpp)
-target_link_libraries(TestAssetURI PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestAssetURI PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestAssetURI tests/TestAssetURI.cpp)
 
 # Asset factory: self-registering type -> loader table + unregistered-type fallback.
-add_executable(TestAssetFactory tests/TestAssetFactory.cpp)
-target_link_libraries(TestAssetFactory PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestAssetFactory PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestAssetFactory tests/TestAssetFactory.cpp)
 
 # Geometry preset library: every shape name used by examples must resolve to a TOML.
-add_executable(TestGeometryPreset tests/TestGeometryPreset.cpp)
-target_link_libraries(TestGeometryPreset PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestGeometryPreset PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestGeometryPreset tests/TestGeometryPreset.cpp)
 
 # TOML SceneSpec parser: schema, references, type-specific keys, and parent cycles.
-add_executable(TestSceneFile tests/TestSceneFile.cpp)
-target_link_libraries(TestSceneFile PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestSceneFile PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestSceneFile tests/TestSceneFile.cpp)
 
 # Unified serialization archive: Value tree, Archive dispatch (scalars / strings /
 # enums / vectors / nested structs / Sequence / Mapping / Set / Tree) and TOML codec.
-add_executable(TestSerializeArchive tests/TestSerializeArchive.cpp)
-target_link_libraries(TestSerializeArchive PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestSerializeArchive PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestSerializeArchive tests/TestSerializeArchive.cpp)
 
 # Asset reflection codegen: TOML round-trip, metadata table, FlatBuffers round-trip.
 # 纯数据往返，不需要设备/窗口，因此在 CI 里也能跑，用来挡住
 # 「改了 C++ 结构但忘记重新生成」与「生成器改坏了语义」。
 find_package(flatbuffers CONFIG QUIET)
 if(flatbuffers_FOUND)
-    add_executable(TestAssetReflection tests/TestAssetReflection.cpp)
-    target_link_libraries(TestAssetReflection PRIVATE ULRE::Engine flatbuffers::flatbuffers)
-    if(MSVC)
-        set_target_properties(TestAssetReflection PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-    endif()
+    add_ecs_test(TestAssetReflection tests/TestAssetReflection.cpp
+        LIBS flatbuffers::flatbuffers)
 else()
     message(STATUS "flatbuffers 未找到：跳过 TestAssetReflection（含 FlatBuffers 往返用例）")
 endif()
@@ -263,68 +223,33 @@ endif()
 # 与 TestAssetReflection 一样是纯数据用例，用来挡住「改了 Spec 但忘记重新生成」
 # 与「生成器改坏了 Presence 语义」。
 if(flatbuffers_FOUND)
-    add_executable(TestMaterialRecipeCodec tests/TestMaterialRecipeCodec.cpp)
-    target_link_libraries(TestMaterialRecipeCodec PRIVATE ULRE::Engine flatbuffers::flatbuffers)
-    if(MSVC)
-        set_target_properties(TestMaterialRecipeCodec PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-    endif()
+    add_ecs_test(TestMaterialRecipeCodec tests/TestMaterialRecipeCodec.cpp
+        LIBS flatbuffers::flatbuffers)
 else()
     message(STATUS "flatbuffers 未找到：跳过 TestMaterialRecipeCodec（含 FlatBuffers 往返用例）")
 endif()
 
-add_executable(TestComponentRows tests/TestComponentRows.cpp)
-target_link_libraries(TestComponentRows PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestComponentRows PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestComponentRows tests/TestComponentRows.cpp)
 
-add_executable(TestVisibilityStorage tests/TestVisibilityStorage.cpp)
-target_link_libraries(TestVisibilityStorage PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestVisibilityStorage PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestVisibilityStorage tests/TestVisibilityStorage.cpp)
 
-add_executable(TestBoundingVolumeCull tests/TestBoundingVolumeCull.cpp)
-target_link_libraries(TestBoundingVolumeCull PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestBoundingVolumeCull PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestBoundingVolumeCull tests/TestBoundingVolumeCull.cpp)
 
 # 诊断探针（T0 量化基线 + T4 旋转提取证据）：只打印数值，不做通过/失败判定
-add_executable(ProbeTransformDiagnostics tests/ProbeTransformDiagnostics.cpp)
-target_link_libraries(ProbeTransformDiagnostics PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(ProbeTransformDiagnostics PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(ProbeTransformDiagnostics tests/ProbeTransformDiagnostics.cpp)
 
 # 批 1.3 C5 判据探针：一次性告警闩必须**每实例**（进程级 static ⇒ 第二个世界静默）。
 # 判据（外部）：跑完 grep -c "切片起点未 4 行对齐" ⇒ 期望 2（两个实例各 1）。
-add_executable(ProbeWarnLatchPerWorld tests/ProbeWarnLatchPerWorld.cpp)
-target_link_libraries(ProbeWarnLatchPerWorld PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(ProbeWarnLatchPerWorld PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(ProbeWarnLatchPerWorld tests/ProbeWarnLatchPerWorld.cpp)
 
 # S1/S2 判据：同类型系统替换必须摘旧实例；裸行池 Row() 必须验活跃（+ 两个池语义对齐 + 析构顺序钉）
-add_executable(TestSystemReplaceAndPoolLiveness tests/TestSystemReplaceAndPoolLiveness.cpp)
-target_link_libraries(TestSystemReplaceAndPoolLiveness PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestSystemReplaceAndPoolLiveness PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestSystemReplaceAndPoolLiveness tests/TestSystemReplaceAndPoolLiveness.cpp)
 
 # §2 #11 判据：PrepareFrame 必须是每帧一次的真守卫（同帧三次调用只做一次准备）
-add_executable(TestFramePrepareOncePerFrame tests/TestFramePrepareOncePerFrame.cpp)
-target_link_libraries(TestFramePrepareOncePerFrame PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestFramePrepareOncePerFrame PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestFramePrepareOncePerFrame tests/TestFramePrepareOncePerFrame.cpp)
 
 # §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
-add_executable(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
-target_link_libraries(TestCameraResolveAndClaim PRIVATE ULRE::Engine)
-if(MSVC)
-    set_target_properties(TestCameraResolveAndClaim PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-endif()
+add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 
 if(BUILD_TESTING)
     add_test(

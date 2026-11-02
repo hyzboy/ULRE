@@ -221,7 +221,7 @@ void RegisterBuiltinSystemGroupInstallers() {
 
 ### 5️⃣ **更新GatherSceneStats**（如需要自动检测）
 
-在 `src/ecs/core/RenderGraph.cpp` 中添加检测：
+在 `src/ecs/core/render/RenderGraph.cpp` 中添加检测：
 
 ```cpp
 SceneStats GatherSceneStats(ECSContext* context) {
@@ -240,7 +240,7 @@ SceneStats GatherSceneStats(ECSContext* context) {
 然后在 `SceneStats` 结构中添加字段，`CreateAdaptiveRenderGraph()` 中添加启用/禁用：
 
 ```cpp
-// inc/hgl/ecs/core/RenderGraph.h
+// inc/hgl/ecs/core/render/RenderGraph.h
 struct SceneStats {
     bool hasPrimitives = false;
     bool hasText = false;
@@ -249,7 +249,7 @@ struct SceneStats {
     bool hasMyElement = false;  // ✅ 新增
 };
 
-// src/ecs/core/RenderGraph.cpp
+// src/ecs/core/render/RenderGraph.cpp
 RenderGraph CreateAdaptiveRenderGraph(ECSContext* context) {
     // ...
     context->SetElementTypeSystemsEnabled("MyElement", stats.hasMyElement);
@@ -334,6 +334,6 @@ A:
 ## 参考资源
 
 - `inc/hgl/ecs/components/PrimitiveComponent.h` - Component示例
-- `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` - 多系统示例
-- `src/ecs/core/RenderGraph.cpp` - 自适应图实现
+- `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` - 多系统示例
+- `src/ecs/core/render/RenderGraph.cpp` - 自适应图实现
 - `inc/hgl/ecs/core/System.h` - ExecutionPhase定义

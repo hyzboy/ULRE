@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <string>
-#include<hgl/ecs/support/ComponentTypeTable.h>
+#include<hgl/ecs/support/storage/ComponentTypeTable.h>
 
 namespace hgl
 {

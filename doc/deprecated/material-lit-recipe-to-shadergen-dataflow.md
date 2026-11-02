@@ -63,7 +63,7 @@
 
 ## 三、运行时触发：ECS → ShaderProgramManager
 
-每帧 `RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:389`）做脏检查后：
+每帧 `RenderPrimitiveCollectSystem::ResolveMaterialProgramForPrimitive`（`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:389`）做脏检查后：
 
 1. `BuildResolvedRecipe` 从 PrimitiveComponent 收集有效 recipe；
 2. `TryGetResolvedMaterialByID("Lit")` 拿到定义；

@@ -296,9 +296,9 @@ set_target_properties(x PROPERTIES VS_DEBUGGER_ENVIRONMENT
 |---|---|---|
 | `src/ecs/tests/TestCSMIncrementalPass.cpp` | 432 KB | 51 个 case 挤在一个 TU |
 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp` | 267 KB | 7 个 regression group 全在一个 TU |
-| `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` | 128 KB | — |
+| `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` | 128 KB | — |
 | `inc/hgl/ecs/core/Context.h` | 70 KB | 被大量 TU 包含 |
-| `inc/hgl/ecs/support/TransformDataStorage.h` | 42 KB | — |
+| `inc/hgl/ecs/support/transform/TransformDataStorage.h` | 42 KB | — |
 | `inc/hgl/vk/VertexAttribDataAccess.h` | 41 KB | — |
 
 ### 危害

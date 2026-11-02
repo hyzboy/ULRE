@@ -3,11 +3,11 @@
 #include"GizmoInternal.h"
 #include"GizmoResource.h"
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/LightSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<glm/gtc/quaternion.hpp>

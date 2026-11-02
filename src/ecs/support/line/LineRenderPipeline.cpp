@@ -1,12 +1,12 @@
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/LinesComponent.h>
-#include <hgl/ecs/support/BoundingBoxAccessor.h>
-#include <hgl/ecs/support/TransformAccessor.h>
-#include <hgl/ecs/support/TransformAssignmentBuffer.h>
+#include <hgl/ecs/support/cull/BoundingBoxAccessor.h>
+#include <hgl/ecs/support/transform/TransformAccessor.h>
+#include <hgl/ecs/support/transform/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
-#include <hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include <hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/SSBOBufferRegistry.h>
 #include <hgl/graph/render/RenderContext.h>

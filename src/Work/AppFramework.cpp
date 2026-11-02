@@ -11,11 +11,11 @@
 #include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/log/Logger.h>
 #include <hgl/io/event/MouseEvent.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include <hgl/ecs/systems/render/RenderTargetSystem.h>
-#include <hgl/ecs/systems/render/EnvironmentSystem.h>
-#include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
-#include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
+#include <hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include <hgl/ecs/systems/render/frame/RenderTargetSystem.h>
+#include <hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/frame/SwapchainNextImageSystem.h>
+#include <hgl/ecs/systems/render/frame/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>

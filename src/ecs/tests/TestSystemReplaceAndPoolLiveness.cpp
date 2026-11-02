@@ -10,7 +10,7 @@
 //                  S2-b 红 = DestroyRowAt 里 SetOwner 出现在 ~T() 之后。
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/System.h>
-#include <hgl/ecs/support/ComponentPool.h>
+#include <hgl/ecs/support/storage/ComponentPool.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/log/Log.h>
@@ -175,7 +175,7 @@ int main()
     {
         std::string src;
 
-        if (!read_text_file("inc/hgl/ecs/support/ComponentPool.h", src))
+        if (!read_text_file("inc/hgl/ecs/support/storage/ComponentPool.h", src))
         {
             GLogError(u8"S2-b Failed: cannot open ComponentPool.h (run from repo root)");
             return 3;

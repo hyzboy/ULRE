@@ -9,7 +9,7 @@
 //   段 3 = 认领版仍保留"渲染必须有一个相机"的兜底契约（fallback + 0 号槽）
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/CameraComponent.h>
-#include <hgl/ecs/support/CameraInfoStorage.h>
+#include <hgl/ecs/support/storage/CameraInfoStorage.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/graph/ubo/ViewportInfo.h>
 #include <hgl/log/Log.h>

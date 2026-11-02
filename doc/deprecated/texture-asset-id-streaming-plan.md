@@ -31,9 +31,9 @@
 | E-2 | `AllocateHandle` = `next_handle_++` **单调不复用**且**无 `kMax=8192` 上限守卫**（溢出 = 描述符缓冲越界写，静默 VU）；`RegisterTexture` 按 `Texture*` 键去重（`tex_cache_`），`AllocateHandle` 无去重；`UpdateTextureHandle` 的守卫是新鲜度（`>= next_handle_`）不是容量 | `src/Vulkan/VKBindlessTextureManager.cpp:AllocateHandle/RegisterTexture/UpdateTextureHandle`；`inc/hgl/vk/VKBindlessTextureManager.h:kMax` | handle 天然可做"永不重排的持久引用"；T1 必须补容量 fail-fast（R-7）；驱逐/复用若引入必须先加 slot+世代（P-6） |
 | E-3 | 帧入口自动泵上传队列：`BeginManagedRenderFrame` 内 `tm->UpdateUploadQueue(bindless_mgr)`，**任务完成后即 delete** | `src/ecs/core/Context.cpp:BeginManagedRenderFrame`；`src/SceneGraph/module/TextureManager.cpp:UpdateUploadQueue` | 状态必须住**常驻记录**，不能住一次性 task（§2.2） |
 | E-4 | 跨队列同步 = 单条 **upload lane**（timeline），主帧提交前 wait 最新值；不得回退逐任务信号量 | `inc/hgl/graph/module/TextureUploadQueue.h:upload_lane_`（注释含两处历史事故） | worker 只产像素（CPU 块或 staging ring **映射块**——取段是纯 CPU 记账，无 Vulkan 对象创建）；VkImage/tci/派发留在主线程泵（T4、§3.4） |
-| E-5 | 材质数据行归**设备级**行号（B4 拍板"路 B"）；重类型落**世界级旁表**，行内只 POD | `inc/hgl/ecs/components/MaterialData.h`（B4-iii 注）；`inc/hgl/ecs/support/MaterialAuthoringSideTable.h:MaterialTextureAuthoringResource` | 旁表条目换成 `uint32_t` 记录 ID 后即满足"行/条目全 POD"（T2） |
-| E-6 | 收集链纹理获取现按 `resource_id` 字符串匹配，缺失即 `GLogError + return false`（每帧每实体重复报错） | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:AcquireDeferredResources`（"DeferredResource" 分支） | Loading≠错误：需状态化静默 + 就绪重试通道（T3） |
-| E-7 | 材质解析跳过靠每实例 `tracked_material_data_generation` 比对 | `inc/hgl/ecs/support/MaterialRuntimeTable.h:MaterialRuntimeSlot` | 纹理就绪是**第二个 generation 源**（§3.3） |
+| E-5 | 材质数据行归**设备级**行号（B4 拍板"路 B"）；重类型落**世界级旁表**，行内只 POD | `inc/hgl/ecs/components/MaterialData.h`（B4-iii 注）；`inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h:MaterialTextureAuthoringResource` | 旁表条目换成 `uint32_t` 记录 ID 后即满足"行/条目全 POD"（T2） |
+| E-6 | 收集链纹理获取现按 `resource_id` 字符串匹配，缺失即 `GLogError + return false`（每帧每实体重复报错） | `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:AcquireDeferredResources`（"DeferredResource" 分支） | Loading≠错误：需状态化静默 + 就绪重试通道（T3） |
+| E-7 | 材质解析跳过靠每实例 `tracked_material_data_generation` 比对 | `inc/hgl/ecs/support/material/MaterialRuntimeTable.h:MaterialRuntimeSlot` | 纹理就绪是**第二个 generation 源**（§3.3） |
 | E-8 | Static transform 重复 set 同值仍会触发 revision 链（教训：CSM 地面吸附加同值守卫） | `example/Shadow/CascadeShadowMap.cpp:UpdateMovableAnimation` 注释；`ECSContext::static_scene_revision` | 就绪广播必须**值变才 bump**，不得每帧全量重解析 |
 | E-9 | `Task 2.2 / MaterialAccessor(4B)` 是原 Roadmap 阶段二既定目标（该档 2026-10-18 已删） | git 历史 `doc/future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md` §三 | 本计划即其纹理侧首批，不与之冲突 |
 
@@ -149,7 +149,7 @@ task `Cancelled/Discarded` 不进记录状态机（记录语义 = "这个文件�
 ### 2.4 材质旁表条目（T2 后形态，全 POD）
 
 ```cpp
-// inc/hgl/ecs/support/MaterialAuthoringSideTable.h:MaterialTextureAuthoringResource 改为
+// inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h:MaterialTextureAuthoringResource 改为
 struct MaterialTextureAuthoringResource {
     hgl::graph::TextureAssetID texture_id;       // 0/无效 = 未绑定；原 resource_id 字符串 + Texture* 双通道整删
     hgl::graph::Sampler       *sampler  = nullptr; // T5 sampler 命名化后再消
@@ -159,7 +159,7 @@ struct MaterialTextureAuthoringResource {
 };
 ```
 
-- `resource_id`/`BuildTextureResourceId`（`src/ecs/support/RenderResource.cpp`）全链删除；
+- `resource_id`/`BuildTextureResourceId`（`src/ecs/support/pipeline/RenderResource.cpp`）全链删除；
 - `materialization_resource_handles(rid→handle)` 映射消失——记录 id **就是** handle，行内取 handle 一步到位；
 - 序列化就绪判据（自动化）：`MaterialAuthoringSideTable.h` 中 grep `std::string|resource_id|Texture \*` = 0 命中（sampler 指针 T5 前豁免，在变更记录中挂账）。
 
@@ -321,8 +321,8 @@ E-3 既有泵    BeginManagedRenderFrame → UpdateUploadQueue → Completed →
 - 队列机制真源：`doc/archive/async-texture-upload-and-bindless.md`；`inc/hgl/graph/module/TextureUploadQueue.h`、`TextureUploadTask.h`
 - bindless：`inc/hgl/vk/VKBindlessTextureManager.h`（AllocateHandle/UpdateTextureHandle）
 - 解码现场：`src/SceneGraph/texture/VKTextureLoader.h`、`VKTexture2DLoader.cpp`、`VKTexture2DArrayLoader.cpp`
-- 材质侧：`inc/hgl/ecs/components/MaterialData.h`、`inc/hgl/ecs/support/MaterialAuthoringSideTable.h`、`MaterialRuntimeTable.h`
-- 收集链：`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`、`src/ecs/support/RenderResource.cpp`
+- 材质侧：`inc/hgl/ecs/components/MaterialData.h`、`inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h`、`MaterialRuntimeTable.h`
+- 收集链：`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp`、`src/ecs/support/pipeline/RenderResource.cpp`
 - 帧入口：`src/ecs/core/Context.cpp:BeginManagedRenderFrame`
 - 线程件：`CMCore/inc/hgl/thread/WorkerPool.h`、`CMCore/inc/hgl/concurrency/SpscQueue.h`
 - 台架样板：`src/ecs/tests/TestCSMIncrementalPass.cpp`；帧摘要 `example/Shared/FrameDigest.h`

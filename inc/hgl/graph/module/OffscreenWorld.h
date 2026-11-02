@@ -25,12 +25,12 @@
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/render/RenderTargetSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include<hgl/ecs/systems/render/frame/RenderTargetSystem.h>
+#include<hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
-#include<hgl/ecs/core/RenderPassRequest.h>
+#include<hgl/ecs/core/render/RenderPassRequest.h>
 
 #include<memory>
 #include<string>

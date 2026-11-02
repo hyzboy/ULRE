@@ -3,10 +3,10 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/components/LinesComponent.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/support/line/LineRenderPipeline.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/color/Color.h>
 #include<hgl/math/Random.h>
 #include<cmath>

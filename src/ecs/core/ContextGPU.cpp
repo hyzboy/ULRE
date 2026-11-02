@@ -1,6 +1,6 @@
 ﻿#include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/support/CameraInfoStorage.h>
-#include <hgl/ecs/support/TransformAssignmentBuffer.h>
+#include <hgl/ecs/support/storage/CameraInfoStorage.h>
+#include <hgl/ecs/support/transform/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/core/GraphicsContext.h>

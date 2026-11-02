@@ -1,7 +1,7 @@
 #pragma once
 
-#include<hgl/ecs/core/ComponentRow.h>
-#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/entity/ComponentRow.h>
+#include<hgl/ecs/core/entity/Entity.h>
 #include<cmath>
 #include<string>
 

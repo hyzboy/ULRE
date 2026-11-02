@@ -37,9 +37,9 @@
 - 行布局：`BuildMaterialTextureReferenceLayout` 按声明顺序排布，`row_stride = 16B 对齐`（同上 `:410-456`）。
 - 普通 Texture2D 的层号被**两处校验**强制为 0；`Texture2DArray` 允许 0..N-1：
   - 作者侧：`src/ecs/components/PrimitiveComponent.cpp:416-429`（`kind` 与声明采样器类型交叉校验 + 非数组不得带层号）
-  - 收集侧：`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:183-193`（binding 校验）、`:896-906`（物化校验）
+  - 收集侧：`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:183-193`（binding 校验）、`:896-906`（物化校验）
 - 行内容在物化阶段写入：`handle = GetBindlessHandle(resource_id)` → `references[i] = {handle, handle==0 ? 0u : layer}`（同上 `:908-947`）。
-- 句柄分配按**纹理对象**去重、不按类型（`tex_cache_`，`src/Vulkan/VKBindlessTextureManager.cpp:132-143`）；资源 id = `"texid:" + TextureID`（`src/ecs/support/RenderResource.cpp:6-12`）。
+- 句柄分配按**纹理对象**去重、不按类型（`tex_cache_`，`src/Vulkan/VKBindlessTextureManager.cpp:132-143`）；资源 id = `"texid:" + TextureID`（`src/ecs/support/pipeline/RenderResource.cpp:6-12`）。
 
 ### ③ 采样口：只有 `texture2DArray` 一种采样形式
 
@@ -74,8 +74,8 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 |---|---|---|
 | 作者侧 | `CreateTexture2DArray(name,w,h,layer,fmt,mips)` 建空 array，`LoadTexture2DArray(arr, layer, file)` 逐层从**单张 2D 文件**拷入 | `inc/hgl/graph/module/TextureManager.h:130-132`、`src/SceneGraph/texture/VKTexture2DArrayLoader.cpp:19-42` |
 | 作者侧 | `SetMaterialTextureResource(name, tex, sampler, kind, resource_id, array_layer)`（层号落脚点） | `src/ecs/components/PrimitiveComponent.cpp:368-446` |
-| 每帧 collect | 注册纹理句柄 → 组 `references[]` → 取行池行 → 写 `uvec2` 行 | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:860-1089` |
-| 每帧 batch | 写每实例地址表 `MaterialInstanceAddresses{payload_address, texture_reference_address}` | `src/ecs/support/PrimitiveBatchPipeline.cpp:828-861` |
+| 每帧 collect | 注册纹理句柄 → 组 `references[]` → 取行池行 → 写 `uvec2` 行 | `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:860-1089` |
+| 每帧 batch | 写每实例地址表 `MaterialInstanceAddresses{payload_address, texture_reference_address}` | `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:828-861` |
 | 描述符集 | 一帧绑一次 Scene(0)/Bindless(1) 两集，per-material 绑定零残留 | `inc/hgl/common/DescriptorSetTypeDef.h:34-45` |
 | GLSL | `MTL_TEX(i)` → `MaterialTextureReferencesRef(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[i].texture_reference_address)` | 发射点 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:205-219` |
 | GPU | `Sample2DArray(handle, sampler, uv, layer)`，`nonuniformEXT` 索引 | `ShaderLibrary/module/descriptor/bindless_textures.glsl:46-66` |

@@ -247,7 +247,7 @@ MyParticleCollectSystem        // phase: RenderCollect
 
 3. **更新RenderGraph中的Pass范围**（如有）
 
-   检查 `src/ecs/core/RenderGraph.cpp`：
+   检查 `src/ecs/core/render/RenderGraph.cpp`：
    
    ```cpp
    // 如果有硬编码的pass范围，需要调整
@@ -340,7 +340,7 @@ class MySystemB : public System {
 
 - `inc/hgl/ecs/core/System.h` 第45-105行 - ExecutionPhase完整定义
 - `src/ecs/core/Context.cpp` 第799行 - AddOrUpdateSystem()
-- `src/ecs/core/RenderGraph.cpp` 第40-80行 - RenderGraph::Pass创建
+- `src/ecs/core/render/RenderGraph.cpp` 第40-80行 - RenderGraph::Pass创建
 
 ---
 

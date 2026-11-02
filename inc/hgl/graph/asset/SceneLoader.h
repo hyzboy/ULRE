@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/ecs/core/EntityHandle.h>
+#include <hgl/ecs/core/entity/EntityHandle.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/asset/GeometryAsset.h>
 #include <hgl/graph/asset/SceneAssetSpec.h>

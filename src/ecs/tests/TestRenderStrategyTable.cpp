@@ -1,6 +1,6 @@
 #define ULRE_STRATEGY_PARITY_ENABLED 1
-#include <hgl/ecs/support/RenderStrategyTable.h>
-#include <hgl/ecs/support/RenderStrategyParity.h>
+#include <hgl/ecs/support/pipeline/RenderStrategyTable.h>
+#include <hgl/ecs/support/pipeline/RenderStrategyParity.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/MaterialResolver.h>
 #include <hgl/log/Log.h>

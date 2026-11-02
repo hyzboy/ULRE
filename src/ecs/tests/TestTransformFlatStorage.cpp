@@ -1,8 +1,8 @@
-#include <hgl/ecs/support/TransformDataStorage.h>
+#include <hgl/ecs/support/transform/TransformDataStorage.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/Entity.h>
-#include <hgl/ecs/support/TransformAccessor.h>
-#include <hgl/ecs/support/ComponentTypeTable.h>
+#include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/ecs/support/transform/TransformAccessor.h>
+#include <hgl/ecs/support/storage/ComponentTypeTable.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -477,22 +477,22 @@ int main(int argc, char** argv)
         const SourceNeedle kNeedles[] =
         {
             // L2W 一侧：动态扩容/重建路径**必须零残留**
-            { "src/ecs/support/TransformAssignmentBuffer.cpp", "StatTransform",                   0, "L2W 按需扩容的旧入口复活（T10：预算期一次性分配）" },
-            { "src/ecs/support/TransformAssignmentBuffer.cpp", "EnsureTransformIndexRowsCapacity",0, "index 行表按需重建复活" },
-            { "src/ecs/support/TransformAssignmentBuffer.cpp", "L2W recreated",                    0, "运行期重建 L2W 的日志/路径复活（行号/地址会移动）" },
-            { "src/ecs/support/TransformAssignmentBuffer.cpp", "transform_policy",                 0, "按策略重建 buffer 的旧字段复活" },
-            { "src/ecs/support/TransformAssignmentBuffer.cpp", "power_to_2",                       0, "按需取 2 次幂容量的旧写法复活（容量应来自预算）" },
-            { "inc/hgl/ecs/support/TransformAssignmentBuffer.h", "EnsureCapacity",                 0, "旧入口名复活（每帧入口应为 EnsureBudget）" },
+            { "src/ecs/support/transform/TransformAssignmentBuffer.cpp", "StatTransform",                   0, "L2W 按需扩容的旧入口复活（T10：预算期一次性分配）" },
+            { "src/ecs/support/transform/TransformAssignmentBuffer.cpp", "EnsureTransformIndexRowsCapacity",0, "index 行表按需重建复活" },
+            { "src/ecs/support/transform/TransformAssignmentBuffer.cpp", "L2W recreated",                    0, "运行期重建 L2W 的日志/路径复活（行号/地址会移动）" },
+            { "src/ecs/support/transform/TransformAssignmentBuffer.cpp", "transform_policy",                 0, "按策略重建 buffer 的旧字段复活" },
+            { "src/ecs/support/transform/TransformAssignmentBuffer.cpp", "power_to_2",                       0, "按需取 2 次幂容量的旧写法复活（容量应来自预算）" },
+            { "inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h", "EnsureCapacity",                 0, "旧入口名复活（每帧入口应为 EnsureBudget）" },
 
             // 预算期一次性分配与预算字段必须在位
-            { "src/ecs/support/TransformAssignmentBuffer.cpp", "AllocateBudgetBuffers",            2, "预算期一次性分配入口缺失（声明 + 定义各一次）" },
-            { "src/ecs/support/TransformAssignmentBuffer.cpp", "EnsureBudget",                     2, "每帧预算入口缺失（定义 + 注释各一次）" },
-            { "inc/hgl/ecs/support/TransformAssignmentBuffer.h", "max_static_rows",               2, "预算字段缺失（容量不再由预算决定）" },
+            { "src/ecs/support/transform/TransformAssignmentBuffer.cpp", "AllocateBudgetBuffers",            2, "预算期一次性分配入口缺失（声明 + 定义各一次）" },
+            { "src/ecs/support/transform/TransformAssignmentBuffer.cpp", "EnsureBudget",                     2, "每帧预算入口缺失（定义 + 注释各一次）" },
+            { "inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h", "max_static_rows",               2, "预算字段缺失（容量不再由预算决定）" },
 
             // 存储侧：声明式预算与"拒绝分配"必须在位
-            { "inc/hgl/ecs/support/TransformDataStorage.h", "kDefaultMaxStaticRows",               3, "默认预算常量缺失（P-2 拍板 static 4096 + dynamic 4096）" },
-            { "inc/hgl/ecs/support/TransformDataStorage.h", "GetRowBudget",                        4, "行预算访问器缺失（访问器 + Initialize + Assemble 校验 + 告警参数）" },
-            { "inc/hgl/ecs/support/TransformDataStorage.h", "row_overflow_warned",                 5, "超限一次性告警闩缺失（字段 + Initialize 复位 + 判定 + 置位 + 访问器）" },
+            { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "kDefaultMaxStaticRows",               3, "默认预算常量缺失（P-2 拍板 static 4096 + dynamic 4096）" },
+            { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "GetRowBudget",                        4, "行预算访问器缺失（访问器 + Initialize + Assemble 校验 + 告警参数）" },
+            { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "row_overflow_warned",                 5, "超限一次性告警闩缺失（字段 + Initialize 复位 + 判定 + 置位 + 访问器）" },
 
             // 调用点：必须走预算入口
             { "src/ecs/systems/tick/TransformSystem.cpp",     "EnsureBudget(",                     1, "每帧入口未走预算 API" },
@@ -507,11 +507,11 @@ int main(int argc, char** argv)
             // 批 1.3 C6：遍历统一走 `ForEach*Transform` 后，槽号改由 slot_map 反查（2 处遍历）
             // ⇒ 该符号用点由 4 涨到 6；针的意图（每帧派生自世界槽位表、不许退化成排名映射）不变。
             { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           6, "槽位映射缺失（每帧派生自世界槽位表）" },
-            { "src/ecs/support/TransformAccessor.cpp",    "MigrateTransform",          1, "换边未通知世界（只改 mobility 字节 ⇒ 实例拿默认行、全画在原点）" },
+            { "src/ecs/support/transform/TransformAccessor.cpp",    "MigrateTransform",          1, "换边未通知世界（只改 mobility 字节 ⇒ 实例拿默认行、全画在原点）" },
 
             // T8.5：局部矩阵常驻缓存与二级标脏字段**必须零残留**（行内存 223 B → 158 B 的验收点）
-            { "inc/hgl/ecs/support/TransformDataStorage.h", "local_matrices",            0, "局部矩阵常驻缓存复活（真源只剩 TRS + 求值循环内按需合成）" },
-            { "inc/hgl/ecs/support/TransformDataStorage.h", "local_dirty",               0, "第二级标脏字段复活（只留单级 matrixDirty）" },
+            { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "local_matrices",            0, "局部矩阵常驻缓存复活（真源只剩 TRS + 求值循环内按需合成）" },
+            { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "local_dirty",               0, "第二级标脏字段复活（只留单级 matrixDirty）" },
         };
 
         for (const SourceNeedle &n : kNeedles)

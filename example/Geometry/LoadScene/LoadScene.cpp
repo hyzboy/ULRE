@@ -13,7 +13,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKTextureReadback.h>
 #include "../../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
-#include<hgl/ecs/support/GPUCullSystem.h>
+#include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<cstring>
 #include<cstdlib>
 #include<cstdio>
@@ -28,8 +28,8 @@
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>

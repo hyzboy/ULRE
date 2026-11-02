@@ -180,5 +180,5 @@ channels = "none"                # 全关（等价于不写）
   这个符号被 Vulkan / ShaderGen / SceneGraph / ECS 四个互相 include 的库（强连通分量）与只链
   `ULRE.Runtime` 的最小工具共同使用，放进任何一个现有库都会造成循环或把 toml11 传染给最小工具。
 - `ULRE_DEBUG.toml` —— 仓库根的配置文件本体（带逐通道中文注释）
-- `inc/hgl/ecs/support/PerfTimer.h` —— `perf` 通道的消费方范式（每 240 帧一窗均值）
+- `inc/hgl/ecs/support/storage/PerfTimer.h` —— `perf` 通道的消费方范式（每 240 帧一窗均值）
 - `doc/future/shadergen-material-chain-review.md` —— 材质链缺陷闭环与本次日志降噪的验收记录

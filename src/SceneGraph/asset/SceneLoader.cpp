@@ -2,7 +2,7 @@
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/support/RenderableBuilder.h>
+#include <hgl/ecs/support/pipeline/RenderableBuilder.h>
 #include <hgl/graph/asset/GeometryPreset.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/GeometryManager.h>

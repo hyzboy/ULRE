@@ -268,14 +268,14 @@ bool ECSContext::RenderTo(IRenderTarget *rt, const Color4f &clear, float dt = 0.
 三段（`Context.cpp:388/483/434`），**不新增第三段逻辑**（P5）。
 `OffscreenWorldRuntime::RenderOnce` 退化为一行转发，随后整个文件删除。
 
-**该正式化已落地（2026-09）**：`RenderPassRequest`（`inc/hgl/ecs/core/RenderPassRequest.h:31`）+
+**该正式化已落地（2026-09）**：`RenderPassRequest`（`inc/hgl/ecs/core/render/RenderPassRequest.h:31`）+
 `ECSContext::RenderTo(const RenderPassRequest &)`（`src/ecs/core/Context.cpp:445`）已是离屏/子 pass 一等入口，
 内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly`
 + `EndManagedRenderFrame`，字段含 `target / camera / clear_color / use_target_clear / load_depth /
 use_scissor / scissor / clear_scissor_depth / mobility_filter / cull_mode`；`RenderPassOptions` 在
 `inc/hgl/vk/VKCommandBuffer.h:116`。实际使用者：`example/Shadow/ShadowMap.cpp:1097`、
 `example/Shadow/CascadeShadowMap.cpp:683,704`。剩余缺口是 `RenderGraph::Pass::renderTarget`
-跨 RT pass 链（执行器目前只输出 `LogWarning`，见 `src/ecs/core/RenderGraph.cpp:110-118`）。
+跨 RT pass 链（执行器目前只输出 `LogWarning`，见 `src/ecs/core/render/RenderGraph.cpp:110-118`）。
 
 **pass 级剔除模式（`CullMode`）**：`RenderPassRequest::cull_mode` / `RenderPassOptions::cull_mode`
 取值 `hgl::ecs::CullMode`（`Inherit = -1`、`None = 0`、`Front = 1`、`Back = 2`），
@@ -462,7 +462,7 @@ offscreen->Resize(1024, 1024);                  // 阶段 D 后可用
 真正的多 RT pass 链（MRT / 后处理链 / 阴影图）留作独立任务，需：
 1. `RenderSystemCore` 支持多段 `Begin/End` 与跨 RT 提交同步；
 2. ~~引入 `RenderPassRequest` 明确描述 `world / target / clear / camera_override`；~~ **已完成**：
-   `inc/hgl/ecs/core/RenderPassRequest.h:31` + `ECSContext::RenderTo(const RenderPassRequest&)`
+   `inc/hgl/ecs/core/render/RenderPassRequest.h:31` + `ECSContext::RenderTo(const RenderPassRequest&)`
    （`src/ecs/core/Context.cpp:445`），见 §3.4 校对注；
 3. 补一个多 RT 用例（如后处理链）作为验证基线。
 

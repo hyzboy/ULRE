@@ -36,7 +36,7 @@
   时返回 true；成功路径才在末尾写回 `new_cap`（现 `:208`）。反证方式：删掉 `:122` 那一行，即回到旧缺陷。
 
 ### 0.2 L2W 缓冲被按设备上限截断，而行号算术仍用预算值 ✅复核（支撑组指出）
-`src/ecs/support/TransformAssignmentBuffer.cpp`
+`src/ecs/support/transform/TransformAssignmentBuffer.cpp`
 - `:460-470` `AllocateBudgetBuffers` 把 `row_count` **按设备 SSBO 上限截断**（注释自认"按设备上限截断（请调小预算）"）
 - 但 `:195-199` `GetDynamicBaseIndex()` 及两个 writer 仍用**预算**（`max_static_rows + kFirstObjectL2WSlot` / `max_dynamic_rows`）
 - 后果：设备 SSBO 上限低于声明预算时，动态段基址指向已建缓冲之外，而代码仍在写 ⇒ 越界写
@@ -58,7 +58,7 @@
 | `Object::GetID()` / `objectId` / `nextObjectId` / `SetName()` | `core/Object.h:19,23,28,46,52` | M ✅复核 |
 | `RenderItem::Compare()`（24 行排序策略） | `core/RenderItem.h:84`、`RenderItem.cpp:8-31` | S2 ✅复核（另见 §6） |
 | `RenderItem::index`（只写不读） | `core/RenderItem.h:35`；唯一写 `MaterialBatch.cpp:91` | S2 ✅复核 |
-| `src/ecs/core/RenderItem.cpp:33-38` 空残留（2 个 legacy include + 空 namespace） | — | S2 |
+| `src/ecs/core/render/RenderItem.cpp:33-38` 空残留（2 个 legacy include + 空 namespace） | — | S2 |
 | `RenderGraph::Pass` 的 `enabled/runUpdate/submitTransforms/runRender` + `onBeforePass/onAfterPass` | `core/RenderGraph.h:39-56` | S2 ✅复核 |
 | `MaterialBatch::static_count`（恒 0） | `core/MaterialBatch.h:48` | S2 |
 | `EntityGPU::work_flags`（自注"留 0"） | `core/EntityGPU.h:51` | S2 |
@@ -113,7 +113,7 @@
 > | `Object` 的 **ID 半边**：`ObjectID` / `objectId` / `nextObjectId` / `GetID()` / `SetName()` | 全仓命中只在 `Object.h/.cpp` 自身（`GetID()` 的其余命中属 `TransformAccessor`/`BoundingBoxAccessor` 等**别的类**）。**名字半边保留**：`objectName`/`GetName()` 被 `ECSContext`（建表/日志）与 `EntityManager` 在用 |
 > | `RenderItem::Compare()`（声明 + 24 行定义，零调用者） | 排序链随 T4c4 删 CPU 绘制后已消失；`Compare` 是最后残留 |
 > | `RenderItem::index`（唯一写者 `MaterialBatch.cpp:88`，零读者） | 写者一并删除 ⇒ 字段无任何使用者 |
-> | `src/ecs/core/RenderItem.cpp` **整个文件** | 删掉 `Compare` 后即为空 TU ⇒ 删文件 + 从 `CMakeLists.txt` 去登记；B3-iii 排序键说明迁到 `RenderItem.h` 的 `draw_key` 处 |
+> | `src/ecs/core/render/RenderItem.cpp` **整个文件** | 删掉 `Compare` 后即为空 TU ⇒ 删文件 + 从 `CMakeLists.txt` 去登记；B3-iii 排序键说明迁到 `RenderItem.h` 的 `draw_key` 处 |
 > | `MaterialBatch::static_count`（恒 0、零读者） | 只有 `= 0` 的两处赋值 |
 > | `RenderGraph::Pass` 的 `enabled` / `runUpdate` / `submitTransforms` / `runRender` / `onBeforePass` / `onAfterPass` | 六者**全仓无赋值点**（唯一构造点传全 true/空）⇒ 删字段 + `RenderGraph.cpp` 五个死分支改无条件执行（含 `else if (submitTransforms)` 那条因 `runRender` 恒 true 而不可达的分支）；`RenderGraph.cpp` 的 `TransformSystem.h` include 一并清掉 |
 >
@@ -209,7 +209,7 @@
 > **本批两处踩坑（都已修）**
 >
 > 1. **grep 范围漏洞**：复核零调用者时我只扫了 `inc/hgl/ecs` + `src/ecs` + `example/`，**漏了 `src/SceneGraph/`** ⇒ `SetResourceNamePrefix` 被误删、`ULRE.SceneGraph` 编译报 `C2039`。教训："全仓零调用者"的 grep 必须覆盖 `inc/`、`src/`、`example/` 的全部子目录（本仓 ECS 之外还有 SceneGraph 等模块在调 ECS API）。
-> 2. **隐式实例化的载体**：删掉 `Context.cpp` 的四个 `GetShadowProxy` 包装后，`TestTransformFlatStorage` 报 `LNK2019: unresolved external symbol Entity::GetComponent<ShadowProxy>()` —— 该模板**只声明在 `Entity.h`、定义在 `Context.h` 尾部**，而 `ShadowProxy.cpp` 此前并不 include `Context.h`：是那四个被删函数经组件模板**顺带实例化**出了这个符号。修法：按同目录 `GeometryData.cpp` / `MaterialData.cpp` 的既有规矩，`ShadowProxy.cpp` 补 `#include<hgl/ecs/core/Entity.h>` + `<hgl/ecs/core/Context.h>`（自己看得见定义）。**教训**：删"零调用"的包装函数前，先查它是否顺带提供了某个只在别处声明的模板实例。
+> 2. **隐式实例化的载体**：删掉 `Context.cpp` 的四个 `GetShadowProxy` 包装后，`TestTransformFlatStorage` 报 `LNK2019: unresolved external symbol Entity::GetComponent<ShadowProxy>()` —— 该模板**只声明在 `Entity.h`、定义在 `Context.h` 尾部**，而 `ShadowProxy.cpp` 此前并不 include `Context.h`：是那四个被删函数经组件模板**顺带实例化**出了这个符号。修法：按同目录 `GeometryData.cpp` / `MaterialData.cpp` 的既有规矩，`ShadowProxy.cpp` 补 `#include<hgl/ecs/core/entity/Entity.h>` + `<hgl/ecs/core/Context.h>`（自己看得见定义）。**教训**：删"零调用"的包装函数前，先查它是否顺带提供了某个只在别处声明的模板实例。
 >
 > **测试改钉（Test 28，A7c-2 双句柄契约）**：`ECSContext::GetShadowProxy` 的"指针版直通核心"计数针失去载体 ⇒ ① 原行改钉**禁复活**（`GetShadowProxy` 在 `Context.cpp` 中出现 0 次）；② 同一"计数式"精度迁到存活唯一路径 `src/ecs/components/ShadowProxy.cpp`（`return owner->GetComponent<ShadowProxy>();` 必须恰好 2 条：const / 非 const）+ 该文件不得出现 `GetEntity(owner)`；③ `GetEntity(owner)` 期望数 11 → **9**（删掉的 2 个 EntityID 重载各解析一次）。
 >
@@ -321,7 +321,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 
 ### 2.3 逐字复制的机制
 - **脏行上传机制在 `EntityGPUTable` / `EntityRenderIDTable` / `LightRowTable` 里逐字重复**：`CollectDirtyRows`、`ClearDirty`、`GetDirtyCount` 三处**字节相同**；`MarkDirty`/`ReportOverflow`（同一闩、同一 `GLogError`，仅文案不同）/`IsAllocated`/`Clear` 近乎相同；成员 `row_dirty` + `overflow_reported` 声明 3 次。命名漂移：`EntityGPUTable` 叫 `Clear()` 而 `EntityRenderIDTable` 同名概念叫 `ClearAll()`。世界侧上传路径重复同一套 quartet 3 次 — `Context.cpp:1701-1712,1750-1755,1791-1796` ⇒ **~120 行**。`S3`
-  - ⇒ **已处置（2026-10-09）**：新增 `inc/hgl/ecs/support/DirtyRowSet.h`，三张表改按**组合**持有
+  - ⇒ **已处置（2026-10-09）**：新增 `inc/hgl/ecs/support/storage/DirtyRowSet.h`，三张表改按**组合**持有
     （`row_dirty` + `overflow_reported` + `MarkDirty` / `CollectDirtyRows` / `ClearDirty` / `GetDirtyCount` 收成一处定义，三张表只剩 `GetDirtySet()`）；
     `ReportOverflow` 的**告警文案**留在各表（`ArmOverflowWarning()` 只提供一次性闩）；上传侧 `UploadDirtyRowsHelper` 改收 `DirtyRowSet&`。
     顺带删掉三处**零调用**的整表 `Clear()` / `ClearAll()`（`rows` 清零 + 脏位清零；全仓零调用 ⇒ 命名漂移的对象本身也是死代码），
@@ -355,7 +355,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
     ⚠️ **端到端对拍未取到**：开关打开后台架能正常注册并初始化（见 §4.1 行），但 `ShadowMap` 当前
     过不了启动阶段 ⇒ 拿不到对拍采样（与本次改动无关，见 §4.1 行）。`S3`
 - **两套同构 profiler** — `CullPerfTimer`（`GPUCullSystem.cpp:33-60`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp:121-146`），都匿名 namespace、都读环境变量 `PBR_PERF`（后统一为 `channels.perf`）、都按 240 帧窗口平均。`S3`
-  - ⇒ **已处置（2026-10-10）**：抽成 `inc/hgl/ecs/support/PerfTimer.h` —— `PerfTimer`（`name` 构造 +
+  - ⇒ **已处置（2026-10-10）**：抽成 `inc/hgl/ecs/support/storage/PerfTimer.h` —— `PerfTimer`（`name` 构造 +
     `Active()` + `Add(us, probe_name=nullptr, probe_value=0)`）+ `DeltaUs` + `PerfSpan` 一份实现；
     两处调用点删掉本地副本。差异点收敛为**一个可选探针**：`gpu_dispatch` 的 `tracked_objects` 泄漏判据
     只在打印那一帧格式化，取值成本留在调用侧（`GetTrackedObjectCount()` = `tracked_objects.size()`，O(1)）；
@@ -436,7 +436,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
   ＋ `static_assert(kDefaultCameraSlot == 0u)` ⇒ **已收敛**。
 - **L2W 槽约定（本批）** ⇒ 两个常量原为 `TransformAssignmentBuffer.cpp` 的**文件私有**匿名命名空间常量，
   而两个写者各自用裸 `slot + 1` 复述「行 0 = 单位矩阵／首对象 = 行 1」⇒ **上提**到
-  `inc/hgl/ecs/support/TransformAssignmentBuffer.h`（唯一具名权威 ＋
+  `inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h`（唯一具名权威 ＋
   `static_assert(kFirstObjectL2WSlot == kIdentityL2WSlot + 1u)`）；`TransformSystem.cpp:65` 与
   `LineRenderPipeline.cpp:585` 的裸算式改用常量。
 - **材质行 0 哨兵（本批）** ⇒ 具名 `kNoMaterialRow`（`MaterialAuthoringSideTable.h`，含 `static_assert`），
@@ -549,7 +549,7 @@ render_pipelines                     unordered_map<string, unique_ptr<...>>    :
 |---|---|
 | `SortBatchItems` 是批排序主函数（`PrimitiveBatchPipeline.cpp:786-831`） | ✅ 已订正 4 份文档（`ecs-layer-architecture-and-frame-flow.md` 批内定型行、`simple-sphere-ecs-render-chain.md`、`render-flow-cull-sort-drawcall.md`、`future/entity-rows-gpu-cull-plan.md`）：说明该函数**全仓不存在**，批内定型现为 `FinalizeBatch → EnsureBatchIndexRows → EnsureMeshDrawParams → WriteBatchIndexRows`，批间排序是 `PrimitiveRenderSystem::RenderBatches` 的 `std::sort(ordered_batches)`（按 `MaterialBatch::key`） |
 | `RenderItem::Compare()` 是批排序主键 | ✅ 已订正：`render-flow-cull-sort-drawcall.md`（②批内行 + 机制提醒 + `item->index` 行 + 文件清单行） |
-| `future/stage_B_execution_plan.md:370` / `stage_B_debt_list.md:249` 把 `Compare` 当活约束 | ✅ 两份规划档都加了**事实订正**块：该函数与 `src/ecs/core/RenderItem.cpp` 已删除 ⇒ 围绕它的设计前提失效（另一处 `:1071` 的 B3-iii 侦察前提同样订正） |
+| `future/stage_B_execution_plan.md:370` / `stage_B_debt_list.md:249` 把 `Compare` 当活约束 | ✅ 两份规划档都加了**事实订正**块：该函数与 `src/ecs/core/render/RenderItem.cpp` 已删除 ⇒ 围绕它的设计前提失效（另一处 `:1071` 的 B3-iii 侦察前提同样订正） |
 | 3 份文档称 `PrimitiveRenderSystem` 调 `GetActiveCameraID()` | ✅ 已订正为 `GetActiveCameraRow()`（`ecs-layer-architecture-and-frame-flow.md`、`simple-sphere-ecs-render-chain.md`；第三份 `t3-camera-row-slotting-plan.md` 已于 2026-10-18 删档）；并注记裸读槽号的该 API 已于 2026-10-10 删除 |
 | 4 份文档用 `SetElementTypeSystemsEnabled(...)` | ✅ 已订正为真 API **`SetSystemGroupEnabled(SystemGroupID, bool)`**（`Context.h:1033` / `Context.cpp:685,701`）：`ecs-layer-architecture-and-frame-flow.md` 5 处、`simple-sphere-ecs-render-chain.md` 1 处、`future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md` 1 处（保留旧名的说明） |
 | `entity-rows-gpu-cull-plan.md:1253` 称该管线有两处 `std::sort` | ✅ 已订正：`PrimitiveBatchPipeline.cpp` 现**没有任何 `std::sort`**（`SortByDistance` 亦不存在）；同文件 `:1407` 的删除清单标注"已不存在" |

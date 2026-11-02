@@ -289,7 +289,7 @@ ctest --test-dir build -C Debug -R "^LoadedFileManagerTest$" --output-on-failure
 |---|---|---|
 | `TextureAsset` | `inc/hgl/graph/asset/TextureAsset.h` | 纹理**句柄**：只带文件名的 `MetaOnly` → `Loading` → `Resident` |
 | `TextureManager` | `inc/hgl/graph/module/TextureManager.h` | 句柄表所有者：`CreateTextureAsset` / `WrapTextureAsset` / `RegisterTextureFilename` |
-| `TextureStreamingSystem` | `inc/hgl/ecs/systems/render/TextureStreamingSystem.h` | ECS 系统：扫句柄表 → 提读盘请求 → 提交 GPU 上传 → 回填句柄 |
+| `TextureStreamingSystem` | `inc/hgl/ecs/systems/render/streaming/TextureStreamingSystem.h` | ECS 系统：扫句柄表 → 提读盘请求 → 提交 GPU 上传 → 回填句柄 |
 
 ### 9.0 几何侧同构管线（2026-10-29 补）
 
@@ -300,7 +300,7 @@ ctest --test-dir build -C Debug -R "^LoadedFileManagerTest$" --output-on-failure
 |---|---|---|
 | `GeometryAsset` | `inc/hgl/graph/asset/GeometryAsset.h` | 几何句柄：内置参数化创建即 `Resident`，文件来源 `MetaOnly` → `Loading` → `Resident` |
 | `GeometryAssetRegistry` | `inc/hgl/graph/asset/GeometryAssetRegistry.h` | 句柄表所有者（挂 `GraphicsContext`，拥有句柄及其 `Geometry*`） |
-| `GeometryStreamingSystem` | `inc/hgl/ecs/systems/render/GeometryStreamingSystem.h` | ECS 系统：扫句柄表 → 提读盘请求 → 主线程解析建 buffer → 回填句柄 |
+| `GeometryStreamingSystem` | `inc/hgl/ecs/systems/render/streaming/GeometryStreamingSystem.h` | ECS 系统：扫句柄表 → 提读盘请求 → 主线程解析建 buffer → 回填句柄 |
 | `PrimitiveAssetRegistry` | `inc/hgl/graph/asset/PrimitiveAssetRegistry.h` | 把「几何 + 配方」装配成 `PrimitiveAsset`（`*.primitive.toml`） |
 
 `PrimitiveState::CanRender` 因此是**双重门禁**：几何 `IsGeometryReady()` **且** 材质必需
@@ -542,7 +542,7 @@ else
 恒不变）。可靠口径只有 `RenderFrameCache::frame_serial`（`BeginFrame()` 自增）：
 
 ```cpp
-// src/ecs/support/PrimitiveBatchPipeline.cpp
+// src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp
 if (cache.last_prepared_serial == cache.frame_serial) return true;
 cache.last_prepared_serial = cache.frame_serial;
 ```

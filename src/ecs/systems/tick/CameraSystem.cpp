@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/ecs/support/CameraInfoStorage.h>
+#include<hgl/ecs/support/storage/CameraInfoStorage.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>

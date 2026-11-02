@@ -95,7 +95,7 @@ ShaderLibrary/module/provider/ambient_light/ambient_light_sky.glsl
 `ambient_light_ibl` 在贴图未绑定时**直接变黑**（只剩直接光），**不会**回落到
 `ambient_light_sky`。因此环境层切换算法轴时，必须同时保证数据轴
 （`Profile::cpu.ambient_env`）已填有效句柄 —— 这是
-`inc/hgl/ecs/systems/render/EnvironmentSystem.h:67` 那条 ⚠ 注释的由来：
+`inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h:67` 那条 ⚠ 注释的由来：
 「换模块**必须**同时确认 `ambient_env` 已给有效句柄（IBL 模块采样它）」。
 
 ### 两者可互换的结构原因
@@ -200,7 +200,7 @@ EnvironmentManager::Profile::cpu.ambient_env                // 数据轴（IBL �
         ↓
 ECSContext::GetAmbientProviderName()
         ↓
-RenderPrimitiveCollectSystem（src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:483-489, :1151）
+RenderPrimitiveCollectSystem（src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:483-489, :1151）
         ↓
 MaterialBuildRequest.ambient_module_name
         ↓

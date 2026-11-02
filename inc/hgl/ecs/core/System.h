@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/Object.h>
+#include<hgl/ecs/core/entity/Object.h>
 #include<hgl/log/Log.h>
 #include<vector>
 #include<typeindex>

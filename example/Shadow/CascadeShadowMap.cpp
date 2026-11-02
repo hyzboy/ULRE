@@ -29,18 +29,18 @@
 #include <hgl/2d/BitmapSave.h>
 
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/Entity.h>
-#include <hgl/ecs/core/ScenePipelineMode.h>
-#include <hgl/ecs/support/TransformAccessor.h>
+#include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/ecs/core/render/ScenePipelineMode.h>
+#include <hgl/ecs/support/transform/TransformAccessor.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/ShadowProxy.h>
 #include <hgl/ecs/components/CameraControlMode.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
-#include <hgl/ecs/systems/render/RenderTargetSystem.h>
-#include <hgl/ecs/systems/render/RenderSystemCore.h>
-#include <hgl/ecs/systems/render/LightSystem.h>
-#include <hgl/ecs/systems/render/MainLightShadowSystem.h>
-#include <hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include <hgl/ecs/systems/render/frame/RenderTargetSystem.h>
+#include <hgl/ecs/systems/render/frame/RenderSystemCore.h>
+#include <hgl/ecs/systems/render/light_shadow/LightSystem.h>
+#include <hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h>
+#include <hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 
 #include <glm/glm.hpp>

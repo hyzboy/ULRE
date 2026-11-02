@@ -33,16 +33,16 @@
 #include<hgl/graph/ssbo/LitMaterialData.h>
 
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include<hgl/ecs/systems/render/RenderTargetSystem.h>
-#include<hgl/ecs/systems/render/RenderSystemCore.h>
-#include<hgl/ecs/systems/render/LightSystem.h>
-#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include<hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/frame/RenderTargetSystem.h>
+#include<hgl/ecs/systems/render/frame/RenderSystemCore.h>
+#include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
+#include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
 #include<hgl/vk/VKRenderTargetSwapchain.h>

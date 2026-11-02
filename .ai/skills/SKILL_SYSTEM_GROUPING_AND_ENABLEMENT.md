@@ -333,8 +333,8 @@ context->Render(delta_time, custom_graph);
 
 ## 参考代码位置
 
-- `inc/hgl/ecs/core/RenderGraph.h` - RenderGraph和SceneStats定义
-- `src/ecs/core/RenderGraph.cpp` - 自适应图实现 (~280行)
+- `inc/hgl/ecs/core/render/RenderGraph.h` - RenderGraph和SceneStats定义
+- `src/ecs/core/render/RenderGraph.cpp` - 自适应图实现 (~280行)
 - `inc/hgl/ecs/core/System.h` - System基类、ExecutionPhase定义
 - `inc/hgl/ecs/core/Context.h` - GetSystemsByElementType()、SetElementTypeSystemsEnabled()
 - `src/ecs/core/DefaultSystemsCP.cpp` - 系统注册示例

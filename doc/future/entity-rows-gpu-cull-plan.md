@@ -19,7 +19,7 @@
 ```
 grep -rn 'EntityGPU' inc/ src/ example/ ShaderLibrary/ src/Tools/
 ```
-只命中：`inc/hgl/ecs/core/EntityGPU.h`（T1 的结构体 + 断言）、若干**注释**（`Entity.h` / `ComponentTypeTable.h` /
+只命中：`inc/hgl/ecs/core/entity/EntityGPU.h`（T1 的结构体 + 断言）、若干**注释**（`Entity.h` / `ComponentTypeTable.h` /
 `MaterialAuthoringSideTable.h`）、探针的 sizeof/offsetof 打印、测试里的枚举追加注释。
 ⇒ 设计稿「0 消费者 = 投机 API」的前提**成立**，所以本稿的价值在于：**先把消费者定形，再让表随它落地**。
 
@@ -29,10 +29,10 @@ grep -rn 'EntityGPU' inc/ src/ example/ ShaderLibrary/ src/Tools/
 
 | 落点 | 事实 |
 |---|---|
-| `inc/hgl/ecs/core/MaterialBatch.h:71` | `bool gpu_driven_override`（**跳过 CPU 侧 ICB 和行表生成**） |
+| `inc/hgl/ecs/core/render/MaterialBatch.h:71` | `bool gpu_driven_override`（**跳过 CPU 侧 ICB 和行表生成**） |
 | `MaterialBatch.h:53-54` | `icb_count_buffer` + `icb_count_buffer_offset`（**GPU-Driven 动态计数**，可选） |
 | `inc/hgl/ecs/core/InstancedPrimitiveRenderItem.h:32` | `bool IsGPUDriven() const`（逐项声明自己是托管的） |
-| `src/ecs/support/PrimitiveBatchPipeline.cpp:744-765` | 任一项 `IsGPUDriven()` ⇒ 该批 `gpu_driven_override = true`，并把 `icb_count_buffer` 挂上 |
+| `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:744-765` | 任一项 `IsGPUDriven()` ⇒ 该批 `gpu_driven_override = true`，并把 `icb_count_buffer` 挂上 |
 | 同上 `:350/453/475/604/657/795/842/927` | 托管批在行表生成 / 4-ID 写入 / 命令表等**八处**被跳过 |
 
 **示例侧原型（`example/ApiValidation/ComputeFrustumCull.cpp`，829 行）** —— 它已经把「GPU 剔除」的
@@ -226,7 +226,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Worl
 新着色器 `#include` 它即可，**不新增 set/binding**（push constant + BDA 两级寻址，照 `example/ApiValidation/ComputeFrustumCull.cpp:120-228`）。
 
 ### 7.4 唯一尚未存在的结构对（T3d-1 必须先补）
-- C++ 端已有：`inc/hgl/ecs/core/EntityGPU.h`（128 B 行：`flags` + `type[16]` + `row[16]`）；
+- C++ 端已有：`inc/hgl/ecs/core/entity/EntityGPU.h`（128 B 行：`flags` + `type[16]` + `row[16]`）；
 - GLSL 端**尚无** `buffer EntityGPURef` ⇒ 必须新增，**两端逐字段同序同型**，并在门里**有对拍用例覆盖**
   （否则门绿也证明不了它没漂 —— 这就是"S.global-addresses-struct-parity 兜底"那条坑的同族）。
 
@@ -780,15 +780,15 @@ cull 派发（RenderFrameSync，本帧）
 
 | 文件 | 改动 |
 |------|------|
-| `inc/hgl/ecs/support/GPUCullSystem.h` | 相位注释（RenderFrameSync/2β）；`kMaxBatches=256`、`kInvalidBatchTag`；`BeginBatchTagWrite/SetBatchLayout/EndBatchLayout`、`GetBatchCounterByteOffset/MapCurrentBatchCounters`、台架视图 `GetBatchCount/GetBatchLayout` |
-| `src/ecs/support/GPUCullSystem.cpp` | 相位改 `RenderFrameSync`；三缓冲创建（标签/分区/计数，**按帧槽分份**，`counter` 带 `TRANSFER_DST`）；PC 加三地址 + `batch_count`（112B）；`FillBuffer` 在 cull cmd 内清本帧槽计数 + `TRANSFER→COMPUTE` barrier；hook 签名 + 切片接线（`icb_count_buffer` = 本批计数槽、`gpu_row_base/gpu_capacity`） |
+| `inc/hgl/ecs/support/cull/GPUCullSystem.h` | 相位注释（RenderFrameSync/2β）；`kMaxBatches=256`、`kInvalidBatchTag`；`BeginBatchTagWrite/SetBatchLayout/EndBatchLayout`、`GetBatchCounterByteOffset/MapCurrentBatchCounters`、台架视图 `GetBatchCount/GetBatchLayout` |
+| `src/ecs/support/cull/GPUCullSystem.cpp` | 相位改 `RenderFrameSync`；三缓冲创建（标签/分区/计数，**按帧槽分份**，`counter` 带 `TRANSFER_DST`）；PC 加三地址 + `batch_count`（112B）；`FillBuffer` 在 cull cmd 内清本帧槽计数 + `TRANSFER→COMPUTE` barrier；hook 签名 + 切片接线（`icb_count_buffer` = 本批计数槽、`gpu_row_base/gpu_capacity`） |
 | `ShaderLibrary/ecs/entity_gpu_cull.glsl` | PC 镜像三地址 + `batch_count`；`BatchTagRef/BatchInfoRef/BatchCountersRef`；gather 段改"标签 → 切片 → atomicAdd → 越界计数"；`cmds.first_instance` = 切片内序号 |
-| `src/ecs/support/PrimitiveBatchPipeline.cpp` | guard 重写：**逐批**评估 + 批号分配 + 标签直写 + 切片装配（起点 4 行对齐）；`row_cursor` 容量前置检查；全量/部分接管分别记账；`RunCulling` 仅在**全量**接管时跳过 CPU 剔除 |
-| `inc/hgl/ecs/support/PrimitiveBatchPipeline.h` | `IsGPUCullFullTakeoverActive()` + `gpu_cull_full_frame_`（按批粒度接管下，部分接管时 CPU-driven 批仍需 CPU 剔除，否则退化成"全项提交"） |
-| `inc/hgl/ecs/core/MaterialBatch.h(.cpp)` | `gpu_row_base / gpu_capacity`（切片；`Clear()` 复位） |
+| `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp` | guard 重写：**逐批**评估 + 批号分配 + 标签直写 + 切片装配（起点 4 行对齐）；`row_cursor` 容量前置检查；全量/部分接管分别记账；`RunCulling` 仅在**全量**接管时跳过 CPU 剔除 |
+| `inc/hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h` | `IsGPUCullFullTakeoverActive()` + `gpu_cull_full_frame_`（按批粒度接管下，部分接管时 CPU-driven 批仍需 CPU 剔除，否则退化成"全项提交"） |
+| `inc/hgl/ecs/core/render/MaterialBatch.h(.cpp)` | `gpu_row_base / gpu_capacity`（切片；`Clear()` 复位） |
 | `inc/hgl/graph/RootAddressPush.h` | push 末尾追加三个字节偏移（追加式 ⇒ 既有位置调用不受影响） |
-| `src/ecs/support/PipelineMaterialRenderer.cpp` | 绘制段偏移/段长 = 切片（`first = row_base`、`maxCount = capacity`）；push 三表地址加 `row_base × 行字节` |
-| `src/ecs/support/CPUCullReferenceSystem.cpp` | 相位随 cull 迁 `RenderFrameSync` + `AddDependency<GPUCullSystem>()`；`CheckShadowFacts` 改**逐批切片走查**（行→实体走 l2w 行号反查，多批交错下保序表作废）+ 两本账交叉核对 + overflow 硬判据 |
+| `src/ecs/support/pipeline/PipelineMaterialRenderer.cpp` | 绘制段偏移/段长 = 切片（`first = row_base`、`maxCount = capacity`）；push 三表地址加 `row_base × 行字节` |
+| `src/ecs/support/cull/CPUCullReferenceSystem.cpp` | 相位随 cull 迁 `RenderFrameSync` + `AddDependency<GPUCullSystem>()`；`CheckShadowFacts` 改**逐批切片走查**（行→实体走 l2w 行号反查，多批交错下保序表作废）+ 两本账交叉核对 + overflow 硬判据 |
 | `example/Material/PBRSpheres.cpp` | `PBR_MULTIBATCH=1`：网格后半走第二套配方（同 def / cull off）⇒ 期望 2 个批 |
 
 ### 契约要点（实现中被抓住的硬约束）
@@ -889,10 +889,10 @@ cull 派发（RenderFrameSync，本帧）
 | 4 | GLSL 侧镜像 `MeshDrawParamsHeadData`：9 字段 + `uint8_t _pad[92]` ⇒ 加字段须同步改 `_pad[92] → _pad[88]` | `ShaderLibrary/ecs/entity_gpu_cull.glsl` |
 | 5 | **门有对表用例**：`E.mesh-draw-params-head-parity` 解析 X 列表**头字段**并与镜像逐字段比 + 断言步长 128 | `src/Tools/ShaderGen/ShaderResourceSchemaRegressionGate.cpp`（`RunMeshDrawParamsHeadParityCase`） |
 | 6 | 池行作者（唯一写 `addr_meshlets` 的地方）就在 meshlet 分支里，`meshlet_count` 成员近在咫尺 | `src/SceneGraph/VKGeometry.cpp`（`if (HasMeshlets())`）+ `inc/hgl/graph/geo/VKGeometry.h`（`meshlet_count` / `SetMeshlets`） |
-| 7 | CPU 账的 X 口径：`mesh_cmd->groupCountX = db.geometry->GetMeshletCount()` | `src/ecs/support/PrimitiveBatchPipeline.cpp`（`WriteMeshDrawCommands`） |
+| 7 | CPU 账的 X 口径：`mesh_cmd->groupCountX = db.geometry->GetMeshletCount()` | `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`（`WriteMeshDrawCommands`） |
 | 8 | GPU gather 侧**已能读池行**（`#define mesh_draw_params_pool …rows`）⇒ 加字段后可直接算 X | `ShaderLibrary/ecs/entity_gpu_cull.glsl` |
 | 9 | 网格着色器侧无需新变体：镜像声明**无条件**发射 `#define sbo_meshlets MeshletDescriptorRef(draw_params.addr_meshlets)`；meshlet 与经典路径由 `draw_params` 决定 | `src/ShaderGen/meshgen/MeshShaderVertexAdapter.h` |
-| 10 | guard 第 6 条（`addr_meshlets != 0` ⇒ 不接管）是这一件要放开的那条 | `src/ecs/support/PrimitiveBatchPipeline.cpp`（`TryApplyGPUCullOverride`） |
+| 10 | guard 第 6 条（`addr_meshlets != 0` ⇒ 不接管）是这一件要放开的那条 | `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`（`TryApplyGPUCullOverride`） |
 | 11 | 阴影批同路：caster 走 `ResolveShadowCasterProgram` 形成独立批 ⇒ 同一 guard/同一池行 ⇒ 放开口径对 forward/shadow 一致 | `RenderPrimitiveCollectSystem.cpp`（`ResolveShadowCasterProgram`） |
 
 ### 任务切分（每步编译 + 运行验证后再进下一步）
@@ -973,7 +973,7 @@ owner）之后，这两个示例在 **T3i `6b6baa39f` 静默黑屏**。
 
 ### 根因（实测，可复现）
 
-T3i 在 `src/ecs/support/PipelineMaterialRenderer.cpp` 引入
+T3i 在 `src/ecs/support/pipeline/PipelineMaterialRenderer.cpp` 引入
 `max_count = gpu_driven_override ? gpu_capacity : indirect_draw_count`，而 **`gpu_capacity` 全仓只有
 `GPUCullSystem.cpp:763` 写**（引擎剔除接管时）；外部注入的批从不 engaged 它 ⇒ `maxDrawCount = 0`
 ⇒ `vkCmdDrawMeshTasksIndirectCountEXT` 画 0 条。实测日志：
@@ -1139,7 +1139,7 @@ overflow=0`、AM `4/4` 与 `5/5`、PBR `1/1 items=100`、LS `1/1 items=49`、GPU
    （`ShaderLibrary/ecs/entity_gpu_cull.glsl:348`）⇒ 一项一条命令、Y=1；而顶点侧实例号定义 =
    `gl_InstanceIndex = draw_params.first_instance + gl_WorkGroupID.y`
    （`src/ShaderGen/meshgen/MeshShaderHeaderGen.h:123`）⇒ **Y 维度本来就是实例维度，机制已在**。
-2. **CPU 账会合，接管后不会**（同示例实测对照）：`src/ecs/support/PrimitiveBatchPipeline.cpp:733`
+2. **CPU 账会合，接管后不会**（同示例实测对照）：`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:733`
    `mesh_cmd->groupCountY = db.instance_count > 1 ? db.instance_count : 1u` ⇒ 同几何连续项合并；
    `GPUDrivenCull` 的 64 个 cube 同几何 ⇒
 
@@ -1450,7 +1450,7 @@ C 除非你明确接受“阴影只画主帧可见集”，否则不取。
     ② **行集按帧槽分份** —— 竞技场（cmds/l2w/mtl/ICB 命令）目前只按 pass 分扇区、**不按帧槽** ⇒
     在飞帧之间会互相覆写；按帧槽分份（2.6 MB 量级）可同时消掉跨帧竞态。
   - **下一步**：重跑"pass × 槽"组合计数取证（上一轮该测量因进程早退失败，**当次无数据**）⇒ 按 ① 收敛判定
-    ⇒ ② 作为竞态根治。临时取证代码已从库中清除（`example/Shadow/ShadowMap.cpp`、`src/ecs/support/GPUCullSystem.cpp`）。
+    ⇒ ② 作为竞态根治。临时取证代码已从库中清除（`example/Shadow/ShadowMap.cpp`、`src/ecs/support/cull/GPUCullSystem.cpp`）。
 
 - **闪烁已量化（2026-10-06，决定性数据）**：`SM_SELFCHECK=1 FRAMEDIGEST_PERFRAME=12` 逐帧摘要——
   `frame=1/2 distinct=256 ✓` → **`frame=3 distinct=4 fnv=0x43D07F2DF9290383 <== 与首帧不同`** → `4/5 ✓` → `6` 又变 →

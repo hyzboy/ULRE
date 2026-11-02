@@ -76,7 +76,7 @@ VUID / [ERROR] = 0（本机未启用 VK_LAYER_KHRONOS_validation）
 | 环节 | 位置 | 事实 |
 |------|------|------|
 | purpose 唯一来源 | `inc/hgl/ecs/components/PrimitiveComponent.h:107-108`、`:166-177` | 默认 `PrimitiveVariantPurpose::Surface`；`SetPrimitiveVariantPurpose()` **全仓零调用者**（仅定义处与 ShaderGen 回归测试出现） |
-| purpose → 程序 purpose | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:445-456` | `Surface → ShaderProgramPurpose::ForwardColor` |
+| purpose → 程序 purpose | `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:445-456` | `Surface → ShaderProgramPurpose::ForwardColor` |
 | 请求构造 | 同上 `:499` | `mtl_request.shader_program_purpose = effective_purpose`（全仓唯一构造点，**不看 RT 是否 depth-only**） |
 | 模板分派 | `src/SceneGraph/module/ShaderProgramManager.cpp:217-230`、`src/ShaderGen/contract/MaterialOutputContract.cpp:36-46` | 只有 `DepthOnly`/`ShadowDepth` 才走 `ShadowCasterOpaque` / `ShadowCasterMasked` |
 | 专用实现已就绪 | `src/ShaderGen/template/FragmentTemplateComposer.cpp`（超薄阶段六后为 `ShaderLibrary/fragment/shadow_caster.glsl.tmpl`） | ShadowCaster 骨架：空 fragment main、无 material/sky descriptors、裁掉无关 varying |
@@ -85,13 +85,13 @@ VUID / [ERROR] = 0（本机未启用 VK_LAYER_KHRONOS_validation）
 **后果**（按可信度分层）：
 
 1. 【已证】4 级联深度图用 `forward_lit_shadowed_ao` 片元着色器绘制：PBR 材质采样 + 16 tap Poisson PCF + 天空/环境光全部执行，颜色写入不存在的附件后被丢弃。纯浪费，且**每次缓存 miss 都要付**——直接抵消"静态级联 0 DrawCall"的性能收益。
-2. 【推论，建议 RenderDoc / validation 确认】`ShaderLibrary/shadow/pcf_shadow.glsl:156` 读 `shadow.cascades[c].shadow_tex.x` 并采样；渲染级联 c 时该句柄就是**当前 pass 的 depth attachment**（`src/ecs/systems/render/EnvironmentSystem.cpp:210-211` 注册的正是同一张 RT 的深度纹理）→ 同一 image 既作 attachment 又被采样，布局为 `DEPTH_ATTACHMENT_OPTIMAL` 而非可采样布局：属 Vulkan attachment feedback loop（UB）。本机验证层未开所以静默通过。
+2. 【推论，建议 RenderDoc / validation 确认】`ShaderLibrary/shadow/pcf_shadow.glsl:156` 读 `shadow.cascades[c].shadow_tex.x` 并采样；渲染级联 c 时该句柄就是**当前 pass 的 depth attachment**（`src/ecs/systems/render/light_shadow/EnvironmentSystem.cpp:210-211` 注册的正是同一张 RT 的深度纹理）→ 同一 image 既作 attachment 又被采样，布局为 `DEPTH_ATTACHMENT_OPTIMAL` 而非可采样布局：属 Vulkan attachment feedback loop（UB）。本机验证层未开所以静默通过。
 3. 【设计层面】MaterialCoverageContract 为 shadow/depth 专门裁掉的资源绑定、alpha 覆盖契约分派等优化全部拿不到。当前 alpha test 恰好因 Surface 变体也带 `discard` 而未出错，属侥幸。
 
 **修复（最小改动）**：在 collect 侧按 pass 覆盖 purpose，不必动 `PrimitiveVariantPurpose`（它还兼管几何/材质变体选择）：
 
 ```cpp
-// src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:~445
+// src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:~445
 if (world && world->IsCurrentPassShadow())
     effective_purpose = graph::mtl::ShaderProgramPurpose::ShadowDepth;   // → ShadowCasterOpaque/Masked
 ```
@@ -101,7 +101,7 @@ if (world && world->IsCurrentPassShadow())
 ### A2【中】每次 `EnableMainLightShadow()` 泄漏一个 CameraInfo 行
 
 - `src/ecs/systems/tick/CameraSystem.cpp:689`：非主相机 `camera->camera_id = registry->AcquireCamera();`
-- `src/ecs/systems/render/EnvironmentSystem.cpp:214`：每次 Enable 都 `make_shared<CameraComponent>("AutoCSMLightCamera")`
+- `src/ecs/systems/render/light_shadow/EnvironmentSystem.cpp:214`：每次 Enable 都 `make_shared<CameraComponent>("AutoCSMLightCamera")`
 - `EnvironmentSystem.cpp:237`：Disable 只 `light_camera.reset()`，不归还行
 - `ReleaseCamera` 存在（`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:278`）但**全仓零调用者**（订正（2026-09-28）：相机行池“设备级全局”的归属已定稿为**世界私有**——相机存储下沉世界级（世界私有 SSBO，16 槽 × 8 帧槽 = 128 行），0 号槽恒为本世界默认相机，槽的申请/归还由世界内分配器管；设备级全局相机号位图 / 全局 8 相机上限随之删除。见 doc/world-addresses-and-camera-model-plan.md §2；`ReleaseCamera` 接入归还链的状态见本文 §4.5。）
 
@@ -136,7 +136,7 @@ if (world && world->IsCurrentPassShadow())
 
 ### A6【低-中】一帧最多 4 次离屏 `RenderTo`，各带一次全流水线排空
 
-- `src/ecs/systems/render/EnvironmentSystem.cpp:302-354`：逐级联发 `RenderTo`
+- `src/ecs/systems/render/light_shadow/EnvironmentSystem.cpp:302-354`：逐级联发 `RenderTo`
 - `src/ecs/core/Context.cpp:502`：每次开头 `saved_target->WaitFence()`；`inc/hgl/vk/VKRenderTargetSwapchain.h:26` 注明 `WaitFence()` = **full drain of all slots**
 - `src/ecs/core/Context.cpp:590`：每次结尾 `rt->WaitFence()`
 - 中间还有一整套 `BeginManagedRenderFrame(false)`：`RenderPreBeginFrame` / `SyncRenderTargetViewport` / `PrepareRenderPassSetup`（collect+batch+upload+sync）/ `BeginRenderPass` / `Submit`
@@ -162,7 +162,7 @@ if (world && world->IsCurrentPassShadow())
 ### A10【低】`EnableMainLightShadow` 的边界与头文件重量
 
 - `EnvironmentSystem.cpp:161-162`：重复 Enable 会整组销毁重建 4 张 D32F RT + 4 个 bindless 句柄 + 新相机（叠加 A2 的泄漏）
-- `inc/hgl/ecs/systems/render/EnvironmentSystem.h:7-8`：为一个 `RenderTargetHandle` 成员把 `RenderTargetDesc.h` / `RenderTargetManager.h` 拉进公共头（可前向声明 + 成员下沉）
+- `inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h:7-8`：为一个 `RenderTargetHandle` 成员把 `RenderTargetDesc.h` / `RenderTargetManager.h` 拉进公共头（可前向声明 + 成员下沉）
 
 ---
 
@@ -187,7 +187,7 @@ if (world && world->IsCurrentPassShadow())
 | T1 | 静态滚动缓存的前提（"静态物体永不变"）引擎不保证，也没有失效链（见 A3） | 要么补钩子，要么做成显式开关并写清适用域（无运行时静态变更的地形/城市）；否则是必还的技术债 |
 | T2 | 级联拟合用"包围球 + 正交方框"而非光空间 AABB | **有意识的交易**：换朝向无关半径（Test 5C 直接依赖），代价是纹素利用率（≈1.4–2× 边长浪费）。SKILL 应写明"为什么不收紧"，并把 AABB + 锚定补偿列为精度优化项 |
 | T3 | 4 张独立 D32F RT vs atlas / depth array | 16MB + 4 个 bindless 槽 + 每 RT 一套 pipeline 键控（`PrimitiveComponent.h` 的 `resolvedRuntimePipelineMap`）；SKILL §10 已列，优先级合理 |
-| T4 | 自动化 prepass 只在 `ECSContext::Render(dt, graph, pre_render)` 一条入口被驱动（`src/ecs/core/RenderGraph.cpp:171`） | 未来若新增/绕过帧入口，阴影会**静默不生效**（无断言无日志）。建议挂到 `BeginManagedRenderFrame` 并显式区分主帧/离屏帧，或入口缺失时告警 |
+| T4 | 自动化 prepass 只在 `ECSContext::Render(dt, graph, pre_render)` 一条入口被驱动（`src/ecs/core/render/RenderGraph.cpp:171`） | 未来若新增/绕过帧入口，阴影会**静默不生效**（无断言无日志）。建议挂到 `BeginManagedRenderFrame` 并显式区分主帧/离屏帧，或入口缺失时告警 |
 | T5 | `ScenePipelineMode` 五个预留空壳 | 目前只有 `StandardLitCSM` 有实现；零兼容偏好下空壳会退化成死分支。建议未实现模式在 switch 里至少 `GLogWarning`/断言，避免调用方误以为已被托管；`Custom` 的语义（不插入任何 prepass）应进文档 |
 | T6 | CSM 塞进 `EnvironmentSystem` | 该系统原定位是"瘦转发层"（`.h:24-30`），现同时持有控制器、4 张 RT、bindless 句柄、光相机、掩码状态、pass 录制。建议抽 `MainLightShadowSystem` / `CSMShadowRuntime`，顺带用 RAII 成员一并解决 A2/A10 |
 | T7 | 引擎已有 `OffscreenWorld`（`depth_only` + `cull_mode`）而 CSM 手搓 RT | 二者其实都对（阴影 pass 必须复用主世界实体，不能另起 ECSContext），但文档没写"为什么不用 `OffscreenWorld`"，未来极易被误"统一"。SKILL 应补一句设计约束 |

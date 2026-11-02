@@ -3,8 +3,8 @@
 #include"GizmoInternal.h"
 #include"GizmoResource.h"
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/graph/CameraInfo.h>

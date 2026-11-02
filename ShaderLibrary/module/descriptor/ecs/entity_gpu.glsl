@@ -7,7 +7,7 @@
 // @ulre end
 // entity_gpu.glsl — EntityGPU 实体行的 GLSL 镜像（GPU 剔除的枚举源，T3d-1）
 //
-// C++ 真源 = inc/hgl/ecs/core/EntityGPU.h（128 B 定长行：flags + type[16] + row[16]
+// C++ 真源 = inc/hgl/ecs/core/entity/EntityGPU.h（128 B 定长行：flags + type[16] + row[16]
 // + work_flags + 40 B 填充，alignas(64)）。两端逐字段同序同型由门用例
 // E.entity-gpu-struct-parity 对拍兜底 —— 改任何一端必须同步另一端。
 //

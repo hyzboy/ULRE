@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include <hgl/ecs/support/RenderPipelineSystem.h>
+#include <hgl/ecs/support/pipeline/RenderPipelineSystem.h>
 
 namespace hgl::ecs
 {

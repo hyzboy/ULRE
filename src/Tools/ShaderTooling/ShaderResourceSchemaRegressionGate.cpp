@@ -4815,7 +4815,7 @@ namespace
         result.name = "B.batch-info-struct-parity";
 
         const std::string cpp_text =
-            ReadFileText(RepoRootPath("inc/hgl/ecs/support/GPUCullSystem.h"));
+            ReadFileText(RepoRootPath("inc/hgl/ecs/support/cull/GPUCullSystem.h"));
         const std::string glsl_text =
             ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"));
         // 派发档 / 遍数的 GLSL 侧数值已收敛为 ShaderConstGen 生成物
@@ -4919,7 +4919,7 @@ namespace
         return result;
     }
 
-    /// C++ EntityGPU（inc/hgl/ecs/core/EntityGPU.h）与 GLSL 侧 EntityGPUData
+    /// C++ EntityGPU（inc/hgl/ecs/core/entity/EntityGPU.h）与 GLSL 侧 EntityGPUData
     /// （ShaderLibrary/module/descriptor/ecs/entity_gpu.glsl）必须逐字段同序同型同长度（§7.4 / §8.3-③）。
     /// 为什么必须门禁：这是 128 B 行的 GPU 镜像 —— 漂移 = 剔除着色器按错步长解引用
     /// 实体行（W.world-addresses-struct-parity 同族的静默错位坑）。
@@ -4933,7 +4933,7 @@ namespace
         result.name = "E.entity-gpu-struct-parity";
 
         const std::string cpp_text =
-            ReadFileText(RepoRootPath("inc/hgl/ecs/core/EntityGPU.h"));
+            ReadFileText(RepoRootPath("inc/hgl/ecs/core/entity/EntityGPU.h"));
         const std::string glsl_text =
             ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ecs/entity_gpu.glsl"));
 

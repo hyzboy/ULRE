@@ -1,8 +1,8 @@
-#include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/ecs/support/text/TextRenderPipeline.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
-#include<hgl/ecs/systems/render/RenderSceneUBOSystem.h>
+#include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/ubo/GlobalAddresses.h>

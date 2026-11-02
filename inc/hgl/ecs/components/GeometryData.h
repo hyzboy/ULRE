@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/ComponentRow.h>
-#include<hgl/ecs/support/ComponentTypeTable.h>
+#include<hgl/ecs/core/entity/ComponentRow.h>
+#include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<cstdint>

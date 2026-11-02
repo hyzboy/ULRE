@@ -1,11 +1,11 @@
 ﻿#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/MaterialBatch.h>
-#include <hgl/ecs/support/PipelineMaterialRenderer.h>
-#include <hgl/ecs/support/TransformAssignmentBuffer.h>
-#include <hgl/ecs/support/TransformAccessor.h>
-#include <hgl/ecs/support/TransformDataStorage.h>
+#include <hgl/ecs/core/render/MaterialBatch.h>
+#include <hgl/ecs/support/pipeline/PipelineMaterialRenderer.h>
+#include <hgl/ecs/support/transform/TransformAssignmentBuffer.h>
+#include <hgl/ecs/support/transform/TransformAccessor.h>
+#include <hgl/ecs/support/transform/TransformDataStorage.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/log/Log.h>
 #include <algorithm>

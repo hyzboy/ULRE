@@ -88,7 +88,7 @@ TextRenderPipeline 为三层 SSBO 各维护一对（buffer + 视图），三张�
 2. **ExecuteRenderGraphPasses** — 遍历 RenderGraph 各 Pass，按 ExecutionPhase 调度 System
 3. **EndManagedRenderFrame** — 结束帧并提交
 
-核心调度在 `ECSContext::Render()`（`src/ecs/core/Context.cpp`）和 `RenderGraph`（`src/ecs/core/RenderGraph.cpp`）中。
+核心调度在 `ECSContext::Render()`（`src/ecs/core/Context.cpp`）和 `RenderGraph`（`src/ecs/core/render/RenderGraph.cpp`）中。
 
 ---
 
@@ -357,10 +357,10 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | SDF 特效演示范例 | `example/Text/SDFTextEffects.cpp` |
 | 框架主循环 | `src/Work/WorkManager.cpp` |
 | ECS 渲染调度 | `src/ecs/core/Context.cpp` |
-| RenderGraph | `src/ecs/core/RenderGraph.cpp` |
+| RenderGraph | `src/ecs/core/render/RenderGraph.cpp` |
 | 默认系统注册 | `src/ecs/core/DefaultSystems.cpp` |
 | TextComponent | `inc/hgl/ecs/components/TextComponent.h` |
-| TextRenderPipeline（头） | `inc/hgl/ecs/support/TextRenderPipeline.h` |
+| TextRenderPipeline（头） | `inc/hgl/ecs/support/text/TextRenderPipeline.h` |
 | TextRenderPipeline（实现） | `src/ecs/support/text/TextRenderPipeline.cpp` |
 | Text ECS 系统 | `src/ecs/support/text/Text{Collect,Build,Sync,Render}System.cpp` |
 | TextLayout（排版） | `src/SceneGraph/font/TextLayout.cpp` |

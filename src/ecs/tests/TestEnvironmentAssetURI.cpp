@@ -13,7 +13,7 @@
 #include <hgl/asset/AssetFactory.h>
 #include <hgl/asset/AssetURI.h>
 #include <hgl/asset/generated/EnvironmentSerialize.gen.h>
-#include <hgl/ecs/systems/render/SkyEnvironmentConfig.h>
+#include <hgl/ecs/systems/render/light_shadow/SkyEnvironmentConfig.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/graph/asset/EnvironmentAssetObject.h>
 #include <hgl/graph/asset/EnvironmentAssetRegistry.h>

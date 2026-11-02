@@ -8,8 +8,8 @@
 // 判据（红的样子）：同帧 3 次调用后 `GetPrepareFrameCount()` != 1；
 //                  帧号推进后 != 2；null 入参被计数。
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/support/PrimitiveBatchPipeline.h>
-#include <hgl/ecs/support/GPUCullSystem.h>
+#include <hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h>
+#include <hgl/ecs/support/cull/GPUCullSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/ComponentRow.h>
+#include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/type/String.h>
 #include<cstdint>

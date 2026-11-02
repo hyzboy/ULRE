@@ -31,8 +31,8 @@
 #include<hgl/log/Log.h>
 
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 
 #include<glm/glm.hpp>

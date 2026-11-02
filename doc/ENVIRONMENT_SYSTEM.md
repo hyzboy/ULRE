@@ -18,7 +18,7 @@
 > ③ 光源参数已从 `SkyInfo` 迁到**世界私有光源行**（`addr_lights`,与 `addr_entity_gpu` 同级）。
 > **下文凡提到「shadow UBO / shadow ring / 两段 / `GetShadowUBO` / `CommitMaterialized` / `MaterializeShadowUBO`」的段落,
 > 一律读作历史口径。** 见 `doc/future/lighting-shadow-domain-split-plan.md` §3/§5。
-> 相关文件:`inc/hgl/graph/ubo/EnvironmentInfo.h`、`inc/hgl/graph/ubo/SkyInfo.h`、`inc/hgl/graph/ubo/ShadowInfo.h`、`inc/hgl/graph/ubo/UBOShaderSources.h`、`inc/hgl/graph/module/EnvironmentManager.h`、`src/SceneGraph/module/EnvironmentManager.cpp`、`inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp`、`inc/hgl/ecs/systems/render/ViewUBOCommitSystem.h/.cpp`、`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h/.cpp`(原 RenderDescriptorBindingSystem)、`inc/hgl/vk/VKRenderTarget.h`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`inc/hgl/common/DescriptorSetTypeDef.h`(`inc/hgl/vk/VKGlobalSceneUBOSet.h` 已随 Scene 集退场删除)、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`
+> 相关文件:`inc/hgl/graph/ubo/EnvironmentInfo.h`、`inc/hgl/graph/ubo/SkyInfo.h`、`inc/hgl/graph/ubo/ShadowInfo.h`、`inc/hgl/graph/ubo/UBOShaderSources.h`、`inc/hgl/graph/module/EnvironmentManager.h`、`src/SceneGraph/module/EnvironmentManager.cpp`、`inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h/.cpp`、`inc/hgl/ecs/systems/render/buffer/ViewUBOCommitSystem.h/.cpp`、`inc/hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h/.cpp`(原 RenderDescriptorBindingSystem)、`inc/hgl/vk/VKRenderTarget.h`、`inc/hgl/graph/ubo/GlobalAddresses.h`、`inc/hgl/common/DescriptorSetTypeDef.h`(`inc/hgl/vk/VKGlobalSceneUBOSet.h` 已随 Scene 集退场删除)、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`
 
 > **订正(2026-10-07,T1 **已落地**)**:环境域从「只有 `sky` 一段」变为**两个 provider 槽各占一段** ——
 > ① `SkyInfo` = `sky_provider` 槽参数块，**只剩外观标量**（`Color4f base_sky_color` + `float halo_intensity`；
@@ -129,7 +129,7 @@ struct Profile
 
 ### ⚠️ UBO 写入的正确姿势(重要)
 
-这类小 UBO 是 host-visible 持久映射,**不在设备级"待上传"扫描的队列里**——`RenderBufferUploadSystem` 只遍历设备 registry 里存活的 `StagedBuffer`(空 registry 是常态,`src/ecs/systems/render/RenderBufferUploadSystem.cpp:59-67`)。因此写入必须**两步都做**:
+这类小 UBO 是 host-visible 持久映射,**不在设备级"待上传"扫描的队列里**——`RenderBufferUploadSystem` 只遍历设备 registry 里存活的 `StagedBuffer`(空 registry 是常态,`src/ecs/systems/render/buffer/RenderBufferUploadSystem.cpp:59-67`)。因此写入必须**两步都做**:
 
 - `accessor->Update(data)`(拷贝进映射窗口 + 置脏,`inc/hgl/vk/buffer/StructView.h:200`)接着 `accessor->Commit()`(把窗口范围标脏交 L2,`StructView.h:215`)——只调其中一个都不完整;
 - 直接改 `Data()` 返回的指针后必须自己 `Commit()`,否则数据停在映射窗口未提交(历史上 sky 丢数据就是这个原因);
@@ -149,7 +149,7 @@ EnvProfileID  GetEnvironmentProfile() const;           // 默认 kEnvProfileDefa
 
 ## 5. 编辑层:`ecs::EnvironmentSystem`(瘦转发)
 
-不再拥有任何 GPU 资源(旧版的 UBO 所有权/析构释放已移除),只做"本 world → 选中 profile → 转发编辑";注册阶段为 `ExecutionPhase::RenderPreBeginFrame`(`src/ecs/systems/render/EnvironmentSystem.cpp:14`),由 `EnsureCoreEcsSystems` 装配并向其注入 `RenderContext`(`src/ecs/core/DefaultSystems.cpp:176`、`:190-191`):
+不再拥有任何 GPU 资源(旧版的 UBO 所有权/析构释放已移除),只做"本 world → 选中 profile → 转发编辑";注册阶段为 `ExecutionPhase::RenderPreBeginFrame`(`src/ecs/systems/render/light_shadow/EnvironmentSystem.cpp:14`),由 `EnsureCoreEcsSystems` 装配并向其注入 `RenderContext`(`src/ecs/core/DefaultSystems.cpp:176`、`:190-191`):
 
 ```cpp
 SkyInfo *EditSkyInfo();                       // 编辑 RT 选中的 profile(未设置=default)
@@ -182,7 +182,7 @@ if (auto *sky = environment_system->EditSkyInfo())
 
 ### 6.1 RenderSceneUBOSystem(`CommitViewportUBO` / `SyncBindingsForCurrentCommand`)
 
-系统本身注册在 `ExecutionPhase::RenderFrameSync`(`src/ecs/systems/render/RenderSceneUBOSystem.cpp:80`),`Update()` 与 `Render()` 都只做 `SyncBindingsForCurrentCommand()`（"绑定"已随 Scene 集整体退场 ⇒ 无描述符可推,现为空实现）。**C2 之后 sky / shadow 的地址发布已不在本系统**:
+系统本身注册在 `ExecutionPhase::RenderFrameSync`(`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:80`),`Update()` 与 `Render()` 都只做 `SyncBindingsForCurrentCommand()`（"绑定"已随 Scene 集整体退场 ⇒ 无描述符可推,现为空实现）。**C2 之后 sky / shadow 的地址发布已不在本系统**:
 
 ```
 本系统自持的 viewport buffer                    → registry->SetViewportAddress(...) → global_addresses.addr_viewport(全帧槽同址)
@@ -211,7 +211,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 - ~~sky~~ / 影子:**地址**都按世界写世界表（`ECSContext::SyncWorldAddresses` → `WorldAddresses.addr_shadow` / `addr_ambient_env`；~~`addr_sky`~~ 2026-10-07 整删，见头部 ④）；**数据**写入点影子 = `ECSContext::CommitShadowInfo`（写**本世界帧 RT**的当前槽；~~sky = `MarkDirty` 即时写~~ 随天空块整删）。
   **地址列口径（2026-10-07 统一）**：解不到有效地址（0）⇒ 沿用**本槽**上一份好值（`pick(…)`），绝不把 0 写进表；按帧槽切份的列不许把 `slot×步长` 加到 0 基址上（否则写出「看着有效」的垃圾地址）。九列逐条钉在 Test 47 ⑦。
 
-(实现:`src/ecs/systems/render/ViewUBOCommitSystem.cpp:14` 定阶段,`:17-36` 三个调用点)
+(实现:`src/ecs/systems/render/buffer/ViewUBOCommitSystem.cpp:14` 定阶段,`:17-36` 三个调用点)
 
 约定分类:
 
@@ -275,7 +275,7 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 5. **地址发布**:`EnvironmentManager::GetFogUBO(id)`(暂无);照抄 `EnsureViewportUBO` → `registry->SetViewportAddress(...)` 这条链(`RenderSceneUBOSystem.cpp:88-148`、调用点 `:145`)在 `RenderSceneUBOSystem` 里加一个 fog 地址写入(本轮之后写**世界表**,不写全局表),解析照抄 `ResolveSkyUBO` / `ResolveShadowUBO`(`:340-400`)。Scene 集已退场 ⇒ **不存在 `global_scene_set->UpdateUBO(kSceneBindingFog, ...)` 这种写法**。旧文建议的通用帮手 **`ResolveEnvUBO` 并未落地**,现实是每个段落一个 `Resolve<X>UBO()`。
 
-6. **编辑转发**:`EnvironmentSystem` 加 `EditFogInfo()/MarkFogDirty()`,与 sky 同构——参照 `EditSkyInfo()/GetSkyInfo()/SetSkyInfo()/MarkSkyDirty()`(`inc/hgl/ecs/systems/render/EnvironmentSystem.h`)。⚠ **别再照抄 shadow 那套**:`EditShadowInfo()` 现落在**世界**(`ECSContext::shadow_info`,T6b/P4),`MarkShadowDirty()` 已删除。
+6. **编辑转发**:`EnvironmentSystem` 加 `EditFogInfo()/MarkFogDirty()`,与 sky 同构——参照 `EditSkyInfo()/GetSkyInfo()/SetSkyInfo()/MarkSkyDirty()`(`inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h`)。⚠ **别再照抄 shadow 那套**:`EditShadowInfo()` 现落在**世界**(`ECSContext::shadow_info`,T6b/P4),`MarkShadowDirty()` 已删除。
 
 7. **RT 选择无需改动**——这正是本架构的目的:选择层只传句柄,不感知内容;新信息自动对所有 profile 生效。
 
@@ -300,8 +300,8 @@ RenderPreBeginFrame → RenderCollect → RenderBatch → [RenderBufferCommit �
 
 | 旧描述 | 现状 | 依据 |
 |---|---|---|
-| `RenderDescriptorBindingSystem`(RDBS) | 已改名 `RenderSceneUBOSystem`(2026-09-08),职责收敛为场景 UBO 数据流 + 材质化注册 | `inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h:35-47` |
-| `IsSemanticResolvable` 的 SkyInfo 分支 | 符号不存在;职责由 `ResolveSkyUBO` / `ResolveShadowUBO` 与 `SyncGlobalAddressesTable`(原 `ResolveGlobalAddressesUBO`,Scene 集退场后不再是 UBO 解析)承担 | `src/ecs/systems/render/RenderSceneUBOSystem.cpp:169-194`、`:340-400` |
+| `RenderDescriptorBindingSystem`(RDBS) | 已改名 `RenderSceneUBOSystem`(2026-09-08),职责收敛为场景 UBO 数据流 + 材质化注册 | `inc/hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h:35-47` |
+| `IsSemanticResolvable` 的 SkyInfo 分支 | 符号不存在;职责由 `ResolveSkyUBO` / `ResolveShadowUBO` 与 `SyncGlobalAddressesTable`(原 `ResolveGlobalAddressesUBO`,Scene 集退场后不再是 UBO 解析)承担 | `src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:169-194`、`:340-400` |
 | `bound_buffers_[4]` 硬编码 4 槽 | (2026-09-28 复核:`VKGlobalSceneUBOSet` 与 `SceneBinding` 已随 Scene 集整体退场,本行及其依据文件均已不存在) | 源文件已删除 |
 | Scene 集只有 camera/sky/viewport/palette | (2026-09-28 复核:Scene 集已整体退场 ⇒ **0 个绑定**;数据改走 BDA 表地址,见 §7) | `inc/hgl/common/DescriptorSetTypeDef.h:9-23` |
 | `MarkDirty` 只打标记不写数据 | `MarkDirty` = `Update(cpu) + Commit()`,是完整写入 | `src/SceneGraph/module/EnvironmentManager.cpp:217-234` |

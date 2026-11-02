@@ -1,8 +1,8 @@
 ﻿#include<hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/LinesComponent.h>
-#include<hgl/ecs/support/BoundingBoxAccessor.h>
-#include<hgl/ecs/support/TransformID.h>
+#include<hgl/ecs/support/cull/BoundingBoxAccessor.h>
+#include<hgl/ecs/support/transform/TransformID.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 
 namespace hgl::ecs

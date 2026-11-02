@@ -12,7 +12,7 @@
 写进 `ShadowInfo` UBO，主帧着色器用 `shadow_pcf.glsl` 采样。
 
 - 控制器：`inc/hgl/graph/render/lighting/CascadedShadowController.h`
-- ECS 门面：`inc/hgl/ecs/systems/render/EnvironmentSystem.h`（实现 `.cpp` 同目录）
+- ECS 门面：`inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h`（实现 `.cpp` 同目录）
 - 数据契约：`inc/hgl/graph/ubo/ShadowInfo.h`（`kMaxShadowCascades = 4`）
 - GLSL：`ShaderLibrary/module/provider/shadow/shadow_pcf.glsl`（选级 `EvalCascadeChain`）、`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl`（`ShadowInfo`）
 - 示例：`example/Shadow/CascadeShadowMap.cpp`（诊断/契约最全）、`example/Shadow/AlphaTestShadow.cpp`（D1/D3/D4 契约）

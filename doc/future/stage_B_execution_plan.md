@@ -30,9 +30,9 @@
 
 | 项 | 现状 | 差距 |
 |---|---|---|
-| 类型表 | `inc/hgl/ecs/support/ComponentTypeTable.h:66-75`：6 项（`None` + 5 类），Transform 有 `gpu_row_bytes=64`，其余四类 `0` + `cpu_type_name="(待 ID 化)"` | **arena 只是字符串**：`arena_name` 全仓唯一消费者是契约测试（`src/ecs/tests/TestTransformFlatStorage.cpp:30`）；**没有** `(scope,type) → 分配器/注册表` 的运行时实体 |
+| 类型表 | `inc/hgl/ecs/support/storage/ComponentTypeTable.h:66-75`：6 项（`None` + 5 类），Transform 有 `gpu_row_bytes=64`，其余四类 `0` + `cpu_type_name="(待 ID 化)"` | **arena 只是字符串**：`arena_name` 全仓唯一消费者是契约测试（`src/ecs/tests/TestTransformFlatStorage.cpp:30`）；**没有** `(scope,type) → 分配器/注册表` 的运行时实体 |
 | 行存储 | 只有 Transform 一类（`TransformDataStorage`，`hgl::ValueArray` **自增长、无上限**、无分区、无预分配） | `Initialize(...)` 不存在；行号会随增长漂移 |
-| GPU 行面 | `TransformAssignmentBuffer` 按需扩容并**重建** L2W/L2WIndex SSBO（`src/ecs/support/TransformAssignmentBuffer.cpp:163` `EnsureCapacity`、`:511` `L2W recreated`） | 行号/地址在运行期会变 ⇒ 与"预烘焙 ID / 后续场景直载"的物理前提冲突 |
+| GPU 行面 | `TransformAssignmentBuffer` 按需扩容并**重建** L2W/L2WIndex SSBO（`src/ecs/support/transform/TransformAssignmentBuffer.cpp:163` `EnsureCapacity`、`:511` `L2W recreated`） | 行号/地址在运行期会变 ⇒ 与"预烘焙 ID / 后续场景直载"的物理前提冲突 |
 | 值句柄 | 已是值句柄：`TransformAccessor` / `BoundingBoxAccessor`（24 B，世代校验）**〔2026-10-11 订正：`BoundingBoxAccessor` 现值 16 B —— 批 1.2 A4 删冗余 `context`；`TransformAccessor` 16 B 不变〕** | `MaterialData` / `GeometryData` / `ShadowProxy` / `Camera` / `MaterialRuntimeSlot` 仍返回**裸指针**（`inc/hgl/ecs/core/Context.h:461-472`、`:553-583`、`:662-682`） |
 | 组件载体 | `ComponentTypeOf<T>` 特化：`GeometryData`（B3）、`MaterialData`（B4）、**`CameraComponent`（B7）** | **B6/B7 后全部类型有定论**：`MaterialRuntime` 的载体 = 每实例 `MaterialRuntimeSlot`（B5，行宽冻结 88 B）；`Texture` **无组件载体**——纹理授权在 `MaterialData` 的具名纹理资源里，其载体形态属"材质定义级行空间"，**与欠账 §2.9 同批处理**（勿补实体级组件） |
 | `EntityGPU` | **零实现**（仅 `Entity.h:29`、`ComponentTypeTable.h:121` 两条注释） | 见 B8（延后） |
@@ -102,9 +102,9 @@
 #### ⚠ B1 侦察结论（2026-10-02 实测，**修正了 T10 的表述**）
 T10 原表述是"`Allocate()` 动态扩容 ⇒ 行号漂移"，实测真因更靠前：**L2W 行号本身是"名单排名"的函数**，与 buffer 是否重建无关。
 链条（全部有 `path:line`）：
-- 片元/顶点侧取 L2W 走 `ResolveTransformID(gl_InstanceIndex)` ⇒ **`item->transform_index` 就是 L2W 行号**（`ShaderLibrary/vertex/helpers/orient_world.glsl:20` `l2w.mats[transformID]`；`src/ecs/support/PrimitiveBatchPipeline.cpp:959` 把它逐实例写进批内 index 行表）。
+- 片元/顶点侧取 L2W 走 `ResolveTransformID(gl_InstanceIndex)` ⇒ **`item->transform_index` 就是 L2W 行号**（`ShaderLibrary/vertex/helpers/orient_world.glsl:20` `l2w.mats[transformID]`；`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:959` 把它逐实例写进批内 index 行表）。
 - 行号算法：静态 `transform_index = 静态排名 + 1`；动态 `= dynamic_base + 动态排名`，`dynamic_base = 静态数 + 1 + frame × 动态数`（`PrimitiveBatchPipeline.cpp:313`、`inc/hgl/vk/buffer/RingLayout.h` `GetBaseIndex`、`TransformSystem::RefreshHandleOrder` 按世界名单顺序发排名）。
-- 全局"TransformID 行表"同样是排名口径：`rows[1+i] = 1+i`（静态）、`rows[1+static_count+i] = dynamic_base+i`（动态）——`src/ecs/support/TransformAssignmentBuffer.cpp` `WriteTransformIndexRows`。
+- 全局"TransformID 行表"同样是排名口径：`rows[1+i] = 1+i`（静态）、`rows[1+static_count+i] = dynamic_base+i`（动态）——`src/ecs/support/transform/TransformAssignmentBuffer.cpp` `WriteTransformIndexRows`。
 ⇒ **后果**：静态名单里插入/删除/换边任意一项，**其后所有静态物体的 L2W 行号整体平移**（不是"缓冲区重建"那么简单）；这也是"预烘焙 ID / 场景直载"不可行的同一根因。
 
 **B1 因此切成两步**（都不引入兼容层）：
@@ -115,8 +115,8 @@ T10 原表述是"`Allocate()` 动态扩容 ⇒ 行号漂移"，实测真因更�
 #### ✅ B1a 已完成（2026-10-02，D: 机实测；清整棵 Debug obj 树后全量重编）
 
 **改动**（7 文件 / `+243 −141`；行尾/BOM 逐文件保真，`TransformSystem.cpp` 维持 LF-only）：
-- `inc/hgl/ecs/support/TransformDataStorage.h`：`kDefaultMaxStaticRows/kDefaultMaxDynamicRows = 4096/4096`（P-2）、`Initialize(static, dynamic)`（一次性 `Reserve` 全部 19 条平行数组 + `children`/`fixed_pixel`）、预算访问器与超限计数/告警闩、构造即 `Initialize()`；`Allocate()` 超预算 ⇒ **拒绝分配**（`INVALID_HANDLE`）+ **一次性明确告警**，行数不变。
-- `inc/hgl/ecs/support/TransformAssignmentBuffer.h` + `src/ecs/support/TransformAssignmentBuffer.cpp`：构造带预算；`StatTransform` / `EnsureTransformIndexRowsCapacity` / `transform_policy` / `"L2W recreated"` / `power_to_2` **整体删除**，改为一次性 `AllocateBudgetBuffers()`；每帧入口 `EnsureCapacity(…, policy)` → `EnsureBudget(static, dynamic)`；设备 SSBO 上限不足时**按上限截断 + 报错**（不静默）；顺带修掉 `MaxTransformCount` 未初始化（无 device 时读未初始化值）。
+- `inc/hgl/ecs/support/transform/TransformDataStorage.h`：`kDefaultMaxStaticRows/kDefaultMaxDynamicRows = 4096/4096`（P-2）、`Initialize(static, dynamic)`（一次性 `Reserve` 全部 19 条平行数组 + `children`/`fixed_pixel`）、预算访问器与超限计数/告警闩、构造即 `Initialize()`；`Allocate()` 超预算 ⇒ **拒绝分配**（`INVALID_HANDLE`）+ **一次性明确告警**，行数不变。
+- `inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h` + `src/ecs/support/transform/TransformAssignmentBuffer.cpp`：构造带预算；`StatTransform` / `EnsureTransformIndexRowsCapacity` / `transform_policy` / `"L2W recreated"` / `power_to_2` **整体删除**，改为一次性 `AllocateBudgetBuffers()`；每帧入口 `EnsureCapacity(…, policy)` → `EnsureBudget(static, dynamic)`；设备 SSBO 上限不足时**按上限截断 + 报错**（不静默）；顺带修掉 `MaxTransformCount` 未初始化（无 device 时读未初始化值）。
 - 调用点：`TransformSystem.cpp`（创建处传预算，真源 = 世界变换存储）、`LineRenderPipeline.cpp`（`EnsureBudget`）、`Context.cpp`（`CreateTransform` 对拒绝分配返 `INVALID_TRANSFORM_ID`）。
 - 契约：`TestTransformFlatStorage` 新增 **Test 11**（行为：默认预算 4096+4096 / 预算内为追加序 / 超限拒绝 + 不扩容 + 告警闩 / 二次超限只增计数）与 **Test 12**（14 条禁复活源码契约：L2W 扩容重建路径 0 残留、预算期一次性分配在位、两个每帧入口均走 `EnsureBudget`）。
 
@@ -134,7 +134,7 @@ T10 原表述是"`Allocate()` 动态扩容 ⇒ 行号漂移"，实测真因更�
 
 
 - 内容：① `TransformDataStorage` 支持**声明式容量 + 预分配**（行数组一次到位、空闲行复用走世代 `+2` 保持奇数，与 v2 §2 一致）+ **静态/动态分区**；② 删除 `TransformAssignmentBuffer::EnsureCapacity` 的动态扩容路径与 `L2W recreated`（改为预算期一次性建 L2W/L2WIndex，容量按预算固定）；③ 超预算 = **一次性明确告警 + 不扩容**。
-- 落点（预期）：`inc/hgl/ecs/support/TransformDataStorage.h`（存储为 header-only）、`inc/hgl/ecs/support/TransformAssignmentBuffer.h` + `src/ecs/support/TransformAssignmentBuffer.cpp`、`src/ecs/systems/tick/TransformSystem.cpp:217`、`src/ecs/support/line/LineRenderPipeline.cpp:843`、`src/ecs/core/Context.cpp`（世界创建处 Initialize）、契约测试（`TestTransformFlatStorage` 行账目 / `TestCSMIncrementalPass` 探针口径）。
+- 落点（预期）：`inc/hgl/ecs/support/transform/TransformDataStorage.h`（存储为 header-only）、`inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h` + `src/ecs/support/transform/TransformAssignmentBuffer.cpp`、`src/ecs/systems/tick/TransformSystem.cpp:217`、`src/ecs/support/line/LineRenderPipeline.cpp:843`、`src/ecs/core/Context.cpp`（世界创建处 Initialize）、契约测试（`TestTransformFlatStorage` 行账目 / `TestCSMIncrementalPass` 探针口径）。
 - 判据：① build 0 error；② 示例运行日志 **`L2W recreated` 出现 0 次**（构建期一次性建好）；③ 行数在整段运行期**恒定**且等于声明预算（探针/契约打印）；④ 构造超预算场景 ⇒ 一次性明确告警 + **不扩容**（文案可判定）；⑤ 10 测试 rc=0 + 门 rc=0 + 抽跑示例 0 真 error + `策略判定对拍` 不一致 0；⑥ `grep EnsureCapacity`（L2W 一侧）零残留。
 - 反证：抽掉超预算 fail-fast（继续静默扩容）⇒ 对应断言必红；把预算调到示例规模以下 ⇒ 必报明确告警。
 
@@ -147,10 +147,10 @@ T10 原表述是"`Allocate()` 动态扩容 ⇒ 行号漂移"，实测真因更�
 
 **改动**（10 文件）：
 - `inc/hgl/ecs/core/Context.h` + `src/ecs/core/Context.cpp`：两个变换数组改为**槽位表**（下标 = 槽位、空洞 = `INVALID_TRANSFORM_ID`）+ 空闲栈；新增 `TryGetTransformSlot` / `GetLiveTransformCount` / `GetTransformRowMoveCount`；`RegisterTransform`（幂等登记 / 换段先归还旧槽）、`MigrateTransform`（归还旧段槽位 → 新段取槽 → **换边计数 + 一次性告警**）、`UnregisterTransform`（置空洞 + 入空闲表）全部重写；段预算用尽 = **一次性明确告警 + 拒绝**。
-- `inc/hgl/ecs/support/TransformID.h`：新增 `INVALID_TRANSFORM_SLOT`（并注明 `0` 是合法槽位）。
-- `inc/hgl/ecs/support/TransformAssignmentBuffer.h` + `.cpp`：`GetDynamicBaseIndex()` 改为**预算决定**（去掉 `static_count/dynamic_count` 参数）；两个写入口按**槽位表**寻址并跳过空洞（空洞行不写、无人引用）。
+- `inc/hgl/ecs/support/transform/TransformID.h`：新增 `INVALID_TRANSFORM_SLOT`（并注明 `0` 是合法槽位）。
+- `inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h` + `.cpp`：`GetDynamicBaseIndex()` 改为**预算决定**（去掉 `static_count/dynamic_count` 参数）；两个写入口按**槽位表**寻址并跳过空洞（空洞行不写、无人引用）。
 - `inc/hgl/ecs/systems/tick/TransformSystem.h` + `.cpp`：`static_index_map/dynamic_index_map` → **`static_slot_map/dynamic_slot_map`**（值 = 槽位，每帧由世界槽位表派生、值本身稳定）；`TryGetTransformGroupIndex` → **`TryGetTransformSlot`**；脏索引 = 槽位；`RefreshHandleOrder` 不再发明排名。
-- `src/ecs/support/PrimitiveBatchPipeline.cpp` + `src/ecs/support/line/LineRenderPipeline.cpp`：`item->transform_index` / Line 的 transform_id 一律 `静态 1+slot` / `动态 基址+slot`。
+- `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp` + `src/ecs/support/line/LineRenderPipeline.cpp`：`item->transform_index` / Line 的 transform_id 一律 `静态 1+slot` / `动态 基址+slot`。
 - `TestTransformFlatStorage.cpp`：新增 **Test 13**（稳定槽位契约：销毁中间物体不影响他者槽位 / 空洞复用 / 换边换段并计数 / 段预算用尽拒绝分配）；Test 12 增 **7 条 B1b 禁复活契约**（`TryGetTransformGroupIndex`/`static_index_map`/`dynamic_index_map` = 0；槽位 API 与 `MigrateTransform` 通知在位）。
 
 **实测证据**：
@@ -367,8 +367,8 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 
 | 耦合点 | 现状（实测） | 改写方向 |
 |---|---|---|
-| ⚠ **2026-10-10 事实订正：`RenderItem::Compare` 与整个 `src/ecs/core/RenderItem.cpp` 已被删除**（审计 §1.1 cleanup：零调用者；CPU 绘制/排序链随 T4c4 消失）⇒ 本行的"待改造"前提**已失效**，不要再围绕它做设计。以下为订正前的历史口径。 | |
-| `RenderItem::Compare`（`src/ecs/core/RenderItem.cpp:8-52`） | **批排序主键** = `*GeometryDataBuffer <=> *…`（内容比较：geometry_id / vdm / vab / ibo）+ `*GeometryDrawRange <=>`（vertex_offset / first_index / counts）。注释明写"必须内容比较：指针比较会打散同几何项 ⇒ 失去实例化合并" | 改比较**行派生 POD 键**（`geometry_id` + `vertex_base`/`index_base`/`vertex_count`/`index_count`/`is_indexed`） |
+| ⚠ **2026-10-10 事实订正：`RenderItem::Compare` 与整个 `src/ecs/core/render/RenderItem.cpp` 已被删除**（审计 §1.1 cleanup：零调用者；CPU 绘制/排序链随 T4c4 消失）⇒ 本行的"待改造"前提**已失效**，不要再围绕它做设计。以下为订正前的历史口径。 | |
+| `RenderItem::Compare`（`src/ecs/core/render/RenderItem.cpp:8-52`） | **批排序主键** = `*GeometryDataBuffer <=> *…`（内容比较：geometry_id / vdm / vab / ibo）+ `*GeometryDrawRange <=>`（vertex_offset / first_index / counts）。注释明写"必须内容比较：指针比较会打散同几何项 ⇒ 失去实例化合并" | 改比较**行派生 POD 键**（`geometry_id` + `vertex_base`/`index_base`/`vertex_count`/`index_count`/`is_indexed`） |
 | `DrawBatch::geom_data_buffer` / `geom_draw_range` + `Set(...)`（`PipelineMaterialRenderer.h:62-79`） | 每批持两个 CPU 对象指针；`Set()` 再由 `data_buffer->geometry_id` 定 `geometry_id` | 换成 POD `MeshDrawKey`；**4 个建批点**（`PrimitiveBatchPipeline.cpp:491/552/570/588`）改传键 |
 | `BatchRequiresIndirectCommands`（`PrimitiveBatchPipeline.cpp:56-63`） | "任一 item 有 `data_buffer` ⇒ 需要 ICB" | "任一 item 的键有 `geometry_id`" |
 | 聚簇循环（`PrimitiveBatchPipeline.cpp:408-470`） | 按 `*data_buffer != *next` / `*draw_range != *next` 断簇，并顺手修 `data_buffer->geometry_id` | 按键相等断簇（POD 比较） |
@@ -504,7 +504,7 @@ GlobalSSBOType : + GeometryAABB（stride 32 B / cap 16384 / reserve 1）
 | GPU 面 | `data_resource` 的基类 `GlobalSSBOBinding{ssbo_type, ssbo_id, data_index}`（`GlobalSSBOTypes.h:101-113`）**已经是「类型 + 行号」** ✓ | 派生类又加了 `DeviceBuffer *buffer` / `element_capacity` / `byte_stride`（`MaterialData.h:60-63`） |
 | **死字段取证** | `buffer` / `element_capacity` / `byte_stride`：**外部读者 0**（唯一出现是 `MaterialData.cpp:34-36` 清零；`SetDataResource` 只整体赋值、不读它们；`GetDataResource` 外部消费者 **0 处**）；**示例侧赋值 0 处**（全部写法是 `named_struct = accessor.GetGlobalSSBOBinding(); SetDataResource(named_struct);`） | 容量/步长的权威真源另有其人：`SSBOBufferRegistry::RegisterBuffer(…, element_capacity)` 用「字节数 ÷ 容量」反算 stride（`src/SceneGraph/module/SSBOBufferRegistry.cpp:280-299`） |
 | 材质行池 | **已存在且设备级**（`GlobalSSBOBufferRegistry` 配置表）：`PBRSurface` 32 B/行、`EmissiveSurface` 16 B/行、`TransmissionSurface` 16 B/行，各 **1024 行**、`reserve_rows = 1`（首个 `Acquire` = 1，行 0 = 哨兵） | registry 只有 GPU 行池，**没有 CPU 侧读口**（B3 已给 MeshDrawParams / GeometryAABB 补过，材质侧还没有） |
-| 访问器 | `ECSContext::GetMaterialData` / `GetOrCreateMaterialData` **4 个重载返回裸指针**（`Context.h:461-472`、`:553-583`）；`Context.h` 注释已写明「stage B 会换成值类型句柄（与 TransformAccessor / BoundingBoxAccessor 同构）」 | 24 B 值句柄先例已在：`BoundingBoxAccessor`（`{row, generation}` + `IsValid()`，`inc/hgl/ecs/support/BoundingBoxAccessor.h:23-30`） |
+| 访问器 | `ECSContext::GetMaterialData` / `GetOrCreateMaterialData` **4 个重载返回裸指针**（`Context.h:461-472`、`:553-583`）；`Context.h` 注释已写明「stage B 会换成值类型句柄（与 TransformAccessor / BoundingBoxAccessor 同构）」 | 24 B 值句柄先例已在：`BoundingBoxAccessor`（`{row, generation}` + `IsValid()`，`inc/hgl/ecs/support/cull/BoundingBoxAccessor.h:23-30`） |
 | API 消费者规模 | `SetTextureResource` **72**、`SetDataResource` **47**、`SetRecipe` 3、`HasRecipeOverride` 3、`BuildResolvedRecipe` 1、`GetAuthoredGeneration` 1、`BumpAuthoredGeneration` 1、`GetTextureResource` 2；`GetDataResource` / `ClearAuthoredResources` / `GetRecipeOverride` **0** | 句柄化会触及全部 `GetMaterialData*` 调用点 |
 | 渲染期读者 | `PrimitiveState.cpp:27-40`（`HasAnyMaterialSource`：裸指针 + `HasRecipeOverride()`）、解析链 `BuildResolvedRecipe`（1 处）、`GeometryData.cpp:43` | 「顺指针取组件」的路径要改成「句柄 → 行」 |
 | 相邻层（**不属本批**） | `MaterialRuntimeRow` / `MaterialRuntimeSlot`（`support/MaterialRuntimeTable.h`：`l2w_buffer`/`l2w_index_buffer`/`mesh_draw_params_buffer`/`material_data_rows_buffer`/`indirect_*` 指针 + `refcount`/`generation` + 每实例字段）⇒ **B5**（P-5 已拍板指针归位） | — |
@@ -700,13 +700,13 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 
 | 落点 | 内容 |
 |---|---|
-| `inc/hgl/ecs/support/ComponentTypeTable.h` | 新增 `enum class SystemGroupID{None,Primitive,Line,Text,Count}` + `kSystemGroupNames[]`（**全仓唯一一份组名**）+ `SystemGroupFromName()`（严格，未知 ⇒ `None`）+ `static_assert(kSystemGroupCount == 4)` |
+| `inc/hgl/ecs/support/storage/ComponentTypeTable.h` | 新增 `enum class SystemGroupID{None,Primitive,Line,Text,Count}` + `kSystemGroupNames[]`（**全仓唯一一份组名**）+ `SystemGroupFromName()`（严格，未知 ⇒ `None`）+ `static_assert(kSystemGroupCount == 4)` |
 | `inc/hgl/ecs/core/Component.h` | `virtual const char *GetSystemGroupName()` **删除** ⇒ `virtual SystemGroupID GetSystemGroup()` |
 | `GeometryData.h` / `LinesComponent.h` / `TextComponent.h` | 改成返回枚举（`Primitive` / `Line` / `Text`）；**字符串字面量从组件头消失** |
 | `inc/hgl/ecs/core/Context.h` | 计数 → `uint32_t system_group_component_counts[kSystemGroupCount]`；已安装 → `bool[]`；新增**每组系统快照** `group_systems[kSystemGroupCount]`；三个 API 改枚举 + 新增 `ResetComponentDrivenGroups()` |
 | `src/ecs/core/Context.cpp` | 注册/注销两条路径改枚举驱动（O(1) 计数，无字符串）；`SetSystemGroupEnabled` 快路径走快照、兜底按名取一次并建快照；`RegisterSystem` 时置空该组快照（**保证后加入的系统不会漏启用**）；两处 Shutdown 清状态合并为 `ResetComponentDrivenGroups()` |
 | `inc/hgl/ecs/core/DefaultSystems.h` + `.cpp` | `EnsureSystemGroupSystems(ctx, SystemGroupID, rt)`；三个安装器注册与默认装配不再就地写字面量，改取 `kSystemGroupNames[...]` |
-| `src/ecs/core/RenderGraph.cpp` | 场景 stats 从组件取**枚举**再映射组名；组启用路径经 `SystemGroupFromName()` 严格转换，**未知组名留痕告警**（不再静默不启用） |
+| `src/ecs/core/render/RenderGraph.cpp` | 场景 stats 从组件取**枚举**再映射组名；组启用路径经 `SystemGroupFromName()` 严格转换，**未知组名留痕告警**（不再静默不启用） |
 | `src/ecs/tests/TestCSMIncrementalPass.cpp` | Test 25：3 条组件契约改钉枚举形态、3 条安装器契约改钉"名取自组名表"，**新增 15 条 A2 契约**（枚举/组名表/虚函数/计数数组/启用函数/注册路径 + 7 条**禁复活**：字符串虚函数、字符串键容器、3 处字符串字面量） |
 
 三、验证（purge 168 TU ⇒ 全量重编）
@@ -748,7 +748,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 
 二、改动（3 文件：2 头 + 1 契约 + 2 文档）
 
-- `inc/hgl/ecs/support/ComponentTypeTable.h`
+- `inc/hgl/ecs/support/storage/ComponentTypeTable.h`
   · 枚举**追加** `Camera`（注释写明：世界私有、CPU 权威在组件、世界表是派生视图）。**只能追加**——
     类型值会被实体位掩码与 `EntityGPU::type[16]` 槽消费，插队会让既有类型全体平移。
   · `kComponentTypeTable` 补行 `{ World, "ECS:Camera", 0, "CameraComponent" }`（**0 = 该类型没有自己的 GPU 行**）。
@@ -802,7 +802,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 
 二、改动（3 文件：1 头 + 1 契约 + 1 文档）
 
-- `inc/hgl/ecs/support/ComponentTypeTable.h`：把后四列的过时占位 `"(待 ID 化)"` 换成 **stage B 后的真实承载类型**——
+- `inc/hgl/ecs/support/storage/ComponentTypeTable.h`：把后四列的过时占位 `"(待 ID 化)"` 换成 **stage B 后的真实承载类型**——
   `Geometry` → `"GeometryData"`（B3）；`MaterialData` → `"MaterialData"` **并按实测把 `gpu_row_bytes` 0 → 16**
   （B4 的 (Global, MaterialData) 组件行）；`MaterialRuntime` → `"MaterialRuntimeSlot"`（B5；注释写明**行宽冻结 88 B**〔2026-10-11 订正：该注释已在批 1.3 C1 改为 **40 B**〕、
   因是 CPU 侧行故 `gpu_row_bytes` 记 0）；`Texture` → `cpu_type_name` 留空 + 注释**无组件载体**（B6）。
@@ -831,7 +831,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 
 一、改动（9 文件：1 新建头 + 7 引擎/实现 + 1 契约）
 
-- **新建** `inc/hgl/ecs/support/MaterialRuntimePipelineTable.h`（世界级）：每实例 × 每 pass 的
+- **新建** `inc/hgl/ecs/support/material/MaterialRuntimePipelineTable.h`（世界级）：每实例 × 每 pass 的
   运行期管线缓存 —— `Set(id, pass, pipeline)` / `Get(id, pass)`（**pass 不匹配 ⇒ 未命中**，
   与旧 slot 字段语义逐字一致）/ `Clear(id)` / `GetLiveEntryCount()`。
 - `MaterialRuntimeTable.h`：删 slot 的最后两个指针（`runtime_pipeline_pass` = `RenderPass*`、
@@ -912,7 +912,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 
 一、改动（12 文件：1 新建头 + 5 引擎 + 6 示例）
 
-- **新建** `inc/hgl/ecs/support/MaterialAuthoringSideTable.h`：`MaterialAuthoringSideTable`
+- **新建** `inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h`：`MaterialAuthoringSideTable`
   （条目 = `{has_recipe_override, mtl::MaterialRecipe recipe_override,
   UnorderedMap<AnsiString, MaterialTextureAuthoringResource> named_texture_resources}`，
   **键 = 材质组件行行号**；`GetOrCreate/Find/Remove/GetLiveEntryCount` inline；行 0 哨兵拒绝并报错）。
@@ -962,7 +962,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
   5 个授权点（SetRecipe / SetTextureResource / SetDataResource 两分支 / ClearAuthoredResources）全部改走它，
   `++authored_generation` 只剩 helper 与 `OnDetach`（分离时无行可写，只前进代数）。新增
   `GetAuthoredRowRevision()`（读行内 revision，无行 ⇒ 退回组件计数器，两者此时同为 0，不存在双真值）。
-- `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`：`MaterialAuthoredGenerationOf()` 改读**行内 revision**。
+- `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp`：`MaterialAuthoredGenerationOf()` 改读**行内 revision**。
 - `src/ecs/tests/TestCSMIncrementalPass.cpp`：新增 **Test 35（18 条契约）**，含「半改状态」防呆
   （三个专用读口都必须委托泛型口）与 1 条禁复活（消费者不得退回读组件计数器）。
 
@@ -1069,7 +1069,7 @@ CSM=531、ComputeFrustumCull、AutoMerge、PlaneGrid3D、IBLEnvironment 全部�
 | 2026-10-02 | **B3 定稿（用户拍板）**：Geometry 的 GPU 可用部分 ID 化 —— 先不扩 8ID、`data_*` 上 GPU、`GeometryAABB` 独立池与 MeshDrawParams **同 ID 索引**（`ActivateAllRows` 结构保证 + 成对写入 + 负半径哨兵）；行 112→128 B；`GlobalAddresses` 加 `addr_geometry_aabb`（步长不变）；**范围订正**：不需要 arena 宿主/值句柄/173 调用点迁移。 |
 | 2026-10-02 | **B3-i 完成**：`GlobalSSBOType::GeometryAABB` + 池（`ActivateAllRows` 静态行空间、`reserve 0`）+ `GlobalAddresses::addr_geometry_aabb`（48→56 B，步长不变）+ GLSL 同步 + 两条自动扩展覆盖性断言；build rc=0/0 error、门 42 PASS/0 FAIL、10 测试 rc=0、4 示例对拍 0（探针 `rows=16384 AABB 32 B/行`）；反证两处（容量不等 ⇒ 运行期不变量红；缺 name case ⇒ 编译期断言红）；**实测修掉 `ActivateAllRows` 与 `reserve_rows` 的机制冲突**。 |
 | 2026-10-02 | **B3-ii 完成**：`MeshDrawParams` 112→**128 B**（拆 `total_vertices` + 补 `data_*`，X-macro 单源 + 三处 GLSL 读侧 + 三处写侧）；AABB 行收敛为唯一写入口 `RefreshGeometryAABBRow()`（实测修掉"Create 先于 SetBoundingVolumes"的顺序坑，PBRSpheres 10/21 行真值、半径 1.7321 与 CPU 同式逐位一致）；`bounding_radius` 改按需反算；门 42/0、10 测试 + Test 29（25 条契约含 6 条禁复活）、四示例 0 error/对拍 0；反证：抽掉刷新 ⇒ 真值 10→0。 |
-| 2026-10-10 | ⚠ **事实订正**：`RenderItem::Compare` / `src/ecs/core/RenderItem.cpp` / `RenderItem::index` 均已删除（审计 §1.1）⇒ 下面这条 2026-10-02 的侦察前提已不存在。 | |
+| 2026-10-10 | ⚠ **事实订正**：`RenderItem::Compare` / `src/ecs/core/render/RenderItem.cpp` / `RenderItem::index` 均已删除（审计 §1.1）⇒ 下面这条 2026-10-02 的侦察前提已不存在。 | |
 | 2026-10-02 | **B3-iii 侦察（未动手）**：规模订正 —— 三指针是**批排序/聚簇主键**（`RenderItem::Compare` + `DrawBatch::Set` 的 4 个建批点 + 采集侧 4ID 填充/列武装 3 处），删它们等于改实例化合并判定；方向 = 行派生 POD 键（ICB 组数逐位等价）；待拍板：同 asset 的每实体 draw range 差异是否退出判定；本轮试改已还原，树保持 B3-ii 已验证状态。 |
 | 2026-10-02 | **B3-iii 缺陷修正**：漏掉 `batch.gpu_driven_override` 逐项成簇判据 ⇒ GPU-Driven 批被合并成多实例簇、屏幕上只剩 1 个实例（界面上可见的错）；修复 + Test 30 契约 ④（去掉判据必 rc=30、逐字节还原必绿）+ 截图复核；教训：**改批/绘制语义必须看像素，数字全绿证明不了画得对**。 |
 | 2026-10-02 | **B4-i 完成**：`MaterialData` 组件删 `buffer`/`element_capacity`/`byte_stride` 三个每实体死字段（外部读者 0、示例赋值 0 处，真源在 `SSBOBufferRegistry` 反算）⇒ GPU 面 = 类型 + 行号；零调用点改动、build rc=0、Test 31（7 契约）+ 反证（加回字段 ⇒ rc=31）。 |

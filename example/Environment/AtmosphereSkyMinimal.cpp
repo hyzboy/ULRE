@@ -7,12 +7,12 @@
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include "../Shared/FrameDigest.h"   // 帧摘要自检（T0 判据前置共用件）
 

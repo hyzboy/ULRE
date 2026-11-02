@@ -14,7 +14,7 @@
  * | B 契约 | builder 源码里必须出现的顺序与错误分支 | 顺序（先上传、再查越界）不做在源码里就没法保证 |
  */
 
-#include <hgl/ecs/support/RenderableBuilder.h>
+#include <hgl/ecs/support/pipeline/RenderableBuilder.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/vk/buffer/ActiveRowPool.h>
@@ -179,7 +179,7 @@ roughness = 0.20
     bool TestSourceContracts()
     {
         AnsiString src;
-        if (!ReadSource(OS_TEXT("src/ecs/support/RenderableBuilder.cpp"), src))
+        if (!ReadSource(OS_TEXT("src/ecs/support/pipeline/RenderableBuilder.cpp"), src))
         {
             GLogError(u8"TestRenderableBuilderDataRow: 无法读取源文件（需在仓库根目录运行）");
             return false;

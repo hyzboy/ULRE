@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include <hgl/ecs/support/RenderPipelineBase.h>
-#include <hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include <hgl/ecs/support/pipeline/RenderPipelineBase.h>
+#include <hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h>
 #include <memory>
 
 namespace hgl::ecs

@@ -1,7 +1,7 @@
-﻿#include <hgl/ecs/support/BoundingBoxDataStorage.h>
-#include <hgl/ecs/support/BoundingBoxAccessor.h>
+﻿#include <hgl/ecs/support/cull/BoundingBoxDataStorage.h>
+#include <hgl/ecs/support/cull/BoundingBoxAccessor.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/Entity.h>
+#include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 

@@ -12,7 +12,7 @@
 //
 //   ./build/out/<cfg>/ProbeWarnLatchPerWorld.exe 2>&1 | grep -c "切片起点未 4 行对齐"   ⇒  期望 2
 //
-#include <hgl/ecs/support/GPUCullSystem.h>
+#include <hgl/ecs/support/cull/GPUCullSystem.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 

@@ -1,5 +1,5 @@
 #include<hgl/ecs/components/MaterialData.h>
-#include<hgl/ecs/support/RenderResource.h>
+#include<hgl/ecs/support/pipeline/RenderResource.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/TextureManager.h>

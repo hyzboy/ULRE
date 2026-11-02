@@ -33,14 +33,14 @@
 #include<glm/gtc/quaternion.hpp>
 
 #include<hgl/math/Matrix.h>
-#include<hgl/ecs/support/TransformDataStorage.h>
+#include<hgl/ecs/support/transform/TransformDataStorage.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/GeometryData.h>   // [T0b] AddComponent<GeometryData> 需完整类型
 #include<hgl/ecs/components/ShadowProxy.h>
-#include<hgl/ecs/support/EntityGPUTable.h>  // [T0c] T3b 实体行表自检    // [T2-c] 行尺寸对照（壳拆掉后每组件只剩载荷）
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/core/EntityGPU.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/support/storage/EntityGPUTable.h>  // [T0c] T3b 实体行表自检    // [T2-c] 行尺寸对照（壳拆掉后每组件只剩载荷）
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/core/entity/EntityGPU.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 
 #ifdef _MSC_VER
 #include<crtdbg.h>

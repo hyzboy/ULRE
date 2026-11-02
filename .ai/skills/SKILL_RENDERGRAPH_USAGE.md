@@ -466,7 +466,7 @@ context->Render(deltaTime, graph, [&](RenderCmdBuffer* cmd) {
 
 ## 参考代码
 
-- `inc/hgl/ecs/core/RenderGraph.h` - RenderGraph和Pass定义
-- `src/ecs/core/RenderGraph.cpp` - 所有预设工厂实现
+- `inc/hgl/ecs/core/render/RenderGraph.h` - RenderGraph和Pass定义
+- `src/ecs/core/render/RenderGraph.cpp` - 所有预设工厂实现
 - `inc/hgl/ecs/core/Context.h` - Render() 重载
 - `src/ecs/core/Context.cpp` - Render()实现 (~200行)

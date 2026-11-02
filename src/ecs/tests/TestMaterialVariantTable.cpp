@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/support/MaterialVariantTable.h>
+﻿#include <hgl/ecs/support/material/MaterialVariantTable.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 

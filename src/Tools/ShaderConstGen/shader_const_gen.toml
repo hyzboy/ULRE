@@ -335,9 +335,9 @@ include = [
     "hgl/graph/ubo/LightRow.h",
     "hgl/graph/font/FontSource.h",
     "hgl/graph/ShaderBufferSources.h",
-    "hgl/ecs/support/GPUCullSystem.h",
-    "hgl/ecs/core/EntityGPU.h",
-    "hgl/ecs/support/TransformDataStorage.h",
+    "hgl/ecs/support/cull/GPUCullSystem.h",
+    "hgl/ecs/core/entity/EntityGPU.h",
+    "hgl/ecs/support/transform/TransformDataStorage.h",
     "hgl/mtl/DomainOptions.h",
 ]
 

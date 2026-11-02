@@ -16,7 +16,7 @@
 | `hgl::Object` | `CMCore/inc/hgl/object/Object.h` | 空壳基类（仅有 `NO_COPY`/`NO_MOVE` 与默认构造/虚析构），无身份、无生命周期管理。 |
 | `hgl::utils::ObjectBase` | `CMCore/inc/hgl/object/ObjectBase.h` | **已删除**。曾为半成品：大量使用被规范禁止的 STL（`std::string`、`std::mutex`、`std::unordered_map`、`printf`），且反向依赖了上层引擎的 `<hgl/core/ObjectType.h>`（破坏 CMCore 底层独立性）。 |
 | `hgl::utils::ObjectTracker` | `CMCore/inc/hgl/object/ObjectTracker.h` | **已删除**。曾预分配百万级大数组导致启动缓慢、干扰 RenderDoc，默认被 `#define HGL_ENABLE_OBJECT_TRACKER 0` 关闭。 |
-| `hgl::ecs::Object` | `ULRE/inc/hgl/ecs/core/Object.h` | ECS 自建的基类，仅保存 `AnsiString objectName`，与 `CMCore` 的 `hgl::Object` 割裂。 |
+| `hgl::ecs::Object` | `ULRE/inc/hgl/ecs/core/entity/Object.h` | ECS 自建的基类，仅保存 `AnsiString objectName`，与 `CMCore` 的 `hgl::Object` 割裂。 |
 | `hgl::logger::ObjectLogger` | `CMCore/inc/hgl/log/Log.h` | 独立日志组件，用 `object_instance_name` 兼任实例标识与可读名称，缺少稳定的唯一实例 ID 与生命周期事件联动。 |
 
 ### 1.2 核心设计目标

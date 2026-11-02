@@ -20,7 +20,7 @@
 > ③ `MaterialInstanceAddresses` 为 **16B 四字段** `{payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}`（`ShaderBufferSources.h:142-198`）。
 > ④ Scene 集（`SCENE_SET`）与 `VKGlobalSceneUBOSet` **已整体退场**（S3）；描述符集收敛为唯一 Bindless(0)（`inc/hgl/common/DescriptorSetTypeDef.h:9-13`）。
 > ⑤ `scene_ubo.glsl` 的 `camera` 宏已漂到 **`:149`**、字段名 **`camera_row`**（原 `:123` / `camera_id`）。
-> ⑥ 4-ID GPU 运行时解析**未启用**：`uses_render_item_resolve` 全仓无处置 true（`inc/hgl/ecs/core/MaterialBatch.h:71` 只被置 false）。
+> ⑥ 4-ID GPU 运行时解析**未启用**：`uses_render_item_resolve` 全仓无处置 true（`inc/hgl/ecs/core/render/MaterialBatch.h:71` 只被置 false）。
 > ⑦ 相机行池本轮定稿改为**世界私有 16 槽 × 8 帧槽**（0 号槽恒为世界默认相机），不再是「全局 64 行 + 全局相机号位图 + 全局 8 相机上限」（plan §2 / §5 C1）。
 > ⑧ `EnvironmentManager` 的 sky / shadow / env 地址本轮后按**世界**发布（plan §4 / §5 C2）。
 
@@ -80,7 +80,7 @@ X-macro `HGL_MESH_DRAW_COMMAND_FIELD_LIST`：`MeshDrawCommand{ geometry_id, firs
   - `MTL_TEX(i)`（:322-325）= `MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(...values[i].texture_reference_index) * uint64_t(row_stride))`。
   - `MaterialInstanceAddressesRef` 的 buffer_reference 声明 :544；`BuildMaterialSSBODeclarations` :197。
   - `fragDataIndexID` = draw item 序号（表下标），由 mesh 阶段写 varying（`src/ShaderGen/meshgen/MeshShaderVaryingGen.h:115/149/150/199`）。
-- 表写入：`src/ecs/support/PrimitiveBatchPipeline.cpp`（`MaterialInstanceAddresses` 行写入区 :889-1000，4-ID 直通时 :975-976 直接取 `RenderItemDescriptor` 的 `material_id`/`texture_id`）；文本路径单行表 `src/ecs/support/text/TextRenderPipeline.cpp:528-560`。
+- 表写入：`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`（`MaterialInstanceAddresses` 行写入区 :889-1000，4-ID 直通时 :975-976 直接取 `RenderItemDescriptor` 的 `material_id`/`texture_id`）；文本路径单行表 `src/ecs/support/text/TextRenderPipeline.cpp:528-560`。
 - 字段行地址 = 池基址 + `payload_index × row_bytes`：由 `RenderPrimitiveCollectSystem.cpp:750-801` 以
   `GlobalSSBOBufferRegistry::TryGetRowBuffer(ssbo_id)`（`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:220`）
   取 `GlobalRowBufferInfo{cpu_base, gpu_base, row_bytes, row_capacity, buffer}`（:63-71）后物化。
@@ -115,7 +115,7 @@ addr_mtl_data_addrs, addr_texture_references, addr_text_char_info,
 addr_text_char_style, addr_text_char_instance, camera_row, _pad_camera
 ```
   布局断言：9×uint64 + 2×uint32 逐字段同序、无 padding（`sizeof(RootAddresses) == 80`，由 `RootAddressesLayoutValid()` 自动推导）：:311-337。
-- 下发 `graph::PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h:28`）；三路径调用点：`src/ecs/support/PipelineMaterialRenderer.cpp:173`、`src/ecs/support/line/LineRenderPipeline.cpp:762`、`src/ecs/support/text/TextRenderPipeline.cpp:290`。
+- 下发 `graph::PushRootAddresses`（`inc/hgl/graph/RootAddressPush.h:28`）；三路径调用点：`src/ecs/support/pipeline/PipelineMaterialRenderer.cpp:173`、`src/ecs/support/line/LineRenderPipeline.cpp:762`、`src/ecs/support/text/TextRenderPipeline.cpp:290`。
 
 ### 2.7 全局池 SSBO 管理 — `GlobalSSBOBufferRegistry`
 - 类型枚举 `GlobalSSBOType`（`inc/hgl/graph/ssbo/SSBOTypes.h:14-25`）：`MeshDrawParams / PBRSurface / EmissiveSurface / TransmissionSurface / CameraInfo`（原 `mtl::MaterialSSBOType` 双枚举已并入并删除）。
@@ -250,7 +250,7 @@ GetManager<GlobalSSBOBufferRegistry>()->GetAccessor<PBRSurfaceRow>()
 RPC 物化 → TryGetRowBuffer(ssbo_id) → row = gpu_base + payload_index×row_bytes
 ```
 
-**涉及文件**：`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h/.cpp`、`inc/hgl/graph/ssbo/GlobalSSBOTypes.h`、`inc/hgl/graph/ssbo/MaterialSSBOLayout.h`、`inc/hgl/graph/ssbo/MaterialDataRows.h`、`inc/hgl/mtl/MaterialRecipe.h`、`inc/hgl/ecs/components/PrimitiveComponent.h/.cpp`、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` 与示例 accessor 创建点。通用 `SSBOBufferRegistry` 只负责非材质 SSBO 与材质纹理引用池。
+**涉及文件**：`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h/.cpp`、`inc/hgl/graph/ssbo/GlobalSSBOTypes.h`、`inc/hgl/graph/ssbo/MaterialSSBOLayout.h`、`inc/hgl/graph/ssbo/MaterialDataRows.h`、`inc/hgl/mtl/MaterialRecipe.h`、`inc/hgl/ecs/components/PrimitiveComponent.h/.cpp`、`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` 与示例 accessor 创建点。通用 `SSBOBufferRegistry` 只负责非材质 SSBO 与材质纹理引用池。
 
 **证据**：`GlobalSSBOBufferRegistry` 143 命中 / 54 文件；`GlobalSSBODataAccessor` 48/33；`ActiveRowPool` 62/8；旧名 `MaterialSSBOBufferRegistry` / `MaterialSSBODataAccessor` / `GetMaterialDataAccessor` / `MaterialRowTypeTraits` / `MaterialSSBOType` 全仓 **0 命中**（改名收口提交 `e9f5ec8bd`、`3ea719317`）。`ActiveIDManager` 已下沉仓库、不再由材质池使用（本仓命中均为行池 `ActiveRowPool` 体系）。
 
@@ -265,7 +265,7 @@ RPC 物化 → TryGetRowBuffer(ssbo_id) → row = gpu_base + payload_index×row_
 - 渲染期命令面只引用 `geometry_id`：`MeshDrawCommand{geometry_id, first_instance}` 8B（§2.2），`WriteMeshDrawCommands` 不再写 112B 行（`PrimitiveBatchPipeline.cpp:644-700`）。
 - 池容量 **16384** 行、`reserve_rows = 1`、Arena 终身不重建（`GlobalSSBOBufferRegistry.cpp:15`）。
 
-**涉及文件**：`src/ecs/support/PrimitiveBatchPipeline.cpp`、`inc/hgl/ecs/support/PrimitiveBatchPipeline.h`、`inc/hgl/graph/ShaderBufferSources.h`、`inc/hgl/graph/geo/VKGeometry.h`、`src/SceneGraph/VKGeometry.cpp`、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp`。
+**涉及文件**：`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`、`inc/hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h`、`inc/hgl/graph/ShaderBufferSources.h`、`inc/hgl/graph/geo/VKGeometry.h`、`src/SceneGraph/VKGeometry.cpp`、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`、`src/ecs/support/pipeline/PipelineMaterialRenderer.cpp`。
 
 **验收（已达成）**：编译 + 全部示例；MeshDrawParams 行只在创建期写一次；几何不变池零重写。
 
@@ -281,7 +281,7 @@ RPC 物化 → TryGetRowBuffer(ssbo_id) → row = gpu_base + payload_index×row_
 
 **落地成果（现状核对）**：
 1. `MaterialInstanceAddresses` 收缩为 `{ uint32_t payload_index; uint32_t texture_reference_index; }`（**本轮再订正为 16B 四字段**：追加 `float shadow_bias_multiplier` / `uint32 shadow_flags`；offset/sizeof 断言齐备）——`ShaderBufferSources.h:142-198`。
-2. `RootAddresses` push constants 增加 `addr_texture_references`，由 MaterialBatch 携带 per-definition 纹理引用池基址并推入（`MaterialBatch.texture_reference_base_addr`，`inc/hgl/ecs/core/MaterialBatch.h`；`PipelineMaterialRenderer.cpp` / `TextRenderPipeline.cpp` / `LineRenderPipeline.cpp` 三路径下发）。
+2. `RootAddresses` push constants 增加 `addr_texture_references`，由 MaterialBatch 携带 per-definition 纹理引用池基址并推入（`MaterialBatch.texture_reference_base_addr`，`inc/hgl/ecs/core/render/MaterialBatch.h`；`PipelineMaterialRenderer.cpp` / `TextRenderPipeline.cpp` / `LineRenderPipeline.cpp` 三路径下发）。
 3. FS 宏 `MTL_ROW(i)` 经 `global_addresses` 表的各类型基址做两级寻址（`MaterialShaderEmitter.cpp:291-296`）。
 4. FS 宏 `MTL_TEX(i)` 经 push constant 纹理池基址做两级寻址（`MaterialShaderEmitter.cpp:322-325`）。
 5. `PrimitiveBatchPipeline` 与 `TextRenderPipeline` 统一写 **16B** 行（`PrimitiveBatchPipeline.cpp:889-1000`；`TextRenderPipeline.cpp:528-560`）。
@@ -307,7 +307,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 - 组件与登记：`PrimitiveComponent::Set4ID`（`PrimitiveComponent.h:257`）+ `RenderPrimitiveCollectSystem.cpp:1418/1426`；实例化路径 `InstancedPrimitiveComponent`。
 - CS 写路径已打通（`example/ApiValidation/ComputeFrustumCull.cpp`：候选 4-ID → `GeometryAABB` 视锥剔除 → `atomicAdd` 紧凑写入 Visible 4-ID → 间接命令）。
 
-**涉及文件**：`inc/hgl/graph/render/RenderItemDescriptor.h`、`inc/hgl/graph/ShaderBufferSources.h`（`DrawItem4ID`/`GeometryAABB`）、`inc/hgl/ecs/support/RenderItemDataStorage.h/.cpp`、`inc/hgl/ecs/support/DrawItemIDStorage.h`、`inc/hgl/ecs/support/DrawItemCompaction.h`、`inc/hgl/ecs/components/PrimitiveComponent.h/.cpp`、`inc/hgl/ecs/components/InstancedPrimitiveComponent.h/.cpp`、`src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`、`ShaderLibrary/common/RenderItemResolve.glsl`、`example/ApiValidation/ComputeFrustumCull.cpp`、`example/ApiValidation/ComputeAsteroidBelt.cpp`。
+**涉及文件**：`inc/hgl/graph/render/RenderItemDescriptor.h`、`inc/hgl/graph/ShaderBufferSources.h`（`DrawItem4ID`/`GeometryAABB`）、`inc/hgl/ecs/support/RenderItemDataStorage.h/.cpp`、`inc/hgl/ecs/support/DrawItemIDStorage.h`、`inc/hgl/ecs/support/DrawItemCompaction.h`、`inc/hgl/ecs/components/PrimitiveComponent.h/.cpp`、`inc/hgl/ecs/components/InstancedPrimitiveComponent.h/.cpp`、`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`、`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp`、`ShaderLibrary/common/RenderItemResolve.glsl`、`example/ApiValidation/ComputeFrustumCull.cpp`、`example/ApiValidation/ComputeAsteroidBelt.cpp`。
 
 **验收（已达成）**：编译 + 全部示例；命令面只引用 ID（`MeshDrawCommand` 8B）；4-ID 直通行表写入由 `RenderItemDescriptor` 直接解析。提交 `31436ece7`、`e8e45baeb`、`9a98eec2d`、`226a592ea`、`cc97be792`、`a306d9c35`。
 
@@ -368,7 +368,7 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 - ~~`MaterialSSBOBufferRegistry` / `MaterialSSBODataAccessor` / `GetMaterialDataAccessor` / `MaterialRowTypeTraits`~~ —— 全部并入 `Global*` 前缀（`e9f5ec8bd`、`3ea719317`）。
 - ~~`MeshDrawParamsPool` 独立类型~~ —— 已退化为转发头（`inc/hgl/graph/module/MeshDrawParamsPool.h` 4 行）。
 - ~~`SSBOBufferRegistry::AllocateSSBOId` / `AllocateArrayAccessor` / `row_segments` / `RowSegmentInfo` / `next_ssbo_id`~~ —— 已删除（全 0 命中），分配上收 `BufferManager`。
-- ~~`TransformDataBuffer` 独立类型~~ —— 现为 `TransformAssignmentBuffer::GetTransformDataBuffer()`（`inc/hgl/ecs/support/TransformAssignmentBuffer.h:73`）返回的 `DeviceBuffer*`。
+- ~~`TransformDataBuffer` 独立类型~~ —— 现为 `TransformAssignmentBuffer::GetTransformDataBuffer()`（`inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h:73`）返回的 `DeviceBuffer*`。
 
 ### 7.3 已完成（2026-09-19~21 4-ID / 实例化）
 - `RenderItemDescriptor` / `RenderItemDataStorage` / `DrawItemIDStorage` / `DrawItemCompaction` 全链落地（§6.4）。
@@ -437,14 +437,14 @@ ICB 命令面 → gl_DrawID → DrawItemID 二级索引（可选）→ 4-ID 行 
 | auth | `inc/hgl/ecs/components/PrimitiveComponent.h/.cpp` | `MaterialDataAuthoringResource`(:69)、`SetMaterialDataResource`(:227)、`SetMaterialTextureResource`(:218)、`SetMaterialTextureArrayLayer`(:225)、`Set4ID`(:257)、`render_item_descriptor`(:140) |
 | recipe | `inc/hgl/mtl/MaterialRecipe.h` | 唯一 `GlobalSSBOBinding material_ssbo_binding`(:508) |
 | 解析缓存 | `inc/hgl/ecs/components/MaterialComponent.h` | `cached_effective_recipe`(:53)；不再缓存 resolved binding/table |
-| 收集/物化 | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` | `MaterializeRecipeRowsForPrimitive`(:653)、`TryGetRowBuffer`(:750)、`BuildMaterialTextureReferenceLayout`(:839)、`AcquireMaterialTextureConfiguration`(:990)、`Set4ID`(:1418/1426) |
-| 批/命令 | `src/ecs/support/PrimitiveBatchPipeline.cpp` | `EnsureMeshDrawParams`(:591)、`WriteMeshDrawCommands`(:644)、`MaterialInstanceAddresses` 行写(:889-1000)、Meshlet 双轨分流 |
-| 批状态 | `inc/hgl/ecs/core/MaterialBatch.h` | `mesh_draw_params_buffer`(:55)、`l2w_index_buffer`(:60)、`material_data_index_rows_buffer`(:65)、`texture_reference_base_addr`(:67)、`gpu_driven_override`/`uses_render_item_resolve`(:70-71) |
-| 渲染器 | `src/ecs/support/PipelineMaterialRenderer.cpp` | `PushRootAddresses`(:173)、`GetTransformDataBuffer`(:168) |
+| 收集/物化 | `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` | `MaterializeRecipeRowsForPrimitive`(:653)、`TryGetRowBuffer`(:750)、`BuildMaterialTextureReferenceLayout`(:839)、`AcquireMaterialTextureConfiguration`(:990)、`Set4ID`(:1418/1426) |
+| 批/命令 | `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp` | `EnsureMeshDrawParams`(:591)、`WriteMeshDrawCommands`(:644)、`MaterialInstanceAddresses` 行写(:889-1000)、Meshlet 双轨分流 |
+| 批状态 | `inc/hgl/ecs/core/render/MaterialBatch.h` | `mesh_draw_params_buffer`(:55)、`l2w_index_buffer`(:60)、`material_data_index_rows_buffer`(:65)、`texture_reference_base_addr`(:67)、`gpu_driven_override`/`uses_render_item_resolve`(:70-71) |
+| 渲染器 | `src/ecs/support/pipeline/PipelineMaterialRenderer.cpp` | `PushRootAddresses`(:173)、`GetTransformDataBuffer`(:168) |
 | 发射 | `src/ShaderGen/compile/MaterialShaderEmitter.cpp` | `BuildMaterialSSBODeclarations`(:197)、`MTL_ROW`(:291-296)、`MTL_TEX`(:322-325)、`MaterialInstanceAddressesRef`(:544) |
 | 发射（mesh） | `src/ShaderGen/meshgen/MeshTemplateEmitter.h` / `MeshShaderVaryingGen.h` / `MeshShaderHeaderGen.h` | `MeshDrawCommandsRef(pc_root.addr_batch_mesh_draw_params)`(:266-268)、`fragDataIndexID`(:115/149/150/199)、8-bit storage(:55) |
 | 几何 | `inc/hgl/graph/geo/VKGeometry.h` + `src/SceneGraph/VKGeometry.cpp` + `inc/hgl/graph/mesh/GeometryDataBuffer.h` | `Geometry::geometry_id`(:121)、`GetGeometryID`(:126)、`EnsureMeshDrawParams`(:130)、`RegisterMeshDrawParams`(实现 :167-174)、Meshlet 缓冲(:95-116)、`GeometryDataBuffer::geometry_id`(:15) |
-| 变换 | `inc/hgl/ecs/support/TransformAssignmentBuffer.h` | static/dynamic 段(:39/73)、`RingLayout ring_layout`(:55)、`EnsureCapacity`(:76)、`WriteStaticDirtyIndices`(:79)、`WriteDynamicDirtyIndices`(:82) |
+| 变换 | `inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h` | static/dynamic 段(:39/73)、`RingLayout ring_layout`(:55)、`EnsureCapacity`(:76)、`WriteStaticDirtyIndices`(:79)、`WriteDynamicDirtyIndices`(:82) |
 | ring | `inc/hgl/vk/buffer/RingLayout.h` | `RingLayout`(:15-47)、`HGL_L2W_RING_FRAMES` |
 | sampler 运行时 | `ShaderLibrary/sampler.toml`、`inc/hgl/mtl/SamplerPreset.h`、`src/ShaderMaterialData/SamplerPreset.cpp`、`src/SceneGraph/render/GraphicsContext.cpp`、`src/Vulkan/VKBindlessTextureManager.cpp` | `SamplerPresetLibrary`(:29)、`Load`(:85)、`GetCreateInfo`(:77)、注册入口(:96-118)、`RegisterSamplers`(:330)、`RebuildSampler`(:373) |
 | 文本数据 | `src/ecs/support/text/TextRenderPipeline.cpp` | `MaterialInstanceAddresses` 单行表(:528-560)、`PushRootAddresses`(:290) |

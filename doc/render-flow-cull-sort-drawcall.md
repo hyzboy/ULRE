@@ -79,7 +79,7 @@ RenderFrameSync ┌─ GPUCullSystem：一次 compute 派发（独立 cmd，异�
 | 落点 | `RenderItem::isVisible`（bool）。**建批时按它过滤成员** ⇒ CPU 账里"批的 item 数 = 幸存者数"，命令条数 CPU 侧天生已知 |
 | 代价 | 主循环 + 每项一次包围盒测试；无遮挡剔除（只有视锥） |
 
-### 2.2 GPU 路（`ShaderLibrary/ecs/entity_gpu_cull.glsl` + `src/ecs/support/GPUCullSystem.cpp`）
+### 2.2 GPU 路（`ShaderLibrary/ecs/entity_gpu_cull.glsl` + `src/ecs/support/cull/GPUCullSystem.cpp`）
 
 | 项 | 现状 |
 |---|---|
@@ -272,14 +272,14 @@ DrawBatch 是**批内的绘制段**；批的所有段累积成**一条 multi-dra
 | 环节 | 落点 |
 |---|---|
 | 相位定义 / 系统装配 | `inc/hgl/ecs/core/System.h:ExecutionPhase`、`src/ecs/core/DefaultSystems.cpp:InstallPrimitiveGroup` |
-| 收集（渲染项、4-ID、距离、材质行物化） | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` |
+| 收集（渲染项、4-ID、距离、材质行物化） | `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` |
 | 相位代理 | `src/ecs/support/primitive/PrimitiveCullSystem.cpp`、`PrimitiveSortSystem.cpp`、`PrimitiveBuildSystem.cpp`、`PrimitiveRenderSystem.cpp` |
 | pipeline 门面 | `src/ecs/support/primitive/PrimitiveRenderPipeline.cpp`（`PrepareFrame/RunCull/RunSort/RunBuild`） |
-| CPU 剔除 / 建批 / guard | `src/ecs/support/PrimitiveBatchPipeline.cpp:PerformFrustumCulling / BuildMaterialBatches / FinalizeBatches / FinalizeBatch / EnsureBatchIndexRows / EnsureMeshDrawParams / WriteBatchIndexRows / TryApplyGPUCullOverride`（⚠ **2026-10-10 订正**：`SortByDistance` / `SortBatchItems` / `BuildBatches` / `WriteMeshDrawCommands` 全仓已不存在） |
-| 批对象与键 | `inc/hgl/ecs/core/MaterialBatch.h`、`inc/hgl/ecs/core/ShaderProgramPipelineKey.h` |
-| 提交与间接绘制 | `src/ecs/support/PipelineMaterialRenderer.cpp:Render / ProcIndirectRender` |
-| GPU 剔除 / 切片 / 计数 / barrier | `src/ecs/support/GPUCullSystem.cpp`（`Dispatch`、`ApplyGPUCullOverrideHook`）、`ShaderLibrary/ecs/entity_gpu_cull.glsl` |
-| 台架与对拍 | `src/ecs/support/CPUCullReferenceSystem.cpp` |
+| CPU 剔除 / 建批 / guard | `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:PerformFrustumCulling / BuildMaterialBatches / FinalizeBatches / FinalizeBatch / EnsureBatchIndexRows / EnsureMeshDrawParams / WriteBatchIndexRows / TryApplyGPUCullOverride`（⚠ **2026-10-10 订正**：`SortByDistance` / `SortBatchItems` / `BuildBatches` / `WriteMeshDrawCommands` 全仓已不存在） |
+| 批对象与键 | `inc/hgl/ecs/core/render/MaterialBatch.h`、`inc/hgl/ecs/core/render/ShaderProgramPipelineKey.h` |
+| 提交与间接绘制 | `src/ecs/support/pipeline/PipelineMaterialRenderer.cpp:Render / ProcIndirectRender` |
+| GPU 剔除 / 切片 / 计数 / barrier | `src/ecs/support/cull/GPUCullSystem.cpp`（`Dispatch`、`ApplyGPUCullOverrideHook`）、`ShaderLibrary/ecs/entity_gpu_cull.glsl` |
+| 台架与对拍 | `src/ecs/support/cull/CPUCullReferenceSystem.cpp` |
 | 状态应用（EDS 逐批） | `src/Vulkan/VKCommandBufferRender.cpp:RenderCmdBuffer::ApplyPipelineState` |
 
 ---

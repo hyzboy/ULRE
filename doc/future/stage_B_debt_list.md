@@ -21,7 +21,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 ### 1.1 按 (scope, 类型) 行 arena —— 只有"表"，没有"arena"
 
 **已落地**
-- 类型表：`inc/hgl/ecs/support/ComponentTypeTable.h:26-37`（枚举 `ComponentType{None,Transform,Geometry,MaterialData,MaterialRuntime,Texture,End}`，
+- 类型表：`inc/hgl/ecs/support/storage/ComponentTypeTable.h:26-37`（枚举 `ComponentType{None,Transform,Geometry,MaterialData,MaterialRuntime,Texture,End}`，
   `COMPONENT_TYPE_COUNT = 6`）；`:66-75` 表本体（type / scope / arena_name / gpu_row_bytes / cpu_type_name）；
   `:80-91` constexpr **同序自检**（漏登记是编译错误）；`:93-118` 查询函数；`:121-135` 位掩码；`:152-166` implies 表 + 闭包自检。
 - 唯一有真实行存储的类型：**Transform** —— `:70` `{ComponentType::Transform, World, "ECS:Transform", 64, "TransformDataStorage"}`。
@@ -37,8 +37,8 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 ### 1.2 访问器（值类型薄句柄）
 
-**已落地**：`TransformAccessor`（`inc/hgl/ecs/support/TransformAccessor.h`）与 `BoundingBoxAccessor`
-（`inc/hgl/ecs/support/BoundingBoxAccessor.h`）。
+**已落地**：`TransformAccessor`（`inc/hgl/ecs/support/transform/TransformAccessor.h`）与 `BoundingBoxAccessor`
+（`inc/hgl/ecs/support/cull/BoundingBoxAccessor.h`）。
 （2026-10-11：`BoundingBoxAccessor` 现 **16 B** —— 冗余 `context` 与 `GetContext()` 已删，批 1.2 A4；两个基础访问器现已同范式。）
 
 **差距**：其余类型仍走**裸指针**世界入口，且注释自己写明"stage B 会换成值类型句柄"：
@@ -57,7 +57,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 ### 1.3 `EntityGPU`（128 B）
 
-**已落地**：CPU 侧位掩码 `Entity::component_mask`（`inc/hgl/ecs/core/Entity.h:30`），
+**已落地**：CPU 侧位掩码 `Entity::component_mask`（`inc/hgl/ecs/core/entity/Entity.h:30`），
 **单一写者**=组件挂载/卸载路径（`ReplaceComponent` 置位、`RemoveComponent` 清位，`Entity.h:107`），
 类型表里注明"它就是 stage B `EntityGPU::type[16]` 的前身"（`Entity.h:29`、`ComponentTypeTable.h:121`）。
 
@@ -82,9 +82,9 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 **局部已有（实测）**
 - `MaterialRuntimeTable::kMaterialRuntimeCapacityLimit = 4096`，超限 fail-fast
-  （`inc/hgl/ecs/support/MaterialRuntimeTable.h:223`，语义见 `:39`）。
-- `MaterialVariantTable::kMaterialVariantCapacityLimit = 4096`（`inc/hgl/ecs/support/MaterialVariantTable.h:141`，语义见 `:59`）。
-- 相机槽：`kSlotCapacity = 16` + `static_assert`（`inc/hgl/ecs/support/CameraInfoStorage.h:48`、`:54`），
+  （`inc/hgl/ecs/support/material/MaterialRuntimeTable.h:223`，语义见 `:39`）。
+- `MaterialVariantTable::kMaterialVariantCapacityLimit = 4096`（`inc/hgl/ecs/support/material/MaterialVariantTable.h:141`，语义见 `:59`）。
+- 相机槽：`kSlotCapacity = 16` + `static_assert`（`inc/hgl/ecs/support/storage/CameraInfoStorage.h:48`、`:54`），
   行空间 `kRowCount = 16 × HGL_FRAME_SLOT_TOTAL`（`:50`）。
 
 **差距（T10 第 1–4 条，逐条对照 `doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md:1158-1164`）—— ✅ 四条全部收口（2026-10-02）**
@@ -93,7 +93,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
    / `StatTransform` 现在**全仓 0 命中**（本批实测 grep；该文件的"按需扩容 + 重建"整块已删，L2W 行数改由预算算式**一次性**建）。
    行号 = **稳定槽位的函数**（静态 `1+slot`、动态 `1+max_static+frame×max_dynamic+slot`）；Mobility 换边 = 换段
    （旧行号作废 + 一次性告警），**不静默平移全体**。判据不是"看起来没重建"，而是**运行日志里重建类日志 0 次**。
-2. ~~没有声明式预算/预分配 API~~ ⇒ **已存在**：`inc/hgl/ecs/support/TransformDataStorage.h:39-41`
+2. ~~没有声明式预算/预分配 API~~ ⇒ **已存在**：`inc/hgl/ecs/support/transform/TransformDataStorage.h:39-41`
    （`kDefaultMaxStaticRows` / `kDefaultMaxDynamicRows = 4096`，P-2 拍板）、`:105-121`（构造即按默认预算预分配）、
    `:150-152`（`GetStaticRowBudget()` / `GetRowBudget()`）；超限 **fail-fast 不扩容**。
 3. ~~行字节瘦身未做~~ ⇒ **已做并实测（B2）**：**279 → 223 B/行**（19 条平行数组；`Test 9` 与探针两处独立测量一致，
@@ -126,7 +126,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 
 **现状（A6 拨正 + A7c 收口示例后）**
 - 相机是**世界级资源**：真源 = 世界相机表的**槽账目**（槽 → 宿主弱引用）
-  `inc/hgl/ecs/support/CameraInfoStorage.h:129`（`std::weak_ptr<CameraComponent> slot_owners[kSlotCapacity]`）。
+  `inc/hgl/ecs/support/storage/CameraInfoStorage.h:129`（`std::weak_ptr<CameraComponent> slot_owners[kSlotCapacity]`）。
 - 组件只描述**参数**（文件头定稿 `inc/hgl/ecs/components/CameraComponent.h:14-38`）；
   解算输入/结果留在组件内：`graph::Camera camera_data`（`:77`）、`graph::CameraInfo camera_info`（`:80`）、
   `const graph::ViewportInfo* viewport_info`（`:84`）。
@@ -146,11 +146,11 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
   **保持 OOP 组件字段形态**，不再要求行化（要求行化的是被否决的 ① 路线的代价）。
 - 两条**非实体**相机路径要一起改：`EnvironmentSystem` 的 `AutoCSMLightCamera`（系统内建，`make_shared` 创建，
   不进 `component_registry`）与常驻 fallback（`Context.h:478`/`:485`），槽宿主走 `CameraSlotGuard`
-  （`inc/hgl/ecs/support/CameraSlotGuard.h`）。
+  （`inc/hgl/ecs/support/storage/CameraSlotGuard.h`）。
 
 ### 2.2 `MaterialRuntimeSlot` 里的每实例字段
 
-**现状**：每实例小记录 `MaterialRuntimeSlot`（`inc/hgl/ecs/support/MaterialRuntimeTable.h:162` 起），
+**现状**：每实例小记录 `MaterialRuntimeSlot`（`inc/hgl/ecs/support/material/MaterialRuntimeTable.h:162` 起），
 按实体稀疏存放（`std::unordered_map<EntityID, MaterialRuntimeSlot> slots`，`:237`）。字段分四组：
 - ① 共享行引用 `row`（`:166`）；
 - ② 每实例选择器 `pass_selector` / `lod_selector` / `dither_enabled`（`:169-171`）；
@@ -172,7 +172,7 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
   setter 统一「先 `Release` 本处旧句柄、再 `Register` 新值」（反复调用不堆计数、不误回收共享缓冲）；
   `DestroySlot` 按引用释放全部 6 个（`GetBufferHandles()` 交出清单）。示例调用点零改动（签名不变）。
 - **`runtime_pipeline_pass` / `runtime_pipeline`（每 pass 解析产物）→ 世界侧旁表**
-  （`inc/hgl/ecs/support/MaterialRuntimePipelineTable.h`：`Set(id, pass)` / `Get(id, pass)`，
+  （`inc/hgl/ecs/support/material/MaterialRuntimePipelineTable.h`：`Set(id, pass)` / `Get(id, pass)`，
   **pass 不匹配即未命中**——与旧 slot 字段语义逐字一致；失效与销毁两条路径都摘除）。
 - **出清后 slot 全 POD、行宽冻结**（B5-b 88 B ⇒ **现值 40 B**）：`static_assert(sizeof(MaterialRuntimeSlot) == 40)` +
   `ProbeTransformDiagnostics` 同源打印（编译期与运行期两处值一致）。
@@ -224,12 +224,12 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 - `overridePipeline`：**全仓 0 命中**（`grep -rn overridePipeline inc/ src/ example/` 无输出）⇒ 已彻底删除，
   **没有**以新形式回归。
 - `positionSourceSpec` / `transformPolicySpec`：**没有消失**，但形态不是"组件字段"而是 **`RenderItem` 的虚接口**：
-  - `inc/hgl/ecs/core/RenderItem.h:4-5` 仍 include 两个头；`:61`
+  - `inc/hgl/ecs/core/render/RenderItem.h:4-5` 仍 include 两个头；`:61`
     `virtual TransformPolicySpec GetTransformPolicySpec() const { return TransformPolicySpec{}; }`；
     `:62` `virtual PositionSourceSpec GetPositionSourceSpec() const { return PositionSourceSpec::MeshVertex; }`。
   - 头文件本体仍在：`inc/hgl/ecs/support/PositionSourceSpec.h`（15 行）、
     `inc/hgl/ecs/support/TransformPolicySpec.h`（20 行）。
-  - 唯一消费者：`src/ecs/support/PrimitiveBatchPipeline.cpp:292-300`
+  - 唯一消费者：`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:292-300`
     （读两个 spec 并 switch `PositionSourceSpec::{MeshVertex, Quad2DGenerated, TerrainHeightmapGrid, ProceduralGenerated}`）。
 - **✅ 已结案（2026-10-14，A5）**：这条通用化**整删** —— `RenderItem` 的两个 spec 虚接口（全仓**零 override**
   ⇒ 无生产者）、`inc/hgl/ecs/support/PositionSourceSpec.h` 与 `TransformPolicySpec.h`（只被 `RenderItem.h` include）、
@@ -252,12 +252,12 @@ stage B 的六件事里：**Transform 一类已行存储化（T8 完成）**，�
 **变更前形态（记录用）**：`GeometryData` 曾持每实体 `new` 出来的
 `GeometryDataBuffer*` / `GeometryDrawRange*` / `Geometry*`，而这三者正是**批处理的主键**：
 
-- ⚠ **2026-10-10 事实订正：本条已作废** —— `RenderItem::Compare` 与 `src/ecs/core/RenderItem.cpp` 已被删除（审计 §1.1；零调用者 + CPU 排序链随 T4c4 消失）⇒ 不再是"活约束"。历史原文：
-- `RenderItem::Compare`（`src/ecs/core/RenderItem.cpp:8-52`）= 批排序主键，按 `*GeometryDataBuffer <=>`
+- ⚠ **2026-10-10 事实订正：本条已作废** —— `RenderItem::Compare` 与 `src/ecs/core/render/RenderItem.cpp` 已被删除（审计 §1.1；零调用者 + CPU 排序链随 T4c4 消失）⇒ 不再是"活约束"。历史原文：
+- `RenderItem::Compare`（`src/ecs/core/render/RenderItem.cpp:8-52`）= 批排序主键，按 `*GeometryDataBuffer <=>`
   （内容比较 geometry_id/vdm/vab/ibo）与 `*GeometryDrawRange <=>`（vertex_offset/first_index/counts）排序；
-  `DrawBatch::Set(...)`（`inc/hgl/ecs/support/PipelineMaterialRenderer.h:62-79`）再由 `data_buffer->geometry_id` 定 `geometry_id`；
-  建批点 4 处：`src/ecs/support/PrimitiveBatchPipeline.cpp:491/552/570/588`。
-- 采集侧每帧经 `EnsureRuntimeGeometryFromAsset()`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:216-254`，
+  `DrawBatch::Set(...)`（`inc/hgl/ecs/support/pipeline/PipelineMaterialRenderer.h:62-79`）再由 `data_buffer->geometry_id` 定 `geometry_id`；
+  建批点 4 处：`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:491/552/570/588`。
+- 采集侧每帧经 `EnsureRuntimeGeometryFromAsset()`（`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:216-254`，
   调用点 `:2187` / `:2228` / `:2280`）按材质程序"武装"几何缓冲；4ID 的 `geometry_id` 走三级回退
   （`geom_buf->geometry_id` → asset→Geometry→`EnsureMeshDrawParams`）。
 

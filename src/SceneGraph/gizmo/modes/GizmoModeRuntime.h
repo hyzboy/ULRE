@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <vector>
-#include <hgl/ecs/support/TransformAccessor.h>
+#include <hgl/ecs/support/transform/TransformAccessor.h>
 #include "../GizmoInternal.h"  // 引入 GizmoShape
 
 // 用于 `GizmoVisualPrimitive` 的 ECS 类型的前向声明。

@@ -75,7 +75,7 @@
 名称化的 `SetMaterialTextureResource()` 绑定 `base_color` 和 `normal`，
 最后交给 `PrimitiveComponent` 的 recipe 合并与运行时收集流程。
 
-### 第 2 步：ECS 收集系统触发编译（src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:520-590）
+### 第 2 步：ECS 收集系统触发编译（src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:520-590）
 
 每帧收集时做**两级脏检查**：
 
@@ -391,7 +391,7 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | L3 | `src/ShaderGen/compile/GLSLCompiler.cpp` | GLSLCompiler 插件加载与 SPV 编译 |
 | L4 | `src/ShaderGen/compile/ShaderArtifactStore.cpp` | SPV 磁盘缓存（stage/program 两级） |
 | L4 | `inc/hgl/mtl/ShaderProgramKey.h` | 程序级缓存 key（六维哈希） |
-| L5 | `src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp` | 收集/脏检查/触发编译；recipe 校验、共享材质行物化与 MaterialInstanceAddresses 行写入 |
+| L5 | `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` | 收集/脏检查/触发编译；recipe 校验、共享材质行物化与 MaterialInstanceAddresses 行写入 |
 | L5 | `src/SceneGraph/module/ShaderProgramManager.cpp` | 程序缓存 + 运行时落地 |
 | 库 | `ShaderLibrary/`（common/compositor/fragment/lighting/material/mesh/ntb/sky/surface/ubo/vertex，另有 ao/shadow） | GLSL 代码模块库 |
 | 库 | `ShaderLibrary/sampler.toml` | Sampler 预设注册表（单一数据源） |

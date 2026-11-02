@@ -933,7 +933,7 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
 > ⚠ 上述两份档已于 2026-10-28 按「7 天时间窗」封存进 `doc/archive/`（正文不再维护，方案结论仍适用）；本项**仍为在办工作**，恢复推进时先按代码现状复核这两份档再动手。
 
 - **现象**：`GPUDrivenCull` 接管后 ICB 内 64 个 cube 是 **64 条 `(x,1,1)` 命令**（用户 RenderDoc 截帧实测），
-  而 CPU 账路径是 **1 条 Y=64**（`src/ecs/support/PrimitiveBatchPipeline.cpp:733`
+  而 CPU 账路径是 **1 条 Y=64**（`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:733`
   `groupCountY = instance_count > 1 ? instance_count : 1`）；**像素一致 ⇒ 现有判据无感**。
 - **为什么是欠账而不是 bug**：合批机制已在（`gl_InstanceIndex = first_instance + gl_WorkGroupID.y`，
   `src/ShaderGen/meshgen/MeshShaderHeaderGen.h:123`；**Y 维度 = 实例维度**）；本轮 ④ 只清了组件多实例，
@@ -1000,7 +1000,7 @@ A5(比较采样) ◄──同做───────────┘            
 | 类 | 档 | 判据 |
 |---|---|---|
 | 自述废止/被取代 | `meshlet-render-path-implementation-plan.md`、`future/niagara-meshlet-drawcull-clustercull-comparison.md`、`render-item-descriptor-and-indirection-pipeline.md`、`future/ULRE_FINAL_TARGET.md`、`gitea-https-reverse-proxy-setup.md` | 档首自述废止；描述符池 2026-10-14 整族删（本档 §2 #3）；v1 被 v2 取代；运维笔记非引擎 |
-| 已落地的一次性计划/交接 | `future/ULRE_Architecture_Phase0_GLTF_TRS_Normalization.md`、`…Phase1_Transform_ID_Accessor.md`、`…Phase2_Subsystems_Component_To_ID.md`、`future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`、`future/HANDOFF_2026-10-01.md`、`scene_ubo_bda_migration_ready.md`、`scene-ubo-bda-migration-handoff.md`、`camera-ubo-removal-plan.md`、`t3-camera-row-slotting-plan.md` | Camera UBO 移除已实测干净（全仓只剩 3 处注释性提及）；相机行槽化见 `inc/hgl/ecs/support/CameraInfoStorage.h` 的 `CameraRow(camera_slot, frame_slot)` |
+| 已落地的一次性计划/交接 | `future/ULRE_Architecture_Phase0_GLTF_TRS_Normalization.md`、`…Phase1_Transform_ID_Accessor.md`、`…Phase2_Subsystems_Component_To_ID.md`、`future/ULRE_ECS_Component_To_ID_Architecture_Roadmap.md`、`future/HANDOFF_2026-10-01.md`、`scene_ubo_bda_migration_ready.md`、`scene-ubo-bda-migration-handoff.md`、`camera-ubo-removal-plan.md`、`t3-camera-row-slotting-plan.md` | Camera UBO 移除已实测干净（全仓只剩 3 处注释性提及）；相机行槽化见 `inc/hgl/ecs/support/storage/CameraInfoStorage.h` 的 `CameraRow(camera_slot, frame_slot)` |
 | 已结案复盘 + 审计冗余 | `future/gpu-cull-flicker-postmortem.md`、`future/offscreen-onetime-world-stall-analysis.md`、`ecs-deep-quality-audit-and-evidence-2026-10.md`、`ecs-deep-audit-crossreview-2026-10.md`、`ecs-deep-audit-second-crossreview-2026-10-11.md`、`ecs-audit-consensus-and-task-plan-2026-10-11.md` | 结论已合流进 `ecs-quality-audit-2026-10.md` §2.2 + `analysis/ecs-audit-2026-10/` 与 `future/entity-rows-gpu-cull-plan.md` §11.9/§11.17 |
 
 **保留**（虽形似候选，但有未结项或为现行交付物）：`future/stage_B_debt_list.md`（本档 §5 有 `receive_shadow` 幅度漂移未定位）、`future/e2-gather-run-length-merge-plan.md`（🟡 已开工）、`instance-batching-and-static-bake-design.md`、`future/ULRE_Architecture_Phase3_Entity64B_Binary_Scene_BlitLoading.md`（§5 已延后）、`simple-sphere-*` 两篇、`ambient-provider-types-inventory.md`。
@@ -1028,7 +1028,7 @@ A5(比较采样) ◄──同做───────────┘            
 
 **保留**（形似候选但**不动**，理由 = 仍被现行代码/权威档引用）：
 
-- `future/lighting-shadow-domain-split-plan.md` — 虽 T6a/T6b 均已落地结案，但仍是**现行光源/影子域的设计依据**，被 `inc/hgl/ecs/support/LightRowTable.h`、`inc/hgl/ecs/systems/render/{EnvironmentSystem,LightSystem,MainLightShadowSystem}.h` 等 6 处代码注释直接引用。
+- `future/lighting-shadow-domain-split-plan.md` — 虽 T6a/T6b 均已落地结案，但仍是**现行光源/影子域的设计依据**，被 `inc/hgl/ecs/support/storage/LightRowTable.h`、`inc/hgl/ecs/systems/render/{EnvironmentSystem,LightSystem,MainLightShadowSystem}.h` 等 6 处代码注释直接引用。
 - `future/sky-domain-and-provider-params-plan.md` — sky 段已整删，但 §2 的 provider 参数块规则（R1 一槽一块一地址 / R2 同族字段）仍是 `inc/hgl/graph/ubo/AmbientEnvInfo.h` 的规则出处。
 - `future/ULRE_Transform_System_Completion_Design_and_Plan.md`（2026-10-28 已封存至 `doc/archive/`）— 无内部完成度标记，无法判定是否已被 A5/T2-c 全量覆盖。
 - `build-and-module-structure-audit-2026-10.md`、`object-hierarchy-and-logger-design.md`、`instance-batching-and-static-bake-design.md`（2026-10-28 已封存至 `doc/archive/`）、`gpu-cull-multipass-design-and-shadow-hang-analysis.md`（手工移入 `doc/deprecated/`）— 均为**提案/底稿/记录**，描述对象仍在位且无失效证据。

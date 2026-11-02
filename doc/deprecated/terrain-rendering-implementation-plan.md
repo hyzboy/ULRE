@@ -134,7 +134,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer TextCharInfoR
 `inc/hgl/ecs/support/line/{LineCollectSystem,LineBuildSystem,LineRenderPipeline,LineRenderSystem}.h`
 + `src/ecs/support/line/*.cpp`，注册点 `src/ecs/core/DefaultSystems.cpp:136`
 （`std::make_unique<LineRenderPipeline>(ctx)`），通过 `world->GetRenderPipeline(LineRenderPipeline::kName)` 取用
-（`src/ecs/systems/render/LineStatsSystem.cpp:26`）。
+（`src/ecs/systems/render/collect/LineStatsSystem.cpp:26`）。
 
 `LineRenderPipeline::Draw()` 就是"自持 SSBO + 一次 `cmd->DrawMeshTasks(group_count)`"
 （`src/ecs/support/line/LineRenderPipeline.cpp:260-286`），draw 前自行 push 根地址（`:762`）。
@@ -538,7 +538,7 @@ CPU 侧自检：相邻 tile 共享边上的 texel 原点差 == 期望值。
 | 根地址 push | `inc/hgl/graph/RootAddressPush.h` |
 | 全局 SSBO 池 | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h`、`inc/hgl/graph/ssbo/SSBOTypes.h` |
 | 专用管线参照 | `inc/hgl/ecs/support/line/*.h`、`src/ecs/support/line/*.cpp`、`src/ecs/core/DefaultSystems.cpp:136` |
-| 间接绘制 / GPU count 参照 | `example/ApiValidation/ComputeIndirectCount.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp:52-65` |
+| 间接绘制 / GPU count 参照 | `example/ApiValidation/ComputeIndirectCount.cpp`、`src/ecs/support/pipeline/PipelineMaterialRenderer.cpp:52-65` |
 | 导数法线 NTB 模块 | `ShaderLibrary/ntb/ntb_derivative_normalmap.glsl` |
 | 材质 TOML 自持模式参照 | `ShaderLibrary/material/unlit_texture.mi.toml` |
 | 剔除基础设施 | `example/ApiValidation/ComputeFrustumCull.cpp`、`src/ecs/tests/TestBoundingVolumeCull.cpp` |

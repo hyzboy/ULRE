@@ -23,7 +23,7 @@
 > 草案原文：「所有的 Component 都会有自己的数据，这个数据必须定长，并且符合 GPU 访问最小对齐单元」「可以对应一个 C++ 结构和一个 GLSL 结构」「整体机制为预算制，除 Editor 模式外正式版不允许扩容」「每当增加一个 Component，是直接从大 SSBO 的数据队列申请一个 ID 用读写」「可参考现有 `GlobalSSBOBufferRegistry`」
 
 **✅ 与现有机制对齐**
-- 预算制 + 不扩容 + 超限报错**已有先例**：`inc/hgl/ecs/support/CameraInfoStorage.h:27`（容量 16 槽 × 帧槽 = 128 行，超限返回 `INVALID_SLOT`，**不扩容**）、`:44` 还带 `static_assert(kSlotCapacity == 16u, ...)`。
+- 预算制 + 不扩容 + 超限报错**已有先例**：`inc/hgl/ecs/support/storage/CameraInfoStorage.h:27`（容量 16 槽 × 帧槽 = 128 行，超限返回 `INVALID_SLOT`，**不扩容**）、`:44` 还带 `static_assert(kSlotCapacity == 16u, ...)`。
 - "大 SSBO 数据队列"已有雏形：`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h`（`GlobalSSBODataAccessor : ActiveRowLease`，per-type SSBO + `ActiveRowPool` 行池）。
 - "C++ 结构 ↔ GLSL 结构对应"已有**校验门**：`S.global-addresses-struct-parity`（C++↔GLSL 结构漂移会静默回退默认材质 ⇒ 已被门拦住）。
 

@@ -17,13 +17,13 @@
 #include"modes/RotateGizmoMode.h"
 #include"modes/ScaleGizmoMode.h"
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/entity/Entity.h>
 
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
 #include<hgl/log/Log.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/render/RenderContext.h>

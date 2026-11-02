@@ -1,30 +1,30 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/ecs/core/Object.h>
-#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/entity/Object.h>
+#include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/System.h>
-#include<hgl/ecs/core/RenderGraph.h>
-#include<hgl/ecs/core/RenderFrameCache.h>
-#include<hgl/ecs/core/RenderPassRequest.h>
+#include<hgl/ecs/core/render/RenderGraph.h>
+#include<hgl/ecs/core/render/RenderFrameCache.h>
+#include<hgl/ecs/core/render/RenderPassRequest.h>
 #include<hgl/vk/VKQueue.h>
-#include<hgl/ecs/core/ScenePipelineMode.h>
-#include<hgl/ecs/support/ComponentTypeTable.h>
-#include<hgl/ecs/support/ComponentPool.h>
-#include<hgl/ecs/support/EntityGPUTable.h>
-#include<hgl/ecs/support/EntityRenderIDTable.h>
-#include<hgl/ecs/support/LightRowTable.h>
+#include<hgl/ecs/core/render/ScenePipelineMode.h>
+#include<hgl/ecs/support/storage/ComponentTypeTable.h>
+#include<hgl/ecs/support/storage/ComponentPool.h>
+#include<hgl/ecs/support/storage/EntityGPUTable.h>
+#include<hgl/ecs/support/storage/EntityRenderIDTable.h>
+#include<hgl/ecs/support/storage/LightRowTable.h>
 #include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/type/ValueArray.h>
-#include<hgl/ecs/support/TransformID.h>
-#include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/support/BoundingBoxAccessor.h>
-#include<hgl/ecs/support/VisibilityDataStorage.h>
-#include<hgl/ecs/support/MaterialVariantTable.h>
-#include<hgl/ecs/support/MaterialRuntimeTable.h>
+#include<hgl/ecs/support/transform/TransformID.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
+#include<hgl/ecs/support/cull/BoundingBoxAccessor.h>
+#include<hgl/ecs/support/cull/VisibilityDataStorage.h>
+#include<hgl/ecs/support/material/MaterialVariantTable.h>
+#include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
-#include<hgl/ecs/core/EntityManager.h>
+#include<hgl/ecs/core/entity/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/log/Log.h>
 #include<memory>
@@ -36,7 +36,7 @@
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
-#include<hgl/ecs/core/ShaderProgramPipelineKey.h>
+#include<hgl/ecs/core/render/ShaderProgramPipelineKey.h>
 #include<hgl/color/Color4f.h>
 #include<glm/glm.hpp>
 

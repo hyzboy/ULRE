@@ -41,24 +41,44 @@
 
 ```
 inc/hgl/ecs/
-├ core/        Object / Component / Entity / EntityHandle / EntityManager / Context
-│              System / SystemGroup / RenderGraph / RenderPassRequest
-│              RenderItem / PrimitiveRenderItem
-│              MaterialBatch / ShaderProgramPipelineKey
+├ core/        Context / ContextGPU / ContextRender / ContextSystems
+│              System / SystemGroup / DefaultSystems
+│ ├ entity/    Object / ComponentRow / Entity / EntityHandle / EntityGPU
+│ │             EntityManager
+│ └ render/    RenderGraph / RenderFrameCache / RenderPassRequest / RenderItem
+│              PrimitiveRenderItem / MaterialBatch / ScenePipelineMode
+│              ShaderProgramPipelineKey
 ├ components/  CameraComponent / CameraControlMode / GeometryData / LinesComponent
 │              Visibility / BoundingBox / Lines / Text / Renderable
 ├ systems/
 │  ├ tick/     InputSystem / TransformSystem / CameraSystem (+ CameraInputMapping)
 │  │           LineBoundsUpdateSystem（VisibilitySystem 已删；可见性存储归世界）
-│  └ render/   RenderPrimitiveCollectSystem / RenderBufferUploadSystem
-│              RenderSceneUBOSystem / ViewUBOCommitSystem / RenderSystemCore
-│              RenderTargetSystem / SwapchainNextImageSystem / SwapchainSubmitSystem
-│              EnvironmentSystem / ColorPaletteSystem / LineStatsSystem
-├ support/     RenderPipelineBase / RenderPipelineSystem / PrimitiveBatchPipeline
-               PipelineMaterialRenderer / PrimitiveRenderPipeline / LineRenderPipeline
-               TextRenderPipeline / RenderResource
-               TransformAssignmentBuffer / TransformDataStorage / VisibilityDataStorage
-               BoundingBoxDataStorage / EntityGPUTable / EntityRenderIDTable
+│  └ render/   按执行阶段分组（子目录即 phase 归属）：
+│     ├ frame/        RenderSystemCore / SwapchainNextImageSystem / RenderTargetSystem
+│     │               SwapchainSubmitSystem
+│     ├ collect/      RenderPrimitiveCollectSystem / LineStatsSystem
+│     ├ buffer/       ViewUBOCommitSystem / RenderBufferUploadSystem / RenderSceneUBOSystem
+│     ├ light_shadow/ MainLightShadowSystem / LightSystem / ColorPaletteSystem
+│     │               EnvironmentSystem / SkyEnvironmentConfig
+│     └ streaming/    GeometryStreamingSystem / TextureStreamingSystem
+├ support/     按职能分为 8 个子目录（头文件与实现同目录镜像）：
+│ ├ cull/       GPUCullSystem / CPUCullReferenceSystem / BoundingVolumeCull
+│ │             BoundingBoxDataStorage / BoundingBoxAccessor / VisibilityDataStorage
+│ ├ transform/  TransformDataStorage / TransformAccessor / TransformAssignmentBuffer
+│ │             TransformID
+│ ├ storage/    ComponentPool / ComponentTypeTable / DirtyRowSet / EntityGPUTable
+│ │             EntityRenderIDTable / LightRowTable / CameraInfoStorage / CameraSlotGuard
+│ │             PerfTimer
+│ ├ material/   MaterialRuntimeTable / MaterialVariantTable / MaterialAuthoringSideTable
+│ │             MaterialRuntimePipelineTable
+│ ├ pipeline/   RenderPipelineBase / RenderPipelineSystem / PrimitiveBatchPipeline
+│ │             PipelineMaterialRenderer / PrimitiveState / RenderableBuilder
+│ │             RenderResource / RenderPassSlot / RenderStrategyTable / RenderStrategyParity
+│ ├ line/       LineRenderPipeline / LineBuildSystem / LineCollectSystem / LineRenderSystem
+│ ├ primitive/  PrimitiveRenderPipeline / PrimitiveBuildSystem / PrimitiveCullSystem
+│ │             PrimitiveSortSystem / PrimitiveRenderSystem / PrimitiveOverlayRenderSystem
+│ └ text/       TextRenderPipeline / TextBuildSystem / TextCollectSystem
+│               TextSyncSystem / TextRenderSystem
 └ tests/      Test*/Probe*（判据与探针源；2026-10-14 由 support/ 迁出）
 ```
 
@@ -79,16 +99,16 @@ inc/hgl/ecs/
 
 | 类 | 基类 | 身份 | 生命周期动词 | 关键成员 |
 |---|---|---|---|---|
-| `Object` | — | `objectId` + `objectName` | **无虚生命周期钩子**（`Object::OnUpdate` 链已删除） | `std::string objectName` `inc/hgl/ecs/core/Object.h:15-60`，注释 :54-59 明示三套动词体系 |
-| ~~`Component`~~ **（已删，T2-c）** | — | — | — | **基类与 `Component.h` 已不存在**：组件 = 类型化对象池里的裸行，行头 `ComponentRow` 只有 `Entity *owner`（8 B，`inc/hgl/ecs/core/ComponentRow.h`）；类型属性（系统组 / 掩码位 / GPU 行宽 / arena）在 `kComponentTypeTable`（`inc/hgl/ecs/support/ComponentTypeTable.h`）；挂卸钩子是**非虚**成员（池按 `requires` 调用，如 `GeometryData::OnDetach`） |
-| `Entity` | `Object` | `EntityID id`（由 `EntityManager` 的**块池**分配，含 `generation` 防悬垂） | 无自有钩子（挂载/卸载转发到类型化池行） | `uint32_t component_rows[COMPONENT_TYPE_COUNT]`（**1 基行号**，0 = 无；**唯一真源**）+ `EntityID id`（`inc/hgl/ecs/core/Entity.h`）；掩码**不再是字段**（A1(b) 2026-10-14 删，需要位图时 `BuildComponentMask()` 现场拼）；**不再有 `shared_ptr<Component>` 容器** |
+| `Object` | — | `objectId` + `objectName` | **无虚生命周期钩子**（`Object::OnUpdate` 链已删除） | `std::string objectName` `inc/hgl/ecs/core/entity/Object.h:15-60`，注释 :54-59 明示三套动词体系 |
+| ~~`Component`~~ **（已删，T2-c）** | — | — | — | **基类与 `Component.h` 已不存在**：组件 = 类型化对象池里的裸行，行头 `ComponentRow` 只有 `Entity *owner`（8 B，`inc/hgl/ecs/core/entity/ComponentRow.h`）；类型属性（系统组 / 掩码位 / GPU 行宽 / arena）在 `kComponentTypeTable`（`inc/hgl/ecs/support/storage/ComponentTypeTable.h`）；挂卸钩子是**非虚**成员（池按 `requires` 调用，如 `GeometryData::OnDetach`） |
+| `Entity` | `Object` | `EntityID id`（由 `EntityManager` 的**块池**分配，含 `generation` 防悬垂） | 无自有钩子（挂载/卸载转发到类型化池行） | `uint32_t component_rows[COMPONENT_TYPE_COUNT]`（**1 基行号**，0 = 无；**唯一真源**）+ `EntityID id`（`inc/hgl/ecs/core/entity/Entity.h`）；掩码**不再是字段**（A1(b) 2026-10-14 删，需要位图时 `BuildComponentMask()` 现场拼）；**不再有 `shared_ptr<Component>` 容器** |
 | `System` | `Object` | `typeid(T).hash_code()` 作为注册键 | `Initialize / Update / Render / Shutdown` | phase / dependencies / enabled / `render_element_type` `inc/hgl/ecs/core/System.h:55-117` |
 
-生命周期动词是**三套不同语义**，不要统一（`inc/hgl/ecs/core/Object.h:54-59` 注释明示）：Component 挂载卸载 / System 初始化运行；Object 层只保留构造函数与析构。`System` **没有** `OnCreate` / `OnDependenciesReady`（全仓 0 命中）；`CreateEntity` 也不触发实体级 `OnCreate`。
+生命周期动词是**三套不同语义**，不要统一（`inc/hgl/ecs/core/entity/Object.h:54-59` 注释明示）：Component 挂载卸载 / System 初始化运行；Object 层只保留构造函数与析构。`System` **没有** `OnCreate` / `OnDependenciesReady`（全仓 0 命中）；`CreateEntity` 也不触发实体级 `OnCreate`。
 
 ### 2.2 组件挂载 → 自动反向注册
 
-`AddComponent<T>(args...)`（`inc/hgl/ecs/core/Entity.h:54-61`）→ `Entity::ReplaceComponent`（`inc/hgl/ecs/core/Entity.h:32`）：
+`AddComponent<T>(args...)`（`inc/hgl/ecs/core/entity/Entity.h:54-61`）→ `Entity::ReplaceComponent`（`inc/hgl/ecs/core/entity/Entity.h:32`）：
 
 ```
 components[typeid(T).hash_code()] = component
@@ -102,14 +122,14 @@ RemoveComponent<T>() 对称：UnregisterFromContext → OnDetach → 删除 → 
 `ECSContext::RegisterComponentInstance`（`src/ecs/core/Context.cpp:1125-1153`）做三件事：
 
 1. 调 `RegisterComponentInstanceInternal`（`src/ecs/core/Context.cpp:1189-1212`）把组件按类型 hash 存进 `component_registry`（`weak_ptr` 列表）——`GetComponents<T>` 就是遍历这张表（`inc/hgl/ecs/core/Context.h:483-501`）；
-2. 组归属读**类型表**（`kComponentTypeTable[].group`，`inc/hgl/ecs/support/ComponentTypeTable.h`；组件虚函数 `GetSystemGroupName()` 已删，T2-c）：挂行即 `OnComponentRowAdded(type)` → **自动安装该组的系统**（`EnsureSystemGroupSystems`）+ **打开该组开关**（`SetSystemGroupEnabled(group, true)`），计数归零自动关组；
+2. 组归属读**类型表**（`kComponentTypeTable[].group`，`inc/hgl/ecs/support/storage/ComponentTypeTable.h`；组件虚函数 `GetSystemGroupName()` 已删，T2-c）：挂行即 `OnComponentRowAdded(type)` → **自动安装该组的系统**（`EnsureSystemGroupSystems`）+ **打开该组开关**（`SetSystemGroupEnabled(group, true)`），计数归零自动关组；
 3. **查询基类机制已删**（`RegisterComponentQueryBase` / `component_query_bases` 全仓 **0 命中**）：图元枚举改按 `GeometryData` **精确类型**（原话见 `src/ecs/core/Context.cpp` A5b 注释），`GetComponents<T>` 直接给类型化池的活跃集视图。
 
-反注册对称处理：`UnregisterComponentInstance`（`src/ecs/core/Context.cpp:1154-1187`）在计数归零时关组。**没有** `DisableUnusedSystemGroups` / `CleanupSystemGroup` 这类显式入口（全仓 0 命中）——组开关的唯一驱动点是 `CreateAdaptiveRenderGraph` 按本世界 `SceneStats.active_render_groups` 逐组调用（`src/ecs/core/RenderGraph.cpp:230-237`）。
+反注册对称处理：`UnregisterComponentInstance`（`src/ecs/core/Context.cpp:1154-1187`）在计数归零时关组。**没有** `DisableUnusedSystemGroups` / `CleanupSystemGroup` 这类显式入口（全仓 0 命中）——组开关的唯一驱动点是 `CreateAdaptiveRenderGraph` 按本世界 `SceneStats.active_render_groups` 逐组调用（`src/ecs/core/render/RenderGraph.cpp:230-237`）。
 
 ### 2.3 Entity 管理
 
-`EntityManager`（`inc/hgl/ecs/core/EntityManager.h`、`src/ecs/core/EntityManager.cpp`）持全部 Entity（`ECSContext` 构造时预分配 **1000**，`src/ecs/core/Context.cpp:60-68`），EntityID = 句柄（`inc/hgl/ecs/core/EntityHandle.h`）。创建走 Context 模板：
+`EntityManager`（`inc/hgl/ecs/core/entity/EntityManager.h`、`src/ecs/core/entity/EntityManager.cpp`）持全部 Entity（`ECSContext` 构造时预分配 **1000**，`src/ecs/core/Context.cpp:60-68`），EntityID = 句柄（`inc/hgl/ecs/core/entity/EntityHandle.h`）。创建走 Context 模板：
 
 ```
 CreateEntity<T>(args...)                       inc/hgl/ecs/core/Context.h:369-380
@@ -216,26 +236,26 @@ RegisterDefaultEcsSystems       :228-245 → 返回 input_system 给 WorkObject
 
 ### 3.5 SystemGroup / 元素类型 / 组开关
 
-- `SystemGroup{name, startPhase, endPhase}`（`inc/hgl/ecs/core/SystemGroup.h:28-43`）——**只有组定义，没有 `enabled` 字段**：组的「是否启用」是每世界状态，由 `CreateAdaptiveRenderGraph` 按本世界 `SceneStats` 即时推导（`src/ecs/core/RenderGraph.cpp:226-240`），不写进全局注册表（多世界建图时全局存会被互相覆盖）。
+- `SystemGroup{name, startPhase, endPhase}`（`inc/hgl/ecs/core/SystemGroup.h:28-43`）——**只有组定义，没有 `enabled` 字段**：组的「是否启用」是每世界状态，由 `CreateAdaptiveRenderGraph` 按本世界 `SceneStats` 即时推导（`src/ecs/core/render/RenderGraph.cpp:226-240`），不写进全局注册表（多世界建图时全局存会被互相覆盖）。
 - 注册表 `SystemGroupRegistry`（`inc/hgl/ecs/core/SystemGroup.h:53-89`）是**静态单例**，只承载真正的全局不变量：组定义 + `RegisterGroupInstaller` 插件式安装器；API 为 `RegisterGroup` / `RegisterGroupInstaller` / `EnsureGroupSystems` / `GetAllGroups` / `GetGroup` / `DebugPrint`。**`ScopedSystemGroupState` 与旧别名 `RenderSystemGroup / RenderSystemGroupRegistry / ScopedGroupState` 均已删除**（0 命中）。
-- 组元数据在首帧由 `EnsureSystemGroupsRegistered` 从系统集合反推：遍历每个 element type 的系统，取 `min(startPhase)/max(phase)` 作为组区间（`src/ecs/core/RenderGraph.cpp:21-87`，幂等，只补缺失，注册后打印一条组清单日志）。
+- 组元数据在首帧由 `EnsureSystemGroupsRegistered` 从系统集合反推：遍历每个 element type 的系统，取 `min(startPhase)/max(phase)` 作为组区间（`src/ecs/core/render/RenderGraph.cpp:21-87`，幂等，只补缺失，注册后打印一条组清单日志）。
 - 「组是否启用」的落地点唯一：`SetSystemGroupEnabled(SystemGroupID, bool)`（`Context.h:1033`）直接 `SetEnabled(false)` 掉该组所有系统。
 
 对 SimpleSphere：只有 `GeometryData` 存在 → 只有 `"Primitive"` 组有组件计数 → Text/Line 组的系统在首帧就被关掉；这一点在日志里表现为 pass 只有 1 个、且看不到 Line/Text 系统。
 
 ### 3.6 RenderGraph：pass 序列
 
-`RenderGraph::Pass{startPhase, endPhase}`（`inc/hgl/ecs/core/RenderGraph.h:31-47`）。**只有一条构造路径**：
+`RenderGraph::Pass{startPhase, endPhase}`（`inc/hgl/ecs/core/render/RenderGraph.h:31-47`）。**只有一条构造路径**：
 
 （历史：该结构曾带 `renderTarget` 与 `enabled` / `runUpdate` / `submitTransforms` / `runRender` / `onBeforePass` / `onAfterPass` 六个配置字段 —— `renderTarget` 随 A3「pass 级跨 RT 切换」删除；其余六个**全仓从未有过赋值点**（唯一构造点传全 true/空），2026-10-10 随审计 §1.1 一并删除 ⇒ pass 执行改为无条件。）
 
 | 路径 | 内容 | 触发 |
 |---|---|---|
-| `CreateAdaptiveRenderGraph(context, stats)`（`inc/hgl/ecs/core/RenderGraph.h:145`，`src/ecs/core/RenderGraph.cpp:217-262`） | 遍历 `SystemGroupRegistry` 全部组：先按 `stats.HasGroup(name)` 调 `SetSystemGroupEnabled`；命中的组各 `Add` 一段 pass（`startPhase..endPhase`） | 每帧 `Render` 入口；仅当 `scene_structure_dirty` 且 `SceneStats::GetHash()` 变化才真正重建（`src/ecs/core/Context.cpp:602-615`） |
+| `CreateAdaptiveRenderGraph(context, stats)`（`inc/hgl/ecs/core/render/RenderGraph.h:145`，`src/ecs/core/render/RenderGraph.cpp:217-262`） | 遍历 `SystemGroupRegistry` 全部组：先按 `stats.HasGroup(name)` 调 `SetSystemGroupEnabled`；命中的组各 `Add` 一段 pass（`startPhase..endPhase`） | 每帧 `Render` 入口；仅当 `scene_structure_dirty` 且 `SceneStats::GetHash()` 变化才真正重建（`src/ecs/core/Context.cpp:602-615`） |
 
 `CreateDefaultLinearGraph` / `use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` 均已删除（0 命中）。
 
-`SceneStats`（`inc/hgl/ecs/core/RenderGraph.h:112-133`）只持有 `std::set<std::string> active_render_groups` + FNV 风格 `GetHash()`；`GatherSceneStats`（`src/ecs/core/RenderGraph.cpp:179-215`）遍历全部实体及其组件，按 `Component::GetSystemGroupName()` 收敛组名集合。
+`SceneStats`（`inc/hgl/ecs/core/render/RenderGraph.h:112-133`）只持有 `std::set<std::string> active_render_groups` + FNV 风格 `GetHash()`；`GatherSceneStats`（`src/ecs/core/render/RenderGraph.cpp:179-215`）遍历全部实体及其组件，按 `Component::GetSystemGroupName()` 收敛组名集合。
 
 **pass 不带目标 RT**：`renderTarget` 字段与那条「设了会被忽略」的告警已随 A3 删除（cmd buffer 由帧初始 RT 的 `RenderSystemCore::BeginFrame()` 取得）。跨 RT 渲染的唯一现行路径是 `ECSContext::RenderTo(RenderPassRequest)`（§4.5）。
 
@@ -250,7 +270,7 @@ RegisterDefaultEcsSystems       :228-245 → 返回 input_system 给 WorkObject
 ```
 ECSContext::Render(dt, pre_render)                        src/ecs/core/Context.cpp:598-618
  └ scene_structure_dirty 时 GatherSceneStats + hash 比较（变化才重建图）
- └ ECSContext::Render(dt, graph, pre_render)              src/ecs/core/RenderGraph.cpp:162-177
+ └ ECSContext::Render(dt, graph, pre_render)              src/ecs/core/render/RenderGraph.cpp:162-177
     ├ BeginManagedRenderFrame(dt)                         src/ecs/core/Context.cpp:331-381
     │   ① AcquireSwapchainImage()       → 相位 RenderSwapchainNextImage（Context.cpp:342/:638）
     │   ② RenderPreBeginFrame()         → 相位 RenderPreBeginFrame（Context.cpp:350/:620）
@@ -260,7 +280,7 @@ ECSContext::Render(dt, pre_render)                        src/ecs/core/Context.c
     │   ⑥ SetCurrentRenderCmd(cmd)      ← 后续所有 Render() 都拿它（:368）
     │   ⑦ PrepareRenderPassSetup(...)   ← 见 4.2（:369/:719）
     │   ⑧ render_core->BeginRenderPass(options) → vkCmdBeginRendering（:372 / RenderSystemCore.cpp:79）
-    ├ ExecuteRenderGraphPasses(graph, dt, pre_render)     src/ecs/core/RenderGraph.cpp:91-160
+    ├ ExecuteRenderGraphPasses(graph, dt, pre_render)     src/ecs/core/render/RenderGraph.cpp:91-160
     │   └ pre_render(dt)（= WorkObject::OnRenderPass）在**进入 pass 循环前**调用一次（:95-96）
     └ EndManagedRenderFrame(dt)                           src/ecs/core/Context.cpp:383-398
         EndFrame（EndRenderingPresent）→ SubmitFrameToRenderTarget（:389/:394）
@@ -281,7 +301,7 @@ RenderFrameSync(dt)                     Context.cpp:711-717（RenderSceneUBOSyst
 
 ### 4.3 pass 内：一遍 RenderGraph 循环
 
-`ExecuteRenderGraphPasses`（`src/ecs/core/RenderGraph.cpp:91-160`）对每个 pass：
+`ExecuteRenderGraphPasses`（`src/ecs/core/render/RenderGraph.cpp:91-160`）对每个 pass：
 
 ```
 RunRenderPhaseUpdates(max(start, RenderDrawSubmit), endPhase)                （:106-113，只跑 pass 内相位）
@@ -320,7 +340,7 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 恢复 render_target / clear 色 / RenderTargetSystem 的 RT / 覆盖相机
 ```
 
-`RenderPassRequest` 字段（`inc/hgl/ecs/core/RenderPassRequest.h:31-64`）：`target` / `clear` / `use_target_clear` / `delta_time` / `camera` / `load_depth` / `use_scissor` + `scissor` / `clear_scissor_depth` / `mobility_filter`。
+`RenderPassRequest` 字段（`inc/hgl/ecs/core/render/RenderPassRequest.h:31-64`）：`target` / `clear` / `use_target_clear` / `delta_time` / `camera` / `load_depth` / `use_scissor` + `scissor` / `clear_scissor_depth` / `mobility_filter`。
 `RenderPassOptions`（`inc/hgl/vk/VKCommandBuffer.h:116-125`）：`load_color` / `load_depth` / `depth_old_layout` / `use_scissor` + `scissor` / `clear_scissor_depth` / `clear_depth_value`（Reversed-Z 默认 0.0f）。
 实际调用者：`example/Shadow/ShadowMap.cpp:1097`、`example/Shadow/CascadeShadowMap.cpp:683,704`（`RenderTo(const RenderPassRequest&)`）；`src/SceneGraph/module/OffscreenWorld.cpp:149` 走的是三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`）。
 
@@ -367,7 +387,7 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 | ~~`VisibilitySystem`~~ **（已删，2026-10-14 核实）** | — | — | 原职责（构造存储 + 塞给组件）已消失：存储归世界、可见性由 `SetEntityVisible` 直写；见 `doc/visibility-authority-chain.md` |
 | `LineBoundsUpdateSystem` `src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:13` | `TickTransform` | `AddDependency<TransformSystem>()`（:14） | 线的局部包围盒 → 建/更新 `BoundingBoxDataStorage` 行（局部 + 世界 AABB；`BoundingBoxAccessor`） |
 
-`TransformSystem` 的两段结构是本层最容易被误读的地方：**Tick 阶段只处理 movable 的 CPU 侧 dirty**，static 与全部 GPU 侧（静态段重写 + movable ring 段填充）都在 `SubmitTransformUpdates()` 里，而它由渲染图在 pass 执行前调用（`src/ecs/core/Context.cpp:406-410`，`src/ecs/core/RenderGraph.cpp:148-149`）。SimpleSphere 的球是 `Mobility::Movable`，所以每帧都进 ring 段。
+`TransformSystem` 的两段结构是本层最容易被误读的地方：**Tick 阶段只处理 movable 的 CPU 侧 dirty**，static 与全部 GPU 侧（静态段重写 + movable ring 段填充）都在 `SubmitTransformUpdates()` 里，而它由渲染图在 pass 执行前调用（`src/ecs/core/Context.cpp:406-410`，`src/ecs/core/render/RenderGraph.cpp:148-149`）。SimpleSphere 的球是 `Mobility::Movable`，所以每帧都进 ring 段。
 
 ---
 
@@ -377,28 +397,28 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 
 | phase | Primitive 组 | Text 组 | Line 组 | 其它渲染系统 |
 |---|---|---|---|---|
-| `RenderPreBeginFrame` | — | — | — | `EnvironmentSystem`（`src/ecs/systems/render/EnvironmentSystem.cpp:14`）、`ColorPaletteSystem`（`src/ecs/systems/render/ColorPaletteSystem.cpp:17`）、`RenderTargetSystem`（`src/ecs/systems/render/RenderTargetSystem.cpp:12`） |
-| `RenderSwapchainNextImage` | — | — | — | `SwapchainNextImageSystem`（`src/ecs/systems/render/SwapchainNextImageSystem.cpp:11`） |
-| `RenderCollect` | `RenderPrimitiveCollectSystem`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:383`）+ `PrimitiveCullSystem`（`src/ecs/support/primitive/PrimitiveCullSystem.cpp:10`）+ `PrimitiveSortSystem`（`src/ecs/support/primitive/PrimitiveSortSystem.cpp:10`） | `TextCollectSystem`（`src/ecs/support/text/TextCollectSystem.cpp:10`） | `LineCollectSystem`（`src/ecs/support/line/LineCollectSystem.cpp:11`） | — |
+| `RenderPreBeginFrame` | — | — | — | `EnvironmentSystem`（`src/ecs/systems/render/light_shadow/EnvironmentSystem.cpp:14`）、`ColorPaletteSystem`（`src/ecs/systems/render/light_shadow/ColorPaletteSystem.cpp:17`）、`RenderTargetSystem`（`src/ecs/systems/render/frame/RenderTargetSystem.cpp:12`） |
+| `RenderSwapchainNextImage` | — | — | — | `SwapchainNextImageSystem`（`src/ecs/systems/render/frame/SwapchainNextImageSystem.cpp:11`） |
+| `RenderCollect` | `RenderPrimitiveCollectSystem`（`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:383`）+ `PrimitiveCullSystem`（`src/ecs/support/primitive/PrimitiveCullSystem.cpp:10`）+ `PrimitiveSortSystem`（`src/ecs/support/primitive/PrimitiveSortSystem.cpp:10`） | `TextCollectSystem`（`src/ecs/support/text/TextCollectSystem.cpp:10`） | `LineCollectSystem`（`src/ecs/support/line/LineCollectSystem.cpp:11`） | — |
 | `RenderBatch` | `PrimitiveBuildSystem`（`src/ecs/support/primitive/PrimitiveBuildSystem.cpp:10`） | `TextBuildSystem`（`src/ecs/support/text/TextBuildSystem.cpp:10`）、`TextSyncSystem`（`src/ecs/support/text/TextSyncSystem.cpp:10`） | `LineBuildSystem`（`src/ecs/support/line/LineBuildSystem.cpp:12`） | — |
-| `RenderBufferCommit` | — | — | — | `ViewUBOCommitSystem`（`src/ecs/systems/render/ViewUBOCommitSystem.cpp:14`） |
-| `RenderBufferUpload` | — | — | — | `RenderBufferUploadSystem`（`src/ecs/systems/render/RenderBufferUploadSystem.cpp:17`） |
-| `RenderFrameSync` | — | — | — | `RenderSceneUBOSystem`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:99`，即原 `RenderDescriptorBindingSystem`） |
+| `RenderBufferCommit` | — | — | — | `ViewUBOCommitSystem`（`src/ecs/systems/render/buffer/ViewUBOCommitSystem.cpp:14`） |
+| `RenderBufferUpload` | — | — | — | `RenderBufferUploadSystem`（`src/ecs/systems/render/buffer/RenderBufferUploadSystem.cpp:17`） |
+| `RenderFrameSync` | — | — | — | `RenderSceneUBOSystem`（`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:99`，即原 `RenderDescriptorBindingSystem`） |
 | `RenderDrawSubmit` | `PrimitiveRenderSystem`（`src/ecs/support/primitive/PrimitiveRenderSystem.cpp:30`） | `TextRenderSystem`（`src/ecs/support/text/TextRenderSystem.cpp:12`） | `LineRenderSystem`（`src/ecs/support/line/LineRenderSystem.cpp:13`） | — |
 | `RenderDebug` | `PrimitiveOverlayRenderSystem`（`src/ecs/support/primitive/PrimitiveOverlayRenderSystem.cpp:26`） | — | — | — |
-| `RenderStat` | — | — | `LineStatsSystem`（`src/ecs/systems/render/LineStatsSystem.cpp:12`） | — |
-| `RenderSubmit` | — | — | — | `SwapchainSubmitSystem`（`src/ecs/systems/render/SwapchainSubmitSystem.cpp:14`） |
+| `RenderStat` | — | — | `LineStatsSystem`（`src/ecs/systems/render/collect/LineStatsSystem.cpp:12`） | — |
+| `RenderSubmit` | — | — | — | `SwapchainSubmitSystem`（`src/ecs/systems/render/frame/SwapchainSubmitSystem.cpp:14`） |
 
-**`RenderFrameUBOSyncSystem` 不存在**（0 命中）：`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem`，它的职责是场景 UBO 数据流 + 材质化资源注册（`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h:35-43` 类注释）。
+**`RenderFrameUBOSyncSystem` 不存在**（0 命中）：`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem`，它的职责是场景 UBO 数据流 + 材质化资源注册（`inc/hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h:35-43` 类注释）。
 
 显式依赖只有 4 条（§3.2）；其余顺序全部由相位决定。
 
 ### 7.2 薄代理系统 + pipeline 的双层结构
 
-`RenderPipelineSystem` 家族把「相位 × 元素类型」标准化（`inc/hgl/ecs/support/RenderPipelineSystem.h:24-153`）：
+`RenderPipelineSystem` 家族把「相位 × 元素类型」标准化（`inc/hgl/ecs/support/pipeline/RenderPipelineSystem.h:24-153`）：
 
 ```
-RenderPipelineSystem::ValidatePipeline(context)     src/ecs/support/RenderPipelineSystem.cpp:6-22
+RenderPipelineSystem::ValidatePipeline(context)     src/ecs/support/pipeline/RenderPipelineSystem.cpp:6-22
    = IsEnabled() && context && GetPipeline(context) != nullptr
 CollectSystem::Update       override final → OnCollect(pipeline)     :24-33
 CullSystem::Update          override final → OnCull                  :36-45
@@ -410,7 +430,7 @@ RenderPipelineDrawSystem::Render override final → OnRender(pipeline, cmd)  :84
 
 于是具体系统只剩三步样板（`src/ecs/support/primitive/PrimitiveCullSystem.cpp:7-22` 为例）：构造里 `SetExecutionPhase(...)` + `SetRenderElementType("Primitive")`；`GetPipeline()` 返回 `context->GetRenderPipeline("Primitive")`；`OnCull` 转调 `pipeline->RunCull()`。**Update/Render 被 `final` 封死**——想插入逻辑必须经 pipeline 或新加阶段基类。
 
-pipeline 侧接口 `RenderPipelineBase`（`inc/hgl/ecs/support/RenderPipelineBase.h:16-56`）：`GetName/GetWorld/PrepareFrame/RunCollect/RunCull/RunSort/RunBuild/RunSync/Render/Shutdown`。`PrimitiveRenderPipeline` 只是把请求转给 `PrimitiveBatchPipeline` 实现体（`src/ecs/support/primitive/PrimitiveRenderPipeline.cpp:24-56`）：
+pipeline 侧接口 `RenderPipelineBase`（`inc/hgl/ecs/support/pipeline/RenderPipelineBase.h:16-56`）：`GetName/GetWorld/PrepareFrame/RunCollect/RunCull/RunSort/RunBuild/RunSync/Render/Shutdown`。`PrimitiveRenderPipeline` 只是把请求转给 `PrimitiveBatchPipeline` 实现体（`src/ecs/support/primitive/PrimitiveRenderPipeline.cpp:24-56`）：
 
 ```
 PrepareFrame → impl_->PrepareFrame(context_)
@@ -420,11 +440,11 @@ RunBuild     → PrepareFrame() + RunTransformIndexing() + RunBatching()
 Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发给 PipelineMaterialRenderer）
 ```
 
-`PrimitiveBatchPipeline::PrepareFrame`（`src/ecs/support/PrimitiveBatchPipeline.cpp:89-118`）是幂等守门：确认 `cache.renderItems` 非空、取 cameraInfo/device、对齐帧序号——所以 Cull/Sort/Build 三个系统各自调都没问题。`PrimitiveBatchPipeline` 的成员声明见 `inc/hgl/ecs/support/PrimitiveBatchPipeline.h:31-76`。
+`PrimitiveBatchPipeline::PrepareFrame`（`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:89-118`）是幂等守门：确认 `cache.renderItems` 非空、取 cameraInfo/device、对齐帧序号——所以 Cull/Sort/Build 三个系统各自调都没问题。`PrimitiveBatchPipeline` 的成员声明见 `inc/hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h:31-76`。
 
 ### 7.3 收集阶段：RenderPrimitiveCollectSystem
 
-`Update`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:1090-1449`）是本层最重的系统：
+`Update`（`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:1090-1449`）是本层最重的系统：
 
 1. **帧缓存开帧**：`cache.BeginFrame()` 清 `renderItems`、清计数、调各 `MaterialBatch::Clear()` 但保留 batch 对象复用（:1106-1108）；
 2. **取可见性 storage**（O(1) 跳过不可见实体，:1110-1116）+ `active_mobility_filter`（:1118）；
@@ -432,26 +452,26 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 4. **主循环**（:1225-1439）：过滤 `!IsVisible / !CanRender` / storage 不可见 / 无 owner / 无 transform / mobility filter / 无 recipe → 解析配方并取 / 建 `MaterialRuntimeTable` 行（`MaterialRuntimeRow`）→ 三条路径：
    - **全清帧快速路径**（`fast_path_holds && last_materialize_epoch == materialize_epoch`，:1286-1311）：只跑 `ResolveMaterialProgramForPrimitive` + `EnsureRuntimeGeometryFromAsset` + `ResolveRuntimePipelineForPrimitive`，成功 `MarkValid()`；
    - **需要工作帧**（:1312-1372）：`MarkResourcesPending()` → `PrepareActivePlanResources` → `MaterializeRecipeRowsForPrimitive` → `EnsureRuntimeGeometryFromAsset` → `ResolveRuntimePipelineForPrimitive` → `MarkValid()`；任一步失败 `InvalidateRecipeRuntime` + `MarkFailed()`（`valid` 保持 false，下一帧重试而不是静默跳过）；
-5. **产出 4-ID 并生成 RenderItem**（:1377-1438）：`transform_id = transform->GetStorageHandle()`、`geometry_id`（必要时现场 `EnsureMeshDrawParams`，:1394）、`material_id = data_index_row`、`texture_id = material_texture_configuration.row_index`；实体 4-ID 表的**唯一发布点** `world->GetEntityRenderIDTable().SetRenderIDs(pass, entity, ids)`（`inc/hgl/ecs/support/EntityRenderIDTable.h`）；`make_unique<PrimitiveRenderItem>`，填 `distanceToCamera = length(worldPos - camera_pos)`（:1432），`UpdateWorldMatrix()`（:1434），push 进 `cache.renderItems`，`renderableCount++`（:1437）。
+5. **产出 4-ID 并生成 RenderItem**（:1377-1438）：`transform_id = transform->GetStorageHandle()`、`geometry_id`（必要时现场 `EnsureMeshDrawParams`，:1394）、`material_id = data_index_row`、`texture_id = material_texture_configuration.row_index`；实体 4-ID 表的**唯一发布点** `world->GetEntityRenderIDTable().SetRenderIDs(pass, entity, ids)`（`inc/hgl/ecs/support/storage/EntityRenderIDTable.h`）；`make_unique<PrimitiveRenderItem>`，填 `distanceToCamera = length(worldPos - camera_pos)`（:1432），`UpdateWorldMatrix()`（:1434），push 进 `cache.renderItems`，`renderableCount++`（:1437）。
 
 材质行地址物化在 `MaterializeRecipeRowsForPrimitive`（:653-1088）里：`TryGetRowBuffer`（:750）→ `IsActive(type, data_index)`（:762）→ 容量检查（:779-791）→ `material_row_gpu = gpu_base + data_index*row_bytes`（:801）、`data_index_row = data_index`（:815）；纹理引用行走 `AcquireMaterialTextureConfiguration`（:990）/ `WriteMaterialTextureConfiguration`（:1004）/ `RetireMaterialTextureConfiguration`（:1010）。
 
-`PrimitiveRenderItem`（`inc/hgl/ecs/core/PrimitiveRenderItem.h:28-72`、`src/ecs/core/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange`（几何侧走 `GeometryData` + `MeshDrawParams` 行；材质侧 = `GetMaterialRuntimeRow()`），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/RenderItem.h:32-46`，含 `isVisible` / `draw_key`(=`MeshDrawKey`)）。`index`（零读者）与 `Compare`（零调用者）2026-10-10 随审计 §1.1 删除 —— 排序/聚簇一律读 `draw_key` 这份行派生 POD 键 —— 这是 ECS 与渲染层解耦的接缝。
+`PrimitiveRenderItem`（`inc/hgl/ecs/core/render/PrimitiveRenderItem.h:28-72`、`src/ecs/core/render/PrimitiveRenderItem.cpp`）是 `RenderItem` 接口的实现：对外暴露实体/组件句柄、`GetShaderProgram/GetPipeline(render_pass)/GetGeometryDataBuffer/GetGeometryDrawRange`（几何侧走 `GeometryData` + `MeshDrawParams` 行；材质侧 = `GetMaterialRuntimeRow()`），构造时缓存世界矩阵。批处理只需要 `RenderItem*` 这层接口（`inc/hgl/ecs/core/render/RenderItem.h:32-46`，含 `isVisible` / `draw_key`(=`MeshDrawKey`)）。`index`（零读者）与 `Compare`（零调用者）2026-10-10 随审计 §1.1 删除 —— 排序/聚簇一律读 `draw_key` 这份行派生 POD 键 —— 这是 ECS 与渲染层解耦的接缝。
 
 ### 7.4 批处理阶段：PrimitiveBatchPipeline
 
 > ⚠ **T3i 之后本节已有增量、且行号属旧修订**：多批/混材质 ⇒ "批标签 + 共享行竞技场切片 + 每批 GPU 计数"、
 > 逐批 guard（可接管前提）与 CPU 账/GPU 接管的双路分流，现状见 `doc/render-flow-cull-sort-drawcall.md` §2.3/§4。
 
-| 步骤 | 函数（`src/ecs/support/PrimitiveBatchPipeline.cpp`） | 内容 |
+| 步骤 | 函数（`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`） | 内容 |
 |---|---|---|
 | 剔除 | `RunCulling → PerformFrustumCulling` `:120/:153-186` | 视锥测试（`TestFrustumWithWorldAABB` `:187` / `LocalAABB` `:197` / `BoundingSphere` `:209`），置 `item->isVisible` |
 | 排序 | `RunSorting → SortByDistance` `:125/:231-243` | 按 `distanceToCamera` | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
 | （空）变换缓冲就绪 | **2026-10-14（A5）整步删除** | 原步骤（`RunTransformSetup`，再往前叫 `RunTransformIndexing`）只调 `EnsureTransformBuffer()` + `RefreshHandleOrder()` —— 而这两步的**唯一执行者**是 `TransformSystem::SubmitTransformUpdates`（`src/ecs/core/ContextRender.cpp:839`，**M8-needle / Test 42 钉住"必须在 collect/派发之前"**），它在管线步骤之前就跑过 ⇒ 管线里那份是**重复调用**（实测注掉它，示例帧摘要逐位不变）。同批删除的还有：原空壳 `RunSorting`、原"行号分配"函数、以及渲染项上的 L2W 行号副本（该副本在批 D / T4c4 删掉读写两端后**只写不读**）。**L2W 行号的权威** = 变换侧算式（静态 `1 + slot` / 动态 `GetDynamicBaseIndex() + slot`）+ GPU 剔除写的 per-batch `l2w_index` 表（`ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl:390`） |
-| 成批 | `RunBatching → BuildMaterialBatches` `:147/:1014-1088` | 按 `ShaderProgramPipelineKey{shader_program, pipeline, pipeline_config}`（`inc/hgl/ecs/core/ShaderProgramPipelineKey.h`）归批；`pipeline_config` 来自 `RenderItem::GetPipelineConfig(pass)`（EDS 下管线不带渲染状态，形态不同必须拆批）；缺 recipe rows 或未解析 pipeline 的 item 直接跳过并告警 |
+| 成批 | `RunBatching → BuildMaterialBatches` `:147/:1014-1088` | 按 `ShaderProgramPipelineKey{shader_program, pipeline, pipeline_config}`（`inc/hgl/ecs/core/render/ShaderProgramPipelineKey.h`）归批；`pipeline_config` 来自 `RenderItem::GetPipelineConfig(pass)`（EDS 下管线不带渲染状态，形态不同必须拆批）；缺 recipe rows 或未解析 pipeline 的 item 直接跳过并告警 |
 | 批内定型 | `FinalizeBatches → FinalizeBatch` | `EnsureBatchIndexRows` → `EnsureMeshDrawParams` → `WriteBatchIndexRows`。⚠ **2026-10-10 订正**：`SortBatchItems` / `BuildBatches` / `WriteMeshDrawCommands` **全仓已不存在**（CPU 建批 / 排序 / 写命令链随 T4c4「删 CPU 绘制链」消失）；批间排序现为 `PrimitiveRenderSystem::RenderBatches` 里的 `std::sort(ordered_batches)`（按 `MaterialBatch::key`），`PrimitiveOverlayRenderSystem` 转发同一函数（`overlay_only=true`） |
 
-`MaterialBatch`（`inc/hgl/ecs/core/MaterialBatch.h:40-94`）是「一个 shader program 的全部待绘项」：`key`（shader+pipeline）、`items`（`RenderItem*`）、`draw_batches`/`draw_batches_count`、**`mesh_draw_params_buffer`（现装 `MeshDrawCommand` 表，每 DrawBatch 一行 8B）+ `mesh_draw_params_capacity`**、`icb_mesh_tasks`（mesh 间接命令）、`icb_count_buffer`/`icb_count_buffer_offset`（GPU 计数，可选）、`l2w_index_buffer`、`material_data_index_rows_buffer`、`texture_reference_base_addr`、`gpu_driven_override`/`own_*` 所有权位（`uses_render_item_resolve` 于 2026-10-09 删除：恒假死开关，4-ID 运行时解析从未启用）、`transform_buffer`（非拥有，来自 TransformSystem）、`renderer`（`PipelineMaterialRenderer`）。
+`MaterialBatch`（`inc/hgl/ecs/core/render/MaterialBatch.h:40-94`）是「一个 shader program 的全部待绘项」：`key`（shader+pipeline）、`items`（`RenderItem*`）、`draw_batches`/`draw_batches_count`、**`mesh_draw_params_buffer`（现装 `MeshDrawCommand` 表，每 DrawBatch 一行 8B）+ `mesh_draw_params_capacity`**、`icb_mesh_tasks`（mesh 间接命令）、`icb_count_buffer`/`icb_count_buffer_offset`（GPU 计数，可选）、`l2w_index_buffer`、`material_data_index_rows_buffer`、`texture_reference_base_addr`、`gpu_driven_override`/`own_*` 所有权位（`uses_render_item_resolve` 于 2026-10-09 删除：恒假死开关，4-ID 运行时解析从未启用）、`transform_buffer`（非拥有，来自 TransformSystem）、`renderer`（`PipelineMaterialRenderer`）。
 
 ### 7.5 提交阶段：从帧缓存到 vkCmd
 
@@ -466,7 +486,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 |---|---|
 | 描述符集 | **只有 1 个**：**Bindless(0)**（纹理数组 + sampler 数组 + cube 数组）。**Scene 集与 `enum class SceneBinding` 已随 S3 整体退场**——相机 / 调色板 / 全局地址表 / sky / viewport / shadow 全部改走 BDA（地址进 `GlobalAddresses` 表，表基址经 `pc_root.addr_global_addresses`）。真源 `inc/hgl/common/DescriptorSetTypeDef.h:9-23`（集号收敛为 Bindless=0） |
 | per-material / per-object / per-draw 描述符集 | **已退役**：`PerObject/Material/Vertex` 集随 BDA 化删除（`inc/hgl/common/DescriptorSetTypeDef.h:55-60` 注释明示）；`MaterialBind` 之类的绑定动作 0 命中 |
-| 绑定点 | `GraphicsContext::BindGlobalDescriptorSets(cmd, layout)`（`inc/hgl/graph/core/GraphicsContext.h:140`，compute 版 :143）：唯一集合 Bindless 由 `BindlessTextureManager` 维护。`RenderSceneUBOSystem::ApplyResourceLayoutBindings`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:401-410`）**已无绑定可推**，只调 `SyncGlobalAddressesTable()`（:169-194，把每帧会变的渲染项 / 绘制项地址刷进 `GlobalAddresses` 表） |
+| 绑定点 | `GraphicsContext::BindGlobalDescriptorSets(cmd, layout)`（`inc/hgl/graph/core/GraphicsContext.h:140`，compute 版 :143）：唯一集合 Bindless 由 `BindlessTextureManager` 维护。`RenderSceneUBOSystem::ApplyResourceLayoutBindings`（`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:401-410`）**已无绑定可推**，只调 `SyncGlobalAddressesTable()`（:169-194，把每帧会变的渲染项 / 绘制项地址刷进 `GlobalAddresses` 表） |
 | 材质行 / 纹理引用行的载体 | `GlobalSSBOBufferRegistry`（`ActiveRowPool` 行池，`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:88`）+ `MaterialTextureReferencePool`（每 (definition, layout) 一池，`inc/hgl/graph/module/MaterialTextureReferencePool.h:49-128`） |
 | 行寻址 | `payload_index`（→ 全局池行号）/ `texture_reference_index`（→ 纹理引用池行号），经 `pc_root.addr_mtl_data_addrs` 行表 + `pc_root.addr_texture_references` 基址 BDA 解引用（`src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-325`） |
 | 地址载体 | ① `GlobalAddresses` **SSBO**（**无绑定无集**；按 `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长分份，基址经 `pc_root.addr_global_addresses` 下发；池基址等长期地址启动写一次，渲染项 / 绘制项两字段每帧同步，`inc/hgl/graph/ubo/GlobalAddresses.h:11-57`）② `RootAddresses` push constant（**80B**，每 MaterialBatch 一次；首字段 `addr_global_addresses`，末位 `camera_row` + `_pad_camera`，`inc/hgl/graph/ShaderBufferSources.h:267-336`、`inc/hgl/graph/RootAddressPush.h:31-75`） |
@@ -478,15 +498,15 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 | GPU 数据 | 写入者（ECS 侧） | 载体 |
 |---|---|---|
-| L2W 矩阵（静态段 + movable ring 段） | `TransformSystem::SubmitTransformUpdates`（tick 系统，渲染前被图调用） | `TransformAssignmentBuffer`（`src/ecs/support/TransformAssignmentBuffer.cpp`，`GetTransformDataBuffer()` `inc/hgl/ecs/support/TransformAssignmentBuffer.h:73`） |
-| 实体 4-ID 表（世界私有；按 `EntityID.index` 直索引、按 pass 分半） | `RenderPrimitiveCollectSystem`（**唯一发布点**：collect 的「几何行成立 ⇒ 本项进批」判据块内 `SetRenderIDs`） | `EntityRenderIDTable`（`inc/hgl/ecs/support/EntityRenderIDTable.h`；地址 `WorldAddresses::addr_entity_render_ids`） |
+| L2W 矩阵（静态段 + movable ring 段） | `TransformSystem::SubmitTransformUpdates`（tick 系统，渲染前被图调用） | `TransformAssignmentBuffer`（`src/ecs/support/transform/TransformAssignmentBuffer.cpp`，`GetTransformDataBuffer()` `inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h:73`） |
+| 实体 4-ID 表（世界私有；按 `EntityID.index` 直索引、按 pass 分半） | `RenderPrimitiveCollectSystem`（**唯一发布点**：collect 的「几何行成立 ⇒ 本项进批」判据块内 `SetRenderIDs`） | `EntityRenderIDTable`（`inc/hgl/ecs/support/storage/EntityRenderIDTable.h`；地址 `WorldAddresses::addr_entity_render_ids`） |
 | L2W 索引行 / `MaterialInstanceAddresses` 行 | `PrimitiveBatchPipeline::WriteBatchIndexRows`（RenderBatch 相位） | `MaterialBatch::l2w_index_buffer` / `material_data_index_rows_buffer` |
 | `MeshDrawCommand` 行（geometry_id + first_instance）+ mesh 间接命令 | `PrimitiveBatchPipeline::WriteMeshDrawCommands` | `MaterialBatch::mesh_draw_params_buffer` / `icb_mesh_tasks` |
 | 几何参数行（112B `MeshDrawParams`，含全部顶点流 BDA 地址） | **几何创建期**：`Geometry::RegisterMeshDrawParams`（由 `GeometryCreater::Create()` 自动调用） | `GlobalSSBOBufferRegistry` 的 `MeshDrawParams` 池，按 `geometry_id` 索引 |
 | 材质参数行（`PBRSurfaceRow` …） | 作者侧 `GlobalSSBODataAccessor::Write`；地址由 RPCS `MaterializeRecipeRowsForPrimitive` 解析 | `GlobalSSBOBufferRegistry` 的 `ActiveRowPool` |
 | 纹理引用行（`uvec2` handle/layer） | RPCS 材质化（`AcquireMaterialTextureConfiguration` / `WriteMaterialTextureConfiguration`） | `MaterialTextureReferencePool`（按 definition 一池） |
 | CameraInfo / SkyInfo / ViewportInfo | 相机：**每个相机组件自持** `local_camera_info`，`CameraSystem::PublishCamera(Rows)` 在 pass 设置阶段 / `RenderTo` 写**世界表相机行**（C1-5 之前的 `CommitCameraUBO` 写世界共享载体已删）；~~sky：**按世界**取址（`ECSContext::GetEnvProfileID()` → `EnvironmentManager::GetSkyAddress`，单份 buffer）由 `ECSContext::SyncWorldAddresses` 写**世界表** `addr_sky`~~（**2026-10-07：`SkyInfo` / `addr_sky` 已整删**，外观标量搬成 `sky_atmosphere.glsl` 常量 ⇒ 无 sky 地址可发布）；**影子数据：世界私有**（T6b/P4）——CPU 权威 `ECSContext::shadow_info`、世界私有缓冲按帧槽各一份（`InitializeShadowInfoTable`）、地址 `addr_shadow` = 基址 + 帧槽 × `sizeof(ShadowInfo)`、设备写入点 = `ECSContext::CommitShadowInfo`（写本世界帧 RT 的当前槽）；**ambient_env（IBL 句柄）自 T1 起独立成段**（`AmbientEnvInfo` / `addr_ambient_env`，`ambient_env` 宏）（C2；旧的 `RenderSceneUBOSystem::ResolveSkyUBO/ResolveShadowUBO` + registry `SetSkyAddress/SetShadowAddress` 已整删；profile 侧 `GetShadowAddress` 亦已随 P4 删除）；viewport：`ViewUBOCommitSystem` → `RenderSceneUBOSystem::CommitViewportUBO`（仍全局表 `addr_viewport`） | **无描述符集**：相机经 `CameraInfoBufferRef(...).cameras[pc_root.camera_row]` 读（`ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:149`），sky / shadow / viewport 经 `world_addresses` / `global_addresses` 表内地址解引用（`sky`/`shadow` 宏 C2 起读世界表）。相机行、sky / shadow、世界私有各列地址**随世界**（世界表 `WorldAddresses`，C1/C2 落地；**viewport 保持全局**） |
-| 脏 buffer 的 GPU 传输 + barrier | `RenderBufferUploadSystem::Update`（先同步世界行表族（实体行 / 实体 4-ID 表等），再遍历 `device->GetGPUBufferRegistry()`） | `IGPUBuffer::CopyToDevice` + `MemoryBarrier2`（`src/ecs/systems/render/RenderBufferUploadSystem.cpp:46-56,135-148`） |
+| 脏 buffer 的 GPU 传输 + barrier | `RenderBufferUploadSystem::Update`（先同步世界行表族（实体行 / 实体 4-ID 表等），再遍历 `device->GetGPUBufferRegistry()`） | `IGPUBuffer::CopyToDevice` + `MemoryBarrier2`（`src/ecs/systems/render/buffer/RenderBufferUploadSystem.cpp:46-56,135-148`） |
 | swapchain 图获取 / 提交 | `SwapchainNextImageSystem`（帧首）/ `SwapchainSubmitSystem`（帧尾） | `SwapchainRenderTarget::NextFrame/Submit` |
 
 ---
@@ -499,7 +519,7 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 - 有桌面、支持所需 Vulkan 功能和 Khronos validation layer 的开发机可配置 `ULRE_ENABLE_GPU_SYNC_VALIDATION_TEST=ON`，编译 `GPUDrivenCull` 后运行 `ctest -R ^GPUCullSyncValidation$`：测试启用 synchronization validation，检查 120 帧实际接管绘制、验证层加载及同步/VUID 错误。
 - `RenderFrameCache`（`inc/hgl/ecs/core/Context.h:48-63`）：`renderItems`（`unique_ptr` 数组，每帧重建）、`materialBatches`（key→`MaterialBatch` 的 map，**跨帧保留对象**只 `Clear()` 内容）、`cameraInfo`、`renderableCount`；实例挂载在 `ECSContext::render_frame_cache`（`inc/hgl/ecs/core/Context.h:128`），经 `GetRenderFrameCache()` 暴露。
 - 跨帧存活的还有：`TransformAssignmentBuffer`（TransformSystem 持有）、`MaterialBatch` 的各类 buffer（`Ensure*` 按 pow2 扩容）、行池（`GlobalSSBOBufferRegistry` / `MaterialTextureReferencePool` 持有）。（另两个 4-ID 存储已随 2026-10-14 整族删除，见文首订正。）
-- 非拥有关系要小心：`MaterialBatch::transform_buffer` 是 TransformSystem 的指针（`inc/hgl/ecs/core/MaterialBatch.h:78` 注释明示勿跨帧缓存系统指针）；`PrimitiveRenderItem` 持 `shared_ptr` 组件句柄（会延长组件寿命到当帧结束）。
+- 非拥有关系要小心：`MaterialBatch::transform_buffer` 是 TransformSystem 的指针（`inc/hgl/ecs/core/render/MaterialBatch.h:78` 注释明示勿跨帧缓存系统指针）；`PrimitiveRenderItem` 持 `shared_ptr` 组件句柄（会延长组件寿命到当帧结束）。
 - `frame_index`（`SetFrameIndex`，`src/ecs/core/Context.cpp:1113-1124`）供 ring 分段；`render_submission_serial`（`inc/hgl/ecs/core/Context.h:130`）供资源回收（纹理引用池的 retire 延迟与此挂钩，常量 `MaterialTextureConfigurationRetireEpochDelay = 3u`，`inc/hgl/graph/module/MaterialTextureReferencePool.h:15`）。
 - 活跃相机/可见性过滤：成员 `active_camera_id`（`inc/hgl/ecs/core/Context.h:275`；读取口 `GetActiveCameraRow()` :520）与 `active_mobility_filter`（:471，`GetActiveMobilityFilter()`）由 `RenderTo` 的 pass 级设置在区间内覆盖，供 RPCS 与渲染器消费。⚠ **2026-10-10**：裸读成员槽号的 `GetActiveCameraID()` 已删除（零调用者）。
 
@@ -509,11 +529,11 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 | 手段 | 位置 / 形态 |
 |---|---|
-| 组注册清单 | `[RenderGraph] Registered %zu system groups (total %zu)`（`src/ecs/core/RenderGraph.cpp:83-84`）+ `SystemGroupRegistry::DebugPrint()`（同处 :85，定义 `inc/hgl/ecs/core/SystemGroup.h:88`）；`[RenderGraph]   active group: %s` 逐个活跃组（`src/ecs/core/RenderGraph.cpp:211`） |
-| 帧边界 / pass 执行日志 | **当前已注释**（`src/ecs/core/RenderGraph.cpp:168,176` 的 Frame Start/End；:104/:108 的 skip/execute pass；`src/ecs/core/Context.cpp:412-418` 的 phase range）。需要时打开对应注释行 |
+| 组注册清单 | `[RenderGraph] Registered %zu system groups (total %zu)`（`src/ecs/core/render/RenderGraph.cpp:83-84`）+ `SystemGroupRegistry::DebugPrint()`（同处 :85，定义 `inc/hgl/ecs/core/SystemGroup.h:88`）；`[RenderGraph]   active group: %s` 逐个活跃组（`src/ecs/core/render/RenderGraph.cpp:211`） |
+| 帧边界 / pass 执行日志 | **当前已注释**（`src/ecs/core/render/RenderGraph.cpp:168,176` 的 Frame Start/End；:104/:108 的 skip/execute pass；`src/ecs/core/Context.cpp:412-418` 的 phase range）。需要时打开对应注释行 |
 | 系统级计时 | **`SystemProfiler` 已删除**（0 命中）。逐系统 `[ECS] Update/Render Begin|End` 日志也已注释（`src/ecs/core/Context.cpp:824-868` 的 `RunSystemUpdate` / `RunRenderSystemsInRange`）——「某系统没跑」改由组开关 + 系统自身日志判断 |
-| 材质/寻址诊断 | `ULRE_DEBUG.toml` 的 `channels.binding/batch/collect/text = true` 开启 `[ArenaTrace]`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:684/:735/:806`）；`[ArenaDebug]` 首次行表诊断由 `MaterialBatch::debug_blocks_logged` 控制（`inc/hgl/ecs/core/MaterialBatch.h:80`） |
-| 渲染层一次性日志 | `[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u`（`src/ecs/support/PipelineMaterialRenderer.cpp:47-48`）；`[MaterialTextureReferencePool] created …`（`src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89`）；`[LineStats] total=…`（`src/ecs/systems/render/LineStatsSystem.cpp:34`）；`[SceneUBO] viewport addr=0x%llX 入表（全帧槽）`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:146`） |
+| 材质/寻址诊断 | `ULRE_DEBUG.toml` 的 `channels.binding/batch/collect/text = true` 开启 `[ArenaTrace]`（`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:684/:735/:806`）；`[ArenaDebug]` 首次行表诊断由 `MaterialBatch::debug_blocks_logged` 控制（`inc/hgl/ecs/core/render/MaterialBatch.h:80`） |
+| 渲染层一次性日志 | `[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u`（`src/ecs/support/pipeline/PipelineMaterialRenderer.cpp:47-48`）；`[MaterialTextureReferencePool] created …`（`src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89`）；`[LineStats] total=…`（`src/ecs/systems/render/collect/LineStatsSystem.cpp:34`）；`[SceneUBO] viewport addr=0x%llX 入表（全帧槽）`（`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:146`） |
 
 ---
 
@@ -561,53 +581,53 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 |---|---|---|
 | `RenderResourceSetup`（惰性一次性 GPU 资源） | 相位不存在 | `inc/hgl/ecs/core/System.h:22-48`；全仓 0 命中 |
 | `RenderMaterialBind`（每实体材质/纹理绑定） | 相位不存在；材质/纹理经全局行池 + BDA，无 per-entity 绑定相位 | 同上；`src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-325` |
-| `RenderBeginFrame`（开 cmd、录帧 UBO） | 相位不存在。开 cmd buffer 是 `RenderSystemCore::BeginFrame()`（非 System），帧 UBO 写在 `RenderBufferCommit` | `src/ecs/systems/render/RenderSystemCore.cpp:42`；`src/ecs/systems/render/ViewUBOCommitSystem.cpp:17-36` |
+| `RenderBeginFrame`（开 cmd、录帧 UBO） | 相位不存在。开 cmd buffer 是 `RenderSystemCore::BeginFrame()`（非 System），帧 UBO 写在 `RenderBufferCommit` | `src/ecs/systems/render/frame/RenderSystemCore.cpp:42`；`src/ecs/systems/render/buffer/ViewUBOCommitSystem.cpp:17-36` |
 | `RenderPostProcess` | 相位不存在；pass 内只有 `RenderDrawSubmit` 与 `RenderDebug` | `inc/hgl/ecs/core/System.h:42-44` |
 | 用数字指代相位（9/10/11/12/13/14/16） | 数字标签废弃。真实渲染段为 `RenderSwapchainNextImage(4)` → `RenderPreBeginFrame(5)` → `RenderCollect(6)` → `RenderBatch(7)` → `RenderBufferCommit(8)` → `RenderBufferUpload(9)` → `RenderFrameSync(10)` → `RenderDrawSubmit(11)` → `RenderDebug(12)` → `RenderStat(13)` → `RenderSubmit(14)` | `inc/hgl/ecs/core/System.h:22-48` |
-| 「pass 0 的各 render phase」 | pass 由组定义推导，数量 = 命中组数；每 pass 携带 `startPhase..endPhase` | `src/ecs/core/RenderGraph.cpp:229-253` |
+| 「pass 0 的各 render phase」 | pass 由组定义推导，数量 = 命中组数；每 pass 携带 `startPhase..endPhase` | `src/ecs/core/render/RenderGraph.cpp:229-253` |
 
 ### 13.2 系统名 / 系统组名
 
 | 旧说法 | 现状 | 依据 |
 |---|---|---|
-| `RenderFrameUBOSyncSystem` | 类型不存在（0 命中）。`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem` | `src/ecs/systems/render/RenderSceneUBOSystem.cpp:99`；`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h:35-43` |
-| `RenderDescriptorBindingSystem` | 已改名 `RenderSceneUBOSystem`（类注释保留改名记录） | `inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h:35` |
+| `RenderFrameUBOSyncSystem` | 类型不存在（0 命中）。`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem` | `src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:99`；`inc/hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h:35-43` |
+| `RenderDescriptorBindingSystem` | 已改名 `RenderSceneUBOSystem`（类注释保留改名记录） | `inc/hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h:35` |
 | `BoundingBoxUpdateSystem` | 类型不存在（0 命中）。世界 AABB 由 `LineBoundsUpdateSystem`（线）与几何注册流程维护；`TransformSystem` 管 L2W | `src/ecs/systems/tick/LineBoundsUpdateSystem.cpp:13` |
 | `SystemProfiler`（per-system / per-group 计时） | 类型不存在（0 命中），`componentCount` 组状态字段也随之删除 | 全仓 0 命中 |
 | `RenderSystemGroup` / `RenderSystemGroupRegistry` / `ScopedGroupState`（旧别名） | 全部删除（0 命中）；只有 `SystemGroup` / `SystemGroupRegistry` | `inc/hgl/ecs/core/SystemGroup.h:28-89` |
-| `SystemGroup{name, startPhase, endPhase, enabled}` | **`enabled` 字段已移除**：组开关是每世界状态，由 `CreateAdaptiveRenderGraph` 按 `SceneStats` 即时推导，不再存全局注册表 | `inc/hgl/ecs/core/SystemGroup.h:28-43,45-52`；`src/ecs/core/RenderGraph.cpp:226-240` |
+| `SystemGroup{name, startPhase, endPhase, enabled}` | **`enabled` 字段已移除**：组开关是每世界状态，由 `CreateAdaptiveRenderGraph` 按 `SceneStats` 即时推导，不再存全局注册表 | `inc/hgl/ecs/core/SystemGroup.h:28-43,45-52`；`src/ecs/core/render/RenderGraph.cpp:226-240` |
 | `ScopedSystemGroupState` 临时开关 | 不存在（0 命中）；开关唯一入口 `SetSystemGroupEnabled(SystemGroupID, bool)` | `Context.h:1033`、`src/ecs/core/Context.cpp:685,701` |
 | `OnCreate` / `OnDependenciesReady`（System 生命周期） | 两个钩子都不存在（0 命中）。System 生命周期 = `Initialize / Update / Render / Shutdown`；`ECSContext::Initialize` 里直接按拓扑序调 `Initialize()` | `inc/hgl/ecs/core/System.h:75-84`；`src/ecs/core/Context.cpp:136-151` |
-| `Context::CreateChildEntity(parent, desc)` | API 不存在（0 命中）。层级走 `TransformAccessor::SetParent/AddChild/RemoveChild/GetParent`（底层 `TransformDataStorage`，**CSR 子表**）+ `CreateEntity<Entity>` + `CreateTransform(...)` | `inc/hgl/ecs/support/TransformAccessor.h:96-100` |
-| `DisableUnusedSystemGroups` / `CleanupSystemGroup` | 两个 API 都不存在（0 命中）。组关闭只发生在 `CreateAdaptiveRenderGraph` 与反注册计数归零路径 | `src/ecs/core/RenderGraph.cpp:230-237`；`src/ecs/core/Context.cpp:1154-1187` |
+| `Context::CreateChildEntity(parent, desc)` | API 不存在（0 命中）。层级走 `TransformAccessor::SetParent/AddChild/RemoveChild/GetParent`（底层 `TransformDataStorage`，**CSR 子表**）+ `CreateEntity<Entity>` + `CreateTransform(...)` | `inc/hgl/ecs/support/transform/TransformAccessor.h:96-100` |
+| `DisableUnusedSystemGroups` / `CleanupSystemGroup` | 两个 API 都不存在（0 命中）。组关闭只发生在 `CreateAdaptiveRenderGraph` 与反注册计数归零路径 | `src/ecs/core/render/RenderGraph.cpp:230-237`；`src/ecs/core/Context.cpp:1154-1187` |
 | `SystemOwnershipScope{GlobalShared,LocalIsolated,Auto}` × `ContextRole{RootShared,LocalSubWorld}` 及被拒计数器 | **全部不存在**（0 命中）。注册无权限门，只有 `RegisterSystem` 与 `EnsureSystem` 幂等包装 | `inc/hgl/ecs/core/Context.h`；`src/ecs/core/DefaultSystems.cpp` |
 | `RegisterTickSystemScoped` / `RegisterRenderSystemScoped` | 不存在（0 命中） | 同上 |
 | `CameraSystem` 依赖 `InputSystem`、`TransformSystem` | 构造里依赖声明为空（仅一句注释）；顺序由相位 `TickInput < TickTransform < TickCamera` 保证。当前仓库显式依赖只有 4 条（LineBoundsUpdate→Transform、TextCollect→RenderPrimitiveCollect、TextSync→TextBuild、TextRender→PrimitiveRender） | `src/ecs/systems/tick/CameraSystem.cpp:219-232`；`grep AddDependency<` 命中 4 处 |
-| `swapchain 提交系统依赖三个 RenderSystem` | `SwapchainSubmitSystem` 未声明显式依赖，靠相位 `RenderSubmit` 保证在三个 `RenderDrawSubmit` 系统之后 | `src/ecs/systems/render/SwapchainSubmitSystem.cpp:14`；`grep AddDependency<` 无该文件 |
-| `RenderSystemGroup` 里「把每个已注册系统组变成一段启用 pass：`CreateDefaultLinearGraph`」 | 线性图路径删除，只有 `CreateAdaptiveRenderGraph`；`use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` 一并删除（0 命中） | `src/ecs/core/RenderGraph.cpp:217-262`；`src/ecs/core/Context.cpp:598-618` |
+| `swapchain 提交系统依赖三个 RenderSystem` | `SwapchainSubmitSystem` 未声明显式依赖，靠相位 `RenderSubmit` 保证在三个 `RenderDrawSubmit` 系统之后 | `src/ecs/systems/render/frame/SwapchainSubmitSystem.cpp:14`；`grep AddDependency<` 无该文件 |
+| `RenderSystemGroup` 里「把每个已注册系统组变成一段启用 pass：`CreateDefaultLinearGraph`」 | 线性图路径删除，只有 `CreateAdaptiveRenderGraph`；`use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` 一并删除（0 命中） | `src/ecs/core/render/RenderGraph.cpp:217-262`；`src/ecs/core/Context.cpp:598-618` |
 
 ### 13.3 描述符 / 材质绑定 → 现载体
 
 | 旧说法 | 现状 | 依据 |
 |---|---|---|
-| 「Scene UBO / Bindless 纹理两个集，首次绑一次」 | **作废（2026-09-28）**：Scene 集与 `enum class SceneBinding` 已整体退场，唯一集合 = **Bindless(0)**（`DescriptorSetTypeDef.h:9-23`）；`RenderSceneUBOSystem::ApplyResourceLayoutBindings` 已无绑定可推，只做 `SyncGlobalAddressesTable()`（`RenderSceneUBOSystem.cpp:401-410`），绑定由 `GraphicsContext::BindGlobalDescriptorSets` 做 | `inc/hgl/common/DescriptorSetTypeDef.h:9-23`；`src/ecs/systems/render/RenderSceneUBOSystem.cpp:169-194,401-410`；`inc/hgl/graph/core/GraphicsContext.h:140` |
+| 「Scene UBO / Bindless 纹理两个集，首次绑一次」 | **作废（2026-09-28）**：Scene 集与 `enum class SceneBinding` 已整体退场，唯一集合 = **Bindless(0)**（`DescriptorSetTypeDef.h:9-23`）；`RenderSceneUBOSystem::ApplyResourceLayoutBindings` 已无绑定可推，只做 `SyncGlobalAddressesTable()`（`RenderSceneUBOSystem.cpp:401-410`），绑定由 `GraphicsContext::BindGlobalDescriptorSets` 做 | `inc/hgl/common/DescriptorSetTypeDef.h:9-23`；`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:169-194,401-410`；`inc/hgl/graph/core/GraphicsContext.h:140` |
 | `MaterialSSBOBufferRegistry` 的 `ActiveRowPool` 写材质行 | 现载体 = `GlobalSSBOBufferRegistry`（`pools[GlobalSSBOTypeCount]`）+ `GlobalSSBODataAccessor`；容量来自 `kGlobalSSBOConfigs`（PBRSurface 1024×32B / MeshDrawParams 16384×112B / CameraInfo 64 行）；**注**：CameraInfo 64 行 = 过渡期的「全局 8 相机 × 8 帧槽」，相机是**世界级数据**，本轮改为**世界私有 16 槽 × 8 帧槽**（该 pool 配置项、全局相机号位图与全局 8 相机上限将删，`inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:288-311`，批次 C1） | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:31-61,88`；`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20` |
 | `MaterialTextureReferencePool`（按 definition 一池，uvec2 handle/layer） | 现为按 **(definition, layout)** 一池，行 0 预留零行，retire 走 `ReleaseDeferred`/`CollectRetired`，常量 `MaterialTextureConfigurationRetireEpochDelay = 3u` | `inc/hgl/graph/module/MaterialTextureReferencePool.h:15,40-47,102-110` |
 | `MaterialSSBODataAccessor::Write` | `GlobalSSBODataAccessor::Write(row)` → `ActiveRowLease::Write` → `ActiveRowView::WriteAs` → `ActiveRowPool::CommitRow`（按行标脏） | `inc/hgl/vk/buffer/ActiveRowLease.h:157-166`；`inc/hgl/vk/buffer/ActiveRowView.h:174-188`；`src/Vulkan/buffer/ActiveRowPool.cpp:191-203` |
-| `payload_address` / `texture_reference_address` | 字段改名 `payload_index` / `texture_reference_index`（行号语义） | `inc/hgl/graph/ShaderBufferSources.h:129-140`；`src/ecs/support/PrimitiveBatchPipeline.cpp:975-994` |
+| `payload_address` / `texture_reference_address` | 字段改名 `payload_index` / `texture_reference_index`（行号语义） | `inc/hgl/graph/ShaderBufferSources.h:129-140`；`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:975-994` |
 | `PBRSurfaceRowRef(...)`（凭地址直解引用） | 生成的宏形态为 `MTL_ROW(i) = PBRSurfaceRowRef(global_addresses.addr_pbr_surface + uint64(...values[i].payload_index) * 32)`；纹理侧 `MTL_TEX(i) = MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64(...values[i].texture_reference_index) * 48)` | `src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-297,322-325` |
 | `pc_root` 7 张表 / 56B / 72B | **80B / 9×uint64 + 2×uint32**：首字段 `addr_global_addresses`，第二位 `addr_batch_mesh_draw_params`（本批 MeshDrawCommand 表），`addr_texture_references` 与文本三表齐备，末位 `camera_row` + `_pad_camera` | `inc/hgl/graph/ShaderBufferSources.h:267-336`；`inc/hgl/graph/RootAddressPush.h:31-75` |
-| `MeshDrawParams` 88B 按 DrawBatch 写行 | 几何参数行 112B（24B 头 + 11×uint64，几何创建期写一次，按 `geometry_id` 索引）+ 命令行 `MeshDrawCommand` 8B（`geometry_id` + `first_instance`，每 DrawBatch 一行，按 `gl_DrawID` 索引）；`MaterialBatch::mesh_draw_params_buffer` 现在装的是后者 | `inc/hgl/graph/ShaderBufferSources.h:16-127`；`src/SceneGraph/VKGeometry.cpp:112-176`；`src/ecs/support/PrimitiveBatchPipeline.cpp:591-730`；`inc/hgl/ecs/core/MaterialBatch.h:55-56` |
+| `MeshDrawParams` 88B 按 DrawBatch 写行 | 几何参数行 112B（24B 头 + 11×uint64，几何创建期写一次，按 `geometry_id` 索引）+ 命令行 `MeshDrawCommand` 8B（`geometry_id` + `first_instance`，每 DrawBatch 一行，按 `gl_DrawID` 索引）；`MaterialBatch::mesh_draw_params_buffer` 现在装的是后者 | `inc/hgl/graph/ShaderBufferSources.h:16-127`；`src/SceneGraph/VKGeometry.cpp:112-176`；`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:591-730`；`inc/hgl/ecs/core/render/MaterialBatch.h:55-56` |
 | `camera_ubo_dirty`（相机 UBO 脏标记） | 字段不存在（0 命中）；**camera UBO 本身已于 C1-5 删除**（相机数据只存在于世界表相机行，`CameraComponent` 侧只有 `matrix_dirty` 决定是否重解算） | `inc/hgl/ecs/components/CameraComponent.h:85` |
-| `worldPosition`（RenderItem 上的世界坐标缓存） | 字段不存在（0 命中）。`RenderItem` 只有 `distanceToCamera`（排序用）；世界坐标现取现算（`transform->GetWorldPosition()`） | `inc/hgl/ecs/core/RenderItem.h:40-44`；`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:1431-1432` | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
-| 材质行 `row_id` / `material_texture_*` 命名 | 材质运行期行现为 `MaterialRuntimeSlot`（`MaterialRuntimeTable`，行宽 **32 B 冻结**）+ 材质行 GPU 地址 + 纹理引用行（`MaterialData` 侧）—— `MaterialComponent` 已删 | `inc/hgl/ecs/support/MaterialRuntimeTable.h`；`inc/hgl/ecs/components/MaterialData.h` |
-| `RenderTo` / 离屏 pass 相关描述缺失 | 现有一等入口 `ECSContext::RenderTo(const RenderPassRequest&)`（+ `RenderTo(rt, clear, dt)` 便捷重载）与 `RenderPassRequest` / `RenderPassOptions` 结构；`RenderGraph::Pass::renderTarget` 仍**未生效**（非当前 RT 只告警） | `inc/hgl/ecs/core/RenderPassRequest.h:31-64`；`src/ecs/core/Context.cpp:445-557`；`inc/hgl/vk/VKCommandBuffer.h:116-125`；`inc/hgl/ecs/core/RenderGraph.h:38-48` |
+| `worldPosition`（RenderItem 上的世界坐标缓存） | 字段不存在（0 命中）。`RenderItem` 只有 `distanceToCamera`（排序用）；世界坐标现取现算（`transform->GetWorldPosition()`） | `inc/hgl/ecs/core/render/RenderItem.h:40-44`；`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:1431-1432` | 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
+| 材质行 `row_id` / `material_texture_*` 命名 | 材质运行期行现为 `MaterialRuntimeSlot`（`MaterialRuntimeTable`，行宽 **32 B 冻结**）+ 材质行 GPU 地址 + 纹理引用行（`MaterialData` 侧）—— `MaterialComponent` 已删 | `inc/hgl/ecs/support/material/MaterialRuntimeTable.h`；`inc/hgl/ecs/components/MaterialData.h` |
+| `RenderTo` / 离屏 pass 相关描述缺失 | 现有一等入口 `ECSContext::RenderTo(const RenderPassRequest&)`（+ `RenderTo(rt, clear, dt)` 便捷重载）与 `RenderPassRequest` / `RenderPassOptions` 结构；`RenderGraph::Pass::renderTarget` 仍**未生效**（非当前 RT 只告警） | `inc/hgl/ecs/core/render/RenderPassRequest.h:31-64`；`src/ecs/core/Context.cpp:445-557`；`inc/hgl/vk/VKCommandBuffer.h:116-125`；`inc/hgl/ecs/core/render/RenderGraph.h:38-48` |
 | `RenderFrameCache` 里 `componentCount` 与 profiler 组状态 | `RenderFrameCache`（`inc/hgl/ecs/core/Context.h:48-63`）只有 `renderItems` / `materialBatches` / `cameraInfo` / `renderableCount`；`componentCount` 与 SystemProfiler 一并删除 | `inc/hgl/ecs/core/Context.h:48-63`；全仓 0 命中 |
-| 逐系统 `[ECS] Update/Render Begin|End` 日志、`[ECS RENDER] ===== Frame Start` | 均已注释掉；现存可观测面 = 组清单日志 + 各系统自身日志（§10） | `src/ecs/core/Context.cpp:824-868`；`src/ecs/core/RenderGraph.cpp:104-176` |
-| 「Object 生命周期 `OnCreate/OnUpdate/OnDestroy`」「Tick 循环含每 Entity `OnUpdate()`」 | Object 无虚生命周期钩子；`ECSContext::Tick` 只跑 tick 系统 + `InputSystem::EndFrame()`，每帧全实体 × 全组件的 `OnUpdate` 虚分发已删除 | `inc/hgl/ecs/core/Object.h:54-59`；`src/ecs/core/Context.cpp:290-314` |
+| 逐系统 `[ECS] Update/Render Begin|End` 日志、`[ECS RENDER] ===== Frame Start` | 均已注释掉；现存可观测面 = 组清单日志 + 各系统自身日志（§10） | `src/ecs/core/Context.cpp:824-868`；`src/ecs/core/render/RenderGraph.cpp:104-176` |
+| 「Object 生命周期 `OnCreate/OnUpdate/OnDestroy`」「Tick 循环含每 Entity `OnUpdate()`」 | Object 无虚生命周期钩子；`ECSContext::Tick` 只跑 tick 系统 + `InputSystem::EndFrame()`，每帧全实体 × 全组件的 `OnUpdate` 虚分发已删除 | `inc/hgl/ecs/core/entity/Object.h:54-59`；`src/ecs/core/Context.cpp:290-314` |
 | `Context::RegisterDefaultEcsSystems`（Context 内部调用） | 改为应用框架显式调用：`src/Work/AppFramework.cpp:251` | `src/ecs/core/DefaultSystems.cpp:228-245` |
 | `Context 构造时预分配 1000` + `RegisterComponentQueryBase` 注册三个基类 | 1000 仍然成立（`src/ecs/core/Context.cpp:62`）；**查询基类机制已删**（0 命中）⇒ 图元枚举按 `GeometryData` 精确类型 | `src/ecs/core/Context.cpp:60-68,124-125` |
-| 组件版本机制 | **`Component` 基类与 `Component.h` 已删**（T2-c）：`version` + `change_mask` 现按承载者各一处 —— 变换在 `TransformDataStorage`（`GetVersion/GetChangeMask`，`TransformChange{Position,Rotation,Scale,Parent,WorldMatrix,Mobility}`）；组件侧各自声明（如 `TextComponent::TouchChange/ClearAllChanges`）；行头 `ComponentRow` 只有 `Entity*owner`（8 B） | `inc/hgl/ecs/support/TransformDataStorage.h`；`inc/hgl/ecs/core/ComponentRow.h`；`inc/hgl/ecs/components/TextComponent.h` |
+| 组件版本机制 | **`Component` 基类与 `Component.h` 已删**（T2-c）：`version` + `change_mask` 现按承载者各一处 —— 变换在 `TransformDataStorage`（`GetVersion/GetChangeMask`，`TransformChange{Position,Rotation,Scale,Parent,WorldMatrix,Mobility}`）；组件侧各自声明（如 `TextComponent::TouchChange/ClearAllChanges`）；行头 `ComponentRow` 只有 `Entity*owner`（8 B） | `inc/hgl/ecs/support/transform/TransformDataStorage.h`；`inc/hgl/ecs/core/entity/ComponentRow.h`；`inc/hgl/ecs/components/TextComponent.h` |
 
 **未能核实（本文未改动、未确认，勿引用本文作为其结论）**：
 

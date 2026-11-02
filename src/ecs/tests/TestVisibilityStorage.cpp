@@ -1,7 +1,7 @@
-﻿#include <hgl/ecs/support/VisibilityDataStorage.h>
+﻿#include <hgl/ecs/support/cull/VisibilityDataStorage.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/Entity.h>
-#include <hgl/ecs/support/TransformAccessor.h>
+#include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/ecs/support/transform/TransformAccessor.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 

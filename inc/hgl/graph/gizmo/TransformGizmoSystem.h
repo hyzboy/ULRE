@@ -2,7 +2,7 @@
 
 #include"GizmoTypes.h"
 #include<hgl/ecs/core/System.h>
-#include<hgl/ecs/support/TransformAccessor.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<memory>
 
 namespace hgl

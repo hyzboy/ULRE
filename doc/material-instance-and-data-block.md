@@ -236,7 +236,7 @@ bool     UploadMaterialDataBlock(const mtl::MaterialDataBlockView &view,
 builder->WithMaterialDataRow(ToOSString(PBR_GRID_DATA_PATH), row * GRID_SIZE + col);
 ```
 
-它做四件事（`src/ecs/support/RenderableBuilder.cpp`）：
+它做四件事（`src/ecs/support/pipeline/RenderableBuilder.cpp`）：
 
 1. 从 `GraphicsContext` 取 `MaterialDataBlockRegistry` 与全局池；
 2. `blocks->GetOrLoadURI(block_uri)` —— 不碰文件格式，只认 URI；

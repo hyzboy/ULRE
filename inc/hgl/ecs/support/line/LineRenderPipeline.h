@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <hgl/ecs/support/RenderPipelineBase.h>
+#include <hgl/ecs/support/pipeline/RenderPipelineBase.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/vk/buffer/TypedArrayView.h>
 #include <hgl/mtl/PipelineConfig.h>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include<hgl/ecs/core/ComponentRow.h>
-#include<hgl/ecs/support/MaterialAuthoringSideTable.h>
+#include<hgl/ecs/core/entity/ComponentRow.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>

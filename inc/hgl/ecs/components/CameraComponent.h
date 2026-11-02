@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/ComponentRow.h>
-#include<hgl/ecs/support/ComponentPool.h>
+#include<hgl/ecs/core/entity/ComponentRow.h>
+#include<hgl/ecs/support/storage/ComponentPool.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/math/Vector.h>
 #include<string>

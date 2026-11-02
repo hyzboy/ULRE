@@ -111,7 +111,7 @@
 
 | 字段 | 位置 | 写入点 | 读取 |
 |---|---|---|---|
-| `MaterialRuntimeRow::material_row_cpu` | `inc/hgl/ecs/support/MaterialRuntimeTable.h:145` | `RenderPrimitiveCollectSystem.cpp:745/1463/1520` | **0** |
+| `MaterialRuntimeRow::material_row_cpu` | `inc/hgl/ecs/support/material/MaterialRuntimeTable.h:145` | `RenderPrimitiveCollectSystem.cpp:745/1463/1520` | **0** |
 | `MaterialRuntimeRow::material_texture_row_cpu` | `:151` | `RenderPrimitiveCollectSystem.cpp:747/1753/1812` | **0** |
 | `ShaderCodeResourceManifest::error_module_name` | `inc/hgl/mtl/ShaderCodeResourceManifest.h:40` | `ShaderCodeResourceManifest.cpp:100/113/120/127/162/170` | **0**（错误文案走 `error` 枚举 + 调用方自带 `definition->name`） |
 | `ShaderCodeModuleDiagnostic::item_index` | `inc/hgl/mtl/ShaderCodeModuleMetadata.h:38` | `ShaderCodeModuleMetadata.cpp:26` | **0** |
@@ -520,7 +520,7 @@ BlendFactor/BlendOp/DynamicState）的 name↔value 注册表，含 `VkEnum2Stri
 
 | # | 字段 | 位置 | 写点 | 读取 |
 |---|---|---|---|---|
-| 1 | `MaterialRuntimeRow::material_row_cpu` | `inc/hgl/ecs/support/MaterialRuntimeTable.h` | `RenderPrimitiveCollectSystem.cpp` ×3 | 0 |
+| 1 | `MaterialRuntimeRow::material_row_cpu` | `inc/hgl/ecs/support/material/MaterialRuntimeTable.h` | `RenderPrimitiveCollectSystem.cpp` ×3 | 0 |
 | 2 | `MaterialRuntimeRow::material_texture_row_cpu` | 同上 | 同上 ×3 | 0 |
 | 3 | `ShaderCodeResourceManifest::error_module_name` | `inc/hgl/mtl/ShaderCodeResourceManifest.h` | `ShaderCodeResourceManifest.cpp` ×6 | 0 |
 | 4 | `ShaderCodeModuleMetadataValidationDiagnostic::item_index` | `inc/hgl/mtl/ShaderCodeModuleMetadata.h` | 同上 `.cpp` ×1 | 0 |
@@ -1188,8 +1188,8 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 | 类别 | 文件 |
 |---|---|
 | 新增 | `inc/hgl/common/DebugChannel.h`、`doc/debug-log-channels.md` |
-| 门统一（旧环境变量门 → 通道） | `inc/hgl/ecs/support/PerfTimer.h`、`src/ecs/support/CPUCullReferenceSystem.cpp`、`src/ecs/support/GPUCullSystem.cpp`、`src/ecs/support/PrimitiveBatchPipeline.cpp`、`src/ecs/support/PipelineMaterialRenderer.cpp`、`src/ecs/support/text/TextRenderPipeline.cpp`、`src/ecs/systems/render/MainLightShadowSystem.cpp`、`src/ecs/core/ContextRender.cpp`、`src/Vulkan/VKQueue.cpp`、`src/ShaderGen/compile/MaterialShaderEmitter.cpp`（`.h` 同步注释）、`src/ShaderGen/compile/MaterialShaderCompiler.cpp` |
-| 高频无门日志补门 | `src/ShaderMaterialData/MaterialResolver.cpp`（`[SkyRoute]`→`route`）、`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp`（`[ArenaTrace]`/`[MaterialTextureReferences]`→`binding`）、`src/ecs/systems/render/LineStatsSystem.cpp`（`line`）、`src/ecs/systems/render/ColorPaletteSystem.cpp` + `src/ecs/systems/render/RenderBufferUploadSystem.cpp` + `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`（`upload`）、`src/Vulkan/VKRenderPass.cpp` + `src/Vulkan/pipeline/VKPipelineResolver.cpp`（`pipeline`） |
+| 门统一（旧环境变量门 → 通道） | `inc/hgl/ecs/support/storage/PerfTimer.h`、`src/ecs/support/cull/CPUCullReferenceSystem.cpp`、`src/ecs/support/cull/GPUCullSystem.cpp`、`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`、`src/ecs/support/pipeline/PipelineMaterialRenderer.cpp`、`src/ecs/support/text/TextRenderPipeline.cpp`、`src/ecs/systems/render/light_shadow/MainLightShadowSystem.cpp`、`src/ecs/core/ContextRender.cpp`、`src/Vulkan/VKQueue.cpp`、`src/ShaderGen/compile/MaterialShaderEmitter.cpp`（`.h` 同步注释）、`src/ShaderGen/compile/MaterialShaderCompiler.cpp` |
+| 高频无门日志补门 | `src/ShaderMaterialData/MaterialResolver.cpp`（`[SkyRoute]`→`route`）、`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp`（`[ArenaTrace]`/`[MaterialTextureReferences]`→`binding`）、`src/ecs/systems/render/collect/LineStatsSystem.cpp`（`line`）、`src/ecs/systems/render/light_shadow/ColorPaletteSystem.cpp` + `src/ecs/systems/render/buffer/RenderBufferUploadSystem.cpp` + `src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`（`upload`）、`src/Vulkan/VKRenderPass.cpp` + `src/Vulkan/pipeline/VKPipelineResolver.cpp`（`pipeline`） |
 | 顺带修规范违规 | `src/ecs/systems/tick/TransformSystem.cpp`：两处 `std::cout`（析构期）改为 `ULRE_DEBUG_ON(transform)` + `GLogInfo`；两处 `#if HGL_TRANSFORM_DEBUG_LOGGING` 改运行时判定 |
 
 `TransformSystem` 那个宏值得一提：`HGL_TRANSFORM_DEBUG_LOGGING` 在全仓**从未定义**，`#if` 恒假 ⇒ 那两段日志实际上**从未输出过**；改成运行时门之后是本批**首次变为可用**。

@@ -45,13 +45,13 @@
 #include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
-#include<hgl/ecs/support/TransformAccessor.h>
-#include<hgl/ecs/systems/render/LightSystem.h>
-#include<hgl/ecs/systems/render/MainLightShadowSystem.h>
-#include<hgl/ecs/systems/render/ViewUBOCommitSystem.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
+#include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h>
+#include<hgl/ecs/systems/render/buffer/ViewUBOCommitSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include "../Shared/FrameDigest.h"   // 帧摘要（判据共用件：ComputeFrameDigest 对任意 RT 回读）

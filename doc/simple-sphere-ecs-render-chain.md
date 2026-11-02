@@ -67,9 +67,9 @@ os_main                                         example/GettingStarted/SimpleSph
       └ ECSContext::Render(dt, pre_render)       src/ecs/core/Context.cpp:598
         ├ 只在 scene_structure_dirty 时 GatherSceneStats（结构稳定则零开销）
         │   命中 hash 变化才重建图                 src/ecs/core/Context.cpp:602-615
-        └ ECSContext::Render(dt, graph, pre_render)   src/ecs/core/RenderGraph.cpp:162
+        └ ECSContext::Render(dt, graph, pre_render)   src/ecs/core/render/RenderGraph.cpp:162
           ├ BeginManagedRenderFrame(dt)              src/ecs/core/Context.cpp:331
-          ├ ExecuteRenderGraphPasses(graph, dt, pre_render)   src/ecs/core/RenderGraph.cpp:91
+          ├ ExecuteRenderGraphPasses(graph, dt, pre_render)   src/ecs/core/render/RenderGraph.cpp:91
           │   └ pre_render(dt) → WorkObject::OnRenderPass    inc/hgl/framework/WorkObject.h:118
           └ EndManagedRenderFrame(dt)                src/ecs/core/Context.cpp:383
 ```
@@ -97,7 +97,7 @@ AcquireSwapchainImage(dt)                    Context.cpp:342 → 相位 RenderSw
                                               Context.cpp:394 / :741
 ```
 
-建图**只有一条路径**（`CreateDefaultLinearGraph` 已不存在）：`CreateAdaptiveRenderGraph`（`inc/hgl/ecs/core/RenderGraph.h:145`、`src/ecs/core/RenderGraph.cpp:217-262`）先按本世界 `SceneStats.active_render_groups` 逐组调 `SetSystemGroupEnabled(group, enabled)`，命中的组各生成一段 pass（`RenderGraph.cpp:232-253`），未命中的组当场关掉该组全部系统。示例场景只有 `PrimitiveComponent` → 只有 `"Primitive"` 组有组件计数 → 只有 1 个 pass。
+建图**只有一条路径**（`CreateDefaultLinearGraph` 已不存在）：`CreateAdaptiveRenderGraph`（`inc/hgl/ecs/core/render/RenderGraph.h:145`、`src/ecs/core/render/RenderGraph.cpp:217-262`）先按本世界 `SceneStats.active_render_groups` 逐组调 `SetSystemGroupEnabled(group, enabled)`，命中的组各生成一段 pass（`RenderGraph.cpp:232-253`），未命中的组当场关掉该组全部系统。示例场景只有 `PrimitiveComponent` → 只有 `"Primitive"` 组有组件计数 → 只有 1 个 pass。
 
 每帧系统序（按相位 + 注册先后推定，排序键 `(phase, insertion_order)` 见 `src/ecs/core/Context.cpp:879` 的 `SortSystemList`；本示例未实跑取日志）：
 
@@ -118,7 +118,7 @@ RenderDebug              PrimitiveOverlayRenderSystem
 RenderSubmit             SwapchainSubmitSystem
 ```
 
-相位注册实据：`src/ecs/core/DefaultSystems.cpp:165-207`（核心系统，按 environment→color_palette→render_target 顺序注册）+ `src/ecs/core/DefaultSystems.cpp:64-103`（`InstallPrimitiveGroup`：先 `RenderPrimitiveCollectSystem`，再 Cull/Sort/Build/Render/OverlayRender）；顺序推导器 `EnsureSystemGroupsRegistered` 取 `min(startPhase)/max(phase)` 作为组区间（`src/ecs/core/RenderGraph.cpp:21-87`）。
+相位注册实据：`src/ecs/core/DefaultSystems.cpp:165-207`（核心系统，按 environment→color_palette→render_target 顺序注册）+ `src/ecs/core/DefaultSystems.cpp:64-103`（`InstallPrimitiveGroup`：先 `RenderPrimitiveCollectSystem`，再 Cull/Sort/Build/Render/OverlayRender）；顺序推导器 `EnsureSystemGroupsRegistered` 取 `min(startPhase)/max(phase)` 作为组区间（`src/ecs/core/render/RenderGraph.cpp:21-87`）。
 
 ---
 
@@ -156,11 +156,11 @@ RenderSubmit             SwapchainSubmitSystem
 ### 3.4 材质定义 → program → pipeline
 
 - 当前对应配方为 `ShaderLibrary/asset/recipe/PBRSpheres.recipe.toml`：直接声明 `domain = "StandardOpaque"`；顶点语义需求（`Position/UV0/Normal`）、表面来源模块、法线标架模块、槽形态（`Sampler2DArray`、是否必绑、`channels=2`）**全部由领域契约给出**。本文件其余旧 Definition 链路段落应按历史口径阅读。
-- ShaderGen 编译成 `program-<hash>`；`RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive`（`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:610`）取到 program 后 `render_pass->CreatePipeline(program, effective_recipe)`，key = shader stages + 附件格式；**每个 RenderPass 各自持有一份解析结果**（`PrimitiveComponent::resolvedRuntimePipelineMap`，`inc/hgl/ecs/components/PrimitiveComponent.h:130`、:188-202）——同一世界渲到多个 RT（shadow map 等离屏 pass）时各 RT 用各自格式匹配的管线，互不驱逐。
+- ShaderGen 编译成 `program-<hash>`；`RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive`（`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:610`）取到 program 后 `render_pass->CreatePipeline(program, effective_recipe)`，key = shader stages + 附件格式；**每个 RenderPass 各自持有一份解析结果**（`PrimitiveComponent::resolvedRuntimePipelineMap`，`inc/hgl/ecs/components/PrimitiveComponent.h:130`、:188-202）——同一世界渲到多个 RT（shadow map 等离屏 pass）时各 RT 用各自格式匹配的管线，互不驱逐。
 
 ### 3.5 纹理 → bindless 句柄 + 引用池
 
-- `LoadTexture2D` 得到 `Texture2D*`（`SimpleSphere.cpp:121-131`）；`RenderSceneUBOSystem::RegisterTextureResource` 把资源登记进 `BindlessTextureManager` 并缓存 `resource_id → handle`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:250-270`），返回 **1-based 句柄**（0 = 无效）；材质化期通过 `RenderSceneUBOSystem::GetBindlessHandle`（:271-278）取回
+- `LoadTexture2D` 得到 `Texture2D*`（`SimpleSphere.cpp:121-131`）；`RenderSceneUBOSystem::RegisterTextureResource` 把资源登记进 `BindlessTextureManager` 并缓存 `resource_id → handle`（`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:250-270`），返回 **1-based 句柄**（0 = 无效）；材质化期通过 `RenderSceneUBOSystem::GetBindlessHandle`（:271-278）取回
 - 按 (definition, layout) 建引用池：`MaterialTextureReferencePool::MakePoolKey`（`inc/hgl/graph/module/MaterialTextureReferencePool.h:75-91`）→ `Initialize`（:96）
   - 行宽 = `reference_count × sizeof(uvec2)`（`Lit` = 6×8 = **48B**）；**行 0 恒为零行**（`ActiveRowPool` 的 `reserve_rows=1`，`MaterialTextureReferencePool.h:59` 注释明示）；`GetZeroRowAddress()`（:127）即 `material_texture_zero_row_gpu` 的来源
   - 创建日志：`[MaterialTextureReferencePool] created definition=%s references=%u row_stride=%u capacity=%u bytes=%llu`（`src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89`），`bytes = row_stride × 物理行数`
@@ -188,7 +188,7 @@ RenderBufferUpload(dt)  → RunRenderPhaseUpdates(...)         Context.cpp:703-7
 RenderFrameSync(dt)     → RunRenderPhaseUpdates(...)         Context.cpp:711-717
 ```
 
-1. **`RenderCollect`**（`RenderPrimitiveCollectSystem::Update`，`src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:1090-1449`）
+1. **`RenderCollect`**（`RenderPrimitiveCollectSystem::Update`，`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:1090-1449`）
    - `cache.BeginFrame()` 清 `renderItems`、清计数、调各 `MaterialBatch::Clear()`（保留批对象复用）（:1108）
    - 取 `VisibilityDataStorage` 做 O(1) 不可见跳过（:1110-1116）、取 `active_mobility_filter`（:1118）
    - **预扫描 + 物化 epoch**（:1141-1216）：判 `fast_path_holds`（program 未脏 + authored generation 未变 + recipe hash 有效，:1186-1191）与 `epoch_stale`（:1193-1195），得 `needs_work`（:1207-1209）；`any_material_work && any_possible_runtime_rows_visible` 才 `++materialize_epoch`（:1215-1216）
@@ -199,14 +199,14 @@ RenderFrameSync(dt)     → RunRenderPhaseUpdates(...)         Context.cpp:711-7
    - **纹理引用行**：算配置 hash → 复用或 `Acquire`（:990）+ `Write`（:1004）→ `material_texture_row_gpu` / `material_texture_zero_row_gpu`（:1027-1034）；失败路径 `Retire` + 清零（:1010-1081）
    - **产出 4-ID**（:1377-1428）：`transform_id = transform->GetStorageHandle()`、`geometry_id`（取 `runtime_data_buffer->geometry_id`，为 0 时现场 `EnsureMeshDrawParams` 补注册，:1385-1402）、`material_id = data_index_row`、`texture_id = material_texture_configuration.row_index`；`PrimitiveComponent::Set4ID(...)`（:1418/:1426，Instanced 走 `SetAllInstances4ID`，:1414）
    - 生成 `PrimitiveRenderItem`（原 `InstancedPrimitiveRenderItem` 分支已随 ④ 整体删除，2026-10-05），填 `distanceToCamera`、`UpdateWorldMatrix()`，push 进 `cache.renderItems`、`renderableCount++`（:1421-1438） 【A6-d T3 已删除：接管恒开 ⇒ 该 CPU 序不再参与渲染；GPU 路径序 = 批内项序（收集序）/ 批间批号，见 `doc/future/entity-rows-gpu-cull-plan.md` §9 §三、§10】
-   - `PrimitiveCullSystem`（`src/ecs/support/primitive/PrimitiveCullSystem.cpp:10`）→ `PrimitiveRenderPipeline::RunCull` → `PrimitiveBatchPipeline::PerformFrustumCulling`（`src/ecs/support/PrimitiveBatchPipeline.cpp:153-186`，`TestFrustumWithWorldAABB/LocalAABB/BoundingSphere` :187-229）
+   - `PrimitiveCullSystem`（`src/ecs/support/primitive/PrimitiveCullSystem.cpp:10`）→ `PrimitiveRenderPipeline::RunCull` → `PrimitiveBatchPipeline::PerformFrustumCulling`（`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:153-186`，`TestFrustumWithWorldAABB/LocalAABB/BoundingSphere` :187-229）
    - `PrimitiveSortSystem`（`src/ecs/support/primitive/PrimitiveSortSystem.cpp:10`）→ `RunSorting`（**空体**；⚠ **2026-10-10 订正**：`SortByDistance` 全仓已不存在 —— CPU 距离排序随 T4c4「删 CPU 绘制链」消失）
 2. **`RenderBatch`**（`PrimitiveBuildSystem`，`src/ecs/support/primitive/PrimitiveBuildSystem.cpp:10`）→ `RunBuild` = `PrepareFrame`（`PrimitiveBatchPipeline.cpp:89-118`，幂等守门）+ `RunTransformIndexing`（:130-145 → `AssignTransformIndices` :244-302）+ `RunBatching`（:147-151 → `BuildMaterialBatches` :1014-1088 + `FinalizeBatches` :1090-1102）
    - `FinalizeBatch` → （⚠ **2026-10-10 订正**：`SortBatchItems`（静态段在前 + `Compare`、回写 `item->index` / `static_count`）与 `BuildBatches`、`WriteMeshDrawCommands` **全仓已不存在**，随 T4c4「删 CPU 绘制链」消失；批间排序现为 `PrimitiveRenderSystem::RenderBatches` 的 `std::sort(ordered_batches)`）→ `EnsureBatchIndexRows`（:833-916，pow2 扩容 L2W 索引表与 `MaterialInstanceAddresses` 行表，**全表预填零**）→ `EnsureMeshDrawParams`（**:591-642**，pow2 扩容 `MeshDrawCommand` 表 + 整表 `memset 0`）→ `BuildBatches`（:366-589，同 `GeometryDataBuffer` + 同 `GeometryDrawRange` 的相邻项聚成 DrawBatch）→ `WriteBatchIndexRows`（:918-1013）
-   - ~~`WriteMeshDrawCommands`~~（**2026-10-10 订正：该函数全仓已不存在**；以下为历史口径）：每个 DrawBatch 写一行 **`MeshDrawCommand`（8B = `geometry_id` + `first_instance`）**（:657-687），并写 mesh 命令 `{groupCountX, groupCountY=instance_count, groupCountZ=1}`（有 meshlet 用 `geometry->GetMeshletCount()`，否则 `CalcMeshGroupCount`，`inc/hgl/ecs/support/PipelineMaterialRenderer.h:44-51`；:712-723）；`gpu_driven_override` 的批次整段跳过（:646）
+   - ~~`WriteMeshDrawCommands`~~（**2026-10-10 订正：该函数全仓已不存在**；以下为历史口径）：每个 DrawBatch 写一行 **`MeshDrawCommand`（8B = `geometry_id` + `first_instance`）**（:657-687），并写 mesh 命令 `{groupCountX, groupCountY=instance_count, groupCountZ=1}`（有 meshlet 用 `geometry->GetMeshletCount()`，否则 `CalcMeshGroupCount`，`inc/hgl/ecs/support/pipeline/PipelineMaterialRenderer.h:44-51`；:712-723）；`gpu_driven_override` 的批次整段跳过（:646）
    - `WriteBatchIndexRows`（:918-1013）：每实例写 `l2w_index`（`item->transform_index`，:935-940）与 `MaterialInstanceAddresses{payload_index, texture_reference_index}`——**单一真源 = 实体 4-ID 表本 pass 那一半**（2026-10-14 起；旧的两级取数"池表 → 材质运行期行回退"已随池整删）
-3. **`RenderBufferCommit`**（`ViewUBOCommitSystem::Update`，`src/ecs/systems/render/ViewUBOCommitSystem.cpp:17-30`）：`RenderSceneUBOSystem::CommitViewportUBO`（`src/ecs/systems/render/RenderSceneUBOSystem.cpp:170`）+ **本世界影子数据提交** `ECSContext::CommitShadowInfo(rt->GetCurrentFrameIndex())`（T6b/P4；`IsCurrentPassShadow()` 的中间 pass 跳过）（`EnvironmentManager::CommitMaterialized` 已删；相机已不在此提交：C1-5 后相机数据只由 `PublishCamera(Rows)` 写进**世界表相机行**）
-4. **`RenderBufferUpload`**（`RenderBufferUploadSystem::Update`，`src/ecs/systems/render/RenderBufferUploadSystem.cpp:20-149`）：先同步世界行表族（实体行 / 实体 4-ID 表等），再遍历 `device->GetGPUBufferRegistry()` 对脏 buffer `CopyToDevice`，最后一条 `MemoryBarrier2`（transfer → draw-indirect/vertex/index/VS/FS/CS）
+3. **`RenderBufferCommit`**（`ViewUBOCommitSystem::Update`，`src/ecs/systems/render/buffer/ViewUBOCommitSystem.cpp:17-30`）：`RenderSceneUBOSystem::CommitViewportUBO`（`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:170`）+ **本世界影子数据提交** `ECSContext::CommitShadowInfo(rt->GetCurrentFrameIndex())`（T6b/P4；`IsCurrentPassShadow()` 的中间 pass 跳过）（`EnvironmentManager::CommitMaterialized` 已删；相机已不在此提交：C1-5 后相机数据只由 `PublishCamera(Rows)` 写进**世界表相机行**）
+4. **`RenderBufferUpload`**（`RenderBufferUploadSystem::Update`，`src/ecs/systems/render/buffer/RenderBufferUploadSystem.cpp:20-149`）：先同步世界行表族（实体行 / 实体 4-ID 表等），再遍历 `device->GetGPUBufferRegistry()` 对脏 buffer `CopyToDevice`，最后一条 `MemoryBarrier2`（transfer → draw-indirect/vertex/index/VS/FS/CS）
 5. **`RenderFrameSync`**（`RenderSceneUBOSystem::Update`，`RenderSceneUBOSystem.cpp:316`）→ `SyncBindingsForCurrentCommand`（:325）→ `ApplyResourceLayoutBindings`（:401）：**Scene 集已随 S3 整体退场**（`VKGlobalSceneUBOSet` 已删除，全仓 0 命中），此处**不再同步任何字段**（`SyncGlobalAddressesTable()` 已随 C1-3 删除）：4-ID 表地址迁入**世界表** `WorldAddresses`；`addr_sky` / `addr_shadow` 由 `ECSContext::SyncWorldAddresses` 写**世界表**（C2；**影子数据世界私有**，T6b/P4）；~~`SetSkyAddress` / `SetShadowAddress`~~ 已随 C2 整删；**无描述符集可绑**（本函数名保留，勿再按「Scene 集数据写入者」理解）。`Render(graph::RenderCmdBuffer*, float)` 空实现（:314）。
 
 ---
@@ -215,7 +215,7 @@ RenderFrameSync(dt)     → RunRenderPhaseUpdates(...)         Context.cpp:711-7
 
 `PrimitiveRenderSystem::OnRender`（`src/ecs/support/primitive/PrimitiveRenderSystem.cpp:39-94`）：从 `cache.materialBatches` 收非空批 → 按 `MaterialBatch::key` 排序（:60-65）→ 跳过 `key.pipeline_config.overlay` 的批（:72-73，交给 Overlay 系统）→ `renderer->Render(cmdBuffer, batch->transform_buffer, batch, context->GetRenderContext(), context->GetActiveCameraRow())`（:86-92）。
 
-`PipelineMaterialRenderer::Render`（`src/ecs/support/PipelineMaterialRenderer.cpp:103-208`）对每个批次只做这几件事：
+`PipelineMaterialRenderer::Render`（`src/ecs/support/pipeline/PipelineMaterialRenderer.cpp:103-208`）对每个批次只做这几件事：
 
 | 步 | 代码 | 内容 |
 |---|---|---|
@@ -246,7 +246,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 | 载体 | 内容 | 谁写 | 真源 |
 |---|---|---|---|
 | `GlobalAddresses`（**SSBO 表，无绑定无集**） | `HGL_FRAME_SLOT_TOTAL` 帧槽 × 128B 步长：`addr_mesh_draw_params_pool`（**全局几何参数池**，112B 行，按 `geometry_id` 索引）、`addr_pbr_surface`、`addr_emissive_surface`、`addr_transmission_surface`、`addr_color_palette`、`addr_viewport`（**C2 后只剩 6 字段 / 48B**：原 `addr_sky` / `addr_shadow` 已随 C2 迁入**世界表** `WorldAddresses`；`addr_camera_info` 亦在该表（其另两个世界私有地址已随 2026-10-14 两表整删退出，见文首 banner））。全局字段启动写一次；viewport 按帧槽刷 | `GlobalSSBOBufferRegistry::InitializePools`（`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`；~~`SetSkyAddress`/`SetShadowAddress`~~ 已随 C2 删除） | `inc/hgl/graph/ubo/GlobalAddresses.h`；GLSL `ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl` |
-| `RootAddresses` push constant（`pc_root`） | 9×uint64 + 2×uint32 = **80B**：`addr_global_addresses`（**GlobalAddresses SSBO 表基址**）、`addr_batch_mesh_draw_params`（**本批 `MeshDrawCommand` 表**，8B 行，按 `gl_DrawID` 索引）、`addr_l2w`、`addr_l2w_index`、`addr_mtl_data_addrs`、`addr_texture_references`、`addr_text_char_info/style/instance`、`camera_row` + `_pad_camera` | 每 MaterialBatch 渲染前一次 `graph::PushRootAddresses` | `inc/hgl/graph/ShaderBufferSources.h:267-278`（布局断言 :311-337）；`inc/hgl/graph/RootAddressPush.h`；调用点 `src/ecs/support/PipelineMaterialRenderer.cpp` |
+| `RootAddresses` push constant（`pc_root`） | 9×uint64 + 2×uint32 = **80B**：`addr_global_addresses`（**GlobalAddresses SSBO 表基址**）、`addr_batch_mesh_draw_params`（**本批 `MeshDrawCommand` 表**，8B 行，按 `gl_DrawID` 索引）、`addr_l2w`、`addr_l2w_index`、`addr_mtl_data_addrs`、`addr_texture_references`、`addr_text_char_info/style/instance`、`camera_row` + `_pad_camera` | 每 MaterialBatch 渲染前一次 `graph::PushRootAddresses` | `inc/hgl/graph/ShaderBufferSources.h:267-278`（布局断言 :311-337）；`inc/hgl/graph/RootAddressPush.h`；调用点 `src/ecs/support/pipeline/PipelineMaterialRenderer.cpp` |
 
 取数表（左列 = 需要什么，右列 = 生成文本 / 源文件）：
 
@@ -263,7 +263,7 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 | 每实例纹理引用 | `MTL_TEX(i) = MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64(...values[i].texture_reference_index) * 48)`（`MaterialShaderEmitter.cpp:322-325`；`MaterialTextureReferencesRef` 声明 :310-320） |
 | 纹理采样 | `bindless_tex[nonuniformEXT(handle-1)]` + `bindless_samp[采样器常量]`；可选槽走 `SampleOptional`（句柄 0 → fallback）（`ShaderLibrary/module/descriptor/bindless_textures.glsl:42-58,86-91`）；消费点 `ShaderLibrary/module/provider/material_source/material_source_pbr_surface.glsl:26,43-50` |
 | 相机 / 天空 / 视口 / 阴影 | **全走 BDA**（Scene 集已退场）：`sky = SkyInfoRef(world_addresses.addr_sky)`（C2 起读**世界表**；`scene_ubo.glsl`）、`ambient_env = AmbientEnvInfoRef(world_addresses.addr_ambient_env)`（T1）、`viewport = ViewportInfoRef(global_addresses.addr_viewport)`、`shadow = ShadowInfoRef(world_addresses.addr_shadow)`（C2；T6b/P4 起**世界私有**数据）。**相机已 SSBO 化**：`camera` 宏 = `CameraInfoBufferRef(global_addresses.addr_camera_info).cameras[pc_root.camera_row]`（`scene_ubo.glsl:149`） |
-| 4-ID 运行时解析（GPU-Driven 路径） | `ResolveRenderItemDirect(instance_index)` / `ResolveRenderItemIndexed(draw_id)`（`ShaderLibrary/module/utility/render_item_resolve.glsl:73-83`）；`RENDER_ITEM_INDEXED_FLAG = 0x80000000u` 由 `ResolveRenderItemAuto` 自动分流（:99-125）。`MaterialBatch::uses_render_item_resolve` 决定是否启用该路径（`inc/hgl/ecs/core/MaterialBatch.h:71`）——**订正（2026-09-28）：该开关全仓无处置 true，4-ID GPU 运行时解析当前未启用** |
+| 4-ID 运行时解析（GPU-Driven 路径） | `ResolveRenderItemDirect(instance_index)` / `ResolveRenderItemIndexed(draw_id)`（`ShaderLibrary/module/utility/render_item_resolve.glsl:73-83`）；`RENDER_ITEM_INDEXED_FLAG = 0x80000000u` 由 `ResolveRenderItemAuto` 自动分流（:99-125）。`MaterialBatch::uses_render_item_resolve` 决定是否启用该路径（`inc/hgl/ecs/core/render/MaterialBatch.h:71`）——**订正（2026-09-28）：该开关全仓无处置 true，4-ID GPU 运行时解析当前未启用** |
 
 约定（`inc/hgl/graph/ShaderBufferSources.h`）：`MeshDrawParams` 头部 6×4B 连续 + 11×8B 连续 = **112B**（断言 :62-88）；`MeshDrawCommand` = 2×uint32 = **8B**（断言 :121-127）；`MaterialInstanceAddresses` = 4×4B = **16B**（`{payload_index, texture_reference_index, shadow_bias_multiplier, shadow_flags}`，断言 :181-198）；`DrawItem4ID` = 4×uint32 = **16B**（断言 :236-244）；`RootAddresses` = 9×uint64 + 2×uint32 = **80B**（断言 :311-337）。所有 buffer 以 `SHADER_DEVICE_ADDRESS` usage 创建，地址取 `VulkanDevice::GetBufferDeviceAddressAligned16`（非 16B 对齐基址 fail-fast）。
 
@@ -277,17 +277,17 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 [MaterialTextureReferencePool] created definition=%s references=%u row_stride=%u capacity=%u bytes=%llu
                                               src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89
 [DeferredResource] owner=%s program=%s planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu
-                                              src/ecs/systems/render/RenderPrimitiveCollectSystem.cpp:581-588
+                                              src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:581-588
 [ArenaTrace] materialize entry / ssbo_id=… data_index=… / translated: gpu=…
                                               RenderPrimitiveCollectSystem.cpp:684 / :735 / :806（channels.binding/batch/collect/text 置位时）
 [IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u
-                                              src/ecs/support/PipelineMaterialRenderer.cpp:47-48（仅首次）
+                                              src/ecs/support/pipeline/PipelineMaterialRenderer.cpp:47-48（仅首次）
 [LineStats] total=… visible=… culled(vis=… frustum=… hzb=…)
-                                              src/ecs/systems/render/LineStatsSystem.cpp:34-35
+                                              src/ecs/systems/render/collect/LineStatsSystem.cpp:34-35
 [SceneUBO] Scene UBO set not bound: camera=%p viewport=%p sky=%p shadow=%p
-                                              src/ecs/systems/render/RenderSceneUBOSystem.cpp:404-408
-[RenderGraph] Registered %zu system groups (total %zu)   src/ecs/core/RenderGraph.cpp:83-84
-[RenderGraph]   active group: %s                          src/ecs/core/RenderGraph.cpp:211
+                                              src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:404-408
+[RenderGraph] Registered %zu system groups (total %zu)   src/ecs/core/render/RenderGraph.cpp:83-84
+[RenderGraph]   active group: %s                          src/ecs/core/render/RenderGraph.cpp:211
 ```
 
 由代码直接推出的自洽关系（不依赖某一次运行）：
@@ -323,19 +323,19 @@ src/Vulkan/VKCommandBufferRender.cpp:416-424
 | `MaterialSSBOBufferRegistry` / `MaterialSSBODataAccessor` / `GetMaterialDataAccessor` / `GetMaterialSSBOBinding` / `IsMaterialDataIDActive` / `material_row_pools` / `DefaultMaterialDataElementCapacity` | 统一为 `GlobalSSBOBufferRegistry` + `GlobalSSBODataAccessor` + `ActiveRowPool pools[GlobalSSBOTypeCount]`；容量来自 `kGlobalSSBOConfigs` 表（PBRSurface 1024×32B / MeshDrawParams 16384×112B / CameraInfo 64；**订正：相机行池本轮定稿下沉世界私有（16 槽 × 8 帧槽），见 plan §2**）；行号活跃判定是 `IsActive(ssbo_type, id)`，绑定是 `GetGlobalSSBOBinding()`。旧名全仓 0 命中 | `inc/hgl/graph/module/GlobalSSBOBufferRegistry.h:31-61,88,147-168,220`；`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20,169`；`example/GettingStarted/SimpleSphere.cpp:90-96,118,190` |
 | 材质 SSBO 类型枚举 `MaterialSSBOType` | 并入 `graph::GlobalSSBOType`（MeshDrawParams / PBRSurface / EmissiveSurface / TransmissionSurface / CameraInfo） | `inc/hgl/graph/ssbo/SSBOTypes.h:14-25`（注释明写“原 mtl::MaterialSSBOType 已并入本枚举”） |
 | 材质行 `data_index` 兼作地址 | `data_index` 是**行号**（`material_id`）；地址由 `material_row_gpu = gpu_base + data_index*row_bytes` 现场算出。返回结构体字段名从 `row_id` 变为 `data_index` | `GlobalSSBOBufferRegistry.h:57-60`；`RenderPrimitiveCollectSystem.cpp:801,815` |
-| `MaterialInstanceAddresses{payload_address, texture_reference_address}` | 字段改名 `{payload_index, texture_reference_index}`（**本轮再订正为 16B 四字段**：追加 `shadow_bias_multiplier` / `shadow_flags`），语义为「指向全局池/纹理引用池的行号」而非地址 | `inc/hgl/graph/ShaderBufferSources.h:142-198`（**16B**，断言 :181-198）；写者 `src/ecs/support/PrimitiveBatchPipeline.cpp`；读者 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-297,322-325` |
-| `MeshDrawParams` 88B（24B 头 + 8×uint64），按 DrawBatch 写行 | 拆成两级：**几何参数行 `MeshDrawParams` 112B**（24B 头 + **11×uint64**，进全局池按 `geometry_id` 索引，几何创建期写一次）+ **命令参数行 `MeshDrawCommand` 8B**（`geometry_id` + `first_instance`，每批 per-DrawBatch 写，按 `gl_DrawID` 索引） | `inc/hgl/graph/ShaderBufferSources.h:16-88`（MDP 断言 112）/:93-127（MDC 断言 8）；`src/SceneGraph/VKGeometry.cpp:112-176`；`src/ecs/support/PrimitiveBatchPipeline.cpp:591-730` |
-| `MaterialBatch::mesh_draw_params_buffer` 是 88B 参数表 | 该成员现在装的是 **`MeshDrawCommand` 表**（容量以「行数」计，`mesh_draw_params_capacity`），表名 `ECS:Batch:MeshDrawCommands` | `inc/hgl/ecs/core/MaterialBatch.h:55-56`；`src/ecs/support/PrimitiveBatchPipeline.cpp:624-640` |
+| `MaterialInstanceAddresses{payload_address, texture_reference_address}` | 字段改名 `{payload_index, texture_reference_index}`（**本轮再订正为 16B 四字段**：追加 `shadow_bias_multiplier` / `shadow_flags`），语义为「指向全局池/纹理引用池的行号」而非地址 | `inc/hgl/graph/ShaderBufferSources.h:142-198`（**16B**，断言 :181-198）；写者 `src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp`；读者 `src/ShaderGen/compile/MaterialShaderEmitter.cpp:291-297,322-325` |
+| `MeshDrawParams` 88B（24B 头 + 8×uint64），按 DrawBatch 写行 | 拆成两级：**几何参数行 `MeshDrawParams` 112B**（24B 头 + **11×uint64**，进全局池按 `geometry_id` 索引，几何创建期写一次）+ **命令参数行 `MeshDrawCommand` 8B**（`geometry_id` + `first_instance`，每批 per-DrawBatch 写，按 `gl_DrawID` 索引） | `inc/hgl/graph/ShaderBufferSources.h:16-88`（MDP 断言 112）/:93-127（MDC 断言 8）；`src/SceneGraph/VKGeometry.cpp:112-176`；`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:591-730` |
+| `MaterialBatch::mesh_draw_params_buffer` 是 88B 参数表 | 该成员现在装的是 **`MeshDrawCommand` 表**（容量以「行数」计，`mesh_draw_params_capacity`），表名 `ECS:Batch:MeshDrawCommands` | `inc/hgl/ecs/core/render/MaterialBatch.h:55-56`；`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:624-640` |
 | `RootAddresses` 56B / 7 张表 | **80B**（9×uint64 + `camera_row` + `_pad_camera`）：首字段 `addr_global_addresses`、第二位 `addr_batch_mesh_draw_params`；`addr_mesh_draw_params` 已一拆为二、名字不再相同，文本从 2 表扩到 3 表 | `inc/hgl/graph/ShaderBufferSources.h:267-278`（断言 :311-337）；`inc/hgl/graph/RootAddressPush.h` |
-| 相机/天空走 UBO（`camera` UBO 直读） | 相机改为 **SSBO 行池**（`GlobalSSBOType::CameraInfo`）+ `pc_root.camera_row` 索引（**订正：行池本轮定稿下沉世界私有（16 槽 × 8 帧槽），非全局 64 行**）；**天空 / 阴影走世界表 `world_addresses.addr_sky` / `addr_shadow`（C2；阴影数据 T6b/P4 起世界私有）、IBL 句柄走 `addr_ambient_env`（T1）、视口走 `global_addresses.addr_viewport`**；**Scene 集（含 Set0/binding0/1）已整体退场，无描述符可挂**（`ApplyResourceLayoutBindings` 现只调 `SyncGlobalAddressesTable`） | `ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:149`；`inc/hgl/graph/ssbo/SSBOTypes.h:20`；`src/ecs/systems/render/RenderSceneUBOSystem.cpp:401` |
+| 相机/天空走 UBO（`camera` UBO 直读） | 相机改为 **SSBO 行池**（`GlobalSSBOType::CameraInfo`）+ `pc_root.camera_row` 索引（**订正：行池本轮定稿下沉世界私有（16 槽 × 8 帧槽），非全局 64 行**）；**天空 / 阴影走世界表 `world_addresses.addr_sky` / `addr_shadow`（C2；阴影数据 T6b/P4 起世界私有）、IBL 句柄走 `addr_ambient_env`（T1）、视口走 `global_addresses.addr_viewport`**；**Scene 集（含 Set0/binding0/1）已整体退场，无描述符可挂**（`ApplyResourceLayoutBindings` 现只调 `SyncGlobalAddressesTable`） | `ShaderLibrary/module/descriptor/ubo/scene_ubo.glsl:149`；`inc/hgl/graph/ssbo/SSBOTypes.h:20`；`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:401` |
 | 阶段名 `RenderResourceSetup` / `RenderMaterialBind` / `RenderBeginFrame` / `RenderPostProcess` | **枚举中不存在**（4 名全仓 0 命中）。真实相位共 15 项，渲染段为 `RenderSwapchainNextImage → RenderPreBeginFrame → RenderCollect → RenderBatch → RenderBufferCommit → RenderBufferUpload → RenderFrameSync → RenderDrawSubmit → RenderDebug → RenderStat → RenderSubmit` | `inc/hgl/ecs/core/System.h:22-48` |
 | 相位用数字（9/10/11/12/13/14/16）指代 | 数字标签已废弃，一律用 `ExecutionPhase` 枚举名。0-based 序：0 TickInput,1 TickTransform,2 TickCamera,3 TickPostCamera,4 RenderSwapchainNextImage,5 RenderPreBeginFrame,6 RenderCollect,7 RenderBatch,8 RenderBufferCommit,9 RenderBufferUpload,10 RenderFrameSync,11 RenderDrawSubmit,12 RenderDebug,13 RenderStat,14 RenderSubmit | `inc/hgl/ecs/core/System.h:24-48` |
-| `RenderFrameUBOSyncSystem`（`RenderFrameSync` 相位上） | 该类型 0 命中。`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem`（原 `RenderDescriptorBindingSystem`，2026-09-08 改名） | `src/ecs/systems/render/RenderSceneUBOSystem.cpp:99`；`inc/hgl/ecs/systems/render/RenderSceneUBOSystem.h:35-43` |
-| `CreateDefaultLinearGraph`（`use_adaptive_render_graph==false` 的线性图） | 已删除，建图只有 `CreateAdaptiveRenderGraph`；`use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` / `CreateDefaultLinearGraph` 全仓 0 命中。图缓存键是 `SceneStats::GetHash()`，只在 `scene_structure_dirty` 时重算 | `inc/hgl/ecs/core/RenderGraph.h:100-145`；`src/ecs/core/RenderGraph.cpp:217-262`；`src/ecs/core/Context.cpp:598-618` |
-| `RenderTo` 尚未成文/离屏 pass 靠 `RenderContext` 副本 | `RenderTo(const RenderPassRequest&)`（`inc/hgl/ecs/core/RenderPassRequest.h`）是离屏/子 pass 一等入口：内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly` + `EndManagedRenderFrame`；支持 `camera`（pass 级相机覆盖）、`clear/use_target_clear`、`load_depth`、`use_scissor/scissor`、`clear_scissor_depth`、`mobility_filter`，并同步 `RenderTargetSystem` 的 RT、两侧 `WaitFence` 保护共享 Camera UBO/L2W ring。实际使用者：`example/Shadow/ShadowMap.cpp:1097`、`example/Shadow/CascadeShadowMap.cpp:683,704`（均为 `RenderTo(const RenderPassRequest&)`）；另外 `src/SceneGraph/module/OffscreenWorld.cpp:149` 用的是旧的三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`），不经 `RenderPassRequest` | `src/ecs/core/Context.cpp:445-557`；`inc/hgl/ecs/core/Context.h:236-249` |
-| pass 内 `renderTarget` 字段可切 RT | `RenderGraph::Pass::renderTarget` **尚未生效**：`ExecuteRenderGraphPasses` 不读它，非当前 RT 只打警告，因为 cmd buffer 由帧初始 RT 持有、跨 RT 切换同步未实现 | `inc/hgl/ecs/core/RenderGraph.h:38-48`；`src/ecs/core/RenderGraph.cpp:110-118` |
+| `RenderFrameUBOSyncSystem`（`RenderFrameSync` 相位上） | 该类型 0 命中。`RenderFrameSync` 相位上只有 `RenderSceneUBOSystem`（原 `RenderDescriptorBindingSystem`，2026-09-08 改名） | `src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:99`；`inc/hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h:35-43` |
+| `CreateDefaultLinearGraph`（`use_adaptive_render_graph==false` 的线性图） | 已删除，建图只有 `CreateAdaptiveRenderGraph`；`use_adaptive_render_graph` / `SetAdaptiveRenderGraphEnabled` / `CreateDefaultLinearGraph` 全仓 0 命中。图缓存键是 `SceneStats::GetHash()`，只在 `scene_structure_dirty` 时重算 | `inc/hgl/ecs/core/render/RenderGraph.h:100-145`；`src/ecs/core/render/RenderGraph.cpp:217-262`；`src/ecs/core/Context.cpp:598-618` |
+| `RenderTo` 尚未成文/离屏 pass 靠 `RenderContext` 副本 | `RenderTo(const RenderPassRequest&)`（`inc/hgl/ecs/core/render/RenderPassRequest.h`）是离屏/子 pass 一等入口：内部复用 `BeginManagedRenderFrame(…, need_swapchain_acquire=false, &RenderPassOptions)` + `RenderDrawOnly` + `EndManagedRenderFrame`；支持 `camera`（pass 级相机覆盖）、`clear/use_target_clear`、`load_depth`、`use_scissor/scissor`、`clear_scissor_depth`、`mobility_filter`，并同步 `RenderTargetSystem` 的 RT、两侧 `WaitFence` 保护共享 Camera UBO/L2W ring。实际使用者：`example/Shadow/ShadowMap.cpp:1097`、`example/Shadow/CascadeShadowMap.cpp:683,704`（均为 `RenderTo(const RenderPassRequest&)`）；另外 `src/SceneGraph/module/OffscreenWorld.cpp:149` 用的是旧的三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`），不经 `RenderPassRequest` | `src/ecs/core/Context.cpp:445-557`；`inc/hgl/ecs/core/Context.h:236-249` |
+| pass 内 `renderTarget` 字段可切 RT | `RenderGraph::Pass::renderTarget` **尚未生效**：`ExecuteRenderGraphPasses` 不读它，非当前 RT 只打警告，因为 cmd buffer 由帧初始 RT 持有、跨 RT 切换同步未实现 | `inc/hgl/ecs/core/render/RenderGraph.h:38-48`；`src/ecs/core/render/RenderGraph.cpp:110-118` |
 | `MAX_FRAMES_IN_FLIGHT`(3) 与 retire 延迟「恰好相等、零余量」 | 渲染层已无该常量（全仓 0 命中）。帧同步槽位归 RT 自持，retire 延迟为 `MaterialTextureConfigurationRetireEpochDelay = 3u` | `inc/hgl/graph/module/MaterialTextureReferencePool.h:15` |
-| Plan 里未出现的新机制：4-ID 一级表 + 二级索引 + 连号折叠 / IndirectMeshDraw 命令表 / GPU-Driven 覆盖 | 已落地（**2026-10-14 订正**：一级表 + 二级索引 + 连号折叠**已整族删除**，4-ID 现由**实体 4-ID 表**承载）：`RenderItemDescriptor`(16B)；`MaterialBatch::gpu_driven_override` / `uses_render_item_resolve` / `icb_count_buffer` 支持 100% GPU-Driven 批次（跳过 CPU 侧 ICB 与行表生成）；**订正（2026-09-28）：`uses_render_item_resolve` 全仓无处置 true ⇒ 4-ID GPU 运行时解析当前未启用** | `inc/hgl/graph/render/RenderItemDescriptor.h:19-44`；`inc/hgl/ecs/support/DrawItemCompaction.h:15-70`；`inc/hgl/ecs/core/MaterialBatch.h:53,69-76`；`src/ecs/support/PrimitiveBatchPipeline.cpp:920,646,1010` |
+| Plan 里未出现的新机制：4-ID 一级表 + 二级索引 + 连号折叠 / IndirectMeshDraw 命令表 / GPU-Driven 覆盖 | 已落地（**2026-10-14 订正**：一级表 + 二级索引 + 连号折叠**已整族删除**，4-ID 现由**实体 4-ID 表**承载）：`RenderItemDescriptor`(16B)；`MaterialBatch::gpu_driven_override` / `uses_render_item_resolve` / `icb_count_buffer` 支持 100% GPU-Driven 批次（跳过 CPU 侧 ICB 与行表生成）；**订正（2026-09-28）：`uses_render_item_resolve` 全仓无处置 true ⇒ 4-ID GPU 运行时解析当前未启用** | `inc/hgl/graph/render/RenderItemDescriptor.h:19-44`；`inc/hgl/ecs/support/DrawItemCompaction.h:15-70`；`inc/hgl/ecs/core/render/MaterialBatch.h:53,69-76`；`src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp:920,646,1010` |
 | 名「恒零行 / 零行占位」 | 现名 **预留行**（`ActiveRowPool::reserve_rows`），池级概念，行 0 不参与分配；纹理引用池与所有全局池一律 `reserve_rows=1` | `inc/hgl/vk/buffer/ActiveRowPool.h:44,96`；`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp:13-20` |
 
 **未能核实（本文未改动、未确认，勿引用本文作为其结论）**：

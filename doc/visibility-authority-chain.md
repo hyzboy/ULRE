@@ -46,7 +46,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 本体 | `EntityGPUTable::VerifyVisibleMirror(entity, authority_visible, what)`（`inc/hgl/ecs/support/EntityGPUTable.h`，与 `VerifyAfterWrite` 同族） |
+| 本体 | `EntityGPUTable::VerifyVisibleMirror(entity, authority_visible, what)`（`inc/hgl/ecs/support/storage/EntityGPUTable.h`，与 `VerifyAfterWrite` 同族） |
 | 开关 | 台帐 `ULRE_ECS_DEBUG_API`（AUTO：Debug 开 / Release 关）⇒ 关掉时函数体**空 inline**，且**门加在触发点**（`RenderPrimitiveCollectSystem` 的接线处包 `#if`）——否则 Release 下 `IsEntityVisible(...)` 实参仍会被求值，「生产零开销」不成立 |
 | 状态 | 闩向量 + 计数**刻意不按宏门住**（全仓无「门住成员」先例；本表是 `ECSContext` 的**值成员** ⇒ 门住会让 Debug/Release 的 `sizeof(ECSContext)` 分叉，陈旧 TU 的错位只在 Debug 暴露，更难查）。常驻成本 = vector 头 + 4 B；闩向量**只在 Debug 首次失步时**惰性分配（Release 零分配） |
 | 接线 | collect 的 **4-ID / 阴影事实发布点**（`RenderPrimitiveCollectSystem`，紧邻 `SetShadowFacts`）—— 覆盖面恰是"有几何、会被剔除当候选"的子集；**(b) 起在镜像写入之后调用** |
@@ -141,12 +141,12 @@
 
 | 事实 | 位置（符号） |
 |---|---|
-| 权威集合 + 互斥锁 + 上溯接口 | `VisibilityDataStorage`（`inc/hgl/ecs/support/VisibilityDataStorage.h`），实现 `src/ecs/support/VisibilityDataStorage.cpp` |
+| 权威集合 + 互斥锁 + 上溯接口 | `VisibilityDataStorage`（`inc/hgl/ecs/support/cull/VisibilityDataStorage.h`），实现 `src/ecs/support/cull/VisibilityDataStorage.cpp` |
 | 上溯走变换树（`TransformAccessor::GetParent()` → `TransformDataStorage::GetOwner()`） | `VisibilityDataStorage::IsInvisible` |
 | 唯一写者（写权威 + 写 ② 两处一函数） | `ECSContext::SetEntityVisible`（`inc/hgl/ecs/core/Context.h`） |
 | 清理路径（销毁时移出集合） | `ECSContext::DestroyEntity`（`Context.h`，`visibility_storage->SetVisible(id)`） |
 | 存储归属 = **世界**（`ECSContext` 初始化列表构造 + `SetContext(this)`） | `src/ecs/core/Context.cpp` |
-| ② 的写入口 | `EntityGPUTable::SetVisible` / `Activate` / `IsVisible`（`inc/hgl/ecs/support/EntityGPUTable.h`） |
+| ② 的写入口 | `EntityGPUTable::SetVisible` / `Activate` / `IsVisible`（`inc/hgl/ecs/support/storage/EntityGPUTable.h`） |
 | ② 的 GPU 读法（Active 位 + Visible 位两道） | `ShaderLibrary/ecs/entity_gpu_cull.glsl`（`flags & 1u` / `flags & 2u`） |
 | ③ 现算点 | `RenderPrimitiveCollectSystem::EvaluateCollectStrategy`（`out.facts.entity_visible = world->IsEntityVisible(...)`） |
 | 台架同读扁平位（对本失步免疫） | `CPUCullReferenceSystem`（`EntityGPUTable::IsVisible(*row)`） |

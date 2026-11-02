@@ -87,7 +87,7 @@ struct EntityGPU                       // 128 B 行（alignas(64)）
 
 ### 2.2 归属：**世界私有**（推荐，理由与相机同源）
 
-`Entity` 属**世界**（每个 `ECSContext` 自带 `EntityManager`，槽表 + 空闲栈都在世界内，`inc/hgl/ecs/core/EntityManager.h`：
+`Entity` 属**世界**（每个 `ECSContext` 自带 `EntityManager`，槽表 + 空闲栈都在世界内，`inc/hgl/ecs/core/entity/EntityManager.h`：
 `std::vector<EntitySlot> slots` + `std::vector<uint32_t> free_indices`）。若把实体表放进设备级 `GlobalSSBOType`，
 多世界同帧会互相覆盖同一批行——**与相机行当年踩过的坑完全同型**（`ulre-ecs-layer` 记的"全局池 + 每世界从 0 开始的语义 id = 跨世界同行冲突"）。
 
@@ -109,8 +109,8 @@ struct EntityGPU                       // 128 B 行（alignas(64)）
 
 ### 3.2 读者：**今天为零**
 
-`grep -rn EntityGPU inc/ src/` 只有 `inc/hgl/ecs/core/Entity.h`（掩码注释）与
-`inc/hgl/ecs/support/ComponentTypeTable.h`（类型表注释）两处**注释**，无任何代码/类型/字段；
+`grep -rn EntityGPU inc/ src/` 只有 `inc/hgl/ecs/core/entity/Entity.h`（掩码注释）与
+`inc/hgl/ecs/support/storage/ComponentTypeTable.h`（类型表注释）两处**注释**，无任何代码/类型/字段；
 shader 侧当前走 `pc_root` + 批内表，不读实体表。
 
 ⇒ **这是本轮最重要的取舍依据**：按你自己反复确立的纪律「**0 消费者 = 投机 API，不做**（等真消费者出现时随需求一起加）」，
@@ -246,7 +246,7 @@ arena 段：每个 (scope, type) 一个段：行数组（含行 0 哨兵）+ 该
 ### T2-c 主体 —— 开工清单（下一批的入口，2026-10-02 定稿）
 
 > **状态**：~~全部前置条件已就绪（类型号、判据工具、边界拍板、改动面已量化），**尚未动代码**。~~
-> **✅ 已完成（2026-10-07 复核）**：类型化对象池已落地 —— `inc/hgl/ecs/support/ComponentPool.h` 提供
+> **✅ 已完成（2026-10-07 复核）**：类型化对象池已落地 —— `inc/hgl/ecs/support/storage/ComponentPool.h` 提供
 > `ComponentPool::Base`（世界侧统一接口）与 `ComponentPool::T<T>`（类型化对象池，注释直写「T2-c『取消逐 new』的落点」）；
 > 组件基类已由 `Component` 换成 `ComponentRow`（`GeometryData`/`MaterialData`/`CameraComponent` 均如此），
 > 全仓 `make_shared<GeometryData|MaterialData>` **0 命中** ⇒ 逐 new 路径已撤。**仅剩** §9 的 P-B8-1..7 拍板与 `.ulrescene` 版本策略。
@@ -283,7 +283,7 @@ Mesh 侧组件（`GeometryData` / `MaterialData` / **`ShadowProxy`**）住**类�
 
 **第一条命令建议**：
 ```bash
-cd /d/ULRE && git log --oneline -3 && python3 -c "print(open('inc/hgl/ecs/core/Entity.h','rb').read().count(b'\r\n'))"
+cd /d/ULRE && git log --oneline -3 && python3 -c "print(open('inc/hgl/ecs/core/entity/Entity.h','rb').read().count(b'\r\n'))"
 # 再跑探针拿当前基线（务必先确认 [T0b] 差值 = +195.4 B / +3.000 块 没漂）
 build/out/Windows_64_Debug/ProbeTransformDiagnostics.exe 2>&1 | grep -aE "^  \[T0b\]|靶子"
 ```
@@ -444,8 +444,8 @@ CSM 阴影 `CascadeShadowMap` 阴影投射/接收正常（ShadowProxy 池路径�
 
 ## 11. 附录：关键落点索引（符号级，不用行号）
 
-- `EntityGPU` 现状：`inc/hgl/ecs/core/Entity.h`（`component_mask` 注释）、`inc/hgl/ecs/support/ComponentTypeTable.h`（类型表注释）
-- 实体存储：`inc/hgl/ecs/core/EntityManager.h`（`slots` + `free_indices`）、`Entity.h`（`components` map + `make_shared`）
+- `EntityGPU` 现状：`inc/hgl/ecs/core/entity/Entity.h`（`component_mask` 注释）、`inc/hgl/ecs/support/storage/ComponentTypeTable.h`（类型表注释）
+- 实体存储：`inc/hgl/ecs/core/entity/EntityManager.h`（`slots` + `free_indices`）、`Entity.h`（`components` map + `make_shared`）
 - 行池与预算：`inc/hgl/graph/ssbo/SSBOTypes.h`、`src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp`（`kGlobalSSBOConfigs`）
 - 世界地址表：`inc/hgl/graph/ubo/WorldAddresses.h`、`ShaderLibrary/ubo/scene_ubo.glsl`（`WorldAddressesRef`）、
   门用例 `W.world-addresses-struct-parity` / `W.world-addresses-field-ownership`、`kAddressOwnershipTable`

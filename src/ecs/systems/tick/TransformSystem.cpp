@@ -1,7 +1,7 @@
 ﻿#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include<hgl/common/DebugChannel.h>
-#include<hgl/ecs/support/TransformAssignmentBuffer.h>
+#include<hgl/ecs/support/transform/TransformAssignmentBuffer.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -67,7 +67,7 @@ namespace hgl::ecs
                 return;
             }
 
-            // L2W 行号约定（具名权威 = `inc/hgl/ecs/support/TransformAssignmentBuffer.h`）：
+            // L2W 行号约定（具名权威 = `inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h`）：
             // 静态 = `kFirstObjectL2WSlot + slot`（行 0 恒为单位矩阵）/ 动态 = 基址(环布局) + slot
             const uint32_t row = movable ? (dynamic_base + slot) : (kFirstObjectL2WSlot + slot);
 

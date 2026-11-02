@@ -190,7 +190,7 @@
 | `src/ecs/tests/TestRenderItemDataStorage.cpp` | `sizeof(WorldAddresses)` 断言 72 → **80** + 新增 `offsetof(addr_ambient_env) == 72` + 零值初始化检查加一项（另有内嵌夹具，`grep -n "sizeof(graph::WorldAddresses)" src/` 全部同步） | 夹具不同步 = 契约测试红 |
 | `ShaderLibrary/ubo/scene_ubo.glsl` | `WorldAddresses` 镜像块加 `uint64_t addr_ambient_env;` + `AmbientEnvInfoRef` + `#define ambient_env ...`；`SkyInfoRef` 删 `uvec4 env_tex` | 两端镜像不同步 = 静默读垃圾（I5） |
 | `ShaderLibrary/lighting/indirect_ibl.glsl` | 3 处 `sky.env_tex` → `ambient_env.env_tex` | 唯一读者 |
-| `inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp` | 加 `EditAmbientEnvInfo()/GetAmbientEnvInfo()/SetAmbientEnvInfo()` + `MarkAmbientEnvDirty()`（与 sky 三件套同形） | 写者入口 |
+| `inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h/.cpp` | 加 `EditAmbientEnvInfo()/GetAmbientEnvInfo()/SetAmbientEnvInfo()` + `MarkAmbientEnvDirty()`（与 sky 三件套同形） | 写者入口 |
 | `inc/hgl/graph/ubo/EnvironmentInfo.h` | `EnvironmentInfo` 加 `AmbientEnvInfo ambient_env;` | profile 承载（与 `sky` 同级） |
 | `inc/hgl/graph/module/EnvironmentManager.h/.cpp` | `Profile` 加 `ambient_env_ubo` + `MaterializeAmbientEnvUBO` + `GetAmbientEnvAddress` + `MarkDirty` 覆盖 + `EnsureDefault` 立即物化 | profile 侧物化与取址（照 `sky_ubo` 三件套） |
 | `src/ecs/core/Context.cpp` | `SyncWorldAddresses` 发布 `want.addr_ambient_env` | I4：地址必须接发布 |
@@ -394,7 +394,7 @@ slot 偏移），**全表九列**统一走它们；注释与实现同批改正�
 - 天空/环境数据：`inc/hgl/graph/ubo/{AmbientEnvInfo.h, EnvironmentInfo.h, WorldAddresses.h}`
   （`SkyInfo.h` 已于 2026-10-07 整删；天空外观常量在 `ShaderLibrary/sky/sky_atmosphere.glsl`）
 - profile 管理：`inc/hgl/graph/module/EnvironmentManager.h` + `src/SceneGraph/module/EnvironmentManager.cpp`
-- 系统与帧入口：`inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp`、
+- 系统与帧入口：`inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h/.cpp`、
   `src/ecs/core/Context.cpp`（`SyncWorldAddresses` / `Initialize*Table` / `CommitShadowInfo`）
 - shader：`ShaderLibrary/ubo/scene_ubo.glsl`（`WorldAddresses` 镜像 / `AmbientEnvInfoRef` / `#define ambient_env`；
   `SkyInfoRef` 与 `#define sky` 已于 2026-10-07 删除）、

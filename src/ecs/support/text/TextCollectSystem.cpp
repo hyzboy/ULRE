@@ -1,6 +1,6 @@
 ﻿#include <hgl/ecs/support/text/TextCollectSystem.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include <hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
 
 namespace hgl::ecs
 {

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/ecs/core/ComponentRow.h>
+#include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/math/Vector.h>
 #include<hgl/math/geometry/AABB.h>
 #include<hgl/color/Color4f.h>

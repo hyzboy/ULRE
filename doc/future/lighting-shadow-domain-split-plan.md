@@ -35,7 +35,7 @@
 | I2 | 世界私有表当前有：camera_info / global_render_items / draw_item_ids / **sky** / **shadow** / entity_gpu / l2w / entity_render_ids … | 同上 |
 | I3 | **容量冻结 + 超限 fail-fast**（不扩容、不静默截断）；新增枚举必须 **constexpr 全表覆盖**判定（禁止逐项手写断言） | 用户既定纪律 |
 | I4 | 新地址字段**必须接写者**（`addr_l2w` 曾只有字段没写者 ⇒ 静默剔空） | `ulre-entity-gpu-cull` 约定 10 |
-| I5 | CSM：**每级联一个离屏 RT + 一条离屏数据槽带**（`OffscreenSlotBands` first-fit + Destroy 归还）；光相机槽由 `CameraSlotGuard` RAII 持有 | `doc/csm-mechanism.md` §5/§8、`inc/hgl/ecs/support/CameraSlotGuard.h` |
+| I5 | CSM：**每级联一个离屏 RT + 一条离屏数据槽带**（`OffscreenSlotBands` first-fit + Destroy 归还）；光相机槽由 `CameraSlotGuard` RAII 持有 | `doc/csm-mechanism.md` §5/§8、`inc/hgl/ecs/support/storage/CameraSlotGuard.h` |
 | I6 | 帧槽空间：主帧 `[0, HGL_FRAME_SLOT_MAIN=4)` / 离屏 `[4, HGL_FRAME_SLOT_TOTAL=8)` 按 RT **整带**；per-frame ring 深度必须 **== 槽空间** | `inc/hgl/common/RenderOptions.h`、`ulre-frame-sync-slots` |
 | I7 | 结构类值（批标签/切片/计数）必须与绘制同源；**改结构体 ⇒ 清 obj 树全量重编** | 同上 |
 | I8 | **判据基线（T6b 全线落地后，2026-10-07）**：门 **46 PASS / 0 FAIL**；`TestCSMIncrementalPass` **48 个测试** rc=0（Test 22 = 25 条两世界隔离；Test 43 = 离屏槽带生命周期；Test 44–48 = T6b 五步各自的契约）；`TestRenderItemDataStorage` rc=0；八台架 + RTT/RTTCD **帧摘要逐位**对基线（数值见 §6 V4/V5）；ATS 三契约与基线一致；环境两例（`IBLENV_SELFCHECK` `0x2D28D72AEA4FC87D` / `SKYMIN_SELFCHECK` `0xC914C338EFC7790E`）rc=0 | 本轮实测 |
@@ -47,7 +47,7 @@
 - **它的阴影住在另一个结构、另一个域**：`EnvironmentInfo{ SkyInfo sky; ShadowInfo shadow; }`
   （`inc/hgl/graph/ubo/EnvironmentInfo.h`），`ShadowInfo` = `cascades[4]`（`ShadowCascadeInfo` 176B，静态断言）+ 全局 shadow_params。
 - **宿主是一个"环境"系统**：`EnvironmentSystem` 里同时堆着 CSM 控制器 / 4 张级联 RT / 光相机 /
-  相机槽 RAII / `cascade_mask` / 静态缓存失效钩子（`inc/hgl/ecs/systems/render/EnvironmentSystem.h:42-55`）。
+  相机槽 RAII / `cascade_mask` / 静态缓存失效钩子（`inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h:42-55`）。
 - **光的定义漏进材质与阴影模块**：`ShaderLibrary/shadow/pcf_shadow.glsl` 注释自陈"光方向取 `sky.sun_direction`…
   若某个场景把 CSM 光与 `sun_direction` 驱动成两个不同方向，请把强度置 0 或关掉宏"；
   `ShaderLibrary/material/shadow_receiver_source.glsl` 甚至"用 `sky.sun_direction` 把光源相机整个重建出来"。
@@ -124,8 +124,8 @@
 |---|---|
 | `inc/hgl/graph/ubo/LightRow.h` | `LightRow` POD + `static_assert(sizeof == 64)` + 类型常量表 |
 | `ShaderLibrary/ubo/light_row.glsl`（或并入现有 ubo 模块） | GLSL 镜像（逐字段同序同型）+ `#define LIGHT_ROW_*` |
-| `inc/hgl/ecs/systems/render/LightSystem.h` + `src/.../LightSystem.cpp` | 行表所有权/发布/编辑 API |
-| `inc/hgl/ecs/systems/render/MainLightShadowSystem.h` + `src/.../MainLightShadowSystem.cpp` | 影子域（从 `EnvironmentSystem` 搬出） |
+| `inc/hgl/ecs/systems/render/light_shadow/LightSystem.h` + `src/.../LightSystem.cpp` | 行表所有权/发布/编辑 API |
+| `inc/hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h` + `src/.../MainLightShadowSystem.cpp` | 影子域（从 `EnvironmentSystem` 搬出） |
 
 **改动触点（逐处缺一不可）**
 
@@ -134,7 +134,7 @@
 | `inc/hgl/graph/ubo/SkyInfo.h` | 删 `sun_direction/sun_color/sun_intensity/sun_ang_deg/moon_color/moon_intensity`（D3/D1） | 光源参数的唯一权威迁到光行；不删则双源 |
 | `inc/hgl/graph/ubo/EnvironmentInfo.h` | 移出 `ShadowInfo shadow`（→ 影子域/世界私有） | 修 §0.3 归属错位 |
 | `inc/hgl/graph/ubo/WorldAddresses.h` | 新增 `addr_lights`；`addr_shadow` 口径改世界私有 | I2/I4 |
-| `inc/hgl/ecs/systems/render/EnvironmentSystem.h/.cpp` | 影子职责整体迁出；只留天空/IBL | §3 |
+| `inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h/.cpp` | 影子职责整体迁出；只留天空/IBL | §3 |
 | `src/ecs/core/Context.cpp` | ① 地址发布补 `addr_lights`；② `ExecuteScenePrePassWorkflow` 改调新系统 | I4 + D6 的帧入口路径 |
 | `ShaderLibrary/ubo/scene_ubo.glsl` | `SkyInfo` 段删 sun/moon 字段；新增光行引用 | C++↔GLSL 表漂移 = 静默回退默认材质 |
 | `ShaderLibrary/shadow/pcf_shadow.glsl`、`material/shadow_receiver_source.glsl`〔2026-10-11 已随 ShadowMap 示例删除〕、`compositor/forward_lighting.glsl`、`sky/sky_atmosphere.glsl` | 光源方向改从**光行**取（`sky.sun_direction` 作废） | 光的定义散在四处，漏一处 = 双源 |
@@ -303,7 +303,7 @@
 ## 附录：关键文件索引
 
 - 光源/环境数据：`inc/hgl/graph/ubo/{SkyInfo.h, ShadowInfo.h, EnvironmentInfo.h, WorldAddresses.h}`
-- 宿主系统：`inc/hgl/ecs/systems/render/EnvironmentSystem.h` + `src/ecs/systems/render/EnvironmentSystem.cpp`
+- 宿主系统：`inc/hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h` + `src/ecs/systems/render/light_shadow/EnvironmentSystem.cpp`
 - 帧入口与地址发布：`src/ecs/core/Context.cpp`（`ExecuteScenePrePassWorkflow` / `SyncWorldAddresses` / `RenderTo`）
 - CSM 机制与控制器：`doc/csm-mechanism.md`、`inc/hgl/graph/render/lighting/CascadedShadowController.h` + `src/SceneGraph/render/lighting/CascadedShadowController.cpp`
 - shader 侧：`ShaderLibrary/{ubo/scene_ubo.glsl, shadow/pcf_shadow.glsl, material/shadow_receiver_source.glsl, compositor/forward_lighting.glsl, sky/sky_atmosphere.glsl}`

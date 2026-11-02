@@ -13,9 +13,9 @@
 #include <hgl/graph/ubo/LightRow.h>
 #include <hgl/graph/font/FontSource.h>
 #include <hgl/graph/ShaderBufferSources.h>
-#include <hgl/ecs/support/GPUCullSystem.h>
-#include <hgl/ecs/core/EntityGPU.h>
-#include <hgl/ecs/support/TransformDataStorage.h>
+#include <hgl/ecs/support/cull/GPUCullSystem.h>
+#include <hgl/ecs/core/entity/EntityGPU.h>
+#include <hgl/ecs/support/transform/TransformDataStorage.h>
 #include <hgl/mtl/DomainOptions.h>
 
 namespace hgl::shader::generated
