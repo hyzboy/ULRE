@@ -124,7 +124,9 @@ namespace hgl::graph::mtl
         ///
         /// `mesh_options_text` / `common_options_text` 传 `nullptr` 表示「本材质没有
         /// 那一份」（工具/门禁只解片段时的路径），此时键值只覆盖其余文本。
-        /// `AppendBytes` 对零长度是空操作，所以「多传一个空串」不改变既有键值。
+        /// 每段文本之前压入 `uint32` 长度前缀，严格隔离拼接边界——否则
+        /// `"A"+"B"` 与 `"AB"+""` 之类的边界歧义会产生相同 key，令不同材质的
+        /// options 目录互相覆盖残留文件（参照 `HashShaderLibraryText` 的加长度惯例）。
         void MakeOptionsKey(const AnsiString &fragment_options_text,
                             const AnsiString *mesh_options_text,
                             const AnsiString *common_options_text,
@@ -134,16 +136,23 @@ namespace hgl::graph::mtl
                             const size_t out_key_size)
         {
             hgl::hash::FNV1aHasher64 hasher;
+            hasher << static_cast<uint32>(fragment_options_text.Length());
             hasher.AppendBytes(fragment_options_text.c_str(),
                                static_cast<size_t>(fragment_options_text.Length()));
 
-            if (mesh_options_text && mesh_options_text->Length() > 0)
+            if (mesh_options_text)
+            {
+                hasher << static_cast<uint32>(mesh_options_text->Length());
                 hasher.AppendBytes(mesh_options_text->c_str(),
                                    static_cast<size_t>(mesh_options_text->Length()));
+            }
 
-            if (common_options_text && common_options_text->Length() > 0)
+            if (common_options_text)
+            {
+                hasher << static_cast<uint32>(common_options_text->Length());
                 hasher.AppendBytes(common_options_text->c_str(),
                                    static_cast<size_t>(common_options_text->Length()));
+            }
 
             hasher << static_cast<uint64>(domain);
             hasher << static_cast<uint64>(purpose);
