@@ -60,7 +60,44 @@
 
 ---
 
-## 4. 重新运行代码生成
+## 4. CMake 构建期自动再生成（默认开启）
+
+`cmake/codegen.cmake` 已把生成器接进 CMake：下列任一文件发生变化时，
+在编译 `ULRE.SceneGraph` / `ULRE.ECS` / `ULRE.Work` / `ULRE.Vulkan` /
+`ULRE.InlineGeometry` 等消费生成头的 target 之前，会先自动重跑 `asset_gen.py`，
+因此**平时不需要再手动执行脚本**。
+
+依赖的输入面：
+
+- `inc/**`、`CMCoreType/inc/**`、`CMCore/inc/**`、`CMMath/inc/**` 下的头文件
+- `src/Tools/AssetGen/asset_gen.py`
+- `src/Tools/AssetGen/asset_gen.toml`
+
+相关 cache 变量：
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `ULRE_ENABLE_CLANG_CODEGEN` | `ON` | 是否启用构建期再生成 |
+| `ULRE_REQUIRE_CLANG_CODEGEN` | `OFF` | `ON` 时缺少 Python/Clang 直接报错，而不是静默跳过 |
+| `ULRE_CLANGXX` | 空 | 指定 `clang++`（也可用环境变量 `HGL_CLANG`） |
+| `ULRE_CODEGEN_PYTHON` | 空 | 指定 Python 3.11+ 解释器 |
+| `ULRE_CODEGEN_EXTRA_INCLUDE_DIRS` | 空 | 追加 include 目录（分号分隔） |
+
+```powershell
+# 关闭构建期再生成（仍可用第 5 节的脚本手动生成）
+cmake -S . -B build -DULRE_ENABLE_CLANG_CODEGEN=OFF
+
+# 严格模式：工具缺失直接失败，避免 CI 上悄悄跳过
+cmake -S . -B build -DULRE_REQUIRE_CLANG_CODEGEN=ON
+```
+
+> 未安装 Python 3.11+/Clang 时该步骤会自动跳过并打印 STATUS 提示：仓库里已提交的
+> `inc/hgl/asset/generated/*.gen.h` 仍可正常编译。生成器内容未变时不写盘，
+> 因此不会造成额外重编译。
+
+---
+
+## 5. 手动重新运行代码生成（备用）
 
 ### 方式一：一键脚本（推荐）
 
@@ -114,7 +151,7 @@ python src/Tools/AssetGen/asset_gen.py --repo-root . `
 
 ---
 
-## 5. 生成后的验证闭环
+## 6. 生成后的验证闭环
 
 完成代码重新生成后，按以下步骤完成验证闭环：
 
@@ -142,7 +179,7 @@ git diff inc/hgl/asset/generated/
 
 ---
 
-## 6. 常见问题与排查
+## 7. 常见问题与排查
 
 ### 1. 报错 `找不到 clang++`
 - **原因**：工具未安装在默认路径，且未加入 `PATH` 或环境变量。

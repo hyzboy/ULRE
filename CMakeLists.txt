@@ -32,6 +32,15 @@ include(math)
 include(vulkan)
 include(use_cm_module)
 
+# ── Clang AST 代码生成（AssetGen）构建期再生成 ──────────────────────────────
+# inc/hgl/asset/generated/*.gen.h 是提交进仓库的派生产物，只用 MSVC 构建不需要 Clang。
+# 这里把它们接到构建里：注解结构体 / asset_gen.toml / 生成器任一变化时，先重跑
+# asset_gen.py 再编译消费方，避免生成头与 C++ 真源脱节。
+# 缺少 Python 3.11+ 或 clang++ 时自动跳过；-DULRE_ENABLE_CLANG_CODEGEN=OFF 可彻底关闭。
+set(ULRE_CODEGEN_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/codegen.cmake)
+ulre_codegen_configure()
+
 # C++20 modules：全仓当前零使用（`export module` / `import` 各 0 处），而 compiler.cmake
 # 无条件开启了模块扫描 —— 每个 target 多一遍 "Scanning sources for module dependencies..."，
 # 并把 /interface /ifcOutput 撒进全局 CMAKE_CXX_FLAGS。这里在根处默认关掉，避免纯开销。
@@ -153,6 +162,11 @@ target_link_libraries(ULRE_Engine INTERFACE ${ULRE})
 add_library(ULRE::Engine ALIAS ULRE_Engine)
 
 add_subdirectory(src)
+
+# 消费 inc/hgl/asset/generated/*.gen.h 的核心库必须在代码生成之后编译；
+# 其它 target（示例、工具、测试）通过链接这些库获得同样的顺序保证。
+ulre_codegen_bind(ULRE.SceneGraph ULRE.ECS ULRE.Work ULRE.Vulkan ULRE.InlineGeometry
+                  ULRE.ShaderMaterialData ULRE.ShaderRuntimeContract)
 
 # example/ 示例需要材质程序构建能力（MaterialResolver / 模板解析等），
 # 发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）下没有它们可链接的目标，故一并退出构建。

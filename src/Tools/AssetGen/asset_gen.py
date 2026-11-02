@@ -273,7 +273,8 @@ class Clang:
 
     def record_layouts(self, header: Path) -> str:
         cmd = self._base(header) + ["-Xclang", "-fdump-record-layouts-complete"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, errors="ignore")
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace")
         if proc.returncode != 0:
             raise GenError(f"clang 记录布局失败（{header.name}）：{proc.stderr.strip()[:900]}")
         return proc.stdout
@@ -283,7 +284,8 @@ class Clang:
             "-Xclang", "-ast-dump=json",
             "-Xclang", f"-ast-dump-filter={name}",
         ]
-        proc = subprocess.run(cmd, capture_output=True, text=True, errors="ignore")
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace")
         if proc.returncode != 0:
             raise GenError(f"clang AST 失败（{header.name}:{name}）：{proc.stderr.strip()[:900]}")
         decoder = json.JSONDecoder()

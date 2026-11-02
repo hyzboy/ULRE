@@ -93,6 +93,17 @@ Serialize.gen.h ──► Archive ──► Value 树 ──┬──► TomlCod
 
 ## 5. 用法
 
+### CMake 构建期自动再生成（默认开启）
+
+`cmake/codegen.cmake` 已把本工具接进构建：`inc/**`、`CMCoreType/inc/**`、
+`CMCore/inc/**`、`CMMath/inc/**` 下的头文件、`asset_gen.py` 或 `asset_gen.toml`
+任一变化时，会在编译消费生成头的 target 之前自动重跑并写盘，无需手动执行脚本。
+
+- `-DULRE_ENABLE_CLANG_CODEGEN=OFF` 关闭（默认 `ON`）
+- `-DULRE_REQUIRE_CLANG_CODEGEN=ON` 让工具缺失直接报错（默认静默跳过）
+- `-DULRE_CLANGXX=...` / `-DULRE_CODEGEN_PYTHON=...` 显式指定工具
+- 未安装 Python 3.11+/Clang 时自动跳过，已提交的 `.gen.h` 仍可正常编译
+
 ### 一键脚本（推荐，自动探测路径）
 
 ```cmd
