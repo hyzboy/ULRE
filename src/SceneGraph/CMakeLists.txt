@@ -260,12 +260,8 @@ set(SG_GEOMETRY_FILES   ${SG_GEO_CORE_FILES}
 # 07.Asset
 # ============================================================================
 
-set(SG_ASSET_CORE_FILES ${ROOT_INCLUDE_PATH}/hgl/asset/AssetURI.h
-                        ${ROOT_INCLUDE_PATH}/hgl/asset/AssetFactory.h
-                        asset/AssetURI.cpp
-                        asset/AssetFactory.cpp)
-
-source_group("07.Asset\\Core" FILES ${SG_ASSET_CORE_FILES})
+# AssetURI / AssetFactory 已下沉到 CMAssetsManage（inc/hgl/asset 路径不变），
+# 本模块只消费、不再编译。
 
 set(SG_ASSET_TEXTURE_FILES  ${SG_INCLUDE_PATH}/asset/TextureAsset.h
                             ${SG_INCLUDE_PATH}/asset/TextureURI.h
@@ -336,8 +332,7 @@ set(SG_ASSET_PRIMITIVE_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
 
 source_group("07.Asset\\Primitive" FILES ${SG_ASSET_PRIMITIVE_FILES})
 
-set(SG_ASSET_FILES  ${SG_ASSET_CORE_FILES}
-                    ${SG_ASSET_TEXTURE_FILES}
+set(SG_ASSET_FILES  ${SG_ASSET_TEXTURE_FILES}
                     ${SG_ASSET_MATERIAL_FILES}
                     ${SG_ASSET_ENVIRONMENT_FILES}
                     ${SG_ASSET_GEOMETRY_FILES}
