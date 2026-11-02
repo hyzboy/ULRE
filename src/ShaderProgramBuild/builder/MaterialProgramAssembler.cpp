@@ -64,16 +64,19 @@ namespace hgl::graph::mtl
             const uint32_t prims_per_inv =
                 GetMeshModePrimitivesPerInvocation(mode);
 
-            uint32_t cap = l.max_mesh_work_group_size_x;
-            if (l.max_mesh_output_vertices > 0)
-                cap = std::min(cap, l.max_mesh_output_vertices / verts_per_inv);
-            if (l.max_mesh_output_primitives > 0)
-                cap = std::min(cap, l.max_mesh_output_primitives / prims_per_inv);
+            // 上限填 0 一律视为「该维度未填/无约束」，不参与取小。
+            // 此前先拿 max_mesh_work_group_size_x 作种子、再以合并后的
+            // cap==0 整体放行 ideal：只要这一项是 0，另外两项已填的
+            // output_vertices / output_primitives 上限就被跳过，
+            // 生成侧会产出超设备能力的 workgroup 尺寸。
+            uint32_t result = ideal;
+            if (l.max_mesh_work_group_size_x > 0)
+                result = std::min(result, l.max_mesh_work_group_size_x);
+            if (l.max_mesh_output_vertices > 0 && verts_per_inv > 0)
+                result = std::min(result, l.max_mesh_output_vertices / verts_per_inv);
+            if (l.max_mesh_output_primitives > 0 && prims_per_inv > 0)
+                result = std::min(result, l.max_mesh_output_primitives / prims_per_inv);
 
-            if (cap == 0)
-                return ideal;   // limits 未填（0）= 无约束，用理想值
-
-            uint32_t result = std::min(ideal, cap);
             return result > 0 ? result : ideal;
         }
 
