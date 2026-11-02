@@ -226,3 +226,14 @@ scan          = [ "inc/hgl/mtl/ShaderStageKey.h",
                   "inc/hgl/mtl/ShaderComputeProgramManifest.h" ]
 serialize     = "inc/hgl/asset/generated/ShaderCacheSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/ShaderCacheMeta.gen.h"
+
+# ── Sampler 预设库文本契约 ──────────────────────────────────────────────────
+# `ShaderLibrary/contract/sampler.toml` 的字段规约真源。独立分组（不并入
+# ShaderCache）：SamplerPreset.h 包含 vulkan.h，生成的序列化头会直接 include
+# 被扫描头，独立成组可把 Vulkan 依赖限制在 SamplerPreset.cpp 的编译链里。
+# 跨字段业务校验（schema 版本、name 非空且唯一、枚举拼写合法性）仍由解析层承担。
+[group.SamplerPreset]
+namespace     = "hgl::graph::mtl"
+scan          = ["inc/hgl/mtl/SamplerPreset.h"]
+serialize     = "inc/hgl/asset/generated/SamplerPresetSerialize.gen.h"
+meta          = "inc/hgl/asset/generated/SamplerPresetMeta.gen.h"

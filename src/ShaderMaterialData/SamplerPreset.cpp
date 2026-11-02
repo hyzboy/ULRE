@@ -1,10 +1,11 @@
 ﻿#include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/VkEnumText.h>
 
+#include <hgl/asset/generated/SamplerPresetSerialize.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
+#include <hgl/serialize/TomlCodec.h>
 #include <hgl/type/Smart.h>
-#include <toml.hpp>
 
 #include <cstring>
 
@@ -74,20 +75,37 @@ namespace hgl::graph::mtl
         }
         buffer[size_t(size)] = 0;
 
-        toml::value root;
-        try
+        // 字段规约来自 [group.SamplerPreset] 生成的序列化器（asset_gen.toml）。
+        // 文本层只管「文本 → 值树 → 规约结构」；枚举拼写仍是字符串，在这里
+        // 才转换 VkSamplerCreateInfo：未知名 = 加载失败（不静默落默认值），
+        // 拼写真源 = inc/hgl/mtl/VkEnumText.h。
+        SamplerPresetFileSpec root;
+        hgl::serialize::Archive archive;
+        hgl::serialize::TomlParseError parse_error;
+        if (!hgl::serialize::LoadFromTomlText(buffer.data(), static_cast<size_t>(size),
+                                              root, &archive, &parse_error))
         {
-            root = toml::parse_str(std::string(buffer.data(), size_t(size)));
-        }
-        catch (const toml::exception &)
-        {
-            GLogError("[SamplerPreset] TOML 解析失败: %s", path.c_str());
+            AnsiString why = parse_error.Format();
+            if (why.Length() == 0)
+            {
+                why = AnsiString(archive.FailedPath());
+                if (why.Length() == 0)
+                    why = AnsiString(archive.FailedField());
+                why += ": ";
+                why += AnsiString(archive.ErrorMessage());
+            }
+            GLogError("[SamplerPreset] 解析失败: %s (%s)", path.c_str(), why.c_str());
             return false;
         }
 
-        if (!root.is_table()
-         || !root.contains("samplers")
-         || !root.at("samplers").is_array())
+        if (root.schema != 1)
+        {
+            GLogError("[SamplerPreset] 不支持的 schema: %u (%s)", root.schema, path.c_str());
+            return false;
+        }
+
+        const int count = root.samplers.GetCount();
+        if (count <= 0)
         {
             GLogError("[SamplerPreset] 缺少 samplers 数组: %s", path.c_str());
             return false;
@@ -96,27 +114,25 @@ namespace hgl::graph::mtl
         // 先解析到临时容器，全部成功后原子替换（失败保留上次成功内容）。
         std::vector<VkSamplerCreateInfo> new_infos;
         hgl::UnorderedMap<AnsiString, uint32> new_map;
+        new_infos.reserve(static_cast<size_t>(count));
 
-        const toml::array &arr = root.at("samplers").as_array();
-        new_infos.reserve(arr.size());
-        const uint32 count = static_cast<uint32>(arr.size());
-        for (uint32 i = 0; i < count; ++i)
+        for (int i = 0; i < count; ++i)
         {
-            const toml::value &item = arr[i];
-            if (!item.is_table()
-             || !item.contains("name") || !item.at("name").is_string())
+            const SamplerPresetSpec &spec = *root.samplers[i];
+
+            const AnsiString name = spec.name;
+            if (name.Length() == 0)
             {
-                GLogError("[SamplerPreset] 第 %u 项缺少 name", i);
+                GLogError("[SamplerPreset] 第 %d 项缺少 name", i);
+                return false;
+            }
+            if (new_map.ContainsKey(name))
+            {
+                GLogError("[SamplerPreset] 重复的 sampler 名: %s", name.c_str());
                 return false;
             }
 
-            const std::string name = item.at("name").as_string();
-            if (name.empty())
-            {
-                GLogError("[SamplerPreset] 第 %u 项 name 为空", i);
-                return false;
-            }
-
+            // 缺省值 = SamplerPresetSpec 的类内缺省（与历史硬编码默认一致）。
             VkSamplerCreateInfo sci{};
             sci.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
             sci.pNext                   = nullptr;
@@ -133,94 +149,72 @@ namespace hgl::graph::mtl
             sci.compareEnable           = VK_FALSE;
             sci.compareOp               = VK_COMPARE_OP_NEVER;
             sci.minLod                  = 0.0f;
-            sci.maxLod                  = 15.0f;   // 统一 max_lod=15，不再按纹理 mip 派生
+            sci.maxLod                  = spec.max_lod;
             sci.borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
             sci.unnormalizedCoordinates = VK_FALSE;
 
-            // 枚举取值一律走 inc/hgl/mtl/VkEnumText.h 的单一真源；未知名 = 加载失败（不静默落默认值）。
-            if (item.contains("mag_filter") && item.at("mag_filter").is_string())
+            // 枚举取值一律走 inc/hgl/mtl/VkEnumText.h 的单一真源；空串 = 保持缺省。
+            if (spec.mag_filter.Length() > 0)
             {
-                const std::string value = item.at("mag_filter").as_string();
-                if (!ParseVkFilter(value.c_str(), sci.magFilter))
+                if (!ParseVkFilter(spec.mag_filter.c_str(), sci.magFilter))
                 {
-                    GLogError("[SamplerPreset] %s: 非法 mag_filter: %s", name.c_str(), value.c_str());
+                    GLogError("[SamplerPreset] %s: 非法 mag_filter: %s", name.c_str(), spec.mag_filter.c_str());
                     return false;
                 }
             }
-            if (item.contains("min_filter") && item.at("min_filter").is_string())
+            if (spec.min_filter.Length() > 0)
             {
-                const std::string value = item.at("min_filter").as_string();
-                if (!ParseVkFilter(value.c_str(), sci.minFilter))
+                if (!ParseVkFilter(spec.min_filter.c_str(), sci.minFilter))
                 {
-                    GLogError("[SamplerPreset] %s: 非法 min_filter: %s", name.c_str(), value.c_str());
+                    GLogError("[SamplerPreset] %s: 非法 min_filter: %s", name.c_str(), spec.min_filter.c_str());
                     return false;
                 }
             }
-            if (item.contains("mipmap_mode") && item.at("mipmap_mode").is_string())
+            if (spec.mipmap_mode.Length() > 0)
             {
-                const std::string value = item.at("mipmap_mode").as_string();
-                if (!ParseVkSamplerMipmapMode(value.c_str(), sci.mipmapMode))
+                if (!ParseVkSamplerMipmapMode(spec.mipmap_mode.c_str(), sci.mipmapMode))
                 {
-                    GLogError("[SamplerPreset] %s: 非法 mipmap_mode: %s", name.c_str(), value.c_str());
+                    GLogError("[SamplerPreset] %s: 非法 mipmap_mode: %s", name.c_str(), spec.mipmap_mode.c_str());
                     return false;
                 }
             }
-            if (item.contains("address_mode") && item.at("address_mode").is_string())
+            if (spec.address_mode.Length() > 0)
             {
-                const std::string value = item.at("address_mode").as_string();
                 VkSamplerAddressMode am = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-                if (!ParseVkSamplerAddressMode(value.c_str(), am))
+                if (!ParseVkSamplerAddressMode(spec.address_mode.c_str(), am))
                 {
-                    GLogError("[SamplerPreset] %s: 非法 address_mode: %s", name.c_str(), value.c_str());
+                    GLogError("[SamplerPreset] %s: 非法 address_mode: %s", name.c_str(), spec.address_mode.c_str());
                     return false;
                 }
                 sci.addressModeU = am;
                 sci.addressModeV = am;
                 sci.addressModeW = am;
             }
-            if (item.contains("anisotropy") && item.at("anisotropy").is_boolean()
-                && item.at("anisotropy").as_boolean())
+            if (spec.anisotropy)
             {
                 sci.anisotropyEnable = VK_TRUE;
-                sci.maxAnisotropy = 16.0f;
-                if (item.contains("max_anisotropy") && item.at("max_anisotropy").is_floating())
-                    sci.maxAnisotropy = static_cast<float>(item.at("max_anisotropy").as_floating());
+                sci.maxAnisotropy = spec.max_anisotropy;
             }
-            if (item.contains("max_lod"))
+            if (spec.compare_op.Length() > 0)
             {
-                if (item.at("max_lod").is_floating())
-                    sci.maxLod = static_cast<float>(item.at("max_lod").as_floating());
-                else if (item.at("max_lod").is_integer())
-                    sci.maxLod = static_cast<float>(item.at("max_lod").as_integer());
-            }
-            if (item.contains("compare_op") && item.at("compare_op").is_string())
-            {
-                const std::string value = item.at("compare_op").as_string();
                 VkCompareOp op = VK_COMPARE_OP_NEVER;
-                if (!ParseVkCompareOp(value.c_str(), op))
+                if (!ParseVkCompareOp(spec.compare_op.c_str(), op))
                 {
-                    GLogError("[SamplerPreset] %s: 非法 compare_op: %s", name.c_str(), value.c_str());
+                    GLogError("[SamplerPreset] %s: 非法 compare_op: %s", name.c_str(), spec.compare_op.c_str());
                     return false;
                 }
                 sci.compareEnable = VK_TRUE;
                 sci.compareOp = op;
             }
 
-            const AnsiString key(name.c_str());
-            if (new_map.ContainsKey(key))
-            {
-                GLogError("[SamplerPreset] 重复的 sampler 名: %s", name.c_str());
-                return false;
-            }
-
-            new_map.Add(key, i);
+            new_map.Add(name, static_cast<uint32>(i));
             new_infos.push_back(sci);
         }
 
         infos_ = new_infos;
         name_to_index_ = new_map;
 
-        GLogInfo("[SamplerPreset] 加载 %u 个 sampler: %s", count, path.c_str());
+        GLogInfo("[SamplerPreset] 加载 %u 个 sampler: %s", static_cast<uint32>(count), path.c_str());
         return true;
     }
 }//namespace hgl::graph::mtl
