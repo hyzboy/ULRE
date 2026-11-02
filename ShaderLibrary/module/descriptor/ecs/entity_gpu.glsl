@@ -26,6 +26,7 @@
 #define HGL_ENTITY_GPU_GLSL
 
 #include "contract/descriptor_macros.glsl"
+#include "contract/engine_constants.glsl"   // ENTITY_GPU_SLOT_COUNT（真源 EntityGPU.h → 契约头）
 #include "module/descriptor/ubo/scene_ubo.glsl"
 
 #extension GL_EXT_buffer_reference : enable
@@ -33,8 +34,6 @@
 #extension GL_ARB_gpu_shader_int64 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
-
-#define ENTITY_GPU_SLOT_COUNT 16   // C++ 真源：kEntityGPUSlotCount（EntityGPU.h）
 
 // 行镜像：类型名与库内其他表镜像同族（CameraInfoData / ShadowInfoRef …）
 struct EntityGPUData

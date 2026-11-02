@@ -14,13 +14,13 @@
 // 多出来的那个宏没有消费者，不产生任何代码。
 //
 // ⚠ 数值是 contract/sampler.toml 里的**全局**预设序号（Nearest=0, Linear=1），
-// 不是本领域内的序号。
+// 不是本领域内的序号 —— 且一律取自生成物，不在本文件写数字。
 #ifndef HGL_DOMAIN_TEXT_2D_BINDINGS_GLSL
 #define HGL_DOMAIN_TEXT_2D_BINDINGS_GLSL
 
 // ── 采样器预设索引 ──
-#define NearestSampler 0u
-#define LinearSampler 1u
+// 真源：inc/hgl/shader/contract/SamplerPresetId.h（经 ShaderConstGen 生成为 GLSL 宏）。
+#include "contract/sampler_presets.glsl"
 
 // ── 材质贴图表 ──
 // 一个元素 = 一对 (bindless 索引, 采样器索引)，16 字节对齐；跨度 16 = 2 × 8。

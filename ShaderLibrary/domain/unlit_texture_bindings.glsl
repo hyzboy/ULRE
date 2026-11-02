@@ -9,8 +9,9 @@
 #ifndef HGL_DOMAIN_UNLIT_TEXTURE_BINDINGS_GLSL
 #define HGL_DOMAIN_UNLIT_TEXTURE_BINDINGS_GLSL
 
-#define TrilinearSampler 2u
-#define TrilinearClampSampler 7u
+// 采样器预设索引取自生成物，不写数字（真源 inc/hgl/shader/contract/SamplerPresetId.h）。
+// Trilinear 给 2D 展开图；TrilinearClamp 给八面体展开图（需要 ClampToEdge）。
+#include "contract/sampler_presets.glsl"
 
 
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef

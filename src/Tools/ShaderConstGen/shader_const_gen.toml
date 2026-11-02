@@ -129,51 +129,11 @@ value_style = "hex"
 section = ["── GPU 侧句柄哨兵（CPU 的同名常量 = UINT32_MAX） ──"]
 
 [[file.enum]]
-cpp = "hgl::shader::contract::LightTypeId"
-name_style = "upper_snake"
-prefix = "LIGHT_TYPE_"
-value_suffix = "u"
-section = ["── 光源行：类型 / flags / 阴影机制 ──"]
-
-[[file.enum]]
-cpp = "hgl::shader::contract::LightFlag"
-name_style = "upper_snake"
-prefix = "LIGHT_FLAG_"
-value_suffix = "u"
-
-[[file.enum]]
-cpp = "hgl::shader::contract::LightShadowKindId"
-name_style = "upper_snake"
-prefix = "LIGHT_SHADOW_"
-value_suffix = "u"
-
-[[file.enum]]
 cpp = "hgl::shader::contract::MaterialShadowFlag"
 name_style = "upper_snake"  # NoReceive → NO_RECEIVE
 prefix = "HGL_MATERIAL_SHADOW_FLAG_"
 value_suffix = "u"
 section = ["── 材质实例行 shadow_flags 位 ──"]
-
-[[file.enum]]
-cpp = "hgl::shader::contract::ShadowPcfPoissonTaps"
-name_style = "upper_snake"
-prefix = "HGL_SHADOW_PCF_"
-value_style = "int"
-section = ["── 阴影 PCF 采样参数默认值 ──"]
-
-[[file.enum.item]]
-cpp_name = "Count"
-glsl_name = "HGL_SHADOW_PCF_POISSON_TAPS"
-
-[[file.enum]]
-cpp = "hgl::shader::contract::ShadowNormalOffset"
-name_style = "upper_snake"
-prefix = "HGL_SHADOW_"
-value_style = "int"
-
-[[file.enum.item]]
-cpp_name = "Pixels"
-glsl_name = "HGL_SHADOW_NORMAL_OFFSET"
 
 [[file.enum]]
 cpp = "hgl::shader::contract::TextSdfSpread"
@@ -186,6 +146,41 @@ section = ["── 文本距离场 ──"]
 cpp_name = "Pixels"
 glsl_name = "TEXT_SDF_SPREAD"
 comment = "SDF 传播半径（像素）；同时是勾边宽度上限"
+
+# ── 光照 / 阴影机制常量 ─────────────────────────────────────────────────────
+# 单独成文件：这批宏描述 LightRow 的 ABI，但目前没有 GLSL 消费者连它们；
+# 放进 engine_constants 会被每个 fragment 无条件 #define，等于把命名空间白送出去。
+# 等真正的"读光行"分支出现时由消费方显式 #include。
+[[file]]
+name = "lighting_constants.glsl"
+guard = "HGL_LIGHTING_CONSTANTS_GLSL"
+doc = [
+    "lighting_constants.glsl — LightRow 的 type / flags / shadow_kind 取值（GLSL 侧）",
+    "",
+    "真源：inc/hgl/shader/contract/LightingContract.h（由 ShaderConstGen 从 Clang AST 读出）。",
+    "当前无 GLSL 消费者分支；留给读光行的着色器显式 #include。",
+]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::LightTypeId"
+name_style = "upper_snake"
+prefix = "LIGHT_TYPE_"
+value_suffix = "u"
+section = ["── 光源类型（LightRow.type） ──"]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::LightFlag"
+name_style = "upper_snake"
+prefix = "LIGHT_FLAG_"
+value_suffix = "u"
+section = ["── 光源行 flags 位 ──"]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::LightShadowKindId"
+name_style = "upper_snake"
+prefix = "LIGHT_SHADOW_"
+value_suffix = "u"
+section = ["── 阴影机制种类（LightRow.shadow_kind） ──"]
 
 # ── 只声明命名策略、不产出 GLSL 的契约枚举 ──────────────────────────────────
 # 这两个枚举的 GLSL 侧文本已经存在且由既有工具/人手维护（见 [[verify_glsl]]），
@@ -200,6 +195,26 @@ value_style = "int"
 [[enum.item]]
 cpp_name = "Bindless"
 glsl_name = "BINDLESS_SET"
+
+[[enum]]
+cpp = "hgl::shader::contract::ShadowPcfPoissonTaps"
+name_style = "upper_snake"
+prefix = "HGL_SHADOW_PCF_"
+value_style = "int"
+
+[[enum.item]]
+cpp_name = "Count"
+glsl_name = "HGL_SHADOW_PCF_POISSON_TAPS"
+
+[[enum]]
+cpp = "hgl::shader::contract::ShadowNormalOffset"
+name_style = "upper_snake"
+prefix = "HGL_SHADOW_"
+value_style = "int"
+
+[[enum.item]]
+cpp_name = "Pixels"
+glsl_name = "HGL_SHADOW_NORMAL_OFFSET"
 
 [[enum]]
 cpp = "hgl::shader::contract::ShaderStageLocationId"
@@ -232,79 +247,81 @@ name_style = "upper_snake"
 prefix = "HGL_LOCATION_"
 value_style = "int"
 
-[[verify_glsl]]
-file = "ShaderLibrary/domain/standard_opaque_bindings.glsl"
-
-[[verify_glsl.check]]
-enum = "hgl::shader::contract::SamplerPresetId"
-glsl_name = { Trilinear = "TrilinearSampler", Linear = "LinearSampler", ShadowPCF = "ShadowPCFSampler", TrilinearClamp = "TrilinearClampSampler" }
-items = ["Trilinear", "Linear", "ShadowPCF", "TrilinearClamp"]
+# ── 手写 GLSL 的值对拍 ──────────────────────────────────────────────────────
+# 这些文件是 shader 内容哈希的参与者，且仍由既有单功能生成器维护
+# （descriptor_macros ← DescriptorMacroGen；interstage_locations ← InterStageLocationMacroGen）
+# 或必须自带 #ifndef 兜底（shadow_pcf 的默认档）。重写会一次性失效全量着色器缓存，
+# 故这里只对拍、不改写。
 
 [[verify_glsl]]
-file = "ShaderLibrary/domain/sky_bindings.glsl"
-
+file = "ShaderLibrary/contract/descriptor_macros.glsl"
 [[verify_glsl.check]]
-enum = "hgl::shader::contract::SamplerPresetId"
-glsl_name = { Trilinear = "TrilinearSampler", TrilinearClamp = "TrilinearClampSampler" }
-items = ["Trilinear", "TrilinearClamp"]
-
-[[verify_glsl]]
-file = "ShaderLibrary/domain/unlit_texture_bindings.glsl"
-
-[[verify_glsl.check]]
-enum = "hgl::shader::contract::SamplerPresetId"
-glsl_name = { Trilinear = "TrilinearSampler", TrilinearClamp = "TrilinearClampSampler" }
-items = ["Trilinear", "TrilinearClamp"]
-
-[[verify_glsl]]
-file = "ShaderLibrary/domain/text_2d_bindings.glsl"
-
-[[verify_glsl.check]]
-enum = "hgl::shader::contract::SamplerPresetId"
-glsl_name = { Nearest = "NearestSampler", Linear = "LinearSampler" }
-items = ["Nearest", "Linear"]
-
-[[verify_glsl]]
-file = "ShaderLibrary/domain/root_bindings.glsl"
-
-[[verify_glsl.check]]
-enum = "hgl::shader::contract::MaterialShadowFlag"
-value_suffix = "u"
-
-[[verify_glsl]]
-file = "ShaderLibrary/module/descriptor/ecs/entity_gpu.glsl"
-
-[[verify_glsl.check]]
-enum = "hgl::shader::contract::EntityGpuSlotCount"
-glsl_name = { Count = "ENTITY_GPU_SLOT_COUNT" }
+enum = "hgl::shader::contract::DescriptorSetId"
+glsl_name = { Bindless = "BINDLESS_SET" }
 value_style = "int"
 
 [[verify_glsl]]
-file = "ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"
-
+file = "ShaderLibrary/contract/interstage_locations.glsl"
 [[verify_glsl.check]]
-enum = "hgl::shader::contract::ArenaPassCount"
-glsl_name = { Passes = "ULRE_ARENA_PASSES" }
-
-[[verify_glsl.check]]
-enum = "hgl::shader::contract::BatchTopology"
-
-[[verify_glsl]]
-file = "ShaderLibrary/module/provider/material_source/material_source_text_gpu.glsl"
-
-[[verify_glsl.check]]
-enum = "hgl::shader::contract::TextSdfSpread"
-glsl_name = { Pixels = "TEXT_SDF_SPREAD" }
-value_style = "float"
+enum = "hgl::shader::contract::ShaderStageLocationId"
+name_style = "upper_snake"
+prefix = "HGL_LOCATION_"
+value_style = "int"
 
 [[verify_glsl]]
 file = "ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"
-
 [[verify_glsl.check]]
 enum = "hgl::shader::contract::ShadowPcfPoissonTaps"
 glsl_name = { Count = "HGL_SHADOW_PCF_POISSON_TAPS" }
 value_style = "int"
 
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::ShadowNormalOffset"
+glsl_name = { Pixels = "HGL_SHADOW_NORMAL_OFFSET" }
+value_style = "int"
+
+# compute 着色器由示例按路径直接加载、不经 @ulre 模块系统 ⇒ 用声明式常量而非 #define。
+[[verify_glsl]]
+file = "ShaderLibrary/compute/compute_transform_hierarchy.glsl"
+kind = "const_decl"
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::GpuHandleSentinel"
+glsl_name = { InvalidHandle = "INVALID_HANDLE" }
+value_style = "hex"
+
+# ── 必须从生成物取值的 GLSL 文件 ────────────────────────────────────────────
+# 这些文件曾经各写一遍裸数字；现在只许 #include 生成物，禁止再内联数字。
+[[require_include]]
+file = "ShaderLibrary/domain/standard_opaque_bindings.glsl"
+include = "contract/sampler_presets.glsl"
+
+[[require_include]]
+file = "ShaderLibrary/domain/sky_bindings.glsl"
+include = "contract/sampler_presets.glsl"
+
+[[require_include]]
+file = "ShaderLibrary/domain/unlit_texture_bindings.glsl"
+include = "contract/sampler_presets.glsl"
+
+[[require_include]]
+file = "ShaderLibrary/domain/text_2d_bindings.glsl"
+include = "contract/sampler_presets.glsl"
+
+[[require_include]]
+file = "ShaderLibrary/domain/root_bindings.glsl"
+include = "contract/engine_constants.glsl"
+
+[[require_include]]
+file = "ShaderLibrary/module/descriptor/ecs/entity_gpu.glsl"
+include = "contract/engine_constants.glsl"
+
+[[require_include]]
+file = "ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"
+include = "contract/engine_constants.glsl"
+
+[[require_include]]
+file = "ShaderLibrary/module/provider/material_source/material_source_text_gpu.glsl"
+include = "contract/engine_constants.glsl"
 # ── C++ 编译期对拍 ──────────────────────────────────────────────────────────
 # 只由门禁 TU（ShaderResourceSchemaRegressionGate）include；普通编译单元不碰。
 [parity]

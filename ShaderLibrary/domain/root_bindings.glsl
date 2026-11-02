@@ -58,6 +58,8 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialInsta
     MaterialInstanceAddresses values[];
 };
 
-#define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 1u
+// 材质实例行 shadow_flags 位（真源 inc/hgl/shader/contract/LightingContract.h，
+// 经 ShaderConstGen 生成为 GLSL 宏；不在本文件写数字）。
+#include "contract/engine_constants.glsl"
 
 #endif // HGL_DOMAIN_ROOT_BINDINGS_GLSL

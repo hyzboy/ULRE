@@ -45,49 +45,11 @@
 #define INVALID_HANDLE 0xFFFFFFFFu
 #endif
 
-// ── 光源行：类型 / flags / 阴影机制 ──
-// 真源：hgl::shader::contract::LightTypeId
-
-#ifndef LIGHT_TYPE_DIRECTION
-#define LIGHT_TYPE_DIRECTION 0u
-#endif
-
-// 真源：hgl::shader::contract::LightFlag
-
-#ifndef LIGHT_FLAG_ENABLED
-#define LIGHT_FLAG_ENABLED 1u
-#endif
-#ifndef LIGHT_FLAG_CAST_SHADOW
-#define LIGHT_FLAG_CAST_SHADOW 2u
-#endif
-
-// 真源：hgl::shader::contract::LightShadowKindId
-
-#ifndef LIGHT_SHADOW_NONE
-#define LIGHT_SHADOW_NONE 0u
-#endif
-#ifndef LIGHT_SHADOW_CSM
-#define LIGHT_SHADOW_CSM 1u
-#endif
-
 // ── 材质实例行 shadow_flags 位 ──
 // 真源：hgl::shader::contract::MaterialShadowFlag
 
 #ifndef HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE
 #define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 1u
-#endif
-
-// ── 阴影 PCF 采样参数默认值 ──
-// 真源：hgl::shader::contract::ShadowPcfPoissonTaps
-
-#ifndef HGL_SHADOW_PCF_POISSON_TAPS
-#define HGL_SHADOW_PCF_POISSON_TAPS 16
-#endif
-
-// 真源：hgl::shader::contract::ShadowNormalOffset
-
-#ifndef HGL_SHADOW_NORMAL_OFFSET
-#define HGL_SHADOW_NORMAL_OFFSET 1
 #endif
 
 // ── 文本距离场 ──

@@ -23,10 +23,18 @@ inc/hgl/shader/contract/*.h                  ← 唯一真源（HGL_SHADER_ENUM 
 src/Tools/ShaderConstGen/shader_const_gen.py
         │
         ├─→ ShaderLibrary/contract/sampler_presets.glsl     采样器预设宏
-        ├─→ ShaderLibrary/contract/engine_constants.glsl    GPU 剔除 / 拓扑 / 光照 / SDF
+        ├─→ ShaderLibrary/contract/engine_constants.glsl    槽位数 / 遍数 / 拓扑 / 哨兵 / 阴影位 / SDF
+        ├─→ ShaderLibrary/contract/lighting_constants.glsl  LightRow 的 type / flags / shadow_kind
         └─→ inc/hgl/shader/generated/ShaderConstantsParity.gen.h
                                                             与遗留常量的 static_assert
 ```
+
+`engine_constants.glsl` 会被域绑定表与 ECS 描述块无条件 `#include`，所以只放
+「全局安全」的常量；`lighting_constants.glsl` 目前没有 GLSL 消费者，单独成文件，
+避免把 `LIGHT_*` 白送进每个 fragment 的宏命名空间。阴影 PCF 的两个档位宏
+（`HGL_SHADOW_PCF_POISSON_TAPS` / `HGL_SHADOW_NORMAL_OFFSET`）**不生成**——
+它们由 `EmitDomainOptions` 按材质配置覆盖、并由 `shadow_pcf.glsl` 的 `#ifndef`
+兜底，生成一份全局默认值反而会破坏「0 = 走 3x3 盒式」的可调语义。
 
 命名与格式化策略（宏名前后缀、数值后缀、十六进制/浮点形态）**不在头文件里**，
 而在 `shader_const_gen.toml`：头文件只回答「值是多少」，TOML 只回答「怎么写出去」。

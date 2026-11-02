@@ -60,6 +60,9 @@ ANNOT_CONST_RE = re.compile(
 )
 # GLSL `#define NAME VALUE`（抓取手写文件里的宏用于对拍）
 GLSL_DEFINE_RE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\s+(.+?)\s*(?://.*)?$")
+# GLSL `const uint NAME = VALUE;`（不走 #define 的声明式常量）
+GLSL_CONST_DECL_RE = re.compile(
+    r"^\s*const\s+\w+\s+([A-Za-z_]\w*)\s*=\s*([^;]+);")
 
 INT_LITERAL_RE = re.compile(r"^(0[xX][0-9a-fA-F]+|\d+)[uUlL]*$")
 
@@ -363,13 +366,17 @@ def render_parity(cfg: dict, enums: dict[str, EnumBlock]) -> str:
 
 # ── 只读校验 ────────────────────────────────────────────────────────────────
 
-def parse_glsl_defines(path: Path) -> dict[str, str]:
-    defines: dict[str, str] = {}
+def parse_glsl_defines(path: Path, kind: str = "define") -> dict[str, str]:
+    """抓取 GLSL 里可对拍的常量：`#define NAME VALUE` 或 `const <T> NAME = VALUE;`。"""
+    pattern = GLSL_CONST_DECL_RE if kind == "const_decl" else GLSL_DEFINE_RE
+    found: dict[str, str] = {}
     for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = GLSL_DEFINE_RE.match(raw)
-        if m and not raw.strip().startswith("//"):
-            defines[m.group(1)] = m.group(2).strip()
-    return defines
+        if raw.strip().startswith("//"):
+            continue
+        m = pattern.match(raw)
+        if m:
+            found[m.group(1)] = m.group(2).strip()
+    return found
 
 
 def _int_of(text: str) -> int | None:
@@ -386,7 +393,7 @@ def verify_glsl(entry: dict, repo_root: Path, enums: dict[str, EnumBlock]) -> li
     if not path.exists():
         return [f"{rel}: 文件不存在（[[verify_glsl]] 目标缺失）"]
 
-    defines = parse_glsl_defines(path)
+    defines = parse_glsl_defines(path, entry.get("kind", "define"))
     problems: list[str] = []
 
     for check in entry.get("check", []):
@@ -410,7 +417,7 @@ def verify_glsl(entry: dict, repo_root: Path, enums: dict[str, EnumBlock]) -> li
                              if style else item.glsl_name)
             if glsl_name not in defines:
                 problems.append(
-                    f"{rel}: 缺少 `#define {glsl_name}`（真源 {enum_cpp}::{item.cpp_name}）")
+                    f"{rel}: 缺少 `{glsl_name}` 的声明（真源 {enum_cpp}::{item.cpp_name}）")
                 continue
             got = defines[glsl_name]
             got_int = _int_of(got)
@@ -418,11 +425,11 @@ def verify_glsl(entry: dict, repo_root: Path, enums: dict[str, EnumBlock]) -> li
             if got_int is not None:
                 if got_int != item.value:
                     problems.append(
-                        f"{rel}: `#define {glsl_name} {got}` ≠ 真源 {enum_cpp}::"
+                        f"{rel}: `{glsl_name} = {got}` ≠ 真源 {enum_cpp}::"
                         f"{item.cpp_name} = {item.value}（期望 {expected}）")
             elif got != expected:
                 problems.append(
-                    f"{rel}: `#define {glsl_name} {got}` ≠ 期望文本 `{expected}`")
+                    f"{rel}: `{glsl_name} = {got}` ≠ 期望文本 `{expected}`")
     return problems
 
 
@@ -447,6 +454,21 @@ def parse_sampler_toml(path: Path) -> list[str]:
     if current is not None and "name" in current:
         names.append(current["name"])
     return names
+
+
+def verify_require_include(entry: dict, repo_root: Path) -> list[str]:
+    rel = entry["file"]
+    include = entry["include"]
+    path = repo_root / rel
+    if not path.exists():
+        return [f"{rel}: 文件不存在（[[require_include]] 目标缺失）"]
+
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if f'#include "{include}"' not in text and f"#include <{include}>" not in text:
+        return [
+            f"{rel}: 缺少 `#include \"{include}\"` —— "
+            "本文件的契约常量必须取自 ShaderConstGen 生成物，不得再内联裸数字"]
+    return []
 
 
 def verify_sampler_registry(entry: dict, repo_root: Path,
@@ -584,6 +606,8 @@ def main(argv: list[str]) -> int:
         problems.extend(verify_glsl(entry, repo_root, enums))
     for entry in cfg.get("sampler_registry", []):
         problems.extend(verify_sampler_registry(entry, repo_root, enums))
+    for entry in cfg.get("require_include", []):
+        problems.extend(verify_require_include(entry, repo_root))
 
     for line in reports:
         print(f"[ShaderConstGen] {line}")

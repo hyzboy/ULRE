@@ -4795,11 +4795,16 @@ namespace
             ReadFileText(RepoRootPath("inc/hgl/ecs/support/GPUCullSystem.h"));
         const std::string glsl_text =
             ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"));
+        // 派发档 / 遍数的 GLSL 侧数值已收敛为 ShaderConstGen 生成物
+        // （真源 inc/hgl/shader/contract/GpuCullContract.h）；entity_gpu_cull.glsl 只 #include。
+        const std::string glsl_const_text =
+            ReadFileText(RepoRootPath("ShaderLibrary/contract/engine_constants.glsl"));
 
-        if (cpp_text.empty() || glsl_text.empty())
+        if (cpp_text.empty() || glsl_text.empty() || glsl_const_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 GPUCullSystem.h / entity_gpu_cull.glsl（结构对表的两端）");
+                "无法读取 GPUCullSystem.h / entity_gpu_cull.glsl / engine_constants.glsl"
+                "（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
         }
@@ -4866,7 +4871,7 @@ namespace
         for (const TierPair &tier : tiers)
         {
             const int cpp_value  = ExtractFirstIntAfter(cpp_text,  tier.cpp_token);
-            const int glsl_value = ExtractFirstIntAfter(glsl_text, tier.glsl_token);
+            const int glsl_value = ExtractFirstIntAfter(glsl_const_text, tier.glsl_token);
 
             if (cpp_value < 0 || glsl_value < 0)
             {

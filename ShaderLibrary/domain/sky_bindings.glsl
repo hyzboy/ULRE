@@ -8,11 +8,10 @@
 #ifndef HGL_DOMAIN_SKY_BINDINGS_GLSL
 #define HGL_DOMAIN_SKY_BINDINGS_GLSL
 
-// 采样器预设索引（contract/sampler.toml 全局序号）。
+// 采样器预设索引（contract/sampler.toml 全局序号）取自生成物，不写数字。
 // Trilinear 给 cubemap / 2D 展开图；TrilinearClamp 给八面体展开图——它需要
 // ClampToEdge 才能避免东西对极纹素边界污染（与 UnlitTexture 域的同一张表对齐）。
-#define TrilinearSampler 2u
-#define TrilinearClampSampler 7u
+#include "contract/sampler_presets.glsl"
 
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
 {

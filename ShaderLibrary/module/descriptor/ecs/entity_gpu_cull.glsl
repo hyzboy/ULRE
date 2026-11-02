@@ -1,10 +1,10 @@
 #version 460
 // @ulre begin
 // @ulre name entity_gpu_cull
-// ⚠ `ULRE_ARENA_PASSES` 必须与 C++ `GPUCullSystem::kArenaPasses` 同值（门
-//   `B.batch-info-struct-parity` 兜底）；批行/计数的块行数经 push constant 下发
-//   （`pc.batch_block_stride`），不在此硬编码。
-#define ULRE_ARENA_PASSES 2u
+// ⚠ `ULRE_ARENA_PASSES` 必须与 C++ `GPUCullSystem::kArenaPasses` 同值 —— 现在两端
+//   都由 ShaderConstGen 生成的 contract/engine_constants.glsl 提供（真源
+//   inc/hgl/shader/contract/GpuCullContract.h），本文件不再写数字。批行/计数的块行数
+//   经 push constant 下发（`pc.batch_block_stride`），不在此硬编码。
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre uses descriptor_macros
@@ -34,6 +34,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable
 
 #include "contract/descriptor_macros.glsl"
+#include "contract/engine_constants.glsl"   // ULRE_ARENA_PASSES / TOPOLOGY_*（契约头生成物）
 #include "module/descriptor/ubo/scene_ubo.glsl"
 #include "module/descriptor/ecs/entity_gpu.glsl"
 
@@ -201,9 +202,8 @@ layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer Batch
     uint tags[];      // [entity_index] = 批号；0xFFFFFFFF = 不属任何接管批（跳过）
 };
 
-// 批的 dispatch 档（与 CPU `GPUCullSystem::kBatchTopology*` 同步）：决定本批的 X 公式
-#define TOPOLOGY_TRIANGLES 0u   // 顶点组→三角形（VertexPassthrough）
-#define TOPOLOGY_LINES     1u   // 段→quad（LineQuad；每线程 1 段 ⇒ 元素数按段数）
+// 批的 dispatch 档（真源 GpuCullContract.h → contract/engine_constants.glsl）：
+// 决定本批的 X 公式。宏名 TOPOLOGY_TRIANGLES / TOPOLOGY_LINES 由生成物提供。
 
 struct BatchInfoRow
 {

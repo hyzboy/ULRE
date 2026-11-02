@@ -20,6 +20,8 @@ layout(buffer_reference, std430, buffer_reference_align=16) buffer Mat4ArrayRef 
 layout(buffer_reference, std430, buffer_reference_align=16) buffer Vec4ArrayRef { vec4 values[]; };
 layout(buffer_reference, std430, buffer_reference_align=16) buffer UintArrayRef { uint values[]; };
 
+// 句柄哨兵。⚠ 本文件由示例直接按路径加载、不走 `@ulre` 模块系统，故此处**保留声明式
+// 常量**而非 #include（值由 ShaderConstGen 的 [[verify_glsl]] const_decl 通道对拍）。
 const uint INVALID_HANDLE = 0xFFFFFFFFu;
 
 // 由原生 TRS 合成局部矩阵（与 CPU 端 ComposeLocalMatrix 同式：M = T * R * S）

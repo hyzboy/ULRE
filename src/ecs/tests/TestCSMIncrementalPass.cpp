@@ -2330,8 +2330,8 @@ int main(int argc, char** argv)
               "MaterialInstanceAddresses values[];",
               "行表 buffer_reference 声明丢失（per-draw 行无法寻址）" },
             { "root_bindings.glsl", OS_TEXT("ShaderLibrary/domain/root_bindings.glsl"),
-              "#define HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 1u",
-              "接收标志位常量与 CPU 端 kMaterialShadowFlagNoReceive 脱钩（GLSL 侧只能硬编码数值）" },
+              "#include \"contract/engine_constants.glsl\"",
+              "接收标志位不再取自生成物（ShaderConstGen 契约头 → GLSL 宏），又回到硬编码数值" },
 
             // ③ 逐图元写入（真值 = 组件自由函数 → EntityGPU 事实行 → per-draw 行）
             { "RenderPrimitiveCollectSystem.cpp",

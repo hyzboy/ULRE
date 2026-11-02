@@ -18,22 +18,9 @@
 
 // ── 采样器预设索引 ──
 // 数值是 contract/sampler.toml 里的**全局**预设序号（SamplerPresetLibrary::GetIndex），
-// 不是本 domain 内的序号。写错不会报错，会静默按 Nearest 采样。
-//
-// ⚠ 这三个 `#define` 原本由 `BuildSamplerMacros(definition->sampler_names)`
-// 逐次生成。实测同一 domain 两次运行会产出**不同的**宏集合（第二次漏掉全部
-// 采样器宏，sky 因此编不过）——生成依赖 definition 的加载顺序，属于隐患。
-// 采样器槽表是 `DomainContracts[]` 里的静态数据，所以这里直接物理固定，
-// 不再有任何生成环节。
-#define TrilinearSampler 2u
-#define LinearSampler 1u
-#define ShadowPCFSampler 4u
-// `TrilinearClamp`（ClampToEdge + 三线性）供 `ambient_light_ibl_oct` 采样八面体展开图：
-// 八面体图外边界之外是无效纹素，必须 ClampToEdge；显式 LOD 采样又要三线性 mip。
-// 索引 7 = contract/sampler.toml 里 TrilinearClamp 的位置（与 sky_bindings.glsl 同值）。
-// 漏掉这一行时八面体 IBL 在本域编不过（`TrilinearClampSampler` 未声明），
-// Cubemap 版只用到 Trilinear/Linear 所以一直没暴露。
-#define TrilinearClampSampler 7u
+// 不是本 domain 内的序号。写错不会报错，会静默按 Nearest 采样 —— 所以这里**不写数字**，
+// 一律取自生成物 contract/sampler_presets.glsl（真源 inc/hgl/shader/contract/SamplerPresetId.h）。
+#include "contract/sampler_presets.glsl"
 
 // ── 材质私有数据行（GlobalSSBOType::PBRSurface） ──
 // 结构本身见 module/descriptor/ssbo/pbr_surface_row.glsl（由 C++ 结构 + 注解生成），

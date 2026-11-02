@@ -48,8 +48,9 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer CharStyleData
 };
 #define sbo_char_style CharStyleDataRef(pc_root.addr_text_char_style)
 
-// SDF 距离场编码跨度（±spread/2 → sdf 域 [-1,1]）：每像素 sdf 增量 = 2.0 / spread
-#define TEXT_SDF_SPREAD 8.0
+// SDF 距离场编码跨度（±spread/2 → sdf 域 [-1,1]）：每像素 sdf 增量 = 2.0 / spread。
+// 数值取自生成物（真源 inc/hgl/shader/contract/LightingContract.h 的 TextSdfSpread）。
+#include "contract/engine_constants.glsl"
 
 // 文本样式特效合成（EvalMaterialSource / EvalMaterialAlpha 共用）：
 //   输入：当前像素已解码的有符号距离场 sdf（[-1,1]，字身边界 = 0）
