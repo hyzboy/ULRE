@@ -202,16 +202,23 @@ bool FinalizeShaderBuildContext(
     if (!build_spec->CreateShaderDirect())
         return false;
 
-    // AnsiString stage_interface_error;
-    // if (!ValidateInterStageInterfaceReflection(
-    //         mesh->GetSPVData(), mesh->GetSPVSize(),
-    //         fragment->GetSPVData(), fragment->GetSPVSize(),
-    //         stage_interface_error))
-    // {
-    //     GLogError(u8"[StageSPVCompiler] 双 Stage 接口反射校验失败：%s",
-    //               stage_interface_error.c_str());
-    //     return false;
-    // }
+    // 双 SPV 接口反射校验只在**至少一个 stage 新鲜编译**时执行：
+    // 缓存命中的字节在当初入库（即走下面新鲜编译+SaveStageSPV 路径）时
+    // 已被同一校验把关；每次命中都重新反射既浪费编译期，也会让
+    // 门禁的合成 SPV 夹具（非真实 SPIR-V）打进 SPIRV-Cross 的异常路径。
+    if ((!mesh_cache_hit || !fragment_cache_hit))
+    {
+        AnsiString stage_interface_error;
+        if (!ValidateInterStageInterfaceReflection(
+                mesh->GetSPVData(), mesh->GetSPVSize(),
+                fragment->GetSPVData(), fragment->GetSPVSize(),
+                stage_interface_error))
+        {
+            GLogError(u8"[StageSPVCompiler] 双 Stage 接口反射校验失败：%s",
+                      stage_interface_error.c_str());
+            return false;
+        }
+    }
 
     if (artifact_store)
     {
