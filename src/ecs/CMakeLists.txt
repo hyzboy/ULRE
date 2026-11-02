@@ -197,6 +197,9 @@ add_ecs_test(TestAssetURI tests/TestAssetURI.cpp)
 # Asset factory: self-registering type -> loader table + unregistered-type fallback.
 add_ecs_test(TestAssetFactory tests/TestAssetFactory.cpp)
 
+# MetaObject: meta/payload 两层生命周期契约（原 CMCore examples/system/MetaObjectTest）。
+add_ecs_test(MetaObjectTest tests/MetaObjectTest.cpp)
+
 # Geometry preset library: every shape name used by examples must resolve to a TOML.
 add_ecs_test(TestGeometryPreset tests/TestGeometryPreset.cpp)
 
@@ -417,6 +420,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestAssetFactory
         PROPERTIES LABELS "asset;factory")
+
+    add_test(
+        NAME MetaObjectTest
+        COMMAND MetaObjectTest
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        MetaObjectTest
+        PROPERTIES LABELS "object;asset")
 
     add_test(
         NAME TestGeometryPreset
