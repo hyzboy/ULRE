@@ -1266,6 +1266,11 @@ double_sided 全链已删，不得复活 -- 'double_sided' 重新出现在 Pipel
 
 **toml11 的代价（实测，接受）**：`inc/toml/toml.hpp`（v4.4.0，header-only，约 600 KB）由 `DebugChannel.h` 直接 include，传染到 19 个 include 点。增量编译实测：`ULRE.Vulkan` 11 s、`ULRE.ECS` 54 s（41 个 TU）、其余三库合计 12 s。此前全仓只有 `ResolvedMaterialFile.cpp`、`SamplerPreset.cpp` 两个 TU 用它。**（§20.10 已把这笔代价关进 `src/Debug/DebugChannel.cpp` 一个 TU。）**
 
+> **2026-12 更新（本段为历史实测记录，路径已过时）**：vendored 的 `inc/toml/toml.hpp` 已删除，
+> 全仓改用 vcpkg 提供的 toml11 4.4.0（同一版本），include 形态变为 `#include <toml.hpp>`，
+> 由 `CMAssetsManage` 的 `find_package(toml11 CONFIG REQUIRED)` 传播。见
+> `doc/unified-serialization-2026-10-30.md` §3。
+
 **验收（本机实测，全部通过）**
 
 | 配置 | exe | 结果 |

@@ -802,7 +802,7 @@ def render_toml_header(structs: list[StructInfo]) -> str:
         "// @ulre-codegen end\n"
         "// ─────────────────────────────────────────────────────────────────────────────\n"
         "#pragma once\n\n"
-        "#include <toml/toml.hpp>\n"
+        "#include <toml.hpp>\n"
     )
     for inc in includes:
         out.append(f"#include <{inc}>\n")

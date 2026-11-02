@@ -11,7 +11,7 @@
 
 // toml11（header-only）。**全工程只有本 TU 把 toml11 拉进 Vulkan / ECS 层**，
 // 头文件侧不再引它，也别在别处再引一次。
-#include<toml/toml.hpp>
+#include<toml.hpp>
 
 namespace hgl::debug
 {

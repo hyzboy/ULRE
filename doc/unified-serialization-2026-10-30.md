@@ -57,21 +57,22 @@ hgl::serialize::Archive  ──►  hgl::serialize::Value（有序值树）
 
 ## 3. 头文件布局
 
-> **物理位置（2026-12 下沉）**：反射与归档内核已迁到公共库 `CMAssetsManage`，
-> 编解码后端留在主仓。`#include <hgl/serialize/...>` / `<hgl/asset/...>` 形态**未变**，
-> 只是物理目录从 `inc/` 变成两个 `inc/`：
+> **物理位置（2026-12 下沉完成）**：`hgl/serialize` 与 `hgl/asset` 已整体迁到公共库
+> `CMAssetsManage`。`#include <hgl/serialize/...>` / `<hgl/asset/...>` 形态**未变**
+> （`use_cm_module` 把 `CMAssetsManage/inc` 并入全局头搜索路径），消费者源码零改动。
 >
 > | 归属 | 物理目录 | 文件 |
 > |---|---|---|
-> | `CMAssetsManage`（公共库） | `CMAssetsManage/inc/hgl/serialize/` | `Value.h`、`Container.h`、`EnumMeta.h`、`Archive.h`、`Traits.h`、`MetaSchema.h` |
+> | `CMAssetsManage`（公共库） | `CMAssetsManage/inc/hgl/serialize/` | `Value.h`、`Container.h`、`EnumMeta.h`、`Archive.h`、`Traits.h`、`MetaSchema.h`、`TomlCodec.h`、`FlatCodec.h`、`ArchiveFile.h` |
 > | `CMAssetsManage`（公共库） | `CMAssetsManage/inc/hgl/asset/` | `AssetObject.h`、`AssetAnnotation.h`（`HGL_ASSET_STRUCT` / `HGL_PROPERTY` 宏） |
-> | ULRE 主仓 | `inc/hgl/serialize/` | `TomlCodec.h`、`FlatCodec.h`、`ArchiveFile.h` |
 > | ULRE 主仓 | `inc/hgl/asset/generated/` | `*.gen.h`（AssetGen 产物，ULRE 领域结构专属） |
 >
-> 分割依据是**第三方依赖**：内核只依赖 `CMCore` / `CMCoreType` / `CMMath`；两个后端
-> 分别引入 vendored 的 `inc/toml/toml.hpp` 与 vcpkg 的 flatbuffers，
-> 搬进公共库会让它反向依赖主仓头文件搜索路径。依赖方向保持
-> `CMCoreType ← CMMath ← hgl/serialize(内核) ← hgl/serialize(后端) ← 具体资产`。
+> 第三方依赖全部改由公共库自己声明：`TomlCodec.h` 用 vcpkg 的 **toml11 4.4.0**
+> （`#include <toml.hpp>`，此前 vendored 在 `inc/toml/toml.hpp` 的那份已删除），
+> `FlatCodec.h` 用 vcpkg 的 **flatbuffers**。`CMAssetsManage/src/CMakeLists.txt`
+> 以 `find_package(... CONFIG REQUIRED)` + `target_link_libraries(... PUBLIC ...)`
+> 把它们传播给消费方。依赖方向：
+> `CMCoreType ← CMMath ← hgl/serialize ← hgl/asset ← ULRE 领域资产`。
 
 | 文件 | 职责 |
 |---|---|

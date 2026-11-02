@@ -12,7 +12,7 @@
 #include<hgl/type/Smart.h>
 #include<hgl/utf.h>
 
-#include<toml/toml.hpp>
+#include<toml.hpp>
 
 #include<string>
 #include<cstring>

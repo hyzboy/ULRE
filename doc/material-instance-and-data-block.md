@@ -62,7 +62,7 @@ roughness    = 0.85
 ### 2.2 差量合并的口径：`Presence<T>`
 
 合并是「按键是否出现过」，不是「值是否等于默认值」。`Presence<T>`
-（`inc/hgl/serialize/Archive.h`）承担这个区分：
+（`CMAssetsManage/inc/hgl/serialize/Archive.h`）承担这个区分：
 
 | 子文件里 | 结果 |
 |---|---|

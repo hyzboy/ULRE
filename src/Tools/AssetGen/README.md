@@ -7,17 +7,20 @@
 2. **字段遍历**（`<Group>Serialize.gen.h`）—— `StructSerializer<T>::Do(Archive&, T&)`。
 
 TOML 与 FlatBuffers **不生成代码**：它们是 `hgl::serialize` 的两个后端
-（`inc/hgl/serialize/TomlCodec.h` / `FlatCodec.h`），由 `Value` 值树驱动。
+（`CMAssetsManage/inc/hgl/serialize/TomlCodec.h` / `FlatCodec.h`），由 `Value` 值树驱动。
 本工具不参与编译产物，只在需要时手动（或 CI 里）运行。
 
-> **`hgl/serialize` 的物理位置已分裂成两处**（`#include <hgl/serialize/...>` 形态不变）：
+> **`hgl/serialize` 与 `hgl/asset` 已整体下沉到公共库 `CMAssetsManage`**
+> （`#include <hgl/serialize/...>` 形态不变）：
 >
 > | 部分 | 位置 | 内容 |
 > |---|---|---|
-> | 反射与归档内核 | `CMAssetsManage/inc/hgl/serialize/` | `Value.h`、`Container.h`、`EnumMeta.h`、`Archive.h`、`Traits.h`、`MetaSchema.h`（同处还有 `CMAssetsManage/inc/hgl/asset/AssetObject.h`、`AssetAnnotation.h`） |
-> | 编解码后端 | `inc/hgl/serialize/`（本仓） | `TomlCodec.h`、`FlatCodec.h`、`ArchiveFile.h`；前者引入 vendored 的 `inc/toml/toml.hpp`，后者引入 vcpkg 的 flatbuffers |
+> | 反射与归档内核 | `CMAssetsManage/inc/hgl/serialize/` | `Value.h`、`Container.h`、`EnumMeta.h`、`Archive.h`、`Traits.h`、`MetaSchema.h` |
+> | 编解码后端 | `CMAssetsManage/inc/hgl/serialize/` | `TomlCodec.h`（toml11，vcpkg）、`FlatCodec.h`（flatbuffers，vcpkg）、`ArchiveFile.h`（文件门面） |
+> | 资产对象与注解 | `CMAssetsManage/inc/hgl/asset/` | `AssetObject.h`、`AssetAnnotation.h` |
+> | 生成物 | `inc/hgl/asset/generated/`（**本仓**） | `*.gen.h`，ULRE 领域结构专属，由本工具产出 |
 >
-> 因此本工具的默认 include 根包含 `CMAssetsManage/inc` —— 结构头里的
+> 本工具的默认 include 根包含 `CMAssetsManage/inc` —— 结构头里的
 > `#include <hgl/asset/AssetAnnotation.h>` / `<hgl/serialize/Archive.h>` 靠它解析。
 
 ## 1. 一条规则

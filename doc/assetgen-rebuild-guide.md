@@ -10,7 +10,7 @@
 
 所有派生产物（字段遍历、属性元数据与枚举名表）均由 `asset_gen.py` 根据 Clang AST 自动化提取并生成，**严禁手动编辑生成的代码文件**。
 
-序列化格式本身**不是**派生产物：TOML 与 FlatBuffers 都是 `inc/hgl/serialize/` 里的
+序列化格式本身**不是**派生产物：TOML 与 FlatBuffers 都是 `CMAssetsManage/inc/hgl/serialize/` 里的
 通用后端（`TomlCodec.h` / `FlatCodec.h`），由 `Serialize.gen.h` 产出的值树驱动。
 新增一种格式（如 JSON）时只需要加一个 codec，生成器与已提交的产物都不用动。
 
@@ -207,4 +207,4 @@ git diff inc/hgl/asset/generated/
 
 ### 3. 报错 `不支持的类型: ...`
 - **原因**：在资产结构中使用了未经支持的 STL 容器（如 `std::vector`）或未注册的复杂自定义类型。
-- **解决**：遵循引擎规范，使用 `hgl::ValueArray<T>`、`hgl::ManagedArray<T>` 等 HGL 自有容器，或在 `inc/hgl/serialize/Traits.h` 中为新基础类型实现特化。
+- **解决**：遵循引擎规范，使用 `hgl::ValueArray<T>`、`hgl::ManagedArray<T>` 等 HGL 自有容器，或在 `CMAssetsManage/inc/hgl/serialize/Traits.h` 中为新基础类型实现特化。

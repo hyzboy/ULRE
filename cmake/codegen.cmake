@@ -168,7 +168,7 @@ function(ulre_codegen_configure)
 
     # 生成器读取的输入面：五个默认 include 根 + 生成器自身 + 配置
     # （CMAssetsManage/inc 承接 hgl/asset/AssetAnnotation.h、AssetObject.h 与
-    #   hgl/serialize 的反射内核；*Spec.h 的 #include 全走它）
+    #   整个 hgl/serialize（反射内核 + Toml/Flat/ArchiveFile 后端）；*Spec.h 的 #include 全走它）
     file(GLOB_RECURSE _inputs CONFIGURE_DEPENDS
          "${_root}/inc/*.h" "${_root}/inc/*.hpp" "${_root}/inc/*.inl"
          "${_root}/CMCoreType/inc/*.h" "${_root}/CMCore/inc/*.h" "${_root}/CMMath/inc/*.h"

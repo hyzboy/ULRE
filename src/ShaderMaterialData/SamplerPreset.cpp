@@ -4,7 +4,7 @@
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/Smart.h>
-#include <toml/toml.hpp>
+#include <toml.hpp>
 
 #include <cstring>
 

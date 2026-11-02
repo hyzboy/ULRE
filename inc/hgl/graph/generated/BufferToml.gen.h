@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 #pragma once
 
-#include <toml/toml.hpp>
+#include <toml.hpp>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/graph/ubo/AmbientEnvInfo.h>
 #include <hgl/graph/ubo/ColorPalette.h>
