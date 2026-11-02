@@ -607,10 +607,16 @@ namespace hgl::graph::mtl
             if (build_capture)
                 build_capture->Clear();
 
-            if (fixed.mesh_source && fixed.mesh_source[0])
+            // 显式覆盖（离线/回归通道）：调用方保证文本与已解析的
+            // mode / ABI / stage interface 相符。即便源文本是覆盖的，
+            // options 的**摘要与 capture** 仍要照常计算——否则 digest 恒 0、
+            // 缓存目录不重新发射 common_options.glsl / mesh_options.glsl，
+            // 覆盖源引用这些生成头时会读到上一材质的陈旧残留文件。
+            const bool using_override_mesh_source =
+                fixed.mesh_source && fixed.mesh_source[0];
+            AnsiString shape_name;      // 覆盖路径下为空（无形状名）
+            if (using_override_mesh_source)
             {
-                // 显式覆盖（离线/回归通道）：调用方保证文本与已解析的
-                // mode / ABI / stage interface 相符。
                 plan.ms = fixed.mesh_source;
                 plan.mesh_source_was_fixed = true;
             }
@@ -628,7 +634,7 @@ namespace hgl::graph::mtl
                 // 路径、把内容交给 options 发射器，再把落盘交给后端。
                 const MeshModeCapacity capacity = ResolveMeshModeTopology(
                     plan.mesh_shader_mode, plan.mesh_max_invocations);
-                const AnsiString shape_name = BuildMeshShapeName(
+                shape_name = BuildMeshShapeName(
                     plan.mesh_shader_mode, capacity.max_vertices);
                 const AnsiString master_include_path =
                     AnsiString("topology/") + shape_name + AnsiString(".mesh");
@@ -659,8 +665,9 @@ namespace hgl::graph::mtl
                         static_cast<size_t>(shape_name.Length()));
                     plan.mesh_source_shape_key = shape_hasher;
                 }
+            }
 
-                // ── 阶段间 varying 开关：`generated/common_options.glsl` ────────
+            // ── 阶段间 varying 开关：`generated/common_options.glsl` ────────
             //
             // 与 `mesh_options` / `frag_options` 不同，这一份是**两个 stage 共用**
             // 的：网格阶段据它声明 out 数组并写值，片段阶段据它声明 in 并解包。
@@ -702,7 +709,7 @@ namespace hgl::graph::mtl
                     static_cast<size_t>(common_options_glsl.Length()));
             }
 
-                // ── CharQuad 不消费 options ────────────────────────────────
+            // ── CharQuad 不消费 options ────────────────────────────────
                 //
                 // CharQuad 的顶点 ABI 求解器在 `VertexInputMode::None` 上直接
                 // 返回（没有 stream_*/position_*/transform_* 三段），options 只能是空文件；而主
@@ -754,7 +761,6 @@ namespace hgl::graph::mtl
                         mesh_options_glsl.c_str(),
                         static_cast<size_t>(mesh_options_glsl.Length()));
                 }
-            }
 
             // ── mesh 源拓扑与构建契约必须逐位一致（见 ValidateMeshSourceTopology）──
             if (!ValidateMeshSourceTopology(plan.ms, plan))
