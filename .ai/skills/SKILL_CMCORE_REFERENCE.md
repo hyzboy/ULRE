@@ -805,6 +805,13 @@ SharedBuffer *raw=a.Detach();       // 交出所有权，不 RefDec
 
 ### 7.3 `MetaObject.h` — meta 与负载分离的对象
 
+> **归属已迁移**：`MetaObject` 现由公共库 **CMAssetsManage** 提供
+> （`CMAssetsManage/inc/hgl/object/MetaObject.h` + `src/MetaObject.cpp`）。
+> 头文件路径保持 `hgl/object/`，`#include` 写法不变；CMCore 只保留
+> `Object` / `RefObject` / `ObjectIdentity` / `TickObject`。
+> 之所以搬走：只有带可卸载载荷的资产（`GeometryAsset` / `TextureAsset` / `LoadedFile`）需要它，
+> CMCore 不应为了一个资产层基类反向依赖资产语义。
+
 ```cpp
 #include<hgl/object/MetaObject.h>
 
@@ -875,7 +882,7 @@ const uint type_count = hgl::GetObjectTypeCount();
 - 类型注册表使用静态存储，`ObjectTypeInfo*` 指针在进程内始终有效，容量 1024 种类型。
 - 与日志关联见 `.ai/skills/SKILL_LOGGING_REFERENCE.md` 的「对象身份与日志关联」一节（`ObjectLogger::BindObjectIdentity()`）。
 
-完整可运行验证见 `CMCore/examples/system/MetaObjectTest.cpp`（构建目标 `MetaObjectTest`）：用例 1 验证 `Object` 身份与 `Init`/`Release` 幂等，用例 2 验证 `RefObject` 计数归零自动销毁，用例 3 验证 `MetaObject` 卸载资源保留 meta 并可重载。退出码 0 即全部通过。
+完整可运行验证见 `src/ecs/tests/MetaObjectTest.cpp`（构建目标与 ctest 名 `MetaObjectTest`，原位于 `CMCore/examples/system/`）：用例 1 验证 `Object` 身份与 `Init`/`Release` 幂等，用例 2 验证 `RefObject` 计数归零自动销毁，用例 3 验证 `MetaObject` 卸载资源保留 meta 并可重载。退出码 0 即全部通过。
 
 ---
 

@@ -190,10 +190,13 @@ Submit(path, handler) ─▶ 读整文件进 LoadedFile ─▶ SwapMailbox ─�
 
 | 组件 | 位置 | 职责 |
 |------|------|------|
-| `LoadedFile` | `inc/hgl/framework/LoadedFile.h` | 文件字节 + META + 引用计数；字节直接读进内部 `AsyncFileLoadRequest`，零额外拷贝 |
-| `LoadedFileHandler` | `inc/hgl/framework/LoadedFileHandler.h` | 业务回调接口；业务上下文放子类成员 |
-| `LoadedFileManager` | `inc/hgl/framework/LoadedFileManager.h` | 读盘调度、弱表缓存、待释放队列、统计 |
+| `LoadedFile` | `CMAssetsManage/inc/hgl/asset/LoadedFile.h` | 文件字节 + META + 引用计数；字节直接读进内部 `AsyncFileLoadRequest`，零额外拷贝 |
+| `LoadedFileHandler` | `CMAssetsManage/inc/hgl/asset/LoadedFileHandler.h` | 业务回调接口；业务上下文放子类成员 |
+| `LoadedFileManager` | `CMAssetsManage/inc/hgl/asset/LoadedFileManager.h` | 读盘调度、弱表缓存、待释放队列、统计 |
 | `TextureLoadCommitter` | `inc/hgl/graph/module/TextureLoadCommitter.h` | 把 `LoadedFile` 解析成 `TextureCreateInfo` 并提交 GPU 上传队列 |
+
+> 三个 `LoadedFile*` 已下沉到公共库 **CMAssetsManage**（`inc/hgl/asset/`），include 写作
+> `#include<hgl/asset/LoadedFile.h>`；原位置 `inc/hgl/framework/` 与 `src/Work/` 已清空。
 
 ### 8.2 弱表缓存与复活
 

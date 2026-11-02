@@ -243,8 +243,21 @@ namespace hgl::asset
      * 三态是**最小公共集**，不是每种资产都会走满：纯文本解析的配方资产从 `Parsed`
      * 起步（没有可挂起的装载阶段）；需要读盘/上传的资产则从 `Unloaded`/`Loading` 起步。
      *
-     * 异步轴**不**在这里：真正的在途进度属于具体资源的载荷（如
-     * `TextureAsset::GetPayloadState()`），本状态只回答「这个句柄现在能不能用」。
+     * ## 与 `hgl::PayloadState` 正交，不要合并
+     *
+     * `AssetState` 回答「**这个句柄现在能不能用**」，`hgl::PayloadState`
+     * （`<hgl/object/MetaObject.h>`）回答「**这份载荷还在不在内存里**」。两者是不同
+     * 的轴，不是同一个状态机的两套措辞：
+     *
+     * | | `AssetState` | `PayloadState` |
+     * |---|---|---|
+     * | 归属 | `AssetObject`（`SharedPtr` 持有，无 `Init/Release`） | `MetaObject`（`RefObject`，有引用计数） |
+     * | 生命周期 | 一次装配，不可回退 | `MetaOnly ⇄ Resident` 可反复往返 |
+     * | 典型消费者 | `MaterialRecipeAsset`、`MaterialDataBlockAsset`（纯文本解析，无 GPU 载荷） | `GeometryAsset`、`TextureAsset`（有可卸载的 GPU 载荷） |
+     *
+     * 把 `AssetObject` 改成继承 `MetaObject` 会让「一份解析好的 TOML」凭空背上
+     * 对象 ID、`Init/Release` 与引用计数，并把「装卸载可反复」的语义塞进一个
+     * 本来只需要「就绪/失败」二值判断的句柄。**两者保持独立是有意的。**
      */
     enum class AssetState : uint8_t
     {

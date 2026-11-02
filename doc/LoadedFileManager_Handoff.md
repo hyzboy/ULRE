@@ -49,13 +49,17 @@ Submit(path,handler) ─▶ 读盘到 LoadedFile 内部的 request ─▶ SwapMa
 
 ## 3. 已写出的文件(均为 UTF-8 BOM + CRLF)
 
+> 位置更新：三个 `LoadedFile*` 头与两个 `.cpp` 已下沉到公共库 **CMAssetsManage**
+> （头在 `CMAssetsManage/inc/hgl/asset/`，源在 `CMAssetsManage/src/`）。
+> 下表左列保留迁移前的原始路径以便对照历史；现行路径见括注。
+
 | 文件 | 内容 |
 |---|---|
-| `inc/hgl/framework/LoadedFile.h` | `LoadedFile : MetaObject`、`LoadedFilePtr = RefPtr<LoadedFile>`;覆盖 `OnLoadPayload / OnUnloadPayload / OnRefZero` |
-| `inc/hgl/framework/LoadedFileHandler.h` | `FileLoadId`、`FileLoadTicket`、`LoadedFileHandler`(`OnFileLoaded` 纯虚;`OnFileFailed/OnFileCancelled` 默认空) |
-| `inc/hgl/framework/LoadedFileManager.h` | `LoadedFileManager : io::AsyncFileLoadHandler`、`LoadedFileManagerStatistics` |
-| `src/Work/LoadedFile.cpp` | `LoadedFile` 实现 |
-| `src/Work/LoadedFileManager.cpp` | 管理器实现 |
+| `CMAssetsManage/inc/hgl/asset/LoadedFile.h`（原 `inc/hgl/framework/`）| `LoadedFile : MetaObject`、`LoadedFilePtr = RefPtr<LoadedFile>`;覆盖 `OnLoadPayload / OnUnloadPayload / OnRefZero` |
+| `CMAssetsManage/inc/hgl/asset/LoadedFileHandler.h`（原 `inc/hgl/framework/`）| `FileLoadId`、`FileLoadTicket`、`LoadedFileHandler`(`OnFileLoaded` 纯虚;`OnFileFailed/OnFileCancelled` 默认空) |
+| `CMAssetsManage/inc/hgl/asset/LoadedFileManager.h`（原 `inc/hgl/framework/`）| `LoadedFileManager : io::AsyncFileLoadHandler`、`LoadedFileManagerStatistics` |
+| `CMAssetsManage/src/LoadedFile.cpp`（原 `src/Work/`）| `LoadedFile` 实现 |
+| `CMAssetsManage/src/LoadedFileManager.cpp`（原 `src/Work/`）| 管理器实现 |
 
 管理器公共 API:`Start(io_workers)`、`Stop(ShutdownMode)`、`Submit(filename, handler) → FileLoadId`、`Cancel(id)`、`Pump(max_dispatch)`、`Collect()`、`Find(filename) → LoadedFilePtr`、`GetStatistics()`、`GetPendingJobCount()`。
 
@@ -143,7 +147,7 @@ add_cm_library(ULRE.Work "ULRE" ${WORK_SOURCE})
 | 底层读盘 | `CMCore/inc/hgl/io/AsyncFileLoader.h` |
 | 优先级队列 | `CMCore/inc/hgl/concurrency/PriorityTaskQueue.h` |
 | 邮箱 | `CMCore/inc/hgl/concurrency/SwapMailbox.h` |
-| 引用计数/元信息 | `CMCore/inc/hgl/object/RefObject.h`、`MetaObject.h`;实现 `CMCore/src/Object/` |
+| 引用计数/元信息 | `CMCore/inc/hgl/object/RefObject.h`;`MetaObject.h` 已移至 `CMAssetsManage/inc/hgl/object/`（实现 `CMAssetsManage/src/MetaObject.cpp`） |
 | 纹理异步上传 | `inc/hgl/graph/module/TextureUploadQueue.h`、`TextureUploadTask.h`、`TextureManager.h`;`src/SceneGraph/module/` |
 | 纹理文件加载 | `src/SceneGraph/texture/VKTextureLoader.h`、`VKTexture2DLoader.cpp`、`VKTexture2DArrayLoader.cpp`;`inc/hgl/graph/texture/TextureLoader.h` |
 | 两个目标示例 | `example/Texture/AsyncTextureUpload.cpp`、`TextureArrayStreaming.cpp` |

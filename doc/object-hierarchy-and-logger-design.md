@@ -691,8 +691,15 @@ protected:
    * `Init()` / `Release()` NVI 状态机及 `OnInit()` / `OnRelease()` 纯虚接口；
    * 析构未 `Release()` 告警检测。
 2. 新增 `CMCore/inc/hgl/object/RefObject.h` 与 `CMCore/inc/hgl/object/MetaObject.h`，实现 Meta 与 Payload 分离状态机。
+
+   > **后续调整（资产层收敛）**：`MetaObject` 已从 CMCore 迁出，现由公共库 **CMAssetsManage**
+   > 提供（`CMAssetsManage/inc/hgl/object/MetaObject.h` + `src/MetaObject.cpp`），CMCore 只保留
+   > `Object` / `RefObject` / `ObjectIdentity` / `TickObject`。头文件路径仍为 `hgl/object/`，
+   > 所有 `#include` 写法不变。同时 `LoadedFile*` 与 `AssetURI` / `AssetFactory` 一并下沉到
+   > `CMAssetsManage`（`inc/hgl/asset/`）。依赖关系变为 `CMCore ← CMAssetsManage ← ULRE`，
+   > CMCore 不再反向携带资产语义。
 3. **清理废弃遗留物（已完成）**：`ObjectBase.h`、`ObjectBaseExamples.h`、`ObjectCrashRecovery.h`、旧版 `ObjectTracker.h/.cpp` 与 `ObjectBase_GUIDE.md` 已全部删除（消除了 CMCore 中残留的 STL 违规引用与对 `hgl/core/ObjectType.h` 的跨层依赖）。`ObjectLogger` 保持独立，`Object` 作为其他对象的基类。
-4. 编写验证程序 `CMCore/examples/system/MetaObjectTest.cpp`（验证 ID 唯一性、`Init`/`Release` 状态转换、引用计数归零销毁、`MetaObject` 卸载资源保留 Meta 并重载）。
+4. 编写验证程序 `src/ecs/tests/MetaObjectTest.cpp`（原 `CMCore/examples/system/MetaObjectTest.cpp`；因 `cm_example_project` 只能链接 `CMCore CMPlatform CMUtil`，`MetaObject` 搬走后该示例已迁到主仓，改用 `add_ecs_test` + ctest）验证 ID 唯一性、`Init`/`Release` 状态转换、引用计数归零销毁、`MetaObject` 卸载资源保留 Meta 并重载。
 
 ### Phase 3：ULRE 引擎层迁移对接
 1. **`CMUtil` 的 `Timer` 已迁移**：改为继承 `hgl::Object`，用 `HGL_OBJECT(Timer,hgl::Object)` 声明，`OnInit()`/`OnRelease()` 实现生命周期，事件回调用裸函数指针 `TimerEvent` 取代已不存在的 `DefEvent`/`SafeCallEvent`，时间源改用 `<hgl/time/Time.h>` 的 `GetUptimeSec()`。
