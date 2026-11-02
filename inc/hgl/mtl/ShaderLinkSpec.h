@@ -3,13 +3,16 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
+#include <hgl/asset/AssetAnnotation.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/mtl/ShaderStageKey.h>
 #include <hgl/mtl/ShaderProgramKey.h>
 
 namespace hgl::graph::mtl
 {
-    struct ShaderLinkSpec
+    /// 字段序列化由 `[group.ShaderCache]` 生成的反射表驱动（派生逻辑
+    /// `IsValid` / `BuildKey` 不参与序列化，留在本文件手写）。
+    struct HGL_ASSET_STRUCT ShaderLinkSpec
     {
         ShaderStageKey mesh_stage;    // mesh shader 顶点处理 stage（VS 已彻底废弃）
         ShaderStageKey fragment_stage;

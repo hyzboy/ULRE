@@ -1,14 +1,17 @@
 // ULRE.ShaderMaterialData —— compute 程序清单（数据面）。
 //
-// 与 ShaderProgramManifest.cpp 同一套磁盘机制（小端手写序列化 + 同一份
-// ShaderArtifactFileHeader），差别只在记录形状和键的来源。
+// 与 ShaderProgramManifest.cpp 同一套磁盘机制（AssetGen 反射表驱动的
+// FlatBuffers 载荷 + 同一份 ShaderArtifactFileHeader），差别只在记录形状
+// 和键的来源。
 #include <hgl/mtl/ShaderComputeProgramManifest.h>
 
+#include <hgl/asset/generated/ShaderCacheSerialize.gen.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/log/Log.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/serialize/FlatCodec.h>
 #include <hgl/utf.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
@@ -17,68 +20,6 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        constexpr uint32 kManifestPayloadHeaderSize =
-            sizeof(uint32) + sizeof(uint32);   // format_version + entry_count
-
-        void AppendU32(ValueArray<uint8> &bytes, const uint32 value)
-        {
-            bytes.Add(static_cast<uint8>(value));
-            bytes.Add(static_cast<uint8>(value >> 8));
-            bytes.Add(static_cast<uint8>(value >> 16));
-            bytes.Add(static_cast<uint8>(value >> 24));
-        }
-
-        void AppendU64(ValueArray<uint8> &bytes, const uint64 value)
-        {
-            AppendU32(bytes, static_cast<uint32>(value));
-            AppendU32(bytes, static_cast<uint32>(value >> 32));
-        }
-
-        bool ReadU32(const uint8 *&cursor, const uint8 *end, uint32 &out_value)
-        {
-            if (!cursor || end - cursor < 4)
-                return false;
-            out_value = uint32(cursor[0])
-                | (uint32(cursor[1]) << 8)
-                | (uint32(cursor[2]) << 16)
-                | (uint32(cursor[3]) << 24);
-            cursor += 4;
-            return true;
-        }
-
-        bool ReadU64(const uint8 *&cursor, const uint8 *end, uint64 &out_value)
-        {
-            uint32 low = 0;
-            uint32 high = 0;
-            if (!ReadU32(cursor, end, low) || !ReadU32(cursor, end, high))
-                return false;
-            out_value = uint64(low) | (uint64(high) << 32);
-            return true;
-        }
-
-        void AppendStageKey(ValueArray<uint8> &bytes, const ShaderStageKey &key)
-        {
-            AppendU32(bytes, static_cast<uint32>(key.stage));
-            AppendU64(bytes, key.definition_hash);
-            AppendU64(bytes, key.compile_inputs_hash);
-            AppendU64(bytes, key.interface_hash);
-            AppendU64(bytes, key.compiler_hash);
-        }
-
-        bool ReadStageKey(const uint8 *&cursor, const uint8 *end, ShaderStageKey &out_key)
-        {
-            uint32 stage = 0;
-            if (!ReadU32(cursor, end, stage))
-                return false;
-
-            out_key.stage = static_cast<ShaderStage>(stage);
-
-            return ReadU64(cursor, end, out_key.definition_hash)
-                && ReadU64(cursor, end, out_key.compile_inputs_hash)
-                && ReadU64(cursor, end, out_key.interface_hash)
-                && ReadU64(cursor, end, out_key.compiler_hash);
-        }
-
         uint64 HashBytes(const void *data, const uint64 byte_size)
         {
             hgl::hash::FNV1aHasher64 hasher;
@@ -145,20 +86,17 @@ namespace hgl::graph::mtl
          && !filesystem::MakePath(directory))
             return false;
 
+        // 载荷 = 生成的反射表驱动的 FlatBuffers（与 program 清单同一套机制）。
+        ShaderComputeProgramManifestPayload payload_struct;
+        payload_struct.entries = entries;
+
         ValueArray<uint8> payload;
-        payload.Reserve(static_cast<int>(
-            kManifestPayloadHeaderSize
-          + ShaderComputeProgramManifestEntryPayloadSize * GetEntryCount()));
-
-        AppendU32(payload, ShaderComputeProgramManifestFormatVersion);
-        AppendU32(payload, GetEntryCount());
-
-        for (const auto &entry : entries)
+        AnsiString encode_error;
+        if (!hgl::serialize::fb::EncodeToFlatBuffers(payload, payload_struct,
+                                                     nullptr, &encode_error))
         {
-            AppendU64(payload, entry.program_key);
-            AppendStageKey(payload, entry.compute_stage);
-            AppendU32(payload, entry.push_constant_size);
-            AppendU32(payload, 0u);   // flags：保留
+            GLogError(u8"compute manifest 编码失败：%s", encode_error.c_str());
+            return false;
         }
 
         ShaderArtifactFileHeader header{};
@@ -213,43 +151,22 @@ namespace hgl::graph::mtl
                 break;
 
             const auto *payload = static_cast<const uint8 *>(file_data) + header.header_size;
-            const uint8 *cursor = payload;
-            const uint8 *end = payload + header.payload_size;
 
             if (HashBytes(payload, header.payload_size) != header.payload_hash)
                 break;
 
-            uint32 format_version = 0;
-            uint32 entry_count = 0;
-            if (!ReadU32(cursor, end, format_version)
-             || !ReadU32(cursor, end, entry_count)
-             || format_version != ShaderComputeProgramManifestFormatVersion)
+            ShaderComputeProgramManifestPayload decoded;
+            if (!hgl::serialize::fb::VerifyAndDecodeFlatBuffers(
+                    payload, static_cast<size_t>(header.payload_size), decoded))
                 break;
 
-            const uint64 required_payload =
-                static_cast<uint64>(kManifestPayloadHeaderSize)
-              + static_cast<uint64>(entry_count) * ShaderComputeProgramManifestEntryPayloadSize;
-            if (required_payload != header.payload_size)
+            if (decoded.format_version != ShaderComputeProgramManifestFormatVersion)
                 break;
 
-            compiler_profile_hash = header.key_digest;
-            codegen_generation = static_cast<uint32>(header.source_digest);
-
+            // 逐条重验不变量：磁盘上的东西不可信，半个清单比没有清单更危险。
             bool decode_ok = true;
-            for (uint32 i = 0; i < entry_count && decode_ok; ++i)
+            for (const auto &entry : decoded.entries)
             {
-                ShaderComputeProgramManifestEntry entry{};
-                uint32 flags = 0;
-
-                decode_ok =
-                       ReadU64(cursor, end, entry.program_key)
-                    && ReadStageKey(cursor, end, entry.compute_stage)
-                    && ReadU32(cursor, end, entry.push_constant_size)
-                    && ReadU32(cursor, end, flags);
-
-                if (!decode_ok)
-                    break;
-
                 if (!entry.IsValid())
                 {
                     decode_ok = false;
@@ -264,6 +181,9 @@ namespace hgl::graph::mtl
                 Clear();
                 break;
             }
+
+            compiler_profile_hash = header.key_digest;
+            codegen_generation = static_cast<uint32>(header.source_digest);
 
             success = true;
         }

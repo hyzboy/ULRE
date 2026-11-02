@@ -3,6 +3,7 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
+#include <hgl/asset/AssetAnnotation.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <cstdint>
 
@@ -27,8 +28,9 @@ namespace hgl::graph::mtl
     // ── Compute program manifest ──
     // compute 程序（如 GPU cull）没有材质定义，也没有 mesh/fragment 两段 link，
     // 塞不进上面那份清单的定长记录里。它只有「程序名 → 一段 compute SPV」一条关系，
-    // 因此单独一份文件，格式机制完全相同（同一套 header / stamp / 校验和），
-    // 但记录只有 60 字节，且与材质清单互不影响 —— 一份损坏不会污染另一份。
+    // 因此单独一份文件，格式机制完全相同（同一套 header / stamp / 校验和 +
+    // AssetGen 反射表驱动的 FlatBuffers 载荷），且与材质清单互不影响 ——
+    // 一份损坏不会污染另一份。
     constexpr const char ShaderArtifactComputeManifestFilename[] = "compute_manifest.pmf";
 
     // ── 生成源（最终 GLSL）落盘扩展名按 shader stage 定（GLSL 命名惯例）──
@@ -55,10 +57,9 @@ namespace hgl::graph::mtl
         return "";
     }
     constexpr uint32 ShaderArtifactFileHeaderSize = 48;
-    /// 2 × uint64（`program_key_digest` + `generated_source_digest`），
-    /// 见 `ShaderProgramArtifactMetadata`。
-    constexpr uint32 ShaderProgramMetadataPayloadSize =
-        sizeof(uint64) * 2;
+    // program metadata 载荷不再是「2 × uint64 裸字节」：v2 起走 AssetGen 反射表
+    // 驱动的 FlatBuffers（ShaderProgramArtifactMetadata 本身即载荷结构），
+    // 尺寸随序列化后端变化，不再有公开定长常量。
 
     enum class ShaderArtifactKind : uint8
     {
@@ -73,47 +74,21 @@ namespace hgl::graph::mtl
         ComputeProgramManifest
     };
 
-    /// manifest payload 布局（小端，逐字段手写序列化，不 memcpy 结构体）：
-    ///   uint32 format_version
-    ///   uint32 entry_count
-    ///   entry[entry_count]
-    /// entry 布局（92 字节）：
-    ///   uint64 lookup_key
-    ///   stage  mesh     : uint32 stage + uint64[4]
-    ///   stage  fragment : uint32 stage + uint64[4]
-    ///   uint64 link_contract_hash
-    ///   uint32 flags（bit0 = requires_recipe_runtime_rows，
-    ///                bit1 = requires_recipe_payload_row）
+    /// manifest payload = AssetGen `[group.ShaderCache]` 生成的 FlatBuffers 载荷
+    /// （`ShaderProgramManifestPayload`：`format_version` + 条目表；后端在
+    /// `hgl/serialize/FlatCodec.h`）。外层帧不变：`ShaderArtifactFileHeader` 的
+    /// magic/kind/尺寸/`payload_hash`（FNV1a 覆盖整段 FlatBuffers 缓冲）。
     ///
     /// v2：stage 键 5 → 4 个哈希（`resource_hash` 折进 `compile_inputs_hash`）、
-    ///     4 个 link 哈希收成 1 个 `link_contract_hash`。旧清单整份失效，重烘焙。
-    constexpr uint32 ShaderProgramManifestFormatVersion = 2;
-    constexpr uint32 ShaderProgramManifestEntryPayloadSize =
-        sizeof(uint64)
-      + (sizeof(uint32) + sizeof(uint64) * 4)
-      + (sizeof(uint32) + sizeof(uint64) * 4)
-      + sizeof(uint64)
-      + sizeof(uint32);
-    constexpr uint32 ShaderProgramManifestFlagRequiresRecipeRows = 0x1u;
-    /// 程序是否读 payload 行（`MTL_ROW`）。与上一位不同：纯纹理材质的
-    /// `RequiresRecipeRuntimeRows` 为真而本位为假（只需要纹理引用行表）。
-    constexpr uint32 ShaderProgramManifestFlagRequiresRecipePayloadRow = 0x2u;
+    ///     4 个 link 哈希收成 1 个 `link_contract_hash`。
+    /// v3：载荷从「小端定长记录手写编解码」换成生成反射表驱动的 FlatBuffers ——
+    ///     字段真源回到结构体本身，不再有第二份布局描述。旧版整份拒收、重烘焙。
+    constexpr uint32 ShaderProgramManifestFormatVersion = 3;
 
-    /// compute manifest payload 布局（小端，逐字段手写序列化）：
-    ///   uint32 format_version
-    ///   uint32 entry_count
-    /// entry[entry_count]
-    /// entry 布局（52 字节）：
-    ///   uint64 program_key          （程序名 digest，运行时可算）
-    ///   stage  compute              : uint32 stage + uint64[4]
-    ///   uint32 push_constant_size   （布局与 SPV 的一致性契约）
-    ///   uint32 flags                （保留，当前恒 0）
-    constexpr uint32 ShaderComputeProgramManifestFormatVersion = 2;
-    constexpr uint32 ShaderComputeProgramManifestEntryPayloadSize =
-        sizeof(uint64)
-      + (sizeof(uint32) + sizeof(uint64) * 4)
-      + sizeof(uint32)
-      + sizeof(uint32);
+    /// compute manifest payload：同 v3，FlatBuffers 生成的
+    /// `ShaderComputeProgramManifestPayload`（真源见
+    /// `hgl/mtl/ShaderComputeProgramManifest.h`）。
+    constexpr uint32 ShaderComputeProgramManifestFormatVersion = 3;
 
     enum class ShaderCacheMode : uint8
     {
@@ -148,7 +123,7 @@ namespace hgl::graph::mtl
     /// 是同一个值（都来自 `GetShaderCompilerProfileHash`），其余 6 个都是 stage 键
     /// 的重复投影——一致性检查的真正来源只有一个：键本身。平铺只会制造「两个字段
     /// 该不该同步」的维护负担。
-    struct ShaderProgramArtifactMetadata
+    struct HGL_ASSET_STRUCT ShaderProgramArtifactMetadata
     {
         uint64 program_key_digest = 0;
         /// 命中后的事后校验：把落盘 SPV 反查回源文本摘要（不参与命中判定）。

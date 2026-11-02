@@ -17,6 +17,7 @@
 #pragma once
 
 #include <hgl/CoreType.h>
+#include <hgl/asset/AssetAnnotation.h>
 #include <hgl/mtl/ShaderArtifactContract.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/type/String.h>
@@ -24,7 +25,12 @@
 
 namespace hgl::graph::mtl
 {
-    struct ShaderProgramManifestEntry
+    /// 一条已编译完成的程序。本结构不保存变体身份（变体身份已经哈希进
+    /// `lookup_key`，再存一份只会给缓存投毒留下第二套口径）。
+    ///
+    /// 字段序列化由 `[group.ShaderCache]` 生成的反射表驱动；派生判断
+    /// `IsValid()` / `IsConsistent()` 留在本文件手写。
+    struct HGL_ASSET_STRUCT ShaderProgramManifestEntry
     {
         /// 轻量语义键（`ComputeMaterialProgramManifestKey` 产出）。
         uint64 lookup_key = 0;
@@ -63,6 +69,17 @@ namespace hgl::graph::mtl
         {
             return !(*this == rhs);
         }
+    };
+
+    /// 磁盘载荷（v3 起 = FlatBuffers 生成的 payload 的反射形状）。
+    ///
+    /// 编译环境戳（`compiler_profile_hash`/`codegen_generation`）不在这里 —— 它们
+    /// 由外层 `ShaderArtifactFileHeader` 的 key_digest/source_digest 承载，清单类
+    /// 只在 Load 时从头部取；载荷里重复一份只会给「头与体不一致」留缝。
+    struct HGL_ASSET_STRUCT ShaderProgramManifestPayload
+    {
+        uint32 format_version = ShaderProgramManifestFormatVersion;
+        ValueArray<ShaderProgramManifestEntry> entries;
     };
 
     class ShaderProgramManifest

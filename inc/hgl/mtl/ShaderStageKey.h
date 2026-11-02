@@ -3,6 +3,7 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
+#include <hgl/asset/AssetAnnotation.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/type/String.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -26,7 +27,11 @@ namespace hgl::graph::mtl
     /// 「文本」——读着色器的人会以为那行注释有语义，编译器只当垃圾，而任何按文本
     /// 比对的断言都得先剥掉它。现在 options 直接进 compile_inputs_hash，落盘的主
     /// 着色器就是纯粹的可编译 GLSL。
-    struct ShaderStageKey
+    ///
+    /// 序列化派生物由 `[group.ShaderCache]`（`src/Tools/AssetGen/asset_gen.toml`）
+    /// 生成；`stage` 按整数序列化（`ShaderStage` 登记为 integer_enum，位标志
+    /// 组合值没有逐值拼写表可言）。
+    struct HGL_ASSET_STRUCT ShaderStageKey
     {
         ShaderStage stage = ShaderStage::Mesh;
         uint64 definition_hash = 0;

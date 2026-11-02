@@ -7,7 +7,9 @@
 # 是为了让同一个目录里的不同资产规约落到不同分组，生成文件不至于混在一起。
 
 # 外部定义的枚举（来自第三方头，例如 Vulkan）。按整数序列化，不生成名字表。
-integer_enums = ["VkFormat"]
+# `ShaderStage` 是 VK 位标志的组合值（Mesh|Fragment 这类），逐值拼写表无从枚举，
+# 磁盘上也只按原始整数走。
+integer_enums = ["VkFormat", "ShaderStage"]
 
 # ── 枚举的 TOML 拼写别名（可选）─────────────────────────────────────────────
 # 按**枚举值声明顺序**给出别名：解析时别名与 C++ 名都接受（大小写不敏感），
@@ -208,3 +210,19 @@ namespace     = "hgl::graph"
 scan          = ["inc/hgl/graph/asset/EnvironmentAssetSpec.h"]
 serialize     = "inc/hgl/asset/generated/EnvironmentSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/EnvironmentMeta.gen.h"
+
+# ── 着色器缓存清单的磁盘载荷 ────────────────────────────────────────────────
+# `*.pmf`（program manifest）与 `*.cmf`（compute manifest）的载荷形状真源。
+# 这里编的是「语义键 → SPV 定位」的查表数据，不是场景资产：外层仍由
+# ShaderArtifactFileHeader 的 magic/kind/校验和包帧，载荷本体走 FlatBuffers 后端。
+# 类本身（私有成员 + 派生校验 IsValid/IsConsistent/Upsert 不变量）不注解，
+# 注解的只有载荷结构与条目结构。
+[group.ShaderCache]
+namespace     = "hgl::graph::mtl"
+scan          = [ "inc/hgl/mtl/ShaderStageKey.h",
+                  "inc/hgl/mtl/ShaderLinkSpec.h",
+                  "inc/hgl/mtl/ShaderArtifactContract.h",
+                  "inc/hgl/mtl/ShaderProgramManifest.h",
+                  "inc/hgl/mtl/ShaderComputeProgramManifest.h" ]
+serialize     = "inc/hgl/asset/generated/ShaderCacheSerialize.gen.h"
+meta          = "inc/hgl/asset/generated/ShaderCacheMeta.gen.h"

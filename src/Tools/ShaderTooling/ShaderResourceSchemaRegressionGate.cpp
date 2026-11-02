@@ -14,6 +14,8 @@
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/mtl/ShaderProgramManifest.h>
 #include <hgl/mtl/ShaderComputeProgramManifest.h>
+#include <hgl/asset/generated/ShaderCacheSerialize.gen.h>
+#include <hgl/serialize/FlatCodec.h>
 #include <hgl/mtl/ShaderProgramManifestKey.h>
 #include <hgl/mtl/ShaderProgramManifestBackend.h>
 #include <hgl/mtl/ShaderProgramBuildBackend.h>
@@ -8074,63 +8076,85 @@ void main()
 
         // ── Load 侧的行需求不变量守卫 ──
         //
-        // 合法清单落盘后把第 0 条（rows=F,payload=F）的 flags 改成 (rows=F,payload=T)：
-        // 这是「要 payload 行却不要行表」的非法组合，必须整份拒绝。校验和不符会先
-        // 一步拦下，所以篡改后必须重算 payload_hash —— 否则测到的是校验和守卫。
+        // 合法清单落盘后把第 0 条（rows=F,payload=F）改成 (rows=F,payload=T)：
+        // 这是「要 payload 行却不要行表」的非法组合，必须整份拒绝。v3 载荷是
+        // AssetGen 生成的 FlatBuffers，按固定字节偏移盲改不再成立——这里解出
+        // 载荷、直接改解码后的条目、重编码并同步头部 payload_size/payload_hash，
+        // 确保测到的是不变量守卫而不是校验和守卫。
         {
             hgl::uint8 *raw = nullptr;
             const hgl::int64 raw_size = hgl::filesystem::LoadFileToMemory(
                 manifest_path, reinterpret_cast<void **>(&raw));
-            const hgl::uint64 payload_offset =
-                static_cast<hgl::uint64>(sizeof(ShaderArtifactFileHeader));
-            // payload = version(u32) + count(u32) + entry*N；flags 是每条 entry 的末位 u32。
-            const hgl::uint64 first_flags_offset = payload_offset
-                + static_cast<hgl::uint64>(sizeof(hgl::uint32) * 2)
-                + static_cast<hgl::uint64>(ShaderProgramManifestEntryPayloadSize)
-                - static_cast<hgl::uint64>(sizeof(hgl::uint32));
 
-            if (raw_size < 0 || !raw
-             || static_cast<hgl::uint64>(raw_size) < first_flags_offset + sizeof(hgl::uint32))
+            ShaderArtifactFileHeader header{};
+            ShaderProgramManifestPayload payload_struct;
+            bool fixture_ok = false;
+
+            if (raw && static_cast<hgl::uint64>(raw_size) >= sizeof(header))
             {
-                if (raw)
-                    delete[] raw;
+                std::memcpy(&header, raw, sizeof(header));
+                if (static_cast<hgl::uint64>(raw_size)
+                        == static_cast<hgl::uint64>(header.header_size)
+                          + header.payload_size)
+                {
+                    const hgl::uint8 *payload = raw + header.header_size;
+                    fixture_ok =
+                        hgl::serialize::fb::VerifyAndDecodeFlatBuffers(
+                            payload, static_cast<size_t>(header.payload_size),
+                            payload_struct)
+                     && !payload_struct.entries.IsEmpty();
+                }
+            }
+
+            if (raw)
+                delete[] raw;
+
+            if (!fixture_ok)
+            {
                 result.diagnostics.emplace_back(
                     "manifest fixture unreadable for load-time invariant test");
             }
             else
             {
-                const hgl::uint64 payload_size =
-                    static_cast<hgl::uint64>(raw_size) - payload_offset;
+                ShaderProgramManifestEntry *first = payload_struct.entries.GetData();
+                first->requires_recipe_runtime_rows = false;
+                first->requires_recipe_payload_row = true;
 
-                hgl::uint32 tampered_flags = 0;
-                std::memcpy(&tampered_flags, raw + first_flags_offset,
-                            sizeof(tampered_flags));
-                tampered_flags |= ShaderProgramManifestFlagRequiresRecipePayloadRow;
-                tampered_flags &= ~ShaderProgramManifestFlagRequiresRecipeRows;
-                std::memcpy(raw + first_flags_offset, &tampered_flags,
-                            sizeof(tampered_flags));
-
-                hgl::hash::FNV1aHasher64 hasher;
-                hasher.AppendBytes(raw + payload_offset,
-                                   static_cast<size_t>(payload_size));
-                const hgl::uint64 refreshed_hash = hasher;
-                std::memcpy(raw + offsetof(ShaderArtifactFileHeader, payload_hash),
-                            &refreshed_hash, sizeof(refreshed_hash));
-
-                const hgl::int64 written = hgl::filesystem::SaveMemoryToFile(
-                    manifest_path, raw, raw_size);
-                delete[] raw;
-
-                if (written != raw_size)
+                hgl::ValueArray<hgl::uint8> bytes;
+                if (!hgl::serialize::fb::EncodeToFlatBuffers(bytes, payload_struct))
                     result.diagnostics.emplace_back(
-                        "failed to write tampered manifest fixture");
+                        "failed to re-encode tampered manifest fixture");
                 else
                 {
-                    ShaderProgramManifest tampered;
-                    if (tampered.Load(manifest_path))
+                    header.payload_size = static_cast<hgl::uint64>(bytes.GetCount());
+                    hgl::hash::FNV1aHasher64 hasher;
+                    hasher.AppendBytes(bytes.GetData(),
+                                       static_cast<size_t>(bytes.GetCount()));
+                    header.payload_hash = hasher;
+
+                    hgl::ValueArray<hgl::uint8> file_bytes;
+                    file_bytes.Resize(static_cast<int>(
+                        sizeof(header) + static_cast<hgl::uint64>(bytes.GetCount())));
+                    std::memcpy(file_bytes.GetData(), &header, sizeof(header));
+                    std::memcpy(file_bytes.GetData() + sizeof(header),
+                                bytes.GetData(),
+                                static_cast<size_t>(bytes.GetCount()));
+
+                    const hgl::int64 written = hgl::filesystem::SaveMemoryToFile(
+                        manifest_path, file_bytes.GetData(),
+                        static_cast<hgl::int64>(file_bytes.GetCount()));
+
+                    if (written != static_cast<hgl::int64>(file_bytes.GetCount()))
                         result.diagnostics.emplace_back(
-                            "Load accepted a manifest carrying "
-                            "payload-row-without-runtime-rows");
+                            "failed to write tampered manifest fixture");
+                    else
+                    {
+                        ShaderProgramManifest tampered;
+                        if (tampered.Load(manifest_path))
+                            result.diagnostics.emplace_back(
+                                "Load accepted a manifest carrying "
+                                "payload-row-without-runtime-rows");
+                    }
                 }
             }
         }

@@ -24,6 +24,7 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
+#include <hgl/asset/AssetAnnotation.h>
 #include <hgl/mtl/ShaderArtifactContract.h>
 #include <hgl/mtl/ShaderStageKey.h>
 #include <hgl/type/String.h>
@@ -33,7 +34,9 @@ namespace hgl::graph::mtl
 {
     class ShaderArtifactStore;
 
-    struct ShaderComputeProgramManifestEntry
+    /// 字段序列化由 `[group.ShaderCache]` 生成的反射表驱动；派生判断
+    /// `IsValid()` 留在本文件手写。
+    struct HGL_ASSET_STRUCT ShaderComputeProgramManifestEntry
     {
         /// 程序名 digest（`ComputeShaderComputeProgramManifestKey`）。运行时可算。
         uint64 program_key = 0;
@@ -61,6 +64,16 @@ namespace hgl::graph::mtl
                 && compute_stage.stage == ShaderStage::Compute
                 && push_constant_size <= 128;   // Vulkan spec 保证的 maxPushConstantsSize 下限
         }
+    };
+
+    /// 磁盘载荷（v3 起 = FlatBuffers 生成的 payload 的反射形状）。
+    ///
+    /// 编译环境戳不在这里，由外层 `ShaderArtifactFileHeader` 承载（与
+    /// `ShaderProgramManifestPayload` 同一套理由）。
+    struct HGL_ASSET_STRUCT ShaderComputeProgramManifestPayload
+    {
+        uint32 format_version = ShaderComputeProgramManifestFormatVersion;
+        ValueArray<ShaderComputeProgramManifestEntry> entries;
     };
 
     class ShaderComputeProgramManifest

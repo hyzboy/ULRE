@@ -1,7 +1,9 @@
 #include <hgl/mtl/ShaderArtifactStore.h>
 
+#include <hgl/asset/generated/ShaderCacheSerialize.gen.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
+#include <hgl/serialize/FlatCodec.h>
 #include <hgl/type/StrChar.h>
 #include <hgl/utf.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -51,74 +53,31 @@ namespace hgl::graph::mtl
             return path.ToOSString();
         }
 
-        void AppendU32(ValueArray<uint8> &bytes, const uint32 value)
-        {
-            bytes.Add(static_cast<uint8>(value));
-            bytes.Add(static_cast<uint8>(value >> 8));
-            bytes.Add(static_cast<uint8>(value >> 16));
-            bytes.Add(static_cast<uint8>(value >> 24));
-        }
-
-        void AppendU64(ValueArray<uint8> &bytes, const uint64 value)
-        {
-            AppendU32(bytes, static_cast<uint32>(value));
-            AppendU32(bytes, static_cast<uint32>(value >> 32));
-        }
-
-        bool ReadU32(
-            const uint8 *&cursor,
-            const uint8 *end,
-            uint32 &out_value)
-        {
-            if (!cursor || end - cursor < 4)
-                return false;
-            out_value = uint32(cursor[0])
-                | (uint32(cursor[1]) << 8)
-                | (uint32(cursor[2]) << 16)
-                | (uint32(cursor[3]) << 24);
-            cursor += 4;
-            return true;
-        }
-
-        bool ReadU64(
-            const uint8 *&cursor,
-            const uint8 *end,
-            uint64 &out_value)
-        {
-            uint32 low = 0;
-            uint32 high = 0;
-            if (!ReadU32(cursor, end, low)
-             || !ReadU32(cursor, end, high))
-                return false;
-            out_value = uint64(low) | (uint64(high) << 32);
-            return true;
-        }
-
-        void SerializeProgramMetadata(
+        bool EncodeProgramMetadata(
             const ShaderProgramArtifactMetadata &metadata,
             ValueArray<uint8> &out_payload)
         {
-            out_payload.Clear();
-            out_payload.Reserve(ShaderProgramMetadataPayloadSize);
-            AppendU64(out_payload, metadata.program_key_digest);
-            AppendU64(out_payload, metadata.generated_source_digest);
+            AnsiString encode_error;
+            if (!hgl::serialize::fb::EncodeToFlatBuffers(
+                    out_payload, metadata, nullptr, &encode_error))
+            {
+                GLogError(u8"program metadata 编码失败：%s", encode_error.c_str());
+                return false;
+            }
+            return true;
         }
 
-        bool DeserializeProgramMetadata(
-            const uint8 *payload,
+        bool DecodeProgramMetadata(
+            const void *payload,
             const uint64 payload_size,
             ShaderProgramArtifactMetadata &out_metadata)
         {
             out_metadata = {};
-            if (!payload
-             || payload_size != ShaderProgramMetadataPayloadSize)
+            if (!payload || payload_size == 0)
                 return false;
 
-            const uint8 *cursor = payload;
-            const uint8 *end = payload + payload_size;
-            return ReadU64(cursor, end, out_metadata.program_key_digest)
-                && ReadU64(cursor, end, out_metadata.generated_source_digest)
-                && cursor == end;
+            return hgl::serialize::fb::VerifyAndDecodeFlatBuffers(
+                payload, static_cast<size_t>(payload_size), out_metadata);
         }
 
         bool IsValidSPVPayload(
@@ -331,8 +290,7 @@ namespace hgl::graph::mtl
              || header.kind != ShaderArtifactKind::ProgramMetadata
              || header.stage != 0
              || header.key_digest != program_key.GetDigest()
-             || header.payload_size
-                != ShaderProgramMetadataPayloadSize
+             || header.payload_size == 0
              || uint64(header.header_size) + header.payload_size
                 != static_cast<uint64>(file_size))
                 break;
@@ -344,7 +302,7 @@ namespace hgl::graph::mtl
             hasher.AppendBytes(payload, static_cast<size_t>(header.payload_size));
             const uint64 payload_hash = hasher;
             if (payload_hash != header.payload_hash
-             || !DeserializeProgramMetadata(
+             || !DecodeProgramMetadata(
                     payload,
                     header.payload_size,
                     out_metadata)
@@ -382,7 +340,8 @@ namespace hgl::graph::mtl
             return false;
 
         ValueArray<uint8> payload;
-        SerializeProgramMetadata(metadata, payload);
+        if (!EncodeProgramMetadata(metadata, payload))
+            return false;
         ShaderArtifactFileHeader header{};
         header.kind = ShaderArtifactKind::ProgramMetadata;
         header.stage = 0;
