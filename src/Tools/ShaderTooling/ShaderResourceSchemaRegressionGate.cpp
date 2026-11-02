@@ -6877,6 +6877,94 @@ namespace
             delete pbr_build_spec;
         }
 
+        // 6 槽 StandardOpaque MTL_TEX 行跨度守卫：`standard_opaque_bindings.glsl`
+        // 把行跨度硬编码为 uint64_t(48)。它必须与其 struct 槽数自洽（8B/槽向上
+        // 取整 16B），并与 C++ `BuildMaterialTextureReferenceLayout` 按规范 6 槽
+        // 声明集算出的 row_stride 交叉一致 —— 任何一侧增减槽位而另一侧漏改，
+        // 运行期都会静默跨材质错位采样。
+        {
+            const std::string standard_bindings = ReadFileText(
+                RepoRootPath("ShaderLibrary/domain/standard_opaque_bindings.glsl"));
+
+            const size_t ref_pos = standard_bindings.find(
+                "buffer MaterialTextureReferencesRef");
+            const size_t ref_end = ref_pos == std::string::npos
+                ? std::string::npos
+                : standard_bindings.find("};", ref_pos);
+            if (ref_end == std::string::npos)
+            {
+                result.diagnostics.emplace_back(
+                    "standard opaque MaterialTextureReferencesRef struct not found");
+            }
+
+            size_t slot_count = 0;
+            if (ref_end != std::string::npos)
+            {
+                for (size_t p = standard_bindings.find("uvec2", ref_pos);
+                     p != std::string::npos && p < ref_end;
+                     p = standard_bindings.find("uvec2", p + 5))
+                    ++slot_count;
+            }
+
+            uint64_t glsl_stride = 0;
+            const size_t mtl_tex_pos =
+                standard_bindings.find("#define MTL_TEX(i)");
+            if (mtl_tex_pos == std::string::npos)
+            {
+                result.diagnostics.emplace_back(
+                    "standard opaque MTL_TEX alias not found");
+            }
+            else
+            {
+                const size_t tex_idx_pos = standard_bindings.find(
+                    "texture_reference_index)", mtl_tex_pos);
+                const size_t num_pos = tex_idx_pos == std::string::npos
+                    ? std::string::npos
+                    : standard_bindings.find("uint64_t(", tex_idx_pos);
+                if (num_pos == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "MTL_TEX row stride literal not found");
+                }
+                else
+                {
+                    glsl_stride = std::strtoull(
+                        standard_bindings.c_str() + num_pos + 9, nullptr, 10);
+                }
+            }
+
+            if (slot_count > 0
+             && glsl_stride > 0
+             && ((slot_count * 8u + 15u) & ~static_cast<size_t>(15u))
+                != static_cast<size_t>(glsl_stride))
+            {
+                result.diagnostics.emplace_back(
+                    "standard opaque MTL_TEX stride disagrees with its struct layout");
+            }
+
+            ResolvedMaterial standard_definition{};
+            standard_definition.domain_name = "StandardOpaqueGate";
+            for (const char *slot : {"base_color", "roughness", "metallic",
+                                     "occlusion", "opacity_mask", "normal"})
+            {
+                MaterialTextureDeclaration decl{};
+                decl.name = slot;
+                standard_definition.texture_declarations.push_back(decl);
+            }
+            MaterialTextureReferenceLayout layout{};
+            if (!BuildMaterialTextureReferenceLayout(standard_definition, layout))
+            {
+                result.diagnostics.emplace_back(
+                    "canonical 6-slot texture layout failed to build");
+            }
+            else if (layout.reference_count != 6u
+                  || layout.row_stride != static_cast<uint32_t>(glsl_stride))
+            {
+                result.diagnostics.emplace_back(
+                    "C++ texture layout row_stride no longer matches standard opaque GLSL hard-coded stride");
+            }
+        }
+
         result.passed = result.diagnostics.empty();
         return result;
     }
