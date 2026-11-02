@@ -203,6 +203,18 @@ namespace hgl::graph::mtl
         return same_name;
     }
 
+    // Explicit hashing: the generic FNV1aHasher::operator<<(const T&) would hash
+    // raw struct bytes (the *pointer value*, unstable per-process). Route through
+    // the `const char *` specialization (uint32 length prefix + content bytes;
+    // nullptr hashes as empty) so cache keys depend only on module name text.
+    inline hgl::hash::FNV1aHasher64 &operator<<(
+        hgl::hash::FNV1aHasher64 &h,
+        const GlslModuleDependency &v) noexcept
+    {
+        h << v.module_name;
+        return h;
+    }
+
     struct GlslModuleSemanticRequirement
     {
         GlslModuleCapabilitySource source = GlslModuleCapabilitySource::GeometryAttribute;
