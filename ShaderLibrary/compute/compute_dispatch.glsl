@@ -9,11 +9,16 @@ layout(buffer_reference, std430, buffer_reference_align=16) buffer FloatArrayRef
 layout(push_constant) uniform PushConstants {
     uint64_t in_addr;
     uint64_t out_addr;
+    uint element_count;
 } pc;
 
 void main()
 {
     const uint idx = gl_GlobalInvocationID.x;
+
+    // 派发组数通常向上取整，尾部组越界读写会破坏相邻内存 ⇒ 按元素数早退
+    if (idx >= pc.element_count)
+        return;
 
     FloatArrayRef in_buf  = FloatArrayRef(pc.in_addr);
     FloatArrayRef out_buf = FloatArrayRef(pc.out_addr);

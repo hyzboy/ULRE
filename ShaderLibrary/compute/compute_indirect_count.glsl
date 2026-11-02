@@ -15,7 +15,13 @@ layout(push_constant) uniform PushConstants {
 } pc;
 
 void main() {
-    uint count = uint(round(float(pc.max_draws) * pc.cutoff_ratio));
+    // cutoff_ratio 可能为负/NaN（作者误配 TOML），float→uint 转换未定义 ⇒ 先钳制到 [0,1]
+    float ratio = pc.cutoff_ratio;
+    if (!(ratio > 0.0))
+        ratio = 0.0;      // 同时兜住负数与 NaN
+    ratio = min(ratio, 1.0);
+
+    uint count = uint(round(float(pc.max_draws) * ratio));
     if (count > pc.max_draws)
         count = pc.max_draws;
 

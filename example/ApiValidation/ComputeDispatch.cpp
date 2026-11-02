@@ -29,14 +29,16 @@ namespace
     constexpr uint32_t DATA_COUNT = 256;
     constexpr uint32_t GROUP_SIZE = 64;                             // 与 local_size_x 一致
 
-    // push constant 只承载两个缓冲区设备地址（BDA）；Set0/1 引擎全局集本例不使用。
+    // push constant 承载两个缓冲区设备地址（BDA）+ 元素总数（尾部越界线程早退）；
+    // Set0/1 引擎全局集本例不使用。
     struct DispatchPushConstants
     {
         uint64_t in_addr;
         uint64_t out_addr;
+        uint32_t element_count;
     };
 
-    static_assert(sizeof(DispatchPushConstants) == 16, "DispatchPushConstants 布局必须与 GLSL push_constant block 一致");
+    static_assert(sizeof(DispatchPushConstants) == 24, "DispatchPushConstants 布局必须与 GLSL push_constant block 一致");
 
     // compute 源码在 ShaderLibrary/compute/compute_dispatch.glsl：改 shader 不用重编译示例，
     // push constant 布局仍与上面的 C++ 结构靠 static_assert 对拍。
@@ -78,6 +80,7 @@ private:
         DispatchPushConstants pc{};
         pc.in_addr  = dev->GetBufferDeviceAddressAligned16(input_buffer ->GetBuffer());
         pc.out_addr = dev->GetBufferDeviceAddressAligned16(output_buffer->GetBuffer());
+        pc.element_count = DATA_COUNT;
 
         if (pc.in_addr == 0 || pc.out_addr == 0)
         {
@@ -87,7 +90,8 @@ private:
 
         compute_cmd->PushConstants(compute_pipeline->GetPipelineLayout(), &pc, sizeof(pc));
 
-        compute_cmd->Dispatch(DATA_COUNT / GROUP_SIZE);
+        // 向上取整派发：尾部越界线程由 shader 内 element_count 守卫吸收
+        compute_cmd->Dispatch((DATA_COUNT + GROUP_SIZE - 1) / GROUP_SIZE);
 
         if (!compute_cmd->End())
             return false;
