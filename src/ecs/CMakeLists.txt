@@ -191,14 +191,8 @@ add_ecs_test(TestGeometryAssetFile tests/TestGeometryAssetFile.cpp)
 # TOML PrimitiveAsset parser (geometry + recipe binding).
 add_ecs_test(TestPrimitiveAssetFile tests/TestPrimitiveAssetFile.cpp)
 
-# Unified asset URI: text -> (type, source, target) segment contract.
-add_ecs_test(TestAssetURI tests/TestAssetURI.cpp)
-
 # Asset factory: self-registering type -> loader table + unregistered-type fallback.
 add_ecs_test(TestAssetFactory tests/TestAssetFactory.cpp)
-
-# MetaObject: meta/payload 两层生命周期契约（原 CMCore examples/system/MetaObjectTest）。
-add_ecs_test(MetaObjectTest tests/MetaObjectTest.cpp)
 
 # Geometry preset library: every shape name used by examples must resolve to a TOML.
 add_ecs_test(TestGeometryPreset tests/TestGeometryPreset.cpp)
@@ -206,9 +200,9 @@ add_ecs_test(TestGeometryPreset tests/TestGeometryPreset.cpp)
 # TOML SceneSpec parser: schema, references, type-specific keys, and parent cycles.
 add_ecs_test(TestSceneFile tests/TestSceneFile.cpp)
 
-# Unified serialization archive: Value tree, Archive dispatch (scalars / strings /
-# enums / vectors / nested structs / Sequence / Mapping / Set / Tree) and TOML codec.
-add_ecs_test(TestSerializeArchive tests/TestSerializeArchive.cpp)
+# 统一序列化框架（TestSerializeArchive）、资产 URI（TestAssetURI）、MetaObject 生命周期
+# （MetaObjectTest）三个用例已随实现一起下沉到 CMAssetsManage/test/，由
+# use_cm_module(CMAssetsManage) 带进构建；ctest 名称与 LABELS 不变，本文件不再登记。
 
 # Asset reflection codegen: TOML round-trip, metadata table, FlatBuffers round-trip.
 # 纯数据往返，不需要设备/窗口，因此在 CI 里也能跑，用来挡住
@@ -406,28 +400,12 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "geometry;primitive;asset")
 
     add_test(
-        NAME TestAssetURI
-        COMMAND TestAssetURI
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    set_tests_properties(
-        TestAssetURI
-        PROPERTIES LABELS "asset;uri")
-
-    add_test(
         NAME TestAssetFactory
         COMMAND TestAssetFactory
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestAssetFactory
         PROPERTIES LABELS "asset;factory")
-
-    add_test(
-        NAME MetaObjectTest
-        COMMAND MetaObjectTest
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    set_tests_properties(
-        MetaObjectTest
-        PROPERTIES LABELS "object;asset")
 
     add_test(
         NAME TestGeometryPreset
@@ -444,14 +422,6 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestSceneFile
         PROPERTIES LABELS "scene;asset")
-
-    add_test(
-        NAME TestSerializeArchive
-        COMMAND TestSerializeArchive
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    set_tests_properties(
-        TestSerializeArchive
-        PROPERTIES LABELS "serialize;archive")
 
     add_test(
         NAME TestAssetReflection
