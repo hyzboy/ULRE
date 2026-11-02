@@ -8,7 +8,6 @@
 #include <hgl/serialize/TomlCodec.h>
 #include <hgl/type/Smart.h>
 #include <hgl/utf.h>
-#include <flatbuffers/flatbuffers.h>
 
 #include <cmath>
 #include <cstring>
@@ -117,8 +116,8 @@ namespace hgl::graph
             return false;
         }
 
-        flatbuffers::FlatBufferBuilder builder;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(builder, spec))
+        hgl::ValueArray<uint8> buffer;
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(buffer, spec))
         {
             MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: serialization failed"));
             return false;
@@ -133,8 +132,8 @@ namespace hgl::graph
             return false;
         }
 
-        if (output->Write(builder.GetBufferPointer(), builder.GetSize())
-            != static_cast<int64>(builder.GetSize()))
+        if (output->Write(buffer.GetData(), buffer.GetCount())
+            != static_cast<int64>(buffer.GetCount()))
         {
             MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: write failed in ")
                       + filename);

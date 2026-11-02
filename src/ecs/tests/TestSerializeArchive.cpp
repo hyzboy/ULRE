@@ -3,7 +3,7 @@
 //   1. Value 树：标量 / 字符串 / 数组 / 表的读写与深拷贝；
 //   2. Archive：标量、字符串、枚举、数学向量、嵌套结构、Sequence / Mapping /
 //      Set / Tree 的双向遍历；
-//   3. TOML 后端：Value ↔ toml::value 往返，文本输出可再解析；
+//   3. TOML 后端：Value 树 ⇄ 文本往返，文本输出可再解析；
 //   4. 缺键语义：读方向缺字段必须保留 C++ 类内缺省值而不是报错；
 //   5. 类型不符：必须失败并给出字段名；
 //   6. 严格键校验：`ValidateKeysByMeta` 按 `ClassMetaInfo` 递归判键名合法性
@@ -458,11 +458,12 @@ namespace
         if (!writer.Ok())
             return false;
 
-        const toml::value toml_value = ToToml(tree);
-        Check(toml_value.is_table(), "TOML 根应为 table");
+        // Value 树 → 文本 → Value 树，闭环一次：断言的就是真正落盘的那份文本。
+        const AnsiString text = ToTomlText(tree);
+        Check(text.Length() > 0, "TOML 文本不应为空");
 
         Value restored;
-        FromToml(toml_value, restored);
+        Check(FromTomlText(text.c_str(), restored), "TOML 文本应可再解析");
 
         SampleAsset loaded;
         Archive reader = Archive::ForRead(restored);
@@ -476,18 +477,6 @@ namespace
         }
 
         Check(SameAsset(fixture.asset, loaded), "TOML 往返后应完全一致");
-
-        // 文本可再解析（format → parse 闭环）
-        const AnsiString text = ToTomlText(tree);
-        Check(text.Length() > 0, "TOML 文本不应为空");
-
-        Value reparsed;
-        Check(FromTomlText(text.c_str(), reparsed), "TOML 文本应可再解析");
-        SampleAsset second;
-        Archive reader2 = Archive::ForRead(reparsed);
-        StructSerializer<SampleAsset>::Do(reader2, second);
-        Check(reader2.Ok(), "文本再解析后读取不应失败");
-        Check(SameAsset(fixture.asset, second), "文本闭环应完全一致");
 
         return true;
     }
@@ -867,13 +856,14 @@ namespace
         StructSerializer<SampleAsset>::Do(writer, fixture.asset);
         Check(writer.Ok(), "FB 写入前的树构建不应失败");
 
-        flatbuffers::FlatBufferBuilder fbb;
-        hgl::serialize::fb::EncodeToBuffer(fbb, tree, desc::asset);
-        Check(fbb.GetSize() > 0, "FlatBuffers 编码应产出非空缓冲");
+        hgl::ValueArray<uint8> fb_bytes;
+        Check(hgl::serialize::fb::EncodeToBuffer(tree, desc::asset, nullptr, fb_bytes),
+              "FlatBuffers 编码应成功");
+        Check(fb_bytes.GetCount() > 0, "FlatBuffers 编码应产出非空缓冲");
 
         Value decoded_tree;
-        Check(hgl::serialize::fb::DecodeFromBuffer(fbb.GetBufferPointer(),
-                                                  fbb.GetSize(), desc::asset,
+        Check(hgl::serialize::fb::DecodeFromBuffer(fb_bytes.GetData(),
+                                                  fb_bytes.GetCount(), desc::asset,
                                                   decoded_tree),
               "FlatBuffers 解码应成功");
 
@@ -993,37 +983,37 @@ namespace
         Fixture fixture;
 
         // ① 反射推导编码
-        flatbuffers::FlatBufferBuilder meta_fbb;
+        hgl::ValueArray<uint8> meta_fb;
         AnsiString encode_error;
         Check(hgl::serialize::fb::EncodeToFlatBuffers<SampleAsset>(
-                  meta_fbb, fixture.asset, fbmeta::kAssetMeta, nullptr, &encode_error),
+                  meta_fb, fixture.asset, fbmeta::kAssetMeta, nullptr, &encode_error),
               "反射驱动编码应成功");
         if (!encode_error.IsEmpty())
             GLogError(u8"  编码诊断=%s", encode_error.c_str());
 
         // ② 与手写描述表的产物逐字节对比：两条路必须推导出同一布局
-        flatbuffers::FlatBufferBuilder desc_fbb;
+        hgl::ValueArray<uint8> desc_fb;
         Value tree;
         Archive writer = Archive::ForWrite(tree);
         StructSerializer<SampleAsset>::Do(writer, fixture.asset);
-        hgl::serialize::fb::EncodeToBuffer(desc_fbb, tree, desc::asset);
+        hgl::serialize::fb::EncodeToBuffer(tree, desc::asset, nullptr, desc_fb);
 
-        Check(meta_fbb.GetSize() == desc_fbb.GetSize(), "反射与描述表产出的缓冲长度应一致");
-        if (meta_fbb.GetSize() == desc_fbb.GetSize())
-            Check(memcmp(meta_fbb.GetBufferPointer(), desc_fbb.GetBufferPointer(),
-                         meta_fbb.GetSize()) == 0,
+        Check(meta_fb.GetCount() == desc_fb.GetCount(), "反射与描述表产出的缓冲长度应一致");
+        if (meta_fb.GetCount() == desc_fb.GetCount())
+            Check(memcmp(meta_fb.GetData(), desc_fb.GetData(),
+                         meta_fb.GetCount()) == 0,
                   "反射与描述表产出的缓冲应逐字节相同");
 
         // ③ 校验通过 + 解码往返
-        const size_t size = meta_fbb.GetSize();
-        Check(hgl::serialize::fb::VerifyBuffer(meta_fbb.GetBufferPointer(), size,
+        const size_t size = static_cast<size_t>(meta_fb.GetCount());
+        Check(hgl::serialize::fb::VerifyBuffer(meta_fb.GetData(), size,
                                                fbmeta::kAssetMeta),
               "合法缓冲应通过反射校验");
 
         SampleAsset loaded;
         AnsiString decode_error;
         Check(hgl::serialize::fb::VerifyAndDecodeFlatBuffers<SampleAsset>(
-                  meta_fbb.GetBufferPointer(), size, loaded, fbmeta::kAssetMeta,
+                  meta_fb.GetData(), size, loaded, fbmeta::kAssetMeta,
                   nullptr, &decode_error),
               "校验并解码应成功");
         if (!decode_error.IsEmpty())
@@ -1033,7 +1023,7 @@ namespace
         // ④ 坏缓冲：越界根偏移必须被拒，且不得解码出半个结构
         uint8_t broken[2048];
         Check(size > 0 && size < sizeof(broken), "缓冲应装得进本地副本");
-        memcpy(broken, meta_fbb.GetBufferPointer(), size);
+        memcpy(broken, meta_fb.GetData(), size);
         broken[0] = 0xFF;
         broken[1] = 0xFF;
         broken[2] = 0xFF;
@@ -1046,7 +1036,7 @@ namespace
               "校验失败的缓冲不得解码");
 
         // ⑤ 截断缓冲同样必须被拒
-        Check(!hgl::serialize::fb::VerifyBuffer(meta_fbb.GetBufferPointer(), 8,
+        Check(!hgl::serialize::fb::VerifyBuffer(meta_fb.GetData(), 8,
                                                 fbmeta::kAssetMeta),
               "截断缓冲必须校验失败");
 

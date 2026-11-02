@@ -38,8 +38,6 @@
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 
-#include <cstring>
-
 namespace hgl::graph::mtl
 {
     /**
@@ -61,22 +59,8 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        flatbuffers::FlatBufferBuilder fbb;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<MaterialDataBlockSpec>(
-                fbb, spec, nullptr, out_error))
-            return false;
-
-        const int size = static_cast<int>(fbb.GetSize());
-        if (size <= 0 || !out_bytes.Resize(size))
-        {
-            if (out_error)
-                *out_error = "分配 FlatBuffers 输出缓冲失败";
-            return false;
-        }
-
-        std::memcpy(out_bytes.GetData(), fbb.GetBufferPointer(),
-                    static_cast<size_t>(size));
-        return true;
+        return hgl::serialize::fb::EncodeToFlatBuffers<MaterialDataBlockSpec>(
+            out_bytes, spec, nullptr, out_error);
     }
 
     /**
@@ -91,7 +75,7 @@ namespace hgl::graph::mtl
     {
         out_spec = MaterialDataBlockSpec{};
 
-        if (!data || size < FLATBUFFERS_MIN_BUFFER_SIZE)
+        if (!data || size < hgl::serialize::kFlatBufferMinSize)
         {
             if (out_error)
                 *out_error = "缓冲长度不足一个 FlatBuffers 根表";

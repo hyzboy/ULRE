@@ -20,6 +20,8 @@
 #include <hgl/serialize/TomlCodec.h>
 #include <cstring>
 
+#include "SerializeSnapshot.h"
+
 using namespace hgl;
 using namespace hgl::graph;
 namespace codec = hgl::asset::generated;
@@ -47,10 +49,12 @@ namespace
         cube.ntb = NTBType::NormalTangentBitangent;
         cube.tex_coord = false;
 
-        const toml::value written = hgl::serialize::WriteTomlTable<BuiltinCubeParams>(cube);
+        // TOML 后端只暴露「文本 ⇄ 值树」，往返就是真落盘的那份文本再读回来。
+        const AnsiString written = serialize_test::WriteToml<BuiltinCubeParams>(cube);
 
         BuiltinCubeParams back;
-        if (!hgl::serialize::ReadTomlTable<BuiltinCubeParams>(written, back))
+        if (!hgl::serialize::LoadFromTomlText<BuiltinCubeParams>(
+                written.c_str(), static_cast<size_t>(written.Length()), back))
             return false;
 
         return back.segments_x == cube.segments_x
@@ -64,25 +68,34 @@ namespace
     {
         // 空字符串必须产生「空 TOML 字符串」而不是缺键/崩溃：
         // 走的是统一序列化框架，所以覆盖 AnsiString / U8String / OSString 三种载体。
-        const auto to_value = [](hgl::serialize::Value &node)
-        {
-            return hgl::serialize::ToToml(node);
-        };
+        hgl::serialize::Value root;
+        root.SetTable();
 
-        hgl::serialize::Value ansi_node;
-        ansi_node.SetString(AnsiString{});
-        hgl::serialize::Value utf8_node;
-        utf8_node.SetString(U8String{});
-        hgl::serialize::Value os_node;
-        os_node.SetString(OSString{});
+        hgl::serialize::Value *ansi_node = root.AddField("ansi", 1);
+        hgl::serialize::Value *utf8_node = root.AddField("utf8", 2);
+        hgl::serialize::Value *os_node = root.AddField("os", 3);
 
-        const toml::value ansi = to_value(ansi_node);
-        const toml::value utf8 = to_value(utf8_node);
-        const toml::value os = to_value(os_node);
+        if (!ansi_node || !utf8_node || !os_node)
+            return false;
 
-        return ansi.is_string() && ansi.as_string().empty()
-            && utf8.is_string() && utf8.as_string().empty()
-            && os.is_string() && os.as_string().empty();
+        ansi_node->SetString(AnsiString{});
+        utf8_node->SetString(U8String{});
+        os_node->SetString(OSString{});
+
+        // 往返一圈，断言的就是落盘文本解析回来的值树。
+        const AnsiString text = hgl::serialize::ToTomlText(root);
+
+        hgl::serialize::Value back;
+        if (!serialize_test::ParseToml(text, back))
+            return false;
+
+        const hgl::serialize::Value *ansi = back.FindField("ansi");
+        const hgl::serialize::Value *utf8 = back.FindField("utf8");
+        const hgl::serialize::Value *os = back.FindField("os");
+
+        return ansi && ansi->IsString() && ansi->GetString().Length() == 0
+            && utf8 && utf8->IsString() && utf8->GetString().Length() == 0
+            && os && os->IsString() && os->GetString().Length() == 0;
     }
 
     // ── 2. 缺键保留类内初始值 / 类型不符失败 ────────────────────────────────
@@ -91,11 +104,15 @@ namespace
         BuiltinTorusParams torus;
         const BuiltinTorusParams defaults;   // 类内初始值
 
-        toml::table empty;
+        // 空文本 ⇒ 空值树，语义等同于「整张表一个键都没写」。
+        hgl::serialize::Value empty_root;
+        if (!serialize_test::ParseToml(AnsiString{}, empty_root))
+            return false;
+
         BuiltinTorusParams back;
         back.inner_radius = 99.0f;           // 故意污染，验证「缺键不动」
 
-        if (!hgl::serialize::ReadTomlTable<BuiltinTorusParams>(toml::value(std::move(empty)), back))
+        if (!hgl::serialize::ReadFromValue<BuiltinTorusParams>(empty_root, back))
             return false;
 
         // 缺键 = 保持调用方传进来的值（不重置），这正是「增量补丁」语义。
@@ -108,10 +125,13 @@ namespace
             return false;
 
         // 类型不符必须失败：slices 是整数，写成字符串应当报错。
-        toml::table bad;
-        bad["slices"] = "many";
+        constexpr char kBadSlices[] = "slices = \"many\"\n";
+        hgl::serialize::Value bad;
+        if (!serialize_test::ParseToml(AnsiString(kBadSlices), bad))
+            return false;
+
         BuiltinTorusParams junk;
-        if (hgl::serialize::ReadTomlTable<BuiltinTorusParams>(toml::value(std::move(bad)), junk))
+        if (hgl::serialize::ReadFromValue<BuiltinTorusParams>(bad, junk))
             return false;
 
         return true;
@@ -119,15 +139,21 @@ namespace
 
     bool TestNumericBounds()
     {
-        toml::table too_large;
-        too_large["segments_x"] = static_cast<int64_t>(UINT64_C(0x100000000));
-        BuiltinCubeParams cube;
-        if (hgl::serialize::ReadTomlTable<BuiltinCubeParams>(toml::value(std::move(too_large)), cube))
+        constexpr char kTooLarge[] = "segments_x = 4294967296\n";
+        hgl::serialize::Value too_large;
+        if (!serialize_test::ParseToml(AnsiString(kTooLarge), too_large))
             return false;
 
-        toml::table too_small;
-        too_small["segments_x"] = static_cast<int64_t>(-1);
-        return !hgl::serialize::ReadTomlTable<BuiltinCubeParams>(toml::value(std::move(too_small)), cube);
+        BuiltinCubeParams cube;
+        if (hgl::serialize::ReadFromValue<BuiltinCubeParams>(too_large, cube))
+            return false;
+
+        constexpr char kTooSmall[] = "segments_x = -1\n";
+        hgl::serialize::Value too_small;
+        if (!serialize_test::ParseToml(AnsiString(kTooSmall), too_small))
+            return false;
+
+        return !hgl::serialize::ReadFromValue<BuiltinCubeParams>(too_small, cube);
     }
 
     // ── 3. 枚举名与别名 ────────────────────────────────────────────────────
@@ -246,13 +272,13 @@ namespace
         frustum.slices = 42;
         frustum.generate_caps = false;
 
-        flatbuffers::FlatBufferBuilder fbb;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<BuiltinFrustumParams>(fbb, frustum))
+        hgl::ValueArray<uint8> fb;
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<BuiltinFrustumParams>(fb, frustum))
             return false;
 
         BuiltinFrustumParams back;
         if (!hgl::serialize::fb::DecodeFromFlatBuffers<BuiltinFrustumParams>(
-                fbb.GetBufferPointer(), fbb.GetSize(), back))
+                fb.GetData(), static_cast<size_t>(fb.GetCount()), back))
             return false;
 
         return back.bottom_radius == frustum.bottom_radius
@@ -265,13 +291,13 @@ namespace
     // ── 7. 图元规约往返（含 ManagedArray 与 Key 覆盖）──────────────────────
     bool TestPrimitiveSpec()
     {
-        toml::table variant;
-        variant["recipe"] = "Core.PBR.DepthOnly";
-        variant["purpose"] = "depth_only";
-        variant["lod"] = static_cast<int64_t>(2);
+        constexpr char kVariant[] =
+            "recipe = \"Core.PBR.DepthOnly\"\n"
+            "purpose = \"depth_only\"\n"
+            "lod = 2\n";
 
         PrimitiveVariantSpec spec;
-        if (!hgl::serialize::ReadTomlTable<PrimitiveVariantSpec>(toml::value(std::move(variant)), spec))
+        if (!hgl::serialize::LoadFromTomlText<PrimitiveVariantSpec>(kVariant, spec))
             return false;
 
         if (spec.recipe_name != "Core.PBR.DepthOnly")
@@ -293,9 +319,10 @@ namespace
         extra->purpose = PrimitiveVariantPurpose::DepthOnly;
         extra->lod_index = 4;
 
-        const toml::value written = hgl::serialize::WriteTomlTable<PrimitiveAssetSpec>(source);
+        const AnsiString written = serialize_test::WriteToml<PrimitiveAssetSpec>(source);
         PrimitiveAssetSpec decoded;
-        if (!hgl::serialize::ReadTomlTable<PrimitiveAssetSpec>(written, decoded))
+        if (!hgl::serialize::LoadFromTomlText<PrimitiveAssetSpec>(
+                written.c_str(), static_cast<size_t>(written.Length()), decoded))
             return false;
 
         return decoded.name == source.name
@@ -323,13 +350,13 @@ namespace
         variant->purpose = PrimitiveVariantPurpose::DepthOnly;
         variant->lod_index = 3;
 
-        flatbuffers::FlatBufferBuilder fbb;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<PrimitiveAssetSpec>(fbb, source))
+        hgl::ValueArray<uint8> fb;
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<PrimitiveAssetSpec>(fb, source))
             return false;
 
         PrimitiveAssetSpec decoded;
         if (!hgl::serialize::fb::DecodeFromFlatBuffers<PrimitiveAssetSpec>(
-                fbb.GetBufferPointer(), fbb.GetSize(), decoded))
+                fb.GetData(), static_cast<size_t>(fb.GetCount()), decoded))
             return false;
         return decoded.name == source.name
             && decoded.geometry_path == source.geometry_path
@@ -361,13 +388,13 @@ namespace
         node->material = "glow";
         node->transform.position = math::Vector3f(1.0f, 2.0f, 3.0f);
 
-        flatbuffers::FlatBufferBuilder fbb;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(fbb, source))
+        hgl::ValueArray<uint8> fb;
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(fb, source))
             return false;
 
         SceneSpec decoded;
         if (!hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(
-                fbb.GetBufferPointer(), fbb.GetSize(), decoded))
+                fb.GetData(), static_cast<size_t>(fb.GetCount()), decoded))
             return false;
         return decoded.schema == source.schema
             && decoded.name == source.name

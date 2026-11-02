@@ -104,3 +104,7 @@ add_cm_library(ULRE.ShaderMaterialData "ULRE"
 # 吃掉本库的目标同样需要这些类型。
 target_link_libraries(ULRE.ShaderMaterialData PUBLIC ULRE.ShaderRuntimeContract
                                                     ULRE.Debug)
+
+# MaterialRecipeFile / MaterialDataBlockFile 走 `hgl::serialize` 统一通路；该库的
+# 文本/字节入口已下沉为 CMAssetsManage 的实现细节，不再是头文件 inline，需真链。
+target_link_libraries(ULRE.ShaderMaterialData PRIVATE CMAssetsManage)

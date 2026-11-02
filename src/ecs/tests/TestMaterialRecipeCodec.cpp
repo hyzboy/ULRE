@@ -20,6 +20,8 @@
 #include <hgl/serialize/FlatCodec.h>
 #include <hgl/serialize/TomlCodec.h>
 
+#include "SerializeSnapshot.h"
+
 using namespace hgl;
 using namespace hgl::asset;
 using namespace hgl::graph::mtl;
@@ -179,13 +181,19 @@ namespace
             return false;
 
         // 写成文本快照后再次读回：值、presence、`Key` 覆盖、表数组都要原样。
-        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
+        const AnsiString written = serialize_test::WriteToml<MaterialRecipeSpec>(spec);
 
         MaterialRecipeSpec back;
-        if (!hgl::serialize::ReadTomlTable<MaterialRecipeSpec>(written, back))
+        if (!hgl::serialize::LoadFromTomlText<MaterialRecipeSpec>(
+                written.c_str(), static_cast<size_t>(written.Length()), back))
             return false;
 
         const RecipePipelineSpec &back_pipeline = back.render_state.pipeline.value;
+
+        hgl::serialize::Value snapshot;
+        if (!serialize_test::ParseToml(written, snapshot))
+            return false;
+
         return back.schema == spec.schema
             && back.name == spec.name
             && back.parent == spec.parent
@@ -211,9 +219,9 @@ namespace
             && back.textures[1]->required.present
             && !back.textures[1]->required.value
             // `Key` 覆盖：字段名是 `input`，写出去必须是 `source`。
-            && written.at("transform").as_table().count("source") == 1
-            && written.at("transform").as_table().count("input") == 0
-            && written.at("textures").as_array().size() == 2;
+            && serialize_test::HasField(snapshot, "transform", "source")
+            && !serialize_test::HasField(snapshot, "transform", "input")
+            && serialize_test::ElementCount(snapshot, "textures") == 2;
     }
 
     // ── 2. Presence 三态 ────────────────────────────────────────────────────
@@ -276,8 +284,13 @@ namespace
             return false;
 
         // 写方向：未 present 的键不能出现在快照里，否则往返会膨胀成整份声明。
-        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(explicit_default);
-        return written.at("render_state").as_table().at("pipeline").as_table().size() == 3;
+        const AnsiString written = serialize_test::WriteToml<MaterialRecipeSpec>(explicit_default);
+
+        hgl::serialize::Value snapshot;
+        if (!serialize_test::ParseToml(written, snapshot))
+            return false;
+
+        return serialize_test::FieldCount(snapshot, "render_state.pipeline") == 3;
     }
 
     bool TestPartialPipeline()
@@ -303,8 +316,13 @@ namespace
             return false;
 
         // 局部覆盖往返后仍只有 1 个键。
-        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
-        return written.at("render_state").as_table().at("pipeline").as_table().size() == 1;
+        const AnsiString written = serialize_test::WriteToml<MaterialRecipeSpec>(spec);
+
+        hgl::serialize::Value snapshot;
+        if (!serialize_test::ParseToml(written, snapshot))
+            return false;
+
+        return serialize_test::FieldCount(snapshot, "render_state.pipeline") == 1;
     }
 
     bool TestEmptyPipelineTable()
@@ -329,9 +347,10 @@ namespace
             return false;
 
         // 空表往返仍是「表存在、零个键」。
-        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
+        const AnsiString written = serialize_test::WriteToml<MaterialRecipeSpec>(spec);
         MaterialRecipeSpec back;
-        if (!hgl::serialize::ReadTomlTable<MaterialRecipeSpec>(written, back))
+        if (!hgl::serialize::LoadFromTomlText<MaterialRecipeSpec>(
+                written.c_str(), static_cast<size_t>(written.Length()), back))
             return false;
 
         return back.render_state.pipeline.present
@@ -362,13 +381,22 @@ namespace
         if (spec.fragment.defines.present)
             return false;
 
-        toml::value written = hgl::serialize::WriteTomlTable<MaterialRecipeSpec>(spec);
-        const toml::table &fragment = written.at("fragment").as_table();
-        if (fragment.count("samplers") != 1 || fragment.count("defines") != 0)
+        const AnsiString written = serialize_test::WriteToml<MaterialRecipeSpec>(spec);
+
+        hgl::serialize::Value snapshot;
+        if (!serialize_test::ParseToml(written, snapshot))
+            return false;
+
+        // `samplers` 出现了（哪怕是空数组），`defines` 一个字都没写。
+        if (!serialize_test::HasField(snapshot, "fragment", "samplers")
+            || serialize_test::HasField(snapshot, "fragment", "defines")
+            // surface_module_name 不是 Presence 字段，永远会写出来，因此是 2 个键。
+            || serialize_test::FieldCount(snapshot, "fragment") != 2)
             return false;
 
         MaterialRecipeSpec back;
-        if (!hgl::serialize::ReadTomlTable<MaterialRecipeSpec>(written, back))
+        if (!hgl::serialize::LoadFromTomlText<MaterialRecipeSpec>(
+                written.c_str(), static_cast<size_t>(written.Length()), back))
             return false;
 
         return back.fragment.samplers.present
@@ -535,13 +563,13 @@ namespace
         tex->resource_id = "res/image/normal.Tex2D";
         tex->required = false;
 
-        flatbuffers::FlatBufferBuilder fbb;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<MaterialRecipeSpec>(fbb, source))
+        hgl::ValueArray<uint8> fb;
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<MaterialRecipeSpec>(fb, source))
             return false;
 
         MaterialRecipeSpec back;
         if (!hgl::serialize::fb::DecodeFromFlatBuffers<MaterialRecipeSpec>(
-                fbb.GetBufferPointer(), fbb.GetSize(), back))
+                fb.GetData(), static_cast<size_t>(fb.GetCount()), back))
             return false;
 
         const RecipePipelineSpec &pipeline = back.render_state.pipeline.value;

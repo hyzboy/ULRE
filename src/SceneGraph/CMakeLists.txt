@@ -446,3 +446,10 @@ add_cm_library(ULRE.SceneGraph "ULRE" ${SG_INCLUDE_PATH}
 )
 
 target_include_directories(ULRE.SceneGraph PUBLIC ${ROOT_INCLUDE_PATH})
+
+# 资产文件读写（GeometryAssetFile / PrimitiveAssetFile / SceneAssetFile /
+# EnvironmentAssetRegistry）走 `hgl::serialize` 的统一通路。该库的 TOML /
+# FlatBuffers 后端已下沉成 .cpp 里的实现细节，所以文本/字节入口不再是头文件里的
+# inline 函数，必须真链一次；PRIVATE 是因为 `hgl::serialize` 的类型全部来自
+# 公开头，消费方不需要经由我们二次传播。
+target_link_libraries(ULRE.SceneGraph PRIVATE CMAssetsManage)

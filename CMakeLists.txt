@@ -165,6 +165,23 @@ add_library(ULRE::Engine ALIAS ULRE_Engine)
 
 add_subdirectory(src)
 
+# ── toml11：主仓仍有 4 个 TU 自己读写 toml（TOML 文本层，不经 `CMAssetsManage`）──
+#
+# `CMAssetsManage` 已把 TOML 后端下沉成实现细节：`TomlCodec.cpp` 独占 `<toml.hpp>`，
+# 公共头只暴露「文本 ⇄ 值树」，所以它对 toml11 的链接声明是 PRIVATE。下面这几个目标
+# **自己就在用** toml11，必须显式认领这条依赖 —— 不能再靠 CMAssetsManage 的 PUBLIC
+# 传播「蹭」到头文件路径：
+#   · ULRE.Debug             ULRE_DEBUG.toml 的加载与解析（DebugChannel.cpp）
+#   · ULRE.ShaderMaterialData 采样器预设（SamplerPreset.cpp）
+#   · ULRE.SceneGraph        渲染目标资产（RenderTargetAsset.cpp）与
+#                            inc/hgl/graph/generated/BufferToml.gen.h
+# 这三个目标都无条件构建，因此统一在 add_subdirectory(src) 之后集中声明。
+find_package(toml11 CONFIG REQUIRED)
+
+target_link_libraries(ULRE.Debug              PRIVATE toml11::toml11)
+target_link_libraries(ULRE.ShaderMaterialData PRIVATE toml11::toml11)
+target_link_libraries(ULRE.SceneGraph         PRIVATE toml11::toml11)
+
 # 消费 inc/hgl/asset/generated/*.gen.h 的核心库必须在代码生成之后编译；
 # 其它 target（示例、工具、测试）通过链接这些库获得同样的顺序保证。
 ulre_codegen_bind(ULRE.SceneGraph ULRE.ECS ULRE.Work ULRE.Vulkan ULRE.InlineGeometry
