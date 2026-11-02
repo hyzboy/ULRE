@@ -1,0 +1,401 @@
+# ============================================================================
+# shader_const_gen.toml —— ShaderConstGen 的命名/格式化策略
+#
+# 本文件**不含任何数值**：数值与项序的唯一真源是
+# `inc/hgl/shader/contract/*.h` 里带 `HGL_SHADER_ENUM` 注解的枚举，由 Clang AST 读出。
+# 这里只回答三个问题：
+#   1. 哪个枚举写进哪个 GLSL 文件（[[file]] / [[file.enum]]）；
+#   2. GLSL 宏名怎么拼（name_style / prefix / suffix / item.glsl_name）；
+#   3. 数值怎么写（value_style / value_suffix）。
+#
+# 另外声明两类只读校验：
+#   * [[verify_glsl]]      —— 手写 GLSL 里的 #define 必须与契约枚举同值；
+#   * [[sampler_registry]] —— sampler.toml 的条目顺序必须与 SamplerPresetId 同序同名。
+#   * [[assert]]           —— 生成 C++ static_assert 头，盯住与遗留常量的相等性。
+# ============================================================================
+
+schema = 1
+
+# 契约命名空间（clang -ast-dump-filter 用）
+ast_filter = "hgl::shader::contract::"
+
+[output]
+glsl_dir = "ShaderLibrary/contract"
+parity_header = "inc/hgl/shader/generated/ShaderConstantsParity.gen.h"
+
+# ── 采样器预设序号 ──────────────────────────────────────────────────────────
+[[file]]
+name = "sampler_presets.glsl"
+guard = "HGL_SAMPLER_PRESETS_GLSL"
+doc = [
+    "sampler_presets.glsl — 全局采样器预设序号（GLSL 侧）",
+    "",
+    "数值 = contract/sampler.toml 里 `[[samplers]]` 的出现顺序（从 0 开始）。",
+    "运行期 SamplerPresetLibrary::GetIndex 按同一顺序注册 vkCreateSampler。",
+    "",
+    "⚠ 写错不会报错，只会静默按 0 号（Nearest）采样。顺序一致性由",
+    "  ShaderConstGen 的 [[sampler_registry]] 校验守住，禁止手改本文件。",
+]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::SamplerPresetId"
+name_style = "as_is"        # Nearest → NearestSampler（保持 8 个既有宏名不动）
+suffix = "Sampler"
+value_suffix = "u"
+section = ["── 采样器预设索引 ──"]
+footer = [
+    "宏名即 GLSL 侧唯一入口：材质/域绑定表只写 <Name>Sampler，永不写裸数字。",
+]
+
+[[file.enum.item]]
+cpp_name = "Nearest"
+comment = "最近邻（无 mip）：像素风 / UI 铭牌"
+
+[[file.enum.item]]
+cpp_name = "Linear"
+comment = "双线性（mip 仍为最近邻）"
+
+[[file.enum.item]]
+cpp_name = "Trilinear"
+comment = "三线性（mip 线性）"
+
+[[file.enum.item]]
+cpp_name = "TrilinearAniso"
+comment = "三线性 + 各向异性"
+
+[[file.enum.item]]
+cpp_name = "ShadowPCF"
+comment = "阴影图专用：ClampToEdge + 比较采样"
+
+[[file.enum.item]]
+cpp_name = "Terrain"
+comment = "地形：运行期可 Rebuild，槽位不变"
+
+[[file.enum.item]]
+cpp_name = "UI"
+comment = "GUI：最近邻/双线性 + ClampToEdge"
+
+[[file.enum.item]]
+cpp_name = "TrilinearClamp"
+comment = "三线性 + ClampToEdge（八面体 IBL 展开等越界图）"
+
+# ── 引擎通用常量 ────────────────────────────────────────────────────────────
+[[file]]
+name = "engine_constants.glsl"
+guard = "HGL_ENGINE_CONSTANTS_GLSL"
+doc = [
+    "engine_constants.glsl — GPU 剔除 / 批拓扑 / 光照阴影 / 文本 SDF 常量（GLSL 侧）",
+    "",
+    "全部数值来自 inc/hgl/shader/contract/*.h，由 ShaderConstGen 从 Clang AST 读出。",
+    "C++ 侧的遗留常量（GPUCullSystem / EntityGPU / LightRow / ShaderBufferSources /",
+    "FontSource）由生成的 ShaderConstantsParity.gen.h 用 static_assert 钉住，",
+    "两侧任何一边改动而另一边没跟上，都会在编译期直接失败。",
+]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::EntityGpuSlotCount"
+name_style = "upper_snake"  # Count → COUNT
+prefix = "ENTITY_GPU_SLOT_"
+value_style = "int"         # 既有 GLSL 写作 16（无后缀），保持不动
+section = ["── 实体 GPU 视图（EntityGPU 定长行） ──"]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::ArenaPassCount"
+name_style = "upper_snake"  # Passes → PASSES
+prefix = "ULRE_ARENA_"
+value_suffix = "u"
+section = ["── GPU 剔除竞技场：按 pass 分扇区 ──", "扇区 0 = 主帧 pass；扇区 1 = 阴影 pass。"]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::BatchTopology"
+name_style = "upper_snake"
+prefix = "TOPOLOGY_"
+value_suffix = "u"
+section = ["── 批的 dispatch 档（随 BatchInfoRow.topology 下发） ──"]
+
+[[file.enum.item]]
+cpp_name = "Triangles"
+comment = "顶点组 → 三角形（VertexPassthrough）"
+
+[[file.enum.item]]
+cpp_name = "Lines"
+comment = "段 → quad（LineQuad；每线程 1 段 ⇒ 元素数按段数）"
+
+[[file.enum]]
+cpp = "hgl::shader::contract::GpuHandleSentinel"
+name_style = "upper_snake"  # InvalidHandle → INVALID_HANDLE
+prefix = ""
+value_style = "hex"
+section = ["── GPU 侧句柄哨兵（CPU 的同名常量 = UINT32_MAX） ──"]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::LightTypeId"
+name_style = "upper_snake"
+prefix = "LIGHT_TYPE_"
+value_suffix = "u"
+section = ["── 光源行：类型 / flags / 阴影机制 ──"]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::LightFlag"
+name_style = "upper_snake"
+prefix = "LIGHT_FLAG_"
+value_suffix = "u"
+
+[[file.enum]]
+cpp = "hgl::shader::contract::LightShadowKindId"
+name_style = "upper_snake"
+prefix = "LIGHT_SHADOW_"
+value_suffix = "u"
+
+[[file.enum]]
+cpp = "hgl::shader::contract::MaterialShadowFlag"
+name_style = "upper_snake"  # NoReceive → NO_RECEIVE
+prefix = "HGL_MATERIAL_SHADOW_FLAG_"
+value_suffix = "u"
+section = ["── 材质实例行 shadow_flags 位 ──"]
+
+[[file.enum]]
+cpp = "hgl::shader::contract::ShadowPcfPoissonTaps"
+name_style = "upper_snake"
+prefix = "HGL_SHADOW_PCF_"
+value_style = "int"
+section = ["── 阴影 PCF 采样参数默认值 ──"]
+
+[[file.enum.item]]
+cpp_name = "Count"
+glsl_name = "HGL_SHADOW_PCF_POISSON_TAPS"
+
+[[file.enum]]
+cpp = "hgl::shader::contract::ShadowNormalOffset"
+name_style = "upper_snake"
+prefix = "HGL_SHADOW_"
+value_style = "int"
+
+[[file.enum.item]]
+cpp_name = "Pixels"
+glsl_name = "HGL_SHADOW_NORMAL_OFFSET"
+
+[[file.enum]]
+cpp = "hgl::shader::contract::TextSdfSpread"
+name_style = "upper_snake"
+prefix = "TEXT_SDF_"
+value_style = "float"       # GLSL 侧以 8.0 参与除法，必须是 float 字面量
+section = ["── 文本距离场 ──"]
+
+[[file.enum.item]]
+cpp_name = "Pixels"
+glsl_name = "TEXT_SDF_SPREAD"
+comment = "SDF 传播半径（像素）；同时是勾边宽度上限"
+
+# ── 只声明命名策略、不产出 GLSL 的契约枚举 ──────────────────────────────────
+# 这两个枚举的 GLSL 侧文本已经存在且由既有工具/人手维护（见 [[verify_glsl]]），
+# 这里只登记命名策略，让 [[verify_glsl]] 能算出期望的宏名。
+
+[[enum]]
+cpp = "hgl::shader::contract::DescriptorSetId"
+name_style = "as_is"
+suffix = "_SET"
+value_style = "int"
+
+[[enum.item]]
+cpp_name = "Bindless"
+glsl_name = "BINDLESS_SET"
+
+[[enum]]
+cpp = "hgl::shader::contract::ShaderStageLocationId"
+name_style = "upper_snake"
+prefix = "HGL_LOCATION_"
+value_style = "int"
+
+# ── 采样器注册表顺序校验 ────────────────────────────────────────────────────
+# sampler.toml 的 [[samplers]] 出现顺序即索引。顺序/条数不符 ⇒ 索引整体错位。
+[[sampler_registry]]
+file = "ShaderLibrary/contract/sampler.toml"
+enum = "hgl::shader::contract::SamplerPresetId"
+
+# ── 手写 GLSL 的值对拍 ──────────────────────────────────────────────────────
+# 这些文件是 shader 内容哈希的参与者，重写会一次性失效全量着色器缓存，
+# 因此这里只对拍、不改写。等缓存策略允许时再改为生成物。
+
+[[verify_glsl]]
+file = "ShaderLibrary/contract/descriptor_macros.glsl"
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::DescriptorSetId"
+glsl_name = { Bindless = "BINDLESS_SET" }
+value_style = "int"
+
+[[verify_glsl]]
+file = "ShaderLibrary/contract/interstage_locations.glsl"
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::ShaderStageLocationId"
+name_style = "upper_snake"
+prefix = "HGL_LOCATION_"
+value_style = "int"
+
+[[verify_glsl]]
+file = "ShaderLibrary/domain/standard_opaque_bindings.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::SamplerPresetId"
+glsl_name = { Trilinear = "TrilinearSampler", Linear = "LinearSampler", ShadowPCF = "ShadowPCFSampler", TrilinearClamp = "TrilinearClampSampler" }
+items = ["Trilinear", "Linear", "ShadowPCF", "TrilinearClamp"]
+
+[[verify_glsl]]
+file = "ShaderLibrary/domain/sky_bindings.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::SamplerPresetId"
+glsl_name = { Trilinear = "TrilinearSampler", TrilinearClamp = "TrilinearClampSampler" }
+items = ["Trilinear", "TrilinearClamp"]
+
+[[verify_glsl]]
+file = "ShaderLibrary/domain/unlit_texture_bindings.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::SamplerPresetId"
+glsl_name = { Trilinear = "TrilinearSampler", TrilinearClamp = "TrilinearClampSampler" }
+items = ["Trilinear", "TrilinearClamp"]
+
+[[verify_glsl]]
+file = "ShaderLibrary/domain/text_2d_bindings.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::SamplerPresetId"
+glsl_name = { Nearest = "NearestSampler", Linear = "LinearSampler" }
+items = ["Nearest", "Linear"]
+
+[[verify_glsl]]
+file = "ShaderLibrary/domain/root_bindings.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::MaterialShadowFlag"
+value_suffix = "u"
+
+[[verify_glsl]]
+file = "ShaderLibrary/module/descriptor/ecs/entity_gpu.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::EntityGpuSlotCount"
+glsl_name = { Count = "ENTITY_GPU_SLOT_COUNT" }
+value_style = "int"
+
+[[verify_glsl]]
+file = "ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::ArenaPassCount"
+glsl_name = { Passes = "ULRE_ARENA_PASSES" }
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::BatchTopology"
+
+[[verify_glsl]]
+file = "ShaderLibrary/module/provider/material_source/material_source_text_gpu.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::TextSdfSpread"
+glsl_name = { Pixels = "TEXT_SDF_SPREAD" }
+value_style = "float"
+
+[[verify_glsl]]
+file = "ShaderLibrary/module/provider/shadow/shadow_pcf.glsl"
+
+[[verify_glsl.check]]
+enum = "hgl::shader::contract::ShadowPcfPoissonTaps"
+glsl_name = { Count = "HGL_SHADOW_PCF_POISSON_TAPS" }
+value_style = "int"
+
+# ── C++ 编译期对拍 ──────────────────────────────────────────────────────────
+# 只由门禁 TU（ShaderResourceSchemaRegressionGate）include；普通编译单元不碰。
+[parity]
+guard = "HGL_SHADER_CONSTANTS_PARITY_GEN_H"
+namespace = "hgl::shader::generated"
+include = [
+    "hgl/shader/contract/SamplerPresetId.h",
+    "hgl/shader/contract/PipelineContract.h",
+    "hgl/shader/contract/GpuCullContract.h",
+    "hgl/shader/contract/LightingContract.h",
+    "hgl/common/DescriptorSetTypeDef.h",
+    "hgl/graph/ubo/LightRow.h",
+    "hgl/graph/font/FontSource.h",
+    "hgl/graph/ShaderBufferSources.h",
+    "hgl/ecs/support/GPUCullSystem.h",
+    "hgl/ecs/core/EntityGPU.h",
+    "hgl/ecs/support/TransformDataStorage.h",
+    "hgl/mtl/DomainOptions.h",
+]
+
+[[assert]]
+contract = "hgl::shader::contract::DescriptorSetId::Bindless"
+legacy = "hgl::graph::DescriptorSetType::Bindless"
+message = "BINDLESS_SET 与 DescriptorSetType::Bindless 漂移（GLSL 集号错位 ⇒ 描述符集绑错）"
+
+[[assert]]
+contract = "hgl::shader::contract::EntityGpuSlotCount::Count"
+legacy = "hgl::ecs::kEntityGPUSlotCount"
+message = "ENTITY_GPU_SLOT_COUNT 与 kEntityGPUSlotCount 漂移（EntityGPU 定长行错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ArenaPassCount::Passes"
+legacy = "hgl::ecs::GPUCullSystem::kArenaPasses"
+message = "ULRE_ARENA_PASSES 与 GPUCullSystem::kArenaPasses 漂移（竞技场扇区与 shader 循环次数不一致）"
+
+[[assert]]
+contract = "hgl::shader::contract::BatchTopology::Triangles"
+legacy = "hgl::ecs::GPUCullSystem::kBatchTopologyTriangles"
+message = "TOPOLOGY_TRIANGLES 与 kBatchTopologyTriangles 漂移（gather 线程数公式错）"
+
+[[assert]]
+contract = "hgl::shader::contract::BatchTopology::Lines"
+legacy = "hgl::ecs::GPUCullSystem::kBatchTopologyLines"
+message = "TOPOLOGY_LINES 与 kBatchTopologyLines 漂移（线 gather 线程数公式错）"
+
+[[assert]]
+contract = "hgl::shader::contract::GpuHandleSentinel::InvalidHandle"
+legacy = "hgl::ecs::TransformDataStorage::INVALID_HANDLE"
+message = "INVALID_HANDLE 与 TransformDataStorage::INVALID_HANDLE 漂移（父子链遍历读到错行）"
+
+[[assert]]
+contract = "hgl::shader::contract::LightTypeId::Direction"
+legacy = "hgl::graph::LightType::Direction"
+message = "LIGHT_TYPE_DIRECTION 与 LightType::Direction 漂移"
+
+[[assert]]
+contract = "hgl::shader::contract::LightShadowKindId::None"
+legacy = "hgl::graph::LightShadowKind::None"
+message = "LIGHT_SHADOW_NONE 与 LightShadowKind::None 漂移"
+
+[[assert]]
+contract = "hgl::shader::contract::LightShadowKindId::CSM"
+legacy = "hgl::graph::LightShadowKind::CSM"
+message = "LIGHT_SHADOW_CSM 与 LightShadowKind::CSM 漂移"
+
+[[assert]]
+contract = "hgl::shader::contract::LightFlag::Enabled"
+legacy = "hgl::graph::kLightFlagEnabled"
+message = "LIGHT_FLAG_ENABLED 与 kLightFlagEnabled 漂移"
+
+[[assert]]
+contract = "hgl::shader::contract::LightFlag::CastShadow"
+legacy = "hgl::graph::kLightFlagCastShadow"
+message = "LIGHT_FLAG_CAST_SHADOW 与 kLightFlagCastShadow 漂移"
+
+[[assert]]
+contract = "hgl::shader::contract::MaterialShadowFlag::NoReceive"
+legacy = "hgl::graph::mtl::kMaterialShadowFlagNoReceive"
+message = "HGL_MATERIAL_SHADOW_FLAG_NO_RECEIVE 与 kMaterialShadowFlagNoReceive 漂移（阴影接收位错 ⇒ 逐图元恒受光/恒黑）"
+
+[[assert]]
+contract = "hgl::shader::contract::TextSdfSpread::Pixels"
+legacy = "hgl::graph::TEXT_SDF_SPREAD"
+message = "TEXT_SDF_SPREAD 与 FontSource.h 的 TEXT_SDF_SPREAD 漂移（距离场码率与勾边宽度同时偏移）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShadowPcfPoissonTaps::Count"
+legacy = "hgl::graph::mtl::DomainOptionsInput{}.shadow_pcf_poisson_taps"
+message = "HGL_SHADOW_PCF_POISSON_TAPS 与 DomainOptionsInput 默认值漂移"
+
+[[assert]]
+contract = "hgl::shader::contract::ShadowNormalOffset::Pixels"
+legacy = "hgl::graph::mtl::DomainOptionsInput{}.shadow_normal_offset"
+message = "HGL_SHADOW_NORMAL_OFFSET 与 DomainOptionsInput 默认值漂移"
