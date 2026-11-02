@@ -65,7 +65,9 @@ namespace hgl::graph::mtl
         /// 「build failed」），所以失败出口同时往这里记一份，调用方用
         /// `GetLastDomainShaderBuildBackendError()` 取走放进自己的诊断。
         /// 与 `GetLastMaterialProgramAssemblyError()` 同一动机。
-        AnsiString g_last_domain_build_error;
+        /// thread_local：并发编译时各线程读回各自的失败原因，互不顶掉，
+        /// 也避免返回的 `const char*` 被其它线程改写后悬垂。
+        thread_local AnsiString g_last_domain_build_error;
 
         void DomainBuildFailed(const char8_t *format, ...)
         {
@@ -79,6 +81,18 @@ namespace hgl::graph::mtl
             g_last_domain_build_error = buffer;
             GLogError(u8"%s", buffer);
         }
+
+        /// RAII：锁住全局着色器编译上下文（include 根表 + compile_info）。
+        /// 「切第二根 -> 编译 -> 恢复单根」必须作为整体串行化，见
+        /// `LockShaderCompileContext()` 在 ShaderCompilerProfileAPI.h 的约定。
+        struct ShaderCompileContextGuard
+        {
+            ShaderCompileContextGuard()  { LockShaderCompileContext(); }
+            ~ShaderCompileContextGuard() { UnlockShaderCompileContext(); }
+
+            ShaderCompileContextGuard(const ShaderCompileContextGuard &) = delete;
+            ShaderCompileContextGuard &operator=(const ShaderCompileContextGuard &) = delete;
+        };
 
         bool LoadTextFile(const OSString &path, AnsiString &out_text)
         {
@@ -581,6 +595,11 @@ namespace hgl::graph::mtl
             const std::string options_root_utf8 =
                 ShaderLibraryPathToUTF8(options_root);
 
+            // 切根与编译共享进程级全局（include 根表 / compile_info）：
+            // 整个「设双根 -> 编译 -> 恢复单根」序列必须互斥执行，
+            // 否则并发编译互相污染；guard 析构在一切 return 路径上解锁。
+            ShaderCompileContextGuard ctx_guard;
+
             const char *roots[2] = { library_root.c_str(), options_root_utf8.c_str() };
             if (!SetShaderIncludeRoots(roots, 2))
             {
@@ -595,16 +614,25 @@ namespace hgl::graph::mtl
 
             // 无论成败都收回第二根：残留的 options 根会让后续编译读到错误宏。
             const char *library_only[1] = { library_root.c_str() };
-            SetShaderIncludeRoots(library_only, 1);
+            const bool restored = SetShaderIncludeRoots(library_only, 1);
 
             if (!compiled)
             {
                 DomainBuildFailed(
-                    u8"[DomainBackend] 固定阶段编译失败：stage=%d domain=%d purpose=%d\n%s",
+                    u8"[DomainBackend] 固定阶段编译失败：stage=%d domain=%d purpose=%d\n%s%s",
                     static_cast<int>(stage),
                     static_cast<int>(domain),
                     static_cast<int>(purpose),
-                    diagnostic.c_str() ? diagnostic.c_str() : "");
+                    diagnostic.c_str() ? diagnostic.c_str() : "",
+                    restored ? "" : " | include 根恢复也失败");
+                return false;
+            }
+
+            if (!restored)
+            {
+                // 恢复失败 = options 根残留，会污染后续所有编译，必须显式报错。
+                DomainBuildFailed(u8"[DomainBackend] 编译成功但恢复库 include 根失败：%s",
+                    library_root.c_str());
                 return false;
             }
 

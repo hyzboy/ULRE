@@ -40,7 +40,9 @@
 
 namespace hgl::graph::mtl
 {
-    static AnsiString s_last_material_program_assembly_error;
+    // thread_local：并发装配时各线程读回各自的失败原因；getter 返回的引用
+    // 不会指向被其它线程改写中的缓冲。
+    static thread_local AnsiString s_last_material_program_assembly_error;
 
     namespace
     {

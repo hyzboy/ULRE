@@ -1,6 +1,7 @@
 #include<hgl/ShaderCompilerAPI.h>
 #include"TBuiltInResourceCompat.h"
 #include<hgl/platform/ExternalModule.h>
+#include<hgl/sync/Mutex.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Logger.h>
@@ -452,6 +453,22 @@ namespace hgl
         uint32_t GetShaderIncludeRootCount()
         {
             return g_include_root_count;
+        }
+
+        // 编译上下文锁（见 ShaderCompilerProfileAPI.h 声明处的约定）：
+        // hgl::Mutex 不可重入，本文件内部路径（SetShaderIncludeRoots、
+        // CompileShader）不加锁，由跨「切根→编译→恢复」序列的调用方
+        // （DomainShaderBuildBackend）整体持有。
+        static hgl::Mutex g_shader_compile_ctx_mutex;
+
+        void LockShaderCompileContext()
+        {
+            g_shader_compile_ctx_mutex.Lock();
+        }
+
+        void UnlockShaderCompileContext()
+        {
+            g_shader_compile_ctx_mutex.Unlock();
         }
         }//namespace mtl
 
