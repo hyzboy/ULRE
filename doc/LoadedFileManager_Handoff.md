@@ -67,6 +67,11 @@ Submit(path,handler) ─▶ 读盘到 LoadedFile 内部的 request ─▶ SwapMa
 
 ## 4. 尚未完成的事项(按顺序)
 
+> **状态更新**：§4.1 已完成（`LoadedFile.cpp` / `LoadedFileManager.cpp` 曾登记进
+> `src/Work/CMakeLists.txt`，后随下沉一并移出），下方的文件清单是迁移前的历史快照。
+> 现行 `src/Work/CMakeLists.txt` 只剩 `WorkObject` / `WorkManager` / `AppFramework`。
+> `LoadedFile*` 的构建登记已转到 `CMAssetsManage/src/CMakeLists.txt`。
+
 ### 4.1 注册到 CMake(**必须先做,否则不会被编译**)
 `src/Work/CMakeLists.txt` 当前只有:
 ```cmake

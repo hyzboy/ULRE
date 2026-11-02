@@ -196,7 +196,9 @@ Submit(path, handler) ─▶ 读整文件进 LoadedFile ─▶ SwapMailbox ─�
 | `TextureLoadCommitter` | `inc/hgl/graph/module/TextureLoadCommitter.h` | 把 `LoadedFile` 解析成 `TextureCreateInfo` 并提交 GPU 上传队列 |
 
 > 三个 `LoadedFile*` 已下沉到公共库 **CMAssetsManage**（`inc/hgl/asset/`），include 写作
-> `#include<hgl/asset/LoadedFile.h>`；原位置 `inc/hgl/framework/` 与 `src/Work/` 已清空。
+> `#include<hgl/asset/LoadedFile.h>`；原 `inc/hgl/framework/LoadedFile*.h` 与
+> `src/Work/LoadedFile*.cpp` 已移出（`src/Work/` 本身仍在，`WorkManager` / `AppFramework`
+> 等主循环代码不受影响）。
 
 ### 8.2 弱表缓存与复活
 
