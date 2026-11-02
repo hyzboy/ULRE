@@ -8,7 +8,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl::contract
 {
-    using namespace hgl::graph::mtl;
     struct PhysicalDeviceLimitsLite
     {
         uint32_t max_image_dimension_2d = 0;

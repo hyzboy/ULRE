@@ -10,7 +10,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl::contract
 {
-    using namespace hgl::graph::mtl;
     namespace detail
     {
         inline bool FindJsonKeyPos(const std::string &json, const std::string &key, std::size_t &value_pos)

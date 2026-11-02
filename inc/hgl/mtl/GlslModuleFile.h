@@ -48,6 +48,12 @@ namespace hgl::graph::mtl
      */
     struct GlslModuleFileData
     {
+        // `definition` 内的指针指向本对象的兄弟成员，复制会复制这些自引用指针
+        // （产生双主/悬垂风险）；实例必须以稳定地址存放，禁止拷贝。
+        GlslModuleFileData() = default;
+        GlslModuleFileData(const GlslModuleFileData &) = delete;
+        GlslModuleFileData &operator=(const GlslModuleFileData &) = delete;
+
         AnsiString name;
         AnsiString glsl_code;
 

@@ -8,8 +8,6 @@ namespace hgl::graph::mtl {}
 
 namespace hgl::graph::mtl::contract
 {
-    using namespace hgl::graph::mtl;
-
     // 硬性 Vulkan 1.4（vulkan1.4.md 第 1 项）：版本/SPIR-V 阶梯整体塌缩为常量。
     // 1.3 起 SPIR-V 1.6 即核心，1.4 下无条件成立——不再按 api_version 探测。
     constexpr uint32_t MakeVkVersion(const uint32_t major, const uint32_t minor, const uint32_t patch = 0)

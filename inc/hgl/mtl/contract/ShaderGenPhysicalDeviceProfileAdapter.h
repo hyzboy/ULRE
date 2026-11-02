@@ -11,7 +11,6 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl::contract
 {
-    using namespace hgl::graph::mtl;
     const char *ResolveCapabilityTier(const ::hgl::graph::VulkanPhyDevice &pd);
     const char *ResolveDeviceTypeName(uint32_t physical_device_type);
 
