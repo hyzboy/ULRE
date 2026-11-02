@@ -111,6 +111,28 @@ endif()
 
 ####################################################################################################
 
+# ShaderConstGen `--check`：逐字节对拍已提交的 GLSL 宏 / parity 头与契约枚举
+# 再生成结果，并跑 sampler_registry（sampler.toml 顺序 vs SamplerPresetId）、
+# verify_glsl、require_include 三类只读校验。没有这条通道，"预设顺序被调换"
+# 只在有人手动跑生成器时才会暴露（M-11）。仅在 Python/clang 探测成功时注册。
+if(BUILD_TESTING AND ULRE_ENABLE_SHADER_CONST_CODEGEN
+        AND ULRE_CODEGEN_PYTHON_EXE AND ULRE_CODEGEN_CLANG_EXE)
+    add_test(
+        NAME shader_const_gen_check
+        COMMAND "${ULRE_CODEGEN_PYTHON_EXE}"
+                "${CMAKE_SOURCE_DIR}/src/Tools/ShaderConstGen/shader_const_gen.py"
+                --repo-root "${CMAKE_SOURCE_DIR}"
+                --config    "${CMAKE_SOURCE_DIR}/src/Tools/ShaderConstGen/shader_const_gen.toml"
+                --clang     "${ULRE_CODEGEN_CLANG_EXE}"
+                --check
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+    set_tests_properties(
+        shader_const_gen_check
+        PROPERTIES LABELS "shader_tooling;baseline;codegen")
+endif()
+
+####################################################################################################
+
 add_executable(ScenePassProfileResolverRegression
     ScenePassProfileResolverRegression.cpp)
 

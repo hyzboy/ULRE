@@ -50,6 +50,42 @@ static_assert(static_cast<int64_t>(hgl::shader::contract::ShadowPcfPoissonTaps::
               "HGL_SHADOW_PCF_POISSON_TAPS 与 DomainOptionsInput 默认值漂移");
 static_assert(static_cast<int64_t>(hgl::shader::contract::ShadowNormalOffset::Pixels) == static_cast<int64_t>(hgl::graph::mtl::DomainOptionsInput{}.shadow_normal_offset),
               "HGL_SHADOW_NORMAL_OFFSET 与 DomainOptionsInput 默认值漂移");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::Nearest) == static_cast<int64_t>(0),
+              "SamplerPresetId::Nearest 数值漂移（采样器槽位整体错位 ⇒ 静默降级为 Nearest）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::Linear) == static_cast<int64_t>(1),
+              "SamplerPresetId::Linear 数值漂移（sampler.toml 第 2 条必须是 Linear）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::Trilinear) == static_cast<int64_t>(2),
+              "SamplerPresetId::Trilinear 数值漂移（sampler.toml 第 3 条必须是 Trilinear）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::TrilinearAniso) == static_cast<int64_t>(3),
+              "SamplerPresetId::TrilinearAniso 数值漂移（sampler.toml 第 4 条必须是 TrilinearAniso）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::ShadowPCF) == static_cast<int64_t>(4),
+              "SamplerPresetId::ShadowPCF 数值漂移（阴影比较采样槽位错 ⇒ reversed-Z 阴影整体错采样）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::Terrain) == static_cast<int64_t>(5),
+              "SamplerPresetId::Terrain 数值漂移（地形 Rebuild 槽位错）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::UI) == static_cast<int64_t>(6),
+              "SamplerPresetId::UI 数值漂移（GUI 采样槽位错）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::SamplerPresetId::TrilinearClamp) == static_cast<int64_t>(7),
+              "SamplerPresetId::TrilinearClamp 数值漂移（八面体 IBL 越界图采样错；追加预设只能往末尾加）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::DataIndexID) == static_cast<int64_t>(0),
+              "ShaderStageLocationId::DataIndexID 数值漂移（进 program 缓存键，单边漂移不编译失败）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::WorldPos) == static_cast<int64_t>(1),
+              "ShaderStageLocationId::WorldPos 数值漂移（Mesh→Frag 交接 location 错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::WorldNormal) == static_cast<int64_t>(2),
+              "ShaderStageLocationId::WorldNormal 数值漂移（Mesh→Frag 交接 location 错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::UV0) == static_cast<int64_t>(3),
+              "ShaderStageLocationId::UV0 数值漂移（Mesh→Frag 交接 location 错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::StyleID) == static_cast<int64_t>(4),
+              "ShaderStageLocationId::StyleID 数值漂移（2D 批量描边样式槽错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::VertexColor) == static_cast<int64_t>(5),
+              "ShaderStageLocationId::VertexColor 数值漂移（Mesh→Frag 交接 location 错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::FragDirection) == static_cast<int64_t>(6),
+              "ShaderStageLocationId::FragDirection 数值漂移（Mesh→Frag 交接 location 错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::Luminance) == static_cast<int64_t>(7),
+              "ShaderStageLocationId::Luminance 数值漂移（vertex_luminance 域亮度交接错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::WorldTangent) == static_cast<int64_t>(8),
+              "ShaderStageLocationId::WorldTangent 数值漂移（法线贴图切线交接错位）");
+static_assert(static_cast<int64_t>(hgl::shader::contract::ShaderStageLocationId::WorldBinormal) == static_cast<int64_t>(9),
+              "ShaderStageLocationId::WorldBinormal 数值漂移（法线贴图副切线交接错位）");
 }
 
 #endif // HGL_SHADER_CONSTANTS_PARITY_GEN_H

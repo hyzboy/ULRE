@@ -166,6 +166,11 @@ function(ulre_codegen_configure)
         return()
     endif()
 
+    # 把探测结果发布给 CMake（ctest 用例 shader_const_gen_check 依赖它们；
+    # 探测失败时上面的 _missing 分支已 return，不会走到这里）。
+    set(ULRE_CODEGEN_PYTHON_EXE "${_python}" CACHE INTERNAL "CodeGen 探测到的 Python 3.11+")
+    set(ULRE_CODEGEN_CLANG_EXE  "${_clang}"  CACHE INTERNAL "CodeGen 探测到的 clang++")
+
     # 生成器读取的输入面：五个默认 include 根 + 生成器自身 + 配置
     # （CMAssetsManage/inc 承接 hgl/asset/AssetAnnotation.h、AssetObject.h 与
     #   整个 hgl/serialize（反射内核 + Toml/Flat/ArchiveFile 后端）；*Spec.h 的 #include 全走它）

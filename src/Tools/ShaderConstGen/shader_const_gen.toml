@@ -415,3 +415,100 @@ message = "HGL_SHADOW_PCF_POISSON_TAPS 与 DomainOptionsInput 默认值漂移"
 contract = "hgl::shader::contract::ShadowNormalOffset::Pixels"
 legacy = "hgl::graph::mtl::DomainOptionsInput{}.shadow_normal_offset"
 message = "HGL_SHADOW_NORMAL_OFFSET 与 DomainOptionsInput 默认值漂移"
+
+# ── 契约枚举数值钉桩（M-11 补盲）──────────────────────────────────────────────
+# SamplerPresetId / ShaderStageLocationId 没有第二份 C++ 镜像可对比，
+# 但它们的**数值本身**就是跨工件 ABI（材质 toml、已提交 GLSL 宏、program
+# 缓存键）。这里把逐项数值钉成 toml 字面量：改头文件枚举而不在本表同步，
+# 门禁 TU 编译期直接失败；顺序/条数错位则由生成器 sampler_registry 校验与
+# `--check` ctest 用例（shader_const_gen_check）拦截。
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::Nearest"
+legacy = "0"
+message = "SamplerPresetId::Nearest 数值漂移（采样器槽位整体错位 ⇒ 静默降级为 Nearest）"
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::Linear"
+legacy = "1"
+message = "SamplerPresetId::Linear 数值漂移（sampler.toml 第 2 条必须是 Linear）"
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::Trilinear"
+legacy = "2"
+message = "SamplerPresetId::Trilinear 数值漂移（sampler.toml 第 3 条必须是 Trilinear）"
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::TrilinearAniso"
+legacy = "3"
+message = "SamplerPresetId::TrilinearAniso 数值漂移（sampler.toml 第 4 条必须是 TrilinearAniso）"
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::ShadowPCF"
+legacy = "4"
+message = "SamplerPresetId::ShadowPCF 数值漂移（阴影比较采样槽位错 ⇒ reversed-Z 阴影整体错采样）"
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::Terrain"
+legacy = "5"
+message = "SamplerPresetId::Terrain 数值漂移（地形 Rebuild 槽位错）"
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::UI"
+legacy = "6"
+message = "SamplerPresetId::UI 数值漂移（GUI 采样槽位错）"
+
+[[assert]]
+contract = "hgl::shader::contract::SamplerPresetId::TrilinearClamp"
+legacy = "7"
+message = "SamplerPresetId::TrilinearClamp 数值漂移（八面体 IBL 越界图采样错；追加预设只能往末尾加）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::DataIndexID"
+legacy = "0"
+message = "ShaderStageLocationId::DataIndexID 数值漂移（进 program 缓存键，单边漂移不编译失败）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::WorldPos"
+legacy = "1"
+message = "ShaderStageLocationId::WorldPos 数值漂移（Mesh→Frag 交接 location 错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::WorldNormal"
+legacy = "2"
+message = "ShaderStageLocationId::WorldNormal 数值漂移（Mesh→Frag 交接 location 错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::UV0"
+legacy = "3"
+message = "ShaderStageLocationId::UV0 数值漂移（Mesh→Frag 交接 location 错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::StyleID"
+legacy = "4"
+message = "ShaderStageLocationId::StyleID 数值漂移（2D 批量描边样式槽错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::VertexColor"
+legacy = "5"
+message = "ShaderStageLocationId::VertexColor 数值漂移（Mesh→Frag 交接 location 错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::FragDirection"
+legacy = "6"
+message = "ShaderStageLocationId::FragDirection 数值漂移（Mesh→Frag 交接 location 错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::Luminance"
+legacy = "7"
+message = "ShaderStageLocationId::Luminance 数值漂移（vertex_luminance 域亮度交接错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::WorldTangent"
+legacy = "8"
+message = "ShaderStageLocationId::WorldTangent 数值漂移（法线贴图切线交接错位）"
+
+[[assert]]
+contract = "hgl::shader::contract::ShaderStageLocationId::WorldBinormal"
+legacy = "9"
+message = "ShaderStageLocationId::WorldBinormal 数值漂移（法线贴图副切线交接错位）"
