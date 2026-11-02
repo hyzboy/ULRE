@@ -10,7 +10,7 @@
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/RenderTargetAsset.h>
-#include<hgl/framework/LoadedFile.h>
+#include<hgl/asset/LoadedFile.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{

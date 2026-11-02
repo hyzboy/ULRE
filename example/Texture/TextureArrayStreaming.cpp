@@ -14,7 +14,7 @@
 // 所以每格只需在实体变换里缩放/平移到格位，不需要相机。
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/framework/LoadedFileManager.h>
+#include<hgl/asset/LoadedFileManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/filesystem/Filename.h>

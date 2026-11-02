@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/framework/LoadedFileHandler.h>
+#include <hgl/asset/LoadedFileHandler.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/type/String.h>

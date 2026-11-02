@@ -1,7 +1,7 @@
 #include <hgl/graph/asset/SceneAssetRegistry.h>
 #include <hgl/graph/asset/SceneAssetFile.h>
 #include <hgl/graph/asset/SceneLoader.h>
-#include <hgl/framework/LoadedFile.h>
+#include <hgl/asset/LoadedFile.h>
 #include <hgl/log/Log.h>
 
 DEFINE_LOGGER_MODULE(SceneAssetRegistry)

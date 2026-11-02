@@ -1,6 +1,6 @@
 #include<hgl/graph/mesh/SceneStreaming.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
-#include<hgl/framework/LoadedFileManager.h>
+#include<hgl/asset/LoadedFileManager.h>
 #include<hgl/log/Log.h>
 #include<hgl/utf.h>
 

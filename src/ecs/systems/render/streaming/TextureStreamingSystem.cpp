@@ -1,7 +1,7 @@
 #include<hgl/ecs/systems/render/streaming/TextureStreamingSystem.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/framework/LoadedFileManager.h>
-#include<hgl/framework/LoadedFileHandler.h>
+#include<hgl/asset/LoadedFileManager.h>
+#include<hgl/asset/LoadedFileHandler.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>

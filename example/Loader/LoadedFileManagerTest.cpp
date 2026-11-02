@@ -15,7 +15,7 @@
 //
 // 返回值：0 表示全部通过，非 0 为失败阶段编号。
 
-#include<hgl/framework/LoadedFileManager.h>
+#include<hgl/asset/LoadedFileManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/io/FileOutputStream.h>
 #include<hgl/time/Time.h>

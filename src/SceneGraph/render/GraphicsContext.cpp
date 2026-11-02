@@ -14,7 +14,7 @@
 #include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKCommandBuffer.h>
-#include <hgl/framework/LoadedFileManager.h>
+#include <hgl/asset/LoadedFileManager.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/type/StdString.h>

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/framework/LoadedFile.h>
+#include<hgl/asset/LoadedFile.h>
 #include<hgl/graph/module/TextureManager.h>
 
 namespace hgl::graph

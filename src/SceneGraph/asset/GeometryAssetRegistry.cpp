@@ -2,7 +2,7 @@
 #include<hgl/graph/asset/GeometryAssetFile.h>
 #include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/asset/AssetURI.h>
-#include<hgl/framework/LoadedFile.h>
+#include<hgl/asset/LoadedFile.h>
 #include<hgl/log/Log.h>
 #include<hgl/utf.h>
 
