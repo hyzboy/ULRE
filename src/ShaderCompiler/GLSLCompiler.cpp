@@ -242,7 +242,7 @@ namespace hgl
 
             if(!filesystem::GetCurrentPath(cur_path))
             {
-                std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot get current path\n");
+                GLogError(u8"[GLSLCompiler] Init failed: cannot get current path");
                 return(false);
             }
             glsl_compiler_fullname=filesystem::JoinPathWithFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
@@ -276,8 +276,7 @@ namespace hgl
 
             if(!gsi_module)
             {
-                std::fprintf(stderr,
-                    "[GLSLCompiler] Init failed: cannot load GLSLCompiler plugin module\n");
+                GLogError(u8"[GLSLCompiler] Init failed: cannot load GLSLCompiler plugin module");
                 return(false);
             }
 
@@ -318,16 +317,16 @@ namespace hgl
                         return(true);
                     }
 
-                    std::fprintf(stderr,"[GLSLCompiler] Init failed: plugin interface init returned false\n");
+                    GLogError(u8"[GLSLCompiler] Init failed: plugin interface init returned false");
                 }
                 else
                 {
-                    std::fprintf(stderr,"[GLSLCompiler] Init failed: GetInterface returned null\n");
+                    GLogError(u8"[GLSLCompiler] Init failed: GetInterface returned null");
                 }
             }
             else
             {
-                std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot resolve GetInterface symbol\n");
+                GLogError(u8"[GLSLCompiler] Init failed: cannot resolve GetInterface symbol");
             }
 
             gsi=nullptr;
@@ -617,8 +616,7 @@ namespace hgl
 
             if(!gsi)
             {
-                std::fprintf(stderr,
-                    "[GLSLCompiler] CompileShader failed: compiler not initialized (GLSLCompiler plugin unavailable?)\n");
+                GLogError(u8"[GLSLCompiler] CompileShader failed: compiler not initialized (GLSLCompiler plugin unavailable?)");
                 if(out_diagnostic)
                     *out_diagnostic = "compiler not initialized (GLSLCompiler plugin unavailable?)";
                 return(nullptr);
@@ -631,7 +629,7 @@ namespace hgl
             else
             if(bom!=ByteOrderMask::NONE)
             {
-                std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: unsupported BOM\n");
+                GLogError(u8"[GLSLCompiler] CompileShader failed: unsupported BOM");
                 if(out_diagnostic)
                     *out_diagnostic = "unsupported BOM";
                 return(nullptr);
@@ -641,7 +639,7 @@ namespace hgl
 
             if(!spv)
             {
-                std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: gsi->Compile returned null\n");
+                GLogError(u8"[GLSLCompiler] CompileShader failed: gsi->Compile returned null");
                 if(out_diagnostic)
                     *out_diagnostic = "GLSLCompiler::Compile returned null";
                 return(nullptr);

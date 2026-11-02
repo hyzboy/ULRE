@@ -305,8 +305,7 @@ static ShaderBuildContext *FailCompile(CompileContext &c)
 {
     if (!c.last_error.empty())
     {
-        std::fprintf(stderr,
-            "[CompileMaterialStages] material=%s failed: %s\n",
+        GLogError(u8"[CompileMaterialStages] material=%s failed: %s",
             c.input && c.input->debug_name ? c.input->debug_name : "<unnamed>",
             c.last_error.c_str());
     }
