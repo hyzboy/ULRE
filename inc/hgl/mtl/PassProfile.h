@@ -63,6 +63,18 @@ namespace hgl::graph::mtl
         AnsiString include_path;
     };
 
+    // 形状/内容契约（阶段 4 调研结论，勿再试图"收敛"掉）：
+    // 生产请求的**槽角色集合**恒等于 FindPassProfile 模板表：请求只能由
+    // ScenePassProfileResolver 的 4 个工厂构造（ecs 的 text/line 管线直接复用
+    // ForwardUnlit 工厂），provider 名经 MaterialResolver 的追加逻辑填入。
+    // 但**槽内模块名是有意动态的**——MaterialSourceProvider / NTBProvider /
+    // AmbientLightProvider / Sky 的 SurfaceProvider 按材质定义替换实现，
+    // 且 ShadowCasterOpaque 的 MaterialSourceProvider 是显式 optional 槽。
+    // 因此下面的两级校验不可互相替代：
+    //   数据面重载只校验基础字段与形状（Stage/Version/Unexpected/
+    //   Duplicate/MissingRequired 等）；
+    //   registry 重载（PassProfileResolve.cpp）校验内容（模块注册、include
+    //   路径、依赖图、capability 闭合），与槽形状无关，删不掉。
     struct PassProfileRequest
     {
         PassProfileID profile_id = PassProfileID::Unknown;
