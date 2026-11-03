@@ -12,7 +12,7 @@ namespace hgl::ecs
         ECSContext* world = nullptr;
 
     public:
-        explicit LineBoundsUpdateSystem(const std::string& name = "LineBoundsUpdateSystem");
+        explicit LineBoundsUpdateSystem(const AnsiString& name = "LineBoundsUpdateSystem");
         ~LineBoundsUpdateSystem() override = default;
 
         void SetWorld(ECSContext* w) { world = w; }

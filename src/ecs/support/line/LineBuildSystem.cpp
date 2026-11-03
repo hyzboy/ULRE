@@ -6,8 +6,8 @@
 
 namespace hgl::ecs
 {
-    LineBuildSystem::LineBuildSystem(const std::string& name)
-        : BuildSystem(name)
+    LineBuildSystem::LineBuildSystem(const AnsiString& name)
+        : BuildSystem(name.ToStdString())
     {
         SetExecutionPhase(ExecutionPhase::RenderBatch);
         SetRenderElementType("Line");

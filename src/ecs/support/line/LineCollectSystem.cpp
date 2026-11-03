@@ -5,8 +5,8 @@
 
 namespace hgl::ecs
 {
-    LineCollectSystem::LineCollectSystem(const std::string& name)
-        : CollectSystem(name)
+    LineCollectSystem::LineCollectSystem(const AnsiString& name)
+        : CollectSystem(name.ToStdString())
     {
         SetExecutionPhase(ExecutionPhase::RenderCollect);
         SetRenderElementType("Line");

@@ -7,7 +7,7 @@
 
 namespace hgl::ecs
 {
-    LineStatsSystem::LineStatsSystem(const std::string& name)
+    LineStatsSystem::LineStatsSystem(const AnsiString& name)
         : System(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderStat);

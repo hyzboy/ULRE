@@ -31,7 +31,6 @@
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
 #include <glm/glm.hpp>
-#include <limits>
 
 namespace hgl::ecs
 {
@@ -40,10 +39,10 @@ namespace hgl::ecs
     static uint32_t s_line_log_ticks[16] = {};
 
     template<typename... Args>
-    void LinePeriodicLog(uint32_t &tick, const char *fmt, Args&&... args)
+    void LinePeriodicLog(uint32_t &tick, const char *fmt, Args... args)
     {
         if ((++tick % 60u) == 1u)
-            GLogInfo(fmt, std::forward<Args>(args)...);
+            GLogInfo(fmt, args...);
     }
     namespace
     {
@@ -547,7 +546,7 @@ namespace hgl::ecs
         current_line_buffer_ = &line_buffers_[slot];
         current_line_buffer_->Reset();
 
-        collected_.clear();
+        collected_.Clear();
         stats_ = LineCollectStats{};
         total_line_count_ = 0;
         prepared_frame_ = frame;
@@ -560,7 +559,7 @@ namespace hgl::ecs
         if (!PrepareFrame())
             return;
 
-        collected_.clear();
+        collected_.Clear();
         stats_ = LineCollectStats{};
 
         // Build frustum from camera
@@ -587,7 +586,7 @@ namespace hgl::ecs
             if (!comp) continue;
             ++stats_.total_components;
 
-            if (comp->lines.empty())
+            if (comp->lines.IsEmpty())
             {
                 // 批 1.3 C2：空线段不是**可见性剔除**——单列一项，别污染真视锥/可见性统计。
                 ++stats_.skipped_empty;
@@ -623,7 +622,7 @@ namespace hgl::ecs
                 }
             }
 
-            collected_.push_back(comp);
+            collected_.Add(comp);
             ++stats_.visible_components;
         }
 
@@ -657,7 +656,7 @@ namespace hgl::ecs
         }
         LineBuffer &line_buffer_ = *current_line_buffer_;
 
-        std::shared_ptr<TransformSystem> transform_system_sp = context_ ? context_->GetSystem<TransformSystem>() : nullptr;
+        auto transform_system_sp = context_ ? context_->GetSystem<TransformSystem>() : nullptr;
         TransformSystem* transform_system = transform_system_sp.get();
         uint32_t static_count = 0;
         uint32_t dynamic_count = 0;
@@ -685,7 +684,7 @@ namespace hgl::ecs
         uint32_t expected_total = 0;
         for (const auto& comp : collected_)
         {
-            const size_t component_line_count = comp->lines.size();
+            const size_t component_line_count = static_cast<size_t>(comp->lines.GetCount());
             if (component_line_count > static_cast<size_t>(0xFFFFFFFFu - expected_total))
             {
                 GLogError("[LineRenderPipeline] Total line count exceeds the supported 32-bit capacity");
@@ -1017,7 +1016,7 @@ namespace hgl::ecs
         device_      = nullptr;
         initialized_ = false;
         prepared_frame_ = UINT32_MAX;
-        collected_.clear();
+        collected_.Clear();
         stats_ = LineCollectStats{};
         total_line_count_ = 0;
         bound_transform_buffer_ = nullptr;
@@ -1029,7 +1028,7 @@ namespace hgl::ecs
         if (!context_ || !material_)
             return;
 
-        std::shared_ptr<TransformSystem> transform_system_sp = context_->GetSystem<TransformSystem>();
+        auto transform_system_sp = context_->GetSystem<TransformSystem>();
         auto* transform_system = transform_system_sp.get();
         if (!transform_system)
             return;

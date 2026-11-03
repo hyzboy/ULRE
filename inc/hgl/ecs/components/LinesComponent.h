@@ -4,9 +4,7 @@
 #include<hgl/math/Vector.h>
 #include<hgl/math/geometry/AABB.h>
 #include<hgl/color/Color4f.h>
-#include<vector>
-#include<limits>
-#include<algorithm>
+#include<hgl/type/ValueArray.h>
 
 namespace hgl::ecs
 {
@@ -35,7 +33,7 @@ namespace hgl::ecs
             float min_width = 0.0f;         ///< CN: 最细阈值(像素)——深度衰减下限；0=可细到消失 EN: Min width (px), depth-attenuation floor
         };
 
-        std::vector<LineSegment> lines;      ///< CN: 线段列表 EN: Line segments
+        ValueArray<LineSegment> lines;   ///< CN: 线段列表 EN: Line segments
         uint8_t width = 1;                   ///< CN: 线宽(1-16) EN: Line width (1-16)
         LineStyle style = LineStyle::Solid;  ///< CN: 线条风格 EN: Line style
 
@@ -60,7 +58,7 @@ namespace hgl::ecs
          */
         void AddLine(const hgl::math::Vector3f &from, const hgl::math::Vector3f &to, uint8_t color_index = 0)
         {
-            lines.push_back({from, to, color_index});
+            lines.Add(LineSegment{from, to, color_index});
             local_bounds_valid = false;
         }
 
@@ -70,21 +68,17 @@ namespace hgl::ecs
          */
         void ClearLines()
         {
-            lines.clear();
+            lines.Clear();
             local_bounds_valid = false;
         }
 
-        /**
-         * CN: 获取线段数量
-         * EN: Get line count
-         */
-        size_t GetLineCount() const { return lines.size(); }
+        /// CN: 获取线段数量
+        /// EN: Get line count
+        size_t GetLineCount() const { return static_cast<size_t>(lines.GetCount()); }
 
-        /**
-         * CN: 是否有线段
-         * EN: Has any lines
-         */
-        bool HasLines() const { return !lines.empty(); }
+        /// CN: 是否有线段
+        /// EN: Has any lines
+        bool HasLines() const { return !lines.IsEmpty(); }
 
         /**
          * CN: 设置线宽
@@ -114,27 +108,38 @@ namespace hgl::ecs
 
         bool RecalculateLocalBounds()
         {
-            if (lines.empty())
+            if (lines.IsEmpty())
             {
                 local_bounds_valid = false;
                 return false;
             }
 
-            float min_x = std::numeric_limits<float>::max();
-            float min_y = std::numeric_limits<float>::max();
-            float min_z = std::numeric_limits<float>::max();
-            float max_x = -std::numeric_limits<float>::max();
-            float max_y = -std::numeric_limits<float>::max();
-            float max_z = -std::numeric_limits<float>::max();
+            // 以首段两端点初始化 min/max，逐项手工比较（不依赖 std::min/max/numeric_limits）
+            const LineSegment &first = lines[0];
+            float min_x = first.from.x < first.to.x ? first.from.x : first.to.x;
+            float min_y = first.from.y < first.to.y ? first.from.y : first.to.y;
+            float min_z = first.from.z < first.to.z ? first.from.z : first.to.z;
+            float max_x = first.from.x < first.to.x ? first.to.x : first.from.x;
+            float max_y = first.from.y < first.to.y ? first.to.y : first.from.y;
+            float max_z = first.from.z < first.to.z ? first.to.z : first.from.z;
 
-            for (const auto& segment : lines)
+            for (int i = 1; i < lines.GetCount(); ++i)
             {
-                min_x = std::min(min_x, std::min(segment.from.x, segment.to.x));
-                min_y = std::min(min_y, std::min(segment.from.y, segment.to.y));
-                min_z = std::min(min_z, std::min(segment.from.z, segment.to.z));
-                max_x = std::max(max_x, std::max(segment.from.x, segment.to.x));
-                max_y = std::max(max_y, std::max(segment.from.y, segment.to.y));
-                max_z = std::max(max_z, std::max(segment.from.z, segment.to.z));
+                const LineSegment &segment = lines[i];
+
+                if (segment.from.x < min_x) min_x = segment.from.x;
+                if (segment.from.y < min_y) min_y = segment.from.y;
+                if (segment.from.z < min_z) min_z = segment.from.z;
+                if (segment.to.x   < min_x) min_x = segment.to.x;
+                if (segment.to.y   < min_y) min_y = segment.to.y;
+                if (segment.to.z   < min_z) min_z = segment.to.z;
+
+                if (segment.from.x > max_x) max_x = segment.from.x;
+                if (segment.from.y > max_y) max_y = segment.from.y;
+                if (segment.from.z > max_z) max_z = segment.from.z;
+                if (segment.to.x   > max_x) max_x = segment.to.x;
+                if (segment.to.y   > max_y) max_y = segment.to.y;
+                if (segment.to.z   > max_z) max_z = segment.to.z;
             }
 
             local_bounds.SetMinMax(hgl::math::Vector3f(min_x, min_y, min_z),

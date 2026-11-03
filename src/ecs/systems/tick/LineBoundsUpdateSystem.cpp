@@ -7,7 +7,7 @@
 
 namespace hgl::ecs
 {
-    LineBoundsUpdateSystem::LineBoundsUpdateSystem(const std::string& name)
+    LineBoundsUpdateSystem::LineBoundsUpdateSystem(const AnsiString& name)
         : System(name)
     {
         SetExecutionPhase(ExecutionPhase::TickTransform);

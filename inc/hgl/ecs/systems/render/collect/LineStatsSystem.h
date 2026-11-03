@@ -14,7 +14,7 @@ namespace hgl::ecs
         uint32_t log_interval = 120;
 
     public:
-        explicit LineStatsSystem(const std::string& name = "LineStatsSystem");
+        explicit LineStatsSystem(const AnsiString& name = "LineStatsSystem");
         ~LineStatsSystem() override = default;
 
         void SetWorld(ECSContext* w) { world = w; }

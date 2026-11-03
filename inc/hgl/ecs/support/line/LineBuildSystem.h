@@ -11,7 +11,7 @@ namespace hgl::ecs
     class LineBuildSystem : public BuildSystem
     {
     public:
-        explicit LineBuildSystem(const std::string& name = "LineBuildSystem");
+        explicit LineBuildSystem(const AnsiString& name = "LineBuildSystem");
         ~LineBuildSystem() override = default;
 
         RenderPipelineBase* GetPipeline(ECSContext* context) override;

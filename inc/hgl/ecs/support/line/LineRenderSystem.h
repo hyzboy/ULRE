@@ -11,7 +11,7 @@ namespace hgl::ecs
     class LineRenderSystem : public RenderPipelineDrawSystem
     {
     public:
-        explicit LineRenderSystem(const std::string& name = "LineRenderSystem");
+        explicit LineRenderSystem(const AnsiString& name = "LineRenderSystem");
         ~LineRenderSystem() override = default;
 
         RenderPipelineBase* GetPipeline(ECSContext* context) override;

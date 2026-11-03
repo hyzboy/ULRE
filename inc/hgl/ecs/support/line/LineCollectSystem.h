@@ -14,7 +14,7 @@ namespace hgl::ecs
     class LineCollectSystem : public CollectSystem
     {
     public:
-        explicit LineCollectSystem(const std::string& name = "LineCollectSystem");
+        explicit LineCollectSystem(const AnsiString& name = "LineCollectSystem");
         ~LineCollectSystem() override = default;
 
         RenderPipelineBase* GetPipeline(ECSContext* context) override;

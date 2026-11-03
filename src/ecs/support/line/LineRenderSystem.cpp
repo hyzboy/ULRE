@@ -7,8 +7,8 @@
 
 namespace hgl::ecs
 {
-    LineRenderSystem::LineRenderSystem(const std::string& name)
-        : RenderPipelineDrawSystem(name)
+    LineRenderSystem::LineRenderSystem(const AnsiString& name)
+        : RenderPipelineDrawSystem(name.ToStdString())
     {
         SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);
         SetRenderElementType("Line");
