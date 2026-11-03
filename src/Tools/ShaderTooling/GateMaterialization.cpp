@@ -624,7 +624,8 @@ namespace gate
                         continue;
 
                     const std::string path = entry.path().string();
-                    if (path.find("ShaderResourceSchemaRegressionGate.cpp") != std::string::npos)
+                    if (path.find("ShaderResourceSchemaRegressionGate.cpp") != std::string::npos
+                     || path.find("GateMaterialization.cpp") != std::string::npos)
                         continue;
 
                     const std::string text = ReadFileText(path);

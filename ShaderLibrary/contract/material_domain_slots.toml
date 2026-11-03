@@ -1,0 +1,289 @@
+# ShaderLibrary/contract/material_domain_slots.toml
+#
+# 材质领域（MaterialDomain）纹理槽规范契约注册表
+# ── 单一事实真源（Single Source of Truth）──
+#
+# 该文件定义所有非 Custom 材质领域的纹理槽规范列表。
+# 由 src/Tools/DomainSlotGen/domain_slot_gen.py 工具自动派生：
+#   1. C++ 头文件: inc/hgl/mtl/generated/MaterialDomainSlots.gen.h
+#   2. GLSL 绑定片段: ShaderLibrary/domain/generated/<domain>_texture_bindings.glsl
+#
+# 字段说明：
+#   domain            : C++ MaterialDomain 枚举名及契约名（如 StandardOpaque, Foliage, UI2D 等）
+#   description       : 领域简要说明
+#   [[domains.slots]] : 纹理槽列表（顺序严格保持，槽位顺序即 ABI 布局顺序与索引）
+#     name            : 纹理槽名（TOML 与 GLSL 标识符，生成 uvec2 tex_<name>）
+#     role            : 语义角色（对应 C++ MaterialDomainTextureRole 枚举，如 BaseColor, Normal 等）
+#     must_declare    : 材质是否必须在 TOML 中声明此槽（true = 强制声明以保证 layout 统一）
+#     sampler         : 默认采样器种类（对应 SamplerType，如 Sampler2DArray, SamplerCube 等）
+#     binding_required: 是否在运行时必须绑定实际纹理（true = 缺失直接报错；false = 可缺省并用中性值保底）
+#     channels        : 通道数约束（0 = 由纹素格式决定；2 = 双通道法线 XY，如 Normal 槽）
+
+schema = 1
+
+# ══ PBR 表面族 ════════════════════════════════════════════════════════════════
+
+[[domains]]
+domain = "StandardOpaque"
+description = "通用不透明/半透明硬表面"
+
+[[domains.slots]]
+name = "base_color"
+role = "BaseColor"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "roughness"
+role = "Roughness"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "metallic"
+role = "Metallic"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "occlusion"
+role = "Occlusion"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "opacity_mask"
+role = "OpacityMask"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "normal"
+role = "Normal"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[domains]]
+domain = "Foliage"
+description = "植被/树叶/草（风力摆动 + 双面 + 透射）"
+
+[[domains.slots]]
+name = "base_color"
+role = "BaseColor"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "normal"
+role = "Normal"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 2
+
+[[domains.slots]]
+name = "roughness"
+role = "Roughness"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "transmission"
+role = "Transmission"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "opacity_mask"
+role = "OpacityMask"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[domains]]
+domain = "Terrain"
+description = "多层混合地形"
+
+[[domains.slots]]
+name = "splat_map"
+role = "SplatMap"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "base_color"
+role = "BaseColor"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "normal"
+role = "Normal"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[domains]]
+domain = "UI2D"
+description = "界面/文本图集精灵（无光照）"
+
+[[domains.slots]]
+name = "sprite"
+role = "Sprite"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[domains]]
+domain = "HumanSkin"
+description = "人体皮肤（预积分 SSS / 次表面散射）"
+
+[[domains.slots]]
+name = "base_color"
+role = "BaseColor"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "normal"
+role = "Normal"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 2
+
+[[domains.slots]]
+name = "roughness"
+role = "Roughness"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "curvature"
+role = "Curvature"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+# ══ 无光表面族 ════════════════════════════════════════════════════════════════
+
+[[domains]]
+domain = "UnlitSolid"
+description = "纯色（材质行取色，无纹理槽）"
+# 无纹理槽
+
+[[domains]]
+domain = "VertexColor"
+description = "顶点色（颜色直接来自 Color 顶点流，无纹理槽）"
+# 无纹理槽
+
+[[domains]]
+domain = "VertexPalette"
+description = "调色板顶点色（无纹理槽）"
+# 无纹理槽
+
+[[domains]]
+domain = "VertexLuminance"
+description = "顶点亮度索引（无纹理槽）"
+# 无纹理槽
+
+[[domains]]
+domain = "UnlitTexture"
+description = "无光单图（2D NDC 贴面）"
+
+[[domains.slots]]
+name = "base_color"
+role = "BaseColor"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = true
+channels = 0
+
+[[domains]]
+domain = "UnlitTexture3D"
+description = "世界空间无光贴面（复用 UnlitTexture 槽契约）"
+ref_slots = "UnlitTexture"
+
+[[domains]]
+domain = "Text2D"
+description = "GPU 文本（SDF / 位图两态共用一张字体图集）"
+
+[[domains.slots]]
+name = "base_color"
+role = "BaseColor"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = true
+channels = 0
+
+# ══ 环境与引擎内部用途 ════════════════════════════════════════════════════════
+
+[[domains]]
+domain = "Sky"
+description = "天空环境（可选一张 cube 贴图）"
+
+[[domains.slots]]
+name = "sky_cube"
+role = "BaseColor"
+must_declare = false
+sampler = "SamplerCube"
+binding_required = true
+channels = 0
+
+[[domains]]
+domain = "DebugNormal"
+description = "调试法线可视化（无纹理槽）"
+# 无纹理槽
+
+[[domains]]
+domain = "Checker2D"
+description = "调试棋盘格 2D（无纹理槽）"
+# 无纹理槽
+
+[[domains]]
+domain = "Checker3D"
+description = "调试棋盘格 3D（无纹理槽）"
+# 无纹理槽
+
+[[domains]]
+domain = "ErrorChecker3D"
+description = "材质错误回退棋盘格（无纹理槽）"
+# 无纹理槽

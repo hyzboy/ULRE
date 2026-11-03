@@ -26,6 +26,8 @@ option(ULRE_REQUIRE_CLANG_CODEGEN
        "ULRE_ENABLE_CLANG_CODEGEN=ON 但缺少 Python/Clang 时直接报错" OFF)
 option(ULRE_ENABLE_SHADER_CONST_CODEGEN
        "构建期自动运行 ShaderConstGen（C++ 契约枚举 → GLSL 宏 + static_assert 头）" ON)
+option(ULRE_ENABLE_DOMAIN_SLOT_CODEGEN
+       "构建期自动运行 DomainSlotGen（材质领域纹理槽 TOML 契约 → C++ / GLSL 绑定代码）" ON)
 
 set(ULRE_CLANGXX "" CACHE FILEPATH
     "Clang-AST 代码生成使用的 clang++（留空自动探测，也可用环境变量 HGL_CLANG）")
@@ -257,6 +259,33 @@ function(ulre_codegen_configure)
 
             list(APPEND ULRE_CODEGEN_TARGET ULRE_CodeGen_ShaderConst)
             message(STATUS "[CodeGen] ShaderConstGen 构建期再生成已启用")
+        endif()
+    endif()
+
+    # ── DomainSlotGen：材质领域纹理槽 TOML 契约 → C++ / GLSL 绑定代码 ──────────
+    if(ULRE_ENABLE_DOMAIN_SLOT_CODEGEN)
+        set(_slot_tool "${_root}/src/Tools/DomainSlotGen/domain_slot_gen.py")
+        set(_slot_contract "${_root}/ShaderLibrary/contract/material_domain_slots.toml")
+        if(NOT EXISTS "${_slot_tool}" OR NOT EXISTS "${_slot_contract}")
+            message(STATUS "[CodeGen] 跳过 DomainSlotGen：找不到生成器或契约 toml")
+        else()
+            add_custom_command(
+                OUTPUT "${_stamp_dir}/domain_slot.stamp"
+                COMMAND "${_python}" "${_slot_tool}"
+                        --repo-root "${_root}"
+                        --write
+                COMMAND "${CMAKE_COMMAND}" -E touch "${_stamp_dir}/domain_slot.stamp"
+                DEPENDS "${_slot_tool}" "${_slot_contract}"
+                COMMENT "[CodeGen] DomainSlotGen：解析 material_domain_slots.toml，刷新 C++ 槽契约与 GLSL 绑定片段"
+                VERBATIM)
+
+            add_custom_target(ULRE_CodeGen_DomainSlot
+                DEPENDS "${_stamp_dir}/domain_slot.stamp"
+                SOURCES "${_slot_tool}" "${_slot_contract}")
+            set_target_properties(ULRE_CodeGen_DomainSlot PROPERTIES FOLDER "CodeGen")
+
+            list(APPEND ULRE_CODEGEN_TARGET ULRE_CodeGen_DomainSlot)
+            message(STATUS "[CodeGen] DomainSlotGen 构建期再生成已启用")
         endif()
     endif()
 

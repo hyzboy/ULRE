@@ -13,10 +13,7 @@
 // ClampToEdge 才能避免东西对极纹素边界污染（与 UnlitTexture 域的同一张表对齐）。
 #include "contract/sampler_presets.glsl"
 
-layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
-{
-    uvec2 tex_sky_cube;
-};
-#define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))
+// ── 材质贴图表（由 ShaderLibrary/contract/material_domain_slots.toml 生成） ──
+#include "domain/generated/sky_texture_bindings.glsl"
 
 #endif // HGL_DOMAIN_SKY_BINDINGS_GLSL

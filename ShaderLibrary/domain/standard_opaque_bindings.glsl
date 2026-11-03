@@ -29,17 +29,7 @@
 #include "module/descriptor/ssbo/pbr_surface_row.glsl"
 #define MTL_ROW(i) PBRSurfaceRow(global_addresses.addr_pbr_surface + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].payload_index) * uint64_t(32))
 
-// ── 材质贴图表 ──
-// 每个元素是一对 (bindless 索引, 采样器索引)，16 字节对齐；跨度 48 = 6 × 8。
-layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
-{
-    uvec2 tex_base_color;
-    uvec2 tex_roughness;
-    uvec2 tex_metallic;
-    uvec2 tex_occlusion;
-    uvec2 tex_opacity_mask;
-    uvec2 tex_normal;
-};
-#define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(48))
+// ── 材质贴图表（由 ShaderLibrary/contract/material_domain_slots.toml 生成） ──
+#include "domain/generated/standard_opaque_texture_bindings.glsl"
 
 #endif // HGL_DOMAIN_STANDARD_OPAQUE_BINDINGS_GLSL

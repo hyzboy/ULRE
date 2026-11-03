@@ -13,11 +13,7 @@
 // Trilinear 给 2D 展开图；TrilinearClamp 给八面体展开图（需要 ClampToEdge）。
 #include "contract/sampler_presets.glsl"
 
-
-layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
-{
-    uvec2 tex_base_color;
-};
-#define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))
+// ── 材质贴图表（由 ShaderLibrary/contract/material_domain_slots.toml 生成） ──
+#include "domain/generated/unlit_texture_texture_bindings.glsl"
 
 #endif // HGL_DOMAIN_UNLIT_TEXTURE_BINDINGS_GLSL

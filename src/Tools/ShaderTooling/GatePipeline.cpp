@@ -940,14 +940,20 @@ namespace gate
             delete pbr_build_spec;
         }
 
-        // 6 槽 StandardOpaque MTL_TEX 行跨度守卫：`standard_opaque_bindings.glsl`
-        // 把行跨度硬编码为 uint64_t(48)。它必须与其 struct 槽数自洽（8B/槽向上
-        // 取整 16B），并与 C++ `BuildMaterialTextureReferenceLayout` 按规范 6 槽
-        // 声明集算出的 row_stride 交叉一致 —— 任何一侧增减槽位而另一侧漏改，
-        // 运行期都会静默跨材质错位采样。
+        // 6 槽 StandardOpaque MTL_TEX 行跨度守卫：
+        // 纹理槽物理布局现由 `contract/material_domain_slots.toml` 单一真源驱动，
+        // 生成的 `generated/standard_opaque_texture_bindings.glsl` 声明槽位与步长。
+        // 它必须与其 struct 槽数自洽（8B/槽向上取整 16B），并与 C++
+        // `BuildMaterialTextureReferenceLayout` 按规范 6 槽声明集算出的 row_stride
+        // 交叉一致 —— 任何一侧增减槽位而另一侧漏改，运行期都会静默跨材质错位采样。
         {
-            const std::string standard_bindings = ReadFileText(
-                RepoRootPath("ShaderLibrary/domain/standard_opaque_bindings.glsl"));
+            std::string standard_bindings = ReadFileText(
+                RepoRootPath("ShaderLibrary/domain/generated/standard_opaque_texture_bindings.glsl"));
+            if (standard_bindings.empty())
+            {
+                standard_bindings = ReadFileText(
+                    RepoRootPath("ShaderLibrary/domain/standard_opaque_bindings.glsl"));
+            }
 
             const size_t ref_pos = standard_bindings.find(
                 "buffer MaterialTextureReferencesRef");
@@ -970,8 +976,10 @@ namespace gate
             }
 
             uint64_t glsl_stride = 0;
-            const size_t mtl_tex_pos =
-                standard_bindings.find("#define MTL_TEX(i)");
+            size_t mtl_tex_pos = standard_bindings.find("#define MTL_TEX_STANDARD_OPAQUE(i)");
+            if (mtl_tex_pos == std::string::npos)
+                mtl_tex_pos = standard_bindings.find("#define MTL_TEX(i)");
+
             if (mtl_tex_pos == std::string::npos)
             {
                 result.diagnostics.emplace_back(
@@ -1025,6 +1033,49 @@ namespace gate
             {
                 result.diagnostics.emplace_back(
                     "C++ texture layout row_stride no longer matches standard opaque GLSL hard-coded stride");
+            }
+        }
+
+        // 验证各领域契约中的纹理槽与生成物的一致性
+        {
+            const MaterialDomain domains_with_slots[] = {
+                MaterialDomain::StandardOpaque,
+                MaterialDomain::Foliage,
+                MaterialDomain::Terrain,
+                MaterialDomain::UI2D,
+                MaterialDomain::HumanSkin,
+                MaterialDomain::UnlitTexture,
+                MaterialDomain::UnlitTexture3D,
+                MaterialDomain::Text2D,
+                MaterialDomain::Sky,
+            };
+
+            for (const MaterialDomain d : domains_with_slots)
+            {
+                const MaterialDomainContract *c = GetMaterialDomainContract(d);
+                if (!c)
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("domain contract not found for ") + GetMaterialDomainName(d));
+                    continue;
+                }
+
+                if (c->texture_slot_count <= 0)
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("expected texture slots for domain ") + GetMaterialDomainName(d));
+                    continue;
+                }
+
+                // 校验槽位指针不为空且槽位名字有效
+                for (int i = 0; i < c->texture_slot_count; ++i)
+                {
+                    if (!c->texture_slots[i].name || !c->texture_slots[i].name[0])
+                    {
+                        result.diagnostics.emplace_back(
+                            std::string("empty texture slot name in domain ") + GetMaterialDomainName(d));
+                    }
+                }
             }
         }
 

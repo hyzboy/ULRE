@@ -22,12 +22,7 @@
 // 真源：inc/hgl/shader/contract/SamplerPresetId.h（经 ShaderConstGen 生成为 GLSL 宏）。
 #include "contract/sampler_presets.glsl"
 
-// ── 材质贴图表 ──
-// 一个元素 = 一对 (bindless 索引, 采样器索引)，16 字节对齐；跨度 16 = 2 × 8。
-layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
-{
-    uvec2 tex_base_color;
-};
-#define MTL_TEX(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(16))
+// ── 材质贴图表（由 ShaderLibrary/contract/material_domain_slots.toml 生成） ──
+#include "domain/generated/text_2d_texture_bindings.glsl"
 
 #endif // HGL_DOMAIN_TEXT_2D_BINDINGS_GLSL

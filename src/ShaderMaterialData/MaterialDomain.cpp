@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialDomain.h>
 #include <hgl/mtl/MaterialRecipe.h>
+#include <hgl/mtl/generated/MaterialDomainSlots.gen.h>
 #include <hgl/type/String.h>
 
 #include <cstring>
@@ -79,118 +80,9 @@ namespace hgl::graph::mtl
     namespace
     {
         // ── 契约表 ──────────────────────────────────────────────────────────────
-        // 槽名即材质 TOML `[resources] textures` 里 `name = "..."` 的写法，
-        // 也是 GLSL 侧 `MTL_TEX(row).tex_<name>` 的后缀。
-        //
-        // 顺序有意义：程序构建阶段按声明顺序排布引用行，顺序变化 = layout_hash 变化。
-        // = 缓存失效。故**不要**重排既有领域的槽顺序。
-
-        // StandardOpaque —— 通用硬表面。
-        //
-        // 顶点：Position/Normal/UV0。
-        //   · **不含 Tangent**：法线贴图走 `ntb_tangent_vbo_normalmap` 的余切标架
-        //     （cotangent frame，由世界位置与 UV 的屏幕空间导数还原切线基），
-        //     引擎也确实不向 Fragment 传 Tangent/Binormal varying。契约若要求
-        //     Tangent 就等于要求一条并不存在的顶点流。
-        //   · **不含 Color/Luminance/Size**：那些是纯色/顶点色/精灵/文本形态，
-        //     不属于硬表面。
-        //
-        // 纹理：六槽全声明。`must_declare = true` 保证**布局稳定**（同一领域所有
-        // 材质的引用行布局一致 ⇒ 可共享 layout_hash），但 `binding_required = false`
-        // 仍是作者可选项（未绑定时 SampleOptional 以中性值保底）。
-        //
-        // 阶段三之二：`sampler / binding_required / channels` 也从资产上移到契约。
-        // 同一个领域里这三个值必然相同——它们是「这个槽在领域里长什么样」，
-        // 不是「这份资产想怎么用」。
-        constexpr MaterialDomainTextureSlot StandardOpaqueSlots[] = {
-            { "base_color",   MaterialDomainTextureRole::BaseColor,   true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "roughness",    MaterialDomainTextureRole::Roughness,   true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "metallic",     MaterialDomainTextureRole::Metallic,    true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "occlusion",    MaterialDomainTextureRole::Occlusion,   true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "opacity_mask", MaterialDomainTextureRole::OpacityMask, true,
-              SamplerType::Sampler2DArray, false, 0 },
-            // normal 固定双通道（BC5：只存 XY，Z 由 shader 还原）。
-            { "normal",       MaterialDomainTextureRole::Normal,      true,
-              SamplerType::Sampler2DArray, false, 2 },
-        };
-
-        // Foliage —— 植被。顶点增加风力参数（走 TransformID 之外的独立通路时再扩），
-        // 纹理增加透射槽。当前无实现材质，先立契约占位。
-        constexpr MaterialDomainTextureSlot FoliageSlots[] = {
-            { "base_color",     MaterialDomainTextureRole::BaseColor,    true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "normal",         MaterialDomainTextureRole::Normal,       true,
-              SamplerType::Sampler2DArray, false, 2 },
-            { "roughness",      MaterialDomainTextureRole::Roughness,    true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "transmission",   MaterialDomainTextureRole::Transmission, true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "opacity_mask",   MaterialDomainTextureRole::OpacityMask,  true,
-              SamplerType::Sampler2DArray, false, 0 },
-        };
-
-        // Terrain —— 多层地形。权重贴图 + 层纹理（层数组走同一槽名的数组采样器）。
-        constexpr MaterialDomainTextureSlot TerrainSlots[] = {
-            { "splat_map",  MaterialDomainTextureRole::SplatMap,  true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "base_color", MaterialDomainTextureRole::BaseColor, true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "normal",     MaterialDomainTextureRole::Normal,    true,
-              SamplerType::Sampler2DArray, false, 2 },
-        };
-
-        // UI2D —— 界面/文本，无光照。
-        constexpr MaterialDomainTextureSlot UI2DSlots[] = {
-            { "sprite", MaterialDomainTextureRole::Sprite, true,
-              SamplerType::Sampler2DArray, false, 0 },
-        };
-
-        // HumanSkin —— 人体皮肤。除标准四槽外增加曲率（预积分 SSS）。
-        constexpr MaterialDomainTextureSlot HumanSkinSlots[] = {
-            { "base_color", MaterialDomainTextureRole::BaseColor,  true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "normal",     MaterialDomainTextureRole::Normal,     true,
-              SamplerType::Sampler2DArray, false, 2 },
-            { "roughness",  MaterialDomainTextureRole::Roughness,  true,
-              SamplerType::Sampler2DArray, false, 0 },
-            { "curvature",  MaterialDomainTextureRole::Curvature,  true,
-              SamplerType::Sampler2DArray, false, 0 },
-        };
-
-        // ── 无光表面族的槽表 ────────────────────────────────────────────────────
-        //
-        // 这一族共同点：**没有 must_declare 的强制槽**（除贴图类）。
-        // 纯色/顶点色材质结构上就不该有纹理，若给它们开一个槽白名单，
-        // 就等于允许「纯色材质偷偷挂贴图」这种自相矛盾的组合。
-
-        // UnlitTexture —— 无光单图。只有一张基础色。
-        constexpr MaterialDomainTextureSlot UnlitTextureSlots[] = {
-            { "base_color", MaterialDomainTextureRole::BaseColor, true,
-              SamplerType::Sampler2DArray, true, 0 },
-        };
-
-        // Text2D —— GPU 文本。SDF 与位图两种形态都只有一张图集。
-        // （SDF 的阈值参数走材质数值，不占纹理槽。）
-        //
-        // 注意：这里定的是**采样器种类**，不是过滤器。SDF 用 Linear、位图用
-        // Nearest，那是 `[resources].samplers` 里的过滤设置，仍留在资产上——
-        // 同一领域的不同资产在过滤器上本来就该不同。
-        constexpr MaterialDomainTextureSlot Text2DSlots[] = {
-            { "base_color", MaterialDomainTextureRole::BaseColor, true,
-              SamplerType::Sampler2DArray, true, 0 },
-        };
-
-        // Sky —— 天空。cube 贴图**可选**：sky_minimal 是纯解析大气，无贴图。
-        // must_declare = false 让两种形态共用一个领域，避免为「有没有贴图」
-        // 分裂出两个领域。
-        constexpr MaterialDomainTextureSlot SkySlots[] = {
-            { "sky_cube", MaterialDomainTextureRole::BaseColor, false,
-              SamplerType::SamplerCube, true, 0 },
-        };
+        // 纹理槽规范列表已迁移至单一真源：ShaderLibrary/contract/material_domain_slots.toml
+        // C++ 结构声明由 inc/hgl/mtl/generated/MaterialDomainSlots.gen.h 生成。
+        using namespace hgl::graph::mtl::generated;
 
         constexpr uint32 Sem(VertexSemantic semantic) noexcept
         {
