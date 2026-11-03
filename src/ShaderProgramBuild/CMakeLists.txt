@@ -44,9 +44,6 @@ SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 set(COMPILE_FILES
     compile/ShaderProgramBuildBackendInstall.h
     compile/ShaderCreateInfoCompile.cpp
-    # 编译器插件的生命周期接线（注册对象）。独立成 TU 是因为它是**存活**代码：
-    # 无对外符号，靠 WHOLE_ARCHIVE 才不被链接器丢掉。
-    compile/ShaderBuildBackendLifecycle.cpp
     # 「不生成着色器」的后端：片段阶段换成领域固定主着色器 + options。
     # 留在本模块，因为它复用 AssembleMaterialProgram 的网格阶段。
     compile/DomainShaderBuildBackend.cpp

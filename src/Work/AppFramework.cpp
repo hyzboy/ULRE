@@ -27,6 +27,16 @@ namespace hgl
 #if ULRE_ENABLE_SHADER_PROGRAM_BUILD
         bool InitShaderCompiler();
         void CloseShaderCompiler();
+
+        // 领域构建后端的显式接线（定义在 ULRE.ShaderProgramBuild，随本文件的
+        // 引用被常规静态链接拉入 —— 不再有静态注册对象，也就没有整库链接）。
+        // 只在 AppFramework 被链接进最终可执行文件时才生效：
+        // 发行形态走 EnsureShaderProgramManifestBackend()，与此无关。
+        namespace mtl
+        {
+            void InstallDomainShaderBuildBackend();
+            void UninstallDomainShaderBuildBackend();
+        }
 #endif
     }
 
@@ -120,6 +130,9 @@ namespace hgl
         if (APP_FRAMEWORK_COUNT == 0)
         {
 #if ULRE_ENABLE_SHADER_PROGRAM_BUILD
+            // 先摘后端再关插件（原 on_close 钩子的时序等价）：
+            // 避免关闭窗口期还有 TU 拿旧后端指针乱转
+            graph::mtl::UninstallDomainShaderBuildBackend();
             graph::CloseShaderCompiler();
 #endif
         }
@@ -162,6 +175,9 @@ namespace hgl
 #if ULRE_ENABLE_SHADER_PROGRAM_BUILD
             if (!graph::InitShaderCompiler())
                 return false;
+            // 插件就绪后立刻装领域构建后端（原先由生命周期钩子在 InitShaderCompiler
+            // 内部触发；改为显式调用，链接器凭引用自然拉入后端 TU）。
+            graph::mtl::InstallDomainShaderBuildBackend();
 #endif
 
             logger::InitLogger(app_name);

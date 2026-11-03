@@ -7,11 +7,10 @@
 // 插件按裸名 "GLSLCompiler" + 平台插件扩展名查找，先试当前工作目录，再回退到
 // 可执行文件目录；不依赖任何固定盘符路径。
 //
-// **本模块不认识任何「构建后端」**：材质程序构建侧（ULRE.ShaderProgramBuild）或直通后端要装进
-// 运行时接缝（inc/hgl/mtl/ShaderProgramBuildBackend.h）时，通过
-// SetShaderCompilerLifecycleHooks() 注册一对钩子，由插件就绪 / 关闭时回调。
-// 这样编译器模块对上层零反向依赖，发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）
-// 也能照常把它编进运行时。
+// **本模块不认识任何「构建后端」**：材质程序构建侧（ULRE.ShaderProgramBuild）由
+// AppFramework（开发形态）或门禁/工具（显式调用）自行装进运行时接缝
+// （inc/hgl/mtl/ShaderProgramBuildBackend.h），编译器模块对上层零反向依赖。
+// 发行形态（ULRE_ENABLE_SHADER_PROGRAM_BUILD=OFF）没有后端可装，照常编进运行时。
 
 #pragma once
 
@@ -56,13 +55,4 @@ namespace hgl::graph
         size_t spv_size,
         uint32 shader_stage,
         uint32 &out_end);
-
-    // ── 构建后端生命周期钩子 ────────────────────────────────────────────────────
-    // 由「往接缝里装后端」的那一层注册（生成器侧 TU 的静态注册对象），编译器模块
-    // 只在插件就绪后 / 关闭前原样回调，绝不反向依赖任何实现后端的库。
-    // 可传 nullptr（表示该时机无动作）。
-    typedef void (*ShaderCompilerLifecycleHook)();
-
-    void        SetShaderCompilerLifecycleHooks(ShaderCompilerLifecycleHook on_ready,
-                                               ShaderCompilerLifecycleHook on_close);
 }//namespace hgl::graph
