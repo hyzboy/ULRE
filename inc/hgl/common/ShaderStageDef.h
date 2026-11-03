@@ -8,14 +8,9 @@ namespace hgl::graph
     {
         Fragment                    = VK_SHADER_STAGE_FRAGMENT_BIT,
         Compute                     = VK_SHADER_STAGE_COMPUTE_BIT,
-        Task                        = VK_SHADER_STAGE_TASK_BIT_EXT,
         Mesh                        = VK_SHADER_STAGE_MESH_BIT_EXT,
-        ClusterCulling              = VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI,
 
-        MeshFragment                = Mesh | Fragment,
-
-        TaskMesh                    = Task | Mesh,
-        TaskMeshFragment            = Task | Mesh | Fragment
+        MeshFragment                = Mesh | Fragment
     };
 
     // 所有实际存在的图形 stage 位（mesh shader 唯一顶点路径，VS/Tess/Geometry 已彻底废弃；
