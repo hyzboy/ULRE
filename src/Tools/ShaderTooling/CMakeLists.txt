@@ -59,7 +59,13 @@ endif()
 ####################################################################################################
 
 add_executable(ShaderResourceSchemaRegressionGate
-    ShaderResourceSchemaRegressionGate.cpp)
+    ShaderResourceSchemaRegressionGate.cpp
+    GateTestSupport.h
+    GateGlsl.cpp
+    GateInterface.cpp
+    GateMaterialization.cpp
+    GatePipeline.cpp
+    GateCache.cpp)
 
 target_link_libraries(ShaderResourceSchemaRegressionGate
     PRIVATE ULRE.ShaderProgramBuild
