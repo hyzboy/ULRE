@@ -78,6 +78,8 @@ set(SHADERMATERIALDATA_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderCacheRoot.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/VkEnumText.h
     # ── 发行形态的两份查表清单 ──
+    # 两份清单的磁盘编解码共享 ShaderManifestFileCodec.h（模块内部头，不放 inc/）。
+    ShaderManifestFileCodec.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderProgramManifest.h
     ShaderProgramManifest.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderProgramManifestKey.h

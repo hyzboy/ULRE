@@ -1,34 +1,23 @@
 // ULRE.ShaderMaterialData —— compute 程序清单（数据面）。
 //
-// 与 ShaderProgramManifest.cpp 同一套磁盘机制（AssetGen 反射表驱动的
-// FlatBuffers 载荷 + 同一份 ShaderArtifactFileHeader），差别只在记录形状
-// 和键的来源。
+// 磁盘机制与 ShaderProgramManifest.cpp 完全共享（ShaderManifestFileCodec.h：
+// AssetGen 反射表驱动的 FlatBuffers 载荷 + 同一份 ShaderArtifactFileHeader），
+// 差别只在记录形状和键的来源。
 #include <hgl/mtl/ShaderComputeProgramManifest.h>
 
+#include "ShaderManifestFileCodec.h"
+
 #include <hgl/asset/generated/ShaderCacheSerialize.gen.h>
-#include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/log/Log.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
-#include <hgl/serialize/FlatCodec.h>
 #include <hgl/utf.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
 namespace hgl::graph::mtl
 {
-    namespace
-    {
-        uint64 HashBytes(const void *data, const uint64 byte_size)
-        {
-            hgl::hash::FNV1aHasher64 hasher;
-            if (data && byte_size > 0)
-                hasher.AppendBytes(data, static_cast<size_t>(byte_size));
-            return static_cast<uint64>(hasher);
-        }
-    }//namespace
-
     void ShaderComputeProgramManifest::Clear()
     {
         compiler_profile_hash = 0;
@@ -76,126 +65,48 @@ namespace hgl::graph::mtl
 
     bool ShaderComputeProgramManifest::Save(const OSString &path) const
     {
-        if (path.IsEmpty())
-            return false;
-
-        filesystem::Path file_path(path);
-        const OSString directory = file_path.GetParent().ToOSString();
-        if (!directory.IsEmpty()
-         && !filesystem::IsDirectory(directory)
-         && !filesystem::MakePath(directory))
-            return false;
-
-        // 载荷 = 生成的反射表驱动的 FlatBuffers（与 program 清单同一套机制）。
+        // 载荷 = 生成的反射表驱动的 FlatBuffers（与 program 清单同一套 codec）。
         ShaderComputeProgramManifestPayload payload_struct;
         payload_struct.entries = entries;
 
-        ValueArray<uint8> payload;
-        AnsiString encode_error;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers(payload, payload_struct,
-                                                     nullptr, &encode_error))
-        {
-            GLogError(u8"compute manifest 编码失败：%s", encode_error.c_str());
-            return false;
-        }
-
-        ShaderArtifactFileHeader header{};
-        header.kind = ShaderArtifactKind::ComputeProgramManifest;
-        header.stage = static_cast<uint32>(ShaderStage::Compute);
-        header.key_digest = compiler_profile_hash;
-        header.source_digest = codegen_generation;
-        header.payload_size = static_cast<uint64>(payload.GetCount());
-        header.payload_hash = HashBytes(payload.GetData(), header.payload_size);
-
-        ValueArray<uint8> file_data;
-        file_data.Resize(static_cast<int>(sizeof(header) + payload.GetCount()));
-        std::memcpy(file_data.GetData(), &header, sizeof(header));
-        if (!payload.IsEmpty())
-            std::memcpy(file_data.GetData() + sizeof(header),
-                        payload.GetData(),
-                        static_cast<size_t>(payload.GetCount()));
-
-        const int64 written = filesystem::SaveMemoryToFile(
-            path, file_data.GetData(), static_cast<int64>(file_data.GetCount()));
-        return written == static_cast<int64>(file_data.GetCount());
+        return WriteManifestArtifactFile(path,
+                                         ShaderArtifactKind::ComputeProgramManifest,
+                                         static_cast<uint32>(ShaderStage::Compute),
+                                         compiler_profile_hash,
+                                         codegen_generation,
+                                         payload_struct,
+                                         "compute manifest");
     }
 
     bool ShaderComputeProgramManifest::Load(const OSString &path)
     {
         Clear();
 
-        if (path.IsEmpty())
-            return false;
-
-        int64 file_size = 0;
-        void *file_data = filesystem::LoadFileToMemory(path, file_size);
-        if (!file_data)
-            return false;
-
-        bool success = false;
-        do
-        {
-            if (file_size < static_cast<int64>(sizeof(ShaderArtifactFileHeader)))
-                break;
-
-            ShaderArtifactFileHeader header{};
-            std::memcpy(&header, file_data, sizeof(header));
-
-            if (!IsValidShaderArtifactFileHeader(header)
-             || header.kind != ShaderArtifactKind::ComputeProgramManifest)
-                break;
-
-            const uint64 expected_file_size =
-                static_cast<uint64>(header.header_size) + header.payload_size;
-            if (expected_file_size != static_cast<uint64>(file_size))
-                break;
-
-            const auto *payload = static_cast<const uint8 *>(file_data) + header.header_size;
-
-            if (HashBytes(payload, header.payload_size) != header.payload_hash)
-                break;
-
-            ShaderComputeProgramManifestPayload decoded;
-            if (!hgl::serialize::fb::VerifyAndDecodeFlatBuffers(
-                    payload, static_cast<size_t>(header.payload_size), decoded))
-                break;
-
-            if (decoded.format_version != ShaderComputeProgramManifestFormatVersion)
-                break;
-
-            // 逐条重验不变量：磁盘上的东西不可信，半个清单比没有清单更危险。
-            bool decode_ok = true;
-            for (const auto &entry : decoded.entries)
+        ShaderComputeProgramManifestPayload decoded;
+        ShaderArtifactFileHeader header{};
+        const bool ok = ReadManifestArtifactFile(
+            path, ShaderArtifactKind::ComputeProgramManifest,
+            ShaderComputeProgramManifestFormatVersion,
+            decoded, header,
+            [this](const ShaderComputeProgramManifestEntry &entry) -> bool
             {
                 if (!entry.IsValid())
-                {
-                    decode_ok = false;
-                    break;
-                }
+                    return false;
 
                 entries.Add(entry);
-            }
+                return true;
+            });
 
-            if (!decode_ok)
-            {
-                Clear();
-                break;
-            }
-
+        if (ok)
+        {
             compiler_profile_hash = header.key_digest;
             codegen_generation = static_cast<uint32>(header.source_digest);
-
-            success = true;
         }
-        while (false);
 
-        // LoadFileToMemory 分配的是 char[]：配对 char* 释放（uint8* 双关为 UB）。
-        delete[] static_cast<char *>(file_data);
-
-        if (!success)
+        if (!ok)
             Clear();
 
-        return success;
+        return ok;
     }
 
     uint64 ComputeShaderComputeProgramManifestKey(const char *program_name)
@@ -231,7 +142,7 @@ namespace hgl::graph::mtl
 
         key.stage = ShaderStage::Compute;
         key.definition_hash = ComputeShaderComputeProgramManifestKey(program_name);
-        key.compile_inputs_hash = HashBytes(spv_data, spv_size);
+        key.compile_inputs_hash = ManifestHashBytes(spv_data, spv_size);
         key.interface_hash = spv_size + 1;
         key.compiler_hash = compiler_hash;
 
