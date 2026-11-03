@@ -6567,7 +6567,8 @@ int main(int argc, char** argv)
               "T6b：新头必须进构建注册（构建注册靠目录递归扫描 + CONFIGURE_DEPENDS，"
               "退回手工列表或去掉 CONFIGURE_DEPENDS = 新增文件静默不编译）" },
 
-            { "ShaderResourceSchemaRegressionGate.cpp", OS_TEXT("src/Tools/ShaderTooling/ShaderResourceSchemaRegressionGate.cpp"),
+            // 门禁按回归组拆分后，门用例函数体已迁入 GateInterface.cpp（注册行仍在旧文件）。
+            { "GateInterface.cpp", OS_TEXT("src/Tools/ShaderTooling/GateInterface.cpp"),
               "W.light-row-struct-parity",
               "T6b：光行结构对拍门用例（C++ ↔ GLSL 漂移必须编译期/门期报红）" },
 
@@ -6872,7 +6873,8 @@ int main(int argc, char** argv)
               "    uint64_t addr_ambient_env;",
               "T1：GLSL 世界表镜像缺 addr_ambient_env（结构漂移 = 其后字段全部错位读）" },
 
-            { "ShaderResourceSchemaRegressionGate.cpp", OS_TEXT("src/Tools/ShaderTooling/ShaderResourceSchemaRegressionGate.cpp"),
+            // 门禁按回归组拆分后，地址归属登记表已迁入 GateTestSupport.h。
+            { "GateTestSupport.h", OS_TEXT("src/Tools/ShaderTooling/GateTestSupport.h"),
               "{ \"addr_ambient_env\",          true  },",
               "T1：新地址字段未在归属门登记（未分类字段 ⇒ 门报错；登记错侧 ⇒ 多世界串数据）" },
 
