@@ -70,18 +70,20 @@ vec3 EvalIndirectLighting(
 
     const vec3 F0 = mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
 
-    // 漫反射项:八面体 irradiance × 反照率 × 非金属系数
+    // split-sum DFG（与 ambient_light_ibl 同一约定：E = F0*x + y）
+    const vec2 env_brdf =
+        Sample2D(ambient_env.env_tex.z, LinearSampler, vec2(NdotV, lighting.roughness)).rg;
+    const vec3 E = F0 * env_brdf.x + env_brdf.y;
+
+    // 漫反射项:八面体 irradiance × 漫反照率 × (1 - E)
     // 单张八面体图只有第 0 级有意义(照射度本就低频),固定 LOD 0 采样。
     const vec2 irr_uv = IBL_OctahedralEncodeDirection(N) * 0.5 + 0.5;
     const vec3 irradiance =
         Sample2DArrayLod(ambient_env.env_tex.x, TrilinearClampSampler, irr_uv, 0.0, 0.0).rgb;
 
     const vec3 diffuse =
-        irradiance * lighting.baseColor * (1.0 - lighting.metallic);
-
-    // 镜面项:八面体 prefiltered × (F0·scale + bias)(BRDF LUT split-sum)
-    const vec2 env_brdf =
-        Sample2D(ambient_env.env_tex.z, LinearSampler, vec2(NdotV, lighting.roughness)).rg;
+        irradiance * lighting.baseColor * (1.0 - lighting.metallic)
+                 * (1.0 - clamp(E, 0.0, 1.0));
 
     // 粗糙度 → mip LOD:第 i 级烘的是 roughness = i/(级数-1)，与烘焙端同一映射。
     // w=0/1 表示只有第 0 级(固定粗糙度)，此时 max(...,1u)-1 = 0，lod 恒 0。
@@ -93,7 +95,9 @@ vec3 EvalIndirectLighting(
     const vec3 prefiltered =
         Sample2DArrayLod(ambient_env.env_tex.y, TrilinearClampSampler, pre_uv, 0.0, prefilter_lod).rgb;
 
-    const vec3 specular = prefiltered * (F0 * env_brdf.x + env_brdf.y);
+    // 镜面项 + 能量补偿（Filament: Fr = E*radiance*(1 + F0*(1/dfg.y - 1))）
+    const vec3 specular = prefiltered * E
+        * (1.0 + F0 * (1.0 / max(env_brdf.y, 1e-4) - 1.0));
 
     vec3 ambient = (diffuse + specular) * lighting.ao;
 

@@ -41,16 +41,21 @@ vec3 EvalIndirectLighting(
 
     const vec3 F0 = mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
 
-    // 漫反射项:irradiance cubemap × 反照率 × 非金属系数
+    // split-sum DFG（LUT 约定：E = F0*x + y；等价于 Filament 的
+    // mix(dfg.xxx, dfg.yyy, F0)，其中 dfg.y = LUT.y，dfg.x = LUT.x + LUT.y）
+    const vec2 env_brdf =
+        Sample2D(ambient_env.env_tex.z, LinearSampler, vec2(NdotV, lighting.roughness)).rg;
+    const vec3 E = F0 * env_brdf.x + env_brdf.y;
+
+    // 漫反射项:irradiance cubemap × 漫反照率 × (1 - E)
+    // —— Filament surface_light_indirect.fs:
+    //    Fd = diffuseColor * irradiance * (1.0 - E)
     const vec3 irradiance =
         SampleCubeArray(ambient_env.env_tex.x, TrilinearSampler, vec4(N, 0.0)).rgb;
 
     const vec3 diffuse =
-        irradiance * lighting.baseColor * (1.0 - lighting.metallic);
-
-    // 镜面项:prefiltered cubemap × (F0·scale + bias)(BRDF LUT split-sum)
-    const vec2 env_brdf =
-        Sample2D(ambient_env.env_tex.z, LinearSampler, vec2(NdotV, lighting.roughness)).rg;
+        irradiance * lighting.baseColor * (1.0 - lighting.metallic)
+                 * (1.0 - clamp(E, 0.0, 1.0));
 
     // 粗糙度 → mip LOD:第 i 级烘的是 roughness = i/(级数-1)，与烘焙端同一映射。
     // w=0/1 表示只有第 0 级(固定粗糙度)，此时 max(...,1u)-1 = 0，lod 恒 0。
@@ -61,7 +66,11 @@ vec3 EvalIndirectLighting(
     const vec3 prefiltered =
         SampleCubeArrayLod(ambient_env.env_tex.y, TrilinearSampler, R, prefilter_lod).rgb;
 
-    const vec3 specular = prefiltered * (F0 * env_brdf.x + env_brdf.y);
+    // 镜面项 + 能量补偿 —— Filament：
+    //   Fr = E * radiance;  Fr *= (1 + F0 * (1/dfg.y - 1))
+    //   （Kulla & Conty 2017, "Practical Multi-scattering for Diffuse Interreflection"）
+    const vec3 specular = prefiltered * E
+        * (1.0 + F0 * (1.0 / max(env_brdf.y, 1e-4) - 1.0));
 
     vec3 ambient = (diffuse + specular) * lighting.ao;
 

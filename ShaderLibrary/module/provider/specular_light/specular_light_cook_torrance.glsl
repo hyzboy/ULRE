@@ -28,14 +28,30 @@ vec3 EvalSpecularLight(LightingInput lighting)
     const float NdotH = max(dot(N, H), 0.0);
     const float VdotH = max(dot(V, H), 0.0);
 
-    const float alpha2 = lighting.roughness * lighting.roughness
-                       * lighting.roughness * lighting.roughness;
-    const float D = ULRE_LIT_D_GGX(NdotH, alpha2);
-    const float G = ULRE_LIT_G_Smith(NdotV, NdotL, lighting.roughness);
-    const vec3  F0 = mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
-    const vec3  F  = ULRE_LIT_F_Schlick(VdotH, F0);
+    // roughness 语义 = perceptualRoughness；alpha = perceptual^2（Filament 同名变量）
+    const float perceptualRoughness = lighting.roughness;
+    const float alpha = perceptualRoughness * perceptualRoughness;
 
-    return D * G * F / max(4.0 * NdotV * NdotL, 1e-4) * NdotL;
+    // F0：metallic 工作流。fresnel 字段语义 = 电介质 F0（默认 0.04，
+    // 即 Filament computeDielectricF0(reflectance=0.5) 的结果），
+    // f0 = baseColor*metallic + fresnel*(1-metallic)，与 Filament computeF0 等价。
+    const vec3 F0 = mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
+
+    // NDF —— D_GGX（拉格朗日恒等式稳健版，Filament surface_brdf.fs）
+    const vec3 NxH = cross(N, H);
+    const float D = ULRE_LIT_D_GGX_Correlated(NdotH, alpha, NxH);
+
+    // 可见项 —— V_SmithGGXCorrelated（height-correlated），已含 1/(4 NoV NoL)
+    const float Vis = ULRE_LIT_V_SmithGGXCorrelated(alpha, NdotV, NdotL);
+
+    // Fresnel —— F_Schlick + F90（Disney：f90 = clamp(50*reflectance*f0,0,1)，
+    // reflectance = sqrt(f0/0.16)；f0=0.04 时恰为 1，与 glTF/Filament 默认一致）
+    const float reflectance = sqrt(lighting.fresnel * 6.25);
+    const float F90 = clamp(50.0 * reflectance * lighting.fresnel, 0.0, 1.0);
+    const vec3  F   = ULRE_LIT_F_Schlick_F90(F0, F90, VdotH);
+
+    // spec = D * V * F * NoL（V 即 G/(4 NoV NoL)，直接乘 NoL 完成余弦加权）
+    return D * Vis * F * NdotL;
 }
 
 #endif // SPECULAR_COOK_TORRANCE_GLSL

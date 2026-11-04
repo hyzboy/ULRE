@@ -26,11 +26,17 @@ vec4 EvalLighting(LightingInput lighting)
 
     vec3 indirectColor = EvalIndirectLighting(lighting);
 
-    const vec3 reflectionF0 =
-        mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
-    indirectColor += lighting.reflectionColor
-                   * reflectionF0
-                   * (1.0 - lighting.roughness);
+    // 反射项（SSR/env 等外部提供的 prefiltered radiance；forward policy 当前置 0）
+    // —— Filament 语义：Fr = radiance * specularDFG * energyCompensation
+    //    specularDFG = mix(dfg.xxx, dfg.yyy, F0) = F0*dfg.x + (1-F0)*dfg.y
+    //    energyComp  = 1 + F0*(1/dfg.y - 1)   （Kulla & Conty 2017 多散射近似）
+    const vec3 N = normalize(lighting.normal);
+    const float NdotV = max(dot(N, lighting.viewDir), 1e-4);
+    const vec3 F0 = mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
+    const vec2 dfg = ULRE_LIT_EnvDFGApprox(NdotV, lighting.roughness);
+    const vec3 E = F0 * dfg.x + (1.0 - F0) * dfg.y;
+    const vec3 energyComp = 1.0 + F0 * (1.0 / dfg.y - 1.0);
+    indirectColor += lighting.reflectionColor * E * energyComp;
 
     return vec4(
         directColor + indirectColor + lighting.emissive,
