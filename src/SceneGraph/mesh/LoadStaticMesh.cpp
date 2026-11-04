@@ -150,6 +150,7 @@ static bool TryLoadScene(
     const OSString           &pack_path,
     const OSString           &base_dir,
     std::vector<Geometry *>  &geometry_list,
+    std::vector<int32_t>     &material_indices,
     std::vector<StaticMeshNode> &scene_nodes,
     std::vector<int32_t> &root_nodes)
 {
@@ -327,6 +328,7 @@ static bool TryLoadScene(
     }
 
     geometry_list.clear();
+    material_indices.clear();
     {
         const uint8_t *ptr = nullptr;
         uint32_t size = 0;
@@ -355,6 +357,7 @@ static bool TryLoadScene(
         for (uint32_t i = 0; i < pcount; ++i)
         {
             Geometry *geo = nullptr;
+            material_indices.push_back(pp[i].material_index);
 
             if (!geometry_by_index.empty()
              && pp[i].geometry_index >= 0
@@ -699,7 +702,9 @@ static bool BuildSceneFromMiniPack(
     const OSString                   &base_dir,
     std::vector<PrimitiveAsset>      &out_assets,
     std::vector<StaticMeshNode>      &out_nodes,
-    std::vector<int32_t>             &out_root_nodes)
+    std::vector<int32_t>             &out_root_nodes,
+    const mtl::MaterialRecipe *const *material_recipes,
+    const uint32_t                    material_recipe_count)
 {
     using namespace hgl::math;
 
@@ -713,7 +718,19 @@ static bool BuildSceneFromMiniPack(
         return false;
     }
 
+    // 按源材质下标选取配方；缺失/越界/空条目回退到默认 recipe（既有单材质行为）。
+    auto pick_recipe = [&](int32_t material_index) -> const mtl::MaterialRecipe *
+    {
+        if (material_recipes
+            && material_index >= 0
+            && static_cast<uint32_t>(material_index) < material_recipe_count
+            && material_recipes[material_index])
+            return material_recipes[material_index];
+        return recipe;
+    };
+
     std::vector<Geometry *> geometry_list;
+    std::vector<int32_t> material_indices;
     std::vector<StaticMeshNode> scene_nodes;
     std::vector<int32_t> root_nodes;
 
@@ -725,10 +742,15 @@ static bool BuildSceneFromMiniPack(
             pack_path,
             base_dir,
             geometry_list,
+            material_indices,
             scene_nodes,
             root_nodes))
     {
         MLogInfo(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: ScenePackV2 not available, fallback to V1"));
+
+        // V2 若在图元循环后才失败可能留下部分数据；V1 路径全量重建，先清空。
+        geometry_list.clear();
+        material_indices.clear();
 
         std::vector<std::string> names;
         {
@@ -776,7 +798,6 @@ static bool BuildSceneFromMiniPack(
                     std::memcpy(&fileLen,       buf, sizeof(uint32_t)); buf += sizeof(uint32_t);
                     (void)originalIndex;
                     (void)geoIndex;
-                    (void)matIndex;
 
                     if (buf + fileLen > end)
                     {
@@ -784,6 +805,7 @@ static bool BuildSceneFromMiniPack(
                             OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: PrimitiveList entry truncated in ") + pack_path);
                         break;
                     }
+                    material_indices.push_back(matIndex);
 
                     std::string geo_file(reinterpret_cast<const char *>(buf), fileLen);
                     buf += fileLen;
@@ -828,15 +850,19 @@ static bool BuildSceneFromMiniPack(
 
     out_assets.reserve(geometry_list.size());
 
-    for (Geometry *geo : geometry_list)
+    for (size_t i = 0; i < geometry_list.size(); ++i)
     {
+        Geometry *geo = geometry_list[i];
+        const int32_t mat_index = (i < material_indices.size()) ? material_indices[i] : -1;
+        const mtl::MaterialRecipe *prim_recipe = pick_recipe(mat_index);
+
         if (!geo)
         {
             out_assets.emplace_back();
             continue;
         }
 
-        out_assets.emplace_back(geo, recipe, PrimitiveType::Triangles);
+        out_assets.emplace_back(geo, prim_recipe, PrimitiveType::Triangles, mat_index);
     }
 
     out_nodes = std::move(scene_nodes);
@@ -854,7 +880,9 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
     const OSString                   &base_dir,
     std::vector<PrimitiveAsset>      &out_assets,
     std::vector<StaticMeshNode>      &out_nodes,
-    std::vector<int32_t>             &out_root_nodes)
+    std::vector<int32_t>             &out_root_nodes,
+    const mtl::MaterialRecipe *const *material_recipes,
+    const uint32_t                    material_recipe_count)
 {
     using namespace hgl::io::minipack;
 
@@ -867,7 +895,8 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
 
     return BuildSceneFromMiniPack(device,geo_mgr,geometry_vertex_format,recipe,
                                   mpm,pack_path,base_dir,
-                                  out_assets,out_nodes,out_root_nodes);
+                                  out_assets,out_nodes,out_root_nodes,
+                                  material_recipes,material_recipe_count);
 }
 
 bool LoadStaticMeshSceneFromMemory(
@@ -881,7 +910,9 @@ bool LoadStaticMeshSceneFromMemory(
     const OSString                   &base_dir,
     std::vector<PrimitiveAsset>      &out_assets,
     std::vector<StaticMeshNode>      &out_nodes,
-    std::vector<int32_t>             &out_root_nodes)
+    std::vector<int32_t>             &out_root_nodes,
+    const mtl::MaterialRecipe *const *material_recipes,
+    const uint32_t                    material_recipe_count)
 {
     using namespace hgl::io::minipack;
 
@@ -894,7 +925,8 @@ bool LoadStaticMeshSceneFromMemory(
 
     return BuildSceneFromMiniPack(device,geo_mgr,geometry_vertex_format,recipe,
                                   mpm,pack_name,base_dir,
-                                  out_assets,out_nodes,out_root_nodes);
+                                  out_assets,out_nodes,out_root_nodes,
+                                  material_recipes,material_recipe_count);
 }
 
 }//namespace hgl::graph

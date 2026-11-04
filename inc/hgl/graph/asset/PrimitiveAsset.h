@@ -62,6 +62,7 @@ namespace hgl::graph
         PrimitiveVariant inline_variant_{};
         const PrimitiveVariant *variants_ = nullptr;
         uint32_t variant_count_ = 0;
+        int32_t material_index_ = -1;
 
     private:
         void CopyFrom(const PrimitiveAsset &src)
@@ -71,6 +72,7 @@ namespace hgl::graph
             primitive_type_ = src.primitive_type_;
             inline_variant_ = src.inline_variant_;
             variant_count_ = src.variant_count_;
+            material_index_ = src.material_index_;
 
             if (!src.variants_ || src.variant_count_ == 0)
             {
@@ -91,6 +93,7 @@ namespace hgl::graph
             src.inline_variant_ = {};
             src.variants_ = nullptr;
             src.variant_count_ = 0;
+            src.material_index_ = -1;
         }
 
     public:
@@ -106,8 +109,9 @@ namespace hgl::graph
 
         PrimitiveAsset(Geometry *geo,
                        const mtl::MaterialRecipe *recipe,
-                       const PrimitiveType primitive_type = PrimitiveType::Triangles)
-            : geometry_(geo), primitive_type_(primitive_type)
+                       const PrimitiveType primitive_type = PrimitiveType::Triangles,
+                       const int32_t material_index = -1)
+            : geometry_(geo), primitive_type_(primitive_type), material_index_(material_index)
         {
             inline_variant_.material_recipe = recipe;
             variants_ = recipe ? &inline_variant_ : nullptr;
@@ -161,6 +165,11 @@ namespace hgl::graph
         const GeometryAsset *GetGeometryAsset() const { return geometry_asset_; }
         PrimitiveType GetPrimitiveType() const { return primitive_type_; }
         uint32_t GetVariantCount() const { return variant_count_; }
+
+        /// 源场景（glTF/`.scene`）材质表下标；-1 = 未提供（单材质场景等既有情形）。
+        /// 多材质场景装载时由 loader 填入，供实例化层按材质下标绑定数据行。
+        int32_t GetMaterialIndex() const { return material_index_; }
+        void SetMaterialIndex(const int32_t material_index) { material_index_ = material_index; }
 
         /**
          * 几何是否**已就绪可画**。

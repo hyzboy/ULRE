@@ -200,6 +200,9 @@ add_ecs_test(TestGeometryPreset tests/TestGeometryPreset.cpp)
 # TOML SceneSpec parser: schema, references, type-specific keys, and parent cycles.
 add_ecs_test(TestSceneFile tests/TestSceneFile.cpp)
 
+# 阶段二：多材质场景装载的资产级材质下标透传 + 实例化行选择逻辑（纯数据用例）。
+add_ecs_test(TestStaticMeshMultiMaterial tests/TestStaticMeshMultiMaterial.cpp)
+
 # 统一序列化框架（TestSerializeArchive）、资产 URI（TestAssetURI）、MetaObject 生命周期
 # （MetaObjectTest）三个用例已随实现一起下沉到 CMAssetsManage/test/，由
 # use_cm_module(CMAssetsManage) 带进构建；ctest 名称与 LABELS 不变，本文件不再登记。
@@ -422,6 +425,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestSceneFile
         PROPERTIES LABELS "scene;asset")
+
+    add_test(
+        NAME TestStaticMeshMultiMaterial
+        COMMAND TestStaticMeshMultiMaterial
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestStaticMeshMultiMaterial
+        PROPERTIES LABELS "scene;asset;material")
 
     add_test(
         NAME TestAssetReflection

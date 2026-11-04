@@ -223,8 +223,11 @@ namespace hgl::graph
 
                 if (options.material_rows && options.material_row_count > 0)
                 {
+                    // 多材质模式优先按图元的源材质下标选行；
+                    // 下标缺失/越界回退到挂载顺序轮转（既有行为）。
                     ecs::MaterialData::MaterialDataAuthoringResource resource{};
-                    resource = options.material_rows[row_counter % options.material_row_count];
+                    resource = options.material_rows[
+                        ResolveMaterialRowIndex(*asset, options, row_counter)];
                     ecs::MaterialData *material_data =
                         world->GetOrCreateMaterialData(entity);
                     if (!material_data || !material_data->SetDataResource(resource))
@@ -243,6 +246,24 @@ namespace hgl::graph
         FLogInfo(u8"Instantiate: 场景实例化完成（节点 %zu，派生图元实体 %zu，资产副本 %d）",
                  nodes.size(), extra_entities.size(), owned_assets.GetCount());
         return true;
+    }
+
+    uint32_t StaticMeshSceneInstance::ResolveMaterialRowIndex(const PrimitiveAsset &asset,
+                                                              const Options &options,
+                                                              uint32_t mount_order)
+    {
+        if (options.material_row_count == 0)
+            return 0;
+
+        if (options.rows_by_material_index)
+        {
+            const int32_t mat_index = asset.GetMaterialIndex();
+            if (mat_index >= 0
+                && static_cast<uint32_t>(mat_index) < options.material_row_count)
+                return static_cast<uint32_t>(mat_index);
+        }
+
+        return mount_order % options.material_row_count;
     }
 
 }//namespace hgl::graph

@@ -47,6 +47,13 @@ namespace hgl
                 /// 材质数据 SSBO 行（可空；非空时按图元挂载顺序轮转绑定）
                 const GlobalSSBOBinding *material_rows = nullptr;
                 uint32_t                 material_row_count = 0;
+                /**
+                 * @brief 多材质模式：`material_rows` 按**材质下标**索引
+                 * （行 i = 源场景 materials[i] 的数据行），图元用其
+                 * `PrimitiveAsset::GetMaterialIndex()` 选行；下标缺失或
+                 * 越界时回退到挂载顺序轮转（既有行为）。
+                 */
+                bool rows_by_material_index = false;
             };
 
         private:
@@ -104,6 +111,19 @@ namespace hgl
                 return asset_index >= 0 && asset_index < owned_assets.GetCount()
                      ? owned_assets.At(asset_index) : nullptr;
             }
+
+            /**
+             * @brief 解析某个图元应绑定的材质数据行下标（纯查表，无副作用）。
+             *
+             * - `options.rows_by_material_index` 且图元带有有效材质下标
+             *   （`GetMaterialIndex()` ∈ [0, material_row_count)）⇒ 行 = 材质下标；
+             * - 否则回退为挂载顺序轮转（`mount_order % material_row_count`），
+             *   即既有单材质行为。
+             * @note `material_row_count == 0` 时返回 0（调用方应先判空跳过绑定）。
+             */
+            static uint32_t ResolveMaterialRowIndex(const PrimitiveAsset &asset,
+                                                    const Options &options,
+                                                    uint32_t mount_order);
         };
     }//namespace graph
 }//namespace hgl
