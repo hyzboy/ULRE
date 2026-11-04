@@ -37,6 +37,16 @@ struct SurfaceOutput
     float ao;
     vec3  emissive;
     float alpha;
+    // 高级材质参数（Filament 扩展；来源 = PBRAdvancedSurfaceRow 64B 行）。
+    // 无高级数据的 provider 一律显式写 0 ⇒ 槽模块常量折叠，行为与没有这些
+    // 字段时等价。字段名与 LightingInput 对齐，output_policy 直通。
+    float clearCoat;
+    float clearCoatRoughness;
+    vec3  sheenColor;
+    float sheenRoughness;
+    float anisotropy;
+    float subsurfacePower;
+    float thickness;
 };
 
 // SurfaceOutputExt — reserved for future specialization (Skin/Hair/ClearCoat/Cloth).

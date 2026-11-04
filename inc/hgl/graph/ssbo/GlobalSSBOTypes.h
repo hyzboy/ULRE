@@ -26,6 +26,7 @@ namespace hgl::graph
         case GlobalSSBOType::PBRSurface:
         case GlobalSSBOType::EmissiveSurface:
         case GlobalSSBOType::TransmissionSurface:
+        case GlobalSSBOType::PBRAdvancedSurface:
             return 1;
         default:
             break;
@@ -41,6 +42,7 @@ namespace hgl::graph
         case GlobalSSBOType::PBRSurface:            return sizeof(float) * 8;
         case GlobalSSBOType::EmissiveSurface:       return sizeof(float) * 4;
         case GlobalSSBOType::TransmissionSurface:   return sizeof(uint32_t) * 4;
+        case GlobalSSBOType::PBRAdvancedSurface:    return sizeof(float) * 16;
         default:
             break;
         }
@@ -123,6 +125,7 @@ HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)
     HGL_ENUM_ITEM(PBRSurface,            "PBR 表面材质字段行")
     HGL_ENUM_ITEM(EmissiveSurface,       "自发光表面材质字段行")
     HGL_ENUM_ITEM(TransmissionSurface,   "透射表面材质字段行")
+    HGL_ENUM_ITEM(PBRAdvancedSurface,    "PBR 高级材质扩展行（ClearCoat/Sheen/Anisotropy/Subsurface）")
     HGL_ENUM_ITEM(GeometryAABB,          "几何本地 AABB（与 MeshDrawParams 同 ID 索引的平行表）")
     HGL_ENUM_ITEM(MaterialData,          "材质数据组件行")
 HGL_ENUM_END(hgl::graph::GlobalSSBOType)

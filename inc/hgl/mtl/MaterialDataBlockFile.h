@@ -90,7 +90,7 @@ namespace hgl::graph::mtl
     /**
      * 授权形态 → TOML 文本（**按 `target` 投影**）。
      *
-     * `MaterialDataRowSpec` 是三种内容行的**并集**，通用 `SaveToTomlText` 会把
+     * `MaterialDataRowSpec` 是四种内容行的**并集**，通用 `SaveToTomlText` 会把
      * 并集字段一个不落地写出来（PBR 块也会带上 `trans_color`），这样的文本再
      * 读回来会被跨类型键校验拒绝。本入口负责把「不属于本 target 的键」滤掉，
      * 是「程序批量生成数据块并落盘」的唯一写出口 —— 与

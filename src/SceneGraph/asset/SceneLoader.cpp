@@ -94,6 +94,26 @@ namespace hgl::graph
                     return false;
                 break;
             }
+            case SceneMaterialType::PBRAdvancedSurface:
+            {
+                runtime->accessor = registry->GetAccessor<ssbo::PBRAdvancedSurfaceRow>();
+                ssbo::PBRAdvancedSurfaceRow row{};
+                row.base_color = spec.base_color;
+                row.metallic = spec.metallic;
+                row.roughness = spec.roughness;
+                row.normal_scale = spec.normal_scale;
+                row.fresnel = spec.fresnel;
+                row.clearcoat = spec.clearcoat;
+                row.clearcoat_roughness = spec.clearcoat_roughness;
+                row.sheen_roughness = spec.sheen_roughness;
+                row.anisotropy = spec.anisotropy;
+                row.sheen_color = spec.sheen_color.packUnorm4x8();
+                row.subsurface_power = spec.subsurface_power;
+                row.thickness = spec.thickness;
+                if (!runtime->accessor || !runtime->accessor.Write(row))
+                    return false;
+                break;
+            }
             default:
                 return false;
             }

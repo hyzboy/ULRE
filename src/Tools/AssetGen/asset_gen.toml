@@ -16,7 +16,7 @@ integer_enums = ["VkFormat", "ShaderStage"]
 # 写出时优先用别名。这样既不改动已有的 TOML 拼写，也不用修改 C++ 命名。
 [[enum]]
 name = "SceneMaterialType"
-aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface"]
+aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface", "PBRAdvancedSurface"]
 
 [[enum]]
 name = "SceneCameraMode"

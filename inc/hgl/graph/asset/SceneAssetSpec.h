@@ -13,7 +13,8 @@ namespace hgl::graph
     {
         PBRSurface,
         EmissiveSurface,
-        TransmissionSurface
+        TransmissionSurface,
+        PBRAdvancedSurface
     };
 
     enum class SceneCameraMode : uint8
@@ -50,6 +51,15 @@ namespace hgl::graph
         float fresnel = 0.04f;
         Color4f color = Color4f(1.0f);
         Color4f trans_color = Color4f(1.0f);
+        // PBRAdvancedSurface 专用（Filament 高级材质扩展；授权侧超集字段，
+        // 与 MaterialDataRowSpec 同款：sheen_color 落 GPU 行时打包成 unorm4x8）
+        float clearcoat = 0.0f;
+        float clearcoat_roughness = 0.0f;
+        Color4f sheen_color = Color4f(1.0f);
+        float sheen_roughness = 0.0f;
+        float anisotropy = 0.0f;
+        float subsurface_power = 0.0f;
+        float thickness = 0.0f;
         ManagedArray<SceneTextureSpec> textures;
     };
 

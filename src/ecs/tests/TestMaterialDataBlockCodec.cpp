@@ -84,8 +84,8 @@ namespace
 
     bool TestMetaWiring()
     {
-        // 行规约是 7 个并集字段；块规约是 schema/name/target/rows 四个。
-        if (codec::Class_MaterialDataRowSpec.property_count != 7)
+        // 行规约是 14 个并集字段（标准 7 + 高级 7）；块规约是 schema/name/target/rows 四个。
+        if (codec::Class_MaterialDataRowSpec.property_count != 14)
             return false;
         if (codec::Class_MaterialDataBlockSpec.property_count != 4)
             return false;
@@ -108,12 +108,18 @@ namespace
         return GetGlobalSSBOTypeStructStride(GlobalSSBOType::PBRSurface) == sizeof(ssbo::PBRSurfaceRow)
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::EmissiveSurface) == sizeof(ssbo::EmissiveSurfaceRow)
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::TransmissionSurface) == sizeof(ssbo::TransmissionSurfaceRow)
+            && GetGlobalSSBOTypeStructStride(GlobalSSBOType::PBRAdvancedSurface) == sizeof(ssbo::PBRAdvancedSurfaceRow)
             // 组件行与绘制参数行都不是「可摊平的内容行」。
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::MaterialData) == 0
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::MeshDrawParams) == 0
             && sizeof(ssbo::PBRSurfaceRow) % 16 == 0
             && sizeof(ssbo::EmissiveSurfaceRow) % 16 == 0
-            && sizeof(ssbo::TransmissionSurfaceRow) % 16 == 0;
+            && sizeof(ssbo::TransmissionSurfaceRow) % 16 == 0
+            && sizeof(ssbo::PBRAdvancedSurfaceRow) % 16 == 0
+            // 高级行前 32B 与标准行逐字节同构（偏移同构由 MaterialDataRows.h 的
+            // static_assert 在编译期钉死；这里只运行期复核行宽口径）。
+            && sizeof(ssbo::PBRAdvancedSurfaceRow) == 64
+            && sizeof(ssbo::PBRSurfaceRow) == 32;
     }
 
     bool TestPbrBlock()

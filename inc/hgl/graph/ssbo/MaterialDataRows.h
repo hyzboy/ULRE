@@ -39,10 +39,35 @@ namespace hgl::graph::ssbo
     };//struct TransmissionSurfaceRow: 16B = 1 block
 
     /**
+     * Filament 高级材质扩展行（ClearCoat / Sheen / Anisotropy / Subsurface）。
+     *
+     * 前 32B 与 `PBRSurfaceRow` **逐字节同构**（base_color / metallic / roughness /
+     * normal_scale / fresnel）：同一份基础材质数据可以原样升级进本行，字段偏移
+     * 不漂移。后 32B 是高级参数；`sheen_color` 与 `TransmissionSurfaceRow::trans_color`
+     * 同款打包（`packUnorm4x8`，授权侧是 `Color4f`）。
+     */
+    struct HGL_SSBO_ROW PBRAdvancedSurfaceRow
+    {
+        Color4f base_color   = Color4f(1.0f);   ///<基础颜色（与 PBRSurfaceRow 同偏移）
+        float   metallic     = 0.0f;            ///<金属度
+        float   roughness    = 1.0f;            ///<粗糙度
+        float   normal_scale = kDefaultLitMaterialNormalStrength;    ///<法线强度
+        float   fresnel      = kDefaultLitMaterialFresnel;           ///<菲涅尔
+        float   clearcoat    = 0.0f;            ///<清漆强度（KHR_materials_clearcoat）
+        float   clearcoat_roughness = 0.0f;     ///<清漆层粗糙度
+        float   sheen_roughness     = 0.0f;     ///<绒毛粗糙度（KHR_materials_sheen）
+        float   anisotropy          = 0.0f;     ///<各向异性强度（KHR_materials_anisotropy）
+        uint32  sheen_color         = 0u;       ///<绒毛色（打包 unorm4x8，rgb 有效）
+        float   subsurface_power    = 0.0f;     ///<次表面 wrap 权重（0 = 关闭）
+        float   thickness           = 0.0f;     ///<厚度（背光穿透衰减）
+        uint32  reserved0           = 0u;       ///<补齐至 64B 整倍数
+    };//struct PBRAdvancedSurfaceRow: 64B = 4 blocks
+
+    /**
      * 材质数据**组件行**（B4-iii-a：(Global, MaterialData) 行 arena 的 C++ 唯一真源）
      *
      * 与上面三个「内容行」分工不同：
-     *   · 内容行（PBRSurface / EmissiveSurface / TransmissionSurface）= **被引用的资源行**，
+     *   · 内容行（PBRSurface / EmissiveSurface / TransmissionSurface / PBRAdvancedSurface）= **被引用的资源行**，
      *     shader 按 `MTL_ROW(…)` 读它的字段；
      *   · 本行 = **组件行**：每份材质数据一行，行内只说「我引用哪一行内容」+ 授权标记。
      *     组件（`ecs::MaterialData`）只持本行行号，不再持每实体副本（B4-i 已删死字段）。
@@ -64,7 +89,7 @@ namespace hgl::graph::ssbo
     /// ── 「材质行号」口径（B4-ii 钉死；改这里之前先读）────────────────────────────
     /// ① **组件行** = `MaterialDataRow`：行号 = `ecs::MaterialData::material_row_id`，
     ///    池 = `GlobalSSBOType::MaterialData`（设备级、跨世界共享），**行 0 = 「无材质数据」哨兵**；
-    /// ② **内容行** = `PBRSurfaceRow` / `EmissiveSurfaceRow` / `TransmissionSurfaceRow`：
+    /// ② **内容行** = `PBRSurfaceRow` / `EmissiveSurfaceRow` / `TransmissionSurfaceRow` / `PBRAdvancedSurfaceRow`：
     ///    由组件行三元组定位 `{surface_type, surface_ssbo_id, surface_data_index}`
     ///    （`surface_data_index == uint32(-1)` ⇒ 无内容；行号只在 `surface_type` 对应的池内有效）。
     /// 读行一律走 `GlobalSSBOBufferRegistry::GetTypedRow<T>(type, row_id)`（越界/行宽不符 ⇒ nullptr），
@@ -106,7 +131,15 @@ namespace hgl::graph::ssbo
     static_assert(sizeof(PBRSurfaceRow)                %16==0);
     static_assert(sizeof(EmissiveSurfaceRow)           %16==0);
     static_assert(sizeof(TransmissionSurfaceRow)       %16==0);
+    static_assert(sizeof(PBRAdvancedSurfaceRow)        %16==0);
     static_assert(sizeof(PBRSurfaceRow)==32);
     static_assert(sizeof(EmissiveSurfaceRow)==16);
     static_assert(sizeof(TransmissionSurfaceRow)==16);
+    static_assert(sizeof(PBRAdvancedSurfaceRow)==64);
+    // 前 32B 与 PBRSurfaceRow 逐字段同构（偏移不得漂移）
+    static_assert(offsetof(PBRAdvancedSurfaceRow, base_color) == offsetof(PBRSurfaceRow, base_color));
+    static_assert(offsetof(PBRAdvancedSurfaceRow, metallic)   == offsetof(PBRSurfaceRow, metallic));
+    static_assert(offsetof(PBRAdvancedSurfaceRow, roughness)  == offsetof(PBRSurfaceRow, roughness));
+    static_assert(offsetof(PBRAdvancedSurfaceRow, normal_scale)== offsetof(PBRSurfaceRow, normal_scale));
+    static_assert(offsetof(PBRAdvancedSurfaceRow, fresnel)    == offsetof(PBRSurfaceRow, fresnel));
 }//namespace hgl::graph::ssbo

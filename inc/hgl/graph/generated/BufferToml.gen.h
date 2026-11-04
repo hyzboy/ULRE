@@ -182,6 +182,7 @@ namespace hgl::graph::generated
     inline bool ReadPBRSurfaceRow(const toml::value &table, hgl::graph::ssbo::PBRSurfaceRow &out);
     inline bool ReadEmissiveSurfaceRow(const toml::value &table, hgl::graph::ssbo::EmissiveSurfaceRow &out);
     inline bool ReadTransmissionSurfaceRow(const toml::value &table, hgl::graph::ssbo::TransmissionSurfaceRow &out);
+    inline bool ReadPBRAdvancedSurfaceRow(const toml::value &table, hgl::graph::ssbo::PBRAdvancedSurfaceRow &out);
     inline bool ReadMaterialDataRow(const toml::value &table, hgl::graph::ssbo::MaterialDataRow &out);
     inline toml::value WriteAmbientEnvInfo(const hgl::graph::AmbientEnvInfo &in);
     inline toml::value WriteViewportInfo(const hgl::graph::ViewportInfo &in);
@@ -194,6 +195,7 @@ namespace hgl::graph::generated
     inline toml::value WritePBRSurfaceRow(const hgl::graph::ssbo::PBRSurfaceRow &in);
     inline toml::value WriteEmissiveSurfaceRow(const hgl::graph::ssbo::EmissiveSurfaceRow &in);
     inline toml::value WriteTransmissionSurfaceRow(const hgl::graph::ssbo::TransmissionSurfaceRow &in);
+    inline toml::value WritePBRAdvancedSurfaceRow(const hgl::graph::ssbo::PBRAdvancedSurfaceRow &in);
     inline toml::value WriteMaterialDataRow(const hgl::graph::ssbo::MaterialDataRow &in);
 
     inline bool ReadAmbientEnvInfo(const toml::value &table, hgl::graph::AmbientEnvInfo &out)
@@ -355,6 +357,10 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.addr_transmission_surface)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "addr_pbr_advanced_surface"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_pbr_advanced_surface)) return false;
+        }
         if (const toml::value *v = detail::Find(table, "addr_color_palette"))
         {
             if (!detail::AsUnsigned(*v, out.addr_color_palette)) return false;
@@ -481,6 +487,61 @@ namespace hgl::graph::generated
         return true;
     }
 
+    inline bool ReadPBRAdvancedSurfaceRow(const toml::value &table, hgl::graph::ssbo::PBRAdvancedSurfaceRow &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "base_color"))
+        {
+            if (!detail::AsFloatArray(*v, &out.base_color.x, 4)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "metallic"))
+        {
+            if (!detail::AsFloat(*v, out.metallic)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "roughness"))
+        {
+            if (!detail::AsFloat(*v, out.roughness)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "normal_scale"))
+        {
+            if (!detail::AsFloat(*v, out.normal_scale)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "fresnel"))
+        {
+            if (!detail::AsFloat(*v, out.fresnel)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "clearcoat"))
+        {
+            if (!detail::AsFloat(*v, out.clearcoat)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "clearcoat_roughness"))
+        {
+            if (!detail::AsFloat(*v, out.clearcoat_roughness)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "sheen_roughness"))
+        {
+            if (!detail::AsFloat(*v, out.sheen_roughness)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "anisotropy"))
+        {
+            if (!detail::AsFloat(*v, out.anisotropy)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "sheen_color"))
+        {
+            if (!detail::AsUnsigned(*v, out.sheen_color)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "subsurface_power"))
+        {
+            if (!detail::AsFloat(*v, out.subsurface_power)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "thickness"))
+        {
+            if (!detail::AsFloat(*v, out.thickness)) return false;
+        }
+        return true;
+    }
+
     inline bool ReadMaterialDataRow(const toml::value &table, hgl::graph::ssbo::MaterialDataRow &out)
     {
         if (!table.is_table())
@@ -572,6 +633,7 @@ namespace hgl::graph::generated
         t["addr_pbr_surface"] = detail::FromInteger(in.addr_pbr_surface);
         t["addr_emissive_surface"] = detail::FromInteger(in.addr_emissive_surface);
         t["addr_transmission_surface"] = detail::FromInteger(in.addr_transmission_surface);
+        t["addr_pbr_advanced_surface"] = detail::FromInteger(in.addr_pbr_advanced_surface);
         t["addr_color_palette"] = detail::FromInteger(in.addr_color_palette);
         t["addr_viewport"] = detail::FromInteger(in.addr_viewport);
         return toml::value(std::move(t));
@@ -624,6 +686,24 @@ namespace hgl::graph::generated
     {
         toml::table t;
         t["trans_color"] = detail::FromInteger(in.trans_color);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WritePBRAdvancedSurfaceRow(const hgl::graph::ssbo::PBRAdvancedSurfaceRow &in)
+    {
+        toml::table t;
+        t["base_color"] = detail::FromFloatArray(&in.base_color.x, 4);
+        t["metallic"] = detail::FromFloat(in.metallic);
+        t["roughness"] = detail::FromFloat(in.roughness);
+        t["normal_scale"] = detail::FromFloat(in.normal_scale);
+        t["fresnel"] = detail::FromFloat(in.fresnel);
+        t["clearcoat"] = detail::FromFloat(in.clearcoat);
+        t["clearcoat_roughness"] = detail::FromFloat(in.clearcoat_roughness);
+        t["sheen_roughness"] = detail::FromFloat(in.sheen_roughness);
+        t["anisotropy"] = detail::FromFloat(in.anisotropy);
+        t["sheen_color"] = detail::FromInteger(in.sheen_color);
+        t["subsurface_power"] = detail::FromFloat(in.subsurface_power);
+        t["thickness"] = detail::FromFloat(in.thickness);
         return toml::value(std::move(t));
     }
 

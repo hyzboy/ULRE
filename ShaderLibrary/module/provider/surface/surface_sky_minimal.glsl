@@ -37,5 +37,13 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     SurfaceOutput so;
     so.baseColor = sky_color + sun_color;
     so.alpha     = 1.0;
+    // 高级材质参数：天空无材质行可读 ⇒ 显式清零（下游常量折叠）。
+    so.clearCoat = 0.0;
+    so.clearCoatRoughness = 0.0;
+    so.sheenColor = vec3(0.0);
+    so.sheenRoughness = 0.0;
+    so.anisotropy = 0.0;
+    so.subsurfacePower = 0.0;
+    so.thickness = 0.0;
     return so;
 }

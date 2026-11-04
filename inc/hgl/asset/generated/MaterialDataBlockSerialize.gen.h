@@ -27,6 +27,13 @@ namespace hgl::serialize
             ar.Field(5, "fresnel", v.fresnel);
             ar.Field(6, "color", v.color);
             ar.Field(7, "trans_color", v.trans_color);
+            ar.Field(8, "clearcoat", v.clearcoat);
+            ar.Field(9, "clearcoat_roughness", v.clearcoat_roughness);
+            ar.Field(10, "sheen_color", v.sheen_color);
+            ar.Field(11, "sheen_roughness", v.sheen_roughness);
+            ar.Field(12, "anisotropy", v.anisotropy);
+            ar.Field(13, "subsurface_power", v.subsurface_power);
+            ar.Field(14, "thickness", v.thickness);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_MaterialDataRowSpec; }

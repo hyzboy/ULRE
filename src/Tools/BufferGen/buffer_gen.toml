@@ -112,6 +112,14 @@ glsl_ref = "TransmissionSurfaceRow"
 note = "GlobalSSBOType::TransmissionSurface 的内容行；reserved0[3] 是补齐至 16B 整倍数的显式填充，必须保留（scalar layout 不隐式补）。"
 
 [[struct]]
+name = "PBRAdvancedSurfaceRow"
+kind = "ssbo"
+file = "module/descriptor/ssbo/pbr_advanced_surface_row.glsl"
+glsl_struct = "PBRAdvancedSurfaceData"
+glsl_ref = "PBRAdvancedSurfaceRow"
+note = "GlobalSSBOType::PBRAdvancedSurface 的内容行（Filament 高级材质扩展）；前 32B 与 PBRSurfaceRow 逐字节同构，sheen_color 是打包的 unorm4x8（授权侧为 Color4f），reserved0 补齐至 64B 整倍数，必须保留。"
+
+[[struct]]
 name = "MaterialDataRow"
 kind = "ssbo"
 file = "module/descriptor/ssbo/material_data_row.glsl"

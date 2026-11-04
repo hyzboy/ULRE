@@ -21,6 +21,7 @@ namespace hgl::graph
         PBRSurface,
         EmissiveSurface,
         TransmissionSurface,
+        PBRAdvancedSurface,     // Filament 高级材质扩展行（64 B）：前 32B 与 PBRSurfaceRow 逐字节同构
         GeometryAABB,           // 几何本地 AABB（32 B），与 MeshDrawParams 同 ID 索引的平行表
         MaterialData,           // 材质数据**组件行**（16 B）：组件在设备级的家（引用哪一行内容 + 授权标记）
 

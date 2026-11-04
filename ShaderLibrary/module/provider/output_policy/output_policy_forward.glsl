@@ -45,16 +45,15 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si, uin
     // 材质数据行号）。不接收阴影的图元在此恒得 1.0。
     lighting.shadowFactor = GetShadowFactor(si, data_index);
 
-    // 高级材质字段：显式字面量 0。阶段二接入 64B 高级数据行后，这里
-    // 改读 surf 的高级字段；在此之前 none 槽与模型中的衰减乘数全部
-    // 常量折叠，生成的 SPIR-V 与没有这些字段时等价。
-    lighting.clearCoat = 0.0;
-    lighting.clearCoatRoughness = 0.0;
-    lighting.sheenColor = vec3(0.0);
-    lighting.sheenRoughness = 0.0;
-    lighting.anisotropy = 0.0;
-    lighting.subsurfacePower = 0.0;
-    lighting.thickness = 0.0;
+    // 高级材质字段：直通 surface（阶段二接入 64B 高级数据行；无高级数据的
+    // provider 恒写 0 ⇒ none 槽与衰减乘数全部常量折叠，SPIR-V 与字段不存在时等价）。
+    lighting.clearCoat = surf.clearCoat;
+    lighting.clearCoatRoughness = surf.clearCoatRoughness;
+    lighting.sheenColor = surf.sheenColor;
+    lighting.sheenRoughness = surf.sheenRoughness;
+    lighting.anisotropy = surf.anisotropy;
+    lighting.subsurfacePower = surf.subsurfacePower;
+    lighting.thickness = surf.thickness;
     return lighting;
 }
 

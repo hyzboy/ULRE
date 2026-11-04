@@ -68,6 +68,14 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     materialResult.ao = 1.0;
     materialResult.emissive = vec3(0.0);
     materialResult.alpha = 1.0;
+    // 高级材质参数：本 provider 无高级数据 ⇒ 显式清零（下游常量折叠）。
+    materialResult.clearCoat = 0.0;
+    materialResult.clearCoatRoughness = 0.0;
+    materialResult.sheenColor = vec3(0.0);
+    materialResult.sheenRoughness = 0.0;
+    materialResult.anisotropy = 0.0;
+    materialResult.subsurfacePower = 0.0;
+    materialResult.thickness = 0.0;
     return materialResult;
 }
 

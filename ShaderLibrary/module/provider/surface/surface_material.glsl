@@ -46,6 +46,14 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     surface.ao = material.ao;
     surface.emissive = material.emissive;
     surface.alpha = material.alpha * si.vertexColor.a;
+    // 高级材质参数直通（provider 未提供时恒 0，见 material_source_interface）。
+    surface.clearCoat = material.clearCoat;
+    surface.clearCoatRoughness = material.clearCoatRoughness;
+    surface.sheenColor = material.sheenColor;
+    surface.sheenRoughness = material.sheenRoughness;
+    surface.anisotropy = material.anisotropy;
+    surface.subsurfacePower = material.subsurfacePower;
+    surface.thickness = material.thickness;
     return surface;
 }
 #endif

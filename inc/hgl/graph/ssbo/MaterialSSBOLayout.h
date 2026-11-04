@@ -14,6 +14,7 @@ namespace hgl::graph::ssbo
     //     ShaderLibrary/module/descriptor/ssbo/pbr_surface_row.glsl
     //     ShaderLibrary/module/descriptor/ssbo/emissive_surface_row.glsl
     //     ShaderLibrary/module/descriptor/ssbo/transmission_surface_row.glsl
+    //     ShaderLibrary/module/descriptor/ssbo/pbr_advanced_surface_row.glsl
     //     ShaderLibrary/module/descriptor/ssbo/material_data_row.glsl
     // 由 `src/Tools/BufferGen/buffer_gen.py` 从 C++ 结构 + 注解生成
     //（`buffer_gen.py --check` 在 CI 里守住漂移）。
@@ -26,7 +27,8 @@ namespace hgl::graph::ssbo
         {
         case GlobalSSBOType::EmissiveSurface:         return "EmissiveSurfaceData";
         case GlobalSSBOType::PBRSurface:              return "PBRSurfaceData";
-        case GlobalSSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
+        case GlobalSSBOType::TransmissionSurface:   return "TransmissionSurfaceData";
+        case GlobalSSBOType::PBRAdvancedSurface:    return "PBRAdvancedSurfaceData";
         default:                                     return nullptr;
         }
     }
@@ -39,6 +41,7 @@ namespace hgl::graph::ssbo
     template<> struct GlobalRowTypeTraits<PBRSurfaceRow>              { static constexpr GlobalSSBOType TYPE = GlobalSSBOType::PBRSurface; };
     template<> struct GlobalRowTypeTraits<EmissiveSurfaceRow>         { static constexpr GlobalSSBOType TYPE = GlobalSSBOType::EmissiveSurface; };
     template<> struct GlobalRowTypeTraits<TransmissionSurfaceRow>     { static constexpr GlobalSSBOType TYPE = GlobalSSBOType::TransmissionSurface; };
+    template<> struct GlobalRowTypeTraits<PBRAdvancedSurfaceRow>      { static constexpr GlobalSSBOType TYPE = GlobalSSBOType::PBRAdvancedSurface; };
 
     inline const char *GetGlobalSSBORowName(const GlobalSSBOType type) noexcept
     {
@@ -46,7 +49,8 @@ namespace hgl::graph::ssbo
         {
         case GlobalSSBOType::EmissiveSurface:         return "EmissiveSurfaceRow";
         case GlobalSSBOType::PBRSurface:              return "PBRSurfaceRow";
-        case GlobalSSBOType::TransmissionSurface:     return "TransmissionSurfaceRow";
+        case GlobalSSBOType::TransmissionSurface:   return "TransmissionSurfaceRow";
+        case GlobalSSBOType::PBRAdvancedSurface:    return "PBRAdvancedSurfaceRow";
         default:                                     return nullptr;
         }
     }
@@ -59,7 +63,8 @@ namespace hgl::graph::ssbo
         {
         case GlobalSSBOType::EmissiveSurface:         return "EmissiveSurfaceBuffer";
         case GlobalSSBOType::PBRSurface:              return "PBRSurfaceBuffer";
-        case GlobalSSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
+        case GlobalSSBOType::TransmissionSurface:   return "TransmissionSurfaceBuffer";
+        case GlobalSSBOType::PBRAdvancedSurface:    return "PBRAdvancedSurfaceBuffer";
         default:                                     return nullptr;
         }
     }

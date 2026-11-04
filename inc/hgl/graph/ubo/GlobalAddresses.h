@@ -33,6 +33,7 @@ namespace hgl::graph
         uint64_t addr_pbr_surface = 0;
         uint64_t addr_emissive_surface = 0;
         uint64_t addr_transmission_surface = 0;
+        uint64_t addr_pbr_advanced_surface = 0;
         uint64_t addr_color_palette = 0;
 
         // ── 每帧槽字段：地址随帧槽变化（buffer 每帧不同）──

@@ -109,6 +109,7 @@ table GlobalAddresses
   addr_pbr_surface: ulong;
   addr_emissive_surface: ulong;
   addr_transmission_surface: ulong;
+  addr_pbr_advanced_surface: ulong;
   addr_color_palette: ulong;
   addr_viewport: ulong;
 }
@@ -156,6 +157,23 @@ table EmissiveSurfaceRow
 table TransmissionSurfaceRow
 {
   trans_color: uint;
+}
+
+// inc/hgl/graph/ssbo/MaterialDataRows.h → PBRAdvancedSurfaceRow
+table PBRAdvancedSurfaceRow
+{
+  base_color: Float4;
+  metallic: float;
+  roughness: float;
+  normal_scale: float;
+  fresnel: float;
+  clearcoat: float;
+  clearcoat_roughness: float;
+  sheen_roughness: float;
+  anisotropy: float;
+  sheen_color: uint;
+  subsurface_power: float;
+  thickness: float;
 }
 
 // inc/hgl/graph/ssbo/MaterialDataRows.h → MaterialDataRow

@@ -21,6 +21,7 @@ namespace hgl::asset::generated
         case hgl::graph::SceneMaterialType::PBRSurface: return "PBRSurface";
         case hgl::graph::SceneMaterialType::EmissiveSurface: return "EmissiveSurface";
         case hgl::graph::SceneMaterialType::TransmissionSurface: return "TransmissionSurface";
+        case hgl::graph::SceneMaterialType::PBRAdvancedSurface: return "PBRAdvancedSurface";
         }
         return nullptr;
     }
@@ -31,6 +32,7 @@ namespace hgl::asset::generated
         if (hgl::stricmp(s, "PBRSurface") == 0) { out = hgl::graph::SceneMaterialType::PBRSurface; return true; }
         if (hgl::stricmp(s, "EmissiveSurface") == 0) { out = hgl::graph::SceneMaterialType::EmissiveSurface; return true; }
         if (hgl::stricmp(s, "TransmissionSurface") == 0) { out = hgl::graph::SceneMaterialType::TransmissionSurface; return true; }
+        if (hgl::stricmp(s, "PBRAdvancedSurface") == 0) { out = hgl::graph::SceneMaterialType::PBRAdvancedSurface; return true; }
         return false;
     }
 
@@ -130,6 +132,13 @@ namespace hgl::asset::generated
         { "fresnel", "fresnel", "fresnel", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, fresnel), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::fresnel)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
         { "color", "color", "color", "Default", "", "Color4f", nullptr, nullptr, PropertyKind::Vector4f, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, color), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::color)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
         { "trans_color", "trans_color", "trans_color", "Default", "", "Color4f", nullptr, nullptr, PropertyKind::Vector4f, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, trans_color), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::trans_color)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "clearcoat", "clearcoat", "clearcoat", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, clearcoat), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::clearcoat)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "clearcoat_roughness", "clearcoat_roughness", "clearcoat_roughness", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, clearcoat_roughness), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::clearcoat_roughness)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "sheen_color", "sheen_color", "sheen_color", "Default", "", "Color4f", nullptr, nullptr, PropertyKind::Vector4f, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, sheen_color), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::sheen_color)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "sheen_roughness", "sheen_roughness", "sheen_roughness", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, sheen_roughness), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::sheen_roughness)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "anisotropy", "anisotropy", "anisotropy", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, anisotropy), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::anisotropy)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "subsurface_power", "subsurface_power", "subsurface_power", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, subsurface_power), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::subsurface_power)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "thickness", "thickness", "thickness", "Default", "", "float", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, thickness), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::thickness)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
         { "textures", "textures", "textures", "Default", "", "ManagedArray<SceneTextureSpec>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::SceneMaterialSpec, textures), (uint32_t)sizeof(decltype(hgl::graph::SceneMaterialSpec::textures)), 0u, 0.0, 0.0, 0.0, &Class_SceneTextureSpec, PropertyKind::Struct, nullptr, nullptr },
     };
 

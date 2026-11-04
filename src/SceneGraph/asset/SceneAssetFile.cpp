@@ -233,7 +233,7 @@ namespace hgl::graph
         /// 按材质类型分派的**键形**校验。
         ///
         /// `ValidateKeysByMeta` 只能校验「这些键是不是 `SceneMaterialSpec` 的字段」，
-        /// 而 `SceneMaterialSpec` 是三种材质的并集，所以它分不清「EmissiveSurface
+        /// 而 `SceneMaterialSpec` 是四种材质的并集，所以它分不清「EmissiveSurface
         /// 写了 metallic」。这条按类型收窄的规则属于场景语义，留在这里。
         bool ValidateMaterialKeys(const hgl::serialize::Value &table,
                                   const SceneMaterialType type)
@@ -244,6 +244,13 @@ namespace hgl::graph
             };
             static const char *const emissive[] = {"name", "type", "color", "textures"};
             static const char *const transmission[] = {"name", "type", "trans_color", "textures"};
+            static const char *const advanced[] = {
+                "name", "type", "base_color", "metallic", "roughness",
+                "normal_scale", "fresnel",
+                "clearcoat", "clearcoat_roughness", "sheen_color",
+                "sheen_roughness", "anisotropy", "subsurface_power",
+                "thickness", "textures"
+            };
 
             switch (type)
             {
@@ -253,6 +260,8 @@ namespace hgl::graph
                 return HasOnlyKeys(table, emissive, sizeof(emissive) / sizeof(emissive[0]));
             case SceneMaterialType::TransmissionSurface:
                 return HasOnlyKeys(table, transmission, sizeof(transmission) / sizeof(transmission[0]));
+            case SceneMaterialType::PBRAdvancedSurface:
+                return HasOnlyKeys(table, advanced, sizeof(advanced) / sizeof(advanced[0]));
             default:
                 return false;
             }
@@ -265,6 +274,7 @@ namespace hgl::graph
             case SceneMaterialType::PBRSurface:
             case SceneMaterialType::EmissiveSurface:
             case SceneMaterialType::TransmissionSurface:
+            case SceneMaterialType::PBRAdvancedSurface:
                 return true;
             default:
                 return false;

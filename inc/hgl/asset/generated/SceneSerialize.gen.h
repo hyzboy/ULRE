@@ -78,7 +78,14 @@ namespace hgl::serialize
             ar.Field(7, "fresnel", v.fresnel);
             ar.Field(8, "color", v.color);
             ar.Field(9, "trans_color", v.trans_color);
-            ar.Field(10, "textures", v.textures);
+            ar.Field(10, "clearcoat", v.clearcoat);
+            ar.Field(11, "clearcoat_roughness", v.clearcoat_roughness);
+            ar.Field(12, "sheen_color", v.sheen_color);
+            ar.Field(13, "sheen_roughness", v.sheen_roughness);
+            ar.Field(14, "anisotropy", v.anisotropy);
+            ar.Field(15, "subsurface_power", v.subsurface_power);
+            ar.Field(16, "thickness", v.thickness);
+            ar.Field(17, "textures", v.textures);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_SceneMaterialSpec; }

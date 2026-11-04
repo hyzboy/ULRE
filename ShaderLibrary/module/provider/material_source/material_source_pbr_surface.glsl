@@ -36,6 +36,15 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     material_output.ao = 1.0;
     material_output.emissive = vec3(0.0);
     material_output.alpha = 1.0;
+    // 高级材质参数：标准 Lit 行（32B）无高级字段 ⇒ 显式清零。
+    // 高级数据走 material_source_pbr_advanced（64B 行）。
+    material_output.clearCoat = 0.0;
+    material_output.clearCoatRoughness = 0.0;
+    material_output.sheenColor = vec3(0.0);
+    material_output.sheenRoughness = 0.0;
+    material_output.anisotropy = 0.0;
+    material_output.subsurfacePower = 0.0;
+    material_output.thickness = 0.0;
 
     const uint material_data_index = source_input.dataIndex;
     const vec2 material_uv = source_input.surface.uv0;

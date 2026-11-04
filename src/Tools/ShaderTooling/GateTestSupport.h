@@ -1535,6 +1535,7 @@ namespace gate
         { "addr_pbr_surface",           false },
         { "addr_emissive_surface",      false },
         { "addr_transmission_surface",  false },
+        { "addr_pbr_advanced_surface",  false },
         { "addr_color_palette",         false },
         { "addr_viewport",              false },
     };

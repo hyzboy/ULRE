@@ -532,6 +532,7 @@ namespace hgl::graph::mtl
                 case GlobalSSBOType::PBRSurface:
                 case GlobalSSBOType::EmissiveSurface:
                 case GlobalSSBOType::TransmissionSurface:
+                case GlobalSSBOType::PBRAdvancedSurface:
                     break;
                 default:
                     return false;
@@ -542,7 +543,7 @@ namespace hgl::graph::mtl
 
         static_assert(AreAllMaterialDataTypesSurface(),
                       "每个领域契约都必须显式填写 material_data_type"
-                      "（PBRSurface / EmissiveSurface / TransmissionSurface）");
+                      "（PBRSurface / EmissiveSurface / TransmissionSurface / PBRAdvancedSurface）");
     }// namespace
 
     const MaterialDomainContract *GetMaterialDomainContract(

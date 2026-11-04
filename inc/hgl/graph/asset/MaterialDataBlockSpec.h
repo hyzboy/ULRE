@@ -23,7 +23,7 @@
  * roughness  = 0.05
  * ```
  *
- * ── 三种内容行合成一个行规约 ────────────────────────────────────────────────
+ * ── 四种内容行合成一个行规约 ────────────────────────────────────────────────
  *
  * GPU 侧仍然有三套独立的内容行（`PBRSurfaceRow` 32B / `EmissiveSurfaceRow` 16B /
  * `TransmissionSurfaceRow` 16B），但**授权侧只用一个超集结构** `MaterialDataRowSpec`：
@@ -50,11 +50,11 @@
 namespace hgl::graph
 {
     /**
-     * 一行材质数据的**授权形态**（三种内容行的并集）。
+     * 一行材质数据的**授权形态**（四种内容行的并集）。
      *
-     * 缺省值与 `PBRSurfaceRow` / `EmissiveSurfaceRow` / `TransmissionSurfaceRow`
-     * 的类内缺省值保持一致：文件里不写的键，落到 GPU 上必须与 C++ 直接构造该行
-     * 得到的字节完全相同。
+     * 缺省值与 `PBRSurfaceRow` / `EmissiveSurfaceRow` / `TransmissionSurfaceRow` /
+     * `PBRAdvancedSurfaceRow` 的类内缺省值保持一致：文件里不写的键，落到 GPU 上必须与
+     * C++ 直接构造该行得到的字节完全相同。
      */
     struct HGL_ASSET_STRUCT MaterialDataRowSpec
     {
@@ -81,12 +81,34 @@ namespace hgl::graph
         // ── TransmissionSurface 专用 ──────────────────────────────────────
         HGL_PROPERTY(EditAnywhere, Category = "Transmission")
         Color4f trans_color  = Color4f(1.0f);                        ///<透射色（落盘时打包成 unorm4x8）
+
+        // ── PBRAdvancedSurface 专用（Filament 高级材质扩展）───────────────
+        HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
+        float   clearcoat    = 0.0f;                                 ///<清漆强度
+
+        HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
+        float   clearcoat_roughness = 0.0f;                          ///<清漆层粗糙度
+
+        HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
+        Color4f sheen_color  = Color4f(1.0f);                        ///<绒毛色（落盘时打包成 unorm4x8）
+
+        HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
+        float   sheen_roughness     = 0.0f;                          ///<绒毛粗糙度
+
+        HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
+        float   anisotropy          = 0.0f;                          ///<各向异性强度
+
+        HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
+        float   subsurface_power    = 0.0f;                          ///<次表面 wrap 权重（0 = 关闭）
+
+        HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
+        float   thickness           = 0.0f;                          ///<厚度（背光穿透衰减）
     };
 
     /**
      * 一个完整的数据块：**同一种**内容行的定长序列。
      *
-     * `target` 只能是三个内容行类型之一（`GetGlobalSSBOTypeStructStride != 0`）；
+     * `target` 只能是四个内容行类型之一（`GetGlobalSSBOTypeStructStride != 0`）；
      * `MaterialData`（组件行）**不在此列**——组件行说的是「引用哪一行内容」，
      * 其中的 `surface_ssbo_id` / `surface_data_index` 是运行期行号，不能写进文件。
      */

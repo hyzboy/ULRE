@@ -17,13 +17,16 @@ namespace
         { GlobalSSBOType::PBRSurface,          "PBRSurface",          sizeof(ssbo::PBRSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::EmissiveSurface,     "EmissiveSurface",     sizeof(ssbo::EmissiveSurfaceRow), 1024u, 1u },
         { GlobalSSBOType::TransmissionSurface, "TransmissionSurface", sizeof(ssbo::TransmissionSurfaceRow), 1024u, 1u },
+        // Filament 高级材质扩展行（64B 超集：前 32B 与 PBRSurfaceRow 同构）。
+        // 与 TransmissionSurface 同款口径：数据先行注册，shader 消费侧随领域契约接入。
+        { GlobalSSBOType::PBRAdvancedSurface,  "PBRAdvancedSurface",  sizeof(ssbo::PBRAdvancedSurfaceRow), 1024u, 1u },
         // 与 MeshDrawParams **同 ID 索引**的平行表（一号双表）：容量必须与主表一致（InitializePools 有断言），
         // 行号唯一来源 = MeshDrawParams 池 ⇒ 本池从不 Acquire，只被静态写入。
         // reserve_rows 必须为 **0**：ActivateAllRows 的前提就是「调用时行号空间为空」，
         // 预留行会让首批 512 号相对 start 偏移导致 fail（实测：reserve=1 时只激活 513 行）。
         // 行 0 的「始终可见」哨兵由写入侧显式写（B3-ii），不靠预留。
         { GlobalSSBOType::GeometryAABB,        "GeometryAABB",        sizeof(mtl::GeometryAABB),  16384u, 0u },
-        // B4-iii-a：材质数据**组件行**（组件在设备级的家）。与上面三个「内容行」池分工不同：
+        // B4-iii-a：材质数据**组件行**（组件在设备级的家）。与上面四个「内容行」池分工不同：
         // 内容行 = 被引用的资源行（shader 按 MTL_ROW 读）；本池 = 组件行（我引用哪一行内容 + 授权标记）。
         // 容量与材质内容池同口径 1024；reserve_rows = 1 ⇒ 行 0 恒为「无材质数据」哨兵
         // （组件侧 material_row_id == 0 即无）。
@@ -162,6 +165,7 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
     global_addresses_global.addr_pbr_surface          = GetGPUBase(GlobalSSBOType::PBRSurface);
     global_addresses_global.addr_emissive_surface     = GetGPUBase(GlobalSSBOType::EmissiveSurface);
     global_addresses_global.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
+    global_addresses_global.addr_pbr_advanced_surface = GetGPUBase(GlobalSSBOType::PBRAdvancedSurface);
     global_addresses_global.addr_color_palette        = 0;   // 由 ColorPaletteSystem 注册（UpdateColorPaletteAddress）
 
     // 每帧槽字段（sky / viewport / shadow）在各自 buffer 就绪后由 Set*Address 填；先整表清 0。

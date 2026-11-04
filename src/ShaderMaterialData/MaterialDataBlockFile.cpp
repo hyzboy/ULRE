@@ -74,7 +74,7 @@ namespace hgl::graph::mtl
             return GetGlobalSSBOTypeStructStride(type);
         }
 
-        /// 该类型是不是「材质内容行」（三种表面数据行之一）。
+        /// 该类型是不是「材质内容行」（四种表面数据行之一）。
         bool IsContentRowType(const GlobalSSBOType type) noexcept
         {
             return RowBytesFor(type) > 0;
@@ -105,6 +105,20 @@ namespace hgl::graph::mtl
 
             case GlobalSSBOType::TransmissionSurface:
                 return strcmp(key, "trans_color") == 0;
+
+            case GlobalSSBOType::PBRAdvancedSurface:
+                return strcmp(key, "base_color") == 0
+                    || strcmp(key, "metallic") == 0
+                    || strcmp(key, "roughness") == 0
+                    || strcmp(key, "normal_scale") == 0
+                    || strcmp(key, "fresnel") == 0
+                    || strcmp(key, "clearcoat") == 0
+                    || strcmp(key, "clearcoat_roughness") == 0
+                    || strcmp(key, "sheen_color") == 0
+                    || strcmp(key, "sheen_roughness") == 0
+                    || strcmp(key, "anisotropy") == 0
+                    || strcmp(key, "subsurface_power") == 0
+                    || strcmp(key, "thickness") == 0;
 
             default:
                 return false;
@@ -140,6 +154,24 @@ namespace hgl::graph::mtl
             {
                 ssbo::TransmissionSurfaceRow row{};
                 row.trans_color = src.trans_color.packUnorm4x8();
+                memcpy(dst, &row, sizeof(row));
+                return true;
+            }
+            case GlobalSSBOType::PBRAdvancedSurface:
+            {
+                ssbo::PBRAdvancedSurfaceRow row;
+                row.base_color          = src.base_color;
+                row.metallic            = src.metallic;
+                row.roughness           = src.roughness;
+                row.normal_scale        = src.normal_scale;
+                row.fresnel             = src.fresnel;
+                row.clearcoat           = src.clearcoat;
+                row.clearcoat_roughness = src.clearcoat_roughness;
+                row.sheen_roughness     = src.sheen_roughness;
+                row.anisotropy          = src.anisotropy;
+                row.sheen_color         = src.sheen_color.packUnorm4x8();
+                row.subsurface_power    = src.subsurface_power;
+                row.thickness           = src.thickness;
                 memcpy(dst, &row, sizeof(row));
                 return true;
             }
