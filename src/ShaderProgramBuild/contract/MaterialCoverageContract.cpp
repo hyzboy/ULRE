@@ -34,6 +34,7 @@ namespace hgl::graph::mtl
         {
             // 模块注册名              DataIndexID  UV0    Color  材质数据行  纹理
             { "material_source_pbr_surface",     true,       true,  false, false,      true  },
+            { "material_source_pbr_advanced",    true,       true,  false, false,      true  },
             { "material_source_texture",         true,       true,  false, false,      true  },
             { "material_source_vertex_color",    false,      false, true,  false,      false },
             { "material_source_unlit",           true,       false, false, true,       false },

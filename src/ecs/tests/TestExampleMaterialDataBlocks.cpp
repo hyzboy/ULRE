@@ -41,7 +41,7 @@ namespace
 
     constexpr float kEpsilon = 1.0e-6f;
 
-    constexpr size_t kExpectedBlockCount = 30;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10
+    constexpr size_t kExpectedBlockCount = 31;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix
 
     /// 阶段 A 的台账：文件名主干 → (行类型, 行数)。
     struct BlockExpect
@@ -83,6 +83,7 @@ namespace
         { "cascade_shadow_map",            graph::GlobalSSBOType::PBRSurface,      11 },
         { "pbr_10x10_grid",                graph::GlobalSSBOType::PBRSurface,     100 },
         { "pbr_matrix_10x10",              graph::GlobalSSBOType::PBRSurface,     100 },
+        { "pbr_advanced_matrix",           graph::GlobalSSBOType::PBRAdvancedSurface, 40 },
     };
 
     bool ReadText(const OSString &path, AnsiString &out_text)

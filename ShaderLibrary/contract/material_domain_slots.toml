@@ -287,3 +287,8 @@ description = "调试棋盘格 3D（无纹理槽）"
 domain = "ErrorChecker3D"
 description = "材质错误回退棋盘格（无纹理槽）"
 # 无纹理槽
+
+[[domains]]
+domain = "StandardAdvanced"
+description = "Filament 高级 PBR（清漆/绒面/各向异性/简易次表面；复用 StandardOpaque 槽契约）"
+ref_slots = "StandardOpaque"

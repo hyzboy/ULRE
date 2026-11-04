@@ -1,0 +1,286 @@
+# PBRAdvanced 示例的批量材质数据块（4 band × 10 = 40 行 PBRAdvancedSurface）
+#
+# 每 band 沿 col 扫一个高级参数（t = col/9），band 内其余参数恒定：
+#   band 0（车漆）   clearcoat         0 → 1（clearcoat_roughness 固定 0.1）
+#   band 1（丝绸）   sheen_color 亮度  0 → 1（sheen_roughness 固定 0.3）
+#   band 2（拉丝金属）anisotropy       0 → 1（metallic 1.0 / roughness 0.3）
+#   band 3（玉石）   subsurface_power  0 → 1（thickness 固定 1.0）
+# f0 fresnel 全部走缺省 0.04（Filament reflectance 0.5 等效）。
+
+schema = 1
+name = "pbr_advanced_matrix"
+target = "PBRAdvancedSurface"
+
+# ---- band 0：车漆 ClearCoat（深蓝底漆 + 清漆强度扫描） ----
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.000000
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.111111
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.222222
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.333333
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.444444
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.555556
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.666667
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.777778
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 0.888889
+clearcoat_roughness = 0.100000
+
+[[rows]]
+base_color = [0.050000, 0.150000, 0.450000, 1.0]
+metallic = 0.000000
+roughness = 0.500000
+clearcoat = 1.000000
+clearcoat_roughness = 0.100000
+
+# ---- band 1：丝绸 Sheen（暗红底 + sheen_color 亮度扫描） ----
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.000000, 0.000000, 0.000000, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.111111, 0.111111, 0.111111, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.222222, 0.222222, 0.222222, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.333333, 0.333333, 0.333333, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.444444, 0.444444, 0.444444, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.555556, 0.555556, 0.555556, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.666667, 0.666667, 0.666667, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.777778, 0.777778, 0.777778, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [0.888889, 0.888889, 0.888889, 1.0]
+sheen_roughness = 0.300000
+
+[[rows]]
+base_color = [0.400000, 0.050000, 0.100000, 1.0]
+metallic = 0.000000
+roughness = 0.600000
+sheen_color = [1.000000, 1.000000, 1.000000, 1.0]
+sheen_roughness = 0.300000
+
+# ---- band 2：拉丝金属 Anisotropy（浅色金属 + 各向异性强度扫描） ----
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.000000
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.111111
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.222222
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.333333
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.444444
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.555556
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.666667
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.777778
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 0.888889
+
+[[rows]]
+base_color = [0.850000, 0.800000, 0.750000, 1.0]
+metallic = 1.000000
+roughness = 0.300000
+anisotropy = 1.000000
+
+# ---- band 3：玉石 Subsurface（青玉底 + wrap 权重扫描，thickness 固定 1.0） ----
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.000000
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.111111
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.222222
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.333333
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.444444
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.555556
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.666667
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.777778
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 0.888889
+thickness = 1.000000
+
+[[rows]]
+base_color = [0.200000, 0.600000, 0.400000, 1.0]
+metallic = 0.000000
+roughness = 0.400000
+subsurface_power = 1.000000
+thickness = 1.000000

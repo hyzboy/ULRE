@@ -90,13 +90,22 @@ namespace hgl::graph::mtl
         // 不携带宽度/样式，光栅化与经典 LINE_LIST 逐像素一致。
         VertexPaletteLines,
 
-        ENUM_CLASS_RANGE(Custom, VertexPaletteLines)
+        // ── Filament 高级 PBR（清漆/绒面/各向异性/简易次表面）────────────
+        // 与 StandardOpaque 同构（贴图槽 ref_slots 复用其规范表），差异只有两处：
+        //   · payload 行 = PBRAdvancedSurface（64B，前 32B 与 PBRSurface 逐字节同构）；
+        //   · 域模板把高级直接光槽绑到 filament 实现（*_none ⇒ *_ggx/charlie/wrap，
+        //     高光槽换各向异性 GGX）。参数全 0 时数学退化回标准 Lit。
+        // 独立成领域而不是放宽 StandardOpaque 契约：契约是封闭组合，新形态=新领域。
+        // 追加在枚举末尾：不改写既有领域的数值（BDA/缓存键的稳定性）。
+        StandardAdvanced,
+
+        ENUM_CLASS_RANGE(Custom, StandardAdvanced)
     };
 
     const char *GetMaterialDomainName(MaterialDomain domain) noexcept;
 
     // 非 Custom 的契约领域数量（用于契约表遍历与门禁穷举）。
-    constexpr int MaterialDomainContractCount = 18;
+    constexpr int MaterialDomainContractCount = 19;
 
     // 严格解析："StandardOpaque" 等；返回 false 表示未知名字（调用方报错）。
     bool ParseMaterialDomain(const char *name, MaterialDomain &out_domain) noexcept;

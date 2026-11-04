@@ -1,0 +1,15 @@
+# PBRAdvanced 示例配方：Filament 高级材质四件套（ClearCoat / Sheen / 各向异性 / 简易次表面）。
+# 与 PBRMatrix.Lit 同口径的纯球演示：**不带任何贴图**，
+# 差异全部由 PBRAdvancedSurface 材质数据行承载；域选 StandardAdvanced，
+# 槽位默认走真实算法（clearcoat_light_ggx / sheen_light_charlie / subsurface_light_wrap），
+# 基底仍是 Lit BRDF（Correlated GGX + DFG）。
+schema = 1
+name = "PBRAdvanced.Lit"
+domain = "StandardAdvanced"
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"

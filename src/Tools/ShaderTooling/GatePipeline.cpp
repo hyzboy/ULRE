@@ -390,6 +390,7 @@ namespace gate
             {MaterialDomain::UnlitTexture, "material_source_texture"},
             {MaterialDomain::DebugNormal, "material_source_debug_normal"},
             {MaterialDomain::StandardOpaque, "material_source_pbr_surface"},
+            {MaterialDomain::StandardAdvanced, "material_source_pbr_advanced"},
             {MaterialDomain::UnlitSolid, "material_source_unlit"},
             {MaterialDomain::Text2D, "material_source_text_gpu"}
         };
@@ -1040,6 +1041,7 @@ namespace gate
         {
             const MaterialDomain domains_with_slots[] = {
                 MaterialDomain::StandardOpaque,
+                MaterialDomain::StandardAdvanced,
                 MaterialDomain::Foliage,
                 MaterialDomain::Terrain,
                 MaterialDomain::UI2D,

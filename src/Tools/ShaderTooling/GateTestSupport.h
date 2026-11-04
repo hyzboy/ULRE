@@ -206,7 +206,7 @@ namespace gate
     /// 89 = 88 + `ambient_light_ibl_oct`（八面体展开版 IBL 天光 provider，
     /// 与 `ambient_light_ibl` 同构、只换纹理寻址方式）。
     /// 90 = 89 + `ambient_light_sh`（SH9 球谐天光 provider，唯一不读贴图的间接光实现）。
-    constexpr int kGlslModuleCount = 97;
+    constexpr int kGlslModuleCount = 98;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)
@@ -1830,6 +1830,14 @@ namespace gate
         { MaterialDomain::StandardOpaque, "lit-shadow-masked",
           ShaderProgramPurpose::ShadowDepth,
           PassProfileID::ShadowCasterMasked, true, true },
+        // Filament 高级 PBR 域：64B payload 行 + filament 高级槽实现。
+        // 前向与蒙版阴影各一条，覆盖 material_source_pbr_advanced 的两条求值路径。
+        { MaterialDomain::StandardAdvanced, "adv-lit-forward",
+          ShaderProgramPurpose::ForwardColor,
+          PassProfileID::ForwardLitShadowedAO, true, false },
+        { MaterialDomain::StandardAdvanced, "adv-lit-shadow-masked",
+          ShaderProgramPurpose::ShadowDepth,
+          PassProfileID::ShadowCasterMasked, true, true },
         { MaterialDomain::VertexPalette, "vertex-palette-color-forward",
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false },
@@ -2172,6 +2180,9 @@ namespace gate
         { "debug-normal", MaterialDomain::DebugNormal,    ShaderProgramPurpose::ForwardColor, false },
         // 尾部追加（顺序被 DH.domain-backend-cache 按下标引用）：原生线图元领域。
         { "vert-pal-lines", MaterialDomain::VertexPaletteLines, ShaderProgramPurpose::ForwardColor, false },
+        // 尾部追加：Filament 高级 PBR 域（64B 行 + filament 高级槽实现）。
+        { "adv-fwd", MaterialDomain::StandardAdvanced, ShaderProgramPurpose::ForwardColor, false },
+        { "adv-shadow-alpha", MaterialDomain::StandardAdvanced, ShaderProgramPurpose::ShadowDepth, true },
     };
 
     /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。

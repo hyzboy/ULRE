@@ -29,6 +29,8 @@ namespace hgl::graph::mtl
         constexpr DomainDirEntry kDomainEntrySources[] =
         {
             { MaterialDomain::StandardOpaque,    "standard_opaque",    "forward_lit.frag", true  },
+            // Filament 高级 PBR：同构的第三档深度参与领域（shadow caster 全套存在）。
+            { MaterialDomain::StandardAdvanced,  "standard_advanced",  "forward_lit.frag", true  },
             { MaterialDomain::Sky,               "sky",                "sky.frag",         false },
             { MaterialDomain::UnlitTexture,      "unlit_texture",      "unlit_texture.frag",      false },
             // 世界空间无光贴面：片元阶段与 UnlitTexture 逐字节相同，直接复用同一

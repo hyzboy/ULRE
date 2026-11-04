@@ -1225,6 +1225,12 @@ int main(const int argc, char **argv)
           true, false, false, true },
         { "lit-shadow", MaterialDomain::StandardOpaque, ShaderProgramPurpose::ShadowDepth,
           true, false, false, false },
+        // Filament 高级 PBR 域端到端：与 lit-* 同形的两条（前向 + 蒙版阴影），
+        // 验证 standard_advanced/*.frag 固定模板能走通完整生产管线。
+        { "adv-forward", MaterialDomain::StandardAdvanced, ShaderProgramPurpose::ForwardColor,
+          true, false, false, false },
+        { "adv-shadow-alpha", MaterialDomain::StandardAdvanced, ShaderProgramPurpose::ShadowDepth,
+          true, false, false, true },
         { "text-gpu-charquad", MaterialDomain::Text2D,
           ShaderProgramPurpose::ForwardColor, false, false, false, false },
         { "sky-minimal", MaterialDomain::Sky, ShaderProgramPurpose::ForwardColor,

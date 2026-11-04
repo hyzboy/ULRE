@@ -1042,11 +1042,12 @@ namespace gate
                     && !ContainsWord(line, "out");
             };
 
-        // 唯一豁免：StandardOpaque 的 depth pass 空体占位。它刻意没有 varying、
-        // 没有 include、没有采样输出，加任何东西都会平白改变 depth 管线。
+        // 唯一豁免：StandardOpaque / StandardAdvanced 的 depth pass 空体占位。它们
+        // 刻意没有 varying、没有 include、没有采样输出，加任何东西都会平白改变 depth 管线。
         const char *const varying_free_fragments[] =
         {
             "ShaderLibrary/domain/standard_opaque/shadow_caster.frag",
+            "ShaderLibrary/domain/standard_advanced/shadow_caster.frag",
         };
 
         const std::vector<std::pair<std::string, std::string>> domain_tree =

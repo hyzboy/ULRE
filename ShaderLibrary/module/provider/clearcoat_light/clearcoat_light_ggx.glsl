@@ -58,7 +58,8 @@ vec3 EvalClearCoatLight(LightingInput lighting)
     // 强度调制 —— F_Schlick(clearCoat, 0.0, NoV)
     const float attenuation = ULRE_LIT_F_Schlick_S(lighting.clearCoat, 0.0, NoV);
 
-    return D * Vis * F * attenuation * NoL;
+    // 清漆叶是单色的（coat F0=0.04 无染色）⇒ 标量广播成 vec3。
+    return vec3(D * Vis * F * attenuation * NoL);
 }
 
 #endif // CLEARCOAT_GGX_GLSL

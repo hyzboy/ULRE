@@ -96,6 +96,11 @@ namespace hgl::graph::mtl
         constexpr int UnlitTexture3DSlotCount = UnlitTextureSlotCount;
         constexpr uint32_t UnlitTexture3DRowStride = UnlitTextureRowStride;
 
+        // StandardAdvanced —— 复用 StandardOpaque 的纹理槽
+        constexpr const MaterialDomainTextureSlot *StandardAdvancedSlots = StandardOpaqueSlots;
+        constexpr int StandardAdvancedSlotCount = StandardOpaqueSlotCount;
+        constexpr uint32_t StandardAdvancedRowStride = StandardOpaqueRowStride;
+
         struct DomainSlotInfo
         {
             const MaterialDomainTextureSlot *slots;
@@ -125,6 +130,8 @@ namespace hgl::graph::mtl
                 return { Text2DSlots, Text2DSlotCount, Text2DRowStride };
             case MaterialDomain::Sky:
                 return { SkySlots, SkySlotCount, SkyRowStride };
+            case MaterialDomain::StandardAdvanced:
+                return { StandardAdvancedSlots, StandardAdvancedSlotCount, StandardAdvancedRowStride };
             default:
                 return { nullptr, 0, 0u };
             }

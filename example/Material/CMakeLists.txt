@@ -3,6 +3,7 @@
 CreateProject(MaterialRecipeEntry            MaterialRecipeEntry.cpp)
 CreateProject(PBRSpheres                     PBRSpheres.cpp)
 CreateProject(PBRMatrix                      PBRMatrix.cpp)
+CreateProject(PBRAdvanced                    PBRAdvanced.cpp)
 CreateProject(SingleSphereMaterialSwitch     SingleSphereMaterialSwitch.cpp)
 CreateProject(BasicLitMeshes                 BasicLitMeshes.cpp)
 CreateProject(FullPrecisionLitMeshes        FullPrecisionLitMeshes.cpp)

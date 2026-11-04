@@ -32,6 +32,7 @@ namespace hgl::graph::mtl
         case MaterialDomain::Checker3D:       return "Checker3D";
         case MaterialDomain::ErrorChecker3D:  return "ErrorChecker3D";
         case MaterialDomain::VertexPaletteLines: return "VertexPaletteLines";
+        case MaterialDomain::StandardAdvanced:   return "StandardAdvanced";
 
         default:                             return "Unknown";
         }
@@ -44,7 +45,7 @@ namespace hgl::graph::mtl
 
         // 上界必须跟着枚举最后一项走；漏改会让新领域名解析不出来，
         // 表现为「TOML 里写对了却报 unknown domain」。
-        constexpr int kLastDomain = static_cast<int>(MaterialDomain::VertexPaletteLines);
+        constexpr int kLastDomain = static_cast<int>(MaterialDomain::StandardAdvanced);
         for (int i = 0; i <= kLastDomain; ++i)
         {
             const MaterialDomain domain = static_cast<MaterialDomain>(i);
@@ -511,6 +512,31 @@ namespace hgl::graph::mtl
                 MeshShaderMode::LineList,
                 true,   // emit_vertex_color_from_palette：Color 流是调色板索引(R8_UINT)，不是 RGBA
                 true,   // use_transform_id_attr：顶点 ABI 需要 TransformID
+            },
+            {
+                // Filament 高级 PBR：与 StandardOpaque 逐字段同构，差异只有三处——
+                //   · 材质源 = material_source_pbr_advanced（读 64B 高级行）；
+                //   · payload 行 = GlobalSSBOType::PBRAdvancedSurface；
+                //   · 域模板把清漆/绒面/次表面/高光槽绑到 filament 实现。
+                // 贴图槽走 ref_slots 别名（StandardAdvancedSlots == StandardOpaqueSlots）。
+                MaterialDomain::StandardAdvanced, "StandardAdvanced",
+                "material_source_pbr_advanced", "ntb_tangent_vbo_normalmap",
+                Sem(VertexSemantic::Position) | Sem(VertexSemantic::Normal)
+                    | Sem(VertexSemantic::TexCoord),
+                StandardAdvancedSlots,
+                StandardAdvancedSlotCount,
+                false,
+                false,
+                {},
+                // 高级 PBR 表面字段组（前 32B 与 PBRSurface 同构 + 高级参数区）。
+                GlobalSSBOType::PBRAdvancedSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition)
+                    | VarSem(InterStageSemantic::WorldNormal)
+                    | VarSem(InterStageSemantic::UV0),
+                PbrSurfaceSamplers,
+                static_cast<int>(sizeof(PbrSurfaceSamplers)
+                                 / sizeof(PbrSurfaceSamplers[0])),
             },
         };
 
