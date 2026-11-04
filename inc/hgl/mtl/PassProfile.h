@@ -45,6 +45,13 @@ namespace hgl::graph::mtl
         /// （indirect_sky_ambient），天光提供太阳方向与大气参数，被
         /// ambient 模块与 sky surface 共同消费，故不能复用同一 slot。
         SkyProvider,
+        /// 高级直接光 — 清漆层（`vec3 EvalClearCoatLight(LightingInput)`）。
+        /// 基线 = clearcoat_light_none（恒 0），Filament 实现 = clearcoat_light_ggx。
+        ClearCoatLightProvider,
+        /// 高级直接光 — 绒面（`vec3 EvalSheenLight(LightingInput)`）。
+        SheenLightProvider,
+        /// 高级直接光 — 简易次表面（`vec3 EvalSubsurfaceLight(LightingInput)`）。
+        SubsurfaceLightProvider,
 
         /// 哨兵：合法 role 个数。ParseSlotRole() 等遍历以它为上界——
         /// 新增 role 时插在本项之前即可，不必再改遍历代码。
@@ -52,7 +59,8 @@ namespace hgl::graph::mtl
     };
 
     // ForwardLit profile（9 个 scene 模块）+ MaterialSource + NTB = 11，
-    // 留 5 个余量，避免 AddModuleRoot() 静默失败（其返回值在 profile
+    // 高级直接光三槽（clearcoat/sheen/subsurface）再 +3 = 14，
+    // 留 2 个余量，避免 AddModuleRoot() 静默失败（其返回值在 profile
     // 构造处未被检查）。直接光已拆成 diffuse/specular 两个槽（10 → 11）。
     constexpr uint32 MaxPassProfileModuleRoots = 16;
 

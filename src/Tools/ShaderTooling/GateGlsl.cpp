@@ -381,6 +381,9 @@ namespace gate
             // frag_options 选其一，主着色器不出现投影分支。
             // 计数常量已收敛到 `kGlslModuleCount`（文件顶部），增删模块时
             // 只改那一处并在此追加一行理由。
+            // 高级材质阶段一（Filament 移植）：新增 clearcoat_light_{none,ggx}、
+            // sheen_light_{none,charlie}、subsurface_light_{none,wrap}、
+            // specular_light_anisotropic（90 → 97）。
             if (file_count != kGlslModuleCount)
                 result.diagnostics.emplace_back("LoadDirectory expected "
                     + std::to_string(kGlslModuleCount)
@@ -468,8 +471,16 @@ namespace gate
                                   "diffuse_light_toon", "diffuse_light_none" })
             require_slot_module(name, "diffuse_light_provider");
         for (const char *name : { "specular_light_cook_torrance", "specular_light_toon_step",
-                                  "specular_light_none" })
+                                  "specular_light_anisotropic", "specular_light_none" })
             require_slot_module(name, "specular_light_provider");
+        // 高级直接光三槽（清漆/绒面/次表面）：每条轴同样必须「真实实现 + 空对象」，
+        // 基线 ForwardLit 绑定 none，Filament 实现按需换绑，无 #ifdef。
+        for (const char *name : { "clearcoat_light_ggx", "clearcoat_light_none" })
+            require_slot_module(name, "clearcoat_light_provider");
+        for (const char *name : { "sheen_light_charlie", "sheen_light_none" })
+            require_slot_module(name, "sheen_light_provider");
+        for (const char *name : { "subsurface_light_wrap", "subsurface_light_none" })
+            require_slot_module(name, "subsurface_light_provider");
         require_slot_module("ambient_light_none", "ambient_light_provider");
         require_slot_module("lighting_model_toon", "lighting_model");
         require_slot_module("shadow_full", "shadow_provider");

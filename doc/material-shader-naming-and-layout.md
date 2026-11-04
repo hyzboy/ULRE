@@ -372,6 +372,10 @@ ShaderLibrary/
 | specular_light | `lighting/specular_cook_torrance.glsl` → `specular_cook_torrance` | `specular_light_cook_torrance` |
 | specular_light | `lighting/specular_toon_step.glsl` → `specular_toon_step` | `specular_light_toon_step` |
 | specular_light | `lighting/specular_none.glsl` → `specular_none` | `specular_light_none` |
+| specular_light | （高级材质改造新增，非重命名） | `specular_light_anisotropic`（Filament 各向异性 GGX，与 cook_torrance 同槽竞争） |
+| clearcoat_light | （新增槽：`clearcoat_light_none` / `clearcoat_light_ggx`） | 基线绑 none（恒 0 空对象），Filament GGX 双层叶按需换绑 |
+| sheen_light | （新增槽：`sheen_light_none` / `sheen_light_charlie`） | Charlie NDF + Ashikhmin Vis，对齐 Filament shading_sheen |
+| subsurface_light | （新增槽：`subsurface_light_none` / `subsurface_light_wrap`） | 简易 wrap 漫反射增量 + 薄壳背散射 |
 | shadow | `shadow/full.glsl` → `full_shadow` | `shadow_full` |
 | shadow | `shadow/pcf_shadow.glsl` → `pcf_shadow` | `shadow_pcf` |
 | shadow | `shadow/identity.glsl` → `identity_shadow` | `shadow_identity` |

@@ -11,7 +11,9 @@ namespace hgl::graph::mtl
         constexpr char ULRE_PREFIX[] = "// @ulre ";
         constexpr size_t ULRE_PREFIX_LENGTH = sizeof(ULRE_PREFIX) - 1;
 
-        constexpr int TOKEN_CAPACITY = 128;
+        // 单个 @ulre 指令 token 的容量。requires_capability 等长名单
+        // （全部能力名 + '|'）可达 ~160 字符，留出余量避免截断。
+        constexpr int TOKEN_CAPACITY = 256;
 
         const char *SkipSpaces(const char *cursor, const char *line_end)
         {
@@ -152,6 +154,9 @@ namespace hgl::graph::mtl
                 { "direct_light", ShaderModuleCapability::DirectLight },
                 { "direct_diffuse", ShaderModuleCapability::DirectDiffuse },
                 { "direct_specular", ShaderModuleCapability::DirectSpecular },
+                { "direct_clearcoat", ShaderModuleCapability::DirectClearCoat },
+                { "direct_sheen", ShaderModuleCapability::DirectSheen },
+                { "direct_subsurface", ShaderModuleCapability::DirectSubsurface },
                 { "shadow_factor", ShaderModuleCapability::ShadowFactor },
                 { "ambient_diffuse", ShaderModuleCapability::AmbientDiffuse },
                 { "ambient_specular", ShaderModuleCapability::AmbientSpecular },

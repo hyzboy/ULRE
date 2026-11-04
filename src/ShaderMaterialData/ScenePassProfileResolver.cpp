@@ -18,6 +18,21 @@ namespace hgl::graph::mtl
             ShaderModuleSlotRole::SpecularLightProvider,
             "specular_light_cook_torrance",
             "module/provider/specular_light/specular_light_cook_torrance.glsl");
+        // 高级直接光三槽的**规范默认值 = 空对象**（与 AmbientLightProvider 同模式）：
+        // 基线绑定 *_none（恒 0），Lit 材质是否启用清漆/绒面/次表面只是模块名替换，
+        // 主着色器与模板表都不出现条件编译。
+        profile.AddModule(
+            ShaderModuleSlotRole::ClearCoatLightProvider,
+            "clearcoat_light_none",
+            "module/provider/clearcoat_light/clearcoat_light_none.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::SheenLightProvider,
+            "sheen_light_none",
+            "module/provider/sheen_light/sheen_light_none.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::SubsurfaceLightProvider,
+            "subsurface_light_none",
+            "module/provider/subsurface_light/subsurface_light_none.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::ShadowProvider,
             "shadow_pcf", "module/provider/shadow/shadow_pcf.glsl");

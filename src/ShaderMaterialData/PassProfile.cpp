@@ -22,6 +22,12 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::DiffuseLightProvider },
             { ShaderModuleSlotRole::SpecularLightProvider },
+            // 高级直接光三槽：紧跟高光槽之后、LightingModel 之前。
+            // lighting_model_pbr 无条件调用三个 Eval*Light 契约，include
+            // 顺序必须保证定义先于使用（与 AmbientLightProvider 同理）。
+            { ShaderModuleSlotRole::ClearCoatLightProvider },
+            { ShaderModuleSlotRole::SheenLightProvider },
+            { ShaderModuleSlotRole::SubsurfaceLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::ShadowProvider },
             { ShaderModuleSlotRole::AmbientOcclusionProvider },
@@ -45,6 +51,9 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::SkyProvider },
             { ShaderModuleSlotRole::DiffuseLightProvider },
             { ShaderModuleSlotRole::SpecularLightProvider },
+            { ShaderModuleSlotRole::ClearCoatLightProvider },
+            { ShaderModuleSlotRole::SheenLightProvider },
+            { ShaderModuleSlotRole::SubsurfaceLightProvider },
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::AmbientOcclusionProvider },
             { ShaderModuleSlotRole::LightingModel },
@@ -204,6 +213,9 @@ namespace hgl::graph::mtl
         case ShaderModuleSlotRole::SurfaceProvider: return "surface_provider";
         case ShaderModuleSlotRole::DiffuseLightProvider: return "diffuse_light_provider";
         case ShaderModuleSlotRole::SpecularLightProvider: return "specular_light_provider";
+        case ShaderModuleSlotRole::ClearCoatLightProvider: return "clearcoat_light_provider";
+        case ShaderModuleSlotRole::SheenLightProvider: return "sheen_light_provider";
+        case ShaderModuleSlotRole::SubsurfaceLightProvider: return "subsurface_light_provider";
         case ShaderModuleSlotRole::ShadowProvider: return "shadow_provider";
         case ShaderModuleSlotRole::AmbientLightProvider: return "ambient_light_provider";
         case ShaderModuleSlotRole::AmbientOcclusionProvider: return "ambient_occlusion_provider";

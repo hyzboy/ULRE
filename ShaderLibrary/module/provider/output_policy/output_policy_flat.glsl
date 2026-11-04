@@ -41,6 +41,15 @@ LightingInput BuildForwardLightingInput(
     lighting.mainLightColor = vec3(0.0);
     lighting.reflectionColor = vec3(0.0);
     lighting.shadowFactor = 1.0;
+    // 高级材质字段：显式字面量 0（lighting_model_flat 不消费这些字段，
+    // 此处初始化只为保证 LightingInput 无未初始化成员）。
+    lighting.clearCoat = 0.0;
+    lighting.clearCoatRoughness = 0.0;
+    lighting.sheenColor = vec3(0.0);
+    lighting.sheenRoughness = 0.0;
+    lighting.anisotropy = 0.0;
+    lighting.subsurfacePower = 0.0;
+    lighting.thickness = 0.0;
     return lighting;
 }
 

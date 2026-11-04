@@ -185,7 +185,13 @@ namespace hgl::graph::mtl
         /// 直接光的漫反射项（由 diffuse_light_provider 槽提供）。
         DirectDiffuse = 1u << 11,
         /// 直接光的高光项（由 specular_light_provider 槽提供）。
-        DirectSpecular = 1u << 12
+        DirectSpecular = 1u << 12,
+        /// 直接光的清漆层项（由 clearcoat_light_provider 槽提供）。
+        DirectClearCoat = 1u << 13,
+        /// 直接光的绒面项（由 sheen_light_provider 槽提供）。
+        DirectSheen = 1u << 14,
+        /// 直接光的简易次表面项（由 subsurface_light_provider 槽提供）。
+        DirectSubsurface = 1u << 15
     };
 
 

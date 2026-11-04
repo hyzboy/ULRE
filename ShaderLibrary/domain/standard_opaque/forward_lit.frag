@@ -22,6 +22,12 @@
 #include "module/provider/sky/sky_atmosphere.glsl"
 #include "module/provider/diffuse_light/diffuse_light_lambert.glsl"
 #include "module/provider/specular_light/specular_light_cook_torrance.glsl"
+// 高级直接光三槽的基线绑定 = 空对象（恒 0，常量折叠 + DCE ⇒ 零开销）。
+// 启用清漆/绒面/次表面 = MaterialRecipe 换绑 filament 实现模块；
+// include 顺序与 PassProfile.cpp 的 ForwardLitSlots 表一致。
+#include "module/provider/clearcoat_light/clearcoat_light_none.glsl"
+#include "module/provider/sheen_light/sheen_light_none.glsl"
+#include "module/provider/subsurface_light/subsurface_light_none.glsl"
 #include "module/provider/shadow/shadow_pcf.glsl"
 #include "module/provider/ambient_occlusion/ambient_occlusion_identity.glsl"
 #include "module/provider/lighting_model/lighting_model_pbr.glsl"
