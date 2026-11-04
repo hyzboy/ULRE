@@ -179,13 +179,15 @@ namespace gate
             }
             else
             {
-                if (manifest_2d.texture_reference_count != 6
+                if (manifest_2d.texture_reference_count != 8
                  || !has_texture_reference(manifest_2d, "base_color")
                  || !has_texture_reference(manifest_2d, "roughness")
                  || !has_texture_reference(manifest_2d, "metallic")
                  || !has_texture_reference(manifest_2d, "occlusion")
                  || !has_texture_reference(manifest_2d, "opacity_mask")
                  || !has_texture_reference(manifest_2d, "normal")
+                 || !has_texture_reference(manifest_2d, "emissive")
+                 || !has_texture_reference(manifest_2d, "orm")
                  || !ValidateShaderCodeResourceManifestTextureReferences(
                         manifest_2d,
                         lit_definition))

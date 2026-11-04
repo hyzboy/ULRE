@@ -75,6 +75,22 @@ sampler = "Sampler2DArray"
 binding_required = false
 channels = 2
 
+[[domains.slots]]
+name = "emissive"
+role = "Emissive"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
+[[domains.slots]]
+name = "orm"
+role = "OcclusionRoughnessMetallic"
+must_declare = true
+sampler = "Sampler2DArray"
+binding_required = false
+channels = 0
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 [[domains]]

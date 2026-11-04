@@ -7,11 +7,11 @@
 #ifndef HGL_DOMAIN_STANDARD_OPAQUE_TEXTURE_BINDINGS_GLSL
 #define HGL_DOMAIN_STANDARD_OPAQUE_TEXTURE_BINDINGS_GLSL
 
-#define HGL_STANDARD_OPAQUE_TEXTURE_SLOT_COUNT 6
-#define HGL_STANDARD_OPAQUE_TEXTURE_ROW_STRIDE 48
+#define HGL_STANDARD_OPAQUE_TEXTURE_SLOT_COUNT 8
+#define HGL_STANDARD_OPAQUE_TEXTURE_ROW_STRIDE 64
 
 // ── 材质贴图表（Buffer Reference） ──
-// 槽数: 6, 行跨度: 48 字节 (16字节对齐)
+// 槽数: 8, 行跨度: 64 字节 (16字节对齐)
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextureReferencesRef
 {
     uvec2 tex_base_color;
@@ -20,9 +20,11 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextu
     uvec2 tex_occlusion;
     uvec2 tex_opacity_mask;
     uvec2 tex_normal;
+    uvec2 tex_emissive;
+    uvec2 tex_orm;
 };
 
-#define MTL_TEX_STANDARD_OPAQUE(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(48))
+#define MTL_TEX_STANDARD_OPAQUE(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(64))
 
 #ifndef MTL_TEX
 #define MTL_TEX(i) MTL_TEX_STANDARD_OPAQUE(i)

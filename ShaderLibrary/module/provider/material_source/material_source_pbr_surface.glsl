@@ -10,6 +10,8 @@
 // @ulre texture_reference metallic Fragment optional fallback
 // @ulre texture_reference occlusion Fragment optional fallback
 // @ulre texture_reference opacity_mask Fragment optional fallback
+// @ulre texture_reference emissive Fragment optional fallback
+// @ulre texture_reference orm Fragment optional fallback
 // @ulre sampler_reference Trilinear
 // @ulre sampler_reference Linear
 // @ulre uses material_source_interface
@@ -53,12 +55,32 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     // 与乘性/替换语义等价（不改变下游数值）。
     material_output.baseColor *=
         SampleOptional(MTL_TEX(material_data_index).tex_base_color, TrilinearSampler, material_uv, vec4(1.0)).rgb;
-    material_output.roughness =
-        clamp(material_output.roughness * SampleOptional(MTL_TEX(material_data_index).tex_roughness, LinearSampler, material_uv, vec4(1.0)).r, 0.04, 1.0);
-    material_output.metallic =
-        clamp(material_output.metallic * SampleOptional(MTL_TEX(material_data_index).tex_metallic, LinearSampler, material_uv, vec4(1.0)).r, 0.0, 1.0);
-    material_output.ao =
-        SampleOptional(MTL_TEX(material_data_index).tex_occlusion, LinearSampler, material_uv, vec4(1.0)).r;
+
+    // glTF ORM 打包图优先：tex_orm 绑定时按通道拆分（R=AO、G=Roughness、
+    // B=Metallic，glTF occlusionRoughnessMetallic 惯例）；未绑定则回退到
+    // roughness/metallic/occlusion 三个独立槽（原行为，两者可共存）。
+    const uvec2 orm_ref = MTL_TEX(material_data_index).tex_orm;
+    if (orm_ref.x != 0u)
+    {
+        const vec3 orm = Sample2DArray(orm_ref.x, LinearSampler, material_uv, float(orm_ref.y)).rgb;
+        material_output.ao        = clamp(orm.r, 0.0, 1.0);
+        material_output.roughness = clamp(material_output.roughness * orm.g, 0.04, 1.0);
+        material_output.metallic  = clamp(material_output.metallic * orm.b, 0.0, 1.0);
+    }
+    else
+    {
+        material_output.roughness =
+            clamp(material_output.roughness * SampleOptional(MTL_TEX(material_data_index).tex_roughness, LinearSampler, material_uv, vec4(1.0)).r, 0.04, 1.0);
+        material_output.metallic =
+            clamp(material_output.metallic * SampleOptional(MTL_TEX(material_data_index).tex_metallic, LinearSampler, material_uv, vec4(1.0)).r, 0.0, 1.0);
+        material_output.ao =
+            SampleOptional(MTL_TEX(material_data_index).tex_occlusion, LinearSampler, material_uv, vec4(1.0)).r;
+    }
+
+    // 自发光：PBRSurfaceRow（32B）无 emissiveFactor 字段且行格式已冻结，
+    // emissive 纹理即唯一光源（factor 隐含 1.0）；未绑定 ⇒ vec3(0.0)（原行为）。
+    material_output.emissive =
+        SampleOptional(MTL_TEX(material_data_index).tex_emissive, TrilinearSampler, material_uv, vec4(0.0)).rgb;
 
     return material_output;
 }

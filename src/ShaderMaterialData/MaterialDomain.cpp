@@ -75,6 +75,8 @@ namespace hgl::graph::mtl
         case MaterialDomainTextureRole::SplatMap:     return "SplatMap";
         case MaterialDomainTextureRole::Curvature:    return "Curvature";
         case MaterialDomainTextureRole::Sprite:       return "Sprite";
+        case MaterialDomainTextureRole::Emissive:     return "Emissive";
+        case MaterialDomainTextureRole::OcclusionRoughnessMetallic: return "OcclusionRoughnessMetallic";
         default:                                      return "Unknown";
         }
     }

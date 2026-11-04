@@ -172,8 +172,10 @@ namespace hgl::graph::mtl
         SplatMap,       // 地形层权重
         Curvature,      // 曲率（Skin 预积分 SSS）
         Sprite,         // 2D 精灵/图集
+        Emissive,       // 自发光贴图（glTF emissiveTexture；行内无系数，纹理即光源）
+        OcclusionRoughnessMetallic, // ORM 打包图（R=AO, G=Roughness, B=Metallic，glTF 惯例）
 
-        ENUM_CLASS_RANGE(Unknown, Sprite)
+        ENUM_CLASS_RANGE(Unknown, OcclusionRoughnessMetallic)
     };
 
     const char *GetMaterialDomainTextureRoleName(

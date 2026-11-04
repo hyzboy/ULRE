@@ -1017,7 +1017,8 @@ namespace gate
             ResolvedMaterial standard_definition{};
             standard_definition.domain_name = "StandardOpaqueGate";
             for (const char *slot : {"base_color", "roughness", "metallic",
-                                     "occlusion", "opacity_mask", "normal"})
+                                     "occlusion", "opacity_mask", "normal",
+                                     "emissive", "orm"})
             {
                 MaterialTextureDeclaration decl{};
                 decl.name = slot;
@@ -1027,9 +1028,9 @@ namespace gate
             if (!BuildMaterialTextureReferenceLayout(standard_definition, layout))
             {
                 result.diagnostics.emplace_back(
-                    "canonical 6-slot texture layout failed to build");
+                    "canonical 8-slot texture layout failed to build");
             }
-            else if (layout.reference_count != 6u
+            else if (layout.reference_count != 8u
                   || layout.row_stride != static_cast<uint32_t>(glsl_stride))
             {
                 result.diagnostics.emplace_back(

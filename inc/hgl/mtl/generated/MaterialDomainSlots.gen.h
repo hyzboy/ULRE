@@ -14,7 +14,7 @@ namespace hgl::graph::mtl
     namespace generated
     {
         // StandardOpaque —— 通用不透明/半透明硬表面
-        // 槽数: 6, 行跨度(stride): 48 字节 (16字节对齐)
+        // 槽数: 8, 行跨度(stride): 64 字节 (16字节对齐)
         constexpr MaterialDomainTextureSlot StandardOpaqueSlots[] = {
             { "base_color", MaterialDomainTextureRole::BaseColor, true, SamplerType::Sampler2DArray, false, 0 },
             { "roughness", MaterialDomainTextureRole::Roughness, true, SamplerType::Sampler2DArray, false, 0 },
@@ -22,9 +22,11 @@ namespace hgl::graph::mtl
             { "occlusion", MaterialDomainTextureRole::Occlusion, true, SamplerType::Sampler2DArray, false, 0 },
             { "opacity_mask", MaterialDomainTextureRole::OpacityMask, true, SamplerType::Sampler2DArray, false, 0 },
             { "normal", MaterialDomainTextureRole::Normal, true, SamplerType::Sampler2DArray, false, 2 },
+            { "emissive", MaterialDomainTextureRole::Emissive, true, SamplerType::Sampler2DArray, false, 0 },
+            { "orm", MaterialDomainTextureRole::OcclusionRoughnessMetallic, true, SamplerType::Sampler2DArray, false, 0 },
         };
         constexpr int StandardOpaqueSlotCount = static_cast<int>(sizeof(StandardOpaqueSlots) / sizeof(StandardOpaqueSlots[0]));
-        constexpr uint32_t StandardOpaqueRowStride = 48u;
+        constexpr uint32_t StandardOpaqueRowStride = 64u;
 
         // Foliage —— 植被/树叶/草（风力摆动 + 双面 + 透射）
         // 槽数: 5, 行跨度(stride): 48 字节 (16字节对齐)
