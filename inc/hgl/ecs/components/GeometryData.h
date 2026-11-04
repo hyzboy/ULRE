@@ -64,6 +64,16 @@ namespace hgl::ecs
     public:
 
         // ── 资产（几何 + 默认配方）──
+        /**
+         * @brief 绑定图元资产（非拥有语义）。
+         *
+         * ⚠ 指针稳定性契约：组件只存裸指针，不延长资产寿命。`asset` 必须在
+         * 组件生命周期内地址与内容均有效 —— 若资产住在会被增删/扩容的
+         * `std::vector<PrimitiveAsset>` 里，vector 搬迁即造成静默悬垂。
+         * 装载 `.scene` 场景进 ECS 时请使用 `StaticMeshSceneInstance`
+         * （资产复制进实例自持的 `ManagedArray`，逐项堆分配，地址恒定），
+         * 或保证外部容器本身满足同样的稳定性要求。传 `nullptr` 表示解绑。
+         */
         void SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset);
         const hgl::graph::PrimitiveAsset *GetPrimitiveAsset() const { return primitiveAsset; }
         void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
