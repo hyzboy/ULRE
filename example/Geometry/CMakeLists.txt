@@ -8,6 +8,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../src/SceneGraph/Vulkan)    
 # 线渲染几何
 CreateProject(MixedBufferMeshes                  MixedBufferMeshes.cpp)
 CreateProject(LineRender                        LineRender.cpp)
+CreateProject(SimpleLineRender                  SimpleLineRender.cpp)
 
 add_subdirectory(LoadGeometry)
 add_subdirectory(LoadScene)
