@@ -187,29 +187,29 @@ float ULRE_LIT_SchlickGGX_S(float NdotX, float a)
 }
 
 // V_Kelemen —— "Kelemen and Szirmay-Kalos 2001,
-// An Efficient and Robust Visibility Function for Microfacet Surface Shading"
-float ULRE_LIT_V_Kelemen(float lV, float lL)
+// A Microfacet Based Coupled Specular-Matte BRDF Model with Importance Sampling"
+// （Filament visibilityClearCoat 同款：0.25 / (LoH * LoH)）
+float ULRE_LIT_V_Kelemen(float LoH)
 {
-    return 0.25 / max(lV * lL, 1e-7);
+    return 0.25 / max(LoH * LoH, 1e-6);
 }
 
-// D_Charlie —— "Lester and Dupuy 2017, Arbitrary Band Filtered Highlighted
-// Spherical Harmonics"（Filament shading_sheen.fs 同款归一化 Charlie 分布）。
+// D_Charlie —— "Estevez and Kulla 2017, Production Friendly Microfacet Sheen BRDF"
+// （Filament shading_sheen / surface_brdf.fs 同款归一化 Charlie 分布）
 float ULRE_LIT_D_Charlie(float NoH, float roughness)
 {
-    float r = max(roughness, 1e-3);
-    float invAlpha = 1.0 / (r * r);
-    float cos2h = 2.0 * NoH * NoH - 1.0;
-    float sin2h = max(1.0 - cos2h, 1e-7);
+    float r = clamp(roughness, 0.045, 1.0);
+    float invAlpha = 1.0 / r;
+    float cos2h = NoH * NoH;
+    float sin2h = max(1.0 - cos2h, 0.0078125);
     return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * ULRE_PI);
 }
 
-// V_Ashikhmin —— "Ashikhmin 2000" 绒面可见度（Filament sheen 同款）：
-// V = 1 / (8 NoL NoV (NoL(NoV(NoL+NoV)-NoV)+NoV))
-float ULRE_LIT_V_Ashikhmin(float NoV, float NoL)
+// V_Neubelt —— "Neubelt and Pettineo 2013, Crafting a Next-gen Material Pipeline for The Order: 1886"
+// （Filament visibilityCloth 同款：1 / (4 * (NoL + NoV - NoL * NoV))）
+float ULRE_LIT_V_Neubelt(float NoV, float NoL)
 {
-    float vl = NoV + NoL - NoV * NoL;
-    return 1.0 / max(8.0 * vl * NoL * NoV, 1e-7);
+    return 1.0 / max(4.0 * (NoL + NoV - NoL * NoV), 1e-5);
 }
 
 // 绒面能量损失 sheenEnergyLoss —— Filament shading_sheen.fs 的

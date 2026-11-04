@@ -6,14 +6,10 @@
 // @ulre provides_capability direct_sheen
 // @ulre uses lighting_interface
 // @ulre end
-// 绒面槽 — Charlie NDF + Ashikhmin Vis（对齐 Google Filament shading_sheen.fs）
+// 绒面槽 — Charlie NDF + Neubelt Vis（对齐 Google Filament shading_sheen / surface_shading_model_standard.fs）
 //
-// 只返回**未调制**的绒面辐射项（不含 mainLightColor / shadowFactor）。
-// 对基底漫反射的能量损失衰减 (1 - sheenEnergyLoss) 由 LightingModel 处理。
-//
-// 简化说明（相对 Filament 完整版）：
-//   - 绒面只作用于直接光（Filament 同样如此，sheen 不进入 IBL specular）；
-//   - 采用归一化 D_Charlie，能量补偿用 sheenEnergyLoss 多项式拟合。
+// 只返回**未调制**的绒面辐射项（不含 mainLightColor / shadowFactor，但含 NoL 投影）。
+// 对基底漫反射的能量损失衰减由 LightingModel 处理。
 #ifndef SHEEN_CHARLIE_GLSL
 #define SHEEN_CHARLIE_GLSL
 
@@ -41,17 +37,13 @@ vec3 EvalSheenLight(LightingInput lighting)
     // NDF —— Charlie（Filament 直接传入 perceptualRoughness）
     const float D = ULRE_LIT_D_Charlie(NoH, lighting.sheenRoughness);
 
-    // Vis —— Ashikhmin
-    const float Vis = ULRE_LIT_V_Ashikhmin(NoV, NoL);
+    // Vis —— Neubelt（Filament visibilityCloth 同款）
+    const float Vis = ULRE_LIT_V_Neubelt(NoV, NoL);
 
-    // Fresnel —— F_Schlick(sheenColor, f90 = 1, VoH = NoH)
-    const vec3 F = ULRE_LIT_F_Schlick_F90(lighting.sheenColor, 1.0, NoH);
-
-    // 能量补偿：specular 自身乘以 (1 - energyLoss * NoL)
-    const float alpha = lighting.sheenRoughness * lighting.sheenRoughness;
-    const float energyLoss = ULRE_LIT_SheenEnergyLoss(NoV, NoL, alpha);
-
-    return D * Vis * F * (1.0 - energyLoss * NoL) * NoL;
+    // Filament surface_shading_model_standard.fs:
+    //   sheenLobe = (D * V) * pixel.sheenColor
+    //   surfaceShading = ... * NoL
+    return (D * Vis * NoL) * lighting.sheenColor;
 }
 
 #endif // SHEEN_CHARLIE_GLSL

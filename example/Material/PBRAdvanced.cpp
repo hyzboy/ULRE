@@ -63,7 +63,7 @@ namespace
     constexpr uint32_t kSelfW           = 1280;
     constexpr uint32_t kSelfH           = 720;
     constexpr uint32_t kSelfMinDistinct = 2;      // 不空转守卫（恒定图会 FAIL）
-    constexpr uint64_t kSelfFNV         = 0x6E6E1FDC3056117Bull;  // Debug 实跑记录（A2BGR10UN 回读）
+    constexpr uint64_t kSelfFNV         = 0x2DA9D1F43EF1481Eull;  // Debug 实跑记录（A2BGR10UN 回读，Filament 纠正后）
 }
 
 class PBRAdvancedApp : public WorkObject

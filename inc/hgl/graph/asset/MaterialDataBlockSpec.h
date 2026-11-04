@@ -90,7 +90,7 @@ namespace hgl::graph
         float   clearcoat_roughness = 0.0f;                          ///<清漆层粗糙度
 
         HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
-        Color4f sheen_color  = Color4f(1.0f);                        ///<绒毛色（落盘时打包成 unorm4x8）
+        Color4f sheen_color  = Color4f(0.0f, 0.0f, 0.0f, 0.0f);      ///<绒毛色（落盘时打包成 unorm4x8，默认全 0 禁用）
 
         HGL_PROPERTY(EditAnywhere, Category = "PBRAdvanced")
         float   sheen_roughness     = 0.0f;                          ///<绒毛粗糙度

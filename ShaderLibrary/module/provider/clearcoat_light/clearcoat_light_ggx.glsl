@@ -45,21 +45,16 @@ vec3 EvalClearCoatLight(LightingInput lighting)
     const float alpha = lighting.clearCoatRoughness * lighting.clearCoatRoughness;
 
     // NDF —— D_GGX（ULRE_LIT_D_GGX 入参为 alpha2 = alpha^2）
-    const float D = ULRE_LIT_D_GGX(NoH, alpha * alpha);
+    const float D = ULRE_LIT_D_GGX(NoH, max(alpha * alpha, 1e-5));
 
-    // Vis —— V_Kelemen + SchlickGGX(a = 0.045)（Filament 清漆层固定值）
-    const float Vis = ULRE_LIT_V_Kelemen(
-        ULRE_LIT_SchlickGGX_S(NoV, 0.045),
-        ULRE_LIT_SchlickGGX_S(NoL, 0.045));
+    // Vis —— Kelemen: V = 0.25 / (VoH * VoH)（Filament visibilityClearCoat 同款）
+    const float Vis = ULRE_LIT_V_Kelemen(VoH);
 
-    // Fresnel —— coat F0 = 0.04（IOR 1.5），f90 = 1
-    const float F = ULRE_LIT_F_Schlick_S(0.04, 1.0, VoH);
+    // Fresnel —— coat F0 = 0.04（IOR 1.5），f90 = 1，乘 clearCoat 强度
+    const float F = ULRE_LIT_F_Schlick_S(0.04, 1.0, VoH) * lighting.clearCoat;
 
-    // 强度调制 —— F_Schlick(clearCoat, 0.0, NoV)
-    const float attenuation = ULRE_LIT_F_Schlick_S(lighting.clearCoat, 0.0, NoV);
-
-    // 清漆叶是单色的（coat F0=0.04 无染色）⇒ 标量广播成 vec3。
-    return vec3(D * Vis * F * attenuation * NoL);
+    // 清漆叶是单色的（coat F0=0.04 无染色）⇒ 标量广播成 vec3，乘 NoL 投影。
+    return vec3(D * Vis * F * NoL);
 }
 
 #endif // CLEARCOAT_GGX_GLSL

@@ -49,20 +49,22 @@ vec3 EvalSpecularLight(LightingInput lighting)
 
     const float ToV = dot(T, V);
     const float BoV = dot(B, V);
+    const float ToL = dot(T, L);
+    const float BoL = dot(B, L);
     const float ToH = dot(T, H);
     const float BoH = dot(B, H);
 
-    // NDF —— D_GGX_Anisotropic（归一化）
+    // NDF —— D_GGX_Anisotropic（Burley 2012 / Filament 同款）
     const float a2 = at * ab;
     const vec3  vv = vec3(ab * ToH, at * BoH, a2 * NoH);
     const float v2 = max(dot(vv, vv), 1e-14);
     const float w2 = a2 / v2;
     const float D  = a2 * w2 * w2 * (1.0 / ULRE_PI);
 
-    // Vis —— V_SmithGGXCorrelated（height-correlated，各向异性推广）
-    const float lambdaV = NoL * sqrt(at * at * ToV * ToV + ab * ab * BoV * BoV + NoV * NoV);
-    const float lambdaL = NoV * sqrt(at * at * ToH * ToH + ab * ab * BoH * BoH + NoL * NoL);
-    const float Vis = 0.5 / max(lambdaV + lambdaL, 1e-7);
+    // Vis —— V_SmithGGXCorrelated_Anisotropic（Heitz 2014 / Filament 同款）
+    const float lambdaV = NoL * length(vec3(at * ToV, ab * BoV, NoV));
+    const float lambdaL = NoV * length(vec3(at * ToL, ab * BoL, NoL));
+    const float Vis     = 0.5 / max(lambdaV + lambdaL, 1e-7);
 
     // Fresnel —— 与 cook_torrance 相同的 F0/F90 约定
     const vec3  F0          = mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
