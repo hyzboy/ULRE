@@ -317,9 +317,11 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/SceneAssetSpec.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/SceneLoader.h
+                            ${SG_INCLUDE_PATH}/asset/StaticMeshSceneInstance.h
                             asset/SceneAssetFile.cpp
                             asset/SceneAssetRegistry.cpp
-                            asset/SceneLoader.cpp)
+                            asset/SceneLoader.cpp
+                            asset/StaticMeshSceneInstance.cpp)
 
 source_group("07.Asset\\Scene" FILES ${SG_ASSET_SCENE_FILES})
 
