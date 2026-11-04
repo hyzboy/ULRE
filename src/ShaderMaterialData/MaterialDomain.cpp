@@ -31,6 +31,7 @@ namespace hgl::graph::mtl
         case MaterialDomain::Checker2D:       return "Checker2D";
         case MaterialDomain::Checker3D:       return "Checker3D";
         case MaterialDomain::ErrorChecker3D:  return "ErrorChecker3D";
+        case MaterialDomain::VertexPaletteLines: return "VertexPaletteLines";
 
         default:                             return "Unknown";
         }
@@ -43,7 +44,7 @@ namespace hgl::graph::mtl
 
         // 上界必须跟着枚举最后一项走；漏改会让新领域名解析不出来，
         // 表现为「TOML 里写对了却报 unknown domain」。
-        constexpr int kLastDomain = static_cast<int>(MaterialDomain::ErrorChecker3D);
+        constexpr int kLastDomain = static_cast<int>(MaterialDomain::VertexPaletteLines);
         for (int i = 0; i <= kLastDomain; ++i)
         {
             const MaterialDomain domain = static_cast<MaterialDomain>(i);
@@ -482,6 +483,34 @@ namespace hgl::graph::mtl
                 nullptr, 0, nullptr, 0,
                 {},
                 MaterialVertexNormalMode::OptionalFaceFallback,
+            },
+            {
+                // 调色板顶点色 · 原生线图元：与 VertexPalette 同一来源模块与
+                // 同一片元模板，差别在两处——
+                //   · 顶点语义去掉 Size（1px 原生线不做宽度，Size 流整个不存在）；
+                //   · mesh_shader_mode = LineList（发射 layout(lines) 线图元）。
+                // 独立成领域而不是放宽 VertexPalette 契约：契约里「少一个语义」
+                // 与「多一个语义」同样是硬边界（见头文件扩展方式说明）。
+                MaterialDomain::VertexPaletteLines, "VertexPaletteLines",
+                "material_source_vertex_color", nullptr,
+                Sem(VertexSemantic::Position) | Sem(VertexSemantic::Color)
+                    | Sem(VertexSemantic::TransformID),
+                nullptr,
+                0,
+                false,
+                false,
+                {},
+                GlobalSSBOType::PBRSurface,
+                VarSem(InterStageSemantic::Color),
+                nullptr,
+                0,
+                nullptr,
+                0,
+                {},
+                MaterialVertexNormalMode::None,
+                MeshShaderMode::LineList,
+                true,   // emit_vertex_color_from_palette：Color 流是调色板索引(R8_UINT)，不是 RGBA
+                true,   // use_transform_id_attr：顶点 ABI 需要 TransformID
             },
         };
 

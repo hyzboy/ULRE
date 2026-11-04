@@ -84,13 +84,19 @@ namespace hgl::graph::mtl
         Checker3D,       // 调试棋盘格（3D）
         ErrorChecker3D,  // 材质错误回退棋盘格
 
-        ENUM_CLASS_RANGE(Custom, ErrorChecker3D)
+        // ── 线条专用（引擎 ECS 调试/标注管线构造）─────────────────────────
+        // 与 VertexPalette 同族：颜色走调色板顶点色；差别在发射拓扑——
+        // LineList 契约锁定 mesh_shader_mode=LineList（layout(lines) 原生 1px 线），
+        // 不携带宽度/样式，光栅化与经典 LINE_LIST 逐像素一致。
+        VertexPaletteLines,
+
+        ENUM_CLASS_RANGE(Custom, VertexPaletteLines)
     };
 
     const char *GetMaterialDomainName(MaterialDomain domain) noexcept;
 
     // 非 Custom 的契约领域数量（用于契约表遍历与门禁穷举）。
-    constexpr int MaterialDomainContractCount = 17;
+    constexpr int MaterialDomainContractCount = 18;
 
     // 严格解析："StandardOpaque" 等；返回 false 表示未知名字（调用方报错）。
     bool ParseMaterialDomain(const char *name, MaterialDomain &out_domain) noexcept;

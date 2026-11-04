@@ -37,6 +37,9 @@ namespace hgl::graph::mtl
             { MaterialDomain::UnlitTexture3D,    "unlit_texture",      "unlit_texture.frag",      false },
             { MaterialDomain::VertexColor,       "vertex_color",       "vertex_color.frag",       false },
             { MaterialDomain::VertexPalette,     "vertex_color",       "vertex_color.frag",       false },
+            // 原生线图元版调色板顶点色：片元阶段与 VertexPalette 逐字节相同，
+            // 复用同一目录与同一份固定主着色器；差异（无 Size、LineList）全在顶点侧。
+            { MaterialDomain::VertexPaletteLines,"vertex_color",       "vertex_color.frag",       false },
             { MaterialDomain::VertexLuminance,   "vertex_luminance",   "vertex_luminance.frag",   false },
             { MaterialDomain::UnlitSolid,        "unlit_solid",        "unlit_solid.frag",        false },
             { MaterialDomain::Checker2D,         "checker_2d",         "checker_2d.frag",         false },

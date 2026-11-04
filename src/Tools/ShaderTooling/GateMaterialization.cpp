@@ -1,6 +1,9 @@
 // 阶段 5 拆分自 ShaderResourceSchemaRegressionGate.cpp：组 materialization 的 case 实现。
 #include "GateTestSupport.h"
 
+#include <hgl/graph/asset/MaterialRecipeSpec.h>
+#include <hgl/mtl/MaterialRecipeInherit.h>
+
 namespace gate
 {
     GateResult RunMaterializationSharedInstanceCase()
@@ -534,6 +537,20 @@ namespace gate
             return result;
         }
 
+        // 差量配方（写了 `parent`）允许不声明 `domain`：解析层此时只记名字，
+        // 领域要到注册表合并后才有。门禁没有注册表，这里自己建「名字/路径 →
+        // 解析结果」索引，第二趟沿父链把有效领域找出来再校验主着色器入口。
+        struct ScannedRecipe
+        {
+            std::string   path;
+            std::string   name;
+            std::string   parent;
+            MaterialDomain domain = MaterialDomain::Custom;
+        };
+        std::vector<ScannedRecipe> scanned;
+        std::map<std::string, size_t> by_name;
+        std::map<std::string, size_t> by_path;
+
         for (const std::string &path : material_files)
         {
             const std::string text = ReadFileText(path);
@@ -567,10 +584,12 @@ namespace gate
             //   * 领域是否存在、是否已实现主着色器、表面模块是否可用，这些判断
             //     只有解析器 + 领域表知道，在门禁里再抄一份必然漂移。
             MaterialRecipeFileData recipe_data{};
+            MaterialRecipeSpec spec{};
             const MaterialRecipeFileParseResult parse_result =
                 ParseMaterialRecipeFile(text.c_str(),
                                         static_cast<int>(text.size()),
-                                        recipe_data);
+                                        recipe_data,
+                                        &spec);
             if (parse_result != MaterialRecipeFileParseResult::OK)
             {
                 // schema 必须为 1、领域必须显式声明且非 Custom、不得有未知键、
@@ -585,12 +604,14 @@ namespace gate
                     + " detail=" + std::string(recipe_data.parse_error.detail.c_str())
                     + ": " + path);
             }
-            else if (!HasMaterialDomainEntrySource(recipe_data.recipe.domain))
+            else
             {
-                result.diagnostics.emplace_back(
-                    "material recipe domain has no fixed master shader entry: "
-                    + path + " domain="
-                    + GetMaterialDomainName(recipe_data.recipe.domain));
+                ScannedRecipe entry;
+                entry.path = path;
+                entry.name = spec.name.c_str() ? spec.name.c_str() : "";
+                entry.parent = spec.parent.c_str() ? spec.parent.c_str() : "";
+                entry.domain = spec.domain;
+                scanned.push_back(std::move(entry));
             }
 
             if (ContainsAnyToken(text, {
@@ -603,6 +624,101 @@ namespace gate
                 result.diagnostics.emplace_back(
                     "embedded material or legacy definition IDs are forbidden in: "
                     + path);
+            }
+        }
+
+        // ── 第二趟：解析父链得到有效领域，再校验固定主着色器入口 ──
+        for (size_t i = 0; i < scanned.size(); ++i)
+        {
+            if (!scanned[i].name.empty())
+            {
+                const auto existing = by_name.find(scanned[i].name);
+                if (existing != by_name.end())
+                {
+                    result.diagnostics.emplace_back(
+                        "duplicate material recipe name: " + scanned[i].name
+                        + " in " + scanned[existing->second].path
+                        + " and " + scanned[i].path);
+                }
+                else
+                    by_name.emplace(scanned[i].name, i);
+            }
+            by_path.emplace(scanned[i].path, i);
+        }
+
+        for (const ScannedRecipe &entry : scanned)
+        {
+            MaterialDomain domain = entry.domain;
+
+            if (domain == MaterialDomain::Custom)
+            {
+                const ScannedRecipe *cur = &entry;
+                std::set<std::string> visited;
+                visited.insert(cur->path);
+                bool resolved = false;
+                while (!resolved)
+                {
+                    MaterialRecipeParentRef ref;
+                    if (!ParseMaterialRecipeParentRef(cur->parent.c_str(), ref))
+                    {
+                        result.diagnostics.emplace_back(
+                            "material recipe has an illegal parent reference: " + cur->path);
+                        break;
+                    }
+                    if (ref.IsNone())
+                    {
+                        result.diagnostics.emplace_back(
+                            "material recipe chain declares no domain: " + entry.path);
+                        break;
+                    }
+
+                    std::string key;
+                    if (ref.kind == MaterialRecipeParentRefKind::ByName)
+                        key = ref.name.c_str() ? ref.name.c_str() : "";
+                    else
+                        for (const auto *p = ref.path.c_str(); p && *p; ++p)
+                            key += static_cast<char>(*p);
+
+                    const std::map<std::string, size_t> &index =
+                        ref.kind == MaterialRecipeParentRefKind::ByName ? by_name : by_path;
+                    const auto it = index.find(key);
+                    if (it == index.end())
+                    {
+                        result.diagnostics.emplace_back(
+                            "material recipe parent not found in recipe tree: "
+                            + cur->path + " parent=" + key);
+                        break;
+                    }
+
+                    const ScannedRecipe &parent = scanned[it->second];
+                    if (!visited.insert(parent.path).second)
+                    {
+                        result.diagnostics.emplace_back(
+                            "material recipe parent chain cycles: " + entry.path);
+                        break;
+                    }
+                    if (parent.domain != MaterialDomain::Custom)
+                    {
+                        domain = parent.domain;
+                        resolved = true;
+                    }
+                    else if (visited.size() > 16)
+                    {
+                        result.diagnostics.emplace_back(
+                            "material recipe parent chain too deep: " + entry.path);
+                        break;
+                    }
+                    cur = &parent;
+                }
+                if (!resolved)
+                    continue;
+            }
+
+            if (!HasMaterialDomainEntrySource(domain))
+            {
+                result.diagnostics.emplace_back(
+                    "material recipe domain has no fixed master shader entry: "
+                    + entry.path + " domain=" + GetMaterialDomainName(domain));
             }
         }
 

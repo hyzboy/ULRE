@@ -355,6 +355,44 @@ namespace hgl::graph::mtl
                 plan.mesh_max_invocations = TEXT_CHARQUAD_MAX_INVOCATIONS;
                 // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
             }
+            else if (definition.mesh_shader_mode == MeshShaderMode::LineList)
+            {
+                plan.mesh_shader_mode = MeshShaderMode::LineList;
+
+                // ── LineList 与 CharQuad 同理：线程数是 CPU 派发契约，锁死 64 ──
+                // SimpleLineRenderPipeline 的 Draw 按 MESH_GROUP_SIZE=64 整除算组数，
+                // 拿不到 shader 的 local_size_x；钳小会造成尾部线段整段缺失且无报错。
+                const uint32_t declared = definition.mesh_shader_max_invocations;
+                if (declared != 0 && declared != kMeshLineListMaxInvocations)
+                {
+                    GLogError(
+                        "[MaterialProgramAssembler] LineList 线程数契约被破坏：definition=%s "
+                        "mesh_shader_max_invocations=%u 必须为 %u"
+                        "（CPU dispatch 固定按该常量算组数，改小会整段漏线）",
+                        definition.domain_name.c_str(),
+                        static_cast<unsigned>(declared),
+                        static_cast<unsigned>(kMeshLineListMaxInvocations));
+                    return false;
+                }
+
+                const uint32_t clamped = ClampMeshInvocationsByDevice(
+                    profile, plan.mesh_shader_mode,
+                    kMeshLineListMaxInvocations);
+                if (clamped != kMeshLineListMaxInvocations)
+                {
+                    GLogError(
+                        "[MaterialProgramAssembler] LineList 线程数契约无法兑现：definition=%s "
+                        "设备能力上限折算后 group_size=%u < %u"
+                        "（CPU dispatch 固定按 %u 算组数，退让会整段漏线）",
+                        definition.domain_name.c_str(),
+                        static_cast<unsigned>(clamped),
+                        static_cast<unsigned>(kMeshLineListMaxInvocations),
+                        static_cast<unsigned>(kMeshLineListMaxInvocations));
+                    return false;
+                }
+
+                plan.mesh_max_invocations = kMeshLineListMaxInvocations;
+            }
             else if (plan.primitive_type == hgl::graph::PrimitiveType::Lines)
             {
                 plan.mesh_shader_mode = MeshShaderMode::LineQuad;
@@ -492,6 +530,8 @@ namespace hgl::graph::mtl
                 prefix = "charquad_";
             else if (mode == MeshShaderMode::LineQuad)
                 prefix = "linequad_";
+            else if (mode == MeshShaderMode::LineList)
+                prefix = "linelist_";
 
             AnsiString name(prefix);
             name += AnsiString::numberOf(max_vertices);

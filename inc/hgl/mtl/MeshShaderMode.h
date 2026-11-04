@@ -14,6 +14,7 @@ namespace hgl::graph::mtl
         VertexPassthrough,   // 每线程 1 顶点（默认，模拟 VS）
         LineQuad,            // 每线程 1 线段 → quad
         CharQuad,            // 每线程 1 字符实例 → quad（6 顶点 2 三角形）
+        LineList,            // 每线程 1 线段 → 原生线图元（2 顶点 1 line，1px）
     };
 
     // 名字↔值的唯一真源 = 本文件末尾的 `HGL_ENUM_BEGIN` 登记块（见 `EnumNameOf` / `EnumParse`）。
@@ -27,17 +28,22 @@ namespace hgl::graph::mtl
     }
 
     // 每线程输出量（mesh 生成器约定）：
-    // VertexPassthrough：3 顶点 1 图元（跨步协作模型）；LineQuad/CharQuad：4 顶点 2 图元（quad）
+    // VertexPassthrough：3 顶点 1 图元（跨步协作模型）；LineQuad/CharQuad：4 顶点 2 图元（quad）；
+    // LineList：2 顶点 1 图元（原生线段）
     inline uint8_t GetMeshModeVerticesPerInvocation(const MeshShaderMode mode) noexcept
     {
         if (mode == MeshShaderMode::VertexPassthrough)
             return 3u;
+        if (mode == MeshShaderMode::LineList)
+            return 2u;
         return (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 4u : 1u;
     }
 
     inline uint8_t GetMeshModePrimitivesPerInvocation(const MeshShaderMode mode) noexcept
     {
         if (mode == MeshShaderMode::VertexPassthrough)
+            return 1u;
+        if (mode == MeshShaderMode::LineList)
             return 1u;
         return (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 2u : 1u;
     }
@@ -48,4 +54,5 @@ HGL_ENUM_BEGIN(hgl::graph::mtl::MeshShaderMode)
     HGL_ENUM_ITEM(VertexPassthrough, "每线程 1 顶点（默认，模拟 VS）")
     HGL_ENUM_ITEM(LineQuad,          "每线程 1 线段 → quad")
     HGL_ENUM_ITEM(CharQuad,          "每线程 1 字符实例 → quad（6 顶点 2 三角形）")
+    HGL_ENUM_ITEM(LineList,          "每线程 1 线段 → 原生线图元（2 顶点 1 line，1px）")
 HGL_ENUM_END(hgl::graph::mtl::MeshShaderMode)

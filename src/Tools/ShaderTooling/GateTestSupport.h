@@ -744,7 +744,7 @@ namespace gate
     /// `module/stage/interstage_varying.glsl` 之后，同一批不变量只剩一份检查对象，
     /// 见 AuditUnifiedInterStageVarying()。本函数现在只看主着色器自身的结构：
     ///
-    /// ① 拓扑契约 `layout(triangles, max_vertices = N, max_primitives = M)` 是字面量
+    /// ① 拓扑契约 `layout(triangles|lines, max_vertices = N, max_primitives = M)` 是字面量
     ///    （与 varying 数组维数宏、CPU 派发是同一份事实）；② 每份形状 master 都走
     ///    统一 varying 文件，且不得再自己 `layout(location=...)`（否则又出现第二个
     ///    真源）；③ Stage2/Stage3 只能来自 `generated/mesh_options.glsl`；④ 形状
@@ -835,11 +835,15 @@ namespace gate
             uint32_t max_vertices = 0;
             uint32_t max_primitives = 0;
             {
-                const size_t layout = text.find("layout(triangles, max_vertices =");
+                // 两种合法发射拓扑：triangles（形状 master 与 LineQuad 的 quad 撑宽）
+                // 与 lines（LineList 原生 1px 线，linelist_*.mesh）。
+                size_t layout = text.find("layout(triangles, max_vertices =");
+                if (layout == std::string::npos)
+                    layout = text.find("layout(lines, max_vertices =");
                 if (layout == std::string::npos)
                 {
                     AddCappedDiagnostic(
-                        result, name + ": 缺少 layout(triangles, ...) 输出声明");
+                        result, name + ": 缺少 layout(triangles/lines, ...) 输出声明");
                     continue;
                 }
                 const size_t first =
@@ -1868,6 +1872,13 @@ namespace gate
           ShaderProgramPurpose::ForwardColor,
           PassProfileID::ForwardUnlit, true, false,
           PrimitiveType::Lines, true },
+        // LineList 是第四种发射模式（原生 1px 线图元），与 CharQuad 一样由
+        // `definition.mesh_shader_mode` 显式指定（VertexPaletteLines 领域契约携带），
+        // 不依赖 primitive_type 推断。覆盖 linelist_128.mesh 与 line_list_body.glsl。
+        { MaterialDomain::VertexPaletteLines, "vertex-palette-lines-list",
+          ShaderProgramPurpose::ForwardColor,
+          PassProfileID::ForwardUnlit, true, false,
+          PrimitiveType::Lines, false },
     };
 
     /// 采样器预设表是进程级单例，`BuildSamplerMacros` 靠它把 `Trilinear`
@@ -2158,6 +2169,8 @@ namespace gate
         { "err-check-3d", MaterialDomain::ErrorChecker3D, ShaderProgramPurpose::ForwardColor, false },
         { "text-gpu",     MaterialDomain::Text2D,         ShaderProgramPurpose::ForwardColor, false },
         { "debug-normal", MaterialDomain::DebugNormal,    ShaderProgramPurpose::ForwardColor, false },
+        // 尾部追加（顺序被 DH.domain-backend-cache 按下标引用）：原生线图元领域。
+        { "vert-pal-lines", MaterialDomain::VertexPaletteLines, ShaderProgramPurpose::ForwardColor, false },
     };
 
     /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。

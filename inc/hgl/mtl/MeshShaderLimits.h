@@ -15,6 +15,7 @@ namespace hgl::graph::mtl
     constexpr uint32_t kMeshVertexPassthroughMaxInvocations = 64u;
     constexpr uint32_t kMeshVertexPassthroughMaxVertices    = 192u;
     constexpr uint32_t kMeshLineQuadMaxInvocations          = 64u;
+    constexpr uint32_t kMeshLineListMaxInvocations          = 64u;
     // CharQuad 用 TEXT_CHARQUAD_MAX_INVOCATIONS（CharQuadConfig.h——与 CPU dispatch 共享的唯一真源）
 
     struct MeshModeCapacity
@@ -42,6 +43,12 @@ namespace hgl::graph::mtl
             case MeshShaderMode::VertexPassthrough:
                 // 每线程 1 顶点、跨步协作：N 线程覆盖 3N 顶点 / N 三角形。
                 capacity.max_vertices   = max_invocations * 3u;
+                capacity.max_primitives = max_invocations;
+                break;
+
+            case MeshShaderMode::LineList:
+                // 每线程 1 线段 → 1 原生线图元（2 顶点 1 line）。
+                capacity.max_vertices   = max_invocations * 2u;
                 capacity.max_primitives = max_invocations;
                 break;
 
