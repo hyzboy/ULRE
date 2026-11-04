@@ -11,6 +11,18 @@ namespace hgl::graph
     class GeometryManager;
     class GeometryVertexFormat;
 
+    /**
+     * @brief 装载 `.scene` 包为「图元资产 + 场景节点树」。
+     *
+     * 变换真源约定（T5）：`out_nodes` 每个节点的**局部 TRS**（`hasTRS`/
+     * `translation`/`rotation`/`scale`）与父子关系（`parentIndex`/`children`）
+     * 是 GLTFConvert 直接导出的无损数据；`localMatrix`/`worldMatrix` 只是
+     * `ComposeNodeMatrices` 顺带组合出的派生便利值。
+     *
+     * 因此装载 ECS 时**不要**对 `worldMatrix` 做 `DecomposeTransform` 再摊平
+     * 层级 —— 应使用 `StaticMeshSceneInstance::Instantiate`，它按局部 TRS +
+     * `SetParent` 逐节点建实体，完整保留层级（且自持资产副本，指针不会悬垂）。
+     */
     bool LoadStaticMeshSceneAsPrimitiveAssets(
         VulkanDevice                     *device,
         GeometryManager                  *geo_mgr,

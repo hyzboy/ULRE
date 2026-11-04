@@ -13,15 +13,19 @@ namespace hgl::graph{
 /**
  * StaticMeshNode - 场景树节点
  * 描述一个场景节点的变换、包围体和引用到primitive_list的图元索引
+ *
+ * 变换真源是**局部 TRS**（`.scene` V2 的 TRSTable，GLTFConvert 无损导出）+
+ * `parentIndex`/`children` 层级；两个矩阵字段仅为 `ComposeNodeMatrices`
+ * 组合出的派生便利值，消费方（如 ECS 实例化）不应再从矩阵反分解 TRS。
  */
 struct StaticMeshNode
 {
     std::string          name;
     int32_t              parentIndex     = -1;              ///< -1 表示根节点
     std::vector<int32_t> children;                          ///< 子节点在 nodes_ 中的索引
-    Matrix4f             localMatrix     { 1.0f };          ///< 本地变换矩阵
-    Matrix4f             worldMatrix     { 1.0f };          ///< 世界变换矩阵
-    bool                 hasTRS          = false;
+    Matrix4f             localMatrix     { 1.0f };          ///< 派生值：由局部 TRS 组合
+    Matrix4f             worldMatrix     { 1.0f };          ///< 派生值：沿父链组合
+    bool                 hasTRS          = false;           ///< 局部 TRS 是否有效（无则单位变换）
     Vector3f             translation     {};
     Quatf                rotation        { 1.0f, 0.0f, 0.0f, 0.0f };  ///< w,x,y,z
     Vector3f             scale           { 1.0f, 1.0f, 1.0f };
