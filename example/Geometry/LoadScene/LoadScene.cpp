@@ -7,6 +7,7 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
+#include<hgl/graph/asset/StaticMeshSceneInstance.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
@@ -91,17 +92,12 @@ private:
     MaterialData solid;
     graph::mtl::MaterialRecipe scene_recipe{};
 
-    struct SceneEntity
-    {
-        hgl::ecs::Entity *entity = nullptr;
-        hgl::ecs::TransformAccessor transform;
-        hgl::ecs::GeometryData *primitive_comp = nullptr;
-    };
-
     std::vector<PrimitiveAsset>    scene_assets_;
     std::vector<StaticMeshNode>    scene_nodes_;
     std::vector<int32_t>           scene_root_nodes_;
-    std::vector<SceneEntity>       scene_entities_;
+    // 场景 → ECS 标准实例化器：逐节点局部 TRS + SetParent 还原层级，
+    // 自持资产副本（不再需要 DecomposeTransform 摊平，也不惧 vector 搬迁悬垂）。
+    StaticMeshSceneInstance        scene_instance_;
 
 private:
 
@@ -180,52 +176,22 @@ private:
         if (scene_nodes_.empty())
             return false;
 
-        size_t entity_idx = 0;
+        // 纯 TRS 直通：节点局部 TRS 取自 .scene 的 TRSTable 真源，父子层级按
+        // parentIndex 用 SetParent 还原 —— 不再对 worldMatrix 做 DecomposeTransform
+        // 摊平（旧写法在非均匀缩放嵌套下有旋转/缩放残差，且丢失场景树）。
+        StaticMeshSceneInstance::Options options;
+        options.mobility           = hgl::ecs::Mobility::Static;
+        options.material_rows      = solid.mtl_data_ssbo_accessors;
+        options.material_row_count = static_cast<uint32_t>(COLOR_COUNT);
 
-        for (const auto &node : scene_nodes_)
-        {
-            for (int32_t pi : node.primitiveIndices)
-            {
-                if (pi < 0 || pi >= static_cast<int32_t>(scene_assets_.size()))
-                    continue;
-                PrimitiveAsset &asset = scene_assets_[pi];
-                if (!asset.IsValid())
-                    continue;
+        if (!scene_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
+                                         scene_root_nodes_, options))
+            return false;
 
-                SceneEntity se;
-                se.entity       = ecs_context->CreateEntity<hgl::ecs::Entity>("SceneNode_" + std::to_string(entity_idx++));
-                se.transform    = ecs_context->GetTransform(ecs_context->CreateTransform(se.entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-                se.primitive_comp = se.entity->GetContext()->GetOrCreateGeometryData(se.entity);
-                hgl::ecs::MaterialData *material_data_comp = se.entity->GetContext()->GetOrCreateMaterialData(se.entity);
-
-                // Use pre-computed world matrix for all nodes so child nodes
-                // (e.g. Pawn_Top inside Pawn_Body) get the full composed transform.
-                //
-                // 世界矩阵 → TRS 必须走 math::DecomposeTransform：旧写法
-                // quat_cast(glm::mat3(worldMatrix)) 在存在非均匀缩放时输入不是正交基
-                // （实测 S=(2,0.5,1)：|q|=1.0768、旋转误差 10.56°、重建误差 0.447），
-                // 明细见 src/ecs/tests/ProbeTransformDiagnostics.cpp 的 [T4] 段。
-                math::Vector3f world_pos;
-                math::Quatf    world_rot;
-                math::Vector3f world_scale;
-                math::DecomposeTransform(node.worldMatrix,world_pos,world_rot,world_scale);
-
-                se.transform.SetLocalPosition(world_pos);
-                se.transform.SetLocalRotation(world_rot);
-                se.transform.SetLocalScale(world_scale);
-                se.transform.SetMobility(hgl::ecs::Mobility::Static);
-
-                se.primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(se.primitive_comp->GetOwnerID())->SetPrimitiveAsset(&asset);
-                hgl::ecs::MaterialData::MaterialDataAuthoringResource scene_struct{};
-                scene_struct =
-                    solid.mtl_data_ssbo_accessors[(entity_idx - 1) % COLOR_COUNT];
-                material_data_comp->SetDataResource(scene_struct);
-                // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
-
-                scene_entities_.push_back(std::move(se));
-            }
-        }
-
+        // 实例已自持资产副本 ⇒ 装载缓冲即刻释放，杜绝误用与驻留
+        scene_assets_.clear();
+        scene_nodes_.clear();
+        scene_root_nodes_.clear();
         return true;
     }
 
@@ -274,7 +240,7 @@ private:
 public:
     ~LoadSceneApp()
     {
-        scene_entities_.clear();
+        scene_instance_.Release();
         scene_assets_.clear();
         scene_nodes_.clear();
         scene_root_nodes_.clear();
