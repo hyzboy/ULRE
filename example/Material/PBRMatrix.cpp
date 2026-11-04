@@ -60,7 +60,8 @@ namespace
     constexpr uint32_t kSelfW           = 1280;
     constexpr uint32_t kSelfH           = 720;
     constexpr uint32_t kSelfMinDistinct = 2;      // 不空转守卫（恒定图会 FAIL）
-    constexpr uint64_t kSelfFNV         = 0x0000000000000000ull;  // TODO(阶段三实跑回填)
+    constexpr uint64_t kSelfFNV         = 0xB65C1C88F65487DCull;  // 冻结相机 + Debug 实跑记录
+                                                                  // （改渲染结果必须复核并重录）
 }
 
 class PBRMatrixApp : public WorkObject
