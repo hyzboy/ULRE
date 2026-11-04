@@ -41,7 +41,7 @@ namespace
 
     constexpr float kEpsilon = 1.0e-6f;
 
-    constexpr size_t kExpectedBlockCount = 32;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix + load_scene_pbr
+    constexpr size_t kExpectedBlockCount = 33;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix + load_scene_pbr + gltf_damaged_helmet
 
     /// 阶段 A 的台账：文件名主干 → (行类型, 行数)。
     struct BlockExpect
@@ -77,6 +77,7 @@ namespace
         { "load_geometry",                 graph::GlobalSSBOType::EmissiveSurface, 9 },
         { "load_scene",                    graph::GlobalSSBOType::EmissiveSurface, 8 },
         { "load_scene_pbr",                graph::GlobalSSBOType::PBRSurface,      15 },
+        { "gltf_damaged_helmet",           graph::GlobalSSBOType::PBRSurface,      1 },
         { "auto_merge_material_instance",  graph::GlobalSSBOType::EmissiveSurface, 12 },
         { "gpu_driven_cull",               graph::GlobalSSBOType::EmissiveSurface, 64 },
         { "alpha_modes",                   graph::GlobalSSBOType::PBRSurface,      28 },

@@ -1,0 +1,13 @@
+# GLTF_DamagedHelmet 示例的材质数据块：单材质（Material_MR）。
+# metallic/roughness 取 glTF 缺省因子 1.0，实际值由 ORM 贴图通道解包；
+# base_color 为白（全由贴图承载）；emissive 无因子字段，纹理即唯一光源。
+
+schema = 1
+name = "gltf_damaged_helmet"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
