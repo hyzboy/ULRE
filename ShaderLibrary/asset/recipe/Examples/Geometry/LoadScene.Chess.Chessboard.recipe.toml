@@ -1,0 +1,20 @@
+# ABeautifulGame chess material #4 (Chessboard).
+# Textures: glTF ORM packing (R=AO, G=roughness, B=metallic), sampled natively by StandardOpaque.
+schema = 1
+name = "LoadScene.Chess.Chessboard"
+domain = "StandardOpaque"
+
+[[textures]]
+name = "base_color"
+asset = "res/model/Chess/ABeautifulGame.Chessboard_base_color.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "normal"
+asset = "res/model/Chess/ABeautifulGame.Chessboard_normal.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "orm"
+asset = "res/model/Chess/ABeautifulGame.Chessboard_ORM.Tex2D"
+auto_mipmaps = true

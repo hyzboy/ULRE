@@ -41,7 +41,7 @@ namespace
 
     constexpr float kEpsilon = 1.0e-6f;
 
-    constexpr size_t kExpectedBlockCount = 31;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix
+    constexpr size_t kExpectedBlockCount = 32;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix + load_scene_pbr
 
     /// 阶段 A 的台账：文件名主干 → (行类型, 行数)。
     struct BlockExpect
@@ -76,6 +76,7 @@ namespace
         { "render_bound_box",              graph::GlobalSSBOType::EmissiveSurface, 16 },
         { "load_geometry",                 graph::GlobalSSBOType::EmissiveSurface, 9 },
         { "load_scene",                    graph::GlobalSSBOType::EmissiveSurface, 8 },
+        { "load_scene_pbr",                graph::GlobalSSBOType::PBRSurface,      15 },
         { "auto_merge_material_instance",  graph::GlobalSSBOType::EmissiveSurface, 12 },
         { "gpu_driven_cull",               graph::GlobalSSBOType::EmissiveSurface, 64 },
         { "alpha_modes",                   graph::GlobalSSBOType::PBRSurface,      28 },
@@ -382,6 +383,34 @@ namespace
     /// 3c. 多行示例的行序契约（行序错位画面上就是错的颜色）。
     bool TestRowOrder()
     {
+        {
+            graph::MaterialDataBlockSpec spec;
+
+            if (LoadSpec("load_scene_pbr", spec) && spec.rows.GetCount() == 15)
+            {
+                // glTF 缺省因子：金属度/粗糙度全交给 ORM 贴图通道
+                for (int i = 0; i < 15; ++i)
+                {
+                    Check(Near(spec.rows[i].metallic, 1.0f), "load_scene_pbr metallic 因子 1.0");
+                    Check(Near(spec.rows[i].roughness, 1.0f), "load_scene_pbr roughness 因子 1.0");
+                    Check(Near(spec.rows[i].normal_scale, 1.0f), "load_scene_pbr normal_scale 1.0");
+                }
+
+                // 仅两个 Pawn_Top 用 baseColorFactor（无 baseColor 贴图）：
+                // 行 5 = White (1,1,0.828)，行 7 = Black (0.2995,0.5,0.45)
+                Check(NearColor(spec.rows[5].base_color, 1.0f, 1.0f, 0.828f, 1.0f),
+                      "load_scene_pbr 行 5 Pawn_Top_White 底色因子");
+                Check(NearColor(spec.rows[7].base_color, 0.2995f, 0.5f, 0.45f, 1.0f),
+                      "load_scene_pbr 行 7 Pawn_Top_Black 底色因子");
+                Check(NearColor(spec.rows[0].base_color, 1.0f, 1.0f, 1.0f, 1.0f),
+                      "load_scene_pbr 其余行底色为白");
+            }
+            else
+            {
+                Check(false, "load_scene_pbr 可读且 15 行");
+            }
+        }
+
         {
             graph::MaterialDataBlockSpec spec;
 

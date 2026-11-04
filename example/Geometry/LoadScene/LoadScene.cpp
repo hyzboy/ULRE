@@ -34,6 +34,8 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
@@ -63,12 +65,44 @@ namespace
 // 颜色数值已搬到数据块文件；这里只保留行数（门禁测试会核对文件行数与它一致）
 constexpr const size_t COLOR_COUNT = 8;
 
+// PBR 模式行数：ABeautifulGame 场景 15 个 glTF 材质，
+// 行序 = material_index = Scene.json materials[] 顺序。
+constexpr const size_t PBR_MATERIAL_COUNT = 15;
+
 namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
         "mtldata:file:ShaderLibrary/asset/material_data/load_scene.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
+
+    // PBR 模式数据块（target=PBRSurface，glTF 缺省因子口径）
+    constexpr char MATERIAL_DATA_URI_PBR[] =
+        "mtldata:file:ShaderLibrary/asset/material_data/load_scene_pbr.material_data.toml";
+
+    // 15 个棋件配方（名字 ↔ ABeautifulGame 材质名；下标即 material_index）
+    constexpr const char *CHESS_RECIPE_NAMES[PBR_MATERIAL_COUNT] =
+    {
+        "LoadScene.Chess.King_Black",
+        "LoadScene.Chess.King_White",
+        "LoadScene.Chess.Queen_Black",
+        "LoadScene.Chess.Queen_White",
+        "LoadScene.Chess.Chessboard",
+        "LoadScene.Chess.Pawn_Top_White",
+        "LoadScene.Chess.Pawn_Body_White",
+        "LoadScene.Chess.Pawn_Top_Black",
+        "LoadScene.Chess.Pawn_Body_Black",
+        "LoadScene.Chess.Castle_Black",
+        "LoadScene.Chess.Castle_White",
+        "LoadScene.Chess.Knight_Black",
+        "LoadScene.Chess.Knight_White",
+        "LoadScene.Chess.Bishop_Black",
+        "LoadScene.Chess.Bishop_White",
+    };
+
+    // 天光 IBL：复用 IBLEnvironment 示例的同一批烘焙贴图与天空配方
+    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
+    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 }
 
 class LoadSceneApp:public WorkObject
@@ -86,11 +120,19 @@ private:
     struct MaterialData
     {
         GeometryVertexFormat geometry_vertex_format;
-        graph::GlobalSSBOBinding mtl_data_ssbo_accessors[COLOR_COUNT]{};
+        // 两套行绑定：调试法线（EmissiveSurface，8 行）与 PBR（PBRSurface，15 行）
+        graph::GlobalSSBOBinding debug_rows[COLOR_COUNT]{};
+        graph::GlobalSSBOBinding pbr_rows[PBR_MATERIAL_COUNT]{};
     };
 
     MaterialData solid;
     graph::mtl::MaterialRecipe scene_recipe{};
+    // PBR 模式：按 material_index 索引的配方表（指向注册表常驻实例）
+    std::vector<const mtl::MaterialRecipe *> chess_recipes_;
+    bool pbr_mode_ = true;
+
+    std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
+    std::shared_ptr<hgl::ecs::LightSystem>       light_system;
 
     std::vector<PrimitiveAsset>    scene_assets_;
     std::vector<StaticMeshNode>    scene_nodes_;
@@ -101,19 +143,18 @@ private:
 
 private:
 
-    bool InitMaterialForDBS(MaterialData *md)
+    bool InitMaterialRows(const char *uri, uint32_t count, graph::GlobalSSBOBinding *rows)
     {
-        if (!md)
+        if (!uri || !rows || count == 0)
             return false;
 
         graph::GlobalSSBOBinding first{};
-        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first))
+        if (!GetMaterialDataBinding(uri, MATERIAL_DATA_ROW, first))
             return false;
 
         // 同一数据块内的相邻行：基行 + 序号，不必逐行查 URI
-        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
-        for (uint32_t i = 0; i < color_count; ++i)
-            md->mtl_data_ssbo_accessors[i] = first.RowOffset(i);
+        for (uint32_t i = 0; i < count; ++i)
+            rows[i] = first.RowOffset(i);
 
         return true;
     }
@@ -124,7 +165,14 @@ private:
         if (solid.geometry_vertex_format.GetCount() == 0)
             return false;
 
-        return InitMaterialForDBS(&solid);
+        if (!InitMaterialRows(MATERIAL_DATA_URI, static_cast<uint32_t>(COLOR_COUNT), solid.debug_rows))
+            return false;
+
+        if (pbr_mode_ &&
+            !InitMaterialRows(MATERIAL_DATA_URI_PBR, static_cast<uint32_t>(PBR_MATERIAL_COUNT), solid.pbr_rows))
+            return false;
+
+        return true;
     }
 
     bool TryLoadStaticMeshScene()
@@ -148,24 +196,51 @@ private:
         const OSString pack_path = hgl::ToOSString(scene_path.string());
         const OSString base_dir  = hgl::ToOSString(scene_dir.string());
 
-        const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("LoadScene.DebugNormalColor");
-        if (!loaded_recipe)
-            return false;
-        scene_recipe = *loaded_recipe;
-        if (!(scene_recipe.material_ssbo_binding = solid.mtl_data_ssbo_accessors[0]).IsValid())
-            return false;
+        // PBR 模式：15 个棋件配方按 material_index 建表交给装载器；
+        // 调试模式：沿用单一 DebugNormal 配方 + 数据行绑定（旧行为）。
+        const mtl::MaterialRecipe *default_recipe = nullptr;
+        const mtl::MaterialRecipe *const *recipe_table = nullptr;
+        uint32_t recipe_table_count = 0;
+
+        if (pbr_mode_)
+        {
+            chess_recipes_.clear();
+            chess_recipes_.reserve(PBR_MATERIAL_COUNT);
+            for (uint32_t i = 0; i < PBR_MATERIAL_COUNT; ++i)
+            {
+                const mtl::MaterialRecipe *r = GetRecipe(CHESS_RECIPE_NAMES[i]);
+                if (!r)
+                    return false;
+                chess_recipes_.push_back(r);
+            }
+            default_recipe    = chess_recipes_[0];
+            recipe_table      = chess_recipes_.data();
+            recipe_table_count = static_cast<uint32_t>(chess_recipes_.size());
+        }
+        else
+        {
+            const mtl::MaterialRecipe *loaded_recipe =
+                GetRecipe("LoadScene.DebugNormalColor");
+            if (!loaded_recipe)
+                return false;
+            scene_recipe = *loaded_recipe;
+            if (!(scene_recipe.material_ssbo_binding = solid.debug_rows[0]).IsValid())
+                return false;
+            default_recipe = &scene_recipe;
+        }
 
         return LoadStaticMeshSceneAsPrimitiveAssets(
             device,
             geo_mgr,
             solid.geometry_vertex_format,
-            &scene_recipe,
+            default_recipe,
             pack_path,
             base_dir,
             scene_assets_,
             scene_nodes_,
-            scene_root_nodes_);
+            scene_root_nodes_,
+            recipe_table,
+            recipe_table_count);
     }
 
     bool InitScene()
@@ -180,9 +255,19 @@ private:
         // parentIndex 用 SetParent 还原 —— 不再对 worldMatrix 做 DecomposeTransform
         // 摊平（旧写法在非均匀缩放嵌套下有旋转/缩放残差，且丢失场景树）。
         StaticMeshSceneInstance::Options options;
-        options.mobility           = hgl::ecs::Mobility::Static;
-        options.material_rows      = solid.mtl_data_ssbo_accessors;
-        options.material_row_count = static_cast<uint32_t>(COLOR_COUNT);
+        options.mobility = hgl::ecs::Mobility::Static;
+        if (pbr_mode_)
+        {
+            // 行序即 glTF 材质下标 ⇒ 按 material_index 选行，不再轮转
+            options.material_rows          = solid.pbr_rows;
+            options.material_row_count     = static_cast<uint32_t>(PBR_MATERIAL_COUNT);
+            options.rows_by_material_index = true;
+        }
+        else
+        {
+            options.material_rows      = solid.debug_rows;
+            options.material_row_count = static_cast<uint32_t>(COLOR_COUNT);
+        }
 
         if (!scene_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
                                          scene_root_nodes_, options))
@@ -259,8 +344,51 @@ public:
         return true;
     }
 
+    // PBR 模式的环境光照：主光方向 + 天光 IBL（复用 IBLEnvironment 的烘焙贴图与天空配方）
+    bool InitEnvironmentControl()
+    {
+        if (!ecs_context)
+            return false;
+
+        environment_system = ecs_context->GetSystem<hgl::ecs::EnvironmentSystem>();
+        if (!environment_system)
+            environment_system = ecs_context->RegisterSystem<hgl::ecs::EnvironmentSystem>();
+        if (!environment_system)
+            return false;
+
+        light_system = ecs_context->GetSystem<hgl::ecs::LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterSystem<hgl::ecs::LightSystem>();
+        if (!light_system)
+            return false;
+
+        // 太阳方向必须在天空托管**之前**写进光源行 0：天光调制按当时太阳现算
+        light_system->SetMainLightDirection(math::Vector3f(0.2f, 0.7f, 0.68f));
+
+        hgl::ecs::SkyEnvironmentConfig config;
+        config.mode         = hgl::ecs::SkyMode::CubeMapIBL;
+        config.sky_recipe   = "IBLEnvironment.Sky";
+        config.sky_scale    = 1.0f;             // 全天球：包住场景即可
+        config.track_camera = true;             // 天空实体逐帧跟随主相机（无视差）
+
+        config.irradiance_texture = IBL_TEX_IRR_CUBE;
+        config.prefilter_texture  = IBL_TEX_PRE_CUBE;
+        // provider 留空 ⇒ 按 prefilter 后缀自动选择（.TexCube → ambient_light_ibl）
+
+        // 这批烘焙图是 LDR 量化版：显式开启曝光调制（与 IBLEnvironment 同口径）
+        config.ldr               = hgl::ecs::SkyAmbientLDR::On;
+        config.ldr_exposure_base = 2.5f;
+        config.ldr_sun_scale     = 1.0f;
+        config.ldr_min_ambient   = 0.05f;
+
+        return environment_system->SetupSkyEnvironment(config);
+    }
+
     bool Init() override
     {
+        // 默认走 PBR 材质路径；LS_DEBUGNORMAL=1 回到旧的调试法线/颜色行路径
+        pbr_mode_ = (getenv("LS_DEBUGNORMAL") == nullptr);
+
         if(!InitSolidMDP())
             return(false);
 
@@ -268,6 +396,9 @@ public:
             return(false);
 
         if(!InitECS())
+            return(false);
+
+        if(pbr_mode_ && !InitEnvironmentControl())
             return(false);
 
         if(!InitCull())
@@ -298,7 +429,8 @@ public:
             static constexpr uint32_t kSelfW           = 1280;
             static constexpr uint32_t kSelfH           = 720;
             static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
-            static constexpr uint64_t kSelfFNV         = 0xc9e38ed2f49a069bull;  // 冻结相机 + 接管下实跑记录
+            static constexpr uint64_t kSelfFNVDebug    = 0xc9e38ed2f49a069bull;  // 调试法线路径（LS_DEBUGNORMAL=1）
+            static constexpr uint64_t kSelfFNVPBR      = 0x407791E46B561248ull;  // PBR 路径（待实跑记录）
                                                         // （改渲染结果必须复核并重录）
 
             if (s_selfcheck && ++s_self_frame == 8)
@@ -314,7 +446,7 @@ public:
                 expect.width                = kSelfW;
                 expect.height               = kSelfH;
                 expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = kSelfFNV;
+                expect.fnv1a64              = pbr_mode_ ? kSelfFNVPBR : kSelfFNVDebug;
 
                 ulre_example::InstallFrameDigestHook(rt, expect, "LSSELF");
             }

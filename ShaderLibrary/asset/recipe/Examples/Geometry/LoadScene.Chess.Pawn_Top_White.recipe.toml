@@ -1,0 +1,15 @@
+# ABeautifulGame chess material #5 (Pawn_Top_White).
+# Textures: glTF ORM packing (R=AO, G=roughness, B=metallic), sampled natively by StandardOpaque.
+schema = 1
+name = "LoadScene.Chess.Pawn_Top_White"
+domain = "StandardOpaque"
+
+[[textures]]
+name = "normal"
+asset = "res/model/Chess/ABeautifulGame.Pawn_normal.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "orm"
+asset = "res/model/Chess/ABeautifulGame.Pawn_ORM.Tex2D"
+auto_mipmaps = true

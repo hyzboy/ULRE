@@ -1,0 +1,108 @@
+# LoadScene 示例（PBR 模式）的材质数据块：ABeautifulGame 场景的 15 个 glTF 材质。
+#
+# 行序 = material_index = Scene.json materials[] 顺序（与
+# ShaderLibrary/asset/recipe/Examples/Geometry/LoadScene.Chess.*.recipe.toml 一一对应）：
+#   0 King_Black   1 King_White    2 Queen_Black  3 Queen_White   4 Chessboard
+#   5 Pawn_Top_White 6 Pawn_Body_White 7 Pawn_Top_Black 8 Pawn_Body_Black
+#   9 Castle_Black  10 Castle_White 11 Knight_Black 12 Knight_White
+#   13 Bishop_Black 14 Bishop_White
+#
+# metallic/roughness 取 glTF 缺省因子 1.0：实际值由 ORM 贴图通道解包
+# （G=roughness、B=metallic 逐通道相乘，见 StandardOpaque 契约 orm 槽）。
+# base_color 取各材质 baseColorFactor：仅 Pawn_Top_* 无 baseColor 贴图，
+# 因子直接决定颜色（其余材质因子为白，颜色全由贴图承载）。
+# normal_scale 取 glTF 缺省 1.0。
+
+schema = 1
+name = "load_scene_pbr"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 0.828, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [0.2995, 0.5, 0.45, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
+
+[[rows]]
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 1.0
+roughness = 1.0
+normal_scale = 1.0
