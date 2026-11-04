@@ -1,0 +1,24 @@
+#pragma once
+
+#include<hgl/ecs/core/System.h>
+
+namespace hgl::ecs
+{
+    class ECSContext;
+
+    class SimpleLineStatsSystem : public System
+    {
+    private:
+        ECSContext* world = nullptr;
+        uint32_t frame_counter = 0;
+        uint32_t log_interval = 120;
+
+    public:
+        explicit SimpleLineStatsSystem(const AnsiString& name = "SimpleLineStatsSystem");
+        ~SimpleLineStatsSystem() override = default;
+
+        void SetWorld(ECSContext* w) { world = w; }
+
+        void Update(float deltaTime) override;
+    };
+}

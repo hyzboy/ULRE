@@ -42,6 +42,7 @@ namespace hgl
                                 ///<  以后再说」的定界一致 —— 只登记类型号，不做 GPU 建模）
             Text,               ///< 文本（同上：CPU-only 类型号）
             ShadowProxy,        ///< 阴影代理（同上：CPU-only 类型号）
+            SimpleLines,        ///< 原生 1px 线段（同上：CPU-only 类型号；LineList mesh 发射，见 SimpleLinesComponent）
             End,
         };
 
@@ -108,6 +109,7 @@ namespace hgl
             { ComponentType::Lines,           ComponentScope::World,  "ECS:Lines",            0, "LinesComponent",      SystemGroupID::Line },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）——全场景收集 + 末次一次绘制，收集语义不随存储统一而变
             { ComponentType::Text,            ComponentScope::World,  "ECS:Text",             0, "TextComponent",       SystemGroupID::Text },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）——2D 专用，未来 2D 单开一套管理 ⇒ 现在不得特化
             { ComponentType::ShadowProxy,     ComponentScope::World,  "ECS:ShadowProxy",      0, "ShadowProxy",         SystemGroupID::None },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
+            { ComponentType::SimpleLines,     ComponentScope::World,  "ECS:SimpleLines",      0, "SimpleLinesComponent", SystemGroupID::Line },       ///< CPU-only（同 Lines）：LineList 原生 1px 线段，末次一次绘制
         };
 
         namespace detail

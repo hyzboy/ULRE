@@ -10,6 +10,12 @@
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineBuildSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
+#include <hgl/ecs/systems/tick/SimpleLineBoundsUpdateSystem.h>
+#include <hgl/ecs/support/line/SimpleLineRenderPipeline.h>
+#include <hgl/ecs/support/line/SimpleLineCollectSystem.h>
+#include <hgl/ecs/support/line/SimpleLineBuildSystem.h>
+#include <hgl/ecs/support/line/SimpleLineRenderSystem.h>
+#include <hgl/ecs/systems/render/collect/SimpleLineStatsSystem.h>
 #include <hgl/ecs/support/text/TextRenderPipeline.h>
 #include <hgl/ecs/support/text/TextCollectSystem.h>
 #include <hgl/ecs/support/text/TextBuildSystem.h>
@@ -166,6 +172,22 @@ namespace
 #if ULRE_ECS_DEBUG_API
         // Stats system (thin stats logger, 按需注册；开关见 RenderOptions.h §2)
         EnsureSystem<hgl::ecs::LineStatsSystem>(ctx);
+#endif
+
+        // ── SimpleLine：标准 Vulkan 原生 1px 线（mesh shader layout(lines) 发射）──
+        // 与 Line 组共开关（组件表 group = Line，元素类型同为 "Line"）
+        auto simple_line_bounds_update_system = EnsureSystem<hgl::ecs::SimpleLineBoundsUpdateSystem>(ctx);
+        if (simple_line_bounds_update_system)
+            simple_line_bounds_update_system->SetWorld(ctx);
+
+        auto simple_line_pipeline = std::make_unique<hgl::ecs::SimpleLineRenderPipeline>(ctx);
+        ctx->RegisterRenderPipeline(hgl::ecs::SimpleLineRenderPipeline::kName, std::move(simple_line_pipeline));
+        ctx->RegisterSystem<hgl::ecs::SimpleLineCollectSystem>();
+        ctx->RegisterSystem<hgl::ecs::SimpleLineBuildSystem>();
+        ctx->RegisterSystem<hgl::ecs::SimpleLineRenderSystem>();
+
+#if ULRE_ECS_DEBUG_API
+        EnsureSystem<hgl::ecs::SimpleLineStatsSystem>(ctx);
 #endif
 
         return true;
