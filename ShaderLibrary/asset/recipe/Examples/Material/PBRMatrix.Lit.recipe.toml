@@ -1,0 +1,14 @@
+# PBRMatrix 示例配方：Filament《materials.spheres》口径的全球 PBR 矩阵。
+# 与 PBRSpheres.Lit 同域（StandardOpaque），但**不带任何贴图**——
+# 100 个球的差异全部由材质数据行（metallic/roughness）承载，
+# 让 BRDF 本身（Cook-Torrance GGX + DFG 环境项）成为画面唯一变量。
+schema = 1
+name = "PBRMatrix.Lit"
+domain = "StandardOpaque"
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"

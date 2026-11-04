@@ -1,0 +1,511 @@
+# PBRMatrix 示例的批量材质数据块（10x10 = 100 行 PBRSurface）
+#
+# Filament《materials.spheres》矩阵口径：
+#   col -> metallic   0.0 -> 1.0（10 档步进 1/9）
+#   row -> roughness  0.045 -> 1.0（FILAMENT MIN_PERCEPTUAL_ROUGHNESS 起步）
+# 底色统一 0.72 灰；fresnel/normal_scale 走 PBRSurfaceRow 缺省
+# （fresnel = 0.04，即 Filament reflectance 0.5 的等效 F0）。
+
+schema = 1
+name = "pbr_matrix_10x10"
+target = "PBRSurface"
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.045000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.151111
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.257222
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.363333
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.469444
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.575556
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.681667
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.787778
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 0.893889
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.000000
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.111111
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.222222
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.333333
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.444444
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.555556
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.666667
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.777778
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 0.888889
+roughness = 1.000000
+
+[[rows]]
+base_color = [0.72, 0.72, 0.72, 1.0]
+metallic = 1.000000
+roughness = 1.000000
