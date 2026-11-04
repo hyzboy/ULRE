@@ -1,0 +1,19 @@
+# glTF Sample Models: FlightHelmet — GlassPlasticMat（glTF 材质下标 2）。
+schema = 1
+name = "GLTF.FlightHelmet.GlassPlastic"
+domain = "StandardOpaque"
+
+[[textures]]
+name = "base_color"
+asset = "res/FlightHelmet.StaticMesh/FlightHelmet.image.5.BaseColor.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "normal"
+asset = "res/FlightHelmet.StaticMesh/FlightHelmet.image.3.Normal.Tex2D"
+auto_mipmaps = true
+
+[[textures]]
+name = "orm"
+asset = "res/FlightHelmet.StaticMesh/FlightHelmet.image.4.MetallicRoughness.Tex2D"
+auto_mipmaps = true
