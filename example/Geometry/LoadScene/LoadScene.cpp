@@ -73,12 +73,12 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/load_scene.material_data.toml";
+        "mtldata:file:res/ABeautifulGame.StaticMesh/load_scene.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 
     // PBR 模式数据块（target=PBRSurface，glTF 缺省因子口径）
     constexpr char MATERIAL_DATA_URI_PBR[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/load_scene_pbr.material_data.toml";
+        "mtldata:file:res/ABeautifulGame.StaticMesh/load_scene_pbr.material_data.toml";
 
     // 15 个棋件配方（名字 ↔ ABeautifulGame 材质名；下标即 material_index）
     constexpr const char *CHESS_RECIPE_NAMES[PBR_MATERIAL_COUNT] =

@@ -56,7 +56,7 @@ namespace
 {
     // 材质数据块（target=PBRSurface，单行；数值全在块文件里）
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/gltf_damaged_helmet.material_data.toml";
+        "mtldata:file:res/DamagedHelmet.StaticMesh/gltf_damaged_helmet.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 
     constexpr const char * RECIPE_NAME = "GLTF.DamagedHelmet";

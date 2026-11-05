@@ -6,6 +6,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/graph/asset/TextureAsset.h>
+#include <hgl/graph/asset/TextureURI.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
@@ -20,6 +21,42 @@ namespace hgl::graph::mtl
         bool IsRecipeFile(const OSString &name)
         {
             return name.EndsWith(OS_TEXT(".recipe.toml"));
+        }
+
+        /**
+         * 纹理资源路径解析（配方同级相对引用的唯一入口）。
+         *
+         * 规则：`asset =` 相对 CWD 能命中时**原样使用**（存量配方零行为变化）；
+         * 命中不了、且配方来自磁盘文件时，再按**配方文件所在目录**相对解析一次。
+         * 这样模型目录（`res/<Model>.StaticMesh/`）里的配方可以直接引用同级纹理，
+         * 资产与配方一起搬家，不需要任何安装前缀或 CWD 假设。
+         * `rt:`/`texarray:` 等非文件 URI 原样交给 TextureManager 解释。
+         */
+        OSString ResolveTextureResourcePath(const OSString &raw,
+                                            const OSString &source_path)
+        {
+            if (raw.IsEmpty())
+                return raw;
+
+            const TextureURI uri = TextureURI::Parse(raw);
+            if (!uri.IsDiskFile() || uri.path.IsEmpty())
+                return raw;
+            if (hgl::filesystem::FileExist(uri.path))
+                return raw;
+
+            if (source_path.IsEmpty() || source_path == OS_TEXT("<memory>"))
+                return raw;
+
+            const OSString candidate =
+                (hgl::filesystem::Path(source_path).GetParent() / uri.path).ToOSString();
+            if (candidate == raw || !hgl::filesystem::FileExist(candidate))
+                return raw;
+
+            // 保留 `cubefile:` scheme：丢了会被当成 2D 打开。
+            // `file:` 无需保留 —— 裸路径本来就按 File 解析。
+            if (uri.IsCubeFile())
+                return OSString(OS_TEXT("cubefile:")) + candidate;
+            return candidate;
         }
 
         void LogRecipeParseFailure(
@@ -136,9 +173,12 @@ namespace hgl::graph::mtl
 
         for (RecipeTextureBinding &binding : recipe.textures)
         {
+            const OSString resource_path =
+                ResolveTextureResourcePath(ToOSString(binding.resource_id.c_str()),
+                                           asset.GetSourcePath());
             hgl::graph::TextureAsset *texture_asset =
                 texture_manager->CreateTextureAsset(
-                    ToOSString(binding.resource_id.c_str()),
+                    resource_path,
                     binding.auto_mipmaps);
             if (!texture_asset)
             {

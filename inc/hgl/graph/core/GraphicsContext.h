@@ -95,6 +95,7 @@ namespace hgl::graph
         /// outlive every PrimitiveAsset authored from it and remain device-scoped.
         mtl::MaterialRecipeRegistry material_recipe_registry_;
         bool default_material_recipes_loaded_ = false;
+        bool default_res_recipes_loaded_ = false;
 
         /// 几何资产句柄表（设备级，拥有句柄及其 Geometry）。
         /// 必须在 `GeometryManager` 之后创建、在其之前销毁：句柄里的 Geometry
