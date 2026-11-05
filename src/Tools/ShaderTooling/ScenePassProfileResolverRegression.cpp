@@ -106,9 +106,12 @@ namespace
 
         GlslModuleRegistry registry;
         int count = 0, errors = 0;
+        // 计数随 ForwardLitSlots 演进：每个槽一个模块文件 + common 一个
+        const int expected_module_count = static_cast<int>(definition->slot_count) + 1;
         if (!Check(registry.LoadDirectory(
                 filesystem::Path(fixtures.root).GetFilename(), &count, &errors)
-                && errors == 0 && count == 12, "load file-backed providers"))
+                && errors == 0 && count == expected_module_count,
+                "load file-backed providers"))
             return false;
         ResolvedPassProfile canonical;
         PassProfileValidationDiagnostic diagnostic;
@@ -182,7 +185,7 @@ namespace
         const GlslModuleFileData *first = registry.FindFileByName(
             request.module_roots[0].module_name.c_str());
         if (!Check(registry.LoadDirectory(fixtures.root, &count, &errors)
-                && count == 0 && errors == 12
+                && count == 0 && errors == expected_module_count
                 && registry.FindFileByName(first->name.c_str()) == first,
                 "duplicate scan preserves original provenance"))
             return false;
