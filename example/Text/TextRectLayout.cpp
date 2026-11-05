@@ -67,7 +67,7 @@ protected:
         if(!text_comp)
             return(nullptr);
 
-        layout::CharStyle cs;
+        layout::CharStyle cs{};
 
         cs.text_color=color.packUnorm4x8();
 
@@ -98,7 +98,7 @@ protected:
         if(!text_comp)
             return(nullptr);
 
-        layout::CharStyle cs;
+        layout::CharStyle cs{};
 
         cs.text_color=color.packUnorm4x8();
 

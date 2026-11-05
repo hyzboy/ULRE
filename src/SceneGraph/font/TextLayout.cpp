@@ -202,7 +202,10 @@ namespace hgl::graph::layout
                         break;
                     }
 
-                    if(rect_w>0&&line.visible>0&&(line.width+cell.advance)>rect_w)
+                    if(st.wrap_mode!=TextWrapMode::None
+                     &&rect_w>0
+                     &&line.visible>0
+                     &&(line.width+cell.advance)>rect_w)
                     {
                         auto_wrap=true;
 
@@ -311,6 +314,47 @@ namespace hgl::graph::layout
             {
                 ll.lines.Resize(line_limit);
                 ll.truncated=true;
+            }
+
+            // ── 不折行模式(TextWrapMode::None)在宽度溢出时的截断处理 ─────
+            if(cut&&st.wrap_mode==TextWrapMode::None&&rect_w>0)
+            {
+                const CLA *ecla=EllipsisCLA(fs);
+                const int32_t ell_advance=(ecla&&st.overflow_mode==TextOverflowMode::Ellipsis)
+                    ?AdvanceOf(ecla,st,false):0;
+
+                for(int32_t i=0;i<ll.lines.GetCount();i++)
+                {
+                    LayoutLine &line=ll.lines[i];
+
+                    if(line.width>rect_w)
+                    {
+                        ll.truncated=true;
+
+                        if(st.overflow_mode==TextOverflowMode::Ellipsis&&ecla)
+                        {
+                            while(line.end>line.begin
+                                &&(line.width+ell_advance)>rect_w)
+                            {
+                                --line.end;
+                                line.width  =SumWidth(ll.cells,line.begin,line.end);
+                                line.visible=CountVisible(ll.cells,line.begin,line.end);
+                            }
+
+                            line.ellipsis=true;
+                        }
+                        else
+                        if(st.overflow_mode==TextOverflowMode::Clip)
+                        {
+                            while(line.end>line.begin&&line.width>rect_w)
+                            {
+                                --line.end;
+                                line.width  =SumWidth(ll.cells,line.begin,line.end);
+                                line.visible=CountVisible(ll.cells,line.begin,line.end);
+                            }
+                        }
+                    }
+                }
             }
 
             // ── 省略号：从最后一行尾部回退，腾出省略号宽度 ─────────────

@@ -278,6 +278,93 @@ int main(int argc,char **argv)
         GLogInfo(u8"Test 6 Passed: TextComponent 矩形与排版属性往返正常");
     }
 
+    // ── 7. Wrap=None 与矩形宽度：不自动折行，以及宽度截断测试 ────────
+    {
+        // 7a: Wrap=None, Overflow=Overflow: 超宽单行绝不折行
+        layout::ParagraphStyle no_wrap_over;
+        no_wrap_over.rect_width    = 100;
+        no_wrap_over.wrap_mode     = layout::TextWrapMode::None;
+        no_wrap_over.overflow_mode = layout::TextOverflowMode::Overflow;
+
+        layout::TextMetrics m_over;
+        if (!Measure(m_over, fs, cjk, no_wrap_over))
+        {
+            GLogError(u8"Test 7a Failed: 测量失败");
+            return 7;
+        }
+
+        if (m_over.line_count != 1 || m_over.width <= 100 || m_over.truncated)
+        {
+            GLogError(u8"Test 7a Failed: Wrap=None 应保持单行且不截断，实得 lines=%d w=%d trunc=%d",
+                      m_over.line_count, m_over.width, (int)m_over.truncated);
+            return 7;
+        }
+
+        // 7b: Wrap=None, Overflow=Clip: 单行超宽按 rect_width 截断
+        layout::ParagraphStyle no_wrap_clip;
+        no_wrap_clip.rect_width    = 150;
+        no_wrap_clip.wrap_mode     = layout::TextWrapMode::None;
+        no_wrap_clip.overflow_mode = layout::TextOverflowMode::Clip;
+
+        layout::TextMetrics m_clip;
+        if (!Measure(m_clip, fs, cjk, no_wrap_clip))
+        {
+            GLogError(u8"Test 7b Failed: 测量失败");
+            return 7;
+        }
+
+        if (m_clip.line_count != 1 || m_clip.width > 150 || !m_clip.truncated)
+        {
+            GLogError(u8"Test 7b Failed: Wrap=None,Clip 应单行截断至 <=150px，实得 lines=%d w=%d trunc=%d",
+                      m_clip.line_count, m_clip.width, (int)m_clip.truncated);
+            return 7;
+        }
+
+        // 7c: Wrap=None, Overflow=Ellipsis: 单行超宽在行尾出省略号
+        layout::ParagraphStyle no_wrap_ell;
+        no_wrap_ell.rect_width    = 150;
+        no_wrap_ell.wrap_mode     = layout::TextWrapMode::None;
+        no_wrap_ell.overflow_mode = layout::TextOverflowMode::Ellipsis;
+
+        layout::TextMetrics m_ell;
+        if (!Measure(m_ell, fs, cjk, no_wrap_ell))
+        {
+            GLogError(u8"Test 7c Failed: 测量失败");
+            return 7;
+        }
+
+        if (m_ell.line_count != 1 || m_ell.width > 150 || !m_ell.truncated)
+        {
+            GLogError(u8"Test 7c Failed: Wrap=None,Ellipsis 应单行截断至 <=150px，实得 lines=%d w=%d trunc=%d",
+                      m_ell.line_count, m_ell.width, (int)m_ell.truncated);
+            return 7;
+        }
+
+        // 7d: 验证 CharStyle 默认无参构造所有字段全部为 0/默认值，以及 BuildDrawStyle 解析
+        layout::CharStyle default_cs;
+        if (default_cs.italic != 0.0f
+         || default_cs.bold_px != 0.0f
+         || default_cs.outline_px != 0.0f
+         || default_cs.scale != 1.0f
+         || default_cs.rotation != 0
+         || default_cs.flags != 0
+         || default_cs.shadow_uv_offset != 0)
+        {
+            GLogError(u8"Test 7d Failed: CharStyle 默认成员未正确初始化");
+            return 7;
+        }
+
+        layout::TextDrawStyle ds;
+        layout::BuildDrawStyle(ds, no_wrap_over, math::Vector2i(50, 100), char_height, 0, &default_cs);
+        if (ds.extra_advance_x != 0.0f || ds.extra_advance_y != 0.0f || ds.scale != 1.0f || ds.rotation != 0)
+        {
+            GLogError(u8"Test 7d Failed: BuildDrawStyle 从默认 CharStyle 解析出非零 extra 或异常 scale");
+            return 7;
+        }
+
+        GLogInfo(u8"Test 7 Passed: Wrap=None 行为与 CharStyle 默认初始化及样式解析均正常");
+    }
+
     GLogInfo(u8"=== All TextRectLayout tests passed successfully! ===");
     return 0;
 }
