@@ -6,6 +6,11 @@
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/math/Matrix.h>      // TranslateMatrix / ToMatrix / ScaleMatrix（TRS→矩阵组合）
 #include <hgl/graph/module/GeometryManager.h>
+#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/asset/MaterialDataBlockRegistry.h>
+#include <hgl/mtl/MaterialRecipeRegistry.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/filesystem/Path.h>
 #include <hgl/io/MiniPack.h>
 #include <hgl/type/StdString.h>
 #include <hgl/log/Log.h>
@@ -106,6 +111,14 @@ struct PackedPrimitive
     int32_t  material_index;
     uint32_t geometry_file_offset;
     uint32_t geometry_file_length;
+};
+
+// 与 GLTFConvert SceneExportPack 的 MaterialTable 行布局一致（表行序 = 材质下标）。
+struct PackedMaterial
+{
+    int32_t  original_index;
+    uint32_t file_offset;   // 指向 StringPool 的 "<Scene>.<idx>.<Name>.material"
+    uint32_t file_length;
 };
 
 struct PackedGeometryView
@@ -927,6 +940,292 @@ bool LoadStaticMeshSceneFromMemory(
                                   mpm,pack_name,base_dir,
                                   out_assets,out_nodes,out_root_nodes,
                                   material_recipes,material_recipe_count);
+}
+
+// ---- 自包含模型目录装配（严禁跨目录查找） ------------------------------------
+
+namespace
+{
+    std::string LowerAsciiString(const std::string &s)
+    {
+        std::string out = s;
+        for (char &c : out)
+            if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+        return out;
+    }
+
+    bool HasOsCharPrefixI(const os_char *file, const os_char *dir)
+    {
+        const os_char *f = file;
+        const os_char *d = dir;
+        for (; *d != 0; ++f, ++d)
+        {
+            const os_char a = (*f >= L'A' && *f <= L'Z') ? static_cast<os_char>(*f + 32) : *f;
+            const os_char b = (*d >= L'A' && *d <= L'Z') ? static_cast<os_char>(*d + 32) : *d;
+            if (a != b)
+                return false;
+        }
+        return *f == (os_char)'\\' || *f == (os_char)'/';
+    }
+
+    // "DamagedHelmet.0.Material_MR.material" → "Material_MR"
+    // 规则：去 `.material` 后缀；`<Scene>.<数字>.` 前缀剥掉；两段形态取最后一段。
+    std::string MaterialNameFromPackFile(const std::string &file)
+    {
+        std::string s = file;
+        static const char kSuffix[] = ".material";
+        const size_t kSuffixLen = sizeof(kSuffix) - 1;
+        if (s.size() > kSuffixLen &&
+            s.compare(s.size() - kSuffixLen, kSuffixLen, kSuffix) == 0)
+            s.erase(s.size() - kSuffixLen);
+
+        const size_t d1 = s.find('.');
+        if (d1 == std::string::npos)
+            return s;
+        const size_t d2 = s.find('.', d1 + 1);
+        if (d2 == std::string::npos)
+            return s.substr(d1 + 1);
+
+        bool numeric = d2 > d1 + 1;
+        for (size_t i = d1 + 1; i < d2 && numeric; ++i)
+            numeric = (s[i] >= '0' && s[i] <= '9');
+        return numeric ? s.substr(d2 + 1) : s;
+    }
+
+    // 配方名最后一段 == 材质名（ASCII 大小写不敏感）
+    bool RecipeMatchesMaterialName(const mtl::MaterialRecipe &recipe, const std::string &material_name)
+    {
+        const std::string &full = recipe.recipe_name;
+        const size_t dot = full.find_last_of('.');
+        const std::string last = (dot == std::string::npos) ? full : full.substr(dot + 1);
+        return LowerAsciiString(last) == LowerAsciiString(material_name);
+    }
+
+    // 只读 V2 MaterialTable（tag 9）：行序 = 材质下标；非 V2/缺表 ⇒ 空。
+    std::vector<std::string> ReadScenePackMaterialNames(hgl::io::minipack::MiniPackMemory *mpm)
+    {
+        std::vector<std::string> names;
+
+        const int32 header_idx  = mpm->FindFile(AnsiStringView("ScenePackHeader"));
+        const int32 payload_idx = mpm->FindFile(AnsiStringView("ScenePayload"));
+        if (header_idx < 0 || payload_idx < 0)
+            return names;
+
+        const void *header_raw  = mpm->Map(header_idx);
+        const uint32 header_len = mpm->GetFileLength(header_idx);
+        const uint8_t *payload  = reinterpret_cast<const uint8_t *>(mpm->Map(payload_idx));
+        const uint32 payload_len = mpm->GetFileLength(payload_idx);
+        if (!header_raw || header_len < sizeof(ScenePackHeader) || !payload)
+            return names;
+
+        ScenePackHeader h{};
+        std::memcpy(&h, header_raw, sizeof(ScenePackHeader));
+        if (h.magic != kScenePackV2Magic || h.version_major != 2)
+            return names;
+        if (h.payload_size > payload_len ||
+            h.dir_offset > h.payload_size ||
+            h.dir_count * sizeof(SceneTableDesc) > h.payload_size - h.dir_offset)
+            return names;
+        if (h.material_count == 0)
+            return names;
+
+        const auto *dir = reinterpret_cast<const SceneTableDesc *>(payload + h.dir_offset);
+        const SceneTableDesc *mat_td  = FindTableDesc(dir, h.dir_count, SceneTableType::MaterialTable);
+        const SceneTableDesc *pool_td = FindTableDesc(dir, h.dir_count, SceneTableType::StringPool);
+        if (!mat_td || !pool_td)
+            return names;
+
+        const uint8_t *mat_ptr = nullptr;  uint32_t mat_size = 0;
+        const uint8_t *pool_ptr = nullptr; uint32_t pool_size = 0;
+        if (!TryGetTableRange(payload, h.payload_size, mat_td, mat_ptr, mat_size))
+            return names;
+        if (!TryGetTableRange(payload, h.payload_size, pool_td, pool_ptr, pool_size))
+            return names;
+        if (mat_size % sizeof(PackedMaterial) != 0)
+            return names;
+
+        const auto *pm = reinterpret_cast<const PackedMaterial *>(mat_ptr);
+        const uint32_t count = mat_size / static_cast<uint32_t>(sizeof(PackedMaterial));
+        names.reserve(count);
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            if (pm[i].file_offset > pool_size ||
+                pm[i].file_length > pool_size ||
+                pm[i].file_offset + pm[i].file_length > pool_size)
+            {
+                names.clear();
+                return names;
+            }
+            const std::string file(reinterpret_cast<const char *>(pool_ptr + pm[i].file_offset),
+                                   pm[i].file_length);
+            names.push_back(MaterialNameFromPackFile(file));
+        }
+        return names;
+    }
+}
+
+bool BuildSelfContainedSceneMaterials(
+    GraphicsContext             &ctx,
+    const OSString              &pack_path,
+    const char                  *material_data_block_hint,
+    SelfContainedSceneMaterials &out)
+{
+    out = SelfContainedSceneMaterials();
+
+    // 1. 模型目录 = pack 所在目录（唯一的资源来源目录）
+    const OSString model_dir = hgl::filesystem::Path(pack_path).GetParent().ToOSString();
+    if (model_dir.IsEmpty())
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 无法取得模型目录 ") + pack_path);
+        return false;
+    }
+
+    // 2. 材质表名字（V2 专有）
+    hgl::io::minipack::MiniPackMemory *mpm =
+        hgl::io::minipack::GetMiniPackMemory(pack_path);
+    if (!mpm)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 无法打开场景包 ") + pack_path);
+        return false;
+    }
+    std::vector<std::string> material_names = ReadScenePackMaterialNames(mpm);
+    delete mpm;
+    if (material_names.empty())
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("BuildSelfContainedSceneMaterials: MaterialTable 缺失或为空（V1 包不支持自装配）")
+            + pack_path);
+        return false;
+    }
+
+    // 3. 只扫模型目录的配方（进 GraphicsContext 注册表）
+    int recipe_files = 0, recipe_errors = 0;
+    if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 配方目录加载失败 ") + model_dir);
+        return false;
+    }
+
+    std::vector<const mtl::MaterialRecipe *> dir_recipes;
+    {
+        const mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
+        for (int i = 0; i < registry->GetCount(); ++i)
+        {
+            const mtl::MaterialRecipeAsset *asset = registry->GetAssetAt(i);
+            if (asset && HasOsCharPrefixI(asset->GetSourcePath().c_str(), model_dir.c_str()))
+                dir_recipes.push_back(&asset->GetRecipe());
+        }
+    }
+    if (dir_recipes.empty())
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 模型目录没有可用配方 ") + model_dir);
+        return false;
+    }
+
+    // 4. 材质数据块（同目录唯一，或多份时按文件名 hint 指定）
+    OSString block_path;
+    if (material_data_block_hint && material_data_block_hint[0])
+    {
+        block_path = model_dir + OS_TEXT("\\") +
+                     hgl::ToOSString(material_data_block_hint) +
+                     OS_TEXT(".material_data.toml");
+        if (!hgl::filesystem::FileExist(block_path))
+        {
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 指定数据块不存在 ") + block_path);
+            return false;
+        }
+    }
+    else
+    {
+        hgl::ValueArray<hgl::filesystem::FileInfo> file_list;
+        if (hgl::filesystem::GetFileInfoList(file_list, model_dir, false, true, false) < 0)
+        {
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 目录扫描失败 ") + model_dir);
+            return false;
+        }
+        int found = 0;
+        for (int i = 0; i < file_list.GetCount(); ++i)
+        {
+            const hgl::filesystem::FileInfo &f = file_list[i];
+            if (!f.is_file)
+                continue;
+            if (!OSString(f.name).EndsWith(OS_TEXT(".material_data.toml")))
+                continue;
+            block_path = OSString(f.fullname);
+            ++found;
+        }
+        if (found == 0)
+        {
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 模型目录没有 material_data 块 ") + model_dir);
+            return false;
+        }
+        if (found > 1)
+        {
+            MLogError(LoadStaticMesh,
+                OS_TEXT("BuildSelfContainedSceneMaterials: 模型目录有多个 material_data 块，必须指定块名: ")
+                + model_dir);
+            return false;
+        }
+    }
+
+    const OSString block_uri = OSString(OS_TEXT("mtldata:file:")) + block_path;
+
+    mtl::MaterialDataBlockRegistry *blocks = ctx.GetMaterialDataBlockRegistry();
+    GlobalSSBOBufferRegistry       *pool   = ctx.GetGlobalSSBOBufferRegistry();
+    if (!blocks || !pool)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: GraphicsContext 注册表未就绪"));
+        return false;
+    }
+
+    // 5. 逐材质：名字匹配配方 + 行号 = 材质下标取绑定
+    const size_t count = material_names.size();
+    out.recipes.resize(count);
+    out.bindings.resize(count);
+    out.table.resize(count, nullptr);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        const mtl::MaterialRecipe *picked = nullptr;
+        for (const mtl::MaterialRecipe *r : dir_recipes)
+        {
+            if (RecipeMatchesMaterialName(*r, material_names[i]))
+            {
+                picked = r;
+                break;
+            }
+        }
+        if (!picked && dir_recipes.size() == 1)
+            picked = dir_recipes[0];   // 单配方目录（单材质模型的常见形态）
+        if (!picked)
+        {
+            MLogError(LoadStaticMesh,
+                OS_TEXT("BuildSelfContainedSceneMaterials: 目录内没有配方匹配材质 ")
+                + model_dir + OS_TEXT(" material=") + hgl::ToOSString(material_names[i].c_str()));
+            return false;
+        }
+
+        GlobalSSBOBinding binding{};
+        if (!blocks->GetRowBinding(pool, block_uri, static_cast<uint32_t>(i), binding))
+        {
+            MLogError(LoadStaticMesh,
+                OS_TEXT("BuildSelfContainedSceneMaterials: 材质数据行绑定失败 row=")
+                + OSString::numberOf(static_cast<int>(i)) + OS_TEXT(" block=") + block_path);
+            return false;
+        }
+
+        out.recipes[i] = *picked;
+        out.recipes[i].material_ssbo_binding = binding;
+        out.bindings[i] = binding;
+        out.table[i] = &out.recipes[i];
+    }
+
+    out.fallback = &out.recipes[0];
+    MLogInfo(LoadStaticMesh,
+        OS_TEXT("BuildSelfContainedSceneMaterials: ") + pack_path
+        + OS_TEXT(" materials=") + OSString::numberOf(static_cast<int>(count))
+        + OS_TEXT(" block=") + block_path);
+    return true;
 }
 
 }//namespace hgl::graph

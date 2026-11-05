@@ -138,6 +138,9 @@ private:
         // 与 LoadScene PBR 同法：注册表原指针直传（配方 toml 不带 material_data 引用，
         // 材质数值经实例 material_rows 按 material_index 选中）
         recipes_.clear();
+        // 自包含目录：显式加载模型自带配方（严禁跨目录兜底扫描）
+        LoadRecipeDirectory(OS_TEXT("res/FlightHelmet.StaticMesh"));
+
         recipes_.reserve(MATERIAL_COUNT);
         for (uint32_t i = 0; i < MATERIAL_COUNT; ++i)
         {

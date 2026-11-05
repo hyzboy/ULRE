@@ -118,38 +118,9 @@ namespace hgl::graph
             return recipe;
         }
 
-        // ShaderLibrary 里没有 ⇒ 模型自带目录（`res/`）再兜底扫一次。
-        // 自包含模型的配方与它的数据住在模型目录里，不登记在 ShaderLibrary。
-        if (!default_res_recipes_loaded_)
-        {
-            default_res_recipes_loaded_ = true;
-
-            const OSString res_directory(OS_TEXT("res"));
-            if (filesystem::Path(res_directory).IsDirectory())
-            {
-                int res_loaded_count = 0;
-                int res_error_count = 0;
-                if (!LoadMaterialRecipeDirectory(res_directory,
-                                                 &res_loaded_count, &res_error_count))
-                {
-                    GLogWarning(u8"[GraphicsContext] 扫描 res 配方目录失败: directory=%ls",
-                                res_directory.c_str());
-                }
-                else if (res_error_count)
-                {
-                    GLogWarning(u8"[GraphicsContext] res 目录部分配方加载失败: loaded=%d errors=%d",
-                                res_loaded_count, res_error_count);
-                }
-            }
-
-            recipe = material_recipe_registry_.FindByName(name);
-            if (recipe)
-            {
-                GLogDebug(u8"[GraphicsContext] 材质配方已解析(res): recipe=%s domain=%s",
-                          name, mtl::GetMaterialDomainName(recipe->domain));
-                return recipe;
-            }
-        }
+        // 自包含模型的配方住在模型自己的目录里：由装载器按 pack 同目录显式加载
+        // （见 BuildSelfContainedSceneMaterials / LoadMaterialRecipeDirectory），
+        // 这里**不做**任何跨目录兜底扫描 —— 严禁全局查找。
 
         GLogError(u8"[GraphicsContext] 材质配方未找到: recipe=%s registered=%d",
                   name, material_recipe_registry_.GetCount());

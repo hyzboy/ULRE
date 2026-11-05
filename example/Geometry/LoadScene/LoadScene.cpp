@@ -205,6 +205,9 @@ private:
         if (pbr_mode_)
         {
             chess_recipes_.clear();
+            // 自包含目录：显式加载模型自带配方（严禁跨目录兜底扫描）
+            LoadRecipeDirectory(OS_TEXT("res/ABeautifulGame.StaticMesh"));
+
             chess_recipes_.reserve(PBR_MATERIAL_COUNT);
             for (uint32_t i = 0; i < PBR_MATERIAL_COUNT; ++i)
             {
