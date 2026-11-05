@@ -50,10 +50,16 @@ tc->SetHorizontalAlign(layout::TextAlign::Left);           // Left / Center / Ri
 tc->SetVerticalAlign(layout::TextVerticalAlign::Top);      // Top / Center / Bottom
 
 // 装饰线（纯色 TILE，颜色跟随文本主色）
+// 1. 整段快捷开关：未设置区间时整段生效
 tc->SetUnderline(true);                                    // 下划线
 tc->SetStrikethrough(true);                                // 删除线（可与下划线同时）
 tc->SetUnderlineStyle(0.08f, 0.90f);                       // (粗细, 位置) 相对字高的比例，0=用默认
 tc->SetStrikethroughStyle(0.06f, 0.50f);                   //   默认：下划线 0.06/0.92，删除线 0.06/0.50
+
+// 2. 精确到字符的区间 API（区间与整段开关可并存，区间内生效）
+tc->AddUnderline(0, 5);                                    // 下标 0 起 5 个字符加下划线
+tc->AddStrikethrough(6, 4);                                // 下标 6 起 4 个字符加删除线
+tc->ClearDecorations();                                    // 清空字符级装饰区间
 ```
 
 所有 setter 都会置 `TextChange::Layout` 变更位，`TextRenderPipeline` 下一帧自动重排该字体批次。
@@ -179,8 +185,10 @@ by_height = (rect_height < char_height) ? 1 : 1 + (rect_height - char_height) / 
   - **scale 补偿**：mesh shader 用 `mw = uint(float(mw_cpu) * scale)`，所以想要屏幕 `w_px` 就写
     `mw_cpu = round(w_px / scale)`（见 `SolidQuadMetrics`）。`offset_x=0` 左边贴笔位，
     `offset_y=基字高(不随 scale 变)`，使 tile **顶边对齐 `pen_y`**（左上角约定）。
-  - `sl_l2r` 逐行记录"可见文本"的 `vis_left / vis_right`（含省略号），行尾据此发射装饰实例，
-    复用该行的 `st.style_id` ⇒ **颜色跟随文本主色**。几何与默认比例由 `ResolveTextDecoration` 求解。
+  - **连续字符合并发射**：`sl_l2r` 支持整段开关（`ParagraphStyle`）与字符级区间（`TextDecorationSpan`）。
+    摆放时逐行扫描字符，**连续划线的字符合并为一条线段发射**（词间空格自动跨过，行尾留白不画线）。
+    整段划线自然退化为整行 1 个 quad，按字划线则仅覆盖该字/词，极高效率。
+  - 复用该行的 `st.style_id` ⇒ **颜色跟随文本主色**。几何与默认比例由 `ResolveTextDecoration` 求解。
 - **公开画线 API**（供 GUI 分隔线 / 光标 / 高亮块，无需真实文本）：
   `TextLayout::HasSolidTile / AddSolidQuad / DrawHorizontalLine / DrawVerticalLine`。
 

@@ -479,6 +479,45 @@ int main(int argc,char **argv)
         GLogInfo(u8"Test 10 Passed: TextComponent 装饰线接口往返正常");
     }
 
+    // ── 11. TextComponent 字符级装饰区间往返 ────────────────────────
+    {
+        hgl::ecs::TextComponent comp;
+
+        comp.SetText(U16String(OS_TEXT("Hello World!")));
+        comp.AddUnderline(0,5);           // "Hello"
+        comp.AddStrikethrough(6,5);       // "World"
+
+        const auto &spans=comp.GetDecorationSpans();
+
+        if(spans.GetCount()!=2)
+        {
+            GLogError(u8"Test 11 Failed: 装饰区间数量错误 count=%d (期望 2)",spans.GetCount());
+            return 11;
+        }
+
+        if(spans[0].start!=0||spans[0].count!=5||spans[0].type!=layout::TextDecorationType::Underline)
+        {
+            GLogError(u8"Test 11 Failed: 第 0 个区间不匹配 (start=%d count=%d)",spans[0].start,spans[0].count);
+            return 11;
+        }
+
+        if(spans[1].start!=6||spans[1].count!=5||spans[1].type!=layout::TextDecorationType::Strikethrough)
+        {
+            GLogError(u8"Test 11 Failed: 第 1 个区间不匹配 (start=%d count=%d)",spans[1].start,spans[1].count);
+            return 11;
+        }
+
+        comp.ClearDecorations();
+
+        if(comp.GetDecorationSpans().GetCount()!=0)
+        {
+            GLogError(u8"Test 11 Failed: 清空装饰区间失败");
+            return 11;
+        }
+
+        GLogInfo(u8"Test 11 Passed: TextComponent 字符级装饰区间往返正常");
+    }
+
     GLogInfo(u8"=== All TextRectLayout tests passed successfully! ===");
     return 0;
 }

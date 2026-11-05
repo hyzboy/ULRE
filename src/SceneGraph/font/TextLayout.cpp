@@ -43,6 +43,7 @@ namespace hgl::graph::layout
             bool         visible    =false;
             bool         newline    =false;
             bool         space      =false;                 ///<半角/全角空格(可作为词边界)
+            uint8        decoration =0;                     ///<字符级装饰位掩码(TextDecorationType)
         };//struct LayoutCell
 
         struct LayoutLine
@@ -451,6 +452,7 @@ namespace hgl::graph::layout
 
         draw_all_strings.Clear();
         draw_string_list.Clear();
+        all_decoration_spans.Clear();
         gpu_char_instances.clear();
         gpu_char_instances.reserve(Estimate);
 
@@ -469,7 +471,7 @@ namespace hgl::graph::layout
         return(true);
     }
 
-    bool TextLayout::AddString(const U16StringView &str, const TextDrawStyle &style)
+    bool TextLayout::AddString(const U16StringView &str, const TextDrawStyle &style, const ValueArray<TextDecorationSpan> *spans)
     {
         if(!atlas_chars_sets)
             return(false);
@@ -487,6 +489,13 @@ namespace hgl::graph::layout
 
         item.str = *csv;  // 保存 ConstStringView
         item.style = style;
+        item.span_offset = static_cast<uint32_t>(all_decoration_spans.GetCount());
+        item.span_count  = (spans && spans->GetCount() > 0) ? static_cast<uint32_t>(spans->GetCount()) : 0;
+
+        if(item.span_count > 0)
+        {
+            all_decoration_spans.Add(spans->GetData(), item.span_count);
+        }
 
         draw_string_list.Add(item);
         return(true);
@@ -774,6 +783,10 @@ namespace hgl::graph::layout
         const int32_t str_len=dsi.str.length;
         const bool    rot_swap=(st.rotation==90||st.rotation==270);
 
+        uint8 base_decor=0;
+        if(st.para_style.underline)     base_decor|=static_cast<uint8>(TextDecorationType::Underline);
+        if(st.para_style.strikethrough) base_decor|=static_cast<uint8>(TextDecorationType::Strikethrough);
+
         // ── 第一趟：采集逐字符度量并切行 ────────────────────────────────
         LayoutLines ll;
         ll.cells.Reserve(str_len);
@@ -787,9 +800,23 @@ namespace hgl::graph::layout
 
                 LayoutCell cell;
                 BuildCell(cell,cda.cla,cda.uv,st,rot_swap);
+                cell.decoration=base_decor;
                 ll.cells.Add(cell);
 
                 ++it_cda;
+            }
+        }
+
+        // 叠加字符级装饰区间
+        for(uint32_t s=0;s<dsi.span_count;++s)
+        {
+            const auto &span=all_decoration_spans[dsi.span_offset+s];
+            const uint32_t end=(span.start+span.count<(uint32_t)str_len)
+                               ?(span.start+span.count)
+                               :(uint32_t)str_len;
+            for(uint32_t i=span.start;i<end;++i)
+            {
+                ll.cells[i].decoration|=static_cast<uint8>(span.type);
             }
         }
 
@@ -860,11 +887,6 @@ namespace hgl::graph::layout
             const int32_t pen_y=st.start_position.y+voff+li*ll.line_step;
             int32_t pen_x=st.start_position.x+hoff;
 
-            // 装饰线(下划线/删除线)需要覆盖本行"可见文本"的横向范围
-            int32_t vis_left =pen_x;
-            int32_t vis_right=pen_x;
-            bool    have_vis =false;
-
             for(int32_t ci=line.begin;ci<line.end;ci++)
             {
                 const LayoutCell &cell=ll.cells[ci];
@@ -880,9 +902,6 @@ namespace hgl::graph::layout
 
                 if(cell.visible)
                 {
-                    if(!have_vis) { vis_left=pen_x; have_vis=true; }
-                    vis_right=pen_x+cell.advance;
-
                     const uint16_t cid=GetOrRegisterCharId(cell.cla->attr->ch,cell.cla->metrics,cell.uv);
 
                     gpu_char_instances.push_back({static_cast<int16_t>(pen_x),static_cast<int16_t>(pen_y),cid,st.style_id,0});
@@ -904,36 +923,76 @@ namespace hgl::graph::layout
                 gpu_char_instances.push_back({static_cast<int16_t>(pen_x),static_cast<int16_t>(pen_y),cid,st.style_id,0});
 
                 ++emitted;
-
-                if(!have_vis) { vis_left=pen_x; have_vis=true; }
-                vis_right=pen_x+ell_adv;
             }
 
-            // ── 装饰线：以纯色 tile 实例绘制，覆盖本行可见文本宽度，颜色复用文本 style ──
-            if(have_vis)
+            // ── 装饰线：按连续字符区间合并发射纯色 tile 实例，颜色复用文本 style ──
+            auto EmitDecorRuns=[&](const uint8 decor_bit,
+                                   const float thick_ratio,const float pos_ratio,
+                                   const float def_thick,const float def_pos)
             {
-                if(st.para_style.underline)
-                {
-                    TEXT_COORD_VEC dpos; uint32_t dw,dh;
+                int32_t run_left =0;
+                int32_t run_right=0;
+                bool in_run=false;
 
-                    if(ResolveTextDecoration(dpos,dw,dh,vis_left,vis_right,pen_y,ll.char_height,
-                                             st.para_style.underline_thickness,
-                                             st.para_style.underline_position,
-                                             0.06f,0.92f))
-                        EmitSolidQuad(dpos.x,dpos.y,dw,dh,st.style_id,st.scale);
+                int32_t cur_pen_x=st.start_position.x+hoff;
+
+                for(int32_t ci=line.begin;ci<line.end;ci++)
+                {
+                    const LayoutCell &cell=ll.cells[ci];
+                    const bool has_decor=(cell.decoration&decor_bit)!=0;
+
+                    if(has_decor&&cell.visible)
+                    {
+                        if(!in_run)
+                        {
+                            run_left =cur_pen_x;
+                            in_run   =true;
+                        }
+                        run_right=cur_pen_x+cell.advance;
+                    }
+                    else if(has_decor&&cell.space&&in_run)
+                    {
+                        // 词间空格：保持 in_run，若后续有同一 run 的可见字符则自然连贯跨过
+                    }
+                    else
+                    {
+                        if(in_run)
+                        {
+                            TEXT_COORD_VEC dpos; uint32_t dw,dh;
+                            if(ResolveTextDecoration(dpos,dw,dh,run_left,run_right,pen_y,ll.char_height,
+                                                     thick_ratio,pos_ratio,def_thick,def_pos))
+                                EmitSolidQuad(dpos.x,dpos.y,dw,dh,st.style_id,st.scale);
+                            in_run=false;
+                        }
+                    }
+
+                    cur_pen_x+=cell.advance;
                 }
 
-                if(st.para_style.strikethrough)
+                // 行尾省略号：若当前仍处于 run 中，且有省略号，将省略号并入划线
+                if(in_run&&line.ellipsis&&ecla)
+                {
+                    run_right=cur_pen_x+ell_adv;
+                }
+
+                if(in_run)
                 {
                     TEXT_COORD_VEC dpos; uint32_t dw,dh;
-
-                    if(ResolveTextDecoration(dpos,dw,dh,vis_left,vis_right,pen_y,ll.char_height,
-                                             st.para_style.strikethrough_thickness,
-                                             st.para_style.strikethrough_position,
-                                             0.06f,0.50f))
+                    if(ResolveTextDecoration(dpos,dw,dh,run_left,run_right,pen_y,ll.char_height,
+                                             thick_ratio,pos_ratio,def_thick,def_pos))
                         EmitSolidQuad(dpos.x,dpos.y,dw,dh,st.style_id,st.scale);
                 }
-            }
+            };
+
+            EmitDecorRuns(static_cast<uint8>(TextDecorationType::Underline),
+                          st.para_style.underline_thickness,
+                          st.para_style.underline_position,
+                          0.06f,0.92f);
+
+            EmitDecorRuns(static_cast<uint8>(TextDecorationType::Strikethrough),
+                          st.para_style.strikethrough_thickness,
+                          st.para_style.strikethrough_position,
+                          0.06f,0.50f);
         }
 
         // 记录排版后的最终尺寸(内容尺寸，不含矩形留白)

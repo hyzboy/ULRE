@@ -255,7 +255,17 @@ protected:
             auto *both=CreateText(U16String(OS_TEXT("下划线 + 删除线 同时")),MakeRect(deco_x,deco_y+150,BOX_W,40),WHITE);
             if(both) { both->SetUnderline(true); both->SetStrikethrough(true); }
 
-            auto *finer=CreateText(U16String(OS_TEXT("加粗上移下划线 / 细删除线")),MakeRect(deco_x,deco_y+200,BOX_W,40),YELLOW);
+            auto *words=CreateText(U16String(OS_TEXT("按字区间：[删除该词] 与 [加下划线]")),MakeRect(deco_x,deco_y+200,BOX_W,40),YELLOW);
+            if(words)
+            {
+                // "按字区间：[删除该词] 与 [加下划线]"
+                // 下标 6 处为 "删除该词"，长度 4
+                // 下标 14 处为 "加下划线"，长度 4
+                words->AddStrikethrough(6,4);
+                words->AddUnderline(14,4);
+            }
+
+            auto *finer=CreateText(U16String(OS_TEXT("自定义粗细：加粗下划线 / 细删除线")),MakeRect(deco_x,deco_y+250,BOX_W,40),GREEN);
             if(finer)
             {
                 finer->SetUnderline(true);
@@ -265,7 +275,7 @@ protected:
             }
 
             auto *multi=CreateText(U16String(OS_TEXT("多行文本逐行覆盖可见宽度。\n换行后每一行各自成一条线。")),
-                                   MakeRect(deco_x,deco_y+260,BOX_W,120),WHITE,
+                                   MakeRect(deco_x,deco_y+310,BOX_W,120),WHITE,
                                    layout::TextWrapMode::Char,
                                    layout::TextOverflowMode::Clip);
             if(multi) multi->SetUnderline(true);

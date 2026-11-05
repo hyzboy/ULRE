@@ -4,6 +4,7 @@
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/String.h>
+#include<hgl/type/ValueArray.h>
 #include<cstdint>
 #include<utility>
 
@@ -42,6 +43,8 @@ namespace hgl::ecs
         graph::layout::ParagraphStyle paragraph_style;
         graph::layout::CharStyle char_style;
         graph::layout::TEXT_COORD_VEC start_position{0, 0};
+
+        ValueArray<graph::layout::TextDecorationSpan> decoration_spans;
 
         graph::FontSource* font_source = nullptr;   // Not owned
 
@@ -192,7 +195,7 @@ namespace hgl::ecs
         // 由排版引擎把图集纯色 tile 作为"虚拟字符"实例发射，走同一套 mesh shader，
         // 颜色复用本组件的 CharStyle(即跟随文本主色)。
 
-        /// 启用/关闭下划线
+        /// 启用/关闭整段下划线（未指定字符区间时默认全段下划线）
         void SetUnderline(bool on)
         {
             paragraph_style.underline = on;
@@ -201,7 +204,7 @@ namespace hgl::ecs
 
         bool GetUnderline() const { return paragraph_style.underline; }
 
-        /// 启用/关闭删除线
+        /// 启用/关闭整段删除线（未指定字符区间时默认全段删除线）
         void SetStrikethrough(bool on)
         {
             paragraph_style.strikethrough = on;
@@ -209,6 +212,42 @@ namespace hgl::ecs
         }
 
         bool GetStrikethrough() const { return paragraph_style.strikethrough; }
+
+        /// 为指定字符区间 [start, start + count) 添加下划线
+        void AddUnderline(uint32_t start, uint32_t count)
+        {
+            if(count>0)
+            {
+                decoration_spans.Add({start, count, graph::layout::TextDecorationType::Underline});
+                TouchChange(static_cast<uint32_t>(TextChange::Layout));
+            }
+        }
+
+        /// 为指定字符区间 [start, start + count) 添加删除线
+        void AddStrikethrough(uint32_t start, uint32_t count)
+        {
+            if(count>0)
+            {
+                decoration_spans.Add({start, count, graph::layout::TextDecorationType::Strikethrough});
+                TouchChange(static_cast<uint32_t>(TextChange::Layout));
+            }
+        }
+
+        /// 清除所有字符级装饰区间
+        void ClearDecorations()
+        {
+            decoration_spans.Clear();
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        /// 设置所有字符级装饰区间
+        void SetDecorationSpans(const ValueArray<graph::layout::TextDecorationSpan>& spans)
+        {
+            decoration_spans = spans;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        const ValueArray<graph::layout::TextDecorationSpan>& GetDecorationSpans() const { return decoration_spans; }
 
         /// 下划线粗细/位置(相对字高的比例；<=0 表示用引擎默认值)
         void SetUnderlineStyle(float thickness_ratio, float position_ratio)

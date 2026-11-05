@@ -85,6 +85,44 @@ namespace hgl::graph
         };//enum class TextVerticalAlign
 
         /**
+        * 文本装饰线类型(下划线 / 删除线，支持按位或组合)
+        */
+        enum class TextDecorationType : uint8
+        {
+            None          = 0,
+            Underline     = 1 << 0,     ///<下划线
+            Strikethrough = 1 << 1,     ///<删除线
+        };//enum class TextDecorationType
+
+        inline constexpr TextDecorationType operator|(TextDecorationType a, TextDecorationType b)
+        {
+            return static_cast<TextDecorationType>(static_cast<uint8>(a) | static_cast<uint8>(b));
+        }
+        inline constexpr TextDecorationType operator&(TextDecorationType a, TextDecorationType b)
+        {
+            return static_cast<TextDecorationType>(static_cast<uint8>(a) & static_cast<uint8>(b));
+        }
+        inline constexpr bool HasDecoration(TextDecorationType val, TextDecorationType flag)
+        {
+            return (static_cast<uint8>(val) & static_cast<uint8>(flag)) != 0;
+        }
+
+        /**
+        * 文本装饰线区间(字符级下划线/删除线)
+        *
+        * 用于精确到字符的划线标记(如某几个字下划线、某个词删除线)。
+        * start/count 对应源文本的字符下标与长度。
+        */
+        struct TextDecorationSpan
+        {
+            uint32_t           start = 0;                          ///<起始字符下标(UTF-16 索引)
+            uint32_t           count = 0;                          ///<字符数量
+            TextDecorationType type  = TextDecorationType::None;   ///<装饰类型
+
+            auto operator <=> (const TextDecorationSpan &) const = default;
+        };//struct TextDecorationSpan
+
+        /**
         * 段落风格
         */
         struct ParagraphStyle

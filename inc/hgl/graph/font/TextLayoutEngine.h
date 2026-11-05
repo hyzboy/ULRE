@@ -69,6 +69,9 @@ namespace hgl::graph::layout
 
             TextDrawStyle style;
 
+            uint32_t span_offset = 0;
+            uint32_t span_count  = 0;
+
             CharDrawAttrIt it;
 
             bool operator==(const DrawStringItem& other) const
@@ -79,6 +82,7 @@ namespace hgl::graph::layout
         };
 
         ValueArray<DrawStringItem> draw_string_list;   ///<所有绘制字符串列表
+        ValueArray<TextDecorationSpan> all_decoration_spans; ///<所有字符串的装饰区间平铺存储(保持 DrawStringItem 为 POD)
 
     public:
 
@@ -194,7 +198,7 @@ namespace hgl::graph::layout
 
         bool Begin(U32CharSet *,int Estimate=1024);                  ///<开始排版
 
-        bool AddString(const U16StringView&,const TextDrawStyle &);     ///<添加一个要排版的字符串
+        bool AddString(const U16StringView&,const TextDrawStyle &,const ValueArray<TextDecorationSpan> *spans=nullptr);     ///<添加一个要排版的字符串(支持字符级装饰区间)
 
         int  End();                                                     ///<结束排版
 
@@ -208,6 +212,7 @@ namespace hgl::graph::layout
             draw_chars_list.Clear();
             draw_all_strings.Clear();
             draw_string_list.Clear();
+            all_decoration_spans.Clear();
             gpu_char_instances.clear();
 
             char_info_table.clear();

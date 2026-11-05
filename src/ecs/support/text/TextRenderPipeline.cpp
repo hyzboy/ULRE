@@ -707,7 +707,7 @@ namespace hgl::ecs
                                                       comp_style_id,
                                                       comp_char_style);
 
-                        layout_engine.AddString(text_comp->GetText(), draw_style);
+                        layout_engine.AddString(text_comp->GetText(), draw_style, &text_comp->GetDecorationSpans());
                     }
 
                     const int draw_count = layout_engine.End();
