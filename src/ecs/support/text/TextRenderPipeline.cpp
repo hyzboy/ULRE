@@ -81,39 +81,6 @@ namespace hgl::ecs
 
             return new graph::TileFont(td, fs);
         }
-
-        void BuildDrawStyle(graph::layout::TextDrawStyle& out_style,
-                            const graph::layout::ParagraphStyle& para_style,
-                            const graph::layout::TEXT_COORD_VEC& start_pos,
-                            const int char_height,
-                            const uint16_t style_id = 0,
-                            const graph::layout::CharStyle* char_style = nullptr)
-        {
-            out_style.para_style = para_style;
-            out_style.start_position = start_pos;
-            out_style.style_id = style_id;
-
-            const float origin_char_height = static_cast<float>(char_height);
-
-            out_style.char_height = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height));
-            out_style.space_size = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.space_size));
-            out_style.full_space_size = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.full_space_size));
-            out_style.tab_size = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.tab_size));
-            out_style.char_gap = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.char_gap));
-            out_style.line_gap = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.line_gap));
-            out_style.line_height = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height + out_style.line_gap));
-
-            // bold/outline 使字形视觉尺寸每侧扩展 bold+outline 像素，
-            // 因此水平/垂直行间距各增加 2*(bold+outline) 以避免字符重叠
-            if (char_style)
-            {
-                const float extra = 2.0f * (char_style->bold_px + char_style->outline_px);
-                out_style.extra_advance_x = extra;
-                out_style.extra_advance_y = extra;
-                out_style.scale = char_style->scale;
-                out_style.rotation = char_style->rotation;
-            }
-        }
     }
 
     TextRenderPipeline::~TextRenderPipeline()
@@ -733,12 +700,12 @@ namespace hgl::ecs
                             ? &input.styles[comp_style_id] : nullptr;
 
                         graph::layout::TextDrawStyle draw_style;
-                        BuildDrawStyle(draw_style,
-                                       text_comp->GetParagraphStyle(),
-                                       text_comp->GetStartPosition(),
-                                       resources->tile_font->GetFontSource()->GetCharHeight(),
-                                       comp_style_id,
-                                       comp_char_style);
+                        graph::layout::BuildDrawStyle(draw_style,
+                                                      text_comp->GetParagraphStyle(),
+                                                      text_comp->GetStartPosition(),
+                                                      resources->tile_font->GetFontSource()->GetCharHeight(),
+                                                      comp_style_id,
+                                                      comp_char_style);
 
                         layout_engine.AddString(text_comp->GetText(), draw_style);
                     }

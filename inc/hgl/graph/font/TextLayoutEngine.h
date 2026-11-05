@@ -81,6 +81,58 @@ namespace hgl::graph::layout
         const std::vector<layout::CharStyle>&   GetCharStyles()     const { return char_styles; }
         uint16_t GetUniqueCharCount() const { return (uint16_t)char_info_table.size(); }
 
+    public:
+
+        /**
+        * 命中测试数据(水平排版专用)
+        *
+        * 每个源字符(含空格等不可见字符)记录其在最近一次排版中的笔位与推进量，
+        * 供 GUI 做点击定位与光标绘制。竖排(Vertical)不填充本表。
+        */
+        struct HitChar
+        {
+            int32_t pen_x       = 0;    ///<笔位 X(与 CharInstance::pen_x 同一坐标空间)
+            int32_t pen_y       = 0;    ///<行顶 Y
+            int32_t advance     = 0;    ///<横向推进量(像素)
+            int32_t src_index   = 0;    ///<源字符串字符下标(UTF-16)
+            int32_t line_index  = 0;    ///<所属行号
+        };//struct HitChar
+
+    protected:
+
+        ValueArray<HitChar> hit_chars;
+
+        int32_t hit_origin_x    = 0;        ///<最近一次排版的起始 X
+        int32_t hit_origin_y    = 0;        ///<最近一次排版的起始 Y
+        int32_t hit_line_step   = 0;        ///<行步进(像素)
+        int32_t hit_char_height = 0;        ///<字符高度(像素，光标高度)
+        int32_t hit_line_count  = 0;        ///<行数
+        int32_t hit_text_length = 0;        ///<最近一次排版的源文本长度
+
+    public:
+
+        /**
+        * 坐标反查字符下标(水平排版)
+        * @param local_pos 与 start_position 同坐标空间的像素坐标
+        * @return 源字符下标；命中行尾返回该行末字符下标+1；无有效排版返回 -1
+        */
+        int GetIndexAtPosition(const TEXT_COORD_VEC &local_pos) const;
+
+        /**
+        * 字符下标反查光标位置(水平排版)
+        * @param src_index 源字符下标(可取 [0, 文本长度] 区间，末尾表示光标停在文末)
+        * @param out_pos   输出光标笔位(与 start_position 同坐标空间)
+        * @param out_height 输出光标高度(像素)
+        * @return 是否有有效排版数据
+        */
+        bool GetCursorPosition(const int src_index, TEXT_COORD_VEC &out_pos, int &out_height) const;
+
+        /// 文末光标位置
+        bool GetEndCursorPosition(TEXT_COORD_VEC &out_pos, int &out_height) const;
+
+        /// 最近一次排版的文本长度(供光标下标上限使用)
+        int GetHitTextLength() const { return hit_text_length; }
+
     private:
         int layout_width_ = 0;   ///< 排版后文本宽度（像素）
         int layout_height_ = 0;  ///< 排版后文本高度（像素）
@@ -125,6 +177,14 @@ namespace hgl::graph::layout
             char_info_table.clear();
             char_to_id.Clear();
             char_styles.clear();
+
+            hit_chars.Clear();
+            hit_origin_x    =0;
+            hit_origin_y    =0;
+            hit_line_step   =0;
+            hit_char_height =0;
+            hit_line_count  =0;
+            hit_text_length =0;
         }
     };//class TextLayout
 }//namespace hgl::graph::layout

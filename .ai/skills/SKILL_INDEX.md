@@ -78,6 +78,30 @@
 ```
 
 ---
+
+### 0.4 [SKILL_GUI_TEXT_LAYOUT.md](SKILL_GUI_TEXT_LAYOUT.md)
+**适用：编辑器 GUI 文本的矩形排版、折行、对齐、省略号截断、测量与光标定位**
+
+- 📐 RECT 排版模型（矩形 = start_position + rect_width × rect_height，0 = 不限制）
+- 🔁 两趟结构：`BreakLines()` 切行 → 对齐摆放（为什么必须两趟）
+- 🔤 `TextWrapMode`（None/Char/Word）与 CJK 标点禁则、行尾空白规则
+- ✂️ `TextOverflowMode`（Overflow/Clip/Ellipsis）与省略号字形预注册顺序
+- 📏 `MeasureTextLayout()` + `BuildDrawStyle()`：无 GPU 的纯测量
+- 🖱️ `GetIndexAtPosition` / `GetCursorPosition`：点击定位与光标绘制
+- ❌ 已知边界（竖排未纳入、int16 坐标上限、无按组件 scissor）
+- ✅ 示例 `example/Text/TextRectLayout.cpp` + 回归测试 `TestTextRectLayout`
+
+**快速导航：**
+```
+控件里排一段文字？        → TextComponent::SetLayoutRect + SetTextWrap
+要居中/右对齐？          → SetHorizontalAlign / SetVerticalAlign
+超出想显示省略号？        → SetTextOverflow(Ellipsis) + SetMaxLines
+还没图集就要算尺寸？      → MeasureTextLayout（配 BuildDrawStyle）
+要做文本输入框光标？      → TextLayout::GetIndexAtPosition / GetCursorPosition
+→ 使用这个SKILL
+```
+
+---
 **适用：查找CMCoreType底层库的基础类型、内存/对齐/枚举工具、数学、颜色、时间常量等**
 - 🧹 内存安全宏（SAFE_CLEAR, SAFE_FREE 等）
 - 🏗️ 平台宏（NO_COPY, NO_MOVE, OS/CPU 检测）

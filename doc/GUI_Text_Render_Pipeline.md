@@ -138,7 +138,7 @@ SDF 编码约定：内部 = 高值（255），外部 = 低值（0）。Shader �
 
 **extra_advance 机制**：
 
-当 `CharStyle` 的 `bold_px` 或 `outline_px` > 0 时，字形视觉尺寸扩展，需要增加字符间距避免重叠。`TextRenderPipeline::BuildDrawStyle()` 自动计算：
+当 `CharStyle` 的 `bold_px` 或 `outline_px` > 0 时，字形视觉尺寸扩展，需要增加字符间距避免重叠。`layout::BuildDrawStyle()`（`src/SceneGraph/font/TextLayout.cpp`，管线与 GUI 层共用）自动计算：
 
 ```cpp
 const float extra = 2.0f * (char_style->bold_px + char_style->outline_px);
@@ -147,6 +147,46 @@ out_style.extra_advance_y = extra;
 ```
 
 `TextLayout::sl_l2r()` 在字符定位和换行逻辑中追加 `extra_advance`，普通文本（bold=0, outline=0）不受影响。
+
+#### 4.2.1 矩形（RECT）排版
+
+编辑器 GUI 的文本以控件矩形为约束，因此 `sl_l2r()` 采用**两趟**结构：
+
+| 趟 | 内容 | 依赖 |
+|----|------|------|
+| 第一趟 `BreakLines()` | 逐字符度量 → 自动折行、标点禁则、行数上限、省略号截断 → 每行的字符区间与宽度 | 只需 `FontSource` 字形度量 |
+| 第二趟 摆放 | 行内水平对齐 + 整块垂直对齐 → 写入 `gpu_char_instances` + 命中表 | 需要行宽（第一趟结果） |
+
+对齐量依赖整行宽度，而整行宽度只有切成行之后才知道——这是必须两趟的原因。`MeasureTextLayout()` 复用第一趟，因此"测量"与"绘制"不会漂移。
+
+配置字段（`ParagraphStyle` / `TextDrawStyle`）：
+
+| 字段 | 含义 |
+|------|------|
+| `rect_width` / `rect_height` | 排版矩形宽高（像素，0 = 不限制；左/上取自 `start_position`） |
+| `wrap_mode` | `None`（只在 `\n` 换行）/ `Char`（CJK、无空格西文）/ `Word`（优先断空格，单词过长回退字符折行） |
+| `overflow_mode` | `Overflow`（默认，矩形只约束宽度与对齐）/ `Clip`（超出不输出）/ `Ellipsis`（截断并补省略号） |
+| `max_lines` | 最大行数（0 = 不限制） |
+| `align` / `v_align` | 水平（Left/Center/Right，`Fill` 按 Left）/ 垂直（Top/Center/Bottom） |
+| `char_gap` | 字间距（本次起在布局中真正生效，默认 0 保持旧行为） |
+
+要点：
+
+- **默认值保持旧行为**：两个尺寸都为 0 时，`sl_l2r()` 的输出与补强前完全一致。
+- **显式 `\n` 是硬换行**，不受 `wrap_mode` 影响；自动折行才做标点禁则（`end_disable` 回退一行、`begin_disable` 悬挂一行）。
+- **行尾空白不触发折行**：恰好差一个尾随空格时不会把整词推到下一行。
+- **省略号字形提前注册**：截断点只有排版时才可知，`StatChars()` 在 `overflow_mode == Ellipsis` 时预先把 `'…'`（缺字形回退 `'.'`）注册进图集，否则排版阶段已无从取 UV。
+- **`Overflow` 不裁高度**：`rect_height` 在 `Overflow` 下只参与垂直对齐，绝不丢弃行，适合"宽度固定、高度自适应"的面板。
+
+命中测试数据（`TextLayout::HitChar`）按**源字符**逐个记录笔位与推进量（含空格），供 GUI 做点击定位与光标绘制：
+
+```cpp
+int  GetIndexAtPosition(const TEXT_COORD_VEC &local_pos) const;       // 像素 → 源字符下标
+bool GetCursorPosition(int src_index, TEXT_COORD_VEC &pos, int &h) const;
+bool GetEndCursorPosition(TEXT_COORD_VEC &pos, int &h) const;
+```
+
+查询坐标与 `start_position` 同一空间（GUI 直接用控件内容区左上角作为起点即可）。竖排（`TextDirection::Vertical`）暂未纳入矩形约束与命中表，仍走原实现。
 
 ### 4.3 GPU 缓冲区（三层 SSBO 模型）
 
@@ -364,7 +404,10 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | TextRenderPipeline（实现） | `src/ecs/support/text/TextRenderPipeline.cpp` |
 | Text ECS 系统 | `src/ecs/support/text/Text{Collect,Build,Sync,Render}System.cpp` |
 | TextLayout（排版） | `src/SceneGraph/font/TextLayout.cpp` |
-| TextLayout（头，TextDrawStyle/extra_advance） | `inc/hgl/graph/font/TextLayout.h` |
+| TextLayout（头，TextDrawStyle/矩形约束/度量） | `inc/hgl/graph/font/TextLayout.h` |
+| TextComponent（ECS 侧 RECT 接口） | `inc/hgl/ecs/components/TextComponent.h` |
+| RECT 排版示例 | `example/Text/TextRectLayout.cpp` |
+| RECT 排版回归测试 | `src/ecs/tests/TestTextRectLayout.cpp` |
 | CharStyle/TextCharInfo/CharInstance SSBO 定义 | `inc/hgl/graph/font/TextCharSSBO.h` |
 | TileFont（字形图集） | `src/SceneGraph/font/TileFont.cpp` |
 | FontSource（字体源） | `inc/hgl/graph/font/FontSource.h` |

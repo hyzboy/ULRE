@@ -159,6 +159,9 @@ add_ecs_test(TestMaterialDataBlockAsset tests/TestMaterialDataBlockAsset.cpp)
 # 以及 builder 源码里「先上传再判越界」的顺序契约。
 add_ecs_test(TestRenderableBuilderDataRow tests/TestRenderableBuilderDataRow.cpp)
 
+# 矩形(RECT)文本排版：折行 / 单词边界 / 省略号 / 高度裁剪 / 纯测量 / 组件接口。
+add_ecs_test(TestTextRectLayout tests/TestTextRectLayout.cpp)
+
 # 环境资产规约（`*.env.toml`）：五组字段往返 + `Presence` 三态 + 枚举拼写别名
 # + `[[sh9.bands]]` 顺序 + 元数据 struct_meta/elem_kind 接线。
 add_ecs_test(TestEnvironmentCodec tests/TestEnvironmentCodec.cpp)

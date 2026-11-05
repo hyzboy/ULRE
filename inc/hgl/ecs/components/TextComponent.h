@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/type/RectScope.h>
 #include<hgl/type/String.h>
 #include<cstdint>
 #include<utility>
@@ -117,6 +118,74 @@ namespace hgl::ecs
             font_source = fs;
             TouchChange(static_cast<uint32_t>(TextChange::Font));
         }
+
+    public: // ── 矩形(RECT)排版 ──────────────────────────────────────────
+
+        /**
+        * 设置排版矩形
+        *
+        * 左/上边写入起始位置，宽/高作为内容区约束交给排版引擎。
+        * 宽或高为 0 表示该方向不限制(与旧版自由排版完全等价)。
+        * 内边距由控件层处理：传入的应当已经是内容区矩形。
+        */
+        void SetLayoutRect(const hgl::math::RectScope2i& rect)
+        {
+            start_position = {rect.GetLeft(), rect.GetTop()};
+            paragraph_style.rect_width  = rect.GetWidth();
+            paragraph_style.rect_height = rect.GetHeight();
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        hgl::math::RectScope2i GetLayoutRect() const
+        {
+            return hgl::math::RectScope2i(start_position.x, start_position.y,
+                                          paragraph_style.rect_width, paragraph_style.rect_height);
+        }
+
+        /// 自动折行模式(需要先设置矩形宽度)
+        void SetTextWrap(graph::layout::TextWrapMode mode)
+        {
+            paragraph_style.wrap_mode = mode;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        graph::layout::TextWrapMode GetTextWrap() const { return paragraph_style.wrap_mode; }
+
+        /// 溢出处理(Clip/Ellipsis 才会按矩形高度与最大行数截断)
+        void SetTextOverflow(graph::layout::TextOverflowMode mode)
+        {
+            paragraph_style.overflow_mode = mode;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        graph::layout::TextOverflowMode GetTextOverflow() const { return paragraph_style.overflow_mode; }
+
+        /// 最大行数(0=不限制)
+        void SetMaxLines(uint32_t lines)
+        {
+            paragraph_style.max_lines = lines;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        uint32_t GetMaxLines() const { return paragraph_style.max_lines; }
+
+        /// 水平对齐(Left/Center/Right；Fill 按 Left 处理)
+        void SetHorizontalAlign(graph::layout::TextAlign align)
+        {
+            paragraph_style.align = align;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        graph::layout::TextAlign GetHorizontalAlign() const { return paragraph_style.align; }
+
+        /// 垂直对齐(需要先设置矩形高度)
+        void SetVerticalAlign(graph::layout::TextVerticalAlign align)
+        {
+            paragraph_style.v_align = align;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        graph::layout::TextVerticalAlign GetVerticalAlign() const { return paragraph_style.v_align; }
     };//class TextComponent
 
     /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。
