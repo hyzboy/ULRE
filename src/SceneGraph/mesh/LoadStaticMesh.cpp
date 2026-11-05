@@ -1218,6 +1218,12 @@ bool BuildSelfContainedSceneMaterials(
         out.recipes[i].material_ssbo_binding = binding;
         out.bindings[i] = binding;
         out.table[i] = &out.recipes[i];
+
+        MLogInfo(LoadStaticMesh,
+            OS_TEXT("BuildSelfContainedSceneMaterials: material[")
+            + OSString::numberOf(static_cast<int>(i)) + OS_TEXT("] ")
+            + hgl::ToOSString(material_names[i].c_str())
+            + OS_TEXT(" → ") + hgl::ToOSString(picked->recipe_name.c_str()));
     }
 
     out.fallback = &out.recipes[0];

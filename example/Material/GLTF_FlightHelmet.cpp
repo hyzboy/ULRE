@@ -1,8 +1,9 @@
 // GLTF_FlightHelmet —— khronos glTF-Sample-Models 的 FlightHelmet 多材质 PBR 演示。
 //
 // 资产管线：res/model/FlightHelmet/glTF → GLTFConvert --no-meshlet → res/FlightHelmet.StaticMesh。
-// 6 个 glTF 材质全 OPAQUE；HoseMat 与 RubberWoodMat 贴图/因子完全相同（共用一个配方），
-// 故 5 个配方 + 6 槽配方表（下标 0 复用 RubberWood）。
+// 自包含目录：scene / geometry / recipe / material_data / tex2d 全部住在模型目录内，
+// 严禁跨目录查找。6 个 glTF 材质全 OPAQUE，每材质一个配方（HoseMat 与 RubberWoodMat
+// 贴图/因子相同但配方独立，按 pack 材质名自匹配）。
 // 贴图已是 glTF ORM 口径（_OcclusionRoughMetal.png：R=AO G=rough B=metal），
 // StandardOpaque 原生解包，无需像 DamagedHelmet 那样离线重打包。
 //
@@ -55,21 +56,17 @@ using namespace hgl::graph;
 
 namespace
 {
-    // 材质数据块（target=PBRSurface，6 行；数值全在块文件里）
-    constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:res/FlightHelmet.StaticMesh/gltf_flight_helmet.material_data.toml";
-    constexpr uint32_t MATERIAL_DATA_ROW = 0;
-
-    // 行序 = glTF materials[] 下标；配方按名查表（HoseMat 复用 RubberWood 配方）
-    constexpr uint32_t MATERIAL_COUNT = 6;
-    constexpr const char * RECIPE_TABLE[MATERIAL_COUNT] = {
-        "GLTF.FlightHelmet.RubberWood",    // 0 HoseMat（贴图/因子与 RubberWood 全同）
-        "GLTF.FlightHelmet.RubberWood",    // 1 RubberWoodMat
-        "GLTF.FlightHelmet.GlassPlastic",  // 2 GlassPlasticMat
-        "GLTF.FlightHelmet.MetalParts",    // 3 MetalPartsMat
-        "GLTF.FlightHelmet.LeatherParts",  // 4 LeatherPartsMat
-        "GLTF.FlightHelmet.Lenses",        // 5 LensesMat
-    };
+    // 自装配：scene/recipe/material_data/tex2d 全部取自 pack 所在目录，无任何硬编码 URI。
+    const std::string &ScenePackPath()
+    {
+        static const std::string path = []
+        {
+            const char *scene_env = getenv("FHF_SCENE");
+            return std::string(scene_env ? scene_env
+                                         : "res/FlightHelmet.StaticMesh/FlightHelmet.unnamed.scene");
+        }();
+        return path;
+    }
 
     // 天光 IBL：与 LoadScene / DamagedHelmet 同一批烘焙贴图与天空配方
     constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
@@ -90,7 +87,7 @@ namespace
     constexpr uint32_t kSelfW           = 1280;
     constexpr uint32_t kSelfH           = 720;
     constexpr uint32_t kSelfMinDistinct = 2;      // 不空转守卫（恒定图会 FAIL）
-    constexpr uint64_t kSelfFNV         = 0x0B243B37B8510D05ull;  // 实跑记录（默认相机 2.2/45/-15，第 8 帧）
+    constexpr uint64_t kSelfFNV         = 0xCA3E781DAE0E3863ull;  // 实跑记录（默认相机 2.2/45/-15，第 8 帧；自包含 6 配方口径，HoseMat 独立成配方后重录）
 }
 
 class GLTFFlightHelmetApp : public WorkObject
@@ -104,9 +101,8 @@ private:
     uint32_t     perf_frames = 0;   ///< FHF_FRAMES=N：定帧退出；0 = 未启用
     std::string  dump_tag;          ///< FHF_DUMP=<tag>：第 8 帧回读落盘后退出
 
-    GeometryVertexFormat geometry_vertex_format;
-    graph::GlobalSSBOBinding material_rows[MATERIAL_COUNT]{};
-    std::vector<const mtl::MaterialRecipe *> recipes_;
+    GeometryVertexFormat     geometry_vertex_format;
+    SelfContainedSceneMaterials scene_materials_;
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::ecs::LightSystem>       light_system;
@@ -135,34 +131,20 @@ private:
             return false;
         }
 
-        // 与 LoadScene PBR 同法：注册表原指针直传（配方 toml 不带 material_data 引用，
-        // 材质数值经实例 material_rows 按 material_index 选中）
-        recipes_.clear();
-        // 自包含目录：显式加载模型自带配方（严禁跨目录兜底扫描）
-        LoadRecipeDirectory(OS_TEXT("res/FlightHelmet.StaticMesh"));
-
-        recipes_.reserve(MATERIAL_COUNT);
-        for (uint32_t i = 0; i < MATERIAL_COUNT; ++i)
+        auto *graphics = GetGraphicsContext();
+        if (!graphics)
         {
-            const mtl::MaterialRecipe *r = GetRecipe(RECIPE_TABLE[i]);
-            if (!r)
-            {
-                GLogError(u8"GLTF_FlightHelmet: 配方 %s 加载失败", RECIPE_TABLE[i]);
-                return false;
-            }
-            recipes_.push_back(r);
-        }
-
-        // 数据块基行 + 序号 = 相邻行绑定（行序即 material_index）
-        graph::GlobalSSBOBinding first{};
-        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first) ||
-            !first.IsValid())
-        {
-            GLogError(u8"GLTF_FlightHelmet: 材质数据行绑定失败");
+            GLogError(u8"GLTF_FlightHelmet: 无 GraphicsContext");
             return false;
         }
-        for (uint32_t i = 0; i < MATERIAL_COUNT; ++i)
-            material_rows[i] = first.RowOffset(i);
+
+        // 自装配：材质名来自 pack 的 MaterialTable，配方/数据块来自模型目录
+        if (!BuildSelfContainedSceneMaterials(
+                *graphics, hgl::ToOSString(ScenePackPath()), nullptr, scene_materials_))
+        {
+            GLogError(u8"GLTF_FlightHelmet: 自包含材质装配失败");
+            return false;
+        }
         return true;
     }
 
@@ -171,9 +153,7 @@ private:
         using std::filesystem::exists;
         using std::filesystem::path;
 
-        const char * scene_env = getenv("FHF_SCENE");
-        const path scene_path(scene_env ? scene_env
-                                        : "res/FlightHelmet.StaticMesh/FlightHelmet.unnamed.scene");
+        const path scene_path(ScenePackPath());
         if (!exists(scene_path))
         {
             AnsiString p = AnsiString(scene_path.string().c_str());
@@ -196,14 +176,14 @@ private:
             device,
             geo_mgr,
             geometry_vertex_format,
-            recipes_[0],
+            scene_materials_.fallback,
             pack_path,
             base_dir,
             scene_assets_,
             scene_nodes_,
             scene_root_nodes_,
-            recipes_.data(),
-            static_cast<uint32_t>(recipes_.size()));
+            scene_materials_.table.data(),
+            static_cast<uint32_t>(scene_materials_.table.size()));
     }
 
     bool InitScene()
@@ -213,8 +193,8 @@ private:
 
         StaticMeshSceneInstance::Options options;
         options.mobility             = hgl::ecs::Mobility::Static;
-        options.material_rows        = material_rows;
-        options.material_row_count   = MATERIAL_COUNT;
+        options.material_rows        = scene_materials_.bindings.data();
+        options.material_row_count   = static_cast<uint32_t>(scene_materials_.bindings.size());
         // 行序即 glTF 材质下标 ⇒ 按 material_index 选行
         options.rows_by_material_index = true;
 
