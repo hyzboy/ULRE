@@ -66,7 +66,7 @@ vec4 EvalLighting(LightingInput lighting)
     const vec3 F0 = mix(vec3(lighting.fresnel), lighting.baseColor, lighting.metallic);
     const vec2 dfg = ULRE_LIT_EnvDFGApprox(NdotV, lighting.roughness);
     const vec3 E = F0 * dfg.x + (1.0 - F0) * dfg.y;
-    const vec3 energyComp = 1.0 + F0 * (1.0 / dfg.y - 1.0);
+    const vec3 energyComp = 1.0 + F0 * (1.0 / max(dfg.x, 0.1) - 1.0);
     indirectColor += lighting.reflectionColor * E * energyComp;
 
     return vec4(

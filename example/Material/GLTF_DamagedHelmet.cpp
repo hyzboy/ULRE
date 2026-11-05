@@ -75,12 +75,13 @@ namespace
         return gvf;
     }
 
-    // 帧摘要判据常量：冻结相机 + 第 8 帧，实跑记录。
-    // ⚠ 改渲染结果（配方/数据行/相机）必须复核并重录（FrameDigest.h 台架规矩）。
+    // 帧摘要判据常量：冻结相机 + 定帧，实跑记录。
+    // 异步纹理流式加载 4 张 2K 贴图在 20 帧左右全部 Resident，判据帧设为第 40 帧保证模型完整渲染。
+    constexpr uint32_t kSelfCheckFrame  = 40;
     constexpr uint32_t kSelfW           = 1280;
     constexpr uint32_t kSelfH           = 720;
     constexpr uint32_t kSelfMinDistinct = 2;      // 不空转守卫（恒定图会 FAIL）
-    constexpr uint64_t kSelfFNV         = 0x69272DB362FDD1EDULL;   // 实跑记录（Debug 锚定）
+    constexpr uint64_t kSelfFNV         = 0x51D0CD111D41CF1EULL;   // 实跑记录（Debug 锚定）
 }
 
 class GLTFDamagedHelmetApp : public WorkObject
@@ -227,8 +228,8 @@ private:
         // 头盔半径约 1：近距离略俯角，正面偏侧看破损面
         camera->control_mode = hgl::ecs::CameraControlMode::ViewModel;
         camera->target       = math::Vector3f(0.0f, 0.0f, 0.0f);
-        // 默认机位与 LoadScene PBR 参考一致（模型半径约 4，距离过近会钻进球体内部只看到天空）
-        camera->distance     = 8.0f;
+        // 头盔半径约 1.28：机位设为 2.5 距离近景特写，略俯角看破损面
+        camera->distance     = 2.5f;
         camera->yaw          = 45.0f;
         camera->pitch        = -20.0f;
 
@@ -331,8 +332,8 @@ public:
         WorkObject::Tick(delta_time);
         ++frame_seen;
 
-        // 场景静止（无动画）⇒ 任意帧画面都确定；判据帧沿用第 8 帧口径。
-        if (selfcheck_enabled && frame_seen == 8)
+        // 场景静止（无动画）⇒ 任意帧画面都确定；判据帧设为第 40 帧（纹理完全 Resident）。
+        if (selfcheck_enabled && frame_seen == kSelfCheckFrame)
         {
             auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
                 ecs_context ? ecs_context->GetRenderTarget() : nullptr);
@@ -357,8 +358,12 @@ public:
             std::exit(0);
         }
 
-        // HDH_DUMP=<tag>：第 8 帧帧内回读落原始字节后退出（像素判据用，与 LS_DUMP 同款）
-        if (!dump_tag.empty() && frame_seen == 8)
+        // HDH_DUMP=<tag>：帧内回读落原始字节后退出（默认第 8 帧，可通过 HDH_DUMP_FRAME 覆盖）
+        uint32_t target_dump_frame = 8;
+        if (const char * df = getenv("HDH_DUMP_FRAME"))
+            target_dump_frame = (uint32_t)atoi(df);
+
+        if (!dump_tag.empty() && frame_seen == target_dump_frame)
         {
             auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
                 ecs_context ? ecs_context->GetRenderTarget() : nullptr);

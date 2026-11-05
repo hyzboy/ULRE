@@ -95,11 +95,13 @@ vec3 EvalIndirectLighting(
     const vec3 prefiltered =
         Sample2DArrayLod(ambient_env.env_tex.y, TrilinearClampSampler, pre_uv, 0.0, prefilter_lod).rgb;
 
-    // 镜面项 + 能量补偿（Filament: Fr = E*radiance*(1 + F0*(1/dfg.y - 1))）
+    // 镜面项 + 能量补偿 —— Filament / Kulla & Conty 2017：
+    //   Fr = E * radiance;  Fr *= (1 + F0 * (1/E_dir - 1))
+    //   其中 E_dir = env_brdf.x + env_brdf.y（即 F0=1 时的定向反射率，取值范围 [0.4, 1.0]；
+    //   不能误除 env_brdf.y——那是 Karis bias B，正入射时趋于 0 会产生万倍放大爆炸）。
+    const float E_dir = clamp(env_brdf.x + env_brdf.y, 0.1, 1.0);
     const vec3 specular = prefiltered * E
-        * (1.0 + F0 * (1.0 / max(env_brdf.y, 1e-4) - 1.0));
-
-    vec3 ambient = (diffuse + specular) * lighting.ao;
+        * (1.0 + F0 * (1.0 / E_dir - 1.0));
 
     // LDR 曝光度与太阳光强度动态调制（仅在 ldr_param.x > 0 时对 LDR 生效）
     // 与 ambient_light_ibl 完全同一语义:八面体与立方体只是寻址方式不同,曝光必须一致。
@@ -107,6 +109,10 @@ vec3 EvalIndirectLighting(
     //   ldr_param.y = exposure_base 基准曝光倍率
     //   ldr_param.z = sun_scale 太阳高度角与光强调制权重
     //   ldr_param.w = min_ambient 最低环境光保底比例
+    // 注：LDR 贴图下漫反射经半球积分能量严重不足，需要 exposure 增益；
+    // 但镜面光直接采样 prefilter radiance，若乘上 base_exposure(2.5) 会导致平滑金属
+    // 反射直接飙升至 2.0+ 引发严重过曝，因此 exposure 仅调制漫反射项。
+    float diffuse_exposure = 1.0;
     if (ambient_env.ldr_param.x > 0.0)
     {
         const float base_exposure = max(ambient_env.ldr_param.y, 0.0);
@@ -122,10 +128,10 @@ vec3 EvalIndirectLighting(
         const float sun_intensity = max(main_light.direction_intensity.w, 0.0);
 
         const float sun_factor = sun_elevation * sun_intensity;
-        const float exposure = base_exposure * (min_ambient + sun_factor * sun_scale);
-
-        ambient *= exposure;
+        diffuse_exposure = base_exposure * (min_ambient + sun_factor * sun_scale);
     }
+
+    vec3 ambient = (diffuse * diffuse_exposure + specular) * lighting.ao;
 
     return ambient;
 }
