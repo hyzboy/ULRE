@@ -18,6 +18,7 @@ TextRenderPipeline（按 FontSource 合批）
 TextLayout::sl_l2r()
       ├── 第一趟 BreakLines()：逐字符度量 → 折行 / 禁则 / 行数上限 / 省略号
       └── 第二趟 摆放：      行内水平对齐 + 整块垂直对齐 → CharInstance
+                             └── 下划线/删除线：按行发射"纯色 TILE"装饰实例（同一条管线）
       ▼
 三层 SSBO（TextCharInfo / CharStyle / CharInstance）→ CharQuad Mesh Shader
 ```
@@ -47,6 +48,12 @@ tc->SetTextOverflow(layout::TextOverflowMode::Clip);       // 或 Ellipsis / Ove
 tc->SetMaxLines(0);                                        // 0 = 不限制
 tc->SetHorizontalAlign(layout::TextAlign::Left);           // Left / Center / Right
 tc->SetVerticalAlign(layout::TextVerticalAlign::Top);      // Top / Center / Bottom
+
+// 装饰线（纯色 TILE，颜色跟随文本主色）
+tc->SetUnderline(true);                                    // 下划线
+tc->SetStrikethrough(true);                                // 删除线（可与下划线同时）
+tc->SetUnderlineStyle(0.08f, 0.90f);                       // (粗细, 位置) 相对字高的比例，0=用默认
+tc->SetStrikethroughStyle(0.06f, 0.50f);                   //   默认：下划线 0.06/0.92，删除线 0.06/0.50
 ```
 
 所有 setter 都会置 `TextChange::Layout` 变更位，`TextRenderPipeline` 下一帧自动重排该字体批次。
@@ -156,11 +163,37 @@ by_height = (rect_height < char_height) ? 1 : 1 + (rect_height - char_height) / 
 | `layout_width_` | 最后一行行尾笔位 | 各行最大宽度 |
 | `End()` 返回值 | 源可见字符数 | 实例数（含省略号） |
 
+### 5.7 纯色 TILE 装饰线（下划线 / 删除线 / 画线画块）
+
+思路：**把一条线/一个块当成"一个虚拟字符"来画**，走完全相同的 CharQuad mesh shader，
+因此**零 GPU / SSBO / shader 改动**，颜色、批次、indirect draw 全部自动继承文本。
+
+- **图集侧**：`TileData::CommitSolid()` 提交一整格 `tile_width×tile_height` 的 `0xFF`。
+  本引擎 SDF 约定 `0xFF = 内部为正 ⇒ 恒不透明`，所以纯色块不需要任何 shader 分支。
+  提交时把采样 UV **退化为 tile 中心单点**（四角相同、宽高为 0）：`solid_uv.Set(cx, cy, 0, 0)`，
+  双线性/三线性只会读到 tile 内部的 `0xFF`，杜绝与相邻字形的边缘渗色。
+  `TileFont::Registry()` 在**首次**注册字形时生成一次并常驻（容量检查额外预留 1 格）。
+- **排版侧**（`TextLayout::EmitSolidQuad`）：
+  - `char_id` 去重 key 用 `variant=TEXT_SOLID_QUAD_VARIANT(0xFFFF)` + 把 `(w,h)` 打包进 unicode 位，
+    与真实字形 key 空间互斥；同一 `(w,h)` 跨颜色共享（颜色在 style 里，不在 char_id 里）。
+  - **scale 补偿**：mesh shader 用 `mw = uint(float(mw_cpu) * scale)`，所以想要屏幕 `w_px` 就写
+    `mw_cpu = round(w_px / scale)`（见 `SolidQuadMetrics`）。`offset_x=0` 左边贴笔位，
+    `offset_y=基字高(不随 scale 变)`，使 tile **顶边对齐 `pen_y`**（左上角约定）。
+  - `sl_l2r` 逐行记录"可见文本"的 `vis_left / vis_right`（含省略号），行尾据此发射装饰实例，
+    复用该行的 `st.style_id` ⇒ **颜色跟随文本主色**。几何与默认比例由 `ResolveTextDecoration` 求解。
+- **公开画线 API**（供 GUI 分隔线 / 光标 / 高亮块，无需真实文本）：
+  `TextLayout::HasSolidTile / AddSolidQuad / DrawHorizontalLine / DrawVerticalLine`。
+
+**限制（有意为之）**：装饰线复用文本 `style_id`，暂不支持"与正文不同色"的自定义线色——
+编辑器每块单一样式，够用。竖排（`sl_v`）尚未接入装饰线。`scale<=0.01` 视作 1.0，度量 clamp 到 `[1,65535]`。
+图集缺纯色 tile 时 `EmitSolidQuad` 静默跳过（文本照常显示，只是没有线）。
+
 ---
 
 ## 6. 已知边界
 
 - 竖排（`Vertical`）尚未纳入矩形约束、省略号与命中表；`RightToLeft` 仍是空实现。
+- 装饰线（下划线/删除线）目前只在横排 `sl_l2r` 发射，竖排 `sl_v` 未接入；且颜色固定跟随文本 `style_id`。
 - 同一字体批次内任一组件变脏 → 该批次整体重排。编辑器静态 UI 量级下可接受；若将来有大量高频动态文本，
   再考虑按组件缓存布局结果。
 - 字形 `pen_x/pen_y` 是 `int16`，坐标超过 ±32767 会溢出（面板坐标应保持控件局部坐标系）。
@@ -172,8 +205,8 @@ by_height = (rect_height < char_height) ? 1 : 1 + (rect_height - char_height) / 
 
 | 内容 | 位置 |
 |------|------|
-| 全能力演示（折行/对齐/省略号/测量/旧行为对照） | `example/Text/TextRectLayout.cpp` |
-| CPU 回归测试（退出码 0 = 通过） | `src/ecs/tests/TestTextRectLayout.cpp` |
+| 全能力演示（折行/对齐/省略号/测量/装饰线/旧行为对照） | `example/Text/TextRectLayout.cpp` |
+| CPU 回归测试（退出码 0 = 通过；含纯色 TILE 度量与装饰线几何） | `src/ecs/tests/TestTextRectLayout.cpp` |
 | 全链路说明（图集 → 三层 SSBO → Mesh Shader） | `doc/GUI_Text_Render_Pipeline.md` §4.2 |
 
 ```powershell

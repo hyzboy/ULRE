@@ -115,6 +115,16 @@ namespace hgl::graph
             TextOverflowMode overflow_mode          =TextOverflowMode::Overflow;                    ///<溢出处理模式
             uint32_t        max_lines               =0;                                             ///<最大行数(0=不限制)
 
+            // ── 装饰线(纯色 TILE) ──────────────────────────────────────────
+            // 下划线/删除线以图集纯色 tile 作为"虚拟字符"实例绘制，颜色跟随文本主色
+            // (复用该文本的 CharStyle，无需新增 GPU 样式)。比例 <=0 表示用内置默认值。
+            bool            underline               =false;                                         ///<启用下划线
+            bool            strikethrough           =false;                                         ///<启用删除线
+            float           underline_thickness     =0.0f;                                          ///<下划线粗细(相对字高比例，<=0 用默认约 6%)
+            float           underline_position      =0.0f;                                          ///<下划线位置(相对行顶的字高比例，<=0 用默认约 92%)
+            float           strikethrough_thickness =0.0f;                                          ///<删除线粗细(相对字高比例，<=0 用默认约 6%)
+            float           strikethrough_position  =0.0f;                                          ///<删除线位置(相对行顶的字高比例，<=0 用默认约 50%)
+
             auto operator <=> (const ParagraphStyle &)const=default;
         };//struct ParagraphStyle
 
@@ -203,5 +213,38 @@ namespace hgl::graph
                                FontSource *font_source,
                                const U16StringView &str,
                                const TextDrawStyle &style);
+
+        /**
+        * 解析一条横向装饰线(下划线/删除线)的屏幕矩形(纯函数，不碰图集，便于无 GPU 单测)。
+        *
+        * @param out_pos   输出线框左上角(与实例 pen 同一坐标空间，屏幕像素)
+        * @param out_w     输出线宽(像素)
+        * @param out_h     输出线高/粗细(像素)
+        * @param vis_left  该行首个可见字符的笔位 X
+        * @param vis_right 该行末可见字符的右缘 X(含省略号)
+        * @param line_top  该行顶 Y(= 实例 pen_y)
+        * @param char_height_scaled 该行缩放后的字高(像素，= ll.char_height)
+        * @param thickness_ratio/position_ratio 段落设定比例(<=0 用默认)
+        * @param default_thickness_ratio/default_position_ratio 内置默认比例
+        * @return 是否值得绘制(线宽<=0 返回 false)
+        */
+        bool ResolveTextDecoration(TEXT_COORD_VEC &out_pos, uint32_t &out_w, uint32_t &out_h,
+                                   int32_t vis_left, int32_t vis_right, int32_t line_top,
+                                   int32_t char_height_scaled,
+                                   float thickness_ratio, float position_ratio,
+                                   float default_thickness_ratio, float default_position_ratio);
+
+        /**
+        * 纯色 quad 的 scale 补偿度量(纯函数，供 EmitSolidQuad 与单测共用)。
+        *
+        * mesh shader 会对 metrics 再乘 cs.scale，故这里写入"未缩放"尺寸，使最终屏幕尺寸 = 期望像素；
+        * offset_x 恒 0(左边对齐 pen_x)，offset_y 取基准字高(未缩放)使 quad 顶部落在 pen_y(与 scale 无关)。
+        *
+        * @param out 输出 CharMetricsInfo(x/y/w/h)
+        * @param w_px/h_px 期望的屏幕像素尺寸
+        * @param scale 该样式的缩放因子(<=0 视为 1)
+        * @param base_char_height 字体基准字高(FontSource::GetCharHeight，未缩放)
+        */
+        void SolidQuadMetrics(CharMetricsInfo &out,uint32_t w_px,uint32_t h_px,float scale,int base_char_height);
     }//namespace layout
 }//namespace hgl::graph

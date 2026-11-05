@@ -17,6 +17,10 @@ namespace hgl::graph::layout
 
     using CharDrawAttrIt=IndexedList<CharDrawAttr>::Iterator;
 
+    // 纯色 quad 在 char_info_table 的去重变体号。真实字形只用 variant 0/1，
+    // 此处用 0xFFFF，配合把 (w,h) 编码进 unicode 位做 key，与字形 key 空间天然不冲突。
+    constexpr uint16_t TEXT_SOLID_QUAD_VARIANT = 0xFFFF;
+
     class TextLayout
     {
     protected:
@@ -47,6 +51,13 @@ namespace hgl::graph::layout
         std::vector<layout::CharStyle>       char_styles;            ///< style table (for SSBO binding 15)
 
         uint16_t GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv,uint16_t variant = 0);
+
+        /**
+        * 发射一个纯色 quad 实例(画线/画块)。
+        * 需要 TileFont 已生成纯色 tile；图集缺失时静默跳过。
+        * 尺寸经 scale 补偿，使最终屏幕像素 = 期望值；顶部落在 (pen_x,pen_y)。
+        */
+        void EmitSolidQuad(int32_t pen_x,int32_t pen_y,uint32_t w_px,uint32_t h_px,uint16_t style_id,float scale);
 
     protected:
 
@@ -132,6 +143,31 @@ namespace hgl::graph::layout
 
         /// 最近一次排版的文本长度(供光标下标上限使用)
         int GetHitTextLength() const { return hit_text_length; }
+
+    public: // ── 纯色 TILE 实例(画线/画块/光标/分隔线) ─────────────────────
+        //
+        // 这些接口直接向 gpu_char_instances 追加纯色 quad 实例，复用现有 CharStyle
+        // (颜色跟随所选 style_id 的文本主色)。图集尚未生成纯色 tile 时静默跳过。
+        // 建议在 Begin..End 之间或 End 之后调用(管线按实例表实际长度上传)。
+
+        /// 图集是否具备纯色 tile(决定画线/画块能否生效)
+        bool HasSolidTile()const;
+
+        /**
+        * 追加一个纯色矩形 quad。
+        * @param x,y 矩形左上角(与实例 pen 同一坐标空间，屏幕像素)
+        * @param w_px,h_px 期望屏幕像素尺寸
+        * @param style_id 复用的 CharStyle(决定颜色)
+        * @param scale 该 style 的缩放因子(默认 1；用于 scale 补偿，使屏幕尺寸精确)
+        * @return 实际发射的实例数(0 或 1)
+        */
+        uint32_t AddSolidQuad(int32_t x,int32_t y,uint32_t w_px,uint32_t h_px,uint16_t style_id,float scale=1.0f);
+
+        /// 画一条水平线(高度=thickness，位于 y 顶边)
+        uint32_t DrawHorizontalLine(int32_t x,int32_t y,uint32_t w_px,uint32_t thickness,uint16_t style_id,float scale=1.0f);
+
+        /// 画一条垂直线(宽度=thickness，位于 x 左边)
+        uint32_t DrawVerticalLine(int32_t x,int32_t y,uint32_t thickness,uint32_t h_px,uint16_t style_id,float scale=1.0f);
 
     private:
         int layout_width_ = 0;   ///< 排版后文本宽度（像素）

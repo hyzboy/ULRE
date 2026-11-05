@@ -21,11 +21,25 @@ namespace hgl::graph
 
         U32CharSet not_bitmap_chars;
 
+        TileObject  *solid_tile=nullptr;      ///<纯色 Tile(画线/画块用)，常驻不回收
+        TileUVFloat  solid_uv;                ///<纯色 Tile 的采样 UV(退化为 tile 中心，杜绝边缘渗色)
+
     public:
 
         FontSource *GetFontSource   (){return source;}
         TileData *  GetTileData     (){return tile_data;}
         Texture2D * GetTexture      (){return tile_data->GetTexture();}
+
+        /// 图集是否已生成纯色 Tile
+        bool HasSolidTile()const{return solid_tile!=nullptr;}
+
+        /**
+        * 取得纯色 Tile 的采样 UV。
+        * 四个角退化为 tile 中心同一点：双线性/三线性采样恒读到内部 0xFF，
+        * 不会采到相邻字形 tile 的透明 spread 边缘，故无需 shader 改动即可画纯色块。
+        * @return 纯色 tile 存在时返回其 UV 矩形指针，否则 nullptr
+        */
+        const TileUVFloat *GetSolidTileUV(){return solid_tile?&solid_uv:nullptr;}
 
     public:
 

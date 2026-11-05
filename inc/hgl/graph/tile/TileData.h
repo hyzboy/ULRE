@@ -61,6 +61,15 @@ namespace hgl::graph
         TileObject *Acquire();                                                                                      ///<请求一个Tile
         bool        Change(TileObject *,const void *,const uint,const int=-1,const int=-1);                         ///<更改一个Tile的数据内容
 
+        /**
+        * 提交一个纯色 Tile(整块填满不透明像素，用作画线/画块等纯色 TILE)
+        *
+        * 图集采用 SDF "内部为正"约定：texel=0xFF 表示深处内部，采样恒得满不透明。
+        * 需在 BeginCommit / EndCommit 之间调用。
+        * @return 新建的 TileObject；图集无空位或未处于提交窗口时返回 nullptr
+        */
+        TileObject *CommitSolid();                                                                                  ///<提交一个纯色Tile
+
         int  EndCommit();
 
         bool Delete(TileObject *);                                                                                  ///<删除一个Tile

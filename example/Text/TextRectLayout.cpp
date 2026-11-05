@@ -239,6 +239,38 @@ protected:
                 GLogError("[TextRect] measure failed");
         }
 
+        // ── 第 7 区：下划线 / 删除线（纯色 TILE 装饰线，颜色跟随文本主色）──
+        const int deco_x=col4;
+        const int deco_y=bottom;
+
+        CreateText(U16String(OS_TEXT("7) 下划线 / 删除线 (纯色 TILE)")),MakeRect(deco_x,deco_y,BOX_W,40),CYAN);
+
+        {
+            auto *u=CreateText(U16String(OS_TEXT("Underline：默认粗细与位置")),MakeRect(deco_x,deco_y+50,BOX_W,40),YELLOW);
+            if(u) u->SetUnderline(true);
+
+            auto *s=CreateText(U16String(OS_TEXT("Strikethrough：默认")),MakeRect(deco_x,deco_y+100,BOX_W,40),GREEN);
+            if(s) s->SetStrikethrough(true);
+
+            auto *both=CreateText(U16String(OS_TEXT("下划线 + 删除线 同时")),MakeRect(deco_x,deco_y+150,BOX_W,40),WHITE);
+            if(both) { both->SetUnderline(true); both->SetStrikethrough(true); }
+
+            auto *finer=CreateText(U16String(OS_TEXT("加粗上移下划线 / 细删除线")),MakeRect(deco_x,deco_y+200,BOX_W,40),YELLOW);
+            if(finer)
+            {
+                finer->SetUnderline(true);
+                finer->SetUnderlineStyle(0.12f,0.80f);        // 更粗、略上移
+                finer->SetStrikethrough(true);
+                finer->SetStrikethroughStyle(0.02f,0.50f);    // 更细、正中
+            }
+
+            auto *multi=CreateText(U16String(OS_TEXT("多行文本逐行覆盖可见宽度。\n换行后每一行各自成一条线。")),
+                                   MakeRect(deco_x,deco_y+260,BOX_W,120),WHITE,
+                                   layout::TextWrapMode::Char,
+                                   layout::TextOverflowMode::Clip);
+            if(multi) multi->SetUnderline(true);
+        }
+
         return(true);
     }
 

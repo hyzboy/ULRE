@@ -35,10 +35,34 @@ namespace hgl::graph
         std::vector<u32char> temp_chars(chars_sets.begin(), chars_sets.end());
         to_res.Stats(stats, temp_chars.data(), temp_chars.size());
 
-        if(stats.not_found>stats.can_free+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
+        const uint solid_reserve = solid_tile ? 0u : 1u;      //纯色 tile 常驻，需预留一格
+
+        if(stats.not_found + solid_reserve > stats.can_free + tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
             return(false);
 
         uv_map.Clear();
+
+        // 纯色 tile 只需在首次注册时生成一次，此后常驻图集。
+        // 单独开一个提交窗口(与下方字形提交串行、不嵌套)，即便本批次全部字符已缓存(not_found==0)也能补齐。
+        if(!solid_tile)
+        {
+            tile_data->BeginCommit();
+            TileObject *st = tile_data->CommitSolid();
+            tile_data->EndCommit();
+
+            if(st)
+            {
+                solid_tile = st;
+
+                // 采样 UV 退化为 tile 中心单点：双线性/三线性恒读内部 0xFF，杜绝相邻字形边缘渗色
+                const float l = st->uv_float.GetLeft();
+                const float t = st->uv_float.GetTop();
+                const float cx = l + st->uv_float.GetWidth() * 0.5f;
+                const float cy = t + st->uv_float.GetHeight() * 0.5f;
+
+                solid_uv.Set(cx, cy, 0, 0);
+            }
+        }
 
         RectScope2f null_uv_float;
         TileObject *to=nullptr;

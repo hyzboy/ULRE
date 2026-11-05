@@ -616,6 +616,104 @@ namespace hgl::graph::layout
         return id;
     }
 
+    // ── 纯色 quad 度量(scale 补偿，纯函数) ─────────────────────────
+    void SolidQuadMetrics(CharMetricsInfo &out,uint32_t w_px,uint32_t h_px,float scale,int base_char_height)
+    {
+        if(!(scale>0.01f))    // 防 0/负/NaN
+            scale=1.0f;
+
+        // shader: mw = uint(float(mw_cpu)*scale)。期望 mw*scale = w_px ⇒ mw_cpu = round(w_px/scale)
+        uint32_t mw=(uint32_t)((float)w_px/scale+0.5f);
+        uint32_t mh=(uint32_t)((float)h_px/scale+0.5f);
+        if(mw<1)     mw=1;
+        if(mh<1)     mh=1;
+        if(mw>65535u)mw=65535u;
+        if(mh>65535u)mh=65535u;
+
+        out.x=0;                            //左边对齐 pen_x(与 scale 无关)
+        out.y=base_char_height;             //顶部落在 pen_y：my_s = base*scale = char_height*scale 抵消
+        out.w=(int)mw;
+        out.h=(int)mh;
+        out.adv_x=0;
+        out.adv_y=0;
+    }
+
+    // ── 装饰线矩形解析(纯函数) ─────────────────────────────────────
+    bool ResolveTextDecoration(TEXT_COORD_VEC &out_pos,uint32_t &out_w,uint32_t &out_h,
+                               int32_t vis_left,int32_t vis_right,int32_t line_top,
+                               int32_t char_height_scaled,
+                               float thickness_ratio,float position_ratio,
+                               float default_thickness_ratio,float default_position_ratio)
+    {
+        const int32_t len=vis_right-vis_left;
+
+        if(len<=0||char_height_scaled<=0)
+            return(false);
+
+        const float tr=(thickness_ratio>0.0f)?thickness_ratio:default_thickness_ratio;
+        const float pr=(position_ratio  >0.0f)?position_ratio  :default_position_ratio;
+
+        int32_t th=(int32_t)((float)char_height_scaled*tr+0.5f);
+        if(th<1) th=1;
+
+        const int32_t top=line_top+(int32_t)((float)char_height_scaled*pr+0.5f);
+
+        out_pos.x=vis_left;
+        out_pos.y=top;
+        out_w=(uint32_t)len;
+        out_h=(uint32_t)th;
+        return(true);
+    }
+
+    // ── 纯色 quad 发射 ─────────────────────────────────────────────
+    bool TextLayout::HasSolidTile()const
+    {
+        return tile_font ? tile_font->HasSolidTile() : false;
+    }
+
+    void TextLayout::EmitSolidQuad(int32_t pen_x,int32_t pen_y,uint32_t w_px,uint32_t h_px,uint16_t style_id,float scale)
+    {
+        if(!tile_font||!font_source)
+            return;
+
+        if(w_px==0||h_px==0)
+            return;
+
+        const TileUVFloat *uv=tile_font->GetSolidTileUV();
+
+        if(!uv)                       //图集未生成纯色 tile，静默跳过(装饰线不可见但不影响文本)
+            return;
+
+        CharMetricsInfo m;
+        SolidQuadMetrics(m,w_px,h_px,scale,font_source->GetCharHeight());
+
+        // 把 (w,h) 编码进 unicode 位做去重 key；纯色专用 variant 与真实字形 key 空间互斥
+        const u32char size_code=static_cast<u32char>((static_cast<uint32_t>(m.w)<<16)|static_cast<uint32_t>(m.h));
+
+        const uint16_t cid=GetOrRegisterCharId(size_code,m,*uv,TEXT_SOLID_QUAD_VARIANT);
+
+        gpu_char_instances.push_back({static_cast<int16_t>(pen_x),static_cast<int16_t>(pen_y),cid,style_id,0});
+    }
+
+    uint32_t TextLayout::AddSolidQuad(int32_t x,int32_t y,uint32_t w_px,uint32_t h_px,uint16_t style_id,float scale)
+    {
+        const size_t before=gpu_char_instances.size();
+
+        EmitSolidQuad(x,y,w_px,h_px,style_id,scale);
+
+        return (uint32_t)(gpu_char_instances.size()-before);
+    }
+
+    uint32_t TextLayout::DrawHorizontalLine(int32_t x,int32_t y,uint32_t w_px,uint32_t thickness,uint16_t style_id,float scale)
+    {
+        return AddSolidQuad(x,y,w_px,thickness?thickness:1,style_id,scale);
+    }
+
+    uint32_t TextLayout::DrawVerticalLine(int32_t x,int32_t y,uint32_t thickness,uint32_t h_px,uint16_t style_id,float scale)
+    {
+        return AddSolidQuad(x,y,thickness?thickness:1,h_px,style_id,scale);
+    }
+
     // ── 禁断（行首/行尾禁用符号）决策 ─────────────────────────────
     // sl_l2r 与 sl_v 共用：前瞻下一可见字符，判定换行/换列时是否需要
     // 行尾回退（end_disable 符号不能停在行尾）或行首禁断（begin_disable
@@ -762,6 +860,11 @@ namespace hgl::graph::layout
             const int32_t pen_y=st.start_position.y+voff+li*ll.line_step;
             int32_t pen_x=st.start_position.x+hoff;
 
+            // 装饰线(下划线/删除线)需要覆盖本行"可见文本"的横向范围
+            int32_t vis_left =pen_x;
+            int32_t vis_right=pen_x;
+            bool    have_vis =false;
+
             for(int32_t ci=line.begin;ci<line.end;ci++)
             {
                 const LayoutCell &cell=ll.cells[ci];
@@ -777,6 +880,9 @@ namespace hgl::graph::layout
 
                 if(cell.visible)
                 {
+                    if(!have_vis) { vis_left=pen_x; have_vis=true; }
+                    vis_right=pen_x+cell.advance;
+
                     const uint16_t cid=GetOrRegisterCharId(cell.cla->attr->ch,cell.cla->metrics,cell.uv);
 
                     gpu_char_instances.push_back({static_cast<int16_t>(pen_x),static_cast<int16_t>(pen_y),cid,st.style_id,0});
@@ -798,6 +904,35 @@ namespace hgl::graph::layout
                 gpu_char_instances.push_back({static_cast<int16_t>(pen_x),static_cast<int16_t>(pen_y),cid,st.style_id,0});
 
                 ++emitted;
+
+                if(!have_vis) { vis_left=pen_x; have_vis=true; }
+                vis_right=pen_x+ell_adv;
+            }
+
+            // ── 装饰线：以纯色 tile 实例绘制，覆盖本行可见文本宽度，颜色复用文本 style ──
+            if(have_vis)
+            {
+                if(st.para_style.underline)
+                {
+                    TEXT_COORD_VEC dpos; uint32_t dw,dh;
+
+                    if(ResolveTextDecoration(dpos,dw,dh,vis_left,vis_right,pen_y,ll.char_height,
+                                             st.para_style.underline_thickness,
+                                             st.para_style.underline_position,
+                                             0.06f,0.92f))
+                        EmitSolidQuad(dpos.x,dpos.y,dw,dh,st.style_id,st.scale);
+                }
+
+                if(st.para_style.strikethrough)
+                {
+                    TEXT_COORD_VEC dpos; uint32_t dw,dh;
+
+                    if(ResolveTextDecoration(dpos,dw,dh,vis_left,vis_right,pen_y,ll.char_height,
+                                             st.para_style.strikethrough_thickness,
+                                             st.para_style.strikethrough_position,
+                                             0.06f,0.50f))
+                        EmitSolidQuad(dpos.x,dpos.y,dw,dh,st.style_id,st.scale);
+                }
             }
         }
 

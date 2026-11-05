@@ -186,6 +186,51 @@ namespace hgl::ecs
         }
 
         graph::layout::TextVerticalAlign GetVerticalAlign() const { return paragraph_style.v_align; }
+
+    public: // ── 装饰线(纯色 TILE：下划线/删除线) ────────────────────────
+        //
+        // 由排版引擎把图集纯色 tile 作为"虚拟字符"实例发射，走同一套 mesh shader，
+        // 颜色复用本组件的 CharStyle(即跟随文本主色)。
+
+        /// 启用/关闭下划线
+        void SetUnderline(bool on)
+        {
+            paragraph_style.underline = on;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        bool GetUnderline() const { return paragraph_style.underline; }
+
+        /// 启用/关闭删除线
+        void SetStrikethrough(bool on)
+        {
+            paragraph_style.strikethrough = on;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        bool GetStrikethrough() const { return paragraph_style.strikethrough; }
+
+        /// 下划线粗细/位置(相对字高的比例；<=0 表示用引擎默认值)
+        void SetUnderlineStyle(float thickness_ratio, float position_ratio)
+        {
+            paragraph_style.underline_thickness = thickness_ratio;
+            paragraph_style.underline_position  = position_ratio;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        float GetUnderlineThickness() const { return paragraph_style.underline_thickness; }
+        float GetUnderlinePosition()  const { return paragraph_style.underline_position; }
+
+        /// 删除线粗细/位置(相对字高的比例；<=0 表示用引擎默认值)
+        void SetStrikethroughStyle(float thickness_ratio, float position_ratio)
+        {
+            paragraph_style.strikethrough_thickness = thickness_ratio;
+            paragraph_style.strikethrough_position  = position_ratio;
+            TouchChange(static_cast<uint32_t>(TextChange::Layout));
+        }
+
+        float GetStrikethroughThickness() const { return paragraph_style.strikethrough_thickness; }
+        float GetStrikethroughPosition()    const { return paragraph_style.strikethrough_position; }
     };//class TextComponent
 
     /// T2-c：登记类型号（**CPU-only**：无 GPU 行、不写 `EntityGPU.row[]`）。

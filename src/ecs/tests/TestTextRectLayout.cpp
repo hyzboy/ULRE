@@ -365,6 +365,120 @@ int main(int argc,char **argv)
         GLogInfo(u8"Test 7 Passed: Wrap=None 行为与 CharStyle 默认初始化及样式解析均正常");
     }
 
+    // ── 8. 纯色 TILE 度量：scale 补偿 / offset_y=基线 ───────────────
+    {
+        // scale=2 时：屏幕想要 100x6 px ⇒ CPU 度量应为 50x3，绘制时 *2 还原
+        CharMetricsInfo m;
+
+        layout::SolidQuadMetrics(m,100,6,2.0f,char_height);
+
+        if(m.w!=50||m.h!=3)
+        {
+            GLogError(u8"Test 8 Failed: scale 补偿度量错误 w=%d h=%d (期望 50/3)",m.w,m.h);
+            return 8;
+        }
+
+        // offset_x=0；offset_y=基字高(不随 scale 变)，使 tile 顶边对齐行起点
+        if(m.x!=0||m.y!=char_height)
+        {
+            GLogError(u8"Test 8 Failed: 偏移错误 x=%d y=%d (期望 0/%d)",m.x,m.y,char_height);
+            return 8;
+        }
+
+        // 极细线：屏幕 1px、scale=2 → round(0.5) 至少保留 1
+        CharMetricsInfo thin;
+
+        layout::SolidQuadMetrics(thin,1,1,2.0f,char_height);
+
+        if(thin.w<1||thin.h<1)
+        {
+            GLogError(u8"Test 8 Failed: 极细线被清零 w=%d h=%d",thin.w,thin.h);
+            return 8;
+        }
+    }
+
+    // ── 9. 装饰线几何求解：默认比例 / 显式比例 / 空宽度 ──────────────
+    {
+        // 9a: 空行宽不画
+        math::Vector2i dpos; uint32_t dw,dh;
+
+        if(layout::ResolveTextDecoration(dpos,dw,dh,100,100,50,char_height,0,0,0.06f,0.92f))
+        {
+            GLogError(u8"Test 9a Failed: 零宽度不应生成装饰线");
+            return 9;
+        }
+
+        // 9b: 默认(0)→用传入默认比例: th=round(0.06*32)=2, pos=round(0.92*32)=29
+        if(!layout::ResolveTextDecoration(dpos,dw,dh,10,210,100,char_height,0,0,0.06f,0.92f))
+        {
+            GLogError(u8"Test 9b Failed: 默认装饰线求解失败");
+            return 9;
+        }
+
+        if(dw!=200||dh!=2||dpos.x!=10||dpos.y!=100+29)
+        {
+            GLogError(u8"Test 9b Failed: 默认几何 x=%d y=%d w=%d h=%d (期望 10/129/200/2)",
+                      dpos.x,dpos.y,dw,dh);
+            return 9;
+        }
+
+        // 9c: 显式比例覆盖默认: th=0.5*32=16, pos=0.5*32=16
+        if(!layout::ResolveTextDecoration(dpos,dw,dh,0,100,0,char_height,0.5f,0.5f,0.06f,0.92f))
+        {
+            GLogError(u8"Test 9c Failed: 显式装饰线求解失败");
+            return 9;
+        }
+
+        if(dw!=100||dh!=16||dpos.y!=16)
+        {
+            GLogError(u8"Test 9c Failed: 显式比例几何 y=%d h=%d (期望 16/16)",dpos.y,dh);
+            return 9;
+        }
+
+        GLogInfo(u8"Test 8-9 Passed: 纯色 TILE 度量与装饰线几何求解正常");
+    }
+
+    // ── 10. TextComponent 装饰线接口往返 ────────────────────────────
+    {
+        hgl::ecs::TextComponent comp;
+
+        comp.SetUnderline(true);
+        comp.SetStrikethrough(true);
+        comp.SetUnderlineStyle(0.08f,0.90f);
+        comp.SetStrikethroughStyle(0.06f,0.48f);
+
+        const auto &ps=comp.GetParagraphStyle();
+
+        if(!ps.underline||!ps.strikethrough)
+        {
+            GLogError(u8"Test 10 Failed: 装饰线开关未写入段落样式");
+            return 10;
+        }
+
+        if(ps.underline_thickness!=0.08f||ps.underline_position!=0.90f
+         ||ps.strikethrough_thickness!=0.06f||ps.strikethrough_position!=0.48f)
+        {
+            GLogError(u8"Test 10 Failed: 装饰线比例往返不一致");
+            return 10;
+        }
+
+        if(comp.GetChangeMask()==0)
+        {
+            GLogError(u8"Test 10 Failed: 设置装饰线后未置变更位");
+            return 10;
+        }
+
+        comp.SetUnderline(false);
+
+        if(comp.GetParagraphStyle().underline)
+        {
+            GLogError(u8"Test 10 Failed: 关闭下划线无效");
+            return 10;
+        }
+
+        GLogInfo(u8"Test 10 Passed: TextComponent 装饰线接口往返正常");
+    }
+
     GLogInfo(u8"=== All TextRectLayout tests passed successfully! ===");
     return 0;
 }

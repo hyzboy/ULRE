@@ -160,6 +160,48 @@ namespace hgl::graph
     }
 
     /**
+    * 提交一个纯色 Tile：整个 tile 区域填 0xFF(图集 SDF "内部为正"⇒ 恒不透明)。
+    * 与 CommitTile 同构，但源数据用 0xFF 直接填充暂存区，省去调用方缓冲区。
+    * 必须在 BeginCommit / EndCommit 之间调用。
+    */
+    TileObject *TileData::CommitSolid()
+    {
+        if(!commit_ptr)       return(nullptr);
+        if(tile_bytes==0)     return(nullptr);
+
+        if(commit_list.GetCount()>=(int)tile_max_count)     //理论上不可能
+            return(nullptr);
+
+        TileObject *to=to_pool.GetIdle();
+
+        if(!to)
+            return(nullptr);
+
+        to->uv_pixel.SetSize(tile_width,tile_height);
+
+        UVFloatFromPixel(   to->uv_float,
+                            to->uv_pixel,
+                            tile_texture->GetWidth(),
+                            tile_texture->GetHeight());
+
+        memset(commit_ptr,255,tile_bytes);      //整块填为不透明
+        commit_ptr+=tile_bytes;
+
+        Image2DRegion ir;
+
+        ir.left   =to->uv_pixel.GetLeft();
+        ir.top    =to->uv_pixel.GetTop();
+        ir.width  =to->uv_pixel.GetWidth();
+        ir.height =to->uv_pixel.GetHeight();
+        ir.bytes  =tile_bytes;
+
+        commit_list.Add(ir);
+
+        tile_count++;
+        return(to);
+    }
+
+    /**
     * 删除一个Tile
     * @param obj 要删除的Tile的对象指针
     * @return 删除是否成功
