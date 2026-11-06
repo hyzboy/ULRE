@@ -194,6 +194,40 @@ namespace hgl::ecs
         }
     }
 
+    void SceneStreamingSystem::PruneStreams()
+    {
+        graph::SceneAssetRegistry *registry = graph::GetDefaultSceneAssetRegistry();
+
+        if (!registry)
+        {
+            for (AssetStream *stream : streams)
+                delete stream;
+
+            streams.Clear();
+            return;
+        }
+
+        const ValueArray<graph::SceneAsset *> &assets = registry->GetAssets();
+
+        for (int i = streams.GetCount() - 1; i >= 0; --i)
+        {
+            AssetStream *stream = streams[i];
+
+            if (!stream)
+            {
+                streams.DeleteSwap(i);
+                continue;
+            }
+
+            if (assets.Contains(stream->asset))
+                continue;
+
+            stream->request.Cancel();
+            delete stream;
+            streams.DeleteSwap(i);
+        }
+    }
+
     void SceneStreamingSystem::AcquireOneFrame()
     {
         graph::SceneAssetRegistry *registry = graph::GetDefaultSceneAssetRegistry();
@@ -337,16 +371,16 @@ namespace hgl::ecs
         if (!asset)
             return true;
 
-        switch (asset->GetState())
-        {
-            case graph::SceneAssetState::Failed:    return true;
-            case graph::SceneAssetState::Ready:     return true;
-            case graph::SceneAssetState::Unloaded:  return false;
-            default: break;
-        }
+        graph::SceneAssetState state = asset->GetState();
+
+        if (state == graph::SceneAssetState::Failed)
+            return true;
+
+        if (state == graph::SceneAssetState::Unloaded)
+            return false;                   ///< 还没轮到它
 
         // ── 阶段 B-1：读盘完成 ⇒ 用同一份字节建计划单（不再读第二遍盘） ──────
-        if (asset->GetState() == graph::SceneAssetState::Loading)
+        if (state == graph::SceneAssetState::Loading)
         {
             if (stream->request.HasFailed())
             {
@@ -377,14 +411,19 @@ namespace hgl::ecs
 
             stream->plan_built = true;
 
-            // 没有任何外部子项时 `SetPlan` 会在内部直接提交。
-            if (asset->SetPlan(plan, stream->request.GetPackPath()))
-                return true;
+            // 计划单没有任何外部子项时 `SetPlan` 会在内部直接提交 ——
+            // 但解析产物还没生成，因此这里**不能**提前返回，必须继续往下走。
+            asset->SetPlan(plan, stream->request.GetPackPath());
+
+            state = asset->GetState();
         }
 
         // ── 阶段 B-2：解析产物（图元 + 节点树） ───────────────────────────────
         if (!stream->content_built)
         {
+            if (state == graph::SceneAssetState::Failed)
+                return true;
+
             graph::SceneAssetRegistry *registry = asset->GetRegistry();
             graph::SceneAssetContent  &content  = asset->GetMutableContent();
 
@@ -410,6 +449,10 @@ namespace hgl::ecs
 
             stream->content_built = true;
 
+            // 计划单已判为空依赖（`SetPlan` 当时就提交了）：产物补完即完成。
+            if (asset->GetState() == graph::SceneAssetState::Ready)
+                return true;
+
             // 子项口径换成「图元数」：几何才是场景就绪的真门禁（见头文件说明）。
             int total = 0;
             int ready = 0;
@@ -419,7 +462,11 @@ namespace hgl::ecs
             asset->SetChildTotal(total);
 
             if (total == 0)
-                return asset->CommitScene();
+            {
+                // 没有任何图元需要等几何：没有可轮询的对象，直接提交。
+                asset->CommitScene();
+                return true;
+            }
 
             if (ready > 0 && asset->SettleAllChildren(ready, 0))
                 return true;
@@ -448,9 +495,10 @@ namespace hgl::ecs
             return;
 
         load_manager->Pump();       ///< ① 派发读盘完成回调（字节落进各句柄的缓冲）
-        AcquireOneFrame();          ///< ② 提交本帧该发起的读盘
-        Advance();                  ///< ③ 推进状态机
-        load_manager->Collect();    ///< ④ 回收已归零的文件引用
+        PruneStreams();             ///< ② 丢掉注册表已清掉的句柄（防悬垂）
+        AcquireOneFrame();          ///< ③ 提交本帧该发起的读盘
+        Advance();                  ///< ④ 推进状态机
+        load_manager->Collect();    ///< ⑤ 回收已归零的文件引用
     }
 
     int SceneStreamingSystem::GetReadySceneCount()const

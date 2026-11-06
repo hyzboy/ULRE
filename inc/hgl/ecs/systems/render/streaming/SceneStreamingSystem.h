@@ -95,7 +95,6 @@ namespace hgl::ecs
             graph::SceneAsset *asset = nullptr;
 
             graph::SceneStreamingRequest request;   ///<阶段 A：读盘 + 持字节
-            graph::AssetDepKind          last_kind = graph::AssetDepKind::Geometry;
 
             bool plan_built    = false;             ///<计划单已生成并登记到句柄
             bool content_built = false;             ///<解析产物已生成
@@ -113,6 +112,15 @@ namespace hgl::ecs
         AssetStream *FindStream(const graph::SceneAsset *asset)const;
         AssetStream *FindStreamByRequest(uint64 request_id)const;
         AssetStream *EnsureStream(graph::SceneAsset *asset);
+
+        /**
+         * @brief 丢掉注册表里已经不存在的句柄。
+         *
+         * `SceneAssetRegistry::Clear()` 会直接析构句柄，而本系统只借指针。
+         * 不清理的话下一帧就会拿悬垂指针去查状态 —— 这种崩溃离出事点很远，
+         * 极难定位，所以每帧开头先对一遍表。
+         */
+        void PruneStreams();
 
         /// 推进单个句柄；返回 false 表示本帧不再需要关注它
         bool AdvanceOne(AssetStream *stream);

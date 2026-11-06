@@ -266,6 +266,9 @@ add_ecs_test(TestSceneLoadPlan tests/TestSceneLoadPlan.cpp)
 # 阶段四判据：异步场景句柄的状态机与句柄表去重（不碰设备）
 add_ecs_test(TestSceneAsset tests/TestSceneAsset.cpp)
 
+# 阶段四判据：流送系统在无设备时的守卫与外部设定（不碰设备）
+add_ecs_test(TestSceneStreamingSystem tests/TestSceneStreamingSystem.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -544,4 +547,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestSceneAsset
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
+
+    add_test(
+        NAME TestSceneStreamingSystem
+        COMMAND TestSceneStreamingSystem)
+    set_tests_properties(
+        TestSceneStreamingSystem
+        PROPERTIES LABELS "ecs;asset;streaming" TIMEOUT 60)
 endif()
