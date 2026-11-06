@@ -1,0 +1,154 @@
+#pragma once
+
+#include<hgl/ecs/core/System.h>
+#include<hgl/graph/asset/SceneAsset.h>
+#include<hgl/graph/mesh/SceneStreaming.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
+#include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/type/String.h>
+#include<hgl/type/ValueArray.h>
+
+namespace hgl
+{
+    class LoadedFileManager;
+
+    namespace graph
+    {
+        class GeometryManager;
+    }
+}
+
+namespace hgl::ecs
+{
+    /**
+     * 场景流送系统 —— 把「一个 URI」变成「可以立刻实例化进 ECS 的图元 + 节点树」。
+     *
+     * ## 为什么需要它
+     *
+     * 场景包是**一个**文件，但里面装着几何、材质、配方、纹理的引用。把它拆成
+     * 「谁先谁后」的活由阶段三的 `BuildSceneLoadPlan` 完成，把「谁在等谁」的记账
+     * 由 `SceneAsset` 句柄完成；本系统只负责**推动**：读盘、解析、逐帧结算，
+     * 全部发生在主线程，任何一帧都不阻塞。
+     *
+     * ## 每帧三段（相位固定为 `ExecutionPhase::RenderPreBeginFrame`）
+     *
+     * ```
+     * ① LoadedFileManager::Pump()   派发上一帧完成的读盘（字节落到句柄自己的缓冲）
+     * ② AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的读盘
+     * ③ Advance()                   推进每个句柄：建计划 ⇒ 解析产物 ⇒ 逐帧结算 ⇒ 提交
+     * ④ LoadedFileManager::Collect() 回收已归零的文件引用
+     * ```
+     *
+     * ## 「子项」的口径
+     *
+     * 场景句柄等的是**图元**，不是计划单里的每一份文件：
+     *   · 材质 / 配方 / 材质数据在解析期（`Build`）里同步完成，无需等待；
+     *   · 纹理由 `TextureStreamingSystem` 自行按需流送，且渲染侧每帧现算
+     *     `MaterialData::HasPendingRequiredTexture()` —— 缺一张纹理应当降级显示，
+     *     不该让整个场景打不开，因此**不阻塞场景就绪**；
+     *   · 几何才是真正的门禁：图元几何没好就没法画。
+     *
+     * 因此构建产物出来之后，句柄的子项口径会被换成「图元数」（`SetChildTotal`），
+     * 每帧统计 `PrimitiveAsset::IsGeometryReady()` 的真实结果再批量结算。
+     * 计划单里的纹理/材质项只用于 `Stats` 诊断。
+     *
+     * ## 外部设定
+     *
+     * `GraphicsContext` 不持有几何顶点格式与材质配方 —— 那是调用方（示例/工具）
+     * 自己的约定。因此调用方必须在请求场景之前 `SetBuildSettings(...)`；
+     * 未设定时句柄直接失败并给出原因，而不是静默画出一个没有材质的场景。
+     */
+    class SceneStreamingSystem final : public System
+    {
+        class StreamHandler;
+
+    public:
+
+        /// 解析场景包所需的外部设定。
+        struct BuildSettings
+        {
+            graph::GeometryVertexFormat geometry_vertex_format;
+
+            /// 缺少配方时的兜底材质（可为空 ⇒ 走引擎默认）
+            const graph::mtl::MaterialRecipe *default_recipe = nullptr;
+
+            /// 场景内材质名 → 配方的查表（可为空 ⇒ 全部走兜底）
+            const graph::mtl::MaterialRecipe *const *recipe_table = nullptr;
+            uint32_t recipe_table_count = 0;
+
+            /// 几何文件的基准目录；空则取场景包所在目录
+            OSString base_dir;
+
+            bool valid = false;
+        };
+
+    private:
+
+        StreamHandler *handler          = nullptr;  ///<读盘回调接收者（活到最后一个回调）
+        LoadedFileManager *load_manager = nullptr;
+
+        BuildSettings settings;
+
+        /// 每个句柄一份在途状态。句柄本身归 `SceneAssetRegistry`，这里只借指针。
+        struct AssetStream
+        {
+            graph::SceneAsset *asset = nullptr;
+
+            graph::SceneStreamingRequest request;   ///<阶段 A：读盘 + 持字节
+            graph::AssetDepKind          last_kind = graph::AssetDepKind::Geometry;
+
+            bool plan_built    = false;             ///<计划单已生成并登记到句柄
+            bool content_built = false;             ///<解析产物已生成
+            bool settled       = false;             ///<子项已全部结算（或无需结算）
+        };
+
+        ValueArray<AssetStream *> streams;          ///<与 registry 句柄一一对应（拥有）
+
+    private:
+
+        bool EnsureManagers();
+        void AcquireOneFrame();
+        void Advance();
+
+        AssetStream *FindStream(const graph::SceneAsset *asset)const;
+        AssetStream *FindStreamByRequest(uint64 request_id)const;
+        AssetStream *EnsureStream(graph::SceneAsset *asset);
+
+        /// 推进单个句柄；返回 false 表示本帧不再需要关注它
+        bool AdvanceOne(AssetStream *stream);
+
+        /// 解析产物里有多少图元、其中几何已就绪多少
+        void CountPrimitives(const graph::SceneAssetContent &content, int &total, int &ready)const;
+
+    public:
+
+        SceneStreamingSystem();
+        ~SceneStreamingSystem() override;
+
+        void Update(float delta_time) override;
+        void Shutdown() override;
+
+    public:     // 外部设定
+
+        /**
+         * @brief 设定解析场景包所需的几何顶点格式与材质配方。
+         *
+         * 必须在请求场景之前调用；同一进程内多份约定共存时，以最后一次为准。
+         */
+        void SetBuildSettings(const graph::GeometryVertexFormat &gvf,
+                              const graph::mtl::MaterialRecipe *default_recipe,
+                              const graph::mtl::MaterialRecipe *const *recipe_table,
+                              uint32_t recipe_table_count,
+                              const OSString &base_dir = OSString());
+
+        bool HasBuildSettings()const { return settings.valid; }
+
+    public:     // 观察
+
+        /// 在途 / 待办的句柄数
+        int GetStreamCount()const { return streams.GetCount(); }
+
+        /// 本系统登记过的子项落定总数（诊断用）
+        int GetReadySceneCount()const;
+    };//class SceneStreamingSystem
+}//namespace hgl::ecs
