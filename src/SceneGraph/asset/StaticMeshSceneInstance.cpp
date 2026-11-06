@@ -290,24 +290,37 @@ namespace hgl::graph
             return false;
 
         bool attached_any = false;
+        bool all_bound    = true;
 
         for (size_t k = 0; k < primitive_records.size(); ++k)
         {
             const PrimitiveRecord &record = primitive_records[k];
             if (!record.entity.IsValid())
+            {
+                all_bound = false;
                 continue;
+            }
 
             ecs::Entity *entity = world->GetEntity(record.entity);
             if (!entity)
+            {
+                all_bound = false;
                 continue;
+            }
 
-            // 幂等：已绑过材质的图元不再重绑（重启流送时也不会把行号打乱）。
-            if (world->GetMaterialData(entity))
-                continue;
+            // 幂等：已绑过**数据行**的图元不再重绑（重启流送时也不会把行号打乱）。
+            // 注意判据是「有行」而不是「有组件」—— 渲染侧每帧收集会给带几何的实体
+            // 建出空的 `MaterialData`，据此跳过会让材质永远绑不上。
+            if (ecs::MaterialData *existing = world->GetMaterialData(entity))
+                if (existing->HasDataResource())
+                    continue;
 
             const PrimitiveAsset *asset = owned_assets.At(record.asset_index);
             if (!asset)
+            {
+                all_bound = false;
                 continue;
+            }
 
             const uint32_t row = ResolveMaterialRowIndex(
                 *asset, options, static_cast<uint32_t>(k));
@@ -326,7 +339,10 @@ namespace hgl::graph
 
         if (attached_any)
             FLogInfo(u8"AttachMaterials: 已挂材质 %d 个", GetAttachedPrimitiveCount());
-        return attached_any;
+
+        // 「没有新绑」不等于失败：渐进通路里可能每个图元都已经绑过行。
+        // 只有仍有图元没绑上行时才算没做完。
+        return all_bound;
     }
 
     bool StaticMeshSceneInstance::Instantiate(ecs::ECSContext                  *ctx,

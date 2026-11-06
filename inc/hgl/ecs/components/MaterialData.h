@@ -169,6 +169,9 @@ namespace hgl::ecs
         /// `resource.ssbo_id == 0` ⇒ 清空（行保留）；其余情况要求 binding 有效（无效即报错拒绝）。
         bool SetDataResource(const MaterialDataAuthoringResource &resource);
 
+        /// 是否已绑上材质数据行（行号 0 ⇒ 尚未授权或已被清空）。
+        bool HasDataResource() const { return material_row_id != 0; }
+
         /// Write a typed material row through a caller-owned lease and bind it.
         /// The accessor must outlive this component's use of the bound row.
         template<typename T>

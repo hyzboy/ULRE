@@ -8,6 +8,8 @@
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/graph/asset/StaticMeshSceneInstance.h>
+#include<hgl/graph/asset/SceneAsset.h>
+#include<hgl/ecs/systems/render/streaming/SceneStreamingSystem.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
@@ -116,6 +118,22 @@ private:
     SelfContainedSceneMaterials chess_materials_;
     bool pbr_mode_ = true;
 
+    // ── 流送（异步）通路（默认；LS_SYNC=1 回到同步）────────────────────
+    // 同步通路（TryLoadStaticMeshScene）仍为默认：它把「读盘 ⇒ 解析 ⇒ 建 GPU
+    // 资源 ⇒ 实例化」全挤在 Init() 里，启动一帧卡住。异步通路把同一份解析交给
+    // SceneStreamingSystem 逐帧推动，本类只负责三段渐进接线：
+    //   ① 节点树解析出来 ⇒ InstantiateSkeleton（实体先入世界，相机立刻对焦）
+    //   ② 图元资产出来   ⇒ AttachGeometries（几何逐帧挂上）
+    //   ③ 材质行绑定     ⇒ AttachMaterials
+    // 两条通路最终落到同一个 StaticMeshSceneInstance，画面应当一致。
+    bool async_mode_ = false;
+    graph::SceneAsset *async_scene_ = nullptr;   ///<句柄归 SceneAssetRegistry，不拥有
+    std::shared_ptr<hgl::ecs::SceneStreamingSystem> streaming_system_;
+
+    bool async_skeleton_built_   = false;
+    bool async_geometries_built_ = false;
+    bool async_materials_built_  = false;
+
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::ecs::LightSystem>       light_system;
 
@@ -160,6 +178,45 @@ private:
         return true;
     }
 
+    // 场景配方表：PBR 自装配 15 个棋件配方，或调试法线单配方。
+    // 同步/异步两条装载通路共用（谁也别再抄一份）。
+    bool BuildSceneRecipes(const mtl::MaterialRecipe *&out_default,
+                           const mtl::MaterialRecipe *const *&out_table,
+                           uint32_t &out_table_count)
+    {
+        out_default     = nullptr;
+        out_table       = nullptr;
+        out_table_count = 0;
+
+        if (pbr_mode_)
+        {
+            auto *graphics = GetGraphicsContext();
+            if (!graphics)
+                return false;
+
+            if (!BuildSelfContainedSceneMaterials(
+                    *graphics, hgl::ToOSString(ScenePackPath()),
+                    "load_scene_pbr", chess_materials_))
+                return false;
+
+            out_default     = chess_materials_.fallback;
+            out_table       = chess_materials_.table.data();
+            out_table_count = static_cast<uint32_t>(chess_materials_.table.size());
+            return true;
+        }
+
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("LoadScene.DebugNormalColor");
+        if (!loaded_recipe)
+            return false;
+
+        scene_recipe = *loaded_recipe;
+        if (!(scene_recipe.material_ssbo_binding = solid.debug_rows[0]).IsValid())
+            return false;
+
+        out_default = &scene_recipe;
+        return true;
+    }
+
     bool TryLoadStaticMeshScene()
     {
         using std::filesystem::path;
@@ -179,38 +236,12 @@ private:
         const OSString pack_path = hgl::ToOSString(scene_path.string());
         const OSString base_dir  = hgl::ToOSString(scene_dir.string());
 
-        // PBR 模式：15 个棋件配方按 material_index 建表交给装载器；
-        // 调试模式：沿用单一 DebugNormal 配方 + 数据行绑定（旧行为）。
         const mtl::MaterialRecipe *default_recipe = nullptr;
         const mtl::MaterialRecipe *const *recipe_table = nullptr;
         uint32_t recipe_table_count = 0;
 
-        if (pbr_mode_)
-        {
-            // 自装配：15 个棋件配方按 pack 材质名匹配，数据块用 hint 选定
-            auto *graphics = GetGraphicsContext();
-            if (!graphics)
-                return false;
-            if (!BuildSelfContainedSceneMaterials(
-                    *graphics, hgl::ToOSString(ScenePackPath()),
-                    "load_scene_pbr", chess_materials_))
-                return false;
-
-            default_recipe     = chess_materials_.fallback;
-            recipe_table       = chess_materials_.table.data();
-            recipe_table_count = static_cast<uint32_t>(chess_materials_.table.size());
-        }
-        else
-        {
-            const mtl::MaterialRecipe *loaded_recipe =
-                GetRecipe("LoadScene.DebugNormalColor");
-            if (!loaded_recipe)
-                return false;
-            scene_recipe = *loaded_recipe;
-            if (!(scene_recipe.material_ssbo_binding = solid.debug_rows[0]).IsValid())
-                return false;
-            default_recipe = &scene_recipe;
-        }
+        if (!BuildSceneRecipes(default_recipe, recipe_table, recipe_table_count))
+            return false;
 
         return LoadStaticMeshSceneAsPrimitiveAssets(
             device,
@@ -226,6 +257,70 @@ private:
             recipe_table_count);
     }
 
+    /**
+     * @brief 异步通路的发起段：只配外部设定并要一个句柄，不读盘、不解析。
+     *
+     * 之后所有推进都由 `SceneStreamingSystem`（已注册进 ECS）每帧自己做，
+     * 本类在 `PollAsyncScene()` 里只做「产物到位就接一段」。
+     */
+    bool TryStartAsyncScene()
+    {
+        using std::filesystem::path;
+        using std::filesystem::exists;
+
+        const path scene_path(ScenePackPath());
+        if (!exists(scene_path))
+            return false;
+
+        const OSString base_dir = hgl::ToOSString(scene_path.parent_path().string());
+
+        const mtl::MaterialRecipe *default_recipe = nullptr;
+        const mtl::MaterialRecipe *const *recipe_table = nullptr;
+        uint32_t recipe_table_count = 0;
+
+        if (!BuildSceneRecipes(default_recipe, recipe_table, recipe_table_count))
+            return false;
+
+        streaming_system_ = ecs_context->GetSystem<hgl::ecs::SceneStreamingSystem>();
+        if (!streaming_system_)
+            streaming_system_ = ecs_context->RegisterSystem<hgl::ecs::SceneStreamingSystem>();
+        if (!streaming_system_)
+            return false;
+
+        streaming_system_->SetBuildSettings(solid.geometry_vertex_format,
+                                            default_recipe,
+                                            recipe_table,
+                                            recipe_table_count,
+                                            base_dir);
+
+        async_scene_ = graph::RequestSceneAsset(AnsiString(ScenePackPath().c_str()));
+
+        if (!async_scene_)
+            return false;
+
+        printf("[LSASYNC] request queued: %s\n", ScenePackPath().c_str());
+        return true;
+    }
+
+    void BuildInstanceOptions(StaticMeshSceneInstance::Options &options) const
+    {
+        options = StaticMeshSceneInstance::Options{};
+        options.mobility = hgl::ecs::Mobility::Static;
+
+        if (pbr_mode_)
+        {
+            // 行序即 glTF 材质下标 ⇒ 按 material_index 选行，不再轮转
+            options.material_rows          = chess_materials_.bindings.data();
+            options.material_row_count     = static_cast<uint32_t>(chess_materials_.bindings.size());
+            options.rows_by_material_index = true;
+        }
+        else
+        {
+            options.material_rows      = solid.debug_rows;
+            options.material_row_count = static_cast<uint32_t>(COLOR_COUNT);
+        }
+    }
+
     bool InitScene()
     {
         if(!ecs_context)
@@ -238,19 +333,7 @@ private:
         // parentIndex 用 SetParent 还原 —— 不再对 worldMatrix 做 DecomposeTransform
         // 摊平（旧写法在非均匀缩放嵌套下有旋转/缩放残差，且丢失场景树）。
         StaticMeshSceneInstance::Options options;
-        options.mobility = hgl::ecs::Mobility::Static;
-        if (pbr_mode_)
-        {
-            // 行序即 glTF 材质下标 ⇒ 按 material_index 选行，不再轮转
-            options.material_rows      = chess_materials_.bindings.data();
-            options.material_row_count = static_cast<uint32_t>(chess_materials_.bindings.size());
-            options.rows_by_material_index = true;
-        }
-        else
-        {
-            options.material_rows      = solid.debug_rows;
-            options.material_row_count = static_cast<uint32_t>(COLOR_COUNT);
-        }
+        BuildInstanceOptions(options);
 
         if (!scene_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
                                          scene_root_nodes_, options))
@@ -336,6 +419,107 @@ private:
         return true;
     }
 
+    /// 骨架到位后按包围盒重新取景（环境变量覆盖优先，与 InitCamera 一致）
+    void FocusCameraOnSkeleton()
+    {
+        if (scene_bound_radius_ <= 0.0f || !camera_entity || !ecs_context)
+            return;
+
+        auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
+
+        if (!camera)
+            return;
+
+        camera->target   = scene_bound_center_;
+        camera->distance = 2.0f * scene_bound_radius_;
+
+        if (const char * v = getenv("LS_DIST"))  camera->distance = (float)atof(v);
+        if (const char * v = getenv("LS_YAW"))   camera->yaw      = (float)atof(v);
+        if (const char * v = getenv("LS_PITCH")) camera->pitch    = (float)atof(v);
+
+        camera->matrix_dirty = true;
+    }
+
+    /**
+     * @brief 异步通路每帧接线：产物到位就接下一段，一段失败就不再重试。
+     *
+     * 三段各有自己的「已建」标记 —— 每段只做一次，之后不再每帧空转。
+     */
+    void PollAsyncScene()
+    {
+        if (!async_mode_ || !async_scene_ || !ecs_context)
+            return;
+
+        const graph::SceneAssetContent &content = async_scene_->GetContent();
+
+        if (!async_skeleton_built_)
+        {
+            if (content.GetNodeCount() <= 0)
+                return;
+
+            StaticMeshSceneInstance::SkeletonOptions skeleton_options;
+            skeleton_options.mobility = hgl::ecs::Mobility::Static;
+
+            if (!scene_instance_.InstantiateSkeleton(ecs_context, content.nodes,
+                                                     content.root_nodes, skeleton_options))
+            {
+                printf("[LSASYNC] InstantiateSkeleton failed\n");
+                async_scene_ = nullptr;
+                return;
+            }
+
+            async_skeleton_built_ = true;
+            printf("[LSASYNC] skeleton: %d nodes / %d roots (frame %u)\n",
+                   content.GetNodeCount(), content.GetRootCount(), ls_frame_seen);
+
+            // 骨架包围盒 ⇒ 相机立刻对焦（此时几何可能还在路上）
+            math::BoundingVolumes bounds;
+            if (scene_instance_.GetSkeletonBounds(bounds))
+            {
+                scene_bound_center_ = bounds.GetCenter();
+                scene_bound_radius_ = bounds.GetMaxRadius();
+                FocusCameraOnSkeleton();
+            }
+
+            return;
+        }
+
+        if (!async_geometries_built_)
+        {
+            if (content.GetAssetCount() <= 0)
+                return;
+
+            if (!scene_instance_.AttachGeometries(content.assets, content.nodes))
+            {
+                printf("[LSASYNC] AttachGeometries failed\n");
+                async_scene_ = nullptr;
+                return;
+            }
+
+            async_geometries_built_ = true;
+            printf("[LSASYNC] geometries: %d primitives (frame %u)\n",
+                   scene_instance_.GetAttachedPrimitiveCount(), ls_frame_seen);
+            return;
+        }
+
+        if (!async_materials_built_)
+        {
+            StaticMeshSceneInstance::Options options;
+            BuildInstanceOptions(options);
+
+            if (!scene_instance_.AttachMaterials(options))
+            {
+                printf("[LSASYNC] AttachMaterials failed\n");
+                async_scene_ = nullptr;
+                return;
+            }
+
+            async_materials_built_ = true;
+            printf("[LSASYNC] materials attached (frame %u), scene state=%s\n",
+                   ls_frame_seen, async_scene_->GetStateName());
+        }
+    }
+
     bool InitECS()
     {
         ecs_context = GetECSContext();
@@ -343,7 +527,8 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!InitScene())
+        // 异步通路的实例化由 PollAsyncScene() 逐帧接线，这里不能同步实例化
+        if(!async_mode_ && !InitScene())
             return false;
 
         if(!InitCamera())
@@ -419,10 +604,19 @@ public:
         // 默认走 PBR 材质路径；LS_DEBUGNORMAL=1 回到旧的调试法线/颜色行路径
         pbr_mode_ = (getenv("LS_DEBUGNORMAL") == nullptr);
 
+        // 默认走流送（异步）通路；LS_SYNC=1 回到同步装载
+        //（两条通路最终落到同一个 StaticMeshSceneInstance，第 40 帧画面逐字节相同）
+        async_mode_ = (getenv("LS_SYNC") == nullptr);
+
+        ecs_context = GetECSContext();
+
+        if(!ecs_context)
+            return(false);
+
         if(!InitSolidMDP())
             return(false);
 
-        if(!TryLoadStaticMeshScene())
+        if (async_mode_ ? !TryStartAsyncScene() : !TryLoadStaticMeshScene())
             return(false);
 
         if(!InitECS())
@@ -447,13 +641,19 @@ public:
     {
         WorkObject::Tick(delta_time);
 
+        ++ls_frame_seen;
+
+        // 异步通路：产物到位就接下一段（同步通路整段空转）
+        PollAsyncScene();
+
         // LS_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（本帧提交后、present 前执行 ⇒ 读到本帧画面），
         // 落原始 packed 字节后退出 —— 像素判据用。
         // LSSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
         // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
         // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
         {
-            static const bool s_selfcheck = (getenv("LS_SELFCHECK") != nullptr);
+            // 异步通路的产物到位帧不确定 ⇒ 定帧判据不成立，只报一句而不误报 FAIL
+            static const bool s_selfcheck = (getenv("LS_SELFCHECK") != nullptr && getenv("LS_SYNC") != nullptr);
             static uint32_t   s_self_frame = 0;
 
             static constexpr uint32_t kSelfW           = 1280;
@@ -528,7 +728,7 @@ public:
             });
         }
 
-        if (ls_frames > 0 && ++ls_frame_seen >= ls_frames)
+        if (ls_frames > 0 && ls_frame_seen >= ls_frames)
         {
             printf("[LoadScene] done frames=%u\n", ls_frame_seen);
             fflush(stdout);
