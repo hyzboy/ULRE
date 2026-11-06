@@ -77,6 +77,13 @@ if(NOT ULRE_ENABLE_SHADER_PROGRAM_BUILD)
     add_compile_definitions(ULRE_ENABLE_SHADER_PROGRAM_BUILD=0)
 endif()
 
+# ── TexConv 纹理转换工具 ───────────────────────────────────────────────────────
+# TexConv 是独立的发布型工具（自身除 image/ 外的代码零 hgl 依赖），它额外需要
+# ImageMagick(Magick++) 与 AMD Compressonator 两套第三方 SDK。ON 时随主树构建；
+# OFF 时整棵 src/Tools/TexConv 不参与配置 —— 引擎的开发/发行构建都不需要它。
+# 需要独占配置时也可以在 src/Tools/TexConv 下直接 cmake（见该目录 CMakeLists 注释）。
+option(ULRE_ENABLE_TEXCONV "Build src/Tools/TexConv (needs ImageMagick + Compressonator)" ON)
+
 # ULRE_RUNTIME：运行时真正需要的一切，**不含** ULRE.ShaderProgramBuild。
 SET(ULRE_RUNTIME
             CMCoreType

@@ -24,4 +24,8 @@ ENDIF()
 # TexConv 纹理转换工具（子模块）：依赖 ImageMagick(Magick++) 与 AMD Compressonator；
 # Intel ISPC 编码器需要 ispc.exe，找不到时在 enc_intel/CMakeLists.txt 内跳过该插件
 # （/Intel 明确报错；未指定后端时回落 AMD 并告警一次）。
-add_subdirectory(TexConv)
+# 这两套 SDK 缺失时 TexConv 会在自己的 CMakeLists 里优雅跳过，不会拖垮整树配置；
+# 完全不需要它时用 -DULRE_ENABLE_TEXCONV=OFF 把整棵子树摘掉。
+IF(ULRE_ENABLE_TEXCONV)
+    add_subdirectory(TexConv)
+ENDIF()

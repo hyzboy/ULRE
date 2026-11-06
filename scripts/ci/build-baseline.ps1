@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$BuildDir = "build",
     [string]$Config   = "Debug",
     # 默认 8：2026-10-18 实测 354 个 exe 在 /m:8 下全部重链，rc=0、零错误、零 MSB3073。
@@ -29,7 +29,7 @@ param(
 # 否则「CMake 模块化」永远卡在修别人的仓库上。
 # 注意：此前观察到的「CMCore.lib / CMMath.lib / CMP.AudioClient.lib 大片 LNK1104」
 # 全部是 Visual Studio 常驻 MSBuild node 与本次构建抢文件造成的假错误，加
-# /nodeReuse:false 后即消失；真实错误只有 TexImage 跨配置链接一条，已由 [2/5] 自动前置。
+# /nodeReuse:false 后即消失（TexImage 已改用与 ImageMagick 一致的 /MD，Debug/Release 均可自足构建）。
 # 更正（2026-10-18）：曾记录「CMP.AudioClient 在 Debug 下从未编译」，经取证为误判 ——
 #   CMP.AudioClient.dll / CMAudio.lib 均正常产出，成因是并发构建把 .tlog 目录清空/重写。
 #
@@ -87,46 +87,22 @@ Write-Host "  配置     = $Config   并行度 = $Jobs"
 Write-Host "  日志目录 = $LogDir"
 Write-Host "=============================================================="
 
-# ── [1/5] configure ──────────────────────────────────────────────────────────
+# ── [1/4] configure ──────────────────────────────────────────────────────────
 if (-not $SkipConfigure -and -not $SkipBuild) {
-    Write-Host "[1/5] configure"
+    Write-Host "[1/4] configure"
     cmake -S $repoRoot -B $buildPath 2>&1 | Tee-Object -FilePath (Join-Path $LogDir "configure-$stamp.log")
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  configure 失败（rc=$LASTEXITCODE）"
         exit 2
     }
 } else {
-    Write-Host "[1/5] configure 已跳过"
+    Write-Host "[1/4] configure 已跳过"
 }
 
-# ── [2/5] 前置：Release 版 TexImage ──────────────────────────────────────────
-# TexImage 恒按 Release 构建：ImageMagick 只提供 /MT 版 import lib，Debug 编译必然
-# 撞 RuntimeLibrary / _ITERATOR_DEBUG_LEVEL 不匹配。Debug 宿主（TexConvCore）因此
-# 必须链 out/..._Release/TexImage.lib —— 干净树里这个文件不存在，是 Debug 全量构建
-# 唯一的固定 LNK1104 来源。这里把它变成基线的自动前置，而不是靠人记住。
-if (-not $SkipBuild -and $Config -ne "Release") {
-    $texImageLib = Get-ChildItem -Path $buildPath -Filter "TexImage.lib" -Recurse -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -match '_Release\\' } | Select-Object -First 1
-    if (-not $texImageLib) {
-        Write-Host "[2/5] 前置：构建 Release 版 TexImage"
-        cmake --build $buildPath --config Release --target TexImage -- /m:1 /nodeReuse:false /nologo 2>&1 |
-            Tee-Object -FilePath (Join-Path $LogDir "bootstrap-teximage-$stamp.log") | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "  Release TexImage 构建失败（rc=$LASTEXITCODE），无法继续"
-            exit 3
-        }
-        # EXISTS() 在 configure 期求值，产出 import lib 后必须重新配置，Debug 链接项才会生效
-        cmake -S $repoRoot -B $buildPath 2>&1 | Out-Null
-    } else {
-        Write-Host "[2/5] 前置：Release 版 TexImage 已存在"
-    }
-} else {
-    Write-Host "[2/5] 前置：已跳过（-SkipBuild 或 Release 配置）"
-}
 
-# ── [3/5] 全量构建（并行，日志落盘） ─────────────────────────────────────────
+# ── [2/4] 全量构建（并行，日志落盘） ─────────────────────────────────────────
 if (-not $SkipBuild) {
-    Write-Host "[3/5] build（--config $Config，/m:$Jobs，日志 -> $buildLog）"
+    Write-Host "[2/4] build（--config $Config，/m:$Jobs，日志 -> $buildLog）"
     # -nodeReuse:false：Visual Studio 常驻的 MSBuild worker node 会与本次构建抢同一批
     # .lib/.dll（表现为大片假的 LNK1104），必须用独立节点构建。
     # 并行：本仓输出目录把 exe/dll/lib 全平铺在一个目录，vcpkg applocal 会并发往同一目录
@@ -180,10 +156,10 @@ if (-not $SkipBuild) {
 } else {
     $buildRc = 0
     $appLocalRepaired = 0
-    Write-Host "[3/5] build 已跳过（-SkipBuild）"
+    Write-Host "[2/4] build 已跳过（-SkipBuild）"
 }
 
-# ── [4/5] 错误分层 ───────────────────────────────────────────────────────────
+# ── [3/4] 错误分层 ───────────────────────────────────────────────────────────
 function Get-LayerOf {
     param([string]$Text)
     $norm = $Text.Replace('\', '/')
@@ -203,7 +179,7 @@ $bErrors = New-Object System.Collections.ArrayList
 $uErrors = New-Object System.Collections.ArrayList
 
 if (Test-Path $buildLog) {
-    Write-Host "[4/5] 错误分层"
+    Write-Host "[3/4] 错误分层"
     # 只认真正的 MSBuild 错误行：形如 "... : error C2065: ..." 或 "LINK : fatal error LNK1104: ..."
     $errLines = Select-String -Path $buildLog -Pattern ':\s*(fatal\s+)?error\s+[A-Z]+\d+' |
         ForEach-Object { $_.Line.Trim() } |
@@ -215,7 +191,7 @@ if (Test-Path $buildLog) {
             default { [void]$uErrors.Add($l) }
         }
     }
-    # 已被 [3/5] 串行重放修复的 applocal 错误不再计入任何层。
+    # 已被 [2/4] 串行重放修复的 applocal 错误不再计入任何层。
     # 注意：applocal POST_BUILD 的宿主工程既可能在上游（B 层 CMCore examples），
     # 也可能在本仓（A 层 example/Text/TextDraw 等）——它的成因是并发拷贝冲突，
     # 与宿主工程归属无关，所以 A 层也要一并剔除，否则偶发时会误报 A 层阻塞。
@@ -236,14 +212,14 @@ if (Test-Path $buildLog) {
     }
     Write-Host ("  A 层错误 = {0}   B 层错误 = {1}   未归类 = {2}" -f $aErrors.Count, $bErrors.Count, $uErrors.Count)
 } else {
-    Write-Host "[4/5] 无构建日志（-SkipBuild），跳过错误分层"
+    Write-Host "[3/4] 无构建日志（-SkipBuild），跳过错误分层"
 }
 
-# ── [5/5] ULRE 自有测试 ──────────────────────────────────────────────────────
+# ── [4/4] ULRE 自有测试 ──────────────────────────────────────────────────────
 $testRc = 0
 $ctestTotal = 0; $ctestPassed = 0; $ctestFailed = 0
 if (-not $SkipTest) {
-    Write-Host "[5/5] ctest -C $Config -L `"$ulreLabelRegex`""
+    Write-Host "[4/4] ctest -C $Config -L `"$ulreLabelRegex`""
     # 多配置生成器必须带 -C，否则 CTestTestfile 里 CTEST_CONFIGURATION_TYPE 为空，
     # 所有 add_test 落进 else() 分支变成 NOT_AVAILABLE（表现为 "Total Tests: 0"）。
     $ctestOut = ctest --test-dir $buildPath -C $Config -L $ulreLabelRegex --output-on-failure 2>&1
@@ -266,7 +242,7 @@ if (-not $SkipTest) {
     }
     Write-Host ("  用例 {0}  通过 {1}  失败 {2}  rc={3}" -f $ctestTotal, $ctestPassed, $ctestFailed, $testRc)
 } else {
-    Write-Host "[5/5] ctest 已跳过（-SkipTest）"
+    Write-Host "[4/4] ctest 已跳过（-SkipTest）"
 }
 
 # ── [extra] 发行形态验收 ─────────────────────────────────────────────────────
