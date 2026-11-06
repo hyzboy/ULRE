@@ -222,7 +222,7 @@
 几何+材质怎么一步绑定？           → 本文 §3 *.primitive.toml 规约
 上层只给一个路径就能建实体？       → RenderableBuilder::WithPrimitiveAssetPath
 模型文件太大卡住启动？             → 本文 §5 异步流送（GeometryStreamingSystem）
-场景包读盘卡主线程？               → 本文 §6 SceneStreamingRequest
+模型包读盘卡主线程？               → 本文 §6 SceneStreamingRequest
 资源没加载好会不会画出错？         → 本文 §4 CanRender 双重门禁
 → 使用这个SKILL
 ```

@@ -349,7 +349,7 @@ struct SceneMaterialRowCodec
 | 典型用法 | 一个模型资产的内部结构 | 关卡/演示的装配 |
 
 推荐路径（V3）：
-`*.scene.toml` 里可以**引用**一个二进制场景包作为子树：
+`*.scene.toml` 里可以**引用**一个二进制模型包作为子树：
 
 ```toml
 [[nodes]]
@@ -370,7 +370,7 @@ transform = { position = [0.0, 0.0, 0.0], scale = [0.01, 0.01, 0.01] }
 | **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader` + `SceneSpecAssetRegistry` 挂 `GraphicsContext` | 解析器、加载器、设备级注册器和 `BasicLitMeshes` 的 12 个实体场景已落地 |
 | **V2** | `[[materials]]` 的 codec 表（PBR/Emissive/Transmission 三种）+ `[environment]` 落地；`[camera]`、`[clear_color]` 与 `geo:`/`primitive:` 异步路径 | 示例里**没有**一段"自己分配行"的代码 |
 | **V3** | `SceneWriter`（Spec→TOML）+ `SceneCapture`（World→Spec）+ `TestSceneRoundTrip`（写→读→写逐字节一致） | 21 个示例的几何/变换/材质由捕获生成，人只增删节点 |
-| **V4** | `pack:` 引用（二进制场景包作为子树）+ 示例全面切换为「一个 TOML 一条命令」 | `BasicLitMeshes.cpp` 缩到 ~40 行 |
+| **V4** | `pack:` 引用（二进制模型包作为子树）+ 示例全面切换为「一个 TOML 一条命令」 | `BasicLitMeshes.cpp` 缩到 ~40 行 |
 
 V1 的一个示例对照（**目标形态**，`BasicLitMeshes` 简化版）：
 

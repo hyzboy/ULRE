@@ -1,20 +1,28 @@
-// ScenePackFormat.h — SCN2 场景包（`.scene` minipack）二进制词汇表
+// ModelPackFormat.h — MDL2 模型包（`.model` minipack）二进制词汇表
 //
-// 这里的结构与 GLTFConvert 的 SceneExportPack 一一对应，任何一侧改动都必须同步。
+// 这里的结构与 GLTFConvert 的 ModelExportPack 一一对应，任何一侧改动都必须同步。
 // 历史上这份声明是 LoadStaticMesh.cpp 匿名命名空间里的唯一副本；依赖图提取
-// （阶段三）与异步场景流送（阶段四）都要读同一张表目录，所以提到头文件，
+// （阶段三）与异步模型流送（阶段四）都要读同一张表目录，所以提到头文件，
 // 避免出现第二份会漂移的副本。
+//
+// 命名沿革：原为 SCN2 场景包（`ScenePackFormat.h` / `.scene`）。glTF 导出物在
+// 引擎里的真实身份是「复合模型预制体」（部件树 + 内嵌几何 + 材质槽），而
+// 「场景/Scene」一词让给关卡编排（Level），故整族更名为 Model / MDL2。
 
 #pragma once
 
 #include <cstdint>
 #include <cstring>
 
-namespace hgl::graph::scenepack
+namespace hgl::graph::modelpack
 {
-    constexpr uint32_t kScenePackV2Magic = 0x324E4353u; // 'SCN2'
+    constexpr uint32_t kModelPackV2Magic = 0x324C444Du; // 'MDL2'
 
-    enum class SceneTableType : uint32_t
+    // MiniPack 条目名：头部与表载荷分开存储。
+    constexpr const char *kModelPackHeaderEntry = "ModelPackHeader";
+    constexpr const char *kModelPayloadEntry    = "ModelPayload";
+
+    enum class ModelTableType : uint32_t
     {
         NameTable         = 1,
         NodeTable         = 2,
@@ -31,13 +39,13 @@ namespace hgl::graph::scenepack
         GeometryBlob      = 13,
     };
 
-    struct ScenePackHeader
+    struct ModelPackHeader
     {
         uint32_t magic;
         uint16_t version_major;
         uint16_t version_minor;
         uint32_t flags;
-        int32_t  scene_name_index;
+        int32_t  model_name_index;
 
         uint32_t node_count;
         uint32_t root_count;
@@ -51,7 +59,7 @@ namespace hgl::graph::scenepack
         uint32_t reserved;
     };
 
-    struct SceneTableDesc
+    struct ModelTableDesc
     {
         uint32_t type;
         uint32_t offset;
@@ -90,11 +98,11 @@ namespace hgl::graph::scenepack
         uint32_t geometry_file_length;
     };
 
-    // 与 GLTFConvert SceneExportPack 的 MaterialTable 行布局一致（表行序 = 材质下标）。
+    // 与 GLTFConvert ModelExportPack 的 MaterialTable 行布局一致（表行序 = 材质下标）。
     struct PackedMaterial
     {
         int32_t  original_index;
-        uint32_t file_offset;   // 指向 StringPool 的 "<Scene>.<idx>.<Name>.material"
+        uint32_t file_offset;   // 指向 StringPool 的 "<Model>.<idx>.<Name>.material"
         uint32_t file_length;
     };
 
@@ -109,7 +117,7 @@ namespace hgl::graph::scenepack
 
     static_assert(sizeof(PackedTRS) == 40, "PackedTRS size mismatch");
 
-    inline const SceneTableDesc *FindTableDesc(const SceneTableDesc *dir, uint32_t dir_count, SceneTableType type)
+    inline const ModelTableDesc *FindTableDesc(const ModelTableDesc *dir, uint32_t dir_count, ModelTableType type)
     {
         const uint32_t t = static_cast<uint32_t>(type);
         for (uint32_t i = 0; i < dir_count; ++i)
@@ -120,7 +128,7 @@ namespace hgl::graph::scenepack
         return nullptr;
     }
 
-    inline bool TryGetTableRange(const uint8_t *payload, uint32_t payload_size, const SceneTableDesc *td, const uint8_t *&ptr, uint32_t &size)
+    inline bool TryGetTableRange(const uint8_t *payload, uint32_t payload_size, const ModelTableDesc *td, const uint8_t *&ptr, uint32_t &size)
     {
         if (!td)
             return false;
@@ -131,37 +139,37 @@ namespace hgl::graph::scenepack
         return true;
     }
 
-    /// 校验 `ScenePackHeader` 条目与 `ScenePayload` 条目，并解出表目录。
+    /// 校验 `ModelPackHeader` 条目与 `ModelPayload` 条目，并解出表目录。
     /// 两个条目在 minipack 里是分开的：header 独立存储，payload 只含表数据。
     /// 成功时 `out_dir` 指向 payload 内部，生命周期与 payload 相同。
     inline bool ReadPayloadDirectory(const void *header_raw, uint32_t header_len,
                                      const void *payload_raw, uint32_t payload_len,
-                                     ScenePackHeader &out_header, const SceneTableDesc *&out_dir)
+                                     ModelPackHeader &out_header, const ModelTableDesc *&out_dir)
     {
         out_dir = nullptr;
 
         const uint8_t *payload = reinterpret_cast<const uint8_t *>(payload_raw);
         if (!header_raw || !payload)
             return false;
-        if (header_len < sizeof(ScenePackHeader))
+        if (header_len < sizeof(ModelPackHeader))
             return false;
 
-        std::memcpy(&out_header, header_raw, sizeof(ScenePackHeader));
+        std::memcpy(&out_header, header_raw, sizeof(ModelPackHeader));
 
-        if (out_header.magic != kScenePackV2Magic)
+        if (out_header.magic != kModelPackV2Magic)
             return false;
         if (out_header.version_major != 2)
             return false;
         if (out_header.payload_size > payload_len)
             return false;
 
-        const uint64_t dir_bytes = static_cast<uint64_t>(out_header.dir_count) * sizeof(SceneTableDesc);
+        const uint64_t dir_bytes = static_cast<uint64_t>(out_header.dir_count) * sizeof(ModelTableDesc);
         if (out_header.dir_offset > out_header.payload_size
             || dir_bytes > out_header.payload_size
             || static_cast<uint64_t>(out_header.dir_offset) + dir_bytes > out_header.payload_size)
             return false;
 
-        out_dir = reinterpret_cast<const SceneTableDesc *>(payload + out_header.dir_offset);
+        out_dir = reinterpret_cast<const ModelTableDesc *>(payload + out_header.dir_offset);
         return true;
     }
-}//namespace hgl::graph::scenepack
+}//namespace hgl::graph::modelpack

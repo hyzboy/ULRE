@@ -1,8 +1,8 @@
-﻿// LoadStaticMesh.cpp — 从 .scene minipack 加载场景树到 StaticMesh
+// LoadStaticMesh.cpp — 从 .scene minipack 加载场景树到 StaticMesh
 // Core scene loader for StaticMesh asset packs.
 
 #include <hgl/graph/mesh/LoadStaticMesh.h>
-#include <hgl/graph/mesh/ScenePackFormat.h>
+#include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/graph/geo/LoadGeometry.h>
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/math/Matrix.h>      // TranslateMatrix / ToMatrix / ScaleMatrix（TRS→矩阵组合）
@@ -37,10 +37,10 @@ namespace
 /// 从局部 TRS 沿层级组合出 local/world 矩阵（两份装载路径共用，定义见文件后半）
 void ComposeNodeMatrices(std::vector<StaticMeshNode> &nodes);
 
-// SCN2 表词汇表（SceneTableType / ScenePackHeader / PackedXXX / FindTableDesc /
-// TryGetTableRange）统一来自 <hgl/graph/mesh/ScenePackFormat.h>，与依赖图提取、
+// MDL2 表词汇表（ModelTableType / ModelPackHeader / PackedXXX / FindTableDesc /
+// TryGetTableRange）统一来自 <hgl/graph/mesh/ModelPackFormat.h>，与依赖图提取、
 // 异步场景流送共用同一份声明，避免多处副本漂移。
-using namespace hgl::graph::scenepack;
+using namespace hgl::graph::modelpack;
 
 std::vector<std::string> ParseNameTable(const void *raw, uint32_t bytes);
 
@@ -56,8 +56,8 @@ static bool TryLoadScene(
     std::vector<StaticMeshNode> &scene_nodes,
     std::vector<int32_t> &root_nodes)
 {
-    const int32 header_idx = mpm->FindFile(AnsiStringView("ScenePackHeader"));
-    const int32 payload_idx = mpm->FindFile(AnsiStringView("ScenePayload"));
+    const int32 header_idx = mpm->FindFile(AnsiStringView("ModelPackHeader"));
+    const int32 payload_idx = mpm->FindFile(AnsiStringView("ModelPayload"));
 
     if (header_idx < 0 || payload_idx < 0)
         return false;
@@ -67,34 +67,34 @@ static bool TryLoadScene(
     const uint8_t *payload = reinterpret_cast<const uint8_t *>(mpm->Map(payload_idx));
     const uint32 payload_len = mpm->GetFileLength(payload_idx);
 
-    if (!header_raw || header_len < sizeof(ScenePackHeader) || !payload)
+    if (!header_raw || header_len < sizeof(ModelPackHeader) || !payload)
         return false;
 
-    ScenePackHeader h{};
-    std::memcpy(&h, header_raw, sizeof(ScenePackHeader));
+    ModelPackHeader h{};
+    std::memcpy(&h, header_raw, sizeof(ModelPackHeader));
 
-    if (h.magic != kScenePackV2Magic)
+    if (h.magic != kModelPackV2Magic)
         return false;
     if (h.version_major != 2)
         return false;
     if (h.payload_size > payload_len)
         return false;
-    if (h.dir_offset > h.payload_size || h.dir_count * sizeof(SceneTableDesc) > h.payload_size || h.dir_offset + h.dir_count * sizeof(SceneTableDesc) > h.payload_size)
+    if (h.dir_offset > h.payload_size || h.dir_count * sizeof(ModelTableDesc) > h.payload_size || h.dir_offset + h.dir_count * sizeof(ModelTableDesc) > h.payload_size)
         return false;
 
-    const auto *dir = reinterpret_cast<const SceneTableDesc *>(payload + h.dir_offset);
+    const auto *dir = reinterpret_cast<const ModelTableDesc *>(payload + h.dir_offset);
 
-    const SceneTableDesc *name_td = FindTableDesc(dir, h.dir_count, SceneTableType::NameTable);
-    const SceneTableDesc *node_td = FindTableDesc(dir, h.dir_count, SceneTableType::NodeTable);
-    const SceneTableDesc *node_prim_td = FindTableDesc(dir, h.dir_count, SceneTableType::NodePrimIndex);
-    const SceneTableDesc *node_child_td = FindTableDesc(dir, h.dir_count, SceneTableType::NodeChildIndex);
-    const SceneTableDesc *root_td = FindTableDesc(dir, h.dir_count, SceneTableType::RootIndex);
-    const SceneTableDesc *trs_td = FindTableDesc(dir, h.dir_count, SceneTableType::TRSTable);
-    const SceneTableDesc *bounds_td = FindTableDesc(dir, h.dir_count, SceneTableType::BoundsTable);
-    const SceneTableDesc *primitive_td = FindTableDesc(dir, h.dir_count, SceneTableType::PrimitiveTable);
-    const SceneTableDesc *string_pool_td = FindTableDesc(dir, h.dir_count, SceneTableType::StringPool);
-    const SceneTableDesc *geo_view_td = FindTableDesc(dir, h.dir_count, SceneTableType::GeometryViewTable);
-    const SceneTableDesc *geo_blob_td = FindTableDesc(dir, h.dir_count, SceneTableType::GeometryBlob);
+    const ModelTableDesc *name_td = FindTableDesc(dir, h.dir_count, ModelTableType::NameTable);
+    const ModelTableDesc *node_td = FindTableDesc(dir, h.dir_count, ModelTableType::NodeTable);
+    const ModelTableDesc *node_prim_td = FindTableDesc(dir, h.dir_count, ModelTableType::NodePrimIndex);
+    const ModelTableDesc *node_child_td = FindTableDesc(dir, h.dir_count, ModelTableType::NodeChildIndex);
+    const ModelTableDesc *root_td = FindTableDesc(dir, h.dir_count, ModelTableType::RootIndex);
+    const ModelTableDesc *trs_td = FindTableDesc(dir, h.dir_count, ModelTableType::TRSTable);
+    const ModelTableDesc *bounds_td = FindTableDesc(dir, h.dir_count, ModelTableType::BoundsTable);
+    const ModelTableDesc *primitive_td = FindTableDesc(dir, h.dir_count, ModelTableType::PrimitiveTable);
+    const ModelTableDesc *string_pool_td = FindTableDesc(dir, h.dir_count, ModelTableType::StringPool);
+    const ModelTableDesc *geo_view_td = FindTableDesc(dir, h.dir_count, ModelTableType::GeometryViewTable);
+    const ModelTableDesc *geo_blob_td = FindTableDesc(dir, h.dir_count, ModelTableType::GeometryBlob);
 
     if (!node_td || !primitive_td || !string_pool_td)
         return false;
@@ -444,15 +444,8 @@ std::vector<std::string> ParseNameTable(const void *raw, uint32_t bytes)
     return names;
 }
 
-// ---- NodeList parser --------------------------------------------------------
-// Per-node stream (all int32_t):
-//   originalIndex, nameIndex, trsIndex, boundsIndex,
-//   primCount, prims[primCount],
-//   childCount, children[childCount]
-// 局部变换只存 TRS（T5）；无 trsIndex（<0）⇒ 单位变换。
-
-/// 从局部 TRS 沿层级组合出 local/world 矩阵（两份装载路径共用）。
-/// 约定：没有 TRS 行的节点 ⇒ 局部变换是单位矩阵（与导出侧 SceneExportNodes.cpp 一致）。
+/// 从局部 TRS 沿层级组合出 local/world 矩阵。
+/// 约定：没有 TRS 行的节点 ⇒ 局部变换是单位矩阵。
 void ComposeNodeMatrices(std::vector<StaticMeshNode> &nodes)
 {
     std::vector<bool>    done(nodes.size(), false);
@@ -490,101 +483,6 @@ void ComposeNodeMatrices(std::vector<StaticMeshNode> &nodes)
         for (int32_t c : n.children)
             stack.push_back(c);
     }
-}
-
-std::vector<StaticMeshNode> ParseNodeList(
-    const void *raw, uint32_t bytes,
-    const std::vector<std::string>        &names,
-    const PackedTRS                       *trs_arr,    uint32_t trs_count,
-    const math::BoundingVolumesData       *bounds_arr, uint32_t bounds_count)
-{
-    std::vector<StaticMeshNode> nodes;
-    if (!raw || bytes < sizeof(int32_t))
-        return nodes;
-
-    const int32_t *cursor = reinterpret_cast<const int32_t *>(raw);
-    const int32_t *end    = cursor + bytes / sizeof(int32_t);
-
-    auto try_read = [&](int32_t &out) -> bool
-    {
-        if (cursor >= end) return false;
-        out = *cursor++;
-        return true;
-    };
-
-    while (cursor < end)
-    {
-        StaticMeshNode node;
-
-        int32_t originalIndex, nameIndex, trsIndex, boundsIndex;
-        if (!try_read(originalIndex))  break;
-        if (!try_read(nameIndex))      break;
-        if (!try_read(trsIndex))       break;
-        if (!try_read(boundsIndex))    break;
-
-        // Name
-        if (nameIndex >= 0 && nameIndex < (int32_t)names.size())
-            node.name = names[nameIndex];
-
-        // TRS（局部变换的唯一来源；无则单位，见 ComposeNodeMatrices）
-        if (trsIndex >= 0 && trsIndex < (int32_t)trs_count)
-        {
-            const PackedTRS &t = trs_arr[trsIndex];
-            node.hasTRS      = true;
-            node.translation = math::Vector3f(t.translation[0], t.translation[1], t.translation[2]);
-            node.rotation    = math::Quatf(t.rotation[3], t.rotation[0], t.rotation[1], t.rotation[2]);
-            node.scale       = math::Vector3f(t.scale[0], t.scale[1], t.scale[2]);
-        }
-
-        // Bounds
-        if (boundsIndex >= 0 && boundsIndex < (int32_t)bounds_count)
-        {
-            math::BoundingVolumesData bvd = bounds_arr[boundsIndex];
-            bvd.To(&node.nodeBounds);
-            node.boundsValid = true;
-        }
-
-        // Primitive indices
-        int32_t prim_count = 0;
-        if (!try_read(prim_count)) break;
-        bool ok = true;
-        node.primitiveIndices.reserve(prim_count);
-        for (int32_t j = 0; j < prim_count; ++j)
-        {
-            int32_t pi;
-            if (!try_read(pi)) { ok = false; break; }
-            node.primitiveIndices.push_back(pi);
-        }
-        if (!ok) break;
-
-        // Children
-        int32_t child_count = 0;
-        if (!try_read(child_count)) break;
-        node.children.reserve(child_count);
-        for (int32_t j = 0; j < child_count; ++j)
-        {
-            int32_t ci;
-            if (!try_read(ci)) { ok = false; break; }
-            node.children.push_back(ci);
-        }
-        if (!ok) break;
-
-        nodes.push_back(std::move(node));
-    }
-
-    // Back-propagate parent indices from children arrays
-    for (int32_t i = 0; i < (int32_t)nodes.size(); ++i)
-    {
-        for (int32_t c : nodes[i].children)
-        {
-            if (c >= 0 && c < (int32_t)nodes.size())
-                nodes[c].parentIndex = i;
-        }
-    }
-
-    ComposeNodeMatrices(nodes);          // 产物只存 TRS ⇒ local/world 在这里组合
-
-    return nodes;
 }
 
 }  // anonymous namespace
@@ -648,104 +546,10 @@ static bool BuildSceneFromMiniPack(
             scene_nodes,
             root_nodes))
     {
-        MLogInfo(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: ScenePackV2 not available, fallback to V1"));
-
-        // V2 若在图元循环后才失败可能留下部分数据；V1 路径全量重建，先清空。
-        geometry_list.clear();
-        material_indices.clear();
-
-        std::vector<std::string> names;
-        {
-            const int32 idx = mpm->FindFile(AnsiStringView("NameTable"));
-            if (idx >= 0)
-                names = ParseNameTable(mpm->Map(idx), mpm->GetFileLength(idx));
-        }
-
-        const PackedTRS *trs_arr  = nullptr;
-        uint32           trs_count = 0;
-        {
-            const int32 idx = mpm->FindFile(AnsiStringView("TRSTable"));
-            if (idx >= 0)
-            {
-                trs_arr   = reinterpret_cast<const PackedTRS *>(mpm->Map(idx));
-                trs_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(PackedTRS));
-            }
-        }
-
-        const BoundingVolumesData *bounds_arr  = nullptr;
-        uint32                     bounds_count = 0;
-        {
-            const int32 idx = mpm->FindFile(AnsiStringView("BoundsTable"));
-            if (idx >= 0)
-            {
-                bounds_arr   = reinterpret_cast<const BoundingVolumesData *>(mpm->Map(idx));
-                bounds_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(BoundingVolumesData));
-            }
-        }
-
-        {
-            const int32 idx = mpm->FindFile(AnsiStringView("PrimitiveList"));
-            if (idx >= 0)
-            {
-                const uint8_t *buf = reinterpret_cast<const uint8_t *>(mpm->Map(idx));
-                const uint8_t *end = buf + mpm->GetFileLength(idx);
-
-                while (buf + 3 * sizeof(int32_t) + sizeof(uint32_t) <= end)
-                {
-                    int32_t originalIndex, geoIndex, matIndex;
-                    uint32_t fileLen;
-                    std::memcpy(&originalIndex, buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                    std::memcpy(&geoIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                    std::memcpy(&matIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                    std::memcpy(&fileLen,       buf, sizeof(uint32_t)); buf += sizeof(uint32_t);
-                    (void)originalIndex;
-                    (void)geoIndex;
-
-                    if (buf + fileLen > end)
-                    {
-                        MLogError(LoadStaticMesh,
-                            OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: PrimitiveList entry truncated in ") + pack_path);
-                        break;
-                    }
-                    material_indices.push_back(matIndex);
-
-                    std::string geo_file(reinterpret_cast<const char *>(buf), fileLen);
-                    buf += fileLen;
-
-                    const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
-
-                    Geometry *geo = LoadGeometry(device, geometry_vertex_format, geo_path);
-                    if (!geo)
-                    {
-                        MLogError(LoadStaticMesh,
-                            OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: failed to load geometry: ") + geo_path);
-                        geometry_list.push_back(nullptr);
-                        continue;
-                    }
-
-                    geo_mgr->Add(geo);
-                    geometry_list.push_back(geo);
-                }
-            }
-        }
-
-        {
-            const int32 idx = mpm->FindFile(AnsiStringView("NodeList"));
-            if (idx >= 0)
-            {
-                scene_nodes = ParseNodeList(
-                    mpm->Map(idx), mpm->GetFileLength(idx),
-                    names,
-                    trs_arr,    trs_count,
-                    bounds_arr, bounds_count);
-            }
-        }
-
-        for (int32_t i = 0; i < int32_t(scene_nodes.size()); ++i)
-        {
-            if (scene_nodes[i].parentIndex < 0)
-                root_nodes.push_back(i);
-        }
+        MLogError(LoadStaticMesh,
+            OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: MDL2 parse failed: ") + pack_path);
+        delete mpm;
+        return false;
     }
 
     delete mpm;
@@ -860,7 +664,7 @@ bool LoadStaticMeshSceneFromStream(
         return false;
     }
 
-    // 场景包解析全程需要随机访问（FindFile/Map），因此先整块读入。
+    // 模型包解析全程需要随机访问（FindFile/Map），因此先整块读入。
     // 这块内存的生命周期严格覆盖下面这一次同步解析，不跨线程保留。
     int64 pack_size = 0;
     void *pack_bytes = hgl::io::LoadFromInputStream(&pack_size, stream);
@@ -944,12 +748,12 @@ namespace
     }
 
     // 只读 V2 MaterialTable（tag 9）：行序 = 材质下标；非 V2/缺表 ⇒ 空。
-    std::vector<std::string> ReadScenePackMaterialNames(hgl::io::minipack::MiniPackMemory *mpm)
+    std::vector<std::string> ReadModelPackMaterialNames(hgl::io::minipack::MiniPackMemory *mpm)
     {
         std::vector<std::string> names;
 
-        const int32 header_idx  = mpm->FindFile(AnsiStringView("ScenePackHeader"));
-        const int32 payload_idx = mpm->FindFile(AnsiStringView("ScenePayload"));
+        const int32 header_idx  = mpm->FindFile(AnsiStringView("ModelPackHeader"));
+        const int32 payload_idx = mpm->FindFile(AnsiStringView("ModelPayload"));
         if (header_idx < 0 || payload_idx < 0)
             return names;
 
@@ -957,23 +761,23 @@ namespace
         const uint32 header_len = mpm->GetFileLength(header_idx);
         const uint8_t *payload  = reinterpret_cast<const uint8_t *>(mpm->Map(payload_idx));
         const uint32 payload_len = mpm->GetFileLength(payload_idx);
-        if (!header_raw || header_len < sizeof(ScenePackHeader) || !payload)
+        if (!header_raw || header_len < sizeof(ModelPackHeader) || !payload)
             return names;
 
-        ScenePackHeader h{};
-        std::memcpy(&h, header_raw, sizeof(ScenePackHeader));
-        if (h.magic != kScenePackV2Magic || h.version_major != 2)
+        ModelPackHeader h{};
+        std::memcpy(&h, header_raw, sizeof(ModelPackHeader));
+        if (h.magic != kModelPackV2Magic || h.version_major != 2)
             return names;
         if (h.payload_size > payload_len ||
             h.dir_offset > h.payload_size ||
-            h.dir_count * sizeof(SceneTableDesc) > h.payload_size - h.dir_offset)
+            h.dir_count * sizeof(ModelTableDesc) > h.payload_size - h.dir_offset)
             return names;
         if (h.material_count == 0)
             return names;
 
-        const auto *dir = reinterpret_cast<const SceneTableDesc *>(payload + h.dir_offset);
-        const SceneTableDesc *mat_td  = FindTableDesc(dir, h.dir_count, SceneTableType::MaterialTable);
-        const SceneTableDesc *pool_td = FindTableDesc(dir, h.dir_count, SceneTableType::StringPool);
+        const auto *dir = reinterpret_cast<const ModelTableDesc *>(payload + h.dir_offset);
+        const ModelTableDesc *mat_td  = FindTableDesc(dir, h.dir_count, ModelTableType::MaterialTable);
+        const ModelTableDesc *pool_td = FindTableDesc(dir, h.dir_count, ModelTableType::StringPool);
         if (!mat_td || !pool_td)
             return names;
 
@@ -1036,15 +840,15 @@ bool BuildSelfContainedSceneMaterials(
         hgl::io::minipack::GetMiniPackMemory(pack_path);
     if (!mpm)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 无法打开场景包 ") + pack_path);
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 无法打开模型包 ") + pack_path);
         return false;
     }
-    std::vector<std::string> material_names = ReadScenePackMaterialNames(mpm);
+    std::vector<std::string> material_names = ReadModelPackMaterialNames(mpm);
     delete mpm;
     if (material_names.empty())
     {
         MLogError(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedSceneMaterials: MaterialTable 缺失或为空（V1 包不支持自装配）")
+            OS_TEXT("BuildSelfContainedSceneMaterials: MaterialTable 缺失或为空（非 MDL2 模型包）")
             + pack_path);
         return false;
     }

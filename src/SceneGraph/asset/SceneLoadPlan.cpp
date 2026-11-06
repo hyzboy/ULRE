@@ -2,7 +2,7 @@
 
 #include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/graph/asset/SceneDependencyExtractor.h>
-#include <hgl/graph/mesh/ScenePackFormat.h>
+#include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/asset/AssetSource.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/InputStream.h>
@@ -13,7 +13,7 @@
 #include <cstring>
 
 using namespace hgl::asset;
-using namespace hgl::graph::scenepack;
+using namespace hgl::graph::modelpack;
 
 DEFINE_LOGGER_MODULE(ScenePlan)
 USE_MODULE_LOGGER(ScenePlan)
@@ -144,7 +144,7 @@ namespace hgl::graph
         /**
          * 收集场景目录下的 `*.recipe.toml`。
          *
-         * 为什么必须枚举而不是拼路径：场景包只给材质名（`Chessboard`），配方文件名
+         * 为什么必须枚举而不是拼路径：模型包只给材质名（`Chessboard`），配方文件名
          * 却是 `LoadScene.Chess.Chessboard.recipe.toml` —— 前缀来自导出器，猜不出来。
          *
          * @return 收集到的数量；枚举能力不可用返回 -1（调用方降级为警告）
@@ -287,9 +287,9 @@ namespace hgl::graph
             if (mpm == nullptr)
             {
                 if(out_error)
-                    *out_error = "cannot parse scene pack";
+                    *out_error = "cannot parse model pack";
 
-                FLogError(u8"构建装载计划失败：场景包无法解析 %s", scene_ref.c_str());
+                FLogError(u8"构建装载计划失败：模型包无法解析 %s", scene_ref.c_str());
                 return false;
             }
 
@@ -308,8 +308,8 @@ namespace hgl::graph
 
         bool ok = false;
 
-        const int32 header_idx  = mpm->FindFile(AnsiStringView("ScenePackHeader"));
-        const int32 payload_idx = mpm->FindFile(AnsiStringView("ScenePayload"));
+        const int32 header_idx  = mpm->FindFile(AnsiStringView("ModelPackHeader"));
+        const int32 payload_idx = mpm->FindFile(AnsiStringView("ModelPayload"));
 
         if(header_idx >= 0 && payload_idx >= 0)
         {
@@ -334,7 +334,7 @@ namespace hgl::graph
                 {
                     // ── 材质 → 配方 → 纹理 ─────────────────────────────────────
                     //
-                    // 场景包只连到材质节点，纹理挂在配方节点上。不补这一条边，
+                    // 模型包只连到材质节点，纹理挂在配方节点上。不补这一条边，
                     // 纹理与配方就脱离根节点，闭包会漏掉它们 —— 而它们恰恰是最
                     // 贵的两类装载。
                     ManagedArray<RecipeFileRef> recipes;
@@ -407,13 +407,13 @@ namespace hgl::graph
             }
             else
             {
-                FLogError(u8"构建装载计划失败：ScenePackHeader/ScenePayload 为空 %s",
+                FLogError(u8"构建装载计划失败：ModelPackHeader/ModelPayload 为空 %s",
                           scene_ref.c_str());
             }
         }
         else
         {
-            FLogError(u8"构建装载计划失败：缺少 ScenePackHeader/ScenePayload 条目 %s",
+            FLogError(u8"构建装载计划失败：缺少 ModelPackHeader/ModelPayload 条目 %s",
                       scene_ref.c_str());
         }
 
@@ -523,9 +523,9 @@ namespace hgl::graph
         if(pack_bytes == nullptr || pack_size == 0)
         {
             if(out_error)
-                *out_error = "scene pack bytes is empty";
+                *out_error = "model pack bytes is empty";
 
-            FLogError(u8"构建装载计划失败：场景包字节为空 %s", scene_ref.c_str());
+            FLogError(u8"构建装载计划失败：模型包字节为空 %s", scene_ref.c_str());
             return false;
         }
 

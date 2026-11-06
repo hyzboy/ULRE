@@ -81,7 +81,7 @@ namespace
     //   LG_DIST/LG_YAW/LG_PITCH  相机覆盖
     //   LG_FRAMES=N      跑 N 帧退出
     //   LG_DUMP=<tag>    第 8 帧帧内回读落原始字节后退出（lgdump_<tag>_WxH_fmt.raw）
-    const OSString &ScenePackPath()
+    const OSString &ModelPackPath()
     {
         static const OSString path = []
         {
@@ -271,7 +271,7 @@ private:
             return false;
 
         if (!graph::BuildSelfContainedSceneMaterials(
-                *graphics, ScenePackPath(), "load_scene_pbr", pack_materials_))
+                *graphics, ModelPackPath(), "load_scene_pbr", pack_materials_))
             return false;
 
         const char *mat_env = getenv("LG_MAT");

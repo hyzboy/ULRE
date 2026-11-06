@@ -1,6 +1,6 @@
-// TestSceneLoadPlan — 阶段三判据：从场景包 + 配方文本派生出可执行的任务单
+// TestSceneLoadPlan — 阶段三判据：从模型包 + 配方文本派生出可执行的任务单
 //
-// 不用真实 `res/`：这里在临时目录里现搓一个最小 minipack 场景包和几份配方，
+// 不用真实 `res/`：这里在临时目录里现搓一个最小 minipack 模型包和几份配方，
 // 保证测试自足，也不受示例资产改名影响。
 //
 // minipack 容器格式（`MiniPackInfoBlock.cpp`）：
@@ -17,7 +17,7 @@
 
 #include <hgl/graph/asset/AssetLoadGraph.h>
 #include <hgl/graph/asset/SceneLoadPlan.h>
-#include <hgl/graph/mesh/ScenePackFormat.h>
+#include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/utf.h>
@@ -28,7 +28,7 @@
 
 using namespace hgl;
 using namespace hgl::graph;
-using namespace hgl::graph::scenepack;
+using namespace hgl::graph::modelpack;
 
 namespace
 {
@@ -39,19 +39,19 @@ namespace
     constexpr const char *kLitRecipe   = "ulre_loadplan_test_tmp/LoadScene.Chess.Lit.recipe.toml";
     constexpr const char *kGarbagePath = "ulre_loadplan_test_tmp/Garbage.scene";
 
-    // ── 内存中的 SCN2 载荷构造（与 TestSceneDependencyExtractor 同构） ──────
+    // ── 内存中的 MDL2 载荷构造（与 TestSceneDependencyExtractor 同构） ──────
 
     struct PayloadBuilder
     {
         ValueArray<uint8_t>        bytes;
-        ValueArray<SceneTableDesc> dir;
+        ValueArray<ModelTableDesc> dir;
 
-        void AddTable(SceneTableType type, const void *data, uint32_t size)
+        void AddTable(ModelTableType type, const void *data, uint32_t size)
         {
             while(bytes.GetCount() % 8)
                 bytes.Add(static_cast<uint8_t>(0));
 
-            SceneTableDesc desc;
+            ModelTableDesc desc;
             desc.type   = static_cast<uint32_t>(type);
             desc.offset = static_cast<uint32_t>(bytes.GetCount());
             desc.size   = size;
@@ -61,13 +61,13 @@ namespace
             dir.Add(desc);
         }
 
-        void Finish(ScenePackHeader &header)
+        void Finish(ModelPackHeader &header)
         {
             header.dir_offset = static_cast<uint32_t>(bytes.GetCount());
             header.dir_count  = static_cast<uint32_t>(dir.GetCount());
 
             bytes.Add(reinterpret_cast<const uint8_t *>(dir.GetData()),
-                      static_cast<int>(dir.GetCount() * static_cast<int>(sizeof(SceneTableDesc))));
+                      static_cast<int>(dir.GetCount() * static_cast<int>(sizeof(ModelTableDesc))));
 
             header.payload_size = static_cast<uint32_t>(bytes.GetCount());
         }
@@ -92,7 +92,7 @@ namespace
      * 材质在包里的文件名是 `<Scene>.<idx>.<Name>.material`，名字里带场景段和
      * 序号，`MaterialNameFromPackFile` 要能从里面剥出裸材质名。
      */
-    void BuildScenePayload(PayloadBuilder &builder, ScenePackHeader &header,
+    void BuildModelPayload(PayloadBuilder &builder, ModelPackHeader &header,
                            const char *scene_name,
                            const char *material0, const char *material1)
     {
@@ -129,14 +129,14 @@ namespace
         }
 
         std::memset(&header, 0, sizeof(header));
-        header.magic           = kScenePackV2Magic;
+        header.magic           = kModelPackV2Magic;
         header.version_major   = 2;
         header.material_count  = 2;
         header.primitive_count = 2;
 
-        builder.AddTable(SceneTableType::MaterialTable,  materials, sizeof(materials));
-        builder.AddTable(SceneTableType::PrimitiveTable, primitives, sizeof(primitives));
-        builder.AddTable(SceneTableType::StringPool,     pool.GetData(), pool.GetCount());
+        builder.AddTable(ModelTableType::MaterialTable,  materials, sizeof(materials));
+        builder.AddTable(ModelTableType::PrimitiveTable, primitives, sizeof(primitives));
+        builder.AddTable(ModelTableType::StringPool,     pool.GetData(), pool.GetCount());
         builder.Finish(header);
     }
 
@@ -153,7 +153,7 @@ namespace
         return ok;
     }
 
-    /// 只支持两个条目的最小 minipack 写出器 —— 场景包正好只需要 header + payload
+    /// 只支持两个条目的最小 minipack 写出器 —— 模型包正好只需要 header + payload
     bool WriteMiniPack(const char *path,
                        const char *name0, const void *data0, uint32_t length0,
                        const char *name1, const void *data1, uint32_t length1)
@@ -300,20 +300,20 @@ namespace
         return true;
     }
 
-    /// 写一个两材质场景包
-    bool WriteScenePack(const char *scene_path, const char *scene_name,
+    /// 写一个两材质模型包
+    bool WriteModelPack(const char *scene_path, const char *scene_name,
                         const char *material0, const char *material1)
     {
         PayloadBuilder  builder;
-        ScenePackHeader header;
+        ModelPackHeader header;
 
-        BuildScenePayload(builder, header, scene_name, material0, material1);
+        BuildModelPayload(builder, header, scene_name, material0, material1);
 
         if(!WriteMiniPack(scene_path,
-                          "ScenePackHeader", &header, sizeof(header),
-                          "ScenePayload", builder.Data(), builder.Size()))
+                          "ModelPackHeader", &header, sizeof(header),
+                          "ModelPayload", builder.Data(), builder.Size()))
         {
-            GLogError(u8"写出合成场景包失败");
+            GLogError(u8"写出合成模型包失败");
             return false;
         }
 
@@ -323,7 +323,7 @@ namespace
     /// 正常场景：几何 1 + 材质 2 + 配方 2 + 纹理 3，纹理排在配方之前
     bool TestFullPlan()
     {
-        if(!WriteScenePack(kFullScenePath, "Stage", "Lit", "Chessboard"))
+        if(!WriteModelPack(kFullScenePath, "Stage", "Lit", "Chessboard"))
             return false;
 
         SceneLoadPlan plan;
@@ -389,7 +389,7 @@ namespace
     bool TestMissingRecipeDegrades()
     {
         // `Ghost` 在设计里没有任何配方文件，`Chessboard` 仍是完好的那份
-        if(!WriteScenePack(kDegradedScenePath, "Lonely", "Ghost", "Chessboard"))
+        if(!WriteModelPack(kDegradedScenePath, "Lonely", "Ghost", "Chessboard"))
             return false;
 
         SceneLoadPlan plan;

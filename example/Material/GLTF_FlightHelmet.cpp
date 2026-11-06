@@ -57,7 +57,7 @@ using namespace hgl::graph;
 namespace
 {
     // 自装配：scene/recipe/material_data/tex2d 全部取自 pack 所在目录，无任何硬编码 URI。
-    const std::string &ScenePackPath()
+    const std::string &ModelPackPath()
     {
         static const std::string path = []
         {
@@ -140,7 +140,7 @@ private:
 
         // 自装配：材质名来自 pack 的 MaterialTable，配方/数据块来自模型目录
         if (!BuildSelfContainedSceneMaterials(
-                *graphics, hgl::ToOSString(ScenePackPath()), nullptr, scene_materials_))
+                *graphics, hgl::ToOSString(ModelPackPath()), nullptr, scene_materials_))
         {
             GLogError(u8"GLTF_FlightHelmet: 自包含材质装配失败");
             return false;
@@ -153,7 +153,7 @@ private:
         using std::filesystem::exists;
         using std::filesystem::path;
 
-        const path scene_path(ScenePackPath());
+        const path scene_path(ModelPackPath());
         if (!exists(scene_path))
         {
             AnsiString p = AnsiString(scene_path.string().c_str());

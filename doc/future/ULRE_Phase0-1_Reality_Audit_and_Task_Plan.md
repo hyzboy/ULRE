@@ -1,4 +1,4 @@
-﻿# ULRE 阶段零/一 前提核对与任务重排（Reality Audit → Task Plan）
+# ULRE 阶段零/一 前提核对与任务重排（Reality Audit → Task Plan）
 
 > **⚠ 历史记录档**：本文写于对应日期，文中提到的已删符号（`PrimitiveComponent` / `MaterialComponent` / `RenderableComponent` / `TransformComponent` / `VisibilityComponent`·`VisibilitySystem` / `component_mask` / `RenderItemDataStorage` / `AssignTransformIndices` / `PositionSourceSpec`·`TransformPolicySpec` 等）按**历史口径**读。
 > 现行权威：`doc/ecs-layer-architecture-and-frame-flow.md`（ECS 层主档；§2.1 对象模型 / §5 组件面）＋ `doc/visibility-authority-chain.md`（可见性）＋ `doc/backlog.md` §2（逐条落地记录）。
@@ -729,7 +729,7 @@ model:CarConcept          节点=101 无变换=17 AABB=79  max[A]=2.38e-07
   **场景记录侧** `SceneExportGeometries.cpp:15` 用 `ci.geometries.size()`（本场景，=1 ⇒ 记录 `MultipleScenes.geometry`）
   ⇒ 打包时按记录名开文件，文件不存在。
 - **根因 1b（同源、更隐蔽，且是运行时 bug）**：`SceneExportPrimitives.cpp` 用默认 `total=-1` 自己又算了一份
-  （**永远带索引**），而这个字段 `pe.geometryFile` **被写进场景包、由引擎在加载时按它打开几何文件**
+  （**永远带索引**），而这个字段 `pe.geometryFile` **被写进模型包、由引擎在加载时按它打开几何文件**
   （`SceneExportPack.cpp:226/516` 写入，`LoadStaticMesh.cpp:394/401` 读出并 `base_dir + "/" + name`）。
   ⇒ **单几何资产**的包内名 `X.0.geometry` 与磁盘 `X.geometry` 不符（实测 `BoxInterleaved`）⇒ **引擎加载必然失败**。
   属既有缺陷，此前没被发现。

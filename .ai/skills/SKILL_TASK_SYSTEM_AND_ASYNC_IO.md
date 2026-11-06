@@ -312,7 +312,7 @@ ctest --test-dir build -C Debug -R "^LoadedFileManagerTest$" --output-on-failure
 贴图 `IsReady()`。配置规范与用法见
 [SKILL_GEOMETRY_ASSET_TOML.md](SKILL_GEOMETRY_ASSET_TOML.md)。
 
-场景包（`.scene`）的读盘也可异步：`SceneStreamingRequest`（`inc/hgl/graph/mesh/SceneStreaming.h`）
+模型包（`.scene`）的读盘也可异步：`SceneStreamingRequest`（`inc/hgl/graph/mesh/SceneStreaming.h`）
 分「后台读盘 → 主线程 `Build()` 解析」两段，`Pump()` 由上面两个流送系统顺带驱动。
 
 ### 9.1 唯一接口：材质只收句柄

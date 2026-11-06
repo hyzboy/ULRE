@@ -8,7 +8,7 @@
 //
 // 直接把依赖边丢给流送系统，会立刻遇到两个真实问题：
 //   1. **重复请求**：ABeautifulGame 的棋盘上，同一种棋子出现多次，材质与几何
-//      在场景包里是同一个条目。若按「每个 primitive 提一次请求」派发，同一份
+//      在模型包里是同一个条目。若按「每个 primitive 提一次请求」派发，同一份
 //      8MB 几何会被并发读多遍、也会被显存里拷贝多份。计划单按**身份去重**，
 //      同一节点只出现一次，并带上 `ref_count`（有多少个父节点引用它）供上层
 //      决定是否复用句柄。
@@ -47,7 +47,7 @@ namespace hgl::graph
         /// 但顺序不再是严格拓扑序 —— 调用方应当告警而不是静默继续。
         bool acyclic = true;
 
-        /// 内嵌在场景包里的几何份数。自足包不产生外部几何依赖（`CountOf(
+        /// 内嵌在模型包里的几何份数。自足包不产生外部几何依赖（`CountOf(
         /// Geometry)==0`），派发时无需为几何做 IO，但这不等于场景里没有几何。
         int embedded_geometry_count = 0;
 
@@ -61,8 +61,8 @@ namespace hgl::graph
      * 生成场景装载计划单。
      *
      * 步骤：
-     *   1. 经 `OpenAssetInputStream` 取场景包字节（不解析顶点、不建 GPU 资源）；
-     *   2. 解析 SCN2 包头与载荷目录，抽出材质 / 几何依赖；
+     *   1. 经 `OpenAssetInputStream` 取模型包字节（不解析顶点、不建 GPU 资源）；
+     *   2. 解析 MDL2 包头与载荷目录，抽出材质 / 几何依赖；
      *   3. 按材质名在场景目录里枚举 `*.recipe.toml`，解析出纹理依赖；
      *   4. 求解依赖闭包，按拓扑序落成任务单。
      *
@@ -73,7 +73,7 @@ namespace hgl::graph
      * @param out         计划单（会先被清空）
      * @param out_graph   可为 nullptr；非空时写入本次构建的依赖图，供诊断
      * @param out_error   失败原因（可为 nullptr）
-     * @return 场景包读取 / 解析成功返回 true。**配方缺失不算失败** —— 配方缺失
+     * @return 模型包读取 / 解析成功返回 true。**配方缺失不算失败** —— 配方缺失
      *         会在装载期表现为「材质回退默认值」，但几何与纹理依赖仍然有效，
      *         提前判失败反而会让整个场景打不开。
      */
@@ -85,7 +85,7 @@ namespace hgl::graph
     /**
      * @brief 同上，但**复用调用方已经读到的字节**。
      *
-     * 异步流送里场景包已经由 IO 线程读进内存（`SceneStreamingRequest` 持有），
+     * 异步流送里模型包已经由 IO 线程读进内存（`SceneStreamingRequest` 持有），
      * 此时再调 `BuildSceneLoadPlan` 会把同一个大包重复读一遍。本入口只做
      * 「解析 + 求解闭包」，不碰 IO —— 除配方文件外（配方很小，且必须读到
      * 纹理依赖才能算出闭包）。
@@ -93,7 +93,7 @@ namespace hgl::graph
      * `pack_name` 只用于日志与 `base_dir` 推导的失败诊断，不参与解析。
      *
      * @param scene_ref  场景引用（与 `BuildSceneLoadPlan` 同口径，决定身份与 base_dir）
-     * @param pack_bytes 场景包完整字节
+     * @param pack_bytes 模型包完整字节
      * @param pack_size  字节数
      */
     bool BuildSceneLoadPlanFromBytes(const AnsiString &scene_ref,

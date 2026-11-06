@@ -150,7 +150,7 @@ GeometryAsset 状态：MetaOnly → Loading → Resident / LoadFailed
 - 诊断：`HasPendingGeometryResource(entity)` 与 `HasPendingMaterialResources(entity)`
   分别回答「卡在几何」「卡在贴图」。
 
-## 6. 场景包异步加载
+## 6. 模型包异步加载
 
 ```cpp
 SceneStreamingRequest req;              // 必须是 app 成员（比读盘请求活得久）

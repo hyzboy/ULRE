@@ -115,7 +115,7 @@ namespace hgl::graph
          * 与同步入口 `LoadStaticMeshSceneAsPrimitiveAssets` 走同一段解析代码。
          * 成功返回 true 并置状态为 `Built`（字节随之释放）。
          *
-         * @param base_dir 场景包内几何文件的基准目录（通常是包的父目录）
+         * @param base_dir 模型包内几何文件的基准目录（通常是包的父目录）
          * @param material_recipes 按源场景材质下标索引的配方表；为空则整场景共用
          *        `recipe`（多材质场景必须传，否则只有第 0 号材质正确）
          */

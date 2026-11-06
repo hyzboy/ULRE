@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -80,7 +80,7 @@ namespace
 
     // PBR 自装配：scene/recipe/material_data/tex2d 全部取自 pack 同目录；
     // 目录里有两份数据块（debug/PBR），用块名 hint 选 PBR 那份。
-    const std::string &ScenePackPath()
+    const std::string &ModelPackPath()
     {
         static const std::string path = []
         {
@@ -199,7 +199,7 @@ private:
                 return false;
 
             if (!BuildSelfContainedSceneMaterials(
-                    *graphics, hgl::ToOSString(ScenePackPath()),
+                    *graphics, hgl::ToOSString(ModelPackPath()),
                     "load_scene_pbr", chess_materials_))
                 return false;
 
@@ -227,7 +227,7 @@ private:
         using std::filesystem::exists;
 
         // 资产路径可覆盖（默认不变）。
-        const path scene_path(ScenePackPath());
+        const path scene_path(ModelPackPath());
         if (!exists(scene_path))
             return false;
 
@@ -272,7 +272,7 @@ private:
         using std::filesystem::path;
         using std::filesystem::exists;
 
-        const path scene_path(ScenePackPath());
+        const path scene_path(ModelPackPath());
         if (!exists(scene_path))
             return false;
 
@@ -297,12 +297,12 @@ private:
                                             recipe_table_count,
                                             base_dir);
 
-        async_scene_ = graph::RequestSceneAsset(AnsiString(ScenePackPath().c_str()));
+        async_scene_ = graph::RequestSceneAsset(AnsiString(ModelPackPath().c_str()));
 
         if (!async_scene_)
             return false;
 
-        printf("[LSASYNC] request queued: %s\n", ScenePackPath().c_str());
+        printf("[LSASYNC] request queued: %s\n", ModelPackPath().c_str());
         return true;
     }
 
@@ -404,7 +404,7 @@ private:
         auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
         camera->control_mode = hgl::ecs::CameraControlMode::ViewModel;
-        // 自动取景：目标 = 场景包围球中心，距离 = 2×半径（求得时）；否则旧默认
+        // 自动取景：目标 = 模型包围球中心，距离 = 2×半径（求得时）；否则旧默认
         camera->target = scene_bound_radius_ > 0.0f
             ? scene_bound_center_ : math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance = scene_bound_radius_ > 0.0f

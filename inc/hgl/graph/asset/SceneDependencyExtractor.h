@@ -1,14 +1,14 @@
-// SceneDependencyExtractor.h — 从场景包 / 材质配方里抽出依赖，喂给 AssetLoadGraph
+// SceneDependencyExtractor.h — 从模型包 / 材质配方里抽出依赖，喂给 AssetLoadGraph
 //
 // 阶段三的关键约束：**不装载也能知道要装什么**。
 // 因此这里的两个函数都只读原始字节 —— 不碰 `GraphicsContext`、不建 GPU 资源、
 // 不解析几何顶点，只把「引用」翻成规范化身份后写进图里。
 //
-// 依赖来源只有两处（SCN2 把几何顶点内嵌在 GeometryBlob 里，所以几何通常不是
+// 依赖来源只有两处（MDL2 把几何顶点内嵌在 GeometryBlob 里，所以几何通常不是
 // 外部依赖；只有早期 V2 包会回退到外部 `.geometry` 文件）：
 //   1. `MaterialTable` 每行的 StringPool 串（形如 `<Scene>.<idx>.<Name>.material`）
 //   2. `PrimitiveTable` 在**没有** GeometryBlob/GeometryView 时的几何文件名
-// 纹理依赖不在场景包里，而在各 `*.recipe.toml` 的 `[[textures]] resource_id`，
+// 纹理依赖不在模型包里，而在各 `*.recipe.toml` 的 `[[textures]] resource_id`，
 // 由 `ExtractRecipeDependencies` 处理。
 
 #pragma once
@@ -26,7 +26,7 @@ namespace hgl::graph
     AnsiString JoinAssetRef(const AnsiString &base_dir, const AnsiString &name);
 
     /**
-     * 场景包里的一条材质引用。
+     * 模型包里的一条材质引用。
      *
      * `name` 是**给人看的材质名**（`Chessboard`），`key` 是**给图用的身份**
      * （`material_recipe:abeautifulgame.staticmesh/abeautifulgame.0.chessboard`）。
@@ -39,11 +39,11 @@ namespace hgl::graph
     };
 
     /**
-     * 从已取到的 SCN2 包头 + 载荷中抽出场景的外部依赖。
+     * 从已取到的 MDL2 包头 + 载荷中抽出场景的外部依赖。
      *
-     * @param pack_header_raw `ScenePackHeader` 条目首地址
+     * @param pack_header_raw `ModelPackHeader` 条目首地址
      * @param header_len      该条目字节数
-     * @param payload_raw     `ScenePayload` 条目首地址
+     * @param payload_raw     `ModelPayload` 条目首地址
      * @param payload_len     该条目字节数
      * @param base_dir        包内相对目录（`res` 包裹里即 `ABeautifulGame.StaticMesh/`）
      * @param scene_ref       场景自身的引用（用于规范化出根节点）

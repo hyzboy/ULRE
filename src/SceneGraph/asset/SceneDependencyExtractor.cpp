@@ -1,12 +1,12 @@
 #include <hgl/graph/asset/SceneDependencyExtractor.h>
 
-#include <hgl/graph/mesh/ScenePackFormat.h>
+#include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/MaterialRecipeFile.h>
 #include <hgl/log/Log.h>
 
 using namespace hgl::asset;
-using namespace hgl::graph::scenepack;
+using namespace hgl::graph::modelpack;
 
 DEFINE_LOGGER_MODULE(SceneDep)
 USE_MODULE_LOGGER(SceneDep)
@@ -32,7 +32,7 @@ namespace hgl::graph
 
     namespace
     {
-        /// `.material` 是 SCN2 的每材质二进制容器，语义上是「材质」而不是「配方」；
+        /// `.material` 是 MDL2 的每材质二进制容器，语义上是「材质」而不是「配方」；
         /// 身份层与 `.recipe.toml` 合并（见 AssetLoadGraph.cpp 的后缀表注释），
         /// 但派发层要区分开 —— 一个交给材质装配，一个交给配方注册表。
         inline AssetDepKind KindFromRef(const AnsiString &ref, AssetType type)
@@ -134,8 +134,8 @@ namespace hgl::graph
         if(out_embedded_geometry)
             *out_embedded_geometry = 0;
 
-        ScenePackHeader h{};
-        const SceneTableDesc *dir = nullptr;
+        ModelPackHeader h{};
+        const ModelTableDesc *dir = nullptr;
 
         if(!ReadPayloadDirectory(pack_header_raw, header_len, payload_raw, payload_len, h, dir))
         {
@@ -145,7 +145,7 @@ namespace hgl::graph
 
         const uint8_t *payload = reinterpret_cast<const uint8_t *>(payload_raw);
 
-        const auto table = [payload, &h, dir](SceneTableType type, const uint8_t *&ptr, uint32_t &size)
+        const auto table = [payload, &h, dir](ModelTableType type, const uint8_t *&ptr, uint32_t &size)
         {
             return TryGetTableRange(payload, h.payload_size, FindTableDesc(dir, h.dir_count, type), ptr, size);
         };
@@ -157,8 +157,8 @@ namespace hgl::graph
             const uint8_t *mat = nullptr;  uint32_t mat_size = 0;
             const uint8_t *pool = nullptr; uint32_t pool_size = 0;
 
-            const bool has_mat  = table(SceneTableType::MaterialTable, mat, mat_size);
-            const bool has_pool = table(SceneTableType::StringPool, pool, pool_size);
+            const bool has_mat  = table(ModelTableType::MaterialTable, mat, mat_size);
+            const bool has_pool = table(ModelTableType::StringPool, pool, pool_size);
 
             if(has_mat != has_pool)
             {
@@ -216,9 +216,9 @@ namespace hgl::graph
             const uint8_t *geo_view = nullptr; uint32_t geo_view_size = 0;
             const uint8_t *geo_blob = nullptr; uint32_t geo_blob_size = 0;
 
-            const bool has_prim     = table(SceneTableType::PrimitiveTable, prim, prim_size);
-            const bool has_geo_view = table(SceneTableType::GeometryViewTable, geo_view, geo_view_size);
-            const bool has_geo_blob = table(SceneTableType::GeometryBlob, geo_blob, geo_blob_size);
+            const bool has_prim     = table(ModelTableType::PrimitiveTable, prim, prim_size);
+            const bool has_geo_view = table(ModelTableType::GeometryViewTable, geo_view, geo_view_size);
+            const bool has_geo_blob = table(ModelTableType::GeometryBlob, geo_blob, geo_blob_size);
 
             // 与 LoadStaticMesh 的判据保持一致：视图表与 blob 都在，几何就是内嵌的
             const bool geometry_embedded = has_geo_view && has_geo_blob
@@ -229,7 +229,7 @@ namespace hgl::graph
             {
                 const uint8_t *pool = nullptr; uint32_t pool_size = 0;
 
-                if(!table(SceneTableType::StringPool, pool, pool_size))
+                if(!table(ModelTableType::StringPool, pool, pool_size))
                 {
                     FLogError(u8"提取场景依赖失败：外部几何回退路径缺少 StringPool");
                     return false;

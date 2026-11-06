@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <hgl/type/String.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/mesh/StaticMesh.h>
@@ -56,7 +56,7 @@ namespace hgl::graph
      * 磁盘映射换成了内存块 —— 因此可以把「读盘」搬到后台 IO 线程，主线程只在
      * 数据就绪后做一次解析与 GPU 建 buffer。
      *
-     * @param pack_bytes 完整场景包字节（本调用期间必须有效，不会被保留）
+     * @param pack_bytes 完整模型包字节（本调用期间必须有效，不会被保留）
      * @param pack_name  仅用于日志/诊断的资产名
      * @note 这里创建的 `Geometry*` 会 `Add` 进 `geo_mgr`，与同步路径一致。
      * @note `material_recipes`/`material_recipe_count` 语义与
@@ -85,10 +85,10 @@ namespace hgl::graph
      * 彻底解耦：调用方可以直接喂资产包的 `OpenAssetStream`，不需要物理路径、
      * 不需要先落盘、也不需要自己管缓冲区生命周期。
      *
-     * @param stream    已定位到场景包首字节的输入流（**所有权留在调用方**，本函数不关闭）
+     * @param stream    已定位到模型包首字节的输入流（**所有权留在调用方**，本函数不关闭）
      * @param pack_name 仅用于日志/诊断的资产名（可以是逻辑路径）
-     * @param base_dir  解析 V1 包里相对几何文件名时使用的基础目录；V2 包自带
-     *                  GeometryBlob 时不使用
+     * @param base_dir  解析几何文件名外置（无 GeometryBlob）时使用的基础目录；
+     *                  模型包内嵌 GeometryBlob 时不使用
      *
      * @note 流的读取位置会被推进到结尾；失败不影响流的可用性。
      */
@@ -128,7 +128,7 @@ namespace hgl::graph
      *
      * 流程：
      * 1. 解析 pack 的 V2 MaterialTable（tag 9），取每个材质下标的材质名
-     *    （`"<Scene>.<idx>.<Name>.material"` → `"<Name>"`）；
+     *    （`"<Model>.<idx>.<Name>.material"` → `"<Name>"`）；
      * 2. 只扫 pack 所在目录的 `*.recipe.toml`（经 GraphicsContext 注册表）；
      * 3. 匹配：配方名最后一段 == 材质名；目录里只有一个配方时通吃所有材质
      *    （单材质模型即此形态）；
@@ -136,7 +136,7 @@ namespace hgl::graph
      *    `material_data_block_hint` 按文件名（不含扩展名）指定；
      * 5. 按行号 = 材质下标取 `GlobalSSBOBinding`，写进配方副本。
      *
-     * @note 仅支持 ScenePackV2（含 MaterialTable）；V1 包返回 `false`。
+     * @note 仅支持 MDL2 模型包（含 MaterialTable）；缺表的包返回 `false`。
      * @note 成功后 `out` 即材质真源；装载 scene 时把 `out.table` 传入即可，
      *       `out` 需活到 `PrimitiveAsset` 使用完毕（同示例自持配方副本的惯例）。
      */

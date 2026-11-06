@@ -6,7 +6,7 @@
 //
 // | | 本文件的 `SceneSpecAsset` | `SceneAsset`（`SceneAsset.h`） |
 // |---|---|---|
-// | 数据来源 | 手写/生成的 `SceneSpec`（TOML 或 FlatBuffers） | SCN2 二进制场景包（`.scene` MiniPack） |
+// | 数据来源 | 手写/生成的 `SceneSpec`（TOML 或 FlatBuffers） | MDL2 二进制模型包（`.scene` MiniPack） |
 // | 内容 | 节点名 + 材质参数 + 按名字引用几何/配方 | 顶点/索引/TRS 全在包里，几何可内嵌 |
 // | 加载形态 | 同步解析（纯文本/小二进制） | 异步流送（读盘在后台，GPU 在主线程） |
 // | 实例化 | `SceneLoader::Instantiate` → `SceneInstance` | `StaticMeshSceneInstance` → `PrimitiveAsset` |

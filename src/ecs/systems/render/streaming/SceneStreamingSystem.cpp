@@ -14,7 +14,7 @@ namespace hgl::ecs
 {
     namespace
     {
-        /// 单帧最多发起几次场景包读盘。场景包是大文件，一帧两个已经足够把 IO
+        /// 单帧最多发起几次模型包读盘。模型包是大文件，一帧两个已经足够把 IO
         /// 队列喂满，同时又不会让「解析 + 建显存」在第一帧堆成峰值。
         constexpr int kMaxSubmitPerFrame = 2;
 
@@ -292,7 +292,7 @@ namespace hgl::ecs
                 if (!stream_in)
                 {
                     const AnsiString reason = open_error.IsEmpty()
-                                            ? AnsiString("无法打开场景包")
+                                            ? AnsiString("无法打开模型包")
                                             : open_error;
 
                     asset->Fail(reason.c_str());
@@ -305,7 +305,7 @@ namespace hgl::ecs
                 if (size <= 0 || size > static_cast<int64>(UINT32_MAX))
                 {
                     delete stream_in;
-                    asset->Fail("场景包尺寸非法");
+                    asset->Fail("模型包尺寸非法");
                     stream->settled = true;
                     continue;
                 }
@@ -315,7 +315,7 @@ namespace hgl::ecs
                 if (!bytes)
                 {
                     delete stream_in;
-                    asset->Fail("场景包缓冲分配失败");
+                    asset->Fail("模型包缓冲分配失败");
                     stream->settled = true;
                     continue;
                 }
@@ -324,7 +324,7 @@ namespace hgl::ecs
                 {
                     hgl_free(bytes);
                     delete stream_in;
-                    asset->Fail("场景包读取不完整");
+                    asset->Fail("模型包读取不完整");
                     stream->settled = true;
                     continue;
                 }
@@ -337,7 +337,7 @@ namespace hgl::ecs
 
                 if (!ok)
                 {
-                    asset->Fail("场景包缓冲接管失败");
+                    asset->Fail("模型包缓冲接管失败");
                     stream->settled = true;
                     continue;
                 }
@@ -354,7 +354,7 @@ namespace hgl::ecs
             if (!started)
             {
                 handler->Release();
-                asset->Fail("场景包读盘提交失败");
+                asset->Fail("模型包读盘提交失败");
                 stream->settled = true;
                 continue;
             }
@@ -396,7 +396,7 @@ namespace hgl::ecs
         {
             if (stream->request.HasFailed())
             {
-                asset->Fail("场景包读取失败");
+                asset->Fail("模型包读取失败");
                 return true;
             }
 
@@ -455,7 +455,7 @@ namespace hgl::ecs
                                        settings.recipe_table_count))
             {
                 content.Clear();
-                asset->Fail("场景包解析失败");
+                asset->Fail("模型包解析失败");
                 return true;
             }
 

@@ -13,7 +13,7 @@
 // ```
 // Request(uri)      主线程立刻返回 Unloaded 句柄（0 IO、0 显存）
 //    ↓  SceneStreamingSystem 每帧取 Unloaded 句柄派发
-// Loading           场景包字节读取 + SCN2 解析在途
+// Loading           模型包字节读取 + MDL2 解析在途
 //    ↓  SetPlan()：拿到依赖计划单，子任务数确定
 // Assembling        子项（几何 / 纹理 / 材质）在各自流送系统里推进
 //    ↓  SettleChild() 逐项递减，全部落定 ⇒ CommitScene()
@@ -33,7 +33,7 @@
 // ── 与 `SceneSpecAsset` 的区别 ────────────────────────────────────────────
 //
 // 见 `SceneSpecAssetRegistry.h` 顶部对照表：那一种是手写规格书（TOML/FB），
-// 这一种是 SCN2 二进制场景包。
+// 这一种是 MDL2 二进制模型包。
 
 #pragma once
 
@@ -56,7 +56,7 @@ namespace hgl::graph
     enum class SceneAssetState : uint8
     {
         Unloaded = 0,   ///<只有 URI，尚未派发（流送系统每帧取它开工）
-        Loading,        ///<场景包字节读取 / SCN2 解析在途
+        Loading,        ///<模型包字节读取 / MDL2 解析在途
         Assembling,     ///<场景已解析，子项（几何/纹理/材质）在途
         Ready,          ///<全部就绪，可实例化进 ECS
         Failed,         ///<读取 / 解析 / 子项失败（不自动重试）
@@ -224,7 +224,7 @@ namespace hgl::graph
         bool BeginStreaming(uint64 request_id = 0);
 
         /**
-         * @brief 场景包已解析：登记计划单与子任务数，`Loading` ⇒ `Assembling`。
+         * @brief 模型包已解析：登记计划单与子任务数，`Loading` ⇒ `Assembling`。
          *
          * 子任务数为 0（空场景 / 只有内嵌几何且无需外部依赖）时会直接提交，
          * 因为此时没有可等待的子项。

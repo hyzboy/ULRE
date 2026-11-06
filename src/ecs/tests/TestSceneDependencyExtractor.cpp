@@ -1,10 +1,10 @@
 // TestSceneDependencyExtractor — 阶段三判据：不装载也能抽出场景/配方依赖
 //
-// 全部用内存里现搓的 SCN2 包与配方文本，不读盘、不建设备。
+// 全部用内存里现搓的 MDL2 包与配方文本，不读盘、不建设备。
 
 #include <hgl/graph/asset/AssetLoadGraph.h>
 #include <hgl/graph/asset/SceneDependencyExtractor.h>
-#include <hgl/graph/mesh/ScenePackFormat.h>
+#include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
@@ -12,23 +12,23 @@
 
 using namespace hgl;
 using namespace hgl::graph;
-using namespace hgl::graph::scenepack;
+using namespace hgl::graph::modelpack;
 
 namespace
 {
-    /// 按 SCN2 布局把若干表串成 payload，并在末尾追加表目录
+    /// 按 MDL2 布局把若干表串成 payload，并在末尾追加表目录
     struct PayloadBuilder
     {
         ValueArray<uint8_t>        bytes;
-        ValueArray<SceneTableDesc> dir;
+        ValueArray<ModelTableDesc> dir;
 
-        void AddTable(SceneTableType type, const void *data, uint32_t size)
+        void AddTable(ModelTableType type, const void *data, uint32_t size)
         {
             // 表内是 POD 强转访问，入口先对齐到 8 字节
             while(bytes.GetCount() % 8)
                 bytes.Add(static_cast<uint8_t>(0));
 
-            SceneTableDesc desc;
+            ModelTableDesc desc;
             desc.type   = static_cast<uint32_t>(type);
             desc.offset = static_cast<uint32_t>(bytes.GetCount());
             desc.size   = size;
@@ -39,13 +39,13 @@ namespace
         }
 
         /// 追加目录，填好包头里与目录相关的三个字段
-        void Finish(ScenePackHeader &header)
+        void Finish(ModelPackHeader &header)
         {
             header.dir_offset = static_cast<uint32_t>(bytes.GetCount());
             header.dir_count  = static_cast<uint32_t>(dir.GetCount());
 
             bytes.Add(reinterpret_cast<const uint8_t *>(dir.GetData()),
-                      static_cast<int>(dir.GetCount() * static_cast<int>(sizeof(SceneTableDesc))));
+                      static_cast<int>(dir.GetCount() * static_cast<int>(sizeof(ModelTableDesc))));
 
             header.payload_size = static_cast<uint32_t>(bytes.GetCount());
         }
@@ -54,10 +54,10 @@ namespace
         uint32_t    Size() const { return static_cast<uint32_t>(bytes.GetCount()); }
     };
 
-    void InitHeader(ScenePackHeader &header, uint32_t materials, uint32_t primitives)
+    void InitHeader(ModelPackHeader &header, uint32_t materials, uint32_t primitives)
     {
         std::memset(&header, 0, sizeof(header));
-        header.magic          = kScenePackV2Magic;
+        header.magic          = kModelPackV2Magic;
         header.version_major  = 2;
         header.version_minor  = 0;
         header.material_count = materials;
@@ -89,8 +89,8 @@ namespace
         return count;
     }
 
-    /// 场景包：2 个材质 + 1 个回退几何（没有 GeometryBlob/GeometryView）
-    bool BuildLegacyScenePack(PayloadBuilder &builder, ScenePackHeader &header)
+    /// 模型包：2 个材质 + 1 个回退几何（没有 GeometryBlob/GeometryView）
+    bool BuildLegacyModelPack(PayloadBuilder &builder, ModelPackHeader &header)
     {
         ValueArray<char> pool;
 
@@ -116,20 +116,20 @@ namespace
 
         InitHeader(header, 2, 2);
 
-        builder.AddTable(SceneTableType::MaterialTable, mats, sizeof(mats));
-        builder.AddTable(SceneTableType::PrimitiveTable, prims, sizeof(prims));
-        builder.AddTable(SceneTableType::StringPool, pool.GetData(), static_cast<uint32_t>(pool.GetCount()));
+        builder.AddTable(ModelTableType::MaterialTable, mats, sizeof(mats));
+        builder.AddTable(ModelTableType::PrimitiveTable, prims, sizeof(prims));
+        builder.AddTable(ModelTableType::StringPool, pool.GetData(), static_cast<uint32_t>(pool.GetCount()));
         builder.Finish(header);
 
         return true;
     }
 
-    bool TestLegacySceneDependencies()
+    bool TestLegacyModelDependencies()
     {
         PayloadBuilder  builder;
-        ScenePackHeader header;
+        ModelPackHeader header;
 
-        if(!BuildLegacyScenePack(builder, header))
+        if(!BuildLegacyModelPack(builder, header))
             return false;
 
         AssetLoadGraph graph;
@@ -214,14 +214,14 @@ namespace
         uint8_t blob[64] = {};
 
         PayloadBuilder   builder;
-        ScenePackHeader  header;
+        ModelPackHeader  header;
         InitHeader(header, 1, 1);
 
-        builder.AddTable(SceneTableType::MaterialTable, &mat, sizeof(mat));
-        builder.AddTable(SceneTableType::PrimitiveTable, &prim, sizeof(prim));
-        builder.AddTable(SceneTableType::GeometryViewTable, &view, sizeof(view));
-        builder.AddTable(SceneTableType::GeometryBlob, blob, sizeof(blob));
-        builder.AddTable(SceneTableType::StringPool, pool.GetData(), static_cast<uint32_t>(pool.GetCount()));
+        builder.AddTable(ModelTableType::MaterialTable, &mat, sizeof(mat));
+        builder.AddTable(ModelTableType::PrimitiveTable, &prim, sizeof(prim));
+        builder.AddTable(ModelTableType::GeometryViewTable, &view, sizeof(view));
+        builder.AddTable(ModelTableType::GeometryBlob, blob, sizeof(blob));
+        builder.AddTable(ModelTableType::StringPool, pool.GetData(), static_cast<uint32_t>(pool.GetCount()));
         builder.Finish(header);
 
         AssetLoadGraph graph;
@@ -244,14 +244,14 @@ namespace
     bool TestBrokenPackRejected()
     {
         PayloadBuilder  builder;
-        ScenePackHeader header;
+        ModelPackHeader header;
 
         // 缺 StringPool 的包不是「零依赖」，而是坏包
         PackedMaterial mat;
         std::memset(&mat, 0, sizeof(mat));
 
         InitHeader(header, 1, 0);
-        builder.AddTable(SceneTableType::MaterialTable, &mat, sizeof(mat));
+        builder.AddTable(ModelTableType::MaterialTable, &mat, sizeof(mat));
         builder.Finish(header);
 
         AssetLoadGraph graph;
@@ -265,7 +265,7 @@ namespace
 
         // 载荷长度撒谎同样要判失败
         PayloadBuilder  builder2;
-        ScenePackHeader header2;
+        ModelPackHeader header2;
         InitHeader(header2, 0, 0);
         builder2.Finish(header2);
         header2.payload_size += 4096;
@@ -278,7 +278,7 @@ namespace
         }
 
         // 魔数不对
-        ScenePackHeader bad;
+        ModelPackHeader bad;
         std::memset(&bad, 0, sizeof(bad));
         bad.magic = 0x12345678u;
         bad.version_major = 2;
@@ -388,7 +388,7 @@ int main()
 {
     hgl::logger::InitLogger(OS_TEXT("TestSceneDependencyExtractor"));
 
-    if(!TestLegacySceneDependencies()
+    if(!TestLegacyModelDependencies()
        || !TestEmbeddedGeometryIsNotADependency()
        || !TestBrokenPackRejected()
        || !TestRecipeDependencies())

@@ -34,12 +34,12 @@
 namespace hgl::graph
 {
     /// 依赖边种类：决定「前置就绪」由哪条流水线负责。
-    /// 与 `asset::AssetType` 保持一一对应（另加 `Material` —— SCN2 每材质
+    /// 与 `asset::AssetType` 保持一一对应（另加 `Material` —— MDL2 每材质
     /// 一份二进制，不对应任何 `AssetType`）。
     enum class AssetDepKind : uint8_t
     {
         Geometry = 0,       ///< `.geometry` / `.mesh` / `.geo.*` → GeometryStreamingSystem
-        Material,           ///< `.material` 容器（SCN2 每材质一份二进制）
+        Material,           ///< `.material` 容器（MDL2 每材质一份二进制）
         MaterialRecipe,     ///< `.recipe.toml` 配方
         Texture,            ///< `.Tex2D` / `.TexCube` / `.TexOct` / `texarray:` → TextureStreamingSystem
         MaterialData,       ///< `.material_data.toml` 数据块
@@ -82,7 +82,7 @@ namespace hgl::graph
         AssetDepKind kind = AssetDepKind::Geometry;
     };
 
-    /// 把场景包/清单里的物理引用规范成资产身份。
+    /// 把模型包/清单里的物理引用规范成资产身份。
     ///
     /// 例：`ABeautifulGame.StaticMesh/ABeautifulGame.Chessboard_normal.Tex2D`
     ///     → { Texture, "abeautifulgame.staticmesh/abeautifulgame.chessboard_normal" }

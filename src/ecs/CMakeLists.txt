@@ -1,4 +1,4 @@
-﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
+SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
 # ECS 调试/校验面（对拍器 + 诊断打印）。**开关与默认值的唯一台帐 = inc/hgl/common/RenderOptions.h §2**：
 # 本 option 只表达「在所有构建配置里**强制打开**」；默认 OFF = 不下发宏 ⇒ 由台帐按配置决定（Debug 开 / Release 关）。
@@ -257,10 +257,10 @@ add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 # 阶段三判据：资产装载顺序图（后缀规范化 / 引用计数 / 拓扑闭包 / 有环终止）
 add_ecs_test(TestAssetLoadGraph tests/TestAssetLoadGraph.cpp)
 
-# 阶段三判据：不装载也能抽出场景/配方依赖（内存内合成 SCN2 包与配方文本）
+# 阶段三判据：不装载也能抽出场景/配方依赖（内存内合成 MDL2 包与配方文本）
 add_ecs_test(TestSceneDependencyExtractor tests/TestSceneDependencyExtractor.cpp)
 
-# 阶段三判据：场景包 + 配方 → 任务单（去重 / 拓扑序 / 配方缺失降级 / 坏包拒绝）
+# 阶段三判据：模型包 + 配方 → 任务单（去重 / 拓扑序 / 配方缺失降级 / 坏包拒绝）
 add_ecs_test(TestSceneLoadPlan tests/TestSceneLoadPlan.cpp)
 
 # 阶段四判据：异步场景句柄的状态机与句柄表去重（不碰设备）

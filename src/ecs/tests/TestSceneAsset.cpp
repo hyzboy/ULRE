@@ -262,7 +262,7 @@ namespace
         asset->SetNotifyCallback(OnReady, OnFailed, &probe);
 
         EXPECT(asset->BeginStreaming(3));
-        asset->Fail("bad SCN2 header");
+        asset->Fail("bad MDL2 header");
 
         EXPECT(asset->HasFailed());
         EXPECT(!asset->IsLoading());

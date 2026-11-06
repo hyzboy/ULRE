@@ -111,7 +111,7 @@ namespace hgl::graph
         /// 场景资产只持有纯数据规格；实例实体及 GPU 资源仍由 SceneInstance/其它注册器管理。
         SceneSpecAssetRegistry scene_spec_asset_registry_;
 
-        /// 异步场景句柄表（SCN2 场景包）。句柄只记状态与依赖计划，GPU 资源在
+        /// 异步场景句柄表（MDL2 模型包）。句柄只记状态与依赖计划，GPU 资源在
         /// `GeometryManager` / `TextureManager` 原处，因此这里无需在设备销毁前
         /// 做硬件回收 —— 仍应在 `Clear()` 里清空，避免悬垂的观察指针活过设备。
         SceneAssetRegistry scene_asset_registry_;
@@ -205,7 +205,7 @@ namespace hgl::graph
         SceneSpecAssetRegistry *GetSceneSpecAssetRegistry() { return &scene_spec_asset_registry_; }
         const SceneSpecAssetRegistry *GetSceneSpecAssetRegistry() const { return &scene_spec_asset_registry_; }
 
-        /// 异步场景句柄表（SCN2 场景包）：`Request(uri)` 零阻塞返回句柄，
+        /// 异步场景句柄表（MDL2 模型包）：`Request(uri)` 零阻塞返回句柄，
         /// 由 `SceneStreamingSystem` 每帧推进；同时登记为进程内默认表，
         /// 供 `RequestSceneAsset(uri)` 使用。
         SceneAssetRegistry *GetSceneAssetRegistry() { return &scene_asset_registry_; }

@@ -25,7 +25,7 @@ namespace hgl::ecs
      *
      * ## 为什么需要它
      *
-     * 场景包是**一个**文件，但里面装着几何、材质、配方、纹理的引用。把它拆成
+     * 模型包是**一个**文件，但里面装着几何、材质、配方、纹理的引用。把它拆成
      * 「谁先谁后」的活由阶段三的 `BuildSceneLoadPlan` 完成，把「谁在等谁」的记账
      * 由 `SceneAsset` 句柄完成；本系统只负责**推动**：读盘、解析、逐帧结算，
      * 全部发生在主线程，任何一帧都不阻塞。
@@ -69,7 +69,7 @@ namespace hgl::ecs
 
     public:
 
-        /// 解析场景包所需的外部设定。
+        /// 解析模型包所需的外部设定。
         struct BuildSettings
         {
             graph::GeometryVertexFormat geometry_vertex_format;
@@ -81,7 +81,7 @@ namespace hgl::ecs
             const graph::mtl::MaterialRecipe *const *recipe_table = nullptr;
             uint32_t recipe_table_count = 0;
 
-            /// 几何文件的基准目录；空则取场景包所在目录
+            /// 几何文件的基准目录；空则取模型包所在目录
             OSString base_dir;
 
             bool valid = false;
@@ -145,7 +145,7 @@ namespace hgl::ecs
     public:     // 外部设定
 
         /**
-         * @brief 设定解析场景包所需的几何顶点格式与材质配方。
+         * @brief 设定解析模型包所需的几何顶点格式与材质配方。
          *
          * 必须在请求场景之前调用；同一进程内多份约定共存时，以最后一次为准。
          */

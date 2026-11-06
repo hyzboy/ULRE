@@ -88,7 +88,7 @@ namespace hgl::graph
 
         if(!pack_bytes)
         {
-            GLogError(u8"[SceneStreaming] 场景包缓冲分配失败（%u 字节）",size);
+            GLogError(u8"[SceneStreaming] 模型包缓冲分配失败（%u 字节）",size);
             state=SceneStreamingState::Failed;
             return(false);
         }
@@ -111,7 +111,7 @@ namespace hgl::graph
 
         if(size==0||size>static_cast<uint64>(UINT32_MAX))
         {
-            GLogError(u8"[SceneStreaming] 场景包尺寸非法（%llu 字节）：%s",
+            GLogError(u8"[SceneStreaming] 模型包尺寸非法（%llu 字节）：%s",
                       static_cast<unsigned long long>(size),
                       reinterpret_cast<const char *>(ToU8String(pack_path).c_str()));
             state=SceneStreamingState::Failed;
@@ -124,7 +124,7 @@ namespace hgl::graph
 
         if(!pack_bytes)
         {
-            GLogError(u8"[SceneStreaming] 场景包缓冲分配失败（%llu 字节）",
+            GLogError(u8"[SceneStreaming] 模型包缓冲分配失败（%llu 字节）",
                       static_cast<unsigned long long>(size));
             state=SceneStreamingState::Failed;
             return;
