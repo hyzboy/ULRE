@@ -243,7 +243,7 @@ material_data.toml / MDB1 二进制
 occlusion, opacity_mask, normal）是**物理 ABI**，`standard_opaque_bindings.glsl:1-31` 与
 `MaterialDomain.cpp` 契约表必须同步，否则整表错位。
 
-示例链（`example/Material/BasicLitMeshes.cpp:35-60`）：scene.toml → SceneAsset::Instantiate →
+示例链（`example/Material/BasicLitMeshes.cpp:35-60`）：scene.toml → SceneSpecAsset::Instantiate →
 引用 MaterialRecipe/material data → ShaderProgramManager 解析取 program。
 
 ## 六、两种形态对照

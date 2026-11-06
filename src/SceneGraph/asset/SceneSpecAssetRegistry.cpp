@@ -1,57 +1,57 @@
-#include <hgl/graph/asset/SceneAssetRegistry.h>
+#include <hgl/graph/asset/SceneSpecAssetRegistry.h>
 #include <hgl/graph/asset/SceneAssetFile.h>
 #include <hgl/graph/asset/SceneLoader.h>
 #include <hgl/asset/LoadedFile.h>
 #include <hgl/log/Log.h>
 
-DEFINE_LOGGER_MODULE(SceneAssetRegistry)
-USE_MODULE_LOGGER(SceneAssetRegistry)
+DEFINE_LOGGER_MODULE(SceneSpecAssetRegistry)
+USE_MODULE_LOGGER(SceneSpecAssetRegistry)
 
 namespace hgl::graph
 {
-    bool SceneAsset::Instantiate(ecs::ECSContext *world,
+    bool SceneSpecAsset::Instantiate(ecs::ECSContext *world,
                                  GeometryCreater *creater,
                                  SceneInstance &out_instance) const
     {
         return SceneLoader::Instantiate(spec, world, creater, out_instance, filename);
     }
 
-    SceneAssetRegistry::~SceneAssetRegistry()
+    SceneSpecAssetRegistry::~SceneSpecAssetRegistry()
     {
         Clear();
     }
 
-    SceneAsset *SceneAssetRegistry::FindByResourceKey(
+    SceneSpecAsset *SceneSpecAssetRegistry::FindByResourceKey(
         const OSString &resource_key) const
     {
         if (resource_key.IsEmpty())
             return nullptr;
 
-        for (SceneAsset *asset : assets)
+        for (SceneSpecAsset *asset : assets)
             if (asset && asset->resource_key == resource_key)
                 return asset;
 
         return nullptr;
     }
 
-    SceneAsset *SceneAssetRegistry::FindByFilename(const OSString &filename) const
+    SceneSpecAsset *SceneSpecAssetRegistry::FindByFilename(const OSString &filename) const
     {
         return FindByResourceKey(MakeLoadedFileKey(filename));
     }
 
-    SceneAsset *SceneAssetRegistry::GetOrLoad(const OSString &filename)
+    SceneSpecAsset *SceneSpecAssetRegistry::GetOrLoad(const OSString &filename)
     {
         if (filename.IsEmpty())
         {
-            MLogError(SceneAssetRegistry, "GetOrLoad received an empty filename");
+            MLogError(SceneSpecAssetRegistry, "GetOrLoad received an empty filename");
             return nullptr;
         }
 
         const OSString resource_key = MakeLoadedFileKey(filename);
-        if (SceneAsset *cached = FindByResourceKey(resource_key))
+        if (SceneSpecAsset *cached = FindByResourceKey(resource_key))
             return cached;
 
-        SceneAsset *asset = assets.Create();
+        SceneSpecAsset *asset = assets.Create();
         if (!asset)
             return nullptr;
 
@@ -66,7 +66,7 @@ namespace hgl::graph
         return asset;
     }
 
-    void SceneAssetRegistry::Clear()
+    void SceneSpecAssetRegistry::Clear()
     {
         assets.Clear();
     }

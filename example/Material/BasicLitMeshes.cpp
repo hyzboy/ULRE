@@ -1,6 +1,6 @@
 #include <hgl/framework/WorkManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/graph/asset/SceneAssetRegistry.h>
+#include <hgl/graph/asset/SceneSpecAssetRegistry.h>
 #include <hgl/graph/asset/SceneLoader.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/BufferManager.h>
@@ -54,12 +54,12 @@ private:
             return false;
 
         GraphicsContext *graphics = ecs_context->GetGraphicsContext();
-        SceneAssetRegistry *scene_registry =
-            graphics ? graphics->GetSceneAssetRegistry() : nullptr;
+        SceneSpecAssetRegistry *scene_registry =
+            graphics ? graphics->GetSceneSpecAssetRegistry() : nullptr;
         if (!scene_registry)
             return false;
 
-        SceneAsset *scene = scene_registry->GetOrLoad(
+        SceneSpecAsset *scene = scene_registry->GetOrLoad(
             OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
         if (!scene)
             return false;

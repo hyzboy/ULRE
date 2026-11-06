@@ -1,5 +1,5 @@
 #include <hgl/graph/asset/SceneAssetFile.h>
-#include <hgl/graph/asset/SceneAssetRegistry.h>
+#include <hgl/graph/asset/SceneSpecAssetRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -191,12 +191,12 @@ namespace
         return !Parse(kMissingGeometryRecipe, spec);
     }
 
-    bool TestSceneAssetRegistry()
+    bool TestSceneSpecAssetRegistry()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *first = registry.GetOrLoad(
+        SceneSpecAssetRegistry registry;
+        SceneSpecAsset *first = registry.GetOrLoad(
             OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
-        SceneAsset *second = registry.GetOrLoad(
+        SceneSpecAsset *second = registry.GetOrLoad(
             OS_TEXT("example\\Material\\BasicLitMeshes.scene.toml"));
 
         return first
@@ -241,7 +241,7 @@ int main()
         || !TestInvalidScenes()
         || !TestBasicLitMeshesSceneFile()
         || !TestGeometryReferenceKinds()
-        || !TestSceneAssetRegistry()
+        || !TestSceneSpecAssetRegistry()
         || !TestSceneFlatBuffersFile())
     {
         GLogError(u8"=== TestSceneFile: 测试失败 ===");

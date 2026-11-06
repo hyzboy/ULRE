@@ -4,7 +4,7 @@
 > 让上层从「手动加载 N 个 TOML、手写 N 段实体构造」变成**一次装载**：
 >
 > ```cpp
-> auto *scene = gc->GetSceneAssetRegistry()->GetOrLoad(OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
+> auto *scene = gc->GetSceneSpecAssetRegistry()->GetOrLoad(OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
 > scene->Instantiate(world);        // 或异步：SceneStreamingRequest
 > ```
 >
@@ -14,7 +14,7 @@
 
 - 已实现 `SceneSpec` TOML/FlatBuffers 编解码、严格解析校验，以及支持 `presets:`、异步 `geo:`/`primitive:` 几何引用的 `SceneLoader`。
 - `BasicLitMeshes` 的几何、变换、材质行、纹理覆盖、相机和清屏色已迁入 `example/Material/BasicLitMeshes.scene.toml`；环境 profile 仍由世界/渲染目标配置。
-- `GraphicsContext` 已持有 `SceneAssetRegistry`，按规范化路径缓存场景规格；实例仍由调用方持有，须在世界与图形资源销毁前释放。
+- `GraphicsContext` 已持有 `SceneSpecAssetRegistry`，按规范化路径缓存场景规格；实例仍由调用方持有，须在世界与图形资源销毁前释放。
 - 环境 profile TOML、SceneWriter/Capture 和 `pack:` 尚未实现。
 
 ---
@@ -47,7 +47,7 @@
 SceneSpec               纯数据中间层（HGL 容器，无 GPU 概念、可回写 TOML）
       │
       ▼
-SceneAssetRegistry     按路径去重 + 持有 SceneSpec（挂 GraphicsContext，设备级）
+SceneSpecAssetRegistry     按路径去重 + 持有 SceneSpec（挂 GraphicsContext，设备级）
       │
       ├─▶ SceneLoader   规格 → ECS：几何(GeometryAssetRegistry) / 配方(MaterialRecipeRegistry)
       │                 / 材质行(GlobalSSBOBufferRegistry) / 变换 / 相机 / 环境
@@ -226,11 +226,11 @@ primitive_dirs = ["res/primitive"]
 
 ```cpp
 // ① 一步到位（推荐给示例）
-SceneAsset *scene = gc->GetSceneAssetRegistry()->GetOrLoad(path);
+SceneSpecAsset *scene = gc->GetSceneSpecAssetRegistry()->GetOrLoad(path);
 bool ok = scene->Instantiate(world);
 
 // ② 分步（需要先做依赖预取/进度条）
-SceneAsset *scene = registry->GetOrLoad(path);
+SceneSpecAsset *scene = registry->GetOrLoad(path);
 scene->PreloadGeometry();                 // 提交全部几何读盘（异步）
 if (scene->IsGeometryReady())             // 门禁：都 Resident 了再建实体
     scene->Instantiate(world);
@@ -241,7 +241,7 @@ req.Begin(gc->GetLoadedFileManager(), path);
 if (req.IsReady()) req.Build(...);        // 与既有 .scene 包同一套两段式
 ```
 
-### 5.2 `SceneAsset` 状态机
+### 5.2 `SceneSpecAsset` 状态机
 
 沿用文字句柄那套（`MetaObject`）：
 
@@ -367,7 +367,7 @@ transform = { position = [0.0, 0.0, 0.0], scale = [0.01, 0.01, 0.01] }
 
 | 阶段 | 内容 | 交付判据 |
 |------|------|---------|
-| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader` + `SceneAssetRegistry` 挂 `GraphicsContext` | 解析器、加载器、设备级注册器和 `BasicLitMeshes` 的 12 个实体场景已落地 |
+| **V1** | `SceneSpec` + `SceneFile` 解析（白名单/URI/拓扑校验）+ `SceneLoader` + `SceneSpecAssetRegistry` 挂 `GraphicsContext` | 解析器、加载器、设备级注册器和 `BasicLitMeshes` 的 12 个实体场景已落地 |
 | **V2** | `[[materials]]` 的 codec 表（PBR/Emissive/Transmission 三种）+ `[environment]` 落地；`[camera]`、`[clear_color]` 与 `geo:`/`primitive:` 异步路径 | 示例里**没有**一段"自己分配行"的代码 |
 | **V3** | `SceneWriter`（Spec→TOML）+ `SceneCapture`（World→Spec）+ `TestSceneRoundTrip`（写→读→写逐字节一致） | 21 个示例的几何/变换/材质由捕获生成，人只增删节点 |
 | **V4** | `pack:` 引用（二进制场景包作为子树）+ 示例全面切换为「一个 TOML 一条命令」 | `BasicLitMeshes.cpp` 缩到 ~40 行 |
@@ -380,7 +380,7 @@ bool Init() override
     SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
     auto *gc = GetGraphicsContext();
-    auto *scene = gc->GetSceneAssetRegistry()->GetOrLoad(
+    auto *scene = gc->GetSceneSpecAssetRegistry()->GetOrLoad(
         OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
 
     return scene && scene->Instantiate(GetECSContext());
@@ -392,7 +392,7 @@ bool Init() override
 ## 10. 设计决策与坑
 
 1. **为什么材质行必须场景级**：行是 GPU 池里的**租约**。现在每个示例自己 `GetAccessor` + `Write`，
-   示例一多就会出现"谁负责归还"的模糊地带。收进场景后，`SceneAsset` 销毁即归还，
+   示例一多就会出现"谁负责归还"的模糊地带。收进场景后，`SceneSpecAsset` 销毁即归还，
    与 `GeometryAsset` 拥有 `Geometry*` 是同一条纪律。
 2. **为什么 `[[materials]]` 用具名而不是节点内联**：多个节点共享一行是常态，内联会让文件里
    重复多段相同的颜色；具名后是"声明 1 段 + 多处引用"。
