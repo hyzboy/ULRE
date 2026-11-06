@@ -57,3 +57,6 @@
 [submodule "CMGUI"]
 	path = CMGUI
 	url = https://git.hyzgame.com/hyzboy/CMGUI.git
+[submodule "CMHash"]
+	path = CMHash
+	url = https://git.hyzgame.com/hyzboy/CMHash.git

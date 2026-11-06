@@ -80,6 +80,7 @@ endif()
 # ULRE_RUNTIME：运行时真正需要的一切，**不含** ULRE.ShaderProgramBuild。
 SET(ULRE_RUNTIME
             CMCoreType
+            CMHash
             CMMath
             CMCore
             CMAssetsManage
@@ -126,6 +127,11 @@ SET(ULRE    ${ULRE_RUNTIME}
 )
 
 use_cm_module(CoreType)
+# CMHash 只依赖 CMCoreType，但必须在 CMCore 之前引入：
+# CMCore 的 String.h / 各 hash-set 头文件直接包含 CMHash 的 FNV1a.h / QuickHash.h，
+# 而 use_cm_module 通过全局 include_directories 提供这些头文件路径。
+use_cm_module(Hash)
+ulre_codegen_bind(CMHash)
 use_cm_module(Math)
 use_cm_module(Core)
 use_cm_module(Util)
