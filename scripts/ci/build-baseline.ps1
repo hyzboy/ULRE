@@ -23,7 +23,7 @@ param(
 # 为什么必须分层（本仓 738 个 target / 183 个 ctest 用例）：
 #   A 层 = ULRE 自有的 src/ + example/ + inc/ + ShaderLibrary/ 产物，以及 ULRE 自有测试
 #          （ctest 标签 ecs / csm / shader_tooling，共 25 个用例）
-#   B 层 = CMCore / CMMath / CMAudio / CM2D / CMUtil / CMCoreType / CMAssetsManage 等
+#   B 层 = CMCore / CMHash / CMMath / CMAudio / CM2D / CMUtil / CMCoreType / CMAssetsManage 等
 #          submodule 上游仓库的 examples 与 tests（共 158 个用例）
 # 上游（B 层）若有断点属另一条任务线，登记不阻塞 ——
 # 否则「CMake 模块化」永远卡在修别人的仓库上。
@@ -72,7 +72,7 @@ $aLayerPrefixes = @(
 
 # B 层（上游 submodule）顶层目录
 $bLayerTops = @(
-    "CMCore", "CMCoreType", "CMMath", "CMUtil", "CMAudio",
+    "CMCore", "CMCoreType", "CMHash", "CMMath", "CMUtil", "CMAudio",
     "CM2D", "CMAssetsManage", "CMGUI", "CMQT", "3rdpty"
 )
 
