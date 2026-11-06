@@ -269,7 +269,7 @@
   - `recipes/PBRSpheres.recipe.toml`：`name` `PBRSpheres.Lit` → `PBRSpheres`
   - `recipes/TextureQuad.recipe.toml`：`name` `TextureQuad.UnlitTexture` → `TextureQuad`
 - **强制**：`material_definition` 字段随 §5.2 新 `id` 同步（`Lit` → `lit` 等，共 60 处 + 2 处 `UnlitTexture`→`unlit_texture`）。
-- **可选（Q1）**：去掉配方名里的定义名后缀（`06b.BasicLit.Lit` → `06b.BasicLit`），约 40 个文件 + `example/**/*.scene.toml` 引用。**默认不做**，因为它纯粹是美观，且会破坏已跟踪的示例场景。
+- **可选（Q1）**：去掉配方名里的定义名后缀（`06b.BasicLit.Lit` → `06b.BasicLit`），约 40 个文件 + `example/**/*.level.toml` 引用。**默认不做**，因为它纯粹是美观，且会破坏已跟踪的示例场景。
 
 ---
 
@@ -638,7 +638,7 @@ include 路径是 **ShaderLibrary 根相对**，不是文件相对。所有 `#in
 
 | 引用方 | 引用形式 | 风险 |
 |---|---|---|
-| `example/**/*.scene.toml`（已跟踪） | `recipe = "06b.BasicLit.Lit"` 等 | §5.3 若只改 `name` 后缀为「不做」，则**不受影响**；但配方的 `material_definition` 改名不影响场景文件 |
+| `example/**/*.level.toml`（已跟踪） | `recipe = "06b.BasicLit.Lit"` 等 | §5.3 若只改 `name` 后缀为「不做」，则**不受影响**；但配方的 `material_definition` 改名不影响场景文件 |
 | `res/**`（**未跟踪**，用户资产） | 同上 | **警告**：任何 recipe `name` 变更都会破坏用户本地场景；这是 §5.3「可选」默认不做的原因 |
 | `MaterialRecipeRegistry.cpp:19` | 按 `.recipe.toml` 后缀扫描目录 | 后缀不变，安全 |
 | `ResolvedMaterialFile.cpp:1376` | 按 `.mi.toml` 后缀扫描 | **必须改** |
@@ -722,7 +722,7 @@ BufferGen 调用：`python src\Tools\BufferGen\buffer_gen.py --repo-root . --cla
 | `src/ShaderGen/**` 路径（该目录已随更早的生成器瘦身整体消失，实现现落在 `src/ShaderProgramBuild/**`） | `doc/ENVIRONMENT_SYSTEM.md`、`doc/GUI_Text_Render_Pipeline.md`、`doc/deprecated/**`、`doc/future/**`、`doc/backlog.md`、`.ai/skills/SKILL_CASCADED_SHADOW_CSM.md` | **专属文档准确性任务**：`EmitShaderConfigDefines`、`MeshTemplateEmitter`、`FragmentTemplateComposer` 等符号在代码里已 0 命中，改名救不了，需按现行 `src/ShaderProgramBuild` / `DomainOptions` 重新表述。本轮只做改名与迁移 |
 | `src/Tools/ShaderGen/**` 路径 | `doc/backlog.md:137,334`、`doc/build-and-module-structure-audit-2026-10.md`、`doc/deprecated/**`、`doc/future/**` | 均是**历史记录/审计快照**，按 §9.6 不加改写 |
 | 5 个 `ShaderGen*` 契约头/实现文件名 | 见 §4.4 | 语义属「物理设备/契约」，不在本轮命名轴 |
-| 配方文件名里的旧定义名后缀（约 40 个） | `ShaderLibrary/asset/recipe/Examples/**` | Q1=B：会破坏 `example/**/*.scene.toml` 与用户 `res/**` 的场景引用 |
+| 配方文件名里的旧定义名后缀（约 40 个） | `ShaderLibrary/asset/recipe/Examples/**` | Q1=B：会破坏 `example/**/*.level.toml` 与用户 `res/**` 的场景引用 |
 | 示例配方仍在引擎库内 | `ShaderLibrary/asset/recipe/Examples/**`（60 个） | Q6=B：搬出涉及装载路径与扫描约定，另开任务 |
 | `RenderTemplateID` 枚举值仍带 `Shadowed`/`AO` 轴信息 | `inc/hgl/mtl/PassProfile.h` | Q3=A：属结构改动（拆轴成独立槽位组合），另开任务 |
 
@@ -737,7 +737,7 @@ BufferGen 调用：`python src\Tools\BufferGen\buffer_gen.py --repo-root . --cla
 
 | # | 问题 | 选项 | 建议 |
 |---|---|---|---|
-| **Q1** | 是否去掉配方名里的定义名后缀（`06b.BasicLit.Lit` → `06b.BasicLit`，约 40 个文件 + 场景引用）？ | A 做 / B 不做 | **B 不做**：纯美观，且会破坏 `example/**/*.scene.toml` 和用户 `res/**` |
+| **Q1** | 是否去掉配方名里的定义名后缀（`06b.BasicLit.Lit` → `06b.BasicLit`，约 40 个文件 + 场景引用）？ | A 做 / B 不做 | **B 不做**：纯美观，且会破坏 `example/**/*.level.toml` 和用户 `res/**` |
 | **Q2** | `.mi.toml` → `.definition.toml` 是否可接受？还是改用 `.material.toml`（与更早命名一致）？ | A `.definition.toml` / B `.material.toml` / C 不改 | **A**：与 `ResolvedMaterial` 类型同名，词义最准 |
 | **Q3** | `RenderTemplateID` 枚举值（`ForwardLitShadowedAO`…）是否也拆轴（阴影/AO 从名字里拿掉，变成独立槽位组合）？ | A 本轮不动 / B 一并改 | **A**：属于结构改动，不是改名，另开任务 |
 | **Q4** | `src/Tools/ShaderGen` → `src/Tools/ShaderTooling`，回归目标一并改名？ | A 全改 / B 只改目录 / C 不动 | **A**：目录与目标名一致才不误导 |

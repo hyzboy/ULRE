@@ -1068,3 +1068,17 @@ A5(比较采样) ◄──同做───────────┘            
 **`archive` 与 `deprecated` 的语义区分**：`deprecated` = 判定**失效**（会误导实现）；`archive` = 仅**停止维护**（内容未必错，用前须对照代码）。索引见 `doc/archive/README.md`。
 
 **同步改写的引用**（18 个文件，全部改为 `doc/archive/...`）：`.ai/skills/SKILL_CASCADED_SHADOW_CSM.md`（4 处）、本档（12 处，含 §E2「已开工」状态注、文档清理「保留」清单改判注）、`doc/csm-mechanism.md`（2）、`doc/csm-review-2026-09-25.md`（3）、`doc/ENVIRONMENT_SYSTEM.md`（3）、`doc/visibility-authority-chain.md`（1）、`doc/world-addresses-and-camera-model-plan.md`（1）、`doc/ecs-quality-audit-2026-10.md` 同族审计表（5 行，保持文件名写法）、`doc/build-and-module-structure-audit-2026-10.md`（1）、`doc/simple-sphere-ecs-render-chain.md`（1）、`doc/gpu-driven-4id-draw-item-plan-2026-09.md`（1）、`doc/future/lighting-shadow-domain-split-plan.md`（1）、`doc/future/ULRE_Phase0-1_Reality_Audit_and_Task_Plan.md`（1）、`doc/deprecated/README.md`（2）、`doc/deprecated/texture-asset-id-streaming-plan.md`（3）、以及被封存档内部互引 3 处。
+
+---
+
+## 🚧 Model/Level 正名遗留（2026-11-07）
+
+「SceneSpec→LevelSpec / .scene→.model」正名重构（plan：阶段一 Model、阶段二 Level、阶段三回归/文档）
+已全部落地并提交。以下为**有意留下**的遗留项：
+
+| 项 | 现状 | 做法 / 触发条件 | 规模 |
+|---|---|---|---|
+| **StaticMeshModelInstance / LoadModelAsPrimitiveAssets 的 STL 接口** | `Instantiate`/`LoadModelAsPrimitiveAssets` 仍吃 `std::vector<PrimitiveAsset/StaticMeshNode>`（Stage-1 既有接口，头文件已 `#include <vector>`）；`LevelLoader` 的 model 分支在边界处局部使用 | 迁移为 `hgl::ArrayList` 需同步动 GLTFConvert 侧 image/示例调用点；等接口下一次有功能性改动时顺带正名，不单开一轮 | 中 |
+| **LevelLoader / 关卡规格异步化** | `LevelAssetRegistry::GetOrLoad` 同步读盘+解析（TOML 文本/小 FB，实践中无感）；示例「非阻塞全异步装载」未做 | 与资产包体系（CMAssetsManage 包内 HASH 寻址、无扩展名）合流时一并设计：解析结果入 `LevelSpec`，GPU 侧维持现有「引用即流送」异步；判据 = 主线程零阻塞读盘 | 大 |
+| **V3：LevelWriter / LevelCapture / TestLevelRoundTrip** | 设计在 `doc/level-toml-design.md` §6/§9，未开工 | 等作者工具用例出现再做；行 codec 双向表（§7）是前置 | 大 |
+| **`.scene` 旧名残留** | 日期快照文档（`doc/gpu-driven-4id-draw-item-plan-2026-09.md`、`doc/unified-serialization-2026-10-30.md`、`doc/future/*`、`doc/archive/*` 等）内仍写 `SceneSpec`/`.scene.toml`——**属历史语境，不改写**；活文档（naming-and-layout、workflow-analysis、level-toml-design）已正名 | 无需动作；引用旧档时以 `doc/level-toml-design.md` 为准 | — |
