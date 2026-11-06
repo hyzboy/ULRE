@@ -254,6 +254,9 @@ add_ecs_test(TestFramePrepareOncePerFrame tests/TestFramePrepareOncePerFrame.cpp
 # §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
 add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 
+# 阶段三判据：资产装载顺序图（后缀规范化 / 引用计数 / 拓扑闭包 / 有环终止）
+add_ecs_test(TestAssetLoadGraph tests/TestAssetLoadGraph.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -504,4 +507,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestCameraResolveAndClaim
         PROPERTIES LABELS "ecs;camera" TIMEOUT 60)
+
+    add_test(
+        NAME TestAssetLoadGraph
+        COMMAND TestAssetLoadGraph)
+    set_tests_properties(
+        TestAssetLoadGraph
+        PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 endif()

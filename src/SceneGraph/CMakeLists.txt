@@ -314,12 +314,14 @@ set(SG_ASSET_GEOMETRY_FILES ${SG_INCLUDE_PATH}/asset/GeometryAssetSpec.h
 source_group("07.Asset\\Geometry" FILES ${SG_ASSET_GEOMETRY_FILES})
 
 set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
+                            ${SG_INCLUDE_PATH}/asset/AssetLoadGraph.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetSpec.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/SceneLoader.h
                             ${SG_INCLUDE_PATH}/asset/StaticMeshSceneInstance.h
                             asset/AssetSourceMount.cpp
+                            asset/AssetLoadGraph.cpp
                             asset/SceneAssetFile.cpp
                             asset/SceneAssetRegistry.cpp
                             asset/SceneLoader.cpp
