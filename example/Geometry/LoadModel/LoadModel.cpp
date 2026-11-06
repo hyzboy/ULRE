@@ -75,7 +75,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:res/ABeautifulGame.StaticMesh/load_scene.material_data.toml";
+        "mtldata:file:res/ABeautifulGame.StaticMesh/load_model.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 
     // PBR 自装配：scene/recipe/material_data/tex2d 全部取自 pack 同目录；
@@ -96,7 +96,7 @@ namespace
     constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 }
 
-class LoadSceneApp:public WorkObject
+class LoadModelApp:public WorkObject
 {
 private:
 
@@ -122,7 +122,7 @@ private:
     bool pbr_mode_ = true;
 
     // ── 流送（异步）通路（默认；LS_SYNC=1 回到同步）────────────────────
-    // 同步通路（TryLoadStaticMeshScene）仍为默认：它把「读盘 ⇒ 解析 ⇒ 建 GPU
+    // 同步通路（TryLoadModel）仍为默认：它把「读盘 ⇒ 解析 ⇒ 建 GPU
     // 资源 ⇒ 实例化」全挤在 Init() 里，启动一帧卡住。异步通路把同一份解析交给
     // ModelStreamingSystem 逐帧推动，本类只负责三段渐进接线：
     //   ① 节点树解析出来 ⇒ InstantiateSkeleton（实体先入世界，相机立刻对焦）
@@ -209,7 +209,7 @@ private:
             return true;
         }
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("LoadScene.DebugNormalColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("LoadModel.DebugNormalColor");
         if (!loaded_recipe)
             return false;
 
@@ -221,7 +221,7 @@ private:
         return true;
     }
 
-    bool TryLoadStaticMeshScene()
+    bool TryLoadModel()
     {
         using std::filesystem::path;
         using std::filesystem::exists;
@@ -267,7 +267,7 @@ private:
      * 之后所有推进都由 `ModelStreamingSystem`（已注册进 ECS）每帧自己做，
      * 本类在 `PollAsyncScene()` 里只做「产物到位就接一段」。
      */
-    bool TryStartAsyncScene()
+    bool TryStartAsyncModel()
     {
         using std::filesystem::path;
         using std::filesystem::exists;
@@ -558,7 +558,7 @@ private:
     }
 
 public:
-    ~LoadSceneApp()
+    ~LoadModelApp()
     {
         model_instance_.Release();
         scene_assets_.clear();
@@ -636,7 +636,7 @@ public:
         if(!InitSolidMDP())
             return(false);
 
-        if (async_mode_ ? !TryStartAsyncScene() : !TryLoadStaticMeshScene())
+        if (async_mode_ ? !TryStartAsyncModel() : !TryLoadModel())
             return(false);
 
         if(!InitECS())
@@ -750,14 +750,14 @@ public:
 
         if (ls_frames > 0 && ls_frame_seen >= ls_frames)
         {
-            printf("[LoadScene] done frames=%u\n", ls_frame_seen);
+            printf("[LoadModel] done frames=%u\n", ls_frame_seen);
             fflush(stdout);
             std::exit(0);
         }
     }
-};//class LoadSceneApp
+};//class LoadModelApp
 
 int os_main(int argc,os_char **argv)
 {
-    return RunFramework<LoadSceneApp>(OS_TEXT("Load Scene"),argc,argv,1280,720);
+    return RunFramework<LoadModelApp>(OS_TEXT("Load Model"),argc,argv,1280,720);
 }

@@ -568,7 +568,7 @@ ShaderLibrary/
 | `Cull/` | 1 | `GPUDrivenCull.Cube` |
 | `Debug/` | 3 | `RenderBoundBox.Solid`、`RenderBoundBox.Wire`、`SimplestAxis.VertexColor` |
 | `Environment/` | 9 | `AtmosphereSkyAmbient.Lit`、`AtmosphereSkyAmbient.Sky`、`AtmosphereSkyMinimal.Sky`、`AtmosphereSkySunGizmo.Sky`、`BasicLitSunDirection.Lit`、`BasicLitSunDirection.Sky`、`IBLEnvironment.Lit`、`IBLEnvironment.Sky`、`SkyCubeSphere.Sky` |
-| `Geometry/` | 5 | `ExtrudedPolygonTest.DebugNormalColor`、`LoadGeometry.DebugNormalColor`、`LoadGeometry.Wire`、`LoadScene.DebugNormalColor`、`WallsFromPolyline.Lit` |
+| `Geometry/` | 5 | `ExtrudedPolygonTest.DebugNormalColor`、`LoadGeometry.DebugNormalColor`、`LoadGeometry.Wire`、`LoadModel.DebugNormalColor`、`WallsFromPolyline.Lit` |
 | `GettingStarted/` | 3 | `DrawTriangle.VertexColor`、`SimpleCube.DebugNormalColor`、`SimpleSphere.Lit` |
 | `Instancing/` | 2 | `AutoInstance.VertexColor`、`AutoMergeMaterialData.PureColor` |
 | `Interaction/` | 5 | `GizmoUsage.DebugNormalColor`、`GizmoUsage.VertexLuminance`、`PlaneGrid3D.VertexLuminance`、`RayPicking.Line`、`RayPicking.PlaneGrid` |

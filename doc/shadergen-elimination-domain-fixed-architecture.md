@@ -1960,7 +1960,7 @@ AcquireShaderProgram failed for BBox_0 ... unresolved runtime pipeline
 | `BasicLitMeshes` | Debug 重建；启动并正常关闭，rc=0（VDM/Geometry 销毁顺序已修正） |
 | `PBRSpheres` | `PBR_FRAMES=8`；rc=0，GPU cull 已初始化 |
 | `LoadGeometry` | Debug 重建；线框 master 被加载并编译，启动/关闭 rc=0 |
-| `LoadScene` | `LS_FRAMES=8`；帧数完成并 rc=0，GPU cull 已初始化 |
+| `LoadModel` | `LS_FRAMES=8`；帧数完成并 rc=0，GPU cull 已初始化 |
 
 8 个运行日志均为 **0** shader/pipeline 错误；每个都出现 `GPUCullSystem Initialized`。固定 mesh 覆盖门 `emit-fixed-mesh` → `covered=36 missing=0 failed=0`；gate `all` → `59 PASS / 0 FAIL`。
 

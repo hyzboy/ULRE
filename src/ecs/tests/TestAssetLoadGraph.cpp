@@ -47,14 +47,14 @@ namespace
             return false;
 
         // `.recipe.toml` 要连剥两段
-        if(!CheckNormalize("LoadScene.Chess.Chessboard.recipe.toml",
+        if(!CheckNormalize("LoadModel.Chess.Chessboard.recipe.toml",
                            asset::AssetType::MaterialRecipe,
-                           "loadscene.chess.chessboard"))
+                           "loadmodel.chess.chessboard"))
             return false;
 
-        if(!CheckNormalize("load_scene.material_data.toml",
+        if(!CheckNormalize("load_model.material_data.toml",
                            asset::AssetType::MaterialData,
-                           "load_scene"))
+                           "load_model"))
             return false;
 
         // 目录名里的点必须活着（只剥文件名部分的后缀）

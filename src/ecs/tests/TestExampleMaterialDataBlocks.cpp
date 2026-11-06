@@ -40,7 +40,7 @@ namespace
     const char *kDataDir = "ShaderLibrary/asset/material_data";
 
     // 「随模型搬家」的块住在模型自己的目录里（与配方、纹理同级）：
-    // DamagedHelmet / FlightHelmet / ABeautifulGame（转换器生成）+ load_scene（调试手写块）。
+    // DamagedHelmet / FlightHelmet / ABeautifulGame（转换器生成）+ load_model（调试手写块）。
     const char *kModelDataDirs[] =
     {
         "res/DamagedHelmet.StaticMesh",
@@ -84,7 +84,7 @@ namespace
         { "render_to_texture_color_depth", graph::GlobalSSBOType::PBRSurface,       2 },
         { "render_bound_box",              graph::GlobalSSBOType::EmissiveSurface, 16 },
         { "load_geometry",                 graph::GlobalSSBOType::EmissiveSurface, 9 },
-        { "load_scene",                    graph::GlobalSSBOType::EmissiveSurface, 8 },
+        { "load_model",                    graph::GlobalSSBOType::EmissiveSurface, 8 },
         { "ABeautifulGame",                graph::GlobalSSBOType::PBRSurface,      15 },
         { "DamagedHelmet",                 graph::GlobalSSBOType::PBRSurface,      1 },
         { "FlightHelmet",                  graph::GlobalSSBOType::PBRSurface,      6 },

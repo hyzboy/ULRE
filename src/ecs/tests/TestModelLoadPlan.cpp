@@ -35,8 +35,8 @@ namespace
     constexpr const char *kTempDirPath = "ulre_loadplan_test_tmp/";
     constexpr const char *kFullScenePath     = "ulre_loadplan_test_tmp/Stage.Scene.model";
     constexpr const char *kDegradedScenePath = "ulre_loadplan_test_tmp/Lonely.Scene.model";
-    constexpr const char *kChessRecipe = "ulre_loadplan_test_tmp/LoadScene.Chess.Chessboard.recipe.toml";
-    constexpr const char *kLitRecipe   = "ulre_loadplan_test_tmp/LoadScene.Chess.Lit.recipe.toml";
+    constexpr const char *kChessRecipe = "ulre_loadplan_test_tmp/LoadModel.Chess.Chessboard.recipe.toml";
+    constexpr const char *kLitRecipe   = "ulre_loadplan_test_tmp/LoadModel.Chess.Lit.recipe.toml";
     constexpr const char *kGarbagePath = "ulre_loadplan_test_tmp/Garbage.model";
 
     // ── 内存中的 MDL2 载荷构造（与 TestSceneDependencyExtractor 同构） ──────

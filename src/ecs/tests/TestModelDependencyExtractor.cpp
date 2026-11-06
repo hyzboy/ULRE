@@ -324,7 +324,7 @@ namespace
 
         if(!ExtractRecipeDependencies(kRecipeWithDeps, static_cast<int>(std::strlen(kRecipeWithDeps)),
                                       AnsiString("ABeautifulGame.StaticMesh/"),
-                                      AnsiString("ABeautifulGame.StaticMesh/LoadScene.Chess.Chessboard.recipe.toml"),
+                                      AnsiString("ABeautifulGame.StaticMesh/LoadModel.Chess.Chessboard.recipe.toml"),
                                       graph, &edges))
         {
             GLogError(u8"配方依赖提取失败");
@@ -339,7 +339,7 @@ namespace
         }
 
         AssetDepKey root;
-        NormalizeAssetRef(AnsiString("ABeautifulGame.StaticMesh/LoadScene.Chess.Chessboard.recipe.toml"),
+        NormalizeAssetRef(AnsiString("ABeautifulGame.StaticMesh/LoadModel.Chess.Chessboard.recipe.toml"),
                           asset::AssetType::MaterialRecipe, root);
 
         const AssetDepEdge *list = graph.GetDependencies(root);

@@ -112,10 +112,10 @@ namespace hgl::graph
         }
 
         /**
-         * `LoadScene.Chess.Chessboard.recipe.toml` → `Chessboard`
+         * `LoadModel.Chess.Chessboard.recipe.toml` → `Chessboard`
          *
          * 与 `LoadStaticMesh.cpp` 的 `RecipeMatchesMaterialName` 同口径：只看配方名
-         * 的最后一段。配方前缀（`LoadScene.Chess.`）是场景/分类标签，不参与匹配。
+         * 的最后一段。配方前缀（`LoadModel.Chess.`）是场景/分类标签，不参与匹配。
          */
         AnsiString RecipeLastName(const AnsiString &path)
         {
@@ -145,7 +145,7 @@ namespace hgl::graph
          * 收集场景目录下的 `*.recipe.toml`。
          *
          * 为什么必须枚举而不是拼路径：模型包只给材质名（`Chessboard`），配方文件名
-         * 却是 `LoadScene.Chess.Chessboard.recipe.toml` —— 前缀来自导出器，猜不出来。
+         * 却是 `LoadModel.Chess.Chessboard.recipe.toml` —— 前缀来自导出器，猜不出来。
          *
          * @return 收集到的数量；枚举能力不可用返回 -1（调用方降级为警告）
          */

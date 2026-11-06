@@ -1122,7 +1122,7 @@ namespace gate
         {VertexSemantic::TexCoord, VF_V2HF},
         {VertexSemantic::Normal,   VF_V3F}
     };
-    // 引擎标准紧凑几何（SimpleSphere / BasicLitMeshes / LoadGeometry / LoadScene 等示例）：
+    // 引擎标准紧凑几何（SimpleSphere / BasicLitMeshes / LoadGeometry / LoadModel 等示例）：
     // TexCoord 为 VF_V2HF（RG16F），Normal 为 VF_V2UN8（RG8 octahedral）。
     static const GeometryVertexFormat kCacheIdentityLitGeometryStandard{
         {VertexSemantic::Position, VF_V3F},

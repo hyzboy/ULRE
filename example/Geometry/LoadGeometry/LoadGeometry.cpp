@@ -105,7 +105,7 @@ namespace
         return path;
     }
 
-    // 天光 IBL：与 LoadScene 同一批烘焙贴图与天空配方
+    // 天光 IBL：与 LoadModel 同一批烘焙贴图与天空配方
     constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
     constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 }
@@ -263,7 +263,7 @@ private:
         return result;
     }
 
-    // pack 自装配：scene/recipe/material_data/tex2d 全取自模型目录（同 LoadScene PBR 模式）
+    // pack 自装配：scene/recipe/material_data/tex2d 全取自模型目录（同 LoadModel PBR 模式）
     bool InitPackMaterials()
     {
         auto *graphics = GetGraphicsContext();
@@ -301,7 +301,7 @@ private:
         return board_binding_.IsValid();
     }
 
-    // PBR 模式的环境光照：主光方向 + 天光 IBL（与 LoadScene 同口径）
+    // PBR 模式的环境光照：主光方向 + 天光 IBL（与 LoadModel 同口径）
     bool InitEnvironmentControl()
     {
         if (!ecs_context)

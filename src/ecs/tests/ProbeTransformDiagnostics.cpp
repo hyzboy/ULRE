@@ -11,7 +11,7 @@
  *
  *   [T4] 证据（非均匀缩放 / 镜像下的旋转提取）
  *        对 M = T * R * S 比较几种写法：
- *          (a) 现状写法  glm::quat_cast(glm::mat3(M))            ← LoadScene.cpp:198 同款
+ *          (a) 现状写法  glm::quat_cast(glm::mat3(M))            ← LoadModel.cpp:198 同款
  *          (b) 既有引擎函数 math::DecomposeTransform(M, t, r, s)
  *          (c) 列归一化后 quat_cast（不含镜像分支）
  *          (d) 正确镜像约定（保留 c0、把负号放进 S.x）
@@ -435,7 +435,7 @@ static void SectionRotationExtraction()
         printf("\n  [%s]  det(mat3)=%+.4f  列模长=(%.3f,%.3f,%.3f)\n",
                c.name,glm::determinant(m3),l0,l1,l2);
 
-        // (a) 现状写法：LoadScene.cpp:197-202 的三行
+        // (a) 现状写法：LoadModel.cpp:197-202 的三行
         {
             const glm::vec3 t = glm::vec3(M[3]);   // 注意：写成 vec3 t(vec3(M[3])) 会被 MSVC 当成函数声明（most vexing parse）
             const glm::vec3 s(l0,l1,l2);
@@ -498,9 +498,9 @@ static void SectionAssetNote()
     const char *path="res/ABeautifulGame.StaticMesh/ABeautifulGame.model";
     const bool  exists=std::filesystem::exists(path);
 
-    printf("LoadScene 加载路径：%s -> %s\n",path,exists?"存在":"不存在");
+    printf("LoadModel 加载路径：%s -> %s\n",path,exists?"存在":"不存在");
     if(!exists)
-        printf("  （本检出未包含该场景资产：example/Geometry/LoadScene/LoadScene.cpp 的资产级验证需要先"
+        printf("  （本检出未包含该场景资产：example/Geometry/LoadModel/LoadModel.cpp 的资产级验证需要先"
                "用 GLTFConvert 由 res/model/*.glb 生成 .model，或补回该资产）\n");
 }
 

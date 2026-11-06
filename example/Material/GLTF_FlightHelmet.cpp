@@ -10,7 +10,7 @@
 // 材质数值唯一来源：FlightHelmet.material_data.toml（6 行 PBRSurface，
 // 行序 = material_index，全为 glTF 缺省因子口径）。
 //
-// 自检台架（与 LoadScene/PBRMatrix/DamagedHelmet 同款，共用 example/Shared/FrameDigest.h）：
+// 自检台架（与 LoadModel/PBRMatrix/DamagedHelmet 同款，共用 example/Shared/FrameDigest.h）：
 //   FHF_SELFCHECK=1  第 8 帧冻结回读 → {尺寸, distinct 下限, FNV-1a64} 比对内联常量；
 //   FHF_FRAMES=N     定帧退出（性能/冒烟）；
 //   FHF_DUMP=<tag>   第 8 帧回读落盘后退出（像素判据用）；
@@ -68,7 +68,7 @@ namespace
         return path;
     }
 
-    // 天光 IBL：与 LoadScene / DamagedHelmet 同一批烘焙贴图与天空配方
+    // 天光 IBL：与 LoadModel / DamagedHelmet 同一批烘焙贴图与天空配方
     constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
     constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 
@@ -148,7 +148,7 @@ private:
         return true;
     }
 
-    bool TryLoadStaticMeshScene()
+    bool TryLoadModel()
     {
         using std::filesystem::exists;
         using std::filesystem::path;
@@ -240,7 +240,7 @@ private:
         return true;
     }
 
-    // 主光方向 + 天光 IBL（与 LoadScene PBR 模式同配置口径）
+    // 主光方向 + 天光 IBL（与 LoadModel PBR 模式同配置口径）
     bool InitEnvironmentControl()
     {
         if (!ecs_context)
@@ -316,7 +316,7 @@ public:
             dump_tag = tag;
 
         if (!InitMaterial())           return false;
-        if (!TryLoadStaticMeshScene()) return false;
+        if (!TryLoadModel()) return false;
 
         if (!InitECS())                return false;
         if (!InitEnvironmentControl()) return false;

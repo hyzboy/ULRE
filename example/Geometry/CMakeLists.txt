@@ -11,4 +11,4 @@ CreateProject(LineRender                        LineRender.cpp)
 CreateProject(SimpleLineRender                  SimpleLineRender.cpp)
 
 add_subdirectory(LoadGeometry)
-add_subdirectory(LoadScene)
+add_subdirectory(LoadModel)
