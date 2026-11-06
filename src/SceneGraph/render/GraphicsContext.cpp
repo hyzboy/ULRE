@@ -15,6 +15,7 @@
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/asset/LoadedFileManager.h>
+#include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/type/StdString.h>
@@ -245,6 +246,17 @@ namespace hgl::graph
             return false;
         }
 
+        // 资产包裹挂载：把 `res/` 登记成 `pack(res)`。此后资产引用统一走
+        // `pack(res):<逻辑路径>`（无扩展名）或 `pack(res):id:<32 hex>`，
+        // 与「字节从哪一个 IO 后端来」解耦（目录包裹 ⇄ 打包文件只换后端）。
+        // 失败不阻断启动：早期示例仍用裸物理路径。
+        {
+            AnsiString mount_error;
+
+            if (!MountDefaultAssetSources(&mount_error) && !mount_error.IsEmpty())
+                GLogWarning("[GraphicsContext] 默认资产包裹挂载失败：%s", mount_error.c_str());
+        }
+
         // Scene 集（Set 0）已整体退场（S3）：viewport/sky/shadow 全走 BDA，
         // 设备级全局集只剩 Bindless 一个（见 SetSceneLayout 的删除）。
 
@@ -280,6 +292,11 @@ namespace hgl::graph
             loaded_file_manager_->Stop();
             SAFE_CLEAR(loaded_file_manager_)
         }
+
+        // 与 Initialize 里成对：注销默认资产包裹（挂载表是进程级的）。
+        // 必须在 LoadedFileManager 停稳之后 —— 包裹内部持有的流仍可能被
+        // 已提交但未派发的读盘任务引用。
+        UnmountDefaultAssetSources();
 
         // 图元资产绑定表持有几何/配方注册器的裸指针 ⇒ 必须先于它们清空。
         if (primitive_asset_registry_ready_)
