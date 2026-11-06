@@ -54,12 +54,17 @@ using namespace hgl::graph;
 
 namespace
 {
-    // 材质数据块（target=PBRSurface，单行；数值全在块文件里）
-    constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/gltf_damaged_helmet.material_data.toml";
-    constexpr uint32_t MATERIAL_DATA_ROW = 0;
-
-    constexpr const char * RECIPE_NAME = "GLTF.DamagedHelmet";
+    // 自装配：scene/recipe/material_data/tex2d 全部取自 pack 所在目录，无任何硬编码 URI。
+    const std::string &ScenePackPath()
+    {
+        static const std::string path = []
+        {
+            const char *scene_env = getenv("HDH_SCENE");
+            return std::string(scene_env ? scene_env
+                                         : "res/DamagedHelmet.StaticMesh/DamagedHelmet.Scene.scene");
+        }();
+        return path;
+    }
 
     // 天光 IBL：与 LoadScene / IBLEnvironment 同一批烘焙贴图与天空配方
     constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
@@ -96,8 +101,7 @@ private:
     std::string  dump_tag;          ///< HDH_DUMP=<tag>：第 8 帧回读落盘后退出
 
     GeometryVertexFormat     geometry_vertex_format;
-    graph::GlobalSSBOBinding material_row{};
-    graph::mtl::MaterialRecipe helmet_recipe{};
+    SelfContainedSceneMaterials scene_materials_;
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::ecs::LightSystem>       light_system;
@@ -126,26 +130,18 @@ private:
             return false;
         }
 
-        const mtl::MaterialRecipe *loaded = GetRecipe(RECIPE_NAME);
-        if (!loaded)
+        auto *graphics = GetGraphicsContext();
+        if (!graphics)
         {
-            GLogError(u8"GLTF_DamagedHelmet: 配方 %s 加载失败", RECIPE_NAME);
+            GLogError(u8"GLTF_DamagedHelmet: 无 GraphicsContext");
             return false;
         }
-        helmet_recipe = *loaded;
 
-        // 单材质：一行绑定即可（数据块第 0 行）
-        graph::GlobalSSBOBinding first{};
-        if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, first) ||
-            !(material_row = first).IsValid())
+        // 自装配：材质名来自 pack 的 MaterialTable，配方/数据块来自模型目录
+        if (!BuildSelfContainedSceneMaterials(
+                *graphics, hgl::ToOSString(ScenePackPath()), nullptr, scene_materials_))
         {
-            GLogError(u8"GLTF_DamagedHelmet: 材质数据行绑定失败");
-            return false;
-        }
-        // 配方副本显式写入材质 SSBO 绑定（WorkObject.h 文档口径，与 PBRMatrix 同法）
-        if (!(helmet_recipe.material_ssbo_binding = material_row).IsValid())
-        {
-            GLogError(u8"GLTF_DamagedHelmet: 配方材质 SSBO 绑定写入失败");
+            GLogError(u8"GLTF_DamagedHelmet: 自包含材质装配失败");
             return false;
         }
         return true;
@@ -156,9 +152,7 @@ private:
         using std::filesystem::exists;
         using std::filesystem::path;
 
-        const char * scene_env = getenv("HDH_SCENE");
-        const path scene_path(scene_env ? scene_env
-                                        : "res/DamagedHelmet.StaticMesh/DamagedHelmet.Scene.scene");
+        const path scene_path(ScenePackPath());
         if (!exists(scene_path))
         {
             AnsiString p = AnsiString(scene_path.string().c_str());
@@ -177,17 +171,19 @@ private:
         const OSString pack_path = hgl::ToOSString(scene_path.string());
         const OSString base_dir  = hgl::ToOSString(scene_path.parent_path().string());
 
-        // 单材质场景：default_recipe 即全部，无需配方表
+        // 自装配：default 用第一份配方副本，逐材质表覆盖各自绑定
         return LoadStaticMeshSceneAsPrimitiveAssets(
             device,
             geo_mgr,
             geometry_vertex_format,
-            &helmet_recipe,
+            scene_materials_.fallback,
             pack_path,
             base_dir,
             scene_assets_,
             scene_nodes_,
-            scene_root_nodes_);
+            scene_root_nodes_,
+            scene_materials_.table.data(),
+            static_cast<uint32_t>(scene_materials_.table.size()));
     }
 
     bool InitScene()
@@ -197,8 +193,9 @@ private:
 
         StaticMeshSceneInstance::Options options;
         options.mobility         = hgl::ecs::Mobility::Static;
-        options.material_rows    = &material_row;
-        options.material_row_count = 1;
+        options.material_rows    = scene_materials_.bindings.data();
+        options.material_row_count = static_cast<uint32_t>(scene_materials_.bindings.size());
+        options.rows_by_material_index = true;   // 行 i = pack 材质表第 i 行
 
         if (!scene_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
                                          scene_root_nodes_, options))

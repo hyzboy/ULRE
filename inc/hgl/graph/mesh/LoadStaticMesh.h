@@ -3,6 +3,7 @@
 #include <hgl/type/String.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/mesh/StaticMesh.h>
+#include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <vector>
 
 namespace hgl::graph
@@ -10,6 +11,7 @@ namespace hgl::graph
     class VulkanDevice;
     class GeometryManager;
     class GeometryVertexFormat;
+    class GraphicsContext;
 
     /**
      * @brief 装载 `.scene` 包为「图元资产 + 场景节点树」。
@@ -69,5 +71,45 @@ namespace hgl::graph
         std::vector<int32_t>             &out_root_nodes,
         const mtl::MaterialRecipe *const *material_recipes = nullptr,
         const uint32_t                    material_recipe_count = 0);
+
+    /**
+     * @brief 自包含模型目录装配出的材质集（下标 = pack 材质表行号 = material_index）。
+     *
+     * `table` 指向 `recipes`（本结构拥有配方副本，并已写入
+     * `material_ssbo_binding`），可直接喂给上面两个装载函数的
+     * `material_recipes`/`material_recipe_count`；`bindings` 可喂给
+     * `StaticMeshSceneInstance::Options::material_rows`。
+     */
+    struct SelfContainedSceneMaterials
+    {
+        std::vector<mtl::MaterialRecipe>        recipes;    ///< 每材质一份副本（含行绑定）
+        std::vector<GlobalSSBOBinding>          bindings;   ///< 与 `recipes` 平行
+        std::vector<const mtl::MaterialRecipe*> table;      ///< 指向 `recipes`
+        const mtl::MaterialRecipe              *fallback = nullptr; ///< = `recipes[0]`
+    };
+
+    /**
+     * @brief 从**自包含模型目录**装配材质：scene、geometry、recipe、tex2d、
+     *        material_data 全部住在 pack 自己的目录里，**严禁跨目录查找**。
+     *
+     * 流程：
+     * 1. 解析 pack 的 V2 MaterialTable（tag 9），取每个材质下标的材质名
+     *    （`"<Scene>.<idx>.<Name>.material"` → `"<Name>"`）；
+     * 2. 只扫 pack 所在目录的 `*.recipe.toml`（经 GraphicsContext 注册表）；
+     * 3. 匹配：配方名最后一段 == 材质名；目录里只有一个配方时通吃所有材质
+     *    （单材质模型即此形态）；
+     * 4. 数据块：目录里唯一一份 `*.material_data.toml`；多份时必须用
+     *    `material_data_block_hint` 按文件名（不含扩展名）指定；
+     * 5. 按行号 = 材质下标取 `GlobalSSBOBinding`，写进配方副本。
+     *
+     * @note 仅支持 ScenePackV2（含 MaterialTable）；V1 包返回 `false`。
+     * @note 成功后 `out` 即材质真源；装载 scene 时把 `out.table` 传入即可，
+     *       `out` 需活到 `PrimitiveAsset` 使用完毕（同示例自持配方副本的惯例）。
+     */
+    bool BuildSelfContainedSceneMaterials(
+        GraphicsContext             &ctx,
+        const OSString              &pack_path,
+        const char                  *material_data_block_hint,
+        SelfContainedSceneMaterials &out);
 
 }//namespace hgl::graph

@@ -39,6 +39,15 @@ namespace
 
     const char *kDataDir = "ShaderLibrary/asset/material_data";
 
+    // 「随模型搬家」的块住在模型自己的目录里（与配方、纹理同级）：
+    // gltf_damaged_helmet / gltf_flight_helmet / load_scene / load_scene_pbr。
+    const char *kModelDataDirs[] =
+    {
+        "res/DamagedHelmet.StaticMesh",
+        "res/FlightHelmet.StaticMesh",
+        "res/ABeautifulGame.StaticMesh",
+    };
+
     constexpr float kEpsilon = 1.0e-6f;
 
     constexpr size_t kExpectedBlockCount = 34;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix + load_scene_pbr + gltf_damaged_helmet + gltf_flight_helmet
@@ -115,13 +124,24 @@ namespace
 
     OSString BlockPath(const char *stem)
     {
-        OSString path;
+        const OSString file = ToOSString(stem) + OS_TEXT(".material_data.toml");
 
-        path  = ToOSString(kDataDir);
+        OSString path  = ToOSString(kDataDir);
         path += OS_TEXT("/");
-        path += ToOSString(stem);
-        path += OS_TEXT(".material_data.toml");
+        path += file;
+        if (filesystem::FileExist(path))
+            return path;
 
+        for (const char *dir : kModelDataDirs)
+        {
+            OSString candidate = ToOSString(dir);
+            candidate += OS_TEXT("/");
+            candidate += file;
+            if (filesystem::FileExist(candidate))
+                return candidate;
+        }
+
+        // 两处都没有：返回旧路径，让读失败自然报错。
         return path;
     }
 
@@ -149,26 +169,23 @@ namespace
         return true;
     }
 
-    /// 1. 目录里的块文件集合与台账一一对应（多一个少一个都算破坏契约）。
-    bool TestDirectoryManifest()
+    /// 扫描一个块目录：计数并核对台账。返回 false 表示目录不可枚举。
+    bool ScanDataRoot(const char *dir, size_t &inout_found)
     {
         ValueArray<filesystem::FileInfo> list;
 
-        const int count = filesystem::GetFileInfoList(list, ToOSString(kDataDir),
+        const int count = filesystem::GetFileInfoList(list, ToOSString(dir),
                                                      false, true, false);
 
         if (count < 0)
         {
             GLogError(u8"TestExampleMaterialDataBlocks: 列不出数据目录（需在仓库根目录运行）: %s",
-                      kDataDir);
-            Check(false, "数据目录可枚举");
+                      dir);
             return false;
         }
 
         const os_char *suffix = OS_TEXT(".material_data.toml");
         const int      suffix_len = static_cast<int>(hgl::strlen(suffix));
-
-        size_t found = 0;
 
         for (int i = 0; i < count; ++i)
         {
@@ -178,7 +195,7 @@ namespace
             if (len <= suffix_len || hgl::strcmp(name + len - suffix_len, suffix) != 0)
                 continue;
 
-            ++found;
+            ++inout_found;
 
             bool known = false;
 
@@ -198,6 +215,36 @@ namespace
 
             if (!known)
                 GLogError(u8"TestExampleMaterialDataBlocks: 台账里没有这个块文件");
+        }
+
+        return true;
+    }
+
+    /// 1. 各根目录里的块文件集合与台账一一对应（多一个少一个都算破坏契约）。
+    bool TestDirectoryManifest()
+    {
+        size_t found = 0;
+
+        if (!ScanDataRoot(kDataDir, found))
+        {
+            Check(false, "数据目录可枚举");
+            return false;
+        }
+
+        for (int i = 0; i < 3; ++i)   // kModelDataDirs 固定三个模型目录
+        {
+            if (!ScanDataRoot(kModelDataDirs[i], found))
+            {
+                Check(false, "模型数据目录可枚举");
+                return false;
+            }
+        }
+
+        // 台账里每个块都必须能在某个根下找到文件。
+        for (const BlockExpect &e : kBlocks)
+        {
+            const OSString path = BlockPath(e.stem);
+            Check(filesystem::FileExist(path), "台账块文件存在");
         }
 
         Check(found == kExpectedBlockCount, "块文件数量与台账一致");

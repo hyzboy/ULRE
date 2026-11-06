@@ -111,17 +111,20 @@ namespace hgl::graph
         }
 
         const mtl::MaterialRecipe *recipe = material_recipe_registry_.FindByName(name);
-        if (!recipe)
-        {
-            GLogError(u8"[GraphicsContext] 材质配方未找到: recipe=%s registered=%d",
-                      name, material_recipe_registry_.GetCount());
-        }
-        else
+        if (recipe)
         {
             GLogDebug(u8"[GraphicsContext] 材质配方已解析: recipe=%s domain=%s",
                       name, mtl::GetMaterialDomainName(recipe->domain));
+            return recipe;
         }
-        return recipe;
+
+        // 自包含模型的配方住在模型自己的目录里：由装载器按 pack 同目录显式加载
+        // （见 BuildSelfContainedSceneMaterials / LoadMaterialRecipeDirectory），
+        // 这里**不做**任何跨目录兜底扫描 —— 严禁全局查找。
+
+        GLogError(u8"[GraphicsContext] 材质配方未找到: recipe=%s registered=%d",
+                  name, material_recipe_registry_.GetCount());
+        return nullptr;
     }
 
     bool GraphicsContext::Initialize()

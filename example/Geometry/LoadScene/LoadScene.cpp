@@ -65,40 +65,25 @@ namespace
 // 颜色数值已搬到数据块文件；这里只保留行数（门禁测试会核对文件行数与它一致）
 constexpr const size_t COLOR_COUNT = 8;
 
-// PBR 模式行数：ABeautifulGame 场景 15 个 glTF 材质，
-// 行序 = material_index = Scene.json materials[] 顺序。
-constexpr const size_t PBR_MATERIAL_COUNT = 15;
-
 namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/load_scene.material_data.toml";
+        "mtldata:file:res/ABeautifulGame.StaticMesh/load_scene.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 
-    // PBR 模式数据块（target=PBRSurface，glTF 缺省因子口径）
-    constexpr char MATERIAL_DATA_URI_PBR[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/load_scene_pbr.material_data.toml";
-
-    // 15 个棋件配方（名字 ↔ ABeautifulGame 材质名；下标即 material_index）
-    constexpr const char *CHESS_RECIPE_NAMES[PBR_MATERIAL_COUNT] =
+    // PBR 自装配：scene/recipe/material_data/tex2d 全部取自 pack 同目录；
+    // 目录里有两份数据块（debug/PBR），用块名 hint 选 PBR 那份。
+    const std::string &ScenePackPath()
     {
-        "LoadScene.Chess.King_Black",
-        "LoadScene.Chess.King_White",
-        "LoadScene.Chess.Queen_Black",
-        "LoadScene.Chess.Queen_White",
-        "LoadScene.Chess.Chessboard",
-        "LoadScene.Chess.Pawn_Top_White",
-        "LoadScene.Chess.Pawn_Body_White",
-        "LoadScene.Chess.Pawn_Top_Black",
-        "LoadScene.Chess.Pawn_Body_Black",
-        "LoadScene.Chess.Castle_Black",
-        "LoadScene.Chess.Castle_White",
-        "LoadScene.Chess.Knight_Black",
-        "LoadScene.Chess.Knight_White",
-        "LoadScene.Chess.Bishop_Black",
-        "LoadScene.Chess.Bishop_White",
-    };
+        static const std::string path = []
+        {
+            const char *scene_env = getenv("LS_SCENE");
+            return std::string(scene_env ? scene_env
+                                         : "res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
+        }();
+        return path;
+    }
 
     // 天光 IBL：复用 IBLEnvironment 示例的同一批烘焙贴图与天空配方
     constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
@@ -120,15 +105,14 @@ private:
     struct MaterialData
     {
         GeometryVertexFormat geometry_vertex_format;
-        // 两套行绑定：调试法线（EmissiveSurface，8 行）与 PBR（PBRSurface，15 行）
+        // 调试法线（EmissiveSurface，8 行）；PBR 行走自装配（chess_materials_）
         graph::GlobalSSBOBinding debug_rows[COLOR_COUNT]{};
-        graph::GlobalSSBOBinding pbr_rows[PBR_MATERIAL_COUNT]{};
     };
 
     MaterialData solid;
     graph::mtl::MaterialRecipe scene_recipe{};
-    // PBR 模式：按 material_index 索引的配方表（指向注册表常驻实例）
-    std::vector<const mtl::MaterialRecipe *> chess_recipes_;
+    // PBR 模式：按 material_index 索引的自装配材质集
+    SelfContainedSceneMaterials chess_materials_;
     bool pbr_mode_ = true;
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
@@ -168,10 +152,6 @@ private:
         if (!InitMaterialRows(MATERIAL_DATA_URI, static_cast<uint32_t>(COLOR_COUNT), solid.debug_rows))
             return false;
 
-        if (pbr_mode_ &&
-            !InitMaterialRows(MATERIAL_DATA_URI_PBR, static_cast<uint32_t>(PBR_MATERIAL_COUNT), solid.pbr_rows))
-            return false;
-
         return true;
     }
 
@@ -181,9 +161,7 @@ private:
         using std::filesystem::exists;
 
         // 资产路径可覆盖（默认不变）。
-        const char * scene_env = getenv("LS_SCENE");
-        const path scene_path(scene_env ? scene_env
-                                        : "res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
+        const path scene_path(ScenePackPath());
         if (!exists(scene_path))
             return false;
 
@@ -204,18 +182,18 @@ private:
 
         if (pbr_mode_)
         {
-            chess_recipes_.clear();
-            chess_recipes_.reserve(PBR_MATERIAL_COUNT);
-            for (uint32_t i = 0; i < PBR_MATERIAL_COUNT; ++i)
-            {
-                const mtl::MaterialRecipe *r = GetRecipe(CHESS_RECIPE_NAMES[i]);
-                if (!r)
-                    return false;
-                chess_recipes_.push_back(r);
-            }
-            default_recipe    = chess_recipes_[0];
-            recipe_table      = chess_recipes_.data();
-            recipe_table_count = static_cast<uint32_t>(chess_recipes_.size());
+            // 自装配：15 个棋件配方按 pack 材质名匹配，数据块用 hint 选定
+            auto *graphics = GetGraphicsContext();
+            if (!graphics)
+                return false;
+            if (!BuildSelfContainedSceneMaterials(
+                    *graphics, hgl::ToOSString(ScenePackPath()),
+                    "load_scene_pbr", chess_materials_))
+                return false;
+
+            default_recipe     = chess_materials_.fallback;
+            recipe_table       = chess_materials_.table.data();
+            recipe_table_count = static_cast<uint32_t>(chess_materials_.table.size());
         }
         else
         {
@@ -259,8 +237,8 @@ private:
         if (pbr_mode_)
         {
             // 行序即 glTF 材质下标 ⇒ 按 material_index 选行，不再轮转
-            options.material_rows          = solid.pbr_rows;
-            options.material_row_count     = static_cast<uint32_t>(PBR_MATERIAL_COUNT);
+            options.material_rows      = chess_materials_.bindings.data();
+            options.material_row_count = static_cast<uint32_t>(chess_materials_.bindings.size());
             options.rows_by_material_index = true;
         }
         else
