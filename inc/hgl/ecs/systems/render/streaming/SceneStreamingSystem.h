@@ -52,6 +52,11 @@ namespace hgl::ecs
      * 每帧统计 `PrimitiveAsset::IsGeometryReady()` 的真实结果再批量结算。
      * 计划单里的纹理/材质项只用于 `Stats` 诊断。
      *
+     * 两条收敛路径都必须显式 `CommitScene()`：`SettleAllChildren` 只记账，不推状态机 ——
+     * 落了账却不提交，句柄会永远停在 `Assembling`。
+     * 几何 `LoadFailed` 是终态（`GeometryStreamingSystem` 不重试），必须按**失败**落定，
+     * 否则该图元永远等不到，场景同样卡在 `Assembling`。
+     *
      * ## 外部设定
      *
      * `GraphicsContext` 不持有几何顶点格式与材质配方 —— 那是调用方（示例/工具）
@@ -125,8 +130,9 @@ namespace hgl::ecs
         /// 推进单个句柄；返回 false 表示本帧不再需要关注它
         bool AdvanceOne(AssetStream *stream);
 
-        /// 解析产物里有多少图元、其中几何已就绪多少
-        void CountPrimitives(const graph::SceneAssetContent &content, int &total, int &ready)const;
+        /// 解析产物里有多少图元、其中几何已就绪多少、永久失败多少
+        void CountPrimitives(const graph::SceneAssetContent &content,
+                             int &total, int &ready, int &failed)const;
 
     public:
 

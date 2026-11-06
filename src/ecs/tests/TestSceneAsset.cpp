@@ -352,6 +352,32 @@ namespace
         return true;
     }
 
+    // ── 判据 9：落定只记账，推状态机必须显式提交 ──────────────────────────
+
+    bool TestSettleDoesNotCommit()
+    {
+        SceneAssetRegistry registry;
+        SceneAsset *asset = registry.Request("pack(res):Probe/SettleOnly.Scene.scene");
+        EXPECT(asset != nullptr);
+
+        EXPECT(asset->BeginStreaming());
+        EXPECT(!asset->SetPlan(MakePlan(2)));
+        EXPECT(asset->GetState() == SceneAssetState::Assembling);
+
+        // 一次把两项都落定：计数归零，但状态**仍停在** `Assembling` ——
+        // `SettleAllChildren` 只记账。流送系统若落了账不调 `CommitScene()`，
+        // 句柄会永远卡在装配中（曾真实发生：示例场景 120 帧都到不了 `Ready`）。
+        EXPECT(asset->SettleAllChildren(2, 0));
+        EXPECT(asset->GetPendingChildCount() == 0);
+        EXPECT(asset->GetState() == SceneAssetState::Assembling);
+        EXPECT(!asset->IsReady());
+
+        EXPECT(asset->CommitScene());
+        EXPECT(asset->IsReady());
+
+        return true;
+    }
+
     // ── 判据 8：进程内默认表 ──────────────────────────────────────────────
 
     bool TestDefaultRegistry()
@@ -388,6 +414,7 @@ int main(int argc, char **argv)
                  && TestFailAndReset()
                  && TestOverSettleGuard()
                  && TestSetChildTotal()
+                 && TestSettleDoesNotCommit()
                  && TestDefaultRegistry();
 
     if(!ok)

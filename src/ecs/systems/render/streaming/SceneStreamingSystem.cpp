@@ -180,17 +180,29 @@ namespace hgl::ecs
 
     void SceneStreamingSystem::CountPrimitives(const graph::SceneAssetContent &content,
                                                int &total,
-                                               int &ready)const
+                                               int &ready,
+                                               int &failed)const
     {
-        total = 0;
-        ready = 0;
+        total  = 0;
+        ready  = 0;
+        failed = 0;
 
         for (const graph::PrimitiveAsset &primitive : content.assets)
         {
             ++total;
 
             if (primitive.IsGeometryReady())
+            {
                 ++ready;
+                continue;
+            }
+
+            // 几何读盘/解析失败是终态：`GeometryStreamingSystem` 不自动重试，
+            // 不按失败落定的话子项永远等不到 ⇒ 场景恒停在 `Assembling`。
+            const graph::GeometryAsset *geometry_asset = primitive.GetGeometryAsset();
+
+            if (geometry_asset && geometry_asset->GetPayloadState() == hgl::PayloadState::LoadFailed)
+                ++failed;
         }
     }
 
@@ -454,10 +466,11 @@ namespace hgl::ecs
                 return true;
 
             // 子项口径换成「图元数」：几何才是场景就绪的真门禁（见头文件说明）。
-            int total = 0;
-            int ready = 0;
+            int total  = 0;
+            int ready  = 0;
+            int failed = 0;
 
-            CountPrimitives(content, total, ready);
+            CountPrimitives(content, total, ready, failed);
 
             asset->SetChildTotal(total);
 
@@ -468,21 +481,34 @@ namespace hgl::ecs
                 return true;
             }
 
-            if (ready > 0 && asset->SettleAllChildren(ready, 0))
+            // 产物出来时就已全部就绪（内置/已驻留几何）⇒ 当场提交成 `Ready`。
+            if ((ready > 0 || failed > 0) && asset->SettleAllChildren(ready, failed))
+            {
+                asset->CommitScene();
                 return true;
+            }
         }
 
         // ── 阶段 C：逐帧结算仍未就绪的图元几何 ───────────────────────────────
-        int total = 0;
-        int ready = 0;
+        int total  = 0;
+        int ready  = 0;
+        int failed = 0;
 
-        CountPrimitives(asset->GetContent(), total, ready);
+        CountPrimitives(asset->GetContent(), total, ready, failed);
 
-        const int delta = ready - asset->GetReadyChildCount();
+        const int ready_delta  = ready  - asset->GetReadyChildCount();
+        const int failed_delta = failed - asset->GetFailedChildCount();
 
-        if (delta > 0)
-            if (asset->SettleAllChildren(delta, 0))
+        if (ready_delta > 0 || failed_delta > 0)
+        {
+            // 「落定」只是记账；把状态机推到 `Ready` 必须显式提交。
+            if (asset->SettleAllChildren(ready_delta < 0 ? 0 : ready_delta,
+                                         failed_delta < 0 ? 0 : failed_delta))
+            {
+                asset->CommitScene();
                 return true;
+            }
+        }
 
         return false;
     }

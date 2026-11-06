@@ -29,6 +29,9 @@
 //   LS_DIST/LS_YAW/LS_PITCH  相机覆盖
 //   LS_FRAMES=N      跑 N 帧退出
 //   LS_DUMP=<tag>    第 8 帧帧内回读落原始字节后退出（lsdump_<tag>_WxH_fmt.raw）
+//   LS_DUMP_FRAME=N  改回读帧号（默认 8）
+//   LS_SYNC=1        走同步装载通路（默认异步流送）
+//   LS_TRACE=1       每 20 帧打印场景句柄的装配计数（确认流送收敛，不卡在 Assembling）
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -133,6 +136,7 @@ private:
     bool async_skeleton_built_   = false;
     bool async_geometries_built_ = false;
     bool async_materials_built_  = false;
+    bool async_ready_reported_   = false;        ///<场景状态机走到 Ready 只报一次
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::ecs::LightSystem>       light_system;
@@ -517,7 +521,23 @@ private:
             async_materials_built_ = true;
             printf("[LSASYNC] materials attached (frame %u), scene state=%s\n",
                    ls_frame_seen, async_scene_->GetStateName());
+            return;
         }
+
+        // 场景状态机的 Ready 由「全部图元几何就绪」推进（见 SceneStreamingSystem 阶段 C）：
+        // 它晚于材质绑定，因此单独报一次，用来确认流送确实收敛而不是永远 Assembling。
+        if (!async_ready_reported_ &&
+            async_scene_->GetState() == graph::SceneAssetState::Ready)
+        {
+            async_ready_reported_ = true;
+            printf("[LSASYNC] scene ready (frame %u)\n", ls_frame_seen);
+        }
+        else if (getenv("LS_TRACE") && (ls_frame_seen % 20) == 0)
+            printf("[LSASYNC-DBG] frame %u state=%s ready=%d failed=%d pending=%d\n",
+                   ls_frame_seen, async_scene_->GetStateName(),
+                   async_scene_->GetReadyChildCount(),
+                   async_scene_->GetFailedChildCount(),
+                   async_scene_->GetPendingChildCount());
     }
 
     bool InitECS()
