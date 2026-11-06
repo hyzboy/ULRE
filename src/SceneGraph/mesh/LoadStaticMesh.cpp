@@ -2,6 +2,7 @@
 // Core scene loader for StaticMesh asset packs.
 
 #include <hgl/graph/mesh/LoadStaticMesh.h>
+#include <hgl/graph/mesh/ScenePackFormat.h>
 #include <hgl/graph/geo/LoadGeometry.h>
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/math/Matrix.h>      // TranslateMatrix / ToMatrix / ScaleMatrix（TRS→矩阵组合）
@@ -36,126 +37,12 @@ namespace
 /// 从局部 TRS 沿层级组合出 local/world 矩阵（两份装载路径共用，定义见文件后半）
 void ComposeNodeMatrices(std::vector<StaticMeshNode> &nodes);
 
-#pragma pack(push, 1)
-// Mirrors exporters::TRS (glm::vec3 + glm::quat + glm::vec3 = 40 bytes)
-// Use plain float arrays to avoid GLM_FORCE_DEFAULT_ALIGNED_GENTYPES padding.
-struct PackedTRS
-{
-    float translation[3];   // 12 bytes
-    float rotation[4];      // 16 bytes
-    float scale[3];         // 12 bytes
-};
-static_assert(sizeof(PackedTRS) == 40, "PackedTRS size mismatch");
-
-constexpr uint32_t kScenePackV2Magic = 0x324E4353u; // 'SCN2'
-
-enum class SceneTableType : uint32_t
-{
-    NameTable      = 1,
-    NodeTable      = 2,
-    NodePrimIndex  = 3,
-    NodeChildIndex = 4,
-    RootIndex      = 5,
-    TRSTable       = 6,
-    BoundsTable    = 7,
-    PrimitiveTable = 8,
-    MaterialTable  = 9,
-    GeometryTable  = 10,
-    StringPool     = 11,
-    GeometryViewTable = 12,
-    GeometryBlob      = 13,
-};
-
-struct ScenePackHeader
-{
-    uint32_t magic;
-    uint16_t version_major;
-    uint16_t version_minor;
-    uint32_t flags;
-    int32_t  scene_name_index;
-
-    uint32_t node_count;
-    uint32_t root_count;
-    uint32_t primitive_count;
-    uint32_t material_count;
-    uint32_t geometry_count;
-
-    uint32_t dir_offset;
-    uint32_t dir_count;
-    uint32_t payload_size;
-    uint32_t reserved;
-};
-
-struct SceneTableDesc
-{
-    uint32_t type;
-    uint32_t offset;
-    uint32_t size;
-    uint32_t stride;
-};
-
-struct PackedNode
-{
-    int32_t original_index;
-    int32_t name_index;
-    int32_t trs_index;          // 局部 TRS 表下标；<0 = 单位变换（产物不存矩阵）
-    int32_t bounds_index;
-    int32_t first_primitive;
-    int32_t primitive_count;
-    int32_t first_child;
-    int32_t child_count;
-};
-
-struct PackedPrimitive
-{
-    int32_t  original_index;
-    int32_t  geometry_index;
-    int32_t  material_index;
-    uint32_t geometry_file_offset;
-    uint32_t geometry_file_length;
-};
-
-// 与 GLTFConvert SceneExportPack 的 MaterialTable 行布局一致（表行序 = 材质下标）。
-struct PackedMaterial
-{
-    int32_t  original_index;
-    uint32_t file_offset;   // 指向 StringPool 的 "<Scene>.<idx>.<Name>.material"
-    uint32_t file_length;
-};
-
-struct PackedGeometryView
-{
-    int32_t  original_index;
-    uint32_t blob_offset;
-    uint32_t blob_size;
-    uint32_t blob_align;
-};
-
-#pragma pack(pop)
+// SCN2 表词汇表（SceneTableType / ScenePackHeader / PackedXXX / FindTableDesc /
+// TryGetTableRange）统一来自 <hgl/graph/mesh/ScenePackFormat.h>，与依赖图提取、
+// 异步场景流送共用同一份声明，避免多处副本漂移。
+using namespace hgl::graph::scenepack;
 
 std::vector<std::string> ParseNameTable(const void *raw, uint32_t bytes);
-
-static const SceneTableDesc *FindTableDesc(const SceneTableDesc *dir, uint32_t dir_count, SceneTableType type)
-{
-    const uint32_t t = static_cast<uint32_t>(type);
-    for (uint32_t i = 0; i < dir_count; ++i)
-    {
-        if (dir[i].type == t)
-            return dir + i;
-    }
-    return nullptr;
-}
-
-static bool TryGetTableRange(const uint8_t *payload, uint32_t payload_size, const SceneTableDesc *td, const uint8_t *&ptr, uint32_t &size)
-{
-    if (!td)
-        return false;
-    if (td->offset > payload_size || td->size > payload_size || td->offset + td->size > payload_size)
-        return false;
-    ptr = payload + td->offset;
-    size = td->size;
-    return true;
-}
 
 static bool TryLoadScene(
     hgl::io::minipack::MiniPackMemory *mpm,
