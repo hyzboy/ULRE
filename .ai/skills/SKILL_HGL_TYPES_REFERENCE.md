@@ -255,6 +255,13 @@ AnsiString *key = bimap.FindByRight(1); // 通过value找key
 
 ## 3. 哈希（Hash）
 
+> 归属：`CMHash` 模块（只依赖 CMCoreType）。头文件路径仍是 `hgl/util/hash/*.h`，
+> 但实现已不在 CMCoreType / CMUtil 里。
+>
+> 算法清单与名称由 Clang AST 从 `CMHash/inc/hgl/util/hash/Algorithm.h` 的
+> `enum class Algorithm` 派生 —— **不要手写算法名表**。名称解析用严格入口
+> `hgl::util::hash::TryParseAlgorithm()`（未命中返回 false，不再静默回退 MD5）。
+
 ### ⚠️ 禁止手写FNV1a！必须使用以下API
 
 ```cpp
@@ -1318,7 +1325,7 @@ std::mutex m;
 
 - 字符串类型：`inc/hgl/type/String.h`、`inc/hgl/type/StrChar.h`
 - 集合类型：`inc/hgl/type/ArrayList.h`、`inc/hgl/type/UnorderedMap.h`、`inc/hgl/type/SortedSet.h`、`inc/hgl/type/Map.h`
-- 哈希：`inc/hgl/util/hash/FNV1a.h`、`inc/hgl/util/hash/Hash.h`
+- 哈希：`CMHash/inc/hgl/util/hash/`（`Algorithm.h` 是算法清单唯一真源；`Hash.h` 提供 `TryParseAlgorithm`/`Hash`；FNV1a/QuickHash/wyhash 也在这里），文件哈希在 `CMCore/inc/hgl/util/hash/HashFile.h`
 - IO：`inc/hgl/io/FileInputStream.h`、`inc/hgl/io/FileOutputStream.h`、`inc/hgl/io/MemoryInputStream.h`、`inc/hgl/io/MemoryOutputStream.h`
 - 日志：`inc/hgl/log/Log.h`
 - 时间：`inc/hgl/time/Time.h`

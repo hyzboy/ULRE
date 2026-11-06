@@ -846,6 +846,9 @@ ArrayRearrange(new_data, old_data, 10,
 
 ## 17. 哈希扩展（QuickHash / HashMergeGolden64）
 
+> 归属：这些头文件已从 CMCoreType 迁入 `CMHash` 模块，include 路径不变。
+> CMCoreType 不再提供散列实现。
+
 ### 快速哈希（QuickHash.h）
 
 ```cpp
@@ -1031,9 +1034,6 @@ CMCoreType/inc/hgl/
 │   ├── StdByteBuffer.h     # ByteWriter/ByteReader（内部使用STL）
 │   ├── TypeLimits.h        # numeric_max, numeric_min...
 │   ├── _Object.h           # _Object基类, GetMemberFuncPointer
-├── util/hash/
-│   ├── FNV1a.h             # FNV1aInit/Append（已在主文档覆盖）
-│   ├── HashMergeGolden64.h # HashMergeGolden64
-│   ├── QuickHash.h         # ComputeOptimalHash
-│   ├── wyhash.h, wyhash32.h, SecureHash.h
 ```
+> 散列头（FNV1a.h / HashMergeGolden64.h / QuickHash.h / wyhash*.h / SecureHash.h）
+> 已迁入 **CMHash** 模块（`CMHash/inc/hgl/util/hash/`），include 路径不变。
