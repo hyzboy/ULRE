@@ -1,7 +1,9 @@
 #pragma once
 
 #include<hgl/type/String.h>
+#include<hgl/type/ManagedArray.h>
 #include<hgl/asset/AssetURI.h>
+#include<hgl/asset/AssetSource.h>
 
 namespace hgl
 {
@@ -65,6 +67,32 @@ namespace hgl
     /// 默认包裹的挂载名 / 根目录（供诊断与日志使用）。
     constexpr const char *DEFAULT_ASSET_SOURCE_NAME = "res";
     constexpr const os_char *DEFAULT_ASSET_SOURCE_ROOT = OS_TEXT("res");
+
+    /**
+     * 取已挂载的资产来源。
+     *
+     * 调用方**不要**长期持有返回指针：注销包裹后它就失效了。这里只是为了在同一
+     * 帧内做「列举目录」「Stat 元信息」这类 OpenAssetInputStream 覆盖不到的查询。
+     *
+     * @return 未挂载返回 nullptr
+     */
+    asset::AssetSource *GetMountedAssetSource(const char *name=DEFAULT_ASSET_SOURCE_NAME);
+
+    /**
+     * 列举包裹内某个目录的直接子项。
+     *
+     * 为什么需要它：材质配方不写在场景包里，场景只给出材质名，配方文件名（
+     * `LoadScene.Chess.Chessboard.recipe.toml`）和材质名（`Chessboard`）只有末段
+     * 对得上。因此「按材质名找配方」必然要枚举目录 —— 硬编码后缀猜测在换场景时
+     * 立刻失效，而且打包后端上根本猜不出内容。
+     *
+     * @param dir_path 包裹内目录（UTF-8，`/` 分隔，不带挂载名前缀）
+     * @param out      追加写入，不清空调用方已有内容
+     * @param source_name 挂载名；nullptr 或空串时用默认包裹
+     * @return 新增项数；包裹未挂载或后端不支持列举返回 -1
+     */
+    int ListAssetDirectory(const AnsiString &dir_path,ManagedArray<asset::SourceEntry> &out,
+                           const char *source_name=nullptr);
 
     /**
      * 统一资产取流入口（包裹 / 磁盘 / 历史裸路径三者的唯一分派点）。

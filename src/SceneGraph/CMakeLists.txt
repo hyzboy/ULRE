@@ -316,6 +316,7 @@ source_group("07.Asset\\Geometry" FILES ${SG_ASSET_GEOMETRY_FILES})
 set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/AssetLoadGraph.h
                             ${SG_INCLUDE_PATH}/asset/SceneDependencyExtractor.h
+                            ${SG_INCLUDE_PATH}/asset/SceneLoadPlan.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetSpec.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetRegistry.h
@@ -324,6 +325,7 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             asset/AssetSourceMount.cpp
                             asset/AssetLoadGraph.cpp
                             asset/SceneDependencyExtractor.cpp
+                            asset/SceneLoadPlan.cpp
                             asset/SceneAssetFile.cpp
                             asset/SceneAssetRegistry.cpp
                             asset/SceneLoader.cpp

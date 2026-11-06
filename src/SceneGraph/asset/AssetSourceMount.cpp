@@ -5,6 +5,7 @@
 #include<hgl/io/FileInputStream.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Log.h>
+#include<hgl/type/ManagedArray.h>
 
 DEFINE_LOGGER_MODULE(AssetMount)
 USE_MODULE_LOGGER(AssetMount)
@@ -125,5 +126,28 @@ namespace hgl::graph
         }
 
         return asset::OpenAssetStream(uri,out_error);
+    }
+
+    asset::AssetSource *GetMountedAssetSource(const char *name)
+    {
+        if(name==nullptr||*name==0)
+            name=DEFAULT_ASSET_SOURCE_NAME;
+
+        return asset::GetSource(AnsiString(name));
+    }
+
+    int ListAssetDirectory(const AnsiString &dir_path,ManagedArray<asset::SourceEntry> &out,
+                           const char *source_name)
+    {
+        asset::AssetSource *src=GetMountedAssetSource(source_name);
+
+        if(src==nullptr)
+            return -1;
+
+        // `u8char` 在开 `HGL_SUPPORT_CHAR8_T` 时是 `char8_t`，与 `char` 不是同一类型，
+        // 没有隐式转换。字节内容本来相同，直接重解释。
+        const U8String u8_dir(reinterpret_cast<const u8char *>(dir_path.c_str()),dir_path.Length());
+
+        return src->ListDirectory(u8_dir,out);
     }
 }

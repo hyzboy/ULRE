@@ -260,6 +260,9 @@ add_ecs_test(TestAssetLoadGraph tests/TestAssetLoadGraph.cpp)
 # 阶段三判据：不装载也能抽出场景/配方依赖（内存内合成 SCN2 包与配方文本）
 add_ecs_test(TestSceneDependencyExtractor tests/TestSceneDependencyExtractor.cpp)
 
+# 阶段三判据：场景包 + 配方 → 任务单（去重 / 拓扑序 / 配方缺失降级 / 坏包拒绝）
+add_ecs_test(TestSceneLoadPlan tests/TestSceneLoadPlan.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -523,5 +526,12 @@ if(BUILD_TESTING)
         COMMAND TestSceneDependencyExtractor)
     set_tests_properties(
         TestSceneDependencyExtractor
+        PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
+
+    add_test(
+        NAME TestSceneLoadPlan
+        COMMAND TestSceneLoadPlan)
+    set_tests_properties(
+        TestSceneLoadPlan
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 endif()

@@ -15,6 +15,7 @@
 
 #include <hgl/graph/asset/AssetLoadGraph.h>
 #include <hgl/type/String.h>
+#include <hgl/type/ManagedArray.h>
 
 #include <cstdint>
 
@@ -23,6 +24,19 @@ namespace hgl::graph
     /// 把包内相对名接到基准目录上。`base_dir` 为空时原样返回；
     /// 否则保证中间只有一个 `/`（`base_dir` 末尾带不带分隔符都可以）。
     AnsiString JoinAssetRef(const AnsiString &base_dir, const AnsiString &name);
+
+    /**
+     * 场景包里的一条材质引用。
+     *
+     * `name` 是**给人看的材质名**（`Chessboard`），`key` 是**给图用的身份**
+     * （`material_recipe:abeautifulgame.staticmesh/abeautifulgame.0.chessboard`）。
+     * 两者都要：配方文件名按名字匹配，依赖边按身份连接。
+     */
+    struct SceneMaterialEntry
+    {
+        AnsiString  name;       ///<已剥 `.material` 后缀与 `<Scene>.<idx>.` 前缀
+        AssetDepKey key;        ///<规范化后的材质节点身份
+    };
 
     /**
      * 从已取到的 SCN2 包头 + 载荷中抽出场景的外部依赖。
@@ -35,6 +49,11 @@ namespace hgl::graph
      * @param scene_ref       场景自身的引用（用于规范化出根节点）
      * @param graph           依赖写进这张图（整体替换 `scene_ref` 的出边）
      * @param out_edge_count  可为 nullptr；返回实际写入的边数
+     * @param out_materials   可为 nullptr；非空时写入包内材质表（名字 + 身份），
+     *                        供上层按名字匹配同目录的 `*.recipe.toml`
+     * @param out_embedded_geometry 可为 nullptr；非空时返回**内嵌**在包里的几何
+     *                        份数。自足包不产生外部几何依赖，因此「几何=0」只是
+     *                        「不需要为几何做外部 IO」，并不等于场景里没有几何。
      *
      * @return false = 包结构不合法。此时**不要**把「零依赖」当成结论。
      */
@@ -43,7 +62,9 @@ namespace hgl::graph
                                   const AnsiString &base_dir,
                                   const AnsiString &scene_ref,
                                   AssetLoadGraph &graph,
-                                  int *out_edge_count = nullptr);
+                                  int *out_edge_count = nullptr,
+                                  ManagedArray<SceneMaterialEntry> *out_materials = nullptr,
+                                  int *out_embedded_geometry = nullptr);
 
     /**
      * 从配方文本中抽出纹理依赖（`[[textures]]` 的 `resource_id`）。

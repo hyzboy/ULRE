@@ -80,6 +80,40 @@ namespace hgl::graph
             edges.Add(edge);
             return true;
         }
+
+        /**
+         * `ABeautifulGame.0.Chessboard.material` → `Chessboard`
+         *
+         * 规则与 `LoadStaticMesh.cpp` 的 `MaterialNameFromPackFile` 完全一致：
+         * 去 `.material` 后缀；`<Scene>.<数字>.` 前缀剥掉。材质名本身可以含点，
+         * 所以不能简单取最后一段。
+         */
+        AnsiString MaterialNameFromPackFile(const AnsiString &file)
+        {
+            AnsiString s = file;
+
+            const int len = s.Length();
+
+            if(len > 9 && s[len - 9] == '.' && s.SubString(len - 9, 9) == ".material")
+                s = s.SubString(0, len - 9);
+
+            const int d1 = s.FindString(AnsiString("."), 0);
+
+            if(d1 < 0)
+                return s;
+
+            const int d2 = s.FindString(AnsiString("."), d1 + 1);
+
+            if(d2 < 0)
+                return s.SubString(d1 + 1);
+
+            bool numeric = d2 > d1 + 1;
+
+            for(int i = d1 + 1; i < d2 && numeric; i++)
+                numeric = (s[i] >= '0' && s[i] <= '9');
+
+            return numeric ? s.SubString(d2 + 1) : s;
+        }
     }//anonymous namespace
 
     bool ExtractSceneDependencies(const void *pack_header_raw, uint32_t header_len,
@@ -87,10 +121,18 @@ namespace hgl::graph
                                   const AnsiString &base_dir,
                                   const AnsiString &scene_ref,
                                   AssetLoadGraph &graph,
-                                  int *out_edge_count)
+                                  int *out_edge_count,
+                                  ManagedArray<SceneMaterialEntry> *out_materials,
+                                  int *out_embedded_geometry)
     {
         if(out_edge_count)
             *out_edge_count = 0;
+
+        if(out_materials)
+            out_materials->Clear();
+
+        if(out_embedded_geometry)
+            *out_embedded_geometry = 0;
 
         ScenePackHeader h{};
         const SceneTableDesc *dir = nullptr;
@@ -148,7 +190,22 @@ namespace hgl::graph
                     const AnsiString file(reinterpret_cast<const char *>(pool + pm[i].file_offset),
                                           static_cast<int>(pm[i].file_length));
 
-                    PushEdge(edges, base_dir, file, AssetType::MaterialRecipe, KindFromRef(file, AssetType::MaterialRecipe));
+                    const AssetDepKind kind = KindFromRef(file, AssetType::MaterialRecipe);
+
+                    if(PushEdge(edges, base_dir, file, AssetType::MaterialRecipe, kind)
+                       && out_materials)
+                    {
+                        // `ManagedArray` 持有并拥有 `T*`，因此必须走 `Create()` 而不是
+                        // 栈上构造 —— `Add` 只接受指针。
+                        SceneMaterialEntry *entry = out_materials->Create();
+
+                        entry->name = MaterialNameFromPackFile(file);
+
+                        // 与 PushEdge 走同一套规范化，保证写进 out_materials 的身份
+                        // 与边上的目标身份**逐字节一致**（否则配方边连不上材质节点）
+                        if(!NormalizeAssetRef(JoinAssetRef(base_dir, file), AssetType::MaterialRecipe, entry->key))
+                            out_materials->DeleteAt(out_materials->GetCount() - 1);
+                    }
                 }
             }
         }
@@ -207,6 +264,12 @@ namespace hgl::graph
                     PushEdge(edges, base_dir, file, AssetType::Geometry, AssetDepKind::Geometry);
                 }
             }
+            else if(geometry_embedded && out_embedded_geometry)
+            {
+                // 内嵌几何不出边，但要报份数：上层据此知道「几何=0」不是「没几何」
+                *out_embedded_geometry =
+                    static_cast<int>(geo_view_size / static_cast<uint32_t>(sizeof(PackedGeometryView)));
+            }
         }
 
         AssetDepKey root;
@@ -251,7 +314,13 @@ namespace hgl::graph
         if(result != mtl::MaterialRecipeFileParseResult::OK
            && result != mtl::MaterialRecipeFileParseResult::Skipped)
         {
-            FLogError(u8"提取配方依赖失败：%s", recipe_ref.c_str());
+            const char *detail = data.parse_error.detail.IsEmpty()
+                               ? "-" : data.parse_error.detail.c_str();
+
+            FLogError(u8"提取配方依赖失败：%s（%s，第 %d 行 %s）",
+                      recipe_ref.c_str(),
+                      mtl::GetMaterialRecipeFileParseResultName(result),
+                      data.parse_error.line, detail);
             return false;
         }
 
