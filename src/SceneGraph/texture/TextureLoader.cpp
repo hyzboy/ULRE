@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/texture/TextureLoader.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/io/FileInputStream.h>
 #include<hgl/utf.h>
 
@@ -334,15 +335,23 @@ namespace hgl::graph
 
     bool TextureLoader::Load(const OSString &filename)
     {
-        io::OpenFileInputStream fis(filename);
+        // 统一取流：`filename` 既可以是历史裸路径，也可以是 `pack(res):tex/xxx`
+        // （无扩展名逻辑路径）或 `pack(res):id:<32 hex>`。
+        AnsiString open_error;
 
-        if(!fis)
+        io::InputStream *is=OpenAssetInputStream(filename,asset::AssetType::Texture,&open_error);
+
+        if(!is)
         {
-            LogError(OS_TEXT("open texture file<")+filename+OS_TEXT("> failed."));
+            LogError(OS_TEXT("open texture file<")+filename+OS_TEXT("> failed: ")+ToOSString(open_error.c_str()));
             return(false);
         }
 
-        if(!this->Load(&fis))
+        const bool load_ok=this->Load(is);
+
+        delete is;
+
+        if(!load_ok)
         {
             LogError(OS_TEXT("load texture file<") + filename + OS_TEXT("> failed."));
             return(false);

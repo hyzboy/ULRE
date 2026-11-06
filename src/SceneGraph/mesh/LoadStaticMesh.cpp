@@ -8,6 +8,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
+#include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
@@ -900,17 +901,26 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
 {
     using namespace hgl::io::minipack;
 
-    MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
-    if (!mpm)
+    // 统一取流：`pack_path` 既可以是历史裸路径，也可以是
+    // `pack(res):scene/xxx`（无扩展名逻辑路径）或 `pack(res):id:<32 hex>`。
+    AnsiString open_error;
+
+    hgl::io::InputStream *stream=OpenAssetInputStream(pack_path,asset::AssetType::Scene,&open_error);
+
+    if (!stream)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: cannot open pack: ") + pack_path);
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: cannot open asset: ") + pack_path
+                                + OS_TEXT(" : ") + ToOSString(open_error.c_str()));
         return false;
     }
 
-    return BuildSceneFromMiniPack(device,geo_mgr,geometry_vertex_format,recipe,
-                                  mpm,pack_path,base_dir,
-                                  out_assets,out_nodes,out_root_nodes,
-                                  material_recipes,material_recipe_count);
+    const bool result=LoadStaticMeshSceneFromStream(device,geo_mgr,geometry_vertex_format,recipe,
+                                                   stream,pack_path,base_dir,
+                                                   out_assets,out_nodes,out_root_nodes,
+                                                   material_recipes,material_recipe_count);
+
+    delete stream;
+    return result;
 }
 
 bool LoadStaticMeshSceneFromMemory(
@@ -1116,6 +1126,15 @@ bool BuildSelfContainedSceneMaterials(
     SelfContainedSceneMaterials &out)
 {
     out = SelfContainedSceneMaterials();
+
+    // 本函数的装配方式是「扫模型目录找配方与数据块」——URI 寻址下没有目录概念。
+    // 明确拒绝，而不是让调用方读到一个误导性的「文件打不开」。
+    if (hgl::asset::AssetURI::Parse(pack_path).source == hgl::asset::AssetSourceKind::Pack)
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("BuildSelfContainedSceneMaterials: 暂不支持包裹 URI 寻址（需改由依赖图装配）: ") + pack_path);
+        return false;
+    }
 
     // 1. 模型目录 = pack 所在目录（唯一的资源来源目录）
     const OSString model_dir = hgl::filesystem::Path(pack_path).GetParent().ToOSString();

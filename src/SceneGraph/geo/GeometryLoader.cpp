@@ -14,6 +14,7 @@
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/io/MiniPack.h>
 #include<hgl/io/MemoryInputStream.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 
 DEFINE_LOGGER_MODULE(LoadGeometry)
 
@@ -542,20 +543,21 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVerte
 
 Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const OSString &filename)
 {
-    using namespace hgl::io::minipack;
+    // 统一取流：`filename` 既可以是历史裸路径，也可以是
+    // `pack(res):geo/presets/torus`（无扩展名逻辑路径）或 `pack(res):id:<32 hex>`。
+    // 这样从「目录包裹」切到「真实打包文件」时本函数一行都不用改。
+    AnsiString open_error;
 
-    MiniPackReader *mpr = GetMiniPackReader(filename);
+    hgl::io::InputStream *stream=OpenAssetInputStream(filename,asset::AssetType::Geometry,&open_error);
 
-    if(!mpr)
+    if(!stream)
     {
-        MLogError(LoadGeometry,OS_TEXT("Cannot open minipack file ") + filename + OS_TEXT(" for reading."));
+        MLogError(LoadGeometry,OS_TEXT("Cannot open geometry asset ") + filename
+                              + OS_TEXT(" : ") + OSString(ToOSString(open_error)));
         return(nullptr);
     }
 
-    Geometry *geometry = LoadGeometryFromReader(device,geometry_vertex_format,mpr,filename);
-
-    delete mpr;
-    return geometry;
+    return LoadGeometryFromStream(device,geometry_vertex_format,stream,filename);
 }
 
 Geometry *LoadGeometryFromStream(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,hgl::io::InputStream *stream,const OSString &debug_name)
