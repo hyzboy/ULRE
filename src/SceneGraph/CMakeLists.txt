@@ -319,6 +319,7 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/SceneLoadPlan.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetSpec.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
+                            ${SG_INCLUDE_PATH}/asset/SceneAsset.h
                             ${SG_INCLUDE_PATH}/asset/SceneSpecAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/SceneLoader.h
                             ${SG_INCLUDE_PATH}/asset/StaticMeshSceneInstance.h
@@ -327,6 +328,7 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             asset/SceneDependencyExtractor.cpp
                             asset/SceneLoadPlan.cpp
                             asset/SceneAssetFile.cpp
+                            asset/SceneAsset.cpp
                             asset/SceneSpecAssetRegistry.cpp
                             asset/SceneLoader.cpp
                             asset/StaticMeshSceneInstance.cpp)

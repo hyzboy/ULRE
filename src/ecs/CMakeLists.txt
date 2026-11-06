@@ -263,6 +263,9 @@ add_ecs_test(TestSceneDependencyExtractor tests/TestSceneDependencyExtractor.cpp
 # 阶段三判据：场景包 + 配方 → 任务单（去重 / 拓扑序 / 配方缺失降级 / 坏包拒绝）
 add_ecs_test(TestSceneLoadPlan tests/TestSceneLoadPlan.cpp)
 
+# 阶段四判据：异步场景句柄的状态机与句柄表去重（不碰设备）
+add_ecs_test(TestSceneAsset tests/TestSceneAsset.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -533,5 +536,12 @@ if(BUILD_TESTING)
         COMMAND TestSceneLoadPlan)
     set_tests_properties(
         TestSceneLoadPlan
+        PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
+
+    add_test(
+        NAME TestSceneAsset
+        COMMAND TestSceneAsset)
+    set_tests_properties(
+        TestSceneAsset
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 endif()
