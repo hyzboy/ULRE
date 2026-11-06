@@ -1,0 +1,42 @@
+# EnumGen 配置 —— Clang AST 枚举派生目标清单
+#
+# 规则：
+#   · 成员名称/数量/顺序一律来自 AST，本文件**不允许**再列一遍成员；
+#   · [[target.display]] 只用于 AST 无法推断的“对外显示名”，且必须
+#     以枚举项名称为键，生成时会做 1:1 校验（不存在的键直接报错）；
+#   · header / output 均为相对仓库根的路径。
+
+# ── CMHash：Hash 算法枚举 ────────────────────────────────────────────────────
+[[target]]
+name            = "HashAlgorithm"
+header          = "CMHash/inc/hgl/util/hash/Algorithm.h"
+enum            = "Algorithm"
+namespace       = "hgl::util::hash"
+include_header  = "hgl/util/hash/Algorithm.h"
+output          = "CMHash/inc/hgl/util/hash/generated/AlgorithmRegistry.gen.h"
+
+# 对外显示名。历史清单里已经使用过带连字符/完整产品名的拼写，
+# 枚举改名时这里必须同步，否则生成阶段就会失败（而不是悄悄回退到枚举名）。
+[[target.display]]
+member = "XXH3_64"
+name   = "XXH3-64"
+
+[[target.display]]
+member = "XXH3_128"
+name   = "XXH3-128"
+
+[[target.display]]
+member = "Murmur3"
+name   = "MurmurHash3"
+
+[[target.display]]
+member = "City32"
+name   = "CityHash32"
+
+[[target.display]]
+member = "City64"
+name   = "CityHash64"
+
+[[target.display]]
+member = "City128"
+name   = "CityHash128"

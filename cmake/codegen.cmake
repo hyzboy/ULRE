@@ -289,6 +289,38 @@ function(ulre_codegen_configure)
         endif()
     endif()
 
+    # ── EnumGen：Clang AST 枚举 → 注册表头（CMHash 的 Algorithm 等）───────────
+    # 与 AssetGen 同策略：真源是 C++ 枚举声明，产物提交进仓库，
+    # MSVC-only 构建不需要 clang；改枚举后重跑（或 CI 用 -Check 拦下脱节）。
+    set(_enum_tool "${_root}/src/Tools/ASTTooling/enum_gen.py")
+    set(_enum_cfg  "${_root}/src/Tools/ASTTooling/enum_gen.toml")
+    if(NOT EXISTS "${_enum_tool}" OR NOT EXISTS "${_enum_cfg}")
+        message(STATUS "[CodeGen] 跳过 EnumGen：找不到生成器或 enum_gen.toml")
+    else()
+        file(GLOB_RECURSE _enum_inputs CONFIGURE_DEPENDS
+             "${_root}/CMHash/inc/hgl/util/hash/Algorithm.h"
+             "${_root}/CMCoreType/inc/hgl/type/EnumUtil.h"
+             "${_root}/src/Tools/ASTTooling/*.py")
+
+        add_custom_command(
+            OUTPUT "${_stamp_dir}/enum_gen.stamp"
+            COMMAND "${_python}" "${_enum_tool}"
+                    --config "${_enum_cfg}"
+                    --clang  "${_clang}"
+            COMMAND "${CMAKE_COMMAND}" -E touch "${_stamp_dir}/enum_gen.stamp"
+            DEPENDS "${_enum_tool}" "${_enum_cfg}" ${_enum_inputs}
+            COMMENT "[CodeGen] EnumGen：扫描 enum Algorithm，刷新 CMHash 的注册表头"
+            VERBATIM)
+
+        add_custom_target(ULRE_CodeGen_EnumGen
+            DEPENDS "${_stamp_dir}/enum_gen.stamp"
+            SOURCES "${_enum_tool}" "${_enum_cfg}")
+        set_target_properties(ULRE_CodeGen_EnumGen PROPERTIES FOLDER "CodeGen")
+
+        list(APPEND ULRE_CODEGEN_TARGET ULRE_CodeGen_EnumGen)
+        message(STATUS "[CodeGen] EnumGen 构建期再生成已启用")
+    endif()
+
     set(ULRE_CODEGEN_TARGET "${ULRE_CODEGEN_TARGET}" PARENT_SCOPE)
 endfunction()
 
