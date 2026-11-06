@@ -558,10 +558,35 @@ Geometry *LoadGeometry(VulkanDevice *device,const GeometryVertexFormat &geometry
     return geometry;
 }
 
+Geometry *LoadGeometryFromStream(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,hgl::io::InputStream *stream,const OSString &debug_name)
+{
+    using namespace hgl::io::minipack;
+
+    if(!stream)
+    {
+        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromStream: null stream for ") + debug_name);
+        return(nullptr);
+    }
+
+    // 所有权移交：GetMiniPackReader 成功时由读取器释放，失败时就地释放。
+    // 因此这里无论成败都不得再 delete stream。
+    MiniPackReader *mpr = GetMiniPackReader(stream);
+
+    if(!mpr)
+    {
+        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromStream: cannot parse minipack for ") + debug_name);
+        return(nullptr);
+    }
+
+    Geometry *geometry = LoadGeometryFromReader(device,geometry_vertex_format,mpr,debug_name);
+
+    delete mpr;
+    return geometry;
+}
+
 Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,const void *bytes,const uint32 size,const OSString &debug_name)
 {
     using namespace hgl::io;
-    using namespace hgl::io::minipack;
 
     if(!bytes || size == 0)
     {
@@ -570,6 +595,7 @@ Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const GeometryVerte
     }
 
     MemoryInputStream *mis = new MemoryInputStream;
+
     if(!mis->Link(bytes,size))
     {
         delete mis;
@@ -577,17 +603,6 @@ Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const GeometryVerte
         return nullptr;
     }
 
-    MiniPackReader *mpr = GetMiniPackReader(static_cast<InputStream *>(mis));
-    if(!mpr)
-    {
-        delete mis;
-        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromMiniPackBytes: cannot parse minipack from memory for ") + debug_name);
-        return nullptr;
-    }
-
-    Geometry *geometry = LoadGeometryFromReader(device,geometry_vertex_format,mpr,debug_name);
-
-    delete mpr;
-    return geometry;
+    return LoadGeometryFromStream(device,geometry_vertex_format,static_cast<InputStream *>(mis),debug_name);
 }
 }//namespace hgl::graph
