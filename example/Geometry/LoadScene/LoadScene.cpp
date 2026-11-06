@@ -7,9 +7,9 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
-#include<hgl/graph/asset/StaticMeshSceneInstance.h>
+#include<hgl/graph/asset/StaticMeshModelInstance.h>
 #include<hgl/graph/asset/ModelAsset.h>
-#include<hgl/ecs/systems/render/streaming/SceneStreamingSystem.h>
+#include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
@@ -124,14 +124,14 @@ private:
     // ── 流送（异步）通路（默认；LS_SYNC=1 回到同步）────────────────────
     // 同步通路（TryLoadStaticMeshScene）仍为默认：它把「读盘 ⇒ 解析 ⇒ 建 GPU
     // 资源 ⇒ 实例化」全挤在 Init() 里，启动一帧卡住。异步通路把同一份解析交给
-    // SceneStreamingSystem 逐帧推动，本类只负责三段渐进接线：
+    // ModelStreamingSystem 逐帧推动，本类只负责三段渐进接线：
     //   ① 节点树解析出来 ⇒ InstantiateSkeleton（实体先入世界，相机立刻对焦）
     //   ② 图元资产出来   ⇒ AttachGeometries（几何逐帧挂上）
     //   ③ 材质行绑定     ⇒ AttachMaterials
-    // 两条通路最终落到同一个 StaticMeshSceneInstance，画面应当一致。
+    // 两条通路最终落到同一个 StaticMeshModelInstance，画面应当一致。
     bool async_mode_ = false;
     graph::ModelAsset *async_scene_ = nullptr;   ///<句柄归 ModelAssetRegistry，不拥有
-    std::shared_ptr<hgl::ecs::SceneStreamingSystem> streaming_system_;
+    std::shared_ptr<hgl::ecs::ModelStreamingSystem> streaming_system_;
 
     bool async_skeleton_built_   = false;
     bool async_geometries_built_ = false;
@@ -150,7 +150,7 @@ private:
     float                          scene_bound_radius_ = -1.0f;
     // 场景 → ECS 标准实例化器：逐节点局部 TRS + SetParent 还原层级，
     // 自持资产副本（不再需要 DecomposeTransform 摊平，也不惧 vector 搬迁悬垂）。
-    StaticMeshSceneInstance        scene_instance_;
+    StaticMeshModelInstance        model_instance_;
 
 private:
 
@@ -264,7 +264,7 @@ private:
     /**
      * @brief 异步通路的发起段：只配外部设定并要一个句柄，不读盘、不解析。
      *
-     * 之后所有推进都由 `SceneStreamingSystem`（已注册进 ECS）每帧自己做，
+     * 之后所有推进都由 `ModelStreamingSystem`（已注册进 ECS）每帧自己做，
      * 本类在 `PollAsyncScene()` 里只做「产物到位就接一段」。
      */
     bool TryStartAsyncScene()
@@ -285,9 +285,9 @@ private:
         if (!BuildSceneRecipes(default_recipe, recipe_table, recipe_table_count))
             return false;
 
-        streaming_system_ = ecs_context->GetSystem<hgl::ecs::SceneStreamingSystem>();
+        streaming_system_ = ecs_context->GetSystem<hgl::ecs::ModelStreamingSystem>();
         if (!streaming_system_)
-            streaming_system_ = ecs_context->RegisterSystem<hgl::ecs::SceneStreamingSystem>();
+            streaming_system_ = ecs_context->RegisterSystem<hgl::ecs::ModelStreamingSystem>();
         if (!streaming_system_)
             return false;
 
@@ -306,9 +306,9 @@ private:
         return true;
     }
 
-    void BuildInstanceOptions(StaticMeshSceneInstance::Options &options) const
+    void BuildInstanceOptions(StaticMeshModelInstance::Options &options) const
     {
-        options = StaticMeshSceneInstance::Options{};
+        options = StaticMeshModelInstance::Options{};
         options.mobility = hgl::ecs::Mobility::Static;
 
         if (pbr_mode_)
@@ -336,10 +336,10 @@ private:
         // 纯 TRS 直通：节点局部 TRS 取自 .model 的 TRSTable 真源，父子层级按
         // parentIndex 用 SetParent 还原 —— 不再对 worldMatrix 做 DecomposeTransform
         // 摊平（旧写法在非均匀缩放嵌套下有旋转/缩放残差，且丢失场景树）。
-        StaticMeshSceneInstance::Options options;
+        StaticMeshModelInstance::Options options;
         BuildInstanceOptions(options);
 
-        if (!scene_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
+        if (!model_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
                                          scene_root_nodes_, options))
             return false;
 
@@ -461,10 +461,10 @@ private:
             if (content.GetNodeCount() <= 0)
                 return;
 
-            StaticMeshSceneInstance::SkeletonOptions skeleton_options;
+            StaticMeshModelInstance::SkeletonOptions skeleton_options;
             skeleton_options.mobility = hgl::ecs::Mobility::Static;
 
-            if (!scene_instance_.InstantiateSkeleton(ecs_context, content.nodes,
+            if (!model_instance_.InstantiateSkeleton(ecs_context, content.nodes,
                                                      content.root_nodes, skeleton_options))
             {
                 printf("[LSASYNC] InstantiateSkeleton failed\n");
@@ -478,7 +478,7 @@ private:
 
             // 骨架包围盒 ⇒ 相机立刻对焦（此时几何可能还在路上）
             math::BoundingVolumes bounds;
-            if (scene_instance_.GetSkeletonBounds(bounds))
+            if (model_instance_.GetSkeletonBounds(bounds))
             {
                 scene_bound_center_ = bounds.GetCenter();
                 scene_bound_radius_ = bounds.GetMaxRadius();
@@ -493,7 +493,7 @@ private:
             if (content.GetAssetCount() <= 0)
                 return;
 
-            if (!scene_instance_.AttachGeometries(content.assets, content.nodes))
+            if (!model_instance_.AttachGeometries(content.assets, content.nodes))
             {
                 printf("[LSASYNC] AttachGeometries failed\n");
                 async_scene_ = nullptr;
@@ -502,16 +502,16 @@ private:
 
             async_geometries_built_ = true;
             printf("[LSASYNC] geometries: %d primitives (frame %u)\n",
-                   scene_instance_.GetAttachedPrimitiveCount(), ls_frame_seen);
+                   model_instance_.GetAttachedPrimitiveCount(), ls_frame_seen);
             return;
         }
 
         if (!async_materials_built_)
         {
-            StaticMeshSceneInstance::Options options;
+            StaticMeshModelInstance::Options options;
             BuildInstanceOptions(options);
 
-            if (!scene_instance_.AttachMaterials(options))
+            if (!model_instance_.AttachMaterials(options))
             {
                 printf("[LSASYNC] AttachMaterials failed\n");
                 async_scene_ = nullptr;
@@ -524,7 +524,7 @@ private:
             return;
         }
 
-        // 场景状态机的 Ready 由「全部图元几何就绪」推进（见 SceneStreamingSystem 阶段 C）：
+        // 场景状态机的 Ready 由「全部图元几何就绪」推进（见 ModelStreamingSystem 阶段 C）：
         // 它晚于材质绑定，因此单独报一次，用来确认流送确实收敛而不是永远 Assembling。
         if (!async_ready_reported_ &&
             async_scene_->GetState() == graph::ModelAssetState::Ready)
@@ -560,7 +560,7 @@ private:
 public:
     ~LoadSceneApp()
     {
-        scene_instance_.Release();
+        model_instance_.Release();
         scene_assets_.clear();
         scene_nodes_.clear();
         scene_root_nodes_.clear();
@@ -625,7 +625,7 @@ public:
         pbr_mode_ = (getenv("LS_DEBUGNORMAL") == nullptr);
 
         // 默认走流送（异步）通路；LS_SYNC=1 回到同步装载
-        //（两条通路最终落到同一个 StaticMeshSceneInstance，第 40 帧画面逐字节相同）
+        //（两条通路最终落到同一个 StaticMeshModelInstance，第 40 帧画面逐字节相同）
         async_mode_ = (getenv("LS_SYNC") == nullptr);
 
         ecs_context = GetECSContext();

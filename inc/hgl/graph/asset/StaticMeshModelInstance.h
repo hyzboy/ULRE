@@ -24,9 +24,9 @@ namespace hgl
          * `LoadModelFromMemory` 的场景产物实例化进 ECS 世界。
          *
          * 与 `SceneLoader::SceneInstance`（spec 场景）对称，这一条通路服务
-         * `.scene` MiniPack 场景。实例化规则：
+         * `.model` MiniPack 场景。实例化规则：
          *
-         * - **每个节点一个实体 + Transform**：局部 TRS 直取 `.scene` 的
+         * - **每个节点一个实体 + Transform**：局部 TRS 直取 `.model` 的
          *   TRSTable 真源（`node.hasTRS` 时），不做任何矩阵反分解；
          *   父子层级按 `parentIndex` 用 `SetParent` 完整还原。
          * - **图元挂载**：节点的首个有效图元直接挂在节点实体上；
@@ -51,12 +51,12 @@ namespace hgl
          * 三段都幂等：重复调用只挂此前缺的部分，已挂的不动。中间态（只有骨架、
          * 有几何无材质）必须是可渲染的合法状态 —— 渲染侧靠占位纹理保底。
          */
-        class StaticMeshSceneInstance
+        class StaticMeshModelInstance
         {
         public:
             struct Options
             {
-                /// 变换行的最终移动性（默认 Static：`.scene` 场景节点通常不动）
+                /// 变换行的最终移动性（默认 Static：`.model` 场景节点通常不动）
                 ecs::Mobility mobility = ecs::Mobility::Static;
                 /// 材质数据 SSBO 行（可空；非空时按图元挂载顺序轮转绑定）
                 const GlobalSSBOBinding *material_rows = nullptr;
@@ -103,11 +103,11 @@ namespace hgl
             ecs::Mobility   skeleton_mobility = ecs::Mobility::Static; ///< 派生图元子实体沿用
 
         public:
-            StaticMeshSceneInstance() = default;
-            ~StaticMeshSceneInstance();
+            StaticMeshModelInstance() = default;
+            ~StaticMeshModelInstance();
 
-            StaticMeshSceneInstance(const StaticMeshSceneInstance &) = delete;
-            StaticMeshSceneInstance &operator=(const StaticMeshSceneInstance &) = delete;
+            StaticMeshModelInstance(const StaticMeshModelInstance &) = delete;
+            StaticMeshModelInstance &operator=(const StaticMeshModelInstance &) = delete;
 
             /**
              * @brief 实例化整棵场景树；任何一步失败即回滚全部并返回 false。
@@ -164,7 +164,7 @@ namespace hgl
             /**
              * @brief 骨架阶段的整体包围盒。
              *
-             * 由各节点的 `nodeBounds` 沿 `worldMatrix` 变换累积而来 —— `.scene`
+             * 由各节点的 `nodeBounds` 沿 `worldMatrix` 变换累积而来 —— `.model`
              * 的 pack 里带着节点包围盒，所以**不依赖几何是否已上传**，
              * 空壳阶段就能给出正确的对焦范围。
              * @return 无任何有效节点包围盒时返回 false（`out` 被清空）

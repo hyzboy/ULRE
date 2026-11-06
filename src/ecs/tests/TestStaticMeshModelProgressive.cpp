@@ -1,4 +1,4 @@
-#include<hgl/graph/asset/StaticMeshSceneInstance.h>
+#include<hgl/graph/asset/StaticMeshModelInstance.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/log/Log.h>
@@ -6,7 +6,7 @@
 #include<glm/gtc/matrix_transform.hpp>
 
 /**
- * 判据：`StaticMeshSceneInstance` 的三段渐进激活（骨架 → 几何 → 材质）。
+ * 判据：`StaticMeshModelInstance` 的三段渐进激活（骨架 → 几何 → 材质）。
  *
  * 本文件不碰设备：`PrimitiveAsset::IsValid()` 要真几何才成立，所以几何/材质
  * 两段只能验证**守约不崩**那一侧（空资产、错顺序调用、重复释放）。
@@ -34,7 +34,7 @@ namespace
     using namespace hgl::ecs;
     using namespace hgl::math;
     using hgl::graph::StaticMeshNode;
-    using hgl::graph::StaticMeshSceneInstance;
+    using hgl::graph::StaticMeshModelInstance;
 
     constexpr float kEps = 1e-5f;
 
@@ -84,7 +84,7 @@ namespace
         std::vector<int32_t>        roots;
         BuildTwoNodeScene(nodes, roots);
 
-        StaticMeshSceneInstance instance;
+        StaticMeshModelInstance instance;
 
         EXPECT(!instance.IsInstantiated());
 
@@ -143,7 +143,7 @@ namespace
         nodes[0].boundsValid = false;
         nodes[1].boundsValid = false;
 
-        StaticMeshSceneInstance instance;
+        StaticMeshModelInstance instance;
         EXPECT(instance.InstantiateSkeleton(&world, nodes, roots));
 
         // 宁可说「不知道」，也不能给一个假的包围盒让相机对错焦。
@@ -166,7 +166,7 @@ namespace
 
         BuildTwoNodeScene(nodes, roots);
 
-        StaticMeshSceneInstance instance;
+        StaticMeshModelInstance instance;
 
         // 骨架未建就挂几何/材质：必须被拒，而不是把状态弄坏。
         EXPECT(!instance.AttachGeometries(no_assets, nodes));
@@ -183,7 +183,7 @@ namespace
         // 材质段在没有图元时无事可做，且没有材质行时同样应当静默返回 false。
         EXPECT(!instance.AttachMaterials());
 
-        StaticMeshSceneInstance::Options options;
+        StaticMeshModelInstance::Options options;
         EXPECT(!instance.AttachMaterials(options));     // material_rows 为空
 
         // 节点数与骨架对不上：拒绝，防止把图元挂到错的实体上。
@@ -203,7 +203,7 @@ namespace
         std::vector<int32_t>               roots;
         std::vector<graph::PrimitiveAsset> no_assets;
 
-        StaticMeshSceneInstance instance;
+        StaticMeshModelInstance instance;
         EXPECT(instance.InstantiateSkeleton(&world, nodes, roots));
         EXPECT(instance.IsInstantiated());
         EXPECT(instance.GetNodeCount() == 0);
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
     (void)argc;
     (void)argv;
 
-    logger::InitLogger(OS_TEXT("TestStaticMeshSceneProgressive"));
+    logger::InitLogger(OS_TEXT("TestStaticMeshModelProgressive"));
 
     TestSkeleton();
     TestSkeletonWithoutBounds();
@@ -231,10 +231,10 @@ int main(int argc, char **argv)
 
     if (g_fail > 0)
     {
-        GLogError(u8"=== TestStaticMeshSceneProgressive: %d 项判据失败 ===", g_fail);
+        GLogError(u8"=== TestStaticMeshModelProgressive: %d 项判据失败 ===", g_fail);
         return 1;
     }
 
-    GLogInfo(u8"=== TestStaticMeshSceneProgressive: 全部测试通过 ===");
+    GLogInfo(u8"=== TestStaticMeshModelProgressive: 全部测试通过 ===");
     return 0;
 }

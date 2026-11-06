@@ -25,7 +25,7 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
-#include<hgl/graph/asset/StaticMeshSceneInstance.h>
+#include<hgl/graph/asset/StaticMeshModelInstance.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
@@ -110,12 +110,12 @@ private:
     std::vector<PrimitiveAsset>  scene_assets_;
     std::vector<StaticMeshNode>  scene_nodes_;
     std::vector<int32_t>         scene_root_nodes_;
-    StaticMeshSceneInstance      scene_instance_;
+    StaticMeshModelInstance      model_instance_;
 
 public:
     ~GLTFFlightHelmetApp() override
     {
-        scene_instance_.Release();
+        model_instance_.Release();
         scene_assets_.clear();
         scene_nodes_.clear();
         scene_root_nodes_.clear();
@@ -191,14 +191,14 @@ private:
         if (!ecs_context || scene_nodes_.empty())
             return false;
 
-        StaticMeshSceneInstance::Options options;
+        StaticMeshModelInstance::Options options;
         options.mobility             = hgl::ecs::Mobility::Static;
         options.material_rows        = scene_materials_.bindings.data();
         options.material_row_count   = static_cast<uint32_t>(scene_materials_.bindings.size());
         // 行序即 glTF 材质下标 ⇒ 按 material_index 选行
         options.rows_by_material_index = true;
 
-        if (!scene_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
+        if (!model_instance_.Instantiate(ecs_context, scene_assets_, scene_nodes_,
                                          scene_root_nodes_, options))
         {
             GLogError(u8"GLTF_FlightHelmet: 场景实例化失败");

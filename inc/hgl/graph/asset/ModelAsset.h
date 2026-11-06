@@ -12,7 +12,7 @@
 //
 // ```
 // Request(uri)      主线程立刻返回 Unloaded 句柄（0 IO、0 显存）
-//    ↓  SceneStreamingSystem 每帧取 Unloaded 句柄派发
+//    ↓  ModelStreamingSystem 每帧取 Unloaded 句柄派发
 // Loading           模型包字节读取 + MDL2 解析在途
 //    ↓  SetPlan()：拿到依赖计划单，子任务数确定
 // Assembling        子项（几何 / 纹理 / 材质）在各自流送系统里推进
@@ -52,7 +52,7 @@ namespace hgl::graph
     class VulkanDevice;
     class GeometryManager;
 
-    /// 场景句柄的生命周期状态。只由 `SceneStreamingSystem`（与测试）推动。
+    /// 场景句柄的生命周期状态。只由 `ModelStreamingSystem`（与测试）推动。
     enum class ModelAssetState : uint8
     {
         Unloaded = 0,   ///<只有 URI，尚未派发（流送系统每帧取它开工）
@@ -100,7 +100,7 @@ namespace hgl::graph
      * 材质 / 图元 / ECS 侧只持有裸观察指针，因此不存在「世界先死、句柄还在」。
      *
      * 线程约定：句柄只在主线程读写。后台 IO 线程只负责把字节读进来，
-     * 状态推进一律在主线程（`SceneStreamingSystem::Update`）发生。
+     * 状态推进一律在主线程（`ModelStreamingSystem::Update`）发生。
      */
     class ModelAsset
     {
@@ -214,7 +214,7 @@ namespace hgl::graph
             notify_user = user_data;
         }
 
-    public:     // 状态机（只由 SceneStreamingSystem / 测试写）
+    public:     // 状态机（只由 ModelStreamingSystem / 测试写）
 
         /**
          * @brief 派发：`Unloaded` ⇒ `Loading`。
@@ -326,7 +326,7 @@ namespace hgl::graph
          *
          * 同一个 URI 只会得到一个句柄（按请求原文去重），因此同一场景被多个
          * 世界请求时只有一次读盘、一份显存。新句柄停在 `Unloaded`，
-         * 由 `SceneStreamingSystem` 每帧扫描派发。
+         * 由 `ModelStreamingSystem` 每帧扫描派发。
          *
          * @return 空 URI 返回 nullptr
          */

@@ -2,7 +2,7 @@
 //
 // 这些判据全部**不碰设备**：句柄只装状态与计划单，不持有 GPU 资源，因此
 // 可以在没有 `GraphicsContext` 的进程里把状态机跑完。真正需要设备的派发
-// （读盘 / 建 buffer）由阶段四 Step 4.2 的 `SceneStreamingSystem` 覆盖。
+// （读盘 / 建 buffer）由阶段四 Step 4.2 的 `ModelStreamingSystem` 覆盖。
 //
 // 判据清单：
 //   1. 句柄表按 URI 原文去重，空 URI 拒绝，计数接口自洽；

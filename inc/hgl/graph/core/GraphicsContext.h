@@ -206,7 +206,7 @@ namespace hgl::graph
         const SceneSpecAssetRegistry *GetSceneSpecAssetRegistry() const { return &scene_spec_asset_registry_; }
 
         /// 异步场景句柄表（MDL2 模型包）：`Request(uri)` 零阻塞返回句柄，
-        /// 由 `SceneStreamingSystem` 每帧推进；同时登记为进程内默认表，
+        /// 由 `ModelStreamingSystem` 每帧推进；同时登记为进程内默认表，
         /// 供 `RequestModelAsset(uri)` 使用。
         ModelAssetRegistry *GetModelAssetRegistry() { return &model_asset_registry_; }
         const ModelAssetRegistry *GetModelAssetRegistry() const { return &model_asset_registry_; }

@@ -267,10 +267,10 @@ add_ecs_test(TestModelLoadPlan tests/TestModelLoadPlan.cpp)
 add_ecs_test(TestModelAsset tests/TestModelAsset.cpp)
 
 # 阶段四判据：流送系统在无设备时的守卫与外部设定（不碰设备）
-add_ecs_test(TestSceneStreamingSystem tests/TestSceneStreamingSystem.cpp)
+add_ecs_test(TestModelStreamingSystem tests/TestModelStreamingSystem.cpp)
 
 # 阶段五判据：三段渐进激活（骨架 → 几何 → 材质）的顺序守约与骨架包围盒
-add_ecs_test(TestStaticMeshSceneProgressive tests/TestStaticMeshSceneProgressive.cpp)
+add_ecs_test(TestStaticMeshModelProgressive tests/TestStaticMeshModelProgressive.cpp)
 
 # 阶段五 Step 5.2 判据：必需纹理的「在途 / 永久失败 / 就绪」三值结论（占位保底的门禁规则）
 add_ecs_test(TestMaterialTextureFallback tests/TestMaterialTextureFallback.cpp)
@@ -555,17 +555,17 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 
     add_test(
-        NAME TestSceneStreamingSystem
-        COMMAND TestSceneStreamingSystem)
+        NAME TestModelStreamingSystem
+        COMMAND TestModelStreamingSystem)
     set_tests_properties(
-        TestSceneStreamingSystem
+        TestModelStreamingSystem
         PROPERTIES LABELS "ecs;asset;streaming" TIMEOUT 60)
 
     add_test(
-        NAME TestStaticMeshSceneProgressive
-        COMMAND TestStaticMeshSceneProgressive)
+        NAME TestStaticMeshModelProgressive
+        COMMAND TestStaticMeshModelProgressive)
     set_tests_properties(
-        TestStaticMeshSceneProgressive
+        TestStaticMeshModelProgressive
         PROPERTIES LABELS "ecs;scene;streaming" TIMEOUT 60)
 
     add_test(

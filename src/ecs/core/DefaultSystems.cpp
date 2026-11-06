@@ -39,7 +39,7 @@
 #include <hgl/ecs/systems/render/buffer/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/streaming/TextureStreamingSystem.h>
 #include <hgl/ecs/systems/render/streaming/GeometryStreamingSystem.h>
-#include <hgl/ecs/systems/render/streaming/SceneStreamingSystem.h>
+#include <hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
 #include <hgl/ecs/systems/render/frame/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/frame/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/buffer/ViewUBOCommitSystem.h>
@@ -98,7 +98,7 @@ namespace
         // 场景流式加载：把一个 .model 包推成「图元 + 节点树」。它管的是
         // 「读包 → 建计划单 → 解析产物 → 等图元几何就绪」这一段，子项几何与纹理
         // 仍由上面两个流送系统各自负责（本系统只查真值、不重复派发）。
-        EnsureSystem<hgl::ecs::SceneStreamingSystem>(ctx);
+        EnsureSystem<hgl::ecs::ModelStreamingSystem>(ctx);
 
         // Register the Primitive pipeline and its thin proxy systems directly
         // (the RenderPipelineGroup container abstraction was removed — it had

@@ -1,9 +1,9 @@
-// StaticMeshSceneInstance.cpp —— .model 场景 → ECS 实例化
+// StaticMeshModelInstance.cpp —— .model 场景 → ECS 实例化
 //
 // 数据流约定（见头文件说明）：节点局部 TRS 与 parentIndex 层级是唯一真源，
 // 全程不做矩阵反分解；资产复制进实例自持的 ManagedArray 以保证指针稳定。
 
-#include <hgl/graph/asset/StaticMeshSceneInstance.h>
+#include <hgl/graph/asset/StaticMeshModelInstance.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/MaterialData.h>
@@ -11,8 +11,8 @@
 #include <hgl/log/Log.h>
 #include <glm/gtc/quaternion.hpp>
 
-DEFINE_LOGGER_MODULE(StaticMeshScene)
-USE_MODULE_LOGGER(StaticMeshScene)
+DEFINE_LOGGER_MODULE(StaticMeshModel)
+USE_MODULE_LOGGER(StaticMeshModel)
 
 namespace hgl::graph
 {
@@ -24,12 +24,12 @@ namespace hgl::graph
         const glm::vec3  kUnitScale(1.0f, 1.0f, 1.0f);
     }//anonymous namespace
 
-    StaticMeshSceneInstance::~StaticMeshSceneInstance()
+    StaticMeshModelInstance::~StaticMeshModelInstance()
     {
         Release();
     }
 
-    void StaticMeshSceneInstance::Release()
+    void StaticMeshModelInstance::Release()
     {
         // 顺序敏感：先销毁实体（GeometryData 仍引用 owned_assets 里的副本），
         // 再释放资产副本。
@@ -53,7 +53,7 @@ namespace hgl::graph
         world = nullptr;
     }
 
-    bool StaticMeshSceneInstance::InstantiateSkeleton(ecs::ECSContext                  *ctx,
+    bool StaticMeshModelInstance::InstantiateSkeleton(ecs::ECSContext                  *ctx,
                                                       const std::vector<StaticMeshNode> &nodes,
                                                       const std::vector<int32_t>        &root_nodes,
                                                       const SkeletonOptions             &options)
@@ -164,7 +164,7 @@ namespace hgl::graph
         return true;
     }
 
-    bool StaticMeshSceneInstance::AttachGeometries(const std::vector<PrimitiveAsset> &assets,
+    bool StaticMeshModelInstance::AttachGeometries(const std::vector<PrimitiveAsset> &assets,
                                                     const std::vector<StaticMeshNode> &nodes)
     {
         if (!world)
@@ -279,7 +279,7 @@ namespace hgl::graph
         return attached_any;
     }
 
-    bool StaticMeshSceneInstance::AttachMaterials(const Options &options)
+    bool StaticMeshModelInstance::AttachMaterials(const Options &options)
     {
         if (!world)
         {
@@ -345,7 +345,7 @@ namespace hgl::graph
         return all_bound;
     }
 
-    bool StaticMeshSceneInstance::Instantiate(ecs::ECSContext                  *ctx,
+    bool StaticMeshModelInstance::Instantiate(ecs::ECSContext                  *ctx,
                                               const std::vector<PrimitiveAsset> &assets,
                                               const std::vector<StaticMeshNode> &nodes,
                                               const std::vector<int32_t>        &root_nodes,
@@ -384,7 +384,7 @@ namespace hgl::graph
         return true;
     }
 
-    uint32_t StaticMeshSceneInstance::ResolveMaterialRowIndex(const PrimitiveAsset &asset,
+    uint32_t StaticMeshModelInstance::ResolveMaterialRowIndex(const PrimitiveAsset &asset,
                                                               const Options &options,
                                                               uint32_t mount_order)
     {

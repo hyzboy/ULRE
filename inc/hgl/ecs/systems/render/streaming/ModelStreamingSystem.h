@@ -63,7 +63,7 @@ namespace hgl::ecs
      * 自己的约定。因此调用方必须在请求场景之前 `SetBuildSettings(...)`；
      * 未设定时句柄直接失败并给出原因，而不是静默画出一个没有材质的场景。
      */
-    class SceneStreamingSystem final : public System
+    class ModelStreamingSystem final : public System
     {
         class StreamHandler;
 
@@ -136,8 +136,8 @@ namespace hgl::ecs
 
     public:
 
-        SceneStreamingSystem();
-        ~SceneStreamingSystem() override;
+        ModelStreamingSystem();
+        ~ModelStreamingSystem() override;
 
         void Update(float delta_time) override;
         void Shutdown() override;
@@ -163,6 +163,6 @@ namespace hgl::ecs
         int GetStreamCount()const { return streams.GetCount(); }
 
         /// 本系统登记过的子项落定总数（诊断用）
-        int GetReadySceneCount()const;
-    };//class SceneStreamingSystem
+        int GetReadyModelCount()const;
+    };//class ModelStreamingSystem
 }//namespace hgl::ecs

@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/streaming/SceneStreamingSystem.h>
+#include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -8,7 +8,7 @@
 #include<hgl/type/String.h>
 
 /**
- * 判据：`SceneStreamingSystem` 的守卫与外部设定。
+ * 判据：`ModelStreamingSystem` 的守卫与外部设定。
  *
  * 本文件刻意**不碰设备**：流送系统的危险边界在「设备/上下文尚未就绪」那一侧
  * —— 那里最容易写出「拿空指针去查状态」的崩溃，而它离出事点很远。
@@ -36,9 +36,9 @@ namespace
 
     void TestConstruction()
     {
-        SceneStreamingSystem system;
+        ModelStreamingSystem system;
 
-        EXPECT(system.GetName() == AnsiString("SceneStreamingSystem"));
+        EXPECT(system.GetName() == AnsiString("ModelStreamingSystem"));
 
         // 纹理/几何流送都排在这个相位：本系统必须与它们同相位或更早，
         // 否则本帧拿到的字节要等下一帧才可能变成可画的图元。
@@ -59,7 +59,7 @@ namespace
 
     void TestBuildSettings()
     {
-        SceneStreamingSystem system;
+        ModelStreamingSystem system;
 
         graph::GeometryVertexFormat gvf;
         graph::mtl::MaterialRecipe  recipe;
@@ -91,7 +91,7 @@ namespace
         EXPECT(asset != nullptr);
 
         {
-            SceneStreamingSystem system;
+            ModelStreamingSystem system;
 
             // 没有 ECSContext、没有 GraphicsContext：拿不到 LoadedFileManager，
             // 此时**不能**给句柄判失败（设备还没建好而已，不是场景有问题）。
@@ -119,7 +119,7 @@ namespace
         graph::ModelAssetRegistry registry;
         graph::SetDefaultModelAssetRegistry(&registry);
 
-        SceneStreamingSystem system;
+        ModelStreamingSystem system;
 
         {
             graph::ModelAsset *asset = graph::RequestModelAsset("pack(res):Probe/Dropped.Scene.model");
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     (void)argc;
     (void)argv;
 
-    logger::InitLogger(OS_TEXT("TestSceneStreamingSystem"));
+    logger::InitLogger(OS_TEXT("TestModelStreamingSystem"));
 
     TestConstruction();
     TestBuildSettings();
@@ -157,10 +157,10 @@ int main(int argc, char **argv)
 
     if (g_fail > 0)
     {
-        GLogError(u8"=== TestSceneStreamingSystem: %d 项判据失败 ===", g_fail);
+        GLogError(u8"=== TestModelStreamingSystem: %d 项判据失败 ===", g_fail);
         return 1;
     }
 
-    GLogInfo(u8"=== TestSceneStreamingSystem: 全部测试通过 ===");
+    GLogInfo(u8"=== TestModelStreamingSystem: 全部测试通过 ===");
     return 0;
 }

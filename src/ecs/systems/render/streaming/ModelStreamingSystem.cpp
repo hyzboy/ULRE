@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/streaming/SceneStreamingSystem.h>
+#include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -30,16 +30,16 @@ namespace hgl::ecs
      *
      * 计数不需要原子：`Submit/Pump/Collect/Stop` 与回调都只发生在主线程。
      */
-    class SceneStreamingSystem::StreamHandler final : public LoadedFileHandler
+    class ModelStreamingSystem::StreamHandler final : public LoadedFileHandler
     {
     private:
 
-        SceneStreamingSystem *owner = nullptr;
+        ModelStreamingSystem *owner = nullptr;
         int ref_count = 1;
 
     public:
 
-        explicit StreamHandler(SceneStreamingSystem *o) : owner(o) {}
+        explicit StreamHandler(ModelStreamingSystem *o) : owner(o) {}
 
         void AddRef() { ++ref_count; }
         void Release() { if (--ref_count <= 0) delete this; }
@@ -73,8 +73,8 @@ namespace hgl::ecs
         }
     };
 
-    SceneStreamingSystem::SceneStreamingSystem()
-        : System("SceneStreamingSystem")
+    ModelStreamingSystem::ModelStreamingSystem()
+        : System("ModelStreamingSystem")
     {
         // 与纹理/几何流送同相位：必须早于引擎的显存提交队列推进，
         // 否则本帧拿到的字节要等下一帧才可能变成可画的图元。
@@ -83,12 +83,12 @@ namespace hgl::ecs
         handler = new StreamHandler(this);
     }
 
-    SceneStreamingSystem::~SceneStreamingSystem()
+    ModelStreamingSystem::~ModelStreamingSystem()
     {
         Shutdown();
     }
 
-    void SceneStreamingSystem::Shutdown()
+    void ModelStreamingSystem::Shutdown()
     {
         if (handler)
         {
@@ -112,7 +112,7 @@ namespace hgl::ecs
         settings = BuildSettings();
     }
 
-    void SceneStreamingSystem::SetBuildSettings(const graph::GeometryVertexFormat &gvf,
+    void ModelStreamingSystem::SetBuildSettings(const graph::GeometryVertexFormat &gvf,
                                                 const graph::mtl::MaterialRecipe *default_recipe,
                                                 const graph::mtl::MaterialRecipe *const *recipe_table,
                                                 uint32_t recipe_table_count,
@@ -126,7 +126,7 @@ namespace hgl::ecs
         settings.valid                  = true;
     }
 
-    bool SceneStreamingSystem::EnsureManagers()
+    bool ModelStreamingSystem::EnsureManagers()
     {
         if (!context)
             return false;
@@ -140,7 +140,7 @@ namespace hgl::ecs
         return load_manager != nullptr;
     }
 
-    SceneStreamingSystem::AssetStream *SceneStreamingSystem::FindStream(const graph::ModelAsset *asset)const
+    ModelStreamingSystem::AssetStream *ModelStreamingSystem::FindStream(const graph::ModelAsset *asset)const
     {
         if (!asset)
             return nullptr;
@@ -152,7 +152,7 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    SceneStreamingSystem::AssetStream *SceneStreamingSystem::FindStreamByRequest(uint64 request_id)const
+    ModelStreamingSystem::AssetStream *ModelStreamingSystem::FindStreamByRequest(uint64 request_id)const
     {
         if (request_id == 0)
             return nullptr;
@@ -165,7 +165,7 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    SceneStreamingSystem::AssetStream *SceneStreamingSystem::EnsureStream(graph::ModelAsset *asset)
+    ModelStreamingSystem::AssetStream *ModelStreamingSystem::EnsureStream(graph::ModelAsset *asset)
     {
         if (AssetStream *found = FindStream(asset))
             return found;
@@ -178,7 +178,7 @@ namespace hgl::ecs
         return stream;
     }
 
-    void SceneStreamingSystem::CountPrimitives(const graph::ModelAssetContent &content,
+    void ModelStreamingSystem::CountPrimitives(const graph::ModelAssetContent &content,
                                                int &total,
                                                int &ready,
                                                int &failed)const
@@ -206,7 +206,7 @@ namespace hgl::ecs
         }
     }
 
-    void SceneStreamingSystem::PruneStreams()
+    void ModelStreamingSystem::PruneStreams()
     {
         graph::ModelAssetRegistry *registry = graph::GetDefaultModelAssetRegistry();
 
@@ -240,7 +240,7 @@ namespace hgl::ecs
         }
     }
 
-    void SceneStreamingSystem::AcquireOneFrame()
+    void ModelStreamingSystem::AcquireOneFrame()
     {
         graph::ModelAssetRegistry *registry = graph::GetDefaultModelAssetRegistry();
 
@@ -364,7 +364,7 @@ namespace hgl::ecs
         }
     }
 
-    void SceneStreamingSystem::Advance()
+    void ModelStreamingSystem::Advance()
     {
         for (AssetStream *stream : streams)
         {
@@ -376,7 +376,7 @@ namespace hgl::ecs
         }
     }
 
-    bool SceneStreamingSystem::AdvanceOne(AssetStream *stream)
+    bool ModelStreamingSystem::AdvanceOne(AssetStream *stream)
     {
         graph::ModelAsset *asset = stream->asset;
 
@@ -513,7 +513,7 @@ namespace hgl::ecs
         return false;
     }
 
-    void SceneStreamingSystem::Update(float delta_time)
+    void ModelStreamingSystem::Update(float delta_time)
     {
         (void)delta_time;
 
@@ -527,7 +527,7 @@ namespace hgl::ecs
         load_manager->Collect();    ///< ⑤ 回收已归零的文件引用
     }
 
-    int SceneStreamingSystem::GetReadySceneCount()const
+    int ModelStreamingSystem::GetReadyModelCount()const
     {
         graph::ModelAssetRegistry *registry = graph::GetDefaultModelAssetRegistry();
 

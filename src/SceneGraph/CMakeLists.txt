@@ -322,7 +322,7 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/ModelAsset.h
                             ${SG_INCLUDE_PATH}/asset/SceneSpecAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/SceneLoader.h
-                            ${SG_INCLUDE_PATH}/asset/StaticMeshSceneInstance.h
+                            ${SG_INCLUDE_PATH}/asset/StaticMeshModelInstance.h
                             asset/AssetSourceMount.cpp
                             asset/AssetLoadGraph.cpp
                             asset/ModelDependencyExtractor.cpp
@@ -331,7 +331,7 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             asset/ModelAsset.cpp
                             asset/SceneSpecAssetRegistry.cpp
                             asset/SceneLoader.cpp
-                            asset/StaticMeshSceneInstance.cpp)
+                            asset/StaticMeshModelInstance.cpp)
 
 source_group("07.Asset\\Scene" FILES ${SG_ASSET_SCENE_FILES})
 

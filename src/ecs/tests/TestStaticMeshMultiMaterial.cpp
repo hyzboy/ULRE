@@ -1,11 +1,11 @@
 // 阶段二轻量验证：多材质场景的资产级材质下标透传 + 实例化行选择逻辑。
 // 纯数据用例，不需要设备/窗口：
 //   1) PrimitiveAsset 的 material_index 构造/复制/移动/缺省语义；
-//   2) StaticMeshSceneInstance::ResolveMaterialRowIndex 的
+//   2) StaticMeshModelInstance::ResolveMaterialRowIndex 的
 //      「按材质下标」与「挂载顺序轮转回退」两种模式。
 
 #include <hgl/graph/asset/PrimitiveAsset.h>
-#include <hgl/graph/asset/StaticMeshSceneInstance.h>
+#include <hgl/graph/asset/StaticMeshModelInstance.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
@@ -55,11 +55,11 @@ namespace
         return true;
     }
 
-    StaticMeshSceneInstance::Options MakeRowOptions(const GlobalSSBOBinding *rows,
+    StaticMeshModelInstance::Options MakeRowOptions(const GlobalSSBOBinding *rows,
                                                     uint32_t count,
                                                     bool by_material_index)
     {
-        StaticMeshSceneInstance::Options options;
+        StaticMeshModelInstance::Options options;
         options.material_rows = rows;
         options.material_row_count = count;
         options.rows_by_material_index = by_material_index;
@@ -73,8 +73,8 @@ namespace
         GlobalSSBOBinding rows[4]{};
 
         mtl::MaterialRecipe recipe{};
-        const StaticMeshSceneInstance::Options cycle = MakeRowOptions(rows, 4, false);
-        const StaticMeshSceneInstance::Options direct = MakeRowOptions(rows, 4, true);
+        const StaticMeshModelInstance::Options cycle = MakeRowOptions(rows, 4, false);
+        const StaticMeshModelInstance::Options direct = MakeRowOptions(rows, 4, true);
 
         PrimitiveAsset m0(nullptr, &recipe, PrimitiveType::Triangles, 0);
         PrimitiveAsset m3(nullptr, &recipe, PrimitiveType::Triangles, 3);
@@ -82,21 +82,21 @@ namespace
         PrimitiveAsset oob(nullptr, &recipe, PrimitiveType::Triangles, 9);
 
         // 关闭开关：始终挂载顺序轮转（既有行为）。
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(m3, cycle, 0) != 0) return false;
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(m3, cycle, 5) != 1) return false;
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(none, cycle, 7) != 3) return false;
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(m3, cycle, 0) != 0) return false;
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(m3, cycle, 5) != 1) return false;
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(none, cycle, 7) != 3) return false;
 
         // 开启开关：有效下标直接命中行。
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(m0, direct, 2) != 0) return false;
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(m3, direct, 0) != 3) return false;
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(m0, direct, 2) != 0) return false;
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(m3, direct, 0) != 3) return false;
 
         // 下标缺失或越界：回退轮转。
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(none, direct, 6) != 2) return false;
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(oob, direct, 3) != 3) return false;
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(none, direct, 6) != 2) return false;
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(oob, direct, 3) != 3) return false;
 
         // 空行表：返回 0（调用方以 material_row_count>0 为准跳过绑定）。
-        const StaticMeshSceneInstance::Options empty_rows = MakeRowOptions(nullptr, 0, true);
-        if (StaticMeshSceneInstance::ResolveMaterialRowIndex(m0, empty_rows, 0) != 0) return false;
+        const StaticMeshModelInstance::Options empty_rows = MakeRowOptions(nullptr, 0, true);
+        if (StaticMeshModelInstance::ResolveMaterialRowIndex(m0, empty_rows, 0) != 0) return false;
 
         return true;
     }

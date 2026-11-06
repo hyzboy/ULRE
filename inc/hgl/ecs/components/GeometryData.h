@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
@@ -70,7 +70,7 @@ namespace hgl::ecs
          * ⚠ 指针稳定性契约：组件只存裸指针，不延长资产寿命。`asset` 必须在
          * 组件生命周期内地址与内容均有效 —— 若资产住在会被增删/扩容的
          * `std::vector<PrimitiveAsset>` 里，vector 搬迁即造成静默悬垂。
-         * 装载 `.scene` 场景进 ECS 时请使用 `StaticMeshSceneInstance`
+         * 装载 `.model` 场景进 ECS 时请使用 `StaticMeshModelInstance`
          * （资产复制进实例自持的 `ManagedArray`，逐项堆分配，地址恒定），
          * 或保证外部容器本身满足同样的稳定性要求。传 `nullptr` 表示解绑。
          */
