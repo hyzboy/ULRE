@@ -1,6 +1,6 @@
 #include<hgl/ecs/systems/render/streaming/SceneStreamingSystem.h>
 #include<hgl/ecs/core/System.h>
-#include<hgl/graph/asset/SceneAsset.h>
+#include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/log/Log.h>
@@ -84,10 +84,10 @@ namespace
 
     void TestUpdateWithoutContext()
     {
-        graph::SceneAssetRegistry registry;
-        graph::SetDefaultSceneAssetRegistry(&registry);
+        graph::ModelAssetRegistry registry;
+        graph::SetDefaultModelAssetRegistry(&registry);
 
-        graph::SceneAsset *asset = graph::RequestSceneAsset("pack(res):Probe/NoContext.Scene.model");
+        graph::ModelAsset *asset = graph::RequestModelAsset("pack(res):Probe/NoContext.Scene.model");
         EXPECT(asset != nullptr);
 
         {
@@ -98,16 +98,16 @@ namespace
             for (int i = 0; i < 3; ++i)
                 system.Update(1.0f / 60.0f);
 
-            EXPECT(asset->GetState() == graph::SceneAssetState::Unloaded);
+            EXPECT(asset->GetState() == graph::ModelAssetState::Unloaded);
             EXPECT(asset->GetFailReason().IsEmpty());
             EXPECT(system.GetStreamCount() == 0);
         }
 
-        EXPECT(asset->GetState() == graph::SceneAssetState::Unloaded);
+        EXPECT(asset->GetState() == graph::ModelAssetState::Unloaded);
 
-        graph::SetDefaultSceneAssetRegistry(nullptr);
+        graph::SetDefaultModelAssetRegistry(nullptr);
 
-        EXPECT(graph::GetDefaultSceneAssetRegistry() == nullptr);
+        EXPECT(graph::GetDefaultModelAssetRegistry() == nullptr);
         EXPECT(registry.GetCount() == 1);
         EXPECT(registry.GetPendingCount() == 1);
     }
@@ -116,13 +116,13 @@ namespace
 
     void TestRegistryClearWhileStreaming()
     {
-        graph::SceneAssetRegistry registry;
-        graph::SetDefaultSceneAssetRegistry(&registry);
+        graph::ModelAssetRegistry registry;
+        graph::SetDefaultModelAssetRegistry(&registry);
 
         SceneStreamingSystem system;
 
         {
-            graph::SceneAsset *asset = graph::RequestSceneAsset("pack(res):Probe/Dropped.Scene.model");
+            graph::ModelAsset *asset = graph::RequestModelAsset("pack(res):Probe/Dropped.Scene.model");
             EXPECT(asset != nullptr);
         }
 
@@ -139,7 +139,7 @@ namespace
 
         system.Shutdown();
 
-        graph::SetDefaultSceneAssetRegistry(nullptr);
+        graph::SetDefaultModelAssetRegistry(nullptr);
     }
 }
 

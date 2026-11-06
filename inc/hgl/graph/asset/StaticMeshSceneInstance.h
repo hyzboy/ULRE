@@ -20,8 +20,8 @@ namespace hgl
     namespace graph
     {
         /**
-         * @brief 把 `LoadStaticMeshSceneAsPrimitiveAssets` /
-         * `LoadStaticMeshSceneFromMemory` 的场景产物实例化进 ECS 世界。
+         * @brief 把 `LoadModelAsPrimitiveAssets` /
+         * `LoadModelFromMemory` 的场景产物实例化进 ECS 世界。
          *
          * 与 `SceneLoader::SceneInstance`（spec 场景）对称，这一条通路服务
          * `.scene` MiniPack 场景。实例化规则：

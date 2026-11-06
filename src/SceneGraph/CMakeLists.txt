@@ -244,11 +244,11 @@ set(SG_MESH_FILES   ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                     ${SG_INCLUDE_PATH}/mesh/Primitive.h
                     ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
                     ${SG_INCLUDE_PATH}/mesh/LoadStaticMesh.h
-                    ${SG_INCLUDE_PATH}/mesh/SceneStreaming.h
+                    ${SG_INCLUDE_PATH}/mesh/ModelStreaming.h
                     mesh/Primitive.cpp
                     mesh/StaticMesh.cpp
                     mesh/LoadStaticMesh.cpp
-                    mesh/SceneStreaming.cpp)
+                    mesh/ModelStreaming.cpp)
 
 source_group("06.Geometry\\Mesh" FILES ${SG_MESH_FILES})
 
@@ -315,20 +315,20 @@ source_group("07.Asset\\Geometry" FILES ${SG_ASSET_GEOMETRY_FILES})
 
 set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/AssetLoadGraph.h
-                            ${SG_INCLUDE_PATH}/asset/SceneDependencyExtractor.h
-                            ${SG_INCLUDE_PATH}/asset/SceneLoadPlan.h
+                            ${SG_INCLUDE_PATH}/asset/ModelDependencyExtractor.h
+                            ${SG_INCLUDE_PATH}/asset/ModelLoadPlan.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetSpec.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
-                            ${SG_INCLUDE_PATH}/asset/SceneAsset.h
+                            ${SG_INCLUDE_PATH}/asset/ModelAsset.h
                             ${SG_INCLUDE_PATH}/asset/SceneSpecAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/SceneLoader.h
                             ${SG_INCLUDE_PATH}/asset/StaticMeshSceneInstance.h
                             asset/AssetSourceMount.cpp
                             asset/AssetLoadGraph.cpp
-                            asset/SceneDependencyExtractor.cpp
-                            asset/SceneLoadPlan.cpp
+                            asset/ModelDependencyExtractor.cpp
+                            asset/ModelLoadPlan.cpp
                             asset/SceneAssetFile.cpp
-                            asset/SceneAsset.cpp
+                            asset/ModelAsset.cpp
                             asset/SceneSpecAssetRegistry.cpp
                             asset/SceneLoader.cpp
                             asset/StaticMeshSceneInstance.cpp)

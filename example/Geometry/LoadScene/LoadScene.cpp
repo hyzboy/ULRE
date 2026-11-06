@@ -8,7 +8,7 @@
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/graph/asset/StaticMeshSceneInstance.h>
-#include<hgl/graph/asset/SceneAsset.h>
+#include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/ecs/systems/render/streaming/SceneStreamingSystem.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
@@ -118,7 +118,7 @@ private:
     MaterialData solid;
     graph::mtl::MaterialRecipe scene_recipe{};
     // PBR 模式：按 material_index 索引的自装配材质集
-    SelfContainedSceneMaterials chess_materials_;
+    SelfContainedModelMaterials chess_materials_;
     bool pbr_mode_ = true;
 
     // ── 流送（异步）通路（默认；LS_SYNC=1 回到同步）────────────────────
@@ -130,7 +130,7 @@ private:
     //   ③ 材质行绑定     ⇒ AttachMaterials
     // 两条通路最终落到同一个 StaticMeshSceneInstance，画面应当一致。
     bool async_mode_ = false;
-    graph::SceneAsset *async_scene_ = nullptr;   ///<句柄归 SceneAssetRegistry，不拥有
+    graph::ModelAsset *async_scene_ = nullptr;   ///<句柄归 ModelAssetRegistry，不拥有
     std::shared_ptr<hgl::ecs::SceneStreamingSystem> streaming_system_;
 
     bool async_skeleton_built_   = false;
@@ -198,7 +198,7 @@ private:
             if (!graphics)
                 return false;
 
-            if (!BuildSelfContainedSceneMaterials(
+            if (!BuildSelfContainedModelMaterials(
                     *graphics, hgl::ToOSString(ModelPackPath()),
                     "ABeautifulGame", chess_materials_))
                 return false;
@@ -247,7 +247,7 @@ private:
         if (!BuildSceneRecipes(default_recipe, recipe_table, recipe_table_count))
             return false;
 
-        return LoadStaticMeshSceneAsPrimitiveAssets(
+        return LoadModelAsPrimitiveAssets(
             device,
             geo_mgr,
             solid.geometry_vertex_format,
@@ -297,7 +297,7 @@ private:
                                             recipe_table_count,
                                             base_dir);
 
-        async_scene_ = graph::RequestSceneAsset(AnsiString(ModelPackPath().c_str()));
+        async_scene_ = graph::RequestModelAsset(AnsiString(ModelPackPath().c_str()));
 
         if (!async_scene_)
             return false;
@@ -454,7 +454,7 @@ private:
         if (!async_mode_ || !async_scene_ || !ecs_context)
             return;
 
-        const graph::SceneAssetContent &content = async_scene_->GetContent();
+        const graph::ModelAssetContent &content = async_scene_->GetContent();
 
         if (!async_skeleton_built_)
         {
@@ -527,7 +527,7 @@ private:
         // 场景状态机的 Ready 由「全部图元几何就绪」推进（见 SceneStreamingSystem 阶段 C）：
         // 它晚于材质绑定，因此单独报一次，用来确认流送确实收敛而不是永远 Assembling。
         if (!async_ready_reported_ &&
-            async_scene_->GetState() == graph::SceneAssetState::Ready)
+            async_scene_->GetState() == graph::ModelAssetState::Ready)
         {
             async_ready_reported_ = true;
             printf("[LSASYNC] scene ready (frame %u)\n", ls_frame_seen);

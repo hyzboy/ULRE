@@ -1,4 +1,4 @@
-// SceneDependencyExtractor.h — 从模型包 / 材质配方里抽出依赖，喂给 AssetLoadGraph
+// ModelDependencyExtractor.h — 从模型包 / 材质配方里抽出依赖，喂给 AssetLoadGraph
 //
 // 阶段三的关键约束：**不装载也能知道要装什么**。
 // 因此这里的两个函数都只读原始字节 —— 不碰 `GraphicsContext`、不建 GPU 资源、
@@ -32,7 +32,7 @@ namespace hgl::graph
      * （`material_recipe:abeautifulgame.staticmesh/abeautifulgame.0.chessboard`）。
      * 两者都要：配方文件名按名字匹配，依赖边按身份连接。
      */
-    struct SceneMaterialEntry
+    struct ModelMaterialEntry
     {
         AnsiString  name;       ///<已剥 `.material` 后缀与 `<Scene>.<idx>.` 前缀
         AssetDepKey key;        ///<规范化后的材质节点身份
@@ -57,13 +57,13 @@ namespace hgl::graph
      *
      * @return false = 包结构不合法。此时**不要**把「零依赖」当成结论。
      */
-    bool ExtractSceneDependencies(const void *pack_header_raw, uint32_t header_len,
+    bool ExtractModelDependencies(const void *pack_header_raw, uint32_t header_len,
                                   const void *payload_raw,    uint32_t payload_len,
                                   const AnsiString &base_dir,
                                   const AnsiString &scene_ref,
                                   AssetLoadGraph &graph,
                                   int *out_edge_count = nullptr,
-                                  ManagedArray<SceneMaterialEntry> *out_materials = nullptr,
+                                  ManagedArray<ModelMaterialEntry> *out_materials = nullptr,
                                   int *out_embedded_geometry = nullptr);
 
     /**

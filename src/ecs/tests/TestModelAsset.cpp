@@ -8,13 +8,13 @@
 //   1. 句柄表按 URI 原文去重，空 URI 拒绝，计数接口自洽；
 //   2. `Unloaded → Loading → Assembling → Ready` 全链路，且 `BeginStreaming` 防重复；
 //   3. 无外部子项时 `SetPlan` 直接提交（不自锁在 `Assembling`）；
-//   4. 子项未全部落定时 `CommitScene` 必须拒绝，落定后才提交；
+//   4. 子项未全部落定时 `CommitModel` 必须拒绝，落定后才提交；
 //   5. 子项失败不阻断场景就绪（降级显示），失败计数可观测；
 //   6. `Fail` 幂等、拒绝后续 `SetPlan`；`Reset` 可重试且保留尝试次数；
 //   7. 记账防线：落定数不得超过登记数，计数不得为负；
-//   8. 进程内默认表：未登记时 `RequestSceneAsset` 返回 nullptr。
+//   8. 进程内默认表：未登记时 `RequestModelAsset` 返回 nullptr。
 
-#include <hgl/graph/asset/SceneAsset.h>
+#include <hgl/graph/asset/ModelAsset.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
@@ -31,10 +31,10 @@ using namespace hgl::graph;
 
 namespace
 {
-    SceneLoadTask MakeTask(asset::AssetType type, const char *path,
+    ModelLoadTask MakeTask(asset::AssetType type, const char *path,
                            AssetDepKind kind, int ref_count = 1)
     {
-        SceneLoadTask task;
+        ModelLoadTask task;
 
         task.key.type = type;
         task.key.SetPath(AnsiString(path));
@@ -45,9 +45,9 @@ namespace
     }
 
     /// 3 个子项（2 几何 + 1 纹理）+ 2 份内嵌几何
-    SceneLoadPlan MakePlan(int task_count = 3)
+    ModelLoadPlan MakePlan(int task_count = 3)
     {
-        SceneLoadPlan plan;
+        ModelLoadPlan plan;
 
         if(task_count >= 1)
             plan.tasks.Add(MakeTask(asset::AssetType::Geometry, "chess/board.geo",
@@ -72,12 +72,12 @@ namespace
         const char *last_reason = nullptr;
     };
 
-    void OnReady(SceneAsset *, void *user)
+    void OnReady(ModelAsset *, void *user)
     {
         static_cast<NotifyProbe *>(user)->ready_count++;
     }
 
-    void OnFailed(SceneAsset *, const char *reason, void *user)
+    void OnFailed(ModelAsset *, const char *reason, void *user)
     {
         NotifyProbe *probe = static_cast<NotifyProbe *>(user);
         probe->failed_count++;
@@ -88,19 +88,19 @@ namespace
 
     bool TestRegistryDedupe()
     {
-        SceneAssetRegistry registry;
+        ModelAssetRegistry registry;
 
-        SceneAsset *a = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model");
+        ModelAsset *a = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model");
         EXPECT(a != nullptr);
-        EXPECT(a->GetState() == SceneAssetState::Unloaded);
+        EXPECT(a->GetState() == ModelAssetState::Unloaded);
         EXPECT(a->NeedsPump());
 
         // 同一 URI 只应得到一个句柄 —— 这是「同一场景被多个世界请求只读一次盘」的前提。
-        SceneAsset *again = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model");
+        ModelAsset *again = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model");
         EXPECT(again == a);
         EXPECT(registry.GetCount() == 1);
 
-        SceneAsset *other = registry.Request("pack(res):Chess/Other.Scene.model");
+        ModelAsset *other = registry.Request("pack(res):Chess/Other.Scene.model");
         EXPECT(other != nullptr);
         EXPECT(other != a);
         EXPECT(registry.GetCount() == 2);
@@ -125,19 +125,19 @@ namespace
 
     bool TestFullStateChain()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Chain.Scene.model");
+        ModelAssetRegistry registry;
+        ModelAsset *asset = registry.Request("pack(res):Probe/Chain.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
         asset->SetNotifyCallback(OnReady, OnFailed, &probe);
 
         // 未派发前不能凭空提交。
-        EXPECT(!asset->CommitScene());
+        EXPECT(!asset->CommitModel());
         EXPECT(!asset->SettleChild(true));
 
         EXPECT(asset->BeginStreaming(7));
-        EXPECT(asset->GetState() == SceneAssetState::Loading);
+        EXPECT(asset->GetState() == ModelAssetState::Loading);
         EXPECT(asset->IsLoading());
         EXPECT(asset->GetAsyncRequestID() == 7);
         EXPECT(asset->GetAsyncAttempt() == 1);
@@ -146,15 +146,15 @@ namespace
         EXPECT(!asset->BeginStreaming(8));
         EXPECT(asset->GetAsyncRequestID() == 7);
 
-        // 子项没到齐前，CommitScene 必须拒绝。
+        // 子项没到齐前，CommitModel 必须拒绝。
         EXPECT(!asset->SetPlan(MakePlan(), OS_TEXT("res/Probe/Chain.Scene.model")));
-        EXPECT(asset->GetState() == SceneAssetState::Assembling);
+        EXPECT(asset->GetState() == ModelAssetState::Assembling);
         EXPECT(asset->GetChildCount() == 3);
         EXPECT(asset->GetPendingChildCount() == 3);
         EXPECT(!asset->IsReady());
         EXPECT(asset->NeedsPump());
 
-        const SceneAsset::Stats &stats = asset->GetStats();
+        const ModelAsset::Stats &stats = asset->GetStats();
         EXPECT(stats.total == 3);
         EXPECT(stats.geometry == 2);
         EXPECT(stats.texture == 1);
@@ -172,21 +172,21 @@ namespace
         EXPECT(asset->GetReadyChildCount() == 2);
 
         // 还差一个：会话尚未就绪，通知也不该提前触发。
-        EXPECT(!asset->CommitScene());
+        EXPECT(!asset->CommitModel());
         EXPECT(probe.ready_count == 0);
 
         EXPECT(asset->SettleChild(true));
         EXPECT(asset->GetPendingChildCount() == 0);
 
-        EXPECT(asset->CommitScene());
-        EXPECT(asset->GetState() == SceneAssetState::Ready);
+        EXPECT(asset->CommitModel());
+        EXPECT(asset->GetState() == ModelAssetState::Ready);
         EXPECT(asset->IsReady());
         EXPECT(!asset->NeedsPump());
         EXPECT(probe.ready_count == 1);
         EXPECT(probe.failed_count == 0);
 
         // 就绪后重复提交是幂等的，通知不重复。
-        EXPECT(asset->CommitScene());
+        EXPECT(asset->CommitModel());
         EXPECT(probe.ready_count == 1);
         EXPECT(registry.GetReadyCount() == 1);
         EXPECT(registry.GetPendingCount() == 0);
@@ -198,8 +198,8 @@ namespace
 
     bool TestEmptyPlanCommitsImmediately()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Empty.Scene.model");
+        ModelAssetRegistry registry;
+        ModelAsset *asset = registry.Request("pack(res):Probe/Empty.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
@@ -207,12 +207,12 @@ namespace
 
         EXPECT(asset->BeginStreaming());
 
-        SceneLoadPlan empty;
+        ModelLoadPlan empty;
         empty.embedded_geometry_count = 5;
 
         // 只有内嵌几何的场景不产生外部依赖：不应自锁在 Assembling 等一个永不来的子项。
         EXPECT(asset->SetPlan(empty));
-        EXPECT(asset->GetState() == SceneAssetState::Ready);
+        EXPECT(asset->GetState() == ModelAssetState::Ready);
         EXPECT(asset->GetStats().embedded_geometry == 5);
         EXPECT(asset->GetChildCount() == 0);
         EXPECT(probe.ready_count == 1);
@@ -224,8 +224,8 @@ namespace
 
     bool TestChildFailureDoesNotBlock()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Degraded.Scene.model");
+        ModelAssetRegistry registry;
+        ModelAsset *asset = registry.Request("pack(res):Probe/Degraded.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
@@ -241,7 +241,7 @@ namespace
         EXPECT(asset->GetFailedChildCount() == 1);
         EXPECT(asset->GetPendingChildCount() == 0);
 
-        EXPECT(asset->CommitScene());
+        EXPECT(asset->CommitModel());
         EXPECT(asset->IsReady());
         EXPECT(probe.ready_count == 1);
         EXPECT(probe.failed_count == 0);        // 子项失败不触发场景级失败通知
@@ -254,8 +254,8 @@ namespace
 
     bool TestFailAndReset()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Broken.Scene.model");
+        ModelAssetRegistry registry;
+        ModelAsset *asset = registry.Request("pack(res):Probe/Broken.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
@@ -275,14 +275,14 @@ namespace
 
         // 失败后不得再被推进（否则坏文件会每帧重试）。
         EXPECT(!asset->SetPlan(MakePlan()));
-        EXPECT(!asset->CommitScene());
+        EXPECT(!asset->CommitModel());
         asset->Fail("second reason");
         EXPECT(probe.failed_count == 1);         // 幂等，通知不重复
 
         // 重试：回到 Unloaded，计划与计数清空，尝试次数保留。
         const int attempt_before = asset->GetAsyncAttempt();
         asset->Reset();
-        EXPECT(asset->GetState() == SceneAssetState::Unloaded);
+        EXPECT(asset->GetState() == ModelAssetState::Unloaded);
         EXPECT(asset->NeedsPump());
         EXPECT(asset->GetChildCount() == 0);
         EXPECT(asset->GetStats().total == 0);
@@ -300,8 +300,8 @@ namespace
 
     bool TestOverSettleGuard()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/OverSettle.Scene.model");
+        ModelAssetRegistry registry;
+        ModelAsset *asset = registry.Request("pack(res):Probe/OverSettle.Scene.model");
         EXPECT(asset != nullptr);
 
         EXPECT(asset->BeginStreaming());
@@ -316,7 +316,7 @@ namespace
         EXPECT(asset->GetFailedChildCount() == 0);
         EXPECT(asset->GetPendingChildCount() == 0);
 
-        EXPECT(asset->CommitScene());
+        EXPECT(asset->CommitModel());
         EXPECT(asset->IsReady());
 
         return true;
@@ -326,8 +326,8 @@ namespace
 
     bool TestSetChildTotal()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Recount.Scene.model");
+        ModelAssetRegistry registry;
+        ModelAsset *asset = registry.Request("pack(res):Probe/Recount.Scene.model");
         EXPECT(asset != nullptr);
 
         EXPECT(asset->BeginStreaming());
@@ -346,7 +346,7 @@ namespace
         EXPECT(asset->GetChildCount() == 2);
 
         EXPECT(asset->SettleChild(true));
-        EXPECT(asset->CommitScene());
+        EXPECT(asset->CommitModel());
         EXPECT(asset->IsReady());
 
         return true;
@@ -356,23 +356,23 @@ namespace
 
     bool TestSettleDoesNotCommit()
     {
-        SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/SettleOnly.Scene.model");
+        ModelAssetRegistry registry;
+        ModelAsset *asset = registry.Request("pack(res):Probe/SettleOnly.Scene.model");
         EXPECT(asset != nullptr);
 
         EXPECT(asset->BeginStreaming());
         EXPECT(!asset->SetPlan(MakePlan(2)));
-        EXPECT(asset->GetState() == SceneAssetState::Assembling);
+        EXPECT(asset->GetState() == ModelAssetState::Assembling);
 
         // 一次把两项都落定：计数归零，但状态**仍停在** `Assembling` ——
-        // `SettleAllChildren` 只记账。流送系统若落了账不调 `CommitScene()`，
+        // `SettleAllChildren` 只记账。流送系统若落了账不调 `CommitModel()`，
         // 句柄会永远卡在装配中（曾真实发生：示例场景 120 帧都到不了 `Ready`）。
         EXPECT(asset->SettleAllChildren(2, 0));
         EXPECT(asset->GetPendingChildCount() == 0);
-        EXPECT(asset->GetState() == SceneAssetState::Assembling);
+        EXPECT(asset->GetState() == ModelAssetState::Assembling);
         EXPECT(!asset->IsReady());
 
-        EXPECT(asset->CommitScene());
+        EXPECT(asset->CommitModel());
         EXPECT(asset->IsReady());
 
         return true;
@@ -383,18 +383,18 @@ namespace
     bool TestDefaultRegistry()
     {
         // 本进程没有创建 GraphicsContext，默认表应当为空。
-        EXPECT(GetDefaultSceneAssetRegistry() == nullptr);
-        EXPECT(RequestSceneAsset("pack(res):Probe/NoRegistry.Scene.model") == nullptr);
+        EXPECT(GetDefaultModelAssetRegistry() == nullptr);
+        EXPECT(RequestModelAsset("pack(res):Probe/NoRegistry.Scene.model") == nullptr);
 
-        SceneAssetRegistry registry;
-        SetDefaultSceneAssetRegistry(&registry);
+        ModelAssetRegistry registry;
+        SetDefaultModelAssetRegistry(&registry);
 
-        SceneAsset *asset = RequestSceneAsset("pack(res):Probe/Default.Scene.model");
+        ModelAsset *asset = RequestModelAsset("pack(res):Probe/Default.Scene.model");
         EXPECT(asset != nullptr);
         EXPECT(asset == registry.Find("pack(res):Probe/Default.Scene.model"));
 
-        SetDefaultSceneAssetRegistry(nullptr);
-        EXPECT(GetDefaultSceneAssetRegistry() == nullptr);
+        SetDefaultModelAssetRegistry(nullptr);
+        EXPECT(GetDefaultModelAssetRegistry() == nullptr);
 
         return true;
     }

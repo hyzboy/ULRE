@@ -1,7 +1,7 @@
-#include <hgl/graph/asset/SceneLoadPlan.h>
+#include <hgl/graph/asset/ModelLoadPlan.h>
 
 #include <hgl/graph/asset/AssetSourceMount.h>
-#include <hgl/graph/asset/SceneDependencyExtractor.h>
+#include <hgl/graph/asset/ModelDependencyExtractor.h>
 #include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/asset/AssetSource.h>
 #include <hgl/filesystem/FileSystem.h>
@@ -15,8 +15,8 @@
 using namespace hgl::asset;
 using namespace hgl::graph::modelpack;
 
-DEFINE_LOGGER_MODULE(ScenePlan)
-USE_MODULE_LOGGER(ScenePlan)
+DEFINE_LOGGER_MODULE(ModelPlan)
+USE_MODULE_LOGGER(ModelPlan)
 
 namespace hgl::graph
 {
@@ -220,7 +220,7 @@ namespace hgl::graph
                 case AssetType::Texture:         return AssetDepKind::Texture;
                 case AssetType::MaterialRecipe:  return AssetDepKind::MaterialRecipe;
                 case AssetType::MaterialData:    return AssetDepKind::MaterialData;
-                case AssetType::Scene:           return AssetDepKind::Scene;
+                case AssetType::Model:           return AssetDepKind::Model;
                 case AssetType::Primitive:       return AssetDepKind::Primitive;
                 case AssetType::Environment:     return AssetDepKind::Environment;
                 default:                         return AssetDepKind::Material;
@@ -252,7 +252,7 @@ namespace hgl::graph
         }
     }//anonymous namespace
 
-    int SceneLoadPlan::CountOf(AssetDepKind kind) const
+    int ModelLoadPlan::CountOf(AssetDepKind kind) const
     {
         int count = 0;
 
@@ -274,15 +274,15 @@ namespace hgl::graph
         bool BuildPlanFromBytes(const AnsiString &scene_ref,
                                 const void *pack_bytes,
                                 const uint32 pack_size,
-                                SceneLoadPlan &out,
+                                ModelLoadPlan &out,
                                 AssetLoadGraph *out_graph,
                                 AnsiString *out_error)
         {
-            const OSString        scene_os = ToOSString(scene_ref.c_str());
-            const asset::AssetURI uri      = asset::AssetURI::Parse(scene_os, AssetType::Scene);
+            const OSString        model_os = ToOSString(scene_ref.c_str());
+            const asset::AssetURI uri      = asset::AssetURI::Parse(model_os, AssetType::Model);
 
             io::minipack::MiniPackMemory *mpm =
-                io::minipack::GetMiniPackMemoryFromBytes(scene_os, pack_bytes, pack_size);
+                io::minipack::GetMiniPackMemoryFromBytes(model_os, pack_bytes, pack_size);
 
             if (mpm == nullptr)
             {
@@ -320,11 +320,11 @@ namespace hgl::graph
 
             if(header_raw && payload_raw && header_len > 0 && payload_len > 0)
             {
-                ManagedArray<SceneMaterialEntry> materials;
+                ManagedArray<ModelMaterialEntry> materials;
 
                 int edge_count = 0;
 
-                ok = ExtractSceneDependencies(header_raw, header_len,
+                ok = ExtractModelDependencies(header_raw, header_len,
                                               payload_raw, payload_len,
                                               base_dir, scene_ref,
                                               graph, &edge_count, &materials,
@@ -346,7 +346,7 @@ namespace hgl::graph
 
                     for(int i = 0; i < materials.GetCount(); i++)
                     {
-                        const SceneMaterialEntry *mat = materials[i];
+                        const ModelMaterialEntry *mat = materials[i];
 
                         if(mat == nullptr)
                             continue;
@@ -429,7 +429,7 @@ namespace hgl::graph
         // ── 闭包 → 任务单 ────────────────────────────────────────────────────
         AssetDepKey root;
 
-        if(!NormalizeAssetRef(scene_ref, AssetType::Scene, root))
+        if(!NormalizeAssetRef(scene_ref, AssetType::Model, root))
         {
             if(out_error)
                 *out_error = "scene ref cannot be normalized";
@@ -465,7 +465,7 @@ namespace hgl::graph
 
         for(int i = 0; i < closure.GetCount(); i++)
         {
-            SceneLoadTask task;
+            ModelLoadTask task;
 
             task.key       = closure[i];
             task.ref_count = graph.GetRefCount(task.key);
@@ -490,7 +490,7 @@ namespace hgl::graph
     namespace
     {
         /// 两个入口共用的前置校验与字段复位。
-        bool PreparePlan(const AnsiString &scene_ref, SceneLoadPlan &out, AnsiString *out_error)
+        bool PreparePlan(const AnsiString &scene_ref, ModelLoadPlan &out, AnsiString *out_error)
         {
             out.tasks.Clear();
             out.acyclic = true;
@@ -510,10 +510,10 @@ namespace hgl::graph
         }
     }//anonymous namespace
 
-    bool BuildSceneLoadPlanFromBytes(const AnsiString &scene_ref,
+    bool BuildModelLoadPlanFromBytes(const AnsiString &scene_ref,
                                      const void *pack_bytes,
                                      const uint32 pack_size,
-                                     SceneLoadPlan &out,
+                                     ModelLoadPlan &out,
                                      AssetLoadGraph *out_graph,
                                      AnsiString *out_error)
     {
@@ -532,8 +532,8 @@ namespace hgl::graph
         return BuildPlanFromBytes(scene_ref, pack_bytes, pack_size, out, out_graph, out_error);
     }
 
-    bool BuildSceneLoadPlan(const AnsiString &scene_ref,
-                            SceneLoadPlan &out,
+    bool BuildModelLoadPlan(const AnsiString &scene_ref,
+                            ModelLoadPlan &out,
                             AssetLoadGraph *out_graph,
                             AnsiString *out_error)
     {
@@ -561,7 +561,7 @@ namespace hgl::graph
         return ok;
     }
 
-    void DumpSceneLoadPlan(const AnsiString &scene_ref, const SceneLoadPlan &plan)
+    void DumpModelLoadPlan(const AnsiString &scene_ref, const ModelLoadPlan &plan)
     {
         FLogInfo(u8"装载计划：%s 任务=%d 几何=%d 内嵌几何=%d 材质=%d 配方=%d 纹理=%d 无环=%d",
                  scene_ref.c_str(),
@@ -575,7 +575,7 @@ namespace hgl::graph
 
         for(int i = 0; i < plan.tasks.GetCount(); i++)
         {
-            const SceneLoadTask &task = plan.tasks[i];
+            const ModelLoadTask &task = plan.tasks[i];
 
             FLogInfo(u8"  [%d] %s %s ref=%d",
                      i,

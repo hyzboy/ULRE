@@ -19,7 +19,7 @@ namespace hgl::graph
     class GraphicsContext;
 
     /**
-     * @brief 装载 `.scene` 包为「图元资产 + 场景节点树」。
+     * @brief 装载 `.model` 包为「图元资产 + 场景节点树」。
      *
      * 变换真源约定（T5）：`out_nodes` 每个节点的**局部 TRS**（`hasTRS`/
      * `translation`/`rotation`/`scale`）与父子关系（`parentIndex`/`children`）
@@ -36,7 +36,7 @@ namespace hgl::graph
      * `recipe`，与既有单材质行为完全一致。选中的材质下标会随
      * `PrimitiveAsset::GetMaterialIndex()` 透给实例化层。
      */
-    bool LoadStaticMeshSceneAsPrimitiveAssets(
+    bool LoadModelAsPrimitiveAssets(
         VulkanDevice                     *device,
         GeometryManager                  *geo_mgr,
         const GeometryVertexFormat       &geometry_vertex_format,
@@ -50,9 +50,9 @@ namespace hgl::graph
         const uint32_t                    material_recipe_count = 0);
 
     /**
-     * @brief 从**已读入内存**的 `.scene` 字节构造场景（异步加载路径）。
+     * @brief 从**已读入内存**的 `.model` 字节构造场景（异步加载路径）。
      *
-     * 与 `LoadStaticMeshSceneAsPrimitiveAssets` 解析逻辑完全一致，只是数据来源从
+     * 与 `LoadModelAsPrimitiveAssets` 解析逻辑完全一致，只是数据来源从
      * 磁盘映射换成了内存块 —— 因此可以把「读盘」搬到后台 IO 线程，主线程只在
      * 数据就绪后做一次解析与 GPU 建 buffer。
      *
@@ -60,9 +60,9 @@ namespace hgl::graph
      * @param pack_name  仅用于日志/诊断的资产名
      * @note 这里创建的 `Geometry*` 会 `Add` 进 `geo_mgr`，与同步路径一致。
      * @note `material_recipes`/`material_recipe_count` 语义与
-     *       `LoadStaticMeshSceneAsPrimitiveAssets` 相同（可选多材质表）。
+     *       `LoadModelAsPrimitiveAssets` 相同（可选多材质表）。
      */
-    bool LoadStaticMeshSceneFromMemory(
+    bool LoadModelFromMemory(
         VulkanDevice                     *device,
         GeometryManager                  *geo_mgr,
         const GeometryVertexFormat       &geometry_vertex_format,
@@ -78,9 +78,9 @@ namespace hgl::graph
         const uint32_t                    material_recipe_count = 0);
 
     /**
-     * @brief 从**已打开的输入流**装载 `.scene`（包裹化 / 流化路径的统一入口）。
+     * @brief 从**已打开的输入流**装载 `.model`（包裹化 / 流化路径的统一入口）。
      *
-     * 语义与 `LoadStaticMeshSceneFromMemory` 完全一致 —— 内部先把流读完到一块
+     * 语义与 `LoadModelFromMemory` 完全一致 —— 内部先把流读完到一块
      * 连续内存，再走同一份字节解析路径。存在的意义是把「资产从哪来」与「怎么解析」
      * 彻底解耦：调用方可以直接喂资产包的 `OpenAssetStream`，不需要物理路径、
      * 不需要先落盘、也不需要自己管缓冲区生命周期。
@@ -92,7 +92,7 @@ namespace hgl::graph
      *
      * @note 流的读取位置会被推进到结尾；失败不影响流的可用性。
      */
-    bool LoadStaticMeshSceneFromStream(
+    bool LoadModelFromStream(
         VulkanDevice                     *device,
         GeometryManager                  *geo_mgr,
         const GeometryVertexFormat       &geometry_vertex_format,
@@ -114,7 +114,7 @@ namespace hgl::graph
      * `material_recipes`/`material_recipe_count`；`bindings` 可喂给
      * `StaticMeshSceneInstance::Options::material_rows`。
      */
-    struct SelfContainedSceneMaterials
+    struct SelfContainedModelMaterials
     {
         std::vector<mtl::MaterialRecipe>        recipes;    ///< 每材质一份副本（含行绑定）
         std::vector<GlobalSSBOBinding>          bindings;   ///< 与 `recipes` 平行
@@ -140,10 +140,10 @@ namespace hgl::graph
      * @note 成功后 `out` 即材质真源；装载 scene 时把 `out.table` 传入即可，
      *       `out` 需活到 `PrimitiveAsset` 使用完毕（同示例自持配方副本的惯例）。
      */
-    bool BuildSelfContainedSceneMaterials(
+    bool BuildSelfContainedModelMaterials(
         GraphicsContext             &ctx,
         const OSString              &pack_path,
         const char                  *material_data_block_hint,
-        SelfContainedSceneMaterials &out);
+        SelfContainedModelMaterials &out);
 
 }//namespace hgl::graph

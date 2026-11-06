@@ -16,7 +16,7 @@
 //   [bytes] 各条目数据
 
 #include <hgl/graph/asset/AssetLoadGraph.h>
-#include <hgl/graph/asset/SceneLoadPlan.h>
+#include <hgl/graph/asset/ModelLoadPlan.h>
 #include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileOutputStream.h>
@@ -236,7 +236,7 @@ namespace
         "asset = \"Stage.White.Tex2D\"\n";
 
     /// 闭包内每个身份只能出现一次 —— 否则异步派发会把同一份资产装两遍
-    bool HasNoDuplicateTask(const SceneLoadPlan &plan)
+    bool HasNoDuplicateTask(const ModelLoadPlan &plan)
     {
         UnorderedMap<AnsiString, int> seen;
 
@@ -267,7 +267,7 @@ namespace
     }
 
     /// 依赖必须排在依赖它的人之前（`SolveClosure` 的后序出栈即拓扑序）
-    bool IndexOfTask(const SceneLoadPlan &plan, const char *id_prefix, int &out_index)
+    bool IndexOfTask(const ModelLoadPlan &plan, const char *id_prefix, int &out_index)
     {
         for(int i = 0; i < plan.tasks.GetCount(); i++)
             if(HasIdPrefix(plan.tasks[i].key.MakeId(), id_prefix))
@@ -326,10 +326,10 @@ namespace
         if(!WriteModelPack(kFullScenePath, "Stage", "Lit", "Chessboard"))
             return false;
 
-        SceneLoadPlan plan;
+        ModelLoadPlan plan;
         AnsiString    error;
 
-        if(!BuildSceneLoadPlan(AnsiString(kFullScenePath), plan, nullptr, &error))
+        if(!BuildModelLoadPlan(AnsiString(kFullScenePath), plan, nullptr, &error))
         {
             GLogError(u8"装载计划构建失败");
             return false;
@@ -381,7 +381,7 @@ namespace
             return false;
         }
 
-        DumpSceneLoadPlan(AnsiString(kFullScenePath), plan);
+        DumpModelLoadPlan(AnsiString(kFullScenePath), plan);
         return true;
     }
 
@@ -392,10 +392,10 @@ namespace
         if(!WriteModelPack(kDegradedScenePath, "Lonely", "Ghost", "Chessboard"))
             return false;
 
-        SceneLoadPlan plan;
+        ModelLoadPlan plan;
         AnsiString    error;
 
-        if(!BuildSceneLoadPlan(AnsiString(kDegradedScenePath), plan, nullptr, &error))
+        if(!BuildModelLoadPlan(AnsiString(kDegradedScenePath), plan, nullptr, &error))
         {
             GLogError(u8"配方缺失不应导致计划构建失败");
             return false;
@@ -418,16 +418,16 @@ namespace
     /// 坏输入必须失败，而不是返回「零依赖」的假结论
     bool TestBrokenInputRejected()
     {
-        SceneLoadPlan plan;
+        ModelLoadPlan plan;
         AnsiString    error;
 
-        if(BuildSceneLoadPlan(AnsiString(), plan, nullptr, &error))
+        if(BuildModelLoadPlan(AnsiString(), plan, nullptr, &error))
         {
             GLogError(u8"空引用应判失败");
             return false;
         }
 
-        if(BuildSceneLoadPlan(AnsiString("no_such_dir/no_such_scene.model"), plan, nullptr, &error))
+        if(BuildModelLoadPlan(AnsiString("no_such_dir/no_such_scene.model"), plan, nullptr, &error))
         {
             GLogError(u8"不存在的场景应判失败");
             return false;
@@ -439,7 +439,7 @@ namespace
         if(!WriteFile(kGarbagePath, garbage, static_cast<int>(std::strlen(garbage))))
             return false;
 
-        if(BuildSceneLoadPlan(AnsiString(kGarbagePath), plan, nullptr, &error))
+        if(BuildModelLoadPlan(AnsiString(kGarbagePath), plan, nullptr, &error))
         {
             GLogError(u8"非 minipack 文件应判失败");
             return false;
@@ -457,16 +457,16 @@ int main(int argc, char **argv)
     //   TestSceneLoadPlan.exe res/xxx/yyy.Scene.model
     if(argc > 1 && argv[1] != nullptr)
     {
-        SceneLoadPlan plan;
+        ModelLoadPlan plan;
         AnsiString    error;
 
-        if(!BuildSceneLoadPlan(AnsiString(argv[1]), plan, nullptr, &error))
+        if(!BuildModelLoadPlan(AnsiString(argv[1]), plan, nullptr, &error))
         {
             GLogError(u8"计划构建失败：%s", argv[1]);
             return 1;
         }
 
-        DumpSceneLoadPlan(AnsiString(argv[1]), plan);
+        DumpModelLoadPlan(AnsiString(argv[1]), plan);
         return plan.acyclic ? 0 : 2;
     }
 

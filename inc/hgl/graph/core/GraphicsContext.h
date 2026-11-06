@@ -23,7 +23,7 @@
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/asset/SceneSpecAssetRegistry.h>
-#include <hgl/graph/asset/SceneAsset.h>
+#include <hgl/graph/asset/ModelAsset.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 
 namespace hgl
@@ -114,7 +114,7 @@ namespace hgl::graph
         /// 异步场景句柄表（MDL2 模型包）。句柄只记状态与依赖计划，GPU 资源在
         /// `GeometryManager` / `TextureManager` 原处，因此这里无需在设备销毁前
         /// 做硬件回收 —— 仍应在 `Clear()` 里清空，避免悬垂的观察指针活过设备。
-        SceneAssetRegistry scene_asset_registry_;
+        ModelAssetRegistry model_asset_registry_;
 
         /// 材质数据块注册表（`mtldata:` URI → 句柄）。整块上传需要全局池，
         /// 因此必须在模块（含 `GlobalSSBOBufferRegistry`）销毁之前清空，
@@ -207,9 +207,9 @@ namespace hgl::graph
 
         /// 异步场景句柄表（MDL2 模型包）：`Request(uri)` 零阻塞返回句柄，
         /// 由 `SceneStreamingSystem` 每帧推进；同时登记为进程内默认表，
-        /// 供 `RequestSceneAsset(uri)` 使用。
-        SceneAssetRegistry *GetSceneAssetRegistry() { return &scene_asset_registry_; }
-        const SceneAssetRegistry *GetSceneAssetRegistry() const { return &scene_asset_registry_; }
+        /// 供 `RequestModelAsset(uri)` 使用。
+        ModelAssetRegistry *GetModelAssetRegistry() { return &model_asset_registry_; }
+        const ModelAssetRegistry *GetModelAssetRegistry() const { return &model_asset_registry_; }
 
         /// 材质数据块表（`mtldata:@<name>` / `mtldata:file:<path>` 进，`MaterialDataBlockAsset*` 出）。
         /// 设备起来之后 `UploadAll(GetGlobalSSBOBufferRegistry())` 才会真正上船。

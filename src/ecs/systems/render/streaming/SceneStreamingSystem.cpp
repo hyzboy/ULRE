@@ -3,8 +3,8 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
-#include<hgl/graph/asset/SceneLoadPlan.h>
-#include<hgl/graph/mesh/SceneStreaming.h>
+#include<hgl/graph/asset/ModelLoadPlan.h>
+#include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/asset/LoadedFileManager.h>
 #include<hgl/asset/LoadedFileHandler.h>
 #include<hgl/log/Log.h>
@@ -18,7 +18,7 @@ namespace hgl::ecs
         /// 队列喂满，同时又不会让「解析 + 建显存」在第一帧堆成峰值。
         constexpr int kMaxSubmitPerFrame = 2;
 
-        constexpr const char *kLogModule = "SceneStreaming";
+        constexpr const char *kLogModule = "ModelStreaming";
     }//namespace
 
     /**
@@ -140,7 +140,7 @@ namespace hgl::ecs
         return load_manager != nullptr;
     }
 
-    SceneStreamingSystem::AssetStream *SceneStreamingSystem::FindStream(const graph::SceneAsset *asset)const
+    SceneStreamingSystem::AssetStream *SceneStreamingSystem::FindStream(const graph::ModelAsset *asset)const
     {
         if (!asset)
             return nullptr;
@@ -158,14 +158,14 @@ namespace hgl::ecs
             return nullptr;
 
         for (AssetStream *stream : streams)
-            if (stream && stream->request.GetState() == graph::SceneStreamingState::Loading
+            if (stream && stream->request.GetState() == graph::ModelStreamingState::Loading
                      && stream->request.GetRequestID() == request_id)
                 return stream;
 
         return nullptr;
     }
 
-    SceneStreamingSystem::AssetStream *SceneStreamingSystem::EnsureStream(graph::SceneAsset *asset)
+    SceneStreamingSystem::AssetStream *SceneStreamingSystem::EnsureStream(graph::ModelAsset *asset)
     {
         if (AssetStream *found = FindStream(asset))
             return found;
@@ -178,7 +178,7 @@ namespace hgl::ecs
         return stream;
     }
 
-    void SceneStreamingSystem::CountPrimitives(const graph::SceneAssetContent &content,
+    void SceneStreamingSystem::CountPrimitives(const graph::ModelAssetContent &content,
                                                int &total,
                                                int &ready,
                                                int &failed)const
@@ -208,7 +208,7 @@ namespace hgl::ecs
 
     void SceneStreamingSystem::PruneStreams()
     {
-        graph::SceneAssetRegistry *registry = graph::GetDefaultSceneAssetRegistry();
+        graph::ModelAssetRegistry *registry = graph::GetDefaultModelAssetRegistry();
 
         if (!registry)
         {
@@ -219,7 +219,7 @@ namespace hgl::ecs
             return;
         }
 
-        const ValueArray<graph::SceneAsset *> &assets = registry->GetAssets();
+        const ValueArray<graph::ModelAsset *> &assets = registry->GetAssets();
 
         for (int i = streams.GetCount() - 1; i >= 0; --i)
         {
@@ -242,7 +242,7 @@ namespace hgl::ecs
 
     void SceneStreamingSystem::AcquireOneFrame()
     {
-        graph::SceneAssetRegistry *registry = graph::GetDefaultSceneAssetRegistry();
+        graph::ModelAssetRegistry *registry = graph::GetDefaultModelAssetRegistry();
 
         if (!registry)
             return;
@@ -251,9 +251,9 @@ namespace hgl::ecs
         {
             // 没有几何顶点格式与配方就无法解析 —— 与其画出一个空场景，
             // 不如把原因写进句柄，调用方一眼能看出是「忘了配置」。
-            for (graph::SceneAsset *asset : registry->GetAssets())
+            for (graph::ModelAsset *asset : registry->GetAssets())
             {
-                if (asset && asset->GetState() == graph::SceneAssetState::Unloaded)
+                if (asset && asset->GetState() == graph::ModelAssetState::Unloaded)
                     asset->Fail("场景流送系统尚未配置几何顶点格式 / 材质配方（SetBuildSettings）");
             }
 
@@ -262,12 +262,12 @@ namespace hgl::ecs
 
         int submitted = 0;
 
-        for (graph::SceneAsset *asset : registry->GetAssets())
+        for (graph::ModelAsset *asset : registry->GetAssets())
         {
             if (submitted >= kMaxSubmitPerFrame)
                 break;
 
-            if (!asset || asset->GetState() != graph::SceneAssetState::Unloaded)
+            if (!asset || asset->GetState() != graph::ModelAssetState::Unloaded)
                 continue;
 
             AssetStream *stream = EnsureStream(asset);
@@ -286,7 +286,7 @@ namespace hgl::ecs
                 AnsiString open_error;
                 io::InputStream *stream_in =
                     graph::OpenAssetInputStream(ToOSString(uri_text.c_str()),
-                                                asset::AssetType::Scene,
+                                                asset::AssetType::Model,
                                                 &open_error);
 
                 if (!stream_in)
@@ -378,21 +378,21 @@ namespace hgl::ecs
 
     bool SceneStreamingSystem::AdvanceOne(AssetStream *stream)
     {
-        graph::SceneAsset *asset = stream->asset;
+        graph::ModelAsset *asset = stream->asset;
 
         if (!asset)
             return true;
 
-        graph::SceneAssetState state = asset->GetState();
+        graph::ModelAssetState state = asset->GetState();
 
-        if (state == graph::SceneAssetState::Failed)
+        if (state == graph::ModelAssetState::Failed)
             return true;
 
-        if (state == graph::SceneAssetState::Unloaded)
+        if (state == graph::ModelAssetState::Unloaded)
             return false;                   ///< 还没轮到它
 
         // ── 阶段 B-1：读盘完成 ⇒ 用同一份字节建计划单（不再读第二遍盘） ──────
-        if (state == graph::SceneAssetState::Loading)
+        if (state == graph::ModelAssetState::Loading)
         {
             if (stream->request.HasFailed())
             {
@@ -403,10 +403,10 @@ namespace hgl::ecs
             if (!stream->request.IsReady())
                 return false;               ///< 还在读
 
-            graph::SceneLoadPlan plan;
+            graph::ModelLoadPlan plan;
             AnsiString           plan_error;
 
-            if (!graph::BuildSceneLoadPlanFromBytes(asset->GetURI(),
+            if (!graph::BuildModelLoadPlanFromBytes(asset->GetURI(),
                                                     stream->request.GetPackBytes(),
                                                     stream->request.GetPackSize(),
                                                     plan,
@@ -433,11 +433,11 @@ namespace hgl::ecs
         // ── 阶段 B-2：解析产物（图元 + 节点树） ───────────────────────────────
         if (!stream->content_built)
         {
-            if (state == graph::SceneAssetState::Failed)
+            if (state == graph::ModelAssetState::Failed)
                 return true;
 
-            graph::SceneAssetRegistry *registry = asset->GetRegistry();
-            graph::SceneAssetContent  &content  = asset->GetMutableContent();
+            graph::ModelAssetRegistry *registry = asset->GetRegistry();
+            graph::ModelAssetContent  &content  = asset->GetMutableContent();
 
             const OSString base_dir = settings.base_dir.IsEmpty()
                                     ? stream->request.GetPackPath()
@@ -462,7 +462,7 @@ namespace hgl::ecs
             stream->content_built = true;
 
             // 计划单已判为空依赖（`SetPlan` 当时就提交了）：产物补完即完成。
-            if (asset->GetState() == graph::SceneAssetState::Ready)
+            if (asset->GetState() == graph::ModelAssetState::Ready)
                 return true;
 
             // 子项口径换成「图元数」：几何才是场景就绪的真门禁（见头文件说明）。
@@ -477,14 +477,14 @@ namespace hgl::ecs
             if (total == 0)
             {
                 // 没有任何图元需要等几何：没有可轮询的对象，直接提交。
-                asset->CommitScene();
+                asset->CommitModel();
                 return true;
             }
 
             // 产物出来时就已全部就绪（内置/已驻留几何）⇒ 当场提交成 `Ready`。
             if ((ready > 0 || failed > 0) && asset->SettleAllChildren(ready, failed))
             {
-                asset->CommitScene();
+                asset->CommitModel();
                 return true;
             }
         }
@@ -505,7 +505,7 @@ namespace hgl::ecs
             if (asset->SettleAllChildren(ready_delta < 0 ? 0 : ready_delta,
                                          failed_delta < 0 ? 0 : failed_delta))
             {
-                asset->CommitScene();
+                asset->CommitModel();
                 return true;
             }
         }
@@ -529,7 +529,7 @@ namespace hgl::ecs
 
     int SceneStreamingSystem::GetReadySceneCount()const
     {
-        graph::SceneAssetRegistry *registry = graph::GetDefaultSceneAssetRegistry();
+        graph::ModelAssetRegistry *registry = graph::GetDefaultModelAssetRegistry();
 
         return registry ? registry->GetReadyCount() : 0;
     }

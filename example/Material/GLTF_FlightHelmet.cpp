@@ -102,7 +102,7 @@ private:
     std::string  dump_tag;          ///< FHF_DUMP=<tag>：第 8 帧回读落盘后退出
 
     GeometryVertexFormat     geometry_vertex_format;
-    SelfContainedSceneMaterials scene_materials_;
+    SelfContainedModelMaterials scene_materials_;
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::ecs::LightSystem>       light_system;
@@ -139,7 +139,7 @@ private:
         }
 
         // 自装配：材质名来自 pack 的 MaterialTable，配方/数据块来自模型目录
-        if (!BuildSelfContainedSceneMaterials(
+        if (!BuildSelfContainedModelMaterials(
                 *graphics, hgl::ToOSString(ModelPackPath()), nullptr, scene_materials_))
         {
             GLogError(u8"GLTF_FlightHelmet: 自包含材质装配失败");
@@ -172,7 +172,7 @@ private:
         const OSString pack_path = hgl::ToOSString(scene_path.string());
         const OSString base_dir  = hgl::ToOSString(scene_path.parent_path().string());
 
-        return LoadStaticMeshSceneAsPrimitiveAssets(
+        return LoadModelAsPrimitiveAssets(
             device,
             geo_mgr,
             geometry_vertex_format,

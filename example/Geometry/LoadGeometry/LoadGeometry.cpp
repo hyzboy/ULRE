@@ -130,7 +130,7 @@ private:
 
     // PBR 棋盘模式：pack 自装配材质 + 选中的棋盘配方
     bool pack_mode_ = true;
-    graph::SelfContainedSceneMaterials pack_materials_;
+    graph::SelfContainedModelMaterials pack_materials_;
     const graph::mtl::MaterialRecipe *board_recipe_ = nullptr;
     graph::GlobalSSBOBinding board_binding_{};
 
@@ -270,7 +270,7 @@ private:
         if (!graphics)
             return false;
 
-        if (!graph::BuildSelfContainedSceneMaterials(
+        if (!graph::BuildSelfContainedModelMaterials(
                 *graphics, ModelPackPath(), "ABeautifulGame", pack_materials_))
             return false;
 

@@ -3,7 +3,7 @@
 // 全部用内存里现搓的 MDL2 包与配方文本，不读盘、不建设备。
 
 #include <hgl/graph/asset/AssetLoadGraph.h>
-#include <hgl/graph/asset/SceneDependencyExtractor.h>
+#include <hgl/graph/asset/ModelDependencyExtractor.h>
 #include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -135,7 +135,7 @@ namespace
         AssetLoadGraph graph;
         int edges = -1;
 
-        if(!ExtractSceneDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
+        if(!ExtractModelDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
                                      AnsiString("ABeautifulGame.StaticMesh/"),
                                      AnsiString("ABeautifulGame.StaticMesh/ABeautifulGame.model"),
                                      graph, &edges))
@@ -153,7 +153,7 @@ namespace
 
         AssetDepKey root;
         NormalizeAssetRef(AnsiString("ABeautifulGame.StaticMesh/ABeautifulGame.model"),
-                          asset::AssetType::Scene, root);
+                          asset::AssetType::Model, root);
 
         if(CountKind(graph, root, AssetDepKind::Material) != 2
            || CountKind(graph, root, AssetDepKind::Geometry) != 1)
@@ -173,7 +173,7 @@ namespace
         }
 
         // 整体替换语义：同一场景再抽一次，边数不能累加
-        if(!ExtractSceneDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
+        if(!ExtractModelDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
                                      AnsiString("ABeautifulGame.StaticMesh/"),
                                      AnsiString("ABeautifulGame.StaticMesh/ABeautifulGame.model"),
                                      graph, &edges)
@@ -227,7 +227,7 @@ namespace
         AssetLoadGraph graph;
         int edges = -1;
 
-        if(!ExtractSceneDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
+        if(!ExtractModelDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
                                      AnsiString("m/"), AnsiString("m/s.model"), graph, &edges))
             return false;
 
@@ -256,7 +256,7 @@ namespace
 
         AssetLoadGraph graph;
 
-        if(ExtractSceneDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
+        if(ExtractModelDependencies(&header, sizeof(header), builder.Data(), builder.Size(),
                                     AnsiString(), AnsiString("s.model"), graph, nullptr))
         {
             GLogError(u8"缺 StringPool 的包应判失败");
@@ -270,7 +270,7 @@ namespace
         builder2.Finish(header2);
         header2.payload_size += 4096;
 
-        if(ExtractSceneDependencies(&header2, sizeof(header2), builder2.Data(), builder2.Size(),
+        if(ExtractModelDependencies(&header2, sizeof(header2), builder2.Data(), builder2.Size(),
                                     AnsiString(), AnsiString("s.model"), graph, nullptr))
         {
             GLogError(u8"载荷长度越界应判失败");
@@ -283,7 +283,7 @@ namespace
         bad.magic = 0x12345678u;
         bad.version_major = 2;
 
-        if(ExtractSceneDependencies(&bad, sizeof(bad), builder2.Data(), builder2.Size(),
+        if(ExtractModelDependencies(&bad, sizeof(bad), builder2.Data(), builder2.Size(),
                                     AnsiString(), AnsiString("s.model"), graph, nullptr))
         {
             GLogError(u8"魔数不符应判失败");
@@ -355,7 +355,7 @@ namespace
         // 闭包：配方 → 2 张贴图，且贴图排在配方之前
         AssetDepKey scene_root;
         NormalizeAssetRef(AnsiString("ABeautifulGame.StaticMesh/ABeautifulGame.model"),
-                          asset::AssetType::Scene, scene_root);
+                          asset::AssetType::Model, scene_root);
 
         AssetDepEdge scene_edge;
         scene_edge.target = root;

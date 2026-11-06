@@ -120,7 +120,7 @@ namespace hgl::graph
         }
 
         // 自包含模型的配方住在模型自己的目录里：由装载器按 pack 同目录显式加载
-        // （见 BuildSelfContainedSceneMaterials / LoadMaterialRecipeDirectory），
+        // （见 BuildSelfContainedModelMaterials / LoadMaterialRecipeDirectory），
         // 这里**不做**任何跨目录兜底扫描 —— 严禁全局查找。
 
         GLogError(u8"[GraphicsContext] 材质配方未找到: recipe=%s registered=%d",
@@ -195,9 +195,9 @@ namespace hgl::graph
         primitive_asset_registry_ready_ = true;
 
         // 异步场景句柄表：绑定设备与几何管理器，并登记为进程内默认表，
-        // 使 `RequestSceneAsset(uri)` 无需先摸到本上下文。
-        scene_asset_registry_.SetTargets(device, geometry_manager);
-        SetDefaultSceneAssetRegistry(&scene_asset_registry_);
+        // 使 `RequestModelAsset(uri)` 无需先摸到本上下文。
+        model_asset_registry_.SetTargets(device, geometry_manager);
+        SetDefaultModelAssetRegistry(&model_asset_registry_);
 
         // 环境综合信息统一管理（sky 等）。必须在 BufferManager 之后创建：
         // default profile 在模块获得 GraphicsContext 时立即物化 sky UBO，
@@ -292,8 +292,8 @@ namespace hgl::graph
 
         // 异步场景句柄排在几何 / 纹理注册器之前清空：句柄只是状态机 + 计划单，
         // 但它的观察指针不得活过下面的 GPU 资源回收。同时注销进程内默认表。
-        SetDefaultSceneAssetRegistry(nullptr);
-        scene_asset_registry_.Clear();
+        SetDefaultModelAssetRegistry(nullptr);
+        model_asset_registry_.Clear();
 
         // 先收掉后台加载底座：Stop(Drain) 会等所有已提交读盘结束并同步派发取消回调，
         // 保证此后不再有 IO 线程访问本上下文持有的任何资源。必须早于模块销毁。

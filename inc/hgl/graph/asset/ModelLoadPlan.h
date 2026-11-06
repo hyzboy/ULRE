@@ -1,4 +1,4 @@
-// SceneLoadPlan.h — 一个场景「要先装哪些东西」的完整应答
+// ModelLoadPlan.h — 一个场景「要先装哪些东西」的完整应答
 //
 // 这是阶段三的收口：把 `AssetLoadGraph`（谁依赖谁）变成一张**可以直接派发**的
 // 任务单。任务单只回答顺序与身份，不负责装载；真正的 IO 与显存提交由阶段四的
@@ -18,7 +18,7 @@
 // ## 与 `hgl::asset::AssetDependencyGraph` 的分工
 //
 // 见 `AssetLoadGraph.h` 顶部说明。这里复用同一套身份口径：`{类型, 小写去后缀
-// 的包内相对路径}`，与 `AssetLoadGraph` / `SceneDependencyExtractor` 完全一致。
+// 的包内相对路径}`，与 `AssetLoadGraph` / `ModelDependencyExtractor` 完全一致。
 
 #pragma once
 
@@ -28,7 +28,7 @@
 namespace hgl::graph
 {
     /// 计划单里的一项：一个待装载的资产。
-    struct SceneLoadTask
+    struct ModelLoadTask
     {
         AssetDepKey key;
         AssetDepKind kind = AssetDepKind::Geometry;
@@ -38,10 +38,10 @@ namespace hgl::graph
     };
 
     /// 场景装载计划单。
-    struct SceneLoadPlan
+    struct ModelLoadPlan
     {
         /// 依赖闭包，**不含**场景自身，按「先依赖后使用」排序
-        ValueArray<SceneLoadTask> tasks;
+        ValueArray<ModelLoadTask> tasks;
 
         /// 依赖图是否无环。有环时 tasks 仍然可用（环上节点只出现一次），
         /// 但顺序不再是严格拓扑序 —— 调用方应当告警而不是静默继续。
@@ -77,32 +77,32 @@ namespace hgl::graph
      *         会在装载期表现为「材质回退默认值」，但几何与纹理依赖仍然有效，
      *         提前判失败反而会让整个场景打不开。
      */
-    bool BuildSceneLoadPlan(const AnsiString &scene_ref,
-                            SceneLoadPlan &out,
+    bool BuildModelLoadPlan(const AnsiString &scene_ref,
+                            ModelLoadPlan &out,
                             AssetLoadGraph *out_graph = nullptr,
                             AnsiString *out_error = nullptr);
 
     /**
      * @brief 同上，但**复用调用方已经读到的字节**。
      *
-     * 异步流送里模型包已经由 IO 线程读进内存（`SceneStreamingRequest` 持有），
-     * 此时再调 `BuildSceneLoadPlan` 会把同一个大包重复读一遍。本入口只做
+     * 异步流送里模型包已经由 IO 线程读进内存（`ModelStreamingRequest` 持有），
+     * 此时再调 `BuildModelLoadPlan` 会把同一个大包重复读一遍。本入口只做
      * 「解析 + 求解闭包」，不碰 IO —— 除配方文件外（配方很小，且必须读到
      * 纹理依赖才能算出闭包）。
      *
      * `pack_name` 只用于日志与 `base_dir` 推导的失败诊断，不参与解析。
      *
-     * @param scene_ref  场景引用（与 `BuildSceneLoadPlan` 同口径，决定身份与 base_dir）
+     * @param scene_ref  场景引用（与 `BuildModelLoadPlan` 同口径，决定身份与 base_dir）
      * @param pack_bytes 模型包完整字节
      * @param pack_size  字节数
      */
-    bool BuildSceneLoadPlanFromBytes(const AnsiString &scene_ref,
+    bool BuildModelLoadPlanFromBytes(const AnsiString &scene_ref,
                                      const void *pack_bytes,
                                      const uint32 pack_size,
-                                     SceneLoadPlan &out,
+                                     ModelLoadPlan &out,
                                      AssetLoadGraph *out_graph = nullptr,
                                      AnsiString *out_error = nullptr);
 
     /// 诊断用：把计划单打到日志（按类型汇总 + 逐项）。
-    void DumpSceneLoadPlan(const AnsiString &scene_ref, const SceneLoadPlan &plan);
+    void DumpModelLoadPlan(const AnsiString &scene_ref, const ModelLoadPlan &plan);
 }//namespace hgl::graph

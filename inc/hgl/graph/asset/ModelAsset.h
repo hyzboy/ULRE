@@ -1,13 +1,13 @@
-// SceneAsset.h — 异步场景句柄（阶段四 Step 4.1）
+// ModelAsset.h — 异步场景句柄（阶段四 Step 4.1）
 //
 // ── 这个类解决什么 ────────────────────────────────────────────────────────
 //
-// 场景装载此前只有一条同步路径：调用方直接调 `LoadStaticMeshScene*`，
+// 场景装载此前只有一条同步路径：调用方直接调 `LoadModel*`，
 // 读盘、解包、建 GPU buffer、解析节点树全在主线程一口气做完。8 万面片的
 // ABeautifulGame 一次性卡住主线程几百毫秒，而且调用方拿不到任何中间状态 ——
 // 「还在装」这件事在类型系统里无法表达，只能靠调用方自己记一个 bool。
 //
-// `SceneAsset` 把这件事变成**句柄 + 状态机**，与 `TextureAsset` /
+// `ModelAsset` 把这件事变成**句柄 + 状态机**，与 `TextureAsset` /
 // `GeometryAsset` 同一个思路：
 //
 // ```
@@ -16,7 +16,7 @@
 // Loading           模型包字节读取 + MDL2 解析在途
 //    ↓  SetPlan()：拿到依赖计划单，子任务数确定
 // Assembling        子项（几何 / 纹理 / 材质）在各自流送系统里推进
-//    ↓  SettleChild() 逐项递减，全部落定 ⇒ CommitScene()
+//    ↓  SettleChild() 逐项递减，全部落定 ⇒ CommitModel()
 // Ready             可实例化进 ECS
 // ```
 //
@@ -38,7 +38,7 @@
 #pragma once
 
 #include <hgl/CoreType.h>
-#include <hgl/graph/asset/SceneLoadPlan.h>
+#include <hgl/graph/asset/ModelLoadPlan.h>
 #include <hgl/graph/mesh/LoadStaticMesh.h>
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
@@ -47,13 +47,13 @@
 
 namespace hgl::graph
 {
-    class SceneAsset;
-    class SceneAssetRegistry;
+    class ModelAsset;
+    class ModelAssetRegistry;
     class VulkanDevice;
     class GeometryManager;
 
     /// 场景句柄的生命周期状态。只由 `SceneStreamingSystem`（与测试）推动。
-    enum class SceneAssetState : uint8
+    enum class ModelAssetState : uint8
     {
         Unloaded = 0,   ///<只有 URI，尚未派发（流送系统每帧取它开工）
         Loading,        ///<模型包字节读取 / MDL2 解析在途
@@ -62,18 +62,18 @@ namespace hgl::graph
         Failed,         ///<读取 / 解析 / 子项失败（不自动重试）
     };
 
-    const char *GetSceneAssetStateName(SceneAssetState state);
+    const char *GetModelAssetStateName(ModelAssetState state);
 
     /**
      * @brief 场景解析产物：可以立刻实例化进 ECS 的三张表。
      *
      * 为什么这里允许 `std::vector`：`LoadStaticMesh.h` 的整组入口
-     * （`LoadStaticMeshSceneFromMemory` / `...AsPrimitiveAssets`）的 out 参数就是
+     * （`LoadModelFromMemory` / `...AsPrimitiveAssets`）的 out 参数就是
      * `std::vector`，那是网格层的既有 ABI。要接上它只有两条路 —— 改那一层的
      * 签名，或者在这里做一次容器类型让步。本类选后者，并把 `std::vector`
      * **限制在本结构体内**，其余新代码仍只用 HGL 容器。
      */
-    struct SceneAssetContent
+    struct ModelAssetContent
     {
         std::vector<PrimitiveAsset> assets;
         std::vector<StaticMeshNode> nodes;
@@ -96,13 +96,13 @@ namespace hgl::graph
     /**
      * @brief 场景资产的异步句柄。
      *
-     * 归属：由 `SceneAssetRegistry` 的表拥有并销毁（与 `GeometryAsset` 同款），
+     * 归属：由 `ModelAssetRegistry` 的表拥有并销毁（与 `GeometryAsset` 同款），
      * 材质 / 图元 / ECS 侧只持有裸观察指针，因此不存在「世界先死、句柄还在」。
      *
      * 线程约定：句柄只在主线程读写。后台 IO 线程只负责把字节读进来，
      * 状态推进一律在主线程（`SceneStreamingSystem::Update`）发生。
      */
-    class SceneAsset
+    class ModelAsset
     {
     public:
 
@@ -119,20 +119,20 @@ namespace hgl::graph
             int embedded_geometry = 0;  ///<包内嵌几何份数（不产生 IO）
         };
 
-        /// 就绪通知：在 `CommitScene()` 成功的同一调用内触发（可为空）
-        using ReadyCallback = void (*)(SceneAsset *asset, void *user_data);
+        /// 就绪通知：在 `CommitModel()` 成功的同一调用内触发（可为空）
+        using ReadyCallback = void (*)(ModelAsset *asset, void *user_data);
 
         /// 失败通知：在掉入 `Failed` 的同一调用内触发（可为空）
-        using FailedCallback = void (*)(SceneAsset *asset, const char *reason, void *user_data);
+        using FailedCallback = void (*)(ModelAsset *asset, const char *reason, void *user_data);
 
     private:
 
-        SceneAssetRegistry *registry = nullptr;     ///<所属表（不拥有）
+        ModelAssetRegistry *registry = nullptr;     ///<所属表（不拥有）
         AnsiString          uri;                    ///<请求原文，同时是去重身份
         OSString            pack_path;              ///<已解析的物理/包裹路径（诊断用）
 
-        SceneAssetState     state = SceneAssetState::Unloaded;
-        SceneLoadPlan       plan;                   ///<依赖计划单（`SetPlan` 之后有效）
+        ModelAssetState     state = ModelAssetState::Unloaded;
+        ModelLoadPlan       plan;                   ///<依赖计划单（`SetPlan` 之后有效）
         Stats               stats;
 
         int                 child_total = 0;        ///<已登记的子任务数
@@ -144,17 +144,17 @@ namespace hgl::graph
 
         AnsiString          fail_reason;
 
-        SceneAssetContent   content;                ///<解析产物（`CommitScene` 之后有效）
+        ModelAssetContent   content;                ///<解析产物（`CommitModel` 之后有效）
 
         ReadyCallback       on_ready = nullptr;
         FailedCallback      on_failed = nullptr;
         void *              notify_user = nullptr;
 
-        friend class SceneAssetRegistry;
+        friend class ModelAssetRegistry;
 
     private:
 
-        SceneAsset(SceneAssetRegistry *owner, const AnsiString &request_uri);
+        ModelAsset(ModelAssetRegistry *owner, const AnsiString &request_uri);
 
         /// 清空计划与计数（回到 Unloaded 时的复位动作）
         void ResetProgress();
@@ -164,39 +164,39 @@ namespace hgl::graph
 
     public:
 
-        SceneAsset() = delete;
-        ~SceneAsset() = default;
+        ModelAsset() = delete;
+        ~ModelAsset() = default;
 
-        SceneAsset(const SceneAsset &) = delete;
-        SceneAsset &operator=(const SceneAsset &) = delete;
+        ModelAsset(const ModelAsset &) = delete;
+        ModelAsset &operator=(const ModelAsset &) = delete;
 
     public:     // 观察
 
-        SceneAssetRegistry * GetRegistry  ()const { return registry; }
+        ModelAssetRegistry * GetRegistry  ()const { return registry; }
         const AnsiString &   GetURI       ()const { return uri; }
         const OSString &     GetPackPath  ()const { return pack_path; }
 
-        SceneAssetState GetState()const { return state; }
-        const char *    GetStateName()const { return GetSceneAssetStateName(state); }
+        ModelAssetState GetState()const { return state; }
+        const char *    GetStateName()const { return GetModelAssetStateName(state); }
 
         /// `Loading` 或 `Assembling`（两者都表示「还在装」）
-        bool IsLoading()const { return state == SceneAssetState::Loading
-                                    || state == SceneAssetState::Assembling; }
-        bool IsReady  ()const { return state == SceneAssetState::Ready; }
-        bool HasFailed()const { return state == SceneAssetState::Failed; }
+        bool IsLoading()const { return state == ModelAssetState::Loading
+                                    || state == ModelAssetState::Assembling; }
+        bool IsReady  ()const { return state == ModelAssetState::Ready; }
+        bool HasFailed()const { return state == ModelAssetState::Failed; }
 
         /// 是否还需要流送系统干活（`Unloaded`：未派发；`Loading`/`Assembling`：在途）
-        bool NeedsPump()const { return state == SceneAssetState::Unloaded || IsLoading(); }
+        bool NeedsPump()const { return state == ModelAssetState::Unloaded || IsLoading(); }
 
-        const SceneLoadPlan &GetPlan ()const { return plan; }
+        const ModelLoadPlan &GetPlan ()const { return plan; }
         const Stats &        GetStats()const { return stats; }
 
         const AnsiString &GetFailReason()const { return fail_reason; }
 
         /// 解析产物（`Assembling` 期间由流送系统写入，`Ready` 之后可读）
-        const SceneAssetContent &GetContent()const { return content; }
+        const ModelAssetContent &GetContent()const { return content; }
 
-        SceneAssetContent &GetMutableContent() { return content; }
+        ModelAssetContent &GetMutableContent() { return content; }
 
         uint64 GetAsyncRequestID()const { return async_request_id; }
         int    GetAsyncAttempt  ()const { return async_attempt; }
@@ -233,7 +233,7 @@ namespace hgl::graph
          * @param resolved_path 已解析的包路径（可为空，仅诊断用）
          * @return 是否进入 `Ready`（true = 已在本次调用内提交完成）
          */
-        bool SetPlan(const SceneLoadPlan &new_plan, const OSString &resolved_path = OSString());
+        bool SetPlan(const ModelLoadPlan &new_plan, const OSString &resolved_path = OSString());
 
         /**
          * @brief 一个子任务落定。
@@ -269,14 +269,14 @@ namespace hgl::graph
          * 允许在 `Assembling` 且 `GetPendingChildCount()==0` 时调用；
          * 也允许在没有子任务的 `Loading` 状态下直接调用。
          */
-        bool CommitScene();
+        bool CommitModel();
 
         /// 掉入 `Failed`（幂等；触发失败通知）
         void Fail(const char *reason);
 
         /// 回到 `Unloaded` 以便重试（保留 URI，清空计划与计数）
         void Reset();
-    };//class SceneAsset
+    };//class ModelAsset
 
     /**
      * @brief 场景句柄表 —— 请求去重与所有权的唯一真值。
@@ -286,26 +286,26 @@ namespace hgl::graph
      *
      * 线程约定：只在主线程使用。
      */
-    class SceneAssetRegistry
+    class ModelAssetRegistry
     {
     private:
 
         VulkanDevice *   device           = nullptr;    ///<不拥有，可为空（只算计划不需要设备）
         GeometryManager *geometry_manager = nullptr;    ///<不拥有，可为空
 
-        ValueArray<SceneAsset *> assets;                ///<句柄表（拥有）
+        ValueArray<ModelAsset *> assets;                ///<句柄表（拥有）
 
     private:
 
-        SceneAsset *FindByURI(const AnsiString &request_uri)const;
+        ModelAsset *FindByURI(const AnsiString &request_uri)const;
 
     public:
 
-        SceneAssetRegistry() = default;
-        ~SceneAssetRegistry();
+        ModelAssetRegistry() = default;
+        ~ModelAssetRegistry();
 
-        SceneAssetRegistry(const SceneAssetRegistry &) = delete;
-        SceneAssetRegistry &operator=(const SceneAssetRegistry &) = delete;
+        ModelAssetRegistry(const ModelAssetRegistry &) = delete;
+        ModelAssetRegistry &operator=(const ModelAssetRegistry &) = delete;
 
     public:
 
@@ -330,12 +330,12 @@ namespace hgl::graph
          *
          * @return 空 URI 返回 nullptr
          */
-        SceneAsset *Request(const AnsiString &uri);
+        ModelAsset *Request(const AnsiString &uri);
 
-        SceneAsset *Find(const AnsiString &uri)const { return FindByURI(uri); }
+        ModelAsset *Find(const AnsiString &uri)const { return FindByURI(uri); }
 
         /// 句柄表只读视图（流送系统逐帧扫描用）
-        const ValueArray<SceneAsset *> &GetAssets()const { return assets; }
+        const ValueArray<ModelAsset *> &GetAssets()const { return assets; }
 
         int GetCount       ()const { return assets.GetCount(); }
         /// 还没就绪、也还没失败（= 正在装或等着装）
@@ -349,23 +349,23 @@ namespace hgl::graph
 
         /// 销毁全部句柄（设备销毁前必须调用）
         void Clear();
-    };//class SceneAssetRegistry
+    };//class ModelAssetRegistry
 
     /**
      * @brief 登记进程内默认场景句柄表（由 `GraphicsContext` 在设备初始化时登记）。
      *
-     * 为什么需要它：计划书里的调用签名是 `RequestSceneAsset(uri)` —— 调用方
+     * 为什么需要它：计划书里的调用签名是 `RequestModelAsset(uri)` —— 调用方
      * 不该为了拿一个场景句柄而先摸到 `GraphicsContext`。设备级句柄表在全进程
      * 只有一份，因此这里按 `GetMountedAssetSource()` 同款方式暴露一个弱引用。
      */
-    void SetDefaultSceneAssetRegistry(SceneAssetRegistry *registry);
-    SceneAssetRegistry *GetDefaultSceneAssetRegistry();
+    void SetDefaultModelAssetRegistry(ModelAssetRegistry *registry);
+    ModelAssetRegistry *GetDefaultModelAssetRegistry();
 
     /**
      * @brief 统一异步入口：请求一个场景句柄，主线程立刻返回。
      *
-     * 等价于 `GetDefaultSceneAssetRegistry()->Request(uri)`。
+     * 等价于 `GetDefaultModelAssetRegistry()->Request(uri)`。
      * 默认表未登记（设备尚未初始化）时返回 nullptr。
      */
-    SceneAsset *RequestSceneAsset(const AnsiString &uri);
+    ModelAsset *RequestModelAsset(const AnsiString &uri);
 }//namespace hgl::graph

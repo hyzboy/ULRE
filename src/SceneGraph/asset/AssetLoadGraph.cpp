@@ -20,7 +20,7 @@ namespace hgl::graph
             case AssetDepKind::MaterialRecipe:  return "material_recipe";
             case AssetDepKind::Texture:         return "texture";
             case AssetDepKind::MaterialData:    return "material_data";
-            case AssetDepKind::Scene:           return "scene";
+            case AssetDepKind::Model:           return "model";
             case AssetDepKind::Primitive:       return "primitive";
             case AssetDepKind::Environment:     return "environment";
         }
@@ -82,7 +82,7 @@ namespace hgl::graph
             { ".recipe",         asset::AssetType::MaterialRecipe },
             { ".rcp",            asset::AssetType::MaterialRecipe },
 
-            { ".model",          asset::AssetType::Scene          },
+            { ".model",          asset::AssetType::Model          },
             { ".prim",           asset::AssetType::Primitive      },
             { ".env",            asset::AssetType::Environment    },
         };

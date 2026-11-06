@@ -59,7 +59,7 @@ namespace
 
         // 目录名里的点必须活着（只剥文件名部分的后缀）
         if(!CheckNormalize("ABeautifulGame.StaticMesh/ABeautifulGame.model",
-                           asset::AssetType::Scene,
+                           asset::AssetType::Model,
                            "abeautifulgame.staticmesh/abeautifulgame"))
             return false;
 
@@ -130,7 +130,7 @@ namespace
             { geo, AssetDepKind::Geometry },
             { mat, AssetDepKind::Material  },
             { mat, AssetDepKind::Material  },   // 重复目标必须被去重
-            { scene, AssetDepKind::Scene   },   // 自环必须被丢掉
+            { scene, AssetDepKind::Model   },   // 自环必须被丢掉
         };
 
         if(graph.SetDependencies(scene, scene_edges, 4) != 2)
@@ -261,9 +261,9 @@ namespace
         if(!MakeKey("a.Scene.model", a) || !MakeKey("b.Scene.model", b) || !MakeKey("c.Scene.model", c))
             return false;
 
-        const AssetDepEdge a_edges[] = { { b, AssetDepKind::Scene } };
-        const AssetDepEdge b_edges[] = { { c, AssetDepKind::Scene } };
-        const AssetDepEdge c_edges[] = { { a, AssetDepKind::Scene } };
+        const AssetDepEdge a_edges[] = { { b, AssetDepKind::Model } };
+        const AssetDepEdge b_edges[] = { { c, AssetDepKind::Model } };
+        const AssetDepEdge c_edges[] = { { a, AssetDepKind::Model } };
 
         graph.SetDependencies(a, a_edges, 1);
         graph.SetDependencies(b, b_edges, 1);

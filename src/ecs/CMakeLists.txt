@@ -258,13 +258,13 @@ add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 add_ecs_test(TestAssetLoadGraph tests/TestAssetLoadGraph.cpp)
 
 # 阶段三判据：不装载也能抽出场景/配方依赖（内存内合成 MDL2 包与配方文本）
-add_ecs_test(TestSceneDependencyExtractor tests/TestSceneDependencyExtractor.cpp)
+add_ecs_test(TestModelDependencyExtractor tests/TestModelDependencyExtractor.cpp)
 
 # 阶段三判据：模型包 + 配方 → 任务单（去重 / 拓扑序 / 配方缺失降级 / 坏包拒绝）
-add_ecs_test(TestSceneLoadPlan tests/TestSceneLoadPlan.cpp)
+add_ecs_test(TestModelLoadPlan tests/TestModelLoadPlan.cpp)
 
 # 阶段四判据：异步场景句柄的状态机与句柄表去重（不碰设备）
-add_ecs_test(TestSceneAsset tests/TestSceneAsset.cpp)
+add_ecs_test(TestModelAsset tests/TestModelAsset.cpp)
 
 # 阶段四判据：流送系统在无设备时的守卫与外部设定（不碰设备）
 add_ecs_test(TestSceneStreamingSystem tests/TestSceneStreamingSystem.cpp)
@@ -534,24 +534,24 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 
     add_test(
-        NAME TestSceneDependencyExtractor
-        COMMAND TestSceneDependencyExtractor)
+        NAME TestModelDependencyExtractor
+        COMMAND TestModelDependencyExtractor)
     set_tests_properties(
-        TestSceneDependencyExtractor
+        TestModelDependencyExtractor
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 
     add_test(
-        NAME TestSceneLoadPlan
-        COMMAND TestSceneLoadPlan)
+        NAME TestModelLoadPlan
+        COMMAND TestModelLoadPlan)
     set_tests_properties(
-        TestSceneLoadPlan
+        TestModelLoadPlan
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 
     add_test(
-        NAME TestSceneAsset
-        COMMAND TestSceneAsset)
+        NAME TestModelAsset
+        COMMAND TestModelAsset)
     set_tests_properties(
-        TestSceneAsset
+        TestModelAsset
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 
     add_test(

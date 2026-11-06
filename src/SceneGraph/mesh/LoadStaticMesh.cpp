@@ -44,7 +44,7 @@ using namespace hgl::graph::modelpack;
 
 std::vector<std::string> ParseNameTable(const void *raw, uint32_t bytes);
 
-static bool TryLoadScene(
+static bool TryLoadModel(
     hgl::io::minipack::MiniPackMemory *mpm,
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
@@ -202,7 +202,7 @@ static bool TryLoadScene(
         {
             if (gv[i].blob_offset > gb_size || gv[i].blob_size > gb_size || gv[i].blob_offset + gv[i].blob_size > gb_size)
             {
-                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: invalid GeometryBlob range in ") + pack_path);
+                MLogError(LoadStaticMesh, OS_TEXT("LoadModel: invalid GeometryBlob range in ") + pack_path);
                 continue;
             }
 
@@ -214,7 +214,7 @@ static bool TryLoadScene(
             Geometry *geo = LoadGeometryFromMiniPackBytes(device, geometry_vertex_format, geo_blob, gv[i].blob_size, geo_debug_name);
             if (!geo)
             {
-                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load inlined geometry #") + OSString::numberOf(i) + OS_TEXT(" from ") + pack_path);
+                MLogError(LoadStaticMesh, OS_TEXT("LoadModel: failed to load inlined geometry #") + OSString::numberOf(i) + OS_TEXT(" from ") + pack_path);
                 continue;
             }
 
@@ -282,7 +282,7 @@ static bool TryLoadScene(
                         std::string geo_file;
                         if (!read_pool_string(pp[i].geometry_file_offset, pp[i].geometry_file_length, geo_file))
                         {
-                            MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: invalid V2 geometry filename range in ") + pack_path);
+                            MLogError(LoadStaticMesh, OS_TEXT("LoadModel: invalid V2 geometry filename range in ") + pack_path);
                             geometry_list.push_back(nullptr);
                             continue;
                         }
@@ -292,7 +292,7 @@ static bool TryLoadScene(
                         geo = LoadGeometry(device, geometry_vertex_format, geo_path);
                         if (!geo)
                         {
-                            MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load geometry: ") + geo_path);
+                            MLogError(LoadStaticMesh, OS_TEXT("LoadModel: failed to load geometry: ") + geo_path);
                             geometry_list.push_back(nullptr);
                             continue;
                         }
@@ -305,7 +305,7 @@ static bool TryLoadScene(
 
             if (!geo)
             {
-                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: missing geometry for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
+                MLogError(LoadStaticMesh, OS_TEXT("LoadModel: missing geometry for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
                 geometry_list.push_back(nullptr);
                 continue;
             }
@@ -492,7 +492,7 @@ void ComposeNodeMatrices(std::vector<StaticMeshNode> &nodes)
 
 /// 解析一个**已打开**的 minipack（内存映射或字节视图）。
 /// @note 本函数在返回前 `delete mpm`（接管所有权），调用方不得再使用该指针。
-static bool BuildSceneFromMiniPack(
+static bool BuildModelFromMiniPack(
     VulkanDevice                     *device,
     GeometryManager                  *geo_mgr,
     const GeometryVertexFormat       &geometry_vertex_format,
@@ -514,7 +514,7 @@ static bool BuildSceneFromMiniPack(
 
     if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !recipe || !mpm)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: invalid argument"));
+        MLogError(LoadStaticMesh, OS_TEXT("LoadModelAsPrimitiveAssets: invalid argument"));
         return false;
     }
 
@@ -534,7 +534,7 @@ static bool BuildSceneFromMiniPack(
     std::vector<StaticMeshNode> scene_nodes;
     std::vector<int32_t> root_nodes;
 
-    if (!TryLoadScene(
+    if (!TryLoadModel(
             mpm,
             device,
             geo_mgr,
@@ -547,7 +547,7 @@ static bool BuildSceneFromMiniPack(
             root_nodes))
     {
         MLogError(LoadStaticMesh,
-            OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: MDL2 parse failed: ") + pack_path);
+            OS_TEXT("LoadModelAsPrimitiveAssets: MDL2 parse failed: ") + pack_path);
         delete mpm;
         return false;
     }
@@ -577,7 +577,7 @@ static bool BuildSceneFromMiniPack(
     return true;
 }
 
-bool LoadStaticMeshSceneAsPrimitiveAssets(
+bool LoadModelAsPrimitiveAssets(
     VulkanDevice                     *device,
     GeometryManager                  *geo_mgr,
     const GeometryVertexFormat       &geometry_vertex_format,
@@ -596,16 +596,16 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
     // `pack(res):scene/xxx`（无扩展名逻辑路径）或 `pack(res):id:<32 hex>`。
     AnsiString open_error;
 
-    hgl::io::InputStream *stream=OpenAssetInputStream(pack_path,asset::AssetType::Scene,&open_error);
+    hgl::io::InputStream *stream=OpenAssetInputStream(pack_path,asset::AssetType::Model,&open_error);
 
     if (!stream)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: cannot open asset: ") + pack_path
+        MLogError(LoadStaticMesh, OS_TEXT("LoadModelAsPrimitiveAssets: cannot open asset: ") + pack_path
                                 + OS_TEXT(" : ") + ToOSString(open_error.c_str()));
         return false;
     }
 
-    const bool result=LoadStaticMeshSceneFromStream(device,geo_mgr,geometry_vertex_format,recipe,
+    const bool result=LoadModelFromStream(device,geo_mgr,geometry_vertex_format,recipe,
                                                    stream,pack_path,base_dir,
                                                    out_assets,out_nodes,out_root_nodes,
                                                    material_recipes,material_recipe_count);
@@ -614,7 +614,7 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
     return result;
 }
 
-bool LoadStaticMeshSceneFromMemory(
+bool LoadModelFromMemory(
     VulkanDevice                     *device,
     GeometryManager                  *geo_mgr,
     const GeometryVertexFormat       &geometry_vertex_format,
@@ -634,17 +634,17 @@ bool LoadStaticMeshSceneFromMemory(
     MiniPackMemory *mpm = GetMiniPackMemoryFromBytes(pack_name,pack_bytes,pack_size);
     if (!mpm)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneFromMemory: cannot parse pack: ") + pack_name);
+        MLogError(LoadStaticMesh, OS_TEXT("LoadModelFromMemory: cannot parse pack: ") + pack_name);
         return false;
     }
 
-    return BuildSceneFromMiniPack(device,geo_mgr,geometry_vertex_format,recipe,
+    return BuildModelFromMiniPack(device,geo_mgr,geometry_vertex_format,recipe,
                                   mpm,pack_name,base_dir,
                                   out_assets,out_nodes,out_root_nodes,
                                   material_recipes,material_recipe_count);
 }
 
-bool LoadStaticMeshSceneFromStream(
+bool LoadModelFromStream(
     VulkanDevice                     *device,
     GeometryManager                  *geo_mgr,
     const GeometryVertexFormat       &geometry_vertex_format,
@@ -660,7 +660,7 @@ bool LoadStaticMeshSceneFromStream(
 {
     if (!stream)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneFromStream: null stream: ") + pack_name);
+        MLogError(LoadStaticMesh, OS_TEXT("LoadModelFromStream: null stream: ") + pack_name);
         return false;
     }
 
@@ -673,11 +673,11 @@ bool LoadStaticMeshSceneFromStream(
     {
         delete[] static_cast<char *>(pack_bytes);
 
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneFromStream: cannot read stream: ") + pack_name);
+        MLogError(LoadStaticMesh, OS_TEXT("LoadModelFromStream: cannot read stream: ") + pack_name);
         return false;
     }
 
-    const bool result = LoadStaticMeshSceneFromMemory(
+    const bool result = LoadModelFromMemory(
         device, geo_mgr, geometry_vertex_format, recipe,
         pack_bytes, static_cast<uint32>(pack_size),
         pack_name, base_dir,
@@ -810,20 +810,20 @@ namespace
     }
 }
 
-bool BuildSelfContainedSceneMaterials(
+bool BuildSelfContainedModelMaterials(
     GraphicsContext             &ctx,
     const OSString              &pack_path,
     const char                  *material_data_block_hint,
-    SelfContainedSceneMaterials &out)
+    SelfContainedModelMaterials &out)
 {
-    out = SelfContainedSceneMaterials();
+    out = SelfContainedModelMaterials();
 
     // 本函数的装配方式是「扫模型目录找配方与数据块」——URI 寻址下没有目录概念。
     // 明确拒绝，而不是让调用方读到一个误导性的「文件打不开」。
     if (hgl::asset::AssetURI::Parse(pack_path).source == hgl::asset::AssetSourceKind::Pack)
     {
         MLogError(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedSceneMaterials: 暂不支持包裹 URI 寻址（需改由依赖图装配）: ") + pack_path);
+            OS_TEXT("BuildSelfContainedModelMaterials: 暂不支持包裹 URI 寻址（需改由依赖图装配）: ") + pack_path);
         return false;
     }
 
@@ -831,7 +831,7 @@ bool BuildSelfContainedSceneMaterials(
     const OSString model_dir = hgl::filesystem::Path(pack_path).GetParent().ToOSString();
     if (model_dir.IsEmpty())
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 无法取得模型目录 ") + pack_path);
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法取得模型目录 ") + pack_path);
         return false;
     }
 
@@ -840,7 +840,7 @@ bool BuildSelfContainedSceneMaterials(
         hgl::io::minipack::GetMiniPackMemory(pack_path);
     if (!mpm)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 无法打开模型包 ") + pack_path);
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法打开模型包 ") + pack_path);
         return false;
     }
     std::vector<std::string> material_names = ReadModelPackMaterialNames(mpm);
@@ -848,7 +848,7 @@ bool BuildSelfContainedSceneMaterials(
     if (material_names.empty())
     {
         MLogError(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedSceneMaterials: MaterialTable 缺失或为空（非 MDL2 模型包）")
+            OS_TEXT("BuildSelfContainedModelMaterials: MaterialTable 缺失或为空（非 MDL2 模型包）")
             + pack_path);
         return false;
     }
@@ -857,7 +857,7 @@ bool BuildSelfContainedSceneMaterials(
     int recipe_files = 0, recipe_errors = 0;
     if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 配方目录加载失败 ") + model_dir);
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录加载失败 ") + model_dir);
         return false;
     }
 
@@ -873,7 +873,7 @@ bool BuildSelfContainedSceneMaterials(
     }
     if (dir_recipes.empty())
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 模型目录没有可用配方 ") + model_dir);
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 模型目录没有可用配方 ") + model_dir);
         return false;
     }
 
@@ -886,7 +886,7 @@ bool BuildSelfContainedSceneMaterials(
                      OS_TEXT(".material_data.toml");
         if (!hgl::filesystem::FileExist(block_path))
         {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 指定数据块不存在 ") + block_path);
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 指定数据块不存在 ") + block_path);
             return false;
         }
     }
@@ -895,7 +895,7 @@ bool BuildSelfContainedSceneMaterials(
         hgl::ValueArray<hgl::filesystem::FileInfo> file_list;
         if (hgl::filesystem::GetFileInfoList(file_list, model_dir, false, true, false) < 0)
         {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 目录扫描失败 ") + model_dir);
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 目录扫描失败 ") + model_dir);
             return false;
         }
         int found = 0;
@@ -911,13 +911,13 @@ bool BuildSelfContainedSceneMaterials(
         }
         if (found == 0)
         {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: 模型目录没有 material_data 块 ") + model_dir);
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 模型目录没有 material_data 块 ") + model_dir);
             return false;
         }
         if (found > 1)
         {
             MLogError(LoadStaticMesh,
-                OS_TEXT("BuildSelfContainedSceneMaterials: 模型目录有多个 material_data 块，必须指定块名: ")
+                OS_TEXT("BuildSelfContainedModelMaterials: 模型目录有多个 material_data 块，必须指定块名: ")
                 + model_dir);
             return false;
         }
@@ -929,7 +929,7 @@ bool BuildSelfContainedSceneMaterials(
     GlobalSSBOBufferRegistry       *pool   = ctx.GetGlobalSSBOBufferRegistry();
     if (!blocks || !pool)
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedSceneMaterials: GraphicsContext 注册表未就绪"));
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: GraphicsContext 注册表未就绪"));
         return false;
     }
 
@@ -955,7 +955,7 @@ bool BuildSelfContainedSceneMaterials(
         if (!picked)
         {
             MLogError(LoadStaticMesh,
-                OS_TEXT("BuildSelfContainedSceneMaterials: 目录内没有配方匹配材质 ")
+                OS_TEXT("BuildSelfContainedModelMaterials: 目录内没有配方匹配材质 ")
                 + model_dir + OS_TEXT(" material=") + hgl::ToOSString(material_names[i].c_str()));
             return false;
         }
@@ -964,7 +964,7 @@ bool BuildSelfContainedSceneMaterials(
         if (!blocks->GetRowBinding(pool, block_uri, static_cast<uint32_t>(i), binding))
         {
             MLogError(LoadStaticMesh,
-                OS_TEXT("BuildSelfContainedSceneMaterials: 材质数据行绑定失败 row=")
+                OS_TEXT("BuildSelfContainedModelMaterials: 材质数据行绑定失败 row=")
                 + OSString::numberOf(static_cast<int>(i)) + OS_TEXT(" block=") + block_path);
             return false;
         }
@@ -975,7 +975,7 @@ bool BuildSelfContainedSceneMaterials(
         out.table[i] = &out.recipes[i];
 
         MLogInfo(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedSceneMaterials: material[")
+            OS_TEXT("BuildSelfContainedModelMaterials: material[")
             + OSString::numberOf(static_cast<int>(i)) + OS_TEXT("] ")
             + hgl::ToOSString(material_names[i].c_str())
             + OS_TEXT(" → ") + hgl::ToOSString(picked->recipe_name.c_str()));
@@ -983,7 +983,7 @@ bool BuildSelfContainedSceneMaterials(
 
     out.fallback = &out.recipes[0];
     MLogInfo(LoadStaticMesh,
-        OS_TEXT("BuildSelfContainedSceneMaterials: ") + pack_path
+        OS_TEXT("BuildSelfContainedModelMaterials: ") + pack_path
         + OS_TEXT(" materials=") + OSString::numberOf(static_cast<int>(count))
         + OS_TEXT(" block=") + block_path);
     return true;

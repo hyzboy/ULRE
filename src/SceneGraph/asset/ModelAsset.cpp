@@ -1,39 +1,39 @@
-#include <hgl/graph/asset/SceneAsset.h>
+#include <hgl/graph/asset/ModelAsset.h>
 #include <hgl/log/Log.h>
 
-DEFINE_LOGGER_MODULE(SceneAssetStream)
-USE_MODULE_LOGGER(SceneAssetStream)
+DEFINE_LOGGER_MODULE(ModelAssetStream)
+USE_MODULE_LOGGER(ModelAssetStream)
 
 namespace hgl::graph
 {
     namespace
     {
-        SceneAssetRegistry *g_default_scene_asset_registry = nullptr;
+        ModelAssetRegistry *g_default_model_asset_registry = nullptr;
     }
 
-    const char *GetSceneAssetStateName(SceneAssetState state)
+    const char *GetModelAssetStateName(ModelAssetState state)
     {
         switch (state)
         {
-            case SceneAssetState::Unloaded:   return "Unloaded";
-            case SceneAssetState::Loading:    return "Loading";
-            case SceneAssetState::Assembling: return "Assembling";
-            case SceneAssetState::Ready:      return "Ready";
-            case SceneAssetState::Failed:     return "Failed";
+            case ModelAssetState::Unloaded:   return "Unloaded";
+            case ModelAssetState::Loading:    return "Loading";
+            case ModelAssetState::Assembling: return "Assembling";
+            case ModelAssetState::Ready:      return "Ready";
+            case ModelAssetState::Failed:     return "Failed";
             default:                          break;
         }
 
         return "Unknown";
     }
 
-    SceneAsset::SceneAsset(SceneAssetRegistry *owner, const AnsiString &request_uri)
+    ModelAsset::ModelAsset(ModelAssetRegistry *owner, const AnsiString &request_uri)
         : registry(owner), uri(request_uri)
     {
     }
 
-    void SceneAsset::ResetProgress()
+    void ModelAsset::ResetProgress()
     {
-        plan = SceneLoadPlan();
+        plan = ModelLoadPlan();
         stats = Stats();
 
         child_total = 0;
@@ -47,7 +47,7 @@ namespace hgl::graph
         content.Clear();
     }
 
-    void SceneAsset::RebuildStats()
+    void ModelAsset::RebuildStats()
     {
         stats = Stats();
         stats.total = plan.TotalCount();
@@ -67,22 +67,22 @@ namespace hgl::graph
         child_failed = 0;
     }
 
-    bool SceneAsset::BeginStreaming(uint64 request_id)
+    bool ModelAsset::BeginStreaming(uint64 request_id)
     {
-        if (state != SceneAssetState::Unloaded)
+        if (state != ModelAssetState::Unloaded)
             return false;
 
-        state = SceneAssetState::Loading;
+        state = ModelAssetState::Loading;
         async_request_id = request_id;
         ++async_attempt;
 
         return true;
     }
 
-    bool SceneAsset::SetPlan(const SceneLoadPlan &new_plan, const OSString &resolved_path)
+    bool ModelAsset::SetPlan(const ModelLoadPlan &new_plan, const OSString &resolved_path)
     {
-        if (state != SceneAssetState::Loading && state != SceneAssetState::Unloaded)
-            return state == SceneAssetState::Ready;
+        if (state != ModelAssetState::Loading && state != ModelAssetState::Unloaded)
+            return state == ModelAssetState::Ready;
 
         plan = new_plan;
         pack_path = resolved_path;
@@ -91,21 +91,21 @@ namespace hgl::graph
         if (!plan.acyclic)
             FLogWarning(u8"场景依赖有环，装载顺序不再严格拓扑：%s", uri.c_str());
 
-        state = SceneAssetState::Assembling;
+        state = ModelAssetState::Assembling;
 
         // 没有任何外部子项（空场景，或几何全内嵌且无材质依赖）：无需等待，直接提交。
         if (child_total <= 0)
-            return CommitScene();
+            return CommitModel();
 
         return false;
     }
 
-    bool SceneAsset::SettleChild(bool ok)
+    bool ModelAsset::SettleChild(bool ok)
     {
-        if (state == SceneAssetState::Ready)
+        if (state == ModelAssetState::Ready)
             return true;
 
-        if (state != SceneAssetState::Assembling)
+        if (state != ModelAssetState::Assembling)
             return false;
 
         if (GetPendingChildCount() <= 0)
@@ -123,12 +123,12 @@ namespace hgl::graph
         return GetPendingChildCount() <= 0;
     }
 
-    bool SceneAsset::SettleAllChildren(int ready_delta, int failed_delta)
+    bool ModelAsset::SettleAllChildren(int ready_delta, int failed_delta)
     {
-        if (state == SceneAssetState::Ready)
+        if (state == ModelAssetState::Ready)
             return true;
 
-        if (state != SceneAssetState::Assembling)
+        if (state != ModelAssetState::Assembling)
             return false;
 
         if (ready_delta < 0 || failed_delta < 0)
@@ -158,9 +158,9 @@ namespace hgl::graph
         return GetPendingChildCount() <= 0;
     }
 
-    void SceneAsset::SetChildTotal(int total)
+    void ModelAsset::SetChildTotal(int total)
     {
-        if (state != SceneAssetState::Assembling)
+        if (state != ModelAssetState::Assembling)
             return;
 
         if (child_ready > 0 || child_failed > 0)
@@ -175,18 +175,18 @@ namespace hgl::graph
         child_total = total;
     }
 
-    bool SceneAsset::CommitScene()
+    bool ModelAsset::CommitModel()
     {
-        if (state == SceneAssetState::Ready)
+        if (state == ModelAssetState::Ready)
             return true;
 
-        if (state != SceneAssetState::Assembling && state != SceneAssetState::Loading)
+        if (state != ModelAssetState::Assembling && state != ModelAssetState::Loading)
             return false;
 
         if (GetPendingChildCount() > 0)
             return false;
 
-        state = SceneAssetState::Ready;
+        state = ModelAssetState::Ready;
         async_request_id = 0;
 
         // 子项失败不阻断场景：缺一张纹理应当降级显示，而不是整个场景打不开。
@@ -200,12 +200,12 @@ namespace hgl::graph
         return true;
     }
 
-    void SceneAsset::Fail(const char *reason)
+    void ModelAsset::Fail(const char *reason)
     {
-        if (state == SceneAssetState::Failed)
+        if (state == ModelAssetState::Failed)
             return;
 
-        state = SceneAssetState::Failed;
+        state = ModelAssetState::Failed;
         async_request_id = 0;
         fail_reason = reason ? reason : "";
 
@@ -215,32 +215,32 @@ namespace hgl::graph
             on_failed(this, fail_reason.c_str(), notify_user);
     }
 
-    void SceneAsset::Reset()
+    void ModelAsset::Reset()
     {
         ResetProgress();
-        state = SceneAssetState::Unloaded;
+        state = ModelAssetState::Unloaded;
     }
 
-    // ── SceneAssetRegistry ────────────────────────────────────────────────
+    // ── ModelAssetRegistry ────────────────────────────────────────────────
 
-    SceneAssetRegistry::~SceneAssetRegistry()
+    ModelAssetRegistry::~ModelAssetRegistry()
     {
         Clear();
     }
 
-    SceneAsset *SceneAssetRegistry::FindByURI(const AnsiString &request_uri) const
+    ModelAsset *ModelAssetRegistry::FindByURI(const AnsiString &request_uri) const
     {
         if (request_uri.IsEmpty())
             return nullptr;
 
-        for (SceneAsset *asset : assets)
+        for (ModelAsset *asset : assets)
             if (asset && asset->uri == request_uri)
                 return asset;
 
         return nullptr;
     }
 
-    SceneAsset *SceneAssetRegistry::Request(const AnsiString &uri)
+    ModelAsset *ModelAssetRegistry::Request(const AnsiString &uri)
     {
         if (uri.IsEmpty())
         {
@@ -248,10 +248,10 @@ namespace hgl::graph
             return nullptr;
         }
 
-        if (SceneAsset *found = FindByURI(uri))
+        if (ModelAsset *found = FindByURI(uri))
             return found;
 
-        SceneAsset *asset = new SceneAsset(this, uri);
+        ModelAsset *asset = new ModelAsset(this, uri);
         if (!asset)
         {
             FLogError(u8"请求场景句柄失败：内存不足（%s）", uri.c_str());
@@ -262,53 +262,53 @@ namespace hgl::graph
         return asset;
     }
 
-    int SceneAssetRegistry::GetPendingCount() const
+    int ModelAssetRegistry::GetPendingCount() const
     {
         int count = 0;
 
-        for (SceneAsset *asset : assets)
+        for (ModelAsset *asset : assets)
             if (asset && asset->NeedsPump())
                 ++count;
 
         return count;
     }
 
-    int SceneAssetRegistry::GetReadyCount() const
+    int ModelAssetRegistry::GetReadyCount() const
     {
         int count = 0;
 
-        for (SceneAsset *asset : assets)
+        for (ModelAsset *asset : assets)
             if (asset && asset->IsReady())
                 ++count;
 
         return count;
     }
 
-    int SceneAssetRegistry::GetFailedCount() const
+    int ModelAssetRegistry::GetFailedCount() const
     {
         int count = 0;
 
-        for (SceneAsset *asset : assets)
+        for (ModelAsset *asset : assets)
             if (asset && asset->HasFailed())
                 ++count;
 
         return count;
     }
 
-    int SceneAssetRegistry::GetChildTaskCount() const
+    int ModelAssetRegistry::GetChildTaskCount() const
     {
         int count = 0;
 
-        for (SceneAsset *asset : assets)
+        for (ModelAsset *asset : assets)
             if (asset)
                 count += asset->GetChildCount();
 
         return count;
     }
 
-    void SceneAssetRegistry::Clear()
+    void ModelAssetRegistry::Clear()
     {
-        for (SceneAsset *asset : assets)
+        for (ModelAsset *asset : assets)
             delete asset;
 
         assets.Clear();
@@ -319,19 +319,19 @@ namespace hgl::graph
 
     // ── 进程内默认句柄表 ──────────────────────────────────────────────────
 
-    void SetDefaultSceneAssetRegistry(SceneAssetRegistry *registry)
+    void SetDefaultModelAssetRegistry(ModelAssetRegistry *registry)
     {
-        g_default_scene_asset_registry = registry;
+        g_default_model_asset_registry = registry;
     }
 
-    SceneAssetRegistry *GetDefaultSceneAssetRegistry()
+    ModelAssetRegistry *GetDefaultModelAssetRegistry()
     {
-        return g_default_scene_asset_registry;
+        return g_default_model_asset_registry;
     }
 
-    SceneAsset *RequestSceneAsset(const AnsiString &uri)
+    ModelAsset *RequestModelAsset(const AnsiString &uri)
     {
-        SceneAssetRegistry *registry = g_default_scene_asset_registry;
+        ModelAssetRegistry *registry = g_default_model_asset_registry;
         if (!registry)
         {
             FLogError(u8"请求场景句柄失败：默认句柄表未登记（设备尚未初始化？）");

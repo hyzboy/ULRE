@@ -1,8 +1,8 @@
 #pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/graph/asset/SceneAsset.h>
-#include<hgl/graph/mesh/SceneStreaming.h>
+#include<hgl/graph/asset/ModelAsset.h>
+#include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/type/String.h>
@@ -26,8 +26,8 @@ namespace hgl::ecs
      * ## 为什么需要它
      *
      * 模型包是**一个**文件，但里面装着几何、材质、配方、纹理的引用。把它拆成
-     * 「谁先谁后」的活由阶段三的 `BuildSceneLoadPlan` 完成，把「谁在等谁」的记账
-     * 由 `SceneAsset` 句柄完成；本系统只负责**推动**：读盘、解析、逐帧结算，
+     * 「谁先谁后」的活由阶段三的 `BuildModelLoadPlan` 完成，把「谁在等谁」的记账
+     * 由 `ModelAsset` 句柄完成；本系统只负责**推动**：读盘、解析、逐帧结算，
      * 全部发生在主线程，任何一帧都不阻塞。
      *
      * ## 每帧三段（相位固定为 `ExecutionPhase::RenderPreBeginFrame`）
@@ -52,7 +52,7 @@ namespace hgl::ecs
      * 每帧统计 `PrimitiveAsset::IsGeometryReady()` 的真实结果再批量结算。
      * 计划单里的纹理/材质项只用于 `Stats` 诊断。
      *
-     * 两条收敛路径都必须显式 `CommitScene()`：`SettleAllChildren` 只记账，不推状态机 ——
+     * 两条收敛路径都必须显式 `CommitModel()`：`SettleAllChildren` 只记账，不推状态机 ——
      * 落了账却不提交，句柄会永远停在 `Assembling`。
      * 几何 `LoadFailed` 是终态（`GeometryStreamingSystem` 不重试），必须按**失败**落定，
      * 否则该图元永远等不到，场景同样卡在 `Assembling`。
@@ -94,12 +94,12 @@ namespace hgl::ecs
 
         BuildSettings settings;
 
-        /// 每个句柄一份在途状态。句柄本身归 `SceneAssetRegistry`，这里只借指针。
+        /// 每个句柄一份在途状态。句柄本身归 `ModelAssetRegistry`，这里只借指针。
         struct AssetStream
         {
-            graph::SceneAsset *asset = nullptr;
+            graph::ModelAsset *asset = nullptr;
 
-            graph::SceneStreamingRequest request;   ///<阶段 A：读盘 + 持字节
+            graph::ModelStreamingRequest request;   ///<阶段 A：读盘 + 持字节
 
             bool plan_built    = false;             ///<计划单已生成并登记到句柄
             bool content_built = false;             ///<解析产物已生成
@@ -114,14 +114,14 @@ namespace hgl::ecs
         void AcquireOneFrame();
         void Advance();
 
-        AssetStream *FindStream(const graph::SceneAsset *asset)const;
+        AssetStream *FindStream(const graph::ModelAsset *asset)const;
         AssetStream *FindStreamByRequest(uint64 request_id)const;
-        AssetStream *EnsureStream(graph::SceneAsset *asset);
+        AssetStream *EnsureStream(graph::ModelAsset *asset);
 
         /**
          * @brief 丢掉注册表里已经不存在的句柄。
          *
-         * `SceneAssetRegistry::Clear()` 会直接析构句柄，而本系统只借指针。
+         * `ModelAssetRegistry::Clear()` 会直接析构句柄，而本系统只借指针。
          * 不清理的话下一帧就会拿悬垂指针去查状态 —— 这种崩溃离出事点很远，
          * 极难定位，所以每帧开头先对一遍表。
          */
@@ -131,7 +131,7 @@ namespace hgl::ecs
         bool AdvanceOne(AssetStream *stream);
 
         /// 解析产物里有多少图元、其中几何已就绪多少、永久失败多少
-        void CountPrimitives(const graph::SceneAssetContent &content,
+        void CountPrimitives(const graph::ModelAssetContent &content,
                              int &total, int &ready, int &failed)const;
 
     public:

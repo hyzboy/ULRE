@@ -12,8 +12,8 @@
 #include <cmath>
 #include <cstring>
 
-DEFINE_LOGGER_MODULE(SceneAsset)
-USE_MODULE_LOGGER(SceneAsset)
+DEFINE_LOGGER_MODULE(ModelAsset)
+USE_MODULE_LOGGER(ModelAsset)
 
 
 namespace hgl::graph
@@ -31,7 +31,7 @@ namespace hgl::graph
         if (filename.EndsWithIgnoreCase(OS_TEXT(".scene.fb")))
             return LoadSceneSpecFromFlatBuffers(filename, out_spec);
 
-        MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFile: unsupported scene file extension in ")
+        MLogError(ModelAsset, OS_TEXT("LoadSceneSpecFromFile: unsupported scene file extension in ")
                   + filename);
         return false;
     }
@@ -42,7 +42,7 @@ namespace hgl::graph
         hgl::io::OpenFileInputStream opener(filename);
         if (!opener)
         {
-            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromTOML: cannot open file ")
+            MLogError(ModelAsset, OS_TEXT("LoadSceneSpecFromTOML: cannot open file ")
                       + filename);
             return false;
         }
@@ -50,7 +50,7 @@ namespace hgl::graph
         const int64 size = opener->GetSize();
         if (size <= 0 || size > 16 * 1024 * 1024)
         {
-            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromTOML: invalid file size in ")
+            MLogError(ModelAsset, OS_TEXT("LoadSceneSpecFromTOML: invalid file size in ")
                       + filename);
             return false;
         }
@@ -58,7 +58,7 @@ namespace hgl::graph
         hgl::AutoDeleteArray<char> buffer(static_cast<size_t>(size) + 1);
         if (!buffer || opener->Read(buffer.data(), size) != size)
         {
-            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromTOML: read failed in ")
+            MLogError(ModelAsset, OS_TEXT("LoadSceneSpecFromTOML: read failed in ")
                       + filename);
             return false;
         }
@@ -74,7 +74,7 @@ namespace hgl::graph
         hgl::io::OpenFileInputStream opener(filename);
         if (!opener)
         {
-            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: cannot open file ")
+            MLogError(ModelAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: cannot open file ")
                       + filename);
             return false;
         }
@@ -82,7 +82,7 @@ namespace hgl::graph
         const int64 size = opener->GetSize();
         if (size <= 0 || size > 64 * 1024 * 1024)
         {
-            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: invalid file size in ")
+            MLogError(ModelAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: invalid file size in ")
                       + filename);
             return false;
         }
@@ -90,7 +90,7 @@ namespace hgl::graph
         hgl::AutoDeleteArray<uint8> buffer(static_cast<size_t>(size));
         if (!buffer || opener->Read(buffer.data(), size) != size)
         {
-            MLogError(SceneAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: read failed in ")
+            MLogError(ModelAsset, OS_TEXT("LoadSceneSpecFromFlatBuffers: read failed in ")
                       + filename);
             return false;
         }
@@ -104,7 +104,7 @@ namespace hgl::graph
     {
         if (spec.schema != 1 || spec.name.Length() == 0)
         {
-            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene specification"));
+            MLogError(ModelAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene specification"));
             return false;
         }
 
@@ -112,14 +112,14 @@ namespace hgl::graph
         // 从表里取值做校验，等于让「能否落盘」依赖 TOML 编码器；现在这条依赖没有了。
         if (!ValidateRelationships(spec))
         {
-            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene relationships"));
+            MLogError(ModelAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: invalid scene relationships"));
             return false;
         }
 
         hgl::ValueArray<uint8> buffer;
         if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(buffer, spec))
         {
-            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: serialization failed"));
+            MLogError(ModelAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: serialization failed"));
             return false;
         }
 
@@ -127,7 +127,7 @@ namespace hgl::graph
             hgl::io::CreateFileOutputStream(filename));
         if (!output)
         {
-            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: cannot create file ")
+            MLogError(ModelAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: cannot create file ")
                       + filename);
             return false;
         }
@@ -135,7 +135,7 @@ namespace hgl::graph
         if (output->Write(buffer.GetData(), buffer.GetCount())
             != static_cast<int64>(buffer.GetCount()))
         {
-            MLogError(SceneAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: write failed in ")
+            MLogError(ModelAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: write failed in ")
                       + filename);
             return false;
         }
@@ -150,14 +150,14 @@ namespace hgl::graph
     {
         if (!data || size == 0 || size > 64 * 1024 * 1024)
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: invalid buffer in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: invalid buffer in ")
                       + OSString(debug_name));
             return false;
         }
 
         if (!hgl::serialize::fb::VerifyBuffer<SceneSpec>(data, size))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: verification failed in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: verification failed in ")
                       + OSString(debug_name));
             return false;
         }
@@ -168,21 +168,21 @@ namespace hgl::graph
         if (!hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(
                 static_cast<const uint8_t *>(data), size, out_spec))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: decode failed in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: decode failed in ")
                       + OSString(debug_name));
             return false;
         }
 
         if (out_spec.schema != 1 || out_spec.name.Length() == 0)
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: invalid schema or name in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: invalid schema or name in ")
                       + OSString(debug_name));
             return false;
         }
 
         if (!ValidateRelationships(out_spec))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: semantic validation failed in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: semantic validation failed in ")
                       + OSString(debug_name));
             return false;
         }
@@ -551,13 +551,13 @@ namespace hgl::graph
 
         if (!content || size == 0)
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: empty content in ") + OSString(debug_name));
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: empty content in ") + OSString(debug_name));
             return false;
         }
 
         if (size > 0x7FFFFFFFu || std::memchr(content, '\0', size))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid content size or embedded null in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: invalid content size or embedded null in ")
                       + OSString(debug_name));
             return false;
         }
@@ -567,7 +567,7 @@ namespace hgl::graph
 
         if (!hgl::serialize::FromTomlText(content, size, root, &toml_error))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: TOML parse error in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: TOML parse error in ")
                       + OSString(debug_name) + OS_TEXT(": ")
                       + ToOSString(toml_error.Format().c_str()));
             return false;
@@ -575,7 +575,7 @@ namespace hgl::graph
 
         if (!root.IsTable())
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: root is not a table in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: root is not a table in ")
                       + OSString(debug_name));
             return false;
         }
@@ -587,7 +587,7 @@ namespace hgl::graph
 
             if (!schema_node || !schema_node->GetInt(schema_value) || schema_value != 1)
             {
-                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: unsupported schema in ")
+                MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: unsupported schema in ")
                           + OSString(debug_name));
                 return false;
             }
@@ -599,7 +599,7 @@ namespace hgl::graph
 
             if (!nodes_node || !nodes_node->IsArray())
             {
-                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: missing 'nodes' array in ")
+                MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: missing 'nodes' array in ")
                           + OSString(debug_name));
                 return false;
             }
@@ -611,7 +611,7 @@ namespace hgl::graph
 
             if (materials_node && !materials_node->IsArray())
             {
-                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: materials must be an array in ")
+                MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: materials must be an array in ")
                           + OSString(debug_name));
                 return false;
             }
@@ -621,7 +621,7 @@ namespace hgl::graph
         // 并不存在，展开成数组之后键校验看到的才是 `name` / `uri` / `required`。
         if (!NormalizeTextureTables(root))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid material textures table in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: invalid material textures table in ")
                       + OSString(debug_name));
             return false;
         }
@@ -638,13 +638,13 @@ namespace hgl::graph
             {
                 if (bad_path.IsEmpty())
                 {
-                    MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: unknown key '")
+                    MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: unknown key '")
                               + ToOSString(bad_key.c_str()) + OS_TEXT("' in ")
                               + OSString(debug_name));
                 }
                 else
                 {
-                    MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: unknown key '")
+                    MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: unknown key '")
                               + ToOSString(bad_key.c_str()) + OS_TEXT("' at '")
                               + ToOSString(bad_path.c_str()) + OS_TEXT("' in ")
                               + OSString(debug_name));
@@ -660,7 +660,7 @@ namespace hgl::graph
 
             if (!hgl::serialize::ReadFromValue(root, out_spec, &archive))
             {
-                MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: field '")
+                MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: field '")
                           + ToOSString(archive.FailedPath()) + OS_TEXT("' is invalid (")
                           + ToOSString(archive.ErrorMessage()) + OS_TEXT(") in ")
                           + OSString(debug_name));
@@ -670,7 +670,7 @@ namespace hgl::graph
 
         if (out_spec.name.IsEmpty())
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: missing 'name' in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: missing 'name' in ")
                       + OSString(debug_name));
             return false;
         }
@@ -684,14 +684,14 @@ namespace hgl::graph
         // 以下全是**跨字段策略**，不属于「字段规约」，因此留在解析层。
         if (!ValidateMaterialTables(root, out_spec))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid material table in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: invalid material table in ")
                       + OSString(debug_name));
             return false;
         }
 
         if (!ValidateRelationships(out_spec))
         {
-            MLogError(SceneAsset, OS_TEXT("ParseSceneSpec: invalid material/node reference, type, or transform in ")
+            MLogError(ModelAsset, OS_TEXT("ParseSceneSpec: invalid material/node reference, type, or transform in ")
                       + OSString(debug_name));
             return false;
         }

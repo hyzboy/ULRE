@@ -154,7 +154,7 @@ namespace
 
         // 完全未注册任何类型
         AssetLoadStatus status = AssetLoadStatus::ParseFailed;
-        AssetObjectPtr obj = f.Create(OS_TEXT("scene:file:level.scene.toml"),
+        AssetObjectPtr obj = f.Create(OS_TEXT("model:file:level.scene.toml"),
                                       AssetLoadOptions(), &status);
 
         Check(obj, "未注册类型应降级出对象");
@@ -168,9 +168,9 @@ namespace
         if (generic)
         {
             Check(generic->IsFallback(), "IsFallback 应为 true");
-            Check(generic->GetURI().type == AssetType::Scene, "URI 类型应解析为 Scene");
+            Check(generic->GetURI().type == AssetType::Model, "URI 类型应解析为 Scene");
             Check(generic->GetURI().source == AssetSourceKind::File, "URI 来源应解析为 File");
-            Check(Narrow(generic->GetURI().raw) == AnsiString("scene:file:level.scene.toml"),
+            Check(Narrow(generic->GetURI().raw) == AnsiString("model:file:level.scene.toml"),
                   "降级对象应保留原始 URI");
         }
 

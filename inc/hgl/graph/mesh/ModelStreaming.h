@@ -16,7 +16,7 @@ namespace hgl::graph
     class VulkanDevice;
     class GeometryManager;
     class GeometryVertexFormat;
-    enum class SceneStreamingState : uint8
+    enum class ModelStreamingState : uint8
     {
         Idle = 0,       ///<尚未发起
         Loading,        ///<后台读盘在途
@@ -26,9 +26,9 @@ namespace hgl::graph
     };
 
     /**
-     * 异步场景加载请求 —— 把 `.scene` 包的**读盘**搬到后台 IO 线程。
+     * 异步场景加载请求 —— 把 `.model` 包的**读盘**搬到后台 IO 线程。
      *
-     * 为什么只搬读盘：`.scene` 里的几何体会在解析期建 GPU buffer，那必须留在主线程。
+     * 为什么只搬读盘：`.model` 里的几何体会在解析期建 GPU buffer，那必须留在主线程。
      * 但读盘本身（动辄几十 MB 的包）不该卡住主线程，因此拆成两段：
      *
      * ```
@@ -44,7 +44,7 @@ namespace hgl::graph
      * 生命周期：本对象必须比它的读盘请求活得久（`LoadedFileManager` 只持裸指针）。
      * 典型用法是把它作为 App 的成员，`Build()` 之后也保留到退出。
      */
-    class SceneStreamingRequest final : public hgl::LoadedFileHandler
+    class ModelStreamingRequest final : public hgl::LoadedFileHandler
     {
     private:
 
@@ -52,7 +52,7 @@ namespace hgl::graph
 
         OSString        pack_path;
         FileLoadId      request_id = 0;
-        SceneStreamingState state = SceneStreamingState::Idle;
+        ModelStreamingState state = ModelStreamingState::Idle;
 
         /// 读盘完成后由回调填入（自有缓冲：`LoadedFile` 只在回调期间有效）。
         void *          pack_bytes = nullptr;
@@ -64,11 +64,11 @@ namespace hgl::graph
 
     public:
 
-        SceneStreamingRequest()=default;
-        ~SceneStreamingRequest() override;
+        ModelStreamingRequest()=default;
+        ~ModelStreamingRequest() override;
 
-        SceneStreamingRequest(const SceneStreamingRequest &)=delete;
-        SceneStreamingRequest &operator=(const SceneStreamingRequest &)=delete;
+        ModelStreamingRequest(const ModelStreamingRequest &)=delete;
+        ModelStreamingRequest &operator=(const ModelStreamingRequest &)=delete;
 
     public:
 
@@ -96,11 +96,11 @@ namespace hgl::graph
 
     public:     // 观察
 
-        SceneStreamingState GetState()const{return state;}
-        bool IsLoading()const{return state==SceneStreamingState::Loading;}
-        bool IsReady()const{return state==SceneStreamingState::Ready;}
-        bool HasFailed()const{return state==SceneStreamingState::Failed;}
-        bool IsFinished()const{return state==SceneStreamingState::Built;}
+        ModelStreamingState GetState()const{return state;}
+        bool IsLoading()const{return state==ModelStreamingState::Loading;}
+        bool IsReady()const{return state==ModelStreamingState::Ready;}
+        bool HasFailed()const{return state==ModelStreamingState::Failed;}
+        bool IsFinished()const{return state==ModelStreamingState::Built;}
 
         const OSString &GetPackPath()const{return pack_path;}
 
@@ -112,7 +112,7 @@ namespace hgl::graph
         /**
          * @brief 主线程解析已就绪的字节，得到图元资产与场景节点树。
          *
-         * 与同步入口 `LoadStaticMeshSceneAsPrimitiveAssets` 走同一段解析代码。
+         * 与同步入口 `LoadModelAsPrimitiveAssets` 走同一段解析代码。
          * 成功返回 true 并置状态为 `Built`（字节随之释放）。
          *
          * @param base_dir 模型包内几何文件的基准目录（通常是包的父目录）
@@ -135,5 +135,5 @@ namespace hgl::graph
         void OnFileLoaded   (const FileLoadTicket &ticket,LoadedFile *file) override;
         void OnFileFailed   (const FileLoadTicket &ticket,io::AsyncFileLoadError error) override;
         void OnFileCancelled(const FileLoadTicket &ticket) override;
-    };//class SceneStreamingRequest
+    };//class ModelStreamingRequest
 }//namespace hgl::graph

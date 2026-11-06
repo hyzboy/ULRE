@@ -43,7 +43,7 @@ namespace hgl::graph
         MaterialRecipe,     ///< `.recipe.toml` 配方
         Texture,            ///< `.Tex2D` / `.TexCube` / `.TexOct` / `texarray:` → TextureStreamingSystem
         MaterialData,       ///< `.material_data.toml` 数据块
-        Scene,              ///< `.scene` 场景（嵌套场景时作为边出现）
+        Model,              ///< `.model` 模型包（嵌套模型时作为边出现）
         Primitive,          ///< `.prim` 图元
         Environment,        ///< `.env` 环境配置
     };

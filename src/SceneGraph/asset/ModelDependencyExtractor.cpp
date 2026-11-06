@@ -1,4 +1,4 @@
-#include <hgl/graph/asset/SceneDependencyExtractor.h>
+#include <hgl/graph/asset/ModelDependencyExtractor.h>
 
 #include <hgl/graph/mesh/ModelPackFormat.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -48,7 +48,7 @@ namespace hgl::graph
                 case AssetType::Texture:         return AssetDepKind::Texture;
                 case AssetType::MaterialRecipe:  return AssetDepKind::MaterialRecipe;
                 case AssetType::MaterialData:    return AssetDepKind::MaterialData;
-                case AssetType::Scene:           return AssetDepKind::Scene;
+                case AssetType::Model:           return AssetDepKind::Model;
                 case AssetType::Primitive:       return AssetDepKind::Primitive;
                 case AssetType::Environment:     return AssetDepKind::Environment;
                 default:                         return AssetDepKind::Material;
@@ -116,13 +116,13 @@ namespace hgl::graph
         }
     }//anonymous namespace
 
-    bool ExtractSceneDependencies(const void *pack_header_raw, uint32_t header_len,
+    bool ExtractModelDependencies(const void *pack_header_raw, uint32_t header_len,
                                   const void *payload_raw,    uint32_t payload_len,
                                   const AnsiString &base_dir,
                                   const AnsiString &scene_ref,
                                   AssetLoadGraph &graph,
                                   int *out_edge_count,
-                                  ManagedArray<SceneMaterialEntry> *out_materials,
+                                  ManagedArray<ModelMaterialEntry> *out_materials,
                                   int *out_embedded_geometry)
     {
         if(out_edge_count)
@@ -197,7 +197,7 @@ namespace hgl::graph
                     {
                         // `ManagedArray` 持有并拥有 `T*`，因此必须走 `Create()` 而不是
                         // 栈上构造 —— `Add` 只接受指针。
-                        SceneMaterialEntry *entry = out_materials->Create();
+                        ModelMaterialEntry *entry = out_materials->Create();
 
                         entry->name = MaterialNameFromPackFile(file);
 
@@ -274,7 +274,7 @@ namespace hgl::graph
 
         AssetDepKey root;
 
-        if(!NormalizeAssetRef(scene_ref, AssetType::Scene, root))
+        if(!NormalizeAssetRef(scene_ref, AssetType::Model, root))
         {
             FLogError(u8"提取场景依赖失败：场景引用无法规范化 %s", scene_ref.c_str());
             return false;

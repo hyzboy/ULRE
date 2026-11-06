@@ -4,7 +4,7 @@
 //
 // 引擎里有两种「场景」，彼此不共享任何格式，也不共享加载路径：
 //
-// | | 本文件的 `SceneSpecAsset` | `SceneAsset`（`SceneAsset.h`） |
+// | | 本文件的 `SceneSpecAsset` | `ModelAsset`（`ModelAsset.h`） |
 // |---|---|---|
 // | 数据来源 | 手写/生成的 `SceneSpec`（TOML 或 FlatBuffers） | MDL2 二进制模型包（`.scene` MiniPack） |
 // | 内容 | 节点名 + 材质参数 + 按名字引用几何/配方 | 顶点/索引/TRS 全在包里，几何可内嵌 |
