@@ -43,24 +43,26 @@ NTBSpace GetNTB(NTBInput ntb_input)
         return BuildOrthoNTB(ntb.N);
     }
 
-    // ── 余切标架：T 沿 +U、B 沿 +V，与贴图切线空间严格对齐 ────────────
-    const vec3 pos_dx = dFdx(si.worldPos);
-    const vec3 pos_dy = dFdy(si.worldPos);
-    const vec2 tex_dx = dFdx(si.uv0);
-    const vec2 tex_dy = dFdy(si.uv0);
+    // ── Christian Schüler 余切标架 ─────────────────────────────────
+    const vec3 dp1 = dFdx(si.worldPos);
+    const vec3 dp2 = dFdy(si.worldPos);
+    const vec2 duv1 = dFdx(si.uv0);
+    const vec2 duv2 = dFdy(si.uv0);
 
-    vec3 T = pos_dx * tex_dy.y - pos_dy * tex_dx.y;
-    T -= ntb.N * dot(ntb.N, T); // Gram-Schmidt：抹掉法线方向上的分量
+    const vec3 dp2perp = cross(dp2, ntb.N);
+    const vec3 dp1perp = cross(ntb.N, dp1);
+    const vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+    const vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
 
-    if (dot(T, T) < 1e-12)
+    const float max_len_sq = max(dot(T, T), dot(B, B));
+    if (max_len_sq < 1e-12)
     {
-        // UV 退化（零面积三角形 / 常量 UV / 贴图被压成一条线）：导数为零，
-        // normalize 会产出 NaN 并顺着光照链路污染整帧。退回任意正交基。
         return BuildOrthoNTB(ntb.N);
     }
 
-    ntb.T = normalize(T);
-    ntb.B = cross(ntb.N, ntb.T); // 右手系，且已单位化
+    const float invmax = inversesqrt(max_len_sq);
+    ntb.T = T * invmax;
+    ntb.B = B * invmax;
 
     const vec4 normal_sample =
         Sample2DArray(
@@ -70,7 +72,7 @@ NTBSpace GetNTB(NTBInput ntb_input)
             float(normalTexture.y));
 
     vec3 nm = normal_sample.xyz * 2.0 - 1.0;
-    nm.y = -nm.y; // GLSL/Vulkan Green Channel 翻转
+    nm.y = -nm.y; // GLSL/Vulkan Green Channel 翻转 (glTF OpenGL 规范: +Y 对应 -V)
 
 #if defined(MTL_TEX_NORMAL_CHANNELS) && (MTL_TEX_NORMAL_CHANNELS == 2)
     // 双通道法线(BC5)：只存 XY，Z 用球面公式还原（与 UE/Unity 的 BC5 法线一致）。
@@ -83,8 +85,6 @@ NTBSpace GetNTB(NTBInput ntb_input)
         normalize(vec3(nm.xy * ntb_input.normalScale, nm.z));
 #endif
 
-    // 只替换法线；T/B 保持 UV 对齐的几何标架（旧实现此处用世界轴重建 T/B，
-    // 等于把切线空间刚退掉，故不再重正交化）。
     ntb.N = normalize(mat3(ntb.T, ntb.B, ntb.N) * tangentNormal);
     return ntb;
 }

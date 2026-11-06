@@ -21,6 +21,10 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextu
     uvec2 tex_opacity_mask;
 };
 
+#ifndef MTL_TEX_NORMAL_CHANNELS
+#define MTL_TEX_NORMAL_CHANNELS 2
+#endif
+
 #define MTL_TEX_FOLIAGE(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(48))
 
 #ifndef MTL_TEX

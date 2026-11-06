@@ -239,6 +239,16 @@ def generate_glsl_binding(d: DomainSlotsDef) -> str:
             lines.append(f"    uvec2 tex_{s.name};")
         lines.append("};")
         lines.append("")
+        has_channel_macro = False
+        for s in d.slots:
+            if s.channels > 0:
+                slot_upper = s.name.upper()
+                lines.append(f"#ifndef MTL_TEX_{slot_upper}_CHANNELS")
+                lines.append(f"#define MTL_TEX_{slot_upper}_CHANNELS {s.channels}")
+                lines.append(f"#endif")
+                has_channel_macro = True
+        if has_channel_macro:
+            lines.append("")
         lines.append(
             f"#define MTL_TEX_{upper_snake}(i) MaterialTextureReferencesRef("
             f"pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t({d.row_stride}))"

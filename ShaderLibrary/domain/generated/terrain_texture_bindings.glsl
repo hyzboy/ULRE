@@ -19,6 +19,10 @@ layout(buffer_reference, scalar, buffer_reference_align=16) buffer MaterialTextu
     uvec2 tex_normal;
 };
 
+#ifndef MTL_TEX_NORMAL_CHANNELS
+#define MTL_TEX_NORMAL_CHANNELS 2
+#endif
+
 #define MTL_TEX_TERRAIN(i) MaterialTextureReferencesRef(pc_root.addr_texture_references + uint64_t(MaterialInstanceAddressesRef(pc_root.addr_mtl_data_addrs).values[(i)].texture_reference_index) * uint64_t(32))
 
 #ifndef MTL_TEX
