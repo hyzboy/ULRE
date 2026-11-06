@@ -858,8 +858,6 @@ namespace hgl::ecs
                     // 不再让整条材质链失败 —— 该槽位保持 bindless 句柄 0，由 GLSL 侧
                     // `SampleOptional()` / `if (handle == 0u)` 的 fallback 兜底（白基色、未扰动法线）。
                     // 否则一个坏文件就会让整个图元永远进不了收集（静默消失）。
-                    // 仍在途（MetaOnly/Loading）的仍按原语义硬失败：那种情况说明 CanRender
-                    // 门禁与收集判定脱节，报出来比画错/画白更容易定位。
                     if (binding_asset
                      && resource_texture == nullptr
                      && binding_asset->GetPayloadState() == hgl::PayloadState::LoadFailed)
@@ -873,12 +871,34 @@ namespace hgl::ecs
                         continue;
                     }
 
+                    // **仍在途**（`MetaOnly` / `Loading`）：流送通路的正常时序 —— 图元先入世界、
+                    // 纹理后到。这时本帧只是"还不该画"，不是错误（`CanRender` 下一次就放行）。
+                    // 降为 Debug：否则渐进装配期间每个图元每段代际刷两条红的，
+                    // 真错误会被埋掉。
+                    if (binding_asset && resource_texture == nullptr)
+                    {
+                        const hgl::PayloadState state =
+                            binding_asset->GetPayloadState();
+                        if (state == hgl::PayloadState::MetaOnly
+                         || state == hgl::PayloadState::Loading)
+                        {
+                            GLogDebug(
+                                "[DeferredResource] Texture still streaming, primitive waits: owner=%s texture=%s",
+                                owner_name,
+                                binding.texture_name.c_str());
+                            return false;
+                        }
+                    }
+
                     GLogError(
-                        "[DeferredResource] Texture acquisition failed: owner=%s texture=%s binding=%d resource=%d bindless=%d",
+                        "[DeferredResource] Texture acquisition failed: owner=%s texture=%s required=%d override=%d state=%d bindless=%d",
                         owner_name,
                         binding.texture_name.c_str(),
-                        1,
-                        binding_asset ? 1 : 0,
+                        binding.required ? 1 : 0,
+                        resource ? 1 : 0,
+                        binding_asset
+                            ? static_cast<int>(binding_asset->GetPayloadState())
+                            : -1,
                         bindless_mgr ? 1 : 0);
                     return false;
                 }
@@ -2447,7 +2467,10 @@ namespace hgl::ecs
                                 : graph::mtl::MaterialRecipe{});
                     if (!resources_ready)
                     {
-                        GLogWarning(
+                        // 失败原因已由 `PrepareActivePlanResources` 内部按性质分级报过
+                        // （永久失败=Warning 且已降级、仍在途=Debug、真错误=Error），
+                        // 这里只留 Debug 级别的链路节点，避免同一件事报两遍把日志刷满。
+                        GLogDebug(
                             "[RenderPrimitiveCollectSystem] Material resources failed for %s program=%s",
                             GetOwnerName(geometryComp->GetOwner()),
                             forward_program
