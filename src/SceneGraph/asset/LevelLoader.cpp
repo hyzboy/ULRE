@@ -1,6 +1,8 @@
 #include <hgl/graph/asset/LevelLoader.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
+#include <hgl/graph/mesh/LoadStaticMesh.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/pipeline/RenderableBuilder.h>
 #include <hgl/graph/asset/GeometryPreset.h>
@@ -51,6 +53,36 @@ namespace hgl::graph
         {
             const char *text = value.c_str();
             return text && std::strncmp(text, prefix, std::strlen(prefix)) == 0;
+        }
+
+        struct NodeTRS
+        {
+            glm::vec3 position{0.0f, 0.0f, 0.0f};
+            glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
+            glm::vec3 scale{1.0f, 1.0f, 1.0f};
+            ecs::Mobility mobility = ecs::Mobility::Static;
+        };
+
+        NodeTRS MakeNodeTRS(const LevelNodeSpec &node_spec)
+        {
+            NodeTRS trs;
+            trs.mobility = hgl::stricmp(node_spec.mobility.c_str(), "static") == 0
+                ? ecs::Mobility::Static
+                : ecs::Mobility::Movable;
+            if (node_spec.transform.rotation_angle_deg != 0.0f)
+            {
+                const math::Vector3f &axis = node_spec.transform.rotation_axis;
+                const glm::vec3 normalized_axis = glm::normalize(glm::vec3(axis.x, axis.y, axis.z));
+                trs.rotation = glm::angleAxis(glm::radians(node_spec.transform.rotation_angle_deg),
+                                              normalized_axis);
+            }
+            trs.position = glm::vec3(node_spec.transform.position.x,
+                                     node_spec.transform.position.y,
+                                     node_spec.transform.position.z);
+            trs.scale = glm::vec3(node_spec.transform.scale.x,
+                                  node_spec.transform.scale.y,
+                                  node_spec.transform.scale.z);
+            return trs;
         }
 
         bool CreateMaterial(const LevelMaterialSpec &spec,
@@ -219,6 +251,60 @@ namespace hgl::graph
         out_instance.world = world;
         out_instance.geometry_manager = geometry_manager;
 
+        // geometry / model 节点共用的材质绑定：把 [materials] 的 SSBO 行与纹理写进
+        // runtime->recipe。node.material 为空时直接成功并保持 out_bound=false。
+        auto bind_material = [&](const LevelNodeSpec &node_spec,
+                                 LevelInstance::RuntimeNode *runtime,
+                                 bool &out_bound) -> bool
+        {
+            out_bound = false;
+            if (node_spec.material.IsEmpty())
+                return true;
+
+            const LevelInstance::RuntimeMaterial *material =
+                FindMaterial(out_instance, node_spec.material);
+            if (!material)
+            {
+                MLogError(LevelLoader, "Instantiate: node references an unknown scene material");
+                return false;
+            }
+
+            if (!material->accessor.GetGlobalSSBOBinding().IsValid())
+            {
+                MLogError(LevelLoader, "Instantiate: scene material has no valid SSBO row");
+                return false;
+            }
+
+            runtime->recipe.material_ssbo_binding =
+                material->accessor.GetGlobalSSBOBinding();
+
+            TextureManager *texture_manager = gc->GetTextureManager();
+            for (int texture_index = 0;
+                 texture_index < material->textures.GetCount();
+                 ++texture_index)
+            {
+                const LevelTextureSpec &texture = *material->textures[texture_index];
+                OSString texture_uri = texture.uri;
+                if (texture_uri.StartsWithIgnoreCase(OS_TEXT("tex:")))
+                    texture_uri = OSString(texture_uri.c_str() + 4);
+                texture_uri = ResolveLevelPath(level_filename, texture_uri);
+                TextureAsset *asset =
+                    texture_manager
+                        ? texture_manager->CreateTextureAsset(texture_uri, true)
+                        : nullptr;
+                if (!asset
+                    || !runtime->recipe.AddTexture(
+                        texture.name.c_str(), asset, texture.required))
+                {
+                    MLogError(LevelLoader, "Instantiate: scene texture could not be added to recipe");
+                    return false;
+                }
+            }
+
+            out_bound = true;
+            return true;
+        };
+
         for (int i = 0; i < spec.materials.GetCount(); ++i)
         {
             auto *runtime = out_instance.materials.Create();
@@ -236,6 +322,7 @@ namespace hgl::graph
             const bool uses_preset = HasPrefix(node_spec.geometry, "presets:");
             const bool uses_geometry_asset = HasPrefix(node_spec.geometry, "geo:");
             const bool uses_primitive_asset = HasPrefix(node_spec.geometry, "primitive:");
+            const bool uses_model = !node_spec.model.IsEmpty();
             const mtl::MaterialRecipe *recipe = nullptr;
             if (!uses_primitive_asset)
                 recipe = gc->FindOrLoadMaterialRecipe(node_spec.recipe.c_str());
@@ -257,6 +344,80 @@ namespace hgl::graph
             runtime->name = node_spec.name;
             if (recipe)
                 runtime->recipe = *recipe;
+
+            if (uses_model)
+            {
+                bool material_bound = false;
+                if (!bind_material(node_spec, runtime, material_bound))
+                {
+                    out_instance.Release();
+                    return false;
+                }
+
+                const NodeTRS trs = MakeNodeTRS(node_spec);
+                const OSString pack_path = ResolveLevelPath(
+                    level_filename, ToOSString(node_spec.model));
+                const OSString base_dir =
+                    hgl::filesystem::Path(pack_path).GetParent().ToOSString();
+
+                std::vector<PrimitiveAsset> model_assets;
+                std::vector<StaticMeshNode> model_nodes;
+                std::vector<int32_t>        model_roots;
+                if (!LoadModelAsPrimitiveAssets(
+                        gc->GetDevice(), geometry_manager,
+                        GetStandardGeometryVertexFormat(), &runtime->recipe,
+                        pack_path, base_dir, model_assets, model_nodes, model_roots))
+                {
+                    MLogError(LevelLoader, "Instantiate: .model pack could not be loaded");
+                    out_instance.Release();
+                    return false;
+                }
+
+                StaticMeshModelInstance::Options options;
+                options.mobility = trs.mobility;
+                if (material_bound)
+                {
+                    options.material_rows = &runtime->recipe.material_ssbo_binding;
+                    options.material_row_count = 1;
+                }
+                if (!runtime->model_instance.Instantiate(
+                        world, model_assets, model_nodes, model_roots, options))
+                {
+                    MLogError(LevelLoader, "Instantiate: model instance could not be created");
+                    out_instance.Release();
+                    return false;
+                }
+
+                // wrapper 实体承载 level 里给节点的 TRS；pack 内部根节点保留自身
+                // 局部变换，只把父级挂到 wrapper 上。可见性沿祖先链级联。
+                ecs::RenderableBuilder builder(world, node_spec.name.c_str());
+                builder.WithTransform(trs.position, trs.rotation, trs.scale, trs.mobility);
+                ecs::Entity *entity = builder.Build();
+                if (!entity)
+                {
+                    MLogError(LevelLoader, "Instantiate: model wrapper entity creation failed");
+                    out_instance.Release();
+                    return false;
+                }
+
+                runtime->entity_id = entity->GetEntityID();
+                ecs::TransformAccessor wrapper_transform =
+                    world->GetTransformByEntity(runtime->entity_id);
+                if (wrapper_transform.IsValid())
+                {
+                    for (size_t root_index = 0; root_index < model_roots.size(); ++root_index)
+                    {
+                        ecs::TransformAccessor root_transform =
+                            world->GetTransformByEntity(
+                                runtime->model_instance.GetNodeEntity(model_roots[root_index]));
+                        if (root_transform.IsValid())
+                            root_transform.SetParent(wrapper_transform.GetID());
+                    }
+                }
+
+                world->SetEntityVisible(runtime->entity_id, node_spec.visible);
+                continue;
+            }
 
             if (uses_preset)
             {
@@ -295,77 +456,18 @@ namespace hgl::graph
             }
 
             ecs::RenderableBuilder builder(world, node_spec.name.c_str());
-            const ecs::Mobility mobility =
-                hgl::stricmp(node_spec.mobility.c_str(), "static") == 0
-                    ? ecs::Mobility::Static
-                    : ecs::Mobility::Movable;
-
-            glm::quat rotation(1.0f, 0.0f, 0.0f, 0.0f);
-            if (node_spec.transform.rotation_angle_deg != 0.0f)
-            {
-                const math::Vector3f &axis = node_spec.transform.rotation_axis;
-                const glm::vec3 normalized_axis = glm::normalize(glm::vec3(axis.x, axis.y, axis.z));
-                rotation = glm::angleAxis(glm::radians(node_spec.transform.rotation_angle_deg),
-                                          normalized_axis);
-            }
-
+            const NodeTRS trs = MakeNodeTRS(node_spec);
             builder.WithTransform(
-                glm::vec3(node_spec.transform.position.x,
-                          node_spec.transform.position.y,
-                          node_spec.transform.position.z),
-                rotation,
-                glm::vec3(node_spec.transform.scale.x,
-                          node_spec.transform.scale.y,
-                          node_spec.transform.scale.z),
-                mobility);
+                trs.position, trs.rotation, trs.scale, trs.mobility);
 
-            if (!node_spec.material.IsEmpty())
+            bool material_bound = false;
+            if (!bind_material(node_spec, runtime, material_bound))
             {
-                const LevelInstance::RuntimeMaterial *material =
-                    FindMaterial(out_instance, node_spec.material);
-                if (!material)
-                {
-                    MLogError(LevelLoader, "Instantiate: node references an unknown scene material");
-                    out_instance.Release();
-                    return false;
-                }
-
-                if (!material->accessor.GetGlobalSSBOBinding().IsValid())
-                {
-                    MLogError(LevelLoader, "Instantiate: scene material has no valid SSBO row");
-                    out_instance.Release();
-                    return false;
-                }
-
-                runtime->recipe.material_ssbo_binding =
-                    material->accessor.GetGlobalSSBOBinding();
-
-                TextureManager *texture_manager = gc->GetTextureManager();
-                for (int texture_index = 0;
-                     texture_index < material->textures.GetCount();
-                     ++texture_index)
-                {
-                    const LevelTextureSpec &texture = *material->textures[texture_index];
-                    OSString texture_uri = texture.uri;
-                    if (texture_uri.StartsWithIgnoreCase(OS_TEXT("tex:")))
-                        texture_uri = OSString(texture_uri.c_str() + 4);
-                    texture_uri = ResolveLevelPath(level_filename, texture_uri);
-                    TextureAsset *asset =
-                        texture_manager
-                            ? texture_manager->CreateTextureAsset(texture_uri, true)
-                            : nullptr;
-                    if (!asset
-                        || !runtime->recipe.AddTexture(
-                            texture.name.c_str(), asset, texture.required))
-                    {
-                        MLogError(LevelLoader, "Instantiate: scene texture could not be added to recipe");
-                        out_instance.Release();
-                        return false;
-                    }
-                }
-
-                builder.WithMaterialDataResource(material->accessor.GetGlobalSSBOBinding());
+                out_instance.Release();
+                return false;
             }
+            if (material_bound)
+                builder.WithMaterialDataResource(runtime->recipe.material_ssbo_binding);
 
             if (uses_primitive_asset)
             {

@@ -4,6 +4,7 @@
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/asset/GeometryAsset.h>
 #include <hgl/graph/asset/LevelSpec.h>
+#include <hgl/graph/asset/StaticMeshModelInstance.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/type/ManagedArray.h>
 
@@ -39,6 +40,8 @@ namespace hgl
                 mtl::MaterialRecipe recipe;
                 PrimitiveVariant variant;
                 PrimitiveAsset primitive;
+                /// `model = "xxx.model"` 节点：实例化后的模型句柄（自带资产副本）
+                StaticMeshModelInstance model_instance;
             };
 
         private:

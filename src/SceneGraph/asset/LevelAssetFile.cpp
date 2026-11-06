@@ -301,8 +301,13 @@ namespace hgl::graph
             return text && std::strncmp(text, prefix, std::strlen(prefix)) == 0;
         }
 
-        bool IsValidGeometryReference(const LevelNodeSpec &node)
+        bool IsValidNodeReference(const LevelNodeSpec &node)
         {
+            // `model = "xxx.model"` 与 `geometry` 二选一；模型节点必须给 recipe
+            //（.material 兜底），material 可选（覆盖全部图元行）。
+            if (!node.model.IsEmpty())
+                return node.geometry.IsEmpty() && !node.recipe.IsEmpty();
+
             if (node.geometry.IsEmpty())
                 return false;
 
@@ -473,7 +478,7 @@ namespace hgl::graph
             {
                 const LevelNodeSpec &node = *nodes[i];
                 if (node.name.IsEmpty()
-                    || !IsValidGeometryReference(node)
+                    || !IsValidNodeReference(node)
                     || (hgl::stricmp(node.mobility.c_str(), "static") != 0
                         && hgl::stricmp(node.mobility.c_str(), "movable") != 0)
                     || !IsFinite(node.transform.position)

@@ -188,7 +188,32 @@ namespace
             || !spec.nodes[0]->recipe.IsEmpty())
             return false;
 
-        return !Parse(kMissingGeometryRecipe, spec);
+        if (Parse(kMissingGeometryRecipe, spec))
+            return false;
+
+        // `model` 节点：与 geometry 二选一，recipe 必填（.material 兜底）。
+        constexpr char kModelScene[] =
+            "schema = 1\nname = \"ModelScene\"\n"
+            "[[nodes]]\nname = \"Model\"\n"
+            "model = \"../../res/model/castle.model\"\n"
+            "recipe = \"Core.PBR.Lit\"\n";
+        constexpr char kModelWithoutRecipe[] =
+            "schema = 1\nname = \"ModelNoRecipe\"\n"
+            "[[nodes]]\nname = \"Model\"\nmodel = \"castle.model\"\n";
+        constexpr char kModelWithGeometry[] =
+            "schema = 1\nname = \"ModelBoth\"\n"
+            "[[nodes]]\nname = \"Model\"\n"
+            "model = \"castle.model\"\ngeometry = \"presets:cube\"\nrecipe = \"R\"\n";
+
+        LevelSpec model_spec;
+        if (!Parse(kModelScene, model_spec)
+            || model_spec.nodes.GetCount() != 1
+            || model_spec.nodes[0]->model != "../../res/model/castle.model")
+            return false;
+
+        LevelSpec throwaway;
+        return !Parse(kModelWithoutRecipe, throwaway)
+            && !Parse(kModelWithGeometry, throwaway);
     }
 
     bool TestLevelAssetRegistry()
