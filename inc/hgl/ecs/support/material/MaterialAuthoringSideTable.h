@@ -65,6 +65,22 @@ namespace hgl::ecs
         {
             return asset && (asset->GetTexture() || !asset->GetFilename().IsEmpty());
         }
+
+        /**
+         * @brief 句柄是否**永久失败**（`LoadFailed`）。
+         *
+         * `TextureStreamingSystem` 明确不对 `LoadFailed` 自动重试（坏文件每帧重读只会刷屏），
+         * 因此这个状态在本进程内是**终态**。渲染侧据此把「等它好」降级为「当它不在」：
+         * 该槽位的 bindless 句柄保持 0，由 GLSL 侧 `SampleOptional()` /
+         * `if (handle == 0u)` 的 fallback 兜底（白色基色、未扰动法线），
+         * 而不是让整条材质链失败、把整个图元永久藏在收集之外。
+         */
+        bool IsTerminallyFailed() const
+        {
+            return asset
+                && !IsReady()
+                && asset->GetPayloadState() == hgl::PayloadState::LoadFailed;
+        }
     };
 
     /**
@@ -110,6 +126,53 @@ namespace hgl::ecs
 
         hgl::UnorderedMap<uint32_t, Entry> entries;
     };
+
+    /// 必需纹理的**就绪结论**（三值互斥）。唯一真源：句柄 `PayloadState`。
+    enum class RequiredTextureReadiness : uint8_t
+    {
+        Ready = 0,      ///< 全部就绪（或没有必需纹理）
+        Pending,        ///< 至少一张仍在读盘/上传 ⇒ 图元暂不渲染
+        Degraded,       ///< 无在途任务，但至少一张已永久失败 ⇒ 句柄 0 占位保底渲染
+    };
+
+    /**
+     * @brief 由旁表条目算出「必需纹理」的就绪结论。
+     *
+     * 单独成函数（不吃设备、不吃行号）是为了让渲染门禁的判定规则可被单元测试直接钉住
+     * —— 这条规则一旦写错，坏一个贴图就能让整个图元永久消失，且现场只表现为「东西不见了」。
+     *
+     * @param entry 旁表条目（`nullptr` ⇒ 没有任何授权资源 ⇒ Ready）
+     */
+    inline RequiredTextureReadiness EvaluateRequiredTextureReadiness(
+        const MaterialAuthoringSideTable::Entry *entry)
+    {
+        if (!entry)
+            return RequiredTextureReadiness::Ready;
+
+        // 单趟同时算出两种结论（互斥，优先报「仍在途」）：
+        //   · 有一张既没就绪、也没定性失败 ⇒ 等它，本帧不渲染；
+        //   · 全部有了结论，但至少一张终态失败 ⇒ 降级：句柄 0 占位保底渲染。
+        bool failed = false;
+
+        for (const auto &[named_key, resource] : entry->named_texture_resources)
+        {
+            // 只对「必需 + 确实声明了来源」的条目把关：既无纹理又无文件名的空条目
+            // 本来就不会被收集路径当作有效绑定，不该把图元永久钉在不可渲染状态。
+            if (!resource.required || !resource.HasSource() || resource.IsReady())
+                continue;
+
+            if (resource.IsTerminallyFailed())
+            {
+                failed = true;
+                continue;
+            }
+
+            return RequiredTextureReadiness::Pending;
+        }
+
+        return failed ? RequiredTextureReadiness::Degraded
+                      : RequiredTextureReadiness::Ready;
+    }
 
     inline MaterialAuthoringSideTable::Entry *
         MaterialAuthoringSideTable::GetOrCreate(const uint32_t row_id)

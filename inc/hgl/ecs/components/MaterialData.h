@@ -148,7 +148,21 @@ namespace hgl::ecs
         /// 是否仍有**必需的**纹理句柄未就绪（`required && !IsReady()`）。
         /// 渲染决策据此判定「资源未加载完成时不渲染」：任一必需贴图缺席 ⇒ 整个图元暂不进入收集。
         /// 就绪度直接读句柄的 `PayloadState`，不另立计数器 ⇒ 无双状态源。
+        ///
+        /// **不含永久失败**（Step 5.2 占位保底）：`LoadFailed` 是终态、不会自己好，
+        /// 若照样把图元钉在不可渲染，一个坏文件就能让整个图元从此消失。
+        /// 这类句柄改由 `HasFailedRequiredTexture()` 单独报告，渲染侧以句柄 0 占位保底。
         bool HasPendingRequiredTexture() const;
+
+        /// 是否存在**永久失败**的必需纹理（`required && IsTerminallyFailed()`）。
+        ///
+        /// 与 `HasPendingRequiredTexture()` 互斥：仍在途 ⇒ 前者 true；已定性失败（无在途任务）
+        /// ⇒ 本判据 true。渲染侧对后者不再等待，直接把该槽位留作句柄 0 走 fallback。
+        bool HasFailedRequiredTexture() const;
+
+        /// 必需纹理的**就绪结论**（三值互斥；见 `EvaluateRequiredTextureReadiness(entry)`）。
+        /// 规则本体住在旁表头文件里（无设备依赖）⇒ 可被单元测试直接钉住。
+        RequiredTextureReadiness EvaluateRequiredTextureReadiness() const;
 
         // ── 材质数据行资源 ──
         /// 授权 / 清空材质数据行（真源写在 (Global, MaterialData) 组件行里；本组件只持行号）。

@@ -35,8 +35,15 @@ namespace hgl::ecs
              && material_data->GetTextureResource(texture.texture_name))
                 continue;
 
-            if (!texture.asset->IsReady())
-                return false;
+            if (texture.asset->IsReady())
+                continue;
+
+            // 永久失败（`LoadFailed` 是终态）⇒ 不再等它：该槽位留句柄 0，
+            // 由 GLSL 侧 fallback 兜底（与实体级 `HasPendingRequiredTexture` 同口径）。
+            if (texture.asset->GetPayloadState() == hgl::PayloadState::LoadFailed)
+                continue;
+
+            return false;
         }
 
         return true;

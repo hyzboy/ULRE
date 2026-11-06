@@ -852,10 +852,27 @@ namespace hgl::ecs
                     (binding_asset && binding_asset->IsReady())
                     ? binding_asset->GetTexture()
                     : nullptr;
-                if (!binding_asset
-                 || !resource_texture
-                 || !bindless_mgr)
+                if (!binding_asset || !resource_texture || !bindless_mgr)
                 {
+                    // Step 5.2 占位保底：**永久失败**（`LoadFailed`，流送系统不自动重试）的纹理
+                    // 不再让整条材质链失败 —— 该槽位保持 bindless 句柄 0，由 GLSL 侧
+                    // `SampleOptional()` / `if (handle == 0u)` 的 fallback 兜底（白基色、未扰动法线）。
+                    // 否则一个坏文件就会让整个图元永远进不了收集（静默消失）。
+                    // 仍在途（MetaOnly/Loading）的仍按原语义硬失败：那种情况说明 CanRender
+                    // 门禁与收集判定脱节，报出来比画错/画白更容易定位。
+                    if (binding_asset
+                     && resource_texture == nullptr
+                     && binding_asset->GetPayloadState() == hgl::PayloadState::LoadFailed)
+                    {
+                        // 材质链成功后 `valid=true` 且代数不变 ⇒ 本分支每个图元最多走一次，
+                        // 不会刷屏；坏文件本身由 `TextureAsset::FailAsyncLoad` 报过 Error。
+                        GLogWarning(
+                            "[DeferredResource] Texture load failed, slot falls back to handle 0: owner=%s texture=%s",
+                            owner_name,
+                            binding.texture_name.c_str());
+                        continue;
+                    }
+
                     GLogError(
                         "[DeferredResource] Texture acquisition failed: owner=%s texture=%s binding=%d resource=%d bindless=%d",
                         owner_name,
@@ -1777,14 +1794,36 @@ namespace hgl::ecs
 
                 if (handle == 0 && declaration.required)
                 {
-                    GLogError(
-                        "[RenderPrimitiveCollectSystem] Required texture handle missing: owner=%s texture=%s resource=%s",
+                    // Step 5.2 占位保底：`LoadFailed` 是终态（`TextureStreamingSystem` 不自动重试），
+                    // 若照样硬失败，一个坏文件就会让整个图元永远进不了收集（画面里静默少一块）。
+                    // 这里改为留句柄 0 —— shader 侧 `SampleOptional()` / `if (handle == 0u)`
+                    // 会取 fallback（白基色、未扰动法线），图元照常画出来。
+                    graph::TextureAsset *slot_asset = recipe_binding->asset;
+                    if (const MaterialData *slot_material =
+                            EnsureMaterialDataOf(primitive_comp))
+                    {
+                        if (const auto *slot_authoring =
+                                slot_material->GetTextureResource(declaration.name))
+                            slot_asset = slot_authoring->asset;
+                    }
+
+                    if (!slot_asset
+                     || slot_asset->GetPayloadState() != hgl::PayloadState::LoadFailed)
+                    {
+                        GLogError(
+                            "[RenderPrimitiveCollectSystem] Required texture handle missing: owner=%s texture=%s resource=%s",
+                            GetOwnerName(primitive_comp),
+                            declaration.name.c_str(),
+                            recipe_binding->resource_id.empty()
+                                ? "<direct/empty>"
+                                : recipe_binding->resource_id.c_str());
+                        return false;
+                    }
+
+                    GLogWarning(
+                        "[RenderPrimitiveCollectSystem] Required texture load failed, slot falls back to handle 0: owner=%s texture=%s",
                         GetOwnerName(primitive_comp),
-                        declaration.name.c_str(),
-                        recipe_binding->resource_id.empty()
-                            ? "<direct/empty>"
-                            : recipe_binding->resource_id.c_str());
-                    return false;
+                        declaration.name.c_str());
                 }
 
                 references[static_cast<int>(declaration_index)] = {

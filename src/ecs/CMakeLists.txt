@@ -272,6 +272,9 @@ add_ecs_test(TestSceneStreamingSystem tests/TestSceneStreamingSystem.cpp)
 # 阶段五判据：三段渐进激活（骨架 → 几何 → 材质）的顺序守约与骨架包围盒
 add_ecs_test(TestStaticMeshSceneProgressive tests/TestStaticMeshSceneProgressive.cpp)
 
+# 阶段五 Step 5.2 判据：必需纹理的「在途 / 永久失败 / 就绪」三值结论（占位保底的门禁规则）
+add_ecs_test(TestMaterialTextureFallback tests/TestMaterialTextureFallback.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -564,4 +567,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestStaticMeshSceneProgressive
         PROPERTIES LABELS "ecs;scene;streaming" TIMEOUT 60)
+
+    add_test(
+        NAME TestMaterialTextureFallback
+        COMMAND TestMaterialTextureFallback)
+    set_tests_properties(
+        TestMaterialTextureFallback
+        PROPERTIES LABELS "ecs;material;streaming" TIMEOUT 60)
 endif()

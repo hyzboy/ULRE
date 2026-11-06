@@ -223,25 +223,27 @@ namespace hgl::ecs
     bool
         MaterialData::HasPendingRequiredTexture() const
     {
+        return EvaluateRequiredTextureReadiness()
+            == RequiredTextureReadiness::Pending;
+    }
+
+    bool
+        MaterialData::HasFailedRequiredTexture() const
+    {
+        return EvaluateRequiredTextureReadiness()
+            == RequiredTextureReadiness::Degraded;
+    }
+
+    RequiredTextureReadiness
+        MaterialData::EvaluateRequiredTextureReadiness() const
+    {
         const MaterialAuthoringSideTable *table = GetAuthoringTable();
 
         if (!table)
-            return false;
+            return RequiredTextureReadiness::Ready;
 
-        const MaterialAuthoringSideTable::Entry *side = table->Find(material_row_id);
-
-        if (!side)
-            return false;
-
-        for (const auto &[named_key, resource] : side->named_texture_resources)
-        {
-            // 只对「必需 + 确实声明了来源」的条目把关：既无纹理又无文件名的空条目
-            // 本来就不会被收集路径当作有效绑定，不该把图元永久钉在不可渲染状态。
-            if (resource.required && resource.HasSource() && !resource.IsReady())
-                return true;
-        }
-
-        return false;
+        return hgl::ecs::EvaluateRequiredTextureReadiness(
+            table->Find(material_row_id));
     }
 
     // ── B4-iii-a：材质数据在设备级的家 = (Global, MaterialData) 组件行 ──────────
