@@ -75,7 +75,7 @@ namespace
 
     // ── 台架门控（PBR 棋盘模式，默认开） ──────────────────────────────
     //   LG_LEGACY=1      回退到旧行为：加载 vulkan_logo 场景 + DebugNormalColor 配方
-    //   LG_SCENE=<path>  覆盖 pack .scene 路径（默认 res/ABeautifulGame.StaticMesh/…）
+    //   LG_SCENE=<path>  覆盖 pack .model 路径（默认 res/ABeautifulGame.StaticMesh/…）
     //   LG_GEO=<path>    覆盖几何体路径（默认 ABeautifulGame.2.geometry，棋盘）
     //   LG_MAT=<name>    覆盖配方名匹配子串（默认 Chessboard）
     //   LG_DIST/LG_YAW/LG_PITCH  相机覆盖
@@ -88,7 +88,7 @@ namespace
             const char *env = getenv("LG_SCENE");
             if (env && env[0])
                 return hgl::ToOSString(env);
-            return OSString(OS_TEXT("res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene"));
+            return OSString(OS_TEXT("res/ABeautifulGame.StaticMesh/ABeautifulGame.model"));
         }();
         return path;
     }
@@ -271,7 +271,7 @@ private:
             return false;
 
         if (!graph::BuildSelfContainedSceneMaterials(
-                *graphics, ModelPackPath(), "load_scene_pbr", pack_materials_))
+                *graphics, ModelPackPath(), "ABeautifulGame", pack_materials_))
             return false;
 
         const char *mat_env = getenv("LG_MAT");

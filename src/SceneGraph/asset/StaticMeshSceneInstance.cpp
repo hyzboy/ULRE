@@ -1,4 +1,4 @@
-// StaticMeshSceneInstance.cpp —— `.scene` 场景 → ECS 实例化
+// StaticMeshSceneInstance.cpp —— .model 场景 → ECS 实例化
 //
 // 数据流约定（见头文件说明）：节点局部 TRS 与 parentIndex 层级是唯一真源，
 // 全程不做矩阵反分解；资产复制进实例自持的 ManagedArray 以保证指针稳定。

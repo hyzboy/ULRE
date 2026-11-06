@@ -90,17 +90,17 @@ namespace
     {
         SceneAssetRegistry registry;
 
-        SceneAsset *a = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
+        SceneAsset *a = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model");
         EXPECT(a != nullptr);
         EXPECT(a->GetState() == SceneAssetState::Unloaded);
         EXPECT(a->NeedsPump());
 
         // 同一 URI 只应得到一个句柄 —— 这是「同一场景被多个世界请求只读一次盘」的前提。
-        SceneAsset *again = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
+        SceneAsset *again = registry.Request("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model");
         EXPECT(again == a);
         EXPECT(registry.GetCount() == 1);
 
-        SceneAsset *other = registry.Request("pack(res):Chess/Other.Scene.scene");
+        SceneAsset *other = registry.Request("pack(res):Chess/Other.Scene.model");
         EXPECT(other != nullptr);
         EXPECT(other != a);
         EXPECT(registry.GetCount() == 2);
@@ -113,7 +113,7 @@ namespace
         EXPECT(registry.GetReadyCount() == 0);
         EXPECT(registry.GetFailedCount() == 0);
         EXPECT(registry.GetChildTaskCount() == 0);
-        EXPECT(registry.Find("pack(res):Chess/Other.Scene.scene") == other);
+        EXPECT(registry.Find("pack(res):Chess/Other.Scene.model") == other);
 
         registry.Clear();
         EXPECT(registry.GetCount() == 0);
@@ -126,7 +126,7 @@ namespace
     bool TestFullStateChain()
     {
         SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Chain.Scene.scene");
+        SceneAsset *asset = registry.Request("pack(res):Probe/Chain.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
@@ -147,7 +147,7 @@ namespace
         EXPECT(asset->GetAsyncRequestID() == 7);
 
         // 子项没到齐前，CommitScene 必须拒绝。
-        EXPECT(!asset->SetPlan(MakePlan(), OS_TEXT("res/Probe/Chain.Scene.scene")));
+        EXPECT(!asset->SetPlan(MakePlan(), OS_TEXT("res/Probe/Chain.Scene.model")));
         EXPECT(asset->GetState() == SceneAssetState::Assembling);
         EXPECT(asset->GetChildCount() == 3);
         EXPECT(asset->GetPendingChildCount() == 3);
@@ -199,7 +199,7 @@ namespace
     bool TestEmptyPlanCommitsImmediately()
     {
         SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Empty.Scene.scene");
+        SceneAsset *asset = registry.Request("pack(res):Probe/Empty.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
@@ -225,7 +225,7 @@ namespace
     bool TestChildFailureDoesNotBlock()
     {
         SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Degraded.Scene.scene");
+        SceneAsset *asset = registry.Request("pack(res):Probe/Degraded.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
@@ -255,7 +255,7 @@ namespace
     bool TestFailAndReset()
     {
         SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Broken.Scene.scene");
+        SceneAsset *asset = registry.Request("pack(res):Probe/Broken.Scene.model");
         EXPECT(asset != nullptr);
 
         NotifyProbe probe;
@@ -301,7 +301,7 @@ namespace
     bool TestOverSettleGuard()
     {
         SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/OverSettle.Scene.scene");
+        SceneAsset *asset = registry.Request("pack(res):Probe/OverSettle.Scene.model");
         EXPECT(asset != nullptr);
 
         EXPECT(asset->BeginStreaming());
@@ -327,7 +327,7 @@ namespace
     bool TestSetChildTotal()
     {
         SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/Recount.Scene.scene");
+        SceneAsset *asset = registry.Request("pack(res):Probe/Recount.Scene.model");
         EXPECT(asset != nullptr);
 
         EXPECT(asset->BeginStreaming());
@@ -357,7 +357,7 @@ namespace
     bool TestSettleDoesNotCommit()
     {
         SceneAssetRegistry registry;
-        SceneAsset *asset = registry.Request("pack(res):Probe/SettleOnly.Scene.scene");
+        SceneAsset *asset = registry.Request("pack(res):Probe/SettleOnly.Scene.model");
         EXPECT(asset != nullptr);
 
         EXPECT(asset->BeginStreaming());
@@ -384,14 +384,14 @@ namespace
     {
         // 本进程没有创建 GraphicsContext，默认表应当为空。
         EXPECT(GetDefaultSceneAssetRegistry() == nullptr);
-        EXPECT(RequestSceneAsset("pack(res):Probe/NoRegistry.Scene.scene") == nullptr);
+        EXPECT(RequestSceneAsset("pack(res):Probe/NoRegistry.Scene.model") == nullptr);
 
         SceneAssetRegistry registry;
         SetDefaultSceneAssetRegistry(&registry);
 
-        SceneAsset *asset = RequestSceneAsset("pack(res):Probe/Default.Scene.scene");
+        SceneAsset *asset = RequestSceneAsset("pack(res):Probe/Default.Scene.model");
         EXPECT(asset != nullptr);
-        EXPECT(asset == registry.Find("pack(res):Probe/Default.Scene.scene"));
+        EXPECT(asset == registry.Find("pack(res):Probe/Default.Scene.model"));
 
         SetDefaultSceneAssetRegistry(nullptr);
         EXPECT(GetDefaultSceneAssetRegistry() == nullptr);

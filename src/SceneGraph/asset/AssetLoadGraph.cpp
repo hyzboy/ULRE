@@ -82,7 +82,7 @@ namespace hgl::graph
             { ".recipe",         asset::AssetType::MaterialRecipe },
             { ".rcp",            asset::AssetType::MaterialRecipe },
 
-            { ".scene",          asset::AssetType::Scene          },
+            { ".model",          asset::AssetType::Scene          },
             { ".prim",           asset::AssetType::Primitive      },
             { ".env",            asset::AssetType::Environment    },
         };

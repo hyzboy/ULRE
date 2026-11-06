@@ -1,4 +1,4 @@
-// LoadStaticMesh.cpp — 从 .scene minipack 加载场景树到 StaticMesh
+// LoadStaticMesh.cpp — 从 .model pack 加载场景树到 StaticMesh
 // Core scene loader for StaticMesh asset packs.
 
 #include <hgl/graph/mesh/LoadStaticMesh.h>

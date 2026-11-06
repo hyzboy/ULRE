@@ -58,9 +58,9 @@ namespace
             return false;
 
         // 目录名里的点必须活着（只剥文件名部分的后缀）
-        if(!CheckNormalize("ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene",
+        if(!CheckNormalize("ABeautifulGame.StaticMesh/ABeautifulGame.model",
                            asset::AssetType::Scene,
-                           "abeautifulgame.staticmesh/abeautifulgame.scene"))
+                           "abeautifulgame.staticmesh/abeautifulgame"))
             return false;
 
         // 反斜杠 + 大写一起折
@@ -119,7 +119,7 @@ namespace
 
         AssetDepKey scene, mat, geo, tex;
 
-        if(!MakeKey("s.Scene.scene", scene)
+        if(!MakeKey("s.Scene.model", scene)
            || !MakeKey("m.material", mat)
            || !MakeKey("g.geometry", geo)
            || !MakeKey("t.Tex2D", tex))
@@ -184,7 +184,7 @@ namespace
 
         AssetDepKey scene, mat_a, mat_b, tex;
 
-        if(!MakeKey("s.Scene.scene", scene)
+        if(!MakeKey("s.Scene.model", scene)
            || !MakeKey("a.material", mat_a)
            || !MakeKey("b.recipe.toml", mat_b)
            || !MakeKey("t.Tex2D", tex))
@@ -244,7 +244,7 @@ namespace
 
         // 未登记过的节点同样安全
         AssetDepKey unknown;
-        MakeKey("n.Scene.scene", unknown);
+        MakeKey("n.Scene.model", unknown);
 
         if(!graph.SolveClosure(unknown, closure) || closure.GetCount() != 0)
             return false;
@@ -258,7 +258,7 @@ namespace
 
         AssetDepKey a, b, c;
 
-        if(!MakeKey("a.Scene.scene", a) || !MakeKey("b.Scene.scene", b) || !MakeKey("c.Scene.scene", c))
+        if(!MakeKey("a.Scene.model", a) || !MakeKey("b.Scene.model", b) || !MakeKey("c.Scene.model", c))
             return false;
 
         const AssetDepEdge a_edges[] = { { b, AssetDepKind::Scene } };

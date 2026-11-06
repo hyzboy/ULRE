@@ -33,11 +33,11 @@ using namespace hgl::graph::modelpack;
 namespace
 {
     constexpr const char *kTempDirPath = "ulre_loadplan_test_tmp/";
-    constexpr const char *kFullScenePath     = "ulre_loadplan_test_tmp/Stage.Scene.scene";
-    constexpr const char *kDegradedScenePath = "ulre_loadplan_test_tmp/Lonely.Scene.scene";
+    constexpr const char *kFullScenePath     = "ulre_loadplan_test_tmp/Stage.Scene.model";
+    constexpr const char *kDegradedScenePath = "ulre_loadplan_test_tmp/Lonely.Scene.model";
     constexpr const char *kChessRecipe = "ulre_loadplan_test_tmp/LoadScene.Chess.Chessboard.recipe.toml";
     constexpr const char *kLitRecipe   = "ulre_loadplan_test_tmp/LoadScene.Chess.Lit.recipe.toml";
-    constexpr const char *kGarbagePath = "ulre_loadplan_test_tmp/Garbage.scene";
+    constexpr const char *kGarbagePath = "ulre_loadplan_test_tmp/Garbage.model";
 
     // ── 内存中的 MDL2 载荷构造（与 TestSceneDependencyExtractor 同构） ──────
 
@@ -427,7 +427,7 @@ namespace
             return false;
         }
 
-        if(BuildSceneLoadPlan(AnsiString("no_such_dir/no_such_scene.scene"), plan, nullptr, &error))
+        if(BuildSceneLoadPlan(AnsiString("no_such_dir/no_such_scene.model"), plan, nullptr, &error))
         {
             GLogError(u8"不存在的场景应判失败");
             return false;
@@ -454,7 +454,7 @@ int main(int argc, char **argv)
     hgl::logger::InitLogger(OS_TEXT("TestSceneLoadPlan"));
 
     // 手工验证入口：把一个真实场景引用当参数传进来，只打计划不装载。
-    //   TestSceneLoadPlan.exe res/xxx/yyy.Scene.scene
+    //   TestSceneLoadPlan.exe res/xxx/yyy.Scene.model
     if(argc > 1 && argv[1] != nullptr)
     {
         SceneLoadPlan plan;

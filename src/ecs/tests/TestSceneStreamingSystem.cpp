@@ -87,7 +87,7 @@ namespace
         graph::SceneAssetRegistry registry;
         graph::SetDefaultSceneAssetRegistry(&registry);
 
-        graph::SceneAsset *asset = graph::RequestSceneAsset("pack(res):Probe/NoContext.Scene.scene");
+        graph::SceneAsset *asset = graph::RequestSceneAsset("pack(res):Probe/NoContext.Scene.model");
         EXPECT(asset != nullptr);
 
         {
@@ -122,7 +122,7 @@ namespace
         SceneStreamingSystem system;
 
         {
-            graph::SceneAsset *asset = graph::RequestSceneAsset("pack(res):Probe/Dropped.Scene.scene");
+            graph::SceneAsset *asset = graph::RequestSceneAsset("pack(res):Probe/Dropped.Scene.model");
             EXPECT(asset != nullptr);
         }
 

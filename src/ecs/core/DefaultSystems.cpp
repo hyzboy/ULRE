@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/core/DefaultSystems.h>
+#include <hgl/ecs/core/DefaultSystems.h>
 #include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include <memory>
 #include <hgl/ecs/core/Context.h>
@@ -95,7 +95,7 @@ namespace
         // 就绪前 CanRender 的几何门禁会拦住图元。
         EnsureSystem<hgl::ecs::GeometryStreamingSystem>(ctx);
 
-        // 场景流式加载：把一个 .scene 包推成「图元 + 节点树」。它管的是
+        // 场景流式加载：把一个 .model 包推成「图元 + 节点树」。它管的是
         // 「读包 → 建计划单 → 解析产物 → 等图元几何就绪」这一段，子项几何与纹理
         // 仍由上面两个流送系统各自负责（本系统只查真值、不重复派发）。
         EnsureSystem<hgl::ecs::SceneStreamingSystem>(ctx);

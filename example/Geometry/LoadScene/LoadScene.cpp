@@ -24,7 +24,7 @@
 #include<filesystem>
 
 // ── 台架门控（默认全关） ────────────────────────────────────────────
-//   LS_SCENE=<path>  覆盖 .scene 资产路径（默认 res/ABeautifulGame.StaticMesh/…；
+//   LS_SCENE=<path>  覆盖 .model 资产路径（默认 res/ABeautifulGame.StaticMesh/…；
 //                    含 meshlets 表的资产已**不支持** ⇒ 加载即显式拒绝）
 //   LS_DIST/LS_YAW/LS_PITCH  相机覆盖
 //   LS_FRAMES=N      跑 N 帧退出
@@ -86,7 +86,7 @@ namespace
         {
             const char *scene_env = getenv("LS_SCENE");
             return std::string(scene_env ? scene_env
-                                         : "res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
+                                         : "res/ABeautifulGame.StaticMesh/ABeautifulGame.model");
         }();
         return path;
     }
@@ -200,7 +200,7 @@ private:
 
             if (!BuildSelfContainedSceneMaterials(
                     *graphics, hgl::ToOSString(ModelPackPath()),
-                    "load_scene_pbr", chess_materials_))
+                    "ABeautifulGame", chess_materials_))
                 return false;
 
             out_default     = chess_materials_.fallback;
@@ -333,7 +333,7 @@ private:
         if (scene_nodes_.empty())
             return false;
 
-        // 纯 TRS 直通：节点局部 TRS 取自 .scene 的 TRSTable 真源，父子层级按
+        // 纯 TRS 直通：节点局部 TRS 取自 .model 的 TRSTable 真源，父子层级按
         // parentIndex 用 SetParent 还原 —— 不再对 worldMatrix 做 DecomposeTransform
         // 摊平（旧写法在非均匀缩放嵌套下有旋转/缩放残差，且丢失场景树）。
         StaticMeshSceneInstance::Options options;

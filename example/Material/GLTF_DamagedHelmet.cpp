@@ -6,7 +6,7 @@
 // 与 StandardOpaque 的 orm 槽解包口径一致；emissive 纹理是唯一自发光来源
 // （PBRSurface 行没有 emissive 因子字段）。
 //
-// 材质数值唯一来源：gltf_damaged_helmet.material_data.toml（1 行 PBRSurface，
+// 材质数值唯一来源：DamagedHelmet.material_data.toml（1 行 PBRSurface，
 // glTF 缺省因子口径 base_color=白 / metallic=1 / roughness=1）。
 //
 // 自检台架（与 LoadScene/PBRMatrix 同款，共用 example/Shared/FrameDigest.h）：
@@ -61,7 +61,7 @@ namespace
         {
             const char *scene_env = getenv("HDH_SCENE");
             return std::string(scene_env ? scene_env
-                                         : "res/DamagedHelmet.StaticMesh/DamagedHelmet.Scene.scene");
+                                         : "res/DamagedHelmet.StaticMesh/DamagedHelmet.model");
         }();
         return path;
     }

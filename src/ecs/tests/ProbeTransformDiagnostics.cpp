@@ -495,13 +495,13 @@ static void SectionAssetNote()
 {
     PrintSeparator("资产备注");
 
-    const char *path="res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene";
+    const char *path="res/ABeautifulGame.StaticMesh/ABeautifulGame.model";
     const bool  exists=std::filesystem::exists(path);
 
     printf("LoadScene 加载路径：%s -> %s\n",path,exists?"存在":"不存在");
     if(!exists)
         printf("  （本检出未包含该场景资产：example/Geometry/LoadScene/LoadScene.cpp 的资产级验证需要先"
-               "用 GLTFConvert 由 res/model/*.glb 生成 .scene，或补回该资产）\n");
+               "用 GLTFConvert 由 res/model/*.glb 生成 .model，或补回该资产）\n");
 }
 
 int main(int argc,char **argv)

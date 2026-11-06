@@ -7,7 +7,7 @@
 // 贴图已是 glTF ORM 口径（_OcclusionRoughMetal.png：R=AO G=rough B=metal），
 // StandardOpaque 原生解包，无需像 DamagedHelmet 那样离线重打包。
 //
-// 材质数值唯一来源：gltf_flight_helmet.material_data.toml（6 行 PBRSurface，
+// 材质数值唯一来源：FlightHelmet.material_data.toml（6 行 PBRSurface，
 // 行序 = material_index，全为 glTF 缺省因子口径）。
 //
 // 自检台架（与 LoadScene/PBRMatrix/DamagedHelmet 同款，共用 example/Shared/FrameDigest.h）：
@@ -63,7 +63,7 @@ namespace
         {
             const char *scene_env = getenv("FHF_SCENE");
             return std::string(scene_env ? scene_env
-                                         : "res/FlightHelmet.StaticMesh/FlightHelmet.unnamed.scene");
+                                         : "res/FlightHelmet.StaticMesh/FlightHelmet.model");
         }();
         return path;
     }
