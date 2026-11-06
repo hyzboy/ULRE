@@ -18,6 +18,7 @@
 #include<cstring>
 #include<cstdlib>
 #include<cstdio>
+#include<cmath>
 #include<filesystem>
 
 // ── 台架门控（默认全关） ────────────────────────────────────────────
@@ -121,6 +122,10 @@ private:
     std::vector<PrimitiveAsset>    scene_assets_;
     std::vector<StaticMeshNode>    scene_nodes_;
     std::vector<int32_t>           scene_root_nodes_;
+    // 场景世界空间包围球（节点 AABB 角点变换后的并集）：相机自动取景用，
+    // 距离 = 2×半径，目标 = 中心；半径 <0 表示未求得（回退旧默认值）。
+    math::Vector3f                 scene_bound_center_ { 0.0f, 0.0f, 0.0f };
+    float                          scene_bound_radius_ = -1.0f;
     // 场景 → ECS 标准实例化器：逐节点局部 TRS + SetParent 还原层级，
     // 自持资产副本（不再需要 DecomposeTransform 摊平，也不惧 vector 搬迁悬垂）。
     StaticMeshSceneInstance        scene_instance_;
@@ -251,11 +256,55 @@ private:
                                          scene_root_nodes_, options))
             return false;
 
+        ComputeSceneBounds();
+
         // 实例已自持资产副本 ⇒ 装载缓冲即刻释放，杜绝误用与驻留
         scene_assets_.clear();
         scene_nodes_.clear();
         scene_root_nodes_.clear();
         return true;
+    }
+
+    // 遍历节点：局部 AABB 8 角点经 worldMatrix 变换求并集 ⇒ 世界空间中心+外接球半径
+    void ComputeSceneBounds()
+    {
+        float mn[3] = {  1e30f,  1e30f,  1e30f };
+        float mx[3] = { -1e30f, -1e30f, -1e30f };
+        bool  any   = false;
+
+        for (const auto &n : scene_nodes_)
+        {
+            if (!n.boundsValid)
+                continue;
+
+            const auto &c = n.nodeBounds.aabb.GetCenter();
+            const auto &l = n.nodeBounds.aabb.GetLength();
+
+            for (int i = 0; i < 8; ++i)
+            {
+                const math::Vector3f corner(
+                    c.x + ((i & 1) ? 0.5f * l.x : -0.5f * l.x),
+                    c.y + ((i & 2) ? 0.5f * l.y : -0.5f * l.y),
+                    c.z + ((i & 4) ? 0.5f * l.z : -0.5f * l.z));
+
+                const math::Vector3f w = math::TransformPosition(n.worldMatrix, corner);
+
+                const float p[3] = { w.x, w.y, w.z };
+                for (int a = 0; a < 3; ++a)
+                {
+                    if (p[a] < mn[a]) mn[a] = p[a];
+                    if (p[a] > mx[a]) mx[a] = p[a];
+                }
+                any = true;
+            }
+        }
+
+        if (!any)
+            return;
+
+        scene_bound_center_ = math::Vector3f((mn[0]+mx[0])*0.5f, (mn[1]+mx[1])*0.5f, (mn[2]+mx[2])*0.5f);
+        const float dx = mx[0]-mn[0], dy = mx[1]-mn[1], dz = mx[2]-mn[2];
+        scene_bound_radius_ = 0.5f * std::sqrt(dx*dx + dy*dy + dz*dz);
     }
 
     bool InitCamera()
@@ -268,8 +317,11 @@ private:
         auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
         camera->control_mode = hgl::ecs::CameraControlMode::ViewModel;
-        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
-        camera->distance = 8.0f;
+        // 自动取景：目标 = 场景包围球中心，距离 = 2×半径（求得时）；否则旧默认
+        camera->target = scene_bound_radius_ > 0.0f
+            ? scene_bound_center_ : math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = scene_bound_radius_ > 0.0f
+            ? 2.0f * scene_bound_radius_ : 8.0f;
         camera->yaw = 45.0f;
         camera->pitch = -20.0f;
         camera->is_main_camera = true;
@@ -431,7 +483,13 @@ public:
         }
 
 
-        if (!dump_tag.empty() && ++dump_frame == 8)
+        static const uint32_t s_target_dump_frame = []() {
+            if (const char *f = getenv("LS_DUMP_FRAME"))
+                return (uint32_t)atoi(f);
+            return 8u;
+        }();
+
+        if (!dump_tag.empty() && ++dump_frame == s_target_dump_frame)
         {
             auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
                 ecs_context ? ecs_context->GetRenderTarget() : nullptr);

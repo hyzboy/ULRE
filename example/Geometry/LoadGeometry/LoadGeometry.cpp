@@ -9,10 +9,17 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/color/Color.h>
 #include<cstring>
+#include<cstdlib>
+#include<cstdio>
 #include<hgl/math/geometry/AABB.h>
+#include<cmath>
 #include<hgl/type/StdString.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKTextureReadback.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -21,6 +28,8 @@
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -63,6 +72,42 @@ namespace
     constexpr char MATERIAL_DATA_URI[] =
         "mtldata:file:ShaderLibrary/asset/material_data/load_geometry.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
+
+    // ── 台架门控（PBR 棋盘模式，默认开） ──────────────────────────────
+    //   LG_LEGACY=1      回退到旧行为：加载 vulkan_logo 场景 + DebugNormalColor 配方
+    //   LG_SCENE=<path>  覆盖 pack .scene 路径（默认 res/ABeautifulGame.StaticMesh/…）
+    //   LG_GEO=<path>    覆盖几何体路径（默认 ABeautifulGame.2.geometry，棋盘）
+    //   LG_MAT=<name>    覆盖配方名匹配子串（默认 Chessboard）
+    //   LG_DIST/LG_YAW/LG_PITCH  相机覆盖
+    //   LG_FRAMES=N      跑 N 帧退出
+    //   LG_DUMP=<tag>    第 8 帧帧内回读落原始字节后退出（lgdump_<tag>_WxH_fmt.raw）
+    const OSString &ScenePackPath()
+    {
+        static const OSString path = []
+        {
+            const char *env = getenv("LG_SCENE");
+            if (env && env[0])
+                return hgl::ToOSString(env);
+            return OSString(OS_TEXT("res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene"));
+        }();
+        return path;
+    }
+
+    const OSString &BoardGeometryPath()
+    {
+        static const OSString path = []
+        {
+            const char *env = getenv("LG_GEO");
+            if (env && env[0])
+                return hgl::ToOSString(env);
+            return OSString(OS_TEXT("res/ABeautifulGame.StaticMesh/ABeautifulGame.2.geometry"));
+        }();
+        return path;
+    }
+
+    // 天光 IBL：与 LoadScene 同一批烘焙贴图与天空配方
+    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
+    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 }
 
 class LoadGeometryApp:public WorkObject
@@ -82,6 +127,20 @@ private:
     MaterialData wire;
     graph::mtl::MaterialRecipe solid_recipe{};
     graph::mtl::MaterialRecipe wire_recipe{};
+
+    // PBR 棋盘模式：pack 自装配材质 + 选中的棋盘配方
+    bool pack_mode_ = true;
+    graph::SelfContainedSceneMaterials pack_materials_;
+    const graph::mtl::MaterialRecipe *board_recipe_ = nullptr;
+    graph::GlobalSSBOBinding board_binding_{};
+
+    std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
+    std::shared_ptr<hgl::ecs::LightSystem>       light_system;
+
+    std::string dump_tag;
+    uint32_t    lg_frames     = 0;
+    uint32_t    lg_frame_seen = 0;
+    uint32_t    dump_frame    = 0;
 
     struct MeshEntry
     {
@@ -186,14 +245,15 @@ private:
         return bbox_asset.IsValid();
     }
 
-    MeshEntry *CreateMeshEntry(Geometry *geometry,const int color)
+    MeshEntry *CreateMeshEntry(Geometry *geometry,const int color,
+                               const mtl::MaterialRecipe *recipe = nullptr)
     {
         if(!geometry)
             return(nullptr);
 
         auto rm = std::make_unique<MeshEntry>();
         rm->geometry = geometry;
-        rm->asset = PrimitiveAsset(geometry, &solid_recipe, PrimitiveType::Triangles);
+        rm->asset = PrimitiveAsset(geometry, recipe ? recipe : &solid_recipe, PrimitiveType::Triangles);
         if (!rm->asset.IsValid())
             return nullptr;
         rm->color_index = static_cast<uint32_t>(color);
@@ -203,11 +263,96 @@ private:
         return result;
     }
 
+    // pack 自装配：scene/recipe/material_data/tex2d 全取自模型目录（同 LoadScene PBR 模式）
+    bool InitPackMaterials()
+    {
+        auto *graphics = GetGraphicsContext();
+        if (!graphics)
+            return false;
+
+        if (!graph::BuildSelfContainedSceneMaterials(
+                *graphics, ScenePackPath(), "load_scene_pbr", pack_materials_))
+            return false;
+
+        const char *mat_env = getenv("LG_MAT");
+        const std::string needle = mat_env && mat_env[0] ? mat_env : "Chessboard";
+
+        for (auto *r : pack_materials_.table)
+        {
+            if (r && r->recipe_name.find(needle) != std::string::npos)
+            {
+                board_recipe_ = r;
+                break;
+            }
+        }
+        if (!board_recipe_ && !pack_materials_.table.empty())
+        {
+            printf("[LGPACK] 未找到包含 \"%s\" 的配方，回退到第 0 行\n", needle.c_str());
+            board_recipe_ = pack_materials_.table[0];
+        }
+        if (!board_recipe_)
+        {
+            printf("[LGPACK] pack 材质表为空\n");
+            return false;
+        }
+
+        board_binding_ = board_recipe_->material_ssbo_binding;
+        printf("[LGPACK] recipe=%s\n", board_recipe_->recipe_name.c_str());
+        return board_binding_.IsValid();
+    }
+
+    // PBR 模式的环境光照：主光方向 + 天光 IBL（与 LoadScene 同口径）
+    bool InitEnvironmentControl()
+    {
+        if (!ecs_context)
+            return false;
+
+        environment_system = ecs_context->GetSystem<hgl::ecs::EnvironmentSystem>();
+        if (!environment_system)
+            environment_system = ecs_context->RegisterSystem<hgl::ecs::EnvironmentSystem>();
+        if (!environment_system)
+            return false;
+
+        light_system = ecs_context->GetSystem<hgl::ecs::LightSystem>();
+        if (!light_system)
+            light_system = ecs_context->RegisterSystem<hgl::ecs::LightSystem>();
+        if (!light_system)
+            return false;
+
+        // 太阳方向必须在天空托管之前写进光源行 0：天光调制按当时太阳现算
+        light_system->SetMainLightDirection(math::Vector3f(0.2f, 0.7f, 0.68f));
+
+        hgl::ecs::SkyEnvironmentConfig config;
+        config.mode         = hgl::ecs::SkyMode::CubeMapIBL;
+        config.sky_recipe   = "IBLEnvironment.Sky";
+        config.sky_scale    = 1.0f;
+        config.track_camera = true;
+
+        config.irradiance_texture = IBL_TEX_IRR_CUBE;
+        config.prefilter_texture  = IBL_TEX_PRE_CUBE;
+
+        config.ldr               = hgl::ecs::SkyAmbientLDR::On;
+        config.ldr_exposure_base = 2.5f;
+        config.ldr_sun_scale     = 1.0f;
+        config.ldr_min_ambient   = 0.05f;
+
+        return environment_system->SetupSkyEnvironment(config);
+    }
+
     bool CreateGeometryMesh()
     {
-        int count=0;
         const GeometryVertexFormat &geometry_vertex_format = solid.geometry_vertex_format;
 
+        if (pack_mode_)
+        {
+            // 单个几何体（默认棋盘 ABeautifulGame.2.geometry），配 Chessboard PBR 配方
+            Geometry *geo = LoadGeometry(GetDevice(), geometry_vertex_format, BoardGeometryPath());
+            if (!geo)
+                return false;
+            return CreateMeshEntry(geo, 0, board_recipe_) != nullptr;
+        }
+
+        int count=0;
 //        for(int i=0;i< COLOR_COUNT;i++)
         {
             OSString fn = OSString(OS_TEXT("res/model/vulkan_logo/scene.StaticMesh/scene.geometry"));
@@ -293,9 +438,12 @@ private:
             rm->primitive_comp = rm->entity->GetContext()->GetOrCreateGeometryData(rm->entity);
             hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity);
 
-            const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
+            const float angle = pack_mode_ ? 0.0f
+                : glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
             const glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
-            const glm::vec3 pos = glm::rotate(rotation, glm::vec3(0.25f, 0.0f, 0.0f));
+            const glm::vec3 pos = pack_mode_
+                ? glm::vec3(0.0f, 0.0f, 0.0f)
+                : glm::rotate(rotation, glm::vec3(0.25f, 0.0f, 0.0f));
 
             rm->transform.SetLocalPosition(pos);
             rm->transform.SetLocalRotation(rotation);
@@ -304,8 +452,9 @@ private:
 
             rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
-            mesh_struct =
-                solid.material_data_ssbo_accessors[rm->color_index];
+            mesh_struct = pack_mode_
+                ? board_binding_
+                : solid.material_data_ssbo_accessors[rm->color_index];
             material_data_comp->SetDataResource(mesh_struct);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
         }
@@ -323,12 +472,37 @@ private:
         auto *camera = ecs_context->GetOrCreateCamera(camera_entity);
 
         camera->control_mode = hgl::ecs::CameraControlMode::ViewModel;
-        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
-        camera->distance = 8.0f;
+        // 默认取景 = 包围球自动框定：目标 = 包围盒中心，距离 = 2×包围球半径
+        // （棋盘 0.7×0.7×0.018m ⇒ 距离约 1.0，法线微起伏清晰可见）
+        hgl::math::Vector3f frame_center(0.0f, 0.0f, 0.0f);
+        float frame_radius = -1.0f;
+        if (pack_mode_ && !render_mesh.empty())
+        {
+            auto *rm = render_mesh[0].get();
+            if (rm && rm->primitive_comp)
+            {
+                hgl::math::AABB local_aabb;
+                if (rm->primitive_comp->GetOwner()->GetContext()
+                        ->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())
+                        ->GetLocalAABB(local_aabb))
+                {
+                    frame_center = local_aabb.GetCenter();
+                    const auto &l = local_aabb.GetLength();
+                    frame_radius = 0.5f * std::sqrt(l.x*l.x + l.y*l.y + l.z*l.z);
+                }
+            }
+        }
+
+        camera->target = frame_center;
+        camera->distance = frame_radius > 0.0f ? 2.0f * frame_radius : 8.0f;
         camera->yaw = 45.0f;
         camera->pitch = -20.0f;
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
+
+        if (const char * v = getenv("LG_DIST"))   camera->distance = (float)atof(v);
+        if (const char * v = getenv("LG_YAW"))    camera->yaw      = (float)atof(v);
+        if (const char * v = getenv("LG_PITCH"))  camera->pitch    = (float)atof(v);
 
         camera->viewport_info = GetViewportInfo();
 
@@ -357,6 +531,8 @@ private:
 public:
     bool Init() override
     {
+        pack_mode_ = (getenv("LG_LEGACY") == nullptr);
+
         if (!InitMaterialRecipes())
             return false;
 
@@ -365,6 +541,9 @@ public:
 
         if(!InitWireMDP())
             return(false);
+
+        if (pack_mode_ && !InitPackMaterials())
+            return false;
 
         if(!CreateGeometryMesh())
             return(false);
@@ -375,7 +554,74 @@ public:
         if(!InitECS())
             return(false);
 
+        if (pack_mode_ && !InitEnvironmentControl())
+            return false;
+
+        if (const char * tag = getenv("LG_DUMP"))
+            dump_tag = tag;
+
+        if (const char * v = getenv("LG_FRAMES"))
+            lg_frames = (uint32_t)atoi(v);
+
         return(true);
+    }
+
+    void Tick(double delta_time) override
+    {
+        WorkObject::Tick(delta_time);
+
+        // LG_DUMP=<tag>：第 8 帧（LG_DUMP_FRAME 可覆盖）帧内回读颜色靶，落原始字节后退出
+        static const uint32_t s_target_dump_frame = []() {
+            if (const char *f = getenv("LG_DUMP_FRAME"))
+                return (uint32_t)atoi(f);
+            return 8u;
+        }();
+
+        if (!dump_tag.empty() && ++dump_frame == s_target_dump_frame)
+        {
+            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
+                ecs_context ? ecs_context->GetRenderTarget() : nullptr);
+            if (!rt)
+            {
+                printf("[LGDUMP] no swapchain RT\n");
+                std::exit(2);
+            }
+
+            std::string tag = dump_tag;
+            graph::IRenderTarget * rt_ptr = rt;
+            rt->SetInFrameReadbackHook([tag, rt_ptr]()
+            {
+                std::vector<uint8_t> pixels;
+                graph::TextureReadbackInfo info;
+                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
+                {
+                    printf("[LGDUMP] readback failed\n");
+                    std::exit(2);
+                }
+
+                char name[256];
+                snprintf(name, sizeof(name), "lgdump_%s_%ux%u_%s.raw",
+                         tag.c_str(), info.width, info.height,
+                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
+                FILE * fp = fopen(name, "wb");
+                if (!fp)
+                {
+                    printf("[LGDUMP] open %s failed\n", name);
+                    std::exit(2);
+                }
+                fwrite(pixels.data(), 1, pixels.size(), fp);
+                fclose(fp);
+                printf("[LGDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
+                std::exit(0);
+            });
+        }
+
+        if (lg_frames > 0 && ++lg_frame_seen >= lg_frames)
+        {
+            printf("[LoadGeometry] done frames=%u\n", lg_frame_seen);
+            fflush(stdout);
+            std::exit(0);
+        }
     }
 };//class LoadGeometryApp
 
