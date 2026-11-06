@@ -384,6 +384,24 @@ submit 0.047 / 上沿 0.83（突发最大 4.39）/ **下沿 0.23**；预热窗�
      标注）、gpu-driven-4id（直通已落地标注）、
      ecs/transform-data-management（传输层改 push constants）、
      ecs/primitive-geometry-vdm（结构图）。
+4. **`shader_resource_schema_regression_gate` 三变体基线红灯（2026-11 实测，先于异步流送工作存在，未修）**
+   - **现象**：全量 `ctest -C Release -j 8`（236 项）唯一失败 =
+     `223 shader_resource_schema_regression_gate` / `229 .pipeline` / `231 .module-invariants`。
+   - **根因 A（`MI.sampler-reference-contract`）**：`material_source_pbr_advanced.glsl`、
+     `material_source_pbr_surface.glsl`（15-16 行）、`ntb_tangent_vbo_normalmap.glsl`（10、73 行）
+     正文取 `TrilinearAnisoSampler`，却只声明 `@ulre sampler_reference Trilinear` / `Linear`。
+     引入点 `f76acfe09`。
+   - **根因 B（`DH.domain-backend-equivalence`）**：`golden/domain-backend/{fwd,adv-fwd}.equiv.txt`
+     的 `spv_bytes` 过期（`fwd 74608→74640`、`adv-fwd 83212→83244`），与 A 同源。
+   - **为什么不能只补一行声明**：`@ulre sampler_reference` 不是等价注释——
+     `ShaderCodeResourceManifest.cpp` 按模块 `sampler_reference_requirements` 把采样器并进
+     manifest，参与 manifest 哈希/容量，进而改变 `V1.material-output-contract`、
+     `V3.unified-forward-skeleton`、`Q0.authoritative-material-cache-identity`、
+     `PM.release-manifest-lookup`、`SPV.generated-interface`、`DH.domain-backend-*` 的结果。
+     两次实验（追加声明 / 替换声明）各连带炸掉 7 项门禁，已 `git checkout -- ShaderLibrary` 回退。
+   - **要做的**：确认三处 GLSL 到底该声明哪个采样器（正文与声明对齐），然后**同批重录**
+     manifest 哈希类锚点 + `spv_bytes` golden，共约 8 项门禁产物。**须单独一轮，不要混进功能提交。**
+   - 附：该门自身与异步流送/场景装载改动**无因果关系**（回退本轮全部提交仍复现）。
 
 ## D 线：CSM/阴影后续（2026-09-26 review 消化 + masked 链深挖新卡）
 
