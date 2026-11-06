@@ -63,14 +63,14 @@ namespace
         "transform.rotation_axis = [0.0, 0.0, 1.0]\n"
         "transform.rotation_angle_deg = 30.0\n";
 
-    bool Parse(const char *text, SceneSpec &spec)
+    bool Parse(const char *text, LevelSpec &spec)
     {
         return ParseSceneSpec(text, std::strlen(text), OS_TEXT("TestSceneFile"), spec);
     }
 
     bool TestValidScene()
     {
-        SceneSpec spec;
+        LevelSpec spec;
         if (!Parse(kValidScene, spec))
             return false;
 
@@ -78,14 +78,14 @@ namespace
             || spec.materials.GetCount() != 3 || spec.nodes.GetCount() != 2)
             return false;
         if (!spec.camera.enabled
-            || spec.camera.mode != SceneCameraMode::ViewModel
+            || spec.camera.mode != LevelCameraMode::ViewModel
             || spec.camera.distance != 14.0f
             || !spec.clear_color.enabled
             || spec.clear_color.value.x != 0.18f)
             return false;
-        if (spec.materials[0]->type != SceneMaterialType::PBRSurface
-            || spec.materials[1]->type != SceneMaterialType::EmissiveSurface
-            || spec.materials[2]->type != SceneMaterialType::TransmissionSurface)
+        if (spec.materials[0]->type != LevelMaterialType::PBRSurface
+            || spec.materials[1]->type != LevelMaterialType::EmissiveSurface
+            || spec.materials[2]->type != LevelMaterialType::TransmissionSurface)
             return false;
         if (spec.materials[0]->textures.GetCount() != 2
             || spec.materials[0]->textures[0]->name != "base_color"
@@ -136,7 +136,7 @@ namespace
             "[clear_color]\nvalue = [0.0, 0.0, 0.0, 1.0e999]\n"
             "[[nodes]]\nname = \"N\"\ngeometry = \"presets:cube\"\nrecipe = \"R\"\n";
 
-        SceneSpec spec;
+        LevelSpec spec;
         return !Parse(kUnknownRootKey, spec)
             && !Parse(kWrongMaterialKey, spec)
             && !Parse(kDuplicateTextureSlot, spec)
@@ -150,7 +150,7 @@ namespace
 
     bool TestBasicLitMeshesSceneFile()
     {
-        SceneSpec spec;
+        LevelSpec spec;
         if (!LoadSceneSpecFromTOML(
                 OS_TEXT("example/Material/BasicLitMeshes.scene.toml"),
                 spec))
@@ -177,7 +177,7 @@ namespace
             "schema = 1\nname = \"MissingRecipe\"\n"
             "[[nodes]]\nname = \"Geo\"\ngeometry = \"geo:res/geo/unit_sphere.geo.toml\"\n";
 
-        SceneSpec spec;
+        LevelSpec spec;
         if (!Parse(kGeometryAssetScene, spec)
             || spec.nodes.GetCount() != 1
             || spec.nodes[0]->recipe != "Core.PBR.Lit")
@@ -212,13 +212,13 @@ namespace
             OS_TEXT("build/Testing/Temporary/scene_asset_roundtrip.scene.fb");
         hgl::filesystem::FileDelete(filename);
 
-        SceneSpec source;
+        LevelSpec source;
         if (!Parse(kValidScene, source))
             return false;
         if (!SaveSceneSpecToFlatBuffers(source, filename))
             return false;
 
-        SceneSpec loaded;
+        LevelSpec loaded;
         const bool load_ok = LoadSceneSpecFromFile(filename, loaded);
         hgl::filesystem::FileDelete(filename);
         return load_ok

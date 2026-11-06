@@ -53,7 +53,7 @@ namespace hgl::graph
             return text && std::strncmp(text, prefix, std::strlen(prefix)) == 0;
         }
 
-        bool CreateMaterial(const SceneMaterialSpec &spec,
+        bool CreateMaterial(const LevelMaterialSpec &spec,
                             GlobalSSBOBufferRegistry *registry,
                             SceneInstance::RuntimeMaterial *runtime)
         {
@@ -63,7 +63,7 @@ namespace hgl::graph
             runtime->name = spec.name;
             switch (spec.type)
             {
-            case SceneMaterialType::PBRSurface:
+            case LevelMaterialType::PBRSurface:
             {
                 runtime->accessor = registry->GetAccessor<ssbo::PBRSurfaceRow>();
                 ssbo::PBRSurfaceRow row{};
@@ -76,7 +76,7 @@ namespace hgl::graph
                     return false;
                 break;
             }
-            case SceneMaterialType::EmissiveSurface:
+            case LevelMaterialType::EmissiveSurface:
             {
                 runtime->accessor = registry->GetAccessor<ssbo::EmissiveSurfaceRow>();
                 ssbo::EmissiveSurfaceRow row{};
@@ -85,7 +85,7 @@ namespace hgl::graph
                     return false;
                 break;
             }
-            case SceneMaterialType::TransmissionSurface:
+            case LevelMaterialType::TransmissionSurface:
             {
                 runtime->accessor = registry->GetAccessor<ssbo::TransmissionSurfaceRow>();
                 ssbo::TransmissionSurfaceRow row{};
@@ -94,7 +94,7 @@ namespace hgl::graph
                     return false;
                 break;
             }
-            case SceneMaterialType::PBRAdvancedSurface:
+            case LevelMaterialType::PBRAdvancedSurface:
             {
                 runtime->accessor = registry->GetAccessor<ssbo::PBRAdvancedSurfaceRow>();
                 ssbo::PBRAdvancedSurfaceRow row{};
@@ -120,7 +120,7 @@ namespace hgl::graph
 
             for (int i = 0; i < spec.textures.GetCount(); ++i)
             {
-                SceneTextureSpec *texture = runtime->textures.Create();
+                LevelTextureSpec *texture = runtime->textures.Create();
                 if (!texture)
                     return false;
                 texture->name = spec.textures[i]->name;
@@ -188,7 +188,7 @@ namespace hgl::graph
         geometry_manager = nullptr;
     }
 
-    bool SceneLoader::Instantiate(const SceneSpec &spec,
+    bool SceneLoader::Instantiate(const LevelSpec &spec,
                                   ecs::ECSContext *world,
                                   GeometryCreater *creater,
                                   SceneInstance &out_instance,
@@ -232,7 +232,7 @@ namespace hgl::graph
 
         for (int i = 0; i < spec.nodes.GetCount(); ++i)
         {
-            const SceneNodeSpec &node_spec = *spec.nodes[i];
+            const LevelNodeSpec &node_spec = *spec.nodes[i];
             const bool uses_preset = HasPrefix(node_spec.geometry, "presets:");
             const bool uses_geometry_asset = HasPrefix(node_spec.geometry, "geo:");
             const bool uses_primitive_asset = HasPrefix(node_spec.geometry, "primitive:");
@@ -345,7 +345,7 @@ namespace hgl::graph
                      texture_index < material->textures.GetCount();
                      ++texture_index)
                 {
-                    const SceneTextureSpec &texture = *material->textures[texture_index];
+                    const LevelTextureSpec &texture = *material->textures[texture_index];
                     OSString texture_uri = texture.uri;
                     if (texture_uri.StartsWithIgnoreCase(OS_TEXT("tex:")))
                         texture_uri = OSString(texture_uri.c_str() + 4);
@@ -424,7 +424,7 @@ namespace hgl::graph
 
         for (int i = 0; i < spec.nodes.GetCount(); ++i)
         {
-            const SceneNodeSpec &node_spec = *spec.nodes[i];
+            const LevelNodeSpec &node_spec = *spec.nodes[i];
             if (node_spec.parent.IsEmpty())
                 continue;
 
@@ -480,16 +480,16 @@ namespace hgl::graph
 
             switch (spec.camera.mode)
             {
-            case SceneCameraMode::ViewModel:
+            case LevelCameraMode::ViewModel:
                 camera->control_mode = ecs::CameraControlMode::ViewModel;
                 break;
-            case SceneCameraMode::Free:
+            case LevelCameraMode::Free:
                 camera->control_mode = ecs::CameraControlMode::Free;
                 break;
-            case SceneCameraMode::LookAt:
+            case LevelCameraMode::LookAt:
                 camera->control_mode = ecs::CameraControlMode::LookAt;
                 break;
-            case SceneCameraMode::FirstPerson:
+            case LevelCameraMode::FirstPerson:
                 camera->control_mode = ecs::CameraControlMode::FirstPerson;
                 break;
             default:

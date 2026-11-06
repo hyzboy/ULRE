@@ -9,7 +9,7 @@
 
 namespace hgl::graph
 {
-    enum class SceneMaterialType : uint8
+    enum class LevelMaterialType : uint8
     {
         PBRSurface,
         EmissiveSurface,
@@ -17,7 +17,7 @@ namespace hgl::graph
         PBRAdvancedSurface
     };
 
-    enum class SceneCameraMode : uint8
+    enum class LevelCameraMode : uint8
     {
         ViewModel,
         Free,
@@ -25,7 +25,7 @@ namespace hgl::graph
         FirstPerson
     };
 
-    struct HGL_ASSET_STRUCT SceneTransformSpec
+    struct HGL_ASSET_STRUCT LevelTransformSpec
     {
         hgl::math::Vector3f position{0.0f};
         hgl::math::Vector3f rotation_axis{0.0f, 0.0f, 1.0f};
@@ -33,17 +33,17 @@ namespace hgl::graph
         hgl::math::Vector3f scale{1.0f};
     };
 
-    struct HGL_ASSET_STRUCT SceneTextureSpec
+    struct HGL_ASSET_STRUCT LevelTextureSpec
     {
         AnsiString name;
         OSString uri;
         bool required = true;
     };
 
-    struct HGL_ASSET_STRUCT SceneMaterialSpec
+    struct HGL_ASSET_STRUCT LevelMaterialSpec
     {
         AnsiString name;
-        SceneMaterialType type = SceneMaterialType::PBRSurface;
+        LevelMaterialType type = LevelMaterialType::PBRSurface;
         Color4f base_color = Color4f(1.0f);
         float metallic = 0.0f;
         float roughness = 1.0f;
@@ -60,25 +60,26 @@ namespace hgl::graph
         float anisotropy = 0.0f;
         float subsurface_power = 0.0f;
         float thickness = 0.0f;
-        ManagedArray<SceneTextureSpec> textures;
+        ManagedArray<LevelTextureSpec> textures;
     };
 
-    struct HGL_ASSET_STRUCT SceneNodeSpec
+    struct HGL_ASSET_STRUCT LevelNodeSpec
     {
         AnsiString name;
         AnsiString parent;
         AnsiString geometry;
+        AnsiString model;   // 复合模型资产引用（`.model` MDL2 包）；与 geometry 二选一
         AnsiString recipe;
         AnsiString material;
         AnsiString mobility = "movable";
         bool visible = true;
-        SceneTransformSpec transform;
+        LevelTransformSpec transform;
     };
 
-    struct HGL_ASSET_STRUCT SceneCameraSpec
+    struct HGL_ASSET_STRUCT LevelCameraSpec
     {
         bool enabled = false;
-        SceneCameraMode mode = SceneCameraMode::ViewModel;
+        LevelCameraMode mode = LevelCameraMode::ViewModel;
         hgl::math::Vector3f position{0.0f, 0.0f, 5.0f};
         hgl::math::Vector3f target{0.0f};
         float distance = 10.0f;
@@ -90,20 +91,20 @@ namespace hgl::graph
         bool main = true;
     };
 
-    struct HGL_ASSET_STRUCT SceneClearColorSpec
+    struct HGL_ASSET_STRUCT LevelClearColorSpec
     {
         bool enabled = false;
         Color4f value{0.0f, 0.0f, 0.0f, 1.0f};
     };
 
-    struct HGL_ASSET_STRUCT SceneSpec
+    struct HGL_ASSET_STRUCT LevelSpec
     {
         uint32 schema = 1;
         AnsiString name;
         AnsiString description;
-        SceneCameraSpec camera;
-        SceneClearColorSpec clear_color;
-        ManagedArray<SceneMaterialSpec> materials;
-        ManagedArray<SceneNodeSpec> nodes;
+        LevelCameraSpec camera;
+        LevelClearColorSpec clear_color;
+        ManagedArray<LevelMaterialSpec> materials;
+        ManagedArray<LevelNodeSpec> nodes;
     };
 }

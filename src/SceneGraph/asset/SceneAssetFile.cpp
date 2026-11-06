@@ -1,5 +1,5 @@
 #include <hgl/graph/asset/SceneAssetFile.h>
-#include <hgl/asset/generated/SceneSerialize.gen.h>
+#include <hgl/asset/generated/LevelSerialize.gen.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>
@@ -20,11 +20,11 @@ namespace hgl::graph
 {
     namespace
     {
-        bool ValidateRelationships(const SceneSpec &spec);
+        bool ValidateRelationships(const LevelSpec &spec);
     }
 
     bool LoadSceneSpecFromFile(const OSString &filename,
-                               SceneSpec &out_spec)
+                               LevelSpec &out_spec)
     {
         if (filename.EndsWithIgnoreCase(OS_TEXT(".toml")))
             return LoadSceneSpecFromTOML(filename, out_spec);
@@ -37,7 +37,7 @@ namespace hgl::graph
     }
 
     bool LoadSceneSpecFromTOML(const OSString &filename,
-                               SceneSpec &out_spec)
+                               LevelSpec &out_spec)
     {
         hgl::io::OpenFileInputStream opener(filename);
         if (!opener)
@@ -69,7 +69,7 @@ namespace hgl::graph
     }
 
     bool LoadSceneSpecFromFlatBuffers(const OSString &filename,
-                                      SceneSpec &out_spec)
+                                      LevelSpec &out_spec)
     {
         hgl::io::OpenFileInputStream opener(filename);
         if (!opener)
@@ -99,7 +99,7 @@ namespace hgl::graph
             buffer.data(), static_cast<size_t>(size), filename.c_str(), out_spec);
     }
 
-    bool SaveSceneSpecToFlatBuffers(const SceneSpec &spec,
+    bool SaveSceneSpecToFlatBuffers(const LevelSpec &spec,
                                     const OSString &filename)
     {
         if (spec.schema != 1 || spec.name.Length() == 0)
@@ -108,7 +108,7 @@ namespace hgl::graph
             return false;
         }
 
-        // 语义校验只看 `SceneSpec` 本身。旧实现先 `WriteTomlTable` 造一张假表再回头
+        // 语义校验只看 `LevelSpec` 本身。旧实现先 `WriteTomlTable` 造一张假表再回头
         // 从表里取值做校验，等于让「能否落盘」依赖 TOML 编码器；现在这条依赖没有了。
         if (!ValidateRelationships(spec))
         {
@@ -117,7 +117,7 @@ namespace hgl::graph
         }
 
         hgl::ValueArray<uint8> buffer;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(buffer, spec))
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<LevelSpec>(buffer, spec))
         {
             MLogError(ModelAsset, OS_TEXT("SaveSceneSpecToFlatBuffers: serialization failed"));
             return false;
@@ -146,7 +146,7 @@ namespace hgl::graph
     bool ParseSceneSpecFromFlatBuffers(const void *data,
                                        const size_t size,
                                        const os_char *debug_name,
-                                       SceneSpec &out_spec)
+                                       LevelSpec &out_spec)
     {
         if (!data || size == 0 || size > 64 * 1024 * 1024)
         {
@@ -155,7 +155,7 @@ namespace hgl::graph
             return false;
         }
 
-        if (!hgl::serialize::fb::VerifyBuffer<SceneSpec>(data, size))
+        if (!hgl::serialize::fb::VerifyBuffer<LevelSpec>(data, size))
         {
             MLogError(ModelAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: verification failed in ")
                       + OSString(debug_name));
@@ -163,9 +163,9 @@ namespace hgl::graph
         }
 
         // 归零放在最前面：连续解码多份缓冲时，上一次的 `materials` / `nodes` 不能残留。
-        out_spec = SceneSpec{};
+        out_spec = LevelSpec{};
 
-        if (!hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(
+        if (!hgl::serialize::fb::DecodeFromFlatBuffers<LevelSpec>(
                 static_cast<const uint8_t *>(data), size, out_spec))
         {
             MLogError(ModelAsset, OS_TEXT("ParseSceneSpecFromFlatBuffers: decode failed in ")
@@ -232,11 +232,11 @@ namespace hgl::graph
 
         /// 按材质类型分派的**键形**校验。
         ///
-        /// `ValidateKeysByMeta` 只能校验「这些键是不是 `SceneMaterialSpec` 的字段」，
-        /// 而 `SceneMaterialSpec` 是四种材质的并集，所以它分不清「EmissiveSurface
+        /// `ValidateKeysByMeta` 只能校验「这些键是不是 `LevelMaterialSpec` 的字段」，
+        /// 而 `LevelMaterialSpec` 是四种材质的并集，所以它分不清「EmissiveSurface
         /// 写了 metallic」。这条按类型收窄的规则属于场景语义，留在这里。
         bool ValidateMaterialKeys(const hgl::serialize::Value &table,
-                                  const SceneMaterialType type)
+                                  const LevelMaterialType type)
         {
             static const char *const pbr[] = {
                 "name", "type", "base_color", "metallic", "roughness",
@@ -254,41 +254,41 @@ namespace hgl::graph
 
             switch (type)
             {
-            case SceneMaterialType::PBRSurface:
+            case LevelMaterialType::PBRSurface:
                 return HasOnlyKeys(table, pbr, sizeof(pbr) / sizeof(pbr[0]));
-            case SceneMaterialType::EmissiveSurface:
+            case LevelMaterialType::EmissiveSurface:
                 return HasOnlyKeys(table, emissive, sizeof(emissive) / sizeof(emissive[0]));
-            case SceneMaterialType::TransmissionSurface:
+            case LevelMaterialType::TransmissionSurface:
                 return HasOnlyKeys(table, transmission, sizeof(transmission) / sizeof(transmission[0]));
-            case SceneMaterialType::PBRAdvancedSurface:
+            case LevelMaterialType::PBRAdvancedSurface:
                 return HasOnlyKeys(table, advanced, sizeof(advanced) / sizeof(advanced[0]));
             default:
                 return false;
             }
         }
 
-        bool IsValidMaterialType(const SceneMaterialType type)
+        bool IsValidMaterialType(const LevelMaterialType type)
         {
             switch (type)
             {
-            case SceneMaterialType::PBRSurface:
-            case SceneMaterialType::EmissiveSurface:
-            case SceneMaterialType::TransmissionSurface:
-            case SceneMaterialType::PBRAdvancedSurface:
+            case LevelMaterialType::PBRSurface:
+            case LevelMaterialType::EmissiveSurface:
+            case LevelMaterialType::TransmissionSurface:
+            case LevelMaterialType::PBRAdvancedSurface:
                 return true;
             default:
                 return false;
             }
         }
 
-        bool IsValidCameraMode(const SceneCameraMode mode)
+        bool IsValidCameraMode(const LevelCameraMode mode)
         {
             switch (mode)
             {
-            case SceneCameraMode::ViewModel:
-            case SceneCameraMode::Free:
-            case SceneCameraMode::LookAt:
-            case SceneCameraMode::FirstPerson:
+            case LevelCameraMode::ViewModel:
+            case LevelCameraMode::Free:
+            case LevelCameraMode::LookAt:
+            case LevelCameraMode::FirstPerson:
                 return true;
             default:
                 return false;
@@ -301,7 +301,7 @@ namespace hgl::graph
             return text && std::strncmp(text, prefix, std::strlen(prefix)) == 0;
         }
 
-        bool IsValidGeometryReference(const SceneNodeSpec &node)
+        bool IsValidGeometryReference(const LevelNodeSpec &node)
         {
             if (node.geometry.IsEmpty())
                 return false;
@@ -323,7 +323,7 @@ namespace hgl::graph
 
         /// 把 `[materials.textures]` 的「槽位名 = uri」简写展开成 `[[materials.textures]]`
         /// 的 `{name, uri}` 数组。必须在键校验之前跑：简写形态下 `textures` 是表，键是
-        /// 槽位名（`base_color`），`SceneTextureSpec` 里没有这些属性，键校验会直接判错。
+        /// 槽位名（`base_color`），`LevelTextureSpec` 里没有这些属性，键校验会直接判错。
         bool NormalizeTextureTables(hgl::serialize::Value &root)
         {
             hgl::serialize::Value *materials = root.FindFieldExact("materials");
@@ -385,7 +385,7 @@ namespace hgl::graph
         /// 定位每张材质源表；现在键名知识已经全部上移到 `ClassMetaInfo`，这里只剩
         /// 「这张表的类型与键集合是否自洽」这一条场景策略，因此只吃值树。
         bool ValidateMaterialTables(const hgl::serialize::Value &root,
-                                    const SceneSpec &spec)
+                                    const LevelSpec &spec)
         {
             const hgl::serialize::Value *materials = root.FindFieldExact("materials");
 
@@ -411,9 +411,9 @@ namespace hgl::graph
             return true;
         }
 
-        /// 纯 `SceneSpec` 语义校验：相机参数、清屏色、材质的引用与取值、节点图。
+        /// 纯 `LevelSpec` 语义校验：相机参数、清屏色、材质的引用与取值、节点图。
         /// 不碰任何后端类型，TOML 与 FlatBuffers 两条路径共用同一份规则。
-        bool ValidateRelationships(const SceneSpec &spec)
+        bool ValidateRelationships(const LevelSpec &spec)
         {
             if (spec.camera.enabled
                 && (!IsValidCameraMode(spec.camera.mode)
@@ -431,8 +431,8 @@ namespace hgl::graph
                     || spec.camera.pitch >= 90.0f
                     || spec.camera.near_plane <= 0.0f
                     || spec.camera.far_plane <= spec.camera.near_plane
-                    || ((spec.camera.mode == SceneCameraMode::ViewModel
-                         || spec.camera.mode == SceneCameraMode::LookAt)
+                    || ((spec.camera.mode == LevelCameraMode::ViewModel
+                         || spec.camera.mode == LevelCameraMode::LookAt)
                         && spec.camera.distance <= 0.0f)))
                 return false;
 
@@ -441,7 +441,7 @@ namespace hgl::graph
 
             for (int i = 0; i < spec.materials.GetCount(); ++i)
             {
-                const SceneMaterialSpec &material = *spec.materials[i];
+                const LevelMaterialSpec &material = *spec.materials[i];
                 if (material.name.IsEmpty())
                     return false;
 
@@ -457,7 +457,7 @@ namespace hgl::graph
 
                 for (int j = 0; j < material.textures.GetCount(); ++j)
                 {
-                    const SceneTextureSpec &texture = *material.textures[j];
+                    const LevelTextureSpec &texture = *material.textures[j];
 
                     if (texture.name.IsEmpty() || texture.uri.IsEmpty())
                         return false;
@@ -471,7 +471,7 @@ namespace hgl::graph
             const auto &nodes = spec.nodes;
             for (int i = 0; i < nodes.GetCount(); ++i)
             {
-                const SceneNodeSpec &node = *nodes[i];
+                const LevelNodeSpec &node = *nodes[i];
                 if (node.name.IsEmpty()
                     || !IsValidGeometryReference(node)
                     || (hgl::stricmp(node.mobility.c_str(), "static") != 0
@@ -524,7 +524,7 @@ namespace hgl::graph
                     if (++steps > nodes.GetCount())
                         return false;
 
-                    const SceneNodeSpec &parent = *nodes[current];
+                    const LevelNodeSpec &parent = *nodes[current];
                     current = -1;
                     if (!parent.parent.IsEmpty())
                     {
@@ -545,9 +545,9 @@ namespace hgl::graph
     bool ParseSceneSpec(const char *content,
                         const size_t size,
                         const os_char *debug_name,
-                        SceneSpec &out_spec)
+                        LevelSpec &out_spec)
     {
-        out_spec = SceneSpec{};
+        out_spec = LevelSpec{};
 
         if (!content || size == 0)
         {
@@ -617,7 +617,7 @@ namespace hgl::graph
             }
         }
 
-        // 必须在键校验之前：`[materials.textures]` 的槽位名在 `SceneTextureSpec` 里
+        // 必须在键校验之前：`[materials.textures]` 的槽位名在 `LevelTextureSpec` 里
         // 并不存在，展开成数组之后键校验看到的才是 `name` / `uri` / `required`。
         if (!NormalizeTextureTables(root))
         {
@@ -633,7 +633,7 @@ namespace hgl::graph
             AnsiString bad_key;
 
             if (!hgl::serialize::ValidateKeysByMeta(
-                    root, hgl::asset::generated::Class_SceneSpec,
+                    root, hgl::asset::generated::Class_LevelSpec,
                     AnsiString(), bad_path, bad_key))
             {
                 if (bad_path.IsEmpty())

@@ -8,30 +8,30 @@
 #pragma once
 
 #include <hgl/serialize/Archive.h>
-#include <hgl/graph/asset/SceneAssetSpec.h>
-#include <hgl/asset/generated/SceneMeta.gen.h>
+#include <hgl/graph/asset/LevelSpec.h>
+#include <hgl/asset/generated/LevelMeta.gen.h>
 
 namespace hgl::serialize
 {
-    template<> struct EnumTraits<hgl::graph::SceneMaterialType>
+    template<> struct EnumTraits<hgl::graph::LevelMaterialType>
     {
         static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::SceneMaterialType v)
-        { return hgl::asset::generated::AssetEnumName_SceneMaterialType(v); }
-        static bool FromName(const char *s, hgl::graph::SceneMaterialType &out)
-        { return hgl::asset::generated::AssetEnumParse_SceneMaterialType(s, out); }
+        static const char *ToName(hgl::graph::LevelMaterialType v)
+        { return hgl::asset::generated::AssetEnumName_LevelMaterialType(v); }
+        static bool FromName(const char *s, hgl::graph::LevelMaterialType &out)
+        { return hgl::asset::generated::AssetEnumParse_LevelMaterialType(s, out); }
     };
 
-    template<> struct EnumTraits<hgl::graph::SceneCameraMode>
+    template<> struct EnumTraits<hgl::graph::LevelCameraMode>
     {
         static constexpr bool defined = true;
-        static const char *ToName(hgl::graph::SceneCameraMode v)
-        { return hgl::asset::generated::AssetEnumName_SceneCameraMode(v); }
-        static bool FromName(const char *s, hgl::graph::SceneCameraMode &out)
-        { return hgl::asset::generated::AssetEnumParse_SceneCameraMode(s, out); }
+        static const char *ToName(hgl::graph::LevelCameraMode v)
+        { return hgl::asset::generated::AssetEnumName_LevelCameraMode(v); }
+        static bool FromName(const char *s, hgl::graph::LevelCameraMode &out)
+        { return hgl::asset::generated::AssetEnumParse_LevelCameraMode(s, out); }
     };
 
-    template<> struct StructSerializer<hgl::graph::SceneTransformSpec>
+    template<> struct StructSerializer<hgl::graph::LevelTransformSpec>
     {
         static constexpr bool defined = true;
 
@@ -44,10 +44,10 @@ namespace hgl::serialize
             ar.Field(4, "scale", v.scale);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
-        { return &hgl::asset::generated::Class_SceneTransformSpec; }
+        { return &hgl::asset::generated::Class_LevelTransformSpec; }
     };
 
-    template<> struct StructSerializer<hgl::graph::SceneTextureSpec>
+    template<> struct StructSerializer<hgl::graph::LevelTextureSpec>
     {
         static constexpr bool defined = true;
 
@@ -59,10 +59,10 @@ namespace hgl::serialize
             ar.Field(3, "required", v.required);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
-        { return &hgl::asset::generated::Class_SceneTextureSpec; }
+        { return &hgl::asset::generated::Class_LevelTextureSpec; }
     };
 
-    template<> struct StructSerializer<hgl::graph::SceneMaterialSpec>
+    template<> struct StructSerializer<hgl::graph::LevelMaterialSpec>
     {
         static constexpr bool defined = true;
 
@@ -88,10 +88,10 @@ namespace hgl::serialize
             ar.Field(17, "textures", v.textures);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
-        { return &hgl::asset::generated::Class_SceneMaterialSpec; }
+        { return &hgl::asset::generated::Class_LevelMaterialSpec; }
     };
 
-    template<> struct StructSerializer<hgl::graph::SceneNodeSpec>
+    template<> struct StructSerializer<hgl::graph::LevelNodeSpec>
     {
         static constexpr bool defined = true;
 
@@ -101,17 +101,18 @@ namespace hgl::serialize
             ar.Field(1, "name", v.name);
             ar.Field(2, "parent", v.parent);
             ar.Field(3, "geometry", v.geometry);
-            ar.Field(4, "recipe", v.recipe);
-            ar.Field(5, "material", v.material);
-            ar.Field(6, "mobility", v.mobility);
-            ar.Field(7, "visible", v.visible);
-            ar.Field(8, "transform", v.transform);
+            ar.Field(4, "model", v.model);
+            ar.Field(5, "recipe", v.recipe);
+            ar.Field(6, "material", v.material);
+            ar.Field(7, "mobility", v.mobility);
+            ar.Field(8, "visible", v.visible);
+            ar.Field(9, "transform", v.transform);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
-        { return &hgl::asset::generated::Class_SceneNodeSpec; }
+        { return &hgl::asset::generated::Class_LevelNodeSpec; }
     };
 
-    template<> struct StructSerializer<hgl::graph::SceneCameraSpec>
+    template<> struct StructSerializer<hgl::graph::LevelCameraSpec>
     {
         static constexpr bool defined = true;
 
@@ -131,10 +132,10 @@ namespace hgl::serialize
             ar.Field(11, "main", v.main);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
-        { return &hgl::asset::generated::Class_SceneCameraSpec; }
+        { return &hgl::asset::generated::Class_LevelCameraSpec; }
     };
 
-    template<> struct StructSerializer<hgl::graph::SceneClearColorSpec>
+    template<> struct StructSerializer<hgl::graph::LevelClearColorSpec>
     {
         static constexpr bool defined = true;
 
@@ -145,10 +146,10 @@ namespace hgl::serialize
             ar.Field(2, "value", v.value);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
-        { return &hgl::asset::generated::Class_SceneClearColorSpec; }
+        { return &hgl::asset::generated::Class_LevelClearColorSpec; }
     };
 
-    template<> struct StructSerializer<hgl::graph::SceneSpec>
+    template<> struct StructSerializer<hgl::graph::LevelSpec>
     {
         static constexpr bool defined = true;
 
@@ -164,7 +165,7 @@ namespace hgl::serialize
             ar.Field(7, "nodes", v.nodes);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
-        { return &hgl::asset::generated::Class_SceneSpec; }
+        { return &hgl::asset::generated::Class_LevelSpec; }
     };
 
 }//namespace hgl::serialize

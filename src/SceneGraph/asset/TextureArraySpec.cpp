@@ -423,7 +423,7 @@ namespace hgl::graph
                 }
             }
 
-            // `ManagedArray` 拥有指针（与 SceneAssetSpec/MaterialRecipeSpec 同一套约定）
+            // `ManagedArray` 拥有指针（与 LevelSpec/MaterialRecipeSpec 同一套约定）
             out.layers.Add(new TextureArrayLayerSpec(layer));
         }
 

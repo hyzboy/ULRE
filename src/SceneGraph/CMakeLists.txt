@@ -317,7 +317,7 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/AssetLoadGraph.h
                             ${SG_INCLUDE_PATH}/asset/ModelDependencyExtractor.h
                             ${SG_INCLUDE_PATH}/asset/ModelLoadPlan.h
-                            ${SG_INCLUDE_PATH}/asset/SceneAssetSpec.h
+                            ${SG_INCLUDE_PATH}/asset/LevelSpec.h
                             ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/ModelAsset.h
                             ${SG_INCLUDE_PATH}/asset/SceneSpecAssetRegistry.h

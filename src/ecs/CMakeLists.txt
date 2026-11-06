@@ -200,7 +200,7 @@ add_ecs_test(TestAssetFactory tests/TestAssetFactory.cpp)
 # Geometry preset library: every shape name used by examples must resolve to a TOML.
 add_ecs_test(TestGeometryPreset tests/TestGeometryPreset.cpp)
 
-# TOML SceneSpec parser: schema, references, type-specific keys, and parent cycles.
+# TOML LevelSpec parser: schema, references, type-specific keys, and parent cycles.
 add_ecs_test(TestSceneFile tests/TestSceneFile.cpp)
 
 # 阶段二：多材质场景装载的资产级材质下标透传 + 实例化行选择逻辑（纯数据用例）。

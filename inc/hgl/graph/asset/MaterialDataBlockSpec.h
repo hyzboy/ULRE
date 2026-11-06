@@ -30,7 +30,7 @@
  * `target` 决定哪些键有意义，其余键写给本 target 用不到的行会被当作错误拒绝
  * （见 `MaterialDataBlockFile.cpp` 的 `ValidateRowKeysForTarget`），不会被静默忽略。
  *
- * 这与 `SceneMaterialSpec`（一个结构 + `type` 判别 + 超集字段）是同一种取舍：
+ * 这与 `LevelMaterialSpec`（一个结构 + `type` 判别 + 超集字段）是同一种取舍：
  * 授权侧同构，运行时按 `target` 摊成物理行。
  *
  * 注意 `trans_color` 在授权侧是 `Color4f`（可读、可写 0..1），在 GPU 侧是

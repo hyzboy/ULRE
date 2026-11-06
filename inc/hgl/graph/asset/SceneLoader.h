@@ -3,7 +3,7 @@
 #include <hgl/ecs/core/entity/EntityHandle.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/asset/GeometryAsset.h>
-#include <hgl/graph/asset/SceneAssetSpec.h>
+#include <hgl/graph/asset/LevelSpec.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/type/ManagedArray.h>
 
@@ -27,7 +27,7 @@ namespace hgl
             {
                 AnsiString name;
                 GlobalSSBODataAccessor accessor;
-                ManagedArray<SceneTextureSpec> textures;
+                ManagedArray<LevelTextureSpec> textures;
             };
 
             struct RuntimeNode
@@ -76,7 +76,7 @@ namespace hgl
         class SceneLoader
         {
         public:
-            static bool Instantiate(const SceneSpec &spec,
+            static bool Instantiate(const LevelSpec &spec,
                                     ecs::ECSContext *world,
                                     GeometryCreater *creater,
                                     SceneInstance &out_instance,

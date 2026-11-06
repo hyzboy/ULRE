@@ -15,11 +15,11 @@ integer_enums = ["VkFormat", "ShaderStage"]
 # 按**枚举值声明顺序**给出别名：解析时别名与 C++ 名都接受（大小写不敏感），
 # 写出时优先用别名。这样既不改动已有的 TOML 拼写，也不用修改 C++ 命名。
 [[enum]]
-name = "SceneMaterialType"
+name = "LevelMaterialType"
 aliases = ["PBRSurface", "EmissiveSurface", "TransmissionSurface", "PBRAdvancedSurface"]
 
 [[enum]]
-name = "SceneCameraMode"
+name = "LevelCameraMode"
 aliases = ["view_model", "free", "look_at", "first_person"]
 
 # ── 外部枚举：拼写表已有唯一真源，生成器只转发 ──────────────────────────────
@@ -174,11 +174,11 @@ serialize     = "inc/hgl/asset/generated/PrimitiveSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/PrimitiveMeta.gen.h"
 
 # ── 场景编排规约 ────────────────────────────────────────────────────────────
-[group.Scene]
+[group.Level]
 namespace     = "hgl::graph"
-scan          = ["inc/hgl/graph/asset/SceneAssetSpec.h"]
-serialize     = "inc/hgl/asset/generated/SceneSerialize.gen.h"
-meta          = "inc/hgl/asset/generated/SceneMeta.gen.h"
+scan          = ["inc/hgl/graph/asset/LevelSpec.h"]
+serialize     = "inc/hgl/asset/generated/LevelSerialize.gen.h"
+meta          = "inc/hgl/asset/generated/LevelMeta.gen.h"
 
 # ── 材质配方规约 ────────────────────────────────────────────────────────────
 # `ShaderLibrary/asset/recipe/**/*.recipe.toml` 的字段契约真源。跨字段业务校验

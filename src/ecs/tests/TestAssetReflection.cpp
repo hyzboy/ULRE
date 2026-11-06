@@ -12,8 +12,8 @@
 #include <hgl/asset/generated/GeometryMeta.gen.h>
 #include <hgl/asset/generated/PrimitiveMeta.gen.h>
 #include <hgl/asset/generated/PrimitiveSerialize.gen.h>
-#include <hgl/asset/generated/SceneSerialize.gen.h>
-#include <hgl/asset/generated/SceneMeta.gen.h>
+#include <hgl/asset/generated/LevelSerialize.gen.h>
+#include <hgl/asset/generated/LevelMeta.gen.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <hgl/serialize/FlatCodec.h>
@@ -370,16 +370,16 @@ namespace
 
     bool TestSceneFlatBuffersRoundTrip()
     {
-        SceneSpec source;
+        LevelSpec source;
         source.name = "FlatScene";
-        SceneMaterialSpec *material = source.materials.Create();
+        LevelMaterialSpec *material = source.materials.Create();
         if (!material)
             return false;
         material->name = "glow";
-        material->type = SceneMaterialType::EmissiveSurface;
+        material->type = LevelMaterialType::EmissiveSurface;
         material->color = Color4f(0.9f, 0.2f, 0.1f, 1.0f);
 
-        SceneNodeSpec *node = source.nodes.Create();
+        LevelNodeSpec *node = source.nodes.Create();
         if (!node)
             return false;
         node->name = "Mesh";
@@ -389,11 +389,11 @@ namespace
         node->transform.position = math::Vector3f(1.0f, 2.0f, 3.0f);
 
         hgl::ValueArray<uint8> fb;
-        if (!hgl::serialize::fb::EncodeToFlatBuffers<SceneSpec>(fb, source))
+        if (!hgl::serialize::fb::EncodeToFlatBuffers<LevelSpec>(fb, source))
             return false;
 
-        SceneSpec decoded;
-        if (!hgl::serialize::fb::DecodeFromFlatBuffers<SceneSpec>(
+        LevelSpec decoded;
+        if (!hgl::serialize::fb::DecodeFromFlatBuffers<LevelSpec>(
                 fb.GetData(), static_cast<size_t>(fb.GetCount()), decoded))
             return false;
         return decoded.schema == source.schema
