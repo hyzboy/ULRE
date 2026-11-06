@@ -740,11 +740,11 @@ bool AssimpLoader::LoadFile(const OSString &filename)
     io::FileOutputStream fos;
     io::LEDataOutputStream dos(&fos);
 
-    OSString scene_filename=main_filename+OS_TEXT(".scene");
+    OSString model_filename=main_filename+OS_TEXT(".model");
 
-    if(!fos.CreateTrunc(scene_filename))
+    if(!fos.CreateTrunc(model_filename))
     {
-        GLogInfo(OS_TEXT("Create Scene file Failed,filename: ")+scene_filename);
+        GLogInfo(OS_TEXT("Create Model file Failed,filename: ")+model_filename);
         return(false);
     }
 

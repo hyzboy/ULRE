@@ -20,7 +20,7 @@ namespace hgl
         class GeometryManager;
         class Geometry;
 
-        class SceneInstance
+        class LevelInstance
         {
         public:
             struct RuntimeMaterial
@@ -50,14 +50,14 @@ namespace hgl
             ManagedArray<RuntimeMaterial> materials;
             ManagedArray<RuntimeNode> nodes;
 
-            friend class SceneLoader;
+            friend class LevelLoader;
 
         public:
-            SceneInstance() = default;
-            ~SceneInstance();
+            LevelInstance() = default;
+            ~LevelInstance();
 
-            SceneInstance(const SceneInstance &) = delete;
-            SceneInstance &operator=(const SceneInstance &) = delete;
+            LevelInstance(const LevelInstance &) = delete;
+            LevelInstance &operator=(const LevelInstance &) = delete;
 
             bool IsInstantiated() const { return world != nullptr; }
             void Release();
@@ -73,14 +73,14 @@ namespace hgl
             int GetNodeCount() const { return nodes.GetCount(); }
         };
 
-        class SceneLoader
+        class LevelLoader
         {
         public:
             static bool Instantiate(const LevelSpec &spec,
                                     ecs::ECSContext *world,
                                     GeometryCreater *creater,
-                                    SceneInstance &out_instance,
-                                    const OSString &scene_filename = {});
+                                    LevelInstance &out_instance,
+                                    const OSString &level_filename = {});
         };
     }
 }

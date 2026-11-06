@@ -22,7 +22,7 @@
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
-#include <hgl/graph/asset/SceneSpecAssetRegistry.h>
+#include <hgl/graph/asset/LevelAssetRegistry.h>
 #include <hgl/graph/asset/ModelAsset.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 
@@ -108,8 +108,8 @@ namespace hgl::graph
         PrimitiveAssetRegistry primitive_asset_registry_;
         bool primitive_asset_registry_ready_ = false;
 
-        /// 场景资产只持有纯数据规格；实例实体及 GPU 资源仍由 SceneInstance/其它注册器管理。
-        SceneSpecAssetRegistry scene_spec_asset_registry_;
+        /// 场景资产只持有纯数据规格；实例实体及 GPU 资源仍由 LevelInstance/其它注册器管理。
+        LevelAssetRegistry level_asset_registry_;
 
         /// 异步场景句柄表（MDL2 模型包）。句柄只记状态与依赖计划，GPU 资源在
         /// `GeometryManager` / `TextureManager` 原处，因此这里无需在设备销毁前
@@ -202,8 +202,8 @@ namespace hgl::graph
         PrimitiveAssetRegistry *GetPrimitiveAssetRegistry() { return &primitive_asset_registry_; }
         const PrimitiveAssetRegistry *GetPrimitiveAssetRegistry() const { return &primitive_asset_registry_; }
 
-        SceneSpecAssetRegistry *GetSceneSpecAssetRegistry() { return &scene_spec_asset_registry_; }
-        const SceneSpecAssetRegistry *GetSceneSpecAssetRegistry() const { return &scene_spec_asset_registry_; }
+        LevelAssetRegistry *GetLevelAssetRegistry() { return &level_asset_registry_; }
+        const LevelAssetRegistry *GetLevelAssetRegistry() const { return &level_asset_registry_; }
 
         /// 异步场景句柄表（MDL2 模型包）：`Request(uri)` 零阻塞返回句柄，
         /// 由 `ModelStreamingSystem` 每帧推进；同时登记为进程内默认表，

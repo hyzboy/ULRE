@@ -1,4 +1,4 @@
-#include <hgl/graph/asset/SceneLoader.h>
+#include <hgl/graph/asset/LevelLoader.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/ecs/core/Context.h>
@@ -18,14 +18,14 @@
 
 #include <cstring>
 
-DEFINE_LOGGER_MODULE(SceneLoader)
-USE_MODULE_LOGGER(SceneLoader)
+DEFINE_LOGGER_MODULE(LevelLoader)
+USE_MODULE_LOGGER(LevelLoader)
 
 namespace hgl::graph
 {
     namespace
     {
-        OSString ResolveScenePath(const OSString &scene_filename,
+        OSString ResolveLevelPath(const OSString &level_filename,
                                   const OSString &reference)
         {
             if (reference.IsEmpty())
@@ -37,11 +37,11 @@ namespace hgl::graph
                 || (reference.Length() >= 2 && path[1] == os_char(':')))
                 return hgl::filesystem::NormalizeFilename(reference);
 
-            if (scene_filename.IsEmpty())
+            if (level_filename.IsEmpty())
                 return hgl::filesystem::NormalizeFilename(reference);
 
             hgl::filesystem::Path resolved =
-                hgl::filesystem::Path(scene_filename).GetParent();
+                hgl::filesystem::Path(level_filename).GetParent();
             resolved /= reference;
             resolved.Normalize();
             return resolved.ToOSString();
@@ -55,7 +55,7 @@ namespace hgl::graph
 
         bool CreateMaterial(const LevelMaterialSpec &spec,
                             GlobalSSBOBufferRegistry *registry,
-                            SceneInstance::RuntimeMaterial *runtime)
+                            LevelInstance::RuntimeMaterial *runtime)
         {
             if (!registry || !runtime)
                 return false;
@@ -131,26 +131,26 @@ namespace hgl::graph
             return true;
         }
 
-        const SceneInstance::RuntimeMaterial *FindMaterial(
-            const SceneInstance &instance,
+        const LevelInstance::RuntimeMaterial *FindMaterial(
+            const LevelInstance &instance,
             const AnsiString &name)
         {
             for (int i = 0; i < instance.GetMaterialCount(); ++i)
             {
-                const SceneInstance::RuntimeMaterial *material = instance.GetMaterial(i);
+                const LevelInstance::RuntimeMaterial *material = instance.GetMaterial(i);
                 if (material && material->name == name)
                     return material;
             }
             return nullptr;
         }
 
-        SceneInstance::RuntimeNode *FindNode(
-            SceneInstance &instance,
+        LevelInstance::RuntimeNode *FindNode(
+            LevelInstance &instance,
             const AnsiString &name)
         {
             for (int i = 0; i < instance.GetNodeCount(); ++i)
             {
-                SceneInstance::RuntimeNode *node = instance.GetNode(i);
+                LevelInstance::RuntimeNode *node = instance.GetNode(i);
                 if (node && node->name == name)
                     return node;
             }
@@ -158,12 +158,12 @@ namespace hgl::graph
         }
     }
 
-    SceneInstance::~SceneInstance()
+    LevelInstance::~LevelInstance()
     {
         Release();
     }
 
-    void SceneInstance::Release()
+    void LevelInstance::Release()
     {
         if (world)
             for (int i = 0; i < nodes.GetCount(); ++i)
@@ -188,23 +188,23 @@ namespace hgl::graph
         geometry_manager = nullptr;
     }
 
-    bool SceneLoader::Instantiate(const LevelSpec &spec,
+    bool LevelLoader::Instantiate(const LevelSpec &spec,
                                   ecs::ECSContext *world,
                                   GeometryCreater *creater,
-                                  SceneInstance &out_instance,
-                                  const OSString &scene_filename)
+                                  LevelInstance &out_instance,
+                                  const OSString &level_filename)
     {
         if (!world || !creater || out_instance.IsInstantiated()
             || spec.schema != 1 || spec.name.IsEmpty())
         {
-            MLogError(SceneLoader, "Instantiate: invalid arguments, occupied instance, or unsupported schema");
+            MLogError(LevelLoader, "Instantiate: invalid arguments, occupied instance, or unsupported schema");
             return false;
         }
 
         GraphicsContext *gc = world->GetGraphicsContext();
         if (!gc)
         {
-            MLogError(SceneLoader, "Instantiate: ECS world has no GraphicsContext");
+            MLogError(LevelLoader, "Instantiate: ECS world has no GraphicsContext");
             return false;
         }
 
@@ -212,7 +212,7 @@ namespace hgl::graph
         GlobalSSBOBufferRegistry *ssbo_registry = gc->GetGlobalSSBOBufferRegistry();
         if (!geometry_manager || !ssbo_registry)
         {
-            MLogError(SceneLoader, "Instantiate: geometry or SSBO registry is unavailable");
+            MLogError(LevelLoader, "Instantiate: geometry or SSBO registry is unavailable");
             return false;
         }
 
@@ -224,7 +224,7 @@ namespace hgl::graph
             auto *runtime = out_instance.materials.Create();
             if (!runtime || !CreateMaterial(*spec.materials[i], ssbo_registry, runtime))
             {
-                MLogError(SceneLoader, "Instantiate: failed to allocate scene material row");
+                MLogError(LevelLoader, "Instantiate: failed to allocate scene material row");
                 out_instance.Release();
                 return false;
             }
@@ -241,7 +241,7 @@ namespace hgl::graph
                 recipe = gc->FindOrLoadMaterialRecipe(node_spec.recipe.c_str());
             if (!uses_primitive_asset && !recipe)
             {
-                MLogError(SceneLoader, "Instantiate: material recipe could not be resolved");
+                MLogError(LevelLoader, "Instantiate: material recipe could not be resolved");
                 out_instance.Release();
                 return false;
             }
@@ -249,7 +249,7 @@ namespace hgl::graph
             auto *runtime = out_instance.nodes.Create();
             if (!runtime)
             {
-                MLogError(SceneLoader, "Instantiate: failed to allocate runtime node");
+                MLogError(LevelLoader, "Instantiate: failed to allocate runtime node");
                 out_instance.Release();
                 return false;
             }
@@ -264,14 +264,14 @@ namespace hgl::graph
                     CreateGeometryPreset(creater, node_spec.geometry.c_str() + 8);
                 if (!runtime->geometry)
                 {
-                    MLogError(SceneLoader, "Instantiate: geometry preset could not be created");
+                    MLogError(LevelLoader, "Instantiate: geometry preset could not be created");
                     out_instance.Release();
                     return false;
                 }
 
                 if (geometry_manager->Add(runtime->geometry) < 0)
                 {
-                    MLogError(SceneLoader, "Instantiate: geometry manager rejected generated geometry");
+                    MLogError(LevelLoader, "Instantiate: geometry manager rejected generated geometry");
                     geometry_manager->Release(runtime->geometry);
                     runtime->geometry = nullptr;
                     out_instance.Release();
@@ -281,14 +281,14 @@ namespace hgl::graph
             else if (uses_geometry_asset)
             {
                 GeometryAssetRegistry *registry = gc->GetGeometryAssetRegistry();
-                const OSString asset_path = ResolveScenePath(
-                    scene_filename,
+                const OSString asset_path = ResolveLevelPath(
+                    level_filename,
                     ToOSString(AnsiString(node_spec.geometry.c_str() + 4)));
                 runtime->geometry_asset =
                     registry ? registry->GetOrLoad(asset_path) : nullptr;
                 if (!runtime->geometry_asset)
                 {
-                    MLogError(SceneLoader, "Instantiate: geometry asset could not be loaded");
+                    MLogError(LevelLoader, "Instantiate: geometry asset could not be loaded");
                     out_instance.Release();
                     return false;
                 }
@@ -321,18 +321,18 @@ namespace hgl::graph
 
             if (!node_spec.material.IsEmpty())
             {
-                const SceneInstance::RuntimeMaterial *material =
+                const LevelInstance::RuntimeMaterial *material =
                     FindMaterial(out_instance, node_spec.material);
                 if (!material)
                 {
-                    MLogError(SceneLoader, "Instantiate: node references an unknown scene material");
+                    MLogError(LevelLoader, "Instantiate: node references an unknown scene material");
                     out_instance.Release();
                     return false;
                 }
 
                 if (!material->accessor.GetGlobalSSBOBinding().IsValid())
                 {
-                    MLogError(SceneLoader, "Instantiate: scene material has no valid SSBO row");
+                    MLogError(LevelLoader, "Instantiate: scene material has no valid SSBO row");
                     out_instance.Release();
                     return false;
                 }
@@ -349,7 +349,7 @@ namespace hgl::graph
                     OSString texture_uri = texture.uri;
                     if (texture_uri.StartsWithIgnoreCase(OS_TEXT("tex:")))
                         texture_uri = OSString(texture_uri.c_str() + 4);
-                    texture_uri = ResolveScenePath(scene_filename, texture_uri);
+                    texture_uri = ResolveLevelPath(level_filename, texture_uri);
                     TextureAsset *asset =
                         texture_manager
                             ? texture_manager->CreateTextureAsset(texture_uri, true)
@@ -358,7 +358,7 @@ namespace hgl::graph
                         || !runtime->recipe.AddTexture(
                             texture.name.c_str(), asset, texture.required))
                     {
-                        MLogError(SceneLoader, "Instantiate: scene texture could not be added to recipe");
+                        MLogError(LevelLoader, "Instantiate: scene texture could not be added to recipe");
                         out_instance.Release();
                         return false;
                     }
@@ -370,14 +370,14 @@ namespace hgl::graph
             if (uses_primitive_asset)
             {
                 PrimitiveAssetRegistry *registry = gc->GetPrimitiveAssetRegistry();
-                const OSString asset_path = ResolveScenePath(
-                    scene_filename,
+                const OSString asset_path = ResolveLevelPath(
+                    level_filename,
                     ToOSString(AnsiString(node_spec.geometry.c_str() + 10)));
                 const PrimitiveAsset *primitive =
                     registry ? registry->GetOrLoad(asset_path) : nullptr;
                 if (!primitive)
                 {
-                    MLogError(SceneLoader, "Instantiate: primitive asset could not be instantiated");
+                    MLogError(LevelLoader, "Instantiate: primitive asset could not be instantiated");
                     out_instance.Release();
                     return false;
                 }
@@ -386,7 +386,7 @@ namespace hgl::graph
                 ecs::Entity *entity = builder.Build();
                 if (!entity)
                 {
-                    MLogError(SceneLoader, "Instantiate: ECS primitive asset construction failed");
+                    MLogError(LevelLoader, "Instantiate: ECS primitive asset construction failed");
                     out_instance.Release();
                     return false;
                 }
@@ -411,7 +411,7 @@ namespace hgl::graph
                 ecs::Entity *entity = builder.Build();
                 if (!entity)
                 {
-                    MLogError(SceneLoader, "Instantiate: ECS renderable construction failed");
+                    MLogError(LevelLoader, "Instantiate: ECS renderable construction failed");
                     out_instance.Release();
                     return false;
                 }
@@ -428,11 +428,11 @@ namespace hgl::graph
             if (node_spec.parent.IsEmpty())
                 continue;
 
-            SceneInstance::RuntimeNode *child = FindNode(out_instance, node_spec.name);
-            SceneInstance::RuntimeNode *parent = FindNode(out_instance, node_spec.parent);
+            LevelInstance::RuntimeNode *child = FindNode(out_instance, node_spec.name);
+            LevelInstance::RuntimeNode *parent = FindNode(out_instance, node_spec.parent);
             if (!child || !parent)
             {
-                MLogError(SceneLoader, "Instantiate: parent relationship could not be resolved");
+                MLogError(LevelLoader, "Instantiate: parent relationship could not be resolved");
                 out_instance.Release();
                 return false;
             }
@@ -443,7 +443,7 @@ namespace hgl::graph
                 world->GetTransformByEntity(parent->entity_id);
             if (!child_transform.IsValid() || !parent_transform.IsValid())
             {
-                MLogError(SceneLoader, "Instantiate: parent transform is unavailable");
+                MLogError(LevelLoader, "Instantiate: parent transform is unavailable");
                 out_instance.Release();
                 return false;
             }
@@ -454,26 +454,26 @@ namespace hgl::graph
         {
             if (!world->EnsureCameraSystem())
             {
-                MLogError(SceneLoader, "Instantiate: camera system is unavailable");
+                MLogError(LevelLoader, "Instantiate: camera system is unavailable");
                 out_instance.Release();
                 return false;
             }
 
             ecs::Entity *camera_entity =
-                world->CreateEntity<ecs::Entity>("SceneCamera");
+                world->CreateEntity<ecs::Entity>("LevelCamera");
             if (!camera_entity)
             {
-                MLogError(SceneLoader, "Instantiate: camera entity creation failed");
+                MLogError(LevelLoader, "Instantiate: camera entity creation failed");
                 out_instance.Release();
                 return false;
             }
             out_instance.camera_entity_id = camera_entity->GetEntityID();
 
             ecs::CameraComponent *camera =
-                world->GetOrCreateCamera(camera_entity, "SceneCamera");
+                world->GetOrCreateCamera(camera_entity, "LevelCamera");
             if (!camera)
             {
-                MLogError(SceneLoader, "Instantiate: camera component creation failed");
+                MLogError(LevelLoader, "Instantiate: camera component creation failed");
                 out_instance.Release();
                 return false;
             }
@@ -493,7 +493,7 @@ namespace hgl::graph
                 camera->control_mode = ecs::CameraControlMode::FirstPerson;
                 break;
             default:
-                MLogError(SceneLoader, "Instantiate: unsupported camera mode");
+                MLogError(LevelLoader, "Instantiate: unsupported camera mode");
                 out_instance.Release();
                 return false;
             }
@@ -515,7 +515,7 @@ namespace hgl::graph
             auto *render_target = world->GetRenderTarget();
             if (!render_target)
             {
-                MLogError(SceneLoader, "Instantiate: clear color requires a render target");
+                MLogError(LevelLoader, "Instantiate: clear color requires a render target");
                 out_instance.Release();
                 return false;
             }

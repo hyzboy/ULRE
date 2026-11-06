@@ -1,5 +1,5 @@
-#include <hgl/graph/asset/SceneAssetFile.h>
-#include <hgl/graph/asset/SceneSpecAssetRegistry.h>
+#include <hgl/graph/asset/LevelAssetFile.h>
+#include <hgl/graph/asset/LevelAssetRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -65,7 +65,7 @@ namespace
 
     bool Parse(const char *text, LevelSpec &spec)
     {
-        return ParseSceneSpec(text, std::strlen(text), OS_TEXT("TestSceneFile"), spec);
+        return ParseLevelSpec(text, std::strlen(text), OS_TEXT("TestSceneFile"), spec);
     }
 
     bool TestValidScene()
@@ -151,7 +151,7 @@ namespace
     bool TestBasicLitMeshesSceneFile()
     {
         LevelSpec spec;
-        if (!LoadSceneSpecFromTOML(
+        if (!LoadLevelSpecFromTOML(
                 OS_TEXT("example/Material/BasicLitMeshes.scene.toml"),
                 spec))
             return false;
@@ -191,12 +191,12 @@ namespace
         return !Parse(kMissingGeometryRecipe, spec);
     }
 
-    bool TestSceneSpecAssetRegistry()
+    bool TestLevelAssetRegistry()
     {
-        SceneSpecAssetRegistry registry;
-        SceneSpecAsset *first = registry.GetOrLoad(
+        LevelAssetRegistry registry;
+        LevelAsset *first = registry.GetOrLoad(
             OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
-        SceneSpecAsset *second = registry.GetOrLoad(
+        LevelAsset *second = registry.GetOrLoad(
             OS_TEXT("example\\Material\\BasicLitMeshes.scene.toml"));
 
         return first
@@ -209,17 +209,17 @@ namespace
     bool TestSceneFlatBuffersFile()
     {
         const OSString filename =
-            OS_TEXT("build/Testing/Temporary/scene_asset_roundtrip.scene.fb");
+            OS_TEXT("build/Testing/Temporary/level_asset_roundtrip.scene.fb");
         hgl::filesystem::FileDelete(filename);
 
         LevelSpec source;
         if (!Parse(kValidScene, source))
             return false;
-        if (!SaveSceneSpecToFlatBuffers(source, filename))
+        if (!SaveLevelSpecToFlatBuffers(source, filename))
             return false;
 
         LevelSpec loaded;
-        const bool load_ok = LoadSceneSpecFromFile(filename, loaded);
+        const bool load_ok = LoadLevelSpecFromFile(filename, loaded);
         hgl::filesystem::FileDelete(filename);
         return load_ok
             && loaded.name == source.name
@@ -241,7 +241,7 @@ int main()
         || !TestInvalidScenes()
         || !TestBasicLitMeshesSceneFile()
         || !TestGeometryReferenceKinds()
-        || !TestSceneSpecAssetRegistry()
+        || !TestLevelAssetRegistry()
         || !TestSceneFlatBuffersFile())
     {
         GLogError(u8"=== TestSceneFile: 测试失败 ===");

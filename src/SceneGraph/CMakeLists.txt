@@ -318,19 +318,19 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/ModelDependencyExtractor.h
                             ${SG_INCLUDE_PATH}/asset/ModelLoadPlan.h
                             ${SG_INCLUDE_PATH}/asset/LevelSpec.h
-                            ${SG_INCLUDE_PATH}/asset/SceneAssetFile.h
+                            ${SG_INCLUDE_PATH}/asset/LevelAssetFile.h
                             ${SG_INCLUDE_PATH}/asset/ModelAsset.h
-                            ${SG_INCLUDE_PATH}/asset/SceneSpecAssetRegistry.h
-                            ${SG_INCLUDE_PATH}/asset/SceneLoader.h
+                            ${SG_INCLUDE_PATH}/asset/LevelAssetRegistry.h
+                            ${SG_INCLUDE_PATH}/asset/LevelLoader.h
                             ${SG_INCLUDE_PATH}/asset/StaticMeshModelInstance.h
                             asset/AssetSourceMount.cpp
                             asset/AssetLoadGraph.cpp
                             asset/ModelDependencyExtractor.cpp
                             asset/ModelLoadPlan.cpp
-                            asset/SceneAssetFile.cpp
+                            asset/LevelAssetFile.cpp
                             asset/ModelAsset.cpp
-                            asset/SceneSpecAssetRegistry.cpp
-                            asset/SceneLoader.cpp
+                            asset/LevelAssetRegistry.cpp
+                            asset/LevelLoader.cpp
                             asset/StaticMeshModelInstance.cpp)
 
 source_group("07.Asset\\Scene" FILES ${SG_ASSET_SCENE_FILES})
@@ -459,7 +459,7 @@ add_cm_library(ULRE.SceneGraph "ULRE" ${SG_INCLUDE_PATH}
 
 target_include_directories(ULRE.SceneGraph PUBLIC ${ROOT_INCLUDE_PATH})
 
-# 资产文件读写（GeometryAssetFile / PrimitiveAssetFile / SceneAssetFile /
+# 资产文件读写（GeometryAssetFile / PrimitiveAssetFile / LevelAssetFile /
 # EnvironmentAssetRegistry）走 `hgl::serialize` 的统一通路。该库的 TOML /
 # FlatBuffers 后端已下沉成 .cpp 里的实现细节，所以文本/字节入口不再是头文件里的
 # inline 函数，必须真链一次；PRIVATE 是因为 `hgl::serialize` 的类型全部来自

@@ -4,20 +4,20 @@
 
 namespace hgl::graph
 {
-    bool LoadSceneSpecFromFile(const OSString &filename,
+    bool LoadLevelSpecFromFile(const OSString &filename,
                                LevelSpec &out_spec);
-    bool LoadSceneSpecFromTOML(const OSString &filename,
+    bool LoadLevelSpecFromTOML(const OSString &filename,
                                LevelSpec &out_spec);
-    bool LoadSceneSpecFromFlatBuffers(const OSString &filename,
+    bool LoadLevelSpecFromFlatBuffers(const OSString &filename,
                                       LevelSpec &out_spec);
-    bool SaveSceneSpecToFlatBuffers(const LevelSpec &spec,
+    bool SaveLevelSpecToFlatBuffers(const LevelSpec &spec,
                                     const OSString &filename);
 
-    bool ParseSceneSpec(const char *content,
+    bool ParseLevelSpec(const char *content,
                         size_t size,
                         const os_char *debug_name,
                         LevelSpec &out_spec);
-    bool ParseSceneSpecFromFlatBuffers(const void *data,
+    bool ParseLevelSpecFromFlatBuffers(const void *data,
                                        size_t size,
                                        const os_char *debug_name,
                                        LevelSpec &out_spec);

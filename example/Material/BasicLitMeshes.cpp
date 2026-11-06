@@ -1,7 +1,7 @@
 #include <hgl/framework/WorkManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/graph/asset/SceneSpecAssetRegistry.h>
-#include <hgl/graph/asset/SceneLoader.h>
+#include <hgl/graph/asset/LevelAssetRegistry.h>
+#include <hgl/graph/asset/LevelLoader.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GeometryManager.h>
@@ -30,7 +30,7 @@ class BasicLitMeshesApp : public WorkObject
 private:
     ECSContext *ecs_context = nullptr;
     AutoDelete<VertexDataManager> mesh_vdm;
-    SceneInstance scene_instance;
+    LevelInstance level_instance;
 
     bool InitVDM()
     {
@@ -47,31 +47,31 @@ private:
             IndexType::U32);
     }
 
-    bool InitScene()
+    bool InitLevel()
     {
         ecs_context = GetECSContext();
         if (!ecs_context || !InitVDM())
             return false;
 
         GraphicsContext *graphics = ecs_context->GetGraphicsContext();
-        SceneSpecAssetRegistry *scene_registry =
-            graphics ? graphics->GetSceneSpecAssetRegistry() : nullptr;
-        if (!scene_registry)
+        LevelAssetRegistry *level_registry =
+            graphics ? graphics->GetLevelAssetRegistry() : nullptr;
+        if (!level_registry)
             return false;
 
-        SceneSpecAsset *scene = scene_registry->GetOrLoad(
+        LevelAsset *scene = level_registry->GetOrLoad(
             OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
         if (!scene)
             return false;
 
         GeometryCreater creater(mesh_vdm);
-        return scene->Instantiate(ecs_context, &creater, scene_instance);
+        return scene->Instantiate(ecs_context, &creater, level_instance);
     }
 
 public:
     ~BasicLitMeshesApp()
     {
-        scene_instance.Release();
+        level_instance.Release();
         if (auto *geometry_manager = GetManager<GeometryManager>())
             geometry_manager->Release();
         mesh_vdm = nullptr;
@@ -79,7 +79,7 @@ public:
 
     bool Init() override
     {
-        return InitScene();
+        return InitLevel();
     }
 };
 

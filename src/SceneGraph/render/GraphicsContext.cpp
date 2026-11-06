@@ -288,7 +288,7 @@ namespace hgl::graph
         // GlobalSSBOBufferRegistry 行池 —— 必须趁设备与模块还活着时释放。
         ForceReleaseGizmoSystemResources();
 
-        scene_spec_asset_registry_.Clear();
+        level_asset_registry_.Clear();
 
         // 异步场景句柄排在几何 / 纹理注册器之前清空：句柄只是状态机 + 计划单，
         // 但它的观察指针不得活过下面的 GPU 资源回收。同时注销进程内默认表。
