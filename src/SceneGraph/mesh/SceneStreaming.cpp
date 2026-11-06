@@ -74,6 +74,32 @@ namespace hgl::graph
             state=SceneStreamingState::Idle;
     }
 
+    bool SceneStreamingRequest::SetPackBytes(const void *data,uint32 size)
+    {
+        if(!data||size==0)
+        {
+            GLogError(u8"[SceneStreaming] SetPackBytes 收到空字节");
+            return(false);
+        }
+
+        Cancel();
+
+        pack_bytes=hgl_malloc(static_cast<size_t>(size));
+
+        if(!pack_bytes)
+        {
+            GLogError(u8"[SceneStreaming] 场景包缓冲分配失败（%u 字节）",size);
+            state=SceneStreamingState::Failed;
+            return(false);
+        }
+
+        memcpy(pack_bytes,data,static_cast<size_t>(size));
+        pack_size=size;
+        state=SceneStreamingState::Ready;
+
+        return(true);
+    }
+
     void SceneStreamingRequest::OnFileLoaded(const FileLoadTicket &ticket,LoadedFile *file)
     {
         if(ticket.id!=request_id||!file)
@@ -144,7 +170,9 @@ namespace hgl::graph
                                       const OSString &base_dir,
                                       std::vector<PrimitiveAsset> &out_assets,
                                       std::vector<StaticMeshNode> &out_nodes,
-                                      std::vector<int32_t>        &out_root_nodes)
+                                      std::vector<int32_t>        &out_root_nodes,
+                                      const mtl::MaterialRecipe *const *material_recipes,
+                                      const uint32_t material_recipe_count)
     {
         if(state!=SceneStreamingState::Ready||!pack_bytes||pack_size==0)
         {
@@ -163,7 +191,9 @@ namespace hgl::graph
                                                     base_dir,
                                                     out_assets,
                                                     out_nodes,
-                                                    out_root_nodes);
+                                                    out_root_nodes,
+                                                    material_recipes,
+                                                    material_recipe_count);
 
         ReleaseBytes();
 

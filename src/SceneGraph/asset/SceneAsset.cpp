@@ -43,6 +43,8 @@ namespace hgl::graph
         async_request_id = 0;
         fail_reason = AnsiString();
         pack_path = OSString();
+
+        content.Clear();
     }
 
     void SceneAsset::RebuildStats()
@@ -119,6 +121,58 @@ namespace hgl::graph
             ++child_failed;
 
         return GetPendingChildCount() <= 0;
+    }
+
+    bool SceneAsset::SettleAllChildren(int ready_delta, int failed_delta)
+    {
+        if (state == SceneAssetState::Ready)
+            return true;
+
+        if (state != SceneAssetState::Assembling)
+            return false;
+
+        if (ready_delta < 0 || failed_delta < 0)
+        {
+            FLogWarning(u8"场景子项落定增量非法（ready=%d failed=%d）：%s",
+                        ready_delta, failed_delta, uri.c_str());
+            return false;
+        }
+
+        const int pending = GetPendingChildCount();
+        int       ok      = ready_delta;
+        int       bad     = failed_delta;
+
+        // 汇总口径同样不能把计数推成负数：超出部分说明上层记账有误，截断并告警。
+        if (ok + bad > pending)
+        {
+            FLogWarning(u8"场景子项落定数超出登记数（本帧 ready=%d failed=%d 未落定=%d）：%s",
+                        ready_delta, failed_delta, pending, uri.c_str());
+
+            bad = (pending > ok) ? (pending - ok) : 0;
+            ok  = (ok < pending) ? ok : pending;
+        }
+
+        child_ready  += ok;
+        child_failed += bad;
+
+        return GetPendingChildCount() <= 0;
+    }
+
+    void SceneAsset::SetChildTotal(int total)
+    {
+        if (state != SceneAssetState::Assembling)
+            return;
+
+        if (child_ready > 0 || child_failed > 0)
+        {
+            FLogWarning(u8"场景已有子项落定，拒绝改写子项总数：%s", uri.c_str());
+            return;
+        }
+
+        if (total < 0)
+            total = 0;
+
+        child_total = total;
     }
 
     bool SceneAsset::CommitScene()

@@ -78,6 +78,22 @@ namespace hgl::graph
         /// 取消在途请求（状态回到 `Idle`，缓存的字节被释放）
         void Cancel();
 
+        /**
+         * @brief 灌入调用方已经读到的字节（`pack(...)` URI 的兜底路径）。
+         *
+         * `LoadedFileManager::Submit` 只接受**物理路径**；包裹内路径
+         * （`pack(res):xxx/yyy`）只能由上层经 `OpenAssetInputStream` 取流。
+         * 取到的字节交给这里后状态直接置 `Ready`，后续 `Build()` 与异步路径
+         * 完全一致 —— 上层不必为两种来源各写一套解析。
+         *
+         * 字节会被**拷进自有缓冲**，调用方在返回后即可释放自己的副本。
+         */
+        bool SetPackBytes(const void *data, uint32 size);
+
+        /// `Ready` 期间的有效字节；`Build()`/`Cancel()` 之后为 nullptr
+        const void *GetPackBytes()const { return pack_bytes; }
+        uint32      GetPackSize ()const { return pack_size; }
+
     public:     // 观察
 
         SceneStreamingState GetState()const{return state;}
@@ -88,6 +104,9 @@ namespace hgl::graph
 
         const OSString &GetPackPath()const{return pack_path;}
 
+        /// 在途读盘请求号（0 表示没有在途请求）；用于把回调反查回句柄
+        FileLoadId GetRequestID()const{return request_id;}
+
     public:
 
         /**
@@ -97,6 +116,8 @@ namespace hgl::graph
          * 成功返回 true 并置状态为 `Built`（字节随之释放）。
          *
          * @param base_dir 场景包内几何文件的基准目录（通常是包的父目录）
+         * @param material_recipes 按源场景材质下标索引的配方表；为空则整场景共用
+         *        `recipe`（多材质场景必须传，否则只有第 0 号材质正确）
          */
         bool Build(VulkanDevice *device,
                    GeometryManager *geo_mgr,
@@ -105,7 +126,9 @@ namespace hgl::graph
                    const OSString &base_dir,
                    std::vector<PrimitiveAsset> &out_assets,
                    std::vector<StaticMeshNode> &out_nodes,
-                   std::vector<int32_t>        &out_root_nodes);
+                   std::vector<int32_t>        &out_root_nodes,
+                   const mtl::MaterialRecipe *const *material_recipes = nullptr,
+                   const uint32_t material_recipe_count = 0);
 
     public:     // LoadedFileHandler
 

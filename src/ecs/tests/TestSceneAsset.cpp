@@ -322,7 +322,37 @@ namespace
         return true;
     }
 
-    // ── 判据 7：进程内默认表 ──────────────────────────────────────────────
+    // ── 判据 7：子项口径可换成「实际图元数」 ──────────────────────────────
+
+    bool TestSetChildTotal()
+    {
+        SceneAssetRegistry registry;
+        SceneAsset *asset = registry.Request("pack(res):Probe/Recount.Scene.scene");
+        EXPECT(asset != nullptr);
+
+        EXPECT(asset->BeginStreaming());
+        EXPECT(!asset->SetPlan(MakePlan(3)));
+        EXPECT(asset->GetChildCount() == 3);
+
+        // 解析产物出来后发现实际只有 2 个图元需要等几何：
+        // 口径按图元重算，否则会永远差一个子项、场景永不就绪。
+        asset->SetChildTotal(2);
+        EXPECT(asset->GetChildCount() == 2);
+        EXPECT(asset->GetPendingChildCount() == 2);
+
+        // 已有子项落定后不得再改写总数，否则计数错位。
+        EXPECT(!asset->SettleChild(true));
+        asset->SetChildTotal(9);
+        EXPECT(asset->GetChildCount() == 2);
+
+        EXPECT(asset->SettleChild(true));
+        EXPECT(asset->CommitScene());
+        EXPECT(asset->IsReady());
+
+        return true;
+    }
+
+    // ── 判据 8：进程内默认表 ──────────────────────────────────────────────
 
     bool TestDefaultRegistry()
     {
@@ -357,6 +387,7 @@ int main(int argc, char **argv)
                  && TestChildFailureDoesNotBlock()
                  && TestFailAndReset()
                  && TestOverSettleGuard()
+                 && TestSetChildTotal()
                  && TestDefaultRegistry();
 
     if(!ok)

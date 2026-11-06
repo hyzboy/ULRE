@@ -263,54 +263,35 @@ namespace hgl::graph
         return count;
     }
 
-    bool BuildSceneLoadPlan(const AnsiString &scene_ref,
-                            SceneLoadPlan &out,
-                            AssetLoadGraph *out_graph,
-                            AnsiString *out_error)
+    namespace
     {
-        out.tasks.Clear();
-        out.acyclic = true;
-        out.embedded_geometry_count = 0;
-
-        if(out_error)
-            out_error->Clear();
-
-        if(scene_ref.IsEmpty())
+        /**
+         * 计划单构建的共用主体。
+         *
+         * 字节由调用方提供：本函数**不读盘、不释放字节**。异步流送里同一份
+         * 字节要同时喂给「依赖提取」与「场景解析」，重复读盘是纯浪费。
+         */
+        bool BuildPlanFromBytes(const AnsiString &scene_ref,
+                                const void *pack_bytes,
+                                const uint32 pack_size,
+                                SceneLoadPlan &out,
+                                AssetLoadGraph *out_graph,
+                                AnsiString *out_error)
         {
-            if(out_error)
-                *out_error = "scene ref is empty";
-            return false;
-        }
+            const OSString        scene_os = ToOSString(scene_ref.c_str());
+            const asset::AssetURI uri      = asset::AssetURI::Parse(scene_os, AssetType::Scene);
 
-        const OSString       scene_os = ToOSString(scene_ref.c_str());
-        const asset::AssetURI uri     = asset::AssetURI::Parse(scene_os, AssetType::Scene);
+            io::minipack::MiniPackMemory *mpm =
+                io::minipack::GetMiniPackMemoryFromBytes(scene_os, pack_bytes, pack_size);
 
-        int64       pack_size  = 0;
-        AnsiString  open_error;
-        void       *pack_bytes = ReadAllBytes(scene_ref, pack_size, open_error);
+            if (mpm == nullptr)
+            {
+                if(out_error)
+                    *out_error = "cannot parse scene pack";
 
-        if(pack_bytes == nullptr)
-        {
-            if(out_error)
-                *out_error = open_error.IsEmpty() ? AnsiString("cannot read scene") : open_error;
-
-            FLogError(u8"构建装载计划失败：读不到场景 %s", scene_ref.c_str());
-            return false;
-        }
-
-        io::minipack::MiniPackMemory *mpm =
-            io::minipack::GetMiniPackMemoryFromBytes(scene_os, pack_bytes, (uint32)pack_size);
-
-        if(mpm == nullptr)
-        {
-            delete[] static_cast<char *>(pack_bytes);
-
-            if(out_error)
-                *out_error = "cannot parse scene pack";
-
-            FLogError(u8"构建装载计划失败：场景包无法解析 %s", scene_ref.c_str());
-            return false;
-        }
+                FLogError(u8"构建装载计划失败：场景包无法解析 %s", scene_ref.c_str());
+                return false;
+            }
 
         // 依赖提取与配方匹配共用的图。调用方不需要时也必须有实体。
         AssetLoadGraph local_graph;
@@ -437,7 +418,6 @@ namespace hgl::graph
         }
 
         delete mpm;
-        delete[] static_cast<char *>(pack_bytes);
 
         if(!ok)
         {
@@ -504,6 +484,81 @@ namespace hgl::graph
             FLogWarning(u8"场景依赖图有环，装载顺序不再是严格拓扑序：%s", scene_ref.c_str());
 
         return true;
+    }
+    }//anonymous namespace
+
+    namespace
+    {
+        /// 两个入口共用的前置校验与字段复位。
+        bool PreparePlan(const AnsiString &scene_ref, SceneLoadPlan &out, AnsiString *out_error)
+        {
+            out.tasks.Clear();
+            out.acyclic = true;
+            out.embedded_geometry_count = 0;
+
+            if(out_error)
+                out_error->Clear();
+
+            if(scene_ref.IsEmpty())
+            {
+                if(out_error)
+                    *out_error = "scene ref is empty";
+                return false;
+            }
+
+            return true;
+        }
+    }//anonymous namespace
+
+    bool BuildSceneLoadPlanFromBytes(const AnsiString &scene_ref,
+                                     const void *pack_bytes,
+                                     const uint32 pack_size,
+                                     SceneLoadPlan &out,
+                                     AssetLoadGraph *out_graph,
+                                     AnsiString *out_error)
+    {
+        if(!PreparePlan(scene_ref, out, out_error))
+            return false;
+
+        if(pack_bytes == nullptr || pack_size == 0)
+        {
+            if(out_error)
+                *out_error = "scene pack bytes is empty";
+
+            FLogError(u8"构建装载计划失败：场景包字节为空 %s", scene_ref.c_str());
+            return false;
+        }
+
+        return BuildPlanFromBytes(scene_ref, pack_bytes, pack_size, out, out_graph, out_error);
+    }
+
+    bool BuildSceneLoadPlan(const AnsiString &scene_ref,
+                            SceneLoadPlan &out,
+                            AssetLoadGraph *out_graph,
+                            AnsiString *out_error)
+    {
+        if(!PreparePlan(scene_ref, out, out_error))
+            return false;
+
+        int64      pack_size  = 0;
+        AnsiString open_error;
+        void      *pack_bytes = ReadAllBytes(scene_ref, pack_size, open_error);
+
+        if(pack_bytes == nullptr)
+        {
+            if(out_error)
+                *out_error = open_error.IsEmpty() ? AnsiString("cannot read scene") : open_error;
+
+            FLogError(u8"构建装载计划失败：读不到场景 %s", scene_ref.c_str());
+            return false;
+        }
+
+        const bool ok = BuildPlanFromBytes(scene_ref, pack_bytes, (uint32)pack_size,
+                                           out, out_graph, out_error);
+
+        delete[] static_cast<char *>(pack_bytes);
+
+        return ok;
     }
 
     void DumpSceneLoadPlan(const AnsiString &scene_ref, const SceneLoadPlan &plan)

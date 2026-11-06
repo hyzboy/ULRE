@@ -6,6 +6,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Log.h>
 #include<hgl/type/ManagedArray.h>
+#include<hgl/type/UnorderedMap.h>
 
 DEFINE_LOGGER_MODULE(AssetMount)
 USE_MODULE_LOGGER(AssetMount)
@@ -13,6 +14,33 @@ USE_MODULE_LOGGER(AssetMount)
 namespace hgl::graph
 {
     using namespace hgl;
+
+    namespace
+    {
+        /// 引擎侧保留的挂载根表。
+        ///
+        /// `AssetSource` 只提供「包裹内路径 → 包裹内路径」的解析，不暴露挂载根；
+        /// 而异步读盘（`LoadedFileManager::Submit`）只吃**物理路径**。这里在挂载
+        /// 成功时记下根，就能把 `pack(res):x/y` 换成真实磁盘路径，避免为了拿到
+        /// 一个路径把整包同步读进内存。
+        UnorderedMap<AnsiString, OSString> mount_roots;
+
+        const OSString *FindMountRoot(const AnsiString &name)
+        {
+            return mount_roots.GetValuePointer(name);
+        }
+
+        void SetMountRoot(const AnsiString &name,const OSString &root)
+        {
+            if(!mount_roots.Add(name,root))
+                mount_roots.GetValueRef(name)=root;
+        }
+
+        void RemoveMountRoot(const AnsiString &name)
+        {
+            mount_roots.DeleteByKey(name);
+        }
+    }//anonymous namespace
 
     bool MountAssetSource(const AssetSourceMountConfig &config,AnsiString *out_error)
     {
@@ -67,6 +95,8 @@ namespace hgl::graph
         FLogInfo(OS_TEXT("包裹 <")+ToOSString(config.name.c_str())+OS_TEXT("> 已挂载：root=")
                  +config.root+OS_TEXT(" 索引项=")+OSString::numberOf(indexed_count));
 
+        SetMountRoot(config.name,config.root);
+
         if(index==nullptr)
             FLogWarning(u8"包裹 <%s> 未建索引，只能按物理路径取流",config.name.c_str());
 
@@ -96,6 +126,36 @@ namespace hgl::graph
     {
         if(asset::UnregisterAssetsSource(DEFAULT_ASSET_SOURCE_NAME))
             FLogInfo(u8"包裹 <%s> 已注销",DEFAULT_ASSET_SOURCE_NAME);
+
+        RemoveMountRoot(DEFAULT_ASSET_SOURCE_NAME);
+    }
+
+    bool ResolveAssetPhysicalPath(const OSString &uri_text,asset::AssetType default_type,OSString &out_path)
+    {
+        out_path.Clear();
+
+        const asset::AssetURI uri=asset::AssetURI::Parse(uri_text,default_type);
+
+        if(uri.IsPack())
+        {
+            const OSString *root=FindMountRoot(uri.pack_name);
+
+            if(root==nullptr)
+                return false;
+
+            out_path=filesystem::JoinPathWithFilename(*root,uri.target);
+            return filesystem::FileExist(out_path);
+        }
+
+        // `builtin` / `rt` / 无名 `pack` 没有磁盘对应物。
+        if(uri.HasSource())
+            return false;
+
+        // 裸路径或 `file:`：定位段就是物理路径。盘符形态（`C:\a\b`）会被解析器
+        // 把盘符当类型段，此时 `target` 已不是原文，直接按原文当路径试。
+        out_path=(uri.target==uri_text)?uri.target:uri_text;
+
+        return filesystem::FileExist(out_path);
     }
 
     io::InputStream *OpenAssetInputStream(const asset::AssetURI &uri,AnsiString *out_error)

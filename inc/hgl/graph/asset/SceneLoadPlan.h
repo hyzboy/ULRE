@@ -82,6 +82,27 @@ namespace hgl::graph
                             AssetLoadGraph *out_graph = nullptr,
                             AnsiString *out_error = nullptr);
 
+    /**
+     * @brief 同上，但**复用调用方已经读到的字节**。
+     *
+     * 异步流送里场景包已经由 IO 线程读进内存（`SceneStreamingRequest` 持有），
+     * 此时再调 `BuildSceneLoadPlan` 会把同一个大包重复读一遍。本入口只做
+     * 「解析 + 求解闭包」，不碰 IO —— 除配方文件外（配方很小，且必须读到
+     * 纹理依赖才能算出闭包）。
+     *
+     * `pack_name` 只用于日志与 `base_dir` 推导的失败诊断，不参与解析。
+     *
+     * @param scene_ref  场景引用（与 `BuildSceneLoadPlan` 同口径，决定身份与 base_dir）
+     * @param pack_bytes 场景包完整字节
+     * @param pack_size  字节数
+     */
+    bool BuildSceneLoadPlanFromBytes(const AnsiString &scene_ref,
+                                     const void *pack_bytes,
+                                     const uint32 pack_size,
+                                     SceneLoadPlan &out,
+                                     AssetLoadGraph *out_graph = nullptr,
+                                     AnsiString *out_error = nullptr);
+
     /// 诊断用：把计划单打到日志（按类型汇总 + 逐项）。
     void DumpSceneLoadPlan(const AnsiString &scene_ref, const SceneLoadPlan &plan);
 }//namespace hgl::graph

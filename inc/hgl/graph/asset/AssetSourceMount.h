@@ -128,5 +128,32 @@ namespace hgl
     io::InputStream *OpenAssetInputStream(const asset::AssetURI &uri,
                                           AnsiString *out_error=nullptr);
 
+    /**
+     * @brief 把资产 URI 解析成**物理磁盘路径**（不解引用、不读字节）。
+     *
+     * 存在的唯一理由：异步读盘（`LoadedFileManager::Submit`）只接受物理路径，
+     * 而资产可能位于 `pack(<name>)` 挂载里。有了本函数，包裹资产也能走异步 IO，
+     * 不必为了拿到一个路径把整包同步读进内存。
+     *
+     * ── 局限 ──────────────────────────────────────────────────────────────────
+     *   · `builtin` / `rt` / 匿名 `pack` 没有磁盘对应物 ⇒ 返回 false；
+     *   · `id:<32 hex>` 需要索引反查，本函数不做 ⇒ 返回 false（此时请改用
+     *     `OpenAssetInputStream` 取流）。
+     *
+     * @param uri_text     资产 URI 或裸物理路径
+     * @param default_type 文本里省略类型段时补上的类型
+     * @param out_path     解析结果（失败时被清空）
+     * @return 路径存在且是文件返回 true
+     */
+    bool ResolveAssetPhysicalPath(const OSString &uri_text,
+                                  asset::AssetType default_type,
+                                  OSString &out_path);
+
+    /// 同上，默认类型为 `Unknown`。
+    inline bool ResolveAssetPhysicalPath(const OSString &uri_text,OSString &out_path)
+    {
+        return ResolveAssetPhysicalPath(uri_text,asset::AssetType::Unknown,out_path);
+    }
+
     }//namespace graph
 }//namespace hgl

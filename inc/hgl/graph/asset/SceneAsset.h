@@ -39,8 +39,11 @@
 
 #include <hgl/CoreType.h>
 #include <hgl/graph/asset/SceneLoadPlan.h>
+#include <hgl/graph/mesh/LoadStaticMesh.h>
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
+
+#include <vector>
 
 namespace hgl::graph
 {
@@ -60,6 +63,35 @@ namespace hgl::graph
     };
 
     const char *GetSceneAssetStateName(SceneAssetState state);
+
+    /**
+     * @brief 场景解析产物：可以立刻实例化进 ECS 的三张表。
+     *
+     * 为什么这里允许 `std::vector`：`LoadStaticMesh.h` 的整组入口
+     * （`LoadStaticMeshSceneFromMemory` / `...AsPrimitiveAssets`）的 out 参数就是
+     * `std::vector`，那是网格层的既有 ABI。要接上它只有两条路 —— 改那一层的
+     * 签名，或者在这里做一次容器类型让步。本类选后者，并把 `std::vector`
+     * **限制在本结构体内**，其余新代码仍只用 HGL 容器。
+     */
+    struct SceneAssetContent
+    {
+        std::vector<PrimitiveAsset> assets;
+        std::vector<StaticMeshNode> nodes;
+        std::vector<int32>          root_nodes;
+
+        bool IsEmpty()const { return assets.empty(); }
+
+        void Clear()
+        {
+            assets.clear();
+            nodes.clear();
+            root_nodes.clear();
+        }
+
+        int GetAssetCount()const { return static_cast<int>(assets.size()); }
+        int GetNodeCount ()const { return static_cast<int>(nodes.size()); }
+        int GetRootCount ()const { return static_cast<int>(root_nodes.size()); }
+    };
 
     /**
      * @brief 场景资产的异步句柄。
@@ -112,6 +144,8 @@ namespace hgl::graph
 
         AnsiString          fail_reason;
 
+        SceneAssetContent   content;                ///<解析产物（`CommitScene` 之后有效）
+
         ReadyCallback       on_ready = nullptr;
         FailedCallback      on_failed = nullptr;
         void *              notify_user = nullptr;
@@ -159,6 +193,11 @@ namespace hgl::graph
 
         const AnsiString &GetFailReason()const { return fail_reason; }
 
+        /// 解析产物（`Assembling` 期间由流送系统写入，`Ready` 之后可读）
+        const SceneAssetContent &GetContent()const { return content; }
+
+        SceneAssetContent &GetMutableContent() { return content; }
+
         uint64 GetAsyncRequestID()const { return async_request_id; }
         int    GetAsyncAttempt  ()const { return async_attempt; }
 
@@ -203,6 +242,26 @@ namespace hgl::graph
          * @return 全部子任务已落定返回 true
          */
         bool SettleChild(bool ok);
+
+        /**
+         * @brief 由流送系统按计划单状态汇总后批量落定（等价于连续调用 `SettleChild`）。
+         *
+         * 流送系统不逐项记账，而是逐帧去几何/纹理句柄表里查真值，然后把
+         * 「本帧新落定了几项、其中几项失败」整体报回来 —— 这样计数只在一处
+         * 累加，不会因为某个子项被跳过一次而永久少一项。
+         *
+         * @return 全部子任务已落定返回 true
+         */
+        bool SettleAllChildren(int ready_delta, int failed_delta);
+
+        /**
+         * @brief 用「实际图元数」替换计划单估算的子项数。
+         *
+         * 计划单只知道「这个场景会引用多少东西」，不知道解析后究竟有几个图元
+         * 需要等几何。构建产物出来的那一帧调用本函数，把口径换成图元，
+         * 只允许在 `Assembling` 且尚无子项落定时调用（否则计数会错位）。
+         */
+        void SetChildTotal(int total);
 
         /**
          * @brief 汇聚提交：子任务未全部落定返回 false；否则 ⇒ `Ready` 并触发通知。
