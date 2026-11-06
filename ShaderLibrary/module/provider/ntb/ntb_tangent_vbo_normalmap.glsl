@@ -44,10 +44,13 @@ NTBSpace GetNTB(NTBInput ntb_input)
     }
 
     // ── Christian Schüler 余切标架 ─────────────────────────────────
+    // Vulkan 屏幕空间原点在左上（Y 向下增加），与 OpenGL（Y 向上）相反，
+    // 导致 dFdy 符号相反。若直接套用原始公式会导致 T 与 B 均反向（凹凸反向）。
+    // 将 dp2 与 duv2 取反对齐右手屏幕标架推导约定。
     const vec3 dp1 = dFdx(si.worldPos);
-    const vec3 dp2 = dFdy(si.worldPos);
+    const vec3 dp2 = -dFdy(si.worldPos);
     const vec2 duv1 = dFdx(si.uv0);
-    const vec2 duv2 = dFdy(si.uv0);
+    const vec2 duv2 = -dFdy(si.uv0);
 
     const vec3 dp2perp = cross(dp2, ntb.N);
     const vec3 dp1perp = cross(ntb.N, dp1);
@@ -55,7 +58,7 @@ NTBSpace GetNTB(NTBInput ntb_input)
     const vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
 
     const float max_len_sq = max(dot(T, T), dot(B, B));
-    if (max_len_sq < 1e-12)
+    if (max_len_sq < 1e-24)
     {
         return BuildOrthoNTB(ntb.N);
     }
@@ -67,7 +70,7 @@ NTBSpace GetNTB(NTBInput ntb_input)
     const vec4 normal_sample =
         Sample2DArray(
             normalTexHandle,
-            TrilinearSampler,
+            TrilinearAnisoSampler,
             si.uv0,
             float(normalTexture.y));
 

@@ -59,14 +59,14 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     // 四个 optional 槽：未绑定（句柄 0）由 SampleOptional 以 1.0 保底，
     // 与乘性/替换语义等价（不改变下游数值）。
     material_output.baseColor *=
-        SampleOptional(MTL_TEX(material_data_index).tex_base_color, TrilinearSampler, material_uv, vec4(1.0)).rgb;
+        SampleOptional(MTL_TEX(material_data_index).tex_base_color, TrilinearAnisoSampler, material_uv, vec4(1.0)).rgb;
 
     // glTF ORM 打包图优先（R=AO、G=Roughness、B=Metallic）；未绑定回退独立槽。
     // 与 material_source_pbr_surface 同语义（共享 StandardOpaque 槽契约）。
     const uvec2 orm_ref = MTL_TEX(material_data_index).tex_orm;
     if (orm_ref.x != 0u)
     {
-        const vec3 orm = Sample2DArray(orm_ref.x, LinearSampler, material_uv, float(orm_ref.y)).rgb;
+        const vec3 orm = Sample2DArray(orm_ref.x, TrilinearAnisoSampler, material_uv, float(orm_ref.y)).rgb;
         material_output.ao        = clamp(orm.r, 0.0, 1.0);
         material_output.roughness = clamp(material_output.roughness * orm.g, 0.04, 1.0);
         material_output.metallic  = clamp(material_output.metallic * orm.b, 0.0, 1.0);
@@ -74,16 +74,16 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     else
     {
         material_output.roughness =
-            clamp(material_output.roughness * SampleOptional(MTL_TEX(material_data_index).tex_roughness, LinearSampler, material_uv, vec4(1.0)).r, 0.04, 1.0);
+            clamp(material_output.roughness * SampleOptional(MTL_TEX(material_data_index).tex_roughness, TrilinearAnisoSampler, material_uv, vec4(1.0)).r, 0.04, 1.0);
         material_output.metallic =
-            clamp(material_output.metallic * SampleOptional(MTL_TEX(material_data_index).tex_metallic, LinearSampler, material_uv, vec4(1.0)).r, 0.0, 1.0);
+            clamp(material_output.metallic * SampleOptional(MTL_TEX(material_data_index).tex_metallic, TrilinearAnisoSampler, material_uv, vec4(1.0)).r, 0.0, 1.0);
         material_output.ao =
-            SampleOptional(MTL_TEX(material_data_index).tex_occlusion, LinearSampler, material_uv, vec4(1.0)).r;
+            SampleOptional(MTL_TEX(material_data_index).tex_occlusion, TrilinearAnisoSampler, material_uv, vec4(1.0)).r;
     }
 
     // 自发光：行内无 emissiveFactor（与 StandardOpaque 同），纹理即唯一光源。
     material_output.emissive =
-        SampleOptional(MTL_TEX(material_data_index).tex_emissive, TrilinearSampler, material_uv, vec4(0.0)).rgb;
+        SampleOptional(MTL_TEX(material_data_index).tex_emissive, TrilinearAnisoSampler, material_uv, vec4(0.0)).rgb;
 
     return material_output;
 }
