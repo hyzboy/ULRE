@@ -11,9 +11,9 @@ using namespace hgl::graph;
 
 namespace
 {
-    constexpr char kValidScene[] =
+    constexpr char kValidLevel[] =
         "schema = 1\n"
-        "name = \"SceneTest\"\n"
+        "name = \"LevelTest\"\n"
         "\n"
         "[camera]\n"
         "mode = \"view_model\"\n"
@@ -65,16 +65,16 @@ namespace
 
     bool Parse(const char *text, LevelSpec &spec)
     {
-        return ParseLevelSpec(text, std::strlen(text), OS_TEXT("TestSceneFile"), spec);
+        return ParseLevelSpec(text, std::strlen(text), OS_TEXT("TestLevelFile"), spec);
     }
 
-    bool TestValidScene()
+    bool TestValidLevel()
     {
         LevelSpec spec;
-        if (!Parse(kValidScene, spec))
+        if (!Parse(kValidLevel, spec))
             return false;
 
-        if (spec.name != "SceneTest" || spec.schema != 1
+        if (spec.name != "LevelTest" || spec.schema != 1
             || spec.materials.GetCount() != 3 || spec.nodes.GetCount() != 2)
             return false;
         if (!spec.camera.enabled
@@ -100,7 +100,7 @@ namespace
         return true;
     }
 
-    bool TestInvalidScenes()
+    bool TestInvalidLevels()
     {
         constexpr char kUnknownRootKey[] =
             "schema = 1\nname = \"Bad\"\nunknown = true\n"
@@ -148,11 +148,11 @@ namespace
             && !Parse(kInvalidClearColor, spec);
     }
 
-    bool TestBasicLitMeshesSceneFile()
+    bool TestBasicLitMeshesLevelFile()
     {
         LevelSpec spec;
         if (!LoadLevelSpecFromTOML(
-                OS_TEXT("example/Material/BasicLitMeshes.scene.toml"),
+                OS_TEXT("example/Material/BasicLitMeshes.level.toml"),
                 spec))
             return false;
 
@@ -164,13 +164,13 @@ namespace
 
     bool TestGeometryReferenceKinds()
     {
-        constexpr char kGeometryAssetScene[] =
-            "schema = 1\nname = \"GeometryAssetScene\"\n"
+        constexpr char kGeometryAssetLevel[] =
+            "schema = 1\nname = \"GeometryAssetLevel\"\n"
             "[[nodes]]\nname = \"Geo\"\n"
             "geometry = \"geo:../../res/geo/unit_sphere.geo.toml\"\n"
             "recipe = \"Core.PBR.Lit\"\n";
-        constexpr char kPrimitiveAssetScene[] =
-            "schema = 1\nname = \"PrimitiveAssetScene\"\n"
+        constexpr char kPrimitiveAssetLevel[] =
+            "schema = 1\nname = \"PrimitiveAssetLevel\"\n"
             "[[nodes]]\nname = \"Primitive\"\n"
             "geometry = \"primitive:../../res/primitive/sphere.primitive.toml\"\n";
         constexpr char kMissingGeometryRecipe[] =
@@ -178,12 +178,12 @@ namespace
             "[[nodes]]\nname = \"Geo\"\ngeometry = \"geo:res/geo/unit_sphere.geo.toml\"\n";
 
         LevelSpec spec;
-        if (!Parse(kGeometryAssetScene, spec)
+        if (!Parse(kGeometryAssetLevel, spec)
             || spec.nodes.GetCount() != 1
             || spec.nodes[0]->recipe != "Core.PBR.Lit")
             return false;
 
-        if (!Parse(kPrimitiveAssetScene, spec)
+        if (!Parse(kPrimitiveAssetLevel, spec)
             || spec.nodes.GetCount() != 1
             || !spec.nodes[0]->recipe.IsEmpty())
             return false;
@@ -192,8 +192,8 @@ namespace
             return false;
 
         // `model` 节点：与 geometry 二选一，recipe 必填（.material 兜底）。
-        constexpr char kModelScene[] =
-            "schema = 1\nname = \"ModelScene\"\n"
+        constexpr char kModelLevel[] =
+            "schema = 1\nname = \"ModelLevel\"\n"
             "[[nodes]]\nname = \"Model\"\n"
             "model = \"../../res/model/castle.model\"\n"
             "recipe = \"Core.PBR.Lit\"\n";
@@ -206,7 +206,7 @@ namespace
             "model = \"castle.model\"\ngeometry = \"presets:cube\"\nrecipe = \"R\"\n";
 
         LevelSpec model_spec;
-        if (!Parse(kModelScene, model_spec)
+        if (!Parse(kModelLevel, model_spec)
             || model_spec.nodes.GetCount() != 1
             || model_spec.nodes[0]->model != "../../res/model/castle.model")
             return false;
@@ -220,25 +220,25 @@ namespace
     {
         LevelAssetRegistry registry;
         LevelAsset *first = registry.GetOrLoad(
-            OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
+            OS_TEXT("example/Material/BasicLitMeshes.level.toml"));
         LevelAsset *second = registry.GetOrLoad(
-            OS_TEXT("example\\Material\\BasicLitMeshes.scene.toml"));
+            OS_TEXT("example\\Material\\BasicLitMeshes.level.toml"));
 
         return first
             && first == second
             && registry.GetCount() == 1
             && registry.FindByFilename(
-                   OS_TEXT("example/Material/BasicLitMeshes.scene.toml")) == first;
+                   OS_TEXT("example/Material/BasicLitMeshes.level.toml")) == first;
     }
 
-    bool TestSceneFlatBuffersFile()
+    bool TestLevelFlatBuffersFile()
     {
         const OSString filename =
-            OS_TEXT("build/Testing/Temporary/level_asset_roundtrip.scene.fb");
+            OS_TEXT("build/Testing/Temporary/level_asset_roundtrip.level.fb");
         hgl::filesystem::FileDelete(filename);
 
         LevelSpec source;
-        if (!Parse(kValidScene, source))
+        if (!Parse(kValidLevel, source))
             return false;
         if (!SaveLevelSpecToFlatBuffers(source, filename))
             return false;
@@ -261,18 +261,18 @@ namespace
 
 int main()
 {
-    hgl::logger::InitLogger(OS_TEXT("TestSceneFile"));
-    if (!TestValidScene()
-        || !TestInvalidScenes()
-        || !TestBasicLitMeshesSceneFile()
+    hgl::logger::InitLogger(OS_TEXT("TestLevelFile"));
+    if (!TestValidLevel()
+        || !TestInvalidLevels()
+        || !TestBasicLitMeshesLevelFile()
         || !TestGeometryReferenceKinds()
         || !TestLevelAssetRegistry()
-        || !TestSceneFlatBuffersFile())
+        || !TestLevelFlatBuffersFile())
     {
-        GLogError(u8"=== TestSceneFile: 测试失败 ===");
+        GLogError(u8"=== TestLevelFile: 测试失败 ===");
         return 1;
     }
 
-    GLogInfo(u8"=== TestSceneFile: 全部测试通过 ===");
+    GLogInfo(u8"=== TestLevelFile: 全部测试通过 ===");
     return 0;
 }

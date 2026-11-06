@@ -201,7 +201,7 @@ add_ecs_test(TestAssetFactory tests/TestAssetFactory.cpp)
 add_ecs_test(TestGeometryPreset tests/TestGeometryPreset.cpp)
 
 # TOML LevelSpec parser: schema, references, type-specific keys, and parent cycles.
-add_ecs_test(TestSceneFile tests/TestSceneFile.cpp)
+add_ecs_test(TestLevelFile tests/TestLevelFile.cpp)
 
 # 阶段二：多材质场景装载的资产级材质下标透传 + 实例化行选择逻辑（纯数据用例）。
 add_ecs_test(TestStaticMeshMultiMaterial tests/TestStaticMeshMultiMaterial.cpp)
@@ -443,11 +443,11 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "geometry;preset;asset")
 
     add_test(
-        NAME TestSceneFile
-        COMMAND TestSceneFile
+        NAME TestLevelFile
+        COMMAND TestLevelFile
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
-        TestSceneFile
+        TestLevelFile
         PROPERTIES LABELS "scene;asset")
 
     add_test(

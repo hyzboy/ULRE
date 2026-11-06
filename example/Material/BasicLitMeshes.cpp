@@ -59,13 +59,13 @@ private:
         if (!level_registry)
             return false;
 
-        LevelAsset *scene = level_registry->GetOrLoad(
-            OS_TEXT("example/Material/BasicLitMeshes.scene.toml"));
-        if (!scene)
+        LevelAsset *level_asset = level_registry->GetOrLoad(
+            OS_TEXT("example/Material/BasicLitMeshes.level.toml"));
+        if (!level_asset)
             return false;
 
         GeometryCreater creater(mesh_vdm);
-        return scene->Instantiate(ecs_context, &creater, level_instance);
+        return level_asset->Instantiate(ecs_context, &creater, level_instance);
     }
 
 public:

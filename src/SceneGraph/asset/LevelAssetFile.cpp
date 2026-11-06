@@ -28,10 +28,10 @@ namespace hgl::graph
     {
         if (filename.EndsWithIgnoreCase(OS_TEXT(".toml")))
             return LoadLevelSpecFromTOML(filename, out_spec);
-        if (filename.EndsWithIgnoreCase(OS_TEXT(".scene.fb")))
+        if (filename.EndsWithIgnoreCase(OS_TEXT(".level.fb")))
             return LoadLevelSpecFromFlatBuffers(filename, out_spec);
 
-        MLogError(ModelAsset, OS_TEXT("LoadLevelSpecFromFile: unsupported scene file extension in ")
+        MLogError(ModelAsset, OS_TEXT("LoadLevelSpecFromFile: unsupported level file extension in ")
                   + filename);
         return false;
     }
