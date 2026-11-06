@@ -1,11 +1,16 @@
 ﻿#pragma once
-
 #include <hgl/type/String.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/mesh/StaticMesh.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <vector>
-
+namespace hgl
+{
+    namespace io
+    {
+        class InputStream;
+    }//namespace io
+}
 namespace hgl::graph
 {
     class VulkanDevice;
@@ -64,6 +69,35 @@ namespace hgl::graph
         const mtl::MaterialRecipe        *recipe,
         const void                       *pack_bytes,
         const uint32                      pack_size,
+        const OSString                   &pack_name,
+        const OSString                   &base_dir,
+        std::vector<PrimitiveAsset>      &out_assets,
+        std::vector<StaticMeshNode>      &out_nodes,
+        std::vector<int32_t>             &out_root_nodes,
+        const mtl::MaterialRecipe *const *material_recipes = nullptr,
+        const uint32_t                    material_recipe_count = 0);
+
+    /**
+     * @brief 从**已打开的输入流**装载 `.scene`（包裹化 / 流化路径的统一入口）。
+     *
+     * 语义与 `LoadStaticMeshSceneFromMemory` 完全一致 —— 内部先把流读完到一块
+     * 连续内存，再走同一份字节解析路径。存在的意义是把「资产从哪来」与「怎么解析」
+     * 彻底解耦：调用方可以直接喂资产包的 `OpenAssetStream`，不需要物理路径、
+     * 不需要先落盘、也不需要自己管缓冲区生命周期。
+     *
+     * @param stream    已定位到场景包首字节的输入流（**所有权留在调用方**，本函数不关闭）
+     * @param pack_name 仅用于日志/诊断的资产名（可以是逻辑路径）
+     * @param base_dir  解析 V1 包里相对几何文件名时使用的基础目录；V2 包自带
+     *                  GeometryBlob 时不使用
+     *
+     * @note 流的读取位置会被推进到结尾；失败不影响流的可用性。
+     */
+    bool LoadStaticMeshSceneFromStream(
+        VulkanDevice                     *device,
+        GeometryManager                  *geo_mgr,
+        const GeometryVertexFormat       &geometry_vertex_format,
+        const mtl::MaterialRecipe        *recipe,
+        io::InputStream                  *stream,
         const OSString                   &pack_name,
         const OSString                   &base_dir,
         std::vector<PrimitiveAsset>      &out_assets,

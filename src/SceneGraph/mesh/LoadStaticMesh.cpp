@@ -12,6 +12,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/io/MiniPack.h>
+#include <hgl/io/InputStream.h>
 #include <hgl/type/StdString.h>
 #include <hgl/log/Log.h>
 
@@ -940,6 +941,50 @@ bool LoadStaticMeshSceneFromMemory(
                                   mpm,pack_name,base_dir,
                                   out_assets,out_nodes,out_root_nodes,
                                   material_recipes,material_recipe_count);
+}
+
+bool LoadStaticMeshSceneFromStream(
+    VulkanDevice                     *device,
+    GeometryManager                  *geo_mgr,
+    const GeometryVertexFormat       &geometry_vertex_format,
+    const mtl::MaterialRecipe        *recipe,
+    io::InputStream                  *stream,
+    const OSString                   &pack_name,
+    const OSString                   &base_dir,
+    std::vector<PrimitiveAsset>      &out_assets,
+    std::vector<StaticMeshNode>      &out_nodes,
+    std::vector<int32_t>             &out_root_nodes,
+    const mtl::MaterialRecipe *const *material_recipes,
+    const uint32_t                    material_recipe_count)
+{
+    if (!stream)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneFromStream: null stream: ") + pack_name);
+        return false;
+    }
+
+    // 场景包解析全程需要随机访问（FindFile/Map），因此先整块读入。
+    // 这块内存的生命周期严格覆盖下面这一次同步解析，不跨线程保留。
+    int64 pack_size = 0;
+    void *pack_bytes = hgl::io::LoadFromInputStream(&pack_size, stream);
+
+    if (!pack_bytes || pack_size <= 0)
+    {
+        delete[] static_cast<char *>(pack_bytes);
+
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneFromStream: cannot read stream: ") + pack_name);
+        return false;
+    }
+
+    const bool result = LoadStaticMeshSceneFromMemory(
+        device, geo_mgr, geometry_vertex_format, recipe,
+        pack_bytes, static_cast<uint32>(pack_size),
+        pack_name, base_dir,
+        out_assets, out_nodes, out_root_nodes,
+        material_recipes, material_recipe_count);
+
+    delete[] static_cast<char *>(pack_bytes);
+    return result;
 }
 
 // ---- 自包含模型目录装配（严禁跨目录查找） ------------------------------------
