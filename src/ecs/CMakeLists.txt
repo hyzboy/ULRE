@@ -269,6 +269,9 @@ add_ecs_test(TestSceneAsset tests/TestSceneAsset.cpp)
 # 阶段四判据：流送系统在无设备时的守卫与外部设定（不碰设备）
 add_ecs_test(TestSceneStreamingSystem tests/TestSceneStreamingSystem.cpp)
 
+# 阶段五判据：三段渐进激活（骨架 → 几何 → 材质）的顺序守约与骨架包围盒
+add_ecs_test(TestStaticMeshSceneProgressive tests/TestStaticMeshSceneProgressive.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -554,4 +557,11 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestSceneStreamingSystem
         PROPERTIES LABELS "ecs;asset;streaming" TIMEOUT 60)
+
+    add_test(
+        NAME TestStaticMeshSceneProgressive
+        COMMAND TestStaticMeshSceneProgressive)
+    set_tests_properties(
+        TestStaticMeshSceneProgressive
+        PROPERTIES LABELS "ecs;scene;streaming" TIMEOUT 60)
 endif()

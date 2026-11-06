@@ -45,42 +45,37 @@ namespace hgl::graph
         }
         extra_entities.clear();
         node_records.clear();
+        primitive_records.clear();
+        attached_per_node.clear();
         owned_assets.Clear();
+        skeleton_bounds.Clear();
+        skeleton_bounds_valid = false;
         world = nullptr;
     }
 
-    bool StaticMeshSceneInstance::Instantiate(ecs::ECSContext                  *ctx,
-                                              const std::vector<PrimitiveAsset> &assets,
-                                              const std::vector<StaticMeshNode> &nodes,
-                                              const std::vector<int32_t>        &root_nodes,
-                                              const Options                     &options)
+    bool StaticMeshSceneInstance::InstantiateSkeleton(ecs::ECSContext                  *ctx,
+                                                      const std::vector<StaticMeshNode> &nodes,
+                                                      const std::vector<int32_t>        &root_nodes,
+                                                      const SkeletonOptions             &options)
     {
         if (world)
         {
-            FLogWarning(u8"Instantiate: 实例已存在，请先 Release()");
+            FLogWarning(u8"InstantiateSkeleton: 实例已存在，请先 Release()");
             return false;
         }
         if (!ctx)
         {
-            FLogError(u8"Instantiate: ECSContext 为空");
+            FLogError(u8"InstantiateSkeleton: ECSContext 为空");
             return false;
         }
 
         world = ctx;
         node_records.assign(nodes.size(), NodeRecord{});
+        attached_per_node.assign(nodes.size(), 0);
+        skeleton_mobility = options.mobility;
         (void)root_nodes; // 层级完全由 parentIndex 决定；根集合仅作入参兼容
 
-        // 1) 资产复制进自持容器：逐项堆分配，地址稳定，vector 搬迁不再造成悬垂。
-        for (const PrimitiveAsset &source : assets)
-            owned_assets.Create(source);
-        if (owned_assets.GetCount() != static_cast<int>(assets.size()))
-        {
-            FLogError(u8"Instantiate: 资产副本分配失败");
-            Release();
-            return false;
-        }
-
-        // 2) 每节点一个实体 + Transform：局部 TRS 直取节点真源字段。
+        // 1) 每节点一个实体 + Transform：局部 TRS 直取节点真源字段。
         //    先按 Movable 建行写入，再切到目标移动性，避开 Static 行
         //    「渲染消费后再写」的 D4 一次性告警路径。
         for (size_t i = 0; i < nodes.size(); ++i)
@@ -91,7 +86,7 @@ namespace hgl::graph
                 node.name.empty() ? "SceneNode" : node.name.c_str());
             if (!entity)
             {
-                FLogError(u8"Instantiate: 节点实体创建失败（index=%zu）", i);
+                FLogError(u8"InstantiateSkeleton: 节点实体创建失败（index=%zu）", i);
                 Release();
                 return false;
             }
@@ -102,7 +97,7 @@ namespace hgl::graph
                 world->CreateTransform(record.entity, ecs::Mobility::Movable);
             if (!ecs::IsValidTransformID(transform_id))
             {
-                FLogError(u8"Instantiate: 节点 Transform 创建失败（index=%zu）", i);
+                FLogError(u8"InstantiateSkeleton: 节点 Transform 创建失败（index=%zu）", i);
                 Release();
                 return false;
             }
@@ -111,7 +106,7 @@ namespace hgl::graph
             ecs::TransformAccessor transform = world->GetTransform(transform_id);
             if (!transform.IsValid())
             {
-                FLogError(u8"Instantiate: 节点 Transform 句柄无效（index=%zu）", i);
+                FLogError(u8"InstantiateSkeleton: 节点 Transform 句柄无效（index=%zu）", i);
                 Release();
                 return false;
             }
@@ -122,7 +117,7 @@ namespace hgl::graph
             transform.SetMobility(options.mobility);
         }
 
-        // 3) 父子层级：按 parentIndex 还原（加载器保证父先于子）。
+        // 2) 父子层级：按 parentIndex 还原（加载器保证父先于子）。
         for (size_t i = 0; i < nodes.size(); ++i)
         {
             const int32_t parent = nodes[i].parentIndex;
@@ -130,14 +125,14 @@ namespace hgl::graph
                 continue;
             if (parent >= static_cast<int32_t>(nodes.size()))
             {
-                FLogError(u8"Instantiate: 父下标越界（node=%zu, parent=%d）", i, parent);
+                FLogError(u8"InstantiateSkeleton: 父下标越界（node=%zu, parent=%d）", i, parent);
                 Release();
                 return false;
             }
             if (!ecs::IsValidTransformID(node_records[i].transform)
                 || !ecs::IsValidTransformID(node_records[parent].transform))
             {
-                FLogError(u8"Instantiate: 父/子 Transform 缺失（node=%zu）", i);
+                FLogError(u8"InstantiateSkeleton: 父/子 Transform 缺失（node=%zu）", i);
                 Release();
                 return false;
             }
@@ -145,106 +140,231 @@ namespace hgl::graph
             child.SetParent(node_records[parent].transform);
         }
 
-        // 4) 图元挂载：首个进节点实体，其余派生单位变换子实体
-        uint32_t row_counter = 0;
-        uint32_t primitive_seq = 0;
+        // 3) 骨架包围盒：节点包围盒是 pack 里的真源，与几何是否上传无关，
+        //    所以空壳阶段就能给出正确对焦范围（不然要等第一个图元落地才敢定位相机）。
+        AABB merged_box;
+        merged_box.Clear();
+        bool any_box = false;
+        for (const StaticMeshNode &node : nodes)
+        {
+            if (!node.boundsValid || node.nodeBounds.aabb.IsEmpty())
+                continue;
+
+            merged_box.Merge(node.nodeBounds.aabb.Transformed(node.worldMatrix));
+            any_box = true;
+        }
+        if (any_box)
+        {
+            skeleton_bounds.SetFromAABB(merged_box);
+            skeleton_bounds_valid = true;
+        }
+
+        FLogInfo(u8"InstantiateSkeleton: 骨架就绪（节点 %zu，包围盒 %s）",
+                 nodes.size(), any_box ? "有效" : "缺失");
+        return true;
+    }
+
+    bool StaticMeshSceneInstance::AttachGeometries(const std::vector<PrimitiveAsset> &assets,
+                                                    const std::vector<StaticMeshNode> &nodes)
+    {
+        if (!world)
+        {
+            FLogError(u8"AttachGeometries: 世界未就绪，请先 InstantiateSkeleton()");
+            return false;
+        }
+        if (node_records.size() != nodes.size())
+        {
+            FLogError(u8"AttachGeometries: 节点数与骨架不一致（骨架 %zu / 入参 %zu）",
+                      node_records.size(), nodes.size());
+            return false;
+        }
+        if (attached_per_node.size() != nodes.size())
+            attached_per_node.assign(nodes.size(), 0);
+
+        // 资产副本按需追加：ManagedArray 追加不移动既有元素，指针保持稳定。
+        for (int i = owned_assets.GetCount(); i < static_cast<int>(assets.size()); ++i)
+        {
+            if (!owned_assets.Create(assets[i]))
+            {
+                FLogError(u8"AttachGeometries: 资产副本分配失败（index=%d）", i);
+                return false;
+            }
+        }
+
+        bool attached_any = false;
+
         for (size_t i = 0; i < nodes.size(); ++i)
         {
             const StaticMeshNode &node = nodes[i];
-            bool first = true;
-            for (int32_t primitive_index : node.primitiveIndices)
+            const int pi_count = static_cast<int>(node.primitiveIndices.size());
+
+            for (int pos = attached_per_node[i]; pos < pi_count; ++pos)
             {
+                const int32_t primitive_index = node.primitiveIndices[pos];
+
                 if (primitive_index < 0
-                    || primitive_index >= static_cast<int32_t>(owned_assets.GetCount()))
+                    || primitive_index >= owned_assets.GetCount())
                 {
-                    FLogWarning(u8"Instantiate: 图元下标越界被跳过（node=%zu, pi=%d）",
-                                i, primitive_index);
-                    continue;
+                    // 资产还没到（流送中是常态）：本节点停在这里，下次接着来。
+                    break;
                 }
+
                 PrimitiveAsset *asset = owned_assets.At(primitive_index);
                 if (!asset || !asset->IsValid())
-                    continue;
+                    break;
 
-                ecs::Entity *entity = nullptr;
-                if (first)
+                ecs::Entity *entity = world->GetEntity(node_records[i].entity);
+
+                if (entity && world->GetGeometryData(entity))
                 {
-                    entity = world->GetEntity(node_records[i].entity);
+                    // 节点实体已被首图元占用 ⇒ 后续图元派生子实体。
+                    entity = nullptr;
                 }
-                else
+
+                if (!entity)
                 {
                     // 一实体一 GeometryData：额外图元挂到单位变换子实体上，
                     // 子实体置于节点之下，保持正确的世界变换。
                     AnsiString child_name =
                         AnsiString("SceneNodePrim_")
-                        + AnsiString::numberOf(static_cast<unsigned>(primitive_seq));
+                        + AnsiString::numberOf(static_cast<unsigned>(primitive_records.size()));
                     ecs::Entity *child_entity =
                         world->CreateEntity<ecs::Entity>(child_name.c_str());
                     if (!child_entity)
                     {
-                        FLogError(u8"Instantiate: 派生图元实体创建失败（node=%zu）", i);
-                        Release();
+                        FLogError(u8"AttachGeometries: 派生图元实体创建失败（node=%zu）", i);
                         return false;
                     }
                     ecs::TransformID child_transform = world->CreateTransform(
                         child_entity->GetEntityID(), ecs::Mobility::Movable);
                     if (!ecs::IsValidTransformID(child_transform))
                     {
-                        FLogError(u8"Instantiate: 派生图元 Transform 创建失败（node=%zu）", i);
-                        Release();
+                        FLogError(u8"AttachGeometries: 派生图元 Transform 创建失败（node=%zu）", i);
                         return false;
                     }
                     ecs::TransformAccessor child_accessor =
                         world->GetTransform(child_transform);
                     child_accessor.SetLocalTRS(kUnitPos, kUnitRot, kUnitScale);
                     child_accessor.SetParent(node_records[i].transform);
-                    child_accessor.SetMobility(options.mobility);
+                    child_accessor.SetMobility(skeleton_mobility);
                     extra_entities.push_back(child_entity->GetEntityID());
                     entity = child_entity;
-                }
-                ++primitive_seq;
-
-                if (!entity)
-                {
-                    FLogError(u8"Instantiate: 节点实体句柄丢失（node=%zu）", i);
-                    Release();
-                    return false;
                 }
 
                 ecs::GeometryData *geometry_data =
                     world->GetOrCreateGeometryData(entity);
                 if (!geometry_data)
                 {
-                    FLogError(u8"Instantiate: GeometryData 创建失败（node=%zu）", i);
-                    Release();
+                    FLogError(u8"AttachGeometries: GeometryData 创建失败（node=%zu）", i);
                     return false;
                 }
                 geometry_data->SetPrimitiveAsset(asset);
                 geometry_data->SetPrimitiveVariantIndex(0);
 
-                if (options.material_rows && options.material_row_count > 0)
-                {
-                    // 多材质模式优先按图元的源材质下标选行；
-                    // 下标缺失/越界回退到挂载顺序轮转（既有行为）。
-                    ecs::MaterialData::MaterialDataAuthoringResource resource{};
-                    resource = options.material_rows[
-                        ResolveMaterialRowIndex(*asset, options, row_counter)];
-                    ecs::MaterialData *material_data =
-                        world->GetOrCreateMaterialData(entity);
-                    if (!material_data || !material_data->SetDataResource(resource))
-                    {
-                        FLogError(u8"Instantiate: 材质行绑定失败（node=%zu）", i);
-                        Release();
-                        return false;
-                    }
-                    ++row_counter;
-                }
+                PrimitiveRecord record;
+                record.asset_index = primitive_index;
+                record.entity      = entity->GetEntityID();
+                primitive_records.push_back(record);
 
-                first = false;
+                attached_per_node[i] = pos + 1;
+                attached_any = true;
             }
         }
 
-        FLogInfo(u8"Instantiate: 场景实例化完成（节点 %zu，派生图元实体 %zu，资产副本 %d）",
-                 nodes.size(), extra_entities.size(), owned_assets.GetCount());
+        if (attached_any)
+        {
+            FLogInfo(u8"AttachGeometries: 已挂几何 %d 个（派生实体 %zu）",
+                     GetAttachedPrimitiveCount(), extra_entities.size());
+        }
+        return attached_any;
+    }
+
+    bool StaticMeshSceneInstance::AttachMaterials(const Options &options)
+    {
+        if (!world)
+        {
+            FLogError(u8"AttachMaterials: 世界未就绪，请先 InstantiateSkeleton()");
+            return false;
+        }
+        if (!options.material_rows || options.material_row_count == 0)
+            return false;
+
+        bool attached_any = false;
+
+        for (size_t k = 0; k < primitive_records.size(); ++k)
+        {
+            const PrimitiveRecord &record = primitive_records[k];
+            if (!record.entity.IsValid())
+                continue;
+
+            ecs::Entity *entity = world->GetEntity(record.entity);
+            if (!entity)
+                continue;
+
+            // 幂等：已绑过材质的图元不再重绑（重启流送时也不会把行号打乱）。
+            if (world->GetMaterialData(entity))
+                continue;
+
+            const PrimitiveAsset *asset = owned_assets.At(record.asset_index);
+            if (!asset)
+                continue;
+
+            const uint32_t row = ResolveMaterialRowIndex(
+                *asset, options, static_cast<uint32_t>(k));
+
+            ecs::MaterialData::MaterialDataAuthoringResource resource{};
+            resource = options.material_rows[row];
+
+            ecs::MaterialData *material_data = world->GetOrCreateMaterialData(entity);
+            if (!material_data || !material_data->SetDataResource(resource))
+            {
+                FLogError(u8"AttachMaterials: 材质行绑定失败（图元 #%zu, row=%u）", k, row);
+                return false;
+            }
+            attached_any = true;
+        }
+
+        if (attached_any)
+            FLogInfo(u8"AttachMaterials: 已挂材质 %d 个", GetAttachedPrimitiveCount());
+        return attached_any;
+    }
+
+    bool StaticMeshSceneInstance::Instantiate(ecs::ECSContext                  *ctx,
+                                              const std::vector<PrimitiveAsset> &assets,
+                                              const std::vector<StaticMeshNode> &nodes,
+                                              const std::vector<int32_t>        &root_nodes,
+                                              const Options                     &options)
+    {
+        SkeletonOptions skeleton_options;
+        skeleton_options.mobility = options.mobility;
+
+        if (!InstantiateSkeleton(ctx, nodes, root_nodes, skeleton_options))
+            return false;
+
+        if (!AttachGeometries(assets, nodes))
+        {
+            // 同步通路里「一个图元都没挂上」等同于失败：渐进通路才允许空壳停留。
+            if (GetAttachedPrimitiveCount() <= 0 && !assets.empty())
+            {
+                FLogError(u8"Instantiate: 没有任何图元被挂载");
+                Release();
+                return false;
+            }
+        }
+
+        if (options.material_rows && options.material_row_count > 0)
+        {
+            if (!AttachMaterials(options))
+            {
+                FLogError(u8"Instantiate: 材质绑定失败");
+                Release();
+                return false;
+            }
+        }
+
+        FLogInfo(u8"Instantiate: 场景实例化完成（节点 %zu，图元 %d，派生图元实体 %zu，资产副本 %d）",
+                 nodes.size(), GetAttachedPrimitiveCount(),
+                 extra_entities.size(), owned_assets.GetCount());
         return true;
     }
 
