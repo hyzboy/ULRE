@@ -1,4 +1,4 @@
-// TestSceneDependencyExtractor — 阶段三判据：不装载也能抽出场景/配方依赖
+// TestModelDependencyExtractor — 阶段三判据：不装载也能抽出模型/配方依赖
 //
 // 全部用内存里现搓的 MDL2 包与配方文本，不读盘、不建设备。
 
@@ -386,17 +386,17 @@ namespace
 
 int main()
 {
-    hgl::logger::InitLogger(OS_TEXT("TestSceneDependencyExtractor"));
+    hgl::logger::InitLogger(OS_TEXT("TestModelDependencyExtractor"));
 
     if(!TestLegacyModelDependencies()
        || !TestEmbeddedGeometryIsNotADependency()
        || !TestBrokenPackRejected()
        || !TestRecipeDependencies())
     {
-        GLogError(u8"=== TestSceneDependencyExtractor: 测试失败 ===");
+        GLogError(u8"=== TestModelDependencyExtractor: 测试失败 ===");
         return 1;
     }
 
-    GLogInfo(u8"=== TestSceneDependencyExtractor: 全部测试通过 ===");
+    GLogInfo(u8"=== TestModelDependencyExtractor: 全部测试通过 ===");
     return 0;
 }

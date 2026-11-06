@@ -55,7 +55,7 @@ flowchart LR
 | `tex` | `AssetType::Texture` | 纹理资产（内部仍由 `TextureURI` 解析） |
 | `rcp` | `AssetType::MaterialRecipe` | 材质配方 |
 | `prim` | `AssetType::Primitive` | 图元资产 |
-| `scene` | `AssetType::Scene` | 场景资产 |
+| `model` | `AssetType::Model` | 模型资产 |
 | `mtldata` | `AssetType::MaterialData` | 材质数据块（批量 SSBO 行数据，见 `material-instance-and-data-block.md`） |
 
 拼写的**唯一真源**是 `AssetTypeTable[]`：名字、解析、反查三个方向全部从那张表派生，
@@ -199,10 +199,10 @@ uint32_t ok = AssetFactory::Instance().Create(uris, 2, objects);
 ```cpp
 AssetFactory &factory = AssetFactory::Instance();
 
-factory.Register(AssetType::Scene, &LoadSceneAsset);
-factory.IsRegistered(AssetType::Scene);   // true
+factory.Register(AssetType::Model, &LoadModelAsset);
+factory.IsRegistered(AssetType::Model);   // true
 factory.GetRegisteredCount();
-factory.Unregister(AssetType::Scene);
+factory.Unregister(AssetType::Model);
 factory.Clear();                          // 主要给测试用
 ```
 

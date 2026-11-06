@@ -1,4 +1,4 @@
-// TestSceneLoadPlan — 阶段三判据：从模型包 + 配方文本派生出可执行的任务单
+// TestModelLoadPlan — 阶段三判据：从模型包 + 配方文本派生出可执行的任务单
 //
 // 不用真实 `res/`：这里在临时目录里现搓一个最小 minipack 模型包和几份配方，
 // 保证测试自足，也不受示例资产改名影响。
@@ -39,7 +39,7 @@ namespace
     constexpr const char *kLitRecipe   = "ulre_loadplan_test_tmp/LoadModel.Chess.Lit.recipe.toml";
     constexpr const char *kGarbagePath = "ulre_loadplan_test_tmp/Garbage.model";
 
-    // ── 内存中的 MDL2 载荷构造（与 TestSceneDependencyExtractor 同构） ──────
+    // ── 内存中的 MDL2 载荷构造（与 TestModelDependencyExtractor 同构） ──────
 
     struct PayloadBuilder
     {
@@ -451,10 +451,10 @@ namespace
 
 int main(int argc, char **argv)
 {
-    hgl::logger::InitLogger(OS_TEXT("TestSceneLoadPlan"));
+    hgl::logger::InitLogger(OS_TEXT("TestModelLoadPlan"));
 
     // 手工验证入口：把一个真实场景引用当参数传进来，只打计划不装载。
-    //   TestSceneLoadPlan.exe res/xxx/yyy.Scene.model
+    //   TestModelLoadPlan.exe res/xxx/yyy.Scene.model
     if(argc > 1 && argv[1] != nullptr)
     {
         ModelLoadPlan plan;
@@ -477,10 +477,10 @@ int main(int argc, char **argv)
 
     if(!ok)
     {
-        GLogError(u8"=== TestSceneLoadPlan: 测试失败 ===");
+        GLogError(u8"=== TestModelLoadPlan: 测试失败 ===");
         return 1;
     }
 
-    GLogInfo(u8"=== TestSceneLoadPlan: 全部测试通过 ===");
+    GLogInfo(u8"=== TestModelLoadPlan: 全部测试通过 ===");
     return 0;
 }

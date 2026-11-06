@@ -168,7 +168,7 @@ namespace
         if (generic)
         {
             Check(generic->IsFallback(), "IsFallback 应为 true");
-            Check(generic->GetURI().type == AssetType::Model, "URI 类型应解析为 Scene");
+            Check(generic->GetURI().type == AssetType::Model, "URI 类型应解析为 Model");
             Check(generic->GetURI().source == AssetSourceKind::File, "URI 来源应解析为 File");
             Check(Narrow(generic->GetURI().raw) == AnsiString("model:file:level.scene.toml"),
                   "降级对象应保留原始 URI");
