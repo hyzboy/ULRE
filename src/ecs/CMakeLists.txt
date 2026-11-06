@@ -257,6 +257,9 @@ add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 # 阶段三判据：资产装载顺序图（后缀规范化 / 引用计数 / 拓扑闭包 / 有环终止）
 add_ecs_test(TestAssetLoadGraph tests/TestAssetLoadGraph.cpp)
 
+# 阶段三判据：不装载也能抽出场景/配方依赖（内存内合成 SCN2 包与配方文本）
+add_ecs_test(TestSceneDependencyExtractor tests/TestSceneDependencyExtractor.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -513,5 +516,12 @@ if(BUILD_TESTING)
         COMMAND TestAssetLoadGraph)
     set_tests_properties(
         TestAssetLoadGraph
+        PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
+
+    add_test(
+        NAME TestSceneDependencyExtractor
+        COMMAND TestSceneDependencyExtractor)
+    set_tests_properties(
+        TestSceneDependencyExtractor
         PROPERTIES LABELS "ecs;asset" TIMEOUT 60)
 endif()
