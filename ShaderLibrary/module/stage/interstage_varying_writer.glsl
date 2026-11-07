@@ -47,7 +47,7 @@ void WriteMeshVertexOutputs(uint vid)
     fragUV0[vid] = TexCoord;
 #endif
 #if defined(HGL_VARYING_VERTEX_COLOR)
-    fragVertexColor[vid] = GetVertexColor();
+    fragVertexColor[vid] = GetVertexColor() * ResolveInstanceCustomColor(gl_InstanceIndex);
 #endif
 #if defined(HGL_VARYING_FRAG_DIRECTION)
     // 天空盒方向：本形状的位置流就是单位方向向量。

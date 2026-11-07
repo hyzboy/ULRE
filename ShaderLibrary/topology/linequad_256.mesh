@@ -64,7 +64,7 @@ void WriteLineQuadVertexOutputs(uint base_vid)
     fragLuminance[base_vid + 3u] = luminance;
 #endif
 #if defined(HGL_VARYING_VERTEX_COLOR)
-    const vec4 color = GetVertexColor();
+    const vec4 color = GetVertexColor() * ResolveInstanceCustomColor(gl_InstanceIndex);
     fragVertexColor[base_vid + 0u] = color;
     fragVertexColor[base_vid + 1u] = color;
     fragVertexColor[base_vid + 2u] = color;

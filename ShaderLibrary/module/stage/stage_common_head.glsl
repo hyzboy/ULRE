@@ -15,8 +15,12 @@
 #extension GL_ARB_gpu_shader_int64 : require
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
 #include "contract/interstage_locations.glsl"
+#include "module/descriptor/ssbo/world_addresses.glsl"
+#include "module/descriptor/ssbo/model_expansion_arena.glsl"
+#include "module/descriptor/ssbo/instance_custom_data.glsl"
 
 layout(push_constant) uniform RootAddresses
 {
@@ -38,3 +42,13 @@ layout(push_constant) uniform RootAddresses
 
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer LocalToWorldIndexRef { uint values[]; };
 uint ResolveTransformID(uint iid) { return uint(LocalToWorldIndexRef(pc_root.addr_l2w_index).values[iid]); }
+
+vec4 ResolveInstanceCustomColor(uint iid)
+{
+    if (pc_root.addr_world_addresses == 0ul) return vec4(1.0);
+    uint64_t addr_arena = WorldAddressesRef(pc_root.addr_world_addresses).addr_model_expansion;
+    if (addr_arena == 0ul) return vec4(1.0);
+    uint64_t addr_custom = ModelExpansionArenaRef(addr_arena).arena.custom_data_addr;
+    if (addr_custom == 0ul) return vec4(1.0);
+    return InstanceCustomDataBufferRef(addr_custom).rows[iid].custom_color;
+}

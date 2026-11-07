@@ -187,7 +187,69 @@ namespace
         ok = ok && (kModelExpansionMaxBucketBaseRows
                     == 2u * kModelExpansionBucketBaseRowsPerPass);
 
+        // 逐实例个性化数据行：初值默认为白色不透明 (1,1,1,1)
+        const ssbo::InstanceCustomData custom_default;
+        ok = ok && (custom_default.custom_color.x == 1.0f
+                 && custom_default.custom_color.y == 1.0f
+                 && custom_default.custom_color.z == 1.0f
+                 && custom_default.custom_color.w == 1.0f);
+
+        const ssbo::InstanceCustomData custom_tint(math::Vector4f(0.5f, 0.2f, 0.8f, 0.5f));
+        ok = ok && (custom_tint.custom_color.x == 0.5f
+                 && custom_tint.custom_color.y == 0.2f
+                 && custom_tint.custom_color.z == 0.8f
+                 && custom_tint.custom_color.w == 0.5f);
+
         return ok;
+    }
+
+    bool TestCustomColorModulation()
+    {
+        // 模拟材质基础颜色与透明度调制逻辑（与 surface_material.glsl 完全等价）：
+        // surface.baseColor = material.baseColor * si.vertexColor.rgb;
+        // surface.alpha = material.alpha * si.vertexColor.a;
+        // 网格阶段：fragVertexColor = GetVertexColor() * ResolveInstanceCustomColor(iid);
+        const math::Vector3f mat_base_color(0.8f, 0.6f, 0.4f);
+        const float mat_alpha = 0.9f;
+
+        // 情况1：默认未设自定义数据（custom_color 恒等于 (1,1,1,1)），无损透传
+        const ssbo::InstanceCustomData default_data;
+        const math::Vector4f default_tint = default_data.custom_color;
+        const math::Vector3f modulated_color_default(
+            mat_base_color.x * default_tint.x,
+            mat_base_color.y * default_tint.y,
+            mat_base_color.z * default_tint.z);
+        const float modulated_alpha_default = mat_alpha * default_tint.w;
+
+        if (modulated_color_default.x != mat_base_color.x
+         || modulated_color_default.y != mat_base_color.y
+         || modulated_color_default.z != mat_base_color.z
+         || modulated_alpha_default != mat_alpha)
+        {
+            GLogError(u8"TestCustomColorModulation: 默认颜色调制不符合恒等性");
+            return false;
+        }
+
+        // 情况2：自定义着色与半透明调制
+        const ssbo::InstanceCustomData custom_data(math::Vector4f(0.5f, 0.5f, 0.5f, 0.5f));
+        const math::Vector4f custom_tint = custom_data.custom_color;
+        const math::Vector3f modulated_color_custom(
+            mat_base_color.x * custom_tint.x,
+            mat_base_color.y * custom_tint.y,
+            mat_base_color.z * custom_tint.z);
+        const float modulated_alpha_custom = mat_alpha * custom_tint.w;
+
+        const auto abs_diff = [](float a, float b) { return a > b ? a - b : b - a; };
+        if (abs_diff(modulated_color_custom.x, 0.4f) > 1e-5f
+         || abs_diff(modulated_color_custom.y, 0.3f) > 1e-5f
+         || abs_diff(modulated_color_custom.z, 0.2f) > 1e-5f
+         || abs_diff(modulated_alpha_custom, 0.45f) > 1e-5f)
+        {
+            GLogError(u8"TestCustomColorModulation: 自定义颜色与透明度调制数值不正确");
+            return false;
+        }
+
+        return true;
     }
 
     // ── B 层：GLSL 镜像逐字段对拍 ───────────────────────────────────────────
@@ -404,11 +466,14 @@ namespace
 
     bool TestSourceContracts()
     {
-        AnsiString registry_src, cull_src, mgr_src;
+        AnsiString registry_src, cull_src, mgr_src, stage_head_src, interstage_writer_src, surface_src;
 
         if (!ReadSource(OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"), registry_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"), cull_src)
-            || !ReadSource(OS_TEXT("src/SceneGraph/asset/ModelTemplateManager.cpp"), mgr_src))
+            || !ReadSource(OS_TEXT("src/SceneGraph/asset/ModelTemplateManager.cpp"), mgr_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/stage/stage_common_head.glsl"), stage_head_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/stage/interstage_varying_writer.glsl"), interstage_writer_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/provider/surface/surface_material.glsl"), surface_src))
         {
             GLogError(u8"TestGPUModelTemplate: 无法读取源文件（需在仓库根目录运行）");
             return false;
@@ -447,6 +512,15 @@ namespace
         const bool proxy_union = ContainsToken(mgr_src, "union_geoms");
         const bool proxy_renumber = ContainsToken(mgr_src, "updated.part_bucket_count = union_count");
 
+        // T6.3/T6.4：剔除展开写出自定义颜色，网格与材质着色器消费
+        const bool cull_custom_out = ContainsToken(cull_src, "instance_custom_data_out[inst_row].custom_color = custom_color;");
+        const bool cull_custom_pool = ContainsToken(cull_src, "instance_custom_data_pool[entity.custom_data_index].custom_color");
+        const bool stage_head_resolve = ContainsToken(stage_head_src, "ResolveInstanceCustomColor(uint iid)");
+        const bool stage_head_bda = ContainsToken(stage_head_src, "InstanceCustomDataBufferRef(addr_custom).rows[iid].custom_color");
+        const bool mesh_varying_color = ContainsToken(interstage_writer_src, "fragVertexColor[vid] = GetVertexColor() * ResolveInstanceCustomColor(gl_InstanceIndex);");
+        const bool surface_color = ContainsToken(surface_src, "surface.baseColor = material.baseColor * si.vertexColor.rgb;");
+        const bool surface_alpha = ContainsToken(surface_src, "surface.alpha = material.alpha * si.vertexColor.a;");
+
         const struct
         {
             bool        ok;
@@ -463,6 +537,13 @@ namespace
             { lod_coarsest_first, "LOD 选择必须从最粗槽往回扫描" },
             { proxy_union,    "SetModelTemplateProxies 必须做代理并集重编号" },
             { proxy_renumber, "并集重编号必须把每个参与模板的 part_bucket_count 改成并集大小" },
+            { cull_custom_out, "剔除计算必须将 custom_color 写出到 instance_custom_data_out" },
+            { cull_custom_pool, "剔除计算必须从 instance_custom_data_pool 采样实体自定义颜色" },
+            { stage_head_resolve, "stage_common_head 必须提供 ResolveInstanceCustomColor 接口" },
+            { stage_head_bda, "ResolveInstanceCustomColor 必须通过 BDA 寻址取 custom_color" },
+            { mesh_varying_color, "网格阶段写入顶点色时必须调制 ResolveInstanceCustomColor" },
+            { surface_color, "材质表面求值必须将 baseColor 与 si.vertexColor.rgb 调制" },
+            { surface_alpha, "材质表面求值必须将 alpha 与 si.vertexColor.a 调制" },
         };
 
         bool ok = true;
@@ -486,8 +567,9 @@ int main()
 
     Check(TestRowLayout(), "行布局（宽/对齐/字段偏移）");
     Check(TestDefaultsAndConstants(), "默认值与常量口径");
+    Check(TestCustomColorModulation(), "自定义颜色与透明度调制");
     Check(TestGlslMirrorParity(), "GLSL 镜像逐字段对拍");
-    Check(TestSourceContracts(), "池/展开侧源码契约");
+    Check(TestSourceContracts(), "池/展开侧/着色器源码契约");
 
     if (g_failed > 0)
     {
