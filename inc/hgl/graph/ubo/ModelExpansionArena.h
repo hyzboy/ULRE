@@ -50,8 +50,7 @@ namespace hgl::graph
         uint32_t bucket_base_count = 0;         ///< 桶组基址表行数（= kModelExpansionMaxBucketBaseRows）
 
         uint64_t bucket_base_addr = 0;          ///< 桶组基址表（u32 一行，下标 = blk*每pass容量 + 实体下标）
-        uint64_t reserved1 = 0;                 ///< 保留（T4.1 复核结论：LOD/阴影代理 id 全在 `ModelTemplateRow`
-                                                ///<   内，**不需要**代理表 ⇒ 本槽空着，勿为对称而滥用）
+        uint64_t prev_l2w_base_row = 0;         ///< 上一帧展开矩阵段起始行号（L2W 池绝对行，TAA motion vector 用）
         uint64_t custom_data_addr = 0;          ///< 实例自定义数据表基址（`InstanceCustomData`，16 B/行，
                                                 ///<   行号 = 剔除实例行号 `inst_row`，容量同 `l2w_row_capacity`）；
                                                 ///<   0 = 未启用 ⇒ 展开侧不写本表

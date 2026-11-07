@@ -313,6 +313,7 @@ bool emit_bucket_instance(const uint blk,
                           const uint texture_id,
                           const bool expansion,
                           const mat4 part_l2w,
+                          const mat4 prev_part_l2w,
                           const uint l2w_base_row,
                           const uint l2w_capacity)
 {
@@ -360,6 +361,12 @@ bool emit_bucket_instance(const uint blk,
 
         L2WIndexOutRef(pc.l2w_out_addr).values[inst_row] = l2w_row;
         l2w_world_write.mats[l2w_row] = part_l2w;
+
+        if (model_expansion_arena.prev_l2w_base_row != uint64_t(0))
+        {
+            const uint prev_l2w_row = uint(model_expansion_arena.prev_l2w_base_row) + inst_row;
+            l2w_world_write.mats[prev_l2w_row] = prev_part_l2w;
+        }
     }
     else
         L2WIndexOutRef(pc.l2w_out_addr).values[inst_row] = transform_id;
@@ -456,6 +463,11 @@ void expand_template_entity(const uint blk,
     if (tpl.part_count == 0u || tpl.part_offset == 0u)
         return;
 
+    const uint prev_transform_id = (entity.prev_transform_id != 0u)
+                                       ? entity.prev_transform_id
+                                       : transform_id;
+    const mat4 prev_root_l2w = l2w_world.mats[prev_transform_id];
+
     // ── 粗包围球（世界空间）：LOD 选级 / 粗剔除共用 ──────────────────────
     // `local_bound_center_radius.w < 0` = 模板未填包围体 ⇒ 不做距离判断。
     const bool has_bound = tpl.local_bound_center_radius.w >= 0.0;
@@ -539,6 +551,7 @@ void expand_template_entity(const uint blk,
         const uint bucket = tag_bucket_base + part.bucket_slot;
 
         const mat4 part_l2w = root_l2w * part.local_matrix;
+        const mat4 prev_part_l2w = prev_root_l2w * part.local_matrix;
 
         // 部件级细剔除（仅主帧 pass）：球测。`w < 0` = 始终可见哨兵
         if (blk == 0u && part.aabb_center_radius.w >= 0.0)
@@ -562,6 +575,7 @@ void expand_template_entity(const uint blk,
                              ids_blk.texture_id,
                              true,
                              part_l2w,
+                             prev_part_l2w,
                              arena.l2w_base_row,
                              arena.l2w_row_capacity);
     }
@@ -732,7 +746,7 @@ void main()
 
         emit_bucket_instance(blk, batch, cur_batch_count, geometry_id, transform_id,
                              entity, ids_blk.material_id, ids_blk.texture_id,
-                             false, mat4(1.0), 0u, 0u);
+                             false, mat4(1.0), mat4(1.0), 0u, 0u);
 
     }
 }

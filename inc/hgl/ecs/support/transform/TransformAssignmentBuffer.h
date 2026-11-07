@@ -116,6 +116,9 @@ namespace hgl::ecs
         /// 本帧槽展开段基址（绝对行号）；恒 ≥ `GetDynamicBaseIndex() + max_dynamic_rows`
         uint32_t GetModelExpansionBaseIndex() const;
 
+        /// 本帧槽前帧展开矩阵段基址（双帧展开专用：紧跟当前矩阵段之后，容量同为 4096）
+        uint32_t GetModelExpansionPrevBaseIndex() const;
+
         // 展开段的帧槽份数按 HGL_L2W_RING_FRAMES 算，而基址按 ring 的 frame_index 算 ⇒
         // 两者必须同深，否则基址会越出缓冲（A5 已关闭这个不等：环深 == 帧槽总数）。
         static_assert(HGL_L2W_RING_FRAMES == HGL_FRAME_SLOT_TOTAL,

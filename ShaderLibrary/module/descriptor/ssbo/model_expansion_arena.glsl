@@ -16,7 +16,7 @@ struct ModelExpansionArenaData
     uint l2w_row_capacity;
     uint bucket_base_count;
     uint64_t bucket_base_addr;
-    uint64_t reserved1;
+    uint64_t prev_l2w_base_row;
     uint64_t custom_data_addr;
     uint64_t reserved3;
 };

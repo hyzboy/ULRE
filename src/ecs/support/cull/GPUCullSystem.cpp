@@ -543,26 +543,29 @@ namespace hgl::ecs
         graph::ModelExpansionArena arena{};
 
         uint32_t l2w_base = 0;
+        uint32_t prev_l2w_base = 0;
         uint32_t l2w_capacity = 0;
         if (auto ts = context_ ? context_->GetSystem<TransformSystem>() : nullptr)
         {
             if (auto *tb = ts->GetTransformBuffer())
             {
-                l2w_base     = tb->GetModelExpansionBaseIndex();
-                l2w_capacity = TransformAssignmentBuffer::kModelExpansionRowsPerSlot;
+                l2w_base      = tb->GetModelExpansionBaseIndex();
+                prev_l2w_base = tb->GetModelExpansionPrevBaseIndex();
+                l2w_capacity  = TransformAssignmentBuffer::kModelExpansionRowsPerSlot / 2;
             }
         }
 
         // 无 L2W 展开段 ⇒ 关掉展开（否则 shader 会往段外写矩阵 = 越界写）。
         arena.flags = (model_expansion_enabled_ && l2w_capacity > 0)
                           ? graph::kModelExpansionFlagEnabled : 0u;
-        arena.l2w_base_row     = l2w_base;
-        arena.l2w_row_capacity = l2w_capacity;
+        arena.l2w_base_row      = l2w_base;
+        arena.l2w_row_capacity  = l2w_capacity;
         arena.bucket_base_count = graph::kModelExpansionMaxBucketBaseRows;
-        arena.bucket_base_addr = expansion_arena_addr_
-                               + uint64_t(slot) * uint64_t(kExpansionSlotBytes)
-                               + uint64_t(kExpansionHeaderBytes);
-        arena.custom_data_addr = custom_data_out_addr_;
+        arena.bucket_base_addr  = expansion_arena_addr_
+                                + uint64_t(slot) * uint64_t(kExpansionSlotBytes)
+                                + uint64_t(kExpansionHeaderBytes);
+        arena.prev_l2w_base_row = uint64_t(prev_l2w_base);
+        arena.custom_data_addr  = custom_data_out_addr_;
 
         std::memcpy(base, &arena, sizeof(arena));
 

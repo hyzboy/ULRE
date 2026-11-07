@@ -178,6 +178,12 @@ namespace hgl::ecs
         return ring_total + ring_layout.GetFrameIndex() * kModelExpansionRowsPerSlot;
     }
 
+    uint32_t TransformAssignmentBuffer::GetModelExpansionPrevBaseIndex() const
+    {
+        // T7.2：双帧展开矩阵，紧随本帧槽当前矩阵段之后（容量为 kModelExpansionRowsPerSlot / 2 = 4096）
+        return GetModelExpansionBaseIndex() + (kModelExpansionRowsPerSlot / 2);
+    }
+
 
 
 
