@@ -45,6 +45,10 @@ namespace hgl
             SimpleLines,        ///< 原生 1px 线段（同上：CPU-only 类型号；LineList mesh 发射，见 SimpleLinesComponent）
             ModelRef,           ///< 模型引用（同上：CPU-only 类型号）——异步模型装配的请求/进度载体，
                                 ///<  推进者 = `ModelStreamingSystem`（见 ModelRefComponent.h）
+            GPUModelRef,        ///< GPU 模型模板引用（CPU-only 类型号）——实体持模板池行 ID，
+                                ///<  部件展开在 GPU 内完成（见 GPUModelRefComponent.h）
+            GPUInstancedModelBatch, ///< 海量同模板实例批次（CPU-only 类型号）——单实体承载
+                                ///<  数千实例矩阵（见 GPUInstancedModelBatchComponent.h）
             End,
         };
 
@@ -113,6 +117,8 @@ namespace hgl
             { ComponentType::ShadowProxy,     ComponentScope::World,  "ECS:ShadowProxy",      0, "ShadowProxy",         SystemGroupID::None },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
             { ComponentType::SimpleLines,     ComponentScope::World,  "ECS:SimpleLines",      0, "SimpleLinesComponent", SystemGroupID::Line },       ///< CPU-only（同 Lines）：LineList 原生 1px 线段，末次一次绘制
             { ComponentType::ModelRef,        ComponentScope::World,  "ECS:ModelRef",         0, "ModelRefComponent",    SystemGroupID::None },       ///< CPU-only：异步模型装配请求/进度载体；不驱动系统组（推进者是流送系统本身）
+            { ComponentType::GPUModelRef,     ComponentScope::World,  "ECS:GPUModelRef",      0, "GPUModelRefComponent",    SystemGroupID::None },     ///< CPU-only：GPU 常驻模型模板的实体引用（template_id + 部件可见掩码）；展开在 GPU（T3 接 collect）
+            { ComponentType::GPUInstancedModelBatch, ComponentScope::World, "ECS:GPUInstancedModelBatch", 0, "GPUInstancedModelBatchComponent", SystemGroupID::None }, ///< CPU-only：单实体海量同模板实例批次（CPU 权威矩阵数组或外部设备缓冲）；T3 接上传/展开
         };
 
         namespace detail
