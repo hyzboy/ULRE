@@ -36,8 +36,9 @@ namespace hgl::ecs
      * ① LoadedFileManager::Pump()   派发上一帧完成的读盘（字节落到句柄自己的缓冲）
      * ② PumpMaterialLane()          把材质车道里解析好的配方提交进配方表（微秒级）
      * ③ AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的取流
-     * ④ Advance()                   推进每个句柄：建计划 ⇒ 扇出配方 ⇒ 解析产物 ⇒ 结算 ⇒ 提交
+     * ④ Advance()                   推进状态机（含配方门禁）
      * ⑤ LoadedFileManager::Collect() 回收已归零的文件引用
+     * ⑥ InstantiateModelRefs()      装配段：推进所有 ModelRefComponent 三段实例化
      * ```
      *
      * ## 取流通道（全部经由 `LoadedFileManager`）
@@ -145,6 +146,20 @@ namespace hgl::ecs
         AssetStream *FindStream(const graph::ModelAsset *asset)const;
         AssetStream *FindStreamByRequest(uint64 request_id)const;
         AssetStream *EnsureStream(graph::ModelAsset *asset);
+
+        /**
+         * @brief 装配段：推进所有 `ModelRefComponent` 的请求与三段实例化。
+         *
+         * 组件表为空 ⇒ 立即返回（零开销）。每帧对每个未终态的组件至多推进一段：
+         *   · 无句柄且未请求 ⇒ 询问 `ModelLoadPolicy::OnBeforeRequest`（负值暂缓），
+         *     通过后 `RequestModelAsset(uri)` 挂回组件；
+         *   · 骨架：节点产物到位 ⇒ `InstantiateSkeleton`（一次）；
+         *   · 几何：图元产物到位 ⇒ 增量 `AttachGeometries`，句柄 `Ready` 时收口；
+         *   · 材质：几何收口后 ⇒ `AttachMaterials`（一次）；
+         *   · 句柄 `Ready` 且三段完成 ⇒ `OnModelReady`（一次）；任何失败 ⇒
+         *     `OnModelFailed`（一次）并清句柄引用，不再重试。
+         */
+        void InstantiateModelRefs();
 
         /**
          * @brief 丢掉注册表里已经不存在的句柄。
