@@ -43,6 +43,8 @@ namespace hgl
             Text,               ///< 文本（同上：CPU-only 类型号）
             ShadowProxy,        ///< 阴影代理（同上：CPU-only 类型号）
             SimpleLines,        ///< 原生 1px 线段（同上：CPU-only 类型号；LineList mesh 发射，见 SimpleLinesComponent）
+            ModelRef,           ///< 模型引用（同上：CPU-only 类型号）——异步模型装配的请求/进度载体，
+                                ///<  推进者 = `ModelStreamingSystem`（见 ModelRefComponent.h）
             End,
         };
 
@@ -110,6 +112,7 @@ namespace hgl
             { ComponentType::Text,            ComponentScope::World,  "ECS:Text",             0, "TextComponent",       SystemGroupID::Text },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）——2D 专用，未来 2D 单开一套管理 ⇒ 现在不得特化
             { ComponentType::ShadowProxy,     ComponentScope::World,  "ECS:ShadowProxy",      0, "ShadowProxy",         SystemGroupID::None },        ///< T2-c：CPU-only（无 GPU 行；实体侧有类型号）
             { ComponentType::SimpleLines,     ComponentScope::World,  "ECS:SimpleLines",      0, "SimpleLinesComponent", SystemGroupID::Line },       ///< CPU-only（同 Lines）：LineList 原生 1px 线段，末次一次绘制
+            { ComponentType::ModelRef,        ComponentScope::World,  "ECS:ModelRef",         0, "ModelRefComponent",    SystemGroupID::None },       ///< CPU-only：异步模型装配请求/进度载体；不驱动系统组（推进者是流送系统本身）
         };
 
         namespace detail

@@ -7,6 +7,7 @@
 #include<hgl/asset/AssetURI.h>
 #include<hgl/graph/asset/MaterialAsyncLoadLane.h>
 #include<hgl/graph/asset/ModelLoadPlan.h>
+#include<hgl/ecs/components/ModelRefComponent.h>   // A.1：定义先行接线在 A.2 消费
 #include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/asset/LoadedFileManager.h>
 #include<hgl/asset/LoadedFileHandler.h>
