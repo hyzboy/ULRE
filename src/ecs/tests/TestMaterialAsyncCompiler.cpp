@@ -1,13 +1,15 @@
 /**
  * TestMaterialAsyncCompiler —— 材质异步解析落地层（Tier 2 → Tier 3 桥）的回归测试。
  *
- * 覆盖四件事：
+ * 覆盖六件事：
  *   1. 挂接/摘除契约：未挂池不投递、重复挂接被拒、有在途任务不许摘；
  *   2. 配方走工作线程解析后，主线程 `Pump()` 的提交结果与同步路径**完全一致**
  *      （含「子配方先到、父配方后到」的多轮继承推进）；
  *   3. 数据块的三种落地面：TOML 成功、TOML 失败（留 `Failed` 句柄）、二进制坏
  *      magic（留 `Failed` 句柄），以及「解析失败 ≠ 任务失败」的区分；
- *   4. 无注册表时不崩、计入失败。
+ *   4. 无注册表时不崩、计入失败；
+ *   5. 文件投递的两段式流水线：加载线程读盘 → 中转纯内存解析任务 → CPU 池 →
+ *      主线程 `Pump()` 提交；坏路径以失败结算、在途名额守恒。
  *
  * 测试**不**验证性能，只验证「搬上工作线程后语义没变」——性能归 `-L perf`。
  */
@@ -16,6 +18,9 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 
+#include <hgl/asset/LoadedFileManager.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/io/FileOutputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <hgl/time/Time.h>
@@ -44,8 +49,6 @@ namespace
         ++g_fail;
         GLogError(u8"TestMaterialAsyncCompiler 失败: %s", label);
     }
-
-    constexpr uint32 kTestSinkID = 0x4D41;      // 'MA'
 
     /// 反复 `Pump()` 直到没有在途任务；超时返回 `false`
     bool PumpUntilIdle(MaterialAsyncCompiler &compiler,
@@ -134,13 +137,12 @@ namespace
 
         Check(!compiler.SubmitRecipeFile(OS_TEXT("not_attached.recipe.toml")),
               "未挂接任务池时投递应失败");
-        Check(compiler.Attach(&pool, kTestSinkID), "挂接任务池");
+        Check(compiler.Attach(&pool), "挂接任务池");
         Check(compiler.IsAttached(), "挂接后状态为已挂接");
-        Check(pool.GetSinkCount() == 1, "sink 已登记到池");
-        Check(!compiler.Attach(&pool, kTestSinkID), "重复挂接应被拒");
+        Check(!compiler.Attach(&pool), "重复挂接应被拒");
         Check(compiler.GetChannelID() != 0, "IO 通道号非零");
 
-        // 有在途任务时不许摘除，否则成品会被投到已注销的 sink
+        // 有在途任务时不许摘除，否则成品会落进已解开的挂接里没人认领
         Check(compiler.SubmitRecipeSource(OS_TEXT("detach-pending"), kParentRecipe,
                                           static_cast<int>(strlen(kParentRecipe))),
               "在途任务提交");
@@ -150,7 +152,6 @@ namespace
         hgl::graph::TextureManager texture_manager(nullptr);
         Check(PumpUntilIdle(compiler, &registry, nullptr, &texture_manager), "追平在途任务");
         Check(compiler.Detach(), "空闲后摘除成功");
-        Check(pool.GetSinkCount() == 0, "sink 已注销");
 
         texture_manager.Release();
         pool.Stop();
@@ -163,7 +164,7 @@ namespace
         Check(pool.Start(2), "配方用例：任务池启动");
 
         MaterialAsyncCompiler compiler;
-        Check(compiler.Attach(&pool, kTestSinkID), "配方用例：挂接");
+        Check(compiler.Attach(&pool), "配方用例：挂接");
 
         MaterialRecipeRegistry registry;
         hgl::graph::TextureManager texture_manager(nullptr);
@@ -207,7 +208,7 @@ namespace
         Check(pool.Start(1), "坏配方用例：任务池启动");
 
         MaterialAsyncCompiler compiler;
-        Check(compiler.Attach(&pool, kTestSinkID), "坏配方用例：挂接");
+        Check(compiler.Attach(&pool), "坏配方用例：挂接");
 
         MaterialRecipeRegistry registry;
         hgl::graph::TextureManager texture_manager(nullptr);
@@ -234,7 +235,7 @@ namespace
         Check(pool.Start(2), "数据块用例：任务池启动");
 
         MaterialAsyncCompiler compiler;
-        Check(compiler.Attach(&pool, kTestSinkID), "数据块用例：挂接");
+        Check(compiler.Attach(&pool), "数据块用例：挂接");
 
         MaterialDataBlockRegistry blocks;
 
@@ -296,7 +297,7 @@ namespace
         Check(pool.Start(1), "无注册表用例：任务池启动");
 
         MaterialAsyncCompiler compiler;
-        Check(compiler.Attach(&pool, kTestSinkID), "无注册表用例：挂接");
+        Check(compiler.Attach(&pool), "无注册表用例：挂接");
         Check(compiler.SubmitRecipeSource(OS_TEXT("no-registry"), kParentRecipe,
                                           static_cast<int>(strlen(kParentRecipe))),
               "无注册表用例：投递");
@@ -305,6 +306,100 @@ namespace
         Check(compiler.GetFailedCount() == 1, "无注册表用例：计入失败而不崩");
 
         Check(compiler.Detach(), "无注册表用例：摘除");
+        pool.Stop();
+    }
+
+    // ── 6. 文件投递：加载线程读盘 → 中转 → CPU 池解析 → Pump 提交 ─────────
+    //    阶段 3 的核心行为：解析任务不再自己碰盘，读盘全程在加载线程上。
+    void TestFileRelayEndToEnd()
+    {
+        hgl::asset::AssetCPUTaskPool pool;
+        Check(pool.Start(2), "文件中转用例：任务池启动");
+
+        hgl::LoadedFileManager lfm;
+        Check(lfm.Start(1), "文件中转用例：读盘底座启动");
+
+        MaterialAsyncCompiler compiler;
+        Check(compiler.Attach(&pool), "文件中转用例：挂接任务池");
+        compiler.AttachFileManager(&lfm);
+
+        MaterialRecipeRegistry registry;
+        hgl::graph::TextureManager texture_manager(nullptr);
+
+        hgl::OSString dir;
+        dir = OS_TEXT("build/test_matcompiler");
+        Check(hgl::filesystem::MakePath(dir), "文件中转用例：建临时目录");
+
+        hgl::OSString recipe_path = dir;
+        recipe_path += OS_TEXT("/relay.recipe.toml");
+
+        hgl::io::FileOutputStream *fos = hgl::io::CreateFileOutputStream(recipe_path);
+        Check(fos != nullptr, "文件中转用例：写配方文件");
+        if (fos)
+        {
+            const int size = static_cast<int>(strlen(kParentRecipe));
+            Check(fos->Write(kParentRecipe, size) == size, "文件中转用例：写入内容");
+            delete fos;
+        }
+
+        Check(compiler.SubmitRecipeFile(recipe_path), "文件中转用例：投递配方文件");
+        Check(compiler.GetPendingCount() == 1, "文件中转用例：投递即在途");
+
+        // 读盘腿 + 解析腿都要泵：加载线程跑完自己会中转，缺泵只影响缓存命中的派发时机
+        bool settled = false;
+        for (int i = 0; i < 5000 && !settled; ++i)
+        {
+            lfm.Pump();
+            compiler.Pump(&registry, nullptr, &texture_manager);
+
+            if (compiler.IsIdle() && lfm.GetPendingJobCount() == 0)
+            {
+                lfm.Pump();
+                compiler.Pump(&registry, nullptr, &texture_manager);
+                settled = compiler.IsIdle();
+            }
+
+            hgl::SleepSecond(0.001);
+        }
+
+        Check(settled, "文件中转用例：追平");
+        Check(compiler.GetRecipeCommittedCount() == 1, "文件中转用例：读盘→解析→提交成功");
+        Check(registry.GetCount() == 1, "文件中转用例：配方进表");
+        Check(compiler.GetFailedCount() == 0, "文件中转用例：无失败");
+
+        // 读不存在的文件：投递被接受（在途），终态以失败结算，名额不泄漏
+        hgl::OSString missing_path = dir;
+        missing_path += OS_TEXT("/nope.recipe.toml");
+
+        Check(compiler.SubmitRecipeFile(missing_path),
+              "缺失文件用例：投递被接受");
+        Check(compiler.GetPendingCount() == 1, "缺失文件用例：在途 1");
+
+        settled = false;
+        for (int i = 0; i < 5000 && !settled; ++i)
+        {
+            lfm.Pump();
+            compiler.Pump(&registry, nullptr, &texture_manager);
+
+            if (compiler.IsIdle() && lfm.GetPendingJobCount() == 0)
+            {
+                lfm.Pump();
+                compiler.Pump(&registry, nullptr, &texture_manager);
+                settled = compiler.IsIdle();
+            }
+
+            hgl::SleepSecond(0.001);
+        }
+
+        Check(settled, "缺失文件用例：追平");
+        Check(compiler.GetFailedCount() == 1, "缺失文件用例：计入一次失败");
+        Check(compiler.GetRecipeCommittedCount() == 1, "缺失文件用例：提交数不变");
+
+        // 没有注入 LoadedFileManager 之前，文件投递必须当场拒绝（本用例开头未注入时
+        // 由 TestAttachDetach 覆盖：未挂池即失败）
+        texture_manager.Release();
+        Check(compiler.Detach(), "文件中转用例：摘除");
+        lfm.Stop();
         pool.Stop();
     }
 }
@@ -318,6 +413,7 @@ int main()
     TestRecipeParseFailure();
     TestDataBlockLanes();
     TestPumpWithoutRegistry();
+    TestFileRelayEndToEnd();
 
     if (g_fail > 0 || g_pass == 0)
     {

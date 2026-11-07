@@ -72,6 +72,10 @@ namespace hgl::graph
 
             material_async_lane_ = created;
 
+            // 文件投递走全局读盘底座（加载线程）；LFM 若尚未创建，稍后其
+            // Start 处会再注入一次。
+            material_async_lane_->AttachFileManager(loaded_file_manager_);
+
             // 车道只在「表里没有」时才投递：调用方常会先同步装一遍配方目录，
             // 没有去重就会把同一批配方在后台再解析一遍。
             material_async_lane_->SetDedupRegistries(&material_recipe_registry_,
@@ -291,6 +295,10 @@ namespace hgl::graph
             return false;
         }
 
+        // 材质车道可能比 LFM 更早创建（懒启动）：此时补注入，保证文件投递碰到盘。
+        if (material_async_lane_)
+            material_async_lane_->AttachFileManager(loaded_file_manager_);
+
         // 资产包裹挂载：把 `res/` 登记成 `pack(res)`。此后资产引用统一走
         // `pack(res):<逻辑路径>`（无扩展名）或 `pack(res):id:<32 hex>`，
         // 与「字节从哪一个 IO 后端来」解耦（目录包裹 ⇄ 打包文件只换后端）。
@@ -358,7 +366,7 @@ namespace hgl::graph
 
         // 材质装载车道必须先停：它在工作线程里解析配方/数据块，成品最终由主线程
         // 的 Pump() 写进下面两张注册表。Stop(Drain) 后补泵一次，把已完成的成品
-        // 落表，再注销 sink，此后不再有任何线程访问这两张表。
+        // 落表，再解除挂接，此后不再有任何线程访问这两张表。
         if (material_async_lane_)
         {
             material_async_lane_->Shutdown(&material_recipe_registry_,

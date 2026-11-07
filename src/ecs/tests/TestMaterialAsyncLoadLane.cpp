@@ -17,6 +17,7 @@
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 
+#include <hgl/asset/LoadedFileManager.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/io/FileOutputStream.h>
@@ -50,6 +51,24 @@ namespace
     }
 
     constexpr const char *kTempRoot = "build/test_matlane";   ///< 落 build/（已被忽略）
+
+    /// 全局读盘底座：车道文件投递经加载线程读字节（与 `GraphicsContext` 的用法一致）。
+    hgl::LoadedFileManager g_io;
+
+    /// 把读盘腿先结算干净。文件中转会在读盘结束时立刻往池里投解析任务；
+    /// 车道 `Shutdown()` 前必须保证没有还在跑的读盘请求，否则中转会碰已销毁的编译器。
+    void DrainIO(const int timeout_ms = 5000)
+    {
+        for (int i = 0; i < timeout_ms; ++i)
+        {
+            g_io.Pump();
+            if (g_io.GetPendingJobCount() == 0)
+                return;
+            hgl::SleepSecond(0.001);
+        }
+
+        GLogError(u8"DrainIO 超时：仍有未回调完的读盘请求");
+    }
 
     constexpr char kParentRecipe[] =
         "schema = 1\n"
@@ -152,6 +171,7 @@ namespace
     {
         for (int i = 0; i < timeout_ms; ++i)
         {
+            g_io.Pump();
             lane.Pump(recipes, blocks, texture_manager);
 
             if (lane.IsIdle())
@@ -170,6 +190,8 @@ namespace
     void TestLazyStart()
     {
         MaterialAsyncLoadLane lane;
+
+        lane.AttachFileManager(&g_io);
 
         Check(!lane.IsRunning(), "未启动时 IsRunning 为 false");
         Check(lane.IsIdle(), "未启动时视为空闲");
@@ -193,6 +215,7 @@ namespace
     void TestDirectorySubmit()
     {
         MaterialAsyncLoadLane lane;
+        lane.AttachFileManager(&g_io);
         Check(lane.EnsureStarted(2), "目录用例：启动");
 
         MaterialRecipeRegistry recipes;
@@ -246,6 +269,7 @@ namespace
     void TestShutdownKeepsFinishedWork()
     {
         MaterialAsyncLoadLane lane;
+        lane.AttachFileManager(&g_io);
         Check(lane.EnsureStarted(2), "收尾用例：启动");
 
         MaterialRecipeRegistry recipes;
@@ -255,7 +279,9 @@ namespace
         Check(lane.BeginRecipeDirectory(TempPath("recipe")) == 2, "收尾用例：投递配方");
         Check(lane.BeginDataBlockDirectory(TempPath("data")) == 2, "收尾用例：投递数据块");
 
+        // 读盘腿必须先落地（中转会在 IO 线程往池里投解析任务）；解析成品腿
         // 故意**不**泵：收尾必须自己 Drain 完再泵一轮，否则成品全丢。
+        DrainIO();
         lane.Shutdown(&recipes, &blocks, &texture_manager);
 
         Check(!lane.IsRunning(), "收尾用例：收尾后不再运行");
@@ -275,10 +301,12 @@ namespace
     void TestShutdownWithoutRegistry()
     {
         MaterialAsyncLoadLane lane;
+        lane.AttachFileManager(&g_io);
         Check(lane.EnsureStarted(1), "空收尾用例：启动");
         Check(lane.BeginRecipeFile(TempPath("recipe/base.recipe.toml")),
               "空收尾用例：投递单文件");
 
+        DrainIO();     // 读盘腿落地后才能收尾（见 DrainIO 注释）
         lane.Shutdown(nullptr, nullptr, nullptr);
         Check(!lane.IsRunning(), "空收尾用例：无注册表收尾不崩");
         Check(lane.IsIdle(), "空收尾用例：收尾后空闲");
@@ -288,6 +316,7 @@ namespace
     void TestRestartAfterShutdown()
     {
         MaterialAsyncLoadLane lane;
+        lane.AttachFileManager(&g_io);
         Check(lane.EnsureStarted(1), "重启用例：首次启动");
         lane.Shutdown(nullptr, nullptr, nullptr);
 
@@ -311,6 +340,7 @@ namespace
     void TestDedup()
     {
         MaterialAsyncLoadLane lane;
+        lane.AttachFileManager(&g_io);
         Check(lane.EnsureStarted(2), "去重用例：启动");
 
         MaterialRecipeRegistry recipes;
@@ -361,6 +391,7 @@ namespace
 
         // 末尾这批重复投递不再提交进表（注册表会按重名拒绝）：
         // 收尾直接不带注册表，只验证「投递计数确实涨了」。
+        DrainIO();
         lane.Shutdown(nullptr, nullptr, nullptr);
         texture_manager.Release();
     }
@@ -372,6 +403,7 @@ namespace
     void TestPathFormEquivalence()
     {
         MaterialAsyncLoadLane lane;
+        lane.AttachFileManager(&g_io);
         Check(lane.EnsureStarted(2), "路径写法用例：启动");
 
         MaterialRecipeRegistry recipes;
@@ -426,6 +458,12 @@ int main()
         return 1;
     }
 
+    if (!g_io.Start(1))
+    {
+        GLogError(u8"=== TestMaterialAsyncLoadLane: 读盘底座启动失败 ===");
+        return 1;
+    }
+
     TestLazyStart();
     TestDirectorySubmit();
     TestShutdownKeepsFinishedWork();
@@ -433,6 +471,8 @@ int main()
     TestRestartAfterShutdown();
     TestDedup();
     TestPathFormEquivalence();
+
+    g_io.Stop();     // 所有车道已收尾：此刻不应再有在途读盘
 
     if (g_fail > 0 || g_pass == 0)
     {

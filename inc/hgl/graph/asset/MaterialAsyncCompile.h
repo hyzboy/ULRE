@@ -21,13 +21,17 @@
  * ── 线程与所有权 ─────────────────────────────────────────────────────────
  *
  * ```
- *   主线程 Submit*() ──► 工作线程 Execute()（读文件 + 解析）──► 主线程 Pump()
+ *   Submit*File() ──► LoadedFileManager 加载线程读盘 ─┐
+ *                                                  ├─► CPU 池工作线程 Execute()（纯解析）
+ *   Submit*Source() ───────────────────────────────┘            │
+ *                                        终态事件全部压进 inbox ──► 主线程 Pump()
  *                                                                  │
  *                                             RegisterParsedRecipe / CommitParsed
  * ```
  *
- * - `Submit*()` 与 `Pump()` 都**只能在主线程**调用（注册表本身没有并发保护）。
- * - 任务对象所有权：提交后归池，完成后经 sink 回到本类的邮箱，`Pump()` 消费并
+ * - `Submit*()` 与 `Pump()` 都**只能在主线程**调用（注册表本身没有并发保护）；
+ *   读盘中转 `OnTaskEvent` 在 IO/Pump 线程回调，只干「拷字节、转投解析任务」的轻活。
+ * - 任务对象所有权：提交后归执行线程，终态事件经信息池回到本类，`Pump()` 消费并
  *   `delete`。调用方永远不持有任务指针。
  * - `Pump()` 只做提交，不做 I/O、不做解析；单条提交成本与配方里纹理槽数量线性相关。
  *
@@ -54,7 +58,7 @@
 #include <hgl/asset/AssetCPUTask.h>
 #include <hgl/asset/AssetCPUTaskPool.h>
 
-#include <hgl/concurrency/SwapMailbox.h>
+#include <hgl/thread/TaskNotification.h>
 
 #include <hgl/graph/asset/MaterialDataBlockAsset.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
@@ -67,6 +71,11 @@
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 
+namespace hgl
+{
+    class LoadedFileManager;
+}
+
 namespace hgl::graph
 {
     class TextureManager;
@@ -75,7 +84,7 @@ namespace hgl::graph
 namespace hgl::graph::mtl
 {
     /**
-     * 配方异步解析任务：**读文件 + TOML 解析都在工作线程**。
+     * 配方异步解析任务：**纯内存解析，不碰盘**（字节由 `LoadedFileManager` 或调用方备好）。
      *
      * 产物 `data` / `spec` 就是 `MaterialRecipeAsset` 的构造实参，主线程把它转交
      * `MaterialRecipeRegistry::RegisterParsedRecipe()` 即可，不需要重新解析。
@@ -87,26 +96,20 @@ namespace hgl::graph::mtl
     private:
 
         OSString label;                     ///< 诊断用来源标识（文件路径或 `<memory>:...`）
-        bool     file_mode = true;          ///< `true` = 工作线程自己读盘；`false` = 用构造时拷贝的字节
-        bool     read_ok   = false;         ///< 字节读取是否成功（内存模式恒为 `true`）
         bool     parse_ok  = false;         ///< TOML 解析是否成功
 
-        hgl::ValueArray<char>   memory;     ///< 内存模式的文本（构造时拷贝）
+        hgl::ValueArray<char>   memory;     ///< 待解析的文本（构造时拷贝）
         MaterialRecipeFileData  data;       ///< 解析产物（`parse_error` 在失败时有效）
         MaterialRecipeSpec      spec;       ///< 授权形态（提交时被移走）
 
     public:
 
-        /// 文件模式：工作线程里自己读盘
-        explicit MaterialRecipeParseTask(const OSString &path);
-
-        /// 内存模式：字节在构造时拷贝进来（调用方缓冲可立刻释放）
+        /// 字节在构造时拷贝进来（调用方缓冲可立刻释放）
         MaterialRecipeParseTask(const os_char *label, const char *content, int content_size);
 
         bool Execute() override;
 
         const OSString &GetLabel() const { return label; }
-        bool IsReadOk() const { return read_ok; }
         bool IsParseOk() const { return parse_ok; }
 
         /// 提交时移走产物（`Pump()` 唯一用法）
@@ -118,7 +121,8 @@ namespace hgl::graph::mtl
      * 数据块异步解析任务：按扩展名分派 `.material_data.toml` / `.mdb` / `.fb`。
      *
      * 解析失败**不是**任务失败 —— `data.parse_error` 里有行号与键值，主线程要拿它
-     * 建 `Failed` 句柄让工具能显示。只有「读不到字节」才算任务失败。
+     * 建 `Failed` 句柄让工具能显示。只有「拿不到字节」才算失败，而字节由
+     * `LoadedFileManager`（文件投递）或调用方（内存投递）备好，任务本身不读盘。
      */
     class MaterialDataBlockParseTask final : public hgl::asset::AssetCPUTask
     {
@@ -127,11 +131,10 @@ namespace hgl::graph::mtl
     private:
 
         OSString                label;
-        bool                    file_mode = true;
         bool                    parse_ok  = false;
         bool                    has_spec  = false;
 
-        hgl::ValueArray<uint8>    memory;   ///< 内存模式的字节（构造时拷贝）
+        hgl::ValueArray<uint8>    memory;   ///< 待解析的字节（构造时拷贝）
         MaterialDataBlockFileData data;
         MaterialDataBlockSpec     spec;     ///< 解析失败时为空
         AnsiString                failure_reason;
@@ -140,7 +143,6 @@ namespace hgl::graph::mtl
 
     public:
 
-        explicit MaterialDataBlockParseTask(const OSString &path);
         MaterialDataBlockParseTask(const os_char *label, const uint8 *bytes, uint64 size);
 
         bool Execute() override;
@@ -162,8 +164,10 @@ namespace hgl::graph::mtl
     /**
      * 材质异步编译器：投递解析任务 + 主线程提交。
      *
-     * 一个 `AssetCPUTaskPool` 可以同时挂多个编译器（IO 分发器、纹理、材质各一个），
-     * 各自持有一个 sink id 与自己的邮箱；池不做业务区分。
+     * 文件类投递不再让解析任务自己读盘：统一经 `LoadedFileManager`（加载线程）
+     * 读字节，到齐后由 `FileReadRelay` 中转成纯内存解析任务投给 CPU 池。
+     * 两条腿的终态事件都汇进同一个 `inbox` 信息池，`Pump()` 一次批量交换处理整批
+     * （一个线程一次跑完一堆任务时，只需一次锁交换）。
      */
     class MaterialAsyncCompiler
     {
@@ -171,56 +175,81 @@ namespace hgl::graph::mtl
 
     private:
 
-        /// 成品邮箱：池的工作线程 `Post`，主线程 `Take`
-        class MaterialAsyncBox final : public hgl::asset::AssetCPUTaskSink
+        /// 一次文件读取的上下文：路径 + 任务类型。随 `task_user_data` 原样回投，
+        /// 由中转器在终态时释放。
+        struct FileReadContext
         {
-            NO_COPY_NO_MOVE(MaterialAsyncBox)
+            OSString path;
+            bool     is_recipe = false;
+        };
+
+        /// IO 读盘终态中转器：可能在 IO 线程或 Pump 线程被回调，只干轻活
+        /// （拷字节转投解析任务；转投未遂时压一个不带任务的终态事件进 inbox）。
+        class FileReadRelay final : public hgl::thread::TaskReceiver
+        {
+            NO_COPY_NO_MOVE(FileReadRelay)
 
         private:
 
-            hgl::SwapMailbox<hgl::asset::AssetCPUTask *> done;
+            MaterialAsyncCompiler *owner = nullptr;
 
         public:
 
-            MaterialAsyncBox() = default;
+            explicit FileReadRelay(MaterialAsyncCompiler *owner_in) : owner(owner_in) {}
 
-            void OnAssetCPUTaskReady(hgl::asset::AssetCPUTask *task) override;
-            int  Take(hgl::ValueArray<hgl::asset::AssetCPUTask *> &out);
-            void Close();
-        };//class MaterialAsyncBox
+            void OnTaskEvent(const hgl::thread::TaskEvent &event) override;
+        };//class FileReadRelay
 
     private:
 
-        hgl::asset::AssetCPUTaskPool *pool    = nullptr;
-        uint32                        sink_id = 0;
+        hgl::asset::AssetCPUTaskPool *pool = nullptr;
+        hgl::LoadedFileManager       *io_manager = nullptr;
         uint32                        channel_id = 0;
 
-        MaterialAsyncBox box;
+        /// 终态事件汇（多生产者、主线程单消费者）：带任务指针的事件拥有该任务。
+        hgl::thread::ThreadMessagePool<hgl::thread::TaskEvent> inbox;
+        hgl::thread::InboxTaskReceiver cpu_receiver{ &inbox };
+        FileReadRelay                  io_relay;
 
-        int pending        = 0;     ///< 已投递、尚未 `Pump` 掉的任务数
+        int pending        = 0;     ///< 已投递、尚未 `Pump` 结算的任务数（仅主线程改动）
         int recipe_done    = 0;
         int block_done     = 0;
         int failed         = 0;
         int cancelled      = 0;
 
         bool SubmitTask(hgl::asset::AssetCPUTask *task);
+        bool SubmitFileToRead(const OSString &path, bool is_recipe);
+
+        void HandleTaskEvent(const hgl::thread::TaskEvent &event,
+                             MaterialRecipeRegistry *recipes,
+                             MaterialDataBlockRegistry *blocks,
+                             hgl::graph::TextureManager *texture_manager,
+                             int &committed);
 
     public:
 
-        MaterialAsyncCompiler() = default;
+        MaterialAsyncCompiler();
         ~MaterialAsyncCompiler();
 
         /**
          * @brief 挂到共享 CPU 池上。
          *
          * @param task_pool   池（调用方持有；必须已 `Start()`）
-         * @param sink_id     本编译器在池里的 sink 编号（与其它 sink 不得重复）
          * @param channel_id  建议的 IO 通道号（供 `AsyncFileLoadRequest::target_id` 使用）
-         * @return false 表示参数非法或 sink 已被占用
+         * @return false 表示参数非法或池未启动
          */
         bool Attach(hgl::asset::AssetCPUTaskPool *task_pool,
-                    uint32 sink_id,
                     uint32 channel_id = 0x4D415441u /* 'MATA' */);
+
+        /**
+         * @brief 注入文件读取用的 `LoadedFileManager`（不持有）。
+         *
+         * `Submit*File` / `Submit*DirectoryFiles` 依赖它；内存投递不受影响。
+         * @note 管理器必须活到所有已投递请求派发完毕（`Stop(Drain)` 早于本对象销毁）。
+         */
+        void AttachFileManager(hgl::LoadedFileManager *file_manager) { io_manager = file_manager; }
+
+        hgl::LoadedFileManager *GetFileManager() const { return io_manager; }
 
         /// 从池上摘下（须先 `Pump()` 干净；否则返回 false）
         /// @note 池的生命周期必须覆盖本对象：销毁池之前必须先 `Detach()`
@@ -233,7 +262,7 @@ namespace hgl::graph::mtl
 
         // ── 投递（主线程）────────────────────────────────────────────────
 
-        /// 一个配方文件；工作线程读盘 + 解析
+        /// 一个配方文件；经 `LoadedFileManager` 读盘，字节到齐后投工作线程解析
         bool SubmitRecipeFile(const OSString &path);
 
         /// 已读进内存的配方文本
@@ -242,7 +271,7 @@ namespace hgl::graph::mtl
         /// 扫目录（递归）投递所有 `.recipe.toml`；返回投递数，`<0` 表示目录不可用
         int SubmitRecipeDirectoryFiles(const OSString &directory);
 
-        /// 一个数据块文件；工作线程读盘 + 解析
+        /// 一个数据块文件；经 `LoadedFileManager` 读盘，字节到齐后投工作线程解析
         bool SubmitDataBlockFile(const OSString &path);
 
         /// 已读进内存的数据块字节

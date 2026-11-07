@@ -62,6 +62,11 @@ namespace hgl::graph::mtl
     class MaterialDataBlockRegistry;
 }
 
+namespace hgl
+{
+    class LoadedFileManager;
+}
+
 namespace hgl::graph::mtl
 {
     /**
@@ -76,13 +81,12 @@ namespace hgl::graph::mtl
 
     private:
 
-        /// 本车道的 sink 编号。与其它 sink（IO 分发器 0x494F2F31、
-        /// 场景取流等）不得冲突，故取一个独立的魔数。
-        enum : hgl::uint32 { kLaneSinkID = 0x4D41544Cu /* 'MATL' */ };
-
         hgl::asset::AssetCPUTaskPool *pool     = nullptr;
         MaterialAsyncCompiler        *compiler = nullptr;
         bool                          owns_pool = false;
+
+        /// 文件投递用的读盘管理器（不持有）。未注入时 `Begin*File` 会失败。
+        hgl::LoadedFileManager *io_manager = nullptr;
 
         /// 去重用的注册表（可空 ⇒ 不去重）。由持有者 `GraphicsContext` 注入。
         MaterialRecipeRegistry    *dedup_recipes = nullptr;
@@ -122,10 +126,18 @@ namespace hgl::graph::mtl
         }
 
         /**
+         * @brief 注入读盘管理器：车道的文件投递经加载线程读字节，解析任务不再自己碰盘。
+         *
+         * @note 不持有。管理器必须活到所有已投递请求派发完毕
+         *       （上下文销毁路径：先 `LoadedFileManager::Stop()`，再 `Shutdown()` 本车道）。
+         */
+        void AttachFileManager(hgl::LoadedFileManager *file_manager);
+
+        /**
          * @brief 懒启动：建池 + 挂编译器（幂等）。
          *
          * @param worker_count 池线程数；`<=0` 时取默认 2
-         * @return false 表示池启动失败或 sink 编号被占用
+         * @return false 表示池启动失败
          */
         bool EnsureStarted(int worker_count = 2);
 

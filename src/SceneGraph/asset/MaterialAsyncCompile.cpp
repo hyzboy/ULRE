@@ -1,11 +1,10 @@
 #include <hgl/graph/asset/MaterialAsyncCompile.h>
 
+#include <hgl/asset/LoadedFileManager.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
-#include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/mtl/MaterialDataBlockFlat.h>
-#include <hgl/type/Smart.h>
 
 #include <climits>
 #include <utility>
@@ -42,102 +41,24 @@ namespace hgl::graph::mtl
         {
             return IsDataBlockToml(name) || IsDataBlockMdb(name) || IsDataBlockFlat(name);
         }
-
-        /**
-         * 读整个文件到带 `'\0'` 尾巴的缓冲。
-         *
-         * 尾巴是给 TOML 解析器用的：`ParseMaterialRecipeFile` / `ParseMaterialDataBlockFile`
-         * 虽然收长度，但保底有一个终止符更安全（与同步路径 `ReadWholeFile` 一致）。
-         */
-        bool ReadWholeFileBytes(const OSString &path,
-                                AutoDeleteArray<uint8> &out_buffer,
-                                int64 &out_size)
-        {
-            out_size = 0;
-
-            hgl::io::OpenFileInputStream opener(path);
-            if (!opener)
-            {
-                GLogError(u8"[MaterialAsyncCompiler] 文件打不开: %ls", path.c_str());
-                return false;
-            }
-
-            const int64 size = opener->GetSize();
-            if (size <= 0 || size > INT_MAX)
-            {
-                GLogError(u8"[MaterialAsyncCompiler] 文件大小无效: %ls (%lld)",
-                          path.c_str(), static_cast<long long>(size));
-                return false;
-            }
-
-            if (!out_buffer.alloc(static_cast<size_t>(size) + 1))
-            {
-                GLogError(u8"[MaterialAsyncCompiler] 文件缓冲分配失败: %ls (%lld)",
-                          path.c_str(), static_cast<long long>(size));
-                return false;
-            }
-
-            if (opener->Read(out_buffer.data(), size) != size)
-            {
-                GLogError(u8"[MaterialAsyncCompiler] 文件读取失败: %ls", path.c_str());
-                return false;
-            }
-
-            out_buffer[static_cast<size_t>(size)] = 0;
-            out_size = size;
-            return true;
-        }
     }//namespace
 
     // ── MaterialRecipeParseTask ──────────────────────────────────────────────
-
-    MaterialRecipeParseTask::MaterialRecipeParseTask(const OSString &path)
-        : AssetCPUTask(hgl::asset::AssetCPUTaskKind::Custom)
-        , label(path)
-    {
-    }
 
     MaterialRecipeParseTask::MaterialRecipeParseTask(const os_char *label_in,
                                                      const char *content,
                                                      const int content_size)
         : AssetCPUTask(hgl::asset::AssetCPUTaskKind::Custom)
         , label(label_in ? label_in : OS_TEXT("<memory>"))
-        , file_mode(false)
     {
         if (content && content_size > 0)
             memory.Add(reinterpret_cast<const char *>(content), content_size);
-
-        read_ok = true;     // 字节已经在手上了
     }
 
     bool MaterialRecipeParseTask::Execute()
     {
-        const char *content = nullptr;
-        int content_size = 0;
-
-        AutoDeleteArray<uint8> buffer;
-
-        if (file_mode)
-        {
-            int64 size = 0;
-            if (!ReadWholeFileBytes(label, buffer, size))
-            {
-                error = "cannot read recipe file";
-                return false;
-            }
-
-            read_ok = true;
-            content = reinterpret_cast<const char *>(buffer.data());
-            content_size = static_cast<int>(size);
-        }
-        else
-        {
-            content = memory.GetData();
-            content_size = memory.GetCount();
-        }
-
         const MaterialRecipeFileParseResult result =
-            ParseMaterialRecipeFile(content, content_size, data, &spec);
+            ParseMaterialRecipeFile(memory.GetData(), memory.GetCount(), data, &spec);
 
         parse_ok = (result == MaterialRecipeFileParseResult::OK);
 
@@ -152,18 +73,11 @@ namespace hgl::graph::mtl
 
     // ── MaterialDataBlockParseTask ───────────────────────────────────────────
 
-    MaterialDataBlockParseTask::MaterialDataBlockParseTask(const OSString &path)
-        : AssetCPUTask(hgl::asset::AssetCPUTaskKind::Custom)
-        , label(path)
-    {
-    }
-
     MaterialDataBlockParseTask::MaterialDataBlockParseTask(const os_char *label_in,
                                                            const uint8 *bytes,
                                                            const uint64 size)
         : AssetCPUTask(hgl::asset::AssetCPUTaskKind::Custom)
         , label(label_in ? label_in : OS_TEXT("<memory>"))
-        , file_mode(false)
     {
         if (bytes && size > 0)
             memory.Add(bytes, static_cast<int>(size));
@@ -250,68 +164,31 @@ namespace hgl::graph::mtl
 
     bool MaterialDataBlockParseTask::Execute()
     {
-        if (!file_mode)
-            return ExecuteBytes(memory.GetData(), static_cast<uint64>(memory.GetCount()));
-
-        AutoDeleteArray<uint8> buffer;
-        int64 size = 0;
-        if (!ReadWholeFileBytes(label, buffer, size))
-        {
-            error = "cannot read material data block file";
-            return false;
-        }
-
-        return ExecuteBytes(buffer.data(), static_cast<uint64>(size));
-    }
-
-    // ── MaterialAsyncCompiler::MaterialAsyncBox ──────────────────────────────
-
-    void MaterialAsyncCompiler::MaterialAsyncBox::OnAssetCPUTaskReady(
-        hgl::asset::AssetCPUTask *task)
-    {
-        if (task)
-            done.Post(task);
-    }
-
-    int MaterialAsyncCompiler::MaterialAsyncBox::Take(
-        hgl::ValueArray<hgl::asset::AssetCPUTask *> &out)
-    {
-        if (!done.TrySwap())
-            return 0;
-
-        hgl::ValueArray<hgl::asset::AssetCPUTask *> &batch = done.GetReceive();
-        const int count = batch.GetCount();
-
-        if (count > 0)
-            out.Add(batch.GetData(), count);
-
-        done.ReleaseReceive();
-        return count;
-    }
-
-    void MaterialAsyncCompiler::MaterialAsyncBox::Close()
-    {
-        done.Close();
+        return ExecuteBytes(memory.GetData(), static_cast<uint64>(memory.GetCount()));
     }
 
     // ── MaterialAsyncCompiler ────────────────────────────────────────────────
+
+    MaterialAsyncCompiler::MaterialAsyncCompiler()
+        : io_relay(this)
+    {
+    }
 
     MaterialAsyncCompiler::~MaterialAsyncCompiler()
     {
         Detach();
 
-        // 池若已 Stop(CancelPending)，未消费的成品还在邮箱里；这里兜底释放。
-        hgl::ValueArray<hgl::asset::AssetCPUTask *> leftover;
-        box.Take(leftover);
+        // 池/管理器若已停，未消费的成品还压在信息池里；这里兜底释放。
+        inbox.DrainOneBatch([this](const hgl::thread::TaskEvent &event)
+        {
+            if (event.task)
+                delete static_cast<hgl::asset::AssetCPUTask *>(event.task);
+        });
 
-        for (int i = 0; i < leftover.GetCount(); ++i)
-            delete leftover[i];
-
-        box.Close();
+        inbox.Close();
     }
 
     bool MaterialAsyncCompiler::Attach(hgl::asset::AssetCPUTaskPool *task_pool,
-                                       const uint32 sink_id_in,
                                        const uint32 channel_id_in)
     {
         if (!task_pool || !task_pool->IsRunning())
@@ -326,14 +203,7 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        if (task_pool->RegisterSink(sink_id_in, &box) == false)
-        {
-            GLogError(u8"[MaterialAsyncCompiler] sink 注册失败（编号重复？）: %u", sink_id_in);
-            return false;
-        }
-
         pool       = task_pool;
-        sink_id    = sink_id_in;
         channel_id = channel_id_in;
         return true;
     }
@@ -350,7 +220,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        pool->UnregisterSink(sink_id);
         pool = nullptr;
         return true;
     }
@@ -367,9 +236,8 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        task->affinity        = hgl::asset::ExecutionAffinity::WorkerAny;
-        task->result_affinity = hgl::asset::ExecutionAffinity::Dedicated;
-        task->result_target_id = sink_id;
+        task->affinity = hgl::asset::ExecutionAffinity::WorkerAny;
+        task->receiver = &cpu_receiver;
 
         if (!pool->Submit(task))
         {
@@ -382,15 +250,110 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool MaterialAsyncCompiler::SubmitRecipeFile(const OSString &path)
+    bool MaterialAsyncCompiler::SubmitFileToRead(const OSString &path, const bool is_recipe)
     {
         if (path.IsEmpty())
         {
-            GLogError(u8"[MaterialAsyncCompiler] 配方路径为空");
+            GLogError(u8"[MaterialAsyncCompiler] %s路径为空",
+                      is_recipe ? u8"配方" : u8"数据块");
             return false;
         }
 
-        return SubmitTask(new MaterialRecipeParseTask(path));
+        if (!io_manager)
+        {
+            GLogError(u8"[MaterialAsyncCompiler] 未挂接 LoadedFileManager，文件投递失败: %ls",
+                      path.c_str());
+            return false;
+        }
+
+        FileReadContext *ctx = new FileReadContext();
+        ctx->path      = path;
+        ctx->is_recipe = is_recipe;
+
+        const hgl::FileLoadId id = io_manager->Submit(path,
+                                                      nullptr,
+                                                      hgl::io::AsyncFilePriority::Normal,
+                                                      &io_relay,
+                                                      nullptr,
+                                                      ctx);
+        if (id == 0)
+        {
+            delete ctx;
+            GLogError(u8"[MaterialAsyncCompiler] 文件读取投递失败: %ls", path.c_str());
+            return false;
+        }
+
+        ++pending;
+        return true;
+    }
+
+    void MaterialAsyncCompiler::FileReadRelay::OnTaskEvent(const hgl::thread::TaskEvent &event)
+    {
+        // 上下文由投递方new出来、经 task_user_data 原样回投；每个请求至多一个终态事件。
+        FileReadContext *ctx = static_cast<FileReadContext *>(event.user_data);
+
+        bool handed_off = false;
+
+        if (event.state == hgl::thread::TaskState::Done && ctx && owner && owner->pool)
+        {
+            hgl::LoadedFile *file = static_cast<hgl::LoadedFile *>(event.task);
+
+            if (file)
+            {
+                hgl::asset::AssetCPUTask *task = nullptr;
+
+                if (ctx->is_recipe
+                    && file->GetSize() >= 1
+                    && file->GetSize() <= static_cast<uint64>(INT_MAX))
+                {
+                    task = new MaterialRecipeParseTask(
+                        ctx->path.c_str(),
+                        reinterpret_cast<const char *>(file->GetData()),
+                        static_cast<int>(file->GetSize()));
+                }
+                else if (!ctx->is_recipe && file->GetSize() >= 1)
+                {
+                    task = new MaterialDataBlockParseTask(
+                        ctx->path.c_str(),
+                        file->GetData(),
+                        file->GetSize());
+                }
+
+                if (task)
+                {
+                    task->affinity = hgl::asset::ExecutionAffinity::WorkerAny;
+                    task->receiver = &owner->cpu_receiver;
+
+                    handed_off = owner->pool->Submit(task);
+
+                    if (!handed_off)
+                        delete task;
+                }
+
+                file->RefDec();     // 中继多持的一次引用，随字节拷贝完成一起还掉
+            }
+        }
+
+        delete ctx;
+
+        if (handed_off)
+            return;     // 在途名额从读盘腿转交解析腿，pending 由解析终态事件结算
+
+        // 读盘失败/取消、或转投未遂：压一个不带任务的中止事件，主线程 Pump 结算
+        if (!owner)
+            return;
+
+        hgl::thread::TaskEvent out{};
+        out.error_code = event.error_code;
+        out.state      = (event.state == hgl::thread::TaskState::Cancelled)
+                             ? hgl::thread::TaskState::Cancelled
+                             : hgl::thread::TaskState::Failed;
+        owner->inbox.Post(out);
+    }
+
+    bool MaterialAsyncCompiler::SubmitRecipeFile(const OSString &path)
+    {
+        return SubmitFileToRead(path, true);
     }
 
     bool MaterialAsyncCompiler::SubmitRecipeSource(const os_char *label,
@@ -434,13 +397,7 @@ namespace hgl::graph::mtl
 
     bool MaterialAsyncCompiler::SubmitDataBlockFile(const OSString &path)
     {
-        if (path.IsEmpty())
-        {
-            GLogError(u8"[MaterialAsyncCompiler] 数据块路径为空");
-            return false;
-        }
-
-        return SubmitTask(new MaterialDataBlockParseTask(path));
+        return SubmitFileToRead(path, false);
     }
 
     bool MaterialAsyncCompiler::SubmitDataBlockSource(const os_char *label,
@@ -482,124 +439,140 @@ namespace hgl::graph::mtl
         return submitted;
     }
 
+    void MaterialAsyncCompiler::HandleTaskEvent(const hgl::thread::TaskEvent &event,
+                                                MaterialRecipeRegistry *recipes,
+                                                MaterialDataBlockRegistry *blocks,
+                                                hgl::graph::TextureManager *texture_manager,
+                                                int &committed)
+    {
+        // 每个在途名额恰好对应一个终态事件：进门先结算
+        if (pending > 0)
+            --pending;
+
+        hgl::asset::AssetCPUTask *task = static_cast<hgl::asset::AssetCPUTask *>(event.task);
+
+        if (!task)
+        {
+            // 读盘腿中止（文件读不到 / 已取消 / 转投未遂）：没有任务体，直接计数
+            if (event.state == hgl::thread::TaskState::Cancelled)
+                ++cancelled;
+            else
+                ++failed;
+            return;
+        }
+
+        if (task->IsCancelled())
+        {
+            ++cancelled;
+            delete task;
+            return;
+        }
+
+        if (!task->IsDone())
+        {
+            GLogError(u8"[MaterialAsyncCompiler] 任务失败: %s", task->error.c_str());
+            ++failed;
+            delete task;
+            return;
+        }
+
+        if (MaterialRecipeParseTask *recipe_task =
+                dynamic_cast<MaterialRecipeParseTask *>(task))
+        {
+            if (!recipe_task->IsParseOk())
+            {
+                const MaterialRecipeFileParseError &parse_error =
+                    recipe_task->GetData().parse_error;
+
+                GLogError(u8"[MaterialAsyncCompiler] 配方解析失败: %ls line=%d table=%s key=%s value=\"%s\" detail=%s",
+                          recipe_task->GetLabel().c_str(),
+                          parse_error.line,
+                          parse_error.table.c_str(),
+                          parse_error.key.c_str(),
+                          parse_error.value.c_str(),
+                          parse_error.detail.c_str());
+
+                ++failed;
+                delete task;
+                return;
+            }
+
+            if (!recipes)
+            {
+                GLogWarning(u8"[MaterialAsyncCompiler] 收到配方但没有注册表，丢弃: %ls",
+                            recipe_task->GetLabel().c_str());
+                ++failed;
+                delete task;
+                return;
+            }
+
+            if (recipes->RegisterParsedRecipe(recipe_task->GetLabel().c_str(),
+                                              recipe_task->GetData(),
+                                              std::move(recipe_task->GetSpec()),
+                                              texture_manager))
+            {
+                ++recipe_done;
+                ++committed;
+            }
+            else
+            {
+                ++failed;
+            }
+
+            delete task;
+            return;
+        }
+
+        if (MaterialDataBlockParseTask *block_task =
+                dynamic_cast<MaterialDataBlockParseTask *>(task))
+        {
+            if (!blocks)
+            {
+                GLogWarning(u8"[MaterialAsyncCompiler] 收到数据块但没有注册表，丢弃: %ls",
+                            block_task->GetLabel().c_str());
+                ++failed;
+                delete task;
+                return;
+            }
+
+            MaterialDataBlockAsset *asset =
+                blocks->CommitParsed(std::move(block_task->GetData()),
+                                     std::move(block_task->GetSpec()),
+                                     block_task->HasSpec(),
+                                     block_task->GetLabel().c_str(),
+                                     block_task->GetFailureReason());
+
+            if (asset && block_task->IsParseOk())
+            {
+                ++block_done;
+                ++committed;
+            }
+            else
+            {
+                ++failed;
+            }
+
+            delete task;
+            return;
+        }
+
+        // 不是本编译器投递的任务类型：不认领，直接释放（任务串了才会走到这里）
+        GLogWarning(u8"[MaterialAsyncCompiler] 收到未知任务类型，已释放");
+        ++failed;
+        delete task;
+    }
+
     int MaterialAsyncCompiler::Pump(MaterialRecipeRegistry *recipes,
                                     MaterialDataBlockRegistry *blocks,
                                     hgl::graph::TextureManager *texture_manager)
     {
-        hgl::ValueArray<hgl::asset::AssetCPUTask *> batch;
-        box.Take(batch);
-
         int committed = 0;
 
-        for (int i = 0; i < batch.GetCount(); ++i)
+        // 一次锁交换处理整批：工作线程一口气跑完 N 个解析也只换一次
+        inbox.DrainOneBatch([&](const hgl::thread::TaskEvent &event)
         {
-            hgl::asset::AssetCPUTask *task = batch[i];
-            if (!task)
-                continue;
-
-            if (pending > 0)
-                --pending;
-
-            if (task->IsCancelled())
-            {
-                ++cancelled;
-                delete task;
-                continue;
-            }
-
-            if (!task->IsDone())
-            {
-                GLogError(u8"[MaterialAsyncCompiler] 任务失败: %s", task->error.c_str());
-                ++failed;
-                delete task;
-                continue;
-            }
-
-            if (MaterialRecipeParseTask *recipe_task =
-                    dynamic_cast<MaterialRecipeParseTask *>(task))
-            {
-                if (!recipe_task->IsParseOk())
-                {
-                    const MaterialRecipeFileParseError &parse_error =
-                        recipe_task->GetData().parse_error;
-
-                    GLogError(u8"[MaterialAsyncCompiler] 配方解析失败: %ls line=%d table=%s key=%s value=\"%s\" detail=%s",
-                              recipe_task->GetLabel().c_str(),
-                              parse_error.line,
-                              parse_error.table.c_str(),
-                              parse_error.key.c_str(),
-                              parse_error.value.c_str(),
-                              parse_error.detail.c_str());
-
-                    ++failed;
-                    delete task;
-                    continue;
-                }
-
-                if (!recipes)
-                {
-                    GLogWarning(u8"[MaterialAsyncCompiler] 收到配方但没有注册表，丢弃: %ls",
-                                recipe_task->GetLabel().c_str());
-                    ++failed;
-                    delete task;
-                    continue;
-                }
-
-                if (recipes->RegisterParsedRecipe(recipe_task->GetLabel().c_str(),
-                                                 recipe_task->GetData(),
-                                                 std::move(recipe_task->GetSpec()),
-                                                 texture_manager))
-                {
-                    ++recipe_done;
-                    ++committed;
-                }
-                else
-                {
-                    ++failed;
-                }
-
-                delete task;
-                continue;
-            }
-
-            if (MaterialDataBlockParseTask *block_task =
-                    dynamic_cast<MaterialDataBlockParseTask *>(task))
-            {
-                if (!blocks)
-                {
-                    GLogWarning(u8"[MaterialAsyncCompiler] 收到数据块但没有注册表，丢弃: %ls",
-                                block_task->GetLabel().c_str());
-                    ++failed;
-                    delete task;
-                    continue;
-                }
-
-                MaterialDataBlockAsset *asset =
-                    blocks->CommitParsed(std::move(block_task->GetData()),
-                                         std::move(block_task->GetSpec()),
-                                         block_task->HasSpec(),
-                                         block_task->GetLabel().c_str(),
-                                         block_task->GetFailureReason());
-
-                if (asset && block_task->IsParseOk())
-                {
-                    ++block_done;
-                    ++committed;
-                }
-                else
-                {
-                    ++failed;
-                }
-
-                delete task;
-                continue;
-            }
-
-            // 不是本编译器投递的任务类型：不认领，直接释放（sink 编号串了才会走到这里）
-            GLogWarning(u8"[MaterialAsyncCompiler] 收到未知任务类型，已释放");
-            ++failed;
-            delete task;
-        }
+            HandleTaskEvent(event, recipes, blocks, texture_manager, committed);
+        });
 
         return committed;
     }

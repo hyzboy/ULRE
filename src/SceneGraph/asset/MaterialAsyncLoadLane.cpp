@@ -43,15 +43,26 @@ namespace hgl::graph::mtl
 
         MaterialAsyncCompiler *created = new MaterialAsyncCompiler();
 
-        if (!created->Attach(pool, kLaneSinkID))
+        if (!created->Attach(pool))
         {
-            GLogError(u8"[MaterialAsyncLoadLane] 编译器挂接任务池失败（sink 编号冲突？）");
+            GLogError(u8"[MaterialAsyncLoadLane] 编译器挂接任务池失败");
             delete created;
             return false;
         }
 
+        if (io_manager)
+            created->AttachFileManager(io_manager);
+
         compiler = created;
         return true;
+    }
+
+    void MaterialAsyncLoadLane::AttachFileManager(hgl::LoadedFileManager *file_manager)
+    {
+        io_manager = file_manager;
+
+        if (compiler)
+            compiler->AttachFileManager(file_manager);
     }
 
     void MaterialAsyncLoadLane::Shutdown(MaterialRecipeRegistry *recipes,
@@ -63,8 +74,8 @@ namespace hgl::graph::mtl
 
         if (compiler)
         {
-            // `Drain` 等所有已投递任务跑完并把成品投回邮箱；此时再泵一次是唯一
-            // 能把邮箱掏空的时机 —— 掏空之后 `Detach()` 才会成功。
+            // `Drain` 等所有已投递任务跑完并把终态事件投回信息池；此时再泵一次是唯一
+            // 能把信息池掏空的时机 —— 掏空之后 `Detach()` 才会成功。
             pool->Stop(hgl::thread::ShutdownMode::Drain);
 
             pumped_commits += compiler->Pump(recipes, blocks, texture_manager);
@@ -72,7 +83,7 @@ namespace hgl::graph::mtl
             if (!compiler->Detach())
             {
                 // 走到这里说明还有任务没被泵掉（例如池在 Drain 期间又收到了新的
-                // 提交）。编译器析构会再尝试一次，池随之销毁，不会留下悬垂 sink。
+                // 提交）。编译器析构会再尝试一次并兜底释放成品，不会留下悬垂引用。
                 GLogWarning(u8"[MaterialAsyncLoadLane] 收尾时仍有在途任务，成品可能被丢弃");
             }
 
