@@ -10,7 +10,10 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include <hgl/graph/asset/MaterialDataBlockAsset.h>
+#include <hgl/graph/asset/MaterialAsyncLoadLane.h>
 #include <hgl/graph/asset/AssetSourceMount.h>
+#include <hgl/asset/LoadedFileManager.h>
+#include <hgl/time/Time.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
@@ -1174,73 +1177,178 @@ bool BuildSelfContainedModelMaterials(
     }
 
     // 装载触发段：本节是全函数唯一碰盘的地方。索引在档的配方与数据块逐个补载；
-    // 无索引 / 索引空手 ⇒ 整目录同步装载（老行为）。数据块只建句柄不碰 GPU
+    // 无索引 / 索引空手 ⇒ 整目录装载（老行为）。数据块只建句柄不碰 GPU
     // （上传仍由 `GetRowBinding` → `GetOrLoadURI` 惰性执行）。异步路径不走这里——
     // 配方与数据块由材质车道扇出落地，门禁放行后直接调 `ResolveSelfContainedModelMaterials`。
+    //
+    // 补载优先走材质车道（读盘+解析在工作线程，本线程只泵提交）；车道起不来
+    // （无设备/工具进程）⇒ 退回主线程同步装载。本函数是阻塞式一次性调用，
+    // 投递后原地泵到在途清零再核验落地。
     IndexProbe probe;
     bool landed_from_index = false;
     bool blocks_from_index = false;
-    mtl::MaterialDataBlockRegistry *blocks = ctx.GetMaterialDataBlockRegistry();
+    mtl::MaterialRecipeRegistry    *registry = ctx.GetMaterialRecipeRegistry();
+    mtl::MaterialDataBlockRegistry *blocks   = ctx.GetMaterialDataBlockRegistry();
+    mtl::MaterialAsyncLoadLane     *lane     = ctx.GetMaterialAsyncLoadLane();
+    const bool use_lane = (registry || blocks) && lane && lane->EnsureStarted();
+
+    // 原地泵送：IO 完成回调 + 车道解析成品提交，直到在途清零（或预算耗尽）。
+    auto drain_lane = [&]()
+    {
+        hgl::LoadedFileManager *file_manager = ctx.GetLoadedFileManager();
+        for (int spin = 0; ctx.IsMaterialAsyncLoadPending(); ++spin)
+        {
+            if (spin >= 15000)   // ≈30s 预算：本地盘的配方批次应在秒级内落地
+            {
+                MLogWarning(LoadStaticMesh,
+                    OS_TEXT("BuildSelfContainedModelMaterials: 材质车道在途超时，按已落地内容继续"));
+                break;
+            }
+            if (file_manager)
+                file_manager->Pump();
+            ctx.PumpMaterialAsyncLoadLane();
+            hgl::SleepSecond(0.002);
+        }
+        if (registry)
+            registry->FinalizePending();   // 批次边界收尾：子配方可能先于父配方落地
+    };
+
+    hgl::ManagedArray<OSString> recipe_paths;
+    hgl::ManagedArray<OSString> block_paths;
     if (ProbeIndexedModelDir(model_dir, probe))
     {
-        hgl::ManagedArray<hgl::asset::AssetIndexEntry> recipe_entries;
+        hgl::ManagedArray<hgl::asset::AssetIndexEntry> entries;
         probe.src->FindInDirectory(probe.logical_dir,
-                                   hgl::asset::AssetType::MaterialRecipe, recipe_entries);
-        mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
-        if (registry && recipe_entries.GetCount() > 0)
-        {
-            for (int i = 0; i < recipe_entries.GetCount(); ++i)
-            {
-                const OSString path = probe.root + OS_TEXT("/") +
-                                      hgl::ToOSString(recipe_entries[i]->physical_path);
-                if (!registry->FindAssetByPath(path) && !ctx.LoadMaterialRecipeFile(path))
-                {
-                    MLogWarning(LoadStaticMesh,
-                        OS_TEXT("BuildSelfContainedModelMaterials: 索引配方加载失败 ") + path);
-                    continue;
-                }
-                landed_from_index = true;
-            }
-            registry->FinalizePending();   // 连续 LoadFile 的收尾：子配方可能先于父配方
-        }
+                                   hgl::asset::AssetType::MaterialRecipe, entries);
+        for (int i = 0; i < entries.GetCount(); ++i)
+            recipe_paths.Create(probe.root + OS_TEXT("/") +
+                                hgl::ToOSString(entries[i]->physical_path));
 
         // 数据块：把本目录索引在档的块全部补载进注册表，选哪一块由
         // `ResolveSelfContainedModelMaterials` 按 hint / 唯一性在注册表里定夺。
         if (blocks)
         {
-            hgl::ManagedArray<hgl::asset::AssetIndexEntry> block_entries;
+            entries.Clear();
             probe.src->FindInDirectory(probe.logical_dir,
-                                       hgl::asset::AssetType::MaterialData, block_entries);
-            for (int i = 0; i < block_entries.GetCount(); ++i)
-            {
-                const OSString path = probe.root + OS_TEXT("/") +
-                                      hgl::ToOSString(block_entries[i]->physical_path);
-                if (!blocks->FindAssetByPath(path) && !blocks->LoadFile(path))
-                {
-                    MLogWarning(LoadStaticMesh,
-                        OS_TEXT("BuildSelfContainedModelMaterials: 索引数据块加载失败 ") + path);
-                    continue;
-                }
-                blocks_from_index = true;
-            }
+                                       hgl::asset::AssetType::MaterialData, entries);
+            for (int i = 0; i < entries.GetCount(); ++i)
+                block_paths.Create(probe.root + OS_TEXT("/") +
+                                   hgl::ToOSString(entries[i]->physical_path));
         }
+    }
+
+    bool any_posted = false;
+    if (registry)
+    {
+        for (int i = 0; i < recipe_paths.GetCount(); ++i)
+        {
+            const OSString &path = *recipe_paths[i];
+            if (registry->FindAssetByPath(path))
+            {
+                landed_from_index = true;
+                continue;
+            }
+            if (use_lane)
+            {
+                if (!lane->BeginRecipeFile(path))
+                    MLogWarning(LoadStaticMesh,
+                        OS_TEXT("BuildSelfContainedModelMaterials: 索引配方投递失败 ") + path);
+                any_posted = true;
+                continue;
+            }
+            if (!ctx.LoadMaterialRecipeFile(path))
+            {
+                MLogWarning(LoadStaticMesh,
+                    OS_TEXT("BuildSelfContainedModelMaterials: 索引配方加载失败 ") + path);
+                continue;
+            }
+            landed_from_index = true;
+        }
+        if (!use_lane && recipe_paths.GetCount() > 0)
+            registry->FinalizePending();   // 连续 LoadFile 的收尾：子配方可能先于父配方
+    }
+    if (blocks)
+    {
+        for (int i = 0; i < block_paths.GetCount(); ++i)
+        {
+            const OSString &path = *block_paths[i];
+            if (blocks->FindAssetByPath(path))
+            {
+                blocks_from_index = true;
+                continue;
+            }
+            if (use_lane)
+            {
+                if (!lane->BeginDataBlockFile(path))
+                    MLogWarning(LoadStaticMesh,
+                        OS_TEXT("BuildSelfContainedModelMaterials: 索引数据块投递失败 ") + path);
+                any_posted = true;
+                continue;
+            }
+            if (!blocks->LoadFile(path))
+            {
+                MLogWarning(LoadStaticMesh,
+                    OS_TEXT("BuildSelfContainedModelMaterials: 索引数据块加载失败 ") + path);
+                continue;
+            }
+            blocks_from_index = true;
+        }
+    }
+    MLogInfo(LoadStaticMesh,
+        OS_TEXT("BuildSelfContainedModelMaterials: lane=") + OSString::numberOf(use_lane ? 1 : 0)
+            + OS_TEXT(" idxRecipes=") + OSString::numberOf(recipe_paths.GetCount())
+            + OS_TEXT(" idxBlocks=") + OSString::numberOf(block_paths.GetCount())
+            + OS_TEXT(" posted=") + OSString::numberOf(any_posted ? 1 : 0));
+    if (use_lane && any_posted)
+    {
+        drain_lane();
+        for (int i = 0; i < recipe_paths.GetCount(); ++i)
+            if (registry && registry->FindAssetByPath(*recipe_paths[i]))
+                landed_from_index = true;
+        for (int i = 0; i < block_paths.GetCount(); ++i)
+            if (blocks && blocks->FindAssetByPath(*block_paths[i]))
+                blocks_from_index = true;
     }
     if (!landed_from_index)
     {
-        int recipe_files = 0, recipe_errors = 0;
-        if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
+        if (use_lane)
         {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录加载失败 ") + model_dir);
-            return false;
+            if (lane->BeginRecipeDirectory(model_dir) < 0)
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录投递失败 ") + model_dir);
+                return false;
+            }
+            drain_lane();
+        }
+        else
+        {
+            int recipe_files = 0, recipe_errors = 0;
+            if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录加载失败 ") + model_dir);
+                return false;
+            }
         }
     }
     if (blocks && !blocks_from_index)
     {
-        int block_files = 0, block_errors = 0;
-        if (!blocks->LoadDirectory(model_dir, &block_files, &block_errors))
+        if (use_lane)
         {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 数据块目录加载失败 ") + model_dir);
-            return false;
+            if (lane->BeginDataBlockDirectory(model_dir) < 0)
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 数据块目录投递失败 ") + model_dir);
+                return false;
+            }
+            drain_lane();
+        }
+        else
+        {
+            int block_files = 0, block_errors = 0;
+            if (!blocks->LoadDirectory(model_dir, &block_files, &block_errors))
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 数据块目录加载失败 ") + model_dir);
+                return false;
+            }
         }
     }
 
