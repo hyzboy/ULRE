@@ -49,7 +49,9 @@ struct EntityGPUData
     uint model_template_id;                  // T3.1 模型模板池行号（0 = 无模板 ⇒ 传统单实体路径）
     uint _pad_model;                         // T3.1 掩码 8B 对齐填充
     uint64_t model_part_mask;                // T3.1 部件可见位掩码（0 位 = 隐藏；默认全 1）
-    uint8_t _pad[16];                        // 显式填充：载荷 112 B ⇒ 128 B 步长（对齐契约）
+    uint custom_data_index;                  // T6.1 实例自定义数据行号（0 = 默认/无微调）
+    uint prev_transform_id;                  // T6.1 上一帧世界变换行号（0 = 当帧兜底）
+    uint8_t _pad[8];                         // 显式填充：载荷 120 B ⇒ 128 B 步长（对齐契约）
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=64) readonly buffer EntityGPURef

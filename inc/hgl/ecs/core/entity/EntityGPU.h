@@ -79,6 +79,13 @@ namespace hgl
             uint32_t model_template_id = 0;         ///< 模型模板池行号（0 = 无模板 ⇒ 传统单实体路径）
             uint32_t _pad_model        = 0;         ///< 对齐填充（mask 需 8B 对齐）
             uint64_t model_part_mask   = ~0ull;     ///< 部件可见位掩码（默认全 1；64 位上限）
+
+            // ── T6.1：实例自定义数据与上一帧变换索引事实 ──────────────────────────
+            // 原 _pad 区划出 8 B：128 B 步长与 alignas(64) 不变（填充剩 8 B）。
+            // custom_data_index: 实例自定义数据行号（0 = 无微调/默认白色无自发光）
+            // prev_transform_id: 上一帧世界变换行号（0 = 当帧兜底 / 刚生成无前帧位姿）
+            uint32_t custom_data_index = 0;         ///< 实例自定义数据行号（0 = 默认/无微调）
+            uint32_t prev_transform_id = 0;         ///< 上一帧世界变换行号（0 = 当帧兜底）
         };
 
         static_assert(sizeof(EntityGPU) == 128,
@@ -96,5 +103,9 @@ namespace hgl
                       "T3.1 模型模板事实偏移被改动（GPU 展开分支读它）");
         static_assert(offsetof(EntityGPU, model_part_mask) == 104,
                       "T3.1 部件掩码偏移被改动（8B 对齐要求）");
+        static_assert(offsetof(EntityGPU, custom_data_index) == 112,
+                      "T6.1 自定义数据索引偏移被改动");
+        static_assert(offsetof(EntityGPU, prev_transform_id) == 116,
+                      "T6.1 上一帧变换索引偏移被改动");
     }//namespace ecs
 }//namespace hgl
