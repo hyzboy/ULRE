@@ -128,6 +128,8 @@ HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)
     HGL_ENUM_ITEM(PBRAdvancedSurface,    "PBR 高级材质扩展行（ClearCoat/Sheen/Anisotropy/Subsurface）")
     HGL_ENUM_ITEM(GeometryAABB,          "几何本地 AABB（与 MeshDrawParams 同 ID 索引的平行表）")
     HGL_ENUM_ITEM(MaterialData,          "材质数据组件行")
+    HGL_ENUM_ITEM(ModelTemplatePool,     "模型模板行（GPU 常驻模板池）")
+    HGL_ENUM_ITEM(ModelPartPool,         "模型部件行（模板内连续部件段）")
 HGL_ENUM_END(hgl::graph::GlobalSSBOType)
 
 static_assert(::hgl::serialize::EnumMeta<::hgl::graph::GlobalSSBOType>::Count == ::hgl::graph::GlobalSSBOTypeCount,

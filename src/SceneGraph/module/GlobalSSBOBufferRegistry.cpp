@@ -1,4 +1,5 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/CameraInfo.h>
@@ -31,6 +32,11 @@ namespace
         // 容量与材质内容池同口径 1024；reserve_rows = 1 ⇒ 行 0 恒为「无材质数据」哨兵
         // （组件侧 material_row_id == 0 即无）。
         { GlobalSSBOType::MaterialData,        "MaterialData",        sizeof(ssbo::MaterialDataRow), 1024u, 1u },
+        // GPU 常驻模型模板池（plan T1）：模板 = 一行，部件 = ModelPartPool 的连续区间。
+        // 两池 reserve_rows = 1 ⇒ 行 0 恒为「无模板 / 无部件」哨兵（kInvalidModelTemplateID）。
+        // 容量为初始预算（4096 模型 × 16384 部件 ≈ 512K + 2M 行字节），不够再调表，不改结构。
+        { GlobalSSBOType::ModelTemplatePool,   "ModelTemplatePool",   sizeof(ssbo::ModelTemplateRow), 4096u,  1u },
+        { GlobalSSBOType::ModelPartPool,       "ModelPartPool",       sizeof(ssbo::ModelPartRow),     16384u, 1u },
     };
 
     /// 配置表覆盖性（遍历全枚举，不手列清单）：聚合数组缺一项**不会编译报错**（值初始化），
@@ -167,6 +173,8 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
     global_addresses_global.addr_transmission_surface = GetGPUBase(GlobalSSBOType::TransmissionSurface);
     global_addresses_global.addr_pbr_advanced_surface = GetGPUBase(GlobalSSBOType::PBRAdvancedSurface);
     global_addresses_global.addr_color_palette        = 0;   // 由 ColorPaletteSystem 注册（UpdateColorPaletteAddress）
+    global_addresses_global.addr_model_template_pool  = GetGPUBase(GlobalSSBOType::ModelTemplatePool);
+    global_addresses_global.addr_model_part_pool      = GetGPUBase(GlobalSSBOType::ModelPartPool);
 
     // 每帧槽字段（sky / viewport / shadow）在各自 buffer 就绪后由 Set*Address 填；先整表清 0。
     for (uint32_t slot = 0; slot < kGlobalAddressesSlotCount; ++slot)
