@@ -52,6 +52,7 @@ namespace hgl
             ModelCollisionProxy,    ///< 模型碰撞/拾取代理（CPU-only 类型号）——粗包围体列表，
                                 ///<  物理与拾取只查本组件，禁止反向读渲染零件（见
                                 ///<  ModelCollisionProxyComponent.h）
+            RigidBody,              ///< 物理刚体（CPU-only 类型号）——物理模拟状态与 Jolt 刚体句柄
             End,
         };
 
@@ -123,6 +124,7 @@ namespace hgl
             { ComponentType::GPUModelRef,     ComponentScope::World,  "ECS:GPUModelRef",      0, "GPUModelRefComponent",    SystemGroupID::None },     ///< CPU-only：GPU 常驻模型模板的实体引用（template_id + 部件可见掩码）；展开在 GPU（T3 接 collect）
             { ComponentType::GPUInstancedModelBatch, ComponentScope::World, "ECS:GPUInstancedModelBatch", 0, "GPUInstancedModelBatchComponent", SystemGroupID::None }, ///< CPU-only：单实体海量同模板实例批次（CPU 权威矩阵数组或外部设备缓冲）；T3 接上传/展开
             { ComponentType::ModelCollisionProxy, ComponentScope::World, "ECS:ModelCollisionProxy", 0, "ModelCollisionProxyComponent", SystemGroupID::None }, ///< CPU-only：模型碰撞/拾取粗包围体代理；物理与拾取唯一入口（禁止读渲染零件）
+            { ComponentType::RigidBody,           ComponentScope::World, "ECS:RigidBody",           0, "RigidBodyComponent",           SystemGroupID::None }, ///< CPU-only：物理刚体与物理模拟状态
         };
 
         namespace detail

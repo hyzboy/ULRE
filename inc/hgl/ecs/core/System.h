@@ -23,6 +23,7 @@ namespace hgl
         {
             // ── Tick (game logic, every frame) ─────────────────────────────
             TickInput,              // user input
+            TickPhysics,            // physics simulation & transform sync
             TickTransform,          // transforms, bounds, visibility
             TickCamera,             // camera matrices
             TickPostCamera,         // facing-policy transforms

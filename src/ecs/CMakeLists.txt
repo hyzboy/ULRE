@@ -96,6 +96,9 @@ source_group("ECS\\Tests" FILES ${ECS_TEST_FILES})
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
 ${ECS_SOURCES} ${ECS_HEADERS})
 
+find_package(Jolt CONFIG REQUIRED)
+target_link_libraries(ULRE.ECS PUBLIC Jolt::Jolt)
+
 # 只在「强制打开」时下发；不下发时由 `inc/hgl/common/RenderOptions.h` §2 按 NDEBUG 决定（Debug 1 / Release 0）。
 # ⚠ 不要在这里下发 `=0`：那会压过台帐的 Debug 默认值，让 Debug 也丢掉校验面（2026-10-13 统一时删掉的分支）。
 if(ULRE_ECS_DEBUG_API)
@@ -300,6 +303,10 @@ add_ecs_test(TestGPUModelExpansionParity tests/TestGPUModelExpansionParity.cpp)
 
 # 落地T5.3判据：模板实例化的聚合账与 ICB 命令语义（50 实例共享桶组，不碰设备）
 add_ecs_test(TestGPUModelExpansionAggregation tests/TestGPUModelExpansionAggregation.cpp)
+
+# JoltPhysics 物理引擎对接与 ModelCollisionProxyComponent 集成测试
+add_ecs_test(TestJoltPhysicsIntegration tests/TestJoltPhysicsIntegration.cpp
+    LIBS Jolt::Jolt)
 
 if(BUILD_TESTING)
     add_test(
@@ -656,4 +663,12 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestGPUModelExpansionAggregation
         PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
+
+    add_test(
+        NAME TestJoltPhysicsIntegration
+        COMMAND TestJoltPhysicsIntegration
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestJoltPhysicsIntegration
+        PROPERTIES LABELS "ecs;physics;jolt" TIMEOUT 60)
 endif()
