@@ -250,6 +250,38 @@ namespace hgl::graph
         return asset::GetSource(AnsiString(name));
     }
 
+    bool GetAssetMountRoot(const AnsiString &name,OSString &out_root)
+    {
+        out_root.Clear();
+
+        const OSString *root=FindMountRoot(name);
+
+        if(root)
+        {
+            out_root=*root;
+            return true;
+        }
+
+        // 挂载名与 URI 里的拼写可能只差大小写（Windows 上尤其常见）。
+        // 挂载表很小，精确查不到再折叠一次大小写。
+        AnsiString lowered=name;
+        lowered.LowerCase();
+
+        for(const auto &pair : mount_roots)
+        {
+            AnsiString key=pair.first;
+            key.LowerCase();
+
+            if(key==lowered)
+            {
+                out_root=pair.second;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     int ListAssetDirectory(const AnsiString &dir_path,ManagedArray<asset::SourceEntry> &out,
                            const char *source_name)
     {

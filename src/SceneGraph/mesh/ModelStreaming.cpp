@@ -24,11 +24,14 @@ namespace hgl::graph
         pack_size=0;
     }
 
-    bool ModelStreamingRequest::Begin(hgl::LoadedFileManager *lfm,const OSString &path)
+    bool ModelStreamingRequest::Begin(hgl::LoadedFileManager *lfm,const OSString &path,
+                                      io::AsyncFileByteSource *source,
+                                      hgl::LoadedFileHandler *callback_handler)
     {
         if(!lfm||path.IsEmpty())
         {
             GLogError(u8"[ModelStreaming] Begin 收到空管理器或空路径");
+            delete source;                          // 所有权已移交：本对象负责处置
             return(false);
         }
 
@@ -37,13 +40,17 @@ namespace hgl::graph
          &&(state==ModelStreamingState::Loading
           ||state==ModelStreamingState::Ready
           ||state==ModelStreamingState::Built))
+        {
+            delete source;                          // 已有在途请求，这份字节源用不上
             return(true);
+        }
 
         Cancel();
 
         load_manager=lfm;
         pack_path   =path;
-        request_id  =lfm->Submit(path,this,io::AsyncFilePriority::Normal);
+        request_id  =lfm->Submit(path,callback_handler?callback_handler:this,
+                                io::AsyncFilePriority::Normal,nullptr,source);
 
         if(request_id==0)
         {

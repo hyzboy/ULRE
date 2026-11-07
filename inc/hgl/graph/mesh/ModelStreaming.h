@@ -9,6 +9,11 @@
 namespace hgl
 {
     class LoadedFileManager;
+
+    namespace io
+    {
+        class AsyncFileByteSource;
+    }//namespace io
 }
 
 namespace hgl::graph
@@ -72,8 +77,22 @@ namespace hgl::graph
 
     public:
 
-        /// 发起异步读取（重复调用同一次加载是幂等的）
-        bool Begin(hgl::LoadedFileManager *lfm,const OSString &path);
+        /**
+         * 发起异步读取（重复调用同一次加载是幂等的）。
+         *
+         * `source` 非空时字节改由字节源提供（归档型包裹、`id:` 身份寻址、
+         * `builtin`/`rt` 这类折不成裸路径的引用）；`path` 此时只是查表键，
+         * 需要全局唯一且不与真实文件路径撞车 —— URI 原文（`pack(x):...`）
+         * 正合适。**所有权立即移交给 `LoadedFileManager`**（成功、失败、
+         * 缓存命中、合并在途都算接管，由管理器负责删除），调用方不再持有。
+         *
+         * `callback_handler` 非空时，回调由它接收（再自行转发给本请求）：
+         * 适合「请求对象可能比在途读盘先死」的宿主，用一个引用计数稳定的
+         * 中继挡住悬垂回调。为空时本请求自己充当回调接收者。
+         */
+        bool Begin(hgl::LoadedFileManager *lfm,const OSString &path,
+                   io::AsyncFileByteSource *source=nullptr,
+                   hgl::LoadedFileHandler *callback_handler=nullptr);
 
         /// 取消在途请求（状态回到 `Idle`，缓存的字节被释放）
         void Cancel();

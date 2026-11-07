@@ -12,12 +12,6 @@ namespace hgl
 {
     class LoadedFileManager;
 
-    namespace asset
-    {
-        class AssetCPUTask;
-        class AssetCPUTaskPool;
-    }
-
     namespace graph
     {
         class GeometryManager;
@@ -40,23 +34,23 @@ namespace hgl::ecs
      *
      * ```text
      * ① LoadedFileManager::Pump()   派发上一帧完成的读盘（字节落到句柄自己的缓冲）
-     * ② PumpPackReads()             取回 CPU 池完成的包裹取流任务（Tier 2 → Tier 3）
-     * ③ PumpMaterialLane()          把材质车道里解析好的配方提交进配方表（微秒级）
-     * ④ AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的取流
-     * ⑤ Advance()                   推进每个句柄：建计划 ⇒ 扇出配方 ⇒ 解析产物 ⇒ 结算 ⇒ 提交
-     * ⑥ LoadedFileManager::Collect() 回收已归零的文件引用
+     * ② PumpMaterialLane()          把材质车道里解析好的配方提交进配方表（微秒级）
+     * ③ AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的取流
+     * ④ Advance()                   推进每个句柄：建计划 ⇒ 扇出配方 ⇒ 解析产物 ⇒ 结算 ⇒ 提交
+     * ⑤ LoadedFileManager::Collect() 回收已归零的文件引用
      * ```
      *
-     * ## 两条取流通道
+     * ## 取流通道（全部经由 `LoadedFileManager`）
      *
-     * | 情形 | 通道 |
-     * |---|---|
-     * | URI 能折成物理路径（裸路径 / 目录型包裹里的真实文件） | `LoadedFileManager` 异步读盘 |
-     * | 折不成物理路径（`id:` 身份寻址、归档型包裹、`builtin`/`rt`） | `PackReadTask` → CPU 池 |
+     * | 情形 | 查表键 | 字节来源 |
+     * |---|---|---|
+     * | URI 能折成物理路径（裸路径 / 目录型包裹里的真实文件） | 物理路径 | 读盘线程直接读文件 |
+     * | 折不成物理路径（`id:` 身份寻址、归档型包裹、`builtin`/`rt`） | URI 原文（不与真实路径撞车） | `asset::AssetURIByteSource` 经 `OpenAssetStream` 分派 |
      *
-     * 第二条通道历史上由主线程同步 `OpenAssetInputStream()` + 整包 `Read()` 完成，
-     * 大模型每帧几十毫秒的卡顿正是它造成的。现在主线程只负责创建任务与提交，
-     * 阻塞读全在工作线程。
+     * 两条通道过去各自为政：第二条曾由主线程同步 `OpenAssetInputStream()` +
+     * 整包 `Read()` 完成（大模型每帧几十毫秒的卡顿正是它造成的），后来改自养
+     * CPU 池取流。现在统一进同一个读盘线程池：字节源只是把「从哪取字节」
+     * 下推到 IO worker，取消、去重、预算、回调全部复用同一条链路。
      *
      * ## 「子项」的口径
      *
@@ -119,12 +113,6 @@ namespace hgl::ecs
         StreamHandler *handler          = nullptr;  ///<读盘回调接收者（活到最后一个回调）
         LoadedFileManager *load_manager = nullptr;
 
-        /// CPU 阶段池：`pack(...)` 无法折成物理路径时在此取流（Tier 2）
-        asset::AssetCPUTaskPool *pack_pool = nullptr;
-
-        /// 在途的取流任务（拥有；句柄被裁掉也不丢，见 `PumpPackReads`）
-        hgl::ValueArray<asset::AssetCPUTask *> pack_pending;
-
         BuildSettings settings;
 
         /// 每个句柄一份在途状态。句柄本身归 `ModelAssetRegistry`，这里只借指针。
@@ -133,9 +121,6 @@ namespace hgl::ecs
             graph::ModelAsset *asset = nullptr;
 
             graph::ModelStreamingRequest request;   ///<阶段 A：读盘 + 持字节
-
-            /// 在途的包裹取流任务（借指针、不拥有）；nullptr 表示未走该通道
-            asset::AssetCPUTask *pack_task = nullptr;
 
             bool plan_built    = false;             ///<计划单已生成并登记到句柄
             bool material_fanout = false;           ///<配方已扇出给材质车道（一次性）
@@ -151,17 +136,11 @@ namespace hgl::ecs
         void AcquireOneFrame();
         void Advance();
 
-        /// 取回已完成的包裹取流任务，把字节落进对应句柄（Tier 3 的主线程侧）
-        void PumpPackReads();
-
         /// 把材质车道里已解析完的配方 / 数据块提交进表（微秒级）
         void PumpMaterialLane();
 
         /// 把场景目录的配方 + 数据块整目录投给材质车道（每个句柄只做一次）
         void FanOutMaterialDeps(AssetStream *stream);
-
-        /// 关停 CPU 取流池并回收所有在途任务
-        void StopPackPool();
 
         AssetStream *FindStream(const graph::ModelAsset *asset)const;
         AssetStream *FindStreamByRequest(uint64 request_id)const;

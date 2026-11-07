@@ -152,8 +152,9 @@ namespace hgl
      *   · `id:<32 hex>` 在索引缺失或索引里没有该身份时 ⇒ 返回 false
      *     （此时请改用 `OpenAssetInputStream` 取流）；
      *   · 只适用于「包裹根目录直接就是文件树」的目录型包裹。真正的归档型包裹
-     *     （单文件 `.pack`）没有可寻址的物理路径，必须走 `PackReadTask` 一类的
-     *     任务通道，不能靠本函数。
+     *     （单文件 `.pack`）没有可寻址的物理路径，必须走
+     *     `LoadedFileManager::Submit` + `asset::AssetURIByteSource` 的取流通道
+     *     （路由路径可用下面的 `GetAssetMountRoot`），不能靠本函数。
      *
      * @param uri_text     资产 URI 或裸物理路径
      * @param default_type 文本里省略类型段时补上的类型
@@ -169,6 +170,15 @@ namespace hgl
     {
         return ResolveAssetPhysicalPath(uri_text,asset::AssetType::Unknown,out_path);
     }
+
+    /**
+     * 取已挂载包裹的物理根目录。
+     *
+     * 归档型包裹里的资产没有可直接寻址的路径，但读盘线程仍需要知道「这份字节
+     * 落在哪块物理盘上」——挂载根本身就在正确的盘上，用它给
+     * `asset::AssetURIByteSource` 提供路由路径即可。未挂载返回 false。
+     */
+    bool GetAssetMountRoot(const AnsiString &name,OSString &out_root);
 
     }//namespace graph
 }//namespace hgl
