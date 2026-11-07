@@ -808,6 +808,63 @@ namespace
         }
         return names;
     }
+
+// ---- 内存索引探索辅助：命中走索引，未命中回退 OS 扫描（行为是超集） ----------
+
+    /// 折叠路径字符：'\\' 归 '/'、ASCII 大写归小写 —— 与索引键口径一致。
+    inline os_char FoldOsPathChar(os_char c)
+    {
+        if (c == OS_TEXT('\\')) return OS_TEXT('/');
+        if (c >= OS_TEXT('A') && c <= OS_TEXT('Z'))
+            return (os_char)(c + (OS_TEXT('a') - OS_TEXT('A')));
+        return c;
+    }
+
+    /// 绝对路径启发式（盘符 / 起始分隔符）。误判只会导致前缀比对失败 → 回退。
+    inline bool LooksAbsoluteOsPath(const OSString &p)
+    {
+        if (p.Length() >= 2 && p[1] == OS_TEXT(':')) return true;
+        if (p.Length() >= 1 && FoldOsPathChar(p[0]) == OS_TEXT('/')) return true;
+        return false;
+    }
+
+    /// `dir` 位于 `root` 之下时，截出 '/' 分隔的相对逻辑目录（保留原始大小写）。
+    static bool MakeLogicalDirUnderRoot(const OSString &root, const OSString &dir, U8String &out)
+    {
+        out.Clear();
+        const int n = root.Length();
+        const int m = dir.Length();
+        if (n <= 0 || m < n) return false;
+        for (int i = 0; i < n; ++i)
+            if (FoldOsPathChar(dir[i]) != FoldOsPathChar(root[i])) return false;
+        int skip = n;
+        if (m > n)
+        {
+            if (FoldOsPathChar(dir[n]) != OS_TEXT('/')) return false;  // 兄弟目录（res_xxx）
+            ++skip;
+        }
+        int end = m;
+        while (end > skip && FoldOsPathChar(dir[end - 1]) == OS_TEXT('/')) --end;
+        if (end <= skip) return false;                                 // 模型就在挂载根：无逻辑目录
+        out = hgl::ToU8String(dir.SubString(skip, end - skip));
+        for (int i = 0; i < out.Length(); ++i)
+            if (out[i] == u8char('\\')) out[i] = u8char('/');
+        return true;
+    }
+
+    /// ASCII 折叠相等（与索引键同口径），用于按名字比对逻辑路径。
+    static inline bool U8FoldedEqual(const U8String &a, const U8String &b)
+    {
+        if (a.Length() != b.Length()) return false;
+        for (int i = 0; i < a.Length(); ++i)
+        {
+            u8char x = a[i], y = b[i];
+            if (x >= (u8char)'A' && x <= (u8char)'Z') x += 32;
+            if (y >= (u8char)'A' && y <= (u8char)'Z') y += 32;
+            if (x != y) return false;
+        }
+        return true;
+    }
 }
 
 bool BuildSelfContainedModelMaterials(
@@ -853,16 +910,67 @@ bool BuildSelfContainedModelMaterials(
         return false;
     }
 
-    // 3. 只扫模型目录的配方（进 GraphicsContext 注册表）
-    int recipe_files = 0, recipe_errors = 0;
-    if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
+    // 2.5 内存索引探测：把模型目录映射到挂载根下的逻辑目录。
+    //     未挂载 / 无索引 / 模型不在挂载根下 → idx_src 为空，下面全走 OS 老路径。
+    asset::AssetSource *idx_src = nullptr;
+    OSString            idx_root;
+    U8String            logical_dir;
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录加载失败 ") + model_dir);
-        return false;
+        asset::AssetSource *src = GetMountedAssetSource();
+        if (src && src->HasIndexTable())
+        {
+            OSString cur;
+            if (hgl::filesystem::GetCurrentPath(cur))
+            {
+                idx_root = hgl::filesystem::JoinPathWithFilename(cur,
+                                                                  OSString(DEFAULT_ASSET_SOURCE_ROOT));
+                const OSString dir_abs = LooksAbsoluteOsPath(model_dir)
+                    ? model_dir
+                    : hgl::filesystem::JoinPathWithFilename(cur, model_dir);
+                if (MakeLogicalDirUnderRoot(idx_root, dir_abs, logical_dir))
+                    idx_src = src;
+            }
+        }
     }
 
+    // 3. 配方集合：优先内存索引探索本目录；空手回退「扫目录 + 前缀过滤」老路径
     std::vector<const mtl::MaterialRecipe *> dir_recipes;
+    if (idx_src)
     {
+        hgl::ManagedArray<hgl::asset::AssetIndexEntry> recipe_entries;
+        idx_src->FindInDirectory(logical_dir, hgl::asset::AssetType::MaterialRecipe, recipe_entries);
+        if (recipe_entries.GetCount() > 0)
+        {
+            mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
+            for (int i = 0; i < recipe_entries.GetCount(); ++i)
+            {
+                const OSString path = idx_root + OS_TEXT("/") +
+                                      hgl::ToOSString(recipe_entries[i]->physical_path);
+                if (!registry->FindAssetByPath(path) && !ctx.LoadMaterialRecipeFile(path))
+                {
+                    MLogWarning(LoadStaticMesh,
+                        OS_TEXT("BuildSelfContainedModelMaterials: 索引配方加载失败 ") + path);
+                }
+            }
+            registry->FinalizePending();   // 连续 LoadFile 的收尾：子配方可能先于父配方
+            for (int i = 0; i < recipe_entries.GetCount(); ++i)
+            {
+                const OSString path = idx_root + OS_TEXT("/") +
+                                      hgl::ToOSString(recipe_entries[i]->physical_path);
+                const mtl::MaterialRecipeAsset *asset = registry->FindAssetByPath(path);
+                if (asset) dir_recipes.push_back(&asset->GetRecipe());
+            }
+        }
+    }
+    if (dir_recipes.empty())
+    {
+        int recipe_files = 0, recipe_errors = 0;
+        if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
+        {
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录加载失败 ") + model_dir);
+            return false;
+        }
+
         const mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
         for (int i = 0; i < registry->GetCount(); ++i)
         {
@@ -877,8 +985,42 @@ bool BuildSelfContainedModelMaterials(
         return false;
     }
 
-    // 4. 材质数据块（同目录唯一，或多份时按文件名 hint 指定）
+    // 4. 材质数据块：同样先问索引（同目录唯一，或多份时按文件名 hint 指定），
+    //    空手回退目录扫描 / FileExist 老路径。
     OSString block_path;
+    if (idx_src)
+    {
+        hgl::ManagedArray<hgl::asset::AssetIndexEntry> block_entries;
+        idx_src->FindInDirectory(logical_dir, hgl::asset::AssetType::MaterialData, block_entries);
+        if (material_data_block_hint && material_data_block_hint[0])
+        {
+            const U8String want = logical_dir + U8String(u8"/") +
+                                  hgl::ToU8String(AnsiString(material_data_block_hint));
+            for (int i = 0; i < block_entries.GetCount(); ++i)
+            {
+                if (U8FoldedEqual(block_entries[i]->logical_path, want))
+                {
+                    block_path = idx_root + OS_TEXT("/") +
+                                 hgl::ToOSString(block_entries[i]->physical_path);
+                    break;
+                }
+            }
+        }
+        else if (block_entries.GetCount() == 1)
+        {
+            block_path = idx_root + OS_TEXT("/") +
+                         hgl::ToOSString(block_entries[0]->physical_path);
+        }
+        // 索引命中但文件已不在盘上（陈旧索引）：清空，让磁盘回退给出确定结论。
+        if (!block_path.IsEmpty() && !hgl::filesystem::FileExist(block_path))
+        {
+            MLogWarning(LoadStaticMesh,
+                OS_TEXT("BuildSelfContainedModelMaterials: 索引数据块文件缺失，回退磁盘查勘 ") + block_path);
+            block_path.Clear();
+        }
+    }
+    if (block_path.IsEmpty())
+    {
     if (material_data_block_hint && material_data_block_hint[0])
     {
         block_path = model_dir + OS_TEXT("\\") +
@@ -921,6 +1063,7 @@ bool BuildSelfContainedModelMaterials(
                 + model_dir);
             return false;
         }
+    }
     }
 
     const OSString block_uri = OSString(OS_TEXT("mtldata:file:")) + block_path;
