@@ -304,6 +304,9 @@ add_ecs_test(TestGPUModelExpansionParity tests/TestGPUModelExpansionParity.cpp)
 # 落地T5.3判据：模板实例化的聚合账与 ICB 命令语义（50 实例共享桶组，不碰设备）
 add_ecs_test(TestGPUModelExpansionAggregation tests/TestGPUModelExpansionAggregation.cpp)
 
+# 阶段八判据：10,000 实例复合模型压力测试基准（内存对比/CPU更新加速/ICB命令聚合/GPU展开段吞吐仿真）
+add_ecs_test(TestGPUModelStress tests/TestGPUModelStress.cpp)
+
 # JoltPhysics 物理引擎对接与 ModelCollisionProxyComponent 集成测试
 add_ecs_test(TestJoltPhysicsIntegration tests/TestJoltPhysicsIntegration.cpp
     LIBS Jolt::Jolt)
@@ -668,6 +671,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestGPUModelExpansionAggregation
         PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
+
+    add_test(
+        NAME TestGPUModelStress
+        COMMAND TestGPUModelStress
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestGPUModelStress
+        PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 120)
 
     add_test(
         NAME TestJoltPhysicsIntegration
