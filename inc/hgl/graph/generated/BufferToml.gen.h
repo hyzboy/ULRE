@@ -9,6 +9,7 @@
 #pragma once
 
 #include <toml.hpp>
+#include <hgl/graph/ssbo/InstanceCustomData.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/ubo/AmbientEnvInfo.h>
@@ -189,6 +190,7 @@ namespace hgl::graph::generated
     inline bool ReadModelTemplateRow(const toml::value &table, hgl::graph::ssbo::ModelTemplateRow &out);
     inline bool ReadModelPartRow(const toml::value &table, hgl::graph::ssbo::ModelPartRow &out);
     inline bool ReadModelExpansionArena(const toml::value &table, hgl::graph::ModelExpansionArena &out);
+    inline bool ReadInstanceCustomData(const toml::value &table, hgl::graph::ssbo::InstanceCustomData &out);
     inline toml::value WriteAmbientEnvInfo(const hgl::graph::AmbientEnvInfo &in);
     inline toml::value WriteViewportInfo(const hgl::graph::ViewportInfo &in);
     inline toml::value WriteColorPalette(const hgl::graph::ColorPalette &in);
@@ -205,6 +207,7 @@ namespace hgl::graph::generated
     inline toml::value WriteModelTemplateRow(const hgl::graph::ssbo::ModelTemplateRow &in);
     inline toml::value WriteModelPartRow(const hgl::graph::ssbo::ModelPartRow &in);
     inline toml::value WriteModelExpansionArena(const hgl::graph::ModelExpansionArena &in);
+    inline toml::value WriteInstanceCustomData(const hgl::graph::ssbo::InstanceCustomData &in);
 
     inline bool ReadAmbientEnvInfo(const toml::value &table, hgl::graph::AmbientEnvInfo &out)
     {
@@ -380,6 +383,10 @@ namespace hgl::graph::generated
         if (const toml::value *v = detail::Find(table, "addr_model_part_pool"))
         {
             if (!detail::AsUnsigned(*v, out.addr_model_part_pool)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "addr_instance_custom_data"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_instance_custom_data)) return false;
         }
         if (const toml::value *v = detail::Find(table, "addr_viewport"))
         {
@@ -687,6 +694,21 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.bucket_base_addr)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "custom_data_addr"))
+        {
+            if (!detail::AsUnsigned(*v, out.custom_data_addr)) return false;
+        }
+        return true;
+    }
+
+    inline bool ReadInstanceCustomData(const toml::value &table, hgl::graph::ssbo::InstanceCustomData &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "custom_color"))
+        {
+            if (!detail::AsFloatArray(*v, &out.custom_color.x, 4)) return false;
+        }
         return true;
     }
 
@@ -762,6 +784,7 @@ namespace hgl::graph::generated
         t["addr_color_palette"] = detail::FromInteger(in.addr_color_palette);
         t["addr_model_template_pool"] = detail::FromInteger(in.addr_model_template_pool);
         t["addr_model_part_pool"] = detail::FromInteger(in.addr_model_part_pool);
+        t["addr_instance_custom_data"] = detail::FromInteger(in.addr_instance_custom_data);
         t["addr_viewport"] = detail::FromInteger(in.addr_viewport);
         return toml::value(std::move(t));
     }
@@ -881,6 +904,14 @@ namespace hgl::graph::generated
         t["l2w_row_capacity"] = detail::FromInteger(in.l2w_row_capacity);
         t["bucket_base_count"] = detail::FromInteger(in.bucket_base_count);
         t["bucket_base_addr"] = detail::FromInteger(in.bucket_base_addr);
+        t["custom_data_addr"] = detail::FromInteger(in.custom_data_addr);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteInstanceCustomData(const hgl::graph::ssbo::InstanceCustomData &in)
+    {
+        toml::table t;
+        t["custom_color"] = detail::FromFloatArray(&in.custom_color.x, 4);
         return toml::value(std::move(t));
     }
 

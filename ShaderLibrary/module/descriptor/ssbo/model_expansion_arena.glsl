@@ -17,7 +17,7 @@ struct ModelExpansionArenaData
     uint bucket_base_count;
     uint64_t bucket_base_addr;
     uint64_t reserved1;
-    uint64_t reserved2;
+    uint64_t custom_data_addr;
     uint64_t reserved3;
 };
 

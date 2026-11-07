@@ -80,6 +80,7 @@ layout(push_constant) uniform PushConstants
 #include "module/descriptor/ssbo/model_template_row.glsl"
 #include "module/descriptor/ssbo/model_part_row.glsl"
 #include "module/descriptor/ssbo/model_expansion_arena.glsl"
+#include "module/descriptor/ssbo/instance_custom_data.glsl"
 
 // 行数组本体（与世界 RenderItemBufferRef 同结构、不同索引空间：这里按 EntityID.index）
 #define entity_render_ids RenderItemBufferRef(world_addresses.addr_entity_render_ids).items
@@ -140,6 +141,10 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Mesh
 
 // 展开竞技场（T3.1）：每帧槽一份，CPU 写、GPU 读。
 #define model_expansion_arena ModelExpansionArenaRef(world_addresses.addr_model_expansion).arena
+
+// 实例自定义数据池与输出表（T6.2 / T6.3）
+#define instance_custom_data_pool InstanceCustomDataBufferRef(global_addresses.addr_instance_custom_data).rows
+#define instance_custom_data_out  InstanceCustomDataBufferRef(model_expansion_arena.custom_data_addr).rows
 
 // 实体桶组基址表（T3.1）：下标 = blk * kArenaRowsPerPass + 实体索引（与竞技场扇区同形），
 // 值 = **块内相对**的该实体模板素材桶组首桶号。展开侧落桶号 = 基址 + part.bucket_slot
@@ -364,6 +369,16 @@ bool emit_bucket_instance(const uint blk,
                texture_id,
                entity.shadow_bias_multiplier,
                entity.shadow_receive == 0u ? 1u : 0u);
+
+    if (model_expansion_arena.custom_data_addr != uint64_t(0))
+    {
+        vec4 custom_color = vec4(1.0, 1.0, 1.0, 1.0);
+        if (entity.custom_data_index != 0u && global_addresses.addr_instance_custom_data != uint64_t(0))
+        {
+            custom_color = instance_custom_data_pool[entity.custom_data_index].custom_color;
+        }
+        instance_custom_data_out[inst_row].custom_color = custom_color;
+    }
 
     return true;
 }

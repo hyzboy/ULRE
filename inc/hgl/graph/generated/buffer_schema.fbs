@@ -123,6 +123,7 @@ table GlobalAddresses
   addr_color_palette: ulong;
   addr_model_template_pool: ulong;
   addr_model_part_pool: ulong;
+  addr_instance_custom_data: ulong;
   addr_viewport: ulong;
 }
 
@@ -232,5 +233,12 @@ table ModelExpansionArena
   l2w_row_capacity: uint;
   bucket_base_count: uint;
   bucket_base_addr: ulong;
+  custom_data_addr: ulong;
+}
+
+// inc/hgl/graph/ssbo/InstanceCustomData.h → InstanceCustomData
+table InstanceCustomData
+{
+  custom_color: Float4;
 }
 

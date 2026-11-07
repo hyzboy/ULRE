@@ -139,6 +139,8 @@ namespace hgl::ecs
         SAFE_CLEAR(l2w_out_buffer_);
         SAFE_CLEAR(cmds_out_buffer_);
         SAFE_CLEAR(mtl_out_buffer_);
+        SAFE_CLEAR(custom_data_out_buffer_);
+        custom_data_out_addr_ = 0;
         SAFE_CLEAR(batch_tag_buffer_);
         SAFE_CLEAR(batch_info_buffer_);
         SAFE_CLEAR(batch_counter_buffer_);
@@ -333,6 +335,7 @@ namespace hgl::ecs
         const VkDeviceSize l2w_bytes  = VkDeviceSize(kArenaRows) * sizeof(uint32_t);
         const VkDeviceSize cmds_bytes = VkDeviceSize(kArenaRows) * 8;    // MeshDrawCommand
         const VkDeviceSize mtl_bytes  = VkDeviceSize(kArenaRows) * 16;   // MaterialInstanceAddresses
+        const VkDeviceSize custom_data_bytes = VkDeviceSize(kArenaRows) * 16; // InstanceCustomData (16 B)
 
         const VkBufferUsageFlags gather_usage =
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -354,6 +357,12 @@ namespace hgl::ecs
             graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
         if (!mtl_out_buffer_) return false;
         mtl_out_addr_ = device_->GetBufferDeviceAddressAligned16(mtl_out_buffer_->GetBuffer());
+
+        custom_data_out_buffer_ = device_->CreateBuffer(
+            "GPUCullSystem.CustomDataOut", gather_usage, custom_data_bytes, custom_data_bytes, nullptr,
+            graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+        if (!custom_data_out_buffer_) return false;
+        custom_data_out_addr_ = device_->GetBufferDeviceAddressAligned16(custom_data_out_buffer_->GetBuffer());
 
         // ── T3i（③ 多批）：批标签 / 分区 / 每批计数（按帧槽分份；CPU 只写当前份）──
         // tag = kSlots × 4096 × u32；info = kSlots × kArenaPasses × kBatchBlockStride × 8 B；
@@ -553,6 +562,7 @@ namespace hgl::ecs
         arena.bucket_base_addr = expansion_arena_addr_
                                + uint64_t(slot) * uint64_t(kExpansionSlotBytes)
                                + uint64_t(kExpansionHeaderBytes);
+        arena.custom_data_addr = custom_data_out_addr_;
 
         std::memcpy(base, &arena, sizeof(arena));
 

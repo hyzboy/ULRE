@@ -180,7 +180,7 @@ namespace
         ok = ok && (offsetof(ModelExpansionArena, bucket_base_count) == 12);
         ok = ok && (offsetof(ModelExpansionArena, bucket_base_addr) == 16);
         ok = ok && (offsetof(ModelExpansionArena, reserved1) == 24);
-        ok = ok && (offsetof(ModelExpansionArena, reserved2) == 32);
+        ok = ok && (offsetof(ModelExpansionArena, custom_data_addr) == 32);
 
         // 桶基址表容量必须恰好容纳两个 pass 的整批实体（几何侧同一口径）。
         ok = ok && (kModelExpansionBucketBaseRowsPerPass == 4096u);

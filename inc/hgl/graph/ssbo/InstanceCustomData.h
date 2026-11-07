@@ -25,6 +25,7 @@
 
 #include <hgl/math/VectorTypes.h>
 #include <hgl/CoreType.h>
+#include <hgl/graph/BufferAnnotation.h>
 #include <cstdint>
 
 namespace hgl::graph::ssbo
@@ -36,7 +37,7 @@ namespace hgl::graph::ssbo
      * A = 不透明度乘子（1.0 = 不改变）。后续如需更多逐实例量，**应**在本行内
      * 复用分量或另开表，**不得**扩大本行（16 B 是已声明的跨管线契约）。
      */
-    struct alignas(16) InstanceCustomData
+    struct alignas(16) HGL_SSBO_ROW InstanceCustomData
     {
         math::Vector4f custom_color = math::Vector4f(1.0f, 1.0f, 1.0f, 1.0f); ///< rgb 色调乘子 + a 不透明度乘子
 

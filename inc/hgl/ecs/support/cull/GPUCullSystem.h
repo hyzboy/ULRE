@@ -201,6 +201,10 @@ namespace hgl::ecs
         /// 在同一帧内先后发生，整表清空会抹掉另一个 pass 已登记的基址。
         void ResetModelBucketBases(uint32_t pass_index);
 
+        /// T6.3：实例自定义数据输出缓冲及 GPU 基址（容量 = kArenaRows，16 B/行）
+        graph::DeviceBuffer *GetCustomDataOutBuffer() const { return custom_data_out_buffer_; }
+        uint64_t GetCustomDataOutAddress() const { return custom_data_out_addr_; }
+
         /// 读回可见计数（**仅限对拍台架**，T3g）：生产路径零 CPU 同步 ⇒ 本函数
         /// **不等 GPU**，读到的可能是上一已定帧的值。调用方（CPUCullReferenceSystem）
         /// 必须先 `SyncForParityReadback()` 把队列排到本帧 dispatch 完成，否则读数
@@ -359,6 +363,7 @@ namespace hgl::ecs
         graph::DeviceBuffer *l2w_out_buffer_ = nullptr;
         graph::DeviceBuffer *cmds_out_buffer_ = nullptr;
         graph::DeviceBuffer *mtl_out_buffer_ = nullptr;
+        graph::DeviceBuffer *custom_data_out_buffer_ = nullptr;
 
         // ── 派发资源（T3g：生命周期一次化，修每帧 new 队列/命令缓冲的泄漏）──
         // 队列一份：fence 环深度 = 帧槽数（DeviceQueue::Submit 自动轮转 fence）；
@@ -389,6 +394,7 @@ namespace hgl::ecs
         uint64_t l2w_out_addr_ = 0;    // 形态 B gather 三表地址（push constant 下发用）
         uint64_t cmds_out_addr_ = 0;
         uint64_t mtl_out_addr_ = 0;
+        uint64_t custom_data_out_addr_ = 0;
 
         static constexpr uint32_t kWorkGroupSize = 64;
     };
