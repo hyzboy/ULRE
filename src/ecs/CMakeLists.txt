@@ -289,6 +289,9 @@ add_ecs_test(TestMaterialTextureFallback tests/TestMaterialTextureFallback.cpp)
 # 阶段四判据：包裹取流统一进 LoadedFileManager（索引优先解析、挂载根查询、字节源取流、失败与合并语义）
 add_ecs_test(TestAssetURIByteSource tests/TestAssetURIByteSource.cpp)
 
+# 落地T2判据：GPU 模型引用/批次组件语义 + 动静 TRS 接入约定（不碰设备）
+add_ecs_test(TestGPUModelComponents tests/TestGPUModelComponents.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -612,4 +615,12 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestAssetURIByteSource
         PROPERTIES LABELS "asset;pack;async" TIMEOUT 120)
+
+    add_test(
+        NAME TestGPUModelComponents
+        COMMAND TestGPUModelComponents
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestGPUModelComponents
+        PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
 endif()
