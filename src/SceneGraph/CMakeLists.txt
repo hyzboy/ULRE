@@ -84,6 +84,7 @@ set(SG_MODULE_FILES ${SG_INCLUDE_PATH}/module/GraphModule.h
                     ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                     ${SG_INCLUDE_PATH}/module/SwapchainModule.h
                     ${SG_INCLUDE_PATH}/module/TextureManager.h
+                    ${SG_INCLUDE_PATH}/module/GpuUploadTask.h
                     ${SG_INCLUDE_PATH}/module/TextureUploadTask.h
                     ${SG_INCLUDE_PATH}/module/TextureUploadQueue.h
                     ${SG_INCLUDE_PATH}/module/TextureLoadCommitter.h
