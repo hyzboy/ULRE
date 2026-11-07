@@ -364,6 +364,56 @@ namespace
         lane.Shutdown(nullptr, nullptr, nullptr);
         texture_manager.Release();
     }
+
+    // ── 8. 去重认同一文件的不同写法 ───────────────────────────────────────
+    //    场景里同步装载用的是绝对路径（`GetCurrentPath` 拼出来的），而车道枚举
+    //    给的是相对路径、分隔符还各写各的；「按路径去重」必须认得出是同一个文件，
+    //    否则门禁白等一轮、注册表再按重名拒一遍。
+    void TestPathFormEquivalence()
+    {
+        MaterialAsyncLoadLane lane;
+        Check(lane.EnsureStarted(2), "路径写法用例：启动");
+
+        MaterialRecipeRegistry recipes;
+        MaterialDataBlockRegistry blocks;
+        hgl::graph::TextureManager texture_manager(nullptr);
+
+        lane.SetDedupRegistries(&recipes, &blocks);
+
+        const OSString rel = TempPath("recipe/base.recipe.toml");
+        Check(lane.BeginRecipeFile(rel), "路径写法用例：相对路径投递");
+
+        // 在途阶段换成另一种写法：反斜杠相对路径（`BeginRecipeFile` 对重复投递仍返回
+        // 成功，所以这里看投递计数会不会涨）
+        OSString backslash = rel;
+        for (int i = 0; i < backslash.Length(); ++i)
+            if (backslash[i] == OS_TEXT('/'))
+                backslash[i] = OS_TEXT('\\');
+
+        const int inflight_submitted = lane.GetSubmittedRecipeCount();
+        Check(lane.BeginRecipeFile(backslash), "路径写法用例：在途时换分隔符仍返回成功");
+        Check(lane.GetSubmittedRecipeCount() == inflight_submitted,
+              "路径写法用例：在途时换分隔符不重复投递");
+
+        Check(PumpUntilIdle(lane, &recipes, &blocks, &texture_manager),
+              "路径写法用例：追平");
+        Check(recipes.GetCount() == 1, "路径写法用例：入库一份");
+
+        // 落地后换绝对路径写法：仍应命中注册表
+        OSString cwd;
+        Check(hgl::filesystem::GetCurrentPath(cwd), "路径写法用例：取当前目录");
+        const OSString abs = hgl::filesystem::JoinPathWithFilename(cwd, rel);
+
+        const int skipped_before = lane.GetSkippedCount();
+        const int submitted_before = lane.GetSubmittedRecipeCount();
+        Check(lane.BeginRecipeFile(abs), "路径写法用例：绝对路径视为已就位");
+        Check(lane.GetSubmittedRecipeCount() == submitted_before,
+              "路径写法用例：绝对路径不重复投递");
+        Check(lane.GetSkippedCount() == skipped_before + 1, "路径写法用例：计入跳过");
+
+        lane.Shutdown(&recipes, &blocks, &texture_manager);
+        texture_manager.Release();
+    }
 }
 
 int main()
@@ -382,6 +432,7 @@ int main()
     TestShutdownWithoutRegistry();
     TestRestartAfterShutdown();
     TestDedup();
+    TestPathFormEquivalence();
 
     if (g_fail > 0 || g_pass == 0)
     {

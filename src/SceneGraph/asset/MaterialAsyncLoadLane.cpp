@@ -1,6 +1,7 @@
 #include <hgl/graph/asset/MaterialAsyncLoadLane.h>
 
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
+#include <hgl/graph/asset/AssetPathKey.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 
@@ -157,8 +158,10 @@ namespace hgl::graph::mtl
 
     bool MaterialAsyncLoadLane::IsInFlight(const OSString &path) const
     {
+        const OSString key = MakeAssetPathKey(path);
+
         for (int i = 0; i < in_flight.GetCount(); ++i)
-            if (*in_flight.At(i) == path)
+            if (*in_flight.At(i) == key)
                 return true;
 
         return false;
@@ -166,7 +169,7 @@ namespace hgl::graph::mtl
 
     void MaterialAsyncLoadLane::MarkInFlight(const OSString &path)
     {
-        in_flight.Create(path);
+        in_flight.Create(MakeAssetPathKey(path));
     }
 
     void MaterialAsyncLoadLane::ClearInFlightWhenIdle()

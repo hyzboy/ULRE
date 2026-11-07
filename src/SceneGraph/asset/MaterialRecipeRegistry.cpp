@@ -6,6 +6,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/graph/asset/TextureAsset.h>
+#include <hgl/graph/asset/AssetPathKey.h>
 #include <hgl/graph/asset/TextureURI.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/io/FileInputStream.h>
@@ -538,11 +539,14 @@ namespace hgl::graph::mtl
         if (path.IsEmpty())
             return nullptr;
 
+        // 相对 / 绝对、分隔符写法都可能不同：折成比较键再比（见 AssetPathKey.h）
+        const OSString key = MakeAssetPathKey(path);
+
         for (int i = 0; i < files.GetCount(); ++i)
         {
             const MaterialRecipeAsset *asset = files[i];
             if (asset && !asset->GetSourcePath().IsEmpty()
-             && asset->GetSourcePath() == path)
+             && MakeAssetPathKey(asset->GetSourcePath()) == key)
                 return asset;
         }
         return nullptr;

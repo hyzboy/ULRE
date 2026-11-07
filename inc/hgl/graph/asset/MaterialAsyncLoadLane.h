@@ -151,10 +151,10 @@ namespace hgl::graph::mtl
         /// 递归扫描目录，把其中所有数据块文件投给工作线程；返回投递数，`<0` 失败
         int BeginDataBlockDirectory(const OSString &directory);
 
-        /// 单个配方文件
+        /// 单个配方文件；已落地 / 已在途也算成功（「已就位」），不去重时才会重投
         bool BeginRecipeFile(const OSString &path);
 
-        /// 单个数据块文件
+        /// 单个数据块文件；语义同 BeginRecipeFile
         bool BeginDataBlockFile(const OSString &path);
 
         // ── 提交（主线程，微秒级）────────────────────────────────────────
