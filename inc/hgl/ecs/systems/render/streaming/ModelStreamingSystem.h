@@ -36,14 +36,15 @@ namespace hgl::ecs
      * 由 `ModelAsset` 句柄完成；本系统只负责**推动**：读盘、解析、逐帧结算，
      * 全部发生在主线程，任何一帧都不阻塞。
      *
-     * ## 每帧三段（相位固定为 `ExecutionPhase::RenderPreBeginFrame`）
+     * ## 每帧固定相位（`ExecutionPhase::RenderPreBeginFrame`）
      *
      * ```text
      * ① LoadedFileManager::Pump()   派发上一帧完成的读盘（字节落到句柄自己的缓冲）
      * ② PumpPackReads()             取回 CPU 池完成的包裹取流任务（Tier 2 → Tier 3）
-     * ③ AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的取流
-     * ④ Advance()                   推进每个句柄：建计划 ⇒ 解析产物 ⇒ 逐帧结算 ⇒ 提交
-     * ⑤ LoadedFileManager::Collect() 回收已归零的文件引用
+     * ③ PumpMaterialLane()          把材质车道里解析好的配方提交进配方表（微秒级）
+     * ④ AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的取流
+     * ⑤ Advance()                   推进每个句柄：建计划 ⇒ 扇出配方 ⇒ 解析产物 ⇒ 结算 ⇒ 提交
+     * ⑥ LoadedFileManager::Collect() 回收已归零的文件引用
      * ```
      *
      * ## 两条取流通道
@@ -102,6 +103,14 @@ namespace hgl::ecs
             /// 几何文件的基准目录；空则取模型包所在目录
             OSString base_dir;
 
+            /**
+             * 装载前门禁：模型包字节到齐、解析产物生成之前，先把场景目录里的
+             * 配方（`*.recipe.toml`）与材质数据块投给材质车道，等车道空闲再 `Build()`。
+             *
+             * 关掉它 ⇒ 配方由调用方自己先同步装好（历史行为）。
+             */
+            bool preload_scene_recipes = true;
+
             bool valid = false;
         };
 
@@ -129,6 +138,7 @@ namespace hgl::ecs
             asset::AssetCPUTask *pack_task = nullptr;
 
             bool plan_built    = false;             ///<计划单已生成并登记到句柄
+            bool material_fanout = false;           ///<配方已扇出给材质车道（一次性）
             bool content_built = false;             ///<解析产物已生成
             bool settled       = false;             ///<子项已全部结算（或无需结算）
         };
@@ -143,6 +153,12 @@ namespace hgl::ecs
 
         /// 取回已完成的包裹取流任务，把字节落进对应句柄（Tier 3 的主线程侧）
         void PumpPackReads();
+
+        /// 把材质车道里已解析完的配方 / 数据块提交进表（微秒级）
+        void PumpMaterialLane();
+
+        /// 把场景目录的配方 + 数据块整目录投给材质车道（每个句柄只做一次）
+        void FanOutMaterialDeps(AssetStream *stream);
 
         /// 关停 CPU 取流池并回收所有在途任务
         void StopPackPool();

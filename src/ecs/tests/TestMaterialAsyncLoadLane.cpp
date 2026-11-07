@@ -306,6 +306,64 @@ namespace
         texture_manager.Release();
         lane.Shutdown(&recipes, nullptr, &texture_manager);
     }
+
+    // ── 7. 去重：表里已有 / 已在途 ────────────────────────────────────────
+    void TestDedup()
+    {
+        MaterialAsyncLoadLane lane;
+        Check(lane.EnsureStarted(2), "去重用例：启动");
+
+        MaterialRecipeRegistry recipes;
+        MaterialDataBlockRegistry blocks;
+        hgl::graph::TextureManager texture_manager(nullptr);
+
+        lane.SetDedupRegistries(&recipes, &blocks);
+
+        const int first = lane.BeginRecipeDirectory(TempPath("recipe"));
+        Check(first == 2, "去重用例：首轮投递两份");
+
+        // 在途重复投递：同一帧里多个流扇出同一个目录
+        const int inflight_submitted = lane.GetSubmittedRecipeCount();
+        Check(lane.BeginRecipeDirectory(TempPath("recipe")) == 0, "去重用例：在途目录重投为 0");
+        Check(lane.GetSubmittedRecipeCount() == inflight_submitted,
+              "去重用例：在途重投不增加投递计数");
+        Check(lane.GetSkippedCount() == 2, "去重用例：在途重投计入跳过");
+
+        Check(PumpUntilIdle(lane, &recipes, &blocks, &texture_manager),
+              "去重用例：首轮追平");
+        Check(recipes.GetCount() == 2, "去重用例：两份配方进表");
+
+        // 落地后再投递：注册表里已有 ⇒ 全部跳过
+        const int skipped_before = lane.GetSkippedCount();
+        const int submitted_before = lane.GetSubmittedRecipeCount();
+        Check(lane.BeginRecipeDirectory(TempPath("recipe")) == 0, "去重用例：落地目录重投为 0");
+        Check(lane.GetSubmittedRecipeCount() == submitted_before,
+              "去重用例：落地重投不增加投递计数");
+        Check(lane.GetSkippedCount() == skipped_before + 2, "去重用例：落地重投计入跳过");
+        Check(lane.IsIdle(), "去重用例：全部跳过时车道仍空闲");
+
+        // 数据块同理
+        const int data_first = lane.BeginDataBlockDirectory(TempPath("data"));
+        Check(data_first == 2, "去重用例：数据块首轮投递两份");
+        Check(PumpUntilIdle(lane, &recipes, &blocks, &texture_manager),
+              "去重用例：数据块追平");
+        Check(lane.BeginDataBlockDirectory(TempPath("data")) == 0,
+              "去重用例：数据块落地重投为 0");
+        Check(blocks.GetCount() == 2, "去重用例：数据块未重复建句柄");
+        Check(lane.GetSkippedCount() == skipped_before + 4, "去重用例：跳过累计");
+
+        // 关掉去重（等价于没有注入注册表）后应恢复重复投递
+        lane.SetDedupRegistries(nullptr, nullptr);
+        const int no_dedup_skipped = lane.GetSkippedCount();
+        Check(lane.BeginRecipeDirectory(TempPath("recipe")) == 2,
+              "去重用例：关掉注册表后重投两份");
+        Check(lane.GetSkippedCount() == no_dedup_skipped, "去重用例：关掉注册表不产生跳过");
+
+        // 末尾这批重复投递不再提交进表（注册表会按重名拒绝）：
+        // 收尾直接不带注册表，只验证「投递计数确实涨了」。
+        lane.Shutdown(nullptr, nullptr, nullptr);
+        texture_manager.Release();
+    }
 }
 
 int main()
@@ -323,6 +381,7 @@ int main()
     TestShutdownKeepsFinishedWork();
     TestShutdownWithoutRegistry();
     TestRestartAfterShutdown();
+    TestDedup();
 
     if (g_fail > 0 || g_pass == 0)
     {

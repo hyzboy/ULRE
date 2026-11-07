@@ -71,6 +71,11 @@ namespace hgl::graph
             }
 
             material_async_lane_ = created;
+
+            // 车道只在「表里没有」时才投递：调用方常会先同步装一遍配方目录，
+            // 没有去重就会把同一批配方在后台再解析一遍。
+            material_async_lane_->SetDedupRegistries(&material_recipe_registry_,
+                                                     &material_data_block_registry_);
         }
 
         return material_async_lane_;

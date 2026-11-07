@@ -4,11 +4,13 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/graph/asset/PackReadTask.h>
+#include<hgl/graph/asset/MaterialAsyncLoadLane.h>
 #include<hgl/asset/AssetCPUTaskPool.h>
 #include<hgl/graph/asset/ModelLoadPlan.h>
 #include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/asset/LoadedFileManager.h>
 #include<hgl/asset/LoadedFileHandler.h>
+#include<hgl/filesystem/Path.h>
 #include<hgl/log/Log.h>
 #include<hgl/utf.h>
 
@@ -190,6 +192,60 @@ namespace hgl::ecs
             delete task;
             pack_pending.DeleteSwap(i);
         }
+    }
+
+    void ModelStreamingSystem::PumpMaterialLane()
+    {
+        if (!context)
+            return;
+
+        if (graph::GraphicsContext *gc = context->GetGraphicsContext())
+            gc->PumpMaterialAsyncLoadLane();
+    }
+
+    void ModelStreamingSystem::FanOutMaterialDeps(AssetStream *stream)
+    {
+        stream->material_fanout = true;
+
+        if (!context || !stream || !stream->asset)
+            return;
+
+        graph::GraphicsContext *gc = context->GetGraphicsContext();
+
+        if (!gc)
+            return;
+
+        // 场景目录：优先取调用方给的基准目录，否则退到模型包所在目录。
+        OSString scene_dir = settings.base_dir;
+
+        if (scene_dir.IsEmpty())
+        {
+            const OSString &pack_path = stream->request.GetPackPath();
+
+            // 包裹 / 身份寻址下 `pack_path` 不是磁盘路径（甚至为空），没有
+            // 「同目录」这个概念：枚举要靠包裹索引，不在本门禁的职责里。
+            if (pack_path.IsEmpty())
+                return;
+
+            scene_dir = filesystem::Path(pack_path).GetParent().ToOSString();
+        }
+
+        if (scene_dir.IsEmpty())
+            return;
+
+        graph::mtl::MaterialAsyncLoadLane *lane = gc->GetMaterialAsyncLoadLane();
+
+        if (!lane)
+            return;             ///< 起不了线程 ⇒ 退回同步装载，行为与门禁之前一致
+
+        // 车道自带去重：表里已有的配方 / 数据块不会再解析一遍，所以调用方
+        // 「先同步装一遍配方」的老写法与这里的扇出可以共存。
+        const int recipes = lane->BeginRecipeDirectory(scene_dir);
+
+        lane->BeginDataBlockDirectory(scene_dir);
+
+        GLogDebug(u8"[ModelStreaming] 配方扇出：dir=%ls recipes=%d",
+                  scene_dir.c_str(), recipes);
     }
 
     void ModelStreamingSystem::SetBuildSettings(const graph::GeometryVertexFormat &gvf,
@@ -479,6 +535,11 @@ namespace hgl::ecs
             asset->SetPlan(plan, stream->request.GetPackPath());
 
             state = asset->GetState();
+
+            // 字节已在手、目录已知：趁主线程还在建产物，把配方目录投给工作线程，
+            // 让解析与下面这一段重叠，而不是等 `Build()` 时再同步扫盘。
+            if (settings.preload_scene_recipes && !stream->material_fanout)
+                FanOutMaterialDeps(stream);
         }
 
         // ── 阶段 B-2：解析产物（图元 + 节点树） ───────────────────────────────
@@ -486,6 +547,16 @@ namespace hgl::ecs
         {
             if (state == graph::ModelAssetState::Failed)
                 return true;
+
+            // 配方门禁：等场景目录的配方在后台落地。`Build()` 之后紧接着的材质
+            // 装配（`FindOrLoadMaterialRecipe` / 目录扫描回退）就全部命中表，
+            // 主线程上不再出现整目录扫盘。
+            //
+            // 车道起不了 / 目录不可枚举 / 调用方关掉预载时这一步立刻放行。
+            if (settings.preload_scene_recipes && context)
+                if (graph::GraphicsContext *gc = context->GetGraphicsContext())
+                    if (gc->IsMaterialAsyncLoadPending())
+                        return false;
 
             graph::ModelAssetRegistry *registry = asset->GetRegistry();
             graph::ModelAssetContent  &content  = asset->GetMutableContent();
@@ -574,9 +645,10 @@ namespace hgl::ecs
         load_manager->Pump();       ///< ① 派发读盘完成回调（字节落进各句柄的缓冲）
         PruneStreams();             ///< ② 丢掉注册表已清掉的句柄（防悬垂）
         PumpPackReads();            ///< ③ 取回 CPU 池的包裹取流成品
-        AcquireOneFrame();          ///< ④ 提交本帧该发起的取流
-        Advance();                  ///< ⑤ 推进状态机
-        load_manager->Collect();    ///< ⑥ 回收已归零的文件引用
+        PumpMaterialLane();         ///< ④ 把材质车道解析好的配方提交进表
+        AcquireOneFrame();          ///< ⑤ 提交本帧该发起的取流
+        Advance();                  ///< ⑥ 推进状态机（含配方门禁）
+        load_manager->Collect();    ///< ⑦ 回收已归零的文件引用
     }
 
     int ModelStreamingSystem::GetReadyModelCount()const

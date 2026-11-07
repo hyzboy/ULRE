@@ -31,6 +31,18 @@
  * 的配方整目录投给车道，`Build()` 等车道空闲再执行 —— 这样 `Build()` 里的
  * `FindOrLoadMaterialRecipe()` 不会再触发一次同步整目录扫描。
  *
+ * ── 去重 ─────────────────────────────────────────────────────────────────
+ *
+ * 门禁是「整目录」粒度的，而调用方很常见的写法是**先同步把配方目录装一遍**，
+ * 再请求场景（示例代码就是这么做的）。为了不把同一批文件重复解析，车道维护
+ * 两层去重：
+ *
+ * - 落地去重：`SetDedupRegistries()` 注入的注册表里已有同名路径 ⇒ 跳过；
+ * - 在途去重：本次扇出已投递、还没 `Pump()` 落地的路径 ⇒ 跳过。
+ *
+ * `BeginRecipeDirectory()` / `BeginDataBlockDirectory()` 的返回值是**真正投出去**
+ * 的数量（跳过的不算），调用方可据此判断要不要等门禁。
+ *
  * ── 线程约定 ─────────────────────────────────────────────────────────────
  *
  * 所有方法都**只能在主线程**调用（注册表无并发保护）。
@@ -72,14 +84,42 @@ namespace hgl::graph::mtl
         MaterialAsyncCompiler        *compiler = nullptr;
         bool                          owns_pool = false;
 
+        /// 去重用的注册表（可空 ⇒ 不去重）。由持有者 `GraphicsContext` 注入。
+        MaterialRecipeRegistry    *dedup_recipes = nullptr;
+        MaterialDataBlockRegistry *dedup_blocks  = nullptr;
+
+        /// 已投递、尚未落地的文件：同一文件在途时再投就是白跑一遍解析
+        hgl::ManagedArray<OSString> in_flight;
+
         int submitted_recipes = 0;      ///< 累计投递的配方数
         int submitted_blocks  = 0;      ///< 累计投递的数据块数
         int pumped_commits    = 0;      ///< 累计提交成功的句柄数
+        int skipped_existing  = 0;      ///< 因「表里已有 / 已在途」而跳过的文件数
+
+        bool IsInFlight(const OSString &path) const;
+        void MarkInFlight(const OSString &path);
+        void ClearInFlightWhenIdle();
 
     public:
 
         MaterialAsyncLoadLane() = default;
         ~MaterialAsyncLoadLane();
+
+        /**
+         * @brief 注入去重注册表：表里已经有的、或已在途的文件不再投递。
+         *
+         * 为什么必须有：调用方常会「先同步把配方目录装一遍，再请求场景」。没有
+         * 去重的话，装载前门禁会把同一批配方再解析一遍 —— 白烧两个线程、白建
+         * 一批重名句柄（注册表按重名拒绝，日志里全是噪音）。
+         *
+         * @note 指针不持有所有权；注册表必须比车道活得久（`Shutdown` 要在 `Clear()` 之前）。
+         */
+        void SetDedupRegistries(MaterialRecipeRegistry *recipes,
+                                MaterialDataBlockRegistry *blocks)
+        {
+            dedup_recipes = recipes;
+            dedup_blocks  = blocks;
+        }
 
         /**
          * @brief 懒启动：建池 + 挂编译器（幂等）。
@@ -138,6 +178,7 @@ namespace hgl::graph::mtl
         int GetSubmittedRecipeCount() const { return submitted_recipes; }
         int GetSubmittedDataBlockCount() const { return submitted_blocks; }
         int GetPumpedCommitCount() const { return pumped_commits; }
+        int GetSkippedCount() const { return skipped_existing; }
         int GetFailedCount() const;
     };//class MaterialAsyncLoadLane
 }//namespace hgl::graph::mtl

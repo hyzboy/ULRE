@@ -7,6 +7,8 @@
 #include <hgl/asset/AssetCPUTaskPool.h>
 #include <hgl/log/Log.h>
 
+#include <hgl/filesystem/FileSystem.h>
+
 #include <hgl/thread/ShutdownMode.h>
 
 namespace hgl::graph::mtl
@@ -95,12 +97,30 @@ namespace hgl::graph::mtl
         if (!EnsureStarted())
             return -1;
 
-        const int submitted = compiler->SubmitRecipeDirectoryFiles(directory);
+        hgl::ValueArray<hgl::filesystem::FileInfo> list;
 
-        if (submitted > 0)
-            submitted_recipes += submitted;
+        if (hgl::filesystem::GetFileInfoList(list, directory, false, true, true) < 0)
+            return -1;
 
-        return submitted;
+        const int before = submitted_recipes;
+
+        for (int i = 0; i < list.GetCount(); ++i)
+        {
+            const hgl::filesystem::FileInfo &file = list[i];
+
+            if (!file.is_file)
+                continue;
+
+            const hgl::OSString name(file.name);
+
+            if (!name.EndsWith(OS_TEXT(".recipe.toml")))
+                continue;
+
+            BeginRecipeFile(hgl::OSString(file.fullname));
+        }
+
+        // 只报「真的投出去」的数量：被去重跳过的文件不算（调用方用它判断门禁要不要等）
+        return submitted_recipes - before;
     }
 
     int MaterialAsyncLoadLane::BeginDataBlockDirectory(const OSString &directory)
@@ -108,12 +128,51 @@ namespace hgl::graph::mtl
         if (!EnsureStarted())
             return -1;
 
-        const int submitted = compiler->SubmitDataBlockDirectoryFiles(directory);
+        hgl::ValueArray<hgl::filesystem::FileInfo> list;
 
-        if (submitted > 0)
-            submitted_blocks += submitted;
+        if (hgl::filesystem::GetFileInfoList(list, directory, false, true, true) < 0)
+            return -1;
 
-        return submitted;
+        const int before = submitted_blocks;
+
+        for (int i = 0; i < list.GetCount(); ++i)
+        {
+            const hgl::filesystem::FileInfo &file = list[i];
+
+            if (!file.is_file)
+                continue;
+
+            const hgl::OSString name(file.name);
+
+            if (!name.EndsWith(OS_TEXT(".material_data.toml"))
+             && !name.EndsWith(OS_TEXT(".mdb"))
+             && !name.EndsWith(OS_TEXT(".fb")))
+                continue;
+
+            BeginDataBlockFile(hgl::OSString(file.fullname));
+        }
+
+        return submitted_blocks - before;
+    }
+
+    bool MaterialAsyncLoadLane::IsInFlight(const OSString &path) const
+    {
+        for (int i = 0; i < in_flight.GetCount(); ++i)
+            if (*in_flight.At(i) == path)
+                return true;
+
+        return false;
+    }
+
+    void MaterialAsyncLoadLane::MarkInFlight(const OSString &path)
+    {
+        in_flight.Create(path);
+    }
+
+    void MaterialAsyncLoadLane::ClearInFlightWhenIdle()
+    {
+        if (IsIdle())
+            in_flight.Clear();
     }
 
     bool MaterialAsyncLoadLane::BeginRecipeFile(const OSString &path)
@@ -121,9 +180,23 @@ namespace hgl::graph::mtl
         if (!EnsureStarted())
             return false;
 
+        // 已经落地过 ⇒ 视为已就位（不是失败）
+        if (dedup_recipes && dedup_recipes->FindAssetByPath(path))
+        {
+            ++skipped_existing;
+            return true;
+        }
+
+        if (IsInFlight(path))
+        {
+            ++skipped_existing;
+            return true;
+        }
+
         if (!compiler->SubmitRecipeFile(path))
             return false;
 
+        MarkInFlight(path);
         ++submitted_recipes;
         return true;
     }
@@ -133,9 +206,22 @@ namespace hgl::graph::mtl
         if (!EnsureStarted())
             return false;
 
+        if (dedup_blocks && dedup_blocks->FindAssetByPath(path))
+        {
+            ++skipped_existing;
+            return true;
+        }
+
+        if (IsInFlight(path))
+        {
+            ++skipped_existing;
+            return true;
+        }
+
         if (!compiler->SubmitDataBlockFile(path))
             return false;
 
+        MarkInFlight(path);
         ++submitted_blocks;
         return true;
     }
@@ -151,6 +237,8 @@ namespace hgl::graph::mtl
 
         if (committed > 0)
             pumped_commits += committed;
+
+        ClearInFlightWhenIdle();
 
         return committed;
     }
