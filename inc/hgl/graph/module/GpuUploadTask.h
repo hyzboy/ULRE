@@ -83,6 +83,7 @@ namespace hgl::graph
         DeviceBuffer *      staging_buffer   = nullptr;      // DMA 路径的暂存缓冲（非环形时由任务持有）
         VkDeviceSize        staging_bytes    = 0;
         bool                is_ring_staging  = false;        // 是否使用共享环形 Staging 缓冲
+        bool                owns_staging     = true;         // 完成时是否由任务销毁 staging_buffer（共享 Staging 置 false）
         VkDeviceSize        ring_offset      = 0;            // 环形/直通缓冲内的起始偏移
 
         Fence *             fence            = nullptr;      // 同步栅栏
@@ -109,7 +110,7 @@ namespace hgl::graph
         {
             if (staging_buffer)
             {
-                if (!is_ring_staging)
+                if (!is_ring_staging && owns_staging)
                     delete staging_buffer;
                 staging_buffer = nullptr;
             }

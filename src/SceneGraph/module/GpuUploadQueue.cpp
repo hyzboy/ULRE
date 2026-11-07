@@ -1,4 +1,4 @@
-#include <hgl/graph/module/TextureUploadQueue.h>
+#include <hgl/graph/module/GpuUploadQueue.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKQueue.h>
 #include <hgl/vk/VKCommandBuffer.h>
@@ -228,13 +228,13 @@ namespace hgl::graph
         bool          IsInitialized() const { return buffer_ != nullptr; }
     };
 
-    TextureUploadQueue::TextureUploadQueue(VulkanDevice *device)
+    GpuUploadQueue::GpuUploadQueue(VulkanDevice *device)
         : device_(device)
     {
         EnsureResources();
     }
 
-    TextureUploadQueue::~TextureUploadQueue()
+    GpuUploadQueue::~GpuUploadQueue()
     {
         if (device_)
             device_->WaitIdle();
@@ -271,7 +271,7 @@ namespace hgl::graph
         all_tasks_.Clear();
     }
 
-    void TextureUploadQueue::EnsureResources()
+    void GpuUploadQueue::EnsureResources()
     {
         if (!device_)
             return;
@@ -289,27 +289,27 @@ namespace hgl::graph
 
         if (!transfer_queue_)
         {
-            transfer_queue_ = device_->CreateTransferQueue("TextureUploadTransferQueue", 2);
+            transfer_queue_ = device_->CreateTransferQueue("GpuUploadTransferQueue", 2);
         }
         if (!transfer_cmd_buf_)
         {
-            transfer_cmd_buf_ = device_->CreateTransferTextureCommandBuffer("TextureUploadTransferCmdBuf");
+            transfer_cmd_buf_ = device_->CreateTransferTextureCommandBuffer("GpuUploadTransferCmdBuf");
         }
         if (!graphics_queue_)
         {
-            graphics_queue_ = device_->CreateQueue("TextureUploadGraphicsQueue", 2);
+            graphics_queue_ = device_->CreateQueue("GpuUploadGraphicsQueue", 2);
         }
         if (!graphics_cmd_buf_)
         {
-            graphics_cmd_buf_ = device_->CreateTextureCommandBuffer("TextureUploadGraphicsCmdBuf");
+            graphics_cmd_buf_ = device_->CreateTextureCommandBuffer("GpuUploadGraphicsCmdBuf");
         }
         if (!upload_lane_)
         {
-            upload_lane_ = device_->CreateTimelineSemaphore("TextureUploadLane");
+            upload_lane_ = device_->CreateTimelineSemaphore("GpuUploadLane");
         }
     }
 
-    uint64_t TextureUploadQueue::Enqueue(TextureUploadTask *task)
+    uint64_t GpuUploadQueue::Enqueue(GpuUploadTask *task)
     {
         if (!task)
             return 0;
@@ -323,7 +323,13 @@ namespace hgl::graph
         // 自动判定后端（仅在 GPU 专用 Transfer DMA 与 Graphics DMA 之间选择）
         if (task->backend == UploadBackendType::Auto)
         {
-            if (device_ && device_->GetTransferFamilyIndex() != VK_QUEUE_FAMILY_IGNORED &&
+            if (task->kind == GpuUploadKind::BufferToBuffer)
+            {
+                // 纯字节拷贝无需 Blit：有专用 Transfer 队列就走 DMA，否则回落 Graphics 队列
+                task->backend = (device_ && device_->GetTransferFamilyIndex() != VK_QUEUE_FAMILY_IGNORED)
+                    ? UploadBackendType::GpuTransferDma : UploadBackendType::GpuGraphicsDma;
+            }
+            else if (device_ && device_->GetTransferFamilyIndex() != VK_QUEUE_FAMILY_IGNORED &&
                 !task->auto_mipmaps && task->priority != UploadPriority::Immediate)
             {
                 task->backend = UploadBackendType::GpuTransferDma;
@@ -347,15 +353,15 @@ namespace hgl::graph
         return task_id;
     }
 
-    bool TextureUploadQueue::CancelUpload(uint64_t task_id)
+    bool GpuUploadQueue::CancelUpload(uint64_t task_id)
     {
         MutexLock lock(&mutex_);
 
-        TextureUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
+        GpuUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
         if (!task_ptr || !*task_ptr)
             return false;
 
-        TextureUploadTask *task = *task_ptr;
+        GpuUploadTask *task = *task_ptr;
         if (task->state == UploadTaskState::Queued)
         {
             task->state = UploadTaskState::Cancelled;
@@ -370,10 +376,10 @@ namespace hgl::graph
         return false;
     }
 
-    UploadTaskState TextureUploadQueue::GetTaskState(uint64_t task_id)
+    UploadTaskState GpuUploadQueue::GetTaskState(uint64_t task_id)
     {
         MutexLock lock(&mutex_);
-        TextureUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
+        GpuUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
         if (task_ptr && *task_ptr)
             return (*task_ptr)->state;
 
@@ -383,16 +389,16 @@ namespace hgl::graph
         return UploadTaskState::Cancelled;
     }
 
-    TextureUploadTask *TextureUploadQueue::FindTask(uint64_t task_id)
+    GpuUploadTask *GpuUploadQueue::FindTask(uint64_t task_id)
     {
         MutexLock lock(&mutex_);
-        TextureUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
+        GpuUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
         return task_ptr ? *task_ptr : nullptr;
     }
 
-    void TextureUploadQueue::WaitTask(uint64_t task_id)
+    void GpuUploadQueue::WaitTask(uint64_t task_id)
     {
-        TextureUploadTask *task = FindTask(task_id);
+        GpuUploadTask *task = FindTask(task_id);
         if (!task)
             return;
 
@@ -417,13 +423,13 @@ namespace hgl::graph
             {
                 if(!transfer_queue_)
                 {
-                    LogError(u8"[TextureUploadQueue] CompleteTask has no transfer queue for in-flight task=%llu",
+                    LogError(u8"[GpuUploadQueue] CompleteTask has no transfer queue for in-flight task=%llu",
                              static_cast<unsigned long long>(task->task_id));
                     return;
                 }
                 if(!transfer_queue_->WaitLastSubmitFence()&&!transfer_queue_->WaitQueue())
                 {
-                    LogError(u8"[TextureUploadQueue] CompleteTask could not drain transfer queue task=%llu",
+                    LogError(u8"[GpuUploadQueue] CompleteTask could not drain transfer queue task=%llu",
                              static_cast<unsigned long long>(task->task_id));
                     return;
                 }
@@ -432,14 +438,14 @@ namespace hgl::graph
             {
                 if(!graphics_queue_->WaitLastSubmitFence()&&!graphics_queue_->WaitQueue())
                 {
-                    LogError(u8"[TextureUploadQueue] CompleteTask could not drain graphics queue task=%llu",
+                    LogError(u8"[GpuUploadQueue] CompleteTask could not drain graphics queue task=%llu",
                              static_cast<unsigned long long>(task->task_id));
                     return;
                 }
             }
             else
             {
-                LogError(u8"[TextureUploadQueue] CompleteTask has no queue for in-flight task=%llu",
+                LogError(u8"[GpuUploadQueue] CompleteTask has no queue for in-flight task=%llu",
                          static_cast<unsigned long long>(task->task_id));
                 return;
             }
@@ -447,7 +453,7 @@ namespace hgl::graph
             if (task->staging_buffer)
             {
                 current_staging_bytes_ -= task->staging_bytes;
-                if (!task->is_ring_staging)
+                if (!task->is_ring_staging && task->owns_staging)
                     delete task->staging_buffer;
                 task->staging_buffer = nullptr;
             }
@@ -466,10 +472,14 @@ namespace hgl::graph
         }
     }
 
-    bool TextureUploadQueue::DispatchTask(TextureUploadTask *task)
+    bool GpuUploadQueue::DispatchTask(GpuUploadTask *task)
     {
         if (!task)
             return false;
+
+        // 缓冲支路（几何/SSBO 等原始字节）与载荷无关，统一走 CopyBuffer 派发
+        if (task->kind == GpuUploadKind::BufferToBuffer)
+            return DispatchBufferToBuffer(task);
 
         switch (task->backend)
         {
@@ -481,7 +491,7 @@ namespace hgl::graph
         }
     }
 
-    bool TextureUploadQueue::DispatchGpuTransferDma(TextureUploadTask *task)
+    bool GpuUploadQueue::DispatchGpuTransferDma(GpuUploadTask *task)
     {
         if (!task || !task->tci || !task->target_texture || !device_)
             return false;
@@ -490,12 +500,12 @@ namespace hgl::graph
 
         if(!transfer_queue_||!transfer_cmd_buf_)
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma missing queue or command buffer");
+            LogError(u8"[GpuUploadQueue] GpuTransferDma missing queue or command buffer");
             return false;
         }
         if(!transfer_queue_->WaitLastSubmitFence())
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma prior submission is still in flight");
+            LogError(u8"[GpuUploadQueue] GpuTransferDma prior submission is still in flight");
             return false;
         }
 
@@ -508,7 +518,7 @@ namespace hgl::graph
         const VkDeviceSize total_bytes = tci->total_bytes > 0 ? tci->total_bytes : (tci->buffer ? tci->buffer->GetSize() : 0);
         if (total_bytes == 0)
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma failed: zero total bytes");
+            LogError(u8"[GpuUploadQueue] GpuTransferDma failed: zero total bytes");
             return false;
         }
 
@@ -552,7 +562,7 @@ namespace hgl::graph
         }
         else
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma failed: no pixel data or buffer");
+            LogError(u8"[GpuUploadQueue] GpuTransferDma failed: no pixel data or buffer");
             return false;
         }
 
@@ -562,7 +572,7 @@ namespace hgl::graph
 
         if(!transfer_cmd_buf_->Begin())
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma command buffer begin failed task=%llu",
+            LogError(u8"[GpuUploadQueue] GpuTransferDma command buffer begin failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
             return false;
         }
@@ -644,7 +654,7 @@ namespace hgl::graph
 
         if(!transfer_cmd_buf_->End())
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma command buffer end failed task=%llu",
+            LogError(u8"[GpuUploadQueue] GpuTransferDma command buffer end failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
             return false;
         }
@@ -657,7 +667,7 @@ namespace hgl::graph
         SemaphoreSubmit transfer_signal = SemaphoreSubmit::Signal(upload_lane_, lane_signal);
         if(!transfer_queue_->Submit(transfer_cmd_buf_, nullptr, 0, &transfer_signal, 1))
         {
-            LogError(u8"[TextureUploadQueue] GpuTransferDma submit failed task=%llu",
+            LogError(u8"[GpuUploadQueue] GpuTransferDma submit failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
             return false;
         }
@@ -671,12 +681,12 @@ namespace hgl::graph
         {
             if(!transfer_queue_->WaitLastSubmitFence()&&!transfer_queue_->WaitQueue())
             {
-                LogError(u8"[TextureUploadQueue] Immediate transfer completion wait failed task=%llu",
+                LogError(u8"[GpuUploadQueue] Immediate transfer completion wait failed task=%llu",
                          static_cast<unsigned long long>(task->task_id));
                 return false;
             }
             current_staging_bytes_ -= task->staging_bytes;
-            if (!task->is_ring_staging && task->staging_buffer)
+            if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
             {
                 delete task->staging_buffer;
             }
@@ -698,7 +708,7 @@ namespace hgl::graph
         return true;
     }
 
-    bool TextureUploadQueue::DispatchGpuGraphicsDma(TextureUploadTask *task)
+    bool GpuUploadQueue::DispatchGpuGraphicsDma(GpuUploadTask *task)
     {
         if (!task || !task->tci || !task->target_texture || !device_)
             return false;
@@ -707,12 +717,12 @@ namespace hgl::graph
 
         if(!graphics_queue_||!graphics_cmd_buf_)
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma missing queue or command buffer");
+            LogError(u8"[GpuUploadQueue] GpuGraphicsDma missing queue or command buffer");
             return false;
         }
         if(!graphics_queue_->WaitLastSubmitFence())
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma prior submission is still in flight");
+            LogError(u8"[GpuUploadQueue] GpuGraphicsDma prior submission is still in flight");
             return false;
         }
 
@@ -725,7 +735,7 @@ namespace hgl::graph
         const VkDeviceSize total_bytes = tci->total_bytes > 0 ? tci->total_bytes : (tci->buffer ? tci->buffer->GetSize() : 0);
         if (total_bytes == 0)
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma failed: zero total bytes");
+            LogError(u8"[GpuUploadQueue] GpuGraphicsDma failed: zero total bytes");
             return false;
         }
 
@@ -769,7 +779,7 @@ namespace hgl::graph
         }
         else
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma failed: no pixel data or buffer");
+            LogError(u8"[GpuUploadQueue] GpuGraphicsDma failed: no pixel data or buffer");
             return false;
         }
 
@@ -779,7 +789,7 @@ namespace hgl::graph
 
         if(!graphics_cmd_buf_->Begin())
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma command buffer begin failed task=%llu",
+            LogError(u8"[GpuUploadQueue] GpuGraphicsDma command buffer begin failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
             return false;
         }
@@ -887,7 +897,7 @@ namespace hgl::graph
 
         if(!graphics_cmd_buf_->End())
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma command buffer end failed task=%llu",
+            LogError(u8"[GpuUploadQueue] GpuGraphicsDma command buffer end failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
             return false;
         }
@@ -896,7 +906,7 @@ namespace hgl::graph
 
         if(!graphics_queue_->Submit(graphics_cmd_buf_, nullptr, 0, nullptr, 0))
         {
-            LogError(u8"[TextureUploadQueue] GpuGraphicsDma submit failed task=%llu",
+            LogError(u8"[GpuUploadQueue] GpuGraphicsDma submit failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
             return false;
         }
@@ -908,12 +918,12 @@ namespace hgl::graph
         {
             if(!graphics_queue_->WaitLastSubmitFence()&&!graphics_queue_->WaitQueue())
             {
-                LogError(u8"[TextureUploadQueue] Immediate graphics completion wait failed task=%llu",
+                LogError(u8"[GpuUploadQueue] Immediate graphics completion wait failed task=%llu",
                          static_cast<unsigned long long>(task->task_id));
                 return false;
             }
             current_staging_bytes_ -= task->staging_bytes;
-            if (!task->is_ring_staging && task->staging_buffer)
+            if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
             {
                 delete task->staging_buffer;
             }
@@ -935,7 +945,183 @@ namespace hgl::graph
         return true;
     }
 
-    void TextureUploadQueue::Update()
+    uint64_t GpuUploadQueue::EnqueueBufferCopyRegions(DeviceBuffer *staging, DeviceBuffer *target,
+        const ValueArray<BufferCopyRegion> &regions, UploadPriority priority,
+        void (*on_complete)(GpuUploadTask *, void *), void *user_data, bool owns_staging)
+    {
+        if (!staging || !target || regions.IsEmpty())
+        {
+            LogError(u8"[GpuUploadQueue] EnqueueBufferCopyRegions: invalid args");
+            return 0;
+        }
+
+        GpuUploadTask *task = new GpuUploadTask();
+        task->kind           = GpuUploadKind::BufferToBuffer;
+        task->priority       = priority;
+        task->backend        = UploadBackendType::Auto;
+        task->staging_buffer = staging;
+        task->owns_staging   = owns_staging;
+        task->is_ring_staging = false;
+        task->target_buffer  = target;
+        for (int i = 0; i < regions.GetCount(); ++i)
+            task->copy_regions.Add(regions[i]);
+
+        VkDeviceSize total = 0;
+        for (int i = 0; i < regions.GetCount(); ++i)
+            total += regions[i].size;
+        task->staging_bytes = total;
+
+        return Enqueue(task);
+    }
+
+    uint64_t GpuUploadQueue::EnqueueBufferCopy(DeviceBuffer *staging, VkDeviceSize src_offset,
+        DeviceBuffer *target, VkDeviceSize dst_offset, VkDeviceSize size, UploadPriority priority,
+        void (*on_complete)(GpuUploadTask *, void *), void *user_data, bool owns_staging)
+    {
+        BufferCopyRegion region;
+        region.src_offset = src_offset;
+        region.dst_offset = dst_offset;
+        region.size       = size;
+
+        ValueArray<BufferCopyRegion> regions;
+        regions.Add(region);
+        return EnqueueBufferCopyRegions(staging, target, regions, priority, on_complete, user_data, owns_staging);
+    }
+
+    bool GpuUploadQueue::DispatchBufferToBuffer(GpuUploadTask *task)
+    {
+        if (!task || !task->staging_buffer || !task->target_buffer || !device_)
+        {
+            LogError(u8"[GpuUploadQueue] BufferToBuffer dispatch: missing staging(%p) or target(%p)",
+                     task ? (void *)task->staging_buffer : nullptr,
+                     task ? (void *)task->target_buffer : nullptr);
+            return false;
+        }
+
+        EnsureResources();
+
+        const bool via_transfer = (task->backend == UploadBackendType::GpuTransferDma);
+        DeviceQueue *queue      = via_transfer ? transfer_queue_      : graphics_queue_;
+        TextureCmdBuffer *cmd_buf = via_transfer ? transfer_cmd_buf_  : graphics_cmd_buf_;
+        if (!queue || !cmd_buf)
+        {
+            LogError(u8"[GpuUploadQueue] BufferToBuffer missing %s queue or command buffer",
+                     via_transfer ? u8"transfer" : u8"graphics");
+            return false;
+        }
+        if (!queue->WaitLastSubmitFence())
+        {
+            LogError(u8"[GpuUploadQueue] BufferToBuffer prior submission is still in flight");
+            return false;
+        }
+
+        const VkBuffer src = task->staging_buffer->GetBuffer();
+        const VkBuffer dst = task->target_buffer->GetBuffer();
+        if (src == VK_NULL_HANDLE || dst == VK_NULL_HANDLE)
+            return false;
+
+        const ValueArray<BufferCopyRegion> &regions = task->ResolveCopyRegions();
+        const VkDeviceSize src_cap = task->staging_buffer->GetSize();
+        const VkDeviceSize dst_cap = task->target_buffer->GetSize();
+        VkDeviceSize region_total = 0;
+        for (int i = 0; i < regions.GetCount(); ++i)
+        {
+            const BufferCopyRegion &r = regions[i];
+            if (r.size == 0 || r.src_offset + r.size > src_cap || r.dst_offset + r.size > dst_cap)
+            {
+                LogError(u8"[GpuUploadQueue] BufferToBuffer region %d out of range (src=%llu+%llu/%llu dst=%llu+%llu/%llu)",
+                         i,
+                         (unsigned long long)r.src_offset, (unsigned long long)r.size, (unsigned long long)src_cap,
+                         (unsigned long long)r.dst_offset, (unsigned long long)r.size, (unsigned long long)dst_cap);
+                return false;
+            }
+            region_total += r.size;
+        }
+        if (task->staging_bytes == 0)
+            task->staging_bytes = region_total;
+
+        current_staging_bytes_ += task->staging_bytes;
+
+        if (!cmd_buf->Begin())
+        {
+            LogError(u8"[GpuUploadQueue] BufferToBuffer command buffer begin failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
+
+        // 目标缓冲可见性屏障。与纹理支路的 ImageMemoryBarrier2 同一套约定：
+        // 跨队列次序统一由 upload lane（timeline semaphore）保证，屏障仅描述访问/阶段依赖。
+        cmd_buf->BufferMemoryBarrier2(dst,
+            VK_PIPELINE_STAGE_2_NONE,
+            VK_PIPELINE_STAGE_2_COPY_BIT,
+            VK_ACCESS_2_NONE,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            0, VK_WHOLE_SIZE);
+
+        AutoDeleteArray<VkBufferCopy> copies(regions.GetCount());
+        copies.zero();
+        for (int i = 0; i < regions.GetCount(); ++i)
+        {
+            copies[i].srcOffset = regions[i].src_offset;
+            copies[i].dstOffset = regions[i].dst_offset;
+            copies[i].size      = regions[i].size;
+        }
+        vkCmdCopyBuffer(*cmd_buf, src, dst, static_cast<uint32_t>(regions.GetCount()), copies.data());
+
+        cmd_buf->BufferMemoryBarrier2(dst,
+            VK_PIPELINE_STAGE_2_COPY_BIT,
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_ACCESS_2_TRANSFER_READ_BIT,
+            0, VK_WHOLE_SIZE);
+
+        if (!cmd_buf->End())
+        {
+            LogError(u8"[GpuUploadQueue] BufferToBuffer command buffer end failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
+
+        // 与纹DMA支路一致：signal upload lane，主帧使用目标缓冲前等待最新值
+        const uint64_t lane_signal = upload_lane_ ? upload_lane_->NextValue() : 0;
+        SemaphoreSubmit buffer_signal = SemaphoreSubmit::Signal(upload_lane_, lane_signal);
+        if (!queue->Submit(cmd_buf, nullptr, 0, &buffer_signal, 1))
+        {
+            LogError(u8"[GpuUploadQueue] BufferToBuffer submit failed task=%llu",
+                     static_cast<unsigned long long>(task->task_id));
+            return false;
+        }
+        if (lane_signal != 0)
+            upload_lane_value_ = lane_signal;
+
+        task->state = UploadTaskState::InFlight;
+        in_flight_tasks_.Add(task);
+
+        if (task->priority == UploadPriority::Immediate)
+        {
+            if (!queue->WaitLastSubmitFence() && !queue->WaitQueue())
+            {
+                LogError(u8"[GpuUploadQueue] BufferToBuffer immediate wait failed task=%llu",
+                         static_cast<unsigned long long>(task->task_id));
+                return false;
+            }
+            current_staging_bytes_ -= task->staging_bytes;
+            if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
+                delete task->staging_buffer;
+            task->staging_buffer = nullptr;
+
+            task->state = UploadTaskState::Completed;
+            if (task->on_complete)
+                task->on_complete(task, task->user_data);
+
+            in_flight_tasks_.Remove(task);
+            completed_tasks_.Add(task);
+        }
+
+        return true;
+    }
+
+    void GpuUploadQueue::Update()
     {
         MutexLock lock(&mutex_);
 
@@ -947,14 +1133,14 @@ namespace hgl::graph
 
             for (int i = in_flight_tasks_.GetCount() - 1; i >= 0; --i)
             {
-                TextureUploadTask *task = in_flight_tasks_[i];
+                GpuUploadTask *task = in_flight_tasks_[i];
                 bool done = (task->backend == UploadBackendType::GpuTransferDma) ? transfer_done : graphics_done;
                 if (done)
                 {
                     if (task->staging_buffer)
                     {
                         current_staging_bytes_ -= task->staging_bytes;
-                        if (!task->is_ring_staging)
+                        if (!task->is_ring_staging && task->owns_staging)
                             delete task->staging_buffer;
                         task->staging_buffer = nullptr;
                     }
@@ -989,7 +1175,7 @@ namespace hgl::graph
         {
             while (queued_tasks_[p].GetCount() > 0)
             {
-                TextureUploadTask *task = queued_tasks_[p][0];
+                GpuUploadTask *task = queued_tasks_[p][0];
                 if (task->state == UploadTaskState::Cancelled)
                 {
                     all_tasks_.DeleteByKey(task->task_id);
@@ -1011,13 +1197,13 @@ namespace hgl::graph
         }
     }
 
-    void TextureUploadQueue::ExtractCompletedTasks(ValueArray<TextureUploadTask *> &out_completed)
+    void GpuUploadQueue::ExtractCompletedTasks(ValueArray<GpuUploadTask *> &out_completed)
     {
         MutexLock lock(&mutex_);
         out_completed.Clear();
         for (int i = 0; i < completed_tasks_.GetCount(); ++i)
         {
-            TextureUploadTask *task = completed_tasks_[i];
+            GpuUploadTask *task = completed_tasks_[i];
             out_completed.Add(task);
             completed_task_ids_.Add(task->task_id);
             all_tasks_.DeleteByKey(task->task_id);
