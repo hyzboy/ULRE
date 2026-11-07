@@ -545,17 +545,20 @@ namespace hgl::ecs
     {
         (void)delta_time;
 
-        if (!EnsureManagers())
-            return;
+        // IO 泵段依赖 LoadedFileManager；装配段⑦不依赖：无设备的进程里
+        // 守卫/状态机（策略拦截、终态、防悬垂）仍要推进，产物段被空 content
+        // 自然挡住，不会误接线。
+        if (EnsureManagers())
+        {
+            load_manager->Pump();       ///< ① 派发读盘完成回调（字节落进各句柄的缓冲）
+            PruneStreams();             ///< ② 丢掉注册表已清掉的句柄（防悬垂）
+            PumpMaterialLane();         ///< ③ 把材质车道解析好的配方提交进表
+            AcquireOneFrame();          ///< ④ 提交本帧该发起的取流
+            Advance();                  ///< ⑤ 推进状态机（含配方门禁）
+            load_manager->Collect();    ///< ⑥ 回收已归零的文件引用
+        }
 
-        load_manager->Pump();       ///< ① 派发读盘完成回调（字节落进各句柄的缓冲）
-        PruneStreams();             ///< ② 丢掉注册表已清掉的句柄（防悬垂）
-        PumpMaterialLane();         ///< ③ 把材质车道解析好的配方提交进表
-        AcquireOneFrame();          ///< ④ 提交本帧该发起的取流
-        Advance();                  ///< ⑤ 推进状态机（含配方门禁）
-        load_manager->Collect();    ///< ⑥ 回收已归零的文件引用
-
-        InstantiateModelRefs();     ///< ⑦ 装配段：推进 ModelRefComponent 三段实例化
+        InstantiateModelRefs();         ///< ⑦ 装配段：推进 ModelRefComponent 三段实例化
     }
 
     void ModelStreamingSystem::InstantiateModelRefs()

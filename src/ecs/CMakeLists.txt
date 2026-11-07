@@ -277,6 +277,9 @@ add_ecs_test(TestModelAsset tests/TestModelAsset.cpp)
 # 阶段四判据：流送系统在无设备时的守卫与外部设定（不碰设备）
 add_ecs_test(TestModelStreamingSystem tests/TestModelStreamingSystem.cpp)
 
+# 落地A判据：ModelRefComponent 自动装配的请求段守卫与终态（策略拦截/防悬垂/不重试；不碰设备）
+add_ecs_test(TestModelAutoInstantiate tests/TestModelAutoInstantiate.cpp)
+
 # 阶段五判据：三段渐进激活（骨架 → 几何 → 材质）的顺序守约与骨架包围盒
 add_ecs_test(TestStaticMeshModelProgressive tests/TestStaticMeshModelProgressive.cpp)
 
