@@ -308,6 +308,11 @@ add_ecs_test(TestGPUModelExpansionAggregation tests/TestGPUModelExpansionAggrega
 add_ecs_test(TestJoltPhysicsIntegration tests/TestJoltPhysicsIntegration.cpp
     LIBS Jolt::Jolt)
 
+# 范例 1~4 场景层（PhysicsScenarios）的无头数值验证：堆叠/斜坡滑滚/运动学平台/射线与传感器
+add_ecs_test(TestPhysicsScenarios tests/TestPhysicsScenarios.cpp
+    EXTRA_SOURCES tests/PhysicsScenarios.cpp
+    LIBS Jolt::Jolt)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -671,4 +676,12 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestJoltPhysicsIntegration
         PROPERTIES LABELS "ecs;physics;jolt" TIMEOUT 60)
+
+    add_test(
+        NAME TestPhysicsScenarios
+        COMMAND TestPhysicsScenarios
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestPhysicsScenarios
+        PROPERTIES LABELS "ecs;physics;jolt" TIMEOUT 120)
 endif()
