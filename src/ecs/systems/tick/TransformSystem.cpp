@@ -40,6 +40,7 @@ namespace hgl::ecs
             return;
 
         const uint32_t dynamic_base = GetDynamicBaseIndex();
+        const uint32_t prev_dynamic_base = GetPrevDynamicBaseIndex();
 
         world->ForEachAliveEntity([&](Entity *entity)
         {
@@ -51,7 +52,7 @@ namespace hgl::ecs
 
             if (!IsValidTransformID(transform_id))
             {
-                world->GetEntityGPUTable().SetTransformRow(owner, 0);
+                world->GetEntityGPUTable().SetTransformRow(owner, 0, 0);
                 world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
                 return;
             }
@@ -62,16 +63,18 @@ namespace hgl::ecs
 
             if (!world->TryGetTransformSlot(transform_id, movable, slot))
             {
-                world->GetEntityGPUTable().SetTransformRow(owner, 0);
+                world->GetEntityGPUTable().SetTransformRow(owner, 0, 0);
                 world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
                 return;
             }
 
             // L2W 行号约定（具名权威 = `inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h`）：
             // 静态 = `kFirstObjectL2WSlot + slot`（行 0 恒为单位矩阵）/ 动态 = 基址(环布局) + slot
+            // 历史前帧行号：静态前后一致，动态从上一环帧槽基址寻址（TAA motion vector 前帧变换寻址）
             const uint32_t row = movable ? (dynamic_base + slot) : (kFirstObjectL2WSlot + slot);
+            const uint32_t prev_row = movable ? (prev_dynamic_base + slot) : (kFirstObjectL2WSlot + slot);
 
-            world->GetEntityGPUTable().SetTransformRow(owner, row);
+            world->GetEntityGPUTable().SetTransformRow(owner, row, prev_row);
             world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
         });
     }
@@ -467,6 +470,14 @@ namespace hgl::ecs
             return 0;
 
         return transform_buffer->GetDynamicBaseIndex();
+    }
+
+    uint32_t TransformSystem::GetPrevDynamicBaseIndex() const
+    {
+        if (!transform_buffer)
+            return 0;
+
+        return transform_buffer->GetPrevDynamicBaseIndex();
     }
 
     bool TransformSystem::TryGetTransformSlot(TransformDataStorage::HandleID handle, bool movable, uint32_t& out_slot) const

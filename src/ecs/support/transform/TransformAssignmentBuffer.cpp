@@ -164,6 +164,11 @@ namespace hgl::ecs
         return ring_layout.GetBaseIndex(max_static_rows + kFirstObjectL2WSlot, max_dynamic_rows);
     }
 
+    uint32_t TransformAssignmentBuffer::GetPrevDynamicBaseIndex() const
+    {
+        return ring_layout.GetPrevBaseIndex(max_static_rows + kFirstObjectL2WSlot, max_dynamic_rows);
+    }
+
     uint32_t TransformAssignmentBuffer::GetModelExpansionBaseIndex() const
     {
         // T3.1：展开段整块排在「恒等槽 + 静态段 + 动态段环」**之后**，再按帧槽切份

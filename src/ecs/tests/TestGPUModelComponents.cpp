@@ -2,6 +2,8 @@
 #include <hgl/ecs/components/GPUInstancedModelBatchComponent.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/ecs/support/storage/EntityGPUTable.h>
+#include <hgl/vk/buffer/RingLayout.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <hgl/type/ValueArray.h>
@@ -185,6 +187,66 @@ namespace
         EXPECT(glm::distance(glm::vec3(m[3][0], m[3][1], m[3][2]),
                              glm::vec3(10.0f, 0.0f, 2.0f)) < 1e-4f);
     }
+
+    // ── 判据 5：RingLayout 历史帧基址计算与循环回绕（T7.1）──────────────────
+
+    void TestRingLayoutPrevBase()
+    {
+        graph::RingLayout ring(3);
+        const uint32_t static_count = 100;
+        const uint32_t dynamic_count = 50;
+
+        ring.SetFrameIndex(0);
+        EXPECT(ring.GetFrameIndex() == 0u);
+        EXPECT(ring.GetPrevFrameIndex() == 2u);
+        EXPECT(ring.GetBaseIndex(static_count, dynamic_count) == 100u);
+        EXPECT(ring.GetPrevBaseIndex(static_count, dynamic_count) == 200u);
+
+        ring.SetFrameIndex(1);
+        EXPECT(ring.GetFrameIndex() == 1u);
+        EXPECT(ring.GetPrevFrameIndex() == 0u);
+        EXPECT(ring.GetBaseIndex(static_count, dynamic_count) == 150u);
+        EXPECT(ring.GetPrevBaseIndex(static_count, dynamic_count) == 100u);
+
+        ring.SetFrameIndex(2);
+        EXPECT(ring.GetFrameIndex() == 2u);
+        EXPECT(ring.GetPrevFrameIndex() == 1u);
+        EXPECT(ring.GetBaseIndex(static_count, dynamic_count) == 200u);
+        EXPECT(ring.GetPrevBaseIndex(static_count, dynamic_count) == 150u);
+    }
+
+    // ── 判据 6：EntityGPUTable 双帧变换行下发与事实保持（T7.1）──────────────
+
+    void TestEntityGPUTablePrevTransform()
+    {
+        EntityGPUTable table;
+        EntityID id{ 1, 1 };
+        table.Activate(id);
+
+        EntityGPU *row = table.Row(id);
+        EXPECT(row != nullptr);
+        EXPECT(row->prev_transform_id == 0u);
+
+        // 静态实体行号：前后帧恒等（row == prev_row）
+        table.SetTransformRow(id, 10u, 10u);
+        EXPECT(row->row[uint32_t(ComponentType::Transform)] == 10u);
+        EXPECT(row->prev_transform_id == 10u);
+
+        // 可动实体行号：随环帧槽分流（当前帧 512，前一帧 256）
+        table.SetTransformRow(id, 512u, 256u);
+        EXPECT(row->row[uint32_t(ComponentType::Transform)] == 512u);
+        EXPECT(row->prev_transform_id == 256u);
+
+        // SetModelFacts 默认 0 时不冲掉已算出的 prev_transform_id
+        table.SetModelFacts(id, 42u, 0xFFFFFFFFull, 5u, 0u);
+        EXPECT(row->model_template_id == 42u);
+        EXPECT(row->custom_data_index == 5u);
+        EXPECT(row->prev_transform_id == 256u);
+
+        // 显式传入非零 override 时覆盖
+        table.SetModelFacts(id, 42u, 0xFFFFFFFFull, 5u, 999u);
+        EXPECT(row->prev_transform_id == 999u);
+    }
 }//namespace
 
 int main(int argc, char **argv)
@@ -198,6 +260,8 @@ int main(int argc, char **argv)
     TestBatchInstanceAccounting();
     TestComponentMountAndEnumeration();
     TestStaticDynamicTransformConvention();
+    TestRingLayoutPrevBase();
+    TestEntityGPUTablePrevTransform();
 
     if (g_fail > 0)
     {

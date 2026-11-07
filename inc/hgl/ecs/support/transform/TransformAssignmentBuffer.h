@@ -104,6 +104,8 @@ namespace hgl::ecs
         void EnsureBudget(const uint32_t static_count,const uint32_t dynamic_count);
         /// 动态段基址（B1b：由**预算**决定，不再随"当前名单长度"漂移；与 buffer 固定容量同源）
         uint32_t GetDynamicBaseIndex() const;
+        /// 上一帧动态段基址（TAA motion vector 前帧变换寻址）
+        uint32_t GetPrevDynamicBaseIndex() const;
 
         /// T3.1：**展开段**每帧槽行数（GPU 模型展开的合成矩阵专用；一人一断）。
         /// 需求来源：部件世界矩阵 = 根世界矩阵 × `ModelPartRow.local_matrix`，无法用行号表达

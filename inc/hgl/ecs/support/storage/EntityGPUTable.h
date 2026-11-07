@@ -218,16 +218,18 @@ namespace hgl
                 if (!row)
                     return;
 
+                const uint32_t effective_prev_transform = (prev_transform != 0) ? prev_transform : row->prev_transform_id;
+
                 if (row->model_template_id == template_id
                  && row->model_part_mask == part_mask
                  && row->custom_data_index == custom_data
-                 && row->prev_transform_id == prev_transform)
+                 && row->prev_transform_id == effective_prev_transform)
                     return;
 
                 row->model_template_id = template_id;
                 row->model_part_mask   = part_mask;
                 row->custom_data_index = custom_data;
-                row->prev_transform_id = prev_transform;
+                row->prev_transform_id = effective_prev_transform;
 
                 dirty.MarkDirty(id.index, rows.size());
             }
@@ -272,6 +274,45 @@ namespace hgl
 
                 row->row[slot_index]  = l2w_row;
                 row->type[slot_index] = type;
+
+                dirty.MarkDirty(id.index, rows.size());
+            }
+
+            /// L2W 行号与前帧 L2W 行号同时下发（P-1 + T7.1）
+            void SetTransformRow(EntityID id, uint32_t l2w_row, uint32_t prev_l2w_row)
+            {
+                EntityGPU *row = Row(id);
+
+                if (!row)
+                    return;
+
+                const uint32_t slot_index = uint32_t(ComponentType::Transform);
+                const uint8_t  type       = l2w_row ? uint8_t(ComponentType::Transform) : 0;
+
+                if (row->row[slot_index] == l2w_row
+                 && row->type[slot_index] == type
+                 && row->prev_transform_id == prev_l2w_row)
+                    return;
+
+                row->row[slot_index]   = l2w_row;
+                row->type[slot_index]  = type;
+                row->prev_transform_id = prev_l2w_row;
+
+                dirty.MarkDirty(id.index, rows.size());
+            }
+
+            /// 仅更新上一帧变换行号
+            void SetPrevTransformRow(EntityID id, uint32_t prev_l2w_row)
+            {
+                EntityGPU *row = Row(id);
+
+                if (!row)
+                    return;
+
+                if (row->prev_transform_id == prev_l2w_row)
+                    return;
+
+                row->prev_transform_id = prev_l2w_row;
 
                 dirty.MarkDirty(id.index, rows.size());
             }

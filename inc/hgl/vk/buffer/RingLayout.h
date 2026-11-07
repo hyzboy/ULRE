@@ -35,10 +35,21 @@ namespace hgl::graph
             return frame_index;
         }
 
+        uint32_t GetPrevFrameIndex() const
+        {
+            return ring_frames ? ((frame_index + ring_frames - 1) % ring_frames) : 0;
+        }
+
         /// 本帧动态段起始行号 = 静态段行数 + frame_index × 动态段行数
         uint32_t GetBaseIndex(const uint32_t static_count, const uint32_t dynamic_count) const
         {
             return static_count + frame_index * dynamic_count;
+        }
+
+        /// 上一帧动态段起始行号 = 静态段行数 + ((frame_index + ring_frames - 1) % ring_frames) × 动态段行数
+        uint32_t GetPrevBaseIndex(const uint32_t static_count, const uint32_t dynamic_count) const
+        {
+            return static_count + GetPrevFrameIndex() * dynamic_count;
         }
 
         /// 容纳静态段 + ring_frames 份动态段所需的整块行数

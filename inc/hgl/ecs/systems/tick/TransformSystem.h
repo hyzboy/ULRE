@@ -64,6 +64,8 @@ namespace hgl::ecs
         void EnsureTransformBuffer();
         /// 动态段基址（B1b：预算决定，与槽位表无关）
         uint32_t GetDynamicBaseIndex() const;
+        /// 上一帧动态段基址（TAA motion vector 前帧变换寻址）
+        uint32_t GetPrevDynamicBaseIndex() const;
         uint32_t GetStaticCount() const { return static_cast<uint32_t>(static_handles.size()); }
         uint32_t GetDynamicCount() const { return static_cast<uint32_t>(dynamic_handles.size()); }
         /// 变换的**稳定槽位**（B1b）：`out_slot` = 段内槽位
