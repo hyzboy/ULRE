@@ -370,6 +370,14 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.addr_color_palette)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "addr_model_template_pool"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_model_template_pool)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "addr_model_part_pool"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_model_part_pool)) return false;
+        }
         if (const toml::value *v = detail::Find(table, "addr_viewport"))
         {
             if (!detail::AsUnsigned(*v, out.addr_viewport)) return false;
@@ -710,6 +718,8 @@ namespace hgl::graph::generated
         t["addr_transmission_surface"] = detail::FromInteger(in.addr_transmission_surface);
         t["addr_pbr_advanced_surface"] = detail::FromInteger(in.addr_pbr_advanced_surface);
         t["addr_color_palette"] = detail::FromInteger(in.addr_color_palette);
+        t["addr_model_template_pool"] = detail::FromInteger(in.addr_model_template_pool);
+        t["addr_model_part_pool"] = detail::FromInteger(in.addr_model_part_pool);
         t["addr_viewport"] = detail::FromInteger(in.addr_viewport);
         return toml::value(std::move(t));
     }

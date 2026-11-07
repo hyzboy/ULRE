@@ -121,6 +121,8 @@ table GlobalAddresses
   addr_transmission_surface: ulong;
   addr_pbr_advanced_surface: ulong;
   addr_color_palette: ulong;
+  addr_model_template_pool: ulong;
+  addr_model_part_pool: ulong;
   addr_viewport: ulong;
 }
 
