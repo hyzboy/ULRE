@@ -52,6 +52,11 @@ namespace hgl::graph
     class EnvironmentManager;
     class BindlessTextureManager;
 
+    namespace mtl
+    {
+        class MaterialAsyncLoadLane;
+    }
+
     /**
      * GraphicsContext - Vulkan图形资源管理器聚合类
      *
@@ -120,6 +125,11 @@ namespace hgl::graph
         /// 因此必须在模块（含 `GlobalSSBOBufferRegistry`）销毁之前清空，
         /// 否则句柄析构时无处归还行区间。
         mtl::MaterialDataBlockRegistry material_data_block_registry_;
+
+        /// 材质异步装载车道（池 + 编译器 + 泵送节奏）。懒创建：只有真正走过
+        /// 异步装载路径的进程才会起线程。必须在配方表 / 数据块表 `Clear()`
+        /// 之前收掉 —— 池线程还在解析时清表就是 use-after-free。
+        mtl::MaterialAsyncLoadLane *material_async_lane_ = nullptr;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -215,6 +225,31 @@ namespace hgl::graph
         /// 设备起来之后 `UploadAll(GetGlobalSSBOBufferRegistry())` 才会真正上船。
         mtl::MaterialDataBlockRegistry *GetMaterialDataBlockRegistry() { return &material_data_block_registry_; }
         const mtl::MaterialDataBlockRegistry *GetMaterialDataBlockRegistry() const { return &material_data_block_registry_; }
+
+        /**
+         * @brief 材质异步装载车道（懒创建）。
+         *
+         * 首次调用即建池并挂上 `MaterialAsyncCompiler`（默认 2 个线程）。
+         * 之后「投递整目录配方 / 每帧 Pump / IsIdle 门禁」都走这一个对象，
+         * 上层不必自己管池与编译器的收尾顺序。
+         *
+         * @return 池启动失败时返回 `nullptr`（此时退化为原有的同步装载路径）
+         */
+        mtl::MaterialAsyncLoadLane *GetMaterialAsyncLoadLane();
+
+        /**
+         * @brief 泵一次材质车道（主线程，微秒级）。
+         *
+         * 把工作线程已解析完的配方 / 数据块提交进本上下文的两张表。
+         * 每帧调用一次即可；`TextureManager` 由本函数自己取，带纹理槽的配方
+         * 会在这里建纹理句柄。
+         *
+         * @return 本次成功提交的句柄数
+         */
+        int PumpMaterialAsyncLoadLane();
+
+        /// 材质车道里是否还有在途解析任务（未启动恒为 `false`）
+        bool IsMaterialAsyncLoadPending() const;
 
         /// 全局异步文件加载管理器（Initialize 后恒为有效，Shutdown 后为 nullptr）。
         /// 调用方只在主线程使用：Submit/Pump/Collect/Stop 有线程亲和性。

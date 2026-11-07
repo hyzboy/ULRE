@@ -282,12 +282,14 @@ set(SG_ASSET_MATERIAL_FILES ${SG_INCLUDE_PATH}/asset/MaterialRecipeAsset.h
                             ${SG_INCLUDE_PATH}/asset/MaterialDataBlockObject.h
                             ${SG_INCLUDE_PATH}/asset/MaterialDataBlockSpec.h
                             ${SG_INCLUDE_PATH}/asset/MaterialAsyncCompile.h
+                            ${SG_INCLUDE_PATH}/asset/MaterialAsyncLoadLane.h
                             asset/MaterialRecipeAsset.cpp
                             asset/MaterialRecipeRegistry.cpp
                             asset/MaterialDataBlockAsset.cpp
                             asset/MaterialDataBlockRegistry.cpp
                             asset/MaterialDataBlockObject.cpp
-                            asset/MaterialAsyncCompile.cpp)
+                            asset/MaterialAsyncCompile.cpp
+                            asset/MaterialAsyncLoadLane.cpp)
 
 source_group("07.Asset\\Material" FILES ${SG_ASSET_MATERIAL_FILES})
 

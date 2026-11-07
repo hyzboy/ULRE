@@ -16,6 +16,7 @@
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/asset/LoadedFileManager.h>
 #include <hgl/graph/asset/AssetSourceMount.h>
+#include <hgl/graph/asset/MaterialAsyncLoadLane.h>
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/type/StdString.h>
@@ -54,6 +55,40 @@ namespace hgl::graph
     bool GraphicsContext::LoadMaterialRecipeFile(const OSString &path)
     {
         return material_recipe_registry_.LoadFile(path, GetTextureManager());
+    }
+
+    mtl::MaterialAsyncLoadLane *GraphicsContext::GetMaterialAsyncLoadLane()
+    {
+        if (!material_async_lane_)
+        {
+            mtl::MaterialAsyncLoadLane *created = new mtl::MaterialAsyncLoadLane();
+
+            if (!created->EnsureStarted())
+            {
+                // 起不了线程不是致命错误：调用方会退回同步装载路径。
+                delete created;
+                return nullptr;
+            }
+
+            material_async_lane_ = created;
+        }
+
+        return material_async_lane_;
+    }
+
+    int GraphicsContext::PumpMaterialAsyncLoadLane()
+    {
+        if (!material_async_lane_)
+            return 0;
+
+        return material_async_lane_->Pump(&material_recipe_registry_,
+                                          &material_data_block_registry_,
+                                          GetTextureManager());
+    }
+
+    bool GraphicsContext::IsMaterialAsyncLoadPending() const
+    {
+        return material_async_lane_ && !material_async_lane_->IsIdle();
     }
 
     bool GraphicsContext::LoadMaterialRecipeDirectory(
@@ -314,6 +349,18 @@ namespace hgl::graph
             primitive_asset_registry_.Clear();
             primitive_asset_registry_.SetSources(nullptr, nullptr);
             primitive_asset_registry_ready_ = false;
+        }
+
+        // 材质装载车道必须先停：它在工作线程里解析配方/数据块，成品最终由主线程
+        // 的 Pump() 写进下面两张注册表。Stop(Drain) 后补泵一次，把已完成的成品
+        // 落表，再注销 sink，此后不再有任何线程访问这两张表。
+        if (material_async_lane_)
+        {
+            material_async_lane_->Shutdown(&material_recipe_registry_,
+                                           &material_data_block_registry_,
+                                           GetTextureManager());
+            delete material_async_lane_;
+            material_async_lane_ = nullptr;
         }
 
         // Recipe data contains TextureAsset observers owned by TextureManager.

@@ -177,6 +177,10 @@ add_ecs_test(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.c
 # 挂接/摘除契约 + 跨任务父子继承推进 + 坏输入留诊断不崩。
 add_ecs_test(TestMaterialAsyncCompiler tests/TestMaterialAsyncCompiler.cpp)
 
+# 材质装载车道（池 + 编译器 + 泵送节奏封装）：懒启动幂等 / 整目录投递 /
+# 门禁语义 / 收尾 Drain 不丢成品 / 无注册表收尾 / 收尾后重启。
+add_ecs_test(TestMaterialAsyncLoadLane tests/TestMaterialAsyncLoadLane.cpp)
+
 # 示例用数据块文件（`pbr_10x10_grid.material_data.toml`）：形状 + 逐行数值与生成公式
 # 一致 + 演示源码不再逐行硬编码。
 add_ecs_test(TestPbrGridDataBlock tests/TestPbrGridDataBlock.cpp)
@@ -408,6 +412,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialAsyncCompiler
         PROPERTIES LABELS "material;recipe;async" TIMEOUT 120)
+
+    add_test(
+        NAME TestMaterialAsyncLoadLane
+        COMMAND TestMaterialAsyncLoadLane
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMaterialAsyncLoadLane
+        PROPERTIES LABELS "material;recipe;asset;async" TIMEOUT 120)
 
     add_test(
         NAME TestEnvironmentCodec
