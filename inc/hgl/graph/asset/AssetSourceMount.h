@@ -61,6 +61,9 @@ namespace hgl
      */
     bool MountDefaultAssetSources(AnsiString *out_error=nullptr);
 
+    /// 注销指定包裹（挂载名不存在时静默返回）。
+    void UnmountAssetSource(const AnsiString &name);
+
     /// 注销全部默认包裹（与 `MountDefaultAssetSources` 成对调用）。
     void UnmountDefaultAssetSources();
 
@@ -135,10 +138,22 @@ namespace hgl
      * 而资产可能位于 `pack(<name>)` 挂载里。有了本函数，包裹资产也能走异步 IO，
      * 不必为了拿到一个路径把整包同步读进内存。
      *
+     * ── 解析次序 ──────────────────────────────────────────────────────────────
+     *   · `pack(<name>)` + 索引存在时，先按索引反查：
+     *     `id:<32 hex>` → 由 `AssetSource::ResolvePath(AssetID)` 取包内相对路径；
+     *     带类型段 → 由 `AssetSource::ResolvePath(type,logical)` 取包内相对路径。
+     *     索引已经裁决过 `.toml`(源) / `.fb`(烘焙) 同名撞车，因此这条通道拿到的是
+     *     **当前该用的那个文件**，而不是「拼出来的名字恰好存在」的那个；
+     *   · 索引无该条目（原始素材，类型段就是物理后缀）才退回直通拼接；
+     *   · 裸物理路径原样校验存在性。
+     *
      * ── 局限 ──────────────────────────────────────────────────────────────────
      *   · `builtin` / `rt` / 匿名 `pack` 没有磁盘对应物 ⇒ 返回 false；
-     *   · `id:<32 hex>` 需要索引反查，本函数不做 ⇒ 返回 false（此时请改用
-     *     `OpenAssetInputStream` 取流）。
+     *   · `id:<32 hex>` 在索引缺失或索引里没有该身份时 ⇒ 返回 false
+     *     （此时请改用 `OpenAssetInputStream` 取流）；
+     *   · 只适用于「包裹根目录直接就是文件树」的目录型包裹。真正的归档型包裹
+     *     （单文件 `.pack`）没有可寻址的物理路径，必须走 `PackReadTask` 一类的
+     *     任务通道，不能靠本函数。
      *
      * @param uri_text     资产 URI 或裸物理路径
      * @param default_type 文本里省略类型段时补上的类型

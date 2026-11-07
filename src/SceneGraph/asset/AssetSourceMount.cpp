@@ -122,12 +122,17 @@ namespace hgl::graph
         return MountAssetSource(config,out_error);
     }
 
+    void UnmountAssetSource(const AnsiString &name)
+    {
+        if(asset::UnregisterAssetsSource(name))
+            FLogInfo(u8"包裹 <%s> 已注销",name.c_str());
+
+        RemoveMountRoot(name);
+    }
+
     void UnmountDefaultAssetSources()
     {
-        if(asset::UnregisterAssetsSource(DEFAULT_ASSET_SOURCE_NAME))
-            FLogInfo(u8"包裹 <%s> 已注销",DEFAULT_ASSET_SOURCE_NAME);
-
-        RemoveMountRoot(DEFAULT_ASSET_SOURCE_NAME);
+        UnmountAssetSource(DEFAULT_ASSET_SOURCE_NAME);
     }
 
     bool ResolveAssetPhysicalPath(const OSString &uri_text,asset::AssetType default_type,OSString &out_path)
@@ -143,8 +148,53 @@ namespace hgl::graph
             if(root==nullptr)
                 return false;
 
+            // 先试索引反查：`id:<32 hex>` 与「不带格式后缀的逻辑路径」在磁盘上
+            // 根本没有对应文件名，直接拼路径必然失败。索引里记着真正的包内相对
+            // 路径（含扩展名），并且已经裁决过 `.toml` / `.fb` 同名撞车该用哪个 ——
+            // 这条通道同时也是「异步读盘不要为了拿一个路径把整包读进内存」的关键。
+            asset::AssetSource *src=asset::GetSource(uri.pack_name);
+
+            U8String pack_path;
+
+            if(src!=nullptr&&src->HasIndexTable())
+            {
+                if(uri.IsIDTarget())
+                {
+                    // 身份寻址没有「按路径摸文件」的退路：查不到就是不存在。
+                    asset::AssetID id;
+
+                    if(uri.GetIDTarget(id)&&src->ResolvePath(id,pack_path)&&!pack_path.IsEmpty())
+                    {
+                        out_path=filesystem::JoinPathWithFilename(*root,ToOSString(pack_path));
+
+                        if(filesystem::FileExist(out_path))
+                            return true;
+
+                        out_path.Clear();
+                    }
+
+                    return false;
+                }
+
+                if(uri.HasType()&&src->ResolvePath(uri.type,ToU8String(uri.target),pack_path)&&!pack_path.IsEmpty())
+                {
+                    out_path=filesystem::JoinPathWithFilename(*root,ToOSString(pack_path));
+
+                    if(filesystem::FileExist(out_path))
+                        return true;
+
+                    out_path.Clear();
+                }
+            }
+
+            // 原始素材（类型段就是物理后缀，索引里没有它的条目）才走直通拼接。
             out_path=filesystem::JoinPathWithFilename(*root,uri.target);
-            return filesystem::FileExist(out_path);
+
+            if(filesystem::FileExist(out_path))
+                return true;
+
+            out_path.Clear();
+            return false;
         }
 
         // `builtin` / `rt` / 无名 `pack` 没有磁盘对应物。
@@ -155,7 +205,11 @@ namespace hgl::graph
         // 把盘符当类型段，此时 `target` 已不是原文，直接按原文当路径试。
         out_path=(uri.target==uri_text)?uri.target:uri_text;
 
-        return filesystem::FileExist(out_path);
+        if(filesystem::FileExist(out_path))
+            return true;
+
+        out_path.Clear();
+        return false;
     }
 
     io::InputStream *OpenAssetInputStream(const asset::AssetURI &uri,AnsiString *out_error)
