@@ -10,6 +10,7 @@
 
 #include <toml.hpp>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
+#include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/ubo/AmbientEnvInfo.h>
 #include <hgl/graph/ubo/ColorPalette.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
@@ -184,6 +185,8 @@ namespace hgl::graph::generated
     inline bool ReadTransmissionSurfaceRow(const toml::value &table, hgl::graph::ssbo::TransmissionSurfaceRow &out);
     inline bool ReadPBRAdvancedSurfaceRow(const toml::value &table, hgl::graph::ssbo::PBRAdvancedSurfaceRow &out);
     inline bool ReadMaterialDataRow(const toml::value &table, hgl::graph::ssbo::MaterialDataRow &out);
+    inline bool ReadModelTemplateRow(const toml::value &table, hgl::graph::ssbo::ModelTemplateRow &out);
+    inline bool ReadModelPartRow(const toml::value &table, hgl::graph::ssbo::ModelPartRow &out);
     inline toml::value WriteAmbientEnvInfo(const hgl::graph::AmbientEnvInfo &in);
     inline toml::value WriteViewportInfo(const hgl::graph::ViewportInfo &in);
     inline toml::value WriteColorPalette(const hgl::graph::ColorPalette &in);
@@ -197,6 +200,8 @@ namespace hgl::graph::generated
     inline toml::value WriteTransmissionSurfaceRow(const hgl::graph::ssbo::TransmissionSurfaceRow &in);
     inline toml::value WritePBRAdvancedSurfaceRow(const hgl::graph::ssbo::PBRAdvancedSurfaceRow &in);
     inline toml::value WriteMaterialDataRow(const hgl::graph::ssbo::MaterialDataRow &in);
+    inline toml::value WriteModelTemplateRow(const hgl::graph::ssbo::ModelTemplateRow &in);
+    inline toml::value WriteModelPartRow(const hgl::graph::ssbo::ModelPartRow &in);
 
     inline bool ReadAmbientEnvInfo(const toml::value &table, hgl::graph::AmbientEnvInfo &out)
     {
@@ -565,6 +570,76 @@ namespace hgl::graph::generated
         return true;
     }
 
+    inline bool ReadModelTemplateRow(const toml::value &table, hgl::graph::ssbo::ModelTemplateRow &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "part_offset"))
+        {
+            if (!detail::AsUnsigned(*v, out.part_offset)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "part_count"))
+        {
+            if (!detail::AsUnsigned(*v, out.part_count)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "lod_proxy_template_ids"))
+        {
+            if (!detail::AsUnsignedArray(*v, out.lod_proxy_template_ids, 3)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "lod_screen_ratios"))
+        {
+            if (!detail::AsFloatArray(*v, out.lod_screen_ratios, 3)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "shadow_proxy_template_id"))
+        {
+            if (!detail::AsUnsigned(*v, out.shadow_proxy_template_id)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "flags"))
+        {
+            if (!detail::AsUnsigned(*v, out.flags)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "local_bound_center_radius"))
+        {
+            if (!detail::AsFloatArray(*v, &out.local_bound_center_radius.x, 4)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "local_bound_extents"))
+        {
+            if (!detail::AsFloatArray(*v, &out.local_bound_extents.x, 4)) return false;
+        }
+        return true;
+    }
+
+    inline bool ReadModelPartRow(const toml::value &table, hgl::graph::ssbo::ModelPartRow &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "local_matrix"))
+        {
+            if (!detail::AsFloatArray(*v, &out.local_matrix[0][0], 16)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "aabb_center_radius"))
+        {
+            if (!detail::AsFloatArray(*v, &out.aabb_center_radius.x, 4)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "aabb_extents"))
+        {
+            if (!detail::AsFloatArray(*v, &out.aabb_extents.x, 4)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "geometry_id"))
+        {
+            if (!detail::AsUnsigned(*v, out.geometry_id)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "material_id"))
+        {
+            if (!detail::AsUnsigned(*v, out.material_id)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "part_flags"))
+        {
+            if (!detail::AsUnsigned(*v, out.part_flags)) return false;
+        }
+        return true;
+    }
+
     inline toml::value WriteAmbientEnvInfo(const hgl::graph::AmbientEnvInfo &in)
     {
         toml::table t;
@@ -714,6 +789,32 @@ namespace hgl::graph::generated
         t["surface_ssbo_id"] = detail::FromInteger(in.surface_ssbo_id);
         t["surface_data_index"] = detail::FromInteger(in.surface_data_index);
         t["authored_flags"] = detail::FromInteger(in.authored_flags);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteModelTemplateRow(const hgl::graph::ssbo::ModelTemplateRow &in)
+    {
+        toml::table t;
+        t["part_offset"] = detail::FromInteger(in.part_offset);
+        t["part_count"] = detail::FromInteger(in.part_count);
+        t["lod_proxy_template_ids"] = detail::FromIntegerArray(in.lod_proxy_template_ids, 3);
+        t["lod_screen_ratios"] = detail::FromFloatArray(in.lod_screen_ratios, 3);
+        t["shadow_proxy_template_id"] = detail::FromInteger(in.shadow_proxy_template_id);
+        t["flags"] = detail::FromInteger(in.flags);
+        t["local_bound_center_radius"] = detail::FromFloatArray(&in.local_bound_center_radius.x, 4);
+        t["local_bound_extents"] = detail::FromFloatArray(&in.local_bound_extents.x, 4);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteModelPartRow(const hgl::graph::ssbo::ModelPartRow &in)
+    {
+        toml::table t;
+        t["local_matrix"] = detail::FromFloatArray(&in.local_matrix[0][0], 16);
+        t["aabb_center_radius"] = detail::FromFloatArray(&in.aabb_center_radius.x, 4);
+        t["aabb_extents"] = detail::FromFloatArray(&in.aabb_extents.x, 4);
+        t["geometry_id"] = detail::FromInteger(in.geometry_id);
+        t["material_id"] = detail::FromInteger(in.material_id);
+        t["part_flags"] = detail::FromInteger(in.part_flags);
         return toml::value(std::move(t));
     }
 

@@ -66,6 +66,16 @@ struct ShadowCascadeInfo4
   v: [ShadowCascadeInfo:4];
 }
 
+struct UInt3
+{
+  v: [uint:3];
+}
+
+struct Float3
+{
+  v: [float:3];
+}
+
 // inc/hgl/graph/ubo/AmbientEnvInfo.h → AmbientEnvInfo
 table AmbientEnvInfo
 {
@@ -183,5 +193,29 @@ table MaterialDataRow
   surface_ssbo_id: uint;
   surface_data_index: uint;
   authored_flags: uint;
+}
+
+// inc/hgl/graph/ssbo/ModelTemplateRows.h → ModelTemplateRow
+table ModelTemplateRow
+{
+  part_offset: uint;
+  part_count: uint;
+  lod_proxy_template_ids: UInt3;
+  lod_screen_ratios: Float3;
+  shadow_proxy_template_id: uint;
+  flags: uint;
+  local_bound_center_radius: Float4;
+  local_bound_extents: Float4;
+}
+
+// inc/hgl/graph/ssbo/ModelTemplateRows.h → ModelPartRow
+table ModelPartRow
+{
+  local_matrix: Float16;
+  aabb_center_radius: Float4;
+  aabb_extents: Float4;
+  geometry_id: uint;
+  material_id: uint;
+  part_flags: uint;
 }
 

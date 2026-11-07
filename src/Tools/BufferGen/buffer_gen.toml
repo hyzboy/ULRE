@@ -127,6 +127,27 @@ glsl_struct = "MaterialDataRowData"
 glsl_ref = "MaterialDataRowRef"
 note = "材质数据组件行（GlobalSSBOType::MaterialData）：行内只说「引用哪一行内容」+ 授权位/revision；行 0 = 无材质数据哨兵。当前 shader 侧只经组件行三元组定位内容行，不直接读本行 ⇒ 本文件暂无人包含。"
 
+# ── 模型模板池行（GPU 常驻模型展开；plan T1） ────────────────────────────────
+[[struct]]
+name = "ModelTemplateRow"
+kind = "ssbo"
+file = "module/descriptor/ssbo/model_template_row.glsl"
+glsl_struct = "ModelTemplateRowData"
+glsl_ref = "ModelTemplateRowBufferRef"
+ref_member = "templates"
+ref_array = 1
+note = "模型模板池行（GlobalSSBOType::ModelTemplatePool）：一步长 128B；行 0 = 非法模板哨兵。着色器经 GlobalAddresses.addr_model_template_pool 以 BDA 读取 ⇒ 本 Ref 块仅作 struct 镜像来源。"
+
+[[struct]]
+name = "ModelPartRow"
+kind = "ssbo"
+file = "module/descriptor/ssbo/model_part_row.glsl"
+glsl_struct = "ModelPartRowData"
+glsl_ref = "ModelPartRowBufferRef"
+ref_member = "parts"
+ref_array = 1
+note = "模型部件池行（GlobalSSBOType::ModelPartPool）：一步长 128B；local_matrix @0 / 包围盒 @64/@80 / geometry_id @96。着色器经 GlobalAddresses.addr_model_part_pool 以 BDA 读取 ⇒ 本 Ref 块仅作 struct 镜像来源。"
+
 # ── CPU-only（位于独占目录但不上 GPU；不产出任何派生物） ──────────────────────
 [[struct]]
 name = "EnvironmentInfo"
