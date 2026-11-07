@@ -37,6 +37,7 @@ namespace hgl::graph
         uint64_t addr_color_palette = 0;
         uint64_t addr_model_template_pool = 0;        // 模型模板池基址（行号 = template_id，见 ModelTemplateRows.h；行 0 哨兵）
         uint64_t addr_model_part_pool = 0;            // 模型部件池基址（行号 = part_offset..+part_count-1；与模板池同族 BDA 只读）
+        uint64_t addr_instance_custom_data = 0;       // T6.2 实例自定义数据池基址（行号 = custom_data_index；行 0 哨兵）
 
         // ── 每帧槽字段：地址随帧槽变化（buffer 每帧不同）──
         // 注：viewport 是**单份 buffer**（内容按 pass/RT 覆盖写、地址恒定）⇒ 全帧槽同址。

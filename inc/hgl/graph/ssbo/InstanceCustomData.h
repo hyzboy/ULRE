@@ -47,6 +47,9 @@ namespace hgl::graph::ssbo
     static_assert(sizeof(InstanceCustomData) == 16, "InstanceCustomData 必须恰为 16 字节");
     static_assert(alignof(InstanceCustomData) == 16, "InstanceCustomData 必须 alignas(16)");
 
+    /// 别名：与其它 SSBO 行结构命名对齐（ModelTemplateRow, ModelPartRow ...）
+    using InstanceCustomDataRow = InstanceCustomData;
+
     /// 「未指定自定义数据」的行号哨兵（= 行 0；与材质/几何行 0 哨兵惯例一致）
     inline constexpr uint32_t kInstanceCustomDataNone = 0u;
 }

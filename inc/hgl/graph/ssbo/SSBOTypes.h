@@ -26,8 +26,9 @@ namespace hgl::graph
         MaterialData,           // 材质数据**组件行**（16 B）：组件在设备级的家（引用哪一行内容 + 授权标记）
         ModelTemplatePool,      // 模型模板行（128 B）：部件段索引 + LOD/阴影代理槽（GPU 常驻模板池，plan T1）
         ModelPartPool,          // 模型部件行（128 B）：模板内连续部件段（local_matrix + AABB + geometry/material id）
+        InstanceCustomDataPool, // 实例自定义数据行（16 B）：Vector4f custom_color（T6.2）
 
-        ENUM_CLASS_RANGE(MeshDrawParams, ModelPartPool)
+        ENUM_CLASS_RANGE(MeshDrawParams, InstanceCustomDataPool)
     };
 
     constexpr uint32_t GlobalSSBOTypeCount = static_cast<uint32_t>(GlobalSSBOType::RANGE_SIZE);

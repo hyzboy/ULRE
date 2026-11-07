@@ -20,6 +20,7 @@ struct GlobalAddressesData
     uint64_t addr_color_palette;
     uint64_t addr_model_template_pool;
     uint64_t addr_model_part_pool;
+    uint64_t addr_instance_custom_data;
     uint64_t addr_viewport;
 };
 
@@ -34,6 +35,7 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Glob
     uint64_t addr_color_palette;
     uint64_t addr_model_template_pool;
     uint64_t addr_model_part_pool;
+    uint64_t addr_instance_custom_data;
     uint64_t addr_viewport;
 };
 

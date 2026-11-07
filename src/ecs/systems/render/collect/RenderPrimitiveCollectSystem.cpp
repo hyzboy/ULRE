@@ -2639,7 +2639,9 @@ namespace hgl::ecs
                             world->GetEntityGPUTable().SetModelFacts(
                                 entity_id,
                                 model_ref ? model_ref->template_id : 0u,
-                                model_ref ? model_ref->part_visibility_mask : 0ull);
+                                model_ref ? model_ref->part_visibility_mask : 0ull,
+                                model_ref ? model_ref->custom_data_index : 0u,
+                                model_ref ? model_ref->prev_transform_id : 0u);
                         }
 
                     #if ULRE_ECS_DEBUG_API

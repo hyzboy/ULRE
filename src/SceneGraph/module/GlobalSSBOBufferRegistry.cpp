@@ -1,5 +1,6 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
+#include <hgl/graph/ssbo/InstanceCustomData.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/CameraInfo.h>
@@ -37,6 +38,8 @@ namespace
         // 容量为初始预算（4096 模型 × 16384 部件 ≈ 512K + 2M 行字节），不够再调表，不改结构。
         { GlobalSSBOType::ModelTemplatePool,   "ModelTemplatePool",   sizeof(ssbo::ModelTemplateRow), 4096u,  1u },
         { GlobalSSBOType::ModelPartPool,       "ModelPartPool",       sizeof(ssbo::ModelPartRow),     16384u, 1u },
+        // T6.2：实例自定义数据池（微调颜色/不透明度，16 B 行）。reserve_rows = 1 ⇒ 行 0 为缺省哨兵。
+        { GlobalSSBOType::InstanceCustomDataPool, "InstanceCustomDataPool", sizeof(ssbo::InstanceCustomData), 16384u, 1u },
     };
 
     /// 配置表覆盖性（遍历全枚举，不手列清单）：聚合数组缺一项**不会编译报错**（值初始化），
@@ -175,6 +178,7 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
     global_addresses_global.addr_color_palette        = 0;   // 由 ColorPaletteSystem 注册（UpdateColorPaletteAddress）
     global_addresses_global.addr_model_template_pool  = GetGPUBase(GlobalSSBOType::ModelTemplatePool);
     global_addresses_global.addr_model_part_pool      = GetGPUBase(GlobalSSBOType::ModelPartPool);
+    global_addresses_global.addr_instance_custom_data = GetGPUBase(GlobalSSBOType::InstanceCustomDataPool);
 
     // 每帧槽字段（sky / viewport / shadow）在各自 buffer 就绪后由 Set*Address 填；先整表清 0。
     for (uint32_t slot = 0; slot < kGlobalAddressesSlotCount; ++slot)
