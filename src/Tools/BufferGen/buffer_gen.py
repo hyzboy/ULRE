@@ -505,6 +505,10 @@ def render_glsl_file(path: str, structs: list[StructInfo]) -> str:
         if info.cfg.get("ref_array", 0):
             member = info.cfg.get("ref_member") or (snake(info.glsl_struct) + "s")
             out.append(f"\n{layout}{{\n    {info.glsl_struct} {member}[];\n}};\n")
+        elif info.cfg.get("ref_member"):
+            # 单例成员：`ModelExpansionArenaRef(addr).arena.flags`（BDA 指向"一块 struct"的语义，
+            # 与 bare 字段形态等价，但访问路径带名字 ⇒ 后续追加列时不会与裸字段撞名）。
+            out.append(f"\n{layout}{{\n    {info.glsl_struct} {info.cfg['ref_member']};\n}};\n")
         else:
             out.append(f"\n{layout}{{\n{body}\n}};\n")
 

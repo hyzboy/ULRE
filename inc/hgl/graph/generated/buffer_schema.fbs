@@ -136,6 +136,7 @@ table WorldAddresses
   addr_entity_render_ids: ulong;
   addr_lights: ulong;
   addr_ambient_env: ulong;
+  addr_model_expansion: ulong;
 }
 
 // inc/hgl/graph/ubo/LightRow.h → LightRow
@@ -206,6 +207,7 @@ table ModelTemplateRow
   lod_screen_ratios: Float3;
   shadow_proxy_template_id: uint;
   flags: uint;
+  part_bucket_count: uint;
   local_bound_center_radius: Float4;
   local_bound_extents: Float4;
 }
@@ -219,5 +221,16 @@ table ModelPartRow
   geometry_id: uint;
   material_id: uint;
   part_flags: uint;
+  bucket_slot: uint;
+}
+
+// inc/hgl/graph/ubo/ModelExpansionArena.h → ModelExpansionArena
+table ModelExpansionArena
+{
+  flags: uint;
+  l2w_base_row: uint;
+  l2w_row_capacity: uint;
+  bucket_base_count: uint;
+  bucket_base_addr: ulong;
 }
 

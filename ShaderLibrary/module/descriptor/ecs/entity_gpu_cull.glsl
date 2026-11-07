@@ -77,6 +77,9 @@ layout(push_constant) uniform PushConstants
 // （2026-10-14：该模块只余形状定义，不再有引用 `world_addresses` 宏的函数体 ⇒
 //  include 位置不再受宏展开时机约束；此前 "必须在上面的 pc 覆盖之后" 的告诫随解析函数一并作废。）
 #include "module/utility/render_item_resolve.glsl"
+#include "module/descriptor/ssbo/model_template_row.glsl"
+#include "module/descriptor/ssbo/model_part_row.glsl"
+#include "module/descriptor/ssbo/model_expansion_arena.glsl"
 
 // 行数组本体（与世界 RenderItemBufferRef 同结构、不同索引空间：这里按 EntityID.index）
 #define entity_render_ids RenderItemBufferRef(world_addresses.addr_entity_render_ids).items
@@ -87,6 +90,13 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Loca
     mat4 mats[];
 };
 #define l2w_world LocalToWorldDataRef(world_addresses.addr_l2w)
+
+// L2W 写入视图（T3.1 展开段）：与上面同址，仅去掉 readonly + 用统一 ref 名。
+layout(buffer_reference, scalar, buffer_reference_align=16) buffer LocalToWorldWriteRef
+{
+    mat4 mats[];
+};
+#define l2w_world_write LocalToWorldWriteRef(world_addresses.addr_l2w)
 
 // 几何 AABB 池（全局）
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer GeometryAABBDataRef
@@ -120,6 +130,27 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Mesh
     MeshDrawParamsHeadData rows[];
 };
 #define mesh_draw_params_pool MeshDrawParamsHeadRef(global_addresses.addr_mesh_draw_params_pool).rows
+
+// ── T3.1：GPU 模型模板/部件池 ────────────────────────────────────────────────
+// 模板池行号 = template_id（行 0 = 非法哨兵）；模板行给 part_offset/part_count，
+// 部件池按 part_offset..+part_count-1 连续排布（见 ModelTemplateRows.h）。
+// 两张池都是**全局只读 BDA**，逐帧稳定 ⇒ shader 侧无任何 CPU 往返。
+#define model_templates ModelTemplateRowBufferRef(global_addresses.addr_model_template_pool).templates
+#define model_parts     ModelPartRowBufferRef(global_addresses.addr_model_part_pool).parts
+
+// 展开竞技场（T3.1）：每帧槽一份，CPU 写、GPU 读。
+#define model_expansion_arena ModelExpansionArenaRef(world_addresses.addr_model_expansion).arena
+
+// 实体桶组基址表（T3.1）：下标 = blk * kArenaRowsPerPass + 实体索引（与竞技场扇区同形），
+// 值 = **块内相对**的该实体模板素材桶组首桶号。展开侧落桶号 = 基址 + part.bucket_slot
+// ⇒ 同一模板跨批 / 跨 pass / 跨帧都能得到正确桶号，同模板多实例共享同一组桶（实例化前提）。
+// 槽头 64 B 之后紧跟本表，地址由 arena.bucket_base_addr 给出。
+layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer ModelBucketBaseRef
+{
+    uint values[];
+};
+#define model_bucket_bases ModelBucketBaseRef(model_expansion_arena.bucket_base_addr).values
+#define MODEL_BUCKET_BASE_INVALID 0xFFFFFFFFu
 
 // 可见计数（原子递增）
 layout(buffer_reference, scalar, buffer_reference_align=4) buffer DrawCountRef
@@ -225,6 +256,213 @@ layout(buffer_reference, scalar, buffer_reference_align=4) buffer BatchCountersR
 
 layout(local_size_x = 64) in;
 
+// ── 球 vs 视锥（6 平面，保守不放大）────────────────────────────────────────
+// 部件级细剔除与模板合并包围体粗剔除共用；平面口径与 main 里的 AABB 剔除同源。
+bool sphere_visible(const vec3 center, const float radius)
+{
+    const CameraInfoData cam = camera;
+
+    for (int i = 0; i < 6; ++i)
+    {
+        const vec4 plane = cam.frustum_planes[i];
+
+        if (dot(plane.xyz, center) + plane.w < -radius)
+            return false;
+    }
+
+    return true;
+}
+
+// ── T3.1：单实例落桶（legacy 与模板展开共用；T5 实例化契约的唯一写口）──────
+// 布局行（`BatchInfoRow`）描述的是**素材桶**而非"整批"：同材质批内按
+// `geometry_id` 聚类，一个桶 = 一种几何 = 一条实例化 draw。
+//
+//  · `cmd_index = block_base + bucket` —— 命令空间（ICB 与 cmds 表共用，块内
+//    绝对桶号）。绘制侧把 cmds 的 push 地址加 `cmd_base × 8`、ICB 起点取
+//    `cmd_base × 12` ⇒ `gl_DrawID` 是桶在**本批**内的相对序号。
+//  · `inst_row  = binfo.row_base + slot` —— 实例空间（arena 绝对行号，本桶的
+//    第 slot 个幸存实例）。l2w/mtl 的 push 偏移恒 0 ⇒ `gl_InstanceIndex` 直接
+//    等于本行号，一条命令用 `groupCountY` 承载整桶实例。
+//
+// `groupCountX/Z` 同值幂等写（同桶所有线程写同一个值，无竞争）；
+// `groupCountY`（实例数）**只能原子累加** —— 清零由 CPU 在 cull cmd 内的
+// FillBuffer 完成（`GPUCullSystem::Update`），故这里不做初始写。
+// `cmds[cmd_index]` 同样同值幂等写（geometry_id + 本桶实例行起点）。
+//
+// `expansion == false`：l2w_out 写 `transform_id`（legacy 语义，逐字节不变）。
+// `expansion == true` ：l2w_out 写**展开段行号**并把 `part_l2w` 写进该行 ——
+//   legacy 行号空间只有 32 bit 且指向实体变换，装不下 per-part 矩阵。
+// 返回 true = 该实例已落桶；false = 桶未接管 / 溢出（调用方无需区分）。
+bool emit_bucket_instance(const uint blk,
+                          const uint bucket,
+                          const uint cur_batch_count,
+                          const uint geometry_id,
+                          const uint transform_id,
+                          const EntityGPUData entity,
+                          const uint material_id,
+                          const uint texture_id,
+                          const bool expansion,
+                          const mat4 part_l2w,
+                          const uint l2w_base_row,
+                          const uint l2w_capacity)
+{
+    const uint block_base = blk * pc.batch_block_stride;
+    const BatchInfoRow binfo = BatchInfoRef(pc.batch_info_addr).rows[block_base + bucket];
+
+    if (binfo.capacity == 0u)
+        return false;    // 本 pass 未接管该批（布局行未写）
+
+    BatchCountersRef counters = BatchCountersRef(pc.batch_counter_addr);
+    const uint slot = atomicAdd(counters.counters[block_base + bucket], 1u);
+
+    // 3A：溢出 = 批归属/部件桶与容量不同源（布局错配/越界）⇒ 跳过 + 计入**本块**
+    // 溢出槽；台架把该计数当**硬判据**（非零即红）。
+    // `expansion` 追加一条：展开段行也必须够（段容量按实例行计，与 arena 行 1:1）。
+    if (slot >= binfo.capacity || (expansion && slot >= l2w_capacity))
+    {
+        atomicAdd(counters.counters[block_base + cur_batch_count], 1u);
+        return false;
+    }
+
+    const uint cmd_index = block_base + bucket;
+    const uint inst_row  = binfo.row_base + slot;
+
+    const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
+    uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
+    if (binfo.topology == TOPOLOGY_LINES)
+        element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段；CPU 侧组数同式，组大小见 MeshDispatchGroupSize）
+    const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
+
+    {
+        DrawIndirectCommandsRef icb = DrawIndirectCommandsRef(pc.indirect_commands_addr);
+        icb.commands[cmd_index].groupCountX = group_count_x;
+        icb.commands[cmd_index].groupCountZ = 1u;
+
+        atomicAdd(IndirectCmdU32Ref(pc.indirect_commands_addr).words[cmd_index * 3u + 1u], 1u);
+    }
+
+    BatchCmdsOutRef(pc.cmds_out_addr).cmds[cmd_index] =
+        BatchCmdRow(geometry_id, binfo.row_base);
+
+    if (expansion)
+    {
+        const uint l2w_row = l2w_base_row + inst_row;
+
+        L2WIndexOutRef(pc.l2w_out_addr).values[inst_row] = l2w_row;
+        l2w_world_write.mats[l2w_row] = part_l2w;
+    }
+    else
+        L2WIndexOutRef(pc.l2w_out_addr).values[inst_row] = transform_id;
+
+    MtlRowsOutRef(pc.mtl_out_addr).values[inst_row] =
+        MtlRow(material_id,
+               texture_id,
+               entity.shadow_bias_multiplier,
+               entity.shadow_receive == 0u ? 1u : 0u);
+
+    return true;
+}
+
+// ── T3.1：模板实体逐部件展开 ────────────────────────────────────────────────
+// 一个实体 = 一个模板实例；模板下的每个部件各自落**一个实例**（不产生新命令 ⇒
+// 绘制侧命令数仍由 CPU 决定，唯一变化是 `groupCountY` 变大）。
+// 部件 ⇒ 素材桶：CPU 装批时按 (批, 模板) 分配一段连续桶 = **模板素材桶组**，并把
+// 组基址写进槽表的 `blk * kArenaRowsPerPass + 实体索引` 行；展开侧
+// `桶号 = 组基址 + part.bucket_slot`。同模板多实例共享同一组桶 ⇒ 实例化成立。
+void expand_template_entity(const uint blk,
+                            const uint cur_batch_count,
+                            const uint entity_slot,
+                            const EntityGPUData entity,
+                            const RenderItemDescriptor ids_blk,
+                            const mat4 root_l2w,
+                            const uint transform_id)
+{
+    const ModelExpansionArenaData arena = model_expansion_arena;
+
+    const uint tag_bucket_base = model_bucket_bases[blk * pc.max_visible_count + entity_slot];
+
+    if (tag_bucket_base == MODEL_BUCKET_BASE_INVALID)
+        return;    // 本批没给该实体分配桶组（CPU 未接管 / 模板未打包）⇒ 不画，不猜默认值
+
+    ModelTemplateRowData tpl = model_templates[entity.model_template_id];
+
+    if (tpl.part_count == 0u || tpl.part_offset == 0u)
+        return;
+
+    // ── T4.2 空壳：阴影代理 ────────────────────────────────────────────────
+    // 阴影 pass（块 1）若模板登记了阴影代理模板，则整棵子树换成代理的部件
+    //（典型用法：楼房 ⇒ 一个 Cube）。当前版本 `shadow_proxy_template_id` 恒 0 ⇒
+    // 直通；启用时代理模板的部件桶也必须被 CPU 并入同一批的桶组。
+    if (blk != 0u && tpl.shadow_proxy_template_id != 0u)
+    {
+        const ModelTemplateRowData proxy = model_templates[tpl.shadow_proxy_template_id];
+
+        if (proxy.part_count != 0u && proxy.part_offset != 0u)
+            tpl = proxy;
+    }
+
+    // 粗剔除：模板合并包围体（`local_bound_center_radius.w < 0` = 未填 ⇒ 跳过）
+    if (blk == 0u && tpl.local_bound_center_radius.w >= 0.0)
+    {
+        const vec3 bound_center = (root_l2w * vec4(tpl.local_bound_center_radius.xyz, 1.0)).xyz;
+        const float bound_scale = max(length(root_l2w[0].xyz),
+                                      max(length(root_l2w[1].xyz), length(root_l2w[2].xyz)));
+
+        if (!sphere_visible(bound_center, tpl.local_bound_center_radius.w * bound_scale))
+            return;
+    }
+
+    for (uint p = 0u; p < tpl.part_count; ++p)
+    {
+        // 部件可见位（`GPUModelRefComponent::part_visibility_mask` 的 GPU 侧镜像）
+        if (((entity.model_part_mask >> uint64_t(p)) & uint64_t(1)) == uint64_t(0))
+            continue;
+
+        const uint part_row = tpl.part_offset + p;
+        const ModelPartRowData part = model_parts[part_row];
+
+        if (part.geometry_id == 0u)
+            continue;    // 空部件（行 0 哨兵惯例）
+
+        // 阴影 pass：只投可投影部件（`kModelPartFlagCanCastShadow`）
+        if (blk != 0u && (part.part_flags & 1u) == 0u)
+            continue;
+
+        // 模板内无几何的部件（CPU 侧已标无槽）：`bucket_slot` 为哨兵
+        if (part.bucket_slot == 0xFFFFFFFFu)
+            continue;
+
+        const uint bucket = tag_bucket_base + part.bucket_slot;
+
+        const mat4 part_l2w = root_l2w * part.local_matrix;
+
+        // 部件级细剔除（仅主帧 pass）：球测。`w < 0` = 始终可见哨兵
+        if (blk == 0u && part.aabb_center_radius.w >= 0.0)
+        {
+            const vec3 part_center = (part_l2w * vec4(part.aabb_center_radius.xyz, 1.0)).xyz;
+            const float part_scale = max(length(part_l2w[0].xyz),
+                                         max(length(part_l2w[1].xyz), length(part_l2w[2].xyz)));
+
+            if (!sphere_visible(part_center, part.aabb_center_radius.w * part_scale))
+                continue;
+        }
+
+        // 材质：部件自带 `material_id` 优先；0 = 继承实体的 pass 级材质行
+        emit_bucket_instance(blk,
+                             bucket,
+                             cur_batch_count,
+                             part.geometry_id,
+                             transform_id,
+                             entity,
+                             (part.material_id != 0u) ? part.material_id : ids_blk.material_id,
+                             ids_blk.texture_id,
+                             true,
+                             part_l2w,
+                             arena.l2w_base_row,
+                             arena.l2w_row_capacity);
+    }
+}
+
 void main()
 {
     uint entity_index = gl_GlobalInvocationID.x;
@@ -273,6 +511,15 @@ void main()
 
     // 读取 L2W 矩阵
     mat4 l2w_matrix = l2w_world.mats[transform_id];
+
+    // ── T3.1：GPU 模型展开总开关 ─────────────────────────────────────────────
+    // 三个条件全真才展开：实体是模板实例、竞技场地址已发布、竞技场 flags 位 0 置位。
+    // 任一不满足 ⇒ 走 legacy 单实例路径（与改造前逐字节一致）。
+    // 地址为 0 时必须**先判空再解引用**（BDA 0 = 空指针）。
+    const uint64_t expansion_addr = world_addresses.addr_model_expansion;
+    const bool expansion_on = (entity.model_template_id != 0u)
+                           && (expansion_addr != uint64_t(0))
+                           && ((model_expansion_arena.flags & 1u) != 0u);
 
     // 读取几何 AABB（center 和 extents 连续存储）
     vec4 aabb_center = geometry_aabbs.center_extents[geometry_id * 2u];
@@ -367,72 +614,21 @@ void main()
         if (batch == 0xFFFFFFFFu || batch >= cur_batch_count)
             continue;
 
-        const uint block_base = blk * pc.batch_block_stride;
-        const BatchInfoRow binfo = BatchInfoRef(pc.batch_info_addr).rows[block_base + batch];
-
-        if (binfo.capacity == 0u)
-            continue;    // 本 pass 未接管该批（布局行未写）
-
-        BatchCountersRef counters = BatchCountersRef(pc.batch_counter_addr);
-        const uint slot = atomicAdd(counters.counters[block_base + batch], 1u);
-
-        if (slot >= binfo.capacity)
-        {
-            // 3A：溢出 = 批归属与容量不同源（布局错配/越界）⇒ 跳过 + 计入**本块**溢出槽；
-            // 台架把该计数当**硬判据**（非零即红）。
-            atomicAdd(counters.counters[block_base + cur_batch_count], 1u);
-            continue;
-        }
-
-        // ── T5（实例化渲染）契约 ────────────────────────────────────────────────
-        // 布局行（`BatchInfoRow`）现在描述的是**素材桶**而非"整批"：同材质批内按
-        // `geometry_id` 聚类，一个桶 = 一种几何 = 一条实例化 draw。
-        //
-        //  · `cmd_index = block_base + batch` —— 命令空间（ICB 与 cmds 表共用，块内
-        //    绝对桶号）。绘制侧把 cmds 的 push 地址加 `cmd_base × 8`、ICB 起点取
-        //    `cmd_base × 12` ⇒ `gl_DrawID` 是桶在**本批**内的相对序号。
-        //  · `inst_row  = binfo.row_base + slot` —— 实例空间（arena 绝对行号，本桶的
-        //    第 slot 个幸存实例）。l2w/mtl 的 push 偏移恒 0 ⇒ `gl_InstanceIndex` 直接
-        //    等于本行号，一条命令用 `groupCountY` 承载整桶实例。
-        //
-        // `groupCountX/Z` 同值幂等写（同桶所有线程写同一个值，无竞争）；
-        // `groupCountY`（实例数）**只能原子累加** —— 清零由 CPU 在 cull cmd 内的
-        // FillBuffer 完成（`GPUCullSystem::Update`），故这里不做初始写。
-        // `cmds[cmd_index]` 同样同值幂等写（geometry_id + 本桶实例行起点）。
-        const uint cmd_index = block_base + batch;
-        const uint inst_row  = binfo.row_base + slot;
-
-        const MeshDrawParamsHeadData mdph = mesh_draw_params_pool[geometry_id];
-        uint element_count = mdph.is_indexed != 0u ? mdph.index_count : mdph.vertex_count;
-        if (binfo.topology == TOPOLOGY_LINES)
-            element_count >>= 1u;   // 线：元素数 = **段数**（每线程 1 段；CPU 侧组数同式，组大小见 MeshDispatchGroupSize）
-        const uint group_count_x = (element_count + binfo.group_size - 1u) / binfo.group_size;
-
-        {
-            DrawIndirectCommandsRef icb = DrawIndirectCommandsRef(pc.indirect_commands_addr);
-            icb.commands[cmd_index].groupCountX = group_count_x;
-            icb.commands[cmd_index].groupCountZ = 1u;
-
-            atomicAdd(IndirectCmdU32Ref(pc.indirect_commands_addr).words[cmd_index * 3u + 1u], 1u);
-        }
-
-        BatchCmdsOutRef(pc.cmds_out_addr).cmds[cmd_index] =
-            BatchCmdRow(geometry_id, binfo.row_base);
-
-        L2WIndexOutRef(pc.l2w_out_addr).values[inst_row] = transform_id;
-
-        // ── T4c3b：4-ID 表按 pass 分半，本块必须读**本 pass 自己那一半** ────────
-        // 行内容**不是 pass 无关**：材质/纹理二 ID 由 collect 按 pass 写（`SetRenderIDs`），
-        // 阴影程序/材质行按 pass 解析 ⇒ 阴影块若照抄主帧那一半，解析到的是主帧的材质变体。
-        // 行号 = `blk * 每 pass 容量 + entity_index`；4-ID 表 pass 容量与可见表上限同值
-        //（`static_assert` 在 `GPUCullSystem.cpp` 守着），故不必再加 push 字段。
+        // ── T3.1 分流：模板实体 ⇒ 逐部件展开；否则走 legacy 单实例 ──────────────
+        // 4-ID 行必须读**本 pass 自己那一半**（材质/纹理二 ID 由 collect 按 pass 写）。
         const RenderItemDescriptor ids_blk =
             entity_render_ids[blk * pc.max_visible_count + entity_index];
 
-        MtlRowsOutRef(pc.mtl_out_addr).values[inst_row] =
-            MtlRow(ids_blk.material_id,
-                   ids_blk.texture_id,
-                   entity.shadow_bias_multiplier,
-                   entity.shadow_receive == 0u ? 1u : 0u);
+        if (expansion_on)
+        {
+            expand_template_entity(blk, cur_batch_count, entity_index, entity, ids_blk,
+                                   l2w_matrix, transform_id);
+            continue;
+        }
+
+        emit_bucket_instance(blk, batch, cur_batch_count, geometry_id, transform_id,
+                             entity, ids_blk.material_id, ids_blk.texture_id,
+                             false, mat4(1.0), 0u, 0u);
+
     }
 }

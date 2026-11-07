@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h>
+#include<hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h>
 #include<hgl/ecs/support/pipeline/RenderStrategyParity.h>
 #include<hgl/ecs/support/cull/BoundingVolumeCull.h>
 #include<hgl/ecs/support/storage/PerfTimer.h>
@@ -11,6 +11,8 @@
 #include<hgl/ecs/support/cull/BoundingBoxAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/ShadowProxy.h>
+#include<hgl/ecs/components/GPUModelRefComponent.h>
+#include<hgl/graph/ssbo/ModelTemplateRows.h>
 #include<hgl/ecs/support/pipeline/PrimitiveState.h>
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/ecs/core/render/PrimitiveRenderItem.h>
@@ -419,6 +421,10 @@ namespace hgl::ecs
         const uint32_t pass_index = world->IsCurrentPassShadow() ? RenderPassSlot::Shadow
                                                                  : RenderPassSlot::Main;
 
+        // T3.1：本 pass 的桶组基址块**先清回哨兵**（上一帧布局对本帧无效）。
+        // 只清本 pass 那半块：两 pass 的装配同帧先后发生，整表清空会抹掉另一半。
+        gpu_cull->ResetModelBucketBases(pass_index);
+
         // ── T3i（③ 多批）：逐批评估 + 共享竞技场切片装配 ──────────────────────
         // 迭代顺序 = `cache.materialBatches` 的 map 键序（确定性）⇒ 批号帧间稳定；
         // 未接管的批**标签留无效** ⇒ cull 不为其写行、CPU 路径照旧绘制（按批粒度：
@@ -479,6 +485,23 @@ namespace hgl::ecs
         std::vector<uint32_t> bucket_geometry;    // 桶 → geometry_id
         std::vector<uint32_t> bucket_capacity;    // 桶 → 容量（= 该几何体的项数）
         std::vector<uint32_t> item_bucket;        // 项 → 桶下标（打标签用）
+
+        // T3.1 模板实体：本批的**模板部件桶组**草稿。
+        // 一个模板在一批里占 `part_bucket_count` 个**连续**桶（桶组），槽 i 对应
+        // `ModelPartRow.bucket_slot == i` 的部件；同模板的多个实例共享同一组 ⇒ 实例化。
+        // 组基址（本 pass 块内桶号）逐实体写进 `GPUCullSystem::SetModelBucketBase`，
+        // 着色器用 `组基址 + part.bucket_slot` 定位（见 entity_gpu_cull.glsl）。
+        struct TemplateGroupDraft
+        {
+            uint32_t template_id  = 0;
+            uint32_t group_bucket = 0;   ///< 组首桶在**本批**桶表内的下标（不含 bucket_first）
+            uint32_t bucket_count = 0;   ///< = tpl.part_bucket_count
+        };
+
+        std::vector<TemplateGroupDraft> template_groups;      // 本批模板（去重、出现序确定）
+        std::vector<uint32_t> template_entity_group;          // 项 → 组下标（UINT32_MAX = 非模板项）
+        std::vector<uint32_t> part_slot_count;                // 槽 → 该槽的部件数（逐模板复用）
+        std::vector<uint32_t> part_slot_geometry;             // 槽 → 该槽的 geometry_id（逐模板复用）
 
         // A/B 诊断开关（临时）：`ULRE_NO_INSTANCING=1` ⇒ 每项独立成桶（capacity=1），
         // 等价于改造前的"每项一条单实例命令"。用于与实例化路径做逐像素对拍。
@@ -582,6 +605,103 @@ namespace hgl::ecs
                     item_bucket[i] = bucket;
                 }
 
+                // ── T3.1：模板实体的**部件桶组**分配（紧接基础聚类之后）─────────
+                // 模板实体在基础聚类里只贡献"代表几何体"那一个桶（正常实体仍要用它）；
+                // 其部件实例**不**落到该桶，而是落到本模板自己的桶组里 ⇒ 这里按模板
+                // 去重后追加 `part_bucket_count` 个连续桶。
+                //
+                // 桶组容量取**精确值**：槽 s 的桶容量 = 该槽的部件数 × 本批该模板的
+                // 实体数（每个部件每实例最多落一行）。Σ 全部槽 = part_count × 实体数
+                // = 展开行数，与旧口径等同，不浪费竞技场行。
+                if (!why)
+                {
+                    template_groups.clear();
+                    part_slot_count.clear();
+                    part_slot_geometry.clear();
+                    template_entity_group.assign(item_count, UINT32_MAX);
+
+                    for (size_t i = 0; i < item_count && !why; ++i)
+                    {
+                        Entity *owner = b->items[i]->GetEntity();
+                        const GPUModelRefComponent *ref =
+                            owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
+
+                        if (!ref || ref->template_id == graph::ssbo::kInvalidModelTemplateID)
+                            continue;
+
+                        const graph::ssbo::ModelTemplateRow *tpl = pool->GetTypedRow<graph::ssbo::ModelTemplateRow>(
+                            graph::GlobalSSBOType::ModelTemplatePool, ref->template_id);
+
+                        if (!tpl || tpl->part_offset == 0u || tpl->part_count == 0u
+                                || tpl->part_bucket_count == 0u)
+                        {
+                            why = "模型模板行缺失/无部件桶（GPUModelRef 指向无效模板）";
+                            break;
+                        }
+
+                        uint32_t gi = UINT32_MAX;
+
+                        for (uint32_t g = 0; g < uint32_t(template_groups.size()); ++g)
+                            if (template_groups[g].template_id == ref->template_id)
+                            {
+                                gi = g;
+                                break;
+                            }
+
+                        if (gi == UINT32_MAX)
+                        {
+                            // 首次出现：建组（槽计数/槽几何体按部件行精确统计）
+                            part_slot_count.assign(tpl->part_bucket_count, 0u);
+                            part_slot_geometry.assign(tpl->part_bucket_count, 0u);
+
+                            for (uint32_t k = 0; k < tpl->part_count && !why; ++k)
+                            {
+                                const graph::ssbo::ModelPartRow *part =
+                                    pool->GetTypedRow<graph::ssbo::ModelPartRow>(
+                                        graph::GlobalSSBOType::ModelPartPool, tpl->part_offset + k);
+
+                                if (!part)
+                                {
+                                    why = "模型部件行缺失（模板 part 区间越界）";
+                                    break;
+                                }
+
+                                if (part->geometry_id == 0u
+                                 || part->bucket_slot >= tpl->part_bucket_count)
+                                    continue;
+
+                                ++part_slot_count[part->bucket_slot];
+                                part_slot_geometry[part->bucket_slot] = part->geometry_id;
+                            }
+
+                            if (why)
+                                break;
+
+                            gi = uint32_t(template_groups.size());
+                            template_groups.push_back(TemplateGroupDraft{});
+
+                            TemplateGroupDraft &grp = template_groups.back();
+                            grp.template_id  = ref->template_id;
+                            grp.group_bucket = uint32_t(bucket_geometry.size());
+                            grp.bucket_count = tpl->part_bucket_count;
+
+                            for (uint32_t s = 0; s < tpl->part_bucket_count; ++s)
+                            {
+                                bucket_geometry.push_back(part_slot_geometry[s]);
+                                bucket_capacity.push_back(0u);
+                            }
+                        }
+
+                        // 逐实例累加：每个实例给该模板的每个槽再加 `part_slot_count[s]` 容量
+                        const TemplateGroupDraft &grp = template_groups[gi];
+
+                        for (uint32_t s = 0; s < grp.bucket_count; ++s)
+                            bucket_capacity[grp.group_bucket + s] += part_slot_count[s];
+
+                        template_entity_group[i] = gi;
+                    }
+                }
+
                 if (!why
                  && next_index + uint32_t(bucket_geometry.size()) > GPUCullSystem::kMaxBatches)
                 {
@@ -661,6 +781,16 @@ namespace hgl::ecs
                 Entity *owner = b->items[i]->GetEntity();
                 // 结构类值：本帧装配、本帧消费。标签 = **桶号**（该实体所属几何桶）。
                 tags[owner->GetEntityID().index] = bucket_first + item_bucket[i];
+
+                // T3.1：模板实体另写**部件桶组基址**（本 pass 块内桶号）。
+                // 标签仍指向"代表几何体"那个桶，但只用于"是否属接管批"的判定；
+                // 部件展开的落点由本表决定（组基址 + `part.bucket_slot`）。
+                const uint32_t gi = template_entity_group.empty()
+                    ? UINT32_MAX : template_entity_group[i];
+
+                if (gi != UINT32_MAX)
+                    gpu_cull->SetModelBucketBase(pass_index, owner->GetEntityID().index,
+                                                 bucket_first + template_groups[gi].group_bucket);
             }
 
             if (s_takeover_trace)

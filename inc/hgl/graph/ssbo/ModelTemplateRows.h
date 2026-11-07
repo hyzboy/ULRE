@@ -47,6 +47,9 @@ namespace hgl::graph::ssbo
     constexpr uint32_t kModelPartFlagCanCastShadow = 1u << 0; ///< 阴影 pass 可投影
     constexpr uint32_t kModelPartFlagIsOpaque      = 1u << 1; ///< 不透明（vs 透明分拣用）
 
+    /// ModelPartRow.bucket_slot 的"无桶"哨兵（geometry_id == 0 的部件恒为此值）。
+    constexpr uint32_t kModelPartBucketSlotNone = 0xFFFFFFFFu;
+
     /**
      * 模型模板行 —— 一个模型（含其 Geometry 节点树）在 VRAM 模板池里的一行。
      *
@@ -59,6 +62,11 @@ namespace hgl::graph::ssbo
      *   （id=0 ⇒ 该级不存在；CPU 侧填表，GPU 展开暂不消费 —— 空壳 T4）。
      * - `shadow_proxy_template_id`：阴影代理模板 id（如整栋楼 ≈ 一个 Cube）；
      *   0 ⇒ 阴影 pass 直接渲染本体部件（空壳 T4）。
+     * - `part_bucket_count`：本模板**部件素材桶数**（= 部件 `bucket_slot` 的最大值 + 1）。
+     *   展开时 GPU 每个部件落一个实例到"模板素材桶组"的第 `bucket_slot` 个桶；
+     *   组基址由 CPU 在装批时按 (批, 模板) 分配并写入展开竞技场的 per-实体表
+     *   （见 `ModelExpansionArena::bucket_base_addr`）。本字段让 CPU 不必扫部件行
+     *   就能知道要为本模板预留几个桶。
      */
     struct alignas(16) HGL_SSBO_BDA ModelTemplateRow
     {
@@ -71,7 +79,8 @@ namespace hgl::graph::ssbo
         uint32_t shadow_proxy_template_id = 0;           ///< 阴影代理模板 id（0 = 用本体）
         uint32_t flags = 0;                              ///< kModelTemplateFlag*
 
-        uint32_t _pad0[2] = { 0u, 0u };                  ///< 对齐：下两个 vec4 落 16B 边界
+        uint32_t part_bucket_count = 0;                  ///< 部件素材桶数（= max(bucket_slot)+1）
+        uint32_t _pad0[1] = { 0u };                      ///< 对齐：下两个 vec4 落 16B 边界
 
         Vector4f local_bound_center_radius = Vector4f(0.0f, 0.0f, 0.0f, 0.0f); ///< xyz 中心，w 半径
         Vector4f local_bound_extents       = Vector4f(0.0f, 0.0f, 0.0f, 0.0f); ///< AABB 半长
@@ -84,6 +93,7 @@ namespace hgl::graph::ssbo
     static_assert(offsetof(ModelTemplateRow, lod_proxy_template_ids) == 8,  "lod_proxy_template_ids @8");
     static_assert(offsetof(ModelTemplateRow, lod_screen_ratios) == 20,      "lod_screen_ratios @20");
     static_assert(offsetof(ModelTemplateRow, shadow_proxy_template_id) == 32, "shadow_proxy_template_id @32");
+    static_assert(offsetof(ModelTemplateRow, part_bucket_count) == 40,      "part_bucket_count @40");
     static_assert(offsetof(ModelTemplateRow, local_bound_center_radius) == 48, "local_bound_center_radius @48");
     static_assert(offsetof(ModelTemplateRow, local_bound_extents) == 64,    "local_bound_extents @64");
 
@@ -98,6 +108,11 @@ namespace hgl::graph::ssbo
      *   口径与 EntityGPU 表的 4-ID（entity_render_ids.geometry）完全一致。
      * - `material_id`：材质数据行号（MaterialData 池）；0 = 未指定，
      *   展开时可回退到实例/批次材质（当前 collect 路径按批次材质，本字段先行占位）。
+     * - `bucket_slot`：本部件在**模板素材桶组**内的槽号（同模板内按 `geometry_id`
+     *   首次出现序去重编号；`geometry_id == 0` ⇒ `kModelPartBucketSlotNone`）。
+     *   桶组由 CPU 在装批时按 (批, 模板) 分配，组基址写入展开竞技场的 per-实体表；
+     *   展开时 `桶号 = 组基址 + bucket_slot`。本字段是"部件 ⇒ 素材桶"映射的
+     *   **唯一真源**，与批无关、跨帧幂等。
      */
     struct alignas(16) HGL_SSBO_BDA ModelPartRow
     {
@@ -109,7 +124,9 @@ namespace hgl::graph::ssbo
         uint32_t material_id = 0;                    ///< 材质数据行号（0 = 未指定）
         uint32_t part_flags  = 0;                    ///< kModelPartFlag*
 
-        uint32_t _pad0[5] = { 0u };                  ///< 补足 128B 行
+        uint32_t bucket_slot = kModelPartBucketSlotNone; ///< 模板素材桶组内的槽号
+
+        uint32_t _pad0[4] = { 0u };                  ///< 补足 128B 行
     };
 
     static_assert(sizeof(ModelPartRow) == 128, "ModelPartRow 必须恰为 128 字节");
@@ -120,4 +137,5 @@ namespace hgl::graph::ssbo
     static_assert(offsetof(ModelPartRow, geometry_id) == 96,   "geometry_id @96");
     static_assert(offsetof(ModelPartRow, material_id) == 100,  "material_id @100");
     static_assert(offsetof(ModelPartRow, part_flags) == 104,   "part_flags @104");
+    static_assert(offsetof(ModelPartRow, bucket_slot) == 108,  "bucket_slot @108");
 }

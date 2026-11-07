@@ -17,7 +17,8 @@ struct ModelPartRowData
     uint geometry_id;
     uint material_id;
     uint part_flags;
-    uint _pad0[5];
+    uint bucket_slot;
+    uint _pad0[4];
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer ModelPartRowBufferRef

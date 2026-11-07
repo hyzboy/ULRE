@@ -15,6 +15,7 @@
 #include <hgl/graph/ubo/ColorPalette.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
 #include <hgl/graph/ubo/LightRow.h>
+#include <hgl/graph/ubo/ModelExpansionArena.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
 #include <hgl/graph/ubo/ViewportInfo.h>
 #include <hgl/graph/ubo/WorldAddresses.h>
@@ -187,6 +188,7 @@ namespace hgl::graph::generated
     inline bool ReadMaterialDataRow(const toml::value &table, hgl::graph::ssbo::MaterialDataRow &out);
     inline bool ReadModelTemplateRow(const toml::value &table, hgl::graph::ssbo::ModelTemplateRow &out);
     inline bool ReadModelPartRow(const toml::value &table, hgl::graph::ssbo::ModelPartRow &out);
+    inline bool ReadModelExpansionArena(const toml::value &table, hgl::graph::ModelExpansionArena &out);
     inline toml::value WriteAmbientEnvInfo(const hgl::graph::AmbientEnvInfo &in);
     inline toml::value WriteViewportInfo(const hgl::graph::ViewportInfo &in);
     inline toml::value WriteColorPalette(const hgl::graph::ColorPalette &in);
@@ -202,6 +204,7 @@ namespace hgl::graph::generated
     inline toml::value WriteMaterialDataRow(const hgl::graph::ssbo::MaterialDataRow &in);
     inline toml::value WriteModelTemplateRow(const hgl::graph::ssbo::ModelTemplateRow &in);
     inline toml::value WriteModelPartRow(const hgl::graph::ssbo::ModelPartRow &in);
+    inline toml::value WriteModelExpansionArena(const hgl::graph::ModelExpansionArena &in);
 
     inline bool ReadAmbientEnvInfo(const toml::value &table, hgl::graph::AmbientEnvInfo &out)
     {
@@ -417,6 +420,10 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.addr_ambient_env)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "addr_model_expansion"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_model_expansion)) return false;
+        }
         return true;
     }
 
@@ -606,6 +613,10 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.flags)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "part_bucket_count"))
+        {
+            if (!detail::AsUnsigned(*v, out.part_bucket_count)) return false;
+        }
         if (const toml::value *v = detail::Find(table, "local_bound_center_radius"))
         {
             if (!detail::AsFloatArray(*v, &out.local_bound_center_radius.x, 4)) return false;
@@ -644,6 +655,37 @@ namespace hgl::graph::generated
         if (const toml::value *v = detail::Find(table, "part_flags"))
         {
             if (!detail::AsUnsigned(*v, out.part_flags)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "bucket_slot"))
+        {
+            if (!detail::AsUnsigned(*v, out.bucket_slot)) return false;
+        }
+        return true;
+    }
+
+    inline bool ReadModelExpansionArena(const toml::value &table, hgl::graph::ModelExpansionArena &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "flags"))
+        {
+            if (!detail::AsUnsigned(*v, out.flags)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "l2w_base_row"))
+        {
+            if (!detail::AsUnsigned(*v, out.l2w_base_row)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "l2w_row_capacity"))
+        {
+            if (!detail::AsUnsigned(*v, out.l2w_row_capacity)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "bucket_base_count"))
+        {
+            if (!detail::AsUnsigned(*v, out.bucket_base_count)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "bucket_base_addr"))
+        {
+            if (!detail::AsUnsigned(*v, out.bucket_base_addr)) return false;
         }
         return true;
     }
@@ -734,6 +776,7 @@ namespace hgl::graph::generated
         t["addr_entity_render_ids"] = detail::FromInteger(in.addr_entity_render_ids);
         t["addr_lights"] = detail::FromInteger(in.addr_lights);
         t["addr_ambient_env"] = detail::FromInteger(in.addr_ambient_env);
+        t["addr_model_expansion"] = detail::FromInteger(in.addr_model_expansion);
         return toml::value(std::move(t));
     }
 
@@ -811,6 +854,7 @@ namespace hgl::graph::generated
         t["lod_screen_ratios"] = detail::FromFloatArray(in.lod_screen_ratios, 3);
         t["shadow_proxy_template_id"] = detail::FromInteger(in.shadow_proxy_template_id);
         t["flags"] = detail::FromInteger(in.flags);
+        t["part_bucket_count"] = detail::FromInteger(in.part_bucket_count);
         t["local_bound_center_radius"] = detail::FromFloatArray(&in.local_bound_center_radius.x, 4);
         t["local_bound_extents"] = detail::FromFloatArray(&in.local_bound_extents.x, 4);
         return toml::value(std::move(t));
@@ -825,6 +869,18 @@ namespace hgl::graph::generated
         t["geometry_id"] = detail::FromInteger(in.geometry_id);
         t["material_id"] = detail::FromInteger(in.material_id);
         t["part_flags"] = detail::FromInteger(in.part_flags);
+        t["bucket_slot"] = detail::FromInteger(in.bucket_slot);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteModelExpansionArena(const hgl::graph::ModelExpansionArena &in)
+    {
+        toml::table t;
+        t["flags"] = detail::FromInteger(in.flags);
+        t["l2w_base_row"] = detail::FromInteger(in.l2w_base_row);
+        t["l2w_row_capacity"] = detail::FromInteger(in.l2w_row_capacity);
+        t["bucket_base_count"] = detail::FromInteger(in.bucket_base_count);
+        t["bucket_base_addr"] = detail::FromInteger(in.bucket_base_addr);
         return toml::value(std::move(t));
     }
 

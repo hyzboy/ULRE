@@ -43,6 +43,10 @@ namespace hgl::graph
         uint64_t addr_ambient_env = 0;          // 环境光 provider 参数块 AmbientEnvInfo（世界私有；T1 归位）——
                                                 // 内容 = IBL 三个 bindless 句柄，资源就绪时写一次、无人逐帧改
                                                 // ⇒ 单份 buffer（全帧槽同址；逐帧演化的块须按帧槽分份，见 R3/T2）
+        uint64_t addr_model_expansion = 0;      // T3.1 GPU 模型展开竞技场 ModelExpansionArena（世界私有）——
+                                                // 头部 = 动态桶表（部件形态 → 紧凑桶号，CPU 每帧重排），块体 = 逐帧槽
+                                                // 命令 / 行号 / 材质 / 部件行映射四张表。展开产出**进既有独立 ICB 多画**，
+                                                // 不需要 CPU 知道部件数（与 "一桶一画" 契约的桥接点）。
     };
 
     /// 表槽数 = per-frame 槽总数（每帧写自己那一槽）。

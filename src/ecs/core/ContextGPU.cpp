@@ -2,6 +2,7 @@
 #include <hgl/ecs/support/storage/CameraInfoStorage.h>
 #include <hgl/ecs/support/transform/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
+#include <hgl/ecs/support/cull/GPUCullSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
@@ -583,6 +584,16 @@ namespace hgl::ecs
                                               ? ResolveEnvManager()->GetAmbientEnvAddress(active_env_profile)
                                               : 0;
             want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);
+
+            // T3.1：GPU 模型展开竞技场（世界私有，按帧槽切份——`l2w_base_row` 逐帧变，
+            // 展开矩阵段本来就跟着帧槽滚动）。未注册剔除系统 / 未建块 ⇒ 沿用旧值（缺席）。
+            {
+                uint64_t expansion_addr = 0;
+                if (auto cull = GetSystem<GPUCullSystem>())
+                    expansion_addr = cull->GetModelExpansionArenaAddress();
+
+                want.addr_model_expansion = pick(expansion_addr, dst->addr_model_expansion);
+            }
 
             want.addr_shadow = pick(
                 slot_offset(shadow_info_addr, sizeof(graph::ShadowInfo)),

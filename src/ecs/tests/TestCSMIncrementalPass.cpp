@@ -5581,8 +5581,14 @@ int main(int argc, char** argv)
         const SourceContract kB4iiiContracts[] =
         {
             // ① 类型与行结构
+            // T1.1 起枚举尾部追加了 ModelTemplatePool / ModelPartPool（GPU 常驻模型模板池），
+            // 范围终点随之移到 ModelPartPool —— 判据要的是「MaterialData 仍在范围内」，
+            // 故改成锁终点 == 末项，并另加一条锁 MaterialData 条目本身还在。
             { "SSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/SSBOTypes.h"),
-              "ENUM_CLASS_RANGE(MeshDrawParams, MaterialData)",
+              "ENUM_CLASS_RANGE(MeshDrawParams, ModelPartPool)",
+              "GlobalSSBOType 的枚举范围终点不再覆盖 MaterialData（设备级组件行类型越界）" },
+            { "SSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/SSBOTypes.h"),
+              "        MaterialData,",
               "GlobalSSBOType 未登记 MaterialData（设备级组件行类型缺失）" },
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
               "struct HGL_SSBO_ROW MaterialDataRow", "材质数据组件行结构缺失" },

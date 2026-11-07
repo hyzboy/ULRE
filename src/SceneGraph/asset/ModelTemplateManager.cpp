@@ -85,6 +85,7 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
     merged_box.Clear();
     bool any_bounds = false;
     uint32_t ready_geometry = 0;
+    uint32_t bucket_slot_count = 0; ///< 模板内已分配的素材桶槽数（去重计数）
 
     for (size_t n = 0; n < node_count; ++n)
     {
@@ -131,6 +132,28 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
             row.material_id = 0u;
             row.part_flags  = row.geometry_id != 0u ? ssbo::kModelPartFlagCanCastShadow : 0u;
 
+            // 部件 → 素材桶槽号：模板内按 geometry_id **首次出现**去重编号。
+            // 该槽号是模板内常量（与批 / pass / 帧无关），展开侧最终桶号 =
+            // 批装配期分配的「模板素材桶组基址」+ 本槽号。
+            row.bucket_slot = ssbo::kModelPartBucketSlotNone;
+
+            if (row.geometry_id != 0u)
+            {
+                const ModelPartRow *prev_rows = rows.GetData();
+
+                for (int i = 0; i < rows.GetCount(); ++i)
+                {
+                    if (prev_rows[i].geometry_id == row.geometry_id)
+                    {
+                        row.bucket_slot = prev_rows[i].bucket_slot;
+                        break;
+                    }
+                }
+
+                if (row.bucket_slot == ssbo::kModelPartBucketSlotNone)
+                    row.bucket_slot = bucket_slot_count++;
+            }
+
             rows.Add(row);
         }
     }
@@ -160,6 +183,7 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
     ModelTemplateRow trow;
     trow.part_offset = part_first;
     trow.part_count  = part_count;
+    trow.part_bucket_count = bucket_slot_count;
 
     if (any_bounds)
     {
@@ -184,8 +208,9 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
         return kInvalidModelTemplateID;
     }
 
-    GLogInfo(u8"[ModelTemplateManager] 模板注册 id=%u parts=%u (几何就绪 %u) 区间=[%u,%u]",
-             template_id, part_count, ready_geometry, part_first, part_first + part_count - 1u);
+    GLogInfo(u8"[ModelTemplateManager] 模板注册 id=%u parts=%u 素材桶=%u (几何就绪 %u) 区间=[%u,%u]",
+             template_id, part_count, bucket_slot_count, ready_geometry,
+             part_first, part_first + part_count - 1u);
 
     return template_id;
 }

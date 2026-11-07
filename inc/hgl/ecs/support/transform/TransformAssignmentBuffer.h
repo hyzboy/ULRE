@@ -105,6 +105,20 @@ namespace hgl::ecs
         /// 动态段基址（B1b：由**预算**决定，不再随"当前名单长度"漂移；与 buffer 固定容量同源）
         uint32_t GetDynamicBaseIndex() const;
 
+        /// T3.1：**展开段**每帧槽行数（GPU 模型展开的合成矩阵专用；一人一断）。
+        /// 需求来源：部件世界矩阵 = 根世界矩阵 × `ModelPartRow.local_matrix`，无法用行号表达
+        /// ⇒ 展开侧要一段可写的矩阵区。行数与剔除实例竞技场同量级（每 pass 4096 × 2 扇区），
+        /// 取 8192 留一倍余量；越界由 `ModelExpansionArena.l2w_row_capacity` 挡。
+        static constexpr uint32_t kModelExpansionRowsPerSlot = 8192;
+
+        /// 本帧槽展开段基址（绝对行号）；恒 ≥ `GetDynamicBaseIndex() + max_dynamic_rows`
+        uint32_t GetModelExpansionBaseIndex() const;
+
+        // 展开段的帧槽份数按 HGL_L2W_RING_FRAMES 算，而基址按 ring 的 frame_index 算 ⇒
+        // 两者必须同深，否则基址会越出缓冲（A5 已关闭这个不等：环深 == 帧槽总数）。
+        static_assert(HGL_L2W_RING_FRAMES == HGL_FRAME_SLOT_TOTAL,
+                      "展开段行数与帧槽必须同深（HGL_L2W_RING_FRAMES != HGL_FRAME_SLOT_TOTAL）");
+
         void WriteStaticDirtyIndices(const TransformDataStorage& storage,
                          const std::vector<TransformDataStorage::HandleID>& handles,
                          const std::vector<uint32_t>& dirty_indices);

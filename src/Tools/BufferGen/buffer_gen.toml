@@ -148,6 +148,16 @@ ref_member = "parts"
 ref_array = 1
 note = "模型部件池行（GlobalSSBOType::ModelPartPool）：一步长 128B；local_matrix @0 / 包围盒 @64/@80 / geometry_id @96。着色器经 GlobalAddresses.addr_model_part_pool 以 BDA 读取 ⇒ 本 Ref 块仅作 struct 镜像来源。"
 
+[[struct]]
+name = "ModelExpansionArena"
+kind = "ssbo"
+file = "module/descriptor/ssbo/model_expansion_arena.glsl"
+glsl_struct = "ModelExpansionArenaData"
+glsl_ref = "ModelExpansionArenaRef"
+ref_member = "arena"
+ref_array = 0
+note = "GPU 模型展开竞技场（世界私有，地址 WorldAddresses.addr_model_expansion）：**读写**块（展开侧写 flags/l2w 段指针的消费者是剔除 shader 自己不算写入，但段内矩阵写的是 L2W 池，故本块用 HGL_SSBO_ROW 保持 readwrite 权限以免后续追加可变列时再改一次 ABI）。按 HGL_FRAME_SLOT_TOTAL 多份，pc_root 已指向本帧槽。"
+
 # ── CPU-only（位于独占目录但不上 GPU；不产出任何派生物） ──────────────────────
 [[struct]]
 name = "EnvironmentInfo"

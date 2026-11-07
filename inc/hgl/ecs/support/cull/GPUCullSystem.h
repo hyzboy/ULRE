@@ -11,6 +11,8 @@
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/graph/ubo/ModelExpansionArena.h>
+#include <hgl/type/ValueArray.h>
 
 namespace hgl::ecs
 {
@@ -126,6 +128,13 @@ namespace hgl::ecs
         static constexpr uint32_t kArenaRowsPerPass   = kMaxVisibleEntities;
         static constexpr uint32_t kArenaRows          = kArenaPasses * kArenaRowsPerPass;
 
+        // T3.1：桶组基址表的行空间必须与竞技场扇区**同形**（同一下标算法
+        // `pass * kArenaRowsPerPass + 实体下标`），否则展开侧读到的基址错位。
+        static_assert(graph::kModelExpansionBucketBaseRowsPerPass == kArenaRowsPerPass,
+                      "kModelExpansionBucketBaseRowsPerPass 与 kMaxVisibleEntities 漂移");
+        static_assert(graph::kModelExpansionMaxBucketBaseRows == kArenaRows,
+                      "kModelExpansionMaxBucketBaseRows 与 kArenaRows 漂移");
+
         /// 扇区 0 = 主帧 pass；扇区 1 = 阴影 pass。
         static constexpr uint32_t ArenaSectorBase(uint32_t pass_index)
         {
@@ -170,6 +179,27 @@ namespace hgl::ecs
         /// 返回指针含 `kMaxBatches + 1` 项，末项 = overflow 计数。
         uint32_t *MapCurrentBatchCounters(uint32_t pass_index);
         void      UnmapCurrentBatchCounters();
+
+        /// T3.1：**当前帧槽**的展开竞技场地址（`WorldAddresses.addr_model_expansion` 的取值）。
+        /// 按槽偏移在内部算好 ⇒ 写表侧不需要知道槽步长；未建块 ⇒ 0（消费者判缺席）。
+        uint64_t GetModelExpansionArenaAddress() const;
+
+        /// T3.1：展开分支开关（置 `ModelExpansionArena.flags` 的使能位）。
+        /// 关 ⇒ 剔除走传统单实体路径（模板事实字段被忽略 ⇒ 逐字节不变）。
+        void SetModelExpansionEnabled(bool enabled) { model_expansion_enabled_ = enabled; }
+        bool IsModelExpansionEnabled() const { return model_expansion_enabled_; }
+
+        /// T3.1：登记「实体 → 模板素材桶组基址」（写者 = 批装配期，`PrimitiveBatchPipeline`）。
+        /// `pass_index` ∈ [0, kArenaPasses)，`entity_index` ∈ [0, kMaxVisibleEntities)。
+        /// 组基址 = 该 (批, 模板) 独占的一段连续桶的**块内相对**首桶号；展开侧落桶号 =
+        /// 组基址 + `ModelPartRow.bucket_slot`。未登记 ⇒ `kModelExpansionInvalidBucketBase`
+        /// ⇒ 展开侧跳过该实体（画不出来也不能画错）。
+        void SetModelBucketBase(uint32_t pass_index, uint32_t entity_index, uint32_t bucket_base);
+
+        /// T3.1：清空当前 pass 的实体桶组基址块（回哨兵）。批装配期每 pass 开头调用一次
+        ///（上一帧的基址对本帧批次布局无效）。只清本 pass 那半块 —— 两个 pass 的装配
+        /// 在同一帧内先后发生，整表清空会抹掉另一个 pass 已登记的基址。
+        void ResetModelBucketBases(uint32_t pass_index);
 
         /// 读回可见计数（**仅限对拍台架**，T3g）：生产路径零 CPU 同步 ⇒ 本函数
         /// **不等 GPU**，读到的可能是上一已定帧的值。调用方（CPUCullReferenceSystem）
@@ -245,6 +275,17 @@ namespace hgl::ecs
         // 创建输出 buffer
         bool CreateOutputBuffers();
 
+        /// T3.1：写**当前帧槽**的展开竞技场（flags + L2W 展开段基址/容量 + 实体桶组基址表）。
+        /// 只写本帧槽那一份；调用点在 Update 的 `WaitForCullSlot` 之后（此时该槽不在飞）。
+        void WriteModelExpansionArena(uint32_t slot);
+
+        /// T3.1：展开竞技场每帧槽字节数 = 64 B 头部（`ModelExpansionArena` 48 B + 对齐余量）
+        /// + 实体桶组基址表（`u32 × kModelExpansionMaxBucketBaseRows`）。表紧跟头部 ⇒
+        /// `bucket_base_addr = 槽基址 + 64`（16 B 对齐）。
+        static constexpr VkDeviceSize kExpansionHeaderBytes = graph::kModelExpansionHeaderBytes;
+        static constexpr VkDeviceSize kExpansionSlotBytes =
+            kExpansionHeaderBytes + VkDeviceSize(graph::kModelExpansionMaxBucketBaseRows) * 4;
+
         /// 一次性创建派发资源（T3g）：队列（fence 环 = 帧槽数）+ 命令缓冲环。
         /// 泄漏修复的本体：这些对象**只在这里 new 一次**，`Shutdown()` 显式释放。
         bool CreateDispatchResources();
@@ -273,6 +314,16 @@ namespace hgl::ecs
         uint64_t batch_tag_addr_ = 0;
         uint64_t batch_info_addr_ = 0;
         uint64_t batch_counter_addr_ = 0;
+
+        // ── T3.1：GPU 模型展开竞技场（按帧槽分份；内容由本系统在 Update 期写当前槽）──
+        //   `l2w_base_row` 逐帧变 ⇒ 必须按槽分份（单份会被下一帧覆写在途矩阵段指针）。
+        graph::DeviceBuffer *expansion_arena_buffer_ = nullptr;  // kSlots × kExpansionSlotBytes
+        uint64_t expansion_arena_addr_ = 0;
+        bool     model_expansion_enabled_ = true;                ///< 展开分支使能（写 arena.flags）
+
+        /// 实体 → 模板素材桶组基址表（CPU 侧主副本；下标 = pass_index * kMaxVisibleEntities + entity_index）。
+        /// 每帧随竞技场一起上传（整表 32 KB/slot，按槽双写 —— 展开分支的读侧只认自己那一槽）。
+        hgl::ValueArray<uint32_t> expansion_bucket_base_cpu_;
 
         /// 批信息行（**与 `entity_gpu_cull.glsl` 的 `BatchInfoRow` 逐字段同序同型**；
         /// 16 B/行）。后两字段 = **dispatch 档**：gather 的 X 公式按它选（线按段数、组大小不同）。

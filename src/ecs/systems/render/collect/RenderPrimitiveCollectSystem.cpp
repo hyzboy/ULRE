@@ -4,6 +4,7 @@
 #include<hgl/ecs/support/pipeline/RenderResource.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/ShadowProxy.h>
+#include<hgl/ecs/components/GPUModelRefComponent.h>
 #include<hgl/ecs/support/pipeline/PrimitiveState.h>
 #include<cmath>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
@@ -2625,6 +2626,21 @@ namespace hgl::ecs
                         // 成本：值已在本帧别处算过同类查询（O(1)+上溯）；`SetVisible` 是**值变才标脏**
                         // ⇒ 静态实体不产生脏行（否则整表每帧上传）。
                         world->GetEntityGPUTable().SetVisible(entity_id, world->IsEntityVisible(entity_id));
+
+                        // ── T3.1 / T3.2：模型模板事实上行（GPU 展开分支的**唯一入口**）──
+                        // 同一判据点、同一纪律：本实体已进批 ⇒ 行值当帧有效。`template_id != 0`
+                        // 时剔除 shader 会按模板部件表逐部件展开（实体自己**不再**为每个部件发
+                        // item）；`0` ⇒ 传统单实体路径（掩码一并归零，避免残留掩码影响日后重绑）。
+                        // 成本：`SetModelFacts` 值变才标脏 ⇒ 稳态零脏行。
+                        {
+                            const GPUModelRefComponent *model_ref =
+                                shadow_owner ? shadow_owner->GetComponent<GPUModelRefComponent>() : nullptr;
+
+                            world->GetEntityGPUTable().SetModelFacts(
+                                entity_id,
+                                model_ref ? model_ref->template_id : 0u,
+                                model_ref ? model_ref->part_visibility_mask : 0ull);
+                        }
 
                     #if ULRE_ECS_DEBUG_API
                         // 写后一致断言（debug 面）：这条**本该恒成立**（刚写的就是权威）⇒ 一旦点名即

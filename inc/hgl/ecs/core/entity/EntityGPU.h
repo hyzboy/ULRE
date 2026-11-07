@@ -67,6 +67,18 @@ namespace hgl
             //   receive = 0 ⇒ 消费端写 kMaterialShadowFlagNoReceive
             float  shadow_bias_multiplier = 0.0f;   ///< 局部 Bias 倍率事实（0 = 未上行/默认）
             uint32_t shadow_receive       = 0;      ///< 1 = 接收阴影（CanReceiveShadow 事实位）
+
+            // ── T3.1：GPU 模型模板引用事实（GPU 展开的入口判据）─────────────
+            // 原 `_pad` 区再划出 12 B：**不新增字段承载组件行号**，只放事实
+            //（与阴影事实同纪律——组件行号对 GPU 无用，值进行才算接线）。
+            // 写者 = collect 的「本项进批」判据点（`EntityGPUTable::SetModelFacts`），
+            // 消费者 = `entity_gpu_cull.glsl` 的展开分支（`template_id != 0` 才进入）。
+            //   template_id == 0 ⇒ 走既有单实体路径（逐字节不变，零回归面）
+            //   model_part_mask 的位 = 部件序号；0 位 = 该部件隐藏 ⇒ 全 1 = 全可见
+            //   （位数 ≥ 64 的部件不受掩码约束，见 `ModelPartRow` 的展开循环）
+            uint32_t model_template_id = 0;         ///< 模型模板池行号（0 = 无模板 ⇒ 传统单实体路径）
+            uint32_t _pad_model        = 0;         ///< 对齐填充（mask 需 8B 对齐）
+            uint64_t model_part_mask   = ~0ull;     ///< 部件可见位掩码（默认全 1；64 位上限）
         };
 
         static_assert(sizeof(EntityGPU) == 128,
@@ -80,5 +92,9 @@ namespace hgl
                       "阴影事实字段偏移被改动（_pad 划用后 GPU 镜像会错位）");
         static_assert(offsetof(EntityGPU, shadow_receive) == 92,
                       "阴影事实字段偏移被改动");
+        static_assert(offsetof(EntityGPU, model_template_id) == 96,
+                      "T3.1 模型模板事实偏移被改动（GPU 展开分支读它）");
+        static_assert(offsetof(EntityGPU, model_part_mask) == 104,
+                      "T3.1 部件掩码偏移被改动（8B 对齐要求）");
     }//namespace ecs
 }//namespace hgl

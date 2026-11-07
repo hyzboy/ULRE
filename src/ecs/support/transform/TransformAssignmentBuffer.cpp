@@ -164,6 +164,15 @@ namespace hgl::ecs
         return ring_layout.GetBaseIndex(max_static_rows + kFirstObjectL2WSlot, max_dynamic_rows);
     }
 
+    uint32_t TransformAssignmentBuffer::GetModelExpansionBaseIndex() const
+    {
+        // T3.1：展开段整块排在「恒等槽 + 静态段 + 动态段环」**之后**，再按帧槽切份
+        //（环深度 = 帧槽数 ⇒ 每帧槽一段，跨帧不别名）。
+        const uint32_t ring_total = ring_layout.GetTotalCount(max_static_rows + kFirstObjectL2WSlot,
+                                                             max_dynamic_rows);
+        return ring_total + ring_layout.GetFrameIndex() * kModelExpansionRowsPerSlot;
+    }
+
 
 
 
@@ -304,6 +313,11 @@ namespace hgl::ecs
         }
 
         uint32_t row_count = ring_layout.GetTotalCount(max_static_rows + kFirstObjectL2WSlot, max_dynamic_rows);
+
+        // T3.1：末尾再接**展开段**（每帧槽 `kModelExpansionRowsPerSlot` 行）——GPU 模型展开
+        // 写合成矩阵的地方。行号口径见 GetModelExpansionBaseIndex()（同一算式 ⇒ 不漂移）。
+        // 份数用 HGL_L2W_RING_FRAMES：A5 起它与 HGL_FRAME_SLOT_TOTAL 恒等（下方 static_assert 兜底）。
+        row_count += kModelExpansionRowsPerSlot * uint32_t(HGL_L2W_RING_FRAMES);
 
         if (MaxTransformCount && row_count > MaxTransformCount)
         {

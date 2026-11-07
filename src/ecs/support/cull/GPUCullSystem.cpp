@@ -8,6 +8,9 @@
 #include <vector>
 #include <hgl/ecs/core/entity/EntityGPU.h>
 #include <hgl/ecs/support/storage/EntityGPUTable.h>
+#include <hgl/ecs/systems/tick/TransformSystem.h>
+#include <hgl/ecs/support/transform/TransformAssignmentBuffer.h>
+#include <hgl/graph/ubo/ModelExpansionArena.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -139,6 +142,9 @@ namespace hgl::ecs
         SAFE_CLEAR(batch_tag_buffer_);
         SAFE_CLEAR(batch_info_buffer_);
         SAFE_CLEAR(batch_counter_buffer_);
+        SAFE_CLEAR(expansion_arena_buffer_);
+        expansion_arena_addr_ = 0;
+        expansion_bucket_base_cpu_.ClearAndDeallocate();
 
         // 映射指针随 buffer 一起失效，必须同时复位（否则重建后仍指向旧映射）
         batch_counter_cpu_ = nullptr;
@@ -407,6 +413,42 @@ namespace hgl::ecs
                  (void*)batch_tag_addr_, (void*)batch_info_addr_, (void*)batch_counter_addr_,
                  uint32_t(HGL_FRAME_SLOT_TOTAL), kMaxBatches);
 
+        // ── T3.1：GPU 模型展开竞技场（按帧槽分份；CPU 每帧写当前槽）──
+        // 槽内容 = 头部（`graph::ModelExpansionArena`）+ 实体桶组基址表（u32 一行）。
+        {
+            const VkDeviceSize arena_slot_bytes = kExpansionSlotBytes;
+            const VkDeviceSize arena_bytes = arena_slot_bytes * VkDeviceSize(HGL_FRAME_SLOT_TOTAL);
+            std::vector<uint8_t> arena_init(size_t(arena_bytes), 0);
+
+            // 实体桶组基址表初值 = 哨兵（"该实体本帧未分配模板素材桶组"）
+            for (uint32_t s = 0; s < uint32_t(HGL_FRAME_SLOT_TOTAL); ++s)
+            {
+                uint32_t *table = reinterpret_cast<uint32_t *>(
+                    arena_init.data() + size_t(arena_slot_bytes) * s + size_t(kExpansionHeaderBytes));
+
+                for (uint32_t r = 0; r < graph::kModelExpansionMaxBucketBaseRows; ++r)
+                    table[r] = graph::kModelExpansionInvalidBucketBase;
+            }
+
+            expansion_arena_buffer_ = device_->CreateBuffer(
+                "GPUCullSystem.ModelExpansionArena",
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                arena_bytes, arena_bytes, arena_init.data(),
+                graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
+            if (!expansion_arena_buffer_) return false;
+            expansion_arena_addr_ = device_->GetBufferDeviceAddressAligned16(expansion_arena_buffer_->GetBuffer());
+
+            expansion_bucket_base_cpu_.ClearAndDeallocate();
+            expansion_bucket_base_cpu_.Reserve(int(graph::kModelExpansionMaxBucketBaseRows));
+
+            for (uint32_t r = 0; r < graph::kModelExpansionMaxBucketBaseRows; ++r)
+                expansion_bucket_base_cpu_.Add(graph::kModelExpansionInvalidBucketBase);
+
+            GLogInfo(u8"[GPUCullSystem] T3.1 model expansion arena ready: addr=%p（slots=%u, slot_bytes=%llu, bucket_base_rows=%u）",
+                     (void*)expansion_arena_addr_, uint32_t(HGL_FRAME_SLOT_TOTAL),
+                     (unsigned long long)arena_slot_bytes, graph::kModelExpansionMaxBucketBaseRows);
+        }
+
         GLogInfo(u8"[GPUCullSystem] Output buffers created: visible_indices=%p, indirect_commands=%p, draw_count=%p, gather_l2w=%p cmds=%p mtl=%p",
                  (void*)visible_indices_addr_, (void*)indirect_commands_addr_, (void*)draw_count_addr_,
                  (void*)l2w_out_addr_, (void*)cmds_out_addr_, (void*)mtl_out_addr_);
@@ -414,6 +456,113 @@ namespace hgl::ecs
     }
 
     // ── T3i（③ 多批）批标签 / 分区 / 计数 ─────────────────────────────
+
+    // ── T3.1：GPU 模型展开竞技场 ─────────────────────────────────────────
+
+    uint64_t GPUCullSystem::GetModelExpansionArenaAddress() const
+    {
+        if (!expansion_arena_addr_)
+            return 0;
+
+        // 槽步长在内部算好：本系统按**当前帧槽**给出地址，
+        // 所以写表侧（ECSContext::SyncWorldAddresses）不需要知道槽步长。
+        const uint32_t slot = context_ ? (context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
+        return expansion_arena_addr_ + uint64_t(slot) * uint64_t(kExpansionSlotBytes);
+    }
+
+    void GPUCullSystem::SetModelBucketBase(const uint32_t pass_index, const uint32_t entity_index,
+                                           const uint32_t bucket_base)
+    {
+        static bool s_row_warned = false;
+
+        if (pass_index >= uint32_t(kArenaPasses) || entity_index >= graph::kModelExpansionBucketBaseRowsPerPass)
+        {
+            if (!s_row_warned)
+            {
+                s_row_warned = true;
+                GLogError(u8"[GPUCullSystem] T3.1 桶组基址表写入越界：pass=%u(≥%u) 实体=%u(≥%u) ⇒ 丢弃",
+                          pass_index, uint32_t(kArenaPasses),
+                          entity_index, graph::kModelExpansionBucketBaseRowsPerPass);
+            }
+            return;
+        }
+
+        uint32_t *table = expansion_bucket_base_cpu_.GetData();
+
+        if (!table)
+            return;
+
+        table[size_t(pass_index) * graph::kModelExpansionBucketBaseRowsPerPass + entity_index] = bucket_base;
+    }
+
+    void GPUCullSystem::ResetModelBucketBases(const uint32_t pass_index)
+    {
+        if (pass_index >= uint32_t(kArenaPasses))
+            return;
+
+        uint32_t *table = expansion_bucket_base_cpu_.GetData();
+
+        if (!table)
+            return;
+
+        uint32_t *block = table + size_t(pass_index) * graph::kModelExpansionBucketBaseRowsPerPass;
+
+        for (uint32_t r = 0; r < graph::kModelExpansionBucketBaseRowsPerPass; ++r)
+            block[r] = graph::kModelExpansionInvalidBucketBase;
+    }
+
+    void GPUCullSystem::WriteModelExpansionArena(const uint32_t slot)
+    {
+        constexpr VkDeviceSize kArenaSlotBytes = kExpansionSlotBytes;
+        static bool s_map_warned = false;
+
+        if (!expansion_arena_buffer_)
+            return;
+
+        void *dst = expansion_arena_buffer_->Map(VkDeviceSize(slot) * kArenaSlotBytes, kArenaSlotBytes);
+        if (!dst)
+        {
+            if (!s_map_warned)
+            {
+                s_map_warned = true;
+                GLogError(u8"[GPUCullSystem] T3.1 展开竞技场 map 失败（slot=%u）——本帧不展开", slot);
+            }
+            return;
+        }
+
+        uint8_t *base = static_cast<uint8_t *>(dst);
+        graph::ModelExpansionArena arena{};
+
+        uint32_t l2w_base = 0;
+        uint32_t l2w_capacity = 0;
+        if (auto ts = context_ ? context_->GetSystem<TransformSystem>() : nullptr)
+        {
+            if (auto *tb = ts->GetTransformBuffer())
+            {
+                l2w_base     = tb->GetModelExpansionBaseIndex();
+                l2w_capacity = TransformAssignmentBuffer::kModelExpansionRowsPerSlot;
+            }
+        }
+
+        // 无 L2W 展开段 ⇒ 关掉展开（否则 shader 会往段外写矩阵 = 越界写）。
+        arena.flags = (model_expansion_enabled_ && l2w_capacity > 0)
+                          ? graph::kModelExpansionFlagEnabled : 0u;
+        arena.l2w_base_row     = l2w_base;
+        arena.l2w_row_capacity = l2w_capacity;
+        arena.bucket_base_count = graph::kModelExpansionMaxBucketBaseRows;
+        arena.bucket_base_addr = expansion_arena_addr_
+                               + uint64_t(slot) * uint64_t(kExpansionSlotBytes)
+                               + uint64_t(kExpansionHeaderBytes);
+
+        std::memcpy(base, &arena, sizeof(arena));
+
+        // 实体桶组基址表（整表上传：32 KB/槽，且内容逐帧重写 ⇒ 不做脏区间跟踪）
+        if (const uint32_t *src = expansion_bucket_base_cpu_.GetData())
+            std::memcpy(base + kExpansionHeaderBytes, src,
+                        size_t(graph::kModelExpansionMaxBucketBaseRows) * sizeof(uint32_t));
+
+        expansion_arena_buffer_->Unmap();
+    }
 
     void GPUCullSystem::AbortBatchTagWrite()
     {
@@ -783,6 +932,9 @@ namespace hgl::ecs
         if (ULRE_DEBUG_ON(Batch))
             GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=[main:%u, shadow:%u] 相机行=%u",
                      context_->GetFrameIndex(), batch_slot, batch_count_[0], batch_count_[1], context_->GetActiveCameraRow());
+
+        // ── T3.1：写本帧槽的展开竞技场（CPU 侧，Q 之前完成）──
+        WriteModelExpansionArena(batch_slot);
 
         if(!cmd->Begin())
         {

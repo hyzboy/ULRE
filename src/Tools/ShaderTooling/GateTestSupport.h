@@ -1450,9 +1450,12 @@ namespace gate
                                        const std::vector<std::pair<std::string, size_t>> &defines,
                                        size_t &out_bytes)
     {
-        // 词汇表：uint8=1 / uint=float=4 / vec2=8 / vec4=uvec4=16 / mat4=64（本门只对拍
-        // 逐行式取块器的产物，字段类型都在这张表内；未登记类型按 4 处理会在总尺寸处报红）
+        // 词汇表：uint8=1 / uint=float=4 / vec2=8 / vec4=uvec4=16 / mat4=64 / uint64=8
+        // （本门只对拍逐行式取块器的产物，字段类型都在这张表内；未登记类型按 4 处理
+        //  会在总尺寸处报红）。uint64 必须有：T3.1 的 `model_part_mask` 是 8 B 事实位，
+        //  按 4 计会把 128 B 行算成 124 B。
         if (field.type == "uint8")      out_bytes = 1u;
+        else if (field.type == "uint64" || field.type == "uint64_t") out_bytes = 8u;
         else if (field.type == "vec2")  out_bytes = 8u;
         else if (field.type == "vec4")  out_bytes = 16u;
         else if (field.type == "uvec4") out_bytes = 16u;
@@ -1529,9 +1532,12 @@ namespace gate
         { "addr_entity_render_ids",    true  },   // T3d-3a：实体 4-ID 表（世界私有 EntityRenderIDTable；GPU 消费者取池口径 id 的唯一通路）
         { "addr_lights",               true  },   // T6b：光源行表（世界私有 LightRowTable；行 0 = 主方向光，按帧槽切份）
         { "addr_ambient_env",          true  },   // T1：环境光 provider 参数块（世界私有；单份 ⇒ 全帧槽同址）
+        { "addr_model_expansion",      true  },   // T3.1：GPU 模型展开竞技场（世界私有；按帧槽切份，槽偏移在 GPUCullSystem 内部算好）
         // ── 设备级全局（跨世界共享的资源池 + 每帧槽字段）──
         { "addr_mesh_draw_params_pool", false },
         { "addr_geometry_aabb",         false },   // B3-i：GeometryAABB 池（设备级全局；与 MeshDrawParams 同 ID 索引）
+        { "addr_model_template_pool",   false },   // T1：模型模板行池（设备级全局；模板是跨世界共享的资产级内容）
+        { "addr_model_part_pool",       false },   // T1：模型部件行池（设备级全局；与模板池同 ID 索引）
         { "addr_pbr_surface",           false },
         { "addr_emissive_surface",      false },
         { "addr_transmission_surface",  false },

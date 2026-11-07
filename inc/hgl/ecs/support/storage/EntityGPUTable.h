@@ -204,6 +204,27 @@ namespace hgl
                 dirty.MarkDirty(id.index, rows.size());
             }
 
+            /// T3.1：模型模板事实上行（写者 = collect 的"进批"判据点 / `GPUModelRefComponent`
+            /// 变更处）。语义：`template_id != 0` ⇒ 剔除 shader 走展开分支，按模板的部件表
+            /// 逐部件写实例；`0` ⇒ 传统单实体路径（整行除掩码外全不动 ⇒ 与旧行为逐字节等价）。
+            /// **值变才标脏**（与 `SetShadowFacts` 同纪律：每帧都调也不制造永久脏行）。
+            void SetModelFacts(EntityID id, uint32_t template_id, uint64_t part_mask)
+            {
+                EntityGPU *row = Row(id);
+
+                if (!row)
+                    return;
+
+                if (row->model_template_id == template_id
+                 && row->model_part_mask == part_mask)
+                    return;
+
+                row->model_template_id = template_id;
+                row->model_part_mask   = part_mask;
+
+                dirty.MarkDirty(id.index, rows.size());
+            }
+
             /// 按实体的**按类型行号表**刷新 `type[]/row[]`（组件挂卸后的唯一同步点）
             void Refresh(const Entity *entity)
             {
