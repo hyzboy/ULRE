@@ -38,6 +38,7 @@
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/components/ModelRefComponent.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
@@ -122,21 +123,20 @@ private:
     bool pbr_mode_ = true;
 
     // ── 流送（异步）通路（默认；LS_SYNC=1 回到同步）────────────────────
-    // 同步通路（TryLoadModel）仍为默认：它把「读盘 ⇒ 解析 ⇒ 建 GPU
-    // 资源 ⇒ 实例化」全挤在 Init() 里，启动一帧卡住。异步通路把同一份解析交给
-    // ModelStreamingSystem 逐帧推动，本类只负责三段渐进接线：
-    //   ① 节点树解析出来 ⇒ InstantiateSkeleton（实体先入世界，相机立刻对焦）
-    //   ② 图元资产出来   ⇒ AttachGeometries（几何逐帧挂上）
-    //   ③ 材质行绑定     ⇒ AttachMaterials
-    // 两条通路最终落到同一个 StaticMeshModelInstance，画面应当一致。
+    // 同步通路（TryLoadModel）把「读盘 ⇒ 解析 ⇒ 建 GPU 资源 ⇒ 实例化」全挤在
+    // Init() 里，启动一帧卡住。异步通路是**声明式**的：挂一个
+    // ModelRefComponent，请求与三段渐进实例化（骨架 ⇒ 几何 ⇒ 材质）全部由
+    // ModelStreamingSystem 的装配段推进，本类只在 AsyncModelPolicy 回调里
+    // 做相机对焦与日志。两条通路最终落到同一个 StaticMeshModelInstance
+    // 的三段 API，画面应当一致。
     bool async_mode_ = false;
-    graph::ModelAsset *async_scene_ = nullptr;   ///<句柄归 ModelAssetRegistry，不拥有
     std::shared_ptr<hgl::ecs::ModelStreamingSystem> streaming_system_;
 
-    bool async_skeleton_built_   = false;
-    bool async_geometries_built_ = false;
-    bool async_materials_built_  = false;
-    bool async_ready_reported_   = false;        ///<场景状态机走到 Ready 只报一次
+    ///< 组件行（归世界；仅供 LS_TRACE 观察句柄状态；实体随世界销毁）
+    hgl::ecs::ModelRefComponent *async_ref_ = nullptr;
+
+    class AsyncModelPolicy;                  ///< 嵌套策略类；定义在本类体内后段
+    AsyncModelPolicy *async_policy_ = nullptr;
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::ecs::LightSystem>       light_system;
@@ -262,10 +262,10 @@ private:
     }
 
     /**
-     * @brief 异步通路的发起段：只配外部设定并要一个句柄，不读盘、不解析。
+     * @brief 异步通路的发起段：配外部设定，然后挂 `ModelRefComponent` 声明请求。
      *
-     * 之后所有推进都由 `ModelStreamingSystem`（已注册进 ECS）每帧自己做，
-     * 本类在 `PollAsyncScene()` 里只做「产物到位就接一段」。
+     * 之后所有推进都由 `ModelStreamingSystem`（已注册进 ECS）的装配段每帧自己做；
+     * 本类只在 `AsyncModelPolicy` 回调里做对焦与日志。
      */
     bool TryStartAsyncModel()
     {
@@ -297,10 +297,22 @@ private:
                                             recipe_table_count,
                                             base_dir);
 
-        async_scene_ = graph::RequestModelAsset(AnsiString(ModelPackPath().c_str()));
-
-        if (!async_scene_)
+        // 声明式请求：挂组件即完事；三段推进由 ModelStreamingSystem 装配段负责
+        auto *ref_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("AsyncModelRoot");
+        if (!ref_entity)
             return false;
+
+        async_ref_ = ref_entity->AddComponent<hgl::ecs::ModelRefComponent>();
+        if (!async_ref_)
+            return false;
+
+        async_ref_->uri = AnsiString(ModelPackPath().c_str());
+        async_ref_->skeleton_options.mobility = hgl::ecs::Mobility::Static;
+        BuildInstanceOptions(async_ref_->options);
+
+        if (!async_policy_)
+            async_policy_ = new AsyncModelPolicy(this);
+        async_ref_->policy = async_policy_;
 
         printf("[LSASYNC] request queued: %s\n", ModelPackPath().c_str());
         return true;
@@ -444,101 +456,66 @@ private:
         camera->matrix_dirty = true;
     }
 
-    /**
-     * @brief 异步通路每帧接线：产物到位就接下一段，一段失败就不再重试。
-     *
-     * 三段各有自己的「已建」标记 —— 每段只做一次，之后不再每帧空转。
-     */
-    void PollAsyncScene()
+    // ── AsyncModelPolicy：三段回调只做对焦与日志 ──────────────────────────
+    // 嵌套类在外侧类成员函数体之前定义 ⇒ `new AsyncModelPolicy(this)` 处类型已完整；
+    // 体内可自由访问 LoadModelApp 全部私有成员（嵌套类拥有外侧访问权）。
+    class AsyncModelPolicy final : public hgl::ecs::ModelLoadPolicy
     {
-        if (!async_mode_ || !async_scene_ || !ecs_context)
-            return;
+    private:
+        LoadModelApp *app_;
 
-        const graph::ModelAssetContent &content = async_scene_->GetContent();
+    public:
+        explicit AsyncModelPolicy(LoadModelApp *owner) : app_(owner) {}
 
-        if (!async_skeleton_built_)
+        ~AsyncModelPolicy() override = default;
+
+        void OnSkeletonReady(hgl::ecs::ModelRefComponent &ref) override
         {
-            if (content.GetNodeCount() <= 0)
-                return;
-
-            StaticMeshModelInstance::SkeletonOptions skeleton_options;
-            skeleton_options.mobility = hgl::ecs::Mobility::Static;
-
-            if (!model_instance_.InstantiateSkeleton(ecs_context, content.nodes,
-                                                     content.root_nodes, skeleton_options))
+            int node_count = 0, root_count = 0;
+            if (ref.asset)
             {
-                printf("[LSASYNC] InstantiateSkeleton failed\n");
-                async_scene_ = nullptr;
-                return;
+                const graph::ModelAssetContent &content = ref.asset->GetContent();
+                node_count = content.GetNodeCount();
+                root_count = content.GetRootCount();
             }
 
-            async_skeleton_built_ = true;
             printf("[LSASYNC] skeleton: %d nodes / %d roots (frame %u)\n",
-                   content.GetNodeCount(), content.GetRootCount(), ls_frame_seen);
+                   node_count, root_count, app_->ls_frame_seen);
 
             // 骨架包围盒 ⇒ 相机立刻对焦（此时几何可能还在路上）
             math::BoundingVolumes bounds;
-            if (model_instance_.GetSkeletonBounds(bounds))
+            if (ref.instance.GetSkeletonBounds(bounds))
             {
-                scene_bound_center_ = bounds.GetCenter();
-                scene_bound_radius_ = bounds.GetMaxRadius();
-                FocusCameraOnSkeleton();
+                app_->scene_bound_center_ = bounds.GetCenter();
+                app_->scene_bound_radius_ = bounds.GetMaxRadius();
+                app_->FocusCameraOnSkeleton();
             }
-
-            return;
         }
 
-        if (!async_geometries_built_)
+        void OnGeometryAttached(hgl::ecs::ModelRefComponent &ref) override
         {
-            if (content.GetAssetCount() <= 0)
-                return;
-
-            if (!model_instance_.AttachGeometries(content.assets, content.nodes))
-            {
-                printf("[LSASYNC] AttachGeometries failed\n");
-                async_scene_ = nullptr;
-                return;
-            }
-
-            async_geometries_built_ = true;
             printf("[LSASYNC] geometries: %d primitives (frame %u)\n",
-                   model_instance_.GetAttachedPrimitiveCount(), ls_frame_seen);
-            return;
+                   ref.instance.GetAttachedPrimitiveCount(), app_->ls_frame_seen);
         }
 
-        if (!async_materials_built_)
+        void OnMaterialAttached(hgl::ecs::ModelRefComponent &ref) override
         {
-            StaticMeshModelInstance::Options options;
-            BuildInstanceOptions(options);
-
-            if (!model_instance_.AttachMaterials(options))
-            {
-                printf("[LSASYNC] AttachMaterials failed\n");
-                async_scene_ = nullptr;
-                return;
-            }
-
-            async_materials_built_ = true;
             printf("[LSASYNC] materials attached (frame %u), scene state=%s\n",
-                   ls_frame_seen, async_scene_->GetStateName());
-            return;
+                   app_->ls_frame_seen, ref.asset ? ref.asset->GetStateName() : "?");
         }
 
         // 场景状态机的 Ready 由「全部图元几何就绪」推进（见 ModelStreamingSystem 阶段 C）：
         // 它晚于材质绑定，因此单独报一次，用来确认流送确实收敛而不是永远 Assembling。
-        if (!async_ready_reported_ &&
-            async_scene_->GetState() == graph::ModelAssetState::Ready)
+        void OnModelReady(hgl::ecs::ModelRefComponent & /*ref*/) override
         {
-            async_ready_reported_ = true;
-            printf("[LSASYNC] scene ready (frame %u)\n", ls_frame_seen);
+            printf("[LSASYNC] scene ready (frame %u)\n", app_->ls_frame_seen);
         }
-        else if (getenv("LS_TRACE") && (ls_frame_seen % 20) == 0)
-            printf("[LSASYNC-DBG] frame %u state=%s ready=%d failed=%d pending=%d\n",
-                   ls_frame_seen, async_scene_->GetStateName(),
-                   async_scene_->GetReadyChildCount(),
-                   async_scene_->GetFailedChildCount(),
-                   async_scene_->GetPendingChildCount());
-    }
+
+        void OnModelFailed(hgl::ecs::ModelRefComponent & /*ref*/, const char *reason) override
+        {
+            printf("[LSASYNC] model failed: %s\n", reason);
+        }
+    };//class AsyncModelPolicy
 
     bool InitECS()
     {
@@ -547,7 +524,7 @@ private:
         if(!ecs_context)
             return false;
 
-        // 异步通路的实例化由 PollAsyncScene() 逐帧接线，这里不能同步实例化
+        // 异步通路的实例化由 ModelStreamingSystem 装配段逐帧推进，这里不能同步实例化
         if(!async_mode_ && !InitScene())
             return false;
 
@@ -560,6 +537,13 @@ private:
 public:
     ~LoadModelApp()
     {
+        // 策略对象归本类；组件行归世界。先解引用再释放，遵守 ModelLoadPolicy 生命期契约。
+        if (async_ref_)
+            async_ref_->policy = nullptr;
+        delete async_policy_;
+        async_policy_ = nullptr;
+        async_ref_ = nullptr;
+
         model_instance_.Release();
         scene_assets_.clear();
         scene_nodes_.clear();
@@ -663,8 +647,16 @@ public:
 
         ++ls_frame_seen;
 
-        // 异步通路：产物到位就接下一段（同步通路整段空转）
-        PollAsyncScene();
+        // LS_TRACE：借组件观察句柄打印装配计数（异步通路专属；装配本身在系统⑦段）
+        if (async_mode_ && getenv("LS_TRACE") && (ls_frame_seen % 20) == 0)
+        {
+            if (graph::ModelAsset *scene = async_ref_ ? async_ref_->asset : nullptr)
+                printf("[LSASYNC-DBG] frame %u state=%s ready=%d failed=%d pending=%d\n",
+                       ls_frame_seen, scene->GetStateName(),
+                       scene->GetReadyChildCount(),
+                       scene->GetFailedChildCount(),
+                       scene->GetPendingChildCount());
+        }
 
         // LS_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（本帧提交后、present 前执行 ⇒ 读到本帧画面），
         // 落原始 packed 字节后退出 —— 像素判据用。
