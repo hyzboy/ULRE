@@ -183,7 +183,7 @@ private:
     }
 
     // 场景配方表：PBR 自装配 15 个棋件配方，或调试法线单配方。
-    // 同步/异步两条装载通路共用（谁也别再抄一份）。
+    // 仅供**同步**装载通路使用；异步通路由系统扇出 + 自装配，启动段零扫盘。
     bool BuildSceneRecipes(const mtl::MaterialRecipe *&out_default,
                            const mtl::MaterialRecipe *const *&out_table,
                            uint32_t &out_table_count)
@@ -281,9 +281,27 @@ private:
         const mtl::MaterialRecipe *default_recipe = nullptr;
         const mtl::MaterialRecipe *const *recipe_table = nullptr;
         uint32_t recipe_table_count = 0;
+        bool auto_scene_materials   = false;
 
-        if (!BuildSceneRecipes(default_recipe, recipe_table, recipe_table_count))
-            return false;
+        if (pbr_mode_)
+        {
+            // 配方/数据块全部交给系统：扇出给材质车道，门禁放行后自装配。
+            // 启动段不再同步扫盘 —— 这正是异步通路存在的意义。
+            auto_scene_materials = true;
+        }
+        else
+        {
+            // 调试法线模式：单配方覆盖全部材质，不能被目录里的 PBR 配方抢走。
+            const mtl::MaterialRecipe *loaded_recipe = GetRecipe("LoadModel.DebugNormalColor");
+            if (!loaded_recipe)
+                return false;
+
+            scene_recipe = *loaded_recipe;
+            if (!(scene_recipe.material_ssbo_binding = solid.debug_rows[0]).IsValid())
+                return false;
+
+            default_recipe = &scene_recipe;
+        }
 
         streaming_system_ = ecs_context->GetSystem<hgl::ecs::ModelStreamingSystem>();
         if (!streaming_system_)
@@ -295,7 +313,8 @@ private:
                                             default_recipe,
                                             recipe_table,
                                             recipe_table_count,
-                                            base_dir);
+                                            base_dir,
+                                            auto_scene_materials);
 
         // 声明式请求：挂组件即完事；三段推进由 ModelStreamingSystem 装配段负责
         auto *ref_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("AsyncModelRoot");
@@ -325,10 +344,15 @@ private:
 
         if (pbr_mode_)
         {
-            // 行序即 glTF 材质下标 ⇒ 按 material_index 选行，不再轮转
-            options.material_rows          = chess_materials_.bindings.data();
-            options.material_row_count     = static_cast<uint32_t>(chess_materials_.bindings.size());
-            options.rows_by_material_index = true;
+            // 行序即 glTF 材质下标 ⇒ 按 material_index 选行，不再轮转。
+            // 异步通路这里留空：由系统在 attach 前用自装配的 `stream->mats` 补上。
+            if (!chess_materials_.bindings.empty())
+            {
+                options.material_rows      = chess_materials_.bindings.data();
+                options.material_row_count =
+                    static_cast<uint32_t>(chess_materials_.bindings.size());
+                options.rows_by_material_index = true;
+            }
         }
         else
         {

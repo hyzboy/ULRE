@@ -123,6 +123,37 @@ namespace hgl::graph
     };
 
     /**
+     * @brief 从**已在内存**的模型包字节读取 V2 MaterialTable 的材质名序列。
+     *
+     * 行序 = 材质下标 = `PrimitiveAsset::GetMaterialIndex()` 的口径。
+     * 非 MDL2 / 缺表 ⇒ 返回 false（`out_names` 清空）。
+     */
+    bool ReadModelPackMaterialNamesFromBytes(const void            *pack_bytes,
+                                             const uint32           pack_size,
+                                             const OSString        &pack_name,
+                                             std::vector<std::string> &out_names);
+
+    /**
+     * @brief 纯绑定装配：零磁盘扫描、零装载触发，只消费**已在注册表里**的
+     *        配方与材质数据块（同步装载过、或材质车道已落地均可）。
+     *
+     * 匹配与行绑定规则和 `BuildSelfContainedModelMaterials` 完全一致（同一份
+     * 尾段代码），差别只在配方来源：本函数查不到就返回 false，绝不代劳装载。
+     * 异步通路由 `ModelStreamingSystem` 在配方门禁放行后调用它，把车道落地的
+     * 数据组装成喂给 `Build()` / `AttachMaterials()` 的配方表与行绑定。
+     *
+     * @param material_names           `ReadModelPackMaterialNames*` 得到的材质名序列
+     * @param model_dir                来源目录（内存索引映射 / 注册表源路径前缀都按它圈定）
+     * @param material_data_block_hint 数据块文件名（不含扩展名）；空 ⇒ 目录内须唯一
+     */
+    bool ResolveSelfContainedModelMaterials(
+        GraphicsContext                &ctx,
+        const std::vector<std::string> &material_names,
+        const OSString                 &model_dir,
+        const OSString                 &material_data_block_hint,
+        SelfContainedModelMaterials    &out);
+
+    /**
      * @brief 从**自包含模型目录**装配材质：scene、geometry、recipe、tex2d、
      *        material_data 全部住在 pack 自己的目录里，**严禁跨目录查找**。
      *
@@ -139,6 +170,8 @@ namespace hgl::graph
      * @note 仅支持 MDL2 模型包（含 MaterialTable）；缺表的包返回 `false`。
      * @note 成功后 `out` 即材质真源；装载 scene 时把 `out.table` 传入即可，
      *       `out` 需活到 `PrimitiveAsset` 使用完毕（同示例自持配方副本的惯例）。
+     * @note 本函数 = 「装载触发段（同步扫目录/索引加载，碰盘）」+ `ResolveSelfContainedModelMaterials`
+     *       （纯绑定）。异步路径不要用本函数，改用系统自装配（见 `ModelStreamingSystem`）。
      */
     bool BuildSelfContainedModelMaterials(
         GraphicsContext             &ctx,

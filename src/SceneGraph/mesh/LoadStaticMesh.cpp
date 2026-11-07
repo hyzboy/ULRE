@@ -9,6 +9,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
+#include <hgl/graph/asset/MaterialDataBlockAsset.h>
 #include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
@@ -865,113 +866,113 @@ namespace
         }
         return true;
     }
+
+    /// 内存索引探测结果：模型目录映射到挂载根下的逻辑目录。
+    struct IndexProbe
+    {
+        asset::AssetSource *src = nullptr;   ///<空 ⇒ 未挂载/无索引，走 OS 老路径
+        OSString            root;            ///<挂载根绝对路径
+        U8String            logical_dir;     ///<'/' 分隔、保留大小写的逻辑目录
+    };
+
+    /// 把 `model_dir` 映射到挂载根下的逻辑目录；映射不上 ⇒ `probe.src` 为空。
+    static bool ProbeIndexedModelDir(const OSString &model_dir, IndexProbe &probe)
+    {
+        asset::AssetSource *s = GetMountedAssetSource();
+        if (!s || !s->HasIndexTable())
+            return false;
+
+        OSString cur;
+        if (!hgl::filesystem::GetCurrentPath(cur))
+            return false;
+
+        probe.root = hgl::filesystem::JoinPathWithFilename(cur,
+                                                           OSString(DEFAULT_ASSET_SOURCE_ROOT));
+        const OSString dir_abs = LooksAbsoluteOsPath(model_dir)
+            ? model_dir
+            : hgl::filesystem::JoinPathWithFilename(cur, model_dir);
+
+        if (!MakeLogicalDirUnderRoot(probe.root, dir_abs, probe.logical_dir))
+            return false;
+
+        probe.src = s;
+        return true;
+    }
 }
 
-bool BuildSelfContainedModelMaterials(
-    GraphicsContext             &ctx,
-    const OSString              &pack_path,
-    const char                  *material_data_block_hint,
-    SelfContainedModelMaterials &out)
+bool ReadModelPackMaterialNamesFromBytes(const void               *pack_bytes,
+                                         const uint32              pack_size,
+                                         const OSString           &pack_name,
+                                         std::vector<std::string> &out_names)
+{
+    out_names.clear();
+
+    if (!pack_bytes || pack_size == 0)
+        return false;
+
+    hgl::io::minipack::MiniPackMemory *mpm =
+        hgl::io::minipack::GetMiniPackMemoryFromBytes(pack_name, pack_bytes, pack_size);
+    if (!mpm)
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("ReadModelPackMaterialNamesFromBytes: 无法打开模型包字节 ") + pack_name);
+        return false;
+    }
+
+    out_names = ReadModelPackMaterialNames(mpm);
+    delete mpm;
+    return !out_names.empty();
+}
+
+bool ResolveSelfContainedModelMaterials(
+    GraphicsContext                &ctx,
+    const std::vector<std::string> &material_names,
+    const OSString                 &model_dir,
+    const OSString                 &material_data_block_hint,
+    SelfContainedModelMaterials    &out)
 {
     out = SelfContainedModelMaterials();
 
-    // 本函数的装配方式是「扫模型目录找配方与数据块」——URI 寻址下没有目录概念。
-    // 明确拒绝，而不是让调用方读到一个误导性的「文件打不开」。
-    if (hgl::asset::AssetURI::Parse(pack_path).source == hgl::asset::AssetSourceKind::Pack)
+    if (material_names.empty() || model_dir.IsEmpty())
     {
         MLogError(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedModelMaterials: 暂不支持包裹 URI 寻址（需改由依赖图装配）: ") + pack_path);
+            OS_TEXT("ResolveSelfContainedModelMaterials: 材质名列表或模型目录为空"));
         return false;
     }
 
-    // 1. 模型目录 = pack 所在目录（唯一的资源来源目录）
-    const OSString model_dir = hgl::filesystem::Path(pack_path).GetParent().ToOSString();
-    if (model_dir.IsEmpty())
-    {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法取得模型目录 ") + pack_path);
-        return false;
-    }
+    // 内存索引探测：只用于圈定路径口径；装载与否由注册表说了算。
+    IndexProbe probe;
+    const bool indexed = ProbeIndexedModelDir(model_dir, probe);
 
-    // 2. 材质表名字（V2 专有）
-    hgl::io::minipack::MiniPackMemory *mpm =
-        hgl::io::minipack::GetMiniPackMemory(pack_path);
-    if (!mpm)
-    {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法打开模型包 ") + pack_path);
-        return false;
-    }
-    std::vector<std::string> material_names = ReadModelPackMaterialNames(mpm);
-    delete mpm;
-    if (material_names.empty())
-    {
-        MLogError(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedModelMaterials: MaterialTable 缺失或为空（非 MDL2 模型包）")
-            + pack_path);
-        return false;
-    }
+    asset::AssetSource  *idx_src     = indexed ? probe.src : nullptr;
+    const OSString       idx_root    = probe.root;
+    const U8String       logical_dir = probe.logical_dir;
 
-    // 2.5 内存索引探测：把模型目录映射到挂载根下的逻辑目录。
-    //     未挂载 / 无索引 / 模型不在挂载根下 → idx_src 为空，下面全走 OS 老路径。
-    asset::AssetSource *idx_src = nullptr;
-    OSString            idx_root;
-    U8String            logical_dir;
-    {
-        asset::AssetSource *src = GetMountedAssetSource();
-        if (src && src->HasIndexTable())
-        {
-            OSString cur;
-            if (hgl::filesystem::GetCurrentPath(cur))
-            {
-                idx_root = hgl::filesystem::JoinPathWithFilename(cur,
-                                                                  OSString(DEFAULT_ASSET_SOURCE_ROOT));
-                const OSString dir_abs = LooksAbsoluteOsPath(model_dir)
-                    ? model_dir
-                    : hgl::filesystem::JoinPathWithFilename(cur, model_dir);
-                if (MakeLogicalDirUnderRoot(idx_root, dir_abs, logical_dir))
-                    idx_src = src;
-            }
-        }
-    }
-
-    // 3. 配方集合：优先内存索引探索本目录；空手回退「扫目录 + 前缀过滤」老路径
+    // 3. 配方集合：只认注册表 —— 索引口径命中的路径先问表，空手回退
+    //    「注册表全量 + 目录前缀过滤」。本函数永不触发装载（碰盘由调用方负责）。
     std::vector<const mtl::MaterialRecipe *> dir_recipes;
+    const mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
+    if (!registry)
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("ResolveSelfContainedModelMaterials: GraphicsContext 注册表未就绪"));
+        return false;
+    }
+
     if (idx_src)
     {
         hgl::ManagedArray<hgl::asset::AssetIndexEntry> recipe_entries;
         idx_src->FindInDirectory(logical_dir, hgl::asset::AssetType::MaterialRecipe, recipe_entries);
-        if (recipe_entries.GetCount() > 0)
+        for (int i = 0; i < recipe_entries.GetCount(); ++i)
         {
-            mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
-            for (int i = 0; i < recipe_entries.GetCount(); ++i)
-            {
-                const OSString path = idx_root + OS_TEXT("/") +
-                                      hgl::ToOSString(recipe_entries[i]->physical_path);
-                if (!registry->FindAssetByPath(path) && !ctx.LoadMaterialRecipeFile(path))
-                {
-                    MLogWarning(LoadStaticMesh,
-                        OS_TEXT("BuildSelfContainedModelMaterials: 索引配方加载失败 ") + path);
-                }
-            }
-            registry->FinalizePending();   // 连续 LoadFile 的收尾：子配方可能先于父配方
-            for (int i = 0; i < recipe_entries.GetCount(); ++i)
-            {
-                const OSString path = idx_root + OS_TEXT("/") +
-                                      hgl::ToOSString(recipe_entries[i]->physical_path);
-                const mtl::MaterialRecipeAsset *asset = registry->FindAssetByPath(path);
-                if (asset) dir_recipes.push_back(&asset->GetRecipe());
-            }
+            const OSString path = idx_root + OS_TEXT("/") +
+                                  hgl::ToOSString(recipe_entries[i]->physical_path);
+            const mtl::MaterialRecipeAsset *asset = registry->FindAssetByPath(path);
+            if (asset) dir_recipes.push_back(&asset->GetRecipe());
         }
     }
     if (dir_recipes.empty())
     {
-        int recipe_files = 0, recipe_errors = 0;
-        if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
-        {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录加载失败 ") + model_dir);
-            return false;
-        }
-
-        const mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
         for (int i = 0; i < registry->GetCount(); ++i)
         {
             const mtl::MaterialRecipeAsset *asset = registry->GetAssetAt(i);
@@ -981,98 +982,96 @@ bool BuildSelfContainedModelMaterials(
     }
     if (dir_recipes.empty())
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 模型目录没有可用配方 ") + model_dir);
+        MLogError(LoadStaticMesh,
+            OS_TEXT("ResolveSelfContainedModelMaterials: 模型目录的配方尚未装载 ") + model_dir);
         return false;
     }
 
-    // 4. 材质数据块：同样先问索引（同目录唯一，或多份时按文件名 hint 指定），
-    //    空手回退目录扫描 / FileExist 老路径。
-    OSString block_path;
+    // 4. 材质数据块：同样只认注册表 —— 索引口径先问表；空手回退 hint 直查 /
+    //    「注册表全量 + 目录前缀 + 块扩展名」过滤。命中判据与车道落地键同源
+    //    （`FindAssetByPath` 折叠绝对路径/大小写/分隔符，口径拼写差异无害）。
+    mtl::MaterialDataBlockRegistry *blocks = ctx.GetMaterialDataBlockRegistry();
+    GlobalSSBOBufferRegistry       *pool   = ctx.GetGlobalSSBOBufferRegistry();
+    if (!blocks || !pool)
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("ResolveSelfContainedModelMaterials: GraphicsContext 注册表未就绪"));
+        return false;
+    }
+
+    OSString block_uri;
     if (idx_src)
     {
         hgl::ManagedArray<hgl::asset::AssetIndexEntry> block_entries;
         idx_src->FindInDirectory(logical_dir, hgl::asset::AssetType::MaterialData, block_entries);
-        if (material_data_block_hint && material_data_block_hint[0])
+
+        OSString cand;
+        if (!material_data_block_hint.IsEmpty())
         {
             const U8String want = logical_dir + U8String(u8"/") +
-                                  hgl::ToU8String(AnsiString(material_data_block_hint));
+                                  hgl::ToU8String(material_data_block_hint);
             for (int i = 0; i < block_entries.GetCount(); ++i)
             {
                 if (U8FoldedEqual(block_entries[i]->logical_path, want))
                 {
-                    block_path = idx_root + OS_TEXT("/") +
-                                 hgl::ToOSString(block_entries[i]->physical_path);
+                    cand = idx_root + OS_TEXT("/") +
+                           hgl::ToOSString(block_entries[i]->physical_path);
                     break;
                 }
             }
         }
         else if (block_entries.GetCount() == 1)
         {
-            block_path = idx_root + OS_TEXT("/") +
-                         hgl::ToOSString(block_entries[0]->physical_path);
+            cand = idx_root + OS_TEXT("/") +
+                   hgl::ToOSString(block_entries[0]->physical_path);
         }
-        // 索引命中但文件已不在盘上（陈旧索引）：清空，让磁盘回退给出确定结论。
-        if (!block_path.IsEmpty() && !hgl::filesystem::FileExist(block_path))
-        {
-            MLogWarning(LoadStaticMesh,
-                OS_TEXT("BuildSelfContainedModelMaterials: 索引数据块文件缺失，回退磁盘查勘 ") + block_path);
-            block_path.Clear();
-        }
-    }
-    if (block_path.IsEmpty())
-    {
-    if (material_data_block_hint && material_data_block_hint[0])
-    {
-        block_path = model_dir + OS_TEXT("\\") +
-                     hgl::ToOSString(material_data_block_hint) +
-                     OS_TEXT(".material_data.toml");
-        if (!hgl::filesystem::FileExist(block_path))
-        {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 指定数据块不存在 ") + block_path);
-            return false;
-        }
-    }
-    else
-    {
-        hgl::ValueArray<hgl::filesystem::FileInfo> file_list;
-        if (hgl::filesystem::GetFileInfoList(file_list, model_dir, false, true, false) < 0)
-        {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 目录扫描失败 ") + model_dir);
-            return false;
-        }
-        int found = 0;
-        for (int i = 0; i < file_list.GetCount(); ++i)
-        {
-            const hgl::filesystem::FileInfo &f = file_list[i];
-            if (!f.is_file)
-                continue;
-            if (!OSString(f.name).EndsWith(OS_TEXT(".material_data.toml")))
-                continue;
-            block_path = OSString(f.fullname);
-            ++found;
-        }
-        if (found == 0)
-        {
-            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 模型目录没有 material_data 块 ") + model_dir);
-            return false;
-        }
-        if (found > 1)
-        {
-            MLogError(LoadStaticMesh,
-                OS_TEXT("BuildSelfContainedModelMaterials: 模型目录有多个 material_data 块，必须指定块名: ")
-                + model_dir);
-            return false;
-        }
-    }
+
+        if (!cand.IsEmpty() && blocks->FindAssetByPath(cand))
+            block_uri = OSString(OS_TEXT("mtldata:file:")) + cand;
     }
 
-    const OSString block_uri = OSString(OS_TEXT("mtldata:file:")) + block_path;
+        if (block_uri.IsEmpty())
+        {
+            if (!material_data_block_hint.IsEmpty())
+            {
+                const OSString want = model_dir + OS_TEXT("\\") +
+                                      material_data_block_hint +
+                                      OS_TEXT(".material_data.toml");
+            if (blocks->FindAssetByPath(want))
+                block_uri = OSString(OS_TEXT("mtldata:file:")) + want;
+        }
+        else
+        {
+            int found = 0;
+            for (int i = 0; i < blocks->GetCount(); ++i)
+            {
+                mtl::MaterialDataBlockAsset *b = blocks->GetAssetAt(i);
+                if (!b || b->GetSourcePath().IsEmpty())
+                    continue;
+                if (!HasOsCharPrefixI(b->GetSourcePath().c_str(), model_dir.c_str()))
+                    continue;
+                const OSString &p = b->GetSourcePath();
+                if (!p.EndsWith(OS_TEXT(".material_data.toml"))
+                 && !p.EndsWith(OS_TEXT(".mdb"))
+                 && !p.EndsWith(OS_TEXT(".fb")))
+                    continue;
+                block_uri = OSString(OS_TEXT("mtldata:file:")) + p;
+                ++found;
+            }
+            if (found > 1)
+            {
+                MLogError(LoadStaticMesh,
+                    OS_TEXT("ResolveSelfContainedModelMaterials: 模型目录有多个 material_data 块，必须指定块名: ")
+                    + model_dir);
+                return false;
+            }
+        }
+    }
 
-    mtl::MaterialDataBlockRegistry *blocks = ctx.GetMaterialDataBlockRegistry();
-    GlobalSSBOBufferRegistry       *pool   = ctx.GetGlobalSSBOBufferRegistry();
-    if (!blocks || !pool)
+    if (block_uri.IsEmpty())
     {
-        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: GraphicsContext 注册表未就绪"));
+        MLogError(LoadStaticMesh,
+            OS_TEXT("ResolveSelfContainedModelMaterials: 模型目录的 material_data 块尚未装载 ") + model_dir);
         return false;
     }
 
@@ -1098,7 +1097,7 @@ bool BuildSelfContainedModelMaterials(
         if (!picked)
         {
             MLogError(LoadStaticMesh,
-                OS_TEXT("BuildSelfContainedModelMaterials: 目录内没有配方匹配材质 ")
+                OS_TEXT("ResolveSelfContainedModelMaterials: 目录内没有配方匹配材质 ")
                 + model_dir + OS_TEXT(" material=") + hgl::ToOSString(material_names[i].c_str()));
             return false;
         }
@@ -1107,8 +1106,8 @@ bool BuildSelfContainedModelMaterials(
         if (!blocks->GetRowBinding(pool, block_uri, static_cast<uint32_t>(i), binding))
         {
             MLogError(LoadStaticMesh,
-                OS_TEXT("BuildSelfContainedModelMaterials: 材质数据行绑定失败 row=")
-                + OSString::numberOf(static_cast<int>(i)) + OS_TEXT(" block=") + block_path);
+                OS_TEXT("ResolveSelfContainedModelMaterials: 材质数据行绑定失败 row=")
+                + OSString::numberOf(static_cast<int>(i)) + OS_TEXT(" block=") + block_uri);
             return false;
         }
 
@@ -1118,7 +1117,7 @@ bool BuildSelfContainedModelMaterials(
         out.table[i] = &out.recipes[i];
 
         MLogInfo(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedModelMaterials: material[")
+            OS_TEXT("ResolveSelfContainedModelMaterials: material[")
             + OSString::numberOf(static_cast<int>(i)) + OS_TEXT("] ")
             + hgl::ToOSString(material_names[i].c_str())
             + OS_TEXT(" → ") + hgl::ToOSString(picked->recipe_name.c_str()));
@@ -1126,9 +1125,134 @@ bool BuildSelfContainedModelMaterials(
 
     out.fallback = &out.recipes[0];
     MLogInfo(LoadStaticMesh,
-        OS_TEXT("BuildSelfContainedModelMaterials: ") + pack_path
+        OS_TEXT("ResolveSelfContainedModelMaterials: ") + model_dir
         + OS_TEXT(" materials=") + OSString::numberOf(static_cast<int>(count))
-        + OS_TEXT(" block=") + block_path);
+        + OS_TEXT(" block=") + block_uri);
+    return true;
+}
+
+bool BuildSelfContainedModelMaterials(
+    GraphicsContext             &ctx,
+    const OSString              &pack_path,
+    const char                  *material_data_block_hint,
+    SelfContainedModelMaterials &out)
+{
+    out = SelfContainedModelMaterials();
+
+    // 本函数的装配方式是「扫模型目录找配方与数据块」——URI 寻址下没有目录概念。
+    // 明确拒绝，而不是让调用方读到一个误导性的「文件打不开」。
+    if (hgl::asset::AssetURI::Parse(pack_path).source == hgl::asset::AssetSourceKind::Pack)
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("BuildSelfContainedModelMaterials: 暂不支持包裹 URI 寻址（需改由依赖图装配）: ") + pack_path);
+        return false;
+    }
+
+    // 模型目录 = pack 所在目录（唯一的资源来源目录）
+    const OSString model_dir = hgl::filesystem::Path(pack_path).GetParent().ToOSString();
+    if (model_dir.IsEmpty())
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法取得模型目录 ") + pack_path);
+        return false;
+    }
+
+    hgl::io::minipack::MiniPackMemory *mpm =
+        hgl::io::minipack::GetMiniPackMemory(pack_path);
+    if (!mpm)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法打开模型包 ") + pack_path);
+        return false;
+    }
+    std::vector<std::string> material_names = ReadModelPackMaterialNames(mpm);
+    delete mpm;
+    if (material_names.empty())
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("BuildSelfContainedModelMaterials: MaterialTable 缺失或为空（非 MDL2 模型包）")
+            + pack_path);
+        return false;
+    }
+
+    // 装载触发段：本节是全函数唯一碰盘的地方。索引在档的配方与数据块逐个补载；
+    // 无索引 / 索引空手 ⇒ 整目录同步装载（老行为）。数据块只建句柄不碰 GPU
+    // （上传仍由 `GetRowBinding` → `GetOrLoadURI` 惰性执行）。异步路径不走这里——
+    // 配方与数据块由材质车道扇出落地，门禁放行后直接调 `ResolveSelfContainedModelMaterials`。
+    IndexProbe probe;
+    bool landed_from_index = false;
+    bool blocks_from_index = false;
+    mtl::MaterialDataBlockRegistry *blocks = ctx.GetMaterialDataBlockRegistry();
+    if (ProbeIndexedModelDir(model_dir, probe))
+    {
+        hgl::ManagedArray<hgl::asset::AssetIndexEntry> recipe_entries;
+        probe.src->FindInDirectory(probe.logical_dir,
+                                   hgl::asset::AssetType::MaterialRecipe, recipe_entries);
+        mtl::MaterialRecipeRegistry *registry = ctx.GetMaterialRecipeRegistry();
+        if (registry && recipe_entries.GetCount() > 0)
+        {
+            for (int i = 0; i < recipe_entries.GetCount(); ++i)
+            {
+                const OSString path = probe.root + OS_TEXT("/") +
+                                      hgl::ToOSString(recipe_entries[i]->physical_path);
+                if (!registry->FindAssetByPath(path) && !ctx.LoadMaterialRecipeFile(path))
+                {
+                    MLogWarning(LoadStaticMesh,
+                        OS_TEXT("BuildSelfContainedModelMaterials: 索引配方加载失败 ") + path);
+                    continue;
+                }
+                landed_from_index = true;
+            }
+            registry->FinalizePending();   // 连续 LoadFile 的收尾：子配方可能先于父配方
+        }
+
+        // 数据块：把本目录索引在档的块全部补载进注册表，选哪一块由
+        // `ResolveSelfContainedModelMaterials` 按 hint / 唯一性在注册表里定夺。
+        if (blocks)
+        {
+            hgl::ManagedArray<hgl::asset::AssetIndexEntry> block_entries;
+            probe.src->FindInDirectory(probe.logical_dir,
+                                       hgl::asset::AssetType::MaterialData, block_entries);
+            for (int i = 0; i < block_entries.GetCount(); ++i)
+            {
+                const OSString path = probe.root + OS_TEXT("/") +
+                                      hgl::ToOSString(block_entries[i]->physical_path);
+                if (!blocks->FindAssetByPath(path) && !blocks->LoadFile(path))
+                {
+                    MLogWarning(LoadStaticMesh,
+                        OS_TEXT("BuildSelfContainedModelMaterials: 索引数据块加载失败 ") + path);
+                    continue;
+                }
+                blocks_from_index = true;
+            }
+        }
+    }
+    if (!landed_from_index)
+    {
+        int recipe_files = 0, recipe_errors = 0;
+        if (!ctx.LoadMaterialRecipeDirectory(model_dir, &recipe_files, &recipe_errors))
+        {
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 配方目录加载失败 ") + model_dir);
+            return false;
+        }
+    }
+    if (blocks && !blocks_from_index)
+    {
+        int block_files = 0, block_errors = 0;
+        if (!blocks->LoadDirectory(model_dir, &block_files, &block_errors))
+        {
+            MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 数据块目录加载失败 ") + model_dir);
+            return false;
+        }
+    }
+
+    if (!ResolveSelfContainedModelMaterials(ctx, material_names, model_dir,
+                                            hgl::ToOSString(material_data_block_hint), out))
+    {
+        MLogError(LoadStaticMesh,
+            OS_TEXT("BuildSelfContainedModelMaterials: 材质装配失败 ") + pack_path);
+        out = SelfContainedModelMaterials();
+        return false;
+    }
+
     return true;
 }
 

@@ -9,6 +9,7 @@
 #include<hgl/graph/asset/ModelLoadPlan.h>
 #include<hgl/ecs/components/ModelRefComponent.h>   // A.1：定义先行接线在 A.2 消费
 #include<hgl/graph/mesh/ModelStreaming.h>
+#include<hgl/filesystem/Path.h>
 #include<hgl/asset/LoadedFileManager.h>
 #include<hgl/asset/LoadedFileHandler.h>
 #include<hgl/filesystem/Path.h>
@@ -175,13 +176,15 @@ namespace hgl::ecs
                                                 const graph::mtl::MaterialRecipe *default_recipe,
                                                 const graph::mtl::MaterialRecipe *const *recipe_table,
                                                 uint32_t recipe_table_count,
-                                                const OSString &base_dir)
+                                                const OSString &base_dir,
+                                                bool auto_scene_materials)
     {
         settings.geometry_vertex_format = gvf;
         settings.default_recipe         = default_recipe;
         settings.recipe_table           = (recipe_table_count > 0) ? recipe_table : nullptr;
         settings.recipe_table_count     = (recipe_table_count > 0) ? recipe_table_count : 0;
         settings.base_dir               = base_dir;
+        settings.auto_scene_materials   = auto_scene_materials;
         settings.valid                  = true;
     }
 
@@ -464,6 +467,54 @@ namespace hgl::ecs
                     if (gc->IsMaterialAsyncLoadPending())
                         return false;
 
+            // ── 阶段 B-2 前置：系统自装配 ─────────────────────────────────────
+            // 门禁放行后，材质车道落在注册表里的配方与数据块已经够一次纯绑定
+            // 解析 —— 全程零同步扫盘。只尝试一次：装配不成则回退调用方给的
+            // `default_recipe`；两者皆空 ⇒ 终态失败（与旧版启动失败同语义）。
+            const graph::mtl::MaterialRecipe *default_eff     = settings.default_recipe;
+            const graph::mtl::MaterialRecipe *const *table_eff = settings.recipe_table;
+            uint32_t table_count_eff = settings.recipe_table_count;
+
+            if (!table_eff && settings.auto_scene_materials && !stream->mats_resolved && context)
+            {
+                stream->mats_resolved = true;
+
+                if (graph::GraphicsContext *gc = context->GetGraphicsContext())
+                {
+                    std::vector<std::string> names;
+                    if (graph::ReadModelPackMaterialNamesFromBytes(
+                            stream->request.GetPackBytes(),
+                            stream->request.GetPackSize(),
+                            stream->request.GetPackPath(),
+                            names))
+                    {
+                        OSString dir = settings.base_dir;
+                        if (dir.IsEmpty())
+                            dir = hgl::filesystem::Path(stream->request.GetPackPath())
+                                      .GetParent().ToOSString();
+
+                        // 数据块命名约定 = 模型包主文件名（GLTFConvert 产出 `<pack>.material_data.toml`）
+                        const OSString hint =
+                            hgl::filesystem::Path(stream->request.GetPackPath()).GetStem();
+
+                        if (graph::ResolveSelfContainedModelMaterials(
+                                *gc, names, dir, hint, stream->mats) &&
+                            !stream->mats.table.empty())
+                        {
+                            default_eff     = stream->mats.fallback;
+                            table_eff       = stream->mats.table.data();
+                            table_count_eff = static_cast<uint32_t>(stream->mats.table.size());
+                        }
+                    }
+                }
+
+                if (!table_eff && !default_eff)
+                {
+                    asset->Fail("材质装配失败：模型目录的配方或数据块尚未落地");
+                    return true;
+                }
+            }
+
             graph::ModelAssetRegistry *registry = asset->GetRegistry();
             graph::ModelAssetContent  &content  = asset->GetMutableContent();
 
@@ -474,13 +525,13 @@ namespace hgl::ecs
             if (!stream->request.Build(registry->GetDevice(),
                                        registry->GetGeometryManager(),
                                        settings.geometry_vertex_format,
-                                       settings.default_recipe,
+                                       default_eff,
                                        base_dir,
                                        content.assets,
                                        content.nodes,
                                        content.root_nodes,
-                                       settings.recipe_table,
-                                       settings.recipe_table_count))
+                                       table_eff,
+                                       table_count_eff))
             {
                 content.Clear();
                 asset->Fail("模型包解析失败");
@@ -673,6 +724,22 @@ namespace hgl::ecs
             // ── 段三：材质（几何收口后一次）────────────────────────────────
             if (!ref->material_done)
             {
+                // 调用方没给行绑定 ⇒ 取系统自装配的结果（B-2 阶段解析好的
+                // `stream->mats`）。绑定只在 attach 时被读值，无需长期持有。
+                if (!ref->options.material_rows)
+                {
+                    if (AssetStream *st = FindStream(asset))
+                    {
+                        if (!st->mats.bindings.empty())
+                        {
+                            ref->options.material_rows           = st->mats.bindings.data();
+                            ref->options.material_row_count      =
+                                static_cast<uint32_t>(st->mats.bindings.size());
+                            ref->options.rows_by_material_index  = true;
+                        }
+                    }
+                }
+
                 if (!ref->instance.AttachMaterials(ref->options))
                 {
                     fail(ref, "AttachMaterials 失败（无已挂几何可补材质？）");

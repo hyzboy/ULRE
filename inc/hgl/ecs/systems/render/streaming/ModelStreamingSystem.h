@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/System.h>
 #include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/graph/mesh/ModelStreaming.h>
+#include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/type/String.h>
@@ -106,6 +107,16 @@ namespace hgl::ecs
              */
             bool preload_scene_recipes = true;
 
+            /**
+             * 自动装配材质：`recipe_table` 为空时，由系统在配方门禁放行后，从
+             * 材质车道（或同步装载过）落在注册表里的数据自装配场景配方表与行
+             * 绑定 —— 零同步扫盘。装配失败且 `default_recipe` 也为空 ⇒ 句柄失败。
+             *
+             * 关掉它 ⇒ 配方表完全由调用方提供（历史行为）。需要「非 PBR」这类
+             * 自定义兜底配方的场景保持关闭，避免被场景目录配方覆盖。
+             */
+            bool auto_scene_materials = false;
+
             bool valid = false;
         };
 
@@ -122,6 +133,11 @@ namespace hgl::ecs
             graph::ModelAsset *asset = nullptr;
 
             graph::ModelStreamingRequest request;   ///<阶段 A：读盘 + 持字节
+
+            /// 阶段 B-2 自装配的材质数据（`auto_scene_materials` 生效时填充）。
+            /// 必须与句柄同寿命：`PrimitiveAsset` 存的是配方**指针**。
+            graph::SelfContainedModelMaterials mats;
+            bool mats_resolved = false;             ///<已尝试过装配（成功与否都不再重试）
 
             bool plan_built    = false;             ///<计划单已生成并登记到句柄
             bool material_fanout = false;           ///<配方已扇出给材质车道（一次性）
@@ -196,7 +212,8 @@ namespace hgl::ecs
                               const graph::mtl::MaterialRecipe *default_recipe,
                               const graph::mtl::MaterialRecipe *const *recipe_table,
                               uint32_t recipe_table_count,
-                              const OSString &base_dir = OSString());
+                              const OSString &base_dir = OSString(),
+                              bool auto_scene_materials = false);
 
         bool HasBuildSettings()const { return settings.valid; }
 
