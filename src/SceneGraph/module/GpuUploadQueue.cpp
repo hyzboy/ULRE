@@ -945,7 +945,7 @@ namespace hgl::graph
         return true;
     }
 
-    uint64_t GpuUploadQueue::EnqueueBufferCopyRegions(DeviceBuffer *staging, DeviceBuffer *target,
+    uint64_t GpuUploadQueue::EnqueueBufferCopyRegions(DeviceBuffer *staging, BufferOwner *target,
         const ValueArray<BufferCopyRegion> &regions, UploadPriority priority,
         void (*on_complete)(GpuUploadTask *, void *), void *user_data, bool owns_staging)
     {
@@ -975,7 +975,7 @@ namespace hgl::graph
     }
 
     uint64_t GpuUploadQueue::EnqueueBufferCopy(DeviceBuffer *staging, VkDeviceSize src_offset,
-        DeviceBuffer *target, VkDeviceSize dst_offset, VkDeviceSize size, UploadPriority priority,
+        BufferOwner *target, VkDeviceSize dst_offset, VkDeviceSize size, UploadPriority priority,
         void (*on_complete)(GpuUploadTask *, void *), void *user_data, bool owns_staging)
     {
         BufferCopyRegion region;

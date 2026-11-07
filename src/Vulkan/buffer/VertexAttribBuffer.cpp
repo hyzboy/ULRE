@@ -25,6 +25,22 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
 
     policy = ResolveBufferPolicy(this, policy);
 
+    if(policy==BufferAllocPolicy::GPUDeviceLocal)
+    {
+        // 纯 device-local（无 host 影子）：内容由 GpuUploadQueue BufferToBuffer DMA 写入，禁止 Map/Write
+        if(data)
+            LogWarning("GPUDeviceLocal policy ignores inline data; contents must be uploaded via GpuUploadQueue DMA");
+
+        DeviceBufferData buf;
+        if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,size,size,nullptr,sharing_mode,MemoryUsage::GPUOnly,ObjectNameBuilder("VAB:Memory"),loc))
+            return(nullptr);
+
+        VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+        vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
+        TrackBuffer(vab, ObjectNameBuilder("VAB"), loc);
+        return vab;
+    }
+
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
         StagedBuffer *staged=CreateStagedBuffer(ObjectNameBuilder("VAB"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);
@@ -85,6 +101,26 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
     const VkDeviceSize size=stride*count;
 
     policy = ResolveBufferPolicy(this, policy);
+
+    if(policy==BufferAllocPolicy::GPUDeviceLocal)
+    {
+        // 纯 device-local（无 host 影子）：内容由 GpuUploadQueue BufferToBuffer DMA 写入，禁止 Map/Write
+        if(data)
+            LogWarning("GPUDeviceLocal policy ignores inline data; contents must be uploaded via GpuUploadQueue DMA");
+
+        ObjectNameBuilder memory_name = name.base_name[0] == '\0'
+            ? ObjectNameBuilder("Memory")
+            : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
+
+        DeviceBufferData buf;
+        if(!CreateBuffer(&buf,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,size,size,nullptr,sharing_mode,MemoryUsage::GPUOnly,memory_name,loc))
+            return(nullptr);
+
+        VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+        vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
+        TrackBuffer(vab, name, loc);
+        return vab;
+    }
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {

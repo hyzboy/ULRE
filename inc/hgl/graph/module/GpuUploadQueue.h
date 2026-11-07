@@ -98,14 +98,14 @@ namespace hgl::graph
          * 共享/常驻 Staging 传 false，由调用方管理生命周期。
          */
         uint64_t EnqueueBufferCopy(DeviceBuffer *staging, VkDeviceSize src_offset,
-                                   DeviceBuffer *target, VkDeviceSize dst_offset, VkDeviceSize size,
+                                   BufferOwner *target, VkDeviceSize dst_offset, VkDeviceSize size,
                                    UploadPriority priority = UploadPriority::Normal,
                                    void (*on_complete)(GpuUploadTask *, void *) = nullptr,
                                    void *user_data = nullptr,
                                    bool owns_staging = true);
 
-        /** 便捷入口：Staging -> DeviceBuffer 多段区域拷贝（一次提交、一次完成回调） */
-        uint64_t EnqueueBufferCopyRegions(DeviceBuffer *staging, DeviceBuffer *target,
+        /** 便捷入口：Staging -> Device-Local 缓冲（BufferOwner）多段区域拷贝（一次提交、一次完成回调） */
+        uint64_t EnqueueBufferCopyRegions(DeviceBuffer *staging, BufferOwner *target,
                                    const ValueArray<BufferCopyRegion> &regions,
                                    UploadPriority priority = UploadPriority::Normal,
                                    void (*on_complete)(GpuUploadTask *, void *) = nullptr,

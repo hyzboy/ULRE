@@ -13,6 +13,7 @@
 namespace hgl::graph
 {
     class Texture;
+    class BufferOwner;
 
     enum class UploadPriority : uint8_t
     {
@@ -97,7 +98,7 @@ namespace hgl::graph
         bool                auto_mipmaps     = false;        // 是否需要 Blit 生成 Mipmap
 
         // ── BufferToBuffer 支路（几何/SSBO/原始字节）──
-        DeviceBuffer *      target_buffer    = nullptr;      // Device-Local 目标缓冲（由资产方持有，任务不销毁）
+        BufferOwner *       target_buffer    = nullptr;      // Device-Local 目标缓冲（BufferOwner 及其派生类；由资产方持有，任务不销毁）
         VkDeviceSize        dst_offset       = 0;            // 单段拷贝：目标偏移（copy_regions 为空时生效）
         VkDeviceSize        copy_size        = 0;            // 单段拷贝：字节数（0 = 取全部 staging_bytes）
         ValueArray<BufferCopyRegion> copy_regions;           // 多段区域；src_offset 为 Staging 内绝对偏移

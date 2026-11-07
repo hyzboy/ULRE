@@ -44,6 +44,26 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
 
     policy = ResolveBufferPolicy(this, policy);
 
+    if(policy==BufferAllocPolicy::GPUDeviceLocal)
+    {
+        // 纯 device-local（无 host 影子）：内容由 GpuUploadQueue BufferToBuffer DMA 写入，禁止 Map/Write
+        if(data)
+            LogWarning("GPUDeviceLocal policy ignores inline data; contents must be uploaded via GpuUploadQueue DMA");
+
+        ObjectNameBuilder memory_name = name.base_name[0] == '\0'
+            ? ObjectNameBuilder("Memory")
+            : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
+
+        DeviceBufferData buf;
+        if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,size,size,nullptr,sharing_mode,MemoryUsage::GPUOnly,memory_name,loc))
+            return(nullptr);
+
+        IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
+        ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
+        TrackBuffer(ibo, name, loc);
+        return ibo;
+    }
+
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
         StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, size, data, sharing_mode, loc);

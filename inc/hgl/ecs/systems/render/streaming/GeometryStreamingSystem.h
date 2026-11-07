@@ -10,6 +10,8 @@ namespace hgl
     {
         class GeometryAsset;
         class GeometryAssetRegistry;
+        class TextureManager;
+        class GpuUploadQueue;
     }
 }
 
@@ -28,8 +30,8 @@ namespace hgl::ecs
      * | | 纹理 | 几何 |
      * |---|------|------|
      * | 后台 | 单 IO 线程读盘 | 同（共用 `LoadedFileManager`，设备级串行） |
-     * | 主线程 | 提交 GPU 上传任务（`TextureLoadCommitter`） | 直接解析 Minipack 建 buffer |
-     * | 就绪标志 | 上传完成回调 | 本帧解析成功即 `CommitAsyncGeometry` |
+     * | 主线程 | Direct-to-Staging + GPU 上传任务 | 同构：Direct-to-Staging + `GpuUploadQueue` BufferToBuffer DMA（属性需格式转换时回退同步解析建 buffer） |
+     * | 就绪标志 | 上传完成回调 | 上传/解析完成回调 `CommitAsyncGeometry` |
      *
      * 内置几何体（`GetSpec().kind == Builtin`）**不经过本系统**：`GeometryAsset::SetupFromSpec`
      * 里已经同步建好，创建即 `Resident`。
@@ -44,8 +46,9 @@ namespace hgl::ecs
      * ```
      * ① Update()
      *      LoadedFileManager::Pump()        ← 派发上一帧读盘完成的回调
-     *        OnFileLoaded → 解析 Minipack → 建 GPU buffer → CommitAsyncGeometry
-     *      扫描句柄表：待办句柄 ⇒ Submit() + MarkAsyncRequested(id)
+     *        OnFileLoaded → 直写 staging 时转交 LoadGeometryFromStagingAsync（DMA 上传）
+     *                       经典路径时解析 Minipack 建 buffer → 完成回调 CommitAsyncGeometry
+     *      扫描句柄表：待办句柄 ⇒ SubmitDirect/Submit() + MarkAsyncRequested(id)
      *      LoadedFileManager::Collect()     ← 回收已归零的文件引用
      * ```
      *
@@ -66,6 +69,8 @@ namespace hgl::ecs
         StreamHandler *handler = nullptr;                       ///<读盘回调接收者(活到最后一个回调)
         LoadedFileManager *load_manager = nullptr;
         graph::GeometryAssetRegistry *geometry_registry = nullptr;
+        graph::TextureManager *tex_manager = nullptr;           ///<借道其上传队列做 Direct-to-Staging
+        graph::GpuUploadQueue *upload_queue = nullptr;          ///<BufferToBuffer DMA 队列(可空⇒经典路径)
 
     private:
 

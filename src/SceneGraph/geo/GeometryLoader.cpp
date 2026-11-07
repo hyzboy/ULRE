@@ -14,6 +14,7 @@
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/io/MiniPack.h>
 #include<hgl/io/MemoryInputStream.h>
+#include<hgl/graph/module/GpuUploadQueue.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
 
 DEFINE_LOGGER_MODULE(LoadGeometry)
@@ -607,4 +608,328 @@ Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const GeometryVerte
 
     return LoadGeometryFromStream(device,geometry_vertex_format,static_cast<InputStream *>(mis),debug_name);
 }
+    // ==================== Direct-to-Staging 异步装载（GpuUploadQueue DMA） ====================
+
+    namespace
+    {
+        using hgl::io::minipack::MiniPackReader;
+        using hgl::io::minipack::MiniPackMemory;
+
+        /**
+         * MiniPackMemory -> MiniPackReader 适配器。
+         *
+         * DMA 资格判定要复用经典路径的同一套解析辅助函数（它们经 ReadFile 逐条读取），
+         * 而 MiniPackMemory 只有 Map 指针访问。本适配器把 ReadFile 变成 Map + memcpy，
+         * 使内存视图拥有与磁盘读取器完全一致的解析语义，不复制任何校验逻辑。
+         * 不持有 mpm 的生命周期：它的存活由调用方保证（视图指向已 Map 的 staging）。
+         */
+        class MemoryAsReader final : public MiniPackReader
+        {
+            MiniPackMemory *mp;
+
+        public:
+
+            explicit MemoryAsReader(MiniPackMemory *m) : mp(m) {}
+
+            uint GetFileCount() const override { return mp->GetFileCount(); }
+            int32 FindFile(const AnsiStringView &name) const override { return mp->FindFile(name); }
+            uint32 GetFileLength(int32 index) const override { return mp->GetFileLength(index); }
+
+            uint32 ReadFile(int32 index, void *buf, uint32 start, uint32 size) override
+            {
+                if (index < 0 || !buf)
+                    return 0;
+
+                const uint32 len = mp->GetFileLength(index);
+
+                if (start >= len)
+                    return 0;
+
+                if (size > len - start)
+                    size = len - start;
+
+                const void *src = mp->Map(index);
+
+                if (!src)
+                    return 0;
+
+                memcpy(buf, static_cast<const uint8 *>(src) + start, size);
+                return size;
+            }
+        };
+
+        struct StagedGeometryJob
+        {
+            Geometry            *geometry     = nullptr;   // DMA 目标几何（含 GPUDeviceLocal 缓冲）
+            DeviceBuffer        *staging      = nullptr;   // 移交所有权；finalize 时 Unmap+delete
+            int                  pending      = 0;         // 未完成的上传任务数
+            bool                 dispatching  = false;     // 入队阶段抑制过早 finalize
+            bool                 failed       = false;
+            GeometryLoadComplete on_complete  = nullptr;
+            void                *user_data    = nullptr;
+        };
+
+        void FinalizeStagedGeometryJob(StagedGeometryJob *job)
+        {
+            Geometry *geometry = job->geometry;
+            const bool success = !job->failed && geometry;
+
+            if (job->staging)
+            {
+                job->staging->Unmap();
+                delete job->staging;
+            }
+
+            if (!success && geometry)
+                delete geometry;    // 失败回滚：连带删除半成品 GeometryData 与显存缓冲
+
+            if (job->on_complete)
+                job->on_complete(success ? geometry : nullptr, success, job->user_data);
+
+            delete job;
+        }
+
+        void OnStagedGeometryTaskDone(GpuUploadTask *task, void *user_data)
+        {
+            StagedGeometryJob *job = static_cast<StagedGeometryJob *>(user_data);
+
+            if (!task || task->state != UploadTaskState::Completed)
+                job->failed = true;
+
+            --job->pending;
+
+            if (!job->dispatching && job->pending <= 0)
+                FinalizeStagedGeometryJob(job);
+        }
+
+        // 判定 minipack 内容能否原样 DMA：每个 gvf 属性都要有语义匹配、格式精确一致、
+        // 长度吻合的源条目；索引只接受 U32 直通（U8/U16 需展开，走同步回退）。
+        bool CanDirectDMAFromMemory(hgl::io::minipack::MiniPack *mpm,
+                                    const GeometryHeader &header,
+                                    const GeometryVertexFormat &geometry_vertex_format,
+                                    const ValueArray<FileAttribute> &file_attributes)
+        {
+            if (header.indexCount > 0 && header.indexStride != 4)
+                return false;
+
+            const uint32_t gvf_attr_count = geometry_vertex_format.GetCount();
+            if (gvf_attr_count == 0 || header.attributeCount == 0)
+                return false;
+
+            for (uint32_t vab_index = 0; vab_index < gvf_attr_count; ++vab_index)
+            {
+                const GeometryVertexAttributeFormat *geometry_attribute = geometry_vertex_format.Get(vab_index);
+                if (!geometry_attribute)
+                    return false;
+
+                const FileAttribute *src_attr = nullptr;
+                for (int i = 0; i < file_attributes.GetCount(); ++i)
+                {
+                    if (file_attributes[i].semantic == geometry_attribute->semantic)
+                    {
+                        src_attr = &file_attributes[i];
+                        break;
+                    }
+                }
+
+                if (!src_attr || src_attr->entry_index < 0)
+                    return false;
+
+                if (src_attr->format != geometry_attribute->format)
+                    return false;
+
+                const size_t stride = GetStrideByFormat(geometry_attribute->format);
+                if (stride == 0 || src_attr->entry_size != static_cast<uint32>(header.vertexCount * stride))
+                    return false;
+            }
+
+            return true;
+        }
+    }//anonymous namespace
+
+    void LoadGeometryFromStagingAsync(VulkanDevice *device,
+                                      const GeometryVertexFormat &geometry_vertex_format,
+                                      GpuUploadQueue *queue,
+                                      DeviceBuffer *staging,
+                                      const void *bytes,
+                                      uint32 size,
+                                      const OSString &debug_name,
+                                      GeometryLoadComplete on_complete,
+                                      void *user_data)
+    {
+        using namespace hgl::io::minipack;
+
+        auto fail_sync = [&](bool release_staging)
+        {
+            if (release_staging && staging)
+            {
+                staging->Unmap();
+                delete staging;
+            }
+            if (on_complete)
+                on_complete(nullptr, false, user_data);
+        };
+
+        if (!on_complete)
+            return;    // 调用方错误；不触碰 staging，交由调用方清理
+
+        if (!device || !bytes || size == 0)
+        {
+            fail_sync(true);
+            return;
+        }
+
+        // 解析失败/需要格式转换/无队列 ⇒ 同步回退（经典路径，含转换逻辑），随后释放 staging
+        bool classic_fallback = true;
+
+        MiniPackMemory *mpm = nullptr;
+        GeometryHeader header{};
+        math::BoundingVolumes bounding_volumes;
+        ValueArray<FileAttribute> file_attributes;
+
+        if (queue)
+        {
+            mpm = GetMiniPackMemoryFromBytes(debug_name, bytes, size);
+
+            MemoryAsReader reader(mpm);
+            MiniPackReader *mpr = mpm ? &reader : nullptr;
+
+            if (mpm
+             && !(mpm->FindFile(AnsiStringView("meshlets")) >= 0
+               || mpm->FindFile(AnsiStringView("meshlet_vertices")) >= 0
+               || mpm->FindFile(AnsiStringView("meshlet_triangles")) >= 0)
+             && ReadGeometryHeader(mpr, header, debug_name)
+             && ReadBoundingVolumes(mpr, bounding_volumes, debug_name)
+             && ParseAttributeMeta(mpr, header, debug_name, file_attributes)
+             && CanDirectDMAFromMemory(mpm, header, geometry_vertex_format, file_attributes))
+            {
+                classic_fallback = false;
+            }
+        }
+
+        if (classic_fallback)
+        {
+            if (mpm)
+                delete mpm;
+
+            Geometry *geometry = LoadGeometryFromMiniPackBytes(device, geometry_vertex_format, bytes, size, debug_name);
+
+            if (staging)
+            {
+                staging->Unmap();
+                delete staging;
+            }
+
+            on_complete(geometry, geometry != nullptr, user_data);
+            return;
+        }
+
+        // ── DMA 路径：纯 device-local 几何 + 每 VAB/IBO 一个 BufferToBuffer 任务 ──
+        GeometryData *geo_data = CreateGeometryData(device, geometry_vertex_format, header.vertexCount,
+                                                    BufferAllocPolicy::GPUDeviceLocal);
+        if (!geo_data)
+        {
+            MLogError(LoadGeometry, OS_TEXT("Cannot create device-local GeometryData for ") + debug_name);
+            delete mpm;
+            fail_sync(true);
+            return;
+        }
+
+        if (!geo_data->CreateAllVAB())
+        {
+            MLogError(LoadGeometry, OS_TEXT("Cannot create VAB for ") + debug_name);
+            delete geo_data;
+            delete mpm;
+            fail_sync(true);
+            return;
+        }
+
+        const U8String geo_name = ToU8String(debug_name);
+        Geometry *geometry = new Geometry((char *)geo_name.c_str(), geo_data);
+        geometry->SetBoundingVolumes(bounding_volumes);
+
+        StagedGeometryJob *job = new StagedGeometryJob;
+        job->geometry    = geometry;
+        job->staging     = staging;
+        job->on_complete = on_complete;
+        job->user_data   = user_data;
+        job->dispatching = true;    // 入队期间不允许 finalize
+
+        const uint8_t *base = static_cast<const uint8_t *>(bytes);
+        const uint32_t gvf_attr_count = geometry_vertex_format.GetCount();
+
+        for (uint32_t vab_index = 0; vab_index < gvf_attr_count; ++vab_index)
+        {
+            const GeometryVertexAttributeFormat *geometry_attribute = geometry_vertex_format.Get(vab_index);
+
+            const FileAttribute *src_attr = nullptr;
+            for (int i = 0; i < file_attributes.GetCount(); ++i)
+            {
+                if (file_attributes[i].semantic == geometry_attribute->semantic)
+                {
+                    src_attr = &file_attributes[i];
+                    break;
+                }
+            }
+
+            VAB *vab = geo_data->GetVAB((int)vab_index);
+            const void *src_ptr = src_attr ? mpm->Map(src_attr->entry_index) : nullptr;
+
+            if (!vab || !src_ptr)
+            {
+                job->failed = true;
+                break;
+            }
+
+            const VkDeviceSize src_offset = (const uint8_t *)src_ptr - base;
+            const VkDeviceSize copy_size  = (VkDeviceSize)src_attr->entry_size;
+
+            const uint64_t id = queue->EnqueueBufferCopy(staging, src_offset, vab, 0, copy_size,
+                                                         UploadPriority::Normal,
+                                                         OnStagedGeometryTaskDone, job, false);
+            if (id == 0)
+            {
+                job->failed = true;
+                break;
+            }
+            ++job->pending;
+        }
+
+        if (!job->failed && header.indexCount > 0)
+        {
+            const int32 indices_index = mpm->FindFile(AnsiStringView("indices"));
+            IndexBuffer *ibo = (indices_index >= 0)
+                ? geo_data->InitIBO((int)header.indexCount, IndexType::U32, "GeometryAsync:IBO")
+                : nullptr;
+            const void *src_ptr = ibo ? mpm->Map(indices_index) : nullptr;
+
+            if (!src_ptr)
+            {
+                job->failed = true;
+            }
+            else
+            {
+                const VkDeviceSize src_offset = (const uint8_t *)src_ptr - base;
+                const uint64_t id = queue->EnqueueBufferCopy(staging, src_offset, ibo, 0,
+                                                             (VkDeviceSize)header.indexCount * 4,
+                                                             UploadPriority::Normal,
+                                                             OnStagedGeometryTaskDone, job, false);
+                if (id == 0)
+                    job->failed = true;
+                else
+                    ++job->pending;
+            }
+        }
+
+        delete mpm;
+
+        job->dispatching = false;
+        if (job->pending <= 0)
+        {
+            job->failed = true;    // 一个任务都没挂上：视为失败，统一回滚
+            FinalizeStagedGeometryJob(job);
+            return;
+        }
+        // 否则：等待最后一个上传任务回调 finalize
+    }
 }//namespace hgl::graph

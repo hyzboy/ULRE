@@ -26,7 +26,8 @@ enum class BufferAllocPolicy
     CPUVisible,     // HOST_VISIBLE | HOST_COHERENT
     GPUOnly,        // DEVICE_LOCAL (use staging for uploads)
     StagedUpload,   // Explicit staging upload to GPU-local buffer
-    Readback        // HOST_VISIBLE | HOST_CACHED
+    Readback,       // HOST_VISIBLE | HOST_CACHED
+    GPUDeviceLocal  // DEVICE_LOCAL pure: no host mirror; filled only by GpuUploadQueue DMA (Map/Write forbidden)
 };
 
 class DeviceMemory
