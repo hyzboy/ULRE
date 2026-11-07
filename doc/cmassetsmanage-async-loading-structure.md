@@ -202,10 +202,10 @@ IO worker 读满整文件 → SwapMailbox → 调用线程 Pump() → LoadedFile
 每帧固定节拍（`src/ecs/systems/render/streaming/ModelStreamingSystem.cpp`，见 `Update()` 相位注释）：
 
 ```
-Pump() → PruneStreams() → PumpPackReads() → AcquireOneFrame() → Advance() → Collect() → PumpMaterialLane()
+Pump() → PruneStreams() → PumpMaterialLane() → AcquireOneFrame() → Advance() → Collect()
 ```
 
-- **AcquireOneFrame**：每帧最多提交 2 个模型包（`kMaxSubmitPerFrame=2`）。能映射物理路径的 URI 走 `LoadedFileManager` 异步读；映射不了物理路径的（归档型包裹、`id:`、`builtin`/`rt`）交给 `PackReadTask` 在 CPU 池里取流，由 `PumpPackReads()` 回收 —— 主线程不再有同步取流分支。
+- **AcquireOneFrame**：每帧最多提交 2 个模型包（`kMaxSubmitPerFrame=2`）。所有 URI（目录型物理文件、`pack(res):id:<hex>`、归档包裹、`builtin`）统一提交给 `LoadedFileManager`：能映射物理路径的走真实路径键读盘，映射不了的以 `AssetURIByteSource` 自定义字节源在同一条读盘通道上取流（表键用完整 URI 文本），由 `StreamHandler` 中继回收 —— 主线程不再有同步取流分支，也没有单独的包裹 CPU 池。
 - **配方扇出 + 门禁**：`SetPlan()` 之后做一次性 `FanOutMaterialDeps()`（场景目录里的配方全部投给 `MaterialAsyncLoadLane`），内容装配前用 `GraphicsContext::IsMaterialAsyncLoadPending()` 做**软门禁**：几何就绪仍是唯一硬门禁，配方缺席回退默认配方，不会把模型卡在 Loading。
 - **Advance** 三阶段：
   - B-1 字节就绪 → `BuildModelLoadPlanFromBytes()` 出计划单 → `SetPlan()`；
@@ -248,14 +248,14 @@ Pump() → PruneStreams() → PumpPackReads() → AcquireOneFrame() → Advance(
 | 层 | 组件 | 职责 |
 |---|---|---|
 | Tier 1 IO | `PhysicalVolumeRouter`（CMAssetsManage）+ `LoadedFileManager` 原始字节后端 | 一物理卷一个工作线程，只把字节读进 RAM 缓冲，不碰对象 |
-| Tier 2 CPU | `AssetCPUTaskPool` + 两级分派（`ExecutionAffinity`） | 通用 `AssetObject` 序列化直接反序列化；特化资产只切 MetaOnly 并回投标注线程 |
+| Tier 2 CPU | `AssetCPUTaskPool` + 两级分派（`ExecutionAffinity`） | 通用 `AssetObject` 序列化直接反序列化；特化资产只切 MetaOnly 并回投标注线程。全局唯一一份由 `GraphicsContext` 持有（材质车道等消费者借用，不再各自建池） |
 | Tier 2 CPU | `MaterialAsyncCompiler`（`MaterialRecipeParseTask` / `MaterialDataBlockParseTask`） | 配方/数据块的 TOML·FB 解析纯 CPU 化，失败保留诊断而非丢任务 |
-| Tier 2 CPU | `PackReadTask` | 归档型包裹 / `id:` / `builtin` / `rt` 的取流 |
+| Tier 1 IO | `AssetURIByteSource`（配合 `LoadedFileManager` 自定义字节源） | 归档包裹 / `id:` / `builtin` 的取流也走通用读盘线程，与物理路径文件同通道 |
 | Tier 3 Commit | `MaterialAsyncLoadLane` + `GraphicsContext` | 主线程每帧 `Pump`：注册表落地、SSBO 分配、状态机跃迁 |
 
 两条容易踩的约定：
 
-- **路径比较键**：`hgl::graph::MakeAssetPathKey()`（`inc/hgl/graph/asset/AssetPathKey.h`）统一分隔符并给相对路径拼上当前工作目录。同步装载给的是绝对路径、车道枚举给的是相对路径，按原始字符串比较会让「按路径去重」和「按路径查找」全部落空（表现为整目录重投 + 注册表按重名拒绝）。
+- **路径比较键**：`hgl::MakeLoadedFileAbsKey()`（`CMAssetsManage/inc/hgl/asset/LoadedFile.h`）统一分隔符、Windows 折叠大小写，并给相对路径拼上当前工作目录。同步装载给的是绝对路径、车道枚举给的是相对路径，按原始字符串比较会让「按路径去重」和「按路径查找」全部落空（表现为整目录重投 + 注册表按重名拒绝）。纯查表（`LoadedFileManager` 表键）用同源的 `MakeLoadedFileKey()`。
 - **门禁分级**：几何 Ready 是硬门禁；配方/数据块只是软门禁（缺席回退默认配方）。异步化不能变成「等所有东西齐了才给模型」。
 
 ---
@@ -290,14 +290,14 @@ sequenceDiagram
 ## 6. 已知边界与缺口（后续演进候选）
 
 1. **没有集成式 LoadGraph 调度器**：子模块的工厂/依赖图/异步管理器需调用方手工串联；外层 `AssetLoadGraph` 已具拓扑能力但尚未接入统一派发。
-2. ~~**包裹 URI 未全量走异步 IO**~~：已由 `PackReadTask` + `ModelStreamingSystem::PumpPackReads()` 收口，主线程不再同步取流。
+2. ~~**包裹 URI 未全量走异步 IO**~~：已由 `LoadedFileManager` 自定义字节源（`AssetURIByteSource`）收口，包裹取流与物理文件共用同一条读盘通道；原 `PackReadTask` 私有池已废除。
 3. ~~**Recipe/MaterialData 解析是同步句柄**~~：已由 `MaterialAsyncCompiler` + `MaterialAsyncLoadLane` 收口，`Loading` 阶段真实存在，`Failed` 带诊断原因。
 4. **无独立 `.pak` 打包器**：Pack 目前=命名挂载+目录后端；迁移路径已在 `doc/Pack.md` 规划（新后端只需实现 Open/Stat/ListDirectory+建索引）。
 5. **无库内烘焙器**：TOML→FB 转换在离线 `AssetManifestTool`/工具链，库内只做产物识别/选择/元数据保留。
 6. **哈希默认值文实不一致**：代码默认 `XXH3-128`，部分文档仍写 BLAKE3（应正名为"开发 XXH3 / 发行 BLAKE3"策略）。
 7. **TextureArray 双机制并存**：运行时同步构建 vs 示例级逐层流送，待统一。
 8. **历史后缀别名仅存在于扫盘路径**：URI 侧唯一拼写是 `rcp/mtldata/prim`，磁盘实际是 `.recipe/.material_data/.primitive`；长期看应由 Bake/迁移工具统一，或把别名表扩展为正式兼容层文档化。
-9. **路径比较只做字符串折叠**：`MakeAssetPathKey()` 不解析 `.` / `..` 点段，相对路径靠「拼当前工作目录」对齐；若将来出现跨工作目录切换后再比较的场景，需要提升为一次真实的 `GetFullPath` 归一。
+9. **路径比较只做字符串折叠**：`MakeLoadedFileAbsKey()` 不解析 `.` / `..` 点段，相对路径靠「拼当前工作目录」对齐；若将来出现跨工作目录切换后再比较的场景，需要提升为一次真实的 `GetFullPath` 归一。
 
 ---
 
@@ -326,7 +326,7 @@ sequenceDiagram
 | `TestAssetCPUTaskPool` | 池启停/两级分派/亲和性回投/任务失败隔离 |
 | `TestMaterialAsyncCompiler` | 配方与数据块解析任务、解析失败=任务成功但带诊断、Detach 前置条件 |
 | `TestMaterialAsyncLoadLane` | 车道启停、目录投递、收尾不丢成品、去重（表内 / 在途）、路径写法等价 |
-| `TestPackReadTask` | 归档包裹 / `id:` / `builtin` 取流、缓冲归属、失败路径 |
+| `TestAssetURIByteSource` | 归档包裹 / `id:` 经 `AssetURIByteSource` + `LoadedFileManager` 取流、挂载反查、表键合并与缓存命中、失败路径 |
 | `TestStaticMeshModelProgressive` | 三段渐进前置条件、重复调用、失败守卫 |
 | `TestAssetLoadGraph` / `TestTextureArraySpec` | 引用规范化/拓扑/环；数组规约 |
 | `LoadModel`（默认异步，`LS_SYNC=1` 同步） | 同一模型双通路一致性；已实测内存索引路径命中（68 条目、materials=15、AttachMaterials 49）；改造后第 6 帧就绪、无重名日志 |
