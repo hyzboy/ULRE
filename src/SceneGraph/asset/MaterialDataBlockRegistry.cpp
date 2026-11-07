@@ -1,5 +1,5 @@
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
-#include <hgl/graph/asset/AssetPathKey.h>
+#include <hgl/asset/LoadedFile.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
@@ -521,13 +521,13 @@ namespace hgl::graph::mtl
 
         // 调用方给的写法与入库时记下的写法未必一致（相对 / 绝对、分隔符）：
         // 折成比较键再比，否则同一个文件会被当成两个。
-        const OSString key = MakeAssetPathKey(path);
+        const OSString key = MakeLoadedFileAbsKey(path);
 
         for (int i = 0; i < blocks.GetCount(); ++i)
         {
             MaterialDataBlockAsset *asset = blocks.At(i);
             if (asset && !asset->GetSourcePath().IsEmpty()
-             && MakeAssetPathKey(asset->GetSourcePath()) == key)
+             && MakeLoadedFileAbsKey(asset->GetSourcePath()) == key)
                 return asset;
         }
 
