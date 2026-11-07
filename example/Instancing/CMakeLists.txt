@@ -2,3 +2,4 @@
 
 CreateProject(AutoInstance                   AutoInstance.cpp)
 CreateProject(AutoMergeMaterialInstance      AutoMergeMaterialInstance.cpp)
+CreateProject(GPUModelChessboard             GPUModelChessboard.cpp)

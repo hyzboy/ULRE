@@ -1,0 +1,13 @@
+# GPUModelChessboard 示例的材质数据块：全局**一行**中性白。
+#
+# 逐棋盘的颜色差异不来自材质行，而来自 `InstanceCustomDataPool` 的两行
+# 自定义色（浅/深），由剔除着色器按 `GPUModelRefComponent::custom_data_index`
+# 抄进展开竞技场，最终 `fragVertexColor = GetVertexColor() × custom_color`
+# 再乘材质行色 ⇒ 行色取 1 时画面色 = 逐实例自定义色（棋盘格本色）。
+
+schema = 1
+name = "gpu_model_chessboard"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [1.0, 1.0, 1.0, 1.0]
