@@ -199,18 +199,19 @@ IO worker 读满整文件 → SwapMailbox → 调用线程 Pump() → LoadedFile
 
 ### 4.4 模型流送（ModelStreamingSystem）
 
-每帧固定节拍（`src/ecs/systems/render/streaming/ModelStreamingSystem.cpp:516-528`）：
+每帧固定节拍（`src/ecs/systems/render/streaming/ModelStreamingSystem.cpp`，见 `Update()` 相位注释）：
 
 ```
-Pump() → PruneStreams() → AcquireOneFrame() → Advance() → Collect()
+Pump() → PruneStreams() → PumpPackReads() → AcquireOneFrame() → Advance() → Collect() → PumpMaterialLane()
 ```
 
-- **AcquireOneFrame**：每帧最多提交 2 个模型包（`kMaxSubmitPerFrame=2`）。能映射物理路径的 URI 走 `LoadedFileManager` 异步读；映射不了的 `pack(res):...` 当前退回 `OpenAssetInputStream()` 主线程同步取流（`:243-365`）——包裹 URI 与异步 IO 尚未完全统一，属已知边界。
+- **AcquireOneFrame**：每帧最多提交 2 个模型包（`kMaxSubmitPerFrame=2`）。能映射物理路径的 URI 走 `LoadedFileManager` 异步读；映射不了物理路径的（归档型包裹、`id:`、`builtin`/`rt`）交给 `PackReadTask` 在 CPU 池里取流，由 `PumpPackReads()` 回收 —— 主线程不再有同步取流分支。
+- **配方扇出 + 门禁**：`SetPlan()` 之后做一次性 `FanOutMaterialDeps()`（场景目录里的配方全部投给 `MaterialAsyncLoadLane`），内容装配前用 `GraphicsContext::IsMaterialAsyncLoadPending()` 做**软门禁**：几何就绪仍是唯一硬门禁，配方缺席回退默认配方，不会把模型卡在 Loading。
 - **Advance** 三阶段：
-  - B-1 字节就绪 → `BuildModelLoadPlanFromBytes()` 出计划单 → `SetPlan()`（`:400-427`）；
-  - B-2 `ModelStreamingRequest::Build()` 产出 PrimitiveAsset/节点树，以实际图元数替换计划子项计数（`:430-495`）；
-  - C 逐帧统计 `PrimitiveAsset::IsGeometryReady()`，增量结算 `SettleAllChildren()`，全落定 `CommitModel()`（`:499-514`）。
-- **就绪门禁是图元几何**，不要求所有纹理/材质 Ready（`inc/hgl/ecs/systems/render/streaming/ModelStreamingSystem.h:53-61`）。
+  - B-1 字节就绪 → `BuildModelLoadPlanFromBytes()` 出计划单 → `SetPlan()`；
+  - B-2 `ModelStreamingRequest::Build()` 产出 PrimitiveAsset/节点树，以实际图元数替换计划子项计数；
+  - C 逐帧统计 `PrimitiveAsset::IsGeometryReady()`，增量结算 `SettleAllChildren()`，全落定 `CommitModel()`。
+- **就绪门禁是图元几何**，不要求所有纹理/材质 Ready（`inc/hgl/ecs/systems/render/streaming/ModelStreamingSystem.h`）。
 
 ### 4.5 三段渐进实例化（StaticMeshModelInstance）
 
@@ -239,6 +240,23 @@ Pump() → PruneStreams() → AcquireOneFrame() → Advance() → Collect()
 5. **绑定**：逐材质 `GetRowBinding(block_uri, i)` → `recipes/bindings/table`。最终关系：模型材质下标 i ↔ 配方匹配 ↔ 数据块第 i 行 ↔ `GlobalSSBOBinding`（`:1070-1129`）。
 
 回退哲学：**行为超集**——索引不可用/未命中时旧 OS 扫描原样保留。
+
+### 4.8 统一异步分发流水线（改造后的骨架）
+
+原始缺口「IO 与 CPU 强耦合、材质解析卡主线程、多设备抢通道、包裹 URI 无法异步」由一条三级流水线收口：
+
+| 层 | 组件 | 职责 |
+|---|---|---|
+| Tier 1 IO | `PhysicalVolumeRouter`（CMAssetsManage）+ `LoadedFileManager` 原始字节后端 | 一物理卷一个工作线程，只把字节读进 RAM 缓冲，不碰对象 |
+| Tier 2 CPU | `AssetCPUTaskPool` + 两级分派（`ExecutionAffinity`） | 通用 `AssetObject` 序列化直接反序列化；特化资产只切 MetaOnly 并回投标注线程 |
+| Tier 2 CPU | `MaterialAsyncCompiler`（`MaterialRecipeParseTask` / `MaterialDataBlockParseTask`） | 配方/数据块的 TOML·FB 解析纯 CPU 化，失败保留诊断而非丢任务 |
+| Tier 2 CPU | `PackReadTask` | 归档型包裹 / `id:` / `builtin` / `rt` 的取流 |
+| Tier 3 Commit | `MaterialAsyncLoadLane` + `GraphicsContext` | 主线程每帧 `Pump`：注册表落地、SSBO 分配、状态机跃迁 |
+
+两条容易踩的约定：
+
+- **路径比较键**：`hgl::graph::MakeAssetPathKey()`（`inc/hgl/graph/asset/AssetPathKey.h`）统一分隔符并给相对路径拼上当前工作目录。同步装载给的是绝对路径、车道枚举给的是相对路径，按原始字符串比较会让「按路径去重」和「按路径查找」全部落空（表现为整目录重投 + 注册表按重名拒绝）。
+- **门禁分级**：几何 Ready 是硬门禁；配方/数据块只是软门禁（缺席回退默认配方）。异步化不能变成「等所有东西齐了才给模型」。
 
 ---
 
@@ -272,13 +290,14 @@ sequenceDiagram
 ## 6. 已知边界与缺口（后续演进候选）
 
 1. **没有集成式 LoadGraph 调度器**：子模块的工厂/依赖图/异步管理器需调用方手工串联；外层 `AssetLoadGraph` 已具拓扑能力但尚未接入统一派发。
-2. **包裹 URI 未全量走异步 IO**：`pack(res):...` 解析不出物理路径时，模型流送退回主线程 `OpenAssetInputStream()` 同步读（`ModelStreamingSystem.cpp:270-335`）。
-3. **Recipe/MaterialData 解析是同步句柄**：有 `Parsed/Ready/Failed` 状态但无后台 Loading 阶段。
+2. ~~**包裹 URI 未全量走异步 IO**~~：已由 `PackReadTask` + `ModelStreamingSystem::PumpPackReads()` 收口，主线程不再同步取流。
+3. ~~**Recipe/MaterialData 解析是同步句柄**~~：已由 `MaterialAsyncCompiler` + `MaterialAsyncLoadLane` 收口，`Loading` 阶段真实存在，`Failed` 带诊断原因。
 4. **无独立 `.pak` 打包器**：Pack 目前=命名挂载+目录后端；迁移路径已在 `doc/Pack.md` 规划（新后端只需实现 Open/Stat/ListDirectory+建索引）。
 5. **无库内烘焙器**：TOML→FB 转换在离线 `AssetManifestTool`/工具链，库内只做产物识别/选择/元数据保留。
 6. **哈希默认值文实不一致**：代码默认 `XXH3-128`，部分文档仍写 BLAKE3（应正名为"开发 XXH3 / 发行 BLAKE3"策略）。
 7. **TextureArray 双机制并存**：运行时同步构建 vs 示例级逐层流送，待统一。
 8. **历史后缀别名仅存在于扫盘路径**：URI 侧唯一拼写是 `rcp/mtldata/prim`，磁盘实际是 `.recipe/.material_data/.primitive`；长期看应由 Bake/迁移工具统一，或把别名表扩展为正式兼容层文档化。
+9. **路径比较只做字符串折叠**：`MakeAssetPathKey()` 不解析 `.` / `..` 点段，相对路径靠「拼当前工作目录」对齐；若将来出现跨工作目录切换后再比较的场景，需要提升为一次真实的 `GetFullPath` 归一。
 
 ---
 
@@ -304,9 +323,13 @@ sequenceDiagram
 |---|---|
 | `LoadedFileManagerTest`（example/Loader） | 成功/失败/取消/缓存在途合并/限量 Pump/延迟释放复活/Stop 语义/单 worker 顺序 |
 | `TestModelStreamingSystem` | 系统生命周期、相位、无 GC 不误推进、注册表 Clear 悬垂保护 |
+| `TestAssetCPUTaskPool` | 池启停/两级分派/亲和性回投/任务失败隔离 |
+| `TestMaterialAsyncCompiler` | 配方与数据块解析任务、解析失败=任务成功但带诊断、Detach 前置条件 |
+| `TestMaterialAsyncLoadLane` | 车道启停、目录投递、收尾不丢成品、去重（表内 / 在途）、路径写法等价 |
+| `TestPackReadTask` | 归档包裹 / `id:` / `builtin` 取流、缓冲归属、失败路径 |
 | `TestStaticMeshModelProgressive` | 三段渐进前置条件、重复调用、失败守卫 |
 | `TestAssetLoadGraph` / `TestTextureArraySpec` | 引用规范化/拓扑/环；数组规约 |
-| `LoadModel`（默认异步，`LS_SYNC=1` 同步） | 同一模型双通路一致性；已实测内存索引路径命中（68 条目、materials=15、AttachMaterials 49） |
+| `LoadModel`（默认异步，`LS_SYNC=1` 同步） | 同一模型双通路一致性；已实测内存索引路径命中（68 条目、materials=15、AttachMaterials 49）；改造后第 6 帧就绪、无重名日志 |
 | `LoadGeometry` / `GLTF_DamagedHelmet` / `GLTF_FlightHelmet` | 自装配材质（单/多材质）、几何加载 |
 | `AsyncTextureUpload` / `TextureArrayStreaming` | 两段式纹理加载、优先级/取消、逐层流送 |
 
@@ -318,4 +341,5 @@ sequenceDiagram
 - 想懂"文件怎么异步进来"：`CMCore/inc/hgl/io/AsyncFileLoader.h` → `LoadedFileManager.h` → 各 StreamingSystem 的 handler
 - 想懂"模型怎么逐帧长出来"：`ModelAsset.h` → `ModelStreamingSystem.cpp` → `StaticMeshModelInstance.h` → `LoadModel.cpp`
 - 想懂"材质怎么装上行绑定"：`MaterialRecipeRegistry.cpp`（pending 机制）→ `MaterialDataBlockRegistry.cpp` → `LoadStaticMesh.cpp:BuildSelfContainedModelMaterials`
+- 想懂"IO/CPU 怎么分三级流水线"：`PhysicalVolumeRouter.h` → `AssetCPUTaskPool.h` → `MaterialAsyncCompile.h` → `MaterialAsyncLoadLane.h` → `ModelStreamingSystem.cpp`
 - 想懂"打包/烘焙演进方向"：`CMAssetsManage/doc/Pack.md`、`doc/AssetDependency.md`
