@@ -12,6 +12,12 @@ namespace hgl
 {
     class LoadedFileManager;
 
+    namespace asset
+    {
+        class AssetCPUTask;
+        class AssetCPUTaskPool;
+    }
+
     namespace graph
     {
         class GeometryManager;
@@ -32,12 +38,24 @@ namespace hgl::ecs
      *
      * ## 每帧三段（相位固定为 `ExecutionPhase::RenderPreBeginFrame`）
      *
-     * ```
+     * ```text
      * ① LoadedFileManager::Pump()   派发上一帧完成的读盘（字节落到句柄自己的缓冲）
-     * ② AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的读盘
-     * ③ Advance()                   推进每个句柄：建计划 ⇒ 解析产物 ⇒ 逐帧结算 ⇒ 提交
-     * ④ LoadedFileManager::Collect() 回收已归零的文件引用
+     * ② PumpPackReads()             取回 CPU 池完成的包裹取流任务（Tier 2 → Tier 3）
+     * ③ AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的取流
+     * ④ Advance()                   推进每个句柄：建计划 ⇒ 解析产物 ⇒ 逐帧结算 ⇒ 提交
+     * ⑤ LoadedFileManager::Collect() 回收已归零的文件引用
      * ```
+     *
+     * ## 两条取流通道
+     *
+     * | 情形 | 通道 |
+     * |---|---|
+     * | URI 能折成物理路径（裸路径 / 目录型包裹里的真实文件） | `LoadedFileManager` 异步读盘 |
+     * | 折不成物理路径（`id:` 身份寻址、归档型包裹、`builtin`/`rt`） | `PackReadTask` → CPU 池 |
+     *
+     * 第二条通道历史上由主线程同步 `OpenAssetInputStream()` + 整包 `Read()` 完成，
+     * 大模型每帧几十毫秒的卡顿正是它造成的。现在主线程只负责创建任务与提交，
+     * 阻塞读全在工作线程。
      *
      * ## 「子项」的口径
      *
@@ -92,6 +110,12 @@ namespace hgl::ecs
         StreamHandler *handler          = nullptr;  ///<读盘回调接收者（活到最后一个回调）
         LoadedFileManager *load_manager = nullptr;
 
+        /// CPU 阶段池：`pack(...)` 无法折成物理路径时在此取流（Tier 2）
+        asset::AssetCPUTaskPool *pack_pool = nullptr;
+
+        /// 在途的取流任务（拥有；句柄被裁掉也不丢，见 `PumpPackReads`）
+        hgl::ValueArray<asset::AssetCPUTask *> pack_pending;
+
         BuildSettings settings;
 
         /// 每个句柄一份在途状态。句柄本身归 `ModelAssetRegistry`，这里只借指针。
@@ -100,6 +124,9 @@ namespace hgl::ecs
             graph::ModelAsset *asset = nullptr;
 
             graph::ModelStreamingRequest request;   ///<阶段 A：读盘 + 持字节
+
+            /// 在途的包裹取流任务（借指针、不拥有）；nullptr 表示未走该通道
+            asset::AssetCPUTask *pack_task = nullptr;
 
             bool plan_built    = false;             ///<计划单已生成并登记到句柄
             bool content_built = false;             ///<解析产物已生成
@@ -113,6 +140,12 @@ namespace hgl::ecs
         bool EnsureManagers();
         void AcquireOneFrame();
         void Advance();
+
+        /// 取回已完成的包裹取流任务，把字节落进对应句柄（Tier 3 的主线程侧）
+        void PumpPackReads();
+
+        /// 关停 CPU 取流池并回收所有在途任务
+        void StopPackPool();
 
         AssetStream *FindStream(const graph::ModelAsset *asset)const;
         AssetStream *FindStreamByRequest(uint64 request_id)const;

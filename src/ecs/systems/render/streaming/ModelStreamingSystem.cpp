@@ -3,6 +3,8 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
+#include<hgl/graph/asset/PackReadTask.h>
+#include<hgl/asset/AssetCPUTaskPool.h>
 #include<hgl/graph/asset/ModelLoadPlan.h>
 #include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/asset/LoadedFileManager.h>
@@ -97,11 +99,14 @@ namespace hgl::ecs
             handler = nullptr;
         }
 
+        StopPackPool();
+
         for (AssetStream *stream : streams)
         {
             if (stream)
             {
                 stream->request.Cancel();
+                stream->pack_task = nullptr;
                 delete stream;
             }
         }
@@ -110,6 +115,81 @@ namespace hgl::ecs
 
         load_manager = nullptr;
         settings = BuildSettings();
+    }
+
+    void ModelStreamingSystem::StopPackPool()
+    {
+        if (!pack_pool)
+            return;
+
+        // `Drain` 先把在跑的任务跑完并把成品投回主线程邮箱，再回收 —— 直接在
+        // 池还在跑的时候 delete 任务就是 use-after-free。
+        pack_pool->Stop(thread::ShutdownMode::Drain);
+
+        pack_pool->Collect(pack_pending);
+
+        for (asset::AssetCPUTask *task : pack_pending)
+            delete task;
+
+        pack_pending.Clear();
+
+        delete pack_pool;
+        pack_pool = nullptr;
+    }
+
+    void ModelStreamingSystem::PumpPackReads()
+    {
+        if (!pack_pool)
+            return;
+
+        pack_pool->Collect(pack_pending);
+
+        for (int i = pack_pending.GetCount() - 1; i >= 0; --i)
+        {
+            asset::AssetCPUTask *task = pack_pending[i];
+
+            if (!task)
+            {
+                pack_pending.DeleteSwap(i);
+                continue;
+            }
+
+            if (task->status == asset::AssetCPUTaskStatus::Pending)
+                continue;                   ///< 还在工作线程上跑
+
+            // 本系统独占这个池，池里只可能是 `PackReadTask`，故可安全下转。
+            graph::PackReadTask *read_task = static_cast<graph::PackReadTask *>(task);
+
+            // 句柄可能在任务在途期间被裁掉（`PruneStreams`）：那就不落地，
+            // 只把任务回收掉。这里只比较指针，不碰已析构的句柄。
+            for (AssetStream *stream : streams)
+            {
+                if (!stream || stream->pack_task != task)
+                    continue;
+
+                stream->pack_task = nullptr;
+
+                if (read_task->IsDone())
+                {
+                    // `SetPackBytes` 把字节拷进请求自有缓冲，任务随后即可销毁。
+                    if (!stream->request.SetPackBytes(read_task->GetData(),
+                                                      static_cast<uint32>(read_task->GetDataSize())))
+                        if (stream->asset)
+                            stream->asset->Fail("模型包缓冲接管失败");
+                }
+                else if (stream->asset)
+                {
+                    stream->asset->Fail(read_task->error.IsEmpty()
+                                        ? "模型包取流失败"
+                                        : read_task->error.c_str());
+                }
+
+                break;
+            }
+
+            delete task;
+            pack_pending.DeleteSwap(i);
+        }
     }
 
     void ModelStreamingSystem::SetBuildSettings(const graph::GeometryVertexFormat &gvf,
@@ -275,72 +355,43 @@ namespace hgl::ecs
             if (!stream)
                 continue;
 
-            // `pack(res):x/y` 之类没有磁盘对应物的引用只能同步取流；
-            // 物理路径（含挂载目录内解析出的真实路径）一律走异步读盘。
+            // 折不成物理路径的引用（`id:` 身份寻址 / 归档型包裹 / `builtin`·`rt`）
+            // 交给 CPU 池取流：主线程不再为了拿到字节去同步读整包。
             OSString physical_path;
 
             const AnsiString &uri_text = asset->GetURI();
 
             if (!graph::ResolveAssetPhysicalPath(ToOSString(uri_text.c_str()), physical_path))
             {
-                AnsiString open_error;
-                io::InputStream *stream_in =
-                    graph::OpenAssetInputStream(ToOSString(uri_text.c_str()),
-                                                asset::AssetType::Model,
-                                                &open_error);
-
-                if (!stream_in)
+                if (!pack_pool)
                 {
-                    const AnsiString reason = open_error.IsEmpty()
-                                            ? AnsiString("无法打开模型包")
-                                            : open_error;
+                    pack_pool = new asset::AssetCPUTaskPool();
 
-                    asset->Fail(reason.c_str());
+                    // 取流是阻塞 IO，线程多了只是在盘上互相打转；两个足够喂满
+                    // 一条普通磁盘队列。
+                    if (!pack_pool->Start(2))
+                    {
+                        delete pack_pool;
+                        pack_pool = nullptr;
+                    }
+                }
+
+                graph::PackReadTask *task = pack_pool
+                                          ? new graph::PackReadTask(ToOSString(uri_text.c_str()),
+                                                                    asset::AssetType::Model)
+                                          : nullptr;
+
+                if (!task || !pack_pool->Submit(task))
+                {
+                    delete task;
+
+                    asset->Fail("模型包取流任务提交失败");
                     stream->settled = true;
                     continue;
                 }
 
-                const int64 size = stream_in->GetSize();
-
-                if (size <= 0 || size > static_cast<int64>(UINT32_MAX))
-                {
-                    delete stream_in;
-                    asset->Fail("模型包尺寸非法");
-                    stream->settled = true;
-                    continue;
-                }
-
-                void *bytes = hgl_malloc(static_cast<size_t>(size));
-
-                if (!bytes)
-                {
-                    delete stream_in;
-                    asset->Fail("模型包缓冲分配失败");
-                    stream->settled = true;
-                    continue;
-                }
-
-                if (stream_in->Read(bytes, static_cast<int64>(size)) != size)
-                {
-                    hgl_free(bytes);
-                    delete stream_in;
-                    asset->Fail("模型包读取不完整");
-                    stream->settled = true;
-                    continue;
-                }
-
-                delete stream_in;
-
-                const bool ok = stream->request.SetPackBytes(bytes, static_cast<uint32>(size));
-
-                hgl_free(bytes);
-
-                if (!ok)
-                {
-                    asset->Fail("模型包缓冲接管失败");
-                    stream->settled = true;
-                    continue;
-                }
+                stream->pack_task = task;
+                pack_pending.Add(task);
 
                 asset->BeginStreaming(0);
                 ++submitted;
@@ -522,9 +573,10 @@ namespace hgl::ecs
 
         load_manager->Pump();       ///< ① 派发读盘完成回调（字节落进各句柄的缓冲）
         PruneStreams();             ///< ② 丢掉注册表已清掉的句柄（防悬垂）
-        AcquireOneFrame();          ///< ③ 提交本帧该发起的读盘
-        Advance();                  ///< ④ 推进状态机
-        load_manager->Collect();    ///< ⑤ 回收已归零的文件引用
+        PumpPackReads();            ///< ③ 取回 CPU 池的包裹取流成品
+        AcquireOneFrame();          ///< ④ 提交本帧该发起的取流
+        Advance();                  ///< ⑤ 推进状态机
+        load_manager->Collect();    ///< ⑥ 回收已归零的文件引用
     }
 
     int ModelStreamingSystem::GetReadyModelCount()const
