@@ -142,9 +142,10 @@ layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer Mesh
 // 展开竞技场（T3.1）：每帧槽一份，CPU 写、GPU 读。
 #define model_expansion_arena ModelExpansionArenaRef(world_addresses.addr_model_expansion).arena
 
-// 实例自定义数据池与输出表（T6.2 / T6.3）
+// 实例自定义数据池（CPU 上传的输入行表）与输出行表（cull 写入、绘制读 shade）。
+// ⚠ 输出表地址**不再**用宏取 `model_expansion_arena.custom_data_addr`：竞技场地址可能尚未发布（0），
+//   宏展开到使用点就是一次未判空的 BDA 读。改由 `main()` 判空后解出并经参数下发。
 #define instance_custom_data_pool InstanceCustomDataBufferRef(global_addresses.addr_instance_custom_data).rows
-#define instance_custom_data_out  InstanceCustomDataBufferRef(model_expansion_arena.custom_data_addr).rows
 
 // 实体桶组基址表（T3.1）：下标 = blk * kArenaRowsPerPass + 实体索引（与竞技场扇区同形），
 // 值 = **块内相对**的该实体模板素材桶组首桶号。展开侧落桶号 = 基址 + part.bucket_slot
@@ -315,7 +316,8 @@ bool emit_bucket_instance(const uint blk,
                           const mat4 part_l2w,
                           const mat4 prev_part_l2w,
                           const uint l2w_base_row,
-                          const uint l2w_capacity)
+                          const uint l2w_capacity,
+                          const uint64_t custom_data_addr)
 {
     const uint block_base = blk * pc.batch_block_stride;
     const BatchInfoRow binfo = BatchInfoRef(pc.batch_info_addr).rows[block_base + bucket];
@@ -377,14 +379,19 @@ bool emit_bucket_instance(const uint blk,
                entity.shadow_bias_multiplier,
                entity.shadow_receive == 0u ? 1u : 0u);
 
-    if (model_expansion_arena.custom_data_addr != uint64_t(0))
+    // T6.3：逐实例自定义颜色落到本批实例行。
+    // ⚠ `custom_data_addr` 必须由调用方在**判空后**解出并传入 —— 本处直接读
+    //   `model_expansion_arena.custom_data_addr`（竞技场尚未发布时地址为 0）是 BDA 空指针解引用，
+    //   AMD 驱动会立刻 `VK_ERROR_DEVICE_LOST`；且编译器可能把该 load 提到判空之外（与
+    //   `stage_common_head.glsl` 的 `ResolveInstanceCustomColor` 同一口径）。
+    if (custom_data_addr != uint64_t(0))
     {
         vec4 custom_color = vec4(1.0, 1.0, 1.0, 1.0);
         if (entity.custom_data_index != 0u && global_addresses.addr_instance_custom_data != uint64_t(0))
         {
             custom_color = instance_custom_data_pool[entity.custom_data_index].custom_color;
         }
-        instance_custom_data_out[inst_row].custom_color = custom_color;
+        InstanceCustomDataBufferRef(custom_data_addr).rows[inst_row].custom_color = custom_color;
     }
 
     return true;
@@ -577,7 +584,8 @@ void expand_template_entity(const uint blk,
                              part_l2w,
                              prev_part_l2w,
                              arena.l2w_base_row,
-                             arena.l2w_row_capacity);
+                             arena.l2w_row_capacity,
+                             arena.custom_data_addr);
     }
 }
 
@@ -635,9 +643,18 @@ void main()
     // 任一不满足 ⇒ 走 legacy 单实例路径（与改造前逐字节一致）。
     // 地址为 0 时必须**先判空再解引用**（BDA 0 = 空指针）。
     const uint64_t expansion_addr = world_addresses.addr_model_expansion;
+    // ⚠ 竞技场地址未发布（0）时**不得**解引用 `model_expansion_arena`：BDA 空指针读在 AMD
+    //   驱动上是立即 `VK_ERROR_DEVICE_LOST`，且编译器会把这类 load 提到 `&&` 判空之前。
+    //   ⇒ 只在判空之后一次性解出本帧要用的字段，之后全部走这两个局部量。
+    uint arena_flags = 0u;
+    uint64_t custom_data_addr = uint64_t(0);
+    if (expansion_addr != uint64_t(0))
+    {
+        arena_flags = model_expansion_arena.flags;
+        custom_data_addr = model_expansion_arena.custom_data_addr;
+    }
     const bool expansion_on = (entity.model_template_id != 0u)
-                           && (expansion_addr != uint64_t(0))
-                           && ((model_expansion_arena.flags & 1u) != 0u);
+                           && ((arena_flags & 1u) != 0u);
 
     // 读取几何 AABB（center 和 extents 连续存储）
     vec4 aabb_center = geometry_aabbs.center_extents[geometry_id * 2u];
@@ -746,7 +763,7 @@ void main()
 
         emit_bucket_instance(blk, batch, cur_batch_count, geometry_id, transform_id,
                              entity, ids_blk.material_id, ids_blk.texture_id,
-                             false, mat4(1.0), mat4(1.0), 0u, 0u);
+                             false, mat4(1.0), mat4(1.0), 0u, 0u, custom_data_addr);
 
     }
 }
