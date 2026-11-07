@@ -49,6 +49,9 @@ namespace hgl
                                 ///<  部件展开在 GPU 内完成（见 GPUModelRefComponent.h）
             GPUInstancedModelBatch, ///< 海量同模板实例批次（CPU-only 类型号）——单实体承载
                                 ///<  数千实例矩阵（见 GPUInstancedModelBatchComponent.h）
+            ModelCollisionProxy,    ///< 模型碰撞/拾取代理（CPU-only 类型号）——粗包围体列表，
+                                ///<  物理与拾取只查本组件，禁止反向读渲染零件（见
+                                ///<  ModelCollisionProxyComponent.h）
             End,
         };
 
@@ -119,6 +122,7 @@ namespace hgl
             { ComponentType::ModelRef,        ComponentScope::World,  "ECS:ModelRef",         0, "ModelRefComponent",    SystemGroupID::None },       ///< CPU-only：异步模型装配请求/进度载体；不驱动系统组（推进者是流送系统本身）
             { ComponentType::GPUModelRef,     ComponentScope::World,  "ECS:GPUModelRef",      0, "GPUModelRefComponent",    SystemGroupID::None },     ///< CPU-only：GPU 常驻模型模板的实体引用（template_id + 部件可见掩码）；展开在 GPU（T3 接 collect）
             { ComponentType::GPUInstancedModelBatch, ComponentScope::World, "ECS:GPUInstancedModelBatch", 0, "GPUInstancedModelBatchComponent", SystemGroupID::None }, ///< CPU-only：单实体海量同模板实例批次（CPU 权威矩阵数组或外部设备缓冲）；T3 接上传/展开
+            { ComponentType::ModelCollisionProxy, ComponentScope::World, "ECS:ModelCollisionProxy", 0, "ModelCollisionProxyComponent", SystemGroupID::None }, ///< CPU-only：模型碰撞/拾取粗包围体代理；物理与拾取唯一入口（禁止读渲染零件）
         };
 
         namespace detail
@@ -206,6 +210,11 @@ namespace hgl
             /* Lines           */ 0,
             /* Text            */ 0,
             /* ShadowProxy     */ 0,
+            /* SimpleLines     */ 0,
+            /* ModelRef        */ 0,
+            /* GPUModelRef     */ 0,
+            /* GPUInstancedModelBatch */ 0,
+            /* ModelCollisionProxy */ 0,
         };
 
         /// implies 掩码的**不动点展开**：把掩码里每个槽位的蕴含并进来，反复迭代到不变。

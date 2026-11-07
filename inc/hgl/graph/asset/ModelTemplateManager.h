@@ -1,6 +1,8 @@
 #pragma once
 
 #include <hgl/CoreType.h>
+#include <hgl/graph/ssbo/ModelTemplateRows.h>
+#include <cstdint>
 
 namespace hgl::graph
 {
@@ -28,6 +30,19 @@ namespace hgl::graph
     public:
 
         /**
+         * @brief 模板代理配置（LOD 级 1..3 + 阴影代理）—— **T4.1 / T4.2 的唯一写入口径**。
+         *
+         * 全 0 / 全 0.0f 的默认值 = 「无代理」⇒ 写回后模板行为与改造前完全一致。
+         * 数组下标 `i` 对应**级号 i+1**（级 0 是本体，不占槽）。
+         */
+        struct ProxyConfig
+        {
+            uint32_t lod_proxy_template_ids[ssbo::kModelLodProxyCount] = { 0u, 0u, 0u };
+            float    lod_screen_ratios[ssbo::kModelLodProxyCount]      = { 0.0f, 0.0f, 0.0f };
+            uint32_t shadow_proxy_template_id = 0u;
+        };
+
+        /**
          * @brief 把一个已解析的模型内容打包注册进模板池。
          *
          * 部件 = (节点 × primitive) 的每个可绘制叶子；行序 = 节点下标升序、
@@ -48,5 +63,27 @@ namespace hgl::graph
          */
         static bool UnregisterModelTemplate(GlobalSSBOBufferRegistry *registry,
                                             uint32_t template_id);
+
+        /**
+         * @brief 回填一个模板的 LOD / 阴影代理（T4.1 + T4.2）。
+         *
+         * **全有或全无**：任一校验失败 ⇒ 返回 false 且模板行**一个字节都不改**。
+         *
+         * 校验口径（与 `ModelTemplateRows.h` 的命名/阈值标准一一对应）：
+         * - `template_id` 必须指向有效模板（`part_count/part_offset` 非 0）；
+         * - 每个非 0 的 LOD 代理 id 必须指向有效模板，且 **≠ 本体、≠ 其它代理**（禁自引）；
+         * - 非 0 代理必须配 **> 0** 的阈值，且阈值序列**单调不增**；`id == 0` ⇒ 阈值强制 0；
+         * - 阴影代理 id 必须指向有效模板且 ≠ 本体（阴影代理可以等于某个 LOD 代理）；
+         * - **禁套娃**：代理模板自己若已声明代理，不影响本次写入，但展开侧只跟随一跳
+         *   （代理行的 `lod_*` / `shadow_proxy_template_id` 不被消费）⇒ 这里不做递归校验。
+         *
+         * 成功时同步维护 `flags`：有任一 LOD 代理 ⇒ 置 `kModelTemplateFlagLodEnabled`；
+         * 有阴影代理 ⇒ 置 `kModelTemplateFlagShadowProxy`；两者皆无 ⇒ 两位清零（幂等）。
+         *
+         * @return true = 已写入（行级 dirty 已标），false = 校验失败（未写入）
+         */
+        static bool SetModelTemplateProxies(GlobalSSBOBufferRegistry *registry,
+                                            uint32_t template_id,
+                                            const ProxyConfig &cfg);
     };
 }

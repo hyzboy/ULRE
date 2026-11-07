@@ -152,6 +152,11 @@ layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer Model
 #define model_bucket_bases ModelBucketBaseRef(model_expansion_arena.bucket_base_addr).values
 #define MODEL_BUCKET_BASE_INVALID 0xFFFFFFFFu
 
+// ── 模板行常量镜像（真源 = inc/hgl/graph/ssbo/ModelTemplateRows.h，改那边必须同步这里）──
+#define MODEL_LOD_PROXY_COUNT              3u
+#define MODEL_TEMPLATE_FLAG_LOD_ENABLED    0x1u   // kModelTemplateFlagLodEnabled
+#define MODEL_TEMPLATE_FLAG_SHADOW_PROXY   0x2u   // kModelTemplateFlagShadowProxy
+
 // 可见计数（原子递增）
 layout(buffer_reference, scalar, buffer_reference_align=4) buffer DrawCountRef
 {
@@ -363,6 +368,53 @@ bool emit_bucket_instance(const uint blk,
     return true;
 }
 
+// ── T4.1 空壳：LOD / HLOD 代理选择 ──────────────────────────────────────────
+// 级命名与阈值口径见 `ModelTemplateRows.h`（级 0 = 本体；级 i+1 ⇐ 槽 i）。
+// 屏幕占比 = 实例外接球在 NDC 半高的比例：`r * cot(fovY/2) / dist`。
+// `|projection[1][1]| == cot(fovY/2)`（本引擎投影按 RH_ZO 约定，m11 为负 ⇒ 取绝对值）。
+//
+// 当前启用前提 = `flags & kModelTemplateFlagLodEnabled`（bit 0）。CPU 不给代理 ⇒
+// 位恒 0 ⇒ **恒返回本体**，与改造前逐字节一致（零回归面）。
+//
+// 换级是**逐实体统一**的（不逐部件）：同一实例只落一级，绝不混级。
+// 代理模板的部件桶必须由 CPU 并进同一 (批, 模板) 的桶组 —— 否则代理部件会读到
+// 别的模板的桶（`bucket_base` 是 per-实体的，组内槽号必须属于被选中的那个模板）。
+uint select_lod_template_id(const uint base_template_id,
+                            const ModelTemplateRowData base_tpl,
+                            const vec3 world_center,
+                            const float world_radius)
+{
+    if ((base_tpl.flags & uint(MODEL_TEMPLATE_FLAG_LOD_ENABLED)) == 0u)
+        return base_template_id;
+
+    const float cot_half_fov = max(abs(camera.projection[1][1]), 1e-4);
+    const float dist = max(distance(world_center, camera.pos), 1e-4);
+    const float ratio = world_radius * cot_half_fov / dist;
+
+    // 槽序 = 由细到粗（槽 0 最细、阈值最高）；阈值沿槽严格非增（CPU 侧校验）。
+    // 从**最粗**槽往回找：命中的最后一槽 = 该占比适用最粗一级 ⇒ 一次命中即最合适级别。
+    for (uint i = uint(MODEL_LOD_PROXY_COUNT); i > 0u; --i)
+    {
+        const uint slot = i - 1u;
+        const uint proxy_id = base_tpl.lod_proxy_template_ids[slot];
+
+        if (proxy_id == 0u || base_tpl.lod_screen_ratios[slot] <= 0.0)
+            continue;
+
+        if (ratio > base_tpl.lod_screen_ratios[slot])
+            continue;
+
+        const ModelTemplateRowData proxy = model_templates[proxy_id];
+
+        if (proxy.part_count == 0u || proxy.part_offset == 0u)
+            continue;    // 代理空壳：跳过该级，继续找更细的
+
+        return proxy_id;
+    }
+
+    return base_template_id;
+}
+
 // ── T3.1：模板实体逐部件展开 ────────────────────────────────────────────────
 // 一个实体 = 一个模板实例；模板下的每个部件各自落**一个实例**（不产生新命令 ⇒
 // 绘制侧命令数仍由 CPU 决定，唯一变化是 `groupCountY` 变大）。
@@ -389,11 +441,39 @@ void expand_template_entity(const uint blk,
     if (tpl.part_count == 0u || tpl.part_offset == 0u)
         return;
 
+    // ── 粗包围球（世界空间）：LOD 选级 / 粗剔除共用 ──────────────────────
+    // `local_bound_center_radius.w < 0` = 模板未填包围体 ⇒ 不做距离判断。
+    const bool has_bound = tpl.local_bound_center_radius.w >= 0.0;
+
+    vec3 bound_center = vec3(0.0);
+    float bound_radius = 0.0;
+
+    if (has_bound)
+    {
+        bound_center = (root_l2w * vec4(tpl.local_bound_center_radius.xyz, 1.0)).xyz;
+
+        const float bound_scale = max(length(root_l2w[0].xyz),
+                                      max(length(root_l2w[1].xyz), length(root_l2w[2].xyz)));
+
+        bound_radius = tpl.local_bound_center_radius.w * bound_scale;
+    }
+
+    // ── T4.1 空壳：LOD 代理 ────────────────────────────────────────────────
+    // 只在**直接渲染** pass（块 0）换级；阴影 pass 走自己的代理（见下）。
+    if (blk == 0u && has_bound)
+    {
+        const uint lod_id = select_lod_template_id(entity.model_template_id, tpl, bound_center, bound_radius);
+
+        if (lod_id != entity.model_template_id)
+            tpl = model_templates[lod_id];
+    }
+
     // ── T4.2 空壳：阴影代理 ────────────────────────────────────────────────
     // 阴影 pass（块 1）若模板登记了阴影代理模板，则整棵子树换成代理的部件
     //（典型用法：楼房 ⇒ 一个 Cube）。当前版本 `shadow_proxy_template_id` 恒 0 ⇒
     // 直通；启用时代理模板的部件桶也必须被 CPU 并入同一批的桶组。
-    if (blk != 0u && tpl.shadow_proxy_template_id != 0u)
+    if (blk != 0u && (tpl.flags & MODEL_TEMPLATE_FLAG_SHADOW_PROXY) != 0u &&
+        tpl.shadow_proxy_template_id != 0u)
     {
         const ModelTemplateRowData proxy = model_templates[tpl.shadow_proxy_template_id];
 
@@ -401,14 +481,23 @@ void expand_template_entity(const uint blk,
             tpl = proxy;
     }
 
-    // 粗剔除：模板合并包围体（`local_bound_center_radius.w < 0` = 未填 ⇒ 跳过）
-    if (blk == 0u && tpl.local_bound_center_radius.w >= 0.0)
+    // 粗剔除：用**当前生效**模板的包围体（换级后是代理的包围体；代理未填则退回本体）
+    if (blk == 0u && has_bound)
     {
-        const vec3 bound_center = (root_l2w * vec4(tpl.local_bound_center_radius.xyz, 1.0)).xyz;
-        const float bound_scale = max(length(root_l2w[0].xyz),
-                                      max(length(root_l2w[1].xyz), length(root_l2w[2].xyz)));
+        const float cull_scale = max(length(root_l2w[0].xyz),
+                                     max(length(root_l2w[1].xyz), length(root_l2w[2].xyz)));
 
-        if (!sphere_visible(bound_center, tpl.local_bound_center_radius.w * bound_scale))
+        vec3 cull_center = bound_center;
+        float cull_radius = bound_radius;
+
+        if (tpl.local_bound_center_radius.w >= 0.0)
+        {
+            cull_center = (root_l2w * vec4(tpl.local_bound_center_radius.xyz, 1.0)).xyz;
+            cull_radius = tpl.local_bound_center_radius.w * cull_scale;
+        }
+
+        // 取两者较大者：代理包围体可能小于本体，粗剔除不能因此漏删/误删
+        if (!sphere_visible(cull_center, max(cull_radius, bound_radius)))
             return;
     }
 

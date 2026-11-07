@@ -50,8 +50,11 @@ namespace hgl::graph
         uint32_t bucket_base_count = 0;         ///< 桶组基址表行数（= kModelExpansionMaxBucketBaseRows）
 
         uint64_t bucket_base_addr = 0;          ///< 桶组基址表（u32 一行，下标 = blk*每pass容量 + 实体下标）
-        uint64_t reserved1 = 0;                 ///< TODO(T4.1) LOD 代理表基址
-        uint64_t reserved2 = 0;                 ///< TODO(T4.4) 实例自定义数据表基址
+        uint64_t reserved1 = 0;                 ///< 保留（T4.1 复核结论：LOD/阴影代理 id 全在 `ModelTemplateRow`
+                                                ///<   内，**不需要**代理表 ⇒ 本槽空着，勿为对称而滥用）
+        uint64_t reserved2 = 0;                 ///< TODO(T4.4) 实例自定义数据表基址（`InstanceCustomData`，16 B/行，
+                                                ///<   行号 = 剔除实例行号 `inst_row`，容量同 `l2w_row_capacity`）；
+                                                ///<   当前恒 0 = 未启用 ⇒ 展开侧不读该表
         uint64_t reserved3 = 0;                 ///< 保留
     };
 

@@ -179,7 +179,8 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
         return kInvalidModelTemplateID;
     }
 
-    // 5) 写模板行。LOD / 阴影代理字段留 0（T4 空壳：由代理登记接口后续回填）。
+    // 5) 写模板行。LOD / 阴影代理字段留 0（= 无代理，恒用本体）；
+    //    代理由 `SetModelTemplateProxies` 事后回填（T4.1 / T4.2 的唯一写入口径）。
     ModelTemplateRow trow;
     trow.part_offset = part_first;
     trow.part_count  = part_count;
@@ -239,6 +240,279 @@ bool ModelTemplateManager::UnregisterModelTemplate(GlobalSSBOBufferRegistry *reg
                  template_id, row->part_offset, row->part_offset + row->part_count - 1u);
 
     return parts_ok && self_ok;
+}
+
+bool ModelTemplateManager::SetModelTemplateProxies(GlobalSSBOBufferRegistry *registry,
+                                                   const uint32_t template_id,
+                                                   const ProxyConfig &cfg)
+{
+    using ssbo::ModelTemplateRow;
+    using ssbo::ModelPartRow;
+    using ssbo::kInvalidModelTemplateID;
+
+    if (!registry || template_id == kInvalidModelTemplateID)
+    {
+        GLogWarning(u8"[ModelTemplateManager] 代理回填被拒：registry/模板 id 非法（id=%u）", template_id);
+        return false;
+    }
+
+    const ModelTemplateRow *base_row =
+        registry->GetTypedRow<ModelTemplateRow>(GlobalSSBOType::ModelTemplatePool, template_id);
+
+    if (!base_row || base_row->part_count == 0u || base_row->part_offset == 0u)
+    {
+        GLogWarning(u8"[ModelTemplateManager] 代理回填被拒：模板行无效或为空壳 id=%u", template_id);
+        return false;
+    }
+
+    // 「有效模板」= 行存在且部件段非空。代理不要求几何就绪（可先占位），
+    // 但**必须**是一个真模板 —— 否则展开侧换级换来一个空段，物体整个消失。
+    const auto is_valid_template = [registry, template_id](const uint32_t id) -> bool
+    {
+        if (id == kInvalidModelTemplateID || id == template_id)
+            return false;
+
+        const ModelTemplateRow *row =
+            registry->GetTypedRow<ModelTemplateRow>(GlobalSSBOType::ModelTemplatePool, id);
+
+        return row && row->part_count != 0u && row->part_offset != 0u;
+    };
+
+    ProxyConfig normalized = cfg;
+
+    // ── LOD 级 1..3：id 与阈值成对校验 ──────────────────────────────────
+    float prev_ratio = 1.0f;   ///< 阈值必须单调不增（第一个的上界 = 1.0 = 屏幕铺满）
+
+    for (uint32_t i = 0; i < ssbo::kModelLodProxyCount; ++i)
+    {
+        const uint32_t id    = normalized.lod_proxy_template_ids[i];
+        const float    ratio = normalized.lod_screen_ratios[i];
+
+        if (id == 0u)
+        {
+            normalized.lod_screen_ratios[i] = 0.0f;   // id 为 0 ⇒ 阈值无意义，清 0 保持行内自洽
+            continue;
+        }
+
+        if (!is_valid_template(id))
+        {
+            GLogWarning(u8"[ModelTemplateManager] 代理回填被拒：LOD%u 代理 id=%u 不是有效模板（本体 id=%u）",
+                        i + 1u, id, template_id);
+            return false;
+        }
+
+        if (!(ratio > 0.0f) || ratio > 1.0f)
+        {
+            GLogWarning(u8"[ModelTemplateManager] 代理回填被拒：LOD%u 阈值 %f 不在 (0,1]",
+                        i + 1u, static_cast<double>(ratio));
+            return false;
+        }
+
+        if (ratio > prev_ratio)
+        {
+            GLogWarning(u8"[ModelTemplateManager] 代理回填被拒：LOD%u 阈值 %f 大于上一级 %f（必须单调不增）",
+                        i + 1u, static_cast<double>(ratio), static_cast<double>(prev_ratio));
+            return false;
+        }
+
+        // 同一代理不得占两个级槽（否则低级的判定永远先命中，高级是死数据）
+        for (uint32_t j = 0; j < i; ++j)
+        {
+            if (normalized.lod_proxy_template_ids[j] == id)
+            {
+                GLogWarning(u8"[ModelTemplateManager] 代理回填被拒：LOD%u 与 LOD%u 共用代理 id=%u",
+                            j + 1u, i + 1u, id);
+                return false;
+            }
+        }
+
+        prev_ratio = ratio;
+    }
+
+    // ── 阴影代理（T4.2）：独立于 LOD 级，可以是某一级模板 ────────────────
+    if (normalized.shadow_proxy_template_id != 0u
+        && !is_valid_template(normalized.shadow_proxy_template_id))
+    {
+        GLogWarning(u8"[ModelTemplateManager] 代理回填被拒：阴影代理 id=%u 不是有效模板（本体 id=%u）",
+                    normalized.shadow_proxy_template_id, template_id);
+        return false;
+    }
+
+    // ── 校验全过 ⇒ 复制一份行改代理字段再整行写回（行内其它字段逐字节不变）──
+    ModelTemplateRow trow = *base_row;
+
+    bool any_lod = false;
+
+    for (uint32_t i = 0; i < ssbo::kModelLodProxyCount; ++i)
+    {
+        trow.lod_proxy_template_ids[i] = normalized.lod_proxy_template_ids[i];
+        trow.lod_screen_ratios[i]      = normalized.lod_screen_ratios[i];
+        any_lod = any_lod || normalized.lod_proxy_template_ids[i] != 0u;
+    }
+
+    trow.shadow_proxy_template_id = normalized.shadow_proxy_template_id;
+
+    // 位维护：有则置、无则清（幂等 —— 反复回填同一份配置不会累积状态）
+    trow.flags = any_lod ? (trow.flags | ssbo::kModelTemplateFlagLodEnabled)
+                         : (trow.flags & ~ssbo::kModelTemplateFlagLodEnabled);
+    trow.flags = (normalized.shadow_proxy_template_id != 0u)
+                     ? (trow.flags | ssbo::kModelTemplateFlagShadowProxy)
+                     : (trow.flags & ~ssbo::kModelTemplateFlagShadowProxy);
+
+    // ── 素材桶槽号统一编号（**换级能否落对桶的前提**）────────────────────
+    //
+    // 展开侧的桶号 = `bucket_base[实体] + part.bucket_slot`，而 `bucket_base` 是 CPU 装批时
+    // 按**本体** `part_bucket_count` 给 (批, 模板) 分配的那一段连续桶 —— 组内第 i 个桶的
+    // 几何来自本体（+ 代理）的**统一去重序**。因此本体与所有代理的 `bucket_slot` 必须共用
+    // 同一套编号，否则代理部件的槽号会指到别的几何的桶里（画错几何，且不越界 = 不报警）。
+    //
+    // 编号规则：先本体部件序、再各级代理部件序，按 `geometry_id` 首次出现编号；
+    // 结果回写进**每个**参与模板的部件行，并把它们的 `part_bucket_count` 都改成并集大小。
+    // 无代理时本段与打包时的编号**等价**（本体独占 ⇒ 序完全一致），因此是无代理路径的恒等变换。
+    //
+    // ⚠ 硬约束（不做运行期校验，靠导入约定保证）：一个代理模板只归属**一个**本体。
+    //   两个本体共用同一代理 ⇒ 后回填者会改写前者的槽号 ⇒ 前者画错。见 ModelTemplateRows.h。
+
+    const uint32_t participant_cap = 1u + ssbo::kModelLodProxyCount + 1u;
+    uint32_t participants[participant_cap];
+    uint32_t participant_count = 0;
+
+    participants[participant_count++] = template_id;
+
+    for (uint32_t i = 0; i < ssbo::kModelLodProxyCount; ++i)
+        if (normalized.lod_proxy_template_ids[i] != 0u)
+            participants[participant_count++] = normalized.lod_proxy_template_ids[i];
+
+    if (normalized.shadow_proxy_template_id != 0u)
+    {
+        bool dup = false;
+
+        for (uint32_t i = 0; i < participant_count; ++i)
+            dup = dup || participants[i] == normalized.shadow_proxy_template_id;
+
+        if (!dup)
+            participants[participant_count++] = normalized.shadow_proxy_template_id;
+    }
+
+    // 并集桶数：无代理 ⇒ 本体既有值（恒等变换）；有代理 ⇒ 由重编号段回填。
+    uint32_t final_bucket_count = base_row->part_bucket_count;
+
+    if (participant_count > 1u)
+    {
+        ValueArray<uint32_t> union_geoms;
+        union_geoms.Reserve(64);
+
+        for (uint32_t pi = 0; pi < participant_count; ++pi)
+        {
+            const ModelTemplateRow *prow =
+                registry->GetTypedRow<ModelTemplateRow>(GlobalSSBOType::ModelTemplatePool, participants[pi]);
+
+            const ModelPartRow *parts =
+                registry->GetTypedRow<ModelPartRow>(GlobalSSBOType::ModelPartPool, prow->part_offset);
+
+            if (!parts)
+            {
+                GLogError(u8"[ModelTemplateManager] 代理回填失败：模板 %u 的部件段不可读", participants[pi]);
+                return false;
+            }
+
+            for (uint32_t k = 0; k < prow->part_count; ++k)
+            {
+                const uint32_t gid = parts[k].geometry_id;
+
+                if (gid == 0u)
+                    continue;
+
+                bool known = false;
+                const uint32_t *known_geoms = union_geoms.GetData();
+
+                for (int i = 0; i < union_geoms.GetCount(); ++i)
+                    known = known || known_geoms[i] == gid;
+
+                if (!known)
+                    union_geoms.Add(gid);
+            }
+        }
+
+        const uint32_t union_count = static_cast<uint32_t>(union_geoms.GetCount());
+
+        final_bucket_count = union_count;
+
+        // 回写：每个参与模板的部件行按并集序重编号（逐模板一次性写回整段），
+        // 随后整行写回模板行（`part_bucket_count` 改并集大小）。
+        ValueArray<ModelPartRow> scratch;
+
+        for (uint32_t pi = 0; pi < participant_count; ++pi)
+        {
+            const ModelTemplateRow *prow =
+                registry->GetTypedRow<ModelTemplateRow>(GlobalSSBOType::ModelTemplatePool, participants[pi]);
+
+            const ModelPartRow *parts =
+                registry->GetTypedRow<ModelPartRow>(GlobalSSBOType::ModelPartPool, prow->part_offset);
+
+            scratch.Clear();
+            scratch.Reserve(static_cast<int>(prow->part_count));
+
+            for (uint32_t k = 0; k < prow->part_count; ++k)
+            {
+                ModelPartRow r = parts[k];
+
+                r.bucket_slot = ssbo::kModelPartBucketSlotNone;
+
+                if (r.geometry_id != 0u)
+                {
+                    const uint32_t *known_geoms = union_geoms.GetData();
+
+                    for (int i = 0; i < union_geoms.GetCount(); ++i)
+                    {
+                        if (known_geoms[i] == r.geometry_id)
+                        {
+                            r.bucket_slot = static_cast<uint32_t>(i);
+                            break;
+                        }
+                    }
+                }
+
+                scratch.Add(r);
+            }
+
+            if (!registry->WriteRowRange(GlobalSSBOType::ModelPartPool, prow->part_offset,
+                                         scratch.GetData(), prow->part_count))
+            {
+                GLogError(u8"[ModelTemplateManager] 代理回填失败：模板 %u 部件段重编号写入失败",
+                          participants[pi]);
+                return false;
+            }
+
+            ModelTemplateRow updated = *prow;
+            updated.part_bucket_count = union_count;
+
+            if (!registry->Write(GlobalSSBOType::ModelTemplatePool, participants[pi], updated))
+            {
+                GLogError(u8"[ModelTemplateManager] 代理回填失败：模板 %u 行写入失败", participants[pi]);
+                return false;
+            }
+        }
+    }
+
+    trow.part_bucket_count = final_bucket_count;
+
+    if (!registry->Write(GlobalSSBOType::ModelTemplatePool, template_id, trow))
+    {
+        GLogError(u8"[ModelTemplateManager] 代理回填写入失败：id=%u", template_id);
+        return false;
+    }
+
+    GLogInfo(u8"[ModelTemplateManager] 代理回填 id=%u LOD=[%u/%u/%u] 阈值=[%.4f/%.4f/%.4f] 阴影=%u",
+             template_id,
+             trow.lod_proxy_template_ids[0], trow.lod_proxy_template_ids[1],
+             trow.lod_proxy_template_ids[2],
+             static_cast<double>(trow.lod_screen_ratios[0]),
+             static_cast<double>(trow.lod_screen_ratios[1]),
+             static_cast<double>(trow.lod_screen_ratios[2]),
+             trow.shadow_proxy_template_id);
+
+    return true;
 }
 
 } // namespace hgl::graph

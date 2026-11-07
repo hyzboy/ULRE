@@ -37,11 +37,43 @@ namespace hgl::graph::ssbo
     /// 模板池行 0：非法/未解析哨兵。
     constexpr uint32_t kInvalidModelTemplateID = 0;
 
-    /// LOD 级数：0 = 原始模板本体，1..3 = 代理槽位。
+    /// LOD 代理槽位数（级 1..3；级 0 = 原始模板本体，不占槽）。
     constexpr uint32_t kModelLodProxyCount = 3;
 
-    // ── ModelTemplateRow.flags 位定义（当前全 0 = 无特殊行为；空壳预留）──
-    constexpr uint32_t kModelTemplateFlagUnused   = 0u; // 占位：后续如 billboard / skinning 等
+    // ── LOD 级命名与导入导出标准（T4.1）───────────────────────────────────
+    //
+    // 级号 → 载体：
+    //   级 0            = **本体**（`part_offset/part_count` 指向的那一段部件行）
+    //   级 1..3         = `lod_proxy_template_ids[级号 - 1]` 指向的**独立模板**
+    //
+    // 代理是货真价实的模板（自有部件段、自有素材桶组）⇒ 展开侧"换级"只是换一个
+    // template_id 再走同一条逐部件循环，没有任何第二条渲染路径。
+    //
+    // 阈值口径（`lod_screen_ratios[i]`）：该级代理的**屏幕占比上界**，0..1，
+    //   1.0 ≈ 物体外接球恰好占满视口半高。判定 = 从**最粗槽往回**取第一个满足
+    //   `ratio <= lod_screen_ratios[i]` 且 `lod_proxy_template_ids[i] != 0` 的级
+    //   （槽序由细到粗 ⇒ 槽 0 最细、阈值最高）。
+    //   要求 `lod_screen_ratios` **单调不增**（r1 >= r2 >= r3 > 0）；写 0 或 id 为 0
+    //   ⇒ 该级不存在。全部不存在 ⇒ 恒选级 0（= 改造前行为，零回归面）。
+    //
+    // 导入导出标准（美术/DCC 侧约定，当前只在 CPU 侧落库，GPU 消费见 T4.1 空壳）：
+    //   · 命名 = `<模型名>_LOD1` / `_LOD2` / `_LOD3` / `_SHADOWPROXY`（大小写不敏感）；
+    //   · 每个代理与被代理本体**同局部坐标系、同单位、同朝向**（RH / Z-up），
+    //     否则换级会跳位 —— 这是硬约束，不是建议；
+    //   · 代理可以有自己的部件树（不必单部件），但**不得**再声明代理（禁止套娃：
+    //     展开侧只做一跳，见 ModelTemplateManager::SetModelTemplateProxies 的校验）；
+    //   · 阴影代理（`shadow_proxy_template_id`）独立于 LOD 级，可以是任一级的模板；
+    //   · **一个代理模板只能归属一个本体**（不可被两个本体共用）。回填代理时本体与全部
+    //     代理的部件 `bucket_slot` 会被统一重编号（按部件几何的首次出现序），代理共用
+    //     ⇒ 后回填者改写前者的槽号 ⇒ 前者画错几何（且槽号不越界，不会报错）。
+    constexpr uint32_t kModelLodLevelBody      = 0;                          ///< 级 0 = 本体
+    constexpr uint32_t kModelLodLevelProxyBase = 1;                          ///< 级 1 = 第一个代理槽
+    constexpr uint32_t kModelLodLevelCount     = 1 + kModelLodProxyCount;    ///< 级总数（含本体）
+
+    // ── ModelTemplateRow.flags 位定义 ─────────────────────────────────────
+    constexpr uint32_t kModelTemplateFlagUnused     = 0u;          // 占位：后续如 billboard / skinning 等
+    constexpr uint32_t kModelTemplateFlagLodEnabled = 1u << 0;     ///< 允许展开侧消费 `lod_*` 表（T4.1）
+    constexpr uint32_t kModelTemplateFlagShadowProxy= 1u << 1;     ///< `shadow_proxy_template_id` 已校验可用（T4.2）
 
     // ── ModelPartRow.part_flags 位定义 ──────────────────────────────────
     constexpr uint32_t kModelPartFlagCanCastShadow = 1u << 0; ///< 阴影 pass 可投影
@@ -57,16 +89,23 @@ namespace hgl::graph::ssbo
      *   （offset 从 1 起；区间内行序 = 打包序，见 ModelTemplateManager）。
      * - `local_bound_*`：模型**局部空间**（根节点 TRS 之前的原始包围盒）中心/半径与
      *   半长；实例化后由 GPU 用实例 L2W 变换做包围测试（plan T3.1 culling）。
-     * - `lod_proxy_template_ids[i]` / `lod_screen_ratios[i]`：LOD 代理壳 —— 代理本身
-     *   也是模板 id；第 i 级在屏幕占比 ≤ lod_screen_ratios[i] 时启用
-     *   （id=0 ⇒ 该级不存在；CPU 侧填表，GPU 展开暂不消费 —— 空壳 T4）。
-     * - `shadow_proxy_template_id`：阴影代理模板 id（如整栋楼 ≈ 一个 Cube）；
-     *   0 ⇒ 阴影 pass 直接渲染本体部件（空壳 T4）。
+     * - `lod_proxy_template_ids[i]` / `lod_screen_ratios[i]`：LOD 代理（T4.1）。代理本身
+     *   也是模板 id；第 i 级（级号 i+1）在屏幕占比 ≤ `lod_screen_ratios[i]` 时启用。
+     *   生效前提 = `flags & kModelTemplateFlagLodEnabled`；id=0 / 阈值=0 ⇒ 该级不存在。
+     *   空表 ⇒ 恒用级 0（本体）。写入口 = `ModelTemplateManager::SetModelTemplateProxies`。
+     * - `shadow_proxy_template_id`：阴影代理模板 id（如整栋楼 ≈ 一个 Cube）；生效前提 =
+     *   `flags & kModelTemplateFlagShadowProxy`。0 或未置位 ⇒ 阴影 pass 直接渲染本体部件。
+     *   展开侧只做一跳：代理自己的 `shadow_proxy_template_id` **不再被跟随**（防套娃）。
      * - `part_bucket_count`：本模板**部件素材桶数**（= 部件 `bucket_slot` 的最大值 + 1）。
      *   展开时 GPU 每个部件落一个实例到"模板素材桶组"的第 `bucket_slot` 个桶；
      *   组基址由 CPU 在装批时按 (批, 模板) 分配并写入展开竞技场的 per-实体表
      *   （见 `ModelExpansionArena::bucket_base_addr`）。本字段让 CPU 不必扫部件行
      *   就能知道要为本模板预留几个桶。
+     *
+     *   登记代理（`SetModelTemplateProxies`）时，本体与全部代理的 `bucket_slot` 会被
+     *   **统一重编号**为按部件几何首次出现序，且**每个参与模板**的 `part_bucket_count`
+     *   都被改写为该并集大小 —— 因为换级时部件仍落同一个桶组，槽号必须共用一套编号。
+     *   无代理时该重编号与打包时编号等价（本体独占），是无代理路径的恒等变换。
      */
     struct alignas(16) HGL_SSBO_BDA ModelTemplateRow
     {
