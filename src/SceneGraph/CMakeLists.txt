@@ -317,6 +317,7 @@ source_group("07.Asset\\Geometry" FILES ${SG_ASSET_GEOMETRY_FILES})
 
 set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/AssetLoadGraph.h
+                            ${SG_INCLUDE_PATH}/asset/PackReadTask.h
                             ${SG_INCLUDE_PATH}/asset/ModelDependencyExtractor.h
                             ${SG_INCLUDE_PATH}/asset/ModelLoadPlan.h
                             ${SG_INCLUDE_PATH}/asset/LevelSpec.h
@@ -327,6 +328,7 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/StaticMeshModelInstance.h
                             asset/AssetSourceMount.cpp
                             asset/AssetLoadGraph.cpp
+                            asset/PackReadTask.cpp
                             asset/ModelDependencyExtractor.cpp
                             asset/ModelLoadPlan.cpp
                             asset/LevelAssetFile.cpp

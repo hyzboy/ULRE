@@ -279,6 +279,9 @@ add_ecs_test(TestStaticMeshModelProgressive tests/TestStaticMeshModelProgressive
 # 阶段五 Step 5.2 判据：必需纹理的「在途 / 永久失败 / 就绪」三值结论（占位保底的门禁规则）
 add_ecs_test(TestMaterialTextureFallback tests/TestMaterialTextureFallback.cpp)
 
+# 阶段四判据：包裹寻址「先查索引」+ `id:` 反查 + 取流任务搬到 CPU 工作线程后语义不变
+add_ecs_test(TestPackReadTask tests/TestPackReadTask.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -586,4 +589,12 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialTextureFallback
         PROPERTIES LABELS "ecs;material;streaming" TIMEOUT 60)
+
+    add_test(
+        NAME TestPackReadTask
+        COMMAND TestPackReadTask
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestPackReadTask
+        PROPERTIES LABELS "asset;pack;async" TIMEOUT 120)
 endif()
