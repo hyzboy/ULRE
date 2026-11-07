@@ -126,6 +126,23 @@ namespace hgl::graph::mtl
         return asset;
     }
 
+    MaterialDataBlockAsset *MaterialDataBlockRegistry::CommitParsed(
+        MaterialDataBlockFileData &&data,
+        MaterialDataBlockSpec      &&spec,
+        const bool                   has_spec,
+        const os_char               *label,
+        const char                  *failure_reason)
+    {
+        MaterialDataBlockAsset *asset =
+            Attach(std::move(data), std::move(spec), has_spec, label);
+
+        if (asset && failure_reason)
+            asset->MarkFailed(failure_reason);
+
+        return asset;
+    }
+
+
     MaterialDataBlockAsset *MaterialDataBlockRegistry::RegisterFromToml(const os_char *label,
                                                                         const char *content,
                                                                         const int content_size)

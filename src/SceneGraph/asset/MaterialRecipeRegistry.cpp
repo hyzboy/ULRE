@@ -314,6 +314,17 @@ namespace hgl::graph::mtl
             return false;
         }
 
+        return RegisterParsedRecipe(source_label, data, std::move(spec), texture_manager);
+    }
+
+    bool MaterialRecipeRegistry::RegisterParsedRecipe(
+        const os_char *label,
+        const MaterialRecipeFileData &data,
+        MaterialRecipeSpec &&spec,
+        hgl::graph::TextureManager *texture_manager)
+    {
+        const os_char *source_label = label ? label : OS_TEXT("<memory>");
+
         if (FindAssetByName(data.recipe.recipe_name.c_str()))
         {
             GLogError(u8"[MaterialRecipeRegistry] 配方名称重复: %s (source=%ls)",

@@ -173,6 +173,10 @@ add_ecs_test(TestEnvironmentAssetURI tests/TestEnvironmentAssetURI.cpp)
 # 配方差量继承（`parent`）：合并口径 + 注册表两阶段加载。
 add_ecs_test(TestMaterialRecipeInheritance tests/TestMaterialRecipeInheritance.cpp)
 
+# 材质异步解析落地层（Tier 2 工作线程解析 → Tier 3 主线程提交）：
+# 挂接/摘除契约 + 跨任务父子继承推进 + 坏输入留诊断不崩。
+add_ecs_test(TestMaterialAsyncCompiler tests/TestMaterialAsyncCompiler.cpp)
+
 # 示例用数据块文件（`pbr_10x10_grid.material_data.toml`）：形状 + 逐行数值与生成公式
 # 一致 + 演示源码不再逐行硬编码。
 add_ecs_test(TestPbrGridDataBlock tests/TestPbrGridDataBlock.cpp)
@@ -393,6 +397,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestMaterialRecipeInheritance
         PROPERTIES LABELS "material;recipe")
+
+    add_test(
+        NAME TestMaterialAsyncCompiler
+        COMMAND TestMaterialAsyncCompiler
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMaterialAsyncCompiler
+        PROPERTIES LABELS "material;recipe;async" TIMEOUT 120)
 
     add_test(
         NAME TestEnvironmentCodec

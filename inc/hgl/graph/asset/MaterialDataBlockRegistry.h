@@ -71,6 +71,18 @@ namespace hgl::graph::mtl
         /// 按扩展名分派读一个文件
         bool LoadFile(const OSString &path);
 
+        /**
+         * 异步链路的落地点：提交一份**已解析**的数据块。
+         *
+         * `failure_reason` 非空表示解析已失败 —— 与同步路径一样建出 `Failed` 句柄
+         * 留在表里（诊断信息是工具要显示的内容），`data.parse_error` 里带上行号与键值。
+         */
+        MaterialDataBlockAsset *CommitParsed(MaterialDataBlockFileData &&data,
+                                             MaterialDataBlockSpec      &&spec,
+                                             bool                         has_spec,
+                                             const os_char               *label,
+                                             const char                  *failure_reason = nullptr);
+
         /// 扫目录（递归），只收三种合法扩展名
         bool LoadDirectory(const OSString &directory,
                            int *out_file_count = nullptr,

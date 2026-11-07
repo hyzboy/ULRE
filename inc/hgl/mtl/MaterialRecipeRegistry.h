@@ -78,6 +78,21 @@ namespace hgl::graph::mtl
                                   int content_size,
                                   hgl::graph::TextureManager *texture_manager);
 
+        /**
+         * 提交一份**已解析**的配方（异步链路的落地点）。
+         *
+         * 与 `RegisterRecipeSource` 的差别只有一处：TOML 解析已经别处做完，本方法
+         * 只做「重名检查 → 建句柄 → 多轮继承推进」，因此不含任何 I/O 与文本解析，
+         * 是主线程可以逐帧调用的微秒级提交入口。
+         *
+         * 语义与 `RegisterRecipeSource` 完全一致：父配方未就绪的句柄留在 `Parsed`
+         * 等待，校验失败的从表里摘掉并返回 `false`。
+         */
+        bool RegisterParsedRecipe(const os_char *label,
+                                  const MaterialRecipeFileData &data,
+                                  MaterialRecipeSpec &&spec,
+                                  hgl::graph::TextureManager *texture_manager);
+
         /// 按配方名取运行时结果（既有调用点契约）
         const MaterialRecipe *FindByName(const char *recipe_name) const;
 
