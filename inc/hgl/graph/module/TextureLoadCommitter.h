@@ -73,6 +73,38 @@ namespace hgl::graph
                                void *user_data=nullptr);
 
         /**
+         * @brief CN: 提交一张"磁盘直写 staging"的 2D 纹理(Direct-to-Staging 零拷贝路径)。
+         *        EN: Submit a 2D texture whose bytes were written straight into a staging buffer by disk IO.
+         * @details CN: 仅适用于 file->IsDirectBuffer() 的 LoadedFile：字节已经在 `staging`
+         *              指向的映射内存里(文件头在最前)。本函数不 memcpy、不分配 CPU 内存，
+         *              只解析头部并把 staging 挂进上传任务。
+         *              staging 的 Unmap 总在内部完成；返回 0 表示失败且 staging 未被接管，
+         *              调用方负责 delete；返回非 0 表示上传任务已拥有它。
+         *          EN: Only for LoadedFile instances with IsDirectBuffer(): the bytes already live
+         *              in the mapped memory behind `staging` (header first). No memcpy, no CPU
+         *              allocation; this parses the header and hands the staging buffer to the
+         *              upload task. The buffer is always unmapped internally. Return 0 means the
+         *              staging was NOT consumed (caller must delete it); non-zero means the
+         *              upload task owns it until the upload finishes.
+         * @param file            CN: 直写模式的已加载文件(其数据指针必须等于 staging 的 Map 指针)。
+         *                        EN: Direct-mode loaded file whose data pointer is the staging map pointer.
+         * @param staging         CN: file 字节所在的那个 DeviceBuffer。 EN: The DeviceBuffer backing file's bytes.
+         * @param auto_mipmaps    CN: 源无 mip 链时是否自动生成。 EN: Whether to build mipmaps when the source has no chain.
+         * @param priority        CN: GPU 上传优先级。 EN: GPU upload priority.
+         * @param bindless_handle CN: 需要更新的 bindless 槽位，0=不绑定。 EN: Bindless slot to update, 0 for none.
+         * @param callback        CN: 上传完成回调，可为 nullptr。 EN: Upload completion callback, may be nullptr.
+         * @param user_data       CN: 回调上下文。 EN: Callback context.
+         * @return CN: 上传任务编号，0 表示失败(staging 交还调用方)。 EN: Upload task id, or 0 on failure (staging returned to caller).
+         */
+        uint64 CommitTexture2DDirect(const LoadedFile *file,
+                                     DeviceBuffer *staging,
+                                     bool auto_mipmaps,
+                                     UploadPriority priority=UploadPriority::Normal,
+                                     uint32 bindless_handle=0,
+                                     void (*callback)(TextureUploadTask *,void *)=nullptr,
+                                     void *user_data=nullptr);
+
+        /**
          * @brief CN: 用已加载文件的字节写入 Texture2DArray 的指定层。
          *        EN: Write loaded file bytes into one layer of a Texture2DArray.
          * @param file  CN: 已加载的 .Tex2D 文件。 EN: Loaded .Tex2D file.

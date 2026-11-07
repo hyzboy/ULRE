@@ -4,8 +4,14 @@
 #include<hgl/asset/LoadedFileHandler.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/TextureAsset.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/TextureUploadTask.h>
+#include<hgl/graph/texture/TextureLoader.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/type/UnorderedMap.h>
+#include<hgl/type/ValueArray.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/utf.h>
 
 namespace hgl::ecs
@@ -15,6 +21,24 @@ namespace hgl::ecs
         /// 单帧最多发起几次读盘。IO 侧本来就是单线程串行，这里再限流的意义在于
         /// 压住"一帧内解析+建纹理+提交上传"的瞬时峰值，避免切换/启动首帧掉帧。
         constexpr int kMaxSubmitPerFrame = 2;
+
+        /// Direct-to-Staging 前置：查询 `filename` 对应物理文件的字节数(含 .Tex2D 文件头)。
+        /// 只有能解析为物理路径的资产(裸文件或 pack(dir) 目录包)才可能走直写通道；
+        /// 归档包/内置资产等返回 0 ⇒ 调用方退回经典 Submit 路径，一切照旧。
+        uint64 QueryPayloadBytes(const OSString &filename)
+        {
+            OSString path;
+
+            if (!graph::ResolveAssetPhysicalPath(filename, path))
+                path = filename;        ///< 裸路径口径：历史上未挂载的文件名本来就按真实路径传
+
+            filesystem::FileInfo fi;
+
+            if (!filesystem::GetFileInfo(path.c_str(), fi) || !fi.is_file)
+                return 0;
+
+            return fi.size;
+        }
 
         /// GPU 上传完成回调：句柄的唯一"转正"点。
         /// user_data 就是句柄本身（归 TextureManager 所有，活得比任何世界都久），
@@ -66,13 +90,67 @@ namespace hgl::ecs
         TextureStreamingSystem *owner = nullptr;
         int ref_count = 1;
 
+        // ── Direct-to-Staging 登记表：请求编号 -> 发起时预分配的映射 staging 缓冲 ──
+        // IO 线程只负责往 Map 指针写字节；缓冲的最终去向(转交上传/作废回收)永远发生在
+        // Pump 线程的回调里，所以这里和三个回调一样无需加锁。
+        UnorderedMap<uint64, graph::DeviceBuffer *> direct_buffers;
+        ValueArray<graph::DeviceBuffer *>           direct_all;   ///< 未取走的缓冲(供析构兜底遍历)
+        uint64 direct_bytes = 0;                                  ///< 在途直写 staging 总字节，预算门控用
+
     public:
 
         explicit StreamHandler(TextureStreamingSystem *o) : owner(o) {}
 
+        ~StreamHandler() override
+        {
+            if (direct_all.IsEmpty())
+                return;
+
+            // 理论上不可达：LoadedFileManager 保证所有请求在销毁前派发终态回调。
+            // 兜底回收在途缓冲，避免泄漏 host-visible 映射内存。
+            GLogError(u8"[TextureStreaming] %d in-flight staging buffer(s) reclaimed at handler teardown",
+                      direct_all.GetCount());
+
+            graph::DeviceBuffer **bufs = direct_all.GetData();
+
+            for (int i = 0; i < direct_all.GetCount(); ++i)
+            {
+                bufs[i]->Unmap();
+                delete bufs[i];
+            }
+        }
+
         void AddRef() { ++ref_count; }
         void Release() { if (--ref_count <= 0) delete this; }
         void DetachOwner() { owner = nullptr; }
+
+        /** @brief CN: 当前在途直写 staging 占用的字节数(预算门控)。 EN: Bytes of staging buffers still awaiting their callback. */
+        uint64 GetPendingDirectBytes()const{return direct_bytes;}
+
+        /** @brief CN: 记下"编号 id 的请求要把字节写进 buf"。 EN: Record that request `id` writes bytes into `buf`. */
+        void RegisterDirectBuffer(uint64 id, graph::DeviceBuffer *buf, uint64 bytes)
+        {
+            direct_buffers.Add(id, buf);
+            direct_all.Add(buf);
+            direct_bytes += bytes;
+        }
+
+        /** @brief CN: 取走(并注销)编号对应的 staging；不是直写请求就返回 nullptr。 EN: Take (and unregister) the staging for `id`; nullptr if not a direct request. */
+        graph::DeviceBuffer *TakeDirectBuffer(uint64 id)
+        {
+            graph::DeviceBuffer **p = direct_buffers.GetValuePointer(id);
+
+            if (!p)
+                return nullptr;
+
+            const graph::DeviceBuffer *found = *p;
+
+            direct_buffers.DeleteByKey(id);
+            direct_all.Remove(const_cast<graph::DeviceBuffer*>(found));
+            direct_bytes -= found->GetSize();
+
+            return const_cast<graph::DeviceBuffer*>(found);
+        }
 
         void OnFileLoaded(const FileLoadTicket &ticket, LoadedFile *file) override;
         void OnFileFailed(const FileLoadTicket &ticket, io::AsyncFileLoadError error) override;
@@ -81,21 +159,40 @@ namespace hgl::ecs
 
     void TextureStreamingSystem::StreamHandler::OnFileLoaded(const FileLoadTicket &ticket, LoadedFile *file)
     {
-        if (owner && owner->tex_manager && file)
-        {
-            graph::TextureAsset *asset = owner->FindAssetByRequest(ticket.id);
+        graph::DeviceBuffer *staging = TakeDirectBuffer(ticket.id);
 
-            if (asset)
+        graph::TextureAsset *asset = (owner && file) ? owner->FindAssetByRequest(ticket.id) : nullptr;
+
+        if (asset)
+        {
+            const uint64 task_id = staging
+                ? owner->committer.CommitTexture2DDirect(file,
+                                                         staging,
+                                                         asset->GetAutoMipmaps(),
+                                                         graph::UploadPriority::Normal,
+                                                         0,
+                                                         OnTextureUploadFinished,
+                                                         asset)
+                : owner->committer.CommitTexture2D(file,
+                                                   asset->GetAutoMipmaps(),
+                                                   graph::UploadPriority::Normal,
+                                                   0,
+                                                   OnTextureUploadFinished,
+                                                   asset);
+            if (task_id == 0)
             {
-                const uint64 task_id = owner->committer.CommitTexture2D(file,
-                                                                        asset->GetAutoMipmaps(),
-                                                                        graph::UploadPriority::Normal,
-                                                                        0,
-                                                                        OnTextureUploadFinished,
-                                                                        asset);
-                if (task_id == 0)
-                    asset->FailAsyncLoad("GPU 上传任务提交失败");
+                if (staging)
+                    delete staging;     ///< CommitTexture2DDirect 各口径都已内部 Unmap，这里只回收内存
+
+                asset->FailAsyncLoad("GPU 上传任务提交失败");
             }
+        }
+        else if (staging)
+        {
+            // 句柄已消失或 owner 已脱钩：直写进来的字节随之作废。
+            // 这副缓冲还没走过 loader，仍处于映射态，先解映射再释放。
+            staging->Unmap();
+            delete staging;
         }
 
         Release();      ///< 此后不得再访问成员
@@ -103,15 +200,30 @@ namespace hgl::ecs
 
     void TextureStreamingSystem::StreamHandler::OnFileFailed(const FileLoadTicket &ticket, io::AsyncFileLoadError error)
     {
+        if (graph::DeviceBuffer *staging = TakeDirectBuffer(ticket.id))
+        {
+            // IO 线程只写了(或没写完)字节，映射始终由发起方在这里关闭
+            staging->Unmap();
+            delete staging;
+        }
+
         if (owner && owner->tex_manager)
         {
             if (graph::TextureAsset *asset = owner->FindAssetByRequest(ticket.id))
             {
-                const AnsiString reason = AnsiString("文件读取失败(AsyncFileLoadError=")
-                                        + AnsiString::numberOf(static_cast<int>(error))
-                                        + ")";
+                if (error == io::AsyncFileLoadError::BufferTooSmall)
+                {
+                    // 查询大小之后文件变大了：临时且可恢复，退回待办集合，下帧重新查尺寸再提交
+                    asset->ClearAsyncRequest();
+                }
+                else
+                {
+                    const AnsiString reason = AnsiString("文件读取失败(AsyncFileLoadError=")
+                                            + AnsiString::numberOf(static_cast<int>(error))
+                                            + ")";
 
-                asset->FailAsyncLoad(reason.c_str());
+                    asset->FailAsyncLoad(reason.c_str());
+                }
             }
         }
 
@@ -120,6 +232,12 @@ namespace hgl::ecs
 
     void TextureStreamingSystem::StreamHandler::OnFileCancelled(const FileLoadTicket &ticket)
     {
+        if (graph::DeviceBuffer *staging = TakeDirectBuffer(ticket.id))
+        {
+            staging->Unmap();
+            delete staging;
+        }
+
         if (owner && owner->tex_manager)
         {
             // 取消只回退"已提交"标记（Loading ⇒ MetaOnly），句柄留在待办集合里，
@@ -238,24 +356,75 @@ namespace hgl::ecs
                 continue;
             }
 
+            // 优先 Direct-to-Staging：先分配一副映射 staging，让 IO 线程把字节直接写进去，
+            // 主线程之后只解析 32B 头并把缓冲挂进上传任务，全程零 CPU 拷贝。
+            // 文件解析不到物理路径、预算不够或缓冲创建失败时，自动退回经典 Submit 路径。
+            graph::DeviceBuffer *staging = nullptr;
+            void *map_ptr = nullptr;
+            uint64 payload = 0;
+
+            if (graph::TextureUploadQueue *queue = tex_manager->GetUploadQueue())
+            {
+                payload = QueryPayloadBytes(filename);
+
+                if (payload >= graph::TextureFileHeaderLength &&
+                    handler->GetPendingDirectBytes() + payload <=
+                        static_cast<uint64>(queue->GetMaxStagingMemory()))
+                {
+                    staging = tex_manager->CreateTransferSourceBuffer(static_cast<VkDeviceSize>(payload));
+
+                    if (staging)
+                    {
+                        map_ptr = staging->Map(0, staging->GetSize());
+
+                        if (!map_ptr)
+                        {
+                            delete staging;       ///< 映射未建立，无需 Unmap
+                            staging = nullptr;
+                        }
+                    }
+                }
+            }
+
             handler->AddRef();
 
-            const FileLoadId id = load_manager->Submit(filename, handler, io::AsyncFilePriority::Normal);
+            const FileLoadId id = map_ptr
+                ? load_manager->SubmitDirect(filename,
+                                             map_ptr,
+                                             static_cast<int64>(payload),
+                                             handler,
+                                             io::AsyncFilePriority::Normal,
+                                             nullptr,
+                                             nullptr,
+                                             nullptr,
+                                             payload)
+                : load_manager->Submit(filename, handler, io::AsyncFilePriority::Normal);
 
             if (id == 0)
             {
                 handler->Release();     ///< 提交失败：不标记，下一帧自然重试
+
+                if (staging)
+                {
+                    staging->Unmap();
+                    delete staging;
+                }
+
                 continue;
             }
+
+            if (staging)
+                handler->RegisterDirectBuffer(id, staging, payload);
 
             asset->MarkAsyncRequested(id);
             ++submitted;
 
             const U8String u8_filename = ToU8String(filename);
 
-            LogDebug(u8"[TextureStreaming] 提交读取：%s（request=%llu）",
+            LogDebug(u8"[TextureStreaming] 提交读取：%s（request=%llu，direct=%d）",
                      reinterpret_cast<const char *>(u8_filename.c_str()),
-                     static_cast<unsigned long long>(id));
+                     static_cast<unsigned long long>(id),
+                     map_ptr ? 1 : 0);
         }
     }
 

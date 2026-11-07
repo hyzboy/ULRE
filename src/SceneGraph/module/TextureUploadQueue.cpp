@@ -520,7 +520,7 @@ namespace hgl::graph
             task->staging_buffer = tci->buffer;
             tci->buffer = nullptr;
             task->is_ring_staging = false;
-            task->ring_offset = 0;
+            task->ring_offset = tci->data_offset;   // Direct-to-Staging：像素可从缓冲内偏移处开始(如文件头之后)
         }
         else if (tci->pixels)
         {
@@ -736,6 +736,8 @@ namespace hgl::graph
             // 零拷贝直通：直接接管 tci->buffer 作为 Transfer 源缓冲，消除额外的 CPU 内存分配与 memcpy
             task->staging_buffer = tci->buffer;
             tci->buffer = nullptr;
+            task->is_ring_staging = false;
+            task->ring_offset = tci->data_offset;   // Direct-to-Staging：像素可从缓冲内偏移处开始(如文件头之后)
         }
         else if (tci->pixels)
         {

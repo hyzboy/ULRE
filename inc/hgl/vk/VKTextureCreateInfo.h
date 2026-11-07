@@ -26,6 +26,8 @@ struct TextureCreateInfo
     void *              pixels;         // If buffer or pixels data exists, use pixels data; otherwise read from buffer
     VkDeviceSize        total_bytes;
     DeviceBuffer *      buffer;         // If pixels is also missing, write image data from this buffer
+    VkDeviceSize        data_offset;    // Pixel data start offset inside buffer; 0 = buffer starts with pixels
+                                        // (Direct-to-Staging: header stays at 0, DMA copies from data_offset)
 
     U8String            name;           // Texture name for debugging/tracing
 
@@ -50,6 +52,7 @@ public:
         pixels                  = nullptr;
         total_bytes             = 0;
         buffer                  = nullptr;
+        data_offset             = 0;
     }
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img,const U8String &n=U8String((const u8char*)u8"Texture")):TextureCreateInfo()

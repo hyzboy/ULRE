@@ -67,6 +67,31 @@ namespace hgl::graph
     const uint32 ComputeMipmapBytes3D(uint32 width,uint32 height,uint32 depth,uint32 bytes,uint mip_level);
     const uint32 ComputeTexture2DMipmapChainBytes(const TexPixelFormat &pixel_format,uint32 width,uint32 height,uint32 mipmap_zero_bytes,uint mip_level);
 
+    /**
+     * @brief CN: 就地解析内存中的 .Tex2D 文件字节(2D 口径)，不做任何拷贝。
+     *        EN: Parse an in-memory .Tex2D payload in place (2D semantics), copying nothing.
+     * @details CN: 与 TextureLoader::Load() 的头部校验/格式解析/字节数计算完全同口径
+     *              (2D 语义:像素数 = width*height，mip 链按 ComputeTexture2DMipmapChainBytes)，
+     *              供 Direct-to-Staging 通道在主线程解析已落盘到映射显存的字节。
+     *              改动 Load() 的解析规则时必须同步这里。
+     *          EN: Mirrors Load()'s header validation / format resolution / byte math
+     *              (2D semantics), for the Direct-to-Staging path. Keep in sync with Load().
+     * @param bytes     CN: 负载起始地址(文件头在最前)。 EN: Payload start; the file header comes first.
+     * @param size      CN: 可用字节数(含文件头)。 EN: Available bytes, header included.
+     * @param out_header              CN: 解析出的文件头副本。 EN: Copy of the parsed header.
+     * @param out_format              CN: 解析出的 VkFormat(VK_FORMAT_UNDEFINED=不认识)。 EN: Resolved VkFormat.
+     * @param out_mipmap_zero_bytes   CN: 0 级 mip 单图字节数。 EN: Bytes of one level-0 image.
+     * @param out_total_bytes         CN: 整个 mip 链的像素字节数(不含文件头)。 EN: Full mip-chain pixel bytes, header excluded.
+     * @return CN: 头合法且 `size >= TextureFileHeaderLength + out_total_bytes` 时返回 true。
+     *           EN: True when the header is valid and enough bytes are present.
+     */
+    bool DecodeTexture2DFromFileBytes(const void *bytes,
+                                      int64 size,
+                                      TextureFileHeader &out_header,
+                                      VkFormat &out_format,
+                                      uint32 &out_mipmap_zero_bytes,
+                                      uint32 &out_total_bytes);
+
     class TextureLoader
     {
         OBJECT_LOGGER

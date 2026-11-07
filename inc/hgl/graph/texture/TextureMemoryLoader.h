@@ -55,6 +55,53 @@ namespace hgl::graph
                                           const OSString &source_name=OSString());
 
     /**
+     * @brief CN: 把"磁盘直写进映射 staging 缓冲"的 .Tex2D 字节零拷贝提交异步上传(Direct-to-Staging)。
+     *        EN: Submit an async 2D upload that reads pixels in place from a staging buffer filled
+     *            directly by disk IO, with no CPU copy at all (Direct-to-Staging).
+     * @details CN: 与 CreateTexture2DFromMemoryAsync 的区别在于像素字节已经在 `staging` 指向的
+     *              设备可读内存里(文件头在最前，像素紧随其后)，本函数只在主线程就地解析头部，
+     *              让上传队列的 DMA 直接从 `staging` 的 TextureFileHeaderLength 偏移搬运像素。
+     *              全程没有 CPU 堆分配、没有 memcpy。
+     *
+     *              映射生命周期:本函数在解析完头部后**总是先 Unmap** 再提交(所有返回路径),
+     *              调用方不得再次 Unmap;失败时(返回 0)staging 未被接管，由调用方负责 delete。
+     *              成功时 staging 所有权转入上传任务，上传结束后由队列释放。
+     *          EN: Unlike CreateTexture2DFromMemoryAsync, the pixel bytes already live in the
+     *              device-visible memory behind `staging` (file header first, pixels right after).
+     *              This parses the header in place on the main thread and lets the upload queue's
+     *              DMA copy pixels starting at TextureFileHeaderLength inside the buffer. No CPU
+     *              allocation, no memcpy.
+     *
+     *              Mapping lifecycle: the buffer is always Unmapped here (on every return path)
+     *              before submission; the caller must not unmap it again. On failure (return 0)
+     *              staging is not consumed and the caller deletes it; on success the upload task
+     *              owns it until the upload finishes.
+     * @param tm              CN: 纹理管理器。 EN: Texture manager.
+     * @param bytes           CN: 映射内存中的完整 .Tex2D 字节(含文件头)，即 staging 的 Map 指针。
+     *                        EN: The mapped pointer holding complete .Tex2D bytes, header included.
+     * @param size            CN: 实际写入的字节数(含文件头)。 EN: Bytes actually present, header included.
+     * @param staging         CN: 与 bytes 对应的 host-visible staging 缓冲。 EN: The staging buffer backing bytes.
+     * @param auto_mipmaps    CN: 源无 mip 链时是否自动生成。 EN: Whether to build mipmaps when the source has no chain.
+     * @param priority        CN: 上传优先级。 EN: Upload priority.
+     * @param bindless_handle CN: 需要绑定的 bindless 槽位，0=不绑定。 EN: Bindless slot to update, 0 for none.
+     * @param callback        CN: 上传完成回调，可为 nullptr。 EN: Upload completion callback, may be nullptr.
+     * @param user_data       CN: 回调上下文。 EN: Callback context.
+     * @param source_name     CN: 调试用的来源名(通常是文件路径)；空则纹理名退化为 "Texture"。
+     *                        EN: Debug source name used as texture name; empty falls back to "Texture".
+     * @return CN: 上传任务编号，0 表示失败(此时 staging 未被接管，调用方 delete)。 EN: Upload task id, or 0 on failure.
+     */
+    uint64 CreateTexture2DFromStagingAsync(TextureManager *tm,
+                                           const void *bytes,
+                                           int64 size,
+                                           DeviceBuffer *staging,
+                                           bool auto_mipmaps,
+                                           UploadPriority priority,
+                                           uint32 bindless_handle,
+                                           void (*callback)(TextureUploadTask *,void *),
+                                           void *user_data,
+                                           const OSString &source_name=OSString());
+
+    /**
      * @brief CN: 从内存中的纹理文件字节写入 Texture2DArray 的指定层。
      *        EN: Write in-memory texture-file bytes into one layer of a Texture2DArray.
      * @param tm    CN: 纹理管理器。 EN: Texture manager.

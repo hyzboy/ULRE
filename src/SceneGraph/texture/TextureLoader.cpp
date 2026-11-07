@@ -257,6 +257,90 @@ namespace hgl::graph
         return VK_FORMAT_UNDEFINED;
     }
 
+    bool DecodeTexture2DFromFileBytes(const void *bytes,
+                                      int64 size,
+                                      TextureFileHeader &out_header,
+                                      VkFormat &out_format,
+                                      uint32 &out_mipmap_zero_bytes,
+                                      uint32 &out_total_bytes)
+    {
+        out_format=VK_FORMAT_UNDEFINED;
+        out_mipmap_zero_bytes=0;
+        out_total_bytes=0;
+
+        if(!bytes||size<(int64)TextureFileHeaderLength)
+            return(false);
+
+        TextureFileHeader header;
+
+        memcpy(&header,bytes,sizeof(TextureFileHeader));
+
+        constexpr char TEXTURE_FILE_HEADER[]="Texture";
+        constexpr uint TEXTURE_FILE_HEADER_LENGTH=sizeof(TEXTURE_FILE_HEADER)-1;
+
+        if(memcmp(&header.id_str,TEXTURE_FILE_HEADER,TEXTURE_FILE_HEADER_LENGTH))
+        {
+            GLogError(OS_TEXT("not a texture file."));
+            return(false);
+        }
+
+        if(header.version!=0)
+        {
+            GLogError(OS_TEXT("unknown texture file version: ") + OSString::numberOf(header.version));
+            return(false);
+        }
+
+        VkFormat format;
+
+        if(header.pixel_format.channels==0)
+        {
+            int cf = GetCompressFormat(header.pixel_format.compress_format);
+
+            if(cf >= 0 && cf < CompressFormatCount)
+                format=CompressFormatList[cf];
+            else
+            {
+                const OSString fmt_name = to_oschar((u8char *)header.pixel_format.compress_format,9);
+
+                GLogError(OS_TEXT("unknown texture compress format: ") + fmt_name);
+                return(false);
+            }
+        }
+        else
+        {
+            format=GetVulkanFormat(header.pixel_format);
+        }
+
+        //2D 口径:0 级 mip 单图字节数与 Texture2DLoader::GetPixelsCount() 同式
+        const uint32 pixels_count = header.width*header.height;
+
+        uint32 zero_bytes, total;
+
+        if(header.pixel_format.channels==0)
+            zero_bytes = ComputeTexture2DMipmapChainBytes(header.pixel_format, header.width, header.height, 0, 1);
+        else
+            zero_bytes = (pixels_count*header.pixel_format.pixel_bits())>>3;
+
+        //与 Texture2DLoader::GetTotalBytes() 同式
+        if(header.mipmaps<=1)
+            total=zero_bytes;
+        else
+            total=ComputeTexture2DMipmapChainBytes(header.pixel_format,header.width,header.height,zero_bytes,header.mipmaps);
+
+        if(size<(int64)(TextureFileHeaderLength+(int64)total))
+        {
+            GLogError(OS_TEXT("texture file data size error."));
+            return(false);
+        }
+
+        out_header=header;
+        out_format=format;
+        out_mipmap_zero_bytes=zero_bytes;
+        out_total_bytes=total;
+
+        return(true);
+    }
+
     bool TextureLoader::Load(io::InputStream *is)
     {
         if(!is)return(false);
