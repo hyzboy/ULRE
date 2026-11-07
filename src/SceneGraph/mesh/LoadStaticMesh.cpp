@@ -879,9 +879,11 @@ namespace
     };
 
     /// 把 `model_dir` 映射到挂载根下的逻辑目录；映射不上 ⇒ `probe.src` 为空。
-    static bool ProbeIndexedModelDir(const OSString &model_dir, IndexProbe &probe)
+    /// `pack_name` 非空 ⇒ 探测该具名挂载（包裹 URI 场景）；为空 ⇒ 默认 "res"。
+    static bool ProbeIndexedModelDir(const OSString &model_dir, IndexProbe &probe,
+                                     const char *pack_name = nullptr)
     {
-        asset::AssetSource *s = GetMountedAssetSource();
+        asset::AssetSource *s = GetMountedAssetSource(pack_name);
         if (!s || !s->HasIndexTable())
             return false;
 
@@ -889,8 +891,16 @@ namespace
         if (!hgl::filesystem::GetCurrentPath(cur))
             return false;
 
-        probe.root = hgl::filesystem::JoinPathWithFilename(cur,
-                                                           OSString(DEFAULT_ASSET_SOURCE_ROOT));
+        OSString root;
+        if (pack_name && GetAssetMountRoot(AnsiString(pack_name), root))
+        {
+            if (!LooksAbsoluteOsPath(root))
+                root = hgl::filesystem::JoinPathWithFilename(cur, root);
+        }
+        else
+            root = hgl::filesystem::JoinPathWithFilename(cur,
+                                                         OSString(DEFAULT_ASSET_SOURCE_ROOT));
+        probe.root = root;
         const OSString dir_abs = LooksAbsoluteOsPath(model_dir)
             ? model_dir
             : hgl::filesystem::JoinPathWithFilename(cur, model_dir);
@@ -1142,17 +1152,23 @@ bool BuildSelfContainedModelMaterials(
 {
     out = SelfContainedModelMaterials();
 
-    // 本函数的装配方式是「扫模型目录找配方与数据块」——URI 寻址下没有目录概念。
-    // 明确拒绝，而不是让调用方读到一个误导性的「文件打不开」。
-    if (hgl::asset::AssetURI::Parse(pack_path).source == hgl::asset::AssetSourceKind::Pack)
+    // 「扫模型目录找配方与数据块」需要磁盘目录概念：包裹 URI 先经挂载索引
+    // 反查转成物理路径（目录型包裹的包内路径就是真实文件树）；转译失败
+    // （归档型包裹 / 未挂载 / 身份缺失）明确报错，而不是留下误导性的「文件打不开」。
+    const hgl::asset::AssetURI uri = hgl::asset::AssetURI::Parse(pack_path);
+    OSString model_path = pack_path;
+    if (uri.IsPack())
     {
-        MLogError(LoadStaticMesh,
-            OS_TEXT("BuildSelfContainedModelMaterials: 暂不支持包裹 URI 寻址（需改由依赖图装配）: ") + pack_path);
-        return false;
+        if (!ResolveAssetPhysicalPath(pack_path, model_path) || model_path.IsEmpty())
+        {
+            MLogError(LoadStaticMesh,
+                OS_TEXT("BuildSelfContainedModelMaterials: 包裹 URI 无法转译物理路径: ") + pack_path);
+            return false;
+        }
     }
 
     // 模型目录 = pack 所在目录（唯一的资源来源目录）
-    const OSString model_dir = hgl::filesystem::Path(pack_path).GetParent().ToOSString();
+    const OSString model_dir = hgl::filesystem::Path(model_path).GetParent().ToOSString();
     if (model_dir.IsEmpty())
     {
         MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法取得模型目录 ") + pack_path);
@@ -1160,7 +1176,7 @@ bool BuildSelfContainedModelMaterials(
     }
 
     hgl::io::minipack::MiniPackMemory *mpm =
-        hgl::io::minipack::GetMiniPackMemory(pack_path);
+        hgl::io::minipack::GetMiniPackMemory(model_path);
     if (!mpm)
     {
         MLogError(LoadStaticMesh, OS_TEXT("BuildSelfContainedModelMaterials: 无法打开模型包 ") + pack_path);
@@ -1215,7 +1231,8 @@ bool BuildSelfContainedModelMaterials(
 
     hgl::ManagedArray<OSString> recipe_paths;
     hgl::ManagedArray<OSString> block_paths;
-    if (ProbeIndexedModelDir(model_dir, probe))
+    if (ProbeIndexedModelDir(model_dir, probe,
+                             uri.IsPack() ? uri.pack_name.c_str() : nullptr))
     {
         hgl::ManagedArray<hgl::asset::AssetIndexEntry> entries;
         probe.src->FindInDirectory(probe.logical_dir,

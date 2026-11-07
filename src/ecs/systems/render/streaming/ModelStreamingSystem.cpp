@@ -146,12 +146,21 @@ namespace hgl::ecs
         {
             const OSString &pack_path = stream->request.GetPackPath();
 
-            // 包裹 / 身份寻址下 `pack_path` 不是磁盘路径（甚至为空），没有
-            // 「同目录」这个概念：枚举要靠包裹索引，不在本门禁的职责里。
+            // 包裹 / 身份寻址下 `pack_path` 不是磁盘路径（甚至为空）：
+            // 目录型包裹先经挂载索引反查转物理路径再扇出；转译不到
+            // （归档型 / id 寻址 / 未挂载）没有「同目录」概念，仍由包裹索引负责。
             if (pack_path.IsEmpty())
                 return;
 
-            scene_dir = filesystem::Path(pack_path).GetParent().ToOSString();
+            OSString located = pack_path;
+            if (asset::AssetURI::Parse(pack_path).IsPack())
+            {
+                if (!graph::ResolveAssetPhysicalPath(pack_path, located)
+                    || located.IsEmpty())
+                    return;
+            }
+
+            scene_dir = filesystem::Path(located).GetParent().ToOSString();
         }
 
         if (scene_dir.IsEmpty())

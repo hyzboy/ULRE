@@ -8,6 +8,7 @@
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/graph/asset/StaticMeshModelInstance.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -90,6 +91,18 @@ namespace
                                          : "res/ABeautifulGame.StaticMesh/ABeautifulGame.model");
         }();
         return path;
+    }
+
+    // 请求串可以是裸路径，也可以是包裹 URI（`pack(res):逻辑路径`）。
+    // 统一经挂载索引反查转物理路径：裸路径顺带完成存在性检查，
+    // 包裹路径转译不到（未挂载 / 索引缺失）返回 false。
+    static bool LocateScenePhysical(const std::string &request, std::string &out_physical)
+    {
+        hgl::OSString resolved;
+        if (!hgl::graph::ResolveAssetPhysicalPath(hgl::ToOSString(request), resolved))
+            return false;
+        out_physical = hgl::ToStdString(resolved);
+        return !out_physical.empty();
     }
 
     // 天光 IBL：复用 IBLEnvironment 示例的同一批烘焙贴图与天空配方
@@ -226,11 +239,12 @@ private:
         using std::filesystem::path;
         using std::filesystem::exists;
 
-        // 资产路径可覆盖（默认不变）。
-        const path scene_path(ModelPackPath());
-        if (!exists(scene_path))
+        // 资产路径可覆盖（默认不变）；包裹 URI 先转译物理路径。
+        std::string physical;
+        if (!LocateScenePhysical(ModelPackPath(), physical))
             return false;
 
+        const path scene_path(physical);
         const path scene_dir = scene_path.parent_path();
 
         auto *device    = GetDevice();
@@ -272,11 +286,12 @@ private:
         using std::filesystem::path;
         using std::filesystem::exists;
 
-        const path scene_path(ModelPackPath());
-        if (!exists(scene_path))
+        // 请求串保留原文（系统内部自行转译）；存在性检查与目录口径用转译后的物理路径。
+        std::string physical;
+        if (!LocateScenePhysical(ModelPackPath(), physical))
             return false;
 
-        const OSString base_dir = hgl::ToOSString(scene_path.parent_path().string());
+        const OSString base_dir = hgl::ToOSString(path(physical).parent_path().string());
 
         const mtl::MaterialRecipe *default_recipe = nullptr;
         const mtl::MaterialRecipe *const *recipe_table = nullptr;
