@@ -7,6 +7,7 @@
 
 #include <hgl/asset/AssetCPUTaskPool.h>
 #include <hgl/log/Log.h>
+#include <hgl/time/Time.h>
 
 #include <hgl/filesystem/FileSystem.h>
 
@@ -65,6 +66,18 @@ namespace hgl::graph::mtl
             compiler->AttachFileManager(file_manager);
     }
 
+    void MaterialAsyncLoadLane::AttachPool(hgl::asset::AssetCPUTaskPool *task_pool)
+    {
+        if (compiler)
+        {
+            GLogWarning(u8"[MaterialAsyncLoadLane] 车道已启动，忽略注入的 CPU 任务池");
+            return;
+        }
+
+        pool      = task_pool;
+        owns_pool = false;
+    }
+
     void MaterialAsyncLoadLane::Shutdown(MaterialRecipeRegistry *recipes,
                                          MaterialDataBlockRegistry *blocks,
                                          hgl::graph::TextureManager *texture_manager)
@@ -74,9 +87,29 @@ namespace hgl::graph::mtl
 
         if (compiler)
         {
-            // `Drain` 等所有已投递任务跑完并把终态事件投回信息池；此时再泵一次是唯一
-            // 能把信息池掏空的时机 —— 掏空之后 `Detach()` 才会成功。
-            pool->Stop(hgl::thread::ShutdownMode::Drain);
+            if (owns_pool)
+            {
+                // `Drain` 等所有已投递任务跑完并把终态事件投回信息池；此时再泵一次是唯一
+                // 能把信息池掏空的时机 —— 掏空之后 `Detach()` 才会成功。
+                pool->Stop(hgl::thread::ShutdownMode::Drain);
+            }
+            else
+            {
+                // 借来的池：主人负责收尾，这里不停它。读盘底座已先一步 `Stop(Drain)`
+                // 派发完最后的回调，所以只剩在途 CPU 任务：等队列清空并泵干成品。
+                // 上限约 2 秒兜底，超时走 `Detach()` 失败的告警路径。
+                for (int spin = 0; spin < 400; ++spin)
+                {
+                    const int pumped = compiler->Pump(recipes, blocks, texture_manager);
+
+                    pumped_commits += pumped;
+
+                    if (pumped == 0 && pool->GetStatistics().pending == 0)
+                        break;
+
+                    hgl::SleepSecond(0.005);
+                }
+            }
 
             pumped_commits += compiler->Pump(recipes, blocks, texture_manager);
 
@@ -90,7 +123,7 @@ namespace hgl::graph::mtl
             delete compiler;
             compiler = nullptr;
         }
-        else
+        else if (owns_pool)
         {
             pool->Stop(hgl::thread::ShutdownMode::Drain);
         }

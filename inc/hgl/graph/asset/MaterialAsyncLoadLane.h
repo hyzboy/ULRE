@@ -134,6 +134,18 @@ namespace hgl::graph::mtl
         void AttachFileManager(hgl::LoadedFileManager *file_manager);
 
         /**
+         * @brief 注入共享的 CPU 任务池：车道不再自建池，收尾时也不停它（主人负责）。
+         *
+         * 由持有者 `GraphicsContext` 注入全局唯一的 `AssetCPUTaskPool`，让所有
+         * 资源车道在同一个 CPU 工作台上排队，线程数不再各池一份。
+         *
+         * @note 必须在 `EnsureStarted()` 之前调用（池已建则忽略并告警）。
+         *       借用模式下 `Shutdown()` 只等在途任务跑完并泵干成品，
+         *       **不**调用 `Stop()` —— 池的停止与回收归注入方。
+         */
+        void AttachPool(hgl::asset::AssetCPUTaskPool *task_pool);
+
+        /**
          * @brief 懒启动：建池 + 挂编译器（幂等）。
          *
          * @param worker_count 池线程数；`<=0` 时取默认 2

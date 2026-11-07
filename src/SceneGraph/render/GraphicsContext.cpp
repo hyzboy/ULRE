@@ -15,6 +15,8 @@
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/asset/LoadedFileManager.h>
+#include <hgl/asset/AssetCPUTaskPool.h>
+#include <hgl/thread/ShutdownMode.h>
 #include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/graph/asset/MaterialAsyncLoadLane.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -62,6 +64,10 @@ namespace hgl::graph
         if (!material_async_lane_)
         {
             mtl::MaterialAsyncLoadLane *created = new mtl::MaterialAsyncLoadLane();
+
+            // 全局 CPU 池已就位 ⇒ 借用它，不再自建（线程数不再各池一份）。
+            if (asset_cpu_pool_)
+                created->AttachPool(asset_cpu_pool_);
 
             if (!created->EnsureStarted())
             {
@@ -284,6 +290,18 @@ namespace hgl::graph
 
         material_manager->SetBindlessLayout(bindless_texture_manager_->GetLayout());
 
+        // 全局共享 CPU 工作池（Tier 2：解析/编译等纯 CPU 阶段）。材质车道及后续
+        // 消费者借用它，不再各建各的池。先于读盘底座创建：读盘完成回调会把
+        // 解析任务投进这里，池必须先于投递方存活。
+        asset_cpu_pool_ = new asset::AssetCPUTaskPool();
+
+        if (!asset_cpu_pool_->Start(2))
+        {
+            // 起不了共享池不致命：消费者退回自建池路径。
+            GLogWarning("[GraphicsContext] AssetCPUTaskPool Start failed; consumers will self-own pools");
+            SAFE_CLEAR(asset_cpu_pool_)
+        }
+
         // 全局异步文件加载底座：后台单 IO 线程（同一物理设备串行读盘更稳），
         // 主线程侧由各消费系统在自己的更新阶段调用 Pump()/Collect()。
         // 必须在任何消费者（纹理流式加载系统等）创建之前就位。
@@ -298,6 +316,11 @@ namespace hgl::graph
         // 材质车道可能比 LFM 更早创建（懒启动）：此时补注入，保证文件投递碰到盘。
         if (material_async_lane_)
             material_async_lane_->AttachFileManager(loaded_file_manager_);
+
+        // 同理补注入共享 CPU 池；若车道已自建池，`AttachPool` 会告警并维持现状
+        //（功能不受影响，只是多养两个线程）。
+        if (material_async_lane_ && asset_cpu_pool_)
+            material_async_lane_->AttachPool(asset_cpu_pool_);
 
         // 资产包裹挂载：把 `res/` 登记成 `pack(res)`。此后资产引用统一走
         // `pack(res):<逻辑路径>`（无扩展名）或 `pack(res):id:<32 hex>`，
@@ -374,6 +397,14 @@ namespace hgl::graph
                                            GetTextureManager());
             delete material_async_lane_;
             material_async_lane_ = nullptr;
+        }
+
+        // 共享 CPU 池最后停：读盘底座与车道的收尾都可能仍需要它执行在途任务。
+        // `Stop(Drain)` 幂等（车道若自持池已停过自己的，这里只管本上下文这一份）。
+        if (asset_cpu_pool_)
+        {
+            asset_cpu_pool_->Stop(thread::ShutdownMode::Drain);
+            SAFE_CLEAR(asset_cpu_pool_)
         }
 
         // Recipe data contains TextureAsset observers owned by TextureManager.

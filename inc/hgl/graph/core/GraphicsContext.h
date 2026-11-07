@@ -29,6 +29,11 @@
 namespace hgl
 {
     class LoadedFileManager;
+
+    namespace asset
+    {
+        class AssetCPUTaskPool;
+    }
 }//namespace hgl
 
 namespace hgl::graph
@@ -96,6 +101,11 @@ namespace hgl::graph
         /// 归属 GraphicsContext：所有资源级异步加载（纹理流式加载等）共用一个队列，
         /// 保证同一物理设备上不会并发读盘。
         LoadedFileManager *loaded_file_manager_ = nullptr;
+
+        /// 全局共享的 CPU 工作池（Tier 2：解析/编译等纯 CPU 阶段）。
+        /// 归属 GraphicsContext：材质车道等消费者借用它，不再各建各的池；
+        /// 收尾顺序 = 读盘底座先停（回调还会投任务）→ 车道收尾 → 本池最后停。
+        asset::AssetCPUTaskPool *asset_cpu_pool_ = nullptr;
 
         /// Recipe data contains non-owning TextureAsset handles; its registry must
         /// outlive every PrimitiveAsset authored from it and remain device-scoped.
@@ -255,6 +265,9 @@ namespace hgl::graph
         /// 调用方只在主线程使用：Submit/Pump/Collect/Stop 有线程亲和性。
         LoadedFileManager *GetLoadedFileManager() { return loaded_file_manager_; }
         const LoadedFileManager *GetLoadedFileManager() const { return loaded_file_manager_; }
+
+        /// 全局共享 CPU 任务池（未创建时可能为空 ⇒ 消费者退回自建）
+        asset::AssetCPUTaskPool *GetAssetCPUTaskPool() { return asset_cpu_pool_; }
 
 
         /**
