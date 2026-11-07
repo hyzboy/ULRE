@@ -27,8 +27,10 @@ flowchart TB
     subgraph L3["L3 资产流送（主线程，ECS System）"]
         TSS[TextureStreamingSystem]
         GSS[GeometryStreamingSystem]
+        MSS["ModelStreamingSystem（含 ModelRefComponent 自动装配）"]
         TLC[TextureLoadCommitter]
         GLS["LoadGeometryFromStagingAsync"]
+        LANE["MaterialAsyncLoadLane（IO 读盘 → CPU 池解析 → 主线程 Pump 提交）"]
     end
     subgraph L2["L2 通用 GPU 上传（主线程派发 + GPU DMA）"]
         GUQ["GpuUploadQueue 优先级x4 / Staging环形 / 背压 / upload lane"]
@@ -45,6 +47,9 @@ flowchart TB
 
     TSS -->|扫描句柄 Submit| LFM
     GSS -->|扫描句柄 SubmitDirect| LFM
+    MSS -->|模型/配方句柄 Submit| LFM
+    MSS -->|装载前门禁 投整目录| LANE
+    LANE -->|Pump 落地配方| MSS
     LFM -->|读盘请求| AFL
     AFL -.->|worker 读字节直写已映射 staging| DISK
     LFM -->|Pump 回调 OnFileLoaded| TLC
@@ -226,6 +231,42 @@ Pump 回调分支（`OnFileLoaded`）：
 - 需要重试：调用方 `ClearAsyncRequest()` 把句柄放回待办集合。
 - 直写任务的 IO 失败（`OnFileFailed/OnFileCancelled`）：句柄推 `LoadFailed` + 撤销 async 标记，同时**回收调用方持有的 staging**（从登记表移除并销毁）。
 
+### 6.4 模型与材质链路（L3 自动装配闭环）
+
+组件与职责：
+
+| 组件 | 文件 | 职责 |
+|------|------|------|
+| `ModelAsset` / `ModelAssetRegistry` | `inc/hgl/graph/asset/ModelAsset.h` | 模型句柄状态机与句柄表；`RequestModelAsset(uri)` 投递即入表，registry 不自动重试 |
+| `ModelStreamingSystem` | `inc/hgl/ecs/systems/render/streaming/ModelStreamingSystem.h` + `src/ecs/systems/render/streaming/ModelStreamingSystem.cpp` | 每帧七段：`Pump → PruneStreams → PumpMaterialLane → AcquireOneFrame → Advance → Collect → InstantiateModelRefs`。⑦ 装配段**不依赖** IO 管理器，headless 进程里状态机与守卫照常推进 |
+| `ModelRefComponent` | `inc/hgl/ecs/components/ModelRefComponent.h` | 实体侧请求与实例化载体：`uri`（请求原文）、`asset`（观察指针，不拥有）、`instance`（自持三段产物）、`options/skeleton_options`（顶点格式、材质行、mobility 快照）、三段/上报标志、`policy`（可空，不拥有） |
+| `ModelLoadPolicy` | `inc/hgl/ecs/systems/render/streaming/ModelLoadPolicy.h` | 拦截点：`OnBeforeRequest`（返回负值可压下请求，宿主自控节奏）、`OnSkeletonReady / OnGeometryAttached / OnMaterialAttached / OnModelReady / OnModelFailed`；默认全部 no-op |
+| `MaterialAsyncLoadLane` | `inc/hgl/graph/asset/MaterialAsyncLoadLane.h` | 材质装载车道：`AssetCPUTaskPool + MaterialAsyncCompiler + 泵送节奏` 三件套收成对象，`GraphicsContext` 持有并暴露 `GetMaterialAsyncLoadLane()` |
+
+`InstantiateModelRefs` 的三段推进（每帧至多一段，与旧示例手动轮询行为一致）：
+
+```
+请求段: asset 为空且 uri 非空 ⇒ policy->OnBeforeRequest 取优先级 ⇒ RequestModelAsset 挂回组件
+段一:   content.nodes 到位 ⇒ InstantiateSkeleton（一次）⇒ OnSkeletonReady
+段二:   content.assets 增量 AttachGeometries；句柄 Ready 时收口 ⇒ OnGeometryAttached
+段三:   几何收口后 AttachMaterials（一次；调用方未给材质行时取车道自装配的 stream->mats）⇒ OnMaterialAttached
+就绪:   句柄 Ready 且三段落定 ⇒ OnModelReady（只报一次）
+失败:   句柄 HasFailed / registry 回收句柄 / 装配返回 false ⇒ 先置终态标志再 OnModelFailed，不重试
+```
+
+示例接入即「建实体 + 挂组件（uri + Options 快照 + 策略子类）」，**删除了所有示例级手动轮询**（`PollAsyncScene` 与逐帧 bool 接线）；同步通路保留作对照。
+
+材质装载的**两层拆分**（车道优先，消除启动同步扫盘）：
+
+- **绑定解析层**：`BuildSelfContainedModelMaterials` 只从已注册的配方/数据块表与内存索引解析材质绑定，不读盘；
+- **装载触发层**：`Advance()` 的配方门禁把场景目录的配方整目录 `BeginRecipeDirectory/BeginDataBlockDirectory` 投进车道，`Build()` 等 `IsIdle()` 落空再执行——车道两层去重（注册表已有同名 + 本次在途）保证不重复解析；车道不可用（无 GPU/工具场景）时保留同步兜底。
+
+**包裹 URI 寻址**（材质装配支持 `pack(...)` 来源）：
+
+- 语义在门面入口统一解析：`AssetURI::Parse` 后 `uri.IsPack()` ⇒ `ResolveAssetPhysicalPath(pack_uri, out)` 拿到物理路径（经默认挂载/内存索引），再走目录扇出与探针；解析失败即报错返回，不再硬拒绝。
+- 语法顺序是**类型段在来源段之前**：`model:pack(res):ABeautifulGame.StaticMesh/ABeautifulGame`；无类型段时 `pack(res):` 只做物理拼接 + `FileExist`，需带完整扩展名。
+- 示例层入口门禁同样先 `ResolveAssetPhysicalPath` 再 `std::filesystem::exists`（对裸路径直通），否则包裹 URI 字符串会被示例自己的存在性检查挡在引擎之前。
+
 ---
 
 ## 7. 端到端时序（几何为例）
@@ -266,6 +307,10 @@ sequenceDiagram
 | `GpuUploadQueue::Enqueue*/Cancel/Update/Extract*` | 仅主线程 |
 | `GetUploadLane()/GetUploadLaneValue()` | 主线程渲染提交处读取 |
 | 流送系统 `Update()` | 由 ECS 于 `RenderPreBeginFrame` 相位驱动 |
+| `ModelStreamingSystem` 各段（含 `InstantiateModelRefs`） | 仅主线程（ECS 相位驱动）；装配段只碰 ECS 组件与句柄表 |
+| `MaterialAsyncLoadLane` 全部方法（`EnsureStarted/Begin*/Pump/IsIdle/Shutdown`） | 仅主线程（配方表/数据块表无并发保护）；解析在池线程，提交回调在 Pump 所在线程 |
+| `RequestModelAsset / ModelAsset::GetContent()` | 发起仅主线程；内容产物在 IO/解析线程写入，主线程只在 Pump 后读 |
+| `ModelRefComponent` 增删与字段写入 | 仅主线程（ECS 组件）；`policy` 回调同在主线程装配段内触发，回调中**不要**再改本组件的三段标志（已先置位，重入安全） |
 
 ## 9. 所有权与生命周期规则
 
@@ -286,7 +331,8 @@ sequenceDiagram
 | L2 | `inc/hgl/graph/module/GpuUploadTask.h`、`inc/hgl/graph/module/GpuUploadQueue.h` |
 | 纹理 | `inc/hgl/graph/module/TextureManager.h`、`TextureLoadCommitter.h`、`inc/hgl/graph/asset/TextureAsset.h`、`inc/hgl/graph/texture/TextureMemoryLoader.h`、`src/SceneGraph/texture/VKTexture2DLoader.cpp`、`src/ecs/systems/render/streaming/TextureStreamingSystem.cpp` |
 | 几何 | `inc/hgl/ecs/systems/render/streaming/GeometryStreamingSystem.h`、`src/ecs/systems/render/streaming/GeometryStreamingSystem.cpp`、`inc/hgl/graph/geo/LoadGeometry.h`、`src/SceneGraph/geo/GeometryLoader.cpp` |
-| 示例/测试 | `example/Texture/AsyncTextureUpload.cpp`、`example/Loader/LoadedFileManagerTest.cpp`、`TestModelStreamingSystem`、`async_load_test` |
+| 模型/材质 | `inc/hgl/graph/asset/ModelAsset.h`、`inc/hgl/ecs/systems/render/streaming/ModelStreamingSystem.h`、`src/ecs/systems/render/streaming/ModelStreamingSystem.cpp`、`inc/hgl/ecs/components/ModelRefComponent.h`、`inc/hgl/ecs/systems/render/streaming/ModelLoadPolicy.h`、`inc/hgl/graph/asset/MaterialAsyncLoadLane.h`、`inc/hgl/graph/mesh/LoadStaticMesh.h`、`src/SceneGraph/mesh/LoadStaticMesh.cpp`（门面 + `BuildSelfContainedModelMaterials` + 包裹寻址）、`CMAssetsManage/inc/hgl/asset/AssetURI.h`、`inc/hgl/graph/asset/AssetSourceMount.h`（`ResolveAssetPhysicalPath`） |
+| 示例/测试 | `example/Texture/AsyncTextureUpload.cpp`、`example/Loader/LoadedFileManagerTest.cpp`、`TestModelStreamingSystem`、`TestModelAutoInstantiate`、`TestMaterialAsyncLoadLane`、`async_load_test`、`example/Geometry/LoadModel`（`LS_SELFCHECK` 定帧自检） |
 
 ## 11. 维护须知（Do & Don't）
 
@@ -296,4 +342,6 @@ sequenceDiagram
 - ✅ 新增流送链路照抄模板：`扫描句柄 -> Submit/SubmitDirect -> Pump -> OnFileLoaded -> GPU 提交 -> Commit ->（同帧）CanRender`，相位必须早于渲染收集。
 - ✅ Direct-to-Staging 的字节数若不可路由，`Submit()` 会回退完整读取，语义仍正确，只是少一次零拷贝优化。
 - ✅ 回归测试从**仓库根目录**运行（`TestLoadedFileManager`、`TestTextureArraySpec` 依赖相对路径）。
+- ✅ 改动**渲染结果**（着色/材质装配/资源内容）后必须复核并重录 `example/Geometry/LoadModel` 的 `LS_SELFCHECK` 定帧常数（`kSelfFNVPBR`/`kSelfFNVDebug`，帧 8、1280x720 A2BGR10UN）：跑一遍拿 `fnv1a64` 实测值 → **肉眼核对定帧截图**确认画面合法 → 再录常数。只录数值不看图 = 把回归也固化进基线。
+- ⚠️ 运行 LoadModel/示例必须以**仓库根为工作目录**（`res/...` 相对路径解析依赖 cwd）。
 - ⚠️ DMA 直通比例可观测性：`direct_bytes / direct_all` 已在 handler 内登记，尚未暴露统计接口；需要时加 getter 即可。

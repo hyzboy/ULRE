@@ -710,8 +710,9 @@ public:
             static constexpr uint32_t kSelfW           = 1280;
             static constexpr uint32_t kSelfH           = 720;
             static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
-            static constexpr uint64_t kSelfFNVDebug    = 0xc9e38ed2f49a069bull;  // 调试法线路径（LS_DEBUGNORMAL=1）
-            static constexpr uint64_t kSelfFNVPBR      = 0x407791E46B561248ull;  // PBR 路径（待实跑记录）
+            static constexpr uint64_t kSelfFNVDebug    = 0xA99178FD2FA1B0C6ull;  // 调试法线路径（LS_DEBUGNORMAL=1；2026-11-07 重录：res 修复+闭环后，画面为棋盘地面+棋子法线着色，背景暗）
+            static constexpr uint64_t kSelfFNVPBR      = 0x35F0E9FD935DA9ADull;  // PBR 路径（落地闭环后重录：
+                                                        // 自动装配/车道优先/包裹寻址合入后的定帧画面）
                                                         // （改渲染结果必须复核并重录）
 
             if (s_selfcheck && ++s_self_frame == 8)
