@@ -8,8 +8,8 @@
 #include<hgl/graph/data/ImageRegion.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/graph/asset/TextureAsset.h>
-#include<hgl/graph/module/TextureUploadTask.h>
-#include<hgl/graph/module/TextureUploadQueue.h>
+#include<hgl/graph/module/GpuUploadTask.h>
+#include<hgl/graph/module/GpuUploadQueue.h>
 #include<hgl/type/ValueArray.h>
 
 namespace hgl::graph{
@@ -20,7 +20,7 @@ GRAPH_MODULE_CLASS(TextureManager)
 {
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
-    TextureUploadQueue *upload_queue=nullptr;
+    GpuUploadQueue *upload_queue=nullptr;
 
 private:
 
@@ -139,7 +139,7 @@ public: // Load
                                            bool auto_mipmaps = false,
                                            UploadPriority priority = UploadPriority::Normal,
                                            uint32_t bindless_handle = 0,
-                                           void (*callback)(TextureUploadTask *, void *) = nullptr,
+                                           void (*callback)(GpuUploadTask *, void *) = nullptr,
                                            void *user_data = nullptr);
     TextureCube *       LoadTextureCube(const OSString &,bool auto_mipmaps=false);
 
@@ -157,12 +157,12 @@ public: // Load
 
 public: // Async Upload Queue
 
-    TextureUploadQueue *GetUploadQueue() { return upload_queue; }
+    GpuUploadQueue *GetUploadQueue() { return upload_queue; }
 
     uint64_t CreateTexture2DAsync(TextureCreateInfo *tci,
                                  UploadPriority priority = UploadPriority::Normal,
                                  uint32_t bindless_handle = 0,
-                                 void (*callback)(TextureUploadTask *, void *) = nullptr,
+                                 void (*callback)(GpuUploadTask *, void *) = nullptr,
                                  void *user_data = nullptr);
 
     bool CancelUpload(uint64_t task_id);

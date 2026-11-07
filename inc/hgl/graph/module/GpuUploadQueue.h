@@ -17,7 +17,7 @@ namespace hgl::graph
     class StagingRingBuffer;
 
     /**
-     * 通用 GPU 异步上传队列（由 TextureUploadQueue 泛化而来）。
+     * 通用 GPU 异步上传队列。
      * 不区分上传载荷是什么——只区分两种硬件 DMA 形态：
      *  - BufferToImage：纹理 / Cubemap / 纹理数组（vkCmdCopyBufferToImage）
      *  - BufferToBuffer：几何 VBO/IBO、SSBO 等任意原始字节块（vkCmdCopyBuffer）

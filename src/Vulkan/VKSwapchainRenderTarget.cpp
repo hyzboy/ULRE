@@ -6,7 +6,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/TextureUploadQueue.h>
+#include<hgl/graph/module/GpuUploadQueue.h>
 #include<hgl/Macro.h>
 #include<hgl/log/Log.h>
 

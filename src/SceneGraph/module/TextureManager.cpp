@@ -23,7 +23,7 @@ GRAPH_MODULE_CONSTRUCT(TextureManager)
 {
     EnsureTransferResources();
     if (GetDevice())
-        upload_queue = new TextureUploadQueue(GetDevice());
+        upload_queue = new GpuUploadQueue(GetDevice());
 }
 
 TextureManager::~TextureManager()
@@ -98,7 +98,7 @@ void TextureManager::EnsureTransferResources()
         return;
 
     if(!upload_queue)
-        upload_queue=new TextureUploadQueue(dev);
+        upload_queue=new GpuUploadQueue(dev);
 
     if(texture_cmd_buf && texture_queue)
         return;
@@ -202,7 +202,7 @@ uint64_t CreateTexture2DFromFileAsync(TextureManager *tm,
                                      bool auto_mipmaps,
                                      UploadPriority priority,
                                      uint32_t bindless_handle,
-                                     void (*callback)(TextureUploadTask *, void *),
+                                     void (*callback)(GpuUploadTask *, void *),
                                      void *user_data);
 
 Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
@@ -237,7 +237,7 @@ uint64_t TextureManager::LoadTexture2DAsync(const OSString &filename,
                                             bool auto_mipmaps,
                                             UploadPriority priority,
                                             uint32_t bindless_handle,
-                                            void (*callback)(TextureUploadTask *, void *),
+                                            void (*callback)(GpuUploadTask *, void *),
                                             void *user_data)
 {
     return CreateTexture2DFromFileAsync(this, filename, auto_mipmaps, priority, bindless_handle, callback, user_data);
@@ -381,7 +381,7 @@ TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_
 uint64_t TextureManager::CreateTexture2DAsync(TextureCreateInfo *tci,
                                              UploadPriority priority,
                                              uint32_t bindless_handle,
-                                             void (*callback)(TextureUploadTask *, void *),
+                                             void (*callback)(GpuUploadTask *, void *),
                                              void *user_data)
 {
     if (!tci)
@@ -438,7 +438,7 @@ uint64_t TextureManager::CreateTexture2DAsync(TextureCreateInfo *tci,
         return 0;
     }
 
-    TextureUploadTask *task = new TextureUploadTask();
+    GpuUploadTask *task = new GpuUploadTask();
     task->priority = priority;
     task->target_texture = tex;
     task->tci = tci;
@@ -474,12 +474,12 @@ void TextureManager::UpdateUploadQueue(BindlessTextureManager *bindless_mgr)
 
     upload_queue->Update();
 
-    ValueArray<TextureUploadTask *> completed;
+    ValueArray<GpuUploadTask *> completed;
     upload_queue->ExtractCompletedTasks(completed);
 
     for (int i = 0; i < completed.GetCount(); ++i)
     {
-        TextureUploadTask *task = completed[i];
+        GpuUploadTask *task = completed[i];
         if (task->state == UploadTaskState::Completed)
         {
             if (bindless_mgr && task->bindless_handle > 0 && task->target_texture)

@@ -6,7 +6,7 @@
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/TextureUploadTask.h>
+#include<hgl/graph/module/GpuUploadTask.h>
 #include<hgl/graph/texture/TextureLoader.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/type/UnorderedMap.h>
@@ -43,7 +43,7 @@ namespace hgl::ecs
         /// GPU 上传完成回调：句柄的唯一"转正"点。
         /// user_data 就是句柄本身（归 TextureManager 所有，活得比任何世界都久），
         /// 因此这里不需要系统指针，也就不存在系统先死、回调后到的悬垂。
-        void OnTextureUploadFinished(graph::TextureUploadTask *task, void *user_data)
+        void OnTextureUploadFinished(graph::GpuUploadTask *task, void *user_data)
         {
             auto *asset = static_cast<graph::TextureAsset *>(user_data);
 
@@ -363,7 +363,7 @@ namespace hgl::ecs
             void *map_ptr = nullptr;
             uint64 payload = 0;
 
-            if (graph::TextureUploadQueue *queue = tex_manager->GetUploadQueue())
+            if (graph::GpuUploadQueue *queue = tex_manager->GetUploadQueue())
             {
                 payload = QueryPayloadBytes(filename);
 

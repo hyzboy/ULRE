@@ -106,13 +106,13 @@ add_cm_library(ULRE.Work "ULRE" ${WORK_SOURCE})
 
 ### 4.4 `TextureLoadCommitter`(纹理提交模块,主线程)
 - 位置:`inc/hgl/graph/module/TextureLoadCommitter.h` + `src/SceneGraph/module/TextureLoadCommitter.cpp`,并在 `src/SceneGraph/CMakeLists.txt` 的 `GRAPH_MODULE_FILES` 里登记。
-- **重要发现(推翻了此前"要改 `TextureUploadTask` 持有 `LoadedFilePtr`"的假设)**:`TextureLoader::Load(io::InputStream*)` 已存在,`io::MemoryInputStream` 也存在;而 `VkTextureLoader` 在 `Load` 内部是**同步把字节拷进映射好的 staging `DeviceBuffer`**(`OnBegin` 创建并 `Map`)。所以只要 `Load` 返回,`LoadedFile` 的字节就不再被需要,**调用方可立即释放引用,`TextureUploadTask` 不需要改**。
+- **重要发现(推翻了此前"要改 `GpuUploadTask`(原名 TextureUploadTask,已泛化更名)持有 `LoadedFilePtr`"的假设)**:`TextureLoader::Load(io::InputStream*)` 已存在,`io::MemoryInputStream` 也存在;而 `VkTextureLoader` 在 `Load` 内部是**同步把字节拷进映射好的 staging `DeviceBuffer`**(`OnBegin` 创建并 `Map`)。所以只要 `Load` 返回,`LoadedFile` 的字节就不再被需要,**调用方可立即释放引用,`GpuUploadTask` 不需要改**。
 - 做法:
   - 在 `src/SceneGraph/texture/VKTexture2DLoader.cpp` 新增"从内存创建异步上传"函数:`MemoryInputStream` → `loader.Load(&stream)` → `CreateTextureCreateInfo` → `tm->CreateTexture2DAsync(...)`(逻辑与现有 `CreateTexture2DFromFileAsync` 相同,只是输入源不同)。
   - 在 `src/SceneGraph/texture/VKTexture2DArrayLoader.cpp` 把 `LoadTexture2DLayerFromFile` 的函数体拆成"`Load` + 公共的层提交逻辑",再加内存版本(同样用 `MemoryInputStream`)。注意这两个文件已经依赖 `VkTextureLoader<Texture2D,Texture2DLoader>::OnExtent` 的显式特化,新代码须放在同样的 TU 里。
   - `TextureLoadCommitter` 持有 `TextureManager*`,提供 `CommitTexture2D(const LoadedFile*, auto_mipmaps, UploadPriority, bindless_handle, callback, user_data) → task_id` 与 `CommitTexture2DArrayLayer(const LoadedFile*, Texture2DArray*, layer) → bool`。
   - `MemoryInputStream` 构造需要非 const `void*`,用 `const_cast`。
-- 线程契约写进头文件注释:**当前只能在主线程调用**;`TextureUploadTask`/多 transfer queue family 多线程化留给未来。
+- 线程契约写进头文件注释:**当前只能在主线程调用**;`GpuUploadTask`/多 transfer queue family 多线程化留给未来。
 
 ### 4.5 两个示例改造(编译通过后)
 - 保持 `TextureManager::LoadTexture2DAsync` / `LoadTexture2DArray` 的**原签名不变**(它们的返回值语义——立即返回 `task_id`、同步 `bool`——被现有代码依赖)。改造发生在示例里,新增的路径是"管理器 + handler + committer"。
@@ -153,6 +153,6 @@ add_cm_library(ULRE.Work "ULRE" ${WORK_SOURCE})
 | 优先级队列 | `CMCore/inc/hgl/concurrency/PriorityTaskQueue.h` |
 | 邮箱 | `CMCore/inc/hgl/concurrency/SwapMailbox.h` |
 | 引用计数/元信息 | `CMCore/inc/hgl/object/RefObject.h`;`MetaObject.h` 已移至 `CMAssetsManage/inc/hgl/object/`（实现 `CMAssetsManage/src/MetaObject.cpp`） |
-| 纹理异步上传 | `inc/hgl/graph/module/TextureUploadQueue.h`、`TextureUploadTask.h`、`TextureManager.h`;`src/SceneGraph/module/` |
+| 纹理异步上传 | `inc/hgl/graph/module/GpuUploadQueue.h`、`GpuUploadTask.h`(原 `TextureUploadQueue.h`/`TextureUploadTask.h` 已删除并入通用队列)、`TextureManager.h`;`src/SceneGraph/module/` |
 | 纹理文件加载 | `src/SceneGraph/texture/VKTextureLoader.h`、`VKTexture2DLoader.cpp`、`VKTexture2DArrayLoader.cpp`;`inc/hgl/graph/texture/TextureLoader.h` |
 | 两个目标示例 | `example/Texture/AsyncTextureUpload.cpp`、`TextureArrayStreaming.cpp` |

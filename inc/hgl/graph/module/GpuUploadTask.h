@@ -69,8 +69,8 @@ namespace hgl::graph
 
     /**
      * 通用 GPU 异步上传任务描述。
-     * 由原 TextureUploadTask 泛化而来：纹理支路（BufferToImage）字段与语义保持不变，
-     * 新增缓冲支路（BufferToBuffer）承载几何 VBO/IBO、SSBO 等零拷贝直传任务。
+     * 纹理支路（BufferToImage）承载像素拷贝，缓冲支路（BufferToBuffer）
+     * 承载几何 VBO/IBO、SSBO 等零拷贝直传任务。
      */
     struct GpuUploadTask
     {

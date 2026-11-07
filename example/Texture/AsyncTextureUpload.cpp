@@ -20,7 +20,7 @@
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/TextureManager.h>
-#include <hgl/graph/module/TextureUploadQueue.h>
+#include <hgl/graph/module/GpuUploadQueue.h>
 #include <hgl/graph/module/TextureLoadCommitter.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
@@ -88,9 +88,9 @@ namespace
     constexpr const os_char *kCancelFile    = OS_TEXT("res/image/PeachWine.Tex2D");
 
     /**
-     * GPU 上传完成回调：在线程/帧序上由 TextureUploadQueue 触发。
+     * GPU 上传完成回调：在线程/帧序上由 GpuUploadQueue 触发。
      */
-    void OnUploadTaskFinished(TextureUploadTask *task, void *user_data);
+    void OnUploadTaskFinished(GpuUploadTask *task, void *user_data);
 }
 
 /**
@@ -476,7 +476,7 @@ public:
 
 namespace
 {
-    void OnUploadTaskFinished(TextureUploadTask *task, void *user_data)
+    void OnUploadTaskFinished(GpuUploadTask *task, void *user_data)
     {
         if (!task)
             return;

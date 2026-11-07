@@ -69,7 +69,7 @@ namespace hgl::graph
                                bool auto_mipmaps,
                                UploadPriority priority=UploadPriority::Normal,
                                uint32 bindless_handle=0,
-                               void (*callback)(TextureUploadTask *,void *)=nullptr,
+                               void (*callback)(GpuUploadTask *,void *)=nullptr,
                                void *user_data=nullptr);
 
         /**
@@ -101,7 +101,7 @@ namespace hgl::graph
                                      bool auto_mipmaps,
                                      UploadPriority priority=UploadPriority::Normal,
                                      uint32 bindless_handle=0,
-                                     void (*callback)(TextureUploadTask *,void *)=nullptr,
+                                     void (*callback)(GpuUploadTask *,void *)=nullptr,
                                      void *user_data=nullptr);
 
         /**

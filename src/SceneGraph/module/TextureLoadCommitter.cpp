@@ -9,7 +9,7 @@ namespace hgl::graph
                                                 bool auto_mipmaps,
                                                 UploadPriority priority,
                                                 uint32 bindless_handle,
-                                                void (*callback)(TextureUploadTask *,void *),
+                                                void (*callback)(GpuUploadTask *,void *),
                                                 void *user_data)
     {
         if(!tex_manager||!file)
@@ -66,7 +66,7 @@ namespace hgl::graph
                                                        bool auto_mipmaps,
                                                        UploadPriority priority,
                                                        uint32 bindless_handle,
-                                                       void (*callback)(TextureUploadTask *,void *),
+                                                       void (*callback)(GpuUploadTask *,void *),
                                                        void *user_data)
     {
         if(!tex_manager||!file)

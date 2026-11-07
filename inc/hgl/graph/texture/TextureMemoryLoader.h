@@ -50,7 +50,7 @@ namespace hgl::graph
                                           bool auto_mipmaps,
                                           UploadPriority priority,
                                           uint32 bindless_handle,
-                                          void (*callback)(TextureUploadTask *,void *),
+                                          void (*callback)(GpuUploadTask *,void *),
                                           void *user_data,
                                           const OSString &source_name=OSString());
 
@@ -97,7 +97,7 @@ namespace hgl::graph
                                            bool auto_mipmaps,
                                            UploadPriority priority,
                                            uint32 bindless_handle,
-                                           void (*callback)(TextureUploadTask *,void *),
+                                           void (*callback)(GpuUploadTask *,void *),
                                            void *user_data,
                                            const OSString &source_name=OSString());
 

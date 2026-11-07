@@ -34,7 +34,7 @@ uint64 CreateTexture2DFromFileAsync(TextureManager *tm,
                                      bool auto_mipmaps,
                                      UploadPriority priority,
                                      uint32 bindless_handle,
-                                     void (*callback)(TextureUploadTask *, void *),
+                                     void (*callback)(GpuUploadTask *, void *),
                                      void *user_data)
 {
     if (!tm || filename.IsEmpty())
@@ -73,7 +73,7 @@ uint64 CreateTexture2DFromMemoryAsync(TextureManager *tm,
                                       bool auto_mipmaps,
                                       UploadPriority priority,
                                       uint32 bindless_handle,
-                                      void (*callback)(TextureUploadTask *,void *),
+                                      void (*callback)(GpuUploadTask *,void *),
                                       void *user_data,
                                       const OSString &source_name)
 {
@@ -102,7 +102,7 @@ uint64 CreateTexture2DFromStagingAsync(TextureManager *tm,
                                        bool auto_mipmaps,
                                        UploadPriority priority,
                                        uint32 bindless_handle,
-                                       void (*callback)(TextureUploadTask *,void *),
+                                       void (*callback)(GpuUploadTask *,void *),
                                        void *user_data,
                                        const OSString &source_name)
 {
