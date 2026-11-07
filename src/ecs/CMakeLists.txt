@@ -292,6 +292,15 @@ add_ecs_test(TestAssetURIByteSource tests/TestAssetURIByteSource.cpp)
 # 落地T2判据：GPU 模型引用/批次组件语义 + 动静 TRS 接入约定（不碰设备）
 add_ecs_test(TestGPUModelComponents tests/TestGPUModelComponents.cpp)
 
+# 落地T5.1判据：模板/部件行布局、常量口径、GLSL 镜像逐字段对拍（不碰设备）
+add_ecs_test(TestGPUModelTemplate tests/TestGPUModelTemplate.cpp)
+
+# 落地T5.2判据：逐部件展开的 CPU 参考实现 vs 着色器口径（矩阵顺序/LOD 选级/阴影代理，不碰设备）
+add_ecs_test(TestGPUModelExpansionParity tests/TestGPUModelExpansionParity.cpp)
+
+# 落地T5.3判据：模板实例化的聚合账与 ICB 命令语义（50 实例共享桶组，不碰设备）
+add_ecs_test(TestGPUModelExpansionAggregation tests/TestGPUModelExpansionAggregation.cpp)
+
 if(BUILD_TESTING)
     add_test(
         NAME TestTransformFlatStorage
@@ -622,5 +631,29 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         TestGPUModelComponents
+        PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
+
+    add_test(
+        NAME TestGPUModelTemplate
+        COMMAND TestGPUModelTemplate
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestGPUModelTemplate
+        PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
+
+    add_test(
+        NAME TestGPUModelExpansionParity
+        COMMAND TestGPUModelExpansionParity
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestGPUModelExpansionParity
+        PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
+
+    add_test(
+        NAME TestGPUModelExpansionAggregation
+        COMMAND TestGPUModelExpansionAggregation
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestGPUModelExpansionAggregation
         PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
 endif()

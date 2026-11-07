@@ -31,7 +31,11 @@ namespace hgl::ecs
         uint64_t part_visibility_mask = 0xFFFFFFFFFFFFFFFFull;  ///< 部件可见位（1 = 渲染；默认全 1）
 
         // ── 预留插槽（空壳，字段即 ABI，后续阶段接消费者）─────────────────
-        uint32_t custom_data_index  = 0;  ///< 实例自定义数据行（逐实例颜色/材质微调，T4 接）
+        /// 实例自定义数据行（逐实例颜色/材质微调）。
+        /// 消费者：`hgl::graph::ssbo::InstanceCustomData`（见 `InstanceCustomData.h`），
+        /// 行 ID 0 保留为「无自定义数据」哨兵（`kInstanceCustomDataNone`），
+        /// 非 0 时按行号索引到自定义数据池，由着色器与本实体的展开实例对齐读取。
+        uint32_t custom_data_index  = 0;
         uint32_t prev_transform_id  = 0;  ///< TAA motion vector 前帧变换行（T4 接）
 
         GPUModelRefComponent() = default;

@@ -38,10 +38,10 @@ namespace hgl::graph::ssbo
      */
     struct alignas(16) InstanceCustomData
     {
-        Vector4f custom_color = Vector4f(1.0f, 1.0f, 1.0f, 1.0f); ///< rgb 色调乘子 + a 不透明度乘子
+        math::Vector4f custom_color = math::Vector4f(1.0f, 1.0f, 1.0f, 1.0f); ///< rgb 色调乘子 + a 不透明度乘子
 
         InstanceCustomData() = default;
-        explicit InstanceCustomData(const Vector4f &color) : custom_color(color) {}
+        explicit InstanceCustomData(const math::Vector4f &color) : custom_color(color) {}
     };
 
     static_assert(sizeof(InstanceCustomData) == 16, "InstanceCustomData 必须恰为 16 字节");
