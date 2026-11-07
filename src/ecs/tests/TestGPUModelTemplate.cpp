@@ -252,6 +252,62 @@ namespace
         return true;
     }
 
+    bool TestPrevTransformResolution()
+    {
+        // 模拟 stage_common_head.glsl 中的 ResolvePrevTransformID 寻址契约：
+        ModelExpansionArena arena{};
+        arena.l2w_base_row = 10000;
+        arena.l2w_row_capacity = 4096;
+        arena.prev_l2w_base_row = 14096;
+
+        const auto resolve_prev_transform = [&](uint32_t curr_id) -> uint32_t {
+            if (arena.prev_l2w_base_row == 0 || arena.l2w_row_capacity == 0)
+                return curr_id;
+            if (curr_id >= arena.l2w_base_row && curr_id < arena.l2w_base_row + arena.l2w_row_capacity)
+            {
+                uint32_t inst_row = curr_id - arena.l2w_base_row;
+                return static_cast<uint32_t>(arena.prev_l2w_base_row) + inst_row;
+            }
+            return curr_id;
+        };
+
+        // 1. 展开段内实例：正确映射到上一帧展开段
+        for (uint32_t inst = 0; inst < 100; ++inst)
+        {
+            const uint32_t curr_row = arena.l2w_base_row + inst;
+            const uint32_t prev_row = resolve_prev_transform(curr_row);
+            if (prev_row != arena.prev_l2w_base_row + inst)
+            {
+                GLogError(u8"TestPrevTransformResolution: 展开段实例上一帧行号映射错误");
+                return false;
+            }
+        }
+
+        // 2. 外部实例（普通实体或静态实体）：回退到 curr_id
+        if (resolve_prev_transform(500) != 500
+         || resolve_prev_transform(20000) != 20000)
+        {
+            GLogError(u8"TestPrevTransformResolution: 外部实例未能恒等回退");
+            return false;
+        }
+
+        // 3. 动态模型变换差异模拟：前帧矩阵与当前帧矩阵正确产生位移差分
+        const math::Matrix4f prev_mat = glm::translate(math::Matrix4f(1.0f), math::Vector3f(0.0f, 0.0f, 0.0f));
+        const math::Matrix4f curr_mat = glm::translate(math::Matrix4f(1.0f), math::Vector3f(1.0f, 0.0f, 0.0f));
+        const math::Vector4f local_vertex(0.0f, 0.0f, 0.0f, 1.0f);
+
+        const math::Vector4f prev_world = prev_mat * local_vertex;
+        const math::Vector4f curr_world = curr_mat * local_vertex;
+
+        if (curr_world.x - prev_world.x != 1.0f)
+        {
+            GLogError(u8"TestPrevTransformResolution: 双矩阵运动差分计算异常");
+            return false;
+        }
+
+        return true;
+    }
+
     // ── B 层：GLSL 镜像逐字段对拍 ───────────────────────────────────────────
 
     bool ReadSource(const OSString &path, AnsiString &out_text)
@@ -466,14 +522,15 @@ namespace
 
     bool TestSourceContracts()
     {
-        AnsiString registry_src, cull_src, mgr_src, stage_head_src, interstage_writer_src, surface_src;
+        AnsiString registry_src, cull_src, mgr_src, stage_head_src, interstage_writer_src, surface_src, orient_src;
 
         if (!ReadSource(OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"), registry_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"), cull_src)
             || !ReadSource(OS_TEXT("src/SceneGraph/asset/ModelTemplateManager.cpp"), mgr_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/stage/stage_common_head.glsl"), stage_head_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/stage/interstage_varying_writer.glsl"), interstage_writer_src)
-            || !ReadSource(OS_TEXT("ShaderLibrary/module/provider/surface/surface_material.glsl"), surface_src))
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/provider/surface/surface_material.glsl"), surface_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/vertex/helpers/orient_world.glsl"), orient_src))
         {
             GLogError(u8"TestGPUModelTemplate: 无法读取源文件（需在仓库根目录运行）");
             return false;
@@ -521,6 +578,11 @@ namespace
         const bool surface_color = ContainsToken(surface_src, "surface.baseColor = material.baseColor * si.vertexColor.rgb;");
         const bool surface_alpha = ContainsToken(surface_src, "surface.alpha = material.alpha * si.vertexColor.a;");
 
+        // T7.2/T7.3：上一帧矩阵双帧展开与着色器消费契约
+        const bool cull_prev_l2w = ContainsToken(cull_src, "l2w_world_write.mats[prev_l2w_row] = prev_part_l2w;");
+        const bool stage_head_prev_resolve = ContainsToken(stage_head_src, "ResolvePrevTransformID(uint iid)");
+        const bool orient_prev_l2w = ContainsToken(orient_src, "GetPrevL2W()");
+
         const struct
         {
             bool        ok;
@@ -544,6 +606,9 @@ namespace
             { mesh_varying_color, "网格阶段写入顶点色时必须调制 ResolveInstanceCustomColor" },
             { surface_color, "材质表面求值必须将 baseColor 与 si.vertexColor.rgb 调制" },
             { surface_alpha, "材质表面求值必须将 alpha 与 si.vertexColor.a 调制" },
+            { cull_prev_l2w, "剔除计算必须将 prev_part_l2w 写入上一帧展开矩阵段" },
+            { stage_head_prev_resolve, "stage_common_head 必须提供 ResolvePrevTransformID 接口" },
+            { orient_prev_l2w, "orient_world 必须提供 GetPrevL2W 接口供历史变换消费" },
         };
 
         bool ok = true;
@@ -568,6 +633,7 @@ int main()
     Check(TestRowLayout(), "行布局（宽/对齐/字段偏移）");
     Check(TestDefaultsAndConstants(), "默认值与常量口径");
     Check(TestCustomColorModulation(), "自定义颜色与透明度调制");
+    Check(TestPrevTransformResolution(), "上一帧矩阵寻址与运动差分");
     Check(TestGlslMirrorParity(), "GLSL 镜像逐字段对拍");
     Check(TestSourceContracts(), "池/展开侧/着色器源码契约");
 

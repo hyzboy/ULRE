@@ -24,6 +24,11 @@ vec3 GetWorldPos(vec4 local_pos)
     return (GetL2W() * local_pos).xyz;
 }
 
+vec3 GetPrevWorldPos(vec4 local_pos)
+{
+    return (GetPrevL2W() * local_pos).xyz;
+}
+
 vec3 GetWorldNormal(vec3 local_normal)
 {
     return NormalToWorldSpace(GetL2W(), local_normal);

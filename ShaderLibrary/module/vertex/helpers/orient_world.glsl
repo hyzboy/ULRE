@@ -24,6 +24,10 @@ mat4 GetL2W()
 {
     return l2w.mats[TransformID];
 }
+mat4 GetPrevL2W()
+{
+    return l2w.mats[TransformID];
+}
 #else
 // Standard path: L2W resolved from gl_InstanceIndex through the l2w_index_rows
 // table (injected by CompileCompositorMaterial).
@@ -31,6 +35,11 @@ mat4 GetL2W()
 {
     uint transformID = ResolveTransformID(gl_InstanceIndex);
     return l2w.mats[transformID];
+}
+mat4 GetPrevL2W()
+{
+    uint prevTransformID = ResolvePrevTransformID(gl_InstanceIndex);
+    return l2w.mats[prevTransformID];
 }
 #endif // HGL_L2W_FROM_VERTEX_ATTR
 

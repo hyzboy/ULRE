@@ -43,6 +43,22 @@ layout(push_constant) uniform RootAddresses
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer LocalToWorldIndexRef { uint values[]; };
 uint ResolveTransformID(uint iid) { return uint(LocalToWorldIndexRef(pc_root.addr_l2w_index).values[iid]); }
 
+uint ResolvePrevTransformID(uint iid)
+{
+    uint curr_id = ResolveTransformID(iid);
+    if (pc_root.addr_world_addresses == 0ul) return curr_id;
+    uint64_t addr_arena = WorldAddressesRef(pc_root.addr_world_addresses).addr_model_expansion;
+    if (addr_arena == 0ul) return curr_id;
+    ModelExpansionArenaData arena = ModelExpansionArenaRef(addr_arena).arena;
+    if (arena.prev_l2w_base_row == 0ul || arena.l2w_row_capacity == 0u) return curr_id;
+    if (curr_id >= arena.l2w_base_row && curr_id < arena.l2w_base_row + arena.l2w_row_capacity)
+    {
+        uint inst_row = curr_id - arena.l2w_base_row;
+        return uint(arena.prev_l2w_base_row) + inst_row;
+    }
+    return curr_id;
+}
+
 vec4 ResolveInstanceCustomColor(uint iid)
 {
     if (pc_root.addr_world_addresses == 0ul) return vec4(1.0);
