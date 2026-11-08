@@ -500,7 +500,7 @@ namespace
          || texture_quad.recipe.recipe_name != "TextureQuad.UnlitTexture"
          || texture_quad.recipe.textures.size() != 1
          // 51f45c1fa 起示例 TOML 直接用 pack(res) 包裹 URI，解析器按原文存 resource_id。
-         || texture_quad.recipe.textures[0].resource_id != "pack(res):image/lena.Tex2D")
+         || texture_quad.recipe.textures[0].resource_id != "tex2d:pack(res):image/lena")
             return false;
 
         // overlay 配方只写与默认不同的键，其余保持默认。

@@ -10,10 +10,10 @@ asset = "rt:RenderToTexture:OffscreenRT:color0"
 
 [[textures]]
 name = "normal"
-asset = "pack(res):image/Brickwall/Normal.Tex2D"
+asset = "tex2d:pack(res):image/Brickwall/Normal"
 auto_mipmaps = true
 
 [[textures]]
 name = "roughness"
-asset = "pack(res):image/Brickwall/Roughness.Tex2D"
+asset = "tex2d:pack(res):image/Brickwall/Roughness"
 auto_mipmaps = true

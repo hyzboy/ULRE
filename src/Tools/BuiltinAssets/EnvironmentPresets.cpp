@@ -49,8 +49,8 @@ namespace hgl::graph::builtin
             spec.visual.scale = 1.0f;
             spec.visual.track_camera = true;
             spec.ambient.mode = SkyMode::CubeMapIBL;
-            spec.ibl.irradiance = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-            spec.ibl.prefilter = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+            spec.ibl.irradiance = OS_TEXT("texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance");
+            spec.ibl.prefilter = OS_TEXT("texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter");
             spec.ldr.mode = SkyAmbientLDR::On;
             spec.ldr.exposure_base = 2.5f;
             spec.ldr.sun_scale = 1.0f;
@@ -73,8 +73,8 @@ namespace hgl::graph::builtin
             spec.visual.scale = 1.0f;
             spec.visual.track_camera = true;
             spec.ambient.mode = SkyMode::OctahedralIBL;
-            spec.ibl.irradiance = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexOct");
-            spec.ibl.prefilter = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexOct");
+            spec.ibl.irradiance = OS_TEXT("texoct:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance");
+            spec.ibl.prefilter = OS_TEXT("texoct:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter");
             spec.ldr.mode = SkyAmbientLDR::On;
             spec.ldr.exposure_base = 2.5f;
             spec.ldr.sun_scale = 1.0f;
@@ -97,8 +97,8 @@ namespace hgl::graph::builtin
             spec.visual.scale = 100.0f;
             spec.visual.track_camera = true;
             spec.ambient.mode = SkyMode::LambertDome;
-            spec.ibl.irradiance = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-            spec.ibl.prefilter = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+            spec.ibl.irradiance = OS_TEXT("texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance");
+            spec.ibl.prefilter = OS_TEXT("texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter");
             spec.ldr.mode = SkyAmbientLDR::On;
             spec.ldr.exposure_base = 2.5f;
             spec.ldr.sun_scale = 1.0f;

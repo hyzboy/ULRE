@@ -4,7 +4,7 @@ domain = "UnlitTexture"
 
 [[textures]]
 name = "base_color"
-asset = "pack(res):image/mipmaps/MipLevels.RGBA8.Tex2D"
+asset = "tex2d:pack(res):image/mipmaps/MipLevels.RGBA8"
 required = true
 
 [transform]

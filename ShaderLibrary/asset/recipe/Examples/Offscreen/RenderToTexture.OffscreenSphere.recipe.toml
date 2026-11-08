@@ -5,15 +5,15 @@ domain = "StandardOpaque"
 # 离屏球：砖墙 PBR 三张贴图（`auto_mipmaps` = 源无 mip 链时由引擎生成）
 [[textures]]
 name = "base_color"
-asset = "pack(res):image/Brickwall/Albedo.Tex2D"
+asset = "tex2d:pack(res):image/Brickwall/Albedo"
 auto_mipmaps = true
 
 [[textures]]
 name = "normal"
-asset = "pack(res):image/Brickwall/Normal.Tex2D"
+asset = "tex2d:pack(res):image/Brickwall/Normal"
 auto_mipmaps = true
 
 [[textures]]
 name = "roughness"
-asset = "pack(res):image/Brickwall/Roughness.Tex2D"
+asset = "tex2d:pack(res):image/Brickwall/Roughness"
 auto_mipmaps = true

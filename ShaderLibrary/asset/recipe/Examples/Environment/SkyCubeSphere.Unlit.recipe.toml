@@ -11,7 +11,7 @@ domain = "UnlitTexture3D"
 # 也不出现任何投影相关的 #if 分支。
 [[textures]]
 name = "base_color"
-asset = "cubefile:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexCube"
+asset = "texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k"
 required = true
 
 [render_state.pipeline]

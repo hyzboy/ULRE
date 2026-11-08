@@ -4,10 +4,10 @@ domain = "StandardOpaque"
 
 [[textures]]
 name = "base_color"
-asset = "pack(res):image/Brickwall/Albedo.Tex2D"
+asset = "tex2d:pack(res):image/Brickwall/Albedo"
 auto_mipmaps = true
 
 [[textures]]
 name = "normal"
-asset = "pack(res):image/Brickwall/Normal.Tex2D"
+asset = "tex2d:pack(res):image/Brickwall/Normal"
 auto_mipmaps = true
