@@ -10,6 +10,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/log/Log.h>
@@ -180,10 +181,24 @@ namespace hgl::ecs
             {
                 sprite->synced_generation = sprite->texture_generation;
 
+                // 若声明了 URI 但尚未解析句柄：向 TextureManager 索取/创建（MetaOnly 句柄自动进入流送）
+                if (!sprite->texture_uri.IsEmpty() && !sprite->texture_asset && !sprite->texture)
+                {
+                    if (auto *gc = world->GetGraphicsContext())
+                        if (auto *tex_manager = gc->GetTextureManager())
+                            sprite->texture_asset = tex_manager->CreateTextureAsset(sprite->texture_uri, true);
+                }
+
                 if (sprite->texture)
-                    material_data->SetTextureResource("base_color", sprite->texture);
+                {
+                    material_data->SetTextureResource("base_color", sprite->texture,
+                                                      MaterialTextureResourceKind::Texture2D, 0, /*required=*/true);
+                }
                 else if (sprite->texture_asset)
-                    material_data->SetTextureResource("base_color", sprite->texture_asset);
+                {
+                    material_data->SetTextureResource("base_color", sprite->texture_asset,
+                                                      MaterialTextureResourceKind::Texture2D, 0, /*required=*/true);
+                }
             }
         }
     }
