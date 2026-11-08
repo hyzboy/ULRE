@@ -2,6 +2,7 @@
 #include<hgl/ecs/support/pipeline/RenderStrategyParity.h>
 #include<hgl/ecs/support/cull/BoundingVolumeCull.h>
 #include<hgl/ecs/support/storage/PerfTimer.h>
+#include<hgl/ecs/support/storage/FrameProfiler.h>
 #include<source_location>
 #include<cmath>
 #include<cstdlib>
@@ -161,8 +162,14 @@ namespace hgl::ecs
         static PerfTimer s_batch_timer("batching");
 
         const uint64_t t0 = GetUptimeUs();
-        BuildMaterialBatches();
-        FinalizeBatches();
+        {
+            FrameProfileSpan build_span(FrameProfileSlot::BatchBuildMaterial);
+            BuildMaterialBatches();
+        }
+        {
+            FrameProfileSpan finalize_span(FrameProfileSlot::BatchFinalize);
+            FinalizeBatches();
+        }
         if (s_batch_timer.Active())
             s_batch_timer.Add(DeltaUs(t0));
     }
@@ -382,12 +389,15 @@ namespace hgl::ecs
                 (*batch_ptr)->AddItem(item);
             }
         }
+
+        FrameProfiler::Count(FrameProfileCount::Batches, cache.materialBatches.GetCount());
     }
 
     void PrimitiveBatchPipeline::TryApplyGPUCullOverride()
     {
         static PerfTimer s_guard_timer("guard_hook");
         const PerfSpan guard_span(s_guard_timer);   // RAII：多点 return 出口统一累计
+        FrameProfileSpan guard_prof_span(FrameProfileSlot::BatchGPUCullGuard);
 
         auto& cache = world->GetRenderFrameCache();
 
@@ -515,6 +525,7 @@ namespace hgl::ecs
                 continue;
 
             ++geometry_batches;
+            FrameProfiler::Count(FrameProfileCount::BucketGroups, 1);
 
             const char *batch_name = b->key.shader_program
                 ? b->key.shader_program->GetName().c_str() : "<null>";
@@ -915,5 +926,7 @@ namespace hgl::ecs
             if (pair.second)
                 FinalizeBatch(*pair.second);
         }
+
+        // 桶组（几何批）数已在上方逐批用 `FrameProfiler::Count` 累加。此处不再重复统计。
     }
 }

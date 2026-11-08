@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/systems/render/frame/RenderSystemCore.h>
+#include<hgl/ecs/support/storage/FrameProfiler.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
@@ -93,6 +94,11 @@ namespace hgl
         {
             if (pre_render)
                 pre_render(deltaTime);
+
+            // 槽口径：只包「pass 循环」——录制绘制命令（RunRenderPhaseUpdates 的
+            // RenderDrawSubmit.. 段 + RecordPreparedRenderPhaseRange）。pre_render 回调
+            // 属应用侧，已在上方先执行，不计入本槽。
+            FrameProfileSpan draw_span(FrameProfileSlot::DrawRecord);
 
             for (size_t pass_idx = 0; pass_idx < graph.passes.size(); ++pass_idx)
             {

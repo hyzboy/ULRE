@@ -100,6 +100,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/JoltPhysicsSystem.h>
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
+#include<hgl/ecs/support/storage/FrameProfiler.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 
 #include<hgl/time/Time.h>
@@ -234,6 +235,7 @@ private:
     bool     no_physics   = false;
     float    orbit_speed  = 10.0f;
     uint32_t sample_interval = 60;
+    bool     profile_breakdown = true;   ///< 打印详细阶段耗时剖析
 
     std::string dump_tag;
     uint32_t    dump_frame  = 0;
@@ -246,9 +248,8 @@ private:
     uint32_t sample_frame  = 0;
 
     // 帧耗时累加（只在两个采样点之间累计，避免长期漂移）
-    double   acc_frame_ms = 0.0;
-    double   acc_tick_ms  = 0.0;
-    uint32_t acc_frames   = 0;
+    double   acc_frame_ms        = 0.0;
+    uint32_t acc_frames          = 0;
 
     bool batch_verified = false;
 
@@ -683,38 +684,117 @@ private:
     void SampleGPU(GPUCullSystem * gpu_cull)
     {
         // 契约（§9 M6）：Map 之前必须 Sync；未同步时 Map 会拒绝返回。
-        if (!gpu_cull->SyncForParityReadback())
-            return;
+        //
+        // 口径隔离：`SyncForParityReadback()` 会等 GPU 跑完**整帧**（fence），
+        // 它既不是渲染成本也不是应用成本 —— 单独记 `SampleReadback` 槽；
+        // SampleGPU 本身在渲染提交之后调用 ⇒ 不污染任何其它槽。
+        uint32_t batch_count = 0;
+        uint32_t entities    = 0;
+        uint32_t parts       = 0;
+        uint32_t overflow    = 0;
 
-        const uint32_t batch_count = gpu_cull->GetBatchCount();
-        const uint32_t entities    = gpu_cull->GetGPUVisibleCount();
-
-        uint32_t parts   = 0;
-        uint32_t overflow = 0;
-
-        if (const uint32_t * counters = gpu_cull->MapCurrentBatchCounters(RenderPassSlot::Main))
         {
-            for (uint32_t b = 0; b < batch_count; ++b)
-                parts += counters[b];
+            FrameProfileSpan readback_span(FrameProfileSlot::SampleReadback);
 
-            overflow = counters[batch_count];   // 块内溢出槽（与 GLSL 同口径）
-            gpu_cull->UnmapCurrentBatchCounters();
+            if (!gpu_cull->SyncForParityReadback())
+                return;
+
+            batch_count = gpu_cull->GetBatchCount();
+            entities    = gpu_cull->GetGPUVisibleCount();
+
+            if (const uint32_t * counters = gpu_cull->MapCurrentBatchCounters(RenderPassSlot::Main))
+            {
+                for (uint32_t b = 0; b < batch_count; ++b)
+                    parts += counters[b];
+
+                overflow = counters[batch_count];   // 块内溢出槽（与 GLSL 同口径）
+                gpu_cull->UnmapCurrentBatchCounters();
+            }
         }
 
         const double avg_frame = (acc_frames > 0) ? acc_frame_ms / double(acc_frames) : 0.0;
-        const double avg_tick  = (acc_frames > 0) ? acc_tick_ms  / double(acc_frames) : 0.0;
         const double fps       = (avg_frame > 0.0) ? 1000.0 / avg_frame : 0.0;
+
+        // 归因口径：FrameProfiler 的**顶层**槽互不重叠，可直接相加 ⇒
+        // 「未归因」= 帧总时间 − Σ顶层槽（应接近 0；偏大 ⇒ 仍有段落没打点）。
+        const uint64_t prof_samples = FrameProfiler::SampleCount();
+        const double   prof_frames  = double(prof_samples);
+        const double   prof_sum_ms  = (prof_frames > 0.0)
+                                    ? double(FrameProfiler::SumUs()) / prof_frames / 1000.0 : 0.0;
+
+        auto SlotMs = [prof_frames](FrameProfileSlot slot) -> double {
+            return (prof_frames > 0.0) ? double(FrameProfiler::GetUs(slot)) / prof_frames / 1000.0 : 0.0;
+        };
+        auto CountAvg = [prof_frames](FrameProfileCount slot) -> double {
+            return (prof_frames > 0.0) ? double(FrameProfiler::GetCount(slot)) / prof_frames : 0.0;
+        };
+
+        const double avg_tick = SlotMs(FrameProfileSlot::AppTick);
 
         printf("[CSTRESS] f=%u  帧=%.2fms(%.1f fps)  ECS+Jolt=%.2fms  渲染≈%.2fms"
                "｜可见实体=%u 可见部件=%u ICB=%u 溢出槽=%u\n",
                frame_seen, avg_frame, fps, avg_tick,
                (avg_frame > avg_tick) ? (avg_frame - avg_tick) : 0.0,
                entities, parts, batch_count, overflow);
+
+        if (profile_breakdown && prof_frames > 0.0)
+        {
+            const double pct_base = (prof_sum_ms > 0.0) ? prof_sum_ms : 1.0;
+
+            auto Line = [pct_base](const char * name, double ms, const char * note) {
+                printf("  %-24s %7.3f ms (%5.1f%%)  %s\n", name, ms, ms / pct_base * 100.0, note);
+            };
+
+            printf("[CSTRESS-PROFILE] 窗口=%llu 帧  Σ归因=%.3f ms/帧  丢弃样本=%llu\n",
+                   static_cast<unsigned long long>(prof_samples), prof_sum_ms,
+                   static_cast<unsigned long long>(FrameProfiler::DroppedSamples()));
+
+            // ── 顶层槽（互不重叠，可直接相加）──────────────────────────────
+            Line("ScenePrePass",       SlotMs(FrameProfileSlot::ScenePrePass),       "主光 CSM 阴影全流程");
+            Line("AcquireSwapchain",   SlotMs(FrameProfileSlot::AcquireSwapchain),   "WSI 取图（含等上一帧 GPU）");
+            Line("PreBeginFrame",      SlotMs(FrameProfileSlot::PreBeginFrame),      "PreBegin 相位 + viewport + 纹理上传");
+            Line("RenderCoreBegin",    SlotMs(FrameProfileSlot::RenderCoreBegin),    "render_core->BeginFrame");
+            Line("TransformSubmit",    SlotMs(FrameProfileSlot::TransformSubmit),    "变换上传提交");
+            Line("CameraPublish",      SlotMs(FrameProfileSlot::CameraPublish),      "相机行发布");
+            Line("CollectPhase",       SlotMs(FrameProfileSlot::CollectPhase),       "RenderCollect 相位总耗时");
+            Line("SyncWorldAddresses", SlotMs(FrameProfileSlot::SyncWorldAddresses), "世界地址同步");
+            Line("BatchPhase",         SlotMs(FrameProfileSlot::BatchPhase),         "RenderBatch 相位总耗时");
+            Line("BufferCommit",       SlotMs(FrameProfileSlot::BufferCommit),       "缓冲提交（描述符/范围）");
+            Line("BufferUpload",       SlotMs(FrameProfileSlot::BufferUpload),       "缓冲上传（DMA）");
+            Line("FrameSync",          SlotMs(FrameProfileSlot::FrameSync),          "GPU 剔除派发与 BeginPass");
+            Line("BeginRenderPass",    SlotMs(FrameProfileSlot::BeginRenderPass),    "render_core->BeginRenderPass");
+            Line("DrawRecord",         SlotMs(FrameProfileSlot::DrawRecord),         "绘制命令录制");
+            Line("EndFrame",           SlotMs(FrameProfileSlot::EndFrame),           "render_core->EndFrame");
+            Line("SubmitPresent",      SlotMs(FrameProfileSlot::SubmitPresent),      "vkQueueSubmit + 呈现（含 VSync）");
+            Line("AppTick",            SlotMs(FrameProfileSlot::AppTick),            "应用 Tick（ECS + Jolt）");
+            Line("SampleReadback",     SlotMs(FrameProfileSlot::SampleReadback),     "采样 fence 等待（不计入渲染）");
+
+            const double unattributed = avg_frame - prof_sum_ms;
+
+            printf("  %-24s %7.3f ms          %s\n", "未归因", unattributed,
+                   (unattributed > 1.0) ? "<- 仍有未打点段落" : "OK");
+
+            // ── 子槽：**包含于** CollectPhase / BatchPhase，不可再相加 ──────
+            printf("  -- 子槽（已含在上面的总段内，勿重复相加）--\n");
+            Line("|- CollectPreScan",     SlotMs(FrameProfileSlot::CollectPreScan),     "材质/管线预扫");
+            Line("|- CollectMainLoop",    SlotMs(FrameProfileSlot::CollectMainLoop),    "判据循环 + item 装配 + 4-ID/事实发布");
+            Line("|- CollectPublish",     SlotMs(FrameProfileSlot::CollectPublish),     "收集尾部诊断/提交");
+            Line("|- BatchBuildMaterial", SlotMs(FrameProfileSlot::BatchBuildMaterial), "BuildMaterialBatches");
+            Line("|- BatchGPUCullGuard",  SlotMs(FrameProfileSlot::BatchGPUCullGuard),  "TryApplyGPUCullOverride（含于 BatchFinalize）");
+            Line("|- BatchFinalize",      SlotMs(FrameProfileSlot::BatchFinalize),      "FinalizeBatches（sort/聚簇/桶布局）");
+
+            printf("  -- 每帧计数 -- 收集调用=%.1f 判据图元=%.0f 进批项=%.0f 材质批=%.1f 几何批=%.1f\n",
+                   CountAvg(FrameProfileCount::CollectCalls),
+                   CountAvg(FrameProfileCount::CollectPrimitives),
+                   CountAvg(FrameProfileCount::CollectItems),
+                   CountAvg(FrameProfileCount::Batches),
+                   CountAvg(FrameProfileCount::BucketGroups));
+        }
         fflush(stdout);
 
-        acc_frame_ms = 0.0;
-        acc_tick_ms  = 0.0;
-        acc_frames   = 0;
+        acc_frame_ms        = 0.0;
+        acc_frames          = 0;
+        FrameProfiler::Reset();
     }
 
 public:
@@ -722,6 +802,10 @@ public:
     ~ChessboardStressApp()
     {
         // cube_geometry 由 GeometryAssetRegistry 持有，此处不再 delete。
+    }
+
+    void OnRenderPass(double delta_time) override
+    {
     }
 
     bool Init() override
@@ -738,8 +822,9 @@ public:
         static_scene = getenv("CSTRESS_STATIC") != nullptr;
         no_physics   = getenv("CSTRESS_NO_PHYSICS") != nullptr;
 
-        if (const char * v = getenv("CSTRESS_ORBIT"))  orbit_speed     = (float)atof(v);
-        if (const char * v = getenv("CSTRESS_SAMPLE")) sample_interval = (uint32_t)atoi(v);
+        if (const char * v = getenv("CSTRESS_ORBIT"))   orbit_speed       = (float)atof(v);
+        if (const char * v = getenv("CSTRESS_SAMPLE"))  sample_interval   = (uint32_t)atoi(v);
+        if (const char * v = getenv("CSTRESS_PROFILE")) profile_breakdown = (atoi(v) != 0);
 
         if (const char * v = getenv("CSTRESS_BOARDS")) board_count = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_DICE"))   dice_count  = (uint32_t)atoi(v);
@@ -777,6 +862,17 @@ public:
         if (!InitCamera())            return false;
         if (!InitCull())              return false;
 
+        // 剖析口径由引擎内的 `FrameProfiler`（真实调用边界打点）提供，
+        // 本示例只在 Tick 里登记 `AppTick` 并累加帧间距，不再注册任何 phase 探针：
+        // 探针只能观测「同 phase 内已注册系统之后」的时点，阶段名会系统性错配。
+        if (profile_breakdown)
+            FrameProfiler::SetEnabled(true);
+        else
+            FrameProfiler::SetEnabled(false);   // 显式关：连 channels.perf 也不看
+
+        // 预热一帧：让首个窗口不把初始化期的异常帧算进去
+        FrameProfiler::Reset();
+
         last_frame_us = GetUptimeUs();
 
         return true;
@@ -800,18 +896,26 @@ public:
             }
         }
 
-        // ── 计时：帧间隔 vs ECS+Jolt 实际占用，差集即渲染 ──────────────────
-        const uint64_t now_us  = GetUptimeUs();
-        const uint64_t tick_t0 = now_us;
+        // ── 计时：只累加帧间距；各段耗时全部由 FrameProfiler 在引擎内登记 ──
+        const uint64_t now_us = GetUptimeUs();
 
-        WorkObject::Tick(delta_time);
+        // 与上一帧 tick_start 的差 = 整帧墙钟（含本次 Render）。首个样本丢弃
+        // （last_frame_us 为初始化时点）。
+        if (last_frame_us > 0 && now_us > last_frame_us)
+        {
+            acc_frame_ms += double(now_us - last_frame_us) / 1000.0;
+            ++acc_frames;
+            FrameProfiler::CountSample();
+        }
 
-        const uint64_t tick_t1 = GetUptimeUs();
-
-        acc_frame_ms += double(now_us - last_frame_us) / 1000.0;
-        acc_tick_ms  += double(tick_t1 - tick_t0)      / 1000.0;
         last_frame_us = now_us;
-        ++acc_frames;
+
+        {
+            FrameProfileSpan tick_span(FrameProfileSlot::AppTick);
+
+            WorkObject::Tick(delta_time);
+        }
+
         ++frame_seen;
 
         auto gpu_cull = ecs_context ? ecs_context->GetSystem<GPUCullSystem>() : nullptr;

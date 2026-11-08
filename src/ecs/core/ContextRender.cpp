@@ -7,6 +7,7 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/support/storage/CameraInfoStorage.h>
+#include <hgl/ecs/support/storage/FrameProfiler.h>
 #include <hgl/ecs/support/pipeline/PrimitiveState.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/vk/VKRenderTarget.h>
@@ -227,13 +228,19 @@ namespace hgl::ecs
             // 其嵌套的阴影 pass 因此也不会递归进来。
             // 位置保持 AcquireSwapchainImage 之前 = 黄金路径原序（先渲阴影 RT，主帧再取图）。
             if (need_swapchain_acquire)
+            {
+                FrameProfileSpan prepass_span(FrameProfileSlot::ScenePrePass);
                 ExecuteScenePrePassWorkflow(deltaTime);
+            }
 
             if (!EnsureRenderCoreInitialized())
                 return false;
 
             if (GetRenderTarget() && need_swapchain_acquire)
             {
+                // 槽口径：这一整段（RecreateSwapchainIfNeeded + NextFrame + WSI 等待）都算取图
+                FrameProfileSpan acquire_span(FrameProfileSlot::AcquireSwapchain);
+
 //                LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
                 if (!AcquireSwapchainImage(deltaTime))
                 {
@@ -242,23 +249,32 @@ namespace hgl::ecs
                 }
             }
 
-//            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
-            RenderPreBeginFrame(deltaTime);
-            SyncRenderTargetViewportToExtent();
-
-            if (auto *gc = GetGraphicsContext())
             {
-                if (auto *tm = gc->GetTextureManager())
+                // 槽口径：PreBeginFrame 相位的系统 + viewport 同步 + 纹理上传队列
+                FrameProfileSpan prebegin_span(FrameProfileSlot::PreBeginFrame);
+
+//            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
+                RenderPreBeginFrame(deltaTime);
+                SyncRenderTargetViewportToExtent();
+
+                if (auto *gc = GetGraphicsContext())
                 {
-                    tm->UpdateUploadQueue(gc->GetBindlessTextureManager());
+                    if (auto *tm = gc->GetTextureManager())
+                    {
+                        tm->UpdateUploadQueue(gc->GetBindlessTextureManager());
+                    }
                 }
             }
 
-//            LogInfo("[ECS RENDER] Calling BeginFrame");
-            if (!render_core->BeginFrame())
             {
-                LogWarning("[ECS RENDER] BeginFrame FAILED");
-                return false;
+                FrameProfileSpan begin_span(FrameProfileSlot::RenderCoreBegin);
+
+//            LogInfo("[ECS RENDER] Calling BeginFrame");
+                if (!render_core->BeginFrame())
+                {
+                    LogWarning("[ECS RENDER] BeginFrame FAILED");
+                    return false;
+                }
             }
 
             SetCurrentRenderCmd(render_core->GetRenderCmd());
@@ -266,13 +282,17 @@ namespace hgl::ecs
             // 两个方向天然不相交 ⇒ prepass 不再覆写主帧在途的 ring 槽（T10 根因）。
             PrepareRenderPassSetup(render_target ? render_target->GetCurrentFrameIndex() : 0u, deltaTime);
 
-//            LogInfo("[ECS RENDER] Calling BeginRenderPass");
-            if (!render_core->BeginRenderPass(options))
             {
-                LogWarning("[ECS RENDER] BeginRenderPass FAILED");
-                render_core->EndFrame();
-                SetCurrentRenderCmd(nullptr);
-                return false;
+                FrameProfileSpan pass_begin_span(FrameProfileSlot::BeginRenderPass);
+
+//            LogInfo("[ECS RENDER] Calling BeginRenderPass");
+                if (!render_core->BeginRenderPass(options))
+                {
+                    LogWarning("[ECS RENDER] BeginRenderPass FAILED");
+                    render_core->EndFrame();
+                    SetCurrentRenderCmd(nullptr);
+                    return false;
+                }
             }
 
             return true;
@@ -283,15 +303,23 @@ namespace hgl::ecs
             if (!render_core)
                 return;
 
+            {
+                FrameProfileSpan end_span(FrameProfileSlot::EndFrame);
+
 //            LogInfo("[ECS RENDER] Calling EndFrame");
-            render_core->EndFrame();
+                render_core->EndFrame();
+            }
 
             SetCurrentRenderCmd(nullptr);
 
-//            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
-            if (!SubmitFrameToRenderTarget(deltaTime))
             {
-                LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
+                FrameProfileSpan submit_span(FrameProfileSlot::SubmitPresent);
+
+//            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
+                if (!SubmitFrameToRenderTarget(deltaTime))
+                {
+                    LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
+                }
             }
         }
 
@@ -861,16 +889,25 @@ namespace hgl::ecs
             // 离屏单帧世界缺陷族的第五层（全族五层见 doc/future/entity-rows-gpu-cull-plan.md §11.17）。
             // 同帧幂等（值变才标脏 + 版本记账）⇒ 绘制录制段的第二次调用退化为 no-op。
             if (auto transform_system = GetSystem<TransformSystem>())
+            {
+                FrameProfileSpan transform_span(FrameProfileSlot::TransformSubmit);
                 transform_system->SubmitTransformUpdates();   // M8-needle：本调用必须在 collect/派发之前（Test 42 钉住）
+            }
 
             // 相机行发布必须在这之后：本帧数据槽（frameIndex）此时才确定
             // （主帧 = acquire 之后拿到的交换链槽；离屏 pass = 该 RT 的槽带）。
             // 这里只覆盖本世界 CameraSystem 收集得到的相机（= 经 Entity 注册的那些）；系统内建
             // 相机（阴影光源相机等）不在其中，由 RenderTo 按 req.camera 单独发布（见下）。
             if (auto cs = GetSystem<CameraSystem>())
+            {
+                FrameProfileSpan camera_span(FrameProfileSlot::CameraPublish);
                 cs->PublishCameraRows(frameIndex);
+            }
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
+            {
+                FrameProfileSpan collect_span(FrameProfileSlot::CollectPhase);
+                RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
+            }
 
             // 实体行表 / 4-ID 表的脏行**由本帧 collect 标出**：帧首那次同步（SetFrameIndex）
             // 只能传到"上一帧的脏行"⇒ 新世界首帧的派发（RenderFrameSync）会读到全零行
@@ -879,12 +916,30 @@ namespace hgl::ecs
             //（实测 RenderToTexture/ColorDepth 离屏只剩 Begin/End）。⇒ collect 后再同步一次
             //（WA 行 memcmp 未变则不提交；脏行上传只传本帧新标的 ⇒ 二次调用近零成本），
             // 让本帧派发读到**本帧**的行。
-            SyncWorldAddresses();
+            {
+                FrameProfileSpan sync_span(FrameProfileSlot::SyncWorldAddresses);
+                SyncWorldAddresses();
+            }
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
-            RenderBufferCommit(deltaTime);                                       // finalize staged CPU writes
-            RenderBufferUpload(deltaTime);                                       // GPU transfer (dirty → uploaded)
-            RenderFrameSync(deltaTime);                                          // sync UBOs/descriptors after upload
+            {
+                FrameProfileSpan batch_span(FrameProfileSlot::BatchPhase);
+                RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
+            }
+
+            {
+                FrameProfileSpan commit_span(FrameProfileSlot::BufferCommit);
+                RenderBufferCommit(deltaTime);                                       // finalize staged CPU writes
+            }
+
+            {
+                FrameProfileSpan upload_span(FrameProfileSlot::BufferUpload);
+                RenderBufferUpload(deltaTime);                                       // GPU transfer (dirty → uploaded)
+            }
+
+            {
+                FrameProfileSpan framesync_span(FrameProfileSlot::FrameSync);
+                RenderFrameSync(deltaTime);                                          // sync UBOs/descriptors after upload
+            }
         }
         void ECSContext::RenderSubmit(float deltaTime)
         {

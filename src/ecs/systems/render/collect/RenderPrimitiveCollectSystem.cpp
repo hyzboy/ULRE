@@ -6,6 +6,7 @@
 #include<hgl/ecs/components/ShadowProxy.h>
 #include<hgl/ecs/components/GPUModelRefComponent.h>
 #include<hgl/ecs/support/pipeline/PrimitiveState.h>
+#include<hgl/ecs/support/storage/FrameProfiler.h>
 #include<cmath>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
@@ -2114,6 +2115,12 @@ namespace hgl::ecs
         bool any_material_work = false;
         bool any_possible_runtime_rows_visible = false;
 
+        FrameProfiler::Count(FrameProfileCount::CollectPrimitives, primitives.GetCount());
+        FrameProfiler::Count(FrameProfileCount::CollectCalls);
+
+        {
+            FrameProfileSpan prescan_span(FrameProfileSlot::CollectPreScan);
+
         for (GeometryData *geometryComp : primitives)
         {
             if (!geometryComp)
@@ -2226,6 +2233,8 @@ namespace hgl::ecs
             any_possible_runtime_rows_visible |= possible_runtime_rows;
         }
 
+        }// CollectPreScan 子槽
+
         if (any_material_work && any_possible_runtime_rows_visible)
             ++materialize_epoch;
 
@@ -2235,6 +2244,9 @@ namespace hgl::ecs
         // S6 诊断：本 pass 产出图元的实体 ID 校验和（判定"条带帧 vs 整级帧是否同一批 caster"）
         uint64_t shadow_pass_idsum = 0;
         size_t added = 0;
+
+        {
+            FrameProfileSpan main_span(FrameProfileSlot::CollectMainLoop);
 
         for (GeometryData *geometryComp : primitives)
         {
@@ -2697,6 +2709,13 @@ namespace hgl::ecs
             shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
         }
 
+        }// CollectMainLoop 子槽
+
+        FrameProfiler::Count(FrameProfileCount::CollectItems, added);
+
+        {
+            FrameProfileSpan publish_span(FrameProfileSlot::CollectPublish);
+
         // S6 诊断（ULRE_DEBUG.toml 的 channels.shadow = true；默认静默）：阴影 pass 的收集结论。
         // 用途：判定"条带重画帧"与"整级重建帧"是否收到**同一批 caster**——
         //   数量/校验和不同 ⇒ 差异根因在收集/剔除侧（视锥、mobility 筛、shadow_origin 距离、
@@ -2727,5 +2746,7 @@ namespace hgl::ecs
                      runtime_stats ? runtime_stats->GetOwnedRowCount() : 0u,
                      runtime_stats ? runtime_stats->GetSlotCount() : 0u);
         }
+
+        }// CollectPublish 子槽
     }
 }//namespace hgl::ecs
