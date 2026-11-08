@@ -1,4 +1,5 @@
 ﻿#include<hgl/io/LoadString.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
@@ -25,7 +26,13 @@ protected:
     {
         U16String str;
 
-        LoadStringFromTextFile(str, OS_TEXT("res/text/道德经.txt"));
+        // LoadString* 只认真实路径：包裹 URI 先经挂载索引折叠，折叠失败退回原文
+        OSString text_path = OS_TEXT("pack(res):text/道德经.txt");
+        OSString folded;
+        if(ResolveAssetPhysicalPath(text_path, folded))
+            text_path = folded;
+
+        LoadStringFromTextFile(str, text_path);
 
         if(str.IsEmpty())
             return(false);

@@ -10,7 +10,7 @@ domain = "Sky"
 # `texture_projection_octahedral`，`surface_sky_cube` 的采样点与调用方式不变。
 [[textures]]
 name = "sky_cube"
-asset = "file:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexOct"
+asset = "pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexOct"
 required = true
 
 [fragment]

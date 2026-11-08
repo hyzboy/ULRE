@@ -59,12 +59,12 @@ public:
         world = GetECSContext();
         if(!world) return false;
 
-        // ── 1) 默认图精灵：配方 res/image/lena.Tex2D，左上区域 ──
+        // ── 1) 默认图精灵：配方 pack(res):image/lena.Tex2D，左上区域 ──
         if(!MakeSprite(math::Vector2f(120.0f, 620.0f), 256.0f, 256.0f, OSString(), nullptr))
             return false;
 
         // ── 2) 覆盖图精灵：直接声明 URI，走全 ECS 异步流式加载，右上区域 ──
-        const OSString peach_uri = OS_TEXT("res/image/PeachHouse.Tex2D");
+        const OSString peach_uri = OS_TEXT("pack(res):image/PeachHouse.Tex2D");
         MakeSprite(math::Vector2f(900.0f, 620.0f), 256.0f, 256.0f, peach_uri, nullptr);
 
         // ── 3) 父子随动：父精灵（PeachHouse 异步加载）水平摆动，子精灵（默认 lena）随动 ──

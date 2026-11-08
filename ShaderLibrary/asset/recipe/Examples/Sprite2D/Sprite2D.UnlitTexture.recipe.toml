@@ -4,7 +4,7 @@ domain = "UnlitTexture"
 
 [[textures]]
 name = "base_color"
-asset = "file:res/image/lena.Tex2D"
+asset = "pack(res):image/lena.Tex2D"
 required = true
 auto_mipmaps = true
 

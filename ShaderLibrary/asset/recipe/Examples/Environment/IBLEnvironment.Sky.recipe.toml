@@ -4,7 +4,7 @@ domain = "Sky"
 
 [[textures]]
 name = "sky_cube"
-asset = "cubefile:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexCube"
+asset = "cubefile:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexCube"
 required = true
 
 [fragment]

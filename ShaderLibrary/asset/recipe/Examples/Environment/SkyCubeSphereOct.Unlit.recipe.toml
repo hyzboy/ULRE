@@ -10,7 +10,7 @@ domain = "UnlitTexture3D"
 # `texture_projection_octahedral`，shader 采样点与调用方式完全不变。
 [[textures]]
 name = "base_color"
-asset = "file:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexOct"
+asset = "pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.TexOct"
 required = true
 
 [render_state.pipeline]

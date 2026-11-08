@@ -1,4 +1,5 @@
 ﻿#include<hgl/type/StringViewList.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
@@ -28,7 +29,13 @@ protected:
     {
         U16StringViewList str_list;
 
-        LoadStringViewListFromTextFile(str_list, OS_TEXT("res/text/百家姓.txt"));
+        // LoadStringViewList* 只认真实路径：包裹 URI 先经挂载索引折叠，折叠失败退回原文
+        OSString text_path = OS_TEXT("pack(res):text/百家姓.txt");
+        OSString folded;
+        if(ResolveAssetPhysicalPath(text_path, folded))
+            text_path = folded;
+
+        LoadStringViewListFromTextFile(str_list, text_path);
 
         if(str_list.IsEmpty())
             return(false);

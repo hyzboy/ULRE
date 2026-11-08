@@ -8,4 +8,4 @@ name = "mip_levels_bc7"
 mipmaps = 7
 
 [[layers]]
-uri = "file:res/image/mipmaps/MipLevels.BC7.Tex2D"
+uri = "pack(res):image/mipmaps/MipLevels.BC7.Tex2D"

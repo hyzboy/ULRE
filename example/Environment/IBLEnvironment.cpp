@@ -117,10 +117,10 @@ namespace
     }
 
     /// 天光 IBL 贴图（同一批烘焙数据的两种投影，只差目录后缀名）。
-    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-    constexpr os_char IBL_TEX_IRR_OCT[]  = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexOct");
-    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
-    constexpr os_char IBL_TEX_PRE_OCT[]  = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexOct");
+    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
+    constexpr os_char IBL_TEX_IRR_OCT[]  = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexOct");
+    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+    constexpr os_char IBL_TEX_PRE_OCT[]  = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexOct");
 }
 
 #define DRAW_SKY_SPHERE

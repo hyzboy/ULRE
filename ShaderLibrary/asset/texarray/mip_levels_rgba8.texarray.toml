@@ -9,4 +9,4 @@ name = "mip_levels_rgba8"
 mipmaps = 9
 
 [[layers]]
-uri = "file:res/image/mipmaps/MipLevels.RGBA8.Tex2D"
+uri = "pack(res):image/mipmaps/MipLevels.RGBA8.Tex2D"

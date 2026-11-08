@@ -11,5 +11,5 @@ overlay = true
 
 [[textures]]
 name = "base_color"
-asset = "res/image/lena.Tex2D"
+asset = "pack(res):image/lena.Tex2D"
 required = true

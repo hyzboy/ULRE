@@ -10,31 +10,31 @@ schema = 1
 name = "pbr_10x10_baseColor"
 
 [[layers]]
-uri = "file:res/image/pbr/Concrete_Plain/baseColor.Tex2D"
+uri = "pack(res):image/pbr/Concrete_Plain/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/Concrete_Planks/baseColor.Tex2D"
+uri = "pack(res):image/pbr/Concrete_Planks/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/Concrete_Tiles/baseColor.Tex2D"
+uri = "pack(res):image/pbr/Concrete_Tiles/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/Fresco_Decor_Wallpaper/baseColor.Tex2D"
+uri = "pack(res):image/pbr/Fresco_Decor_Wallpaper/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/TH_Brown_Leather/baseColor.Tex2D"
+uri = "pack(res):image/pbr/TH_Brown_Leather/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/TH_Cobblestone_Color/baseColor.Tex2D"
+uri = "pack(res):image/pbr/TH_Cobblestone_Color/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/TH_Large_Square_Pattern/baseColor.Tex2D"
+uri = "pack(res):image/pbr/TH_Large_Square_Pattern/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/TH_Sandstone_Blocks/baseColor.Tex2D"
+uri = "pack(res):image/pbr/TH_Sandstone_Blocks/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/TH_Sidewalk_Brick_Floor/baseColor.Tex2D"
+uri = "pack(res):image/pbr/TH_Sidewalk_Brick_Floor/baseColor.Tex2D"
 
 [[layers]]
-uri = "file:res/image/pbr/TH_Square_Floor_Pattern/baseColor.Tex2D"
+uri = "pack(res):image/pbr/TH_Square_Floor_Pattern/baseColor.Tex2D"

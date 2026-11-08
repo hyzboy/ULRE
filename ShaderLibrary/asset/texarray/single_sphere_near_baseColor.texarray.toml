@@ -7,4 +7,4 @@ schema = 1
 name = "single_sphere_near_baseColor"
 
 [[layers]]
-uri = "file:res/image/pbr/Concrete_Plain/baseColor.Tex2D"
+uri = "pack(res):image/pbr/Concrete_Plain/baseColor.Tex2D"

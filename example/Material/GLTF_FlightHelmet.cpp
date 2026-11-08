@@ -25,6 +25,7 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/graph/asset/StaticMeshModelInstance.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
@@ -63,14 +64,14 @@ namespace
         {
             const char *scene_env = getenv("FHF_SCENE");
             return std::string(scene_env ? scene_env
-                                         : "res/FlightHelmet.StaticMesh/FlightHelmet.model");
+                                         : "pack(res):FlightHelmet.StaticMesh/FlightHelmet.model");
         }();
         return path;
     }
 
     // 天光 IBL：与 LoadModel / DamagedHelmet 同一批烘焙贴图与天空配方
-    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
+    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
@@ -153,7 +154,16 @@ private:
         using std::filesystem::exists;
         using std::filesystem::path;
 
-        const path scene_path(ModelPackPath());
+        // 请求串可以是裸路径或包裹 URI：先经挂载索引反查成物理路径，再上盘核验存在性
+        hgl::OSString resolved;
+        if (!hgl::graph::ResolveAssetPhysicalPath(hgl::ToOSString(ModelPackPath()), resolved) || resolved.IsEmpty())
+        {
+            AnsiString p = AnsiString(ModelPackPath().c_str());
+            GLogError(u8"GLTF_FlightHelmet: 场景资产不存在：%s", p.c_str());
+            return false;
+        }
+
+        const path scene_path(hgl::ToStdString(resolved));
         if (!exists(scene_path))
         {
             AnsiString p = AnsiString(scene_path.string().c_str());

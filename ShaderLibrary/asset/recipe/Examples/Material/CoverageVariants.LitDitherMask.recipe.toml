@@ -10,5 +10,5 @@ dither = true
 # Lit 定义的 alpha 只来自 opacity_mask（base_color.a 不参与）。
 [[textures]]
 name = "opacity_mask"
-asset = "res/image/pbr/AlphaChecker/baseColor.Tex2D"
+asset = "pack(res):image/pbr/AlphaChecker/baseColor.Tex2D"
 auto_mipmaps = true

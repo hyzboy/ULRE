@@ -4,4 +4,4 @@ schema = 1
 name = "single_sphere_near_normal"
 
 [[layers]]
-uri = "file:res/image/pbr/Concrete_Plain/normal.Tex2D"
+uri = "pack(res):image/pbr/Concrete_Plain/normal.Tex2D"

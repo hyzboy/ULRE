@@ -10,13 +10,13 @@ schema = 1
 name = "freepik_icons"
 
 [[layers]]
-uri = "file:res/image/icon/freepik/001-online resume.Tex2D"
+uri = "pack(res):image/icon/freepik/001-online resume.Tex2D"
 
 [[layers]]
-uri = "file:res/image/icon/freepik/002-salary.Tex2D"
+uri = "pack(res):image/icon/freepik/002-salary.Tex2D"
 
 [[layers]]
-uri = "file:res/image/icon/freepik/003-application.Tex2D"
+uri = "pack(res):image/icon/freepik/003-application.Tex2D"
 
 [[layers]]
-uri = "file:res/image/icon/freepik/004-job interview.Tex2D"
+uri = "pack(res):image/icon/freepik/004-job interview.Tex2D"

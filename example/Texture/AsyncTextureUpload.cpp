@@ -81,11 +81,11 @@ namespace
     };
 
     // 五个文件请求：读盘优先级与上传优先级可以不同，这里故意错开以展示两层独立调度
-    constexpr const os_char *kImmediateFile = OS_TEXT("res/image/noise32.Tex2D");
-    constexpr const os_char *kHighFile      = OS_TEXT("res/image/lena.Tex2D");
-    constexpr const os_char *kNormalFile    = OS_TEXT("res/image/Gear.Tex2D");
-    constexpr const os_char *kLowFile       = OS_TEXT("res/image/PeachHouse.Tex2D");
-    constexpr const os_char *kCancelFile    = OS_TEXT("res/image/PeachWine.Tex2D");
+    constexpr const os_char *kImmediateFile = OS_TEXT("pack(res):image/noise32.Tex2D");
+    constexpr const os_char *kHighFile      = OS_TEXT("pack(res):image/lena.Tex2D");
+    constexpr const os_char *kNormalFile    = OS_TEXT("pack(res):image/Gear.Tex2D");
+    constexpr const os_char *kLowFile       = OS_TEXT("pack(res):image/PeachHouse.Tex2D");
+    constexpr const os_char *kCancelFile    = OS_TEXT("pack(res):image/PeachWine.Tex2D");
 
     /**
      * GPU 上传完成回调：在线程/帧序上由 GpuUploadQueue 触发。
@@ -186,7 +186,7 @@ private:
             return false;
 
         // 占位纹理走同步加载：首帧必须有材质可用，且它很小、不构成卡顿
-        placeholder_tex = tex_manager->LoadTexture2D(OS_TEXT("res/image/Lena.Tex2D"), false);
+        placeholder_tex = tex_manager->LoadTexture2D(OS_TEXT("pack(res):image/Lena.Tex2D"), false);
         if (!placeholder_tex)
         {
             GLogError(u8"Failed to load placeholder texture Lena.Tex2D");

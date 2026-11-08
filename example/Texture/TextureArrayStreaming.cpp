@@ -23,6 +23,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/io/LoadStringList.h>
 #include<hgl/utf.h>
@@ -50,8 +51,8 @@ namespace
 
     constexpr uint32_t kIconSize     = 512;                     // 图标边长（资产实测）
 
-    constexpr const os_char *kIconDirName = OS_TEXT("res/image/icon/freepik");
-    constexpr const os_char *kIconListFile= OS_TEXT("res/image/icon/freepik/list.txt");
+    constexpr const os_char *kIconDirName = OS_TEXT("pack(res):image/icon/freepik");
+    constexpr const os_char *kIconListFile= OS_TEXT("pack(res):image/icon/freepik/list.txt");
 
     constexpr int      kPumpPerFrame = 2;                       // 每帧最多提交多少个图标
 
@@ -149,7 +150,13 @@ private:
 
     bool InitIconList()
     {
-        const int count = LoadStringListFromTextFile(icon_names, kIconListFile);
+        // LoadStringList* 只认真实路径：包裹 URI 先经挂载索引折叠，折叠失败退回原文
+        OSString list_path = kIconListFile;
+        OSString folded;
+        if (ResolveAssetPhysicalPath(list_path, folded))
+            list_path = folded;
+
+        const int count = LoadStringListFromTextFile(icon_names, list_path);
 
         if (count <= 0)
         {
@@ -253,6 +260,11 @@ private:
                 const OSString filename=filesystem::JoinPathWithFilename(kIconDirName,
                                                                         ToOSString(icon_names[index])+OS_TEXT(".Tex2D"));
 
+                // LoadedFileManager 只认真实路径：包裹折叠成物理路径后再提交，失败退回原文
+                OSString submit_path;
+                if (!ResolveAssetPhysicalPath(filename, submit_path))
+                    submit_path = filename;
+
                 IconLoadHandler &handler=handlers[index];
 
                 handler.app      = this;
@@ -264,7 +276,7 @@ private:
                                                      : (index<kGridCols*2)    ? io::AsyncFilePriority::Normal
                                                                               : io::AsyncFilePriority::Low;
 
-                if(load_manager.Submit(filename,&handler,priority)==0)
+                if(load_manager.Submit(submit_path,&handler,priority)==0)
                 {
                     GLogError(u8"[IconWall] 第 %u 个图标提交失败", index);
                     ++failed_count;

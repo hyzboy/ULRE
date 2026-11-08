@@ -5,8 +5,8 @@ domain = "StandardOpaque"
 # 单通道 gradient：base_color 与 opacity_mask 共用同一张（alpha 真值只来自 opacity_mask）
 [[textures]]
 name = "base_color"
-asset = "res/image/gradient/0.Tex2D"
+asset = "pack(res):image/gradient/0.Tex2D"
 
 [[textures]]
 name = "opacity_mask"
-asset = "res/image/gradient/0.Tex2D"
+asset = "pack(res):image/gradient/0.Tex2D"

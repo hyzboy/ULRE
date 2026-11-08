@@ -77,7 +77,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:res/ABeautifulGame.StaticMesh/load_model.material_data.toml";
+        "mtldata:pack(res):ABeautifulGame.StaticMesh/load_model.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 
     // PBR 自装配：scene/recipe/material_data/tex2d 全部取自 pack 同目录；
@@ -88,7 +88,7 @@ namespace
         {
             const char *scene_env = getenv("LS_SCENE");
             return std::string(scene_env ? scene_env
-                                         : "res/ABeautifulGame.StaticMesh/ABeautifulGame.model");
+                                         : "pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model");
         }();
         return path;
     }
@@ -106,8 +106,8 @@ namespace
     }
 
     // 天光 IBL：复用 IBLEnvironment 示例的同一批烘焙贴图与天空配方
-    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
+    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 }
 
 class LoadModelApp:public WorkObject

@@ -12,7 +12,7 @@ domain = "UnlitTexture3D"
 # 直接以几何体顶点提供的 UV 采样 2D 纹理，无额外着色器分支。
 [[textures]]
 name = "base_color"
-asset = "file:res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.Tex2D"
+asset = "pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k.Tex2D"
 required = true
 
 [render_state.pipeline]

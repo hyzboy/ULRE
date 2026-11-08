@@ -88,7 +88,7 @@ namespace
             const char *env = getenv("LG_SCENE");
             if (env && env[0])
                 return hgl::ToOSString(env);
-            return OSString(OS_TEXT("res/ABeautifulGame.StaticMesh/ABeautifulGame.model"));
+            return OSString(OS_TEXT("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.model"));
         }();
         return path;
     }
@@ -100,14 +100,14 @@ namespace
             const char *env = getenv("LG_GEO");
             if (env && env[0])
                 return hgl::ToOSString(env);
-            return OSString(OS_TEXT("res/ABeautifulGame.StaticMesh/ABeautifulGame.2.geometry"));
+            return OSString(OS_TEXT("pack(res):ABeautifulGame.StaticMesh/ABeautifulGame.2.geometry"));
         }();
         return path;
     }
 
     // 天光 IBL：与 LoadModel 同一批烘焙贴图与天空配方
-    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
+    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
 }
 
 class LoadGeometryApp:public WorkObject
@@ -355,7 +355,7 @@ private:
         int count=0;
 //        for(int i=0;i< COLOR_COUNT;i++)
         {
-            OSString fn = OSString(OS_TEXT("res/model/vulkan_logo/scene.StaticMesh/scene.geometry"));
+            OSString fn = OSString(OS_TEXT("pack(res):model/vulkan_logo/scene.StaticMesh/scene.geometry"));
 
             Geometry *geo = LoadGeometry(GetDevice(),geometry_vertex_format,fn);
 

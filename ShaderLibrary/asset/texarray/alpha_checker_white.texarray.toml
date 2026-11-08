@@ -9,4 +9,4 @@ name = "alpha_checker_white"
 mipmaps = 1
 
 [[layers]]
-uri = "file:res/image/pbr/AlphaChecker/white.Tex2D"
+uri = "pack(res):image/pbr/AlphaChecker/white.Tex2D"

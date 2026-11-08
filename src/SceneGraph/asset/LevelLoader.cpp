@@ -39,6 +39,12 @@ namespace hgl::graph
                 || (reference.Length() >= 2 && path[1] == os_char(':')))
                 return hgl::filesystem::NormalizeFilename(reference);
 
+            // 包裹 URI（`pack(<name>):<target>`，或带 cubefile: 等方案前缀）不是磁盘
+            // 相对路径：绝不与 level 目录拼接，原文交给按挂载索引解析的取流层。
+            if (reference.StartsWithIgnoreCase(OS_TEXT("pack("))
+                || reference.StartsWithIgnoreCase(OS_TEXT("cubefile:pack(")))
+                return reference;
+
             if (level_filename.IsEmpty())
                 return hgl::filesystem::NormalizeFilename(reference);
 
