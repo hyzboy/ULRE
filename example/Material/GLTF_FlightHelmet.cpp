@@ -69,9 +69,9 @@ namespace
         return path;
     }
 
-    // 天光 IBL：与 LoadModel / DamagedHelmet 同一批烘焙贴图与天空配方
-    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+    // 统一天空资产：与 LoadModel / DamagedHelmet 同一份 sky_34，本示例选 CubeMap 档
+    constexpr os_char kEnvAssetDirectory[] = OS_TEXT("ShaderLibrary/asset/environment");
+    constexpr os_char kSky34URI[] = OS_TEXT("env:@Sky34");
 
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
@@ -88,7 +88,9 @@ namespace
     constexpr uint32_t kSelfW           = 1280;
     constexpr uint32_t kSelfH           = 720;
     constexpr uint32_t kSelfMinDistinct = 2;      // 不空转守卫（恒定图会 FAIL）
-    constexpr uint64_t kSelfFNV         = 0xCA3E781DAE0E3863ull;  // 实跑记录（默认相机 2.2/45/-15，第 8 帧；自包含 6 配方口径，HoseMat 独立成配方后重录）
+    constexpr uint64_t kSelfFNV         = 0xC419F5C2A0796C8Bull;  // 实跑记录（默认相机 2.2/45/-15，第 8 帧；2026-11 todo-11 重录：
+                                                                  // 资产化改造前后实测逐字节相同（HEAD A/B 验证），
+                                                                  // 旧常量 0xCA3E781DAE0E3863 是阶段4管线漂移后未重录的陈旧基线）
 }
 
 class GLTFFlightHelmetApp : public WorkObject
@@ -271,22 +273,27 @@ private:
         // 太阳方向必须在天空托管**之前**写进光源行 0：天光调制按当时太阳现算
         light_system->SetMainLightDirection(math::Vector3f(0.2f, 0.7f, 0.68f));
 
-        hgl::ecs::SkyEnvironmentConfig config;
-        config.mode               = hgl::ecs::SkyMode::CubeMapIBL;
-        config.sky_recipe         = "IBLEnvironment.Sky";
-        config.sky_scale          = 1.0f;
-        config.track_camera       = true;
-        config.irradiance_texture = IBL_TEX_IRR_CUBE;
-        config.prefilter_texture  = IBL_TEX_PRE_CUBE;
-        // provider 留空 ⇒ 按 prefilter 后缀自动选择（.TexCube → ambient_light_ibl）
+        // 统一天空资产 `env:@Sky34` 的 `[cubemap]` 段与旧内联拼装逐项同值
+        //（recipe `IBLEnvironment.Sky`、texcube: 烘焙图、LDR on/2.5/1.0/0.05、
+        // scale 1.0、track_camera）。先扫一次目录注册 `env:@Name`。
+        static bool s_dir_loaded = false;
 
-        // 这批烘焙图是 LDR 量化版：显式开启曝光调制（与 IBLEnvironment 同口径）
-        config.ldr               = hgl::ecs::SkyAmbientLDR::On;
-        config.ldr_exposure_base = 2.5f;
-        config.ldr_sun_scale     = 1.0f;
-        config.ldr_min_ambient   = 0.05f;
+        if (!s_dir_loaded)
+        {
+            int loaded = 0;
+            int errors = 0;
 
-        return environment_system->SetupSkyEnvironment(config);
+            if (!environment_system->LoadEnvironmentDirectory(kEnvAssetDirectory, &loaded, &errors)
+                || loaded < 1 || errors > 0)
+            {
+                GLogError(u8"[GLTF_FlightHelmet] 环境预设目录加载失败：%ls", kEnvAssetDirectory);
+                return false;
+            }
+
+            s_dir_loaded = true;
+        }
+
+        return environment_system->SetupSkyEnvironment(kSky34URI, hgl::ecs::SkyTechnique::CubeMap);
     }
 
     bool InitCull()

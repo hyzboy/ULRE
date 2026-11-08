@@ -4,9 +4,9 @@
 //    ——无 GI/IBL 探针时 sky ambient 参与 PBR 计算（indirect_sky_ambient）
 //
 // 天空实体与天光 provider 都**不再在此手工装配**：一句
-// `EnvironmentSystem::SetupSkyEnvironment({mode = Atmosphere, sky_recipe = ...})`
-// 就够了 —— 几何体、顶点流、实体、provider 槽、SH9 兜底全由环境系统决定。
-// 本示例因此只保留"要哪些配方 / 放哪些物体"这一层。
+// `EnvironmentSystem::SetupSkyEnvironment(OS_TEXT("env:@Sky34"), SkyTechnique::Atmosphere)`
+// 就够了 —— 配方、几何体、顶点流、实体、provider 槽、SH9 兜底全由环境系统按
+// 统一天空资产的 `[atmosphere]` 段决定。本示例因此只保留"要哪个档位 / 放哪些物体"这一层。
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
@@ -52,8 +52,11 @@ namespace
 
 namespace
 {
-    /// 天空外观配方（解析大气，不吃任何贴图）。投影/几何体由 `SkyMode::Atmosphere` 决定。
-    constexpr char SKY_RECIPE_NAME[] = "AtmosphereSkyAmbient.Sky";
+    /// 统一天空资产（与 IBLEnvironment / showcase 同一份 sky_34）：本示例选
+    /// Atmosphere 档，解析大气配方 `AtmosphereSkyAmbient.Sky` 配在资产
+    /// `[atmosphere]` 段里，不再在示例代码中手工拼 `SkyEnvironmentConfig`。
+    constexpr os_char kEnvAssetDirectory[] = OS_TEXT("ShaderLibrary/asset/environment");
+    constexpr os_char kSky34URI[] = OS_TEXT("env:@Sky34");
 }
 
 namespace
@@ -147,21 +150,33 @@ private:
     }
 
     /**
-     * 天空 + 天光一行托管。
+     * 天空 + 天光一行托管：`env:@Sky34` 的 Atmosphere 档。
      *
-     * `Atmosphere` + 空 IBL 数据 ⇒ 视觉天空走 `surface_sky_minimal` 解析大气，
-     * 天光 provider 自动选 `ambient_light_sky`（同一算法采样世界法线）；
-     * SH9 由 `sh_auto` 现算 —— 即使以后把 provider 热切到 `ambient_light_sh`，
-     * 也已经有与太阳方向一致的系数，不会黑。
+     * `[atmosphere]` 段给出解析大气配方（不吃任何贴图）⇒ 视觉天空走
+     * `surface_sky_minimal`，天光 provider 自动选 `ambient_light_sky`
+     * （同一算法采样世界法线）；SH9 由资产 `[sh9]` 段现算 —— 即使以后把
+     * provider 热切到 `ambient_light_sh`，也已经有与太阳方向一致的系数，不会黑。
      */
     bool InitSkyEnvironment()
     {
-        SkyEnvironmentConfig config;
+        static bool s_dir_loaded = false;
 
-        config.mode        = SkyMode::Atmosphere;
-        config.sky_recipe  = SKY_RECIPE_NAME;
+        if (!s_dir_loaded)
+        {
+            int loaded = 0;
+            int errors = 0;
 
-        return environment_system->SetupSkyEnvironment(config);
+            if (!environment_system->LoadEnvironmentDirectory(kEnvAssetDirectory, &loaded, &errors)
+                || loaded < 1 || errors > 0)
+            {
+                GLogError(u8"[AtmosphereSkyAmbient] 环境预设目录加载失败：%ls", kEnvAssetDirectory);
+                return false;
+            }
+
+            s_dir_loaded = true;
+        }
+
+        return environment_system->SetupSkyEnvironment(kSky34URI, SkyTechnique::Atmosphere);
     }
 
     bool InitSceneEntities()

@@ -105,9 +105,9 @@ namespace
         return path;
     }
 
-    // 天光 IBL：与 LoadModel 同一批烘焙贴图与天空配方
-    constexpr os_char IBL_TEX_IRR_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
-    constexpr os_char IBL_TEX_PRE_CUBE[] = OS_TEXT("pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_prefilter.TexCube");
+    // 统一天空资产：与 IBLEnvironment / showcase 同一份 sky_34，本示例选 CubeMap 档
+    constexpr os_char kEnvAssetDirectory[] = OS_TEXT("ShaderLibrary/asset/environment");
+    constexpr os_char kSky34URI[] = OS_TEXT("env:@Sky34");
 }
 
 class LoadGeometryApp:public WorkObject
@@ -322,21 +322,27 @@ private:
         // 太阳方向必须在天空托管之前写进光源行 0：天光调制按当时太阳现算
         light_system->SetMainLightDirection(math::Vector3f(0.2f, 0.7f, 0.68f));
 
-        hgl::ecs::SkyEnvironmentConfig config;
-        config.mode         = hgl::ecs::SkyMode::CubeMapIBL;
-        config.sky_recipe   = "IBLEnvironment.Sky";
-        config.sky_scale    = 1.0f;
-        config.track_camera = true;
+        // 统一天空资产 `env:@Sky34` 的 `[cubemap]` 段与旧内联拼装逐项同值
+        //（recipe `IBLEnvironment.Sky`、texcube: 烘焙图、LDR on/2.5/1.0/0.05、
+        // scale 1.0、track_camera）。先扫一次目录注册 `env:@Name`。
+        static bool s_dir_loaded = false;
 
-        config.irradiance_texture = IBL_TEX_IRR_CUBE;
-        config.prefilter_texture  = IBL_TEX_PRE_CUBE;
+        if (!s_dir_loaded)
+        {
+            int loaded = 0;
+            int errors = 0;
 
-        config.ldr               = hgl::ecs::SkyAmbientLDR::On;
-        config.ldr_exposure_base = 2.5f;
-        config.ldr_sun_scale     = 1.0f;
-        config.ldr_min_ambient   = 0.05f;
+            if (!environment_system->LoadEnvironmentDirectory(kEnvAssetDirectory, &loaded, &errors)
+                || loaded < 1 || errors > 0)
+            {
+                GLogError(u8"[LoadGeometry] 环境预设目录加载失败：%ls", kEnvAssetDirectory);
+                return false;
+            }
 
-        return environment_system->SetupSkyEnvironment(config);
+            s_dir_loaded = true;
+        }
+
+        return environment_system->SetupSkyEnvironment(kSky34URI, hgl::ecs::SkyTechnique::CubeMap);
     }
 
     bool CreateGeometryMesh()
