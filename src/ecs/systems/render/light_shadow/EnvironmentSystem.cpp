@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/components/GeometryData.h>
@@ -341,7 +342,41 @@ namespace hgl::ecs
         return true;
     }
 
-    bool EnvironmentSystem::SetupSkyEnvironment(const OSString &env_uri)
+    void EnvironmentSystem::SyncSunToMainLight()
+    {
+        // 光源行表的**唯一编辑入口**是 LightSystem（边界约定见其头注释）；
+        // 本系统没注册时只记警告 —— 绕道直写行表会把"值变才标脏"的口径打散。
+        auto lights = context->GetSystem<LightSystem>();
+
+        if (!lights)
+        {
+            GLogWarning(u8"[EnvironmentSystem] 资产带 [sun] 但 LightSystem 未注册，主光源保持现值");
+            return;
+        }
+
+        // direction 规约：RH Z-up 世界系、指向太阳的单位向量（与行 0 的
+        // direction_intensity.xyz 同约定）。长度异常时不归一化也不写 —— 数据坏了
+        // 就让光源停在上一版，而不是静默造出一个任意方向。
+        const math::Vector3f &d = sky_config.sun_direction;
+        const float len = sqrtf(d.x * d.x + d.y * d.y + d.z * d.z);
+
+        if (len > 1e-6f)
+        {
+            const float inv = 1.0f / len;
+            lights->SetMainLightDirection(math::Vector3f(d.x * inv, d.y * inv, d.z * inv));
+        }
+        else
+        {
+            GLogWarning(u8"[EnvironmentSystem] [sun].direction 长度近零，跳过方向同步");
+        }
+
+        const Color4f color(sky_config.sun_color.x, sky_config.sun_color.y,
+                            sky_config.sun_color.z, 1.0f);
+        lights->SetMainLightColor(color);
+        lights->SetMainLightIntensity(sky_config.sun_intensity);
+    }
+
+    bool EnvironmentSystem::SetupSkyEnvironment(const OSString &env_uri, SkyTechnique technique)
     {
         graph::EnvironmentAsset *asset = environment_registry.GetOrLoadURI(env_uri);
 
@@ -355,7 +390,7 @@ namespace hgl::ecs
         }
 
         SkyEnvironmentConfig config;
-        ApplyEnvironmentSpec(asset->GetSpec(), config);
+        ApplyEnvironmentSpec(asset->GetSpec(), config, technique);
 
         return SetupSkyEnvironment(config);
     }
@@ -387,6 +422,10 @@ namespace hgl::ecs
         }
 
         sky_config = config;
+
+        // `[sun]` 基准先行：后面的 SH 合成读的就是行 0，天光与太阳必须同一版。
+        if (sky_config.sun_present)
+            SyncSunToMainLight();
 
         // ── 0. `None`：显式声明"没有天空、也没有天光" ──
         //

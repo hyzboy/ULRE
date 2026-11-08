@@ -86,6 +86,10 @@ namespace hgl
             /// 没有 `ambient_env` 参数块时返回 false（未做任何修改）。
             bool WriteSkySHFromMainLight();
 
+            /// `[sun]` 基准（`sky_config.sun_present` 时）→ `LightSystem` 世界主光源行 0。
+            /// LightSystem 未注册 ⇒ 记警告并跳过（行表编辑权归 LightSystem，不绕道直写）。
+            void SyncSunToMainLight();
+
         public:
 
             EnvironmentSystem(const std::string &name = "EnvironmentSystem");
@@ -157,8 +161,13 @@ namespace hgl
              * 传配置**完全一致**，URI 只是一个可序列化的入口。
              *
              * 失败（文件不存在 / 解析失败 / 校验不过）时不改变现有环境，返回 false。
+             *
+             * `technique` = 画质档位在**资产外部**选技术段展开（`SkyTechnique::Default`
+             * 沿用资产 `[ambient].mode` 的默认段，行为与单参版本完全一致）：同一份
+             * schema-2 资产高配走 `[cubemap]`、低配走 `[octahedral]`、超低配走 SH9。
              */
-            bool SetupSkyEnvironment(const OSString &env_uri);
+            bool SetupSkyEnvironment(const OSString &env_uri,
+                                     SkyTechnique technique = SkyTechnique::Default);
 
             /**
              * 预载一个目录里的所有 `.env.toml`（不递归），使 `env:@<name>` 可用。
