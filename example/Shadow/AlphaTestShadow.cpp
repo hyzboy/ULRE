@@ -479,8 +479,8 @@ public:
 
     bool InitMaterial()
     {
-        const mtl::MaterialRecipe *alpha_loaded = GetRecipe("AlphaTestShadow.Lit");
-        const mtl::MaterialRecipe *ground_loaded = GetRecipe("AlphaTestShadow.Ground");
+        const mtl::MaterialRecipe *alpha_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Shadow/AlphaTestShadow.Lit");
+        const mtl::MaterialRecipe *ground_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Shadow/AlphaTestShadow.Ground");
         if (!alpha_loaded || !ground_loaded)
             return false;
         alpha_recipe = *alpha_loaded;
@@ -585,7 +585,7 @@ public:
             // 差别只在配方上，所以挂一份配方覆盖，实体端不再出现纹理授权。
             if (bind_opacity[i])
             {
-                const mtl::MaterialRecipe *masked_loaded = GetRecipe("AlphaTestShadow.LitMasked");
+                const mtl::MaterialRecipe *masked_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Shadow/AlphaTestShadow.LitMasked");
                 if (!masked_loaded)
                     return false;
 

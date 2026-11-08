@@ -57,7 +57,7 @@ private:
         if (!prim_sky_sphere)
             return false;
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("AtmosphereSkySunGizmo.Sky");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/AtmosphereSkySunGizmo.Sky");
         if (!loaded_recipe)
             return false;
         sky_recipe = *loaded_recipe;

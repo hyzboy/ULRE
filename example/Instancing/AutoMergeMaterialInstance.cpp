@@ -97,7 +97,7 @@ private:
             return false;
 
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("AutoMergeMaterialData.PureColor");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Instancing/AutoMergeMaterialData.PureColor");
         if (!loaded_recipe)
             return false;
         triangle_recipe = *loaded_recipe;

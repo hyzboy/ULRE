@@ -200,8 +200,8 @@ private:
     bool InitMaterialRecipes()
     {
         const mtl::MaterialRecipe *loaded_solid =
-            GetRecipe("LoadGeometry.DebugNormalColor");
-        const mtl::MaterialRecipe *loaded_wire = GetRecipe("LoadGeometry.Wire");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Geometry/LoadGeometry.DebugNormalColor");
+        const mtl::MaterialRecipe *loaded_wire = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Geometry/LoadGeometry.Wire");
         if (!loaded_solid || !loaded_wire)
             return false;
         solid_recipe = *loaded_solid;

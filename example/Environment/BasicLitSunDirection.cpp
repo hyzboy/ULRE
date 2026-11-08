@@ -149,7 +149,7 @@ private:
             return false;
 
         const mtl::MaterialRecipe *loaded_sky_recipe =
-            GetRecipe("BasicLitSunDirection.Sky");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/BasicLitSunDirection.Sky");
         if (!loaded_sky_recipe)
             return false;
         sky_recipe = *loaded_sky_recipe;
@@ -162,7 +162,7 @@ private:
     bool InitMaterial()
     {
         const mtl::MaterialRecipe *loaded_mesh_recipe =
-            GetRecipe("BasicLitSunDirection.Lit");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/BasicLitSunDirection.Lit");
         if (!loaded_mesh_recipe)
             return false;
         mesh_recipe = *loaded_mesh_recipe;

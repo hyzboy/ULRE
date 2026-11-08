@@ -107,7 +107,7 @@ private:
 
         auto primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity);
         hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity);
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SimpleCube.DebugNormalColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/GettingStarted/SimpleCube.DebugNormalColor");
         if (!loaded_recipe)
             return false;
         cube_recipe = *loaded_recipe;

@@ -132,7 +132,7 @@ private:
             return false;
 
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("PlaneGrid3D.VertexLuminance");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Interaction/PlaneGrid3D.VertexLuminance");
         if (!loaded_recipe)
             return false;
         plane_grid_recipe = *loaded_recipe;

@@ -83,7 +83,7 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("TextureRect.UnlitTexture");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Texture/TextureRect.UnlitTexture");
         if (!loaded_recipe)
             return false;
         rect_recipe = *loaded_recipe;

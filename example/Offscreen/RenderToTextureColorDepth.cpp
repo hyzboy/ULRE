@@ -300,7 +300,7 @@ public:
             return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
 
         const mtl::MaterialRecipe *loaded_recipe =
-            owner->GetRecipe("RTTColorDepth.OffscreenSphere");
+            owner->GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Offscreen/RTTColorDepth.OffscreenSphere");
         if (!loaded_recipe)
             return LogStageFail("OffscreenPass::BuildSphere", "material recipe not found");
         sphere_recipe = *loaded_recipe;

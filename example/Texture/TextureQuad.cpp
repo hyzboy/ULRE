@@ -73,7 +73,7 @@ private:
 
     bool InitMaterial()
     {
-        quad_recipe = GetRecipe("TextureQuad.UnlitTexture");
+        quad_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/TextureQuad");
         return quad_recipe != nullptr;
     }
 

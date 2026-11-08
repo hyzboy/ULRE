@@ -113,7 +113,7 @@ private:
          || !tick_data_ssbo_accessor.IsValid())
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("Clock.PureColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Transform/Clock.PureColor");
         if (!loaded_recipe)
             return false;
         clock_recipe = *loaded_recipe;

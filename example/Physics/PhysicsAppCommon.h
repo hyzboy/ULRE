@@ -152,8 +152,8 @@ namespace hgl::example
         const char *const kMtlUri =
             "mtldata:pack(ShaderLibrary):asset/material_data/render_bound_box.material_data.toml";
 
-        const graph::mtl::MaterialRecipe *loaded_solid = app_->GetRecipe("RenderBoundBox.Solid");
-        const graph::mtl::MaterialRecipe *loaded_wire  = app_->GetRecipe("RenderBoundBox.Wire");
+        const graph::mtl::MaterialRecipe *loaded_solid = app_->GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Debug/RenderBoundBox.Solid");
+        const graph::mtl::MaterialRecipe *loaded_wire  = app_->GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Debug/RenderBoundBox.Wire");
         if(loaded_solid == nullptr || loaded_wire == nullptr)
         {
             GLogError("[PhysicsKit] RenderBoundBox recipes not available");

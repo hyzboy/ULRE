@@ -95,7 +95,7 @@ public:
 private:
     bool InitMaterial()
     {
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("PBRMatrix.Lit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/PBRMatrix.Lit");
         if (!loaded_recipe)
         {
             GLogError(u8"PBRMatrix: 配方 PBRMatrix.Lit 加载失败");

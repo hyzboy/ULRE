@@ -813,8 +813,8 @@ private:
 
     bool InitMaterial()
     {
-        const mtl::MaterialRecipe *lit_loaded = GetRecipe("CascadeShadowMap.Lit");
-        const mtl::MaterialRecipe *alpha_loaded = GetRecipe("CascadeShadowMap.AlphaTest");
+        const mtl::MaterialRecipe *lit_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Shadow/CascadeShadowMap.Lit");
+        const mtl::MaterialRecipe *alpha_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Shadow/CascadeShadowMap.AlphaTest");
         if (!lit_loaded || !alpha_loaded)
             return false;
         lit_recipe = *lit_loaded;

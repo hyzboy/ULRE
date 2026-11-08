@@ -81,7 +81,7 @@ private:
 
     bool InitMaterial()
     {
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SimpleSphere.Lit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/GettingStarted/SimpleSphere.Lit");
         if (!loaded_recipe)
             return false;
         sphere_recipe = *loaded_recipe;

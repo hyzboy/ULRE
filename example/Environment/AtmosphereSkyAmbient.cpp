@@ -99,7 +99,7 @@ private:
         if (!material_data_ssbo_accessor.IsValid())
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("AtmosphereSkyAmbient.Lit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/AtmosphereSkyAmbient.Lit");
         if (!loaded_recipe)
             return false;
         mesh_recipe = *loaded_recipe;

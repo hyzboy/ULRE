@@ -153,7 +153,7 @@ private:
     bool InitMaterial()
     {
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("PBRSpheres.Lit");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/PBRSpheres");
         if (!loaded_recipe)
             return false;
         sphere_recipe = *loaded_recipe;
@@ -171,7 +171,7 @@ private:
             // ⇒ 用**同 def + 不同顶点节点配置**（billboard 朝向 ⇒ 不同 vertex program，
             //   资源/材质行路径完全一致）拿到真正的第二个批。
             const mtl::MaterialRecipe *billboard_recipe =
-                GetRecipe("PBRSpheres.LitBillboard");
+                GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/PBRSpheres.LitBillboard");
             if (!billboard_recipe)
                 return false;
             sphere_recipe_b = *billboard_recipe;

@@ -109,8 +109,8 @@ private:
 
     bool InitMaterialAndPipeline()
     {
-        const mtl::MaterialRecipe *plane_loaded = GetRecipe("RayPicking.PlaneGrid");
-        const mtl::MaterialRecipe *line_loaded = GetRecipe("RayPicking.Line");
+        const mtl::MaterialRecipe *plane_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Interaction/RayPicking.PlaneGrid");
+        const mtl::MaterialRecipe *line_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Interaction/RayPicking.Line");
         if (!plane_loaded || !line_loaded)
             return false;
         plane_recipe = *plane_loaded;

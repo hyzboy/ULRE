@@ -69,7 +69,7 @@ private:
         if (!sky_geometry)
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SkyCubeSphere.Unlit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/SkyCubeSphere.Unlit");
         if (!loaded_recipe)
             return false;
         sky_recipe = *loaded_recipe;

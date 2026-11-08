@@ -66,7 +66,7 @@ private:
         if (!dome_geometry)
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SkyLambertDome.Unlit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/SkyLambertDome.Unlit");
         if (!loaded_recipe)
             return false;
         dome_recipe = *loaded_recipe;

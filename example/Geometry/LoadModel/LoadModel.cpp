@@ -222,7 +222,7 @@ private:
             return true;
         }
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("LoadModel.DebugNormalColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Geometry/LoadModel.DebugNormalColor");
         if (!loaded_recipe)
             return false;
 
@@ -307,7 +307,7 @@ private:
         else
         {
             // 调试法线模式：单配方覆盖全部材质，不能被目录里的 PBR 配方抢走。
-            const mtl::MaterialRecipe *loaded_recipe = GetRecipe("LoadModel.DebugNormalColor");
+            const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Geometry/LoadModel.DebugNormalColor");
             if (!loaded_recipe)
                 return false;
 

@@ -157,7 +157,7 @@ private:
             return false;
 
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("ComputeIndirectCount.CubeMaterial");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/ApiValidation/ComputeIndirectCount.CubeMaterial");
         if (!loaded_recipe)
             return false;
         cube_recipe = *loaded_recipe;

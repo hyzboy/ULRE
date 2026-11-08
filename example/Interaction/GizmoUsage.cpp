@@ -106,7 +106,7 @@ private:
                 return false;
 
             const mtl::MaterialRecipe *loaded_grid_recipe =
-                GetRecipe("GizmoUsage.VertexLuminance");
+                GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Interaction/GizmoUsage.VertexLuminance");
             if (!loaded_grid_recipe)
                 return false;
             grid_recipe = *loaded_grid_recipe;
@@ -127,7 +127,7 @@ private:
                 return false;
 
             const mtl::MaterialRecipe *loaded_cube_recipe =
-                GetRecipe("GizmoUsage.DebugNormalColor");
+                GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Interaction/GizmoUsage.DebugNormalColor");
             if (!loaded_cube_recipe)
                 return false;
             cube_recipe = *loaded_cube_recipe;

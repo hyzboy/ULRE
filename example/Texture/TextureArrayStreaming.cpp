@@ -204,7 +204,7 @@ private:
     bool InitMaterial()
     {
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("TextureArrayStreaming.UnlitTexture");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Texture/TextureArrayStreaming.UnlitTexture");
         if (!loaded_recipe)
             return false;
         icon_recipe = *loaded_recipe;

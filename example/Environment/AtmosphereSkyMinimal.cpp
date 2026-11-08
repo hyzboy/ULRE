@@ -49,7 +49,7 @@ private:
         if (!prim_sky_sphere)
             return false;
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("AtmosphereSkyMinimal.Sky");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/AtmosphereSkyMinimal.Sky");
         if (!loaded_recipe)
             return false;
         sky_recipe = *loaded_recipe;

@@ -273,7 +273,7 @@ public:
             return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
 
         const mtl::MaterialRecipe *loaded_sphere_recipe =
-            owner->GetRecipe("RenderToTexture.OffscreenSphere");
+            owner->GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Offscreen/RenderToTexture.OffscreenSphere");
         if (!loaded_sphere_recipe)
             return LogStageFail("OffscreenPass::BuildSphere", "material recipe not found");
         sphere_recipe = *loaded_sphere_recipe;
@@ -430,7 +430,7 @@ private:
             return LogStageFail("RenderToTextureApp::CreateCube", "CreateCube geometry failed");
 
         const mtl::MaterialRecipe *loaded_cube_recipe =
-            GetRecipe("RenderToTexture.Cube");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Offscreen/RenderToTexture.Cube");
         if (!loaded_cube_recipe)
             return LogStageFail("RenderToTextureApp::CreateCube", "material recipe not found");
         cube_recipe = *loaded_cube_recipe;

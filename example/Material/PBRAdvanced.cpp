@@ -97,7 +97,7 @@ public:
 private:
     bool InitMaterial()
     {
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("PBRAdvanced.Lit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/PBRAdvanced.Lit");
         if (!loaded_recipe)
         {
             GLogError(u8"PBRAdvanced: 配方 PBRAdvanced.Lit 加载失败");

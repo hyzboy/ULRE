@@ -322,7 +322,7 @@ private:
         if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, base_row))
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("GPUModelChessboard.Board");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Instancing/GPUModelChessboard.Board");
         if (!loaded_recipe)
             return false;
         board_recipe = *loaded_recipe;

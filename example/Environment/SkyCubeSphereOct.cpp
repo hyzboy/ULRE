@@ -68,7 +68,7 @@ private:
         if (!ball_geometry)
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SkyCubeSphereOct.Unlit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/SkyCubeSphereOct.Unlit");
         if (!loaded_recipe)
             return false;
         ball_recipe = *loaded_recipe;

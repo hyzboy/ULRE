@@ -136,7 +136,7 @@ private:
         // 几何/资产侧状态由 GeometryData 承载
         // 注意：需要明确使用 hgl::ecs 命名空间
         auto ecs_primitive = triangle_entity->GetContext()->GetOrCreateGeometryData(triangle_entity);
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("DrawTriangle.VertexColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/GettingStarted/DrawTriangle.VertexColor");
         if (!loaded_recipe)
             return false;
         triangle_recipe = *loaded_recipe;

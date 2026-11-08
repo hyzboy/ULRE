@@ -126,7 +126,7 @@ private:
         auto primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity);
         hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity);
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("Phase2.MaterialRecipeEntry.Cube");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/Phase2.MaterialRecipeEntry.Cube");
         if (!loaded_recipe)
             return false;
         cube_recipe = *loaded_recipe;

@@ -147,8 +147,8 @@ private:
 
     bool InitMaterialRecipes()
     {
-        const mtl::MaterialRecipe *loaded_solid = GetRecipe("RenderBoundBox.Solid");
-        const mtl::MaterialRecipe *loaded_wire = GetRecipe("RenderBoundBox.Wire");
+        const mtl::MaterialRecipe *loaded_solid = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Debug/RenderBoundBox.Solid");
+        const mtl::MaterialRecipe *loaded_wire = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Debug/RenderBoundBox.Wire");
         if (!loaded_solid || !loaded_wire)
             return false;
         solid_recipe = *loaded_solid;

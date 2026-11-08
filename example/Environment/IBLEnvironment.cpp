@@ -236,7 +236,7 @@ private:
     bool InitMaterial()
     {
         // 与默认 Lit 材质同一套 PBR 表面：环境光**算法**由环境层决定（见 InitSkyEnvironment）
-        const mtl::MaterialRecipe *loaded_mesh_recipe = GetRecipe("IBLEnvironment.Lit");
+        const mtl::MaterialRecipe *loaded_mesh_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Environment/IBLEnvironment.Lit");
         if (!loaded_mesh_recipe)
             return false;
         mesh_recipe = *loaded_mesh_recipe;

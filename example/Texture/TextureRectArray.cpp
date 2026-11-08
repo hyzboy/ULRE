@@ -79,7 +79,7 @@ private:
     bool InitMaterial()
     {
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("TextureRectArray.UnlitTexture");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Texture/TextureRectArray.UnlitTexture");
         if (!loaded_recipe)
             return false;
 

@@ -237,7 +237,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("TextureQuad.UnlitTexture");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/TextureQuad");
         if (!loaded_recipe)
             return false;
         quad_recipe = *loaded_recipe;

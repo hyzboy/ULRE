@@ -225,7 +225,7 @@ private:
         if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, material_accessor))
             return LogStageFail("CreateSharedResources", "material data block binding failed");
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("DualWorldShadows.Lit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Shadow/DualWorldShadows.Lit");
         if (!loaded_recipe)
             return LogStageFail("CreateSharedResources", "material recipe not found");
         lit_recipe = *loaded_recipe;
@@ -454,7 +454,7 @@ private:
 
         // 只有这块屏幕贴这张图 ⇒ 给它挂一份派生配方（其余几何继续用无纹理的共享配方）。
         // 采样器由 Bindless 预设统一管理，材质侧不再持有 Sampler。
-        const mtl::MaterialRecipe *screen_loaded = GetRecipe("DualWorldShadows.Screen");
+        const mtl::MaterialRecipe *screen_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Shadow/DualWorldShadows.Screen");
         if (!screen_loaded)
             return LogStageFail("BindChildScreenTexture", "screen recipe not found");
 

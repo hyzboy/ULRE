@@ -160,10 +160,10 @@ private:
     {
         // 基础配方：Lit，实心（Opaque 就是它）。五种模式的纹理都来自 Opaque 配方，
         // 变体只声明 parent 与自己的 render_state ⇒ 这里不再 AddTexture。
-        const mtl::MaterialRecipe *opaque_loaded = GetRecipe("AlphaModes.LitOpaque");
-        const mtl::MaterialRecipe *blend_loaded = GetRecipe("AlphaModes.LitAlphaBlend");
-        const mtl::MaterialRecipe *alpha_test_loaded = GetRecipe("AlphaModes.LitAlphaTest");
-        const mtl::MaterialRecipe *dither_loaded = GetRecipe("AlphaModes.LitAlphaDither");
+        const mtl::MaterialRecipe *opaque_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/AlphaModes.LitOpaque");
+        const mtl::MaterialRecipe *blend_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/AlphaModes.LitAlphaBlend");
+        const mtl::MaterialRecipe *alpha_test_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/AlphaModes.LitAlphaTest");
+        const mtl::MaterialRecipe *dither_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/AlphaModes.LitAlphaDither");
         if (!opaque_loaded || !blend_loaded || !alpha_test_loaded || !dither_loaded)
             return false;
         opaque_recipe = *opaque_loaded;
@@ -178,7 +178,7 @@ private:
         if (partial_enabled)
         {
             const mtl::MaterialRecipe *partial_loaded =
-                GetRecipe("AlphaModes.LitOpaqueBillboard");
+                GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/AlphaModes.LitOpaqueBillboard");
             if (!partial_loaded)
                 return false;
             partial_recipe = *partial_loaded;

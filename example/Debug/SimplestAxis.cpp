@@ -86,7 +86,7 @@ private:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("SimplestAxis.VertexColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Debug/SimplestAxis.VertexColor");
         if (!loaded_recipe)
             return false;
         axis_recipe = *loaded_recipe;

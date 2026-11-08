@@ -528,7 +528,7 @@ private:
             return false;
 
         const mtl::MaterialRecipe *planet_loaded =
-            GetRecipe("ComputeAsteroidBelt.PlanetMaterial");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/ApiValidation/ComputeAsteroidBelt.PlanetMaterial");
         if (!planet_loaded)
             return false;
         planet_recipe = *planet_loaded;
@@ -563,7 +563,7 @@ private:
         }
 
         const mtl::MaterialRecipe *asteroid_loaded =
-            GetRecipe("ComputeAsteroidBelt.AsteroidMaterial");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/ApiValidation/ComputeAsteroidBelt.AsteroidMaterial");
         if (!asteroid_loaded)
             return false;
         asteroid_recipe = *asteroid_loaded;

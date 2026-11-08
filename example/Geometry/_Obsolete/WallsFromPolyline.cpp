@@ -136,7 +136,7 @@ public:
         material_data.roughness=0.95f;
         material_data.normal_scale=0.35f;
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("WallsFromPolyline.Lit");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Geometry/WallsFromPolyline.Lit");
         if (!loaded_recipe)
             return false;
         wall_recipe = *loaded_recipe;

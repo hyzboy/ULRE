@@ -76,7 +76,7 @@ private:
         if (!geom_triangle)
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("AutoInstance.VertexColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Instancing/AutoInstance.VertexColor");
         if (!loaded_recipe)
             return false;
         triangle_recipe = *loaded_recipe;

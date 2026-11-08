@@ -133,9 +133,9 @@ private:
             return LogFail("InitMaterials", "material data block binding failed");
 
         const mtl::MaterialRecipe *near_loaded_recipe =
-            GetRecipe("06e.SingleSphereSwitch.Near");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/06e.SingleSphereSwitch.Near");
         const mtl::MaterialRecipe *far_loaded_recipe =
-            GetRecipe("06e.SingleSphereSwitch.Far");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/06e.SingleSphereSwitch.Far");
         if (!near_loaded_recipe || !far_loaded_recipe)
             return LogFail("InitMaterials", "material recipe not found");
         near_recipe = *near_loaded_recipe;

@@ -82,7 +82,7 @@ private:
     {
         if (!material_data_ssbo_accessor)
             return false;
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("06c.FullPrecisionLit.Lit");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/06c.FullPrecisionLit.Lit");
         if (!loaded_recipe)
             return false;
         mesh_recipe = *loaded_recipe;

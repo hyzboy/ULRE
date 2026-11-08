@@ -135,8 +135,8 @@ private:
     {
         // 纹理绑定由配方文件声明（`[[textures]]`），配方的 `parent` 继承让
         // DitherMask 变体只补自己的 `opacity_mask`；这里不再创建句柄、不再 AddTexture。
-        const mtl::MaterialRecipe *opaque_loaded = GetRecipe("CoverageVariants.LitOpaque");
-        const mtl::MaterialRecipe *dither_loaded = GetRecipe("CoverageVariants.LitDitherMask");
+        const mtl::MaterialRecipe *opaque_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/CoverageVariants.LitOpaque");
+        const mtl::MaterialRecipe *dither_loaded = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/CoverageVariants.LitDitherMask");
         if (!opaque_loaded || !dither_loaded)
             return false;
 

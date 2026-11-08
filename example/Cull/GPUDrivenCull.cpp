@@ -149,7 +149,7 @@ private:
         for (uint i = 0; i < CUBE_COUNT; ++i)
             color_rows[i] = first.RowOffset(i);
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("GPUDrivenCull.Cube");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Cull/GPUDrivenCull.Cube");
         if (!loaded_recipe)
             return false;
         cube_recipe = *loaded_recipe;

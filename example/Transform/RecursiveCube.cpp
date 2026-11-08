@@ -125,7 +125,7 @@ private:
         if (!GetMaterialDataBinding(MATERIAL_DATA_URI, MATERIAL_DATA_ROW, mtl_data_ssbo_accessor))
             return false;
 
-        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("RecursiveCube.DebugNormalColor");
+        const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Transform/RecursiveCube.DebugNormalColor");
         if (!loaded_recipe)
             return false;
         cube_recipe = *loaded_recipe;

@@ -81,7 +81,7 @@ private:
             return false;
 
         const mtl::MaterialRecipe *loaded_recipe =
-            GetRecipe("ExtrudedPolygonTest.DebugNormalColor");
+            GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Geometry/ExtrudedPolygonTest.DebugNormalColor");
         if (!loaded_recipe)
             return false;
         mesh_recipe = *loaded_recipe;
