@@ -55,11 +55,33 @@ namespace hgl::graph::mtl
             if (!source)
                 return fail(PassProfileValidationError::ModuleSourceMissing);
 
-            const OSString expected = ResolveShaderLibraryModulePath(
-                source->source_root, source->include_path);
-            const OSString actual = ResolveShaderLibraryModulePath(
-                source->source_root,
-                root.include_path.IsEmpty() ? source->include_path : root.include_path);
+            const AnsiString &query_include =
+                root.include_path.IsEmpty() ? source->include_path : root.include_path;
+
+            OSString expected;
+            OSString actual;
+            if (source->source_root.IsEmpty())
+            {
+                // 包内来源（pack(...)）：没有物理根目录，身份就是归一化后的
+                // '/'分隔 include 路径本身，与 source_path（同为相对包根）直接比对。
+                const auto pack_identity = [](const AnsiString &include_path) -> OSString
+                {
+                    AnsiString relative = include_path;
+                    if (!hgl::shader::NormalizeRootIncludePath(relative.c_str()))
+                        return {};
+                    relative.Resize(hgl::strlen(relative.c_str()));
+                    return ToOSString(relative.c_str());
+                };
+                expected = pack_identity(source->include_path);
+                actual = pack_identity(query_include);
+            }
+            else
+            {
+                expected = ResolveShaderLibraryModulePath(
+                    source->source_root, source->include_path);
+                actual = ResolveShaderLibraryModulePath(
+                    source->source_root, query_include);
+            }
             if (expected.IsEmpty() || actual.IsEmpty())
                 return fail(PassProfileValidationError::IncludePathNotFound);
 #if HGL_OS == HGL_OS_Windows

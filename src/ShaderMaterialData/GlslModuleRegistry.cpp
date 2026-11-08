@@ -1,6 +1,8 @@
 #include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/mtl/GlslModuleMetadata.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderLibraryPack.h>
+#include <hgl/graph/asset/AssetSourceMount.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileInputStream.h>
@@ -108,123 +110,149 @@ namespace hgl::graph::mtl
 
             const OSString full_name(file_info.fullname);
 
-            GlslModuleFileData *data = file_data.Create();
-            if (!data)
-            {
-                ++error_count;
-                continue;
-            }
-
-            if (!LoadFileContent(full_name, data->glsl_code))
+            AnsiString text;
+            if (!LoadFileContent(full_name, text))
             {
                 GLogError(u8"[GlslModuleRegistry] Failed to read code-module file: %ls",
                           full_name.c_str());
-                file_data.DeleteAt(file_data.GetCount() - 1);
                 ++error_count;
                 continue;
             }
 
-            const GlslModuleParseResult result =
-                ParseGlslModuleFile(data->glsl_code.c_str(), data->glsl_code.Length(), *data);
-
-            if (result == GlslModuleParseResult::Skipped)
-            {
-                file_data.DeleteAt(file_data.GetCount() - 1);
-                continue;
-            }
-
-            if (result != GlslModuleParseResult::OK)
-            {
-                GLogError(u8"[GlslModuleRegistry] Code-module metadata parse failed: file=%ls error=%s",
-                          full_name.c_str(), GetGlslModuleParseResultName(result));
-                file_data.DeleteAt(file_data.GetCount() - 1);
-                ++error_count;
-                continue;
-            }
-
-            if (data->name.IsEmpty())
-            {
-                // @ulre name 是必填身份——模块身份统一为 name（T2 起），
-                // 不接受"文件名即名字"的隐式特例
-                GLogError(u8"[GlslModuleRegistry] Code-module metadata missing @ulre name: file=%ls",
-                          full_name.c_str());
-                file_data.DeleteAt(file_data.GetCount() - 1);
-                ++error_count;
-                continue;
-            }
-
-            if (FindByName(data->name.c_str()))
-            {
-                GLogError(u8"[GlslModuleRegistry] Duplicate code-module name: %s (file=%ls)",
-                          data->name.c_str(), full_name.c_str());
-                file_data.DeleteAt(file_data.GetCount() - 1);
-                ++error_count;
-                continue;
-            }
-
-            data->source_root = source_root;
-            data->source_path = filesystem::NormalizeFilename(full_name);
-            const OSString relative = data->source_path.SubString(relative_start);
-            const U8String relative_utf8 = ToU8String(relative);
-            data->include_path = AnsiString(
+            const OSString normalized = filesystem::NormalizeFilename(full_name);
+            const U8String relative_utf8 = ToU8String(normalized.SubString(relative_start));
+            AnsiString include_path(
                 reinterpret_cast<const char *>(relative_utf8.c_str()),
                 relative_utf8.Length());
-            data->include_path.Replace('\\', '/');
+            include_path.Replace('\\', '/');
 
-            // Finalize the definition. Pointers reference stable members of the
-            // heap-allocated entry, which are not mutated afterwards.
-            data->definition.name = data->name.c_str();
-            data->definition.glsl_code = data->glsl_code.c_str();
-            data->definition.kind = data->kind;
-            data->definition.priority = data->priority;
-            data->definition.flags = data->flags;
-            data->definition.slot_role = data->slot_role;
-            data->definition.provided_capabilities =
-                data->provided_capabilities;
-            data->definition.required_capabilities =
-                data->required_capabilities;
-            data->definition.semantic_requirements = data->semantic_requirements.GetData();
-            data->definition.semantic_requirement_count = static_cast<uint32>(data->semantic_requirements.GetCount());
-            data->definition.semantic_provides = data->semantic_provides.GetData();
-            data->definition.semantic_provide_count = static_cast<uint32>(data->semantic_provides.GetCount());
-            for (int k = 0;
-                 k < data->texture_reference_requirements.GetCount();
-                 ++k)
-            {
-                data->texture_reference_requirements[k].texture_name =
-                    data->texture_reference_name_storage[k]->c_str();
-            }
-            data->definition.texture_reference_requirements =
-                data->texture_reference_requirements.GetData();
-            data->definition.texture_reference_requirement_count =
-                static_cast<uint32>(
-                    data->texture_reference_requirements.GetCount());
-            for (int k = 0;
-                 k < data->sampler_reference_requirements.GetCount();
-                 ++k)
-            {
-                data->sampler_reference_requirements[k].sampler_name =
-                    data->sampler_reference_name_storage[k]->c_str();
-            }
-            data->definition.sampler_reference_requirements =
-                data->sampler_reference_requirements.GetData();
-            data->definition.sampler_reference_requirement_count =
-                static_cast<uint32>(
-                    data->sampler_reference_requirements.GetCount());
-            data->metadata_resolution_valid = false;
-
-            if (!Register(data->definition))
-            {
-                GLogError(u8"[GlslModuleRegistry] Failed to register code module: %s",
-                          data->name.c_str());
-                file_data.DeleteAt(file_data.GetCount() - 1);
+            const int result = RegisterModuleText(text, include_path, source_root, normalized);
+            if (result > 0)
+                ++file_count;
+            else if (result < 0)
                 ++error_count;
-                continue;
-            }
-
-            ++file_count;
         }
 
+        FinishRegistration(first_new_file_index, file_count, error_count, directory);
+
+        if (out_file_count)
+            *out_file_count = file_count;
+        if (out_error_count)
+            *out_error_count = error_count;
+
+        return true;
+    }
+
+    int GlslModuleRegistry::RegisterModuleText(const AnsiString &text,
+                                               const AnsiString &include_path,
+                                               const OSString &source_root,
+                                               const OSString &source_path)
+    {
+        GlslModuleFileData *data = file_data.Create();
+        if (!data)
+        {
+            return -1;
+        }
+
+        data->glsl_code = text;
+
+        const GlslModuleParseResult result =
+            ParseGlslModuleFile(data->glsl_code.c_str(), data->glsl_code.Length(), *data);
+
+        if (result == GlslModuleParseResult::Skipped)
+        {
+            file_data.DeleteAt(file_data.GetCount() - 1);
+            return 0;
+        }
+
+        if (result != GlslModuleParseResult::OK)
+        {
+            GLogError(u8"[GlslModuleRegistry] Code-module metadata parse failed: file=%ls error=%s",
+                      source_path.c_str(), GetGlslModuleParseResultName(result));
+            file_data.DeleteAt(file_data.GetCount() - 1);
+            return -1;
+        }
+
+        if (data->name.IsEmpty())
+        {
+            // @ulre name 是必填身份——模块身份统一为 name（T2 起），
+            // 不接受"文件名即名字"的隐式特例
+            GLogError(u8"[GlslModuleRegistry] Code-module metadata missing @ulre name: file=%ls",
+                      source_path.c_str());
+            file_data.DeleteAt(file_data.GetCount() - 1);
+            return -1;
+        }
+
+        if (FindByName(data->name.c_str()))
+        {
+            GLogError(u8"[GlslModuleRegistry] Duplicate code-module name: %s (file=%ls)",
+                      data->name.c_str(), source_path.c_str());
+            file_data.DeleteAt(file_data.GetCount() - 1);
+            return -1;
+        }
+
+        data->source_root = source_root;
+        data->source_path = source_path;
+        data->include_path = include_path;
+
+        // Finalize the definition. Pointers reference stable members of the
+        // heap-allocated entry, which are not mutated afterwards.
+        data->definition.name = data->name.c_str();
+        data->definition.glsl_code = data->glsl_code.c_str();
+        data->definition.kind = data->kind;
+        data->definition.priority = data->priority;
+        data->definition.flags = data->flags;
+        data->definition.slot_role = data->slot_role;
+        data->definition.provided_capabilities =
+            data->provided_capabilities;
+        data->definition.required_capabilities =
+            data->required_capabilities;
+        data->definition.semantic_requirements = data->semantic_requirements.GetData();
+        data->definition.semantic_requirement_count = static_cast<uint32>(data->semantic_requirements.GetCount());
+        data->definition.semantic_provides = data->semantic_provides.GetData();
+        data->definition.semantic_provide_count = static_cast<uint32>(data->semantic_provides.GetCount());
+        for (int k = 0;
+             k < data->texture_reference_requirements.GetCount();
+             ++k)
+        {
+            data->texture_reference_requirements[k].texture_name =
+                data->texture_reference_name_storage[k]->c_str();
+        }
+        data->definition.texture_reference_requirements =
+            data->texture_reference_requirements.GetData();
+        data->definition.texture_reference_requirement_count =
+            static_cast<uint32>(
+                data->texture_reference_requirements.GetCount());
+        for (int k = 0;
+             k < data->sampler_reference_requirements.GetCount();
+             ++k)
+        {
+            data->sampler_reference_requirements[k].sampler_name =
+                data->sampler_reference_name_storage[k]->c_str();
+        }
+        data->definition.sampler_reference_requirements =
+            data->sampler_reference_requirements.GetData();
+        data->definition.sampler_reference_requirement_count =
+            static_cast<uint32>(
+                data->sampler_reference_requirements.GetCount());
+        data->metadata_resolution_valid = false;
+
+        if (!Register(data->definition))
+        {
+            GLogError(u8"[GlslModuleRegistry] Failed to register code module: %s",
+                      data->name.c_str());
+            file_data.DeleteAt(file_data.GetCount() - 1);
+            return -1;
+        }
+
+        return 1;
+    }
+
+    void GlslModuleRegistry::FinishRegistration(int first_new_file_index,
+                                                int &file_count,
+                                                int &error_count,
+                                                const OSString &origin)
+    {
         // Pass 2: validate `uses <module-name>` references against the
         // now-complete registry and store dependency/conflict names.
         for (int i = 0; i < file_data.GetCount(); ++i)
@@ -378,13 +406,107 @@ namespace hgl::graph::mtl
             ++error_count;
         }
 
+        GLogInfo(u8"[GlslModuleRegistry] Loaded %d code modules from %ls (%d errors)",
+                 file_count, origin.c_str(), error_count);
+    }
+
+    bool GlslModuleRegistry::LoadFromPack(const char *pack_name,
+                                          int *out_file_count,
+                                          int *out_error_count)
+    {
+        if (!pack_name || !*pack_name)
+            return false;
+        if (hgl::graph::GetMountedAssetSource(pack_name) == nullptr)
+            return false;
+
+        // ListAssetDirectory 只返回单层条目；自挂载根起 BFS 收集全部 .glsl。
+        AnsiStringList dirs;
+        AnsiStringList module_paths;   // '/'分隔的包内相对路径（含扩展名）
+        dirs.Add(AnsiString());
+
+        for (int d = 0; d < dirs.GetCount(); ++d)
+        {
+            ManagedArray<asset::SourceEntry> entries;
+            const int listed = hgl::graph::ListAssetDirectory(dirs[d], entries, pack_name);
+            if (listed < 0)
+            {
+                GLogError(u8"[GlslModuleRegistry] Pack directory not enumerable: %s",
+                          pack_name);
+                return false;
+            }
+
+            for (int e = 0; e < entries.GetCount(); ++e)
+            {
+                const asset::SourceEntry *entry = entries[e];
+                if (!entry)
+                    continue;
+
+                const AnsiString path(
+                    reinterpret_cast<const char *>(entry->path.c_str()),
+                    entry->path.Length());
+                if (path.IsEmpty())
+                    continue;
+
+                if (entry->is_directory)
+                {
+                    dirs.Add(path);
+                    continue;
+                }
+
+                if (path.EndsWith(".glsl"))
+                    module_paths.Add(path);
+            }
+        }
+
+        int file_count = 0;
+        int error_count = 0;
+        const int first_new_file_index = file_data.GetCount();
+
+        OSString origin = ToOSString("pack(");
+        origin += ToOSString(pack_name);
+        origin += ToOSString(")");
+
+        for (int i = 0; i < module_paths.GetCount(); ++i)
+        {
+            const AnsiString &include_path = module_paths[i];
+
+            OSString uri = origin;
+            uri += ToOSString(":");
+            uri += ToOSString(include_path.c_str());
+
+            AnsiString text;
+            AnsiString err;
+            hgl::io::InputStream *stream = hgl::graph::OpenAssetInputStream(
+                uri, asset::AssetType::Unknown, &err);
+            const bool ok = ReadStreamToText(stream, text);
+            if (stream)
+            {
+                stream->Close();
+                delete stream;
+            }
+            if (!ok)
+            {
+                GLogError(u8"[GlslModuleRegistry] Failed to read pack code-module: %s (%s)",
+                          include_path.c_str(), err.c_str());
+                ++error_count;
+                continue;
+            }
+
+            // source_root 留空、source_path 记包内相对路径：溯源日志不依赖物理盘路径。
+            const int result = RegisterModuleText(
+                text, include_path, OSString(), ToOSString(include_path.c_str()));
+            if (result > 0)
+                ++file_count;
+            else if (result < 0)
+                ++error_count;
+        }
+
+        FinishRegistration(first_new_file_index, file_count, error_count, origin);
+
         if (out_file_count)
             *out_file_count = file_count;
         if (out_error_count)
             *out_error_count = error_count;
-
-        GLogInfo(u8"[GlslModuleRegistry] Loaded %d code modules from %s (%d errors)",
-                 file_count, directory.c_str(), error_count);
 
         return true;
     }
@@ -459,7 +581,17 @@ namespace hgl::graph::mtl
             hgl::MutexLock lock(&load_mutex);
             if (!loaded)
             {
-                registry.LoadDirectory(ToOSString(mtl::GetShaderLibraryPath()));
+                // 包内访问优先：ShaderLibrary 已挂载时经 pack 枚举并取流；
+                // 未挂载（离线工具/独立测试）回退物理目录扫描，行为不变。
+                if (!registry.LoadFromPack(SHADER_LIBRARY_PACK_NAME))
+                {
+                    OSString root;
+                    if (GetShaderLibraryRoot(root))
+                        registry.LoadDirectory(root);
+                    else
+                        GLogError(u8"[GlslModuleRegistry] ShaderLibrary unavailable: "
+                                  u8"pack not mounted and physical root unresolved");
+                }
                 loaded = true;
             }
         }

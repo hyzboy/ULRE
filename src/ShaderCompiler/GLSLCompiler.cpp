@@ -9,6 +9,7 @@
 #include<hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include<hgl/mtl/contract/ShaderGenPhysicalDeviceProfileJson.h>
 #include<hgl/mtl/ShaderLibraryPath.h>
+#include<hgl/mtl/ShaderLibraryPack.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
 #include "ShaderReflectionData.h"
 #include "SPVParseFlat.h"
@@ -426,9 +427,16 @@ namespace hgl
 
         OSString GetShaderIncludeRoot()
         {
-            if (g_include_root.IsEmpty()
-             && !SetShaderIncludeRoot(GetShaderLibraryPath().c_str()))
-                return {};
+            if (g_include_root.IsEmpty())
+            {
+                // 优先解析 ShaderLibrary 挂载根（发行/开发包统一），未挂载回退物理路径。
+                OSString root;
+                if (!GetShaderLibraryRoot(root))
+                    return {};
+                const U8String root_utf8 = ToU8String(root);
+                if (!SetShaderIncludeRoot(reinterpret_cast<const char *>(root_utf8.c_str())))
+                    return {};
+            }
             return g_include_root;
         }
 

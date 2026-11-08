@@ -1,17 +1,15 @@
 #pragma once
 
-#include <hgl/mtl/ShaderLibraryPath.h>
-#include <hgl/filesystem/Path.h>
-#include <hgl/io/LoadString.h>
+#include <hgl/mtl/ShaderLibraryPack.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph::mtl
 {
     /**
-     * 按 ShaderLibrary 根解析相对路径，读入一份 GLSL/compute 源文本。
+     * 按 ShaderLibrary 包（挂载名 `ShaderLibrary`）读入一份 GLSL/compute 源文本。
      *
-     * - 路径单源：根目录由 `GetShaderLibraryPath()` 解析（环境变量 → 显式 → 向上搜索），
+     * - 路径单源：统一经 `ReadShaderLibraryText()` 走包内访问（未挂载时回退物理根目录）。
      *   示例里不写任何绝对路径、也不拼 `../`。
      * - 只读**开发形态**产物（发行包不带 .glsl）；失败返回空串并记一条错误日志。
      *
@@ -25,23 +23,14 @@ namespace hgl::graph::mtl
         if (!relative_path || !relative_path[0])
             return AnsiString();
 
-        const std::string root = GetShaderLibraryPath();
-
-        if (root.empty())
-            return AnsiString();
-
-        const OSString full_name = filesystem::NormalizeFilename(
-            (filesystem::Path(ToOSString(root.c_str())) / ToOSString(relative_path)).ToOSString());
-
-        U8String text;
-
-        if (LoadStringFromTextFile(text, full_name) <= 0 || text.IsEmpty())
+        AnsiString text;
+        if (!ReadShaderLibraryText(ToOSString(relative_path), text) || text.IsEmpty())
         {
             GLogError(u8"[ShaderLibrarySource] 读取 shader 源失败（发行形态不带 .glsl）：%s",
                       relative_path);
             return AnsiString();
         }
 
-        return AnsiString(reinterpret_cast<const char *>(text.c_str()), int(text.Length()));
+        return text;
     }
 }//namespace hgl::graph::mtl

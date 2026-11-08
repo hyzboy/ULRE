@@ -37,6 +37,18 @@ namespace hgl::graph::mtl
                            int *out_file_count = nullptr,
                            int *out_error_count = nullptr);
 
+        /**
+         * 从已挂载的资产包（`pack(<pack_name>)`）加载全部代码模块——运行期
+         * 包内访问首选渠道。递归列举包目录树并对每个 `.glsl` 走
+         * OpenAssetInputStream 取流，include_path 与 LoadDirectory 同为
+         * '/'分隔的包内相对路径（含扩展名）。
+         *
+         * @return false 当包未挂载或首层无法列举（调用方应回退 LoadDirectory）。
+         */
+        bool LoadFromPack(const char *pack_name,
+                          int *out_file_count = nullptr,
+                          int *out_error_count = nullptr);
+
         const GlslModuleDefinition *FindByName(const char *name) const;
         /// Source of the active file-backed definition; null for metadata-only entries.
         const GlslModuleFileData *FindFileByName(const char *name) const;
@@ -53,6 +65,22 @@ namespace hgl::graph::mtl
          */
         const GlslModuleDefinition *GetModuleByIndex(const int index) const;
         void Clear() { modules.Clear(); file_data.Clear(); }
+
+    private:
+        /// 解析并注册单条模块文本。1=注册成功，0=无 @ulre 被跳过，-1=失败。
+        /// source_root/source_path 仅用于溯源日志与字段填充（包内加载时
+        /// source_root 可为空、source_path 为展示用来源）。
+        int RegisterModuleText(const AnsiString &text,
+                               const AnsiString &include_path,
+                               const OSString &source_root,
+                               const OSString &source_path);
+
+        /// 两种加载器共用的收尾：依赖/引用一致性校验、不完整模块剔除、
+        /// 生产侧元数据校验与汇总日志（Pass 2 及之后）。
+        void FinishRegistration(int first_new_file_index,
+                                int &file_count,
+                                int &error_count,
+                                const OSString &origin);
     };
 
     // 全局 GLSL 模块注册表单例（懒加载，首次调用时扫描 ShaderLibrary）。

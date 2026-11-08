@@ -14,6 +14,7 @@
 #include <hgl/graph/font/CharQuadConfig.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderLibraryPack.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
@@ -543,32 +544,7 @@ namespace hgl::graph::mtl
             const AnsiString &include_path,
             AnsiString &out_source)
         {
-            out_source.Clear();
-
-            const std::string library_root = GetShaderLibraryPath();
-            if (library_root.empty())
-                return false;
-
-            const OSString path = ResolveShaderLibraryModulePath(
-                ToOSString(library_root.c_str()), include_path);
-            if (path.IsEmpty())
-                return false;
-
-            hgl::io::OpenFileInputStream opener(path);
-            if (!opener)
-                return false;
-
-            const int64 file_size = opener->GetSize();
-            if (file_size <= 0 || file_size > 0x7FFFFFFF)
-                return false;
-
-            char *buffer = out_source.Resize(static_cast<int>(file_size));
-            if (!buffer || opener->Read(buffer, file_size) != file_size)
-            {
-                out_source.Clear();
-                return false;
-            }
-            return true;
+            return ReadShaderLibraryModuleText(include_path, out_source);
         }
 
         // ── 固定 mesh 源的拓扑字面量校验 ────────────────────────────────────
@@ -867,22 +843,12 @@ namespace hgl::graph::mtl
                 hasher.AppendBytes(text, length);
         }
 
-        /// 与 GLSLCompiler 使用相同的唯一 include root
-        OSString ResolveShaderLibraryModulePath(const AnsiString &include_path)
-        {
-            if (include_path.IsEmpty())
-                return OSString();
-
-            return mtl::ResolveShaderLibraryModulePath(
-                GetShaderIncludeRoot(), include_path);
-        }
-
         /// 递归把文档里 `#include "..."` 指向的模块**正文**并入哈希。
         ///
         /// 最终文档对 ShaderLibrary 里的 GLSL 模块只保留 include 指令，真正的
         /// 展开发生在编译期。因此只哈希文档正文不够：改一个被 include 的 .glsl
         /// 不会改变 stage key，磁盘上旧的 SPV 会被永久命中复用（曾导致长时间
-        /// 静默运行陈旧阴影代码）。这里按 GLSLCompiler 同一 include 根递归遍历，
+        /// 静默运行陈旧阴影代码）。这里经与编译期同源的 ShaderLibrary 包访问递归遍历，
         /// 让「闭包内任何一个文件的任何一个字节变化」都必然换键。
         void AccumulateGLSLIncludeClosure(
             hgl::hash::FNV1aHasher64 &hasher,
@@ -929,27 +895,25 @@ namespace hgl::graph::mtl
                             include_path.c_str(),
                             static_cast<size_t>(include_path.Length()));
 
-                        const OSString module_path =
-                            ResolveShaderLibraryModulePath(include_path);
-
-                        if (module_path.IsEmpty())
+                        AnsiString module_text;
+                        if (!ReadShaderLibraryModuleText(include_path, module_text))
                         {
                             HashShaderLibraryText(
                                 hasher, "<module-missing>", 16);
                         }
                         else
                         {
-                            const auto module_bytes =
-                                hgl::LoadFileToDataArray<uint8>(module_path);
+                            const size_t module_len =
+                                static_cast<size_t>(module_text.Length());
 
                             HashShaderLibraryText(
                                 hasher,
-                                reinterpret_cast<const char *>(module_bytes.data()),
-                                module_bytes.size());
+                                module_text.c_str(),
+                                module_len);
                             AccumulateGLSLIncludeClosure(
                                 hasher,
-                                reinterpret_cast<const char *>(module_bytes.data()),
-                                module_bytes.size(), depth + 1);
+                                module_text.c_str(),
+                                module_len, depth + 1);
                         }
                     }
                 }

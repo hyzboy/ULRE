@@ -24,7 +24,7 @@
 #include <hgl/io/InputStream.h>
 #include <hgl/mtl/MaterialRecipeInherit.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderLibraryPack.h>
 #include <hgl/type/StdString.h>
 #include <hgl/log/Log.h>
 
@@ -511,12 +511,14 @@ namespace hgl::graph
         // 统一 Sampler 注册：解析 contract/sampler.toml → 按序 vkCreateSampler 写 binding=1。
         // 此处与 ShaderGen 的 SamplerPresetLibrary 同源，保证 name→index 唯一一致。
         {
-            const hgl::filesystem::Path sampler_toml =
-                hgl::filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
-                / OSString(OS_TEXT("contract/sampler.toml"));
+            // 包内访问：经 pack(ShaderLibrary) 读取 contract/sampler.toml；
+            // 包未挂载时由 ReadShaderLibraryText 回退物理根直读（工具形态）。
+            AnsiString sampler_text;
+            const OSString sampler_origin(OS_TEXT("pack(ShaderLibrary):contract/sampler.toml"));
 
             auto &preset_lib = mtl::SamplerPresetLibrary::Instance();
-            if (preset_lib.Load(sampler_toml.ToOSString()))
+            if (mtl::ReadShaderLibraryText(OS_TEXT("contract/sampler.toml"), sampler_text)
+                && preset_lib.LoadFromText(sampler_text, sampler_origin))
             {
                 const uint32 count = preset_lib.GetCount();
                 if (count > 0

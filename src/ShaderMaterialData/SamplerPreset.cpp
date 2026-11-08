@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/SamplerPreset.h>
+#include <hgl/mtl/SamplerPreset.h>
 #include <hgl/mtl/VkEnumText.h>
 
 #include <hgl/asset/generated/SamplerPresetSerialize.gen.h>
@@ -62,9 +62,8 @@ namespace hgl::graph::mtl
 
     bool SamplerPresetLibrary::Load(const OSString &path)
     {
-        // 写锁罩住整函数：临时容器构建 + 末尾成员替换与并发 Load/Clear 互斥。
-        hgl::MutexLock write_lock(&g_sampler_library_write_mutex);
-
+        // 物理路径入口：离线工具（ShaderTooling 等）保留；运行期调用方
+        // 应走 LoadFromText + mtl::ReadShaderLibraryText 的包内访问渠道。
         hgl::io::OpenFileInputStream opener(path);
         if (!opener)
         {
@@ -78,14 +77,33 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        hgl::AutoDeleteArray<char> buffer(size_t(size) + 1);
-        if (!buffer || opener->Read(buffer.data(), size) != size)
+        AnsiString raw;
+        char *buffer = raw.Resize(static_cast<int>(size));
+        if (!buffer || opener->Read(buffer, size) != size)
         {
             GLogError("[SamplerPreset] 读取失败: %s", path.c_str());
             return false;
         }
-        buffer[size_t(size)] = 0;
 
+        // 写锁罩住解析+替换：临时容器构建与并发 Load/Clear 互斥。
+        hgl::MutexLock write_lock(&g_sampler_library_write_mutex);
+        return ParseTextLocked(buffer, static_cast<size_t>(size), path);
+    }
+
+    bool SamplerPresetLibrary::LoadFromText(const AnsiString &text, const OSString &origin)
+    {
+        if (text.IsEmpty())
+        {
+            GLogError("[SamplerPreset] 文本为空: %s", origin.c_str());
+            return false;
+        }
+
+        hgl::MutexLock write_lock(&g_sampler_library_write_mutex);
+        return ParseTextLocked(text.c_str(), static_cast<size_t>(text.Length()), origin);
+    }
+
+    bool SamplerPresetLibrary::ParseTextLocked(const char *data, size_t size, const OSString &origin)
+    {
         // 字段规约来自 [group.SamplerPreset] 生成的序列化器（asset_gen.toml）。
         // 文本层只管「文本 → 值树 → 规约结构」；枚举拼写仍是字符串，在这里
         // 才转换 VkSamplerCreateInfo：未知名 = 加载失败（不静默落默认值），
@@ -93,7 +111,7 @@ namespace hgl::graph::mtl
         SamplerPresetFileSpec root;
         hgl::serialize::Archive archive;
         hgl::serialize::TomlParseError parse_error;
-        if (!hgl::serialize::LoadFromTomlText(buffer.data(), static_cast<size_t>(size),
+        if (!hgl::serialize::LoadFromTomlText(data, size,
                                               root, &archive, &parse_error))
         {
             AnsiString why = parse_error.Format();
@@ -105,20 +123,20 @@ namespace hgl::graph::mtl
                 why += ": ";
                 why += AnsiString(archive.ErrorMessage());
             }
-            GLogError("[SamplerPreset] 解析失败: %s (%s)", path.c_str(), why.c_str());
+            GLogError("[SamplerPreset] 解析失败: %s (%s)", origin.c_str(), why.c_str());
             return false;
         }
 
         if (root.schema != 1)
         {
-            GLogError("[SamplerPreset] 不支持的 schema: %u (%s)", root.schema, path.c_str());
+            GLogError("[SamplerPreset] 不支持的 schema: %u (%s)", root.schema, origin.c_str());
             return false;
         }
 
         const int count = root.samplers.GetCount();
         if (count <= 0)
         {
-            GLogError("[SamplerPreset] 缺少 samplers 数组: %s", path.c_str());
+            GLogError("[SamplerPreset] 缺少 samplers 数组: %s", origin.c_str());
             return false;
         }
 
@@ -225,7 +243,7 @@ namespace hgl::graph::mtl
         infos_ = new_infos;
         name_to_index_ = new_map;
 
-        GLogInfo("[SamplerPreset] 加载 %u 个 sampler: %s", static_cast<uint32>(count), path.c_str());
+        GLogInfo("[SamplerPreset] 加载 %u 个 sampler: %s", static_cast<uint32>(count), origin.c_str());
         return true;
     }
 }//namespace hgl::graph::mtl

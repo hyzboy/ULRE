@@ -34,6 +34,7 @@
 #include <hgl/mtl/DomainOptions.h>
 #include <hgl/mtl/DomainEntrySource.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderLibraryPack.h>
 #include <hgl/mtl/GlslModuleRegistry.h>
 #include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/ShaderCompilerProfileAPI.h>
@@ -93,24 +94,6 @@ namespace hgl::graph::mtl
             ShaderCompileContextGuard(const ShaderCompileContextGuard &) = delete;
             ShaderCompileContextGuard &operator=(const ShaderCompileContextGuard &) = delete;
         };
-
-        bool LoadTextFile(const OSString &path, AnsiString &out_text)
-        {
-            int64 file_size = 0;
-            void *file_data = filesystem::LoadFileToMemory(path, file_size);
-            if (!file_data)
-                return false;
-
-            if (file_size > 0)
-                out_text = AnsiString(static_cast<const char *>(file_data),
-                                      static_cast<int>(file_size));
-            else
-                out_text.Clear();
-
-            // LoadFileToMemory 分配的是 char[]：配对 char* 释放（uint8* 双关为 UB）。
-            delete[] static_cast<char *>(file_data);
-            return true;
-        }
 
         bool WriteTextFile(const OSString &path, const AnsiString &text)
         {
@@ -498,28 +481,18 @@ namespace hgl::graph::mtl
             const DomainEntrySource &domain_template,
             AnsiString &out_source)
         {
-            const std::string library_root = GetShaderLibraryPath();
-            if (library_root.empty())
-            {
-                DomainBuildFailed(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");
-                return false;
-            }
-
-            const OSString path = ResolveShaderLibraryModulePath(
-                ToOSString(library_root.c_str()),
-                domain_template.relative_path);
-
-            if (!LoadTextFile(path, out_source))
+            if (!ReadShaderLibraryModuleText(
+                    domain_template.relative_path, out_source))
             {
                 DomainBuildFailed(u8"[DomainBackend] 读取领域主着色器失败：%s",
-                    ShaderLibraryPathToUTF8(path).c_str());
+                    domain_template.relative_path.c_str());
                 return false;
             }
 
             if (out_source.Length() <= 0)
             {
                 DomainBuildFailed(u8"[DomainBackend] 领域主着色器是空文件：%s",
-                    ShaderLibraryPathToUTF8(path).c_str());
+                    domain_template.relative_path.c_str());
                 return false;
             }
 
@@ -586,7 +559,15 @@ namespace hgl::graph::mtl
                 }
             }
 
-            const std::string library_root = GetShaderLibraryPath();
+            // 编译器 include 根需物理路径：经 GetShaderLibraryRoot 解析（已挂载则取包根），
+            // 保证与引擎侧包访问指向同一份 ShaderLibrary 文件。
+            OSString library_root_os;
+            if (!GetShaderLibraryRoot(library_root_os))
+            {
+                DomainBuildFailed(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");
+                return false;
+            }
+            const std::string library_root = ShaderLibraryPathToUTF8(library_root_os);
             if (library_root.empty())
             {
                 DomainBuildFailed(u8"[DomainBackend] 找不到 ShaderLibrary 根目录");

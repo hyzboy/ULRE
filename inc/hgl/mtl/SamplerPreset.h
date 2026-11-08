@@ -63,8 +63,15 @@ namespace hgl::graph::mtl
     public:
         static SamplerPresetLibrary &Instance();
 
-        /** 解析 contract/sampler.toml。失败返回 false（保留上次成功内容）。 */
+        /** 解析 contract/sampler.toml（物理路径入口，离线工具用）。失败返回 false（保留上次成功内容）。 */
         bool Load(const OSString &path);
+
+        /**
+         * 从已读取的 TOML 文本解析（运行期包内访问入口，配合
+         * mtl::ReadShaderLibraryText 使用）。失败返回 false（保留上次成功内容）。
+         * @param origin 文本来源描述，仅用于日志定位。
+         */
+        bool LoadFromText(const AnsiString &text, const OSString &origin);
 
         void Clear();
 
@@ -79,6 +86,9 @@ namespace hgl::graph::mtl
 
     private:
         SamplerPresetLibrary() = default;
+
+        /// 文本 → infos_/name_to_index_ 原子替换；调用方须已持有写锁。
+        bool ParseTextLocked(const char *data, size_t size, const OSString &origin);
 
         std::vector<VkSamplerCreateInfo> infos_;              // 索引 = 数组顺序
         hgl::UnorderedMap<AnsiString, uint32> name_to_index_; // 名字 → 索引

@@ -69,11 +69,14 @@ add_executable(ShaderResourceSchemaRegressionGate
 
 target_link_libraries(ShaderResourceSchemaRegressionGate
     PRIVATE ULRE.ShaderProgramBuild
+            ULRE.SceneGraph
+            ULRE.Debug
             ULRE.Vulkan
             CMCore
             CMMath
             CMCoreType)
 # SPVParseFlat.h / ShaderReflectionData.h 路径经 ULRE.ShaderCompiler PUBLIC 接口传播。
+# ShaderLibrary 改为包内访问后经 hgl::graph::*（AssetSourceMount，位于 ULRE.SceneGraph/ULRE.Debug）。
 
 SetupToolTarget(ShaderResourceSchemaRegressionGate)
 
@@ -144,6 +147,8 @@ add_executable(ScenePassProfileResolverRegression
 
 target_link_libraries(ScenePassProfileResolverRegression
     PRIVATE ULRE.ShaderProgramBuild
+            ULRE.SceneGraph
+            ULRE.Debug
             CMCore
             CMCoreType)
 
@@ -173,6 +178,8 @@ add_executable(ShaderDocumentProductionRegression
 
 target_link_libraries(ShaderDocumentProductionRegression
     PRIVATE ULRE.ShaderProgramBuild
+            ULRE.SceneGraph
+            ULRE.Debug
             ULRE.Vulkan
             CMCore
             CMMath

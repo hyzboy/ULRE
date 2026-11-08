@@ -13,7 +13,7 @@
 #include <hgl/graph/ubo/ModelExpansionArena.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/mtl/MeshShaderLimits.h>
-#include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderLibraryPack.h>
 #include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -66,36 +66,6 @@ namespace hgl::ecs
         static_assert(offsetof(CullPushConstants, batch_block_stride) == 104, "T4c2 pc 段偏移");
         static_assert(offsetof(CullPushConstants, batch_count_shadow) == 108, "batch_count_shadow pc 段偏移");
 
-        // 引擎合规文件读取（先例：GlslModuleRegistry::LoadFileContent ——
-        // 同一读法与缓冲口径），路径由 ShaderLibrary 单源解析（禁绝对路径）。
-        //
-        // 只在开发形态存在：发行包不带 .glsl，无从读取。整个函数一起 #if 掉，
-        // 免得 OFF 形态留下一个「永远没人调用」的内部链接函数。
-    #if ULRE_ENABLE_SHADER_PROGRAM_BUILD
-        AnsiString LoadShaderSource(const std::string &path)
-        {
-            hgl::io::OpenFileInputStream opener(hgl::ToOSString(path.c_str()));
-            if (!opener)
-            {
-                GLogError(u8"[GPUCullSystem] Failed to open shader: %s", path.c_str());
-                return AnsiString();
-            }
-
-            const int64 size = opener->GetSize();
-            if (size <= 0)
-                return AnsiString();
-
-            hgl::AutoDeleteArray<char> buffer(size_t(size) + 1);
-            if (!buffer)
-                return AnsiString();
-
-            if (opener->Read(static_cast<void *>(buffer.data()), size) != size)
-                return AnsiString();
-
-            buffer[size_t(size)] = 0;
-            return AnsiString(buffer.data(), int(size));
-        }
-    #endif//ULRE_ENABLE_SHADER_PROGRAM_BUILD
     }
 
     GPUCullSystem::GPUCullSystem()
@@ -240,14 +210,14 @@ namespace hgl::ecs
 
     #if ULRE_ENABLE_SHADER_PROGRAM_BUILD
         // 开发形态：GLSL 单源是唯一事实源，现编并顺手把 SPV 烘焙进 shader-cache。
-        // 加载着色器源码（ShaderLibrary 单源路径，禁绝对路径）
-        const std::string shader_path =
-            graph::mtl::GetShaderLibraryPath() + "/module/descriptor/ecs/entity_gpu_cull.glsl";
-        AnsiString shader_source = LoadShaderSource(shader_path);
-        if (shader_source.IsEmpty())
+        // 包内访问：经 pack(ShaderLibrary) 读着色器源码（未挂载时回退物理根）。
+        const OSString shader_rel(OS_TEXT("module/descriptor/ecs/entity_gpu_cull.glsl"));
+        AnsiString shader_source;
+        if (!graph::mtl::ReadShaderLibraryText(shader_rel, shader_source)
+            || shader_source.IsEmpty())
         {
-            GLogError(u8"[GPUCullSystem] CreateComputePipeline: Failed to load shader source: %s",
-                      shader_path.c_str());
+            GLogError(u8"[GPUCullSystem] CreateComputePipeline: Failed to load shader source: %ls",
+                      shader_rel.c_str());
             return false;
         }
 
