@@ -264,26 +264,45 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        const int64 size = opener->GetSize();
+        return LoadFromStream(opener.operator->(), path.c_str(), texture_manager);
+    }
+
+    bool MaterialRecipeRegistry::LoadFromStream(
+        hgl::io::InputStream *stream,
+        const os_char *label,
+        hgl::graph::TextureManager *texture_manager,
+        AnsiString *out_recipe_name)
+    {
+        if (!stream)
+        {
+            GLogError(u8"[MaterialRecipeRegistry] 配方流为空: source=%ls",
+                      label ? label : OS_TEXT("<memory>"));
+            return false;
+        }
+
+        const int64 size = stream->CanSize() ? stream->GetSize() : -1;
         if (size <= 0 || size > INT_MAX)
         {
-            GLogError(u8"[MaterialRecipeRegistry] 配方文件大小无效: %ls (%lld)",
-                      path.c_str(), static_cast<long long>(size));
+            GLogError(u8"[MaterialRecipeRegistry] 配方流尺寸无效: source=%ls (%lld)",
+                      label ? label : OS_TEXT("<memory>"),
+                      static_cast<long long>(size));
             return false;
         }
 
         hgl::AutoDeleteArray<char> buffer(static_cast<size_t>(size) + 1);
-        if (!buffer || opener->Read(buffer.data(), size) != size)
+        if (!buffer || stream->Read(buffer.data(), size) != size)
         {
-            GLogError(u8"[MaterialRecipeRegistry] 配方文件读取失败: %ls", path.c_str());
+            GLogError(u8"[MaterialRecipeRegistry] 配方流读取失败: source=%ls",
+                      label ? label : OS_TEXT("<memory>"));
             return false;
         }
         buffer[static_cast<size_t>(size)] = '\0';
 
-        return RegisterRecipeSource(path.c_str(),
+        return RegisterRecipeSource(label,
                                     buffer.data(),
                                     static_cast<int>(size),
-                                    texture_manager);
+                                    texture_manager,
+                                    out_recipe_name);
     }
 
     bool MaterialRecipeRegistry::LoadDirectory(
@@ -353,7 +372,8 @@ namespace hgl::graph::mtl
         const os_char *label,
         const char *content,
         const int content_size,
-        hgl::graph::TextureManager *texture_manager)
+        hgl::graph::TextureManager *texture_manager,
+        AnsiString *out_recipe_name)
     {
         const os_char *source_label = label ? label : OS_TEXT("<memory>");
 
@@ -367,22 +387,29 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        return RegisterParsedRecipe(source_label, data, std::move(spec), texture_manager);
+        return RegisterParsedRecipe(source_label, data, std::move(spec),
+                                    texture_manager, out_recipe_name);
     }
 
     bool MaterialRecipeRegistry::RegisterParsedRecipe(
         const os_char *label,
         const MaterialRecipeFileData &data,
         MaterialRecipeSpec &&spec,
-        hgl::graph::TextureManager *texture_manager)
+        hgl::graph::TextureManager *texture_manager,
+        AnsiString *out_recipe_name)
     {
         const os_char *source_label = label ? label : OS_TEXT("<memory>");
 
-        if (FindAssetByName(data.recipe.recipe_name.c_str()))
+        if (const MaterialRecipeAsset *existing =
+                FindAssetByName(data.recipe.recipe_name.c_str()))
         {
             GLogError(u8"[MaterialRecipeRegistry] 配方名称重复: %s (source=%ls)",
                       data.recipe.recipe_name.c_str(),
                       source_label);
+            // 回填**已存在**的名字：按需加载的调用方拿着这个名字照样能查到配方，
+            // 不必把「重名」当成「查不到」而反复重试取流。
+            if (out_recipe_name)
+                *out_recipe_name = existing->GetAssetName();
             return false;
         }
 
@@ -419,6 +446,11 @@ namespace hgl::graph::mtl
                         recipe_name.c_str(),
                         parent_text.IsEmpty() ? "" : parent_text.c_str());
         }
+
+        // 就绪与 `Parsed` 等待态都回填：句柄确实在表里，调用方可以按名字继续
+        // （等待态 ⇒ 由调用方按需补加载父配方，见头文件「按需加载」）。
+        if (out_recipe_name)
+            *out_recipe_name = recipe_name;
 
         return true;
     }

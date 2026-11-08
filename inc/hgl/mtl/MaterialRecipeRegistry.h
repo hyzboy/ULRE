@@ -17,6 +17,14 @@
  *
  * 解析永远不动的 `Parsed` 句柄只有两种可能：父配方根本不存在，或父链成环 ——
  * 两者都在收尾时标 `Failed` 并从表里摘掉，与「校验失败就摘掉」的既有语义一致。
+ *
+ * ── 按需加载（URI/索引取流）─────────────────────────────────────────────
+ *
+ * `LoadFromStream` 是单资产入口：调用方（`GraphicsContext::FindOrLoadMaterialRecipe`）
+ * 从包裹索引定位到**那一个**配方文件取流注册，不再全量扫默认目录。子配方先于父
+ * 配方被加载时留在 `Parsed` 态等待，调用方随即按需加载父配方，父注册时触发的
+ * `ResolvePending` 会把子推进到 `Ready` —— 因此按需链路**禁止**调用
+ * `FinalizePending`（它会把等待中的子配方误判为失败摘除）。
  */
 
 #include <hgl/graph/asset/MaterialRecipeAsset.h>
@@ -25,6 +33,11 @@
 namespace hgl::graph
 {
     class TextureManager;
+}
+
+namespace hgl::io
+{
+    class InputStream;
 }
 
 namespace hgl::graph::mtl
@@ -69,6 +82,26 @@ namespace hgl::graph::mtl
         int FinalizePending();
         bool LoadFile(const OSString &path,
                       hgl::graph::TextureManager *texture_manager);
+
+        /**
+         * 从**任意输入流**按需加载单个配方（URI/索引取流的落地入口）。
+         *
+         * 与 `LoadFile` 的区别：字节来源由调用方决定（`OpenAssetInputStream`、
+         * 包裹索引 `AssetSource::Open`、内存流皆可），本方法只负责读满、解析、
+         * 注册 —— 不扫目录、不调 `FinalizePending`（按需加载是单资产语义，
+         * 父子推进靠后续父配方注册时的 `ResolvePending` 自愈）。
+         *
+         * @param stream          取到即消费的输入流；**调用方负责 delete**
+         * @param label           诊断与来源标签（通常写资产 URI 文本）
+         * @param texture_manager 纹理槽句柄落点
+         * @param out_recipe_name 成功注册时回填配方名（重名失败时回填**已存在**
+         *                        的名字）；调用方用它做 URI→名字 缓存
+         * @return 解析+注册成功返回 true（父未就绪时仍为 true，句柄留在 `Parsed`）
+         */
+        bool LoadFromStream(hgl::io::InputStream *stream,
+                            const os_char *label,
+                            hgl::graph::TextureManager *texture_manager,
+                            AnsiString *out_recipe_name = nullptr);
         bool LoadDirectory(const OSString &directory,
                            hgl::graph::TextureManager *texture_manager,
                            int *out_file_count = nullptr,
@@ -76,7 +109,8 @@ namespace hgl::graph::mtl
         bool RegisterRecipeSource(const os_char *label,
                                   const char *content,
                                   int content_size,
-                                  hgl::graph::TextureManager *texture_manager);
+                                  hgl::graph::TextureManager *texture_manager,
+                                  AnsiString *out_recipe_name = nullptr);
 
         /**
          * 提交一份**已解析**的配方（异步链路的落地点）。
@@ -91,7 +125,8 @@ namespace hgl::graph::mtl
         bool RegisterParsedRecipe(const os_char *label,
                                   const MaterialRecipeFileData &data,
                                   MaterialRecipeSpec &&spec,
-                                  hgl::graph::TextureManager *texture_manager);
+                                  hgl::graph::TextureManager *texture_manager,
+                                  AnsiString *out_recipe_name = nullptr);
 
         /// 按配方名取运行时结果（既有调用点契约）
         const MaterialRecipe *FindByName(const char *recipe_name) const;
