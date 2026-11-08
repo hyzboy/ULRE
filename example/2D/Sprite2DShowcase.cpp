@@ -11,8 +11,6 @@
 #include<hgl/ecs/components/Sprite2DComponent.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/components/Layer2DComponent.h>
-#include<hgl/vk/VKTexture.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/framework/WorkManager.h>
 #include<cmath>
@@ -33,9 +31,9 @@ private:
 
     double elapsed = 0.0;
 
-    /// 建一个 2D 精灵节点（T2 + Sprite2D，可选纹理）；parent 为空则为根
+    /// 建一个 2D 精灵节点（T2 + Sprite2D，可选纹理 URI）；parent 为空则为根
     Sprite2DComponent *MakeSprite(const math::Vector2f &pos, float w, float h,
-                                  Texture *tex, Transform2DComponent *parent)
+                                  const OSString &tex_uri, Transform2DComponent *parent)
     {
         Entity *entity = world->CreateEntity();
         if(!entity) return nullptr;
@@ -47,7 +45,7 @@ private:
         t2->SetSize(w, h);
         t2->SetLocalPosition(pos);
 
-        if(tex) sp->SetTexture(tex);
+        if(!tex_uri.IsEmpty()) sp->SetTextureURI(tex_uri);
 
         if(parent && !parent->AddChild(t2)) return nullptr;
 
@@ -62,27 +60,24 @@ public:
         if(!world) return false;
 
         // ── 1) 默认图精灵：配方 res/image/lena.Tex2D，左上区域 ──
-        if(!MakeSprite(math::Vector2f(120.0f, 620.0f), 256.0f, 256.0f, nullptr, nullptr))
+        if(!MakeSprite(math::Vector2f(120.0f, 620.0f), 256.0f, 256.0f, OSString(), nullptr))
             return false;
 
-        // ── 2) 覆盖图精灵：运行时加载 PeachHouse，右上区域 ──
-        Texture *peach = nullptr;
-        if(auto *tex_manager = GetManager<TextureManager>())
-            peach = tex_manager->LoadTexture2D(OS_TEXT("res/image/PeachHouse.Tex2D"), true);
+        // ── 2) 覆盖图精灵：直接声明 URI，走全 ECS 异步流式加载，右上区域 ──
+        const OSString peach_uri = OS_TEXT("res/image/PeachHouse.Tex2D");
+        MakeSprite(math::Vector2f(900.0f, 620.0f), 256.0f, 256.0f, peach_uri, nullptr);
 
-        MakeSprite(math::Vector2f(900.0f, 620.0f), 256.0f, 256.0f, peach, nullptr);
-
-        // ── 3) 父子随动：父精灵（lena）水平摆动，子精灵（PeachHouse）局部偏移随动 ──
-        mover_sp = MakeSprite(math::Vector2f(400.0f, 260.0f), 192.0f, 192.0f, peach, nullptr);
+        // ── 3) 父子随动：父精灵（PeachHouse 异步加载）水平摆动，子精灵（默认 lena）随动 ──
+        mover_sp = MakeSprite(math::Vector2f(400.0f, 260.0f), 192.0f, 192.0f, peach_uri, nullptr);
         if(mover_sp)
         {
             mover_t2 = mover_sp->GetOwner()->GetComponent<Transform2DComponent>();
             child_sp = MakeSprite(math::Vector2f(60.0f, 200.0f), 96.0f, 96.0f,
-                                  nullptr, mover_t2);   // 子用默认 lena 以示区别
+                                  OSString(), mover_t2);   // 子用默认 lena 以示区别
         }
 
         // ── 4) 呼吸缩放精灵：中间底部，每帧 SetSize ──
-        scaler_sp = MakeSprite(math::Vector2f(1100.0f, 180.0f), 200.0f, 200.0f, peach, nullptr);
+        scaler_sp = MakeSprite(math::Vector2f(1100.0f, 180.0f), 200.0f, 200.0f, peach_uri, nullptr);
 
         // ── HUD：说明文字 ──
         if(FontSource *font = CreateFontSource(OS_TEXT("微软雅黑"), 22))
@@ -96,7 +91,7 @@ public:
                 if(t2 && ly && tc)
                 {
                     t2->SetLocalPosition(math::Vector2f(60.0f, 940.0f));
-                    tc->SetText(U16_TEXT("Sprite2D：默认图 | SetTexture 覆盖 | 父子随动 | 呼吸缩放"));
+                    tc->SetText(U16_TEXT("Sprite2D：默认图 | 纯 URI 异步流送覆盖 | 父子随动 | 呼吸缩放"));
                     tc->SetFontSource(font);
                 }
             }
