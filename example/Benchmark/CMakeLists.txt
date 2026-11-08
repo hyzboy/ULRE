@@ -7,3 +7,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 CreateProject(ChessboardStress 01_ChessboardStress.cpp)
+
+# T8.3：把压测包成 CTest。默认关——它需要**真实 Vulkan 设备 + 能开窗口的会话**，
+# 无头 CI 上必然失败；按 example/Cull 的既有约定用选项隔离。
+option(ULRE_ENABLE_GPU_MODEL_STRESS_TEST "注册 GPU 模型实机压测（729 棋盘 + 350 骰子，需真实 GPU）" OFF)
+if(BUILD_TESTING AND ULRE_ENABLE_GPU_MODEL_STRESS_TEST)
+    add_test(NAME GPUModelChessboardStress
+        COMMAND ${CMAKE_COMMAND}
+            "-DEXAMPLE=$<TARGET_FILE:ChessboardStress>"
+            "-DRUNTIME_DIR=${ULRE_RUNTIME_PATH}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/ChessboardStressValidate.cmake")
+    set_tests_properties(GPUModelChessboardStress PROPERTIES
+        LABELS "vulkan;integration;stress"
+        RUN_SERIAL TRUE
+        TIMEOUT 300)
+endif()
