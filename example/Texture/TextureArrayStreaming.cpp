@@ -24,6 +24,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
+#include<hgl/graph/asset/TextureURI.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/io/LoadStringList.h>
 #include<hgl/utf.h>
@@ -257,8 +258,9 @@ private:
 
             if(!request_sent[index])
             {
-                const OSString filename=filesystem::JoinPathWithFilename(kIconDirName,
-                                                                        ToOSString(icon_names[index])+OS_TEXT(".Tex2D"));
+                // URI 里不写容器扩展名：用 ProbeTextureURI 按 .Tex2D/.png/... 探测补全
+                const OSString filename=ProbeTextureURI(
+                    filesystem::JoinPathWithFilename(kIconDirName,ToOSString(icon_names[index])));
 
                 // LoadedFileManager 只认真实路径：包裹折叠成物理路径后再提交，失败退回原文
                 OSString submit_path;
