@@ -39,6 +39,10 @@ namespace
     const char *kGridDataPath =
         "ShaderLibrary/asset/material_data/pbr_10x10_grid.material_data.toml";
 
+    /// 演示里引用的 URI（不写物理扩展名，由包索引裁决 `.toml`/`.fb`）。
+    const char *kGridDataURI =
+        "mtldata:pack(ShaderLibrary):asset/material_data/pbr_10x10_grid";
+
     const char *kDemoSourcePath = "example/Material/PBRSpheres.cpp";
 
     constexpr int   kGridSize       = 10;
@@ -204,11 +208,11 @@ namespace
         Check(strstr(text, "sphere_slot_accessors") == nullptr,
               "演示里已删除 100 个 MaterialDataAccessor");
 
-        // 数据文件路径与 URI 引用都在注释外（真代码）。
+        // URI 引用在注释外（真代码）：按「不写扩展名」的包裹寻址形态检查。
         const char *raw = src.c_str();
 
-        Check(strstr(raw, kGridDataPath) != nullptr,
-              "演示引用了数据文件路径");
+        Check(strstr(raw, kGridDataURI) != nullptr,
+              "演示引用了数据文件 URI（pack 形态，不带物理扩展名）");
 
         Check(strstr(text, ".WithMaterialDataRow(") != nullptr,
               "演示走 WithMaterialDataRow（URI + 行下标）");

@@ -50,7 +50,7 @@ namespace
 
     constexpr float kEpsilon = 1.0e-6f;
 
-    constexpr size_t kExpectedBlockCount = 34;  // 28 个示例块 + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix + ABeautifulGame + DamagedHelmet + FlightHelmet
+    constexpr size_t kExpectedBlockCount = 35;  // 28 个示例块 + gpu_model_chessboard + pbr_10x10_grid + pbr_matrix_10x10 + pbr_advanced_matrix + ABeautifulGame + DamagedHelmet + FlightHelmet
 
     /// 阶段 A 的台账：文件名主干 → (行类型, 行数)。
     struct BlockExpect
@@ -90,6 +90,7 @@ namespace
         { "FlightHelmet",                  graph::GlobalSSBOType::PBRSurface,      6 },
         { "auto_merge_material_instance",  graph::GlobalSSBOType::EmissiveSurface, 12 },
         { "gpu_driven_cull",               graph::GlobalSSBOType::EmissiveSurface, 64 },
+        { "gpu_model_chessboard",          graph::GlobalSSBOType::EmissiveSurface, 1 },
         { "alpha_modes",                   graph::GlobalSSBOType::PBRSurface,      28 },
         { "coverage_variants",             graph::GlobalSSBOType::PBRSurface,      20 },
         { "cascade_shadow_map",            graph::GlobalSSBOType::PBRSurface,      11 },
