@@ -295,11 +295,43 @@ int main(int, char **)
     {
         EnvironmentAssetRegistry registry;
 
-        constexpr char kBadSchema[] = "schema = 2\n";
+        constexpr char kBadSchema[] = "schema = 3\n";
         Check(registry.RegisterFromToml(nullptr, kBadSchema,
                                         static_cast<int>(hgl::strlen(kBadSchema))) == nullptr,
-              "schema != 1 应被拒绝");
+              "schema > 2 应被拒绝");
         Check(registry.GetLastError().Contains("schema"), "失败原因应指明 schema");
+
+        // schema 2 只写名字也必须被接受（各技术段可整体缺失）
+        constexpr char kSchema2[] = "schema = 2\nname = \"Sky2.Minimal\"\n";
+        Check(registry.RegisterFromToml(nullptr, kSchema2,
+                                        static_cast<int>(hgl::strlen(kSchema2))) != nullptr,
+              "schema 2 最小文件应被接受");
+
+        // schema 1 装载时自动归一化：旧字段镜像进默认技术段（只填不清）
+        constexpr char kLegacy[] =
+            "schema = 1\n"
+            "name = \"Sky34.CubeIBL\"\n"
+            "[visual]\n"
+            "recipe = \"IBLEnvironment.Sky\"\n"
+            "[ambient]\n"
+            "mode = \"cubemap_ibl\"\n"
+            "[ibl]\n"
+            "irradiance = \"texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k\"\n";
+        EnvironmentAsset *legacy = registry.RegisterFromToml(nullptr, kLegacy,
+                                        static_cast<int>(hgl::strlen(kLegacy)));
+        Check(legacy != nullptr, "schema 1 旧文件仍应可装载");
+        if (legacy)
+        {
+            const EnvironmentSpec &spec = legacy->GetSpec();
+            const EnvironmentTechniqueSpec *sec =
+                FindTechniqueSection(spec, SkyMode::CubeMapIBL);
+            Check(sec && sec->recipe.value == "IBLEnvironment.Sky"
+                  && sec->irradiance.value
+                     == OS_TEXT("texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k"),
+                  "注册路径应自动归一化进 [cubemap] 段");
+            Check(spec.visual.recipe.present && spec.ibl.irradiance.present,
+                  "归一化不得清空旧字段");
+        }
 
         constexpr char kBadBands[] =
             "schema = 1\n"
@@ -311,7 +343,7 @@ int main(int, char **)
               "bands 条数不是 9 应被拒绝");
         Check(registry.GetLastError().Contains("9"), "失败原因应指明需要 9 条");
 
-        Check(registry.GetCount() == 0, "失败不应留下记录");
+        Check(registry.GetCount() == 2, "失败不应留下记录（只有两个成功注册）");
 
         GLogInfo(u8"[7] 跨字段业务规则 OK");
     }

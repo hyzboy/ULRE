@@ -19,7 +19,87 @@ namespace hgl::graph
             const U8String u8 = ToU8String(str);
             return AnsiString(reinterpret_cast<const char *>(u8.c_str()), u8.Length());
         }
+
+        /// 目标键缺失且来源键存在 ⇒ 整份拷贝（含 present 位）
+        template<typename T>
+        void FillIfAbsent(hgl::serialize::Presence<T> &dst, const hgl::serialize::Presence<T> &src)
+        {
+            if (!dst.present && src.present)
+                dst = src;
+        }
+
+        /// 任一子键存在 ⇒ 段本身标记为「出现过」
+        bool BaseHasAny(const EnvironmentBaseSpec &b)
+        {
+            return b.geometry.present || b.scale.present || b.track_camera.present;
+        }
+
+        bool TechHasAny(const EnvironmentTechniqueSpec &t)
+        {
+            return t.recipe.present || t.geometry.present || t.scale.present
+                || t.irradiance.present || t.prefilter.present || t.brdf_lut.present
+                || t.ldr_mode.present || t.ldr_exposure_base.present
+                || t.ldr_sun_scale.present || t.ldr_min_ambient.present || t.provider.present;
+        }
     }//namespace
+
+    /* ── schema 2 归一化与段选择 ──────────────────────────────────────────── */
+
+    void NormalizeEnvironmentSpec(EnvironmentSpec &spec)
+    {
+        // [base] ← [visual]：共用视觉身份
+        FillIfAbsent(spec.base.value.geometry,       spec.visual.geometry);
+        FillIfAbsent(spec.base.value.scale,          spec.visual.scale);
+        FillIfAbsent(spec.base.value.track_camera,   spec.visual.track_camera);
+        if (BaseHasAny(spec.base.value))
+            spec.base.present = true;
+
+        // 默认技术 = [ambient].mode；缺键取 SHLightOnly（与旧缺省一致，无视觉段）
+        const SkyMode mode = spec.ambient.mode.present
+                           ? spec.ambient.mode.value
+                           : SkyMode::SHLightOnly;
+
+        hgl::serialize::Presence<EnvironmentTechniqueSpec> *wsec = nullptr;
+        switch (mode)
+        {
+        case SkyMode::Atmosphere:    wsec = &spec.atmosphere;  break;
+        case SkyMode::CubeMapIBL:    wsec = &spec.cubemap;     break;
+        case SkyMode::OctahedralIBL: wsec = &spec.octahedral;  break;
+        case SkyMode::LambertDome:   wsec = &spec.lambert_dome; break;
+        default: break; // SHLightOnly / None：没有视觉技术段
+        }
+        if (!wsec)
+            return;
+
+        EnvironmentTechniqueSpec &sec = wsec->value;
+
+        // 旧字段镜像进默认技术段（只填不清；schema 2 手写的键优先）
+        FillIfAbsent(sec.recipe,            spec.visual.recipe);
+        FillIfAbsent(sec.geometry,          spec.visual.geometry);
+        FillIfAbsent(sec.scale,             spec.visual.scale);
+        FillIfAbsent(sec.irradiance,        spec.ibl.irradiance);
+        FillIfAbsent(sec.prefilter,         spec.ibl.prefilter);
+        FillIfAbsent(sec.brdf_lut,          spec.ibl.brdf_lut);
+        FillIfAbsent(sec.ldr_mode,          spec.ldr.mode);
+        FillIfAbsent(sec.ldr_exposure_base, spec.ldr.exposure_base);
+        FillIfAbsent(sec.ldr_sun_scale,     spec.ldr.sun_scale);
+        FillIfAbsent(sec.ldr_min_ambient,   spec.ldr.min_ambient);
+        FillIfAbsent(sec.provider,          spec.ambient.provider);
+        if (TechHasAny(sec))
+            wsec->present = true;
+    }
+
+    const EnvironmentTechniqueSpec *FindTechniqueSection(const EnvironmentSpec &spec, SkyMode mode)
+    {
+        switch (mode)
+        {
+        case SkyMode::Atmosphere:    return spec.atmosphere.present ? &spec.atmosphere.value : nullptr;
+        case SkyMode::CubeMapIBL:    return spec.cubemap.present    ? &spec.cubemap.value    : nullptr;
+        case SkyMode::OctahedralIBL: return spec.octahedral.present ? &spec.octahedral.value : nullptr;
+        case SkyMode::LambertDome:   return spec.lambert_dome.present ? &spec.lambert_dome.value : nullptr;
+        default:                     return nullptr; // SHLightOnly / None 共用顶层 [sh9]
+        }
+    }
 
     EnvironmentAsset::EnvironmentAsset(const EnvironmentSpec &in_spec)
         : spec(in_spec)

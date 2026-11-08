@@ -124,6 +124,59 @@ namespace hgl::serialize
         { return &hgl::asset::generated::Class_EnvironmentSH9Spec; }
     };
 
+    template<> struct StructSerializer<hgl::graph::EnvironmentSunSpec>
+    {
+        static constexpr bool defined = true;
+
+        template<typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "direction", v.direction);
+            ar.Field(2, "color", v.color);
+            ar.Field(3, "intensity", v.intensity);
+        }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_EnvironmentSunSpec; }
+    };
+
+    template<> struct StructSerializer<hgl::graph::EnvironmentBaseSpec>
+    {
+        static constexpr bool defined = true;
+
+        template<typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "geometry", v.geometry);
+            ar.Field(2, "scale", v.scale);
+            ar.Field(3, "track_camera", v.track_camera);
+        }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_EnvironmentBaseSpec; }
+    };
+
+    template<> struct StructSerializer<hgl::graph::EnvironmentTechniqueSpec>
+    {
+        static constexpr bool defined = true;
+
+        template<typename Self>
+        static void Do(Archive &ar, Self &v)
+        {
+            ar.Field(1, "recipe", v.recipe);
+            ar.Field(2, "geometry", v.geometry);
+            ar.Field(3, "scale", v.scale);
+            ar.Field(4, "irradiance", v.irradiance);
+            ar.Field(5, "prefilter", v.prefilter);
+            ar.Field(6, "brdf_lut", v.brdf_lut);
+            ar.Field(7, "ldr_mode", v.ldr_mode);
+            ar.Field(8, "ldr_exposure_base", v.ldr_exposure_base);
+            ar.Field(9, "ldr_sun_scale", v.ldr_sun_scale);
+            ar.Field(10, "ldr_min_ambient", v.ldr_min_ambient);
+            ar.Field(11, "provider", v.provider);
+        }
+        static const hgl::asset::ClassMetaInfo *Meta()
+        { return &hgl::asset::generated::Class_EnvironmentTechniqueSpec; }
+    };
+
     template<> struct StructSerializer<hgl::graph::EnvironmentSpec>
     {
         static constexpr bool defined = true;
@@ -139,6 +192,12 @@ namespace hgl::serialize
             ar.Field(6, "ibl", v.ibl);
             ar.Field(7, "ldr", v.ldr);
             ar.Field(8, "sh9", v.sh9);
+            ar.Field(9, "sun", v.sun);
+            ar.Field(10, "base", v.base);
+            ar.Field(11, "cubemap", v.cubemap);
+            ar.Field(12, "octahedral", v.octahedral);
+            ar.Field(13, "lambert_dome", v.lambert_dome);
+            ar.Field(14, "atmosphere", v.atmosphere);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_EnvironmentSpec; }

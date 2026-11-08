@@ -18,8 +18,9 @@ namespace hgl::graph
         /// `sh9.bands` 的基函数个数（Z-up L2，见 `EnvironmentSH9BandSpec`）
         constexpr int kSH9BandCount = 9;
 
-        /// 当前唯一支持的 `schema` 版本
-        constexpr uint32 kEnvironmentSchemaVersion = 1;
+        /// 支持的 `schema` 版本区间（1 = 旧单技术形态，2 = 统一多技术形态）
+        constexpr uint32 kEnvironmentSchemaMinVersion = 1;
+        constexpr uint32 kEnvironmentSchemaMaxVersion = 2;
 
         bool IsEnvironmentFlatFile(const OSString &name)
         {
@@ -41,10 +42,12 @@ namespace hgl::graph
 
     bool EnvironmentAssetRegistry::Validate(const EnvironmentSpec &spec, AnsiString &out_error) const
     {
-        if (spec.schema != kEnvironmentSchemaVersion)
+        if (spec.schema < kEnvironmentSchemaMinVersion || spec.schema > kEnvironmentSchemaMaxVersion)
         {
-            out_error  = "environment schema: 只支持 ";
-            out_error += AnsiString::numberOf(kEnvironmentSchemaVersion);
+            out_error  = "environment schema: 支持 ";
+            out_error += AnsiString::numberOf(kEnvironmentSchemaMinVersion);
+            out_error += "-";
+            out_error += AnsiString::numberOf(kEnvironmentSchemaMaxVersion);
             out_error += "，实际 ";
             out_error += AnsiString::numberOf(spec.schema);
             return false;
@@ -81,6 +84,10 @@ namespace hgl::graph
 
     EnvironmentAsset *EnvironmentAssetRegistry::Attach(EnvironmentSpec &&spec, const os_char *label)
     {
+        // schema 1 → 2 归一化：把旧 [visual]/[ibl]/[ldr] 镜像进 [base]/默认技术段
+        // （只填不清，旧字段原样保留；schema 2 手写键优先，幂等）
+        NormalizeEnvironmentSpec(spec);
+
         EnvironmentAsset *asset = assets.Create(std::move(spec));
 
         if (!asset)

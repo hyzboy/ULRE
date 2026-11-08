@@ -97,6 +97,9 @@ namespace hgl::asset::generated
     extern const ClassMetaInfo Class_EnvironmentLDRSpec;
     extern const ClassMetaInfo Class_EnvironmentSH9BandSpec;
     extern const ClassMetaInfo Class_EnvironmentSH9Spec;
+    extern const ClassMetaInfo Class_EnvironmentSunSpec;
+    extern const ClassMetaInfo Class_EnvironmentBaseSpec;
+    extern const ClassMetaInfo Class_EnvironmentTechniqueSpec;
     extern const ClassMetaInfo Class_EnvironmentSpec;
 
     inline const PropertyMetaInfo Meta_EnvironmentVisualSpec[] =
@@ -186,6 +189,56 @@ namespace hgl::asset::generated
         (uint32_t)sizeof(hgl::graph::EnvironmentSH9Spec), (uint32_t)alignof(hgl::graph::EnvironmentSH9Spec)
     };
 
+    inline const PropertyMetaInfo Meta_EnvironmentSunSpec[] =
+    {
+        { "direction", "direction", "direction", "Default", "", "hgl::serialize::Presence<hgl::math::Vector3f>", nullptr, nullptr, PropertyKind::Vector3f, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSunSpec, direction), (uint32_t)sizeof(hgl::math::Vector3f), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "color", "color", "color", "Default", "", "hgl::serialize::Presence<hgl::math::Vector3f>", nullptr, nullptr, PropertyKind::Vector3f, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSunSpec, color), (uint32_t)sizeof(hgl::math::Vector3f), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "intensity", "intensity", "intensity", "Default", "", "hgl::serialize::Presence<float>", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSunSpec, intensity), (uint32_t)sizeof(float), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+    };
+
+    inline const ClassMetaInfo Class_EnvironmentSunSpec =
+    {
+        "EnvironmentSunSpec", "", "`[sun]` 默认太阳（schema 2）。",
+        Meta_EnvironmentSunSpec, (uint32_t)(sizeof(Meta_EnvironmentSunSpec) / sizeof(Meta_EnvironmentSunSpec[0])),
+        (uint32_t)sizeof(hgl::graph::EnvironmentSunSpec), (uint32_t)alignof(hgl::graph::EnvironmentSunSpec)
+    };
+
+    inline const PropertyMetaInfo Meta_EnvironmentBaseSpec[] =
+    {
+        { "geometry", "geometry", "geometry", "Default", "", "hgl::serialize::Presence<AnsiString>", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentBaseSpec, geometry), (uint32_t)sizeof(AnsiString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "scale", "scale", "scale", "Default", "", "hgl::serialize::Presence<float>", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentBaseSpec, scale), (uint32_t)sizeof(float), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "track_camera", "track_camera", "track_camera", "Default", "", "hgl::serialize::Presence<bool>", nullptr, nullptr, PropertyKind::Bool, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentBaseSpec, track_camera), (uint32_t)sizeof(bool), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+    };
+
+    inline const ClassMetaInfo Class_EnvironmentBaseSpec =
+    {
+        "EnvironmentBaseSpec", "", "`[base]` 各技术共用的视觉身份（schema 2；可被技术段同名键覆盖）。",
+        Meta_EnvironmentBaseSpec, (uint32_t)(sizeof(Meta_EnvironmentBaseSpec) / sizeof(Meta_EnvironmentBaseSpec[0])),
+        (uint32_t)sizeof(hgl::graph::EnvironmentBaseSpec), (uint32_t)alignof(hgl::graph::EnvironmentBaseSpec)
+    };
+
+    inline const PropertyMetaInfo Meta_EnvironmentTechniqueSpec[] =
+    {
+        { "recipe", "recipe", "recipe", "Default", "", "hgl::serialize::Presence<AnsiString>", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, recipe), (uint32_t)sizeof(AnsiString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "geometry", "geometry", "geometry", "Default", "", "hgl::serialize::Presence<AnsiString>", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, geometry), (uint32_t)sizeof(AnsiString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "scale", "scale", "scale", "Default", "", "hgl::serialize::Presence<float>", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, scale), (uint32_t)sizeof(float), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "irradiance", "irradiance", "irradiance", "Default", "", "hgl::serialize::Presence<OSString>", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, irradiance), (uint32_t)sizeof(OSString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "prefilter", "prefilter", "prefilter", "Default", "", "hgl::serialize::Presence<OSString>", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, prefilter), (uint32_t)sizeof(OSString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "brdf_lut", "brdf_lut", "brdf_lut", "Default", "", "hgl::serialize::Presence<OSString>", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, brdf_lut), (uint32_t)sizeof(OSString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "ldr_mode", "ldr_mode", "ldr_mode", "Default", "", "hgl::serialize::Presence<SkyAmbientLDR>", "hgl::graph::SkyAmbientLDR", nullptr, PropertyKind::Enum, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, ldr_mode), (uint32_t)sizeof(hgl::graph::SkyAmbientLDR), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, &AssetEnumParse64_SkyAmbientLDR, &AssetEnumName64_SkyAmbientLDR },
+        { "ldr_exposure_base", "ldr_exposure_base", "ldr_exposure_base", "Default", "", "hgl::serialize::Presence<float>", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, ldr_exposure_base), (uint32_t)sizeof(float), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "ldr_sun_scale", "ldr_sun_scale", "ldr_sun_scale", "Default", "", "hgl::serialize::Presence<float>", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, ldr_sun_scale), (uint32_t)sizeof(float), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "ldr_min_ambient", "ldr_min_ambient", "ldr_min_ambient", "Default", "", "hgl::serialize::Presence<float>", nullptr, nullptr, PropertyKind::Float, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, ldr_min_ambient), (uint32_t)sizeof(float), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "provider", "provider", "provider", "Default", "", "hgl::serialize::Presence<AnsiString>", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentTechniqueSpec, provider), (uint32_t)sizeof(AnsiString), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+    };
+
+    inline const ClassMetaInfo Class_EnvironmentTechniqueSpec =
+    {
+        "EnvironmentTechniqueSpec", "", "一种天空技术的完整配置段（schema 2）。 `[cubemap]` / `[octahedral]` / `[lambert_dome]` / `[atmosphere]` 共用此形状： · `[atmosphere]` 只用 `recipe`（解析大气不吃贴图，IBL/LDR 键写了也无意义）； · `[lambert_dome]` 的 `geometry/scale` 通常覆盖 `[base]`（穹顶 ≠ 全天球）； · `recipe` 的空 ⇒ 该档**不建**视觉天空（如只用 IBL 贴图喂光照的档位）； · LDR 键是该档烘焙图的曝光调制（同一环境 HDR/LDR 打包各配各的）。",
+        Meta_EnvironmentTechniqueSpec, (uint32_t)(sizeof(Meta_EnvironmentTechniqueSpec) / sizeof(Meta_EnvironmentTechniqueSpec[0])),
+        (uint32_t)sizeof(hgl::graph::EnvironmentTechniqueSpec), (uint32_t)alignof(hgl::graph::EnvironmentTechniqueSpec)
+    };
+
     inline const PropertyMetaInfo Meta_EnvironmentSpec[] =
     {
         { "schema", "schema", "schema", "Default", "", "uint32", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, schema), (uint32_t)sizeof(decltype(hgl::graph::EnvironmentSpec::schema)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
@@ -196,6 +249,12 @@ namespace hgl::asset::generated
         { "ibl", "ibl", "ibl", "Default", "", "EnvironmentIBLSpec", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, ibl), (uint32_t)sizeof(decltype(hgl::graph::EnvironmentSpec::ibl)), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentIBLSpec, PropertyKind::None, nullptr, nullptr },
         { "ldr", "ldr", "ldr", "Default", "", "EnvironmentLDRSpec", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, ldr), (uint32_t)sizeof(decltype(hgl::graph::EnvironmentSpec::ldr)), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentLDRSpec, PropertyKind::None, nullptr, nullptr },
         { "sh9", "sh9", "sh9", "Default", "", "EnvironmentSH9Spec", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, sh9), (uint32_t)sizeof(decltype(hgl::graph::EnvironmentSpec::sh9)), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentSH9Spec, PropertyKind::None, nullptr, nullptr },
+        { "sun", "sun", "sun", "Default", "", "hgl::serialize::Presence<EnvironmentSunSpec>", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, sun), (uint32_t)sizeof(hgl::graph::EnvironmentSunSpec), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentSunSpec, PropertyKind::None, nullptr, nullptr },
+        { "base", "base", "base", "Default", "", "hgl::serialize::Presence<EnvironmentBaseSpec>", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, base), (uint32_t)sizeof(hgl::graph::EnvironmentBaseSpec), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentBaseSpec, PropertyKind::None, nullptr, nullptr },
+        { "cubemap", "cubemap", "cubemap", "Default", "", "hgl::serialize::Presence<EnvironmentTechniqueSpec>", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, cubemap), (uint32_t)sizeof(hgl::graph::EnvironmentTechniqueSpec), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentTechniqueSpec, PropertyKind::None, nullptr, nullptr },
+        { "octahedral", "octahedral", "octahedral", "Default", "", "hgl::serialize::Presence<EnvironmentTechniqueSpec>", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, octahedral), (uint32_t)sizeof(hgl::graph::EnvironmentTechniqueSpec), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentTechniqueSpec, PropertyKind::None, nullptr, nullptr },
+        { "lambert_dome", "lambert_dome", "lambert_dome", "Default", "", "hgl::serialize::Presence<EnvironmentTechniqueSpec>", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, lambert_dome), (uint32_t)sizeof(hgl::graph::EnvironmentTechniqueSpec), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentTechniqueSpec, PropertyKind::None, nullptr, nullptr },
+        { "atmosphere", "atmosphere", "atmosphere", "Default", "", "hgl::serialize::Presence<EnvironmentTechniqueSpec>", nullptr, nullptr, PropertyKind::Struct, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers | PF_Presence, (uint32_t)offsetof(hgl::graph::EnvironmentSpec, atmosphere), (uint32_t)sizeof(hgl::graph::EnvironmentTechniqueSpec), 0u, 0.0, 0.0, 0.0, &Class_EnvironmentTechniqueSpec, PropertyKind::None, nullptr, nullptr },
     };
 
     inline const ClassMetaInfo Class_EnvironmentSpec =
@@ -211,5 +270,8 @@ namespace hgl::asset::generated
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::EnvironmentLDRSpec *) { return &Class_EnvironmentLDRSpec; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::EnvironmentSH9BandSpec *) { return &Class_EnvironmentSH9BandSpec; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::EnvironmentSH9Spec *) { return &Class_EnvironmentSH9Spec; }
+    inline const ClassMetaInfo *GetClassMeta(const hgl::graph::EnvironmentSunSpec *) { return &Class_EnvironmentSunSpec; }
+    inline const ClassMetaInfo *GetClassMeta(const hgl::graph::EnvironmentBaseSpec *) { return &Class_EnvironmentBaseSpec; }
+    inline const ClassMetaInfo *GetClassMeta(const hgl::graph::EnvironmentTechniqueSpec *) { return &Class_EnvironmentTechniqueSpec; }
     inline const ClassMetaInfo *GetClassMeta(const hgl::graph::EnvironmentSpec *) { return &Class_EnvironmentSpec; }
 } // namespace hgl::asset::generated

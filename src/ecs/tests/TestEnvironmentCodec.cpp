@@ -7,8 +7,9 @@
 //   5. 类型不符必须失败（不能静默吞掉）；
 //   6. 元数据：`struct_meta` 递归接线 + 容器 `elem_kind` + `PF_Presence` 旗标。
 //
-// 只测「规约 ↔ 文本」这一层：跨字段业务规则（`schema` 只接受 1、`auto_generate == false`
-// 时 `bands` 必须正好 9 条、空字符串回落缺省贴图）属于解析层，不在这里断言。
+// 只测「规约 ↔ 文本」这一层：跨字段业务规则（`schema` 只接受 1-2、`auto_generate == false`
+// 时 `bands` 必须正好 9 条、空字符串回落缺省贴图）属于解析层，不在这里断言；
+// `NormalizeEnvironmentSpec()`（schema 1 → 2 镜像）在 graph 层，也归本文件把门。
 //
 // 纯数据往返，不依赖设备 / 窗口，因此在 CI 里也能跑。
 #include <hgl/asset/AssetObject.h>
@@ -349,7 +350,7 @@ namespace
 #define REQUIRE(cond) do { if (!(cond)) { GLogError(u8"[meta] 断言失败: %s", #cond); return false; } } while (0)
 
         const ClassMetaInfo &env = codec::Class_EnvironmentSpec;
-        REQUIRE(env.property_count == 8);
+        REQUIRE(env.property_count == 14);   // 8 个 schema-1 字段 + sun/base + 4 个技术段
         REQUIRE(env.struct_size == sizeof(EnvironmentSpec));
         REQUIRE(env.struct_align == alignof(EnvironmentSpec));
 
@@ -360,6 +361,24 @@ namespace
         const PropertyMetaInfo *ldr = FindProperty(env, "ldr");
         const PropertyMetaInfo *sh9 = FindProperty(env, "sh9");
         REQUIRE(schema && visual && ambient && ibl && ldr && sh9);
+
+        // schema 2 新增段的元数据接线
+        const PropertyMetaInfo *sun = FindProperty(env, "sun");
+        const PropertyMetaInfo *base_sec = FindProperty(env, "base");
+        const PropertyMetaInfo *cubemap = FindProperty(env, "cubemap");
+        const PropertyMetaInfo *atmos = FindProperty(env, "atmosphere");
+        REQUIRE(sun && base_sec && cubemap && atmos);
+        REQUIRE(sun->struct_meta == &codec::Class_EnvironmentSunSpec);
+        REQUIRE(base_sec->struct_meta == &codec::Class_EnvironmentBaseSpec);
+        REQUIRE(cubemap->struct_meta == &codec::Class_EnvironmentTechniqueSpec);
+        REQUIRE(atmos->struct_meta == &codec::Class_EnvironmentTechniqueSpec);
+        REQUIRE(IsPresenceProperty(*cubemap));
+
+        // `[sun].direction` 是 Presence<Vector3f>：定长向量 kind + presence 旗标
+        const PropertyMetaInfo *direction = FindProperty(*sun->struct_meta, "direction");
+        REQUIRE(direction != nullptr);
+        REQUIRE(direction->kind == PropertyKind::Vector3f);
+        REQUIRE(IsPresenceProperty(*direction));
 
         // 顶层标量：没有子结构，不是 presence（版本号必须始终写出来）。
         REQUIRE(schema->kind == PropertyKind::UInt32);
@@ -678,6 +697,146 @@ namespace
 
         return true;
     }
+
+    // ── 10. schema 2：多技术并列段 ─────────────────────────────────────────
+    constexpr char kSchema2Environment[] =
+        "schema = 2\n"
+        "name = \"Sky34\"\n"
+        "description = \"统一天空资产：一份数据，各档技术\"\n"
+        "\n"
+        "[sun]\n"
+        "direction = [0.35, -0.55, 0.75]\n"
+        "color = [1.0, 0.98, 0.95]\n"
+        "intensity = 40.0\n"
+        "\n"
+        "[base]\n"
+        "geometry = \"geo:builtin:skybox\"\n"
+        "scale = 1.0\n"
+        "track_camera = true\n"
+        "\n"
+        "[ambient]\n"
+        "mode = \"cubemap_ibl\"\n"
+        "\n"
+        "[cubemap]\n"
+        "recipe = \"IBLEnvironment.Sky\"\n"
+        "irradiance = \"texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k\"\n"
+        "prefilter = \"texcube:pack(res):image/Environments/sky_34_2k/sky_34_prefilter_2k\"\n"
+        "ldr_mode = \"auto\"\n"
+        "\n"
+        "[octahedral]\n"
+        "recipe = \"OctEnvironment.Sky\"\n"
+        "irradiance = \"texoct:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k\"\n"
+        "ldr_mode = \"on\"\n"
+        "ldr_exposure_base = 3.0\n"
+        "\n"
+        "[lambert_dome]\n"
+        "recipe = \"LambertDome.Sky\"\n"
+        "geometry = \"geo:builtin:dome_64\"\n"
+        "scale = 4.0\n"
+        "\n"
+        "[atmosphere]\n"
+        "recipe = \"SkyMinimal.Sky\"\n"
+        "\n"
+        "[sh9]\n"
+        "auto_generate = true\n"
+        "track_sun = true\n";
+
+    bool TestSchema2RoundTrip()
+    {
+        EnvironmentSpec spec;
+        if (!ReadText(kSchema2Environment, spec))
+            return false;
+
+        Check(spec.schema == 2, "schema 2 应原样读入");
+        Check(spec.sun.present, "[sun] 段应出现");
+        if (spec.sun.present)
+        {
+            const auto &sun = spec.sun.value;
+            Check(sun.direction.present
+                  && Nearly(sun.direction.value.x, 0.35f)
+                  && Nearly(sun.direction.value.y, -0.55f)
+                  && Nearly(sun.direction.value.z, 0.75f),
+                  "[sun].direction 三分量应逐一读回");
+            Check(sun.color.present && Nearly(sun.color.value.g, 0.98f),
+                  "[sun].color 应读回");
+            Check(sun.intensity.present && Nearly(sun.intensity.value, 40.0f),
+                  "[sun].intensity 应读回");
+        }
+        Check(spec.base.present && spec.base.value.track_camera.present
+              && spec.base.value.track_camera.value,
+              "[base] 段应读回");
+        Check(spec.cubemap.present && !spec.cubemap.value.ldr_exposure_base.present
+              && Nearly(spec.octahedral.value.ldr_exposure_base.value, 3.0f),
+              "技术段 Presence 应逐段独立");
+        Check(spec.atmosphere.present && spec.lambert_dome.present,
+              "四个技术段都应出现");
+
+        // 段选择：各模式取各自段；SHLightOnly/None 无视觉段
+        const EnvironmentTechniqueSpec *cubemap =
+            FindTechniqueSection(spec, SkyMode::CubeMapIBL);
+        Check(cubemap && cubemap->recipe.value == "IBLEnvironment.Sky",
+              "FindTechniqueSection 应命中 [cubemap]");
+        Check(FindTechniqueSection(spec, SkyMode::SHLightOnly) == nullptr,
+              "SHLightOnly 没有视觉技术段");
+
+        // 未写的段 ⇒ present 为假（不是空壳默认）
+        EnvironmentSpec minimal;
+        Check(ReadText("schema = 2\nname = \"X\"\n", minimal)
+              && !minimal.cubemap.present && !minimal.sun.present
+              && minimal.schema == 2,
+              "schema 2 省略技术段应全部缺失");
+
+        // 文本往返闭环
+        const AnsiString once = hgl::serialize::SaveToTomlText<EnvironmentSpec>(spec);
+        EnvironmentSpec back;
+        if (!ReadText(once.c_str(), back))
+            return false;
+        const AnsiString twice = hgl::serialize::SaveToTomlText<EnvironmentSpec>(back);
+        Check(once == twice, "schema 2 文本往返应稳定");
+        Check(back.cubemap.value.prefilter.value
+                  == OS_TEXT("texcube:pack(res):image/Environments/sky_34_2k/sky_34_prefilter_2k"),
+              "prefilter URI 应往返一致");
+        return true;
+    }
+
+    // ── 11. schema 1 → 2 归一化（NormalizeEnvironmentSpec）─────────────────
+    bool TestNormalizeSchema1()
+    {
+        EnvironmentSpec spec;
+        if (!ReadText(kFullEnvironment, spec))   // 第 1 节的完整 schema 1 文本
+            return false;
+
+        NormalizeEnvironmentSpec(spec);
+
+        Check(spec.base.present
+              && spec.base.value.geometry.value == "geo:builtin:hex_sphere_sky"
+              && Nearly(spec.base.value.scale.value, 1.5f)
+              && spec.base.value.track_camera.value,
+              "[base] 应从 [visual] 镜像");
+        Check(spec.cubemap.present, "默认技术段（cubemap_ibl）应被标记出现");
+        if (spec.cubemap.present)
+        {
+            const auto &sec = spec.cubemap.value;
+            Check(sec.recipe.value == "IBLEnvironment.Sky", "recipe 应镜像进 [cubemap]");
+            Check(sec.irradiance.value == spec.ibl.irradiance.value
+                  && sec.prefilter.value == spec.ibl.prefilter.value,
+                  "ibl 贴图应镜像进 [cubemap]");
+            Check(sec.ldr_mode.value == SkyAmbientLDR::On
+                  && Nearly(sec.ldr_exposure_base.value, 3.0f),
+                  "ldr 键应镜像进 [cubemap]");
+            Check(sec.provider.value == "ambient_light_ibl", "provider 应镜像");
+        }
+        // 旧字段必须原样保留（只填不清）
+        Check(spec.visual.recipe.value == "IBLEnvironment.Sky"
+              && spec.ibl.irradiance.present && spec.ldr.mode.present,
+              "归一化不得清空 schema 1 旧字段");
+        // 幂等：再跑一次结果不变
+        const AnsiString first = hgl::serialize::SaveToTomlText<EnvironmentSpec>(spec);
+        NormalizeEnvironmentSpec(spec);
+        Check(first == hgl::serialize::SaveToTomlText<EnvironmentSpec>(spec),
+              "归一化应幂等");
+        return true;
+    }
 }//namespace
 
 int main()
@@ -693,6 +852,8 @@ int main()
     Check(TestFlatBuffersRoundTrip(), "FlatBuffers 往返");
     Check(TestAssetObjectPolymorphicIO(), "AssetObject 多态序列化虚接口");
     Check(TestVerifyShippedDefaultPresets(), "仓库内置预设双格式一致性");
+    Check(TestSchema2RoundTrip(), "schema 2 多技术段往返");
+    Check(TestNormalizeSchema1(), "schema 1 → 2 归一化");
 
     if (g_failed > 0)
     {

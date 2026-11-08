@@ -25,8 +25,8 @@
  * mode = "cubemap_ibl"
  *
  * [ibl]
- * irradiance = "res/image/Environments/sky_34_2k/sky_34_cubemap_2k.TexCube"
- * prefilter  = "res/image/Environments/sky_34_2k/sky_34_prefilter_2k.TexCube"
+ * irradiance = "texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k"
+ * prefilter  = "texcube:pack(res):image/Environments/sky_34_2k/sky_34_prefilter_2k"
  *
  * [ldr]
  * mode = "auto"
@@ -34,6 +34,62 @@
  * [sh9]
  * auto = true
  * ```
+ *
+ * ── schema 2（统一天空资产）─────────────────────────────────────────────────
+ *
+ * 一份资产把**每种天空技术**各自需要的配置并列写全，`[ambient].mode` 只表示
+ * 「默认技术」；画质档位/平台由**外部**选择技术（`SkyEnvironmentConfig::
+ * ApplyTechnique()`），资产本身不含画质分级概念。
+ *
+ * ```toml
+ * schema = 2
+ * name = "Sky34"
+ *
+ * [sun]                    # 默认太阳（可选；固定纹理技术写了也不保证可动）
+ * direction = [0.35, -0.55, 0.75]   # RH Z-up 世界单位方向
+ * color     = [1.0, 0.98, 0.95]     # 线性 RGB
+ * intensity = 40.0
+ *
+ * [base]                   # 各技术共用的视觉身份（可被技术段同名键覆盖）
+ * geometry = "geo:builtin:skybox"
+ * scale    = 1.0
+ * track_camera = true
+ *
+ * [ambient]
+ * mode = "cubemap_ibl"      # 默认技术
+ *
+ * [cubemap]                 # 立方体贴图 IBL
+ * recipe    = "IBLEnvironment.Sky"
+ * irradiance = "texcube:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k"
+ * prefilter  = "texcube:pack(res):image/Environments/sky_34_2k/sky_34_prefilter_2k"
+ * ldr_mode  = "auto"
+ *
+ * [octahedral]              # 八面体 IBL（同一环境另一种打包）
+ * recipe     = "OctEnvironment.Sky"
+ * irradiance = "texoct:pack(res):image/Environments/sky_34_2k/sky_34_cubemap_2k"
+ * prefilter  = "texoct:pack(res):image/Environments/sky_34_2k/sky_34_prefilter_2k"
+ * ldr_mode   = "auto"
+ *
+ * [lambert_dome]
+ * recipe     = "LambertDome.Sky"
+ * geometry   = "geo:builtin:dome_64"
+ * scale      = 4.0
+ * irradiance = "tex2d:pack(res):image/Environments/sky_34_2k/sky_34_irradiance"
+ * prefilter  = "tex2d:pack(res):image/Environments/sky_34_2k/sky_34_prefilter"
+ *
+ * [atmosphere]              # 解析大气（不吃贴图，只有配方）
+ * recipe = "SkyMinimal.Sky"
+ *
+ * [sh9]                     # 全画质档共用的廉价天光源，保持顶层
+ * auto = true
+ * track_sun = true
+ * ```
+ *
+ * 同一份数据在不同画质档的用法：高配 `[cubemap]`（HDR IBL）、低配
+ * `[octahedral]`/`[lambert_dome]`（LDR IBL）、超低配 `[sh9]`（SHLightOnly）。
+ * schema 1 文件仍可直接装载：注册时 `NormalizeEnvironmentSpec()` 把旧
+ * `[visual]/[ibl]/[ldr]` 中**缺失的键**镜像进 `[base]` 与默认技术段（只填不清，
+ * 旧字段原样保留，两套读取路径长期共存）。
  *
  * ── 为什么字段几乎全是 `hgl::serialize::Presence<T>` ─────────────────────────
  *
@@ -52,6 +108,7 @@
 
 #include <hgl/asset/AssetAnnotation.h>
 #include <hgl/CoreType.h>
+#include <hgl/math/VectorTypes.h>
 #include <hgl/serialize/Archive.h>
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
@@ -218,10 +275,81 @@ namespace hgl::graph
         hgl::serialize::Presence<ValueArray<EnvironmentSH9BandSpec>> bands;
     };
 
+    /// `[sun]` 默认太阳（schema 2）。
+    struct HGL_ASSET_STRUCT EnvironmentSunSpec
+    {
+        /// 世界空间单位方向（RH Z-up，指向太阳）；同步给 LightSystem 主光行。
+        hgl::serialize::Presence<hgl::math::Vector3f> direction;
+
+        /// 太阳线性 RGB 颜色。
+        hgl::serialize::Presence<hgl::math::Vector3f> color;
+
+        /// 太阳强度（与主光源辐照度联动的标定值）。
+        hgl::serialize::Presence<float> intensity;
+    };
+
+    /// `[base]` 各技术共用的视觉身份（schema 2；可被技术段同名键覆盖）。
+    struct HGL_ASSET_STRUCT EnvironmentBaseSpec
+    {
+        /// 天空几何体 URI；空 ⇒ 由技术各自内置。
+        hgl::serialize::Presence<AnsiString> geometry;
+
+        /// 天空实体世界缩放；0 ⇒ 用技术内置默认。
+        hgl::serialize::Presence<float> scale;
+
+        /// 天空实体逐帧跟随主相机平移。
+        hgl::serialize::Presence<bool> track_camera;
+    };
+
+    /**
+     * 一种天空技术的完整配置段（schema 2）。
+     *
+     * `[cubemap]` / `[octahedral]` / `[lambert_dome]` / `[atmosphere]` 共用此形状：
+     *   · `[atmosphere]` 只用 `recipe`（解析大气不吃贴图，IBL/LDR 键写了也无意义）；
+     *   · `[lambert_dome]` 的 `geometry/scale` 通常覆盖 `[base]`（穹顶 ≠ 全天球）；
+     *   · `recipe` 的空 ⇒ 该档**不建**视觉天空（如只用 IBL 贴图喂光照的档位）；
+     *   · LDR 键是该档烘焙图的曝光调制（同一环境 HDR/LDR 打包各配各的）。
+     */
+    struct HGL_ASSET_STRUCT EnvironmentTechniqueSpec
+    {
+        /// 该技术的天空材质配方名。
+        hgl::serialize::Presence<AnsiString> recipe;
+
+        /// 该技术的几何体覆盖（空 ⇒ 取 `[base].geometry`）。
+        hgl::serialize::Presence<AnsiString> geometry;
+
+        /// 该技术的缩放覆盖（0 ⇒ 取 `[base].scale`）。
+        hgl::serialize::Presence<float> scale;
+
+        /// 漫反射辐照度贴图 URI（`tex2d:/texcube:/texoct:` 前缀区分投影）。
+        hgl::serialize::Presence<OSString> irradiance;
+
+        /// 镜面预滤波贴图 URI。
+        hgl::serialize::Presence<OSString> prefilter;
+
+        /// BRDF LUT；空 ⇒ `tex2d:pack(res):image/brdflut`。
+        hgl::serialize::Presence<OSString> brdf_lut;
+
+        /// 该档烘焙图的 LDR 曝光调制策略。
+        hgl::serialize::Presence<SkyAmbientLDR> ldr_mode;
+
+        /// 基准曝光倍率。
+        hgl::serialize::Presence<float> ldr_exposure_base;
+
+        /// 太阳高度角/光强调制权重。
+        hgl::serialize::Presence<float> ldr_sun_scale;
+
+        /// 夜间保底环境光比例。
+        hgl::serialize::Presence<float> ldr_min_ambient;
+
+        /// 该技术的天光 provider 覆盖（空 ⇒ 取 `[ambient].provider`）。
+        hgl::serialize::Presence<AnsiString> provider;
+    };
+
     /// 一份环境资产文件的完整字段规约。
     struct HGL_ASSET_STRUCT EnvironmentSpec
     {
-        /// 版本号。当前只接受 1，判断留在解析层（这是跨字段业务规则）。
+        /// 版本号。接受 1（旧单技术形态）与 2（统一多技术形态），判断留在解析层。
         uint32 schema = 1;
 
         /// 资产名（`env:@Name` 按名引用时的键）。
@@ -229,10 +357,45 @@ namespace hgl::graph
 
         AnsiString description;
 
+        /* ── schema 1 遗留字段（长期保留；装载时由 NormalizeEnvironmentSpec
+           镜像进 [base]/默认技术段，只填不清，两套读取路径共存）────────── */
+
         EnvironmentVisualSpec  visual;
         EnvironmentAmbientSpec ambient;
         EnvironmentIBLSpec     ibl;
         EnvironmentLDRSpec     ldr;
         EnvironmentSH9Spec     sh9;
+
+        /* ── schema 2 新增段 ──────────────────────────────────────────────── */
+
+        /// `[sun]` 默认太阳与时间（可选）。
+        hgl::serialize::Presence<EnvironmentSunSpec> sun;
+
+        /// `[base]` 共用视觉身份。
+        hgl::serialize::Presence<EnvironmentBaseSpec> base;
+
+        /// `[cubemap]` 立方体贴图 IBL 档。
+        hgl::serialize::Presence<EnvironmentTechniqueSpec> cubemap;
+
+        /// `[octahedral]` 八面体 IBL 档。
+        hgl::serialize::Presence<EnvironmentTechniqueSpec> octahedral;
+
+        /// `[lambert_dome]` Lambert 穹顶档。
+        hgl::serialize::Presence<EnvironmentTechniqueSpec> lambert_dome;
+
+        /// `[atmosphere]` 解析大气档。
+        hgl::serialize::Presence<EnvironmentTechniqueSpec> atmosphere;
     };
+
+    /**
+     * 把 schema 1 的 `[visual]/[ibl]/[ldr]/[ambient]` **镜像**进 `[base]` 与
+     * `[ambient].mode` 指向的技术段（只填缺失键，绝不清空旧字段）。
+     *
+     * 注册路径装载后自动调用；手写 schema 2 文件调用它也无害（幂等：
+     * 已有键优先）。schema 2 的 SHLightOnly/None 默认技术没有视觉段，只补 `[base]`。
+     */
+    void NormalizeEnvironmentSpec(EnvironmentSpec &spec);
+
+    /// 取某技术对应的配置段（schema 2）；未配置返回 nullptr。
+    const EnvironmentTechniqueSpec *FindTechniqueSection(const EnvironmentSpec &spec, SkyMode mode);
 }//namespace hgl::graph
