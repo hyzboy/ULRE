@@ -2,6 +2,8 @@
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
+#include<hgl/ecs/components/Transform2DComponent.h>
+#include<cmath>
 #include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -613,6 +615,22 @@ namespace hgl::ecs
                 continue;
 
             Entity* owner = text_comp->GetOwner();
+
+            // 2D 层级 bridge：宿主若有 Transform2DComponent，世界坐标取整同步到
+            // 排版起点（值变化才 SetStartPosition，避免每帧误置 Layout 脏位）
+            if (owner)
+            {
+                if (auto *t2 = owner->GetComponent<Transform2DComponent>())
+                {
+                    const math::Vector2f &wp = t2->GetWorldPosition();
+                    graph::layout::TEXT_COORD_VEC pos;
+                    pos.x = static_cast<int>(std::lround(wp.x));
+                    pos.y = static_cast<int>(std::lround(wp.y));
+                    if (pos != text_comp->GetStartPosition())
+                        text_comp->SetStartPosition(pos);
+                }
+            }
+
             auto* font_source = text_comp->GetFontSource();
             if (!font_source)
                 continue;
