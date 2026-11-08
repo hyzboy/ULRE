@@ -5,8 +5,8 @@
 把仓库内置的预设数据（环境、几何、材质…）导出成 `ShaderLibrary/asset/` 下的资产文件：
 
 ```
-ShaderLibrary/asset/environment/sky34_cube_ibl.env        ← FlatBuffers（运行时读的那份）
-ShaderLibrary/asset/environment/sky34_cube_ibl.env.toml   ← TOML（作者侧可 diff / 可手改）
+ShaderLibrary/asset/environment/sky_34.env        ← FlatBuffers（运行时读的那份）
+ShaderLibrary/asset/environment/sky_34.env.toml   ← TOML（作者侧可 diff / 可手改）
 ```
 
 ## 为什么不放在运行时库里
@@ -65,5 +65,7 @@ constexpr PresetGroup kGroups[] =
 
 ## 门禁
 
-`TestEnvironmentCodec` 的第 9 节校验仓库里那 5 份环境预设「TOML 与 FlatBuffers 同源、
-字段一致、能反序列化」。改了预设数据后必须重跑本工具，否则该测试会指出产物与声明不符。
+`TestEnvironmentCodec` 的第 9 节校验仓库里统一天空预设 `sky_34`「TOML 与 FlatBuffers
+同源、字段一致、能反序列化」，并且**所有技术段的纹理 URI 都命中磁盘实际存在的产物**
+（schema 2 后 URI 不带后缀，具体文件名由装载探测推导，所以这层校验必须由测试承担）。
+改了预设数据后必须重跑本工具，否则该测试会指出产物与声明不符。

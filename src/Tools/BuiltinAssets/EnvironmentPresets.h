@@ -14,7 +14,8 @@
  *    让发行产物背着一份永远不会执行的代码。
  *
  * 对应的产物目录：`ShaderLibrary/asset/environment/`
- * （`sky_atmosphere` / `sky34_cube_ibl` / `sky34_oct_ibl` / `sky34_lambert_dome` / `sky34_sh9`）。
+ * （`sky_34` —— schema 2 统一天空资产：五档技术并列一份文件，画质档由调用方在
+ * `SetupSkyEnvironment(uri, SkyTechnique)` 外部选型）。
  */
 
 #include "PresetWriter.h"
@@ -22,13 +23,13 @@
 namespace hgl::graph::builtin
 {
     /// 内置环境预设的数量（`ExportEnvironmentPresets()` 成功时应等于它）
-    inline constexpr int kEnvironmentPresetCount = 5;
+    inline constexpr int kEnvironmentPresetCount = 1;
 
     /**
      * @brief 导出全部内置环境预设。
      *
      * @param writer 落盘器（输出根目录 + 格式选择）
-     * @return 成功导出的预设数量；任何一份失败都立即返回已成功的计数（< 5）
+     * @return 成功导出的预设数量；任何一份失败都立即返回已成功的计数（< 本值）
      */
     int ExportEnvironmentPresets(PresetWriter &writer);
 }//namespace hgl::graph::builtin

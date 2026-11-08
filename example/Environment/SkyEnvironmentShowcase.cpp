@@ -8,10 +8,10 @@
 // 观察每种模式如何自己跟着太阳走（大气的高光与地平线过渡、LDR IBL 的曝光调制、
 // SH9 系数的重算都是引擎侧自动的，示例一行都不写）。
 //
-// 五种组合**不在代码里**：它们是 `ShaderLibrary/asset/environment/` 下的五份
-// `*.env.toml`（`name` 分别是 `Sky.Atmosphere` / `Sky34.CubeMapIBL` /
-// `Sky34.OctahedralIBL` / `Sky34.LambertDome` / `Sky34.SH9`）。示例开机扫一次目录，
-// 切换时只传一个 `env:@<name>` —— 这就是"环境配置资产化"：加一套新天空不用改代码。
+// 五种组合**不在代码里**：它们是同一份统一天空资产 `sky_34`（schema 2，
+// `ShaderLibrary/asset/environment/`，`name = "Sky34"`）里的五个技术段。示例开机扫
+// 一次目录，切换时传 `env:@Sky34` + 一个 `SkyTechnique` 档位 —— 画质档位在资产**外**
+// 选型（高配 CubeMap、低配 Octahedral/Lambert、超低配 SH9）；这就是"环境配置资产化"。
 //
 // 为什么切换是**一次 API 调用**：`SetupSkyEnvironment()` 会先拆掉上一套（天空实体、
 // 句柄、provider 槽）再按新配置重建 ⇒ 换模式不会留下过期实体或悬空句柄。示例需要
@@ -76,6 +76,7 @@ namespace
     {
         const char * label;     ///< 菜单名（仅诊断日志）
         const os_char * env_uri;///< `env:@<name>`：按资产文件里的 `name` 引用
+        SkyTechnique technique; ///< 画质档位在这**外面**选技术段（资产内不配画质）
     };
 
     constexpr int kModeCount = 5;
@@ -83,13 +84,14 @@ namespace
     /// 预设资产目录（开机扫一次，之后 `env:@Name` 才能命中）。
     constexpr os_char kEnvAssetDirectory[] = OS_TEXT("ShaderLibrary/asset/environment");
 
+    // 五档预设 = **同一份**统一天空资产 `sky_34`（`env:@Sky34`）× 五个技术档位。
     const SkyEnvPreset kPresets[kModeCount] =
     {
-        { "大气（解析）",   OS_TEXT("env:@Sky.Atmosphere")      },
-        { "Cubemap IBL",    OS_TEXT("env:@Sky34.CubeMapIBL")    },
-        { "八面体 IBL",     OS_TEXT("env:@Sky34.OctahedralIBL") },
-        { "Lambert 穹顶",   OS_TEXT("env:@Sky34.LambertDome")   },
-        { "SH9 球谐天光",   OS_TEXT("env:@Sky34.SH9")           },
+        { "大气（解析）",   OS_TEXT("env:@Sky34"), SkyTechnique::Atmosphere  },
+        { "Cubemap IBL",    OS_TEXT("env:@Sky34"), SkyTechnique::CubeMap     },
+        { "八面体 IBL",     OS_TEXT("env:@Sky34"), SkyTechnique::Octahedral  },
+        { "Lambert 穹顶",   OS_TEXT("env:@Sky34"), SkyTechnique::LambertDome },
+        { "SH9 球谐天光",   OS_TEXT("env:@Sky34"), SkyTechnique::SH9         },
     };
 
     /// 自检：每模式跑几帧才取摘要（第 1 帧在建实体 + 新配方首帧编译，画面还不稳）。
@@ -270,7 +272,7 @@ private:
 
         const SkyEnvPreset & preset = kPresets[index];
 
-        if (!environment_system->SetupSkyEnvironment(OSString(preset.env_uri)))
+        if (!environment_system->SetupSkyEnvironment(OSString(preset.env_uri), preset.technique))
         {
             GLogError(u8"[SkyShowcase] 模式 %d（%s）装配失败：%ls",
                       index + 1, preset.label, preset.env_uri);
@@ -330,9 +332,10 @@ private:
                 return false;
             }
 
-            if (loaded < kModeCount || errors > 0)
-                GLogWarning(u8"[SkyShowcase] 环境预设数量异常：loaded=%d errors=%d（期望 %d 个全成功）",
-                            loaded, errors, kModeCount);
+            // 统一后目录里只有 1 份 `sky_34`（五档技术共用）
+            if (loaded < 1 || errors > 0)
+                GLogWarning(u8"[SkyShowcase] 环境预设数量异常：loaded=%d errors=%d（期望 ≥1 且 0 错）",
+                            loaded, errors);
         }
 
         if (!ApplySkyMode(StartMode()))

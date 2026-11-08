@@ -640,17 +640,20 @@ namespace
     // ── 9. 仓库内置预设的双格式一致性校验 ───────────────────────────────────
     //
     // 产物由工具工程 `src/Tools/BuiltinAssets`（`BuiltinAssetExport`）生成，生成器
-    // 不在运行时库内 —— 本测试只校验「仓库里那 5 份预设两份格式同源且可读」。
+    // 不在运行时库内 —— 本测试校验「统一天空预设 `sky_34` 两份格式同源、schema 2
+    // 技术段齐全、且技术段里的无扩展名纹理 URI 在磁盘上真实存在对应容器文件」。
+
+    // 无扩展名 URI 的类型前缀 → 磁盘容器扩展名（与 ProbeTextureURI 的候选表一致）
+    static const OSString kShippedTexCubeExt = OS_TEXT(".TexCube");
+    static const OSString kShippedTexOctExt  = OS_TEXT(".TexOct");
+    static const OSString kShippedTex2DExt   = OS_TEXT(".Tex2D");
+
     bool TestVerifyShippedDefaultPresets()
     {
         const OSString preset_dir = OS_TEXT("ShaderLibrary/asset/environment");
 
         const os_char *preset_names[] = {
-            OS_TEXT("sky_atmosphere"),
-            OS_TEXT("sky34_cube_ibl"),
-            OS_TEXT("sky34_oct_ibl"),
-            OS_TEXT("sky34_lambert_dome"),
-            OS_TEXT("sky34_sh9"),
+            OS_TEXT("sky_34"),
         };
 
         for (const os_char *base_name : preset_names)
@@ -672,10 +675,73 @@ namespace
                 return false;
             }
 
-            if (toml_asset.GetSpec().schema != 1 || flat_asset.GetSpec().schema != 1)
+            if (toml_asset.GetSpec().schema != 2 || flat_asset.GetSpec().schema != 2)
             {
-                GLogError(u8"预设 schema 校验失败: %ls", base_name);
+                GLogError(u8"预设 schema 校验失败（期望统一天空资产 schema 2）: %ls", base_name);
                 return false;
+            }
+
+            if (toml_asset.GetSpec().name != "Sky34")
+            {
+                GLogError(u8"预设资产名校验失败: %ls", base_name);
+                return false;
+            }
+
+            // 五档技术段必须齐全（sh9 走顶层 [sh9]，四个可视技术各一段）
+            const EnvironmentSpec &esm = toml_asset.GetSpec();
+            if (!esm.cubemap.present || !esm.octahedral.present ||
+                !esm.lambert_dome.present || !esm.atmosphere.present ||
+                !esm.sh9.auto_generate.present || !esm.sh9.track_sun.present)
+            {
+                GLogError(u8"预设技术段不全: %ls", base_name);
+                return false;
+            }
+            if (esm.sun.present)
+            {
+                GLogError(u8"统一预设不应含 [sun]（烘焙太阳固定，见生成器注释）: %ls", base_name);
+                return false;
+            }
+
+            // 技术段核心字段双格式一致
+            const EnvironmentSpec &fsm = flat_asset.GetSpec();
+            if (esm.cubemap.value.recipe.value != fsm.cubemap.value.recipe.value ||
+                esm.octahedral.value.recipe.value != fsm.octahedral.value.recipe.value ||
+                esm.atmosphere.value.recipe.value != fsm.atmosphere.value.recipe.value ||
+                esm.lambert_dome.value.irradiance.value != fsm.lambert_dome.value.irradiance.value)
+            {
+                GLogError(u8"预设技术段 TOML 与 FlatBuffers 不一致: %ls", base_name);
+                return false;
+            }
+
+            // 无扩展名纹理 URI 必须能命中磁盘实际容器文件（装载探测的前提）
+            OSString tex_paths[] = {
+                esm.cubemap.value.irradiance.value,
+                esm.cubemap.value.prefilter.value,
+                esm.octahedral.value.irradiance.value,
+                esm.octahedral.value.prefilter.value,
+            };
+            for (const OSString &tex_uri : tex_paths)
+            {
+                const OSString *ext = nullptr;
+                OSString rest = tex_uri;
+                if (rest.StartsWith(OS_TEXT("texcube:"))) { ext = &kShippedTexCubeExt; rest = rest.SubString(8); }
+                else if (rest.StartsWith(OS_TEXT("texoct:"))) { ext = &kShippedTexOctExt; rest = rest.SubString(7); }
+                else if (rest.StartsWith(OS_TEXT("tex2d:"))) { ext = &kShippedTex2DExt; rest = rest.SubString(6); }
+                if (ext == nullptr)
+                {
+                    GLogError(u8"预设纹理 URI 缺少类型前缀: %ls", tex_uri.c_str());
+                    return false;
+                }
+                if (rest.StartsWith(OS_TEXT("pack(res):")))
+                {
+                    rest = OS_TEXT("res/") + rest.SubString(10);
+                }
+                rest += *ext;
+                if (!hgl::filesystem::FileExist(rest))
+                {
+                    GLogError(u8"预设纹理 URI 在磁盘上不存在: %ls -> %ls", tex_uri.c_str(), rest.c_str());
+                    return false;
+                }
             }
 
             if (toml_asset.GetSpec().name != flat_asset.GetSpec().name)
