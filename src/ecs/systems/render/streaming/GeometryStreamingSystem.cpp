@@ -2,6 +2,8 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/asset/LoadedFileManager.h>
 #include<hgl/asset/LoadedFileHandler.h>
+#include<hgl/asset/AssetByteSource.h>
+#include<hgl/asset/AssetURI.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/GeometryAsset.h>
 #include<hgl/graph/asset/GeometryAssetRegistry.h>
@@ -26,17 +28,11 @@ namespace hgl::ecs
         /// 因此这里比纹理流送更保守：压住"一帧内解包+建 buffer"的瞬时峰值。
         constexpr int kMaxSubmitPerFrame = 1;
 
-        /// Direct-to-Staging 前置：查询 `filename` 对应物理文件的字节数。
-        /// 只有能解析为物理路径的资产(裸文件或 pack(dir) 目录包)才可能走直写通道；
-        /// 归档包/内置资产等返回 0 ⇒ 调用方退回经典 Submit 路径，一切照旧。
+        /// Direct-to-Staging 前置：查询**已折叠真实路径**的字节数。
+        /// 调用方先把 URI 折成物理路径再送来；不存在/非文件返回 0 ⇒ 退回经典 Submit 通道。
         /// 与 `TextureStreamingSystem` 同名辅助函数同构（口径一致，便于统一治理）。
-        uint64 QueryPayloadBytes(const OSString &filename)
+        uint64 QueryPayloadBytes(const OSString &path)
         {
-            OSString path;
-
-            if (!graph::ResolveAssetPhysicalPath(filename, path))
-                path = filename;        ///< 裸路径口径：历史上未挂载的文件名本来就按真实路径传
-
             filesystem::FileInfo fi;
 
             if (!filesystem::GetFileInfo(path.c_str(), fi) || !fi.is_file)
@@ -435,6 +431,32 @@ namespace hgl::ecs
 
             handler->AddRef();
 
+            // 读盘通道统一（口径同 ModelStreamingSystem）：能折成物理路径的
+            // （裸路径、pack(dir) 目录包裹）按真实路径读；折不成的 pack URI
+            // （归档型包裹）按 URI 原文作查表键，字节改由 AssetURIByteSource
+            // 在 IO 线程经 OpenAssetStream 分派取流，主线程不同步读整包。
+            OSString physical_path;
+
+            const bool foldable = graph::ResolveAssetPhysicalPath(filename, physical_path);
+
+            OSString key_path = filename;
+            io::AsyncFileByteSource *source = nullptr;
+
+            if (foldable)
+                key_path = physical_path;
+            else
+            {
+                const asset::AssetURI uri = asset::AssetURI::Parse(filename);
+
+                if (uri.IsPack())
+                {
+                    OSString route;             // 挂载根只用于选物理盘；取不到
+                    graph::GetAssetMountRoot(uri.pack_name, route);     // 就退回默认通道
+
+                    source = new asset::AssetURIByteSource(route, uri);
+                }
+            }
+
             // Direct-to-Staging：能解析物理文件、且在 staging 预算内时，预先分配
             // 映射缓冲并让 IO 线程直写其中；否则退回经典 Submit(内存副本)路径。
             // 预算门控与 TextureStreamingSystem 同口径：全部在途直写 staging 之和
@@ -445,7 +467,7 @@ namespace hgl::ecs
 
             if (upload_queue && tex_manager)
             {
-                payload = QueryPayloadBytes(filename);
+                payload = QueryPayloadBytes(key_path);
 
                 if (payload > 0 &&
                     handler->GetPendingDirectBytes() + payload <= (uint64)upload_queue->GetMaxStagingMemory())
@@ -466,17 +488,20 @@ namespace hgl::ecs
                 }
             }
 
+            // map_ptr 只在 foldable（有物理路径）时建立，此时 source 必为空；
+            // 经典通道则可能带 AssetURIByteSource（归档包裹按 URI 取字节）。
             FileLoadId id;
 
             if (map_ptr)
             {
-                id = load_manager->SubmitDirect(filename, map_ptr, static_cast<int64>(payload),
+                id = load_manager->SubmitDirect(key_path, map_ptr, static_cast<int64>(payload),
                                                 handler, io::AsyncFilePriority::Normal,
                                                 nullptr, nullptr, nullptr, payload);
             }
             else
             {
-                id = load_manager->Submit(filename, handler, io::AsyncFilePriority::Normal);
+                id = load_manager->Submit(key_path, handler, io::AsyncFilePriority::Normal,
+                                          nullptr, source);
             }
 
             if (id == 0)
