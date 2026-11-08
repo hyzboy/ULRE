@@ -38,8 +38,9 @@ namespace hgl::graph
         static constexpr int CHAR_COUNT =256;                       ///<字符总数(标准ASCII 256码位)
         static constexpr int CHAR_WIDTH =8;                         ///<字符宽度(像素)
         static constexpr int CHAR_HEIGHT=16;                        ///<字符高度(像素)
-        static constexpr int CHAR_BYTES =CHAR_WIDTH*CHAR_HEIGHT;    ///<单字符点阵字节数
-        static constexpr int FILE_BYTES =CHAR_COUNT*CHAR_BYTES;     ///<完整字体文件字节数(4096)
+        static constexpr int CHAR_BYTES =CHAR_WIDTH*CHAR_HEIGHT;    ///<单字符展开后的灰度字节数(128)
+        static constexpr int CHAR_PACKED_BYTES=CHAR_HEIGHT;         ///<单字符在文件中的字节数(每行1字节)
+        static constexpr int FILE_BYTES =CHAR_COUNT*CHAR_PACKED_BYTES;  ///<完整字体文件字节数(4096)
 
     private:
 

@@ -55,7 +55,7 @@ namespace hgl::graph
         //一次性展开：1 位/像素 → 8bit 灰度(0/255)，MSB 为最左像素
         for(int ch=0;ch<CHAR_COUNT;ch++)
         {
-            const uint8 *src=packed    +ch*CHAR_BYTES;
+            const uint8 *src=packed    +ch*CHAR_PACKED_BYTES;
             uint8       *dst=grayscale +ch*CHAR_BYTES;
 
             for(int row=0;row<CHAR_HEIGHT;row++)
