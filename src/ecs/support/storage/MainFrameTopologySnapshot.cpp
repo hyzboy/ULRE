@@ -50,6 +50,23 @@ namespace hgl::ecs
         return s_enabled;
     }
 
+    bool GetMainFrameCollectCacheEnvDefault()
+    {
+        static const bool s_enabled = []
+        {
+            const char *value = getenv("ULRE_MAINFRAME_COLLECT_CACHE");
+
+            if (!value || !*value)
+                return false;
+
+            return value[0] == '1'
+                || value[0] == 't' || value[0] == 'T'
+                || value[0] == 'y' || value[0] == 'Y';
+        }();
+
+        return s_enabled;
+    }
+
     void MainFrameTopologySnapshot::ClearPending()
     {
         items[pending_slot].Clear();
@@ -147,6 +164,17 @@ namespace hgl::ecs
                     item_record.entity_index      = entity_id.index;
                     item_record.entity_generation = entity_id.generation;
                     item_record.material_row      = prim->GetMaterialRuntimeRowID();
+
+                    // 绘制键：完整路径刚刚在 `PublishPrimitiveFacts` 里算好 ⇒ 搬进快照是
+                    // **零额外成本**，却让快路径（P3）无需再读映射 GPU 缓冲里的 params 行。
+                    const RenderItem::MeshDrawKey &key = prim->draw_key;
+
+                    item_record.draw_geometry_id  = key.geometry_id;
+                    item_record.draw_vertex_base  = key.vertex_base;
+                    item_record.draw_index_base   = key.index_base;
+                    item_record.draw_vertex_count = key.vertex_count;
+                    item_record.draw_index_count  = key.index_count;
+                    item_record.draw_is_indexed   = key.is_indexed;
                 }
                 else
                 {
@@ -180,7 +208,13 @@ namespace hgl::ecs
             hasher << item_data[i].entity_index
                    << item_data[i].entity_generation
                    << item_data[i].material_row
-                   << item_data[i].batch_slot;
+                   << item_data[i].batch_slot
+                   << item_data[i].draw_geometry_id
+                   << item_data[i].draw_vertex_base
+                   << item_data[i].draw_index_base
+                   << item_data[i].draw_vertex_count
+                   << item_data[i].draw_index_count
+                   << item_data[i].draw_is_indexed;
         }
 
         const uint64_t new_hash = hasher.Result();
@@ -208,6 +242,7 @@ namespace hgl::ecs
         topology_revision = in_topology_revision;
         content_hash      = new_hash;
         frame_serial      = in_frame_serial;
+        collected_items   = static_cast<uint32_t>(cache.renderItems.size());
 
         state = SnapshotState::Ready;
 
@@ -250,6 +285,7 @@ namespace hgl::ecs
         topology_revision = 0;
         content_hash      = 0;
         frame_serial      = 0;
+        collected_items   = 0;
 
         building = false;
 

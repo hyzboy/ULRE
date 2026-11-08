@@ -78,6 +78,10 @@ namespace hgl
 
             // P2：主帧拓扑快照默认关闭；宿主可用环境变量或显式 setter 打开。
             main_frame_topology_snapshot_enabled = GetMainFrameTopologySnapshotEnvDefault();
+
+            // P3：主帧收集快路径默认关闭（独立开关；`IsMainFrameCollectCacheEnabled()`
+            // 会额外要求快照本身也开启）。
+            main_frame_collect_cache_enabled = GetMainFrameCollectCacheEnvDefault();
         }
 
         ECSContext::~ECSContext()

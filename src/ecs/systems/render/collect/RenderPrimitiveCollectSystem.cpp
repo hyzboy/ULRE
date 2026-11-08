@@ -2038,6 +2038,346 @@ namespace hgl::ecs
             || (retries % kShadowRetryBumpPeriod) == 0;
     }
 
+
+    bool RenderPrimitiveCollectSystem::PublishPrimitiveFacts(const EntityID entity_id,
+                                                            const uint32_t transform_id,
+                                                            const uint32_t geometry_id,
+                                                            const uint32_t material_id,
+                                                            const uint32_t texture_id,
+                                                            const uint32_t pass_index,
+                                                            PrimitiveRenderItem *item,
+                                                            const SnapshotItemRecord *draw_seed)
+    {
+        bool ids_published = false;
+        bool has_draw_key  = false;
+
+        if (item)
+        {
+            if (draw_seed)
+            {
+                // ── P3 快路径：绘制键直接取自拓扑快照 ────────────────────────────────
+                // `MeshDrawParams` 的 CPU 行位于**映射的 GPU 缓冲**（host-visible 非缓存
+                // 内存）⇒ 实测单个字段读取 ≈2.3 µs，每帧 1079×6 次 ≈14.6 ms（占整相位 90%+
+                // 的唯一大头，已由差分实验定性）。绘制键只由池 `geometry_id` 决定 = 资产拓扑
+                // ⇒ 拓扑未变（快照代际判据）时逐帧重现即可，**一个字段都不必再读**。
+                // 记录里 `draw_geometry_id == 0` 与完整路径「params 行不成立」同义。
+                if (draw_seed->draw_geometry_id != 0)
+                {
+                    RenderItem::MeshDrawKey &key = item->draw_key;
+                    key.geometry_id  = draw_seed->draw_geometry_id;
+                    key.vertex_base  = draw_seed->draw_vertex_base;
+                    key.index_base   = draw_seed->draw_index_base;
+                    key.vertex_count = draw_seed->draw_vertex_count;
+                    key.index_count  = draw_seed->draw_index_count;
+                    key.is_indexed   = draw_seed->draw_is_indexed;
+
+                    has_draw_key = true;
+                }
+            }
+            else if (geometry_id != 0)
+            {
+                auto *gc_key   = world ? world->GetGraphicsContext() : nullptr;
+                auto *pool_key = gc_key ? gc_key->GetGlobalSSBOBufferRegistry() : nullptr;
+                const auto *params_row = pool_key ? pool_key->GetMeshDrawParamsRow(geometry_id) : nullptr;
+
+                if (params_row)
+                {
+                    RenderItem::MeshDrawKey &key = item->draw_key;
+                    key.geometry_id  = geometry_id;
+                    key.vertex_base  = params_row->vertex_base;
+                    key.index_base   = params_row->index_base;
+                    key.vertex_count = params_row->vertex_count;
+                    key.index_count  = params_row->index_count;
+                    key.is_indexed   = params_row->is_indexed;
+
+                    has_draw_key = true;
+                }
+            }
+        }
+
+        // 绘制键成立 = 「本项能画」的同一判据点：4-ID 与全部事实都挂在这里上行。
+        if (has_draw_key)
+        {
+            // T3d-3a：实体 4-ID 表随"本项进批"同一判据上行
+            //（消费者 = GPU 剔除 / CPU 批行写入 / 形态 B）
+            graph::RenderItemDescriptor render_ids{};
+            render_ids.transform_id = transform_id;
+            render_ids.geometry_id  = geometry_id;
+            render_ids.material_id  = material_id;
+            render_ids.texture_id   = texture_id;
+
+            world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, render_ids);
+            ids_published = true;
+
+            // T3h：阴影**事实**随同一判据点上 EntityGPU 行（ShadowProxy 是
+            // CPU-only 组件、无 GPU 行号可推 ⇒ 值进行才算接线；写者=世界，
+            // 与 SetVisible 同族）。消费规则与着色侧逐字同式（bias<=0/非有限 ⇒ 行留 0
+            // ⇒ 着色侧视 0 为默认 1.0）；剔除端按 `entity.shadow_*` 把本行抄进
+            // per-draw 行（D3 契约段③ 现由这两跳承担 —— 原 CPU 行写入端已删）。
+            {
+                Entity *shadow_owner = world->GetEntity(entity_id);
+
+                // A5b / A7a（2026-10-14 批 D **搬家**）：接收判定**由策略表给出**
+                // —— `RenderNeed::ShadowReceiver` 是唯一判据。原实现长在 CPU 侧批行
+                // 写入端，随「CPU 侧 per-batch 表构建」整族删除后迁到本处：
+                // 本事实行是它的**新载体**（剔除端按 `entity.shadow_*` 抄进 per-draw
+                // 行 ⇒ D3 契约段③ 由两跳承担）。
+                // `receive_shadow` 事实仍由实体级自由函数提供（缺省约定唯一出处见 ShadowProxy.h）。
+                StrategyFacts shadow_facts;
+                shadow_facts.receive_shadow = CanReceiveShadow(shadow_owner);
+
+                const uint32_t shadow_needs =
+                    EvaluateRenderNeed(shadow_owner ? shadow_owner->BuildComponentMask() : 0u,
+                                       shadow_facts.ToMask());
+
+#if ULRE_STRATEGY_PARITY_ENABLED
+                // 反向守卫：参考实现 = 旧判据（Release 下整块编空）
+                ParityCheckShadowReceiver(
+                    HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver),
+                    CanReceiveShadow(shadow_owner),
+                    "RenderPrimitiveCollectSystem#shadow-facts");
+#endif
+
+                world->GetEntityGPUTable().SetShadowFacts(
+                    entity_id,
+                    NormalizeShadowBiasToRow(GetShadowBiasMultiplier(shadow_owner)),
+                    HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver) ? 1u : 0u);
+
+                // ECS #4 **(b)（2026-10-14 落地）**：每帧按权威**重算 ②**（实体行 `Visible` 位）。
+                // 为什么只刷这一处：这里正是"本项进批"判据点（4-ID 就在上面同一判据里发）⇒
+                // 不变量「**4-ID 已发布 ⇒ ② == 权威（含祖先继承）**」成立，且剔除端能读到的行
+                // 一律是当帧值。未进批的实体不刷：其 4-ID 已清零，剔除端 `geometry_id == 0`
+                // 闸门**先于**任何昂贵计算（契约档 §5「问题 3 的 ②」裁定）。
+                // 成本：值已在本帧别处算过同类查询（O(1)+上溯）；`SetVisible` 是**值变才标脏**
+                // ⇒ 静态实体不产生脏行（否则整表每帧上传）。
+                world->GetEntityGPUTable().SetVisible(entity_id, world->IsEntityVisible(entity_id));
+
+                // ── T3.1 / T3.2：模型模板事实上行（GPU 展开分支的**唯一入口**）──
+                // 同一判据点、同一纪律：本实体已进批 ⇒ 行值当帧有效。`template_id != 0`
+                // 时剔除 shader 会按模板部件表逐部件展开（实体自己**不再**为每个部件发
+                // item）；`0` ⇒ 传统单实体路径（掩码一并归零，避免残留掩码影响日后重绑）。
+                // 成本：`SetModelFacts` 值变才标脏 ⇒ 稳态零脏行。
+                //
+                // 注意：这里**必须每帧无条件重发**，不能按"组件没变"跳过 ——
+                // `GPUModelRefComponent::HidePart/ShowPart/ShowAllParts` 是裸写掩码字段，
+                // **没有**任何 dirty 通知；一旦跳过，部件显隐就会停滞在上一帧的掩码上。
+                {
+                    const GPUModelRefComponent *model_ref =
+                        shadow_owner ? shadow_owner->GetComponent<GPUModelRefComponent>() : nullptr;
+
+                    world->GetEntityGPUTable().SetModelFacts(
+                        entity_id,
+                        model_ref ? model_ref->template_id : 0u,
+                        model_ref ? model_ref->part_visibility_mask : 0ull,
+                        model_ref ? model_ref->custom_data_index : 0u,
+                        model_ref ? model_ref->prev_transform_id : 0u);
+                }
+
+#if ULRE_ECS_DEBUG_API
+                // 写后一致断言（debug 面）：这条**本该恒成立**（刚写的就是权威）⇒ 一旦点名即
+                // 行缺失/溢出/有第二写者。取数：EntityGPUTable::GetVisibleMirrorCount()（应恒 0）。
+                world->GetEntityGPUTable().VerifyVisibleMirror(
+                    shadow_owner, world->IsEntityVisible(entity_id),
+                    "RenderPrimitiveCollectSystem#publish");
+#endif//ULRE_ECS_DEBUG_API
+            }
+        }
+
+        if (!ids_published)
+        {
+            // 时点 2（几何行不成立 ⇒ 本项不进批）：**显式清零本 pass 那一半**。
+            // 为什么：留着上一帧的值会让剔除按**旧几何的 AABB** 记账（画面不受影响 —— 该实体不在任何批里、
+            // 被 tags 跳过 —— 但剔除账与计数会偏）；零 = 未上行，与 `EntityRenderIDTable::Clear()`
+            //（实体销毁清两半）以及剔除侧 `geometry_id == 0 ⇒ 跳过本帧` 是同一约定。
+            // 成本：表的 setter 值变才标脏 ⇒ 稳态只在"有 → 无"那一帧脏一次。
+            world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});
+
+#if ULRE_ECS_DEBUG_API
+            const graph::RenderItemDescriptor *verif_row =
+                world->GetEntityRenderIDTable().Row(pass_index, entity_id.index);
+            if (verif_row && !(*verif_row == graph::RenderItemDescriptor{}))
+            {
+                GLogError("[EntityRenderIDTable] 几何行不成立但本 pass 行未清零：entity_index=%u pass=%u geometry_id=%u",
+                          entity_id.index, pass_index, geometry_id);
+            }
+#endif
+        }
+
+        return ids_published;
+    }
+
+    bool RenderPrimitiveCollectSystem::TryCachedMainFrameCollect(const bool ambient_provider_changed)
+    {
+        if (!world)
+            return false;
+
+        // ── 前提①：开关（已把 P2 快照开关合成进判据）+ 只能在主帧 pass 上接管 ──
+        if (!world->IsMainFrameCollectCacheEnabled())
+            return false;
+
+        if (!world->IsMainFrameTopologyPass())
+            return false;
+
+        // ── 前提②：天光算法没热切（provider 变 ⇒ program 身份变 ⇒ 材质链必须重跑）──
+        if (ambient_provider_changed)
+            return false;
+
+        // ── 前提③：上一帧主帧收集是稳态（无任何实例在等流式资源 / 重试失败）──
+        // 否则完整路径必须继续逐帧重试，不能把"启动时未就绪"永久缓存下来。
+        if (!last_main_collect_steady)
+            return false;
+
+        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+
+        // ── 前提④：GPU 剔除接管中 ──
+        // CPU 剔除只在接管期间直接 return 而不改 items ⇒ 快照的成员集合与顺序原样成立。
+        // 若本帧退回 CPU 剔除，它会按 items 逐项裁剪（并可能重排），那时成员集合必须
+        // 由收集侧重新产出。
+        if (!ledger.GetLastGPUCullEngaged())
+            return false;
+
+        MainFrameTopologySnapshot &snapshot = world->GetMainFrameTopologySnapshot();
+
+        // ── 前提⑤：快照就绪 + 代数一致 + **完整覆盖**上一次收集结果 ──
+        if (!snapshot.IsReady())
+            return false;
+
+        if (snapshot.GetTopologyRevision() != ledger.GetTopologyRevision())
+            return false;
+
+        const SnapshotItemRecord *records = snapshot.GetItems();
+        const int record_count = snapshot.GetItemCount();
+
+        if (record_count <= 0 || !records)
+            return false;
+
+        // `collected_items != item_count` ⇒ 上一帧有项因不可见/几何行缺失被合批阶段过滤掉
+        // ⇒ 快照不是同一套成员，复用会静默丢绘制。
+        if (snapshot.GetCollectedItemCount() != static_cast<uint32_t>(record_count))
+            return false;
+
+        MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
+
+        if (!runtime_table)
+            return false;
+
+        RenderFrameCache &cache = world->GetRenderFrameCache();
+
+        const size_t base_items = cache.renderItems.size();
+        const uint32_t base_renderable = cache.renderableCount;
+
+        // 4-ID 是**按 pass 解析**的（阴影程序/材质变体不同）；前面已限定主帧 pass，
+        // 这里仍显式取一次，避免日后放宽前提时静默写错半边。
+        const uint32_t pass_index = world->IsCurrentPassShadow() ? 1u : 0u;
+
+        bool ok = true;
+
+        {
+            FrameProfileSpan replay_span(FrameProfileSlot::CollectCacheReplay);
+
+            for (int i = 0; i < record_count; ++i)
+            {
+                const SnapshotItemRecord &record = records[i];
+
+                // 非 `PrimitiveRenderItem` 成员（当前不存在）：不猜测语义，整体回退
+                if (record.entity_index == 0xFFFFFFFFu)
+                {
+                    ok = false;
+                    break;
+                }
+
+                EntityID entity_id;
+                entity_id.index      = record.entity_index;
+                entity_id.generation = record.entity_generation;
+
+                // 代数不符 ⇒ nullptr（陈旧句柄在此判出）
+                Entity *entity = world->GetEntity(entity_id);
+
+                if (!entity)
+                {
+                    ok = false;
+                    break;
+                }
+
+                GeometryData *geometry_comp = entity->GetComponent<GeometryData>();
+
+                if (!geometry_comp)
+                {
+                    ok = false;
+                    break;
+                }
+
+                const TransformAccessor transform = world->GetTransformByEntity(entity_id);
+
+                if (!transform.IsValid())
+                {
+                    ok = false;
+                    break;
+                }
+
+                // 材质共享行必须仍然活着：行被回收 ⇒ 变体/程序/管线/绑定全部失配，
+                // 必须重跑完整材质链才能重建（这正是 P3 不做材质复用的边界）。
+
+                const MaterialRuntimeRow *material_row = runtime_table->Get(record.material_row);
+
+                if (!material_row)
+                {
+                    ok = false;
+                    break;
+                }
+
+                const uint32_t transform_id = transform.GetID();
+                const uint32_t geometry_id  = geometry_comp->GetGeometryID();
+                const uint32_t material_id  = (material_row->data_index_row != uint32_t(-1))
+                    ? material_row->data_index_row : 0u;
+                const uint32_t texture_id   = material_row->material_texture_configuration.IsValid()
+                    ? material_row->material_texture_configuration.row_index : 0u;
+
+                // A4：item 只持**行号**；`GetShaderProgram/GetPipeline` 都按实体现查世界表
+                // ⇒ 只要 `material_runtime_row` 仍然有效，程序/管线/渲染状态自动正确，
+                // 无需重做材质链（这是快路径成立的根据）。
+
+                std::unique_ptr<PrimitiveRenderItem> item =
+                    std::make_unique<PrimitiveRenderItem>(
+                        entity_id, transform, record.material_row, world);
+
+                item->UpdateWorldMatrix();
+
+
+                // 事实必须**逐帧重发**（不可跳过）：TRS 每帧可能变；可见性权威在
+                // `VisibilityDataStorage`；`GPUModelRefComponent` 的部件掩码是裸字段、
+                // 无 dirty 通知。这里写的每一项都是权威值，与完整路径逐字同值。
+                // 绘制键走 `record`（快照）⇒ 快路径**不读**映射 GPU 缓冲里的 params 行。
+                PublishPrimitiveFacts(entity_id, transform_id, geometry_id,
+                                      material_id, texture_id, pass_index, item.get(),
+                                      &record);
+
+                cache.renderItems.push_back(std::move(item));
+                cache.renderableCount++;
+            }
+
+        }// CollectCacheReplay 子槽
+
+        if (!ok)
+        {
+            // 回退：把本次已建出的项全部丢弃（记住入表前的水位，不假设缓存为空）。
+            // 已发布的事实行写的都是**权威值**，完整路径会再写一遍同样的值 ⇒ 无需回滚。
+            cache.renderItems.resize(base_items);
+            cache.renderableCount = base_renderable;
+
+            ++collect_cache_fallbacks;
+
+            return false;
+        }
+
+        ++collect_cache_hits;
+        collect_cache_last_items = static_cast<uint64_t>(record_count);
+
+        FrameProfiler::Count(FrameProfileCount::CollectItems, static_cast<uint32_t>(record_count));
+
+        return true;
+    }
+
     void RenderPrimitiveCollectSystem::ObserveCollectCacheEligibility()
     {
         if (!world)
@@ -2162,6 +2502,12 @@ namespace hgl::ecs
 
         FrameProfiler::Count(FrameProfileCount::CollectPrimitives, primitives.GetCount());
         FrameProfiler::Count(FrameProfileCount::CollectCalls);
+
+        // P3：主帧收集快路径。命中即本 pass 的收集工作**全部完成** ⇒ 直接返回。
+        // 未命中（任一前提不成立，或中途发现不一致而主动回退）⇒ 照原样跑完整收集，
+        // 回退路径不留下任何半成品（见 `TryCachedMainFrameCollect` 的契约）。
+        if (TryCachedMainFrameCollect(ambient_provider_changed))
+            return;
 
         {
             FrameProfileSpan prescan_span(FrameProfileSlot::CollectPreScan);
@@ -2611,126 +2957,13 @@ namespace hgl::ecs
 
             // ── B3-iii：填"行派生键"（批排序 / 聚簇 / ICB 的唯一判据）──
             // 行号 = geometry_id；其余字段从**行**读（同 asset ⇒ 同一行）。行缺失 ⇒ 键保持 0 ⇒ 本项不进批，
-            // 且本 pass 那一半要**显式清零**（见下面 ids_published 的收尾分支）。
-            bool ids_published = false;
+            // 且本 pass 那一半要**显式清零**（见 `PublishPrimitiveFacts` 的收尾分支）。
             const uint32_t pass_index = world->IsCurrentPassShadow() ? 1u : 0u;   // T4c3a：4-ID 是**按 pass 解析**的（阴影程序/材质变体不同）
 
-            if (geometry_id != 0)
-            {
-                auto *gc_key = world ? world->GetGraphicsContext() : nullptr;
-                auto *pool_key = gc_key ? gc_key->GetGlobalSSBOBufferRegistry() : nullptr;
-                const auto *params_row = pool_key ? pool_key->GetMeshDrawParamsRow(geometry_id) : nullptr;
-
-                if (params_row)
-                {
-                    RenderItem::MeshDrawKey &key = item->draw_key;
-                    key.geometry_id  = geometry_id;
-                    key.vertex_base  = params_row->vertex_base;
-                    key.index_base   = params_row->index_base;
-                    key.vertex_count = params_row->vertex_count;
-                    key.index_count  = params_row->index_count;
-                    key.is_indexed   = params_row->is_indexed;
-
-                    // T3d-3a：实体 4-ID 表随"本项进批"同一判据上行
-                    //（消费者 = GPU 剔除 / CPU 批行写入 / 形态 B）
-                    graph::RenderItemDescriptor render_ids{};
-                    render_ids.transform_id = transform_id;
-                    render_ids.geometry_id  = geometry_id;
-                    render_ids.material_id  = material_id;
-                    render_ids.texture_id   = texture_id;
-                    world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, render_ids);
-                    ids_published = true;
-
-                    // T3h：阴影**事实**随同一判据点上 EntityGPU 行（ShadowProxy 是
-                    // CPU-only 组件、无 GPU 行号可推 ⇒ 值进行才算接线；写者=世界，
-                    // 与 SetVisible 同族）。消费规则与着色侧逐字同式（bias<=0/非有限 ⇒ 行留 0
-                    // ⇒ 着色侧视 0 为默认 1.0）；剔除端按 `entity.shadow_*` 把本行抄进
-                    // per-draw 行（D3 契约段③ 现由这两跳承担 —— 原 CPU 行写入端已删）。
-                    {
-                        Entity *shadow_owner = world->GetEntity(entity_id);
-
-                        // A5b / A7a（2026-10-14 批 D **搬家**）：接收判定**由策略表给出**
-                        // —— `RenderNeed::ShadowReceiver` 是唯一判据。原实现长在 CPU 侧批行
-                        // 写入端，随「CPU 侧 per-batch 表构建」整族删除后迁到本处：
-                        // 本事实行是它的**新载体**（剔除端按 `entity.shadow_*` 抄进 per-draw 行
-                        // ⇒ D3 契约段③ 由两跳承担）。
-                        // `receive_shadow` 事实仍由实体级自由函数提供（缺省约定唯一出处见 ShadowProxy.h）。
-                        StrategyFacts shadow_facts;
-                        shadow_facts.receive_shadow = CanReceiveShadow(shadow_owner);
-
-                        const uint32_t shadow_needs =
-                            EvaluateRenderNeed(shadow_owner ? shadow_owner->BuildComponentMask() : 0u,
-                                               shadow_facts.ToMask());
-
-#if ULRE_STRATEGY_PARITY_ENABLED
-                        // 反向守卫：参考实现 = 旧判据（Release 下整块编空）
-                        ParityCheckShadowReceiver(
-                            HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver),
-                            CanReceiveShadow(shadow_owner),
-                            "RenderPrimitiveCollectSystem#shadow-facts");
-#endif
-
-                        world->GetEntityGPUTable().SetShadowFacts(
-                            entity_id,
-                            NormalizeShadowBiasToRow(GetShadowBiasMultiplier(shadow_owner)),
-                            HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver) ? 1u : 0u);
-
-                        // ECS #4 **(b)（2026-10-14 落地）**：每帧按权威**重算 ②**（实体行 `Visible` 位）。
-                        // 为什么只刷这一处：这里正是"本项进批"判据点（4-ID 就在上面同一判据里发）⇒
-                        // 不变量「**4-ID 已发布 ⇒ ② == 权威（含祖先继承）**」成立，且剔除端能读到的行
-                        // 一律是当帧值。未进批的实体不刷：其 4-ID 已清零，剔除端 `geometry_id == 0`
-                        // 闸门**先于**任何昂贵计算（契约档 §5「问题 3 的 ②」裁定）。
-                        // 成本：值已在本帧别处算过同类查询（O(1)+上溯）；`SetVisible` 是**值变才标脏**
-                        // ⇒ 静态实体不产生脏行（否则整表每帧上传）。
-                        world->GetEntityGPUTable().SetVisible(entity_id, world->IsEntityVisible(entity_id));
-
-                        // ── T3.1 / T3.2：模型模板事实上行（GPU 展开分支的**唯一入口**）──
-                        // 同一判据点、同一纪律：本实体已进批 ⇒ 行值当帧有效。`template_id != 0`
-                        // 时剔除 shader 会按模板部件表逐部件展开（实体自己**不再**为每个部件发
-                        // item）；`0` ⇒ 传统单实体路径（掩码一并归零，避免残留掩码影响日后重绑）。
-                        // 成本：`SetModelFacts` 值变才标脏 ⇒ 稳态零脏行。
-                        {
-                            const GPUModelRefComponent *model_ref =
-                                shadow_owner ? shadow_owner->GetComponent<GPUModelRefComponent>() : nullptr;
-
-                            world->GetEntityGPUTable().SetModelFacts(
-                                entity_id,
-                                model_ref ? model_ref->template_id : 0u,
-                                model_ref ? model_ref->part_visibility_mask : 0ull,
-                                model_ref ? model_ref->custom_data_index : 0u,
-                                model_ref ? model_ref->prev_transform_id : 0u);
-                        }
-
-                    #if ULRE_ECS_DEBUG_API
-                        // 写后一致断言（debug 面）：这条**本该恒成立**（刚写的就是权威）⇒ 一旦点名即
-                        // 行缺失/溢出/有第二写者。取数：EntityGPUTable::GetVisibleMirrorCount()（应恒 0）。
-                        world->GetEntityGPUTable().VerifyVisibleMirror(
-                            shadow_owner, world->IsEntityVisible(entity_id),
-                            "RenderPrimitiveCollectSystem#publish");
-                    #endif//ULRE_ECS_DEBUG_API
-                    }
-                }
-            }
-
-            if (!ids_published)
-            {
-                // 时点 2（几何行不成立 ⇒ 本项不进批）：**显式清零本 pass 那一半**。
-                // 为什么：留着上一帧的值会让剔除按**旧几何的 AABB** 记账（画面不受影响 —— 该实体不在任何批里、
-                // 被 tags 跳过 —— 但剔除账与计数会偏）；零 = 未上行，与 `EntityRenderIDTable::Clear()`
-                //（实体销毁清两半）以及剔除侧 `geometry_id == 0 ⇒ 跳过本帧` 是同一约定。
-                // 成本：表的 setter 值变才标脏 ⇒ 稳态只在"有 → 无"那一帧脏一次。
-                world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});
-
-#if ULRE_ECS_DEBUG_API
-                const graph::RenderItemDescriptor *verif_row =
-                    world->GetEntityRenderIDTable().Row(pass_index, entity_id.index);
-                if (verif_row && !(*verif_row == graph::RenderItemDescriptor{}))
-                {
-                    GLogError("[EntityRenderIDTable] 几何行不成立但本 pass 行未清零：entity_index=%u pass=%u geometry_id=%u",
-                              entity_id.index, pass_index, geometry_id);
-                }
-#endif
-            }
+            // 事实发布（4-ID / 阴影 / 可见性 / 模型模板）**与 P3 快路径共用同一份实现**：
+            // 任何一侧要增删一种事实，都只改 `PublishPrimitiveFacts` 一次。
+            PublishPrimitiveFacts(entity_id, transform_id, geometry_id,
+                                  material_id, texture_id, pass_index, item.get());
 
             // D9：阴影 pass 的 caster 本帧成功产出 item（该实例的阴影变体已就绪）
             // ⇒ 影子链已恢复正常，复位**该实例**的重试计数（A4 起计数归每实例 slot：
@@ -2793,5 +3026,10 @@ namespace hgl::ecs
         }
 
         }// CollectPublish 子槽
+
+        // P3：记录本 pass 是否"稳态"（无任何图元需要完整材质链），供下一帧快路径判定。
+        // 只在主帧 pass 更新：阴影/过滤 pass 的结论会污染这份判断。
+        if (world->IsMainFrameTopologyPass())
+            last_main_collect_steady = !any_material_work;
     }
 }//namespace hgl::ecs

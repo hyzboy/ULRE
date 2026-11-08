@@ -13,8 +13,12 @@ namespace hgl
 
 namespace hgl::ecs
 {
+    /// 主帧拓扑快照的成员记录（P2）。此处只需前置声明：仅作**可选入参指针**使用。
+    struct SnapshotItemRecord;
+
     class ECSContext;
     class Entity;
+    class PrimitiveRenderItem;
 
     /**
      * RenderPrimitiveCollectSystem
@@ -68,6 +72,65 @@ namespace hgl::ecs
         /// P1：每帧一次的资格判定与统计（只观测，**不跳过任何逻辑**）。
         void ObserveCollectCacheEligibility();
 
+        /// P3：上一帧**主帧 pass** 的收集是否为"稳态"。
+        ///
+        /// 定义：该次收集的预扫描判定 `any_material_work == false` —— 即**没有任何**
+        /// 图元需要完整材质链（`fast_path_holds` 成立、slot 有效、物化世代已覆盖、
+        /// 无 `runtime_dirty`）。只有稳态才允许快路径接管：否则说明有实例正在等流式
+        /// 资源或在重试失败，必须让完整路径继续逐帧重试，不能把"启动时未就绪"
+        /// 永久缓存成空/缺项。
+        ///
+        /// 只在主帧 pass 结束时更新（阴影 pass 的结论会污染这份判断）。
+        bool last_main_collect_steady = false;
+
+        /// P3 统计（快路径关闭时恒为 0）：
+        /// `hits` = 快路径完整接管的主帧数；`fallbacks` = 尝试后回退到完整收集的次数；
+        /// `last_items` = 最近一次快路径重建出的成员数。
+        uint64_t collect_cache_hits      = 0;
+        uint64_t collect_cache_fallbacks = 0;
+        uint64_t collect_cache_last_items = 0;
+
+        /// P3：主帧收集快路径。
+        ///
+        /// 返回 true = 本 pass 已完成全部收集工作（调用方**必须立即 return**）；
+        /// false = 未接管（任何一条前提不成立，或过程中发现不一致而主动回退），
+        /// 调用方照原样跑完整收集。回退时不会留下半成品：`cache` 里已建的项会被
+        /// 清掉，已发布的事实行写的都是权威值（完整路径会再写一遍同样的值）。
+        bool TryCachedMainFrameCollect(bool ambient_provider_changed);
+
+        /// 发布一个已装配图元的**全部权威事实**。
+        ///
+        /// 事实清单（缺一不可，缺哪一项都是静默错画）：
+        ///   · 4-ID 行（transform / geometry / material / texture，**按 pass 分半存**）；
+        ///   · 阴影事实（`CanReceiveShadow` → 接收位 + bias 归一行）；
+        ///   · 可见性（`Visible` 位，权威在 `VisibilityDataStorage`，含祖先继承）；
+        ///   · 模型模板事实（`template_id` / 部件掩码 / custom_data_index / prev_transform_id）。
+        ///
+        /// **完整收集路径与 P3 快路径共用这一份实现**：任何一侧要增删一种事实，
+        /// 都只改这里一次，不可能出现「快路径漏发一个事实」的静默偏差。
+        ///
+        /// @param entity_id    图元实体
+        /// @param transform_id 变换行号（`TransformAccessor::GetID()`）
+        /// @param geometry_id  几何行号；`0` = 无几何 ⇒ 只做本 pass 那一半的显式清零
+        /// @param material_id  材质数据行号（0 = 无）
+        /// @param texture_id   材质纹理配置行号（0 = 无）
+        /// @param pass_index   0 = 主帧，1 = 阴影（4-ID 行按 pass 分半存）
+        /// @param item         已装配的图元项（`draw_key` 由本函数填）
+        /// @param draw_seed    **可选**：上一份主帧拓扑快照的记录。非空时绘制键直接取自它，
+        ///                     从而**完全不读** `MeshDrawParams` 的 CPU 行（该行在映射的 GPU
+        ///                     缓冲里，实测每字段 ≈2.3 µs）。快路径实测 16.4 → 1.7 ms。
+        ///                     语义前提：记录来自同一拓扑代数 ⇒ `geometry_id` 未变
+        ///                     ⇒ 该 `geometry_id` 对应的绘制键也未变（见 P2 内容哈希）。
+        /// @return true = 几何行成立、4-ID 已发布；false = 本 pass 那一半已显式清零
+        bool PublishPrimitiveFacts(EntityID entity_id,
+                                   uint32_t transform_id,
+                                   uint32_t geometry_id,
+                                   uint32_t material_id,
+                                   uint32_t texture_id,
+                                   uint32_t pass_index,
+                                   PrimitiveRenderItem *item,
+                                   const SnapshotItemRecord *draw_seed = nullptr);
+
         /// 命名口径：**Ensure 而非 Resolve** —— "Resolve" 会被读成"只查表"，
         /// 而这三个入口在缓存未命中时**会触发** GLSL 生成 + SPV 编译 + 磁盘落盘
         /// （经 ShaderProgramManager::AcquireShaderProgram）。
@@ -98,6 +161,17 @@ namespace hgl::ecs
         ~RenderPrimitiveCollectSystem() override = default;
 
     public:
+
+        // ── P3 收集快路径统计（报表用；快路径关闭时恒为 0）───────────────────
+
+        /// 快路径完整接管的主帧数
+        uint64_t GetCollectCacheHits()      const { return collect_cache_hits; }
+        /// 尝试后被判据拒绝 / 中途发现不一致而回退的次数
+        uint64_t GetCollectCacheFallbacks() const { return collect_cache_fallbacks; }
+        /// 最近一次快路径重建出的成员数
+        uint64_t GetCollectCacheLastItems() const { return collect_cache_last_items; }
+        /// 上一帧主帧收集是否为稳态（快路径的前提之一）
+        bool     IsLastMainCollectSteady()  const { return last_main_collect_steady; }
 
         void SetWorld(ECSContext* w) { world = w; }
 

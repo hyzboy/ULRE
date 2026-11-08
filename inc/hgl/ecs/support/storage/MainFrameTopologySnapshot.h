@@ -72,6 +72,13 @@ namespace hgl::ecs
     /// `SetMainFrameTopologySnapshotEnabled(true/false)` 覆盖。
     bool GetMainFrameTopologySnapshotEnvDefault();
 
+    /// 读取环境变量 `ULRE_MAINFRAME_COLLECT_CACHE`（`1` / `true` / `on` / `yes` 视为开启）。
+    /// 这是 P3 的**收集快路径**开关：开启后主帧在全部资格条件成立时直接按上一份
+    /// 主帧拓扑快照重建收集结果。默认关闭；且**只有在
+    /// `SetMainFrameTopologySnapshotEnabled(true)` 也打开时才可能生效**
+    /// （`ECSContext::IsMainFrameCollectCacheEnabled()` 已把两者合成一个判据）。
+    bool GetMainFrameCollectCacheEnvDefault();
+
     /// 一个可绘制成员
     struct SnapshotItemRecord
     {
@@ -80,6 +87,19 @@ namespace hgl::ecs
         uint16_t reserved0         = 0;   ///< 保留（显式填零，便于逐字节对拍）
         uint32_t material_row      = 0;   ///< `MaterialRuntimeRowID`（材质运行期共享行号）
         uint32_t batch_slot        = 0;   ///< 所属批在 `SnapshotBatchRecord` 数组里的下标
+
+        // ── 绘制键（`RenderItem::MeshDrawKey` 的权威副本，P3 快路径的唯一来源）──
+        // **为什么必须存进快照**：`MeshDrawParams` 的 CPU 行位于**映射的 GPU 缓冲**
+        // （host-visible 非缓存内存）⇒ 实测单个字段读取 ≈2.3 µs，快路径每帧 1079×6 次
+        // ≈14.6 ms（占比 90%+，已由差分实验定性）。而绘制键只由池 `geometry_id` 决定
+        // （= 资产拓扑）⇒ 拓扑未变时可逐帧重现，**完全不必再读该行**。
+        // 完整路径构建快照时这些值刚从 `item->draw_key` 算出 ⇒ 填充是零额外成本。
+        uint32_t draw_geometry_id  = 0;   ///< 池 `geometry_id`（**0 = 本成员无绘制键**）
+        uint32_t draw_vertex_base  = 0;
+        uint32_t draw_index_base   = 0;
+        uint32_t draw_vertex_count = 0;
+        uint32_t draw_index_count  = 0;
+        uint32_t draw_is_indexed   = 0;   ///< `bool` 语义（0/1，避免 bool 填充位影响逐字节对拍）
     };
 
     /// 一个批（= 一次 `MaterialBatch`）
@@ -138,6 +158,12 @@ namespace hgl::ecs
         uint64_t content_hash      = 0;   ///< 全部记录 + 计数的 FNV1a（对拍用）
         uint32_t frame_serial      = 0;   ///< 构建时的 `RenderFrameCache::frame_serial`
 
+        /// 构建时 `RenderFrameCache::renderItems` 的**收集总数**（含没进批的项）。
+        /// 与 `GetItemCount()` 比较可判出「本次快照是否完整覆盖了收集结果」：
+        /// 有项因不可见 / 几何行缺失被合批阶段过滤掉时，快照就不是同一套成员，
+        /// P3 快路径必须据此拒绝复用（否则会静默丢绘制）。
+        uint32_t collected_items   = 0;
+
         bool building = false;            ///< 重入护栏
 
         SnapshotStats stats;
@@ -178,6 +204,10 @@ namespace hgl::ecs
         uint64_t GetTopologyRevision() const { return topology_revision; }
         uint64_t GetContentHash()      const { return content_hash; }
         uint32_t GetBuiltFrameSerial() const { return frame_serial; }
+
+        /// 构建时 `renderItems` 的收集总数。等于 `GetItemCount()` 才说明快照
+        /// 完整覆盖了上一次收集结果（P3 快路径的**必要条件**）。
+        uint32_t GetCollectedItemCount() const { return collected_items; }
 
         const SnapshotStats &GetStats() const { return stats; }
 

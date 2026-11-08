@@ -69,6 +69,7 @@ namespace hgl::ecs
             "CollectPreScan",
             "CollectMainLoop",
             "CollectPublish",
+            "CollectCacheReplay",
             "BatchBuildMaterial",
             "BatchGPUCullGuard",
             "BatchFinalize",

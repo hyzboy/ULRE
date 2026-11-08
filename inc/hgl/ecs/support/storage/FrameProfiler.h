@@ -46,6 +46,7 @@ namespace hgl::ecs
         CollectPreScan,     ///< 材质/管线预扫循环（决定本帧是否需要物化）
         CollectMainLoop,    ///< 主循环（策略判据 + item 装配 + 4-ID/事实发布）
         CollectPublish,     ///< 收集尾部（诊断/统计提交）
+        CollectCacheReplay, ///< 主帧收集快路径（按拓扑快照重建 item + 事实，P3）
 
         // ── 合批内部（PrimitiveBatchPipeline）────────────────────────────────
         BatchBuildMaterial, ///< BuildMaterialBatches()

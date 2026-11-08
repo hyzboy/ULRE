@@ -101,6 +101,9 @@
 #include<hgl/ecs/systems/tick/JoltPhysicsSystem.h>
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/ecs/support/storage/FrameProfiler.h>
+#include<hgl/ecs/support/storage/PrimitiveTopologyLedger.h>
+#include<hgl/ecs/support/storage/MainFrameTopologySnapshot.h>
+#include<hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 
 #include<hgl/time/Time.h>
@@ -237,6 +240,7 @@ private:
     uint32_t sample_interval = 60;
     bool     profile_breakdown = true;   ///< 打印详细阶段耗时剖析
     bool     topo_snapshot     = false;  ///< P2：开启主帧拓扑快照（只观测）
+    bool     collect_cache     = false;  ///< P3：开启主帧收集快路径（依赖 P2 快照）
 
     std::string dump_tag;
     uint32_t    dump_frame  = 0;
@@ -909,6 +913,60 @@ private:
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // P3：主帧收集快路径报表
+    //
+    // 读法（照这个顺序排查）：
+    //   · `接管/帧` —— 快路径完整接管的主帧数 / 窗口帧数。稳态应为 1.0。
+    //     稳态却 < 1.0 ⇒ 前提在反复不成立，按下面顺序逐个查：
+    //       台帐代数在变（有拓扑写者） → GPU 剔除没接管 → 快照成员数 != 收集数
+    //       → `last_main_collect_steady` 为假（材质链还没就绪）
+    //   · `回退` —— 判据通过后，又在重建途中发现不一致（实体没了 / 几何组件没了 /
+    //     变换没了 / 材质共享行被回收）。**非 0 就是告警**：明明"拓扑代数未变"，
+    //     却有成员消失 ⇒ 台帐漏了一个拓扑写者。
+    // ─────────────────────────────────────────────────────────────────────
+    struct CollectCacheCounters
+    {
+        uint64_t hits      = 0;
+        uint64_t fallbacks = 0;
+    };
+
+    CollectCacheCounters collect_cache_prev;
+
+    void ReportCollectCache(uint32_t window_frames)
+    {
+        if (!ecs_context || !collect_cache)
+            return;
+
+        auto system = ecs_context->GetSystem<RenderPrimitiveCollectSystem>();
+
+        if (!system)
+            return;
+
+        const uint64_t hits      = system->GetCollectCacheHits();
+        const uint64_t fallbacks = system->GetCollectCacheFallbacks();
+
+        const uint64_t d_hits      = (hits >= collect_cache_prev.hits) ? (hits - collect_cache_prev.hits) : 0;
+        const uint64_t d_fallbacks = (fallbacks >= collect_cache_prev.fallbacks) ? (fallbacks - collect_cache_prev.fallbacks) : 0;
+
+        const double div = (window_frames > 0) ? double(window_frames) : 1.0;
+
+        printf("  -- P3 主帧收集快路径（真正跳过收集主循环）--\n");
+        printf("  %-22s 接管=%llu (%.2f/帧) 回退=%llu ｜ 成员=%llu 稳态=%s\n",
+               "窗口统计",
+               static_cast<unsigned long long>(d_hits), double(d_hits) / div,
+               static_cast<unsigned long long>(d_fallbacks),
+               static_cast<unsigned long long>(system->GetCollectCacheLastItems()),
+               system->IsLastMainCollectSteady() ? "yes" : "no");
+        printf("  %-22s %s\n",
+               "诊断",
+               (d_fallbacks == 0) ? "OK（快照成员与实体状态一致）"
+                                  : "<- 有回退：台帐可能漏了拓扑写者");
+
+        collect_cache_prev.hits      = hits;
+        collect_cache_prev.fallbacks = fallbacks;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // T8.2 采样：GPU 侧可见数 / 溢出槽（会在采样帧付出一次 fence 等待）
     // ─────────────────────────────────────────────────────────────────────
     void SampleGPU(GPUCullSystem * gpu_cull)
@@ -1009,6 +1067,7 @@ private:
             Line("|- CollectPreScan",     SlotMs(FrameProfileSlot::CollectPreScan),     "材质/管线预扫");
             Line("|- CollectMainLoop",    SlotMs(FrameProfileSlot::CollectMainLoop),    "判据循环 + item 装配 + 4-ID/事实发布");
             Line("|- CollectPublish",     SlotMs(FrameProfileSlot::CollectPublish),     "收集尾部诊断/提交");
+            Line("|- CollectCacheReplay",  SlotMs(FrameProfileSlot::CollectCacheReplay), "P3 快路径：按拓扑快照重建 item + 事实");
             Line("|- BatchBuildMaterial", SlotMs(FrameProfileSlot::BatchBuildMaterial), "BuildMaterialBatches");
             Line("|- BatchGPUCullGuard",  SlotMs(FrameProfileSlot::BatchGPUCullGuard),  "TryApplyGPUCullOverride（含于 BatchFinalize）");
             Line("|- BatchFinalize",      SlotMs(FrameProfileSlot::BatchFinalize),      "FinalizeBatches（sort/聚簇/桶布局）");
@@ -1022,6 +1081,7 @@ private:
 
             ReportTopologyLedger(acc_frames);
             ReportMainFrameSnapshot(acc_frames);
+            ReportCollectCache(acc_frames);
         }
         fflush(stdout);
 
@@ -1059,6 +1119,7 @@ public:
         if (const char * v = getenv("CSTRESS_SAMPLE"))  sample_interval   = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_PROFILE")) profile_breakdown = (atoi(v) != 0);
         if (const char * v = getenv("CSTRESS_TOPO"))    topo_snapshot     = (atoi(v) != 0);
+        if (const char * v = getenv("CSTRESS_COLLECT_CACHE")) collect_cache = (atoi(v) != 0);
 
         if (const char * v = getenv("CSTRESS_BOARDS")) board_count = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_DICE"))   dice_count  = (uint32_t)atoi(v);
@@ -1106,6 +1167,23 @@ public:
         if (topo_snapshot)
         {
             printf("[CSTRESS] 主帧拓扑快照：开启（P2 观测模式 —— 只构建/对拍，不跳过原路径）\n");
+            fflush(stdout);
+        }
+
+        // P3：主帧收集快路径。**依赖 P2 快照**（快照就是快路径的输入），
+        // 所以只要快照没开，快路径一律强制关闭 —— 不做「有开关无数据」的假配置。
+        collect_cache = collect_cache || ecs_context->IsMainFrameCollectCacheEnabled();
+        if (collect_cache && !topo_snapshot)
+        {
+            printf("[CSTRESS] 主帧收集快路径：拒绝开启（依赖 P2 拓扑快照，请同时开 CSTRESS_TOPO=1）\n");
+            fflush(stdout);
+            collect_cache = false;
+        }
+        ecs_context->SetMainFrameCollectCacheEnabled(collect_cache);
+
+        if (collect_cache)
+        {
+            printf("[CSTRESS] 主帧收集快路径：开启（P3 —— 稳态时跳过收集主循环，仅重建 item + 重发事实）\n");
             fflush(stdout);
         }
 

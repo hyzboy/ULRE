@@ -318,6 +318,14 @@ namespace hgl
             /// 主帧拓扑快照开关（默认关闭；环境变量 `ULRE_MAINFRAME_TOPO_CACHE=1` 可开）。
             bool main_frame_topology_snapshot_enabled = false;
 
+            /// 主帧**收集快路径**开关（计划 P3，默认关闭；环境变量
+            /// `ULRE_MAINFRAME_COLLECT_CACHE=1` 可开）。
+            /// 与 `main_frame_topology_snapshot_enabled` 分开的原因：快照本身只是
+            /// 观测（P2 已证明零行为变化），而"让快照接管收集"是真正改变执行路径的
+            /// 决定 ⇒ 两个开关必须能独立打开，才能做出「快照开/关」与「快路径开/关」
+            /// 的四组对拍。快路径**要求**快照开启，反之不成立。
+            bool main_frame_collect_cache_enabled = false;
+
             /// 当前 Pass 是否为阴影贴图生成 Pass
             bool is_current_pass_shadow = false;
             glm::vec3 current_pass_shadow_origin{0.0f};
@@ -510,6 +518,18 @@ namespace hgl
                 main_frame_topology_snapshot.Reset();
             }
             bool IsMainFrameTopologySnapshotEnabled() const { return main_frame_topology_snapshot_enabled; }
+
+            /// 开/关主帧**收集快路径**（P3）。开启后主帧在满足全部资格条件时直接从
+            /// 上一份主帧拓扑快照重建收集结果；条件不满足（任一帧）就退回完整收集，
+            /// 不做任何"部分复用"。关闭时整条快路径不存在（零开销）。
+            void SetMainFrameCollectCacheEnabled(bool enabled)
+            {
+                main_frame_collect_cache_enabled = enabled;
+            }
+            bool IsMainFrameCollectCacheEnabled() const
+            {
+                return main_frame_collect_cache_enabled && main_frame_topology_snapshot_enabled;
+            }
 
             /// 本 pass 是否有资格充当「主帧」（与 P1 资格判定的谓词完全一致）：
             /// 非阴影 pass 且无移动性过滤。阴影/过滤 pass 与主帧共用同一份
