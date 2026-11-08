@@ -70,7 +70,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/load_geometry.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/load_geometry.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 
     // ── 台架门控（PBR 棋盘模式，默认开） ──────────────────────────────

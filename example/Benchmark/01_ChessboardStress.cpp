@@ -206,7 +206,7 @@ namespace
 {
     // 材质数据块：一行中性白，颜色差异全部走逐实例自定义色
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/gpu_model_chessboard.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/gpu_model_chessboard.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 

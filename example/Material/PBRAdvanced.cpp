@@ -56,7 +56,7 @@ namespace
 
     // 材质数据行唯一来源（块内第 i 行 == 池行号 first+i）
     constexpr const char * ADV_DATA_PATH =
-        "ShaderLibrary/asset/material_data/pbr_advanced_matrix.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/pbr_advanced_matrix.material_data.toml";
 
     // 帧摘要判据常量：冻结相机 + 第 8 帧，Debug 下实跑记录。
     // ⚠ 改渲染结果（BRDF/数据行/相机）必须复核并重录（FrameDigest.h 台架规矩）。

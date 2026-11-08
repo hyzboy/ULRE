@@ -128,7 +128,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/cascade_shadow_map.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/cascade_shadow_map.material_data.toml";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
     // 地面行紧跟在 10 个 PBR 纹理行之后（同一数据块）
     constexpr uint32_t MATERIAL_DATA_ROW_GROUND = kPBRTextureCount;

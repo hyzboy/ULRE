@@ -49,7 +49,7 @@ namespace
 
     // 材质数据行的唯一来源；示例代码里不再出现任何一个材质数值
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/simple_sphere.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/simple_sphere.material_data.toml";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 

@@ -62,7 +62,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/render_to_texture.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/render_to_texture.material_data.toml";
     constexpr uint32 MATERIAL_DATA_ROW_SPHERE = 0;
     constexpr uint32 MATERIAL_DATA_ROW_CUBE   = 1;
 }

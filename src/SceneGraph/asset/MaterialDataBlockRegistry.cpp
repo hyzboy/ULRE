@@ -1,5 +1,6 @@
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include <hgl/asset/LoadedFile.h>
+#include <hgl/graph/asset/AssetSourceMount.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
@@ -430,13 +431,28 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
-        MaterialDataBlockAsset *cached = FindAssetByPath(parsed.target);
+        // pack 来源的路径段是「包内逻辑/相对路径」，本地磁盘上未必有同名文件：
+        // 先经挂载索引反查出物理路径（顺带裁决 `.toml`/`.fb` 同名），file 来源原样直通。
+        OSString load_path = parsed.target;
+
+        if (parsed.IsPack())
+        {
+            if (!ResolveAssetPhysicalPath(uri, hgl::asset::AssetType::MaterialData, load_path) ||
+                load_path.IsEmpty())
+            {
+                GLogError(u8"[MaterialDataBlockRegistry] 包裹路径解析失败: %s",
+                          hgl::asset::AssetURISegmentToAnsi(uri).c_str());
+                return nullptr;
+            }
+        }
+
+        MaterialDataBlockAsset *cached = FindAssetByPath(load_path);
         if (cached)
             return cached;
 
-        LoadFile(parsed.target);
+        LoadFile(load_path);
 
-        return FindAssetByPath(parsed.target);
+        return FindAssetByPath(load_path);
     }
 
     bool MaterialDataBlockRegistry::GetRowBinding(GlobalSSBOBufferRegistry *pool,

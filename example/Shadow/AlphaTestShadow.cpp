@@ -53,7 +53,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/alpha_test_shadow.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/alpha_test_shadow.material_data.toml";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 
     // 纹理（base_color / opacity_mask）都在配方文件里声明：

@@ -60,7 +60,7 @@ namespace
 {
     // 物体材质：材质数据行的唯一来源（一个 URI + 一个行号）
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:file:ShaderLibrary/asset/material_data/atmosphere_sky_ambient.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/atmosphere_sky_ambient.material_data.toml";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 
