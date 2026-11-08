@@ -139,6 +139,11 @@ namespace hgl::graph
         }
 
         source_kind         =TextureURIKind::File;
+        meta.source_path    =uri.path;
+        meta.asset_type     =OS_TEXT("Texture2D");
+        this->auto_mipmaps  =auto_mipmaps;
+
+        return(Init());
     }
 
     bool TextureAsset::SetupFromRenderTarget(const OSString &target,const OSString &attachment)

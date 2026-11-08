@@ -207,16 +207,20 @@ uint64_t CreateTexture2DFromFileAsync(TextureManager *tm,
 
 Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
 {
+    // 无扩展名写法先探测补全（`x` → `x.Tex2D` 等），补全后的名字同时作缓存键，
+    // 让 `tex2d:x`、`file:x`、`x.Tex2D` 收敛到同一张纹理。
+    const OSString probed=ProbeTextureURI(filename);
+
     Texture2D *tex;
 
-    if(texture_by_filename.Get(filename,(Texture *&)tex))
+    if(texture_by_filename.Get(probed,(Texture *&)tex))
         return tex;
 
-    tex=CreateTexture2DFromFile(this,filename,auto_mipmaps);
+    tex=CreateTexture2DFromFile(this,probed,auto_mipmaps);
 
     if(tex)
     {
-        Add(tex,filename);
+        Add(tex,probed);
 
     //#ifdef _DEBUG
     //    DebugUtils *du=device->GetDebugUtils();
@@ -240,7 +244,7 @@ uint64_t TextureManager::LoadTexture2DAsync(const OSString &filename,
                                             void (*callback)(GpuUploadTask *, void *),
                                             void *user_data)
 {
-    return CreateTexture2DFromFileAsync(this, filename, auto_mipmaps, priority, bindless_handle, callback, user_data);
+    return CreateTexture2DFromFileAsync(this, ProbeTextureURI(filename), auto_mipmaps, priority, bindless_handle, callback, user_data);
 }
 
 Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,const uint32_t mip_levels)
@@ -363,16 +367,20 @@ TextureCube *CreateTextureCubeFromFile(TextureManager *tm,const OSString &filena
 
 TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_mipmaps)
 {
+    // 裸路径无扩展名时按立方体候选探测（`.TexCube` 优先）；带 `cubefile:/texcube:`
+    // 前缀的由 scheme 定形态。
+    const OSString probed=ProbeTextureURI(filename,TextureURIKind::CubeFile);
+
     TextureCube *tex;
 
-    if(texture_by_filename.Get(filename,(Texture *&)tex))
+    if(texture_by_filename.Get(probed,(Texture *&)tex))
         return tex;
 
-    tex=CreateTextureCubeFromFile(this,filename,auto_mipmaps);
+    tex=CreateTextureCubeFromFile(this,probed,auto_mipmaps);
 
     if(tex)
     {
-        Add(tex,filename);
+        Add(tex,probed);
     }
 
     return tex;
@@ -511,7 +519,9 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
 
     // 作者可以直接写 `rt:GBuffer:depth`：解析后落到 RenderTarget 句柄表，
     // 由 RenderTargetManager 在附件创建时绑定，完全不读盘。
-    const TextureURI uri=TextureURI::Parse(filename);
+    // 先做无扩展名探测：`texoct:x`/`texcube:x`/`x` 补全成带容器别名的规范名，
+    // 后续 Parse、去重键、meta.source_path 全部使用补全后的文本。
+    const TextureURI uri=TextureURI::Parse(ProbeTextureURI(filename));
 
     if(!uri.IsValid())
     {

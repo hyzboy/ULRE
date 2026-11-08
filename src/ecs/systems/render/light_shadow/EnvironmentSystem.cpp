@@ -7,6 +7,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/asset/TextureURI.h>
 #include<hgl/graph/asset/GeometryAsset.h>
 #include<hgl/graph/asset/GeometryAssetRegistry.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -208,13 +209,19 @@ namespace hgl::ecs
 
         const U8String u8_uri = ToU8String(uri);
 
-        // 装载形态由**后缀**决定，与渲染侧判定投影的规则同源（`ResolveMaterialTextureProjection`）：
-        //   `.TexCube` → 立方体容器 → LoadTextureCube
-        //   `.TexOct`  → 八面体展开图，仍是 **2D 容器**（单层 + 完整 mip 链）→ LoadTexture2D
-        //   其余        → 普通 2D → LoadTexture2D
+        // 装载形态判定：**前缀优先，后缀兜底**（与 `ResolveMaterialTextureProjection` 同源规则）：
+        //   `texcube:`/`cubefile:` → 立方体容器 → LoadTextureCube
+        //   `texoct:`              → 八面体展开图，仍是 **2D 容器**（单层 + 完整 mip 链）→ LoadTexture2D
+        //   裸路径 / `tex2d:file:` → 按容器后缀判：`.TexCube` → 立方体；其余 → 2D
         // 八面体绝不能走 LoadTextureCube：那会把每层当 cube face，装出来是垃圾。
-        graph::Texture *texture = (ResolveProjectionOf(u8_uri)
-                                        == graph::mtl::MaterialTextureProjection::CubeMap)
+        const graph::TextureURI tex_uri = graph::TextureURI::Parse(uri);
+
+        const bool cube_route =
+               tex_uri.IsCubeFile()
+            || (tex_uri.kind == graph::TextureURIKind::File
+                && ResolveProjectionOf(u8_uri) == graph::mtl::MaterialTextureProjection::CubeMap);
+
+        graph::Texture *texture = cube_route
             ? static_cast<graph::Texture *>(texture_manager->LoadTextureCube(uri, false))
             : static_cast<graph::Texture *>(texture_manager->LoadTexture2D(uri, false));
 

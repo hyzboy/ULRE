@@ -1,5 +1,7 @@
 #include<hgl/graph/asset/TextureURI.h>
 #include<hgl/graph/asset/RenderTargetAsset.h>
+#include<hgl/graph/asset/AssetSourceMount.h>
+#include<hgl/filesystem/FileSystem.h>
 #include<hgl/utf.h>
 
 namespace hgl::graph
@@ -361,5 +363,84 @@ namespace hgl::graph
             return(OSString());
 
         return ToOSString(U8String(reinterpret_cast<const u8char *>(ansi_name.c_str()),ansi_name.Length()));
+    }
+
+    OSString ProbeTextureURI(const OSString &uri,TextureURIKind assume_kind)
+    {
+        const TextureURI parsed=TextureURI::Parse(uri);
+
+        if(!parsed.IsDiskFile()||parsed.path.IsEmpty())
+            return(uri);
+
+        // scheme 已声明形态时以 scheme 为准；裸路径才采用调用方假设。
+        TextureURIKind kind=parsed.kind;
+
+        if(kind==TextureURIKind::File&&assume_kind!=TextureURIKind::File)
+            kind=assume_kind;
+
+        // 「有无扩展名」只看最后一段：pack 名或目录里的点不算扩展名。
+        const OSString target=parsed.IsPackURI()?parsed.GetPackTarget():parsed.path;
+        const int len=target.Length();
+
+        if(len>0)
+        {
+            const os_char *data=target.c_str();
+
+            for(int i=len-1;i>=0;i--)
+            {
+                const os_char ch=data[i];
+
+                if(ch==OS_TEXT('.'))
+                    return(uri);                      // 已带扩展名：不探测，原样返回
+
+                if(ch==OS_TEXT('/')||ch==OS_TEXT('\\')||ch==OS_TEXT(':'))
+                    break;
+            }
+        }
+
+        static const os_char *const k2DCandidates[] =
+            {OS_TEXT(".Tex2D"),OS_TEXT(".png"),OS_TEXT(".jpg"),OS_TEXT(".tga"),
+             OS_TEXT(".bmp"),OS_TEXT(".hdr"),OS_TEXT(".dds"),OS_TEXT(".ktx2")};
+        static const os_char *const kCubeCandidates[] =
+            {OS_TEXT(".TexCube"),OS_TEXT(".ktx"),OS_TEXT(".hdr"),OS_TEXT(".dds")};
+        static const os_char *const kOctaCandidates[] =
+            {OS_TEXT(".TexOct")};
+
+        const os_char *const *candidates;
+        int count;
+
+        switch(kind)
+        {
+        case TextureURIKind::CubeFile:
+            candidates=kCubeCandidates; count=int(sizeof(kCubeCandidates)/sizeof(kCubeCandidates[0])); break;
+        case TextureURIKind::OctaFile:
+            candidates=kOctaCandidates; count=int(sizeof(kOctaCandidates)/sizeof(kOctaCandidates[0])); break;
+        default:
+            candidates=k2DCandidates;   count=int(sizeof(k2DCandidates)/sizeof(k2DCandidates[0]));    break;
+        }
+
+        const bool pack=parsed.IsPackURI();
+
+        for(int i=0;i<count;i++)
+        {
+            // path 是 raw 的连续尾部，直接在 raw 末尾补扩展名即可保留 scheme/pack 前缀。
+            const OSString probed=uri+OSString(candidates[i]);
+            bool hit;
+
+            if(pack)
+            {
+                OSString physical;
+                hit=ResolveAssetPhysicalPath(probed,asset::AssetType::Texture,physical);
+            }
+            else
+            {
+                hit=hgl::filesystem::FileExist(parsed.path+OSString(candidates[i]));
+            }
+
+            if(hit)
+                return(probed);
+        }
+
+        return(uri);                                  // 全部落空：不改写
     }
 }//namespace hgl::graph

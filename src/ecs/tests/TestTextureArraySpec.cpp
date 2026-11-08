@@ -364,6 +364,53 @@ namespace
         return true;
     }
 
+    /// `ProbeTextureURI`：无扩展名 URI 的磁盘探测（用仓库真实夹具，CWD=仓库根）。
+    bool TestProbeTextureURI()
+    {
+        const OSString stem   = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k");
+        const OSString irrad  = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance");
+
+        // 裸路径：默认按 2D 候选（.Tex2D 优先），同名词干的 .TexCube/.TexOct 不许抢
+        Check(graph::ProbeTextureURI(OS_TEXT("res/image/lena")) == OS_TEXT("res/image/lena.Tex2D"),
+              "裸无扩展名路径探测出 .Tex2D 别名");
+        Check(graph::ProbeTextureURI(stem) == stem + OS_TEXT(".Tex2D"),
+              "同名多形态词干按 File 假设命中 .Tex2D");
+
+        // 调用方声明形态：cube / octa 各自命中自己的别名，互不串
+        Check(graph::ProbeTextureURI(stem, graph::TextureURIKind::CubeFile) == stem + OS_TEXT(".TexCube"),
+              "CubeFile 假设命中 .TexCube（与 .Tex2D 同词干不混淆）");
+        Check(graph::ProbeTextureURI(stem, graph::TextureURIKind::OctaFile) == stem + OS_TEXT(".TexOct"),
+              "OctaFile 假设命中 .TexOct");
+        Check(graph::ProbeTextureURI(irrad, graph::TextureURIKind::CubeFile) == irrad + OS_TEXT(".TexCube"),
+              "只有 .TexCube/.TexOct 的 irradiance 按 cube 探测成功");
+        Check(graph::ProbeTextureURI(irrad) == irrad,
+              "irradiance 按 2D 候选全部落空 ⇒ 原样返回，绝不乱补扩展名");
+
+        // scheme 形态：前缀保留 + 补全；cubefile:/texcube: 同候选
+        Check(graph::ProbeTextureURI(OS_TEXT("tex2d:res/image/lena")) == OS_TEXT("tex2d:res/image/lena.Tex2D"),
+              "tex2d: 前缀在探测结果里保留");
+        Check(graph::ProbeTextureURI(OS_TEXT("texcube:") + irrad) == OS_TEXT("texcube:") + irrad + OS_TEXT(".TexCube"),
+              "texcube: 前缀决定候选，忽略 assume");
+        Check(graph::ProbeTextureURI(OS_TEXT("texoct:") + stem) == OS_TEXT("texoct:") + stem + OS_TEXT(".TexOct"),
+              "texoct: 前缀探测 .TexOct");
+        Check(graph::ProbeTextureURI(OS_TEXT("cubefile:") + irrad) == OS_TEXT("cubefile:") + irrad + OS_TEXT(".TexCube"),
+              "cubefile: 旧写法同样探测");
+
+        // 已带扩展名 / 非磁盘形态 / 不存在 ⇒ 原样返回
+        Check(graph::ProbeTextureURI(OS_TEXT("res/image/lena.Tex2D")) == OS_TEXT("res/image/lena.Tex2D"),
+              "已带扩展名不重复探测");
+        Check(graph::ProbeTextureURI(OS_TEXT("rt:GBuffer:depth")) == OS_TEXT("rt:GBuffer:depth"),
+              "rt: 非磁盘形态不探测");
+        Check(graph::ProbeTextureURI(OS_TEXT("texarray:@pbr_10x10_baseColor"))
+                  == OS_TEXT("texarray:@pbr_10x10_baseColor"),
+              "texarray: 不探测");
+        Check(graph::ProbeTextureURI(OS_TEXT("res/image/__no_such_texture_xyz"))
+                  == OS_TEXT("res/image/__no_such_texture_xyz"),
+              "全候选落空的原样返回");
+
+        return true;
+    }
+
     /// 去掉行注释后再做「不得出现 X」的断言 —— 注释里可以留历史说明，代码里不行。
     AnsiString StripLineComments(const AnsiString &src)
     {
@@ -506,6 +553,7 @@ int main()
     Check(TestDefaultLayerName(), "缺省层名带父目录");
     Check(TestRejectsBadInput(), "坏输入整张拒绝");
     Check(TestUriResolution(), "texarray: URI → 规约路径");
+    Check(TestProbeTextureURI(), "无扩展名 URI 磁盘探测");
     Check(TestExampleSources(), "示例不再手工装配数组");
 
     if (g_failed > 0)

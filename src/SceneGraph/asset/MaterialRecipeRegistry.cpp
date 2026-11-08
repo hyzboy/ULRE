@@ -45,19 +45,48 @@ namespace hgl::graph::mtl
             if (hgl::filesystem::FileExist(uri.path))
                 return raw;
 
+            // 无扩展名写法：先按原文探测（pack 形态走挂载表索引，普通形态按 CWD 直查），
+            // 命中即返回补全名 —— 优先级与上面「相对 CWD 命中就原样使用」一致。
+            {
+                const OSString probed = ProbeTextureURI(raw);
+                if (probed != raw)
+                    return probed;
+            }
+
             if (source_path.IsEmpty() || source_path == OS_TEXT("<memory>"))
                 return raw;
 
             const OSString candidate =
                 (hgl::filesystem::Path(source_path).GetParent() / uri.path).ToOSString();
-            if (candidate == raw || !hgl::filesystem::FileExist(candidate))
+            if (candidate == raw)
                 return raw;
+
+            TextureURIKind assume;
+            if (uri.IsCubeFile())
+                assume = TextureURIKind::CubeFile;
+            else if (uri.IsOctaFile())
+                assume = TextureURIKind::OctaFile;
+            else
+                assume = TextureURIKind::File;
+
+            OSString resolved = candidate;
+
+            if (!hgl::filesystem::FileExist(candidate))
+            {
+                // 配方目录相对的无扩展名写法：candidate 已是相对 CWD 的完整路径，直接探测。
+                const OSString probed = ProbeTextureURI(candidate, assume);
+                if (probed == candidate)
+                    return raw;
+                resolved = probed;
+            }
 
             // 保留 `cubefile:` scheme：丢了会被当成 2D 打开。
             // `file:` 无需保留 —— 裸路径本来就按 File 解析。
             if (uri.IsCubeFile())
-                return OSString(OS_TEXT("cubefile:")) + candidate;
-            return candidate;
+                return OSString(OS_TEXT("cubefile:")) + resolved;
+            if (uri.IsOctaFile())
+                return OSString(OS_TEXT("texoct:")) + resolved;
+            return resolved;
         }
 
         void LogRecipeParseFailure(

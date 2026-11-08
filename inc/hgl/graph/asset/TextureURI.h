@@ -138,6 +138,28 @@ namespace hgl::graph
     };//struct TextureURI
 
     /**
+     * 无扩展名纹理 URI 的磁盘探测（「URI 前缀写类型、后面不写扩展名」的落地入口）。
+     *
+     * 对磁盘形态（File/CubeFile/OctaFile）且**目标不带容器扩展名**的 URI，
+     * 按类型前缀补出候选名并验证存在性，返回补全后的 URI 原文（前缀保留）：
+     * - `tex2d:x` / `file:x` / 裸 `x` → 依次试 `.Tex2D .png .jpg .tga .bmp .hdr .dds .ktx2`
+     *   （裸 `x` 由 `assume_kind` 告知调用方期望的形态，例如 `LoadTextureCube` 传 `CubeFile`）；
+     * - `texcube:x` / `cubefile:x` → 试 `.TexCube .ktx .hdr .dds`；
+     * - `texoct:x` → 试 `.TexOct`。
+     *
+     * 同一词干可能同时存在 `.TexCube/.TexOct/.Tex2D` 三种同名别名（如
+     * `sky_34_cubemap_2k`），因此**必须**按 kind 选候选，不能猜。
+     * 验证方式：`pack(<name>):` 形态走 `ResolveAssetPhysicalPath`（挂载表索引），
+     * 普通路径走 `hgl::filesystem::FileExist`（相对 CWD）。
+     * 已带扩展名、非磁盘形态、或全部候选落空时**原样返回**，不重写。
+     *
+     * 返回值是「补全后的规范名」，下游缓存键/去重键用它可让 `tex2d:x` 与
+     * `x.Tex2D` 收敛到同一身份。
+     */
+    OSString ProbeTextureURI(const OSString &uri,
+                             TextureURIKind assume_kind = TextureURIKind::File);
+
+    /**
      * 名字域转换：`RenderTargetDesc::name` 是 `AnsiString`，URI 用 `OSString`。
      *
      * 两者之间的往返在各处自己写 `reinterpret_cast` 极易出错（`u8char` 在 C++20 下
