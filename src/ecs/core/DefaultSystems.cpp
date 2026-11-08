@@ -7,6 +7,7 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
 #include <hgl/ecs/systems/tick/Transform2DSystem.h>
+#include <hgl/ecs/support/hierarchy2d/CullAndSort2DSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineBuildSystem.h>
@@ -209,6 +210,9 @@ namespace
         auto transform_2d_system = EnsureSystem<hgl::ecs::Transform2DSystem>(ctx);
         if (transform_2d_system)
             transform_2d_system->SetWorld(ctx);
+
+        // 剔除 + 排序表（RenderBatch 相位，依赖上者）
+        EnsureSystem<hgl::ecs::CullAndSort2DSystem>(ctx);
 
         return true;
     }

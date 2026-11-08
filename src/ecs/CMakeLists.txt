@@ -49,7 +49,8 @@ set(ECS_GROUP_DIRS
     "support/pipeline:Support\\Pipeline"
     "support/line:Support\\Line"
     "support/primitive:Support\\Primitive"
-    "support/text:Support\\Text")
+    "support/text:Support\\Text"
+    "support/hierarchy2d:Support\\Hierarchy2D")
 
 set(ECS_GROUPED_FILES)
 foreach(entry IN LISTS ECS_GROUP_DIRS)
