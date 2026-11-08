@@ -102,6 +102,7 @@
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/ecs/support/storage/FrameProfiler.h>
 #include<hgl/ecs/support/storage/PrimitiveTopologyLedger.h>
+#include<hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include<hgl/ecs/support/storage/MainFrameTopologySnapshot.h>
 #include<hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
@@ -913,6 +914,61 @@ private:
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // P4：材质批计划重放报表
+    //
+    // 读法：稳态窗口里 `未命中` 增量应为 0（拓扑/材质内容/项序列都没变 ⇒ 计划一直有效）。
+    // 非 0 时按这个顺序查：
+    //   · 台帐代数在变（有拓扑写者）          → 看上面 P1 报表的增量
+    //   · 项序列指纹在变（实体增删/可见性）    → 报「判据图元」是否稳定
+    //   · render pass 指针在变（离屏目标重建）→ 槽位打印的数会 > 2
+    // ─────────────────────────────────────────────────────────────────────
+    struct BatchPlanCounters
+    {
+        uint64_t hits   = 0;
+        uint64_t misses = 0;
+        uint64_t builds = 0;
+    };
+
+    BatchPlanCounters batch_plan_prev;
+
+    void ReportBatchPlan(uint32_t window_frames)
+    {
+        if (!ecs_context)
+            return;
+
+        auto *rp = dynamic_cast<PrimitiveRenderPipeline *>(ecs_context->GetRenderPipeline("Primitive"));
+
+        if (!rp)
+            return;
+
+        PrimitiveBatchPipeline *bp = rp->GetImplementation();
+
+        if (!bp)
+            return;
+
+        const BatchPlanCounters now{ bp->GetBatchPlanHits(), bp->GetBatchPlanMisses(), bp->GetBatchPlanBuilds() };
+
+        const uint64_t d_hits   = (now.hits   >= batch_plan_prev.hits)   ? (now.hits   - batch_plan_prev.hits)   : 0;
+        const uint64_t d_misses = (now.misses >= batch_plan_prev.misses) ? (now.misses - batch_plan_prev.misses) : 0;
+        const uint64_t d_builds = (now.builds >= batch_plan_prev.builds) ? (now.builds - batch_plan_prev.builds) : 0;
+
+        const double div = (window_frames > 0) ? double(window_frames) : 1.0;
+
+        printf("  -- P4 材质批计划重放（稳态不解析管线/材质行）--\n");
+        printf("  %-22s 重放=%llu (%.2f/帧) 未命中=%llu 重建=%llu\n",
+               "窗口统计",
+               static_cast<unsigned long long>(d_hits), double(d_hits) / div,
+               static_cast<unsigned long long>(d_misses),
+               static_cast<unsigned long long>(d_builds));
+        printf("  %-22s %s\n",
+               "诊断",
+               (d_misses == 0) ? "OK（稳态零未命中）"
+                               : "<- 有未命中：拓扑/材质/项序列变动，或 render pass 指针不稳定");
+
+        batch_plan_prev = now;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // P3：主帧收集快路径报表
     //
     // 读法（照这个顺序排查）：
@@ -1082,6 +1138,7 @@ private:
             ReportTopologyLedger(acc_frames);
             ReportMainFrameSnapshot(acc_frames);
             ReportCollectCache(acc_frames);
+            ReportBatchPlan(acc_frames);
         }
         fflush(stdout);
 

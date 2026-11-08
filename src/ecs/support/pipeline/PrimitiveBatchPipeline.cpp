@@ -47,6 +47,9 @@ namespace hgl::ecs
 {
     namespace
     {
+        /// P4：材质批计划里「本帧跳过该项」的哨兵（该项解析不出管线/配方行 ⇒ 不进行）
+        constexpr uint32_t kNoPlanBatch = 0xFFFFFFFFu;
+
         // 材质来源判据已收敛为实体级自由函数 HasAnyMaterialSource(Entity*)（support/PrimitiveState.h）。
 
         // 材质是否含 mesh stage（ShaderGen 材质恒是——mesh 为唯一顶点路径）
@@ -310,6 +313,184 @@ namespace hgl::ecs
         }
     }
 
+    void PrimitiveBatchPipeline::ResetMaterialBatchPlan()
+    {
+        for (BatchPlanSlot &slot : batch_plans_)
+        {
+            slot.valid = false;
+            slot.batches.clear();
+            slot.item_batch.clear();
+            slot.visible = 0;
+            slot.item_sig = 0;
+        }
+    }
+
+    PrimitiveBatchPipeline::BatchPlanSlot *PrimitiveBatchPipeline::FindBatchPlanSlot(const void *render_pass)
+    {
+        for (BatchPlanSlot &slot : batch_plans_)
+        {
+            if (slot.render_pass == render_pass)
+                return &slot;
+        }
+
+        return nullptr;
+    }
+
+    PrimitiveBatchPipeline::BatchPlanSlot *PrimitiveBatchPipeline::AcquireBatchPlanSlot(const void *render_pass)
+    {
+        if (BatchPlanSlot *slot = FindBatchPlanSlot(render_pass))
+            return slot;
+
+        // 现实中只有 Main / Shadow 两槽；超过上限说明 pass 身份不稳定（例如每帧新建
+        // 离屏目标），此时整体作废重来，绝不无限增长。
+        if (batch_plans_.size() >= 8)
+            batch_plans_.clear();
+
+        BatchPlanSlot slot;
+        slot.render_pass = render_pass;
+
+        batch_plans_.push_back(slot);
+
+        return &batch_plans_.back();
+    }
+
+    /**
+     * 项序列指纹：只读 `RenderItem` 的内联字段（实体 index/generation + 可见性），
+     * **不触碰任何 SSBO 池**（那些行在映射的 GPU 缓冲里，单字段 ≈2.3µs）。
+     *
+     * 指纹变了 ⇒ 批计划作废。材质行/管线变化不需要进指纹 —— 由
+     * `MaterialBinding`/`PassAndTarget` 拓扑代数与 `MaterialContent` 事实代数覆盖。
+     */
+    uint64_t PrimitiveBatchPipeline::ComputeRenderItemSignature(const RenderFrameCache &cache,
+                                                               uint32_t &visible_count) const
+    {
+        uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
+
+        visible_count = 0;
+
+        for (const auto &itemPtr : cache.renderItems)
+        {
+            const RenderItem *item = itemPtr.get();
+
+            if (!item)
+                continue;
+
+            const EntityID id = item->GetEntityID();
+
+            hash = hgl::hash::FNV1aAppendBytes(hash,
+                                              reinterpret_cast<const uint8_t *>(&id.index),
+                                              sizeof(id.index));
+            hash = hgl::hash::FNV1aAppendBytes(hash,
+                                              reinterpret_cast<const uint8_t *>(&id.generation),
+                                              sizeof(id.generation));
+
+            const uint8_t visible = item->isVisible ? 1u : 0u;
+
+            hash = hgl::hash::FNV1aAppendBytes(hash, &visible, 1);
+
+            if (item->isVisible)
+                ++visible_count;
+        }
+
+        return hash;
+    }
+
+    /**
+     * P4：材质批计划重放（命中路径）。
+     *
+     * 命中时**完全不解析** shader 程序 / 管线 / 动态渲染状态 / 材质行 —— 这正是
+     * `BuildMaterialBatches()` 2.9ms 的来源（每实例一次 `unordered_map` 查找，
+     * 且 `GetPipelineConfig()` 按值拷贝配置）。批对象本身仍要逐帧重建，
+     * 因为 `RenderFrameCache::BeginFrame()` 每帧清空批表。
+     */
+    bool PrimitiveBatchPipeline::TryReplayMaterialBatchPlan(RenderFrameCache &cache,
+                                                            BatchPlanSlot &slot,
+                                                            TransformAssignmentBuffer *shared_transform_buffer,
+                                                            graph::BufferManager *buffer_manager)
+    {
+        if (!slot.valid || slot.batches.empty())
+        {
+            ++batch_plan_misses_;
+            return false;
+        }
+
+        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+
+        if (ledger.GetTopologyRevision() != slot.topology_rev
+         || ledger.GetDynamicFactRevision(DynamicFactChange::MaterialContent) != slot.fact_rev)
+        {
+            ++batch_plan_misses_;
+            return false;
+        }
+
+        uint32_t visible_count = 0;
+        const uint64_t sig = ComputeRenderItemSignature(cache, visible_count);
+
+        if (sig != slot.item_sig || visible_count != slot.visible)
+        {
+            ++batch_plan_misses_;
+            return false;
+        }
+
+        // 计划自洽性预校验（缺陷防线，非常态分支）：项→批下标必须全部有效。
+        // 任何一条不成立就整份计划作废 —— 绝不在**已部分构建**的批表上留半成品。
+        for (const uint32_t bi : slot.item_batch)
+        {
+            if (bi != kNoPlanBatch && bi >= slot.batches.size())
+            {
+                ResetMaterialBatchPlan();
+                ++batch_plan_misses_;
+                return false;
+            }
+        }
+
+        // ── 重放 ────────────────────────────────────────────────────────────────
+        std::vector<MaterialBatch *> created(slot.batches.size(), nullptr);
+
+        uint32_t vi = 0;
+
+        for (const auto &itemPtr : cache.renderItems)
+        {
+            RenderItem *item = itemPtr.get();
+
+            if (!item || !item->isVisible)
+                continue;
+
+            const uint32_t bi = slot.item_batch[vi];
+
+            if (bi == kNoPlanBatch)
+            {
+                // 建计划那一帧就没进任何批（管线/配方行未解析）⇒ 本帧同样跳过，
+                // 与慢路径逐位一致。
+                ++vi;
+                continue;
+            }
+
+            MaterialBatch *batch = created[bi];
+
+            if (!batch)
+            {
+                const ShaderProgramPipelineKey &key = slot.batches[bi].key;
+
+                auto batch_owner = std::make_unique<MaterialBatch>(key, device, buffer_manager);
+                batch_owner->transform_buffer = shared_transform_buffer;
+                batch = batch_owner.get();
+
+                cache.materialBatches[key] = std::move(batch_owner);
+                created[bi] = batch;
+            }
+
+            batch->AddItem(item);
+            ++vi;
+        }
+
+        ++batch_plan_hits_;
+
+        FrameProfiler::Count(FrameProfileCount::Batches, cache.materialBatches.GetCount());
+
+        return true;
+    }
+
     void PrimitiveBatchPipeline::BuildMaterialBatches()
     {
         if (!world)
@@ -327,6 +508,17 @@ namespace hgl::ecs
         // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除）
         auto* rt = world ? world->GetRenderTarget() : nullptr;
         auto* current_render_pass = rt ? rt->GetRenderPass() : nullptr;
+
+        // ── P4：稳态重放（拓扑/材质/项序列都未变 ⇒ 一个字都不解析管线）─────────
+        BatchPlanSlot *plan_slot = AcquireBatchPlanSlot(static_cast<const void *>(current_render_pass));
+
+        if (plan_slot && TryReplayMaterialBatchPlan(cache, *plan_slot, shared_transform_buffer, buffer_manager))
+        {
+            return;
+        }
+
+        std::vector<CachedBatchPlan> new_plan;
+        std::vector<uint32_t>        new_item_batch;
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -348,6 +540,8 @@ namespace hgl::ecs
                                         || material_row->data_index_row == uint32_t(-1));
                 if (missing_rows)
                 {
+                    new_item_batch.push_back(kNoPlanBatch);
+
                     LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved recipe rows. shader_prog=%s",
                                shader_prog ? shader_prog->GetName().c_str() : "<null>");
                     continue;
@@ -359,6 +553,8 @@ namespace hgl::ecs
                 // A7b：「有无材质来源」不再用于**静默**这条失败告警 —— 无材质来源的图元
                 // 现在会走回退（错误）材质进入批次，其管线解析失败同样必须留痕，不能因为
                 // 它“本来没有材质”就无声跳过（这正是被用户拍板取消的那条旧语义）。
+                new_item_batch.push_back(kNoPlanBatch);
+
                 LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
                            shader_prog ? shader_prog->GetName().c_str() : "<null>",
                            current_render_pass);
@@ -375,6 +571,30 @@ namespace hgl::ecs
                                             : graph::mtl::MaterialPipelineConfig{});
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
+            // 计划批下标（线性查找：批数极少，实测 1~2；仅慢路径执行）
+            uint32_t plan_batch = kNoPlanBatch;
+
+            for (uint32_t pi = 0; pi < static_cast<uint32_t>(new_plan.size()); ++pi)
+            {
+                if (new_plan[pi].key == key)
+                {
+                    plan_batch = pi;
+                    break;
+                }
+            }
+
+            if (plan_batch == kNoPlanBatch)
+            {
+                plan_batch = static_cast<uint32_t>(new_plan.size());
+
+                CachedBatchPlan entry;
+                entry.key = key;
+                new_plan.push_back(entry);
+            }
+
+            ++new_plan[plan_batch].item_count;
+            new_item_batch.push_back(plan_batch);
+
             if (!batch_ptr)
             {
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
@@ -390,7 +610,110 @@ namespace hgl::ecs
             }
         }
 
+        // ── 计划整体重存（拒绝半成品：只有跑完全程才提交）──────────────────────
+        if (plan_slot)
+        {
+            const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+
+            plan_slot->topology_rev = ledger.GetTopologyRevision();
+            plan_slot->fact_rev     = ledger.GetDynamicFactRevision(DynamicFactChange::MaterialContent);
+            plan_slot->item_sig     = ComputeRenderItemSignature(cache, plan_slot->visible);
+            plan_slot->batches.swap(new_plan);
+            plan_slot->item_batch.swap(new_item_batch);
+            plan_slot->valid = !plan_slot->batches.empty();
+
+            ++batch_plan_builds_;
+        }
+
         FrameProfiler::Count(FrameProfileCount::Batches, cache.materialBatches.GetCount());
+
+    }
+
+    void PrimitiveBatchPipeline::RefreshTemplateFactCache()
+    {
+        if (!world)
+            return;
+
+        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+        const uint64_t topo_rev = ledger.GetTopologyRevision();
+        const uint64_t pool_rev = ledger.GetStatPoolContentChanges();
+
+        if (template_fact_valid_
+         && topo_rev == template_fact_topology_rev_
+         && pool_rev == template_fact_pool_content_rev_)
+            return;
+
+        template_facts_.clear();
+        template_fact_valid_            = true;
+        template_fact_topology_rev_     = topo_rev;
+        template_fact_pool_content_rev_ = pool_rev;
+        ++template_fact_builds_;
+    }
+
+    const PrimitiveBatchPipeline::TemplatePartFacts *
+    PrimitiveBatchPipeline::ResolveTemplatePartFacts(graph::GlobalSSBOBufferRegistry *pool,
+                                                    const uint32_t template_id,
+                                                    TemplateFactResult &result)
+    {
+        result = TemplateFactResult::Ok;
+
+        if (!pool || template_id == graph::ssbo::kInvalidModelTemplateID)
+        {
+            result = TemplateFactResult::RowMissing;
+            return nullptr;
+        }
+
+        auto it = template_facts_.find(template_id);
+
+        if (it != template_facts_.end())
+        {
+            ++template_fact_hits_;
+            return &it->second;
+        }
+
+        ++template_fact_misses_;
+
+        const graph::ssbo::ModelTemplateRow *tpl = pool->GetTypedRow<graph::ssbo::ModelTemplateRow>(
+            graph::GlobalSSBOType::ModelTemplatePool, template_id);
+
+        if (!tpl || tpl->part_offset == 0u || tpl->part_count == 0u
+                || tpl->part_bucket_count == 0u)
+        {
+            // 无效模板行**不入缓存**：行被写成有效后下一帧自然会重建事实
+            result = TemplateFactResult::RowMissing;
+            return nullptr;
+        }
+
+        TemplatePartFacts facts;
+        facts.part_offset       = tpl->part_offset;
+        facts.part_count        = tpl->part_count;
+        facts.part_bucket_count = tpl->part_bucket_count;
+        facts.slot_count.assign(facts.part_bucket_count, 0u);
+        facts.slot_geometry.assign(facts.part_bucket_count, 0u);
+
+        for (uint32_t k = 0; k < facts.part_count; ++k)
+        {
+            const graph::ssbo::ModelPartRow *part = pool->GetTypedRow<graph::ssbo::ModelPartRow>(
+                graph::GlobalSSBOType::ModelPartPool, facts.part_offset + k);
+
+            if (!part)
+            {
+                // 半成品事实绝不出厂：越界模板每次都按原路径拒批
+                result = TemplateFactResult::PartMissing;
+                return nullptr;
+            }
+
+            if (part->geometry_id == 0u || part->bucket_slot >= facts.part_bucket_count)
+                continue;
+
+            ++facts.slot_count[part->bucket_slot];
+            facts.slot_geometry[part->bucket_slot] = part->geometry_id;
+        }
+
+        TemplatePartFacts &slot = template_facts_[template_id];
+        slot = std::move(facts);
+
+        return &slot;
     }
 
     void PrimitiveBatchPipeline::TryApplyGPUCullOverride()
@@ -510,8 +833,9 @@ namespace hgl::ecs
 
         std::vector<TemplateGroupDraft> template_groups;      // 本批模板（去重、出现序确定）
         std::vector<uint32_t> template_entity_group;          // 项 → 组下标（UINT32_MAX = 非模板项）
-        std::vector<uint32_t> part_slot_count;                // 槽 → 该槽的部件数（逐模板复用）
-        std::vector<uint32_t> part_slot_geometry;             // 槽 → 该槽的 geometry_id（逐模板复用）
+
+        // P4：模板事实缓存的失效检查（每帧 O(1)：两个代数比对）
+        RefreshTemplateFactCache();
 
         // A/B 诊断开关（临时）：`ULRE_NO_INSTANCING=1` ⇒ 每项独立成桶（capacity=1），
         // 等价于改造前的"每项一条单实例命令"。用于与实例化路径做逐像素对拍。
@@ -627,8 +951,6 @@ namespace hgl::ecs
                 if (!why)
                 {
                     template_groups.clear();
-                    part_slot_count.clear();
-                    part_slot_geometry.clear();
                     template_entity_group.assign(item_count, UINT32_MAX);
 
                     for (size_t i = 0; i < item_count && !why; ++i)
@@ -640,13 +962,17 @@ namespace hgl::ecs
                         if (!ref || ref->template_id == graph::ssbo::kInvalidModelTemplateID)
                             continue;
 
-                        const graph::ssbo::ModelTemplateRow *tpl = pool->GetTypedRow<graph::ssbo::ModelTemplateRow>(
-                            graph::GlobalSSBOType::ModelTemplatePool, ref->template_id);
+                        // P4：模板事实从 CPU 侧缓存取 —— 槽计数/槽几何体只需按
+                        // `template_id` 建一次，稳定帧不再读映射缓冲里的模板行。
+                        TemplateFactResult fact_result = TemplateFactResult::Ok;
+                        const TemplatePartFacts *facts =
+                            ResolveTemplatePartFacts(pool, ref->template_id, fact_result);
 
-                        if (!tpl || tpl->part_offset == 0u || tpl->part_count == 0u
-                                || tpl->part_bucket_count == 0u)
+                        if (!facts)
                         {
-                            why = "模型模板行缺失/无部件桶（GPUModelRef 指向无效模板）";
+                            why = (fact_result == TemplateFactResult::PartMissing)
+                                ? "模型部件行缺失（模板 part 区间越界）"
+                                : "模型模板行缺失/无部件桶（GPUModelRef 指向无效模板）";
                             break;
                         }
 
@@ -661,53 +987,29 @@ namespace hgl::ecs
 
                         if (gi == UINT32_MAX)
                         {
-                            // 首次出现：建组（槽计数/槽几何体按部件行精确统计）
-                            part_slot_count.assign(tpl->part_bucket_count, 0u);
-                            part_slot_geometry.assign(tpl->part_bucket_count, 0u);
-
-                            for (uint32_t k = 0; k < tpl->part_count && !why; ++k)
-                            {
-                                const graph::ssbo::ModelPartRow *part =
-                                    pool->GetTypedRow<graph::ssbo::ModelPartRow>(
-                                        graph::GlobalSSBOType::ModelPartPool, tpl->part_offset + k);
-
-                                if (!part)
-                                {
-                                    why = "模型部件行缺失（模板 part 区间越界）";
-                                    break;
-                                }
-
-                                if (part->geometry_id == 0u
-                                 || part->bucket_slot >= tpl->part_bucket_count)
-                                    continue;
-
-                                ++part_slot_count[part->bucket_slot];
-                                part_slot_geometry[part->bucket_slot] = part->geometry_id;
-                            }
-
-                            if (why)
-                                break;
-
+                            // 首次出现：建组（槽几何体来自该模板自己的部件事实）
                             gi = uint32_t(template_groups.size());
                             template_groups.push_back(TemplateGroupDraft{});
 
                             TemplateGroupDraft &grp = template_groups.back();
                             grp.template_id  = ref->template_id;
                             grp.group_bucket = uint32_t(bucket_geometry.size());
-                            grp.bucket_count = tpl->part_bucket_count;
+                            grp.bucket_count = facts->part_bucket_count;
 
-                            for (uint32_t s = 0; s < tpl->part_bucket_count; ++s)
+                            for (uint32_t s = 0; s < facts->part_bucket_count; ++s)
                             {
-                                bucket_geometry.push_back(part_slot_geometry[s]);
+                                bucket_geometry.push_back(facts->slot_geometry[s]);
                                 bucket_capacity.push_back(0u);
                             }
                         }
 
-                        // 逐实例累加：每个实例给该模板的每个槽再加 `part_slot_count[s]` 容量
+                        // 逐实例累加：每个实例给该模板的每个槽再加 `slot_count[s]` 容量。
+                        // 容量取自**本模板自己**的事实（原实现共用一份草稿，同批出现第二个
+                        // 模板后会把先前模板的槽计数覆盖掉 ⇒ 多模板批的容量算错）。
                         const TemplateGroupDraft &grp = template_groups[gi];
 
                         for (uint32_t s = 0; s < grp.bucket_count; ++s)
-                            bucket_capacity[grp.group_bucket + s] += part_slot_count[s];
+                            bucket_capacity[grp.group_bucket + s] += facts->slot_count[s];
 
                         template_entity_group[i] = gi;
                     }
@@ -910,6 +1212,7 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::FinalizeBatches()
     {
+
         if (!world)
             return;
 
@@ -965,5 +1268,6 @@ namespace hgl::ecs
         }
 
         // 桶组（几何批）数已在上方逐批用 `FrameProfiler::Count` 累加。此处不再重复统计。
+
     }
 }

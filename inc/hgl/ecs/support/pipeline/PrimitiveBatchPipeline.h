@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <limits>
 #include <utility>
+#include <vector>
+#include <unordered_map>
 
 #include<hgl/math/geometry/Frustum.h>
 #include<hgl/ecs/core/render/MaterialBatch.h>
@@ -16,6 +18,7 @@ namespace hgl
         struct CameraInfo;
         class VulkanDevice;
         class BufferManager;
+        class GlobalSSBOBufferRegistry;
     }
 }
 
@@ -74,8 +77,7 @@ namespace hgl::ecs
         ///   A6：**lines 已可接管**（dispatch 档随批信息行下发：线按段数 + 组大小 64）。
         void TryApplyGPUCullOverride();
 
-        /// 本帧是否有任一含几何批正在接管（`TryApplyGPUCullOverride` 记账）。
-        /// T3i 起接管是**按批粒度**的 ⇒ 此判据只表示"至少一批走 GPU 账"。
+        /// 本帧是否有任一含几何批正在接管（`TryApplyGPUCullOverride` 记账）。        /// T3i 起接管是**按批粒度**的 ⇒ 此判据只表示"至少一批走 GPU 账"。
         bool IsGPUCullOverrideActive() const { return gpu_cull_override_frame_ == gpu_cull_override_eval_frame_; }
 
         /// 本帧是否**全量**接管（全部含几何批都走 GPU 账）——只有全量才允许跳过
@@ -87,6 +89,117 @@ namespace hgl::ecs
         uint64_t gpu_cull_override_eval_frame_ = 0;
         uint64_t gpu_cull_override_frame_ = 0;
         uint64_t gpu_cull_full_frame_ = 0;
+
+        /// P4：**模板部件事实缓存**（`ModelTemplatePool` / `ModelPartPool` 行内容的 CPU 侧镜像）。
+        ///
+        /// 为什么需要：guard 的模板展开归组循环逐项读 `ModelTemplateRow` 的
+        /// `part_offset` / `part_count` / `part_bucket_count` —— 这些行落在**映射的 GPU 缓冲**
+        /// （host-visible、非缓存内存）上，单字段读约 2.3µs；1000 项棋盘实测该循环占
+        /// guard 的 58%（≈1.65ms）。模板数 ≪ 实例数 ⇒ 按 `template_id` 记忆化即可，
+        /// 每帧成本从「项数 × 3 次映射读」降为「模板数 × 一次建表 + 项数 × 哈希查」。
+        ///
+        /// 失效：`(拓扑总代数, 池内容变更计数)` 二元组变化 ⇒ 整表清空。两者合起来覆盖
+        /// 「模板行被改写」「部件行被改写」「池行被回收复用」的全部形态；重建只涉及本帧
+        /// 实际出现的模板（典型 1~个位数）。
+        struct TemplatePartFacts
+        {
+            uint32_t part_offset       = 0;
+            uint32_t part_count        = 0;
+            uint32_t part_bucket_count = 0;
+            std::vector<uint32_t> slot_count;      ///< 槽 → 该槽部件数
+            std::vector<uint32_t> slot_geometry;   ///< 槽 → geometry_id（该槽桶的几何体）
+        };
+
+        /// `ResolveTemplatePartFacts` 的失败形态（用于保持与原实现**逐字相同**的拒批原因）
+        enum class TemplateFactResult : uint8_t
+        {
+            Ok = 0,
+            RowMissing,    ///< 模板行缺失 / 无部件桶
+            PartMissing,   ///< 模板 part 区间越界（部件行缺失）
+        };
+
+        bool     template_fact_valid_            = false;
+        uint64_t template_fact_topology_rev_     = 0;
+        uint64_t template_fact_pool_content_rev_ = 0;
+        uint64_t template_fact_hits_             = 0;
+        uint64_t template_fact_misses_           = 0;
+        uint64_t template_fact_builds_           = 0;
+
+        std::unordered_map<uint32_t, TemplatePartFacts> template_facts_;
+
+        void RefreshTemplateFactCache();
+        const TemplatePartFacts *ResolveTemplatePartFacts(graph::GlobalSSBOBufferRegistry *pool,
+                                                          uint32_t template_id,
+                                                          TemplateFactResult &result);
+
+    public:
+        /// P4：模板事实缓存统计（命中 = 免读映射行；未命中 = 本帧首次遇到该模板）
+        uint64_t GetTemplateFactHits()     const { return template_fact_hits_; }
+        uint64_t GetTemplateFactMisses()   const { return template_fact_misses_; }
+        uint64_t GetTemplateFactBuilds()   const { return template_fact_builds_; }
+
+    private:
+
+        /// P4：**材质批计划缓存**（稳态重放）。
+        ///
+        /// 为什么需要：`BuildMaterialBatches()` 逐项解析「程序 → 管线 → 动态渲染状态 →
+        /// 材质行」，其中 `GetPipeline` / `GetPipelineConfig` 各是一次
+        /// `MaterialRuntimePipelineTable::entries.find(entity)`（`std::unordered_map`，
+        /// 每实例一个散列节点）——1000 项实测 2.9ms，占 BatchPhase 的 95%。
+        /// 这些解析结果在**拓扑不变**的帧里逐位相同，重复解析纯属浪费。
+        ///
+        /// 重放契约（命中时）：
+        ///   · 只按缓存里的**键**重建 `MaterialBatch` 对象（`BeginFrame` 每帧清空批表，
+        ///     批对象必须重建；但键与「项→批」归属不必重算）；
+        ///   · 项指针按缓存里记录的「项 → 批下标」逐个 `AddItem`；
+        ///   · 命中条件 = 总拓扑代数不变 + 材质内容事实代数不变 + **同一 render pass** +
+        ///     **项序列指纹**（实体 index/generation/可见性，按序 FNV1a）一致 +
+        ///     可见项数一致。
+        ///   · 任一不满足 ⇒ 走原逐项路径并在末尾**整体重存**计划（拒绝半成品计划）。
+        struct CachedBatchPlan
+        {
+            ShaderProgramPipelineKey key;
+            uint32_t item_count = 0;   ///< 诊断：该批在计划里的项数
+        };
+
+        /// 每个 render pass 一份计划。
+        /// Main / Shadow 用的是**不同**的 `RenderPass*`，共用一份会让两个 pass
+        /// 每帧互相覆盖 ⇒ 永不命中。故按 pass 指针分槽。
+        struct BatchPlanSlot
+        {
+            const void *render_pass  = nullptr;
+            uint64_t    topology_rev = 0;
+            uint64_t    fact_rev     = 0;
+            uint64_t    item_sig     = 0;
+            uint32_t    visible      = 0;
+            bool        valid        = false;
+
+            std::vector<CachedBatchPlan> batches;      ///< 计划批表（键，出现序）
+            std::vector<uint32_t>        item_batch;   ///< 可见项序号 → 计划批下标
+        };
+
+        std::vector<BatchPlanSlot> batch_plans_;
+        uint64_t batch_plan_hits_   = 0;
+        uint64_t batch_plan_misses_ = 0;
+        uint64_t batch_plan_builds_ = 0;
+
+        BatchPlanSlot *AcquireBatchPlanSlot(const void *render_pass);
+        BatchPlanSlot *FindBatchPlanSlot(const void *render_pass);
+        void ResetMaterialBatchPlan();
+        bool TryReplayMaterialBatchPlan(struct RenderFrameCache &cache,
+                                        BatchPlanSlot &slot,
+                                        TransformAssignmentBuffer *shared_transform_buffer,
+                                        graph::BufferManager *buffer_manager);
+        uint64_t ComputeRenderItemSignature(const struct RenderFrameCache &cache,
+                                           uint32_t &visible_count) const;
+
+    public:
+        /// P4：材质批计划重放统计
+        uint64_t GetBatchPlanHits()      const { return batch_plan_hits_; }
+        uint64_t GetBatchPlanMisses()    const { return batch_plan_misses_; }
+        uint64_t GetBatchPlanBuilds()    const { return batch_plan_builds_; }
+
+    private:
 
         /// 批 1.3 C5：两个一次性闩改**每实例**（原 `static bool` 是进程级 ⇒ 第二个世界静默）：
         /// 前者 = 批前提不满足的 fail-fast 告警；后者 = 「GPU 剔除接管生效」的一次性正面证据日志。
