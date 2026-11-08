@@ -48,7 +48,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/ray_picking.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/ray_picking";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 

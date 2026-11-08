@@ -83,7 +83,7 @@ static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 // 改成一份可被离线工具读写、也可被别的示例复用的资产文件 —— 示例代码里不再出现
 // 任何逐行参数。
 static constexpr const char * PBR_GRID_DATA_PATH =
-    "mtldata:pack(ShaderLibrary):asset/material_data/pbr_10x10_grid.material_data.toml";
+    "mtldata:pack(ShaderLibrary):asset/material_data/pbr_10x10_grid";
 
 class PBRSpheresApp : public WorkObject
 {

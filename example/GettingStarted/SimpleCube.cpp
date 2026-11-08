@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
+// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
 // This example demonstrates rendering a cube with ECS and driving the camera via ViewModel mode
 //
 // 本范例展示了：
@@ -41,7 +41,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/simple_cube.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/simple_cube";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 

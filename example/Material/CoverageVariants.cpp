@@ -1,4 +1,4 @@
-﻿// 该范例演示**同一份材质配方的两个覆盖（coverage）变体**：
+// 该范例演示**同一份材质配方的两个覆盖（coverage）变体**：
 //   · Opaque      —— 无覆盖模式（实体，alpha 恒 1.0）
 //   · DitherMask  —— HGL_ALPHA_DITHER（按 alpha 与位置阈值 discard 的**顺序无关半透明**；
 //                    不混合、不排序，因此仍留在不透明 pass）
@@ -86,7 +86,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/coverage_variants.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/coverage_variants";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 

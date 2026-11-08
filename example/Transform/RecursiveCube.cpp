@@ -1,4 +1,4 @@
-﻿// Recursive Cube (ECS)
+// Recursive Cube (ECS)
 //
 // This example places a base cube at origin and spawns 6 independent chains.
 // Each chain moves outward along a face normal by the parent cube size,
@@ -38,7 +38,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/recursive_cube.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/recursive_cube";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 

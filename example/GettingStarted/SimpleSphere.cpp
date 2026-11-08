@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制一个球体，并通过ECS CameraSystem使用ViewModel模式
+// 该范例主要演示使用ECS架构绘制一个球体，并通过ECS CameraSystem使用ViewModel模式
 // This example demonstrates rendering a sphere with ECS and driving the camera via ViewModel mode
 //
 // 本范例展示了：
@@ -49,7 +49,7 @@ namespace
 
     // 材质数据行的唯一来源；示例代码里不再出现任何一个材质数值
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/simple_sphere.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/simple_sphere";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 

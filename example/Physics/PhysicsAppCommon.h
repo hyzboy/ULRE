@@ -150,7 +150,7 @@ namespace hgl::example
     inline bool PhysicsVisualKit::InitRecipes()
     {
         const char *const kMtlUri =
-            "mtldata:pack(ShaderLibrary):asset/material_data/render_bound_box.material_data.toml";
+            "mtldata:pack(ShaderLibrary):asset/material_data/render_bound_box";
 
         const graph::mtl::MaterialRecipe *loaded_solid = app_->GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Debug/RenderBoundBox.Solid");
         const graph::mtl::MaterialRecipe *loaded_wire  = app_->GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Debug/RenderBoundBox.Wire");

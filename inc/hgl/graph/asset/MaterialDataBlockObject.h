@@ -9,7 +9,8 @@
  * 注册表里的对象删掉）。所以这里和 `GeometryAssetObject` 采用同一套做法：
  *
  * ```
- * "mtldata:file:res/.../grid.material_data.toml"
+ * "mtldata:file:res/.../grid.material_data.toml"   // 直连磁盘：写真实文件名
+ * "mtldata:pack(res):material/grid"                // 包裹寻址：不写扩展名，由索引裁决 .toml/.fb
  *        ──AssetFactory──▶ MaterialDataBlockObject  （不拥有）
  *                                │
  *                                └─▶ MaterialDataBlockAsset*  ← 注册表持有

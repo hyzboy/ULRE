@@ -1,4 +1,4 @@
-﻿// NOTE (test-only):
+// NOTE (test-only):
 // This sample exists only to validate runtime material switching behavior in isolation.
 // It is NOT the production path for material LOD.
 //
@@ -46,7 +46,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/single_sphere_material_switch.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/single_sphere_material_switch";
     constexpr uint32 MATERIAL_DATA_ROW_NEAR = 0;
     constexpr uint32 MATERIAL_DATA_ROW_FAR  = 1;
 }

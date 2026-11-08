@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
+// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
 // 刻度是静态的三角形（Static Transform），指针是动态更新的三角形（Movable Transform）
 // This example demonstrates a clock using ECS architecture with Static/Movable Transform separation
 //
@@ -40,7 +40,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/clock_use.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/clock_use";
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 

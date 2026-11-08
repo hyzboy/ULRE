@@ -88,6 +88,9 @@ namespace hgl::ecs
          *        .WithMaterialDataRow(u8"mtldata:file:res/material/pbr_grid.material_data.toml", i);
          * @endcode
          *
+         * 包裹寻址时 URI 里不写物理扩展名（`mtldata:pack(res):material/pbr_grid`），
+         * 由包索引在 `.toml`（源码形态）与 `.fb`（BAKE 产物）之间裁决。
+         *
          * 语义与 `WithMaterialRow(accessor, data)` 的区别：那条是**自己造一行**（数据在
          * 调用方内存里，行号由调用方租约管理），这条是**引用别人造好的一行**（数据在
          * 数据块文件里，块由注册表拥有并整块上传）。同一块的同一行可以被任意多个实体

@@ -1,4 +1,4 @@
-﻿// 该范例用 CUBE 演示四种 alpha 呈现方式。有效 alpha = **材质指定比例 × 纹理采样**：
+// 该范例用 CUBE 演示四种 alpha 呈现方式。有效 alpha = **材质指定比例 × 纹理采样**：
 //   · 比例 = 材质行 `PBRSurfaceRow.base_color.a`（列 = 档位 100/85/70/55/40/25/10%，步长 −15%）
 //   · 采样 = opacity_mask（这里就用同一张单通道 gradient：逐像素 alpha 图案）
 // ⇒ 同一列内 alpha 随纹理明暗起伏，列间整体被比例缩放（低档位整格趋于透/空）。
@@ -118,7 +118,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/alpha_modes.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/alpha_modes";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 

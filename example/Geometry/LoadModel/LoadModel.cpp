@@ -77,7 +77,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:pack(res):ABeautifulGame.StaticMesh/load_model.material_data.toml";
+        "mtldata:pack(res):ABeautifulGame.StaticMesh/load_model";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 
     // PBR 自装配：scene/recipe/material_data/tex2d 全部取自 pack 同目录；

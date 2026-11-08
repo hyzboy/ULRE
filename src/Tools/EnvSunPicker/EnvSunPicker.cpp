@@ -77,7 +77,7 @@ namespace
 {
     // 线段材质沿用 RayPicking 示例的现成配方与材质数据行（行 1 = 线）
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/ray_picking.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/ray_picking";
     constexpr uint32 MATERIAL_DATA_ROW_LINE = 1;
 
     constexpr os_char kWindowTitle[] = OS_TEXT("EnvSunPicker");

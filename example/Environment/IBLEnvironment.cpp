@@ -43,7 +43,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 一个行号，材质数值全部在块文件里
     constexpr char   MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/ibl_environment.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/ibl_environment";
     constexpr uint32 kMeshRowCount = 5;   // floor / sphere / cube / torus / arrow
 }
 

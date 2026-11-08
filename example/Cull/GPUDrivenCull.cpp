@@ -1,4 +1,4 @@
-﻿// GPUDrivenCull —— 引擎 GPU 剔除（T3 线）的**正式示例**
+// GPUDrivenCull —— 引擎 GPU 剔除（T3 线）的**正式示例**
 //
 // 演示内容：
 //   · 8×8 = 64 个立方体，**同一几何 + 同一材质配方** ⇒ 单一批次
@@ -100,7 +100,7 @@ namespace
 {
     // 材质数据行的唯一来源：一个 URI + 行号，材质数值全部在块文件里
     constexpr char MATERIAL_DATA_URI[] =
-        "mtldata:pack(ShaderLibrary):asset/material_data/gpu_driven_cull.material_data.toml";
+        "mtldata:pack(ShaderLibrary):asset/material_data/gpu_driven_cull";
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 
