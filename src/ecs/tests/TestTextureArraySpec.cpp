@@ -303,6 +303,29 @@ namespace
         Check(file_pack.IsPackURI() && file_pack.GetPackName() == OS_TEXT("res"),
               "file:pack() 归一成包裹寻址");
 
+        // ── 类型前缀写法：tex2d/texcube/texoct（目标可不带容器扩展名，可叠加 pack()）──
+        const graph::TextureURI t2d    = graph::TextureURI::Parse(OS_TEXT("tex2d:res/image/lena.Tex2D"));
+        const graph::TextureURI t2d_p  = graph::TextureURI::Parse(OS_TEXT("tex2d:pack(res):image/lena"));
+        const graph::TextureURI tcube  = graph::TextureURI::Parse(OS_TEXT("texcube:pack(res):image/sky_irradiance"));
+        const graph::TextureURI toct   = graph::TextureURI::Parse(OS_TEXT("texoct:res/image/sky"));
+        const graph::TextureURI toct_p = graph::TextureURI::Parse(OS_TEXT("texoct:pack(res):image/sky_prefilter"));
+        Check(t2d.IsFile() && t2d.path == OS_TEXT("res/image/lena.Tex2D"),
+              "tex2d: 解析为 File 形态");
+        Check(t2d_p.IsFile() && t2d_p.IsPackURI() && t2d_p.GetPackTarget() == OS_TEXT("image/lena"),
+              "tex2d: 的目标可以是 pack() 形态");
+        Check(tcube.IsCubeFile() && tcube.IsPackURI() && tcube.GetPackName() == OS_TEXT("res"),
+              "texcube: 解析为 CubeFile 且支持 pack()");
+        Check(toct.IsOctaFile() && toct.IsOctahedralFile() && toct.IsDiskFile(),
+              "texoct: 解析为 OctaFile，前缀即判八面体");
+        Check(toct_p.IsPackURI() && toct_p.IsOctahedralFile(),
+              "texoct:pack() 同时认包裹与八面体");
+        Check(toct.ToString() == OS_TEXT("texoct:res/image/sky"),
+              "texoct: 的 ToString() 原文回写");
+        Check(tcube.ToString() == OS_TEXT("cubefile:pack(res):image/sky_irradiance"),
+              "texcube: 与 cubefile: 同形态回写");
+        Check(!tcube.IsOctahedralFile() && !t2d_p.IsOctahedralFile(),
+              "texcube/tex2d 前缀不受八面体判定影响");
+
         // 坏形态一律判非法：缺定界符、空名字、空目标、名字里带冒号
         Check(!graph::TextureURI::Parse(OS_TEXT("pack(res)image/a.Tex2D")).IsValid()
               && !graph::TextureURI::Parse(OS_TEXT("pack():image/a.Tex2D")).IsValid()

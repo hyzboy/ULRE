@@ -144,6 +144,28 @@ namespace hgl::graph
             return(info);
         }
 
+        // ── 类型前缀写法（与 `geo:` 系列对齐；目标可不带容器扩展名）──
+        if(HasPrefixNoCase(uri,OS_TEXT("tex2d:")))
+        {
+            info.kind=TextureURIKind::File;
+            info.path=uri.SubString(6);      // 跳过 "tex2d:"
+            return(info);
+        }
+
+        if(HasPrefixNoCase(uri,OS_TEXT("texcube:")))
+        {
+            info.kind=TextureURIKind::CubeFile;
+            info.path=uri.SubString(8);      // 跳过 "texcube:"
+            return(info);
+        }
+
+        if(HasPrefixNoCase(uri,OS_TEXT("texoct:")))
+        {
+            info.kind=TextureURIKind::OctaFile;
+            info.path=uri.SubString(7);      // 跳过 "texoct:"
+            return(info);
+        }
+
         if(HasPrefixNoCase(uri,OS_TEXT("rt:")))
         {
             info.kind=TextureURIKind::RenderTarget;
@@ -236,7 +258,7 @@ namespace hgl::graph
 
     bool TextureURI::IsPackURI()const
     {
-        if(kind!=TextureURIKind::File)
+        if(!IsDiskFile())
             return(false);
 
         int name_end,target_begin;
@@ -245,6 +267,11 @@ namespace hgl::graph
 
     bool TextureURI::IsOctahedralFile()const
     {
+        if(kind==TextureURIKind::OctaFile)
+            return(true);
+
+        // 旧写法的兼容路径：`file:`/裸路径 + `.TexOct` 后缀。
+        // `cubefile:`/`texcube:` 即使带该后缀也不算八面体（形态由前缀定死）。
         return kind==TextureURIKind::File
             && HasSuffixNoCase(path,OS_TEXT(".TexOct"));
     }
@@ -270,7 +297,7 @@ namespace hgl::graph
 
     OSString TextureURI::GetPackName()const
     {
-        if(kind!=TextureURIKind::File)
+        if(!IsDiskFile())
             return OSString();
 
         int name_end,target_begin;
@@ -282,7 +309,7 @@ namespace hgl::graph
 
     OSString TextureURI::GetPackTarget()const
     {
-        if(kind!=TextureURIKind::File)
+        if(!IsDiskFile())
             return OSString();
 
         int name_end,target_begin;
@@ -299,6 +326,9 @@ namespace hgl::graph
 
         if(kind==TextureURIKind::TextureArray)
             return OSString(OS_TEXT("texarray:"))+path;
+
+        if(kind==TextureURIKind::OctaFile)
+            return OSString(OS_TEXT("texoct:"))+path;
 
         if(kind==TextureURIKind::CubeFile)
             return OSString(OS_TEXT("cubefile:"))+path;

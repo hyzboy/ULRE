@@ -35,7 +35,8 @@ namespace hgl::graph
             return(true);
 
         if(source_kind!=TextureURIKind::File
-         &&source_kind!=TextureURIKind::CubeFile)
+         &&source_kind!=TextureURIKind::CubeFile
+         &&source_kind!=TextureURIKind::OctaFile)
         {
             // RenderTarget / TextureArray 来源没有「单张文件」可读：
             // RT 等 RenderTargetManager 绑定，数组在创建时就装配完了。
@@ -125,12 +126,19 @@ namespace hgl::graph
             return(LoadPayload());
         }
 
-        source_kind         =TextureURIKind::File;
-        meta.source_path    =uri.path;
-        meta.asset_type     =OS_TEXT("Texture2D");
-        this->auto_mipmaps  =auto_mipmaps;
+        // 八面体投影：存储仍是 2D 纹理（`LoadTexture2D` + 异步流式链路），
+        // 投影语义由 kind 声明；与「`.TexOct` 后缀 + File」的旧写法并行。
+        if(uri.IsOctaFile())
+        {
+            source_kind         =TextureURIKind::OctaFile;
+            meta.source_path    =uri.path;
+            meta.asset_type     =OS_TEXT("Texture2D");
+            this->auto_mipmaps  =auto_mipmaps;
 
-        return(Init());
+            return(Init());
+        }
+
+        source_kind         =TextureURIKind::File;
     }
 
     bool TextureAsset::SetupFromRenderTarget(const OSString &target,const OSString &attachment)
@@ -348,6 +356,19 @@ namespace hgl::graph
                 if(!meta.source_path.IsEmpty())
                 {
                     U8String id(u8"texcubefile:");
+
+                    id+=ToU8String(meta.source_path);
+                    return id;
+                }
+
+                break;
+            }
+            case TextureURIKind::OctaFile:
+            {
+                if(!meta.source_path.IsEmpty())
+                {
+                    // 与 File 同路径但不同身份：投影语义不同，绑定槽位不可互换。
+                    U8String id(u8"texoctfile:");
 
                     id+=ToU8String(meta.source_path);
                     return id;
