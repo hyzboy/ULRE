@@ -203,38 +203,45 @@ namespace hgl
             // 组启用状态由**本世界的 stats** 即时推导（不再写入全局注册表——
             // enabled 是每世界状态，全局存储会在多世界建图时互相覆盖；
             // registry 只保留组定义+installer 这类真正的全局不变量）。
-            const auto all_groups = registry.GetAllGroups();
-            for (const auto& group : all_groups)
+            //
+            // ⚠ pass 顺序 = SystemGroupID 枚举声明序（Primitive < Line < Text < Hierarchy2D），
+            // **不是** registry 插入序（历史上插入序跟随元素类型的字符串序 ⇒ "Line" 排在
+            // "Primitive" 前 ⇒ 线条先画、被后续不透明图元（如统一天空穹顶）整批盖掉）。
+            // 渲染分层语义由组身份定义，与组名的字典序无关。
+            for (uint32_t group_idx = 1; group_idx < kSystemGroupCount; ++group_idx)
             {
-                const bool enabled = stats.HasGroup(group.name);
+                const SystemGroupID group_id = static_cast<SystemGroupID>(group_idx);
+                const SystemGroup* group = registry.GetGroup(kSystemGroupNames[group_idx]);
 
                 if (context)
                 {
-                    const SystemGroupID group_id = SystemGroupFromName(group.name.c_str());
-
-                    if (group_id != SystemGroupID::None)
-                    {
-                        context->SetSystemGroupEnabled(group_id, enabled);
-                    }
-                    else
-                    {
-                        MLogWarning(RenderGraph,
-                            "[RenderGraph] 未知系统组名 '%s'（未在 kSystemGroupNames 里）⇒ 本组不启用；"
-                            "系统侧 SetRenderElementType 与组名表必须同名",
-                            group.name.c_str());
-                    }
+                    const bool enabled = group && stats.HasGroup(group->name);
+                    context->SetSystemGroupEnabled(group_id, enabled);
                 }
 
-                if (!enabled)
+                if (!group || !stats.HasGroup(group->name))
                     continue;
 
-//                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",group.name.c_str(),static_cast<int>(group.startPhase),static_cast<int>(group.endPhase));
+//                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",group->name.c_str(),static_cast<int>(group->startPhase),static_cast<int>(group->endPhase));
 
                 // Each enabled group becomes a pass in the graph
                 graph.Add(RenderGraph::Pass(
-                    group.startPhase,
-                    group.endPhase
+                    group->startPhase,
+                    group->endPhase
                 ));
+            }
+
+            // 注册表里存在但未列入 kSystemGroupNames 的组（理论上不该发生）：
+            // 系统侧 SetRenderElementType 与组名表必须同名，否则此处会给出告警。
+            for (const auto& group : registry.GetAllGroups())
+            {
+                if (SystemGroupFromName(group.name.c_str()) == SystemGroupID::None)
+                {
+                    MLogWarning(RenderGraph,
+                        "[RenderGraph] 未知系统组名 '%s'（未在 kSystemGroupNames 里）⇒ 本组不启用；"
+                        "系统侧 SetRenderElementType 与组名表必须同名",
+                        group.name.c_str());
+                }
             }
 
             // Fully data-driven:
