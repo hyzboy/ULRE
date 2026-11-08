@@ -1047,12 +1047,24 @@ bool ResolveSelfContainedModelMaterials(
         {
             if (!material_data_block_hint.IsEmpty())
             {
-                const OSString want = model_dir + OS_TEXT("\\") +
-                                      material_data_block_hint +
-                                      OS_TEXT(".material_data.toml");
-            if (blocks->FindAssetByPath(want))
-                block_uri = OSString(OS_TEXT("mtldata:file:")) + want;
-        }
+                // 旁挂块可能是源码形态（.toml）也可能是 BAKE 产物（.fb/.mdb），
+                // 逐个后缀探测，不能只认 .material_data.toml 一种拼法。
+                static const os_char *const kSuffixes[] = {
+                    OS_TEXT(".material_data.toml"),
+                    OS_TEXT(".material_data.fb"),
+                    OS_TEXT(".material_data.mdb"),
+                };
+                for (const os_char *suffix : kSuffixes)
+                {
+                    const OSString want = model_dir + OS_TEXT("\\") +
+                                          material_data_block_hint + suffix;
+                    if (blocks->FindAssetByPath(want))
+                    {
+                        block_uri = OSString(OS_TEXT("mtldata:file:")) + want;
+                        break;
+                    }
+                }
+            }
         else
         {
             int found = 0;
