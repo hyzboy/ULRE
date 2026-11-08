@@ -213,7 +213,9 @@ namespace
             transform_2d_system->SetWorld(ctx);
 
         // 剔除 + 排序表（RenderBatch 相位，依赖上者）
-        EnsureSystem<hgl::ecs::CullAndSort2DSystem>(ctx);
+        auto cull_sort_2d = EnsureSystem<hgl::ecs::CullAndSort2DSystem>(ctx);
+        if (cull_sort_2d)
+            cull_sort_2d->SetWorld(ctx);
 
         // 精灵桥：Sprite2DComponent → 场景管线 UnlitTexture 单位矩形（TickPostCamera）
         auto sprite_sync = EnsureSystem<hgl::ecs::Sprite2DSyncSystem>(ctx);
