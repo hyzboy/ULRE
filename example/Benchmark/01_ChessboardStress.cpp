@@ -955,7 +955,7 @@ private:
         const double div = (window_frames > 0) ? double(window_frames) : 1.0;
 
         printf("  -- P4 材质批计划重放（稳态不解析管线/材质行）--\n");
-        printf("  %-22s 重放=%llu (%.2f/帧) 未命中=%llu 重建=%llu\n",
+        printf("  %-22s 重放=%llu (%.2f/帧) 计划未命中=%llu 重建=%llu\n",
                "窗口统计",
                static_cast<unsigned long long>(d_hits), double(d_hits) / div,
                static_cast<unsigned long long>(d_misses),
