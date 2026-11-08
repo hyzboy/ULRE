@@ -403,10 +403,12 @@ set(SG_FONT_CORE_FILES  ${SG_INCLUDE_PATH}/font/Font.h
 source_group("10.Font\\Core" FILES ${SG_FONT_CORE_FILES})
 
 set(SG_FONT_SOURCE_FILES    ${SG_INCLUDE_PATH}/font/FontSource.h
+                            ${SG_INCLUDE_PATH}/font/MonoBitmapFontSource.h
                             font/FontDataSource.cpp
                             font/FontBitmapDataSource.cpp
                             font/FontDataSourceManage.cpp
-                            font/FontSource.cpp)
+                            font/FontSource.cpp
+                            font/MonoBitmapFontSource.cpp)
 
 source_group("10.Font\\DataSource" FILES ${SG_FONT_SOURCE_FILES})
 
