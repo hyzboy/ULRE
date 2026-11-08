@@ -679,6 +679,143 @@ private:
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // P1：失效台帐报表（只观测 —— 不改变任何绘制行为）
+    //
+    // 报表口径：台帐计数器是**只增不减**的，所以这里报「窗口增量 / 帧」。
+    // 判定 P1 是否达标的两个数值：
+    //   · `拓扑代数增量/帧` 应 ≈ 0（稳定场景无拓扑变更，快照才有资格复用）
+    //   · `池轮询 布局变`  应 = 0（否则说明有系统在每帧分配/归还行）
+    // 动态事实增量每帧 > 0 是正常的：它只要求重发事实，不要求重建批。
+    // ─────────────────────────────────────────────────────────────────────
+    struct LedgerSnapshot
+    {
+        uint64_t topo[static_cast<size_t>(TopologyChange::Count)]      = {};
+        uint64_t fact[static_cast<size_t>(DynamicFactChange::Count)]  = {};
+        uint64_t reject[static_cast<size_t>(CacheRejectReason::Count)] = {};
+
+        uint64_t candidate    = 0;
+        uint64_t eligible     = 0;
+        uint64_t pool_layout  = 0;
+        uint64_t pool_content = 0;
+    };
+
+    LedgerSnapshot ledger_prev;
+
+    LedgerSnapshot CaptureLedger()
+    {
+        LedgerSnapshot s;
+
+        if (!ecs_context)
+            return s;
+
+        const PrimitiveTopologyLedger &ledger = ecs_context->GetPrimitiveTopologyLedger();
+
+        for (size_t i = 0; i < static_cast<size_t>(TopologyChange::Count); ++i)
+            s.topo[i] = ledger.GetTopologyRevision(static_cast<TopologyChange>(i));
+
+        for (size_t i = 0; i < static_cast<size_t>(DynamicFactChange::Count); ++i)
+            s.fact[i] = ledger.GetDynamicFactRevision(static_cast<DynamicFactChange>(i));
+
+        for (size_t i = 0; i < static_cast<size_t>(CacheRejectReason::Count); ++i)
+            s.reject[i] = ledger.GetStatReject(static_cast<CacheRejectReason>(i));
+
+        s.candidate    = ledger.GetStatCandidateFrames();
+        s.eligible     = ledger.GetStatEligibleFrames();
+        s.pool_layout  = ledger.GetStatPoolLayoutChanges();
+        s.pool_content = ledger.GetStatPoolContentChanges();
+
+        return s;
+    }
+
+    void ReportTopologyLedger(uint32_t window_frames)
+    {
+        if (!ecs_context)
+            return;
+
+        const PrimitiveTopologyLedger &ledger = ecs_context->GetPrimitiveTopologyLedger();
+        const LedgerSnapshot now = CaptureLedger();
+
+        const double div = (window_frames > 0) ? double(window_frames) : 1.0;
+
+        auto PerFrame = [div](uint64_t cur, uint64_t prev) -> double {
+            return (cur >= prev) ? double(cur - prev) / div : 0.0;
+        };
+        auto Delta = [](uint64_t cur, uint64_t prev) -> uint64_t {
+            return (cur >= prev) ? (cur - prev) : 0;
+        };
+
+        // ── 拓扑代数（稳态应全 0）─────────────────────────────────────────
+        printf("  -- P1 失效台帐（只观测，不参与跳过决策）--\n");
+        printf("  %-22s", "拓扑代数增量/帧");
+
+        double topo_sum = 0.0;
+        for (size_t i = 0; i < static_cast<size_t>(TopologyChange::Count); ++i)
+        {
+            const double v = PerFrame(now.topo[i], ledger_prev.topo[i]);
+            topo_sum += v;
+            printf(" %s=%.2f", GetTopologyChangeName(static_cast<TopologyChange>(i)), v);
+        }
+        printf("  ｜ 合计=%.2f\n", topo_sum);
+
+        // ── 动态事实代数（每帧 > 0 属正常）────────────────────────────────
+        printf("  %-22s", "动态事实增量/帧");
+
+        double fact_sum = 0.0;
+        for (size_t i = 0; i < static_cast<size_t>(DynamicFactChange::Count); ++i)
+        {
+            const double v = PerFrame(now.fact[i], ledger_prev.fact[i]);
+            fact_sum += v;
+            printf(" %s=%.2f", GetDynamicFactChangeName(static_cast<DynamicFactChange>(i)), v);
+        }
+        printf("  ｜ 合计=%.2f\n", fact_sum);
+
+        // ── 池级轮询（布局变 = 危险信号；内容变 = 常态）──────────────────
+        printf("  %-22s 布局变=%llu 内容变=%llu\n", "池代数轮询（窗口累计）",
+               static_cast<unsigned long long>(Delta(now.pool_layout,  ledger_prev.pool_layout)),
+               static_cast<unsigned long long>(Delta(now.pool_content, ledger_prev.pool_content)));
+
+        // ── 资格判定（P1 中 `NoSnapshot` 恒为真，命中数应为 0）────────────
+        const uint64_t cand = Delta(now.candidate, ledger_prev.candidate);
+        const uint64_t hit  = Delta(now.eligible,  ledger_prev.eligible);
+
+        printf("  %-22s 候选=%llu 命中=%llu (%.1f%%)\n", "主帧缓存资格",
+               static_cast<unsigned long long>(cand),
+               static_cast<unsigned long long>(hit),
+               (cand > 0) ? (double(hit) * 100.0 / double(cand)) : 0.0);
+
+        printf("  %-22s", "资格拒绝归因");
+
+        for (size_t i = 1; i < static_cast<size_t>(CacheRejectReason::Count); ++i)
+        {
+            printf(" %s=%llu", GetCacheRejectReasonName(static_cast<CacheRejectReason>(i)),
+                   static_cast<unsigned long long>(Delta(now.reject[i], ledger_prev.reject[i])));
+        }
+        printf("\n");
+
+        // ── 拓扑末次变更帧（0 = 从未变更 ⇒ '-'）──────────────────────────
+        printf("  %-22s", "拓扑末次变更帧");
+
+        for (size_t i = 0; i < static_cast<size_t>(TopologyChange::Count); ++i)
+        {
+            const TopologyChange kind = static_cast<TopologyChange>(i);
+            const uint32_t      f     = ledger.GetTopologyLastFrame(kind);
+
+            // `frame_serial` 从 1 开始（`BeginFrame` 先自增）⇒ 帧号 0 表示
+            // 「变更发生在第一帧渲染之前」（Init 期建场景）。这类变更同样真实发生，
+            // 不能用 '-' 表示「从未变更」，故用代数区分。
+            if (f > 0)
+                printf(" %s=#%u", GetTopologyChangeName(kind), f);
+            else if (ledger.GetTopologyRevision(kind) > 0)
+                printf(" %s=#<init>", GetTopologyChangeName(kind));
+            else
+                printf(" %s=-", GetTopologyChangeName(kind));
+        }
+        printf("  ｜ 当前帧序号=%u\n", ledger.GetFrameSerial());
+
+        ledger_prev = now;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // T8.2 采样：GPU 侧可见数 / 溢出槽（会在采样帧付出一次 fence 等待）
     // ─────────────────────────────────────────────────────────────────────
     void SampleGPU(GPUCullSystem * gpu_cull)
@@ -789,6 +926,8 @@ private:
                    CountAvg(FrameProfileCount::CollectItems),
                    CountAvg(FrameProfileCount::Batches),
                    CountAvg(FrameProfileCount::BucketGroups));
+
+            ReportTopologyLedger(acc_frames);
         }
         fflush(stdout);
 

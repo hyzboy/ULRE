@@ -927,6 +927,26 @@ namespace hgl::ecs
                 FinalizeBatch(*pair.second);
         }
 
+        // P1：把「本帧 GPU 剔除是否真的接管」记进失效台帐，供**下一帧**的资格判定使用。
+        // 必须放在 FinalizeBatch 之后：接管结果由 FinalizeBatch 定型。
+        // 判据取实际结果而非请求：只要有任一批仍是 CPU 模式，就说明本帧批布局
+        // 依赖 CPU 账，下一帧不可假设它稳定。
+        if (world)
+        {
+            bool all_engaged = cache.materialBatches.GetCount() > 0;
+
+            for (const auto& pair : cache.materialBatches)
+            {
+                if (!pair.second || !pair.second->gpu_driven_override)
+                {
+                    all_engaged = false;
+                    break;
+                }
+            }
+
+            world->GetPrimitiveTopologyLedger().ObserveGPUCullEngaged(all_engaged);
+        }
+
         // 桶组（几何批）数已在上方逐批用 `FrameProfiler::Count` 累加。此处不再重复统计。
     }
 }

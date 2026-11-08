@@ -45,6 +45,27 @@ protected:
     ActiveIDManager ids;                    ///< 行号空间（FIFO 复用；上限 = row_capacity）
     uint64_t      commit_reject_count = 0;  ///< CommitRow 被拒次数（越界/行未 Active）；契约用，正常恒为 0
 
+    /**
+     * @brief 行**占用**代数：任何 `Acquire/AcquireRun/Release/ReleaseRun/Reset/ActivateAllRows`
+     *        成功改变「哪一行归谁」时自增。
+     *
+     * 语义是「行号空间布图变了」⇒ 所有以行号为键的缓存（材质批、模板键、图元→行映射）
+     * 都可能失效。**不**在 `CommitRow` 时自增：提交只改字节，不改归属。
+     *
+     * 用途：`hgl::ecs::PrimitiveTopologyLedger` 轮询它来覆盖那些无法逐点加固写入口的
+     * 全局池（模板池、部件池、材质行…）。它是**诊断/失效信号**，不参与分配决策，
+     * 回绕在 2^64 次操作之后，实际不可能发生。
+     */
+    uint64_t      layout_version = 0;
+
+    /**
+     * @brief 行**内容**代数：任何 `CommitRow/CommitRun/ActivateAllRows` 成功标脏时自增。
+     *
+     * 语义是「同一行的字节变了」⇒ 拓扑（键、容量、桶划分）可复用，但必须重新发布/重传。
+     * 与 `layout_version` 分开记，是为了让消费者区分「要重建批」和「只要重发事实」。
+     */
+    uint64_t      content_version = 0;
+
     struct PendingRelease
     {
         RowID    row_id = InvalidRowID;
@@ -124,6 +145,12 @@ public:
 
     /// CommitRow 被拒次数（行越界 / 行未 Active）。契约判据：正常运行恒为 0。
     uint64_t GetCommitRejectCount() const { return commit_reject_count; }
+
+    /// 行占用代数（见 `layout_version`）。消费者只做「与上次采样是否相等」的比较。
+    uint64_t GetLayoutVersion() const { return layout_version; }
+
+    /// 行内容代数（见 `content_version`）。
+    uint64_t GetContentVersion() const { return content_version; }
 
     uint32_t GetActiveCount() const { return uint32_t(ids.GetActiveCount()); }
     uint32_t GetReservedRowCount() const { return reserved_rows; }

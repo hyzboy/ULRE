@@ -715,6 +715,9 @@ namespace hgl::ecs
 
             LogInfo("[ECSContext] OnResize: %s %ux%u", GetName().c_str(), extent.width, extent.height);
 
+            // P1：目标尺寸变化 ⇒ 依赖 viewport/RT 尺寸的合批与桶布局需要重算。
+            MarkTopologyChanged(TopologyChange::PassAndTarget);
+
             // Ensure render target viewport/UBO are updated immediately for this extent.
             if (render_target)
                 render_target->OnResize(extent);
@@ -747,6 +750,14 @@ namespace hgl::ecs
 
         void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)
         {
+            // P1：世界帧边界 —— 轮询设备级行池代数，把「无法逐点加固写入口」的全局池
+            // （模板池/部件池/材质行/自定义数据行…）的占用与内容变化折进失效台帐。
+            // 放在最前面：本帧后续所有 collect/batch 产生的行写入，都会在**下一帧**被看到，
+            // 这正是快照需要知道的「上一帧改过行」。
+            primitive_topology_ledger.BeginFrame();
+            if (auto *gc = GetGraphicsContext())
+                primitive_topology_ledger.PollDeviceRowPools(gc->GetGlobalSSBOBufferRegistry());
+
             // 只在场景结构变化（scene_structure_dirty）时重新 gather，
             // 避免每帧全量遍历所有 entity/component（结构稳定时零开销）。
             if (scene_structure_dirty)

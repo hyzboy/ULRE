@@ -217,7 +217,8 @@ namespace hgl::ecs
 
         /// 上游来源（asset 默认配方 / 变体切换）变化时前进授权代数：
         /// 只动代数，不改本组件持有的授权数据——下游据此让解析结果失效。
-        void BumpAuthoredGeneration() { ++authored_generation; }
+        /// 同时记一次 `TopologyChange::MaterialBinding`（P1：材质批键可能变）。
+        void BumpAuthoredGeneration();
 
         // ── 解析（本层唯一出口）──
         /// @param asset_default_recipe asset 里的默认配方（基底；可为 nullptr）

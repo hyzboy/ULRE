@@ -29,8 +29,10 @@ namespace hgl::ecs
 
     void GeometryData::SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset)
     {
-        if (primitiveAsset != asset)
-            InvalidateOwnerRuntimePipeline();
+        if (primitiveAsset == asset)
+            return;
+
+        InvalidateOwnerRuntimePipeline();
 
         primitiveAsset = asset;
 
@@ -44,6 +46,10 @@ namespace hgl::ecs
             : nullptr;
         if (material_data)
             material_data->BumpAuthoredGeneration();
+
+        // P1：换资产 ⇒ 图元→几何 ID 绑定变了，主帧拓扑（成员、材质基底、包围盒行）都变。
+        if (context)
+            context->MarkTopologyChanged(TopologyChange::GeometryBinding);
     }
 
     void GeometryData::SetPrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose purpose)
@@ -53,6 +59,33 @@ namespace hgl::ecs
 
         primitiveVariantPurpose = purpose;
         InvalidateOwnerRuntimePipeline();
+
+        Entity *owner = GetOwner();
+        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        if (context)
+            context->MarkTopologyChanged(TopologyChange::GeometryBinding);
+    }
+
+    void GeometryData::SetPrimitiveVariantIndex(const uint32_t index)
+    {
+        // 2026-10 P1：原先是内联裸 setter、不触发任何失效。变体索引参与
+        // `FindVariantByPurpose`（决定几何变体与默认材质配方），改它等同于换资产 ⇒
+        // 必须同时让运行期管线与材质授权代失效，并记一次拓扑变更。
+        if (primitiveVariantIndex == index)
+            return;
+
+        primitiveVariantIndex = index;
+        InvalidateOwnerRuntimePipeline();
+
+        Entity *owner = GetOwner();
+        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        if (!context)
+            return;
+
+        if (MaterialData *material_data = context->GetMaterialData(owner))
+            material_data->BumpAuthoredGeneration();
+
+        context->MarkTopologyChanged(TopologyChange::GeometryBinding);
     }
 
     const hgl::graph::mtl::MaterialRecipe *GeometryData::GetAssetMaterialRecipe() const
@@ -101,5 +134,13 @@ namespace hgl::ecs
         // 不删几何资源：它们归资源管理器所有。
         primitiveAsset = nullptr;
         primitiveVariantIndex = 0;
+
+        // P1：卸载后该实体不再可渲染 ⇒ 主帧成员集合变化。
+        // （`OnComponentRowRemoved` 也会记一次 EntityStructure，这里记的是
+        //   几何绑定类别的归因，便于报表指出「是谁导致的重建」。）
+        Entity *owner = GetOwner();
+        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        if (context)
+            context->MarkTopologyChanged(TopologyChange::GeometryBinding);
     }
 }//namespace hgl::ecs

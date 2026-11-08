@@ -58,6 +58,16 @@ namespace hgl::ecs
         uint64_t ambient_provider_snapshot_hash = 0;
         bool     ambient_provider_snapshot_valid = false;
 
+        /// P1 干跑（dry-run）快照代数：模拟"上一帧已发布过一次拓扑快照"。
+        /// 用它回答**真正有用的问题** —— 「假如 P2 已经落地，本帧能不能复用上一帧的收集结果」。
+        /// 若沿用真实状态（`has_snapshot = false`），报表会 100% 落在 `NoSnapshot`，
+        /// 那就等于什么都没测。
+        uint64_t dryrun_snapshot_topology_rev = 0;
+        bool     dryrun_snapshot_valid = false;
+
+        /// P1：每帧一次的资格判定与统计（只观测，**不跳过任何逻辑**）。
+        void ObserveCollectCacheEligibility();
+
         /// 命名口径：**Ensure 而非 Resolve** —— "Resolve" 会被读成"只查表"，
         /// 而这三个入口在缓存未命中时**会触发** GLSL 生成 + SPV 编译 + 磁盘落盘
         /// （经 ShaderProgramManager::AcquireShaderProgram）。

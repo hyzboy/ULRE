@@ -706,6 +706,11 @@ namespace hgl
         // ── T2-c：组件行 → 系统组计数（组归属是**类型属性**，取自类型表）──
         void ECSContext::OnComponentRowAdded(const ComponentType type)
         {
+            // P1：组件挂载改变「实体具备哪些能力」⇒ 主帧图元的候选集合可能变化。
+            // 必须放在下面的早退**之前**：`SystemGroupID::None` 的组件同样可能被
+            // 图元侧读到（如 GPUModelRefComponent 只做数据不建系统组）。
+            MarkTopologyChanged(TopologyChange::EntityStructure);
+
             const SystemGroupID group = GetComponentGroup(type);
 
             if (group == SystemGroupID::None)
@@ -719,6 +724,9 @@ namespace hgl
 
         void ECSContext::OnComponentRowRemoved(const ComponentType type)
         {
+            // P1：同 `OnComponentRowAdded`，早退之前记账（卸载同样改变候选集合）。
+            MarkTopologyChanged(TopologyChange::EntityStructure);
+
             const SystemGroupID group = GetComponentGroup(type);
 
             if (group == SystemGroupID::None)
@@ -1112,6 +1120,9 @@ namespace hgl
         {
             // B5-b：管线缓存已迁到世界级旁表（slot 里不放指针）
             material_runtime_pipeline_table->Clear(owner);
+
+            // P1：解析出的 shader/管线身份失效 ⇒ 材质批的键可能变（拓扑类别）。
+            MarkTopologyChanged(TopologyChange::MaterialBinding);
         }
 
         void ECSContext::DestroyBoundingBox(BoundingBoxDataStorage::HandleID id)

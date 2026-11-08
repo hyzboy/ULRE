@@ -79,7 +79,9 @@ namespace hgl::ecs
         void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
 
         // ── 变体选择 ──
-        void SetPrimitiveVariantIndex(const uint32_t index) { primitiveVariantIndex = index; }
+        /// 变体索引参与 `FindVariantByPurpose`（决定几何变体与默认材质配方）⇒
+        /// **不是**裸 setter：值变时让运行期管线与材质授权代失效，并记一次拓扑变更。
+        void SetPrimitiveVariantIndex(const uint32_t index);
         uint32_t GetPrimitiveVariantIndex() const { return primitiveVariantIndex; }
         void SetPrimitiveVariantPurpose(const hgl::graph::PrimitiveVariantPurpose purpose);
         hgl::graph::PrimitiveVariantPurpose GetPrimitiveVariantPurpose() const { return primitiveVariantPurpose; }

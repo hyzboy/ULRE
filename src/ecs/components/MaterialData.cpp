@@ -396,6 +396,20 @@ namespace hgl::ecs
     }
 
     // B4-ii：授权变更唯一入口（见 .h 注释）。行内 revision 与授权位**只在这里落笔**。
+    void MaterialData::BumpAuthoredGeneration()
+    {
+        ++authored_generation;
+
+        // P1：上游来源变化（asset 默认配方 / 变体切换）会让解析结果与 shader 身份失配 ⇒
+        // 材质批的键集合可能变化，按拓扑变更记账（而不是动态事实）。
+        // 只读 `GetOwner()->GetContext()`，不触发重建，纯记账。
+        const Entity *owner = GetOwner();
+
+        if (owner)
+            if (ECSContext *context = owner->GetContext())
+                context->MarkTopologyChanged(TopologyChange::MaterialBinding);
+    }
+
     void MaterialData::TouchAuthoredRow(const uint32_t set_flags, const uint32_t clear_flags)
     {
         ++authored_generation;
@@ -422,6 +436,12 @@ namespace hgl::ecs
         if (!registry->Write(hgl::graph::GlobalSSBOType::MaterialData, material_row_id, row))
             GLogError("[MaterialData] 写组件行（授权位 0x%X + revision %u）失败 row=%u",
                       flags, authored_generation, material_row_id);
+
+        // P1：授权位/revision 变化 = 材质批的划分依据可能变（从 Basic 升到 Textured
+        // 会换 shader 身份 ⇒ 换 MaterialBatch 键）。归到拓扑类别，让快照拒绝复用。
+        if (const Entity *owner = GetOwner())
+            if (ECSContext *context = owner->GetContext())
+                context->MarkTopologyChanged(TopologyChange::MaterialBinding);
     }
 
     uint32_t MaterialData::GetAuthoredRowRevision() const

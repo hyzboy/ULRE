@@ -2038,6 +2038,48 @@ namespace hgl::ecs
             || (retries % kShadowRetryBumpPeriod) == 0;
     }
 
+    void RenderPrimitiveCollectSystem::ObserveCollectCacheEligibility()
+    {
+        if (!world)
+            return;
+
+        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+
+        // 本 pass 是否有资格：阴影 pass / 移动性过滤 pass 共用同一份 RenderFrameCache，
+        // 它们的成员集合天然不同 ⇒ 只有「无过滤的非阴影 pass」才可能是主帧快照的消费者。
+        const bool is_main_swapchain_frame =
+            !world->IsCurrentPassShadow() && world->GetActiveMobilityFilter() < 0;
+
+        const uint64_t topology_now = ledger.GetTopologyRevision();
+
+        // 干跑：首次把当前代数当作「刚发布过快照」，之后只在判定为「拓扑脏」时刷新，
+        // 因为那时真实实现会重建并发布一份新快照。
+        if (!dryrun_snapshot_valid)
+        {
+            dryrun_snapshot_topology_rev = topology_now;
+            dryrun_snapshot_valid        = true;
+        }
+
+        CollectCacheInputs in;
+
+        in.is_main_swapchain_frame = is_main_swapchain_frame;
+        in.gpu_cull_engaged        = ledger.GetLastGPUCullEngaged();
+        in.has_snapshot            = true;              // 干跑：假装已有快照
+        in.snapshot_ready          = true;              // 干跑：假装快照就绪
+        in.snapshot_topology_rev   = dryrun_snapshot_topology_rev;
+
+        const CacheRejectReason reason = ledger.Evaluate(in);
+
+        // 本 pass 非主帧时不计入统计：它本来就不参与主帧快照，算进分母会稀释命中率。
+        if (is_main_swapchain_frame)
+        {
+            world->GetPrimitiveTopologyLedger().RecordEligibility(reason);
+
+            if (reason != CacheRejectReason::Eligible)
+                dryrun_snapshot_topology_rev = topology_now;
+        }
+    }
+
     void RenderPrimitiveCollectSystem::Update(float /*deltaTime*/)
     {
         if (!world)
@@ -2052,6 +2094,9 @@ namespace hgl::ecs
 
         auto& cache = world->GetRenderFrameCache();
         cache.cameraInfo = cameraInfo;
+
+        // P1：每 pass 一次资格判定（只统计，不改变本帧任何行为）。
+        ObserveCollectCacheEligibility();
 
         // A7b：本 pass 回退（错误）材质配方合成次数（诊断；默认 0 ⇒ 不打印任何东西，
         // 基线日志逐字不变）。

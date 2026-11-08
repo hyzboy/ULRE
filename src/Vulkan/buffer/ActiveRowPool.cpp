@@ -115,6 +115,11 @@ void ActiveRowPool::Reset()
     ssbo_id      = 0;
     row_bytes    = 0;
     row_capacity = 0;
+
+    // 行号空间与内容都被抹掉 ⇒ 两个代数都要前进，避免消费者把「重建后的池」
+    // 当成「和上一帧一样」。
+    ++layout_version;
+    ++content_version;
 }
 
 bool ActiveRowPool::ActivateAllRows()
@@ -153,6 +158,7 @@ bool ActiveRowPool::ActivateAllRows()
         }
     }
 
+    ++layout_version;
     return true;
 }
 
@@ -202,6 +208,7 @@ ActiveRowPool::RowID ActiveRowPool::Acquire()
         return InvalidRowID;
     }
 
+    ++layout_version;   // 行归属改变
     return static_cast<RowID>(id);
 }
 
@@ -217,7 +224,12 @@ bool ActiveRowPool::Release(const RowID id)
     }
 
     const int raw_id = static_cast<int>(id);
-    return ids.Release(&raw_id) == 1;
+
+    if (ids.Release(&raw_id) != 1)
+        return false;
+
+    ++layout_version;   // 行归还后可能被他人复用，行号→归属映射已变
+    return true;
 }
 
 ActiveRowPool::RowID ActiveRowPool::AcquireRun(const uint32_t count)
@@ -277,6 +289,7 @@ ActiveRowPool::RowID ActiveRowPool::AcquireRun(const uint32_t count)
         done += batch;
     }
 
+    ++layout_version;   // 整段新行号进入占用
     return first;
 }
 
@@ -301,6 +314,9 @@ bool ActiveRowPool::ReleaseRun(const RowID first, const uint32_t count)
         const int raw_id = static_cast<int>(id);
         released += static_cast<uint32_t>(ids.Release(&raw_id));
     }
+
+    if (released == count)
+        ++layout_version;   // 只有整段归还成功才算布图变更
 
     return released == count;
 }
@@ -334,6 +350,7 @@ bool ActiveRowPool::CommitRun(const RowID first, const uint32_t count)
     }
 
     gpu_buffer->MarkDirty(VkDeviceSize(first) * row_bytes, VkDeviceSize(count) * row_bytes);
+    ++content_version;   // 行字节已变，但归属不变
     return true;
 }
 
@@ -359,6 +376,7 @@ bool ActiveRowPool::CommitRow(const RowID id)
     }
 
     gpu_buffer->MarkDirty(VkDeviceSize(id) * row_bytes, row_bytes);
+    ++content_version;   // 行字节已变，但归属不变
     return true;
 }
 
