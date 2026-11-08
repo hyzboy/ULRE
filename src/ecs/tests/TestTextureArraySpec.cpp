@@ -15,6 +15,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/graph/asset/TextureArraySpec.h>
 #include <hgl/graph/asset/TextureURI.h>
+#include <hgl/mtl/MaterialTextureProjection.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -543,6 +544,40 @@ namespace
 
         return true;
     }
+
+    // 投影推导：URI 类型前缀是第一真源，`.TexOct/.TexCube` 后缀仅作旧写法兜底。
+    bool TestProjectionPrefix()
+    {
+        using graph::mtl::MaterialTextureProjection;
+        using graph::mtl::ResolveMaterialTextureProjection;
+
+        Check(ResolveMaterialTextureProjection("texcube:pack(res):image/sky34")
+                  == MaterialTextureProjection::CubeMap,
+              "texcube: 前缀推导为 CubeMap");
+        Check(ResolveMaterialTextureProjection("cubefile:image/sky.TexCube")
+                  == MaterialTextureProjection::CubeMap,
+              "cubefile: 旧 scheme 同样推导为 CubeMap");
+        Check(ResolveMaterialTextureProjection("TEXOCT:image/Environments/sky_34")
+                  == MaterialTextureProjection::Octahedral,
+              "texoct: 前缀大小写不敏感");
+        Check(ResolveMaterialTextureProjection("tex2d:weird/suffix.TexCube")
+                  == MaterialTextureProjection::Texture2D,
+              "tex2d: 显式声明短路后缀兜底");
+        Check(ResolveMaterialTextureProjection("pack(res):image/Brickwall/Albedo.Tex2D")
+                  == MaterialTextureProjection::Texture2D,
+              "pack 包裹普通贴图维持 2D");
+        Check(ResolveMaterialTextureProjection("image/sky.TexOct")
+                  == MaterialTextureProjection::Octahedral,
+              "旧 .TexOct 后缀兜底仍生效");
+        Check(ResolveMaterialTextureProjection("image/sky.TexCube")
+                  == MaterialTextureProjection::CubeMap,
+              "旧 .TexCube 后缀兜底仍生效");
+        Check(ResolveMaterialTextureProjection(nullptr)
+                  == MaterialTextureProjection::Texture2D,
+              "空资源 id 回落 2D");
+
+        return true;
+    }
 }//namespace
 
 int main()
@@ -554,6 +589,7 @@ int main()
     Check(TestRejectsBadInput(), "坏输入整张拒绝");
     Check(TestUriResolution(), "texarray: URI → 规约路径");
     Check(TestProbeTextureURI(), "无扩展名 URI 磁盘探测");
+    Check(TestProjectionPrefix(), "URI 前缀推导采样投影");
     Check(TestExampleSources(), "示例不再手工装配数组");
 
     if (g_failed > 0)

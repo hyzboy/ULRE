@@ -38,6 +38,27 @@ namespace hgl::graph::mtl
                 ++length;
             return length;
         }
+
+        // 大小写不敏感的"以某个 ASCII 前缀开头"判定，规则与 EndsWithIgnoreCase 相同。
+        bool StartsWithIgnoreCase(const char *text, const size_t text_length,
+                                  const char *prefix, const size_t prefix_length) noexcept
+        {
+            if (!text || !prefix || text_length < prefix_length)
+                return false;
+
+            for (size_t index = 0; index < prefix_length; ++index)
+            {
+                char a = text[index];
+                char b = prefix[index];
+
+                if (a >= 'a' && a <= 'z') a = static_cast<char>(a - 'a' + 'A');
+                if (b >= 'a' && b <= 'z') b = static_cast<char>(b - 'a' + 'A');
+
+                if (a != b)
+                    return false;
+            }
+            return true;
+        }
     }// namespace
 
     MaterialTextureProjection ResolveMaterialTextureProjection(const char *resource_id) noexcept
@@ -47,8 +68,21 @@ namespace hgl::graph::mtl
 
         const size_t length = TextLength(resource_id);
 
-        // 顺序有意义：`.TexOct` 与 `.TexCube` 互不为后缀，先判谁都行，
-        // 但两者都不能被 `.Tex2D` 之类的通用规则抢先吃掉，所以这里只有这两条显式标记。
+        // URI 类型前缀是第一真源（与 TextureURI 的 tex2d/texcube/texoct 规范同源）：
+        // 无扩展名写法也能拿到投影；`cubefile:` 是既有立方体贴图 scheme，一并认领。
+        if (StartsWithIgnoreCase(resource_id, length, "texcube:", 8)
+         || StartsWithIgnoreCase(resource_id, length, "cubefile:", 9))
+            return MaterialTextureProjection::CubeMap;
+
+        if (StartsWithIgnoreCase(resource_id, length, "texoct:", 7))
+            return MaterialTextureProjection::Octahedral;
+
+        // `tex2d:` 显式声明 2D，短路掉后面的后缀兜底。
+        if (StartsWithIgnoreCase(resource_id, length, "tex2d:", 6))
+            return MaterialTextureProjection::Texture2D;
+
+        // 后缀兜底（旧写法并行期保留）：`.TexOct` 与 `.TexCube` 互不为后缀，
+        // 先判谁都行，但两者都不能被 `.Tex2D` 之类的通用规则抢先吃掉。
         if (EndsWithIgnoreCase(resource_id, length, ".TexOct", 7))
             return MaterialTextureProjection::Octahedral;
 
