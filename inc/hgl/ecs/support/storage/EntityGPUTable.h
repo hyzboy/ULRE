@@ -136,7 +136,8 @@ namespace hgl
                 // `type[]/row[]`（`Deactivate` 按诊断口径刻意不清）。新实体在挂第一个组件之前
                 // 与 `component_rows[]`（全新实体 = 全 0）不一致 ⇒ 会让下面 §2.2 问题 2 的
                 // 写入侧对拍**假红**。这里清成"无组件"（与权威同源；挂卸仍由 `Refresh` 全槽同步）。
-                for (uint32_t t = 1; t < COMPONENT_TYPE_COUNT; ++t)
+                // 上界 = 镜像容量（越界的 CPU-only 类型不进 `type[]/row[]`，见 EntityGPU.h 扩容判据）
+                for (uint32_t t = 1; t < kEntityGPUMirroredTypeCount; ++t)
                 {
                     row->type[t] = 0;
                     row->row [t] = 0;
@@ -245,7 +246,8 @@ namespace hgl
                 if (!row)
                     return;
 
-                for (uint32_t t = 1; t < COMPONENT_TYPE_COUNT; ++t)
+                // 全槽同步只覆盖**进镜像的类型**（上界 = 镜像容量；CPU-only 越界类型不写槽）
+                for (uint32_t t = 1; t < kEntityGPUMirroredTypeCount; ++t)
                 {
                     const uint32_t handle = entity->GetComponentRow(static_cast<ComponentType>(t));
 
@@ -338,7 +340,8 @@ namespace hgl
                 if (!row)
                     return false;
 
-                for (uint32_t t = 1; t < COMPONENT_TYPE_COUNT; ++t)
+                // 对拍同样只核**进镜像的类型**（越界 CPU-only 类型无槽可比）
+                for (uint32_t t = 1; t < kEntityGPUMirroredTypeCount; ++t)
                 {
                     if (t == uint32_t(ComponentType::Transform))
                         continue;       // 单独口径（L2W 行），见 SetTransformRow

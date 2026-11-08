@@ -42,8 +42,30 @@ namespace hgl
         /// `type` / `row` 的槽数（设计输入：16 槽）
         constexpr uint32_t kEntityGPUSlotCount = 16;
 
-        static_assert(COMPONENT_TYPE_COUNT <= kEntityGPUSlotCount,
-                      "组件类型数已超过 EntityGPU 的 16 槽：P-3「每类型一槽」的前提失效，需先扩容设计");
+        /// 进 GPU 镜像的组件类型数 = min(类型数, 槽容量)。
+        /// 超出槽容量的类型**只在 CPU 侧存在**（不写 `type[]/row[]`，GLSL 不可见）：
+        /// 行形状（128 B 定长）与 GLSL 镜像逐字节不变，扩容只发生在 CPU 类型枚举一侧。
+        constexpr uint32_t kEntityGPUMirroredTypeCount =
+            (COMPONENT_TYPE_COUNT < kEntityGPUSlotCount) ? COMPONENT_TYPE_COUNT : kEntityGPUSlotCount;
+
+        namespace detail
+        {
+            /// 槽容量扩容判据：越界类型必须是 **CPU-only**（`gpu_row_bytes == 0`，无 GPU 行）。
+            /// 「每类型一槽」的前提对**有 GPU 行的类型**依然成立；若某越界类型要上 GPU，
+            /// 本断言失败 ⇒ 那时才做真正的扩容设计（行形状 + GLSL 镜像 + parity 门同批改）。
+            constexpr bool CheckGPUMirroredTypesFitSlots()
+            {
+                for (uint32_t i = kEntityGPUSlotCount; i < COMPONENT_TYPE_COUNT; ++i)
+                    if (kComponentTypeTable[i].gpu_row_bytes != 0)
+                        return false;
+
+                return true;
+            }
+        }
+
+        static_assert(detail::CheckGPUMirroredTypesFitSlots(),
+                      "组件类型数超过 EntityGPU 的 16 槽：越界类型必须是 CPU-only（gpu_row_bytes=0，不进 GPU 镜像）。"
+                      "若有 GPU 行的类型越界 ⇒ P-3「每类型一槽」前提失效，需先做扩容设计（行形状 + GLSL 镜像 + parity 门）。");
 
         /// 实体的 GPU 派生视图（128 B 定长行；CPU 权威是 `Entity` + 各类型行号）
         struct alignas(64) EntityGPU

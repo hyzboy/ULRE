@@ -53,6 +53,10 @@ namespace hgl
                                 ///<  物理与拾取只查本组件，禁止反向读渲染零件（见
                                 ///<  ModelCollisionProxyComponent.h）
             RigidBody,              ///< 物理刚体（CPU-only 类型号）——物理模拟状态与 Jolt 刚体句柄
+            Transform2D,            ///< 2D 变换（CPU-only 类型号）——2D 层级树：父子指针 + 局部/世界 2D 变换，
+                                ///<  级联求值由 Transform2DSystem（TickTransform）承担（见 Transform2DComponent.h）
+            Layer2D,              ///< 2D 层级/排序（CPU-only 类型号）——layer_id + order_in_layer + 子树裁切声明，
+                                ///<  排序与剔除由 CullAndSort2DSystem（RenderBatch）承担（见 Layer2DComponent.h）
             End,
         };
 
@@ -80,6 +84,7 @@ namespace hgl
             Primitive,      ///< 图元（渲染元素标记 = `GeometryData`，A5b）
             Line,           ///< 线条
             Text,           ///< 文本
+            Hierarchy2D,    ///< 2D 层级（Transform2D / Layer2D 组件驱动；系统 = Transform2DSystem + CullAndSort2DSystem）
 
             Count
         };
@@ -125,6 +130,8 @@ namespace hgl
             { ComponentType::GPUInstancedModelBatch, ComponentScope::World, "ECS:GPUInstancedModelBatch", 0, "GPUInstancedModelBatchComponent", SystemGroupID::None }, ///< CPU-only：单实体海量同模板实例批次（CPU 权威矩阵数组或外部设备缓冲）；T3 接上传/展开
             { ComponentType::ModelCollisionProxy, ComponentScope::World, "ECS:ModelCollisionProxy", 0, "ModelCollisionProxyComponent", SystemGroupID::None }, ///< CPU-only：模型碰撞/拾取粗包围体代理；物理与拾取唯一入口（禁止读渲染零件）
             { ComponentType::RigidBody,           ComponentScope::World, "ECS:RigidBody",           0, "RigidBodyComponent",           SystemGroupID::None }, ///< CPU-only：物理刚体与物理模拟状态
+            { ComponentType::Transform2D,         ComponentScope::World, "ECS:Transform2D",         0, "Transform2DComponent",         SystemGroupID::Hierarchy2D }, ///< CPU-only：2D 层级树变换（父子指针 + 局部/世界 2D 仿射）；无 GPU 行
+            { ComponentType::Layer2D,             ComponentScope::World, "ECS:Layer2D",             0, "Layer2DComponent",             SystemGroupID::Hierarchy2D }, ///< CPU-only：2D 排序层 + 子树裁切声明；无 GPU 行
         };
 
         namespace detail
@@ -372,6 +379,7 @@ namespace hgl
             "Primitive",
             "Line",
             "Text",
+            "Hierarchy2D",
         };
 
         constexpr bool SystemGroupNameEquals(const char *a, const char *b) noexcept
