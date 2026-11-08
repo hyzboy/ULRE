@@ -64,6 +64,9 @@ namespace hgl::ecs
         graph::TextureManager *tex_manager = nullptr;
         graph::TextureLoadCommitter committer;
 
+        /// 句柄表扫描摘要日志的开关：首次扫描必打一条，之后只在有提交时打
+        bool first_scan_logged = false;
+
     private:
 
         bool EnsureManagers();                          ///< 惰性抓取上下文里的两个管理器

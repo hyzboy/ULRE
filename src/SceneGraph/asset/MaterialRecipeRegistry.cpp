@@ -229,6 +229,17 @@ namespace hgl::graph::mtl
                           binding.texture_name.c_str());
                 return false;
             }
+
+            // 每个纹理槽都会在 TextureManager 的句柄表里落一个句柄，之后
+            // TextureStreamingSystem 会按整张表读盘。
+            // 「场景里没人用的文件为什么被打开」的答案就在这一行的 recipe/source 上。
+            GLogVerbose(u8"[MaterialRecipeRegistry] 配方建纹理句柄: recipe=%s slot=%s resource=%ls source=%ls required=%d layer=%u",
+                      recipe.recipe_name.c_str(),
+                      binding.texture_name.c_str(),
+                      resource_path.c_str(),
+                      asset.GetSourcePath().c_str(),
+                      binding.required ? 1 : 0,
+                      binding.array_layer);
         }
 
         NormalizeRecipe(recipe);
@@ -300,6 +311,13 @@ namespace hgl::graph::mtl
 
         int file_count = 0;
         int error_count = 0;
+
+        // 整目录扫描 = 目录里**每个**配方的纹理槽都会建句柄（不管本次运行有没有用到）。
+        const int tex_handles_before =
+            texture_manager ? texture_manager->GetTextureAssets().GetCount() : 0;
+        GLogDebug(u8"[MaterialRecipeRegistry] 开始加载配方目录: directory=%ls entries=%d tex_handles_before=%d",
+                  directory.c_str(), file_list.GetCount(), tex_handles_before);
+
         for (int i = 0; i < file_list.GetCount(); ++i)
         {
             const hgl::filesystem::FileInfo &file = file_list[i];
@@ -321,8 +339,13 @@ namespace hgl::graph::mtl
             *out_file_count = file_count;
         if (out_error_count)
             *out_error_count = error_count;
-        GLogInfo(u8"[MaterialRecipeRegistry] 配方目录加载完成: directory=%ls loaded=%d errors=%d total=%d",
-                 directory.c_str(), file_count, error_count, files.GetCount());
+
+        const int tex_handles_after =
+            texture_manager ? texture_manager->GetTextureAssets().GetCount() : 0;
+        GLogInfo(u8"[MaterialRecipeRegistry] 配方目录加载完成: directory=%ls loaded=%d errors=%d total=%d "
+                 u8"tex_handles_after=%d（新增=%d）",
+                 directory.c_str(), file_count, error_count, files.GetCount(),
+                 tex_handles_after, tex_handles_after - tex_handles_before);
         return true;
     }
 

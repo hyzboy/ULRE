@@ -147,6 +147,16 @@ namespace hgl::graph
                  / OSString(OS_TEXT("asset/recipe"))).ToOSString();
             int loaded_count = 0;
             int error_count = 0;
+
+            // 一次配方未命中会把**整个默认配方目录**全量加载一遍，目录里每个配方的纹理槽
+            // 都会在句柄表落一个句柄，之后 TextureStreamingSystem 按整张表提交读盘。
+            // 排查"场景里没人用的文件为什么被打开"时，这里是第一现场。
+            const int tex_handles_before =
+                GetTextureManager()->GetTextureAssets().GetCount();
+            GLogInfo(u8"[GraphicsContext] 配方未命中 ⇒ 全量加载默认配方目录: request=%s directory=%ls "
+                     u8"tex_handles_before=%d",
+                     name, recipe_directory.c_str(), tex_handles_before);
+
             if (!LoadMaterialRecipeDirectory(recipe_directory, &loaded_count, &error_count))
             {
                 GLogError(u8"[GraphicsContext] 加载默认材质配方目录失败: recipe=%s directory=%ls",
@@ -159,6 +169,13 @@ namespace hgl::graph
                             recipe_directory.c_str(), loaded_count, error_count);
 
             default_material_recipes_loaded_ = true;
+
+            const int tex_handles_after =
+                GetTextureManager()->GetTextureAssets().GetCount();
+            GLogDebug(u8"[GraphicsContext] 默认配方目录全量加载结束: request=%s loaded=%d errors=%d "
+                      u8"tex_handles_after=%d（新增=%d）",
+                      name, loaded_count, error_count,
+                      tex_handles_after, tex_handles_after - tex_handles_before);
         }
 
         const mtl::MaterialRecipe *recipe = material_recipe_registry_.FindByName(name);

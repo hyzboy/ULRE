@@ -319,37 +319,80 @@ namespace hgl::ecs
 
     void TextureStreamingSystem::AcquireOneFrame()
     {
+        const auto & handle_table = tex_manager->GetTextureAssets();
+
         int submitted = 0;
+        int scanned   = 0;   ///< 句柄表里有效的句柄数
+        int ready     = 0;   ///< 已 Resident
+        int in_flight = 0;   ///< 读取/上传在途
+        int no_payload= 0;   ///< RT 来源 / 无文件名：本系统绝不读盘
+        int failed    = 0;   ///< LoadFailed / Disposed：不自动重试
+        int claimed   = 0;   ///< 同步路径已加载过 ⇒ 直接认领
+        int throttled = 0;   ///< 待办但本轮被限流挡下（下一帧继续）
 
-        for (graph::TextureAsset *asset : tex_manager->GetTextureAssets())
+        for (int handle_index = 0; handle_index < handle_table.GetCount(); ++handle_index)
         {
-            if (submitted >= kMaxSubmitPerFrame)
-                break;
+            graph::TextureAsset *asset = handle_table[handle_index];
 
-            if (!asset || asset->IsReady() || asset->IsAsyncRequested())
+            if (!asset)
                 continue;
+            ++scanned;
+
+            if (asset->IsReady())
+            {
+                ++ready;
+                continue;
+            }
+
+            if (asset->IsAsyncRequested())
+            {
+                ++in_flight;
+                continue;
+            }
+
+            if (submitted >= kMaxSubmitPerFrame)
+            {
+                ++throttled;
+                continue;
+            }
 
             // RenderTarget 来源的句柄没有磁盘负载：它的就绪由 RenderTargetManager
             // 在附件创建/重建时直接绑定，绝不能被当成文件名送去读盘。
             if (asset->IsRenderTarget())
+            {
+                ++no_payload;
                 continue;
+            }
 
             const PayloadState state = asset->GetPayloadState();
 
             // 失败/已销毁的句柄不自动重试：坏文件每帧重读磁盘只会刷屏，
             // 而且它对应的图元本来就因为未就绪而不渲染，不会画错。
             if (state == PayloadState::LoadFailed || state == PayloadState::Disposed)
+            {
+                ++failed;
                 continue;
+            }
 
             const OSString &filename = asset->GetFilename();
 
             if (filename.IsEmpty())
+            {
+                ++no_payload;
                 continue;           ///< 包装现成纹理的句柄：没有文件可读
+            }
 
             // 收敛捷径：同步路径已经加载过这个文件 ⇒ 直接认领那张纹理，不重复读盘建纹理。
             if (graph::Texture *ready = tex_manager->FindTextureByFilename(filename))
             {
                 asset->CommitAsyncTexture(ready);
+                ++claimed;
+
+                const U8String u8_claimed = ToU8String(filename);
+
+                GLogVerbose(u8"[TextureStreaming] 句柄#%d 认领同步纹理（不读盘）：%s",
+                          handle_index,
+                          reinterpret_cast<const char *>(u8_claimed.c_str()));
                 continue;
             }
 
@@ -446,11 +489,28 @@ namespace hgl::ecs
             ++submitted;
 
             const U8String u8_filename = ToU8String(filename);
+            const U8String u8_key      = ToU8String(key_path);
 
-            LogDebug(u8"[TextureStreaming] 提交读取：%s（request=%llu，direct=%d）",
+            LogDebug(u8"[TextureStreaming] 提交读取：句柄#%d uri=%s 读盘键=%s"
+                     u8"（request=%llu，direct=%d，state=%d，句柄表=%d）",
+                     handle_index,
                      reinterpret_cast<const char *>(u8_filename.c_str()),
+                     reinterpret_cast<const char *>(u8_key.c_str()),
                      static_cast<unsigned long long>(id),
-                     map_ptr ? 1 : 0);
+                     map_ptr ? 1 : 0,
+                     static_cast<int>(state),
+                     handle_table.GetCount());
+        }
+
+        // 摘要：本系统的工作集是**整张句柄表**，与场景里有没有人用这张纹理无关。
+        // 看到"不该读的文件"时，先在这里确认句柄表规模，再回看是谁把句柄建进表的。
+        if (submitted > 0 || !first_scan_logged)
+        {
+            first_scan_logged = true;
+
+            LogVerbose(u8"[TextureStreaming] 句柄表扫描：total=%d ready=%d in_flight=%d claimed=%d "
+                       u8"no_payload=%d failed=%d submitted=%d throttled=%d",
+                     scanned, ready, in_flight, claimed, no_payload, failed, submitted, throttled);
         }
     }
 

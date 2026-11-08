@@ -547,7 +547,12 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
 
         if(exist && exist->GetSourceKind()==uri.kind
                  && MakeLoadedFileKey(exist->GetFilename())==key)
+        {
+            // 追踪用：命中已有句柄 ⇒ 谁在引用它（配方名由调用方 MaterialRecipeRegistry 打）
+            GLogVerbose(u8"[TextureManager] 纹理句柄命中已有：#%d %s",
+                        i,ToU8String(uri.raw).c_str());
             return(exist);
+        }
     }
 
     TextureAsset *asset=new TextureAsset(this);
@@ -559,6 +564,12 @@ TextureAsset *TextureManager::CreateTextureAsset(const OSString &filename,bool a
     }
 
     texture_assets.Add(asset);
+
+    // 追踪用：句柄入表 = 进入 TextureStreamingSystem 的工作集（之后会被无条件读盘）。
+    // 想知道"这个文件是谁要开的"，往上看同一条 URI 的 [MaterialRecipeRegistry] 归属日志。
+    GLogDebug(u8"[TextureManager] 纹理句柄入表：#%d（total=%d）%s auto_mip=%d",
+             texture_assets.GetCount()-1,texture_assets.GetCount(),
+             ToU8String(uri.raw).c_str(),auto_mipmaps?1:0);
 
     return(asset);
 }
@@ -603,6 +614,11 @@ TextureAsset *TextureManager::GetOrCreateTextureArrayAsset(const TextureURI &uri
     }
 
     texture_assets.Add(asset);
+
+    // 追踪用：数组句柄在**创建期**就同步读盘装配（与文件句柄的异步流送不同）
+    GLogDebug(u8"[TextureManager] 纹理数组句柄入表：#%d（total=%d）%s spec=%s",
+              texture_assets.GetCount()-1,texture_assets.GetCount(),
+              ToU8String(uri_text).c_str(),ToU8String(spec_path).c_str());
 
     return(asset);
 }
