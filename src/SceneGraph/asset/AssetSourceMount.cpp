@@ -398,6 +398,20 @@ namespace hgl::graph
         return asset::GetSource(AnsiString(name));
     }
 
+    int ListMountedAssetSourceNames(ManagedArray<AnsiString> &out_names)
+    {
+        int added = 0;
+
+        for (auto &item : mount_roots)
+        {
+            // `ManagedArray` 拥有元素指针 ⇒ 放副本，不能放 `mount_roots` 里的借用。
+            out_names.Create(item.first);
+            ++added;
+        }
+
+        return added;
+    }
+
     bool GetAssetMountRoot(const AnsiString &name,OSString &out_root)
     {
         out_root.Clear();

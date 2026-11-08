@@ -2,6 +2,7 @@
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -568,9 +569,19 @@ namespace
             return false;
         if (graphics.FindOrLoadMaterialRecipe("") != nullptr)
             return false;
+
+        // 按需加载改造后，短名解析走「包裹索引的文件名检索」，不再有全量目录兜底。
+        // 因此查找前必须像 AppFramework 那样先挂载包裹（cwd = 仓库根）。
+        if (!hgl::graph::MountAssetSourcesFromToml(OS_TEXT("asset_mount.toml")))
+            return false;
+
         if (!graphics.FindOrLoadMaterialRecipe("PBRSpheres.Lit"))
             return false;
-        return graphics.FindOrLoadMaterialRecipe("RecipeParser.Nonexistent") == nullptr;
+        if (graphics.FindOrLoadMaterialRecipe("RecipeParser.Nonexistent") != nullptr)
+            return false;
+
+        hgl::graph::UnmountAllAssetSources();
+        return true;
     }
 }
 

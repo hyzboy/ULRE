@@ -110,6 +110,18 @@ namespace hgl
     asset::AssetSource *GetMountedAssetSource(const char *name=DEFAULT_ASSET_SOURCE_NAME);
 
     /**
+     * 列举当前已挂载包裹的挂载名（`pack(<name>)` 的 `<name>` 段）。
+     *
+     * 存在的理由：`AssetSource` 进程级注册表只支持「按名取源」，而「按短名在
+     * 所有包裹的索引里找那一个资产」（材质配方按需加载）需要遍历挂载集合。
+     * 名字来自引擎侧挂载记录，与 `GetMountedAssetSource` 严格一致。
+     *
+     * @param out_names 追加写入，不清空调用方已有内容
+     * @return 新增的挂载名数量
+     */
+    int ListMountedAssetSourceNames(ManagedArray<AnsiString> &out_names);
+
+    /**
      * 列举包裹内某个目录的直接子项。
      *
      * 为什么需要它：材质配方不写在模型包里，场景只给出材质名，配方文件名（

@@ -20,6 +20,7 @@
 
 #include <hgl/vk/VKDevice.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
+#include <hgl/type/UnorderedMap.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/asset/LevelAssetRegistry.h>
@@ -110,7 +111,26 @@ namespace hgl::graph
         /// Recipe data contains non-owning TextureAsset handles; its registry must
         /// outlive every PrimitiveAsset authored from it and remain device-scoped.
         mtl::MaterialRecipeRegistry material_recipe_registry_;
-        bool default_material_recipes_loaded_ = false;
+
+        /**
+         * 按需配方加载的「请求串 → 注册表内配方名」缓存。
+         *
+         * `GetRecipe` 的入参形态五花八门（短名 / 逻辑路径 / `rcp:` URI / 物理路径），
+         * 注册表只认**配方名**。首次解析成功后记下映射，之后逐帧查找都省掉重新
+         * 定位取流的开销；值为空串表示「该请求已确认取不到」—— 不再重试取流，
+         * 避免每帧刷屏。注册器被清空（无设备 → 有设备切换）时必须同步清空本表。
+         */
+        hgl::UnorderedMap<AnsiString, AnsiString> recipe_lookup_cache_;
+
+        /// 按需解析并加载单个配方（URI / 包裹索引定位 + 父链补载），含缓存。
+        const mtl::MaterialRecipe *ResolveMaterialRecipe(const char *request, int depth);
+
+        /// 把任意请求形态定位成「可交给 `OpenAssetInputStream` 的 URI 文本」。
+        bool LocateMaterialRecipeURI(const char *request, OSString &out_uri);
+
+        /// 取流 → `MaterialRecipeRegistry::LoadFromStream` 的最短路径。
+        /// 成功或重名命中已存在配方都回填 `out_recipe_name`。
+        bool LoadMaterialRecipeFromURI(const OSString &uri_text, AnsiString &out_recipe_name);
 
         /// 几何资产句柄表（设备级，拥有句柄及其 Geometry）。
         /// 必须在 `GeometryManager` 之后创建、在其之前销毁：句柄里的 Geometry
