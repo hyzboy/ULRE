@@ -57,6 +57,9 @@ namespace hgl
                                 ///<  级联求值由 Transform2DSystem（TickTransform）承担（见 Transform2DComponent.h）
             Layer2D,              ///< 2D 层级/排序（CPU-only 类型号）——layer_id + order_in_layer + 子树裁切声明，
                                 ///<  排序与剔除由 CullAndSort2DSystem（RenderBatch）承担（见 Layer2DComponent.h）
+            Sprite2D,             ///< 2D 精灵（CPU-only 类型号）——Transform2D 树的图片载体声明：
+                                ///<  Sprite2DSyncSystem（TickPostCamera）把它桥接为场景管线的
+                                ///<  UnlitTexture 单位矩形（像素→NDC TRS + 纹理覆盖，见 Sprite2DComponent.h）
             End,
         };
 
@@ -132,6 +135,7 @@ namespace hgl
             { ComponentType::RigidBody,           ComponentScope::World, "ECS:RigidBody",           0, "RigidBodyComponent",           SystemGroupID::None }, ///< CPU-only：物理刚体与物理模拟状态
             { ComponentType::Transform2D,         ComponentScope::World, "ECS:Transform2D",         0, "Transform2DComponent",         SystemGroupID::Hierarchy2D }, ///< CPU-only：2D 层级树变换（父子指针 + 局部/世界 2D 仿射）；无 GPU 行
             { ComponentType::Layer2D,             ComponentScope::World, "ECS:Layer2D",             0, "Layer2DComponent",             SystemGroupID::Hierarchy2D }, ///< CPU-only：2D 排序层 + 子树裁切声明；无 GPU 行
+            { ComponentType::Sprite2D,            ComponentScope::World,  "ECS:Sprite2D",            0, "Sprite2DComponent",            SystemGroupID::Hierarchy2D }, ///< CPU-only：2D 精灵（桥接 UnlitTexture 场景管线）；无 GPU 行
         };
 
         namespace detail
