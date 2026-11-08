@@ -66,11 +66,15 @@ namespace
 
 namespace
 {
-    /// 一套可热切的环境资产。示例只认识 **URI**：配方 / 几何体 / 投影形态（cube 还是
-    /// 八面体）/ LDR 曝光策略 / provider 全在 `*.env.toml` 里，示例不再逐个字段赋值。
+    /// 一档可热切的天空组合。示例只认识 **URI + 技术档位**：配方 / 几何体 /
+    /// 投影形态（cube 还是八面体）/ LDR 曝光策略 / provider 全在统一资产
+    /// `sky_34.env.toml` 的技术段里，示例不再逐个字段赋值。
     ///
-    /// 这就是「环境配置资产化」的意义：换一套天空 + 天光 = 换一个字符串，而不是在
-    /// 代码里重新拼 `SkyEnvironmentConfig`。整套预设放在
+    /// 这就是「环境配置资产化」的意义：换一套天空 + 天光 = 换一个字符串（外加
+    /// 一个 `SkyTechnique` 档位），而不是在代码里重新拼 `SkyEnvironmentConfig`。
+    /// **画质档位不在资产里** —— 资产把五种技术并列配全，由外面的画质系统选档：
+    /// 高配 `CubeMap`（HDR IBL）、低配 `Octahedral` / `LambertDome`（LDR IBL）、
+    /// 超低配 `SH9`（纯球谐天光，无视觉天空）。资产文件放在
     /// `ShaderLibrary/asset/environment/`（见 `kEnvAssetDirectory`）。
     struct SkyEnvPreset
     {
@@ -106,6 +110,17 @@ namespace
      * 为什么不能只靠交互手测：热切路径的真事故是"拆了旧的没建起新的"（天空实体
      * 消失 / provider 槽没换 / 句柄悬空），这些在日志里只差一行，眼睛很难盯住五连切。
      * 摘要两两不同即可证明"每一档都真的换了画面"，比逐个模式钉死像素更抗材质微调。
+     *
+     * 基线参考（`sun_dir = normalize(0.35, 0.55, 0.76)`、`sky_34` 统一资产、
+     * 10 帧/档取摘要；改渲染数学或资产数据后有出入时**先人眼复核再更新这里**）：
+     *
+     * | 档 | 模式            | mean_luma | fnv1a64              |
+     * |----|-----------------|-----------|----------------------|
+     * | 1  | 大气（解析）    | 0.2470    | 0xA3828C6D882D4C50   |
+     * | 2  | Cubemap IBL     | 0.6701    | 0x81A199C92C6204AA   |
+     * | 3  | 八面体 IBL      | 0.6701    | 0x588233B412645C90   |
+     * | 4  | Lambert 穹顶    | 0.1295    | 0x8BBE0E754EF6F6CF   |
+     * | 5  | SH9 球谐天光    | 0.0784    | 0x229CA395E78808FE   |
      */
     bool CycleSelfTest()
     {
@@ -261,9 +276,10 @@ private:
     /**
      * 把一档预设交给托管层。
      *
-     * 示例侧现在只剩一行：`SetupSkyEnvironment(uri)`。投影形态（`.TexCube` / `.TexOct`）、
-     * provider 名、HDR/LDR 策略、几何体与 scale 全在资产文件里 —— 这正是"环境配置
-     * 资产化"要达到的效果：加一套新的天空组合不需要改示例。
+     * 示例侧现在只剩一行：`SetupSkyEnvironment(uri, technique)`。投影形态（Cube /
+     * Oct 由 URI 前缀推导）、provider 名、HDR/LDR 策略、几何体与 scale 全在统一
+     * 资产的对应技术段里 —— 这正是"环境配置资产化"要达到的效果：加一套新的
+     * 天空组合只需要改资产 + 选档位，不需要在示例里拼配置。
      */
     bool ApplySkyMode(int index)
     {
