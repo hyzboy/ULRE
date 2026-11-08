@@ -73,6 +73,13 @@
 //   CSTRESS_ORBIT=<deg/s> 轨道转速（默认 10）
 //   CSTRESS_SAMPLE=N      每 N 帧采一次 GPU 侧面（默认 60；采样帧会 fence 等待）
 //   CSTRESS_SEED=N        骰子初始位置/朝向的随机种子（默认 20260814）
+//   CSTRESS_PROFILE=1     采样帧打印分槽耗时报表（**CSTRESS_SAMPLE=0 时无报表**）
+//   CSTRESS_TOPO=1        ≡ `ULRE_MAINFRAME_TOPO_CACHE=1`：构建主帧拓扑快照
+//   CSTRESS_COLLECT_CACHE=1  ≡ `ULRE_MAINFRAME_COLLECT_CACHE=1`：让快照接管收集
+//                         （**必须同时 `CSTRESS_TOPO=1`**，单独开无效）
+//
+// 收集快路径 / 批计划重放的机制、失效判据、报表读法与实测数据：
+//   `doc/primitive-collect-cache-and-batch-plan.md`
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/ModelTemplateManager.h>
