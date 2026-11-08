@@ -120,6 +120,10 @@ public:
             if(Transform2DComponent *t2 = scaler_sp->GetOwner()->GetComponent<Transform2DComponent>())
                 t2->SetSize(s, s);
         }
+
+        // 尾调基类：WorkObject::Tick 转发 ECSContext::Tick，
+        // 2D 层级求值/精灵同步等 tick 相位系统由此驱动（覆写不调基类会全停）。
+        WorkObject::Tick(delta_time);
     }
 
 private:
