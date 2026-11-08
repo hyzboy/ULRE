@@ -1,0 +1,23 @@
+schema = 1
+name = "Sprite2D.UnlitTexture"
+domain = "UnlitTexture"
+
+[[textures]]
+name = "base_color"
+asset = "file:res/image/lena.Tex2D"
+required = true
+auto_mipmaps = true
+
+[transform]
+source = "Vec2Position"
+mapping = "ZeroOneToNDC"
+orientation = "World"
+scale = "World"
+projection = "LocalToWorldOnly"
+
+[render_state.pipeline]
+cull_mode = "None"
+depth_test = false
+depth_write = false
+depth_compare_op = "Always"
+overlay = true
