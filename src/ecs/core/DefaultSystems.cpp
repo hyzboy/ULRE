@@ -8,6 +8,7 @@
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
 #include <hgl/ecs/systems/tick/Transform2DSystem.h>
 #include <hgl/ecs/support/hierarchy2d/CullAndSort2DSystem.h>
+#include <hgl/ecs/support/hierarchy2d/Sprite2DSyncSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineBuildSystem.h>
@@ -213,6 +214,11 @@ namespace
 
         // 剔除 + 排序表（RenderBatch 相位，依赖上者）
         EnsureSystem<hgl::ecs::CullAndSort2DSystem>(ctx);
+
+        // 精灵桥：Sprite2DComponent → 场景管线 UnlitTexture 单位矩形（TickPostCamera）
+        auto sprite_sync = EnsureSystem<hgl::ecs::Sprite2DSyncSystem>(ctx);
+        if (sprite_sync)
+            sprite_sync->SetWorld(ctx);
 
         return true;
     }

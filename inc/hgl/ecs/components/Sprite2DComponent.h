@@ -52,7 +52,7 @@ namespace hgl::ecs
         hgl::graph::TextureAsset *GetTextureAsset() const { return texture_asset; }
         bool HasTextureOverride() const { return texture != nullptr || texture_asset != nullptr; }
 
-        /// 用已就绪纹理覆盖 base_color（传 null 清除覆盖，回退配方默认图）
+        /// 用已就绪纹理覆盖 base_color（传 null 视为清除意图，见类注释的清除限制）
         void SetTexture(hgl::graph::Texture *tex)
         {
             if (tex == texture && texture_asset == nullptr) return;
@@ -61,7 +61,8 @@ namespace hgl::ecs
             ++texture_generation;
         }
 
-        /// 用资产句柄覆盖 base_color（MetaOnly 句柄自动流送；传 null 清除覆盖）
+        /// 用资产句柄覆盖 base_color（MetaOnly 句柄自动流送；材质侧无移除入口，
+        /// 清除/换图后已下发的覆盖在切图完成前保持）
         void SetTextureAsset(hgl::graph::TextureAsset *asset)
         {
             if (asset == texture_asset && texture == nullptr) return;
@@ -70,7 +71,8 @@ namespace hgl::ecs
             ++texture_generation;
         }
 
-        /// 清除覆盖，回退到配方默认纹理
+        /// 清除覆盖意图：递增代数以停止后续下发；已写入材质的覆盖无法回退
+        /// （MaterialData 暂无纹理移除入口，限制已记在类注释）
         void ClearTextureOverride()
         {
             if (!texture && !texture_asset) return;
