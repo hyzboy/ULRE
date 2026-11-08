@@ -61,8 +61,36 @@ namespace hgl
      */
     bool MountDefaultAssetSources(AnsiString *out_error=nullptr);
 
+    /**
+     * @brief 从 TOML 配置文件批量挂载资产包裹（推荐的统一入口）。
+     *
+     * 挂载是**进程级**的资产寻址能力，与图形设备无关 —— 因此调用方应当是
+     * 应用框架（`AppFramework::Init`），而不是 GraphicsContext。配置文件
+     * 形如：
+     *
+     * ```toml
+     * [[mount]]
+     * name = "res"              # 对应 pack(res)
+     * root = "res"              # 相对当前工作目录或绝对路径
+     * build_index = true        # 可选，默认 true
+     * load_manifest = true      # 可选，默认 true
+     * save_manifest = false     # 可选，默认 false
+     * ```
+     *
+     * 逐条走 `MountAssetSource`（同名幂等跳过）；单条失败只告警不中断其余条目，
+     * 目录不存在同样不视为致命错误（与 `MountDefaultAssetSources` 的宽容策略一致）。
+     *
+     * @param path      配置文件路径（OS 路径）
+     * @param out_error 打开/解析失败的原因（可为 nullptr）
+     * @return 至少成功挂载一个包裹返回 true
+     */
+    bool MountAssetSourcesFromToml(const OSString &path,AnsiString *out_error=nullptr);
+
     /// 注销指定包裹（挂载名不存在时静默返回）。
     void UnmountAssetSource(const AnsiString &name);
+
+    /// 注销全部已挂载包裹（框架退出时与 `MountAssetSourcesFromToml` 成对调用）。
+    void UnmountAllAssetSources();
 
     /// 注销全部默认包裹（与 `MountDefaultAssetSources` 成对调用）。
     void UnmountDefaultAssetSources();

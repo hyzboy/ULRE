@@ -5,8 +5,12 @@
 #include<hgl/io/FileInputStream.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Log.h>
+#include<hgl/serialize/TomlCodec.h>
 #include<hgl/type/ManagedArray.h>
+#include<hgl/type/Smart.h>
+#include<hgl/type/StringList.h>
 #include<hgl/type/UnorderedMap.h>
+#include<hgl/utf.h>
 
 DEFINE_LOGGER_MODULE(AssetMount)
 USE_MODULE_LOGGER(AssetMount)
@@ -122,6 +126,137 @@ namespace hgl::graph
         return MountAssetSource(config,out_error);
     }
 
+    bool MountAssetSourcesFromToml(const OSString &path,AnsiString *out_error)
+    {
+        if(out_error)
+            out_error->Clear();
+
+        // ── 读入配置文件全文 ────────────────────────────────────────────────
+        io::OpenFileInputStream opener(path);
+
+        if(!opener)
+        {
+            if(out_error)
+                *out_error="mount toml: cannot open file";
+            FLogWarning(OS_TEXT("无法打开资产挂载配置文件：")+path);
+            return false;
+        }
+
+        const int64 size=opener->GetSize();
+
+        if(size<=0||size>INT_MAX)
+        {
+            if(out_error)
+                *out_error="mount toml: file is empty or too large";
+            FLogWarning(OS_TEXT("资产挂载配置文件内容为空或过大：")+path);
+            return false;
+        }
+
+        AutoDeleteArray<char> buffer;
+
+        if(!buffer.alloc(static_cast<size_t>(size)+1))
+        {
+            if(out_error)
+                *out_error="mount toml: out of memory";
+            return false;
+        }
+
+        if(opener->Read(buffer.data(),size)!=size)
+        {
+            if(out_error)
+                *out_error="mount toml: read failed";
+            return false;
+        }
+
+        buffer[static_cast<size_t>(size)]=0;
+
+        // ── TOML → 值树（toml11 封在 CMAssetsManage 内，这里只摸 Value）────
+        serialize::Value root;
+        serialize::TomlParseError parse_error;
+
+        if(!serialize::FromTomlText(buffer.data(),static_cast<size_t>(size),root,&parse_error))
+        {
+            const AnsiString detail=parse_error.Format();
+
+            if(out_error)
+                *out_error="mount toml: parse failed: "+detail;
+            FLogError(OS_TEXT("资产挂载配置文件解析失败（")+ToOSString(detail.c_str())
+                      +OS_TEXT("）：")+path);
+            return false;
+        }
+
+        const serialize::Value *mounts=root.FindFieldExact("mount");
+
+        if(!mounts||!mounts->IsArray())
+        {
+            if(out_error)
+                *out_error="mount toml: no [[mount]] array";
+            FLogWarning(OS_TEXT("资产挂载配置文件缺少 [[mount]] 数组：")+path);
+            return false;
+        }
+
+        // ── 逐条挂载：单条失败只记录，不中断其余条目 ────────────────────────
+        const int count=mounts->GetElementCount();
+        int mounted_count=0;
+        AnsiString first_error;
+
+        for(int i=0;i<count;i++)
+        {
+            const serialize::Value *item=mounts->GetElement(i);
+
+            if(!item||!item->IsTable())
+                continue;
+
+            const serialize::Value *name_v =item->FindFieldExact("name");
+            const serialize::Value *root_v =item->FindFieldExact("root");
+
+            if(!name_v||!name_v->IsString()||!root_v||!root_v->IsString())
+            {
+                FLogWarning(u8"资产挂载配置第 %d 条缺少 name/root 字符串字段，跳过",i+1);
+                continue;
+            }
+
+            AssetSourceMountConfig config;
+
+            const U8String &name_u8=name_v->GetString();
+            const U8String &root_u8=root_v->GetString();
+
+            config.name=AnsiString(reinterpret_cast<const char *>(name_u8.c_str()),
+                                   static_cast<int>(name_u8.Length()));
+            config.root=ToOSString(root_u8);
+
+            bool flag;
+            const serialize::Value *v=item->FindFieldExact("build_index");
+            if(v&&v->GetBool(flag))
+                config.build_index=flag;
+            v=item->FindFieldExact("load_manifest");
+            if(v&&v->GetBool(flag))
+                config.load_manifest=flag;
+            v=item->FindFieldExact("save_manifest");
+            if(v&&v->GetBool(flag))
+                config.save_manifest=flag;
+
+            AnsiString item_error;
+
+            if(MountAssetSource(config,&item_error))
+                ++mounted_count;
+            else if(first_error.IsEmpty()&&!item_error.IsEmpty())
+                first_error=item_error;
+        }
+
+        if(mounted_count==0)
+        {
+            if(out_error&&!first_error.IsEmpty())
+                *out_error=first_error;
+            return false;
+        }
+
+        FLogInfo(OS_TEXT("从配置文件挂载了 ")+OSString::numberOf(mounted_count)
+                 +OS_TEXT(" 个资产包裹：")+path);
+
+        return true;
+    }
+
     void UnmountAssetSource(const AnsiString &name)
     {
         if(asset::UnregisterAssetsSource(name))
@@ -133,6 +268,19 @@ namespace hgl::graph
     void UnmountDefaultAssetSources()
     {
         UnmountAssetSource(DEFAULT_ASSET_SOURCE_NAME);
+    }
+
+    void UnmountAllAssetSources()
+    {
+        // UnmountAssetSource 会 DeleteByKey，边遍历边删会让迭代器失效 ⇒ 先快照键名。
+        // （变量不叫 names：会撞 hgl::names() 自由函数，`names[i]` 被解析成调用。）
+        AnsiStringList mount_names;
+
+        for(const auto &pair : mount_roots)
+            mount_names.Add(pair.first);
+
+        for(int i=0;i<mount_names.GetCount();i++)
+            UnmountAssetSource(mount_names[i]);
     }
 
     bool ResolveAssetPhysicalPath(const OSString &uri_text,asset::AssetType default_type,OSString &out_path)

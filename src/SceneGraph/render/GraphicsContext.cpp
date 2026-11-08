@@ -322,10 +322,11 @@ namespace hgl::graph
         if (material_async_lane_ && asset_cpu_pool_)
             material_async_lane_->AttachPool(asset_cpu_pool_);
 
-        // 资产包裹挂载：把 `res/` 登记成 `pack(res)`。此后资产引用统一走
-        // `pack(res):<逻辑路径>`（无扩展名）或 `pack(res):id:<32 hex>`，
-        // 与「字节从哪一个 IO 后端来」解耦（目录包裹 ⇄ 打包文件只换后端）。
-        // 失败不阻断启动：早期示例仍用裸物理路径。
+        // 资产包裹挂载的正常路径在 AppFramework::Init（读 asset_mount.toml，
+        // 进程级、与图形无关）。这里只做兜底：无框架参与（如纯引擎测试）时
+        // 补挂默认 res；同名挂载幂等跳过，绝不会覆盖框架已挂好的表。
+        // 注销同样归框架退出路径（AppFramework 析构 → UnmountAllAssetSources）。
+        if (GetMountedAssetSource() == nullptr)
         {
             AnsiString mount_error;
 
@@ -374,10 +375,8 @@ namespace hgl::graph
             SAFE_CLEAR(loaded_file_manager_)
         }
 
-        // 与 Initialize 里成对：注销默认资产包裹（挂载表是进程级的）。
-        // 必须在 LoadedFileManager 停稳之后 —— 包裹内部持有的流仍可能被
-        // 已提交但未派发的读盘任务引用。
-        UnmountDefaultAssetSources();
+        // 包裹注销已上收到框架退出路径（AppFramework 析构），必须晚于此处
+        // LoadedFileManager 停稳 —— 时序由框架保证，本上下文不再代管。
 
         // 图元资产绑定表持有几何/配方注册器的裸指针 ⇒ 必须先于它们清空。
         if (primitive_asset_registry_ready_)

@@ -19,6 +19,7 @@
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <hgl/graph/asset/AssetSourceMount.h>
 
 namespace hgl
 {
@@ -135,6 +136,9 @@ namespace hgl
             graph::mtl::UninstallDomainShaderBuildBackend();
             graph::CloseShaderCompiler();
 #endif
+            // 与 Init 的挂载成对：此时图形上下文与各装载器均已销毁，
+            // 注销全部包裹不会让任何在途读盘踩空。
+            graph::UnmountAllAssetSources();
         }
     }
 
@@ -181,6 +185,27 @@ namespace hgl
 #endif
 
             logger::InitLogger(app_name);
+
+            // 资产包裹统一挂载（进程级能力，职责在框架而非图形层）：
+            // 读当前工作目录下的 asset_mount.toml，逐条登记 pack(<name>)；
+            // 找不到配置文件才退回内置默认（仅 res）。失败不阻断启动 ——
+            // 缺包裹只是让 pack 寻址不可用，历史裸路径引用仍按物理路径解析。
+            {
+                AnsiString mount_error;
+                const OSString mount_config = OS_TEXT("asset_mount.toml");
+
+                if (!graph::MountAssetSourcesFromToml(mount_config, &mount_error))
+                {
+                    if (!mount_error.IsEmpty() &&
+                        mount_error != AnsiString("mount toml: cannot open file"))
+                        GLogWarning("资产挂载配置未生效（%s），退回默认包裹",
+                                    mount_error.c_str());
+
+                    if (!graph::MountDefaultAssetSources(&mount_error) &&
+                        !mount_error.IsEmpty())
+                        GLogWarning("默认资产包裹挂载失败：%s", mount_error.c_str());
+                }
+            }
 
             InitNativeWindowSystem();
         }

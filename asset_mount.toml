@@ -1,0 +1,27 @@
+# ── 资产包裹挂载配置 ──────────────────────────────────────────────────────
+# 应用框架启动时（AppFramework::Init）读取本文件，把每个 [[mount]] 条目登记为
+# `pack(<name>)` 资产来源。此后所有资产引用统一写成：
+#
+#     pack(<name>):<包内路径>          例：pack(res):image/lena.Tex2D
+#     pack(<name>):id:<32 hex>         身份寻址（需清单/索引）
+#
+# 与「字节从哪个 IO 后端来」解耦：目录包裹换成打包文件只改后端不改引用。
+# 查找规则：以当前工作目录下的 asset_mount.toml 为准；找不到时框架退回
+# 内置默认（仅挂 res）。示例程序均在仓库根启动，本文件即全局生效。
+#
+# 字段说明：
+#   name          挂载名（必填，对应 pack(<name>)）
+#   root          目录根（必填，相对当前工作目录或绝对路径）
+#   build_index   扫描建索引（可选，默认 true；关掉等于退回按路径摸文件）
+#   load_manifest 挂载前读 <root>/.asset_manifest.toml（可选，默认 true）
+#   save_manifest 对拍不一致时回写清单（可选，默认 false；只应离线做）
+
+[[mount]]
+name = "res"
+root = "res"
+
+[[mount]]
+name = "ShaderLibrary"
+root = "ShaderLibrary"
+# 着色器库是原始文件树（.slang/.toml 直读），不需要清单对拍
+load_manifest = false
