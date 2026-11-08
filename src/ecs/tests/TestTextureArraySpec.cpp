@@ -400,6 +400,22 @@ namespace
         // 已带扩展名 / 非磁盘形态 / 不存在 ⇒ 原样返回
         Check(graph::ProbeTextureURI(OS_TEXT("res/image/lena.Tex2D")) == OS_TEXT("res/image/lena.Tex2D"),
               "已带扩展名不重复探测");
+        // 扩展名判定取**最后一个**点：前面还能有点，只要末段落在容器表里就算已带扩展名
+        Check(graph::ProbeTextureURI(OS_TEXT("res/image/mipmaps/MipLevels.RGBA8.Tex2D"))
+                  == OS_TEXT("res/image/mipmaps/MipLevels.RGBA8.Tex2D"),
+              "多点的完整名按最后一个点判定为已带扩展名");
+
+        // 名字里的点不是扩展名：这种词干照样得按 kind 补全（历史漏网的一支）。
+        Check(graph::ProbeTextureURI(OS_TEXT("res/image/mipmaps/MipLevels.RGBA8"))
+                  == OS_TEXT("res/image/mipmaps/MipLevels.RGBA8.Tex2D"),
+              "词干含点必须补出 .Tex2D（MipLevels.RGBA8）");
+        Check(graph::ProbeTextureURI(OS_TEXT("res/image/mipmaps/MipLevels.BC7"))
+                  == OS_TEXT("res/image/mipmaps/MipLevels.BC7.Tex2D"),
+              "词干含点必须补出 .Tex2D（MipLevels.BC7）");
+        // 原文本身就能命名时不改写：`.toml` 不在容器后缀表里，但文件真实存在。
+        Check(graph::ProbeTextureURI(OS_TEXT("ShaderLibrary/asset/recipe/TextureQuad.recipe.toml"))
+                  == OS_TEXT("ShaderLibrary/asset/recipe/TextureQuad.recipe.toml"),
+              "原文命中的含点路径不许被补成 .Tex2D");
         Check(graph::ProbeTextureURI(OS_TEXT("rt:GBuffer:depth")) == OS_TEXT("rt:GBuffer:depth"),
               "rt: 非磁盘形态不探测");
         Check(graph::ProbeTextureURI(OS_TEXT("texarray:@pbr_10x10_baseColor"))

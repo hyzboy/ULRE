@@ -378,26 +378,6 @@ namespace hgl::graph
         if(kind==TextureURIKind::File&&assume_kind!=TextureURIKind::File)
             kind=assume_kind;
 
-        // 「有无扩展名」只看最后一段：pack 名或目录里的点不算扩展名。
-        const OSString target=parsed.IsPackURI()?parsed.GetPackTarget():parsed.path;
-        const int len=target.Length();
-
-        if(len>0)
-        {
-            const os_char *data=target.c_str();
-
-            for(int i=len-1;i>=0;i--)
-            {
-                const os_char ch=data[i];
-
-                if(ch==OS_TEXT('.'))
-                    return(uri);                      // 已带扩展名：不探测，原样返回
-
-                if(ch==OS_TEXT('/')||ch==OS_TEXT('\\')||ch==OS_TEXT(':'))
-                    break;
-            }
-        }
-
         static const os_char *const k2DCandidates[] =
             {OS_TEXT(".Tex2D"),OS_TEXT(".png"),OS_TEXT(".jpg"),OS_TEXT(".tga"),
              OS_TEXT(".bmp"),OS_TEXT(".hdr"),OS_TEXT(".dds"),OS_TEXT(".ktx2")};
@@ -405,6 +385,69 @@ namespace hgl::graph
             {OS_TEXT(".TexCube"),OS_TEXT(".ktx"),OS_TEXT(".hdr"),OS_TEXT(".dds")};
         static const os_char *const kOctaCandidates[] =
             {OS_TEXT(".TexOct")};
+
+        // 容器扩展名总表（三组候选的并集 + 常见图片后缀）。判「有没有扩展名」
+        // 只认这张表：名字里的点（`MipLevels.RGBA8`、`hero.v2`、`a.recipe.toml`）
+        // 不是扩展名，这种词干照样得走补全。
+        static const os_char *const kContainerSuffixes[] =
+            {OS_TEXT(".Tex2D"),OS_TEXT(".TexCube"),OS_TEXT(".TexOct"),
+             OS_TEXT(".png"),OS_TEXT(".jpg"),OS_TEXT(".jpeg"),OS_TEXT(".tga"),
+             OS_TEXT(".bmp"),OS_TEXT(".hdr"),OS_TEXT(".exr"),OS_TEXT(".psd"),
+             OS_TEXT(".dds"),OS_TEXT(".ktx"),OS_TEXT(".ktx2")};
+
+        // 「有无扩展名」只看最后一段：pack 名或目录里的点不算扩展名。
+        const OSString target=parsed.IsPackURI()?parsed.GetPackTarget():parsed.path;
+        const int len=target.Length();
+        bool dotted_name=false;
+
+        if(len>0)
+        {
+            const os_char *data=target.c_str();
+
+            // 从右向左找**最后一个**点：点之后的文本才是扩展名候选。
+            // 遇到分隔符说明这一段没有点（目录里的点不参与）。
+            int dot=-1;
+
+            for(int i=len-1;i>=0;i--)
+            {
+                const os_char ch=data[i];
+
+                if(ch==OS_TEXT('.'))
+                {
+                    dot=i;
+                    break;
+                }
+
+                if(ch==OS_TEXT('/')||ch==OS_TEXT('\\')||ch==OS_TEXT(':'))
+                    break;
+            }
+
+            if(dot>=0)
+            {
+                // 候选必须落在容器后缀表里才算"已带扩展名"；
+                // `MipLevels.RGBA8` 的 `RGBA8`、`a.recipe.toml` 的 `toml` 只是名字的一部分。
+                for(const os_char *suffix : kContainerSuffixes)
+                    if(HasSuffixNoCase(target,suffix))
+                        return(uri);                  // 已带扩展名：不探测，原样返回
+
+                dotted_name=true;                     // 点属于名字：整段按词干继续探测
+            }
+        }
+
+        // 名字带点时先让原文赢一次：`a.recipe.toml` 这类完整逻辑名不许被改写成
+        // `a.recipe.toml.Tex2D`。
+        if(dotted_name)
+        {
+            if(parsed.IsPackURI())
+            {
+                OSString physical;
+
+                if(ResolveAssetPhysicalPath(uri,asset::AssetType::Texture,physical))
+                    return(uri);
+            }
+            else if(hgl::filesystem::FileExist(parsed.path))
+                return(uri);
+        }
 
         const os_char *const *candidates;
         int count;

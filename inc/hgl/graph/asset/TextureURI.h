@@ -142,6 +142,10 @@ namespace hgl::graph
      *
      * 对磁盘形态（File/CubeFile/OctaFile）且**目标不带容器扩展名**的 URI，
      * 按类型前缀补出候选名并验证存在性，返回补全后的 URI 原文（前缀保留）：
+     * 「带没带扩展名」= 从右向左取**最后一个点**之后的文本，再查下面的容器后缀表 ——
+     * 表里没有就不算扩展名：`image/mipmaps/MipLevels.RGBA8` 的 `RGBA8` 是名字的一部分，
+     * 整段按词干补全（实体 `MipLevels.RGBA8.Tex2D`）；`a.recipe.toml` 这种原文本身
+     * 就能命名的，先按原文返回、不改写。
      * - `tex2d:x` / `file:x` / 裸 `x` → 依次试 `.Tex2D .png .jpg .tga .bmp .hdr .dds .ktx2`
      *   （裸 `x` 由 `assume_kind` 告知调用方期望的形态，例如 `LoadTextureCube` 传 `CubeFile`）；
      * - `texcube:x` / `cubefile:x` → 试 `.TexCube .ktx .hdr .dds`；
@@ -151,7 +155,7 @@ namespace hgl::graph
      * `sky_34_cubemap_2k`），因此**必须**按 kind 选候选，不能猜。
      * 验证方式：`pack(<name>):` 形态走 `ResolveAssetPhysicalPath`（挂载表索引），
      * 普通路径走 `hgl::filesystem::FileExist`（相对 CWD）。
-     * 已带扩展名、非磁盘形态、或全部候选落空时**原样返回**，不重写。
+     * 已带表内扩展名、非磁盘形态、或全部候选落空时**原样返回**，不重写。
      *
      * 返回值是「补全后的规范名」，下游缓存键/去重键用它可让 `tex2d:x` 与
      * `x.Tex2D` 收敛到同一身份。
