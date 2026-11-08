@@ -6,6 +6,7 @@
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
+#include <hgl/ecs/systems/tick/Transform2DSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineBuildSystem.h>
@@ -199,6 +200,19 @@ namespace
         return true;
     }
 
+    bool InstallHierarchy2DGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
+    {
+        if (!ctx)
+            return false;
+
+        // 2D 层级求值器（tick 相位）：挂载 Transform2D/Layer2D 即懒装
+        auto transform_2d_system = EnsureSystem<hgl::ecs::Transform2DSystem>(ctx);
+        if (transform_2d_system)
+            transform_2d_system->SetWorld(ctx);
+
+        return true;
+    }
+
     void RegisterBuiltinSystemGroupInstallers()
     {
         static bool registered = false;
@@ -210,6 +224,7 @@ namespace
         registry.RegisterGroupInstaller(hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Primitive)], InstallPrimitiveGroup);
         registry.RegisterGroupInstaller(hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Text)],      InstallTextGroup);
         registry.RegisterGroupInstaller(hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Line)],      InstallLineGroup);
+        registry.RegisterGroupInstaller(hgl::ecs::kSystemGroupNames[static_cast<uint32_t>(hgl::ecs::SystemGroupID::Hierarchy2D)], InstallHierarchy2DGroup);
 
         registered = true;
     }
