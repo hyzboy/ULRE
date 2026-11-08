@@ -6,6 +6,9 @@ add_subdirectory(GLTFConvert)
 # 只留产物、不留这段代码。见 src/Tools/BuiltinAssets/README.md。
 add_subdirectory(BuiltinAssets)
 
+# .env 资产太阳方向拾取工具（引擎级工具，链 ULRE::Engine；见其目录内说明头）
+add_subdirectory(EnvSunPicker)
+
 # 发行形态探针：只链接 ULRE::Runtime，两种形态下都构建 ——
 # 它在 ON 树里编译也是在为 OFF 树做同样的工作，且能让「运行时反向依赖生成器」
 # 在开发形态就暴露成链接错误，而不是等到打发行包时才发现。
