@@ -947,6 +947,23 @@ namespace hgl::ecs
             world->GetPrimitiveTopologyLedger().ObserveGPUCullEngaged(all_engaged);
         }
 
+        // P2：主帧拓扑快照 —— 构建 + 对拍，**不改变任何绘制结果**。
+        //
+        // 位置：批阶段尾部（`FinalizeBatch` 之后）。理由：
+        //   · 成员集合（`materialBatches` / `items`）已定型；
+        //   · 跳过判据所需的「GPU 剔除是否接管」也已定型（上一行）。
+        // 只读 `cache`：不写字段、不搬指针、不清批。
+        //
+        // `IsMainFrameTopologyPass()` 与 P1 的资格谓词一致：阴影 pass 与移动性过滤
+        // pass 共用同一份 `RenderFrameCache`，成员集合天然不同 ⇒ 不参与主帧快照。
+        if (world && world->IsMainFrameTopologySnapshotEnabled() && world->IsMainFrameTopologyPass())
+        {
+            world->GetMainFrameTopologySnapshot().BuildFromCache(
+                cache,
+                world->GetPrimitiveTopologyLedger().GetTopologyRevision(),
+                cache.frame_serial);
+        }
+
         // 桶组（几何批）数已在上方逐批用 `FrameProfiler::Count` 累加。此处不再重复统计。
     }
 }

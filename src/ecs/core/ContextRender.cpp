@@ -718,6 +718,9 @@ namespace hgl::ecs
             // P1：目标尺寸变化 ⇒ 依赖 viewport/RT 尺寸的合批与桶布局需要重算。
             MarkTopologyChanged(TopologyChange::PassAndTarget);
 
+            // P2：RT/附件格式重算会换管线对象与 pass 尺寸 ⇒ 已提交主帧快照作废。
+            main_frame_topology_snapshot.Invalidate();
+
             // Ensure render target viewport/UBO are updated immediately for this extent.
             if (render_target)
                 render_target->OnResize(extent);

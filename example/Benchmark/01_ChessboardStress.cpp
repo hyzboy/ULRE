@@ -236,6 +236,7 @@ private:
     float    orbit_speed  = 10.0f;
     uint32_t sample_interval = 60;
     bool     profile_breakdown = true;   ///< 打印详细阶段耗时剖析
+    bool     topo_snapshot     = false;  ///< P2：开启主帧拓扑快照（只观测）
 
     std::string dump_tag;
     uint32_t    dump_frame  = 0;
@@ -816,6 +817,98 @@ private:
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // P2：主帧拓扑快照报表（只观测 —— 不改变任何绘制行为）
+    //
+    // 达标口径（P2 验收）：
+    //   · 稳态窗口 `命中 / (命中+未命中)` ≈ 100% —— 代数不变且内容不变，
+    //     P3 才可能真的跳过收集；
+    //   · **对拍不一致 = 0** —— 这是 P2 唯一的硬告警。非 0 表示有系统改了
+    //     成员集合/批归属却没上报代数，P3 一旦据此跳过就是静默丢绘制；
+    //   · `构建/帧` ≈ 1.0 —— 大于 1 说明不止一个 pass 抢当主帧
+    //     （阴影/移动性过滤 pass 已排除，剩下的可疑对象是离屏 RTT pass）。
+    // ─────────────────────────────────────────────────────────────────────
+    struct SnapshotCounters
+    {
+        uint64_t builds          = 0;
+        uint64_t commits         = 0;
+        uint64_t aborts          = 0;
+        uint64_t invalidations   = 0;
+        uint64_t hits            = 0;
+        uint64_t misses          = 0;
+        uint64_t parity_mismatch = 0;
+        uint64_t empty_builds    = 0;
+    };
+
+    SnapshotCounters snapshot_prev;
+
+    void ReportMainFrameSnapshot(uint32_t window_frames)
+    {
+        if (!ecs_context)
+            return;
+
+        const MainFrameTopologySnapshot & snapshot = ecs_context->GetMainFrameTopologySnapshot();
+        const SnapshotStats & s = snapshot.GetStats();
+
+        const double div = (window_frames > 0) ? double(window_frames) : 1.0;
+
+        auto Delta = [](uint64_t cur, uint64_t prev) -> uint64_t {
+            return (cur >= prev) ? (cur - prev) : 0;
+        };
+
+        const uint64_t builds   = Delta(s.builds,          snapshot_prev.builds);
+        const uint64_t commits  = Delta(s.commits,         snapshot_prev.commits);
+        const uint64_t aborts   = Delta(s.aborts,          snapshot_prev.aborts);
+        const uint64_t inval    = Delta(s.invalidations,   snapshot_prev.invalidations);
+        const uint64_t hits     = Delta(s.hits,            snapshot_prev.hits);
+        const uint64_t misses   = Delta(s.misses,          snapshot_prev.misses);
+        const uint64_t mismatch = Delta(s.parity_mismatch, snapshot_prev.parity_mismatch);
+        const uint64_t empty    = Delta(s.empty_builds,    snapshot_prev.empty_builds);
+
+        const double hit_pct = (hits + misses > 0)
+                             ? double(hits) * 100.0 / double(hits + misses)
+                             : 0.0;
+
+        printf("  -- P2 主帧拓扑快照（只观测，不参与跳过决策）--\n");
+
+        printf("  %-22s 状态=%s 成员=%d 批=%d 代数=%llu 内容=%016llx 构建帧序号=%u\n",
+               "快照内容",
+               GetSnapshotStateName(snapshot.GetState()),
+               snapshot.GetItemCount(), snapshot.GetBatchCount(),
+               static_cast<unsigned long long>(snapshot.GetTopologyRevision()),
+               static_cast<unsigned long long>(snapshot.GetContentHash()),
+               snapshot.GetBuiltFrameSerial());
+
+        printf("  %-22s 构建=%llu 提交=%llu 中断=%llu 失效=%llu ｜ 构建/帧=%.2f\n",
+               "构建与提交（窗口）",
+               static_cast<unsigned long long>(builds),
+               static_cast<unsigned long long>(commits),
+               static_cast<unsigned long long>(aborts),
+               static_cast<unsigned long long>(inval),
+               double(builds) / div);
+
+        printf("  %-22s 命中=%llu 未命中=%llu (%.1f%%) ｜ 空快照=%llu\n",
+               "命中率（窗口）",
+               static_cast<unsigned long long>(hits),
+               static_cast<unsigned long long>(misses), hit_pct,
+               static_cast<unsigned long long>(empty));
+
+        printf("  %-22s 对拍不一致=%llu ｜ %s\n",
+               "拓扑/内容对拍",
+               static_cast<unsigned long long>(mismatch),
+               (mismatch == 0) ? "OK（台帐覆盖全部拓扑写者）"
+                               : "<- 有未上报的拓扑写者！");
+
+        snapshot_prev.builds          = s.builds;
+        snapshot_prev.commits         = s.commits;
+        snapshot_prev.aborts          = s.aborts;
+        snapshot_prev.invalidations   = s.invalidations;
+        snapshot_prev.hits            = s.hits;
+        snapshot_prev.misses          = s.misses;
+        snapshot_prev.parity_mismatch = s.parity_mismatch;
+        snapshot_prev.empty_builds    = s.empty_builds;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // T8.2 采样：GPU 侧可见数 / 溢出槽（会在采样帧付出一次 fence 等待）
     // ─────────────────────────────────────────────────────────────────────
     void SampleGPU(GPUCullSystem * gpu_cull)
@@ -928,6 +1021,7 @@ private:
                    CountAvg(FrameProfileCount::BucketGroups));
 
             ReportTopologyLedger(acc_frames);
+            ReportMainFrameSnapshot(acc_frames);
         }
         fflush(stdout);
 
@@ -964,6 +1058,7 @@ public:
         if (const char * v = getenv("CSTRESS_ORBIT"))   orbit_speed       = (float)atof(v);
         if (const char * v = getenv("CSTRESS_SAMPLE"))  sample_interval   = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_PROFILE")) profile_breakdown = (atoi(v) != 0);
+        if (const char * v = getenv("CSTRESS_TOPO"))    topo_snapshot     = (atoi(v) != 0);
 
         if (const char * v = getenv("CSTRESS_BOARDS")) board_count = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_DICE"))   dice_count  = (uint32_t)atoi(v);
@@ -1000,6 +1095,19 @@ public:
         if (!InitScene())             return false;
         if (!InitCamera())            return false;
         if (!InitCull())              return false;
+
+        // P2：主帧拓扑快照（默认关闭）。开启只增加「构建 + 对拍 + 报表」，
+        // **不改变任何绘制结果** —— 这正是 P2 允许在实验开关下落地的原因。
+        // 两个开关等价：本示例的 `CSTRESS_TOPO` 与引擎侧的 `ULRE_MAINFRAME_TOPO_CACHE`
+        // （后者在世界构造时读取）；任一打开即开，报表口径保持一致。
+        topo_snapshot = topo_snapshot || ecs_context->IsMainFrameTopologySnapshotEnabled();
+        ecs_context->SetMainFrameTopologySnapshotEnabled(topo_snapshot);
+
+        if (topo_snapshot)
+        {
+            printf("[CSTRESS] 主帧拓扑快照：开启（P2 观测模式 —— 只构建/对拍，不跳过原路径）\n");
+            fflush(stdout);
+        }
 
         // 剖析口径由引擎内的 `FrameProfiler`（真实调用边界打点）提供，
         // 本示例只在 Tick 里登记 `AppTick` 并累加帧间距，不再注册任何 phase 探针：

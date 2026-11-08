@@ -14,6 +14,7 @@
 #include<hgl/ecs/support/storage/EntityGPUTable.h>
 #include<hgl/ecs/support/storage/EntityRenderIDTable.h>
 #include<hgl/ecs/support/storage/PrimitiveTopologyLedger.h>
+#include<hgl/ecs/support/storage/MainFrameTopologySnapshot.h>
 #include<hgl/ecs/support/storage/LightRowTable.h>
 #include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/type/ValueArray.h>
@@ -309,6 +310,14 @@ namespace hgl
             /// ⚠ P1 阶段它只被观测与统计，**不驱动任何跳过**。
             mutable PrimitiveTopologyLedger primitive_topology_ledger;
 
+            /// 主帧拓扑快照（计划 P2）。**单世界一份**（世界隔离由此天然成立）。
+            /// P2 阶段只构建 + 对拍 + 统计，不驱动任何跳过；是否构建由
+            /// `main_frame_topology_snapshot_enabled` 决定（默认关闭）。
+            MainFrameTopologySnapshot main_frame_topology_snapshot;
+
+            /// 主帧拓扑快照开关（默认关闭；环境变量 `ULRE_MAINFRAME_TOPO_CACHE=1` 可开）。
+            bool main_frame_topology_snapshot_enabled = false;
+
             /// 当前 Pass 是否为阴影贴图生成 Pass
             bool is_current_pass_shadow = false;
             glm::vec3 current_pass_shadow_origin{0.0f};
@@ -485,6 +494,31 @@ namespace hgl
             /// 拓扑/事实的标记仍应走下面的两个具名入口，以免绕过 `MarkSceneStructureDirty`。
             PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() { return primitive_topology_ledger; }
 
+            /// 主帧拓扑快照（P2）。可写访问：构建方（批阶段尾部）与统计读取方共用。
+            MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() { return main_frame_topology_snapshot; }
+            const MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() const { return main_frame_topology_snapshot; }
+
+            /// 开/关主帧拓扑快照。**关闭时必须完全不构建**（P2 的零开销保证）。
+            void SetMainFrameTopologySnapshotEnabled(bool enabled)
+            {
+                if (main_frame_topology_snapshot_enabled == enabled)
+                    return;
+
+                main_frame_topology_snapshot_enabled = enabled;
+
+                // 开关切换后的第一份快照没有可信基线 ⇒ 丢掉旧的比较基线与内容。
+                main_frame_topology_snapshot.Reset();
+            }
+            bool IsMainFrameTopologySnapshotEnabled() const { return main_frame_topology_snapshot_enabled; }
+
+            /// 本 pass 是否有资格充当「主帧」（与 P1 资格判定的谓词完全一致）：
+            /// 非阴影 pass 且无移动性过滤。阴影/过滤 pass 与主帧共用同一份
+            /// `RenderFrameCache`，成员集合天然不同 ⇒ 不得互相覆盖快照。
+            bool IsMainFrameTopologyPass() const
+            {
+                return !IsCurrentPassShadow() && active_mobility_filter < 0;
+            }
+
             /// 声明拓扑变更（写入方调用；见 `TopologyChange` 各类别的注释）
             void MarkTopologyChanged(TopologyChange kind, uint32_t count = 1) const
             {
@@ -511,6 +545,9 @@ namespace hgl
 
                 // P1：场景 profile 变化会换渲染图与 pass 集合 ⇒ 主帧拓扑必须重建。
                 MarkTopologyChanged(TopologyChange::PassAndTarget);
+
+                // P2：pass/target 集合变了，已提交快照的批序/批块前提不再成立 ⇒ 显式失效。
+                main_frame_topology_snapshot.Invalidate();
             }
             ScenePipelineMode GetScenePipelineMode() const { return scene_pipeline_mode; }
 

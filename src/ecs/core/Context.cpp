@@ -75,6 +75,9 @@ namespace hgl
             // 材质运行期表需要拿到本世界指针：共享行回收时退休其纹理配置池行
             // （GPU 侧绑定随行存亡）；单测里没有世界，钩子自动 no-op。
             material_runtime_table->SetContext(this);
+
+            // P2：主帧拓扑快照默认关闭；宿主可用环境变量或显式 setter 打开。
+            main_frame_topology_snapshot_enabled = GetMainFrameTopologySnapshotEnvDefault();
         }
 
         ECSContext::~ECSContext()
