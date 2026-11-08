@@ -286,6 +286,30 @@ namespace
               && !rt_octa.IsOctahedralFile() && !suffix.IsOctahedralFile(),
               "普通纹理、立方纹理、RT 和非末尾扩展名不视为 Octahedral 文件");
 
+        // pack(): 包裹寻址仍是 File 形态，path 保留原文，ToString() 不补 file:
+        const graph::TextureURI pack = graph::TextureURI::Parse(OS_TEXT("pack(res):image/lena.Tex2D"));
+        Check(pack.IsValid() && pack.IsFile() && pack.IsPackURI(), "pack() 认成 File 包裹寻址");
+        Check(pack.GetPackName() == OS_TEXT("res")
+              && pack.GetPackTarget() == OS_TEXT("image/lena.Tex2D"),
+              "pack() 名字与目标切分正确");
+        Check(pack.ToString() == OS_TEXT("pack(res):image/lena.Tex2D"),
+              "pack() 原文回写，不退化成 file:pack()");
+
+        const graph::TextureURI pack_octa = graph::TextureURI::Parse(OS_TEXT("pack(res):image/sky.TexOct"));
+        Check(pack_octa.IsPackURI() && pack_octa.IsOctahedralFile(),
+              "pack() 的 .TexOct 仍按扩展名识别");
+
+        const graph::TextureURI file_pack = graph::TextureURI::Parse(OS_TEXT("file:pack(res):image/a.Tex2D"));
+        Check(file_pack.IsPackURI() && file_pack.GetPackName() == OS_TEXT("res"),
+              "file:pack() 归一成包裹寻址");
+
+        // 坏形态一律判非法：缺定界符、空名字、空目标、名字里带冒号
+        Check(!graph::TextureURI::Parse(OS_TEXT("pack(res)image/a.Tex2D")).IsValid()
+              && !graph::TextureURI::Parse(OS_TEXT("pack():image/a.Tex2D")).IsValid()
+              && !graph::TextureURI::Parse(OS_TEXT("pack(res):")).IsValid()
+              && !graph::TextureURI::Parse(OS_TEXT("pack(a:b):image/a.Tex2D")).IsValid(),
+              "坏 pack() 形态判非法，不当磁盘路径放行");
+
         Check(named.IsValid() && named.IsArrayByName()
               && named.GetArrayName() == OS_TEXT("pbr_10x10_baseColor"),
               "@name 的 GetArrayName() 只留名字");

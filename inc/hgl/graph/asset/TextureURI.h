@@ -27,6 +27,10 @@ namespace hgl::graph
     inline constexpr os_char kTextureURISchemeTextureArray[]  = OS_TEXT("texarray");
     inline constexpr os_char kTextureURISchemeCubeFile[]      = OS_TEXT("cubefile");
 
+    /// `pack(<name>):<target>` 的固定前缀与「名字与目标的定界符」。
+    inline constexpr os_char kTextureURIPackPrefix[]          = OS_TEXT("pack(");
+    inline constexpr os_char kTextureURIPackDelim[]           = OS_TEXT("):");
+
     /**
      * `texarray:` 的两种写法（`path` 里保留原始标记，便于回写与去重）：
      * - `texarray:@<name>`：按**已注册**的数组名取（对应 `<name>.texarray.toml`）；
@@ -56,6 +60,12 @@ namespace hgl::graph
      *   但对象类型是 `TextureCube`，与 2D 走的是不同的加载器，因此单独一个 kind。
      *   注意它**不能**简写成裸路径 —— 裸路径一律按 2D 处理。
      *
+     * - `pack(<name>):<target>`：已挂载包裹内的纹理（`AssetSourceMount` 的
+     *   `PackAssetURI` 产出的就是这种写法）。它**仍是 `File` 形态** —— 包裹根
+     *   目录背后就是文件树，读盘链路（`ResolveAssetPhysicalPath` /
+     *   `AssetURIByteSource`）按包裹解析，`path` 保留完整原文以便 `ToString()`
+     *   原样回写（不会退化成 `file:pack(...)` 这种双重前缀）。
+     *
      * 注意 `C:\path\to\texture.Tex2D` 这类盘符不会被误判成 scheme：
      * 只有 `file`/`rt`/`texarray`/`cubefile` 几个已知 scheme 才生效，
      * 其余形如 `<prefix>:...` 的一律按文件路径处理。
@@ -66,6 +76,9 @@ namespace hgl::graph
         OSString        raw;            ///< 原始输入
         OSString        path;           ///< File/CubeFile: 文件路径 / RenderTarget: RenderTarget 名
         OSString        attachment;     ///< RenderTarget: 附件名（File 时为空）
+
+        /// File 形态且写成 `pack(<name>):<target>` 的包裹寻址纹理
+        bool IsPackURI()const;
 
         bool IsValid       ()const{return !path.IsEmpty();}
         bool IsFile        ()const{return kind==TextureURIKind::File;}
@@ -88,6 +101,12 @@ namespace hgl::graph
 
         /// `texarray:file:<path>` → `<path>`；按名字形态返回空
         OSString GetArraySpecPath()const;
+
+        /// `pack(<name>):<target>` → `<name>`；其它形态返回空
+        OSString GetPackName()const;
+
+        /// `pack(<name>):<target>` → `<target>`；其它形态返回空
+        OSString GetPackTarget()const;
 
         /// 规范化的 URI 文本（用于日志与去重键）
         OSString ToString()const;

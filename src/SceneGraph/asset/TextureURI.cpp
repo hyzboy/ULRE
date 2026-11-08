@@ -76,6 +76,47 @@ namespace hgl::graph
             uint32_t index=0;
             return(ParseColorAttachmentName(name,index));
         }
+
+        /**
+         * 识别 `pack(<name>):<target>` 语法（`AssetSourceMount::PackAssetURI` 的产出形态）。
+         *
+         * 合法条件：`pack(` 前缀（ASCII 大小写不敏感）、名字非空且不含 `)`/`:`、
+         * 有 `):` 定界符、其后的目标非空。
+         *
+         * 匹配成功时 `out_name_end` 指向 `)`，`out_target_begin` 指向目标首字符。
+         * **不**检查包裹是否已挂载：解析保持纯语法，挂载状态由取流/解析层裁决，
+         * 离线配方校验这类无挂载环境才能正常解析文本。
+         */
+        bool TryParsePack(const OSString &text,int &out_name_end,int &out_target_begin)
+        {
+            out_name_end      =-1;
+            out_target_begin  =-1;
+
+            if(!HasPrefixNoCase(text,kTextureURIPackPrefix))
+                return(false);
+
+            const os_char *data=text.c_str();
+            const int      len =text.Length();
+
+            int i=5;      // 跳过 "pack("
+            while(i<len && data[i]!=OS_TEXT(')'))
+            {
+                if(data[i]==OS_TEXT(':'))
+                    return(false);
+                ++i;
+            }
+
+            // 必须是 `):` 收尾，且名字（i-5）与目标（len-i-2）都非空
+            if(data[i]!=OS_TEXT(')') || i+1>=len || data[i+1]!=OS_TEXT(':'))
+                return(false);
+
+            if(i<=5 || i+2>=len)
+                return(false);
+
+            out_name_end     =i;
+            out_target_begin =i+2;
+            return(true);
+        }
     }//namespace
 
     TextureURI TextureURI::Parse(const OSString &uri)
@@ -158,6 +199,27 @@ namespace hgl::graph
             return(info);
         }
 
+        // `pack(<name>):<target>`：包裹内寻址。仍是 File 形态（包裹根背后就是
+        // 文件树），但 path 保留**完整原文**，交给 ResolveAssetPhysicalPath /
+        // AssetURIByteSource 按包裹解析；避免 ToString() 拼出 `file:pack(...)`。
+        {
+            int name_end,target_begin;
+
+            if(TryParsePack(uri,name_end,target_begin))
+            {
+                info.kind=TextureURIKind::File;
+                info.path=uri;
+                return(info);
+            }
+
+            if(HasPrefixNoCase(uri,kTextureURIPackPrefix))
+            {
+                // `pack(` 开头却不合法（缺 `):`、名字或目标为空）：按非法处理，
+                // 不能让坏包裹 URI 悄悄当成磁盘路径去开文件。
+                return(info);
+            }
+        }
+
         // 无已知 scheme：按文件路径处理
         info.kind=TextureURIKind::File;
         info.path=uri;
@@ -170,6 +232,15 @@ namespace hgl::graph
         return kind==TextureURIKind::TextureArray
             && !path.IsEmpty()
             && path.c_str()[0]==kTextureURIArrayNamePrefix;
+    }
+
+    bool TextureURI::IsPackURI()const
+    {
+        if(kind!=TextureURIKind::File)
+            return(false);
+
+        int name_end,target_begin;
+        return(TryParsePack(path,name_end,target_begin));
     }
 
     bool TextureURI::IsOctahedralFile()const
@@ -197,6 +268,30 @@ namespace hgl::graph
         return OSString();
     }
 
+    OSString TextureURI::GetPackName()const
+    {
+        if(kind!=TextureURIKind::File)
+            return OSString();
+
+        int name_end,target_begin;
+        if(!TryParsePack(path,name_end,target_begin))
+            return OSString();
+
+        return path.SubString(5,name_end-5);
+    }
+
+    OSString TextureURI::GetPackTarget()const
+    {
+        if(kind!=TextureURIKind::File)
+            return OSString();
+
+        int name_end,target_begin;
+        if(!TryParsePack(path,name_end,target_begin))
+            return OSString();
+
+        return path.SubString(target_begin);
+    }
+
     OSString TextureURI::ToString()const
     {
         if(kind==TextureURIKind::RenderTarget)
@@ -207,6 +302,10 @@ namespace hgl::graph
 
         if(kind==TextureURIKind::CubeFile)
             return OSString(OS_TEXT("cubefile:"))+path;
+
+        // 包裹原文本身就是完整 URI，再补 `file:` 会拼出双重前缀
+        if(IsPackURI())
+            return path;
 
         return OSString(OS_TEXT("file:"))+path;
     }
