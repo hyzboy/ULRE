@@ -14,6 +14,36 @@ namespace hgl::ecs
     using graph::SkyMode;
     using graph::SkyAmbientLDR;
 
+    /**
+     * 天空**技术档位**（画质选择的输入，不是资产内容）。
+     *
+     * 一个 `SkyEnvironmentConfig` 资产（schema 2 的 `*.env.toml`）里各技术段是**并列**
+     * 存在的：高配用 `CubeMap`（HDR IBL）、低配用 `Octahedral` / `LambertDome`、
+     * 超低配用 `SH9`。画质系统在外面**选一个档位**传进 `ApplyEnvironmentSpec()`，
+     * 而不是往资产里配画质。
+     *
+     * `Default` = 不指定：按资产 `[ambient].mode` 的默认技术展开（等价于只装载
+     * schema-1 遗留镜像，向后兼容）。
+     */
+    enum class SkyTechnique : uint8
+    {
+        CubeMap,        ///< `[cubemap]`：立方体贴图 IBL（`SkyMode::CubeMapIBL`）
+        Octahedral,     ///< `[octahedral]`：八面体映射 IBL（`SkyMode::OctahedralIBL`）
+        LambertDome,    ///< `[lambert_dome]`：半球穹顶 Lambert（`SkyMode::LambertDome`）
+        Atmosphere,     ///< `[atmosphere]`：解析大气（`SkyMode::Atmosphere`）
+        SH9,            ///< 顶层 `[sh9]`：纯球谐天光，无视觉天空（`SkyMode::SHLightOnly`）
+        Default         ///< 用资产 `[ambient].mode` 指向的技术段
+    };
+
+    /// 技术名（诊断 / 日志用）。
+    const char *GetSkyTechniqueName(SkyTechnique technique) noexcept;
+
+    /**
+     * 技术档位 → 视觉模式。`Default` 返回 `fallback`（一般是资产 `[ambient].mode`
+     * 或调用方现配的 `cfg.mode`）。
+     */
+    SkyMode SkyTechniqueToSkyMode(SkyTechnique technique, SkyMode fallback) noexcept;
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 统一天空 + 天光管理的**输入契约**
     // ═══════════════════════════════════════════════════════════════════════════
@@ -120,6 +150,20 @@ namespace hgl::ecs
         /// 天空实体逐帧跟随主相机平移（无限远 / 无视差）。默认开。
         bool track_camera = true;
 
+        /**
+         * `[sun]` 默认太阳基准（schema 2 新增；schema-1 资产没有 ⇒ `sun_present == false`）。
+         *
+         * `sun_direction` 是 RH Z-up 世界系里**指向太阳**的单位向量（与光源行 0 的
+         * forward 相反）。这里只是**纯数据承接**：把基准同步进 `LightSystem` 世界主光源
+         * 行 0 是 `EnvironmentSystem` 的职责（见 todo-7 的 `[sun]` → 光源同步）。
+         * 固定纹理类技术（Cube/Oct/Lambert）的太阳烘焙在贴图里，方向仅供天光/曝光调制
+         * 参考 —— 图上太阳与光影不一致属于作者配置问题，引擎不做仲裁。
+         */
+        bool sun_present = false;
+        Vector3f sun_direction = Vector3f(0.0f, 0.0f, 1.0f);
+        Vector3f sun_color = Vector3f(1.0f, 1.0f, 1.0f);
+        float sun_intensity = 1.0f;
+
     public:
 
         /// 是否要求建视觉天空实体。
@@ -148,6 +192,15 @@ namespace hgl::ecs
      * `spec.name` / `spec.description` / `spec.schema` 不参与覆盖 —— 那是资产身份的
      * 元数据，不是运行时行为。`sh9.bands` 只在给了系数时整组覆盖（不做逐条合并），
      * 且 `sh9.auto_generate == true` 时下游会忽略它们。
+     *
+     * `technique` 指定**展开哪个技术段**（画质在资产外部选择的落点）：
+     *   · `Default` —— 只走 schema-1 遗留镜像（注册表归一化时已把 `[base]` 与默认
+     *     技术段镜像进 `[visual]/[ibl]/[ldr]/[ambient]`），行为与两参版本完全一致；
+     *   · 显式档位 —— 先把技术相关字段**重置为引擎缺省**（换形态不留上档残留），
+     *     再按 `[base]` → 该技术段的顺序覆盖，并把 `cfg.mode` 切到对应 `SkyMode`。
+     * 资产里没配该技术段时得到一个"干净的空形态"（无 recipe / 无 IBL 贴图），
+     * 由调用方决定回退 —— 数据层不猜。
      */
-    void ApplyEnvironmentSpec(const graph::EnvironmentSpec &spec, SkyEnvironmentConfig &cfg);
+    void ApplyEnvironmentSpec(const graph::EnvironmentSpec &spec, SkyEnvironmentConfig &cfg,
+                              SkyTechnique technique = SkyTechnique::Default);
 }//namespace hgl::ecs

@@ -7,7 +7,8 @@
 //   5. 扩展名不是 `.env.toml` / `.environment.toml` 时拒绝；
 //   6. `ApplyEnvironmentSpec()` 的 `Presence` 局部覆盖语义：缺键保留现值、
 //      「显式写成缺省值」也算覆盖、`sh9.bands` 整组替换且不足 9 条补 0；
-//   7. 跨字段业务规则（`schema` 版本、`sh9.bands` 条数）在解析层被拦下。
+//   7. 跨字段业务规则（`schema` 版本、`sh9.bands` 条数）在解析层被拦下；
+//   8. `SkyTechnique` 显式档位展开：重置残留 → `[base]` → 技术段，`[sun]` 纯数据承接。
 //
 // 需要真实的文件读写（第 4 条），但**不需要**设备 / 窗口，因此 CI 里也能跑。
 #include <hgl/asset/AssetFactory.h>
@@ -451,6 +452,101 @@ int main(int, char **)
 
         UnregisterEnvironmentAssetLoader();
         GLogInfo(u8"[10] AssetFactory 集成 OK");
+    }
+
+    // ── 11. SkyTechnique 展开（todo-6：画质在资产外部选段）──────────────────
+    {
+        EnvironmentAssetRegistry registry;
+
+        constexpr char kMulti[] =
+            "schema = 2\n"
+            "name = \"Sky34.Multi\"\n"
+            "[ambient]\n"
+            "mode = \"cubemap_ibl\"\n"
+            "[sun]\n"
+            "direction = [0.35, -0.55, 0.75]\n"
+            "color = [1.0, 0.9, 0.8]\n"
+            "intensity = 1.4\n"
+            "[base]\n"
+            "geometry = \"geo:builtin:hex_sphere_sky\"\n"
+            "scale = 2.0\n"
+            "[cubemap]\n"
+            "recipe = \"IBLEnvironment.Sky\"\n"
+            "irradiance = \"texcube:pack(res):image/Environments/sky_34_2k/irr\"\n"
+            "prefilter = \"texcube:pack(res):image/Environments/sky_34_2k/pre\"\n"
+            "[octahedral]\n"
+            "recipe = \"OctSky.Sky\"\n"
+            "geometry = \"geo:builtin:dome_64\"\n"
+            "irradiance = \"tex2d:pack(res):image/Environments/oct_irr\"\n"
+            "ldr_mode = \"on\"\n"
+            "ldr_exposure_base = 3.0\n";
+
+        EnvironmentAsset *multi = registry.RegisterFromToml(nullptr, kMulti,
+                                        static_cast<int>(hgl::strlen(kMulti)));
+        Check(multi != nullptr, "多技术段资产应装载成功");
+
+        if (multi)
+        {
+            const EnvironmentSpec &spec = multi->GetSpec();
+
+            // Default：完全沿用遗留镜像（与两参旧行为等价）
+            {
+                SkyEnvironmentConfig cfg;
+                ApplyEnvironmentSpec(spec, cfg, SkyTechnique::Default);
+                Check(cfg.mode == SkyMode::CubeMapIBL, "Default 应取 [ambient].mode");
+                Check(cfg.sky_recipe == "Sky34.Multi" || cfg.sky_recipe.IsEmpty()
+                      || cfg.sky_recipe == "IBLEnvironment.Sky",
+                      "Default 走遗留镜像路径");
+                Check(cfg.sun_present
+                      && cfg.sun_direction.x == 0.35f && cfg.sun_intensity == 1.4f,
+                      "[sun] 应被承接（与档位无关）");
+            }
+
+            // 显式 CubeMap：[base] scale + [cubemap] 贴图
+            {
+                SkyEnvironmentConfig cfg;
+                ApplyEnvironmentSpec(spec, cfg, SkyTechnique::CubeMap);
+                Check(cfg.mode == SkyMode::CubeMapIBL, "档位应映射到 CubeMapIBL");
+                Check(cfg.sky_recipe == "IBLEnvironment.Sky", "[cubemap].recipe 应生效");
+                Check(cfg.sky_geometry_uri == "geo:builtin:hex_sphere_sky",
+                      "[base].geometry 应生效");
+                Check(cfg.sky_scale == 2.0f, "[base].scale 应生效");
+                Check(cfg.irradiance_texture
+                      == OS_TEXT("texcube:pack(res):image/Environments/sky_34_2k/irr"),
+                      "[cubemap].irradiance 应生效");
+                Check(cfg.ldr == SkyAmbientLDR::Auto && cfg.ldr_exposure_base == 2.5f,
+                      "[cubemap] 未写 ldr ⇒ 引擎缺省");
+            }
+
+            // 显式 Octahedral：技术段 geometry 覆盖 [base]，ldr 段覆盖缺省
+            {
+                SkyEnvironmentConfig cfg;
+                cfg.sky_recipe = "STALE.Residue";   // 换形态必须清残留
+                ApplyEnvironmentSpec(spec, cfg, SkyTechnique::Octahedral);
+                Check(cfg.mode == SkyMode::OctahedralIBL, "档位应映射到 OctahedralIBL");
+                Check(cfg.sky_recipe == "OctSky.Sky", "陈旧 recipe 应被技术段覆盖");
+                Check(cfg.sky_geometry_uri == "geo:builtin:dome_64",
+                      "技术段 geometry 应覆盖 [base]");
+                Check(cfg.ldr == SkyAmbientLDR::On
+                      && cfg.ldr_exposure_base == 3.0f, "[octahedral] 的 ldr 键应生效");
+                Check(cfg.prefilter_texture.IsEmpty(),
+                      "未配的 prefilter 不得从别的档位残留");
+            }
+
+            // 显式 SH9：无视觉段 ⇒ 干净空形态（贴图/recipe 全清）
+            {
+                SkyEnvironmentConfig cfg;
+                ApplyEnvironmentSpec(spec, cfg, SkyTechnique::SH9);
+                Check(cfg.mode == SkyMode::SHLightOnly, "SH9 ⇒ SHLightOnly");
+                Check(cfg.sky_recipe.IsEmpty() && cfg.irradiance_texture.IsEmpty()
+                      && cfg.prefilter_texture.IsEmpty(),
+                      "SH9 不应带任何视觉/IBL 残留");
+                Check(cfg.sky_scale == 2.0f && cfg.track_camera,
+                      "[base] 仍适用于 SH9");
+            }
+        }
+
+        GLogInfo(u8"[11] SkyTechnique 展开 OK");
     }
 
     if (g_failed)
