@@ -66,15 +66,17 @@ namespace hgl::ecs
     /// 状态名（报表用；越界返回 "<bad>"）
     const char *GetSnapshotStateName(SnapshotState state);
 
-    /// 读取环境变量 `ULRE_MAINFRAME_TOPO_CACHE`（`1` / `true` / `on` / `yes` 视为开启）。
-    /// 引擎侧默认**关闭**：P2 的快照只做观测，开启后每帧多一次全量遍历 +
-    /// 一次批排序，不开就没有任何额外开销。宿主也可在创建世界后直接
+    /// 读取环境变量 `ULRE_MAINFRAME_TOPO_CACHE`（**opt-out 语义**：未设置 / `1` /
+    /// `true` / `yes` 均为开启；`0` / `f(alse)` / `n(o)` 视为关闭）。
+    /// 引擎侧默认**开启**：P2 的快照只做观测，但每帧多一次全量遍历 +
+    /// 一次批排序；关掉它就没有任何额外开销。宿主也可在创建世界后直接
     /// `SetMainFrameTopologySnapshotEnabled(true/false)` 覆盖。
     bool GetMainFrameTopologySnapshotEnvDefault();
 
-    /// 读取环境变量 `ULRE_MAINFRAME_COLLECT_CACHE`（`1` / `true` / `on` / `yes` 视为开启）。
+    /// 读取环境变量 `ULRE_MAINFRAME_COLLECT_CACHE`（**opt-out 语义**：未设置 / `1` /
+    /// `true` / `yes` 均为开启；`0` / `f(alse)` / `n(o)` 视为关闭）。
     /// 这是 P3 的**收集快路径**开关：开启后主帧在全部资格条件成立时直接按上一份
-    /// 主帧拓扑快照重建收集结果。默认关闭；且**只有在
+    /// 主帧拓扑快照重建收集结果。默认开启；且**只有在
     /// `SetMainFrameTopologySnapshotEnabled(true)` 也打开时才可能生效**
     /// （`ECSContext::IsMainFrameCollectCacheEnabled()` 已把两者合成一个判据）。
     bool GetMainFrameCollectCacheEnvDefault();

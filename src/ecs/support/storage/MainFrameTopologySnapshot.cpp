@@ -35,16 +35,17 @@ namespace hgl::ecs
     bool GetMainFrameTopologySnapshotEnvDefault()
     {
         // 函数内 static：规避静态初始化顺序问题（与 FrameProfiler 的通道默认值同一手法）。
+        // 默认开启：环境变量语义是 **opt-out**，仅 `0` / `f(alse)` / `n(o)` 视为关闭。
         static const bool s_enabled = []
         {
             const char *value = getenv("ULRE_MAINFRAME_TOPO_CACHE");
 
             if (!value || !*value)
-                return false;
+                return true;
 
-            return value[0] == '1'
-                || value[0] == 't' || value[0] == 'T'
-                || value[0] == 'y' || value[0] == 'Y';
+            return !(value[0] == '0'
+                || value[0] == 'f' || value[0] == 'F'
+                || value[0] == 'n' || value[0] == 'N');
         }();
 
         return s_enabled;
@@ -52,16 +53,17 @@ namespace hgl::ecs
 
     bool GetMainFrameCollectCacheEnvDefault()
     {
+        // 默认开启（opt-out）：仅 `0` / `f(alse)` / `n(o)` 视为关闭。
         static const bool s_enabled = []
         {
             const char *value = getenv("ULRE_MAINFRAME_COLLECT_CACHE");
 
             if (!value || !*value)
-                return false;
+                return true;
 
-            return value[0] == '1'
-                || value[0] == 't' || value[0] == 'T'
-                || value[0] == 'y' || value[0] == 'Y';
+            return !(value[0] == '0'
+                || value[0] == 'f' || value[0] == 'F'
+                || value[0] == 'n' || value[0] == 'N');
         }();
 
         return s_enabled;

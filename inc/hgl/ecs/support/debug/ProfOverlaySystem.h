@@ -81,12 +81,17 @@ namespace hgl
             InputSystem * input_system = nullptr;      ///< 懒查找（F1 边沿检测用）
             bool   f1_prev = false;                    ///< 上一帧 F1 电平
             bool   visible = true;                     ///< F1 切换的显示开关
+            bool   disabled = false;                   ///< Disable() 强制停用（自检像素对拍用）
 
         public:
             ProfOverlaySystem();
             ~ProfOverlaySystem() override;
 
             void Update(float deltaTime) override;
+
+            /// 外部强制停用（像素摘要自检等要求干净回缓存的场景）：
+            /// 覆盖层永不建立、永不显示，F1 也不再生效；已激活时再调用会立即清屏。
+            void Disable();
 
         private:
             /// 懒初始化：检查 Text 组、加载字体、建行池。失败返回 false。

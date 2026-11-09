@@ -127,6 +127,7 @@ endif()
 clean_env()
 set(ENV{CSTRESS_FRAMES} "${RUN_FRAMES}")
 set(ENV{CSTRESS_SAMPLE} "10")
+set(ENV{ULRE_MAINFRAME_COLLECT_CACHE} "0")
 execute_process(
     COMMAND "${EXAMPLE}"
     WORKING_DIRECTORY "${RUNTIME_DIR}"

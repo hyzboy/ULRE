@@ -313,14 +313,15 @@ namespace hgl
 
             /// 主帧拓扑快照（计划 P2）。**单世界一份**（世界隔离由此天然成立）。
             /// P2 阶段只构建 + 对拍 + 统计，不驱动任何跳过；是否构建由
-            /// `main_frame_topology_snapshot_enabled` 决定（默认关闭）。
+            /// `main_frame_topology_snapshot_enabled` 决定（默认开启）。
             MainFrameTopologySnapshot main_frame_topology_snapshot;
 
-            /// 主帧拓扑快照开关（默认关闭；环境变量 `ULRE_MAINFRAME_TOPO_CACHE=1` 可开）。
+            /// 主帧拓扑快照开关（默认开启；环境变量 `ULRE_MAINFRAME_TOPO_CACHE=0` 可关，
+            /// opt-out 语义：未设置 / `1` / `true` / `yes` 均为开，`0` / `f` / `n` 为关）。
             bool main_frame_topology_snapshot_enabled = false;
 
-            /// 主帧**收集快路径**开关（计划 P3，默认关闭；环境变量
-            /// `ULRE_MAINFRAME_COLLECT_CACHE=1` 可开）。
+            /// 主帧**收集快路径**开关（计划 P3，默认开启；环境变量
+            /// `ULRE_MAINFRAME_COLLECT_CACHE=0` 可关，opt-out 语义同上）。
             /// 与 `main_frame_topology_snapshot_enabled` 分开的原因：快照本身只是
             /// 观测（P2 已证明零行为变化），而"让快照接管收集"是真正改变执行路径的
             /// 决定 ⇒ 两个开关必须能独立打开，才能做出「快照开/关」与「快路径开/关」

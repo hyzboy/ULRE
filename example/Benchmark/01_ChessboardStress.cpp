@@ -74,9 +74,9 @@
 //   CSTRESS_SAMPLE=N      每 N 帧采一次 GPU 侧面（默认 60；采样帧会 fence 等待）
 //   CSTRESS_SEED=N        骰子初始位置/朝向的随机种子（默认 20260814）
 //   CSTRESS_PROFILE=1     采样帧打印分槽耗时报表（**CSTRESS_SAMPLE=0 时无报表**）
-//   CSTRESS_TOPO=1        ≡ `ULRE_MAINFRAME_TOPO_CACHE=1`：构建主帧拓扑快照
-//   CSTRESS_COLLECT_CACHE=1  ≡ `ULRE_MAINFRAME_COLLECT_CACHE=1`：让快照接管收集
-//                         （**必须同时 `CSTRESS_TOPO=1`**，单独开无效）
+//   CSTRESS_TOPO=0/1      主帧拓扑快照（P2）：三态——未设置=跟随引擎（默认开），
+//                         `1` 强制开，`0` 强制关（等价 `ULRE_MAINFRAME_TOPO_CACHE`）
+//   CSTRESS_COLLECT_CACHE=0/1  主帧收集快路径（P3）：三态同上；**必须同时有 P2 快照**
 //
 // 收集快路径 / 批计划重放的机制、失效判据、报表读法与实测数据：
 //   `doc/primitive-collect-cache-and-batch-plan.md`
@@ -107,6 +107,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/JoltPhysicsSystem.h>
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
+#include<hgl/ecs/support/debug/ProfOverlaySystem.h>
 #include<hgl/ecs/support/storage/FrameProfiler.h>
 #include<hgl/ecs/support/storage/PrimitiveTopologyLedger.h>
 #include<hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
@@ -247,8 +248,10 @@ private:
     float    orbit_speed  = 10.0f;
     uint32_t sample_interval = 60;
     bool     profile_breakdown = true;   ///< 打印详细阶段耗时剖析
-    bool     topo_snapshot     = false;  ///< P2：开启主帧拓扑快照（只观测）
-    bool     collect_cache     = false;  ///< P3：开启主帧收集快路径（依赖 P2 快照）
+    int      topo_env          = -1;     ///< CSTRESS_TOPO 三态：-1跟随引擎 / 0关 / 1开
+    int      collect_cache_env = -1;     ///< CSTRESS_COLLECT_CACHE 三态同上
+    bool     topo_snapshot     = false;  ///< P2：主帧拓扑快照（解析后的最终状态）
+    bool     collect_cache     = false;  ///< P3：主帧收集快路径（依赖 P2 快照）
 
     std::string dump_tag;
     uint32_t    dump_frame  = 0;
@@ -1182,8 +1185,8 @@ public:
         if (const char * v = getenv("CSTRESS_ORBIT"))   orbit_speed       = (float)atof(v);
         if (const char * v = getenv("CSTRESS_SAMPLE"))  sample_interval   = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_PROFILE")) profile_breakdown = (atoi(v) != 0);
-        if (const char * v = getenv("CSTRESS_TOPO"))    topo_snapshot     = (atoi(v) != 0);
-        if (const char * v = getenv("CSTRESS_COLLECT_CACHE")) collect_cache = (atoi(v) != 0);
+        if (const char * v = getenv("CSTRESS_TOPO"))          topo_env          = (atoi(v) != 0) ? 1 : 0;
+        if (const char * v = getenv("CSTRESS_COLLECT_CACHE")) collect_cache_env = (atoi(v) != 0) ? 1 : 0;
 
         if (const char * v = getenv("CSTRESS_BOARDS")) board_count = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_DICE"))   dice_count  = (uint32_t)atoi(v);
@@ -1221,11 +1224,12 @@ public:
         if (!InitCamera())            return false;
         if (!InitCull())              return false;
 
-        // P2：主帧拓扑快照（默认关闭）。开启只增加「构建 + 对拍 + 报表」，
-        // **不改变任何绘制结果** —— 这正是 P2 允许在实验开关下落地的原因。
-        // 两个开关等价：本示例的 `CSTRESS_TOPO` 与引擎侧的 `ULRE_MAINFRAME_TOPO_CACHE`
-        // （后者在世界构造时读取）；任一打开即开，报表口径保持一致。
-        topo_snapshot = topo_snapshot || ecs_context->IsMainFrameTopologySnapshotEnabled();
+        // P2：主帧拓扑快照（引擎默认**开启**）。开启只增加「构建 + 对拍 + 报表」，
+        // **不改变任何绘制结果** —— 这正是 P2 允许默认落地的原因。
+        // 三态解析：`CSTRESS_TOPO` 未设置 = 跟随引擎默认；`1`/`0` = 强制开/关。
+        topo_snapshot = (topo_env < 0)
+            ? ecs_context->IsMainFrameTopologySnapshotEnabled()
+            : (topo_env == 1);
         ecs_context->SetMainFrameTopologySnapshotEnabled(topo_snapshot);
 
         if (topo_snapshot)
@@ -1234,9 +1238,11 @@ public:
             fflush(stdout);
         }
 
-        // P3：主帧收集快路径。**依赖 P2 快照**（快照就是快路径的输入），
-        // 所以只要快照没开，快路径一律强制关闭 —— 不做「有开关无数据」的假配置。
-        collect_cache = collect_cache || ecs_context->IsMainFrameCollectCacheEnabled();
+        // P3：主帧收集快路径（引擎默认**开启**）。**依赖 P2 快照**（快照就是快路径的
+        // 输入），所以只要快照没开，快路径一律强制关闭 —— 不做「有开关无数据」的假配置。
+        collect_cache = (collect_cache_env < 0)
+            ? ecs_context->IsMainFrameCollectCacheEnabled()
+            : (collect_cache_env == 1);
         if (collect_cache && !topo_snapshot)
         {
             printf("[CSTRESS] 主帧收集快路径：拒绝开启（依赖 P2 拓扑快照，请同时开 CSTRESS_TOPO=1）\n");
@@ -1249,6 +1255,15 @@ public:
         {
             printf("[CSTRESS] 主帧收集快路径：开启（P3 —— 稳态时跳过收集主循环，仅重建 item + 重发事实）\n");
             fflush(stdout);
+        }
+
+        // 屏显 PROF 覆盖层（ULRE_DEBUG.toml 的 channels.profui=true 启动即显示）会把
+        // "每帧都在变"的耗时文字画进回缓存 ⇒ 第 8 帧像素摘要逐次漂移，快/慢路径对拍
+        // 失去意义。自检模式强制停用覆盖层，保证摘要只由冻结场景本身决定。
+        if (selfcheck)
+        {
+            if (auto overlay = ecs_context->GetSystem<ecs::ProfOverlaySystem>())
+                overlay->Disable();
         }
 
         // 剖析口径由引擎内的 `FrameProfiler`（真实调用边界打点）提供，

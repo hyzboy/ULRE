@@ -99,22 +99,25 @@
 
 | 环境变量 | 默认 | 含义 |
 |---|---|---|
-| `ULRE_MAINFRAME_TOPO_CACHE` | **关闭** | 构建 P2 快照（纯观测，不动执行路径） |
-| `ULRE_MAINFRAME_COLLECT_CACHE` | **关闭** | 允许快照接管收集（真正改执行路径，要求上一项也开） |
+| `ULRE_MAINFRAME_TOPO_CACHE` | **开启** | 构建 P2 快照（纯观测，不动执行路径） |
+| `ULRE_MAINFRAME_COLLECT_CACHE` | **开启** | 允许快照接管收集（真正改执行路径，要求上一项也开） |
 
-取值：`1` / `t` / `T` / `y` / `Y` 开头为开，其余（含 `0`）为关。
+取值（**opt-out 语义**）：未设置 / `1` / `t` / `T` / `y` / `Y` 开头为开；
+`0` / `f` / `F` / `n` / `N` 开头为关。
 
-**为什么默认关闭**：P3/P4 改的是执行路径，而它们依赖"台帐覆盖全部拓扑写者"这个
-不变量。该不变量目前只在压测台的对拍与像素摘要上验证过（一个世界、一套渲染工作流）。
-默认关闭意味着**出问题只需 unset 环境变量即可回到原路径**；等更多场景（地形、粒子、
-多 pass、编辑器视口）跑过 P5 的四路对拍，再考虑翻默认。
+**为什么默认开启**：压测台实测（T8）显示关闭时 RenderCollect 全路径每帧
+16–26ms（1079 图元、CPU），是稳态帧时的第一大头；开启后稳态 CollectPhase
+降到 ~2ms（快路径逐帧接管、回退 0）。P3/P4 依赖的"台帐覆盖全部拓扑写者"
+不变量已由 `ChessboardStressValidate.cmake` 的双路径像素摘要对拍钉住。
+**需要回到原路径时设 `ULRE_MAINFRAME_COLLECT_CACHE=0` 即可**（或只关快照
+`ULRE_MAINFRAME_TOPO_CACHE=0`，两者合成判据自动退回完整收集）。
 
 P4 没有开关：它不改变任何可观测语义（批的对象、顺序、内容完全一致），只是复用键表，
 因此不提供关闭路径（否则等于给自己留一条永远不会被测的代码分支）。
 
-压测台自身的等价开关：`CSTRESS_TOPO=1` ≡ `ULRE_MAINFRAME_TOPO_CACHE=1`，
-`CSTRESS_COLLECT_CACHE=1` ≡ `ULRE_MAINFRAME_COLLECT_CACHE=1`。
-**`CSTRESS_COLLECT_CACHE=1` 单独用无效，必须同时 `CSTRESS_TOPO=1`。**
+压测台自身的三态开关：`CSTRESS_TOPO` / `CSTRESS_COLLECT_CACHE` 未设置=跟随引擎默认
+（开），`1`=强制开，`0`=强制关。**快路径必须有 P2 快照**：快照被关时压测台会打印
+拒绝开启快路径并退回完整收集。
 
 ## 4. 读报表
 

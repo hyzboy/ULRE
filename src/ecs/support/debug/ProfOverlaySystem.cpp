@@ -143,6 +143,9 @@ namespace hgl::ecs
 
     void ProfOverlaySystem::Update(float /*deltaTime*/)
     {
+        if (disabled)
+            return;   // Disable() 强制停用（自检像素对拍等场景）
+
         // 通道运行期不可变（ULRE_DEBUG.toml 只在启动读取一次）⇒ 函数本地 static 缓存。
         // 通道只决定"启动时是否自动显示"；F1 在任何情况下都能按需拉出覆盖层，
         // 免得改完配置忘了重启进程就以为功能坏了。
@@ -239,6 +242,20 @@ namespace hgl::ecs
 
         FrameProfiler::Reset();
         window_t0 = GetUptimeUs();
+    }
+
+    void ProfOverlaySystem::Disable()
+    {
+        if (disabled)
+            return;
+
+        disabled = true;
+
+        // 已激活过 ⇒ 立即清屏；未激活 ⇒ Update 首帧就返回，行池根本不会建立。
+        if (active && visible)
+            SetVisible(false);
+        else
+            visible = false;
     }
 
     void ProfOverlaySystem::PutLine(int idx, uint32_t color, const char * ascii, int len)
