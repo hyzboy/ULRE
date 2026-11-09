@@ -1055,7 +1055,24 @@ namespace hgl::ecs
 
 //            LogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
 
-            system->Update(deltaTime);
+            if (FrameProfiler::IsEnabled())
+            {
+                const uint64_t t0 = GetUptimeUs();
+
+                system->Update(deltaTime);
+
+                AnsiString name = system->GetName();
+                if (name.IsEmpty())
+                    name = AnsiString(typeid(*system).name()); // 空名回退 RTTI（唯一，但为 mangled 名）
+
+                SystemProfiler::Add(name, system->GetRenderElementType(),
+                                    static_cast<uint32_t>(system->GetExecutionPhase()),
+                                    GetUptimeUs() - t0);
+            }
+            else
+            {
+                system->Update(deltaTime);
+            }
 
 //            LogDebug("[ECS] Update End: %s", system->GetName().c_str());
         }
@@ -1080,9 +1097,26 @@ namespace hgl::ecs
 
 //                LogDebug("[ECS] Render Begin: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
 
-                entry.system->Render(current_render_cmd, deltaTime);
+                if (FrameProfiler::IsEnabled())
+                {
+                    const uint64_t t0 = GetUptimeUs();
 
-//                LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
+                    entry.system->Render(current_render_cmd, deltaTime);
+
+                    AnsiString name = entry.system->GetName();
+                    if (name.IsEmpty())
+                        name = AnsiString(typeid(*entry.system).name());
+
+                    SystemProfiler::Add(name, entry.system->GetRenderElementType(),
+                                        static_cast<uint32_t>(entry.phase),
+                                        GetUptimeUs() - t0);
+                }
+                else
+                {
+                    entry.system->Render(current_render_cmd, deltaTime);
+                }
+
+//                LogDebug("[ECS] Render End: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
             }
 
             if (gpu_device)
