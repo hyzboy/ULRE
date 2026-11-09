@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/ecs/support/pipeline/RenderPipelineSystem.h>
+#include <hgl/mtl/RenderLayer.h>
 
 namespace hgl::ecs
 {
@@ -18,8 +19,8 @@ namespace hgl::ecs
 
         RenderPipelineBase* GetPipeline(ECSContext* context) override;
 
-        /// 统一批次渲染核心实现（支持普通/Overlay过滤）
-        static void RenderBatches(ECSContext* context, hgl::graph::RenderCmdBuffer* cmd, bool overlay_only);
+        /// 统一批次渲染核心实现（按固定渲染分段过滤）
+        static void RenderBatches(ECSContext* context, hgl::graph::RenderCmdBuffer* cmd, hgl::graph::mtl::RenderLayer layer);
 
     private:
         void OnRender(RenderPipelineBase* pipeline, hgl::graph::RenderCmdBuffer* cmd) override;

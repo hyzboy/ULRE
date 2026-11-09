@@ -2,6 +2,7 @@
 
 #include <hgl/vk/VK.h>
 #include <hgl/util/hash/FNV1a.h>
+#include <hgl/mtl/RenderLayer.h>
 #include <cstdint>
 
 namespace hgl::graph::mtl
@@ -25,6 +26,7 @@ namespace hgl::graph::mtl
         bool dynamic_line_width = false;                            // 启用动态线宽
         bool overlay = false;                                       // 覆盖层渲染路径（替代 IsOverlayPipelinePreset）
         bool wireframe = false;                                     // 线框多边形模式
+        RenderLayer render_layer = RenderLayer::Scene;              // 固定渲染分段（Scene/Gizmo/UI2D/Overlay）
     };//struct MaterialPipelineConfig
 
     inline bool operator==(const MaterialPipelineConfig &lhs,
@@ -40,7 +42,8 @@ namespace hgl::graph::mtl
             && lhs.line_width == rhs.line_width
             && lhs.dynamic_line_width == rhs.dynamic_line_width
             && lhs.overlay == rhs.overlay
-            && lhs.wireframe == rhs.wireframe;
+            && lhs.wireframe == rhs.wireframe
+            && lhs.render_layer == rhs.render_layer;
     }
 
     inline bool operator!=(const MaterialPipelineConfig &lhs,
@@ -67,7 +70,8 @@ namespace hgl::graph::mtl
         if (lhs.line_width         != rhs.line_width        ) return lhs.line_width         < rhs.line_width;
         if (lhs.dynamic_line_width != rhs.dynamic_line_width) return lhs.dynamic_line_width < rhs.dynamic_line_width;
         if (lhs.overlay            != rhs.overlay           ) return lhs.overlay            < rhs.overlay;
-        return lhs.wireframe < rhs.wireframe;
+        if (lhs.wireframe          != rhs.wireframe         ) return lhs.wireframe          < rhs.wireframe;
+        return lhs.render_layer < rhs.render_layer;
     }
 
     /**
@@ -91,12 +95,13 @@ namespace hgl::graph::mtl
         DynamicLineWidth = 1u << 8,
         Overlay          = 1u << 9,
         Wireframe        = 1u << 10,
+        RenderLayer      = 1u << 11,
     };
 
     using MaterialPipelineFieldMask = uint16_t;
 
-    /** 全部 11 个字段都显式声明（= 整份配置替换）*/
-    constexpr MaterialPipelineFieldMask kMaterialPipelineAllFields = 0x7FFu;
+    /** 全部 12 个字段都显式声明（= 整份配置替换）*/
+    constexpr MaterialPipelineFieldMask kMaterialPipelineAllFields = 0xFFFu;
 
     inline bool MaterialPipelineHas(const MaterialPipelineFieldMask mask,
                                     const MaterialPipelineField field) noexcept
@@ -120,6 +125,7 @@ namespace hgl::graph::mtl
         if (MaterialPipelineHas(mask, MaterialPipelineField::DynamicLineWidth)) base.dynamic_line_width = over.dynamic_line_width;
         if (MaterialPipelineHas(mask, MaterialPipelineField::Overlay         )) base.overlay            = over.overlay;
         if (MaterialPipelineHas(mask, MaterialPipelineField::Wireframe       )) base.wireframe          = over.wireframe;
+        if (MaterialPipelineHas(mask, MaterialPipelineField::RenderLayer     )) base.render_layer       = over.render_layer;
     }
 
     /**
@@ -190,6 +196,7 @@ namespace hgl::graph::mtl
         config.depth_write = false;
         config.depth_compare_op = VK_COMPARE_OP_ALWAYS;
         config.overlay = true;
+        config.render_layer = RenderLayer::Gizmo;
         return config;
     }
 
@@ -201,6 +208,7 @@ namespace hgl::graph::mtl
         config.depth_write = false;
         config.depth_compare_op = VK_COMPARE_OP_ALWAYS;
         config.overlay = true;
+        config.render_layer = RenderLayer::UI2D;
         return config;
     }
 
@@ -242,7 +250,8 @@ namespace hgl::graph::mtl
           << config.line_width
           << config.dynamic_line_width
           << config.overlay
-          << config.wireframe;
+          << config.wireframe
+          << config.render_layer;
 
         return h;
     }

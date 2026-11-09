@@ -342,6 +342,14 @@ namespace hgl::graph::mtl
             {
                 config.overlay = pipeline.overlay.value;
                 mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::Overlay);
+
+                // 配方 overlay 即 2D 覆盖层（UI2D 段）；gizmo 只走 C++
+                // MakeGizmoOverlayConfig（Gizmo 段），不在配方路径出现。
+                if (pipeline.overlay.value)
+                {
+                    config.render_layer = RenderLayer::UI2D;
+                    mask |= static_cast<MaterialPipelineFieldMask>(MaterialPipelineField::RenderLayer);
+                }
             }
             if (pipeline.wireframe.present)
             {

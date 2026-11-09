@@ -15,14 +15,14 @@ namespace hgl::ecs
 {
     namespace
     {
-        bool IsOverlayLikeBatch(const MaterialBatch* batch)
+        hgl::graph::mtl::RenderLayer GetBatchRenderLayer(const MaterialBatch* batch)
         {
             if (!batch || !batch->key.pipeline)
-                return false;
+                return hgl::graph::mtl::RenderLayer::Scene;
 
-            // EDS：覆盖层标记属于**渲染形态**（材质/批次事实），不在 Pipeline 对象上
-            //（两个 recipe 只差 overlay 时会共用同一 Pipeline ⇒ 读 Pipeline 会串味）。
-            return batch->key.pipeline_config.overlay;
+            // EDS：渲染分段标记属于**渲染形态**（材质/批次事实），不在 Pipeline 对象上
+            //（两个 recipe 只差 render_layer 时会共用同一 Pipeline ⇒ 读 Pipeline 会串味）。
+            return batch->key.pipeline_config.render_layer;
         }
     }
 
@@ -38,7 +38,7 @@ namespace hgl::ecs
         return context->GetRenderPipeline("Primitive");
     }
 
-    void PrimitiveRenderSystem::RenderBatches(ECSContext* context, hgl::graph::RenderCmdBuffer* cmdBuffer, bool overlay_only)
+    void PrimitiveRenderSystem::RenderBatches(ECSContext* context, hgl::graph::RenderCmdBuffer* cmdBuffer, hgl::graph::mtl::RenderLayer layer)
     {
         if (!context || !cmdBuffer)
             return;
@@ -72,8 +72,8 @@ namespace hgl::ecs
             if (!batch || batch->items.empty())
                 continue;
 
-            const bool is_overlay = IsOverlayLikeBatch(batch);
-            if (overlay_only != is_overlay)
+            const hgl::graph::mtl::RenderLayer batch_layer = GetBatchRenderLayer(batch);
+            if (layer != batch_layer)
                 continue;
 
             const auto& key = batch->key;
@@ -95,6 +95,6 @@ namespace hgl::ecs
 
     void PrimitiveRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)
     {
-        RenderBatches(context, cmdBuffer, false);
+        RenderBatches(context, cmdBuffer, hgl::graph::mtl::RenderLayer::Scene);
     }
 }

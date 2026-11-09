@@ -37,6 +37,7 @@
 #include <hgl/ecs/support/primitive/PrimitiveBuildSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveUI2DRenderSystem.h>
 #include <hgl/ecs/support/cull/GPUCullSystem.h>
 #include <hgl/ecs/support/cull/CPUCullReferenceSystem.h>
 #include <hgl/ecs/support/debug/ProfOverlaySystem.h>
@@ -115,6 +116,7 @@ namespace
         ctx->RegisterSystem<hgl::ecs::PrimitiveBuildSystem>();
         ctx->RegisterSystem<hgl::ecs::PrimitiveRenderSystem>();
         ctx->RegisterSystem<hgl::ecs::PrimitiveOverlayRenderSystem>();
+        ctx->RegisterSystem<hgl::ecs::PrimitiveUI2DRenderSystem>();
 
         // GPU cull system for entity-based frustum culling (T3d-1b)
         auto gpu_cull_system = EnsureSystem<hgl::ecs::GPUCullSystem>(ctx);

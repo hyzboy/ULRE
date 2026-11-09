@@ -19,6 +19,6 @@ namespace hgl::ecs
 
     void PrimitiveOverlayRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)
     {
-        PrimitiveRenderSystem::RenderBatches(context, cmdBuffer, true);
+        PrimitiveRenderSystem::RenderBatches(context, cmdBuffer, hgl::graph::mtl::RenderLayer::Gizmo);
     }
 }
