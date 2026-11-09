@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/core/render/RenderGraph.h>
+#include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/SystemGroup.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/entity/Entity.h>
@@ -195,19 +195,11 @@ namespace hgl
         {
             RenderGraph graph;
 
-//            MLogDebug(RenderGraph,"[RenderGraph] Adaptive: detected %zu active groups",stats.active_render_groups.size());
-
             auto& registry = SystemGroupRegistry::Get();
             EnsureSystemGroupsRegistered(context);
 
-            // 组启用状态由**本世界的 stats** 即时推导（不再写入全局注册表——
-            // enabled 是每世界状态，全局存储会在多世界建图时互相覆盖；
-            // registry 只保留组定义+installer 这类真正的全局不变量）。
-            //
-            // ⚠ pass 顺序 = SystemGroupID 枚举声明序（Primitive < Line < Text < Hierarchy2D），
-            // **不是** registry 插入序（历史上插入序跟随元素类型的字符串序 ⇒ "Line" 排在
-            // "Primitive" 前 ⇒ 线条先画、被后续不透明图元（如统一天空穹顶）整批盖掉）。
-            // 渲染分层语义由组身份定义，与组名的字典序无关。
+            // 组启用状态由**本世界的 stats** 即时推导（enabled 是每世界状态，不写全局注册表）。
+            // 它只控制「无活动组件时跳过该系统」的空跑开销；**不再**决定 pass 数量/顺序。
             for (uint32_t group_idx = 1; group_idx < kSystemGroupCount; ++group_idx)
             {
                 const SystemGroupID group_id = static_cast<SystemGroupID>(group_idx);
@@ -218,17 +210,6 @@ namespace hgl
                     const bool enabled = group && stats.HasGroup(group->name);
                     context->SetSystemGroupEnabled(group_id, enabled);
                 }
-
-                if (!group || !stats.HasGroup(group->name))
-                    continue;
-
-//                MLogDebug(RenderGraph,"[RenderGraph] Adding pass for group '%s' (phases %d-%d)",group->name.c_str(),static_cast<int>(group->startPhase),static_cast<int>(group->endPhase));
-
-                // Each enabled group becomes a pass in the graph
-                graph.Add(RenderGraph::Pass(
-                    group->startPhase,
-                    group->endPhase
-                ));
             }
 
             // 注册表里存在但未列入 kSystemGroupNames 的组（理论上不该发生）：
@@ -244,11 +225,35 @@ namespace hgl
                 }
             }
 
-            // Fully data-driven:
-            // - 组件类型声明它驱动哪个组（`kComponentTypeTable[].group`；T2-c 起组归属是**类型属性**，
-            //   组件对象上不再有虚表）
-            // - Systems declare their group via System::SetRenderElementType()
-            // - RenderGraph builds passes from the name mapping at runtime
+            // ── 固定分段表（替代历史「按活动组派生 pass」）─────────────────────
+            //
+            // 渲染顺序由**固定、互不重叠**的相位分段定义，与场景内容无关：
+            //   RenderDrawSubmit  → Scene（深度测试的 3D 场景图元/线条/常规文本）
+            //   RenderDebug       → Gizmo（无深度测试、必须压在最上层的覆盖图元）
+            //   RenderUI2D        → 2D UI（sprite 桥接的 2D 图元 / 常规 HUD 文本）
+            //   RenderOverlay     → 最终全屏覆盖层（DEBUG PROF 统计文本）
+            //   RenderStat        → 统计系统
+            //
+            // 每个 pass 只覆盖**单一**相位，相位互不重叠 ⇒ 每个系统每帧只执行一次。
+            // 这同时修复了两个缺陷：
+            //   1) gizmo 回归：旧逻辑最后一个 pass 的 endPhase < RenderDebug，
+            //      使 RenderDebug 相位的 PrimitiveOverlayRenderSystem 不再重绘，
+            //      gizmo 被后续普通图元盖掉。
+            //   2) N× 重录：旧逻辑「每活动组一个 pass、pass 不做组过滤」，
+            //      导致整段绘制区间按活动组数量重复录制。
+            static const ExecutionPhase kFixedSegments[] =
+            {
+                ExecutionPhase::RenderDrawSubmit,
+                ExecutionPhase::RenderDebug,
+                ExecutionPhase::RenderUI2D,
+                ExecutionPhase::RenderOverlay,
+                ExecutionPhase::RenderStat,
+            };
+
+            for (const ExecutionPhase phase : kFixedSegments)
+            {
+                graph.Add(RenderGraph::Pass(phase, phase));
+            }
 
             return graph;
         }
