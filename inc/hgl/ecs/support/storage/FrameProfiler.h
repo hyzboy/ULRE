@@ -1,9 +1,12 @@
 #pragma once
 
 #include<cstdint>
+#include<vector>
 
 #include<hgl/common/DebugChannel.h>
 #include<hgl/time/Time.h>
+#include<hgl/type/String.h>
+#include<hgl/type/UnorderedMap.h>
 
 namespace hgl::ecs
 {
@@ -125,6 +128,38 @@ namespace hgl::ecs
         /// 被判定为无效（时间戳乱序 / 缺失）而丢弃的样本数
         static void     DropSample();
         static uint64_t DroppedSamples();
+    };
+
+    /**
+     * 逐系统/逐模块耗时条目（动态键，非固定枚举槽）。
+     *
+     * 由 `SystemProfiler` 按 `Object::GetName()` 聚合；`RunSystemUpdate` /
+     * `RunRenderSystemsInRange` 在真实调用边界累加。
+     *
+     * 注：条目含 AnsiString（非平凡可复制）⇒ 快照容器用 `std::vector`，
+     * 与本子系统既有惯例一致（`System.h`、`RenderGraph.h`、`MaterialRecipe.h`）。
+     */
+    struct SystemProfileEntry
+    {
+        AnsiString name;      ///< 系统名（空名由调用侧回退为 RTTI 名）
+        AnsiString module;    ///< 模块标签（System::GetRenderElementType()，可空）
+        uint32_t   phase = 0; ///< ExecutionPhase 的枚举值（用 uint32 存，避免依赖 System.h）
+        uint64_t   us = 0;    ///< 窗口内累计耗时（微秒，CPU 墙钟）
+        uint64_t   calls = 0; ///< 窗口内 Update/Render 调用次数
+    };
+
+    /**
+     * 系统级耗时累加器（与 FrameProfiler 同开关、同窗口清零）。
+     *
+     * - 关闭时 `Add` 立即返回；键不存在才插入（每帧只付哈希查找的钱）。
+     * - `Snapshot` 拷贝全部条目到 out 并清空表 ⇒ 窗口式读取。
+     * - 非线程安全：只允许主渲染线程写、读（与 FrameProfiler 相同约定）。
+     */
+    struct SystemProfiler
+    {
+        static void Add(const AnsiString & name, const AnsiString & module, uint32_t phase, uint64_t us);
+        static void Snapshot(std::vector<SystemProfileEntry> & out);
+        static void Reset();
     };
 
     /// RAII 计时段：开关判定只做一次，析构时累加。

@@ -161,6 +161,8 @@ namespace hgl::ecs
 
         Samples() = 0;
         Dropped() = 0;
+
+        SystemProfiler::Reset();
     }
 
     uint64_t FrameProfiler::SumUs()
@@ -202,5 +204,63 @@ namespace hgl::ecs
     uint64_t FrameProfiler::DroppedSamples()
     {
         return Dropped();
+    }
+
+    // ── SystemProfiler ────────────────────────────────────────────────────────
+
+    namespace
+    {
+        UnorderedMap<AnsiString, SystemProfileEntry> & SystemTable()
+        {
+            static UnorderedMap<AnsiString, SystemProfileEntry> s_table;
+            return s_table;
+        }
+    }//anonymous
+
+    void SystemProfiler::Add(const AnsiString & name, const AnsiString & module, uint32_t phase, uint64_t us)
+    {
+        if (!FrameProfiler::IsEnabled())
+            return;
+
+        UnorderedMap<AnsiString, SystemProfileEntry> & table = SystemTable();
+        SystemProfileEntry * e = table.GetValuePointer(name);
+
+        if (!e)
+        {
+            SystemProfileEntry fresh;
+            fresh.name  = name;
+            fresh.module = module;
+            fresh.phase = phase;
+            table.Add(name, fresh);
+            // 插入可能触发 rehash ⇒ 指针必须重新取
+            e = table.GetValuePointer(name);
+            if (!e)
+                return;
+        }
+
+        e->us += us;
+        ++e->calls;
+
+        if (e->module.IsEmpty())
+            e->module = module;
+
+        e->phase = phase;
+    }
+
+    void SystemProfiler::Snapshot(std::vector<SystemProfileEntry> & out)
+    {
+        out.clear();
+
+        UnorderedMap<AnsiString, SystemProfileEntry> & table = SystemTable();
+
+        for (auto & kv : table)
+            out.push_back(kv.second);
+
+        table.Clear();
+    }
+
+    void SystemProfiler::Reset()
+    {
+        SystemTable().Clear();
     }
 }//namespace hgl::ecs
