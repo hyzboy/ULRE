@@ -224,7 +224,29 @@ namespace hgl::ecs
     {
         if (!PrepareFrame())
             return;
-        ClearChanges(frame_texts);
+
+        // 只清除"本帧已被布局完整消费"的批次内组件脏位；
+        // 资源创建失败/布局中止(Begin 失败)的批次保留脏位 ⇒ 下一帧 should_layout 自动重试，
+        // 不会把尚未渲染消费的修改悄悄抹掉。
+        for (auto &pair : frame_inputs)
+        {
+            BatchInput &input = pair.second;
+            if (!input.processed)
+                continue;
+
+            for (TextComponent *text_comp : input.texts)
+            {
+                if (text_comp)
+                    text_comp->ClearAllChanges();
+            }
+        }
+
+        // 空文本/无字体源的组件不进任何批次：其变更永远不影响排版，直接清掉防脏位堆积
+        for (TextComponent *text_comp : frame_texts)
+        {
+            if (text_comp && (text_comp->GetText().IsEmpty() || !text_comp->GetFontSource()))
+                text_comp->ClearAllChanges();
+        }
     }
 
     void TextRenderPipeline::Render(graph::RenderCmdBuffer* cmd)
@@ -730,6 +752,8 @@ namespace hgl::ecs
 
                     const int draw_count = layout_engine.End();
 
+                    input.processed = true;     //布局完整跑完：组件脏位已被消费（或明确产出为空），RunSync 可清除
+
                     if (draw_count > 0)
                     {
                         resources->last_draw_char_count = static_cast<uint32_t>(draw_count);
@@ -880,6 +904,10 @@ namespace hgl::ecs
                     else
                         resources->last_draw_char_count = 0;
                 }
+            }
+            else
+            {
+                input.processed = true;         //未触发布局：本批组件本就无待消费变更（任一脏位都会置 input.dirty），清除无害
             }
 
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());

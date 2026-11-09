@@ -78,11 +78,12 @@ namespace hgl
             struct BatchInput
             {
                 graph::FontSource* font_source = nullptr;
-                std::vector<const TextComponent*> texts;
+                std::vector<TextComponent*> texts;
                 std::vector<graph::layout::CharStyle> styles;   ///<批次内所有组件的样式（去重后）
                 std::vector<uint16_t> style_ids;                ///<与 texts 平行的 style_id 表
                 uint32_t total_chars = 0;
                 bool dirty = false;
+                bool processed = false;                         ///<本帧布局已完整消费该批次变更（RunSync 据此清除组件脏位）
             };
 
             ECSContext* world = nullptr;
