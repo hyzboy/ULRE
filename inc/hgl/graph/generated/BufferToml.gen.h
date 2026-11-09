@@ -186,7 +186,6 @@ namespace hgl::graph::generated
     inline bool ReadEmissiveSurfaceRow(const toml::value &table, hgl::graph::ssbo::EmissiveSurfaceRow &out);
     inline bool ReadTransmissionSurfaceRow(const toml::value &table, hgl::graph::ssbo::TransmissionSurfaceRow &out);
     inline bool ReadPBRAdvancedSurfaceRow(const toml::value &table, hgl::graph::ssbo::PBRAdvancedSurfaceRow &out);
-    inline bool ReadMaterialDataRow(const toml::value &table, hgl::graph::ssbo::MaterialDataRow &out);
     inline bool ReadModelTemplateRow(const toml::value &table, hgl::graph::ssbo::ModelTemplateRow &out);
     inline bool ReadModelPartRow(const toml::value &table, hgl::graph::ssbo::ModelPartRow &out);
     inline bool ReadModelExpansionArena(const toml::value &table, hgl::graph::ModelExpansionArena &out);
@@ -203,7 +202,6 @@ namespace hgl::graph::generated
     inline toml::value WriteEmissiveSurfaceRow(const hgl::graph::ssbo::EmissiveSurfaceRow &in);
     inline toml::value WriteTransmissionSurfaceRow(const hgl::graph::ssbo::TransmissionSurfaceRow &in);
     inline toml::value WritePBRAdvancedSurfaceRow(const hgl::graph::ssbo::PBRAdvancedSurfaceRow &in);
-    inline toml::value WriteMaterialDataRow(const hgl::graph::ssbo::MaterialDataRow &in);
     inline toml::value WriteModelTemplateRow(const hgl::graph::ssbo::ModelTemplateRow &in);
     inline toml::value WriteModelPartRow(const hgl::graph::ssbo::ModelPartRow &in);
     inline toml::value WriteModelExpansionArena(const hgl::graph::ModelExpansionArena &in);
@@ -569,29 +567,6 @@ namespace hgl::graph::generated
         return true;
     }
 
-    inline bool ReadMaterialDataRow(const toml::value &table, hgl::graph::ssbo::MaterialDataRow &out)
-    {
-        if (!table.is_table())
-            return false;
-        if (const toml::value *v = detail::Find(table, "surface_type"))
-        {
-            if (!detail::AsUnsigned(*v, out.surface_type)) return false;
-        }
-        if (const toml::value *v = detail::Find(table, "surface_ssbo_id"))
-        {
-            if (!detail::AsUnsigned(*v, out.surface_ssbo_id)) return false;
-        }
-        if (const toml::value *v = detail::Find(table, "surface_data_index"))
-        {
-            if (!detail::AsUnsigned(*v, out.surface_data_index)) return false;
-        }
-        if (const toml::value *v = detail::Find(table, "authored_flags"))
-        {
-            if (!detail::AsUnsigned(*v, out.authored_flags)) return false;
-        }
-        return true;
-    }
-
     inline bool ReadModelTemplateRow(const toml::value &table, hgl::graph::ssbo::ModelTemplateRow &out)
     {
         if (!table.is_table())
@@ -855,16 +830,6 @@ namespace hgl::graph::generated
         t["sheen_color"] = detail::FromInteger(in.sheen_color);
         t["subsurface_power"] = detail::FromFloat(in.subsurface_power);
         t["thickness"] = detail::FromFloat(in.thickness);
-        return toml::value(std::move(t));
-    }
-
-    inline toml::value WriteMaterialDataRow(const hgl::graph::ssbo::MaterialDataRow &in)
-    {
-        toml::table t;
-        t["surface_type"] = detail::FromInteger(in.surface_type);
-        t["surface_ssbo_id"] = detail::FromInteger(in.surface_ssbo_id);
-        t["surface_data_index"] = detail::FromInteger(in.surface_data_index);
-        t["authored_flags"] = detail::FromInteger(in.authored_flags);
         return toml::value(std::move(t));
     }
 

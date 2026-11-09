@@ -4726,8 +4726,8 @@ int main(int argc, char** argv)
             { "LineRenderPipeline.cpp", OS_TEXT("src/ecs/support/line/LineRenderPipeline.cpp"),
               "(slot + 1", "裸 slot 加一的算式复活（应写 kFirstObjectL2WSlot + slot）", true },
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
-              "inline constexpr uint32_t kNoMaterialRow = 0;",
-              "材质行 0 哨兵的具名权威丢失" },
+              "hgl::UnorderedMap<EntityID, Entry> entries;",
+              "旁表不再以 EntityID 为键（2026-11 收敛：组件行池 row_id 转手的间接层已退役）" },
             // ⑩ B1/S3b-3（2026-10-14，2026-11 改判）：顶点节点枚举的名字表归位到枚举定义旁。
             //    唯一真源 = 文末的 `HGL_ENUM_BEGIN` 登记块；原先那批
             //    `Get*Name` / `Parse*` 纯转发壳已删（取名字 = `hgl::serialize::EnumNameOf`，
@@ -5539,11 +5539,14 @@ int main(int argc, char** argv)
             // 且与「GPU 面只剩类型 + 行号」相矛盾）⇒ 原正向 needle 失去载体，改钉**禁复活**。
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "bool authored = false;", "材质数据行资源又挂回 `authored` 死字段（零读写 ⇒ 按 B4-i 零残留判）", true },
-            // B4-iii-a：行号复位语义已搬到「组件行结构默认值 + ClearMaterialRow 写默认行」
+            // 2026-11：设备级组件行退役 ⇒ 行结构本身进「禁复活」列；
+            // 清空路径的复位语义搬到「旁表条目 has_data_resource 置假」。
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
-              "uint32 surface_data_index = uint32(-1);", "组件行缺「未设」哨兵默认值（会残留旧行号）" },
+              "struct HGL_SSBO_ROW MaterialDataRow",
+              "设备级材质组件行结构复活（该池 GPU 从未消费，已退役）", true },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "const hgl::graph::ssbo::MaterialDataRow cleared{};", "清空路径不再复位组件行（残留旧引用）" },
+              "entry->has_data_resource = false;",
+              "清空路径不再复位旁表条目（残留旧引用）" },
 
             // ② 禁复活：每实体死指针与派生数
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
@@ -5568,61 +5571,60 @@ int main(int argc, char** argv)
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Test 32: B4-iii-a 契约（材质数据 = 设备级 (Global, MaterialData) 组件行）
+    // Test 32: B4-iii-a 契约（2026-11 改判：设备级组件行**整体退役**，真源收敛到旁表）
     //
-    // 背景（B4 拍板「路 B」：用户原话「MaterialData 的数据本就是跨世界的」）：
-    // 材质数据组件的 GPU 面住在**设备级**行 arena 里，行内只放「引用哪一行内容 + 授权标记」；
-    // 组件只持行号（`material_row_id`）⇒ 不存在「组件副本 vs 行」双真值。
-    // 行 0 = 哨兵（无材质数据）；`BuildResolvedRecipe` 的绑定真源 = 该行（不再读组件副本）。
+    // 背景：原「(Global, MaterialData) 设备级组件行池」是给 GPU 消费预留的设计，但实测
+    // GPU 从未读该池（GlobalAddresses/ShaderBufferSources 均无该槽位），收口路径只读
+    // 世界级旁表；行池容量（1024）反而给每实体场景造成假预算（棋盘格压测刷「行池分配
+    // 失败」）。⇒ 池 + 行结构 + 注册表读口 + GLSL 桩全部删除；`ecs::MaterialData` 收敛为
+    // **薄代理**（零字段），授权内容行绑定与授权代数并入旁表条目（键 = EntityID）。
     //
-    // 反证：删掉行写入 / 恢复组件副本 ⇒ 本用例必失败。
+    // 反证：恢复枚举条目 / 池配置 / 行结构 / 组件持行号 ⇒ 本用例必失败（禁复活）。
     // ─────────────────────────────────────────────────────────────
     {
         const SourceContract kB4iiiContracts[] =
         {
-            // ① 类型与行结构
-            // T1.1 起枚举尾部追加了 ModelTemplatePool / ModelPartPool（GPU 常驻模型模板池），
-            // 范围终点随之移到 ModelPartPool —— 判据要的是「MaterialData 仍在范围内」，
-            // 故改成锁终点 == 末项，并另加一条锁 MaterialData 条目本身还在。
-            { "SSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/SSBOTypes.h"),
-              "ENUM_CLASS_RANGE(MeshDrawParams, ModelPartPool)",
-              "GlobalSSBOType 的枚举范围终点不再覆盖 MaterialData（设备级组件行类型越界）" },
+            // ① 枚举、池、行结构零残留（禁复活）
             { "SSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/SSBOTypes.h"),
               "        MaterialData,",
-              "GlobalSSBOType 未登记 MaterialData（设备级组件行类型缺失）" },
-            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
-              "struct HGL_SSBO_ROW MaterialDataRow", "材质数据组件行结构缺失" },
-            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
-              "kMaterialDataFlagAuthoredDataResource", "组件行的「已授权数据行」位缺失" },
-
-            // ② 池与读口
+              "GlobalSSBOType 又登记了 MaterialData 组件行类型（退役被回退）", true },
+            { "GlobalSSBOTypes.h", OS_TEXT("inc/hgl/graph/ssbo/GlobalSSBOTypes.h"),
+              "HGL_ENUM_ITEM(MaterialData",
+              "GlobalSSBOType 名字表又登记 MaterialData（退役被回退）", true },
             { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
-              "GlobalSSBOType::MaterialData,        \"MaterialData\"",
-              "registry 未给 MaterialData 配池（设备级行 arena 缺池）" },
-            { "GlobalSSBOBufferRegistry.h", OS_TEXT("inc/hgl/graph/module/GlobalSSBOBufferRegistry.h"),
-              "const ssbo::MaterialDataRow *GetMaterialDataRow", "registry 缺组件行读口" },
+              "GetMaterialDataRow",
+              "registry 又出现组件行专用读口（退役被回退）", true },
+            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
+              "kMaterialDataFlagAuthoredDataResource",
+              "组件行授权位复活（内容行绑定真源应只在旁表条目）", true },
 
-            // ③ 组件侧：只持行号 + 走行读写 + 归还
+            // ② 组件 = 薄代理：不持行号、不持代数副本
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "uint32_t material_row_id = 0;", "组件不再持设备级行号" },
+              "uint32_t material_row_id = 0;",
+              "材质组件又持设备级行号（多真值复活）", true },
+            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "uint32_t GetAuthoredRowRevision() const;",
+              "「读行内 revision」的旧读数口复活", true },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "registry->Acquire(hgl::graph::GlobalSSBOType::MaterialData)",
-              "组件不再从设备级池取行" },
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "registry->GetMaterialDataRow(material_row_id)",
-              "解析路径不再读行（回到读组件副本）" },
-            // 句柄语义 = 非租约：**析构不归还行**（行回收属 arena 策略）。
-            // 禁复活：在 OnDetach 里碰设备级池 ⇒ 会在 GraphicsContext::Shutdown 期间写坏池状态
-            //（2026-10-02 实测：进程崩在 ~GlobalSSBOBufferRegistry，且丢失未 flush 日志）。
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "registry->ReleaseID(hgl::graph::GlobalSSBOType::MaterialData",
-              "析构期又去归还设备级行（句柄语义：析构不归还行）", true },
+              "组件又从设备级池取行（每实体行预算复活 = 压测报错的根因）", true },
 
-            // ④ 禁复活：每实体副本与其读取口
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "data_resource", "材质组件又持每实体数据行副本（双真值）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "GetDataResource", "材质组件又暴露每实体副本读取口", true },
+            // ③ 旁表收口：读写/清空/分离都以 EntityID 为键落旁表
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "return table->GetOrCreate(GetOwnerID());",
+              "授权写入未以 EntityID 为键落旁表" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "entry->has_data_resource = true;",
+              "内容行绑定未写进旁表条目（绑定真源丢失）" },
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "table->Remove(GetOwnerID());",
+              "组件分离未摘除旁表条目（跨生命周期串味 + 泄漏）" },
+            // 句柄语义的时代已结束：OnDetach 现在**整条删除条目**；
+            // 禁复活：任何在组件里留「行号不清零」的状态（2026-10-02 关闭期崩溃教训
+            // 的原载体——设备级池——已不存在，条目删除只是哈希删项）。
+            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
+              "GetOrCreateMaterialRow",
+              "组件又经池取行（关闭期写坏池状态的崩溃教训会回归）", true },
         };
 
         if (const int failed = verify_source_contracts(32, kB4iiiContracts,
@@ -5630,8 +5632,8 @@ int main(int argc, char** argv)
                                                                          sizeof(kB4iiiContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 32 Passed: B4-iii-a 契约成立（材质数据 = 设备级 (Global, MaterialData) 组件行："
-                 u8"类型/行结构/池/读口/组件只持行号/分离归还；禁复活每实体副本与其读取口；共 %d 条契约）。",
+        GLogInfo(u8"Test 32 Passed: B4-iii-a 改判契约成立（设备级组件行池退役零残留、组件薄代理零字段、"
+                 u8"旁表按 EntityID 收口读写与分离摘除；共 %d 条契约）。",
                  static_cast<int>(sizeof(kB4iiiContracts) / sizeof(kB4iiiContracts[0])));
     }
 
@@ -5726,78 +5728,63 @@ int main(int argc, char** argv)
     }
 
     // ──────────────────────────────────────────────────────
-    // Test 35: B4-ii 契约（材质行 CPU 读口 + 行内 revision）
+    // Test 35: B4-ii 契约（2026-11 改判：授权代数收敛到旁表条目）
     //
-    // 背景（2026-10-02，B4 拍板「路 B」后的第二批）：材质数据的**状态真源是行**——
-    // ① 组件行 `MaterialDataRow` 内嵌 revision（高位 24 位），授权位仍在低 8 位；
-    // ② 授权变更只有唯一入口 `MaterialData::TouchAuthoredRow`（五个授权点全走它，
-    //    不再各自 `++authored_generation`）；
-    // ③ registry 提供泛型类型化读口 `GetTypedRow<T>(type, row_id)`，三个专用读口改为它的薄包装；
-    // ④ 消费者（每实例 slot 的变更检测）改读**行内 revision**，不读组件副本。
+    // 背景：原设计「组件行内嵌 revision（高 24 位）+ TouchAuthoredRow 打包写行」随
+    // 设备级组件行池退役（Test 32）。代数的真源现在是旁表条目的 `authored_generation`
+    // 字段；授权变更唯一入口改名为 `MaterialData::TouchAuthored()`（三个授权点全走它：
+    // SetRecipe / SetTextureResource / SetDataResource）。消费者（收集路径的每实例
+    // slot 变更检测）读 `GetAuthoredGeneration()`。
+    // registry 的泛型类型化读口 `GetTypedRow<T>` 仍在（内容行读口依赖它）。
     //
-    // 反证：拿掉任一环（读口 / 打包 / 唯一入口 / 消费者读行）⇒ 本用例必失败。
+    // 反证：恢复行内 revision 位段/打包口，或授权点绕过唯一入口 ⇒ 本用例必失败。
     // ──────────────────────────────────────────────────────
     {
         const SourceContract kB4iiContracts[] =
         {
-            // ① 行内 revision 位段 + 打包/取值口 + 位段不重叠
+            // ① 行内 revision 位段零残留（禁复活）
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
               "kMaterialDataRevisionShift",
-              "组件行缺行内 revision 位段（只读行的消费者无法检测变更）" },
+              "组件行 revision 位段复活（代数真源应只在旁表条目）", true },
             { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
               "PackMaterialDataAuthoredFlags",
-              "缺「授权位 + revision」打包口（revision 会与 flag 位串位）" },
-            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
-              "GetMaterialDataRowRevision",
-              "缺行内 revision 取值口" },
-            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
-              "static_assert(kMaterialDataFlagMask < (1u << kMaterialDataRevisionShift)",
-              "位段重叠的编译期约束缺失（授权位与 revision 会互相污染）" },
-            { "MaterialDataRows.h", OS_TEXT("inc/hgl/graph/ssbo/MaterialDataRows.h"),
-              "static_assert(sizeof(MaterialDataRow) == 16)",
-              "组件行不再固定 16B（行内 revision 被实现成扩行宽）" },
-            // ② 泛型类型化读口在位 + 三个专用读口全委托（防「只改一个」的半改状态）
+              "「授权位 + revision」打包口复活", true },
+            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
+              "GetTypedRow<ssbo::MaterialDataRow>",
+              "材质组件行读口复活（该行结构已退役）", true },
+
+            // ② 泛型类型化读口在位 + 内容行读口全委托（防「只改一个」的半改状态）
             { "GlobalSSBOBufferRegistry.h", OS_TEXT("inc/hgl/graph/module/GlobalSSBOBufferRegistry.h"),
               "const T *GetTypedRow(GlobalSSBOType type, uint32_t row_id) const",
               "缺泛型类型化行读口（读行又得裸 RowCPU + 强转）" },
-            { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
-              "GetTypedRow<ssbo::MaterialDataRow>(GlobalSSBOType::MaterialData, row_id)",
-              "材质组件行读口未走泛型口（半改状态）" },
             { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
               "GetTypedRow<mtl::MeshDrawParams>(GlobalSSBOType::MeshDrawParams, geometry_id)",
               "MeshDrawParams 读口未走泛型口（半改状态）" },
             { "GlobalSSBOBufferRegistry.cpp", OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"),
               "GetTypedRow<mtl::GeometryAABB>(GlobalSSBOType::GeometryAABB, id)",
               "GeometryAABB 读口未走泛型口（半改状态）" },
-            // ③ 授权变更唯一入口 + 四个授权点都走它 + 写行带 revision
+
+            // ③ 授权变更唯一入口 + 授权点都走它
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "void MaterialData::TouchAuthoredRow(const uint32_t set_flags, const uint32_t clear_flags)",
-              "缺授权变更唯一入口（行内 revision 与组件代数列会不同步）" },
+              "void MaterialData::TouchAuthored()",
+              "缺授权变更唯一入口（代数推进被拆回各授权点各自为政）" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredRecipe, 0);",
-              "SetRecipe 未走唯一入口" },
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredTexture, 0);",
-              "SetTextureResource 未走唯一入口" },
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource);",
-              "SetDataResource 清空分支未走唯一入口" },
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "hgl::graph::ssbo::PackMaterialDataAuthoredFlags(",
-              "SetDataResource 写行未带行内 revision（行内副本会停在 0）" },
-            // ④ 消费者读行不读组件副本
+              "TouchAuthored();",
+              "授权点未走唯一入口" },
+
+            // ④ 代数读数 = 旁表条目；消费者读数与其一致
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "uint32_t GetAuthoredRowRevision() const;",
-              "组件缺「读行内 revision」口" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
-              "material_data->GetAuthoredRowRevision()",
-              "变更检测又读组件副本（状态真源被拆成两份）" },
-            // ⑤ 禁复活：消费者不得退回读组件计数器
+              "uint32_t GetAuthoredGeneration() const;",
+              "组件缺「读旁表条目代数」口" },
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
               "material_data->GetAuthoredGeneration()",
-              "变更检测退回读组件副本（B4-ii 被回退）", true },
+              "变更检测未走代数读数口" },
+            // ⑤ 禁复活：旧行内 revision 读数口
+            { "RenderPrimitiveCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+              "material_data->GetAuthoredRowRevision()",
+              "变更检测退回读设备级组件行（B4-ii 旧形态复活）", true },
         };
 
         if (const int failed = verify_source_contracts(35, kB4iiContracts,
@@ -5805,34 +5792,38 @@ int main(int argc, char** argv)
                                                                          sizeof(kB4iiContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 35 Passed: B4-ii 契约成立（组件行内嵌 revision、授权变更唯一入口、"
-                 u8"泛型类型化读口 + 三个专用读口全委托、消费者读行内 revision 不读组件副本；共 %d 条契约）。",
+        GLogInfo(u8"Test 35 Passed: B4-ii 改判契约成立（行内 revision 零残留、泛型读口仍委托、"
+                 u8"授权变更唯一入口 TouchAuthored、代数读数 = 旁表条目且消费者同口径；共 %d 条契约）。",
                  static_cast<int>(sizeof(kB4iiContracts) / sizeof(kB4iiContracts[0])));
     }
 
     // ──────────────────────────────────────────────────────
-    // Test 36: B4-iii-b 契约（重类型落世界级旁表，组件只持行号）
+    // Test 36: B4-iii-b 契约（重类型落世界级旁表；2026-11 改键 = EntityID，组件零字段）
     //
     // 背景：设备级组件行只能放 POD；配方覆盖（`mtl::MaterialRecipe`）与具名纹理资源
     // （`UnorderedMap<AnsiString,…>`）是重类型 ⇒ 落**世界级旁表** `MaterialAuthoringSideTable`
-    // （`ECSContext` 持有），**键 = 材质组件行行号**；组件侧成员整组删除，只留 `material_row_id`。
-    // 纹理资源类型/枚举随之从组件移到 `hgl::ecs` 域（限定名调用点已全量迁移）。
+    // （`ECSContext` 持有）。2026-11 起**键 = `EntityID`**（原「键 = 材质组件行行号」的
+    // 间接层随组件行池退役，见 Test 32）；组件收敛为**薄代理**，零字段。
+    // 纹理资源类型/枚举在 `hgl::ecs` 域（限定名调用点零改动）。
     //
     // 反证：把任一重类型成员搬回组件，或让读写绕过旁表 ⇒ 本用例必失败。
     // ──────────────────────────────────────────────────────
     {
         const SourceContract kB4iiibContracts[] =
         {
-            // ① 旁表在位、以行号为键
+            // ① 旁表在位、以 EntityID 为键
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "class MaterialAuthoringSideTable",
               "重类型旁表缺失（配方覆盖/具名纹理资源无处安放）" },
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
-              "Entry *GetOrCreate(uint32_t row_id);",
-              "旁表不再以「行号」为键" },
+              "Entry *GetOrCreate(EntityID entity_id);",
+              "旁表不再以 EntityID 为键（行号间接层已退役，不许回潮）" },
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>",
               "旁表条目不持具名纹理资源（重类型又要有第二个家）" },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
+              "uint32_t authored_generation = 0;",
+              "旁表条目不持授权代数（代数真源无处安放）" },
             // ② 世界级归属（ECSContext 持有 + 取用口）
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "std::unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table;",
@@ -5840,10 +5831,10 @@ int main(int argc, char** argv)
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "MaterialAuthoringSideTable* GetMaterialAuthoringTable()",
               "世界缺旁表取用口" },
-            // ③ 组件只持行号：重类型成员禁复活
+            // ③ 组件零字段：重类型成员与行号一律禁复活
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "uint32_t material_row_id = 0;",
-              "组件不再持材质行号（身份丢失）" },
+              "组件又持材质行号（薄代理被回退）", true },
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "bool has_recipe_override = false;",
               "配方覆盖布尔又回到组件（重类型搬回组件的先兆）", true },
@@ -5864,11 +5855,11 @@ int main(int argc, char** argv)
               "MaterialData::GetAuthoringTable() const",
               "组件缺旁表取用口" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "return table->GetOrCreate(material_row_id);",
-              "授权写入未以行号为键落旁表" },
+              "table->GetOrCreate(material_row_id)",
+              "旁表读写又经行号转手（间接层已退役）", true },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "table->Remove(material_row_id);",
-              "组件分离未摘除旁表条目（跨生命周期串味 + 泄漏）" },
+              "分离摘除又按行号删（键已改为 EntityID）", true },
             // ⑤ 禁复活：旧「组件成员直接读写」形态
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "        recipe_override = recipe;",
@@ -6246,9 +6237,12 @@ int main(int argc, char** argv)
             // （无断言、无日志）。现在内聚在 BeginManagedRenderFrame 里、以「主帧」为条件执行
             // （离屏帧传 need_swapchain_acquire=false ⇒ 不重复 prepass，嵌套阴影 pass 也不递归）。
             { "ContextRender.cpp", OS_TEXT("src/ecs/core/ContextRender.cpp"),
-              "if (need_swapchain_acquire)\r\n                ExecuteScenePrePassWorkflow(deltaTime);",
+              "if (need_swapchain_acquire)\r\n            "
+              "{\r\n                FrameProfileSpan prepass_span(FrameProfileSlot::ScenePrePass);\r\n"
+              "                ExecuteScenePrePassWorkflow(deltaTime);",
               "§9 M12：场景预处理必须在**主帧帧入口**执行（守卫与调用一起钉：只留调用 ⇒ 离屏帧也跑 "
-              "prepass；只留守卫 ⇒ 入口又退回「调用方负责」的单入口形态）" },
+              "prepass；只留守卫 ⇒ 入口又退回「调用方负责」的单入口形态；2026-11 起包体含 prepass 性能账 span，"
+              "守卫-计时-调用同块不得拆散）" },
 
             { "RenderGraph.cpp", OS_TEXT("src/ecs/core/render/RenderGraph.cpp"),
               "ExecuteScenePrePassWorkflow",

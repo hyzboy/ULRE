@@ -109,8 +109,7 @@ namespace
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::EmissiveSurface) == sizeof(ssbo::EmissiveSurfaceRow)
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::TransmissionSurface) == sizeof(ssbo::TransmissionSurfaceRow)
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::PBRAdvancedSurface) == sizeof(ssbo::PBRAdvancedSurfaceRow)
-            // 组件行与绘制参数行都不是「可摊平的内容行」。
-            && GetGlobalSSBOTypeStructStride(GlobalSSBOType::MaterialData) == 0
+            // 绘制参数行不是「可摊平的内容行」（原组件行 MaterialData 池已退役）。
             && GetGlobalSSBOTypeStructStride(GlobalSSBOType::MeshDrawParams) == 0
             && sizeof(ssbo::PBRSurfaceRow) % 16 == 0
             && sizeof(ssbo::EmissiveSurfaceRow) % 16 == 0
@@ -393,7 +392,7 @@ namespace
         MaterialDataBlockSpec spec;
         spec.schema = 1;
         spec.name = "bad";
-        spec.target = GlobalSSBOType::MaterialData;
+        spec.target = GlobalSSBOType::ModelTemplatePool;
         spec.rows.Resize(1);
 
         mtl::MaterialDataBlock block;
@@ -500,7 +499,7 @@ namespace
         MaterialDataBlockSpec bad;
         bad.schema = 1;
         bad.name = "bad";
-        bad.target = GlobalSSBOType::MaterialData;
+        bad.target = GlobalSSBOType::ModelTemplatePool;
         bad.rows.Resize(1);
 
         return !mtl::EncodeMaterialDataBlockFlat(bad, flat, &error);

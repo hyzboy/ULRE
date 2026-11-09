@@ -28,11 +28,8 @@ namespace
         // 预留行会让首批 512 号相对 start 偏移导致 fail（实测：reserve=1 时只激活 513 行）。
         // 行 0 的「始终可见」哨兵由写入侧显式写（B3-ii），不靠预留。
         { GlobalSSBOType::GeometryAABB,        "GeometryAABB",        sizeof(mtl::GeometryAABB),  16384u, 0u },
-        // B4-iii-a：材质数据**组件行**（组件在设备级的家）。与上面四个「内容行」池分工不同：
-        // 内容行 = 被引用的资源行（shader 按 MTL_ROW 读）；本池 = 组件行（我引用哪一行内容 + 授权标记）。
-        // 容量与材质内容池同口径 1024；reserve_rows = 1 ⇒ 行 0 恒为「无材质数据」哨兵
-        // （组件侧 material_row_id == 0 即无）。
-        { GlobalSSBOType::MaterialData,        "MaterialData",        sizeof(ssbo::MaterialDataRow), 1024u, 1u },
+        // （原 MaterialData 组件行池已退役 —— 材质数据是每实体 CPU 授权状态，
+        //  落 MaterialAuthoringSideTable（键 = EntityID）；GPU 只经 BDA 读内容行，从不读组件行。）
         // GPU 常驻模型模板池（plan T1）：模板 = 一行，部件 = ModelPartPool 的连续区间。
         // 两池 reserve_rows = 1 ⇒ 行 0 恒为「无模板 / 无部件」哨兵（kInvalidModelTemplateID）。
         // 容量为初始预算（4096 模型 × 16384 部件 ≈ 512K + 2M 行字节），不够再调表，不改结构。
@@ -436,14 +433,6 @@ const mtl::MeshDrawParams *GlobalSSBOBufferRegistry::GetMeshDrawParamsRow(const 
     return geometry_id == 0
         ? nullptr
         : GetTypedRow<mtl::MeshDrawParams>(GlobalSSBOType::MeshDrawParams, geometry_id);
-}
-
-const ssbo::MaterialDataRow *GlobalSSBOBufferRegistry::GetMaterialDataRow(const uint32_t row_id) const
-{
-    // 行 0 = 「无材质数据」哨兵
-    return row_id == 0
-        ? nullptr
-        : GetTypedRow<ssbo::MaterialDataRow>(GlobalSSBOType::MaterialData, row_id);
 }
 
 const mtl::GeometryAABB *GlobalSSBOBufferRegistry::GetGeometryAABB(const uint32_t id) const

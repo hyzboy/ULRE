@@ -29,7 +29,6 @@
 #include <hgl/ecs/support/transform/TransformAccessor.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/MaterialData.h>
-#include <hgl/ecs/components/CameraComponent.h>
 #include <hgl/ecs/components/CameraControlMode.h>
 #include <hgl/ecs/components/ModelCollisionProxyComponent.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -389,7 +388,7 @@ namespace hgl::example
         {
             return false;
         }
-        ecs::CameraComponent *camera = ctx_->GetOrCreateCamera(cam_entity);
+        auto *camera = ctx_->GetOrCreateCamera(cam_entity);
         if(camera == nullptr)
         {
             return false;

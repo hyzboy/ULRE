@@ -81,7 +81,6 @@ namespace hgl::ecs
                 case T::EmissiveSurface:
                 case T::TransmissionSurface:
                 case T::PBRAdvancedSurface:
-                case T::MaterialData:
                     out_topology = TopologyChange::MaterialBinding;
                     out_fact     = DynamicFactChange::MaterialContent;
                     return true;

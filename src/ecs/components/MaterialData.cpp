@@ -50,8 +50,7 @@ namespace hgl::ecs
 
     void MaterialData::SetRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
     {
-        // B4-iii-b：配方是重类型 ⇒ 落**世界级旁表**（键 = 本组件的材质行行号）；
-        // 行内只留授权位 + revision。行不可用即报错返回，不造半个对象。
+        // 配方是重类型 ⇒ 落**世界级旁表**（键 = EntityID）。条目建不出来即报错返回。
         MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry();
 
         if (!entry)
@@ -60,7 +59,7 @@ namespace hgl::ecs
         entry->recipe_override = recipe;
         entry->has_recipe_override = true;
 
-        TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredRecipe, 0);
+        TouchAuthored();
     }
 
     const hgl::graph::mtl::MaterialRecipe *MaterialData::GetRecipeOverride() const
@@ -70,7 +69,7 @@ namespace hgl::ecs
         if (!table)
             return nullptr;
 
-        const MaterialAuthoringSideTable::Entry *entry = table->Find(material_row_id);
+        const MaterialAuthoringSideTable::Entry *entry = table->Find(GetOwnerID());
 
         return (entry && entry->has_recipe_override) ? &entry->recipe_override : nullptr;
     }
@@ -113,7 +112,7 @@ namespace hgl::ecs
             return false;
         }
 
-        TouchAuthoredRow(hgl::graph::ssbo::kMaterialDataFlagAuthoredTexture, 0);
+        TouchAuthored();
         return true;
     }
 
@@ -204,7 +203,7 @@ namespace hgl::ecs
         if (!table)
             return nullptr;
 
-        const MaterialAuthoringSideTable::Entry *side = table->Find(material_row_id);
+        const MaterialAuthoringSideTable::Entry *side = table->Find(GetOwnerID());
 
         if (!side)
             return nullptr;
@@ -243,95 +242,26 @@ namespace hgl::ecs
             return RequiredTextureReadiness::Ready;
 
         return hgl::ecs::EvaluateRequiredTextureReadiness(
-            table->Find(material_row_id));
+            table->Find(GetOwnerID()));
     }
 
-    // ── B4-iii-a：材质数据在设备级的家 = (Global, MaterialData) 组件行 ──────────
-    //   真源只有一处：**行**。组件只持行号 ⇒ 不存在「组件副本 vs 行」双真值。
-    //   行归属设备级（材质数据是资源级、跨世界共享）—— 与 P-1 及 B4 拍板「路 B」一致。
-
-    hgl::graph::GlobalSSBOBufferRegistry *MaterialData::GetRegistry() const
-    {
-        const Entity *owner = GetOwner();
-        ECSContext *world = owner ? owner->GetContext() : nullptr;
-        hgl::graph::GraphicsContext *gc = world ? world->GetGraphicsContext() : nullptr;
-
-        return gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-    }
-
-    bool MaterialData::EnsureMaterialRow()
-    {
-        if (material_row_id != 0)
-            return true;
-
-        auto *registry = GetRegistry();
-
-        if (!registry)
-        {
-            GLogError("[MaterialData] 无设备/注册表：无法分配 (Global, MaterialData) 组件行 owner_id=%llu",
-                      GetOwnerID().index);
-            return false;
-        }
-
-        const uint32_t row = registry->Acquire(hgl::graph::GlobalSSBOType::MaterialData);
-
-        if (row == 0 || row == hgl::graph::ActiveRowPool::InvalidRowID)
-        {
-            GLogError("[MaterialData] (Global, MaterialData) 行池分配失败（预算用尽？）owner_id=%llu",
-                      GetOwnerID().index);
-            return false;
-        }
-
-        material_row_id = row;
-
-        // 一次性证据（B3 同款「就位」留痕）：设备级行 arena 真的被用上
-        static bool s_logged = false;
-        if (!s_logged)
-        {
-            s_logged = true;
-            GLogInfo("[MaterialData] (Global, MaterialData) 组件行就位：row=%u（设备级、跨世界共享；行 0 = 无材质数据哨兵）",
-                     row);
-        }
-
-        return true;
-    }
-
-    const hgl::graph::ssbo::MaterialDataRow *MaterialData::GetMaterialRow() const
-    {
-        if (material_row_id == 0)
-            return nullptr;
-
-        auto *registry = GetRegistry();
-
-        return registry ? registry->GetMaterialDataRow(material_row_id) : nullptr;
-    }
-
-    bool MaterialData::WriteMaterialRow(const hgl::graph::ssbo::MaterialDataRow &row)
-    {
-        auto *registry = GetRegistry();
-
-        return registry
-            && registry->Write(hgl::graph::GlobalSSBOType::MaterialData, material_row_id, row);
-    }
-
-    void MaterialData::ClearMaterialRow()
-    {
-        const hgl::graph::ssbo::MaterialDataRow cleared{};
-
-        if (!WriteMaterialRow(cleared))
-            GLogError("[MaterialData] 清空 (Global, MaterialData) 行失败 row=%u", material_row_id);
-    }
+    // ── 内容行绑定（2026-11 收敛：真源 = 旁表条目；设备组件行池已退役）───────────
 
     bool MaterialData::SetDataResource(
         const MaterialDataAuthoringResource &resource)
     {
         if (resource.ssbo_id == 0)
         {
-            // 清空路径：行保留（行号不还），只把内容复位 ⇒ 下游按「无数据行」走。
-            if (material_row_id != 0)
+            // 清空路径：有条目就复位引用并推进代数；无条目 ⇒ 本来就没有 ⇒ 直接成功。
+            MaterialAuthoringSideTable *table = GetAuthoringTable();
+            MaterialAuthoringSideTable::Entry *entry =
+                table ? table->Find(GetOwnerID()) : nullptr;
+
+            if (entry && entry->has_data_resource)
             {
-                ClearMaterialRow();
-                TouchAuthoredRow(0, hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource);
+                entry->data_resource = {};
+                entry->has_data_resource = false;
+                TouchAuthored();
             }
             return true;
         }
@@ -347,29 +277,20 @@ namespace hgl::ecs
             return false;
         }
 
-        if (!EnsureMaterialRow())
+        MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry();
+
+        if (!entry)
             return false;
 
         const hgl::graph::GlobalSSBOBinding binding = resource.GetGlobalSSBOBinding();
 
-        hgl::graph::ssbo::MaterialDataRow row{};
-        row.surface_type       = static_cast<uint32>(binding.ssbo_type);
-        row.surface_ssbo_id    = binding.ssbo_id;
-        row.surface_data_index = binding.data_index;
-        row.authored_flags     = hgl::graph::ssbo::PackMaterialDataAuthoredFlags(
-            hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource,
-            ++authored_generation);
-
-        if (!WriteMaterialRow(row))
-        {
-            GLogError("[MaterialData] 写 (Global, MaterialData) 行失败 row=%u ssbo_id=%u data_index=%u",
-                      material_row_id, binding.ssbo_id, binding.data_index);
-            return false;
-        }
+        entry->data_resource = binding;
+        entry->has_data_resource = true;
+        TouchAuthored();
         return true;
     }
 
-    // ── B4-iii-b：世界级旁表取用（键 = 材质行行号）──────────────────────────
+    // ── 世界级旁表取用（键 = EntityID）──────────────────────────────────────────
     MaterialAuthoringSideTable *MaterialData::GetAuthoringTable() const
     {
         const Entity *owner = GetOwner();
@@ -389,20 +310,42 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        if (!EnsureMaterialRow())      // 行 = 旁表的键；行不可用即失败（已报错）
-            return nullptr;
-
-        return table->GetOrCreate(material_row_id);
+        return table->GetOrCreate(GetOwnerID());
     }
 
-    // B4-ii：授权变更唯一入口（见 .h 注释）。行内 revision 与授权位**只在这里落笔**。
+    const MaterialAuthoringSideTable::Entry *MaterialData::FindAuthoringEntry() const
+    {
+        const MaterialAuthoringSideTable *table = GetAuthoringTable();
+
+        return table ? table->Find(GetOwnerID()) : nullptr;
+    }
+
+    bool MaterialData::HasDataResource() const
+    {
+        const auto *entry = FindAuthoringEntry();
+
+        return entry && entry->has_data_resource;
+    }
+
+    uint32_t MaterialData::GetAuthoredGeneration() const
+    {
+        const auto *entry = FindAuthoringEntry();
+
+        return entry ? entry->authored_generation : 0u;
+    }
+
     void MaterialData::BumpAuthoredGeneration()
     {
-        ++authored_generation;
+        // 上游来源变化：只动代数，不改授权数据本体。条目不存在 ⇒ 没有任何授权状态
+        // 可失效（解析链本来就走资产默认配方/无材质），代数留在 0 即可。
+        MaterialAuthoringSideTable *table = GetAuthoringTable();
+
+        if (MaterialAuthoringSideTable::Entry *entry =
+                table ? table->Find(GetOwnerID()) : nullptr)
+            ++entry->authored_generation;
 
         // P1：上游来源变化（asset 默认配方 / 变体切换）会让解析结果与 shader 身份失配 ⇒
         // 材质批的键集合可能变化，按拓扑变更记账（而不是动态事实）。
-        // 只读 `GetOwner()->GetContext()`，不触发重建，纯记账。
         const Entity *owner = GetOwner();
 
         if (owner)
@@ -410,45 +353,17 @@ namespace hgl::ecs
                 context->MarkTopologyChanged(TopologyChange::MaterialBinding);
     }
 
-    void MaterialData::TouchAuthoredRow(const uint32_t set_flags, const uint32_t clear_flags)
+    // 授权变更唯一入口（见 .h 注释）：代数 +1 + 拓扑记账。
+    void MaterialData::TouchAuthored()
     {
-        ++authored_generation;
+        if (MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry())
+            ++entry->authored_generation;
 
-        if (material_row_id == 0 && !EnsureMaterialRow())
-            return;                     // 无设备/预算用尽：代数已前进，行内副本留待下次
-
-        auto *registry = GetRegistry();
-
-        if (!registry)
-            return;
-
-        const auto *current = registry->GetMaterialDataRow(material_row_id);
-
-        hgl::graph::ssbo::MaterialDataRow row =
-            current ? *current : hgl::graph::ssbo::MaterialDataRow{};
-
-        const uint32_t flags = (hgl::graph::ssbo::GetMaterialDataRowFlags(row) | set_flags)
-                             & ~clear_flags & hgl::graph::ssbo::kMaterialDataFlagMask;
-
-        row.authored_flags = hgl::graph::ssbo::PackMaterialDataAuthoredFlags(
-            flags, authored_generation);
-
-        if (!registry->Write(hgl::graph::GlobalSSBOType::MaterialData, material_row_id, row))
-            GLogError("[MaterialData] 写组件行（授权位 0x%X + revision %u）失败 row=%u",
-                      flags, authored_generation, material_row_id);
-
-        // P1：授权位/revision 变化 = 材质批的划分依据可能变（从 Basic 升到 Textured
+        // P1：授权状态变化 = 材质批的划分依据可能变（从 Basic 升到 Textured
         // 会换 shader 身份 ⇒ 换 MaterialBatch 键）。归到拓扑类别，让快照拒绝复用。
         if (const Entity *owner = GetOwner())
             if (ECSContext *context = owner->GetContext())
                 context->MarkTopologyChanged(TopologyChange::MaterialBinding);
-    }
-
-    uint32_t MaterialData::GetAuthoredRowRevision() const
-    {
-        const auto *row = GetMaterialRow();
-
-        return row ? hgl::graph::ssbo::GetMaterialDataRowRevision(*row) : authored_generation;
     }
 
     bool MaterialData::BuildResolvedRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
@@ -474,14 +389,12 @@ namespace hgl::ecs
         const bool has_definition =
             hgl::graph::mtl::ResolveMaterialFromRecipe(out_recipe, definition);
 
-        // B4-iii-b：具名纹理资源住在**世界级旁表**（键 = 材质行行号）——解析路径读旁表，
-        // 组件已无副本。无旁表/无条目 ⇒ 空表（语义 = 没有任何具名纹理授权）。
+        // 具名纹理资源住在**世界级旁表**（键 = EntityID）——解析路径读旁表。
+        // 无旁表/无条目 ⇒ 空表（语义 = 没有任何具名纹理授权）。
         static const hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
             kEmptyNamedTextures;
 
-        const MaterialAuthoringSideTable *authoring_table = GetAuthoringTable();
-        const MaterialAuthoringSideTable::Entry *authoring_entry =
-            authoring_table ? authoring_table->Find(material_row_id) : nullptr;
+        const MaterialAuthoringSideTable::Entry *authoring_entry = FindAuthoringEntry();
 
         const auto &named_texture_resources = authoring_entry
             ? authoring_entry->named_texture_resources
@@ -555,16 +468,11 @@ namespace hgl::ecs
             }
         }
 
-        // B4-iii-a：绑定真源 = 设备级组件行（不再读组件里的每实体副本）
-        const hgl::graph::ssbo::MaterialDataRow *material_row = GetMaterialRow();
-
-        if (material_row
-         && (material_row->authored_flags & hgl::graph::ssbo::kMaterialDataFlagAuthoredDataResource))
+        // 绑定真源 = 旁表条目（2026-11：设备级组件行退役后唯一的一处）
+        if (authoring_entry && authoring_entry->has_data_resource)
         {
-            hgl::graph::GlobalSSBOBinding material_ssbo_binding{
-                static_cast<hgl::graph::GlobalSSBOType>(material_row->surface_type),
-                material_row->surface_ssbo_id,
-                material_row->surface_data_index };
+            hgl::graph::GlobalSSBOBinding material_ssbo_binding =
+                authoring_entry->data_resource;
             material_ssbo_binding.ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
@@ -614,22 +522,12 @@ namespace hgl::ecs
 
     void MaterialData::OnDetach()
     {
-        // B4-iii-b：重类型授权数据（配方覆盖 / 具名纹理资源）随组件分离而**摘除**
-        //（键 = 行号；行本身不归还——句柄语义，行回收属 arena 自身策略）。
-        if (material_row_id != 0)
-        {
-            if (MaterialAuthoringSideTable *table = GetAuthoringTable())
-                table->Remove(material_row_id);
-        }
-
-        // B4-iii-a：**不在析构期归还设备级行**——方案对句柄的定稿是「句柄语义（不是租约）：
-        // 长生命周期、**析构不归还行**」；行回收属 arena 自身策略。
-        // 实测教训（2026-10-02）：在 OnDetach 里经 GetRegistry() 调 ReleaseID，会在
-        // `~GlobalSSBOBufferRegistry → ~ActiveRowPool → ~ActiveIDManager`（GraphicsContext::Shutdown）
-        // 期间写坏池状态 ⇒ 堆破坏/双重释放 ⇒ 进程崩在关闭流程，且**丢失未 flush 的日志**
-        //（看起来像"初始化就挂"，实为关闭期崩）。
-        material_row_id = 0;
-
-        ++authored_generation;
+        // 重类型授权数据（配方覆盖 / 具名纹理 / 内容行绑定 / 代数）随组件分离而**摘除**
+        //（键 = EntityID；条目整个删除 ⇒ 分离后所有读数回到「无授权」初态）。
+        // 注意：**不在析构期碰任何设备级池** —— 实测教训（2026-10-02）：OnDetach 期间
+        // 写池状态会在 GraphicsContext::Shutdown 序列里造成堆破坏/双重释放。
+        // 旁表是世界级对象、随 Context 生命周期存在，Remove 只是哈希表删项，安全。
+        if (MaterialAuthoringSideTable *table = GetAuthoringTable())
+            table->Remove(GetOwnerID());
     }
 }//namespace hgl::ecs

@@ -1,9 +1,21 @@
 #pragma once
 
+// MaterialAuthoringSideTable.h — 材质数据的「CPU 侧授权副本」存储（B4-iii-b 首刀；2026-11 改键）
+//
+// 为什么要有这张表：`ecs::MaterialData` 是**每实体**的授权状态（配方覆盖 + 具名纹理覆盖 +
+// 内容行绑定引用），里面装着 `MaterialRecipe`（含 `AnsiString`/`U8String`/`hgl::ArrayList`）与
+// `hgl::UnorderedMap` —— 全都不是 POD，不该进设备侧行 arena。
+// ⇒ 组件本体照常活在 ECS 组件池里，它的**授权内容**寄存在这张表：
+//   **键 = `EntityID`**（2026-11 起直接以实体 id 为键 —— 原先经 `GlobalSSBOType::MaterialData`
+//   组件行池 row_id 转手的间接层已整体退役：GPU 从未消费该池，收口只读旁表），
+//   由 `hgl::ecs::Context` 持有、与 `MaterialData::OnDetach` 联动删除。
+
 #include<hgl/CoreType.h>
 #include<hgl/log/Log.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/asset/TextureAsset.h>
+#include<hgl/graph/ssbo/GlobalSSBOTypes.h>       // hgl::graph::GlobalSSBOBinding（内容行三元组）
+#include<hgl/ecs/core/entity/EntityHandle.h>     // hgl::ecs::EntityID（键类型）
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
 #include<cstdint>
@@ -18,12 +30,6 @@ namespace hgl::ecs
         Texture2D = 0,
         Texture2DArray
     };
-
-    /// **材质行 0 哨兵**（唯一具名权威）：作者侧旁表的 `row_id` 0 不表示任何材质（`MaterialData` 侧的 0 行
-    /// 同为"无材质"）。原先多处用裸 `0` 复述该约定（审计 §4.2）；2026-10-14 具名。
-    inline constexpr uint32_t kNoMaterialRow = 0;
-
-    static_assert(kNoMaterialRow == 0u, "0 行 = 无材质数据哨兵");
 
     /// 具名纹理授权资源（B4-iii-b：原为 `MaterialData` 的嵌套类型；随重类型整体移入旁表，
     /// 组件不再持有它 —— 类型名与限定名在 `hgl::ecs` 内保持不变，调用点零改动）。
@@ -84,47 +90,54 @@ namespace hgl::ecs
     };
 
     /**
-     * 材质授权**旁表**（B4-iii-b，B4 拍板「路 B」的第三步）。
+     * 材质授权**旁表**（B4-iii-b，2026-11 改键收敛）。
      *
-     * 为什么存在：设备级组件行（`graph::ssbo::MaterialDataRow`，16B）**只能放 POD**，
-     * 而配方覆盖（`mtl::MaterialRecipe`）与具名纹理资源（`UnorderedMap<AnsiString, …>`）
-     * 是重类型 ⇒ 按「行内只留 generation + side_row，重类型落旁表**按行号索引**」的规则
-     * 落在这里：**键 = 材质组件行行号**（`MaterialData::material_row_id`，设备级组件行）。
+     * 为什么存在：配方覆盖（`mtl::MaterialRecipe`）、具名纹理资源（`UnorderedMap<AnsiString, …>`）
+     * 是重类型 ⇒ 不能进任何设备侧行 arena；它们本来就只被 CPU 侧的收集路径消费。
+     * **键 = `EntityID`**（原「键 = MaterialData 组件行行号」的间接层已随组件行池退役）。
      *
      * 归属：**世界级**（`ECSContext` 持有，与 MaterialVariantTable / MaterialRuntimeTable 同域）——
-     * 行的行号是设备级（跨世界可解析），但重类型数据只被本世界的组件与渲染路径消费；
-     * 键仍用行号 ⇒ 与 B8 的 `EntityGPU::row[16]` 是同一套寻址。
+     * 授权数据只被本世界的组件与渲染路径消费。
      *
-     * 生命周期：**随组件分离而摘除**（`MaterialData::OnDetach`）；行本身不归还（句柄语义）。
+     * 生命周期：**随组件分离而摘除**（`MaterialData::OnDetach`）。
      */
     class MaterialAuthoringSideTable
     {
     public:
 
-        /// 一行材质数据的重类型授权数据（键 = 材质组件行行号）
+        /// 一个实体的材质重类型授权数据（键 = EntityID）
         struct Entry
         {
             bool has_recipe_override = false;
             hgl::graph::mtl::MaterialRecipe recipe_override;
             hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
                 named_texture_resources;
+
+            // ── 2026-11 从退役的 MaterialData 设备组件行吸收的字段 ──────────────
+            /// 授权的内容行三元组（= 旧组件行 surface_type/ssbo_id/data_index）。
+            /// `has_data_resource == false` 时本字段无意义。
+            hgl::graph::GlobalSSBOBinding data_resource{};
+            bool has_data_resource = false;
+            /// 授权代数（= 旧组件行高 24 位 revision 的行内镜像）。每次授权变更 ++，
+            /// 收集路径据此判断「配方是否需要在下一帧重解析」。
+            uint32_t authored_generation = 0;
         };
 
     public:
 
-        /// 取（无则建）行号对应的条目；`row_id == 0`（无材质行哨兵）⇒ nullptr
-        Entry *GetOrCreate(uint32_t row_id);
+        /// 取（无则建）实体对应的条目；非法 EntityID ⇒ nullptr
+        Entry *GetOrCreate(EntityID entity_id);
 
         /// 查条目（无则 nullptr）
-        Entry *Find(uint32_t row_id);
-        const Entry *Find(uint32_t row_id) const;
+        Entry *Find(EntityID entity_id);
+        const Entry *Find(EntityID entity_id) const;
 
         /// 摘除条目（组件分离时调用）；返回是否真的摘到
-        bool Remove(uint32_t row_id);
+        bool Remove(EntityID entity_id);
 
     private:
 
-        hgl::UnorderedMap<uint32_t, Entry> entries;
+        hgl::UnorderedMap<EntityID, Entry> entries;
     };
 
     /// 必需纹理的**就绪结论**（三值互斥）。唯一真源：句柄 `PayloadState`。
@@ -175,41 +188,42 @@ namespace hgl::ecs
     }
 
     inline MaterialAuthoringSideTable::Entry *
-        MaterialAuthoringSideTable::GetOrCreate(const uint32_t row_id)
+        MaterialAuthoringSideTable::GetOrCreate(const EntityID entity_id)
     {
-        if (row_id == kNoMaterialRow)
+        if (!entity_id.IsValid())
         {
-            GLogError("[MaterialAuthoringSideTable] 拒绝行 %u（= 「无材质数据」哨兵 kNoMaterialRow）",
-                      kNoMaterialRow);
+            GLogError("[MaterialAuthoringSideTable] 拒绝非法 EntityID（index=0x%08X）",
+                      entity_id.index);
             return nullptr;
         }
 
-        if (Entry *exist = entries.GetValuePointer(row_id))
+        if (Entry *exist = entries.GetValuePointer(entity_id))
             return exist;
 
-        if (!entries.Add(row_id, Entry{}))
+        if (!entries.Add(entity_id, Entry{}))
         {
-            GLogError("[MaterialAuthoringSideTable] 旁表分配失败 row=%u（内存不足？）", row_id);
+            GLogError("[MaterialAuthoringSideTable] 旁表分配失败 entity=%u（内存不足？）",
+                      entity_id.index);
             return nullptr;
         }
 
-        return entries.GetValuePointer(row_id);
+        return entries.GetValuePointer(entity_id);
     }
 
     inline MaterialAuthoringSideTable::Entry *
-        MaterialAuthoringSideTable::Find(const uint32_t row_id)
+        MaterialAuthoringSideTable::Find(const EntityID entity_id)
     {
-        return row_id == 0 ? nullptr : entries.GetValuePointer(row_id);
+        return entity_id.IsValid() ? entries.GetValuePointer(entity_id) : nullptr;
     }
 
     inline const MaterialAuthoringSideTable::Entry *
-        MaterialAuthoringSideTable::Find(const uint32_t row_id) const
+        MaterialAuthoringSideTable::Find(const EntityID entity_id) const
     {
-        return row_id == 0 ? nullptr : entries.GetValuePointer(row_id);
+        return entity_id.IsValid() ? entries.GetValuePointer(entity_id) : nullptr;
     }
 
-    inline bool MaterialAuthoringSideTable::Remove(const uint32_t row_id)
+    inline bool MaterialAuthoringSideTable::Remove(const EntityID entity_id)
     {
-        return row_id == 0 ? false : entries.DeleteByKey(row_id);
+        return entity_id.IsValid() ? entries.DeleteByKey(entity_id) : false;
     }
 }//namespace hgl::ecs

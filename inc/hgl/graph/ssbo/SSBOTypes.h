@@ -23,7 +23,9 @@ namespace hgl::graph
         TransmissionSurface,
         PBRAdvancedSurface,     // Filament 高级材质扩展行（64 B）：前 32B 与 PBRSurfaceRow 逐字节同构
         GeometryAABB,           // 几何本地 AABB（32 B），与 MeshDrawParams 同 ID 索引的平行表
-        MaterialData,           // 材质数据**组件行**（16 B）：组件在设备级的家（引用哪一行内容 + 授权标记）
+        // （原 MaterialData 材质数据组件行已退役：GPU 侧从未消费该池 —— 收集路径经
+        //  MaterialAuthoringSideTable 直接把 content 行三元组写进 recipe.material_ssbo_binding，
+        //  shader 只经 MaterialInstanceAddresses 的 BDA 读内容行。2026-11 refactor）
         ModelTemplatePool,      // 模型模板行（128 B）：部件段索引 + LOD/阴影代理槽（GPU 常驻模板池，plan T1）
         ModelPartPool,          // 模型部件行（128 B）：模板内连续部件段（local_matrix + AABB + geometry/material id）
         InstanceCustomDataPool, // 实例自定义数据行（16 B）：Vector4f custom_color（T6.2）

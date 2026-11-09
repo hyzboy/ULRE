@@ -3,7 +3,7 @@
 #include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
-#include<hgl/graph/ssbo/MaterialDataRows.h>
+#include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include<hgl/type/String.h>
@@ -39,6 +39,12 @@ namespace hgl::ecs
      * 本组件的配方覆盖是**覆盖源**；参数按声明逐条校验后产出规范化结果。
      * 本步（A2）由调用方把 asset 默认配方作为参数传入；A5 拆分 GeometryData 后
      * 改由数据层自己持引用。
+     *
+     * 2026-11 收敛：本组件是**薄代理** —— 不含任何数据字段；全部授权状态
+     * （配方覆盖 / 具名纹理 / 内容行绑定 / 授权代数）住在世界级的
+     * `MaterialAuthoringSideTable`（键 = `EntityID`）。原先的「设备级组件行
+     * （`GlobalSSBOType::MaterialData` 池 + `ssbo::MaterialDataRow`）」已整体退役：
+     * GPU 从未消费该池，组件行池容量（1024）反而给每实体场景造成假预算。
      */
     class MaterialData : public ComponentRow
     {
@@ -83,19 +89,10 @@ namespace hgl::ecs
 
     private:
 
-        // B4-iii-b：**组件不再持任何重类型**——配方覆盖 / 具名纹理资源都落在世界级旁表
-        // （`MaterialAuthoringSideTable`，键 = 本组件的材质行行号）。行内只有 POD
-        //（授权位 + revision），组件只持行号。⇒ 不存在「组件副本 vs 旁表」双真值。
-        //
-        // B4-iii-a：材质数据在**设备级**的家的行号（`GlobalSSBOType::MaterialData` 池）。
-        // 0 = 尚未分配 / 哨兵（= 旧的「无授权数据行」）；行的内容见 graph::ssbo::MaterialDataRow。
-        // 归属设备级、跨世界共享：材质数据是资源级对象，行号必须全局可解析（B4 拍板「路 B」）。
-        uint32_t material_row_id = 0;
-
-        // 单调计数器：每次授权状态变化 +1（纹理 / 数据行 / 配方 / 上游来源）。
-        // 每实例 slot 的跟踪副本（MaterialRuntimeSlot::tracked_material_data_generation）
-        // 与之比对，相等即跳过整条解析链。
-        uint32_t authored_generation = 0;
+        // 2026-11 收敛：**组件不再持任何字段**。授权状态（配方覆盖 / 具名纹理 / 内容行绑定 /
+        // 授权代数）的唯一真源是世界级旁表条目（`MaterialAuthoringSideTable`，键 = EntityID）。
+        // 原先的 `material_row_id`（设备级组件行行号）与 `authored_generation`（组件副本计数器）
+        // 都已并入旁表条目 —— 不存在「组件副本 vs 行 vs 旁表」多套真值。
 
     public:
 
@@ -164,13 +161,14 @@ namespace hgl::ecs
         /// 规则本体住在旁表头文件里（无设备依赖）⇒ 可被单元测试直接钉住。
         RequiredTextureReadiness EvaluateRequiredTextureReadiness() const;
 
-        // ── 材质数据行资源 ──
-        /// 授权 / 清空材质数据行（真源写在 (Global, MaterialData) 组件行里；本组件只持行号）。
-        /// `resource.ssbo_id == 0` ⇒ 清空（行保留）；其余情况要求 binding 有效（无效即报错拒绝）。
+        // ── 材质数据行资源（内容行三元组）──
+        /// 授权 / 清空本实体引用的**内容行**（PBR/自发光/透射…池里的行）。
+        /// `resource.ssbo_id == 0` ⇒ 清空；其余情况要求 binding 有效（无效即报错拒绝）。
+        /// 真源写在旁表条目（`Entry::data_resource`）；每次变更推进授权代数。
         bool SetDataResource(const MaterialDataAuthoringResource &resource);
 
-        /// 是否已绑上材质数据行（行号 0 ⇒ 尚未授权或已被清空）。
-        bool HasDataResource() const { return material_row_id != 0; }
+        /// 是否已绑上材质数据行（条目不存在或未授权 ⇒ false）。
+        bool HasDataResource() const;
 
         /// Write a typed material row through a caller-owned lease and bind it.
         /// The accessor must outlive this component's use of the bound row.
@@ -205,18 +203,15 @@ namespace hgl::ecs
             return SetDataResource(resource);
         }
 
-        /// 组件侧授权代数（每次授权状态变化 +1）。**行内 revision 与之同源**（见
-        /// `GetAuthoredRowRevision`）——只读行的消费者应当读行，不要读组件副本。
-        // 2026-10-10（审计 §1.1）：`GetAuthoredGeneration()`（零调用者；B4-ii 起消费者只读行内
-        // revision —— 见 Test 35 的禁复活 needle）已删除。成员 `authored_generation` 仍在内部使用。
-
-        /// B4-ii：设备级组件行里的**行内 revision**（= 上面的代数在行内的镜像）。
-        /// 消费者（每实例 slot 的变更检测）用这个 ⇒ 状态真源是**行**，不是组件副本。
-        /// 无行（组件从未授权 ⇒ 行号 0）⇒ 退回组件计数器（两者此时同为 0，不存在双真值）。
-        uint32_t GetAuthoredRowRevision() const;
+        /// 授权代数（每次授权状态变化 +1；真源 = 旁表条目 `Entry::authored_generation`）。
+        /// 每实例 slot 的跟踪副本（`MaterialRuntimeSlot::tracked_material_data_generation`）
+        /// 与之比对，相等即跳过整条解析链。无条目 ⇒ 0。
+        /// （2026-11：原 `GetAuthoredRowRevision()` 读设备组件行的行内 revision —— 组件行池
+        /// 退役后该名字失去所指，代数读数回归 `GetAuthoredGeneration()`。）
+        uint32_t GetAuthoredGeneration() const;
 
         /// 上游来源（asset 默认配方 / 变体切换）变化时前进授权代数：
-        /// 只动代数，不改本组件持有的授权数据——下游据此让解析结果失效。
+        /// 只动代数，不改旁表里的授权数据——下游据此让解析结果失效。
         /// 同时记一次 `TopologyChange::MaterialBinding`（P1：材质批键可能变）。
         void BumpAuthoredGeneration();
 
@@ -232,25 +227,15 @@ namespace hgl::ecs
 
     private:
 
-        /// 取本组件所在世界的设备级注册表（无 owner / 无世界 / 无设备 ⇒ nullptr）
-        hgl::graph::GlobalSSBOBufferRegistry *GetRegistry() const;
-        /// B4-iii-b：取本组件所在世界的材质授权旁表（无 owner / 无世界 ⇒ nullptr）
+        /// 取本组件所在世界的材质授权旁表（无 owner / 无世界 ⇒ nullptr）
         hgl::ecs::MaterialAuthoringSideTable *GetAuthoringTable() const;
-        /// B4-iii-b：取（必要时建）本组件行对应的旁表条目；行不可用 ⇒ nullptr（已报错）
+        /// 取（必要时建）本实体的旁表条目；旁表不可用 ⇒ nullptr（已报错）
         MaterialAuthoringSideTable::Entry *GetOrCreateAuthoringEntry();
-        /// 按需分配组件行（首次授权时）；失败即报错返回 false（不静默）
-        bool EnsureMaterialRow();
-        /// 读本组件的组件行（未分配返回 nullptr）
-        const hgl::graph::ssbo::MaterialDataRow *GetMaterialRow() const;
-        /// B4-ii：授权变更**唯一入口**——组件计数器 +1，并（有行时）把
-        /// 「(flags 置位 ∧ clear_flags 清位) + 新 revision」写进组件行。
-        /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource）
-        /// 都必须走它，不得自己 `++authored_generation`（否则行内 revision 与代数列不同步）。
-        void TouchAuthoredRow(uint32_t set_flags, uint32_t clear_flags);
-        /// 写本组件的组件行
-        bool WriteMaterialRow(const hgl::graph::ssbo::MaterialDataRow &row);
-        /// 清空组件行内容（保留行号）
-        void ClearMaterialRow();
+        /// 查本实体的旁表条目（无则 nullptr；const 视角）
+        const MaterialAuthoringSideTable::Entry *FindAuthoringEntry() const;
+        /// 授权变更**唯一入口**：条目代数 +1 并记一次 TopologyChange::MaterialBinding。
+        /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource）都必须走它。
+        void TouchAuthored();
     };
 
     /// 槽位映射：`MaterialData` = 材质**数据层**（资源级、跨世界共享）
