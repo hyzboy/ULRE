@@ -30,6 +30,7 @@
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
+#include <hgl/common/DebugChannel.h>
 #include <glm/glm.hpp>
 
 namespace hgl::ecs
@@ -520,6 +521,24 @@ namespace hgl::ecs
 
     void SimpleLineRenderPipeline::RunCollect()
     {
+        if (!context_)
+            return;
+
+        // 收集 = 池的活跃集视图（裸指针）。先取池快照，再决定是否进入帧流程：
+        // Line 与 SimpleLine 两套管线成组安装（DefaultSystems::InstallLineGroup），
+        // 当前场景没有本管线的组件时保持**完全空闲**——不 PrepareFrame、不 Initialize
+        // （不创建材质/PSO/缓冲等 GPU 资源）、不 SyncTransformBinding、不输出任何日志。
+        ValueArray<SimpleLinesComponent *> all;
+        context_->GetComponents<SimpleLinesComponent>(all);
+        if (all.IsEmpty())
+        {
+            collected_.Clear();
+            stats_ = SimpleLineCollectStats{};
+            total_line_count_ = 0;
+            current_line_buffer_ = nullptr;
+            return;
+        }
+
         if (!PrepareFrame())
             return;
 
@@ -541,10 +560,7 @@ namespace hgl::ecs
             }
         }
 
-        // T2-c：收集 = 池的活跃集视图（裸指针）。语义不变：仍是**全场景收集 + 末次一次绘制**。
-        ValueArray<SimpleLinesComponent *> all;
-        context_->GetComponents<SimpleLinesComponent>(all);
-
+        // 语义不变：仍是**全场景收集 + 末次一次绘制**（all 为本函数开头已取的池快照）
         for (const auto& comp : all)
         {
             if (!comp) continue;
@@ -593,15 +609,18 @@ namespace hgl::ecs
 
     void SimpleLineRenderPipeline::RunBuild()
     {
-        if (!initialized_)
+        if (collected_.empty())
         {
-            GLogWarning("[SimpleLineRenderPipeline] RunBuild skipped: pipeline not initialized");
+            // 闲置管线（本场景无 SimpleLinesComponent）每帧走到这里是正常空态而非异常
+            // ⇒ 空跳过日志受 line 通道门控；也**先于**未初始化检查，避免空闲期刷 Warning
+            if (ULRE_DEBUG_ON(Line))
+                GLogInfo("[SimpleLineRenderPipeline] RunBuild skipped: no collected line components");
             return;
         }
 
-        if (collected_.empty())
+        if (!initialized_)
         {
-            GLogInfo("[SimpleLineRenderPipeline] RunBuild skipped: no collected line components");
+            GLogWarning("[SimpleLineRenderPipeline] RunBuild skipped: pipeline not initialized");
             return;
         }
 
@@ -787,16 +806,19 @@ namespace hgl::ecs
             return;
         }
 
-        if (!initialized_)
+        if (total_line_count_ == 0)
         {
-            GLogWarning("[SimpleLineRenderPipeline] Render skipped: pipeline not initialized");
+            // 无组件时的空渲染为正常状态（闲置管线同样命中），line 通道开启时才输出；
+            // 先于未初始化检查，避免空闲期刷 Warning
+            if (ULRE_DEBUG_ON(Line))
+                GLogInfo("[SimpleLineRenderPipeline] Render skipped: total_line_count=0 (visible_components=%u total_components=%u)",
+                         stats_.visible_components, stats_.total_components);
             return;
         }
 
-        if (total_line_count_ == 0)
+        if (!initialized_)
         {
-            GLogInfo("[SimpleLineRenderPipeline] Render skipped: total_line_count=0 (visible_components=%u total_components=%u)",
-                     stats_.visible_components, stats_.total_components);
+            GLogWarning("[SimpleLineRenderPipeline] Render skipped: pipeline not initialized");
             return;
         }
 
