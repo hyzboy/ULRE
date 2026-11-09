@@ -17,7 +17,15 @@
 
 void main()
 {
-    draw_params = MeshDrawParamsRef(pc_root.addr_batch_mesh_draw_params).rows[gl_DrawID];
+    // 固定读 row 0：文本路径每个字体桶只有 1 行参数（PushRootAddresses 传的是单行表、
+    // 偏移 0），不存在多行索引的需求。
+    //
+    // 不能用 gl_DrawID（曾经是 rows[gl_DrawID]，会随机失效）：gl_DrawID 只在 multi-draw
+    // 里被真正定义，vkCmdDrawMeshTasksEXT 单次直发时驱动给的是上一次间接批残留的序号
+    // （实测固定为 3）。于是读「1 行表的第 3 行」→ 越界读到全零行：vertex_count=0 ⇒
+    // 一个字符都不发；char_height=0 ⇒ 位置全部退化。表现就是「文本静默不显示」，
+    // 且结果依赖本帧前面跑过多少条 indirect draw，属于典型的隐式耦合。
+    draw_params = MeshDrawParamsRef(pc_root.addr_batch_mesh_draw_params).rows[0];
 
     const uint char_idx = gl_WorkGroupID.x * gl_WorkGroupSize.x
                         + gl_LocalInvocationIndex;
@@ -120,7 +128,12 @@ void main()
     WriteCharQuadVertexOutputs(base_vid + 2u, vec2(uv_r, uv_t), char_color);  // TR
     WriteCharQuadVertexOutputs(base_vid + 3u, vec2(uv_r, uv_b), char_color);  // BR
 
-    const uint data_id = gl_DrawID;
+    // 材质数据行同样是固定 0：一个字体桶只有一张图集、一行 MaterialInstance
+    // （见 TextRenderPipeline::RenderLayer 传的 material_instance_addresses_buffer）。
+    // 与上面的 draw_params 同理，不能用 gl_DrawID——单次 DrawMeshTasks 直发时它
+    // 是未定义值，取到 3 就会去读第 3 行地址表，得到非法贴图地址，
+    // fragment 侧采样覆盖率恒为 0 ⇒ 文本整段消失（几何仍在，但全透明）。
+    const uint data_id = 0u;
     WriteCharQuadPrimitiveOutputs(gl_LocalInvocationIndex * 2u + 0u, data_id, style_id);
     WriteCharQuadPrimitiveOutputs(gl_LocalInvocationIndex * 2u + 1u, data_id, style_id);
 }
