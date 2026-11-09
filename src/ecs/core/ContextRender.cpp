@@ -335,13 +335,14 @@ namespace hgl::ecs
                     transform_system->SubmitTransformUpdates();
             }
 
-            //if (log_prefix)
-            //{
-            //    LogDebug("%s phase range %d to %d",
-            //             log_prefix,
-            //             static_cast<int>(minPhase),
-            //             static_cast<int>(maxPhase));
-            //}
+            // rendergraph 通道：相位区间明细（调用方前缀，如 "[ECS RENDER] Render"）
+            if (log_prefix && ULRE_DEBUG_ON(RenderGraph))
+            {
+                GLogInfo("%s phase range %d to %d",
+                         log_prefix,
+                         static_cast<int>(minPhase),
+                         static_cast<int>(maxPhase));
+            }
 
             RunRenderSystemsInRange(minPhase, maxPhase, deltaTime);
         }

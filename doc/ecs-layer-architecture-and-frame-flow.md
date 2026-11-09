@@ -548,8 +548,8 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 | 手段 | 位置 / 形态 |
 |---|---|
-| 组注册清单 | `[RenderGraph] Registered %zu system groups (total %zu)`（`src/ecs/core/render/RenderGraph.cpp:83-84`）+ `SystemGroupRegistry::DebugPrint()`（同处 :85，定义 `inc/hgl/ecs/core/SystemGroup.h:88`）；`[RenderGraph]   active group: %s` 逐个活跃组（`src/ecs/core/render/RenderGraph.cpp:211`） |
-| 帧边界 / pass 执行日志 | **当前已注释**（`src/ecs/core/render/RenderGraph.cpp:168,176` 的 Frame Start/End；:104/:108 的 skip/execute pass；`src/ecs/core/Context.cpp:412-418` 的 phase range）。需要时打开对应注释行 |
+| 组注册清单 | **`rendergraph` 通道门控**：`[RenderGraph] Registered %zu system groups (total %zu)`（`src/ecs/core/render/RenderGraph.cpp`）+ `SystemGroupRegistry::DebugPrint()` 全表；`[RenderGraph]   active group: %s` 逐个活跃组（同文件） |
+| 帧边界 / pass 执行日志 | **`rendergraph` 通道门控**：Frame Start/End、`Completed pass %zu`（`src/ecs/core/render/RenderGraph.cpp`）与 phase range（`src/ecs/core/ContextRender.cpp` 的 `RecordPreparedRenderPhaseRange`）。原为注释行，2026-11 起改为通道控制（Release 亦可开） |
 | 系统级计时 | **`SystemProfiler` 已删除**（0 命中）。逐系统 `[ECS] Update/Render Begin|End` 日志也已注释（`src/ecs/core/Context.cpp:824-868` 的 `RunSystemUpdate` / `RunRenderSystemsInRange`）——「某系统没跑」改由组开关 + 系统自身日志判断 |
 | 材质/寻址诊断 | `ULRE_DEBUG.toml` 的 `channels.binding/batch/collect/text = true` 开启 `[ArenaTrace]`（`src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp:684/:735/:806`）；`[ArenaDebug]` 首次行表诊断由 `MaterialBatch::debug_blocks_logged` 控制（`inc/hgl/ecs/core/render/MaterialBatch.h:80`） |
 | 渲染层一次性日志 | `[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u`（`src/ecs/support/pipeline/PipelineMaterialRenderer.cpp:47-48`）；`[MaterialTextureReferencePool] created …`（`src/SceneGraph/module/MaterialTextureReferencePool.cpp:82-89`）；`[LineStats] total=…`（`src/ecs/systems/render/collect/LineStatsSystem.cpp:34`）；`[SceneUBO] viewport addr=0x%llX 入表（全帧槽）`（`src/ecs/systems/render/buffer/RenderSceneUBOSystem.cpp:146`） |

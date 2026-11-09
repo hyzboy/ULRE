@@ -7,6 +7,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
+#include<hgl/common/DebugChannel.h>
 #include<algorithm>
 
 
@@ -78,7 +79,8 @@ namespace hgl
                 ++added;
             }
 
-            if (added)
+            // rendergraph 通道：注册清单只在启动/新元素类型出现时打一次（含全表 DebugPrint）
+            if (added && ULRE_DEBUG_ON(RenderGraph))
             {
                 MLogInfo(RenderGraph, "[RenderGraph] Registered %zu system groups (total %zu)",
                          added, registry.GetAllGroups().size());
@@ -124,7 +126,9 @@ namespace hgl
 
                 RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,true,"[ECS RENDER] Render");
 
-//                LogDebug("[ECS RENDER] Completed pass %zu", pass_idx);
+                // rendergraph 通道：pass 级执行明细（原为注释掉的 LogDebug，且 ECSContext 无 OBJECT_LOGGER）
+                if (ULRE_DEBUG_ON(RenderGraph))
+                    MLogInfo(RenderGraph, "[ECS RENDER] Completed pass %zu", pass_idx);
             }
         }
 
@@ -134,7 +138,12 @@ namespace hgl
                 return;
 
             // Canonical frame entry with RenderGraph
-//            LogInfo("[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====", graph.GetEnabledPassCount());
+            // rendergraph 通道：帧边界 2 行/帧 + pass 明细（GetEnabledPassCount 不存在 ⇒ 用 passes.size()）
+            const bool graph_trace = ULRE_DEBUG_ON(RenderGraph);
+
+            if (graph_trace)
+                MLogInfo(RenderGraph, "[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====",
+                         graph.passes.size());
 
             // ── 场景预处理（主光 CSM 阴影）已内聚到 BeginManagedRenderFrame（D6）──
             // 主帧入口统一执行，杜绝"新入口忘记调用 ⇒ 阴影静默失效"。见 Context.cpp。
@@ -144,7 +153,8 @@ namespace hgl
             ExecuteRenderGraphPasses(graph, deltaTime, pre_render);
             EndManagedRenderFrame(deltaTime);
 
-//            LogInfo("[ECS RENDER] ===== Frame End (RenderGraph) =====");
+            if (graph_trace)
+                MLogInfo(RenderGraph, "[ECS RENDER] ===== Frame End (RenderGraph) =====");
         }
 
         SceneStats GatherSceneStats(ECSContext* context)
@@ -183,9 +193,13 @@ namespace hgl
                 }
             }
 
-            for (const auto& group_name : stats.active_render_groups)
+            // MLogDebug 在非 _DEBUG 被编译掉 ⇒ 改由 rendergraph 通道门控 + Info（见 doc/debug-log-channels.md §7）
+            if (ULRE_DEBUG_ON(RenderGraph))
             {
-                MLogDebug(RenderGraph,"[RenderGraph]   active group: %s", group_name.c_str());
+                for (const auto& group_name : stats.active_render_groups)
+                {
+                    MLogInfo(RenderGraph, "[RenderGraph]   active group: %s", group_name.c_str());
+                }
             }
 
             return stats;

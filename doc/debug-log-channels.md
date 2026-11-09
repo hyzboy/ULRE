@@ -52,6 +52,7 @@ if (ULRE_DEBUG_ON(Batch))
 | `perf`      | `Perf`      | 计时 | `[PBR-PERF]`、`[PREPASS-TIMING]` |
 | `vksync`    | `VkSync`    | Vulkan | 队列 / fence / 信号量（`[QUEUE][SYNC]`） |
 | `profui`    | `ProfUI`    | 计时 | 屏显 DEBUG PROF 覆盖层（帧末文字面板；开启即强制 `FrameProfiler` 计时） |
+| `rendergraph` | `RenderGraph` | 渲染 | RenderGraph pass 调度与 `[ECS RENDER]` 帧边界/pass 完成/相位区间（`src/ecs/core/render/RenderGraph.cpp`、`ContextRender.cpp` 的 `RecordPreparedRenderPhaseRange`）；SystemGroup 注册清单 + `DebugPrint()` 全表 + `active group` 逐个 |
 
 **只增不改**：新增通道加在 `Channel::Count` 之前；令牌一经发布不再改名。
 上限 32 个（掩码是 `uint32_t`，`DebugChannel.h` 有 `static_assert`）。

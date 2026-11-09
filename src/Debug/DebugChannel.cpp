@@ -38,6 +38,7 @@ namespace hgl::debug
             { "perf",      "计时（prepass / pbr 性能账）" },
             { "vksync",    "Vulkan 队列/fence/信号量" },
             { "profui",    "屏显 DEBUG PROF 覆盖层" },
+            { "rendergraph", "RenderGraph pass 调度、SystemGroup 注册、[ECS RENDER] 帧边界" },
         };
         return table;
     }
