@@ -50,28 +50,16 @@ namespace hgl::ecs
 
     void MaterialData::SetRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
     {
-        // 配方是重类型 ⇒ 落**世界级旁表**（键 = EntityID）。条目建不出来即报错返回。
-        MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry();
-
-        if (!entry)
-            return;
-
-        entry->recipe_override = recipe;
-        entry->has_recipe_override = true;
+        // 配方是重类型 ⇒ 直接写在旁表持有的本记录上。
+        recipe_override = recipe;
+        has_recipe_override = true;
 
         TouchAuthored();
     }
 
     const hgl::graph::mtl::MaterialRecipe *MaterialData::GetRecipeOverride() const
     {
-        const MaterialAuthoringSideTable *table = GetAuthoringTable();
-
-        if (!table)
-            return nullptr;
-
-        const MaterialAuthoringSideTable::Entry *entry = table->Find(GetOwnerID());
-
-        return (entry && entry->has_recipe_override) ? &entry->recipe_override : nullptr;
+        return has_recipe_override ? &recipe_override : nullptr;
     }
 
     bool MaterialData::SetTextureResource(
@@ -96,13 +84,8 @@ namespace hgl::ecs
             return false;
         }
 
-        MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry();
-
-        if (!entry)
-            return false;
-
         if (!UpsertTextureAuthoringResource(
-                entry->named_texture_resources,
+                named_texture_resources,
                 name,
                 resource))
         {
@@ -133,10 +116,9 @@ namespace hgl::ecs
 
         // 便捷重载不新增行为路径：把现成纹理包成句柄（Resident）后走统一入口。
         hgl::graph::TextureManager *tex_manager = nullptr;
-        if (const Entity *owner = GetOwner())
-            if (ECSContext *world = owner->GetContext())
-                if (hgl::graph::GraphicsContext *gc = world->GetGraphicsContext())
-                    tex_manager = gc->GetTextureManager();
+        if (context)
+            if (hgl::graph::GraphicsContext *gc = context->GetGraphicsContext())
+                tex_manager = gc->GetTextureManager();
 
         if (!tex_manager)
         {
@@ -198,18 +180,8 @@ namespace hgl::ecs
         if (!hgl::graph::mtl::IsValidMaterialTextureName(name))
             return nullptr;
 
-        const MaterialAuthoringSideTable *table = GetAuthoringTable();
-
-        if (!table)
-            return nullptr;
-
-        const MaterialAuthoringSideTable::Entry *side = table->Find(GetOwnerID());
-
-        if (!side)
-            return nullptr;
-
         const hgl::AnsiString key(name.c_str());
-        if (const auto *entry = side->named_texture_resources.GetValuePointer(key))
+        if (const auto *entry = named_texture_resources.GetValuePointer(key))
         {
             // 只要求「表达了某个纹理」：只有文件名的句柄也要能被看到（渲染层据 IsReady()
             // 判断可否绑定，未就绪的图元由 CanRender 拦截，不会走到绑定路径）。
@@ -236,31 +208,23 @@ namespace hgl::ecs
     RequiredTextureReadiness
         MaterialData::EvaluateRequiredTextureReadiness() const
     {
-        const MaterialAuthoringSideTable *table = GetAuthoringTable();
-
-        if (!table)
-            return RequiredTextureReadiness::Ready;
-
-        return hgl::ecs::EvaluateRequiredTextureReadiness(
-            table->Find(GetOwnerID()));
+        // 规则本体在旁表头文件的自由函数里（可被单元测试直接钉住）；限定名调用，
+        // 避免与同名成员的重载遮蔽纠缠。
+        return hgl::ecs::EvaluateRequiredTextureReadiness(this);
     }
 
-    // ── 内容行绑定（2026-11 收敛：真源 = 旁表条目；设备组件行池已退役）───────────
+    // ── 内容行绑定（2026-11 收敛：真源 = 本记录字段；设备组件行池已退役）───────────
 
     bool MaterialData::SetDataResource(
         const MaterialDataAuthoringResource &resource)
     {
         if (resource.ssbo_id == 0)
         {
-            // 清空路径：有条目就复位引用并推进代数；无条目 ⇒ 本来就没有 ⇒ 直接成功。
-            MaterialAuthoringSideTable *table = GetAuthoringTable();
-            MaterialAuthoringSideTable::Entry *entry =
-                table ? table->Find(GetOwnerID()) : nullptr;
-
-            if (entry && entry->has_data_resource)
+            // 清空路径：已绑就复位引用并推进代数；未绑 ⇒ 本来就没有 ⇒ 直接成功。
+            if (has_data_resource)
             {
-                entry->data_resource = {};
-                entry->has_data_resource = false;
+                data_resource = {};
+                has_data_resource = false;
                 TouchAuthored();
             }
             return true;
@@ -277,93 +241,44 @@ namespace hgl::ecs
             return false;
         }
 
-        MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry();
-
-        if (!entry)
-            return false;
-
         const hgl::graph::GlobalSSBOBinding binding = resource.GetGlobalSSBOBinding();
 
-        entry->data_resource = binding;
-        entry->has_data_resource = true;
+        data_resource = binding;
+        has_data_resource = true;
         TouchAuthored();
         return true;
     }
 
-    // ── 世界级旁表取用（键 = EntityID）──────────────────────────────────────────
-    MaterialAuthoringSideTable *MaterialData::GetAuthoringTable() const
-    {
-        const Entity *owner = GetOwner();
-        ECSContext *world = owner ? owner->GetContext() : nullptr;
-
-        return world ? world->GetMaterialAuthoringTable() : nullptr;
-    }
-
-    MaterialAuthoringSideTable::Entry *MaterialData::GetOrCreateAuthoringEntry()
-    {
-        MaterialAuthoringSideTable *table = GetAuthoringTable();
-
-        if (!table)
-        {
-            GLogError("[MaterialData] 无世界/无授权旁表：重类型授权数据无处安放 owner_id=%llu",
-                      GetOwnerID().index);
-            return nullptr;
-        }
-
-        return table->GetOrCreate(GetOwnerID());
-    }
-
-    const MaterialAuthoringSideTable::Entry *MaterialData::FindAuthoringEntry() const
-    {
-        const MaterialAuthoringSideTable *table = GetAuthoringTable();
-
-        return table ? table->Find(GetOwnerID()) : nullptr;
-    }
-
     bool MaterialData::HasDataResource() const
     {
-        const auto *entry = FindAuthoringEntry();
-
-        return entry && entry->has_data_resource;
+        return has_data_resource;
     }
 
     uint32_t MaterialData::GetAuthoredGeneration() const
     {
-        const auto *entry = FindAuthoringEntry();
-
-        return entry ? entry->authored_generation : 0u;
+        return authored_generation;
     }
 
     void MaterialData::BumpAuthoredGeneration()
     {
-        // 上游来源变化：只动代数，不改授权数据本体。条目不存在 ⇒ 没有任何授权状态
-        // 可失效（解析链本来就走资产默认配方/无材质），代数留在 0 即可。
-        MaterialAuthoringSideTable *table = GetAuthoringTable();
-
-        if (MaterialAuthoringSideTable::Entry *entry =
-                table ? table->Find(GetOwnerID()) : nullptr)
-            ++entry->authored_generation;
+        // 上游来源变化：只动代数，不改授权数据本体。
+        ++authored_generation;
 
         // P1：上游来源变化（asset 默认配方 / 变体切换）会让解析结果与 shader 身份失配 ⇒
         // 材质批的键集合可能变化，按拓扑变更记账（而不是动态事实）。
-        const Entity *owner = GetOwner();
-
-        if (owner)
-            if (ECSContext *context = owner->GetContext())
-                context->MarkTopologyChanged(TopologyChange::MaterialBinding);
+        if (context)
+            context->MarkTopologyChanged(TopologyChange::MaterialBinding);
     }
 
     // 授权变更唯一入口（见 .h 注释）：代数 +1 + 拓扑记账。
     void MaterialData::TouchAuthored()
     {
-        if (MaterialAuthoringSideTable::Entry *entry = GetOrCreateAuthoringEntry())
-            ++entry->authored_generation;
+        ++authored_generation;
 
         // P1：授权状态变化 = 材质批的划分依据可能变（从 Basic 升到 Textured
         // 会换 shader 身份 ⇒ 换 MaterialBatch 键）。归到拓扑类别，让快照拒绝复用。
-        if (const Entity *owner = GetOwner())
-            if (ECSContext *context = owner->GetContext())
-                context->MarkTopologyChanged(TopologyChange::MaterialBinding);
+        if (context)
+            context->MarkTopologyChanged(TopologyChange::MaterialBinding);
     }
 
     bool MaterialData::BuildResolvedRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
@@ -389,17 +304,7 @@ namespace hgl::ecs
         const bool has_definition =
             hgl::graph::mtl::ResolveMaterialFromRecipe(out_recipe, definition);
 
-        // 具名纹理资源住在**世界级旁表**（键 = EntityID）——解析路径读旁表。
-        // 无旁表/无条目 ⇒ 空表（语义 = 没有任何具名纹理授权）。
-        static const hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>
-            kEmptyNamedTextures;
-
-        const MaterialAuthoringSideTable::Entry *authoring_entry = FindAuthoringEntry();
-
-        const auto &named_texture_resources = authoring_entry
-            ? authoring_entry->named_texture_resources
-            : kEmptyNamedTextures;
-
+        // 具名纹理资源就住在本记录上（唯一真源）——解析路径直接读记录字段。
         for (const auto &[named_key, resource] : named_texture_resources)
         {
             const std::string name = named_key.c_str();
@@ -468,11 +373,11 @@ namespace hgl::ecs
             }
         }
 
-        // 绑定真源 = 旁表条目（2026-11：设备级组件行退役后唯一的一处）
-        if (authoring_entry && authoring_entry->has_data_resource)
+        // 绑定真源 = 本记录字段（2026-11：设备级组件行退役后唯一的一处）
+        if (has_data_resource)
         {
             hgl::graph::GlobalSSBOBinding material_ssbo_binding =
-                authoring_entry->data_resource;
+                data_resource;
             material_ssbo_binding.ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
@@ -518,16 +423,5 @@ namespace hgl::ecs
         }
 
         return true;
-    }
-
-    void MaterialData::OnDetach()
-    {
-        // 重类型授权数据（配方覆盖 / 具名纹理 / 内容行绑定 / 代数）随组件分离而**摘除**
-        //（键 = EntityID；条目整个删除 ⇒ 分离后所有读数回到「无授权」初态）。
-        // 注意：**不在析构期碰任何设备级池** —— 实测教训（2026-10-02）：OnDetach 期间
-        // 写池状态会在 GraphicsContext::Shutdown 序列里造成堆破坏/双重释放。
-        // 旁表是世界级对象、随 Context 生命周期存在，Remove 只是哈希表删项，安全。
-        if (MaterialAuthoringSideTable *table = GetAuthoringTable())
-            table->Remove(GetOwnerID());
     }
 }//namespace hgl::ecs

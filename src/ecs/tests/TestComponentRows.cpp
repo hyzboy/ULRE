@@ -43,8 +43,8 @@ static_assert(ComponentTypeBit(ComponentType::None) == 0u, "None 不得占位");
 static_assert(ComponentMaskHas(ComponentTypeBit(ComponentType::Geometry), ComponentType::Geometry), "位查询错误");
 static_assert(!ComponentMaskHas(ComponentTypeBit(ComponentType::Geometry), ComponentType::Texture), "位串了");
 static_assert(GetImpliedComponentMask(ComponentType::MaterialRuntime)
-                  == (ComponentTypeBit(ComponentType::MaterialRuntime) | ComponentTypeBit(ComponentType::MaterialData)),
-              "MaterialRuntime 必须蕴含 MaterialData（含自身位）");
+                  == ComponentTypeBit(ComponentType::MaterialRuntime),
+              "MaterialRuntime 蕴含已随 MaterialData 组件退役归零（闭包只剩自身位，2026-11）");
 static_assert(GetImpliedComponentMask(ComponentType::Transform) == ComponentTypeBit(ComponentType::Transform),
               "Transform 无蕴含，闭包应只有自身位");
 

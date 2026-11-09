@@ -4,7 +4,8 @@
  * 设计依据：doc/future/ULRE_FINAL_TARGET_v2_设计约束.md
  *   §1 Component Data —— "每 (scope, 组件类型) 一个定长行 arena（= 一个 SSBO）"，**scope 静态**
  *                        （组件类型决定作用域，运行时不变）。
- *   §3 Entity        —— GPU 可见组件 = Transform / MaterialData / MaterialRuntime / Geometry / Texture。
+ *   §3 Entity        —— GPU 可见组件 = Transform / MaterialRuntime / Geometry / Texture。
+ *                        （原 `MaterialData` 组件已退役：材质授权数据是 CPU 侧旁表记录，GPU 从不消费）
  *
  * 约定：
  *   · **新增组件类型时只改这一处**（加枚举项 + 加表项）；表与枚举**同序**由下面的 static_assert 强制，
@@ -29,7 +30,8 @@ namespace hgl
 
             Transform,          ///< 变换：每实体一行；L2W 由 CPU 权威 TRS 求值（GPU 行是派生视图）
             Geometry,           ///< 几何体（引用几何数据行）
-            MaterialData,       ///< 材质数据（配方/参数，资源级）
+                                ///< （原 `MaterialData` 槽位已退役，2026-11：材质授权数据不再是 ECS 组件，
+                                ///<  改由世界级 `MaterialAuthoringSideTable` 按 `EntityID` 稀疏持有）
             MaterialRuntime,    ///< 材质运行期数据（渲染侧创建/销毁）
             Texture,            ///< 贴图引用
                                 ///< **无实体级载体**（B6 判据；零消费者）：纹理引用属于 `MaterialPrivateData`
@@ -108,8 +110,10 @@ namespace hgl
          * 静态表本体。**新增组件类型时只改这里**。
          *
          * scope/行宽已随各类型 ID 化**定稿**（B3 Geometry / B4 MaterialData / B5 MaterialRuntime / B6 Texture）：
-         *   **Global** = 跨世界共享的资源级（`Geometry` / `MaterialData` / `Texture`）；
+         *   **Global** = 跨世界共享的资源级（`Geometry` / `Texture`）；
          *   **World** = 世界私有的实例级（`Transform` / `MaterialRuntime`）。
+         *（2026-11：B4 的 `MaterialData` 已整体退役——设备行池与组件层先后删除，材质授权
+         * 数据住在世界级旁表 `MaterialAuthoringSideTable`，不再占类型表槽位。）
          * `gpu_row_bytes` 只记**已有定长 GPU 行**者（Geometry 的数据在 MeshDrawParams / GeometryAABB 行、
          * `MaterialRuntimeSlot` 是 CPU 侧行 ⇒ 记 0）；改行宽须与 GLSL 侧结构一并核对
          *（并过 S.global-addresses-struct-parity 门）。
@@ -120,7 +124,6 @@ namespace hgl
             { ComponentType::None,            ComponentScope::World,  "",                     0, "",                    SystemGroupID::None },
             { ComponentType::Transform,       ComponentScope::World,  "ECS:Transform",       64, "TransformDataStorage", SystemGroupID::None },
             { ComponentType::Geometry,        ComponentScope::Global, "ECS:Geometry",         0, "GeometryData",        SystemGroupID::Primitive },   ///< B3：ID 化完成（几何数据落 MeshDrawParams / GeometryAABB 行）。A5b：本组件是"该实体是一个 Primitive 渲染元素"的**唯一标记** ⇒ 驱动图元组；T2-c 起组归属由**类型表**声明（组件虚函数已删）
-            { ComponentType::MaterialData,    ComponentScope::Global, "ECS:MaterialData",    16, "MaterialData",        SystemGroupID::None },        ///< B4：组件行 16 B（(Global, MaterialData) arena，行内只放 POD）
             { ComponentType::MaterialRuntime, ComponentScope::World,  "ECS:MaterialRuntime",  0, "MaterialRuntimeSlot", SystemGroupID::None },        ///< B5：slot 全 POD、行宽冻结 **32 B**（CPU 侧行 ⇒ gpu_row_bytes 记 0；2026-10-14 删 4-ID 句柄字段后 40 → 32，与 MaterialRuntimeTable.h 的 static_assert(sizeof==32) 同批订正）
             { ComponentType::Texture,         ComponentScope::Global, "ECS:Texture",          0, "",                    SystemGroupID::None },        ///< B6：**无组件载体**（纹理授权在 MaterialData 的具名纹理资源里，零消费者，仅登记）；载体形态 = 材质私有数据一族（按定义变长的行空间）⇒ 与欠账 §2.9 同批处理，**勿补实体级组件**
             { ComponentType::Camera,          ComponentScope::World,  "ECS:Camera",           0, "CameraComponent",     SystemGroupID::None },        ///< B7：相机（P-6 ②：**不新开 arena**，参数留组件；世界相机表 = 派生视图 ⇒ 本类型无自己的 GPU 行）；T2-c：相机行内持 `shared_ptr`（槽账目按宿主弱引用计占用期，见 `SharedComponentPool`）
@@ -207,7 +210,8 @@ namespace hgl
 
         // ─────────────────────────────────────────────────────────────
         // implies（蕴含）规则：某类型出现 ⇒ 必然同时具备哪些槽位
-        //   · 例：`MaterialRuntime ⇒ MaterialData`（运行期数据必以数据层为源）
+        //   · 例（历史）：`MaterialRuntime ⇒ MaterialData`——2026-11 `MaterialData` 组件退役
+        //     （材质授权住世界级旁表，不是类型表槽位）⇒ 该蕴含随数据层槽位一并归零。
         //   · 表只写**直接**蕴含；传递闭包由 `ExpandComponentImplies` 在编译期算完并自检
         // ─────────────────────────────────────────────────────────────
 
@@ -216,8 +220,7 @@ namespace hgl
             /* None            */ 0,
             /* Transform       */ 0,
             /* Geometry        */ 0,
-            /* MaterialData    */ 0,
-            /* MaterialRuntime */ ComponentTypeBit(ComponentType::MaterialData),
+            /* MaterialRuntime */ 0,   ///< 原蕴含 MaterialData 位（已退役）
             /* Texture         */ 0,
             /* Camera          */ 0,
             /* Lines           */ 0,

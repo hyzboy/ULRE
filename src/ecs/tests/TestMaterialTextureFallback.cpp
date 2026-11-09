@@ -81,7 +81,7 @@ namespace
         // 无水材质 / 无授权资源：不该把图元钉死。
         EXPECT(EvaluateRequiredTextureReadiness(nullptr) == Readiness::Ready);
 
-        MaterialAuthoringSideTable::Entry empty_entry;
+        MaterialData empty_entry;
         EXPECT(EvaluateRequiredTextureReadiness(&empty_entry) == Readiness::Ready);
     }
 
@@ -103,7 +103,7 @@ namespace
         EXPECT(!failed.IsReady() && failed.GetPayloadState() == PayloadState::LoadFailed);
 
         {
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&meta_only, true));
 
             // 已声明来源但还没读到 ⇒ 等它，本帧不渲染（这是原语义，不能退化成占位）。
@@ -111,13 +111,13 @@ namespace
         }
 
         {
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&ready, true));
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Ready);
         }
 
         {
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&failed, true));
 
             // 核心判据：终态失败 ⇒ 降级占位保底，而不是永久阻断。
@@ -126,14 +126,14 @@ namespace
 
         {
             // 非必需（optional）不参与门禁：失败与否都算 Ready。
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("detail"), Bind(&failed, false));
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Ready);
         }
 
         {
             // 空条目（既无句柄也无文件名）：本来就收集不到绑定，不该影响门禁。
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("ghost"), Bind(nullptr, true));
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Ready);
         }
@@ -141,7 +141,7 @@ namespace
         {
             // 「有句柄但无来源」：`HasSource()` 为假 ⇒ 同样不参与门禁。
             graph::TextureAsset blank(nullptr);
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("blank"), Bind(&blank, true));
             EXPECT(!blank.IsReady());
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Ready);
@@ -168,7 +168,7 @@ namespace
         {
             // 一张失败挂在另一张在途上：仍应等 —— 在途那张可能马上就好，
             // 现在就画出来会在它到位后继续用旧占位（材质链已 clean，不会自动重算）。
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&failed_a, true));
             entry.named_texture_resources.Add(AnsiString("normal"), Bind(&loading,    true));
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Pending);
@@ -176,7 +176,7 @@ namespace
 
         {
             // 全部有结论、且至少一张失败 ⇒ 降级。
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&failed_a, true));
             entry.named_texture_resources.Add(AnsiString("normal"),     Bind(&failed_b, true));
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Degraded);
@@ -184,7 +184,7 @@ namespace
 
         {
             // 失败 + 就绪（无在途）⇒ 仍是降级，不是 Ready：不能让失败被就绪掩盖掉。
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&failed_a, true));
             entry.named_texture_resources.Add(AnsiString("normal"),     Bind(&ready,    true));
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Degraded);
@@ -192,7 +192,7 @@ namespace
 
         {
             // 非必需的失败不得把整体拖进 Degraded。
-            MaterialAuthoringSideTable::Entry entry;
+            MaterialData entry;
             entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&ready,    true));
             entry.named_texture_resources.Add(AnsiString("detail"),     Bind(&failed_a, false));
             EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Ready);
@@ -206,7 +206,7 @@ namespace
         graph::TextureAsset asset(nullptr);
         MakeMetaOnly(asset);
 
-        MaterialAuthoringSideTable::Entry entry;
+        MaterialData entry;
         entry.named_texture_resources.Add(AnsiString("base_color"), Bind(&asset, true));
 
         EXPECT(EvaluateRequiredTextureReadiness(&entry) == Readiness::Pending);

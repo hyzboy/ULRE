@@ -50,20 +50,15 @@ namespace hgl::ecs
             return entity->GetName().c_str();
         }
 
-        /// A2/A5b 查询：实体的**材质数据层**组件（无实体/无世界时 nullptr）。
+        /// A2/A5b 查询：实体的**材质授权记录**（无实体/无世界/从未授权时 nullptr）。
+        /// 2026-11：MaterialData 已退役为纯旁表记录（键 = EntityID）——渲染侧只**读**，
+        /// 绝不再「无则创建」：从未改过材质的实体本就没有授权状态，零内存才是正解
+        ///（原 `EnsureMaterialDataOf` 是压测场景行池/内存报错的根因）。
         MaterialData *FindMaterialDataOf(Entity *entity)
         {
             ECSContext *context = entity ? entity->GetContext() : nullptr;
 
             return context ? context->GetMaterialData(entity) : nullptr;
-        }
-
-        /// 材质数据层组件（无则创建）。渲染侧需要读出授权状态时，数据层必须存在。
-        MaterialData *EnsureMaterialDataOf(Entity *entity)
-        {
-            ECSContext *context = entity ? entity->GetContext() : nullptr;
-
-            return context ? context->GetOrCreateMaterialData(entity) : nullptr;
         }
 
         /// A5a 查询：实体的**几何资产组件**（无实体/无世界/未挂载时 nullptr）。
@@ -77,9 +72,9 @@ namespace hgl::ecs
         /// 材质授权代数（A2 之前挂在图元组件上，随授权状态一并迁入数据层）。
         uint32_t MaterialAuthoredGenerationOf(Entity *entity)
         {
-            MaterialData *material_data = EnsureMaterialDataOf(entity);
+            MaterialData *material_data = FindMaterialDataOf(entity);
 
-            // 2026-11：代数真源 = 世界级旁表条目（`Entry::authored_generation`，
+            // 2026-11：代数真源 = 世界级旁表记录（`MaterialData::authored_generation`，
             // 键 = EntityID）。原「设备级组件行行内 revision」已随组件行池退役。
             return material_data ? material_data->GetAuthoredGeneration() : 0;
         }
@@ -499,10 +494,13 @@ namespace hgl::ecs
             if (!primitive_comp)
                 return false;
 
-            MaterialData *material_data = EnsureMaterialDataOf(primitive_comp);
+            // 授权记录只**读**：从未改过材质的实体走一条默认构造的局部空记录
+            //（语义 = 无任何覆盖 ⇒ 解析只用 asset 默认配方），零堆分配。
+            const MaterialData authored_fallback{};
+            const MaterialData *material_data = FindMaterialDataOf(primitive_comp);
 
             if (!material_data)
-                return false;
+                material_data = &authored_fallback;
 
             // asset 里的默认配方是基底，数据层里的配方覆盖是覆盖源（配方来源 = 实体的
             // GeometryData 组件；A5a 起由几何组件持有 asset）。
@@ -833,7 +831,7 @@ namespace hgl::ecs
             const char *owner_name =
                 GetOwnerName(primitive_comp);
             const MaterialData *material_data =
-                EnsureMaterialDataOf(primitive_comp);
+                FindMaterialDataOf(primitive_comp);
 
             for (const auto &binding : active_recipe.textures)
             {
@@ -1795,7 +1793,7 @@ namespace hgl::ecs
                         // 兜底：配方里记录的身份还没登记 bindless（例如 RT 附件刚重建、
                         // 或资源由实体级覆盖提供）。实体级覆盖优先，其次配方级句柄。
                         const MaterialData *material_data =
-                            EnsureMaterialDataOf(primitive_comp);
+                            FindMaterialDataOf(primitive_comp);
                         const auto *authoring = material_data
                             ? material_data->GetTextureResource(declaration.name)
                             : nullptr;
@@ -1822,7 +1820,7 @@ namespace hgl::ecs
                     // 会取 fallback（白基色、未扰动法线），图元照常画出来。
                     graph::TextureAsset *slot_asset = recipe_binding->asset;
                     if (const MaterialData *slot_material =
-                            EnsureMaterialDataOf(primitive_comp))
+                            FindMaterialDataOf(primitive_comp))
                     {
                         if (const auto *slot_authoring =
                                 slot_material->GetTextureResource(declaration.name))

@@ -60,7 +60,7 @@ namespace hgl
             , visibility_storage(std::make_unique<VisibilityDataStorage>())
             , material_variant_table(std::make_unique<MaterialVariantTable>())
             , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
-            , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>())
+            , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>(this))
             , material_runtime_pipeline_table(std::make_unique<MaterialRuntimePipelineTable>())
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
@@ -1065,32 +1065,32 @@ namespace hgl
 
         MaterialData* ECSContext::GetMaterialData(EntityID owner)
         {
-            return ComponentOfEntity<MaterialData>(GetEntity(owner));
+            return material_authoring_side_table->Find(owner);
         }
 
         const MaterialData* ECSContext::GetMaterialData(EntityID owner) const
         {
-            return ComponentOfEntity<MaterialData>(GetEntity(owner));
+            return material_authoring_side_table->Find(owner);
         }
 
         MaterialData* ECSContext::GetMaterialData(Entity *owner)
         {
-            return ComponentOfEntity<MaterialData>(owner);
+            return owner ? material_authoring_side_table->Find(owner->GetEntityID()) : nullptr;
         }
 
         const MaterialData* ECSContext::GetMaterialData(const Entity *owner) const
         {
-            return ComponentOfEntity<MaterialData>(owner);
+            return owner ? material_authoring_side_table->Find(owner->GetEntityID()) : nullptr;
         }
 
         MaterialData* ECSContext::GetOrCreateMaterialData(EntityID owner)
         {
-            return GetOrAddComponentOfEntity<MaterialData>(GetEntity(owner));
+            return material_authoring_side_table->GetOrCreate(owner);
         }
 
         MaterialData* ECSContext::GetOrCreateMaterialData(Entity *owner)
         {
-            return GetOrAddComponentOfEntity<MaterialData>(owner);
+            return owner ? material_authoring_side_table->GetOrCreate(owner->GetEntityID()) : nullptr;
         }
 
         GeometryData* ECSContext::GetGeometryData(EntityID owner)

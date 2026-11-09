@@ -19,7 +19,14 @@ namespace hgl
             // 实体生死是**单一入口**：所有销毁路径（DestroyEntity / Clear / 世界 Shutdown）
             // 都会走到显式 `~Entity()`（T2-a 块池的约定）。
             if (context)
+            {
                 context->DeactivateEntityRow(id);
+
+                // 2026-11（MaterialData 组件退役）：材质授权记录随实体死亡摘除——
+                // 原 `MaterialData::OnDetach` 的旁表清理搬到这里（记录以 EntityID 为键、
+                // 住世界级旁表；Remove 只是哈希删项，不碰任何设备级池）。
+                context->GetMaterialAuthoringTable()->Remove(id);
+            }
         }
 
         void Entity::MarkSceneDirty() const

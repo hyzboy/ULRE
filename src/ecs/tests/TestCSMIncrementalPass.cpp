@@ -4726,8 +4726,8 @@ int main(int argc, char** argv)
             { "LineRenderPipeline.cpp", OS_TEXT("src/ecs/support/line/LineRenderPipeline.cpp"),
               "(slot + 1", "裸 slot 加一的算式复活（应写 kFirstObjectL2WSlot + slot）", true },
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
-              "hgl::UnorderedMap<EntityID, Entry> entries;",
-              "旁表不再以 EntityID 为键（2026-11 收敛：组件行池 row_id 转手的间接层已退役）" },
+              "hgl::UnorderedMap<EntityID, MaterialData> entries;",
+              "旁表不再以 EntityID 为键 / 不再直存 MaterialData 记录（2026-11 收敛：组件行池 row_id 转手的间接层已退役；2026-11 组件退役：`Entry` 别名随壳删除，记录本体直接入表）" },
             // ⑩ B1/S3b-3（2026-10-14，2026-11 改判）：顶点节点枚举的名字表归位到枚举定义旁。
             //    唯一真源 = 文末的 `HGL_ENUM_BEGIN` 登记块；原先那批
             //    `Get*Name` / `Parse*` 纯转发壳已删（取名字 = `hgl::serialize::EnumNameOf`，
@@ -5218,7 +5218,7 @@ int main(int argc, char** argv)
             {
                 // 指针版**直通**（const + 非 const 两条）
                 { "return ComponentOfEntity<GeometryData>(owner);",         2, "GeometryData 指针版必须直通核心（不得再解析 ID）" },
-                { "return ComponentOfEntity<MaterialData>(owner);",         2, "MaterialData 指针版必须直通核心" },
+                { "return material_authoring_side_table->Find(owner);",     2, "MaterialData EntityID 版必须直通旁表（2026-11 组件退役：记录住世界级旁表）" },
                 // （2026-10-10 审计 §1.1）：`ECSContext` 的四个 ShadowProxy 包装重载全仓零调用者，已删 ⇒
                 // 该条"计数式直通契约"迁到组件侧自由函数上（见本块末尾 kDirectFree），这里只钉**禁复活**。
                 { "GetShadowProxy",                                          0, "ECSContext 的 ShadowProxy 包装已删（禁复活；指针版走组件侧自由函数）" },
@@ -5229,14 +5229,14 @@ int main(int argc, char** argv)
 
                 // 指针版「无则创建」**直通**（各一条：创建必须能改实体）
                 { "return GetOrAddComponentOfEntity<GeometryData>(owner);", 1, "GeometryData「无则创建」指针版必须直通核心" },
-                { "return GetOrAddComponentOfEntity<MaterialData>(owner);", 1, "MaterialData「无则创建」指针版必须直通核心" },
+                { "return material_authoring_side_table->GetOrCreate(owner);", 1, "MaterialData「无则创建」EntityID 版必须直通旁表（组件已退役）" },
                 // §3-②：相机「无则创建」的指针版同样改走世界侧直通（判存在 + 世界侧创建），
                 // 不再经 `GetOrAddComponentOfEntity<T>`（其内部实例化被禁的两个 Entity 模板）。
                 { "if (CameraComponent *existing = GetCameraByEntity(owner))",       1, "相机「无则创建」指针版必须直通判存在（不经 ID→Entity 往返）" },
                 { "return CreateComponent<CameraComponent>(owner, name);",           1, "相机创建的指针版必须直通核心（绕开已禁死的 Entity::AddComponent）" },
 
                 // ID 版**每个重载解析一次**：少了 = 有人跳过解析（返回垃圾/nullptr）
-                { "GetEntity(owner)",                                       9, "EntityID 版必须每个重载各解析一次 GetEntity（9 = 组件访问器 EntityID 重载数；2026-10-10 删 ShadowProxy 两条 ⇒ 11→9）" },
+                { "GetEntity(owner)",                                       6, "EntityID 版必须每个重载各解析一次 GetEntity（9 = 组件访问器 EntityID 重载数；2026-10-10 删 ShadowProxy 两条 ⇒ 11→9；2026-11 MaterialData 三改旁表直通 ⇒ 9→6）" },
             };
 
             for (const CountExpect &c : kDirect)
@@ -5533,11 +5533,12 @@ int main(int argc, char** argv)
         const SourceContract kB4Contracts[] =
         {
             // ① 仍在：类型 + 行号（三者缺一即 "GPU 面" 塌掉）
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "hgl::graph::GlobalSSBOBinding", "材质组件的 GPU 面不再是「类型 + 行号」" },
+            //    2026-11：MaterialData 组件退役为纯旁表记录，GPU 面字段随记录住旁表头。
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
+              "hgl::graph::GlobalSSBOBinding", "材质授权记录的 GPU 面不再是「类型 + 行号」" },
             // B4-i 续（2026-10-10）：`authored` 与上面三个字段**同判据**（`.authored` 全仓读写 0 处、
             // 且与「GPU 面只剩类型 + 行号」相矛盾）⇒ 原正向 needle 失去载体，改钉**禁复活**。
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "bool authored = false;", "材质数据行资源又挂回 `authored` 死字段（零读写 ⇒ 按 B4-i 零残留判）", true },
             // 2026-11：设备级组件行退役 ⇒ 行结构本身进「禁复活」列；
             // 清空路径的复位语义搬到「旁表条目 has_data_resource 置假」。
@@ -5545,16 +5546,16 @@ int main(int argc, char** argv)
               "struct HGL_SSBO_ROW MaterialDataRow",
               "设备级材质组件行结构复活（该池 GPU 从未消费，已退役）", true },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "entry->has_data_resource = false;",
+              "has_data_resource = false;",
               "清空路径不再复位旁表条目（残留旧引用）" },
 
             // ② 禁复活：每实体死指针与派生数
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "element_capacity", "材质组件又持每实体元素容量（真源在 SSBOBufferRegistry）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "byte_stride", "材质组件又持每实体字节步长（真源在 SSBOBufferRegistry）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "DeviceBuffer", "材质组件又挂 DeviceBuffer（每实体缓冲指针）", true },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
+              "element_capacity", "材质授权记录又持每实体元素容量（真源在 SSBOBufferRegistry）", true },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
+              "byte_stride", "材质授权记录又持每实体字节步长（真源在 SSBOBufferRegistry）", true },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
+              "DeviceBuffer", "材质授权记录又挂 DeviceBuffer（每实体缓冲指针）", true },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "resource.buffer", "材质组件重置又在写每实体缓冲指针", true },
         };
@@ -5598,27 +5599,30 @@ int main(int argc, char** argv)
               "kMaterialDataFlagAuthoredDataResource",
               "组件行授权位复活（内容行绑定真源应只在旁表条目）", true },
 
-            // ② 组件 = 薄代理：不持行号、不持代数副本
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+            // ② 授权记录 = 纯数据：不持行号、不持代数副本
+            //    2026-11：组件退役后这些死字段若复活，载体只可能是旁表头的记录本体。
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "uint32_t material_row_id = 0;",
-              "材质组件又持设备级行号（多真值复活）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+              "材质授权记录又持设备级行号（多真值复活）", true },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "uint32_t GetAuthoredRowRevision() const;",
               "「读行内 revision」的旧读数口复活", true },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "registry->Acquire(hgl::graph::GlobalSSBOType::MaterialData)",
-              "组件又从设备级池取行（每实体行预算复活 = 压测报错的根因）", true },
+              "授权记录又从设备级池取行（每实体行预算复活 = 压测报错的根因）", true },
 
-            // ③ 旁表收口：读写/清空/分离都以 EntityID 为键落旁表
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "return table->GetOrCreate(GetOwnerID());",
+            // ③ 旁表收口：写入按 EntityID 建记录、清空落记录字段、摘除在 ~Entity
+            //    （2026-11 组件退役：原「组件方法经 GetAuthoringTable 转手」的形态收敛——
+            //    取用口 = `ECSContext::GetOrCreateMaterialData` 直通旁表；摘除 = `~Entity`。）
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "return material_authoring_side_table->GetOrCreate(owner);",
               "授权写入未以 EntityID 为键落旁表" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "entry->has_data_resource = true;",
-              "内容行绑定未写进旁表条目（绑定真源丢失）" },
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "table->Remove(GetOwnerID());",
-              "组件分离未摘除旁表条目（跨生命周期串味 + 泄漏）" },
+              "has_data_resource = true;",
+              "内容行绑定未写进旁表记录（绑定真源丢失）" },
+            { "Entity.cpp", OS_TEXT("src/ecs/core/entity/Entity.cpp"),
+              "context->GetMaterialAuthoringTable()->Remove(id);",
+              "实体死亡未摘除旁表记录（跨生命周期串味 + 泄漏）" },
             // 句柄语义的时代已结束：OnDetach 现在**整条删除条目**；
             // 禁复活：任何在组件里留「行号不清零」的状态（2026-10-02 关闭期崩溃教训
             // 的原载体——设备级池——已不存在，条目删除只是哈希删项）。
@@ -5772,10 +5776,11 @@ int main(int argc, char** argv)
               "TouchAuthored();",
               "授权点未走唯一入口" },
 
-            // ④ 代数读数 = 旁表条目；消费者读数与其一致
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+            // ④ 代数读数 = 旁表记录；消费者读数与其一致
+            //    （2026-11 组件退役：读数口随记录本体搬进旁表头。）
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "uint32_t GetAuthoredGeneration() const;",
-              "组件缺「读旁表条目代数」口" },
+              "授权记录缺「读旁表代数」口" },
             { "RenderPrimitiveCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
               "material_data->GetAuthoredGeneration()",
@@ -5816,7 +5821,7 @@ int main(int argc, char** argv)
               "class MaterialAuthoringSideTable",
               "重类型旁表缺失（配方覆盖/具名纹理资源无处安放）" },
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
-              "Entry *GetOrCreate(EntityID entity_id);",
+              "MaterialData *GetOrCreate(EntityID entity_id);",
               "旁表不再以 EntityID 为键（行号间接层已退役，不许回潮）" },
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>",
@@ -5831,42 +5836,44 @@ int main(int argc, char** argv)
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "MaterialAuthoringSideTable* GetMaterialAuthoringTable()",
               "世界缺旁表取用口" },
-            // ③ 组件零字段：重类型成员与行号一律禁复活
+            // ③ 记录不再披回组件外衣：重类型成员与行号一律禁复活**回壳层**
+            //    （2026-11：成员本体住旁表头里的记录类——壳（components/MaterialData.h）
+            //    转发后若又长出字段/基类，即为组件化回潮。）
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "uint32_t material_row_id = 0;",
-              "组件又持材质行号（薄代理被回退）", true },
+              "组件壳又长出材质行号字段（转发壳被回退）", true },
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "bool has_recipe_override = false;",
-              "配方覆盖布尔又回到组件（重类型搬回组件的先兆）", true },
+              "组件壳又长出配方覆盖布尔（记录定义搬回壳层）", true },
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "hgl::graph::mtl::MaterialRecipe recipe_override;",
-              "配方覆盖结构又回到组件（设备级行只能放 POD）", true },
+              "组件壳又持重类型成员（记录定义必须只在旁表头）", true },
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>",
-              "具名纹理资源映射又回到组件（重类型搬回组件）", true },
+              "组件壳又持具名纹理映射（记录定义必须只在旁表头）", true },
             { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
               "enum class MaterialTextureResourceKind",
-              "选择器枚举又回到组件（应与其他重类型同域在 hgl::ecs）", true },
+              "选择器枚举又回到壳层（应与其他重类型同域在旁表头）", true },
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "enum class MaterialTextureResourceKind : uint8_t",
               "选择器枚举未随重类型移到 hgl::ecs 域" },
-            // ④ 组件实现走旁表（含分离摘除）
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "MaterialData::GetAuthoringTable() const",
-              "组件缺旁表取用口" },
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
+              "public ComponentRow",
+              "授权记录又继承组件行基类（组件化回潮）", true },
+            { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/storage/ComponentTypeTable.h"),
+              "{ ComponentType::MaterialData,",
+              "MaterialData 又登记进类型表行（枚举条目 + 表行禁止复活）", true },
+            // ④ 世界取用口直通旁表（2026-11：组件退役后「组件实现走旁表」升格为
+            //    「Context 访问器直通旁表」；实体死亡摘除见 Test 32 ③）
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "MaterialData* ECSContext::GetOrCreateMaterialData(EntityID owner)",
+              "世界缺「无则创建」旁表取用口" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "table->GetOrCreate(material_row_id)",
               "旁表读写又经行号转手（间接层已退役）", true },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "table->Remove(material_row_id);",
               "分离摘除又按行号删（键已改为 EntityID）", true },
-            // ⑤ 禁复活：旧「组件成员直接读写」形态
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "        recipe_override = recipe;",
-              "配方又写进组件成员（绕开旁表）", true },
-            { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
-              "        named_texture_resources.Clear();",
-              "具名纹理资源又在组件成员上清空（绕开旁表）", true },
         };
 
         if (const int failed = verify_source_contracts(36, kB4iiibContracts,
@@ -5969,9 +5976,11 @@ int main(int argc, char** argv)
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/storage/ComponentTypeTable.h"),
               "{ ComponentType::Geometry,        ComponentScope::Global, \"ECS:Geometry\",         0, \"GeometryData\",        SystemGroupID::Primitive },",
               "Geometry 的承载类型未校准（B3 已 ID 化 ⇒ 应为 GeometryData）" },
+            // （2026-11 MaterialData 组件退役：原「逐行钉 MaterialData 承载行」的正向契约
+            //  失去载体 ⇒ 改钉该行**禁复活**，与 Test 36 ③ 的类型表行 FORBID 同判据。）
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/storage/ComponentTypeTable.h"),
-              "{ ComponentType::MaterialData,    ComponentScope::Global, \"ECS:MaterialData\",    16, \"MaterialData\",        SystemGroupID::None },",
-              "MaterialData 的承载类型/行宽未校准（B4 ⇒ MaterialData 组件行 16 B）" },
+              "ComponentScope::Global, \"ECS:MaterialData\"",
+              "MaterialData 又登记回类型表（组件退役被回退）", true },
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/storage/ComponentTypeTable.h"),
               "{ ComponentType::MaterialRuntime, ComponentScope::World,  \"ECS:MaterialRuntime\",  0, \"MaterialRuntimeSlot\", SystemGroupID::None },",
               "MaterialRuntime 的承载类型未校准（B5 ⇒ MaterialRuntimeSlot）" },

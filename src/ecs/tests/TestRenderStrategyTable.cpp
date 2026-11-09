@@ -15,7 +15,6 @@ namespace
 {
     constexpr uint32_t kGeoSlot      = ComponentTypeBit(ComponentType::Geometry);
     constexpr uint32_t kMatRtSlot    = ComponentTypeBit(ComponentType::MaterialRuntime);
-    constexpr uint32_t kMatDataSlot  = ComponentTypeBit(ComponentType::MaterialData);
 
     /// 全部事实为正（主视图）：随后按需翻某个事实来构造用例
     StrategyFacts AllGoodFacts()
@@ -209,9 +208,11 @@ int main(int argc, char** argv)
     // Test 4: 组件集合蕴含（implies）与"需要材质运行期行"
     // ─────────────────────────────────────────────────────────────
     {
-        if (GetImpliedComponentMask(ComponentType::MaterialRuntime) != (kMatRtSlot | kMatDataSlot))
+        // （2026-11 MaterialData 组件退役：「MaterialRuntime ⇒ MaterialData」蕴含随
+        //  数据层槽位一并归零 ⇒ 闭包只剩自身位。）
+        if (GetImpliedComponentMask(ComponentType::MaterialRuntime) != kMatRtSlot)
         {
-            GLogError(u8"Test 4 Failed: MaterialRuntime 应蕴含 MaterialData");
+            GLogError(u8"Test 4 Failed: MaterialRuntime 蕴含应已归零（只剩自身位）");
             return 13;
         }
 
