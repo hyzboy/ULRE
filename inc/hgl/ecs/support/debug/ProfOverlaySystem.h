@@ -33,6 +33,10 @@ namespace hgl
          *   文本写入发生在 Collect/Batch 之前 ⇒ 面板与所统计的帧同批出图。
          * - 首次启用时强制 `FrameProfiler::SetEnabled(true)` 并加载 8x8 点阵字体
          *   （res/font/FM-T-437.F08），建一个常驻文本行实体池（不销毁、不注销组件）。
+         * - 定宽列依赖**空格等宽**：点阵字体的字格推进是 char_width，而
+         *   `ParagraphStyle::space_size` 默认 0.5（字高系数）会让空格只有半格，
+         *   用空格对齐的列会随名字长度整体左移。因此这里显式把 space_size 设成
+         *   `char_width / char_height`（8x8 即 1.0）＝恰好一格。
          * - 每 `kWindowFrames` 次 Update 汇总一次窗口数据（槽耗时/计数 +
          *   `SystemProfiler` 逐系统耗时 + SceneStats），只在文本变化的行上重设内容。
          *

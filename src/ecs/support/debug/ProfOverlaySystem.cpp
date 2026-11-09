@@ -99,6 +99,17 @@ namespace hgl::ecs
 
         font_source = new graph::FontSource(data_source);   // 只接管引用计数，数据源须同寿命
 
+        // 点阵字体的字格是 char_width × char_height 的固定格子（metrics.adv_x = char_width）。
+        // 但 ParagraphStyle::space_size 默认 0.5（字高系数）⇒ 空格只推进半格，
+        // 用空格对齐的定宽列会随 name 长度整体左移。这里把空格设成恰好一格宽。
+        graph::layout::ParagraphStyle para;
+
+        if (data_source->GetCharHeight() > 0)
+            para.space_size = static_cast<float>(data_source->GetCharWidth())
+                            / static_cast<float>(data_source->GetCharHeight());
+
+        para.full_space_size = para.space_size * 2.0f;
+
         lines.resize(kMaxLines);
 
         for (int i = 0; i < kMaxLines; ++i)
@@ -122,6 +133,7 @@ namespace hgl::ecs
             }
 
             l.comp->SetFontSource(font_source);
+            l.comp->SetParagraphStyle(para);
             l.comp->SetStartPosition(graph::layout::TEXT_COORD_VEC{ 6, 6 + i * 10 });
         }
 
