@@ -62,6 +62,7 @@ namespace hgl::debug
         Upload,         ///< 缓冲上传 / 资源行同步
         Perf,           ///< 计时（原 PBR_PERF / PREPASS_TIMING）
         VkSync,         ///< Vulkan 队列 / fence / 信号量
+        ProfUI,         ///< 屏显 DEBUG PROF 覆盖层（需 perf 通道或显式开关配合）
 
         Count
     };

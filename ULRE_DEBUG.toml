@@ -39,6 +39,7 @@ transform = false   # 变换提交、脏标记
 upload    = false   # 缓冲上传、资源行同步
 perf      = false   # 计时（prepass / pbr 性能账）
 vksync    = false   # Vulkan 队列/fence/信号量
+profui    = false   # 屏显 DEBUG PROF 覆盖层（开启即强制 FrameProfiler 计时）
 
 # ----------------------------------------------------------------------------
 # 字符串形式（二选一）—— 等价于旧 `ULRE_DEBUG=...` 的写法，适合临时抓一段：

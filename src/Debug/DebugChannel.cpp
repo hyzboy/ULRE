@@ -37,6 +37,7 @@ namespace hgl::debug
             { "upload",    "缓冲上传、资源行同步" },
             { "perf",      "计时（prepass / pbr 性能账）" },
             { "vksync",    "Vulkan 队列/fence/信号量" },
+            { "profui",    "屏显 DEBUG PROF 覆盖层" },
         };
         return table;
     }
