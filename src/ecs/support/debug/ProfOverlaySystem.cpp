@@ -6,6 +6,7 @@
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<hgl/ecs/support/storage/FrameProfiler.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/MonoBitmapFontSource.h>
 #include<hgl/graph/font/TextCharSSBO.h>
@@ -150,18 +151,52 @@ namespace hgl::ecs
             return;
         }
 
+        // F1 电平 ⇒ 自行做上升沿，避免按住连切
+        if (!input_system)
+            input_system = context->GetSystem<InputSystem>().get();
+
+        if (input_system)
+        {
+            const bool f1 = input_system->IsKeyDown(io::KeyboardButton::F1);
+
+            if (f1 && !f1_prev)
+                SetVisible(!visible);
+
+            f1_prev = f1;
+        }
+
         // Tick 中每真实帧调用一次 Update ⇒ window_calls 即真实帧数。
         if (++window_calls < kWindowFrames)
             return;
 
         const uint64_t wall = GetUptimeUs() - window_t0;
 
-        Rebuild(wall);
+        if (visible)
+            Rebuild(wall);
 
         FrameProfiler::Reset();   // 连同 SystemProfiler / 计数槽一起清零
 
         window_t0    = GetUptimeUs();
         window_calls = 0;
+    }
+
+    void ProfOverlaySystem::SetVisible(bool on)
+    {
+        if (visible == on)
+            return;
+
+        visible = on;
+
+        if (!on)
+        {
+            // 立即清屏；统计窗口照常滚动，重新显示时第一帧就有新数据
+            for (int i = 0; i < static_cast<int>(lines.size()); ++i)
+                PutLine(i, 0u, "", 0);
+
+            FrameProfiler::Reset();
+            window_t0    = GetUptimeUs();
+            window_calls = 0;
+        }
     }
 
     void ProfOverlaySystem::PutLine(int idx, uint32_t color, const char * ascii, int len)

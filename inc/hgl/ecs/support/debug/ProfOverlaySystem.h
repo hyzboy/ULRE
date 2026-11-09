@@ -17,6 +17,7 @@ namespace hgl
     {
         class Entity;
         class TextComponent;
+        class InputSystem;
 
         /**
          * 屏显 DEBUG PROF 覆盖层（`ULRE_DEBUG.toml` 的 `channels.profui` 开启）。
@@ -43,6 +44,8 @@ namespace hgl
          *   （一次 Tick 对应一次渲染帧）。
          * - 面板显示的是**上一个窗口**的数据（窗口末尾才有汇总值），滞后 ≤ 窗口长度，
          *   对 debug 叠加无碍。
+         * - **F1** 运行期切换显示/隐藏（上升沿检测；隐藏时清屏并照常滚动统计窗口，
+         *   重新开启后立即可见最新窗口数据）。
          */
         class ProfOverlaySystem : public System
         {
@@ -67,6 +70,10 @@ namespace hgl
             uint64_t window_t0    = 0;                 ///< 窗口起点（GetUptimeUs）
             uint64_t window_calls = 0;                 ///< 窗口内已计 Update 次数
 
+            InputSystem * input_system = nullptr;      ///< 懒查找（F1 边沿检测用）
+            bool   f1_prev = false;                    ///< 上一帧 F1 电平
+            bool   visible = true;                     ///< F1 切换的显示开关
+
         public:
             ProfOverlaySystem();
             ~ProfOverlaySystem() override;
@@ -82,6 +89,9 @@ namespace hgl
 
             /// 写第 idx 行：文本未变化则跳过；color 为 packUnorm4x8
             void PutLine(int idx, uint32_t color, const char * ascii, int len);
+
+            /// F1 切换：隐藏时立即清空所有行并重置统计窗口
+            void SetVisible(bool on);
         };
     }//namespace ecs
 }//namespace hgl
