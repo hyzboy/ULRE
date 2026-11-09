@@ -777,7 +777,7 @@ namespace hgl
             TransformID CreateTransform(EntityID owner, Mobility mobility);
             void        DestroyTransform(TransformID id);
 
-            /// 实体 → 材质数据层组件 `MaterialData`（无则 nullptr）。
+            /// 实体 → 材质授权记录 `MaterialData`（世界级旁表，非组件；无则 nullptr）。
             /// **stage B 会换成值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
             /// 届时不再返回裸指针。
             MaterialData* GetMaterialData(EntityID owner);
@@ -785,8 +785,8 @@ namespace hgl
             MaterialData* GetMaterialData(Entity* owner);
             const MaterialData* GetMaterialData(const Entity* owner) const;
 
-            /// 实体 → 材质数据层组件（无则 AddComponent 创建）。
-            /// 与 GetOrCreateBoundingBox 同风格：渲染/作者侧需要"一定有数据层"时用。
+            /// 实体 → 材质授权记录（无则在世界级旁表 `MaterialAuthoringSideTable` 建条目）。
+            /// 2026-11 退役：不再挂组件、不占行池；渲染/作者侧需要"一定有授权数据"时用。
             MaterialData* GetOrCreateMaterialData(EntityID owner);
             MaterialData* GetOrCreateMaterialData(Entity* owner);
 

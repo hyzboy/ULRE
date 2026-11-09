@@ -126,8 +126,11 @@ graph TD
   diffuse/specular、shadow、ntb、output_policy、surface、sky），选择体现为 include 而非运行时分支。
 - `module/vertex/*` —— 可组合顶点节点：`stream_*`（属性装载）+ `transform_*`
   （如 `transform_world_camera_vp.glsl` 实现 GetWorldPos/GetWorldNormal/GetClipPos）+ helpers。
-- `module/descriptor/*` —— UBO/SSBO/bindless 声明；`ssbo/material_data_row.glsl` 为 codegen
+- `module/descriptor/*` —— UBO/SSBO/bindless 声明；`ssbo/material_data_row.glsl` 曾为 codegen
   产物（`MaterialDataRow`：surface_type / surface_ssbo_id / surface_data_index / authored_flags）。
+  **2026-11 退役**：该组件行 SSBO 池 GPU 从未消费（交叉分析证实），已随 `MaterialData`
+  组件化退役删除；材质授权改为世界级 `MaterialAuthoringSideTable` 纯记录。PBR 内容行
+  （`MaterialDataBlock`，见下文 §数据块管线）不受影响，仍是 GPU 读取的真源。
 - `module/stage/stage_body.glsl` —— 固定 mesh stage 主体，include 前需备齐 topology 字面量、
   varying、`generated/mesh_options.glsl`、`ULRE_MESH_MAX_VERTS/INVOCATIONS`
   （`stage_body.glsl:1-30`）。

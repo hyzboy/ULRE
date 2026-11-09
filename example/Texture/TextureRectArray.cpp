@@ -139,7 +139,7 @@ private:
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
             auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(render_obj[i].entity->GetEntityID(), Mobility::Static));
             auto primitive = render_obj[i].entity->GetContext()->GetOrCreateGeometryData(render_obj[i].entity);
-            // 材质数据层组件（配方/绑定/行号的承载者）——渲染侧需要它存在
+            // 材质授权记录（配方/绑定/行号的承载者，世界级旁表条目而非组件）——本示例的纹理绑定需要它存在
             render_obj[i].entity->GetContext()->GetOrCreateMaterialData(render_obj[i].entity);
 
             transform.SetLocalPosition(glm::vec3(offset.x, offset.y, offset.z));

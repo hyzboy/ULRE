@@ -36,7 +36,7 @@ namespace hgl::ecs
 
         primitiveAsset = asset;
 
-        // asset 默认配方是材质解析的基底来源：换 asset ⇒ 让本实体材质数据层的
+        // asset 默认配方是材质解析的基底来源：换 asset ⇒ 让本实体材质授权记录的
         // 授权代数前进，渲染侧的重解析快路径据此失配（原先由组件级 generation
         // 承担的失效点，A2 随授权状态一并迁入 MaterialData）。
         Entity *owner = GetOwner();

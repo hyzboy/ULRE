@@ -51,7 +51,7 @@ namespace hgl::ecs
         /// 几何段完成（本帧有新挂上的 GeometryData）
         virtual void OnGeometryAttached(ModelRefComponent & /*component*/) {}
 
-        /// 材质段完成（本帧有新挂上的 MaterialData）
+        /// 材质段完成（本帧有新写入的 MaterialData 授权记录）
         virtual void OnMaterialAttached(ModelRefComponent & /*component*/) {}
 
         /// 全段落定且句柄 `CommitModel` 就绪 —— 模型可用（只报一次）

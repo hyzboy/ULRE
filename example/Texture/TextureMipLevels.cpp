@@ -265,7 +265,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto primitive = row_entities[row]->GetContext()->GetOrCreateGeometryData(row_entities[row]);
-            // 材质数据层组件（配方/绑定/行号的承载者）——渲染侧需要它存在
+            // 材质授权记录（配方/绑定/行号的承载者，世界级旁表条目而非组件）——本示例的纹理绑定需要它存在
             row_entities[row]->GetContext()->GetOrCreateMaterialData(row_entities[row]);
             primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
 
