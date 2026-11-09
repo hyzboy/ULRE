@@ -74,6 +74,8 @@ namespace hgl::ecs
             const auto& rhs = order_list[b];
             if (lhs.phase != rhs.phase)
                 return lhs.phase < rhs.phase;
+            if (lhs.group_id != rhs.group_id)
+                return lhs.group_id < rhs.group_id;
             return lhs.insertion_order < rhs.insertion_order;
         };
 
@@ -111,10 +113,12 @@ namespace hgl::ecs
                 {
                     if (a.phase != b.phase)
                         return a.phase < b.phase;
+                    if (a.group_id != b.group_id)
+                        return a.group_id < b.group_id;
                     return a.insertion_order < b.insertion_order;
                 });
 
-            LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/insertion order.",label);
+            LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/group/insertion order.",label);
         }
         else
         {
@@ -184,10 +188,13 @@ namespace hgl::ecs
             systems_list.push_back(system);
         }
 
+        const int group_id = static_cast<int>(SystemGroupFromName(element_type.c_str()));
+
         if (auto *entry = FindOrderedSystem(order_list, key))
         {
             entry->system = system;
             entry->phase = effective_phase;
+            entry->group_id = group_id;
             dirty_flag = true;
         }
         else
@@ -195,6 +202,7 @@ namespace hgl::ecs
             OrderedSystem new_entry;
             new_entry.key = key;
             new_entry.phase = effective_phase;
+            new_entry.group_id = group_id;
             new_entry.insertion_order = next_system_order++;
             new_entry.system = system;
             order_list.push_back(std::move(new_entry));

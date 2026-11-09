@@ -132,6 +132,7 @@ namespace hgl
             {
                 size_t key = 0;
                 int phase = 0;          // ExecutionPhase as int
+                int group_id = 0;       // SystemGroupID as int（同相位内按组分层排序）
                 uint64_t insertion_order = 0;  // For stable sorting
                 std::shared_ptr<System> system;
             };
