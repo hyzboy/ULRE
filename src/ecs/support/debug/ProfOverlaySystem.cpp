@@ -53,7 +53,9 @@ namespace hgl::ecs
     ProfOverlaySystem::ProfOverlaySystem()
         : System("ProfOverlay")
     {
-        SetExecutionPhase(ExecutionPhase::RenderDebug);
+        // 必须用 tick 相位：普通 System 的 Update 只由 Tick(tick_system_order) 或
+        // RenderGraph pass 范围派发；渲染相位 RenderDebug 不在任何 pass 范围内 ⇒ 永不执行。
+        SetExecutionPhase(ExecutionPhase::TickPostCamera);
     }
 
     ProfOverlaySystem::~ProfOverlaySystem()
@@ -148,8 +150,7 @@ namespace hgl::ecs
             return;
         }
 
-        // 按 Update 调用数开窗：多 pass 世界一次真实帧会计多次 ⇒ 归一化口径是
-        // "每次 RenderDebug 调用一帧"（见类注释）。
+        // Tick 中每真实帧调用一次 Update ⇒ window_calls 即真实帧数。
         if (++window_calls < kWindowFrames)
             return;
 

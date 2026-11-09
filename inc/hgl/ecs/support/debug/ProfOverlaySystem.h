@@ -22,7 +22,14 @@ namespace hgl
          * 屏显 DEBUG PROF 覆盖层（`ULRE_DEBUG.toml` 的 `channels.profui` 开启）。
          *
          * 工作方式：
-         * - phase = RenderDebug，位于绘制命令录制之后 ⇒ 文字随场景一起提交，永远最后叠显。
+         * - phase = TickPostCamera，走 `ECSContext::Tick` 的 tick 系统列。
+         *   （不能用渲染相位：普通 System 的 Update 只有两个派发口 —— Tick 的
+         *   tick_system_order（仅非渲染相位）与 RenderGraph pass 循环的
+         *   RunRenderPhaseUpdates（仅各 pass 的 [startPhase,endPhase] 范围，而
+         *   pass 按渲染元素类型分组建）。RenderDebug(13) 不属于任何 pass 的
+         *   范围 ⇒ Update 永不执行；PrimitiveOverlayRenderSystem 能跑是因为它是
+         *   RenderPipelineDrawSystem，由 draw call 驱动而非相位 Update。）
+         *   文本写入发生在 Collect/Batch 之前 ⇒ 面板与所统计的帧同批出图。
          * - 首次启用时强制 `FrameProfiler::SetEnabled(true)` 并加载 8x8 点阵字体
          *   （res/font/FM-T-437.F08），建一个常驻文本行实体池（不销毁、不注销组件）。
          * - 每 `kWindowFrames` 次 Update 汇总一次窗口数据（槽耗时/计数 +
@@ -31,11 +38,11 @@ namespace hgl
          * 约束（重要）：
          * - **不安装 Text 系统组**：在 Update/Initialize 里注册系统会向
          *   `render_system_order` 追加元素，而该表正被渲染循环迭代 ⇒ 悬垂迭代器。
-         *   因此要求宿主应用已装好 Text 组，否则记一次错误并永久停用。
-         * - 窗口帧数按 **Update 调用次数**计：多 pass 世界（离屏/阴影 pass 也会触发
-         *   RenderDebug）时一次真实帧会多次计数 ⇒ 帧率/均值按调用数归一，语义为
-         *   "每次渲染 pass 一帧"。
-         * - 文本在 RenderDebug 阶段写入，收集在下帧 ⇒ 面板天然滞后一帧，可接受。
+         *   因此要求宿主应用已装好 Text 组，否则每帧重试并记一次警告。
+         * - 窗口帧数按 **Tick 中的 Update 调用次数**计 = 真实帧数
+         *   （一次 Tick 对应一次渲染帧）。
+         * - 面板显示的是**上一个窗口**的数据（窗口末尾才有汇总值），滞后 ≤ 窗口长度，
+         *   对 debug 叠加无碍。
          */
         class ProfOverlaySystem : public System
         {
