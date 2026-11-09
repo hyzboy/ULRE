@@ -75,12 +75,12 @@ namespace hgl::ecs
     {
         Entity *ground = nullptr;            ///< 静态地面（top 面位于 z = 0）
         std::vector<Entity *> stack_boxes;   ///< 金字塔堆叠箱体（3-2-1 共 6 个，静摩擦堆叠）
-        std::vector<Entity *> bouncy_boxes;  ///< 高恢复系数落箱（restitution ≈ 0.8，演示弹性反弹）
+        std::vector<Entity *> bouncy_boxes;  ///< 高恢复系数落箱（restitution ≈ 0.8，10×10 共 100 枚，演示弹性反弹）
     };
 
     /**
-     * 地面 + 3-2-1 金字塔堆叠 + 两枚高弹性落箱。
-     * 金字塔箱体静置在 z=0.5/1.5/2.5 层；落箱从 z=8/12 高处释放。
+     * 地面 + 3-2-1 金字塔堆叠 + 100 枚高弹性落箱（10×10 网格）。
+     * 金字塔箱体静置在 z=0.5/1.5/2.5 层；落箱从 z≈10~13.6 高处释放。
      */
     BoxStackingScenario BuildBoxStackingScenario(ECSContext *ctx);
 

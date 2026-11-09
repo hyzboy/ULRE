@@ -47,11 +47,12 @@ namespace
         BoxStackingScenario sc = BuildBoxStackingScenario(&ctx);
         EXPECT(sc.ground != nullptr);
         EXPECT(sc.stack_boxes.size() == 6);
-        EXPECT(sc.bouncy_boxes.size() == 2);
+        EXPECT(sc.bouncy_boxes.size() == 100);
 
         const float dt = 0.02f;
 
-        // 前 2 秒：堆叠不应塌散（底层仍在原位附近），反弹箱应至少一次明显向上回弹
+        // 前 2 秒：堆叠不应塌散（底层仍在原位附近），抽样落箱应至少一次明显向上回弹
+        // （取网格第一行前两枚：x 侧位远离金字塔，纯净落地）
         float bouncy_min_z[2] = {1e9f, 1e9f};
         bool    bounced[2]    = {false, false};
         float   prev_z[2]     = {WorldPos(ctx, sc.bouncy_boxes[0]).z, WorldPos(ctx, sc.bouncy_boxes[1]).z};

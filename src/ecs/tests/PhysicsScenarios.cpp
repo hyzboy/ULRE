@@ -7,6 +7,7 @@
 #include <hgl/ecs/components/ModelCollisionProxyComponent.h>
 #include <hgl/ecs/support/transform/TransformAccessor.h>
 #include <hgl/ecs/systems/tick/JoltPhysicsSystem.h>
+#include <hgl/type/String.h>
 
 #include <cmath>
 
@@ -134,7 +135,7 @@ namespace hgl::ecs
                 sc.stack_boxes.push_back(CreatePhysicsBox(ctx, "Stack_L2", p, glm::quat(1.0f, 0.0f, 0.0f, 0.0f), math::Vector3f(0.5f), b));
         }
 
-        // 高弹性落箱：从高处下落砸向地面（避开金字塔，x 侧位），演示 restitution 反弹
+        // 高弹性落箱：10×10 = 100 枚，从高处下落砸向地面，演示 restitution 反弹
         {
             PhysicsBodyDesc e;
             e.motion = BodyMotionType::Dynamic;
@@ -144,14 +145,28 @@ namespace hgl::ecs
             e.allow_sleeping = false;
             e.linear_damping = 0.01f;
 
-            sc.bouncy_boxes.push_back(CreatePhysicsBox(ctx, "Bouncy_A",
-                                                       math::Vector3f(4.0f, 0.0f, 10.0f),
-                                                       glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                                       math::Vector3f(0.5f), e));
-            sc.bouncy_boxes.push_back(CreatePhysicsBox(ctx, "Bouncy_B",
-                                                       math::Vector3f(-4.0f, 2.0f, 14.0f),
-                                                       glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                                       math::Vector3f(0.5f), e));
+            const glm::quat identity(1.0f, 0.0f, 0.0f, 0.0f);
+            const math::Vector3f half_extents(0.5f);
+            constexpr int   kGridDim = 10;   // 10×10 ⇒ 100 枚
+            constexpr float kSpacing = 1.5f; // 1m 立方体 + 0.5m 间隙，落体间不互相干涉
+
+            for (int row = 0; row < kGridDim; ++row)
+            {
+                for (int col = 0; col < kGridDim; ++col)
+                {
+                    const float x = (col - (kGridDim - 1) * 0.5f) * kSpacing;
+                    const float y = (row - (kGridDim - 1) * 0.5f) * kSpacing;
+                    // 逐行错开释放高度，避免整片同步落地
+                    const float z = 10.0f + row * 0.4f;
+
+                    const AnsiString name = AnsiString("Bouncy_") + AnsiString::numberOf(row)
+                                          + AnsiString("_") + AnsiString::numberOf(col);
+
+                    sc.bouncy_boxes.push_back(CreatePhysicsBox(ctx, name.c_str(),
+                                                               math::Vector3f(x, y, z),
+                                                               identity, half_extents, e));
+                }
+            }
         }
 
         return sc;
