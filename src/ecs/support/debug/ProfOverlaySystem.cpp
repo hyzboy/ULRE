@@ -28,6 +28,7 @@ namespace hgl::ecs
         };
 
         constexpr int kTopModules = 12;   ///< MODULES 段显示前 N 个系统
+        constexpr int kWarmupFrames = 10; ///< 刚打开覆盖层时先攒这么少帧就刷新一次，尽快有真实数据
         constexpr int kMaxTextLen = 240;  ///< 单行字符上限（ASCII）
 
         U16String MakeU16(const char * ascii, int len)
@@ -130,40 +131,61 @@ namespace hgl::ecs
     void ProfOverlaySystem::Update(float /*deltaTime*/)
     {
         // 通道运行期不可变（ULRE_DEBUG.toml 只在启动读取一次）⇒ 函数本地 static 缓存。
+        // 通道只决定"启动时是否自动显示"；F1 在任何情况下都能按需拉出覆盖层，
+        // 免得改完配置忘了重启进程就以为功能坏了。
         static const bool s_channel = ULRE_DEBUG_ON(ProfUI);
+        static bool       s_logged  = false;
 
-        if (!s_channel)
-            return;
-
-        if (!active)
+        if (!s_logged)
         {
-            if (failed)
-                return;
+            s_logged = true;
 
-            if (!Setup())
-                return;
-
-            FrameProfiler::SetEnabled(true);   // 覆盖层存在即强制计时
-
-            window_t0    = GetUptimeUs();
-            window_calls = 0;
-            active       = true;
-            return;
+            if (s_channel)
+            {
+                LogInfo(u8"profui: 通道已开启，启动即显示覆盖层（F1 切换）");
+            }
+            else
+            {
+                LogInfo(u8"profui: 通道未开启（ULRE_DEBUG.toml 的 channels.profui = true），可随时按 F1 显示");
+            }
         }
 
-        // F1 电平 ⇒ 自行做上升沿，避免按住连切
+        // F1 电平 ⇒ 自行做上升沿，避免按住连切。通道关闭时也查（每帧一次电平读，代价可忽略）。
         if (!input_system)
             input_system = context->GetSystem<InputSystem>().get();
+
+        bool f1_pressed = false;
 
         if (input_system)
         {
             const bool f1 = input_system->IsKeyDown(io::KeyboardButton::F1);
 
-            if (f1 && !f1_prev)
-                SetVisible(!visible);
-
-            f1_prev = f1;
+            f1_pressed = (f1 && !f1_prev);
+            f1_prev    = f1;
         }
+
+        if (!active)
+        {
+            if (!s_channel && !f1_pressed)
+                return;   // 通道关闭且未按 F1 ⇒ 不做任何事
+
+            if (failed || !Setup())
+                return;
+
+            FrameProfiler::SetEnabled(true);   // 覆盖层存在即强制计时
+
+            active  = true;
+            visible = true;
+
+            Rebuild(0);                        // 立即出一版骨架，按 F1 即时可见
+            window_t0    = GetUptimeUs();
+            window_calls = kWindowFrames - kWarmupFrames;   // 首个窗口短一些，尽快换成真实数据
+
+            return;                            // 这次的 F1 用于开启，不再翻转
+        }
+
+        if (f1_pressed)
+            SetVisible(!visible);
 
         // Tick 中每真实帧调用一次 Update ⇒ window_calls 即真实帧数。
         if (++window_calls < kWindowFrames)
@@ -187,16 +209,23 @@ namespace hgl::ecs
 
         visible = on;
 
-        if (!on)
+        if (on)
+        {
+            // 立即出骨架：否则要等满一个窗口（60 帧）才有文字，慢帧率下像"没反应"
+            Rebuild(0);
+            window_calls = kWindowFrames - kWarmupFrames;
+        }
+        else
         {
             // 立即清屏；统计窗口照常滚动，重新显示时第一帧就有新数据
             for (int i = 0; i < static_cast<int>(lines.size()); ++i)
                 PutLine(i, 0u, "", 0);
 
-            FrameProfiler::Reset();
-            window_t0    = GetUptimeUs();
             window_calls = 0;
         }
+
+        FrameProfiler::Reset();
+        window_t0 = GetUptimeUs();
     }
 
     void ProfOverlaySystem::PutLine(int idx, uint32_t color, const char * ascii, int len)
@@ -226,12 +255,12 @@ namespace hgl::ecs
 
     void ProfOverlaySystem::Rebuild(uint64_t wall_us)
     {
-        if (wall_us == 0)
-            wall_us = 1;
-
-        const double inv     = 1.0 / static_cast<double>(kWindowFrames);
-        const double fps     = static_cast<double>(kWindowFrames) * 1e6 / static_cast<double>(wall_us);
-        const double frame_ms = static_cast<double>(wall_us) * 1e-3 * inv;
+        // wall_us = 0 ⇒ 刚打开、还没攒够一个窗口：只出骨架，所有数值按 0 显示
+        const bool   have_wall = wall_us > 0;
+        const double pct_den   = have_wall ? static_cast<double>(wall_us) : 1.0;
+        const double inv       = 1.0 / static_cast<double>(kWindowFrames);
+        const double fps       = have_wall ? static_cast<double>(kWindowFrames) * 1e6 / pct_den : 0.0;
+        const double frame_ms  = have_wall ? static_cast<double>(wall_us) * 1e-3 * inv : 0.0;
         const double attr_ms  = static_cast<double>(FrameProfiler::SumUs()) * 1e-3 * inv;
         const double unattr_ms = frame_ms > attr_ms ? frame_ms - attr_ms : 0.0;
 
@@ -270,7 +299,7 @@ namespace hgl::ecs
 
             const uint64_t ua   = FrameProfiler::GetUs(a);
             const double   a_ms = static_cast<double>(ua) * 1e-3 * inv;
-            const double   a_pct= static_cast<double>(ua) * 100.0 / static_cast<double>(wall_us);
+            const double   a_pct= static_cast<double>(ua) * 100.0 / pct_den;
 
             if (i + 1 < ntop)
             {
@@ -278,7 +307,7 @@ namespace hgl::ecs
 
                 const uint64_t ub   = FrameProfiler::GetUs(b);
                 const double   b_ms = static_cast<double>(ub) * 1e-3 * inv;
-                const double   b_pct= static_cast<double>(ub) * 100.0 / static_cast<double>(wall_us);
+                const double   b_pct= static_cast<double>(ub) * 100.0 / pct_den;
 
                 len = snprintf(buf, sizeof(buf), "%-18.18s %7.2f %6.1f   %-18.18s %7.2f %6.1f",
                                GetFrameProfileSlotName(a), a_ms, a_pct,
@@ -356,7 +385,7 @@ namespace hgl::ecs
             len = snprintf(buf, sizeof(buf), "%-24.24s %-11.11s %8.2f %6.1f %8u",
                            e.name.c_str(), kPhaseNames[phase],
                            static_cast<double>(e.us) * 1e-3,
-                           static_cast<double>(e.us) * 100.0 / static_cast<double>(wall_us),
+                           static_cast<double>(e.us) * 100.0 / pct_den,
                            static_cast<unsigned>(e.calls));
             PutLine(n++, c_cyan.packUnorm4x8(), buf, len);
         }
