@@ -160,7 +160,7 @@ namespace hgl::ecs
                 res.tile_font = nullptr;
             }
         }
-        resources_by_font.Clear();
+        resources_by_font.clear();
     }
 
     const AnsiString TextRenderPipeline::kName{ "Text" };
@@ -251,6 +251,11 @@ namespace hgl::ecs
 
     void TextRenderPipeline::Render(graph::RenderCmdBuffer* cmd)
     {
+        RenderLayer(cmd, graph::mtl::RenderLayer::UI2D);
+    }
+
+    void TextRenderPipeline::RenderLayer(graph::RenderCmdBuffer* cmd, graph::mtl::RenderLayer layer)
+    {
         if (!cmd)
             return;
 
@@ -258,6 +263,9 @@ namespace hgl::ecs
 
         for (auto &pair : resources_by_font)
         {
+            if (pair.first.layer != layer)
+                continue;
+
             auto &res = pair.second;
 
             if (text_trace)
@@ -331,11 +339,13 @@ namespace hgl::ecs
         }
     }
 
-    TextRenderPipeline::RenderResources* TextRenderPipeline::GetOrCreateResources(graph::FontSource* font_source,
+    TextRenderPipeline::RenderResources* TextRenderPipeline::GetOrCreateResources(const TextLayerKey& key,
                                                                                   uint32_t estimate_chars)
     {
-        if (!font_source)
+        if (!key.font_source)
             return nullptr;
+
+        graph::FontSource* font_source = key.font_source;
 
         if (!render_context && world)
             render_context = world->GetRenderContext();
@@ -347,9 +357,9 @@ namespace hgl::ecs
         if (!render_context || !graphics_context)
             return nullptr;
 
-        if (auto* entry = resources_by_font.GetValuePointer(font_source))
+        if (auto it = resources_by_font.find(key); it != resources_by_font.end())
         {
-            return entry;
+            return &it->second;
         }
 
         RenderResources resources;
@@ -584,12 +594,12 @@ namespace hgl::ecs
         resources.material = guard.material;
         guard.committed = true;
 
-        resources_by_font.Add(font_source, std::move(resources));
+        resources_by_font.emplace(key, std::move(resources));
 
         if (ULRE_DEBUG_ON(Text))
             GLogInfo("[TextTrace] font resources created: atlas_handle=%u", resources.bindless_atlas_handle);
 
-        return resources_by_font.GetValuePointer(font_source);
+        return &resources_by_font.find(key)->second;
     }
 
     bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
@@ -629,7 +639,7 @@ namespace hgl::ecs
     }
 
     void TextRenderPipeline::BuildInputs(ValueArray<TextComponent *> &texts,
-                                         std::unordered_map<graph::FontSource*, BatchInput>& inputs)
+                                         std::unordered_map<TextLayerKey, BatchInput, TextLayerKeyHash>& inputs)
     {
         for (TextComponent *text_comp : texts)
         {
@@ -657,12 +667,16 @@ namespace hgl::ecs
             if (!font_source)
                 continue;
 
-            if (inputs.find(font_source) == inputs.end())
+            const TextLayerKey key{ font_source, text_comp->GetRenderLayer() };
+            if (inputs.find(key) == inputs.end())
             {
-                inputs[font_source] = BatchInput{font_source};
+                BatchInput bi;
+                bi.font_source  = font_source;
+                bi.render_layer = key.layer;
+                inputs.emplace(key, std::move(bi));
             }
 
-            auto& input = inputs[font_source];
+            auto& input = inputs[key];
             input.texts.push_back(text_comp);
             input.total_chars += text_comp->GetText().Length();
 
@@ -687,7 +701,7 @@ namespace hgl::ecs
         }
     }
 
-    void TextRenderPipeline::ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
+    void TextRenderPipeline::ProcessInputs(std::unordered_map<TextLayerKey, BatchInput, TextLayerKeyHash>& inputs,
                                            graph::RenderPass* render_pass,
                                            graph::VulkanDevice* device)
     {
@@ -698,7 +712,8 @@ namespace hgl::ecs
             if (!input.font_source || input.texts.empty())
                 continue;
 
-            auto* resources = GetOrCreateResources(input.font_source, input.total_chars);
+            auto* resources = GetOrCreateResources({ input.font_source, input.render_layer },
+                                                   input.total_chars);
             if (!resources)
                 continue;
 
@@ -716,6 +731,9 @@ namespace hgl::ecs
                 // CharQuad mesh shader self-declares all vertex SSBOs; no geometry_vertex_format
                 // EDS 1/2/3：管线只带 shader 部分 ⇒ 这份配置随资源留存，绘制期动态下发。
                 resources->pipeline_config = graph::mtl::MakeAlpha2DConfig();
+                // 层级只影响提交时机（由哪个系统绘制），不影响混合/深度状态：
+                // MakeAlpha2DConfig 默认 UI2D，这里按本桶实际层级覆盖。
+                resources->pipeline_config.render_layer = input.render_layer;
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
                                                                   resources->pipeline_config);
                 if (!resources->pipeline)

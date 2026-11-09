@@ -24,6 +24,7 @@
 #include <hgl/ecs/support/text/TextBuildSystem.h>
 #include <hgl/ecs/support/text/TextSyncSystem.h>
 #include <hgl/ecs/support/text/TextRenderSystem.h>
+#include <hgl/ecs/support/text/TextOverlayRenderSystem.h>
 #include <hgl/ecs/systems/render/collect/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/light_shadow/LightSystem.h>
@@ -159,6 +160,7 @@ namespace
         ctx->RegisterSystem<hgl::ecs::TextBuildSystem>();
         ctx->RegisterSystem<hgl::ecs::TextSyncSystem>();
         ctx->RegisterSystem<hgl::ecs::TextRenderSystem>();
+        ctx->RegisterSystem<hgl::ecs::TextOverlayRenderSystem>();
 
         return true;
     }

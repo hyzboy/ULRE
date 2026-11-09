@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/mtl/RenderLayer.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/String.h>
 #include<hgl/type/ValueArray.h>
@@ -47,6 +48,11 @@ namespace hgl::ecs
         ValueArray<graph::layout::TextDecorationSpan> decoration_spans;
 
         graph::FontSource* font_source = nullptr;   // Not owned
+
+        // 渲染分段：决定该文本由哪个 phase 的系统提交（UI2D → TextRenderSystem，
+        // Overlay → TextOverlayRenderSystem）。层级只影响提交时机，不影响排版；
+        // 修改后下一帧 BuildInputs 按 (font, layer) 重新分桶，无需 TouchChange。
+        graph::mtl::RenderLayer render_layer = graph::mtl::RenderLayer::UI2D;
 
     public:
 
@@ -121,6 +127,10 @@ namespace hgl::ecs
             font_source = fs;
             TouchChange(static_cast<uint32_t>(TextChange::Font));
         }
+
+        graph::mtl::RenderLayer GetRenderLayer() const { return render_layer; }
+
+        void SetRenderLayer(graph::mtl::RenderLayer layer) { render_layer = layer; }
 
     public: // ── 矩形(RECT)排版 ──────────────────────────────────────────
 

@@ -4,6 +4,7 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
+#include<hgl/mtl/RenderLayer.h>
 #include<hgl/mtl/PipelineConfig.h>
 #include<hgl/vk/buffer/ArrayView.h>
 #include<cstdint>
@@ -36,6 +37,31 @@ namespace hgl
     {
         class ECSContext;
         class TextComponent;
+
+        /**
+         * 文本资源分桶键：(字体源, 渲染分段)。同一字体用于不同层级时，
+         * 必须拆分出独立的 RenderResources——其 SSBO 三表 / mesh_draw_params
+         * 存的是"本层级的排版输出"，若两层共享一份资源会互相覆盖。
+         */
+        struct TextLayerKey
+        {
+            graph::FontSource*      font_source = nullptr;
+            graph::mtl::RenderLayer layer = graph::mtl::RenderLayer::UI2D;
+
+            bool operator==(const TextLayerKey& o) const
+            {
+                return font_source == o.font_source && layer == o.layer;
+            }
+        };
+
+        struct TextLayerKeyHash
+        {
+            size_t operator()(const TextLayerKey& k) const noexcept
+            {
+                return std::hash<graph::FontSource*>{}(k.font_source)
+                     ^ (static_cast<size_t>(k.layer) * 0x9E3779B97F4A7C15ull);
+            }
+        };
 
         class TextRenderPipeline : public RenderPipelineBase
         {
@@ -78,6 +104,7 @@ namespace hgl
             struct BatchInput
             {
                 graph::FontSource* font_source = nullptr;
+                graph::mtl::RenderLayer render_layer = graph::mtl::RenderLayer::UI2D;
                 std::vector<TextComponent*> texts;
                 std::vector<graph::layout::CharStyle> styles;   ///<批次内所有组件的样式（去重后）
                 std::vector<uint16_t> style_ids;                ///<与 texts 平行的 style_id 表
@@ -89,11 +116,11 @@ namespace hgl
             ECSContext* world = nullptr;
             graph::RenderContext* render_context = nullptr;
 
-            hgl::UnorderedMap<graph::FontSource*, RenderResources> resources_by_font;
+            std::unordered_map<TextLayerKey, RenderResources, TextLayerKeyHash> resources_by_font;
 
             uint32_t prepared_frame_index = std::numeric_limits<uint32_t>::max();
             ValueArray<TextComponent *> frame_texts;    ///< T2-c：池活跃集视图（裸指针）
-            std::unordered_map<graph::FontSource*, BatchInput> frame_inputs;
+            std::unordered_map<TextLayerKey, BatchInput, TextLayerKeyHash> frame_inputs;
             graph::GraphicsContext* frame_graphics_context = nullptr;
             graph::ShaderProgramManager* frame_material_manager = nullptr;
             graph::RenderPass* frame_render_pass = nullptr;
@@ -116,8 +143,12 @@ namespace hgl
             void RunSync()      override;
             void Render(graph::RenderCmdBuffer* cmd) override;
 
+            /// 只提交指定渲染分段的文本（UI2D → TextRenderSystem，
+            /// Overlay → TextOverlayRenderSystem）。虚拟 Render 默认提交 UI2D。
+            void RenderLayer(graph::RenderCmdBuffer* cmd, graph::mtl::RenderLayer layer);
+
         private:
-            RenderResources* GetOrCreateResources(graph::FontSource* font_source, uint32_t estimate_chars);
+            RenderResources* GetOrCreateResources(const TextLayerKey& key, uint32_t estimate_chars);
 
             bool PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                        graph::ShaderProgramManager*& material_manager,
@@ -126,9 +157,9 @@ namespace hgl
                                        graph::IRenderTarget*& render_target);
 
             void BuildInputs(ValueArray<TextComponent *> &texts,
-                             std::unordered_map<graph::FontSource*, BatchInput>& inputs);
+                             std::unordered_map<TextLayerKey, BatchInput, TextLayerKeyHash>& inputs);
 
-            void ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
+            void ProcessInputs(std::unordered_map<TextLayerKey, BatchInput, TextLayerKeyHash>& inputs,
                                graph::RenderPass* render_pass,
                                graph::VulkanDevice* device);
 

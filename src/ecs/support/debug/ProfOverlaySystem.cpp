@@ -135,6 +135,7 @@ namespace hgl::ecs
             l.comp->SetFontSource(font_source);
             l.comp->SetParagraphStyle(para);
             l.comp->SetStartPosition(graph::layout::TEXT_COORD_VEC{ 6, 6 + i * 10 });
+            l.comp->SetRenderLayer(graph::mtl::RenderLayer::Overlay);
         }
 
         return true;
