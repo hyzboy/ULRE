@@ -147,6 +147,8 @@ namespace hgl::graph
 
         FontDataSource *GetFontDataSource(const u32char &ch);
 
+        bool IsSourceReferenced(FontSourcePointer fs);                        ///<数据源是否仍被 default 项或任一 Unicode 块引用
+
     public:
 
         /**

@@ -38,9 +38,42 @@ namespace hgl::graph
             ||!fs
             ||fs==default_source)return;
 
+        // 覆盖旧数据源时：先摘除本项引用；若旧源不再被任何项引用，对称释放（RefObject 以指针去重，多块共享同一源只计一次）
+        FontSourcePointer old;
+        if(source_map.Get(ub,old))
+        {
+            if(old==fs)
+                return;     // 已注册于本块（引用已计），幂等返回
+
+            source_map.DeleteByKey(ub);
+
+            if(old && old!=default_source && !IsSourceReferenced(old))
+                old->RefRelease(this);
+        }
+
         get_max(max_char_height,fs->GetCharHeight());
 
+        fs->RefAcquire(this);   // 与析构/Remove 的 RefRelease 对称；OrderedSet 去重，多块重复注册只计一次
         source_map[ub] = fs;
+    }
+
+    bool FontSource::IsSourceReferenced(FontSourcePointer fs)
+    {
+        if(!fs)
+            return(false);
+
+        if(fs==default_source)
+            return(true);
+
+        std::vector<FontSourcePointer> values;
+        source_map.GetValueArray(values);
+        for(auto *fsp:values)
+        {
+            if(fsp==fs)
+                return(true);
+        }
+
+        return(false);
     }
 
     void FontSource::RefreshMaxCharHeight()
@@ -64,8 +97,11 @@ namespace hgl::graph
         {
             const bool refresh=(fsp->GetCharHeight()==max_char_height);
 
-            fsp->RefRelease(this);
             source_map.DeleteByKey(ub);
+
+            // 同一数据源可能仍被其它块引用 ⇒ 仅当它不再出现在任何项时才释放本 FontSource 的引用
+            if(fsp && !IsSourceReferenced(fsp))
+                fsp->RefRelease(this);
 
             if(refresh)
                 RefreshMaxCharHeight();
@@ -98,21 +134,16 @@ namespace hgl::graph
         {
             const bool refresh=(fs->GetCharHeight()==max_char_height);
 
-            fs->RefRelease(this);
-
-            // 删除所有值为fs的项
+            // 删除所有值为fs的项：同一数据源可注册到多个 Unicode 块（如 AddCJK 十余块），
+            // 只删首个匹配会在 source_map 里留下悬空引用
             for(const auto &key:keys)
             {
-                if(source_map.ContainsKey(key))
-                {
-                    const auto &value=source_map.GetValueRef(key);
-                    if(value==fs)
-                    {
-                        source_map.DeleteByKey(key);
-                        break;
-                    }
-                }
+                FontSourcePointer val;
+                if(source_map.Get(key,val) && val==fs)
+                    source_map.DeleteByKey(key);
             }
+
+            fs->RefRelease(this);
 
             if(refresh)
                 RefreshMaxCharHeight();
@@ -184,7 +215,10 @@ namespace hgl::graph
         FontDataSource *s=GetFontDataSource(ch);
 
         if(!s)
-            return(default_source->GetCLA(ch));
+            s=default_source;         //空格等无归属字符回落缺省源
+
+        if(!s)
+            return(nullptr);          //无任何数据源：防御性返回，原先直接解引用空 default_source 会崩溃
 
         return s->GetCLA(ch);
     }
