@@ -39,6 +39,7 @@
 #include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
 #include <hgl/ecs/support/cull/GPUCullSystem.h>
 #include <hgl/ecs/support/cull/CPUCullReferenceSystem.h>
+#include <hgl/ecs/support/debug/ProfOverlaySystem.h>
 #include <hgl/ecs/systems/render/buffer/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/streaming/TextureStreamingSystem.h>
 #include <hgl/ecs/systems/render/streaming/GeometryStreamingSystem.h>
@@ -264,6 +265,7 @@ namespace hgl::ecs
         EnsureSystem<ecs::SwapchainSubmitSystem>(ctx);
         EnsureSystem<ecs::RenderSceneUBOSystem>(ctx);
         EnsureSystem<ecs::ViewUBOCommitSystem>(ctx);
+        EnsureSystem<ecs::ProfOverlaySystem>(ctx);   // DEBUG PROF 屏显面板（profui 通道关闭时零开销）
 
         if (environment_system)
             environment_system->SetRenderContext(rc);
