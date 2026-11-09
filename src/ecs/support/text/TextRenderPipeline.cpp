@@ -935,6 +935,16 @@ namespace hgl::ecs
                 }
             }
         }
+
+        // 某字体的文本组件可能已全部删除/清空 ⇒ 本帧不在 inputs（或批次为空）中，
+        // 上面的循环覆盖不到它的历史资源 ⇒ 显式清零绘制计数，
+        // 否则 Render 仍按旧 last_draw_char_count 发 DrawMeshTasks，画出上一帧的幽灵文本。
+        for (auto &res_pair : resources_by_font)
+        {
+            auto it = inputs.find(res_pair.first);
+            if (it == inputs.end() || it->second.texts.empty())
+                res_pair.second.last_draw_char_count = 0;
+        }
     }
 
     void TextRenderPipeline::ClearChanges(const ValueArray<TextComponent *> &texts)
