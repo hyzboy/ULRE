@@ -65,3 +65,15 @@ build_debugapi_release/
 *.spv
 DartConfiguration.tcl
 /bin/
+
+# 本地调试/测试残留（2026-11，只忽略不删除）
+# CTest 运行目录与漏网临时产物
+/Testing/
+/run_out.txt
+/run_err.txt
+/ulre_loadplan_test_tmp/
+/test_async.wav
+# 编辑器临时草稿
+/Untitled-1.md
+# 手工调试日志与截图归档
+/files/
