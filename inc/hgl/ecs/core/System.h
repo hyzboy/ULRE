@@ -41,8 +41,10 @@ namespace hgl
             RenderFrameSync,        // sync frame UBOs/descriptors after upload
 
             // ── Inside render pass ──────────────────────────────────────────
-            RenderDrawSubmit,       // record draw commands
-            RenderDebug,            // debug overlays
+            RenderDrawSubmit,       // record scene draw commands (Scene layer)
+            RenderDebug,            // no-depth overlay draw (Gizmo layer)
+            RenderUI2D,             // 2D UI sprites + regular HUD text (UI2D layer)
+            RenderOverlay,          // final full-screen overlay text (Overlay layer)
 
             // ── Post-pass ───────────────────────────────────────────────────
             RenderStat,             // stats systems

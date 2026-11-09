@@ -18,13 +18,13 @@ namespace hgl::ecs
 {
     namespace
     {
-        /// ExecutionPhase 0..15 的短名（面板 11 列宽）
-        const char * const kPhaseNames[16] =
+        /// ExecutionPhase 0..17 的短名（面板 11 列宽）
+        const char * const kPhaseNames[18] =
         {
             "TickInput",  "TickPhysics", "TickTransform", "TickCamera", "TickPostCamera",
             "SwapNextImg","PreBegin",    "Collect",       "Batch",      "BufCommit",
-            "BufUpload",  "FrameSync",   "DrawSubmit",    "Debug",      "Stat",
-            "Submit",
+            "BufUpload",  "FrameSync",   "DrawSubmit",    "Debug",      "UI2D",
+            "Overlay",    "Stat",        "Submit",
         };
 
         constexpr int kTopModules = 12;   ///< MODULES 段显示前 N 个系统
@@ -392,7 +392,7 @@ namespace hgl::ecs
             taken[best] = 1;
 
             const SystemProfileEntry & e = entries[best];
-            const uint32_t phase = e.phase < 16 ? e.phase : 15;
+            const uint32_t phase = e.phase < 18 ? e.phase : 17;
 
             len = snprintf(buf, sizeof(buf), "%-24.24s %-11.11s %8.2f %6.1f %8u",
                            e.name.c_str(), kPhaseNames[phase],
