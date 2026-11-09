@@ -55,6 +55,7 @@ namespace hgl::graph
 
         fs->RefAcquire(this);   // 与析构/Remove 的 RefRelease 对称；OrderedSet 去重，多块重复注册只计一次
         source_map[ub] = fs;
+        keys_cache_dirty = true;
     }
 
     bool FontSource::IsSourceReferenced(FontSourcePointer fs)
@@ -98,6 +99,7 @@ namespace hgl::graph
             const bool refresh=(fsp->GetCharHeight()==max_char_height);
 
             source_map.DeleteByKey(ub);
+            keys_cache_dirty = true;
 
             // 同一数据源可能仍被其它块引用 ⇒ 仅当它不再出现在任何项时才释放本 FontSource 的引用
             if(fsp && !IsSourceReferenced(fsp))
@@ -143,6 +145,8 @@ namespace hgl::graph
                     source_map.DeleteByKey(key);
             }
 
+            keys_cache_dirty = true;
+
             fs->RefRelease(this);
 
             if(refresh)
@@ -173,17 +177,22 @@ namespace hgl::graph
     {
         if(hgl::is_space(ch))return(nullptr);   //不能显示的数据或是空格
 
-        if(!source_map.IsEmpty())
+        if(source_map.IsEmpty())
+            return default_source;              //只有缺省源：逐字符查询免去找表
+
+        if(keys_cache_dirty)
         {
-            std::vector<UnicodeBlock> keys;
-            source_map.GetKeyArray(keys);
-            for(const auto &key:keys)
+            source_map.GetKeyArray(key_array_cache);
+            keys_cache_dirty=false;
+        }
+
+        for(const auto &key:key_array_cache)
+        {
+            if(IsInUnicodeBlock(key,ch))
             {
-                if(IsInUnicodeBlock(key,ch))
-                {
-                    if(source_map.ContainsKey(key))
-                        return source_map.GetValueRef(key);
-                }
+                FontSourcePointer val;
+                if(source_map.Get(key,val) && val)
+                    return val;
             }
         }
 

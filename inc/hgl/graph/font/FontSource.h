@@ -139,6 +139,9 @@ namespace hgl::graph
         FontDataSource *default_source;
         UnorderedMap<UnicodeBlock,FontSourcePointer> source_map;
 
+        std::vector<UnicodeBlock> key_array_cache;    ///<source_map 键数组缓存：GetFontDataSource 逐字符调用，避免每次现取键数组堆分配
+        bool keys_cache_dirty = true;                 ///<键集合增删后置脏，下次查询时重建缓存
+
         int max_char_height;
 
         void RefreshMaxCharHeight();
