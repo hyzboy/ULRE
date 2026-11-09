@@ -111,6 +111,7 @@ namespace hgl::ecs
         SAFE_CLEAR(mtl_out_buffer_);
         SAFE_CLEAR(custom_data_out_buffer_);
         custom_data_out_addr_ = 0;
+        custom_data_out_seeded_ = false;
         SAFE_CLEAR(batch_tag_buffer_);
         SAFE_CLEAR(batch_info_buffer_);
         SAFE_CLEAR(batch_counter_buffer_);
@@ -328,8 +329,12 @@ namespace hgl::ecs
         if (!mtl_out_buffer_) return false;
         mtl_out_addr_ = device_->GetBufferDeviceAddressAligned16(mtl_out_buffer_->GetBuffer());
 
+        // ⚠ usage 必带 TRANSFER_DST：首帧派发时用 `vkCmdFillBuffer` 把整表充填为中性色
+        //（1,1,1,1）。VUID-vkCmdFillBuffer-dstBuffer-00031：dst 必须建缓冲时就带该位。
         custom_data_out_buffer_ = device_->CreateBuffer(
-            "GPUCullSystem.CustomDataOut", gather_usage, custom_data_bytes, custom_data_bytes, nullptr,
+            "GPUCullSystem.CustomDataOut",
+            gather_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            custom_data_bytes, custom_data_bytes, nullptr,
             graph::BufferAllocPolicy::Auto, graph::SharingMode::Exclusive);
         if (!custom_data_out_buffer_) return false;
         custom_data_out_addr_ = device_->GetBufferDeviceAddressAligned16(custom_data_out_buffer_->GetBuffer());
@@ -978,6 +983,27 @@ namespace hgl::ecs
                                           VK_ACCESS_2_TRANSFER_WRITE_BIT,
                                           VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
             }
+        }
+
+        // ── 逐实例自定义色输出的**一次性白充填** ─────────────────────────────────
+        // 语义：没有逐实例自定义色的实例 = 乘子 1.0（与 `ResolveInstanceCustomColor()` 的
+        // 默认值同一口径）。缓冲建成即零，而「零」在着色器里等于「乘子 0 ⇒ 纯黑」——
+        // 但着色器的判空只覆盖「地址为 0」，地址一旦发布，未写过该行的实例就读到零。
+        // 未写过行的实例是常态：CPU 驱动绘制的管线（线条 / 文字 / 天空盒 / 精灵）
+        // 都是 `first_instance = 0` ⇒ `gl_InstanceIndex` 恒 0 ⇒ 一律读第 0 行。
+        // 所以只充填一次，之后各行由剔除着色器按实体覆盖，未覆盖的保持中性色。
+        if (!custom_data_out_seeded_ && custom_data_out_buffer_)
+        {
+            const VkDeviceSize custom_rows_bytes = VkDeviceSize(kArenaRows) * 16;
+            // 0x3F800000 = float 1.0f 的位模式；FillBuffer 按 4B 重复 ⇒ 每行 (1,1,1,1)。
+            cmd->FillBuffer(custom_data_out_buffer_->GetBuffer(), 0, custom_rows_bytes, 0x3F800000u);
+            cmd->BufferMemoryBarrier2(custom_data_out_buffer_->GetBuffer(),
+                                      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+                                          | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+                                      VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                      VK_ACCESS_2_SHADER_READ_BIT);
+            custom_data_out_seeded_ = true;
         }
 
         cmd->BindPipeline(compute_pipeline_);

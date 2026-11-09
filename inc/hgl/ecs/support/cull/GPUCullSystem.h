@@ -364,6 +364,14 @@ namespace hgl::ecs
         graph::DeviceBuffer *cmds_out_buffer_ = nullptr;
         graph::DeviceBuffer *mtl_out_buffer_ = nullptr;
         graph::DeviceBuffer *custom_data_out_buffer_ = nullptr;
+        /// 逐实例自定义色输出的**一次性白充填**闩。缓冲建出来是零（Vulkan 保证），
+        /// 而零 = 「加色乘子 0」= 纯黑。着色器侧 `ResolveInstanceCustomColor()`
+        /// 的语义默认是 `vec4(1.0)`（无逐实例色 = 不做调制），但那只覆盖
+        /// 「地址为 0」的情形；地址一旦发布，未写过该行的实例就会读到零 ⇒ 画出来全黑。
+        /// 典型的「未写过」实例：CPU 驱动绘制的各条管线（线条 / 文字 / 天空盒 / 精灵）
+        /// 都是 `first_instance = 0`，`gl_InstanceIndex` 恒 0 ⇒ 一律读第 0 行。
+        /// 所以首帧派发时把整表充填成 1.0，使「没写过」= 中性色而不是黑色。
+        bool custom_data_out_seeded_ = false;
 
         // ── 派发资源（T3g：生命周期一次化，修每帧 new 队列/命令缓冲的泄漏）──
         // 队列一份：fence 环深度 = 帧槽数（DeviceQueue::Submit 自动轮转 fence）；
