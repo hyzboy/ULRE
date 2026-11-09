@@ -141,7 +141,12 @@ bool SelectScenePassProfileRequest(
     // 它与 `ambient_env` 参数块（IBL 句柄）必须由同一个所有者配对。
     // include 路径不来自配置：清空后由模板校验按注册表来源规范化
     // （PassProfile.cpp ResolveModuleRoot），与 surface_module_name 同规则。
+    // ambient 覆盖只对 Lit 模板有意义：ForwardUnlit / Sky **设计上就没有**
+    // ambient_light_provider 槽（无光/天空材质不参与天光），环境配了 provider
+    // 时对它们跳过即可，不是配置错误——逐材质逐次警告会刷屏。
+    // 只有 Lit 模板缺槽才是真正的结构性错配，才值得警告。
     if (!depth_purpose
+     && profile_id == PassProfileID::ForwardLitShadowedAO
      && ambient_module_name
      && ambient_module_name[0])
     {
