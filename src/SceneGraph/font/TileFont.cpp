@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/font/TileFont.h>
+#include<hgl/log/Log.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKFormat.h>
 
@@ -38,7 +39,12 @@ namespace hgl::graph
         const uint solid_reserve = solid_tile ? 0u : 1u;      //纯色 tile 常驻，需预留一格
 
         if(stats.not_found + solid_reserve > stats.can_free + tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
+        {
+            //容量不足会导致本批次全部字符注册失败、当帧该字体文本整体消失；静默失败难以定位，留一条告警
+            GLogWarning(u8"TileFont 图集容量不足: not_found=%d can_free=%d free=%d，本批次注册失败",
+                        stats.not_found, stats.can_free, tile_data->GetFreeCount());
             return(false);
+        }
 
         uv_map.Clear();
 
@@ -110,9 +116,12 @@ namespace hgl::graph
         {
             for(const u32char cp:chars_sets)
             {
-                to_res.Get(cp,to);
+                to=nullptr;                 //Get 未命中时不改动出参，必须逐项复位，防止沿用上一项指针
 
-                uv_map.Add(cp,to->uv_float);
+                if(to_res.Get(cp,to) && to)
+                    uv_map.Add(cp,to->uv_float);
+                else
+                    uv_map.Add(cp,null_uv_float);   //防御：池中被缓存为空指针时回落空UV，原先直接解引用会崩溃
             }
         }
 
