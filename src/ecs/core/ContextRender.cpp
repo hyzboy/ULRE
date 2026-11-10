@@ -356,13 +356,15 @@ namespace hgl::ecs
 
             // Draw-only entry: Update() phases (Collect/Batch/Upload) were already executed
             // by PrepareRenderPassSetup() before BeginRenderPass. Only issue GPU draw commands here.
+            // W5：变换提交同理已由帧入口（BeginManagedRenderFrame→PrepareRenderPassSetup）
+            // 完成——本函数不得再挂第二次全量提交（实测每次 ~2ms，离屏路径双倍付出）。
             if (!current_render_cmd && cmd)
                 current_render_cmd = cmd;
 
             RecordPreparedRenderPhaseRange(ExecutionPhase::RenderCollect,
                                            ExecutionPhase::RenderStat,
                                            deltaTime,
-                                           true,
+                                           false,
                                            "[ECSContext::RenderDrawOnly]");
 
             if (current_render_cmd == cmd)
@@ -902,7 +904,10 @@ namespace hgl::ecs
             // 而 RenderOnce 的离屏世界只有一帧 ⇒ `row[Transform]=0` ⇒ cull 着色器在视锥测试前
             // return ⇒ DrawCount=0、离屏永久空白（实测 RenderToTexture/ColorDepth；
             // 离屏单帧世界缺陷族的第五层（全族五层见 doc/future/entity-rows-gpu-cull-plan.md §11.17）。
-            // 同帧幂等（值变才标脏 + 版本记账）⇒ 绘制录制段的第二次调用退化为 no-op。
+            // 同帧**幂等守卫（W5）**：ring 段按帧入口推进，本函数是每帧唯一的全量填充点；
+            // 旧口径「绘制录制段再调一次会退化为 no-op」**不成立**——动态段 dynamic_force_full
+            // 使每次调用都全量重写（实测 ~2ms×pass 数，曾把 DrawRecord 顶到 10ms+）。
+            // 录制段/RenderDrawOnly 已不再挂此调用；万一有重复调用，同 epoch 自动退化为版本增量。
             if (auto transform_system = GetSystem<TransformSystem>())
             {
                 FrameProfileSpan transform_span(FrameProfileSlot::TransformSubmit);

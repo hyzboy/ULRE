@@ -124,7 +124,13 @@ namespace hgl
                     }
                 }
 
-                RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,true,"[ECS RENDER] Render");
+                // W5（2026-02）：submit_transforms=false —— 变换提交在**帧入口**做一次
+                // （PrepareRenderPassSetup，M8-needle 钉住其必须在 collect/派发之前）。
+                // 历史上这里每 pass 各调一次 SubmitTransformUpdates，而动态场景下它并非
+                // no-op（dynamic_force_full ⇒ 每次 ~2ms 全量重写本帧 ring 段），5 pass
+                // ≈ 10ms 全落在 DrawRecord 槽。即便有调用方误传 true，W5 epoch 守卫
+                // （TransformSystem）也会把同帧重复调用退化为版本增量路径。
+                RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,false,"[ECS RENDER] Render");
 
                 // rendergraph 通道：pass 级执行明细（原为注释掉的 LogDebug，且 ECSContext 无 OBJECT_LOGGER）
                 if (ULRE_DEBUG_ON(RenderGraph))

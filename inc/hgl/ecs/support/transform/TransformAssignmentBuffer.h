@@ -77,6 +77,7 @@ namespace hgl::ecs
         graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(SSBO)
 
         graph::RingLayout ring_layout;   ///<静态段 + 动态段×帧数 的环形行布局算术（不持有 buffer）
+        uint32_t frame_epoch = 0;        ///<SetFrameIndex 单调计数 = 帧入口序号（W5 同帧去重键）
 
         /// 按预算**一次性**建立 L2W SSBO（只在首次调用时创建，永不重建）
         bool AllocateBudgetBuffers();
@@ -136,5 +137,11 @@ namespace hgl::ecs
         /// 经 TransformSystem::GetTransformBuffer() 直推（不再全局广播——
         /// 那会让一个世界推进触达所有世界，且静态实例表析构不摘除留悬空）
         void SetFrameIndex(const uint32_t index);
+
+        /// 「渲染帧入口」序号：SetFrameIndex 每调一次单调 +1。
+        /// ring 段按帧入口推进 ⇒ 它正是 TransformSystem 帧级去重（W5）的键：
+        /// 同一 epoch 内的重复 SubmitTransformUpdates 不再全量填本帧段。
+        /// 0 = 尚未走过任何帧入口（单元测试/无设备路径恒为此值 ⇒ 不去重）。
+        uint32_t GetFrameEpoch() const { return frame_epoch; }
     };
 }//namespace hgl::ecs

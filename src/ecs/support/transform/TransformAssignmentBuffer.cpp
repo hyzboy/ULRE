@@ -369,5 +369,6 @@ namespace hgl::ecs
     void TransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
     {
         ring_layout.SetFrameIndex(index);
+        ++frame_epoch;   // W5：每个「渲染帧入口」（主帧/离屏 pass）推进一次
     }
 }//namespace hgl::ecs

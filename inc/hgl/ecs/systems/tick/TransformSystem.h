@@ -38,7 +38,12 @@ namespace hgl::ecs
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_seen_version;
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_uploaded_version;
         // W5 帧级 once：同帧多次调用（RenderGraph pass 循环 + Line 管线）
-        // 只执行一次全量提交——ring 段每帧填一次，所有 pass 读同一帧段
+        // 只执行一次全量提交——ring 段每帧填一次，所有 pass 读同一帧段；
+        // 同 epoch 的后续重复调用走**版本增量路径**（帧内改值的写者如
+        // LineRenderPipeline 自行 Update+Submit 的变更仍能落盘）。
+        uint32_t last_full_fill_epoch = 0;    ///<最近一次全量填充时的 buffer 帧入口序号（0=未走过帧入口 ⇒ 恒全量）
+        uint32_t last_static_slot_count = 0;  ///<上次调用时的静态槽位表长度（增减=结构变更 ⇒ 同帧也回全量）
+        uint32_t last_dynamic_slot_count = 0; ///<上次调用时的可动槽位表长度
 
 
     public:

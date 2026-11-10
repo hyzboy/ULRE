@@ -192,6 +192,21 @@ namespace hgl::ecs
         if (!world)
             return;
 
+        EnsureTransformBuffer();
+
+        // W5 帧级 once（DrawRecord 去重）：ring 段按「帧入口」推进（SetFrameIndex ⇒
+        // frame_epoch++），本帧段的**全量**填充每帧入口只做一次。同 epoch 的重复调用
+        // （历史上：pass 循环每 pass 一次 + RenderDrawOnly，每次 ~2ms 全量重写）退化
+        // 为版本增量路径：跳过静态扫描块与结构重排，动态段不再强制全量——
+        // 帧内改值的写者（如 LineRenderPipeline 自行 Update+Submit）仍由版本对账落盘。
+        // 槽位表长度同帧增减（加/删实体、mobility 翻转）⇒ 回全量路径（重填同一切片幂等）。
+        const uint32_t frame_epoch = transform_buffer ? transform_buffer->GetFrameEpoch() : 0u;
+        const bool slot_layout_changed =
+            (static_cast<uint32_t>(world->GetStaticTransforms().size())  != last_static_slot_count) ||
+            (static_cast<uint32_t>(world->GetMovableTransforms().size()) != last_dynamic_slot_count);
+        const bool full_fill = (frame_epoch == 0u) || (frame_epoch != last_full_fill_epoch) || slot_layout_changed;
+
+        if (full_fill)
         {
             const auto& static_transforms = world->GetStaticTransforms();
 
@@ -253,14 +268,15 @@ namespace hgl::ecs
             }
         }
 
-        EnsureTransformBuffer();
         if (!transform_buffer)
             return;
 
         const auto prev_static_handles = static_handles;
         const auto prev_dynamic_handles = dynamic_handles;
 
-        RefreshHandleOrder();
+        // W5：增量调用不重排结构（同帧内结构变更已被 slot_layout_changed 兜回全量路径）
+        if (full_fill)
+            RefreshHandleOrder();
 
         auto* storage = world ? world->GetTransformStorage() : nullptr;
         if (!storage)
@@ -278,8 +294,9 @@ namespace hgl::ecs
             static_dirty = true;
 
         // Dynamic transforms are written into a per-frame ring segment.
-        // Even when transform values are unchanged, current frame segment must be populated.
-        const bool dynamic_force_full = (dynamic_count > 0);
+        // Even when transform values are unchanged, current frame segment must be populated
+        // —— 但「每帧入口一次」即够（W5）：同 epoch 重复调用走版本增量路径。
+        const bool dynamic_force_full = (dynamic_count > 0) && full_fill;
 
         transform_buffer->EnsureBudget(static_count, dynamic_count);
 
@@ -392,6 +409,12 @@ namespace hgl::ecs
         }
 
         last_static_count = static_count;
+
+        // W5 记账：槽位表长度快照 + 本帧入口的全量填充标记
+        last_static_slot_count = static_cast<uint32_t>(world->GetStaticTransforms().size());
+        last_dynamic_slot_count = static_cast<uint32_t>(world->GetMovableTransforms().size());
+        if (full_fill && frame_epoch != 0u)
+            last_full_fill_epoch = frame_epoch;
 
         if (ULRE_DEBUG_ON(Transform))
         {
