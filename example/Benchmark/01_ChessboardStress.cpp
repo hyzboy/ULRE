@@ -126,6 +126,7 @@
 #include<cstdlib>
 #include<string>
 #include<vector>
+#include<algorithm>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -1144,6 +1145,33 @@ private:
                    CountAvg(FrameProfileCount::CollectItems),
                    CountAvg(FrameProfileCount::Batches),
                    CountAvg(FrameProfileCount::BucketGroups));
+
+            // ── 逐系统明细（SystemProfiler：与 FrameProfiler 同开关、同窗口清零，
+            //    在 RunSystemUpdate / RunRenderSystemsInRange 真实调用边界累加）──
+            //    ⚠ profui 覆盖层开启时会被它每帧抢先 Snapshot ⇒ 本表需在 profui=false 下读。
+            {
+                static std::vector<SystemProfileEntry> sys_entries;
+                sys_entries.clear();
+                SystemProfiler::Snapshot(sys_entries);
+                std::sort(sys_entries.begin(), sys_entries.end(),
+                          [](const SystemProfileEntry & a, const SystemProfileEntry & b)
+                          { return a.us > b.us; });
+
+                const size_t top = sys_entries.size() < 14 ? sys_entries.size() : 14;
+
+                printf("  -- 逐系统明细（窗口内合计，按 ms/帧 排序，Top %zu / 共 %zu）--\n",
+                       top, sys_entries.size());
+                for (size_t i = 0; i < top; ++i)
+                {
+                    const SystemProfileEntry & e = sys_entries[i];
+                    printf("  %-26s ph=%-3u %8.3f ms/帧  x%6.2f/帧  %s\n",
+                           e.name.IsEmpty() ? "(无名)" : e.name.c_str(),
+                           e.phase,
+                           double(e.us) / prof_frames / 1000.0,
+                           double(e.calls) / prof_frames,
+                           e.module.IsEmpty() ? "-" : e.module.c_str());
+                }
+            }
 
             ReportTopologyLedger(acc_frames);
             ReportMainFrameSnapshot(acc_frames);
