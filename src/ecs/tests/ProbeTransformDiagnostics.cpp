@@ -221,8 +221,8 @@ static void SectionAllocation()
     }
 
     // ── [T0c] T3b：实体行表（EntityGPUTable）与实体按类型行号表对拍 ──
-    //   [T0]/[T0b] 用 10000 实体量堆开销，已超实体行表容量（4096）⇒ 上方那条
-    //   EntityGPUTable 超容量报错是**预期的 fail-fast**；本段用 n=512 验证表本身。
+    //   容量已单源 ULRE_MAX_VISIBLE_ENTITIES（默认 40960）⇒ [T0]/[T0b] 的 10000 实体
+    //   场景不再超容量，不会再有超容量 fail-fast 报错；本段用 n=512 验证表本身。
     {
         const uint32_t n=512;
 
@@ -283,7 +283,8 @@ static void SectionAllocation()
             printf("  逐字段对拍：不一致（首个不符 idx=%u type=%u row=%u）\n",first_bad,bad_type,bad_row);
         printf("  组件全卸后行归零=%s、实体销毁后 Active 清零=%s\n",
                detach_cleared?"是":"否",dead_cleared?"是":"否");
-        printf("  注：[T0]/[T0b] 的 10000 实体场景超 4096 容量 ⇒ 上方那条超容量报错是预期 fail-fast。\n");
+        printf("  注：容量单源 ULRE_MAX_VISIBLE_ENTITIES=%u ⇒ [T0]/[T0b] 的 10000 实体场景已不超容量。\n",
+               EntityGPUTable::kCapacity);
 
         // T3c-2a：脏行上传计划（CPU 侧语义：无脏 ⇒ 0 行；改一行 ⇒ 恰好 1 行）
         std::vector<uint32_t> plan;

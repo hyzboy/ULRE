@@ -7,6 +7,7 @@
 
 #pragma once
 #include<hgl/vk/VK.h>
+#include<hgl/common/RenderOptions.h>   // §1b ULRE_MAX_VISIBLE_ENTITIES / 帧槽常量（单源）
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/buffer/RingLayout.h>
 #include<hgl/ecs/core/render/RenderItem.h>
@@ -68,8 +69,8 @@ namespace hgl::ecs
         // ── 声明式行预算（T10/B1a）──
         // 容量在**启动期一次性**按预算建好，此后**不再重建**（行号/基址因此固定）；
         // 超预算只做**一次性明确告警**，不扩容 —— 与材质行 arena「上限不扩容」同口径。
-        uint32_t max_static_rows;               ///<静态段行预算（P-2 拍板：4096）
-        uint32_t max_dynamic_rows;              ///<动态段行预算（P-2 拍板：4096）
+        uint32_t max_static_rows;               ///<静态段行预算（默认 = §1b 单源宏）
+        uint32_t max_dynamic_rows;              ///<动态段行预算（默认 = §1b 单源宏）
         bool     budget_warned = false;         ///<超预算一次性告警闩
 
     private:    // LocalToWorld矩阵数据
@@ -110,14 +111,15 @@ namespace hgl::ecs
 
         /// T3.1：**展开段**每帧槽行数（GPU 模型展开的合成矩阵专用；一人一断）。
         /// 需求来源：部件世界矩阵 = 根世界矩阵 × `ModelPartRow.local_matrix`，无法用行号表达
-        /// ⇒ 展开侧要一段可写的矩阵区。行数与剔除实例竞技场同量级（每 pass 4096 × 2 扇区），
-        /// 取 8192 留一倍余量；越界由 `ModelExpansionArena.l2w_row_capacity` 挡。
-        static constexpr uint32_t kModelExpansionRowsPerSlot = 8192;
+        /// ⇒ 展开侧要一段可写的矩阵区。行数与剔除实例竞技场同量级（每 pass
+        /// `ULRE_MAX_VISIBLE_ENTITIES` × 2 半段：当前 + 前帧）；单源真值见
+        /// `RenderOptions.h` §1b，越界由 `ModelExpansionArena.l2w_row_capacity` 挡。
+        static constexpr uint32_t kModelExpansionRowsPerSlot = 2u * ULRE_MAX_VISIBLE_ENTITIES;
 
         /// 本帧槽展开段基址（绝对行号）；恒 ≥ `GetDynamicBaseIndex() + max_dynamic_rows`
         uint32_t GetModelExpansionBaseIndex() const;
 
-        /// 本帧槽前帧展开矩阵段基址（双帧展开专用：紧跟当前矩阵段之后，容量同为 4096）
+        /// 本帧槽前帧展开矩阵段基址（双帧展开专用：紧跟当前矩阵段之后，容量同为单 pass 剔除容量）
         uint32_t GetModelExpansionPrevBaseIndex() const;
 
         // 展开段的帧槽份数按 HGL_L2W_RING_FRAMES 算，而基址按 ring 的 frame_index 算 ⇒

@@ -197,7 +197,7 @@ namespace hgl::ecs
         }
 
         /// T3d-3a：建实体 4-ID 表的设备镜像（与实体行表同骨架，共用 `BuildWorldRowTable`；
-        /// 行 16 B ⇒ 8 份 × 4096 行 × 16 B = 512 KB）。地址缺失 = 消费者解引用 0 基址 ⇒ fail-fast。
+        /// 行 16 B ⇒ 8 份 × kCapacity（单源 40960）行 × 16 B ≈ 5 MB）。地址缺失 = 消费者解引用 0 基址 ⇒ fail-fast。
         bool ECSContext::InitializeEntityRenderIDTable()
         {
             if (entity_render_id_buffer)

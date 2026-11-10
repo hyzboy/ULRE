@@ -4,6 +4,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <hgl/type/ValueArray.h>
+#include <hgl/common/RenderOptions.h>   // §1b ULRE_MAX_VISIBLE_ENTITIES（行预算单源）
 #include <hgl/ecs/core/entity/EntityHandle.h>
 #include <hgl/log/Log.h>
 #include <functional>
@@ -38,9 +39,10 @@ namespace hgl
             using HandleID = uint32_t;
             static constexpr HandleID INVALID_HANDLE = UINT32_MAX;
 
-            /// 声明式行预算默认值（T10/B1a；P-2 拍板 2026-10-02：static 4096 + dynamic 4096）
-            static constexpr uint32_t kDefaultMaxStaticRows  = 4096;
-            static constexpr uint32_t kDefaultMaxDynamicRows = 4096;
+            /// 声明式行预算默认值（T10/B1a；单源真值 = `RenderOptions.h` §1b
+            /// `ULRE_MAX_VISIBLE_ENTITIES`，与实体表容量/剔除竞技场同口径随动）
+            static constexpr uint32_t kDefaultMaxStaticRows  = ULRE_MAX_VISIBLE_ENTITIES;
+            static constexpr uint32_t kDefaultMaxDynamicRows = ULRE_MAX_VISIBLE_ENTITIES;
 
         private:
 
@@ -131,7 +133,7 @@ namespace hgl
 
         public:
 
-            /// 构造即按默认预算初始化（P-2 拍板 2026-10-02：static 4096 + dynamic 4096）。
+            /// 构造即按默认预算初始化（P-2 拍板口径：static/dynamic 各一幅，值单源 §1b）。
             /// 需要别的预算的世界在创建后显式再调一次 `Initialize(...)`。
             TransformDataStorage() { Initialize(); }
 

@@ -180,7 +180,7 @@ namespace hgl::ecs
 
     uint32_t TransformAssignmentBuffer::GetModelExpansionPrevBaseIndex() const
     {
-        // T7.2：双帧展开矩阵，紧随本帧槽当前矩阵段之后（容量为 kModelExpansionRowsPerSlot / 2 = 4096）
+        // T7.2：双帧展开矩阵，紧随本帧槽当前矩阵段之后（容量为 kModelExpansionRowsPerSlot / 2 = 单 pass 剔除容量）
         return GetModelExpansionBaseIndex() + (kModelExpansionRowsPerSlot / 2);
     }
 

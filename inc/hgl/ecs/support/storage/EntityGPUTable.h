@@ -25,7 +25,8 @@ namespace hgl
          *   · `row[Transform]` = **L2W 行号**（P-1；与 `MeshDrawParams.addr_transform_id` 同源），
          *     由**变换上传路径**给出（`SetTransformRow`），本表不自己推算 —— 动态段的行号含帧槽，
          *     换算的唯一出处是变换存储/系统那一侧。
-         *   · 容量 **4096**（设计稿 P-B8-6 拍板，与 Transform static 同口径）；超限 = **fail-fast**
+         *   · 容量单源 `ULRE_MAX_VISIBLE_ENTITIES`（RenderOptions §1b；设计稿 P-B8-6 拍板口径，
+         *     与 Transform static 同幅）；超限 = **fail-fast**
          *     （一次性报错；不扩容、不截断成静默丢实体）。
          *
          * ── 权威链（四份副本 + 刷新时机；2026-10-13 审计 §2.2 问题 2 选项 (b)）─────────────
@@ -47,8 +48,9 @@ namespace hgl
         {
         public:
 
-            /// 容量（设计稿 P-B8-6 冻结值；与 Transform static 段同口径）
-            static constexpr uint32_t kCapacity = 4096;
+            /// 容量（单源真值：`RenderOptions.h` §1b `ULRE_MAX_VISIBLE_ENTITIES`；
+            /// 与 GPUCullSystem::kMaxVisibleEntities / Transform 行预算同口径随动）
+            static constexpr uint32_t kCapacity = ULRE_MAX_VISIBLE_ENTITIES;
 
         private:
 

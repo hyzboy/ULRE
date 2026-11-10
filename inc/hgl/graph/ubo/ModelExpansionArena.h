@@ -1,7 +1,8 @@
 #pragma once
 
 #include <hgl/CoreType.h>
-#include <hgl/graph/BufferAnnotation.h>
+#include <hgl/common/RenderOptions.h>          // §1b ULRE_MAX_VISIBLE_ENTITIES（容量单源）
+#include <hgl/shader/contract/GpuCullContract.h> // ArenaPassCount（pass 数单源）
 #include <cstdint>
 
 namespace hgl::graph
@@ -65,11 +66,16 @@ namespace hgl::graph
     /// 槽头字节数（表体从「槽基址 + 本值」开始；与 GPUCullSystem::kExpansionHeaderBytes 同值）
     inline constexpr uint32_t kModelExpansionHeaderBytes = 64;
 
-    /// 单个 pass 的桶组基址表容量（= GPUCullSystem::kMaxVisibleEntities，由 static_assert 锁死）
-    inline constexpr uint32_t kModelExpansionBucketBaseRowsPerPass = 4096;
+    /// 单个 pass 的桶组基址表容量（**单源**：`RenderOptions.h` §1b
+    /// `ULRE_MAX_VISIBLE_ENTITIES`；与 GPUCullSystem::kArenaRowsPerPass 同值，
+    /// 由 GPUCullSystem 的 static_assert 锁死）
+    inline constexpr uint32_t kModelExpansionBucketBaseRowsPerPass = ULRE_MAX_VISIBLE_ENTITIES;
 
-    /// 桶组基址表总行数上限（pass 数 × 单 pass 容量；由 static_assert 锁死）
-    inline constexpr uint32_t kModelExpansionMaxBucketBaseRows = 2u * kModelExpansionBucketBaseRowsPerPass;
+    /// 桶组基址表总行数上限（pass 数 × 单 pass 容量；pass 数取契约真源
+    /// `ArenaPassCount::Passes`，与 `GPUCullSystem::kArenaRows` 的对拍 assert 锁死）
+    inline constexpr uint32_t kModelExpansionMaxBucketBaseRows =
+        static_cast<uint32_t>(hgl::shader::contract::ArenaPassCount::Passes)
+        * kModelExpansionBucketBaseRowsPerPass;
 
     /// 实体未分配模板素材桶组时的哨兵值（表初值 / CPU 允许显式写入）
     inline constexpr uint32_t kModelExpansionInvalidBucketBase = 0xFFFFFFFFu;

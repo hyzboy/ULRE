@@ -268,7 +268,7 @@ namespace hgl::ecs
         // 间接绘制命令表（IndirectMeshTaskBuffer）
         // VkDrawMeshTasksIndirectCommandEXT = { groupCountX, groupCountY, groupCountZ }
         // ⚠ T4c1 漏改：ICB 必须与 gather 三表同域 —— 按 **kArenaRows** 分配。
-        //   阴影扇区切片从 4096 行起，绘制偏移 = row_base × 12 ⇒ 只按 4096 条分配会触发
+        //   阴影扇区切片从 kArenaRowsPerPass 行起，绘制偏移 = row_base × 12 ⇒ 只按单扇区分配会触发
         //   VUID-vkCmdDrawMeshTasksIndirectCountEXT 越界读（实测 AMDVLK ⇒ VK_ERROR_DEVICE_LOST）。
         indirect_commands_buffer_ = device_->CreateIndirectMeshTaskBuffer(
             kArenaRows,
@@ -297,7 +297,7 @@ namespace hgl::ecs
         if (!draw_count_buffer_) return false;
         draw_count_addr_ = device_->GetBufferDeviceAddressAligned16(draw_count_buffer_->GetBuffer());
 
-        // ── 形态 B（T3f-2）gather 输出三表（容量 = kArenaRows = 每 pass 4096 × 2 扇区；icb 复用上面）──
+        // ── 形态 B（T3f-2）gather 输出三表（容量 = kArenaRows = 每 pass kMaxVisibleEntities × 2 扇区；icb 复用上面）──
         // 行距契约（与着色器镜像逐字段一致，§8.2d 的"读真源零复制"口径）：
         //   l2w_out  = uint32 × 4 B/行；cmds_out = MeshDrawCommand 8 B/行；
         //   mtl_out  = MaterialInstanceAddresses 16 B/行。
@@ -340,7 +340,7 @@ namespace hgl::ecs
         custom_data_out_addr_ = device_->GetBufferDeviceAddressAligned16(custom_data_out_buffer_->GetBuffer());
 
         // ── T3i（③ 多批）：批标签 / 分区 / 每批计数（按帧槽分份；CPU 只写当前份）──
-        // tag = kSlots × 4096 × u32；info = kSlots × kArenaPasses × kBatchBlockStride × 8 B；
+        // tag = kSlots × kMaxVisibleEntities × u32；info = kSlots × kArenaPasses × kBatchBlockStride × 8 B；
         // counter = kSlots × kArenaPasses × kBatchBlockStride × u32（每块末位 = 该块 overflow 槽）。
         // usage：STORAGE（CS 读写）+ SHADER_DEVICE_ADDRESS（BDA 下发）；counter 另带
         // TRANSFER_DST（cull cmd 内 FillBuffer 清零，VUID-vkCmdFillBuffer-dstBuffer-00031）。

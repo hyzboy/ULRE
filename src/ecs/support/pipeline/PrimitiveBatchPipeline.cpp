@@ -806,7 +806,7 @@ namespace hgl::ecs
         // 诊断接线（`ULRE_DEBUG.toml` 的 `channels.batch/cull = true`）：逐帧/逐 pass 记录接管评估的出口与关键量——
         // "某帧 count=0"这类症状必须靠它定位（帧摘要只看一张图，看不见帧间差异）。
         const bool s_takeover_trace = ULRE_DEBUG_ON(Batch);
-        // T4c3c：切片起点 = 本 pass 的竞技场扇区（主帧 0 / 阴影 4096）⇒ 两 pass 行集互不覆盖。
+        // T4c3c：切片起点 = 本 pass 的竞技场扇区（主帧 0 / 阴影 kArenaRowsPerPass，单源 40960）⇒ 两 pass 行集互不覆盖。
         uint32_t row_cursor = GPUCullSystem::ArenaSectorBase(pass_index);
         uint32_t total_items = 0;
         uint32_t tagged_items = 0;   // 诊断：本帧打上标签的项数

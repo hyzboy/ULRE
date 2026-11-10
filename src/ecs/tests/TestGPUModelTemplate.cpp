@@ -182,8 +182,10 @@ namespace
         ok = ok && (offsetof(ModelExpansionArena, prev_l2w_base_row) == 24);
         ok = ok && (offsetof(ModelExpansionArena, custom_data_addr) == 32);
 
-        // 桶基址表容量必须恰好容纳两个 pass 的整批实体（几何侧同一口径）。
-        ok = ok && (kModelExpansionBucketBaseRowsPerPass == 4096u);
+        // 桶基址表容量必须恰好容纳两个 pass 的整批实体（几何侧同一口径；
+        // 容量单源 = RenderOptions §1b ULRE_MAX_VISIBLE_ENTITIES，不钉字面量）。
+        ok = ok && (kModelExpansionBucketBaseRowsPerPass
+                    == static_cast<uint32_t>(ULRE_MAX_VISIBLE_ENTITIES));
         ok = ok && (kModelExpansionMaxBucketBaseRows
                     == 2u * kModelExpansionBucketBaseRowsPerPass);
 
@@ -570,7 +572,8 @@ namespace
         const bool proxy_renumber = ContainsToken(mgr_src, "updated.part_bucket_count = union_count");
 
         // T6.3/T6.4：剔除展开写出自定义颜色，网格与材质着色器消费
-        const bool cull_custom_out = ContainsToken(cull_src, "instance_custom_data_out[inst_row].custom_color = custom_color;");
+        const bool cull_custom_out = ContainsToken(cull_src,
+            "InstanceCustomDataBufferRef(custom_data_addr).rows[inst_row].custom_color = custom_color;");
         const bool cull_custom_pool = ContainsToken(cull_src, "instance_custom_data_pool[entity.custom_data_index].custom_color");
         const bool stage_head_resolve = ContainsToken(stage_head_src, "ResolveInstanceCustomColor(uint iid)");
         const bool stage_head_bda = ContainsToken(stage_head_src, "InstanceCustomDataBufferRef(addr_custom).rows[iid].custom_color");
@@ -599,7 +602,7 @@ namespace
             { lod_coarsest_first, "LOD 选择必须从最粗槽往回扫描" },
             { proxy_union,    "SetModelTemplateProxies 必须做代理并集重编号" },
             { proxy_renumber, "并集重编号必须把每个参与模板的 part_bucket_count 改成并集大小" },
-            { cull_custom_out, "剔除计算必须将 custom_color 写出到 instance_custom_data_out" },
+            { cull_custom_out, "剔除计算必须将 custom_color 写出到 custom_data_addr 指向的输出表（判空后 BDA 解引用，f892761e7 口径）" },
             { cull_custom_pool, "剔除计算必须从 instance_custom_data_pool 采样实体自定义颜色" },
             { stage_head_resolve, "stage_common_head 必须提供 ResolveInstanceCustomColor 接口" },
             { stage_head_bda, "ResolveInstanceCustomColor 必须通过 BDA 寻址取 custom_color" },

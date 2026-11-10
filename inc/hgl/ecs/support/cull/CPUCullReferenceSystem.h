@@ -21,7 +21,7 @@ namespace hgl::ecs
      * - 执行阶段：RenderCollect（在 GPUCullSystem 之后）
      * - 使用相同的剔除算法：6 平面 AABB 测试；geometry_id 读实体 4-ID 表
      *   （与 GPU 逐字同口径，§8.2d）
-     * - 对拍用**定长位图**（下标 = EntityID.index 的布尔数组，2×4096 B，零动态
+     * - 对拍用**定长位图**（下标 = EntityID.index 的布尔数组，2×kMaxVisible B，零动态
      *   分配）：atomicAdd 的幸存序每帧不定，位图把"集合相等"归约为逐槽比对——
      *   旧 std::set 台架是给"顺序不定"买的单，位图直接消掉。
      */
@@ -60,10 +60,11 @@ namespace hgl::ecs
         ECSContext* context_ = nullptr;
 
         // 采样位图：下标 = EntityID.index（1 = 本采样窗口判可见）。
-        // 容量 = 实体表容量（4096，`EntityGPUTable::kCapacity` 同口径）⇒ index
-        // 恒在界内；比对 = 逐槽 O(kMaxVisible)。零动态分配、无顺序依赖
+        // 容量 = 实体表容量（单源 `ULRE_MAX_VISIBLE_ENTITIES`，与
+        // `EntityGPUTable::kCapacity` 同口径）⇒ index 恒在界内；比对 = 逐槽
+        // O(kMaxVisible)。零动态分配、无顺序依赖
         //（替代旧 std::vector + std::set 台架，用户合规清单第 3 条）。
-        static constexpr uint32_t kMaxVisible = 4096;
+        static constexpr uint32_t kMaxVisible = ULRE_MAX_VISIBLE_ENTITIES;
 
         uint8_t cpu_visible_map_[kMaxVisible] = {};
         uint8_t gpu_visible_map_[kMaxVisible] = {};

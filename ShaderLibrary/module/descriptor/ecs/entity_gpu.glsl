@@ -22,7 +22,7 @@
 // 8B 对齐 ⇒ @100 显式填充一个 uint），填充剩 16 B。填充在行尾，划用同样不
 // 破坏契约，与 offsetof 断言族互验。
 //
-// 容量 4096（P-B8-6）不进本结构：那是表级常量，由 C++ 端持有（本文件是行形状，
+// 容量（P-B8-6 口径，单源 = C++ 端 ULRE_MAX_VISIBLE_ENTITIES）不进本结构：那是表级常量（本文件是行形状，
 // 不是表边界）。
 #ifndef HGL_ENTITY_GPU_GLSL
 #define HGL_ENTITY_GPU_GLSL

@@ -388,7 +388,7 @@ int main(int argc, char** argv)
     //   · `Initialize(static, dynamic)` 声明预算；**预算内分配行号仍是追加序**（本步不改行号含义）
     //   · 超预算 ⇒ **拒绝分配**（INVALID_HANDLE）+ 行数不变（**不扩容**）
     //   · 超预算只告警一次（告警闩），并留下可观测计数
-    //   · 默认预算 = (4096, 4096)（P-2 拍板 2026-10-02）
+    //   · 默认预算 = (每段各一幅 ULRE_MAX_VISIBLE_ENTITIES)（P-2 拍板 2026-10-02，单源 §1b）
     // ─────────────────────────────────────────────────────────────
     {
         TransformDataStorage budget_storage;      // 独立实例：不污染主世界存储
@@ -445,7 +445,7 @@ int main(int argc, char** argv)
             return 13;
         }
 
-        GLogInfo(u8"Test 11 Passed: 声明式行预算契约（默认 4096+4096 / 预算内为追加序 / 超限拒绝分配不扩容 + 一次性告警闩）。");
+        GLogInfo(u8"Test 11 Passed: 声明式行预算契约（默认预算单源 §1b / 预算内为追加序 / 超限拒绝分配不扩容 + 一次性告警闩）。");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -490,7 +490,7 @@ int main(int argc, char** argv)
             { "inc/hgl/ecs/support/transform/TransformAssignmentBuffer.h", "max_static_rows",               2, "预算字段缺失（容量不再由预算决定）" },
 
             // 存储侧：声明式预算与"拒绝分配"必须在位
-            { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "kDefaultMaxStaticRows",               3, "默认预算常量缺失（P-2 拍板 static 4096 + dynamic 4096）" },
+            { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "kDefaultMaxStaticRows",               3, "默认预算常量缺失（已单源 ULRE_MAX_VISIBLE_ENTITIES，static/dynamic 同口径）" },
             { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "GetRowBudget",                        4, "行预算访问器缺失（访问器 + Initialize + Assemble 校验 + 告警参数）" },
             { "inc/hgl/ecs/support/transform/TransformDataStorage.h", "row_overflow_warned",                 5, "超限一次性告警闩缺失（字段 + Initialize 复位 + 判定 + 置位 + 访问器）" },
 

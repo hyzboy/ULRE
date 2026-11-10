@@ -57,6 +57,34 @@
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════════
+ * §1b 实体/剔除容量（**单源真值**：一处改，整簇随动）
+ *
+ * 历史上这是一组散落的 `4096` 字面量（"三道 4096 硬墙"）：
+ *   · `EntityGPUTable::kCapacity`                     —— 实体行上限
+ *   · `GPUCullSystem::kMaxVisibleEntities`            —— 可见实体/竞技场每 pass 行上限
+ *   · `graph::kModelExpansionBucketBaseRowsPerPass`   —— 桶组基址表每 pass 行上限
+ *   · `TransformDataStorage::kDefaultMaxStaticRows` / `kDefaultMaxDynamicRows` —— 变换行预算
+ *   · `TransformAssignmentBuffer::kModelExpansionRowsPerSlot` —— 展开段 = 2 × 每 pass 容量
+ *   · `CPUCullReferenceSystem::kMaxVisible`           —— CPU 对拍台架同口径
+ * 改一处会被其余处的 `static_assert` 漂移拦住（C2338）或静默不对齐 ⇒ 2026-10 起
+ * 全部由本宏派生。**要扩容只改这里**（或 `cmake -DULRE_MAX_VISIBLE_ENTITIES=...` 覆盖）。
+ *
+ * ⚠ 容量是线性付费：标签表（2×N×4B×帧槽）、gather 三表、展开段（2N 行/帧槽×64B）、
+ *   实体行表（N×128B）等全部随 N 缩放。40960 ≈ 数十 MB 常驻；移动端慎用大值。
+ * ⚠ pass 数（`kArenaPasses` = 2）**不**收归本宏：GLSL `ULRE_ARENA_PASSES` 与 C++ 侧
+ *   由文本对拍门 `B.batch-info-struct-parity` 与 `ShaderConstantsParity.gen.h` 钉住，
+ *   两侧必须保留字面量，别名会让门提取失败。
+ * ⚠ GLSL 侧没有本值的字面量（`pc.max_visible_count` 是 push constant 运行时下发）
+ *   ⇒ 改容量不需要动任何 shader。
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+
+/// 实体/实例规模上限（三道墙的唯一真源，口径含义见上方台账注释）。
+#ifndef ULRE_MAX_VISIBLE_ENTITIES
+#define ULRE_MAX_VISIBLE_ENTITIES 40960
+#endif
+
+/* ══════════════════════════════════════════════════════════════════════════════
  * §2 校验面开关（对拍器 / 诊断打印）
  *
  * 默认规则一律是 **AUTO：Debug 开、Release 关**（按 `NDEBUG` 判定；MSVC Release 定义 NDEBUG）。

@@ -46,9 +46,9 @@ function(check_common label output)
     if(NOT output MATCHES "\\[CSTRESS\\] 合批验证 PASS")
         message(FATAL_ERROR "${label}: 合批验证未 PASS（桶组/竞技场行预算分配错）\n${output}")
     endif()
-    # 默认档 Σ桶容量 = 5 × 729 + 350 = 3995（改默认档必须同步改这条与 01_ChessboardStress.cpp 文件头）
-    if(NOT output MATCHES "Σ桶容量=3995（期望 3995）")
-        message(FATAL_ERROR "${label}: Σ桶容量与默认档算式不符（期望 3995）\n${output}")
+    # 默认档 Σ桶容量 = 5 × 729 + 3500 = 7145（容量单源 §1b = 40960；改默认档必须同步改这条与 01_ChessboardStress.cpp 文件头）
+    if(NOT output MATCHES "Σ桶容量=7145（期望 7145）")
+        message(FATAL_ERROR "${label}: Σ桶容量与默认档算式不符（期望 7145）\n${output}")
     endif()
     if(output MATCHES "VUID-|SYNC-HAZARD|hazard detected|\\[ERROR\\]|\\[FATAL\\]|竞技场实例行超容量")
         message(FATAL_ERROR "${label}: 运行期报错（校验层或竞技场容量）\n${output}")
@@ -206,4 +206,4 @@ if(plan_misses GREATER 2)
 endif()
 
 message(STATUS
-    "ChessboardStress: 729 棋盘 × 4 部件 + 350 骰子 —— 双路径摘要对拍(${digest_off}) + 采样监控 + 稳态快路径(接管=${coll_hits} 回退=0 计划未命中=${plan_misses}) 通过")
+    "ChessboardStress: 729 棋盘 × 4 部件 + 3500 骰子 —— 双路径摘要对拍(${digest_off}) + 采样监控 + 稳态快路径(接管=${coll_hits} 回退=0 计划未命中=${plan_misses}) 通过")

@@ -114,9 +114,11 @@ namespace hgl::ecs
         // ── 容量与按 pass 的块/扇区常量 ──────────────────────────────────────
         // ⚠ 必须声明在**成员之前**：`batch_info_staging_` 等成员数组要用它们
         //   （类内声明序 = 使用序，前向引用不成立）。
-        static constexpr uint32_t kMaxVisibleEntities = 4096;
+        // 单源真值：`RenderOptions.h` §1b `ULRE_MAX_VISIBLE_ENTITIES`（与
+        // `EntityGPUTable::kCapacity` / 桶基址表 / 变换行预算同幅随动，别在本处改数字）。
+        static constexpr uint32_t kMaxVisibleEntities = ULRE_MAX_VISIBLE_ENTITIES;
 
-        // T4c1：竞技场按 pass 分扇区（拍板：容量扩到 2 × 4096 = 8192）。
+        // T4c1：竞技场按 pass 分扇区（总容量 = kArenaPasses × kMaxVisibleEntities）。
         // 两个 pass 的绘制集不同（主帧 = GPU 剔除后子集；阴影 = 全量直通，T4c2/T4c3）
         // ⇒ 各写各的扇区，互不覆盖。**实体索引空间与批标签不在此列**：标签按实体记
         // "属哪一批"，与 pass 无关 ⇒ 仍为 kMaxVisibleEntities（一槽一份）。
@@ -312,7 +314,7 @@ namespace hgl::ecs
         graph::DeviceBuffer *draw_count_buffer_ = nullptr;
 
         // ── T3i：批标签 / 分区 / 计数（按帧槽分份；CPU 只写当前份）──
-        graph::DeviceBuffer *batch_tag_buffer_ = nullptr;      // kSlots × 4096 × u32
+        graph::DeviceBuffer *batch_tag_buffer_ = nullptr;      // kSlots × kMaxVisibleEntities × u32
         graph::DeviceBuffer *batch_info_buffer_ = nullptr;     // kSlots × kMaxBatches × 8 B
         graph::DeviceBuffer *batch_counter_buffer_ = nullptr;  // kSlots × (kMaxBatches+1) × u32
         uint64_t batch_tag_addr_ = 0;

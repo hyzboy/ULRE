@@ -23,13 +23,14 @@
 //   · 相机默认绕方阵轨道旋转 ⇒ 实例随视锥进出，剔除账在动。
 //
 // ═════════════════════════════════════════════════════════════════════════════
-// 二、规模为什么是 676 × 4 + 400（**改数字前先看这一节**）
+// 二、规模上限怎么来的（**改数字前先看这一节**）
 // ═════════════════════════════════════════════════════════════════════════════
-// 引擎有三道 4096 硬墙（都是 `static constexpr`，没有扩容开关）：
-//   ① `EntityGPUTable::kCapacity = 4096`              —— 实体行上限
-//   ② `GPUCullSystem::kMaxVisibleEntities = 4096`      —— 可见实体上限
-//   ③ `TransformDataStorage` 默认 4096 / 4096          —— 静态/动态 TRS 行上限
-// 更紧的是**竞技场行预算**（`GPUCullSystem::kArenaRowsPerPass = 4096`，每个 pass
+// 引擎侧的三道容量墙已收归**单源真值** `RenderOptions.h` §1b
+// `ULRE_MAX_VISIBLE_ENTITIES`（改一处全簇随动，历史上它们是各自写死的 4096）：
+//   ① `EntityGPUTable::kCapacity`                     —— 实体行上限
+//   ② `GPUCullSystem::kMaxVisibleEntities`             —— 可见实体上限
+//   ③ `TransformDataStorage` 默认行预算（静态/动态各一幅）—— TRS 行上限
+// 更紧的是**竞技场行预算**（`GPUCullSystem::kArenaRowsPerPass`，每个 pass
 // 一份扇区，同 pass 内**所有批共享**同一段 `row_cursor`）：
 //
 //     占用行数 = Σ(每个素材桶容量) + 1 行桶头/桶，各桶按 4 行向上对齐
@@ -38,12 +39,13 @@
 //               这条桶按实例数计容量，是本设计已知的固定开销）
 //     素图元 ⇒ 每实体 1 行
 //
-//   ⇒ 4 部件模板下**每棋盘 5 行**，`5 × 实体数` 就已经贴满 4096，
-//     **896 个棋盘（5 × 896 = 4480）必越界**——这是本工程第一次实跑撞的墙
-//     （`[T3i] 竞技场实例行超容量` 断言 + 整批不绘制）。
-//   ⇒ 本档：`5 × 729 + 350 = 3995`，留 101 行余量（桶 4 行对齐 + 未来加桶）。
-//     实测桶数 = 2（代表几何体桶 1079 + 部件桶组 2916，4 个部件同几何 ⇒ 同一个
-//     `bucket_slot`，容量按 `部件数 × 实例数` 计），对齐只吃 1 行。
+//   ⇒ 4 部件模板下**每棋盘 5 行**，旧容量档（4096）时 `5 × 896 = 4480` 必越界
+//     ——这是本工程第一次实跑撞的墙（`[T3i] 竞技场实例行超容量` 断言 + 整批不绘制）。
+//   ⇒ 本档（容量 `ULRE_MAX_VISIBLE_ENTITIES` = 40960）：`5 × 729 + 3500 = 7145`，
+//     留 ~33k 行余量（桶 4 行对齐 + 未来加桶）。
+//     实测桶数 = 2（代表几何体桶 = 棋盘数 + 骰子数，部件桶组 = 4 × 棋盘数；
+//     4 个部件同几何 ⇒ 同一个 `bucket_slot`，容量按 `部件数 × 实例数` 计），
+//     对齐只吃 1 行。
 //     越界的后果不是掉帧，是 `PrimitiveBatchPipeline` 的 fail-fast：
 //     打一行「竞技场实例行超容量（kArenaRowsPerPass）」并把该批 items 清空
 //     ⇒ **整批当帧不绘制**（黑屏），所以下面的运行期钳制不是可选项。
@@ -134,13 +136,13 @@ using namespace hgl::ecs;
 
 namespace
 {
-    // ── 硬上限（与引擎常量同源；改引擎必须同步改这里）──────────────────────
-    constexpr uint32_t kArenaRowsPerPass = 4096;   // GPUCullSystem::kArenaRowsPerPass
+    // ── 硬上限（直接取引擎常量，不再镜像字面量；扩容改 RenderOptions §1b）──
+    constexpr uint32_t kArenaRowsPerPass = GPUCullSystem::kArenaRowsPerPass;
     constexpr uint32_t kArenaHeadroom    = 64;     // 桶对齐（≤3行/桶）+ 未来加桶的余量
 
     // ── 默认档（见文件头第二节的算式）─────────────────────────────────────
     constexpr uint32_t kDefaultBoards = 729;       // 5 × 729 = 3645
-    constexpr uint32_t kDefaultDice   = 350;       //      + 350 = 3995 ≤ 4096
+    constexpr uint32_t kDefaultDice   = 3500;      //      + 3500 = 7145 ≤ 40960
     constexpr float    kCellSpacing   = 1.25f;     // 底板宽 1.12 ⇒ 留 0.13 缝
 
     // 棋盘本体全部由**内置单位立方体**（±0.5）拼出：部件只差模板内的 local_matrix。
@@ -275,7 +277,7 @@ private:
     static constexpr uint32_t kSelfW           = 1280;
     static constexpr uint32_t kSelfH           = 720;
     static constexpr uint32_t kSelfMinDistinct = 2;
-    static constexpr uint64_t kSelfFNV         = 0x701368BFE0E60060ull;   // 2026-08 Debug 实跑记录
+    static constexpr uint64_t kSelfFNV         = 0x67E2C7C665F22584ull;   // 2026-11 Debug 实跑记录（默认档 729+3500，容量单源 40960）
 
 private:
 
@@ -652,7 +654,7 @@ private:
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // T8.2 合批验证：Σ桶容量 == 4×棋盘 + 骰子（行预算被真实占用）
+    // T8.2 合批验证：Σ桶容量 == 5×棋盘 + 骰子（行预算被真实占用）
     // ─────────────────────────────────────────────────────────────────────
     void VerifyBatching(GPUCullSystem * gpu_cull)
     {
