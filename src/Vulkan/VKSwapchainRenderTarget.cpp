@@ -7,6 +7,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GpuUploadQueue.h>
+#include<hgl/vk/VKQueryProfiler.h>
 #include<hgl/Macro.h>
 #include<hgl/log/Log.h>
 
@@ -262,6 +263,11 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         acquire_window_open = false;
         return false;
     }
+
+    // GPU 查询：本帧已提交 = 帧边界（fence 环位供将来按帧等待；内部随即做一次
+    // 非阻塞回收，早完成的帧更早进历史）
+    if(GpuQueryProfiler *gp=GpuQueryProfiler::GetActive())
+        gp->FrameSubmitted(slot.queue->GetCurrentFenceIndex());
 
     // ── 帧内回读窗口：本帧已提交、尚未 present ───────────────────────────────
     // 此刻交换链 image 仍是「已 acquire、未 present」，是唯一能对它做布局转换/拷贝的时点。

@@ -10,6 +10,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/vk/VKQueryProfiler.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
 
 #include<hgl/log/Log.h>
@@ -97,6 +98,7 @@ namespace
 
         FEATURE_COPY(multiDrawIndirect);
         FEATURE_COPY(samplerAnisotropy);
+        FEATURE_COPY(pipelineStatisticsQuery);    // GpuQueryProfiler 统计计数器（不支持则保持 false）
 
         REQURE_FEATURE_COPY(geometryShader);
 
@@ -471,6 +473,9 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         // drawIndirectCount：支持根据 GPU 计数缓冲发起间接绘制（vkCmdDrawMeshTasksIndirectCountEXT）
         vk12_features.drawIndirectCount                       = dev12.drawIndirectCount;
 
+        // hostQueryReset：GpuQueryProfiler 回收帧后 vkResetQueryPool 复位查询复用槽位
+        vk12_features.hostQueryReset                          = dev12.hostQueryReset;
+
         create_info.pNext = &vk12_features;
 
         // VK_KHR_16bit_storage（独立结构——Vulkan12Features 不含 16bit storage 字段）
@@ -820,7 +825,12 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         }
     #endif//_DEBUG
 
-    return(new VulkanDevice(device_attr));
+    VulkanDevice *device = new VulkanDevice(device_attr);
+
+    // GPU 查询采样器（Stage 1）：失败不致命，内部空转
+    GpuQueryProfiler::Create(device);
+
+    return device;
 }
 
 VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,

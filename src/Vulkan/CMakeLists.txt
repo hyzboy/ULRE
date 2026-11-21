@@ -268,6 +268,12 @@ SET(VK_BUFFER_READBACK_FILES    ${VK_INCLUDE_PATH}/VKBufferReadback.h
 
 SOURCE_GROUP("BufferReadback" FILES ${VK_BUFFER_READBACK_FILES})
 
+# --- 17. GPU Query Profiler (timestamp / pipeline statistics) ---
+SET(VK_QUERY_PROFILER_FILES     ${VK_INCLUDE_PATH}/VKQueryProfiler.h
+                                VKQueryProfiler.cpp)
+
+SOURCE_GROUP("QueryProfiler" FILES ${VK_QUERY_PROFILER_FILES})
+
 # ============================================================================
 # Combine all Vulkan files
 # ============================================================================
@@ -293,7 +299,8 @@ SET(VULKAN_ALL_FILES    ${VK_DEVICE_INSTANCE_FILES}
                         ${GEOMETRY_VERTEX_DATA_FILES}
                         ${VK_HIGH_LEVEL_HEADERS}
                         ${VK_TEXTURE_READBACK_FILES}
-                        ${VK_BUFFER_READBACK_FILES})
+                        ${VK_BUFFER_READBACK_FILES}
+                        ${VK_QUERY_PROFILER_FILES})
 
 # ============================================================================
 # Build Library

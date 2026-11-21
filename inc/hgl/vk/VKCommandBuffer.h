@@ -243,7 +243,13 @@ public:
     {
         EndRegion();        // 关闭 BeginRendering 打开的 pass 作用域
         vkCmdEndRendering(cmd_buf);
+
+        ProfilerPassEnd();  // GPU 查询 pass 结束（未配对 Begin 时安全空转）
     }
+
+    // GpuQueryProfiler pass 结束钩子（实现在 VKCommandBufferRender.cpp，
+    // 避免本头文件引入 VKQueryProfiler.h）
+    void ProfilerPassEnd();
 
     // EndRendering 后将 color 附件转换到 PRESENT_SRC（dynamic rendering 无自动转换）
     // ——swapchain present 要求 image 处于 PRESENT_SRC_KHR（VUID-VkPresentInfoKHR-pImageIndices-01430）

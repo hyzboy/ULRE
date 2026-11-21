@@ -7,6 +7,7 @@
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKQueue.h>
+#include<hgl/vk/VKQueryProfiler.h>
 
 
 namespace hgl::graph
@@ -201,6 +202,10 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
     ri.pColorAttachments    =color_atts;
     ri.pDepthAttachment     =depth_att.imageView?&depth_att:nullptr;
 
+    // GPU 查询：pass 边界采样（统计查询的 begin/end 必须在 renderpass 实例之外）
+    if(GpuQueryProfiler *gp=GpuQueryProfiler::GetActive())
+        gp->PassBegin(cmd_buf,rt->IsSwapchain()?"pass:swapchain":"pass:offscreen",ext.width,ext.height);
+
     vkCmdBeginRendering(cmd_buf,&ri);
 
     vkCmdSetViewport(cmd_buf,0,1,&viewport);
@@ -248,10 +253,18 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
     return(true);
 }
 
+void RenderCmdBuffer::ProfilerPassEnd()
+{
+    if(GpuQueryProfiler *gp=GpuQueryProfiler::GetActive())
+        gp->PassEnd(cmd_buf);
+}
+
 void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
 {
     EndRegion();                    // 关闭 BeginRendering 打开的 pass 作用域
     vkCmdEndRendering(cmd_buf);
+
+    ProfilerPassEnd();
 
     if(!rt)return;
 
