@@ -278,6 +278,33 @@ namespace hgl::graph
                                out_pixels, out_info);
     }
 
+    bool ReadbackTexture(VulkanDevice *device, Texture *tex,
+                         hgl::ValueArray<uint8_t> &out_pixels,
+                         TextureReadbackInfo *out_info)
+    {
+        out_pixels.Resize(0);
+        std::vector<uint8_t> bytes;
+        if(!ReadbackTexture(device,tex,bytes,out_info))
+            return false;
+        out_pixels.Resize(static_cast<int>(bytes.size()));
+        if(!bytes.empty())
+            memcpy(out_pixels.GetData(),bytes.data(),bytes.size());
+        return true;
+    }
+
+    bool ReadbackColorTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
+                             uint32_t color_index, TextureReadbackInfo *out_info)
+    {
+        out_pixels.Resize(0);
+        std::vector<uint8_t> bytes;
+        if(!ReadbackColorTarget(rt,bytes,color_index,out_info))
+            return false;
+        out_pixels.Resize(static_cast<int>(bytes.size()));
+        if(!bytes.empty())
+            memcpy(out_pixels.GetData(),bytes.data(),bytes.size());
+        return true;
+    }
+
     bool ReadbackDepthTarget(IRenderTarget *rt, std::vector<uint8_t> &out_pixels,
                              TextureReadbackInfo *out_info)
     {
@@ -285,5 +312,18 @@ namespace hgl::graph
             return false;
 
         return ReadbackTexture(rt->GetDevice(), rt->GetDepthTexture(), out_pixels, out_info);
+    }
+
+    bool ReadbackDepthTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
+                             TextureReadbackInfo *out_info)
+    {
+        out_pixels.Resize(0);
+        std::vector<uint8_t> bytes;
+        if(!ReadbackDepthTarget(rt,bytes,out_info))
+            return false;
+        out_pixels.Resize(static_cast<int>(bytes.size()));
+        if(!bytes.empty())
+            memcpy(out_pixels.GetData(),bytes.data(),bytes.size());
+        return true;
     }
 }//namespace hgl::graph

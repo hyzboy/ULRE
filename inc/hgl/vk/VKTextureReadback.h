@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/type/ValueArray.h>
 #include<vector>
 
 /**
@@ -56,6 +57,10 @@ namespace hgl::graph
                          std::vector<uint8_t> &out_pixels,
                          TextureReadbackInfo *out_info = nullptr);
 
+    bool ReadbackTexture(VulkanDevice *device, Texture *tex,
+                         hgl::ValueArray<uint8_t> &out_pixels,
+                         TextureReadbackInfo *out_info = nullptr);
+
     /// 读回渲染目标的颜色附件（color_index 越界或该附件不存在返回 false）
     ///
     /// @note 交换链 RT：只允许在 `SetInFrameReadbackHook()` 的回调（帧内提交后、Present 前）里
@@ -64,7 +69,14 @@ namespace hgl::graph
                              uint32_t color_index = 0,
                              TextureReadbackInfo *out_info = nullptr);
 
+    bool ReadbackColorTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
+                             uint32_t color_index = 0,
+                             TextureReadbackInfo *out_info = nullptr);
+
     /// 读回渲染目标的深度附件
     bool ReadbackDepthTarget(IRenderTarget *rt, std::vector<uint8_t> &out_pixels,
+                             TextureReadbackInfo *out_info = nullptr);
+
+    bool ReadbackDepthTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
                              TextureReadbackInfo *out_info = nullptr);
 }//namespace hgl::graph

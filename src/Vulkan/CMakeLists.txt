@@ -274,6 +274,14 @@ SET(VK_QUERY_PROFILER_FILES     ${VK_INCLUDE_PATH}/VKQueryProfiler.h
 
 SOURCE_GROUP("QueryProfiler" FILES ${VK_QUERY_PROFILER_FILES})
 
+# --- 18. Render diagnostics (health ledger / frame debugger) ---
+SET(VK_RENDER_DIAGNOSTICS_FILES ${VK_INCLUDE_PATH}/RenderHealthLedger.h
+                                RenderHealthLedger.cpp
+                                ${VK_INCLUDE_PATH}/FrameDebugger.h
+                                FrameDebugger.cpp)
+
+SOURCE_GROUP("RenderDiagnostics" FILES ${VK_RENDER_DIAGNOSTICS_FILES})
+
 # ============================================================================
 # Combine all Vulkan files
 # ============================================================================
@@ -300,7 +308,8 @@ SET(VULKAN_ALL_FILES    ${VK_DEVICE_INSTANCE_FILES}
                         ${VK_HIGH_LEVEL_HEADERS}
                         ${VK_TEXTURE_READBACK_FILES}
                         ${VK_BUFFER_READBACK_FILES}
-                        ${VK_QUERY_PROFILER_FILES})
+                        ${VK_QUERY_PROFILER_FILES}
+                        ${VK_RENDER_DIAGNOSTICS_FILES})
 
 # ============================================================================
 # Build Library
