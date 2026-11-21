@@ -282,6 +282,12 @@ SET(VK_RENDER_DIAGNOSTICS_FILES ${VK_INCLUDE_PATH}/RenderHealthLedger.h
 
 SOURCE_GROUP("RenderDiagnostics" FILES ${VK_RENDER_DIAGNOSTICS_FILES})
 
+# --- 18.1 Debug Bridge (named pipe) ---
+SET(VK_DEBUG_BRIDGE_FILES       ${VK_INCLUDE_PATH}/DebugBridgeServer.h
+                                DebugBridgeServer.cpp)
+
+SOURCE_GROUP("DebugBridge" FILES ${VK_DEBUG_BRIDGE_FILES})
+
 # ============================================================================
 # Combine all Vulkan files
 # ============================================================================
@@ -309,7 +315,8 @@ SET(VULKAN_ALL_FILES    ${VK_DEVICE_INSTANCE_FILES}
                         ${VK_TEXTURE_READBACK_FILES}
                         ${VK_BUFFER_READBACK_FILES}
                         ${VK_QUERY_PROFILER_FILES}
-                        ${VK_RENDER_DIAGNOSTICS_FILES})
+                        ${VK_RENDER_DIAGNOSTICS_FILES}
+                        ${VK_DEBUG_BRIDGE_FILES})
 
 # ============================================================================
 # Build Library

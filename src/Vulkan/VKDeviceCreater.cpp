@@ -11,6 +11,7 @@
 #include<hgl/vk/VKSurface.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKQueryProfiler.h>
+#include<hgl/vk/DebugBridgeServer.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
 
 #include<hgl/log/Log.h>
@@ -829,6 +830,9 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     // GPU 查询采样器（Stage 1）：失败不致命，内部空转
     GpuQueryProfiler::Create(device);
+
+    // DebugBridge（Stage 3）：ULRE_DEBUG.toml [channels].debugbridge=true 时启动
+    DebugBridgeServer::StartActive();
 
     return device;
 }

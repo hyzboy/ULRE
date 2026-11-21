@@ -8,6 +8,7 @@
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/buffer/IGPUBuffer.h>
 #include<hgl/vk/VKQueryProfiler.h>
+#include<hgl/vk/DebugBridgeServer.h>
 #include<hgl/log/Log.h>
 #include<hgl/type/Smart.h>
 #include<hgl/utf.h>
@@ -71,6 +72,8 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 
 VulkanDevice::~VulkanDevice()
 {
+    DebugBridgeServer::StopActive();
+
     // QueryPool 句柄依赖 VkDevice：必须先于 attr（含 vkDestroyDevice）销毁
     GpuQueryProfiler::DestroyActive();
 

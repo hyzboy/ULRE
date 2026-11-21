@@ -64,6 +64,7 @@ namespace hgl::debug
         VkSync,         ///< Vulkan 队列 / fence / 信号量
         ProfUI,         ///< 屏显 DEBUG PROF 覆盖层（需 perf 通道或显式开关配合）
         RenderGraph,    ///< RenderGraph pass 调度 / SystemGroup 注册 / [ECS RENDER] 帧边界
+        DebugBridge,    ///< 引擎内命名管道诊断桥接服务
 
         Count
     };

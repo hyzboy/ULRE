@@ -39,6 +39,7 @@ namespace hgl::debug
             { "vksync",    "Vulkan 队列/fence/信号量" },
             { "profui",    "屏显 DEBUG PROF 覆盖层" },
             { "rendergraph", "RenderGraph pass 调度、SystemGroup 注册、[ECS RENDER] 帧边界" },
+            { "debugbridge", "引擎内命名管道诊断桥接服务" },
         };
         return table;
     }
