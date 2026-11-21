@@ -12,6 +12,13 @@
 
 ## 🎯 SKILL导航
 
+### 0.5 [SKILL_RENDER_DIAGNOSTICS.md](SKILL_RENDER_DIAGNOSTICS.md)
+**适用：通过 ULRE 内嵌 Render Health Ledger、GPU Metrics 和 Frame Dump 排查渲染故障**
+
+- 使用 MCP 工具 `get_render_health` / `get_pass_metrics` / `dump_render_target` / `dump_buffer`
+- 按 Camera -> Texture/Pipeline -> GPU Pass -> FBO/SSBO 的顺序归因
+- 遵循 Vulkan RH Z-up ZO 与正高度 viewport 投影约定
+
 ### 0. [SKILL_HGL_TYPES_REFERENCE.md](SKILL_HGL_TYPES_REFERENCE.md)
 **适用：查找字符串、集合、哈希、IO等基础类型的正确HGL用法**
 

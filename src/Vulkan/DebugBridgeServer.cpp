@@ -162,8 +162,11 @@ bool DebugBridgeServer::Execute()
         result=RenderHealthLedger::GetStatusJSON();
     else if(ContainsMethod(request,"get_pass_metrics"))
         result=MakeMetricsJSON();
-    else if(ContainsMethod(request,"dump_buffer"))
+    else if(ContainsMethod(request,"dump_buffer")
+         || ContainsMethod(request,"dump_render_target"))
         result=FrameDebugger::GetLatestResultJSON();
+    else if(ContainsMethod(request,"inspect_camera_viewport"))
+        result=RenderHealthLedger::GetStatusJSON();
     else
         result="{\"valid\":false,\"error\":\"unknown_method\"}";
 
