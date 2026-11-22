@@ -79,6 +79,24 @@
   量化的 `EvalAlpha` 与 `HGLDitherThreshold`；主路径保留两次 alpha 判定。
   仅输出这些值而移除原材质计算时阈值相同，保留各自的材质计算时出现上述差异，
   因此不能把这个问题简化为帧槽、时序或材质 alpha 不同。探针未纳入正式构建。
+  复用最终深度也不足以恢复覆盖归属：两个重叠片元 A、B 深度相等，A 通过 dither、
+  B 被丢弃时，深度只保留 A 的值；调试 pass 用 `EQUAL` 且不重算 dither 会让 B
+  也通过，并可能输出 B 的属性。这个反例同样适用于同一实例桶内的重叠图元；
+  最终颜色或二值 mask 也不包含获胜图元/实例的身份。一般场景中，方案必须能确定
+  每个样本最终获胜片元及其属性，并保持主帧深度/遮罩写入的可见性和顺序。
+  例如在主绘制中额外输出调试属性可以共享实际片元结果，但当前主 shader 只有一个
+  颜色输出；增加输出会改变 shader/管线的编译上下文，尚不能保证主帧不变。复用同一
+  主管线只能得到原颜色，不能读取其内部的 dither 判定或法线；仅共享源码或 SPIR-V
+  片段、重新编译管线也不能证明驱动生成的运算与主管线相同。
+  当前图像和管线为单采样且关闭 alpha-to-coverage；这些结论不构成 MSAA 支持。
+  若以后支持 MSAA，必须逐样本保留覆盖及获胜身份，匹配样本位置、sample mask、
+  shading/alpha-to-coverage 和 resolve 语义，不能仅比较 resolve 后的像素深度。
+  主深度当前只具备深度附件用途，`TRANSFER_SRC` 仅在 DebugBridge 开启且格式支持时
+  添加，并未声明采样用途。复用或复制它还需在同一提交中正确屏障主 pass 的
+  early/late depth writes 到后续 transfer 或 depth read、匹配图像布局与 depth/stencil
+  aspect，并在后续捕获及帧槽重用前恢复依赖；录制时的 `WaitIdle` 不会同步尚未提交的
+  当前命令。现有 `BeginRendering(load_depth)` 的源依赖按 shader read 设置，不能直接
+  作为主深度写入后的同步证明。以上条件尚未实现或证明，因此继续 fail closed。
   `base_color` 为材质行乘基础色贴图，不包含顶点色；
   `surface` 为 roughness/metallic/AO，`emissive` 为自发光贴图，`uv0` 为 UV 小数部分。
   这些属性通道仍为 RGBA8，会量化并截断到 [0,1]，不是 HDR 或原始浮点数据。
