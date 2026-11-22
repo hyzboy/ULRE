@@ -118,6 +118,30 @@ python -B tools\ulre-mcp-server\selftest.py
 完整 BasicLitMeshes/MCP 顺序及固定场景基线 `create`、`compare`、`update` 示例见设计文档和 Skill。
 基线绑定实际设备/驱动和场景输入；新机器无匹配基线应返回 `NOT_COVERED`，只在用户明确操作时创建或更新。
 
+## 新机器（AMD RX 6700 XT）迁移后验证记录
+
+环境：AMD Radeon RX 6700 XT、驱动 32.0.21045.29003、Vulkan SDK 1.4.363.0、
+Visual Studio 18.12.12412.261、MSVC 工具集 14.52.37025、CMake 4.4.4、
+Windows SDK 10.0.26100.0、vcpkg `x64-windows`、静态运行库 `/MT`。
+
+- 工具集小版本升级（14.51 → 14.52）会让既有 `build/CMakeCache.txt` 指向已被删除的
+  `cl.exe`，必须 `cmake --fresh` 重新配置；否则配置阶段直接失败。
+- 并行构建偶发 `MSB3073 / vcpkg z-applocal 退出码 32`，同名命令单独执行返回 0，
+  重试或 `--parallel 4` 即可，与本分支改动无关。
+- Debug 全量构建 0 错误；`ctest -C Debug -E "BidirectionalMapStressTest$"`
+  **253/253 全部通过**。`BidirectionalMapStressTest` 在 Debug 下运行超过 15 分钟，
+  属既有耗时问题，非回归。
+- `GPUModelChessboardStress`（729 + 350 = 3995 立方体）通过，自校验
+  `[CSTRESSSELF] PASS`；新设备金标准摘要为 `0x701368BFE0E60060`。像素摘要与
+  批次/桶容量判据绑定具体 GPU 与驱动，换设备必须重新录制，不能沿用旧值。
+- 修复 `VUID-07069`：`VKQueryProfiler` 只有在
+  `GetMeshShaderFeatures().meshShaderQueries` 为真时才写入 task/mesh 统计查询位。
+- `PhysicsScenarios` 的箱体堆叠场景曾依赖退化构型（等距贴面垒放、上层箱心正跨拼缝、
+  且 100 枚落箱中最近的几枚正好砸在金字塔上），判定结果由浮点末位决定，会随编译器
+  版本翻转。现改为：金字塔每块箱体带亚分米级错位使支撑面积不对称，落箱阵列整体移到
+  +Y 侧、与金字塔互不干扰。判据未放宽，仍为「顶层箱在金字塔附近且 z > 1.0」和
+  「100 枚落箱全部 z > 0」。
+
 ## 后续工作意向
 
 以下是分析建议，**尚未实现或作为本次迁移的执行计划**：
