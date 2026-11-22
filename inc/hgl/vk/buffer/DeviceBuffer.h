@@ -24,6 +24,8 @@ class DeviceBuffer : public BufferOwner
 private:
 
     friend class VulkanDevice;
+    friend class DebugCaptureQueue;
+    uint64_t debug_capture_id=0;
 
     DeviceBuffer(VkDevice d, const DeviceBufferData &b) : BufferOwner(d, b) {}
 
@@ -32,6 +34,8 @@ public:
     // Destructor declared out-of-line so old stale OBJ files that reference
     // the virtual ~DeviceBuffer() symbol can still link against VKBuffer.obj.
     virtual ~DeviceBuffer();
+    VkDeviceSize GetBufferSize() const { return buf.size; }
+    VkBufferUsageFlags GetUsage() const { return buf.usage; }
 
     // Transitional forwarders — route through staged_source when present.
     // TODO(Phase3c): Remove once VKMemoryAllocator is migrated or isolated.

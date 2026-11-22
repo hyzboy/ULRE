@@ -14,6 +14,100 @@ import capture_manifest
 @unittest.skipUnless(os.environ.get("ULRE_CAPTURE_TEST") == "1",
                      "requires a running engine with DebugBridge enabled")
 class CaptureIntegrationTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("ULRE_BUFFER_TEST") == "1",
+                         "requires a GPU-written SSBO fixture")
+    @unittest.skipIf(os.environ.get("ULRE_BUFFER_FAILURE_TEST") == "1",
+                     "fixture intentionally fails or destroys the resource")
+    def test_registered_storage_buffer(self):
+        for _ in range(150):
+            listing = mcp_server.call_engine("list_capture_buffers")
+            buffers = {item["name"]: item for item in listing.get("buffers", [])}
+            if "fixture_ssbo" in buffers and "fixture_no_transfer_src" in buffers:
+                break
+            time.sleep(0.1)
+        self.assertIn("fixture_ssbo", buffers)
+        buffer = buffers["fixture_ssbo"]
+        unavailable = buffers["fixture_no_transfer_src"]
+        self.assertTrue(buffer["available"])
+        self.assertFalse(unavailable["available"])
+        for resource_id, offset, size, error in (
+                (unavailable["resource_id"], 0, 4, "buffer_unavailable"),
+                (buffer["resource_id"], 1, 4, "invalid_range"),
+                (buffer["resource_id"], 0, 3, "invalid_range"),
+                (buffer["resource_id"], 60, 8, "invalid_range"),
+                (buffer["resource_id"], 0, 4194308, "invalid_range")):
+            response = mcp_server.call_engine("capture_buffer", {
+                "resource_id": resource_id, "offset": offset, "size": size,
+            })
+            self.assertFalse(response["valid"], response)
+            self.assertEqual(response["error"], error)
+        previous_frame = 0
+        for _ in range(2):
+            request = mcp_server.call_engine("capture_buffer", {
+                "resource_id": buffer["resource_id"], "offset": 4, "size": 12,
+            })
+            self.assertTrue(request["valid"], request)
+            try:
+                for _ in range(150):
+                    result = mcp_server.call_engine("get_capture_status", {
+                        "request_id": request["request_id"],
+                    })
+                    if result.get("state") not in ("queued", "capturing"):
+                        break
+                    time.sleep(0.1)
+                self.assertEqual(result["state"], "succeeded", result)
+                self.assertGreater(result["frame_id"], previous_frame)
+                previous_frame = result["frame_id"]
+                metadata = json.loads(Path(result["metadata_path"]).read_text(encoding="utf-8"))
+                self.assertEqual(metadata["schema"], "ulre.buffer_capture.v1")
+                self.assertEqual(metadata["request_id"], request["request_id"])
+                self.assertEqual(metadata["resource_id"], buffer["resource_id"])
+                self.assertEqual(metadata["frame_id"], result["frame_id"])
+                self.assertEqual((metadata["offset"], metadata["byte_count"]), (4, 12))
+                self.assertEqual(metadata["buffer_usage"], buffer["usage"])
+                self.assertEqual(metadata["byte_order"], "opaque")
+                data = Path(result["dump_path"]).read_bytes()
+                self.assertEqual(data, struct.pack("<III", *([0x12340000 + result["frame_id"]] * 3)))
+                self.assertNotEqual(data, b"\xa5" * 12)
+            finally:
+                mcp_server.call_engine("release_capture", {"request_id": request["request_id"]})
+
+    @unittest.skipUnless(os.environ.get("ULRE_BUFFER_FAILURE_TEST") == "1",
+                         "requires a failing SSBO fixture")
+    def test_storage_buffer_failure_or_destruction(self):
+        for _ in range(150):
+            listing = mcp_server.call_engine("list_capture_buffers")
+            buffer = next((item for item in listing.get("buffers", [])
+                           if item["name"] == "fixture_ssbo"), None)
+            if buffer:
+                break
+            time.sleep(0.1)
+        self.assertIsNotNone(buffer, listing)
+        request = mcp_server.call_engine("capture_buffer", {
+            "resource_id": buffer["resource_id"], "offset": 0, "size": 4,
+        })
+        self.assertTrue(request["valid"], request)
+        try:
+            for _ in range(150):
+                result = mcp_server.call_engine("get_capture_status", {
+                    "request_id": request["request_id"],
+                })
+                if result.get("state") not in ("queued", "capturing"):
+                    break
+                time.sleep(0.1)
+            expected = os.environ.get("ULRE_BUFFER_FAILURE_KIND")
+            if expected == "destroy":
+                self.assertEqual((result["state"], result["error"]), ("cancelled", "target_destroyed"))
+                self.assertNotIn(buffer["resource_id"], [item["resource_id"] for item in
+                    mcp_server.call_engine("list_capture_buffers")["buffers"]])
+            elif expected == "queue":
+                self.assertEqual((result["state"], result["error"]), ("failed", "queue_unavailable"))
+            else:
+                self.assertEqual((result["state"], result["error"]), ("failed", "submission_failed"))
+            self.assertFalse(result.get("dump_path"))
+        finally:
+            mcp_server.call_engine("release_capture", {"request_id": request["request_id"]})
+
     @unittest.skipUnless(os.environ.get("ULRE_OFFSCREEN_TEST") == "1",
                          "requires an ordinary offscreen target rendered on request")
     @unittest.skipIf(os.environ.get("ULRE_OFFSCREEN_UNSAFE_TEST") == "1",

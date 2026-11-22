@@ -72,6 +72,8 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
         buf->info.range   =range;
 
         buf->memory       =dm;
+        buf->usage        =buf_usage;
+        buf->size         =size;
 
         if(!data)
             return(true);
@@ -120,6 +122,8 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
+        buf.usage=buf_usage|VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        buf.size=size;
 
         DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
         dev_buf->SetStagedSource(staged);
@@ -186,6 +190,8 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
+        buf.usage=buf_usage|VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        buf.size=size;
 
         DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
         dev_buf->SetStagedSource(staged);
@@ -267,6 +273,8 @@ DeviceBuffer *VulkanDevice::CreateArenaBuffer(const AnsiString &name,VkDeviceSiz
         buf.info.buffer =buf.buffer;
         buf.info.offset =0;
         buf.info.range  =size;
+        buf.usage       =buf_usage;
+        buf.size        =size;
 
         buf.memory      =dm;
 

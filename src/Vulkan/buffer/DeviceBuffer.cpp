@@ -1,10 +1,15 @@
 ﻿#include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/vk/DebugCaptureQueue.h>
 
 namespace hgl::graph{
 
 // Out-of-line destructor: provides the symbol expected by stale OBJ files compiled
 // before VKBuffer.h switched to ~DeviceBuffer() = default.  Cleanup is in BufferOwner.
-DeviceBuffer::~DeviceBuffer() {}
+DeviceBuffer::~DeviceBuffer()
+{
+    if(debug_capture_id)
+        DebugCaptureQueue::UnregisterTarget(debug_capture_id);
+}
 
 void *DeviceBuffer::Map()
 {

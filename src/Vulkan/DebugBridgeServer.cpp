@@ -334,6 +334,27 @@ bool DebugBridgeServer::Execute()
         result=hgl::ecs::DebugViewPass::GetStatusJSON();
     else if(::strcmp(parsed.method,"list_capture_targets")==0)
         result=DebugCaptureQueue::GetTargetsJSON();
+    else if(::strcmp(parsed.method,"list_capture_buffers")==0)
+        result=DebugCaptureQueue::GetBuffersJSON();
+    else if(::strcmp(parsed.method,"capture_buffer")==0)
+    {
+        if(!parsed.has_resource_id || !parsed.has_offset || !parsed.has_size)
+            result="{\"valid\":false,\"error\":\"missing_buffer_range\"}";
+        else
+        {
+            const char *error=nullptr;
+            const uint64_t request_id=DebugCaptureQueue::RequestBuffer(
+                parsed.resource_id,parsed.offset,parsed.size,&error);
+            if(request_id)
+                result=DebugCaptureQueue::GetResultJSON(request_id);
+            else
+            {
+                result="{\"valid\":false,\"error\":\"";
+                result+=error;
+                result+="\"}";
+            }
+        }
+    }
     else if(::strcmp(parsed.method,"capture_frame")==0)
     {
         if(!parsed.has_target_id)

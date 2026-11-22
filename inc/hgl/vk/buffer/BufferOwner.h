@@ -17,6 +17,8 @@ struct DeviceBufferData
     VkBuffer                buffer  = nullptr;
     DeviceMemory           *memory  = nullptr;
     VkDescriptorBufferInfo  info;
+    VkBufferUsageFlags      usage   = 0;
+    VkDeviceSize            size    = 0;
 };//struct DeviceBufferData
 
 /**

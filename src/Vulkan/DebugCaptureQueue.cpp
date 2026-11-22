@@ -1,5 +1,7 @@
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKTextureReadback.h>
+#include<hgl/vk/VKBufferReadback.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/graph/CameraInfo.h>
@@ -9,6 +11,7 @@
 #include<hgl/sync/Mutex.h>
 #include<hgl/time/Time.h>
 #include<hgl/type/ValueArray.h>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 #include<cstdio>
 #include<cstring>
@@ -21,6 +24,7 @@ namespace hgl::graph
         constexpr uint32_t kMaxRequests=16;
         constexpr uint32_t kMaxQueueTimeoutMs=30000;
         constexpr uint64_t kMaxCaptureBytes=256ull*1024*1024;
+        constexpr uint64_t kMaxBufferCaptureBytes=4ull*1024*1024;
         struct Target
         {
             uint64_t id=0;
@@ -29,6 +33,9 @@ namespace hgl::graph
             uint64_t frame_id=0;
             DebugCaptureQueue::Source source=DebugCaptureQueue::Source::Swapchain;
             IRenderTarget *bound_target=nullptr;
+            DeviceBuffer *buffer=nullptr;
+            uint64_t buffer_size=0;
+            VkBufferUsageFlags buffer_usage=0;
             AnsiString name;
             uint32_t color_count=0;
             VkFormat color_formats[8]{};
@@ -175,6 +182,25 @@ namespace hgl::graph
             const char *backslash=::strrchr(filename,'\\');
             if(backslash && (!base || backslash>base))
                 base=backslash;
+            if(result.attachment==DebugCaptureQueue::Attachment::Buffer)
+            {
+                AnsiString json="{\"schema\":\"ulre.buffer_capture.v1\",\"request_id\":";
+                json+=AnsiString::numberOf(result.request_id);
+                json+=",\"resource_id\":";
+                json+=AnsiString::numberOf(result.target_id);
+                json+=",\"frame_id\":";
+                json+=AnsiString::numberOf(result.frame_id);
+                json+=",\"offset\":";
+                json+=AnsiString::numberOf(result.buffer_offset);
+                json+=",\"byte_count\":";
+                json+=AnsiString::numberOf(result.byte_count);
+                json+=",\"buffer_usage\":";
+                json+=AnsiString::numberOf(result.buffer_usage);
+                json+=",\"byte_order\":\"opaque\",\"data_file\":";
+                AppendJSONString(json,base?base+1:filename);
+                json+="}";
+                return json;
+            }
             AnsiString json="{\"schema\":\"ulre.capture.v1\",\"request_id\":";
             json+=AnsiString::numberOf(result.request_id);
             json+=",\"target_id\":";
@@ -278,7 +304,8 @@ namespace hgl::graph
                 static_cast<char>(HGL_DIRECTORY_SEPARATOR),
                 static_cast<unsigned long long>(hgl::GetTimeUs()),
                 static_cast<unsigned long long>(result.request_id),
-                result.attachment==DebugCaptureQueue::Attachment::Color?"color":"depth");
+                result.attachment==DebugCaptureQueue::Attachment::Color?"color":
+                result.attachment==DebugCaptureQueue::Attachment::Buffer?"buffer":"depth");
             if(length<0 || static_cast<size_t>(length)>=sizeof(base))
                 return false;
             ::snprintf(raw,sizeof(raw),"%s.raw",base);
@@ -478,6 +505,108 @@ namespace hgl::graph
         return 0;
     }
 
+    uint64_t DebugCaptureQueue::RegisterBuffer(DeviceBuffer *buffer,const char *name)
+    {
+        if(!ULRE_DEBUG_ON(DebugBridge))
+            return 0;
+        if(!buffer || !buffer->GetBuffer())
+        {
+            GLogError(u8"[DebugCapture] Cannot register an invalid buffer");
+            return 0;
+        }
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        if(!queue.next_target || buffer->debug_capture_id)
+        {
+            GLogError(u8"[DebugCapture] Buffer already registered or resource IDs exhausted");
+            return 0;
+        }
+        for(Target &target:queue.targets)
+            if(!target.id)
+            {
+                target=Target{};
+                target.id=queue.next_target++;
+                target.source=Source::Buffer;
+                target.buffer=buffer;
+                target.buffer_size=buffer->GetBufferSize();
+                target.buffer_usage=buffer->GetUsage();
+                if(name) target.name=name;
+                buffer->debug_capture_id=target.id;
+                return target.id;
+            }
+        GLogError(u8"[DebugCapture] Buffer registry is full");
+        return 0;
+    }
+
+    AnsiString DebugCaptureQueue::GetBuffersJSON()
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        AnsiString json="{\"valid\":true,\"buffers\":[";
+        bool first=true;
+        for(const Target &target:queue.targets)
+            if(target.id && target.source==Source::Buffer)
+            {
+                if(!first) json+=",";
+                first=false;
+                json+="{\"resource_id\":";
+                json+=AnsiString::numberOf(target.id);
+                json+=",\"name\":";
+                AppendJSONString(json,target.name.c_str());
+                json+=",\"size\":";
+                json+=AnsiString::numberOf(target.buffer_size);
+                json+=",\"usage\":";
+                json+=AnsiString::numberOf(target.buffer_usage);
+                json+=",\"available\":";
+                const VkBufferUsageFlags required=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+                json+=(target.buffer_size && (target.buffer_usage&required)==required)?"true}":"false}";
+            }
+        json+="],\"max_capture_bytes\":";
+        json+=AnsiString::numberOf(kMaxBufferCaptureBytes);
+        json+=",\"alignment\":4}";
+        return json;
+    }
+
+    uint64_t DebugCaptureQueue::RequestBuffer(uint64_t resource_id,uint64_t offset,uint64_t size,
+                                              const char **error,uint32_t timeout_ms)
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        Expire(queue);
+        if(error) *error=nullptr;
+        const Target *target=FindTarget(queue,resource_id);
+        const VkBufferUsageFlags required=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        const char *failure=nullptr;
+        if(!timeout_ms || timeout_ms>kMaxQueueTimeoutMs) failure="invalid_timeout";
+        else if(!target || target->source!=Source::Buffer) failure="unknown_resource";
+        else if(!target->buffer_size || (target->buffer_usage&required)!=required) failure="buffer_unavailable";
+        else if(!size || size>kMaxBufferCaptureBytes || (offset&3) || (size&3)
+                || offset>target->buffer_size || size>target->buffer_size-offset) failure="invalid_range";
+        else if(!queue.next_request) failure="request_id_exhausted";
+        if(failure)
+        {
+            if(error) *error=failure;
+            return 0;
+        }
+        for(Result &result:queue.requests)
+            if(result.state==State::Empty)
+            {
+                result=Result{};
+                result.request_id=queue.next_request++;
+                result.target_id=resource_id;
+                result.source=Source::Buffer;
+                result.attachment=Attachment::Buffer;
+                result.buffer_offset=offset;
+                result.byte_count=size;
+                result.buffer_usage=target->buffer_usage;
+                result.state=State::Queued;
+                result.expires_at_ms=hgl::GetUptimeMs()+timeout_ms;
+                return result.request_id;
+            }
+        if(error) *error="queue_full";
+        return 0;
+    }
+
     bool DebugCaptureQueue::SupportsFormat(VkFormat format,Attachment attachment)
     {
         if(attachment!=Attachment::Color && attachment!=Attachment::Depth)
@@ -517,7 +646,12 @@ namespace hgl::graph
         QueueState &queue=Queue();
         hgl::MutexLock lock(&queue.lock);
         for(Target &target:queue.targets)
-            if(target.id==target_id) target=Target{};
+            if(target.id==target_id && target_id)
+            {
+                if(target.source==Source::Buffer && target.buffer)
+                    target.buffer->debug_capture_id=0;
+                target=Target{};
+            }
         for(Result &result:queue.requests)
             if(result.target_id==target_id && result.state==State::Queued)
             {
@@ -533,7 +667,7 @@ namespace hgl::graph
         AnsiString json="{\"valid\":true,\"targets\":[";
         bool first=true;
         for(const Target &target:queue.targets)
-            if(target.id)
+            if(target.id && target.source!=Source::Buffer)
             {
                 if(!first) json+=",";
                 first=false;
@@ -704,11 +838,19 @@ namespace hgl::graph
         json+=AnsiString::numberOf(result.request_id);
         json+=",\"target_id\":";
         json+=AnsiString::numberOf(result.target_id);
+        if(result.attachment==Attachment::Buffer)
+        {
+            json+=",\"resource_id\":";
+            json+=AnsiString::numberOf(result.target_id);
+            json+=",\"offset\":";
+            json+=AnsiString::numberOf(result.buffer_offset);
+        }
         json+=",\"state\":\"";
         json+=StateName(result.state);
         json+="\",\"attachment\":\"";
         json+=result.attachment==Attachment::Color?"color"
-             :result.attachment==Attachment::Depth?"depth":"color_depth";
+             :result.attachment==Attachment::Depth?"depth"
+             :result.attachment==Attachment::Buffer?"buffer":"color_depth";
         json+="\",\"frame_id\":";
         json+=AnsiString::numberOf(result.frame_id);
         json+=",\"width\":";
@@ -785,6 +927,7 @@ namespace hgl::graph
                         break;
                     }
 
+
             }
             if(!result.request_id) return;
             result.frame_id=frame_id;
@@ -836,6 +979,85 @@ namespace hgl::graph
                 }
         }
     }
+
+    void DebugCaptureQueue::ProcessBuffer(uint64_t resource_id,DeviceBuffer *buffer,uint64_t frame_id,
+                                          VkQueue submitted_queue,bool submission_succeeded)
+    {
+        VulkanDevice *device=buffer && buffer->GetVkDevice()
+            ?VulkanDevice::FromDevice(buffer->GetVkDevice()):nullptr;
+        const char *failure=nullptr;
+        Result pending[kMaxRequests];
+        uint32_t pending_count=0;
+        {
+            QueueState &queue=Queue();
+            hgl::MutexLock lock(&queue.lock);
+            Expire(queue);
+            Target *target=nullptr;
+            for(Target &entry:queue.targets)
+                if(entry.id==resource_id && resource_id && entry.source==Source::Buffer)
+                    target=&entry;
+            if(!target) return;
+            const VkBufferUsageFlags required=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            if(!submission_succeeded) failure="submission_failed";
+            else if(!buffer || target->buffer!=buffer) failure="resource_mismatch";
+            else if(!device || submitted_queue!=device->GetGraphicsQueue()) failure="queue_unavailable";
+            else if(!frame_id || frame_id<=target->frame_id) failure="frame_unavailable";
+            else if(!buffer->GetBuffer() || buffer->GetBufferSize()!=target->buffer_size
+                    || buffer->GetUsage()!=target->buffer_usage
+                    || (target->buffer_usage&required)!=required) failure="buffer_unavailable";
+            if(failure)
+            {
+                for(Result &result:queue.requests)
+                    if(result.target_id==resource_id && result.state==State::Queued)
+                    {
+                        result.state=State::Failed;
+                        result.error=failure;
+                    }
+                return;
+            }
+            target->frame_id=frame_id;
+            for(Result &entry:queue.requests)
+                if(entry.target_id==resource_id && entry.state==State::Queued)
+                {
+                    entry.state=State::Capturing;
+                    pending[pending_count++]=entry;
+                }
+        }
+        for(uint32_t i=0;i<pending_count;++i)
+        {
+            Result result=pending[i];
+            result.frame_id=frame_id;
+            ValueArray<uint8_t> bytes;
+            bytes.Resize(static_cast<int>(result.byte_count));
+            if(!ReadbackBuffer(device,buffer->GetBuffer(),result.buffer_offset,result.byte_count,bytes.GetData()))
+            {
+                result.state=State::Failed;
+                result.error="readback_failed";
+            }
+            else if(!Save(result,bytes))
+            {
+                result.state=State::Failed;
+                result.error="write_failed";
+            }
+            else
+            {
+                result.state=State::Succeeded;
+                result.error=nullptr;
+            }
+            if(result.error)
+                GLogError(u8"[DebugCapture] Buffer request %llu failed: %s",
+                          static_cast<unsigned long long>(result.request_id),result.error);
+            QueueState &queue=Queue();
+            hgl::MutexLock lock(&queue.lock);
+            for(Result &entry:queue.requests)
+                if(entry.request_id==result.request_id && entry.state==State::Capturing)
+                {
+                    entry=result;
+                    break;
+                }
+        }
+    }
+
 
     void DebugCaptureQueue::FailQueued(uint64_t target_id,const char *error)
     {

@@ -41,6 +41,23 @@ namespace hgl::graph
 
         if (ok)
         {
+            VkBufferMemoryBarrier2 barrier{};
+            barrier.sType=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier.srcStageMask=VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            barrier.srcAccessMask=VK_ACCESS_2_MEMORY_WRITE_BIT;
+            barrier.dstStageMask=VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            barrier.dstAccessMask=VK_ACCESS_2_TRANSFER_READ_BIT;
+            barrier.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+            barrier.buffer=buffer;
+            barrier.offset=offset;
+            barrier.size=size;
+            VkDependencyInfo dependency{};
+            dependency.sType=VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency.bufferMemoryBarrierCount=1;
+            dependency.pBufferMemoryBarriers=&barrier;
+            vkCmdPipelineBarrier2(*cmd,&dependency);
+
             VkBufferCopy region{};
             region.srcOffset = offset;
             region.dstOffset = 0;

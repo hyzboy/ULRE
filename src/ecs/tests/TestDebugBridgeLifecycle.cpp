@@ -36,13 +36,24 @@ int main()
        || ::strcmp(parsed.id,"\"a\\\"b\"")!=0)
         return 10;
 
+    const char buffer_request[]="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"capture_buffer\","
+                                "\"params\":{\"resource_id\":12,\"offset\":0,\"size\":16}}";
+    Request buffer;
+    if(!Parser(buffer_request,sizeof(buffer_request)-1).Parse(buffer)
+       || !buffer.has_resource_id || buffer.resource_id!=12
+       || !buffer.has_offset || buffer.offset!=0 || !buffer.has_size || buffer.size!=16)
+        return 10;
+
     const char *invalid[]={
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"off\",\"method\":\"get_debug_view\"}",
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"get_debug_view\",\"params\":{\"mode\":\"off\",\"mode\":\"uv0\"}}",
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"get_debug_view\"} trailing",
         "{\"jsonrpc\":\"2.0\",\"id\":01,\"method\":\"get_debug_view\"}",
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"\\uD800\"}",
-        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"get_debug_view\",\"params\":{\"x\":[1,]}}"
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"get_debug_view\",\"params\":{\"x\":[1,]}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"capture_buffer\",\"params\":{\"offset\":-1}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"capture_buffer\",\"params\":{\"size\":1,\"size\":4}}",
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"capture_buffer\",\"params\":{\"size\":18446744073709551616}}"
     };
     for(const char *text:invalid)
     {

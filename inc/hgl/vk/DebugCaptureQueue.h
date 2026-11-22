@@ -6,14 +6,15 @@
 namespace hgl::graph
 {
     class IRenderTarget;
+    class DeviceBuffer;
     struct CameraInfo;
 
     class DebugCaptureQueue
     {
     public:
-        enum class Attachment { Color, Depth, ColorDepth };
+        enum class Attachment { Color, Depth, ColorDepth, Buffer };
         enum class State { Empty, Queued, Capturing, Succeeded, Failed, Cancelled };
-        enum class Source { Swapchain, DebugView, Offscreen };
+        enum class Source { Swapchain, DebugView, Offscreen, Buffer };
 
         struct CameraSnapshot
         {
@@ -50,6 +51,8 @@ namespace hgl::graph
             uint32_t row_pitch=0;
             VkFormat format=VK_FORMAT_UNDEFINED;
             uint64_t byte_count=0;
+            uint64_t buffer_offset=0;
+            VkBufferUsageFlags buffer_usage=0;
             char path[1024]{};
             char metadata_path[1024]{};
             const char *error=nullptr;
@@ -59,6 +62,15 @@ namespace hgl::graph
 
         static uint64_t RegisterTarget(bool color=true,bool depth=true,Source source=Source::Swapchain,
                                        IRenderTarget *bound_target=nullptr,const char *name=nullptr);
+        // Registration, processing and unregistration must run on the resource owner/render thread.
+        // The owner guarantees that all GPU access is ordered on the graphics queue and that
+        // the buffer remains alive and unchanged until ProcessBuffer returns.
+        static uint64_t RegisterBuffer(DeviceBuffer *buffer,const char *name);
+        static AnsiString GetBuffersJSON();
+        static uint64_t RequestBuffer(uint64_t resource_id,uint64_t offset,uint64_t size,
+                                      const char **error=nullptr,uint32_t timeout_ms=30000);
+        static void ProcessBuffer(uint64_t resource_id,DeviceBuffer *buffer,uint64_t frame_id,
+                                  VkQueue submitted_queue,bool submission_succeeded);
         static bool SupportsFormat(VkFormat format,Attachment attachment);
         static void SetOffscreenDetails(uint64_t target_id,const VkFormat *colors,uint32_t count,VkFormat depth,
                                         bool can_color,bool can_depth);

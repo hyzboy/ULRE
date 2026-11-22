@@ -16,6 +16,8 @@
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/vk/DebugCaptureQueue.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/type/Smart.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -427,6 +429,11 @@ private:
 
     /// [0] = 贴离屏颜色纹理，[1] = 贴离屏深度纹理
     DisplayCube cubes[2];
+    hgl::AutoDelete<graph::DeviceBuffer> capture_buffer;
+    hgl::AutoDelete<graph::DeviceBuffer> unavailable_capture_buffer;
+    uint64_t capture_buffer_id=0;
+    uint64_t unavailable_capture_buffer_id=0;
+    uint64_t capture_buffer_frame=0;
 
     float cube_theta = 0.0f;
 
@@ -434,6 +441,80 @@ private:
     static constexpr float kCubeSpacing = 1.4f;
 
 private:
+    bool InitCaptureBufferFixture()
+    {
+        if(!getenv("RTTCD_BUFFER_TEST"))
+            return true;
+        auto *device=ecs_context->GetGPUDevice();
+        if(!device)
+            return false;
+        uint32_t upload[16];
+        for(uint32_t &value:upload) value=0xa5a5a5a5u;
+        capture_buffer=device->CreateBuffer(
+            graph::ObjectNameBuilder("CaptureFixtureSSBO"),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            sizeof(upload),sizeof(upload),upload,graph::BufferAllocPolicy::GPUOnly,graph::SharingMode::Exclusive);
+        if(!capture_buffer)
+            return false;
+        capture_buffer_id=graph::DebugCaptureQueue::RegisterBuffer(capture_buffer,"fixture_ssbo");
+        unavailable_capture_buffer=device->CreateBuffer(
+            graph::ObjectNameBuilder("UnavailableFixtureSSBO"),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            sizeof(upload),sizeof(upload),nullptr,graph::BufferAllocPolicy::GPUOnly,graph::SharingMode::Exclusive);
+        if(!unavailable_capture_buffer)
+            return false;
+        unavailable_capture_buffer_id=graph::DebugCaptureQueue::RegisterBuffer(
+            unavailable_capture_buffer,"fixture_no_transfer_src");
+        return capture_buffer_id && unavailable_capture_buffer_id;
+    }
+
+    void ProcessCaptureBufferFixture()
+    {
+        if(!capture_buffer_id || !graph::DebugCaptureQueue::HasQueued(capture_buffer_id))
+            return;
+        auto *device=ecs_context->GetGPUDevice();
+        if(getenv("RTTCD_BUFFER_DESTROY_TEST"))
+        {
+            capture_buffer_id=0;
+            capture_buffer=nullptr;
+            return;
+        }
+        if(getenv("RTTCD_BUFFER_FAIL_TEST"))
+        {
+            graph::DebugCaptureQueue::ProcessBuffer(capture_buffer_id,capture_buffer,
+                                                     0,device->GetGraphicsQueue(),false);
+            return;
+        }
+        if(getenv("RTTCD_BUFFER_QUEUE_TEST"))
+        {
+            graph::DebugCaptureQueue::ProcessBuffer(capture_buffer_id,capture_buffer,
+                                                     1,VK_NULL_HANDLE,true);
+            return;
+        }
+        hgl::AutoDelete<graph::TextureCmdBuffer> cmd(
+            device->CreateTextureCommandBuffer(graph::ObjectNameBuilder("CaptureFixtureWrite")));
+        bool submitted=false;
+        if(cmd && cmd->Begin())
+        {
+            ++capture_buffer_frame;
+            vkCmdFillBuffer(*cmd,capture_buffer->GetBuffer(),0,VK_WHOLE_SIZE,
+                            0x12340000u+static_cast<uint32_t>(capture_buffer_frame));
+            if(cmd->End())
+            {
+                const VkCommandBuffer raw=*cmd;
+                VkSubmitInfo submit{};
+                submit.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                submit.commandBufferCount=1;
+                submit.pCommandBuffers=&raw;
+                submitted=vkQueueSubmit(device->GetGraphicsQueue(),1,&submit,VK_NULL_HANDLE)==VK_SUCCESS;
+            }
+        }
+        graph::DebugCaptureQueue::ProcessBuffer(capture_buffer_id,capture_buffer,
+                                                 capture_buffer_frame,device->GetGraphicsQueue(),submitted);
+        if(submitted && vkQueueWaitIdle(device->GetGraphicsQueue())!=VK_SUCCESS)
+            GLogError(u8"[CaptureFixture] queue wait failed");
+    }
+
     bool SetupMainCamera()
     {
         LogStage("App::SetupMainCamera", "begin");
@@ -592,6 +673,12 @@ private:
 public:
     ~RenderToTextureColorDepthApp() override
     {
+        if(capture_buffer_id)
+            graph::DebugCaptureQueue::UnregisterTarget(capture_buffer_id);
+        if(unavailable_capture_buffer_id)
+            graph::DebugCaptureQueue::UnregisterTarget(unavailable_capture_buffer_id);
+        capture_buffer=nullptr;
+        unavailable_capture_buffer=nullptr;
         SAFE_CLEAR(offscreen)
     }
 
@@ -624,6 +711,9 @@ public:
         if (!SetupMainCamera())
             return LogStageFail("App::Init", "SetupMainCamera failed");
 
+        if(!InitCaptureBufferFixture())
+            return LogStageFail("App::Init", "capture buffer fixture failed");
+
         LogStage("App::Init", "success");
         return true;
     }
@@ -655,6 +745,7 @@ public:
         }
 
         WorkObject::Tick(delta_time);
+        ProcessCaptureBufferFixture();
 
         // 离屏内容静态：驱动到内容就绪即可，之后停止（避免同一纹理跨 pass 每帧写/读抖动）。
         // 就绪前每帧都要驱动 —— 离屏世界内部的异步读盘由它自己的 TextureStreamingSystem

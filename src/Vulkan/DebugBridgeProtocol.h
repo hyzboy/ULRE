@@ -15,8 +15,14 @@ namespace hgl::graph::debug_bridge
         bool has_id=false;
         uint64_t target_id=0;
         uint64_t request_id=0;
+        uint64_t resource_id=0;
+        uint64_t offset=0;
+        uint64_t size=0;
         bool has_target_id=false;
         bool has_request_id=false;
+        bool has_resource_id=false;
+        bool has_offset=false;
+        bool has_size=false;
     };
 
     class Parser
@@ -240,6 +246,21 @@ namespace hgl::graph::debug_bridge
                 {
                     if(request.has_request_id || !Unsigned(request.request_id)) return false;
                     request.has_request_id=true;
+                }
+                else if(::strcmp(key,"resource_id")==0)
+                {
+                    if(request.has_resource_id || !Unsigned(request.resource_id)) return false;
+                    request.has_resource_id=true;
+                }
+                else if(::strcmp(key,"offset")==0)
+                {
+                    if(request.has_offset || !Unsigned(request.offset)) return false;
+                    request.has_offset=true;
+                }
+                else if(::strcmp(key,"size")==0)
+                {
+                    if(request.has_size || !Unsigned(request.size)) return false;
+                    request.has_size=true;
                 }
                 else if(!Value(1)) return false;
                 Space();

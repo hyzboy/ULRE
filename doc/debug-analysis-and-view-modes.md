@@ -24,8 +24,19 @@
   普通离屏 `frame_id` 是该目标的成功托管提交序号，不是交换链全局帧号；相机、viewport
   标记为 unavailable/null，不可用于需要这些信息的深度分析；符合条件的 pass
   以 0 清空深度，清单记录该实际值。
+- `list_capture_buffers` 和 `capture_buffer` 是独立的 SSBO 请求接口，不接受客户端 GPU
+  指针或输出路径。资源所有者须在渲染线程登记 `DeviceBuffer`，保证资源存活、无并发修改，
+  所有 GPU 访问均在图形队列并按提交顺序同步；每次生产者成功提交后在同一线程调用
+  `ProcessBuffer`，传入实际图形队列和该资源单调递增的非零提交序号。销毁在同一线程执行，
+  `DeviceBuffer` 析构时自动注销并取消排队请求，也可提前注销。
+  没有这一契约的资源不得登记为可用；处理失败或队列不匹配不会返回旧数据。
+  只允许包含 `STORAGE_BUFFER` 和 `TRANSFER_SRC` 的真实 device buffer，offset 与 size
+  必须四字节对齐、位于实际 VkBuffer 大小内，单次最多 4 MiB。拷贝从 device buffer
+  到 staging，非从 CPU 上传镜像读取；清单 `ulre.buffer_capture.v1` 记录 resource ID、
+  request ID、提交序号、字节范围和真实 usage。注册但不满足 usage 的资源标记不可用。
+  当前只有测试夹具登记了缓冲；生产 SSBO 尚未接入此契约，因此默认不会被发现或抓取。
 - `dump_render_target` 和 `dump_buffer` 是旧接口，只读取最近一条 C++ 抓取结果，
-  不创建请求，也不保证结果属于调用者或当前帧。SSBO 的远程抓取尚未接入。
+  不创建请求，也不保证结果属于调用者或当前帧。
 - 纹理和缓冲 staging 读回在等待提交完成、映射后显式 invalidate 映射内存，
   invalidate 失败时不发布数据。旧 `FrameDebugger` 缓冲接口仍可能读到上传镜像，
   不能作为 GPU 写入的 SSBO 的可靠抓取接口。

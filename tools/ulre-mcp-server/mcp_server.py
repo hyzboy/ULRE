@@ -113,6 +113,20 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
+        "name": "list_capture_buffers",
+        "description": "List explicitly registered storage buffers and their readback capabilities.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "capture_buffer",
+        "description": "Queue a bounded, aligned range from a registered GPU storage buffer.",
+        "inputSchema": {"type": "object", "properties": {
+            "resource_id": {"type": "integer", "minimum": 1},
+            "offset": {"type": "integer", "minimum": 0},
+            "size": {"type": "integer", "minimum": 4, "maximum": 4194304},
+        }, "required": ["resource_id", "offset", "size"]},
+    },
+    {
         "name": "capture_frame",
         "description": "Queue target color, depth, or same-frame color and depth capture.",
         "inputSchema": {"type": "object", "properties": {
