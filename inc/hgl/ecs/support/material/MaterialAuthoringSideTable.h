@@ -189,6 +189,7 @@ namespace hgl::ecs
         /// 授权代数（= 旧组件行高 24 位 revision 的行内镜像）。每次授权变更 ++，
         /// 收集路径据此判断「配方是否需要在下一帧重解析」。
         uint32_t authored_generation = 0;
+        uint64_t recipe_generation = 0;
 
     public:
 
@@ -212,6 +213,7 @@ namespace hgl::ecs
 
         const hgl::graph::mtl::MaterialRecipe *GetRecipeOverride() const;
         bool HasRecipeOverride() const { return GetRecipeOverride() != nullptr; }
+        uint64_t GetRecipeGeneration() const { return recipe_generation; }
 
         // ── 具名纹理资源 ──
         /// **统一入口**：`resource.asset` 是唯一纹理来源（`TextureAsset*` 句柄）。

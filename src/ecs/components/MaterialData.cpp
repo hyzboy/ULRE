@@ -53,6 +53,7 @@ namespace hgl::ecs
         // 配方是重类型 ⇒ 直接写在旁表持有的本记录上。
         recipe_override = recipe;
         has_recipe_override = true;
+        ++recipe_generation;
 
         TouchAuthored();
     }
@@ -64,6 +65,7 @@ namespace hgl::ecs
 
         recipe_override = hgl::graph::mtl::MaterialRecipe{};
         has_recipe_override = false;
+        ++recipe_generation;
 
         TouchAuthored();
     }

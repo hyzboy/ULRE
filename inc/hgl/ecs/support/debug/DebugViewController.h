@@ -17,7 +17,7 @@ namespace hgl::ecs
      *     实例化 / 顶点 ABI；
      *   · 开关 = 逐实体的 `MaterialData::SetRecipe()` 覆盖。首次接管某实体时把
      *     「原配方（或原本没有覆盖这一事实）」记进旁表，`Off` 时逐条还原；
-     *   · 关闭状态**零开销**：`Apply()` 只比较一次模式，未变即返回 false。
+     *   · 关闭状态仅比较模式；开启时每次收集检查新增实体和作者配方修改。
      *
      * 线程模型：`RequestMode()` 可从任意线程调用（命名管道线程），`Apply()` 只在
      * 渲染线程的收集阶段之前调用。两者之间只有一把极短的互斥锁。
@@ -38,7 +38,7 @@ namespace hgl::ecs
         static graph::mtl::DebugViewMode GetAppliedMode();
 
         /// 渲染线程：把登记的模式应用到世界。返回 true = 本次发生了切换。
-        /// 模式未变 / world 为空 ⇒ 返回 false 且不做任何遍历。
+        /// 开启时同步新增实体和作者配方修改；关闭且模式未变时不遍历。
         static bool Apply(ECSContext *world);
 
         /// 渲染线程：还原全部被接管的实体并清空记录（世界销毁前调用）。

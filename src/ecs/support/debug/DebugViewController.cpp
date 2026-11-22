@@ -20,6 +20,8 @@ namespace hgl::ecs
         {
             bool had_override = false;
             MaterialRecipe recipe{};
+            bool overlay_applied = false;
+            uint64_t overlay_generation = 0;
         };
 
         struct ControllerState
@@ -62,7 +64,18 @@ namespace hgl::ecs
             return state;
         }
 
-        // 按记录还原并清空。world 可以是 nullptr（换世界时）。
+        void Restore(ECSContext *world,EntityID id,const SavedRecipe &saved)
+        {
+            MaterialData *material=world?world->GetMaterialData(id):nullptr;
+            if(!material || !saved.overlay_applied
+               || material->GetRecipeGeneration()!=saved.overlay_generation)
+                return;
+            if(saved.had_override)
+                material->SetRecipe(saved.recipe);
+            else
+                material->ClearRecipeOverride();
+        }
+
         void DropAllRecords(ECSContext *world)
         {
             ControllerState &state=State();
@@ -71,25 +84,25 @@ namespace hgl::ecs
             if(world&&state.world==world)
             {
                 for(auto [id,saved]:state.saved)
-                {
-                    MaterialData *material=world->GetMaterialData(id);
-                    if(!material)
-                        continue;
-
-                    if(saved.had_override)
-                        material->SetRecipe(saved.recipe);
-                    else
-                        material->ClearRecipeOverride();
-                }
+                    Restore(world,id,saved);
             }
 
             state.saved.Clear();
             state.world=nullptr;
         }
 
-        void ApplyMode(ECSContext *world,const DebugViewMode mode)
+        bool ApplyMode(ECSContext *world,const DebugViewMode mode)
         {
             ControllerState &state=State();
+            ValueArray<EntityID> removed;
+            for(auto [id,saved]:state.saved)
+                if(!world->GetGeometryData(id) || !world->GetMaterialData(id))
+                {
+                    Restore(world,id,saved);
+                    removed.Add(id);
+                }
+            for(EntityID id:removed)
+                state.saved.DeleteByKey(id);
 
             ValueArray<GeometryData *> primitives;
             world->GetComponents<GeometryData>(primitives);
@@ -128,6 +141,14 @@ namespace hgl::ecs
                 if(!saved)
                     continue;
 
+                if(saved->overlay_applied
+                   && material->GetRecipeGeneration()==saved->overlay_generation)
+                    continue;
+
+                saved->had_override=material->HasRecipeOverride();
+                saved->recipe=saved->had_override?*material->GetRecipeOverride():MaterialRecipe{};
+                saved->overlay_applied=false;
+
                 // base 配方 = 作者原本的配方，不是上一个调试通道的配方：
                 // 否则通道之间来回切换会累积（把上一个通道的贴图/渲染状态当成"原始"）。
                 const MaterialRecipe *base=saved->had_override?&saved->recipe:nullptr;
@@ -137,15 +158,18 @@ namespace hgl::ecs
                     continue;
 
                 material->SetRecipe(debug_recipe);
+                saved->overlay_generation=material->GetRecipeGeneration();
+                saved->overlay_applied=true;
                 ++applied;
             }
 
             state.world=world;
 
-            GLogInfo(u8"[DebugView] channel=%s primitives=%u/%u",
-                     GetDebugViewModeName(mode),
-                     applied,
-                     static_cast<uint32>(primitives.GetCount()));
+            if(applied)
+                GLogInfo(u8"[DebugView] channel=%s updated=%u/%u",
+                         GetDebugViewModeName(mode),applied,
+                         static_cast<uint32>(primitives.GetCount()));
+            return applied!=0 || !removed.IsEmpty();
         }
     }//namespace
 
@@ -196,21 +220,29 @@ namespace hgl::ecs
         ControllerState &state=State();
 
         DebugViewMode want;
+        bool refresh=false;
 
         {
             hgl::MutexLock lock(&state.lock);
 
-            if(state.requested==state.applied&&state.world==world)
-                return false;   // 最常见路径：一次比较就返回，不遍历
+            if(state.requested==state.applied)
+            {
+                if(state.requested==DebugViewMode::Off)
+                    return false;
+                refresh=state.world==world;
+            }
 
             want=state.requested;
         }
 
-        // 切换前先把旧记录按旧世界还原（换世界时 state.world != world）。
-        DropAllRecords(state.world);
-
+        bool changed=false;
+        if(!refresh)
+        {
+            DropAllRecords(state.world);
+            changed=true;
+        }
         if(want!=DebugViewMode::Off)
-            ApplyMode(world,want);
+            changed=ApplyMode(world,want)||changed;
 
         {
             hgl::MutexLock lock(&state.lock);
@@ -218,7 +250,7 @@ namespace hgl::ecs
             state.tracked_count=static_cast<uint32>(state.saved.GetCount());
         }
 
-        return true;
+        return changed;
     }
 
     void DebugViewController::Reset(ECSContext *world)
