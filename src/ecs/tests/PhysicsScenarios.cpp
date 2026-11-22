@@ -116,6 +116,12 @@ namespace hgl::ecs
         }
 
         // 3-2-1 金字塔（箱体半长 0.5 ⇒ 1m 立方；层中心 z = 0.5 / 1.5 / 2.5）
+        //
+        // 刻意不采用「等距贴面垒放 + 上层箱心正跨拼缝」的教科书构型：那是 Jolt 的
+        // 退化构型，左右接触法线完全对称、接触力相互抵消，最终判定「站住」还是
+        // 「被邻居挤出」只取决于浮点末位，结果会随编译器版本与线程调度翻转。
+        // 这里给每个箱体亚分米级的位置错位，使每个上层箱支撑在下方两块顶面上的
+        // 面积明显不相等（0.47 : 0.52 / 0.44 : 0.55 / 0.49 : 0.47），构型不再对称。
         {
             PhysicsBodyDesc b;
             b.motion = BodyMotionType::Dynamic;
@@ -123,9 +129,9 @@ namespace hgl::ecs
             b.restitution = 0.0f;
             b.mass = 1.0f;
 
-            const math::Vector3f layer0[3] = {{-1.0f, 0.0f, 0.5f}, {0.0f, 0.0f, 0.5f}, {1.0f, 0.0f, 0.5f}};
-            const math::Vector3f layer1[2] = {{-0.5f, 0.0f, 1.5f}, {0.5f, 0.0f, 1.5f}};
-            const math::Vector3f layer2[1] = {{0.0f, 0.0f, 2.5f}};
+            const math::Vector3f layer0[3] = {{-1.01f, -0.02f, 0.5f}, {0.0f, 0.0f, 0.5f}, {1.01f, 0.02f, 0.5f}};
+            const math::Vector3f layer1[2] = {{-0.48f, 0.0f, 1.5f}, {0.56f, 0.01f, 1.5f}};
+            const math::Vector3f layer2[1] = {{0.03f, 0.0f, 2.5f}};
 
             for (const auto &p : layer0)
                 sc.stack_boxes.push_back(CreatePhysicsBox(ctx, "Stack_L0", p, glm::quat(1.0f, 0.0f, 0.0f, 0.0f), math::Vector3f(0.5f), b));
@@ -145,26 +151,32 @@ namespace hgl::ecs
             e.allow_sleeping = false;
             e.linear_damping = 0.01f;
 
-            const glm::quat identity(1.0f, 0.0f, 0.0f, 0.0f);
             const math::Vector3f half_extents(0.5f);
-            constexpr int   kGridDim = 10;   // 10×10 ⇒ 100 枚
-            constexpr float kSpacing = 1.5f; // 1m 立方体 + 0.5m 间隙，落体间不互相干涉
+            constexpr int   kGridDim = 10;      // 10×10 ⇒ 100 枚
+            constexpr float kSpacing = 1.8f;    // 1m 立方 + 0.8m 间隙：反弹后互不干涉
+            constexpr float kGridCenterY = 9.5f; // 整片网格挪到 +Y 侧，让「反弹」与「金字塔」
+                                                 // 成为互不干扰的两个独立演示（原构型中最近
+                                                 // 的落箱正好砸在金字塔上，堆叠判据因此变成
+                                                 // 混沌判据）
 
             for (int row = 0; row < kGridDim; ++row)
             {
                 for (int col = 0; col < kGridDim; ++col)
                 {
                     const float x = (col - (kGridDim - 1) * 0.5f) * kSpacing;
-                    const float y = (row - (kGridDim - 1) * 0.5f) * kSpacing;
-                    // 逐行错开释放高度，避免整片同步落地
-                    const float z = 10.0f + row * 0.4f;
+                    const float y = kGridCenterY + (row - (kGridDim - 1) * 0.5f) * kSpacing;
+                    // 逐行错开释放高度、逐列错开微量偏航：避免整片同步落地 +
+                    // 完全同向的接触构型（同样属于退化情形）。
+                    const float z = 10.0f + row * 0.4f + col * 0.015f;
+                    const float yaw = (float)(((row * 7 + col * 3) % 5) - 2) * 0.004f;
+                    const glm::quat rot = glm::angleAxis(yaw, glm::vec3(0.0f, 0.0f, 1.0f));
 
                     const AnsiString name = AnsiString("Bouncy_") + AnsiString::numberOf(row)
                                           + AnsiString("_") + AnsiString::numberOf(col);
 
                     sc.bouncy_boxes.push_back(CreatePhysicsBox(ctx, name.c_str(),
                                                                math::Vector3f(x, y, z),
-                                                               identity, half_extents, e));
+                                                               rot, half_extents, e));
                 }
             }
         }

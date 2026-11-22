@@ -45,7 +45,8 @@ namespace
             {
                 kit_.AttachVisuals(box, example::kRowCrimson);
             }
-            return kit_.InitCamera(math::Vector3f(0.0f, 0.0f, 1.5f), 20.0f, 45.0f, -25.0f);
+            // 取景兼顾原点处的 3-2-1 金字塔与 +Y 侧的 10×10 反弹落箱阵列
+            return kit_.InitCamera(math::Vector3f(0.0f, 4.5f, 1.0f), 30.0f, 45.0f, -25.0f);
         }
 
         void Tick(double delta) override
