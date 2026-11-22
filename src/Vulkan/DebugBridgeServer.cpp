@@ -5,7 +5,9 @@
 #include<hgl/ecs/support/debug/DebugViewController.h>
 #include<hgl/mtl/DebugViewMode.h>
 #include<hgl/common/DebugChannel.h>
+#include<hgl/time/Time.h>
 #include<hgl/log/Log.h>
+#include "DebugBridgeProtocol.h"
 #include<cstring>
 #include<cinttypes>
 
@@ -42,11 +44,6 @@ static AnsiString MakeMetricsJSON()
     return json;
 }
 
-static bool ContainsMethod(const char *request,const char *method)
-{
-    return request && method && ::strstr(request,method)!=nullptr;
-}
-
 static AnsiString MakeDebugViewJSON()
 {
     const hgl::graph::mtl::DebugViewMode mode=
@@ -63,22 +60,9 @@ static AnsiString MakeDebugViewJSON()
     return json;
 }
 
-static AnsiString SetDebugViewFromRequest(const char *request)
+static AnsiString SetDebugViewFromRequest(const char *mode_name)
 {
     hgl::graph::mtl::DebugViewMode mode;
-
-    if(!request)
-        return AnsiString("{\"valid\":false,\"error\":\"missing_request\"}");
-
-    const char *mode_name=nullptr;
-    if(::strstr(request,"world_normal")) mode_name="world_normal";
-    else if(::strstr(request,"base_color")) mode_name="base_color";
-    else if(::strstr(request,"surface")) mode_name="surface";
-    else if(::strstr(request,"emissive")) mode_name="emissive";
-    else if(::strstr(request,"uv0")) mode_name="uv0";
-    else if(::strstr(request,"off")) mode_name="off";
-    else
-        return AnsiString("{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}");
 
     if(!hgl::graph::mtl::ParseDebugViewMode(mode_name,mode))
         return AnsiString("{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}");
@@ -124,7 +108,7 @@ static bool ConnectPipe(HANDLE pipe,HANDLE stop_event)
 }
 
 static bool TransferPipe(HANDLE pipe,HANDLE stop_event,void *read_buffer,const void *write_buffer,
-                         DWORD size,DWORD &transferred,DWORD timeout)
+                         DWORD size,DWORD &transferred,DWORD timeout,DWORD *failure=nullptr)
 {
     OVERLAPPED operation{};
     operation.hEvent=CreateEventW(nullptr,TRUE,FALSE,nullptr);
@@ -137,13 +121,18 @@ static bool TransferPipe(HANDLE pipe,HANDLE stop_event,void *read_buffer,const v
     bool success=done!=FALSE;
     if(!success && GetLastError()==ERROR_IO_PENDING)
         success=WaitPipeOperation(pipe,stop_event,operation,transferred,timeout);
+    if(!success && failure)
+        *failure=GetLastError();
     CloseHandle(operation.hEvent);
     return success;
 }
 
-static bool SendPipeResponse(HANDLE pipe,HANDLE stop_event,const AnsiString &body)
+static bool SendPipeResponse(HANDLE pipe,HANDLE stop_event,const char *id,
+                             const AnsiString &body,bool error=false)
 {
-    AnsiString response="{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":";
+    AnsiString response="{\"jsonrpc\":\"2.0\",\"id\":";
+    response+=id;
+    response+=error?",\"error\":" : ",\"result\":";
     response+=body;
     response+="}";
 
@@ -158,6 +147,24 @@ static bool SendPipeResponse(HANDLE pipe,HANDLE stop_event,const AnsiString &bod
         offset+=written;
     }
     return true;
+}
+
+static void WaitForClientClose(HANDLE pipe,HANDLE stop_event)
+{
+    const uint64_t deadline=hgl::GetUptimeMs()+5000;
+    char ignored[256];
+    for(;;)
+    {
+        const uint64_t now=hgl::GetUptimeMs();
+        if(now>=deadline) return;
+        DWORD received=0;
+        DWORD error=0;
+        if(!TransferPipe(pipe,stop_event,ignored,nullptr,sizeof(ignored),received,
+                         static_cast<DWORD>(deadline-now),&error)
+           && error!=ERROR_MORE_DATA)
+            return;
+        if(received==0) return;
+    }
 }
 
 #endif
@@ -264,7 +271,7 @@ bool DebugBridgeServer::Execute()
     pipe_handle=CreateNamedPipeA(
         pipe_name.c_str(),
         PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
-        PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
+        PIPE_TYPE_MESSAGE|PIPE_READMODE_MESSAGE|PIPE_WAIT,
         1,4096,4096,0,nullptr);
 
     if(pipe_handle==INVALID_HANDLE_VALUE)
@@ -285,9 +292,16 @@ bool DebugBridgeServer::Execute()
 
     char request[4096]={};
     DWORD bytes_read=0;
+    DWORD read_error=0;
     if(!TransferPipe(pipe_handle,stop_event,request,nullptr,sizeof(request)-1,
-                     bytes_read,5000) || bytes_read==0)
+                     bytes_read,5000,&read_error) || bytes_read==0)
     {
+        if(read_error==ERROR_MORE_DATA)
+        {
+            if(SendPipeResponse(pipe_handle,stop_event,"null",
+                                "{\"code\":-32600,\"message\":\"Request too large\"}",true))
+                WaitForClientClose(pipe_handle,stop_event);
+        }
         DisconnectNamedPipe(pipe_handle);
         CloseHandle(pipe_handle);
         pipe_handle=INVALID_HANDLE_VALUE;
@@ -295,33 +309,38 @@ bool DebugBridgeServer::Execute()
     }
     request[bytes_read]=0;
 
+    debug_bridge::Request parsed;
+    debug_bridge::Parser parser(request,bytes_read);
+    const bool valid=parser.Parse(parsed);
+    bool protocol_error=!valid;
     AnsiString result;
-    if(ContainsMethod(request,"get_render_health"))
+    if(!valid)
+        result="{\"code\":-32600,\"message\":\"Invalid request\"}";
+    else if(::strcmp(parsed.method,"get_render_health")==0)
         result=RenderHealthLedger::GetStatusJSON();
-    else if(ContainsMethod(request,"get_pass_metrics"))
+    else if(::strcmp(parsed.method,"get_pass_metrics")==0)
         result=MakeMetricsJSON();
-    else if(ContainsMethod(request,"get_camera_matrices"))
+    else if(::strcmp(parsed.method,"get_camera_matrices")==0)
         result=FrameDebugger::GetCameraSnapshotJSON();
-    else if(ContainsMethod(request,"set_debug_view"))
-        result=SetDebugViewFromRequest(request);
-    else if(ContainsMethod(request,"get_debug_view"))
+    else if(::strcmp(parsed.method,"set_debug_view")==0)
+        result=SetDebugViewFromRequest(parsed.mode);
+    else if(::strcmp(parsed.method,"get_debug_view")==0)
         result=MakeDebugViewJSON();
-    else if(ContainsMethod(request,"capture_frame"))
+    else if(::strcmp(parsed.method,"capture_frame")==0)
         result="{\"valid\":false,\"error\":\"capture_request_not_supported\"}";
-    else if(ContainsMethod(request,"dump_buffer")
-         || ContainsMethod(request,"dump_render_target"))
+    else if(::strcmp(parsed.method,"dump_buffer")==0
+         || ::strcmp(parsed.method,"dump_render_target")==0)
         result=FrameDebugger::GetLatestResultJSON();
-    else if(ContainsMethod(request,"inspect_camera_viewport"))
+    else if(::strcmp(parsed.method,"inspect_camera_viewport")==0)
         result=RenderHealthLedger::GetStatusJSON();
     else
-        result="{\"valid\":false,\"error\":\"unknown_method\"}";
-
-    if(SendPipeResponse(pipe_handle,stop_event,result))
     {
-        char ignored;
-        DWORD received=0;
-        TransferPipe(pipe_handle,stop_event,&ignored,nullptr,1,received,5000);
+        protocol_error=true;
+        result="{\"code\":-32601,\"message\":\"Method not found\"}";
     }
+
+    if(SendPipeResponse(pipe_handle,stop_event,valid?parsed.id:"null",result,protocol_error))
+        WaitForClientClose(pipe_handle,stop_event);
     else if(!IsStopRequested())
         GLogError(u8"[DebugBridge] Failed to send pipe response");
     DisconnectNamedPipe(pipe_handle);

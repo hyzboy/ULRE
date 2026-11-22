@@ -6,6 +6,8 @@ import analyzer
 
 
 PIPE_NAME = r"\\.\pipe\ulre_render_debug"
+MAX_PIPE_REQUEST_BYTES = 4095
+MAX_PIPE_RESPONSE_BYTES = 1024 * 1024
 
 
 TOOLS = [
@@ -145,19 +147,35 @@ def call_engine(method, params=None):
     payload = {"jsonrpc": "2.0", "id": 1, "method": method}
     if params:
         payload["params"] = params
-    request = json.dumps(payload)
+    request = json.dumps(payload).encode("utf-8")
+    if len(request) > MAX_PIPE_REQUEST_BYTES:
+        return {"valid": False, "error": "ULRE bridge request exceeds the size limit"}
     try:
         with open(PIPE_NAME, "r+b", buffering=0) as pipe:
-            pipe.write(request.encode("utf-8"))
-            response = pipe.read(4096)
+            if pipe.write(request) != len(request):
+                return {"valid": False, "error": "Incomplete ULRE bridge request"}
+            chunks = bytearray()
+            while len(chunks) < MAX_PIPE_RESPONSE_BYTES:
+                data = pipe.read(min(4096, MAX_PIPE_RESPONSE_BYTES - len(chunks)))
+                if not data:
+                    break
+                chunks.extend(data)
+                try:
+                    envelope = json.loads(chunks)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    continue
+                if not isinstance(envelope, dict) or envelope.get("id") != 1:
+                    return {"valid": False, "error": "Invalid ULRE bridge response ID"}
+                if "error" in envelope:
+                    return {"valid": False, "error": "ULRE bridge RPC error",
+                            "detail": envelope["error"]}
+                result = envelope.get("result")
+                if not isinstance(result, dict):
+                    return {"valid": False, "error": "Invalid ULRE bridge result"}
+                return result
     except OSError as exc:
         return {"valid": False, "error": "ULRE bridge unavailable", "detail": str(exc)}
-
-    if not response:
-        return {"valid": False, "error": "Empty ULRE bridge response"}
-
-    envelope = json.loads(response.decode("utf-8"))
-    return envelope.get("result", {"valid": False, "error": "Invalid ULRE response"})
+    return {"valid": False, "error": "Incomplete or oversized ULRE bridge response"}
 
 
 def result_response(request_id, result):

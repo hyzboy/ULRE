@@ -100,6 +100,40 @@ class AnalyzerTests(unittest.TestCase):
             response = mcp_server.handle(request)
         self.assertTrue(response["result"]["isError"])
 
+    def test_pipe_client_reads_fragmented_response(self):
+        class Pipe:
+            def __init__(self):
+                self.chunks = iter([b'{"jsonrpc":"2.0","id":', b'1,"result":{"valid":true}}'])
+            def __enter__(self):
+                return self
+            def __exit__(self, *_):
+                pass
+            def write(self, data):
+                return len(data)
+            def read(self, _):
+                return next(self.chunks, b"")
+
+        with patch.object(mcp_server.os, "name", "nt"), \
+             patch("builtins.open", return_value=Pipe()):
+            result = mcp_server.call_engine("get_debug_view")
+        self.assertTrue(result["valid"])
+
+    def test_pipe_client_rejects_mismatched_response_id(self):
+        class Pipe:
+            def __enter__(self):
+                return self
+            def __exit__(self, *_):
+                pass
+            def write(self, data):
+                return len(data)
+            def read(self, _):
+                return b'{"jsonrpc":"2.0","id":2,"result":{"valid":true}}'
+
+        with patch.object(mcp_server.os, "name", "nt"), \
+             patch("builtins.open", return_value=Pipe()):
+            result = mcp_server.call_engine("get_debug_view")
+        self.assertFalse(result["valid"])
+
     def test_world_position_does_not_read_latest_camera(self):
         depth = self.capture("depth.raw", struct.pack("<ff", 0.0, 0.5))
         inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
