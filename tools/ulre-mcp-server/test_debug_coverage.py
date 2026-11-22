@@ -47,6 +47,17 @@ class DebugCoverageIntegrationTests(unittest.TestCase):
                 normal = 'normal = "pack(res):image/Brickwall/Normal.Tex2D"\n'
                 self.assertEqual(text.count(normal), 1)
                 text = text.replace(normal, "")
+            text += f"""
+[[nodes]]
+name = "CubeInstance"
+geometry = "presets:cube"
+recipe = "{recipe}"
+material = "fixture_surface"
+mobility = "static"
+transform.position = [0.0, -3.0, 1.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 0.0
+"""
             scene.write_text(text, encoding="utf-8")
             env = os.environ.copy()
             for key in list(env):
@@ -86,7 +97,7 @@ class DebugCoverageIntegrationTests(unittest.TestCase):
                         render_regression._wait_ready(process, log, mode, 120)
                         status = render_regression._bridge("get_debug_view")
                         self.assertEqual(status["mode"], mode, status)
-                        self.assertGreaterEqual(status["tracked_entities"], 3)
+                        self.assertGreaterEqual(status["tracked_entities"], 4)
                         main_request = self._request(main)
                         debug_request = self._request(status["target_id"])
                         main_result = self._wait(main_request)

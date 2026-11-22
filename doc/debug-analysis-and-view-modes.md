@@ -237,7 +237,7 @@ surface 的 metallic 均值执行数值检查；
 完整 BasicLitMeshes MCP 调用顺序见 `.ai/skills/SKILL_RENDER_DIAGNOSTICS.md`。
 
 同帧覆盖测试使用单独的临时场景和成对请求，逐像素比较主深度、调试深度及
-颜色/Position alpha，检查 alpha-test 镂空、法线贴图、有无贴图、缺顶点法线、
+颜色/Position alpha，检查 alpha-test 镂空、重复几何实例、法线贴图、有无贴图、缺顶点法线、
 dither 拒绝、主颜色和关闭行为。它不更改基线，必须在管道未被其他引擎占用时运行：
 
 ```powershell
