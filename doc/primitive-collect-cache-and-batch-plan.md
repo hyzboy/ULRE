@@ -172,10 +172,11 @@ Release，1280×720，`CSTRESS_FRAMES=180 CSTRESS_SAMPLE=170 CSTRESS_PROFILE=1`�
 3. 常规运行（cache 关）→ `溢出槽=0` + `done frames=N`
 4. 稳态运行（cache 开）→ `回退=0`、`稳态=yes`、`接管≥1`、`计划未命中≤2`
 
-当前基线（默认档 729 棋盘 + 3500 骰子，容量单源 §1b = 40960）：Release
-`fnv1a64=0x76BCF2F4A175A013`、Debug 锚定值 `0x67E2C7C665F22584`
-（`ULRE_NO_INSTANCING=1` 时为 `0x966D6FDBBE188383`）。Release 不钉死该值
-（浮点/优化差异），只要求两条路径互等。
+当前基线（默认档 729 棋盘 + 350 骰子，容量单源 §1b = 40960）：Debug 锚定值
+`0x701368BFE0E60060`（2026-11 迁移后机器实测：AMD RX 6700 XT / 32.0.21045.29003）。
+旧档（+3500 骰 / Intel Arc 140T）记录为 Release `0x76BCF2F4A175A013`、Debug
+`0x67E2C7C665F22584`、`ULRE_NO_INSTANCING=1` 时 `0x966D6FDBBE188383`，仅作对照。
+Release 不钉死该值（浮点/优化差异），只要求两条路径互等。
 
 ## 7. 已知残余风险
 

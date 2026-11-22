@@ -15,7 +15,7 @@
 //   · 默认 27×27 = 729 个**棋盘模型**实例（每模型 1 个 GPU 模板 × 4 个部件），
 //     场景里加一个棋盘 = 实体树上加一行；部件展开 / 逐实例矩阵 / 剔除全在
 //     `entity_gpu_cull.glsl` 里完成，CPU 不按部件记账。
-//   · 默认 400 颗**骰子**走**传统路径**（每实体 1 条 4-ID 行、无模板）作为对照：
+//   · 默认 350 颗**骰子**走**传统路径**（每实体 1 条 4-ID 行、无模板）作为对照：
 //     同一相机、同一帧里既有「模板桶组」也有「素图元实例」，验证两条路径共存
 //     不打架（模板实体按 `part_bucket_count` 占连续桶组，素图元落在基础桶）。
 //   · 骰子是 `BodyMotionType::Dynamic` 刚体，从空中落下弹在棋盘面上 ⇒ 量的是
@@ -41,8 +41,8 @@
 //
 //   ⇒ 4 部件模板下**每棋盘 5 行**，旧容量档（4096）时 `5 × 896 = 4480` 必越界
 //     ——这是本工程第一次实跑撞的墙（`[T3i] 竞技场实例行超容量` 断言 + 整批不绘制）。
-//   ⇒ 本档（容量 `ULRE_MAX_VISIBLE_ENTITIES` = 40960）：`5 × 729 + 3500 = 7145`，
-//     留 ~33k 行余量（桶 4 行对齐 + 未来加桶）。
+//   ⇒ 本档（容量 `ULRE_MAX_VISIBLE_ENTITIES` = 40960）：`5 × 729 + 350 = 3995`，
+//     留 ~37k 行余量（桶 4 行对齐 + 未来加桶）。
 //     实测桶数 = 2（代表几何体桶 = 棋盘数 + 骰子数，部件桶组 = 4 × 棋盘数；
 //     4 个部件同几何 ⇒ 同一个 `bucket_slot`，容量按 `部件数 × 实例数` 计），
 //     对齐只吃 1 行。
@@ -142,7 +142,7 @@ namespace
 
     // ── 默认档（见文件头第二节的算式）─────────────────────────────────────
     constexpr uint32_t kDefaultBoards = 729;       // 5 × 729 = 3645
-    constexpr uint32_t kDefaultDice   = 350;      //      + 3500 = 7145 ≤ 40960
+    constexpr uint32_t kDefaultDice   = 350;       //      + 350 = 3995 ≤ 40960
     constexpr float    kCellSpacing   = 1.25f;     // 底板宽 1.12 ⇒ 留 0.13 缝
 
     // 棋盘本体全部由**内置单位立方体**（±0.5）拼出：部件只差模板内的 local_matrix。
@@ -277,7 +277,7 @@ private:
     static constexpr uint32_t kSelfW           = 1280;
     static constexpr uint32_t kSelfH           = 720;
     static constexpr uint32_t kSelfMinDistinct = 2;
-    static constexpr uint64_t kSelfFNV         = 0x67E2C7C665F22584ull;   // 2026-11 Debug 实跑记录（默认档 729+3500，容量单源 40960）
+    static constexpr uint64_t kSelfFNV         = 0x701368BFE0E60060ull;   // 2026-11 Debug 实跑记录（AMD RX 6700 XT / 32.0.21045.29003；默认档 729+350，容量单源 40960）
 
 private:
 
