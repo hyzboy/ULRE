@@ -503,13 +503,8 @@ namespace hgl::ecs
             return false;
 
         // ------- Create pipeline -------
-        // P2：mesh 管线（宽度入 SSBO，cull off——quad 绕序不定，双面绘制）
-        // EDS 1/2/3：管线只带 shader 部分 ⇒ 这份配置自己留着，绘制期动态下发。
+        // 管线按 RenderPass 创建；初始化时不绑定当前 RT，Render() 按实际 pass 重建。
         pipeline_config_ = graph::mtl::MakeLineMeshConfig();
-        pipeline_ = rp->CreatePipeline(material_, pipeline_config_);
-
-        if (!pipeline_)
-            return false;
 
         SyncTransformBinding();
 
@@ -918,13 +913,29 @@ namespace hgl::ecs
             return;
         }
 
-        if (!pipeline_ || !material_)
+        if (!material_)
         {
-            GLogWarning("[LineRenderPipeline] Render skipped: invalid render resources (pipeline=%p material=%p)",
-                        pipeline_,
-                        material_);
+            GLogWarning("[LineRenderPipeline] Render skipped: invalid material");
             return;
         }
+
+        graph::IRenderTarget* active_target = context_ ? context_->GetRenderTarget() : nullptr;
+        graph::RenderPass* active_pass = active_target ? active_target->GetRenderPass() : nullptr;
+        if (!active_pass)
+        {
+            GLogWarning("[LineRenderPipeline] Render skipped: no active RenderPass");
+            return;
+        }
+        if (active_pass->GetColorCount() == 0)
+            return;
+        if (pipeline_render_pass_ != active_pass)
+        {
+            pipeline_ = active_pass->CreatePipeline(material_, pipeline_config_);
+            pipeline_render_pass_ = pipeline_ ? active_pass : nullptr;
+        }
+
+        if (!pipeline_)
+            return;
 
         if (!current_line_buffer_)
         {

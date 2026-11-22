@@ -73,6 +73,7 @@ namespace hgl::ecs
         graph::VulkanDevice*    device_         = nullptr;
         graph::ShaderProgram*        material_       = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;
+        graph::RenderPass*      pipeline_render_pass_ = nullptr;
 
         /// EDS 1/2/3：管线不带渲染状态 ⇒ 建管线时的那份配置留在这里，绘制期下发
         ///（见 `inc/hgl/vk/pipeline/VKPipeline.h`；`MakeLineMeshConfig()`：双面 + 深度 test/write）。

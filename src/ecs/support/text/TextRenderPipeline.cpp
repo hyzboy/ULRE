@@ -259,6 +259,17 @@ namespace hgl::ecs
         if (!cmd)
             return;
 
+        // 深度专用 pass（CSM 级联等：RenderPass 颜色附件数 0）里不得绘制文字。
+        // 文字片元着色器静态写 outColor ⇒ Vulkan 硬性要求 VkRenderingInfo 有对应颜色附件
+        // （VUID-interface 的 "writes to outColor but no pColorAttachment"）；即便管线
+        // 正是为该 pass 建的也不合法（`MakeAlpha2DConfig()` 的 alpha blend 不让
+        // `strip_fragment_shader` 生效）。文字属 UI 层，本就与阴影贴图无关 ⇒ 整段跳过。
+        if (graph::RenderPass* active_pass = ResolveActiveRenderPass())
+        {
+            if (active_pass->GetColorCount() == 0)
+                return;
+        }
+
         const bool text_trace = ULRE_DEBUG_ON(Text);
 
         for (auto &pair : resources_by_font)
@@ -638,6 +649,13 @@ namespace hgl::ecs
         return true;
     }
 
+    graph::RenderPass* TextRenderPipeline::ResolveActiveRenderPass() const
+    {
+        // 当前渲染目标唯一权威：world->GetRenderTarget()（`RenderTo` 期间它指向本次离屏 RT）
+        graph::IRenderTarget* active_target = world ? world->GetRenderTarget() : nullptr;
+        return active_target ? active_target->GetRenderPass() : nullptr;
+    }
+
     void TextRenderPipeline::BuildInputs(ValueArray<TextComponent *> &texts,
                                          std::unordered_map<TextLayerKey, BatchInput, TextLayerKeyHash>& inputs)
     {
@@ -726,7 +744,19 @@ namespace hgl::ecs
                 input.dirty = true;
             }
 
-            if (!resources->pipeline && resources->material)
+            // 管线与 RenderPass 是**绑定关系**：`VkPipelineRenderingCreateInfo` 里的
+            // colorAttachmentCount / colorAttachmentFormats / depthAttachmentFormat 全部取自
+            // 建它时那个 RenderPass ⇒ 同一份 `pipeline` 不能跨 pass 复用。
+            // 一个世界每帧会走多个 pass（CSM 级联 = 0 颜色附件、主 pass = 1 颜色附件），
+            // 若只在 `pipeline == nullptr` 时建，则**第一个** pass（阴影）建的管线会被后续
+            // 主 pass 一直沿用 ⇒ vkCmdDrawMeshTasks 报 VUID-pColorAttachments-08963 /
+            // colorAttachmentCount-06179 / dynamicRenderingUnusedAttachments-08914。
+            // ⇒ 判据必须带上 RenderPass 指针。同 pass 反复进入无成本：
+            // `CreatePipelineForProgram` 自带 (program_digest, strip_fragment_shader) 备忘。
+            // 深度专用 pass（颜色附件数 0）**不建管线**：`RenderLayer` 在该 pass 直接跳过绘制
+            // （见其守卫），建了也用不上，反而把 `pipeline_render_pass` 拉到该 pass 上。
+            if (render_pass && resources->material && render_pass->GetColorCount() > 0
+                && resources->pipeline_render_pass != render_pass)
             {
                 // CharQuad mesh shader self-declares all vertex SSBOs; no geometry_vertex_format
                 // EDS 1/2/3：管线只带 shader 部分 ⇒ 这份配置随资源留存，绘制期动态下发。
@@ -736,6 +766,7 @@ namespace hgl::ecs
                 resources->pipeline_config.render_layer = input.render_layer;
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
                                                                   resources->pipeline_config);
+                resources->pipeline_render_pass = resources->pipeline ? render_pass : nullptr;
                 if (!resources->pipeline)
                     GLogError("[TextRenderPipeline] Failed to create GPU text pipeline");
             }

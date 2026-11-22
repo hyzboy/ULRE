@@ -74,6 +74,11 @@ namespace hgl
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
 
+                /// `pipeline` 是**按 RenderPass 建**的（`VkPipelineRenderingCreateInfo` 里带着该
+                /// pass 的颜色附件数量/格式与深度格式，见 `RenderPass::CreatePipelineForProgram`）
+                /// ⇒ 换 pass 必须换管线。此处记录建它时的 pass，绘制前判等重建。
+                graph::RenderPass* pipeline_render_pass = nullptr;
+
                 /// EDS 1/2/3：管线不带渲染状态 ⇒ 建管线时的那份配置留在这里，绘制期下发
                 ///（见 `inc/hgl/vk/pipeline/VKPipeline.h`；`MakeAlpha2DConfig()`：2D overlay + alpha blend）。
                 graph::mtl::MaterialPipelineConfig pipeline_config{};
@@ -124,6 +129,9 @@ namespace hgl
             graph::GraphicsContext* frame_graphics_context = nullptr;
             graph::ShaderProgramManager* frame_material_manager = nullptr;
             graph::RenderPass* frame_render_pass = nullptr;
+
+            /// 当前生效的 RenderPass（取 `world->GetRenderTarget()`，绘制/建管线期都按它判等）
+            graph::RenderPass* ResolveActiveRenderPass() const;
             graph::VulkanDevice* frame_device = nullptr;
             graph::IRenderTarget* frame_render_target = nullptr;
 

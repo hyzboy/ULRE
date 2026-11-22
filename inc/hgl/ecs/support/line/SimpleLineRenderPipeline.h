@@ -72,6 +72,7 @@ namespace hgl::ecs
         graph::VulkanDevice*    device_         = nullptr;
         graph::ShaderProgram*        material_       = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;
+        graph::RenderPass*      pipeline_render_pass_ = nullptr;
 
         /// 建管线时的那份配置留在这里，绘制期下发（同 Line：双面 + 深度 test/write）。
         graph::mtl::MaterialPipelineConfig pipeline_config_{};
