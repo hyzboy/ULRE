@@ -68,6 +68,8 @@ def load_manifest(path):
     if not isinstance(filename, str) or not filename or filename in (".", "..") or \
             "/" in filename or "\\" in filename or ":" in filename:
         raise ValueError("data_file must be a file name in the manifest directory")
+    if "capture_id" in metadata and metadata["capture_id"] != filename:
+        raise ValueError("capture_id does not match data_file")
     data_path = (metadata_path.parent / filename).resolve(strict=True)
     if data_path.parent != metadata_path.parent or not data_path.is_file():
         raise ValueError("Capture data must be in the manifest directory")
@@ -94,6 +96,8 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
         if color_space not in ("linear", "srgb"):
             raise ValueError("Capture color space is unknown; supply color_space_override")
         result = analyzer.analyze_luminance(str(data_path), width, height, encoding, color_space)
+        result["color_space_source"] = ("override" if metadata["color_space"] == "unknown"
+                                        else "capture_metadata")
     elif operation in ("depth", "world_position"):
         if metadata.get("attachment") != "depth" or encoding != "r32f" or \
                 metadata.get("copy_aspect") != "depth":
@@ -135,9 +139,12 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
             result["sampling_step"] = sample_step
             result["limitations"] = ["camera snapshot covers primitive collection only",
                                      "clear-depth filtering cannot distinguish geometry at clear depth"]
+        result["depth_convention_source"] = ("capture_metadata" if isinstance(camera_reversed, bool)
+                                              else "override")
     else:
         raise ValueError("Unsupported capture analysis operation")
     result["capture"] = {key: metadata[key] for key in ("request_id", "target_id", "frame_id")}
+    result["capture"]["capture_id"] = metadata.get("capture_id")
     result["pixel_scope"] = ("sampled_non_clear_depth" if operation == "world_position"
                              else "full_frame_including_clear")
     return result
@@ -187,7 +194,11 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
                                      a["encoding"], threshold, heatmap_dir)
     result["captures"] = [{key: entry[key] for key in ("request_id", "target_id", "frame_id")}
                           for entry in (a, b)]
+    for provenance, metadata in zip(result["captures"], (a, b)):
+        provenance["capture_id"] = metadata.get("capture_id")
     result["color_space"] = color_space
+    result["color_space_source"] = ("override" if a["color_space"] == "unknown"
+                                    else "capture_metadata")
     result["comparison_space"] = "encoded_channels"
     result["pixel_scope"] = "full_frame_including_clear"
     result["limitations"] = ["scene and device context are unverified",

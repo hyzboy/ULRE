@@ -249,6 +249,7 @@ class AnalyzerTests(unittest.TestCase):
                        {"data_file": "../capture.raw"},
                        {"data_file": "C:outside.raw"},
                        {"vk_format": 37},
+                       {"capture_id": "another-capture.raw"},
                        {"samples": True}):
             with self.subTest(fields=fields):
                 with self.assertRaises(ValueError):
