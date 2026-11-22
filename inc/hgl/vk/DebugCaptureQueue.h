@@ -34,7 +34,8 @@ namespace hgl::graph
         static uint64_t RegisterTarget(bool color=true,bool depth=true);
         static void UnregisterTarget(uint64_t target_id);
         static AnsiString GetTargetsJSON();
-        static uint64_t Request(uint64_t target_id,Attachment attachment,const char **error=nullptr);
+        static uint64_t Request(uint64_t target_id,Attachment attachment,const char **error=nullptr,
+                                uint32_t timeout_ms=30000);
         static bool GetResult(uint64_t request_id,Result &result);
         static bool Cancel(uint64_t request_id);
         static bool Release(uint64_t request_id);

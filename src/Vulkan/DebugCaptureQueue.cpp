@@ -17,7 +17,7 @@ namespace hgl::graph
     {
         constexpr uint32_t kMaxTargets=16;
         constexpr uint32_t kMaxRequests=16;
-        constexpr uint64_t kQueueTimeoutMs=30000;
+        constexpr uint32_t kMaxQueueTimeoutMs=30000;
         constexpr uint64_t kMaxCaptureBytes=256ull*1024*1024;
         struct Target
         {
@@ -143,12 +143,18 @@ namespace hgl::graph
         return json;
     }
 
-    uint64_t DebugCaptureQueue::Request(uint64_t target_id,Attachment attachment,const char **error)
+    uint64_t DebugCaptureQueue::Request(uint64_t target_id,Attachment attachment,const char **error,
+                                        uint32_t timeout_ms)
     {
         QueueState &queue=Queue();
         hgl::MutexLock lock(&queue.lock);
         Expire(queue);
         if(error) *error=nullptr;
+        if(!timeout_ms || timeout_ms>kMaxQueueTimeoutMs)
+        {
+            if(error) *error="invalid_timeout";
+            return 0;
+        }
         if(attachment!=Attachment::Color && attachment!=Attachment::Depth)
         {
             if(error) *error="unsupported_attachment";
@@ -179,7 +185,7 @@ namespace hgl::graph
                 result.target_id=target_id;
                 result.attachment=attachment;
                 result.state=State::Queued;
-                result.expires_at_ms=hgl::GetUptimeMs()+kQueueTimeoutMs;
+                result.expires_at_ms=hgl::GetUptimeMs()+timeout_ms;
                 return result.request_id;
             }
         if(error) *error="queue_full";

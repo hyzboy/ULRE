@@ -2,6 +2,7 @@
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/log/Log.h>
+#include<hgl/time/Time.h>
 #include<cstring>
 
 namespace
@@ -84,6 +85,13 @@ int main()
        || !DebugCaptureQueue::GetResult(cancelled,result)
        || result.state!=DebugCaptureQueue::State::Cancelled
        || !DebugCaptureQueue::Release(cancelled))
+        return 3;
+    const uint64_t expiring=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Depth,nullptr,1);
+    hgl::SleepSecond(0.01);
+    if(!expiring || !DebugCaptureQueue::GetResult(expiring,result)
+       || result.state!=DebugCaptureQueue::State::Failed
+       || !result.error || ::strcmp(result.error,"queue_timeout")!=0
+       || !DebugCaptureQueue::Release(expiring))
         return 3;
     DebugCaptureQueue::Process(&target,target_id,77);
     if(!DebugCaptureQueue::GetResult(request_id,result)
