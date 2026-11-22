@@ -27,6 +27,11 @@ class AnalyzerTests(unittest.TestCase):
         result = analyzer.analyze_luminance(path, 1, 1, "bgra8")
         self.assertAlmostEqual(result["mean"], 0.2126)
 
+    def test_srgb_luminance_is_linearized(self):
+        path = self.capture("gray.raw", bytes((128, 128, 128, 255)))
+        result = analyzer.analyze_luminance(path, 1, 1, "rgba8", "srgb")
+        self.assertAlmostEqual(result["mean"], 0.2158605001)
+
     def test_unknown_format_is_rejected(self):
         path = self.capture("image.raw", bytes((0, 0, 0, 0)))
         with self.assertRaises(ValueError):
@@ -81,6 +86,7 @@ class AnalyzerTests(unittest.TestCase):
             "method": "tools/call",
             "params": {"name": "analyze_luminance", "arguments": {
                 "path": str(self.root / "missing.raw"), "width": 1, "height": 1,
+                "color_space": "linear",
             }},
         })
         self.assertTrue(response["result"]["isError"])

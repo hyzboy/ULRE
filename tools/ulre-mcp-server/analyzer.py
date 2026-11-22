@@ -59,7 +59,11 @@ def _percentile(values, percentile):
     return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
 
 
-def analyze_luminance(path, width, height, pixel_format="rgba8"):
+def analyze_luminance(path, width, height, pixel_format="rgba8", color_space="linear"):
+    if color_space not in ("linear", "srgb"):
+        raise ValueError(f"Unsupported color space: {color_space}")
+    if pixel_format == "r32f" and color_space != "linear":
+        raise ValueError("R32F luminance must be linear")
     data = _read_raw(path)
     channels = _float32_channels(data, width, height, pixel_format)
     luminance = []
@@ -78,6 +82,9 @@ def analyze_luminance(path, width, height, pixel_format="rgba8"):
             if value < 0.0:
                 negative_count += 1
         else:
+            if color_space == "srgb":
+                channel = tuple(c / 12.92 if c <= 0.04045 else
+                                ((c + 0.055) / 1.055) ** 2.4 for c in channel)
             value = 0.2126 * channel[0] + 0.7152 * channel[1] + 0.0722 * channel[2]
         luminance.append(value)
 
@@ -91,6 +98,7 @@ def analyze_luminance(path, width, height, pixel_format="rgba8"):
         "width": width,
         "height": height,
         "pixel_format": pixel_format,
+        "color_space": color_space,
         "mean": mean,
         "stddev": math.sqrt(variance),
         "p05": _percentile(finite, 0.05),

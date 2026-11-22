@@ -71,13 +71,14 @@ TOOLS = [
     },
     {
         "name": "analyze_luminance",
-        "description": "Quantify luminance, exposure, and dead pixel ratios for a raw capture.",
+        "description": "Quantify luminance of a raw capture; supply its actual color space.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string"},
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
             "pixel_format": {"type": "string", "default": "rgba8"},
-        }, "required": ["path", "width", "height"]},
+            "color_space": {"type": "string", "enum": ["linear", "srgb"]},
+        }, "required": ["path", "width", "height", "color_space"]},
     },
     {
         "name": "analyze_normals",
@@ -192,7 +193,7 @@ def handle(request):
             if tool_name == "analyze_luminance":
                 value = analyzer.analyze_luminance(
                     arguments["path"], arguments["width"], arguments["height"],
-                    arguments.get("pixel_format", "rgba8"))
+                    arguments.get("pixel_format", "rgba8"), arguments["color_space"])
             elif tool_name == "analyze_normals":
                 value = analyzer.analyze_normals(
                     arguments["path"], arguments["width"], arguments["height"],
