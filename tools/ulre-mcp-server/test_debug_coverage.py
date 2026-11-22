@@ -33,10 +33,36 @@ class DebugCoverageIntegrationTests(unittest.TestCase):
         self._run_scene(executable, artifact_dir, "AlphaModes.LitOpaque", without_normal_map=True)
         self._run_scene(executable, artifact_dir, "AlphaModes.LitOpaque", missing_normal=True)
 
-    def _run_scene(self, executable, artifact_dir, recipe, without_normal_map=False, missing_normal=False):
+    def test_vertex_and_instance_alpha_in_shared_bucket(self):
+        executable = Path(os.environ["ULRE_COVERAGE_FIXTURE_EXE"]).resolve(strict=True)
+        artifact_dir = Path(os.environ["ULRE_COVERAGE_ARTIFACT_DIR"]).resolve(strict=True)
+        recipe = "AlphaModes.LitAlphaTest"
+        baseline = self._run_scene(executable, artifact_dir, recipe, shared_cube=True)
+        vertex_baseline = self._run_scene(executable, artifact_dir, recipe, shared_cube=True,
+                                          vertex_geometry=True)
+        vertex = self._run_scene(executable, artifact_dir, recipe, shared_cube=True,
+                                 vertex_geometry=True, vertex_alpha=True)
+        instance = self._run_scene(executable, artifact_dir, recipe, shared_cube=True, instance_alpha=True)
+        for label, full, reduced in (("vertex", vertex_baseline, vertex),
+                                     ("instance", baseline, instance)):
+            self.assertLess(sum(reduced), sum(full), label)
+            self.assertTrue(all(not masked or visible for visible, masked in zip(full, reduced)), label)
+        self._run_scene(executable, artifact_dir, "AlphaModes.LitAlphaDither",
+                        shared_cube=True, vertex_geometry=True, vertex_alpha=True)
+        self._run_scene(executable, artifact_dir, "AlphaModes.LitAlphaDither",
+                        shared_cube=True, instance_alpha=True)
+        self._run_scene(executable, artifact_dir, recipe, shared_cube=True,
+                        vertex_geometry=True, bad_color_stride=True)
+
+    def _run_scene(self, executable, artifact_dir, recipe, without_normal_map=False, missing_normal=False,
+                   shared_cube=False, vertex_geometry=False, vertex_alpha=False, instance_alpha=False,
+                   bad_color_stride=False):
         with tempfile.TemporaryDirectory(prefix="coverage_", dir=artifact_dir) as temporary:
             directory = Path(temporary)
             render_regression._prepare(directory)
+            if shared_cube:
+                (directory / "ULRE_DEBUG.toml").write_text(
+                    "[channels]\ndebugbridge = true\nbatch = true\n", encoding="utf-8")
             scene = directory / render_regression.SCENE
             text = scene.read_text(encoding="utf-8")
             self.assertEqual(text.count('recipe = "06b.BasicLit.Lit"'), 3)
@@ -66,13 +92,30 @@ transform.rotation_angle_deg = 0.0
             env["ULRE_DIAGNOSTIC_PAIRED_CAPTURE"] = "1"
             if missing_normal:
                 env["ULRE_DIAGNOSTIC_MISSING_NORMAL"] = "1"
-            suffix = "-missing-normal" if missing_normal else "-no-normal-map" if without_normal_map else ""
+            if shared_cube:
+                env["ULRE_DIAGNOSTIC_SHARED_CUBE"] = "1"
+            if vertex_geometry:
+                env["ULRE_DIAGNOSTIC_VERTEX_GEOMETRY"] = "1"
+            if vertex_alpha:
+                env["ULRE_DIAGNOSTIC_VERTEX_ALPHA"] = "1"
+            if bad_color_stride:
+                env["ULRE_DIAGNOSTIC_BAD_COLOR_STRIDE"] = "1"
+            if instance_alpha:
+                env["ULRE_DIAGNOSTIC_INSTANCE_ALPHA"] = "1"
+            suffix = ("-bad-color-stride" if bad_color_stride else
+                      "-vertex-alpha" if vertex_alpha else "-vertex-baseline" if vertex_geometry else
+                      "-instance-alpha" if instance_alpha else
+                      "-shared-cube" if shared_cube else "-missing-normal" if missing_normal else
+                      "-no-normal-map" if without_normal_map else "")
             log = artifact_dir / f"{recipe}{suffix}.log"
             with log.open("wb") as output:
                 process = subprocess.Popen([str(executable)], cwd=directory, env=env,
                                            stdout=output, stderr=subprocess.STDOUT)
                 try:
                     render_regression._wait_ready(process, log, "off", 120)
+                    if shared_cube:
+                        self.assertRegex(log.read_text(encoding="utf-8", errors="replace"),
+                                         r"\[T5\]\[BUCKETS\][^\n]*\b2x\d+")
                     targets = render_regression._bridge("list_capture_targets")["targets"]
                     main = next(item["target_id"] for item in targets if item["kind"] == "swapchain")
                     before = self._request(main)
@@ -82,7 +125,7 @@ transform.rotation_angle_deg = 0.0
                     masks = {}
                     for mode in ("world_normal", "shading_normal", "world_position"):
                         render_regression._bridge("set_debug_view", {"mode": mode})
-                        if recipe == "AlphaModes.LitAlphaDither" or missing_normal:
+                        if recipe == "AlphaModes.LitAlphaDither" or missing_normal or bad_color_stride:
                             deadline = time.monotonic() + 30
                             while time.monotonic() < deadline:
                                 status = render_regression._bridge("get_debug_view")
@@ -110,7 +153,13 @@ transform.rotation_angle_deg = 0.0
                         self.assertEqual(main_color, before_color)
                         self.assertEqual(main_depth_meta["encoding"], "r32f")
                         self.assertEqual(depth_meta["encoding"], "r32f")
-                        self.assertEqual(main_depth, depth)
+                        if main_depth != depth:
+                            (artifact_dir / f"{recipe}-{mode}-main-depth.raw").write_bytes(main_depth)
+                            (artifact_dir / f"{recipe}-{mode}-debug-depth.raw").write_bytes(depth)
+                            (artifact_dir / f"{recipe}-{mode}-debug-color.raw").write_bytes(color)
+                            different = sum(a != b for a, b in zip(
+                                struct.iter_unpack("<f", main_depth), struct.iter_unpack("<f", depth)))
+                            self.fail(f"{recipe} {mode}: {different} depth pixels differ")
                         self.assertEqual(color_meta["frame_id"], depth_meta["frame_id"])
                         self.assertEqual(main_color_meta["frame_id"], color_meta["frame_id"])
                         if mode != "world_position":

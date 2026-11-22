@@ -67,8 +67,18 @@
   StandardOpaque 主着色器相同的 normal 纹理、normal_scale、UV 导数切线基与解码，
   无法线贴图时等于未扰动法线。它仅支持三角形。两者以 RGB 的 [0,1] 编码 [-1,1]，
   捕获清单 `normal.source` 分别为 `interpolated_vertex` 和 `standard_opaque_shading`。
-  dither 使用同一屏幕坐标公式仍在 Intel Arc 140T 的同帧实测中出现主深度与调试深度
-  覆盖差异；根因尚未确定，在能保证逐像素一致之前不予支持，不能归因于时序或猜测结果。
+  顶点色流仅支持已绑定的 `VF_V4F`；其他格式或缺失缓冲的声明会被拒绝。
+  dither 不使用时间或随机帧种子，主帧和调试帧复用同一批次、相机及帧槽。
+  Intel Arc 140T（驱动 101.9175）的同帧探针发现 519 个深度像素不同；
+  2364 个双方共同覆盖像素的量化 alpha 全部相同，其中 261 个量化阈值不同。
+  即使源码公式相同，独立 shader 上下文也不能保证阈值相同；尚不能确定差异是
+  `dot`、`sin`、融合运算还是驱动优化的哪一环。实验性 `precise` 在该设备消除了
+  观察到的差异，却改变了主帧 473 个深度像素，不满足保持主帧不变的要求，也不能
+  证明跨设备一致。因此在有不改变主帧的可靠复用途径前保持拒绝。
+  定位探针在临时构建中移除 dither 的两处拒绝，在同帧读取主/调试深度，再分别输出
+  量化的 `EvalAlpha` 与 `HGLDitherThreshold`；主路径保留两次 alpha 判定。
+  仅输出这些值而移除原材质计算时阈值相同，保留各自的材质计算时出现上述差异，
+  因此不能把这个问题简化为帧槽、时序或材质 alpha 不同。探针未纳入正式构建。
   `base_color` 为材质行乘基础色贴图，不包含顶点色；
   `surface` 为 roughness/metallic/AO，`emissive` 为自发光贴图，`uv0` 为 UV 小数部分。
   这些属性通道仍为 RGBA8，会量化并截断到 [0,1]，不是 HDR 或原始浮点数据。
@@ -237,7 +247,8 @@ surface 的 metallic 均值执行数值检查；
 完整 BasicLitMeshes MCP 调用顺序见 `.ai/skills/SKILL_RENDER_DIAGNOSTICS.md`。
 
 同帧覆盖测试使用单独的临时场景和成对请求，逐像素比较主深度、调试深度及
-颜色/Position alpha，检查 alpha-test 镂空、重复几何实例、法线贴图、有无贴图、缺顶点法线、
+颜色/Position alpha，检查 alpha-test 镂空、确认同桶多实例、非白顶点和实例 alpha、
+法线贴图、有无贴图、缺顶点法线、
 dither 拒绝、主颜色和关闭行为。它不更改基线，必须在管道未被其他引擎占用时运行：
 
 ```powershell

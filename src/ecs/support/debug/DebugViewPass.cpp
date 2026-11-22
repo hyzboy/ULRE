@@ -17,6 +17,7 @@
 #include<hgl/vk/VKRenderbufferInfo.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/sync/Mutex.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ValueArray.h>
@@ -242,6 +243,14 @@ namespace hgl::ecs
                 const GeometryVertexFormat *item_format=&asset_geometry->GetGeometryVertexFormat();
                 if(!item_format->Find(VertexSemantic::Normal)
                    || !item_format->Find(VertexSemantic::TexCoord)) return false;
+                const auto *color=item_format->Find(VertexSemantic::Color);
+                if(color)
+                {
+                    const VAB *vab=asset_geometry->GetVAB(VertexSemantic::Color);
+                    if(color->format!=VF_V4F || color->vec_size!=4 || color->stride!=16
+                       || !vab || vab->GetFormat()!=VF_V4F || vab->GetStride()!=16)
+                        return false;
+                }
                 const PrimitiveType item_type=asset->GetPrimitiveType();
                 if(item_type!=PrimitiveType::Triangles)
                     return false;

@@ -4,8 +4,11 @@
 #include<hgl/graph/asset/LevelAssetRegistry.h>
 #include<hgl/graph/asset/LevelLoader.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/InstanceCustomData.h>
 #include<hgl/graph/render/shadow/CascadedShadowController.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/DebugCaptureQueue.h>
@@ -13,12 +16,16 @@
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/GeometryData.h>
+#include<hgl/ecs/components/GPUModelRefComponent.h>
+#include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
 #include<hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h>
 #include<hgl/ecs/support/debug/DebugViewPass.h>
 #include<hgl/time/Time.h>
 #include<hgl/log/Log.h>
+#include<hgl/type/Smart.h>
 #include<stdlib.h>
 
 using namespace hgl;
@@ -58,11 +65,84 @@ int os_main(int argc,os_char **argv)
     VertexDataManager vertices(buffers,format);
     if(!vertices.Init(HGL_SIZE_1MB,HGL_SIZE_1MB,IndexType::U32))
         return 4;
+    GeometryVertexFormat color_format{
+        {VertexSemantic::Position,VF_V3F},
+        {VertexSemantic::TexCoord,VF_V2F},
+        {VertexSemantic::Normal,VF_V3F},
+    };
+    if(!color_format.Add(VertexSemantic::Color,VF_V4F,4,
+                         ::getenv("ULRE_DIAGNOSTIC_BAD_COLOR_STRIDE")?32:16))
+        return 20;
+    VertexDataManager color_vertices(buffers,color_format);
+    AutoDelete<Geometry> color_geometry;
+    PrimitiveAsset color_primitive;
+    GlobalSSBODataAccessor custom_row;
     LevelInstance instance;
     LevelAsset *level=levels->GetOrLoad(OS_TEXT("example/Debug/RenderDiagnosticsFixture.level.toml"));
     GeometryCreater creater(&vertices);
     if(!level || !level->Instantiate(world,&creater,instance))
         return 5;
+
+    if(::getenv("ULRE_DIAGNOSTIC_SHARED_CUBE"))
+    {
+        LevelInstance::RuntimeNode *cube=nullptr,*duplicate=nullptr;
+        for(int i=0;i<instance.GetNodeCount();++i)
+        {
+            auto *node=instance.GetNode(i);
+            if(node->name=="Cube") cube=node;
+            if(node->name=="CubeInstance") duplicate=node;
+        }
+        ecs::GeometryData *geometry=duplicate?world->GetGeometryData(duplicate->entity_id):nullptr;
+        if(!cube || !geometry)
+            return 15;
+        geometry->SetPrimitiveAsset(&cube->primitive);
+        if(::getenv("ULRE_DIAGNOSTIC_VERTEX_GEOMETRY"))
+        {
+            if(!color_vertices.Init(HGL_SIZE_1MB,HGL_SIZE_1MB,IndexType::U32))
+                return 13;
+            GeometryCreater color_creator(&color_vertices);
+            const math::Vector3f positions[]={
+                {-1,0,0},{1,0,0},{1,0,2},{-1,0,0},{1,0,2},{-1,0,2}};
+            const math::Vector2f uv[]={{0,0},{1,0},{1,1},{0,0},{1,1},{0,1}};
+            const math::Vector3f normals[]={
+                {0,-1,0},{0,-1,0},{0,-1,0},{0,-1,0},{0,-1,0},{0,-1,0}};
+            const uint32_t indices[]={0,2,1,3,5,4};
+            const float alpha=::getenv("ULRE_DIAGNOSTIC_VERTEX_ALPHA")?0.25f:1.0f;
+            const math::Vector4f colors[]={
+                {0.5f,0.75f,1,alpha},{0.5f,0.75f,1,alpha},{0.5f,0.75f,1,alpha},
+                {0.5f,0.75f,1,alpha},{0.5f,0.75f,1,alpha},{0.5f,0.75f,1,alpha}};
+            if(!color_creator.Init("diagnostic_color_quad",6,6)
+               || !color_creator.WriteVAB(VertexSemantic::Position,VF_V3F,positions)
+               || !color_creator.WriteVAB(VertexSemantic::TexCoord,VF_V2F,uv)
+               || !color_creator.WriteVAB(VertexSemantic::Normal,VF_V3F,normals)
+               || !color_creator.WriteVAB(VertexSemantic::Color,VF_V4F,colors)
+               || !color_creator.WriteIBO(indices,6))
+                return 14;
+            color_geometry=color_creator.CreateWithAABB({-1,0,0},{1,0,2});
+            if(!color_geometry)
+                return 18;
+            color_primitive=PrimitiveAsset(color_geometry,&cube->recipe);
+            ecs::GeometryData *original=world->GetGeometryData(cube->entity_id);
+            if(!original)
+                return 19;
+            original->SetPrimitiveAsset(&color_primitive);
+            geometry->SetPrimitiveAsset(&color_primitive);
+        }
+        if(::getenv("ULRE_DIAGNOSTIC_INSTANCE_ALPHA"))
+        {
+            auto *registry=graphics->GetGlobalSSBOBufferRegistry();
+            Entity *entity=world->GetEntity(duplicate->entity_id);
+            auto *ref=entity?entity->AddComponent<GPUModelRefComponent>():nullptr;
+            if(!registry || !ref)
+                return 16;
+            custom_row=registry->GetAccessor(GlobalSSBOType::InstanceCustomDataPool);
+            if(!custom_row || !custom_row.GetDataID()
+               || !registry->Write(GlobalSSBOType::InstanceCustomDataPool,custom_row.GetDataID(),
+                                   ssbo::InstanceCustomData(math::Vector4f(0.5f,0.75f,1.0f,0.25f))))
+                return 17;
+            ref->custom_data_index=custom_row.GetDataID();
+        }
+    }
 
     auto light=world->GetSystem<LightSystem>();
     if(!light)

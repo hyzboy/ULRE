@@ -101,7 +101,7 @@ TOOLS = [
     },
     {
         "name": "set_debug_view",
-        "description": "Request an isolated offscreen attribute view. world_normal is the interpolated vertex normal; shading_normal includes StandardOpaque normal mapping. Dither and blending are unsupported. Read target_id and errors from get_debug_view.",
+        "description": "Request an isolated offscreen attribute view. Alpha test supports PBRSurface and bound VF_V4F vertex color streams; dither and blending are unsupported. world_normal is the interpolated vertex normal; shading_normal includes StandardOpaque normal mapping. Read target_id and errors from get_debug_view.",
         "inputSchema": {
             "type": "object",
             "properties": {
