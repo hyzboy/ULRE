@@ -50,7 +50,7 @@ If the MCP reports `ULRE bridge unavailable`, verify:
 
 Use fixed numeric tools before looking at any image attachment.
 
-1. Call `set_debug_view` to request `world_normal`, `base_color`, `surface`, `emissive`, `uv0`, or the optional `world_position` RGBA32F view.
+1. Call `set_debug_view` to request `world_normal`, `shading_normal`, `base_color`, `surface`, `emissive`, `uv0`, or the optional `world_position` RGBA32F view.
 2. Poll `get_debug_view` until `mode` equals the request; an `error` means the pass did not succeed. Capture its `target_id`, then set `off` when finished. The process-wide status is for the most recently handled world, not a world selector.
 3. `get_camera_matrices` returns the latest snapshot, not necessarily the capture's camera or frame; do not use it to reconstruct an older capture.
 4. Prefer `analyze_capture` with the capture's `metadata_path` so format, row pitch,
@@ -111,7 +111,7 @@ The Vulkan RH ZO convention is mandatory:
 
 Use capture metadata, not the latest camera snapshot. Matrices are column-major; the coordinate contract is Vulkan RH, Z-up, ZO, with a positive-height viewport. Clear-depth filtering applies when no mask proves the pixel contains geometry; homogeneous `w` must be finite and nonzero. Position RT reports absolute world-space XYZ in IEEE-754 binary32 with alpha mask; current transforms do not enable camera-relative offsets. Report measured error only—no fixed physical precision claim.
 
-Debug View accepts GPU-driven StandardOpaque scene batches with PBRSurface rows, Normal and TexCoord, and standard- or reversed-Z active cameras. Alpha test, dither, blending and unsupported scene batches fail explicitly; non-Scene layers are excluded. World normals are geometric, not normal-mapped shading normals. Base color excludes vertex color; emissive is the sampled texture; UV uses its fractional part. RGBA8 attribute values are clipped/quantized and are not HDR.
+Debug View accepts GPU-driven StandardOpaque triangle batches with PBRSurface rows, Normal and TexCoord, and standard- or reversed-Z active cameras. Alpha test uses the main material's opacity texture, row alpha, vertex/instance alpha and cutoff. Dither, blending, custom vertex/surface/sampler/defines and unsupported scene batches fail explicitly; non-Scene layers are excluded. On Intel Arc 140T, dither produced different same-frame main/debug depth coverage despite sharing the threshold formula, so its root cause remains unverified. `world_normal` is the interpolated vertex normal, not necessarily a face normal; `shading_normal` includes StandardOpaque's normal map and derivative TBN. Capture metadata records their distinct sources. Base color excludes vertex color; emissive is the sampled texture; UV uses its fractional part. RGBA8 attribute values are clipped/quantized and are not HDR.
 
 The enabled pass waits for device idle before reusing its attachments; do not use its timings as production performance measurements. Disabling releases the target and attachments, while existing manager caches retain shader/pipeline/render-pass objects until their normal teardown.
 
@@ -142,7 +142,7 @@ It is **not** a golden-baseline acceptance verdict. For the fixed
 `RenderDiagnosticsFixture`, use `tools\ulre-mcp-server\render_regression.py`
 with `create`, `update`, or `compare`; see `doc\debug-analysis-and-view-modes.md`
 for commands and provenance rules. Missing coverage must not be reported as a
-pass. The current view does not support alpha-test scenes or a receiver shadow
-factor, so neither can be accepted through this sequence. The fixture's
+pass. The ordinary fixture does not exercise alpha-test scenes, and a receiver
+shadow factor is unavailable. The fixture's
 `--mode shadow_caster` captures its explicitly managed CSM depth map;
 `--inject-fault shadow_caster` checks caster coverage, not screen shadowing.

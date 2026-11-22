@@ -86,22 +86,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     return material_output;
 }
 
-float EvalMaterialAlpha(MaterialSourceInput source_input)
-{
-    // 有效 alpha = **材质行指定的混合比例** × **opacity_mask 的逐像素图案**：
-    //   · 比例 = `PBRSurfaceRow.base_color.a`（作者按实体/材质指定；此前该字段对 Lit 无效）
-    //   · 图案 = optional 槽 opacity_mask；未绑定 → 1.0（回退 ⇒ alpha = 比例）
-    // ⇒ 只给比例（不绑 mask）= 均匀半透明；只给图案（比例 1.0）= 纯按图案；两者都给 = 相乘。
-    // ⚠ buffer_reference 类型不能加 const 限定（glslang：variables with reference type
-    //   can't have qualifier 'const'）——与上方 EvalMaterialSource 的写法一致。
-    PBRSurfaceRow material_data = MTL_ROW(source_input.dataIndex);
-
-    return clamp(material_data.base_color.a, 0.0, 1.0)
-         * SampleOptional(
-               MTL_TEX(source_input.dataIndex).tex_opacity_mask,
-               LinearSampler,
-               source_input.surface.uv0,
-               vec4(1.0)).r;
-}
+// Coverage is shared with the independent debug view.
+#include "module/provider/material_source/pbr_surface_alpha.glsl"
 
 #endif // PBR_SURFACE_SOURCE_GLSL

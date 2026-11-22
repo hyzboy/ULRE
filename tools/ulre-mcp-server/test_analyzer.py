@@ -403,9 +403,25 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(result["length_error_ratio"], 0.0)
         with self.assertRaisesRegex(ValueError, "matching masked"):
             capture_manifest.analyze_capture(path, "surface")
+        path = self.manifest(source="debug_view", debug_view_mode="shading_normal",
+                             attachment="color", encoding="rgba8", color_space="linear",
+                             vk_format=37, width=2, row_pitch=8, byte_count=8,
+                             mask="alpha_nonzero",
+                             normal={"space": "world", "encoding": "unorm01_to_signed_xyz",
+                                     "source": "standard_opaque_shading"})
+        shading = capture_manifest.analyze_capture(path, "normals")
+        self.assertEqual(shading["sample_count"], 1)
         self.capture("capture.raw", bytes(8))
         with self.assertRaisesRegex(ValueError, "no valid masked pixels"):
             capture_manifest.analyze_capture(path, "normals")
+        invalid = self.manifest(source="debug_view", debug_view_mode="shading_normal",
+                                attachment="color", encoding="rgba8", color_space="linear",
+                                vk_format=37, width=2, row_pitch=8, byte_count=8,
+                                mask="alpha_nonzero",
+                                normal={"space": "world", "encoding": "unorm01_to_signed_xyz",
+                                        "source": "interpolated_vertex"})
+        with self.assertRaisesRegex(ValueError, "Normal metadata"):
+            capture_manifest.analyze_capture(invalid, "normals")
 
     def test_masked_frame_diff_uses_intersection_and_reports_coverage_separately(self):
         a = self.capture("a.raw", bytes((0, 0, 0, 255, 255, 0, 0, 255, 0, 0, 0, 0)))

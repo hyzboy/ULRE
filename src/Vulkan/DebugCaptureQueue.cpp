@@ -362,6 +362,16 @@ namespace hgl::graph
                       "\"coordinate_system\":\"right_handed_z_up\",\"representation\":\"ieee754_binary32\","
                       "\"format\":\"rgba32f\",\"mask\":\"alpha_nonzero\","
                       "\"precision_note\":\"float32 fragment output; no fixed physical error guarantee\"}";
+            if(result.source==DebugCaptureQueue::Source::DebugView
+               && result.attachment==DebugCaptureQueue::Attachment::Color
+               && (result.debug_mode==static_cast<uint32_t>(mtl::DebugViewMode::WorldNormal)
+                   || result.debug_mode==static_cast<uint32_t>(mtl::DebugViewMode::ShadingNormal)))
+            {
+                json+=",\"normal\":{\"space\":\"world\",\"encoding\":\"unorm01_to_signed_xyz\",\"source\":\"";
+                json+=result.debug_mode==static_cast<uint32_t>(mtl::DebugViewMode::WorldNormal)
+                    ?"interpolated_vertex":"standard_opaque_shading";
+                json+="\"}";
+            }
             json+="}";
             return json;
         }

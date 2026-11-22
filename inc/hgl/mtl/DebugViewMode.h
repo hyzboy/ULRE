@@ -34,20 +34,21 @@ namespace hgl::graph::mtl
     enum class DebugViewMode : uint8
     {
         Off = 0,        ///< 关闭离屏调试视图
-        WorldNormal,    ///< normalize(worldNormal) * 0.5 + 0.5
+        WorldNormal,    ///< 插值顶点世界法线；不是三角形面法线或法线贴图结果
         BaseColor,      ///< PBR 行的 base_color（含 base_color 贴图）
         Surface,        ///< (roughness, metallic, ao)
         Emissive,       ///< 自发光（含 emissive 贴图）
         UV0,            ///< fract(uv0) 映射到 RGB
         WorldPosition,  ///< fragment world position，RGBA32F，alpha 为有效 mask
+        ShadingNormal,  ///< StandardOpaque 的法线贴图扰动后世界空间法线
 
-        ENUM_CLASS_RANGE(Off, WorldPosition)
+        ENUM_CLASS_RANGE(Off, ShadingNormal)
     };
 
     constexpr uint32 DebugViewModeCount = static_cast<uint32>(DebugViewMode::RANGE_SIZE);
 
     /// 稳定名字（配置文件 / JSON-RPC / MCP 参数共用这一份）。
-    /// 形如 "off" / "world_normal" / "base_color" / "surface" / "emissive" / "uv0" / "world_position"。
+    /// 稳定字符串包括 world_normal、shading_normal 和 world_position。
     const char *GetDebugViewModeName(DebugViewMode mode) noexcept;
 
     /// 严格解析；未知名返回 false（调用方负责报错，不做静默回退）。

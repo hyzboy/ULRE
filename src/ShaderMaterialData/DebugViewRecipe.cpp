@@ -17,6 +17,7 @@ namespace hgl::graph::mtl
             case DebugViewMode::Emissive:    return "emissive";
             case DebugViewMode::UV0:         return "uv0";
             case DebugViewMode::WorldPosition:return "world_position";
+            case DebugViewMode::ShadingNormal:return "shading_normal";
             default:                         return "unknown";
         }
     }
@@ -50,6 +51,7 @@ namespace hgl::graph::mtl
             case DebugViewMode::Emissive:    return "HGL_DEBUG_VIEW_EMISSIVE";
             case DebugViewMode::UV0:         return "HGL_DEBUG_VIEW_UV0";
             case DebugViewMode::WorldPosition:return "HGL_DEBUG_VIEW_WORLD_POSITION";
+            case DebugViewMode::ShadingNormal:return "HGL_DEBUG_VIEW_SHADING_NORMAL";
             default:                         return nullptr;
         }
     }
@@ -59,7 +61,11 @@ namespace hgl::graph::mtl
                               MaterialRecipe &out_recipe)
     {
         const char *define_name=GetDebugViewCompileDefine(mode);
-        if(!define_name)
+        if(!define_name || !base_recipe || base_recipe->domain!=MaterialDomain::StandardOpaque
+           || !base_recipe->surface_module_name.empty()
+           || (base_recipe->has_compile_defines && !base_recipe->compile_defines.empty())
+           || base_recipe->has_sampler_names
+           || !IsDefault3DNodeConfig(base_recipe->vertex_node_config))
             return false;
 
         if(!GetMaterialDomainContract(MaterialDomain::DebugAttribute))
@@ -81,6 +87,7 @@ namespace hgl::graph::mtl
             // 材质行**原样保留**：调试通道读的就是这份数据（PBRSurface 行与
             // StandardOpaque 逐字节同构，切通道不搬行）。
             out_recipe.material_ssbo_binding=base_recipe->material_ssbo_binding;
+            out_recipe.vertex_node_config=base_recipe->vertex_node_config;
 
             // 贴图绑定按目标领域槽表过滤后保留：
             //   · 保留 ⇒ "纹理没绑上"在 base_color 通道里表现为纯白（bindless
@@ -93,30 +100,27 @@ namespace hgl::graph::mtl
                     out_recipe.textures.push_back(binding);
             }
 
-            // 渲染状态：沿用 base 的**已解析结果**，只强制三件事——
-            //   · 不混合：半透明会让相邻像素混色，破坏像素统计可比性；
-            //   · 不 alpha test / 不 dither：调试通道要覆盖率，不要裁掉像素。
+            // 沿用主场景的覆盖状态；混合材质由调用方拒绝。
             ResolvedMaterial base_definition{};
             if(!ResolveMaterialFromRecipe(*base_recipe,base_definition))
             {
-                GLogError(u8"[DebugView] base 配方无法解析，退回领域默认渲染状态（recipe=%s）",
+                GLogError(u8"[DebugView] base 配方无法解析（recipe=%s）",
                           base_recipe->recipe_name.c_str());
-                base_definition=ResolvedMaterial{};
+                return false;
             }
 
             ResolvedMaterialRenderState state=
                 ResolveMaterialRenderState(base_definition,*base_recipe);
 
-            state.alpha_test=false;
-            state.dither=false;
-            state.pipeline_config.alpha_blend=false;
+            if(state.pipeline_config.alpha_blend || state.dither)
+                return false;
 
             out_recipe.render_state_overrides.has_alpha_test=true;
-            out_recipe.render_state_overrides.alpha_test=false;
+            out_recipe.render_state_overrides.alpha_test=state.alpha_test;
             out_recipe.render_state_overrides.has_alpha_cutoff=true;
             out_recipe.render_state_overrides.alpha_cutoff=state.alpha_cutoff;
             out_recipe.render_state_overrides.has_dither=true;
-            out_recipe.render_state_overrides.dither=false;
+            out_recipe.render_state_overrides.dither=state.dither;
             out_recipe.render_state_overrides.has_pipeline_config=true;
             out_recipe.render_state_overrides.pipeline_config=state.pipeline_config;
             // 掩码 0 = 整份替换（与 NormalizeRecipe 的回写口径一致）。

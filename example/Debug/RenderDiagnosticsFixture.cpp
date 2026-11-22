@@ -10,6 +10,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKOffscreenRenderTarget.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -18,6 +19,7 @@
 #include<hgl/ecs/support/debug/DebugViewPass.h>
 #include<hgl/time/Time.h>
 #include<hgl/log/Log.h>
+#include<stdlib.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -46,6 +48,13 @@ int os_main(int argc,os_char **argv)
         {VertexSemantic::TexCoord,VF_V2HF},
         {VertexSemantic::Normal,VF_V2UN8},
     };
+    if(::getenv("ULRE_DIAGNOSTIC_MISSING_NORMAL"))
+    {
+        format.Clear();
+        if(!format.Add(VertexSemantic::Position,VF_V3F)
+           || !format.Add(VertexSemantic::TexCoord,VF_V2HF))
+            return 12;
+    }
     VertexDataManager vertices(buffers,format);
     if(!vertices.Init(HGL_SIZE_1MB,HGL_SIZE_1MB,IndexType::U32))
         return 4;
@@ -102,6 +111,11 @@ int os_main(int argc,os_char **argv)
     auto mode=DebugViewPass::GetRequestedMode();
     bool ready_reported=false;
     Window *window=app.GetWindow();
+    const bool paired_capture=::getenv("ULRE_DIAGNOSTIC_PAIRED_CAPTURE")!=nullptr;
+    auto *main_target=dynamic_cast<SwapchainRenderTarget *>(world->GetRenderTarget());
+    const uint64_t main_target_id=main_target?main_target->GetDebugCaptureTargetID():0;
+    if(paired_capture && !main_target_id)
+        return 11;
     while(window && window->Update())
     {
         const auto requested=DebugViewPass::GetRequestedMode();
@@ -122,7 +136,10 @@ int os_main(int argc,os_char **argv)
                          static_cast<unsigned long long>(target),warmup_frames);
                 ready_reported=true;
             }
-            if(!DebugCaptureQueue::HasQueued(target) && !DebugCaptureQueue::HasQueued(shadow_target_id))
+            const bool debug_queued=DebugCaptureQueue::HasQueued(target);
+            const bool main_queued=DebugCaptureQueue::HasQueued(main_target_id);
+            if((paired_capture && !(debug_queued && main_queued))
+               || (!paired_capture && !debug_queued && !DebugCaptureQueue::HasQueued(shadow_target_id)))
             {
                 SleepSecond(0.001);
                 continue;
@@ -136,7 +153,8 @@ int os_main(int argc,os_char **argv)
                          warmup_frames);
                 ready_reported=true;
             }
-            if(!DebugCaptureQueue::HasQueued(shadow_target_id))
+            if(!DebugCaptureQueue::HasQueued(shadow_target_id)
+               && !(paired_capture && DebugCaptureQueue::HasQueued(main_target_id)))
             {
                 SleepSecond(0.001);
                 continue;

@@ -101,13 +101,13 @@ TOOLS = [
     },
     {
         "name": "set_debug_view",
-        "description": "Request an isolated offscreen attribute view; the main frame is unchanged. Read target_id from get_debug_view.",
+        "description": "Request an isolated offscreen attribute view. world_normal is the interpolated vertex normal; shading_normal includes StandardOpaque normal mapping. Dither and blending are unsupported. Read target_id and errors from get_debug_view.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "mode": {
                     "type": "string",
-                    "enum": ["off", "world_normal", "base_color", "surface", "emissive", "uv0",
+                    "enum": ["off", "world_normal", "shading_normal", "base_color", "surface", "emissive", "uv0",
                              "world_position"],
                 },
             },

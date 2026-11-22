@@ -11,8 +11,7 @@
 // 与 `debug_normal.frag` 的两处刻意差异：
 //   1. 数据行绑定用 `standard_opaque_bindings.glsl`（PBRSurface，32B/行）——
 //      调试配方**不搬动材质数据行**，读的就是被诊断材质原来那一行；
-//   2. `si.vertexColor` 固定为白：`EvalSurface()` 会把 baseColor 乘上顶点色，
-//      那会让通道值随几何染色而失真（分析要的是材质/几何事实，不是顶点色）。
+//   2. 色彩通道不乘顶点色；覆盖判定仍使用主场景的顶点 alpha。
 
 #include "domain/root_bindings.glsl"
 #include "domain/standard_opaque_bindings.glsl"
@@ -23,7 +22,11 @@
 #include "module/interface/pass_environment_interface.glsl"
 #include "module/provider/output_policy/output_policy_flat.glsl"
 #include "module/provider/material_source/material_source_debug_attribute.glsl"
+#ifdef HGL_DEBUG_VIEW_SHADING_NORMAL
+#include "module/provider/ntb/ntb_tangent_vbo_normalmap.glsl"
+#else
 #include "module/provider/ntb/ntb_none.glsl"
+#endif
 #include "module/provider/surface/surface_material.glsl"
 #include "module/interface/alpha_compositor.glsl"
 // 阶段间 varying 的输入声明来自 `module/stage/interstage_varying.glsl` 的片段段：
@@ -41,8 +44,11 @@ void main()
     si.worldNormal = vec3(0.0, 0.0, 1.0);
     si.uv0 = vec2(0.0);
     si.uv1 = vec2(0.0);
-    // 见文件头第 2 条：顶点色不参与调试通道。
+#if defined(HGL_ALPHA_TEST) || defined(HGL_ALPHA_DITHER)
+    si.vertexColor = fragVertexColor;
+#else
     si.vertexColor = vec4(1.0);
+#endif
     si.viewDir = vec3(0.0, 0.0, 1.0);
     si.screenPos = gl_FragCoord.xy;
     si.luminance = 1.0;
@@ -71,11 +77,17 @@ void main()
     const uint materialDataIndex = fragDataIndexID;
     si.styleID = 0u;
     const SurfaceOutput surface = EvalSurface(si, materialDataIndex);
-    // 调试通道不接受 alpha 覆盖：半透明会让相邻像素混色，破坏像素统计的可比性。
+#if defined(HGL_ALPHA_TEST) || defined(HGL_ALPHA_DITHER)
+    HGLApplyAlpha(EvalAlpha(si, materialDataIndex));
+#endif
     const vec4 finalColor =
         EvalPassEnvironment(PassEnvironmentInput(si, surface, materialDataIndex));
 #ifdef HGL_DEBUG_VIEW_WORLD_POSITION
     WriteMaterialOutput(vec4(si.worldPos, 1.0));
+#elif defined(HGL_DEBUG_VIEW_SHADING_NORMAL)
+    WriteMaterialOutput(vec4(surface.normal * 0.5 + 0.5, 1.0));
+#elif defined(HGL_ALPHA_TEST) || defined(HGL_ALPHA_DITHER)
+    WriteMaterialOutput(vec4(finalColor.rgb, 1.0));
 #else
     WriteMaterialOutput(HGLComposeColor(vec4(finalColor.rgb, 1.0)));
 #endif

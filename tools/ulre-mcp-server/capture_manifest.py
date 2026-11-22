@@ -55,7 +55,7 @@ def load_manifest(path):
     if metadata.get("source") not in ("swapchain", "debug_view", "offscreen"):
         raise ValueError("Unsupported capture source")
     if metadata["source"] == "debug_view" and metadata.get("debug_view_mode") not in (
-            "world_normal", "base_color", "surface", "emissive", "uv0", "world_position"):
+            "world_normal", "shading_normal", "base_color", "surface", "emissive", "uv0", "world_position"):
         raise ValueError("Unknown debug view mode")
     for field in ("request_id", "target_id", "frame_id", "width", "height",
                   "pixel_size", "row_pitch", "byte_count"):
@@ -73,6 +73,14 @@ def load_manifest(path):
     if metadata["source"] == "debug_view" and metadata.get("attachment") == "color":
         if metadata.get("mask") != "alpha_nonzero":
             raise ValueError("Debug view requires an alpha mask")
+        mode = metadata.get("debug_view_mode")
+        normal = metadata.get("normal")
+        if mode in ("world_normal", "shading_normal") and (normal is not None or mode == "shading_normal"):
+            expected_source = "interpolated_vertex" if mode == "world_normal" else "standard_opaque_shading"
+            if not isinstance(normal, dict) or normal.get("space") != "world" or \
+                    normal.get("encoding") != "unorm01_to_signed_xyz" or \
+                    normal.get("source") != expected_source:
+                raise ValueError("Normal metadata is missing or inconsistent")
         if metadata.get("debug_view_mode") == "world_position":
             if vk_format != 109 or encoding != "rgba32f":
                 raise ValueError("World-position view requires RGBA32F")
@@ -180,9 +188,9 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
         result["color_space_source"] = ("override" if metadata["color_space"] == "unknown"
                                         else "capture_metadata")
     elif operation in ("normals", "surface"):
-        expected_mode = "world_normal" if operation == "normals" else "surface"
+        expected_modes = ("world_normal", "shading_normal") if operation == "normals" else ("surface",)
         if metadata.get("source") != "debug_view" or metadata.get("attachment") != "color" \
-                or metadata.get("debug_view_mode") != expected_mode or not mask_alpha:
+                or metadata.get("debug_view_mode") not in expected_modes or not mask_alpha:
             raise ValueError(f"{operation} requires a matching masked debug view")
         function = analyzer.analyze_normals if operation == "normals" else analyzer.analyze_surface
         result = function(str(data_path), width, height, encoding, metadata["row_pitch"], True)

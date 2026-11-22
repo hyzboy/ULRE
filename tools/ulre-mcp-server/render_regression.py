@@ -30,7 +30,7 @@ INPUTS = [
     Path("example") / "Debug" / "RenderDiagnosticsFixture.cpp",
     Path("GLSLCompiler.dll"),
 ]
-MODES = ("world_normal", "base_color", "surface", "emissive", "uv0", "world_position",
+MODES = ("world_normal", "shading_normal", "base_color", "surface", "emissive", "uv0", "world_position",
          "shadow_caster")
 FAULTS = ("camera", "normal", "material", "coverage", "shadow_caster")
 
@@ -147,7 +147,7 @@ def _analyze_fixture(color, depth, mode):
             "crosscheck": capture_manifest.analyze_capture(
                 color, "position_crosscheck", depth_metadata_path=str(depth), sample_step=8),
         }
-    operation = {"world_normal": "normals", "surface": "surface"}.get(mode, "luminance")
+    operation = {"world_normal": "normals", "shading_normal": "normals", "surface": "surface"}.get(mode, "luminance")
     return capture_manifest.analyze_capture(color, operation)
 
 
@@ -166,7 +166,7 @@ def _check_fixture_analysis(analysis, mode):
         return
     if analysis["sample_count"] <= 0 or analysis.get("nan_count", 0) or analysis.get("inf_count", 0):
         raise RuntimeError("fixture_has_no_finite_samples")
-    if mode == "world_normal" and (analysis["zero_normal_ratio"] != 0 or
+    if mode in ("world_normal", "shading_normal") and (analysis["zero_normal_ratio"] != 0 or
                                    analysis["length_error_ratio"] > 0.01):
         raise RuntimeError("fixture_normal_length_out_of_range")
     if mode == "surface" and abs(analysis["metallic"]["mean"] - 0.08) > 1.0 / 255.0:
@@ -345,7 +345,8 @@ def main(argv=None):
                     "depth_manifest": str(depth) if depth else str(color),
                     "fixture_log": str(log), "fixture_exe_sha256": _digest(exe),
                     "fault_injection": args.inject_fault,
-                    "limitations": ["alpha_test_not_supported", "receiver_shadow_factor_unavailable"]}
+                    "limitations": ["fixture_does_not_cover_alpha_test", "dither_unsupported",
+                                    "receiver_shadow_factor_unavailable"]}
         analysis = _analyze_fixture(color, depth, args.mode)
         evidence["fixture_analysis"] = analysis
         analysis_error = None

@@ -58,10 +58,18 @@
 - 支持范围是带 PBRSurface 行、Normal 和 TexCoord 的 GPU-driven `StandardOpaque`
   场景批次及标准或 reversed-Z 活动相机；Position RT 还要求设备支持 RGBA32F
   颜色附件与 transfer-source 用途，否则状态明确报告 `position_format_unavailable`
-  或目标创建错误，不会降级为量化颜色。不支持 alpha test、dither、混合和不兼容批次，
+  或目标创建错误，不会降级为量化颜色。标准材质的 alpha test 复用主场景的
+  PBRSurface 行 alpha、opacity_mask、顶点/实例颜色 alpha、阈值及采样路径。
+  不支持 dither、混合、非三角形、自定义顶点配置/表面模块/采样器/宏和不兼容批次，
   遇到这些场景批次时整次视图失败（`unsupported_scene_batch`）。非 Scene 层不会被绘制，
-  因而 mask 不代表天空、UI 或所有场景内容。`world_normal` 是归一化的几何世界法线，
-  不包含法线贴图；`base_color` 为材质行乘基础色贴图，不包含顶点色；
+  因而 mask 不代表天空、UI 或所有场景内容。`world_normal` 是变换并插值后的顶点
+  世界法线（不含法线贴图，并非必然等于三角形面法线）；`shading_normal` 使用
+  StandardOpaque 主着色器相同的 normal 纹理、normal_scale、UV 导数切线基与解码，
+  无法线贴图时等于未扰动法线。它仅支持三角形。两者以 RGB 的 [0,1] 编码 [-1,1]，
+  捕获清单 `normal.source` 分别为 `interpolated_vertex` 和 `standard_opaque_shading`。
+  dither 使用同一屏幕坐标公式仍在 Intel Arc 140T 的同帧实测中出现主深度与调试深度
+  覆盖差异；根因尚未确定，在能保证逐像素一致之前不予支持，不能归因于时序或猜测结果。
+  `base_color` 为材质行乘基础色贴图，不包含顶点色；
   `surface` 为 roughness/metallic/AO，`emissive` 为自发光贴图，`uv0` 为 UV 小数部分。
   这些属性通道仍为 RGBA8，会量化并截断到 [0,1]，不是 HDR 或原始浮点数据。
   `world_position` 使用 RGBA32F，RGB 是 shader 的世界位置，alpha 为 0/1 有效像素 mask；
@@ -140,7 +148,7 @@ viewport、reversed-Z、矩阵布局和同帧 VP/inverse VP；相机相对坐标
 ### 独立 Debug Override Pass
 
 按需插入独立离屏 Pass，复用主场景的几何、实例、变换和剔除结果，不修改作者配方。
-当前支持范围和限制如上；实际着色法线以及 alpha test/dither 覆盖尚未实现。
+当前支持范围和限制如上；dither 覆盖尚未实现。
 不支持的场景批次不会被静默当成有效结果。关闭后不改变主帧或作者状态。
 
 ### 世界坐标与阴影
@@ -195,8 +203,8 @@ SSIM 定义为 8×8 不重叠方窗；边缘窗口可小于 8×8，mask 交集�
 
 `RenderDiagnosticsFixture` 固定 640×360、未动画的几何和材质、相机、1/60 秒时间步、
 主光与单级联 CSM；首次预热 120 帧，选择 Debug View 后再预热 120 帧，在第 241 帧
-响应抓取。夹具冻结在预热点直到请求到达；不支持的 alpha test 和屏幕受影因子不能计为
-已覆盖。该夹具没有引入随机场景输入。
+响应抓取。夹具冻结在预热点直到请求到达；该常规场景不包含 alpha test，屏幕受影因子
+不可用。该夹具没有引入随机场景输入。
 
 Windows 上先构建 `RenderDiagnosticsFixture`，然后用以下命令显式建基线并比较：
 
@@ -227,6 +235,16 @@ surface 的 metallic 均值执行数值检查；
 深度约定依据固定夹具的 reversed-Z 契约，不适用于任意离屏目标。
 原始 `compare_captures` 仍是显式接受未验证上下文的图像比较，不能替代基线工具。
 完整 BasicLitMeshes MCP 调用顺序见 `.ai/skills/SKILL_RENDER_DIAGNOSTICS.md`。
+
+同帧覆盖测试使用单独的临时场景和成对请求，逐像素比较主深度、调试深度及
+颜色/Position alpha，检查 alpha-test 镂空、法线贴图、有无贴图、缺顶点法线、
+dither 拒绝、主颜色和关闭行为。它不更改基线，必须在管道未被其他引擎占用时运行：
+
+```powershell
+$env:ULRE_COVERAGE_FIXTURE_EXE = "D:\ULRE\build\out\Windows_64_Debug\RenderDiagnosticsFixture.exe"
+$env:ULRE_COVERAGE_ARTIFACT_DIR = "C:\runs"
+python -m unittest discover -s tools\ulre-mcp-server -p test_debug_coverage.py -v
+```
 
 验收需覆盖已知像素的合成单元测试、协议错误和并发、实际 Vulkan 抓帧及 validation、
 模式切换和资源生命周期、固定场景端到端与故障注入。GPU 不可用或某项能力未支持

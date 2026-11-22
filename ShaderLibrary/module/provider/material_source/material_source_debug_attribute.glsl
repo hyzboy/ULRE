@@ -11,6 +11,7 @@
 // @ulre texture_reference metallic Fragment optional fallback
 // @ulre texture_reference occlusion Fragment optional fallback
 // @ulre texture_reference opacity_mask Fragment optional fallback
+// @ulre texture_reference normal Fragment optional fallback
 // @ulre texture_reference emissive Fragment optional fallback
 // @ulre texture_reference orm Fragment optional fallback
 // @ulre sampler_reference Trilinear
@@ -110,7 +111,11 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     materialResult.metallic = 0.0;
     materialResult.roughness = 1.0;
     materialResult.fresnel = 0.0;
+#ifdef HGL_DEBUG_VIEW_SHADING_NORMAL
+    materialResult.normalScale = material_data.normal_scale;
+#else
     materialResult.normalScale = 1.0;
+#endif
     materialResult.ao = 1.0;
     materialResult.emissive = vec3(0.0);
     materialResult.alpha = 1.0;
@@ -124,10 +129,13 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     return materialResult;
 }
 
+#if defined(HGL_ALPHA_TEST) || defined(HGL_ALPHA_DITHER)
+#include "module/provider/material_source/pbr_surface_alpha.glsl"
+#else
 float EvalMaterialAlpha(MaterialSourceInput /*sourceInput*/)
 {
-    // 调试通道恒不透明：半透明图元会与背景混合，破坏像素统计的可比性。
     return 1.0;
 }
+#endif
 
 #endif // DEBUG_ATTRIBUTE_SOURCE_GLSL

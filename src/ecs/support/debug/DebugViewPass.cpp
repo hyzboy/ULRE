@@ -217,6 +217,7 @@ namespace hgl::ecs
             const MaterialRecipe *base=nullptr;
             const GeometryVertexFormat *format=nullptr;
             PrimitiveType primitive_type=PrimitiveType::Triangles;
+            ResolvedMaterialRenderState base_state{};
             for(RenderItem *item:batch->items)
             {
                 const auto *primitive=dynamic_cast<const PrimitiveRenderItem *>(item);
@@ -233,18 +234,28 @@ namespace hgl::ecs
                 ResolvedMaterial definition{};
                 if(!ResolveMaterialFromRecipe(recipe,definition)) return false;
                 const ResolvedMaterialRenderState state=ResolveMaterialRenderState(definition,recipe);
-                if(state.alpha_test || state.dither) return false;
+                if(state.dither || !(state.pipeline_config==batch->pipeline_config)) return false;
+                if(!recipe.surface_module_name.empty()
+                   || (recipe.has_compile_defines && !recipe.compile_defines.empty())
+                   || recipe.has_sampler_names || !IsDefault3DNodeConfig(recipe.vertex_node_config))
+                    return false;
                 const GeometryVertexFormat *item_format=&asset_geometry->GetGeometryVertexFormat();
                 if(!item_format->Find(VertexSemantic::Normal)
                    || !item_format->Find(VertexSemantic::TexCoord)) return false;
                 const PrimitiveType item_type=asset->GetPrimitiveType();
-                if(base && (primitive_type!=item_type || !SameVertexFormat(*format,*item_format)))
+                if(item_type!=PrimitiveType::Triangles)
+                    return false;
+                if(base && (primitive_type!=item_type || !SameVertexFormat(*format,*item_format)
+                            || state.alpha_test!=base_state.alpha_test
+                            || state.dither!=base_state.dither
+                            || (state.alpha_test && state.alpha_cutoff!=base_state.alpha_cutoff)))
                     return false;
                 if(!base)
                 {
                     base=&recipe;
                     format=item_format;
                     primitive_type=item_type;
+                    base_state=state;
                 }
             }
             if(!base) return false;

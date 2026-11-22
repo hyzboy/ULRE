@@ -3,6 +3,7 @@
 #include<hgl/ecs/support/debug/DebugViewController.h>
 #include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/mtl/MaterialDomain.h>
+#include<hgl/mtl/MaterialResolver.h>
 
 int main()
 {
@@ -11,6 +12,42 @@ int main()
     using hgl::graph::mtl::DebugViewMode;
     using hgl::graph::mtl::MaterialDomain;
     using hgl::graph::mtl::MaterialRecipe;
+    using hgl::graph::mtl::ResolvedMaterial;
+    using hgl::graph::mtl::ResolveMaterialFromRecipe;
+    using hgl::graph::mtl::ResolveMaterialRenderState;
+    using hgl::graph::mtl::BuildDebugViewRecipe;
+
+    MaterialRecipe coverage;
+    coverage.domain=MaterialDomain::StandardOpaque;
+    coverage.render_state_overrides.has_alpha_test=true;
+    coverage.render_state_overrides.alpha_test=true;
+    coverage.render_state_overrides.has_alpha_cutoff=true;
+    coverage.render_state_overrides.alpha_cutoff=0.37f;
+    coverage.render_state_overrides.has_dither=true;
+    coverage.render_state_overrides.dither=false;
+    MaterialRecipe debug;
+    if(!BuildDebugViewRecipe(DebugViewMode::ShadingNormal,&coverage,debug))
+        return 7;
+    ResolvedMaterial resolved{};
+    if(!ResolveMaterialFromRecipe(debug,resolved))
+        return 8;
+    const auto state=ResolveMaterialRenderState(resolved,debug);
+    if(!state.alpha_test || state.dither || state.alpha_cutoff!=0.37f
+       || !coverage.render_state_overrides.alpha_test)
+        return 9;
+    coverage.render_state_overrides.dither=true;
+    if(BuildDebugViewRecipe(DebugViewMode::ShadingNormal,&coverage,debug))
+        return 11;
+    coverage.render_state_overrides.dither=false;
+    coverage.domain=MaterialDomain::StandardAdvanced;
+    if(BuildDebugViewRecipe(DebugViewMode::ShadingNormal,&coverage,debug)
+       || BuildDebugViewRecipe(DebugViewMode::ShadingNormal,nullptr,debug))
+        return 10;
+    coverage.domain=MaterialDomain::StandardOpaque;
+    coverage.render_state_overrides.has_pipeline_config=true;
+    coverage.render_state_overrides.pipeline_config.alpha_blend=true;
+    if(BuildDebugViewRecipe(DebugViewMode::ShadingNormal,&coverage,debug))
+        return 12;
 
     ECSContext world("DebugViewOwner");
     auto *entity=world.CreateEntity<hgl::ecs::Entity>("original");

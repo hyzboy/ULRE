@@ -319,7 +319,7 @@ class CaptureIntegrationTests(unittest.TestCase):
         main_target = next(item["target_id"] for item in targets if item["kind"] == "swapchain")
         before = capture(main_target)
         try:
-            for mode in ("world_normal", "base_color", "surface", "emissive", "uv0"):
+            for mode in ("world_normal", "shading_normal", "base_color", "surface", "emissive", "uv0"):
                 with self.subTest(mode=mode):
                     self.assertTrue(mcp_server.call_engine("set_debug_view", {"mode": mode})["valid"])
                     for _ in range(300):
@@ -334,8 +334,8 @@ class CaptureIntegrationTests(unittest.TestCase):
                     self.assertEqual(manifest["source"], "debug_view")
                     self.assertEqual(manifest["debug_view_mode"], mode)
                     self.assertEqual(manifest["mask"], "alpha_nonzero")
-                    if mode in ("world_normal", "surface"):
-                        operation = "normals" if mode == "world_normal" else "surface"
+                    if mode in ("world_normal", "shading_normal", "surface"):
+                        operation = "surface" if mode == "surface" else "normals"
                         analysis = capture_manifest.analyze_capture(captured["metadata_path"], operation)
                         self.assertGreater(analysis["sample_count"], 0)
                         if mode == "world_normal":
