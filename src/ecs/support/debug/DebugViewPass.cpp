@@ -294,6 +294,13 @@ namespace hgl::ecs
         return status.applied;
     }
 
+    uint64_t DebugViewPass::GetTargetID()
+    {
+        Status &status=SharedStatus();
+        hgl::MutexLock lock(&status.lock);
+        return status.target_id;
+    }
+
     uint32_t DebugViewPass::GetTrackedCount()
     {
         Status &status=SharedStatus();

@@ -19,6 +19,7 @@ namespace hgl::ecs
         static bool RequestMode(graph::mtl::DebugViewMode);
         static graph::mtl::DebugViewMode GetRequestedMode();
         static graph::mtl::DebugViewMode GetAppliedMode();
+        static uint64_t GetTargetID();
         static uint32_t GetTrackedCount();
         static AnsiString GetStatusJSON();
         static void Record(ECSContext *,graph::RenderCmdBuffer *,graph::IRenderTarget *);

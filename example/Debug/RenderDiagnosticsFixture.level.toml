@@ -1,0 +1,60 @@
+schema = 1
+name = "RenderDiagnosticsFixture"
+description = "Static opaque geometry for diagnostic captures."
+
+[camera]
+mode = "view_model"
+target = [0.0, 0.0, 0.0]
+distance = 14.0
+yaw = 45.0
+pitch = -20.0
+main = true
+
+[clear_color]
+value = [0.18, 0.18, 0.20, 1.0]
+
+[[materials]]
+name = "fixture_surface"
+type = "PBRSurface"
+base_color = [1.0, 1.0, 1.0, 1.0]
+metallic = 0.08
+roughness = 0.92
+normal_scale = 0.35
+
+[materials.textures]
+base_color = "pack(res):image/Brickwall/Albedo.Tex2D"
+normal = "pack(res):image/Brickwall/Normal.Tex2D"
+roughness = "pack(res):image/Brickwall/Roughness.Tex2D"
+
+[[nodes]]
+name = "Floor"
+geometry = "presets:plane_square"
+recipe = "06b.BasicLit.Lit"
+material = "fixture_surface"
+mobility = "static"
+
+[nodes.transform]
+position = [0.0, 0.0, 0.0]
+rotation_axis = [0.0, 0.0, 1.0]
+rotation_angle_deg = 0.0
+scale = [1.0, 1.0, 1.0]
+
+[[nodes]]
+name = "Cube"
+geometry = "presets:cube"
+recipe = "06b.BasicLit.Lit"
+material = "fixture_surface"
+mobility = "static"
+transform.position = [0.0, 0.0, 1.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 0.0
+
+[[nodes]]
+name = "Sphere"
+geometry = "presets:sphere_64"
+recipe = "06b.BasicLit.Lit"
+material = "fixture_surface"
+mobility = "static"
+transform.position = [3.0, 0.0, 1.0]
+transform.rotation_axis = [0.0, 0.0, 1.0]
+transform.rotation_angle_deg = 0.0

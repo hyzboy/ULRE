@@ -3,3 +3,4 @@
 CreateProject(RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(SimplestAxis SimplestAxis.cpp)
 CreateProject(PlaneGrid3D PlaneGrid3D.cpp)
+CreateProject(RenderDiagnosticsFixture RenderDiagnosticsFixture.cpp)
