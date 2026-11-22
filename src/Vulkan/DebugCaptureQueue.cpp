@@ -201,8 +201,9 @@ namespace hgl::graph
             json+="\",\"camera\":";
             if(result.camera.valid)
             {
+                // Camera-relative view/transform offsets are not enabled in the current camera path.
                 json+="{\"source\":\"primitive_collect\",\"matrix_layout\":\"column_major\","
-                      "\"position_space\":\"unspecified\",\"vp\":";
+                      "\"position_space\":\"world_absolute\",\"vp\":";
                 AppendFloats(json,result.camera.vp,16);
                 json+=",\"inverse_vp\":";
                 AppendFloats(json,result.camera.inverse_vp,16);

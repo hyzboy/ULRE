@@ -67,7 +67,8 @@ def load_manifest(path):
     return metadata, data_path
 
 
-def analyze_capture(path, operation, color_space_override=None, reversed_z_override=None):
+def analyze_capture(path, operation, color_space_override=None, reversed_z_override=None,
+                    sample_step=16, allow_unverified_depth_producers=False):
     metadata, data_path = load_manifest(path)
     width, height = metadata["width"], metadata["height"]
     encoding = metadata["encoding"]
@@ -84,7 +85,7 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
         if color_space not in ("linear", "srgb"):
             raise ValueError("Capture color space is unknown; supply color_space_override")
         result = analyzer.analyze_luminance(str(data_path), width, height, encoding, color_space)
-    elif operation == "depth":
+    elif operation in ("depth", "world_position"):
         if metadata.get("attachment") != "depth" or encoding != "r32f" or \
                 metadata.get("copy_aspect") != "depth":
             raise ValueError("Depth analysis requires an R32F depth-aspect capture")
@@ -104,9 +105,30 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
             reversed_z = reversed_z_override
         else:
             raise ValueError("Capture has no camera depth convention; supply reversed_z_override")
-        result = analyzer.analyze_depth(str(data_path), width, height, reversed_z, clear_depth)
+        if operation == "depth":
+            result = analyzer.analyze_depth(str(data_path), width, height, reversed_z, clear_depth)
+        else:
+            if not isinstance(camera, dict) or camera.get("matrix_layout") != "column_major" or \
+                    camera.get("position_space") != "world_absolute":
+                raise ValueError("A same-frame absolute-world camera matrix is required")
+            if allow_unverified_depth_producers is not True:
+                raise ValueError("Depth producers are not fully verified; explicit opt-in is required")
+            inverse_vp = camera.get("inverse_vp")
+            if not isinstance(inverse_vp, list):
+                raise ValueError("Capture inverse VP is missing")
+            viewport = metadata.get("viewport")
+            if not isinstance(viewport, dict):
+                raise ValueError("Capture viewport is missing")
+            result = analyzer.reconstruct_world_pos(
+                str(data_path), width, height, inverse_vp, reversed_z, sample_step,
+                clear_depth, viewport)
+            result["position_space"] = "world_absolute"
+            result["sampling_step"] = sample_step
+            result["limitations"] = ["camera snapshot covers primitive collection only",
+                                     "clear-depth filtering cannot distinguish geometry at clear depth"]
     else:
         raise ValueError("Unsupported capture analysis operation")
     result["capture"] = {key: metadata[key] for key in ("request_id", "target_id", "frame_id")}
-    result["pixel_scope"] = "full_frame_including_clear"
+    result["pixel_scope"] = ("sampled_non_clear_depth" if operation == "world_position"
+                             else "full_frame_including_clear")
     return result

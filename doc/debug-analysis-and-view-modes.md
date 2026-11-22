@@ -20,10 +20,12 @@
 - `DebugAttribute` 目前通过覆盖实体的作者配方渲染到原目标，不是离屏 Pass。
   `world_normal` 表示顶点或面法线，不包含法线贴图扰动。其 PBR 数据行与纹理假设
   不适用于所有材质；动态实体、作者编辑与多世界切换需要特别审查。
-- `analyze_capture` 可读取 v1 清单进行亮度或 R32F 深度分析；颜色空间未知时必须
+- `analyze_capture` 可读取 v1 清单进行亮度、R32F 深度及采样位置反投影；颜色空间未知时必须
   显式指定，深度统计使用清单中的实际清屏值。尚无有效像素 mask，统计包含背景，
   因此不能直接作为完整回归基线。
-  反投影工具要求调用方显式传入该深度帧对应的 inverse VP，不再隐式获取最新相机。
+  清单反投影要求同帧绝对世界相机；由于相机快照只覆盖 primitive collect、
+  未证明所有深度写入者使用同一相机，必须显式设置 `allow_unverified_depth_producers`。
+  手动反投影工具仍要求调用方传入同帧 inverse VP，不隐式获取最新相机。
 
 `ULRE_DEBUG.toml` 中的 `debugbridge` 控制命名管道；诊断功能应显式启用。
 不要将未实现的接口、SSIM、阴影受影比例或 Position RT 描述为已支持。

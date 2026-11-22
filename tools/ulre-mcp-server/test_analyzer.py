@@ -171,6 +171,43 @@ class AnalyzerTests(unittest.TestCase):
         self.assertFalse(response["result"]["isError"])
         self.assertIn('"point_count": 1', response["result"]["content"][0]["text"])
 
+    def test_world_position_respects_viewport_and_depth_range(self):
+        depth = self.capture("viewport.raw", struct.pack(
+            "<8f", 0.0, 0.5, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0))
+        inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                   0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        viewport = {"x": 1, "y": 0, "width": 2, "height": 2,
+                    "min_depth": 0.2, "max_depth": 0.8}
+        result = analyzer.reconstruct_world_pos(depth, 4, 2, inverse, True, 1, 0, viewport)
+        self.assertEqual(result["point_count"], 4)
+        self.assertEqual(result["bounds"]["min"][:2], [-0.5, -0.5])
+        self.assertEqual(result["bounds"]["max"][:2], [0.5, 0.5])
+        self.assertAlmostEqual(result["bounds"]["min"][2], 0.5)
+
+    def test_world_position_applies_column_major_translation(self):
+        depth = self.capture("translated.raw", struct.pack("<f", 0.5))
+        inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                   0.0, 0.0, 1.0, 0.0, 3.0, -2.0, 7.0, 1.0]
+        result = analyzer.reconstruct_world_pos(depth, 1, 1, inverse, sample_step=1)
+        self.assertEqual(result["bounds"]["min"], [3.0, -2.0, 7.5])
+        self.assertEqual(result["bounds"]["max"], [3.0, -2.0, 7.5])
+
+    def test_manifest_world_position_requires_known_coordinate_space(self):
+        self.capture("capture.raw", struct.pack("<f", 0.5))
+        camera = {"reversed_z": True, "matrix_layout": "column_major",
+                  "position_space": "unspecified", "inverse_vp": [1.0] * 16}
+        path = self.manifest(attachment="depth", encoding="r32f", vk_format=130,
+                             copy_aspect="depth", clear_depth=0.0,
+                             camera_status="recorded", camera=camera)
+        with self.assertRaisesRegex(ValueError, "absolute-world"):
+            capture_manifest.analyze_capture(path, "world_position")
+        camera["position_space"] = "world_absolute"
+        path = self.manifest(attachment="depth", encoding="r32f", vk_format=130,
+                             copy_aspect="depth", clear_depth=0.0,
+                             camera_status="recorded", camera=camera)
+        with self.assertRaisesRegex(ValueError, "explicit opt-in"):
+            capture_manifest.analyze_capture(path, "world_position")
+
     def test_missing_capture_matrix_is_an_error(self):
         request = {"id": 10, "method": "tools/call",
                    "params": {"name": "reconstruct_world_pos", "arguments": {

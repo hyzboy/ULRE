@@ -64,6 +64,18 @@ class CaptureIntegrationTests(unittest.TestCase):
                     self.assertFalse(analysis["result"]["isError"], analysis)
                     values = json.loads(analysis["result"]["content"][0]["text"])
                     self.assertEqual(values["capture"]["frame_id"], manifest["frame_id"])
+                    if attachment == "depth":
+                        arguments["operation"] = "world_position"
+                        arguments["sample_step"] = 8
+                        arguments["allow_unverified_depth_producers"] = True
+                        analysis = mcp_server.handle({
+                            "id": 12, "method": "tools/call",
+                            "params": {"name": "analyze_capture", "arguments": arguments},
+                        })
+                        self.assertFalse(analysis["result"]["isError"], analysis)
+                        points = json.loads(analysis["result"]["content"][0]["text"])
+                        self.assertEqual(points["position_space"], "world_absolute")
+                        self.assertGreater(points["point_count"], 0)
                 finally:
                     released = mcp_server.call_engine("release_capture", {
                         "request_id": request_id,

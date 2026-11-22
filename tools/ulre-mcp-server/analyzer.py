@@ -208,16 +208,38 @@ def analyze_depth(path, width, height, reversed_z=False, clear_depth=None):
     }
 
 
-def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16):
+def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16,
+                          clear_depth=None, viewport=None):
     depth = _read_raw(depth_path)
     values = _float32_channels(depth, width, height, "r32f")
 
     if (len(inverse_vp) != 16 or
-            not all(isinstance(value, (int, float)) and math.isfinite(value)
+            not all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
                     for value in inverse_vp)):
         raise ValueError("inverse_vp must contain 16 finite numbers")
     if not isinstance(sample_step, int) or isinstance(sample_step, bool) or sample_step <= 0:
         raise ValueError("sample_step must be a positive integer")
+    if clear_depth is None:
+        clear_depth = 0.0 if reversed_z else 1.0
+    if isinstance(clear_depth, bool) or not isinstance(clear_depth, (int, float)) or \
+            not math.isfinite(clear_depth) or not 0 <= clear_depth <= 1:
+        raise ValueError("clear_depth must be a finite number in [0, 1]")
+    if viewport is None:
+        viewport = {"x": 0, "y": 0, "width": width, "height": height,
+                    "min_depth": 0.0, "max_depth": 1.0}
+    if not isinstance(viewport, dict):
+        raise ValueError("viewport must be an object")
+    names = ("x", "y", "width", "height", "min_depth", "max_depth")
+    if any(isinstance(viewport.get(key), bool) or
+           not isinstance(viewport.get(key), (int, float)) or
+           not math.isfinite(viewport[key]) for key in names):
+        raise ValueError("viewport fields must be finite numbers")
+    vx, vy = viewport["x"], viewport["y"]
+    vw, vh = viewport["width"], viewport["height"]
+    vmin, vmax = viewport["min_depth"], viewport["max_depth"]
+    if vx < 0 or vy < 0 or vw <= 0 or vh <= 0 or vx + vw > width or vy + vh > height \
+            or not 0 <= vmin < vmax <= 1:
+        raise ValueError("viewport is outside the capture or has an invalid depth range")
 
     def multiply(row, x, y, z, w):
         return (inverse_vp[row] * x + inverse_vp[row + 4] * y +
@@ -227,26 +249,30 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
     for y in range(0, height, sample_step):
         for x in range(0, width, sample_step):
             d = values[y * width + x][0]
-            clear_depth = 0.0 if reversed_z else 1.0
-            if not math.isfinite(d) or d < 0.0 or d > 1.0 or d == clear_depth:
+            if not (vx <= x + 0.5 < vx + vw and vy <= y + 0.5 < vy + vh):
                 continue
-            u = (x + 0.5) / width
-            v = (y + 0.5) / height
+            if not math.isfinite(d) or d < vmin or d > vmax or d == clear_depth:
+                continue
+            u = (x + 0.5 - vx) / vw
+            v = (y + 0.5 - vy) / vh
             ndc_x = u * 2.0 - 1.0
             ndc_y = v * 2.0 - 1.0
+            ndc_z = (d - vmin) / (vmax - vmin)
             clip = [
-                multiply(0, ndc_x, ndc_y, d, 1.0),
-                multiply(1, ndc_x, ndc_y, d, 1.0),
-                multiply(2, ndc_x, ndc_y, d, 1.0),
-                multiply(3, ndc_x, ndc_y, d, 1.0),
+                multiply(0, ndc_x, ndc_y, ndc_z, 1.0),
+                multiply(1, ndc_x, ndc_y, ndc_z, 1.0),
+                multiply(2, ndc_x, ndc_y, ndc_z, 1.0),
+                multiply(3, ndc_x, ndc_y, ndc_z, 1.0),
             ]
-            if abs(clip[3]) < 1e-8:
+            if not all(math.isfinite(value) for value in clip) or abs(clip[3]) < 1e-8:
                 continue
-            points.append([
+            point = [
                 clip[0] / clip[3],
                 clip[1] / clip[3],
                 clip[2] / clip[3],
-            ])
+            ]
+            if all(math.isfinite(value) for value in point):
+                points.append(point)
 
     if not points:
         return {"valid": True, "point_count": 0, "bounds": None}
