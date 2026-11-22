@@ -111,13 +111,16 @@ TOOLS = [
     },
     {
         "name": "reconstruct_world_pos",
-        "description": "Reconstruct sampled world positions from a depth capture and camera inverse VP.",
+        "description": "Reconstruct sampled positions using the matching capture's inverse VP; never uses the latest camera implicitly.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string"},
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
             "sample_step": {"type": "integer", "minimum": 1, "default": 16},
-        }, "required": ["path", "width", "height"]},
+            "inverse_vp": {"type": "array", "items": {"type": "number"},
+                           "minItems": 16, "maxItems": 16},
+            "reversed_z": {"type": "boolean", "default": False},
+        }, "required": ["path", "width", "height", "inverse_vp"]},
     },
     {
         "name": "compare_frames",
@@ -203,15 +206,10 @@ def handle(request):
                     arguments["path"], arguments["width"], arguments["height"],
                     arguments.get("reversed_z", False))
             elif tool_name == "reconstruct_world_pos":
-                camera = call_engine("get_camera_matrices")
-                if not camera.get("valid"):
-                    value = camera
-                else:
-                    value = analyzer.reconstruct_world_pos(
-                        arguments["path"], arguments["width"], arguments["height"],
-                        camera["inverse_vp"],
-                        bool(camera.get("use_reversed_z", 0)),
-                        arguments.get("sample_step", 16))
+                value = analyzer.reconstruct_world_pos(
+                    arguments["path"], arguments["width"], arguments["height"],
+                    arguments["inverse_vp"], arguments.get("reversed_z", False),
+                    arguments.get("sample_step", 16))
             elif tool_name == "compare_frames":
                 value = analyzer.compare_frames(
                     arguments["path_a"], arguments["path_b"],

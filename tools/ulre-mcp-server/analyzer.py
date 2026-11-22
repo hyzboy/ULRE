@@ -82,8 +82,10 @@ def analyze_luminance(path, width, height, pixel_format="rgba8"):
         luminance.append(value)
 
     finite = [v for v in luminance if math.isfinite(v)]
-    mean = sum(finite) / len(finite) if finite else 0.0
-    variance = sum((v - mean) ** 2 for v in finite) / len(finite) if finite else 0.0
+    if not finite:
+        raise ValueError("Capture has no finite luminance samples")
+    mean = sum(finite) / len(finite)
+    variance = sum((v - mean) ** 2 for v in finite) / len(finite)
     return {
         "valid": True,
         "width": width,
@@ -183,9 +185,9 @@ def analyze_depth(path, width, height, reversed_z=False):
     return {
         "valid": True,
         "reversed_z": reversed_z,
-        "min": min(finite) if finite else 0.0,
-        "max": max(finite) if finite else 0.0,
-        "mean": sum(finite) / len(finite) if finite else 0.0,
+        "min": min(finite) if finite else None,
+        "max": max(finite) if finite else None,
+        "mean": sum(finite) / len(finite) if finite else None,
         "effective_depth_ratio": sum(v != clear_depth for v in finite) / count,
         "clear_depth": clear_depth,
         "valid_depth_count": len(finite),
@@ -196,12 +198,14 @@ def analyze_depth(path, width, height, reversed_z=False):
 
 def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16):
     depth = _read_raw(depth_path)
-    count = width * height
-    if len(depth) < count * 4:
-        raise ValueError("Depth capture is shorter than width * height * 4")
+    values = _float32_channels(depth, width, height, "r32f")
 
-    if len(inverse_vp) != 16:
-        raise ValueError("inverse_vp must contain 16 floats")
+    if (len(inverse_vp) != 16 or
+            not all(isinstance(value, (int, float)) and math.isfinite(value)
+                    for value in inverse_vp)):
+        raise ValueError("inverse_vp must contain 16 finite numbers")
+    if not isinstance(sample_step, int) or isinstance(sample_step, bool) or sample_step <= 0:
+        raise ValueError("sample_step must be a positive integer")
 
     def multiply(row, x, y, z, w):
         return (inverse_vp[row] * x + inverse_vp[row + 4] * y +
@@ -210,8 +214,9 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
     points = []
     for y in range(0, height, sample_step):
         for x in range(0, width, sample_step):
-            d = struct.unpack_from("<f", depth, (y * width + x) * 4)[0]
-            if not math.isfinite(d) or d < 0.0 or d > 1.0:
+            d = values[y * width + x][0]
+            clear_depth = 0.0 if reversed_z else 1.0
+            if not math.isfinite(d) or d < 0.0 or d > 1.0 or d == clear_depth:
                 continue
             u = (x + 0.5) / width
             v = (y + 0.5) / height

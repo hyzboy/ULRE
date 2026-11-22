@@ -94,6 +94,34 @@ class AnalyzerTests(unittest.TestCase):
             response = mcp_server.handle(request)
         self.assertTrue(response["result"]["isError"])
 
+    def test_world_position_does_not_read_latest_camera(self):
+        depth = self.capture("depth.raw", struct.pack("<ff", 0.0, 0.5))
+        inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                   0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        request = {"id": 9, "method": "tools/call",
+                   "params": {"name": "reconstruct_world_pos", "arguments": {
+                       "path": depth, "width": 2, "height": 1,
+                       "inverse_vp": inverse, "reversed_z": True, "sample_step": 1,
+                   }}}
+        with patch.object(mcp_server, "call_engine", side_effect=AssertionError):
+            response = mcp_server.handle(request)
+        self.assertFalse(response["result"]["isError"])
+        self.assertIn('"point_count": 1', response["result"]["content"][0]["text"])
+
+    def test_missing_capture_matrix_is_an_error(self):
+        request = {"id": 10, "method": "tools/call",
+                   "params": {"name": "reconstruct_world_pos", "arguments": {
+                       "path": "unused", "width": 1, "height": 1,
+                   }}}
+        with patch.object(mcp_server, "call_engine", side_effect=AssertionError):
+            response = mcp_server.handle(request)
+        self.assertTrue(response["result"]["isError"])
+
+    def test_no_finite_luminance_is_an_error(self):
+        path = self.capture("nan.raw", struct.pack("<f", math.nan))
+        with self.assertRaises(ValueError):
+            analyzer.analyze_luminance(path, 1, 1, "r32f")
+
 
 if __name__ == "__main__":
     unittest.main()
