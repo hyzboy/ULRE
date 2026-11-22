@@ -1,3 +1,4 @@
+import json
 import math
 import struct
 import tempfile
@@ -6,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import analyzer
+import capture_manifest
 import mcp_server
 
 
@@ -20,6 +22,20 @@ class AnalyzerTests(unittest.TestCase):
     def capture(self, name, data):
         path = self.root / name
         path.write_bytes(data)
+        return str(path)
+
+    def manifest(self, **overrides):
+        metadata = {
+            "schema": "ulre.capture.v1", "request_id": 1, "target_id": 2, "frame_id": 3,
+            "source": "swapchain", "attachment": "color", "data_file": "capture.raw",
+            "width": 1, "height": 1, "encoding": "bgra8", "color_space": "unknown",
+            "vk_format": 44,
+            "byte_order": "little", "samples": 1, "mip": 0, "layer": 0,
+            "pixel_size": 4, "row_pitch": 4, "byte_count": 4,
+        }
+        metadata.update(overrides)
+        path = self.root / "capture.json"
+        path.write_text(json.dumps(metadata), encoding="utf-8")
         return str(path)
 
     def test_bgra_luminance_uses_red_channel(self):
@@ -168,6 +184,38 @@ class AnalyzerTests(unittest.TestCase):
         path = self.capture("nan.raw", struct.pack("<f", math.nan))
         with self.assertRaises(ValueError):
             analyzer.analyze_luminance(path, 1, 1, "r32f")
+
+    def test_manifest_luminance_requires_known_color_space(self):
+        self.capture("capture.raw", bytes((0, 0, 255, 255)))
+        path = self.manifest()
+        with self.assertRaisesRegex(ValueError, "color space is unknown"):
+            capture_manifest.analyze_capture(path, "luminance")
+        result = capture_manifest.analyze_capture(path, "luminance", "linear")
+        self.assertAlmostEqual(result["mean"], 0.2126)
+        self.assertEqual(result["capture"]["frame_id"], 3)
+
+    def test_manifest_depth_uses_recorded_clear_value(self):
+        self.capture("capture.raw", struct.pack("<ff", 0.0, 1.0))
+        path = self.manifest(attachment="depth", encoding="r32f", vk_format=130, width=2,
+                             row_pitch=8, byte_count=8, copy_aspect="depth",
+                             clear_depth=0.0, camera_status="recorded",
+                             camera={"reversed_z": False})
+        result = capture_manifest.analyze_capture(path, "depth")
+        self.assertEqual(result["effective_depth_ratio"], 0.5)
+        self.assertEqual(result["clear_depth"], 0.0)
+        with self.assertRaisesRegex(ValueError, "conflicts"):
+            capture_manifest.analyze_capture(path, "depth", reversed_z_override=True)
+
+    def test_manifest_rejects_bad_layout_and_traversal(self):
+        self.capture("capture.raw", bytes(4))
+        for fields in ({"row_pitch": 8, "byte_count": 8},
+                       {"data_file": "../capture.raw"},
+                       {"data_file": "C:outside.raw"},
+                       {"vk_format": 37},
+                       {"samples": True}):
+            with self.subTest(fields=fields):
+                with self.assertRaises(ValueError):
+                    capture_manifest.load_manifest(self.manifest(**fields))
 
 
 if __name__ == "__main__":

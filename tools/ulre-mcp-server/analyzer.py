@@ -177,7 +177,7 @@ def analyze_surface(path, width, height, pixel_format="rgba8"):
     }
 
 
-def analyze_depth(path, width, height, reversed_z=False):
+def analyze_depth(path, width, height, reversed_z=False, clear_depth=None):
     data = _read_raw(path)
     channels = _float32_channels(data, width, height, "r32f")
     count = width * height
@@ -189,7 +189,11 @@ def analyze_depth(path, width, height, reversed_z=False):
         histogram[bucket] += 1
 
     invalid = sum(not math.isfinite(v) or v < 0.0 or v > 1.0 for v in values)
-    clear_depth = 0.0 if reversed_z else 1.0
+    if clear_depth is None:
+        clear_depth = 0.0 if reversed_z else 1.0
+    if not isinstance(clear_depth, (int, float)) or isinstance(clear_depth, bool) or \
+            not math.isfinite(clear_depth) or not 0.0 <= clear_depth <= 1.0:
+        raise ValueError("clear_depth must be a finite number in [0, 1]")
     return {
         "valid": True,
         "reversed_z": reversed_z,

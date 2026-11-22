@@ -53,6 +53,17 @@ class CaptureIntegrationTests(unittest.TestCase):
                                         for k in range(4))
                             self.assertAlmostEqual(value, float(row == col), delta=0.001)
                     self.assertGreater(camera["znear"], 0)
+                    operation = "luminance" if attachment == "color" else "depth"
+                    arguments = {"metadata_path": str(metadata_path), "operation": operation}
+                    if attachment == "color" and manifest["color_space"] == "unknown":
+                        arguments["color_space_override"] = "linear"
+                    analysis = mcp_server.handle({
+                        "id": 11, "method": "tools/call",
+                        "params": {"name": "analyze_capture", "arguments": arguments},
+                    })
+                    self.assertFalse(analysis["result"]["isError"], analysis)
+                    values = json.loads(analysis["result"]["content"][0]["text"])
+                    self.assertEqual(values["capture"]["frame_id"], manifest["frame_id"])
                 finally:
                     released = mcp_server.call_engine("release_capture", {
                         "request_id": request_id,

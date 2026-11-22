@@ -4,6 +4,7 @@ import sys
 import time
 
 import analyzer
+import capture_manifest
 
 
 PIPE_NAME = r"\\.\pipe\ulre_render_debug"
@@ -26,6 +27,16 @@ def open_engine_pipe():
 
 
 TOOLS = [
+    {
+        "name": "analyze_capture",
+        "description": "Analyze a versioned capture manifest; rejects unknown layouts and requires an explicit color-space override when unspecified.",
+        "inputSchema": {"type": "object", "properties": {
+            "metadata_path": {"type": "string"},
+            "operation": {"type": "string", "enum": ["luminance", "depth"]},
+            "color_space_override": {"type": "string", "enum": ["linear", "srgb"]},
+            "reversed_z_override": {"type": "boolean"},
+        }, "required": ["metadata_path", "operation"]},
+    },
     {
         "name": "get_render_health",
         "description": "Read the ULRE render health ledger.",
@@ -252,7 +263,11 @@ def handle(request):
         arguments = params.get("arguments", {})
 
         try:
-            if tool_name == "analyze_luminance":
+            if tool_name == "analyze_capture":
+                value = capture_manifest.analyze_capture(
+                    arguments["metadata_path"], arguments["operation"],
+                    arguments.get("color_space_override"), arguments.get("reversed_z_override"))
+            elif tool_name == "analyze_luminance":
                 value = analyzer.analyze_luminance(
                     arguments["path"], arguments["width"], arguments["height"],
                     arguments.get("pixel_format", "rgba8"), arguments["color_space"])

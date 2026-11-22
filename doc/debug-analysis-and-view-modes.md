@@ -20,9 +20,9 @@
 - `DebugAttribute` 目前通过覆盖实体的作者配方渲染到原目标，不是离屏 Pass。
   `world_normal` 表示顶点或面法线，不包含法线贴图扰动。其 PBR 数据行与纹理假设
   不适用于所有材质；动态实体、作者编辑与多世界切换需要特别审查。
-- 分析工具仍需要调用方提供原始格式和尺寸；亮度分析要求明确输入线性或 sRGB 颜色。
-  尚无有效像素 mask 和元数据驱动分析，不能直接作为完整回归基线。合成测试覆盖
-  格式、深度和帧差的基本语义。
+- `analyze_capture` 可读取 v1 清单进行亮度或 R32F 深度分析；颜色空间未知时必须
+  显式指定，深度统计使用清单中的实际清屏值。尚无有效像素 mask，统计包含背景，
+  因此不能直接作为完整回归基线。
   反投影工具要求调用方显式传入该深度帧对应的 inverse VP，不再隐式获取最新相机。
 
 `ULRE_DEBUG.toml` 中的 `debugbridge` 控制命名管道；诊断功能应显式启用。
@@ -56,7 +56,8 @@ JSON 字段匹配，响应保留请求 ID。桥接线程的连接与 I/O 可在�
 
 例如：`capture_frame({"target_id":1,"attachment":"depth"})` 返回 request ID；
 随后 `get_capture_status({"request_id":1})` 在成功时提供 `dump_path` 和
-`metadata_path`。不同请求即使连续发出也可能捕获不同帧。
+`metadata_path`；`analyze_capture({"metadata_path":"<绝对路径>","operation":"depth"})`
+读取清单和数据。不同请求即使连续发出也可能捕获不同帧。
 
 目标契约还需包括 schema 版本、capture/request/frame ID、目标及 pass、相机标识、
 附件类型、尺寸、VkFormat、像素布局和数值类型、颜色空间、行跨度、字节序、实际
