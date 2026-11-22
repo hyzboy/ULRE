@@ -386,14 +386,20 @@ def analyze_shadow_semantics(path, is_shadow_map_depth=False):
 
 
 def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis",
-                     color_space_override=None, allow_unverified_context=False):
+                     color_space_override=None, allow_unverified_context=False,
+                     allow_world_position=False):
     a, data_a = load_manifest(path_a)
     b, data_b = load_manifest(path_b)
     if a["attachment"] != "color" or b["attachment"] != "color":
         raise ValueError("Capture comparison currently supports color attachments only")
-    if a.get("debug_view_mode") == "world_position" or \
-            b.get("debug_view_mode") == "world_position":
+    position = a.get("debug_view_mode") == "world_position" or \
+        b.get("debug_view_mode") == "world_position"
+    if position and not allow_world_position:
         raise ValueError("World-position captures require position analysis, not color comparison")
+    if position and (a.get("debug_view_mode") != "world_position" or
+                     b.get("debug_view_mode") != "world_position" or
+                     a.get("position") != b.get("position")):
+        raise ValueError("World-position capture coordinates differ")
     for field in ("width", "height", "encoding", "vk_format", "color_space", "viewport", "source"):
         if a.get(field) != b.get(field):
             raise ValueError(f"Capture {field} differs")
@@ -448,17 +454,18 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
     result["color_space"] = color_space
     result["color_space_source"] = ("override" if a["color_space"] == "unknown"
                                     else "capture_metadata")
-    result["comparison_space"] = "encoded_channels"
+    result["comparison_space"] = "world_position" if position else "encoded_channels"
     result["pixel_scope"] = ("intersection_of_valid_geometry_masks"
                              if a.get("mask") == "alpha_nonzero"
                              else "full_frame_including_clear")
-    result["algorithm"] = "ulre_frame_diff_v2"
+    result["algorithm"] = "ulre_position_diff_v1" if position else "ulre_frame_diff_v2"
     result["analysis_schema_version"] = "ulre.analysis.v1"
     result["input_capture_ids"] = [_capture_id(entry) for entry in (a, b)]
     result["algorithm_parameters"] = {
         "threshold": threshold,
-        "threshold_units": "normalized encoded channel values",
-        "changed_pixel_rule": "strictly greater than threshold on any RGB channel",
+        "threshold_units": "world units" if position else "normalized encoded channel values",
+        "changed_pixel_rule": ("strictly greater than threshold on any XYZ component" if position
+                               else "strictly greater than threshold on any RGB channel"),
         "mask_policy": "valid-mask intersection for image metrics; symmetric difference reported separately",
         "ssim_window_size": 8,
         "ssim_window_shape": "non-overlapping square; partial edge windows allowed",
@@ -478,6 +485,20 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
         "SSIM is computed in encoded channel space and is not a perceptual color metric",
         "connected components include only threshold-exceeding pixels in the mask intersection",
     ]
+    if position:
+        result["psnr"] = None
+        result["psnr_infinite"] = None
+        result["ssim"] = None
+        for channel, axis in zip(result["channel_metrics"], ("x", "y", "z")):
+            channel["channel"] = axis
+            channel.pop("psnr")
+            channel.pop("psnr_infinite")
+        result["heatmap"]["difference_values"] = (
+            "1..254 proportional to maximum world-coordinate error, capped at one world unit")
+        result["limitations"][1] = "SSIM and PSNR are not defined for world positions"
+        result["algorithm_parameters"]["ssim_window_size"] = None
+        result["algorithm_parameters"]["ssim_window_shape"] = None
+        result["algorithm_parameters"]["ssim_channels"] = None
     if a.get("mask") != "alpha_nonzero":
         result["limitations"].append("valid geometry mask is unavailable")
     return result

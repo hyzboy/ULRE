@@ -13,6 +13,7 @@ import capture_manifest
 
 SCHEMA = "ulre.render_baseline.v1"
 ALGORITHM = "ulre_frame_diff_v2"
+POSITION_ALGORITHM = "ulre_position_diff_v1"
 
 
 class NotCovered(Exception):
@@ -55,8 +56,6 @@ def _capture(path, scene):
         raise NotCovered("capture_dimensions_do_not_match_fixture")
     if "capture_frame" in scene and metadata["frame_id"] != scene["capture_frame"]:
         raise NotCovered("capture_frame_does_not_match_fixture")
-    if metadata["encoding"] == "rgba32f":
-        raise NotCovered("position_rt_requires_numeric_crosscheck")
     if metadata.get("camera_status") != "recorded":
         raise NotCovered("capture_camera_unavailable")
     return metadata, data, _profile(metadata)
@@ -81,7 +80,8 @@ def write_baseline(path, capture_path, scene, *, update=False):
     copied["capture_id"] = raw_name
     meta_path.write_text(json.dumps(copied, allow_nan=False), encoding="utf-8")
     descriptor = {
-        "schema": SCHEMA, "algorithm": ALGORITHM, "capture_schema": metadata["schema"],
+        "schema": SCHEMA, "algorithm": (POSITION_ALGORITHM if scene["mode"] == "world_position"
+                                         else ALGORITHM), "capture_schema": metadata["schema"],
         "scene": scene, "device": profile,
         "format": {key: metadata[key] for key in ("vk_format", "encoding", "color_space")},
         "capture_manifest": meta_name, "capture_manifest_sha256": _sha256(meta_path),
@@ -110,13 +110,16 @@ def write_baseline(path, capture_path, scene, *, update=False):
 
 def compare_baseline(path, capture_path, scene, heatmap_dir, cross_tolerance=None):
     if cross_tolerance is not None and (type(cross_tolerance) not in (int, float)
-            or not math.isfinite(cross_tolerance) or not 0 <= cross_tolerance <= 1):
-        raise ValueError("cross-device tolerance must be finite and in [0,1]")
+            or not math.isfinite(cross_tolerance) or cross_tolerance < 0):
+        raise ValueError("cross-device tolerance must be finite and non-negative")
+    if scene.get("mode") != "world_position" and cross_tolerance is not None and cross_tolerance > 1:
+        raise ValueError("color cross-device tolerance must be in [0,1]")
     path = Path(path).resolve()
     if not path.is_file():
         raise NotCovered("baseline_missing")
     baseline = json.loads(path.read_text(encoding="utf-8"))
-    if baseline.get("schema") != SCHEMA or baseline.get("algorithm") != ALGORITHM \
+    expected_algorithm = POSITION_ALGORITHM if scene.get("mode") == "world_position" else ALGORITHM
+    if baseline.get("schema") != SCHEMA or baseline.get("algorithm") != expected_algorithm \
             or baseline.get("capture_schema") != "ulre.capture.v1":
         raise NotCovered("baseline_schema_or_algorithm_mismatch")
     if baseline.get("scene") != scene:
@@ -147,7 +150,7 @@ def compare_baseline(path, capture_path, scene, heatmap_dir, cross_tolerance=Non
     try:
         result = capture_manifest.compare_captures(
             saved, capture_path, threshold=threshold, heatmap_dir=heatmap_dir,
-            allow_unverified_context=True)
+            allow_unverified_context=True, allow_world_position=scene.get("mode") == "world_position")
     except ValueError as exc:
         return {"status": "FAIL", "reason": str(exc)}
     identical = saved_data.read_bytes() == current_data.read_bytes()

@@ -215,7 +215,8 @@ python tools\ulre-mcp-server\render_regression.py compare --baseline C:\runs\nor
 `--inject-fault camera|normal|material|coverage` 仅用于 compare 负向运行；
 normal 需 `world_normal` 模式，material 需 `surface` 模式。
 夹具对有效法线的非零和长度、surface 的 metallic 均值执行数值检查；
-`world_position` 输出同帧反投影数值，但 RGBA32F 基线比较目前为 `NOT_COVERED`。
+`world_position` 输出同帧反投影数值，并支持 RGBA32F 位置基线比较：同设备逐字节严格
+比较，跨设备显式容差的单位是世界坐标单位，mask 不一致始终失败。
 覆盖变化故障是几何 mask 变化，不代表阴影覆盖变化已验收。
 原始 `compare_captures` 仍是显式接受未验证上下文的图像比较，不能替代基线工具。
 完整 BasicLitMeshes MCP 调用顺序见 `.ai/skills/SKILL_RENDER_DIAGNOSTICS.md`。

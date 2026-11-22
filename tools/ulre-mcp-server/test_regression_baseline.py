@@ -1,4 +1,5 @@
 import json
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -95,6 +96,35 @@ class BaselineTests(unittest.TestCase):
         a.write_text(json.dumps(metadata), encoding="utf-8")
         with self.assertRaises(baseline.NotCovered):
             self.compare(a)
+
+    def test_world_position_float_baseline(self):
+        self.scene["mode"] = "world_position"
+
+        def position(name, values, device_id=7):
+            path = self.capture(name, struct.pack("<8f", *values), device_id=device_id)
+            metadata = json.loads(path.read_text(encoding="utf-8"))
+            metadata.update(debug_view_mode="world_position", encoding="rgba32f",
+                            vk_format=109, pixel_size=16, row_pitch=32, byte_count=32,
+                            position={"space": "world_absolute", "origin": [0, 0, 0],
+                                      "coordinate_system": "right_handed_z_up",
+                                      "representation": "ieee754_binary32", "format": "rgba32f",
+                                      "mask": "alpha_nonzero"})
+            path.write_text(json.dumps(metadata), encoding="utf-8")
+            return path
+
+        a = position("position-a", [1, 2, 3, 1, 0, 0, 0, 0])
+        changed = position("position-changed", [1.01, 2, 3, 1, 0, 0, 0, 0])
+        other = position("position-other", [1.01, 2, 3, 1, 0, 0, 0, 0], device_id=8)
+        coverage = position("position-mask", [1, 2, 3, 1, 1, 2, 3, 1])
+        baseline.write_baseline(self.path, a, self.scene)
+        result = self.compare(a)
+        self.assertEqual(result["status"], "PASS")
+        self.assertEqual(result["comparison"]["algorithm"], "ulre_position_diff_v1")
+        self.assertIsNone(result["comparison"]["ssim"])
+        self.assertEqual(self.compare(changed)["status"], "FAIL")
+        self.assertEqual(self.compare(coverage)["status"], "FAIL")
+        self.assertEqual(self.compare(other, 0.02)["status"], "PASS")
+        self.assertEqual(self.compare(other, 0.001)["status"], "FAIL")
 
 
 if __name__ == "__main__":
