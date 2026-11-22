@@ -9,6 +9,7 @@
 #include<hgl/sync/Mutex.h>
 #include<hgl/time/Time.h>
 #include<hgl/log/Log.h>
+#include "DebugBridgeJson.h"
 #include<cstring>
 #include<cstdio>
 
@@ -270,42 +271,32 @@ AnsiString FrameDebugger::GetLatestResultJSON()
 {
     hgl::MutexLock lock(&CaptureMutex());
     const uint32_t count=ResultCount();
-    if(count==0) return AnsiString("{\"valid\":false}");
+    if(count==0)
+        return debug_bridge::DebugJsonToText(nlohmann::json{{"valid",false}});
     const CaptureResult &result=Results()[count-1];
 
-    AnsiString json="{\"valid\":";
-    json+=result.valid?"true":"false";
-    json+=",\"name\":\"";
-    json+=result.request.name;
-    json+="\",\"kind\":\"";
+    const char *kind="unknown";
     switch(result.request.kind)
     {
-        case RequestKind::ColorTarget: json+="color_rt"; break;
-        case RequestKind::DepthTarget: json+="depth_rt"; break;
-        case RequestKind::Buffer: json+="buffer"; break;
-        default: json+="unknown"; break;
+        case RequestKind::ColorTarget: kind="color_rt"; break;
+        case RequestKind::DepthTarget: kind="depth_rt"; break;
+        case RequestKind::Buffer: kind="buffer"; break;
+        default: break;
     }
-    json+="\",\"width\":";
-    json+=AnsiString::numberOf(result.width);
-    json+=",\"height\":";
-    json+=AnsiString::numberOf(result.height);
-    json+=",\"format\":";
-    json+=AnsiString::numberOf(static_cast<int>(result.format));
-    json+=",\"bytes\":";
-    json+=AnsiString::numberOf(static_cast<uint64_t>(result.byte_count));
-    json+=",\"dump_path\":\"";
-    json+=result.dump_path;
-    json+="\"";
-    json+=",\"capture_id\":";
-    json+=AnsiString::numberOf(result.capture_id);
+
+    nlohmann::json json={
+        {"valid",result.valid},
+        {"name",result.request.name},
+        {"kind",kind},
+        {"width",result.width},
+        {"height",result.height},
+        {"format",static_cast<int>(result.format)},
+        {"bytes",result.byte_count},
+        {"dump_path",result.dump_path},
+        {"capture_id",result.capture_id}};
     if(result.error)
-    {
-        json+=",\"error\":\"";
-        json+=result.error;
-        json+="\"";
-    }
-    json+="}";
-    return json;
+        json["error"]=result.error;
+    return debug_bridge::DebugJsonToText(json);
 }
 
 void FrameDebugger::SetCameraSnapshot(const CameraInfo *camera)
@@ -335,47 +326,25 @@ AnsiString FrameDebugger::GetCameraSnapshotJSON()
 {
     const CameraSnapshot snapshot=GetCameraSnapshot();
     if(!snapshot.valid)
-        return AnsiString("{\"valid\":false}");
+        return debug_bridge::DebugJsonToText(nlohmann::json{{"valid",false}});
 
-    AnsiString json="{\"valid\":true,\"znear\":";
-    char number[64];
-    snprintf(number,sizeof(number),"%.9g",snapshot.znear);
-    json+=AnsiString(number);
-    json+=",\"zfar\":";
-    snprintf(number,sizeof(number),"%.9g",snapshot.zfar);
-    json+=AnsiString(number);
-    json+=",\"use_reversed_z\":";
-    json+=AnsiString::numberOf(snapshot.use_reversed_z);
-    json+=",\"inverse_vp\":[";
-    for(uint32_t i=0;i<16;i++)
+    const auto matrix=[](const float *m)
     {
-        if(i) json+=",";
-        snprintf(number,sizeof(number),"%.9g",snapshot.inverse_vp[i]);
-        json+=AnsiString(number);
-    }
-    json+="],\"vp\":[";
-    for(uint32_t i=0;i<16;i++)
-    {
-        if(i) json+=",";
-        snprintf(number,sizeof(number),"%.9g",snapshot.vp[i]);
-        json+=AnsiString(number);
-    }
-    json+="],\"inverse_view\":[";
-    for(uint32_t i=0;i<16;i++)
-    {
-        if(i) json+=",";
-        snprintf(number,sizeof(number),"%.9g",snapshot.inverse_view[i]);
-        json+=AnsiString(number);
-    }
-    json+="],\"inverse_projection\":[";
-    for(uint32_t i=0;i<16;i++)
-    {
-        if(i) json+=",";
-        snprintf(number,sizeof(number),"%.9g",snapshot.inverse_projection[i]);
-        json+=AnsiString(number);
-    }
-    json+="]}";
-    return json;
+        nlohmann::json array=nlohmann::json::array();
+        for(uint32_t i=0;i<16;i++)
+            array.push_back(m[i]);
+        return array;
+    };
+
+    return debug_bridge::DebugJsonToText(nlohmann::json{
+        {"valid",true},
+        {"znear",snapshot.znear},
+        {"zfar",snapshot.zfar},
+        {"use_reversed_z",snapshot.use_reversed_z},
+        {"inverse_vp",matrix(snapshot.inverse_vp)},
+        {"vp",matrix(snapshot.vp)},
+        {"inverse_view",matrix(snapshot.inverse_view)},
+        {"inverse_projection",matrix(snapshot.inverse_projection)}});
 }
 
 void FrameDebugger::SetPipelineInspection(const PipelineInspectionSnapshot &snapshot)
@@ -392,81 +361,80 @@ FrameDebugger::PipelineInspectionSnapshot FrameDebugger::GetPipelineInspection()
 
 AnsiString FrameDebugger::GetPipelineInspectionJSON()
 {
-    const PipelineInspectionSnapshot snap = GetPipelineInspection();
-    if (!snap.valid)
-        return AnsiString("{\"valid\":false}");
+    const PipelineInspectionSnapshot snap=GetPipelineInspection();
+    if(!snap.valid)
+        return debug_bridge::DebugJsonToText(nlohmann::json{{"valid",false}});
 
-    AnsiString json = "{\"valid\":true,\"frame_serial\":";
-    json += AnsiString::numberOf(snap.frame_serial);
-    json += ",\"funnel\":{";
-    json += "\"scene_primitives\":"; json += AnsiString::numberOf(snap.scene_primitives);
-    json += ",\"passed_can_render\":"; json += AnsiString::numberOf(snap.passed_can_render);
-    json += ",\"collected_items\":"; json += AnsiString::numberOf(snap.collected_items);
-    json += ",\"batched_items\":"; json += AnsiString::numberOf(snap.batched_items);
-    json += ",\"batch_count\":"; json += AnsiString::numberOf(snap.batch_count);
-    json += ",\"gpu_draw_count\":"; json += AnsiString::numberOf(snap.gpu_draw_count);
-    json += "},\"cache_state\":{";
-    json += "\"fast_path_engaged\":"; json += (snap.fast_path_engaged ? "true" : "false");
-    json += ",\"last_collect_steady\":"; json += (snap.last_collect_steady ? "true" : "false");
-    json += ",\"has_pending_resources\":"; json += (snap.has_pending_resources ? "true" : "false");
-    json += ",\"snapshot_ready\":"; json += (snap.snapshot_ready ? "true" : "false");
-    json += ",\"snapshot_topology_rev\":"; json += AnsiString::numberOf(snap.snapshot_topology_rev);
-    json += ",\"world_topology_rev\":"; json += AnsiString::numberOf(snap.world_topology_rev);
-    json += ",\"snapshot_item_count\":"; json += AnsiString::numberOf(snap.snapshot_item_count);
-    json += "},\"drops\":{";
-    json += "\"invisible\":"; json += AnsiString::numberOf(snap.dropped_invisible);
-    json += ",\"no_transform\":"; json += AnsiString::numberOf(snap.dropped_no_transform);
-    json += ",\"mobility_filtered\":"; json += AnsiString::numberOf(snap.dropped_mobility);
-    json += ",\"resource_pending\":"; json += AnsiString::numberOf(snap.dropped_resource_pending);
-    json += ",\"geometry_loading\":"; json += AnsiString::numberOf(snap.dropped_geometry_loading);
-    json += ",\"other\":"; json += AnsiString::numberOf(snap.dropped_other);
-    json += ",\"samples\":[";
-    for (uint32_t i = 0; i < snap.drop_sample_count; ++i)
+    nlohmann::json samples=nlohmann::json::array();
+    for(uint32_t i=0;i<snap.drop_sample_count;++i)
     {
-        if (i) json += ",";
-        const auto &s = snap.drop_samples[i];
-        json += "{\"name\":\""; json += s.entity_name;
-        json += "\",\"entity_id\":"; json += AnsiString::numberOf(s.entity_id);
-        json += ",\"stage\":\""; json += s.stage;
-        json += "\",\"reason\":\""; json += s.reason;
-        json += "\",\"detail\":\""; json += s.detail;
-        json += "\"}";
+        const auto &s=snap.drop_samples[i];
+        samples.push_back({{"name",s.entity_name},
+                           {"entity_id",s.entity_id},
+                           {"stage",s.stage},
+                           {"reason",s.reason},
+                           {"detail",s.detail}});
     }
-    json += "]}}";
-    return json;
+
+    return debug_bridge::DebugJsonToText(nlohmann::json{
+        {"valid",true},
+        {"frame_serial",snap.frame_serial},
+        {"funnel",{{"scene_primitives",snap.scene_primitives},
+                   {"passed_can_render",snap.passed_can_render},
+                   {"collected_items",snap.collected_items},
+                   {"batched_items",snap.batched_items},
+                   {"batch_count",snap.batch_count},
+                   {"gpu_draw_count",snap.gpu_draw_count}}},
+        {"cache_state",{{"fast_path_engaged",snap.fast_path_engaged},
+                        {"last_collect_steady",snap.last_collect_steady},
+                        {"has_pending_resources",snap.has_pending_resources},
+                        {"snapshot_ready",snap.snapshot_ready},
+                        {"snapshot_topology_rev",snap.snapshot_topology_rev},
+                        {"world_topology_rev",snap.world_topology_rev},
+                        {"snapshot_item_count",snap.snapshot_item_count}}},
+        {"drops",{{"invisible",snap.dropped_invisible},
+                  {"no_transform",snap.dropped_no_transform},
+                  {"mobility_filtered",snap.dropped_mobility},
+                  {"resource_pending",snap.dropped_resource_pending},
+                  {"geometry_loading",snap.dropped_geometry_loading},
+                  {"other",snap.dropped_other},
+                  {"samples",samples}}}});
 }
 
 AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id)
 {
-    if (!name_or_id || !*name_or_id)
-        return AnsiString("{\"valid\":false,\"error\":\"missing entity name or ID\"}");
+    if(!name_or_id || !*name_or_id)
+        return debug_bridge::DebugJsonToText(
+            nlohmann::json{{"valid",false},{"error","missing entity name or ID"}});
 
-    const PipelineInspectionSnapshot snap = GetPipelineInspection();
-    if (!snap.valid)
-        return AnsiString("{\"valid\":false,\"error\":\"no pipeline inspection data available\"}");
+    const PipelineInspectionSnapshot snap=GetPipelineInspection();
+    if(!snap.valid)
+        return debug_bridge::DebugJsonToText(
+            nlohmann::json{{"valid",false},{"error","no pipeline inspection data available"}});
 
-    uint32_t target_id = 0;
-    const bool is_numeric = (sscanf(name_or_id, "%u", &target_id) == 1 && target_id > 0);
+    uint32_t target_id=0;
+    const bool is_numeric=(sscanf(name_or_id,"%u",&target_id)==1 && target_id>0);
 
-    for (uint32_t i = 0; i < snap.drop_sample_count; ++i)
+    for(uint32_t i=0;i<snap.drop_sample_count;++i)
     {
-        const auto &s = snap.drop_samples[i];
-        if ((is_numeric && s.entity_id == target_id) || (strcmp(s.entity_name, name_or_id) == 0))
+        const auto &s=snap.drop_samples[i];
+        if((is_numeric && s.entity_id==target_id) || (strcmp(s.entity_name,name_or_id)==0))
         {
-            AnsiString json = "{\"valid\":true,\"status\":\"Dropped\",\"entity_name\":\"";
-            json += s.entity_name;
-            json += "\",\"entity_id\":"; json += AnsiString::numberOf(s.entity_id);
-            json += ",\"stage\":\""; json += s.stage;
-            json += "\",\"reason\":\""; json += s.reason;
-            json += "\",\"detail\":\""; json += s.detail;
-            json += "\"}";
-            return json;
+            return debug_bridge::DebugJsonToText(nlohmann::json{
+                {"valid",true},
+                {"status","Dropped"},
+                {"entity_name",s.entity_name},
+                {"entity_id",s.entity_id},
+                {"stage",s.stage},
+                {"reason",s.reason},
+                {"detail",s.detail}});
         }
     }
 
-    AnsiString json = "{\"valid\":true,\"status\":\"RenderedOrPassed\",\"query\":\"";
-    json += name_or_id;
-    json += "\",\"note\":\"Entity not found in drop attribution samples. Likely passed all stages or fast-path replayed.\"}";
-    return json;
+    return debug_bridge::DebugJsonToText(nlohmann::json{
+        {"valid",true},
+        {"status","RenderedOrPassed"},
+        {"query",name_or_id},
+        {"note","Entity not found in drop attribution samples. Likely passed all stages or fast-path replayed."}});
 }
 }//namespace hgl::graph

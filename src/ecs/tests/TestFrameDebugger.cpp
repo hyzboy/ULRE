@@ -207,5 +207,42 @@ int main()
            || result.state!=DebugCaptureQueue::State::Cancelled
            || !DebugCaptureQueue::Release(id))
             return 7;
+
+    // 结构化 JSON 输出与转义回归（旧手工拼接实现不转义实体名/详情）
+    FrameDebugger::PipelineInspectionSnapshot snap{};
+    snap.valid=true;
+    snap.frame_serial=5;
+    snap.scene_primitives=10;
+    snap.collected_items=8;
+    snap.fast_path_engaged=true;
+    snap.drop_sample_count=1;
+    ::strcpy(snap.drop_samples[0].entity_name,"ch\"ess");
+    snap.drop_samples[0].entity_id=7;
+    ::strcpy(snap.drop_samples[0].stage,"Collect");
+    ::strcpy(snap.drop_samples[0].reason,"invisible");
+    ::strcpy(snap.drop_samples[0].detail,"a\\b");
+    FrameDebugger::SetPipelineInspection(snap);
+    const hgl::AnsiString inspection=FrameDebugger::GetPipelineInspectionJSON();
+    if(!::strstr(inspection.c_str(),"\"funnel\":{")
+       || !::strstr(inspection.c_str(),"\"cache_state\":{")
+       || !::strstr(inspection.c_str(),"ch\\\"ess")
+       || !::strstr(inspection.c_str(),"a\\\\b"))
+    {
+        GLogError(u8"Pipeline inspection JSON lost structure or escaping");
+        return 8;
+    }
+    const hgl::AnsiString dropped=FrameDebugger::TraceEntityPipelineJSON("ch\"ess");
+    if(!::strstr(dropped.c_str(),"\"status\":\"Dropped\"")
+       || !::strstr(dropped.c_str(),"ch\\\"ess"))
+        return 8;
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7").c_str(),"\"status\":\"Dropped\""))
+        return 8;
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("absent").c_str(),"RenderedOrPassed"))
+        return 8;
+    FrameDebugger::SetCameraSnapshot(&camera);
+    const hgl::AnsiString camera_json=FrameDebugger::GetCameraSnapshotJSON();
+    if(!::strstr(camera_json.c_str(),"\"vp\":[")
+       || !::strstr(camera_json.c_str(),"\"use_reversed_z\":1"))
+        return 8;
     return 0;
 }
