@@ -66,7 +66,7 @@ TOOLS = [
     },
     {
         "name": "capture_frame",
-        "description": "Read the latest frame capture metadata and dump file path.",
+        "description": "Request frame capture (currently unavailable).",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {

@@ -6,6 +6,7 @@
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/io/FileOutputStream.h>
+#include<hgl/sync/Mutex.h>
 #include<hgl/log/Log.h>
 #include<cstring>
 #include<cstdio>
@@ -19,10 +20,12 @@ uint32_t &RequestCount(){ static uint32_t count=0; return count; }
 
 FrameDebugger::CaptureResult *Results(){ static FrameDebugger::CaptureResult results[FrameDebugger::kMaxRequests]; return results; }
 uint32_t &ResultCount(){ static uint32_t count=0; return count; }
+hgl::Mutex &CaptureMutex(){ static hgl::Mutex mutex; return mutex; }
 
 uint8_t *BufferScratch(){ static uint8_t bytes[FrameDebugger::kMaxBufferBytes]; return bytes; }
 hgl::ValueArray<uint8_t> &PixelScratch(){ static hgl::ValueArray<uint8_t> bytes; return bytes; }
 FrameDebugger::CameraSnapshot &CameraSnapshotState(){ static FrameDebugger::CameraSnapshot snapshot; return snapshot; }
+hgl::Mutex &CameraSnapshotMutex(){ static hgl::Mutex mutex; return mutex; }
 uint64_t &CaptureSequence(){ static uint64_t sequence=0; return sequence; }
 
 void CopyText(char *dst,uint32_t cap,const char *src)
@@ -34,6 +37,21 @@ void CopyText(char *dst,uint32_t cap,const char *src)
     const uint32_t copy=(len<cap-1)?len:cap-1;
     memcpy(dst,src,copy);
     dst[copy]=0;
+}
+
+bool IsSafeCaptureName(const char *name)
+{
+    if(!name||!name[0])
+        return false;
+    for(uint32_t i=0;name[i];++i)
+    {
+        const char c=name[i];
+        if(i>=sizeof(FrameDebugger::CaptureRequest::name)-1
+           || !((c>='a'&&c<='z')||(c>='A'&&c<='Z')
+                ||(c>='0'&&c<='9')||c=='_'||c=='-'))
+            return false;
+    }
+    return true;
 }
 
 bool SaveCaptureRaw(const char *name,const uint8_t *data,uint32_t byte_count,char *dump_path,uint32_t cap)
@@ -49,13 +67,11 @@ bool SaveCaptureRaw(const char *name,const uint8_t *data,uint32_t byte_count,cha
              name,
              static_cast<unsigned long long>(CaptureSequence()));
 
-    hgl::io::FileOutputStream *stream=
-        hgl::io::CreateFileOutputStream(ToOSString(filename));
+    hgl::io::OpenFileOutputStream stream(ToOSString(filename),hgl::io::FileOpenMode::CreateTrunc);
     if(!stream)
         return false;
 
-    const bool ok=stream->Write(data,byte_count);
-    delete stream;
+    const bool ok=stream->Write(data,byte_count)==byte_count;
 
     if(!ok)
         return false;
@@ -66,6 +82,7 @@ bool SaveCaptureRaw(const char *name,const uint8_t *data,uint32_t byte_count,cha
 
 uint32_t AddRequest(const FrameDebugger::CaptureRequest &request)
 {
+    hgl::MutexLock lock(&CaptureMutex());
     uint32_t &count=RequestCount();
     if(count>=FrameDebugger::kMaxRequests) return UINT32_MAX;
     Requests()[count]=request;
@@ -75,7 +92,7 @@ uint32_t AddRequest(const FrameDebugger::CaptureRequest &request)
 
 uint32_t FrameDebugger::RequestColor(IRenderTarget *target,const char *name,uint32_t color_index)
 {
-    if(!target) return UINT32_MAX;
+    if(!target||!IsSafeCaptureName(name)) return UINT32_MAX;
     CaptureRequest request;
     request.kind=RequestKind::ColorTarget;
     request.render_target=target;
@@ -86,7 +103,7 @@ uint32_t FrameDebugger::RequestColor(IRenderTarget *target,const char *name,uint
 
 uint32_t FrameDebugger::RequestDepth(IRenderTarget *target,const char *name)
 {
-    if(!target) return UINT32_MAX;
+    if(!target||!IsSafeCaptureName(name)) return UINT32_MAX;
     CaptureRequest request;
     request.kind=RequestKind::DepthTarget;
     request.render_target=target;
@@ -96,10 +113,11 @@ uint32_t FrameDebugger::RequestDepth(IRenderTarget *target,const char *name)
 
 uint32_t FrameDebugger::RequestBuffer(DeviceBuffer *buffer,const char *name,uint32_t offset,uint32_t size)
 {
-    if(!buffer) return UINT32_MAX;
+    if(!buffer||!IsSafeCaptureName(name)) return UINT32_MAX;
     if(offset>static_cast<uint32_t>(buffer->GetSize())) return UINT32_MAX;
     const uint32_t actual_size=(size==0)?static_cast<uint32_t>(buffer->GetSize()-offset):size;
-    if(actual_size==0 || actual_size>kMaxBufferBytes) return UINT32_MAX;
+    if(actual_size==0 || actual_size>kMaxBufferBytes
+       || actual_size>static_cast<uint32_t>(buffer->GetSize()-offset)) return UINT32_MAX;
 
     CaptureRequest request;
     request.kind=RequestKind::Buffer;
@@ -112,6 +130,7 @@ uint32_t FrameDebugger::RequestBuffer(DeviceBuffer *buffer,const char *name,uint
 
 uint32_t FrameDebugger::CollectPending()
 {
+    hgl::MutexLock lock(&CaptureMutex());
     uint32_t &request_count=RequestCount();
     uint32_t &result_count=ResultCount();
     uint32_t collected=0;
@@ -183,27 +202,33 @@ uint32_t FrameDebugger::CollectPending()
         if(result.valid)
         {
             ++CaptureSequence();
+            bool saved=false;
 
             if(request.kind==RequestKind::ColorTarget)
             {
                 ValueArray<uint8_t> &pixels=PixelScratch();
-                SaveCaptureRaw(request.name,pixels.GetData(),
+                saved=SaveCaptureRaw(request.name,pixels.GetData(),
                                static_cast<uint32_t>(pixels.GetTotalBytes()),
                                result.dump_path,sizeof(result.dump_path));
             }
             else if(request.kind==RequestKind::DepthTarget)
             {
                 ValueArray<uint8_t> &pixels=PixelScratch();
-                SaveCaptureRaw(request.name,pixels.GetData(),
+                saved=SaveCaptureRaw(request.name,pixels.GetData(),
                                static_cast<uint32_t>(pixels.GetTotalBytes()),
                                result.dump_path,sizeof(result.dump_path));
             }
             else if(request.kind==RequestKind::Buffer)
             {
-                SaveCaptureRaw(request.name,BufferScratch(),request.buffer_size,
+                saved=SaveCaptureRaw(request.name,BufferScratch(),request.buffer_size,
                                result.dump_path,sizeof(result.dump_path));
             }
 
+            if(!saved)
+            {
+                result.valid=false;
+                GLogError(u8"[FrameDebugger] Capture write failed: %s",request.name);
+            }
             if(result_count>=kMaxRequests)
             {
                 result_count=0;
@@ -221,6 +246,7 @@ uint32_t FrameDebugger::CollectPending()
 
 uint32_t FrameDebugger::GetResultCount()
 {
+    hgl::MutexLock lock(&CaptureMutex());
     return ResultCount();
 }
 
@@ -232,6 +258,7 @@ const FrameDebugger::CaptureResult *FrameDebugger::GetResult(uint32_t index)
 
 AnsiString FrameDebugger::GetLatestResultJSON()
 {
+    hgl::MutexLock lock(&CaptureMutex());
     const uint32_t count=ResultCount();
     if(count==0) return AnsiString("{\"valid\":false}");
     const CaptureResult &result=Results()[count-1];
@@ -267,6 +294,7 @@ AnsiString FrameDebugger::GetLatestResultJSON()
 
 void FrameDebugger::SetCameraSnapshot(const CameraInfo *camera)
 {
+    hgl::MutexLock lock(&CameraSnapshotMutex());
     CameraSnapshot &snapshot=CameraSnapshotState();
     snapshot.valid=(camera!=nullptr);
     if(!camera)
@@ -283,12 +311,13 @@ void FrameDebugger::SetCameraSnapshot(const CameraInfo *camera)
 
 FrameDebugger::CameraSnapshot FrameDebugger::GetCameraSnapshot()
 {
+    hgl::MutexLock lock(&CameraSnapshotMutex());
     return CameraSnapshotState();
 }
 
 AnsiString FrameDebugger::GetCameraSnapshotJSON()
 {
-    const CameraSnapshot &snapshot=CameraSnapshotState();
+    const CameraSnapshot snapshot=GetCameraSnapshot();
     if(!snapshot.valid)
         return AnsiString("{\"valid\":false}");
 

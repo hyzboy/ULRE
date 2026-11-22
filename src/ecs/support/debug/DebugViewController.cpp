@@ -28,6 +28,7 @@ namespace hgl::ecs
 
             DebugViewMode requested = DebugViewMode::Off;
             DebugViewMode applied   = DebugViewMode::Off;
+            uint32 tracked_count = 0;
 
             // 被接管的实体 -> 接管前的授权事实（引擎侧旁表，键 = EntityID）。
             hgl::UnorderedMap<EntityID,SavedRecipe> saved;
@@ -184,7 +185,7 @@ namespace hgl::ecs
         ControllerState &state=State();
 
         hgl::MutexLock lock(&state.lock);
-        return static_cast<uint32>(state.saved.GetCount());
+        return state.tracked_count;
     }
 
     bool DebugViewController::Apply(ECSContext *world)
@@ -214,6 +215,7 @@ namespace hgl::ecs
         {
             hgl::MutexLock lock(&state.lock);
             state.applied=want;
+            state.tracked_count=static_cast<uint32>(state.saved.GetCount());
         }
 
         return true;
@@ -228,5 +230,6 @@ namespace hgl::ecs
         hgl::MutexLock lock(&state.lock);
         state.applied=DebugViewMode::Off;
         state.requested=DebugViewMode::Off;
+        state.tracked_count=0;
     }
 }//namespace hgl::ecs

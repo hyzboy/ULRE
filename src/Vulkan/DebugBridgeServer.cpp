@@ -211,7 +211,7 @@ bool DebugBridgeServer::Execute()
     else if(ContainsMethod(request,"get_debug_view"))
         result=MakeDebugViewJSON();
     else if(ContainsMethod(request,"capture_frame"))
-        result=FrameDebugger::GetLatestResultJSON();
+        result="{\"valid\":false,\"error\":\"capture_request_not_supported\"}";
     else if(ContainsMethod(request,"dump_buffer")
          || ContainsMethod(request,"dump_render_target"))
         result=FrameDebugger::GetLatestResultJSON();

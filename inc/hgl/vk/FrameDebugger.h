@@ -77,6 +77,8 @@ public:
 
     static uint32_t CollectPending();
     static uint32_t GetResultCount();
+    /// Only call on the collecting thread when no collection is in progress.
+    /// The returned pointer is invalidated by subsequent collection.
     static const CaptureResult *GetResult(uint32_t index);
     static AnsiString GetLatestResultJSON();
     static void SetCameraSnapshot(const CameraInfo *camera);

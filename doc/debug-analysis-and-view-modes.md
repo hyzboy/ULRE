@@ -6,8 +6,8 @@
 `tools/ulre-mcp-server` 提供桥接与图像分析。当前实现仍是诊断原型，不能视为完整、
 可靠的端到端抓帧系统：
 
-- `capture_frame`、`dump_render_target` 和 `dump_buffer` 目前只读取最近一条结果，
-  不创建请求，也不保证结果属于调用者或当前帧。实际抓取依赖 C++ 调用者调用
+- `capture_frame` 目前返回不支持；`dump_render_target` 和 `dump_buffer` 只读取
+  最近一条结果，不创建请求，也不保证结果属于调用者或当前帧。实际抓取依赖 C++ 调用者调用
   `RequestColor`、`RequestDepth` 或 `RequestBuffer`，并在合法时机调用 `CollectPending`。
 - 原始文件没有同帧元数据清单；最近相机矩阵不一定属于抓取的附件或同一帧。
   资源生命周期、共享状态同步、写盘错误与请求结果关联仍需补强。

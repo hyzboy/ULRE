@@ -18,8 +18,8 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
    - `TextureManager`: missing asset or fallback binding.
    - `Pipeline`: shader or pipeline creation failure.
 3. Call `get_pass_metrics` and rank passes by `gpu_time_ms`.
-4. If a pass has zero useful output, call `dump_render_target` and inspect dimensions, format, and captured byte count.
-5. If GPU data is suspect, call `dump_buffer` and compare row count, size, and binding state with the relevant contract header.
+4. `dump_render_target` and `dump_buffer` report the most recent C++-requested capture; they do not request one or select by name. Do not treat the result as a new capture.
+5. `capture_frame` currently returns an explicit unsupported error.
 6. Conclude with a reproducible root cause and the exact engine subsystem/file to change.
 
 ## Camera contract
@@ -48,7 +48,7 @@ Use fixed numeric tools before looking at any image attachment.
 
 1. Call `set_debug_view` to request `world_normal`, `base_color`, `surface`, `emissive`, or `uv0`.
 2. Wait one render frame, then call `get_debug_view` and verify `mode` equals the requested mode.
-3. Call `get_camera_matrices` before depth/world-position reconstruction.
+3. `get_camera_matrices` returns the latest snapshot, not necessarily the capture's camera or frame; do not use it to reconstruct an older capture.
 4. If the raw capture is a color/debug RT:
    - `analyze_luminance` for exposure, dead pixels, and NaN/Inf;
    - `analyze_normals` for length error, zero normals, and Z-axis distribution;

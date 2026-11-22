@@ -3,6 +3,7 @@ import struct
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import analyzer
 import mcp_server
@@ -82,6 +83,15 @@ class AnalyzerTests(unittest.TestCase):
                 "path": str(self.root / "missing.raw"), "width": 1, "height": 1,
             }},
         })
+        self.assertTrue(response["result"]["isError"])
+
+    def test_mcp_marks_unavailable_capture_as_error(self):
+        request = {"id": 8, "method": "tools/call",
+                   "params": {"name": "capture_frame", "arguments": {}}}
+        with patch.object(mcp_server, "call_engine", return_value={
+            "valid": False, "error": "capture_request_not_supported",
+        }):
+            response = mcp_server.handle(request)
         self.assertTrue(response["result"]["isError"])
 
 
