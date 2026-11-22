@@ -72,6 +72,8 @@
   当前分析器限制单图最多 2,097,152 像素和 64 MiB，超限返回错误。
   Debug View 的颜色 alpha 为二值有效像素 mask；普通交换链没有 mask，
   统计包含背景，因此不能直接作为完整回归基线。
+  交换链深度清单当前的 `clear_depth` 为 null；深度统计和无 mask 的反投影会显式拒绝，
+  即使相机的 reversed-Z 已知也不会猜测实际清屏值。Debug View 深度的清屏值可用。
   清单反投影要求同帧绝对世界相机；由于相机快照只覆盖 primitive collect、
   未证明所有深度写入者使用同一相机，普通深度必须显式设置 `allow_unverified_depth_producers`。
   对 Debug View 使用一次 `color_depth` 请求，以返回的深度清单作为 `metadata_path`，
@@ -188,6 +190,11 @@ SSIM 定义为 8×8 不重叠方窗；边缘窗口可小于 8×8，mask 交集�
 分辨率、预热与捕获帧。基线绑定场景版本、设备和驱动类别、格式及算法版本：
 同环境可严格比较；跨环境使用显式容差；不存在匹配基线时返回 `not_covered`。
 基线只能显式创建或更新，比较不得自动覆盖。
+
+这些是目标而不是现有功能：目前没有确定性固定帧夹具、设备/驱动身份绑定的基线
+清单或基线创建/比较命令。`compare_captures` 仅是显式接受未验证上下文的图像比较，
+不能作为黄金基线 PASS；不支持的 alpha test 和屏幕受影因子也不能计为已覆盖。
+完整 BasicLitMeshes MCP 调用顺序见 `.ai/skills/SKILL_RENDER_DIAGNOSTICS.md`。
 
 验收需覆盖已知像素的合成单元测试、协议错误和并发、实际 Vulkan 抓帧及 validation、
 模式切换和资源生命周期、固定场景端到端与故障注入。GPU 不可用或某项能力未支持

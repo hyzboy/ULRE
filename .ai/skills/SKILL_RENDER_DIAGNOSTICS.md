@@ -19,10 +19,10 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
    - `Pipeline`: shader or pipeline creation failure.
 3. Call `get_pass_metrics` and rank passes by `gpu_time_ms`.
 4. `dump_render_target` and `dump_buffer` report the most recent C++-requested capture; they do not request one or select by name. Do not treat the result as a new capture.
-5. Call `list_capture_targets`, then `capture_frame` with a swapchain or Debug View `target_id` and a supported `attachment`. Poll `get_capture_status` using the returned `request_id`; release terminal status with `release_capture`. Queued requests expire after 30 seconds. General offscreen targets and buffers are not exposed through this API.
+5. Call `list_capture_targets`, then `capture_frame` with an available swapchain, Debug View or explicitly opted-in managed offscreen `target_id` and a supported `attachment`. Poll `get_capture_status` using the returned `request_id`; release terminal status with `release_capture`. Queued requests expire after 30 seconds. Use `list_capture_buffers` and `capture_buffer` for registered GPU buffers; the production DrawCount sequence is a dispatch sequence, not a main-frame ID.
    Use `color_depth` when both attachments must belong to the same submitted frame.
 6. Use `analyze_capture` with the returned `metadata_path` for luminance, R32F depth, normals or surface. Debug View color has a binary alpha mask; swapchain statistics include background. Unknown color space requires an explicit override.
-7. For masked world-position bounds, request `color_depth` on the Debug View target and pass its depth `metadata_path` plus the same result's color `metadata_path` as `mask_metadata_path`. The pair must match group, frame, target, camera and viewport. For unmasked swapchain depth, use `allow_unverified_depth_producers` only after confirming compatible depth writers; clear-depth pixels cannot be distinguished from geometry at that depth.
+7. For masked world-position bounds, request `color_depth` on the Debug View target and pass its depth `metadata_path` plus the same result's color `metadata_path` as `mask_metadata_path`. The pair must match group, frame, target, camera and viewport. Current swapchain manifests do not record `clear_depth`, so depth analysis and unmasked reconstruction are unavailable; `allow_unverified_depth_producers` cannot supply a missing clear value.
 8. `compare_captures` verifies image layout and camera but lacks scene/device identity. Its opt-in comparison uses the intersection of Debug View masks, or includes swapchain background, and measures encoded channels; mask coverage changes are reported separately. It is not a validated golden-baseline verdict.
 9. Conclude with a reproducible root cause and the exact engine subsystem/file to change.
 
@@ -114,3 +114,32 @@ Use capture metadata, not the latest camera snapshot. Matrices are column-major;
 Debug View accepts GPU-driven StandardOpaque scene batches with PBRSurface rows, Normal and TexCoord, and standard- or reversed-Z active cameras. Alpha test, dither, blending and unsupported scene batches fail explicitly; non-Scene layers are excluded. World normals are geometric, not normal-mapped shading normals. Base color excludes vertex color; emissive is the sampled texture; UV uses its fractional part. RGBA8 attribute values are clipped/quantized and are not HDR.
 
 The enabled pass waits for device idle before reusing its attachments; do not use its timings as production performance measurements. Disabling releases the target and attachments, while existing manager caches retain shader/pipeline/render-pass objects until their normal teardown.
+
+## BasicLitMeshes MCP sequence
+
+Start `BasicLitMeshes` with `debugbridge = true` in an isolated `ULRE_DEBUG.toml`;
+the default is off. The following are tool names and argument objects, not raw pipe
+JSON-RPC envelopes. Do not copy IDs from another run.
+
+1. `list_capture_targets({})`; confirm the engine is ready.
+2. `set_debug_view({"mode":"world_position"})`, then poll `get_debug_view({})`
+   until the requested mode and a nonzero `target_id` appear. Stop on `error`.
+3. `capture_frame({"target_id": <target_id>, "attachment":"color_depth"})`.
+   Poll `get_capture_status({"request_id": <request_id>})` for this exact ID until
+   `succeeded`, `failed`, or `cancelled`; a timeout is not success.
+4. On success, use the color and depth `metadata_path` values from `captures`:
+   `analyze_capture({"metadata_path": <color_path>, "operation":"world_position_rt"})`
+   and `analyze_capture({"metadata_path": <color_path>, "operation":"position_crosscheck",
+   "depth_metadata_path": <depth_path>, "sample_step":8})`.
+5. `release_capture({"request_id": <request_id>})`, then
+   `set_debug_view({"mode":"off"})` and poll `get_debug_view({})` until the
+   target is gone. Release any other completed request separately.
+
+For two compatible color captures, `compare_captures` needs
+`metadata_path_a`, `metadata_path_b`, and `allow_unverified_context: true`;
+this opt-in explicitly admits that scene and device identity are not recorded.
+It is **not** a golden-baseline acceptance verdict. No explicit baseline
+create/update command, device-bound baseline manifest, or deterministic
+fixed-frame fixture is implemented yet; missing coverage must not be reported
+as a pass. The current view does not support alpha-test scenes or a receiver
+shadow factor, so neither can be accepted through this sequence.
