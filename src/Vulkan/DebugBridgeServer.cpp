@@ -10,53 +10,42 @@
 #include<hgl/time/Time.h>
 #include<hgl/log/Log.h>
 #include "DebugBridgeProtocol.h"
-#include<cstring>
-#include<cinttypes>
+#include "DebugBridgeJson.h"
 
 namespace hgl::graph
 {
 #ifdef _WIN32
-static AnsiString MakeMetricsJSON()
+static nlohmann::json MakeMetricsJSON()
 {
     GpuQueryProfiler *profiler=GpuQueryProfiler::GetActive();
-    if(!profiler) return AnsiString("{\"valid\":false}");
+    if(!profiler) return nlohmann::json{{"valid",false}};
     const GpuQueryProfiler::FrameMetric *frame=profiler->GetLatestFrame();
-    if(!frame) return AnsiString("{\"valid\":false}");
+    if(!frame) return nlohmann::json{{"valid",false}};
 
-    AnsiString json="{\"valid\":true,\"frame_id\":";
-    char number[64];
-    snprintf(number,sizeof(number),"%" PRIu64,static_cast<uint64_t>(frame->frame_id));
-    json+=AnsiString(number);
-    json+=",\"gpu_total_time_ms\":";
-    snprintf(number,sizeof(number),"%.6f",frame->total_gpu_ms);
-    json+=AnsiString(number);
-    json+=",\"passes\":[";
+    nlohmann::json passes=nlohmann::json::array();
     for(uint32_t i=0;i<frame->pass_count;i++)
     {
         const GpuQueryProfiler::PassMetric &pass=frame->passes[i];
-        if(i) json+=",";
-        json+="{\"name\":\"";
-        json+=pass.name;
-        json+="\",\"gpu_time_ms\":";
-        snprintf(number,sizeof(number),"%.6f",pass.gpu_ms);
-        json+=AnsiString(number);
-        json+="}";
+        passes.push_back({{"name",pass.name.c_str()},{"gpu_time_ms",pass.gpu_ms}});
     }
-    json+="]}";
-    return json;
+    return nlohmann::json{
+        {"valid",true},
+        {"frame_id",frame->frame_id},
+        {"gpu_total_time_ms",frame->total_gpu_ms},
+        {"passes",passes}};
 }
 
-static AnsiString MakeDebugViewJSON()
+static nlohmann::json MakeDebugViewJSON()
 {
-    return hgl::ecs::DebugViewPass::GetStatusJSON();
+    return debug_bridge::DebugJsonFromText(hgl::ecs::DebugViewPass::GetStatusJSON());
 }
 
-static AnsiString SetDebugViewFromRequest(const char *mode_name)
+static nlohmann::json SetDebugViewFromRequest(const char *mode_name)
 {
     hgl::graph::mtl::DebugViewMode mode;
 
     if(!hgl::graph::mtl::ParseDebugViewMode(mode_name,mode))
-        return AnsiString("{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}");
+        return nlohmann::json{{"valid",false},{"error","unknown_debug_view_mode"}};
 
     hgl::ecs::DebugViewController::RequestMode(mode);
     return MakeDebugViewJSON();
@@ -118,21 +107,22 @@ static bool TransferPipe(HANDLE pipe,HANDLE stop_event,void *read_buffer,const v
     return success;
 }
 
-static bool SendPipeResponse(HANDLE pipe,HANDLE stop_event,const char *id,
-                             const AnsiString &body,bool error=false)
+static bool SendPipeResponse(HANDLE pipe,HANDLE stop_event,const nlohmann::json &id,
+                             const nlohmann::json &body,bool error=false)
 {
-    AnsiString response="{\"jsonrpc\":\"2.0\",\"id\":";
-    response+=id;
-    response+=error?",\"error\":" : ",\"result\":";
-    response+=body;
-    response+="}";
+    nlohmann::json response={{"jsonrpc","2.0"},{"id",id}};
+    response[error?"error":"result"]=body;
+
+    const AnsiString text=debug_bridge::DebugJsonToText(response);
+    if(text.IsEmpty())
+        return false;
 
     DWORD offset=0;
-    const DWORD length=static_cast<DWORD>(response.Length());
+    const DWORD length=static_cast<DWORD>(text.Length());
     while(offset<length)
     {
         DWORD written=0;
-        if(!TransferPipe(pipe,stop_event,nullptr,response.c_str()+offset,
+        if(!TransferPipe(pipe,stop_event,nullptr,text.c_str()+offset,
                          length-offset,written,5000) || written==0)
             return false;
         offset+=written;
@@ -291,8 +281,8 @@ bool DebugBridgeServer::Execute()
     {
         if(read_error==ERROR_MORE_DATA)
         {
-            if(SendPipeResponse(pipe_handle,stop_event,"null",
-                                "{\"code\":-32600,\"message\":\"Request too large\"}",true))
+            if(SendPipeResponse(pipe_handle,stop_event,nlohmann::json(),
+                                nlohmann::json{{"code",-32600},{"message","Request too large"}},true))
                 WaitForClientClose(pipe_handle,stop_event);
         }
         DisconnectNamedPipe(pipe_handle);
@@ -305,9 +295,9 @@ bool DebugBridgeServer::Execute()
     debug_bridge::Request parsed;
     const bool valid=parsed.Parse(request,bytes_read);
     bool protocol_error=!valid;
-    AnsiString result;
+    nlohmann::json result;
     if(!valid)
-        result="{\"code\":-32600,\"message\":\"Invalid request\"}";
+        result=nlohmann::json{{"code",-32600},{"message","Invalid request"}};
     else
     {
         const AnsiString &method=parsed.GetMethod();
@@ -321,15 +311,15 @@ bool DebugBridgeServer::Execute()
         const bool has_size=parsed.GetParamUInt64("size",size);
 
         if(method=="get_render_health")
-            result=RenderHealthLedger::GetStatusJSON();
+            result=debug_bridge::DebugJsonFromText(RenderHealthLedger::GetStatusJSON());
         else if(method=="get_pass_metrics")
             result=MakeMetricsJSON();
         else if(method=="get_camera_matrices")
-            result=FrameDebugger::GetCameraSnapshotJSON();
+            result=debug_bridge::DebugJsonFromText(FrameDebugger::GetCameraSnapshotJSON());
         else if(method=="inspect_render_pipeline" || method=="get_pipeline_inspection")
-            result=FrameDebugger::GetPipelineInspectionJSON();
+            result=debug_bridge::DebugJsonFromText(FrameDebugger::GetPipelineInspectionJSON());
         else if(method=="trace_entity_pipeline" || method=="trace_entity_render_state")
-            result=FrameDebugger::TraceEntityPipelineJSON(parsed.GetEntity().c_str());
+            result=debug_bridge::DebugJsonFromText(FrameDebugger::TraceEntityPipelineJSON(parsed.GetEntity().c_str()));
         else if(method=="set_debug_view")
             result=SetDebugViewFromRequest(mode.c_str());
         else if(method=="get_debug_view")
@@ -338,44 +328,40 @@ bool DebugBridgeServer::Execute()
         {
             hgl::graph::mtl::DebugViewMode view_mode;
             if(!hgl::graph::mtl::ParseDebugViewMode(mode.c_str(),view_mode))
-                result="{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}";
+                result=nlohmann::json{{"valid",false},{"error","unknown_debug_view_mode"}};
             else
             {
                 hgl::ecs::DebugViewPass::RequestMode(view_mode);
-                result=hgl::ecs::DebugViewPass::GetStatusJSON();
+                result=debug_bridge::DebugJsonFromText(hgl::ecs::DebugViewPass::GetStatusJSON());
             }
         }
         else if(method=="get_offscreen_debug_view")
-            result=hgl::ecs::DebugViewPass::GetStatusJSON();
+            result=debug_bridge::DebugJsonFromText(hgl::ecs::DebugViewPass::GetStatusJSON());
         else if(method=="list_capture_targets")
-            result=DebugCaptureQueue::GetTargetsJSON();
+            result=debug_bridge::DebugJsonFromText(DebugCaptureQueue::GetTargetsJSON());
         else if(method=="list_capture_buffers")
-            result=DebugCaptureQueue::GetBuffersJSON();
+            result=debug_bridge::DebugJsonFromText(DebugCaptureQueue::GetBuffersJSON());
         else if(method=="capture_buffer")
         {
             if(!has_resource_id || !has_offset || !has_size)
-                result="{\"valid\":false,\"error\":\"missing_buffer_range\"}";
+                result=nlohmann::json{{"valid",false},{"error","missing_buffer_range"}};
             else
             {
                 const char *error=nullptr;
                 const uint64_t capture_request_id=DebugCaptureQueue::RequestBuffer(
                     resource_id,offset,size,&error);
                 if(capture_request_id)
-                    result=DebugCaptureQueue::GetResultJSON(capture_request_id);
+                    result=debug_bridge::DebugJsonFromText(DebugCaptureQueue::GetResultJSON(capture_request_id));
                 else
-                {
-                    result="{\"valid\":false,\"error\":\"";
-                    result+=error;
-                    result+="\"}";
-                }
+                    result=nlohmann::json{{"valid",false},{"error",error}};
             }
         }
         else if(method=="capture_frame")
         {
             if(!has_target_id)
-                result="{\"valid\":false,\"error\":\"missing_target_id\"}";
+                result=nlohmann::json{{"valid",false},{"error","missing_target_id"}};
             else if(attachment!="color" && attachment!="depth" && attachment!="color_depth")
-                result="{\"valid\":false,\"error\":\"unsupported_attachment\"}";
+                result=nlohmann::json{{"valid",false},{"error","unsupported_attachment"}};
             else
             {
                 const auto attachment_type=attachment=="color"
@@ -385,47 +371,34 @@ bool DebugBridgeServer::Execute()
                 const char *error=nullptr;
                 const uint64_t capture_request_id=DebugCaptureQueue::Request(target_id,attachment_type,&error);
                 if(capture_request_id)
-                    result=DebugCaptureQueue::GetResultJSON(capture_request_id);
+                    result=debug_bridge::DebugJsonFromText(DebugCaptureQueue::GetResultJSON(capture_request_id));
                 else
-                {
-                    result="{\"valid\":false,\"error\":\"";
-                    result+=error;
-                    result+="\"}";
-                }
+                    result=nlohmann::json{{"valid",false},{"error",error}};
             }
         }
         else if(method=="get_capture_status")
-            result=has_request_id?DebugCaptureQueue::GetResultJSON(request_id)
-                                 :AnsiString("{\"valid\":false,\"error\":\"missing_request_id\"}");
+            result=has_request_id?debug_bridge::DebugJsonFromText(DebugCaptureQueue::GetResultJSON(request_id))
+                                 :nlohmann::json{{"valid",false},{"error","missing_request_id"}};
         else if(method=="release_capture")
             result=has_request_id && DebugCaptureQueue::Release(request_id)
-                  ?AnsiString("{\"valid\":true}")
-                  :AnsiString("{\"valid\":false,\"error\":\"request_not_terminal_or_unknown\"}");
+                  ?nlohmann::json{{"valid",true}}
+                  :nlohmann::json{{"valid",false},{"error","request_not_terminal_or_unknown"}};
         else if(method=="cancel_capture")
             result=has_request_id && DebugCaptureQueue::Cancel(request_id)
-                  ?AnsiString("{\"valid\":true}")
-                  :AnsiString("{\"valid\":false,\"error\":\"request_not_queued_or_unknown\"}");
+                  ?nlohmann::json{{"valid",true}}
+                  :nlohmann::json{{"valid",false},{"error","request_not_queued_or_unknown"}};
         else if(method=="dump_buffer" || method=="dump_render_target")
-            result=FrameDebugger::GetLatestResultJSON();
+            result=debug_bridge::DebugJsonFromText(FrameDebugger::GetLatestResultJSON());
         else if(method=="inspect_camera_viewport")
-            result=RenderHealthLedger::GetStatusJSON();
+            result=debug_bridge::DebugJsonFromText(RenderHealthLedger::GetStatusJSON());
         else
         {
             protocol_error=true;
-            result="{\"code\":-32601,\"message\":\"Method not found\"}";
+            result=nlohmann::json{{"code",-32601},{"message","Method not found"}};
         }
     }
 
-    AnsiString id_token("null");
-    if(valid)
-    {
-        U8String id_text;
-        OSString id_error;
-        if(JsonToString(parsed.GetId(),id_text,id_error))
-            id_token=AnsiString(reinterpret_cast<const char*>(id_text.c_str()),id_text.Length());
-    }
-
-    if(SendPipeResponse(pipe_handle,stop_event,id_token.c_str(),result,protocol_error))
+    if(SendPipeResponse(pipe_handle,stop_event,valid?parsed.GetId():nlohmann::json(),result,protocol_error))
         WaitForClientClose(pipe_handle,stop_event);
     else if(!IsStopRequested())
         GLogError(u8"[DebugBridge] Failed to send pipe response");

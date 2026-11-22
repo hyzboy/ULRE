@@ -285,6 +285,7 @@ SOURCE_GROUP("RenderDiagnostics" FILES ${VK_RENDER_DIAGNOSTICS_FILES})
 # --- 18.1 Debug Bridge (named pipe) ---
 SET(VK_DEBUG_BRIDGE_FILES       ${VK_INCLUDE_PATH}/DebugBridgeServer.h
                                 DebugBridgeProtocol.h
+                                DebugBridgeJson.h
                                 DebugBridgeServer.cpp
                                 ${VK_INCLUDE_PATH}/DebugCaptureQueue.h
                                 DebugCaptureQueue.cpp)
