@@ -408,6 +408,15 @@ class CaptureIntegrationTests(unittest.TestCase):
             self.assertEqual(manifests[0]["frame_id"], result["frame_id"])
             self.assertEqual(manifests[1]["frame_id"], result["frame_id"])
             self.assertEqual(manifests[0]["camera"], manifests[1]["camera"])
+            self.assertEqual(manifests[0]["device"], manifests[1]["device"])
+            device = manifests[0]["device"]
+            self.assertIsInstance(device, dict)
+            for key in ("vendor_id", "device_id", "device_type", "api_version", "driver_version"):
+                self.assertIsInstance(device[key], int)
+            self.assertTrue(device["device_name"])
+            if device["driver_properties"] is not None:
+                self.assertGreater(device["driver_properties"]["driver_id"], 0)
+                self.assertTrue(device["driver_properties"]["driver_name"])
             self.assertEqual(manifests[0]["viewport"], manifests[1]["viewport"])
             for entry, manifest in zip(captures, manifests):
                 self.assertEqual(Path(entry["dump_path"]).stat().st_size, manifest["byte_count"])

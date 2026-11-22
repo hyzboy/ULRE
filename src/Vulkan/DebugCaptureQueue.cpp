@@ -2,6 +2,7 @@
 #include<hgl/vk/VKTextureReadback.h>
 #include<hgl/vk/VKBufferReadback.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/graph/CameraInfo.h>
@@ -177,6 +178,32 @@ namespace hgl::graph
             json+="\"";
         }
 
+        void RecordDevice(DebugCaptureQueue::Result &result,const VulkanDevice *device)
+        {
+            const VulkanPhyDevice *physical=device?device->GetPhyDevice():nullptr;
+            if(!physical) return;
+            const VkPhysicalDeviceProperties &properties=physical->GetProperties();
+            auto &identity=result.device;
+            identity.available=true;
+            identity.vendor_id=properties.vendorID;
+            identity.device_id=properties.deviceID;
+            identity.device_type=static_cast<uint32_t>(properties.deviceType);
+            identity.api_version=properties.apiVersion;
+            identity.driver_version=properties.driverVersion;
+            ::memcpy(identity.device_name,properties.deviceName,sizeof(identity.device_name));
+            identity.device_name[sizeof(identity.device_name)-1]=0;
+            const VkPhysicalDeviceVulkan12Properties &driver=physical->GetProperties12();
+            if(driver.sType==VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES)
+            {
+                identity.driver_properties_available=true;
+                identity.driver_id=static_cast<uint32_t>(driver.driverID);
+                ::memcpy(identity.driver_name,driver.driverName,sizeof(identity.driver_name));
+                ::memcpy(identity.driver_info,driver.driverInfo,sizeof(identity.driver_info));
+                identity.driver_name[sizeof(identity.driver_name)-1]=0;
+                identity.driver_info[sizeof(identity.driver_info)-1]=0;
+            }
+        }
+
         AnsiString MakeManifest(const DebugCaptureQueue::Result &result,const char *filename)
         {
             const char *base=::strrchr(filename,'/');
@@ -208,6 +235,39 @@ namespace hgl::graph
             json+=AnsiString::numberOf(result.target_id);
             json+=",\"frame_id\":";
             json+=AnsiString::numberOf(result.frame_id);
+            json+=",\"device\":";
+            if(!result.device.available)
+                json+="null";
+            else
+            {
+                const auto &device=result.device;
+                json+="{\"vendor_id\":";
+                json+=AnsiString::numberOf(device.vendor_id);
+                json+=",\"device_id\":";
+                json+=AnsiString::numberOf(device.device_id);
+                json+=",\"device_type\":";
+                json+=AnsiString::numberOf(device.device_type);
+                json+=",\"api_version\":";
+                json+=AnsiString::numberOf(device.api_version);
+                json+=",\"driver_version\":";
+                json+=AnsiString::numberOf(device.driver_version);
+                json+=",\"device_name\":";
+                AppendJSONString(json,device.device_name);
+                json+=",\"driver_properties\":";
+                if(!device.driver_properties_available)
+                    json+="null";
+                else
+                {
+                    json+="{\"driver_id\":";
+                    json+=AnsiString::numberOf(device.driver_id);
+                    json+=",\"driver_name\":";
+                    AppendJSONString(json,device.driver_name);
+                    json+=",\"driver_info\":";
+                    AppendJSONString(json,device.driver_info);
+                    json+="}";
+                }
+                json+="}";
+            }
             json+=",\"source\":\"";
             json+=result.source==DebugCaptureQueue::Source::DebugView?"debug_view":
                   result.source==DebugCaptureQueue::Source::Offscreen?"offscreen":"swapchain";
@@ -948,6 +1008,7 @@ namespace hgl::graph
             }
             if(!result.request_id) return;
             result.frame_id=frame_id;
+            RecordDevice(result,target->GetDevice());
             if(result.camera.valid && !CameraFinite(result.camera))
                 result.camera.valid=false;
             if(result.attachment==Attachment::ColorDepth)

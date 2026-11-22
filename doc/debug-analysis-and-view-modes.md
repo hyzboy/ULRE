@@ -45,7 +45,9 @@
   不能作为 GPU 写入的 SSBO 的可靠抓取接口。
 - 新交换链抓帧同时发布 `ulre.capture.v1` JSON 清单：记录请求、目标、帧、
   原始文件、格式、布局和同帧 primitive-collect 相机快照；不同相机混用时标记
-  `ambiguous`。旧 C++ 抓取接口仍没有此清单。
+  `ambiguous`。颜色和深度清单还记录该目标实际 Vulkan 物理设备的 vendor/device ID、
+  设备类型、API 和原始驱动版本及设备名称；Vulkan 1.2 驱动属性可用时记录 driver ID、
+  名称和信息，否则标为 null。旧清单可能没有该字段；旧 C++ 抓取接口仍没有此清单。
 - `set_debug_view` 现在按需请求独立离屏 Pass，复用主帧 GPU 剔除结果，
   不覆盖作者配方或主目标。`get_debug_view` 返回最近提交的模式和 `target_id`，
   失败时返回 `error`；开启请求并不意味着本帧已成功。关闭后注销目标并释放资源。
@@ -89,7 +91,7 @@
   才能计算屏幕受影比例，目前没有这类生产附件，所以返回 unavailable。级联、PCF、
   bias 和 receiver mask 前提若未记录会保持未知。
 - `compare_captures` 检查颜色附件的格式、尺寸、viewport 和相机矩阵，并在编码通道
-  空间比较；当前缺少场景和设备身份，必须显式允许未验证上下文。Debug View 的颜色误差、
+  空间比较；它尚不验证清单设备身份，也缺少场景身份，必须显式允许未验证上下文。Debug View 的颜色误差、
   MAE/RMSE/PSNR、SSIM 和差异连通区域只使用两个有效 mask 的交集；mask 对称差异另行
   统计，不会被并入像素差。交换链比较包含整帧；均不能替代黄金基线。
 
@@ -169,7 +171,7 @@ viewport、reversed-Z、矩阵布局和同帧 VP/inverse VP；相机相对坐标
 深度结果分别列出有效范围、NaN/Inf、超范围、清屏和非清屏比例；比例附有 mask/full-frame
 分母说明，mask 支持时清屏值仍可属于有效几何。
 
-帧对比以兼容的尺寸、格式、颜色空间、viewport 和相机为前提；场景/设备身份缺失时必须
+帧对比以兼容的尺寸、格式、颜色空间、viewport 和相机为前提；场景/设备身份未验证时必须
 显式 opt-in，结果标记 `opted_in_unverified`。MAE/RMSE 按有效交集中的 RGB 全通道样本
 计算，并同时列出各通道值；PSNR 峰值为声明的 `signal_peak`（元数据色彩图像为 1）。
 阈值比较的是编码通道的归一化值，严格使用任一 RGB 通道误差大于阈值的像素判定。

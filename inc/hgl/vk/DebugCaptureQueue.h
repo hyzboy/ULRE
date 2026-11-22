@@ -30,6 +30,20 @@ namespace hgl::graph
 
         struct Result
         {
+            struct DeviceIdentity
+            {
+                bool available=false;
+                bool driver_properties_available=false;
+                uint32_t vendor_id=0;
+                uint32_t device_id=0;
+                uint32_t device_type=0;
+                uint32_t api_version=0;
+                uint32_t driver_version=0;
+                uint32_t driver_id=0;
+                char device_name[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE]{};
+                char driver_name[VK_MAX_DRIVER_NAME_SIZE]{};
+                char driver_info[VK_MAX_DRIVER_INFO_SIZE]{};
+            };
             struct Secondary
             {
                 char path[1024]{};
@@ -57,6 +71,7 @@ namespace hgl::graph
             char metadata_path[1024]{};
             const char *error=nullptr;
             CameraSnapshot camera;
+            DeviceIdentity device;
             Secondary depth;
         };
 

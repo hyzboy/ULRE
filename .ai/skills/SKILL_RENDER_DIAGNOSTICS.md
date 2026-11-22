@@ -23,7 +23,7 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
    Use `color_depth` when both attachments must belong to the same submitted frame.
 6. Use `analyze_capture` with the returned `metadata_path` for luminance, R32F depth, normals or surface. Debug View color has a binary alpha mask; swapchain statistics include background. Unknown color space requires an explicit override.
 7. For masked world-position bounds, request `color_depth` on the Debug View target and pass its depth `metadata_path` plus the same result's color `metadata_path` as `mask_metadata_path`. The pair must match group, frame, target, camera and viewport. Current swapchain manifests do not record `clear_depth`, so depth analysis and unmasked reconstruction are unavailable; `allow_unverified_depth_producers` cannot supply a missing clear value.
-8. `compare_captures` verifies image layout and camera but lacks scene/device identity. Its opt-in comparison uses the intersection of Debug View masks, or includes swapchain background, and measures encoded channels; mask coverage changes are reported separately. It is not a validated golden-baseline verdict.
+8. `compare_captures` verifies image layout and camera but not scene/device identity, even when a newer manifest includes device properties. Its opt-in comparison uses the intersection of Debug View masks, or includes swapchain background, and measures encoded channels; mask coverage changes are reported separately. It is not a validated golden-baseline verdict.
 9. Conclude with a reproducible root cause and the exact engine subsystem/file to change.
 
 ## Camera contract
@@ -62,8 +62,8 @@ Use fixed numeric tools before looking at any image attachment.
    - `analyze_depth` for cleared/invalid coverage and depth histogram;
    - `reconstruct_world_pos` for sampled world-position bounds.
 6. Call `compare_captures` for repeated captures or shader regression. It requires compatible
-   formats, dimensions, viewport and camera; because scene/device identity is not yet in the
-   manifest, set `allow_unverified_context: true` only when that limitation is acceptable.
+   formats, dimensions, viewport and camera; because scene identity is missing and device
+   identity is not checked, set `allow_unverified_context: true` only when that limitation is acceptable.
    - MAE/RMSE/PSNR are computed over all RGB channel samples in the intersection of valid masks;
      `channel_metrics` also reports each channel separately.
    - `threshold` is in normalized encoded-channel units; a pixel changes only when any RGB
@@ -137,7 +137,7 @@ JSON-RPC envelopes. Do not copy IDs from another run.
 
 For two compatible color captures, `compare_captures` needs
 `metadata_path_a`, `metadata_path_b`, and `allow_unverified_context: true`;
-this opt-in explicitly admits that scene and device identity are not recorded.
+this opt-in explicitly admits that scene and device identity are not verified.
 It is **not** a golden-baseline acceptance verdict. No explicit baseline
 create/update command, device-bound baseline manifest, or deterministic
 fixed-frame fixture is implemented yet; missing coverage must not be reported
