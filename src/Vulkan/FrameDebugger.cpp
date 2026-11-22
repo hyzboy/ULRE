@@ -142,6 +142,8 @@ uint32_t FrameDebugger::CollectPending()
 
         CaptureResult result;
         result.request=request;
+        result.capture_id=++CaptureSequence();
+        result.error="readback_failed";
 
         if(request.kind==RequestKind::ColorTarget)
         {
@@ -170,7 +172,7 @@ uint32_t FrameDebugger::CollectPending()
                 result.pixel_size=info.pixel_size;
                 result.byte_count=pixels.GetTotalBytes();
 
-                if(info.pixel_size>=4)
+                if(info.format==VK_FORMAT_D32_SFLOAT && info.pixel_size==4)
                 {
                     const float *values=reinterpret_cast<const float *>(pixels.GetData());
                     const uint32_t count=pixels.GetCount()/4;
@@ -201,7 +203,6 @@ uint32_t FrameDebugger::CollectPending()
 
         if(result.valid)
         {
-            ++CaptureSequence();
             bool saved=false;
 
             if(request.kind==RequestKind::ColorTarget)
@@ -227,15 +228,20 @@ uint32_t FrameDebugger::CollectPending()
             if(!saved)
             {
                 result.valid=false;
+                result.error="write_failed";
                 GLogError(u8"[FrameDebugger] Capture write failed: %s",request.name);
             }
-            if(result_count>=kMaxRequests)
-            {
-                result_count=0;
-            }
-            Results()[result_count++]=result;
-            collected++;
+            else
+                result.error=nullptr;
         }
+
+        if(result_count>=kMaxRequests)
+            result_count=0;
+        Results()[result_count++]=result;
+        if(result.valid)
+            collected++;
+        else
+            GLogError(u8"[FrameDebugger] Capture failed: %s (%s)",request.name,result.error);
 
         Requests()[i].kind=RequestKind::None;
     }
@@ -287,7 +293,13 @@ AnsiString FrameDebugger::GetLatestResultJSON()
     json+=result.dump_path;
     json+="\"";
     json+=",\"capture_id\":";
-    json+=AnsiString::numberOf(CaptureSequence());
+    json+=AnsiString::numberOf(result.capture_id);
+    if(result.error)
+    {
+        json+=",\"error\":\"";
+        json+=result.error;
+        json+="\"";
+    }
     json+="}";
     return json;
 }

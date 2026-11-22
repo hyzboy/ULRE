@@ -131,6 +131,8 @@ endfunction()
 
 add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 
+add_ecs_test(TestFrameDebugger tests/TestFrameDebugger.cpp)
+
 add_ecs_test(TestCSMIncrementalPass tests/TestCSMIncrementalPass.cpp)
 
 # 包围盒 SoA 存储 + 值类型句柄（组件 → BoundingBoxDataStorage/BoundingBoxAccessor 改造）
@@ -322,6 +324,10 @@ add_ecs_test(TestPhysicsScenarios tests/TestPhysicsScenarios.cpp
     LIBS Jolt::Jolt)
 
 if(BUILD_TESTING)
+    add_test(NAME TestFrameDebugger COMMAND TestFrameDebugger
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(TestFrameDebugger PROPERTIES LABELS "debug;capture")
+
     add_test(
         NAME TestTransformFlatStorage
         COMMAND TestTransformFlatStorage

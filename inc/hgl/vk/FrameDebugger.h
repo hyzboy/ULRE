@@ -57,6 +57,8 @@ public:
         uint64_t nan_count = 0;
         uint64_t inf_count = 0;
         char dump_path[256] = {};
+        const char *error = nullptr;
+        uint64_t capture_id = 0;
     };
 
     struct CameraSnapshot
