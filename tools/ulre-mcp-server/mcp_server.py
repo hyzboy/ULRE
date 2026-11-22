@@ -220,12 +220,12 @@ def handle(request):
                     arguments.get("threshold", 0.01))
             else:
                 value = call_engine(tool_name, arguments)
-        except Exception as exc:
+        except (KeyError, ValueError, TypeError, OSError, OverflowError) as exc:
             value = {"valid": False, "error": str(exc)}
 
         return result_response(request_id, {
             "content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False)}],
-            "isError": False,
+            "isError": value.get("valid") is False,
         })
     if method == "ping":
         return result_response(request_id, {})

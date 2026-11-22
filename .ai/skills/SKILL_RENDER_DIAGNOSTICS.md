@@ -64,13 +64,13 @@ Use fixed numeric tools before looking at any image attachment.
 
 ## Quantitative decision tree
 
-- **World normal length-error ratio > 5%**: suspect vertex-normal stream, normal-map tangent basis, or face-normal fallback.
-- **Zero-normal ratio elevated**: suspect missing Normal vertex semantic or an uninitialized varying.
+- **World normal length-error ratio > 5%**: investigate the encoded channel and valid-pixel mask. The current view normalizes its output and cannot establish whether the source was normalized.
+- **Zero-normal ratio elevated**: investigate missing Normal semantics or invalid values, while excluding background pixels.
 - **Negative-Z/positive-Z distribution is wrong for the known surface**: suspect coordinate-space or front-face sign.
-- **Dead roughness or metallic ratio high**: suspect PBR row/layout mismatch or a bindless material fallback.
+- **Roughness or metallic concentrated at 0 or 1**: compare with the authored material; either endpoint can be intentional.
 - **Underexposed/overexposed ratio is isolated to a region**: inspect shadow, AO, emissive, and light parameters for that region.
-- **Depth effective ratio is near 0**: suspect clearing or depth-only pass output.
-- **Depth effective ratio is near 1**: inspect whether geometry coverage or depth-wash state is wrong.
+- **Depth effective ratio is near 0**: inspect geometry coverage and the depth pass; the metric excludes the conventional clear value.
+- **Depth effective ratio is near 1**: inspect expected scene coverage; a full-depth image is not necessarily an error.
 - **MAE/RMSE rises after a code change with a low changed-ratio**: suspect anti-aliasing, one-pixel offset, or sparse hot pixels.
 - **MAE/RMSE rises with high changed-ratio across geometry**: suspect camera, projection, transform, or pipeline-state drift.
 - **Heatmap follows a mesh silhouette**: suspect transform, culling, or normal/camera-space math.

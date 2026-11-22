@@ -1,6 +1,6 @@
-import json
 import math
 import struct
+import tempfile
 from pathlib import Path
 
 
@@ -12,29 +12,37 @@ def _read_raw(path):
 
 
 def _float32_channels(data, width, height, pixel_format):
+    if not isinstance(width, int) or isinstance(width, bool) or width <= 0:
+        raise ValueError("width must be a positive integer")
+    if not isinstance(height, int) or isinstance(height, bool) or height <= 0:
+        raise ValueError("height must be a positive integer")
     count = width * height
+    sizes = {"rgba8": 4, "bgra8": 4, "rgb8": 3,
+             "a2bgr10": 4, "rgb10a2": 4, "a2r10g10b10": 4,
+             "r32f": 4}
+    if pixel_format not in sizes:
+        raise ValueError(f"Unsupported pixel format: {pixel_format}")
+    pixel_size = sizes[pixel_format]
+    if len(data) != count * pixel_size:
+        raise ValueError("Capture byte count does not match dimensions and format")
     if pixel_format == "r32f":
-        if len(data) < count * 4:
-            raise ValueError("R32F capture is shorter than width * height")
-        values = struct.unpack("<" + "f" * count, data[: count * 4])
+        values = struct.unpack("<" + "f" * count, data)
         return [(v,) for v in values]
-
-    pixel_size = 4
-    if len(data) < count * pixel_size:
-        raise ValueError("Capture is shorter than width * height * 4")
 
     channels = []
     for offset in range(0, count * pixel_size, pixel_size):
-        packed = struct.unpack_from("<I", data, offset)[0]
-        if pixel_format in ("rgba8", "bgra8", "rgb8"):
+        if pixel_format in ("rgba8", "rgb8"):
             channels.append(tuple(data[offset + i] / 255.0 for i in range(3)))
-        elif pixel_format in ("a2bgr10", "rgb10a2", "a2r10g10b10"):
+        elif pixel_format == "bgra8":
+            channels.append(tuple(data[offset + i] / 255.0 for i in (2, 1, 0)))
+        else:
+            packed = struct.unpack_from("<I", data, offset)[0]
             r = ((packed >> 0) & 0x3FF) / 1023.0
             g = ((packed >> 10) & 0x3FF) / 1023.0
             b = ((packed >> 20) & 0x3FF) / 1023.0
+            if pixel_format == "a2r10g10b10":
+                r, b = b, r
             channels.append((r, g, b))
-        else:
-            channels.append(tuple(data[offset + i] / 255.0 for i in range(min(3, len(data) - offset))))
     return channels
 
 
@@ -102,7 +110,8 @@ def analyze_normals(path, width, height, pixel_format="rgba8"):
     high_error_count = 0
     positive_z = 0
     negative_z = 0
-    front_facing = 0
+    if pixel_format == "r32f":
+        raise ValueError("Normal analysis requires three color channels")
     for r, g, b in channels:
         nx = r * 2.0 - 1.0
         ny = g * 2.0 - 1.0
@@ -117,8 +126,6 @@ def analyze_normals(path, width, height, pixel_format="rgba8"):
             positive_z += 1
         else:
             negative_z += 1
-        if nz > 0.0:
-            front_facing += 1
 
     total = max(1, width * height)
     mean_length_error = sum(abs(length - 1.0) for length in lengths) / len(lengths) if lengths else 0.0
@@ -129,13 +136,14 @@ def analyze_normals(path, width, height, pixel_format="rgba8"):
         "length_error_ratio": high_error_count / total,
         "positive_z_ratio": positive_z / total,
         "negative_z_ratio": negative_z / total,
-        "heuristic_front_facing_ratio": front_facing / total,
     }
 
 
 def analyze_surface(path, width, height, pixel_format="rgba8"):
     data = _read_raw(path)
     channels = _float32_channels(data, width, height, pixel_format)
+    if pixel_format == "r32f":
+        raise ValueError("Surface analysis requires three color channels")
     roughness = [c[0] for c in channels]
     metallic = [c[1] for c in channels]
     ao = [c[2] for c in channels]
@@ -161,24 +169,26 @@ def analyze_surface(path, width, height, pixel_format="rgba8"):
 
 def analyze_depth(path, width, height, reversed_z=False):
     data = _read_raw(path)
+    channels = _float32_channels(data, width, height, "r32f")
     count = width * height
-    if len(data) < count * 4:
-        raise ValueError("Depth capture is shorter than width * height * 4")
-    values = list(struct.unpack("<" + "f" * count, data[: count * 4]))
-    finite = [v for v in values if math.isfinite(v)]
+    values = [channel[0] for channel in channels]
+    finite = [v for v in values if math.isfinite(v) and 0.0 <= v <= 1.0]
     histogram = [0] * 10
     for value in finite:
         bucket = min(9, max(0, int(value * 10.0)))
         histogram[bucket] += 1
 
     invalid = sum(not math.isfinite(v) or v < 0.0 or v > 1.0 for v in values)
+    clear_depth = 0.0 if reversed_z else 1.0
     return {
         "valid": True,
         "reversed_z": reversed_z,
         "min": min(finite) if finite else 0.0,
         "max": max(finite) if finite else 0.0,
         "mean": sum(finite) / len(finite) if finite else 0.0,
-        "effective_depth_ratio": len(finite) / max(1, count),
+        "effective_depth_ratio": sum(v != clear_depth for v in finite) / count,
+        "clear_depth": clear_depth,
+        "valid_depth_count": len(finite),
         "invalid_depth_ratio": invalid / max(1, count),
         "histogram_0_1": histogram,
     }
@@ -234,7 +244,8 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
     }
 
 
-def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshold=0.01):
+def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshold=0.01,
+                   heatmap_dir=".ulre-analysis"):
     a = _read_raw(path_a)
     b = _read_raw(path_b)
     channels_a = _float32_channels(a, width, height, pixel_format)
@@ -242,33 +253,42 @@ def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshol
     if len(channels_a) != len(channels_b):
         raise ValueError("Frame captures have different pixel counts")
 
+    if not math.isfinite(threshold) or threshold < 0:
+        raise ValueError("threshold must be finite and non-negative")
     mae_sum = 0.0
     mse_sum = 0.0
     changed = 0
     heatmap = bytearray(width * height)
     for index, (ca, cb) in enumerate(zip(channels_a, channels_b)):
-        error = max(abs(ca[i] - cb[i]) for i in range(min(3, len(ca))))
-        mae_sum += error
-        mse_sum += error * error
+        errors = [abs(x - y) for x, y in zip(ca, cb)]
+        if not all(math.isfinite(error) for error in errors):
+            raise ValueError("Cannot compare non-finite pixel values")
+        error = max(errors)
+        mae_sum += sum(errors)
+        mse_sum += sum(value * value for value in errors)
         if error > threshold:
             changed += 1
         heatmap[index] = min(255, int(error * 255.0))
 
     count = max(1, len(channels_a))
-    rmse = math.sqrt(mse_sum / count)
-    mae = mae_sum / count
-    psnr = 20.0 * math.log10(1.0 / rmse) if rmse > 1e-12 else 100.0
+    sample_count = count * len(channels_a[0])
+    rmse = math.sqrt(mse_sum / sample_count)
+    mae = mae_sum / sample_count
+    psnr = 20.0 * math.log10(1.0 / rmse) if rmse > 0 else None
 
-    heatmap_path = ".ulre-analysis/frame_diff.pgm"
-    Path(".ulre-analysis").mkdir(parents=True, exist_ok=True)
+    Path(heatmap_dir).mkdir(parents=True, exist_ok=True)
     header = f"P5\n{width} {height}\n255\n".encode("ascii")
-    Path(heatmap_path).write_bytes(header + heatmap)
+    with tempfile.NamedTemporaryFile(prefix="frame_diff_", suffix=".pgm",
+                                     dir=heatmap_dir, delete=False) as output:
+        output.write(header + heatmap)
+        heatmap_path = output.name
 
     return {
         "valid": True,
         "mae": mae,
         "rmse": rmse,
         "psnr": psnr,
+        "psnr_infinite": rmse == 0,
         "changed_ratio": changed / count,
         "threshold": threshold,
         "heatmap_path": heatmap_path,

@@ -62,7 +62,8 @@ def main():
               world["valid"] and world["point_count"] > 0,
               "world-position reconstruction returned no points")
 
-        diff = analyzer.compare_frames(frame_a, frame_b, 8, 8, "rgba8", 0.001)
+        diff = analyzer.compare_frames(frame_a, frame_b, 8, 8, "rgba8", 0.001,
+                                       heatmap_dir=directory)
         check("frame diff output",
               diff["valid"] and diff["changed_ratio"] > 0.0 and diff["heatmap_path"].endswith(".pgm"),
               "frame diff did not produce a changed-pixel result")
