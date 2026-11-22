@@ -100,6 +100,27 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
+        "name": "inspect_render_pipeline",
+        "description": "Inspect the ULRE render pipeline stage-by-stage throughput funnel (scene primitives -> CanRender -> Collect -> Batch -> GPU indirect draw), fast-path cache status, and drop attribution.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "trace_entity_render_state",
+        "description": "Trace the render pipeline status, batch assignment, or drop attribution for a specific entity by name or entity ID.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Entity name or integer ID"}
+            },
+            "required": ["name"]
+        },
+    },
+    {
+        "name": "audit_cache_invariants",
+        "description": "Audit the render pipeline collect cache invariants (checks for topology/snapshot desynchronization, pending resources while fast-path active, or drop discrepancies).",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "set_debug_view",
         "description": "Request an isolated offscreen attribute view. Alpha test supports PBRSurface and bound VF_V4F vertex color streams; dither and blending are unsupported. world_normal is the interpolated vertex normal; shading_normal includes StandardOpaque normal mapping. Read target_id and errors from get_debug_view.",
         "inputSchema": {
@@ -383,6 +404,57 @@ def handle(request):
                     row_pitch_b=arguments.get("row_pitch_b"),
                     mask_alpha=arguments.get("mask_alpha", False),
                     peak_value=arguments.get("peak_value", 1.0))
+            elif tool_name == "trace_entity_render_state":
+                value = call_engine("trace_entity_pipeline", arguments)
+            elif tool_name == "audit_cache_invariants":
+                pipe_data = call_engine("inspect_render_pipeline")
+                if not isinstance(pipe_data, dict) or not pipe_data.get("valid"):
+                    value = pipe_data
+                else:
+                    cache_state = pipe_data.get("cache_state", {})
+                    funnel = pipe_data.get("funnel", {})
+                    drops = pipe_data.get("drops", {})
+                    anomalies = []
+                    
+                    if cache_state.get("fast_path_engaged") and cache_state.get("has_pending_resources"):
+                        anomalies.append({
+                            "severity": "CRITICAL",
+                            "rule": "CollectCachePendingResourceViolation",
+                            "message": "Fast-path collect cache is active while scene has pending/streaming resources!"
+                        })
+                    if cache_state.get("snapshot_ready") and cache_state.get("snapshot_topology_rev") != cache_state.get("world_topology_rev"):
+                        anomalies.append({
+                            "severity": "ERROR",
+                            "rule": "SnapshotTopologyMismatch",
+                            "message": f"Snapshot topology rev ({cache_state.get('snapshot_topology_rev')}) does not match world ({cache_state.get('world_topology_rev')})!"
+                        })
+                    if drops.get("resource_pending", 0) > 0 and cache_state.get("last_collect_steady"):
+                        anomalies.append({
+                            "severity": "CRITICAL",
+                            "rule": "UnsteadyGatingViolation",
+                            "message": "last_collect_steady is TRUE while drops.resource_pending > 0!"
+                        })
+                    
+                    passed_can_render = funnel.get("passed_can_render", 0)
+                    collected = funnel.get("collected_items", 0)
+                    if collected < passed_can_render:
+                        anomalies.append({
+                            "severity": "WARNING",
+                            "rule": "CollectDropDiscrepancy",
+                            "message": f"Collected items ({collected}) is less than passed_can_render ({passed_can_render})!"
+                        })
+                    
+                    value = {
+                        "valid": True,
+                        "status": "PASS" if not anomalies else "FAIL",
+                        "anomaly_count": len(anomalies),
+                        "anomalies": anomalies,
+                        "summary": {
+                            "fast_path": cache_state.get("fast_path_engaged"),
+                            "funnel": funnel,
+                            "cache_state": cache_state
+                        }
+                    }
             else:
                 value = call_engine(tool_name, arguments)
         except (KeyError, ValueError, TypeError, OSError, OverflowError) as exc:

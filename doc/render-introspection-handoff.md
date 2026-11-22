@@ -141,6 +141,29 @@ Windows SDK 10.0.26100.0、vcpkg `x64-windows`、静态运行库 `/MT`。
   版本翻转。现改为：金字塔每块箱体带亚分米级错位使支撑面积不对称，落箱阵列整体移到
   +Y 侧、与金字塔互不干扰。判据未放宽，仍为「顶层箱在金字塔附近且 z > 1.0」和
   「100 枚落箱全部 z > 0」。
+- 修复 `VUID-08963 / 06179 / 08914`（`CascadeShadowMap` 每帧刷屏，画面看似正常）：
+  `VkPipelineRenderingCreateInfo`（颜色附件数与格式、深度格式）在
+  `RenderPass::CreatePipeline*` 里**按 RenderPass 烘进管线**，`pipeline_memo` 也是
+  per-RenderPass 的；而 `TextRenderPipeline` 的 `RenderResources::pipeline` 是
+  **按字体缓存、只判空建一次**，结果在零颜色附件的 CSM 阴影 pass 里建出的文字管线
+  被拿到 swapchain 前向 pass 上绑定（颜色附件数 0 vs 1、深度 `D32F` vs `D32F_S8U`、
+  `pColorAttachmentFormats[0]` 为 `VK_FORMAT_UNDEFINED`）。
+  修法：`RenderResources` 记录 `pipeline_render_pass`，绘制前与
+  `world->GetRenderTarget()->GetRenderPass()` 判等，不等就重建；建管线另加
+  `GetColorCount() > 0` 前置条件（文字 FS 静态写 `outColor`，零颜色 pass 里连创建都不合法），
+  `TextRenderLayer::RenderLayer` 在零颜色 pass 直接早退。
+  验证：同场景约 14 秒捕获，`VUID` / `pColorAttachments` / `colorAttachmentCount` /
+  `pColorAttachment` 命中数全为 0（修复前 68 条），管线 5 Created / 0 Reuse，文字程序
+  `program-18131365001569992837` 的管线改在前向
+  `RenderPass_2_130_1000001002_3_1_64` 内创建。
+- **通则**：`graph::Pipeline*` 只在其创建时的 `graph::RenderPass` 上有效；任何
+  「按资源缓存管线」的代码都必须记录并比较来源 RenderPass。`LineRenderPipeline` /
+  `SimpleLineRenderPipeline` 已同时改为按实际 RenderPass 延迟创建并重建，
+  零颜色 pass 直接跳过线段绘制。
+- 该示例在 Debug + validation 下帧率低，且**首帧之后几乎不再输出日志**：日志停在
+  ~480 KB 不代表卡死。用 `cdb -p <pid> -c "~0k 12; qd"` 采样主线程栈，多次分别落在
+  `ECSContext::Tick` / `ECSContext::Render` / `ECSContext::RenderGraph` 执行处，
+  可确认仍在连续出帧。退出码与退出期泄漏见 `doc/backlog.md`。
 
 ## 后续工作意向
 
