@@ -64,6 +64,20 @@ class AnalyzerTests(unittest.TestCase):
         result = analyzer.compare_frames(a, b, 1, 1, "rgba8", heatmap_dir=self.root)
         self.assertAlmostEqual(result["mae"], 1.0 / 3.0)
         self.assertAlmostEqual(result["rmse"], math.sqrt(1.0 / 3.0))
+        self.assertAlmostEqual(result["channel_metrics"][0]["mae"], 1.0)
+        self.assertAlmostEqual(result["channel_metrics"][1]["mae"], 0.0)
+        self.assertEqual(result["changed_regions"]["component_count"], 1)
+        self.assertAlmostEqual(result["ssim"]["value"], (0.0001 / 1.0001 + 2.0) / 3.0)
+
+    def test_frame_difference_honors_each_row_pitch(self):
+        a = self.capture("padded-a.raw", bytes((0, 0, 0, 255, 91, 91,
+                                                0, 0, 0, 255, 91, 91)))
+        b = self.capture("padded-b.raw", bytes((255, 0, 0, 255, 73, 73,
+                                                0, 0, 0, 255, 73, 73)))
+        result = analyzer.compare_frames(a, b, 1, 2, row_pitch_a=6, row_pitch_b=6,
+                                         heatmap_dir=self.root)
+        self.assertAlmostEqual(result["mae"], 1.0 / 6.0)
+        self.assertEqual(result["sample_count"], 2)
 
     def test_equal_frames_have_infinite_psnr_and_unique_heatmaps(self):
         image = self.capture("a.raw", bytes((42, 0, 0, 255)))
@@ -96,6 +110,20 @@ class AnalyzerTests(unittest.TestCase):
         result = analyzer.analyze_normals(path, 1, 1, "rgba8")
         self.assertNotIn("heuristic_front_facing_ratio", result)
 
+    def test_float_normals_are_read_as_signed_xyz(self):
+        path = self.capture("float-normal.raw", struct.pack("<4f", 0.0, 0.0, 1.0, 1.0))
+        result = analyzer.analyze_normals(path, 1, 1, "rgba32f")
+        self.assertEqual(result["normal_encoding"], "signed_xyz")
+        self.assertEqual(result["length_error_ratio"], 0.0)
+        self.assertEqual(result["positive_z_ratio"], 1.0)
+
+    def test_surface_endpoints_are_descriptive_not_failures(self):
+        path = self.capture("surface-endpoints.raw", bytes((0, 255, 255, 255)))
+        result = analyzer.analyze_surface(path, 1, 1)
+        self.assertEqual(result["dead_roughness_ratio"], 1.0)
+        self.assertEqual(result["dead_metallic_ratio"], 1.0)
+        self.assertTrue(result["endpoint_ratios_are_descriptive_not_failures"])
+
     def test_mcp_marks_analysis_errors(self):
         response = mcp_server.handle({
             "id": 7,
@@ -103,6 +131,22 @@ class AnalyzerTests(unittest.TestCase):
             "params": {"name": "analyze_luminance", "arguments": {
                 "path": str(self.root / "missing.raw"), "width": 1, "height": 1,
                 "color_space": "linear",
+            }},
+        })
+        self.assertTrue(response["result"]["isError"])
+
+    def test_mcp_compare_exposes_ssim_and_reports_bad_raw_input(self):
+        tool = next(item for item in mcp_server.TOOLS if item["name"] == "compare_frames")
+        self.assertIn("row_pitch_a", tool["inputSchema"]["properties"])
+        self.assertIn("peak_value", tool["inputSchema"]["properties"])
+        response = mcp_server.handle({
+            "id": 11,
+            "method": "tools/call",
+            "params": {"name": "compare_frames", "arguments": {
+                "path_a": str(self.root / "missing-a.raw"),
+                "path_b": str(self.root / "missing-b.raw"),
+                "width": 1,
+                "height": 1,
             }},
         })
         self.assertTrue(response["result"]["isError"])
@@ -201,6 +245,17 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual((result["nan_count"], result["inf_count"],
                           result["out_of_range_count"]), (1, 1, 1))
 
+    def test_depth_mask_separates_clear_and_nonclear_ratios(self):
+        path = self.capture("masked-depth.raw", struct.pack("<3f", 1.0, 0.5, math.nan))
+        result = analyzer.analyze_depth(path, 3, 1, False, 1.0,
+                                        valid_mask=[True, True, False])
+        self.assertEqual(result["sample_count"], 2)
+        self.assertEqual(result["mask_sample_count"], 2)
+        self.assertEqual(result["finite_depth_ratio"], 1.0)
+        self.assertEqual(result["clear_depth_ratio"], 0.5)
+        self.assertEqual(result["non_clear_depth_ratio"], 0.5)
+        self.assertEqual(result["nan_count"], 0)
+
     def test_world_position_with_only_clear_pixels_has_no_result(self):
         depth = self.capture("clear.raw", struct.pack("<f", 0.0))
         inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
@@ -292,6 +347,9 @@ class AnalyzerTests(unittest.TestCase):
         result = capture_manifest.analyze_capture(path, "luminance", "linear")
         self.assertAlmostEqual(result["mean"], 0.2126)
         self.assertEqual(result["capture"]["frame_id"], 3)
+        self.assertEqual(result["analysis"]["schema_version"], "ulre.analysis.v1")
+        self.assertEqual(result["analysis"]["input_capture_ids"], ["capture.raw"])
+        self.assertEqual(result["analysis"]["mask_sample_count"], 1)
 
     def test_manifest_depth_uses_recorded_clear_value(self):
         self.capture("capture.raw", struct.pack("<ff", 0.0, 1.0))
@@ -302,6 +360,8 @@ class AnalyzerTests(unittest.TestCase):
         result = capture_manifest.analyze_capture(path, "depth")
         self.assertEqual(result["effective_depth_ratio"], 0.5)
         self.assertEqual(result["clear_depth"], 0.0)
+        self.assertEqual(result["non_clear_depth_ratio"], 0.5)
+        self.assertEqual(result["ratio_denominator"], "full image")
         with self.assertRaisesRegex(ValueError, "conflicts"):
             capture_manifest.analyze_capture(path, "depth", reversed_z_override=True)
 
@@ -347,15 +407,61 @@ class AnalyzerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no valid masked pixels"):
             capture_manifest.analyze_capture(path, "normals")
 
-    def test_masked_frame_diff_reports_coverage_changes(self):
-        a = self.capture("a.raw", bytes((0, 0, 0, 255, 0, 0, 0, 0)))
-        b = self.capture("b.raw", bytes(8))
-        result = analyzer.compare_frames(a, b, 2, 1, heatmap_dir=self.root, mask_alpha=True)
+    def test_masked_frame_diff_uses_intersection_and_reports_coverage_separately(self):
+        a = self.capture("a.raw", bytes((0, 0, 0, 255, 255, 0, 0, 255, 0, 0, 0, 0)))
+        b = self.capture("b.raw", bytes((255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 255)))
+        result = analyzer.compare_frames(a, b, 3, 1, heatmap_dir=self.root, mask_alpha=True)
         self.assertEqual(result["changed_ratio"], 1.0)
-        self.assertEqual(result["mask_changed_ratio"], 0.5)
+        self.assertEqual(result["mask_changed_ratio"], 2 / 3)
         self.assertEqual(result["sample_count"], 1)
-        with self.assertRaisesRegex(ValueError, "no valid masked"):
-            analyzer.compare_frames(b, b, 2, 1, heatmap_dir=self.root, mask_alpha=True)
+        self.assertEqual(result["mask"]["sample_count_a"], 2)
+        self.assertEqual(result["mask"]["sample_count_b"], 2)
+        self.assertEqual(result["mask"]["intersection_sample_count"], 1)
+        empty = self.capture("empty-mask.raw", bytes(12))
+        with self.assertRaisesRegex(ValueError, "no valid intersection-mask"):
+            analyzer.compare_frames(empty, empty, 3, 1, heatmap_dir=self.root, mask_alpha=True)
+
+    def test_changed_regions_use_four_connected_components(self):
+        before = self.capture("regions-a.raw", bytes(4 * 2 * 4))
+        after_pixels = [
+            (255, 0, 0, 255), (0, 0, 0, 255), (0, 0, 0, 255), (255, 0, 0, 255),
+            (255, 0, 0, 255), (255, 0, 0, 255), (0, 0, 0, 255), (0, 0, 0, 255),
+        ]
+        after = self.capture("regions-b.raw", bytes(channel for pixel in after_pixels
+                                                      for channel in pixel))
+        result = analyzer.compare_frames(before, after, 4, 2, heatmap_dir=self.root)
+        regions = result["changed_regions"]
+        self.assertEqual(regions["connectivity"], 4)
+        self.assertEqual(regions["component_count"], 2)
+        self.assertEqual(regions["largest_area_pixels"], 3)
+        self.assertEqual([item["area_pixels"] for item in regions["regions"]], [3, 1])
+
+    def test_large_connected_component_analysis_is_explicitly_limited(self):
+        before = self.capture("limited-a.raw", bytes((0, 0, 0, 255)))
+        after = self.capture("limited-b.raw", bytes((255, 0, 0, 255)))
+        with patch.object(analyzer, "MAX_COMPONENT_ANALYSIS_PIXELS", 0):
+            result = analyzer.compare_frames(before, after, 1, 1, heatmap_dir=self.root)
+        self.assertEqual(result["changed_regions"]["status"], "unavailable")
+        self.assertEqual(result["changed_regions"]["reason"], "component_analysis_pixel_limit")
+        self.assertTrue(result["valid"])
+
+    def test_compare_rejects_nonfinite_values_and_bad_pitches(self):
+        nan = self.capture("nan-frame.raw", struct.pack("<4f", math.nan, 0.0, 0.0, 1.0))
+        finite = self.capture("finite-frame.raw", struct.pack("<4f", 0.0, 0.0, 0.0, 1.0))
+        with self.assertRaisesRegex(ValueError, "non-finite"):
+            analyzer.compare_frames(nan, finite, 1, 1, "rgba32f", heatmap_dir=self.root)
+        with self.assertRaisesRegex(ValueError, "row pitch"):
+            analyzer.compare_frames(finite, finite, 1, 1, "rgba32f",
+                                    row_pitch_a=8, heatmap_dir=self.root)
+
+    def test_float_luminance_reports_and_excludes_nonfinite_pixels(self):
+        raw = self.capture("float-color.raw", struct.pack(
+            "<8f", math.nan, 0.0, 0.0, 1.0, 0.5, 0.5, 0.5, 1.0))
+        result = analyzer.analyze_luminance(raw, 2, 1, "rgba32f")
+        self.assertEqual(result["nan_count"], 1)
+        self.assertEqual(result["sample_count"], 1)
+        self.assertEqual(result["input_sample_count"], 2)
+        self.assertEqual(result["overexposed_ratio"], 0.0)
 
     def test_debug_mask_rejects_non_binary_alpha(self):
         image = self.capture("invalid-mask.raw", bytes((128, 128, 255, 127)))
@@ -526,6 +632,12 @@ class AnalyzerTests(unittest.TestCase):
         self.assertAlmostEqual(result["mae"], 1 / 3)
         self.assertAlmostEqual(result["rmse"], math.sqrt(1 / 3))
         self.assertEqual(result["comparison_space"], "encoded_channels")
+        self.assertEqual(result["analysis_schema_version"], "ulre.analysis.v1")
+        self.assertEqual(result["input_capture_ids"], ["a.raw", "b.raw"])
+        self.assertEqual(result["context"]["status"], "opted_in_unverified")
+        self.assertEqual(result["mask"]["policy"], "intersection")
+        self.assertEqual(result["ssim"]["window_size"], 8)
+        self.assertEqual(result["changed_regions"]["connectivity"], 4)
         changed_camera = dict(camera, vp=[2.0] + camera["vp"][1:])
         b = self.manifest("b.json", data_file="b.raw", frame_id=4, row_pitch=8, byte_count=8,
                           camera_status="recorded", camera=changed_camera, viewport=viewport)

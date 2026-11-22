@@ -29,7 +29,7 @@ def open_engine_pipe():
 TOOLS = [
     {
         "name": "compare_captures",
-        "description": "Compare compatible capture manifests; requires explicit opt-in for unverified scene/device context.",
+        "description": "Compare compatible capture manifests using RGB MAE/RMSE/PSNR, fixed-window SSIM and 4-connected changed regions. Image metrics use the valid-mask intersection; coverage changes are reported separately. Requires explicit opt-in for unverified scene/device context.",
         "inputSchema": {"type": "object", "properties": {
             "metadata_path_a": {"type": "string"},
             "metadata_path_b": {"type": "string"},
@@ -169,33 +169,43 @@ TOOLS = [
     },
     {
         "name": "analyze_luminance",
-        "description": "Quantify luminance of a raw capture; supply its actual color space.",
+        "description": "Legacy raw-capture interface. Prefer analyze_capture with a capture manifest; raw callers must provide dimensions, pixel format and actual color space.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string"},
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
-            "pixel_format": {"type": "string", "default": "rgba8"},
+            "pixel_format": {"type": "string", "enum": ["rgba8", "bgra8", "rgb8", "a2bgr10",
+                                                          "rgb10a2", "a2r10g10b10",
+                                                          "r32f", "rgba32f"]},
             "color_space": {"type": "string", "enum": ["linear", "srgb"]},
+            "row_pitch": {"type": "integer", "minimum": 1},
+            "mask_alpha": {"type": "boolean", "default": False},
         }, "required": ["path", "width", "height", "color_space"]},
     },
     {
         "name": "analyze_normals",
-        "description": "Validate encoded world normals and their axis distribution.",
+        "description": "Legacy raw-capture interface. Prefer analyze_capture with a world_normal manifest and its valid-pixel mask.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string"},
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
-            "pixel_format": {"type": "string", "default": "rgba8"},
+            "pixel_format": {"type": "string", "enum": ["rgba8", "bgra8", "rgb8", "a2bgr10",
+                                                          "rgb10a2", "a2r10g10b10", "rgba32f"]},
+            "row_pitch": {"type": "integer", "minimum": 1},
+            "mask_alpha": {"type": "boolean", "default": False},
         }, "required": ["path", "width", "height"]},
     },
     {
         "name": "analyze_surface",
-        "description": "Quantify roughness, metallic, and AO debug attributes.",
+        "description": "Legacy raw-capture interface. Prefer analyze_capture with a surface manifest and its valid-pixel mask; endpoint ratios are descriptive, not failures.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string"},
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
-            "pixel_format": {"type": "string", "default": "rgba8"},
+            "pixel_format": {"type": "string", "enum": ["rgba8", "bgra8", "rgb8", "a2bgr10",
+                                                          "rgb10a2", "a2r10g10b10", "rgba32f"]},
+            "row_pitch": {"type": "integer", "minimum": 1},
+            "mask_alpha": {"type": "boolean", "default": False},
         }, "required": ["path", "width", "height"]},
     },
     {
@@ -206,31 +216,46 @@ TOOLS = [
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
             "reversed_z": {"type": "boolean", "default": False},
+            "clear_depth": {"type": "number", "minimum": 0, "maximum": 1},
+            "row_pitch": {"type": "integer", "minimum": 1},
         }, "required": ["path", "width", "height"]},
     },
     {
         "name": "reconstruct_world_pos",
-        "description": "Reconstruct sampled positions using the matching capture's inverse VP; never uses the latest camera implicitly.",
+        "description": "Legacy raw-depth interface; prefer analyze_capture with depth metadata and a same-frame mask. Manual callers must provide the matching inverse VP and row pitch when padded; never uses the latest camera implicitly.",
         "inputSchema": {"type": "object", "properties": {
             "path": {"type": "string"},
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
             "sample_step": {"type": "integer", "minimum": 1, "default": 16},
+            "row_pitch": {"type": "integer", "minimum": 1},
+            "clear_depth": {"type": "number", "minimum": 0, "maximum": 1},
             "inverse_vp": {"type": "array", "items": {"type": "number"},
                            "minItems": 16, "maxItems": 16},
             "reversed_z": {"type": "boolean", "default": False},
+            "viewport": {"type": "object", "properties": {
+                "x": {"type": "number"}, "y": {"type": "number"},
+                "width": {"type": "number", "exclusiveMinimum": 0},
+                "height": {"type": "number", "exclusiveMinimum": 0},
+                "min_depth": {"type": "number"}, "max_depth": {"type": "number"},
+            }, "required": ["x", "y", "width", "height", "min_depth", "max_depth"]},
         }, "required": ["path", "width", "height", "inverse_vp"]},
     },
     {
         "name": "compare_frames",
-        "description": "Compare two raw frame captures and emit MAE, RMSE, PSNR, changed ratio and heatmap.",
+        "description": "Legacy raw-frame interface; prefer compare_captures with manifests. Computes per-channel and aggregate RGB MAE/RMSE/PSNR, 8x8 non-overlapping SSIM, 4-connected threshold regions and a separate valid-mask coverage delta. Values use encoded channel units, or float channel units for RGBA32F.",
         "inputSchema": {"type": "object", "properties": {
             "path_a": {"type": "string"},
             "path_b": {"type": "string"},
             "width": {"type": "integer", "minimum": 1},
             "height": {"type": "integer", "minimum": 1},
-            "pixel_format": {"type": "string", "default": "rgba8"},
+            "pixel_format": {"type": "string", "enum": ["rgba8", "bgra8", "rgb8", "a2bgr10",
+                                                          "rgb10a2", "a2r10g10b10", "rgba32f"]},
             "threshold": {"type": "number", "minimum": 0.0, "default": 0.01},
+            "row_pitch_a": {"type": "integer", "minimum": 1},
+            "row_pitch_b": {"type": "integer", "minimum": 1},
+            "mask_alpha": {"type": "boolean", "default": False},
+            "peak_value": {"type": "number", "exclusiveMinimum": 0, "default": 1.0},
         }, "required": ["path_a", "path_b", "width", "height"]},
     },
 ]
@@ -325,30 +350,39 @@ def handle(request):
             elif tool_name == "analyze_luminance":
                 value = analyzer.analyze_luminance(
                     arguments["path"], arguments["width"], arguments["height"],
-                    arguments.get("pixel_format", "rgba8"), arguments["color_space"])
+                    arguments.get("pixel_format", "rgba8"), arguments["color_space"],
+                    arguments.get("row_pitch"), arguments.get("mask_alpha", False))
             elif tool_name == "analyze_normals":
                 value = analyzer.analyze_normals(
                     arguments["path"], arguments["width"], arguments["height"],
-                    arguments.get("pixel_format", "rgba8"))
+                    arguments.get("pixel_format", "rgba8"), arguments.get("row_pitch"),
+                    arguments.get("mask_alpha", False))
             elif tool_name == "analyze_surface":
                 value = analyzer.analyze_surface(
                     arguments["path"], arguments["width"], arguments["height"],
-                    arguments.get("pixel_format", "rgba8"))
+                    arguments.get("pixel_format", "rgba8"), arguments.get("row_pitch"),
+                    arguments.get("mask_alpha", False))
             elif tool_name == "analyze_depth":
                 value = analyzer.analyze_depth(
                     arguments["path"], arguments["width"], arguments["height"],
-                    arguments.get("reversed_z", False))
+                    arguments.get("reversed_z", False), arguments.get("clear_depth"),
+                    arguments.get("row_pitch"))
             elif tool_name == "reconstruct_world_pos":
                 value = analyzer.reconstruct_world_pos(
                     arguments["path"], arguments["width"], arguments["height"],
                     arguments["inverse_vp"], arguments.get("reversed_z", False),
-                    arguments.get("sample_step", 16))
+                    arguments.get("sample_step", 16), arguments.get("clear_depth"),
+                    arguments.get("viewport"), arguments.get("row_pitch"))
             elif tool_name == "compare_frames":
                 value = analyzer.compare_frames(
                     arguments["path_a"], arguments["path_b"],
                     arguments["width"], arguments["height"],
                     arguments.get("pixel_format", "rgba8"),
-                    arguments.get("threshold", 0.01))
+                    arguments.get("threshold", 0.01),
+                    row_pitch_a=arguments.get("row_pitch_a"),
+                    row_pitch_b=arguments.get("row_pitch_b"),
+                    mask_alpha=arguments.get("mask_alpha", False),
+                    peak_value=arguments.get("peak_value", 1.0))
             else:
                 value = call_engine(tool_name, arguments)
         except (KeyError, ValueError, TypeError, OSError, OverflowError) as exc:

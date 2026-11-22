@@ -23,7 +23,7 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
    Use `color_depth` when both attachments must belong to the same submitted frame.
 6. Use `analyze_capture` with the returned `metadata_path` for luminance, R32F depth, normals or surface. Debug View color has a binary alpha mask; swapchain statistics include background. Unknown color space requires an explicit override.
 7. For masked world-position bounds, request `color_depth` on the Debug View target and pass its depth `metadata_path` plus the same result's color `metadata_path` as `mask_metadata_path`. The pair must match group, frame, target, camera and viewport. For unmasked swapchain depth, use `allow_unverified_depth_producers` only after confirming compatible depth writers; clear-depth pixels cannot be distinguished from geometry at that depth.
-8. `compare_captures` verifies image layout and camera but lacks scene/device identity. Its opt-in comparison uses the union of Debug View masks, or includes swapchain background, and measures encoded channels; it is not a validated golden-baseline verdict.
+8. `compare_captures` verifies image layout and camera but lacks scene/device identity. Its opt-in comparison uses the intersection of Debug View masks, or includes swapchain background, and measures encoded channels; mask coverage changes are reported separately. It is not a validated golden-baseline verdict.
 9. Conclude with a reproducible root cause and the exact engine subsystem/file to change.
 
 ## Camera contract
@@ -53,18 +53,32 @@ Use fixed numeric tools before looking at any image attachment.
 1. Call `set_debug_view` to request `world_normal`, `base_color`, `surface`, `emissive`, `uv0`, or the optional `world_position` RGBA32F view.
 2. Poll `get_debug_view` until `mode` equals the request; an `error` means the pass did not succeed. Capture its `target_id`, then set `off` when finished. The process-wide status is for the most recently handled world, not a world selector.
 3. `get_camera_matrices` returns the latest snapshot, not necessarily the capture's camera or frame; do not use it to reconstruct an older capture.
-4. For a Debug View color manifest use `analyze_capture` so its alpha mask is applied:
+4. Prefer `analyze_capture` with the capture's `metadata_path` so format, row pitch,
+   color space, frame/camera context and Debug View alpha mask come from the manifest:
    - `analyze_luminance` for exposure, dead pixels, and NaN/Inf;
    - `analyze_normals` for length error, zero normals, and Z-axis distribution;
    - `analyze_surface` for roughness, metallic, and AO distributions.
 5. If the raw capture is a depth RT:
    - `analyze_depth` for cleared/invalid coverage and depth histogram;
    - `reconstruct_world_pos` for sampled world-position bounds.
-6. Call `compare_frames` for repeated captures or shader regression:
-   - MAE is the first broad drift indicator;
-   - RMSE and PSNR quantify accumulated error;
-   - `changed_ratio` locates the fraction of pixels outside the threshold;
-   - the PGM heatmap is evidence, not the pass/fail decision.
+6. Call `compare_captures` for repeated captures or shader regression. It requires compatible
+   formats, dimensions, viewport and camera; because scene/device identity is not yet in the
+   manifest, set `allow_unverified_context: true` only when that limitation is acceptable.
+   - MAE/RMSE/PSNR are computed over all RGB channel samples in the intersection of valid masks;
+     `channel_metrics` also reports each channel separately.
+   - `threshold` is in normalized encoded-channel units; a pixel changes only when any RGB
+     channel's absolute error is strictly greater than it.
+   - SSIM uses non-overlapping 8×8 windows (partial edge windows allowed), population variance,
+     per-channel SSIM averaged equally, then weighted by each window's valid pixel count.
+     It is an encoded-channel similarity measure, not a perceptual metric.
+   - `changed_regions` uses 4-connectivity, analyzes up to 262,144 pixels and returns at most
+     the largest 64 areas. Above the component-analysis limit, only that metric is unavailable.
+   - `mask.coverage_changed_pixels` reports the symmetric difference separately; it is not
+     folded into image-error metrics. Heatmap coverage changes are white (255).
+   - Read `algorithm_parameters`, `input_capture_ids`, sample counts and `limitations` alongside
+     scores. PSNR infinity is represented by `psnr: null` and `psnr_infinite: true`.
+   - `compare_frames` is the legacy raw-file interface; provide width, height, format and row
+     pitch when applicable. The PGM heatmap is evidence, not a baseline verdict.
 7. For Position RT verification, select `world_position`, capture `color_depth` from that debug target in one request, then call `analyze_capture` with `operation: "world_position_rt"` and `operation: "position_crosscheck"` (the latter also takes the paired depth manifest as `depth_metadata_path`). Read the measured near/middle/far error bands; they are descriptive and have no fixed physical tolerance.
 8. Call `analyze_shadow_semantics` for shadow interpretation. Mark `is_shadow_map_depth: true` only for an actual shadow-map depth capture: non-clear ratio is caster projection coverage, not screen shadow. Screen-space shadow ratio remains unavailable without a real same-frame receiver shadow factor/mask; cascade, PCF and bias assumptions are reported only when captured.
 
@@ -72,8 +86,10 @@ Use fixed numeric tools before looking at any image attachment.
 
 - **World normal length-error ratio > 5%**: investigate the encoded channel and valid-pixel mask. The current view normalizes its output and cannot establish whether the source was normalized.
 - **Zero-normal ratio elevated**: investigate missing Normal semantics or invalid values, while excluding background pixels.
-- **Negative-Z/positive-Z distribution is wrong for the known surface**: suspect coordinate-space or front-face sign.
-- **Roughness or metallic concentrated at 0 or 1**: compare with the authored material; either endpoint can be intentional.
+- **Negative-Z/positive-Z distribution is wrong for the known surface**: investigate the encoded
+  coordinate space only when the expected surface orientation is known. The statistic is not a
+  front/back-facing test; that requires an actual per-pixel view direction.
+- **Roughness or metallic concentrated at 0 or 1**: compare with the authored material; either endpoint can be intentional and endpoint ratios are descriptive, not failures.
 - **Underexposed/overexposed ratio is isolated to a region**: inspect shadow, AO, emissive, and light parameters for that region.
 - **Depth effective ratio is near 0**: inspect geometry coverage and the depth pass; the metric excludes the conventional clear value.
 - **Depth effective ratio is near 1**: inspect expected scene coverage; a full-depth image is not necessarily an error.

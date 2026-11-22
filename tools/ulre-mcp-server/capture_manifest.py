@@ -37,6 +37,10 @@ def _finite_number(value):
         return False
 
 
+def _capture_id(metadata):
+    return metadata.get("capture_id") or metadata["data_file"]
+
+
 def load_manifest(path):
     metadata_path = Path(path).resolve(strict=True)
     if metadata_path.stat().st_size > MAX_MANIFEST_BYTES:
@@ -222,6 +226,8 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
             result = analyzer.reconstruct_world_pos(
                 str(data_path), width, height, inverse_vp, reversed_z, sample_step,
                 clear_depth, viewport, metadata["row_pitch"], valid_mask)
+            if valid_mask is not None:
+                result["mask_sample_count"] = sum(valid_mask)
             result["position_space"] = "world_absolute"
             result["sampling_step"] = sample_step
             result["limitations"] = ["debug view covers supported primitive scene batches only"] \
@@ -260,6 +266,7 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
             camera.get("inverse_vp"), camera.get("reversed_z"),
             sample_step, depth.get("clear_depth"), depth.get("viewport"),
             depth["row_pitch"], metadata["row_pitch"], camera.get("camera_world_pos"))
+        result["mask_sample_count"] = sum(valid_mask)
         result["mask_source"] = "same_frame_position_alpha"
         result["camera_distance_bands"] = "equal-count quantiles of sampled camera distances"
         if not any(valid_mask):
@@ -267,7 +274,9 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
     else:
         raise ValueError("Unsupported capture analysis operation")
     result["capture"] = {key: metadata[key] for key in ("request_id", "target_id", "frame_id")}
-    result["capture"]["capture_id"] = metadata.get("capture_id")
+    result["capture"]["capture_id"] = _capture_id(metadata)
+    result["capture"]["capture_id_source"] = (
+        "manifest" if metadata.get("capture_id") else "data_file_fallback")
     result["pixel_scope"] = ("sampled_same_frame_position_mask"
                              if operation == "position_crosscheck"
                              else "valid_position_mask" if operation == "world_position_rt"
@@ -278,6 +287,38 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
                              and mask_metadata_path is not None
                              else "valid_geometry_mask" if mask_alpha
                              else "full_frame_including_clear")
+    result["analysis"] = {
+        "schema_version": "ulre.analysis.v1",
+        "algorithm": "ulre_capture_analysis_v1",
+        "operation": operation,
+        "parameters": {
+            "color_space_override": color_space_override,
+            "reversed_z_override": reversed_z_override,
+            "sample_step": sample_step if operation in ("world_position", "position_crosscheck") else None,
+            "mask_metadata_path_supplied": mask_metadata_path is not None,
+            "depth_metadata_path_supplied": depth_metadata_path is not None,
+            "allow_unverified_depth_producers": allow_unverified_depth_producers,
+        },
+        "input_capture_ids": [_capture_id(metadata)],
+        "sample_count": result.get("sample_count", result.get("point_count")),
+        "mask_sample_count": result.get("mask_sample_count", result.get("input_sample_count")),
+        "units": {
+            "luminance": "linear_luminance",
+            "depth": "normalized_depth_0_to_1",
+            "world_position": "world_units",
+            "world_position_rt": "world_units",
+            "position_crosscheck": "world_units",
+            "normals": "normal_components_and_length_ratio",
+            "surface": "normalized_material_attributes",
+        }[operation],
+        "limits": {
+            "max_manifest_bytes": MAX_MANIFEST_BYTES,
+            "max_capture_bytes": MAX_CAPTURE_BYTES,
+            "max_analysis_bytes": analyzer.MAX_ANALYSIS_BYTES,
+            "max_analysis_pixels": analyzer.MAX_ANALYSIS_PIXELS,
+            "max_position_crosscheck_samples": 262144,
+        },
+    }
     return result
 
 
@@ -325,7 +366,22 @@ def analyze_shadow_semantics(path, is_shadow_map_depth=False):
             "clear_depth_count": coverage["clear_depth_count"],
         }
     result["capture"] = {key: metadata[key] for key in ("request_id", "target_id", "frame_id")}
-    result["capture"]["capture_id"] = metadata.get("capture_id")
+    result["capture"]["capture_id"] = _capture_id(metadata)
+    result["capture"]["capture_id_source"] = (
+        "manifest" if metadata.get("capture_id") else "data_file_fallback")
+    result["analysis"] = {
+        "schema_version": "ulre.analysis.v1",
+        "algorithm": "ulre_shadow_semantics_v1",
+        "parameters": {"is_shadow_map_depth": is_shadow_map_depth},
+        "input_capture_ids": [_capture_id(metadata)],
+        "ratio_units": "fraction_of_selected_capture_pixels",
+        "mask_sample_count": result["shadow_depth_caster_coverage"].get("valid_depth_count"),
+        "limits": {
+            "max_manifest_bytes": MAX_MANIFEST_BYTES,
+            "max_capture_bytes": MAX_CAPTURE_BYTES,
+            "max_analysis_pixels": analyzer.MAX_ANALYSIS_PIXELS,
+        },
+    }
     return result
 
 
@@ -373,6 +429,10 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
             not all(_finite_number(value) for value in camera_a["vp"]) or \
             camera_a["vp"] != camera_b.get("vp"):
         raise ValueError("Capture cameras differ or are invalid")
+    for field in ("reversed_z", "projection_convention", "world_up", "position_space",
+                  "viewport_y"):
+        if camera_a.get(field) != camera_b.get(field):
+            raise ValueError(f"Capture camera {field} differs")
     if allow_unverified_context is not True:
         raise ValueError("Scene and device context are not recorded; explicit opt-in is required")
     result = analyzer.compare_frames(str(data_a), str(data_b), a["width"], a["height"],
@@ -382,14 +442,42 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
     result["captures"] = [{key: entry[key] for key in ("request_id", "target_id", "frame_id")}
                           for entry in (a, b)]
     for provenance, metadata in zip(result["captures"], (a, b)):
-        provenance["capture_id"] = metadata.get("capture_id")
+        provenance["capture_id"] = _capture_id(metadata)
+        provenance["capture_id_source"] = (
+            "manifest" if metadata.get("capture_id") else "data_file_fallback")
     result["color_space"] = color_space
     result["color_space_source"] = ("override" if a["color_space"] == "unknown"
                                     else "capture_metadata")
     result["comparison_space"] = "encoded_channels"
-    result["pixel_scope"] = ("union_of_valid_geometry_masks" if a.get("mask") == "alpha_nonzero"
+    result["pixel_scope"] = ("intersection_of_valid_geometry_masks"
+                             if a.get("mask") == "alpha_nonzero"
                              else "full_frame_including_clear")
-    result["limitations"] = ["scene and device context are unverified"]
+    result["algorithm"] = "ulre_frame_diff_v2"
+    result["analysis_schema_version"] = "ulre.analysis.v1"
+    result["input_capture_ids"] = [_capture_id(entry) for entry in (a, b)]
+    result["algorithm_parameters"] = {
+        "threshold": threshold,
+        "threshold_units": "normalized encoded channel values",
+        "changed_pixel_rule": "strictly greater than threshold on any RGB channel",
+        "mask_policy": "valid-mask intersection for image metrics; symmetric difference reported separately",
+        "ssim_window_size": 8,
+        "ssim_window_shape": "non-overlapping square; partial edge windows allowed",
+        "ssim_channels": "per-channel SSIM averaged equally",
+        "connected_region_connectivity": 4,
+        "connected_region_limit": 64,
+        "connected_region_pixel_limit": analyzer.MAX_COMPONENT_ANALYSIS_PIXELS,
+    }
+    result["context"] = {
+        "status": "opted_in_unverified",
+        "scene_identity": "unavailable",
+        "device_identity": "unavailable",
+        "opt_in": True,
+    }
+    result["limitations"] = [
+        "scene and device context are unverified",
+        "SSIM is computed in encoded channel space and is not a perceptual color metric",
+        "connected components include only threshold-exceeding pixels in the mask intersection",
+    ]
     if a.get("mask") != "alpha_nonzero":
         result["limitations"].append("valid geometry mask is unavailable")
     return result
