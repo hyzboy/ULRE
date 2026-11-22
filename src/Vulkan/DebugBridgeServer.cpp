@@ -87,21 +87,94 @@ static AnsiString SetDebugViewFromRequest(const char *request)
     return MakeDebugViewJSON();
 }
 
-static void SendPipeResponse(HANDLE pipe,const AnsiString &body)
+static bool WaitPipeOperation(HANDLE pipe,HANDLE stop_event,OVERLAPPED &operation,
+                              DWORD &transferred,DWORD timeout=INFINITE)
+{
+    HANDLE events[]={stop_event,operation.hEvent};
+    const DWORD status=WaitForMultipleObjects(2,events,FALSE,timeout);
+    if(status==WAIT_OBJECT_0+1)
+        return GetOverlappedResult(pipe,&operation,&transferred,FALSE)!=FALSE;
+
+    CancelIoEx(pipe,&operation);
+    GetOverlappedResult(pipe,&operation,&transferred,TRUE);
+    return false;
+}
+
+static bool ConnectPipe(HANDLE pipe,HANDLE stop_event)
+{
+    OVERLAPPED operation{};
+    operation.hEvent=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+    if(!operation.hEvent)
+        return false;
+
+    bool connected=ConnectNamedPipe(pipe,&operation)!=FALSE;
+    if(!connected)
+    {
+        const DWORD error=GetLastError();
+        if(error==ERROR_PIPE_CONNECTED)
+            connected=true;
+        else if(error==ERROR_IO_PENDING)
+        {
+            DWORD ignored=0;
+            connected=WaitPipeOperation(pipe,stop_event,operation,ignored);
+        }
+    }
+    CloseHandle(operation.hEvent);
+    return connected;
+}
+
+static bool TransferPipe(HANDLE pipe,HANDLE stop_event,void *read_buffer,const void *write_buffer,
+                         DWORD size,DWORD &transferred,DWORD timeout)
+{
+    OVERLAPPED operation{};
+    operation.hEvent=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+    if(!operation.hEvent)
+        return false;
+
+    transferred=0;
+    const BOOL done=write_buffer?WriteFile(pipe,write_buffer,size,&transferred,&operation)
+                                :ReadFile(pipe,read_buffer,size,&transferred,&operation);
+    bool success=done!=FALSE;
+    if(!success && GetLastError()==ERROR_IO_PENDING)
+        success=WaitPipeOperation(pipe,stop_event,operation,transferred,timeout);
+    CloseHandle(operation.hEvent);
+    return success;
+}
+
+static bool SendPipeResponse(HANDLE pipe,HANDLE stop_event,const AnsiString &body)
 {
     AnsiString response="{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":";
     response+=body;
     response+="}";
 
-    DWORD written=0;
-    WriteFile(pipe,response.c_str(),static_cast<DWORD>(response.Length()),&written,nullptr);
+    DWORD offset=0;
+    const DWORD length=static_cast<DWORD>(response.Length());
+    while(offset<length)
+    {
+        DWORD written=0;
+        if(!TransferPipe(pipe,stop_event,nullptr,response.c_str()+offset,
+                         length-offset,written,5000) || written==0)
+            return false;
+        offset+=written;
+    }
+    return true;
 }
+
 #endif
+
+static DebugBridgeServer &ActiveBridge()
+{
+    static DebugBridgeServer server;
+    return server;
+}
+
+DebugBridgeServer::DebugBridgeServer(const char *name):pipe_name(name)
+{
+}
 
 bool DebugBridgeServer::ProcStartThread()
 {
 #ifdef _WIN32
-    started=true;
     return true;
 #else
     return false;
@@ -116,15 +189,14 @@ void DebugBridgeServer::ProcEndThread()
         CloseHandle(pipe_handle);
         pipe_handle=INVALID_HANDLE_VALUE;
     }
-    started=false;
 #endif
 }
 
 void DebugBridgeServer::OnStopRequested()
 {
 #ifdef _WIN32
-    if(pipe_handle!=INVALID_HANDLE_VALUE)
-        CancelIoEx(pipe_handle,nullptr);
+    if(stop_event)
+        SetEvent(stop_event);
 #endif
 }
 
@@ -138,8 +210,23 @@ bool DebugBridgeServer::StartServer()
 #ifdef _WIN32
     if(!ULRE_DEBUG_ON(DebugBridge))
         return false;
-    if(started || IsRunning()) return false;
-    return Start();
+    if(IsRunning()) return false;
+    if(stop_event)
+    {
+        if(!Join()) return false;
+        CloseHandle(stop_event);
+        stop_event=nullptr;
+    }
+    stop_event=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+    if(!stop_event)
+    {
+        GLogError(u8"[DebugBridge] CreateEvent failed: %u",static_cast<unsigned>(GetLastError()));
+        return false;
+    }
+    if(Start()) return true;
+    CloseHandle(stop_event);
+    stop_event=nullptr;
+    return false;
 #else
     return false;
 #endif
@@ -148,29 +235,35 @@ bool DebugBridgeServer::StartServer()
 void DebugBridgeServer::StopServer()
 {
 #ifdef _WIN32
-    if(IsRunning())
-        StopAndJoin(2.0);
+    if(stop_event)
+    {
+        if(!StopAndJoin())
+        {
+            GLogError(u8"[DebugBridge] Failed to stop server thread");
+            return;
+        }
+        CloseHandle(stop_event);
+        stop_event=nullptr;
+    }
 #endif
 }
 
 bool DebugBridgeServer::StartActive()
 {
-    static DebugBridgeServer server;
-    return server.StartServer();
+    return ActiveBridge().StartServer();
 }
 
 void DebugBridgeServer::StopActive()
 {
-    static DebugBridgeServer server;
-    server.StopServer();
+    ActiveBridge().StopServer();
 }
 
 bool DebugBridgeServer::Execute()
 {
 #ifdef _WIN32
     pipe_handle=CreateNamedPipeA(
-        "\\\\.\\pipe\\ulre_render_debug",
-        PIPE_ACCESS_DUPLEX,
+        pipe_name.c_str(),
+        PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
         1,4096,4096,0,nullptr);
 
@@ -183,14 +276,17 @@ bool DebugBridgeServer::Execute()
     if(IsStopRequested())
         return false;
 
-    const BOOL connected=ConnectNamedPipe(pipe_handle,nullptr)
-                       || GetLastError()==ERROR_PIPE_CONNECTED;
-    if(!connected)
-        return IsStopRequested()?false:true;
+    if(!ConnectPipe(pipe_handle,stop_event))
+    {
+        CloseHandle(pipe_handle);
+        pipe_handle=INVALID_HANDLE_VALUE;
+        return !IsStopRequested();
+    }
 
     char request[4096]={};
     DWORD bytes_read=0;
-    if(!ReadFile(pipe_handle,request,sizeof(request)-1,&bytes_read,nullptr))
+    if(!TransferPipe(pipe_handle,stop_event,request,nullptr,sizeof(request)-1,
+                     bytes_read,5000) || bytes_read==0)
     {
         DisconnectNamedPipe(pipe_handle);
         CloseHandle(pipe_handle);
@@ -220,8 +316,14 @@ bool DebugBridgeServer::Execute()
     else
         result="{\"valid\":false,\"error\":\"unknown_method\"}";
 
-    SendPipeResponse(pipe_handle,result);
-    FlushFileBuffers(pipe_handle);
+    if(SendPipeResponse(pipe_handle,stop_event,result))
+    {
+        char ignored;
+        DWORD received=0;
+        TransferPipe(pipe_handle,stop_event,&ignored,nullptr,1,received,5000);
+    }
+    else if(!IsStopRequested())
+        GLogError(u8"[DebugBridge] Failed to send pipe response");
     DisconnectNamedPipe(pipe_handle);
     CloseHandle(pipe_handle);
     pipe_handle=INVALID_HANDLE_VALUE;

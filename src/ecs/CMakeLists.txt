@@ -132,6 +132,7 @@ endfunction()
 add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 
 add_ecs_test(TestFrameDebugger tests/TestFrameDebugger.cpp)
+add_ecs_test(TestDebugBridgeLifecycle tests/TestDebugBridgeLifecycle.cpp)
 
 add_ecs_test(TestCSMIncrementalPass tests/TestCSMIncrementalPass.cpp)
 
@@ -327,6 +328,9 @@ if(BUILD_TESTING)
     add_test(NAME TestFrameDebugger COMMAND TestFrameDebugger
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(TestFrameDebugger PROPERTIES LABELS "debug;capture")
+    add_test(NAME TestDebugBridgeLifecycle COMMAND TestDebugBridgeLifecycle
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(TestDebugBridgeLifecycle PROPERTIES LABELS "debug;bridge" TIMEOUT 20)
 
     add_test(
         NAME TestTransformFlatStorage
