@@ -1,5 +1,6 @@
 ﻿#include <hgl/ecs/systems/render/frame/RenderSystemCore.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/support/debug/DebugViewPass.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKCommandBuffer.h>
@@ -127,6 +128,9 @@ void RenderSystemCore::EndFrame() {
 
     if (render_cmd && render_pass_begun)
         render_cmd->EndRenderingPresent(render_target);   // Dynamic Rendering（EndRendering + color→PRESENT_SRC 布局转换）
+
+    if(render_cmd && render_pass_begun && render_target->IsSwapchain())
+        DebugViewPass::Record(world,render_cmd,render_target);
 
     render_target->EndRender();
 

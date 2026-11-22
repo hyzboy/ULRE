@@ -1,15 +1,103 @@
 import json
 import os
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
 import mcp_server
+import capture_manifest
 
 
 @unittest.skipUnless(os.environ.get("ULRE_CAPTURE_TEST") == "1",
                      "requires a running engine with DebugBridge enabled")
 class CaptureIntegrationTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("ULRE_DEBUG_VIEW_TEST") == "1",
+                         "requires the static BasicLitMeshes fixture")
+    def test_isolated_debug_modes_leave_main_frame_unchanged(self):
+        def capture(target, attachment="color"):
+            request = mcp_server.call_engine("capture_frame", {
+                "target_id": target, "attachment": attachment,
+            })
+            self.assertTrue(request.get("valid"), request)
+            for _ in range(150):
+                result = mcp_server.call_engine("get_capture_status", {
+                    "request_id": request["request_id"],
+                })
+                if result.get("state") not in ("queued", "capturing"):
+                    break
+                time.sleep(0.1)
+            self.assertEqual(result.get("state"), "succeeded", result)
+            self.assertTrue(mcp_server.call_engine("release_capture", {
+                "request_id": request["request_id"],
+            }).get("valid"))
+            return result
+
+        targets = mcp_server.call_engine("list_capture_targets")["targets"]
+        main_target = next(item["target_id"] for item in targets if item["kind"] == "swapchain")
+        before = capture(main_target)
+        try:
+            for mode in ("world_normal", "base_color", "surface", "emissive", "uv0"):
+                with self.subTest(mode=mode):
+                    self.assertTrue(mcp_server.call_engine("set_debug_view", {"mode": mode})["valid"])
+                    for _ in range(300):
+                        status = mcp_server.call_engine("get_debug_view")
+                        if status.get("mode") == mode or status.get("error"):
+                            break
+                        time.sleep(0.1)
+                    self.assertEqual(status.get("mode"), mode, status)
+                    self.assertGreater(status["tracked_entities"], 0)
+                    captured = capture(status["target_id"])
+                    manifest = json.loads(Path(captured["metadata_path"]).read_text(encoding="utf-8"))
+                    self.assertEqual(manifest["source"], "debug_view")
+                    self.assertEqual(manifest["debug_view_mode"], mode)
+                    self.assertEqual(manifest["mask"], "alpha_nonzero")
+                    if mode in ("world_normal", "surface"):
+                        operation = "normals" if mode == "world_normal" else "surface"
+                        analysis = capture_manifest.analyze_capture(captured["metadata_path"], operation)
+                        self.assertGreater(analysis["sample_count"], 0)
+                        if mode == "world_normal":
+                            self.assertLess(analysis["length_error_ratio"], 0.01)
+                            pair = capture(status["target_id"], "color_depth")
+                            points = capture_manifest.analyze_capture(
+                                pair["captures"][1]["metadata_path"], "world_position", sample_step=8,
+                                mask_metadata_path=pair["captures"][0]["metadata_path"])
+                            self.assertTrue(points["valid"], points)
+                            self.assertGreater(points["point_count"], 0)
+                            for value in points["bounds"]["min"] + points["bounds"]["max"]:
+                                self.assertLess(abs(value), 30.0, points)
+            after = capture(main_target)
+            self.assertEqual(Path(before["dump_path"]).read_bytes(),
+                             Path(after["dump_path"]).read_bytes())
+        finally:
+            mcp_server.call_engine("set_debug_view", {"mode": "off"})
+            for _ in range(150):
+                status = mcp_server.call_engine("get_debug_view")
+                if status.get("mode") == "off" and not status.get("target_id"):
+                    break
+                time.sleep(0.1)
+            self.assertEqual(status.get("mode"), "off", status)
+            self.assertFalse(status.get("target_id"), status)
+
+        for _ in range(8):
+            mcp_server.call_engine("set_debug_view", {"mode": "world_normal"})
+            for _ in range(300):
+                status = mcp_server.call_engine("get_debug_view")
+                if status.get("mode") == "world_normal" or status.get("error"):
+                    break
+                time.sleep(0.1)
+            self.assertEqual(status.get("mode"), "world_normal", status)
+            old_target = status["target_id"]
+            mcp_server.call_engine("set_debug_view", {"mode": "off"})
+            for _ in range(150):
+                status = mcp_server.call_engine("get_debug_view")
+                if status.get("mode") == "off" and not status.get("target_id"):
+                    break
+                time.sleep(0.1)
+            self.assertEqual(status.get("mode"), "off", status)
+            self.assertNotIn(old_target, [item["target_id"] for item in
+                                          mcp_server.call_engine("list_capture_targets")["targets"]])
+
     def test_color_and_depth_share_a_submitted_frame(self):
         import time
         targets = mcp_server.call_engine("list_capture_targets")
@@ -31,6 +119,8 @@ class CaptureIntegrationTests(unittest.TestCase):
             manifests = [json.loads(Path(entry["metadata_path"]).read_text(encoding="utf-8"))
                          for entry in captures]
             self.assertNotEqual(manifests[0]["capture_id"], manifests[1]["capture_id"])
+            self.assertEqual(manifests[0]["capture_group_id"], manifests[0]["capture_id"])
+            self.assertEqual(manifests[1]["capture_group_id"], manifests[0]["capture_id"])
             self.assertEqual(manifests[0]["request_id"], request_id)
             self.assertEqual(manifests[1]["request_id"], request_id)
             self.assertEqual(manifests[0]["frame_id"], result["frame_id"])

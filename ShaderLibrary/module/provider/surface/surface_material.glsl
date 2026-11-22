@@ -38,14 +38,24 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     // Vertex color is a universal multiplicative input. Mesh masters always
     // provide it; the default provider returns white when geometry has no color
     // stream, so ordinary materials retain their previous result.
+#if defined(HGL_DEBUG_VIEW_WORLD_NORMAL) || defined(HGL_DEBUG_VIEW_BASE_COLOR) || \
+    defined(HGL_DEBUG_VIEW_SURFACE) || defined(HGL_DEBUG_VIEW_EMISSIVE) || defined(HGL_DEBUG_VIEW_UV0)
+    surface.baseColor = material.baseColor;
+#else
     surface.baseColor = material.baseColor * si.vertexColor.rgb;
+#endif
     surface.normal = resolvedNormal;
     surface.metallic = material.metallic;
     surface.roughness = material.roughness;
     surface.fresnel = material.fresnel;
     surface.ao = material.ao;
     surface.emissive = material.emissive;
+#if defined(HGL_DEBUG_VIEW_WORLD_NORMAL) || defined(HGL_DEBUG_VIEW_BASE_COLOR) || \
+    defined(HGL_DEBUG_VIEW_SURFACE) || defined(HGL_DEBUG_VIEW_EMISSIVE) || defined(HGL_DEBUG_VIEW_UV0)
+    surface.alpha = 1.0;
+#else
     surface.alpha = material.alpha * si.vertexColor.a;
+#endif
     // 高级材质参数直通（provider 未提供时恒 0，见 material_source_interface）。
     surface.clearCoat = material.clearCoat;
     surface.clearCoatRoughness = material.clearCoatRoughness;

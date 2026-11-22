@@ -525,6 +525,13 @@ bool RenderTargetManager::Destroy(IRenderTarget *rt)
         if(it->rt != rt)
             continue;
 
+        if(VulkanDevice *device=rt->GetDevice())
+            if(!device->WaitIdle())
+            {
+                GLogError("[RenderTargetManager] Cannot destroy in-use target %s",it->name.c_str());
+                return false;
+            }
+
         // 归还本 RT 占用的数据槽带（erase 前先取带信息；带随 RT 生命周期回收——
         // 历史只增游标不归还 ⇒ CSM 一次 Enable 即耗尽 4 带、二次 Enable 必越界）
         const uint32_t band_base  = it->slot_base;
@@ -536,8 +543,17 @@ bool RenderTargetManager::Destroy(IRenderTarget *rt)
         // RT 消失 ⇒ 引用它的句柄退回 MetaOnly（材质不会继续往一个不存在的目标上绑）
         tex_manager->UnbindRenderTargetTextures(FromRenderTargetName(it->name));
 
+        ValueArray<Texture2D *> attachments;
+        for(uint32_t i=0;i<rt->GetColorCount();++i)
+            if(Texture2D *texture=rt->GetColorTexture(i))
+                attachments.Add(texture);
+        if(Texture2D *texture=rt->GetDepthTexture())
+            attachments.Add(texture);
+
         registry.erase(it);
         delete rt;
+        for(Texture2D *texture:attachments)
+            tex_manager->Destory(texture);
         return(true);
     }
 

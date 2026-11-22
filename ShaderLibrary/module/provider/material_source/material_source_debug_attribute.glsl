@@ -98,7 +98,11 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
 #else
     // 默认（含 HGL_DEBUG_VIEW_WORLD_NORMAL）：世界法线编码到 [0,1]。
     // 8bit 量化下每分量误差 <= 1/255，模长误差上限约 0.014 ⇒ 分析侧判据取 0.05。
-    channel = normalize(sourceInput.surface.worldNormal) * 0.5 + 0.5;
+    const vec3 normal = sourceInput.surface.worldNormal;
+    const float normal_length_squared = dot(normal, normal);
+    channel = normal_length_squared > 1e-20 && !isinf(normal_length_squared)
+              && !isnan(normal_length_squared)
+        ? normal * inversesqrt(normal_length_squared) * 0.5 + 0.5 : vec3(0.5);
 #endif
 
     MaterialSourceOutput materialResult;

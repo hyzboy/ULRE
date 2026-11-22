@@ -3,6 +3,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/graph/CameraInfo.h>
+#include<hgl/mtl/DebugViewMode.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/io/FileOutputStream.h>
 #include<hgl/sync/Mutex.h>
@@ -26,6 +27,8 @@ namespace hgl::graph
             bool color=false;
             bool depth=false;
             uint64_t frame_id=0;
+            DebugCaptureQueue::Source source=DebugCaptureQueue::Source::Swapchain;
+            uint32_t debug_mode=0;
             DebugCaptureQueue::CameraSnapshot camera;
         };
         struct QueueState
@@ -168,12 +171,21 @@ namespace hgl::graph
             json+=AnsiString::numberOf(result.target_id);
             json+=",\"frame_id\":";
             json+=AnsiString::numberOf(result.frame_id);
-            json+=",\"source\":\"swapchain\",\"attachment\":\"";
+            json+=",\"source\":\"";
+            json+=result.source==DebugCaptureQueue::Source::DebugView?"debug_view":"swapchain";
+            json+="\",\"debug_view_mode\":\"";
+            json+=mtl::GetDebugViewModeName(static_cast<mtl::DebugViewMode>(result.debug_mode));
+            json+="\",\"attachment\":\"";
             json+=result.attachment==DebugCaptureQueue::Attachment::Color?"color":"depth";
             json+="\",\"capture_id\":\"";
             json+=base?base+1:filename;
             json+="\",\"data_file\":\"";
             json+=base?base+1:filename;
+            if(result.grouped)
+            {
+                json+="\",\"capture_group_id\":\"";
+                json+=result.group_id;
+            }
             json+="\",\"width\":";
             json+=AnsiString::numberOf(result.width);
             json+=",\"height\":";
@@ -183,15 +195,20 @@ namespace hgl::graph
             json+=",\"encoding\":\"";
             json+=Encoding(result);
             json+="\",\"color_space\":\"";
-            json+=(result.format==VK_FORMAT_R8G8B8A8_SRGB || result.format==VK_FORMAT_B8G8R8A8_SRGB)
-                ?"srgb":"unknown";
+            json+=result.source==DebugCaptureQueue::Source::DebugView
+                  && result.attachment==DebugCaptureQueue::Attachment::Color?"linear":
+                  (result.format==VK_FORMAT_R8G8B8A8_SRGB || result.format==VK_FORMAT_B8G8R8A8_SRGB)
+                  ?"srgb":"unknown";
             json+="\",\"byte_order\":\"little\",\"samples\":1,\"mip\":0,\"layer\":0,\"pixel_size\":";
             json+=AnsiString::numberOf(result.pixel_size);
             json+=",\"row_pitch\":";
             json+=AnsiString::numberOf(result.row_pitch);
             json+=",\"byte_count\":";
             json+=AnsiString::numberOf(result.byte_count);
-            json+=",\"mask\":\"unavailable\",\"viewport\":{\"x\":0,\"y\":0,\"width\":";
+            json+=",\"mask\":\"";
+            json+=result.source==DebugCaptureQueue::Source::DebugView
+                  && result.attachment==DebugCaptureQueue::Attachment::Color?"alpha_nonzero":"unavailable";
+            json+="\",\"viewport\":{\"x\":0,\"y\":0,\"width\":";
             json+=AnsiString::numberOf(result.width);
             json+=",\"height\":";
             json+=AnsiString::numberOf(result.height);
@@ -252,6 +269,13 @@ namespace hgl::graph
             ::snprintf(raw_tmp,sizeof(raw_tmp),"%s.raw.tmp",base);
             ::snprintf(meta,sizeof(meta),"%s.json",base);
             ::snprintf(meta_tmp,sizeof(meta_tmp),"%s.json.tmp",base);
+            if(result.grouped && result.attachment==DebugCaptureQueue::Attachment::Color)
+            {
+                const char *filename=::strrchr(raw,static_cast<char>(HGL_DIRECTORY_SEPARATOR));
+                filename=filename?filename+1:raw;
+                if(::strlen(filename)>=sizeof(result.group_id)) return false;
+                ::memcpy(result.group_id,filename,::strlen(filename)+1);
+            }
             OSString cwd;
             if(!filesystem::GetCurrentPath(cwd))
                 return false;
@@ -342,7 +366,7 @@ namespace hgl::graph
         }
     }
 
-    void DebugCaptureQueue::BeginFrame(uint64_t target_id,uint64_t frame_id)
+    void DebugCaptureQueue::BeginFrame(uint64_t target_id,uint64_t frame_id,uint32_t debug_mode)
     {
         QueueState &queue=Queue();
         hgl::MutexLock lock(&queue.lock);
@@ -350,6 +374,7 @@ namespace hgl::graph
             if(target.id==target_id && target_id)
             {
                 target.frame_id=frame_id;
+                target.debug_mode=debug_mode;
                 target.camera=CameraSnapshot{};
                 return;
             }
@@ -386,11 +411,28 @@ namespace hgl::graph
                     target.camera.valid=false;
                     target.camera.ambiguous=true;
                 }
+
                 return;
             }
     }
 
-    uint64_t DebugCaptureQueue::RegisterTarget(bool color,bool depth)
+    bool DebugCaptureQueue::CopyCamera(uint64_t from_target,uint64_t to_target,uint64_t frame_id)
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        const Target *source=FindTarget(queue,from_target);
+        if(!source || source->frame_id!=frame_id || !source->camera.valid || source->camera.ambiguous)
+            return false;
+        for(Target &target:queue.targets)
+            if(target.id==to_target && target.frame_id==frame_id)
+            {
+                target.camera=source->camera;
+                return true;
+            }
+        return false;
+    }
+
+    uint64_t DebugCaptureQueue::RegisterTarget(bool color,bool depth,Source source)
     {
         QueueState &queue=Queue();
         hgl::MutexLock lock(&queue.lock);
@@ -401,6 +443,7 @@ namespace hgl::graph
                 target.id=queue.next_target++;
                 target.color=color;
                 target.depth=depth;
+                target.source=source;
                 return target.id;
             }
         GLogError(u8"[DebugCapture] Target registry is full");
@@ -434,7 +477,11 @@ namespace hgl::graph
                 first=false;
                 json+="{\"target_id\":";
                 json+=AnsiString::numberOf(target.id);
-                json+=",\"kind\":\"swapchain\",\"attachments\":[";
+                json+=",\"source\":\"";
+                json+=target.source==Source::DebugView?"debug_view":"swapchain";
+                json+="\",\"kind\":\"";
+                json+=target.source==Source::DebugView?"offscreen":"swapchain";
+                json+="\",\"attachments\":[";
                 if(target.color) json+="\"color\"";
                 if(target.color && target.depth) json+=",";
                 if(target.depth) json+="\"depth\"";
@@ -613,10 +660,15 @@ namespace hgl::graph
                     {
                         entry.state=State::Capturing;
                         result=entry;
+                        result.source=registered->source;
                         if(registered->frame_id==frame_id)
+                        {
                             result.camera=registered->camera;
+                            result.debug_mode=registered->debug_mode;
+                        }
                         break;
                     }
+
             }
             if(!result.request_id) return;
             result.frame_id=frame_id;
@@ -626,6 +678,7 @@ namespace hgl::graph
             {
                 Result color=result;
                 color.attachment=Attachment::Color;
+                color.grouped=true;
                 if(!CaptureAttachment(target,color))
                 {
                     result.state=State::Failed;
@@ -635,6 +688,8 @@ namespace hgl::graph
                 {
                     Result depth=result;
                     depth.attachment=Attachment::Depth;
+                    depth.grouped=true;
+                    ::memcpy(depth.group_id,color.group_id,sizeof(color.group_id));
                     if(!CaptureAttachment(target,depth))
                     {
                         RemoveCapture(color);
@@ -649,6 +704,7 @@ namespace hgl::graph
                         ::memcpy(result.depth.metadata_path,depth.metadata_path,sizeof(depth.metadata_path));
                     }
                 }
+
             }
             else CaptureAttachment(target,result);
             if(result.error)
@@ -663,5 +719,17 @@ namespace hgl::graph
                     break;
                 }
         }
+    }
+
+    void DebugCaptureQueue::FailQueued(uint64_t target_id,const char *error)
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        for(Result &result:queue.requests)
+            if(result.target_id==target_id && result.state==State::Queued)
+            {
+                result.state=State::Failed;
+                result.error=error;
+            }
     }
 }

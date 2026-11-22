@@ -9,6 +9,7 @@
 #include<hgl/graph/module/GpuUploadQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
 #include<hgl/vk/DebugCaptureQueue.h>
+#include<hgl/ecs/support/debug/DebugViewPass.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/Macro.h>
 #include<hgl/log/Log.h>
@@ -102,7 +103,10 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
 bool SwapchainRenderTarget::NextFrame()
 {
     if(fatal_sync_error)
+    {
+        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
+    }
 
     if(!swapchain||!sync_slots||slot_count==0||current_slot>=slot_count)
     {
@@ -216,12 +220,14 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         LogError("[WSI] Submit rejected without a valid acquired image slot=%u image=%u slot_count=%u image_count=%u acquired=%d",
                  current_slot,acquired_image,slot_count,swapchain?swapchain->image_count:0,
                  acquire_window_open?1:0);
+        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
     }
     if(extra_wait_count>0&&!extra_waits)
     {
         LogError("[WSI] Submit rejected null extra-wait list count=%u slot=%u image=%u",
                  extra_wait_count,current_slot,acquired_image);
+        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
     }
 
@@ -281,6 +287,7 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         LogError("SwapchainRenderTarget: queue submit failed (slot=%u image=%u)",
                  current_slot, acquired_image);
         acquire_window_open = false;
+        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
     }
 
@@ -291,6 +298,7 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
 
     if(debug_capture_target)
         DebugCaptureQueue::Process(this,debug_capture_target,debug_capture_frame);
+    ecs::DebugViewPass::ProcessSubmitted(this,debug_capture_frame);
 
     // ── 帧内回读窗口：本帧已提交、尚未 present ───────────────────────────────
     // 此刻交换链 image 仍是「已 acquire、未 present」，是唯一能对它做布局转换/拷贝的时点。

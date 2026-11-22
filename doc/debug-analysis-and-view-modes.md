@@ -6,7 +6,7 @@
 `tools/ulre-mcp-server` 提供桥接与图像分析。当前实现仍是诊断原型，不能视为完整、
 可靠的端到端抓帧系统：
 
-- `list_capture_targets` 列出支持抓取的交换链；`capture_frame` 接受 target ID 和
+- `list_capture_targets` 列出支持抓取的交换链及已提交的 Debug View 离屏目标；`capture_frame` 接受 target ID 和
   `color`/`depth`/`color_depth`，返回请求 ID，随后可通过 `get_capture_status` 查询。
   `color_depth` 在同一个提交帧内读取两个附件，返回各自的清单与文件。抓取只在该
   交换链提交后、present 前执行。`cancel_capture` 可取消排队请求；终态需调用
@@ -14,25 +14,39 @@
   深度模板格式仅读回深度 aspect，返回的 `pixel_size`/`row_pitch` 描述副本，
   不等于深度模板联合像素布局。独立请求可能属于不同帧，必须检查 `frame_id`。
 - `dump_render_target` 和 `dump_buffer` 是旧接口，只读取最近一条 C++ 抓取结果，
-  不创建请求，也不保证结果属于调用者或当前帧。离屏目标和 SSBO 的远程抓取尚未接入。
+  不创建请求，也不保证结果属于调用者或当前帧。除 Debug View 专用目标外的通用离屏目标
+  和 SSBO 的远程抓取尚未接入。
 - 新交换链抓帧同时发布 `ulre.capture.v1` JSON 清单：记录请求、目标、帧、
   原始文件、格式、布局和同帧 primitive-collect 相机快照；不同相机混用时标记
   `ambiguous`。旧 C++ 抓取接口仍没有此清单。
-- `DebugAttribute` 目前通过覆盖实体的作者配方渲染到原目标，不是离屏 Pass。
-  `world_normal` 表示顶点或面法线，不包含法线贴图扰动。其 PBR 数据行与纹理假设
-  不适用于所有材质；开启时会同步新增实体和作者配方修改，但仍会修改主目标和
-  作者配方状态，多世界切换需要特别审查。
+- `set_debug_view` 现在请求独立 RGBA8 UNORM 离屏 Pass，复用主帧 GPU 剔除结果，
+  不覆盖作者配方或主目标。`get_debug_view` 返回最近提交的模式和 `target_id`，
+  失败时返回 `error`；开启请求并不意味着本帧已成功。关闭后注销目标并释放资源。
+  开关是进程级，状态只反映最近处理的世界，不是世界选择接口；各世界的目标分别注册，
+  多世界不能把全局状态当成指定世界的状态。
+  启用期间每帧等待设备空闲后复用离屏附件，适合诊断而非性能测量；关闭会释放目标和附件，
+  已创建的 shader、pipeline 和 render pass 由现有管理器缓存至其生命周期结束。
+- 支持范围是带 PBRSurface 行、Normal 和 TexCoord 的 GPU-driven `StandardOpaque`
+  场景批次及 reversed-Z 活动相机；不支持 alpha test、dither、混合和不兼容批次，
+  遇到这些场景批次时整次视图失败（`unsupported_scene_batch`）。非 Scene 层不会被绘制，
+  因而 mask 不代表天空、UI 或所有场景内容。`world_normal` 是归一化的几何世界法线，
+  不包含法线贴图；`base_color` 为材质行乘基础色贴图，不包含顶点色；
+  `surface` 为 roughness/metallic/AO，`emissive` 为自发光贴图，`uv0` 为 UV 小数部分。
+  RGBA8 会量化并截断到 [0,1]，不是 HDR 或原始浮点数据。
 - `analyze_capture` 可读取 v1 清单进行亮度、R32F 深度及采样位置反投影；颜色空间未知时必须
   显式指定，深度统计使用清单中的实际清屏值；分析器按清单行跨度处理行填充。
   当前分析器限制单图最多 2,097,152 像素和 64 MiB，超限返回错误。
-  尚无有效像素 mask，统计包含背景，
-  因此不能直接作为完整回归基线。
+  Debug View 的颜色 alpha 为二值有效像素 mask；普通交换链没有 mask，
+  统计包含背景，因此不能直接作为完整回归基线。
   清单反投影要求同帧绝对世界相机；由于相机快照只覆盖 primitive collect、
-  未证明所有深度写入者使用同一相机，必须显式设置 `allow_unverified_depth_producers`。
+  未证明所有深度写入者使用同一相机，普通深度必须显式设置 `allow_unverified_depth_producers`。
+  对 Debug View 使用一次 `color_depth` 请求，以返回的深度清单作为 `metadata_path`，
+  颜色清单作为 `mask_metadata_path`；分析器验证 group、目标、帧、相机和 viewport，
+  用同帧 alpha 排除背景，且不以清屏深度排除有效几何。
   手动反投影工具仍要求调用方传入同帧 inverse VP，不隐式获取最新相机。
 - `compare_captures` 检查颜色附件的格式、尺寸、viewport 和相机矩阵，并在编码通道
-  空间比较；当前缺少场景、设备身份和 mask，必须显式允许未验证上下文，结果包含
-  背景，不能替代黄金基线。
+  空间比较；当前缺少场景和设备身份，必须显式允许未验证上下文。Debug View 使用
+  两个 mask 的并集并报告覆盖变化，交换链比较包含背景；均不能替代黄金基线。
 
 `ULRE_DEBUG.toml` 中的 `debugbridge` 控制命名管道；诊断功能应显式启用。
 不要将未实现的接口、SSIM、阴影受影比例或 Position RT 描述为已支持。
@@ -74,12 +88,11 @@ JSON 字段匹配，响应保留请求 ID。桥接线程的连接与 I/O 可在�
 viewport、reversed-Z、矩阵布局和同帧 VP/inverse VP；相机相对坐标还需明确原点。
 未知格式、损坏文件及缺失必需字段必须显式拒绝，不能猜测布局。
 
-### 独立 Debug Override Pass（目标）
+### 独立 Debug Override Pass
 
 按需插入独立离屏 Pass，复用主场景的几何、实例、变换和剔除结果，不修改作者配方。
-先支持可验证的 `StandardOpaque` 路径；其他材质、透明对象、缺失语义或设备能力不符
-时明确标注支持范围。几何法线与实际着色法线分开，保留遮罩、深度和必要的 alpha
-覆盖语义，并输出有效像素 mask。关闭后不改变主帧或作者状态。
+当前支持范围和限制如上；实际着色法线以及 alpha test/dither 覆盖尚未实现。
+不支持的场景批次不会被静默当成有效结果。关闭后不改变主帧或作者状态。
 
 ### 世界坐标与阴影
 

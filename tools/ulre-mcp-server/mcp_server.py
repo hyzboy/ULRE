@@ -44,11 +44,12 @@ TOOLS = [
         "description": "Analyze a versioned capture manifest, including depth-based world-position bounds.",
         "inputSchema": {"type": "object", "properties": {
             "metadata_path": {"type": "string"},
-            "operation": {"type": "string", "enum": ["luminance", "depth", "world_position"]},
+            "operation": {"type": "string", "enum": ["luminance", "depth", "world_position", "normals", "surface"]},
             "color_space_override": {"type": "string", "enum": ["linear", "srgb"]},
             "reversed_z_override": {"type": "boolean"},
             "sample_step": {"type": "integer", "minimum": 1, "default": 16},
             "allow_unverified_depth_producers": {"type": "boolean", "default": False},
+            "mask_metadata_path": {"type": "string"},
         }, "required": ["metadata_path", "operation"]},
     },
     {
@@ -89,7 +90,7 @@ TOOLS = [
     },
     {
         "name": "set_debug_view",
-        "description": "Request an engine debug attribute view.",
+        "description": "Request an isolated offscreen attribute view; the main frame is unchanged. Read target_id from get_debug_view.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -103,17 +104,17 @@ TOOLS = [
     },
     {
         "name": "get_debug_view",
-        "description": "Read the current debug attribute view.",
+        "description": "Read the submitted offscreen debug view, target_id and any unsupported-scene error.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "list_capture_targets",
-        "description": "List swapchain targets registered for capture.",
+        "description": "List registered swapchain and debug-view offscreen targets.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "capture_frame",
-        "description": "Queue swapchain color, depth, or same-frame color and depth capture.",
+        "description": "Queue target color, depth, or same-frame color and depth capture.",
         "inputSchema": {"type": "object", "properties": {
             "target_id": {"type": "integer", "minimum": 1},
             "attachment": {"type": "string", "enum": ["color", "depth", "color_depth"]},
@@ -289,7 +290,8 @@ def handle(request):
                     arguments["metadata_path"], arguments["operation"],
                     arguments.get("color_space_override"), arguments.get("reversed_z_override"),
                     arguments.get("sample_step", 16),
-                    arguments.get("allow_unverified_depth_producers", False))
+                    arguments.get("allow_unverified_depth_producers", False),
+                    arguments.get("mask_metadata_path"))
             elif tool_name == "analyze_luminance":
                 value = analyzer.analyze_luminance(
                     arguments["path"], arguments["width"], arguments["height"],

@@ -20,7 +20,7 @@ def _read_raw(path):
     return data
 
 
-def _float32_channels(data, width, height, pixel_format, row_pitch=None):
+def _float32_channels(data, width, height, pixel_format, row_pitch=None, mask_alpha=False):
     if not isinstance(width, int) or isinstance(width, bool) or width <= 0:
         raise ValueError("width must be a positive integer")
     if not isinstance(height, int) or isinstance(height, bool) or height <= 0:
@@ -41,6 +41,8 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None):
         raise ValueError("row_pitch must be an integer at least as large as one pixel row")
     if len(data) != height * row_pitch:
         raise ValueError("Capture byte count does not match dimensions and format")
+    if mask_alpha and pixel_format not in ("rgba8", "bgra8"):
+        raise ValueError("Alpha mask requires an 8-bit four-channel image")
     if pixel_format == "r32f":
         values = [value for row in range(height)
                   for value in struct.unpack_from("<" + "f" * width, data, row * row_pitch)]
@@ -49,6 +51,12 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None):
     channels = []
     for index in range(count):
         offset = (index // width) * row_pitch + (index % width) * pixel_size
+        if mask_alpha:
+            alpha = data[offset + 3]
+            if alpha not in (0, 255):
+                raise ValueError("Debug view mask contains non-binary alpha")
+            if alpha == 0:
+                continue
         if pixel_format in ("rgba8", "rgb8"):
             channels.append(tuple(data[offset + i] / 255.0 for i in range(3)))
         elif pixel_format == "bgra8":
@@ -61,6 +69,8 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None):
             if pixel_format == "a2r10g10b10":
                 r, b = b, r
             channels.append((r, g, b))
+    if not channels:
+        raise ValueError("Capture has no valid masked pixels")
     return channels
 
 
@@ -78,13 +88,13 @@ def _percentile(values, percentile):
 
 
 def analyze_luminance(path, width, height, pixel_format="rgba8", color_space="linear",
-                      row_pitch=None):
+                      row_pitch=None, mask_alpha=False):
     if color_space not in ("linear", "srgb"):
         raise ValueError(f"Unsupported color space: {color_space}")
     if pixel_format == "r32f" and color_space != "linear":
         raise ValueError("R32F luminance must be linear")
     data = _read_raw(path)
-    channels = _float32_channels(data, width, height, pixel_format, row_pitch)
+    channels = _float32_channels(data, width, height, pixel_format, row_pitch, mask_alpha)
     luminance = []
     nan_count = 0
     inf_count = 0
@@ -123,17 +133,18 @@ def analyze_luminance(path, width, height, pixel_format="rgba8", color_space="li
         "p05": _percentile(finite, 0.05),
         "p50": _percentile(finite, 0.50),
         "p95": _percentile(finite, 0.95),
-        "underexposed_ratio": sum(v < 0.005 for v in finite) / max(1, width * height),
-        "overexposed_ratio": sum(v > 0.995 for v in finite) / max(1, width * height),
+        "underexposed_ratio": sum(v < 0.005 for v in finite) / len(channels),
+        "overexposed_ratio": sum(v > 0.995 for v in finite) / len(channels),
+        "sample_count": len(channels),
         "nan_count": nan_count,
         "inf_count": inf_count,
         "negative_count": negative_count,
     }
 
 
-def analyze_normals(path, width, height, pixel_format="rgba8"):
+def analyze_normals(path, width, height, pixel_format="rgba8", row_pitch=None, mask_alpha=False):
     data = _read_raw(path)
-    channels = _float32_channels(data, width, height, pixel_format)
+    channels = _float32_channels(data, width, height, pixel_format, row_pitch, mask_alpha)
     lengths = []
     zero_count = 0
     high_error_count = 0
@@ -156,10 +167,11 @@ def analyze_normals(path, width, height, pixel_format="rgba8"):
         else:
             negative_z += 1
 
-    total = max(1, width * height)
+    total = len(channels)
     mean_length_error = sum(abs(length - 1.0) for length in lengths) / len(lengths) if lengths else 0.0
     return {
         "valid": True,
+        "sample_count": total,
         "mean_length_error": mean_length_error,
         "zero_normal_ratio": zero_count / total,
         "length_error_ratio": high_error_count / total,
@@ -168,9 +180,9 @@ def analyze_normals(path, width, height, pixel_format="rgba8"):
     }
 
 
-def analyze_surface(path, width, height, pixel_format="rgba8"):
+def analyze_surface(path, width, height, pixel_format="rgba8", row_pitch=None, mask_alpha=False):
     data = _read_raw(path)
-    channels = _float32_channels(data, width, height, pixel_format)
+    channels = _float32_channels(data, width, height, pixel_format, row_pitch, mask_alpha)
     if pixel_format == "r32f":
         raise ValueError("Surface analysis requires three color channels")
     roughness = [c[0] for c in channels]
@@ -188,21 +200,27 @@ def analyze_surface(path, width, height, pixel_format="rgba8"):
 
     return {
         "valid": True,
+        "sample_count": len(channels),
         "roughness": stats(roughness),
         "metallic": stats(metallic),
         "ao": stats(ao),
-        "dead_roughness_ratio": sum(v < 0.001 or v > 0.999 for v in roughness) / max(1, width * height),
-        "dead_metallic_ratio": sum(v < 0.001 or v > 0.999 for v in metallic) / max(1, width * height),
+        "dead_roughness_ratio": sum(v < 0.001 or v > 0.999 for v in roughness) / len(channels),
+        "dead_metallic_ratio": sum(v < 0.001 or v > 0.999 for v in metallic) / len(channels),
     }
 
 
-def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_pitch=None):
+def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_pitch=None,
+                  valid_mask=None):
     if not isinstance(reversed_z, bool):
         raise ValueError("reversed_z must be boolean")
     data = _read_raw(path)
     channels = _float32_channels(data, width, height, "r32f", row_pitch)
     count = width * height
+    if valid_mask is not None and (len(valid_mask) != count or not any(valid_mask)):
+        raise ValueError("Depth mask is empty or has the wrong size")
     values = [channel[0] for channel in channels]
+    if valid_mask is not None:
+        values = [value for value, valid in zip(values, valid_mask) if valid]
     finite = [v for v in values if math.isfinite(v) and 0.0 <= v <= 1.0]
     histogram = [0] * 10
     for value in finite:
@@ -224,10 +242,12 @@ def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_p
         "min": min(finite) if finite else None,
         "max": max(finite) if finite else None,
         "mean": sum(finite) / len(finite) if finite else None,
-        "effective_depth_ratio": (sum(v != clear_depth for v in finite) / count) if finite else None,
+        "effective_depth_ratio": ((len(finite) if valid_mask is not None
+                                   else sum(v != clear_depth for v in finite)) / count) if finite else None,
         "clear_depth": clear_depth,
         "valid_depth_count": len(finite),
-        "invalid_depth_ratio": invalid / max(1, count),
+        "invalid_depth_ratio": invalid / len(values),
+        "sample_count": len(values),
         "nan_count": nan_count,
         "inf_count": inf_count,
         "out_of_range_count": out_of_range_count,
@@ -240,9 +260,11 @@ def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_p
 
 
 def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16,
-                          clear_depth=None, viewport=None, row_pitch=None):
+                          clear_depth=None, viewport=None, row_pitch=None, valid_mask=None):
     depth = _read_raw(depth_path)
     values = _float32_channels(depth, width, height, "r32f", row_pitch)
+    if valid_mask is not None and (len(valid_mask) != width * height or not any(valid_mask)):
+        raise ValueError("Depth mask is empty or has the wrong size")
 
     if (len(inverse_vp) != 16 or
             not all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
@@ -280,9 +302,12 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
     for y in range(0, height, sample_step):
         for x in range(0, width, sample_step):
             d = values[y * width + x][0]
+            if valid_mask is not None and not valid_mask[y * width + x]:
+                continue
             if not (vx <= x + 0.5 < vx + vw and vy <= y + 0.5 < vy + vh):
                 continue
-            if not math.isfinite(d) or d < vmin or d > vmax or d == clear_depth:
+            if not math.isfinite(d) or d < vmin or d > vmax \
+                    or (valid_mask is None and d == clear_depth):
                 continue
             u = (x + 0.5 - vx) / vw
             v = (y + 0.5 - vy) / vh
@@ -320,32 +345,54 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
 
 
 def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshold=0.01,
-                   heatmap_dir=".ulre-analysis", row_pitch_a=None, row_pitch_b=None):
+                   heatmap_dir=".ulre-analysis", row_pitch_a=None, row_pitch_b=None,
+                   mask_alpha=False):
     a = _read_raw(path_a)
     b = _read_raw(path_b)
     channels_a = _float32_channels(a, width, height, pixel_format, row_pitch_a)
     channels_b = _float32_channels(b, width, height, pixel_format, row_pitch_b)
     if len(channels_a) != len(channels_b):
         raise ValueError("Frame captures have different pixel counts")
+    if mask_alpha and pixel_format not in ("rgba8", "bgra8"):
+        raise ValueError("Alpha mask requires an 8-bit four-channel image")
 
     if not math.isfinite(threshold) or threshold < 0:
         raise ValueError("threshold must be finite and non-negative")
     mae_sum = 0.0
     mse_sum = 0.0
     changed = 0
+    mask_changed = 0
+    count = 0
     heatmap = bytearray(width * height)
     for index, (ca, cb) in enumerate(zip(channels_a, channels_b)):
+        mask_diff = False
+        if mask_alpha:
+            row, column = divmod(index, width)
+            stride_a = row_pitch_a if row_pitch_a is not None else width * 4
+            stride_b = row_pitch_b if row_pitch_b is not None else width * 4
+            alpha_a = a[row * stride_a + column * 4 + 3]
+            alpha_b = b[row * stride_b + column * 4 + 3]
+            if alpha_a not in (0, 255) or alpha_b not in (0, 255):
+                raise ValueError("Debug view mask contains non-binary alpha")
+            valid_a = alpha_a != 0
+            valid_b = alpha_b != 0
+            if not valid_a and not valid_b:
+                continue
+            mask_diff = valid_a != valid_b
+            mask_changed += mask_diff
+        count += 1
         errors = [abs(x - y) for x, y in zip(ca, cb)]
         if not all(math.isfinite(error) for error in errors):
             raise ValueError("Cannot compare non-finite pixel values")
         error = max(errors)
         mae_sum += sum(errors)
         mse_sum += sum(value * value for value in errors)
-        if error > threshold:
+        if error > threshold or mask_diff:
             changed += 1
-        heatmap[index] = min(255, int(error * 255.0))
+        heatmap[index] = 255 if mask_diff else min(255, int(error * 255.0))
 
-    count = max(1, len(channels_a))
+    if not count:
+        raise ValueError("Capture comparison has no valid masked pixels")
     sample_count = count * len(channels_a[0])
     rmse = math.sqrt(mse_sum / sample_count)
     mae = mae_sum / sample_count
@@ -358,7 +405,7 @@ def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshol
         output.write(header + heatmap)
         heatmap_path = output.name
 
-    return {
+    result = {
         "valid": True,
         "mae": mae,
         "rmse": rmse,
@@ -368,3 +415,8 @@ def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshol
         "threshold": threshold,
         "heatmap_path": heatmap_path,
     }
+    if mask_alpha:
+        result["mask_changed_pixels"] = mask_changed
+        result["mask_changed_ratio"] = mask_changed / (width * height)
+        result["sample_count"] = count
+    return result

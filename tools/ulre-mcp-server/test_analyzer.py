@@ -276,6 +276,84 @@ class AnalyzerTests(unittest.TestCase):
         depth = capture_manifest.analyze_capture(path, "depth")
         self.assertEqual(depth["effective_depth_ratio"], 0.5)
 
+    def test_debug_view_mask_excludes_background(self):
+        self.capture("capture.raw", bytes((128, 128, 255, 255, 0, 0, 0, 0)))
+        path = self.manifest(source="debug_view", debug_view_mode="world_normal",
+                             attachment="color", encoding="rgba8", color_space="linear",
+                             vk_format=37, width=2, row_pitch=8, byte_count=8,
+                             mask="alpha_nonzero")
+        result = capture_manifest.analyze_capture(path, "normals")
+        self.assertEqual(result["sample_count"], 1)
+        self.assertEqual(result["pixel_scope"], "valid_geometry_mask")
+        self.assertEqual(result["length_error_ratio"], 0.0)
+        with self.assertRaisesRegex(ValueError, "matching masked"):
+            capture_manifest.analyze_capture(path, "surface")
+        self.capture("capture.raw", bytes(8))
+        with self.assertRaisesRegex(ValueError, "no valid masked pixels"):
+            capture_manifest.analyze_capture(path, "normals")
+
+    def test_masked_frame_diff_reports_coverage_changes(self):
+        a = self.capture("a.raw", bytes((0, 0, 0, 255, 0, 0, 0, 0)))
+        b = self.capture("b.raw", bytes(8))
+        result = analyzer.compare_frames(a, b, 2, 1, heatmap_dir=self.root, mask_alpha=True)
+        self.assertEqual(result["changed_ratio"], 1.0)
+        self.assertEqual(result["mask_changed_ratio"], 0.5)
+        self.assertEqual(result["sample_count"], 1)
+        with self.assertRaisesRegex(ValueError, "no valid masked"):
+            analyzer.compare_frames(b, b, 2, 1, heatmap_dir=self.root, mask_alpha=True)
+
+    def test_debug_mask_rejects_non_binary_alpha(self):
+        image = self.capture("invalid-mask.raw", bytes((128, 128, 255, 127)))
+        with self.assertRaisesRegex(ValueError, "non-binary alpha"):
+            analyzer.analyze_normals(image, 1, 1, mask_alpha=True)
+        with self.assertRaisesRegex(ValueError, "non-binary alpha"):
+            analyzer.compare_frames(image, image, 1, 1, heatmap_dir=self.root, mask_alpha=True)
+
+    def test_depth_reconstruction_requires_matching_same_frame_mask(self):
+        self.capture("color.raw", bytes((128, 128, 255, 255, 0, 0, 0, 0)))
+        self.capture("depth.raw", struct.pack("<ff", 0.0, 0.5))
+        inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                   0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        shared = {"source": "debug_view", "debug_view_mode": "world_normal",
+                  "width": 2, "height": 1, "row_pitch": 8, "byte_count": 8,
+                  "capture_group_id": "color.raw", "camera_status": "recorded",
+                  "camera": {"matrix_layout": "column_major", "position_space": "world_absolute",
+                             "inverse_vp": inverse, "reversed_z": True},
+                  "viewport": {"x": 0, "y": 0, "width": 2, "height": 1,
+                               "min_depth": 0, "max_depth": 1}}
+        color = self.manifest("color.json", data_file="color.raw", capture_id="color.raw",
+                              attachment="color", encoding="rgba8", vk_format=37,
+                              color_space="linear", mask="alpha_nonzero", **shared)
+        depth = self.manifest("depth.json", data_file="depth.raw", attachment="depth",
+                              encoding="r32f", vk_format=126, color_space="unknown",
+                              mask="unavailable", copy_aspect="depth", clear_depth=0.0, **shared)
+        result = capture_manifest.analyze_capture(depth, "world_position", sample_step=1,
+                                                  mask_metadata_path=color)
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["point_count"], 1)
+        self.assertEqual(result["bounds"]["min"], [-0.5, 0.0, 0.0])
+        self.assertEqual(result["pixel_scope"], "sampled_valid_geometry_mask")
+        altered = dict(shared)
+        altered["frame_id"] = 4
+        different = self.manifest("different.json", data_file="color.raw", capture_id="color.raw",
+                                  attachment="color", encoding="rgba8", vk_format=37,
+                                  color_space="linear", mask="alpha_nonzero", **altered)
+        with self.assertRaisesRegex(ValueError, "frame_id differ"):
+            capture_manifest.analyze_capture(depth, "world_position", sample_step=1,
+                                             mask_metadata_path=different)
+        altered = dict(shared)
+        altered["capture_group_id"] = "other.raw"
+        different = self.manifest("different.json", data_file="color.raw", capture_id="color.raw",
+                                  attachment="color", encoding="rgba8", vk_format=37,
+                                  color_space="linear", mask="alpha_nonzero", **altered)
+        with self.assertRaisesRegex(ValueError, "same capture group"):
+            capture_manifest.analyze_capture(depth, "world_position", sample_step=1,
+                                             mask_metadata_path=different)
+        self.capture("color.raw", bytes((128, 128, 255, 127, 0, 0, 0, 0)))
+        with self.assertRaisesRegex(ValueError, "non-binary alpha"):
+            capture_manifest.analyze_capture(depth, "world_position", sample_step=1,
+                                             mask_metadata_path=color)
+
     def test_analysis_rejects_oversized_inputs(self):
         with self.assertRaisesRegex(ValueError, "pixel limit"):
             analyzer._float32_channels(bytes(4), analyzer.MAX_ANALYSIS_PIXELS + 1, 1, "rgba8")

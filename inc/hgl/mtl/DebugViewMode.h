@@ -18,14 +18,13 @@
 //
 // ## 实现口径（改这里之前请先读 doc/debug-analysis-and-view-modes.md）
 //
-// 调试视图**不新增渲染管线、不新增离屏 RT、不改任何固定主着色器**：
+// 调试视图复用主帧的 GPU 剔除结果，在独立离屏目标上绘制：
 //
 //   · 成像由 `MaterialDomain::DebugAttribute` 领域承担（一份固定的
 //     `ShaderLibrary/domain/debug_attribute/debug_attribute.frag`）；
 //   · 通道选择走配方的 `compile_defines`（`HGL_DEBUG_VIEW_*`），因此不同通道
 //     天然是不同的 program 身份 —— 切回原通道不会串味；
-//   · 世界级开关 = 逐实体的 `MaterialData::SetRecipe()` 覆盖（见
-//     `hgl/ecs/support/debug/DebugViewController.h`），关闭时逐条还原。
+//   · 世界级调度见 `hgl/ecs/support/debug/DebugViewPass.h`，不修改作者配方。
 //
 // ## 为什么世界坐标不在本表里
 //
@@ -36,7 +35,7 @@ namespace hgl::graph::mtl
 {
     enum class DebugViewMode : uint8
     {
-        Off = 0,        ///< 关闭：恢复全部原配方
+        Off = 0,        ///< 关闭离屏调试视图
         WorldNormal,    ///< normalize(worldNormal) * 0.5 + 0.5
         BaseColor,      ///< PBR 行的 base_color（含 base_color 贴图）
         Surface,        ///< (roughness, metallic, ao)

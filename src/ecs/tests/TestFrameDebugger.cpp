@@ -113,10 +113,33 @@ int main()
        || DebugCaptureQueue::GetResult(request_id,result))
         return 4;
 
+    const uint64_t debug_target=DebugCaptureQueue::RegisterTarget(
+        true,true,DebugCaptureQueue::Source::DebugView);
+    DebugCaptureQueue::BeginFrame(debug_target,77,1);
+    if(!DebugCaptureQueue::CopyCamera(target_id,debug_target,77)
+       || DebugCaptureQueue::CopyCamera(target_id,debug_target,76))
+        return 4;
+    const uint64_t copied=DebugCaptureQueue::Request(debug_target,DebugCaptureQueue::Attachment::Color);
+    DebugCaptureQueue::Process(&target,debug_target,77);
+    if(!DebugCaptureQueue::GetResult(copied,result) || !result.camera.valid
+       || result.source!=DebugCaptureQueue::Source::DebugView || result.debug_mode!=1
+       || !DebugCaptureQueue::Release(copied))
+        return 4;
+
     DebugCaptureQueue::BeginFrame(target_id,78);
     DebugCaptureQueue::RecordCamera(target_id,&camera);
     camera.vp[0][0]=2.0f;
     DebugCaptureQueue::RecordCamera(target_id,&camera);
+    DebugCaptureQueue::BeginFrame(debug_target,78,1);
+    if(DebugCaptureQueue::CopyCamera(target_id,debug_target,78))
+        return 4;
+    const uint64_t failed=DebugCaptureQueue::Request(debug_target,DebugCaptureQueue::Attachment::Color);
+    DebugCaptureQueue::FailQueued(debug_target,"unsupported_scene_batch");
+    if(!DebugCaptureQueue::GetResult(failed,result) || result.state!=DebugCaptureQueue::State::Failed
+       || !result.error || ::strcmp(result.error,"unsupported_scene_batch")!=0
+       || !DebugCaptureQueue::Release(failed))
+        return 4;
+    DebugCaptureQueue::UnregisterTarget(debug_target);
     const uint64_t ambiguous=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Color);
     DebugCaptureQueue::Process(&target,target_id,78);
     if(!DebugCaptureQueue::GetResult(ambiguous,result) || result.camera.valid

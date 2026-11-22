@@ -4,6 +4,7 @@
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
 #include<hgl/ecs/support/debug/DebugViewController.h>
+#include<hgl/ecs/support/debug/DebugViewPass.h>
 #include<hgl/mtl/DebugViewMode.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/time/Time.h>
@@ -47,18 +48,7 @@ static AnsiString MakeMetricsJSON()
 
 static AnsiString MakeDebugViewJSON()
 {
-    const hgl::graph::mtl::DebugViewMode mode=
-        hgl::ecs::DebugViewController::GetAppliedMode();
-
-    AnsiString json="{\"valid\":true,\"mode\":\"";
-    json+=hgl::graph::mtl::GetDebugViewModeName(mode);
-    json+="\",\"requested_mode\":\"";
-    json+=hgl::graph::mtl::GetDebugViewModeName(
-        hgl::ecs::DebugViewController::GetRequestedMode());
-    json+="\",\"tracked_entities\":";
-    json+=AnsiString::numberOf(hgl::ecs::DebugViewController::GetTrackedCount());
-    json+="}";
-    return json;
+    return hgl::ecs::DebugViewPass::GetStatusJSON();
 }
 
 static AnsiString SetDebugViewFromRequest(const char *mode_name)
@@ -329,6 +319,19 @@ bool DebugBridgeServer::Execute()
         result=SetDebugViewFromRequest(parsed.mode);
     else if(::strcmp(parsed.method,"get_debug_view")==0)
         result=MakeDebugViewJSON();
+    else if(::strcmp(parsed.method,"set_offscreen_debug_view")==0)
+    {
+        hgl::graph::mtl::DebugViewMode mode;
+        if(!hgl::graph::mtl::ParseDebugViewMode(parsed.mode,mode))
+            result="{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}";
+        else
+        {
+            hgl::ecs::DebugViewPass::RequestMode(mode);
+            result=hgl::ecs::DebugViewPass::GetStatusJSON();
+        }
+    }
+    else if(::strcmp(parsed.method,"get_offscreen_debug_view")==0)
+        result=hgl::ecs::DebugViewPass::GetStatusJSON();
     else if(::strcmp(parsed.method,"list_capture_targets")==0)
         result=DebugCaptureQueue::GetTargetsJSON();
     else if(::strcmp(parsed.method,"capture_frame")==0)

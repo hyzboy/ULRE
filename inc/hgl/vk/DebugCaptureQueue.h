@@ -13,6 +13,7 @@ namespace hgl::graph
     public:
         enum class Attachment { Color, Depth, ColorDepth };
         enum class State { Empty, Queued, Capturing, Succeeded, Failed, Cancelled };
+        enum class Source { Swapchain, DebugView };
 
         struct CameraSnapshot
         {
@@ -39,6 +40,10 @@ namespace hgl::graph
             uint64_t expires_at_ms=0;
             Attachment attachment=Attachment::Color;
             State state=State::Empty;
+            Source source=Source::Swapchain;
+            uint32_t debug_mode=0;
+            bool grouped=false;
+            char group_id[192]{};
             uint32_t width=0;
             uint32_t height=0;
             uint32_t pixel_size=0;
@@ -52,7 +57,7 @@ namespace hgl::graph
             Secondary depth;
         };
 
-        static uint64_t RegisterTarget(bool color=true,bool depth=true);
+        static uint64_t RegisterTarget(bool color=true,bool depth=true,Source source=Source::Swapchain);
         static void UnregisterTarget(uint64_t target_id);
         static AnsiString GetTargetsJSON();
         static uint64_t Request(uint64_t target_id,Attachment attachment,const char **error=nullptr,
@@ -61,8 +66,10 @@ namespace hgl::graph
         static bool Cancel(uint64_t request_id);
         static bool Release(uint64_t request_id);
         static AnsiString GetResultJSON(uint64_t request_id);
-        static void BeginFrame(uint64_t target_id,uint64_t frame_id);
+        static void BeginFrame(uint64_t target_id,uint64_t frame_id,uint32_t debug_mode=0);
         static void RecordCamera(uint64_t target_id,const CameraInfo *camera);
+        static bool CopyCamera(uint64_t from_target,uint64_t to_target,uint64_t frame_id);
         static void Process(IRenderTarget *target,uint64_t target_id,uint64_t frame_id);
+        static void FailQueued(uint64_t target_id,const char *error);
     };
 }

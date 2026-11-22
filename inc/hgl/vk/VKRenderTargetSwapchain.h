@@ -85,6 +85,8 @@ public:
     /// 窗口外对交换链颜色图做任何访问（布局转换/拷贝/读回）都是真 VUID。
     bool IsColorReadbackWindowOpen() const override { return acquire_window_open; }
     void RecordCaptureCamera(const CameraInfo *camera);
+    uint64_t GetDebugCaptureTargetID() const { return debug_capture_target; }
+    uint64_t GetDebugCaptureFrameID() const { return debug_capture_frame; }
 
     /// 帧内回读钩子：在「本帧队列提交之后、vkQueuePresentKHR 之前」执行一次。
     ///
