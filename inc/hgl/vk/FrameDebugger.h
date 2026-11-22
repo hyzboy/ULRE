@@ -73,6 +73,45 @@ public:
         uint32_t use_reversed_z = 0;
     };
 
+    struct PipelineInspectionSnapshot
+    {
+        bool valid = false;
+        uint32_t frame_serial = 0;
+        uint32_t scene_primitives = 0;
+        uint32_t passed_can_render = 0;
+        uint32_t collected_items = 0;
+        uint32_t batched_items = 0;
+        uint32_t batch_count = 0;
+        uint32_t gpu_draw_count = 0;
+
+        bool fast_path_engaged = false;
+        bool last_collect_steady = false;
+        bool has_pending_resources = false;
+        bool snapshot_ready = false;
+        uint64_t snapshot_topology_rev = 0;
+        uint64_t world_topology_rev = 0;
+        uint32_t snapshot_item_count = 0;
+
+        uint32_t dropped_invisible = 0;
+        uint32_t dropped_no_transform = 0;
+        uint32_t dropped_mobility = 0;
+        uint32_t dropped_resource_pending = 0;
+        uint32_t dropped_geometry_loading = 0;
+        uint32_t dropped_other = 0;
+
+        static constexpr uint32_t kMaxSampleDrops = 16;
+        struct DropSample
+        {
+            char entity_name[64] = {};
+            uint32_t entity_id = 0;
+            char stage[32] = {};
+            char reason[32] = {};
+            char detail[64] = {};
+        };
+        uint32_t drop_sample_count = 0;
+        DropSample drop_samples[kMaxSampleDrops];
+    };
+
     static uint32_t RequestColor(IRenderTarget *target,const char *name,uint32_t color_index=0);
     static uint32_t RequestDepth(IRenderTarget *target,const char *name);
     static uint32_t RequestBuffer(DeviceBuffer *buffer,const char *name,uint32_t offset=0,uint32_t size=0);
@@ -86,5 +125,9 @@ public:
     static void SetCameraSnapshot(const CameraInfo *camera);
     static CameraSnapshot GetCameraSnapshot();
     static AnsiString GetCameraSnapshotJSON();
+    static void SetPipelineInspection(const PipelineInspectionSnapshot &snapshot);
+    static PipelineInspectionSnapshot GetPipelineInspection();
+    static AnsiString GetPipelineInspectionJSON();
+    static AnsiString TraceEntityPipelineJSON(const char *name_or_id);
 };
 }//namespace hgl::graph

@@ -27,6 +27,8 @@ uint8_t *BufferScratch(){ static uint8_t bytes[FrameDebugger::kMaxBufferBytes]; 
 hgl::ValueArray<uint8_t> &PixelScratch(){ static hgl::ValueArray<uint8_t> bytes; return bytes; }
 FrameDebugger::CameraSnapshot &CameraSnapshotState(){ static FrameDebugger::CameraSnapshot snapshot; return snapshot; }
 hgl::Mutex &CameraSnapshotMutex(){ static hgl::Mutex mutex; return mutex; }
+FrameDebugger::PipelineInspectionSnapshot &PipelineInspectionState(){ static FrameDebugger::PipelineInspectionSnapshot snapshot; return snapshot; }
+hgl::Mutex &PipelineInspectionMutex(){ static hgl::Mutex mutex; return mutex; }
 uint64_t &CaptureSequence(){ static uint64_t sequence=0; return sequence; }
 
 void CopyText(char *dst,uint32_t cap,const char *src)
@@ -373,6 +375,98 @@ AnsiString FrameDebugger::GetCameraSnapshotJSON()
         json+=AnsiString(number);
     }
     json+="]}";
+    return json;
+}
+
+void FrameDebugger::SetPipelineInspection(const PipelineInspectionSnapshot &snapshot)
+{
+    hgl::MutexLock lock(&PipelineInspectionMutex());
+    PipelineInspectionState() = snapshot;
+}
+
+FrameDebugger::PipelineInspectionSnapshot FrameDebugger::GetPipelineInspection()
+{
+    hgl::MutexLock lock(&PipelineInspectionMutex());
+    return PipelineInspectionState();
+}
+
+AnsiString FrameDebugger::GetPipelineInspectionJSON()
+{
+    const PipelineInspectionSnapshot snap = GetPipelineInspection();
+    if (!snap.valid)
+        return AnsiString("{\"valid\":false}");
+
+    AnsiString json = "{\"valid\":true,\"frame_serial\":";
+    json += AnsiString::numberOf(snap.frame_serial);
+    json += ",\"funnel\":{";
+    json += "\"scene_primitives\":"; json += AnsiString::numberOf(snap.scene_primitives);
+    json += ",\"passed_can_render\":"; json += AnsiString::numberOf(snap.passed_can_render);
+    json += ",\"collected_items\":"; json += AnsiString::numberOf(snap.collected_items);
+    json += ",\"batched_items\":"; json += AnsiString::numberOf(snap.batched_items);
+    json += ",\"batch_count\":"; json += AnsiString::numberOf(snap.batch_count);
+    json += ",\"gpu_draw_count\":"; json += AnsiString::numberOf(snap.gpu_draw_count);
+    json += "},\"cache_state\":{";
+    json += "\"fast_path_engaged\":"; json += (snap.fast_path_engaged ? "true" : "false");
+    json += ",\"last_collect_steady\":"; json += (snap.last_collect_steady ? "true" : "false");
+    json += ",\"has_pending_resources\":"; json += (snap.has_pending_resources ? "true" : "false");
+    json += ",\"snapshot_ready\":"; json += (snap.snapshot_ready ? "true" : "false");
+    json += ",\"snapshot_topology_rev\":"; json += AnsiString::numberOf(snap.snapshot_topology_rev);
+    json += ",\"world_topology_rev\":"; json += AnsiString::numberOf(snap.world_topology_rev);
+    json += ",\"snapshot_item_count\":"; json += AnsiString::numberOf(snap.snapshot_item_count);
+    json += "},\"drops\":{";
+    json += "\"invisible\":"; json += AnsiString::numberOf(snap.dropped_invisible);
+    json += ",\"no_transform\":"; json += AnsiString::numberOf(snap.dropped_no_transform);
+    json += ",\"mobility_filtered\":"; json += AnsiString::numberOf(snap.dropped_mobility);
+    json += ",\"resource_pending\":"; json += AnsiString::numberOf(snap.dropped_resource_pending);
+    json += ",\"geometry_loading\":"; json += AnsiString::numberOf(snap.dropped_geometry_loading);
+    json += ",\"other\":"; json += AnsiString::numberOf(snap.dropped_other);
+    json += ",\"samples\":[";
+    for (uint32_t i = 0; i < snap.drop_sample_count; ++i)
+    {
+        if (i) json += ",";
+        const auto &s = snap.drop_samples[i];
+        json += "{\"name\":\""; json += s.entity_name;
+        json += "\",\"entity_id\":"; json += AnsiString::numberOf(s.entity_id);
+        json += ",\"stage\":\""; json += s.stage;
+        json += "\",\"reason\":\""; json += s.reason;
+        json += "\",\"detail\":\""; json += s.detail;
+        json += "\"}";
+    }
+    json += "]}}";
+    return json;
+}
+
+AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id)
+{
+    if (!name_or_id || !*name_or_id)
+        return AnsiString("{\"valid\":false,\"error\":\"missing entity name or ID\"}");
+
+    const PipelineInspectionSnapshot snap = GetPipelineInspection();
+    if (!snap.valid)
+        return AnsiString("{\"valid\":false,\"error\":\"no pipeline inspection data available\"}");
+
+    uint32_t target_id = 0;
+    const bool is_numeric = (sscanf(name_or_id, "%u", &target_id) == 1 && target_id > 0);
+
+    for (uint32_t i = 0; i < snap.drop_sample_count; ++i)
+    {
+        const auto &s = snap.drop_samples[i];
+        if ((is_numeric && s.entity_id == target_id) || (strcmp(s.entity_name, name_or_id) == 0))
+        {
+            AnsiString json = "{\"valid\":true,\"status\":\"Dropped\",\"entity_name\":\"";
+            json += s.entity_name;
+            json += "\",\"entity_id\":"; json += AnsiString::numberOf(s.entity_id);
+            json += ",\"stage\":\""; json += s.stage;
+            json += "\",\"reason\":\""; json += s.reason;
+            json += "\",\"detail\":\""; json += s.detail;
+            json += "\"}";
+            return json;
+        }
+    }
+
+    AnsiString json = "{\"valid\":true,\"status\":\"RenderedOrPassed\",\"query\":\"";
+    json += name_or_id;
+    json += "\",\"note\":\"Entity not found in drop attribution samples. Likely passed all stages or fast-path replayed.\"}";
     return json;
 }
 }//namespace hgl::graph

@@ -315,6 +315,12 @@ bool DebugBridgeServer::Execute()
         result=MakeMetricsJSON();
     else if(::strcmp(parsed.method,"get_camera_matrices")==0)
         result=FrameDebugger::GetCameraSnapshotJSON();
+    else if(::strcmp(parsed.method,"inspect_render_pipeline")==0
+         || ::strcmp(parsed.method,"get_pipeline_inspection")==0)
+        result=FrameDebugger::GetPipelineInspectionJSON();
+    else if(::strcmp(parsed.method,"trace_entity_pipeline")==0
+         || ::strcmp(parsed.method,"trace_entity_render_state")==0)
+        result=FrameDebugger::TraceEntityPipelineJSON(parsed.has_id ? parsed.id : "");
     else if(::strcmp(parsed.method,"set_debug_view")==0)
         result=SetDebugViewFromRequest(parsed.mode);
     else if(::strcmp(parsed.method,"get_debug_view")==0)

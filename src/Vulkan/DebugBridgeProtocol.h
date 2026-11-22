@@ -262,6 +262,11 @@ namespace hgl::graph::debug_bridge
                     if(request.has_size || !Unsigned(request.size)) return false;
                     request.has_size=true;
                 }
+                else if(::strcmp(key,"name")==0 || ::strcmp(key,"entity")==0 || ::strcmp(key,"id")==0)
+                {
+                    if(request.has_id || !String(request.id,sizeof(request.id))) return false;
+                    request.has_id=true;
+                }
                 else if(!Value(1)) return false;
                 Space();
                 if(cursor<end && *cursor=='}') { ++cursor; return true; }
