@@ -22,8 +22,8 @@
   `attachment_details` 描述至多前 8 个颜色附件的索引、格式和可用性，以及深度附件；
   `color_attachment_count` 始终报告实际数量。
   普通离屏 `frame_id` 是该目标的成功托管提交序号，不是交换链全局帧号；相机、viewport
-  标记为 unavailable/null，不可用于需要这些信息的深度分析；符合条件的 pass
-  以 0 清空深度，清单记录该实际值。
+  标记为 unavailable/null；符合条件的 pass 将实际清屏值写入深度清单，
+  深度分析需要明确提供投影深度约定。
 - `list_capture_buffers` 和 `capture_buffer` 是独立的 SSBO 请求接口，不接受客户端 GPU
   指针或输出路径。资源所有者须在渲染线程登记 `DeviceBuffer`，保证资源存活、无并发修改，
   所有 GPU 访问均在图形队列并按提交顺序同步；每次生产者成功提交后在同一线程调用
@@ -74,8 +74,8 @@
   当前分析器限制单图最多 2,097,152 像素和 64 MiB，超限返回错误。
   Debug View 的颜色 alpha 为二值有效像素 mask；普通交换链没有 mask，
   统计包含背景，因此不能直接作为完整回归基线。
-  交换链深度清单当前的 `clear_depth` 为 null；深度统计和无 mask 的反投影会显式拒绝，
-  即使相机的 reversed-Z 已知也不会猜测实际清屏值。Debug View 深度的清屏值可用。
+  交换链深度清单的 `clear_depth` 来自该帧实际的完整附件清屏；若最后一次 pass 加载
+  现有深度或无法确定完整清屏，记录 null，分析器不会从 reversed-Z 猜测清屏值。
   清单反投影要求同帧绝对世界相机；由于相机快照只覆盖 primitive collect、
   未证明所有深度写入者使用同一相机，普通深度必须显式设置 `allow_unverified_depth_producers`。
   对 Debug View 使用一次 `color_depth` 请求，以返回的深度清单作为 `metadata_path`，
@@ -193,16 +193,18 @@ SSIM 定义为 8×8 不重叠方窗；边缘窗口可小于 8×8，mask 交集�
 同环境可严格比较；跨环境使用显式容差；不存在匹配基线时返回 `not_covered`。
 基线只能显式创建或更新，比较不得自动覆盖。
 
-`RenderDiagnosticsFixture` 固定 640×360、静态几何和材质、相机、1/60 秒时间步、
+`RenderDiagnosticsFixture` 固定 640×360、未动画的几何和材质、相机、1/60 秒时间步、
 主光与单级联 CSM；首次预热 120 帧，选择 Debug View 后再预热 120 帧，在第 241 帧
-响应抓取。夹具冻结在预热点直到请求到达；不支持的 alpha test、shadow-map 采集与
-屏幕受影因子不能计为已覆盖。该夹具没有引入随机场景输入。
+响应抓取。夹具冻结在预热点直到请求到达；不支持的 alpha test 和屏幕受影因子不能计为
+已覆盖。该夹具没有引入随机场景输入。
 
 Windows 上先构建 `RenderDiagnosticsFixture`，然后用以下命令显式建基线并比较：
 
 ```powershell
 python tools\ulre-mcp-server\render_regression.py create --baseline C:\runs\normal.json --output-dir C:\runs\create --exe D:\ULRE\build\out\Windows_64_Debug\RenderDiagnosticsFixture.exe --mode world_normal
 python tools\ulre-mcp-server\render_regression.py compare --baseline C:\runs\normal.json --output-dir C:\runs\compare --exe D:\ULRE\build\out\Windows_64_Debug\RenderDiagnosticsFixture.exe --mode world_normal
+python tools\ulre-mcp-server\render_regression.py create --baseline C:\runs\shadow.json --output-dir C:\runs\shadow-create --exe D:\ULRE\build\out\Windows_64_Debug\RenderDiagnosticsFixture.exe --mode shadow_caster
+python tools\ulre-mcp-server\render_regression.py compare --baseline C:\runs\shadow.json --output-dir C:\runs\shadow-fault --exe D:\ULRE\build\out\Windows_64_Debug\RenderDiagnosticsFixture.exe --mode shadow_caster --inject-fault shadow_caster
 ```
 
 使用 `update` 明确更新已有基线；`create` 拒绝覆盖，`compare` 不修改基线。
@@ -212,13 +214,17 @@ python tools\ulre-mcp-server\render_regression.py compare --baseline C:\runs\nor
 严格逐字节比较；跨设备/驱动默认 `NOT_COVERED`，仅同厂商、设备类型和 driver ID
 且显式指定 `--cross-device-tolerance` 时按声明的编码通道容差比较，mask 差异仍失败。
 容差须由使用者依据目标设备实测选定，不代表已认证的跨设备范围。
-`--inject-fault camera|normal|material|coverage` 仅用于 compare 负向运行；
+`--inject-fault camera|normal|material|coverage|shadow_caster` 仅用于 compare 负向运行；
 normal 需 `world_normal` 模式，material 需 `surface` 模式。
 夹具对有效法线的非零和长度、固定平面与立方体顶面中心投影像素的已知 +Z 法线方向、
 surface 的 metallic 均值执行数值检查；
-`world_position` 输出同帧反投影数值，并支持 RGBA32F 位置基线比较：同设备逐字节严格
+`world_position` 输出同帧反投影数值（夹具采样最大误差限 0.002 世界单位），
+并支持 RGBA32F 位置基线比较：同设备逐字节严格
 比较，跨设备显式容差的单位是世界坐标单位，mask 不一致始终失败。
-覆盖变化故障是几何 mask 变化，不代表阴影覆盖变化已验收。
+`shadow_caster` 模式显式托管第 0 级 CSM 深度目标，在第 121 次该目标提交抓取
+1024×1024 深度；`shadow_caster` 故障把唯一动态投射物改为静态，检查非清屏投射覆盖变化。
+阴影比较输出的覆盖只是投射物在贴图中的覆盖，不是屏幕受影比例；此离屏清单不记录光相机，
+深度约定依据固定夹具的 reversed-Z 契约，不适用于任意离屏目标。
 原始 `compare_captures` 仍是显式接受未验证上下文的图像比较，不能替代基线工具。
 完整 BasicLitMeshes MCP 调用顺序见 `.ai/skills/SKILL_RENDER_DIAGNOSTICS.md`。
 
