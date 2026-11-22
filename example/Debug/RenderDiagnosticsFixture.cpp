@@ -9,6 +9,7 @@
 #include<hgl/graph/render/shadow/CascadedShadowController.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/DebugCaptureQueue.h>
+#include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -80,6 +81,14 @@ int os_main(int argc,os_char **argv)
     shadow.blend_width=0.05f;
     if(!shadows->EnableMainLightShadow(shadow,1024))
         return 8;
+    auto *shadow_target=dynamic_cast<OffscreenRenderTarget *>(shadows->GetCascadeRenderTarget(0));
+    if(!shadow_target)
+        return 9;
+    shadow_target->RegisterDebugCapture("CSM_Cascade_0");
+    shadow_target->EnableManagedDebugCapture();
+    const uint64_t shadow_target_id=shadow_target->GetDebugCaptureTargetID();
+    if(!shadow_target_id)
+        return 10;
 
     auto camera_system=world->GetSystem<CameraSystem>();
     CameraComponent *camera=camera_system?camera_system->GetMainCameraComponent():nullptr;
@@ -113,7 +122,7 @@ int os_main(int argc,os_char **argv)
                          static_cast<unsigned long long>(target),warmup_frames);
                 ready_reported=true;
             }
-            if(!DebugCaptureQueue::HasQueued(target))
+            if(!DebugCaptureQueue::HasQueued(target) && !DebugCaptureQueue::HasQueued(shadow_target_id))
             {
                 SleepSecond(0.001);
                 continue;
@@ -127,8 +136,11 @@ int os_main(int argc,os_char **argv)
                          warmup_frames);
                 ready_reported=true;
             }
-            SleepSecond(0.001);
-            continue;
+            if(!DebugCaptureQueue::HasQueued(shadow_target_id))
+            {
+                SleepSecond(0.001);
+                continue;
+            }
         }
         camera_system->SetOverrideCamera(camera);
         world->Tick(delta);

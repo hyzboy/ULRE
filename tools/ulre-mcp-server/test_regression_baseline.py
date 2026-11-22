@@ -126,6 +126,33 @@ class BaselineTests(unittest.TestCase):
         self.assertEqual(self.compare(other, 0.02)["status"], "PASS")
         self.assertEqual(self.compare(other, 0.001)["status"], "FAIL")
 
+    def test_shadow_caster_depth_and_coverage(self):
+        self.scene["mode"] = "shadow_caster"
+
+        def shadow(name, values, device_id=7):
+            path = self.capture(name, struct.pack("<2f", *values), device_id=device_id)
+            metadata = json.loads(path.read_text(encoding="utf-8"))
+            metadata.update(source="offscreen", attachment="depth", encoding="r32f",
+                            color_space="unknown", vk_format=126, copy_aspect="depth",
+                            mask="unavailable", clear_depth=0.0, camera_status="unavailable",
+                            camera=None, viewport=None)
+            path.write_text(json.dumps(metadata), encoding="utf-8")
+            return path
+
+        a = shadow("shadow-a", [0.5, 0.0])
+        removed = shadow("shadow-removed", [0.0, 0.0])
+        drift = shadow("shadow-drift", [0.51, 0.0], device_id=8)
+        invalid = shadow("shadow-invalid", [float("nan"), 0.0])
+        baseline.write_baseline(self.path, a, self.scene)
+        self.assertEqual(self.compare(a)["status"], "PASS")
+        result = self.compare(removed)
+        self.assertEqual(result["status"], "FAIL")
+        self.assertEqual(result["comparison"]["mask"]["coverage_changed_pixels"], 1)
+        self.assertTrue(Path(result["comparison"]["heatmap_path"]).is_file())
+        self.assertEqual(self.compare(drift, 0.02)["status"], "PASS")
+        self.assertEqual(self.compare(drift, 0.001)["status"], "FAIL")
+        self.assertEqual(self.compare(invalid)["status"], "FAIL")
+
 
 if __name__ == "__main__":
     unittest.main()

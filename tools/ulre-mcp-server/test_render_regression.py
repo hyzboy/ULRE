@@ -27,6 +27,10 @@ class FixtureAnalysisTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no_samples"):
             render_regression._check_fixture_analysis(
                 {"crosscheck": {"point_count": 0}}, "world_position")
+        with self.assertRaisesRegex(RuntimeError, "error_out_of_range"):
+            render_regression._check_fixture_analysis(
+                {"crosscheck": {"point_count": 4,
+                                "absolute_position_error": {"max": 0.003}}}, "world_position")
 
     def test_known_normal_anchor_rejects_rotated_direction(self):
         metadata = {

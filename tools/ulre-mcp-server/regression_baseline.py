@@ -5,6 +5,7 @@ import json
 import math
 import os
 import shutil
+import struct
 import tempfile
 import uuid
 from pathlib import Path
@@ -14,6 +15,7 @@ import capture_manifest
 SCHEMA = "ulre.render_baseline.v1"
 ALGORITHM = "ulre_frame_diff_v2"
 POSITION_ALGORITHM = "ulre_position_diff_v1"
+SHADOW_ALGORITHM = "ulre_shadow_depth_diff_v1"
 
 
 class NotCovered(Exception):
@@ -48,7 +50,12 @@ def _profile(metadata):
 
 def _capture(path, scene):
     metadata, data = capture_manifest.load_manifest(path)
-    if metadata.get("source") != "debug_view" or metadata.get("attachment") != "color" \
+    shadow = scene.get("mode") == "shadow_caster"
+    if shadow:
+        if metadata.get("source") != "offscreen" or metadata.get("attachment") != "depth" \
+                or metadata.get("encoding") != "r32f" or metadata.get("clear_depth") != 0:
+            raise NotCovered("capture_does_not_match_fixture_shadow_depth")
+    elif metadata.get("source") != "debug_view" or metadata.get("attachment") != "color" \
             or metadata.get("debug_view_mode") != scene.get("mode") \
             or metadata.get("mask") != "alpha_nonzero":
         raise NotCovered("capture_does_not_match_fixture_view")
@@ -56,9 +63,59 @@ def _capture(path, scene):
         raise NotCovered("capture_dimensions_do_not_match_fixture")
     if "capture_frame" in scene and metadata["frame_id"] != scene["capture_frame"]:
         raise NotCovered("capture_frame_does_not_match_fixture")
-    if metadata.get("camera_status") != "recorded":
+    if not shadow and metadata.get("camera_status") != "recorded":
         raise NotCovered("capture_camera_unavailable")
     return metadata, data, _profile(metadata)
+
+
+def _algorithm(scene):
+    if scene["mode"] == "shadow_caster":
+        return SHADOW_ALGORITHM
+    return POSITION_ALGORITHM if scene["mode"] == "world_position" else ALGORITHM
+
+
+def _compare_shadow(a, b, metadata_a, metadata_b, threshold, heatmap_dir):
+    width, height = metadata_a["width"], metadata_a["height"]
+    heatmap = bytearray(width * height)
+    changed = coverage_changed = common = 0
+    depth_error_sum = 0.0
+    depth_error_max = 0.0
+    for y in range(height):
+        for x in range(width):
+            index = y * width + x
+            da = struct.unpack_from("<f", a, y * metadata_a["row_pitch"] + x * 4)[0]
+            db = struct.unpack_from("<f", b, y * metadata_b["row_pitch"] + x * 4)[0]
+            if not math.isfinite(da) or not math.isfinite(db) or not (0 <= da <= 1 and 0 <= db <= 1):
+                raise ValueError("shadow depth contains non-finite or out-of-range values")
+            ca, cb = da != 0.0, db != 0.0
+            if ca != cb:
+                coverage_changed += 1
+                heatmap[index] = 255
+            elif ca:
+                common += 1
+                error = abs(da - db)
+                depth_error_sum += error
+                depth_error_max = max(depth_error_max, error)
+                if error > threshold:
+                    changed += 1
+                if error:
+                    heatmap[index] = min(254, max(1, int(error * 254)))
+    Path(heatmap_dir).mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix="shadow_diff_", suffix=".pgm",
+                                     dir=heatmap_dir, delete=False) as output:
+        output.write(f"P5\n{width} {height}\n255\n".encode("ascii") + heatmap)
+        heatmap_path = output.name
+    return {
+        "algorithm": SHADOW_ALGORITHM, "changed_pixels": changed,
+        "mask": {"coverage_changed_pixels": coverage_changed,
+                 "intersection_sample_count": common},
+        "mean_depth_error": depth_error_sum / common if common else None,
+        "max_depth_error": depth_error_max if common else None,
+        "threshold": threshold, "threshold_units": "normalized shadow depth",
+        "heatmap_path": heatmap_path,
+        "limitations": ["non-clear texels measure caster coverage, not screen shadow ratio",
+                        "light camera matrix is not captured; scene configuration is verified"],
+    }
 
 
 def write_baseline(path, capture_path, scene, *, update=False):
@@ -80,8 +137,7 @@ def write_baseline(path, capture_path, scene, *, update=False):
     copied["capture_id"] = raw_name
     meta_path.write_text(json.dumps(copied, allow_nan=False), encoding="utf-8")
     descriptor = {
-        "schema": SCHEMA, "algorithm": (POSITION_ALGORITHM if scene["mode"] == "world_position"
-                                         else ALGORITHM), "capture_schema": metadata["schema"],
+        "schema": SCHEMA, "algorithm": _algorithm(scene), "capture_schema": metadata["schema"],
         "scene": scene, "device": profile,
         "format": {key: metadata[key] for key in ("vk_format", "encoding", "color_space")},
         "capture_manifest": meta_name, "capture_manifest_sha256": _sha256(meta_path),
@@ -118,7 +174,7 @@ def compare_baseline(path, capture_path, scene, heatmap_dir, cross_tolerance=Non
     if not path.is_file():
         raise NotCovered("baseline_missing")
     baseline = json.loads(path.read_text(encoding="utf-8"))
-    expected_algorithm = POSITION_ALGORITHM if scene.get("mode") == "world_position" else ALGORITHM
+    expected_algorithm = _algorithm(scene)
     if baseline.get("schema") != SCHEMA or baseline.get("algorithm") != expected_algorithm \
             or baseline.get("capture_schema") != "ulre.capture.v1":
         raise NotCovered("baseline_schema_or_algorithm_mismatch")
@@ -144,13 +200,17 @@ def compare_baseline(path, capture_path, scene, heatmap_dir, cross_tolerance=Non
     saved = path.parent / filename
     if _sha256(saved) != baseline.get("capture_manifest_sha256"):
         raise ValueError("baseline capture manifest digest mismatch")
-    _, saved_data = capture_manifest.load_manifest(saved)
+    saved_metadata, saved_data = capture_manifest.load_manifest(saved)
     if _sha256(saved_data) != baseline.get("data_sha256"):
         raise ValueError("baseline capture data digest mismatch")
     try:
-        result = capture_manifest.compare_captures(
-            saved, capture_path, threshold=threshold, heatmap_dir=heatmap_dir,
-            allow_unverified_context=True, allow_world_position=scene.get("mode") == "world_position")
+        if scene.get("mode") == "shadow_caster":
+            result = _compare_shadow(saved_data.read_bytes(), current_data.read_bytes(),
+                                     saved_metadata, metadata, threshold, heatmap_dir)
+        else:
+            result = capture_manifest.compare_captures(
+                saved, capture_path, threshold=threshold, heatmap_dir=heatmap_dir,
+                allow_unverified_context=True, allow_world_position=scene.get("mode") == "world_position")
     except ValueError as exc:
         return {"status": "FAIL", "reason": str(exc)}
     identical = saved_data.read_bytes() == current_data.read_bytes()

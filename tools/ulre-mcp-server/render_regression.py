@@ -30,8 +30,9 @@ INPUTS = [
     Path("example") / "Debug" / "RenderDiagnosticsFixture.cpp",
     Path("GLSLCompiler.dll"),
 ]
-MODES = ("world_normal", "base_color", "surface", "emissive", "uv0", "world_position")
-FAULTS = ("camera", "normal", "material", "coverage")
+MODES = ("world_normal", "base_color", "surface", "emissive", "uv0", "world_position",
+         "shadow_caster")
+FAULTS = ("camera", "normal", "material", "coverage", "shadow_caster")
 
 
 def _digest(path):
@@ -43,10 +44,14 @@ def _digest(path):
 
 
 def scene_contract(mode):
+    shadow = mode == "shadow_caster"
     return {
-        "name": "RenderDiagnosticsFixture", "version": 3, "mode": mode,
-        "width": 640, "height": 360, "fixed_delta_seconds": 1.0 / 60.0,
-        "initial_warmup_frames": 120, "view_warmup_frames": 120, "capture_frame": 241,
+        "name": "RenderDiagnosticsFixture", "version": 4, "mode": mode,
+        "width": 1024 if shadow else 640, "height": 1024 if shadow else 360,
+        "window_width": 640, "window_height": 360, "fixed_delta_seconds": 1.0 / 60.0,
+        "initial_warmup_frames": 120, "view_warmup_frames": 0 if shadow else 120,
+        "capture_frame": 121 if shadow else 241,
+        "position_crosscheck_max_error_world_units": 0.002,
         "light_direction": [0.55, 0.35, 0.75], "light_intensity": 1.5,
         "shadow_cascades": 1, "shadow_map_size": 1024,
         "validation_layers": os.environ.get("VK_INSTANCE_LAYERS", ""),
@@ -101,6 +106,12 @@ def _prepare(directory, fault=None):
             "material": ("roughness = 0.92", "roughness = 0.10"),
             "coverage": ("transform.position = [3.0, 0.0, 1.0]",
                          "transform.position = [7.0, 0.0, 1.0]"),
+            "shadow_caster": ('name = "Cube"\ngeometry = "presets:cube"\n'
+                              'recipe = "06b.BasicLit.Lit"\nmaterial = "fixture_surface"\n'
+                              'mobility = "movable"',
+                              'name = "Cube"\ngeometry = "presets:cube"\n'
+                              'recipe = "06b.BasicLit.Lit"\nmaterial = "fixture_surface"\n'
+                              'mobility = "static"'),
         }
         if fault == "normal":
             before = ('transform.position = [0.0, 0.0, 1.0]\n'
@@ -128,6 +139,8 @@ def _copy_capture(path, output_dir):
 
 
 def _analyze_fixture(color, depth, mode):
+    if mode == "shadow_caster":
+        return capture_manifest.analyze_capture(color, "depth", reversed_z_override=True)
     if mode == "world_position":
         return {
             "position": capture_manifest.analyze_capture(color, "world_position_rt"),
@@ -139,9 +152,17 @@ def _analyze_fixture(color, depth, mode):
 
 
 def _check_fixture_analysis(analysis, mode):
+    if mode == "shadow_caster":
+        if analysis["invalid_depth_ratio"] != 0 or analysis["non_clear_depth_count"] <= 0:
+            raise RuntimeError("shadow_caster_coverage_unavailable_or_empty")
+        return
     if mode == "world_position":
-        if analysis["crosscheck"]["point_count"] <= 0:
+        crosscheck = analysis["crosscheck"]
+        if crosscheck["point_count"] <= 3:
             raise RuntimeError("position_crosscheck_has_no_samples")
+        error = crosscheck["absolute_position_error"]["max"]
+        if not isinstance(error, (int, float)) or not math.isfinite(error) or error > 0.002:
+            raise RuntimeError("position_crosscheck_error_out_of_range")
         return
     if analysis["sample_count"] <= 0 or analysis.get("nan_count", 0) or analysis.get("inf_count", 0):
         raise RuntimeError("fixture_has_no_finite_samples")
@@ -211,15 +232,25 @@ def _capture_fixture(exe, mode, output_dir, timeout, fault=None):
             request_id = None
             try:
                 _wait_ready(process, log, "off", timeout)
-                _bridge("set_debug_view", {"mode": mode})
-                _wait_ready(process, log, mode, timeout)
-                status = _bridge("get_debug_view")
-                if status.get("error"):
-                    raise regression_baseline.NotCovered("debug_view_" + status["error"])
-                if status.get("mode") != mode or not status.get("target_id"):
-                    raise regression_baseline.NotCovered("debug_view_not_ready")
+                if mode == "shadow_caster":
+                    targets = _bridge("list_capture_targets")["targets"]
+                    matches = [target for target in targets if target.get("name") == "CSM_Cascade_0"
+                               and target.get("source") == "offscreen"
+                               and "depth" in target.get("attachments", [])]
+                    if len(matches) != 1:
+                        raise regression_baseline.NotCovered("fixture_shadow_target_unavailable")
+                    target_id = matches[0]["target_id"]
+                else:
+                    _bridge("set_debug_view", {"mode": mode})
+                    _wait_ready(process, log, mode, timeout)
+                    status = _bridge("get_debug_view")
+                    if status.get("error"):
+                        raise regression_baseline.NotCovered("debug_view_" + status["error"])
+                    if status.get("mode") != mode or not status.get("target_id"):
+                        raise regression_baseline.NotCovered("debug_view_not_ready")
+                    target_id = status["target_id"]
                 request = _bridge("capture_frame", {
-                    "target_id": status["target_id"], "attachment": "color_depth",
+                    "target_id": target_id, "attachment": "depth" if mode == "shadow_caster" else "color_depth",
                 })
                 request_id = request["request_id"]
                 deadline = time.monotonic() + timeout
@@ -234,15 +265,28 @@ def _capture_fixture(exe, mode, output_dir, timeout, fault=None):
                     raise RuntimeError("capture_timeout")
                 if result.get("state") != "succeeded":
                     raise RuntimeError(f"capture_failed: {result}")
-                if result.get("request_id") != request_id or result.get("frame_id") != 241:
+                if result.get("request_id") != request_id or result.get("target_id") != target_id \
+                        or result.get("frame_id") != scene["capture_frame"]:
                     raise RuntimeError(f"unexpected_capture_frame_or_request: {result}")
+                if mode == "shadow_caster":
+                    shadow, metadata = _copy_capture(result["metadata_path"], output_dir)
+                    if metadata["target_id"] != target_id or metadata["request_id"] != request_id \
+                            or metadata["frame_id"] != result["frame_id"]:
+                        raise RuntimeError("shadow_capture_context_mismatch")
+                    if scene_contract(mode) != scene:
+                        raise RuntimeError("fixture_inputs_changed_during_run")
+                    return shadow, None, scene, log
                 entries = result.get("captures", [])
                 if len(entries) != 2 or [entry.get("attachment") for entry in entries] != ["color", "depth"]:
                     raise RuntimeError("capture_missing_color_depth_pair")
                 color, color_metadata = _copy_capture(entries[0]["metadata_path"], output_dir)
                 depth, depth_metadata = _copy_capture(entries[1]["metadata_path"], output_dir)
-                if color_metadata.get("device") != depth_metadata.get("device") or \
+                if any(entry["request_id"] != request_id or entry["target_id"] != target_id
+                       or entry["frame_id"] != result["frame_id"]
+                       for entry in (color_metadata, depth_metadata)) or \
+                        color_metadata.get("device") != depth_metadata.get("device") or \
                         color_metadata.get("frame_id") != depth_metadata.get("frame_id") or \
+                        not color_metadata.get("capture_group_id") or \
                         color_metadata.get("capture_group_id") != depth_metadata.get("capture_group_id"):
                     raise RuntimeError("capture_pair_context_mismatch")
                 if scene_contract(mode) != scene:
@@ -290,16 +334,18 @@ def main(argv=None):
             raise ValueError("material fault requires surface mode")
         if args.inject_fault == "normal" and args.mode != "world_normal":
             raise ValueError("normal fault requires world_normal mode")
+        if args.inject_fault == "shadow_caster" and args.mode != "shadow_caster":
+            raise ValueError("shadow_caster fault requires shadow_caster mode")
         exe = args.exe.resolve(strict=True)
         if exe.name.lower() != "renderdiagnosticsfixture.exe":
             raise ValueError("exe must be RenderDiagnosticsFixture.exe")
         color, depth, scene, log = _capture_fixture(
             exe, args.mode, args.output_dir.resolve(), args.timeout, args.inject_fault)
-        evidence = {"color_manifest": str(color), "depth_manifest": str(depth),
+        evidence = {"color_manifest": str(color) if depth else None,
+                    "depth_manifest": str(depth) if depth else str(color),
                     "fixture_log": str(log), "fixture_exe_sha256": _digest(exe),
                     "fault_injection": args.inject_fault,
-                    "limitations": ["alpha_test_not_supported", "receiver_shadow_factor_unavailable",
-                                    "shadow_map_capture_not_covered"]}
+                    "limitations": ["alpha_test_not_supported", "receiver_shadow_factor_unavailable"]}
         analysis = _analyze_fixture(color, depth, args.mode)
         evidence["fixture_analysis"] = analysis
         analysis_error = None
