@@ -2,6 +2,8 @@
 
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetData.h>
+#include<hgl/vk/DebugCaptureQueue.h>
+#include<hgl/vk/VKDevice.h>
 
 namespace hgl::graph{
 
@@ -18,6 +20,12 @@ namespace hgl::graph{
 class OffscreenRenderTarget:public IRenderTarget
 {
     RenderTargetData *data;
+    uint64_t debug_capture_target=0;
+    uint64_t debug_capture_frame=0;
+    bool debug_recording=false;
+    bool debug_recorded=false;
+    bool debug_managed_pass=false;
+    bool debug_managed_opt_in=false;
 
 protected:
 
@@ -33,11 +41,51 @@ public:
 
     virtual ~OffscreenRenderTarget() override
     {
+        if(debug_capture_target)
+            DebugCaptureQueue::UnregisterTarget(debug_capture_target);
         if(data)
         {
             data->Clear();
             delete data;
         }
+    }
+
+    void RegisterDebugCapture(const char *name=nullptr)
+    {
+        Texture2D *color=GetColorCount()?GetColorTexture(0):nullptr;
+        Texture2D *depth=GetDepthTexture();
+        const bool supported_count=GetColorCount()<=1;
+        const bool can_color=debug_managed_opt_in && supported_count && color
+                             && (color->GetUsage()&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                             && DebugCaptureQueue::SupportsFormat(color->GetFormat(),DebugCaptureQueue::Attachment::Color);
+        const bool can_depth=debug_managed_opt_in && supported_count && depth
+                             && (depth->GetUsage()&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+                             && DebugCaptureQueue::SupportsFormat(depth->GetFormat(),DebugCaptureQueue::Attachment::Depth);
+        if(!debug_capture_target)
+            debug_capture_target=DebugCaptureQueue::RegisterTarget(
+                false,false,DebugCaptureQueue::Source::Offscreen,this,name);
+        VkFormat colors[8]{};
+        const uint32_t count=GetColorCount();
+        for(uint32_t i=0;i<count && i<8;++i)
+        {
+            Texture2D *texture=GetColorTexture(i);
+            colors[i]=texture?texture->GetFormat():VK_FORMAT_UNDEFINED;
+        }
+        DebugCaptureQueue::SetOffscreenDetails(debug_capture_target,colors,count,
+                                               depth?depth->GetFormat():VK_FORMAT_UNDEFINED,
+                                               can_color,can_depth);
+    }
+
+    bool HasDebugCapture() const { return debug_capture_target!=0; }
+    uint64_t GetDebugCaptureTargetID() const { return debug_capture_target; }
+
+    // The owner guarantees managed writes and graphics-queue-only access to these attachments.
+    void EnableManagedDebugCapture()
+    {
+        if(!debug_capture_target)
+            return;
+        debug_managed_opt_in=true;
+        RegisterDebugCapture();
     }
 
     Framebuffer *       GetFramebuffer      ()override{return data->fbo;}
@@ -66,7 +114,36 @@ public: // Command Buffer
         if(!data)
             return(false);
 
-        return data->Submit(extra_waits,extra_wait_count);
+        if(!debug_recorded)
+        {
+            if(debug_capture_target)
+                DebugCaptureQueue::FailQueued(debug_capture_target,"recording_failed");
+            return false;
+        }
+        const bool submitted=data->Submit(extra_waits,extra_wait_count);
+        if(debug_capture_target)
+        {
+            DeviceQueue *queue=data->GetQueue();
+            const bool same_queue=queue && data->device
+                && static_cast<VkQueue>(*queue)==data->device->GetGraphicsQueue();
+            Texture2D *color=GetColorCount()?GetColorTexture(0):nullptr;
+            Texture2D *depth=GetDepthTexture();
+            const bool layouts=(!color || color->GetImageLayout()==VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                            && (!depth || depth->GetImageLayout()==VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            if(!submitted || !debug_managed_opt_in || !debug_managed_pass || !same_queue
+               || !layouts || debug_capture_frame==UINT64_MAX)
+                DebugCaptureQueue::FailQueued(debug_capture_target,
+                    submitted?"frame_unavailable":"submission_failed");
+            else
+            {
+                ++debug_capture_frame;
+                DebugCaptureQueue::BeginFrame(debug_capture_target,debug_capture_frame);
+                DebugCaptureQueue::Process(this,debug_capture_target,debug_capture_frame);
+            }
+        }
+        debug_recorded=false;
+        debug_managed_pass=false;
+        return submitted;
     }
 
     /// per-frame 数据槽号（L2W ring / CameraInfo 行 / Viewport 槽按它取号）
@@ -103,7 +180,13 @@ public:
         if(!data)
             return(nullptr);
 
-        return data->BeginRender();
+        RenderCmdBuffer *cmd=data->BeginRender();
+        debug_recording=cmd!=nullptr;
+        debug_recorded=false;
+        debug_managed_pass=false;
+        if(!cmd && debug_capture_target)
+            DebugCaptureQueue::FailQueued(debug_capture_target,"recording_failed");
+        return cmd;
     }
 
     virtual void EndRender() override
@@ -111,8 +194,16 @@ public:
         if(!data)
             return;
 
-        data->EndRender();
+        debug_recorded=debug_recording && data->EndRender();
+        if(!debug_recorded && debug_capture_target)
+            DebugCaptureQueue::FailQueued(debug_capture_target,"recording_failed");
+        else if(debug_capture_target && debug_managed_opt_in && !debug_managed_pass)
+            DebugCaptureQueue::FailQueued(debug_capture_target,"frame_unavailable");
+        debug_recording=false;
     }
+
+    void MarkManagedCapturePass(bool safe) override { debug_managed_pass=debug_recording && safe; }
+    bool IsRenderRecordingValid() const override { return debug_recorded; }
 };//class OffscreenRenderTarget
 
 }//namespace hgl::graph

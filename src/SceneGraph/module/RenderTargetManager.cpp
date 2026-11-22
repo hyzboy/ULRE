@@ -20,6 +20,7 @@
 #include <hgl/vk/VKRenderPass.h>
 #include <hgl/vk/VKRenderTargetData.h>
 #include<hgl/vk/VKOffscreenRenderTarget.h>
+#include<hgl/common/DebugChannel.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VKTextureCreateInfo.h>
 #include <vulkan/vulkan_core.h>
@@ -206,7 +207,8 @@ RenderTargetHandle RenderTargetManager::CreateFromSpecFile(const OSString &filen
 OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
                                                               const AnsiString &name,
                                                               const FramebufferInfo *fbi,
-                                                              const uint32_t slot_count)
+                                                              const uint32_t slot_count,
+                                                              const bool register_debug_capture)
 {
     if(!fbi || !ecs_ctx)
         return(nullptr);
@@ -313,6 +315,8 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
         const AnsiString rt_name = name + ":RT";
 
         OffscreenRenderTarget *rt = new OffscreenRenderTarget(ecs_ctx, rtd);
+        if(register_debug_capture && ULRE_DEBUG_ON(DebugBridge))
+            rt->RegisterDebugCapture(name.c_str());
 
         // 登记入注册表：所有权归本 Manager，推荐用 RenderTargetHandle（RAII），
         // 裸指针场景用 Destroy()，不得手动 delete。带信息一并登记 ⇒ Destroy 时归还。
@@ -478,7 +482,10 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
     data->depth_texture  = nullptr;
 
     // ---- 4. 按新尺寸与附件配置重建 ----
-    return CreateAttachments(data, name, &fbi);
+    const bool created=CreateAttachments(data, name, &fbi);
+    if(rt->HasDebugCapture())
+        rt->RegisterDebugCapture();
+    return created;
 }
 
 bool RenderTargetManager::Resize(IRenderTarget *rt,const uint32_t width,const uint32_t height)

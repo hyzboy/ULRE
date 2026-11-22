@@ -9,10 +9,13 @@
 //   RTTCD_SELFCHECK=1   帧摘要自检（就绪后第 8 帧；PASS 退 0 / FAIL 退 1 / 读回失败退 2）
 //   RTTCD_DUMP=<tag>    就绪后第 8 帧帧内回读主场景颜色靶落原始字节后退出
 //                       （`rttcddump_<tag>_WxH_fmt.raw`）
+//   RTTCD_CAPTURE_ON_REQUEST=1  抓取请求时提交离屏帧，供集成测试
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
+#include<hgl/vk/VKOffscreenRenderTarget.h>
+#include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/module/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -125,6 +128,7 @@ namespace
     // env 开关：Tick 的旋转冻结与摘要/落盘计数共用
     const char *s_dump_tag  = getenv("RTTCD_DUMP");
     const bool  s_selfcheck = (getenv("RTTCD_SELFCHECK") != nullptr);
+    const bool  s_capture_on_request = (getenv("RTTCD_CAPTURE_ON_REQUEST") != nullptr);
 }
 
 /**
@@ -228,6 +232,10 @@ public:
                                                   desc);
         if (!offscreen)
             return LogStageFail("OffscreenPass::Init", "OffscreenWorld::Create failed");
+
+        if(s_capture_on_request)
+            if(auto *target=dynamic_cast<graph::OffscreenRenderTarget *>(offscreen->GetRenderTarget()))
+                target->EnableManagedDebugCapture();
 
         // RTT 内容会被主场景 Lit 材质再乘一次光照，离屏用高太阳强度 profile 补偿
         if (auto *gc = owner->GetGraphicsContext())
@@ -369,6 +377,16 @@ public:
         if (!offscreen)
             return LogStageFail("OffscreenPass::RenderOffscreenFrame", "offscreen world is null");
 
+        auto *target=dynamic_cast<graph::OffscreenRenderTarget *>(offscreen->GetRenderTarget());
+        if(s_capture_on_request && getenv("RTTCD_UNSAFE_CAPTURE_TEST") && offscreen->IsContentReady()
+           && target && graph::DebugCaptureQueue::HasQueued(target->GetDebugCaptureTargetID()))
+        {
+            ecs::RenderPassRequest request;
+            request.target=target;
+            request.use_scissor=true;
+            request.scissor.extent=target->GetExtent();
+            return offscreen->GetWorld()->RenderTo(request);
+        }
         offscreen->Render();
         return true;
     }
@@ -644,7 +662,10 @@ public:
         //
         // 帧预算**不能固定**：异步读盘完成在第几帧取决于磁盘与解码速度（实测 2~10 帧浮动），
         // 写死帧数会让"贴图刚好没赶上"伪装成"离屏永不渲染"。判据就是内容就绪本身。
-        if (offscreen && !offscreen->IsContentReady())
+        auto *capture_target=offscreen && s_capture_on_request
+            ?dynamic_cast<graph::OffscreenRenderTarget *>(offscreen->GetRenderTarget()):nullptr;
+        if (offscreen && (!offscreen->IsContentReady()
+            || (capture_target && graph::DebugCaptureQueue::HasQueued(capture_target->GetDebugCaptureTargetID()))))
         {
             offscreen->RenderOffscreenFrame();
         }

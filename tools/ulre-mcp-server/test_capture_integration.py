@@ -1,5 +1,7 @@
 import json
+import math
 import os
+import struct
 import tempfile
 import time
 import unittest
@@ -12,6 +14,93 @@ import capture_manifest
 @unittest.skipUnless(os.environ.get("ULRE_CAPTURE_TEST") == "1",
                      "requires a running engine with DebugBridge enabled")
 class CaptureIntegrationTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("ULRE_OFFSCREEN_TEST") == "1",
+                         "requires an ordinary offscreen target rendered on request")
+    @unittest.skipIf(os.environ.get("ULRE_OFFSCREEN_UNSAFE_TEST") == "1",
+                     "fixture is intentionally rendering an unsupported pass")
+    def test_ordinary_offscreen_color_depth(self):
+        target = None
+        for _ in range(150):
+            targets = mcp_server.call_engine("list_capture_targets")
+            target = next((item for item in targets.get("targets", [])
+                           if item["source"] == "offscreen"
+                           and {"color", "depth"} <= set(item["attachments"])), None)
+            if target:
+                break
+            time.sleep(0.1)
+        self.assertIsNotNone(target, targets)
+        details = target["attachment_details"]
+        self.assertEqual(target["color_attachment_count"], 1)
+        self.assertEqual([entry["attachment"] for entry in details], ["color", "depth"])
+        self.assertTrue(all(entry["available"] and entry["vk_format"] > 0 for entry in details))
+        previous_frame = 0
+        for _ in range(2):
+            request = mcp_server.call_engine("capture_frame", {
+                "target_id": target["target_id"], "attachment": "color_depth",
+            })
+            self.assertTrue(request.get("valid"), request)
+            try:
+                for _ in range(150):
+                    result = mcp_server.call_engine("get_capture_status", {
+                        "request_id": request["request_id"],
+                    })
+                    if result.get("state") not in ("queued", "capturing"):
+                        break
+                    time.sleep(0.1)
+                self.assertEqual(result.get("state"), "succeeded", result)
+                self.assertGreater(result["frame_id"], previous_frame)
+                previous_frame = result["frame_id"]
+                manifests = [json.loads(Path(entry["metadata_path"]).read_text(encoding="utf-8"))
+                             for entry in result["captures"]]
+                for entry, manifest in zip(result["captures"], manifests):
+                    self.assertEqual(manifest["source"], "offscreen")
+                    self.assertEqual(manifest["target_id"], target["target_id"])
+                    self.assertEqual(manifest["frame_id"], result["frame_id"])
+                    self.assertEqual(manifest["camera_status"], "unavailable")
+                    self.assertIsNone(manifest["viewport"])
+                    self.assertEqual(Path(entry["dump_path"]).stat().st_size, manifest["byte_count"])
+                self.assertEqual(manifests[1]["clear_depth"], 0)
+                self.assertEqual(manifests[0]["capture_group_id"], manifests[1]["capture_group_id"])
+                color = Path(result["captures"][0]["dump_path"]).read_bytes()
+                self.assertGreater(len({color[i:i + 4] for i in range(0, len(color), 4)}), 1)
+                self.assertEqual(manifests[1]["encoding"], "r32f")
+                depth = Path(result["captures"][1]["dump_path"]).read_bytes()
+                depths = [value[0] for value in struct.iter_unpack("<f", depth)]
+                self.assertTrue(all(math.isfinite(value) and 0 <= value <= 1 for value in depths))
+                self.assertTrue(any(value > 0 for value in depths))
+                self.assertTrue(any(value == 0 for value in depths))
+            finally:
+                mcp_server.call_engine("release_capture", {"request_id": request["request_id"]})
+
+    @unittest.skipUnless(os.environ.get("ULRE_OFFSCREEN_UNSAFE_TEST") == "1",
+                         "requires the unsupported-pass fixture")
+    def test_ordinary_offscreen_rejects_scissor_pass(self):
+        for _ in range(150):
+            targets = mcp_server.call_engine("list_capture_targets")
+            target = next((item for item in targets.get("targets", [])
+                           if item["source"] == "offscreen" and "color" in item["attachments"]), None)
+            if target:
+                break
+            time.sleep(0.1)
+        self.assertIsNotNone(target, targets)
+        request = mcp_server.call_engine("capture_frame", {
+            "target_id": target["target_id"], "attachment": "color",
+        })
+        self.assertTrue(request.get("valid"), request)
+        try:
+            for _ in range(150):
+                result = mcp_server.call_engine("get_capture_status", {
+                    "request_id": request["request_id"],
+                })
+                if result.get("state") not in ("queued", "capturing"):
+                    break
+                time.sleep(0.1)
+            self.assertEqual(result.get("state"), "failed", result)
+            self.assertEqual(result.get("error"), "frame_unavailable")
+            self.assertFalse(result.get("dump_path"))
+        finally:
+            mcp_server.call_engine("release_capture", {"request_id": request["request_id"]})
+
     @unittest.skipUnless(os.environ.get("ULRE_DEBUG_VIEW_TEST") == "1",
                          "requires the static BasicLitMeshes fixture")
     def test_isolated_debug_modes_leave_main_frame_unchanged(self):

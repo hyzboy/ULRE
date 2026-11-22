@@ -133,7 +133,8 @@ public: // 创建
     OffscreenRenderTarget *CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
                                              const AnsiString &name,
                                              const FramebufferInfo *fbi,
-                                             const uint32_t slot_count=1);
+                                             const uint32_t slot_count=1,
+                                             const bool register_debug_capture=true);
 
     /// [Deprecated] 便捷静态入口，保留以兼容旧调用；新代码请用 Create(desc)
     static OffscreenRenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,

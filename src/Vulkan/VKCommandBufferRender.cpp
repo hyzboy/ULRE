@@ -38,6 +38,13 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
     const uint32_t has_depth=rt->hasDepth()?1:0;
 
     const VkExtent2D &ext=rt->GetExtent();
+    if(color_count+has_depth>8 || !ext.width || !ext.height)
+        return false;
+    for(uint32_t i=0;i<color_count;++i)
+        if(!rt->GetColorTexture(i) || !rt->GetColorAttachment(i).IsValid())
+            return false;
+    if(has_depth && (!rt->GetDepthTexture() || !rt->GetDepthAttachment().IsValid()))
+        return false;
 
     // pass 作用域：在 vkCmdBeginRendering 前打开，由 EndRendering() /
     // EndRenderingPresent() 关闭。抓帧工具里本 pass 的全部屏障、清屏、绘制

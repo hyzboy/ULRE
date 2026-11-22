@@ -93,7 +93,7 @@ public:
 
     RenderCmdBuffer *BeginRender();
 
-    void EndRender();
+    bool EndRender();
     virtual void Clear();
 };//struct RenderTargetData
 

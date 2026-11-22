@@ -78,11 +78,11 @@ RenderCmdBuffer *RenderTargetData::BeginRender()
     return cmd_buf;
 }
 
-void RenderTargetData::EndRender()
+bool RenderTargetData::EndRender()
 {
     RenderCmdBuffer *cmd_buf = GetCmdBuffer();
     if(!cmd_buf)
-        return;
+        return false;
 
     // Ensure our tracked layout matches the render pass finalLayout (SRO).
     // This covers both cases: whether or not any draw happened, the render pass
@@ -110,7 +110,7 @@ void RenderTargetData::EndRender()
             td->image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
-    cmd_buf->End();
+    return cmd_buf->End();
 }
 
 void RenderTargetData::Clear()

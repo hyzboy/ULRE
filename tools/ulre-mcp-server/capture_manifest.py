@@ -46,7 +46,7 @@ def load_manifest(path):
     metadata = json.loads(content.decode("utf-8"))
     if not isinstance(metadata, dict) or metadata.get("schema") != "ulre.capture.v1":
         raise ValueError("Unsupported capture manifest schema")
-    if metadata.get("source") not in ("swapchain", "debug_view"):
+    if metadata.get("source") not in ("swapchain", "debug_view", "offscreen"):
         raise ValueError("Unsupported capture source")
     if metadata["source"] == "debug_view" and metadata.get("debug_view_mode") not in (
             "world_normal", "base_color", "surface", "emissive", "uv0"):

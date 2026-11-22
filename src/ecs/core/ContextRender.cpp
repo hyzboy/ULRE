@@ -298,29 +298,35 @@ namespace hgl::ecs
             return true;
         }
 
-        void ECSContext::EndManagedRenderFrame(float deltaTime)
+        bool ECSContext::EndManagedRenderFrame(float deltaTime)
         {
             if (!render_core)
-                return;
+                return false;
 
+            bool ended=false;
             {
                 FrameProfileSpan end_span(FrameProfileSlot::EndFrame);
 
 //            LogInfo("[ECS RENDER] Calling EndFrame");
-                render_core->EndFrame();
+                ended=render_core->EndFrame();
             }
 
             SetCurrentRenderCmd(nullptr);
+            if(!ended)
+                return false;
 
+            bool submitted=false;
             {
                 FrameProfileSpan submit_span(FrameProfileSlot::SubmitPresent);
 
 //            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
-                if (!SubmitFrameToRenderTarget(deltaTime))
+                submitted=SubmitFrameToRenderTarget(deltaTime);
+                if (!submitted)
                 {
                     LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
                 }
             }
+            return submitted;
         }
 
         void ECSContext::RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
@@ -613,11 +619,9 @@ namespace hgl::ecs
                     probe_draw_ns = PrepassTimingNow() - probe_draw_start;
 
                 const uint64_t probe_submit_start = (probe_t0 != 0) ? PrepassTimingNow() : 0;
-                EndManagedRenderFrame(req.delta_time);
+                ok=EndManagedRenderFrame(req.delta_time);
                 if (probe_submit_start != 0)
                     probe_submit_ns = PrepassTimingNow() - probe_submit_start;
-
-                ok = true;
             }
 
             active_mobility_filter = -1;

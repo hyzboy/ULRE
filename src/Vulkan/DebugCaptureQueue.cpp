@@ -28,6 +28,11 @@ namespace hgl::graph
             bool depth=false;
             uint64_t frame_id=0;
             DebugCaptureQueue::Source source=DebugCaptureQueue::Source::Swapchain;
+            IRenderTarget *bound_target=nullptr;
+            AnsiString name;
+            uint32_t color_count=0;
+            VkFormat color_formats[8]{};
+            VkFormat depth_format=VK_FORMAT_UNDEFINED;
             uint32_t debug_mode=0;
             DebugCaptureQueue::CameraSnapshot camera;
         };
@@ -137,6 +142,11 @@ namespace hgl::graph
         void AppendJSONString(AnsiString &json,const char *value)
         {
             json+="\"";
+            if(!value)
+            {
+                json+="\"";
+                return;
+            }
             for(const unsigned char *p=reinterpret_cast<const unsigned char *>(value);*p;++p)
             {
                 if(*p=='"' || *p=='\\')
@@ -172,7 +182,8 @@ namespace hgl::graph
             json+=",\"frame_id\":";
             json+=AnsiString::numberOf(result.frame_id);
             json+=",\"source\":\"";
-            json+=result.source==DebugCaptureQueue::Source::DebugView?"debug_view":"swapchain";
+            json+=result.source==DebugCaptureQueue::Source::DebugView?"debug_view":
+                  result.source==DebugCaptureQueue::Source::Offscreen?"offscreen":"swapchain";
             json+="\",\"debug_view_mode\":\"";
             json+=mtl::GetDebugViewModeName(static_cast<mtl::DebugViewMode>(result.debug_mode));
             json+="\",\"attachment\":\"";
@@ -208,11 +219,16 @@ namespace hgl::graph
             json+=",\"mask\":\"";
             json+=result.source==DebugCaptureQueue::Source::DebugView
                   && result.attachment==DebugCaptureQueue::Attachment::Color?"alpha_nonzero":"unavailable";
-            json+="\",\"viewport\":{\"x\":0,\"y\":0,\"width\":";
-            json+=AnsiString::numberOf(result.width);
-            json+=",\"height\":";
-            json+=AnsiString::numberOf(result.height);
-            json+=",\"min_depth\":0,\"max_depth\":1}";
+            if(result.source==DebugCaptureQueue::Source::Offscreen)
+                json+="\",\"viewport\":null";
+            else
+            {
+                json+="\",\"viewport\":{\"x\":0,\"y\":0,\"width\":";
+                json+=AnsiString::numberOf(result.width);
+                json+=",\"height\":";
+                json+=AnsiString::numberOf(result.height);
+                json+=",\"min_depth\":0,\"max_depth\":1}";
+            }
             if(result.attachment==DebugCaptureQueue::Attachment::Depth)
                 json+=",\"copy_aspect\":\"depth\",\"clear_depth\":0";
             json+=",\"camera_status\":\"";
@@ -325,6 +341,15 @@ namespace hgl::graph
             result.error="readback_failed";
             Texture2D *texture=result.attachment==Queue::Attachment::Color
                 ?target->GetColorTexture(0):target->GetDepthTexture();
+            if(texture)
+            {
+                result.format=texture->GetFormat();
+                if(::strcmp(Encoding(result),"unknown")==0)
+                {
+                    result.error="unsupported_format";
+                    return false;
+                }
+            }
             const VkExtent3D *extent=texture?texture->GetExtent():nullptr;
             uint32_t stride=texture?GetStrideByFormat(texture->GetFormat()):0;
             if(texture && result.attachment==Queue::Attachment::Depth)
@@ -432,7 +457,8 @@ namespace hgl::graph
         return false;
     }
 
-    uint64_t DebugCaptureQueue::RegisterTarget(bool color,bool depth,Source source)
+    uint64_t DebugCaptureQueue::RegisterTarget(bool color,bool depth,Source source,IRenderTarget *bound_target,
+                                               const char *name)
     {
         QueueState &queue=Queue();
         hgl::MutexLock lock(&queue.lock);
@@ -444,10 +470,46 @@ namespace hgl::graph
                 target.color=color;
                 target.depth=depth;
                 target.source=source;
+                target.bound_target=bound_target;
+                if(name) target.name=name;
                 return target.id;
             }
         GLogError(u8"[DebugCapture] Target registry is full");
         return 0;
+    }
+
+    bool DebugCaptureQueue::SupportsFormat(VkFormat format,Attachment attachment)
+    {
+        if(attachment!=Attachment::Color && attachment!=Attachment::Depth)
+            return false;
+        Result result;
+        result.format=format;
+        result.attachment=attachment;
+        return ::strcmp(Encoding(result),"unknown")!=0;
+    }
+
+    void DebugCaptureQueue::SetOffscreenDetails(uint64_t target_id,const VkFormat *colors,
+                                                 uint32_t count,VkFormat depth,bool can_color,bool can_depth)
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        for(Target &target:queue.targets)
+            if(target.id==target_id && target_id && target.source==Source::Offscreen)
+            {
+                for(Result &result:queue.requests)
+                    if(result.target_id==target_id && result.state==State::Queued)
+                    {
+                        result.state=State::Failed;
+                        result.error="target_rebuilt";
+                    }
+                target.color=can_color;
+                target.depth=can_depth;
+                target.color_count=count;
+                for(uint32_t i=0;i<8;++i)
+                    target.color_formats[i]=colors && i<count?colors[i]:VK_FORMAT_UNDEFINED;
+                target.depth_format=depth;
+                return;
+            }
     }
 
     void DebugCaptureQueue::UnregisterTarget(uint64_t target_id)
@@ -477,16 +539,49 @@ namespace hgl::graph
                 first=false;
                 json+="{\"target_id\":";
                 json+=AnsiString::numberOf(target.id);
+                json+=",\"name\":";
+                AppendJSONString(json,target.name.c_str());
                 json+=",\"source\":\"";
-                json+=target.source==Source::DebugView?"debug_view":"swapchain";
+                json+=target.source==Source::DebugView?"debug_view":
+                      target.source==Source::Offscreen?"offscreen":"swapchain";
                 json+="\",\"kind\":\"";
-                json+=target.source==Source::DebugView?"offscreen":"swapchain";
+                json+=target.source==Source::Swapchain?"swapchain":"offscreen";
+                if(target.source==Source::Offscreen && !target.color && !target.depth)
+                    json+="\",\"availability\":\"unavailable";
                 json+="\",\"attachments\":[";
                 if(target.color) json+="\"color\"";
                 if(target.color && target.depth) json+=",";
                 if(target.depth) json+="\"depth\"";
                 if(target.color && target.depth) json+=",\"color_depth\"";
-                json+="]}";
+                json+="]";
+                if(target.source==Source::Offscreen)
+                {
+                    json+=",\"color_attachment_count\":";
+                    json+=AnsiString::numberOf(target.color_count);
+                    json+=",\"attachment_details\":[";
+                    bool first_attachment=true;
+                    for(uint32_t i=0;i<target.color_count && i<8;++i)
+                    {
+                        if(!first_attachment) json+=",";
+                        first_attachment=false;
+                        json+="{\"attachment\":\"color\",\"index\":";
+                        json+=AnsiString::numberOf(i);
+                        json+=",\"vk_format\":";
+                        json+=AnsiString::numberOf(static_cast<int>(target.color_formats[i]));
+                        json+=",\"available\":";
+                        json+=(i==0 && target.color)?"true}":"false}";
+                    }
+                    if(target.depth_format!=VK_FORMAT_UNDEFINED)
+                    {
+                        if(!first_attachment) json+=",";
+                        json+="{\"attachment\":\"depth\",\"vk_format\":";
+                        json+=AnsiString::numberOf(static_cast<int>(target.depth_format));
+                        json+=",\"available\":";
+                        json+=target.depth?"true}":"false}";
+                    }
+                    json+="]";
+                }
+                json+="}";
             }
         json+="]}";
         return json;
@@ -587,6 +682,17 @@ namespace hgl::graph
         return false;
     }
 
+    bool DebugCaptureQueue::HasQueued(uint64_t target_id)
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        Expire(queue);
+        for(const Result &result:queue.requests)
+            if(target_id && result.target_id==target_id && result.state==State::Queued)
+                return true;
+        return false;
+    }
+
     AnsiString DebugCaptureQueue::GetResultJSON(uint64_t request_id)
     {
         Result result;
@@ -655,6 +761,16 @@ namespace hgl::graph
                 Expire(queue);
                 const Target *registered=FindTarget(queue,target_id);
                 if(!registered) return;
+                if(registered->bound_target && registered->bound_target!=target)
+                {
+                    for(Result &entry:queue.requests)
+                        if(entry.state==State::Queued && entry.target_id==target_id)
+                        {
+                            entry.state=State::Failed;
+                            entry.error="target_mismatch";
+                        }
+                    return;
+                }
                 for(Result &entry:queue.requests)
                     if(entry.state==State::Queued && entry.target_id==target_id)
                     {

@@ -66,6 +66,46 @@ int main()
         return 1;
     }
     using hgl::graph::DebugCaptureQueue;
+    if(!DebugCaptureQueue::SupportsFormat(VK_FORMAT_R8G8B8A8_UNORM,DebugCaptureQueue::Attachment::Color)
+       || !DebugCaptureQueue::SupportsFormat(VK_FORMAT_D32_SFLOAT,DebugCaptureQueue::Attachment::Depth)
+       || DebugCaptureQueue::SupportsFormat(VK_FORMAT_S8_UINT,DebugCaptureQueue::Attachment::Depth)
+       || DebugCaptureQueue::SupportsFormat(VK_FORMAT_UNDEFINED,DebugCaptureQueue::Attachment::Color))
+        return 2;
+    EmptyTarget other_target;
+    const uint64_t unavailable=DebugCaptureQueue::RegisterTarget(
+        false,false,DebugCaptureQueue::Source::Offscreen,&other_target,"unavailable");
+    const char *unavailable_error=nullptr;
+    if(!::strstr(DebugCaptureQueue::GetTargetsJSON().c_str(),"\"availability\":\"unavailable\"")
+       || DebugCaptureQueue::Request(unavailable,DebugCaptureQueue::Attachment::Color,&unavailable_error)
+       || !unavailable_error || ::strcmp(unavailable_error,"attachment_unavailable")!=0)
+        return 2;
+    DebugCaptureQueue::UnregisterTarget(unavailable);
+    const uint64_t offscreen=DebugCaptureQueue::RegisterTarget(
+        true,false,DebugCaptureQueue::Source::Offscreen,&target);
+    if(!::strstr(DebugCaptureQueue::GetTargetsJSON().c_str(),"\"source\":\"offscreen\""))
+        return 2;
+    const uint64_t wrong_target=DebugCaptureQueue::Request(offscreen,DebugCaptureQueue::Attachment::Color);
+    if(!DebugCaptureQueue::HasQueued(offscreen)) return 2;
+    DebugCaptureQueue::Process(&other_target,offscreen,1);
+    DebugCaptureQueue::Result result;
+    if(!DebugCaptureQueue::GetResult(wrong_target,result)
+       || result.state!=DebugCaptureQueue::State::Failed || !result.error
+       || ::strcmp(result.error,"target_mismatch")!=0
+       || !DebugCaptureQueue::Release(wrong_target)
+       || DebugCaptureQueue::HasQueued(offscreen))
+        return 2;
+    const uint64_t rebuilt=DebugCaptureQueue::Request(offscreen,DebugCaptureQueue::Attachment::Color);
+    const VkFormat formats[]={VK_FORMAT_R8G8B8A8_UNORM};
+    DebugCaptureQueue::SetOffscreenDetails(offscreen,formats,1,VK_FORMAT_D32_SFLOAT,false,true);
+    if(!DebugCaptureQueue::GetResult(rebuilt,result) || result.state!=DebugCaptureQueue::State::Failed
+       || !result.error || ::strcmp(result.error,"target_rebuilt")!=0
+       || !DebugCaptureQueue::Release(rebuilt)
+       || DebugCaptureQueue::Request(offscreen,DebugCaptureQueue::Attachment::Color))
+        return 2;
+    if(!::strstr(DebugCaptureQueue::GetTargetsJSON().c_str(),"\"color_attachment_count\":1")
+       || !::strstr(DebugCaptureQueue::GetTargetsJSON().c_str(),"\"attachment\":\"depth\""))
+        return 2;
+    DebugCaptureQueue::UnregisterTarget(offscreen);
     const uint64_t no_depth=DebugCaptureQueue::RegisterTarget(true,false);
     const char *error=nullptr;
     if(!no_depth || DebugCaptureQueue::Request(no_depth,DebugCaptureQueue::Attachment::Depth,&error)
@@ -87,7 +127,6 @@ int main()
        || !error || ::strcmp(error,"unknown_target")!=0)
         return 2;
     const uint64_t request_id=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Color);
-    DebugCaptureQueue::Result result;
     if(!request_id || !DebugCaptureQueue::GetResult(request_id,result)
        || result.state!=DebugCaptureQueue::State::Queued || DebugCaptureQueue::Release(request_id))
         return 3;

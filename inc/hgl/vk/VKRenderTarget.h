@@ -164,6 +164,9 @@ public: // 附件访问窗口（新虚函数一律追加在末尾，避免平移
     ///
     /// 离屏 RT：恒为真（其 GPU 工作已由提交信号量/围栏排序，帧外读回是合法的）。
     virtual bool                IsColorReadbackWindowOpen()const{return true;}
+
+    virtual void                MarkManagedCapturePass(bool) {}
+    virtual bool                IsRenderRecordingValid() const { return true; }
 };//class IRenderTarget
 
 }//namespace hgl::graph

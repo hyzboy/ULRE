@@ -63,6 +63,7 @@ private:
     uint32_t swapchain_image_index = 0;
     bool frame_begun = false;
     bool render_pass_begun = false;
+    bool capture_pass_safe = false;
 
     // 渲染命令缓冲区
     hgl::graph::RenderCmdBuffer* render_cmd = nullptr;
@@ -128,7 +129,7 @@ public:
      *
      * 调用此方法后，render_cmd 变为无效
      */
-    void EndFrame();
+    bool EndFrame();
 
     /**
      * 获取当前渲染命令缓冲区

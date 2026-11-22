@@ -6,16 +6,26 @@
 `tools/ulre-mcp-server` 提供桥接与图像分析。当前实现仍是诊断原型，不能视为完整、
 可靠的端到端抓帧系统：
 
-- `list_capture_targets` 列出支持抓取的交换链及已提交的 Debug View 离屏目标；`capture_frame` 接受 target ID 和
+- `list_capture_targets` 列出交换链、Debug View 和管理器创建的普通离屏目标；`capture_frame` 接受 target ID 和
   `color`/`depth`/`color_depth`，返回请求 ID，随后可通过 `get_capture_status` 查询。
   `color_depth` 在同一个提交帧内读取两个附件，返回各自的清单与文件。抓取只在该
-  交换链提交后、present 前执行。`cancel_capture` 可取消排队请求；终态需调用
+  交换链提交后、present 前执行；普通离屏目标在该目标提交成功后执行。`cancel_capture` 可取消排队请求；终态需调用
   `release_capture` 释放状态槽，文件不会自动删除。排队超时为 30 秒。
   深度模板格式仅读回深度 aspect，返回的 `pixel_size`/`row_pitch` 描述副本，
   不等于深度模板联合像素布局。独立请求可能属于不同帧，必须检查 `frame_id`。
+- 普通离屏目标的资源所有者必须在渲染线程显式调用 `EnableManagedDebugCapture()`，
+  保证附件只由托管渲染路径写入，且所有访问均由图形队列执行并遵守资源生命周期。
+  未 opt-in 的目标显示 `availability: unavailable`、无可抓取附件。当前只支持零或一个颜色附件，
+  且只在完整清屏、非 scissor 的托管 pass 成功结束并提交到图形队列后读回；
+  load、scissor、其他队列和不符合契约的帧返回 `frame_unavailable`。
+  多颜色附件、缺少 transfer-source usage、未知格式不可抓取。
+  `attachment_details` 描述至多前 8 个颜色附件的索引、格式和可用性，以及深度附件；
+  `color_attachment_count` 始终报告实际数量。
+  普通离屏 `frame_id` 是该目标的成功托管提交序号，不是交换链全局帧号；相机、viewport
+  标记为 unavailable/null，不可用于需要这些信息的深度分析；符合条件的 pass
+  以 0 清空深度，清单记录该实际值。
 - `dump_render_target` 和 `dump_buffer` 是旧接口，只读取最近一条 C++ 抓取结果，
-  不创建请求，也不保证结果属于调用者或当前帧。除 Debug View 专用目标外的通用离屏目标
-  和 SSBO 的远程抓取尚未接入。
+  不创建请求，也不保证结果属于调用者或当前帧。SSBO 的远程抓取尚未接入。
 - 纹理和缓冲 staging 读回在等待提交完成、映射后显式 invalidate 映射内存，
   invalidate 失败时不发布数据。旧 `FrameDebugger` 缓冲接口仍可能读到上传镜像，
   不能作为 GPU 写入的 SSBO 的可靠抓取接口。

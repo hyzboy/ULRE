@@ -103,15 +103,18 @@ bool RenderSystemCore::BeginRenderPass(const hgl::graph::RenderPassOptions *opti
     if (render_target && render_target->GetColorCount() > 0)
         render_cmd->SetClearColor(0, render_target->GetClearColor());
 
-    render_cmd->BeginRendering(render_target, options);   // Dynamic Rendering（替代传统 BeginRenderPass）
+    if(!render_cmd->BeginRendering(render_target, options))
+        return false;
     render_pass_begun = true;
+    capture_pass_safe = !options || (!options->load_color && !options->load_depth
+                                     && !options->use_scissor && !options->clear_scissor_depth);
     return true;
 }
 
-void RenderSystemCore::EndFrame() {
+bool RenderSystemCore::EndFrame() {
     if (!frame_begun) {
         LogWarning("RenderSystemCore::EndFrame: frame not begun");
-        return;
+        return false;
     }
 
     // 重新获取render_target以防resize时被重建
@@ -123,21 +126,27 @@ void RenderSystemCore::EndFrame() {
         LogError("RenderSystemCore::EndFrame: render_target is null");
         frame_begun = false;
         render_pass_begun = false;
-        return;
+        return false;
     }
 
     if (render_cmd && render_pass_begun)
+    {
         render_cmd->EndRenderingPresent(render_target);   // Dynamic Rendering（EndRendering + color→PRESENT_SRC 布局转换）
+        render_target->MarkManagedCapturePass(capture_pass_safe);
+    }
 
     if(render_cmd && render_pass_begun && render_target->IsSwapchain())
         DebugViewPass::Record(world,render_cmd,render_target);
 
     render_target->EndRender();
+    const bool valid=render_pass_begun && render_target->IsRenderRecordingValid();
 
     ++render_submission_serial;
     render_cmd = nullptr;
     frame_begun = false;
     render_pass_begun = false;
+    capture_pass_safe = false;
+    return valid;
 }
 
 } // namespace hgl::ecs

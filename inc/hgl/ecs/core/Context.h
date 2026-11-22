@@ -381,7 +381,7 @@ namespace hgl
             void ExecuteScenePrePassWorkflow(float deltaTime);
 
             bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true, const graph::RenderPassOptions *options = nullptr);
-            void EndManagedRenderFrame(float deltaTime);
+            bool EndManagedRenderFrame(float deltaTime);
             void RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
                                                ExecutionPhase maxPhase,
                                                float deltaTime,

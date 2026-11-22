@@ -13,7 +13,7 @@ namespace hgl::graph
     public:
         enum class Attachment { Color, Depth, ColorDepth };
         enum class State { Empty, Queued, Capturing, Succeeded, Failed, Cancelled };
-        enum class Source { Swapchain, DebugView };
+        enum class Source { Swapchain, DebugView, Offscreen };
 
         struct CameraSnapshot
         {
@@ -57,7 +57,11 @@ namespace hgl::graph
             Secondary depth;
         };
 
-        static uint64_t RegisterTarget(bool color=true,bool depth=true,Source source=Source::Swapchain);
+        static uint64_t RegisterTarget(bool color=true,bool depth=true,Source source=Source::Swapchain,
+                                       IRenderTarget *bound_target=nullptr,const char *name=nullptr);
+        static bool SupportsFormat(VkFormat format,Attachment attachment);
+        static void SetOffscreenDetails(uint64_t target_id,const VkFormat *colors,uint32_t count,VkFormat depth,
+                                        bool can_color,bool can_depth);
         static void UnregisterTarget(uint64_t target_id);
         static AnsiString GetTargetsJSON();
         static uint64_t Request(uint64_t target_id,Attachment attachment,const char **error=nullptr,
@@ -65,6 +69,7 @@ namespace hgl::graph
         static bool GetResult(uint64_t request_id,Result &result);
         static bool Cancel(uint64_t request_id);
         static bool Release(uint64_t request_id);
+        static bool HasQueued(uint64_t target_id);
         static AnsiString GetResultJSON(uint64_t request_id);
         static void BeginFrame(uint64_t target_id,uint64_t frame_id,uint32_t debug_mode=0);
         static void RecordCamera(uint64_t target_id,const CameraInfo *camera);

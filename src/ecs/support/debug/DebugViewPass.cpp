@@ -139,7 +139,7 @@ namespace hgl::ecs
             info.SetExtent(extent.width,extent.height);
             static uint64_t serial=0;
             const AnsiString name=AnsiString("DebugView_")+AnsiString::numberOf(++serial);
-            OffscreenRenderTarget *target=manager->CreateOffscreenRT(world,name,&info,1);
+            OffscreenRenderTarget *target=manager->CreateOffscreenRT(world,name,&info,1,false);
             if(!target) return false;
             const uint64_t id=DebugCaptureQueue::RegisterTarget(
                 true,true,DebugCaptureQueue::Source::DebugView);

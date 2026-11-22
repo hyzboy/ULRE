@@ -109,7 +109,7 @@ TOOLS = [
     },
     {
         "name": "list_capture_targets",
-        "description": "List registered swapchain and debug-view offscreen targets.",
+        "description": "List registered swapchain, ordinary offscreen and debug-view targets.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {

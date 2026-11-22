@@ -260,6 +260,16 @@ class AnalyzerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "conflicts"):
             capture_manifest.analyze_capture(path, "depth", reversed_z_override=True)
 
+    def test_offscreen_unknown_clear_depth_is_not_guessed(self):
+        self.capture("capture.raw", struct.pack("<f", 0.5))
+        path = self.manifest(source="offscreen", attachment="depth", encoding="r32f",
+                             vk_format=130, copy_aspect="depth", clear_depth=None,
+                             camera_status="unavailable", camera=None)
+        metadata, _ = capture_manifest.load_manifest(path)
+        self.assertIsNone(metadata["clear_depth"])
+        with self.assertRaisesRegex(ValueError, "clear_depth"):
+            capture_manifest.analyze_capture(path, "depth", reversed_z_override=True)
+
     def test_manifest_analysis_respects_row_padding(self):
         self.capture("capture.raw", bytes((0, 0, 255, 255, 123, 123,
                                             255, 0, 0, 255, 123, 123)))
