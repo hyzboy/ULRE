@@ -178,6 +178,8 @@ def analyze_surface(path, width, height, pixel_format="rgba8"):
 
 
 def analyze_depth(path, width, height, reversed_z=False, clear_depth=None):
+    if not isinstance(reversed_z, bool):
+        raise ValueError("reversed_z must be boolean")
     data = _read_raw(path)
     channels = _float32_channels(data, width, height, "r32f")
     count = width * height
@@ -188,24 +190,34 @@ def analyze_depth(path, width, height, reversed_z=False, clear_depth=None):
         bucket = min(9, max(0, int(value * 10.0)))
         histogram[bucket] += 1
 
-    invalid = sum(not math.isfinite(v) or v < 0.0 or v > 1.0 for v in values)
+    nan_count = sum(math.isnan(v) for v in values)
+    inf_count = sum(math.isinf(v) for v in values)
+    out_of_range_count = sum(math.isfinite(v) and not 0.0 <= v <= 1.0 for v in values)
+    invalid = nan_count + inf_count + out_of_range_count
     if clear_depth is None:
         clear_depth = 0.0 if reversed_z else 1.0
     if not isinstance(clear_depth, (int, float)) or isinstance(clear_depth, bool) or \
             not math.isfinite(clear_depth) or not 0.0 <= clear_depth <= 1.0:
         raise ValueError("clear_depth must be a finite number in [0, 1]")
-    return {
-        "valid": True,
+    result = {
+        "valid": bool(finite),
         "reversed_z": reversed_z,
         "min": min(finite) if finite else None,
         "max": max(finite) if finite else None,
         "mean": sum(finite) / len(finite) if finite else None,
-        "effective_depth_ratio": sum(v != clear_depth for v in finite) / count,
+        "effective_depth_ratio": (sum(v != clear_depth for v in finite) / count) if finite else None,
         "clear_depth": clear_depth,
         "valid_depth_count": len(finite),
         "invalid_depth_ratio": invalid / max(1, count),
+        "nan_count": nan_count,
+        "inf_count": inf_count,
+        "out_of_range_count": out_of_range_count,
+        "clear_depth_count": sum(v == clear_depth for v in finite),
         "histogram_0_1": histogram,
     }
+    if not finite:
+        result["error"] = "no_valid_depth_samples"
+    return result
 
 
 def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16,
@@ -275,7 +287,8 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
                 points.append(point)
 
     if not points:
-        return {"valid": True, "point_count": 0, "bounds": None}
+        return {"valid": False, "error": "no_valid_non_clear_samples",
+                "point_count": 0, "bounds": None}
 
     mins = [min(p[i] for p in points) for i in range(3)]
     maxs = [max(p[i] for p in points) for i in range(3)]

@@ -192,6 +192,23 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(result["bounds"]["min"], [3.0, -2.0, 7.5])
         self.assertEqual(result["bounds"]["max"], [3.0, -2.0, 7.5])
 
+    def test_invalid_depth_is_not_reported_as_valid(self):
+        depth = self.capture("invalid.raw", struct.pack("<3f", math.nan, math.inf, -1.0))
+        result = analyzer.analyze_depth(depth, 3, 1)
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["error"], "no_valid_depth_samples")
+        self.assertIsNone(result["effective_depth_ratio"])
+        self.assertEqual((result["nan_count"], result["inf_count"],
+                          result["out_of_range_count"]), (1, 1, 1))
+
+    def test_world_position_with_only_clear_pixels_has_no_result(self):
+        depth = self.capture("clear.raw", struct.pack("<f", 0.0))
+        inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                   0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        result = analyzer.reconstruct_world_pos(depth, 1, 1, inverse, True, 1)
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["error"], "no_valid_non_clear_samples")
+
     def test_manifest_world_position_requires_known_coordinate_space(self):
         self.capture("capture.raw", struct.pack("<f", 0.5))
         camera = {"reversed_z": True, "matrix_layout": "column_major",
