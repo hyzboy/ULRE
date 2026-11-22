@@ -94,17 +94,24 @@ bool GpuQueryProfiler::InitPools(VulkanDevice *device_)
     }
 
     // 只请求与 mesh shader 绘制兼容的位（见头文件 07076 注释）；
-    // 含 task/mesh EXT 位建池失败则去掉两位重试
+    // VUID-07069：未启用 meshShaderQueries 时不得请求 task/mesh 位 —— 校验层在
+    // **首次建池**就会判错，不能只靠失败后重试（重试前的那次 VUID 已被记录）。
+    // 本工程在 VKDeviceCreater 里把设备支持的 mesh 特性原样启用，故此处读支持值即可。
+    VkQueryPipelineStatisticFlags stat_flags =
+        VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
+      | VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+
+    if(device_->GetPhyDevice()->GetMeshShaderFeatures().meshShaderQueries)
+        stat_flags |= VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT
+                    | VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT;
+
     VkQueryPoolCreateInfo sci{};
     sci.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     sci.queryType  = VK_QUERY_TYPE_PIPELINE_STATISTICS;
     sci.queryCount = kFrameSlots * kMaxPassesPerFrame;
-    sci.pipelineStatistics =
-        VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT
-      | VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT;
+    sci.pipelineStatistics = stat_flags;
 
+    // 建池仍可能因其他原因失败（位不受支持等）：去掉 task/mesh 位重试
     if(vkCreateQueryPool(device,&sci,nullptr,&stats_pool)!=VK_SUCCESS)
     {
         sci.pipelineStatistics &= ~(VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT
