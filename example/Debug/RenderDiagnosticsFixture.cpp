@@ -15,7 +15,6 @@
 #include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/GPUModelRefComponent.h>
 #include<hgl/ecs/core/entity/Entity.h>
@@ -179,8 +178,9 @@ int os_main(int argc,os_char **argv)
     if(!shadow_target_id)
         return 10;
 
+    // 取相机只走世界级访问器（A7c：示例不直取组件，`example/` 下不得出现组件类型名）
     auto camera_system=world->GetSystem<CameraSystem>();
-    CameraComponent *camera=camera_system?camera_system->GetMainCameraComponent():nullptr;
+    auto *camera=camera_system?world->GetCameraByEntity(instance.GetCameraEntityID()):nullptr;
     if(!camera)
         return 6;
     camera_system->SetOverrideCamera(camera);

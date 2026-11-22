@@ -64,6 +64,9 @@ namespace hgl
 
             bool IsInstantiated() const { return world != nullptr; }
             void Release();
+            /// 关卡相机实体（`spec.camera.enabled` 为假时是 `EntityID::Invalid()`）；
+            /// 取相机组件本身仍走世界级入口 `ECSContext::GetCameraByEntity`
+            ecs::EntityID GetCameraEntityID() const { return camera_entity_id; }
             int GetMaterialCount() const { return materials.GetCount(); }
             const RuntimeMaterial *GetMaterial(int index) const
             {
