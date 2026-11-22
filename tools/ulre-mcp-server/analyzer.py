@@ -1,0 +1,275 @@
+import json
+import math
+import struct
+from pathlib import Path
+
+
+def _read_raw(path):
+    data = Path(path).read_bytes()
+    if not data:
+        raise ValueError("Capture file is empty")
+    return data
+
+
+def _float32_channels(data, width, height, pixel_format):
+    count = width * height
+    if pixel_format == "r32f":
+        if len(data) < count * 4:
+            raise ValueError("R32F capture is shorter than width * height")
+        values = struct.unpack("<" + "f" * count, data[: count * 4])
+        return [(v,) for v in values]
+
+    pixel_size = 4
+    if len(data) < count * pixel_size:
+        raise ValueError("Capture is shorter than width * height * 4")
+
+    channels = []
+    for offset in range(0, count * pixel_size, pixel_size):
+        packed = struct.unpack_from("<I", data, offset)[0]
+        if pixel_format in ("rgba8", "bgra8", "rgb8"):
+            channels.append(tuple(data[offset + i] / 255.0 for i in range(3)))
+        elif pixel_format in ("a2bgr10", "rgb10a2", "a2r10g10b10"):
+            r = ((packed >> 0) & 0x3FF) / 1023.0
+            g = ((packed >> 10) & 0x3FF) / 1023.0
+            b = ((packed >> 20) & 0x3FF) / 1023.0
+            channels.append((r, g, b))
+        else:
+            channels.append(tuple(data[offset + i] / 255.0 for i in range(min(3, len(data) - offset))))
+    return channels
+
+
+def _percentile(values, percentile):
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * percentile
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    fraction = position - lower
+    return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
+
+
+def analyze_luminance(path, width, height, pixel_format="rgba8"):
+    data = _read_raw(path)
+    channels = _float32_channels(data, width, height, pixel_format)
+    luminance = []
+    nan_count = 0
+    inf_count = 0
+    negative_count = 0
+    for channel in channels:
+        if pixel_format == "r32f":
+            value = channel[0]
+            if math.isnan(value):
+                nan_count += 1
+                continue
+            if math.isinf(value):
+                inf_count += 1
+                continue
+            if value < 0.0:
+                negative_count += 1
+        else:
+            value = 0.2126 * channel[0] + 0.7152 * channel[1] + 0.0722 * channel[2]
+        luminance.append(value)
+
+    finite = [v for v in luminance if math.isfinite(v)]
+    mean = sum(finite) / len(finite) if finite else 0.0
+    variance = sum((v - mean) ** 2 for v in finite) / len(finite) if finite else 0.0
+    return {
+        "valid": True,
+        "width": width,
+        "height": height,
+        "pixel_format": pixel_format,
+        "mean": mean,
+        "stddev": math.sqrt(variance),
+        "p05": _percentile(finite, 0.05),
+        "p50": _percentile(finite, 0.50),
+        "p95": _percentile(finite, 0.95),
+        "underexposed_ratio": sum(v < 0.005 for v in finite) / max(1, width * height),
+        "overexposed_ratio": sum(v > 0.995 for v in finite) / max(1, width * height),
+        "nan_count": nan_count,
+        "inf_count": inf_count,
+        "negative_count": negative_count,
+    }
+
+
+def analyze_normals(path, width, height, pixel_format="rgba8"):
+    data = _read_raw(path)
+    channels = _float32_channels(data, width, height, pixel_format)
+    lengths = []
+    zero_count = 0
+    high_error_count = 0
+    positive_z = 0
+    negative_z = 0
+    front_facing = 0
+    for r, g, b in channels:
+        nx = r * 2.0 - 1.0
+        ny = g * 2.0 - 1.0
+        nz = b * 2.0 - 1.0
+        length = math.sqrt(nx * nx + ny * ny + nz * nz)
+        lengths.append(length)
+        if length < 0.1:
+            zero_count += 1
+        if abs(length - 1.0) > 0.05:
+            high_error_count += 1
+        if nz > 0.0:
+            positive_z += 1
+        else:
+            negative_z += 1
+        if nz > 0.0:
+            front_facing += 1
+
+    total = max(1, width * height)
+    mean_length_error = sum(abs(length - 1.0) for length in lengths) / len(lengths) if lengths else 0.0
+    return {
+        "valid": True,
+        "mean_length_error": mean_length_error,
+        "zero_normal_ratio": zero_count / total,
+        "length_error_ratio": high_error_count / total,
+        "positive_z_ratio": positive_z / total,
+        "negative_z_ratio": negative_z / total,
+        "heuristic_front_facing_ratio": front_facing / total,
+    }
+
+
+def analyze_surface(path, width, height, pixel_format="rgba8"):
+    data = _read_raw(path)
+    channels = _float32_channels(data, width, height, pixel_format)
+    roughness = [c[0] for c in channels]
+    metallic = [c[1] for c in channels]
+    ao = [c[2] for c in channels]
+
+    def stats(values):
+        mean = sum(values) / len(values) if values else 0.0
+        return {
+            "mean": mean,
+            "p05": _percentile(values, 0.05),
+            "p50": _percentile(values, 0.50),
+            "p95": _percentile(values, 0.95),
+        }
+
+    return {
+        "valid": True,
+        "roughness": stats(roughness),
+        "metallic": stats(metallic),
+        "ao": stats(ao),
+        "dead_roughness_ratio": sum(v < 0.001 or v > 0.999 for v in roughness) / max(1, width * height),
+        "dead_metallic_ratio": sum(v < 0.001 or v > 0.999 for v in metallic) / max(1, width * height),
+    }
+
+
+def analyze_depth(path, width, height, reversed_z=False):
+    data = _read_raw(path)
+    count = width * height
+    if len(data) < count * 4:
+        raise ValueError("Depth capture is shorter than width * height * 4")
+    values = list(struct.unpack("<" + "f" * count, data[: count * 4]))
+    finite = [v for v in values if math.isfinite(v)]
+    histogram = [0] * 10
+    for value in finite:
+        bucket = min(9, max(0, int(value * 10.0)))
+        histogram[bucket] += 1
+
+    invalid = sum(not math.isfinite(v) or v < 0.0 or v > 1.0 for v in values)
+    return {
+        "valid": True,
+        "reversed_z": reversed_z,
+        "min": min(finite) if finite else 0.0,
+        "max": max(finite) if finite else 0.0,
+        "mean": sum(finite) / len(finite) if finite else 0.0,
+        "effective_depth_ratio": len(finite) / max(1, count),
+        "invalid_depth_ratio": invalid / max(1, count),
+        "histogram_0_1": histogram,
+    }
+
+
+def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16):
+    depth = _read_raw(depth_path)
+    count = width * height
+    if len(depth) < count * 4:
+        raise ValueError("Depth capture is shorter than width * height * 4")
+
+    if len(inverse_vp) != 16:
+        raise ValueError("inverse_vp must contain 16 floats")
+
+    def multiply(row, x, y, z, w):
+        return (inverse_vp[row] * x + inverse_vp[row + 4] * y +
+                inverse_vp[row + 8] * z + inverse_vp[row + 12] * w)
+
+    points = []
+    for y in range(0, height, sample_step):
+        for x in range(0, width, sample_step):
+            d = struct.unpack_from("<f", depth, (y * width + x) * 4)[0]
+            if not math.isfinite(d) or d < 0.0 or d > 1.0:
+                continue
+            u = (x + 0.5) / width
+            v = (y + 0.5) / height
+            ndc_x = u * 2.0 - 1.0
+            ndc_y = v * 2.0 - 1.0
+            clip = [
+                multiply(0, ndc_x, ndc_y, d, 1.0),
+                multiply(1, ndc_x, ndc_y, d, 1.0),
+                multiply(2, ndc_x, ndc_y, d, 1.0),
+                multiply(3, ndc_x, ndc_y, d, 1.0),
+            ]
+            if abs(clip[3]) < 1e-8:
+                continue
+            points.append([
+                clip[0] / clip[3],
+                clip[1] / clip[3],
+                clip[2] / clip[3],
+            ])
+
+    if not points:
+        return {"valid": True, "point_count": 0, "bounds": None}
+
+    mins = [min(p[i] for p in points) for i in range(3)]
+    maxs = [max(p[i] for p in points) for i in range(3)]
+    return {
+        "valid": True,
+        "reversed_z": reversed_z,
+        "point_count": len(points),
+        "bounds": {"min": mins, "max": maxs},
+    }
+
+
+def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshold=0.01):
+    a = _read_raw(path_a)
+    b = _read_raw(path_b)
+    channels_a = _float32_channels(a, width, height, pixel_format)
+    channels_b = _float32_channels(b, width, height, pixel_format)
+    if len(channels_a) != len(channels_b):
+        raise ValueError("Frame captures have different pixel counts")
+
+    mae_sum = 0.0
+    mse_sum = 0.0
+    changed = 0
+    heatmap = bytearray(width * height)
+    for index, (ca, cb) in enumerate(zip(channels_a, channels_b)):
+        error = max(abs(ca[i] - cb[i]) for i in range(min(3, len(ca))))
+        mae_sum += error
+        mse_sum += error * error
+        if error > threshold:
+            changed += 1
+        heatmap[index] = min(255, int(error * 255.0))
+
+    count = max(1, len(channels_a))
+    rmse = math.sqrt(mse_sum / count)
+    mae = mae_sum / count
+    psnr = 20.0 * math.log10(1.0 / rmse) if rmse > 1e-12 else 100.0
+
+    heatmap_path = ".ulre-analysis/frame_diff.pgm"
+    Path(".ulre-analysis").mkdir(parents=True, exist_ok=True)
+    header = f"P5\n{width} {height}\n255\n".encode("ascii")
+    Path(heatmap_path).write_bytes(header + heatmap)
+
+    return {
+        "valid": True,
+        "mae": mae,
+        "rmse": rmse,
+        "psnr": psnr,
+        "changed_ratio": changed / count,
+        "threshold": threshold,
+        "heatmap_path": heatmap_path,
+    }

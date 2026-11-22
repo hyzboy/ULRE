@@ -2,6 +2,8 @@ import json
 import os
 import sys
 
+import analyzer
+
 
 PIPE_NAME = r"\\.\pipe\ulre_render_debug"
 
@@ -67,6 +69,68 @@ TOOLS = [
         "description": "Read the latest frame capture metadata and dump file path.",
         "inputSchema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "analyze_luminance",
+        "description": "Quantify luminance, exposure, and dead pixel ratios for a raw capture.",
+        "inputSchema": {"type": "object", "properties": {
+            "path": {"type": "string"},
+            "width": {"type": "integer", "minimum": 1},
+            "height": {"type": "integer", "minimum": 1},
+            "pixel_format": {"type": "string", "default": "rgba8"},
+        }, "required": ["path", "width", "height"]},
+    },
+    {
+        "name": "analyze_normals",
+        "description": "Validate encoded world normals and their axis distribution.",
+        "inputSchema": {"type": "object", "properties": {
+            "path": {"type": "string"},
+            "width": {"type": "integer", "minimum": 1},
+            "height": {"type": "integer", "minimum": 1},
+            "pixel_format": {"type": "string", "default": "rgba8"},
+        }, "required": ["path", "width", "height"]},
+    },
+    {
+        "name": "analyze_surface",
+        "description": "Quantify roughness, metallic, and AO debug attributes.",
+        "inputSchema": {"type": "object", "properties": {
+            "path": {"type": "string"},
+            "width": {"type": "integer", "minimum": 1},
+            "height": {"type": "integer", "minimum": 1},
+            "pixel_format": {"type": "string", "default": "rgba8"},
+        }, "required": ["path", "width", "height"]},
+    },
+    {
+        "name": "analyze_depth",
+        "description": "Quantify depth distribution and invalid depth pixels.",
+        "inputSchema": {"type": "object", "properties": {
+            "path": {"type": "string"},
+            "width": {"type": "integer", "minimum": 1},
+            "height": {"type": "integer", "minimum": 1},
+            "reversed_z": {"type": "boolean", "default": False},
+        }, "required": ["path", "width", "height"]},
+    },
+    {
+        "name": "reconstruct_world_pos",
+        "description": "Reconstruct sampled world positions from a depth capture and camera inverse VP.",
+        "inputSchema": {"type": "object", "properties": {
+            "path": {"type": "string"},
+            "width": {"type": "integer", "minimum": 1},
+            "height": {"type": "integer", "minimum": 1},
+            "sample_step": {"type": "integer", "minimum": 1, "default": 16},
+        }, "required": ["path", "width", "height"]},
+    },
+    {
+        "name": "compare_frames",
+        "description": "Compare two raw frame captures and emit MAE, RMSE, PSNR, changed ratio and heatmap.",
+        "inputSchema": {"type": "object", "properties": {
+            "path_a": {"type": "string"},
+            "path_b": {"type": "string"},
+            "width": {"type": "integer", "minimum": 1},
+            "height": {"type": "integer", "minimum": 1},
+            "pixel_format": {"type": "string", "default": "rgba8"},
+            "threshold": {"type": "number", "minimum": 0.0, "default": 0.01},
+        }, "required": ["path_a", "path_b", "width", "height"]},
+    },
 ]
 
 
@@ -119,7 +183,46 @@ def handle(request):
                 "isError": True,
                 "content": [{"type": "text", "text": "Unknown tool: " + str(tool_name)}],
             })
-        value = call_engine(tool_name, params.get("arguments", {}))
+        arguments = params.get("arguments", {})
+
+        try:
+            if tool_name == "analyze_luminance":
+                value = analyzer.analyze_luminance(
+                    arguments["path"], arguments["width"], arguments["height"],
+                    arguments.get("pixel_format", "rgba8"))
+            elif tool_name == "analyze_normals":
+                value = analyzer.analyze_normals(
+                    arguments["path"], arguments["width"], arguments["height"],
+                    arguments.get("pixel_format", "rgba8"))
+            elif tool_name == "analyze_surface":
+                value = analyzer.analyze_surface(
+                    arguments["path"], arguments["width"], arguments["height"],
+                    arguments.get("pixel_format", "rgba8"))
+            elif tool_name == "analyze_depth":
+                value = analyzer.analyze_depth(
+                    arguments["path"], arguments["width"], arguments["height"],
+                    arguments.get("reversed_z", False))
+            elif tool_name == "reconstruct_world_pos":
+                camera = call_engine("get_camera_matrices")
+                if not camera.get("valid"):
+                    value = camera
+                else:
+                    value = analyzer.reconstruct_world_pos(
+                        arguments["path"], arguments["width"], arguments["height"],
+                        camera["inverse_vp"],
+                        bool(camera.get("use_reversed_z", 0)),
+                        arguments.get("sample_step", 16))
+            elif tool_name == "compare_frames":
+                value = analyzer.compare_frames(
+                    arguments["path_a"], arguments["path_b"],
+                    arguments["width"], arguments["height"],
+                    arguments.get("pixel_format", "rgba8"),
+                    arguments.get("threshold", 0.01))
+            else:
+                value = call_engine(tool_name, arguments)
+        except Exception as exc:
+            value = {"valid": False, "error": str(exc)}
+
         return result_response(request_id, {
             "content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False)}],
             "isError": False,
