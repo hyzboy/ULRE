@@ -2,6 +2,8 @@
 #include<hgl/vk/RenderHealthLedger.h>
 #include<hgl/vk/FrameDebugger.h>
 #include<hgl/vk/VKQueryProfiler.h>
+#include<hgl/ecs/support/debug/DebugViewController.h>
+#include<hgl/mtl/DebugViewMode.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/log/Log.h>
 #include<cstring>
@@ -43,6 +45,46 @@ static AnsiString MakeMetricsJSON()
 static bool ContainsMethod(const char *request,const char *method)
 {
     return request && method && ::strstr(request,method)!=nullptr;
+}
+
+static AnsiString MakeDebugViewJSON()
+{
+    const hgl::graph::mtl::DebugViewMode mode=
+        hgl::ecs::DebugViewController::GetAppliedMode();
+
+    AnsiString json="{\"valid\":true,\"mode\":\"";
+    json+=hgl::graph::mtl::GetDebugViewModeName(mode);
+    json+="\",\"requested_mode\":\"";
+    json+=hgl::graph::mtl::GetDebugViewModeName(
+        hgl::ecs::DebugViewController::GetRequestedMode());
+    json+="\",\"tracked_entities\":";
+    json+=AnsiString::numberOf(hgl::ecs::DebugViewController::GetTrackedCount());
+    json+="}";
+    return json;
+}
+
+static AnsiString SetDebugViewFromRequest(const char *request)
+{
+    hgl::graph::mtl::DebugViewMode mode;
+
+    if(!request)
+        return AnsiString("{\"valid\":false,\"error\":\"missing_request\"}");
+
+    const char *mode_name=nullptr;
+    if(::strstr(request,"world_normal")) mode_name="world_normal";
+    else if(::strstr(request,"base_color")) mode_name="base_color";
+    else if(::strstr(request,"surface")) mode_name="surface";
+    else if(::strstr(request,"emissive")) mode_name="emissive";
+    else if(::strstr(request,"uv0")) mode_name="uv0";
+    else if(::strstr(request,"off")) mode_name="off";
+    else
+        return AnsiString("{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}");
+
+    if(!hgl::graph::mtl::ParseDebugViewMode(mode_name,mode))
+        return AnsiString("{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}");
+
+    hgl::ecs::DebugViewController::RequestMode(mode);
+    return MakeDebugViewJSON();
 }
 
 static void SendPipeResponse(HANDLE pipe,const AnsiString &body)
@@ -162,6 +204,14 @@ bool DebugBridgeServer::Execute()
         result=RenderHealthLedger::GetStatusJSON();
     else if(ContainsMethod(request,"get_pass_metrics"))
         result=MakeMetricsJSON();
+    else if(ContainsMethod(request,"get_camera_matrices"))
+        result=FrameDebugger::GetCameraSnapshotJSON();
+    else if(ContainsMethod(request,"set_debug_view"))
+        result=SetDebugViewFromRequest(request);
+    else if(ContainsMethod(request,"get_debug_view"))
+        result=MakeDebugViewJSON();
+    else if(ContainsMethod(request,"capture_frame"))
+        result=FrameDebugger::GetLatestResultJSON();
     else if(ContainsMethod(request,"dump_buffer")
          || ContainsMethod(request,"dump_render_target"))
         result=FrameDebugger::GetLatestResultJSON();

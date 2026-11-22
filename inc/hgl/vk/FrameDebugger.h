@@ -15,6 +15,8 @@ class DeviceBuffer;
 
 namespace hgl::graph
 {
+struct CameraInfo;
+
 class FrameDebugger
 {
 public:
@@ -54,6 +56,19 @@ public:
         double average = 0.0;
         uint64_t nan_count = 0;
         uint64_t inf_count = 0;
+        char dump_path[256] = {};
+    };
+
+    struct CameraSnapshot
+    {
+        bool valid = false;
+        float inverse_vp[16] = {};
+        float vp[16] = {};
+        float inverse_view[16] = {};
+        float inverse_projection[16] = {};
+        float znear = 0.0f;
+        float zfar = 0.0f;
+        uint32_t use_reversed_z = 0;
     };
 
     static uint32_t RequestColor(IRenderTarget *target,const char *name,uint32_t color_index=0);
@@ -64,5 +79,8 @@ public:
     static uint32_t GetResultCount();
     static const CaptureResult *GetResult(uint32_t index);
     static AnsiString GetLatestResultJSON();
+    static void SetCameraSnapshot(const CameraInfo *camera);
+    static CameraSnapshot GetCameraSnapshot();
+    static AnsiString GetCameraSnapshotJSON();
 };
 }//namespace hgl::graph

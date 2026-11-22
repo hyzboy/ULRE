@@ -32,7 +32,7 @@ cull      = false   # 剔除派发、CPU 参考剔除对拍
 culldump  = false   # 剔除 SSBO 与计数回读转储
 shadow    = false   # 阴影/CSM 逐 pass 诊断
 rendergraph = false # RenderGraph pass 调度、SystemGroup 注册清单、[ECS RENDER] 帧边界/相位区间
-debugbridge = false # 引擎内命名管道诊断桥接服务
+debugbridge = true  # 引擎内命名管道诊断桥接服务
 
 # ── 其它子系统 ───────────────────────────────────────────────────────────
 line      = false   # 线渲染

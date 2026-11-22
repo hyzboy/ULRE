@@ -3,6 +3,9 @@
 #include<hgl/vk/VKBufferReadback.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/graph/CameraInfo.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/io/FileOutputStream.h>
 #include<hgl/log/Log.h>
 #include<cstring>
 #include<cstdio>
@@ -19,6 +22,8 @@ uint32_t &ResultCount(){ static uint32_t count=0; return count; }
 
 uint8_t *BufferScratch(){ static uint8_t bytes[FrameDebugger::kMaxBufferBytes]; return bytes; }
 hgl::ValueArray<uint8_t> &PixelScratch(){ static hgl::ValueArray<uint8_t> bytes; return bytes; }
+FrameDebugger::CameraSnapshot &CameraSnapshotState(){ static FrameDebugger::CameraSnapshot snapshot; return snapshot; }
+uint64_t &CaptureSequence(){ static uint64_t sequence=0; return sequence; }
 
 void CopyText(char *dst,uint32_t cap,const char *src)
 {
@@ -29,6 +34,34 @@ void CopyText(char *dst,uint32_t cap,const char *src)
     const uint32_t copy=(len<cap-1)?len:cap-1;
     memcpy(dst,src,copy);
     dst[copy]=0;
+}
+
+bool SaveCaptureRaw(const char *name,const uint8_t *data,uint32_t byte_count,char *dump_path,uint32_t cap)
+{
+    if(!name||!data||byte_count==0||!dump_path||cap==0)
+        return false;
+
+    hgl::filesystem::MakePath(OS_TEXT(".ulre-captures"));
+
+    char filename[320];
+    snprintf(filename,sizeof(filename),
+             ".ulre-captures/%s_%llu.raw",
+             name,
+             static_cast<unsigned long long>(CaptureSequence()));
+
+    hgl::io::FileOutputStream *stream=
+        hgl::io::CreateFileOutputStream(ToOSString(filename));
+    if(!stream)
+        return false;
+
+    const bool ok=stream->Write(data,byte_count);
+    delete stream;
+
+    if(!ok)
+        return false;
+
+    CopyText(dump_path,cap,filename);
+    return true;
 }
 
 uint32_t AddRequest(const FrameDebugger::CaptureRequest &request)
@@ -149,6 +182,28 @@ uint32_t FrameDebugger::CollectPending()
 
         if(result.valid)
         {
+            ++CaptureSequence();
+
+            if(request.kind==RequestKind::ColorTarget)
+            {
+                ValueArray<uint8_t> &pixels=PixelScratch();
+                SaveCaptureRaw(request.name,pixels.GetData(),
+                               static_cast<uint32_t>(pixels.GetTotalBytes()),
+                               result.dump_path,sizeof(result.dump_path));
+            }
+            else if(request.kind==RequestKind::DepthTarget)
+            {
+                ValueArray<uint8_t> &pixels=PixelScratch();
+                SaveCaptureRaw(request.name,pixels.GetData(),
+                               static_cast<uint32_t>(pixels.GetTotalBytes()),
+                               result.dump_path,sizeof(result.dump_path));
+            }
+            else if(request.kind==RequestKind::Buffer)
+            {
+                SaveCaptureRaw(request.name,BufferScratch(),request.buffer_size,
+                               result.dump_path,sizeof(result.dump_path));
+            }
+
             if(result_count>=kMaxRequests)
             {
                 result_count=0;
@@ -201,7 +256,80 @@ AnsiString FrameDebugger::GetLatestResultJSON()
     json+=AnsiString::numberOf(static_cast<int>(result.format));
     json+=",\"bytes\":";
     json+=AnsiString::numberOf(static_cast<uint64_t>(result.byte_count));
+    json+=",\"dump_path\":\"";
+    json+=result.dump_path;
+    json+="\"";
+    json+=",\"capture_id\":";
+    json+=AnsiString::numberOf(CaptureSequence());
     json+="}";
+    return json;
+}
+
+void FrameDebugger::SetCameraSnapshot(const CameraInfo *camera)
+{
+    CameraSnapshot &snapshot=CameraSnapshotState();
+    snapshot.valid=(camera!=nullptr);
+    if(!camera)
+        return;
+
+    memcpy(snapshot.inverse_vp,&camera->inverse_vp[0][0],sizeof(snapshot.inverse_vp));
+    memcpy(snapshot.vp,&camera->vp[0][0],sizeof(snapshot.vp));
+    memcpy(snapshot.inverse_view,&camera->inverse_view[0][0],sizeof(snapshot.inverse_view));
+    memcpy(snapshot.inverse_projection,&camera->inverse_projection[0][0],sizeof(snapshot.inverse_projection));
+    snapshot.znear=camera->znear;
+    snapshot.zfar=camera->zfar;
+    snapshot.use_reversed_z=camera->use_reversed_z;
+}
+
+FrameDebugger::CameraSnapshot FrameDebugger::GetCameraSnapshot()
+{
+    return CameraSnapshotState();
+}
+
+AnsiString FrameDebugger::GetCameraSnapshotJSON()
+{
+    const CameraSnapshot &snapshot=CameraSnapshotState();
+    if(!snapshot.valid)
+        return AnsiString("{\"valid\":false}");
+
+    AnsiString json="{\"valid\":true,\"znear\":";
+    char number[64];
+    snprintf(number,sizeof(number),"%.9g",snapshot.znear);
+    json+=AnsiString(number);
+    json+=",\"zfar\":";
+    snprintf(number,sizeof(number),"%.9g",snapshot.zfar);
+    json+=AnsiString(number);
+    json+=",\"use_reversed_z\":";
+    json+=AnsiString::numberOf(snapshot.use_reversed_z);
+    json+=",\"inverse_vp\":[";
+    for(uint32_t i=0;i<16;i++)
+    {
+        if(i) json+=",";
+        snprintf(number,sizeof(number),"%.9g",snapshot.inverse_vp[i]);
+        json+=AnsiString(number);
+    }
+    json+="],\"vp\":[";
+    for(uint32_t i=0;i<16;i++)
+    {
+        if(i) json+=",";
+        snprintf(number,sizeof(number),"%.9g",snapshot.vp[i]);
+        json+=AnsiString(number);
+    }
+    json+="],\"inverse_view\":[";
+    for(uint32_t i=0;i<16;i++)
+    {
+        if(i) json+=",";
+        snprintf(number,sizeof(number),"%.9g",snapshot.inverse_view[i]);
+        json+=AnsiString(number);
+    }
+    json+="],\"inverse_projection\":[";
+    for(uint32_t i=0;i<16;i++)
+    {
+        if(i) json+=",";
+        snprintf(number,sizeof(number),"%.9g",snapshot.inverse_projection[i]);
+        json+=AnsiString(number);
+    }
+    json+="]}";
     return json;
 }
 }//namespace hgl::graph

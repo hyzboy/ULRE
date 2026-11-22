@@ -38,14 +38,46 @@ TOOLS = [
         "description": "Read camera and viewport contract violations.",
         "inputSchema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "get_camera_matrices",
+        "description": "Read the latest camera VP matrices and depth contract.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "set_debug_view",
+        "description": "Request an engine debug attribute view.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["off", "world_normal", "base_color", "surface", "emissive", "uv0"],
+                },
+            },
+            "required": ["mode"],
+        },
+    },
+    {
+        "name": "get_debug_view",
+        "description": "Read the current debug attribute view.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "capture_frame",
+        "description": "Read the latest frame capture metadata and dump file path.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
 ]
 
 
-def call_engine(method):
+def call_engine(method, params=None):
     if os.name != "nt":
         return {"valid": False, "error": "ULRE named pipe is available on Windows only"}
 
-    request = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method})
+    payload = {"jsonrpc": "2.0", "id": 1, "method": method}
+    if params:
+        payload["params"] = params
+    request = json.dumps(payload)
     try:
         with open(PIPE_NAME, "r+b", buffering=0) as pipe:
             pipe.write(request.encode("utf-8"))
@@ -87,7 +119,7 @@ def handle(request):
                 "isError": True,
                 "content": [{"type": "text", "text": "Unknown tool: " + str(tool_name)}],
             })
-        value = call_engine(tool_name)
+        value = call_engine(tool_name, params.get("arguments", {}))
         return result_response(request_id, {
             "content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False)}],
             "isError": False,
