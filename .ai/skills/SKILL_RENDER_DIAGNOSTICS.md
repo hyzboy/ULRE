@@ -12,6 +12,13 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
 
 ## Diagnosis order
 
+`get_render_health` currently has no identified production alert producers in
+`src`/`inc`: an empty ledger is **not** evidence that the scene is healthy.
+Ledger text also needs JSON escaping before quoted alerts can be trusted.
+`get_pass_metrics` currently exposes names and times, not its stored pipeline
+statistics; its snapshot synchronization and pass truncation need further work.
+See `doc/render-introspection-handoff.md` for current limitations and next steps.
+
 1. Call `get_render_health`.
 2. Classify alerts:
    - `Camera`: viewport/projection/Z convention mismatch.
