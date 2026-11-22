@@ -303,112 +303,129 @@ bool DebugBridgeServer::Execute()
     request[bytes_read]=0;
 
     debug_bridge::Request parsed;
-    debug_bridge::Parser parser(request,bytes_read);
-    const bool valid=parser.Parse(parsed);
+    const bool valid=parsed.Parse(request,bytes_read);
     bool protocol_error=!valid;
     AnsiString result;
     if(!valid)
         result="{\"code\":-32600,\"message\":\"Invalid request\"}";
-    else if(::strcmp(parsed.method,"get_render_health")==0)
-        result=RenderHealthLedger::GetStatusJSON();
-    else if(::strcmp(parsed.method,"get_pass_metrics")==0)
-        result=MakeMetricsJSON();
-    else if(::strcmp(parsed.method,"get_camera_matrices")==0)
-        result=FrameDebugger::GetCameraSnapshotJSON();
-    else if(::strcmp(parsed.method,"inspect_render_pipeline")==0
-         || ::strcmp(parsed.method,"get_pipeline_inspection")==0)
-        result=FrameDebugger::GetPipelineInspectionJSON();
-    else if(::strcmp(parsed.method,"trace_entity_pipeline")==0
-         || ::strcmp(parsed.method,"trace_entity_render_state")==0)
-        result=FrameDebugger::TraceEntityPipelineJSON(parsed.has_id ? parsed.id : "");
-    else if(::strcmp(parsed.method,"set_debug_view")==0)
-        result=SetDebugViewFromRequest(parsed.mode);
-    else if(::strcmp(parsed.method,"get_debug_view")==0)
-        result=MakeDebugViewJSON();
-    else if(::strcmp(parsed.method,"set_offscreen_debug_view")==0)
-    {
-        hgl::graph::mtl::DebugViewMode mode;
-        if(!hgl::graph::mtl::ParseDebugViewMode(parsed.mode,mode))
-            result="{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}";
-        else
-        {
-            hgl::ecs::DebugViewPass::RequestMode(mode);
-            result=hgl::ecs::DebugViewPass::GetStatusJSON();
-        }
-    }
-    else if(::strcmp(parsed.method,"get_offscreen_debug_view")==0)
-        result=hgl::ecs::DebugViewPass::GetStatusJSON();
-    else if(::strcmp(parsed.method,"list_capture_targets")==0)
-        result=DebugCaptureQueue::GetTargetsJSON();
-    else if(::strcmp(parsed.method,"list_capture_buffers")==0)
-        result=DebugCaptureQueue::GetBuffersJSON();
-    else if(::strcmp(parsed.method,"capture_buffer")==0)
-    {
-        if(!parsed.has_resource_id || !parsed.has_offset || !parsed.has_size)
-            result="{\"valid\":false,\"error\":\"missing_buffer_range\"}";
-        else
-        {
-            const char *error=nullptr;
-            const uint64_t request_id=DebugCaptureQueue::RequestBuffer(
-                parsed.resource_id,parsed.offset,parsed.size,&error);
-            if(request_id)
-                result=DebugCaptureQueue::GetResultJSON(request_id);
-            else
-            {
-                result="{\"valid\":false,\"error\":\"";
-                result+=error;
-                result+="\"}";
-            }
-        }
-    }
-    else if(::strcmp(parsed.method,"capture_frame")==0)
-    {
-        if(!parsed.has_target_id)
-            result="{\"valid\":false,\"error\":\"missing_target_id\"}";
-        else if(::strcmp(parsed.attachment,"color")!=0 && ::strcmp(parsed.attachment,"depth")!=0
-                && ::strcmp(parsed.attachment,"color_depth")!=0)
-            result="{\"valid\":false,\"error\":\"unsupported_attachment\"}";
-        else
-        {
-            const auto attachment=::strcmp(parsed.attachment,"color")==0
-                ?DebugCaptureQueue::Attachment::Color
-                :(::strcmp(parsed.attachment,"depth")==0
-                    ?DebugCaptureQueue::Attachment::Depth:DebugCaptureQueue::Attachment::ColorDepth);
-            const char *error=nullptr;
-            const uint64_t request_id=DebugCaptureQueue::Request(parsed.target_id,attachment,&error);
-            if(request_id)
-                result=DebugCaptureQueue::GetResultJSON(request_id);
-            else
-            {
-                result="{\"valid\":false,\"error\":\"";
-                result+=error;
-                result+="\"}";
-            }
-        }
-    }
-    else if(::strcmp(parsed.method,"get_capture_status")==0)
-        result=parsed.has_request_id?DebugCaptureQueue::GetResultJSON(parsed.request_id)
-                                    :AnsiString("{\"valid\":false,\"error\":\"missing_request_id\"}");
-    else if(::strcmp(parsed.method,"release_capture")==0)
-        result=parsed.has_request_id && DebugCaptureQueue::Release(parsed.request_id)
-              ?AnsiString("{\"valid\":true}")
-              :AnsiString("{\"valid\":false,\"error\":\"request_not_terminal_or_unknown\"}");
-    else if(::strcmp(parsed.method,"cancel_capture")==0)
-        result=parsed.has_request_id && DebugCaptureQueue::Cancel(parsed.request_id)
-              ?AnsiString("{\"valid\":true}")
-              :AnsiString("{\"valid\":false,\"error\":\"request_not_queued_or_unknown\"}");
-    else if(::strcmp(parsed.method,"dump_buffer")==0
-         || ::strcmp(parsed.method,"dump_render_target")==0)
-        result=FrameDebugger::GetLatestResultJSON();
-    else if(::strcmp(parsed.method,"inspect_camera_viewport")==0)
-        result=RenderHealthLedger::GetStatusJSON();
     else
     {
-        protocol_error=true;
-        result="{\"code\":-32601,\"message\":\"Method not found\"}";
+        const AnsiString &method=parsed.GetMethod();
+        const AnsiString mode=parsed.GetParamString("mode");
+        const AnsiString attachment=parsed.GetParamString("attachment");
+        uint64_t target_id=0,request_id=0,resource_id=0,offset=0,size=0;
+        const bool has_target_id=parsed.GetParamUInt64("target_id",target_id);
+        const bool has_request_id=parsed.GetParamUInt64("request_id",request_id);
+        const bool has_resource_id=parsed.GetParamUInt64("resource_id",resource_id);
+        const bool has_offset=parsed.GetParamUInt64("offset",offset);
+        const bool has_size=parsed.GetParamUInt64("size",size);
+
+        if(method=="get_render_health")
+            result=RenderHealthLedger::GetStatusJSON();
+        else if(method=="get_pass_metrics")
+            result=MakeMetricsJSON();
+        else if(method=="get_camera_matrices")
+            result=FrameDebugger::GetCameraSnapshotJSON();
+        else if(method=="inspect_render_pipeline" || method=="get_pipeline_inspection")
+            result=FrameDebugger::GetPipelineInspectionJSON();
+        else if(method=="trace_entity_pipeline" || method=="trace_entity_render_state")
+            result=FrameDebugger::TraceEntityPipelineJSON(parsed.GetEntity().c_str());
+        else if(method=="set_debug_view")
+            result=SetDebugViewFromRequest(mode.c_str());
+        else if(method=="get_debug_view")
+            result=MakeDebugViewJSON();
+        else if(method=="set_offscreen_debug_view")
+        {
+            hgl::graph::mtl::DebugViewMode view_mode;
+            if(!hgl::graph::mtl::ParseDebugViewMode(mode.c_str(),view_mode))
+                result="{\"valid\":false,\"error\":\"unknown_debug_view_mode\"}";
+            else
+            {
+                hgl::ecs::DebugViewPass::RequestMode(view_mode);
+                result=hgl::ecs::DebugViewPass::GetStatusJSON();
+            }
+        }
+        else if(method=="get_offscreen_debug_view")
+            result=hgl::ecs::DebugViewPass::GetStatusJSON();
+        else if(method=="list_capture_targets")
+            result=DebugCaptureQueue::GetTargetsJSON();
+        else if(method=="list_capture_buffers")
+            result=DebugCaptureQueue::GetBuffersJSON();
+        else if(method=="capture_buffer")
+        {
+            if(!has_resource_id || !has_offset || !has_size)
+                result="{\"valid\":false,\"error\":\"missing_buffer_range\"}";
+            else
+            {
+                const char *error=nullptr;
+                const uint64_t capture_request_id=DebugCaptureQueue::RequestBuffer(
+                    resource_id,offset,size,&error);
+                if(capture_request_id)
+                    result=DebugCaptureQueue::GetResultJSON(capture_request_id);
+                else
+                {
+                    result="{\"valid\":false,\"error\":\"";
+                    result+=error;
+                    result+="\"}";
+                }
+            }
+        }
+        else if(method=="capture_frame")
+        {
+            if(!has_target_id)
+                result="{\"valid\":false,\"error\":\"missing_target_id\"}";
+            else if(attachment!="color" && attachment!="depth" && attachment!="color_depth")
+                result="{\"valid\":false,\"error\":\"unsupported_attachment\"}";
+            else
+            {
+                const auto attachment_type=attachment=="color"
+                    ?DebugCaptureQueue::Attachment::Color
+                    :(attachment=="depth"
+                        ?DebugCaptureQueue::Attachment::Depth:DebugCaptureQueue::Attachment::ColorDepth);
+                const char *error=nullptr;
+                const uint64_t capture_request_id=DebugCaptureQueue::Request(target_id,attachment_type,&error);
+                if(capture_request_id)
+                    result=DebugCaptureQueue::GetResultJSON(capture_request_id);
+                else
+                {
+                    result="{\"valid\":false,\"error\":\"";
+                    result+=error;
+                    result+="\"}";
+                }
+            }
+        }
+        else if(method=="get_capture_status")
+            result=has_request_id?DebugCaptureQueue::GetResultJSON(request_id)
+                                 :AnsiString("{\"valid\":false,\"error\":\"missing_request_id\"}");
+        else if(method=="release_capture")
+            result=has_request_id && DebugCaptureQueue::Release(request_id)
+                  ?AnsiString("{\"valid\":true}")
+                  :AnsiString("{\"valid\":false,\"error\":\"request_not_terminal_or_unknown\"}");
+        else if(method=="cancel_capture")
+            result=has_request_id && DebugCaptureQueue::Cancel(request_id)
+                  ?AnsiString("{\"valid\":true}")
+                  :AnsiString("{\"valid\":false,\"error\":\"request_not_queued_or_unknown\"}");
+        else if(method=="dump_buffer" || method=="dump_render_target")
+            result=FrameDebugger::GetLatestResultJSON();
+        else if(method=="inspect_camera_viewport")
+            result=RenderHealthLedger::GetStatusJSON();
+        else
+        {
+            protocol_error=true;
+            result="{\"code\":-32601,\"message\":\"Method not found\"}";
+        }
     }
 
-    if(SendPipeResponse(pipe_handle,stop_event,valid?parsed.id:"null",result,protocol_error))
+    AnsiString id_token("null");
+    if(valid)
+    {
+        U8String id_text;
+        OSString id_error;
+        if(JsonToString(parsed.GetId(),id_text,id_error))
+            id_token=AnsiString(reinterpret_cast<const char*>(id_text.c_str()),id_text.Length());
+    }
+
+    if(SendPipeResponse(pipe_handle,stop_event,id_token.c_str(),result,protocol_error))
         WaitForClientClose(pipe_handle,stop_event);
     else if(!IsStopRequested())
         GLogError(u8"[DebugBridge] Failed to send pipe response");

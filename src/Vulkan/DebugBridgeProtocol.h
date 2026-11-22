@@ -4,330 +4,210 @@
 #include<cstdint>
 #include<cstring>
 
+#include<hgl/type/String.h>
+#include<hgl/util/json/JsonTool.h>
+
 namespace hgl::graph::debug_bridge
 {
-    struct Request
+    /**
+     * Debug Bridge JSON-RPC 2.0 请求（严格解析）。
+     *
+     * 解析后端为 CMUtil JsonTool 的 nlohmann::json，取代旧手写解析器。
+     * 相对旧实现修复两处缺陷：
+     *  - 顶层 id 与 params 内 name/entity/id 不再共享状态：旧实现两者同时出现
+     *    必然解析失败（带实体名的 trace_entity_pipeline 无法使用）；
+     *  - \uXXXX 转义正确解码为 UTF-8（旧实现将非 ASCII 截断为 0xFF）。
+     *
+     * 保留的严格性（TestDebugBridgeLifecycle 覆盖）：
+     *  - jsonrpc 必须为 "2.0"；method 与 id 必填；id 仅允许 string/number/null；
+     *  - params 必须为对象；重复键拒绝（比旧实现更严：旧实现仅拒绝已知键重复）；
+     *  - target_id/request_id/resource_id/offset/size 必须为无符号整数
+     *    （拒绝负数/小数/指数/溢出）；
+     *  - mode/attachment/name/entity/id 必须为字符串；实体三别名互斥；
+     *  - 容器嵌套深度 ≤32；拒绝尾随多余内容、前导零、孤立代理项、裸控制字符。
+     */
+    class Request
     {
-        char method[96]{};
-        char mode[64]{};
-        char attachment[32]{};
-        char id[256]{};
-        bool has_id=false;
-        uint64_t target_id=0;
-        uint64_t request_id=0;
-        uint64_t resource_id=0;
-        uint64_t offset=0;
-        uint64_t size=0;
-        bool has_target_id=false;
-        bool has_request_id=false;
-        bool has_resource_id=false;
-        bool has_offset=false;
-        bool has_size=false;
-    };
+        nlohmann::json document;
+        nlohmann::json request_id;
+        const nlohmann::json *params=nullptr;
+        AnsiString method_name;
 
-    class Parser
-    {
-        const char *cursor;
-        const char *end;
-
-        void Space()
+        // 已知字符串字段不得含嵌入 NUL（与旧实现一致）
+        static bool IsPlainString(const nlohmann::json &value)
         {
-            while(cursor<end && (*cursor==' ' || *cursor=='\t' || *cursor=='\r' || *cursor=='\n'))
-                ++cursor;
-        }
-
-        bool Consume(char ch)
-        {
-            Space();
-            if(cursor==end || *cursor!=ch)
+            if(!value.is_string())
                 return false;
-            ++cursor;
-            return true;
+            const auto &text=value.get_ref<const nlohmann::json::string_t&>();
+            return ::strlen(text.c_str())==text.size();
         }
 
-        static int Hex(char ch)
+        bool Validate()
         {
-            if(ch>='0' && ch<='9') return ch-'0';
-            if(ch>='a' && ch<='f') return ch-'a'+10;
-            if(ch>='A' && ch<='F') return ch-'A'+10;
-            return -1;
-        }
-
-        bool Unicode(unsigned &value)
-        {
-            if(end-cursor<4)
+            if(!document.is_object())
                 return false;
-            value=0;
-            for(int i=0;i<4;++i)
+
+            const auto version=document.find("jsonrpc");
+            if(version==document.end() || *version!=nlohmann::json("2.0"))
+                return false;
+
+            const auto method=document.find("method");
+            if(method==document.end() || !IsPlainString(*method))
+                return false;
+
+            const auto id=document.find("id");
+            if(id==document.end())
+                return false;
+            if(id->is_string())
             {
-                const int digit=Hex(*cursor++);
-                if(digit<0)
+                if(!IsPlainString(*id))
                     return false;
-                value=(value<<4)|static_cast<unsigned>(digit);
             }
-            return true;
-        }
-
-        bool String(char *out=nullptr,size_t capacity=0)
-        {
-            if(!Consume('"'))
+            else if(!id->is_number() && !id->is_null())
                 return false;
-            size_t length=0;
-            while(cursor<end)
+
+            const auto params_it=document.find("params");
+            if(params_it!=document.end())
             {
-                unsigned ch=static_cast<unsigned char>(*cursor++);
-                if(ch=='"')
-                {
-                    if(out)
-                    {
-                        if(length>=capacity) return false;
-                        out[length]=0;
-                    }
-                    return true;
-                }
-                if(ch<0x20)
+                if(!params_it->is_object())
                     return false;
-                if(ch=='\\')
-                {
-                    if(cursor==end) return false;
-                    ch=static_cast<unsigned char>(*cursor++);
-                    switch(ch)
-                    {
-                        case '"': case '\\': case '/': break;
-                        case 'b': ch='\b'; break;
-                        case 'f': ch='\f'; break;
-                        case 'n': ch='\n'; break;
-                        case 'r': ch='\r'; break;
-                        case 't': ch='\t'; break;
-                        case 'u':
-                        {
-                            if(!Unicode(ch)) return false;
-                            if(ch>=0xd800 && ch<=0xdbff)
-                            {
-                                if(end-cursor<6 || cursor[0]!='\\' || cursor[1]!='u') return false;
-                                cursor+=2;
-                                unsigned low=0;
-                                if(!Unicode(low) || low<0xdc00 || low>0xdfff) return false;
-                                ch=0x10000+((ch-0xd800)<<10)+(low-0xdc00);
-                            }
-                            else if(ch>=0xdc00 && ch<=0xdfff)
-                                return false;
-                            if(ch>=128) ch=0xff;
-                            break;
-                        }
-                        default: return false;
-                    }
-                }
-                if(out)
-                {
-                    if(ch==0 || length+1>=capacity) return false;
-                    out[length++]=static_cast<char>(ch);
-                }
-            }
-            return false;
-        }
+                params=&*params_it;
 
-        bool Number()
-        {
-            if(cursor<end && *cursor=='-') ++cursor;
-            if(cursor==end) return false;
-            if(*cursor=='0') ++cursor;
-            else
-            {
-                if(*cursor<'1' || *cursor>'9') return false;
-                do { ++cursor; } while(cursor<end && *cursor>='0' && *cursor<='9');
-            }
-            if(cursor<end && *cursor=='.')
-            {
-                ++cursor;
-                if(cursor==end || *cursor<'0' || *cursor>'9') return false;
-                do { ++cursor; } while(cursor<end && *cursor>='0' && *cursor<='9');
-            }
-            if(cursor<end && (*cursor=='e' || *cursor=='E'))
-            {
-                ++cursor;
-                if(cursor<end && (*cursor=='+' || *cursor=='-')) ++cursor;
-                if(cursor==end || *cursor<'0' || *cursor>'9') return false;
-                do { ++cursor; } while(cursor<end && *cursor>='0' && *cursor<='9');
-            }
-            return true;
-        }
-
-        bool Unsigned(uint64_t &value)
-        {
-            Space();
-            if(cursor==end || *cursor<'0' || *cursor>'9') return false;
-            if(*cursor=='0' && cursor+1<end && cursor[1]>='0' && cursor[1]<='9')
-                return false;
-            value=0;
-            do
-            {
-                const unsigned digit=static_cast<unsigned>(*cursor-'0');
-                if(value>(UINT64_MAX-digit)/10) return false;
-                value=value*10+digit;
-                ++cursor;
-            } while(cursor<end && *cursor>='0' && *cursor<='9');
-            return true;
-        }
-
-        bool Literal(const char *text,size_t size)
-        {
-            if(static_cast<size_t>(end-cursor)<size || ::memcmp(cursor,text,size)!=0)
-                return false;
-            cursor+=size;
-            return true;
-        }
-
-        bool Value(unsigned depth)
-        {
-            if(depth>32) return false;
-            Space();
-            if(cursor==end) return false;
-            if(*cursor=='"') return String();
-            if(*cursor=='{')
-            {
-                ++cursor;
-                Space();
-                if(cursor<end && *cursor=='}') { ++cursor; return true; }
-                do
+                static const char *unsigned_keys[]=
+                    {"target_id","request_id","resource_id","offset","size"};
+                for(const char *key:unsigned_keys)
                 {
-                    if(!String() || !Consume(':') || !Value(depth+1)) return false;
-                    Space();
-                    if(cursor<end && *cursor=='}') { ++cursor; return true; }
-                } while(Consume(','));
-                return false;
-            }
-            if(*cursor=='[')
-            {
-                ++cursor;
-                Space();
-                if(cursor<end && *cursor==']') { ++cursor; return true; }
-                do
-                {
-                    if(!Value(depth+1)) return false;
-                    Space();
-                    if(cursor<end && *cursor==']') { ++cursor; return true; }
-                } while(Consume(','));
-                return false;
-            }
-            if(*cursor=='t') return Literal("true",4);
-            if(*cursor=='f') return Literal("false",5);
-            if(*cursor=='n') return Literal("null",4);
-            return Number();
-        }
-
-        bool Params(Request &request)
-        {
-            if(!Consume('{')) return false;
-            Space();
-            if(cursor<end && *cursor=='}') { ++cursor; return true; }
-            bool has_mode=false,has_attachment=false;
-            do
-            {
-                char key[96];
-                if(!String(key,sizeof(key)) || !Consume(':')) return false;
-                if(::strcmp(key,"mode")==0)
-                {
-                    if(has_mode || !String(request.mode,sizeof(request.mode))) return false;
-                    has_mode=true;
-                }
-                else if(::strcmp(key,"attachment")==0)
-                {
-                    if(has_attachment || !String(request.attachment,sizeof(request.attachment)))
+                    const auto it=params->find(key);
+                    if(it!=params->end() && !it->is_number_unsigned())
                         return false;
-                    has_attachment=true;
                 }
-                else if(::strcmp(key,"target_id")==0)
+
+                static const char *string_keys[]=
+                    {"mode","attachment","name","entity","id"};
+                int entity_aliases=0;
+                for(const char *key:string_keys)
                 {
-                    if(request.has_target_id || !Unsigned(request.target_id)) return false;
-                    request.has_target_id=true;
+                    const auto it=params->find(key);
+                    if(it==params->end())
+                        continue;
+                    if(!IsPlainString(*it))
+                        return false;
+                    if(::strcmp(key,"name")==0 || ::strcmp(key,"entity")==0 || ::strcmp(key,"id")==0)
+                        ++entity_aliases;
                 }
-                else if(::strcmp(key,"request_id")==0)
-                {
-                    if(request.has_request_id || !Unsigned(request.request_id)) return false;
-                    request.has_request_id=true;
-                }
-                else if(::strcmp(key,"resource_id")==0)
-                {
-                    if(request.has_resource_id || !Unsigned(request.resource_id)) return false;
-                    request.has_resource_id=true;
-                }
-                else if(::strcmp(key,"offset")==0)
-                {
-                    if(request.has_offset || !Unsigned(request.offset)) return false;
-                    request.has_offset=true;
-                }
-                else if(::strcmp(key,"size")==0)
-                {
-                    if(request.has_size || !Unsigned(request.size)) return false;
-                    request.has_size=true;
-                }
-                else if(::strcmp(key,"name")==0 || ::strcmp(key,"entity")==0 || ::strcmp(key,"id")==0)
-                {
-                    if(request.has_id || !String(request.id,sizeof(request.id))) return false;
-                    request.has_id=true;
-                }
-                else if(!Value(1)) return false;
-                Space();
-                if(cursor<end && *cursor=='}') { ++cursor; return true; }
-            } while(Consume(','));
-            return false;
+                if(entity_aliases>1)
+                    return false;
+            }
+
+            request_id=*id;
+            const auto &method_text=method->get_ref<const nlohmann::json::string_t&>();
+            method_name=AnsiString(method_text.c_str(),static_cast<int>(method_text.size()));
+            return true;
         }
 
     public:
-        Parser(const char *input,size_t length):cursor(input),end(input+length){}
-
-        bool Parse(Request &request)
+        bool Parse(const char *text,size_t length)
         {
-            if(!Consume('{')) return false;
-            bool has_method=false,has_version=false,has_params=false;
-            Space();
-            if(cursor<end && *cursor=='}') return false;
-            do
+            document=nlohmann::json();
+            request_id=nlohmann::json();
+            params=nullptr;
+            method_name=AnsiString();
+
+            if(!text || length==0)
+                return false;
+
+            int container_depth=0;
+            int object_depth=0;
+            bool failed=false;
+            nlohmann::json key_sets[33];    // 按对象深度(1..32)索引，用于重复键检测
+
+            auto callback=[&](int,nlohmann::json::parse_event_t event,nlohmann::json &parsed)->bool
             {
-                char key[96];
-                if(!String(key,sizeof(key)) || !Consume(':')) return false;
-                if(::strcmp(key,"method")==0)
+                if(failed)
+                    return true;
+                switch(event)
                 {
-                    if(has_method || !String(request.method,sizeof(request.method))) return false;
-                    has_method=true;
+                    case nlohmann::json::parse_event_t::object_start:
+                        ++container_depth;
+                        if(container_depth>32) { failed=true; break; }
+                        ++object_depth;
+                        key_sets[object_depth]=nlohmann::json::object();
+                        break;
+                    case nlohmann::json::parse_event_t::array_start:
+                        ++container_depth;
+                        if(container_depth>32) failed=true;
+                        break;
+                    case nlohmann::json::parse_event_t::object_end:
+                        --container_depth;
+                        --object_depth;
+                        break;
+                    case nlohmann::json::parse_event_t::array_end:
+                        --container_depth;
+                        break;
+                    case nlohmann::json::parse_event_t::key:
+                    {
+                        if(object_depth<1 || object_depth>32) { failed=true; break; }
+                        const auto &key=parsed.get_ref<const nlohmann::json::string_t&>();
+                        nlohmann::json &set=key_sets[object_depth];
+                        if(set.contains(key.c_str()))
+                            failed=true;
+                        else
+                            set[key.c_str()]=true;
+                        break;
+                    }
+                    default:
+                        break;
                 }
-                else if(::strcmp(key,"jsonrpc")==0)
+                return true;
+            };
+
+            document=nlohmann::json::parse(text,text+length,callback,false);
+            if(failed || document.is_discarded())
+                return false;
+            return Validate();
+        }
+
+        const AnsiString &GetMethod()const { return method_name; }
+        const nlohmann::json &GetId()const { return request_id; }
+
+        AnsiString GetParamString(const char *key,const char *fallback="")const
+        {
+            if(params)
+            {
+                const auto it=params->find(key);
+                if(it!=params->end() && it->is_string())
                 {
-                    char version[8];
-                    if(has_version || !String(version,sizeof(version)) || ::strcmp(version,"2.0")!=0)
-                        return false;
-                    has_version=true;
+                    const auto &text=it->get_ref<const nlohmann::json::string_t&>();
+                    return AnsiString(text.c_str(),static_cast<int>(text.size()));
                 }
-                else if(::strcmp(key,"params")==0)
+            }
+            return AnsiString(fallback);
+        }
+
+        bool GetParamUInt64(const char *key,uint64_t &value)const
+        {
+            if(params)
+            {
+                const auto it=params->find(key);
+                if(it!=params->end() && it->is_number_unsigned())
                 {
-                    if(has_params || !Params(request)) return false;
-                    has_params=true;
+                    value=it->get<uint64_t>();
+                    return true;
                 }
-                else if(::strcmp(key,"id")==0)
-                {
-                    if(request.has_id) return false;
-                    Space();
-                    const char *start=cursor;
-                    if(cursor==end || (*cursor!='"' && *cursor!='-' &&
-                       !(*cursor>='0' && *cursor<='9') && *cursor!='n')) return false;
-                    if(!Value(1)) return false;
-                    const size_t length=static_cast<size_t>(cursor-start);
-                    if(length>=sizeof(request.id)) return false;
-                    ::memcpy(request.id,start,length);
-                    request.id[length]=0;
-                    request.has_id=true;
-                }
-                else if(!Value(1)) return false;
-                Space();
-                if(cursor<end && *cursor=='}')
-                {
-                    ++cursor;
-                    Space();
-                    return cursor==end && has_method && has_version && request.has_id;
-                }
-            } while(Consume(','));
+            }
             return false;
         }
+
+        // 实体参数：按 name → entity → id 取第一个存在者（三者互斥）
+        AnsiString GetEntity()const
+        {
+            if(params)
+            {
+                if(params->contains("name"))   return GetParamString("name");
+                if(params->contains("entity")) return GetParamString("entity");
+                if(params->contains("id"))     return GetParamString("id");
+            }
+            return AnsiString();
+        }
     };
-}
+}//namespace hgl::graph::debug_bridge
