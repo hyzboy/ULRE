@@ -26,6 +26,7 @@ class OffscreenRenderTarget:public IRenderTarget
     bool debug_recorded=false;
     bool debug_managed_pass=false;
     bool debug_managed_opt_in=false;
+    float debug_clear_depth=0.0f;
 
 protected:
 
@@ -138,6 +139,7 @@ public: // Command Buffer
             {
                 ++debug_capture_frame;
                 DebugCaptureQueue::BeginFrame(debug_capture_target,debug_capture_frame);
+                DebugCaptureQueue::RecordDepthClear(debug_capture_target,hasDepth(),debug_clear_depth);
                 DebugCaptureQueue::Process(this,debug_capture_target,debug_capture_frame);
             }
         }
@@ -202,7 +204,11 @@ public:
         debug_recording=false;
     }
 
-    void MarkManagedCapturePass(bool safe) override { debug_managed_pass=debug_recording && safe; }
+    void MarkManagedCapturePass(bool safe,float clear_depth) override
+    {
+        debug_managed_pass=debug_recording && safe;
+        debug_clear_depth=clear_depth;
+    }
     bool IsRenderRecordingValid() const override { return debug_recorded; }
 };//class OffscreenRenderTarget
 

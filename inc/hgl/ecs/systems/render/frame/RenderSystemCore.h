@@ -64,6 +64,7 @@ private:
     bool frame_begun = false;
     bool render_pass_begun = false;
     bool capture_pass_safe = false;
+    float capture_clear_depth = 0.0f;
 
     // 渲染命令缓冲区
     hgl::graph::RenderCmdBuffer* render_cmd = nullptr;

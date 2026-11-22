@@ -72,6 +72,8 @@ namespace hgl::graph
             const char *error=nullptr;
             CameraSnapshot camera;
             DeviceIdentity device;
+            bool clear_depth_valid=false;
+            float clear_depth=0;
             Secondary depth;
         };
 
@@ -99,6 +101,7 @@ namespace hgl::graph
         static bool HasQueued(uint64_t target_id);
         static AnsiString GetResultJSON(uint64_t request_id);
         static void BeginFrame(uint64_t target_id,uint64_t frame_id,uint32_t debug_mode=0);
+        static void RecordDepthClear(uint64_t target_id,bool full_clear,float value);
         static void RecordCamera(uint64_t target_id,const CameraInfo *camera);
         static bool CopyCamera(uint64_t from_target,uint64_t to_target,uint64_t frame_id);
         static void Process(IRenderTarget *target,uint64_t target_id,uint64_t frame_id);

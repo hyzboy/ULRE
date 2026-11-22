@@ -123,6 +123,7 @@ int main()
     camera.use_reversed_z=1;
     DebugCaptureQueue::BeginFrame(target_id,77);
     DebugCaptureQueue::RecordCamera(target_id,&camera);
+    DebugCaptureQueue::RecordDepthClear(target_id,true,0.25f);
     if(!target_id || DebugCaptureQueue::Request(0,DebugCaptureQueue::Attachment::Color,&error)
        || !error || ::strcmp(error,"unknown_target")!=0)
         return 2;
@@ -147,6 +148,7 @@ int main()
     if(!DebugCaptureQueue::GetResult(request_id,result)
        || result.state!=DebugCaptureQueue::State::Failed || result.frame_id!=77
        || !result.camera.valid || result.camera.vp[0]!=1.0f || result.camera.reversed_z!=1
+       || !result.clear_depth_valid || result.clear_depth!=0.25f
        || !result.error || ::strcmp(result.error,"readback_failed")!=0
        || !DebugCaptureQueue::Release(request_id)
        || DebugCaptureQueue::GetResult(request_id,result))
@@ -166,6 +168,8 @@ int main()
         return 4;
 
     DebugCaptureQueue::BeginFrame(target_id,78);
+    DebugCaptureQueue::RecordDepthClear(target_id,true,0.75f);
+    DebugCaptureQueue::RecordDepthClear(target_id,false,0.0f);
     DebugCaptureQueue::RecordCamera(target_id,&camera);
     camera.vp[0][0]=2.0f;
     DebugCaptureQueue::RecordCamera(target_id,&camera);
@@ -182,7 +186,7 @@ int main()
     const uint64_t ambiguous=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Color);
     DebugCaptureQueue::Process(&target,target_id,78);
     if(!DebugCaptureQueue::GetResult(ambiguous,result) || result.camera.valid
-       || !result.camera.ambiguous || !DebugCaptureQueue::Release(ambiguous))
+       || !result.camera.ambiguous || result.clear_depth_valid || !DebugCaptureQueue::Release(ambiguous))
         return 4;
     const uint64_t group=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::ColorDepth);
     DebugCaptureQueue::Process(&target,target_id,78);

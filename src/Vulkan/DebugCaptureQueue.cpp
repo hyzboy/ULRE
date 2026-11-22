@@ -43,6 +43,8 @@ namespace hgl::graph
             VkFormat depth_format=VK_FORMAT_UNDEFINED;
             uint32_t debug_mode=0;
             DebugCaptureQueue::CameraSnapshot camera;
+            bool clear_depth_valid=false;
+            float clear_depth=0;
         };
         struct QueueState
         {
@@ -321,8 +323,12 @@ namespace hgl::graph
                 json+=",\"copy_aspect\":\"depth\",\"clear_depth\":";
                 if(result.source==DebugCaptureQueue::Source::DebugView && result.camera.valid)
                     json+=result.camera.reversed_z?"0":"1";
-                else if(result.source==DebugCaptureQueue::Source::Offscreen)
-                    json+="0";
+                else if(result.clear_depth_valid)
+                {
+                    char value[48];
+                    ::snprintf(value,sizeof(value),"%.9g",static_cast<double>(result.clear_depth));
+                    json+=value;
+                }
                 else
                     json+="null";
             }
@@ -505,6 +511,21 @@ namespace hgl::graph
                 target.frame_id=frame_id;
                 target.debug_mode=debug_mode;
                 target.camera=CameraSnapshot{};
+                target.clear_depth_valid=false;
+                return;
+            }
+    }
+
+    void DebugCaptureQueue::RecordDepthClear(uint64_t target_id,bool full_clear,float value)
+    {
+        if(!target_id) return;
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        for(Target &target:queue.targets)
+            if(target.id==target_id && target.frame_id)
+            {
+                target.clear_depth_valid=full_clear && Finite(value) && value>=0.0f && value<=1.0f;
+                target.clear_depth=value;
                 return;
             }
     }
@@ -1000,6 +1021,8 @@ namespace hgl::graph
                         {
                             result.camera=registered->camera;
                             result.debug_mode=registered->debug_mode;
+                            result.clear_depth_valid=registered->clear_depth_valid;
+                            result.clear_depth=registered->clear_depth;
                         }
                         break;
                     }

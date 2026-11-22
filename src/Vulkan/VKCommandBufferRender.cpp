@@ -6,6 +6,8 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
 
@@ -214,6 +216,13 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
         gp->PassBegin(cmd_buf,rt->IsSwapchain()?"pass:swapchain":"pass:offscreen",ext.width,ext.height);
 
     vkCmdBeginRendering(cmd_buf,&ri);
+    if(has_depth && rt->IsSwapchain())
+    {
+        auto *swapchain=dynamic_cast<SwapchainRenderTarget *>(rt);
+        if(swapchain)
+            DebugCaptureQueue::RecordDepthClear(swapchain->GetDebugCaptureTargetID(),
+                depth_att.loadOp==VK_ATTACHMENT_LOAD_OP_CLEAR,depth_att.clearValue.depthStencil.depth);
+    }
 
     vkCmdSetViewport(cmd_buf,0,1,&viewport);
 

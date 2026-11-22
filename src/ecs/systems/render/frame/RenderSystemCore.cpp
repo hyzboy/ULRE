@@ -108,6 +108,7 @@ bool RenderSystemCore::BeginRenderPass(const hgl::graph::RenderPassOptions *opti
     render_pass_begun = true;
     capture_pass_safe = !options || (!options->load_color && !options->load_depth
                                      && !options->use_scissor && !options->clear_scissor_depth);
+    capture_clear_depth = options ? options->clear_depth_value : 0.0f;
     return true;
 }
 
@@ -132,7 +133,7 @@ bool RenderSystemCore::EndFrame() {
     if (render_cmd && render_pass_begun)
     {
         render_cmd->EndRenderingPresent(render_target);   // Dynamic Rendering（EndRendering + color→PRESENT_SRC 布局转换）
-        render_target->MarkManagedCapturePass(capture_pass_safe);
+        render_target->MarkManagedCapturePass(capture_pass_safe,capture_clear_depth);
     }
 
     if(render_cmd && render_pass_begun && render_target->IsSwapchain())

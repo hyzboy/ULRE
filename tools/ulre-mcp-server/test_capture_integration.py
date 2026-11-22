@@ -476,11 +476,8 @@ class CaptureIntegrationTests(unittest.TestCase):
                         "id": 11, "method": "tools/call",
                         "params": {"name": "analyze_capture", "arguments": arguments},
                     })
-                    if attachment == "depth" and manifest.get("clear_depth") is None:
-                        self.assertTrue(analysis["result"]["isError"], analysis)
-                        error = json.loads(analysis["result"]["content"][0]["text"])
-                        self.assertIn("clear_depth", error["error"])
-                        self.skipTest("swapchain clear depth is not recorded; depth analysis unavailable")
+                    if attachment == "depth":
+                        self.assertEqual(manifest.get("clear_depth"), 0.0)
                     self.assertFalse(analysis["result"]["isError"], analysis)
                     values = json.loads(analysis["result"]["content"][0]["text"])
                     self.assertEqual(values["capture"]["frame_id"], manifest["frame_id"])
