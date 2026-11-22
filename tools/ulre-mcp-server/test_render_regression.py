@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 import render_regression
 
@@ -24,6 +27,24 @@ class FixtureAnalysisTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no_samples"):
             render_regression._check_fixture_analysis(
                 {"crosscheck": {"point_count": 0}}, "world_position")
+
+    def test_known_normal_anchor_rejects_rotated_direction(self):
+        metadata = {
+            "debug_view_mode": "world_normal", "encoding": "rgba8",
+            "width": 2, "height": 1, "row_pitch": 8,
+            "viewport": {"x": 0, "y": 0, "width": 2, "height": 1},
+            "camera": {"vp": [1, 0, 0, 0, 0, 1, 0, 0,
+                               0, 0, 1, 0, 0, 0, 0, 1]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "normal.raw"
+            path.write_bytes(bytes((0, 0, 0, 0, 128, 128, 255, 255)))
+            with patch.object(render_regression.capture_manifest, "load_manifest",
+                              return_value=(metadata, path)):
+                self.assertEqual(len(render_regression._check_known_normal_pixels("unused")), 2)
+                path.write_bytes(bytes((0, 0, 0, 0, 255, 128, 128, 255)))
+                with self.assertRaisesRegex(RuntimeError, "direction_mismatch"):
+                    render_regression._check_known_normal_pixels("unused")
 
 
 if __name__ == "__main__":

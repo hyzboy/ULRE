@@ -214,7 +214,8 @@ python tools\ulre-mcp-server\render_regression.py compare --baseline C:\runs\nor
 容差须由使用者依据目标设备实测选定，不代表已认证的跨设备范围。
 `--inject-fault camera|normal|material|coverage` 仅用于 compare 负向运行；
 normal 需 `world_normal` 模式，material 需 `surface` 模式。
-夹具对有效法线的非零和长度、surface 的 metallic 均值执行数值检查；
+夹具对有效法线的非零和长度、固定平面与立方体顶面中心投影像素的已知 +Z 法线方向、
+surface 的 metallic 均值执行数值检查；
 `world_position` 输出同帧反投影数值，并支持 RGBA32F 位置基线比较：同设备逐字节严格
 比较，跨设备显式容差的单位是世界坐标单位，mask 不一致始终失败。
 覆盖变化故障是几何 mask 变化，不代表阴影覆盖变化已验收。

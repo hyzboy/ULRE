@@ -152,6 +152,37 @@ def _check_fixture_analysis(analysis, mode):
         raise RuntimeError("fixture_metallic_out_of_range")
 
 
+def _check_known_normal_pixels(path):
+    metadata, data_path = capture_manifest.load_manifest(path)
+    if metadata.get("debug_view_mode") != "world_normal" or metadata["encoding"] != "rgba8":
+        raise RuntimeError("known_normal_requires_rgba8_world_normal")
+    camera = metadata.get("camera")
+    vp = camera.get("vp") if isinstance(camera, dict) else None
+    if not isinstance(vp, list) or len(vp) != 16 or not all(
+            isinstance(value, (int, float)) and math.isfinite(value) for value in vp):
+        raise RuntimeError("known_normal_camera_unavailable")
+    viewport = metadata["viewport"]
+    pixels = data_path.read_bytes()
+    checked = []
+    for label, z in (("floor_center", 0.0), ("cube_top_center", 1.5)):
+        point = (0.0, 0.0, z, 1.0)
+        clip = [sum(vp[column * 4 + row] * point[column] for column in range(4))
+                for row in range(4)]
+        if clip[3] <= 0:
+            raise RuntimeError("known_normal_anchor_behind_camera")
+        x = math.floor(viewport["x"] + (clip[0] / clip[3] + 1) * viewport["width"] / 2)
+        y = math.floor(viewport["y"] + (clip[1] / clip[3] + 1) * viewport["height"] / 2)
+        if not (0 <= x < metadata["width"] and 0 <= y < metadata["height"]):
+            raise RuntimeError("known_normal_anchor_outside_capture")
+        offset = y * metadata["row_pitch"] + x * 4
+        rgba = pixels[offset:offset + 4]
+        if len(rgba) != 4 or rgba[3] != 255 or any(
+                abs(rgba[i] - expected) > 2 for i, expected in enumerate((128, 128, 255))):
+            raise RuntimeError(f"known_normal_direction_mismatch:{label}:{x},{y}")
+        checked.append({"anchor": label, "pixel": [x, y], "expected_world_normal": [0, 0, 1]})
+    return checked
+
+
 def _capture_fixture(exe, mode, output_dir, timeout, fault=None):
     if os.name != "nt":
         raise regression_baseline.NotCovered("windows_named_pipe_required")
@@ -271,11 +302,21 @@ def main(argv=None):
                                     "shadow_map_capture_not_covered"]}
         analysis = _analyze_fixture(color, depth, args.mode)
         evidence["fixture_analysis"] = analysis
-        if not args.inject_fault:
+        analysis_error = None
+        try:
             _check_fixture_analysis(analysis, args.mode)
+            if args.mode == "world_normal":
+                evidence["known_normal_pixels"] = _check_known_normal_pixels(color)
+        except RuntimeError as exc:
+            analysis_error = str(exc)
+        if analysis_error and args.operation != "compare":
+            raise RuntimeError(analysis_error)
         if args.operation == "compare":
             result = regression_baseline.compare_baseline(
                 args.baseline, color, scene, args.output_dir, args.cross_device_tolerance)
+            if analysis_error:
+                result["status"] = "FAIL"
+                result["fixture_assertion_error"] = analysis_error
         else:
             result = regression_baseline.write_baseline(
                 args.baseline, color, scene, update=args.operation == "update")
