@@ -39,7 +39,11 @@ def load_manifest(path):
     metadata_path = Path(path).resolve(strict=True)
     if metadata_path.stat().st_size > MAX_MANIFEST_BYTES:
         raise ValueError("Capture manifest exceeds the size limit")
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    with metadata_path.open("rb") as source:
+        content = source.read(MAX_MANIFEST_BYTES + 1)
+    if len(content) > MAX_MANIFEST_BYTES:
+        raise ValueError("Capture manifest exceeds the size limit")
+    metadata = json.loads(content.decode("utf-8"))
     if not isinstance(metadata, dict) or metadata.get("schema") != "ulre.capture.v1":
         raise ValueError("Unsupported capture manifest schema")
     if metadata.get("source") != "swapchain":

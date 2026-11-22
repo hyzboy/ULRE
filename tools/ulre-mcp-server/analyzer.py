@@ -3,9 +3,18 @@ import struct
 import tempfile
 from pathlib import Path
 
+MAX_ANALYSIS_BYTES = 64 * 1024 * 1024
+MAX_ANALYSIS_PIXELS = 2 * 1024 * 1024
+
 
 def _read_raw(path):
-    data = Path(path).read_bytes()
+    file_path = Path(path)
+    if file_path.stat().st_size > MAX_ANALYSIS_BYTES:
+        raise ValueError("Capture exceeds the analysis byte limit")
+    with file_path.open("rb") as source:
+        data = source.read(MAX_ANALYSIS_BYTES + 1)
+    if len(data) > MAX_ANALYSIS_BYTES:
+        raise ValueError("Capture exceeds the analysis byte limit")
     if not data:
         raise ValueError("Capture file is empty")
     return data
@@ -17,6 +26,8 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None):
     if not isinstance(height, int) or isinstance(height, bool) or height <= 0:
         raise ValueError("height must be a positive integer")
     count = width * height
+    if count > MAX_ANALYSIS_PIXELS:
+        raise ValueError("Capture exceeds the analysis pixel limit")
     sizes = {"rgba8": 4, "bgra8": 4, "rgb8": 3,
              "a2bgr10": 4, "rgb10a2": 4, "a2r10g10b10": 4,
              "r32f": 4}

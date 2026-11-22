@@ -276,6 +276,14 @@ class AnalyzerTests(unittest.TestCase):
         depth = capture_manifest.analyze_capture(path, "depth")
         self.assertEqual(depth["effective_depth_ratio"], 0.5)
 
+    def test_analysis_rejects_oversized_inputs(self):
+        with self.assertRaisesRegex(ValueError, "pixel limit"):
+            analyzer._float32_channels(bytes(4), analyzer.MAX_ANALYSIS_PIXELS + 1, 1, "rgba8")
+        path = self.capture("oversized.raw", bytes(4))
+        with patch.object(analyzer, "MAX_ANALYSIS_BYTES", 2):
+            with self.assertRaisesRegex(ValueError, "byte limit"):
+                analyzer.analyze_luminance(path, 1, 1)
+
     def test_manifest_rejects_bad_layout_and_traversal(self):
         self.capture("capture.raw", bytes(4))
         for fields in ({"row_pitch": 8, "byte_count": 8},
