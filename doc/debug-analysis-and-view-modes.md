@@ -26,6 +26,9 @@
   清单反投影要求同帧绝对世界相机；由于相机快照只覆盖 primitive collect、
   未证明所有深度写入者使用同一相机，必须显式设置 `allow_unverified_depth_producers`。
   手动反投影工具仍要求调用方传入同帧 inverse VP，不隐式获取最新相机。
+- `compare_captures` 检查颜色附件的格式、尺寸、viewport 和相机矩阵，并在编码通道
+  空间比较；当前缺少场景、设备身份和 mask，必须显式允许未验证上下文，结果包含
+  背景，不能替代黄金基线。
 
 `ULRE_DEBUG.toml` 中的 `debugbridge` 控制命名管道；诊断功能应显式启用。
 不要将未实现的接口、SSIM、阴影受影比例或 Position RT 描述为已支持。

@@ -24,7 +24,7 @@ class AnalyzerTests(unittest.TestCase):
         path.write_bytes(data)
         return str(path)
 
-    def manifest(self, **overrides):
+    def manifest(self, name="capture.json", **overrides):
         metadata = {
             "schema": "ulre.capture.v1", "request_id": 1, "target_id": 2, "frame_id": 3,
             "source": "swapchain", "attachment": "color", "data_file": "capture.raw",
@@ -34,7 +34,7 @@ class AnalyzerTests(unittest.TestCase):
             "pixel_size": 4, "row_pitch": 4, "byte_count": 4,
         }
         metadata.update(overrides)
-        path = self.root / "capture.json"
+        path = self.root / name
         path.write_text(json.dumps(metadata), encoding="utf-8")
         return str(path)
 
@@ -253,6 +253,32 @@ class AnalyzerTests(unittest.TestCase):
             with self.subTest(fields=fields):
                 with self.assertRaises(ValueError):
                     capture_manifest.load_manifest(self.manifest(**fields))
+
+    def test_compare_manifests_checks_context_and_channel_error(self):
+        self.capture("a.raw", bytes((0, 0, 0, 255)))
+        self.capture("b.raw", bytes((0, 0, 255, 255)))
+        camera = {"matrix_layout": "column_major",
+                  "vp": [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0]}
+        viewport = {"x": 0, "y": 0, "width": 1, "height": 1,
+                    "min_depth": 0, "max_depth": 1}
+        shared = {"camera_status": "recorded", "camera": camera, "viewport": viewport}
+        a = self.manifest("a.json", data_file="a.raw", **shared)
+        b = self.manifest("b.json", data_file="b.raw", frame_id=4, **shared)
+        with self.assertRaisesRegex(ValueError, "explicit opt-in"):
+            capture_manifest.compare_captures(a, b, heatmap_dir=self.root,
+                                              color_space_override="linear")
+        result = capture_manifest.compare_captures(a, b, heatmap_dir=self.root,
+                                                   color_space_override="linear",
+                                                   allow_unverified_context=True)
+        self.assertAlmostEqual(result["mae"], 1 / 3)
+        self.assertAlmostEqual(result["rmse"], math.sqrt(1 / 3))
+        self.assertEqual(result["comparison_space"], "encoded_channels")
+        changed_camera = dict(camera, vp=[2.0] + camera["vp"][1:])
+        b = self.manifest("b.json", data_file="b.raw", frame_id=4,
+                          camera_status="recorded", camera=changed_camera, viewport=viewport)
+        with self.assertRaisesRegex(ValueError, "cameras differ"):
+            capture_manifest.compare_captures(a, b, color_space_override="linear",
+                                              allow_unverified_context=True)
 
 
 if __name__ == "__main__":

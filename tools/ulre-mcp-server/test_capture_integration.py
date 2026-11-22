@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -64,6 +65,23 @@ class CaptureIntegrationTests(unittest.TestCase):
                     self.assertFalse(analysis["result"]["isError"], analysis)
                     values = json.loads(analysis["result"]["content"][0]["text"])
                     self.assertEqual(values["capture"]["frame_id"], manifest["frame_id"])
+                    if attachment == "color":
+                        with tempfile.TemporaryDirectory() as output:
+                            comparison = mcp_server.handle({
+                                "id": 13, "method": "tools/call",
+                                "params": {"name": "compare_captures", "arguments": {
+                                    "metadata_path_a": str(metadata_path),
+                                    "metadata_path_b": str(metadata_path),
+                                    "color_space_override": manifest["color_space"]
+                                        if manifest["color_space"] != "unknown" else "linear",
+                                    "allow_unverified_context": True,
+                                    "heatmap_dir": output,
+                                }},
+                            })
+                            self.assertFalse(comparison["result"]["isError"], comparison)
+                            diff = json.loads(comparison["result"]["content"][0]["text"])
+                            self.assertEqual(diff["rmse"], 0)
+                            self.assertTrue(diff["psnr_infinite"])
                     if attachment == "depth":
                         arguments["operation"] = "world_position"
                         arguments["sample_step"] = 8

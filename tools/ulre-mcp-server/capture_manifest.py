@@ -26,6 +26,15 @@ def _positive_int(value, name):
     return value
 
 
+def _finite_number(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def load_manifest(path):
     metadata_path = Path(path).resolve(strict=True)
     if metadata_path.stat().st_size > MAX_MANIFEST_BYTES:
@@ -131,4 +140,56 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
     result["capture"] = {key: metadata[key] for key in ("request_id", "target_id", "frame_id")}
     result["pixel_scope"] = ("sampled_non_clear_depth" if operation == "world_position"
                              else "full_frame_including_clear")
+    return result
+
+
+def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis",
+                     color_space_override=None, allow_unverified_context=False):
+    a, data_a = load_manifest(path_a)
+    b, data_b = load_manifest(path_b)
+    if a["attachment"] != "color" or b["attachment"] != "color":
+        raise ValueError("Capture comparison currently supports color attachments only")
+    for field in ("width", "height", "encoding", "vk_format", "color_space", "viewport"):
+        if a.get(field) != b.get(field):
+            raise ValueError(f"Capture {field} differs")
+    viewport = a.get("viewport")
+    if not isinstance(viewport, dict) or any(
+            not _finite_number(viewport.get(key))
+            for key in ("x", "y", "width", "height", "min_depth", "max_depth")):
+        raise ValueError("Capture viewport is missing or invalid")
+    if viewport["x"] < 0 or viewport["y"] < 0 or viewport["width"] <= 0 or \
+            viewport["height"] <= 0 or viewport["x"] + viewport["width"] > a["width"] or \
+            viewport["y"] + viewport["height"] > a["height"] or \
+            not 0 <= viewport["min_depth"] < viewport["max_depth"] <= 1:
+        raise ValueError("Capture viewport is outside the image")
+    color_space = a["color_space"]
+    if color_space_override is not None:
+        if color_space_override not in ("linear", "srgb"):
+            raise ValueError("Invalid color space override")
+        if color_space != "unknown" and color_space != color_space_override:
+            raise ValueError("Color space override conflicts with capture metadata")
+        color_space = color_space_override
+    if color_space not in ("linear", "srgb"):
+        raise ValueError("Capture color space is unknown; supply color_space_override")
+    if a.get("camera_status") != "recorded" or b.get("camera_status") != "recorded":
+        raise ValueError("Comparison requires recorded cameras")
+    camera_a, camera_b = a.get("camera"), b.get("camera")
+    if not isinstance(camera_a, dict) or not isinstance(camera_b, dict) or \
+            camera_a.get("matrix_layout") != "column_major" or \
+            camera_b.get("matrix_layout") != "column_major" or \
+            not isinstance(camera_a.get("vp"), list) or len(camera_a["vp"]) != 16 or \
+            not all(_finite_number(value) for value in camera_a["vp"]) or \
+            camera_a["vp"] != camera_b.get("vp"):
+        raise ValueError("Capture cameras differ or are invalid")
+    if allow_unverified_context is not True:
+        raise ValueError("Scene and device context are not recorded; explicit opt-in is required")
+    result = analyzer.compare_frames(str(data_a), str(data_b), a["width"], a["height"],
+                                     a["encoding"], threshold, heatmap_dir)
+    result["captures"] = [{key: entry[key] for key in ("request_id", "target_id", "frame_id")}
+                          for entry in (a, b)]
+    result["color_space"] = color_space
+    result["comparison_space"] = "encoded_channels"
+    result["pixel_scope"] = "full_frame_including_clear"
+    result["limitations"] = ["scene and device context are unverified",
+                             "valid geometry mask is unavailable"]
     return result

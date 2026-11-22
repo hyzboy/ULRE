@@ -22,6 +22,7 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
 5. For a swapchain capture, call `list_capture_targets`, then `capture_frame` with its `target_id` and a supported `attachment`. Poll `get_capture_status` using the returned `request_id`; release terminal status with `release_capture`. Queued requests expire after 30 seconds. Offscreen targets and buffers are not yet exposed through this API.
 6. Use `analyze_capture` with the returned `metadata_path` for luminance or R32F depth. Unknown color space requires an explicit override. Statistics include clear/background pixels; do not infer a geometry-only mask.
 7. `analyze_capture` can sample world-position bounds from depth, but its camera is recorded at primitive collection only. Use `allow_unverified_depth_producers` only after confirming the scene has no incompatible depth writers; clear-depth pixels cannot be distinguished from geometry at that depth.
+8. `compare_captures` verifies image layout and camera but lacks scene/device identity and a mask. Its opt-in comparison includes background and measures encoded channels; it is not a validated golden-baseline verdict.
 6. Conclude with a reproducible root cause and the exact engine subsystem/file to change.
 
 ## Camera contract

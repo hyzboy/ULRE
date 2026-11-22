@@ -28,6 +28,18 @@ def open_engine_pipe():
 
 TOOLS = [
     {
+        "name": "compare_captures",
+        "description": "Compare compatible capture manifests; requires explicit opt-in for unverified scene/device context.",
+        "inputSchema": {"type": "object", "properties": {
+            "metadata_path_a": {"type": "string"},
+            "metadata_path_b": {"type": "string"},
+            "threshold": {"type": "number", "minimum": 0, "default": 0.01},
+            "heatmap_dir": {"type": "string"},
+            "color_space_override": {"type": "string", "enum": ["linear", "srgb"]},
+            "allow_unverified_context": {"type": "boolean", "default": False},
+        }, "required": ["metadata_path_a", "metadata_path_b"]},
+    },
+    {
         "name": "analyze_capture",
         "description": "Analyze a versioned capture manifest, including depth-based world-position bounds.",
         "inputSchema": {"type": "object", "properties": {
@@ -265,7 +277,14 @@ def handle(request):
         arguments = params.get("arguments", {})
 
         try:
-            if tool_name == "analyze_capture":
+            if tool_name == "compare_captures":
+                value = capture_manifest.compare_captures(
+                    arguments["metadata_path_a"], arguments["metadata_path_b"],
+                    arguments.get("threshold", 0.01),
+                    arguments.get("heatmap_dir", ".ulre-analysis"),
+                    arguments.get("color_space_override"),
+                    arguments.get("allow_unverified_context", False))
+            elif tool_name == "analyze_capture":
                 value = capture_manifest.analyze_capture(
                     arguments["metadata_path"], arguments["operation"],
                     arguments.get("color_space_override"), arguments.get("reversed_z_override"),
