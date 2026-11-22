@@ -75,20 +75,217 @@ namespace hgl::graph
             }
         }
 
-        bool Save(const DebugCaptureQueue::Result &result,const ValueArray<uint8_t> &pixels,
-                  char *path,size_t path_size)
+        const char *Encoding(const DebugCaptureQueue::Result &result)
+        {
+            if(result.attachment==DebugCaptureQueue::Attachment::Depth)
+            {
+                switch(result.format)
+                {
+                    case VK_FORMAT_D32_SFLOAT:
+                    case VK_FORMAT_D32_SFLOAT_S8_UINT: return "r32f";
+                    case VK_FORMAT_D16_UNORM:
+                    case VK_FORMAT_D16_UNORM_S8_UINT: return "d16_unorm";
+                    case VK_FORMAT_X8_D24_UNORM_PACK32:
+                    case VK_FORMAT_D24_UNORM_S8_UINT: return "d24_unorm_32";
+                    default: return "unknown";
+                }
+            }
+            switch(result.format)
+            {
+                case VK_FORMAT_R8G8B8A8_UNORM:
+                case VK_FORMAT_R8G8B8A8_SRGB: return "rgba8";
+                case VK_FORMAT_B8G8R8A8_UNORM:
+                case VK_FORMAT_B8G8R8A8_SRGB: return "bgra8";
+                case VK_FORMAT_A2B10G10R10_UNORM_PACK32: return "a2bgr10";
+                case VK_FORMAT_A2R10G10B10_UNORM_PACK32: return "a2r10g10b10";
+                default: return "unknown";
+            }
+        }
+
+        bool Finite(float value)
+        {
+            uint32_t bits=0;
+            ::memcpy(&bits,&value,sizeof(bits));
+            return (bits&0x7f800000u)!=0x7f800000u;
+        }
+
+        bool CameraFinite(const DebugCaptureQueue::CameraSnapshot &camera)
+        {
+            if(!Finite(camera.znear) || !Finite(camera.zfar)) return false;
+            for(float value:camera.vp) if(!Finite(value)) return false;
+            for(float value:camera.inverse_vp) if(!Finite(value)) return false;
+            for(float value:camera.camera_world_pos) if(!Finite(value)) return false;
+            return true;
+        }
+
+        void AppendFloats(AnsiString &json,const float *values,uint32_t count)
+        {
+            json+="[";
+            for(uint32_t i=0;i<count;++i)
+            {
+                if(i) json+=",";
+                char text[48];
+                ::snprintf(text,sizeof(text),"%.9g",static_cast<double>(values[i]));
+                json+=text;
+            }
+            json+="]";
+        }
+
+        void AppendJSONString(AnsiString &json,const char *value)
+        {
+            json+="\"";
+            for(const unsigned char *p=reinterpret_cast<const unsigned char *>(value);*p;++p)
+            {
+                if(*p=='"' || *p=='\\')
+                {
+                    char escaped[3]={'\\',static_cast<char>(*p),0};
+                    json+=escaped;
+                }
+                else if(*p<0x20)
+                {
+                    char escaped[7];
+                    ::snprintf(escaped,sizeof(escaped),"\\u%04x",static_cast<unsigned>(*p));
+                    json+=escaped;
+                }
+                else
+                {
+                    char text[2]={static_cast<char>(*p),0};
+                    json+=text;
+                }
+            }
+            json+="\"";
+        }
+
+        AnsiString MakeManifest(const DebugCaptureQueue::Result &result,const char *filename)
+        {
+            const char *base=::strrchr(filename,'/');
+            const char *backslash=::strrchr(filename,'\\');
+            if(backslash && (!base || backslash>base))
+                base=backslash;
+            AnsiString json="{\"schema\":\"ulre.capture.v1\",\"request_id\":";
+            json+=AnsiString::numberOf(result.request_id);
+            json+=",\"target_id\":";
+            json+=AnsiString::numberOf(result.target_id);
+            json+=",\"frame_id\":";
+            json+=AnsiString::numberOf(result.frame_id);
+            json+=",\"source\":\"swapchain\",\"attachment\":\"";
+            json+=result.attachment==DebugCaptureQueue::Attachment::Color?"color":"depth";
+            json+="\",\"data_file\":\"";
+            json+=base?base+1:filename;
+            json+="\",\"width\":";
+            json+=AnsiString::numberOf(result.width);
+            json+=",\"height\":";
+            json+=AnsiString::numberOf(result.height);
+            json+=",\"vk_format\":";
+            json+=AnsiString::numberOf(static_cast<int>(result.format));
+            json+=",\"encoding\":\"";
+            json+=Encoding(result);
+            json+="\",\"color_space\":\"";
+            json+=(result.format==VK_FORMAT_R8G8B8A8_SRGB || result.format==VK_FORMAT_B8G8R8A8_SRGB)
+                ?"srgb":"unknown";
+            json+="\",\"byte_order\":\"little\",\"samples\":1,\"mip\":0,\"layer\":0,\"pixel_size\":";
+            json+=AnsiString::numberOf(result.pixel_size);
+            json+=",\"row_pitch\":";
+            json+=AnsiString::numberOf(result.row_pitch);
+            json+=",\"byte_count\":";
+            json+=AnsiString::numberOf(result.byte_count);
+            json+=",\"mask\":\"unavailable\",\"viewport\":{\"x\":0,\"y\":0,\"width\":";
+            json+=AnsiString::numberOf(result.width);
+            json+=",\"height\":";
+            json+=AnsiString::numberOf(result.height);
+            json+=",\"min_depth\":0,\"max_depth\":1}";
+            if(result.attachment==DebugCaptureQueue::Attachment::Depth)
+                json+=",\"copy_aspect\":\"depth\",\"clear_depth\":0";
+            json+=",\"camera_status\":\"";
+            json+=result.camera.valid?"recorded":result.camera.ambiguous?"ambiguous":"unavailable";
+            json+="\",\"camera\":";
+            if(result.camera.valid)
+            {
+                json+="{\"source\":\"primitive_collect\",\"matrix_layout\":\"column_major\","
+                      "\"position_space\":\"unspecified\",\"vp\":";
+                AppendFloats(json,result.camera.vp,16);
+                json+=",\"inverse_vp\":";
+                AppendFloats(json,result.camera.inverse_vp,16);
+                json+=",\"camera_world_pos\":";
+                AppendFloats(json,result.camera.camera_world_pos,3);
+                char depth_range[96];
+                ::snprintf(depth_range,sizeof(depth_range),",\"znear\":%.9g,\"zfar\":%.9g",
+                           static_cast<double>(result.camera.znear),static_cast<double>(result.camera.zfar));
+                json+=depth_range;
+                json+=",\"reversed_z\":";
+                json+=result.camera.reversed_z?"true":"false";
+                json+="}";
+            }
+            else json+="null";
+            json+="}";
+            return json;
+        }
+
+        bool WriteNew(const char *path,const void *data,int64 length,bool &created)
+        {
+            created=false;
+            io::OpenFileOutputStream stream(ToOSString(path),io::FileOpenMode::Create);
+            if(!stream) return false;
+            created=true;
+            return stream->Write(data,length)==length;
+        }
+
+        bool Save(DebugCaptureQueue::Result &result,const ValueArray<uint8_t> &pixels)
         {
             if(!filesystem::MakePath(OS_TEXT(".ulre-captures")))
                 return false;
-            const int length=::snprintf(path,path_size,".ulre-captures/capture_%llu_%llu.raw",
+            const uint16_t endian=1;
+            if(*reinterpret_cast<const uint8_t *>(&endian)!=1)
+                return false;
+            char base[192],raw[256],raw_tmp[256],meta[256],meta_tmp[256];
+            const int length=::snprintf(base,sizeof(base),".ulre-captures%ccapture_%llu_%llu",
+                static_cast<char>(HGL_DIRECTORY_SEPARATOR),
                 static_cast<unsigned long long>(hgl::GetTimeUs()),
                 static_cast<unsigned long long>(result.request_id));
-            if(length<0 || static_cast<size_t>(length)>=path_size)
+            if(length<0 || static_cast<size_t>(length)>=sizeof(base))
                 return false;
-            io::OpenFileOutputStream stream(ToOSString(path),io::FileOpenMode::Create);
-            if(!stream)
+            ::snprintf(raw,sizeof(raw),"%s.raw",base);
+            ::snprintf(raw_tmp,sizeof(raw_tmp),"%s.raw.tmp",base);
+            ::snprintf(meta,sizeof(meta),"%s.json",base);
+            ::snprintf(meta_tmp,sizeof(meta_tmp),"%s.json.tmp",base);
+            OSString cwd;
+            if(!filesystem::GetCurrentPath(cwd))
                 return false;
-            return stream->Write(pixels.GetData(),pixels.GetTotalBytes())==pixels.GetTotalBytes();
+            const U8String raw_absolute=ToU8String(filesystem::JoinPathWithFilename(cwd,ToOSString(raw)));
+            const U8String meta_absolute=ToU8String(filesystem::JoinPathWithFilename(cwd,ToOSString(meta)));
+            if(raw_absolute.Length()>=sizeof(result.path)
+               || meta_absolute.Length()>=sizeof(result.metadata_path))
+                return false;
+            if(filesystem::FileExist(ToOSString(raw)) || filesystem::FileExist(ToOSString(meta)))
+                return false;
+            bool created=false;
+            if(!WriteNew(raw_tmp,pixels.GetData(),pixels.GetTotalBytes(),created))
+            {
+                if(created) filesystem::FileDelete(ToOSString(raw_tmp));
+                return false;
+            }
+            const AnsiString json=MakeManifest(result,raw);
+            if(!WriteNew(meta_tmp,json.c_str(),json.Length(),created))
+            {
+                filesystem::FileDelete(ToOSString(raw_tmp));
+                if(created) filesystem::FileDelete(ToOSString(meta_tmp));
+                return false;
+            }
+            if(!filesystem::FileRename(ToOSString(raw),ToOSString(raw_tmp)))
+            {
+                filesystem::FileDelete(ToOSString(raw_tmp));
+                filesystem::FileDelete(ToOSString(meta_tmp));
+                return false;
+            }
+            if(!filesystem::FileRename(ToOSString(meta),ToOSString(meta_tmp)))
+            {
+                filesystem::FileDelete(ToOSString(raw));
+                filesystem::FileDelete(ToOSString(meta_tmp));
+                return false;
+            }
+            ::memcpy(result.path,raw_absolute.c_str(),raw_absolute.Length()+1);
+            ::memcpy(result.metadata_path,meta_absolute.c_str(),meta_absolute.Length()+1);
+            return true;
         }
     }
 
@@ -316,9 +513,10 @@ namespace hgl::graph
         json+=AnsiString::numberOf(static_cast<int>(result.format));
         json+=",\"bytes\":";
         json+=AnsiString::numberOf(result.byte_count);
-        json+=",\"dump_path\":\"";
-        json+=result.path;
-        json+="\"";
+        json+=",\"dump_path\":";
+        AppendJSONString(json,result.path);
+        json+=",\"metadata_path\":";
+        AppendJSONString(json,result.metadata_path);
         if(result.error)
         {
             json+=",\"error\":\"";
@@ -353,6 +551,8 @@ namespace hgl::graph
             }
             if(!result.request_id) return;
             result.frame_id=frame_id;
+            if(result.camera.valid && !CameraFinite(result.camera))
+                result.camera.valid=false;
             TextureReadbackInfo info;
             ValueArray<uint8_t> pixels;
             result.state=State::Failed;
@@ -382,7 +582,7 @@ namespace hgl::graph
                 result.row_pitch=info.row_pitch;
                 result.format=info.format;
                 result.byte_count=pixels.GetTotalBytes();
-                if(Save(result,pixels,result.path,sizeof(result.path)))
+                if(Save(result,pixels))
                 {
                     result.state=State::Succeeded;
                     result.error=nullptr;

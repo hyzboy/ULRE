@@ -40,7 +40,8 @@ namespace hgl::graph
             uint32_t row_pitch=0;
             VkFormat format=VK_FORMAT_UNDEFINED;
             uint64_t byte_count=0;
-            char path[256]{};
+            char path[1024]{};
+            char metadata_path[1024]{};
             const char *error=nullptr;
             CameraSnapshot camera;
         };
