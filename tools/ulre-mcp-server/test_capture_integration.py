@@ -14,6 +14,46 @@ import capture_manifest
 @unittest.skipUnless(os.environ.get("ULRE_CAPTURE_TEST") == "1",
                      "requires a running engine with DebugBridge enabled")
 class CaptureIntegrationTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("ULRE_GPU_CULL_TEST") == "1",
+                         "requires the static one-board, four-dice ChessboardStress scene")
+    def test_production_gpu_cull_draw_count(self):
+        for _ in range(300):
+            listing = mcp_server.call_engine("list_capture_buffers")
+            buffers = [item for item in listing.get("buffers", [])
+                       if item["name"] == "GPUCullSystem.DrawCount" and item["available"]]
+            if buffers:
+                break
+            time.sleep(0.1)
+        self.assertEqual(len(buffers), 1, listing)
+        buffer = buffers[0]
+        self.assertEqual(buffer["size"], 4)
+        previous_frame = 0
+        for _ in range(2):
+            request = mcp_server.call_engine("capture_buffer", {
+                "resource_id": buffer["resource_id"], "offset": 0, "size": 4,
+            })
+            self.assertTrue(request["valid"], request)
+            try:
+                for _ in range(300):
+                    result = mcp_server.call_engine("get_capture_status", {
+                        "request_id": request["request_id"],
+                    })
+                    if result.get("state") not in ("queued", "capturing"):
+                        break
+                    time.sleep(0.1)
+                self.assertEqual(result["state"], "succeeded", result)
+                self.assertGreater(result["frame_id"], previous_frame)
+                previous_frame = result["frame_id"]
+                metadata = json.loads(Path(result["metadata_path"]).read_text(encoding="utf-8"))
+                self.assertEqual(metadata["resource_id"], buffer["resource_id"])
+                self.assertEqual(metadata["frame_id"], result["frame_id"])
+                self.assertEqual((metadata["offset"], metadata["byte_count"]), (0, 4))
+                data = Path(result["dump_path"]).read_bytes()
+                self.assertEqual(len(data), 4)
+                self.assertEqual(struct.unpack("<I", data)[0], 5)
+            finally:
+                mcp_server.call_engine("release_capture", {"request_id": request["request_id"]})
+
     @unittest.skipUnless(os.environ.get("ULRE_BUFFER_TEST") == "1",
                          "requires a GPU-written SSBO fixture")
     @unittest.skipIf(os.environ.get("ULRE_BUFFER_FAILURE_TEST") == "1",

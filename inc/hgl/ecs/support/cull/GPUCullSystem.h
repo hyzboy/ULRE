@@ -385,6 +385,8 @@ namespace hgl::ecs
         uint32_t cull_cmd_fence_slots_[HGL_FRAME_SLOT_TOTAL] = {};
         bool cull_cmd_submitted_[HGL_FRAME_SLOT_TOTAL] = {};
         uint32_t dispatch_count_ = 0;   ///< 成功派发帧数（IsDispatchSettled 判据）
+        uint64_t draw_count_capture_id_ = 0;
+        uint64_t draw_count_capture_serial_ = 0;
 
         /// 批 1.3 C5：一次性告警闩改**每实例**（每个世界一个 GPUCullSystem 实例 ⇒ 实例级 = 世界级）。
         /// 原 `static bool` 是**进程级** ⇒ 第一个世界报过之后，第二个世界（如离屏世界）

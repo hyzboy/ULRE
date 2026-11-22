@@ -34,7 +34,10 @@
   必须四字节对齐、位于实际 VkBuffer 大小内，单次最多 4 MiB。拷贝从 device buffer
   到 staging，非从 CPU 上传镜像读取；清单 `ulre.buffer_capture.v1` 记录 resource ID、
   request ID、提交序号、字节范围和真实 usage。注册但不满足 usage 的资源标记不可用。
-  当前只有测试夹具登记了缓冲；生产 SSBO 尚未接入此契约，因此默认不会被发现或抓取。
+  生产路径目前仅登记 `GPUCullSystem.DrawCount`：它在图形队列上每次先清零，再由
+  GPU 剔除 compute shader 原子累加，并在派发成功提交后处理请求。必须在该系统初始化前
+  启用 DebugBridge；没有后续派发的请求会以 `queue_timeout` 结束。其 `frame_id`
+  是该资源的成功派发序号，不是交换链帧号；其他生产 SSBO 尚未接入，不会被发现或抓取。
 - `dump_render_target` 和 `dump_buffer` 是旧接口，只读取最近一条 C++ 抓取结果，
   不创建请求，也不保证结果属于调用者或当前帧。
 - 纹理和缓冲 staging 读回在等待提交完成、映射后显式 invalidate 映射内存，

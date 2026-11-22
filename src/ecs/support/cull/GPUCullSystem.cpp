@@ -21,6 +21,7 @@
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/buffer/BufferPolicy.h>
 #include <hgl/vk/VKBufferReadback.h>
+#include <hgl/vk/DebugCaptureQueue.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/common/DebugChannel.h>
@@ -106,6 +107,8 @@ namespace hgl::ecs
         SAFE_CLEAR(visible_indices_buffer_);
         SAFE_CLEAR(indirect_commands_buffer_);
         SAFE_CLEAR(draw_count_buffer_);
+        draw_count_capture_id_ = 0;
+        draw_count_capture_serial_ = 0;
         SAFE_CLEAR(l2w_out_buffer_);
         SAFE_CLEAR(cmds_out_buffer_);
         SAFE_CLEAR(mtl_out_buffer_);
@@ -184,6 +187,10 @@ namespace hgl::ecs
             GLogError(u8"[GPUCullSystem] Failed to create dispatch resources");
             return false;
         }
+
+        if (ULRE_DEBUG_ON(DebugBridge))
+            draw_count_capture_id_ = graph::DebugCaptureQueue::RegisterBuffer(
+                draw_count_buffer_, "GPUCullSystem.DrawCount");
 
         initialized_ = true;
         GLogInfo(u8"[GPUCullSystem] Initialized: max_visible=%u, work_group=%u",
@@ -287,7 +294,8 @@ namespace hgl::ecs
         //（VUID-vkCmdFillBuffer-dstBuffer-00031：dst 必须建缓冲时就带该位）
         draw_count_buffer_ = device_->CreateBuffer(
             "GPUCullSystem.DrawCount",
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | (ULRE_DEBUG_ON(DebugBridge) ? VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0),
             sizeof(uint32_t),
             sizeof(uint32_t),
             nullptr,
@@ -885,6 +893,8 @@ namespace hgl::ecs
             GLogError(u8"[GPUCullSystem] refusing to re-record pending command buffer frame=%u slot=%u cmd=%p fence_slot=%u",
                       frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd,
                       cull_cmd_fence_slots_[batch_slot]);
+            if(draw_count_capture_id_)
+                graph::DebugCaptureQueue::FailQueued(draw_count_capture_id_,"frame_unavailable");
             return;
         }
 
@@ -928,6 +938,8 @@ namespace hgl::ecs
         {
             GLogError(u8"[GPUCullSystem] command buffer begin failed frame=%u slot=%u cmd=%p",
                       frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd);
+            if(draw_count_capture_id_)
+                graph::DebugCaptureQueue::FailQueued(draw_count_capture_id_,"submission_failed");
             return;
         }
 
@@ -1023,6 +1035,8 @@ namespace hgl::ecs
         {
             GLogError(u8"[GPUCullSystem] command buffer end failed frame=%u slot=%u cmd=%p",
                       frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd);
+            if(draw_count_capture_id_)
+                graph::DebugCaptureQueue::FailQueued(draw_count_capture_id_,"submission_failed");
             return;
         }
 
@@ -1034,11 +1048,17 @@ namespace hgl::ecs
             GLogError(u8"[GPUCullSystem] command buffer submit failed frame=%u slot=%u cmd=%p dispatch_count=%llu",
                       frame_slot,batch_slot,(void*)(VkCommandBuffer)*cmd,
                       static_cast<unsigned long long>(dispatch_count_));
+            if(draw_count_capture_id_)
+                graph::DebugCaptureQueue::FailQueued(draw_count_capture_id_,"submission_failed");
             return;
         }
         cull_cmd_fence_slots_[batch_slot]=submit_fence_slot;
         cull_cmd_submitted_[batch_slot]=true;
         ++dispatch_count_;
+        if(draw_count_capture_id_)
+            graph::DebugCaptureQueue::ProcessBuffer(draw_count_capture_id_,draw_count_buffer_,
+                                                     ++draw_count_capture_serial_,
+                                                     static_cast<VkQueue>(*cull_queue_),true);
 
         if (s_dispatch_perf.on)
             s_dispatch_perf.Add(GetUptimeUs() - t_dispatch0, "tracked_objects",
