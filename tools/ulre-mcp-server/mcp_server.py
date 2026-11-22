@@ -113,10 +113,10 @@ TOOLS = [
     },
     {
         "name": "capture_frame",
-        "description": "Queue one swapchain color or depth capture for the next submitted frame.",
+        "description": "Queue swapchain color, depth, or same-frame color and depth capture.",
         "inputSchema": {"type": "object", "properties": {
             "target_id": {"type": "integer", "minimum": 1},
-            "attachment": {"type": "string", "enum": ["color", "depth"]},
+            "attachment": {"type": "string", "enum": ["color", "depth", "color_depth"]},
         }, "required": ["target_id", "attachment"]},
     },
     {

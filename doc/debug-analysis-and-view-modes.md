@@ -7,7 +7,8 @@
 可靠的端到端抓帧系统：
 
 - `list_capture_targets` 列出支持抓取的交换链；`capture_frame` 接受 target ID 和
-  `color`/`depth`，返回请求 ID，随后可通过 `get_capture_status` 查询。抓取只在该
+  `color`/`depth`/`color_depth`，返回请求 ID，随后可通过 `get_capture_status` 查询。
+  `color_depth` 在同一个提交帧内读取两个附件，返回各自的清单与文件。抓取只在该
   交换链提交后、present 前执行。`cancel_capture` 可取消排队请求；终态需调用
   `release_capture` 释放状态槽，文件不会自动删除。排队超时为 30 秒。
   深度模板格式仅读回深度 aspect，返回的 `pixel_size`/`row_pitch` 描述副本，

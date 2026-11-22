@@ -71,6 +71,9 @@ int main()
     if(!no_depth || DebugCaptureQueue::Request(no_depth,DebugCaptureQueue::Attachment::Depth,&error)
        || !error || ::strcmp(error,"attachment_unavailable")!=0)
         return 2;
+    if(DebugCaptureQueue::Request(no_depth,DebugCaptureQueue::Attachment::ColorDepth,&error)
+       || !error || ::strcmp(error,"attachment_unavailable")!=0)
+        return 2;
     DebugCaptureQueue::UnregisterTarget(no_depth);
     const uint64_t target_id=DebugCaptureQueue::RegisterTarget();
     hgl::graph::CameraInfo camera{};
@@ -118,6 +121,11 @@ int main()
     DebugCaptureQueue::Process(&target,target_id,78);
     if(!DebugCaptureQueue::GetResult(ambiguous,result) || result.camera.valid
        || !result.camera.ambiguous || !DebugCaptureQueue::Release(ambiguous))
+        return 4;
+    const uint64_t group=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::ColorDepth);
+    DebugCaptureQueue::Process(&target,target_id,78);
+    if(!DebugCaptureQueue::GetResult(group,result) || result.state!=DebugCaptureQueue::State::Failed
+       || result.path[0] || result.depth.path[0] || !DebugCaptureQueue::Release(group))
         return 4;
 
     uint64_t pending[16]{};

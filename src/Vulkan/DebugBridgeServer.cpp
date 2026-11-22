@@ -335,12 +335,15 @@ bool DebugBridgeServer::Execute()
     {
         if(!parsed.has_target_id)
             result="{\"valid\":false,\"error\":\"missing_target_id\"}";
-        else if(::strcmp(parsed.attachment,"color")!=0 && ::strcmp(parsed.attachment,"depth")!=0)
+        else if(::strcmp(parsed.attachment,"color")!=0 && ::strcmp(parsed.attachment,"depth")!=0
+                && ::strcmp(parsed.attachment,"color_depth")!=0)
             result="{\"valid\":false,\"error\":\"unsupported_attachment\"}";
         else
         {
             const auto attachment=::strcmp(parsed.attachment,"color")==0
-                ?DebugCaptureQueue::Attachment::Color:DebugCaptureQueue::Attachment::Depth;
+                ?DebugCaptureQueue::Attachment::Color
+                :(::strcmp(parsed.attachment,"depth")==0
+                    ?DebugCaptureQueue::Attachment::Depth:DebugCaptureQueue::Attachment::ColorDepth);
             const char *error=nullptr;
             const uint64_t request_id=DebugCaptureQueue::Request(parsed.target_id,attachment,&error);
             if(request_id)

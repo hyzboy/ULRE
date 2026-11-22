@@ -10,6 +10,39 @@ import mcp_server
 @unittest.skipUnless(os.environ.get("ULRE_CAPTURE_TEST") == "1",
                      "requires a running engine with DebugBridge enabled")
 class CaptureIntegrationTests(unittest.TestCase):
+    def test_color_and_depth_share_a_submitted_frame(self):
+        import time
+        targets = mcp_server.call_engine("list_capture_targets")
+        target = next(item for item in targets["targets"] if "color_depth" in item["attachments"])
+        request = mcp_server.call_engine("capture_frame", {
+            "target_id": target["target_id"], "attachment": "color_depth",
+        })
+        self.assertTrue(request.get("valid"), request)
+        request_id = request["request_id"]
+        for _ in range(150):
+            result = mcp_server.call_engine("get_capture_status", {"request_id": request_id})
+            if result.get("state") not in ("queued", "capturing"):
+                break
+            time.sleep(0.1)
+        try:
+            self.assertEqual(result.get("state"), "succeeded", result)
+            captures = result["captures"]
+            self.assertEqual([entry["attachment"] for entry in captures], ["color", "depth"])
+            manifests = [json.loads(Path(entry["metadata_path"]).read_text(encoding="utf-8"))
+                         for entry in captures]
+            self.assertNotEqual(manifests[0]["capture_id"], manifests[1]["capture_id"])
+            self.assertEqual(manifests[0]["request_id"], request_id)
+            self.assertEqual(manifests[1]["request_id"], request_id)
+            self.assertEqual(manifests[0]["frame_id"], result["frame_id"])
+            self.assertEqual(manifests[1]["frame_id"], result["frame_id"])
+            self.assertEqual(manifests[0]["camera"], manifests[1]["camera"])
+            self.assertEqual(manifests[0]["viewport"], manifests[1]["viewport"])
+            for entry, manifest in zip(captures, manifests):
+                self.assertEqual(Path(entry["dump_path"]).stat().st_size, manifest["byte_count"])
+        finally:
+            released = mcp_server.call_engine("release_capture", {"request_id": request_id})
+            self.assertTrue(released.get("valid"), released)
+
     def test_swapchain_captures_have_consistent_manifests(self):
         targets = mcp_server.call_engine("list_capture_targets")
         self.assertTrue(targets.get("valid"), targets)

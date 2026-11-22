@@ -170,6 +170,8 @@ namespace hgl::graph
             json+=AnsiString::numberOf(result.frame_id);
             json+=",\"source\":\"swapchain\",\"attachment\":\"";
             json+=result.attachment==DebugCaptureQueue::Attachment::Color?"color":"depth";
+            json+="\",\"capture_id\":\"";
+            json+=base?base+1:filename;
             json+="\",\"data_file\":\"";
             json+=base?base+1:filename;
             json+="\",\"width\":";
@@ -239,10 +241,11 @@ namespace hgl::graph
             if(*reinterpret_cast<const uint8_t *>(&endian)!=1)
                 return false;
             char base[192],raw[256],raw_tmp[256],meta[256],meta_tmp[256];
-            const int length=::snprintf(base,sizeof(base),".ulre-captures%ccapture_%llu_%llu",
+            const int length=::snprintf(base,sizeof(base),".ulre-captures%ccapture_%llu_%llu_%s",
                 static_cast<char>(HGL_DIRECTORY_SEPARATOR),
                 static_cast<unsigned long long>(hgl::GetTimeUs()),
-                static_cast<unsigned long long>(result.request_id));
+                static_cast<unsigned long long>(result.request_id),
+                result.attachment==DebugCaptureQueue::Attachment::Color?"color":"depth");
             if(length<0 || static_cast<size_t>(length)>=sizeof(base))
                 return false;
             ::snprintf(raw,sizeof(raw),"%s.raw",base);
@@ -287,6 +290,55 @@ namespace hgl::graph
             ::memcpy(result.path,raw_absolute.c_str(),raw_absolute.Length()+1);
             ::memcpy(result.metadata_path,meta_absolute.c_str(),meta_absolute.Length()+1);
             return true;
+        }
+
+        bool CaptureAttachment(IRenderTarget *target,DebugCaptureQueue::Result &result)
+        {
+            using Queue=DebugCaptureQueue;
+            TextureReadbackInfo info;
+            ValueArray<uint8_t> pixels;
+            result.state=Queue::State::Failed;
+            result.error="readback_failed";
+            Texture2D *texture=result.attachment==Queue::Attachment::Color
+                ?target->GetColorTexture(0):target->GetDepthTexture();
+            const VkExtent3D *extent=texture?texture->GetExtent():nullptr;
+            uint32_t stride=texture?GetStrideByFormat(texture->GetFormat()):0;
+            if(texture && result.attachment==Queue::Attachment::Depth)
+            {
+                if(texture->GetFormat()==VK_FORMAT_D16_UNORM
+                   || texture->GetFormat()==VK_FORMAT_D16_UNORM_S8_UINT)
+                    stride=2;
+                else stride=4;
+            }
+            const bool too_large=extent && stride
+                && uint64_t(extent->width)*extent->height>kMaxCaptureBytes/stride;
+            if(too_large) result.error="capture_size_limit";
+            const bool read=!too_large && (result.attachment==Queue::Attachment::Color
+                ?ReadbackColorTarget(target,pixels,0,&info)
+                :ReadbackDepthTarget(target,pixels,&info));
+            if(!read) return false;
+            result.width=info.width;
+            result.height=info.height;
+            result.pixel_size=info.pixel_size;
+            result.row_pitch=info.row_pitch;
+            result.format=info.format;
+            result.byte_count=pixels.GetTotalBytes();
+            if(!Save(result,pixels))
+            {
+                result.error="write_failed";
+                return false;
+            }
+            result.state=Queue::State::Succeeded;
+            result.error=nullptr;
+            return true;
+        }
+
+        void RemoveCapture(const DebugCaptureQueue::Result &result)
+        {
+            if(result.path[0] && !filesystem::FileDelete(ToOSString(result.path)))
+                GLogError(u8"[DebugCapture] Failed to remove partial capture data");
+            if(result.metadata_path[0] && !filesystem::FileDelete(ToOSString(result.metadata_path)))
+                GLogError(u8"[DebugCapture] Failed to remove partial capture manifest");
         }
     }
 
@@ -386,6 +438,7 @@ namespace hgl::graph
                 if(target.color) json+="\"color\"";
                 if(target.color && target.depth) json+=",";
                 if(target.depth) json+="\"depth\"";
+                if(target.color && target.depth) json+=",\"color_depth\"";
                 json+="]}";
             }
         json+="]}";
@@ -404,7 +457,8 @@ namespace hgl::graph
             if(error) *error="invalid_timeout";
             return 0;
         }
-        if(attachment!=Attachment::Color && attachment!=Attachment::Depth)
+        if(attachment!=Attachment::Color && attachment!=Attachment::Depth
+           && attachment!=Attachment::ColorDepth)
         {
             if(error) *error="unsupported_attachment";
             return 0;
@@ -416,7 +470,8 @@ namespace hgl::graph
             return 0;
         }
         if((attachment==Attachment::Color && !target->color)
-           || (attachment==Attachment::Depth && !target->depth))
+           || (attachment==Attachment::Depth && !target->depth)
+           || (attachment==Attachment::ColorDepth && (!target->color || !target->depth)))
         {
             if(error) *error="attachment_unavailable";
             return 0;
@@ -499,7 +554,8 @@ namespace hgl::graph
         json+=",\"state\":\"";
         json+=StateName(result.state);
         json+="\",\"attachment\":\"";
-        json+=result.attachment==Attachment::Color?"color":"depth";
+        json+=result.attachment==Attachment::Color?"color"
+             :result.attachment==Attachment::Depth?"depth":"color_depth";
         json+="\",\"frame_id\":";
         json+=AnsiString::numberOf(result.frame_id);
         json+=",\"width\":";
@@ -518,6 +574,18 @@ namespace hgl::graph
         AppendJSONString(json,result.path);
         json+=",\"metadata_path\":";
         AppendJSONString(json,result.metadata_path);
+        if(result.attachment==Attachment::ColorDepth && result.state==State::Succeeded)
+        {
+            json+=",\"captures\":[{\"attachment\":\"color\",\"dump_path\":";
+            AppendJSONString(json,result.path);
+            json+=",\"metadata_path\":";
+            AppendJSONString(json,result.metadata_path);
+            json+="},{\"attachment\":\"depth\",\"dump_path\":";
+            AppendJSONString(json,result.depth.path);
+            json+=",\"metadata_path\":";
+            AppendJSONString(json,result.depth.metadata_path);
+            json+="}]";
+        }
         if(result.error)
         {
             json+=",\"error\":\"";
@@ -554,42 +622,35 @@ namespace hgl::graph
             result.frame_id=frame_id;
             if(result.camera.valid && !CameraFinite(result.camera))
                 result.camera.valid=false;
-            TextureReadbackInfo info;
-            ValueArray<uint8_t> pixels;
-            result.state=State::Failed;
-            result.error="readback_failed";
-            Texture2D *texture=result.attachment==Attachment::Color
-                ?target->GetColorTexture(0):target->GetDepthTexture();
-            const VkExtent3D *extent=texture?texture->GetExtent():nullptr;
-            uint32_t stride=texture?GetStrideByFormat(texture->GetFormat()):0;
-            if(texture && result.attachment==Attachment::Depth)
+            if(result.attachment==Attachment::ColorDepth)
             {
-                if(texture->GetFormat()==VK_FORMAT_D16_UNORM
-                   || texture->GetFormat()==VK_FORMAT_D16_UNORM_S8_UINT)
-                    stride=2;
-                else stride=4;
-            }
-            const bool too_large=extent && stride
-                && uint64_t(extent->width)*extent->height>kMaxCaptureBytes/stride;
-            if(too_large) result.error="capture_size_limit";
-            const bool read=!too_large && (result.attachment==Attachment::Color
-                ?ReadbackColorTarget(target,pixels,0,&info)
-                :ReadbackDepthTarget(target,pixels,&info));
-            if(read)
-            {
-                result.width=info.width;
-                result.height=info.height;
-                result.pixel_size=info.pixel_size;
-                result.row_pitch=info.row_pitch;
-                result.format=info.format;
-                result.byte_count=pixels.GetTotalBytes();
-                if(Save(result,pixels))
+                Result color=result;
+                color.attachment=Attachment::Color;
+                if(!CaptureAttachment(target,color))
                 {
-                    result.state=State::Succeeded;
-                    result.error=nullptr;
+                    result.state=State::Failed;
+                    result.error=color.error;
                 }
-                else result.error="write_failed";
+                else
+                {
+                    Result depth=result;
+                    depth.attachment=Attachment::Depth;
+                    if(!CaptureAttachment(target,depth))
+                    {
+                        RemoveCapture(color);
+                        result.state=State::Failed;
+                        result.error=depth.error;
+                    }
+                    else
+                    {
+                        result=color;
+                        result.attachment=Attachment::ColorDepth;
+                        ::memcpy(result.depth.path,depth.path,sizeof(depth.path));
+                        ::memcpy(result.depth.metadata_path,depth.metadata_path,sizeof(depth.metadata_path));
+                    }
+                }
             }
+            else CaptureAttachment(target,result);
             if(result.error)
                 GLogError(u8"[DebugCapture] Request %llu failed: %s",
                           static_cast<unsigned long long>(result.request_id),result.error);

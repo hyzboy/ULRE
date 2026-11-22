@@ -11,7 +11,7 @@ namespace hgl::graph
     class DebugCaptureQueue
     {
     public:
-        enum class Attachment { Color, Depth };
+        enum class Attachment { Color, Depth, ColorDepth };
         enum class State { Empty, Queued, Capturing, Succeeded, Failed, Cancelled };
 
         struct CameraSnapshot
@@ -28,6 +28,11 @@ namespace hgl::graph
 
         struct Result
         {
+            struct Secondary
+            {
+                char path[1024]{};
+                char metadata_path[1024]{};
+            };
             uint64_t request_id=0;
             uint64_t target_id=0;
             uint64_t frame_id=0;
@@ -44,6 +49,7 @@ namespace hgl::graph
             char metadata_path[1024]{};
             const char *error=nullptr;
             CameraSnapshot camera;
+            Secondary depth;
         };
 
         static uint64_t RegisterTarget(bool color=true,bool depth=true);
