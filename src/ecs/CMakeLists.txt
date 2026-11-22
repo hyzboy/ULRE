@@ -133,6 +133,9 @@ add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 
 add_ecs_test(TestFrameDebugger tests/TestFrameDebugger.cpp)
 add_ecs_test(TestDebugBridgeLifecycle tests/TestDebugBridgeLifecycle.cpp)
+# 该测试直接包含 DebugBridgeProtocol.h（→ CMUtil JsonTool.h → nlohmann/json.hpp），
+# 与根 CMakeLists 的 toml11/nlohmann_json 显式认领惯例一致，须自行链接 nlohmann_json。
+target_link_libraries(TestDebugBridgeLifecycle PRIVATE nlohmann_json::nlohmann_json)
 add_ecs_test(TestDebugViewLifecycle tests/TestDebugViewLifecycle.cpp)
 
 add_ecs_test(TestCSMIncrementalPass tests/TestCSMIncrementalPass.cpp)

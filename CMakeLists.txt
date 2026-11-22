@@ -171,6 +171,12 @@ add_library(ULRE_Engine INTERFACE)
 target_link_libraries(ULRE_Engine INTERFACE ${ULRE})
 add_library(ULRE::Engine ALIAS ULRE_Engine)
 
+# nlohmann_json 的导入目标须在主树之前于根作用域创建（CONFIG 导入目标默认目录作用域，
+# CMUtil 子目录内 find_package 创建的目标对 src/ 兄弟目录不可见）。
+# Debug Bridge（ULRE.Vulkan）与 TestDebugBridgeLifecycle 经 CMUtil JsonTool 使用它，
+# 具体链接声明见下方 toml11 块之后的「显式认领」段。
+find_package(nlohmann_json CONFIG REQUIRED)
+
 add_subdirectory(src)
 
 # ── toml11：主仓仍有 4 个 TU 自己读写 toml（TOML 文本层，不经 `CMAssetsManage`）──
@@ -189,6 +195,18 @@ find_package(toml11 CONFIG REQUIRED)
 target_link_libraries(ULRE.Debug              PRIVATE toml11::toml11)
 target_link_libraries(ULRE.ShaderMaterialData PRIVATE toml11::toml11)
 target_link_libraries(ULRE.SceneGraph         PRIVATE toml11::toml11)
+
+# ── nlohmann_json：Debug Bridge 协议解析与诊断 JSON 序列化（经 CMUtil JsonTool）──
+#
+# `CMUtil`（子模块）把 nlohmann 后端下沉成实现细节（JsonTool.cpp 独占 <nlohmann/json.hpp>
+# 的解析/序列化实现），其对 nlohmann_json 的链接声明是 PRIVATE。但 JsonTool.h 的接口
+# 仍暴露 nlohmann::json 类型，下面这些目标**自己就在用** JsonTool，与上面 toml11 同理，
+# 必须显式认领这条依赖，不能靠 CMUtil 的 PRIVATE 链接「蹭」到头文件路径：
+#   · ULRE.Vulkan              DebugBridgeProtocol.h / DebugBridgeServer.cpp /
+#                              FrameDebugger.cpp（需要 CM_UTIL_SUPPORT_JSON=ON，默认开启）
+#   · TestDebugBridgeLifecycle 直接包含 DebugBridgeProtocol.h（见 src/ecs/CMakeLists.txt）
+# find_package(nlohmann_json) 已在 add_subdirectory(src) 之前完成（见上方）。
+target_link_libraries(ULRE.Vulkan PRIVATE nlohmann_json::nlohmann_json)
 
 # 消费 inc/hgl/asset/generated/*.gen.h 的核心库必须在代码生成之后编译；
 # 其它 target（示例、工具、测试）通过链接这些库获得同样的顺序保证。
