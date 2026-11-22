@@ -11,7 +11,7 @@ def _read_raw(path):
     return data
 
 
-def _float32_channels(data, width, height, pixel_format):
+def _float32_channels(data, width, height, pixel_format, row_pitch=None):
     if not isinstance(width, int) or isinstance(width, bool) or width <= 0:
         raise ValueError("width must be a positive integer")
     if not isinstance(height, int) or isinstance(height, bool) or height <= 0:
@@ -23,14 +23,21 @@ def _float32_channels(data, width, height, pixel_format):
     if pixel_format not in sizes:
         raise ValueError(f"Unsupported pixel format: {pixel_format}")
     pixel_size = sizes[pixel_format]
-    if len(data) != count * pixel_size:
+    packed_row = width * pixel_size
+    if row_pitch is None:
+        row_pitch = packed_row
+    if not isinstance(row_pitch, int) or isinstance(row_pitch, bool) or row_pitch < packed_row:
+        raise ValueError("row_pitch must be an integer at least as large as one pixel row")
+    if len(data) != height * row_pitch:
         raise ValueError("Capture byte count does not match dimensions and format")
     if pixel_format == "r32f":
-        values = struct.unpack("<" + "f" * count, data)
+        values = [value for row in range(height)
+                  for value in struct.unpack_from("<" + "f" * width, data, row * row_pitch)]
         return [(v,) for v in values]
 
     channels = []
-    for offset in range(0, count * pixel_size, pixel_size):
+    for index in range(count):
+        offset = (index // width) * row_pitch + (index % width) * pixel_size
         if pixel_format in ("rgba8", "rgb8"):
             channels.append(tuple(data[offset + i] / 255.0 for i in range(3)))
         elif pixel_format == "bgra8":
@@ -59,13 +66,14 @@ def _percentile(values, percentile):
     return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
 
 
-def analyze_luminance(path, width, height, pixel_format="rgba8", color_space="linear"):
+def analyze_luminance(path, width, height, pixel_format="rgba8", color_space="linear",
+                      row_pitch=None):
     if color_space not in ("linear", "srgb"):
         raise ValueError(f"Unsupported color space: {color_space}")
     if pixel_format == "r32f" and color_space != "linear":
         raise ValueError("R32F luminance must be linear")
     data = _read_raw(path)
-    channels = _float32_channels(data, width, height, pixel_format)
+    channels = _float32_channels(data, width, height, pixel_format, row_pitch)
     luminance = []
     nan_count = 0
     inf_count = 0
@@ -177,11 +185,11 @@ def analyze_surface(path, width, height, pixel_format="rgba8"):
     }
 
 
-def analyze_depth(path, width, height, reversed_z=False, clear_depth=None):
+def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_pitch=None):
     if not isinstance(reversed_z, bool):
         raise ValueError("reversed_z must be boolean")
     data = _read_raw(path)
-    channels = _float32_channels(data, width, height, "r32f")
+    channels = _float32_channels(data, width, height, "r32f", row_pitch)
     count = width * height
     values = [channel[0] for channel in channels]
     finite = [v for v in values if math.isfinite(v) and 0.0 <= v <= 1.0]
@@ -221,9 +229,9 @@ def analyze_depth(path, width, height, reversed_z=False, clear_depth=None):
 
 
 def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16,
-                          clear_depth=None, viewport=None):
+                          clear_depth=None, viewport=None, row_pitch=None):
     depth = _read_raw(depth_path)
-    values = _float32_channels(depth, width, height, "r32f")
+    values = _float32_channels(depth, width, height, "r32f", row_pitch)
 
     if (len(inverse_vp) != 16 or
             not all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
@@ -301,11 +309,11 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
 
 
 def compare_frames(path_a, path_b, width, height, pixel_format="rgba8", threshold=0.01,
-                   heatmap_dir=".ulre-analysis"):
+                   heatmap_dir=".ulre-analysis", row_pitch_a=None, row_pitch_b=None):
     a = _read_raw(path_a)
     b = _read_raw(path_b)
-    channels_a = _float32_channels(a, width, height, pixel_format)
-    channels_b = _float32_channels(b, width, height, pixel_format)
+    channels_a = _float32_channels(a, width, height, pixel_format, row_pitch_a)
+    channels_b = _float32_channels(b, width, height, pixel_format, row_pitch_b)
     if len(channels_a) != len(channels_b):
         raise ValueError("Frame captures have different pixel counts")
 

@@ -59,8 +59,8 @@ def load_manifest(path):
     layout = VK_FORMAT_LAYOUTS.get(vk_format) if type(vk_format) is int else None
     if layout != (encoding, metadata.get("attachment"), metadata.get("color_space")):
         raise ValueError("VkFormat, encoding, attachment and color space disagree")
-    if metadata["row_pitch"] != metadata["width"] * metadata["pixel_size"]:
-        raise ValueError("Padded rows are not supported")
+    if metadata["row_pitch"] < metadata["width"] * metadata["pixel_size"]:
+        raise ValueError("Capture row_pitch is smaller than a pixel row")
     if metadata["byte_count"] != metadata["row_pitch"] * metadata["height"] or \
             metadata["byte_count"] > MAX_CAPTURE_BYTES:
         raise ValueError("Invalid capture byte count")
@@ -95,7 +95,8 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
             color_space = color_space_override
         if color_space not in ("linear", "srgb"):
             raise ValueError("Capture color space is unknown; supply color_space_override")
-        result = analyzer.analyze_luminance(str(data_path), width, height, encoding, color_space)
+        result = analyzer.analyze_luminance(str(data_path), width, height, encoding, color_space,
+                                            metadata["row_pitch"])
         result["color_space_source"] = ("override" if metadata["color_space"] == "unknown"
                                         else "capture_metadata")
     elif operation in ("depth", "world_position"):
@@ -119,7 +120,8 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
         else:
             raise ValueError("Capture has no camera depth convention; supply reversed_z_override")
         if operation == "depth":
-            result = analyzer.analyze_depth(str(data_path), width, height, reversed_z, clear_depth)
+            result = analyzer.analyze_depth(str(data_path), width, height, reversed_z, clear_depth,
+                                            metadata["row_pitch"])
         else:
             if not isinstance(camera, dict) or camera.get("matrix_layout") != "column_major" or \
                     camera.get("position_space") != "world_absolute":
@@ -134,7 +136,7 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
                 raise ValueError("Capture viewport is missing")
             result = analyzer.reconstruct_world_pos(
                 str(data_path), width, height, inverse_vp, reversed_z, sample_step,
-                clear_depth, viewport)
+                clear_depth, viewport, metadata["row_pitch"])
             result["position_space"] = "world_absolute"
             result["sampling_step"] = sample_step
             result["limitations"] = ["camera snapshot covers primitive collection only",
@@ -191,7 +193,8 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
     if allow_unverified_context is not True:
         raise ValueError("Scene and device context are not recorded; explicit opt-in is required")
     result = analyzer.compare_frames(str(data_a), str(data_b), a["width"], a["height"],
-                                     a["encoding"], threshold, heatmap_dir)
+                                     a["encoding"], threshold, heatmap_dir,
+                                     a["row_pitch"], b["row_pitch"])
     result["captures"] = [{key: entry[key] for key in ("request_id", "target_id", "frame_id")}
                           for entry in (a, b)]
     for provenance, metadata in zip(result["captures"], (a, b)):

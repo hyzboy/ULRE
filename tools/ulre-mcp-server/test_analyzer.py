@@ -260,6 +260,22 @@ class AnalyzerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "conflicts"):
             capture_manifest.analyze_capture(path, "depth", reversed_z_override=True)
 
+    def test_manifest_analysis_respects_row_padding(self):
+        self.capture("capture.raw", bytes((0, 0, 255, 255, 123, 123,
+                                            255, 0, 0, 255, 123, 123)))
+        path = self.manifest(height=2, row_pitch=6, byte_count=12)
+        color = capture_manifest.analyze_capture(path, "luminance", "linear")
+        self.assertAlmostEqual(color["mean"], (0.2126 + 0.0722) / 2)
+
+        self.capture("capture.raw", struct.pack("<f", 0.0) + b"PAD!" +
+                     struct.pack("<f", 0.5) + b"PAD!")
+        path = self.manifest(attachment="depth", encoding="r32f", vk_format=130,
+                             height=2, row_pitch=8, byte_count=16, copy_aspect="depth",
+                             clear_depth=0.0, camera_status="recorded",
+                             camera={"reversed_z": True})
+        depth = capture_manifest.analyze_capture(path, "depth")
+        self.assertEqual(depth["effective_depth_ratio"], 0.5)
+
     def test_manifest_rejects_bad_layout_and_traversal(self):
         self.capture("capture.raw", bytes(4))
         for fields in ({"row_pitch": 8, "byte_count": 8},
@@ -274,14 +290,15 @@ class AnalyzerTests(unittest.TestCase):
 
     def test_compare_manifests_checks_context_and_channel_error(self):
         self.capture("a.raw", bytes((0, 0, 0, 255)))
-        self.capture("b.raw", bytes((0, 0, 255, 255)))
+        self.capture("b.raw", bytes((0, 0, 255, 255, 9, 9, 9, 9)))
         camera = {"matrix_layout": "column_major",
                   "vp": [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0]}
         viewport = {"x": 0, "y": 0, "width": 1, "height": 1,
                     "min_depth": 0, "max_depth": 1}
         shared = {"camera_status": "recorded", "camera": camera, "viewport": viewport}
         a = self.manifest("a.json", data_file="a.raw", **shared)
-        b = self.manifest("b.json", data_file="b.raw", frame_id=4, **shared)
+        b = self.manifest("b.json", data_file="b.raw", frame_id=4, row_pitch=8,
+                          byte_count=8, **shared)
         with self.assertRaisesRegex(ValueError, "explicit opt-in"):
             capture_manifest.compare_captures(a, b, heatmap_dir=self.root,
                                               color_space_override="linear")
@@ -292,7 +309,7 @@ class AnalyzerTests(unittest.TestCase):
         self.assertAlmostEqual(result["rmse"], math.sqrt(1 / 3))
         self.assertEqual(result["comparison_space"], "encoded_channels")
         changed_camera = dict(camera, vp=[2.0] + camera["vp"][1:])
-        b = self.manifest("b.json", data_file="b.raw", frame_id=4,
+        b = self.manifest("b.json", data_file="b.raw", frame_id=4, row_pitch=8, byte_count=8,
                           camera_status="recorded", camera=changed_camera, viewport=viewport)
         with self.assertRaisesRegex(ValueError, "cameras differ"):
             capture_manifest.compare_captures(a, b, color_space_override="linear",
