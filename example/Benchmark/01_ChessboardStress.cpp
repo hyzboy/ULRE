@@ -142,7 +142,7 @@ namespace
 
     // ── 默认档（见文件头第二节的算式）─────────────────────────────────────
     constexpr uint32_t kDefaultBoards = 729;       // 5 × 729 = 3645
-    constexpr uint32_t kDefaultDice   = 3500;      //      + 3500 = 7145 ≤ 40960
+    constexpr uint32_t kDefaultDice   = 350;      //      + 3500 = 7145 ≤ 40960
     constexpr float    kCellSpacing   = 1.25f;     // 底板宽 1.12 ⇒ 留 0.13 缝
 
     // 棋盘本体全部由**内置单位立方体**（±0.5）拼出：部件只差模板内的 local_matrix。
