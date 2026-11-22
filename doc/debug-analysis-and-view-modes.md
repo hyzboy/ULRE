@@ -193,9 +193,31 @@ SSIM 定义为 8×8 不重叠方窗；边缘窗口可小于 8×8，mask 交集�
 同环境可严格比较；跨环境使用显式容差；不存在匹配基线时返回 `not_covered`。
 基线只能显式创建或更新，比较不得自动覆盖。
 
-这些是目标而不是现有功能：目前没有确定性固定帧夹具、设备/驱动身份绑定的基线
-清单或基线创建/比较命令。`compare_captures` 仅是显式接受未验证上下文的图像比较，
-不能作为黄金基线 PASS；不支持的 alpha test 和屏幕受影因子也不能计为已覆盖。
+`RenderDiagnosticsFixture` 固定 640×360、静态几何和材质、相机、1/60 秒时间步、
+主光与单级联 CSM；首次预热 120 帧，选择 Debug View 后再预热 120 帧，在第 241 帧
+响应抓取。夹具冻结在预热点直到请求到达；不支持的 alpha test、shadow-map 采集与
+屏幕受影因子不能计为已覆盖。该夹具没有引入随机场景输入。
+
+Windows 上先构建 `RenderDiagnosticsFixture`，然后用以下命令显式建基线并比较：
+
+```powershell
+python tools\ulre-mcp-server\render_regression.py create --baseline C:\runs\normal.json --output-dir C:\runs\create --exe D:\ULRE\build\out\Windows_64_Debug\RenderDiagnosticsFixture.exe --mode world_normal
+python tools\ulre-mcp-server\render_regression.py compare --baseline C:\runs\normal.json --output-dir C:\runs\compare --exe D:\ULRE\build\out\Windows_64_Debug\RenderDiagnosticsFixture.exe --mode world_normal
+```
+
+使用 `update` 明确更新已有基线；`create` 拒绝覆盖，`compare` 不修改基线。
+输出 JSON 的状态为 `PASS`、`FAIL` 或 `NOT_COVERED`，进程退出码分别为 0、1、2。
+结果包含捕获清单和热图路径；新基线清单绑定场景版本、固定帧配置及输入内容哈希、
+实际设备/驱动、捕获格式与颜色空间、capture schema 和分析算法。相同设备及驱动
+严格逐字节比较；跨设备/驱动默认 `NOT_COVERED`，仅同厂商、设备类型和 driver ID
+且显式指定 `--cross-device-tolerance` 时按声明的编码通道容差比较，mask 差异仍失败。
+容差须由使用者依据目标设备实测选定，不代表已认证的跨设备范围。
+`--inject-fault camera|normal|material|coverage` 仅用于 compare 负向运行；
+normal 需 `world_normal` 模式，material 需 `surface` 模式。
+夹具对有效法线的非零和长度、surface 的 metallic 均值执行数值检查；
+`world_position` 输出同帧反投影数值，但 RGBA32F 基线比较目前为 `NOT_COVERED`。
+覆盖变化故障是几何 mask 变化，不代表阴影覆盖变化已验收。
+原始 `compare_captures` 仍是显式接受未验证上下文的图像比较，不能替代基线工具。
 完整 BasicLitMeshes MCP 调用顺序见 `.ai/skills/SKILL_RENDER_DIAGNOSTICS.md`。
 
 验收需覆盖已知像素的合成单元测试、协议错误和并发、实际 Vulkan 抓帧及 validation、

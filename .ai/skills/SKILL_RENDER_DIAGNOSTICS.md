@@ -138,8 +138,9 @@ JSON-RPC envelopes. Do not copy IDs from another run.
 For two compatible color captures, `compare_captures` needs
 `metadata_path_a`, `metadata_path_b`, and `allow_unverified_context: true`;
 this opt-in explicitly admits that scene and device identity are not verified.
-It is **not** a golden-baseline acceptance verdict. No explicit baseline
-create/update command, device-bound baseline manifest, or deterministic
-fixed-frame fixture is implemented yet; missing coverage must not be reported
-as a pass. The current view does not support alpha-test scenes or a receiver
-shadow factor, so neither can be accepted through this sequence.
+It is **not** a golden-baseline acceptance verdict. For the fixed
+`RenderDiagnosticsFixture`, use `tools\ulre-mcp-server\render_regression.py`
+with `create`, `update`, or `compare`; see `doc\debug-analysis-and-view-modes.md`
+for commands and provenance rules. Missing coverage must not be reported as a
+pass. The current view does not support alpha-test scenes or a receiver shadow
+factor, so neither can be accepted through this sequence.
