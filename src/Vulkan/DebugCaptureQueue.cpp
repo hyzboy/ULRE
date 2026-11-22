@@ -2,6 +2,7 @@
 #include<hgl/vk/VKTextureReadback.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKFormat.h>
+#include<hgl/graph/CameraInfo.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/io/FileOutputStream.h>
 #include<hgl/sync/Mutex.h>
@@ -24,6 +25,8 @@ namespace hgl::graph
             uint64_t id=0;
             bool color=false;
             bool depth=false;
+            uint64_t frame_id=0;
+            DebugCaptureQueue::CameraSnapshot camera;
         };
         struct QueueState
         {
@@ -87,6 +90,54 @@ namespace hgl::graph
                 return false;
             return stream->Write(pixels.GetData(),pixels.GetTotalBytes())==pixels.GetTotalBytes();
         }
+    }
+
+    void DebugCaptureQueue::BeginFrame(uint64_t target_id,uint64_t frame_id)
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        for(Target &target:queue.targets)
+            if(target.id==target_id && target_id)
+            {
+                target.frame_id=frame_id;
+                target.camera=CameraSnapshot{};
+                return;
+            }
+    }
+
+    void DebugCaptureQueue::RecordCamera(uint64_t target_id,const CameraInfo *camera)
+    {
+        if(!camera || !target_id) return;
+        CameraSnapshot snapshot;
+        snapshot.valid=true;
+        ::memcpy(snapshot.vp,&camera->vp[0][0],sizeof(snapshot.vp));
+        ::memcpy(snapshot.inverse_vp,&camera->inverse_vp[0][0],sizeof(snapshot.inverse_vp));
+        snapshot.camera_world_pos[0]=camera->camera_world_pos.x;
+        snapshot.camera_world_pos[1]=camera->camera_world_pos.y;
+        snapshot.camera_world_pos[2]=camera->camera_world_pos.z;
+        snapshot.znear=camera->znear;
+        snapshot.zfar=camera->zfar;
+        snapshot.reversed_z=camera->use_reversed_z;
+
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        for(Target &target:queue.targets)
+            if(target.id==target_id && target.frame_id)
+            {
+                if(target.camera.ambiguous) return;
+                if(!target.camera.valid)
+                    target.camera=snapshot;
+                else if(::memcmp(target.camera.vp,snapshot.vp,sizeof(snapshot.vp))!=0
+                     || ::memcmp(target.camera.inverse_vp,snapshot.inverse_vp,sizeof(snapshot.inverse_vp))!=0
+                     || ::memcmp(target.camera.camera_world_pos,snapshot.camera_world_pos,sizeof(snapshot.camera_world_pos))!=0
+                     || target.camera.znear!=snapshot.znear || target.camera.zfar!=snapshot.zfar
+                     || target.camera.reversed_z!=snapshot.reversed_z)
+                {
+                    target.camera.valid=false;
+                    target.camera.ambiguous=true;
+                }
+                return;
+            }
     }
 
     uint64_t DebugCaptureQueue::RegisterTarget(bool color,bool depth)
@@ -288,12 +339,15 @@ namespace hgl::graph
                 QueueState &queue=Queue();
                 hgl::MutexLock lock(&queue.lock);
                 Expire(queue);
-                if(!FindTarget(queue,target_id)) return;
+                const Target *registered=FindTarget(queue,target_id);
+                if(!registered) return;
                 for(Result &entry:queue.requests)
                     if(entry.state==State::Queued && entry.target_id==target_id)
                     {
                         entry.state=State::Capturing;
                         result=entry;
+                        if(registered->frame_id==frame_id)
+                            result.camera=registered->camera;
                         break;
                     }
             }

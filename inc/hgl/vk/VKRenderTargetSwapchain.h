@@ -8,6 +8,7 @@
 
 namespace hgl::graph{
 
+struct CameraInfo;
 /**
  * Per-slot (in-flight frame) synchronization objects.
  * slot_count == swapchain image_count (configurable later).
@@ -83,6 +84,7 @@ public:
     /// 交换链颜色图是否处于「已 acquire、未 present」的窗口（IRenderTarget 覆写）。
     /// 窗口外对交换链颜色图做任何访问（布局转换/拷贝/读回）都是真 VUID。
     bool IsColorReadbackWindowOpen() const override { return acquire_window_open; }
+    void RecordCaptureCamera(const CameraInfo *camera);
 
     /// 帧内回读钩子：在「本帧队列提交之后、vkQueuePresentKHR 之前」执行一次。
     ///

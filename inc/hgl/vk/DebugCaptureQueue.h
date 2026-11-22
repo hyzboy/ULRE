@@ -6,12 +6,25 @@
 namespace hgl::graph
 {
     class IRenderTarget;
+    struct CameraInfo;
 
     class DebugCaptureQueue
     {
     public:
         enum class Attachment { Color, Depth };
         enum class State { Empty, Queued, Capturing, Succeeded, Failed, Cancelled };
+
+        struct CameraSnapshot
+        {
+            bool valid=false;
+            bool ambiguous=false;
+            float vp[16]{};
+            float inverse_vp[16]{};
+            float camera_world_pos[3]{};
+            float znear=0;
+            float zfar=0;
+            uint32_t reversed_z=0;
+        };
 
         struct Result
         {
@@ -29,6 +42,7 @@ namespace hgl::graph
             uint64_t byte_count=0;
             char path[256]{};
             const char *error=nullptr;
+            CameraSnapshot camera;
         };
 
         static uint64_t RegisterTarget(bool color=true,bool depth=true);
@@ -40,6 +54,8 @@ namespace hgl::graph
         static bool Cancel(uint64_t request_id);
         static bool Release(uint64_t request_id);
         static AnsiString GetResultJSON(uint64_t request_id);
+        static void BeginFrame(uint64_t target_id,uint64_t frame_id);
+        static void RecordCamera(uint64_t target_id,const CameraInfo *camera);
         static void Process(IRenderTarget *target,uint64_t target_id,uint64_t frame_id);
     };
 }

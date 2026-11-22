@@ -193,8 +193,16 @@ bool SwapchainRenderTarget::NextFrame()
     // 5. 颜色读回窗口开启：本帧这张 image 已是「已 acquire、未 present」
     //    （Submit 收尾时关闭；见 SwapchainRenderTarget::SetInFrameReadbackHook）
     acquire_window_open = true;
+    if(debug_capture_target)
+        DebugCaptureQueue::BeginFrame(debug_capture_target,++debug_capture_frame);
 
     return true;
+}
+
+void SwapchainRenderTarget::RecordCaptureCamera(const CameraInfo *camera)
+{
+    if(debug_capture_target && acquire_window_open)
+        DebugCaptureQueue::RecordCamera(debug_capture_target,camera);
 }
 
 bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint32_t extra_wait_count)
@@ -282,7 +290,7 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         gp->FrameSubmitted(slot.queue->GetCurrentFenceIndex());
 
     if(debug_capture_target)
-        DebugCaptureQueue::Process(this,debug_capture_target,++debug_capture_frame);
+        DebugCaptureQueue::Process(this,debug_capture_target,debug_capture_frame);
 
     // ── 帧内回读窗口：本帧已提交、尚未 present ───────────────────────────────
     // 此刻交换链 image 仍是「已 acquire、未 present」，是唯一能对它做布局转换/拷贝的时点。

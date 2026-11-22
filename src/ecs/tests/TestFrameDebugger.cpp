@@ -1,6 +1,7 @@
 #include<hgl/vk/FrameDebugger.h>
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/graph/CameraInfo.h>
 #include<hgl/log/Log.h>
 #include<hgl/time/Time.h>
 #include<cstring>
@@ -72,6 +73,13 @@ int main()
         return 2;
     DebugCaptureQueue::UnregisterTarget(no_depth);
     const uint64_t target_id=DebugCaptureQueue::RegisterTarget();
+    hgl::graph::CameraInfo camera{};
+    for(int column=0;column<4;++column)
+        for(int row=0;row<4;++row)
+            camera.vp[column][row]=camera.inverse_vp[column][row]=(column==row)?1.0f:0.0f;
+    camera.use_reversed_z=1;
+    DebugCaptureQueue::BeginFrame(target_id,77);
+    DebugCaptureQueue::RecordCamera(target_id,&camera);
     if(!target_id || DebugCaptureQueue::Request(0,DebugCaptureQueue::Attachment::Color,&error)
        || !error || ::strcmp(error,"unknown_target")!=0)
         return 2;
@@ -96,9 +104,20 @@ int main()
     DebugCaptureQueue::Process(&target,target_id,77);
     if(!DebugCaptureQueue::GetResult(request_id,result)
        || result.state!=DebugCaptureQueue::State::Failed || result.frame_id!=77
+       || !result.camera.valid || result.camera.vp[0]!=1.0f || result.camera.reversed_z!=1
        || !result.error || ::strcmp(result.error,"readback_failed")!=0
        || !DebugCaptureQueue::Release(request_id)
        || DebugCaptureQueue::GetResult(request_id,result))
+        return 4;
+
+    DebugCaptureQueue::BeginFrame(target_id,78);
+    DebugCaptureQueue::RecordCamera(target_id,&camera);
+    camera.vp[0][0]=2.0f;
+    DebugCaptureQueue::RecordCamera(target_id,&camera);
+    const uint64_t ambiguous=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Color);
+    DebugCaptureQueue::Process(&target,target_id,78);
+    if(!DebugCaptureQueue::GetResult(ambiguous,result) || result.camera.valid
+       || !result.camera.ambiguous || !DebugCaptureQueue::Release(ambiguous))
         return 4;
 
     uint64_t pending[16]{};

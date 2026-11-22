@@ -13,6 +13,7 @@
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/debug/DebugViewController.h>
 #include<hgl/vk/FrameDebugger.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/ecs/core/render/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include <cstdlib>
@@ -2439,6 +2440,9 @@ namespace hgl::ecs
         auto& cache = world->GetRenderFrameCache();
         cache.cameraInfo = cameraInfo;
         hgl::graph::FrameDebugger::SetCameraSnapshot(cameraInfo);
+        if(!world->IsCurrentPassShadow())
+            if(auto *swapchain=dynamic_cast<hgl::graph::SwapchainRenderTarget *>(world->GetRenderTarget()))
+                swapchain->RecordCaptureCamera(cameraInfo);
 
         // P1：每 pass 一次资格判定（只统计，不改变本帧任何行为）。
         ObserveCollectCacheEligibility();
