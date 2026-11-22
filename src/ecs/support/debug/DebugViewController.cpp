@@ -225,6 +225,9 @@ namespace hgl::ecs
     {
         ControllerState &state=State();
 
+        if(world && state.world!=world)
+            return;
+
         DropAllRecords(world?world:state.world);
 
         hgl::MutexLock lock(&state.lock);

@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/support/debug/DebugViewController.h>
 
 #include<utility>
 #include<hgl/graph/render/RenderContext.h>
@@ -246,6 +247,8 @@ namespace hgl
                 return;
 
             shutdown_in_progress = true;
+
+            DebugViewController::Reset(this);
 
             if (auto *device = GetGPUDevice())
                 device->WaitIdle();
