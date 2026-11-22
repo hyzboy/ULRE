@@ -134,6 +134,13 @@ class AnalyzerTests(unittest.TestCase):
             result = mcp_server.call_engine("get_debug_view")
         self.assertFalse(result["valid"])
 
+    def test_pipe_open_retries_busy_before_sending(self):
+        sentinel = object()
+        with patch("builtins.open", side_effect=[OSError(22, "busy"), sentinel]) as opened, \
+             patch.object(mcp_server.time, "sleep"):
+            self.assertIs(mcp_server.open_engine_pipe(), sentinel)
+        self.assertEqual(opened.call_count, 2)
+
     def test_world_position_does_not_read_latest_camera(self):
         depth = self.capture("depth.raw", struct.pack("<ff", 0.0, 0.5))
         inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,

@@ -7,6 +7,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/io/FileOutputStream.h>
 #include<hgl/sync/Mutex.h>
+#include<hgl/time/Time.h>
 #include<hgl/log/Log.h>
 #include<cstring>
 #include<cstdio>
@@ -63,11 +64,12 @@ bool SaveCaptureRaw(const char *name,const uint8_t *data,uint32_t byte_count,cha
 
     char filename[320];
     snprintf(filename,sizeof(filename),
-             ".ulre-captures/%s_%llu.raw",
+             ".ulre-captures/%s_%llu_%llu.raw",
              name,
+             static_cast<unsigned long long>(hgl::GetTimeUs()),
              static_cast<unsigned long long>(CaptureSequence()));
 
-    hgl::io::OpenFileOutputStream stream(ToOSString(filename),hgl::io::FileOpenMode::CreateTrunc);
+    hgl::io::OpenFileOutputStream stream(ToOSString(filename),hgl::io::FileOpenMode::Create);
     if(!stream)
         return false;
 

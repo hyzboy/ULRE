@@ -45,6 +45,8 @@ class SwapchainRenderTarget : public IRenderTarget
     SwapchainFrameSync* sync_slots          = nullptr;  ///< [slot_count] - owned
     DeviceQueue**       images_in_flight    = nullptr;  ///< [image_count] - which slot owns each image
     bool                resize_required     = false;
+    uint64_t            debug_capture_target = 0;
+    uint64_t            debug_capture_frame = 0;
 
     /// 主帧车道（A1）：timeline 信号量，主帧提交 signal、离屏 prepass await 其上一次值。
     /// **延迟创建**：构造期 `ecs_context` 尚未绑定 GPU 设备（`ECSContext::Initialize`

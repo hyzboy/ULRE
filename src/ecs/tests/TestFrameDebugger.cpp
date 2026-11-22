@@ -1,4 +1,5 @@
 #include<hgl/vk/FrameDebugger.h>
+#include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/log/Log.h>
 #include<cstring>
@@ -62,5 +63,48 @@ int main()
         GLogError(u8"Latest failure did not identify the new capture");
         return 1;
     }
+    using hgl::graph::DebugCaptureQueue;
+    const uint64_t no_depth=DebugCaptureQueue::RegisterTarget(true,false);
+    const char *error=nullptr;
+    if(!no_depth || DebugCaptureQueue::Request(no_depth,DebugCaptureQueue::Attachment::Depth,&error)
+       || !error || ::strcmp(error,"attachment_unavailable")!=0)
+        return 2;
+    DebugCaptureQueue::UnregisterTarget(no_depth);
+    const uint64_t target_id=DebugCaptureQueue::RegisterTarget();
+    if(!target_id || DebugCaptureQueue::Request(0,DebugCaptureQueue::Attachment::Color,&error)
+       || !error || ::strcmp(error,"unknown_target")!=0)
+        return 2;
+    const uint64_t request_id=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Color);
+    DebugCaptureQueue::Result result;
+    if(!request_id || !DebugCaptureQueue::GetResult(request_id,result)
+       || result.state!=DebugCaptureQueue::State::Queued || DebugCaptureQueue::Release(request_id))
+        return 3;
+    const uint64_t cancelled=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Depth);
+    if(!cancelled || !DebugCaptureQueue::Cancel(cancelled)
+       || !DebugCaptureQueue::GetResult(cancelled,result)
+       || result.state!=DebugCaptureQueue::State::Cancelled
+       || !DebugCaptureQueue::Release(cancelled))
+        return 3;
+    DebugCaptureQueue::Process(&target,target_id,77);
+    if(!DebugCaptureQueue::GetResult(request_id,result)
+       || result.state!=DebugCaptureQueue::State::Failed || result.frame_id!=77
+       || !result.error || ::strcmp(result.error,"readback_failed")!=0
+       || !DebugCaptureQueue::Release(request_id)
+       || DebugCaptureQueue::GetResult(request_id,result))
+        return 4;
+
+    uint64_t pending[16]{};
+    for(uint64_t &id:pending)
+        if(!(id=DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Depth)))
+            return 5;
+    if(DebugCaptureQueue::Request(target_id,DebugCaptureQueue::Attachment::Color,&error)
+       || !error || ::strcmp(error,"queue_full")!=0)
+        return 6;
+    DebugCaptureQueue::UnregisterTarget(target_id);
+    for(uint64_t id:pending)
+        if(!DebugCaptureQueue::GetResult(id,result)
+           || result.state!=DebugCaptureQueue::State::Cancelled
+           || !DebugCaptureQueue::Release(id))
+            return 7;
     return 0;
 }

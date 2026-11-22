@@ -7,6 +7,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKDeviceAttribute.h>
+#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderbufferInfo.h>
 #include<hgl/vk/VKTexture.h>
@@ -18,6 +19,7 @@
 #include<hgl/vk/VKSurface.h>
 #include<hgl/Macro.h>
 #include<hgl/type/String.h>
+#include<hgl/common/DebugChannel.h>
 
 namespace hgl::graph{
 
@@ -133,19 +135,27 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
     AnsiString num_string;
     VulkanDevice *device=GetDevice();
     auto *dev_attr=GetDevAttr();
+    const VkImageUsageFlags color_usage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+        |(dev_attr->surface->GetCapabilities().supportedUsageFlags
+          &(VK_IMAGE_USAGE_TRANSFER_SRC_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT));
+    VkFormatProperties depth_properties{};
+    vkGetPhysicalDeviceFormatProperties(dev_attr->physical_device->GetVulkanDevice(),
+                                        swapchain->depth_format,&depth_properties);
+    const bool depth_readback=ULRE_DEBUG_ON(DebugBridge)
+        && (depth_properties.optimalTilingFeatures&VK_FORMAT_FEATURE_TRANSFER_SRC_BIT);
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
         num_string=AnsiString("SwapchainColor[")+AnsiString::numberOf(i)+"]";
         U8String color_name=ToU8String(num_string);
-        swapchain->sc_image[i].color=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i],color_name));
+        swapchain->sc_image[i].color=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i],color_name,color_usage));
 
         if(!swapchain->sc_image[i].color)
             return(false);
 
         num_string=AnsiString("SwapchainDepth[")+AnsiString::numberOf(i)+"]";
         U8String depth_name=ToU8String(num_string);
-        swapchain->sc_image[i].depth=tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent,depth_name));
+        swapchain->sc_image[i].depth=tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent,depth_name,depth_readback));
 
         if(!swapchain->sc_image[i].depth)
             return(false);

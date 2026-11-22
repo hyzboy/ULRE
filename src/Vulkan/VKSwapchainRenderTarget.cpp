@@ -8,6 +8,8 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GpuUploadQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
+#include<hgl/vk/DebugCaptureQueue.h>
+#include<hgl/common/DebugChannel.h>
 #include<hgl/Macro.h>
 #include<hgl/log/Log.h>
 
@@ -25,6 +27,14 @@ SwapchainRenderTarget::SwapchainRenderTarget(
     , current_slot(0)
     , acquired_image(0)
 {
+    if(ULRE_DEBUG_ON(DebugBridge) && swapchain && swapchain->image_count>0 && swapchain->sc_image)
+    {
+        Texture2D *color=swapchain->sc_image[0].color;
+        Texture2D *depth=swapchain->sc_image[0].depth;
+        debug_capture_target=DebugCaptureQueue::RegisterTarget(
+            color && (color->GetUsage()&VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+            depth && (depth->GetUsage()&VK_IMAGE_USAGE_TRANSFER_SRC_BIT));
+    }
     present_info.waitSemaphoreCount = 0;
     present_info.pWaitSemaphores    = nullptr;
     present_info.swapchainCount     = 1;
@@ -67,6 +77,8 @@ Semaphore *SwapchainRenderTarget::EnsureMainLane()
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
 {
+    if(debug_capture_target)
+        DebugCaptureQueue::UnregisterTarget(debug_capture_target);
     SAFE_CLEAR(main_lane);
 
     delete[] images_in_flight;
@@ -268,6 +280,9 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
     // 非阻塞回收，早完成的帧更早进历史）
     if(GpuQueryProfiler *gp=GpuQueryProfiler::GetActive())
         gp->FrameSubmitted(slot.queue->GetCurrentFenceIndex());
+
+    if(debug_capture_target)
+        DebugCaptureQueue::Process(this,debug_capture_target,++debug_capture_frame);
 
     // ── 帧内回读窗口：本帧已提交、尚未 present ───────────────────────────────
     // 此刻交换链 image 仍是「已 acquire、未 present」，是唯一能对它做布局转换/拷贝的时点。

@@ -336,17 +336,17 @@ struct DepthStencilAttachmentTextureCreateInfo:public AttachmentTextureCreateInf
 
 struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
 {
-    SwapchainColorTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,VkImage img,const U8String &n=U8String((const u8char*)u8"SwapchainColor"))
-        :TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,ext,fmt,img,n){}
+    SwapchainColorTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,VkImage img,const U8String &n=U8String((const u8char*)u8"SwapchainColor"),const uint32_t image_usage=0)
+        :TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,ext,fmt,img,n){usage=image_usage;}
 };//struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
 
 struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 {
-    SwapchainDepthTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n=U8String((const u8char*)u8"SwapchainDepth"))
+    SwapchainDepthTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n=U8String((const u8char*)u8"SwapchainDepth"),const bool transfer_src=false)
         :TextureCreateInfo( VK_IMAGE_ASPECT_DEPTH_BIT,
                             fmt,
                             ext,
-                            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT|(transfer_src?VK_IMAGE_USAGE_TRANSFER_SRC_BIT:0),
                             ImageTiling::Optimal,
                             VK_IMAGE_LAYOUT_UNDEFINED,
                             n){}
@@ -361,6 +361,7 @@ struct TextureData
     ImageView *         array_view;     // bindless companion view（惰性创建）：2D=单层2D_ARRAY，Cube=6层CUBE_ARRAY
     uint32              miplevel;
     VkImageTiling       tiling;
+    VkImageUsageFlags   usage;
 
 public:
 
@@ -377,6 +378,7 @@ public:
         array_view  =nullptr;
         miplevel    =tci->target_mipmaps;
         tiling      =VkImageTiling(tci->tiling);
+        usage       =tci->usage;
 
         if(!tci->buffer&&!tci->pixels&&tci->image_layout==VK_IMAGE_LAYOUT_UNDEFINED)
             image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

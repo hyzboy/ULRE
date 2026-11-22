@@ -70,7 +70,7 @@ int main()
     char response[512]={};
     DWORD received=0;
     if(!ReadFile(pipe,response,sizeof(response)-1,&received,nullptr)
-       || !::strstr(response,"capture_request_not_supported"))
+       || !::strstr(response,"missing_target_id"))
         return 4;
     CloseHandle(pipe);
     pipe=Connect(name);

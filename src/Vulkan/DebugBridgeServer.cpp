@@ -1,6 +1,7 @@
 #include<hgl/vk/DebugBridgeServer.h>
 #include<hgl/vk/RenderHealthLedger.h>
 #include<hgl/vk/FrameDebugger.h>
+#include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
 #include<hgl/ecs/support/debug/DebugViewController.h>
 #include<hgl/mtl/DebugViewMode.h>
@@ -160,9 +161,11 @@ static void WaitForClientClose(HANDLE pipe,HANDLE stop_event)
         DWORD received=0;
         DWORD error=0;
         if(!TransferPipe(pipe,stop_event,ignored,nullptr,sizeof(ignored),received,
-                         static_cast<DWORD>(deadline-now),&error)
-           && error!=ERROR_MORE_DATA)
+                         static_cast<DWORD>(deadline-now),&error))
+        {
+            if(error==ERROR_MORE_DATA) continue;
             return;
+        }
         if(received==0) return;
     }
 }
@@ -326,8 +329,41 @@ bool DebugBridgeServer::Execute()
         result=SetDebugViewFromRequest(parsed.mode);
     else if(::strcmp(parsed.method,"get_debug_view")==0)
         result=MakeDebugViewJSON();
+    else if(::strcmp(parsed.method,"list_capture_targets")==0)
+        result=DebugCaptureQueue::GetTargetsJSON();
     else if(::strcmp(parsed.method,"capture_frame")==0)
-        result="{\"valid\":false,\"error\":\"capture_request_not_supported\"}";
+    {
+        if(!parsed.has_target_id)
+            result="{\"valid\":false,\"error\":\"missing_target_id\"}";
+        else if(::strcmp(parsed.attachment,"color")!=0 && ::strcmp(parsed.attachment,"depth")!=0)
+            result="{\"valid\":false,\"error\":\"unsupported_attachment\"}";
+        else
+        {
+            const auto attachment=::strcmp(parsed.attachment,"color")==0
+                ?DebugCaptureQueue::Attachment::Color:DebugCaptureQueue::Attachment::Depth;
+            const char *error=nullptr;
+            const uint64_t request_id=DebugCaptureQueue::Request(parsed.target_id,attachment,&error);
+            if(request_id)
+                result=DebugCaptureQueue::GetResultJSON(request_id);
+            else
+            {
+                result="{\"valid\":false,\"error\":\"";
+                result+=error;
+                result+="\"}";
+            }
+        }
+    }
+    else if(::strcmp(parsed.method,"get_capture_status")==0)
+        result=parsed.has_request_id?DebugCaptureQueue::GetResultJSON(parsed.request_id)
+                                    :AnsiString("{\"valid\":false,\"error\":\"missing_request_id\"}");
+    else if(::strcmp(parsed.method,"release_capture")==0)
+        result=parsed.has_request_id && DebugCaptureQueue::Release(parsed.request_id)
+              ?AnsiString("{\"valid\":true}")
+              :AnsiString("{\"valid\":false,\"error\":\"request_not_terminal_or_unknown\"}");
+    else if(::strcmp(parsed.method,"cancel_capture")==0)
+        result=parsed.has_request_id && DebugCaptureQueue::Cancel(parsed.request_id)
+              ?AnsiString("{\"valid\":true}")
+              :AnsiString("{\"valid\":false,\"error\":\"request_not_queued_or_unknown\"}");
     else if(::strcmp(parsed.method,"dump_buffer")==0
          || ::strcmp(parsed.method,"dump_render_target")==0)
         result=FrameDebugger::GetLatestResultJSON();

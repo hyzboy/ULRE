@@ -45,6 +45,7 @@ public:
 
     const VkFormat              GetFormat           ()const {return data?data->image_view->GetFormat():VK_FORMAT_UNDEFINED;}
     const VkImageAspectFlags    GetAspect           ()const {return data?data->image_view->GetAspectFlags():0;}
+    VkImageUsageFlags           GetUsage            ()const {return data?data->usage:0;}
     const VkExtent3D *          GetExtent           ()const {return data?&data->image_view->GetExtent():nullptr;}
 
     /**

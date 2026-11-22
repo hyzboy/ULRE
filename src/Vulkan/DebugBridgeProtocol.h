@@ -1,6 +1,7 @@
 #pragma once
 
 #include<cstddef>
+#include<cstdint>
 #include<cstring>
 
 namespace hgl::graph::debug_bridge
@@ -9,8 +10,13 @@ namespace hgl::graph::debug_bridge
     {
         char method[96]{};
         char mode[64]{};
+        char attachment[32]{};
         char id[256]{};
         bool has_id=false;
+        uint64_t target_id=0;
+        uint64_t request_id=0;
+        bool has_target_id=false;
+        bool has_request_id=false;
     };
 
     class Parser
@@ -141,6 +147,23 @@ namespace hgl::graph::debug_bridge
             return true;
         }
 
+        bool Unsigned(uint64_t &value)
+        {
+            Space();
+            if(cursor==end || *cursor<'0' || *cursor>'9') return false;
+            if(*cursor=='0' && cursor+1<end && cursor[1]>='0' && cursor[1]<='9')
+                return false;
+            value=0;
+            do
+            {
+                const unsigned digit=static_cast<unsigned>(*cursor-'0');
+                if(value>(UINT64_MAX-digit)/10) return false;
+                value=value*10+digit;
+                ++cursor;
+            } while(cursor<end && *cursor>='0' && *cursor<='9');
+            return true;
+        }
+
         bool Literal(const char *text,size_t size)
         {
             if(static_cast<size_t>(end-cursor)<size || ::memcmp(cursor,text,size)!=0)
@@ -192,7 +215,7 @@ namespace hgl::graph::debug_bridge
             if(!Consume('{')) return false;
             Space();
             if(cursor<end && *cursor=='}') { ++cursor; return true; }
-            bool has_mode=false;
+            bool has_mode=false,has_attachment=false;
             do
             {
                 char key[96];
@@ -201,6 +224,22 @@ namespace hgl::graph::debug_bridge
                 {
                     if(has_mode || !String(request.mode,sizeof(request.mode))) return false;
                     has_mode=true;
+                }
+                else if(::strcmp(key,"attachment")==0)
+                {
+                    if(has_attachment || !String(request.attachment,sizeof(request.attachment)))
+                        return false;
+                    has_attachment=true;
+                }
+                else if(::strcmp(key,"target_id")==0)
+                {
+                    if(request.has_target_id || !Unsigned(request.target_id)) return false;
+                    request.has_target_id=true;
+                }
+                else if(::strcmp(key,"request_id")==0)
+                {
+                    if(request.has_request_id || !Unsigned(request.request_id)) return false;
+                    request.has_request_id=true;
                 }
                 else if(!Value(1)) return false;
                 Space();

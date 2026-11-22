@@ -19,7 +19,7 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
    - `Pipeline`: shader or pipeline creation failure.
 3. Call `get_pass_metrics` and rank passes by `gpu_time_ms`.
 4. `dump_render_target` and `dump_buffer` report the most recent C++-requested capture; they do not request one or select by name. Do not treat the result as a new capture.
-5. `capture_frame` currently returns an explicit unsupported error.
+5. For a swapchain capture, call `list_capture_targets`, then `capture_frame` with its `target_id` and a supported `attachment`. Poll `get_capture_status` using the returned `request_id`; release terminal status with `release_capture`. Queued requests expire after 30 seconds. Offscreen targets and buffers are not yet exposed through this API.
 6. Conclude with a reproducible root cause and the exact engine subsystem/file to change.
 
 ## Camera contract

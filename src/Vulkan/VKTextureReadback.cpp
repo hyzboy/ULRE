@@ -87,6 +87,11 @@ namespace hgl::graph
 
         if (!device || !tex)
             return false;
+        if (!(tex->GetUsage() & VK_IMAGE_USAGE_TRANSFER_SRC_BIT))
+        {
+            GLogError(u8"[Readback] Image does not support transfer-source usage");
+            return false;
+        }
 
         const VkImage image = tex->GetImage();
         const VkExtent3D *extent = tex->GetExtent();
@@ -97,15 +102,6 @@ namespace hgl::graph
 
         const uint32_t width = extent->width;
         const uint32_t height = extent->height;
-        const uint32_t pixel_size = GetStrideByFormat(format);
-
-        if (pixel_size == 0)
-        {
-            GLogError(u8"[Readback] 格式 %d 无已知每像素字节数（压缩格式或非图像格式），无法读回",
-                      static_cast<int>(format));
-            return false;
-        }
-
         // aspect 优先取纹理自身的（ImageView 上已按格式判定）；缺省时按格式归类
         VkImageAspectFlags aspect = tex->GetAspect();
         if (aspect == 0)
@@ -119,6 +115,34 @@ namespace hgl::graph
             aspect &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
         const bool is_depth = (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) != 0;
+        const VkImageAspectFlags copy_aspect=is_depth?VK_IMAGE_ASPECT_DEPTH_BIT:VK_IMAGE_ASPECT_COLOR_BIT;
+        if(is_depth && !(aspect&VK_IMAGE_ASPECT_DEPTH_BIT))
+        {
+            GLogError(u8"[Readback] Stencil-only readback is not supported");
+            return false;
+        }
+        if(is_depth && HasStencil(format))
+            aspect|=VK_IMAGE_ASPECT_STENCIL_BIT;
+
+        uint32_t pixel_size=GetStrideByFormat(format);
+        if(is_depth)
+        {
+            switch(format)
+            {
+                case VK_FORMAT_D16_UNORM:
+                case VK_FORMAT_D16_UNORM_S8_UINT: pixel_size=2; break;
+                case VK_FORMAT_X8_D24_UNORM_PACK32:
+                case VK_FORMAT_D24_UNORM_S8_UINT:
+                case VK_FORMAT_D32_SFLOAT:
+                case VK_FORMAT_D32_SFLOAT_S8_UINT: pixel_size=4; break;
+                default: pixel_size=0; break;
+            }
+        }
+        if(pixel_size==0)
+        {
+            GLogError(u8"[Readback] Unsupported format %d",static_cast<int>(format));
+            return false;
+        }
 
         const VkDeviceSize bytes = VkDeviceSize(width) * VkDeviceSize(height) * VkDeviceSize(pixel_size);
         const VkImageLayout cur_layout = tex->GetImageLayout();
@@ -160,7 +184,7 @@ namespace hgl::graph
                                      range);
 
             VkBufferImageCopy region{};
-            region.imageSubresource = {aspect, 0, 0, 1};
+            region.imageSubresource = {copy_aspect, 0, 0, 1};
             region.imageExtent = {width, height, 1};
 
             cmd->CopyImageToBuffer(image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

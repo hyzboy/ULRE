@@ -6,9 +6,14 @@
 `tools/ulre-mcp-server` 提供桥接与图像分析。当前实现仍是诊断原型，不能视为完整、
 可靠的端到端抓帧系统：
 
-- `capture_frame` 目前返回不支持；`dump_render_target` 和 `dump_buffer` 只读取
-  最近一条结果，不创建请求，也不保证结果属于调用者或当前帧。实际抓取依赖 C++ 调用者调用
-  `RequestColor`、`RequestDepth` 或 `RequestBuffer`，并在合法时机调用 `CollectPending`。
+- `list_capture_targets` 列出支持抓取的交换链；`capture_frame` 接受 target ID 和
+  `color`/`depth`，返回请求 ID，随后可通过 `get_capture_status` 查询。抓取只在该
+  交换链提交后、present 前执行。`cancel_capture` 可取消排队请求；终态需调用
+  `release_capture` 释放状态槽，文件不会自动删除。排队超时为 30 秒。
+  深度模板格式仅读回深度 aspect，返回的 `pixel_size`/`row_pitch` 描述副本，
+  不等于深度模板联合像素布局。独立请求可能属于不同帧，必须检查 `frame_id`。
+- `dump_render_target` 和 `dump_buffer` 是旧接口，只读取最近一条 C++ 抓取结果，
+  不创建请求，也不保证结果属于调用者或当前帧。离屏目标和 SSBO 的远程抓取尚未接入。
 - 原始文件没有同帧元数据清单；最近相机矩阵不一定属于抓取的附件或同一帧。
   资源生命周期、共享状态同步、写盘错误与请求结果关联仍需补强。
 - `DebugAttribute` 目前通过覆盖实体的作者配方渲染到原目标，不是离屏 Pass。

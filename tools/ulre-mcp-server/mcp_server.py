@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import time
 
 import analyzer
 
@@ -8,6 +9,20 @@ import analyzer
 PIPE_NAME = r"\\.\pipe\ulre_render_debug"
 MAX_PIPE_REQUEST_BYTES = 4095
 MAX_PIPE_RESPONSE_BYTES = 1024 * 1024
+
+
+def open_engine_pipe():
+    deadline = time.monotonic() + 2.0
+    while True:
+        try:
+            return open(PIPE_NAME, "r+b", buffering=0)
+        except OSError as exc:
+            code = getattr(exc, "winerror", None)
+            if code not in (2, 231) and not (code is None and exc.errno in (2, 22)):
+                raise
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.01)
 
 
 TOOLS = [
@@ -67,9 +82,38 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
-        "name": "capture_frame",
-        "description": "Request frame capture (currently unavailable).",
+        "name": "list_capture_targets",
+        "description": "List swapchain targets registered for capture.",
         "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "capture_frame",
+        "description": "Queue one swapchain color or depth capture for the next submitted frame.",
+        "inputSchema": {"type": "object", "properties": {
+            "target_id": {"type": "integer", "minimum": 1},
+            "attachment": {"type": "string", "enum": ["color", "depth"]},
+        }, "required": ["target_id", "attachment"]},
+    },
+    {
+        "name": "get_capture_status",
+        "description": "Get the state and result of a queued capture request.",
+        "inputSchema": {"type": "object", "properties": {
+            "request_id": {"type": "integer", "minimum": 1},
+        }, "required": ["request_id"]},
+    },
+    {
+        "name": "cancel_capture",
+        "description": "Cancel a queued capture request; in-progress readbacks cannot be cancelled.",
+        "inputSchema": {"type": "object", "properties": {
+            "request_id": {"type": "integer", "minimum": 1},
+        }, "required": ["request_id"]},
+    },
+    {
+        "name": "release_capture",
+        "description": "Release a completed capture's in-memory status slot; does not delete its file.",
+        "inputSchema": {"type": "object", "properties": {
+            "request_id": {"type": "integer", "minimum": 1},
+        }, "required": ["request_id"]},
     },
     {
         "name": "analyze_luminance",
@@ -151,7 +195,7 @@ def call_engine(method, params=None):
     if len(request) > MAX_PIPE_REQUEST_BYTES:
         return {"valid": False, "error": "ULRE bridge request exceeds the size limit"}
     try:
-        with open(PIPE_NAME, "r+b", buffering=0) as pipe:
+        with open_engine_pipe() as pipe:
             if pipe.write(request) != len(request):
                 return {"valid": False, "error": "Incomplete ULRE bridge request"}
             chunks = bytearray()
