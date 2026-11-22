@@ -2375,6 +2375,13 @@ namespace hgl::ecs
 
         FrameProfiler::Count(FrameProfileCount::CollectItems, static_cast<uint32_t>(record_count));
 
+        cache.fast_path_engaged     = true;
+        cache.scene_primitives      = static_cast<uint32_t>(record_count);
+        cache.passed_can_render     = static_cast<uint32_t>(record_count);
+        cache.collected_items       = static_cast<uint32_t>(record_count);
+        cache.is_collect_steady     = true;
+        cache.has_pending_resources = false;
+
         return true;
     }
 
@@ -2503,9 +2510,12 @@ namespace hgl::ecs
         // next render.
         bool any_material_work = false;
         bool any_possible_runtime_rows_visible = false;
+        bool any_pending_resources = false;
 
         FrameProfiler::Count(FrameProfileCount::CollectPrimitives, primitives.GetCount());
         FrameProfiler::Count(FrameProfileCount::CollectCalls);
+
+        cache.scene_primitives = static_cast<uint32_t>(primitives.GetCount());
 
         // P3：主帧收集快路径。命中即本 pass 的收集工作**全部完成** ⇒ 直接返回。
         // 未命中（任一前提不成立，或中途发现不一致而主动回退）⇒ 照原样跑完整收集，
@@ -2524,6 +2534,25 @@ namespace hgl::ecs
             // A7a：收集判定 = 策略表（唯一判据）；事实由组件 / 世界回答。mobility 过滤是
             // 世界级过滤器（表不建模），仍在本循环里单独生效。
             const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp);
+
+            Entity *owner = geometryComp->GetOwner();
+            if (strategy.facts.entity_visible && owner)
+            {
+                if (HasPendingGeometryResource(owner))
+                {
+                    any_pending_resources = true;
+                    any_material_work     = true;
+                    ++cache.dropped_geometry_loading;
+                    cache.RecordDrop(GetOwnerName(owner), owner->GetEntityID().index, "RenderCollect", "GeometryLoading", "Geometry asset loading");
+                }
+                else if (HasPendingMaterialResources(owner))
+                {
+                    any_pending_resources = true;
+                    any_material_work     = true;
+                    ++cache.dropped_resource_pending;
+                    cache.RecordDrop(GetOwnerName(owner), owner->GetEntityID().index, "RenderCollect", "MaterialResourcePending", "Texture streaming");
+                }
+            }
 
 #if ULRE_STRATEGY_PARITY_ENABLED
             // ── 反向守卫：参考实现 = 手写 if 链（Release 下整块编空）───────────
@@ -2988,6 +3017,8 @@ namespace hgl::ecs
             cache.renderItems.push_back(std::move(item));
             cache.renderableCount++;
             ++added;
+            ++cache.passed_can_render;
+            ++cache.collected_items;
             shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
         }
 
@@ -3034,6 +3065,10 @@ namespace hgl::ecs
         // P3：记录本 pass 是否"稳态"（无任何图元需要完整材质链），供下一帧快路径判定。
         // 只在主帧 pass 更新：阴影/过滤 pass 的结论会污染这份判断。
         if (world->IsMainFrameTopologyPass())
-            last_main_collect_steady = !any_material_work;
+        {
+            last_main_collect_steady    = !any_material_work && !any_pending_resources;
+            cache.is_collect_steady     = last_main_collect_steady;
+            cache.has_pending_resources = any_pending_resources;
+        }
     }
 }//namespace hgl::ecs

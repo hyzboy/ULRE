@@ -37,6 +37,36 @@ namespace hgl::ecs
         /// 首帧 renderItems 必然为空 ⇒ 准备失败被缓存 ⇒ 批次永不装配 ⇒ 离屏永不绘制）。
         uint32_t frame_serial = 0;
 
+        // ── 阶段账本与自省状态 ──────────────────────────────────────────────
+        bool has_pending_resources = false;
+        bool is_collect_steady     = false;
+        bool fast_path_engaged     = false;
+
+        uint32_t scene_primitives  = 0;
+        uint32_t passed_can_render = 0;
+        uint32_t collected_items   = 0;
+
+        uint32_t dropped_invisible         = 0;
+        uint32_t dropped_no_transform     = 0;
+        uint32_t dropped_mobility         = 0;
+        uint32_t dropped_resource_pending = 0;
+        uint32_t dropped_geometry_loading = 0;
+        uint32_t dropped_other            = 0;
+
+        static constexpr uint32_t kMaxSampleDrops = 16;
+        struct DropSampleRecord
+        {
+            char entity_name[64] = {};
+            uint32_t entity_id   = 0;
+            char stage[32]       = {};
+            char reason[32]      = {};
+            char detail[64]      = {};
+        };
+        uint32_t drop_sample_count = 0;
+        DropSampleRecord drop_samples[kMaxSampleDrops];
+
+        void RecordDrop(const char *name, uint32_t id, const char *stage, const char *reason, const char *detail);
+
         RenderFrameCache() = default;
         ~RenderFrameCache();
 

@@ -33,6 +33,7 @@
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/buffer/IndirectCommandBuffer.h>
 #include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/FrameDebugger.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/common/DebugChannel.h>
@@ -1259,12 +1260,68 @@ namespace hgl::ecs
         //
         // `IsMainFrameTopologyPass()` 与 P1 的资格谓词一致：阴影 pass 与移动性过滤
         // pass 共用同一份 `RenderFrameCache`，成员集合天然不同 ⇒ 不参与主帧快照。
+        uint32_t batched_item_count = 0;
+        uint32_t valid_batch_count = 0;
+        for (const auto &pair : cache.materialBatches)
+        {
+            if (pair.second && !pair.second->items.empty())
+            {
+                batched_item_count += static_cast<uint32_t>(pair.second->items.size());
+                ++valid_batch_count;
+            }
+        }
+
         if (world && world->IsMainFrameTopologySnapshotEnabled() && world->IsMainFrameTopologyPass())
         {
-            world->GetMainFrameTopologySnapshot().BuildFromCache(
-                cache,
-                world->GetPrimitiveTopologyLedger().GetTopologyRevision(),
-                cache.frame_serial);
+            if (cache.is_collect_steady && !cache.has_pending_resources)
+            {
+                world->GetMainFrameTopologySnapshot().BuildFromCache(
+                    cache,
+                    world->GetPrimitiveTopologyLedger().GetTopologyRevision(),
+                    cache.frame_serial);
+            }
+            else
+            {
+                world->GetMainFrameTopologySnapshot().Invalidate();
+            }
+        }
+
+        if (world && world->IsMainFrameTopologyPass())
+        {
+            hgl::graph::FrameDebugger::PipelineInspectionSnapshot snapshot{};
+            snapshot.valid = true;
+            snapshot.frame_serial = cache.frame_serial;
+            snapshot.scene_primitives = cache.scene_primitives;
+            snapshot.passed_can_render = cache.passed_can_render;
+            snapshot.collected_items = static_cast<uint32_t>(cache.renderItems.size());
+            snapshot.batched_items = batched_item_count;
+            snapshot.batch_count = valid_batch_count;
+            snapshot.gpu_draw_count = batched_item_count;
+
+            snapshot.fast_path_engaged = cache.fast_path_engaged;
+            snapshot.last_collect_steady = cache.is_collect_steady;
+            snapshot.has_pending_resources = cache.has_pending_resources;
+
+            const auto &topo_snap = world->GetMainFrameTopologySnapshot();
+            snapshot.snapshot_ready = topo_snap.IsReady();
+            snapshot.snapshot_topology_rev = topo_snap.GetTopologyRevision();
+            snapshot.world_topology_rev = world->GetPrimitiveTopologyLedger().GetTopologyRevision();
+            snapshot.snapshot_item_count = topo_snap.GetItemCount();
+
+            snapshot.dropped_invisible = cache.dropped_invisible;
+            snapshot.dropped_no_transform = cache.dropped_no_transform;
+            snapshot.dropped_mobility = cache.dropped_mobility;
+            snapshot.dropped_resource_pending = cache.dropped_resource_pending;
+            snapshot.dropped_geometry_loading = cache.dropped_geometry_loading;
+            snapshot.dropped_other = cache.dropped_other;
+
+            snapshot.drop_sample_count = cache.drop_sample_count;
+            for (uint32_t i = 0; i < cache.drop_sample_count; ++i)
+            {
+                memcpy(&snapshot.drop_samples[i], &cache.drop_samples[i], sizeof(snapshot.drop_samples[i]));
+            }
+
+            hgl::graph::FrameDebugger::SetPipelineInspection(snapshot);
         }
 
         // 桶组（几何批）数已在上方逐批用 `FrameProfiler::Count` 累加。此处不再重复统计。
