@@ -456,7 +456,7 @@ namespace
             const char *why;
         } kCpuChecks[] =
         {
-            { "bucket_capacity[grp.group_bucket + s] += part_slot_count[s];",
+            { "bucket_capacity[grp.group_bucket + s] += facts->slot_count[s];",
               "容量必须逐实例累加到**模板组**的槽上（聚合而非每实例一组桶）" },
             { "const uint32_t group_size = MeshDispatchGroupSize(batch_is_lines);",
               "CPU 必须用 MeshDispatchGroupSize 单一真源下发组大小" },

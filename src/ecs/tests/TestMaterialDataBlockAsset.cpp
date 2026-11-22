@@ -21,6 +21,7 @@
 #include <hgl/log/Logger.h>
 #include <hgl/mtl/MaterialDataBlockFile.h>
 #include <hgl/mtl/MaterialDataBlockFlat.h>
+#include <hgl/utf.h>
 #include <hgl/vk/buffer/ActiveRowPool.h>
 
 #include <cstring>
@@ -346,11 +347,25 @@ namespace
         return ok;
     }
 
+    /// 临时目录（落在 build/ 下且与配置无关：Debug/Release 都能跑）
+    constexpr const char *kTempDir = "build/test_mtlblock";
+
+    OSString TempPath(const char *leaf)
+    {
+        OSString path = ToOSString(kTempDir);
+        path += OS_TEXT("/");
+        path += ToOSString(leaf);
+        return path;
+    }
+
     bool TestLoadFileDispatch()
     {
-        const OSString toml_path(OS_TEXT("build/out/Windows_64_Release/__t_grid.material_data.toml"));
-        const OSString mdb_path(OS_TEXT("build/out/Windows_64_Release/__t_grid.material_data.mdb"));
-        const OSString unknown_path(OS_TEXT("build/out/Windows_64_Release/__t_grid.txt"));
+        if (!hgl::filesystem::MakePath(ToOSString(kTempDir)))
+            return false;
+
+        const OSString toml_path = TempPath("__t_grid.material_data.toml");
+        const OSString mdb_path = TempPath("__t_grid.material_data.mdb");
+        const OSString unknown_path = TempPath("__t_grid.txt");
 
         hgl::graph::MaterialDataBlockSpec ref_spec;
         mtl::MaterialDataBlock ref_block;
@@ -384,7 +399,7 @@ namespace
             // 不认识的后缀、不存在的文件都是明确失败。
             if (ok)
                 ok = !registry.LoadFile(unknown_path)
-                  && !registry.LoadFile(OS_TEXT("build/out/Windows_64_Release/__t_missing.mdb"));
+                  && !registry.LoadFile(TempPath("__t_missing.mdb"));
 
             // URI 门面的 File 形态：首次按需加载，第二次命中缓存。
             if (ok)
