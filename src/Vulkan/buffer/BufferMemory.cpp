@@ -173,6 +173,29 @@ void DeviceMemory::Unmap()
     mapped_size = 0;
 }
 
+bool DeviceMemory::InvalidateMapped()
+{
+    if(!is_mapped)
+    {
+        LogError("[DeviceMemory::InvalidateMapped] Memory is not mapped");
+        return false;
+    }
+
+    VkMappedMemoryRange range{};
+    range.sType=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+    range.memory=memory;
+    range.offset=mapped_offset;
+    range.size=VK_WHOLE_SIZE;
+    const VkResult result=vkInvalidateMappedMemoryRanges(device,1,&range);
+    if(result!=VK_SUCCESS)
+    {
+        LogError("[DeviceMemory::InvalidateMapped] vkInvalidateMappedMemoryRanges failed result=%d",
+                 static_cast<int>(result));
+        return false;
+    }
+    return true;
+}
+
 void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
 {
     if(!is_mapped)

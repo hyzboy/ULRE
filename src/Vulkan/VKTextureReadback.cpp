@@ -3,6 +3,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/log/Log.h>
 #include<hgl/type/String.h>
 
@@ -249,8 +250,18 @@ namespace hgl::graph
 
             if (mapped)
             {
-                const uint8_t *first = static_cast<const uint8_t *>(mapped);
-                out_pixels.assign(first, first + bytes);
+                DeviceMemory *memory=staging->GetMemory();
+                if(memory && memory->InvalidateMapped())
+                {
+                    const uint8_t *first = static_cast<const uint8_t *>(mapped);
+                    out_pixels.assign(first, first + bytes);
+                }
+                else
+                {
+                    if(!memory)
+                        GLogError(u8"[TextureReadback] Staging memory is unavailable");
+                    ok=false;
+                }
                 staging->GetGPUBuffer()->Unmap();
             }
             else

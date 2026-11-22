@@ -16,6 +16,9 @@
 - `dump_render_target` 和 `dump_buffer` 是旧接口，只读取最近一条 C++ 抓取结果，
   不创建请求，也不保证结果属于调用者或当前帧。除 Debug View 专用目标外的通用离屏目标
   和 SSBO 的远程抓取尚未接入。
+- 纹理和缓冲 staging 读回在等待提交完成、映射后显式 invalidate 映射内存，
+  invalidate 失败时不发布数据。旧 `FrameDebugger` 缓冲接口仍可能读到上传镜像，
+  不能作为 GPU 写入的 SSBO 的可靠抓取接口。
 - 新交换链抓帧同时发布 `ulre.capture.v1` JSON 清单：记录请求、目标、帧、
   原始文件、格式、布局和同帧 primitive-collect 相机快照；不同相机混用时标记
   `ambiguous`。旧 C++ 抓取接口仍没有此清单。

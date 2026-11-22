@@ -100,7 +100,15 @@ namespace hgl::graph
             const void *mapped = staging->GetGPUBuffer()->Map(0, size);
             if (mapped)
             {
-                memcpy(out_data, mapped, static_cast<size_t>(size));
+                DeviceMemory *memory=staging->GetMemory();
+                if(memory && memory->InvalidateMapped())
+                    memcpy(out_data, mapped, static_cast<size_t>(size));
+                else
+                {
+                    if(!memory)
+                        GLogError(u8"[BufferReadback] Staging memory is unavailable");
+                    ok=false;
+                }
                 staging->GetGPUBuffer()->Unmap();
             }
             else

@@ -85,6 +85,7 @@ public:
 
     void    Flush       (VkDeviceSize,VkDeviceSize);
     void    Flush       (VkDeviceSize size){Flush(0,size);}
+    bool    InvalidateMapped();
 };//class DeviceMemory
 }//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_MEMORY_INCLUDE
