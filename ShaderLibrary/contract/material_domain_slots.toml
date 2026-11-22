@@ -308,3 +308,8 @@ description = "材质错误回退棋盘格（无纹理槽）"
 domain = "StandardAdvanced"
 description = "Filament 高级 PBR（清漆/绒面/各向异性/简易次表面；复用 StandardOpaque 槽契约）"
 ref_slots = "StandardOpaque"
+
+[[domains]]
+domain = "DebugAttribute"
+description = "引擎内嵌调试视图（世界法线/基础色/表面参数/自发光/UV 通道；复用 StandardOpaque 槽契约）"
+ref_slots = "StandardOpaque"

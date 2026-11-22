@@ -201,6 +201,15 @@ namespace hgl::ecs
 
         // ── 配方覆盖 ──
         void SetRecipe(const hgl::graph::mtl::MaterialRecipe &recipe);
+
+        /// 撤销配方覆盖，回到「asset 默认配方」。
+        ///
+        /// 唯一消费方 = 引擎内嵌调试视图的还原路径
+        /// （`hgl/ecs/support/debug/DebugViewController.h`）：调试配方是引擎临时
+        /// 叠加的覆盖，关闭时必须能回到「作者原本有没有覆盖」这一事实，
+        /// 所以这里不是 `SetRecipe({})`（那会留下一个空的真覆盖）。
+        void ClearRecipeOverride();
+
         const hgl::graph::mtl::MaterialRecipe *GetRecipeOverride() const;
         bool HasRecipeOverride() const { return GetRecipeOverride() != nullptr; }
 

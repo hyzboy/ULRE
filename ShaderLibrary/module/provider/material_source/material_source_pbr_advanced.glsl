@@ -13,6 +13,7 @@
 // @ulre texture_reference emissive Fragment optional fallback
 // @ulre texture_reference orm Fragment optional fallback
 // @ulre sampler_reference Trilinear
+// @ulre sampler_reference TrilinearAniso
 // @ulre sampler_reference Linear
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures

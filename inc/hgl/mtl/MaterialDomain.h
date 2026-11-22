@@ -99,13 +99,23 @@ namespace hgl::graph::mtl
         // 追加在枚举末尾：不改写既有领域的数值（BDA/缓存键的稳定性）。
         StandardAdvanced,
 
-        ENUM_CLASS_RANGE(Custom, StandardAdvanced)
+        // ── 引擎内嵌调试视图（渲染自省阶段二）────────────────────────────────
+        // 把「中间量」当颜色输出，供 AI Agent / 自动化测试拿去做数值分析：
+        // 世界法线、基础色、表面参数（roughness/metallic/ao）、自发光、UV。
+        //
+        // 它**不是**给美术用的材质，而是「同一份材质行的另一种解读」：
+        // 配方切到本领域时材质行绑定保持不变（PBRSurface 行与 StandardOpaque
+        // 逐字节同构），通道由配方的 `compile_defines`（`HGL_DEBUG_VIEW_*`）选择。
+        // 详见 doc/debug-analysis-and-view-modes.md 与 inc/hgl/mtl/DebugViewMode.h。
+        DebugAttribute,
+
+        ENUM_CLASS_RANGE(Custom, DebugAttribute)
     };
 
     const char *GetMaterialDomainName(MaterialDomain domain) noexcept;
 
     // 非 Custom 的契约领域数量（用于契约表遍历与门禁穷举）。
-    constexpr int MaterialDomainContractCount = 19;
+    constexpr int MaterialDomainContractCount = 20;
 
     // 严格解析："StandardOpaque" 等；返回 false 表示未知名字（调用方报错）。
     bool ParseMaterialDomain(const char *name, MaterialDomain &out_domain) noexcept;

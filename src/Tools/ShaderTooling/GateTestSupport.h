@@ -206,7 +206,8 @@ namespace gate
     /// 89 = 88 + `ambient_light_ibl_oct`（八面体展开版 IBL 天光 provider，
     /// 与 `ambient_light_ibl` 同构、只换纹理寻址方式）。
     /// 90 = 89 + `ambient_light_sh`（SH9 球谐天光 provider，唯一不读贴图的间接光实现）。
-    constexpr int kGlslModuleCount = 98;
+    // 99 = 98 + DebugAttribute 调试属性通道。
+    constexpr int kGlslModuleCount = 99;
 
     // 仓库根路径（由 CMake 注入，避免硬编码盘符）
     static std::string RepoRootPath(const char *suffix)
@@ -2190,6 +2191,8 @@ namespace gate
         // 尾部追加：Filament 高级 PBR 域（64B 行 + filament 高级槽实现）。
         { "adv-fwd", MaterialDomain::StandardAdvanced, ShaderProgramPurpose::ForwardColor, false },
         { "adv-shadow-alpha", MaterialDomain::StandardAdvanced, ShaderProgramPurpose::ShadowDepth, true },
+        // 尾部追加：引擎内嵌调试属性域（世界法线 / 基础色 / 表面参数）。
+        { "debug-attribute", MaterialDomain::DebugAttribute, ShaderProgramPurpose::ForwardColor, false },
     };
 
     /// reflection 的稳定文本形式。只取跨编译器稳定的字段，不含任何指令偏移。

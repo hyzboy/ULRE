@@ -57,6 +57,17 @@ namespace hgl::ecs
         TouchAuthored();
     }
 
+    void MaterialData::ClearRecipeOverride()
+    {
+        if(!has_recipe_override)
+            return;     // 本来就没有覆盖 ⇒ 不推进代数（避免无意义的重解析）
+
+        recipe_override = hgl::graph::mtl::MaterialRecipe{};
+        has_recipe_override = false;
+
+        TouchAuthored();
+    }
+
     const hgl::graph::mtl::MaterialRecipe *MaterialData::GetRecipeOverride() const
     {
         return has_recipe_override ? &recipe_override : nullptr;

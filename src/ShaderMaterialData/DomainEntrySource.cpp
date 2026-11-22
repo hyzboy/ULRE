@@ -49,6 +49,10 @@ namespace hgl::graph::mtl
             { MaterialDomain::ErrorChecker3D,    "error_checker_3d",   "error_checker_3d.frag",   false },
             { MaterialDomain::Text2D,            "text_2d",            "text_2d.frag",            false },
             { MaterialDomain::DebugNormal,       "debug_normal",       "debug_normal.frag",       false },
+            // 引擎内嵌调试视图：中间量通道（世界法线 / 基础色 / 表面参数 / 自发光 / UV）。
+            // 通道由配方的 `compile_defines`（`HGL_DEBUG_VIEW_*`）在编译期选定，
+            // 因此**一个领域、一份固定主着色器**覆盖全部通道。
+            { MaterialDomain::DebugAttribute,    "debug_attribute",    "debug_attribute.frag",    false },
         };
 
         constexpr int kDomainDirCount =

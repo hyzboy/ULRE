@@ -11,6 +11,7 @@
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
+#include<hgl/ecs/support/debug/DebugViewController.h>
 #include<hgl/ecs/core/render/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include <cstdlib>
@@ -2422,6 +2423,10 @@ namespace hgl::ecs
     {
         if (!world)
             return;
+
+        // 调试视图（Debug View）：世界级配方覆盖必须在材质解析之前落定，否则本帧
+        // 仍会用旧配方解析管线。模式未变时这里只有一次比较（关闭态零开销）。
+        DebugViewController::Apply(world);
 
         // 本 pass 生效相机的 CameraInfo（离屏 pass = pass 相机，主帧 = 主相机）：
         // 每帧现取，**不缓存指针**——pass 之间相机会换（旧实现把指针缓存在安装期，pass 相机一上场就错）。

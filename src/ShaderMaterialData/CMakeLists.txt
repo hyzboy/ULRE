@@ -23,6 +23,9 @@ set(SHADERMATERIALDATA_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDataBlockFile.h
     MaterialDataBlockFile.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
+    # 引擎内嵌调试视图：通道枚举 + 调试配方合成（与回退配方同一条规范化路径）。
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/DebugViewMode.h
+    DebugViewRecipe.cpp
     # 材质源贴图的投影表示（2D / cubemap / 八面体展开图）。纯数据判定，只读
     # recipe 里的 resource_id 后缀；不改装载路径，也不新增材质领域。
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialTextureProjection.h

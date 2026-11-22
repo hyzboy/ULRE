@@ -103,6 +103,11 @@ namespace hgl::graph::mtl
         constexpr int StandardAdvancedSlotCount = StandardOpaqueSlotCount;
         constexpr uint32_t StandardAdvancedRowStride = StandardOpaqueRowStride;
 
+        // DebugAttribute —— 复用 StandardOpaque 的纹理槽
+        constexpr const MaterialDomainTextureSlot *DebugAttributeSlots = StandardOpaqueSlots;
+        constexpr int DebugAttributeSlotCount = StandardOpaqueSlotCount;
+        constexpr uint32_t DebugAttributeRowStride = StandardOpaqueRowStride;
+
         struct DomainSlotInfo
         {
             const MaterialDomainTextureSlot *slots;
@@ -134,6 +139,8 @@ namespace hgl::graph::mtl
                 return { SkySlots, SkySlotCount, SkyRowStride };
             case MaterialDomain::StandardAdvanced:
                 return { StandardAdvancedSlots, StandardAdvancedSlotCount, StandardAdvancedRowStride };
+            case MaterialDomain::DebugAttribute:
+                return { DebugAttributeSlots, DebugAttributeSlotCount, DebugAttributeRowStride };
             default:
                 return { nullptr, 0, 0u };
             }

@@ -8,6 +8,7 @@
 // @ulre uses bindless_textures
 // @ulre texture_reference normal Fragment optional fallback
 // @ulre sampler_reference Trilinear
+// @ulre sampler_reference TrilinearAniso
 // @ulre end
 // NTB Normal Map — 余切标架（cotangent frame）法线贴图
 //

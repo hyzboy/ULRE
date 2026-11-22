@@ -50,7 +50,8 @@ set(ECS_GROUP_DIRS
     "support/line:Support\\Line"
     "support/primitive:Support\\Primitive"
     "support/text:Support\\Text"
-    "support/hierarchy2d:Support\\Hierarchy2D")
+    "support/hierarchy2d:Support\\Hierarchy2D"
+    "support/debug:Support\\Debug")
 
 set(ECS_GROUPED_FILES)
 foreach(entry IN LISTS ECS_GROUP_DIRS)

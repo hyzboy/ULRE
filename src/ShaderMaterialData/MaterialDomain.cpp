@@ -33,6 +33,7 @@ namespace hgl::graph::mtl
         case MaterialDomain::ErrorChecker3D:  return "ErrorChecker3D";
         case MaterialDomain::VertexPaletteLines: return "VertexPaletteLines";
         case MaterialDomain::StandardAdvanced:   return "StandardAdvanced";
+        case MaterialDomain::DebugAttribute:     return "DebugAttribute";
 
         default:                             return "Unknown";
         }
@@ -45,7 +46,7 @@ namespace hgl::graph::mtl
 
         // 上界必须跟着枚举最后一项走；漏改会让新领域名解析不出来，
         // 表现为「TOML 里写对了却报 unknown domain」。
-        constexpr int kLastDomain = static_cast<int>(MaterialDomain::StandardAdvanced);
+        constexpr int kLastDomain = static_cast<int>(MaterialDomain::DebugAttribute);
         for (int i = 0; i <= kLastDomain; ++i)
         {
             const MaterialDomain domain = static_cast<MaterialDomain>(i);
@@ -97,7 +98,7 @@ namespace hgl::graph::mtl
         // 名字必须在 ShaderLibrary/contract/sampler.toml 里存在，否则构建侧会
         // 静默取索引 0（门禁 S.material-domain-sampler-presets-exist 会核对）。
         constexpr const char *PbrSurfaceSamplers[] = {
-            "Trilinear", "Linear", "ShadowPCF"};
+            "Trilinear", "TrilinearAniso", "Linear", "ShadowPCF"};
         constexpr const char *TextureSurfaceSamplers[] = {
             "Trilinear", "TrilinearClamp"};
         // SDF 文本默认线性过滤；位图形态由资产声明 samplers=["Nearest"] 覆盖。
@@ -532,6 +533,35 @@ namespace hgl::graph::mtl
                 {},
                 // 高级 PBR 表面字段组（前 32B 与 PBRSurface 同构 + 高级参数区）。
                 GlobalSSBOType::PBRAdvancedSurface,
+                VarSem(InterStageSemantic::DataIndexID)
+                    | VarSem(InterStageSemantic::WorldPosition)
+                    | VarSem(InterStageSemantic::WorldNormal)
+                    | VarSem(InterStageSemantic::UV0),
+                PbrSurfaceSamplers,
+                static_cast<int>(sizeof(PbrSurfaceSamplers)
+                                 / sizeof(PbrSurfaceSamplers[0])),
+            },
+            {
+                // 引擎内嵌调试视图：把中间量当颜色输出，供数值分析消费。
+                //
+                //   · 材质源 = material_source_debug_attribute（按 frag_options 的
+                //     `HGL_DEBUG_VIEW_*` 宏选通道）；
+                //   · 贴图槽与采样器预设**复用 StandardOpaque 的那一份**：调试配方
+                //     会保留被诊断材质的贴图绑定（"纹理没绑上"要在通道里看得见），
+                //     且命名贴图资源也要求槽位同名可查；
+                //   · payload 行 = PBRSurface（与 StandardOpaque 逐字节同构）⇒
+                //     切通道时**不需要搬动任何材质数据行**；
+                //   · ntb = nullptr：调试通道输出的是顶点侧世界法线，不做切线空间扰动。
+                MaterialDomain::DebugAttribute, "DebugAttribute",
+                "material_source_debug_attribute", nullptr,
+                Sem(VertexSemantic::Position) | Sem(VertexSemantic::Normal)
+                    | Sem(VertexSemantic::TexCoord),
+                StandardOpaqueSlots,
+                StandardOpaqueSlotCount,
+                false,
+                false,
+                {},
+                GlobalSSBOType::PBRSurface,
                 VarSem(InterStageSemantic::DataIndexID)
                     | VarSem(InterStageSemantic::WorldPosition)
                     | VarSem(InterStageSemantic::WorldNormal)
