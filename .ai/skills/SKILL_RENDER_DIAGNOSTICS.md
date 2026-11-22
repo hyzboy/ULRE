@@ -41,3 +41,46 @@ If the MCP reports `ULRE bridge unavailable`, verify:
 1. `ULRE_DEBUG.toml` contains `debugbridge = true`.
 2. The engine process is running and its Vulkan device is initialized.
 3. No stale engine process is holding the named pipe.
+
+## Advanced quantitative diagnosis
+
+Use fixed numeric tools before looking at any image attachment.
+
+1. Call `set_debug_view` to request `world_normal`, `base_color`, `surface`, `emissive`, or `uv0`.
+2. Wait one render frame, then call `get_debug_view` and verify `mode` equals the requested mode.
+3. Call `get_camera_matrices` before depth/world-position reconstruction.
+4. If the raw capture is a color/debug RT:
+   - `analyze_luminance` for exposure, dead pixels, and NaN/Inf;
+   - `analyze_normals` for length error, zero normals, and Z-axis distribution;
+   - `analyze_surface` for roughness, metallic, and AO distributions.
+5. If the raw capture is a depth RT:
+   - `analyze_depth` for cleared/invalid coverage and depth histogram;
+   - `reconstruct_world_pos` for sampled world-position bounds.
+6. Call `compare_frames` for repeated captures or shader regression:
+   - MAE is the first broad drift indicator;
+   - RMSE and PSNR quantify accumulated error;
+   - `changed_ratio` locates the fraction of pixels outside the threshold;
+   - the PGM heatmap is evidence, not the pass/fail decision.
+
+## Quantitative decision tree
+
+- **World normal length-error ratio > 5%**: suspect vertex-normal stream, normal-map tangent basis, or face-normal fallback.
+- **Zero-normal ratio elevated**: suspect missing Normal vertex semantic or an uninitialized varying.
+- **Negative-Z/positive-Z distribution is wrong for the known surface**: suspect coordinate-space or front-face sign.
+- **Dead roughness or metallic ratio high**: suspect PBR row/layout mismatch or a bindless material fallback.
+- **Underexposed/overexposed ratio is isolated to a region**: inspect shadow, AO, emissive, and light parameters for that region.
+- **Depth effective ratio is near 0**: suspect clearing or depth-only pass output.
+- **Depth effective ratio is near 1**: inspect whether geometry coverage or depth-wash state is wrong.
+- **MAE/RMSE rises after a code change with a low changed-ratio**: suspect anti-aliasing, one-pixel offset, or sparse hot pixels.
+- **MAE/RMSE rises with high changed-ratio across geometry**: suspect camera, projection, transform, or pipeline-state drift.
+- **Heatmap follows a mesh silhouette**: suspect transform, culling, or normal/camera-space math.
+
+## World-position reconstruction
+
+World position is reconstructed from depth plus `inverse_vp`; do not require an extra 64-bit WorldPosition RT.
+
+The Vulkan RH ZO convention is mandatory:
+
+`ndc = ((px + 0.5) / width * 2 - 1, (py + 0.5) / height * 2 - 1, depth, 1)`
+
+`world = inverse_vp * ndc`, then divide by `w`.
