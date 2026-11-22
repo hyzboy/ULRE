@@ -163,7 +163,7 @@ bool RenderCmdBuffer::BeginRendering(IRenderTarget *rt, const RenderPassOptions 
     // 所有片元——整个场景只剩清屏色，表现为「示例什么都看不到」。
     // 也与 SetClearDepthStencil() 的既有默认值一致。
     if(has_depth)
-        SetClearDepthStencil(color_count,0.0f,0.0f);
+        SetClearDepthStencil(color_count,options?options->clear_depth_value:0.0f,0.0f);
 
     VkRenderingAttachmentInfo color_atts[8]{};
 

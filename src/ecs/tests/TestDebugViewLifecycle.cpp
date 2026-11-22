@@ -29,10 +29,14 @@ int main()
        || !material->GetRecipeOverride()
        || material->GetRecipeOverride()->recipe_name!="original")
         return 3;
+    if(!DebugViewController::RequestMode(DebugViewMode::WorldPosition)
+       || DebugViewController::GetRequestedMode()!=DebugViewMode::WorldPosition
+       || material->GetAuthoredGeneration()!=generation)
+        return 6;
     {
         ECSContext other("UnrelatedWorld");
         other.Shutdown();
-        if(DebugViewController::GetRequestedMode()!=DebugViewMode::WorldNormal)
+        if(DebugViewController::GetRequestedMode()!=DebugViewMode::WorldPosition)
             return 4;
     }
     if(!DebugViewController::RequestMode(DebugViewMode::Off)

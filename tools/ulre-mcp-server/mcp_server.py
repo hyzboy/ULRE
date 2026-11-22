@@ -44,13 +44,24 @@ TOOLS = [
         "description": "Analyze a versioned capture manifest, including depth-based world-position bounds.",
         "inputSchema": {"type": "object", "properties": {
             "metadata_path": {"type": "string"},
-            "operation": {"type": "string", "enum": ["luminance", "depth", "world_position", "normals", "surface"]},
+            "operation": {"type": "string", "enum": ["luminance", "depth", "world_position",
+                                                      "world_position_rt", "position_crosscheck",
+                                                      "normals", "surface"]},
             "color_space_override": {"type": "string", "enum": ["linear", "srgb"]},
             "reversed_z_override": {"type": "boolean"},
             "sample_step": {"type": "integer", "minimum": 1, "default": 16},
             "allow_unverified_depth_producers": {"type": "boolean", "default": False},
             "mask_metadata_path": {"type": "string"},
+            "depth_metadata_path": {"type": "string"},
         }, "required": ["metadata_path", "operation"]},
+    },
+    {
+        "name": "analyze_shadow_semantics",
+        "description": "Distinguish shadow-map caster coverage from screen-space receiver shadowing; the latter needs a same-frame receiver shadow factor or mask.",
+        "inputSchema": {"type": "object", "properties": {
+            "metadata_path": {"type": "string"},
+            "is_shadow_map_depth": {"type": "boolean", "default": False},
+        }, "required": ["metadata_path"]},
     },
     {
         "name": "get_render_health",
@@ -96,7 +107,8 @@ TOOLS = [
             "properties": {
                 "mode": {
                     "type": "string",
-                    "enum": ["off", "world_normal", "base_color", "surface", "emissive", "uv0"],
+                    "enum": ["off", "world_normal", "base_color", "surface", "emissive", "uv0",
+                             "world_position"],
                 },
             },
             "required": ["mode"],
@@ -305,7 +317,11 @@ def handle(request):
                     arguments.get("color_space_override"), arguments.get("reversed_z_override"),
                     arguments.get("sample_step", 16),
                     arguments.get("allow_unverified_depth_producers", False),
-                    arguments.get("mask_metadata_path"))
+                    arguments.get("mask_metadata_path"),
+                    arguments.get("depth_metadata_path"))
+            elif tool_name == "analyze_shadow_semantics":
+                value = capture_manifest.analyze_shadow_semantics(
+                    arguments["metadata_path"], arguments.get("is_shadow_map_depth", False))
             elif tool_name == "analyze_luminance":
                 value = analyzer.analyze_luminance(
                     arguments["path"], arguments["width"], arguments["height"],

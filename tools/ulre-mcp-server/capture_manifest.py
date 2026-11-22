@@ -1,12 +1,13 @@
 import json
 import math
+import struct
 from pathlib import Path
 
 import analyzer
 
 MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_CAPTURE_BYTES = 256 * 1024 * 1024
-PIXEL_SIZES = {"rgba8": 4, "bgra8": 4, "a2bgr10": 4,
+PIXEL_SIZES = {"rgba8": 4, "bgra8": 4, "rgba32f": 16, "a2bgr10": 4,
                "a2r10g10b10": 4, "r32f": 4}
 VK_FORMAT_LAYOUTS = {
     37: ("rgba8", "color", "unknown"),
@@ -15,6 +16,7 @@ VK_FORMAT_LAYOUTS = {
     50: ("bgra8", "color", "srgb"),
     58: ("a2r10g10b10", "color", "unknown"),
     64: ("a2bgr10", "color", "unknown"),
+    109: ("rgba32f", "color", "linear"),
     126: ("r32f", "depth", "unknown"),
     130: ("r32f", "depth", "unknown"),
 }
@@ -49,7 +51,7 @@ def load_manifest(path):
     if metadata.get("source") not in ("swapchain", "debug_view", "offscreen"):
         raise ValueError("Unsupported capture source")
     if metadata["source"] == "debug_view" and metadata.get("debug_view_mode") not in (
-            "world_normal", "base_color", "surface", "emissive", "uv0"):
+            "world_normal", "base_color", "surface", "emissive", "uv0", "world_position"):
         raise ValueError("Unknown debug view mode")
     for field in ("request_id", "target_id", "frame_id", "width", "height",
                   "pixel_size", "row_pitch", "byte_count"):
@@ -65,9 +67,31 @@ def load_manifest(path):
     vk_format = metadata.get("vk_format")
     layout = VK_FORMAT_LAYOUTS.get(vk_format) if type(vk_format) is int else None
     if metadata["source"] == "debug_view" and metadata.get("attachment") == "color":
-        if metadata.get("mask") != "alpha_nonzero" or vk_format != 37:
-            raise ValueError("Debug view requires an RGBA8 alpha mask")
-        layout = ("rgba8", "color", "linear")
+        if metadata.get("mask") != "alpha_nonzero":
+            raise ValueError("Debug view requires an alpha mask")
+        if metadata.get("debug_view_mode") == "world_position":
+            if vk_format != 109 or encoding != "rgba32f":
+                raise ValueError("World-position view requires RGBA32F")
+            position = metadata.get("position")
+            if not isinstance(position, dict) or position.get("space") != "world_absolute" or \
+                    position.get("origin") != [0, 0, 0] or \
+                    position.get("coordinate_system") != "right_handed_z_up" or \
+                    position.get("representation") != "ieee754_binary32" or \
+                    position.get("format") != "rgba32f" or \
+                    position.get("mask") != "alpha_nonzero":
+                raise ValueError("World-position metadata is missing or inconsistent")
+            camera = metadata.get("camera")
+            if not isinstance(camera, dict) or \
+                    camera.get("position_space") != "world_absolute" or \
+                    camera.get("projection_convention") != "vulkan_rh_zo" or \
+                    camera.get("world_up") != "z_up" or \
+                    camera.get("viewport_y") != "positive_height":
+                raise ValueError("World-position capture has an unsupported coordinate contract")
+            layout = ("rgba32f", "color", "linear")
+        else:
+            if vk_format != 37 or encoding != "rgba8":
+                raise ValueError("Debug attribute views require RGBA8")
+            layout = ("rgba8", "color", "linear")
     elif metadata.get("mask", "unavailable") != "unavailable":
         raise ValueError("Unsupported capture mask")
     if layout != (encoding, metadata.get("attachment"), metadata.get("color_space")):
@@ -108,16 +132,25 @@ def _paired_depth_mask(depth, depth_path, mask_path):
     data = analyzer._read_raw(image_path)
     if len(data) != mask["byte_count"]:
         raise ValueError("Mask size changed after validation")
-    result = bytearray(data[y * mask["row_pitch"] + x * 4 + 3]
-                       for y in range(mask["height"]) for x in range(mask["width"]))
-    if any(value not in (0, 255) for value in result):
+    if mask["encoding"] == "rgba32f":
+        result = bytearray(mask["width"] * mask["height"])
+        for y in range(mask["height"]):
+            for x in range(mask["width"]):
+                alpha = struct.unpack_from("<f", data, y * mask["row_pitch"] + x * 16 + 12)[0]
+                if alpha not in (0.0, 1.0):
+                    raise ValueError("Debug view mask contains non-binary alpha")
+                result[y * mask["width"] + x] = int(alpha == 1.0)
+    else:
+        result = bytearray(data[y * mask["row_pitch"] + x * 4 + 3]
+                           for y in range(mask["height"]) for x in range(mask["width"]))
+    if mask["encoding"] != "rgba32f" and any(value not in (0, 255) for value in result):
         raise ValueError("Debug view mask contains non-binary alpha")
-    return result
+    return [bool(value) for value in result]
 
 
 def analyze_capture(path, operation, color_space_override=None, reversed_z_override=None,
                     sample_step=16, allow_unverified_depth_producers=False,
-                    mask_metadata_path=None):
+                    mask_metadata_path=None, depth_metadata_path=None):
     metadata, data_path = load_manifest(path)
     width, height = metadata["width"], metadata["height"]
     encoding = metadata["encoding"]
@@ -127,6 +160,8 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
     if operation == "luminance":
         if metadata.get("attachment") != "color":
             raise ValueError("Luminance requires a color capture")
+        if metadata.get("debug_view_mode") == "world_position":
+            raise ValueError("World-position data is not a color image")
         color_space = metadata.get("color_space")
         if color_space_override is not None:
             if color_space_override not in ("linear", "srgb"):
@@ -194,11 +229,49 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
                                                 "clear-depth filtering cannot distinguish geometry at clear depth"]
         result["depth_convention_source"] = ("capture_metadata" if isinstance(camera_reversed, bool)
                                               else "override")
+    elif operation == "world_position_rt":
+        if metadata.get("source") != "debug_view" or metadata.get("attachment") != "color" or \
+                metadata.get("debug_view_mode") != "world_position" or \
+                metadata.get("encoding") != "rgba32f" or metadata.get("mask") != "alpha_nonzero":
+            raise ValueError("world_position_rt requires a masked RGBA32F world-position view")
+        result = analyzer.analyze_position_rt(
+            str(data_path), width, height, metadata["row_pitch"])
+        result["position_format"] = metadata["vk_format"]
+    elif operation == "position_crosscheck":
+        if metadata.get("source") != "debug_view" or metadata.get("attachment") != "color" or \
+                metadata.get("debug_view_mode") != "world_position" or \
+                metadata.get("encoding") != "rgba32f":
+            raise ValueError("position_crosscheck requires a world-position RT manifest")
+        if not isinstance(depth_metadata_path, str) or not depth_metadata_path:
+            raise ValueError("depth_metadata_path is required for position_crosscheck")
+        depth, depth_data_path = load_manifest(depth_metadata_path)
+        if depth.get("attachment") != "depth" or depth.get("encoding") != "r32f" or \
+                depth.get("copy_aspect") != "depth" or \
+                depth.get("source") != "debug_view" or \
+                depth.get("debug_view_mode") != "world_position":
+            raise ValueError("Depth manifest is not from the matching world-position pass")
+        valid_mask = _paired_depth_mask(depth, depth_data_path, str(path))
+        camera = depth.get("camera")
+        if not isinstance(camera, dict) or camera.get("position_space") != "world_absolute" or \
+                camera.get("matrix_layout") != "column_major":
+            raise ValueError("A same-frame absolute-world camera matrix is required")
+        result = analyzer.cross_validate_position_rt(
+            str(data_path), str(depth_data_path), width, height,
+            camera.get("inverse_vp"), camera.get("reversed_z"),
+            sample_step, depth.get("clear_depth"), depth.get("viewport"),
+            depth["row_pitch"], metadata["row_pitch"], camera.get("camera_world_pos"))
+        result["mask_source"] = "same_frame_position_alpha"
+        result["camera_distance_bands"] = "equal-count quantiles of sampled camera distances"
+        if not any(valid_mask):
+            raise ValueError("Position RT mask contains no valid pixels")
     else:
         raise ValueError("Unsupported capture analysis operation")
     result["capture"] = {key: metadata[key] for key in ("request_id", "target_id", "frame_id")}
     result["capture"]["capture_id"] = metadata.get("capture_id")
-    result["pixel_scope"] = ("sampled_valid_geometry_mask" if operation == "world_position"
+    result["pixel_scope"] = ("sampled_same_frame_position_mask"
+                             if operation == "position_crosscheck"
+                             else "valid_position_mask" if operation == "world_position_rt"
+                             else "sampled_valid_geometry_mask" if operation == "world_position"
                              and mask_metadata_path is not None
                              else "sampled_non_clear_depth" if operation == "world_position"
                              else "valid_geometry_mask" if operation == "depth"
@@ -208,12 +281,63 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
     return result
 
 
+def analyze_shadow_semantics(path, is_shadow_map_depth=False):
+    if not isinstance(is_shadow_map_depth, bool):
+        raise ValueError("is_shadow_map_depth must be boolean")
+    metadata, data_path = load_manifest(path)
+    if is_shadow_map_depth and metadata.get("attachment") != "depth":
+        raise ValueError("A shadow-map depth analysis requires a depth attachment")
+    shadow = metadata.get("shadow")
+    result = {
+        "valid": True,
+        "shadow_depth_caster_coverage": {
+            "status": "unavailable",
+            "reason": "capture_not_declared_as_shadow_map",
+            "meaning": "non-clear shadow-map texels indicate caster projection coverage only",
+        },
+        "screen_shadow_ratio": {
+            "status": "unavailable",
+            "reason": "same_frame_receiver_shadow_factor_not_captured",
+        },
+        "assumptions": {
+            "cascade_index": shadow.get("cascade_index") if isinstance(shadow, dict) else None,
+            "cascade_count": shadow.get("cascade_count") if isinstance(shadow, dict) else None,
+            "pcf": shadow.get("pcf") if isinstance(shadow, dict) else None,
+            "bias": shadow.get("bias") if isinstance(shadow, dict) else None,
+            "receiver_mask": shadow.get("receiver_mask") if isinstance(shadow, dict) else None,
+        },
+    }
+    if is_shadow_map_depth:
+        clear_depth = metadata.get("clear_depth")
+        camera = metadata.get("camera")
+        reversed_z = camera.get("reversed_z") if isinstance(camera, dict) else None
+        if clear_depth is None or not isinstance(reversed_z, bool) or \
+                metadata.get("encoding") != "r32f":
+            raise ValueError("Shadow-map depth requires R32F, clear depth, and a recorded depth convention")
+        coverage = analyzer.analyze_depth(
+            str(data_path), metadata["width"], metadata["height"], reversed_z,
+            clear_depth, metadata["row_pitch"])
+        result["shadow_depth_caster_coverage"] = {
+            "status": "available",
+            "meaning": "non-clear shadow-map texels indicate caster projection coverage only",
+            "non_clear_ratio": coverage["effective_depth_ratio"],
+            "valid_depth_count": coverage["valid_depth_count"],
+            "clear_depth_count": coverage["clear_depth_count"],
+        }
+    result["capture"] = {key: metadata[key] for key in ("request_id", "target_id", "frame_id")}
+    result["capture"]["capture_id"] = metadata.get("capture_id")
+    return result
+
+
 def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis",
                      color_space_override=None, allow_unverified_context=False):
     a, data_a = load_manifest(path_a)
     b, data_b = load_manifest(path_b)
     if a["attachment"] != "color" or b["attachment"] != "color":
         raise ValueError("Capture comparison currently supports color attachments only")
+    if a.get("debug_view_mode") == "world_position" or \
+            b.get("debug_view_mode") == "world_position":
+        raise ValueError("World-position captures require position analysis, not color comparison")
     for field in ("width", "height", "encoding", "vk_format", "color_space", "viewport", "source"):
         if a.get(field) != b.get(field):
             raise ValueError(f"Capture {field} differs")

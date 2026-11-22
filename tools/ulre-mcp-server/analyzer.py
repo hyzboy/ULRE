@@ -30,7 +30,7 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None, mask_al
         raise ValueError("Capture exceeds the analysis pixel limit")
     sizes = {"rgba8": 4, "bgra8": 4, "rgb8": 3,
              "a2bgr10": 4, "rgb10a2": 4, "a2r10g10b10": 4,
-             "r32f": 4}
+             "r32f": 4, "rgba32f": 16}
     if pixel_format not in sizes:
         raise ValueError(f"Unsupported pixel format: {pixel_format}")
     pixel_size = sizes[pixel_format]
@@ -41,8 +41,8 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None, mask_al
         raise ValueError("row_pitch must be an integer at least as large as one pixel row")
     if len(data) != height * row_pitch:
         raise ValueError("Capture byte count does not match dimensions and format")
-    if mask_alpha and pixel_format not in ("rgba8", "bgra8"):
-        raise ValueError("Alpha mask requires an 8-bit four-channel image")
+    if mask_alpha and pixel_format not in ("rgba8", "bgra8", "rgba32f"):
+        raise ValueError("Alpha mask requires a supported four-channel image")
     if pixel_format == "r32f":
         values = [value for row in range(height)
                   for value in struct.unpack_from("<" + "f" * width, data, row * row_pitch)]
@@ -51,13 +51,21 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None, mask_al
     channels = []
     for index in range(count):
         offset = (index // width) * row_pitch + (index % width) * pixel_size
-        if mask_alpha:
+        if mask_alpha and pixel_format == "rgba32f":
+            alpha = struct.unpack_from("<f", data, offset + 12)[0]
+            if alpha not in (0.0, 1.0):
+                raise ValueError("Debug view mask contains non-binary alpha")
+            if alpha == 0.0:
+                continue
+        elif mask_alpha:
             alpha = data[offset + 3]
             if alpha not in (0, 255):
                 raise ValueError("Debug view mask contains non-binary alpha")
             if alpha == 0:
                 continue
-        if pixel_format in ("rgba8", "rgb8"):
+        if pixel_format == "rgba32f":
+            channels.append(struct.unpack_from("<3f", data, offset))
+        elif pixel_format in ("rgba8", "rgb8"):
             channels.append(tuple(data[offset + i] / 255.0 for i in range(3)))
         elif pixel_format == "bgra8":
             channels.append(tuple(data[offset + i] / 255.0 for i in (2, 1, 0)))
@@ -72,6 +80,198 @@ def _float32_channels(data, width, height, pixel_format, row_pitch=None, mask_al
     if not channels:
         raise ValueError("Capture has no valid masked pixels")
     return channels
+
+
+def _unproject_pixel(x, y, depth, inverse_vp, viewport):
+    vx, vy = viewport["x"], viewport["y"]
+    vw, vh = viewport["width"], viewport["height"]
+    vmin, vmax = viewport["min_depth"], viewport["max_depth"]
+    u = (x + 0.5 - vx) / vw
+    v = (y + 0.5 - vy) / vh
+    ndc_x = u * 2.0 - 1.0
+    # Positive-height Vulkan viewports map framebuffer top-to-bottom to NDC -1..1.
+    ndc_y = v * 2.0 - 1.0
+    ndc_z = (depth - vmin) / (vmax - vmin)
+
+    def multiply(row):
+        return (inverse_vp[row] * ndc_x + inverse_vp[row + 4] * ndc_y +
+                inverse_vp[row + 8] * ndc_z + inverse_vp[row + 12])
+
+    clip = [multiply(row) for row in range(4)]
+    if not all(math.isfinite(value) for value in clip) or abs(clip[3]) < 1e-8:
+        return None
+    point = tuple(clip[index] / clip[3] for index in range(3))
+    return point if all(math.isfinite(value) for value in point) else None
+
+
+def _position_pixels(data, width, height, row_pitch):
+    if not isinstance(width, int) or isinstance(width, bool) or width <= 0 or \
+            not isinstance(height, int) or isinstance(height, bool) or height <= 0:
+        raise ValueError("Position RT dimensions must be positive integers")
+    if width * height > MAX_ANALYSIS_PIXELS:
+        raise ValueError("Capture exceeds the analysis pixel limit")
+    if (not isinstance(row_pitch, int) or isinstance(row_pitch, bool) or
+            row_pitch < width * 16 or len(data) != height * row_pitch):
+        raise ValueError("Position RT byte count or row pitch is invalid")
+    for y in range(height):
+        for x in range(width):
+            offset = y * row_pitch + x * 16
+            position = struct.unpack_from("<3f", data, offset)
+            alpha = struct.unpack_from("<f", data, offset + 12)[0]
+            if alpha not in (0.0, 1.0):
+                raise ValueError("Position RT mask contains non-binary alpha")
+            yield x, y, position, alpha == 1.0
+
+
+def _error_summary(values):
+    if not values:
+        return {"sample_count": 0, "mean": None, "p50": None, "p95": None, "max": None}
+    ordered = sorted(values)
+    return {
+        "sample_count": len(ordered),
+        "mean": sum(ordered) / len(ordered),
+        "p50": _percentile(ordered, 0.5),
+        "p95": _percentile(ordered, 0.95),
+        "max": ordered[-1],
+    }
+
+
+def analyze_position_rt(path, width, height, row_pitch=None):
+    data = _read_raw(path)
+    if row_pitch is None:
+        row_pitch = width * 16
+    count = 0
+    mins = [math.inf, math.inf, math.inf]
+    maxs = [-math.inf, -math.inf, -math.inf]
+    invalid_count = 0
+    for _, _, position, valid in _position_pixels(data, width, height, row_pitch):
+        if not valid:
+            continue
+        if not all(math.isfinite(value) for value in position):
+            invalid_count += 1
+            continue
+        count += 1
+        for axis in range(3):
+            mins[axis] = min(mins[axis], position[axis])
+            maxs[axis] = max(maxs[axis], position[axis])
+    if not count:
+        return {"valid": False, "error": "no_valid_position_samples",
+                "point_count": 0, "invalid_position_count": invalid_count, "bounds": None}
+    return {
+        "valid": True,
+        "point_count": count,
+        "invalid_position_count": invalid_count,
+        "bounds": {"min": mins, "max": maxs},
+        "position_space": "world_absolute",
+        "representation": "ieee754_binary32",
+        "precision_note": "measured values only; no fixed physical error guarantee",
+    }
+
+
+def cross_validate_position_rt(position_path, depth_path, width, height, inverse_vp,
+                               reversed_z, sample_step, clear_depth, viewport, row_pitch,
+                               position_row_pitch, camera_world_pos):
+    if not isinstance(sample_step, int) or isinstance(sample_step, bool) or sample_step <= 0:
+        raise ValueError("sample_step must be a positive integer")
+    sampled_width = (width + sample_step - 1) // sample_step
+    sampled_height = (height + sample_step - 1) // sample_step
+    if sampled_width * sampled_height > 262144:
+        raise ValueError("Position cross-check exceeds the sample limit; increase sample_step")
+    if len(inverse_vp) != 16 or not all(
+            isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+            for value in inverse_vp):
+        raise ValueError("inverse_vp must contain 16 finite numbers")
+    if len(camera_world_pos) != 3 or not all(
+            isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+            for value in camera_world_pos):
+        raise ValueError("camera_world_pos must contain three finite numbers")
+    depth_data = _read_raw(depth_path)
+    position_data = _read_raw(position_path)
+    if not isinstance(width, int) or isinstance(width, bool) or width <= 0 or \
+            not isinstance(height, int) or isinstance(height, bool) or height <= 0 or \
+            width * height > MAX_ANALYSIS_PIXELS:
+        raise ValueError("Capture dimensions are invalid or exceed the analysis pixel limit")
+    if not isinstance(row_pitch, int) or isinstance(row_pitch, bool) or row_pitch < width * 4 or \
+            len(depth_data) != height * row_pitch:
+        raise ValueError("Depth byte count or row pitch is invalid")
+    if not isinstance(position_row_pitch, int) or isinstance(position_row_pitch, bool) or \
+            position_row_pitch < width * 16 or len(position_data) != height * position_row_pitch:
+        raise ValueError("Position RT byte count or row pitch is invalid")
+    if not isinstance(reversed_z, bool) or isinstance(clear_depth, bool) or \
+            not isinstance(clear_depth, (int, float)) or not math.isfinite(clear_depth) or \
+            not 0 <= clear_depth <= 1:
+        raise ValueError("Depth convention or clear value is invalid")
+    if not isinstance(viewport, dict) or any(
+            isinstance(viewport.get(key), bool) or
+            not isinstance(viewport.get(key), (int, float)) or
+            not math.isfinite(viewport[key])
+            for key in ("x", "y", "width", "height", "min_depth", "max_depth")):
+        raise ValueError("Capture viewport is missing or invalid")
+    vx, vy = viewport["x"], viewport["y"]
+    vw, vh = viewport["width"], viewport["height"]
+    if vx < 0 or vy < 0 or vw <= 0 or vh <= 0 or vx + vw > width or vy + vh > height or \
+            not 0 <= viewport["min_depth"] < viewport["max_depth"] <= 1:
+        raise ValueError("Capture viewport is outside the image or has an invalid depth range")
+    errors = []
+    comparisons = []
+    invalid_position_count = 0
+    for y in range(0, height, sample_step):
+        for x in range(0, width, sample_step):
+            if not (vx <= x + 0.5 < vx + vw and vy <= y + 0.5 < vy + vh):
+                continue
+            offset = y * position_row_pitch + x * 16
+            position = struct.unpack_from("<3f", position_data, offset)
+            alpha = struct.unpack_from("<f", position_data, offset + 12)[0]
+            if alpha not in (0.0, 1.0):
+                raise ValueError("Position RT mask contains non-binary alpha")
+            if alpha == 0.0:
+                continue
+            depth = struct.unpack_from("<f", depth_data, y * row_pitch + x * 4)[0]
+            if not math.isfinite(depth) or depth < viewport["min_depth"] or depth > viewport["max_depth"]:
+                continue
+            reconstructed = _unproject_pixel(x, y, depth, inverse_vp, viewport)
+            if reconstructed is None:
+                continue
+            if not all(math.isfinite(value) for value in position):
+                invalid_position_count += 1
+                continue
+            delta = [position[i] - reconstructed[i] for i in range(3)]
+            error = math.sqrt(sum(value * value for value in delta))
+            camera_distance = math.sqrt(sum((position[i] - camera_world_pos[i]) ** 2
+                                            for i in range(3)))
+            if math.isfinite(error) and math.isfinite(camera_distance):
+                errors.append(error)
+                comparisons.append((camera_distance, error))
+    if not comparisons:
+        return {"valid": False, "error": "no_comparable_position_samples",
+                "point_count": 0, "invalid_position_count": invalid_position_count,
+                "distance_bands": []}
+    ordered = sorted(comparisons, key=lambda value: value[0])
+    bands = []
+    count = len(ordered)
+    for index, name in enumerate(("near", "middle", "far")):
+        start = index * count // 3
+        end = (index + 1) * count // 3
+        if start == end:
+            continue
+        values = ordered[start:end]
+        summary = _error_summary([item[1] for item in values])
+        summary["band"] = name
+        summary["camera_distance"] = {
+            "min": values[0][0],
+            "max": values[-1][0],
+        }
+        bands.append(summary)
+    return {
+        "valid": True,
+        "point_count": count,
+        "invalid_position_count": invalid_position_count,
+        "absolute_position_error": _error_summary(errors),
+        "distance_bands": bands,
+        "position_space": "world_absolute",
+        "error_unit": "world_units",
+        "precision_note": "measured same-frame difference; no fixed physical error guarantee",
+    }
 
 
 def _percentile(values, percentile):

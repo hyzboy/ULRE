@@ -40,6 +40,7 @@ namespace hgl::ecs
             DebugViewMode recorded_mode=DebugViewMode::Off;
             uint32_t recorded_batches=0;
             uint32_t recorded_entities=0;
+            VkFormat color_format=VK_FORMAT_UNDEFINED;
         };
 
         struct Status
@@ -125,34 +126,63 @@ namespace hgl::ecs
             status.error=nullptr;
         }
 
-        bool CreateTarget(ECSContext *world,IRenderTarget *main,WorldState &state)
+        bool CreateTarget(ECSContext *world,IRenderTarget *main,DebugViewMode mode,
+                          WorldState &state,const char *&error)
         {
             GraphicsContext *graphics=world->GetGraphicsContext();
             RenderTargetManager *manager=graphics?graphics->GetRenderTargetManager():nullptr;
-            if(!manager || !main->GetDepthTexture()) return false;
-
-            FramebufferInfo info;
-            if(!info.AddColor(VK_FORMAT_R8G8B8A8_UNORM)
-               || !info.SetDepth(main->GetDepthTexture()->GetFormat()))
+            if(!manager || !main->GetDepthTexture())
+            {
+                error="target_creation_failed";
                 return false;
+            }
+
+            const VkFormat color_format=mode==DebugViewMode::WorldPosition
+                ?VK_FORMAT_R32G32B32A32_SFLOAT:VK_FORMAT_R8G8B8A8_UNORM;
+            if(mode==DebugViewMode::WorldPosition)
+            {
+                const VulkanPhyDevice *physical=graphics->GetPhyDevice();
+                const VkFormatFeatureFlags required=VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT
+                                                     |VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
+                if(!physical || !physical->OptimalSupport(color_format,required))
+                {
+                    error="position_format_unavailable";
+                    return false;
+                }
+            }
+            FramebufferInfo info;
+            if(!info.AddColor(color_format)
+               || !info.SetDepth(main->GetDepthTexture()->GetFormat()))
+            {
+                error=mode==DebugViewMode::WorldPosition
+                    ?"position_format_unavailable":"target_creation_failed";
+                return false;
+            }
             const VkExtent2D extent=main->GetExtent();
             info.SetExtent(extent.width,extent.height);
             static uint64_t serial=0;
             const AnsiString name=AnsiString("DebugView_")+AnsiString::numberOf(++serial);
             OffscreenRenderTarget *target=manager->CreateOffscreenRT(world,name,&info,1,false);
-            if(!target) return false;
+            if(!target)
+            {
+                error=mode==DebugViewMode::WorldPosition
+                    ?"position_target_creation_failed":"target_creation_failed";
+                return false;
+            }
             const uint64_t id=DebugCaptureQueue::RegisterTarget(
                 true,true,DebugCaptureQueue::Source::DebugView);
             if(!id)
             {
                 if(!manager->Destroy(target))
                     GLogError(u8"[DebugViewPass] Failed to clean up target after registration failure");
+                error="target_registration_failed";
                 return false;
             }
             target->SetClearColor(Color4f(0,0,0,0));
             state.manager=manager;
             state.target=target;
             state.target_id=id;
+            state.color_format=color_format;
             return true;
         }
 
@@ -332,7 +362,10 @@ namespace hgl::ecs
             return;
         }
         WorldState *state=Worlds().GetValuePointer(world);
-        if(state && (state->target->GetExtent().width!=main->GetExtent().width
+        const VkFormat requested_format=mode==DebugViewMode::WorldPosition
+            ?VK_FORMAT_R32G32B32A32_SFLOAT:VK_FORMAT_R8G8B8A8_UNORM;
+        if(state && (state->color_format!=requested_format
+                     || state->target->GetExtent().width!=main->GetExtent().width
                      || state->target->GetExtent().height!=main->GetExtent().height))
         {
             if(!DropWorld(world))
@@ -346,9 +379,10 @@ namespace hgl::ecs
         if(!state)
         {
             WorldState fresh;
-            if(!CreateTarget(world,main,fresh))
+            const char *target_error=nullptr;
+            if(!CreateTarget(world,main,mode,fresh,target_error))
             {
-                SetStatus(world,DebugViewMode::Off,0,0,"target_creation_failed");
+                SetStatus(world,DebugViewMode::Off,0,0,target_error?target_error:"target_creation_failed");
                 return;
             }
             Worlds().Add(world,fresh);
@@ -362,7 +396,7 @@ namespace hgl::ecs
         const char *error=nullptr;
         if(!graphics || !pass) error="render_context_unavailable";
         const CameraInfo *camera=world->GetRenderFrameCache().cameraInfo;
-        if(!error && (!camera || !camera->use_reversed_z
+        if(!error && (!camera || camera->use_reversed_z>1
                       || camera!=world->GetActiveCameraInfo()))
             error="unsupported_camera";
         if(!error)
@@ -395,7 +429,9 @@ namespace hgl::ecs
             return;
         }
         cmd->SetClearColor(0,state->target->GetClearColor());
-        if(!cmd->BeginRendering(state->target))
+        RenderPassOptions render_options;
+        render_options.clear_depth_value=camera->use_reversed_z?0.0f:1.0f;
+        if(!cmd->BeginRendering(state->target,&render_options))
         {
             DebugCaptureQueue::FailQueued(state->target_id,"begin_render_failed");
             SetStatus(world,DebugViewMode::Off,state->target_id,0,"begin_render_failed");

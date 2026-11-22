@@ -46,7 +46,7 @@
 - 新交换链抓帧同时发布 `ulre.capture.v1` JSON 清单：记录请求、目标、帧、
   原始文件、格式、布局和同帧 primitive-collect 相机快照；不同相机混用时标记
   `ambiguous`。旧 C++ 抓取接口仍没有此清单。
-- `set_debug_view` 现在请求独立 RGBA8 UNORM 离屏 Pass，复用主帧 GPU 剔除结果，
+- `set_debug_view` 现在按需请求独立离屏 Pass，复用主帧 GPU 剔除结果，
   不覆盖作者配方或主目标。`get_debug_view` 返回最近提交的模式和 `target_id`，
   失败时返回 `error`；开启请求并不意味着本帧已成功。关闭后注销目标并释放资源。
   开关是进程级，状态只反映最近处理的世界，不是世界选择接口；各世界的目标分别注册，
@@ -54,12 +54,18 @@
   启用期间每帧等待设备空闲后复用离屏附件，适合诊断而非性能测量；关闭会释放目标和附件，
   已创建的 shader、pipeline 和 render pass 由现有管理器缓存至其生命周期结束。
 - 支持范围是带 PBRSurface 行、Normal 和 TexCoord 的 GPU-driven `StandardOpaque`
-  场景批次及 reversed-Z 活动相机；不支持 alpha test、dither、混合和不兼容批次，
+  场景批次及标准或 reversed-Z 活动相机；Position RT 还要求设备支持 RGBA32F
+  颜色附件与 transfer-source 用途，否则状态明确报告 `position_format_unavailable`
+  或目标创建错误，不会降级为量化颜色。不支持 alpha test、dither、混合和不兼容批次，
   遇到这些场景批次时整次视图失败（`unsupported_scene_batch`）。非 Scene 层不会被绘制，
   因而 mask 不代表天空、UI 或所有场景内容。`world_normal` 是归一化的几何世界法线，
   不包含法线贴图；`base_color` 为材质行乘基础色贴图，不包含顶点色；
   `surface` 为 roughness/metallic/AO，`emissive` 为自发光贴图，`uv0` 为 UV 小数部分。
-  RGBA8 会量化并截断到 [0,1]，不是 HDR 或原始浮点数据。
+  这些属性通道仍为 RGBA8，会量化并截断到 [0,1]，不是 HDR 或原始浮点数据。
+  `world_position` 使用 RGBA32F，RGB 是 shader 的世界位置，alpha 为 0/1 有效像素 mask；
+  元数据声明 IEEE-754 binary32、绝对世界坐标、Z-up 与零原点。当前变换路径没有启用
+  camera-relative L2W 偏移；Position RT 与深度反投影均使用同帧矩阵和坐标语义。
+  Float32 格式不代表固定物理误差，结果必须依据实际距离和交叉验证误差解读。
 - `analyze_capture` 可读取 v1 清单进行亮度、R32F 深度及采样位置反投影；颜色空间未知时必须
   显式指定，深度统计使用清单中的实际清屏值；分析器按清单行跨度处理行填充。
   当前分析器限制单图最多 2,097,152 像素和 64 MiB，超限返回错误。
@@ -71,12 +77,21 @@
   颜色清单作为 `mask_metadata_path`；分析器验证 group、目标、帧、相机和 viewport，
   用同帧 alpha 排除背景，且不以清屏深度排除有效几何。
   手动反投影工具仍要求调用方传入同帧 inverse VP，不隐式获取最新相机。
+  `world_position_rt` 分析直接 RT 的有效坐标范围；`position_crosscheck` 使用同一
+  `color_depth` 请求的两个清单，逐样本比较 RGBA32F 坐标与反投影坐标，报告绝对误差
+  及按采样相机距离三等分的 near/middle/far 误差分布。分组按本次样本等量划分，不是
+  固定距离或 pass/fail 容差；一次最多比较 262,144 个采样点，超限需增大 sample_step。
+- `analyze_shadow_semantics` 将显式标记为 shadow-map depth 的非清屏比例命名为
+  投射物投影覆盖；它不是屏幕受影比例。只有真实同帧 receiver shadow factor/mask
+  才能计算屏幕受影比例，目前没有这类生产附件，所以返回 unavailable。级联、PCF、
+  bias 和 receiver mask 前提若未记录会保持未知。
 - `compare_captures` 检查颜色附件的格式、尺寸、viewport 和相机矩阵，并在编码通道
   空间比较；当前缺少场景和设备身份，必须显式允许未验证上下文。Debug View 使用
   两个 mask 的并集并报告覆盖变化，交换链比较包含背景；均不能替代黄金基线。
 
 `ULRE_DEBUG.toml` 中的 `debugbridge` 控制命名管道；诊断功能应显式启用。
-不要将未实现的接口、SSIM、阴影受影比例或 Position RT 描述为已支持。
+不要将未实现的接口、SSIM 或屏幕阴影受影比例描述为已支持。Position RT 是按需能力，
+须遵守上述格式、相机、材质与 mask 前提。
 管道按单次写入的一条消息接收请求，当前请求上限为 4095 字节；方法和参数按
 JSON 字段匹配，响应保留请求 ID。桥接线程的连接与 I/O 可在停机时取消。
 
@@ -123,13 +138,21 @@ viewport、reversed-Z、矩阵布局和同帧 VP/inverse VP；相机相对坐标
 
 ### 世界坐标与阴影
 
-默认通过同帧深度和 inverse VP 反投影；可按需输出高精度 Position RT 交叉验证。
-像素中心依据 capture 中的 viewport 原点、尺寸和深度范围转换为 Vulkan ZO NDC；
-矩阵顺序、Y 方向以及是否需要补回相机相对原点均由同帧元数据决定。需过滤清屏、
-无效深度和不可除的齐次坐标。精度依赖格式、距离及投影，不保证固定物理误差。
+默认通过同帧深度和 inverse VP 反投影；可按需输出 RGBA32F Position RT 并交叉验证。
+像素中心依据捕获中的 viewport 原点、尺寸与深度范围转换为 Vulkan ZO NDC：
 
-阴影贴图的非清屏比例表示**投射物覆盖**，不是屏幕上的受影比例。后者需要同帧
-受影因子或 mask，并注明级联、PCF 和 bias；缺少数据时返回 unavailable。
+`u=(px+0.5-vx)/vw; v=(py+0.5-vy)/vh; ndc=(2u-1, 2v-1, (depth-min_depth)/(max_depth-min_depth), 1)`
+
+正高度 viewport 的 Y 方向按 Vulkan framebuffer 映射处理；inverse VP 按列主序计算，
+并执行齐次除法。清屏深度、viewport 外、非有限深度和不可除的齐次坐标会被过滤；
+使用同帧有效像素 mask 时，深度恰好等于清屏值仍可代表有效几何。标准 Z/reversed-Z
+依赖同帧 VP/inverse VP 与已记录 clear depth。当前坐标为绝对世界、RH、Z-up，camera-relative
+原点偏移没有启用；未来启用时必须写入实际原点后才能恢复绝对坐标。误差只报告实测值，
+受 float 表示、着色器插值、深度格式、距离和投影共同影响，不设固定物理阈值。
+
+阴影贴图的非清屏比例只表示**投射物在光源投影中的覆盖**，不是屏幕上的受影比例。
+后者需要真实的同帧接收者 shadow factor/mask，并注明级联、PCF 和 bias；当前生产路径
+没有该附件，`analyze_shadow_semantics` 因此将 screen shadow ratio 报为 unavailable。
 
 ### 量化分析与比较
 

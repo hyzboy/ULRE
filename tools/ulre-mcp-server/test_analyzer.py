@@ -209,6 +209,51 @@ class AnalyzerTests(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertEqual(result["error"], "no_valid_non_clear_samples")
 
+    def test_position_rt_bounds_and_float_mask(self):
+        data = struct.pack("<8f", 2.0, -3.0, 4.0, 1.0,
+                           0.0, 0.0, 0.0, 0.0)
+        path = self.capture("position.raw", data)
+        result = analyzer.analyze_position_rt(path, 2, 1)
+        self.assertEqual(result["point_count"], 1)
+        self.assertEqual(result["bounds"]["min"], [2.0, -3.0, 4.0])
+        self.assertEqual(result["bounds"]["max"], [2.0, -3.0, 4.0])
+        invalid_mask = self.capture("invalid-position-mask.raw",
+                                    struct.pack("<4f", 0.0, 0.0, 1.0, 0.5))
+        with self.assertRaisesRegex(ValueError, "non-binary alpha"):
+            analyzer.analyze_position_rt(invalid_mask, 1, 1)
+
+    def test_position_crosscheck_matches_known_points_at_multiple_distances(self):
+        width = 4
+        depths = [0.125, 0.375, 0.625, 0.875]
+        viewport = {"x": 0, "y": 0, "width": width, "height": 1,
+                    "min_depth": 0.0, "max_depth": 1.0}
+        inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                   0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        for reversed_z in (False, True):
+            with self.subTest(reversed_z=reversed_z):
+                position_values = []
+                for x, depth in enumerate(depths):
+                    ndc_x = ((x + 0.5) / width) * 2.0 - 1.0
+                    ndc_z = depth
+                    world_z = 1.0 - ndc_z if reversed_z else ndc_z
+                    position_values.extend((ndc_x, 0.0, world_z, 1.0))
+                position = self.capture(
+                    "position.raw", struct.pack("<" + "f" * len(position_values), *position_values))
+                depth = self.capture("depth.raw", struct.pack("<4f", *depths))
+                inverse_for_convention = inverse
+                if reversed_z:
+                    inverse_for_convention = list(inverse)
+                    inverse_for_convention[10] = -1.0
+                    inverse_for_convention[14] = 1.0
+                result = analyzer.cross_validate_position_rt(
+                    position, depth, width, 1, inverse_for_convention, reversed_z, 1,
+                    1.0 if not reversed_z else 0.0, viewport, width * 4, width * 16,
+                    [0.0, 0.0, 0.0])
+                self.assertTrue(result["valid"])
+                self.assertEqual(result["point_count"], width)
+                self.assertEqual(len(result["distance_bands"]), 3)
+                self.assertLess(result["absolute_position_error"]["max"], 1e-7)
+
     def test_manifest_world_position_requires_known_coordinate_space(self):
         self.capture("capture.raw", struct.pack("<f", 0.5))
         camera = {"reversed_z": True, "matrix_layout": "column_major",
@@ -363,6 +408,83 @@ class AnalyzerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "non-binary alpha"):
             capture_manifest.analyze_capture(depth, "world_position", sample_step=1,
                                              mask_metadata_path=color)
+
+    def test_position_manifest_crosscheck_requires_same_frame_and_reports_error(self):
+        width = 4
+        depths = [0.125, 0.375, 0.625, 0.875]
+        viewport = {"x": 0, "y": 0, "width": width, "height": 1,
+                    "min_depth": 0.0, "max_depth": 1.0}
+        inverse = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                   0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        positions = []
+        for x, depth in enumerate(depths):
+            positions.extend((((x + 0.5) / width) * 2.0 - 1.0, 0.0,
+                              depth, 1.0))
+        self.capture("position.raw", struct.pack("<16f", *positions))
+        self.capture("depth.raw", struct.pack("<4f", *depths))
+        camera = {
+            "matrix_layout": "column_major", "position_space": "world_absolute",
+            "projection_convention": "vulkan_rh_zo", "world_up": "z_up",
+            "viewport_y": "positive_height", "reversed_z": False,
+            "inverse_vp": inverse, "camera_world_pos": [0.0, 0.0, 0.0],
+        }
+        shared = {
+            "source": "debug_view", "debug_view_mode": "world_position",
+            "width": width, "height": 1, "viewport": viewport,
+            "camera_status": "recorded", "camera": camera,
+            "capture_group_id": "position.raw",
+        }
+        position_metadata = {
+            "space": "world_absolute", "origin": [0, 0, 0],
+            "coordinate_system": "right_handed_z_up",
+            "representation": "ieee754_binary32", "format": "rgba32f",
+            "mask": "alpha_nonzero",
+        }
+        position_path = self.manifest(
+            "position.json", data_file="position.raw", capture_id="position.raw",
+            attachment="color", encoding="rgba32f", color_space="linear",
+            vk_format=109, pixel_size=16, row_pitch=width * 16,
+            byte_count=width * 16, mask="alpha_nonzero",
+            position=position_metadata, **shared)
+        depth_path = self.manifest(
+            "position-depth.json", data_file="depth.raw", capture_id="depth.raw",
+            attachment="depth", encoding="r32f", color_space="unknown",
+            vk_format=126, pixel_size=4, row_pitch=width * 4,
+            byte_count=width * 4, copy_aspect="depth", clear_depth=1.0,
+            **shared)
+        result = capture_manifest.analyze_capture(
+            position_path, "position_crosscheck", sample_step=1,
+            depth_metadata_path=depth_path)
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["point_count"], width)
+        self.assertLess(result["absolute_position_error"]["max"], 1e-7)
+        self.assertEqual(result["pixel_scope"], "sampled_same_frame_position_mask")
+        altered = dict(shared)
+        altered["frame_id"] = 4
+        mismatched = self.manifest(
+            "mismatched-depth.json", data_file="depth.raw", capture_id="depth.raw",
+            attachment="depth", encoding="r32f", color_space="unknown",
+            vk_format=126, pixel_size=4, row_pitch=width * 4,
+            byte_count=width * 4, copy_aspect="depth", clear_depth=1.0,
+            **altered)
+        with self.assertRaisesRegex(ValueError, "frame_id differ"):
+            capture_manifest.analyze_capture(
+                position_path, "position_crosscheck", sample_step=1,
+                depth_metadata_path=mismatched)
+
+    def test_shadow_depth_coverage_is_not_screen_shadow_ratio(self):
+        self.capture("capture.raw", struct.pack("<4f", 1.0, 0.5, 0.4, 1.0))
+        path = self.manifest(
+            attachment="depth", encoding="r32f", vk_format=126,
+            width=4, row_pitch=16, byte_count=16, copy_aspect="depth",
+            clear_depth=1.0, camera_status="recorded",
+            camera={"reversed_z": False})
+        unavailable = capture_manifest.analyze_shadow_semantics(path)
+        self.assertEqual(unavailable["shadow_depth_caster_coverage"]["status"], "unavailable")
+        result = capture_manifest.analyze_shadow_semantics(path, True)
+        self.assertEqual(result["shadow_depth_caster_coverage"]["status"], "available")
+        self.assertEqual(result["shadow_depth_caster_coverage"]["non_clear_ratio"], 0.5)
+        self.assertEqual(result["screen_shadow_ratio"]["status"], "unavailable")
 
     def test_analysis_rejects_oversized_inputs(self):
         with self.assertRaisesRegex(ValueError, "pixel limit"):

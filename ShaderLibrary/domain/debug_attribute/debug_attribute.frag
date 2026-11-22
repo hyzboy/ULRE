@@ -74,5 +74,9 @@ void main()
     // 调试通道不接受 alpha 覆盖：半透明会让相邻像素混色，破坏像素统计的可比性。
     const vec4 finalColor =
         EvalPassEnvironment(PassEnvironmentInput(si, surface, materialDataIndex));
+#ifdef HGL_DEBUG_VIEW_WORLD_POSITION
+    WriteMaterialOutput(vec4(si.worldPos, 1.0));
+#else
     WriteMaterialOutput(HGLComposeColor(vec4(finalColor.rgb, 1.0)));
+#endif
 }

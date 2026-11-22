@@ -26,11 +26,9 @@
 //     天然是不同的 program 身份 —— 切回原通道不会串味；
 //   · 世界级调度见 `hgl/ecs/support/debug/DebugViewPass.h`，不修改作者配方。
 //
-// ## 为什么世界坐标不在本表里
-//
-// 主帧颜色附件是 8~10bit，把世界坐标压进去只有厘米级精度。世界坐标由
-// 「深度图 + 相机 inverse_vp」在分析侧精确反算（见设计文档 §4.1），
-// 引擎侧只需下发 `CameraInfo`。本表因此**只提供 0~1 有意义的量**。
+// 世界坐标默认由同帧深度与 inverse_vp 反投影。`WorldPosition` 是可选的
+// RGBA32F 输出，用于按需直接采样和与深度反投影交叉验证；其实际误差取决于
+// shader/interpolation 精度及距离，不承诺固定物理误差。
 namespace hgl::graph::mtl
 {
     enum class DebugViewMode : uint8
@@ -41,14 +39,15 @@ namespace hgl::graph::mtl
         Surface,        ///< (roughness, metallic, ao)
         Emissive,       ///< 自发光（含 emissive 贴图）
         UV0,            ///< fract(uv0) 映射到 RGB
+        WorldPosition,  ///< fragment world position，RGBA32F，alpha 为有效 mask
 
-        ENUM_CLASS_RANGE(Off, UV0)
+        ENUM_CLASS_RANGE(Off, WorldPosition)
     };
 
     constexpr uint32 DebugViewModeCount = static_cast<uint32>(DebugViewMode::RANGE_SIZE);
 
     /// 稳定名字（配置文件 / JSON-RPC / MCP 参数共用这一份）。
-    /// 形如 "off" / "world_normal" / "base_color" / "surface" / "emissive" / "uv0"。
+    /// 形如 "off" / "world_normal" / "base_color" / "surface" / "emissive" / "uv0" / "world_position"。
     const char *GetDebugViewModeName(DebugViewMode mode) noexcept;
 
     /// 严格解析；未知名返回 false（调用方负责报错，不做静默回退）。

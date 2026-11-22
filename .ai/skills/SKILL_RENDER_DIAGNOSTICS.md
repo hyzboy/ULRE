@@ -50,7 +50,7 @@ If the MCP reports `ULRE bridge unavailable`, verify:
 
 Use fixed numeric tools before looking at any image attachment.
 
-1. Call `set_debug_view` to request `world_normal`, `base_color`, `surface`, `emissive`, or `uv0`.
+1. Call `set_debug_view` to request `world_normal`, `base_color`, `surface`, `emissive`, `uv0`, or the optional `world_position` RGBA32F view.
 2. Poll `get_debug_view` until `mode` equals the request; an `error` means the pass did not succeed. Capture its `target_id`, then set `off` when finished. The process-wide status is for the most recently handled world, not a world selector.
 3. `get_camera_matrices` returns the latest snapshot, not necessarily the capture's camera or frame; do not use it to reconstruct an older capture.
 4. For a Debug View color manifest use `analyze_capture` so its alpha mask is applied:
@@ -65,6 +65,8 @@ Use fixed numeric tools before looking at any image attachment.
    - RMSE and PSNR quantify accumulated error;
    - `changed_ratio` locates the fraction of pixels outside the threshold;
    - the PGM heatmap is evidence, not the pass/fail decision.
+7. For Position RT verification, select `world_position`, capture `color_depth` from that debug target in one request, then call `analyze_capture` with `operation: "world_position_rt"` and `operation: "position_crosscheck"` (the latter also takes the paired depth manifest as `depth_metadata_path`). Read the measured near/middle/far error bands; they are descriptive and have no fixed physical tolerance.
+8. Call `analyze_shadow_semantics` for shadow interpretation. Mark `is_shadow_map_depth: true` only for an actual shadow-map depth capture: non-clear ratio is caster projection coverage, not screen shadow. Screen-space shadow ratio remains unavailable without a real same-frame receiver shadow factor/mask; cascade, PCF and bias assumptions are reported only when captured.
 
 ## Quantitative decision tree
 
@@ -81,14 +83,18 @@ Use fixed numeric tools before looking at any image attachment.
 
 ## World-position reconstruction
 
-World position is reconstructed from same-frame depth plus `inverse_vp`; no Position RT is currently available. A paired Debug View alpha mask identifies pixels produced by supported geometry. Its precision depends on depth format, distance, projection and quantization.
+World position is reconstructed from same-frame depth plus `inverse_vp`; an opt-in RGBA32F Position RT can be captured alongside depth and cross-checked. A paired alpha mask identifies pixels produced by supported geometry. Position RT is unavailable if the device cannot create and read back the format or if camera/material conditions are unsupported.
 
 The Vulkan RH ZO convention is mandatory:
 
-`ndc = ((px + 0.5) / width * 2 - 1, (py + 0.5) / height * 2 - 1, depth, 1)`
+`u = (px + 0.5 - viewport.x) / viewport.width; v = (py + 0.5 - viewport.y) / viewport.height`
+
+`ndc = (2u - 1, 2v - 1, (depth - min_depth) / (max_depth - min_depth), 1)`
 
 `world = inverse_vp * ndc`, then divide by `w`.
 
-Debug View currently accepts GPU-driven StandardOpaque scene batches with PBRSurface rows, Normal and TexCoord, and a reversed-Z active camera. Alpha test, dither, blending and unsupported scene batches fail explicitly; non-Scene layers are excluded. World normals are geometric, not normal-mapped shading normals. Base color excludes vertex color; emissive is the sampled texture; UV uses its fractional part. RGBA8 values are clipped/quantized and are not HDR.
+Use capture metadata, not the latest camera snapshot. Matrices are column-major; the coordinate contract is Vulkan RH, Z-up, ZO, with a positive-height viewport. Clear-depth filtering applies when no mask proves the pixel contains geometry; homogeneous `w` must be finite and nonzero. Position RT reports absolute world-space XYZ in IEEE-754 binary32 with alpha mask; current transforms do not enable camera-relative offsets. Report measured error only—no fixed physical precision claim.
+
+Debug View accepts GPU-driven StandardOpaque scene batches with PBRSurface rows, Normal and TexCoord, and standard- or reversed-Z active cameras. Alpha test, dither, blending and unsupported scene batches fail explicitly; non-Scene layers are excluded. World normals are geometric, not normal-mapped shading normals. Base color excludes vertex color; emissive is the sampled texture; UV uses its fractional part. RGBA8 attribute values are clipped/quantized and are not HDR.
 
 The enabled pass waits for device idle before reusing its attachments; do not use its timings as production performance measurements. Disabling releases the target and attachments, while existing manager caches retain shader/pipeline/render-pass objects until their normal teardown.

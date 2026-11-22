@@ -14,6 +14,65 @@ import capture_manifest
 @unittest.skipUnless(os.environ.get("ULRE_CAPTURE_TEST") == "1",
                      "requires a running engine with DebugBridge enabled")
 class CaptureIntegrationTests(unittest.TestCase):
+    def test_world_position_rt_matches_same_frame_depth_at_multiple_distances(self):
+        requested = mcp_server.call_engine("set_debug_view", {"mode": "world_position"})
+        self.assertTrue(requested.get("valid"), requested)
+        try:
+            for _ in range(300):
+                status = mcp_server.call_engine("get_debug_view")
+                if status.get("mode") == "world_position" or status.get("error"):
+                    break
+                time.sleep(0.1)
+            if status.get("error") in ("position_format_unavailable",
+                                      "position_target_creation_failed"):
+                self.skipTest("Position RT unavailable: " + status["error"])
+            self.assertEqual(status.get("mode"), "world_position", status)
+            target_id = status["target_id"]
+            request = mcp_server.call_engine("capture_frame", {
+                "target_id": target_id, "attachment": "color_depth",
+            })
+            self.assertTrue(request.get("valid"), request)
+            try:
+                for _ in range(150):
+                    result = mcp_server.call_engine("get_capture_status", {
+                        "request_id": request["request_id"],
+                    })
+                    if result.get("state") not in ("queued", "capturing"):
+                        break
+                    time.sleep(0.1)
+                self.assertEqual(result.get("state"), "succeeded", result)
+                position_path = result["captures"][0]["metadata_path"]
+                depth_path = result["captures"][1]["metadata_path"]
+                position_manifest = json.loads(Path(position_path).read_text(encoding="utf-8"))
+                depth_manifest = json.loads(Path(depth_path).read_text(encoding="utf-8"))
+                self.assertEqual(position_manifest["vk_format"], 109)
+                self.assertEqual(position_manifest["encoding"], "rgba32f")
+                self.assertEqual(position_manifest["position"]["space"], "world_absolute")
+                self.assertEqual(position_manifest["camera"], depth_manifest["camera"])
+                self.assertEqual(position_manifest["frame_id"], depth_manifest["frame_id"])
+                position = capture_manifest.analyze_capture(position_path, "world_position_rt")
+                self.assertTrue(position["valid"], position)
+                self.assertGreater(position["point_count"], 0)
+                comparison = capture_manifest.analyze_capture(
+                    position_path, "position_crosscheck", sample_step=8,
+                    depth_metadata_path=depth_path)
+                self.assertTrue(comparison["valid"], comparison)
+                self.assertGreater(comparison["point_count"], 3)
+                self.assertGreaterEqual(len(comparison["distance_bands"]), 2)
+                error = comparison["absolute_position_error"]
+                self.assertTrue(math.isfinite(error["mean"]), comparison)
+                print("position_rt_crosscheck=" + json.dumps({
+                    "point_count": comparison["point_count"],
+                    "absolute_position_error": error,
+                    "distance_bands": comparison["distance_bands"],
+                }, allow_nan=False))
+            finally:
+                self.assertTrue(mcp_server.call_engine("release_capture", {
+                    "request_id": request["request_id"],
+                }).get("valid"))
+        finally:
+            mcp_server.call_engine("set_debug_view", {"mode": "off"})
+
     @unittest.skipUnless(os.environ.get("ULRE_GPU_CULL_TEST") == "1",
                          "requires the static one-board, four-dice ChessboardStress scene")
     def test_production_gpu_cull_draw_count(self):

@@ -113,6 +113,7 @@ namespace hgl::graph
                 case VK_FORMAT_B8G8R8A8_SRGB: return "bgra8";
                 case VK_FORMAT_A2B10G10R10_UNORM_PACK32: return "a2bgr10";
                 case VK_FORMAT_A2R10G10B10_UNORM_PACK32: return "a2r10g10b10";
+                case VK_FORMAT_R32G32B32A32_SFLOAT: return "rgba32f";
                 default: return "unknown";
             }
         }
@@ -256,7 +257,15 @@ namespace hgl::graph
                 json+=",\"min_depth\":0,\"max_depth\":1}";
             }
             if(result.attachment==DebugCaptureQueue::Attachment::Depth)
-                json+=",\"copy_aspect\":\"depth\",\"clear_depth\":0";
+            {
+                json+=",\"copy_aspect\":\"depth\",\"clear_depth\":";
+                if(result.source==DebugCaptureQueue::Source::DebugView && result.camera.valid)
+                    json+=result.camera.reversed_z?"0":"1";
+                else if(result.source==DebugCaptureQueue::Source::Offscreen)
+                    json+="0";
+                else
+                    json+="null";
+            }
             json+=",\"camera_status\":\"";
             json+=result.camera.valid?"recorded":result.camera.ambiguous?"ambiguous":"unavailable";
             json+="\",\"camera\":";
@@ -264,7 +273,8 @@ namespace hgl::graph
             {
                 // Camera-relative view/transform offsets are not enabled in the current camera path.
                 json+="{\"source\":\"primitive_collect\",\"matrix_layout\":\"column_major\","
-                      "\"position_space\":\"world_absolute\",\"vp\":";
+                      "\"position_space\":\"world_absolute\",\"projection_convention\":\"vulkan_rh_zo\","
+                      "\"world_up\":\"z_up\",\"viewport_y\":\"positive_height\",\"vp\":";
                 AppendFloats(json,result.camera.vp,16);
                 json+=",\"inverse_vp\":";
                 AppendFloats(json,result.camera.inverse_vp,16);
@@ -279,6 +289,13 @@ namespace hgl::graph
                 json+="}";
             }
             else json+="null";
+            if(result.source==DebugCaptureQueue::Source::DebugView
+               && result.attachment==DebugCaptureQueue::Attachment::Color
+               && result.debug_mode==static_cast<uint32_t>(mtl::DebugViewMode::WorldPosition))
+                json+=",\"position\":{\"space\":\"world_absolute\",\"origin\":[0,0,0],"
+                      "\"coordinate_system\":\"right_handed_z_up\",\"representation\":\"ieee754_binary32\","
+                      "\"format\":\"rgba32f\",\"mask\":\"alpha_nonzero\","
+                      "\"precision_note\":\"float32 fragment output; no fixed physical error guarantee\"}";
             json+="}";
             return json;
         }

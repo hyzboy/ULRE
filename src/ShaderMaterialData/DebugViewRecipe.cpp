@@ -16,6 +16,7 @@ namespace hgl::graph::mtl
             case DebugViewMode::Surface:     return "surface";
             case DebugViewMode::Emissive:    return "emissive";
             case DebugViewMode::UV0:         return "uv0";
+            case DebugViewMode::WorldPosition:return "world_position";
             default:                         return "unknown";
         }
     }
@@ -48,6 +49,7 @@ namespace hgl::graph::mtl
             case DebugViewMode::Surface:     return "HGL_DEBUG_VIEW_SURFACE";
             case DebugViewMode::Emissive:    return "HGL_DEBUG_VIEW_EMISSIVE";
             case DebugViewMode::UV0:         return "HGL_DEBUG_VIEW_UV0";
+            case DebugViewMode::WorldPosition:return "HGL_DEBUG_VIEW_WORLD_POSITION";
             default:                         return nullptr;
         }
     }
