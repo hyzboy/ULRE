@@ -1290,7 +1290,11 @@ namespace hgl::ecs
         {
             hgl::graph::FrameDebugger::PipelineInspectionSnapshot snapshot{};
             snapshot.valid = true;
+            snapshot.world_id = world->GetRenderDiagnosticWorldID();
             snapshot.frame_serial = cache.frame_serial;
+            snapshot.collect_available = true;
+            snapshot.collect_complete = !cache.fast_path_engaged;
+            snapshot.batch_available = true;
             snapshot.scene_primitives = cache.scene_primitives;
             snapshot.passed_can_render = cache.passed_can_render;
             snapshot.collected_items = static_cast<uint32_t>(cache.renderItems.size());

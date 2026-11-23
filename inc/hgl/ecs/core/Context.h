@@ -97,6 +97,7 @@ namespace hgl
             //   **必须声明在 `entity_manager` 之前**：成员按声明逆序析构 ⇒ 表比实体活得久
             //   （`~Entity` 会回写本表的 `Active` 位；表先死就会写到已释放内存）。
             EntityGPUTable entity_gpu_table;
+            uint64_t render_diagnostic_world_id = 0;
 
             /// T3d-3a：实体 4-ID 表（世界私有；与 `entity_gpu_table` 同批声明 ⇒ 同一条析构逆序纪律，
             /// `~Entity` 经 `DeactivateEntityRow` 同时清两表，两表都必须比 `entity_manager` 活得久）
@@ -490,6 +491,7 @@ namespace hgl
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
+            uint64_t GetRenderDiagnosticWorldID() const { return render_diagnostic_world_id; }
 
             int GetActiveMobilityFilter() const { return active_mobility_filter; }
 

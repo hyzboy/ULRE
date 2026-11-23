@@ -76,7 +76,16 @@ public:
     struct PipelineInspectionSnapshot
     {
         bool valid = false;
+        uint32_t schema_version = 2;
+        uint64_t world_id = 0;
         uint32_t frame_serial = 0;
+        uint64_t snapshot_sequence = 0;
+        uint64_t published_at_ms = 0;
+        bool collect_available = false;
+        bool collect_complete = false;
+        bool batch_available = false;
+        bool gpu_cull_available = false;
+        bool gpu_execution_available = false;
         uint32_t scene_primitives = 0;
         uint32_t passed_can_render = 0;
         uint32_t collected_items = 0;
@@ -99,6 +108,8 @@ public:
         uint32_t dropped_resource_pending = 0;
         uint32_t dropped_geometry_loading = 0;
         uint32_t dropped_other = 0;
+        uint32_t pending_material_resources = 0;
+        uint32_t pending_geometry_resources = 0;
 
         static constexpr uint32_t kMaxSampleDrops = 16;
         struct DropSample
@@ -129,7 +140,10 @@ public:
     static AnsiString GetCameraSnapshotJSON();
     static void SetPipelineInspection(const PipelineInspectionSnapshot &snapshot);
     static PipelineInspectionSnapshot GetPipelineInspection();
-    static AnsiString GetPipelineInspectionJSON();
-    static AnsiString TraceEntityPipelineJSON(const char *name_or_id);
+    static bool GetPipelineInspection(uint64_t world_id,uint32_t frame_serial,
+                                      PipelineInspectionSnapshot &snapshot);
+    static AnsiString GetPipelineInspectionJSON(uint64_t world_id=0,uint32_t frame_serial=0);
+    static AnsiString TraceEntityPipelineJSON(const char *name_or_id,
+                                               uint64_t world_id=0,uint32_t frame_serial=0);
 };
 }//namespace hgl::graph

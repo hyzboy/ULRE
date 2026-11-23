@@ -43,6 +43,7 @@
 #include<hgl/ecs/systems/render/buffer/RenderBufferUploadSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
+#include<hgl/sync/Mutex.h>
 #include<hgl/time/Time.h>
 #include<algorithm>
 #include<cstdlib>
@@ -53,6 +54,17 @@ namespace hgl
 {
     namespace ecs
     {
+        namespace
+        {
+            uint64_t NextRenderDiagnosticWorldID()
+            {
+                static hgl::Mutex mutex;
+                static uint64_t next_id=0;
+                hgl::MutexLock lock(&mutex);
+                return ++next_id;
+            }
+        }
+
         ECSContext::ECSContext(const AnsiString& name)
             : Object(name)
             , entity_manager(std::make_unique<EntityManager>(1000))
@@ -66,6 +78,8 @@ namespace hgl
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {
+            render_diagnostic_world_id=NextRenderDiagnosticWorldID();
+
             // 可见性存储需要拿到本世界指针：祖先链上溯要回查实体与变换行
             visibility_storage->SetContext(this);
 

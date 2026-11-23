@@ -231,6 +231,7 @@ int main()
     snap.scene_primitives=10;
     snap.collected_items=8;
     snap.fast_path_engaged=true;
+    snap.world_id=42;
     snap.drop_sample_count=1;
     ::strcpy(snap.drop_samples[0].entity_name,"ch\"ess");
     snap.drop_samples[0].entity_id=7;
@@ -238,26 +239,42 @@ int main()
     ::strcpy(snap.drop_samples[0].reason,"invisible");
     ::strcpy(snap.drop_samples[0].detail,"a\\b");
     FrameDebugger::SetPipelineInspection(snap);
+    FrameDebugger::PipelineInspectionSnapshot selected{};
+    if(!FrameDebugger::GetPipelineInspection(42,5,selected)
+       || selected.world_id!=42 || selected.frame_serial!=5
+       || selected.snapshot_sequence==0)
+        return 8;
+    FrameDebugger::PipelineInspectionSnapshot other=snap;
+    other.world_id=84;
+    other.frame_serial=6;
+    FrameDebugger::SetPipelineInspection(other);
+    if(!FrameDebugger::GetPipelineInspection(42,5,selected)
+       || selected.world_id!=42 || selected.frame_serial!=5
+       || FrameDebugger::GetPipelineInspection(84,5,selected))
+        return 8;
     const hgl::AnsiString inspection=FrameDebugger::GetPipelineInspectionJSON();
     if(!::strstr(inspection.c_str(),"\"funnel\":{")
        || !::strstr(inspection.c_str(),"\"cache_state\":{")
        || !::strstr(inspection.c_str(),"ch\\\"ess")
        || !::strstr(inspection.c_str(),"a\\\\b")
        || !::strstr(inspection.c_str(),"\"gpu_draw_count_available\":false")
-       || !::strstr(inspection.c_str(),"\"gpu_draw_count\":null"))
+       || !::strstr(inspection.c_str(),"\"gpu_draw_count\":null")
+       || !::strstr(inspection.c_str(),"\"schema_version\":2")
+       || !::strstr(inspection.c_str(),"\"world_id\":84")
+       || !::strstr(inspection.c_str(),"\"snapshot_sequence\":"))
     {
         GLogError(u8"Pipeline inspection JSON lost structure or escaping");
         return 8;
     }
-    const hgl::AnsiString dropped=FrameDebugger::TraceEntityPipelineJSON("ch\"ess");
+    const hgl::AnsiString dropped=FrameDebugger::TraceEntityPipelineJSON("ch\"ess",84,6);
     if(!::strstr(dropped.c_str(),"\"status\":\"Dropped\"")
        || !::strstr(dropped.c_str(),"ch\\\"ess"))
         return 8;
-    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7").c_str(),"\"status\":\"Dropped\""))
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7",84,6).c_str(),"\"status\":\"Dropped\""))
         return 8;
-    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("absent").c_str(),"\"status\":\"Unknown\""))
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("absent",84,6).c_str(),"\"status\":\"Unknown\""))
         return 8;
-    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7x").c_str(),"\"status\":\"Unknown\""))
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7x",84,6).c_str(),"\"status\":\"Unknown\""))
         return 8;
     FrameDebugger::SetCameraSnapshot(&camera);
     const hgl::AnsiString camera_json=FrameDebugger::GetCameraSnapshotJSON();

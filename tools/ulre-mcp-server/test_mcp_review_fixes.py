@@ -44,6 +44,31 @@ class MCPReviewFixTests(unittest.TestCase):
         self.assertIn('"missing_fields"', text)
         self.assertNotIn('"status": "PASS"', text)
 
+    def test_audit_forwards_snapshot_selectors(self):
+        original = mcp_server.call_engine
+        captured = {}
+
+        def fake_call(method, params=None):
+            captured["method"] = method
+            captured["params"] = params
+            return {"valid": False, "error": "pipeline_snapshot_not_found"}
+
+        mcp_server.call_engine = fake_call
+        try:
+            mcp_server.handle({
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "audit_cache_invariants",
+                    "arguments": {"world_id": 17, "frame_serial": 23},
+                },
+            })
+        finally:
+            mcp_server.call_engine = original
+
+        self.assertEqual(captured["method"], "inspect_render_pipeline")
+        self.assertEqual(captured["params"], {"world_id": 17, "frame_serial": 23})
+
     def test_d16_and_d24_depth_decoding(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

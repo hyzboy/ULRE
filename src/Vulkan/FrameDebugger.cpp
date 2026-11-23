@@ -28,7 +28,15 @@ uint8_t *BufferScratch(){ static uint8_t bytes[FrameDebugger::kMaxBufferBytes]; 
 hgl::ValueArray<uint8_t> &PixelScratch(){ static hgl::ValueArray<uint8_t> bytes; return bytes; }
 FrameDebugger::CameraSnapshot &CameraSnapshotState(){ static FrameDebugger::CameraSnapshot snapshot; return snapshot; }
 hgl::Mutex &CameraSnapshotMutex(){ static hgl::Mutex mutex; return mutex; }
-FrameDebugger::PipelineInspectionSnapshot &PipelineInspectionState(){ static FrameDebugger::PipelineInspectionSnapshot snapshot; return snapshot; }
+static constexpr uint32_t kPipelineSnapshotHistory=8;
+FrameDebugger::PipelineInspectionSnapshot *PipelineInspectionHistory()
+{
+    static FrameDebugger::PipelineInspectionSnapshot snapshots[kPipelineSnapshotHistory];
+    return snapshots;
+}
+uint32_t &PipelineInspectionHead(){ static uint32_t head=0; return head; }
+uint32_t &PipelineInspectionCount(){ static uint32_t count=0; return count; }
+uint64_t &PipelineInspectionSequence(){ static uint64_t sequence=0; return sequence; }
 hgl::Mutex &PipelineInspectionMutex(){ static hgl::Mutex mutex; return mutex; }
 uint64_t &CaptureSequence(){ static uint64_t sequence=0; return sequence; }
 
@@ -350,20 +358,55 @@ AnsiString FrameDebugger::GetCameraSnapshotJSON()
 void FrameDebugger::SetPipelineInspection(const PipelineInspectionSnapshot &snapshot)
 {
     hgl::MutexLock lock(&PipelineInspectionMutex());
-    PipelineInspectionState() = snapshot;
+    PipelineInspectionSnapshot published=snapshot;
+    if(published.drop_sample_count>PipelineInspectionSnapshot::kMaxSampleDrops)
+        published.drop_sample_count=PipelineInspectionSnapshot::kMaxSampleDrops;
+    published.schema_version=2;
+    published.snapshot_sequence=++PipelineInspectionSequence();
+    published.published_at_ms=hgl::GetUptimeMs();
+    PipelineInspectionHistory()[PipelineInspectionHead()]=published;
+    PipelineInspectionHead()=(PipelineInspectionHead()+1)%kPipelineSnapshotHistory;
+    if(PipelineInspectionCount()<kPipelineSnapshotHistory)
+        ++PipelineInspectionCount();
 }
 
 FrameDebugger::PipelineInspectionSnapshot FrameDebugger::GetPipelineInspection()
 {
     hgl::MutexLock lock(&PipelineInspectionMutex());
-    return PipelineInspectionState();
+    if(!PipelineInspectionCount())
+        return PipelineInspectionSnapshot{};
+    const uint32_t latest=(PipelineInspectionHead()+kPipelineSnapshotHistory-1)
+                          %kPipelineSnapshotHistory;
+    return PipelineInspectionHistory()[latest];
 }
 
-AnsiString FrameDebugger::GetPipelineInspectionJSON()
+bool FrameDebugger::GetPipelineInspection(const uint64_t world_id,const uint32_t frame_serial,
+                                          PipelineInspectionSnapshot &snapshot)
 {
-    const PipelineInspectionSnapshot snap=GetPipelineInspection();
-    if(!snap.valid)
-        return debug_bridge::DebugJsonToText(nlohmann::json{{"valid",false}});
+    hgl::MutexLock lock(&PipelineInspectionMutex());
+    const uint32_t count=PipelineInspectionCount();
+    for(uint32_t offset=0;offset<count;++offset)
+    {
+        const uint32_t index=(PipelineInspectionHead()+kPipelineSnapshotHistory-1-offset)
+                             %kPipelineSnapshotHistory;
+        const PipelineInspectionSnapshot &candidate=PipelineInspectionHistory()[index];
+        if((!world_id||candidate.world_id==world_id)
+           &&(!frame_serial||candidate.frame_serial==frame_serial))
+        {
+            snapshot=candidate;
+            return true;
+        }
+    }
+    return false;
+}
+
+AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
+                                                    const uint32_t frame_serial)
+{
+    PipelineInspectionSnapshot snap;
+    if(!GetPipelineInspection(world_id,frame_serial,snap) || !snap.valid)
+        return debug_bridge::DebugJsonToText(nlohmann::json{
+            {"valid",false},{"error","pipeline_snapshot_not_found"}});
 
     nlohmann::json samples=nlohmann::json::array();
     for(uint32_t i=0;i<snap.drop_sample_count;++i)
@@ -388,9 +431,35 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON()
         {"gpu_draw_count",gpu_draw_count},
         {"gpu_draw_count_available",snap.gpu_draw_count_available}};
 
+    const uint64_t now=hgl::GetUptimeMs();
+    const uint64_t age_ms=now>=snap.published_at_ms?now-snap.published_at_ms:0;
+    const nlohmann::json collect_reason=snap.collect_complete?nlohmann::json():
+        nlohmann::json(snap.fast_path_engaged?"collect_fast_path_replay":"collect_stage_unavailable");
+    const nlohmann::json batch_reason=snap.batch_available?nlohmann::json():
+        nlohmann::json("batch_stage_unavailable");
+    const nlohmann::json gpu_cull_reason=snap.gpu_cull_available?nlohmann::json():
+        nlohmann::json("frame_correlated_gpu_cull_unavailable");
+    const nlohmann::json gpu_execution_reason=snap.gpu_execution_available?nlohmann::json():
+        nlohmann::json("entity_level_gpu_execution_unavailable");
     return debug_bridge::DebugJsonToText(nlohmann::json{
         {"valid",true},
+        {"schema_version",snap.schema_version},
+        {"world_id",snap.world_id},
         {"frame_serial",snap.frame_serial},
+        {"snapshot_sequence",snap.snapshot_sequence},
+        {"snapshot_age_ms",age_ms},
+        {"coverage",{{"collect",{{"available",snap.collect_available},
+                                  {"complete",snap.collect_complete},
+                                  {"reason",collect_reason}}},
+                     {"batch",{{"available",snap.batch_available},
+                                {"complete",snap.batch_available},
+                                {"reason",batch_reason}}},
+                     {"gpu_cull",{{"available",snap.gpu_cull_available},
+                                   {"complete",snap.gpu_cull_available},
+                                   {"reason",gpu_cull_reason}}},
+                     {"gpu_execution",{{"available",snap.gpu_execution_available},
+                                        {"complete",snap.gpu_execution_available},
+                                        {"reason",gpu_execution_reason}}}}},
         {"funnel",funnel},
         {"cache_state",{{"fast_path_engaged",snap.fast_path_engaged},
                         {"last_collect_steady",snap.last_collect_steady},
@@ -409,14 +478,16 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON()
                   {"samples",samples}}}});
 }
 
-AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id)
+AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id,
+                                                   const uint64_t world_id,
+                                                   const uint32_t frame_serial)
 {
     if(!name_or_id || !*name_or_id)
         return debug_bridge::DebugJsonToText(
             nlohmann::json{{"valid",false},{"error","missing entity name or ID"}});
 
-    const PipelineInspectionSnapshot snap=GetPipelineInspection();
-    if(!snap.valid)
+    PipelineInspectionSnapshot snap;
+    if(!GetPipelineInspection(world_id,frame_serial,snap)||!snap.valid)
         return debug_bridge::DebugJsonToText(
             nlohmann::json{{"valid",false},{"error","no pipeline inspection data available"}});
 

@@ -184,6 +184,11 @@ namespace hgl::graph::debug_bridge
             return AnsiString(fallback);
         }
 
+        bool HasParam(const char *key)const
+        {
+            return params && params->is_object() && params->contains(key);
+        }
+
         bool GetParamUInt64(const char *key,uint64_t &value)const
         {
             if(params)

@@ -313,11 +313,18 @@ bool DebugBridgeServer::Execute()
         const AnsiString mode=parsed.GetParamString("mode");
         const AnsiString attachment=parsed.GetParamString("attachment");
         uint64_t target_id=0,request_id=0,resource_id=0,offset=0,size=0;
+        uint64_t query_world_id=0,query_frame_serial=0;
         const bool has_target_id=parsed.GetParamUInt64("target_id",target_id);
         const bool has_request_id=parsed.GetParamUInt64("request_id",request_id);
         const bool has_resource_id=parsed.GetParamUInt64("resource_id",resource_id);
         const bool has_offset=parsed.GetParamUInt64("offset",offset);
         const bool has_size=parsed.GetParamUInt64("size",size);
+        const bool has_query_world_id=parsed.GetParamUInt64("world_id",query_world_id);
+        const bool has_query_frame_serial=parsed.GetParamUInt64("frame_serial",query_frame_serial);
+        const bool invalid_query_selector=
+            (parsed.HasParam("world_id")&&!has_query_world_id)
+            ||(parsed.HasParam("frame_serial")
+               &&(!has_query_frame_serial||query_frame_serial>UINT32_MAX));
 
         if(method=="get_render_health")
             result=debug_bridge::DebugJsonFromText(RenderHealthLedger::GetStatusJSON());
@@ -326,9 +333,17 @@ bool DebugBridgeServer::Execute()
         else if(method=="get_camera_matrices")
             result=debug_bridge::DebugJsonFromText(FrameDebugger::GetCameraSnapshotJSON());
         else if(method=="inspect_render_pipeline" || method=="get_pipeline_inspection")
-            result=debug_bridge::DebugJsonFromText(FrameDebugger::GetPipelineInspectionJSON());
+            result=invalid_query_selector
+                ?nlohmann::json{{"valid",false},{"error","invalid_pipeline_snapshot_selector"}}
+                :debug_bridge::DebugJsonFromText(FrameDebugger::GetPipelineInspectionJSON(
+                    has_query_world_id?query_world_id:0,
+                    has_query_frame_serial?static_cast<uint32_t>(query_frame_serial):0));
         else if(method=="trace_entity_pipeline" || method=="trace_entity_render_state")
-            result=debug_bridge::DebugJsonFromText(FrameDebugger::TraceEntityPipelineJSON(parsed.GetEntity().c_str()));
+            result=invalid_query_selector
+                ?nlohmann::json{{"valid",false},{"error","invalid_pipeline_snapshot_selector"}}
+                :debug_bridge::DebugJsonFromText(FrameDebugger::TraceEntityPipelineJSON(
+                    parsed.GetEntity().c_str(),has_query_world_id?query_world_id:0,
+                    has_query_frame_serial?static_cast<uint32_t>(query_frame_serial):0));
         else if(method=="set_debug_view")
             result=SetDebugViewFromRequest(mode.c_str());
         else if(method=="get_debug_view")

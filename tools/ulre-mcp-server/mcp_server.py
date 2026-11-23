@@ -105,24 +105,32 @@ TOOLS = [
     },
     {
         "name": "inspect_render_pipeline",
-        "description": "Inspect the ULRE render pipeline stage-by-stage throughput funnel (scene primitives -> CanRender -> Collect -> Batch -> GPU indirect draw), fast-path cache status, and drop attribution.",
-        "inputSchema": {"type": "object", "properties": {}},
+        "description": "Inspect the latest or selected main-scene primitive pipeline snapshot. Stage coverage and GPU metrics are explicit; unavailable stages are not inferred.",
+        "inputSchema": {"type": "object", "properties": {
+            "world_id": {"type": "integer", "minimum": 1},
+            "frame_serial": {"type": "integer", "minimum": 1},
+        }},
     },
     {
         "name": "trace_entity_render_state",
-        "description": "Trace the render pipeline status, batch assignment, or drop attribution for a specific entity by name or entity ID.",
+        "description": "Trace observable collect/drop facts for an entity in the latest or selected main-scene primitive snapshot. Missing sample coverage returns Unknown, not rendered.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Entity name or integer ID"}
+                "name": {"type": "string", "description": "Entity name or integer ID"},
+                "world_id": {"type": "integer", "minimum": 1},
+                "frame_serial": {"type": "integer", "minimum": 1},
             },
             "required": ["name"]
         },
     },
     {
         "name": "audit_cache_invariants",
-        "description": "Audit the render pipeline collect cache invariants (checks for topology/snapshot desynchronization, pending resources while fast-path active, or drop discrepancies).",
-        "inputSchema": {"type": "object", "properties": {}},
+        "description": "Audit applicable invariants for the latest or selected main-scene primitive pipeline snapshot. Missing evidence is UNKNOWN, not PASS.",
+        "inputSchema": {"type": "object", "properties": {
+            "world_id": {"type": "integer", "minimum": 1},
+            "frame_serial": {"type": "integer", "minimum": 1},
+        }},
     },
     {
         "name": "set_debug_view",
@@ -445,7 +453,9 @@ def handle(request):
             elif tool_name == "trace_entity_render_state":
                 value = call_engine("trace_entity_pipeline", arguments)
             elif tool_name == "audit_cache_invariants":
-                pipe_data = call_engine("inspect_render_pipeline")
+                selectors = {key: arguments[key] for key in ("world_id", "frame_serial")
+                             if key in arguments}
+                pipe_data = call_engine("inspect_render_pipeline", selectors)
                 if not isinstance(pipe_data, dict) or not pipe_data.get("valid"):
                     value = pipe_data
                 else:

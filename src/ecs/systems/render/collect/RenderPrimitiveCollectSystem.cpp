@@ -2376,7 +2376,6 @@ namespace hgl::ecs
         FrameProfiler::Count(FrameProfileCount::CollectItems, static_cast<uint32_t>(record_count));
 
         cache.fast_path_engaged     = true;
-        cache.scene_primitives      = static_cast<uint32_t>(record_count);
         cache.passed_can_render     = static_cast<uint32_t>(record_count);
         cache.collected_items       = static_cast<uint32_t>(record_count);
         cache.is_collect_steady     = true;
