@@ -1,5 +1,6 @@
 #include<hgl/vk/FrameDebugger.h>
 #include<hgl/vk/DebugCaptureQueue.h>
+#include<hgl/vk/RenderHealthLedger.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/log/Log.h>
@@ -31,6 +32,21 @@ namespace
 int main()
 {
     using hgl::graph::FrameDebugger;
+    using hgl::graph::RenderHealthLedger;
+
+    RenderHealthLedger::Clear();
+    const hgl::AnsiString health_unavailable=RenderHealthLedger::GetStatusJSON();
+    if(!::strstr(health_unavailable.c_str(),"\"coverage\":\"unavailable\"")
+       || !::strstr(health_unavailable.c_str(),"no_registered_production_alert_producer"))
+        return 9;
+    RenderHealthLedger::Add(hgl::graph::RenderHealthSeverity::Warning,
+                            "Texture\"Manager","missing\\texture");
+    const hgl::AnsiString escaped=RenderHealthLedger::GetStatusJSON();
+    if(!::strstr(escaped.c_str(),"Texture\\\"Manager")
+       || !::strstr(escaped.c_str(),"missing\\\\texture"))
+        return 9;
+    RenderHealthLedger::Clear();
+
     EmptyTarget target;
     if(FrameDebugger::RequestColor(&target,"../unsafe")!=UINT32_MAX)
     {

@@ -41,6 +41,14 @@ static nlohmann::json MakeDebugViewJSON()
     return debug_bridge::DebugJsonFromText(hgl::ecs::DebugViewPass::GetStatusJSON());
 }
 
+static nlohmann::json MakeCameraViewportJSON()
+{
+    return nlohmann::json{
+        {"valid",false},
+        {"status","unavailable"},
+        {"error","camera_viewport_contract_not_sampled"}};
+}
+
 static nlohmann::json SetDebugViewFromRequest(const char *mode_name)
 {
     hgl::graph::mtl::DebugViewMode mode;
@@ -389,9 +397,12 @@ bool DebugBridgeServer::Execute()
                   ?nlohmann::json{{"valid",true}}
                   :nlohmann::json{{"valid",false},{"error","request_not_queued_or_unknown"}};
         else if(method=="dump_buffer" || method=="dump_render_target")
-            result=debug_bridge::DebugJsonFromText(FrameDebugger::GetLatestResultJSON());
+            result=nlohmann::json{
+                {"valid",false},
+                {"error","deprecated_dump_api"},
+                {"reason","Use list_capture_targets/list_capture_buffers plus capture_frame/capture_buffer"}};
         else if(method=="inspect_camera_viewport")
-            result=debug_bridge::DebugJsonFromText(RenderHealthLedger::GetStatusJSON());
+            result=MakeCameraViewportJSON();
         else
         {
             protocol_error=true;

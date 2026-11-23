@@ -1,4 +1,5 @@
 #include<hgl/vk/RenderHealthLedger.h>
+#include "DebugBridgeJson.h"
 #include<cstring>
 #include<cstdio>
 
@@ -16,6 +17,12 @@ uint32_t &AlertCount()
 {
     static uint32_t count=0;
     return count;
+}
+
+hgl::Mutex &AlertMutex()
+{
+    static hgl::Mutex mutex;
+    return mutex;
 }
 
 void CopyText(char *dst,uint32_t cap,const char *src)
@@ -42,12 +49,14 @@ const char *SeverityName(RenderHealthSeverity severity)
 
 void RenderHealthLedger::Clear()
 {
+    hgl::MutexLock lock(&AlertMutex());
     for(uint32_t i=0;i<kMaxAlerts;i++) Alerts()[i]=RenderHealthAlert{};
     AlertCount()=0;
 }
 
 void RenderHealthLedger::Add(RenderHealthSeverity severity,const char *subsystem,const char *message)
 {
+    hgl::MutexLock lock(&AlertMutex());
     uint32_t &count=AlertCount();
     if(count>=kMaxAlerts) return;
     RenderHealthAlert &alert=Alerts()[count++];
@@ -86,45 +95,51 @@ void RenderHealthLedger::ReportPipelineFailure(const char *pipeline,const char *
 
 uint32_t RenderHealthLedger::GetCount()
 {
+    hgl::MutexLock lock(&AlertMutex());
     return AlertCount();
 }
 
 const RenderHealthAlert *RenderHealthLedger::Get(uint32_t index)
 {
+    hgl::MutexLock lock(&AlertMutex());
     if(index>=AlertCount()) return nullptr;
     return &Alerts()[index];
 }
 
 AnsiString RenderHealthLedger::GetStatusJSON()
 {
-    const uint32_t count=AlertCount();
-    RenderHealthSeverity worst=RenderHealthSeverity::Info;
-    for(uint32_t i=0;i<count;i++)
+    RenderHealthAlert alerts[kMaxAlerts]{};
+    uint32_t count=0;
     {
-        if(Get(i)->severity==RenderHealthSeverity::Error)
+        hgl::MutexLock lock(&AlertMutex());
+        count=AlertCount();
+        if(count>kMaxAlerts) count=kMaxAlerts;
+        for(uint32_t i=0;i<count;++i)
+            alerts[i]=Alerts()[i];
+    }
+
+    RenderHealthSeverity worst=RenderHealthSeverity::Info;
+    nlohmann::json items=nlohmann::json::array();
+    for(uint32_t i=0;i<count;++i)
+    {
+        const RenderHealthAlert &alert=alerts[i];
+        if(alert.severity==RenderHealthSeverity::Error)
             worst=RenderHealthSeverity::Error;
-        else if(Get(i)->severity==RenderHealthSeverity::Warning
+        else if(alert.severity==RenderHealthSeverity::Warning
                 && worst!=RenderHealthSeverity::Error)
             worst=RenderHealthSeverity::Warning;
+        items.push_back({{"severity",SeverityName(alert.severity)},
+                         {"subsystem",alert.subsystem},
+                         {"message",alert.message}});
     }
 
-    AnsiString json="{\"status\":\"";
-    json+=SeverityName(worst);
-    json+="\",\"alerts\":[";
-
-    for(uint32_t i=0;i<count;i++)
-    {
-        const RenderHealthAlert *a=Get(i);
-        if(i) json+=",";
-        json+="{\"severity\":\"";
-        json+=SeverityName(a->severity);
-        json+="\",\"subsystem\":\"";
-        json+=a->subsystem;
-        json+="\",\"message\":\"";
-        json+=a->message;
-        json+="\"}";
-    }
-    json+="]}";
-    return json;
+    nlohmann::json document{
+        {"valid",true},
+        {"status",SeverityName(worst)},
+        {"coverage",count?"reported":"unavailable"},
+        {"alerts",items}};
+    if(count==0)
+        document["coverage_reason"]="no_registered_production_alert_producer";
+    return debug_bridge::DebugJsonToText(document);
 }
 }//namespace hgl::graph

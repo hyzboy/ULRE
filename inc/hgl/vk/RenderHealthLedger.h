@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/type/String.h>
+#include<hgl/sync/Mutex.h>
 
 namespace hgl::graph
 {

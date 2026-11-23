@@ -75,7 +75,7 @@ TOOLS = [
     },
     {
         "name": "dump_render_target",
-        "description": "Read the latest requested render-target capture summary.",
+        "description": "Deprecated compatibility tool. Use list_capture_targets and capture_frame instead.",
         "inputSchema": {
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -83,7 +83,7 @@ TOOLS = [
     },
     {
         "name": "dump_buffer",
-        "description": "Read the latest requested SSBO or UBO capture summary.",
+        "description": "Deprecated compatibility tool. Use list_capture_buffers and capture_buffer instead.",
         "inputSchema": {
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -414,47 +414,77 @@ def handle(request):
                     cache_state = pipe_data.get("cache_state", {})
                     funnel = pipe_data.get("funnel", {})
                     drops = pipe_data.get("drops", {})
-                    anomalies = []
-                    
-                    if cache_state.get("fast_path_engaged") and cache_state.get("has_pending_resources"):
-                        anomalies.append({
-                            "severity": "CRITICAL",
-                            "rule": "CollectCachePendingResourceViolation",
-                            "message": "Fast-path collect cache is active while scene has pending/streaming resources!"
-                        })
-                    if cache_state.get("snapshot_ready") and cache_state.get("snapshot_topology_rev") != cache_state.get("world_topology_rev"):
-                        anomalies.append({
-                            "severity": "ERROR",
-                            "rule": "SnapshotTopologyMismatch",
-                            "message": f"Snapshot topology rev ({cache_state.get('snapshot_topology_rev')}) does not match world ({cache_state.get('world_topology_rev')})!"
-                        })
-                    if drops.get("resource_pending", 0) > 0 and cache_state.get("last_collect_steady"):
-                        anomalies.append({
-                            "severity": "CRITICAL",
-                            "rule": "UnsteadyGatingViolation",
-                            "message": "last_collect_steady is TRUE while drops.resource_pending > 0!"
-                        })
-                    
-                    passed_can_render = funnel.get("passed_can_render", 0)
-                    collected = funnel.get("collected_items", 0)
-                    if collected < passed_can_render:
-                        anomalies.append({
-                            "severity": "WARNING",
-                            "rule": "CollectDropDiscrepancy",
-                            "message": f"Collected items ({collected}) is less than passed_can_render ({passed_can_render})!"
-                        })
-                    
-                    value = {
-                        "valid": True,
-                        "status": "PASS" if not anomalies else "FAIL",
-                        "anomaly_count": len(anomalies),
-                        "anomalies": anomalies,
-                        "summary": {
-                            "fast_path": cache_state.get("fast_path_engaged"),
-                            "funnel": funnel,
-                            "cache_state": cache_state
+                    required_cache = (
+                        "fast_path_engaged", "last_collect_steady",
+                        "has_pending_resources", "snapshot_ready",
+                        "snapshot_topology_rev", "world_topology_rev")
+                    required_funnel = (
+                        "passed_can_render", "collected_items")
+                    required_drops = ("resource_pending",)
+                    missing = (
+                        [f"cache_state.{key}" for key in required_cache
+                         if key not in cache_state]
+                        + [f"funnel.{key}" for key in required_funnel
+                           if key not in funnel]
+                        + [f"drops.{key}" for key in required_drops
+                           if key not in drops])
+                    if missing:
+                        value = {
+                            "valid": False,
+                            "status": "UNKNOWN",
+                            "error": "missing_cache_audit_fields",
+                            "missing_fields": missing,
                         }
-                    }
+                    else:
+                        anomalies = []
+                    
+                        if cache_state["fast_path_engaged"] and cache_state["has_pending_resources"]:
+                            anomalies.append({
+                                "severity": "CRITICAL",
+                                "rule": "CollectCachePendingResourceViolation",
+                                "message": "Fast-path collect cache is active while scene has pending/streaming resources!"
+                            })
+                        if cache_state["snapshot_ready"] and cache_state["snapshot_topology_rev"] != cache_state["world_topology_rev"]:
+                            anomalies.append({
+                                "severity": "ERROR",
+                                "rule": "SnapshotTopologyMismatch",
+                                "message": f"Snapshot topology rev ({cache_state['snapshot_topology_rev']}) does not match world ({cache_state['world_topology_rev']})!"
+                            })
+                        if drops["resource_pending"] > 0 and cache_state["last_collect_steady"]:
+                            anomalies.append({
+                                "severity": "CRITICAL",
+                                "rule": "UnsteadyGatingViolation",
+                                "message": "last_collect_steady is TRUE while drops.resource_pending > 0!"
+                            })
+                    
+                        passed_can_render = funnel["passed_can_render"]
+                        collected = funnel["collected_items"]
+                        if collected < passed_can_render:
+                            anomalies.append({
+                                "severity": "WARNING",
+                                "rule": "CollectDropDiscrepancy",
+                                "message": f"Collected items ({collected}) is less than passed_can_render ({passed_can_render})!"
+                            })
+                    
+                        value = {
+                            "valid": True,
+                            "status": "PASS" if not anomalies else "FAIL",
+                            "anomaly_count": len(anomalies),
+                            "anomalies": anomalies,
+                            "summary": {
+                                "fast_path": cache_state["fast_path_engaged"],
+                                "funnel": funnel,
+                                "cache_state": cache_state
+                            }
+                        }
+            elif tool_name in ("dump_buffer", "dump_render_target"):
+                value = {
+                    "valid": False,
+                    "error": "deprecated_dump_api",
+                    "reason": ("Use list_capture_buffers and capture_buffer"
+                               if tool_name == "dump_buffer"
+                               else "Use list_capture_targets and capture_frame"),
+                }
             else:
                 value = call_engine(tool_name, arguments)
         except (KeyError, ValueError, TypeError, OSError, OverflowError) as exc:
