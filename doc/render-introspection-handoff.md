@@ -1,6 +1,6 @@
 # 渲染自省工作交接
 
-本文是截至 2026-11-22 的交接记录。功能契约、调用方式和限制以
+本文是截至 2026-11-23 的交接记录。功能契约、调用方式和限制以
 [渲染自省设计文档](debug-analysis-and-view-modes.md) 和
 [诊断 Skill](../.ai/skills/SKILL_RENDER_DIAGNOSTICS.md) 为准；本文件中的未来方案不代表已经实现。
 
@@ -42,7 +42,14 @@
 - GPU pass 历史读取改为锁内完整快照，桥不再持有环形槽位外的可变指针。
 - 管线漏斗不再把 CPU 批次数伪装为实测 GPU 绘制数；无实测 GPU 数据时返回
   `gpu_draw_count_available:false` 与 `gpu_draw_count:null`。
-- 实体追踪未命中或样本截断时返回 `Unknown`，不再归为 `RenderedOrPassed`。
+- 管线自省改为 8 项有界历史，带 schema/world/frame/sequence/age，支持 world/frame 查询。
+  `world_id` 仅在进程内唯一，进程重启会重置。
+- 主场景 primitive collect 记录分开的 renderable、collect-candidate 和 collected 计数；
+  resource pending 是观察项，不再冒充 drop。实体追踪保留最多 64 条 generation-aware
+  样本，并关联 CPU batch；未采样、重名、快路径回放和截断都显式返回 Unknown/Ambiguous。
+- GPU DrawCount 抓取保留 dispatch `frame_id`，另附 `source_world_id/source_frame_serial`；
+  数据仍不等价于实际 draw 或 mesh/task invocation，未并入帧级漏斗。
+- 缓存审计逐规则返回 `PASS/FAIL/UNKNOWN`，完整 collect 证据不足时不输出 PASS。
 - Health Ledger 使用结构化序列化并加锁；空账本明确为 no production alert producer
   导致的 unavailable，不等于场景健康。
 - 缓存审计缺少必需字段时返回 `UNKNOWN`，不再用零值或空对象制造 PASS。
@@ -56,7 +63,7 @@ Windows 命名管道桥（`13aaf5d3b`）、MCP 与诊断 Skill（`09a0ab6ce`）�
 其后逐步完成：
 
 1. 真实抓帧请求和状态、同帧 color/depth、版本化清单、设备和相机快照、
-   失败/取消/释放及严格格式检查；旧 `dump_*` 只读取最近结果，不发起请求。
+   失败/取消/释放及严格格式检查；旧 `dump_*` 保留兼容入口但返回弃用错误和迁移建议。
 2. 受所有权、提交与同步约束的 opt-in 托管离屏抓取；有界 GPU buffer 读回。
    目前实际生产 SSBO 仅登记 `GPUCullSystem.DrawCount`，其序号是派发序号而非主帧 ID。
 3. 不改作者材质的独立 Debug View，支持 `world_normal`、`shading_normal`、

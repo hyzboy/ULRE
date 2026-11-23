@@ -11,6 +11,31 @@ MCP 客户端配置、工具参考与故障排查见
 `tools/ulre-mcp-server` 提供桥接与图像分析。当前实现仍是诊断原型，不能视为完整、
 可靠的端到端抓帧系统：
 
+## 主场景 primitive 管线自省
+
+`inspect_render_pipeline` 返回 schema v2 的主场景 primitive 帧快照。可选
+`world_id`/`frame_serial` 用于从最近 8 个快照中选取具体世界和帧；不传时取最近发布项。
+快照带 `snapshot_sequence`/`snapshot_age_ms`，并为 collect、batch、GPU cull 和 GPU
+execution 分别报告 coverage。`world_id` 在当前引擎进程内唯一，重启后会重置。
+
+漏斗计数的单位不相同：`scene_primitives`、`passed_can_render`、
+`collect_candidates` 是 primitive；`collected_items`、`batched_items` 是 render item；
+`batch_count` 是 CPU material batch。`passed_can_render` 表示 strategy 的 renderable
+事实；`collect_candidates` 表示符合当前 pass collect strategy；`collected_items`
+来自实际 RenderFrameCache；`batched_items`/`batch_count` 来自最终 CPU 批次。
+`gpu_draw_count` 在还没有帧级 GPU 指标合并机制时为 null，不能从 CPU batch 或 DrawCount
+buffer 推算实际 draw/invocation。
+
+快路径回放的 collect coverage `complete:false`，只有被缓存的计数，不表示本帧重跑了每个判定。
+`trace_entity_render_state` 可选同一组 world/frame selector；返回最多 64 条
+generation-aware 实体观察，展示 collect、pending-resource observation 和 batch 状态。
+16 条 drop 样本是单独的摘要。`entity_trace.complete:false` 或 `sample_truncated:true`
+时，未命中实体为 `Unknown`；重复名称为 `Ambiguous`。仅覆盖主场景 primitive，
+不覆盖 2D、线条、overlay 或 shadow pass。
+
+`audit_cache_invariants` 对指定快照逐规则返回 `PASS`、`FAIL` 或 `UNKNOWN`。没有快照、
+缺字段、错误类型、未就绪拓扑或 collect 快路径回放均不能推导出全局 PASS。
+
 - `list_capture_targets` 列出交换链、Debug View 和管理器创建的普通离屏目标；`capture_frame` 接受 target ID 和
   `color`/`depth`/`color_depth`，返回请求 ID，随后可通过 `get_capture_status` 查询。
   `color_depth` 在同一个提交帧内读取两个附件，返回各自的清单与文件。抓取只在该
@@ -42,7 +67,9 @@ MCP 客户端配置、工具参考与故障排查见
   生产路径目前仅登记 `GPUCullSystem.DrawCount`：它在图形队列上每次先清零，再由
   GPU 剔除 compute shader 原子累加，并在派发成功提交后处理请求。必须在该系统初始化前
   启用 DebugBridge；没有后续派发的请求会以 `queue_timeout` 结束。其 `frame_id`
-  是该资源的成功派发序号，不是交换链帧号；其他生产 SSBO 尚未接入，不会被发现或抓取。
+  是该资源的成功派发序号，不是交换链帧号；清单和状态另有 `source_world_id` 与
+  `source_frame_serial` 关联来源主帧。该计数表示 GPU cull survivors，不代表实际
+  mesh-task/draw 执行数；其他生产 SSBO 尚未接入，不会被发现或抓取。
 - `dump_render_target` 和 `dump_buffer` 已标记弃用：保留仅为兼容，不创建请求、
   不按名称选择结果，并返回 `deprecated_dump_api`。应使用捕获队列的
   `list_capture_targets/list_capture_buffers` 与 `capture_frame/capture_buffer`。

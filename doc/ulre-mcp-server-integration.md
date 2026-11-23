@@ -251,8 +251,8 @@ python -B -m unittest discover -s E:\ULRE\tools\ulre-mcp-server -p "test_*.py"
    | --- | --- | --- |
    | 1 | `list_capture_targets({})` | `valid:true`，含 `kind:"swapchain"` 的 `target_id` |
    | 2 | `get_pass_metrics({})` | `valid:true`，`frame_id` 递增，`passes` 含 `gpu_time_ms` |
-   | 3 | `inspect_render_pipeline({})` | `funnel`/`cache_state`/`drops` 三段齐全 |
-   | 4 | `audit_cache_invariants({})` | `status:"PASS"`（或列出具体异常规则） |
+   | 3 | `inspect_render_pipeline({})` | 含 `schema_version/world_id/frame_serial/coverage/funnel/entity_trace` |
+   | 4 | `audit_cache_invariants({})` | `PASS`、`FAIL` 或 `UNKNOWN`；缺数据、快路径回放不能假定 PASS |
    | 5 | `capture_frame({"target_id":1,"attachment":"color"})` | 返回 `request_id`，`state:"queued"` |
    | 6 | `get_capture_status({"request_id":<id>})` | 轮询至 `succeeded`，得到 `width/height/bytes/dump_path/metadata_path` |
    | 7 | `analyze_capture({"metadata_path":<清单路径>,"operation":"luminance"})` | 离线亮度统计 |
@@ -281,9 +281,9 @@ MCP 层标记 `isError: true`。参数表中 **粗体** 为必填。
 | `get_pass_metrics` | 无 | 最近一帧 GPU 时间戳：`frame_id`、`gpu_total_time_ms`、`passes[]`（名称粗分 swapchain/offscreen，每帧最多 32 个 pass） |
 | `get_camera_matrices` | 无 | 最近相机快照：`vp`/`inverse_vp`/`inverse_view`/`inverse_projection`（16 元素列主序数组）、`znear`/`zfar`、`use_reversed_z`（**数值 0/1，不是布尔**）。是最新快照，不一定是某次抓帧的相机 |
 | `inspect_camera_viewport` | 无 | 当前返回 `valid:false`/`camera_viewport_contract_not_sampled`；尚无完整相机/viewport 生产者覆盖 |
-| `inspect_render_pipeline` | 无 | 管线漏斗 `funnel`、`cache_state`、`drops`；`gpu_draw_count` 不可证实时返回 `null` 和 `gpu_draw_count_available:false` |
-| `trace_entity_render_state` | **name**（实体名或整数字符串 ID） | 命中丢弃样本返回 `status:"Dropped"`；未被 16 条样本覆盖、截断或纯 ID 格式无效时返回 `status:"Unknown"`，不得解释为已通过 |
-| `audit_cache_invariants` | 无 | **MCP 侧计算**：检查缺失字段、fast-path 挂起资源、拓扑版本失配及 steady/resource_pending 矛盾；缺数据或字段不完整返回 `UNKNOWN`，不得全局 PASS |
+| `inspect_render_pipeline` | 可选 `world_id`、`frame_serial` | 最近或指定的主场景 primitive 快照；包含 `schema_version`、world/frame、snapshot sequence/age、每阶段 coverage、漏斗单位定义、cache、drops 和实体样本。历史环保留 8 个快照；GPU 未采样进帧快照时 `gpu_draw_count:null` |
+| `trace_entity_render_state` | **name**（实体名或整数字符串 ID）；可选 `world_id`、`frame_serial` | 仅查询选定帧中最多 64 条实体观测；返回 collect/pending/batch 阶段、EntityID generation 与 frame。可能状态包括 `Filtered`、`CollectCandidate`、`Collected`、`Batched`、`BatchFiltered`、`Ambiguous`、`Unknown`；未采样不是已渲染 |
+| `audit_cache_invariants` | 可选 `world_id`、`frame_serial` | **MCP 侧逐规则计算**并给出 evidence：cache/pending、拓扑版本、steady 门控、完整 collect funnel。各规则和总体状态为 `PASS/FAIL/UNKNOWN`；快路径、过期快照、缺字段或非法类型不能 PASS |
 | `dump_render_target` | name（可选；保留兼容） | 已弃用；返回 `deprecated_dump_api` 和迁移指引，使用 `list_capture_targets` + `capture_frame` |
 | `dump_buffer` | name（可选；保留兼容） | 已弃用；返回 `deprecated_dump_api` 和迁移指引，使用 `list_capture_buffers` + `capture_buffer` |
 
@@ -306,8 +306,8 @@ MCP 层标记 `isError: true`。参数表中 **粗体** 为必填。
 | `get_capture_status` | **request_id**（≥1） | 查询状态：`queued`/`succeeded`/`failed`/`cancelled`；成功时含 `width/height/format/bytes/row_pitch/pixel_size/dump_path/metadata_path`；`color_depth` 结果在 `captures` 中给出成对清单 |
 | `cancel_capture` | **request_id** | 取消排队请求；进行中的读回不可取消 |
 | `release_capture` | **request_id** | 释放终态状态槽；**不删除文件** |
-| `list_capture_buffers` | 无 | 列出显式登记的 GPU storage buffer 及读回能力。当前生产 SSBO 仅 `GPUCullSystem.DrawCount`（其序号是派发序号，不是主帧 ID） |
-| `capture_buffer` | **resource_id**（≥1）、**offset**（≥0）、**size**（4…4194304） | 有界、对齐的 buffer 区间读回 |
+| `list_capture_buffers` | 无 | 列出显式登记的 GPU storage buffer 及读回能力。当前生产 SSBO 仅 `GPUCullSystem.DrawCount` |
+| `capture_buffer` | **resource_id**（≥1）、**offset**（≥0）、**size**（4…4194304） | 有界、对齐的 buffer 区间读回。结果 `frame_id` 是 DrawCount dispatch 序号；同时返回 `source_world_id/source_frame_serial`，可关联发起该 dispatch 的世界主帧；它仍不是实际 draw/invocation 统计 |
 
 ### 6.4 图像分析类（本地离线，读清单或 raw 文件）
 

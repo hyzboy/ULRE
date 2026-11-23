@@ -12,12 +12,12 @@ Diagnose ULRE Vulkan rendering failures through engine-embedded telemetry instea
 
 ## Diagnosis order
 
-`get_render_health` currently has no identified production alert producers in
-`src`/`inc`: an empty ledger is **not** evidence that the scene is healthy.
-Ledger text also needs JSON escaping before quoted alerts can be trusted.
-`get_pass_metrics` currently exposes names and times, not its stored pipeline
-statistics; its snapshot synchronization and pass truncation need further work.
-See `doc/render-introspection-handoff.md` for current limitations and next steps.
+`get_render_health` has no complete production alert coverage: an empty ledger
+is reported as unavailable, not healthy. `get_pass_metrics` returns synchronized
+frame snapshots and pass times but not all stored Vulkan statistics. The
+main-scene primitive pipeline inspector is frame/world scoped; fast-path replay
+and bounded entity-sample coverage are explicit. See
+`doc/render-introspection-handoff.md` for current limitations.
 
 1. Call `get_render_health`.
 2. Classify alerts:
@@ -25,8 +25,12 @@ See `doc/render-introspection-handoff.md` for current limitations and next steps
    - `TextureManager`: missing asset or fallback binding.
    - `Pipeline`: shader or pipeline creation failure.
 3. Call `get_pass_metrics` and rank passes by `gpu_time_ms`.
+   Call `inspect_render_pipeline` to inspect its `world_id`, `frame_serial`,
+   stage `coverage`, and metric units. Use `trace_entity_render_state` with the
+   same selectors; `Unknown` means the entity was not covered, not that it rendered.
+   `audit_cache_invariants` is tri-state; only a complete evaluation can return PASS.
 4. `dump_render_target` and `dump_buffer` are deprecated compatibility tools. They return `deprecated_dump_api`; use `list_capture_targets` + `capture_frame` or `list_capture_buffers` + `capture_buffer` instead.
-5. Call `list_capture_targets`, then `capture_frame` with an available swapchain, Debug View or explicitly opted-in managed offscreen `target_id` and a supported `attachment`. Poll `get_capture_status` using the returned `request_id`; release terminal status with `release_capture`. Queued requests expire after 30 seconds. Use `list_capture_buffers` and `capture_buffer` for registered GPU buffers; the production DrawCount sequence is a dispatch sequence, not a main-frame ID.
+5. Call `list_capture_targets`, then `capture_frame` with an available swapchain, Debug View or explicitly opted-in managed offscreen `target_id` and a supported `attachment`. Poll `get_capture_status` using the returned `request_id`; release terminal status with `release_capture`. Queued requests expire after 30 seconds. Use `list_capture_buffers` and `capture_buffer` for registered GPU buffers; DrawCount `frame_id` is a dispatch sequence, while `source_world_id/source_frame_serial` identify its source world frame. This survivor count is not actual GPU draw execution.
    Use `color_depth` when both attachments must belong to the same submitted frame.
 6. Use `analyze_capture` with the returned `metadata_path` for luminance, R32F depth, normals or surface. Debug View color has a binary alpha mask; swapchain statistics include background. Unknown color space requires an explicit override.
 7. For masked world-position bounds, request `color_depth` on the Debug View target and pass its depth `metadata_path` plus the same result's color `metadata_path` as `mask_metadata_path`. The pair must match group, frame, target, camera and viewport. Swapchain `clear_depth` is recorded from the actual full clear when known; otherwise it is null and depth analysis remains unavailable. Unmasked reconstruction still requires `allow_unverified_depth_producers`.
