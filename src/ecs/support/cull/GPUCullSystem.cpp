@@ -1058,7 +1058,9 @@ namespace hgl::ecs
         if(draw_count_capture_id_)
             graph::DebugCaptureQueue::ProcessBuffer(draw_count_capture_id_,draw_count_buffer_,
                                                      ++draw_count_capture_serial_,
-                                                     static_cast<VkQueue>(*cull_queue_),true);
+                                                     static_cast<VkQueue>(*cull_queue_),true,
+                                                     context_->GetRenderDiagnosticWorldID(),
+                                                     context_->GetRenderFrameCache().frame_serial);
 
         if (s_dispatch_perf.on)
             s_dispatch_perf.Add(GetUptimeUs() - t_dispatch0, "tracked_objects",

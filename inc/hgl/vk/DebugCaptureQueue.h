@@ -52,6 +52,8 @@ namespace hgl::graph
             uint64_t request_id=0;
             uint64_t target_id=0;
             uint64_t frame_id=0;
+            uint64_t source_world_id=0;
+            uint64_t source_frame_serial=0;
             uint64_t expires_at_ms=0;
             Attachment attachment=Attachment::Color;
             State state=State::Empty;
@@ -87,7 +89,8 @@ namespace hgl::graph
         static uint64_t RequestBuffer(uint64_t resource_id,uint64_t offset,uint64_t size,
                                       const char **error=nullptr,uint32_t timeout_ms=30000);
         static void ProcessBuffer(uint64_t resource_id,DeviceBuffer *buffer,uint64_t frame_id,
-                                  VkQueue submitted_queue,bool submission_succeeded);
+                                  VkQueue submitted_queue,bool submission_succeeded,
+                                  uint64_t source_world_id=0,uint64_t source_frame_serial=0);
         static bool SupportsFormat(VkFormat format,Attachment attachment);
         static void SetOffscreenDetails(uint64_t target_id,const VkFormat *colors,uint32_t count,VkFormat depth,
                                         bool can_color,bool can_depth);

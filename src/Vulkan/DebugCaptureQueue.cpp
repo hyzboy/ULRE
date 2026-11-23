@@ -220,6 +220,10 @@ namespace hgl::graph
                 json+=AnsiString::numberOf(result.target_id);
                 json+=",\"frame_id\":";
                 json+=AnsiString::numberOf(result.frame_id);
+                json+=",\"source_world_id\":";
+                json+=AnsiString::numberOf(result.source_world_id);
+                json+=",\"source_frame_serial\":";
+                json+=AnsiString::numberOf(result.source_frame_serial);
                 json+=",\"offset\":";
                 json+=AnsiString::numberOf(result.buffer_offset);
                 json+=",\"byte_count\":";
@@ -950,6 +954,10 @@ namespace hgl::graph
         {
             json+=",\"resource_id\":";
             json+=AnsiString::numberOf(result.target_id);
+            json+=",\"source_world_id\":";
+            json+=AnsiString::numberOf(result.source_world_id);
+            json+=",\"source_frame_serial\":";
+            json+=AnsiString::numberOf(result.source_frame_serial);
             json+=",\"offset\":";
             json+=AnsiString::numberOf(result.buffer_offset);
         }
@@ -1092,7 +1100,8 @@ namespace hgl::graph
     }
 
     void DebugCaptureQueue::ProcessBuffer(uint64_t resource_id,DeviceBuffer *buffer,uint64_t frame_id,
-                                          VkQueue submitted_queue,bool submission_succeeded)
+                                          VkQueue submitted_queue,bool submission_succeeded,
+                                          uint64_t source_world_id,uint64_t source_frame_serial)
     {
         VulkanDevice *device=buffer && buffer->GetVkDevice()
             ?VulkanDevice::FromDevice(buffer->GetVkDevice()):nullptr;
@@ -1131,6 +1140,8 @@ namespace hgl::graph
                 if(entry.target_id==resource_id && entry.state==State::Queued)
                 {
                     entry.state=State::Capturing;
+                    entry.source_world_id=source_world_id;
+                    entry.source_frame_serial=source_frame_serial;
                     pending[pending_count++]=entry;
                 }
         }

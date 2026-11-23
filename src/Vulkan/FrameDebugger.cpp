@@ -457,7 +457,7 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
     const nlohmann::json batch_reason=snap.batch_available?nlohmann::json():
         nlohmann::json("batch_stage_unavailable");
     const nlohmann::json gpu_cull_reason=snap.gpu_cull_available?nlohmann::json():
-        nlohmann::json("frame_correlated_gpu_cull_unavailable");
+        nlohmann::json("gpu_cull_metric_not_sampled_into_pipeline_snapshot");
     const nlohmann::json gpu_execution_reason=snap.gpu_execution_available?nlohmann::json():
         nlohmann::json("entity_level_gpu_execution_unavailable");
     const bool entity_trace_complete=snap.collect_complete
@@ -501,8 +501,15 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
                                 {"batch_count","nonempty_cpu_material_batches"}}},
         {"funnel_provenance",{{"collect",snap.fast_path_engaged?"cache_replay":"current_frame"},
                                {"batch","current_frame_cpu_batch_membership"},
-                               {"gpu_cull","unavailable"},
-                               {"gpu_execution","unavailable"}}},
+                               {"gpu_cull",{{"available",snap.gpu_cull_available},
+                                             {"reason",gpu_cull_reason}}},
+                               {"gpu_execution",{{"available",snap.gpu_execution_available},
+                                                  {"reason",gpu_execution_reason}}}}},
+        {"gpu_metric_sources",{{"draw_count_buffer_capture",{
+                                   {"mode","on_demand"},
+                                   {"frame_id_domain","gpu_cull_dispatch_sequence"},
+                                   {"source_world_id_and_frame_serial_recorded",true},
+                                   {"included_in_pipeline_snapshot",false}}}}},
         {"cache_state",{{"fast_path_engaged",snap.fast_path_engaged},
                         {"last_collect_steady",snap.last_collect_steady},
                         {"has_pending_resources",snap.has_pending_resources},

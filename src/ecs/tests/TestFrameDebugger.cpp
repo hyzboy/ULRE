@@ -274,7 +274,9 @@ int main()
        || !::strstr(inspection.c_str(),"\"world_id\":84")
        || !::strstr(inspection.c_str(),"\"snapshot_sequence\":")
        || !::strstr(inspection.c_str(),"\"collect_candidates\":0")
-       || !::strstr(inspection.c_str(),"\"batch_status\":\"batched\""))
+       || !::strstr(inspection.c_str(),"\"batch_status\":\"batched\"")
+       || !::strstr(inspection.c_str(),"\"frame_id_domain\":\"gpu_cull_dispatch_sequence\"")
+       || !::strstr(inspection.c_str(),"\"included_in_pipeline_snapshot\":false"))
     {
         GLogError(u8"Pipeline inspection JSON lost structure or escaping");
         return 8;
