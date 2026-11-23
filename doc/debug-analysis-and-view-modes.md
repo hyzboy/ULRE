@@ -2,6 +2,8 @@
 
 跨机器继续工作的阶段记录、已知问题和恢复步骤见
 [渲染自省工作交接](render-introspection-handoff.md)。
+MCP 客户端配置、工具参考与故障排查见
+[ULRE MCP Server 对接文档](ulre-mcp-server-integration.md)。
 
 ## 当前状态
 
