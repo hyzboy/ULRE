@@ -18,6 +18,10 @@ namespace hgl::ecs
             if (reason) { strncpy(sample.reason, reason, sizeof(sample.reason) - 1); sample.reason[sizeof(sample.reason) - 1] = 0; }
             if (detail) { strncpy(sample.detail, detail, sizeof(sample.detail) - 1); sample.detail[sizeof(sample.detail) - 1] = 0; }
         }
+        else
+        {
+            drop_sample_truncated = true;
+        }
     }
 
     void RenderFrameCache::BeginFrame()
@@ -44,6 +48,7 @@ namespace hgl::ecs
         dropped_geometry_loading = 0;
         dropped_other            = 0;
         drop_sample_count        = 0;
+        drop_sample_truncated    = false;
 
         // 清空批次内容，保留对象以供重用
         for (auto& pair : materialBatches)

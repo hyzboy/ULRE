@@ -419,7 +419,8 @@ def handle(request):
                         "has_pending_resources", "snapshot_ready",
                         "snapshot_topology_rev", "world_topology_rev")
                     required_funnel = (
-                        "passed_can_render", "collected_items")
+                        "passed_can_render", "collected_items",
+                        "gpu_draw_count_available")
                     required_drops = ("resource_pending",)
                     missing = (
                         [f"cache_state.{key}" for key in required_cache
@@ -455,15 +456,6 @@ def handle(request):
                                 "severity": "CRITICAL",
                                 "rule": "UnsteadyGatingViolation",
                                 "message": "last_collect_steady is TRUE while drops.resource_pending > 0!"
-                            })
-                    
-                        passed_can_render = funnel["passed_can_render"]
-                        collected = funnel["collected_items"]
-                        if collected < passed_can_render:
-                            anomalies.append({
-                                "severity": "WARNING",
-                                "rule": "CollectDropDiscrepancy",
-                                "message": f"Collected items ({collected}) is less than passed_can_render ({passed_can_render})!"
                             })
                     
                         value = {

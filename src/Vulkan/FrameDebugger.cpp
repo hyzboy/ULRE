@@ -376,15 +376,22 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON()
                            {"detail",s.detail}});
     }
 
+    nlohmann::json gpu_draw_count=nlohmann::json();
+    if(snap.gpu_draw_count_available)
+        gpu_draw_count=snap.gpu_draw_count;
+    nlohmann::json funnel={
+        {"scene_primitives",snap.scene_primitives},
+        {"passed_can_render",snap.passed_can_render},
+        {"collected_items",snap.collected_items},
+        {"batched_items",snap.batched_items},
+        {"batch_count",snap.batch_count},
+        {"gpu_draw_count",gpu_draw_count},
+        {"gpu_draw_count_available",snap.gpu_draw_count_available}};
+
     return debug_bridge::DebugJsonToText(nlohmann::json{
         {"valid",true},
         {"frame_serial",snap.frame_serial},
-        {"funnel",{{"scene_primitives",snap.scene_primitives},
-                   {"passed_can_render",snap.passed_can_render},
-                   {"collected_items",snap.collected_items},
-                   {"batched_items",snap.batched_items},
-                   {"batch_count",snap.batch_count},
-                   {"gpu_draw_count",snap.gpu_draw_count}}},
+        {"funnel",funnel},
         {"cache_state",{{"fast_path_engaged",snap.fast_path_engaged},
                         {"last_collect_steady",snap.last_collect_steady},
                         {"has_pending_resources",snap.has_pending_resources},
@@ -398,6 +405,7 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON()
                   {"resource_pending",snap.dropped_resource_pending},
                   {"geometry_loading",snap.dropped_geometry_loading},
                   {"other",snap.dropped_other},
+                  {"sample_truncated",snap.drop_sample_truncated},
                   {"samples",samples}}}});
 }
 
@@ -413,7 +421,25 @@ AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id)
             nlohmann::json{{"valid",false},{"error","no pipeline inspection data available"}});
 
     uint32_t target_id=0;
-    const bool is_numeric=(sscanf(name_or_id,"%u",&target_id)==1 && target_id>0);
+    bool is_numeric=true;
+    bool numeric_overflow=false;
+    for(const unsigned char *p=reinterpret_cast<const unsigned char *>(name_or_id);*p;++p)
+    {
+        if(*p<'0'||*p>'9')
+        {
+            is_numeric=false;
+            break;
+        }
+        const uint32_t digit=*p-'0';
+        if(target_id>(UINT32_MAX-digit)/10)
+        {
+            numeric_overflow=true;
+            break;
+        }
+        target_id=target_id*10+digit;
+    }
+    if(is_numeric && (numeric_overflow||target_id==0))
+        is_numeric=false;
 
     for(uint32_t i=0;i<snap.drop_sample_count;++i)
     {
@@ -431,10 +457,13 @@ AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id)
         }
     }
 
-    return debug_bridge::DebugJsonToText(nlohmann::json{
+    nlohmann::json unknown={
         {"valid",true},
-        {"status","RenderedOrPassed"},
+        {"status","Unknown"},
         {"query",name_or_id},
-        {"note","Entity not found in drop attribution samples. Likely passed all stages or fast-path replayed."}});
+        {"reason","entity_not_covered_by_observable_drop_samples"}};
+    if(snap.drop_sample_truncated)
+        unknown["reason"]="drop_samples_truncated";
+    return debug_bridge::DebugJsonToText(unknown);
 }
 }//namespace hgl::graph

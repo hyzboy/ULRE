@@ -83,6 +83,7 @@ public:
         uint32_t batched_items = 0;
         uint32_t batch_count = 0;
         uint32_t gpu_draw_count = 0;
+        bool gpu_draw_count_available = false;
 
         bool fast_path_engaged = false;
         bool last_collect_steady = false;
@@ -109,6 +110,7 @@ public:
             char detail[64] = {};
         };
         uint32_t drop_sample_count = 0;
+        bool drop_sample_truncated = false;
         DropSample drop_samples[kMaxSampleDrops];
     };
 

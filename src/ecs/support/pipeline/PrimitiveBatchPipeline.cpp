@@ -1296,7 +1296,8 @@ namespace hgl::ecs
             snapshot.collected_items = static_cast<uint32_t>(cache.renderItems.size());
             snapshot.batched_items = batched_item_count;
             snapshot.batch_count = valid_batch_count;
-            snapshot.gpu_draw_count = batched_item_count;
+            snapshot.gpu_draw_count = 0;
+            snapshot.gpu_draw_count_available = false;
 
             snapshot.fast_path_engaged = cache.fast_path_engaged;
             snapshot.last_collect_steady = cache.is_collect_steady;
@@ -1316,6 +1317,7 @@ namespace hgl::ecs
             snapshot.dropped_other = cache.dropped_other;
 
             snapshot.drop_sample_count = cache.drop_sample_count;
+            snapshot.drop_sample_truncated = cache.drop_sample_truncated;
             for (uint32_t i = 0; i < cache.drop_sample_count; ++i)
             {
                 memcpy(&snapshot.drop_samples[i], &cache.drop_samples[i], sizeof(snapshot.drop_samples[i]));

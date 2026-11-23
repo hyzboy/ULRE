@@ -242,7 +242,9 @@ int main()
     if(!::strstr(inspection.c_str(),"\"funnel\":{")
        || !::strstr(inspection.c_str(),"\"cache_state\":{")
        || !::strstr(inspection.c_str(),"ch\\\"ess")
-       || !::strstr(inspection.c_str(),"a\\\\b"))
+       || !::strstr(inspection.c_str(),"a\\\\b")
+       || !::strstr(inspection.c_str(),"\"gpu_draw_count_available\":false")
+       || !::strstr(inspection.c_str(),"\"gpu_draw_count\":null"))
     {
         GLogError(u8"Pipeline inspection JSON lost structure or escaping");
         return 8;
@@ -253,7 +255,9 @@ int main()
         return 8;
     if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7").c_str(),"\"status\":\"Dropped\""))
         return 8;
-    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("absent").c_str(),"RenderedOrPassed"))
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("absent").c_str(),"\"status\":\"Unknown\""))
+        return 8;
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7x").c_str(),"\"status\":\"Unknown\""))
         return 8;
     FrameDebugger::SetCameraSnapshot(&camera);
     const hgl::AnsiString camera_json=FrameDebugger::GetCameraSnapshotJSON();

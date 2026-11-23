@@ -52,6 +52,7 @@ namespace hgl::ecs
         uint32_t dropped_resource_pending = 0;
         uint32_t dropped_geometry_loading = 0;
         uint32_t dropped_other            = 0;
+        bool drop_sample_truncated = false;
 
         static constexpr uint32_t kMaxSampleDrops = 16;
         struct DropSampleRecord
