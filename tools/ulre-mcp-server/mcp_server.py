@@ -37,6 +37,7 @@ TOOLS = [
             "heatmap_dir": {"type": "string"},
             "color_space_override": {"type": "string", "enum": ["linear", "srgb"]},
             "allow_unverified_context": {"type": "boolean", "default": False},
+            "allow_pixel_only_unverified": {"type": "boolean", "default": False},
         }, "required": ["metadata_path_a", "metadata_path_b"]},
     },
     {
@@ -239,6 +240,7 @@ TOOLS = [
             "reversed_z": {"type": "boolean", "default": False},
             "clear_depth": {"type": "number", "minimum": 0, "maximum": 1},
             "row_pitch": {"type": "integer", "minimum": 1},
+            "pixel_format": {"type": "string", "enum": ["r32f", "d16_unorm", "d24_unorm_32"], "default": "r32f"},
         }, "required": ["path", "width", "height"]},
     },
     {
@@ -251,6 +253,7 @@ TOOLS = [
             "sample_step": {"type": "integer", "minimum": 1, "default": 16},
             "row_pitch": {"type": "integer", "minimum": 1},
             "clear_depth": {"type": "number", "minimum": 0, "maximum": 1},
+            "pixel_format": {"type": "string", "enum": ["r32f", "d16_unorm", "d24_unorm_32"], "default": "r32f"},
             "inverse_vp": {"type": "array", "items": {"type": "number"},
                            "minItems": 16, "maxItems": 16},
             "reversed_z": {"type": "boolean", "default": False},
@@ -356,7 +359,9 @@ def handle(request):
                     arguments.get("threshold", 0.01),
                     arguments.get("heatmap_dir", ".ulre-analysis"),
                     arguments.get("color_space_override"),
-                    arguments.get("allow_unverified_context", False))
+                    arguments.get("allow_unverified_context", False),
+                    False,
+                    arguments.get("allow_pixel_only_unverified", False))
             elif tool_name == "analyze_capture":
                 value = capture_manifest.analyze_capture(
                     arguments["metadata_path"], arguments["operation"],
@@ -387,13 +392,15 @@ def handle(request):
                 value = analyzer.analyze_depth(
                     arguments["path"], arguments["width"], arguments["height"],
                     arguments.get("reversed_z", False), arguments.get("clear_depth"),
-                    arguments.get("row_pitch"))
+                    arguments.get("row_pitch"), None,
+                    arguments.get("pixel_format", "r32f"))
             elif tool_name == "reconstruct_world_pos":
                 value = analyzer.reconstruct_world_pos(
                     arguments["path"], arguments["width"], arguments["height"],
                     arguments["inverse_vp"], arguments.get("reversed_z", False),
                     arguments.get("sample_step", 16), arguments.get("clear_depth"),
-                    arguments.get("viewport"), arguments.get("row_pitch"))
+                    arguments.get("viewport"), arguments.get("row_pitch"), None,
+                    arguments.get("pixel_format", "r32f"))
             elif tool_name == "compare_frames":
                 value = analyzer.compare_frames(
                     arguments["path_a"], arguments["path_b"],

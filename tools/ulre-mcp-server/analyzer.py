@@ -22,6 +22,17 @@ def _read_raw(path):
     return data
 
 
+def _decode_depth(data, offset, pixel_format):
+    if pixel_format == "r32f":
+        return struct.unpack_from("<f", data, offset)[0]
+    if pixel_format == "d16_unorm":
+        return struct.unpack_from("<H", data, offset)[0] / 65535.0
+    if pixel_format == "d24_unorm_32":
+        packed = struct.unpack_from("<I", data, offset)[0]
+        return (packed & 0xFFFFFF) / 16777215.0
+    raise ValueError("Unsupported depth pixel format: " + str(pixel_format))
+
+
 def _image_layout(width, height, pixel_format, row_pitch=None):
     if not isinstance(width, int) or isinstance(width, bool) or width <= 0:
         raise ValueError("width must be a positive integer")
@@ -32,7 +43,8 @@ def _image_layout(width, height, pixel_format, row_pitch=None):
         raise ValueError("Capture exceeds the analysis pixel limit")
     sizes = {"rgba8": 4, "bgra8": 4, "rgb8": 3,
              "a2bgr10": 4, "rgb10a2": 4, "a2r10g10b10": 4,
-             "r32f": 4, "rgba32f": 16}
+             "r32f": 4, "rgba32f": 16, "d16_unorm": 2,
+             "d24_unorm_32": 4}
     if pixel_format not in sizes:
         raise ValueError(f"Unsupported pixel format: {pixel_format}")
     pixel_size = sizes[pixel_format]
@@ -187,7 +199,7 @@ def analyze_position_rt(path, width, height, row_pitch=None):
 
 def cross_validate_position_rt(position_path, depth_path, width, height, inverse_vp,
                                reversed_z, sample_step, clear_depth, viewport, row_pitch,
-                               position_row_pitch, camera_world_pos):
+                               position_row_pitch, camera_world_pos, depth_format="r32f"):
     if not isinstance(sample_step, int) or isinstance(sample_step, bool) or sample_step <= 0:
         raise ValueError("sample_step must be a positive integer")
     sampled_width = (width + sample_step - 1) // sample_step
@@ -208,7 +220,10 @@ def cross_validate_position_rt(position_path, depth_path, width, height, inverse
             not isinstance(height, int) or isinstance(height, bool) or height <= 0 or \
             width * height > MAX_ANALYSIS_PIXELS:
         raise ValueError("Capture dimensions are invalid or exceed the analysis pixel limit")
-    if not isinstance(row_pitch, int) or isinstance(row_pitch, bool) or row_pitch < width * 4 or \
+    if depth_format not in ("r32f", "d16_unorm", "d24_unorm_32"):
+        raise ValueError("Unsupported depth pixel format: " + str(depth_format))
+    depth_pixel_size = {"r32f": 4, "d16_unorm": 2, "d24_unorm_32": 4}[depth_format]
+    if not isinstance(row_pitch, int) or isinstance(row_pitch, bool) or row_pitch < width * depth_pixel_size or \
             len(depth_data) != height * row_pitch:
         raise ValueError("Depth byte count or row pitch is invalid")
     if not isinstance(position_row_pitch, int) or isinstance(position_row_pitch, bool) or \
@@ -243,7 +258,7 @@ def cross_validate_position_rt(position_path, depth_path, width, height, inverse
                 raise ValueError("Position RT mask contains non-binary alpha")
             if alpha == 0.0:
                 continue
-            depth = struct.unpack_from("<f", depth_data, y * row_pitch + x * 4)[0]
+            depth = _decode_depth(depth_data, y * row_pitch + x * depth_pixel_size, depth_format)
             if not math.isfinite(depth) or depth < viewport["min_depth"] or depth > viewport["max_depth"]:
                 continue
             reconstructed = _unproject_pixel(x, y, depth, inverse_vp, viewport)
@@ -487,11 +502,13 @@ def analyze_surface(path, width, height, pixel_format="rgba8", row_pitch=None, m
 
 
 def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_pitch=None,
-                  valid_mask=None):
+                  valid_mask=None, pixel_format="r32f"):
     if not isinstance(reversed_z, bool):
         raise ValueError("reversed_z must be boolean")
     data = _read_raw(path)
-    count, _, row_pitch = _image_layout(width, height, "r32f", row_pitch)
+    if pixel_format not in ("r32f", "d16_unorm", "d24_unorm_32"):
+        raise ValueError("Unsupported depth pixel format: " + str(pixel_format))
+    count, pixel_size, row_pitch = _image_layout(width, height, pixel_format, row_pitch)
     if len(data) != height * row_pitch:
         raise ValueError("Capture byte count does not match dimensions and format")
     if valid_mask is not None and (len(valid_mask) != count or not any(valid_mask)):
@@ -516,8 +533,8 @@ def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_p
         if valid_mask is not None and not valid_mask[index]:
             continue
         sample_count += 1
-        value = struct.unpack_from("<f", data, (index // width) * row_pitch +
-                                   (index % width) * 4)[0]
+        value = _decode_depth(data, (index // width) * row_pitch +
+                              (index % width) * pixel_size, pixel_format)
         if math.isnan(value):
             nan_count += 1
             continue
@@ -567,9 +584,12 @@ def analyze_depth(path, width, height, reversed_z=False, clear_depth=None, row_p
 
 
 def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=False, sample_step=16,
-                          clear_depth=None, viewport=None, row_pitch=None, valid_mask=None):
+                          clear_depth=None, viewport=None, row_pitch=None, valid_mask=None,
+                          pixel_format="r32f"):
     depth = _read_raw(depth_path)
-    _, _, row_pitch = _image_layout(width, height, "r32f", row_pitch)
+    if pixel_format not in ("r32f", "d16_unorm", "d24_unorm_32"):
+        raise ValueError("Unsupported depth pixel format: " + str(pixel_format))
+    _, pixel_size, row_pitch = _image_layout(width, height, pixel_format, row_pitch)
     if len(depth) != height * row_pitch:
         raise ValueError("Capture byte count does not match dimensions and format")
     if valid_mask is not None and (len(valid_mask) != width * height or not any(valid_mask)):
@@ -612,7 +632,7 @@ def reconstruct_world_pos(depth_path, width, height, inverse_vp, reversed_z=Fals
     maxs = [-math.inf, -math.inf, -math.inf]
     for y in range(0, height, sample_step):
         for x in range(0, width, sample_step):
-            d = struct.unpack_from("<f", depth, y * row_pitch + x * 4)[0]
+            d = _decode_depth(depth, y * row_pitch + x * pixel_size, pixel_format)
             if valid_mask is not None and not valid_mask[y * width + x]:
                 continue
             if not (vx <= x + 0.5 < vx + vw and vy <= y + 0.5 < vy + vh):

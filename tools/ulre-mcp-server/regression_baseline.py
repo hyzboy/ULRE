@@ -41,11 +41,13 @@ def _profile(metadata):
     if not isinstance(driver, dict) or type(driver.get("driver_id")) is not int \
             or driver["driver_id"] <= 0 or not driver.get("driver_name"):
         raise NotCovered("capture_driver_identity_unavailable")
-    return {key: device[key] for key in fields} | {
+    profile = {key: device[key] for key in fields}
+    profile.update({
         "driver_id": driver["driver_id"],
         "driver_name": driver["driver_name"],
         "driver_info": driver.get("driver_info"),
-    }
+    })
+    return profile
 
 
 def _capture(path, scene):

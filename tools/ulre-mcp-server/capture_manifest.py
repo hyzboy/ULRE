@@ -8,7 +8,8 @@ import analyzer
 MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_CAPTURE_BYTES = 256 * 1024 * 1024
 PIXEL_SIZES = {"rgba8": 4, "bgra8": 4, "rgba32f": 16, "a2bgr10": 4,
-               "a2r10g10b10": 4, "r32f": 4}
+               "a2r10g10b10": 4, "r32f": 4, "d16_unorm": 2,
+               "d24_unorm_32": 4}
 VK_FORMAT_LAYOUTS = {
     37: ("rgba8", "color", "unknown"),
     43: ("rgba8", "color", "srgb"),
@@ -19,6 +20,9 @@ VK_FORMAT_LAYOUTS = {
     109: ("rgba32f", "color", "linear"),
     126: ("r32f", "depth", "unknown"),
     130: ("r32f", "depth", "unknown"),
+    124: ("d16_unorm", "depth", "unknown"),
+    125: ("d24_unorm_32", "depth", "unknown"),
+    129: ("d24_unorm_32", "depth", "unknown"),
 }
 
 
@@ -195,9 +199,9 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
         function = analyzer.analyze_normals if operation == "normals" else analyzer.analyze_surface
         result = function(str(data_path), width, height, encoding, metadata["row_pitch"], True)
     elif operation in ("depth", "world_position"):
-        if metadata.get("attachment") != "depth" or encoding != "r32f" or \
+        if metadata.get("attachment") != "depth" or encoding not in ("r32f", "d16_unorm", "d24_unorm_32") or \
                 metadata.get("copy_aspect") != "depth":
-            raise ValueError("Depth analysis requires an R32F depth-aspect capture")
+            raise ValueError("Depth analysis requires a supported depth-aspect capture")
         clear_depth = metadata.get("clear_depth")
         if isinstance(clear_depth, bool) or not isinstance(clear_depth, (int, float)) or \
                 not math.isfinite(clear_depth) or not 0 <= clear_depth <= 1:
@@ -218,7 +222,7 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
                       if mask_metadata_path is not None else None)
         if operation == "depth":
             result = analyzer.analyze_depth(str(data_path), width, height, reversed_z, clear_depth,
-                                            metadata["row_pitch"], valid_mask)
+                                            metadata["row_pitch"], valid_mask, encoding)
         else:
             if not isinstance(camera, dict) or camera.get("matrix_layout") != "column_major" or \
                     camera.get("position_space") != "world_absolute":
@@ -233,7 +237,7 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
                 raise ValueError("Capture viewport is missing")
             result = analyzer.reconstruct_world_pos(
                 str(data_path), width, height, inverse_vp, reversed_z, sample_step,
-                clear_depth, viewport, metadata["row_pitch"], valid_mask)
+                clear_depth, viewport, metadata["row_pitch"], valid_mask, encoding)
             if valid_mask is not None:
                 result["mask_sample_count"] = sum(valid_mask)
             result["position_space"] = "world_absolute"
@@ -273,7 +277,8 @@ def analyze_capture(path, operation, color_space_override=None, reversed_z_overr
             str(data_path), str(depth_data_path), width, height,
             camera.get("inverse_vp"), camera.get("reversed_z"),
             sample_step, depth.get("clear_depth"), depth.get("viewport"),
-            depth["row_pitch"], metadata["row_pitch"], camera.get("camera_world_pos"))
+            depth["row_pitch"], metadata["row_pitch"], camera.get("camera_world_pos"),
+            depth.get("encoding", "r32f"))
         result["mask_sample_count"] = sum(valid_mask)
         result["mask_source"] = "same_frame_position_alpha"
         result["camera_distance_bands"] = "equal-count quantiles of sampled camera distances"
@@ -365,7 +370,7 @@ def analyze_shadow_semantics(path, is_shadow_map_depth=False):
             raise ValueError("Shadow-map depth requires R32F, clear depth, and a recorded depth convention")
         coverage = analyzer.analyze_depth(
             str(data_path), metadata["width"], metadata["height"], reversed_z,
-            clear_depth, metadata["row_pitch"])
+            clear_depth, metadata["row_pitch"], None, metadata["encoding"])
         result["shadow_depth_caster_coverage"] = {
             "status": "available",
             "meaning": "non-clear shadow-map texels indicate caster projection coverage only",
@@ -395,7 +400,7 @@ def analyze_shadow_semantics(path, is_shadow_map_depth=False):
 
 def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis",
                      color_space_override=None, allow_unverified_context=False,
-                     allow_world_position=False):
+                     allow_world_position=False, allow_pixel_only_unverified=False):
     a, data_a = load_manifest(path_a)
     b, data_b = load_manifest(path_b)
     if a["attachment"] != "color" or b["attachment"] != "color":
@@ -408,22 +413,34 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
                      b.get("debug_view_mode") != "world_position" or
                      a.get("position") != b.get("position")):
         raise ValueError("World-position capture coordinates differ")
-    for field in ("width", "height", "encoding", "vk_format", "color_space", "viewport", "source"):
+    for field in ("width", "height", "encoding", "vk_format", "color_space", "source"):
         if a.get(field) != b.get(field):
             raise ValueError(f"Capture {field} differs")
     if a.get("mask", "unavailable") != b.get("mask", "unavailable") or \
             (a["source"] == "debug_view" and a.get("debug_view_mode") != b.get("debug_view_mode")):
         raise ValueError("Capture debug mode or mask differs")
-    viewport = a.get("viewport")
-    if not isinstance(viewport, dict) or any(
-            not _finite_number(viewport.get(key))
-            for key in ("x", "y", "width", "height", "min_depth", "max_depth")):
-        raise ValueError("Capture viewport is missing or invalid")
-    if viewport["x"] < 0 or viewport["y"] < 0 or viewport["width"] <= 0 or \
-            viewport["height"] <= 0 or viewport["x"] + viewport["width"] > a["width"] or \
-            viewport["y"] + viewport["height"] > a["height"] or \
-            not 0 <= viewport["min_depth"] < viewport["max_depth"] <= 1:
-        raise ValueError("Capture viewport is outside the image")
+    pixel_only = (
+        allow_pixel_only_unverified is True
+        and a.get("source") == "offscreen"
+        and b.get("source") == "offscreen"
+        and a.get("viewport") is None
+        and b.get("viewport") is None
+        and a.get("camera_status") == "unavailable"
+        and b.get("camera_status") == "unavailable")
+    if pixel_only:
+        if allow_unverified_context is not True:
+            raise ValueError("Pixel-only offscreen comparison requires explicit unverified-context opt-in")
+    else:
+        viewport = a.get("viewport")
+        if not isinstance(viewport, dict) or any(
+                not _finite_number(viewport.get(key))
+                for key in ("x", "y", "width", "height", "min_depth", "max_depth")):
+            raise ValueError("Capture viewport is missing or invalid")
+        if viewport["x"] < 0 or viewport["y"] < 0 or viewport["width"] <= 0 or \
+                viewport["height"] <= 0 or viewport["x"] + viewport["width"] > a["width"] or \
+                viewport["y"] + viewport["height"] > a["height"] or \
+                not 0 <= viewport["min_depth"] < viewport["max_depth"] <= 1:
+            raise ValueError("Capture viewport is outside the image")
     color_space = a["color_space"]
     if color_space_override is not None:
         if color_space_override not in ("linear", "srgb"):
@@ -433,20 +450,21 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
         color_space = color_space_override
     if color_space not in ("linear", "srgb"):
         raise ValueError("Capture color space is unknown; supply color_space_override")
-    if a.get("camera_status") != "recorded" or b.get("camera_status") != "recorded":
-        raise ValueError("Comparison requires recorded cameras")
-    camera_a, camera_b = a.get("camera"), b.get("camera")
-    if not isinstance(camera_a, dict) or not isinstance(camera_b, dict) or \
-            camera_a.get("matrix_layout") != "column_major" or \
-            camera_b.get("matrix_layout") != "column_major" or \
-            not isinstance(camera_a.get("vp"), list) or len(camera_a["vp"]) != 16 or \
-            not all(_finite_number(value) for value in camera_a["vp"]) or \
-            camera_a["vp"] != camera_b.get("vp"):
-        raise ValueError("Capture cameras differ or are invalid")
-    for field in ("reversed_z", "projection_convention", "world_up", "position_space",
-                  "viewport_y"):
-        if camera_a.get(field) != camera_b.get(field):
-            raise ValueError(f"Capture camera {field} differs")
+    if not pixel_only:
+        if a.get("camera_status") != "recorded" or b.get("camera_status") != "recorded":
+            raise ValueError("Comparison requires recorded cameras")
+        camera_a, camera_b = a.get("camera"), b.get("camera")
+        if not isinstance(camera_a, dict) or not isinstance(camera_b, dict) or \
+                camera_a.get("matrix_layout") != "column_major" or \
+                camera_b.get("matrix_layout") != "column_major" or \
+                not isinstance(camera_a.get("vp"), list) or len(camera_a["vp"]) != 16 or \
+                not all(_finite_number(value) for value in camera_a["vp"]) or \
+                camera_a["vp"] != camera_b.get("vp"):
+            raise ValueError("Capture cameras differ or are invalid")
+        for field in ("reversed_z", "projection_convention", "world_up", "position_space",
+                      "viewport_y"):
+            if camera_a.get(field) != camera_b.get(field):
+                raise ValueError(f"Capture camera {field} differs")
     if allow_unverified_context is not True:
         raise ValueError("Scene and device context are not recorded; explicit opt-in is required")
     result = analyzer.compare_frames(str(data_a), str(data_b), a["width"], a["height"],
@@ -482,17 +500,33 @@ def compare_captures(path_a, path_b, threshold=0.01, heatmap_dir=".ulre-analysis
         "connected_region_limit": 64,
         "connected_region_pixel_limit": analyzer.MAX_COMPONENT_ANALYSIS_PIXELS,
     }
-    result["context"] = {
-        "status": "opted_in_unverified",
-        "scene_identity": "unavailable",
-        "device_identity": "unavailable",
-        "opt_in": True,
-    }
-    result["limitations"] = [
-        "scene and device context are unverified",
-        "SSIM is computed in encoded channel space and is not a perceptual color metric",
-        "connected components include only threshold-exceeding pixels in the mask intersection",
-    ]
+    if pixel_only:
+        result["context"] = {
+            "status": "opted_in_pixel_only_unverified",
+            "comparison_kind": "pixel_only",
+            "scene_identity": "unavailable",
+            "device_identity": "unavailable",
+            "camera_identity": "unavailable",
+            "viewport_identity": "unavailable",
+            "opt_in": True,
+        }
+        result["limitations"] = [
+            "offscreen captures are compared as pixels only",
+            "scene, device, camera and viewport identity are unverified",
+            "this is not a baseline or cross-device acceptability verdict",
+        ]
+    else:
+        result["context"] = {
+            "status": "opted_in_unverified",
+            "scene_identity": "unavailable",
+            "device_identity": "unavailable",
+            "opt_in": True,
+        }
+        result["limitations"] = [
+            "scene and device context are unverified",
+            "SSIM is computed in encoded channel space and is not a perceptual color metric",
+            "connected components include only threshold-exceeding pixels in the mask intersection",
+        ]
     if position:
         result["psnr"] = None
         result["psnr_infinite"] = None
