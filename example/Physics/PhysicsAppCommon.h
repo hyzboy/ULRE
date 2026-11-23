@@ -127,7 +127,7 @@ namespace hgl::example
         graph::PrimitiveAsset *cube_wire_     = nullptr;
         graph::PrimitiveAsset *capsule_wire_  = nullptr;
 
-        std::unordered_map<ecs::Entity *, std::vector<ecs::MaterialData *>> visuals_;
+        std::unordered_map<ecs::Entity *, std::vector<ecs::EntityID>> visuals_;
         uint32_t vis_counter_ = 0;
         uint32_t dynamic_cursor_ = 0;
     };
@@ -354,7 +354,7 @@ namespace hgl::example
                 ecs::MaterialData::MaterialDataAuthoringResource res{};
                 res = solid_rows_[RowClamp(row)];
                 mat->SetDataResource(res);
-                mats.push_back(mat);
+                mats.push_back(child->GetEntityID());
             }
         }
     }
@@ -367,8 +367,9 @@ namespace hgl::example
             return;
         }
         const graph::GlobalSSBOBinding &binding = solid_rows_[RowClamp(row)];
-        for(ecs::MaterialData *mat : it->second)
+        for(const ecs::EntityID material_entity : it->second)
         {
+            ecs::MaterialData *mat = ctx_->GetMaterialData(material_entity);
             if(mat == nullptr)
             {
                 continue;
