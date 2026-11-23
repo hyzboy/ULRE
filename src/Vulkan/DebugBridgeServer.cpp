@@ -19,19 +19,20 @@ static nlohmann::json MakeMetricsJSON()
 {
     GpuQueryProfiler *profiler=GpuQueryProfiler::GetActive();
     if(!profiler) return nlohmann::json{{"valid",false}};
-    const GpuQueryProfiler::FrameMetric *frame=profiler->GetLatestFrame();
-    if(!frame) return nlohmann::json{{"valid",false}};
+    GpuQueryProfiler::FrameMetric frame;
+    if(!profiler->GetLatestFrameSnapshot(frame))
+        return nlohmann::json{{"valid",false}};
 
     nlohmann::json passes=nlohmann::json::array();
-    for(uint32_t i=0;i<frame->pass_count;i++)
+    for(uint32_t i=0;i<frame.pass_count;i++)
     {
-        const GpuQueryProfiler::PassMetric &pass=frame->passes[i];
+        const GpuQueryProfiler::PassMetric &pass=frame.passes[i];
         passes.push_back({{"name",pass.name.c_str()},{"gpu_time_ms",pass.gpu_ms}});
     }
     return nlohmann::json{
         {"valid",true},
-        {"frame_id",frame->frame_id},
-        {"gpu_total_time_ms",frame->total_gpu_ms},
+        {"frame_id",frame.frame_id},
+        {"gpu_total_time_ms",frame.total_gpu_ms},
         {"passes",passes}};
 }
 

@@ -376,6 +376,7 @@ void GpuQueryProfiler::Collect()
 
 void GpuQueryProfiler::PushHistory(const FrameMetric &metric)
 {
+    hgl::MutexLock lock(&history_mutex);
     history[history_head] = metric;
     history_head = (history_head+1)%kHistoryFrames;
     if(history_count < kHistoryFrames) history_count++;
@@ -393,6 +394,27 @@ const GpuQueryProfiler::FrameMetric *GpuQueryProfiler::GetLatestFrame()const
 {
     if(history_count==0) return(nullptr);
     return(&history[(history_head + kHistoryFrames - 1)%kHistoryFrames]);
+}
+
+bool GpuQueryProfiler::GetLatestFrameSnapshot(FrameMetric &snapshot)const
+{
+    hgl::MutexLock lock(&history_mutex);
+    if(history_count==0) return false;
+
+    snapshot=history[(history_head+kHistoryFrames-1)%kHistoryFrames];
+    return true;
+}
+
+uint32_t GpuQueryProfiler::GetHistorySnapshot(FrameMetric *snapshots,uint32_t max_count)const
+{
+    if(!snapshots || max_count==0) return 0;
+
+    hgl::MutexLock lock(&history_mutex);
+    const uint32_t count=(history_count<max_count)?history_count:max_count;
+    const uint32_t oldest=(history_head+kHistoryFrames-history_count)%kHistoryFrames;
+    for(uint32_t i=0;i<count;++i)
+        snapshots[i]=history[(oldest+i)%kHistoryFrames];
+    return count;
 }
 
 }//namespace hgl::graph

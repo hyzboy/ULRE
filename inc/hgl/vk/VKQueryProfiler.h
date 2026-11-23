@@ -20,6 +20,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
+#include<hgl/sync/Mutex.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph
@@ -111,6 +112,8 @@ public: // 结果读取
     /// index 0 = 最旧保留帧
     const FrameMetric *GetHistory(uint32_t index)const;
     const FrameMetric *GetLatestFrame()const;
+    bool GetLatestFrameSnapshot(FrameMetric &snapshot)const;
+    uint32_t GetHistorySnapshot(FrameMetric *snapshots,uint32_t max_count)const;
 
 private:
 
@@ -163,6 +166,7 @@ private:
     FrameMetric history[kHistoryFrames];
     uint32_t history_head = 0;                    ///<环形：下一个写入位置
     uint32_t history_count = 0;
+    mutable hgl::Mutex history_mutex;
 
     bool enabled = true;
 
