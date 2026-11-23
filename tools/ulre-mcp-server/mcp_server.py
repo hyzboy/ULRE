@@ -457,66 +457,158 @@ def handle(request):
                              if key in arguments}
                 pipe_data = call_engine("inspect_render_pipeline", selectors)
                 if not isinstance(pipe_data, dict) or not pipe_data.get("valid"):
-                    value = pipe_data
+                    if isinstance(pipe_data, dict) and pipe_data.get("error") == "pipeline_snapshot_not_found":
+                        value = {
+                            "valid": True,
+                            "status": "UNKNOWN",
+                            "reason": "pipeline_snapshot_not_found",
+                            "selectors": selectors,
+                        }
+                    else:
+                        value = pipe_data
                 else:
                     cache_state = pipe_data.get("cache_state", {})
                     funnel = pipe_data.get("funnel", {})
                     drops = pipe_data.get("drops", {})
+                    coverage = pipe_data.get("coverage", {})
+                    collect_coverage = coverage.get("collect", {}) if isinstance(coverage, dict) else {}
                     required_cache = (
                         "fast_path_engaged", "last_collect_steady",
                         "has_pending_resources", "snapshot_ready",
                         "snapshot_topology_rev", "world_topology_rev")
                     required_funnel = (
-                        "passed_can_render", "collected_items",
+                        "passed_can_render", "collect_candidates", "collected_items",
                         "gpu_draw_count_available")
-                    required_drops = ("resource_pending",)
+                    required_identity = ("schema_version", "world_id", "frame_serial")
                     missing = (
+                        [key for key in required_identity if key not in pipe_data]
+                        +
                         [f"cache_state.{key}" for key in required_cache
-                         if key not in cache_state]
+                         if not isinstance(cache_state, dict) or key not in cache_state]
                         + [f"funnel.{key}" for key in required_funnel
-                           if key not in funnel]
-                        + [f"drops.{key}" for key in required_drops
-                           if key not in drops])
+                           if not isinstance(funnel, dict) or key not in funnel]
+                        + [f"coverage.collect.{key}" for key in ("available", "complete")
+                           if not isinstance(collect_coverage, dict) or key not in collect_coverage])
                     if missing:
                         value = {
-                            "valid": False,
+                            "valid": True,
                             "status": "UNKNOWN",
                             "error": "missing_cache_audit_fields",
                             "missing_fields": missing,
                         }
                     else:
-                        anomalies = []
-                    
-                        if cache_state["fast_path_engaged"] and cache_state["has_pending_resources"]:
-                            anomalies.append({
-                                "severity": "CRITICAL",
-                                "rule": "CollectCachePendingResourceViolation",
-                                "message": "Fast-path collect cache is active while scene has pending/streaming resources!"
-                            })
-                        if cache_state["snapshot_ready"] and cache_state["snapshot_topology_rev"] != cache_state["world_topology_rev"]:
-                            anomalies.append({
-                                "severity": "ERROR",
-                                "rule": "SnapshotTopologyMismatch",
-                                "message": f"Snapshot topology rev ({cache_state['snapshot_topology_rev']}) does not match world ({cache_state['world_topology_rev']})!"
-                            })
-                        if drops["resource_pending"] > 0 and cache_state["last_collect_steady"]:
-                            anomalies.append({
-                                "severity": "CRITICAL",
-                                "rule": "UnsteadyGatingViolation",
-                                "message": "last_collect_steady is TRUE while drops.resource_pending > 0!"
-                            })
-                    
-                        value = {
-                            "valid": True,
-                            "status": "PASS" if not anomalies else "FAIL",
-                            "anomaly_count": len(anomalies),
-                            "anomalies": anomalies,
-                            "summary": {
-                                "fast_path": cache_state["fast_path_engaged"],
-                                "funnel": funnel,
-                                "cache_state": cache_state
+                        type_errors = []
+                        if type(pipe_data["schema_version"]) is not int or pipe_data["schema_version"] != 2:
+                            type_errors.append("schema_version")
+                        if type(pipe_data["world_id"]) is not int or pipe_data["world_id"] <= 0:
+                            type_errors.append("world_id")
+                        if type(pipe_data["frame_serial"]) is not int or pipe_data["frame_serial"] < 0:
+                            type_errors.append("frame_serial")
+                        for key in ("fast_path_engaged", "last_collect_steady",
+                                    "has_pending_resources", "snapshot_ready"):
+                            if type(cache_state[key]) is not bool:
+                                type_errors.append(f"cache_state.{key}")
+                        for key in ("snapshot_topology_rev", "world_topology_rev"):
+                            if type(cache_state[key]) is not int or cache_state[key] < 0:
+                                type_errors.append(f"cache_state.{key}")
+                        for key in required_funnel[:-1]:
+                            if type(funnel[key]) is not int or funnel[key] < 0:
+                                type_errors.append(f"funnel.{key}")
+                        for key in ("available", "complete"):
+                            if type(collect_coverage[key]) is not bool:
+                                type_errors.append(f"coverage.collect.{key}")
+                        if type(funnel["gpu_draw_count_available"]) is not bool:
+                            type_errors.append("funnel.gpu_draw_count_available")
+
+                        if type_errors:
+                            value = {
+                                "valid": True,
+                                "status": "UNKNOWN",
+                                "error": "invalid_cache_audit_field_types",
+                                "invalid_fields": type_errors,
                             }
-                        }
+                            rules = []
+                        else:
+                            rules = []
+
+                            def add_rule(rule, status, reason, evidence):
+                                rules.append({
+                                    "rule": rule,
+                                    "status": status,
+                                    "reason": reason,
+                                    "evidence": evidence,
+                                })
+
+                            add_rule(
+                                "CollectCachePendingResourceViolation",
+                                "FAIL" if cache_state["fast_path_engaged"]
+                                and cache_state["has_pending_resources"] else "PASS",
+                                "fast_path_with_pending_resources"
+                                if cache_state["fast_path_engaged"]
+                                and cache_state["has_pending_resources"] else None,
+                                {"fast_path_engaged": cache_state["fast_path_engaged"],
+                                 "has_pending_resources": cache_state["has_pending_resources"]})
+
+                            if cache_state["snapshot_ready"]:
+                                topology_mismatch = (
+                                    cache_state["snapshot_topology_rev"]
+                                    != cache_state["world_topology_rev"])
+                                add_rule(
+                                    "SnapshotTopologyMismatch",
+                                    "FAIL" if topology_mismatch else "PASS",
+                                    "snapshot_world_topology_revision_differs"
+                                    if topology_mismatch else None,
+                                    {"snapshot_topology_rev": cache_state["snapshot_topology_rev"],
+                                     "world_topology_rev": cache_state["world_topology_rev"]})
+                            else:
+                                add_rule(
+                                    "SnapshotTopologyMismatch", "UNKNOWN",
+                                    "topology_snapshot_not_ready", {})
+
+                            steady_violation = (
+                                cache_state["has_pending_resources"]
+                                and cache_state["last_collect_steady"])
+                            add_rule(
+                                "UnsteadyGatingViolation",
+                                "FAIL" if steady_violation else "PASS",
+                                "steady_collect_with_pending_resources"
+                                if steady_violation else None,
+                                {"last_collect_steady": cache_state["last_collect_steady"],
+                                 "has_pending_resources": cache_state["has_pending_resources"]})
+
+                            if collect_coverage["available"] and collect_coverage["complete"]:
+                                invalid_funnel = (
+                                    funnel["collect_candidates"] > funnel["passed_can_render"]
+                                    or funnel["collected_items"] > funnel["collect_candidates"])
+                                add_rule(
+                                    "CollectFunnelMonotonicity",
+                                    "FAIL" if invalid_funnel else "PASS",
+                                    "collect_stage_counts_are_not_monotonic"
+                                    if invalid_funnel else None,
+                                    {key: funnel[key] for key in required_funnel[:-1]})
+                            else:
+                                add_rule(
+                                    "CollectFunnelMonotonicity", "UNKNOWN",
+                                    collect_coverage.get("reason") or "collect_stage_incomplete",
+                                    {key: funnel[key] for key in required_funnel[:-1]})
+
+                            statuses = [rule["status"] for rule in rules]
+                            overall = ("FAIL" if "FAIL" in statuses else
+                                       "PASS" if statuses and all(status == "PASS" for status in statuses)
+                                       else "UNKNOWN")
+                            value = {
+                                "valid": True,
+                                "status": overall,
+                                "rules": rules,
+                                "summary": {
+                                    "world_id": pipe_data.get("world_id"),
+                                    "frame_serial": pipe_data.get("frame_serial"),
+                                    "coverage": coverage,
+                                    "funnel": funnel,
+                                    "cache_state": cache_state,
+                                    "drops": drops,
+                                },
+                            }
             elif tool_name in ("dump_buffer", "dump_render_target"):
                 value = {
                     "valid": False,

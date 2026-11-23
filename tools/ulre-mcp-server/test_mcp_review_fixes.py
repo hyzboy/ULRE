@@ -69,6 +69,95 @@ class MCPReviewFixTests(unittest.TestCase):
         self.assertEqual(captured["method"], "inspect_render_pipeline")
         self.assertEqual(captured["params"], {"world_id": 17, "frame_serial": 23})
 
+    def test_audit_reports_unknown_for_evicted_snapshot(self):
+        original = mcp_server.call_engine
+        mcp_server.call_engine = lambda method, params=None: {
+            "valid": False, "error": "pipeline_snapshot_not_found"}
+        try:
+            response = mcp_server.handle({
+                "id": 6,
+                "method": "tools/call",
+                "params": {
+                    "name": "audit_cache_invariants",
+                    "arguments": {"world_id": 1, "frame_serial": 99},
+                },
+            })
+        finally:
+            mcp_server.call_engine = original
+
+        result = json.loads(response["result"]["content"][0]["text"])
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["reason"], "pipeline_snapshot_not_found")
+
+    def test_audit_reports_unknown_for_replayed_collect(self):
+        snapshot = {
+            "valid": True,
+            "schema_version": 2,
+            "world_id": 1,
+            "frame_serial": 9,
+            "coverage": {"collect": {"available": True, "complete": False,
+                                     "reason": "collect_fast_path_replay"}},
+            "funnel": {"passed_can_render": 10, "collect_candidates": 10,
+                       "collected_items": 10, "gpu_draw_count_available": False},
+            "cache_state": {
+                "fast_path_engaged": True, "last_collect_steady": False,
+                "has_pending_resources": False, "snapshot_ready": True,
+                "snapshot_topology_rev": 4, "world_topology_rev": 4,
+            },
+            "drops": {},
+        }
+        original = mcp_server.call_engine
+        mcp_server.call_engine = lambda method, params=None: snapshot
+        try:
+            response = mcp_server.handle({
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "audit_cache_invariants", "arguments": {}},
+            })
+        finally:
+            mcp_server.call_engine = original
+
+        result = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(result["status"], "UNKNOWN")
+        collect_rule = next(rule for rule in result["rules"]
+                            if rule["rule"] == "CollectFunnelMonotonicity")
+        self.assertEqual(collect_rule["status"], "UNKNOWN")
+        self.assertEqual(collect_rule["reason"], "collect_fast_path_replay")
+
+    def test_audit_fails_non_monotonic_collect_counts(self):
+        snapshot = {
+            "valid": True,
+            "schema_version": 2,
+            "world_id": 1,
+            "frame_serial": 10,
+            "coverage": {"collect": {"available": True, "complete": True, "reason": None}},
+            "funnel": {"passed_can_render": 5, "collect_candidates": 7,
+                       "collected_items": 8, "gpu_draw_count_available": False},
+            "cache_state": {
+                "fast_path_engaged": False, "last_collect_steady": False,
+                "has_pending_resources": False, "snapshot_ready": True,
+                "snapshot_topology_rev": 4, "world_topology_rev": 4,
+            },
+            "drops": {},
+        }
+        original = mcp_server.call_engine
+        mcp_server.call_engine = lambda method, params=None: snapshot
+        try:
+            response = mcp_server.handle({
+                "id": 5,
+                "method": "tools/call",
+                "params": {"name": "audit_cache_invariants", "arguments": {}},
+            })
+        finally:
+            mcp_server.call_engine = original
+
+        result = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(result["status"], "FAIL")
+        collect_rule = next(rule for rule in result["rules"]
+                            if rule["rule"] == "CollectFunnelMonotonicity")
+        self.assertEqual(collect_rule["status"], "FAIL")
+
     def test_d16_and_d24_depth_decoding(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
