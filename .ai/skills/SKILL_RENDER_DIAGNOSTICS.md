@@ -25,12 +25,12 @@ See `doc/render-introspection-handoff.md` for current limitations and next steps
    - `TextureManager`: missing asset or fallback binding.
    - `Pipeline`: shader or pipeline creation failure.
 3. Call `get_pass_metrics` and rank passes by `gpu_time_ms`.
-4. `dump_render_target` and `dump_buffer` report the most recent C++-requested capture; they do not request one or select by name. Do not treat the result as a new capture.
+4. `dump_render_target` and `dump_buffer` are deprecated compatibility tools. They return `deprecated_dump_api`; use `list_capture_targets` + `capture_frame` or `list_capture_buffers` + `capture_buffer` instead.
 5. Call `list_capture_targets`, then `capture_frame` with an available swapchain, Debug View or explicitly opted-in managed offscreen `target_id` and a supported `attachment`. Poll `get_capture_status` using the returned `request_id`; release terminal status with `release_capture`. Queued requests expire after 30 seconds. Use `list_capture_buffers` and `capture_buffer` for registered GPU buffers; the production DrawCount sequence is a dispatch sequence, not a main-frame ID.
    Use `color_depth` when both attachments must belong to the same submitted frame.
 6. Use `analyze_capture` with the returned `metadata_path` for luminance, R32F depth, normals or surface. Debug View color has a binary alpha mask; swapchain statistics include background. Unknown color space requires an explicit override.
 7. For masked world-position bounds, request `color_depth` on the Debug View target and pass its depth `metadata_path` plus the same result's color `metadata_path` as `mask_metadata_path`. The pair must match group, frame, target, camera and viewport. Swapchain `clear_depth` is recorded from the actual full clear when known; otherwise it is null and depth analysis remains unavailable. Unmasked reconstruction still requires `allow_unverified_depth_producers`.
-8. `compare_captures` verifies image layout and camera but not scene/device identity, even when a newer manifest includes device properties. Its opt-in comparison uses the intersection of Debug View masks, or includes swapchain background, and measures encoded channels; mask coverage changes are reported separately. It is not a validated golden-baseline verdict.
+8. `compare_captures` verifies compatible image layout and context when available. Strict captures require viewport/camera provenance. Ordinary offscreen captures may use explicit `allow_pixel_only_unverified: true` with `allow_unverified_context: true`; this reports scene/device/camera/viewport as unverified and is not a baseline verdict.
 9. Conclude with a reproducible root cause and the exact engine subsystem/file to change.
 
 ## Camera contract

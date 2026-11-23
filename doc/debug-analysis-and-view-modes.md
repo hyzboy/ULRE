@@ -43,8 +43,9 @@ MCP 客户端配置、工具参考与故障排查见
   GPU 剔除 compute shader 原子累加，并在派发成功提交后处理请求。必须在该系统初始化前
   启用 DebugBridge；没有后续派发的请求会以 `queue_timeout` 结束。其 `frame_id`
   是该资源的成功派发序号，不是交换链帧号；其他生产 SSBO 尚未接入，不会被发现或抓取。
-- `dump_render_target` 和 `dump_buffer` 是旧接口，只读取最近一条 C++ 抓取结果，
-  不创建请求，也不保证结果属于调用者或当前帧。
+- `dump_render_target` 和 `dump_buffer` 已标记弃用：保留仅为兼容，不创建请求、
+  不按名称选择结果，并返回 `deprecated_dump_api`。应使用捕获队列的
+  `list_capture_targets/list_capture_buffers` 与 `capture_frame/capture_buffer`。
 - 纹理和缓冲 staging 读回在等待提交完成、映射后显式 invalidate 映射内存，
   invalidate 失败时不发布数据。旧 `FrameDebugger` 缓冲接口仍可能读到上传镜像，
   不能作为 GPU 写入的 SSBO 的可靠抓取接口。

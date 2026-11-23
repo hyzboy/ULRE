@@ -96,6 +96,7 @@ debugbridge = true   # 引擎内命名管道诊断桥接服务（显式启用）
 | 请求上限 | 4095 字节（超出返回 `-32600 Request too large`） | 服务端读缓冲 4096−1；MCP 侧同限 |
 | 响应上限 | MCP 侧累计读取上限 1 MiB | `MAX_PIPE_RESPONSE_BYTES` |
 | 读请求超时 | 5 秒（连接后等待请求） | `TransferPipe` |
+| MCP 往返时限 | 3 秒 | 连接、写入、读取的完整工具调用超时；超时返回 `ULRE bridge call timeout` |
 | 抓帧排队超时 | 30 秒（排队请求过期置 `failed`） | `DebugCaptureQueue` |
 
 MCP 侧连接管道时有 **2 秒重试窗口**（容忍 `ERROR_FILE_NOT_FOUND`/`ERROR_PIPE_BUSY`，
@@ -279,12 +280,12 @@ MCP 层标记 `isError: true`。参数表中 **粗体** 为必填。
 | `get_render_health` | 无 | 渲染健康账本。**空告警不代表场景健康**（生产告警生产者尚未补齐，见交接文档） |
 | `get_pass_metrics` | 无 | 最近一帧 GPU 时间戳：`frame_id`、`gpu_total_time_ms`、`passes[]`（名称粗分 swapchain/offscreen，每帧最多 32 个 pass） |
 | `get_camera_matrices` | 无 | 最近相机快照：`vp`/`inverse_vp`/`inverse_view`/`inverse_projection`（16 元素列主序数组）、`znear`/`zfar`、`use_reversed_z`（**数值 0/1，不是布尔**）。是最新快照，不一定是某次抓帧的相机 |
-| `inspect_camera_viewport` | 无 | 相机/viewport 契约违规告警 |
-| `inspect_render_pipeline` | 无 | 管线漏斗 `funnel`（scene_primitives→passed_can_render→collected_items→batched_items→batch_count→gpu_draw_count）、`cache_state`（fast-path/拓扑版本号）、`drops`（分类计数+至多 16 条样本） |
-| `trace_entity_render_state` | **name**（实体名或整数字符串 ID） | 实体归因：命中丢弃样本返回 `status:"Dropped"` 及 stage/reason/detail；否则 `status:"RenderedOrPassed"`。引擎方法名为 `trace_entity_pipeline` |
-| `audit_cache_invariants` | 无 | **MCP 侧计算**：读取 `inspect_render_pipeline` 后检查 4 条不变量（fast-path 期间挂起资源、拓扑版本失配、steady 门控与 resource_pending 矛盾、收集数小于通过数），返回 `PASS/FAIL` 与异常列表 |
-| `dump_render_target` | name（可选，当前不按名选择） | 只读**最近一次** C++ 侧请求的 RT 抓取摘要；**不发起新抓取** |
-| `dump_buffer` | name（可选，同上） | 只读最近一次 SSBO/UBO 抓取摘要；不发起新抓取 |
+| `inspect_camera_viewport` | 无 | 当前返回 `valid:false`/`camera_viewport_contract_not_sampled`；尚无完整相机/viewport 生产者覆盖 |
+| `inspect_render_pipeline` | 无 | 管线漏斗 `funnel`、`cache_state`、`drops`；`gpu_draw_count` 不可证实时返回 `null` 和 `gpu_draw_count_available:false` |
+| `trace_entity_render_state` | **name**（实体名或整数字符串 ID） | 命中丢弃样本返回 `status:"Dropped"`；未被 16 条样本覆盖、截断或纯 ID 格式无效时返回 `status:"Unknown"`，不得解释为已通过 |
+| `audit_cache_invariants` | 无 | **MCP 侧计算**：检查缺失字段、fast-path 挂起资源、拓扑版本失配及 steady/resource_pending 矛盾；缺数据或字段不完整返回 `UNKNOWN`，不得全局 PASS |
+| `dump_render_target` | name（可选；保留兼容） | 已弃用；返回 `deprecated_dump_api` 和迁移指引，使用 `list_capture_targets` + `capture_frame` |
+| `dump_buffer` | name（可选；保留兼容） | 已弃用；返回 `deprecated_dump_api` 和迁移指引，使用 `list_capture_buffers` + `capture_buffer` |
 
 ### 6.2 调试视图类
 
@@ -313,13 +314,13 @@ MCP 层标记 `isError: true`。参数表中 **粗体** 为必填。
 | 工具 | 参数 | 说明 |
 | --- | --- | --- |
 | `analyze_capture` | **metadata_path**、**operation**：`luminance`/`depth`/`world_position`/`world_position_rt`/`position_crosscheck`/`normals`/`surface`；可选 `color_space_override`、`reversed_z_override`、`sample_step`（默认 16）、`allow_unverified_depth_producers`（默认 false）、`mask_metadata_path`、`depth_metadata_path` | **首选入口**。格式/色彩空间/相机上下文来自清单；`position_crosscheck` 需成对深度清单；无掩码反投影需显式 opt-in |
-| `compare_captures` | **metadata_path_a**、**metadata_path_b**；可选 `threshold`（默认 0.01）、`heatmap_dir`（默认 `.ulre-analysis`）、`color_space_override`、`allow_unverified_context`（默认 false） | RGB MAE/RMSE/PSNR、8×8 SSIM、4 连通变化区域；掩码交集上计算，覆盖变化单独报告。**不校验场景/设备身份**，opt-in 不等同基线判定 |
+| `compare_captures` | **metadata_path_a**、**metadata_path_b**；可选 `threshold`、`heatmap_dir`、`color_space_override`、`allow_unverified_context`、`allow_pixel_only_unverified`（默认 false） | 默认或严格模式仍需兼容 viewport/相机上下文。普通离屏无 viewport/相机时可显式启用像素模式；结果标记场景、设备、相机、viewport 均未验证，不是基线判定 |
 | `analyze_shadow_semantics` | **metadata_path**；可选 `is_shadow_map_depth`（默认 false） | 区分 shadow-map 投射物覆盖与屏幕受影；后者目前 unavailable |
 | `analyze_luminance` | **path**、**width**、**height**、**color_space**；可选 `pixel_format`（默认 rgba8）、`row_pitch`、`mask_alpha` | 旧式 raw 接口：亮度/曝光/死像素/NaN |
 | `analyze_normals` | **path**、**width**、**height**；可选 `pixel_format`、`row_pitch`、`mask_alpha` | 旧式 raw 接口：法线长度误差/零法线/Z 分布 |
 | `analyze_surface` | **path**、**width**、**height**；可选同上 | 旧式 raw 接口：roughness/metallic/AO 分布 |
-| `analyze_depth` | **path**、**width**、**height**；可选 `reversed_z`、`clear_depth`、`row_pitch` | 深度分布与无效深度像素 |
-| `reconstruct_world_pos` | **path**、**width**、**height**、**inverse_vp**（16 元素）；可选 `sample_step`、`row_pitch`、`clear_depth`、`reversed_z`、`viewport` | 旧式 raw 深度反投影；**绝不隐式使用最新相机**，需手工提供匹配的 inverse VP |
+| `analyze_depth` | **path**、**width**、**height**；可选 `reversed_z`、`clear_depth`、`row_pitch`、`pixel_format`（`r32f`/`d16_unorm`/`d24_unorm_32`） | 深度分布与无效深度像素；按显式格式解码 |
+| `reconstruct_world_pos` | **path**、**width**、**height**、**inverse_vp**（16 元素）；可选 `sample_step`、`row_pitch`、`clear_depth`、`reversed_z`、`viewport`、`pixel_format` | 旧式 raw 深度反投影；**绝不隐式使用最新相机**，需手工提供匹配的 inverse VP |
 | `compare_frames` | **path_a**、**path_b**、**width**、**height**；可选 `pixel_format`、`threshold`、`row_pitch_a/b`、`mask_alpha`、`peak_value` | 旧式 raw 帧差；优先用 `compare_captures` |
 
 `pixel_format` 枚举：`rgba8`/`bgra8`/`rgb8`/`a2bgr10`/`rgb10a2`/`a2r10g10b10`/`r32f`（仅亮度）/`rgba32f`。

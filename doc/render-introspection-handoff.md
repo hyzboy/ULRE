@@ -37,6 +37,20 @@
 
 ## 已完成工作
 
+截至 2026-11-23 的复核修复包括：
+
+- GPU pass 历史读取改为锁内完整快照，桥不再持有环形槽位外的可变指针。
+- 管线漏斗不再把 CPU 批次数伪装为实测 GPU 绘制数；无实测 GPU 数据时返回
+  `gpu_draw_count_available:false` 与 `gpu_draw_count:null`。
+- 实体追踪未命中或样本截断时返回 `Unknown`，不再归为 `RenderedOrPassed`。
+- Health Ledger 使用结构化序列化并加锁；空账本明确为 no production alert producer
+  导致的 unavailable，不等于场景健康。
+- 缓存审计缺少必需字段时返回 `UNKNOWN`，不再用零值或空对象制造 PASS。
+- 旧 dump 工具保留兼容入口但统一返回弃用错误及现有抓帧迁移指引。
+- D16、D24 深度格式纳入 metadata-first 深度和位置分析；普通离屏比较可显式选择
+  仅像素模式并标记上下文未验证。
+- MCP 到引擎管道往返增加 3 秒守护线程时限，超时返回明确错误。
+
 最初四阶段为 GPU 查询采样器（`e91ce2d7f`）、健康账本和帧调试器（`2c9742412`）、
 Windows 命名管道桥（`13aaf5d3b`）、MCP 与诊断 Skill（`09a0ab6ce`）。
 其后逐步完成：
