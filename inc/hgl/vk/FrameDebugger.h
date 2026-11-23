@@ -88,6 +88,7 @@ public:
         bool gpu_execution_available = false;
         uint32_t scene_primitives = 0;
         uint32_t passed_can_render = 0;
+        uint32_t collect_candidates = 0;
         uint32_t collected_items = 0;
         uint32_t batched_items = 0;
         uint32_t batch_count = 0;
@@ -103,10 +104,9 @@ public:
         uint32_t snapshot_item_count = 0;
 
         uint32_t dropped_invisible = 0;
+        uint32_t dropped_no_owner = 0;
         uint32_t dropped_no_transform = 0;
         uint32_t dropped_mobility = 0;
-        uint32_t dropped_resource_pending = 0;
-        uint32_t dropped_geometry_loading = 0;
         uint32_t dropped_other = 0;
         uint32_t pending_material_resources = 0;
         uint32_t pending_geometry_resources = 0;
@@ -123,6 +123,24 @@ public:
         uint32_t drop_sample_count = 0;
         bool drop_sample_truncated = false;
         DropSample drop_samples[kMaxSampleDrops];
+
+        static constexpr uint32_t kMaxTraceSamples = 64;
+        struct TraceSample
+        {
+            uint32_t entity_id = UINT32_MAX;
+            uint16_t generation = 0;
+            bool pending_geometry = false;
+            bool pending_material = false;
+            uint32_t batch_index = UINT32_MAX;
+            char entity_name[64] = {};
+            char collect_status[16] = "unknown";
+            char collect_reason[32] = {};
+            char batch_status[16] = "unknown";
+            char batch_reason[32] = {};
+        };
+        uint32_t trace_sample_count = 0;
+        bool trace_sample_truncated = false;
+        TraceSample trace_samples[kMaxTraceSamples];
     };
 
     static uint32_t RequestColor(IRenderTarget *target,const char *name,uint32_t color_index=0);

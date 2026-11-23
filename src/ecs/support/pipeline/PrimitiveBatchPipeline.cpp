@@ -1297,6 +1297,7 @@ namespace hgl::ecs
             snapshot.batch_available = true;
             snapshot.scene_primitives = cache.scene_primitives;
             snapshot.passed_can_render = cache.passed_can_render;
+            snapshot.collect_candidates = cache.collect_candidates;
             snapshot.collected_items = static_cast<uint32_t>(cache.renderItems.size());
             snapshot.batched_items = batched_item_count;
             snapshot.batch_count = valid_batch_count;
@@ -1314,17 +1315,60 @@ namespace hgl::ecs
             snapshot.snapshot_item_count = topo_snap.GetItemCount();
 
             snapshot.dropped_invisible = cache.dropped_invisible;
+            snapshot.dropped_no_owner = cache.dropped_no_owner;
             snapshot.dropped_no_transform = cache.dropped_no_transform;
             snapshot.dropped_mobility = cache.dropped_mobility;
-            snapshot.dropped_resource_pending = cache.dropped_resource_pending;
-            snapshot.dropped_geometry_loading = cache.dropped_geometry_loading;
             snapshot.dropped_other = cache.dropped_other;
+            snapshot.pending_material_resources = cache.pending_material_resources;
+            snapshot.pending_geometry_resources = cache.pending_geometry_resources;
 
             snapshot.drop_sample_count = cache.drop_sample_count;
             snapshot.drop_sample_truncated = cache.drop_sample_truncated;
             for (uint32_t i = 0; i < cache.drop_sample_count; ++i)
             {
                 memcpy(&snapshot.drop_samples[i], &cache.drop_samples[i], sizeof(snapshot.drop_samples[i]));
+            }
+
+            snapshot.trace_sample_count = cache.trace_sample_count;
+            snapshot.trace_sample_truncated = cache.trace_sample_truncated;
+            for(uint32_t i=0;i<cache.trace_sample_count;++i)
+                memcpy(&snapshot.trace_samples[i],&cache.trace_samples[i],sizeof(snapshot.trace_samples[i]));
+
+            uint32_t batch_index=0;
+            for(const auto &pair:cache.materialBatches)
+            {
+                const MaterialBatch *batch=pair.second.get();
+                if(!batch||batch->items.empty())
+                    continue;
+                for(const RenderItem *item:batch->items)
+                {
+                    if(!item)
+                        continue;
+                    const EntityID entity_id=item->GetEntityID();
+                    for(uint32_t sample_index=0;sample_index<snapshot.trace_sample_count;++sample_index)
+                    {
+                        auto &sample=snapshot.trace_samples[sample_index];
+                        if(sample.entity_id==entity_id.index
+                           && sample.generation==entity_id.generation
+                           && ::strcmp(sample.collect_status,"collected")==0)
+                        {
+                            sample.batch_index=batch_index;
+                            ::memcpy(sample.batch_status,"batched",8);
+                            break;
+                        }
+                    }
+                }
+                ++batch_index;
+            }
+            for(uint32_t sample_index=0;sample_index<snapshot.trace_sample_count;++sample_index)
+            {
+                auto &sample=snapshot.trace_samples[sample_index];
+                if(::strcmp(sample.collect_status,"collected")==0
+                   &&::strcmp(sample.batch_status,"unknown")==0)
+                {
+                    ::memcpy(sample.batch_status,"filtered",9);
+                    ::memcpy(sample.batch_reason,"not_in_batch",13);
+                }
             }
 
             hgl::graph::FrameDebugger::SetPipelineInspection(snapshot);

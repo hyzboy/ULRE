@@ -361,6 +361,8 @@ void FrameDebugger::SetPipelineInspection(const PipelineInspectionSnapshot &snap
     PipelineInspectionSnapshot published=snapshot;
     if(published.drop_sample_count>PipelineInspectionSnapshot::kMaxSampleDrops)
         published.drop_sample_count=PipelineInspectionSnapshot::kMaxSampleDrops;
+    if(published.trace_sample_count>PipelineInspectionSnapshot::kMaxTraceSamples)
+        published.trace_sample_count=PipelineInspectionSnapshot::kMaxTraceSamples;
     published.schema_version=2;
     published.snapshot_sequence=++PipelineInspectionSequence();
     published.published_at_ms=hgl::GetUptimeMs();
@@ -418,6 +420,22 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
                            {"reason",s.reason},
                            {"detail",s.detail}});
     }
+    nlohmann::json trace_samples=nlohmann::json::array();
+    for(uint32_t i=0;i<snap.trace_sample_count;++i)
+    {
+        const auto &s=snap.trace_samples[i];
+        trace_samples.push_back({
+            {"name",s.entity_name},
+            {"entity_id",s.entity_id},
+            {"generation",s.generation},
+            {"collect_status",s.collect_status},
+            {"collect_reason",s.collect_reason},
+            {"resource_observations",{{"geometry_pending",s.pending_geometry},
+                                      {"material_pending",s.pending_material}}},
+            {"batch_status",s.batch_status},
+            {"batch_index",s.batch_index==UINT32_MAX?nlohmann::json():nlohmann::json(s.batch_index)},
+            {"batch_reason",s.batch_reason}});
+    }
 
     nlohmann::json gpu_draw_count=nlohmann::json();
     if(snap.gpu_draw_count_available)
@@ -425,6 +443,7 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
     nlohmann::json funnel={
         {"scene_primitives",snap.scene_primitives},
         {"passed_can_render",snap.passed_can_render},
+        {"collect_candidates",snap.collect_candidates},
         {"collected_items",snap.collected_items},
         {"batched_items",snap.batched_items},
         {"batch_count",snap.batch_count},
@@ -441,6 +460,12 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
         nlohmann::json("frame_correlated_gpu_cull_unavailable");
     const nlohmann::json gpu_execution_reason=snap.gpu_execution_available?nlohmann::json():
         nlohmann::json("entity_level_gpu_execution_unavailable");
+    const bool entity_trace_complete=snap.collect_complete
+        &&!snap.trace_sample_truncated
+        &&snap.trace_sample_count==snap.scene_primitives;
+    const nlohmann::json entity_trace_reason=entity_trace_complete?nlohmann::json():
+        nlohmann::json(snap.fast_path_engaged?"collect_fast_path_replay":
+                       (snap.trace_sample_truncated?"trace_samples_truncated":"trace_coverage_incomplete"));
     return debug_bridge::DebugJsonToText(nlohmann::json{
         {"valid",true},
         {"schema_version",snap.schema_version},
@@ -461,6 +486,23 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
                                         {"complete",snap.gpu_execution_available},
                                         {"reason",gpu_execution_reason}}}}},
         {"funnel",funnel},
+        {"funnel_units",{{"scene_primitives","primitive"},
+                          {"passed_can_render","primitive"},
+                          {"collect_candidates","primitive"},
+                          {"collected_items","render_item"},
+                          {"batched_items","render_item"},
+                          {"batch_count","batch"},
+                          {"gpu_draw_count","unavailable_until_frame_correlated"}}},
+        {"funnel_definitions",{{"scene_primitives","primitive_components_in_main_frame_source_list"},
+                                {"passed_can_render","primitive_components_with_renderable_fact"},
+                                {"collect_candidates","primitive_components_eligible_for_current_pass"},
+                                {"collected_items","actual_render_items_in_frame_cache"},
+                                {"batched_items","items_in_nonempty_cpu_material_batches"},
+                                {"batch_count","nonempty_cpu_material_batches"}}},
+        {"funnel_provenance",{{"collect",snap.fast_path_engaged?"cache_replay":"current_frame"},
+                               {"batch","current_frame_cpu_batch_membership"},
+                               {"gpu_cull","unavailable"},
+                               {"gpu_execution","unavailable"}}},
         {"cache_state",{{"fast_path_engaged",snap.fast_path_engaged},
                         {"last_collect_steady",snap.last_collect_steady},
                         {"has_pending_resources",snap.has_pending_resources},
@@ -469,13 +511,20 @@ AnsiString FrameDebugger::GetPipelineInspectionJSON(const uint64_t world_id,
                         {"world_topology_rev",snap.world_topology_rev},
                         {"snapshot_item_count",snap.snapshot_item_count}}},
         {"drops",{{"invisible",snap.dropped_invisible},
+                  {"no_owner",snap.dropped_no_owner},
                   {"no_transform",snap.dropped_no_transform},
                   {"mobility_filtered",snap.dropped_mobility},
-                  {"resource_pending",snap.dropped_resource_pending},
-                  {"geometry_loading",snap.dropped_geometry_loading},
                   {"other",snap.dropped_other},
                   {"sample_truncated",snap.drop_sample_truncated},
-                  {"samples",samples}}}});
+                  {"samples",samples}}},
+        {"entity_trace",{{"complete",entity_trace_complete},
+                          {"reason",entity_trace_reason},
+                          {"sample_count",snap.trace_sample_count},
+                          {"sample_truncated",snap.trace_sample_truncated},
+                          {"samples",trace_samples}}},
+        {"resource_observations",{{"pending_material_resources",snap.pending_material_resources},
+                                   {"pending_geometry_resources",snap.pending_geometry_resources},
+                                   {"unit","primitive_observations"}}}});
 }
 
 AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id,
@@ -510,7 +559,55 @@ AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id,
         target_id=target_id*10+digit;
     }
     if(is_numeric && (numeric_overflow||target_id==0))
-        is_numeric=false;
+        return debug_bridge::DebugJsonToText(nlohmann::json{
+            {"valid",false},{"error","invalid_entity_id"}});
+
+    const PipelineInspectionSnapshot::TraceSample *match=nullptr;
+    for(uint32_t i=0;i<snap.trace_sample_count;++i)
+    {
+        const auto &sample=snap.trace_samples[i];
+        if((is_numeric&&sample.entity_id==target_id)
+           ||(!is_numeric&&::strcmp(sample.entity_name,name_or_id)==0))
+        {
+            if(match&&(match->entity_id!=sample.entity_id
+                       ||match->generation!=sample.generation))
+                return debug_bridge::DebugJsonToText(nlohmann::json{
+                    {"valid",true},{"status","Ambiguous"},{"query",name_or_id},
+                    {"reason","duplicate_entity_name_in_snapshot"}});
+            match=&sample;
+        }
+    }
+
+    if(match)
+    {
+        const char *status="Unknown";
+        if(::strcmp(match->collect_status,"filtered")==0) status="Filtered";
+        else if(::strcmp(match->collect_status,"pending")==0) status="Pending";
+        else if(::strcmp(match->collect_status,"failed")==0) status="Failed";
+        else if(::strcmp(match->collect_status,"candidate")==0) status="CollectCandidate";
+        else if(::strcmp(match->collect_status,"collected")==0)
+        {
+            status="Collected";
+            if(::strcmp(match->batch_status,"batched")==0) status="Batched";
+            else if(::strcmp(match->batch_status,"filtered")==0) status="BatchFiltered";
+        }
+
+        return debug_bridge::DebugJsonToText(nlohmann::json{
+            {"valid",true},
+            {"status",status},
+            {"world_id",snap.world_id},
+            {"frame_serial",snap.frame_serial},
+            {"entity_name",match->entity_name},
+            {"entity_id",match->entity_id},
+            {"generation",match->generation},
+            {"collect",{{"status",match->collect_status},
+                        {"reason",match->collect_reason}}},
+            {"resource_observations",{{"geometry_pending",match->pending_geometry},
+                                      {"material_pending",match->pending_material}}},
+            {"batch",{{"status",match->batch_status},
+                      {"index",match->batch_index==UINT32_MAX?nlohmann::json():nlohmann::json(match->batch_index)},
+                      {"reason",match->batch_reason}}}});
+    }
 
     for(uint32_t i=0;i<snap.drop_sample_count;++i)
     {
@@ -531,10 +628,10 @@ AnsiString FrameDebugger::TraceEntityPipelineJSON(const char *name_or_id,
     nlohmann::json unknown={
         {"valid",true},
         {"status","Unknown"},
+        {"world_id",snap.world_id},
+        {"frame_serial",snap.frame_serial},
         {"query",name_or_id},
-        {"reason","entity_not_covered_by_observable_drop_samples"}};
-    if(snap.drop_sample_truncated)
-        unknown["reason"]="drop_samples_truncated";
+        {"reason",snap.trace_sample_truncated?"trace_samples_truncated":"entity_not_sampled"}};
     return debug_bridge::DebugJsonToText(unknown);
 }
 }//namespace hgl::graph

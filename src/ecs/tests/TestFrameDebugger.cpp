@@ -233,6 +233,17 @@ int main()
     snap.fast_path_engaged=true;
     snap.world_id=42;
     snap.drop_sample_count=1;
+    snap.trace_sample_count=2;
+    snap.trace_samples[0].entity_id=9;
+    snap.trace_samples[0].generation=3;
+    ::strcpy(snap.trace_samples[0].entity_name,"batch_entity");
+    ::strcpy(snap.trace_samples[0].collect_status,"collected");
+    ::strcpy(snap.trace_samples[0].batch_status,"batched");
+    snap.trace_samples[0].batch_index=1;
+    snap.trace_samples[1].entity_id=10;
+    snap.trace_samples[1].generation=1;
+    ::strcpy(snap.trace_samples[1].entity_name,"batch_entity");
+    ::strcpy(snap.trace_samples[1].collect_status,"collected");
     ::strcpy(snap.drop_samples[0].entity_name,"ch\"ess");
     snap.drop_samples[0].entity_id=7;
     ::strcpy(snap.drop_samples[0].stage,"Collect");
@@ -261,7 +272,9 @@ int main()
        || !::strstr(inspection.c_str(),"\"gpu_draw_count\":null")
        || !::strstr(inspection.c_str(),"\"schema_version\":2")
        || !::strstr(inspection.c_str(),"\"world_id\":84")
-       || !::strstr(inspection.c_str(),"\"snapshot_sequence\":"))
+       || !::strstr(inspection.c_str(),"\"snapshot_sequence\":")
+       || !::strstr(inspection.c_str(),"\"collect_candidates\":0")
+       || !::strstr(inspection.c_str(),"\"batch_status\":\"batched\""))
     {
         GLogError(u8"Pipeline inspection JSON lost structure or escaping");
         return 8;
@@ -275,6 +288,16 @@ int main()
     if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("absent",84,6).c_str(),"\"status\":\"Unknown\""))
         return 8;
     if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("7x",84,6).c_str(),"\"status\":\"Unknown\""))
+        return 8;
+    const hgl::AnsiString batched=FrameDebugger::TraceEntityPipelineJSON("9",84,6);
+    if(!::strstr(batched.c_str(),"\"status\":\"Batched\"")
+       || !::strstr(batched.c_str(),"\"generation\":3")
+       || !::strstr(batched.c_str(),"\"index\":1"))
+        return 8;
+    if(!::strstr(FrameDebugger::TraceEntityPipelineJSON("batch_entity",84,6).c_str(),
+                 "\"status\":\"Ambiguous\"")
+       || !::strstr(FrameDebugger::TraceEntityPipelineJSON("0",84,6).c_str(),
+                    "invalid_entity_id"))
         return 8;
     FrameDebugger::SetCameraSnapshot(&camera);
     const hgl::AnsiString camera_json=FrameDebugger::GetCameraSnapshotJSON();

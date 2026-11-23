@@ -2377,6 +2377,7 @@ namespace hgl::ecs
 
         cache.fast_path_engaged     = true;
         cache.passed_can_render     = static_cast<uint32_t>(record_count);
+        cache.collect_candidates    = static_cast<uint32_t>(record_count);
         cache.collected_items       = static_cast<uint32_t>(record_count);
         cache.is_collect_steady     = true;
         cache.has_pending_resources = false;
@@ -2537,19 +2538,21 @@ namespace hgl::ecs
             Entity *owner = geometryComp->GetOwner();
             if (strategy.facts.entity_visible && owner)
             {
+                const EntityID owner_id=owner->GetEntityID();
+                auto *trace=cache.GetOrCreateTrace(GetOwnerName(owner),owner_id.index,owner_id.generation);
                 if (HasPendingGeometryResource(owner))
                 {
                     any_pending_resources = true;
                     any_material_work     = true;
-                    ++cache.dropped_geometry_loading;
-                    cache.RecordDrop(GetOwnerName(owner), owner->GetEntityID().index, "RenderCollect", "GeometryLoading", "Geometry asset loading");
+                    ++cache.pending_geometry_resources;
+                    if(trace) trace->pending_geometry=true;
                 }
-                else if (HasPendingMaterialResources(owner))
+                if (HasPendingMaterialResources(owner))
                 {
                     any_pending_resources = true;
                     any_material_work     = true;
-                    ++cache.dropped_resource_pending;
-                    cache.RecordDrop(GetOwnerName(owner), owner->GetEntityID().index, "RenderCollect", "MaterialResourcePending", "Texture streaming");
+                    ++cache.pending_material_resources;
+                    if(trace) trace->pending_material=true;
                 }
             }
 
@@ -2709,6 +2712,12 @@ namespace hgl::ecs
             }
 #endif
 
+            const EntityID entity_id = geometryComp->GetOwnerID();
+            const char *entity_name=GetOwnerName(geometryComp->GetOwner());
+            auto *trace=cache.GetOrCreateTrace(entity_name,entity_id.index,entity_id.generation);
+            if(strategy.facts.renderable)
+                ++cache.passed_can_render;
+
             if (!HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass))
             {
                 // 判定已由表给出；下面只是 S6 探针的**归因**（不参与判定），口径与旧计数器
@@ -2719,15 +2728,55 @@ namespace hgl::ecs
                 if (strategy.facts.renderable)
                 {
                     if (!strategy.facts.entity_visible)
+                    {
                         ++skipped_invisible;
+                        ++cache.dropped_invisible;
+                        if(trace)
+                        {
+                            ::strncpy(trace->collect_status,"filtered",sizeof(trace->collect_status)-1);
+                            ::strncpy(trace->collect_reason,"invisible",sizeof(trace->collect_reason)-1);
+                        }
+                        cache.RecordDrop(entity_name,entity_id.index,"RenderCollect","Invisible","Entity is not visible");
+                    }
                     else if (!strategy.facts.has_owner)
+                    {
                         ++skipped_no_owner;
+                        ++cache.dropped_no_owner;
+                        if(trace)
+                        {
+                            ::strncpy(trace->collect_status,"filtered",sizeof(trace->collect_status)-1);
+                            ::strncpy(trace->collect_reason,"no_owner",sizeof(trace->collect_reason)-1);
+                        }
+                        cache.RecordDrop(entity_name,entity_id.index,"RenderCollect","NoOwner","Renderable has no owner");
+                    }
+                    else
+                    {
+                        ++cache.dropped_other;
+                        if(trace)
+                        {
+                            ::strncpy(trace->collect_status,"filtered",sizeof(trace->collect_status)-1);
+                            ::strncpy(trace->collect_reason,"strategy_filtered",sizeof(trace->collect_reason)-1);
+                        }
+                        cache.RecordDrop(entity_name,entity_id.index,"RenderCollect","StrategyFiltered","Current pass strategy rejected primitive");
+                    }
+                }
+                else
+                {
+                    ++cache.dropped_other;
+                    if(trace)
+                    {
+                        ::strncpy(trace->collect_status,"filtered",sizeof(trace->collect_status)-1);
+                        ::strncpy(trace->collect_reason,"not_renderable",sizeof(trace->collect_reason)-1);
+                    }
+                    cache.RecordDrop(entity_name,entity_id.index,"RenderCollect","NotRenderable","CanRender rejected primitive");
                 }
 
                 continue;
             }
 
-            EntityID entity_id = geometryComp->GetOwnerID();
+            ++cache.collect_candidates;
+            if(trace)
+                ::strncpy(trace->collect_status,"candidate",sizeof(trace->collect_status)-1);
 
             // 实体级可见性与 owner 已由表的 CollectForCurrentPass 要求 ⇒ 不再单独判据
             Entity* entity = geometryComp->GetOwner();
@@ -2737,11 +2786,25 @@ namespace hgl::ecs
             if (!transform.IsValid())
             {
                 ++skipped_no_transform;
+                ++cache.dropped_no_transform;
+                if(trace)
+                {
+                    ::strncpy(trace->collect_status,"filtered",sizeof(trace->collect_status)-1);
+                    ::strncpy(trace->collect_reason,"no_transform",sizeof(trace->collect_reason)-1);
+                }
+                cache.RecordDrop(entity_name,entity_id.index,"RenderCollect","NoTransform","Transform handle unavailable");
                 continue;
             }
 
             if (active_mobility_filter >= 0 && static_cast<int>(transform.GetMobility()) != active_mobility_filter)
             {
+                ++cache.dropped_mobility;
+                if(trace)
+                {
+                    ::strncpy(trace->collect_status,"filtered",sizeof(trace->collect_status)-1);
+                    ::strncpy(trace->collect_reason,"mobility_filtered",sizeof(trace->collect_reason)-1);
+                }
+                cache.RecordDrop(entity_name,entity_id.index,"RenderCollect","MobilityFiltered","Mobility does not match active pass");
                 continue;
             }
 
@@ -3016,8 +3079,9 @@ namespace hgl::ecs
             cache.renderItems.push_back(std::move(item));
             cache.renderableCount++;
             ++added;
-            ++cache.passed_can_render;
             ++cache.collected_items;
+            if(trace)
+                ::strncpy(trace->collect_status,"collected",sizeof(trace->collect_status)-1);
             shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
         }
 

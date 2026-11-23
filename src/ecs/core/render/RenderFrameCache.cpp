@@ -24,6 +24,34 @@ namespace hgl::ecs
         }
     }
 
+    RenderFrameCache::EntityTraceRecord *RenderFrameCache::GetOrCreateTrace(
+        const char *name,const uint32_t id,const uint16_t generation)
+    {
+        for(uint32_t i=0;i<trace_sample_count;++i)
+        {
+            EntityTraceRecord &record=trace_samples[i];
+            if(record.entity_id==id && record.generation==generation)
+                return &record;
+        }
+
+        if(trace_sample_count>=kMaxTraceSamples)
+        {
+            trace_sample_truncated=true;
+            return nullptr;
+        }
+
+        EntityTraceRecord &record=trace_samples[trace_sample_count++];
+        record=EntityTraceRecord{};
+        record.entity_id=id;
+        record.generation=generation;
+        if(name)
+        {
+            strncpy(record.entity_name,name,sizeof(record.entity_name)-1);
+            record.entity_name[sizeof(record.entity_name)-1]=0;
+        }
+        return &record;
+    }
+
     void RenderFrameCache::BeginFrame()
     {
         ++frame_serial;
@@ -39,16 +67,21 @@ namespace hgl::ecs
 
         scene_primitives  = 0;
         passed_can_render = 0;
+        collect_candidates = 0;
         collected_items   = 0;
 
         dropped_invisible         = 0;
+        dropped_no_owner          = 0;
+        dropped_no_owner          = 0;
         dropped_no_transform     = 0;
         dropped_mobility         = 0;
-        dropped_resource_pending = 0;
-        dropped_geometry_loading = 0;
         dropped_other            = 0;
         drop_sample_count        = 0;
         drop_sample_truncated    = false;
+        pending_material_resources = 0;
+        pending_geometry_resources = 0;
+        trace_sample_count       = 0;
+        trace_sample_truncated   = false;
 
         // 清空批次内容，保留对象以供重用
         for (auto& pair : materialBatches)
