@@ -1,7 +1,9 @@
 import json
 import os
 import sys
+import queue
 import time
+import threading
 
 import analyzer
 import capture_manifest
@@ -10,6 +12,7 @@ import capture_manifest
 PIPE_NAME = r"\\.\pipe\ulre_render_debug"
 MAX_PIPE_REQUEST_BYTES = 4095
 MAX_PIPE_RESPONSE_BYTES = 1024 * 1024
+PIPE_CALL_TIMEOUT_SECONDS = 3.0
 
 
 def open_engine_pipe():
@@ -285,7 +288,7 @@ TOOLS = [
 ]
 
 
-def call_engine(method, params=None):
+def _call_engine_once(method, params=None):
     if os.name != "nt":
         return {"valid": False, "error": "ULRE named pipe is available on Windows only"}
 
@@ -321,6 +324,34 @@ def call_engine(method, params=None):
     except OSError as exc:
         return {"valid": False, "error": "ULRE bridge unavailable", "detail": str(exc)}
     return {"valid": False, "error": "Incomplete or oversized ULRE bridge response"}
+
+
+def call_engine(method, params=None):
+    result_queue = queue.Queue(maxsize=1)
+
+    def worker():
+        try:
+            result_queue.put_nowait(_call_engine_once(method, params))
+        except BaseException as exc:
+            result_queue.put_nowait({
+                "valid": False,
+                "error": "ULRE bridge call failed",
+                "detail": str(exc),
+            })
+
+    thread = threading.Thread(target=worker, name="ulre-engine-pipe-call", daemon=True)
+    thread.start()
+    thread.join(PIPE_CALL_TIMEOUT_SECONDS)
+    if thread.is_alive():
+        return {
+            "valid": False,
+            "error": "ULRE bridge call timeout",
+            "detail": f"Exceeded {PIPE_CALL_TIMEOUT_SECONDS:.1f} seconds",
+        }
+    try:
+        return result_queue.get_nowait()
+    except queue.Empty:
+        return {"valid": False, "error": "ULRE bridge call failed"}
 
 
 def result_response(request_id, result):

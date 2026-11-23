@@ -1,6 +1,7 @@
 import json
 import struct
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -107,6 +108,24 @@ class MCPReviewFixTests(unittest.TestCase):
                 allow_unverified_context=True,
                 allow_pixel_only_unverified=True)
             self.assertEqual(result["context"]["comparison_kind"], "pixel_only")
+
+    def test_engine_pipe_call_has_bounded_timeout(self):
+        original = mcp_server._call_engine_once
+
+        def slow_call(method, params=None):
+            time.sleep(4.0)
+            return {"valid": True}
+
+        mcp_server._call_engine_once = slow_call
+        started = time.monotonic()
+        try:
+            result = mcp_server.call_engine("get_render_health")
+        finally:
+            mcp_server._call_engine_once = original
+
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["error"], "ULRE bridge call timeout")
+        self.assertLess(time.monotonic() - started, 3.5)
 
 
 if __name__ == "__main__":
