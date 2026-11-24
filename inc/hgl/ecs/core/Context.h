@@ -24,6 +24,7 @@
 #include<hgl/ecs/support/cull/VisibilityDataStorage.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
+#include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/entity/EntityManager.h>
@@ -209,6 +210,9 @@ namespace hgl
             /// B5-b：每实例 × 每 pass 的**运行期管线缓存**（slot 里不放指针 ⇒ 落这里；
             /// 见 support/MaterialRuntimePipelineTable.h）。
             std::unique_ptr<MaterialRuntimePipelineTable> material_runtime_pipeline_table;
+
+            /// Step 1.4：模板材质表（template_id -> TemplateRenderBinding，管理多材质模板的共享材质行生命周期）
+            std::unique_ptr<ModelTemplateMaterialTable> model_template_material_table;
 
             // 世界私有**相机表**：相机是**世界级资源**（16 槽 × 帧槽数，0 号槽恒为本世界默认相机）。
             // 行空间 + **槽账目（槽 → 宿主相机）** 都在这里，是"相机属于哪个世界 / 哪个槽"的唯一真源；
@@ -979,6 +983,9 @@ namespace hgl
 
             MaterialRuntimeTable* GetMaterialRuntimeTable() { return material_runtime_table.get(); }
             const MaterialRuntimeTable* GetMaterialRuntimeTable() const { return material_runtime_table.get(); }
+
+            ModelTemplateMaterialTable* GetModelTemplateMaterialTable() { return model_template_material_table.get(); }
+            const ModelTemplateMaterialTable* GetModelTemplateMaterialTable() const { return model_template_material_table.get(); }
 
             /// 实体 → 材质运行期 slot（无则创建）。命名向 `GetOrCreateMaterialData` 看齐。
             /// ⚠ stage B 会换成**值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），

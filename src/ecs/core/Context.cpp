@@ -75,6 +75,7 @@ namespace hgl
             , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
             , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>(this))
             , material_runtime_pipeline_table(std::make_unique<MaterialRuntimePipelineTable>())
+            , model_template_material_table(std::make_unique<ModelTemplateMaterialTable>(this))
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
             , active(false)
         {
@@ -90,6 +91,9 @@ namespace hgl
             // 材质运行期表需要拿到本世界指针：共享行回收时退休其纹理配置池行
             // （GPU 侧绑定随行存亡）；单测里没有世界，钩子自动 no-op。
             material_runtime_table->SetContext(this);
+
+            // 模板材质表绑定本世界指针
+            model_template_material_table->SetContext(this);
 
             // P2：主帧拓扑快照默认开启；宿主可用环境变量（opt-out，`=0` 关闭）或显式 setter 调整。
             main_frame_topology_snapshot_enabled = GetMainFrameTopologySnapshotEnvDefault();
@@ -308,6 +312,10 @@ namespace hgl
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
                          render_frame_cache.materialBatches.GetCount());
                 render_frame_cache.materialBatches.Clear();
+
+                if (model_template_material_table)
+                    model_template_material_table->Clear();
+
                 shutdown_in_progress = false;
                 return;
             }
@@ -355,6 +363,9 @@ namespace hgl
                      render_frame_cache.materialBatches.GetCount());
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
+
+            if (model_template_material_table)
+                model_template_material_table->Clear();
 
             // 相机槽拥有者的安全网由 **弱引用** 提供：`CameraSlotGuard` 只持
             // `weak_ptr<CameraInfoStorage>`，世界先销毁时 lock() 失败 ⇒ 析构自动 no-op，不需要在这里
