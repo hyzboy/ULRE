@@ -27,6 +27,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include<hgl/graph/ssbo/ModelTemplateRows.h>
 
 #include<hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
@@ -996,29 +997,41 @@ namespace hgl::ecs
             bool          in_shadow_range = true;   ///< 阴影距离裁剪事实（参考实现复用）
         };
 
+        /// 阶段 1：模板载体 —— 挂有效 `GPUModelRefComponent` 的整模型根实体。
+        /// "能不能画"由模板池（本体部件行 + 材质绑定）决定，**不**依赖 GeometryData。
+        bool IsModelTemplateCarrier(const Entity *entity)
+        {
+            if (!entity)
+                return false;
+
+            const GPUModelRefComponent *ref = entity->GetComponent<GPUModelRefComponent>();
+
+            return ref && ref->template_id != graph::ssbo::kInvalidModelTemplateID;
+        }
+
         /// 实体 + 世界 ⇒ 收集策略（表是唯一判据）
-        CollectStrategy EvaluateCollectStrategy(ECSContext *world,const GeometryData *geometry_comp)
+        CollectStrategy EvaluateCollectStrategy(ECSContext *world,const Entity *owner)
         {
             CollectStrategy out;
 
-            const Entity *owner = geometry_comp->GetOwner();
+            const bool template_carrier = IsModelTemplateCarrier(owner);
 
-            out.facts.entity_visible      = world->IsEntityVisible(geometry_comp->GetOwnerID());
+            out.facts.entity_visible      = owner ? world->IsEntityVisible(owner->GetEntityID()) : false;
             out.facts.has_owner           = (owner != nullptr);
-            out.facts.renderable          = CanRender(owner);
-            out.facts.has_material_source = HasAnyMaterialSource(owner);
+            out.facts.renderable          = template_carrier || CanRender(owner);
+            out.facts.has_material_source = template_carrier || HasAnyMaterialSource(owner);
             out.facts.cast_shadow         = CanCastShadow(owner);
             out.facts.receive_shadow      = CanReceiveShadow(owner);
             out.facts.shadow_pass         = world->IsCurrentPassShadow();
 
-            if (out.facts.shadow_pass)
+            if (out.facts.shadow_pass && owner)
             {
                 const float max_dist = GetShadowMaxDistance(owner);
 
                 if (max_dist > 0.0f && world->HasShadowOrigin())
                 {
                     const TransformAccessor transform =
-                        world->GetTransformByEntity(geometry_comp->GetOwnerID());
+                        world->GetTransformByEntity(owner->GetEntityID());
 
                     if (transform.IsValid())
                     {
@@ -2051,6 +2064,20 @@ namespace hgl::ecs
         bool ids_published = false;
         bool has_draw_key  = false;
 
+        // 阶段 1：模板载体（整模型根实体）**没有**代表几何体 ⇒ `has_draw_key` 恒 false，
+        // 但它必须上行事实（模板 id / 部件掩码 / 4-ID 的材质纹理）并被批装配看见。
+        // 判据 = 实体挂了有效 `GPUModelRefComponent`。
+        bool is_template_carrier = false;
+        if (item)
+        {
+            Entity *item_owner = item->GetEntity();
+            const GPUModelRefComponent *model_ref =
+                item_owner ? item_owner->GetComponent<GPUModelRefComponent>() : nullptr;
+
+            is_template_carrier = (model_ref
+                && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID);
+        }
+
         if (item)
         {
             if (draw_seed)
@@ -2096,7 +2123,8 @@ namespace hgl::ecs
         }
 
         // 绘制键成立 = 「本项能画」的同一判据点：4-ID 与全部事实都挂在这里上行。
-        if (has_draw_key)
+        // 模板载体是唯一的例外：它没有绘制键，但"能画"由模板池决定 ⇒ 同样上行。
+        if (has_draw_key || is_template_carrier)
         {
             // T3d-3a：实体 4-ID 表随"本项进批"同一判据上行
             //（消费者 = GPU 剔除 / CPU 批行写入 / 形态 B）
@@ -2449,9 +2477,34 @@ namespace hgl::ecs
 
         const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
 
-        // T2-c：图元枚举源 = **GeometryData 类型化池的活跃集视图**（裸指针；池即活跃集）
-        ValueArray<GeometryData *> primitives;
-        world->GetComponents<GeometryData>(primitives);
+        // T2-c + 阶段 1：图元枚举源 = **GeometryData 活跃集 ∪ 纯模板载体实体**。
+        //
+        // 纯模板载体 = 挂 `GPUModelRefComponent` 但**不挂** `GeometryData` 的实体
+        //（整模型根实体：部件几何/材质都在模板池里，CPU 侧没有任何几何副本）。
+        // 旧实现只扫 GeometryData 池 ⇒ 这类实体永不入批（模板展开也就永远不执行）。
+        ValueArray<Entity *> primitives;
+        {
+            ValueArray<GeometryData *> geometry_rows;
+            world->GetComponents<GeometryData>(geometry_rows);
+
+            for (GeometryData *geometry_comp : geometry_rows)
+                if (geometry_comp && geometry_comp->GetOwner())
+                    primitives.Add(geometry_comp->GetOwner());
+
+            // 先收集 ID 再取可变句柄（`ForEachAliveEntity` 只给 const 视图）。
+            ValueArray<EntityID> carrier_ids;
+            world->ForEachAliveEntity([&carrier_ids](const Entity *alive)
+            {
+                if (!alive || alive->GetComponent<GeometryData>() || !alive->GetComponent<GPUModelRefComponent>())
+                    return;
+
+                carrier_ids.Add(alive->GetEntityID());
+            });
+
+            for (EntityID carrier_id : carrier_ids)
+                if (Entity *carrier = world->GetEntity(carrier_id))
+                    primitives.Add(carrier);
+        }
 
         // A4：材质运行期表（世界私有）——共享行 = 可共享的材质绑定；slot = 每实例状态。
         MaterialRuntimeTable *runtime_table = world->GetMaterialRuntimeTable();
@@ -2520,16 +2573,16 @@ namespace hgl::ecs
         {
             FrameProfileSpan prescan_span(FrameProfileSlot::CollectPreScan);
 
-        for (GeometryData *geometryComp : primitives)
+        for (Entity *entity : primitives)
         {
-            if (!geometryComp)
+            if (!entity)
                 continue;
 
             // A7a：收集判定 = 策略表（唯一判据）；事实由组件 / 世界回答。mobility 过滤是
             // 世界级过滤器（表不建模），仍在本循环里单独生效。
-            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp);
+            const CollectStrategy strategy = EvaluateCollectStrategy(world,entity);
 
-            Entity *owner = geometryComp->GetOwner();
+            Entity *owner = entity;
             if (strategy.facts.entity_visible && owner)
             {
                 const EntityID owner_id=owner->GetEntityID();
@@ -2559,23 +2612,23 @@ namespace hgl::ecs
             // 剔除、或把回退规则写歪，都会在那条守卫上立刻报不一致。
             {
                 const bool legacy_collect =
-                       world->IsEntityVisible(geometryComp->GetOwnerID())
-                    && CanRender(geometryComp->GetOwner())
-                    && (geometryComp->GetOwner() != nullptr)
+                       world->IsEntityVisible(entity->GetEntityID())
+                    && (CanRender(entity) || IsModelTemplateCarrier(entity))
+                    && (entity != nullptr)
                     && (!strategy.facts.shadow_pass
-                        || (CanCastShadow(geometryComp->GetOwner()) && strategy.in_shadow_range));
+                        || (CanCastShadow(entity) && strategy.in_shadow_range));
 
                 ParityCheckCollect(HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass),
                                    legacy_collect,
                                    "RenderPrimitiveCollectSystem#prescan");
 
                 ParityCheckShadowCaster(HasRenderNeed(strategy.needs,RenderNeed::ShadowCaster),
-                                        CanCastShadow(geometryComp->GetOwner()),
+                                        CanCastShadow(entity),
                                         "RenderPrimitiveCollectSystem#prescan");
 
                 // A7b 新语义守卫：表说“材质缺失 ⇒ 回退材质” ⟺ 事实“无任何材质来源”。
                 ParityCheckFallbackMaterial(HasRenderNeed(strategy.needs,RenderNeed::FallbackMaterial),
-                                            !HasAnyMaterialSource(geometryComp->GetOwner()),
+                                            (!HasAnyMaterialSource(entity) && !IsModelTemplateCarrier(entity)),
                                             "RenderPrimitiveCollectSystem#prescan");
             }
 #endif
@@ -2584,7 +2637,6 @@ namespace hgl::ecs
                 continue;
 
             // 实体级可见性与 owner 已由表的 CollectForCurrentPass 要求 ⇒ 不再单独判据
-            Entity* entity = geometryComp->GetOwner();
 
             if (active_mobility_filter >= 0)
             {
@@ -2627,7 +2679,7 @@ namespace hgl::ecs
                    !material_slot.program_dirty
                 && forward_program
                 && material_slot.tracked_material_data_generation
-                   == MaterialAuthoredGenerationOf(geometryComp->GetOwner())
+                   == MaterialAuthoredGenerationOf(entity)
                 && material_row
                 && material_row->cached_effective_recipe_hash != 0;
 
@@ -2668,13 +2720,13 @@ namespace hgl::ecs
         {
             FrameProfileSpan main_span(FrameProfileSlot::CollectMainLoop);
 
-        for (GeometryData *geometryComp : primitives)
+        for (Entity *entity : primitives)
         {
-            if (!geometryComp)
+            if (!entity)
                 continue;
 
             // A7a：收集判定 = 策略表（唯一判据）；事实由组件 / 世界回答。
-            const CollectStrategy strategy = EvaluateCollectStrategy(world,geometryComp);
+            const CollectStrategy strategy = EvaluateCollectStrategy(world,entity);
 
 #if ULRE_STRATEGY_PARITY_ENABLED
             // ── 反向守卫：参考实现 = 手写 if 链（Release 下整块编空）───────────
@@ -2685,29 +2737,29 @@ namespace hgl::ecs
             // 剔除、或把回退规则写歪，都会在那条守卫上立刻报不一致。
             {
                 const bool legacy_collect =
-                       world->IsEntityVisible(geometryComp->GetOwnerID())
-                    && CanRender(geometryComp->GetOwner())
-                    && (geometryComp->GetOwner() != nullptr)
+                       world->IsEntityVisible(entity->GetEntityID())
+                    && (CanRender(entity) || IsModelTemplateCarrier(entity))
+                    && (entity != nullptr)
                     && (!strategy.facts.shadow_pass
-                        || (CanCastShadow(geometryComp->GetOwner()) && strategy.in_shadow_range));
+                        || (CanCastShadow(entity) && strategy.in_shadow_range));
 
                 ParityCheckCollect(HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass),
                                    legacy_collect,
                                    "RenderPrimitiveCollectSystem#collect");
 
                 ParityCheckShadowCaster(HasRenderNeed(strategy.needs,RenderNeed::ShadowCaster),
-                                        CanCastShadow(geometryComp->GetOwner()),
+                                        CanCastShadow(entity),
                                         "RenderPrimitiveCollectSystem#collect");
 
                 // A7b 新语义守卫：表说“材质缺失 ⇒ 回退材质” ⟺ 事实“无任何材质来源”。
                 ParityCheckFallbackMaterial(HasRenderNeed(strategy.needs,RenderNeed::FallbackMaterial),
-                                            !HasAnyMaterialSource(geometryComp->GetOwner()),
+                                            (!HasAnyMaterialSource(entity) && !IsModelTemplateCarrier(entity)),
                                             "RenderPrimitiveCollectSystem#collect");
             }
 #endif
 
-            const EntityID entity_id = geometryComp->GetOwnerID();
-            const char *entity_name=GetOwnerName(geometryComp->GetOwner());
+            const EntityID entity_id = entity->GetEntityID();
+            const char *entity_name=GetOwnerName(entity);
             auto *trace=cache.GetOrCreateTrace(entity_name,entity_id.index,entity_id.generation);
             if(strategy.facts.renderable)
                 ++cache.passed_can_render;
@@ -2773,7 +2825,6 @@ namespace hgl::ecs
                 ::strncpy(trace->collect_status,"candidate",sizeof(trace->collect_status)-1);
 
             // 实体级可见性与 owner 已由表的 CollectForCurrentPass 要求 ⇒ 不再单独判据
-            Entity* entity = geometryComp->GetOwner();
 
             TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
 
@@ -2819,7 +2870,7 @@ namespace hgl::ecs
                 if (ambient_provider_changed)
                     material_slot.program_dirty = true;
 
-                if (!EnsureMaterialProgramForPrimitive(geometryComp->GetOwner(), material_slot))
+                if (!EnsureMaterialProgramForPrimitive(entity, material_slot))
                 {
                     if (world->IsCurrentPassShadow())
                     {
@@ -2842,14 +2893,14 @@ namespace hgl::ecs
                         // 输出一条（每 episode），不再外面逐帧刷屏。
                         if (AdvanceShadowRetry(material_slot,
                                                "shadow caster program resolve failed",
-                                               geometryComp->GetOwner()))
+                                               entity))
                             world->BumpStaticSceneRevision();
                     }
                     else
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] EnsureMaterialProgramForPrimitive failed for %s",
-                            GetOwnerName(geometryComp->GetOwner()));
+                            GetOwnerName(entity));
                         // A4：行键不变（解析没走到算键处）⇒ 就地把本行物化绑定作废 + 退 program。
                         InvalidateRecipeRuntime(world, material_slot, true, true);
                         material_slot.valid = false;        // 等价于 MarkFailed()
@@ -2888,12 +2939,12 @@ namespace hgl::ecs
                         if (AdvanceShadowRetry(
                                 material_slot,
                                 "masked caster runtime rows not ready (forward chain has not materialized them)",
-                                geometryComp->GetOwner()))
+                                entity))
                             world->BumpStaticSceneRevision();
                         continue; // 本帧深度图不含它；下帧行就绪后重画
                     }
 
-                    if (!EnsureGeometryRowReady(world, geometryComp->GetOwner()))
+                    if (!EnsureGeometryRowReady(world, entity))
                     {
                         if (shadow_row)
                             ClearVariantProgram(GetVariantTable(world),
@@ -2901,11 +2952,11 @@ namespace hgl::ecs
                         // D9：告警与 bump 都经统一收敛入口（不再逐帧刷屏）
                         if (AdvanceShadowRetry(material_slot,
                                                "shadow pass geometry failed",
-                                               geometryComp->GetOwner()))
+                                               entity))
                             world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
-                                 geometryComp->GetOwner(), material_slot))
+                                 entity, material_slot))
                     {
                         if (shadow_row)
                             ClearVariantProgram(GetVariantTable(world),
@@ -2913,7 +2964,7 @@ namespace hgl::ecs
                         // D9：同上
                         if (AdvanceShadowRetry(material_slot,
                                                "shadow pass pipeline failed",
-                                               geometryComp->GetOwner()))
+                                               entity))
                             world->BumpStaticSceneRevision(); // 固化防御（同上）
                     }
                 }
@@ -2932,10 +2983,10 @@ namespace hgl::ecs
                     // full chain.
                     const bool chain_ok =
                         EnsureMaterialProgramForPrimitive(
-                            geometryComp->GetOwner(), material_slot)
-                     && EnsureGeometryRowReady(world, geometryComp->GetOwner())
+                            entity, material_slot)
+                     && EnsureGeometryRowReady(world, entity)
                      && ResolveRuntimePipelineForPrimitive(
-                            geometryComp->GetOwner(), material_slot);
+                            entity, material_slot);
                     if (chain_ok)
                         material_slot.valid = true;     // 等价于 MarkValid()
                     else
@@ -2953,7 +3004,7 @@ namespace hgl::ecs
                     const bool resources_ready =
                         PrepareActivePlanResources(
                             world,
-                            geometryComp->GetOwner(),
+                            entity,
                             forward_program,
                             forward_row
                                 ? forward_row->cached_effective_recipe
@@ -2965,7 +3016,7 @@ namespace hgl::ecs
                         // 这里只留 Debug 级别的链路节点，避免同一件事报两遍把日志刷满。
                         GLogDebug(
                             "[RenderPrimitiveCollectSystem] Material resources failed for %s program=%s",
-                            GetOwnerName(geometryComp->GetOwner()),
+                            GetOwnerName(entity),
                             forward_program
                                 ? forward_program->
                                     GetName().c_str()
@@ -2974,11 +3025,11 @@ namespace hgl::ecs
                         material_slot.valid = false;
                     }
                     else if (!MaterializeRecipeRowsForPrimitive(
-                                geometryComp->GetOwner(), material_slot))
+                                entity, material_slot))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] MaterializeRecipeRowsForPrimitive failed for %s program=%s",
-                            GetOwnerName(geometryComp->GetOwner()),
+                            GetOwnerName(entity),
                             forward_program
                                 ? forward_program->
                                     GetName().c_str()
@@ -2986,19 +3037,19 @@ namespace hgl::ecs
                         InvalidateRecipeRuntime(world, material_slot, true, false);
                         material_slot.valid = false;
                     }
-                    else if (!EnsureGeometryRowReady(world, geometryComp->GetOwner()))
+                    else if (!EnsureGeometryRowReady(world, entity))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] EnsureGeometryRowReady failed for %s",
-                            GetOwnerName(geometryComp->GetOwner()));
+                            GetOwnerName(entity));
                         material_slot.valid = false;
                     }
                     else if (!ResolveRuntimePipelineForPrimitive(
-                                geometryComp->GetOwner(), material_slot))
+                                entity, material_slot))
                     {
                         GLogWarning(
                             "[RenderPrimitiveCollectSystem] ResolveRuntimePipelineForPrimitive failed for %s",
-                            GetOwnerName(geometryComp->GetOwner()));
+                            GetOwnerName(entity));
                         material_slot.valid = false;
                     }
                     else
@@ -3017,7 +3068,7 @@ namespace hgl::ecs
             // ── 本帧 4-ID 四元组（唯一消费者 = 实体 4-ID 表；句柄空间副本已随池整删）──
             // B3-iii：geometry_id 直读几何行号（不再经每实体 CPU 几何副本的镜像字段与三级回退）
             const uint32_t transform_id = transform.GetID();
-            GeometryData *geometry_comp = geometryComp;
+            GeometryData *geometry_comp = entity->GetComponent<GeometryData>();
             const uint32_t geometry_id = geometry_comp ? geometry_comp->GetGeometryID() : 0u;
             const uint32_t material_id = (material_for_item && material_for_item->data_index_row != uint32_t(-1))
                 ? material_for_item->data_index_row : 0;

@@ -4918,7 +4918,7 @@ int main(int argc, char** argv)
               "fallback_mismatch",
               "回退对拍不计不一致数（‘不一致 0 行’变成无意义的常量）" },
             { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
-              "!HasAnyMaterialSource(geometryComp->GetOwner()),",
+              "(!HasAnyMaterialSource(entity) && !IsModelTemplateCarrier(entity)),",
               "回退守卫的参考实现不再是“事实求反”（对拍可能退化成恒真）" },
 
             // ⑤ 回退规则表对每个错误种类都有定义 ID（收集侧拿到的必须有定义可查）
@@ -6203,11 +6203,11 @@ int main(int argc, char** argv)
               "§9 M6：台架读回路径的 Map 调用点（与上一条成对：删任一即红）" },
 
             { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
-              "(aabb_center.w >= 0.0) && (i < 6)",
+              "bound_test && (i < 6)",
               "§9 M7：GeometryAABB center.w<0 的「始终可见」哨兵必须被 GPU 消费者兑现（2D 几何/V2F 靠它不被零 extents 静默剔空；写者 = RefreshGeometryAABBRow）" },
 
             { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/cull/CPUCullReferenceSystem.cpp"),
-              "aabb->center[3] >= 0.0f",
+              "bound_radius_w >= 0.0f",
               "§9 M7 对拍同式：CPU 参考的哨兵判定必须与 GLSL 逐字同汽（丢一端 = 两端又错得不同源）" },
 
             // ── M8/M9：离屏单帧世界（RenderOnce）缺陷族固化（全族见 doc/future/entity-rows-gpu-cull-plan.md §11.17）──

@@ -46,9 +46,9 @@ function(check_common label output)
     if(NOT output MATCHES "\\[CSTRESS\\] 合批验证 PASS")
         message(FATAL_ERROR "${label}: 合批验证未 PASS（桶组/竞技场行预算分配错）\n${output}")
     endif()
-    # 默认档 Σ桶容量 = (部件数 + 代表几何体行数) × 729 + 350 = 3995
-    if(NOT output MATCHES "Σ桶容量=3995（期望 3995）")
-        message(FATAL_ERROR "${label}: Σ桶容量与默认档算式不符（期望 3995）\n${output}")
+    # 默认档 Σ桶容量 = 部件数 × 729 + 350 = 3266（阶段 1：代表几何体桶已删除）
+    if(NOT output MATCHES "Σ桶容量=3266（期望 3266）")
+        message(FATAL_ERROR "${label}: Σ桶容量与默认档算式不符（期望 3266）\n${output}")
     endif()
     if(output MATCHES "VUID-|SYNC-HAZARD|hazard detected|\\[ERROR\\]|\\[FATAL\\]|竞技场实例行超容量")
         message(FATAL_ERROR "${label}: 运行期报错（校验层或竞技场容量）\n${output}")

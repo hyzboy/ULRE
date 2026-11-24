@@ -651,9 +651,6 @@ void main()
 
     const uint geometry_id = render_ids.geometry_id;   // MeshDrawParams / GeometryAABB 池行
 
-    if (geometry_id == 0u)
-        return;
-
     // L2W 行号仍取实体行表的 `row[Transform]`（B1：变换侧写的**帧槽含基址**行号，
     // 那边已闭环；本表的 transform_id 是原始句柄、含帧槽换算未做 ⇒ 不用它索引 L2W）
     const uint transform_id = entity.row[1u];
@@ -687,26 +684,62 @@ void main()
     const bool expansion_on = (entity.model_template_id != 0u)
                            && ((arena_flags & 1u) != 0u);
 
-    // 读取几何 AABB（center 和 extents 连续存储）
-    vec4 aabb_center = geometry_aabbs.center_extents[geometry_id * 2u];
-    vec4 aabb_extents = geometry_aabbs.center_extents[geometry_id * 2u + 1u];
-
-    // 变换 AABB 中心到世界空间
-    vec3 world_center = (l2w_matrix * vec4(aabb_center.xyz, 1.0)).xyz;
+    // ── 外层 6 平面视锥测试：模板实体用**模板包围体**，传统实体用几何 AABB ──────
+    //
+    // 为什么模板实体不能再用 `render_ids.geometry_id` 的 AABB：模板实体是"整模型载体"，
+    // 它的 geometry_id 要么为 0（纯模板实体，无 GeometryData），要么指向一个**从不绘制**
+    // 的代表图元（旧补丁）。拿代表图元的盒子判可见性 ⇒ 实例还没出视锥就被剔掉，
+    // `expand_template_entity` 根本没机会执行（小盒子剔大模型）。模板行自带
+    // `local_bound_*`（本体 ∪ 全部 LOD 代理的并集）才是唯一正确口径。
+    //
+    // `w < 0` 仍是「始终可见」哨兵（缺包围体 ⇒ 不得静默剔空物体）。
 
     // 计算变换后的 extents（简化：取最大缩放）
     // 本式是 C++ 侧 `hgl::ecs::GetMaxWorldScaleRaw`（BoundingVolumeCull.h）的**镜像**：
     // 两边都不带退化保护（scale==0 就返回 0）—— 那正是 CPU 剔除参考能逐字对拍的前提。
-    float scale = max(length(l2w_matrix[0].xyz), max(length(l2w_matrix[1].xyz), length(l2w_matrix[2].xyz)));
-    vec3 world_extents = aabb_extents.xyz * scale;
+    const float scale = max(length(l2w_matrix[0].xyz), max(length(l2w_matrix[1].xyz), length(l2w_matrix[2].xyz)));
+
+    vec3 world_center  = vec3(0.0);
+    vec3 world_extents = vec3(0.0);
+    bool bound_test    = false;   // 是否有可用的包围体（false = 始终可见）
+
+    if (expansion_on)
+    {
+        const ModelTemplateRowData base_tpl = model_templates[entity.model_template_id];
+
+        if (base_tpl.part_count == 0u || base_tpl.part_offset == 0u)
+            return;    // 空壳模板：无部件可展开
+
+        if (base_tpl.local_bound_center_radius.w >= 0.0)
+        {
+            world_center  = (l2w_matrix * vec4(base_tpl.local_bound_center_radius.xyz, 1.0)).xyz;
+            world_extents = base_tpl.local_bound_extents.xyz * scale;
+            bound_test    = true;
+        }
+    }
+    else
+    {
+        if (geometry_id == 0u)
+            return;    // 传统路径：无几何行 = 未上行（行 0 哨兵惯例）
+
+        // 读取几何 AABB（center 和 extents 连续存储）
+        vec4 aabb_center  = geometry_aabbs.center_extents[geometry_id * 2u];
+        vec4 aabb_extents = geometry_aabbs.center_extents[geometry_id * 2u + 1u];
+
+        // 变换 AABB 中心到世界空间
+        world_center  = (l2w_matrix * vec4(aabb_center.xyz, 1.0)).xyz;
+        world_extents = aabb_extents.xyz * scale;
+        bound_test    = (aabb_center.w >= 0.0);
+    }
 
     // 视锥剔除（6 个平面）。
     // ⚠ center.w = 外接球半径；**< 0 ⇒ 「始终可见」哨兵**（写者：`Geometry::RefreshGeometryAABBRow`
     //   无有效本地 AABB 时填 `GlobalSSBOBufferRegistry::kAlwaysVisibleRadius`=-1，
     //   语义 = 缺数据不得静默剔空物体——2D 几何（V2F 位置）全在这里被救回）。
     //   半径只被哨兵判定消费：extents 才是投影半径的来源（与 CPU 参考逐字同式）。
+    //   模板实体同式：`local_bound_center_radius.w < 0` ⇒ 不做外层剔除。
     bool visible = true;
-    for (int i = 0; (aabb_center.w >= 0.0) && (i < 6); ++i)
+    for (int i = 0; bound_test && (i < 6); ++i)
     {
         vec4 plane = cam.frustum_planes[i];
         vec3 normal = plane.xyz;
@@ -755,13 +788,35 @@ void main()
     // T4c2 同族：标签表**按 pass 分块**（块步长 = 可见表上限，与实体 4-ID 表同口径）——
     // 两个 pass **各查自己那一块**：此前不带 pass 项 ⇒ 两 pass 共用标签，静止物体被按
     // 另一 pass 的批索引写行 ⇒ 挤进批 0（capacity=1）⇒ 切片溢出（计划 §11.9）。
-    const uint batch0 = BatchTagRef(pc.batch_tag_addr).tags[0u * pc.max_visible_count + entity_index];
-    const uint batch1 = BatchTagRef(pc.batch_tag_addr).tags[1u * pc.max_visible_count + entity_index];
+    //
+    // 阶段 1：模板实体的接管判据换成**组表是否分配**（`model_bucket_bases != 哨兵`）。
+    // 理由：一个实体可以按 shading_group 分流到多个 MaterialBatch，单个 `batch_tag`
+    // 表达不了"两组各属不同批"；且纯模板实体没有代表几何体，压根没有桶号可打标签。
+    uint tpl_group_off0 = MODEL_BUCKET_BASE_INVALID;
+    uint tpl_group_off1 = MODEL_BUCKET_BASE_INVALID;
+    uint batch0 = 0xFFFFFFFFu;
+    uint batch1 = 0xFFFFFFFFu;
+    bool taken0 = false;
+    bool taken1 = false;
 
-    const bool tagged0 = (batch0 != 0xFFFFFFFFu && batch0 < pc.batch_count);
-    const bool tagged1 = (batch1 != 0xFFFFFFFFu && batch1 < pc.batch_count_shadow);
+    if (expansion_on)
+    {
+        tpl_group_off0 = model_bucket_bases[0u * pc.max_visible_count + entity_index];
+        tpl_group_off1 = model_bucket_bases[1u * pc.max_visible_count + entity_index];
 
-    if (!tagged0 && !tagged1)
+        taken0 = (tpl_group_off0 != MODEL_BUCKET_BASE_INVALID);
+        taken1 = (tpl_group_off1 != MODEL_BUCKET_BASE_INVALID);
+    }
+    else
+    {
+        batch0 = BatchTagRef(pc.batch_tag_addr).tags[0u * pc.max_visible_count + entity_index];
+        batch1 = BatchTagRef(pc.batch_tag_addr).tags[1u * pc.max_visible_count + entity_index];
+
+        taken0 = (batch0 != 0xFFFFFFFFu && batch0 < pc.batch_count);
+        taken1 = (batch1 != 0xFFFFFFFFu && batch1 < pc.batch_count_shadow);
+    }
+
+    if (!taken0 && !taken1)
         return;      // 两个 pass 都不属任何接管批 ⇒ 不写行（该实体由 CPU 路径绘制）
 
     // ── T4c2：按 pass 两遍写行 ────────────────────────────────────────────
@@ -777,9 +832,6 @@ void main()
         const uint cur_batch_count = (blk == 0u) ? pc.batch_count : pc.batch_count_shadow;
         const uint batch = (blk == 0u) ? batch0 : batch1;
 
-        if (batch == 0xFFFFFFFFu || batch >= cur_batch_count)
-            continue;
-
         // ── T3.1 分流：模板实体 ⇒ 逐部件展开；否则走 legacy 单实例 ──────────────
         // 4-ID 行必须读**本 pass 自己那一半**（材质/纹理二 ID 由 collect 按 pass 写）。
         const RenderItemDescriptor ids_blk =
@@ -787,10 +839,17 @@ void main()
 
         if (expansion_on)
         {
+            // 本 pass 未分配组表 ⇒ 该 pass 不画（如纯主帧模型不投阴影）
+            if ((blk == 0u ? tpl_group_off0 : tpl_group_off1) == MODEL_BUCKET_BASE_INVALID)
+                continue;
+
             expand_template_entity(blk, cur_batch_count, entity_index, entity, ids_blk,
                                    l2w_matrix, transform_id, group_bucket_base_addr);
             continue;
         }
+
+        if (batch == 0xFFFFFFFFu || batch >= cur_batch_count)
+            continue;
 
         emit_bucket_instance(blk, batch, cur_batch_count, geometry_id, transform_id,
                              entity, ids_blk.material_id, ids_blk.texture_id,

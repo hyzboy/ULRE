@@ -9,6 +9,7 @@
 #include <hgl/ecs/support/cull/BoundingVolumeCull.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/common/DebugChannel.h>
@@ -111,6 +112,13 @@ namespace hgl::ecs
         if (!counters)
             return;
 
+        // 阶段 1：展开段行号起点（模板部件合成矩阵的落点）。>= 该值的 l2w 行**不对应任何
+        // 实体**（它是 `实例L2W × part.local_matrix` 的产物）⇒ 不能走实体反查。
+        uint32_t expansion_base = 0u;
+        if (auto ts = context_->GetSystem<TransformSystem>())
+            if (auto *tb = ts->GetTransformBuffer())
+                expansion_base = tb->GetModelExpansionBaseIndex();
+
         const uint32_t overflow = counters[batch_count];   // 块内溢出槽 = 块内第 batch_count 行
         uint32_t sum = 0;
 
@@ -148,6 +156,7 @@ namespace hgl::ecs
         });
 
         uint32_t checked = 0, bad = 0, nondefault_seen = 0, rows_read = 0;
+        uint32_t expansion_rows = 0;   ///< 展开段行数（模板部件实例；每个 = 一条独立实例）
 
         for (uint32_t b = 0; b < batch_count; ++b)
         {
@@ -177,8 +186,17 @@ namespace hgl::ecs
 
             for (uint32_t r = 0; r < n; ++r)
             {
-                // 段零：行 → 实体（l2w 行号反查；查不到 = 行内容与实体表不同源 ⇒ 红）
                 const uint32_t l2w_row = l2w_rows[r];
+
+                // 展开段行：`实例L2W × part.local_matrix` 的合成矩阵，不与实体一一对应
+                // （1 个实体展开出 K 个部件行）⇒ 只计数，不做实体反查/阴影事实三段比对。
+                if (expansion_base > 0u && l2w_row >= expansion_base)
+                {
+                    ++expansion_rows;
+                    continue;
+                }
+
+                // 段零：行 → 实体（l2w 行号反查；查不到 = 行内容与实体表不同源 ⇒ 红）
                 const uint32_t entity_index = (l2w_row < kL2WRowCapacity)
                                             ? l2w_row_to_entity_[l2w_row] : UINT32_MAX;
 
@@ -257,14 +275,22 @@ namespace hgl::ecs
                       overflow);
 
         if (sum > gpu_count_)
-            GLogError(u8"[T3i] 两本账越界：Σbatch_counts=%u > 全局幸存=%u"
-                      u8"（标签/分区与 gather 输出不同源）", sum, gpu_count_);
+        {
+            // 阶段 1：Σ批计数里含**模板展开部件实例**（1 个可见实体 ⇒ K 条实例行），
+            // 不能再与"可见根实体数"直接比较。口径改为：**非展开实例** ≤ 全局幸存。
+            const uint32_t legacy_instances = (expansion_rows <= sum) ? (sum - expansion_rows) : sum;
+
+            if (legacy_instances > gpu_count_)
+                GLogError(u8"[T3i] 两本账越界：非展开实例=%u > 全局幸存=%u"
+                          u8"（标签/分区与 gather 输出不同源；Σ=%u 展开行=%u）",
+                          legacy_instances, gpu_count_, sum, expansion_rows);
+        }
 
         if (ULRE_DEBUG_ON(Cull))
             GLogInfo(u8"[T3i] batch slices: image=%u batches=%u rows=%u Σcount=%u global=%u overflow=%u"
-                             u8" 值链=%u/%u bad=%u nondefault=%u",
+                             u8" 展开行=%u 值链=%u/%u bad=%u nondefault=%u",
                              context_->GetFrameIndex(), batch_count, rows_read, sum, gpu_count_, overflow,
-                             checked, checked, bad, nondefault_seen);
+                             expansion_rows, checked, checked, bad, nondefault_seen);
     }
 
     void CPUCullReferenceSystem::PerformCPUCulling()
@@ -321,6 +347,11 @@ namespace hgl::ecs
         // 遍历所有实体
         const EntityRenderIDTable &render_ids = context_->GetEntityRenderIDTable();
 
+        // 阶段 1：模板实体的可见性判据 = **模板包围体**（与 `entity_gpu_cull.glsl` 逐字同式）。
+        // 展开分支是否生效与 GPU 端同一判据：模板 id 非 0 且世界允许展开。
+        auto gpu_cull = context_->GetSystem<GPUCullSystem>();
+        const bool expansion_enabled = gpu_cull && gpu_cull->IsModelExpansionEnabled();
+
         for (uint32_t i = 0; i < entity_count; ++i)
         {
             const EntityGPU* row = entity_table.Row(i);
@@ -331,14 +362,6 @@ namespace hgl::ecs
 
             // 跳过不可见实体
             if (!EntityGPUTable::IsVisible(*row)) continue;
-
-            // T3d-3a：geometry_id 取**实体 4-ID 表**（池口径，与 GPU 剔除逐字同式；
-            // `row[Geometry]` 是组件池行、与 AABB 池不同口径 —— 旧版两端错得同源，见 §8.2d）
-            const graph::RenderItemDescriptor *ids = render_ids.Row(0u /*pass: 主帧*/, i);
-
-            if (!ids || ids->geometry_id == 0) continue;
-
-            const uint32_t geometry_id = ids->geometry_id;
 
             // 获取 L2W 行号（仍走实体行表 row[Transform]：变换侧写的帧槽含基址行号）
             const uint32_t l2w_row = row->row[static_cast<uint32_t>(ComponentType::Transform)];
@@ -351,25 +374,67 @@ namespace hgl::ecs
             // 从 L2W buffer 读取世界矩阵
             const glm::mat4 world_matrix = l2w_matrices[l2w_row];
 
-            // 获取 GeometryAABB（从全局池）
-            const graph::mtl::GeometryAABB* aabb = global_registry->GetGeometryAABB(geometry_id);
-            if (!aabb) continue;
+            glm::vec3 world_center;
+            glm::vec3 world_extents;
+            float     bound_radius_w = -1.0f;   // < 0 = 「始终可见」哨兵
 
-            // 变换 AABB 中心到世界空间
-            const glm::vec4 local_center(aabb->center[0], aabb->center[1], aabb->center[2], 1.0f);
-            const glm::vec3 world_center = glm::vec3(world_matrix * local_center);
+            if (expansion_enabled
+                && row->model_template_id != graph::ssbo::kInvalidModelTemplateID)
+            {
+                const auto *tpl = global_registry->GetTypedRow<graph::ssbo::ModelTemplateRow>(
+                    graph::GlobalSSBOType::ModelTemplatePool, row->model_template_id);
 
-            // 计算变换后的 extents（简化：取最大缩放）
-            // 公式单一来源 = `GetMaxWorldScaleRaw`（**用 Raw 不用带退化保护的 GetMaxWorldScale**：
-            // 后者在 scale==0 时给 1.0，会与 GPU 判出不同可见性 ⇒ 假对拍差异）
-            const float max_scale = GetMaxWorldScaleRaw(world_matrix);
-            const glm::vec3 world_extents(aabb->extents[0] * max_scale, aabb->extents[1] * max_scale, aabb->extents[2] * max_scale);
+                // 空壳模板：GPU 端直接 return（不写可见表）⇒ CPU 同口径跳过
+                if (!tpl || tpl->part_count == 0u || tpl->part_offset == 0u)
+                    continue;
 
-            // 视锥剔除（6 个平面）。center[3] = 外接球半径，< 0 ⇒ 「始终可见」哨兵
+                bound_radius_w = tpl->local_bound_center_radius.w;
+
+                const glm::vec4 local_center(tpl->local_bound_center_radius.x,
+                                             tpl->local_bound_center_radius.y,
+                                             tpl->local_bound_center_radius.z, 1.0f);
+
+                world_center = glm::vec3(world_matrix * local_center);
+
+                const float max_scale = GetMaxWorldScaleRaw(world_matrix);
+                world_extents = glm::vec3(tpl->local_bound_extents.x * max_scale,
+                                          tpl->local_bound_extents.y * max_scale,
+                                          tpl->local_bound_extents.z * max_scale);
+            }
+            else
+            {
+                // T3d-3a：geometry_id 取**实体 4-ID 表**（池口径，与 GPU 剔除逐字同式；
+                // `row[Geometry]` 是组件池行、与 AABB 池不同口径 —— 旧版两端错得同源，见 §8.2d）
+                const graph::RenderItemDescriptor *ids = render_ids.Row(0u /*pass: 主帧*/, i);
+
+                if (!ids || ids->geometry_id == 0) continue;
+
+                const uint32_t geometry_id = ids->geometry_id;
+
+                // 获取 GeometryAABB（从全局池）
+                const graph::mtl::GeometryAABB* aabb = global_registry->GetGeometryAABB(geometry_id);
+                if (!aabb) continue;
+
+                // 变换 AABB 中心到世界空间
+                const glm::vec4 local_center(aabb->center[0], aabb->center[1], aabb->center[2], 1.0f);
+                world_center = glm::vec3(world_matrix * local_center);
+
+                // 计算变换后的 extents（简化：取最大缩放）
+                // 公式单一来源 = `GetMaxWorldScaleRaw`（**用 Raw 不用带退化保护的 GetMaxWorldScale**：
+                // 后者在 scale==0 时给 1.0，会与 GPU 判出不同可见性 ⇒ 假对拍差异）
+                const float max_scale = GetMaxWorldScaleRaw(world_matrix);
+                world_extents = glm::vec3(aabb->extents[0] * max_scale,
+                                          aabb->extents[1] * max_scale,
+                                          aabb->extents[2] * max_scale);
+
+                bound_radius_w = aabb->center[3];
+            }
+
+            // 视锥剔除（6 个平面）。w = 外接球半径，< 0 ⇒ 「始终可见」哨兵
             //（与 entity_gpu_cull.glsl 逐字同式；写者 = Geometry::RefreshGeometryAABBRow，
             //  2D 几何（V2F 位置）无有效本地 AABB ⇒ 全靠这条不静默剔空）
             bool visible = true;
-            for (int p = 0; aabb->center[3] >= 0.0f && p < 6; ++p)
+            for (int p = 0; bound_radius_w >= 0.0f && p < 6; ++p)
             {
                 const glm::vec4& plane = camera_info->frustum_planes[p];
                 const glm::vec3 normal = glm::vec3(plane);

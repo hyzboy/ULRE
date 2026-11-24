@@ -137,6 +137,10 @@ namespace hgl
             uint32_t   forbidden_facts;         ///< 必须为假的事实位
             uint32_t   when_facts;              ///< 条件触发位（0 = 无条件）
             uint32_t   then_required_facts;     ///< 触发时额外必须为真的事实位
+            /// 「或」槽位：与 `required_slots` **任一**满足即可（0 = 无）。
+            /// 用途：模板载体实体（整模型根实体）没有 GeometryData 也只有 GPUModelRef，
+            /// 但它同样要进收集/投影 —— 这是唯一需要"二选一"的槽位口径。
+            uint32_t   alternative_slots = 0;
         };
 
         /// 规则表（**长度由初始化列表推出**，条数由下面的 static_assert 与需求位数对齐 ——
@@ -157,7 +161,8 @@ namespace hgl
               0,
               static_cast<uint32_t>(StrategyFact::ShadowPass),
               static_cast<uint32_t>(StrategyFact::CastShadow)
-            | static_cast<uint32_t>(StrategyFact::InShadowRange) },
+            | static_cast<uint32_t>(StrategyFact::InShadowRange),
+              ComponentTypeBit(ComponentType::GPUModelRef) },
 
             // 「材质缺失 ⇒ 取保底（错误）材质」：用 **forbidden_facts 表达“缺失”**，
             // 于是它仍是表可查的需求位而不是特例 if。种类与根颜色由 mtl 侧
@@ -172,7 +177,8 @@ namespace hgl
             { RenderNeed::ShadowCaster,
               ComponentTypeBit(ComponentType::Geometry),
               static_cast<uint32_t>(StrategyFact::CastShadow),
-              0, 0, 0 },
+              0, 0, 0,
+              ComponentTypeBit(ComponentType::GPUModelRef) },
 
             // 接收阴影也是能力位
             { RenderNeed::ShadowReceiver,
@@ -210,7 +216,12 @@ namespace hgl
 
             for (const RenderNeedRule &rule : kRenderNeedRules)
             {
-                if ((slots & rule.required_slots) != rule.required_slots)
+                const bool slot_ok =
+                       (slots & rule.required_slots) == rule.required_slots
+                    || (rule.alternative_slots != 0u
+                        && (slots & rule.alternative_slots) != 0u);
+
+                if (!slot_ok)
                     continue;
 
                 if ((fact_mask & rule.required_facts) != rule.required_facts)

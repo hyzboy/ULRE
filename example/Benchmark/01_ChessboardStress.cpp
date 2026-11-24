@@ -172,8 +172,9 @@ namespace
     };
     constexpr size_t PART_COUNT = sizeof(kParts) / sizeof(kParts[0]);
 
-    // 每棋盘占用行数 = 部件桶组（part_bucket_count）+ 代表几何体桶（1 行/实例）
-    constexpr uint32_t kRepresentativeGeometryRows = 1u;
+    // 每棋盘占用行数 = 部件桶组（part_bucket_count）。阶段 1 起**不再**有代表几何体桶：
+    // 批装配按 `GPUModelRefComponent` 跳过载体项的基础聚类 ⇒ 4 部件棋盘 = 4 行/实例。
+    constexpr uint32_t kRepresentativeGeometryRows = 0u;
     constexpr uint32_t kRowsPerBoard = uint32_t(PART_COUNT) + kRepresentativeGeometryRows;
 
     // 逐实例自定义色：浅格 / 深格（材质行是白 ⇒ 最终画面色 = 本色）
@@ -483,7 +484,8 @@ private:
         return true;
     }
 
-    /// 挂「代表图元 + 材质行」——模板实体与素图元实体都要这一步（否则不被收集）
+    /// 挂「代表图元 + 材质行」——模板实体与素图元实体都要这一步（否则不被收集）。
+    /// 阶段 1 起模板实体的代表图元**不再占竞技场桶容量**（批装配按 GPUModelRef 跳过）。
     void AttachPrimitive(Entity * e, uint32_t tmpl, uint32_t custom_row)
     {
         auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);

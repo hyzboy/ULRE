@@ -321,8 +321,10 @@ private:
             if (movable)
                 movers.push_back({ transform.GetID(), x, y, 0.0f, float(i) * 0.7f });
 
-            // 代表图元：模板实体**仍要被收集**（4-ID 行是展开的宿主；部件本体
-            // 走模板桶组，不再由这条代表图元自己画 ⇒ PrimitiveBatchPipeline T3.1）
+            // 代表图元：模板实体**仍要被收集** —— 注意阶段 1 起它**不再**占竞技场桶容量
+            //（`PrimitiveBatchPipeline` 按 `GPUModelRefComponent` 跳过载体项的基础聚类）；
+            // 这里保留挂载只因宿主材质配方仍走"几何资产默认配方"来源（模板自带材质绑定
+            // 在 Step 1.4 落地后才可完全去掉）。
             auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
             geometry_data->GetOwner()->GetContext()
                 ->GetOrCreateGeometryData(geometry_data->GetOwnerID())->SetPrimitiveAsset(&cube_asset);

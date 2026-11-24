@@ -75,8 +75,20 @@ namespace hgl::ecs
             // 凡含几何项的 batch 都需要 ICB（mesh 为唯一顶点路径，恒走间接）。
             for (auto *item : batch.items)
             {
+                if (!item)
+                    continue;
+
                 // B3-iii：判据从"有每实体 CPU 几何副本"改为"行键有几何"（等价：副本只在有几何时存在）
-                if (item && item->draw_key.HasGeometry())
+                if (item->draw_key.HasGeometry())
+                    return true;
+
+                // 阶段 1：模板载体项自己没有 draw_key（整模型根实体，几何在模板池里），
+                // 但展开后要写部件桶 ⇒ 同样必须走间接命令，否则该批被跳过、模板永不落桶。
+                Entity *owner = item->GetEntity();
+                const GPUModelRefComponent *ref =
+                    owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
+
+                if (ref && ref->template_id != graph::ssbo::kInvalidModelTemplateID)
                     return true;
             }
 
@@ -904,6 +916,18 @@ namespace hgl::ecs
                     // 崩（响亮），好过静默丢项。
                     Entity *owner = item->GetEntity();
 
+                    // 阶段 1：模板载体项**不进基础聚类**（不占代表几何体的桶/实例行）。
+                    // 它的部件由 expand 侧落进模板桶组；纯模板实体（无 GeometryData）的
+                    // 4-ID geometry_id 本就是 0，也必须在这里放行（旧代码会按"行缺失"拒批）。
+                    const GPUModelRefComponent *owner_ref =
+                        owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
+
+                    if (owner_ref && owner_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+                    {
+                        item_bucket[i] = UINT32_MAX;
+                        continue;
+                    }
+
                     const graph::RenderItemDescriptor *ids =
                         rid_table.Row(pass_index, owner->GetEntityID().index);
 
@@ -1118,7 +1142,10 @@ namespace hgl::ecs
             {
                 Entity *owner = b->items[i]->GetEntity();
                 // 结构类值：本帧装配、本帧消费。标签 = **桶号**（该实体所属几何桶）。
-                tags[owner->GetEntityID().index] = bucket_first + item_bucket[i];
+                // 模板载体项没有代表性桶（`UINT32_MAX`）⇒ 不打标签；其接管判据是
+                // 组表偏移（见 `entity_gpu_cull.glsl` 的 expansion 分支）。
+                if (item_bucket[i] != UINT32_MAX)
+                    tags[owner->GetEntityID().index] = bucket_first + item_bucket[i];
 
                 // T3.1：模板实体另写**部件桶组基址**（本 pass 块内桶号）。
                 // 标签仍指向"代表几何体"那个桶，但只用于"是否属接管批"的判定；
