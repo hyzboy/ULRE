@@ -104,6 +104,8 @@ bool SwapchainRenderTarget::NextFrame()
 {
     if(fatal_sync_error)
     {
+        if(debug_capture_target)
+            DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
         ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
     }
@@ -220,6 +222,8 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         LogError("[WSI] Submit rejected without a valid acquired image slot=%u image=%u slot_count=%u image_count=%u acquired=%d",
                  current_slot,acquired_image,slot_count,swapchain?swapchain->image_count:0,
                  acquire_window_open?1:0);
+        if(debug_capture_target)
+            DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
         ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
     }
@@ -227,6 +231,8 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
     {
         LogError("[WSI] Submit rejected null extra-wait list count=%u slot=%u image=%u",
                  extra_wait_count,current_slot,acquired_image);
+        if(debug_capture_target)
+            DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
         ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
     }
@@ -287,6 +293,8 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         LogError("SwapchainRenderTarget: queue submit failed (slot=%u image=%u)",
                  current_slot, acquired_image);
         acquire_window_open = false;
+        if(debug_capture_target)
+            DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
         ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
         return false;
     }

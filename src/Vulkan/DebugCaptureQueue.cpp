@@ -1018,7 +1018,16 @@ namespace hgl::graph
                 hgl::MutexLock lock(&queue.lock);
                 Expire(queue);
                 const Target *registered=FindTarget(queue,target_id);
-                if(!registered) return;
+                if(!registered)
+                {
+                    for(Result &entry:queue.requests)
+                        if(entry.state==State::Queued && entry.target_id==target_id)
+                        {
+                            entry.state=State::Failed;
+                            entry.error="target_destroyed";
+                        }
+                    return;
+                }
                 if(registered->bound_target && registered->bound_target!=target)
                 {
                     for(Result &entry:queue.requests)
@@ -1201,6 +1210,9 @@ namespace hgl::graph
             target=Target{};
         for(Result &result:queue.requests)
             if(result.state==State::Queued || result.state==State::Capturing)
+            {
                 result.state=State::Cancelled;
+                result.error="targets_reset";
+            }
     }
 }
