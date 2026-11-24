@@ -39,6 +39,7 @@ shader-cache/
 /_build
 /.workbuddy
 /Tools
+/.ulre-captures/
 
 # 示例运行产物：帧内回读 dump —— 带 *_DUMP=<tag> / ATS_SELFCHECK 的示例跑一次就落仓根
 # ats_*=AlphaTestShadow lsdump_*=LoadScene pbrdump_*=PBRSpheres amdump_*=AlphaModes cvdump_*=CoverageVariants gcdump_*=GPUDrivenCull

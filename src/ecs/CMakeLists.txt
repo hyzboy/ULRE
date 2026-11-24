@@ -329,6 +329,9 @@ add_ecs_test(TestGPUModelExpansionAggregation tests/TestGPUModelExpansionAggrega
 # 阶段八判据：10,000 实例复合模型压力测试基准（内存对比/CPU更新加速/ICB命令聚合/GPU展开段吞吐仿真）
 add_ecs_test(TestGPUModelStress tests/TestGPUModelStress.cpp)
 
+# Stage 1 多材质模型模板（Step 1.4）：材质表生命周期、载体项与源码契约
+add_ecs_test(TestMultiMaterialModelTemplate tests/TestMultiMaterialModelTemplate.cpp)
+
 # JoltPhysics 物理引擎对接与 ModelCollisionProxyComponent 集成测试
 add_ecs_test(TestJoltPhysicsIntegration tests/TestJoltPhysicsIntegration.cpp
     LIBS Jolt::Jolt)
@@ -711,6 +714,14 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestGPUModelStress
         PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 120)
+
+    add_test(
+        NAME TestMultiMaterialModelTemplate
+        COMMAND TestMultiMaterialModelTemplate
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        TestMultiMaterialModelTemplate
+        PROPERTIES LABELS "ecs;gpu-model" TIMEOUT 60)
 
     add_test(
         NAME TestJoltPhysicsIntegration
