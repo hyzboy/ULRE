@@ -155,6 +155,9 @@ namespace hgl::ecs
         bool MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
                                                MaterialRuntimeSlot &slot);
 
+        /// 阶段 1：前置确保图元实体的 GPUModelRefComponent 与模型模板
+        bool EnsurePrimitiveModelTemplate(Entity *entity);
+
     public:
 
         RenderPrimitiveCollectSystem(const std::string& name = "RenderPrimitiveCollectSystem");

@@ -2081,6 +2081,69 @@ namespace hgl::ecs
         return true;
     }
 
+    bool RenderPrimitiveCollectSystem::EnsurePrimitiveModelTemplate(Entity *entity)
+    {
+        if (!world || !entity)
+            return false;
+
+        auto *ref = entity->GetComponent<GPUModelRefComponent>();
+        const auto *mat_table = world->GetModelTemplateMaterialTable();
+        if (ref && ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+        {
+            if (mat_table && mat_table->FindBinding(ref->template_id))
+                return true;
+        }
+
+        GeometryData *geom_comp = FindGeometryOf(entity);
+        const graph::PrimitiveAsset *prim_asset = geom_comp ? geom_comp->GetPrimitiveAsset() : nullptr;
+        graph::Geometry *geo = prim_asset ? prim_asset->GetGeometry() : nullptr;
+        auto *gc = world->GetGraphicsContext();
+        auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+        if (!geo || !registry)
+            return false;
+
+        MaterialRuntimeSlot &material_slot = world->GetOrCreateMaterialRuntimeSlot(entity);
+        if (!EnsureForwardProgram(entity, material_slot))
+            return false;
+
+        MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
+        const MaterialRuntimeRow *material_for_item = runtime_table ? runtime_table->Get(material_slot.row) : nullptr;
+        if (!material_for_item)
+            return false;
+
+        if (material_slot.runtime_dirty || !material_slot.valid)
+        {
+            if (!MaterializeRecipeRowsForPrimitive(entity, material_slot))
+                return false;
+            material_slot.valid = true;
+            material_for_item = runtime_table ? runtime_table->Get(material_slot.row) : nullptr;
+            if (!material_for_item)
+                return false;
+        }
+
+        SinglePrimitiveModelTemplateDesc tmpl_desc;
+        tmpl_desc.material_input.runtime_row = material_slot.row;
+        tmpl_desc.material_input.material_id = (material_for_item->data_index_row != uint32_t(-1))
+            ? material_for_item->data_index_row : 0u;
+        tmpl_desc.material_input.texture_id = material_for_item->material_texture_configuration.IsValid()
+            ? material_for_item->material_texture_configuration.row_index : 0u;
+        tmpl_desc.can_cast_shadow = CanCastShadow(entity);
+        tmpl_desc.is_opaque = true;
+
+        const uint32_t auto_template_id = BuildSinglePrimitiveModelTemplate(
+            registry, world, geo, tmpl_desc);
+
+        if (auto_template_id == graph::ssbo::kInvalidModelTemplateID)
+            return false;
+
+        if (!ref)
+            ref = entity->AddComponent<GPUModelRefComponent>();
+        if (ref)
+            ref->template_id = auto_template_id;
+
+        return true;
+    }
+
     // D9：阴影 pass 跳过/失败路径的统一收敛入口（见头文件注释）。
     bool RenderPrimitiveCollectSystem::AdvanceShadowRetry(
         MaterialRuntimeSlot &slot,
@@ -2716,6 +2779,9 @@ namespace hgl::ecs
                     continue;
             }
 
+            // 阶段 1：在进入收集主循环之前，确保所有有效渲染几何实体已绑定单图元模型模板
+            EnsurePrimitiveModelTemplate(entity);
+
             // 阶段 1/2：模板载体实体（挂有效 GPUModelRefComponent）
             // 若在 ModelTemplateMaterialTable 中已注册绑定（自包含 Shading Groups），或无 GeometryData，
             // 则其部件几何与材质常驻 GPU SSBO，无需参与单图元 slot 预扫描。
@@ -3056,311 +3122,16 @@ namespace hgl::ecs
                 continue;
             }
 
-            // A4：本实例的材质运行期 slot（**有材质来源**已由表的 CollectForCurrentPass 蕴含
-            // ⇒ 不再需要"有 / 无来源"双分支；保留一层作用域标出块边界，与预扫描同一份 slot）。
-            MaterialRuntimeSlot *material_slot_ptr = nullptr;
-
+            // 阶段 2：收集系统旧单图元分支彻底清理
+            // 经过预扫描 EnsurePrimitiveModelTemplate，所有合法图元实体均已完成单图元模型模板晋升。
+            // 若仍有非模板实体进入此处，记录 Drop 并跳过，不再保留旧单图元物化与收集分支。
+            if (trace)
             {
-                // A4：本实例的材质运行期 **slot**（世界表按实体稀疏存放；与预扫描同一份）。
-                MaterialRuntimeSlot &material_slot =
-                    world->GetOrCreateMaterialRuntimeSlot(entity);
-                material_slot_ptr = &material_slot;
-
-                // 天光算法热切：provider 变 ⇒ program 身份变，快路径必须失效（见 Update 开头）。
-                if (ambient_provider_changed)
-                    material_slot.program_dirty = true;
-
-                if (!EnsureMaterialProgramForPrimitive(entity, material_slot))
-                {
-                    if (world->IsCurrentPassShadow())
-                    {
-                        // A1-2：阴影解析失败只清阴影槽。InvalidateRecipeRuntime
-                        // 的 retire 纹理配置/清物化行/置 program_dirty 全是
-                        // forward 槽语义，由阴影失败触发会把 forward 链整链
-                        // 拖垮（持续失败时每帧 retire+重建）。清槽后下个阴影
-                        // 帧快路径自然失配并重试。
-                        if (const MaterialRuntimeRow *row = runtime_table
-                                ? runtime_table->Get(material_slot.row)
-                                : nullptr)
-                        {
-                            ClearVariantProgram(GetVariantTable(world),
-                                                row->shadow_variant);
-                        }
-                        // 固化防御：本帧深度图缺了这个 caster，静态级联若全量
-                        // 重绘过就会把"无它"的内容缓存住。借 A3 revision 链让
-                        // EnvironmentSystem 下帧失效重画，直至 resolve 成功。
-                        // D9：告警与降频都经统一收敛入口——阴影 pass 只在此处
-                        // 输出一条（每 episode），不再外面逐帧刷屏。
-                        if (AdvanceShadowRetry(material_slot,
-                                               "shadow caster program resolve failed",
-                                               entity))
-                            world->BumpStaticSceneRevision();
-                    }
-                    else
-                    {
-                        GLogWarning(
-                            "[RenderPrimitiveCollectSystem] EnsureMaterialProgramForPrimitive failed for %s",
-                            GetOwnerName(entity));
-                        // A4：行键不变（解析没走到算键处）⇒ 就地把本行物化绑定作废 + 退 program。
-                        InvalidateRecipeRuntime(world, material_slot, true, true);
-                        material_slot.valid = false;        // 等价于 MarkFailed()
-                    }
-                }
-                else if (world->IsCurrentPassShadow())
-                {
-                    // A1：阴影 pass 精简链。ShadowCaster 程序不消费材质 SSBO
-                    // payload；几何+管线即可绘制。
-                    //
-                    // A1-4：masked caster（ShadowCasterMasked 模板）的片元要
-                    // 采样 opacity mask → 需要纹理引用行。行由 **主帧 forward
-                    // 链** 物化并持有（行内容随授权态、与 program 无关，
-                    // shadow program 共读）。这里**绝不**在阴影帧代为物化：
-                    // 阴影帧与主帧两条物化链会互相 retire/重分配纹理配置行，
-                    // 深度图采样引用的池行随即漂移 → opacity 槽失效 → 影子
-                    // 退化为实心。行未就绪（valid==false，如首帧 prepass 早于
-                    // 任何主帧物化）时跳过本帧该 caster，并 bump static_scene_
-                    // revision 触发静态级联下帧重画，直至行就绪（收敛）。
-                    const MaterialRuntimeRow *shadow_row = runtime_table
-                        ? runtime_table->Get(material_slot.row)
-                        : nullptr;
-                    const graph::ShaderProgram *shadow_pass_program =
-                        GetShadowProgram(GetVariantTable(world), shadow_row);
-
-                    const bool shadow_needs_rows =
-                        shadow_pass_program
-                     && shadow_pass_program->RequiresRecipeRuntimeRows();
-
-                    if (shadow_needs_rows && !material_slot.valid)
-                    {
-                        // D9：本路径原本完全静默（只 bump+continue）。原因经统一收敛
-                        // 入口记录：首次跳过告警一次；连续超过 kShadowRetryFullBumpFrames
-                        // 帧后报错并把 bump 降频——否则"每帧 bump → 静态级联每帧全量
-                        // 重画"会持续到场景结束且无任何日志。
-                        if (AdvanceShadowRetry(
-                                material_slot,
-                                "masked caster runtime rows not ready (forward chain has not materialized them)",
-                                entity))
-                            world->BumpStaticSceneRevision();
-                        continue; // 本帧深度图不含它；下帧行就绪后重画
-                    }
-
-                    if (!EnsureGeometryRowReady(world, entity))
-                    {
-                        if (shadow_row)
-                            ClearVariantProgram(GetVariantTable(world),
-                                                shadow_row->shadow_variant);
-                        // D9：告警与 bump 都经统一收敛入口（不再逐帧刷屏）
-                        if (AdvanceShadowRetry(material_slot,
-                                               "shadow pass geometry failed",
-                                               entity))
-                            world->BumpStaticSceneRevision(); // 固化防御（同上）
-                    }
-                    else if (!ResolveRuntimePipelineForPrimitive(
-                                 entity, material_slot))
-                    {
-                        if (shadow_row)
-                            ClearVariantProgram(GetVariantTable(world),
-                                                shadow_row->shadow_variant);
-                        // D9：同上
-                        if (AdvanceShadowRetry(material_slot,
-                                               "shadow pass pipeline failed",
-                                               entity))
-                            world->BumpStaticSceneRevision(); // 固化防御（同上）
-                    }
-                }
-                else if (!any_material_work
-                         && material_slot.last_materialize_epoch == materialize_epoch)
-                {
-                    // P1-1: all-clean frame — no primitive requires
-                    // materialization work, this primitive's full chain
-                    // succeeded last frame (valid), and the current
-                    // materialization epoch is already covered. Everything
-                    // cached (resource preparation, materialization rows,
-                    // runtime geometry/pipeline) is still valid, so skip the
-                    // expensive re-prepare / re-materialize chain. Only the
-                    // cheap resolve fast-paths run; on any unexpected failure
-                    // fall back to MarkFailed so the next frame retries the
-                    // full chain.
-                    const bool chain_ok =
-                        EnsureMaterialProgramForPrimitive(
-                            entity, material_slot)
-                     && EnsureGeometryRowReady(world, entity)
-                     && ResolveRuntimePipelineForPrimitive(
-                            entity, material_slot);
-                    if (chain_ok)
-                        material_slot.valid = true;     // 等价于 MarkValid()
-                    else
-                        material_slot.valid = false;    // 等价于 MarkFailed()
-                }
-                else
-                {
-                    const MaterialRuntimeRow *forward_row = runtime_table
-                        ? runtime_table->Get(material_slot.row)
-                        : nullptr;
-                    graph::ShaderProgram *forward_program =
-                        GetForwardProgram(GetVariantTable(world), forward_row);
-
-                    material_slot.valid = false;        // 等价于 MarkResourcesPending()
-                    const bool resources_ready =
-                        PrepareActivePlanResources(
-                            world,
-                            entity,
-                            forward_program,
-                            forward_row
-                                ? forward_row->cached_effective_recipe
-                                : graph::mtl::MaterialRecipe{});
-                    if (!resources_ready)
-                    {
-                        // 失败原因已由 `PrepareActivePlanResources` 内部按性质分级报过
-                        // （永久失败=Warning 且已降级、仍在途=Debug、真错误=Error），
-                        // 这里只留 Debug 级别的链路节点，避免同一件事报两遍把日志刷满。
-                        GLogDebug(
-                            "[RenderPrimitiveCollectSystem] Material resources failed for %s program=%s",
-                            GetOwnerName(entity),
-                            forward_program
-                                ? forward_program->
-                                    GetName().c_str()
-                                : "<null>");
-                        InvalidateRecipeRuntime(world, material_slot, true, false);
-                        material_slot.valid = false;
-                    }
-                    else if (!MaterializeRecipeRowsForPrimitive(
-                                entity, material_slot))
-                    {
-                        GLogWarning(
-                            "[RenderPrimitiveCollectSystem] MaterializeRecipeRowsForPrimitive failed for %s program=%s",
-                            GetOwnerName(entity),
-                            forward_program
-                                ? forward_program->
-                                    GetName().c_str()
-                                : "<null>");
-                        InvalidateRecipeRuntime(world, material_slot, true, false);
-                        material_slot.valid = false;
-                    }
-                    else if (!EnsureGeometryRowReady(world, entity))
-                    {
-                        GLogWarning(
-                            "[RenderPrimitiveCollectSystem] EnsureGeometryRowReady failed for %s",
-                            GetOwnerName(entity));
-                        material_slot.valid = false;
-                    }
-                    else if (!ResolveRuntimePipelineForPrimitive(
-                                entity, material_slot))
-                    {
-                        GLogWarning(
-                            "[RenderPrimitiveCollectSystem] ResolveRuntimePipelineForPrimitive failed for %s",
-                            GetOwnerName(entity));
-                        material_slot.valid = false;
-                    }
-                    else
-                    {
-                        material_slot.valid = true;     // 等价于 MarkValid()
-                    }
-                }
+                ::strncpy(trace->collect_status, "dropped", sizeof(trace->collect_status) - 1);
+                ::strncpy(trace->collect_reason, "no_valid_model_template", sizeof(trace->collect_reason) - 1);
             }
-
-
-            // A4：解析/物化可能刚换过行 ⇒ 重新按**行号**取指针（不复用上面任何行指针）。
-            const MaterialRuntimeRow *material_for_item = (runtime_table && material_slot_ptr)
-                ? runtime_table->Get(material_slot_ptr->row)
-                : nullptr;
-
-            // 阶段 3 归一化：将物化成功的单图元实体自动提升为 GPU 模型模板实体
-            if (!pure_model_ref && material_slot_ptr && material_slot_ptr->valid)
-            {
-                GeometryData *geom_comp = FindGeometryOf(entity);
-                const graph::PrimitiveAsset *prim_asset = geom_comp ? geom_comp->GetPrimitiveAsset() : nullptr;
-                graph::Geometry *geo = prim_asset ? prim_asset->GetGeometry() : nullptr;
-                auto *gc = world->GetGraphicsContext();
-                auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-                if (geo && registry && material_for_item)
-                {
-                    SinglePrimitiveModelTemplateDesc tmpl_desc;
-                    tmpl_desc.material_input.runtime_row = material_slot_ptr->row;
-                    tmpl_desc.material_input.material_id = (material_for_item->data_index_row != uint32_t(-1))
-                        ? material_for_item->data_index_row : 0u;
-                    tmpl_desc.material_input.texture_id = material_for_item->material_texture_configuration.IsValid()
-                        ? material_for_item->material_texture_configuration.row_index : 0u;
-                    tmpl_desc.can_cast_shadow = CanCastShadow(entity);
-                    tmpl_desc.is_opaque = true;
-
-                    const uint32_t auto_template_id = BuildSinglePrimitiveModelTemplate(
-                        registry, world, geo, tmpl_desc);
-
-                    if (auto_template_id != graph::ssbo::kInvalidModelTemplateID)
-                    {
-                        auto *new_ref = entity->AddComponent<GPUModelRefComponent>();
-                        if (new_ref)
-                        {
-                            new_ref->template_id = auto_template_id;
-                        }
-                    }
-                }
-            }
-
-            // ── 本帧 4-ID 四元组（唯一消费者 = 实体 4-ID 表；句柄空间副本已随池整删）──
-            // B3-iii：geometry_id 直读几何行号（不再经每实体 CPU 几何副本的镜像字段与三级回退）
-            const uint32_t transform_id = transform.GetID();
-            GeometryData *geometry_comp = entity->GetComponent<GeometryData>();
-            const uint32_t geometry_id = geometry_comp ? geometry_comp->GetGeometryID() : 0u;
-            const uint32_t material_id = (material_for_item && material_for_item->data_index_row != uint32_t(-1))
-                ? material_for_item->data_index_row : 0;
-            const uint32_t texture_id = (material_for_item && material_for_item->material_texture_configuration.IsValid())
-                ? material_for_item->material_texture_configuration.row_index : 0;
-
-            // A4：RenderItem 只持**行号**（绑定状态在世界表里；行由本实体 slot 持引用，
-            // collect → batch 之间不会失效）。
-            const MaterialRuntimeRowID material_row_id =
-                material_for_item ? material_slot_ptr->row : INVALID_MATERIAL_RUNTIME_ROW_ID;
-
-            std::unique_ptr<PrimitiveRenderItem> item;
-
-            // T3d-3a：写**实体 4-ID 表**（世界私有、按 EntityID.index 直索引）——世界唯一的
-            // 4-ID 发布点（GPU 剔除按 index 枚举源直接取资源池口径 geometry_id / material /
-            // texture；CPU 侧批行写入读的也是本表本 pass 那一半）。
-            // 挂在下面 B3-iii「几何行成立 ⇒ 本项进批」的同一判据块内（行缺失 ⇒ 键 0 ⇒ 不进批；
-            // 本 pass 那一半清零 —— 见同函数里的 `ids_published` 分支）。⇒ 表内的实体 = **几何行成立**者，
-            // **不等于**"本帧一定会画"：装配期还会按可见性 / 配方行 / 程序管线再剔一次，而那一层在
-            // collect 之后、4-ID 已经写过（批 D 若落地，该层判据点还会减少）。
-
-            item = std::make_unique<PrimitiveRenderItem>(
-                entity_id, transform, material_row_id, world);
-
-            item->UpdateWorldMatrix();
-
-            // ── B3-iii：填"行派生键"（批排序 / 聚簇 / ICB 的唯一判据）──
-            // 行号 = geometry_id；其余字段从**行**读（同 asset ⇒ 同一行）。行缺失 ⇒ 键保持 0 ⇒ 本项不进批，
-            // 且本 pass 那一半要**显式清零**（见 `PublishPrimitiveFacts` 的收尾分支）。
-            const uint32_t pass_index = world->IsCurrentPassShadow() ? 1u : 0u;   // T4c3a：4-ID 是**按 pass 解析**的（阴影程序/材质变体不同）
-
-            // 事实发布（4-ID / 阴影 / 可见性 / 模型模板）**与 P3 快路径共用同一份实现**：
-            // 任何一侧要增删一种事实，都只改 `PublishPrimitiveFacts` 一次。
-            PublishPrimitiveFacts(entity_id, transform_id, geometry_id,
-                                  material_id, texture_id, pass_index, item.get());
-
-            // D9：阴影 pass 的 caster 本帧成功产出 item（该实例的阴影变体已就绪）
-            // ⇒ 影子链已恢复正常，复位**该实例**的重试计数（A4 起计数归每实例 slot：
-            // 同键的健康兄弟不再每帧清零失败者的计数，D9 的告警/降频对每个实例独立）。
-            if (material_slot_ptr && world->IsCurrentPassShadow())
-            {
-                const MaterialVariantTable *variant_table = GetVariantTable(world);
-                const MaterialVariantRecord *shadow_record = variant_table
-                    ? variant_table->Get(material_for_item ? material_for_item->shadow_variant
-                                                           : INVALID_MATERIAL_VARIANT_ID)
-                    : nullptr;
-
-                if (shadow_record && shadow_record->program)
-                    material_slot_ptr->shadow_retry_frames = 0;
-            }
-
-
-            cache.renderItems.push_back(std::move(item));
-            cache.renderableCount++;
-            ++added;
-            ++cache.collected_items;
-            if(trace)
-                ::strncpy(trace->collect_status,"collected",sizeof(trace->collect_status)-1);
-            shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
+            cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", "NoModelTemplate", "Entity has no valid model template or binding");
+            continue;
         }
 
         }// CollectMainLoop 子槽
