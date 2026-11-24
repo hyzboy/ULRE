@@ -576,9 +576,16 @@ namespace
         const bool tpl_addr  = ContainsInOrder(registry_src, kTplAddrTokens,  2);
         const bool part_addr = ContainsInOrder(registry_src, kPartAddrTokens, 2);
 
-        // 展开侧：桶号 = 组基址 + 槽号（"部件 ⇒ 素材桶"的唯一公式）。
+        // 展开侧：桶号 = 组基址 + 槽号（"部件 ⇒ 素材桶"的唯一公式；阶段 1 组基址来自二级表）。
         const bool bucket_formula = ContainsToken(cull_src,
-            "const uint bucket = tag_bucket_base + part.bucket_slot");
+            "const uint bucket = part_bucket_base + part.bucket_slot;");
+        const bool group_table = ContainsToken(cull_src,
+            "ModelGroupBucketBaseRef(group_bucket_addr).values[tag_bucket_base + part.shading_group]");
+        const bool part_material = ContainsToken(cull_src,
+            "has_part_mtl ? part.material_id : ids_blk.material_id");
+        const bool part_texture = ContainsToken(cull_src,
+            "has_part_mtl ? part.texture_id  : ids_blk.texture_id");
+        const bool mask_guard = ContainsToken(cull_src, "if (p < 64u && ((entity.model_part_mask");
         const bool slot_sentinel = ContainsToken(cull_src, "part.bucket_slot == 0xFFFFFFFFu");
 
         // 代理球更小不得导致误剔除（保守取大）。
@@ -622,6 +629,10 @@ namespace
             { tpl_addr,  "模板池 BDA 地址必须在全局地址表回填" },
             { part_addr, "部件池 BDA 地址必须在全局地址表回填" },
             { bucket_formula, "展开侧桶号必须 = 组基址 + part.bucket_slot" },
+            { group_table,    "展开侧必须经二级组表按 part.shading_group 取组基址" },
+            { part_material,  "部件自带材质必须按 HasMaterial 标志显式选择" },
+            { part_texture,   "部件自带纹理必须按 HasMaterial 标志显式选择" },
+            { mask_guard,     "部件掩码必须判 p<64（超出范围的部件默认可见，避免移位 UB）" },
             { slot_sentinel,  "无槽部件必须按哨兵跳过（不得落到组首桶）" },
             { conservative_cull, "粗略剔除必须取 max(cull_radius, 生效模板包围球)" },
             { lod_coarsest_first, "LOD 选择必须从最粗槽往回扫描" },

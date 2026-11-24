@@ -191,17 +191,42 @@ namespace hgl::ecs
         void SetModelExpansionEnabled(bool enabled) { model_expansion_enabled_ = enabled; }
         bool IsModelExpansionEnabled() const { return model_expansion_enabled_; }
 
-        /// T3.1：登记「实体 → 模板素材桶组基址」（写者 = 批装配期，`PrimitiveBatchPipeline`）。
+        /// T3.1 + 阶段 1：登记「实体 → 模板组表偏移」（写者 = 批装配期，`PrimitiveBatchPipeline`）。
         /// `pass_index` ∈ [0, kArenaPasses)，`entity_index` ∈ [0, kMaxVisibleEntities)。
-        /// 组基址 = 该 (批, 模板) 独占的一段连续桶的**块内相对**首桶号；展开侧落桶号 =
-        /// 组基址 + `ModelPartRow.bucket_slot`。未登记 ⇒ `kModelExpansionInvalidBucketBase`
-        /// ⇒ 展开侧跳过该实体（画不出来也不能画错）。
-        void SetModelBucketBase(uint32_t pass_index, uint32_t entity_index, uint32_t bucket_base);
+        /// 写入值 = `AllocateModelGroupBucketSlots` 返回的**组表偏移**（不是桶号）：
+        /// 展开侧先取 `group_table[偏移 + part.shading_group]` 得到该组的块内首桶号，
+        /// 再加 `bucket_slot` ⇒ 同一实体的部件可以分流到不同 MaterialBatch。
+        /// 未登记 ⇒ `kModelExpansionInvalidBucketBase` ⇒ 展开侧跳过该实体。
+        void SetModelEntityGroupOffset(uint32_t pass_index, uint32_t entity_index, uint32_t group_table_offset);
 
         /// T3.1：清空当前 pass 的实体桶组基址块（回哨兵）。批装配期每 pass 开头调用一次
         ///（上一帧的基址对本帧批次布局无效）。只清本 pass 那半块 —— 两个 pass 的装配
         /// 在同一帧内先后发生，整表清空会抹掉另一个 pass 已登记的基址。
         void ResetModelBucketBases(uint32_t pass_index);
+
+        /// ── 阶段 1：二级「shading_group 组基址」表 ────────────────────────────
+        ///
+        /// 一级表（`SetModelBucketBase`）只给实体**一个**组基址，无法表达"同一实体的部件
+        /// 分流到多个 MaterialBatch"。二级表把"实体 → 组基址"换成"实体 → 组表偏移"，
+        /// 再由 `组表偏移 + part.shading_group` 取该组的绝对桶号。
+        ///
+        /// 分配口径：批装配期按 (pass, 模板) 申请 `group_count` 个连续槽（初值哨兵），
+        /// 某组确定归属本批后再回填该槽。未参与本 pass 的组保持哨兵 ⇒ 展开侧
+        /// `continue` 掉该部件（如透明件不投阴影）。
+        ///
+        /// 越界（单 pass 槽数超 `kModelExpansionGroupBucketSlotsPerPass`）= 装配 bug，
+        /// 返回 false 由调用方 fail-fast（整批不接管），不做静默截断。
+        bool AllocateModelGroupBucketSlots(uint32_t pass_index, uint32_t group_count,
+                                          uint32_t *out_offset);
+
+        /// 回填某一组的组基址（块内相对首桶号）。`offset` 来自 AllocateModelGroupBucketSlots。
+        void SetModelGroupBucketBase(uint32_t pass_index, uint32_t offset,
+                                     uint32_t group_index, uint32_t bucket_base);
+
+        /// 清空全部 pass 的组表（回哨兵 + 游标归零）。批装配期每 pass 开头调用
+        /// `ResetModelGroupBucketSlots(pass)`（按下标重载见下）。
+        void ResetModelGroupBucketSlots();
+        void ResetModelGroupBucketSlots(uint32_t pass_index);
 
         /// T6.3：实例自定义数据输出缓冲及 GPU 基址（容量 = kArenaRows，16 B/行）
         graph::DeviceBuffer *GetCustomDataOutBuffer() const { return custom_data_out_buffer_; }
@@ -286,11 +311,18 @@ namespace hgl::ecs
         void WriteModelExpansionArena(uint32_t slot);
 
         /// T3.1：展开竞技场每帧槽字节数 = 64 B 头部（`ModelExpansionArena` 48 B + 对齐余量）
-        /// + 实体桶组基址表（`u32 × kModelExpansionMaxBucketBaseRows`）。表紧跟头部 ⇒
-        /// `bucket_base_addr = 槽基址 + 64`（16 B 对齐）。
+        /// + 实体桶组基址表（`u32 × kModelExpansionMaxBucketBaseRows`）
+        /// + 二级 shading_group 组基址表（`u32 × kModelExpansionMaxGroupBucketSlots`）。
+        /// 两张表都紧跟头部 ⇒ `bucket_base_addr = 槽基址 + 64`，
+        /// `group_bucket_base_addr = 槽基址 + kExpansionGroupBucketOffset`（16 B 对齐）。
         static constexpr VkDeviceSize kExpansionHeaderBytes = graph::kModelExpansionHeaderBytes;
-        static constexpr VkDeviceSize kExpansionSlotBytes =
+        static constexpr VkDeviceSize kExpansionGroupBucketOffset =
             kExpansionHeaderBytes + VkDeviceSize(graph::kModelExpansionMaxBucketBaseRows) * 4;
+        static constexpr VkDeviceSize kExpansionSlotBytes =
+            kExpansionGroupBucketOffset + VkDeviceSize(graph::kModelExpansionMaxGroupBucketSlots) * 4;
+
+        static_assert(kExpansionGroupBucketOffset % 16u == 0u,
+                      "二级组基址表必须 16B 对齐（buffer_reference 取址承诺）");
 
         /// 一次性创建派发资源（T3g）：队列（fence 环 = 帧槽数）+ 命令缓冲环。
         /// 泄漏修复的本体：这些对象**只在这里 new 一次**，`Shutdown()` 显式释放。
@@ -330,6 +362,13 @@ namespace hgl::ecs
         /// 实体 → 模板素材桶组基址表（CPU 侧主副本；下标 = pass_index * kMaxVisibleEntities + entity_index）。
         /// 每帧随竞技场一起上传（整表 32 KB/slot，按槽双写 —— 展开分支的读侧只认自己那一槽）。
         hgl::ValueArray<uint32_t> expansion_bucket_base_cpu_;
+
+        /// 二级 shading_group 组基址表（CPU 侧主副本；下标 = pass * 单 pass 槽数 + 组表偏移）。
+        /// 每帧随竞技场一起上传（16 KB/slot）。
+        hgl::ValueArray<uint32_t> expansion_group_bucket_cpu_;
+
+        /// 每个 pass 的组表分配游标（下一可用槽）。
+        uint32_t expansion_group_slot_next_[kArenaPasses] = {};
 
         /// 批信息行（**与 `entity_gpu_cull.glsl` 的 `BatchInfoRow` 逐字段同序同型**；
         /// 16 B/行）。后两字段 = **dispatch 档**：gather 的 X 公式按它选（线按段数、组大小不同）。

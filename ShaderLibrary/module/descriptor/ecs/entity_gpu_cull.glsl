@@ -158,10 +158,19 @@ layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer Model
 #define model_bucket_bases ModelBucketBaseRef(model_expansion_arena.bucket_base_addr).values
 #define MODEL_BUCKET_BASE_INVALID 0xFFFFFFFFu
 
+// 二级「shading_group 组基址表」（阶段 1）：下标 = 组表偏移 + part.shading_group，
+// 值 = 该组的**块内相对**首桶号。组表偏移由一级表（`model_bucket_bases[实体]`）给出。
+// `group_bucket_base_addr == 0`（旧帧槽 / 未启用）⇒ 退回一级表的单组口径。
+layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer ModelGroupBucketBaseRef
+{
+    uint values[];
+};
+
 // ── 模板行常量镜像（真源 = inc/hgl/graph/ssbo/ModelTemplateRows.h，改那边必须同步这里）──
 #define MODEL_LOD_PROXY_COUNT              3u
 #define MODEL_TEMPLATE_FLAG_LOD_ENABLED    0x1u   // kModelTemplateFlagLodEnabled
 #define MODEL_TEMPLATE_FLAG_SHADOW_PROXY   0x2u   // kModelTemplateFlagShadowProxy
+#define MODEL_PART_FLAG_HAS_MATERIAL       0x4u   // kModelPartFlagHasMaterial
 
 // 可见计数（原子递增）
 layout(buffer_reference, scalar, buffer_reference_align=4) buffer DrawCountRef
@@ -456,7 +465,8 @@ void expand_template_entity(const uint blk,
                             const EntityGPUData entity,
                             const RenderItemDescriptor ids_blk,
                             const mat4 root_l2w,
-                            const uint transform_id)
+                            const uint transform_id,
+                            const uint64_t group_bucket_addr)
 {
     const ModelExpansionArenaData arena = model_expansion_arena;
 
@@ -537,8 +547,10 @@ void expand_template_entity(const uint blk,
 
     for (uint p = 0u; p < tpl.part_count; ++p)
     {
-        // 部件可见位（`GPUModelRefComponent::part_visibility_mask` 的 GPU 侧镜像）
-        if (((entity.model_part_mask >> uint64_t(p)) & uint64_t(1)) == uint64_t(0))
+        // 部件可见位（`GPUModelRefComponent::part_visibility_mask` 的 GPU 侧镜像）。
+        // ⚠ `p >= 64` 时移位是**未定义行为**（GLSL 与 C++ 同规）⇒ 先判 `p < 64`：
+        //   超出掩码覆盖范围的部件默认保持可见（不得被 UB 随机剔除）。
+        if (p < 64u && ((entity.model_part_mask >> uint64_t(p)) & uint64_t(1)) == uint64_t(0))
             continue;
 
         const uint part_row = tpl.part_offset + p;
@@ -555,7 +567,20 @@ void expand_template_entity(const uint blk,
         if (part.bucket_slot == 0xFFFFFFFFu)
             continue;
 
-        const uint bucket = tag_bucket_base + part.bucket_slot;
+        // 部件 → 素材桶：先经二级组表取所属 shading_group 的组基址；
+        // 组表未启用（旧槽）或该组在本 pass 不参与 ⇒ 前者回退一级表、后者跳过该部件。
+        uint part_bucket_base = tag_bucket_base;
+
+        if (group_bucket_addr != uint64_t(0))
+        {
+            part_bucket_base =
+                ModelGroupBucketBaseRef(group_bucket_addr).values[tag_bucket_base + part.shading_group];
+
+            if (part_bucket_base == MODEL_BUCKET_BASE_INVALID)
+                continue;    // 该组本 pass 不绘制（如透明件不投阴影）——只丢部件，不丢整个实例
+        }
+
+        const uint bucket = part_bucket_base + part.bucket_slot;
 
         const mat4 part_l2w = root_l2w * part.local_matrix;
         const mat4 prev_part_l2w = prev_root_l2w * part.local_matrix;
@@ -571,15 +596,19 @@ void expand_template_entity(const uint blk,
                 continue;
         }
 
-        // 材质：部件自带 `material_id` 优先；0 = 继承实体的 pass 级材质行
+        // 材质：部件自带 `material_id` / `texture_id` 优先（`kModelPartFlagHasMaterial`），
+        // 未置位 ⇒ 继承实体的 pass 级材质行（单材质模板 / 宿主材质覆盖路径，逐字节不变）。
+        // ⚠ 用显式标志位而不是 `!= 0u`：池行号 0 可能是**合法数据**。
+        const bool has_part_mtl = (part.part_flags & MODEL_PART_FLAG_HAS_MATERIAL) != 0u;
+
         emit_bucket_instance(blk,
                              bucket,
                              cur_batch_count,
                              part.geometry_id,
                              transform_id,
                              entity,
-                             (part.material_id != 0u) ? part.material_id : ids_blk.material_id,
-                             ids_blk.texture_id,
+                             has_part_mtl ? part.material_id : ids_blk.material_id,
+                             has_part_mtl ? part.texture_id  : ids_blk.texture_id,
                              true,
                              part_l2w,
                              prev_part_l2w,
@@ -648,10 +677,12 @@ void main()
     //   ⇒ 只在判空之后一次性解出本帧要用的字段，之后全部走这两个局部量。
     uint arena_flags = 0u;
     uint64_t custom_data_addr = uint64_t(0);
+    uint64_t group_bucket_base_addr = uint64_t(0);
     if (expansion_addr != uint64_t(0))
     {
         arena_flags = model_expansion_arena.flags;
         custom_data_addr = model_expansion_arena.custom_data_addr;
+        group_bucket_base_addr = model_expansion_arena.group_bucket_base_addr;
     }
     const bool expansion_on = (entity.model_template_id != 0u)
                            && ((arena_flags & 1u) != 0u);
@@ -757,7 +788,7 @@ void main()
         if (expansion_on)
         {
             expand_template_entity(blk, cur_batch_count, entity_index, entity, ids_blk,
-                                   l2w_matrix, transform_id);
+                                   l2w_matrix, transform_id, group_bucket_base_addr);
             continue;
         }
 

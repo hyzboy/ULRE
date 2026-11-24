@@ -157,10 +157,12 @@ namespace
         uint32_t bucket      = 0;
         uint32_t geometry_id = 0;
         uint32_t material_id = 0;
+        uint32_t texture_id  = 0;
 
         bool Equals(const DrawRec &o) const
         {
-            return bucket == o.bucket && geometry_id == o.geometry_id && material_id == o.material_id;
+            return bucket == o.bucket && geometry_id == o.geometry_id
+                && material_id == o.material_id && texture_id == o.texture_id;
         }
     };
 
@@ -216,9 +218,12 @@ namespace
     {
         uint32_t blk             = 0;        ///< 0 = 直渲 pass，非 0 = 阴影等附属 pass
         uint32_t template_id     = 0;
-        uint64_t part_mask       = 0;
-        uint32_t blk_material_id = 0;        ///< 批次/pass 级材质（部件 material_id==0 时继承）
-        uint32_t bucket_base     = 0;        ///< 组基址（CPU 分配的模板桶组起点）
+        uint64_t part_mask       = ~uint64_t(0);
+        uint32_t blk_material_id = 0;        ///< 批次/pass 级材质（部件未置 HasMaterial 时继承）
+        uint32_t blk_texture_id  = 0;        ///< 批次/pass 级纹理（同上）
+        uint32_t bucket_base     = 0;        ///< 组基址（CPU 分配的模板桶组起点；无组表时的旧口径）
+        const uint32_t *group_bases = nullptr; ///< 二级组表：组 → 块内首桶号（nullptr = 旧单组回退）
+        uint32_t group_base_count   = 0;       ///< 组表槽数（组号越界 = 该组本 pass 不参与）
         float    lod_ratio       = 0.0f;     ///< 屏幕占比（公式见 A 组/源码契约）
         bool     has_bound       = true;     ///< 模板是否填了包围体
     };
@@ -266,7 +271,8 @@ namespace
 
         for (uint32_t p = 0u; p < tpl->row.part_count; ++p)
         {
-            if (((a.part_mask >> uint64_t(p)) & uint64_t(1)) == uint64_t(0))
+            // 部件可见位：`p >= 64` 时移位是 UB ⇒ 与着色器一致，只对 p<64 判定（其余默认可见）
+            if (p < 64u && ((a.part_mask >> uint64_t(p)) & uint64_t(1)) == uint64_t(0))
                 continue;       // 部件可见位关闭
 
             if (p >= uint32_t(tpl->parts.GetCount()))
@@ -283,10 +289,28 @@ namespace
             if (part.bucket_slot == kModelPartBucketSlotNone)
                 continue;       // 无槽部件（CPU 侧已标无几何）
 
+            // 部件 → 素材桶：二级组表优先（组表偏移已由一级表解析成 group_bases 数组），
+            // 未启用组表 ⇒ 旧单组口径（bucket_base）。
+            uint32_t part_bucket_base = a.bucket_base;
+
+            if (a.group_bases)
+            {
+                if (part.shading_group >= a.group_base_count)
+                    continue;   // 组表里没有该组 ⇒ 本 pass 不绘制该部件
+
+                part_bucket_base = a.group_bases[part.shading_group];
+
+                if (part_bucket_base == kModelExpansionInvalidBucketBase)
+                    continue;   // 该组本 pass 不参与（如透明件不投阴影）
+            }
+
+            const bool has_mtl = (part.part_flags & kModelPartFlagHasMaterial) != 0u;
+
             DrawRec rec;
-            rec.bucket      = a.bucket_base + part.bucket_slot;
+            rec.bucket      = part_bucket_base + part.bucket_slot;
             rec.geometry_id = part.geometry_id;
-            rec.material_id = (part.material_id != 0u) ? part.material_id : a.blk_material_id;
+            rec.material_id = has_mtl ? part.material_id : a.blk_material_id;
+            rec.texture_id  = has_mtl ? part.texture_id  : a.blk_texture_id;
 
             out.Add(rec);
         }
@@ -317,10 +341,10 @@ namespace
     /**
      * 夹具：
      *   id 1 = 本体，4 个部件、2 个桶槽
-     *         P0 geo=10 mat=0 （继承批次材质） slot=0 可投影+不透明
-     *         P1 geo=20 mat=77（自带材质）     slot=1 仅不透明
-     *         P2 geo=0  （空部件）             slot=哨兵
-     *         P3 geo=20 mat=0                  slot=1 仅可投影（与 P1 共槽）
+     *         P0 geo=10 HasMaterial 未置（继承批次材质）  slot=0 可投影+不透明
+     *         P1 geo=20 mat=77（HasMaterial ⇒ 自带）      slot=1 仅不透明
+     *         P2 geo=0  （空部件）                        slot=哨兵
+     *         P3 geo=20 继承批次材质                      slot=1 仅可投影（与 P1 共槽）
      *   id 2 = LOD1 代理，1 个部件 geo=30
      *   id 3 = 阴影代理，  1 个部件 geo=40（可投影）
      */
@@ -341,7 +365,7 @@ namespace
 
             ModelPartRow p0, p1, p2, p3;
             MakePart(p0, 10u, 0u,  kModelPartFlagCanCastShadow | kModelPartFlagIsOpaque, 0u);
-            MakePart(p1, 20u, 77u, kModelPartFlagIsOpaque, 1u);
+            MakePart(p1, 20u, 77u, kModelPartFlagIsOpaque | kModelPartFlagHasMaterial, 1u);
             MakePart(p2, 0u,  0u,  0u, 0u);
             MakePart(p3, 20u, 0u,  kModelPartFlagCanCastShadow, 1u);
 
@@ -490,10 +514,10 @@ namespace
 
             ok = false;
             GLogError(u8"TestGPUModelExpansionParity 失败: %s —— 第 %d 个实例 "
-                      u8"(桶 %u/geo %u/mat %u) 期望 (桶 %u/geo %u/mat %u)",
+                      u8"(桶 %u/geo %u/mat %u/tex %u) 期望 (桶 %u/geo %u/mat %u/tex %u)",
                       what, i,
-                      got[i].bucket, got[i].geometry_id, got[i].material_id,
-                      expect[i].bucket, expect[i].geometry_id, expect[i].material_id);
+                      got[i].bucket, got[i].geometry_id, got[i].material_id, got[i].texture_id,
+                      expect[i].bucket, expect[i].geometry_id, expect[i].material_id, expect[i].texture_id);
         }
 
         return ok;
@@ -620,6 +644,177 @@ namespace
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    // E 组：部件自带材质/纹理 与 shading_group 分流（阶段 1）
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// 部件自带材质：`kModelPartFlagHasMaterial` 置位 ⇒ 原样采用（含合法行号 0）；
+    /// 未置位 ⇒ 继承宿主实体的 (material_id, texture_id)。**不得**用 `!= 0` 判定。
+    bool TestPartMaterialRouting()
+    {
+        TemplateFixture tpls[1];
+        tpls[0].id = 7u;
+        tpls[0].row.part_offset         = 1u;
+        tpls[0].row.part_count          = 3u;
+        tpls[0].row.part_bucket_count   = 3u;
+        tpls[0].row.shading_group_count = 1u;
+        SetBound(tpls[0].row, 1.0f);
+
+        ModelPartRow p0, p1, p2;
+
+        // P0：显式 (mat=0, tex=0) —— 池行 0 可能是**合法数据**，必须原样采用
+        MakePart(p0, 10u, 0u, kModelPartFlagCanCastShadow | kModelPartFlagHasMaterial, 0u);
+        p0.texture_id = 0u;
+
+        // P1：显式 (mat=13, tex=5)
+        MakePart(p1, 11u, 13u, kModelPartFlagCanCastShadow | kModelPartFlagHasMaterial, 1u);
+        p1.texture_id = 5u;
+
+        // P2：未置 HasMaterial ⇒ 行内 material/texture 是脏值，必须被宿主值覆盖
+        MakePart(p2, 12u, 77u, kModelPartFlagCanCastShadow, 2u);
+        p2.texture_id = 66u;
+
+        tpls[0].parts.Add(p0);
+        tpls[0].parts.Add(p1);
+        tpls[0].parts.Add(p2);
+
+        const uint32_t kBase = 50u;
+        const uint32_t kHostMat = 99u;
+        const uint32_t kHostTex = 8u;
+
+        ExpandArgs a;
+        a.template_id     = 7u;
+        a.bucket_base     = kBase;
+        a.blk_material_id = kHostMat;
+        a.blk_texture_id  = kHostTex;
+        a.lod_ratio       = 1.0f;      // 不换级
+
+        ValueArray<DrawRec> got;
+        ExpandEntity(tpls, 1, a, got);
+
+        const DrawRec kExpect[] =
+        {
+            { kBase + 0u, 10u, 0u,      0u      },   // 显式行号 0 必须保留
+            { kBase + 1u, 11u, 13u,     5u      },
+            { kBase + 2u, 12u, kHostMat, kHostTex }, // 未置位 ⇒ 继承宿主
+        };
+
+        bool ok = ExpectDraws(got, kExpect, 3, "部件自带/继承材质与纹理的手算表");
+
+        // 反向守卫：把 P2 也置 HasMaterial 后必须改用行内值（证明不是「行号非 0 优先」）
+        tpls[0].parts[2].part_flags |= kModelPartFlagHasMaterial;
+
+        ExpandEntity(tpls, 1, a, got);
+
+        const DrawRec kExpect2[] =
+        {
+            { kBase + 0u, 10u, 0u,  0u },
+            { kBase + 1u, 11u, 13u, 5u },
+            { kBase + 2u, 12u, 77u, 66u },
+        };
+
+        ok = ExpectDraws(got, kExpect2, 3, "置 HasMaterial 后必须改用行内 (material, texture)") && ok;
+
+        return ok;
+    }
+
+    /// shading_group 分流：桶号 = 组基址(g) + bucket_slot；某组基址为哨兵 ⇒ 只跳过该组部件。
+    bool TestShadingGroupRouting()
+    {
+        TemplateFixture tpls[1];
+        tpls[0].id = 9u;
+        tpls[0].row.part_offset         = 1u;
+        tpls[0].row.part_count          = 4u;
+        tpls[0].row.part_bucket_count   = 3u;   // 组 0 两槽 + 组 1 两槽（示例里槽号各自从 0 起）
+        tpls[0].row.shading_group_count = 2u;
+        SetBound(tpls[0].row, 1.0f);
+
+        ModelPartRow p0, p1, p2, p3;
+
+        MakePart(p0, 10u, 0u, kModelPartFlagCanCastShadow, 0u);   // 组 0 / 槽 0 / 可投影
+        p0.shading_group = 0u;
+
+        MakePart(p1, 20u, 0u, kModelPartFlagCanCastShadow, 0u);   // 组 1 / 槽 0 / 可投影
+        p1.shading_group = 1u;
+
+        MakePart(p2, 21u, 0u, kModelPartFlagCanCastShadow, 1u);   // 组 1 / 槽 1 / 可投影
+        p2.shading_group = 1u;
+
+        MakePart(p3, 30u, 0u, 0u, 1u);                            // 组 0 / 槽 1 / 不投阴影
+        p3.shading_group = 0u;
+
+        tpls[0].parts.Add(p0);
+        tpls[0].parts.Add(p1);
+        tpls[0].parts.Add(p2);
+        tpls[0].parts.Add(p3);
+
+        const uint32_t kGroupBase[2] = { 200u, 300u };
+
+        ExpandArgs a;
+        a.template_id     = 9u;
+        a.bucket_base     = 999u;      // 启用组表后必须**不**被使用
+        a.group_bases     = kGroupBase;
+        a.group_base_count = 2u;
+        a.lod_ratio       = 1.0f;
+
+        ValueArray<DrawRec> got;
+
+        // 1) 直渲：两组都参与 ⇒ 4 条实例，各落自己组的桶
+        const DrawRec kExpectMain[] =
+        {
+            { 200u + 0u, 10u, 0u, 0u },
+            { 300u + 0u, 20u, 0u, 0u },
+            { 300u + 1u, 21u, 0u, 0u },
+            { 200u + 1u, 30u, 0u, 0u },
+        };
+
+        ExpandEntity(tpls, 1, a, got);
+        bool ok = ExpectDraws(got, kExpectMain, 4, "双 shading_group 分流手算表");
+
+        // 2) 阴影 pass 且组 1 不参与 ⇒ 只剩组 0 的可投影部件（P3 无 CanCastShadow）
+        uint32_t shadow_group_base[2] = { 200u, kModelExpansionInvalidBucketBase };
+
+        a.blk            = 1u;
+        a.group_bases    = shadow_group_base;
+        a.group_base_count = 2u;
+
+        const DrawRec kExpectShadow[] = { { 200u + 0u, 10u, 0u, 0u } };
+
+        ExpandEntity(tpls, 1, a, got);
+        ok = ExpectDraws(got, kExpectShadow, 1, "某组不参与本 pass ⇒ 只跳过该组部件") && ok;
+
+        // 3) 组表缺该组（组号越界）⇒ 该组部件跳过，不越界读
+        a.blk = 0u;
+        a.group_bases = kGroupBase;
+        a.group_base_count = 1u;
+
+        const DrawRec kExpectShort[] =
+        {
+            { 200u + 0u, 10u, 0u, 0u },
+            { 200u + 1u, 30u, 0u, 0u },
+        };
+
+        ExpandEntity(tpls, 1, a, got);
+        ok = ExpectDraws(got, kExpectShort, 2, "组表短于模板组数 ⇒ 越界组跳过（不得读越界）") && ok;
+
+        // 4) 未启用组表（旧路径）⇒ 全部落 bucket_base（单组回退，逐字节不变）
+        a.group_bases = nullptr;
+        a.group_base_count = 0u;
+
+        const DrawRec kExpectLegacy[] =
+        {
+            { 999u + 0u, 10u, 0u, 0u },
+            { 999u + 0u, 20u, 0u, 0u },
+            { 999u + 1u, 21u, 0u, 0u },
+            { 999u + 1u, 30u, 0u, 0u },
+        };
+
+        ExpandEntity(tpls, 1, a, got);
+        ok = ExpectDraws(got, kExpectLegacy, 4, "组表未启用 ⇒ 回退一级表（单组旧口径）") && ok;
+
+        return ok;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     // D 组：着色器源码契约
     // ══════════════════════════════════════════════════════════════════════
 
@@ -679,20 +874,26 @@ namespace
             { "if (blk != 0u && (tpl.flags & MODEL_TEMPLATE_FLAG_SHADOW_PROXY) != 0u &&",
               "阴影代理只在非直渲 pass 生效" },
 
-            { "if (((entity.model_part_mask >> uint64_t(p)) & uint64_t(1)) == uint64_t(0))",
-              "部件可见位必须按位号 p 取" },
+            { "if (p < 64u && ((entity.model_part_mask >> uint64_t(p)) & uint64_t(1)) == uint64_t(0))",
+              "部件可见位必须按位号 p 取，且 p>=64 时不得移位（UB）" },
             { "if (part.geometry_id == 0u)",
               "无几何部件必须跳过" },
             { "if (blk != 0u && (part.part_flags & 1u) == 0u)",
               "阴影 pass 必须只投可投影部件（kModelPartFlagCanCastShadow）" },
             { "if (part.bucket_slot == 0xFFFFFFFFu)",
               "无槽部件（bucket_slot 哨兵）必须跳过，不得落到组基址" },
-            { "const uint bucket = tag_bucket_base + part.bucket_slot;",
+            { "ModelGroupBucketBaseRef(group_bucket_addr).values[tag_bucket_base + part.shading_group]",
+              "组基址必须经二级组表按 part.shading_group 取" },
+            { "if (part_bucket_base == MODEL_BUCKET_BASE_INVALID)",
+              "某组本 pass 不参与时必须只跳过该组部件（不得丢整个实例）" },
+            { "const uint bucket = part_bucket_base + part.bucket_slot;",
               "桶号必须是组基址 + 模板内槽号，不得跨组重排" },
             { "if (blk == 0u && part.aabb_center_radius.w >= 0.0)",
               "部件级细剔除只在直渲 pass 生效（阴影 pass 不做，避免漏阴影）" },
-            { "(part.material_id != 0u) ? part.material_id : ids_blk.material_id",
-              "部件材质优先，material_id==0 表示继承批次/pass 级材质" },
+            { "has_part_mtl ? part.material_id : ids_blk.material_id",
+              "部件材质必须按 HasMaterial 标志选择（不得用行号 != 0 判定）" },
+            { "has_part_mtl ? part.texture_id  : ids_blk.texture_id",
+              "部件纹理必须按 HasMaterial 标志选择（不得恒用实体纹理）" },
         };
 
         bool ok = true;
@@ -717,6 +918,8 @@ int main()
     Check(TestMatrixOrder(), "A 组：矩阵合成顺序");
     Check(TestLodSelection(), "B 组：LOD 选级手算表");
     Check(TestExpansionTable(), "C 组：阴影代理/部件筛选/桶号手算表");
+    Check(TestPartMaterialRouting(), "E 组：部件自带材质/纹理（HasMaterial）");
+    Check(TestShadingGroupRouting(), "E 组：shading_group 二级组表分流");
     Check(TestSourceContracts(), "D 组：着色器源码契约");
 
     if (g_failed > 0)

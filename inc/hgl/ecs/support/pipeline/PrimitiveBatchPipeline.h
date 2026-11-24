@@ -103,9 +103,10 @@ namespace hgl::ecs
         /// 实际出现的模板（典型 1~个位数）。
         struct TemplatePartFacts
         {
-            uint32_t part_offset       = 0;
-            uint32_t part_count        = 0;
-            uint32_t part_bucket_count = 0;
+            uint32_t part_offset         = 0;
+            uint32_t part_count          = 0;
+            uint32_t part_bucket_count   = 0;
+            uint32_t shading_group_count = 1;
             std::vector<uint32_t> slot_count;      ///< 槽 → 该槽部件数
             std::vector<uint32_t> slot_geometry;   ///< 槽 → geometry_id（该槽桶的几何体）
         };

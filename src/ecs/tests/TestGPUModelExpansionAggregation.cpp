@@ -464,8 +464,10 @@ namespace
               "布局行 = 一个桶，容量随行下发" },
             { "row_cursor = (row_cursor + capacity + 3u) & ~3u;",
               "桶间实例行起点必须推进到 4 行对齐" },
-            { "gpu_cull->SetModelBucketBase(pass_index, owner->GetEntityID().index,",
-              "模板实体必须按实体写回部件桶组基址" },
+            { "gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,",
+              "模板实体必须按实体写回**组表偏移**（二级表寻址）" },
+            { "gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset, 0u,",
+              "组 0 的块内首桶号必须回填进二级组表" },
             { "need_rows += cap;",
               "竞技场前置校验必须按 Σ(1 + 容量) 计（实例行连续占用）" },
         };
