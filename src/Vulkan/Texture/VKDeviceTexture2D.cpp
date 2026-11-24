@@ -24,7 +24,7 @@ void TextureManager::Clear(TextureCreateInfo *tci)
 {
     if(!tci)return;
 
-    if(tci->image)DestroyImage(tci->image);
+    if(tci->image && tci->owns_image)DestroyImage(tci->image);
     if(tci->image_view)delete tci->image_view;
     if(tci->memory)delete tci->memory;
 

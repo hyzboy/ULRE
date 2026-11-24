@@ -35,6 +35,7 @@ public:
 
     VkDeviceMemory              GetDeviceMemory     ()      {return data?(data->memory?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE):VK_NULL_HANDLE;}
     VkImage                     GetImage            ()      {return data?data->image:VK_NULL_HANDLE;}
+    bool                        OwnsImage           ()const noexcept {return data?data->owns_image:false;}
     VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     void                        SetImageLayout      (VkImageLayout layout) {if(data) data->image_layout = layout;}
     VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->GetImageView():VK_NULL_HANDLE;}

@@ -19,6 +19,7 @@ struct TextureCreateInfo
     VkImageLayout       image_layout;
 
     VkImage             image;          // If no IMAGE, create one; otherwise directly provide image (can be from external source)
+    bool                owns_image;     // Whether this texture owns the VkImage lifecycle (false for swapchain images etc.)
     DeviceMemory *      memory;         // Bind memory at the same time
 
     ImageView *         image_view;     // If no imageview, create one
@@ -47,6 +48,7 @@ public:
         tiling                  = ImageTiling(0);
         image_layout            = VkImageLayout(0);
         image                   = VK_NULL_HANDLE;
+        owns_image              = true;
         memory                  = nullptr;
         image_view              = nullptr;
         pixels                  = nullptr;
@@ -65,6 +67,7 @@ public:
 
         format=fmt;
         image=img;
+        owns_image=false;
         name=n;
     }
 
@@ -337,7 +340,7 @@ struct DepthStencilAttachmentTextureCreateInfo:public AttachmentTextureCreateInf
 struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
 {
     SwapchainColorTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,VkImage img,const U8String &n=U8String((const u8char*)u8"SwapchainColor"),const uint32_t image_usage=0)
-        :TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,ext,fmt,img,n){usage=image_usage;}
+        :TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,ext,fmt,img,n){usage=image_usage;owns_image=false;}
 };//struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
 
 struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
@@ -362,12 +365,14 @@ struct TextureData
     uint32              miplevel;
     VkImageTiling       tiling;
     VkImageUsageFlags   usage;
+    bool                owns_image;
 
 public:
 
     TextureData()
     {
         mem_zero(*this);
+        owns_image = true;
     }
 
     TextureData(const TextureCreateInfo *tci)
@@ -379,6 +384,7 @@ public:
         miplevel    =tci->target_mipmaps;
         tiling      =VkImageTiling(tci->tiling);
         usage       =tci->usage;
+        owns_image  =tci->owns_image;
 
         if(!tci->buffer&&!tci->pixels&&tci->image_layout==VK_IMAGE_LAYOUT_UNDEFINED)
             image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

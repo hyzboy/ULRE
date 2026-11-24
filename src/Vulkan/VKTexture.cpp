@@ -25,7 +25,7 @@ Texture::~Texture()
 
     const VkDevice vk_dev = manager ? manager->GetVkDevice() : VK_NULL_HANDLE;
 
-    if(data->image && vk_dev != VK_NULL_HANDLE)
+    if(data->image && vk_dev != VK_NULL_HANDLE && data->owns_image)
     {
         VulkanDevice *owner = VulkanDevice::FromDevice(vk_dev);
         if (owner)
@@ -38,7 +38,7 @@ Texture::~Texture()
     if(data->image_view)
         delete data->image_view;
 
-    if(data->image && vk_dev != VK_NULL_HANDLE)
+    if(data->image && vk_dev != VK_NULL_HANDLE && data->owns_image)
         vkDestroyImage(vk_dev, data->image, nullptr);
 
     if(data->memory)
