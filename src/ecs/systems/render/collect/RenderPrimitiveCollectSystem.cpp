@@ -16,6 +16,7 @@
 #include<hgl/ecs/core/render/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/render/ModelTemplateRenderItem.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
+#include<hgl/ecs/support/material/ModelTemplateBuilder.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include <cstdlib>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
@@ -2971,8 +2972,27 @@ namespace hgl::ecs
                 const uint32_t transform_id = transform.GetID();
                 const uint32_t pass_index = shadow_pass ? 1u : 0u;
 
+                // 提取材质 4-ID 事实（支持覆盖优先，默认回退模板 group 0）
+                uint32_t fact_material_id = 0u;
+                uint32_t fact_texture_id = 0u;
+                MaterialRuntimeRowID active_row_id = pure_model_ref->override_material_row;
+                if (active_row_id == INVALID_MATERIAL_RUNTIME_ROW_ID && !binding->groups.IsEmpty())
+                {
+                    active_row_id = binding->groups[0].runtime_row;
+                }
+                if (active_row_id != INVALID_MATERIAL_RUNTIME_ROW_ID)
+                {
+                    if (const MaterialRuntimeRow *mat_row = current_runtime_table ? current_runtime_table->Get(active_row_id) : nullptr)
+                    {
+                        if (mat_row->data_index_row != uint32_t(-1))
+                            fact_material_id = mat_row->data_index_row;
+                        if (mat_row->material_texture_configuration.IsValid())
+                            fact_texture_id = mat_row->material_texture_configuration.row_index;
+                    }
+                }
+
                 // 发布模板实体的权威事实（template_id, part_visibility_mask, etc.）
-                PublishPrimitiveFacts(entity_id, transform_id, 0u, 0u, 0u, pass_index, nullptr);
+                PublishPrimitiveFacts(entity_id, transform_id, 0u, fact_material_id, fact_texture_id, pass_index, nullptr);
 
                 for (uint32_t g = 0; g < static_cast<uint32_t>(binding->groups.GetCount()); ++g)
                 {
@@ -2982,6 +3002,11 @@ namespace hgl::ecs
                         continue;
 
                     MaterialRuntimeRowID row_id = grp_desc.runtime_row;
+                    if (pure_model_ref->override_material_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
+                    {
+                        row_id = pure_model_ref->override_material_row;
+                    }
+
                     const MaterialRuntimeRow *row = current_runtime_table ? current_runtime_table->Get(row_id) : nullptr;
                     if (!row)
                         continue;
@@ -3239,6 +3264,39 @@ namespace hgl::ecs
             const MaterialRuntimeRow *material_for_item = (runtime_table && material_slot_ptr)
                 ? runtime_table->Get(material_slot_ptr->row)
                 : nullptr;
+
+            // 阶段 3 归一化：将物化成功的单图元实体自动提升为 GPU 模型模板实体
+            if (!pure_model_ref && material_slot_ptr && material_slot_ptr->valid)
+            {
+                GeometryData *geom_comp = FindGeometryOf(entity);
+                const graph::PrimitiveAsset *prim_asset = geom_comp ? geom_comp->GetPrimitiveAsset() : nullptr;
+                graph::Geometry *geo = prim_asset ? prim_asset->GetGeometry() : nullptr;
+                auto *gc = world->GetGraphicsContext();
+                auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+                if (geo && registry && material_for_item)
+                {
+                    SinglePrimitiveModelTemplateDesc tmpl_desc;
+                    tmpl_desc.material_input.runtime_row = material_slot_ptr->row;
+                    tmpl_desc.material_input.material_id = (material_for_item->data_index_row != uint32_t(-1))
+                        ? material_for_item->data_index_row : 0u;
+                    tmpl_desc.material_input.texture_id = material_for_item->material_texture_configuration.IsValid()
+                        ? material_for_item->material_texture_configuration.row_index : 0u;
+                    tmpl_desc.can_cast_shadow = CanCastShadow(entity);
+                    tmpl_desc.is_opaque = true;
+
+                    const uint32_t auto_template_id = BuildSinglePrimitiveModelTemplate(
+                        registry, world, geo, tmpl_desc);
+
+                    if (auto_template_id != graph::ssbo::kInvalidModelTemplateID)
+                    {
+                        auto *new_ref = entity->AddComponent<GPUModelRefComponent>();
+                        if (new_ref)
+                        {
+                            new_ref->template_id = auto_template_id;
+                        }
+                    }
+                }
+            }
 
             // ── 本帧 4-ID 四元组（唯一消费者 = 实体 4-ID 表；句柄空间副本已随池整删）──
             // B3-iii：geometry_id 直读几何行号（不再经每实体 CPU 几何副本的镜像字段与三级回退）
