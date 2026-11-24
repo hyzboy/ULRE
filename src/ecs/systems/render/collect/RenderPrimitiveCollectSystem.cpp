@@ -2715,10 +2715,17 @@ namespace hgl::ecs
                     continue;
             }
 
-            // 阶段 1：纯模板载体实体（无 GeometryData 且有 GPUModelRefComponent）
-            // 其部件几何与材质常驻 GPU SSBO 并由 ModelTemplateMaterialTable 管理，无需参与单图元 slot 预扫描。
-            if (!entity->GetComponent<GeometryData>() && entity->GetComponent<GPUModelRefComponent>())
-                continue;
+            // 阶段 1/2：模板载体实体（挂有效 GPUModelRefComponent）
+            // 若在 ModelTemplateMaterialTable 中已注册绑定（自包含 Shading Groups），或无 GeometryData，
+            // 则其部件几何与材质常驻 GPU SSBO，无需参与单图元 slot 预扫描。
+            const GPUModelRefComponent *scan_model_ref = entity->GetComponent<GPUModelRefComponent>();
+            if (scan_model_ref && scan_model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+            {
+                const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+                const bool has_template_binding = template_mat_table && template_mat_table->FindBinding(scan_model_ref->template_id) != nullptr;
+                if (has_template_binding || !entity->GetComponent<GeometryData>())
+                    continue;
+            }
 
             // 阴影 pass 的 caster 能力（CanCastShadow）与距离裁剪（in_shadow_range）已由表的
             // CollectForCurrentPass 条件要求表达 ⇒ 这里不再重复判据。
@@ -2931,10 +2938,15 @@ namespace hgl::ecs
             // 阴影 pass 的 caster 能力与距离裁剪已由表的 CollectForCurrentPass 条件要求表达
             // ⇒ 这里不再重复判据（原两条 continue 随之删除）。
 
-            // 阶段 1：纯模板载体实体（无 GeometryData 且有 GPUModelRefComponent）快线分流
+            // 阶段 1/2：模板载体实体（挂有效 GPUModelRefComponent）快线分流
             // 按 ModelTemplateMaterialTable 中已注册的各 Shading Group 独立投递载体项（完全绕过传统单图元材质物化）
             const GPUModelRefComponent *pure_model_ref = entity->GetComponent<GPUModelRefComponent>();
-            const bool is_pure_template = (pure_model_ref != nullptr) && (entity->GetComponent<GeometryData>() == nullptr);
+            const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+            const TemplateRenderBinding *binding = (pure_model_ref && template_mat_table)
+                ? template_mat_table->FindBinding(pure_model_ref->template_id) : nullptr;
+
+            const bool is_pure_template = (pure_model_ref != nullptr && pure_model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+                                       && (binding != nullptr || entity->GetComponent<GeometryData>() == nullptr);
 
             if (is_pure_template)
             {
@@ -2944,8 +2956,6 @@ namespace hgl::ecs
                     continue;
                 }
 
-                const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
-                const TemplateRenderBinding *binding = template_mat_table ? template_mat_table->FindBinding(pure_model_ref->template_id) : nullptr;
                 if (!binding || binding->groups.IsEmpty())
                 {
                     cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", "NoTemplateBinding", "Model template has no render binding");

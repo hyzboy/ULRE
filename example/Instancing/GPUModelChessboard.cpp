@@ -165,7 +165,7 @@ private:
     static constexpr uint32_t kSelfW           = 1280;
     static constexpr uint32_t kSelfH           = 720;
     static constexpr uint32_t kSelfMinDistinct = 2;
-    static constexpr uint64_t kSelfFNV         = 0x0C85065FA52E007Dull;  // 冻结相机 + 定帧 8 实跑记录
+    static constexpr uint64_t kSelfFNV         = 0x1E7512FCCA62A5A9ull;  // 冻结相机 + 定帧 8 实跑记录
 
 private:
 
