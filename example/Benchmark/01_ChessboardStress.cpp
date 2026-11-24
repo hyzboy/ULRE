@@ -173,7 +173,8 @@ namespace
     constexpr size_t PART_COUNT = sizeof(kParts) / sizeof(kParts[0]);
 
     // 每棋盘占用行数 = 部件桶组（part_bucket_count）+ 代表几何体桶（1 行/实例）
-    constexpr uint32_t kRowsPerBoard = uint32_t(PART_COUNT) + 1u;
+    constexpr uint32_t kRepresentativeGeometryRows = 1u;
+    constexpr uint32_t kRowsPerBoard = uint32_t(PART_COUNT) + kRepresentativeGeometryRows;
 
     // 逐实例自定义色：浅格 / 深格（材质行是白 ⇒ 最终画面色 = 本色）
     static const math::Vector4f kLightColor(0.87f, 0.83f, 0.74f, 1.0f);

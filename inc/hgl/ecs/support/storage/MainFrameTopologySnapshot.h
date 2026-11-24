@@ -86,7 +86,7 @@ namespace hgl::ecs
     {
         uint32_t entity_index      = 0;   ///< `EntityID::index`
         uint16_t entity_generation = 0;   ///< `EntityID::generation`（陈旧句柄以此判出）
-        uint16_t reserved0         = 0;   ///< 保留（显式填零，便于逐字节对拍）
+        uint16_t member_kind       = 0;   ///< 0=PrimitiveGeometry, 1=ModelTemplateOnly
         uint32_t material_row      = 0;   ///< `MaterialRuntimeRowID`（材质运行期共享行号）
         uint32_t batch_slot        = 0;   ///< 所属批在 `SnapshotBatchRecord` 数组里的下标
 

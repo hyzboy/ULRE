@@ -46,7 +46,7 @@ function(check_common label output)
     if(NOT output MATCHES "\\[CSTRESS\\] 合批验证 PASS")
         message(FATAL_ERROR "${label}: 合批验证未 PASS（桶组/竞技场行预算分配错）\n${output}")
     endif()
-    # 默认档 Σ桶容量 = 5 × 729 + 350 = 3995（容量单源 §1b = 40960；改默认档必须同步改这条与 01_ChessboardStress.cpp 文件头）
+    # 默认档 Σ桶容量 = (部件数 + 代表几何体行数) × 729 + 350 = 3995
     if(NOT output MATCHES "Σ桶容量=3995（期望 3995）")
         message(FATAL_ERROR "${label}: Σ桶容量与默认档算式不符（期望 3995）\n${output}")
     endif()

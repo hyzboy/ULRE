@@ -166,6 +166,7 @@ namespace hgl::ecs
                     item_record.entity_index      = entity_id.index;
                     item_record.entity_generation = entity_id.generation;
                     item_record.material_row      = prim->GetMaterialRuntimeRowID();
+                    item_record.member_kind       = 0u;
 
                     // 绘制键：完整路径刚刚在 `PublishPrimitiveFacts` 里算好 ⇒ 搬进快照是
                     // **零额外成本**，却让快路径（P3）无需再读映射 GPU 缓冲里的 params 行。
@@ -209,6 +210,7 @@ namespace hgl::ecs
         {
             hasher << item_data[i].entity_index
                    << item_data[i].entity_generation
+                   << item_data[i].member_kind
                    << item_data[i].material_row
                    << item_data[i].batch_slot
                    << item_data[i].draw_geometry_id

@@ -2299,13 +2299,7 @@ namespace hgl::ecs
                     break;
                 }
 
-                GeometryData *geometry_comp = entity->GetComponent<GeometryData>();
-
-                if (!geometry_comp)
-                {
-                    ok = false;
-                    break;
-                }
+                // P3 不再要求实体挂载 GeometryData；draw_geometry_id 已是快照权威绘制键。
 
                 const TransformAccessor transform = world->GetTransformByEntity(entity_id);
 
@@ -2327,7 +2321,7 @@ namespace hgl::ecs
                 }
 
                 const uint32_t transform_id = transform.GetID();
-                const uint32_t geometry_id  = geometry_comp->GetGeometryID();
+                const uint32_t geometry_id  = record.draw_geometry_id;
                 const uint32_t material_id  = (material_row->data_index_row != uint32_t(-1))
                     ? material_row->data_index_row : 0u;
                 const uint32_t texture_id   = material_row->material_texture_configuration.IsValid()
