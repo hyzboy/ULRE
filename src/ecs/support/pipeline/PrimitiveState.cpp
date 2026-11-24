@@ -3,7 +3,9 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/components/GPUModelRefComponent.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
+#include<hgl/graph/ssbo/ModelTemplateRows.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
 
 namespace hgl::ecs
@@ -72,6 +74,10 @@ namespace hgl::ecs
         if (!entity)
             return false;
 
+        const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
+        if (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+            return true;
+
         ECSContext *context = entity->GetContext();
         if (!context)
             return false;
@@ -127,6 +133,10 @@ namespace hgl::ecs
     {
         if (!entity)
             return false;
+
+        const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
+        if (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+            return true;
 
         ECSContext *context = entity->GetContext();
         if (!context)

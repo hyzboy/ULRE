@@ -1,6 +1,7 @@
 #include <hgl/ecs/support/pipeline/RenderableBuilder.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/MaterialData.h>
+#include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
@@ -273,6 +274,23 @@ namespace hgl::ecs
         binding.data_index = block->RowIDAt(row_index);
 
         return WithMaterialDataResource(binding);
+    }
+
+    RenderableBuilder &RenderableBuilder::WithModelTemplate(uint32_t template_id)
+    {
+        if (failed || !entity)
+            return *this;
+
+        auto *ref = entity->GetComponent<GPUModelRefComponent>();
+        if (!ref)
+            ref = entity->AddComponent<GPUModelRefComponent>();
+        if (!ref)
+        {
+            Fail("WithModelTemplate");
+            return *this;
+        }
+        ref->template_id = template_id;
+        return *this;
     }
 
     Entity *RenderableBuilder::Build()

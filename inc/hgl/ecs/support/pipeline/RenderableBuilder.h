@@ -119,6 +119,11 @@ namespace hgl::ecs
             return *this;
         }
 
+        /**
+         * @brief 绑定 GPU 模型模板（直挂 GPUModelRefComponent，走 GPU 驱动快线）
+         */
+        RenderableBuilder &WithModelTemplate(uint32_t template_id);
+
         Entity *Build();
     };
 }

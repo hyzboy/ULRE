@@ -10,6 +10,8 @@
 #include <hgl/ecs/support/storage/FrameProfiler.h>
 #include <hgl/ecs/support/pipeline/PrimitiveState.h>
 #include <hgl/ecs/components/GeometryData.h>
+#include <hgl/ecs/components/GPUModelRefComponent.h>
+#include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/vk/VKCommandBuffer.h>
@@ -168,6 +170,17 @@ namespace hgl::ecs
                     continue;
 
                 if (HasPendingMaterialResources(geometry->GetOwner()))
+                    return true;
+            }
+
+            ValueArray<GPUModelRefComponent *> model_refs;
+            GetComponents<GPUModelRefComponent>(model_refs);
+            for (GPUModelRefComponent *ref : model_refs)
+            {
+                if (!ref || ref->template_id == graph::ssbo::kInvalidModelTemplateID)
+                    continue;
+
+                if (HasPendingMaterialResources(ref->GetOwner()))
                     return true;
             }
 
