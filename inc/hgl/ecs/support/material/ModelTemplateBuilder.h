@@ -4,10 +4,13 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/graph/asset/ModelAsset.h>
 #include <hgl/ecs/support/material/ModelTemplateMaterialTable.h>
+#include <hgl/math/geometry/AABB.h>
 
 namespace hgl::graph
 {
     class GlobalSSBOBufferRegistry;
+    class Geometry;
+    class PrimitiveAsset;
 }
 
 namespace hgl::ecs
@@ -22,6 +25,16 @@ namespace hgl::ecs
         MaterialRuntimeRowID runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
         uint32_t material_id = 0;
         uint32_t texture_id = 0;
+        bool can_cast_shadow = true;
+        bool is_opaque = true;
+    };
+
+    /**
+     * 单图元模型模板构建描述
+     */
+    struct SinglePrimitiveModelTemplateDesc
+    {
+        MultiMaterialPartInput material_input{};
         bool can_cast_shadow = true;
         bool is_opaque = true;
     };
@@ -51,7 +64,29 @@ namespace hgl::ecs
                                             const MultiMaterialModelTemplateDesc &desc);
 
     /**
-     * @brief 注销多材质模型模板（同时注销材质绑定并归还 GPU 模板池行与部件区间）
+     * @brief 构建并注册一个单图元极简 GPU 模型模板 (part_count=1, group_count=1)。
+     * 具备按 (geometry_id, runtime_row, can_cast_shadow, is_opaque) 的全局去重缓存机制。
+     *
+     * @return 模板池行号 (template_id != 0)，失败返回 0
+     */
+    uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                              ECSContext *context,
+                                              uint32_t geometry_id,
+                                              const hgl::math::AABB &local_aabb,
+                                              const SinglePrimitiveModelTemplateDesc &desc);
+
+    uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                              ECSContext *context,
+                                              graph::Geometry *geo,
+                                              const SinglePrimitiveModelTemplateDesc &desc);
+
+    uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                              ECSContext *context,
+                                              const graph::PrimitiveAsset *asset,
+                                              const SinglePrimitiveModelTemplateDesc &desc);
+
+    /**
+     * @brief 注销多材质/单图元模型模板（同时注销材质绑定并归还 GPU 模板池行与部件区间）
      */
     bool DestroyMultiMaterialModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
                                           ECSContext *context,

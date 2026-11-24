@@ -4,11 +4,41 @@
 #include <hgl/type/PtrArray.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/ecs/support/material/MaterialRuntimeTable.h>
+#include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 
 namespace hgl::ecs
 {
     class ECSContext;
+
+    /**
+     * 单图元模型模板缓存键
+     */
+    struct SinglePrimitiveTemplateKey
+    {
+        uint32_t geometry_id = 0;
+        MaterialRuntimeRowID runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
+        bool can_cast_shadow = true;
+        bool is_opaque = true;
+
+        bool operator==(const SinglePrimitiveTemplateKey &rhs) const
+        {
+            return geometry_id == rhs.geometry_id
+                && runtime_row == rhs.runtime_row
+                && can_cast_shadow == rhs.can_cast_shadow
+                && is_opaque == rhs.is_opaque;
+        }
+    };
+
+    struct SinglePrimitiveTemplateKeyHash
+    {
+        std::size_t operator()(const SinglePrimitiveTemplateKey &k) const
+        {
+            hgl::hash::FNV1aHasher64 h;
+            h << k.geometry_id << k.runtime_row << (k.can_cast_shadow ? 1u : 0u) << (k.is_opaque ? 1u : 0u);
+            return static_cast<std::size_t>(h.Result());
+        }
+    };
 
     /**
      * 模板内一个 Shading Group 的渲染元数据描述
@@ -43,6 +73,8 @@ namespace hgl::ecs
     private:
         ECSContext *context = nullptr;
         UnorderedMap<uint32_t, TemplateRenderBinding *> bindings;
+        UnorderedMap<SinglePrimitiveTemplateKey, uint32_t, SinglePrimitiveTemplateKeyHash> single_primitive_cache;
+        UnorderedMap<uint32_t, SinglePrimitiveTemplateKey> template_to_single_key;
 
         void ReleaseBindingRows(const TemplateRenderBinding &binding);
 
@@ -60,6 +92,9 @@ namespace hgl::ecs
 
         const TemplateRenderBinding *FindBinding(uint32_t template_id) const;
         bool HasBinding(uint32_t template_id) const;
+
+        uint32_t FindSinglePrimitiveTemplate(const SinglePrimitiveTemplateKey &key) const;
+        void RegisterSinglePrimitiveTemplate(const SinglePrimitiveTemplateKey &key, uint32_t template_id);
 
         uint32_t GetCount() const { return static_cast<uint32_t>(bindings.GetCount()); }
         void Clear();

@@ -81,6 +81,13 @@ namespace hgl::ecs
         ReleaseBindingRows(*existing);
         delete existing;
         bindings.DeleteByKey(template_id);
+
+        if (const SinglePrimitiveTemplateKey *k = template_to_single_key.GetValuePointer(template_id))
+        {
+            single_primitive_cache.DeleteByKey(*k);
+            template_to_single_key.DeleteByKey(template_id);
+        }
+
         return true;
     }
 
@@ -95,6 +102,21 @@ namespace hgl::ecs
         return bindings.ContainsKey(template_id);
     }
 
+    uint32_t ModelTemplateMaterialTable::FindSinglePrimitiveTemplate(const SinglePrimitiveTemplateKey &key) const
+    {
+        const uint32_t *id_ptr = single_primitive_cache.GetValuePointer(key);
+        return id_ptr ? *id_ptr : 0u;
+    }
+
+    void ModelTemplateMaterialTable::RegisterSinglePrimitiveTemplate(const SinglePrimitiveTemplateKey &key, uint32_t template_id)
+    {
+        if (template_id == 0)
+            return;
+
+        single_primitive_cache.Add(key, template_id);
+        template_to_single_key.Add(template_id, key);
+    }
+
     void ModelTemplateMaterialTable::Clear()
     {
         for (auto &pair : bindings)
@@ -106,5 +128,7 @@ namespace hgl::ecs
             }
         }
         bindings.Clear();
+        single_primitive_cache.Clear();
+        template_to_single_key.Clear();
     }
 }

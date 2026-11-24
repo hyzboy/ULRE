@@ -4,7 +4,9 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/geo/VKGeometry.h>
+#include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/math/geometry/AABB.h>
+#include <hgl/math/geometry/BoundingVolumes.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/PtrArray.h>
 
@@ -333,6 +335,183 @@ namespace hgl::ecs
         }
 
         return template_id;
+    }
+
+    uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                              ECSContext *context,
+                                              uint32_t geometry_id,
+                                              const hgl::math::AABB &local_aabb,
+                                              const SinglePrimitiveModelTemplateDesc &desc)
+    {
+        using graph::ssbo::ModelTemplateRow;
+        using graph::ssbo::ModelPartRow;
+        using graph::ssbo::kInvalidModelTemplateID;
+        using graph::ssbo::kModelPartFlagHasMaterial;
+        using graph::ssbo::kModelPartFlagCanCastShadow;
+        using graph::ssbo::kModelPartFlagIsOpaque;
+
+        if (!registry || !context || geometry_id == 0)
+        {
+            GLogError(u8"[BuildSinglePrimitiveModelTemplate] 参数无效: registry=%p, context=%p, geometry_id=%u",
+                      registry, context, geometry_id);
+            return kInvalidModelTemplateID;
+        }
+
+        ModelTemplateMaterialTable *mat_table = context->GetModelTemplateMaterialTable();
+        if (!mat_table)
+        {
+            GLogError(u8"[BuildSinglePrimitiveModelTemplate] context 未初始化 ModelTemplateMaterialTable");
+            return kInvalidModelTemplateID;
+        }
+
+        // 检查缓存
+        SinglePrimitiveTemplateKey cache_key;
+        cache_key.geometry_id = geometry_id;
+        cache_key.runtime_row = desc.material_input.runtime_row;
+        cache_key.can_cast_shadow = desc.can_cast_shadow;
+        cache_key.is_opaque = desc.is_opaque;
+
+        const uint32_t existing_template_id = mat_table->FindSinglePrimitiveTemplate(cache_key);
+        if (existing_template_id != kInvalidModelTemplateID)
+        {
+            return existing_template_id;
+        }
+
+        // 自动补齐 material_id / texture_id
+        uint32_t effective_mat_id = desc.material_input.material_id;
+        uint32_t effective_tex_id = desc.material_input.texture_id;
+        if (effective_mat_id == 0 && effective_tex_id == 0 && desc.material_input.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
+        {
+            MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
+            if (runtime_table)
+            {
+                if (const MaterialRuntimeRow *row = runtime_table->Get(desc.material_input.runtime_row))
+                {
+                    if (row->data_index_row != uint32_t(-1))
+                        effective_mat_id = row->data_index_row;
+                    if (row->material_texture_configuration.IsValid())
+                        effective_tex_id = row->material_texture_configuration.row_index;
+                }
+            }
+        }
+
+        // 申请 GPU SSBO 行号
+        const uint32_t template_id = registry->Acquire(GlobalSSBOType::ModelTemplatePool);
+        if (template_id == ActiveRowPool::InvalidRowID)
+        {
+            GLogError(u8"[BuildSinglePrimitiveModelTemplate] ModelTemplatePool 发号失败");
+            return kInvalidModelTemplateID;
+        }
+
+        const uint32_t part_first = registry->AcquireRowRange(GlobalSSBOType::ModelPartPool, 1);
+        if (part_first == ActiveRowPool::InvalidRowID)
+        {
+            GLogError(u8"[BuildSinglePrimitiveModelTemplate] ModelPartPool 发号失败");
+            registry->ReleaseID(GlobalSSBOType::ModelTemplatePool, template_id);
+            return kInvalidModelTemplateID;
+        }
+
+        const bool bounds_ok = !local_aabb.IsEmpty();
+        const hgl::math::Vector3f part_center = bounds_ok ? local_aabb.GetCenter()
+                                                          : hgl::math::Vector3f(0.0f, 0.0f, 0.0f);
+        const hgl::math::Vector3f part_extent = bounds_ok ? local_aabb.GetExtent()
+                                                          : hgl::math::Vector3f(0.0f, 0.0f, 0.0f);
+        const float part_radius = bounds_ok ? local_aabb.GetDiagonal() * 0.5f
+                                            : graph::GlobalSSBOBufferRegistry::kAlwaysVisibleRadius;
+
+        // 拼装 ModelPartRow
+        ModelPartRow part_row;
+        part_row.local_matrix = hgl::math::Identity4f;
+        part_row.aabb_center_radius = hgl::math::Vector4f(part_center.x, part_center.y, part_center.z, part_radius);
+        part_row.aabb_extents = hgl::math::Vector4f(part_extent.x, part_extent.y, part_extent.z, 0.0f);
+        part_row.geometry_id = geometry_id;
+        part_row.material_id = effective_mat_id;
+        part_row.texture_id = effective_tex_id;
+        part_row.shading_group = 0;
+        part_row.bucket_slot = 0;
+        part_row.part_flags = kModelPartFlagHasMaterial;
+        if (desc.can_cast_shadow)
+            part_row.part_flags |= kModelPartFlagCanCastShadow;
+        if (desc.is_opaque)
+            part_row.part_flags |= kModelPartFlagIsOpaque;
+
+        if (!registry->WriteRowRange(GlobalSSBOType::ModelPartPool, part_first, &part_row, 1))
+        {
+            GLogError(u8"[BuildSinglePrimitiveModelTemplate] ModelPartPool 写入失败");
+            registry->ReleaseRowRange(GlobalSSBOType::ModelPartPool, part_first, 1);
+            registry->ReleaseID(GlobalSSBOType::ModelTemplatePool, template_id);
+            return kInvalidModelTemplateID;
+        }
+
+        // 拼装 ModelTemplateRow
+        ModelTemplateRow tmpl_row;
+        tmpl_row.part_offset = part_first;
+        tmpl_row.part_count = 1;
+        tmpl_row.part_bucket_count = 1;
+        tmpl_row.shading_group_count = 1;
+        tmpl_row.local_bound_center_radius = hgl::math::Vector4f(part_center.x, part_center.y, part_center.z, part_radius);
+        tmpl_row.local_bound_extents = hgl::math::Vector4f(part_extent.x, part_extent.y, part_extent.z, 0.0f);
+
+        if (!registry->Write(GlobalSSBOType::ModelTemplatePool, template_id, tmpl_row))
+        {
+            GLogError(u8"[BuildSinglePrimitiveModelTemplate] ModelTemplatePool 写入失败");
+            registry->ReleaseRowRange(GlobalSSBOType::ModelPartPool, part_first, 1);
+            registry->ReleaseID(GlobalSSBOType::ModelTemplatePool, template_id);
+            return kInvalidModelTemplateID;
+        }
+
+        // 注册 TemplateRenderBinding
+        TemplateRenderBinding binding;
+        binding.template_id = template_id;
+        if (desc.material_input.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
+            binding.owned_part_rows.Add(desc.material_input.runtime_row);
+
+        TemplateShadingGroupDesc grp;
+        grp.runtime_row = desc.material_input.runtime_row;
+        grp.casts_shadow = desc.can_cast_shadow;
+        grp.slot_geometry.Add(geometry_id);
+        grp.slot_count.Add(1);
+        binding.groups.Add(grp);
+
+        if (!mat_table->RegisterBinding(binding))
+        {
+            GLogError(u8"[BuildSinglePrimitiveModelTemplate] RegisterBinding 失败");
+            registry->ReleaseRowRange(GlobalSSBOType::ModelPartPool, part_first, 1);
+            registry->ReleaseID(GlobalSSBOType::ModelTemplatePool, template_id);
+            return kInvalidModelTemplateID;
+        }
+
+        mat_table->RegisterSinglePrimitiveTemplate(cache_key, template_id);
+        return template_id;
+    }
+
+    uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                              ECSContext *context,
+                                              graph::Geometry *geo,
+                                              const SinglePrimitiveModelTemplateDesc &desc)
+    {
+        if (!geo)
+            return graph::ssbo::kInvalidModelTemplateID;
+
+        if (geo->GetGeometryID() == 0 && registry && context)
+        {
+            geo->EnsureMeshDrawParams(registry, context->GetGPUDevice());
+        }
+
+        const uint32_t geometry_id = geo->GetGeometryID();
+        const hgl::math::AABB local_aabb = geo->GetBoundingVolumes().aabb;
+        return BuildSinglePrimitiveModelTemplate(registry, context, geometry_id, local_aabb, desc);
+    }
+
+    uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                              ECSContext *context,
+                                              const graph::PrimitiveAsset *asset,
+                                              const SinglePrimitiveModelTemplateDesc &desc)
+    {
+        if (!asset)
+            return graph::ssbo::kInvalidModelTemplateID;
+
+        return BuildSinglePrimitiveModelTemplate(registry, context, asset->GetGeometry(), desc);
     }
 
     bool DestroyMultiMaterialModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
