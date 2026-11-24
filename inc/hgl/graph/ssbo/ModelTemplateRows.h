@@ -79,6 +79,11 @@ namespace hgl::graph::ssbo
     constexpr uint32_t kModelPartFlagCanCastShadow = 1u << 0; ///< 阴影 pass 可投影
     constexpr uint32_t kModelPartFlagIsOpaque      = 1u << 1; ///< 不透明（vs 透明分拣用）
 
+    /// 部件自带显式 `material_id` / `texture_id`（置位 ⇒ 直接采用部件行号，允许合法行号 0；
+    /// 未置位 ⇒ 回退继承宿主实体的 `ids_blk.material_id / texture_id`，兼容旧单材质模板）。
+    /// 为什么不用 `material_id != 0` 判断：材质 SSBO 池 / 纹理配置池的行 0 可能是**合法数据**。
+    constexpr uint32_t kModelPartFlagHasMaterial  = 1u << 2;
+
     /// ModelPartRow.bucket_slot 的"无桶"哨兵（geometry_id == 0 的部件恒为此值）。
     constexpr uint32_t kModelPartBucketSlotNone = 0xFFFFFFFFu;
 
@@ -96,11 +101,14 @@ namespace hgl::graph::ssbo
      * - `shadow_proxy_template_id`：阴影代理模板 id（如整栋楼 ≈ 一个 Cube）；生效前提 =
      *   `flags & kModelTemplateFlagShadowProxy`。0 或未置位 ⇒ 阴影 pass 直接渲染本体部件。
      *   展开侧只做一跳：代理自己的 `shadow_proxy_template_id` **不再被跟随**（防套娃）。
-     * - `part_bucket_count`：本模板**部件素材桶数**（= 部件 `bucket_slot` 的最大值 + 1）。
+     * - `part_bucket_count`：本模板**部件素材桶总数**（各 shading_group 的桶数之和；
+     *   单组时 = 部件 `bucket_slot` 的最大值 + 1）。
      *   展开时 GPU 每个部件落一个实例到"模板素材桶组"的第 `bucket_slot` 个桶；
-     *   组基址由 CPU 在装批时按 (批, 模板) 分配并写入展开竞技场的 per-实体表
-     *   （见 `ModelExpansionArena::bucket_base_addr`）。本字段让 CPU 不必扫部件行
+     *   组基址由 CPU 在装批时按 (pass, 模板, 组) 分配并写入展开竞技场的二级表
+     *   （见 `ModelExpansionArena::group_bucket_base_addr`）。本字段让 CPU 不必扫部件行
      *   就能知道要为本模板预留几个桶。
+     * - `shading_group_count`：模板内 Shading Group 数（至少 1）。组 = 材质物化后的管线
+     *   批次身份（forward + shadow 变体组合）；单材质模板恒为 1。
      *
      *   登记代理（`SetModelTemplateProxies`）时，本体与全部代理的 `bucket_slot` 会被
      *   **统一重编号**为按部件几何首次出现序，且**每个参与模板**的 `part_bucket_count`
@@ -118,8 +126,8 @@ namespace hgl::graph::ssbo
         uint32_t shadow_proxy_template_id = 0;           ///< 阴影代理模板 id（0 = 用本体）
         uint32_t flags = 0;                              ///< kModelTemplateFlag*
 
-        uint32_t part_bucket_count = 0;                  ///< 部件素材桶数（= max(bucket_slot)+1）
-        uint32_t _pad0[1] = { 0u };                      ///< 对齐：下两个 vec4 落 16B 边界
+        uint32_t part_bucket_count = 0;                  ///< 部件素材桶总数（Σ 各组桶数；旧口径 = max(bucket_slot)+1）
+        uint32_t shading_group_count = 1;                ///< 模板内 Shading Group 数（至少 1）
 
         Vector4f local_bound_center_radius = Vector4f(0.0f, 0.0f, 0.0f, 0.0f); ///< xyz 中心，w 半径
         Vector4f local_bound_extents       = Vector4f(0.0f, 0.0f, 0.0f, 0.0f); ///< AABB 半长
@@ -133,6 +141,7 @@ namespace hgl::graph::ssbo
     static_assert(offsetof(ModelTemplateRow, lod_screen_ratios) == 20,      "lod_screen_ratios @20");
     static_assert(offsetof(ModelTemplateRow, shadow_proxy_template_id) == 32, "shadow_proxy_template_id @32");
     static_assert(offsetof(ModelTemplateRow, part_bucket_count) == 40,      "part_bucket_count @40");
+    static_assert(offsetof(ModelTemplateRow, shading_group_count) == 44,    "shading_group_count @44");
     static_assert(offsetof(ModelTemplateRow, local_bound_center_radius) == 48, "local_bound_center_radius @48");
     static_assert(offsetof(ModelTemplateRow, local_bound_extents) == 64,    "local_bound_extents @64");
 
@@ -145,11 +154,18 @@ namespace hgl::graph::ssbo
      *   半径为辅助快速球测，extents 供精确 AABB）。
      * - `geometry_id`：Geometry 池（MeshDrawParams 主表）行号，0 = 无几何跳过。
      *   口径与 EntityGPU 表的 4-ID（entity_render_ids.geometry）完全一致。
-     * - `material_id`：材质数据行号（MaterialData 池）；0 = 未指定，
-     *   展开时可回退到实例/批次材质（当前 collect 路径按批次材质，本字段先行占位）。
-     * - `bucket_slot`：本部件在**模板素材桶组**内的槽号（同模板内按 `geometry_id`
+     * - `material_id`：材质数据行号（MaterialData 池）。
+     *   **仅当 `part_flags & kModelPartFlagHasMaterial` 置位时有效**；否则回退到宿主实体的
+     *   `ids_blk.material_id`（旧单材质模板语义）。
+     * - `texture_id`：纹理配置行号（`MaterialTextureConfiguration::row_index`，Forward/Shadow
+     *   同源）。有效性口径同 `material_id`（同一个 `HasMaterial` 标志）。
+     * - `shading_group`：本部件所属的模板内 Shading Group 序号 `[0, shading_group_count)`。
+     *   组 = 材质物化后的**管线批次身份**（forward + shadow 变体组合）。展开侧桶号 =
+     *   `group_bucket_bases[实体组表偏移 + shading_group] + bucket_slot` ⇒ 同一实体可以
+     *   按部件分流到不同的 `MaterialBatch`。无材质纯几何模板恒为 0。
+     * - `bucket_slot`：本部件在**所属 shading_group 的素材桶组**内的槽号（组内按 `geometry_id`
      *   首次出现序去重编号；`geometry_id == 0` ⇒ `kModelPartBucketSlotNone`）。
-     *   桶组由 CPU 在装批时按 (批, 模板) 分配，组基址写入展开竞技场的 per-实体表；
+     *   桶组由 CPU 在装批时按 (pass, 批, 模板, 组) 分配，组基址写入展开竞技场的二级表；
      *   展开时 `桶号 = 组基址 + bucket_slot`。本字段是"部件 ⇒ 素材桶"映射的
      *   **唯一真源**，与批无关、跨帧幂等。
      */
@@ -160,12 +176,14 @@ namespace hgl::graph::ssbo
         Vector4f aabb_extents       = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);                                     ///< AABB 半长
 
         uint32_t geometry_id = 0;                    ///< Geometry 池行号（0 = 无几何，展开跳过）
-        uint32_t material_id = 0;                    ///< 材质数据行号（0 = 未指定）
+        uint32_t material_id = 0;                    ///< 材质数据行号（HasMaterial 置位时有效）
         uint32_t part_flags  = 0;                    ///< kModelPartFlag*
 
-        uint32_t bucket_slot = kModelPartBucketSlotNone; ///< 模板素材桶组内的槽号
+        uint32_t bucket_slot = kModelPartBucketSlotNone; ///< 所属 shading_group 内的素材桶槽号
 
-        uint32_t _pad0[4] = { 0u };                  ///< 补足 128B 行
+        uint32_t texture_id    = 0;                  ///< 纹理配置行号（HasMaterial 置位时有效）
+        uint32_t shading_group = 0;                  ///< 模板内 Shading Group 序号
+        uint32_t _pad0[2]      = { 0u, 0u };         ///< 补足 128B
     };
 
     static_assert(sizeof(ModelPartRow) == 128, "ModelPartRow 必须恰为 128 字节");
@@ -177,4 +195,6 @@ namespace hgl::graph::ssbo
     static_assert(offsetof(ModelPartRow, material_id) == 100,  "material_id @100");
     static_assert(offsetof(ModelPartRow, part_flags) == 104,   "part_flags @104");
     static_assert(offsetof(ModelPartRow, bucket_slot) == 108,  "bucket_slot @108");
+    static_assert(offsetof(ModelPartRow, texture_id) == 112,     "texture_id @112");
+    static_assert(offsetof(ModelPartRow, shading_group) == 116,  "shading_group @116");
 }

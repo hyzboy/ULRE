@@ -128,8 +128,11 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
             if (row.geometry_id != 0u)
                 ++ready_geometry;
 
-            // material_id：模板层不定死材质（批次/实例材质在 collect 侧回退），先行占 0。
+            // material_id / texture_id：模板层不定死材质（批次/实例材质在 collect 侧回退），
+            // 先行占 0 且**不置** `kModelPartFlagHasMaterial` ⇒ 展开侧沿用宿主实体材质。
             row.material_id = 0u;
+            row.texture_id  = 0u;
+            row.shading_group = 0u;
             row.part_flags  = row.geometry_id != 0u ? ssbo::kModelPartFlagCanCastShadow : 0u;
 
             // 部件 → 素材桶槽号：模板内按 geometry_id **首次出现**去重编号。
@@ -185,6 +188,7 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
     trow.part_offset = part_first;
     trow.part_count  = part_count;
     trow.part_bucket_count = bucket_slot_count;
+    trow.shading_group_count = 1u;   ///< 纯几何模板：单 shading group（材质由宿主实体提供）
 
     if (any_bounds)
     {
@@ -394,6 +398,77 @@ bool ModelTemplateManager::SetModelTemplateProxies(GlobalSSBOBufferRegistry *reg
             participants[participant_count++] = normalized.shadow_proxy_template_id;
     }
 
+    // ── 单 shading_group 约束（阶段 1）──────────────────────────────────
+    // 代理槽位重编号与并集桶数是按 `geometry_id` 的**一维**编号，只有
+    // `shading_group_count == 1` 的模板成立；多组模板的槽号是组内编号，跨组合并会串组
+    //（画错几何且槽号不越界 = 不报警）。⇒ 多组模板登记代理一律拒绝（阶段 1 无此需求）。
+    if (participant_count > 1u)
+    {
+        for (uint32_t pi = 0; pi < participant_count; ++pi)
+        {
+            const ModelTemplateRow *prow =
+                registry->GetTypedRow<ModelTemplateRow>(GlobalSSBOType::ModelTemplatePool, participants[pi]);
+
+            if (!prow || prow->shading_group_count > 1u)
+            {
+                GLogError(u8"[ModelTemplateManager] 代理回填被拒：模板 %u 是多 shading_group 模板（groups=%u），阶段 1 不支持代理",
+                          participants[pi], prow ? prow->shading_group_count : 0u);
+                return false;
+            }
+        }
+    }
+
+    // ── 代理包围体并集（防外层 6 平面粗剔除误杀）────────────────────────
+    // 展开侧外层视锥测试用的是**本体**的 `local_bound_*`；低模代理的包围盒可能比本体略大
+    // 或中心偏移 ⇒ 只用本体的盒子会在"本体已出视锥、代理仍可见"时提前剔掉整个实例。
+    // 这里把本体与全部代理的局部包围盒取并集写回所有参与模板 ⇒ 粗剔除只会多画不会少画。
+    // 任一参与模板缺包围体（半径 < 0 = 始终可见哨兵）⇒ 整体按哨兵处理（安全侧）。
+    const bool has_union_bound = participant_count > 1u;
+
+    hgl::math::Vector4f union_center_radius(0.0f, 0.0f, 0.0f,
+                                            GlobalSSBOBufferRegistry::kAlwaysVisibleRadius);
+    hgl::math::Vector4f union_extents(0.0f, 0.0f, 0.0f, 0.0f);
+
+    if (has_union_bound)
+    {
+        hgl::math::AABB union_box;
+        union_box.Clear();
+
+        bool unbounded = false;
+
+        for (uint32_t pi = 0; pi < participant_count && !unbounded; ++pi)
+        {
+            const ModelTemplateRow *prow =
+                registry->GetTypedRow<ModelTemplateRow>(GlobalSSBOType::ModelTemplatePool, participants[pi]);
+
+            if (!prow || prow->local_bound_center_radius.w < 0.0f)
+            {
+                unbounded = true;
+                break;
+            }
+
+            const hgl::math::Vector3f c(prow->local_bound_center_radius.x,
+                                        prow->local_bound_center_radius.y,
+                                        prow->local_bound_center_radius.z);
+            const hgl::math::Vector3f e(prow->local_bound_extents.x,
+                                        prow->local_bound_extents.y,
+                                        prow->local_bound_extents.z);
+
+            hgl::math::AABB one;
+            one.SetMinMax(c - e, c + e);
+            union_box.Merge(one);
+        }
+
+        if (!unbounded && !union_box.IsEmpty())
+        {
+            const hgl::math::Vector3f c = union_box.GetCenter();
+            const hgl::math::Vector3f e = union_box.GetExtent();
+
+            union_center_radius = hgl::math::Vector4f(c.x, c.y, c.z, union_box.GetDiagonal() * 0.5f);
+            union_extents       = hgl::math::Vector4f(e.x, e.y, e.z, 0.0f);
+        }
+    }
+
     // 并集桶数：无代理 ⇒ 本体既有值（恒等变换）；有代理 ⇒ 由重编号段回填。
     uint32_t final_bucket_count = base_row->part_bucket_count;
 
@@ -486,6 +561,8 @@ bool ModelTemplateManager::SetModelTemplateProxies(GlobalSSBOBufferRegistry *reg
 
             ModelTemplateRow updated = *prow;
             updated.part_bucket_count = union_count;
+            updated.local_bound_center_radius = union_center_radius;
+            updated.local_bound_extents       = union_extents;
 
             if (!registry->Write(GlobalSSBOType::ModelTemplatePool, participants[pi], updated))
             {
@@ -496,6 +573,12 @@ bool ModelTemplateManager::SetModelTemplateProxies(GlobalSSBOBufferRegistry *reg
     }
 
     trow.part_bucket_count = final_bucket_count;
+
+    if (has_union_bound)
+    {
+        trow.local_bound_center_radius = union_center_radius;
+        trow.local_bound_extents       = union_extents;
+    }
 
     if (!registry->Write(GlobalSSBOType::ModelTemplatePool, template_id, trow))
     {

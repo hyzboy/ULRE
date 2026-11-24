@@ -78,6 +78,8 @@ namespace
               "ModelTemplateRow.flags @36" },
             { offsetof(ssbo::ModelTemplateRow, part_bucket_count) == 40,
               "ModelTemplateRow.part_bucket_count @40" },
+            { offsetof(ssbo::ModelTemplateRow, shading_group_count) == 44,
+              "ModelTemplateRow.shading_group_count @44（原 _pad0[1]）" },
             { offsetof(ssbo::ModelTemplateRow, local_bound_center_radius) == 48,
               "ModelTemplateRow.local_bound_center_radius @48（16B 对齐）" },
             { offsetof(ssbo::ModelTemplateRow, local_bound_extents) == 64,
@@ -97,6 +99,10 @@ namespace
               "ModelPartRow.part_flags @104" },
             { offsetof(ssbo::ModelPartRow, bucket_slot) == 108,
               "ModelPartRow.bucket_slot @108" },
+            { offsetof(ssbo::ModelPartRow, texture_id) == 112,
+              "ModelPartRow.texture_id @112（原 _pad0[0]）" },
+            { offsetof(ssbo::ModelPartRow, shading_group) == 116,
+              "ModelPartRow.shading_group @116（原 _pad0[1]）" },
 
             // T4.4：实例自定义数据独表（不挤进已被 128B 锁死的 EntityGPU 行）。
             { sizeof(ssbo::InstanceCustomData) == 16u,
@@ -145,12 +151,16 @@ namespace
         // 部件标志位同上。
         ok = ok && (ssbo::kModelPartFlagCanCastShadow != 0u);
         ok = ok && (ssbo::kModelPartFlagIsOpaque != 0u);
+        ok = ok && (ssbo::kModelPartFlagHasMaterial != 0u);
         ok = ok && ((ssbo::kModelPartFlagCanCastShadow & ssbo::kModelPartFlagIsOpaque) == 0u);
+        ok = ok && ((ssbo::kModelPartFlagHasMaterial
+                     & (ssbo::kModelPartFlagCanCastShadow | ssbo::kModelPartFlagIsOpaque)) == 0u);
 
         // 默认构造：一切都是"无模型"的恒等初值（展开侧不做任何事）。
         const ssbo::ModelTemplateRow tpl;
         ok = ok && (tpl.part_offset == 0u && tpl.part_count == 0u);
         ok = ok && (tpl.part_bucket_count == 0u);
+        ok = ok && (tpl.shading_group_count == 1u);   // 单组是恒等初值（旧单材质模板口径）
         ok = ok && (tpl.shadow_proxy_template_id == 0u);
         ok = ok && (tpl.flags == 0u);
         ok = ok && (tpl.local_bound_center_radius.w == 0.0f);   // w=0 ⇒ 没有包围球
@@ -168,6 +178,11 @@ namespace
         ok = ok && (part.part_flags == 0u);
         ok = ok && (part.bucket_slot == ssbo::kModelPartBucketSlotNone);
         ok = ok && (ssbo::kModelPartBucketSlotNone != 0u);   // 无槽哨兵不得与真实槽号 0 撞
+        // 阶段 1：模板层不定材质 ⇒ 不置 HasMaterial，展开侧回退宿主实体材质（旧路径逐字节不变）。
+        ok = ok && ((part.part_flags & ssbo::kModelPartFlagHasMaterial) == 0u);
+        ok = ok && (part.material_id == 0u);
+        ok = ok && (part.texture_id == 0u);
+        ok = ok && (part.shading_group == 0u);
 
         // 展开竞技场：48 B 头 + 64 B 对齐段首（矩阵段/桶基址段按 16B 引用对齐）。
         ok = ok && (sizeof(ModelExpansionArena) == 48);
@@ -181,6 +196,12 @@ namespace
         ok = ok && (offsetof(ModelExpansionArena, bucket_base_addr) == 16);
         ok = ok && (offsetof(ModelExpansionArena, prev_l2w_base_row) == 24);
         ok = ok && (offsetof(ModelExpansionArena, custom_data_addr) == 32);
+        ok = ok && (offsetof(ModelExpansionArena, group_bucket_base_addr) == 40);
+
+        // 二级组基址表容量（阶段 1：每 pass 固定 4096 槽；总槽数 = pass 数 × 单 pass）。
+        ok = ok && (kModelExpansionGroupBucketSlotsPerPass == 4096u);
+        ok = ok && (kModelExpansionMaxGroupBucketSlots
+                    == 2u * kModelExpansionGroupBucketSlotsPerPass);
 
         // 桶基址表容量必须恰好容纳两个 pass 的整批实体（几何侧同一口径；
         // 容量单源 = RenderOptions §1b ULRE_MAX_VISIBLE_ENTITIES，不钉字面量）。
@@ -458,8 +479,8 @@ namespace
         {
             { &tpl_src,   "ModelTemplateRowData",    uint32_t(sizeof(ssbo::ModelTemplateRow)), 11u,
               "ModelTemplateRowData 镜像字段总宽必须 == 128B 且字段数不变" },
-            { &part_src,  "ModelPartRowData",        uint32_t(sizeof(ssbo::ModelPartRow)),     8u,
-              "ModelPartRowData 镜像字段总宽必须 == 128B 且字段数不变" },
+            { &part_src,  "ModelPartRowData",        uint32_t(sizeof(ssbo::ModelPartRow)),     10u,
+              "ModelPartRowData 镜像字段总宽必须 == 128B 且字段数不变（texture_id/shading_group 占用原填充）" },
             { &arena_src, "ModelExpansionArenaData", uint32_t(sizeof(ModelExpansionArena)),    8u,
               "ModelExpansionArenaData 镜像字段总宽必须 == 48B 且字段数不变" },
         };
@@ -571,6 +592,10 @@ namespace
         const bool proxy_union = ContainsToken(mgr_src, "union_geoms");
         const bool proxy_renumber = ContainsToken(mgr_src, "updated.part_bucket_count = union_count");
 
+        // 阶段 1：纯几何模板必须显式写单 shading group；代理回填必须并集包围体（防外层误剔）。
+        const bool tpl_single_group = ContainsToken(mgr_src, "trow.shading_group_count = 1u");
+        const bool proxy_bound_union = ContainsToken(mgr_src, "union_box.Merge(one)");
+
         // T6.3/T6.4：剔除展开写出自定义颜色，网格与材质着色器消费
         const bool cull_custom_out = ContainsToken(cull_src,
             "InstanceCustomDataBufferRef(custom_data_addr).rows[inst_row].custom_color = custom_color;");
@@ -602,6 +627,8 @@ namespace
             { lod_coarsest_first, "LOD 选择必须从最粗槽往回扫描" },
             { proxy_union,    "SetModelTemplateProxies 必须做代理并集重编号" },
             { proxy_renumber, "并集重编号必须把每个参与模板的 part_bucket_count 改成并集大小" },
+            { tpl_single_group, "纯几何模板注册必须显式写 shading_group_count = 1" },
+            { proxy_bound_union, "代理回填必须把本体与代理的局部包围盒取并集（防外层 6 平面误剔）" },
             { cull_custom_out, "剔除计算必须将 custom_color 写出到 custom_data_addr 指向的输出表（判空后 BDA 解引用，f892761e7 口径）" },
             { cull_custom_pool, "剔除计算必须从 instance_custom_data_pool 采样实体自定义颜色" },
             { stage_head_resolve, "stage_common_head 必须提供 ResolveInstanceCustomColor 接口" },

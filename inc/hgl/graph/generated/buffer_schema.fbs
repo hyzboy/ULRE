@@ -190,15 +190,6 @@ table PBRAdvancedSurfaceRow
   thickness: float;
 }
 
-// inc/hgl/graph/ssbo/MaterialDataRows.h → MaterialDataRow
-table MaterialDataRow
-{
-  surface_type: uint;
-  surface_ssbo_id: uint;
-  surface_data_index: uint;
-  authored_flags: uint;
-}
-
 // inc/hgl/graph/ssbo/ModelTemplateRows.h → ModelTemplateRow
 table ModelTemplateRow
 {
@@ -209,6 +200,7 @@ table ModelTemplateRow
   shadow_proxy_template_id: uint;
   flags: uint;
   part_bucket_count: uint;
+  shading_group_count: uint;
   local_bound_center_radius: Float4;
   local_bound_extents: Float4;
 }
@@ -223,6 +215,8 @@ table ModelPartRow
   material_id: uint;
   part_flags: uint;
   bucket_slot: uint;
+  texture_id: uint;
+  shading_group: uint;
 }
 
 // inc/hgl/graph/ubo/ModelExpansionArena.h → ModelExpansionArena
@@ -233,7 +227,9 @@ table ModelExpansionArena
   l2w_row_capacity: uint;
   bucket_base_count: uint;
   bucket_base_addr: ulong;
+  prev_l2w_base_row: ulong;
   custom_data_addr: ulong;
+  group_bucket_base_addr: ulong;
 }
 
 // inc/hgl/graph/ssbo/InstanceCustomData.h → InstanceCustomData

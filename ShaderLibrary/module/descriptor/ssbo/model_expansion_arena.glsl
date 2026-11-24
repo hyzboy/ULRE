@@ -18,7 +18,7 @@ struct ModelExpansionArenaData
     uint64_t bucket_base_addr;
     uint64_t prev_l2w_base_row;
     uint64_t custom_data_addr;
-    uint64_t reserved3;
+    uint64_t group_bucket_base_addr;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=16) buffer ModelExpansionArenaRef

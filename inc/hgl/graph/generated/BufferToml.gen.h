@@ -599,6 +599,10 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.part_bucket_count)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "shading_group_count"))
+        {
+            if (!detail::AsUnsigned(*v, out.shading_group_count)) return false;
+        }
         if (const toml::value *v = detail::Find(table, "local_bound_center_radius"))
         {
             if (!detail::AsFloatArray(*v, &out.local_bound_center_radius.x, 4)) return false;
@@ -642,6 +646,14 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.bucket_slot)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "texture_id"))
+        {
+            if (!detail::AsUnsigned(*v, out.texture_id)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "shading_group"))
+        {
+            if (!detail::AsUnsigned(*v, out.shading_group)) return false;
+        }
         return true;
     }
 
@@ -669,9 +681,17 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.bucket_base_addr)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "prev_l2w_base_row"))
+        {
+            if (!detail::AsUnsigned(*v, out.prev_l2w_base_row)) return false;
+        }
         if (const toml::value *v = detail::Find(table, "custom_data_addr"))
         {
             if (!detail::AsUnsigned(*v, out.custom_data_addr)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "group_bucket_base_addr"))
+        {
+            if (!detail::AsUnsigned(*v, out.group_bucket_base_addr)) return false;
         }
         return true;
     }
@@ -843,6 +863,7 @@ namespace hgl::graph::generated
         t["shadow_proxy_template_id"] = detail::FromInteger(in.shadow_proxy_template_id);
         t["flags"] = detail::FromInteger(in.flags);
         t["part_bucket_count"] = detail::FromInteger(in.part_bucket_count);
+        t["shading_group_count"] = detail::FromInteger(in.shading_group_count);
         t["local_bound_center_radius"] = detail::FromFloatArray(&in.local_bound_center_radius.x, 4);
         t["local_bound_extents"] = detail::FromFloatArray(&in.local_bound_extents.x, 4);
         return toml::value(std::move(t));
@@ -858,6 +879,8 @@ namespace hgl::graph::generated
         t["material_id"] = detail::FromInteger(in.material_id);
         t["part_flags"] = detail::FromInteger(in.part_flags);
         t["bucket_slot"] = detail::FromInteger(in.bucket_slot);
+        t["texture_id"] = detail::FromInteger(in.texture_id);
+        t["shading_group"] = detail::FromInteger(in.shading_group);
         return toml::value(std::move(t));
     }
 
@@ -869,7 +892,9 @@ namespace hgl::graph::generated
         t["l2w_row_capacity"] = detail::FromInteger(in.l2w_row_capacity);
         t["bucket_base_count"] = detail::FromInteger(in.bucket_base_count);
         t["bucket_base_addr"] = detail::FromInteger(in.bucket_base_addr);
+        t["prev_l2w_base_row"] = detail::FromInteger(in.prev_l2w_base_row);
         t["custom_data_addr"] = detail::FromInteger(in.custom_data_addr);
+        t["group_bucket_base_addr"] = detail::FromInteger(in.group_bucket_base_addr);
         return toml::value(std::move(t));
     }
 

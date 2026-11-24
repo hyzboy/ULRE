@@ -18,7 +18,7 @@ struct ModelTemplateRowData
     uint shadow_proxy_template_id;
     uint flags;
     uint part_bucket_count;
-    uint _pad0[1];
+    uint shading_group_count;
     vec4 local_bound_center_radius;
     vec4 local_bound_extents;
     uint _pad1[12];
