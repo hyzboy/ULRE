@@ -316,10 +316,16 @@ namespace
               "收集系统必须支持 pure_model_ref->override_material_row 实例材质覆盖" },
             { collect_src,
               "BuildSinglePrimitiveModelTemplate",
-              "收集系统物化成功时必须调用 BuildSinglePrimitiveModelTemplate 自动提升为模板实体" },
+              "收集系统前置保障必须调用 BuildSinglePrimitiveModelTemplate 自动提升为模板实体" },
             { collect_src,
-              "new_ref->template_id = auto_template_id",
+              "ref->template_id = auto_template_id",
               "自动提升必须将分配的模板 ID 挂接到实体的 GPUModelRefComponent" },
+            { collect_src,
+              "EnsurePrimitiveModelTemplate",
+              "收集预扫描必须调用 EnsurePrimitiveModelTemplate 前置确保模型模板" },
+            { collect_src,
+              "NoModelTemplate",
+              "主收集循环必须彻底清理旧单图元物化分支，仅保留纯模板快线与 NoModelTemplate 兜底" },
 
             // 批处理流水线多组支持契约
             { batch_src,
