@@ -83,13 +83,16 @@
 | 跨平台文件路径字符串          | `OSString`                             | `<hgl/type/String.h>`               |
 | `std::wstring`               | `WideString`                           | `<hgl/type/String.h>`               |
 | `std::string_view`（字节）   | `AnsiStringView`                       | `<hgl/type/String.h>`               |
-| `std::vector<T>`             | `hgl::ArrayList<T>`                    | `<hgl/type/ArrayList.h>`            |
+| `std::vector<T>`（值/裸指针） | `hgl::ValueArray<T>`                  | `<hgl/type/ValueArray.h>`           |
+| `std::vector<T*>`（管理生命周期）| `hgl::ManagedArray<T>`              | `<hgl/type/ManagedArray.h>`         |
 | `std::list<T>`               | `hgl::List<T>`                         | `<hgl/type/List.h>`                 |
 | `std::map<K,V>`              | `hgl::Map<K,V>`（有序）                | `<hgl/type/Map.h>`                  |
 | `std::unordered_map<K,V>`    | `hgl::UnorderedMap<K,V>`               | `<hgl/type/UnorderedMap.h>`         |
 | `std::set<T>`                | `hgl::SortedSet<T>`                    | `<hgl/type/SortedSet.h>`            |
 | `std::unordered_set<T>`      | `hgl::OrderedSet<T>`                   | `<hgl/type/OrderedSet.h>`           |
-| `std::shared_ptr<T>`         | HGL智能指针                            | `<hgl/type/Smart.h>`                |
+| `std::shared_ptr<T>`         | `hgl::SharedPtr<T>`                    | `<hgl/type/Smart.h>`                |
+| `std::weak_ptr<T>`           | `hgl::WeakPtr<T>`                      | `<hgl/type/Smart.h>`                |
+| `std::unique_ptr<T>`         | `hgl::AutoDelete<T>`（单所有者 RAII）  | `<hgl/type/Smart.h>`                |
 | 手写FNV1a                    | `hgl::hash::FNV1aInit` + Append系列    | `<hgl/util/hash/FNV1a.h>`           |
 | 其他哈希函数                  | `hgl::hash::Hash`                      | `<hgl/util/hash/Hash.h>`            |
 | `std::ifstream`              | `hgl::io::FileInputStream` + `OpenFileInputStream`  | `<hgl/io/FileInputStream.h>`        |
@@ -174,15 +177,19 @@ const u8char *u8_ptr = u8s.data(); // UTF8String
 ## 📦 集合类正确用法
 
 ```cpp
-#include <hgl/type/ArrayList.h>
+#include <hgl/type/ValueArray.h>
+#include <hgl/type/ManagedArray.h>
 #include <hgl/type/UnorderedMap.h>
 
-// 动态数组（替代 std::vector）
-hgl::ArrayList<int> list;
+// 动态数组（替代 std::vector，元素为平凡可拷贝值或裸指针）
+hgl::ValueArray<int> list;
 list.Add(1);
 list.Add(2);
 const int count = list.GetCount();
 int *ptr = list.GetData();
+
+// 需要托管堆对象生命周期时用 ManagedArray
+hgl::ManagedArray<MyObject> objects;
 
 // 哈希Map（替代 std::unordered_map）
 hgl::UnorderedMap<AnsiString, int> map;

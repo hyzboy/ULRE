@@ -70,7 +70,7 @@
       "id": "hgl-types-reference",
       "name": "HGL Types Reference",
       "path": "SKILL_HGL_TYPES_REFERENCE.md",
-      "description": "Complete reference for HGL's own string, collection, hash, IO and utility types. Use instead of STL. Covers AnsiString/UTF8String/OSString, ArrayList, UnorderedMap, FNV1a hash, FileInputStream/OutputStream and more.",
+      "description": "Complete reference for HGL's own string, collection, hash, IO and utility types. Use instead of STL. Covers AnsiString/UTF8String/OSString, ValueArray/ManagedArray, UnorderedMap, FNV1a hash, FileInputStream/OutputStream and more.",
       "tags": ["string", "collection", "hash", "io", "types", "no-stl", "fnv1a", "reference"],
       "difficulty": "beginner",
       "estimated_time_minutes": 5

@@ -78,13 +78,13 @@ namespace hgl::graph
     }//namespace
 
     bool ReadbackTexture(VulkanDevice *device, Texture *tex,
-                         std::vector<uint8_t> &out_pixels,
+                         hgl::ValueArray<uint8_t> &out_pixels,
                          TextureReadbackInfo *out_info)
     {
         if (out_info)
             *out_info = TextureReadbackInfo{};
 
-        out_pixels.clear();
+        out_pixels.Clear();
 
         if (!device || !tex)
             return false;
@@ -254,7 +254,9 @@ namespace hgl::graph
                 if(memory && memory->InvalidateMapped())
                 {
                     const uint8_t *first = static_cast<const uint8_t *>(mapped);
-                    out_pixels.assign(first, first + bytes);
+                    out_pixels.Resize(static_cast<int>(bytes));
+                    if (bytes > 0)
+                        memcpy(out_pixels.GetData(), first, static_cast<size_t>(bytes));
                 }
                 else
                 {
@@ -287,7 +289,7 @@ namespace hgl::graph
         return ok;
     }
 
-    bool ReadbackColorTarget(IRenderTarget *rt, std::vector<uint8_t> &out_pixels,
+    bool ReadbackColorTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
                              uint32_t color_index, TextureReadbackInfo *out_info)
     {
         if (!rt)
@@ -301,7 +303,7 @@ namespace hgl::graph
         {
             GLogError(u8"[Readback] 颜色附件不在读回窗口内（交换链图仅在本帧提交后、present 前可访问）"
                       u8"——请用 SwapchainRenderTarget::SetInFrameReadbackHook() 在帧内读回");
-            out_pixels.clear();
+            out_pixels.Clear();
 
             if (out_info)
                 *out_info = TextureReadbackInfo{};
@@ -313,52 +315,12 @@ namespace hgl::graph
                                out_pixels, out_info);
     }
 
-    bool ReadbackTexture(VulkanDevice *device, Texture *tex,
-                         hgl::ValueArray<uint8_t> &out_pixels,
-                         TextureReadbackInfo *out_info)
-    {
-        out_pixels.Resize(0);
-        std::vector<uint8_t> bytes;
-        if(!ReadbackTexture(device,tex,bytes,out_info))
-            return false;
-        out_pixels.Resize(static_cast<int>(bytes.size()));
-        if(!bytes.empty())
-            memcpy(out_pixels.GetData(),bytes.data(),bytes.size());
-        return true;
-    }
-
-    bool ReadbackColorTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
-                             uint32_t color_index, TextureReadbackInfo *out_info)
-    {
-        out_pixels.Resize(0);
-        std::vector<uint8_t> bytes;
-        if(!ReadbackColorTarget(rt,bytes,color_index,out_info))
-            return false;
-        out_pixels.Resize(static_cast<int>(bytes.size()));
-        if(!bytes.empty())
-            memcpy(out_pixels.GetData(),bytes.data(),bytes.size());
-        return true;
-    }
-
-    bool ReadbackDepthTarget(IRenderTarget *rt, std::vector<uint8_t> &out_pixels,
+    bool ReadbackDepthTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
                              TextureReadbackInfo *out_info)
     {
         if (!rt)
             return false;
 
         return ReadbackTexture(rt->GetDevice(), rt->GetDepthTexture(), out_pixels, out_info);
-    }
-
-    bool ReadbackDepthTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
-                             TextureReadbackInfo *out_info)
-    {
-        out_pixels.Resize(0);
-        std::vector<uint8_t> bytes;
-        if(!ReadbackDepthTarget(rt,bytes,out_info))
-            return false;
-        out_pixels.Resize(static_cast<int>(bytes.size()));
-        if(!bytes.empty())
-            memcpy(out_pixels.GetData(),bytes.data(),bytes.size());
-        return true;
     }
 }//namespace hgl::graph

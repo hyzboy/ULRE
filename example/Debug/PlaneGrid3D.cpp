@@ -295,7 +295,7 @@ public:
             graph::IRenderTarget * rt_ptr = rt;
             rt->SetInFrameReadbackHook([tag, rt_ptr]()
             {
-                std::vector<uint8_t> pixels;
+                hgl::ValueArray<uint8_t> pixels;
                 graph::TextureReadbackInfo info;
                 if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
                 {
@@ -315,7 +315,7 @@ public:
                     std::exit(2);
                 }
 
-                fwrite(pixels.data(), 1, pixels.size(), fp);
+                fwrite(pixels.GetData(), 1, pixels.size(), fp);
                 fclose(fp);
                 printf("[PGDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
                 std::exit(0);

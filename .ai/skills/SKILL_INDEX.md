@@ -24,7 +24,7 @@
 
 - 📋 STL → HGL 完整替换对照表
 - 🔤 `AnsiString`/`UTF8String`/`OSString` 使用示例
-- 📦 `ArrayList`/`UnorderedMap`/`SortedSet` 使用示例
+- 📦 `ValueArray`/`ManagedArray`/`UnorderedMap` 使用示例
 - 🔑 FNV1a哈希正确用法（禁止手写）
 - 📁 IO读写完整示例
 - ❌ 常见错误 vs ✅ 正确写法对比

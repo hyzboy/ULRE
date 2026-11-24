@@ -71,7 +71,7 @@ namespace ulre_example
     /// 寻址，两条路径的平均亮度必须**相当**（差异只应来自投影重采样，量级几个百分点）。
     ///
     /// 只解 UNORM 打包格式；其它格式退化成**字节均值**（仍是可比单调量，只是不是物理亮度）。
-    inline void AccumulateLuma(const std::vector<uint8_t> & pixels,
+    inline void AccumulateLuma(const hgl::ValueArray<uint8_t> & pixels,
                                const hgl::graph::TextureReadbackInfo & info,
                                double & sum, float & max)
     {
@@ -87,7 +87,7 @@ namespace ulre_example
             case PF_A2BGR10UN:
             case PF_A2RGB10UN:
             {
-                const uint32_t * p = reinterpret_cast<const uint32_t *>(pixels.data());
+                const uint32_t * p = reinterpret_cast<const uint32_t *>(pixels.GetData());
                 const size_t n = count / 4;
 
                 for (size_t i = 0; i < n; ++i)
@@ -112,7 +112,7 @@ namespace ulre_example
 
                 for (size_t i = 0; i < n; ++i)
                 {
-                    const uint8_t * q  = pixels.data() + i * 4;
+                    const uint8_t * q  = pixels.GetData() + i * 4;
                     const float     c0 = float(q[0]) / 255.0f;
                     const float     c1 = float(q[1]) / 255.0f;
                     const float     c2 = float(q[2]) / 255.0f;
@@ -139,7 +139,7 @@ namespace ulre_example
     /// 单帧摘要（对**打包字节**算；与 `*_DUMP` 落盘字节同源）
     inline bool ComputeFrameDigest(hgl::graph::IRenderTarget * rt, FrameDigest & out)
     {
-        std::vector<uint8_t> pixels;
+        hgl::ValueArray<uint8_t> pixels;
         hgl::graph::TextureReadbackInfo info;
 
         if (!hgl::graph::ReadbackColorTarget(rt, pixels, 0, &info) || pixels.empty())
@@ -158,7 +158,7 @@ namespace ulre_example
         }
 
         hgl::hash::FNV1aHasher64 hasher;
-        hasher.AppendBytes(pixels.data(), pixels.size());
+        hasher.AppendBytes(pixels.GetData(), pixels.size());
 
         out.width                = info.width;
         out.height               = info.height;

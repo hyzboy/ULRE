@@ -576,7 +576,7 @@ public:
                 graph::IRenderTarget *rt_ptr = rt;
                 rt->SetInFrameReadbackHook([tag, rt_ptr]()
                 {
-                    std::vector<uint8_t> pixels;
+                    hgl::ValueArray<uint8_t> pixels;
                     graph::TextureReadbackInfo info;
                     if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
                     {
@@ -596,7 +596,7 @@ public:
                         std::exit(2);
                     }
 
-                    fwrite(pixels.data(), 1, pixels.size(), fp);
+                    fwrite(pixels.GetData(), 1, pixels.size(), fp);
                     fclose(fp);
                     printf("[RTTDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
                     std::exit(0);
@@ -617,7 +617,7 @@ public:
                 // 缺陷在"关联/采样"侧；两侧同时绿才算离屏管线整体成立。
                 if (auto *ort = offscreen ? offscreen->GetRenderTarget() : nullptr)
                 {
-                    std::vector<uint8_t> px;
+                    hgl::ValueArray<uint8_t> px;
                     graph::TextureReadbackInfo oinfo;
                     if (graph::ReadbackColorTarget(ort, px, 0, &oinfo))
                     {
@@ -629,7 +629,7 @@ public:
                         }
 
                         hgl::hash::FNV1aHasher64 hasher;
-                        hasher.AppendBytes(px.data(), px.size());
+                        hasher.AppendBytes(px.GetData(), px.size());
                         const uint64_t ofnv = hasher;
 
                         printf("[RTTORT] offscreen %ux%u %s bytes=%zu distinct=%u fnv=0x%016llX\n",

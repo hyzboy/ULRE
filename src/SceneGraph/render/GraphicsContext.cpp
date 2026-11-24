@@ -673,11 +673,11 @@ namespace hgl::graph
         // ⇒ 必须在模块（含 GlobalSSBOBufferRegistry）销毁之前清空。
         material_data_block_registry_.Clear();
 
-        std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
+        GLogDebug(u8"GraphicsContext::Shutdown() - 正在销毁 GraphModuleManager");
         // GraphModuleManager destructor will call Release() on all modules automatically
         // This ensures proper cleanup order
         SAFE_CLEAR(module_manager)
-        std::cout << "[DEBUG] GraphicsContext::Shutdown() - GraphModuleManager deleted" << std::endl;
+        GLogDebug(u8"GraphicsContext::Shutdown() - GraphModuleManager 已销毁");
 
         // Clear all manager pointers (they're owned by module_manager)
         rp_manager = nullptr;

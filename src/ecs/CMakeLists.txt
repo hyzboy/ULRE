@@ -129,6 +129,14 @@ function(add_ecs_test target_name source_file)
     endif()
 endfunction()
 
+# 纯 CPU/数据结构单测：不链接 ULRE::Engine，只链接 CMCore 与被测源。
+function(add_ulre_unit_test target_name)
+    cmake_parse_arguments(UNIT_TEST "" "" "EXTRA_SOURCES;LIBS" ${ARGN})
+    add_executable(${target_name} ${UNIT_TEST_UNPARSED_ARGUMENTS} ${UNIT_TEST_EXTRA_SOURCES})
+    target_link_libraries(${target_name} PRIVATE CMCore ${UNIT_TEST_LIBS})
+    set_target_properties(${target_name} PROPERTIES FOLDER "ULRE/Tests/ECS/Unit")
+endfunction()
+
 add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 
 add_ecs_test(TestFrameDebugger tests/TestFrameDebugger.cpp)

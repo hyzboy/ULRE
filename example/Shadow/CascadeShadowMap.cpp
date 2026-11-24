@@ -277,7 +277,7 @@ private:
     {
         out.clear();
 
-        std::vector<uint8_t> pixels;
+        hgl::ValueArray<uint8_t> pixels;
         graph::TextureReadbackInfo info;
 
         if (!graph::ReadbackDepthTarget(rt, pixels, &info))
@@ -289,7 +289,7 @@ private:
         const size_t count = static_cast<size_t>(info.width) * info.height;
 
         out.resize(count);
-        std::memcpy(out.data(), pixels.data(), count * sizeof(float));
+        std::memcpy(out.data(), pixels.GetData(), count * sizeof(float));
 
         return true;
     }

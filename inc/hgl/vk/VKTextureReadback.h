@@ -4,7 +4,6 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/type/ValueArray.h>
-#include<vector>
 
 /**
  * 纹理/渲染目标读回（GPU → CPU）。
@@ -29,7 +28,7 @@
  */
 namespace hgl::graph
 {
-    /// 读回结果描述（像素本体在调用方的 vector 里）
+    /// 读回结果描述（像素本体在调用方的 ValueArray 里）
     struct TextureReadbackInfo
     {
         uint32_t width      = 0;                    ///<纹理宽（像素）
@@ -54,10 +53,6 @@ namespace hgl::graph
      * @param out_info 可选：尺寸/格式/步长信息
      */
     bool ReadbackTexture(VulkanDevice *device, Texture *tex,
-                         std::vector<uint8_t> &out_pixels,
-                         TextureReadbackInfo *out_info = nullptr);
-
-    bool ReadbackTexture(VulkanDevice *device, Texture *tex,
                          hgl::ValueArray<uint8_t> &out_pixels,
                          TextureReadbackInfo *out_info = nullptr);
 
@@ -65,18 +60,11 @@ namespace hgl::graph
     ///
     /// @note 交换链 RT：只允许在 `SetInFrameReadbackHook()` 的回调（帧内提交后、Present 前）里
     ///       调用；窗口外调用被拒绝（真 VUID 的护栏），见文件头说明。
-    bool ReadbackColorTarget(IRenderTarget *rt, std::vector<uint8_t> &out_pixels,
-                             uint32_t color_index = 0,
-                             TextureReadbackInfo *out_info = nullptr);
-
     bool ReadbackColorTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
                              uint32_t color_index = 0,
                              TextureReadbackInfo *out_info = nullptr);
 
     /// 读回渲染目标的深度附件
-    bool ReadbackDepthTarget(IRenderTarget *rt, std::vector<uint8_t> &out_pixels,
-                             TextureReadbackInfo *out_info = nullptr);
-
     bool ReadbackDepthTarget(IRenderTarget *rt, hgl::ValueArray<uint8_t> &out_pixels,
                              TextureReadbackInfo *out_info = nullptr);
 }//namespace hgl::graph

@@ -387,7 +387,7 @@ public:
             graph::IRenderTarget * rt_ptr = rt;
             rt->SetInFrameReadbackHook([tag, rt_ptr]()
             {
-                std::vector<uint8_t> pixels;
+                hgl::ValueArray<uint8_t> pixels;
                 graph::TextureReadbackInfo info;
                 if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
                 {
@@ -405,7 +405,7 @@ public:
                     GLogError(u8"FHFDUMP: 打开 %s 失败", AnsiString(name).c_str());
                     std::exit(2);
                 }
-                fwrite(pixels.data(), 1, pixels.size(), fp);
+                fwrite(pixels.GetData(), 1, pixels.size(), fp);
                 fclose(fp);
                 GLogInfo(u8"FHFDUMP: 写出 %s（%llu 字节）", AnsiString(name).c_str(), (unsigned long long)pixels.size());
                 std::exit(0);

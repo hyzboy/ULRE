@@ -3,7 +3,7 @@
 #include<hgl/framework/WorkObject.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/time/Time.h>
-#include<memory>
+#include<hgl/type/Smart.h>
 
 namespace hgl
 {
@@ -72,8 +72,8 @@ namespace hgl
                 // delete wo，这些设备对象就活到 app 析构之后 ⇒ 子世界资源越过
                 // vkDestroyDevice，被校验层报成 "<Device> has N leaked objects"
                 //（DualWorldShadows 实测 30 个：8 × VkFence + 子世界 cull 缓冲的设备内存）。
-                // unique_ptr 声明在 wm 之后 ⇒ 逆序析构时 wo 最先走，早于 wm、更早于 app。
-                std::unique_ptr<WO> wo(new WO());
+                // AutoDelete 声明在 wm 之后 ⇒ 逆序析构时 wo 最先走，早于 wm、更早于 app。
+                hgl::AutoDelete<WO> wo(new WO());
                 wo->SetECSContext(app.GetECSContext());
 
                 if(!wo->Init())
@@ -82,7 +82,7 @@ namespace hgl
                 }
                 else
                 {
-                    wm.Run(wo.get());
+                    wm.Run(wo);
                 }
             }
         }

@@ -178,7 +178,7 @@ private:
     // T2-c：组件住世界的类型化对象池（实体只持行号）⇒ 这里持**行内裸指针**（池行地址稳定，
     // 与全仓持 `Entity*` 同纪律；行的生存期 ⊂ 实体生存期）。
     ShadowProxy *ground_shadow = nullptr;             // 地面（接收面）的阴影组件
-    std::vector<uint8_t> d3_lum[3];                   // A/B/C 三帧亮度图
+    hgl::ValueArray<uint8_t> d3_lum[3];               // A/B/C 三帧亮度图
     int  d3_frame = 0;                                // 深度判读之后的相对帧号
     bool d3_done = false;
     bool d3_noknob = false;                           // ATS_D3_NOKNOB=1 → 对照组（只读回不改旋钮）
@@ -240,7 +240,7 @@ private:
         if (!rt)
             return false;
 
-        std::vector<uint8_t> pixels;
+        hgl::ValueArray<uint8_t> pixels;
         graph::TextureReadbackInfo info;
 
         if (!graph::ReadbackDepthTarget(rt, pixels, &info))
@@ -258,7 +258,7 @@ private:
 
         const uint32_t w = info.width;
         const uint32_t h = info.height;
-        const float *depth = reinterpret_cast<const float *>(pixels.data());
+        const float *depth = reinterpret_cast<const float *>(pixels.GetData());
 
         std::vector<uint8> gray(static_cast<size_t>(w) * h, 0);
 
@@ -326,12 +326,12 @@ private:
     // 但像素计数不与真实亮度成比例（暗部与高位被丢）。若将来要把 D3 升级成可量化指标，
     // 须改成按位解包 R=(v>>0)&0x3FF / G=(v>>10)&0x3FF / B=(v>>20)&0x3FF（会改基线数字）。
     bool DumpColorTarget(graph::IRenderTarget *rt, const char *filename,
-                         std::vector<uint8_t> *out_lum)
+                         hgl::ValueArray<uint8_t> *out_lum)
     {
         if (!rt)
             return false;
 
-        std::vector<uint8_t> pixels;
+        hgl::ValueArray<uint8_t> pixels;
         graph::TextureReadbackInfo info;
 
         if (!graph::ReadbackColorTarget(rt, pixels, 0, &info))
@@ -349,7 +349,7 @@ private:
         std::vector<uint8> rgb(static_cast<size_t>(w) * h * 3, 0);
 
         if (out_lum)
-            out_lum->assign(static_cast<size_t>(w) * h * 3, 0);
+            out_lum->Resize(static_cast<int>(static_cast<size_t>(w) * h * 3));
 
         uint64_t lum_sum = 0;
 
@@ -357,7 +357,7 @@ private:
         {
             for (uint32_t x = 0; x < w; ++x)
             {
-                const uint8 *p = pixels.data() + (static_cast<size_t>(y) * w + x) * info.pixel_size;
+                const uint8 *p = pixels.GetData() + (static_cast<size_t>(y) * w + x) * info.pixel_size;
                 const uint8 lum = uint8((uint32(p[0]) + uint32(p[1]) + uint32(p[2])) / 3);
                 lum_sum += lum;
 
@@ -386,7 +386,7 @@ private:
         const AnsiString trunc_tag = AnsiString(fmt_tag) + "_low8x3";
         const AnsiString tga_name = MakeDumpName(filename, w, h, trunc_tag.c_str(), "tga");
 
-        if (!SaveRaw(raw_name.c_str(), pixels.data(), pixels.size()))
+        if (!SaveRaw(raw_name.c_str(), pixels.GetData(), pixels.size()))
             return false;
 
         if (!SaveRgbTga(tga_name.c_str(), rgb.data(), w, h))
@@ -406,7 +406,7 @@ private:
     // 注意帧号口径：钩子在**本帧**提交窗口内执行，请求发生在 Tick（本帧渲染之前）⇒ 读到的是
     // 本帧渲染结果（旧实现读的是上一帧结果——因为它发生在 Tick，那时本帧还没渲染）。
     bool RequestColorDump(graph::IRenderTarget *rt, const char *filename,
-                          std::vector<uint8_t> *out_lum)
+                          hgl::ValueArray<uint8_t> *out_lum)
     {
         auto *sc_rt = dynamic_cast<graph::SwapchainRenderTarget *>(rt);
         if (!sc_rt)
@@ -431,8 +431,8 @@ private:
     // 本场景地面是饱和红、影子压在其上呈灰蓝 → "变红"即"该像素不再受影"。
     // 相机与场景静止，除被改动的旋钮外逐帧一致（对照组实测逐像素相同），
     // 故差值只可能来自该旋钮。
-    static void CompareAppearance(const std::vector<uint8_t> &a,
-                                  const std::vector<uint8_t> &b,
+    static void CompareAppearance(const hgl::ValueArray<uint8_t> &a,
+                                  const hgl::ValueArray<uint8_t> &b,
                                   uint32_t &out_changed,
                                   uint32_t &out_grey_to_red,
                                   uint32_t &out_red_to_grey)

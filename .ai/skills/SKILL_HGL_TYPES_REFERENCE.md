@@ -134,12 +134,16 @@ SplitString(parts, "a,b,c", ',');
 
 ## 2. 集合类型（Collections）
 
-### 动态数组 `ArrayList<T>` → 替代 `std::vector<T>`
+### 动态数组 `ValueArray<T>` → 替代 `std::vector<T>`（值/裸指针）
+
+> ⚠️ 本仓库 **不存在** `hgl::ArrayList` / `<hgl/type/ArrayList.h>`。CMCore 的两种动态数组是：
+> - `hgl::ValueArray<T>`：元素必须是平凡可拷贝的值或裸指针（POD）
+> - `hgl::ManagedArray<T>`：管理堆对象指针的生命周期（析构时删除元素）
 
 ```cpp
-#include <hgl/type/ArrayList.h>
+#include <hgl/type/ValueArray.h>
 
-hgl::ArrayList<int> arr;
+hgl::ValueArray<int> arr;
 
 // 添加
 arr.Add(1);
@@ -153,15 +157,17 @@ int val = arr[0];               // 下标访问
 
 // 查找
 int idx = arr.Find(2);          // 找到返回索引，否则 -1
+bool has = arr.Contains(2);
 
 // 删除
-arr.Delete(0);                  // 按索引删除
-arr.DeleteMove(0);              // 删除并移动后续元素
-arr.Clear();                    // 清空
+arr.Delete(0);                  // 按索引删除（第二参数为数量）
+arr.DeleteSwap(0);              // 删除并与末尾元素交换（O(1)，不保序）
+arr.Clear();                    // 清空内容，保留容量
 
-// 预分配
-arr.SetCount(100);              // 设置大小（不初始化）
-arr.SetAllocCount(100);         // 预分配容量
+// 预分配 / 定长
+arr.Resize(100);                // 设置元素数量
+arr.Reserve(100);               // 预分配容量
+arr.ClearAndDeallocate();       // 清空并释放缓冲区
 
 // 遍历
 for (int i = 0; i < arr.GetCount(); i++) {
@@ -169,12 +175,27 @@ for (int i = 0; i < arr.GetCount(); i++) {
 }
 ```
 
+### 托管数组 `ManagedArray<T>` → 替代 `std::vector<std::unique_ptr<T>>`
+
+```cpp
+#include <hgl/type/ManagedArray.h>
+
+hgl::ManagedArray<MyObject> objects;
+
+objects.Add(new MyObject());    // 所有权移交，析构时自动 delete
+int count = objects.GetCount();
+MyObject *obj = objects[0];
+
+objects.DeleteAt(0);            // 删除并释放该元素
+objects.Clear();                // 释放全部元素
+```
+
 ### 链表 `List<T>` → 替代 `std::list<T>`
 
 ```cpp
 #include <hgl/type/List.h>
 
-// 通常优先使用 ArrayList；只在需要频繁中间插入删除时用 List
+// 通常优先使用 ValueArray；只在需要频繁中间插入删除时用 List
 ```
 
 ### 哈希映射 `UnorderedMap<K,V>` → 替代 `std::unordered_map<K,V>`
@@ -1232,11 +1253,11 @@ std::vector<int> ids;
 ids.push_back(1);
 size_t count = ids.size();
 ```
-### ✅ 正确：使用 `ArrayList`
+### ✅ 正确：使用 `ValueArray`
 ```cpp
 // 正确
-#include <hgl/type/ArrayList.h>
-hgl::ArrayList<int> ids;
+#include <hgl/type/ValueArray.h>
+hgl::ValueArray<int> ids;
 ids.Add(1);
 int count = ids.GetCount();
 ```
@@ -1324,7 +1345,7 @@ std::mutex m;
 ## 参考文件位置
 
 - 字符串类型：`inc/hgl/type/String.h`、`inc/hgl/type/StrChar.h`
-- 集合类型：`inc/hgl/type/ArrayList.h`、`inc/hgl/type/UnorderedMap.h`、`inc/hgl/type/SortedSet.h`、`inc/hgl/type/Map.h`
+- 集合类型：`inc/hgl/type/ValueArray.h`、`inc/hgl/type/ManagedArray.h`、`inc/hgl/type/UnorderedMap.h`、`inc/hgl/type/OrderedSet.h`、`inc/hgl/type/OrderedMap.h`
 - 哈希：`CMHash/inc/hgl/util/hash/`（`Algorithm.h` 是算法清单唯一真源；`Hash.h` 提供 `TryParseAlgorithm`/`Hash`；FNV1a/QuickHash/wyhash 也在这里），文件哈希在 `CMCore/inc/hgl/util/hash/HashFile.h`
 - IO：`inc/hgl/io/FileInputStream.h`、`inc/hgl/io/FileOutputStream.h`、`inc/hgl/io/MemoryInputStream.h`、`inc/hgl/io/MemoryOutputStream.h`
 - 日志：`inc/hgl/log/Log.h`
