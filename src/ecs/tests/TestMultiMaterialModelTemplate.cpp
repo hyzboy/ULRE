@@ -147,6 +147,58 @@ namespace
         return true;
     }
 
+    // ── 1b. 单图元模板缓存与注销级联清理测试 ────────────────────────
+
+    bool TestSinglePrimitiveModelTemplateCache()
+    {
+        ECSContext context("TestSingleTmplContext");
+        ModelTemplateMaterialTable *mat_table = context.GetModelTemplateMaterialTable();
+        if (!mat_table)
+            return false;
+
+        const uint32_t kGeoID = 42u;
+        const MaterialRuntimeRowID kRow = 7u;
+        const uint32_t kTemplateID = 101u;
+
+        SinglePrimitiveTemplateKey key;
+        key.geometry_id = kGeoID;
+        key.runtime_row = kRow;
+        key.can_cast_shadow = true;
+        key.is_opaque = true;
+
+        // 初始无缓存
+        if (mat_table->FindSinglePrimitiveTemplate(key) != 0u)
+            return false;
+
+        // 注册绑定并关联单图元模板
+        TemplateRenderBinding binding;
+        binding.template_id = kTemplateID;
+        TemplateShadingGroupDesc grp;
+        grp.runtime_row = kRow;
+        grp.casts_shadow = true;
+        grp.slot_geometry.Add(kGeoID);
+        grp.slot_count.Add(1);
+        binding.groups.Add(grp);
+
+        if (!mat_table->RegisterBinding(binding))
+            return false;
+
+        mat_table->RegisterSinglePrimitiveTemplate(key, kTemplateID);
+
+        // 查缓存必须命中
+        if (mat_table->FindSinglePrimitiveTemplate(key) != kTemplateID)
+            return false;
+
+        // 注销绑定必须自动清除单图元缓存
+        if (!mat_table->UnregisterBinding(kTemplateID))
+            return false;
+
+        if (mat_table->FindSinglePrimitiveTemplate(key) != 0u)
+            return false;
+
+        return true;
+    }
+
     // ── 2. ModelTemplateRenderItem 载体项测试 ──────────────────────────
 
     bool TestTemplateRenderItemCarrier()
@@ -185,6 +237,47 @@ namespace
         return true;
     }
 
+    // ── 2b. 实例级材质覆盖测试 ──────────────────────────────────────
+
+    bool TestInstanceMaterialOverride()
+    {
+        ECSContext context("TestOverrideContext");
+        Entity *entity_default = context.CreateEntity();
+        Entity *entity_override = context.CreateEntity();
+        if (!entity_default || !entity_override)
+            return false;
+
+        const uint32_t kTemplateID = 77u;
+        const MaterialRuntimeRowID kOverrideRow = 55u;
+
+        auto *ref_def = entity_default->AddComponent<GPUModelRefComponent>();
+        auto *ref_ovr = entity_override->AddComponent<GPUModelRefComponent>();
+        if (!ref_def || !ref_ovr)
+            return false;
+
+        ref_def->template_id = kTemplateID;
+        ref_ovr->template_id = kTemplateID;
+
+        // 默认无覆盖
+        if (ref_def->HasMaterialOverride())
+            return false;
+        if (ref_def->override_material_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
+            return false;
+
+        // 实体 B 覆盖材质
+        ref_ovr->SetOverrideMaterialRow(kOverrideRow);
+        if (!ref_ovr->HasMaterialOverride())
+            return false;
+        if (ref_ovr->override_material_row != kOverrideRow)
+            return false;
+
+        ref_ovr->ClearOverrideMaterialRow();
+        if (ref_ovr->HasMaterialOverride())
+            return false;
+
+        return true;
+    }
+
     // ── 3. 源码契约测试（验证 Step 1.4.4 与 1.4.5 的核心修改）──────────
 
     bool TestSourceContracts()
@@ -218,6 +311,15 @@ namespace
             { collect_src,
               "ModelTemplateRenderItem",
               "纯模板实体必须按组创建 ModelTemplateRenderItem 载体项投入批次" },
+            { collect_src,
+              "override_material_row",
+              "收集系统必须支持 pure_model_ref->override_material_row 实例材质覆盖" },
+            { collect_src,
+              "BuildSinglePrimitiveModelTemplate",
+              "收集系统物化成功时必须调用 BuildSinglePrimitiveModelTemplate 自动提升为模板实体" },
+            { collect_src,
+              "new_ref->template_id = auto_template_id",
+              "自动提升必须将分配的模板 ID 挂接到实体的 GPUModelRefComponent" },
 
             // 批处理流水线多组支持契约
             { batch_src,
@@ -250,7 +352,9 @@ int main()
     hgl::logger::InitLogger(OS_TEXT("TestMultiMaterialModelTemplate"));
 
     Check(TestMaterialTableLifecycle(), "1. ModelTemplateMaterialTable 生命周期与引用计数");
+    Check(TestSinglePrimitiveModelTemplateCache(), "1b. 单图元模板缓存与注销级联清理");
     Check(TestTemplateRenderItemCarrier(), "2. ModelTemplateRenderItem 载体项属性");
+    Check(TestInstanceMaterialOverride(), "2b. 实例级材质覆盖属性与重置");
     Check(TestSourceContracts(), "3. 收集快线与批处理多组源码契约");
 
     if (g_failed > 0)
