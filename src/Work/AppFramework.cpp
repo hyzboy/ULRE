@@ -20,6 +20,8 @@
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/graph/asset/AssetSourceMount.h>
+#include <hgl/vk/DebugBridgeServer.h>
+#include <hgl/vk/DebugCaptureQueue.h>
 
 namespace hgl
 {
@@ -68,50 +70,41 @@ namespace hgl
     AppFramework::~AppFramework()
     {
         GLogDebug("================ AppFramework Destructor Start ================");
-        if (device)
-            device->WaitIdle();
 
-        // 1. Shutdown ECS context FIRST so systems can clean up their buffers
-        // while managers are still alive
+        graph::DebugBridgeServer::StopActive();
+        graph::DebugCaptureQueue::ResetAllTargets();
+
+        if (graphics_context)
+            graphics_context->StopAsyncProducers();
+
+        if (device)
+        {
+            const VkResult wait_result=device->WaitIdleResult();
+            if(wait_result==VK_ERROR_DEVICE_LOST)
+                GLogWarning(u8"[AppFramework] GPU device lost during shutdown; continuing single-pass cleanup");
+        }
+
         GLogDebug("Step 1: Calling ECSContext::Shutdown()");
         if (default_ecs_context)
             default_ecs_context->Shutdown();
-        GLogDebug("Step 1 complete");
 
-        // 2. GraphicsContext shutdown - calls Release() on all modules (including sc_module)
-        // GraphicsContext owns all modules through GraphModuleManager
         GLogDebug("Step 2: Calling GraphicsContext::Shutdown()");
         if (graphics_context)
             graphics_context->Shutdown();
-        GLogDebug("Step 2 complete");
 
-        // 3. Release render context
         render_context.reset();
 
-        // 4. Clear graphics context (owns all managers and modules)
-        // GraphModuleManager destructor automatically calls Release() on all modules
-        // and then deletes them, so don't directly manage sc_module
         GLogDebug("Step 4: Deleting GraphicsContext");
         SAFE_CLEAR(graphics_context);
-        GLogDebug("Step 4 complete");
-        sc_module = nullptr;  // sc_module was deleted by GraphModuleManager, just null the pointer
+        sc_module = nullptr;
 
-        // 5. Destroy ECS context after graphics resources are cleaned up
         GLogDebug("Step 5: Deleting ECSContext");
         if (default_ecs_context)
         {
             delete default_ecs_context;
             default_ecs_context = nullptr;
         }
-        GLogDebug("Step 5 complete");
 
-        // 6. Wait for GPU to complete all operations before destroying device/window
-        if (device)
-        {
-            device->WaitIdle();
-        }
-
-        // 7. Cleanup GPU resources
         GLogDebug("Step 7: Deleting VulkanDevice (will check for leaks)");
         SAFE_CLEAR(device);
         GLogDebug("Step 7 complete");

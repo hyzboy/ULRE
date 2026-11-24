@@ -1192,4 +1192,15 @@ namespace hgl::graph
                 result.error=error;
             }
     }
+
+    void DebugCaptureQueue::ResetAllTargets()
+    {
+        QueueState &queue=Queue();
+        hgl::MutexLock lock(&queue.lock);
+        for(Target &target:queue.targets)
+            target=Target{};
+        for(Result &result:queue.requests)
+            if(result.state==State::Queued || result.state==State::Capturing)
+                result.state=State::Cancelled;
+    }
 }

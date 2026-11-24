@@ -12,9 +12,11 @@ Texture::~Texture()
 
     if(!data)return;
 
-    if(data->image)
+    const VkDevice vk_dev = manager ? manager->GetVkDevice() : VK_NULL_HANDLE;
+
+    if(data->image && vk_dev != VK_NULL_HANDLE)
     {
-        VulkanDevice *owner = VulkanDevice::FromDevice(manager->GetVkDevice());
+        VulkanDevice *owner = VulkanDevice::FromDevice(vk_dev);
         if (owner)
             owner->UntrackObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)(uintptr_t)data->image);
     }
@@ -25,13 +27,16 @@ Texture::~Texture()
     if(data->image_view)
         delete data->image_view;
 
-    if(data->memory)        //没有memory的纹理都是从其它地方借来的，所以就不存在删除
+    if(data->image && vk_dev != VK_NULL_HANDLE)
+        vkDestroyImage(vk_dev, data->image, nullptr);
+
+    if(data->memory)
     {
         delete data->memory;
-
-        if(data->image)
-            vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
     }
+
+    delete data;
+    data = nullptr;
 }
 
 VkImageView TextureCube::GetBindlessArrayView()

@@ -160,6 +160,7 @@ namespace hgl::graph
         /// 异步装载路径的进程才会起线程。必须在配方表 / 数据块表 `Clear()`
         /// 之前收掉 —— 池线程还在解析时清表就是 use-after-free。
         mtl::MaterialAsyncLoadLane *material_async_lane_ = nullptr;
+        bool async_producers_stopped_ = false;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -182,6 +183,9 @@ namespace hgl::graph
          * 在销毁前调用以确保正确的清理顺序
          */
         void Shutdown();
+
+        /// 在 GPU 归寂前幂等停止所有异步生产源。
+        void StopAsyncProducers();
 
         /**
          * 通知所有模块窗口尺寸改变

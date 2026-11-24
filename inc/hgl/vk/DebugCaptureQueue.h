@@ -109,5 +109,6 @@ namespace hgl::graph
         static bool CopyCamera(uint64_t from_target,uint64_t to_target,uint64_t frame_id);
         static void Process(IRenderTarget *target,uint64_t target_id,uint64_t frame_id);
         static void FailQueued(uint64_t target_id,const char *error);
+        static void ResetAllTargets();
     };
 }

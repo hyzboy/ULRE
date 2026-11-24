@@ -597,10 +597,34 @@ namespace hgl::graph
         return true;
     }
 
+    void GraphicsContext::StopAsyncProducers()
+    {
+        if (async_producers_stopped_)
+            return;
+
+        async_producers_stopped_=true;
+
+        if (loaded_file_manager_)
+        {
+            loaded_file_manager_->Stop(thread::ShutdownMode::Drain);
+        }
+
+        if (material_async_lane_)
+        {
+            material_async_lane_->Shutdown(&material_recipe_registry_,
+                                           &material_data_block_registry_,
+                                           GetTextureManager());
+        }
+
+        if (asset_cpu_pool_)
+        {
+            asset_cpu_pool_->Stop(thread::ShutdownMode::Drain);
+        }
+    }
+
     void GraphicsContext::Shutdown()
     {
-        if (device)
-            device->WaitIdle();
+        StopAsyncProducers();
 
         // Gizmo 驻留资源(VDM/GeometryCreater/颜色行租约)挂在文件级 static 上,
         // 无人释放会在 static 析构(晚于本函数)时把行还回已销毁的
@@ -638,9 +662,12 @@ namespace hgl::graph
         // 落表，再解除挂接，此后不再有任何线程访问这两张表。
         if (material_async_lane_)
         {
-            material_async_lane_->Shutdown(&material_recipe_registry_,
-                                           &material_data_block_registry_,
-                                           GetTextureManager());
+            if (!async_producers_stopped_)
+            {
+                material_async_lane_->Shutdown(&material_recipe_registry_,
+                                               &material_data_block_registry_,
+                                               GetTextureManager());
+            }
             delete material_async_lane_;
             material_async_lane_ = nullptr;
         }
