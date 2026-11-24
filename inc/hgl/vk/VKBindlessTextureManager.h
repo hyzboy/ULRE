@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include<hgl/vk/VKBindlessSlotAllocator.h>
 
 #include <vulkan/vulkan.h>
 #include <hgl/common/RenderOptions.h>
@@ -72,7 +73,9 @@ namespace hgl::graph
         uint32_t next_handle_ = 1;
 
         // 纹理 → tex_handle（1-based）去重映射
-        hgl::UnorderedMap<const Texture *, uint32_t> tex_cache_;
+        hgl::UnorderedMap<uint64_t, uint32_t> tex_cache_;
+        BindlessSlotAllocator slot_allocator_{kMax};
+        uint64_t frame_serial_=0;
 
         // 统一注册机制：由 RegisterSamplers 创建的 VkSampler 句柄，index = 预设索引。
         hgl::ValueArray<VkSampler> samplers_;
@@ -127,6 +130,8 @@ namespace hgl::graph
          * 注册一张纹理，返回纯 tex_handle（1-based，0=无效）。
          */
         uint32_t RegisterTexture(Texture *tex);
+        void UnregisterTexture(uint64_t unique_id,uint64_t current_frame);
+        void ReclaimRetiredSlots(uint64_t current_frame);
 
         /**
          * 预分配一个 1-based 纹理 handle（可选关联一个占位纹理写入描述符）。
@@ -143,6 +148,7 @@ namespace hgl::graph
          * @return 是否更新成功
          */
         bool UpdateTextureHandle(uint32_t tex_handle, Texture *tex);
+        void NotifyTextureDestroyed(uint64_t unique_id);
 
         /**
          * 按预设顺序创建并注册所有 sampler（写 binding=1，index=数组顺序）。

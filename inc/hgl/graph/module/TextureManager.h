@@ -40,6 +40,14 @@ private:
     /// 多个材质共享同一份加载状态与同一张纹理。线性扫描即可 —— 只在材质装配期写入。
     ValueArray<TextureAsset *> texture_assets;
 
+    struct PendingTextureDelete
+    {
+        Texture *texture=nullptr;
+        uint64_t retire_frame=0;
+    };
+    ValueArray<PendingTextureDelete> pending_texture_deletes_;
+    uint64_t texture_frame_serial_=0;
+
     const TextureID Add(Texture *);
     const TextureID Add(Texture *,const OSString &);
 
@@ -120,15 +128,8 @@ public: //Create/Chagne
     bool ChangeTexture2DArrayMipmaps(Texture2DArray *,DeviceBuffer *buf,const VkExtent3D &extent,const uint32_t top_mipmap_bytes,const uint32_t base_layer,const uint32_t layer_count=1,VkPipelineStageFlags2=VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 
 public:
-
     void Release(Texture *);
-    void Destory(Texture *tex)
-    {
-        if(!tex)return;
-
-        Release(tex);
-        delete tex;
-    }
+    void Destory(Texture *tex);
 
     void Release() override;
 

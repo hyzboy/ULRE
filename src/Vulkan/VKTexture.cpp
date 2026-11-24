@@ -3,10 +3,21 @@
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<cstdint>
 namespace hgl::graph{
 Texture::~Texture()
 {
+    if(manager)
+    {
+        if(auto *gc=manager->GetGraphicsContext())
+        {
+            if(auto *bindless=gc->GetBindlessTextureManager())
+                bindless->NotifyTextureDestroyed(unique_id_);
+        }
+    }
+
     if (manager)
         manager->Release(this);
 

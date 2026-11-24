@@ -7,6 +7,7 @@
 #include<hgl/graph/data/BitmapData.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKTextureCreateInfo.h>
+#include<hgl/sync/Atomic.h>
 namespace hgl::graph{
 
 BitmapData *LoadBitmapFromFile(const OSString &filename);
@@ -20,6 +21,7 @@ protected:
 
     TextureManager *manager;
     TextureID texture_id;
+    uint64_t unique_id_=0;
 
     TextureData *data;
 
@@ -27,6 +29,7 @@ public:
 
     TextureManager *            GetManager          ()      {return manager;}
     const TextureID             GetID               ()const noexcept {return texture_id;}
+    uint64_t                    GetUniqueID         ()const noexcept {return unique_id_;}
 
     TextureData *               GetData             ()      {return data;}
 
@@ -68,6 +71,8 @@ public:
         manager=tm;
         texture_id=id;
         data=td;
+        static hgl::atom_uint64 next_uid{1};
+        unique_id_=next_uid.fetch_add(1,std::memory_order_relaxed);
     }
 
     virtual ~Texture();

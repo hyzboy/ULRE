@@ -137,6 +137,8 @@ function(add_ulre_unit_test target_name)
     set_target_properties(${target_name} PROPERTIES FOLDER "ULRE/Tests/ECS/Unit")
 endfunction()
 
+add_ulre_unit_test(TestBindlessSlotAllocator tests/TestBindlessSlotAllocator.cpp)
+
 add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 
 add_ecs_test(TestFrameDebugger tests/TestFrameDebugger.cpp)

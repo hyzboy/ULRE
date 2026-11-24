@@ -35,6 +35,10 @@ TextureManager::~TextureManager()
 
 void TextureManager::Release()
 {
+    for(int i=0;i<pending_texture_deletes_.GetCount();++i)
+        if(pending_texture_deletes_[i].texture)
+            delete pending_texture_deletes_[i].texture;
+    pending_texture_deletes_.Clear();
     // 纹理句柄表归本管理器所有：先按稳定快照逐个 Release + delete，再动纹理本体，
     // 这样句柄的 OnUnloadPayload 一定跑在纹理对象仍然有效的时候。
     if(texture_assets.GetCount()>0)
@@ -161,6 +165,24 @@ void TextureManager::Release(Texture *tex)
     texture_set.Delete(tex);
     texture_by_id.RemoveByValue(tex);          ///<从ID映射删除
     texture_by_filename.RemoveByValue(tex);    ///<从文件名映射删除
+}
+
+void TextureManager::Destory(Texture *tex)
+{
+    if(!tex)
+        return;
+
+    if(auto *gc=GetGraphicsContext())
+    {
+        if(auto *bindless=gc->GetBindlessTextureManager())
+            bindless->UnregisterTexture(tex->GetUniqueID(),texture_frame_serial_);
+    }
+
+    PendingTextureDelete pending;
+    pending.texture=tex;
+    pending.retire_frame=texture_frame_serial_+HGL_FRAME_SLOT_TOTAL;
+    pending_texture_deletes_.Add(pending);
+    Release(tex);    ///<从文件名映射删除
 }
 
 Texture *TextureManager::FindTextureByFilename(const OSString &filename)const
@@ -477,6 +499,26 @@ void TextureManager::WaitUpload(uint64_t task_id)
 
 void TextureManager::UpdateUploadQueue(BindlessTextureManager *bindless_mgr)
 {
+    ++texture_frame_serial_;
+    if(bindless_mgr)
+        bindless_mgr->ReclaimRetiredSlots(texture_frame_serial_);
+
+    ValueArray<PendingTextureDelete> remain;
+    for(int i=0;i<pending_texture_deletes_.GetCount();++i)
+    {
+        PendingTextureDelete pending=pending_texture_deletes_[i];
+        if(pending.retire_frame<=texture_frame_serial_)
+        {
+            if(pending.texture)
+                delete pending.texture;
+        }
+        else
+        {
+            remain.Add(pending);
+        }
+    }
+    pending_texture_deletes_=remain;
+
     if (!upload_queue)
         return;
 

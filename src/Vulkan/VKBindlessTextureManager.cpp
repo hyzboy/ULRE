@@ -374,7 +374,6 @@ void BindlessTextureManager::Destroy()
     device_                = VK_NULL_HANDLE;
     attr_                  = nullptr;
     use_descriptor_buffer_ = false;
-    next_handle_           = 1;
     tex_cache_.Clear();
 }
 
@@ -383,17 +382,23 @@ uint32_t BindlessTextureManager::AllocateHandle(Texture *placeholder_tex)
     if (!IsValid())
         return 0;
 
-    const uint32_t tex_handle = next_handle_++;
+    const uint32_t tex_handle = slot_allocator_.Allocate();
+    if(tex_handle==0)
+    {
+        LogError(u8"[BindlessTextureManager] texture slot pool exhausted (max=%u)", kMax);
+        return 0;
+    }
     if (placeholder_tex)
     {
         UpdateTextureHandle(tex_handle, placeholder_tex);
     }
+    slot_allocator_.MarkLive(tex_handle);
     return tex_handle;
 }
 
 bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *tex)
 {
-    if (!tex || !IsValid() || tex_handle == 0 || tex_handle >= next_handle_)
+    if (!tex || !IsValid() || tex_handle == 0 || tex_handle > slot_allocator_.GetHighWaterMark())
         return false;
 
     // Cubemap 纹理写 binding=2(textureCube[])，其余写 binding=0(texture2DArray[])
@@ -426,7 +431,7 @@ bool BindlessTextureManager::UpdateTextureHandle(uint32_t tex_handle, Texture *t
         return false;
     }
 
-    tex_cache_.Add(tex, tex_handle);
+    tex_cache_.Add(tex->GetUniqueID(), tex_handle);
 
 #if HGL_VK_DESCRIPTOR_POOL_FALLBACK
     if (!use_descriptor_buffer_)
@@ -469,15 +474,41 @@ uint32_t BindlessTextureManager::RegisterTexture(Texture *tex)
     if (!tex || !IsValid())
         return 0;
 
-    const uint32_t *cached = tex_cache_.GetValuePointer(tex);
+    const uint32_t *cached = tex_cache_.GetValuePointer(tex->GetUniqueID());
     if (cached)
         return *cached;
 
-    const uint32_t tex_handle = next_handle_++;
-    if (!UpdateTextureHandle(tex_handle, tex))
+    const uint32_t tex_handle=AllocateHandle(tex);
+    if(tex_handle==0)
         return 0;
 
     return tex_handle;
+}
+
+void BindlessTextureManager::NotifyTextureDestroyed(uint64_t unique_id)
+{
+    tex_cache_.DeleteByKey(unique_id);
+}
+
+void BindlessTextureManager::UnregisterTexture(uint64_t unique_id,uint64_t current_frame)
+{
+    const uint32_t *handle=tex_cache_.GetValuePointer(unique_id);
+    if(!handle)
+        return;
+
+    const uint32_t tex_handle=*handle;
+    tex_cache_.DeleteByKey(unique_id);
+    if(tex_handle==0)
+        return;
+
+    slot_allocator_.Retire(tex_handle,current_frame);
+    frame_serial_=current_frame;
+}
+
+void BindlessTextureManager::ReclaimRetiredSlots(uint64_t current_frame)
+{
+    frame_serial_=current_frame;
+    slot_allocator_.Reclaim(current_frame);
 }
 
 bool BindlessTextureManager::RegisterSamplers(const VkSamplerCreateInfo *infos, uint32_t count)
