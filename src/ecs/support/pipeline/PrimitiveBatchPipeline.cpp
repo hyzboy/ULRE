@@ -17,7 +17,10 @@
 #include<hgl/ecs/support/pipeline/PrimitiveState.h>
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/ecs/core/render/PrimitiveRenderItem.h>
+#include<hgl/ecs/core/render/ModelTemplateRenderItem.h>
+#include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/CameraInfo.h>
@@ -841,15 +844,19 @@ namespace hgl::ecs
         // 着色器用 `组基址 + part.bucket_slot` 定位（见 entity_gpu_cull.glsl）。
         struct TemplateGroupDraft
         {
-            uint32_t template_id  = 0;
-            uint32_t group_bucket = 0;   ///< 组首桶在**本批**桶表内的下标（不含 bucket_first）
-            uint32_t bucket_count = 0;   ///< = tpl.part_bucket_count
-            uint32_t group_count  = 1;   ///< = tpl.shading_group_count
+            uint32_t template_id   = 0;
+            uint32_t shading_group = 0;   ///< 所属 Shading Group 索引
+            uint32_t group_bucket  = 0;   ///< 组首桶在**本批**桶表内的下标（不含 bucket_first）
+            uint32_t bucket_count  = 0;   ///< 本组的桶数
+            uint32_t group_count   = 1;   ///< = tpl.shading_group_count
             uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase; ///< 二级组表偏移
         };
 
         std::vector<TemplateGroupDraft> template_groups;      // 本批模板（去重、出现序确定）
         std::vector<uint32_t> template_entity_group;          // 项 → 组下标（UINT32_MAX = 非模板项）
+
+        // 本 pass 内各模板的二级组表基址（按 template_id 统一分配一次）
+        hgl::UnorderedMap<uint32_t, uint32_t> pass_template_group_offsets;
 
         // P4：模板事实缓存的失效检查（每帧 O(1)：两个代数比对）
         RefreshTemplateFactCache();
@@ -1005,20 +1012,68 @@ namespace hgl::ecs
                             break;
                         }
 
-                        // 阶段 1 边界：多 shading_group 模板的部件要分流到**不同**批，
-                        // 归组依据来自载体项（`TemplateRenderBinding::groups` ⇒ 每条投到自己
-                        // 那批），Step 1.4 才落地。在此之前一律 fail-fast，避免把全部组塞进
-                        // 同一批（那会画错几何且不越界 = 不报警）。
-                        if (facts->shading_group_count > 1u)
+                        // Step 1.4：支持多 shading_group 模板部件分流到不同批。
+                        // 确定当前项所属的 shading_group（如果是 ModelTemplateRenderItem 则取其属性，否则默认组 0）。
+                        uint32_t target_group = 0;
+                        if (const auto *tpl_item = dynamic_cast<const ModelTemplateRenderItem *>(b->items[i]))
+                            target_group = tpl_item->GetShadingGroup();
+
+                        if (target_group >= facts->shading_group_count)
                         {
-                            why = "多 shading_group 模板需要载体项按组分批（Step 1.4）";
+                            why = "模板部件组索引超出模板声明的 shading_group_count";
+                            break;
+                        }
+
+                        // 二级组表：本 (pass, 模板) 独占一段 `shading_group_count` 个连续槽
+                        uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
+                        if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(ref->template_id))
+                        {
+                            group_table_offset = *offset_ptr;
+                        }
+                        else
+                        {
+                            if (!gpu_cull->AllocateModelGroupBucketSlots(pass_index, facts->shading_group_count,
+                                                                        &group_table_offset))
+                            {
+                                why = "组基址表槽位耗尽（kModelExpansionGroupBucketSlotsPerPass）";
+                                break;
+                            }
+                            pass_template_group_offsets.Add(ref->template_id, group_table_offset);
+                        }
+
+                        // 获取该组的几何与容量规格（优先从 ModelTemplateMaterialTable 取，单组可回退 facts）
+                        uint32_t grp_bucket_count = 0;
+                        const uint32_t *slot_geo_data = nullptr;
+                        const uint32_t *slot_cnt_data = nullptr;
+
+                        const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+                        const TemplateRenderBinding *binding = template_mat_table
+                            ? template_mat_table->FindBinding(ref->template_id) : nullptr;
+
+                        if (binding && target_group < static_cast<uint32_t>(binding->groups.GetCount()))
+                        {
+                            const TemplateShadingGroupDesc &grp_desc = binding->groups[target_group];
+                            grp_bucket_count = static_cast<uint32_t>(grp_desc.slot_geometry.GetCount());
+                            slot_geo_data = grp_desc.slot_geometry.GetData();
+                            slot_cnt_data = grp_desc.slot_count.GetData();
+                        }
+                        else if (facts->shading_group_count == 1u)
+                        {
+                            grp_bucket_count = facts->part_bucket_count;
+                            slot_geo_data = facts->slot_geometry.data();
+                            slot_cnt_data = facts->slot_count.data();
+                        }
+                        else
+                        {
+                            why = "多组模板缺少 ModelTemplateMaterialTable 绑定信息";
                             break;
                         }
 
                         uint32_t gi = UINT32_MAX;
 
                         for (uint32_t g = 0; g < uint32_t(template_groups.size()); ++g)
-                            if (template_groups[g].template_id == ref->template_id)
+                            if (template_groups[g].template_id == ref->template_id
+                             && template_groups[g].shading_group == target_group)
                             {
                                 gi = g;
                                 break;
@@ -1026,39 +1081,33 @@ namespace hgl::ecs
 
                         if (gi == UINT32_MAX)
                         {
-                            // 首次出现：建组（槽几何体来自该模板自己的部件事实）
+                            // 首次出现：建组（槽几何体来自该模板该组的部件事实）
                             gi = uint32_t(template_groups.size());
                             template_groups.push_back(TemplateGroupDraft{});
 
                             TemplateGroupDraft &grp = template_groups.back();
-                            grp.template_id  = ref->template_id;
-                            grp.group_bucket = uint32_t(bucket_geometry.size());
-                            grp.bucket_count = facts->part_bucket_count;
-                            grp.group_count  = facts->shading_group_count;
+                            grp.template_id        = ref->template_id;
+                            grp.shading_group      = target_group;
+                            grp.group_bucket       = uint32_t(bucket_geometry.size());
+                            grp.bucket_count       = grp_bucket_count;
+                            grp.group_count        = facts->shading_group_count;
+                            grp.group_table_offset = group_table_offset;
 
-                            // 二级组表：本 (pass, 模板) 独占一段 `group_count` 个连续槽，
-                            // 初值哨兵；某组确定落在本批后再回填（见下方 Finalize 循环）。
-                            if (!gpu_cull->AllocateModelGroupBucketSlots(pass_index, grp.group_count,
-                                                                        &grp.group_table_offset))
+                            for (uint32_t s = 0; s < grp_bucket_count; ++s)
                             {
-                                why = "组基址表槽位耗尽（kModelExpansionGroupBucketSlotsPerPass）";
-                                break;
-                            }
-
-                            for (uint32_t s = 0; s < facts->part_bucket_count; ++s)
-                            {
-                                bucket_geometry.push_back(facts->slot_geometry[s]);
+                                bucket_geometry.push_back(slot_geo_data ? slot_geo_data[s] : 0u);
                                 bucket_capacity.push_back(0u);
                             }
                         }
 
-                        // 逐实例累加：每个实例给该模板的每个槽再加 `slot_count[s]` 容量。
-                        // 容量取自**本模板自己**的事实（原实现共用一份草稿，同批出现第二个
-                        // 模板后会把先前模板的槽计数覆盖掉 ⇒ 多模板批的容量算错）。
+                        // 逐实例累加：每个实例给该模板该组的每个槽再加 `slot_cnt_data[s]` 容量。
                         const TemplateGroupDraft &grp = template_groups[gi];
 
                         for (uint32_t s = 0; s < grp.bucket_count; ++s)
-                            bucket_capacity[grp.group_bucket + s] += facts->slot_count[s];
+                        {
+                            if (slot_cnt_data)
+                                bucket_capacity[grp.group_bucket + s] += slot_cnt_data[s];
+                        }
 
                         template_entity_group[i] = gi;
                     }
@@ -1157,9 +1206,9 @@ namespace hgl::ecs
                 {
                     const TemplateGroupDraft &grp = template_groups[gi];
 
-                    // 二级组表：组 0 的块内首桶号（阶段 1 单组；多组在 Step 1.4 由载体项
-                    // 各自所属的批分别回填自己的组槽）。实体行只记**组表偏移**。
-                    gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset, 0u,
+                    // 二级组表：将本批分配的首桶号回填到该模板的该组槽位中
+                    // （多组在 Step 1.4 由载体项各自所属的批分别回填自己的组槽）。实体行记组表偏移。
+                    gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset, grp.shading_group,
                                                       bucket_first + grp.group_bucket);
                     gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,
                                                         grp.group_table_offset);

@@ -14,6 +14,8 @@
 #include<hgl/vk/FrameDebugger.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/ecs/core/render/PrimitiveRenderItem.h>
+#include<hgl/ecs/core/render/ModelTemplateRenderItem.h>
+#include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include <cstdlib>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
@@ -632,6 +634,74 @@ namespace hgl::ecs
             if (length > 0)
                 hasher.AppendBytes(text, length);
             return hasher;
+        }
+
+        graph::ShaderProgram *EnsureTemplateGroupProgram(
+            ECSContext *world,
+            MaterialVariantTable *variant_table,
+            MaterialRuntimeTable *runtime_table,
+            MaterialRuntimeRowID row_id,
+            bool shadow_pass)
+        {
+            if (!world || !variant_table || !runtime_table || row_id == INVALID_MATERIAL_RUNTIME_ROW_ID)
+                return nullptr;
+
+            MaterialRuntimeRow *row = runtime_table->GetMutable(row_id);
+            if (!row)
+                return nullptr;
+
+            const MaterialVariantID variant_id = shadow_pass ? row->shadow_variant : row->forward_variant;
+            if (variant_id == INVALID_MATERIAL_VARIANT_ID)
+                return nullptr;
+
+            MaterialVariantRecord *record = variant_table->GetMutable(variant_id);
+            if (!record)
+                return nullptr;
+
+            if (record->program)
+                return record->program;
+
+            const graph::mtl::MaterialRecipe &effective_recipe = shadow_pass
+                ? row->shadow_cached_normalized_recipe
+                : row->cached_effective_recipe;
+
+            if (effective_recipe.recipe_name.empty())
+                return nullptr;
+
+            graph::GraphicsContext *graphics = nullptr;
+            graph::ShaderProgramManager *material_manager = nullptr;
+            if (!ResolveGraphicsAndMaterialManager(world, graphics, material_manager) || !material_manager)
+                return nullptr;
+
+            const AnsiString &ambient_provider = ResolveAmbientProviderModule(world);
+
+            graph::mtl::MaterialBuildRequest mtl_request{};
+            mtl_request.recipe = effective_recipe;
+            mtl_request.primitive_type = graph::PrimitiveType::Triangles;
+            mtl_request.geometry_vertex_format = nullptr;
+            mtl_request.shader_program_purpose = shadow_pass
+                ? graph::mtl::ShaderProgramPurpose::ShadowDepth
+                : graph::mtl::ShaderProgramPurpose::ForwardColor;
+            mtl_request.ambient_module_name = ambient_provider.c_str();
+
+            graph::mtl::ResolvedMaterial template_definition{};
+            if (!ResolveResolvedMaterial(effective_recipe, template_definition))
+                return nullptr;
+
+            if (!graph::SelectCurrentScenePassProfileRequest(
+                    template_definition, mtl_request,
+                    mtl_request.render_template_request))
+                return nullptr;
+
+            graph::ShaderProgram *resolved_program =
+                material_manager->AcquireShaderProgram(mtl_request);
+
+            if (resolved_program)
+            {
+                record->program = resolved_program;
+            }
+
+            return resolved_program;
         }
 
         const graph::mtl::RecipeTextureBinding *FindRecipeTextureBinding(
@@ -2068,11 +2138,11 @@ namespace hgl::ecs
         // 但它必须上行事实（模板 id / 部件掩码 / 4-ID 的材质纹理）并被批装配看见。
         // 判据 = 实体挂了有效 `GPUModelRefComponent`。
         bool is_template_carrier = false;
-        if (item)
+        Entity *carrier_owner = item ? item->GetEntity() : (world ? world->GetEntity(entity_id) : nullptr);
+        if (carrier_owner)
         {
-            Entity *item_owner = item->GetEntity();
             const GPUModelRefComponent *model_ref =
-                item_owner ? item_owner->GetComponent<GPUModelRefComponent>() : nullptr;
+                carrier_owner->GetComponent<GPUModelRefComponent>();
 
             is_template_carrier = (model_ref
                 && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID);
@@ -2645,6 +2715,11 @@ namespace hgl::ecs
                     continue;
             }
 
+            // 阶段 1：纯模板载体实体（无 GeometryData 且有 GPUModelRefComponent）
+            // 其部件几何与材质常驻 GPU SSBO 并由 ModelTemplateMaterialTable 管理，无需参与单图元 slot 预扫描。
+            if (!entity->GetComponent<GeometryData>() && entity->GetComponent<GPUModelRefComponent>())
+                continue;
+
             // 阴影 pass 的 caster 能力（CanCastShadow）与距离裁剪（in_shadow_range）已由表的
             // CollectForCurrentPass 条件要求表达 ⇒ 这里不再重复判据。
 
@@ -2855,6 +2930,96 @@ namespace hgl::ecs
 
             // 阴影 pass 的 caster 能力与距离裁剪已由表的 CollectForCurrentPass 条件要求表达
             // ⇒ 这里不再重复判据（原两条 continue 随之删除）。
+
+            // 阶段 1：纯模板载体实体（无 GeometryData 且有 GPUModelRefComponent）快线分流
+            // 按 ModelTemplateMaterialTable 中已注册的各 Shading Group 独立投递载体项（完全绕过传统单图元材质物化）
+            const GPUModelRefComponent *pure_model_ref = entity->GetComponent<GPUModelRefComponent>();
+            const bool is_pure_template = (pure_model_ref != nullptr) && (entity->GetComponent<GeometryData>() == nullptr);
+
+            if (is_pure_template)
+            {
+                if (pure_model_ref->template_id == graph::ssbo::kInvalidModelTemplateID)
+                {
+                    cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", "InvalidTemplate", "Model template ID is invalid");
+                    continue;
+                }
+
+                const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+                const TemplateRenderBinding *binding = template_mat_table ? template_mat_table->FindBinding(pure_model_ref->template_id) : nullptr;
+                if (!binding || binding->groups.IsEmpty())
+                {
+                    cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", "NoTemplateBinding", "Model template has no render binding");
+                    continue;
+                }
+
+                const bool shadow_pass = world->IsCurrentPassShadow();
+                auto *render_target = world->GetRenderTarget();
+                auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+                MaterialRuntimeTable *current_runtime_table = GetRuntimeTable(world);
+                MaterialVariantTable *variant_table = GetVariantTable(world);
+
+                const uint32_t transform_id = transform.GetID();
+                const uint32_t pass_index = shadow_pass ? 1u : 0u;
+
+                // 发布模板实体的权威事实（template_id, part_visibility_mask, etc.）
+                PublishPrimitiveFacts(entity_id, transform_id, 0u, 0u, 0u, pass_index, nullptr);
+
+                for (uint32_t g = 0; g < static_cast<uint32_t>(binding->groups.GetCount()); ++g)
+                {
+                    const TemplateShadingGroupDesc &grp_desc = binding->groups[g];
+
+                    if (shadow_pass && !grp_desc.casts_shadow)
+                        continue;
+
+                    MaterialRuntimeRowID row_id = grp_desc.runtime_row;
+                    const MaterialRuntimeRow *row = current_runtime_table ? current_runtime_table->Get(row_id) : nullptr;
+                    if (!row)
+                        continue;
+
+                    graph::ShaderProgram *program = EnsureTemplateGroupProgram(
+                        world, variant_table, current_runtime_table, row_id, shadow_pass);
+                    if (!program || !render_pass)
+                        continue;
+
+                    graph::mtl::MaterialRecipe effective_recipe = shadow_pass
+                        ? row->shadow_cached_normalized_recipe
+                        : row->cached_effective_recipe;
+
+                    if (!shadow_pass && row->recipe_hash == row->cached_effective_recipe_hash)
+                        effective_recipe = row->cached_normalized_recipe;
+
+                    graph::mtl::MaterialPipelineConfig resolved_pipeline_config{};
+                    graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(
+                        program, effective_recipe, &resolved_pipeline_config);
+
+                    if (!resolved_pipeline)
+                        continue;
+
+                    auto item = std::make_unique<ModelTemplateRenderItem>(
+                        entity_id,
+                        transform,
+                        row_id,
+                        g,
+                        pure_model_ref->template_id,
+                        render_pass,
+                        resolved_pipeline,
+                        resolved_pipeline_config,
+                        world);
+
+                    item->UpdateWorldMatrix();
+
+                    cache.renderItems.push_back(std::move(item));
+                    cache.renderableCount++;
+                    ++added;
+                    ++cache.collected_items;
+                }
+
+                if (trace)
+                    ::strncpy(trace->collect_status, "collected", sizeof(trace->collect_status) - 1);
+                shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
+
+                continue;
+            }
 
             // A4：本实例的材质运行期 slot（**有材质来源**已由表的 CollectForCurrentPass 蕴含
             // ⇒ 不再需要"有 / 无来源"双分支；保留一层作用域标出块边界，与预扫描同一份 slot）。
