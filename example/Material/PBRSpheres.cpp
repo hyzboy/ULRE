@@ -34,16 +34,7 @@
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
-#include <cstdio>
-#include <cstdlib>
-#include <hgl/time/Time.h>
-
-#include<glm/glm.hpp>
-#include<glm/gtc/quaternion.hpp>
-#include<memory>
-#include<cstring>
-#include<string>
+#include "../Shared/ExampleAppBase.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -85,18 +76,26 @@ static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 static constexpr const char * PBR_GRID_DATA_PATH =
     "mtldata:pack(ShaderLibrary):asset/material_data/pbr_10x10_grid";
 
-class PBRSpheresApp : public WorkObject
+class PBRSpheresApp : public ulre_example::ExampleAppBase
 {
+public:
+
+    PBRSpheresApp()
+    {
+        SetupExampleConfig({
+            "PBR",
+            "pbrdump",
+            "PBRSELF",
+            8,
+            8,
+            { 1280, 720, 0, 2, 0x3dd88a0999cdc486ull }
+        });
+    }
+
 private:
 
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
-
-    std::string   dump_tag;               ///< PBR_DUMP=<tag>：像素验收模式（t 冻结 + 帧 8 回读）
-    uint32_t      dump_frame = 0;
-    uint32_t      perf_frames = 0;        ///< PBR_FRAMES=N：定帧退出；0 = 未启用
-    uint32_t      perf_frame_seen = 0;    ///< 已计帧数（240 帧一窗打印）
-    double        perf_total_us = 0.0;    ///< Tick 全帧 CPU 时间累计（每 240 帧一窗打印）
 
     graph::mtl::MaterialRecipe sphere_recipe{};
 
@@ -483,7 +482,7 @@ public:
         SAFE_CLEAR(mesh_vdm)
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
 
@@ -502,34 +501,15 @@ public:
         if (!InitCamera())
             return false;
 
-        // A6-d T2：**接管已强制**（opt-in 面整体删除）——主帧 mesh 批恒走 GPU 路径。
-
-        // PBR_DUMP=<tag>：像素验收 dump —— 帧 8（剔除已热、场景静止）装一次性帧内
-        // 回读钩子，落原始字节（A2B10G10R10 packed，与 AlphaTestShadow 同口径），
-        // 落完 std::exit。t 冻结为 0 ⇒ 两次运行的几何逐帧确定。
-        if (const char *tag = getenv("PBR_DUMP"))
-        {
-            dump_tag = tag;
-        }
-
-        // PBR_FRAMES=N：性能对照定帧退出（配 ULRE_DEBUG.toml 的 channels.perf = true；Tick 全帧计时打印）。
-        if (const char *v = getenv("PBR_FRAMES"))
-            perf_frames = (uint32_t)atoi(v);
-
         return true;
     }
 
-    void Tick(double delta_time) override
+    void OnTick(double delta_time) override
     {
-        // ULRE_DEBUG.toml 的 channels.perf = true：Tick 全帧 CPU 时间（record/present 同步框架内的线程占用；
-        // 与 cull/batch/dispatch 分计时互补，给出端到端口径。引擎时间源，禁 chrono）
-        const bool perf_on = perf_frames > 0;
-        const uint64 perf_t0 = hgl::GetUptimeUs();
-
         // dump 模式：时间冻结 ⇒ 两次运行（GPU 剔除 vs CPU 基线）的几何逐帧确定，
         // 像素差只可能来自剔除判据本身。
         // 帧摘要自检（PBR_SELFCHECK=1）同理必须冻结时间，否则两次运行几何不同 ⇒ 摘要非确定。
-        if (dump_tag.empty() && getenv("PBR_SELFCHECK") == nullptr)
+        if (example_dump_tag.IsEmpty() && !example_selfcheck_enabled)
             elapsed_time += delta_time;
 
         const float t = static_cast<float>(elapsed_time);
@@ -549,105 +529,6 @@ public:
 
                 const glm::quat spin = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
                 transform.SetLocalRotation(spin * MakeRandomRotation(row, col));
-            }
-        }
-
-        WorkObject::Tick(delta_time);
-
-        // PBR_DUMP 模式：第 8 帧装一次性帧内回读钩子（钩子在本帧提交后、present 前
-        // 执行 ⇒ 读到本帧画面），落原始 packed 字节后 std::exit（同 AlphaTestShadow
-        // 自检先例：跳过框架析构，验收路径可接受）。
-        // PBRSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
-        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
-        {
-            static const bool s_selfcheck = (getenv("PBR_SELFCHECK") != nullptr);
-            static uint32_t   s_self_frame = 0;
-
-            static constexpr uint32_t kSelfW           = 1280;
-            static constexpr uint32_t kSelfH           = 720;
-            static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
-            static constexpr uint64_t kSelfFNV         = 0x3dd88a0999cdc486ull;  // 冻结相机 + 接管下实跑记录
-                                                        // （改渲染结果必须复核并重录）
-
-            if (s_selfcheck && ++s_self_frame == 8)
-            {
-                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_world ? ecs_world->GetRenderTarget() : nullptr);
-                if (!rt)
-                {
-                    printf("[PBRSELF] no swapchain RT\n");
-                    std::exit(2);
-                }
-
-                ulre_example::FrameDigest expect;
-                expect.width                = kSelfW;
-                expect.height               = kSelfH;
-                expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = kSelfFNV;
-
-                ulre_example::InstallFrameDigestHook(rt, expect, "PBRSELF");
-            }
-        }
-
-
-        if (!dump_tag.empty() && ++dump_frame == 8)
-        {
-            auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                ecs_world ? ecs_world->GetRenderTarget() : nullptr);
-            if (!rt)
-            {
-                printf("[PBRDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget *rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[PBRDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "pbrdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-                FILE *fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[PBRDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[PBRDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        // channels.perf：Tick 全帧 CPU 时间累计，240 帧一窗打印；PBR_FRAMES 到数即退。
-        if (perf_on)
-        {
-            perf_total_us += double(hgl::GetUptimeUs() - perf_t0);
-            ++perf_frame_seen;
-
-            if (perf_frame_seen % 240 == 0)
-            {
-                printf("[PBR-PERF] tick: window=240 avg=%.1f us/frame\n",
-                       perf_total_us / 240.0);
-                fflush(stdout);
-                perf_total_us = 0.0;
-            }
-
-            if (perf_frame_seen >= perf_frames)
-            {
-                printf("[PBR-PERF] done frames=%u\n", perf_frame_seen);
-                fflush(stdout);
-                std::exit(0);
             }
         }
     }

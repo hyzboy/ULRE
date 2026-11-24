@@ -24,7 +24,7 @@
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include "../Shared/ExampleAppBase.h"
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -46,8 +46,22 @@ namespace
     constexpr uint32 MATERIAL_DATA_ROW = 0;
 }
 
-class PlaneGrid3DApp:public WorkObject
+class PlaneGrid3DApp : public ulre_example::ExampleAppBase
 {
+public:
+
+    PlaneGrid3DApp()
+    {
+        SetupExampleConfig({
+            "PG",
+            "pgdump",
+            "PGSELF",
+            8,
+            8,
+            { 1280, 720, 0, 2, 0x4125c3c830cb92d3ull }
+        });
+    }
+
 private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
@@ -57,16 +71,6 @@ private:
     Geometry *         geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_grid_recipe{};
     PrimitiveAsset             plane_grid_asset{};
-
-    // ── GPU 剔除台架（A6：**内容线**能否进接管）───────────────────────────
-    //   3 张 32×32（sub 8×8）网格 = 数千条线段 ⇒ X 必须按**段数**算（÷2），
-    //   公式错则整块网格缺线/错线 ⇒ 像素判据可直接抓。
-    //   PG_FRAMES=N    跑 N 帧后退出（CI / 像素对照）
-    //   PG_DUMP=<tag>  第 8 帧帧内回读落原始字节后退出（pgdump_<tag>_WxH_fmt.raw）
-    std::string pg_dump_tag;
-    uint32_t    pg_run_frames = 0;
-    uint32_t    pg_dump_frame = 0;
-    uint32_t    pg_frame_seen = 0;
 
     bool InitCull()
     {
@@ -227,7 +231,7 @@ private:
     }
 
 public:
-    bool Init() override
+    bool OnInit() override
     {
         if(!CreateRenderObject())
             return(false);
@@ -238,97 +242,7 @@ public:
         if(!InitCull())
             return(false);
 
-        if (const char * tag = getenv("PG_DUMP"))   pg_dump_tag   = tag;
-        if (const char * v   = getenv("PG_FRAMES")) pg_run_frames = (uint32_t)atoi(v);
-
         return(true);
-    }
-
-    void Tick(double delta_time) override
-    {
-        WorkObject::Tick(delta_time);
-
-        // PG_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（本帧提交后、present 前执行 ⇒ 读到
-        // 本帧画面），落原始 packed 字节后退出（同 GPUDrivenCull / CoverageVariants 先例）。
-        // PGSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
-        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
-        {
-            static const bool s_selfcheck = (getenv("PG_SELFCHECK") != nullptr);
-            static uint32_t   s_self_frame = 0;
-
-            static constexpr uint32_t kSelfW           = 1280;
-            static constexpr uint32_t kSelfH           = 720;
-            static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
-            static constexpr uint64_t kSelfFNV         = 0x4125c3c830cb92d3ull;  // 冻结相机 + 接管下实跑记录
-                                                        // （改渲染结果必须复核并重录）
-
-            if (s_selfcheck && ++s_self_frame == 8)
-            {
-                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-                if (!rt)
-                {
-                    printf("[PGSELF] no swapchain RT\n");
-                    std::exit(2);
-                }
-
-                ulre_example::FrameDigest expect;
-                expect.width                = kSelfW;
-                expect.height               = kSelfH;
-                expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = kSelfFNV;
-
-                ulre_example::InstallFrameDigestHook(rt, expect, "PGSELF");
-            }
-        }
-
-        if (!pg_dump_tag.empty() && ++pg_dump_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-            if (!rt)
-            {
-                printf("[PGDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = pg_dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[PGDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "pgdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[PGDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[PGDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        // PG_FRAMES=N：定帧退出（CI / 像素对照）
-        if (pg_run_frames > 0 && ++pg_frame_seen >= pg_run_frames)
-        {
-            printf("[PG] done frames=%u\n", pg_frame_seen);
-            fflush(stdout);
-            std::exit(0);
-        }
     }
 };//class PlaneGrid3DApp:public CameraAppFramework
 

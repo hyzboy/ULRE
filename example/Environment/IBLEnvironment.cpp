@@ -29,7 +29,7 @@
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检（T0 判据前置共用件）
+#include "../Shared/ExampleAppBase.h"
 
 #include<vector>
 #include<memory>
@@ -123,8 +123,22 @@ namespace
  *
  * 场内物体是不同金属度/粗糙度的 PBR 材质("lit"),便于对比 IBL 在不同表面上的表现。
  */
-class IBLEnvironmentApp : public WorkObject
+class IBLEnvironmentApp : public ulre_example::ExampleAppBase
 {
+public:
+
+    IBLEnvironmentApp()
+    {
+        SetupExampleConfig({
+            "IBLENV",
+            "iblenvdump",
+            "IBLSELF",
+            8,
+            8,
+            { 1280, 720, 0, 256, 0x75A21A3F7828F7FAull }
+        });
+    }
+
 private:
 
     struct MeshEntry
@@ -460,72 +474,6 @@ private:
     }
 
 public:
-    void Tick(double delta_time) override
-    {
-        WorkObject::Tick(delta_time);
-
-        // IBLENV_SELFCHECK=1：**帧摘要自检**（T0 判据前置；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, 平均亮度, FNV-1a 64} 比对下方内联常量：
-        // PASS 退出 0 / FAIL 退出 1。
-        // 为什么本例必须有它：IBL 句柄（env_tex）是八台架摘要的**盲区**（只有本示例把 indirect_ibl
-        // 选为 ambient_light_provider）⇒ 句柄错位这种静默发黑事故只有这条判据有分辨力。
-        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
-        static const bool s_selfcheck = (getenv("IBLENV_SELFCHECK") != nullptr);
-        static uint32_t   s_self_frame = 0;
-
-        static constexpr uint32_t kSelfW           = 1280;
-        static constexpr uint32_t kSelfH           = 720;
-        static constexpr uint32_t kSelfMinDistinct = 256;   // 不空转守卫（恒定图会 FAIL）
-
-        // 三条技术档位各自的基线（同一场景 / 同一组材质参数 / 同一套 LDR 曝光调制）。
-        // 八面体版是另一张图、另一套采样 ⇒ 摘要必然不同，但亮度应与 Cube 几乎同量级
-        // （同一批烘焙数据的两种投影，重采样只挪动高光分布，实测 mean_luma 同为 0.6929）；
-        // SH9 档换了整套算法（低频解析）且**没有视觉天空**（`SHLightOnly`，背景=清屏色），
-        // 亮度只剩物体间接光 + 直接光贡献。三侧都钉住，
-        // 「provider 接错 / 句柄错位 / 采样规则坏掉」在任一档位下都会翻红。
-        //
-        // 2026-10（阶段 4）：改用 `SetupSkyEnvironment()` 托管后四条基线整体重录过一次。
-        // 唯一改变像素的原因是**天空实体改为跟随主相机**（`track_camera`，半径 256 的
-        // 半球球心从世界原点挪到相机位置，背景产生 ~6% 的视差位移）；把该开关临时关掉
-        // 重跑时 Cube 摘要与改造前**逐字节一致**（0x54295E44E3C1677C）⇒ 托管路径与手工
-        // 装配等价。
-        //
-        // 2026-11（todo-10 资产化）：Cube / Octahedral 切到 `env:@Sky34` 的
-        // `[cubemap]` / `[octahedral]` 段。装配语义不变（运行日志仍报
-        // `recipe=IBLEnvironment.Sky / provider=ambient_light_ibl, ldr=1, mips=8`，
-        // oct 侧 `recipe=IBLEnvironmentSkyOct.Sky / provider=ambient_light_ibl_oct`），
-        // 数值相对 2026-10 有 ~0.2% 漂移（0.6941 → 0.6929），来源是阶段 4 之后的
-        // 无扩展名 URI 探测 / 前缀推导投影等管线改动，与资产化本身无关；按实跑重录。
-        // SH9 档改为 `SkyTechnique::SH9` 后**没有视觉天空**（`SHLightOnly`，背景=
-        // 清屏色，物体只剩间接光 + 直接光），亮度降到 0.1282，按实跑重录。
-        // 原第四条 `IBLENV_SKY_OCT`（只换背景投影）随资产配对退役，基线删除。
-        static constexpr uint64_t kSelfFNV_Cube       = 0x75A21A3F7828F7FAull;  // CubeMap（Debug；mean_luma 0.6929）
-        static constexpr uint64_t kSelfFNV_Octahedral = 0x5A9C4E86A8FBE417ull;  // 八面体（Debug；mean_luma 0.6929）
-        static constexpr uint64_t kSelfFNV_SH         = 0xEEB9434DC80DD0CBull;  // SH9 解析合成（Debug；mean_luma 0.1282，无背景天空）
-
-        if (s_selfcheck && ++s_self_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->GetRenderTarget() : nullptr );
-            if (!rt)
-            {
-                printf("[IBLSELF] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            const SkyTechnique technique = AmbientTechnique();
-
-            ulre_example::FrameDigest expect;
-            expect.width                = kSelfW;
-            expect.height               = kSelfH;
-            expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = technique == SkyTechnique::SH9        ? kSelfFNV_SH
-                                        : technique == SkyTechnique::Octahedral ? kSelfFNV_Octahedral
-                                                                                : kSelfFNV_Cube;
-
-            ulre_example::InstallFrameDigestHook(rt, expect, "IBLSELF");
-        }
-    }
-
     ~IBLEnvironmentApp()
     {
         // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
@@ -535,9 +483,18 @@ public:
         SAFE_CLEAR(mesh_vdm)
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.10f, 0.12f, 0.16f, 1.0f));
+
+        static constexpr uint64_t kSelfFNV_Cube       = 0x75A21A3F7828F7FAull;  // CubeMap（Debug；mean_luma 0.6929）
+        static constexpr uint64_t kSelfFNV_Octahedral = 0x5A9C4E86A8FBE417ull;  // 八面体（Debug；mean_luma 0.6929）
+        static constexpr uint64_t kSelfFNV_SH         = 0xEEB9434DC80DD0CBull;  // SH9 解析合成（Debug；mean_luma 0.1282，无背景天空）
+
+        const SkyTechnique technique = AmbientTechnique();
+        example_config.expected_digest.fnv1a64 = (technique == SkyTechnique::SH9)        ? kSelfFNV_SH
+                                               : (technique == SkyTechnique::Octahedral) ? kSelfFNV_Octahedral
+                                                                                         : kSelfFNV_Cube;
 
         if (!InitMaterial())
             return false;

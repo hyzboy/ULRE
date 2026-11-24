@@ -16,7 +16,7 @@
 #include<hgl/type/StdString.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include "../../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include "../../Shared/ExampleAppBase.h"
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<cstring>
 #include<cstdlib>
@@ -110,17 +110,26 @@ namespace
     constexpr os_char kSky34URI[] = OS_TEXT("env:@Sky34");
 }
 
-class LoadModelApp:public WorkObject
+class LoadModelApp:public ulre_example::ExampleAppBase
 {
+public:
+
+    LoadModelApp()
+    {
+        SetupExampleConfig({
+            "LS",
+            "lsdump",
+            "LSSELF",
+            8,
+            8,
+            { 1280, 720, 0, 2, 0x35F0E9FD935DA9ADull }
+        });
+    }
+
 private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-
-    std::string dump_tag;
-    uint32_t    ls_frames      = 0;
-    uint32_t    ls_frame_seen  = 0;
-    uint32_t    dump_frame     = 0;
 
     struct MaterialData
     {
@@ -519,7 +528,7 @@ private:
             }
 
             printf("[LSASYNC] skeleton: %d nodes / %d roots (frame %u)\n",
-                   node_count, root_count, app_->ls_frame_seen);
+                   node_count, root_count, app_->GetCurrentFrame());
 
             // 骨架包围盒 ⇒ 相机立刻对焦（此时几何可能还在路上）
             math::BoundingVolumes bounds;
@@ -534,20 +543,20 @@ private:
         void OnGeometryAttached(hgl::ecs::ModelRefComponent &ref) override
         {
             printf("[LSASYNC] geometries: %d primitives (frame %u)\n",
-                   ref.instance.GetAttachedPrimitiveCount(), app_->ls_frame_seen);
+                   ref.instance.GetAttachedPrimitiveCount(), app_->GetCurrentFrame());
         }
 
         void OnMaterialAttached(hgl::ecs::ModelRefComponent &ref) override
         {
             printf("[LSASYNC] materials attached (frame %u), scene state=%s\n",
-                   app_->ls_frame_seen, ref.asset ? ref.asset->GetStateName() : "?");
+                   app_->GetCurrentFrame(), ref.asset ? ref.asset->GetStateName() : "?");
         }
 
         // 场景状态机的 Ready 由「全部图元几何就绪」推进（见 ModelStreamingSystem 阶段 C）：
         // 它晚于材质绑定，因此单独报一次，用来确认流送确实收敛而不是永远 Assembling。
         void OnModelReady(hgl::ecs::ModelRefComponent & /*ref*/) override
         {
-            printf("[LSASYNC] scene ready (frame %u)\n", app_->ls_frame_seen);
+            printf("[LSASYNC] scene ready (frame %u)\n", app_->GetCurrentFrame());
         }
 
         void OnModelFailed(hgl::ecs::ModelRefComponent & /*ref*/, const char *reason) override
@@ -646,7 +655,7 @@ public:
         return environment_system->SetupSkyEnvironment(kSky34URI, hgl::ecs::SkyTechnique::CubeMap);
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         // 默认走 PBR 材质路径；LS_DEBUGNORMAL=1 回到旧的调试法线/颜色行路径
         pbr_mode_ = (getenv("LS_DEBUGNORMAL") == nullptr);
@@ -654,6 +663,11 @@ public:
         // 默认走流送（异步）通路；LS_SYNC=1 回到同步装载
         //（两条通路最终落到同一个 StaticMeshModelInstance，第 40 帧画面逐字节相同）
         async_mode_ = (getenv("LS_SYNC") == nullptr);
+
+        if (getenv("LS_SYNC") == nullptr)
+            example_selfcheck_enabled = false;
+
+        example_config.expected_digest.fnv1a64 = pbr_mode_ ? 0x35F0E9FD935DA9ADull : 0xA99178FD2FA1B0C6ull;
 
         ecs_context = GetECSContext();
 
@@ -675,120 +689,20 @@ public:
         if(!InitCull())
             return(false);
 
-        if (const char * tag = getenv("LS_DUMP"))
-            dump_tag = tag;
-
-        if (const char * v = getenv("LS_FRAMES"))
-            ls_frames = (uint32_t)atoi(v);
-
         return(true);
     }
 
-    void Tick(double delta_time) override
+    void OnTick(double delta_time) override
     {
-        WorkObject::Tick(delta_time);
-
-        ++ls_frame_seen;
-
         // LS_TRACE：借组件观察句柄打印装配计数（异步通路专属；装配本身在系统⑦段）
-        if (async_mode_ && getenv("LS_TRACE") && (ls_frame_seen % 20) == 0)
+        if (async_mode_ && getenv("LS_TRACE") && (GetCurrentFrame() % 20) == 0)
         {
             if (graph::ModelAsset *scene = async_ref_ ? async_ref_->asset : nullptr)
                 printf("[LSASYNC-DBG] frame %u state=%s ready=%d failed=%d pending=%d\n",
-                       ls_frame_seen, scene->GetStateName(),
+                       GetCurrentFrame(), scene->GetStateName(),
                        scene->GetReadyChildCount(),
                        scene->GetFailedChildCount(),
                        scene->GetPendingChildCount());
-        }
-
-        // LS_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（本帧提交后、present 前执行 ⇒ 读到本帧画面），
-        // 落原始 packed 字节后退出 —— 像素判据用。
-        // LSSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
-        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
-        {
-            // 异步通路的产物到位帧不确定 ⇒ 定帧判据不成立，只报一句而不误报 FAIL
-            static const bool s_selfcheck = (getenv("LS_SELFCHECK") != nullptr && getenv("LS_SYNC") != nullptr);
-            static uint32_t   s_self_frame = 0;
-
-            static constexpr uint32_t kSelfW           = 1280;
-            static constexpr uint32_t kSelfH           = 720;
-            static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
-            static constexpr uint64_t kSelfFNVDebug    = 0xA99178FD2FA1B0C6ull;  // 调试法线路径（LS_DEBUGNORMAL=1；2026-11-07 重录：res 修复+闭环后，画面为棋盘地面+棋子法线着色，背景暗）
-            static constexpr uint64_t kSelfFNVPBR      = 0x35F0E9FD935DA9ADull;  // PBR 路径（落地闭环后重录：
-                                                        // 自动装配/车道优先/包裹寻址合入后的定帧画面）
-                                                        // （改渲染结果必须复核并重录）
-
-            if (s_selfcheck && ++s_self_frame == 8)
-            {
-                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->GetRenderTarget() : nullptr);
-                if (!rt)
-                {
-                    printf("[LSSELF] no swapchain RT\n");
-                    std::exit(2);
-                }
-
-                ulre_example::FrameDigest expect;
-                expect.width                = kSelfW;
-                expect.height               = kSelfH;
-                expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = pbr_mode_ ? kSelfFNVPBR : kSelfFNVDebug;
-
-                ulre_example::InstallFrameDigestHook(rt, expect, "LSSELF");
-            }
-        }
-
-
-        static const uint32_t s_target_dump_frame = []() {
-            if (const char *f = getenv("LS_DUMP_FRAME"))
-                return (uint32_t)atoi(f);
-            return 8u;
-        }();
-
-        if (!dump_tag.empty() && ++dump_frame == s_target_dump_frame)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                ecs_context ? ecs_context->GetRenderTarget() : nullptr);
-            if (!rt)
-            {
-                printf("[LSDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[LSDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "lsdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[LSDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[LSDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        if (ls_frames > 0 && ls_frame_seen >= ls_frames)
-        {
-            printf("[LoadModel] done frames=%u\n", ls_frame_seen);
-            fflush(stdout);
-            std::exit(0);
         }
     }
 };//class LoadModelApp

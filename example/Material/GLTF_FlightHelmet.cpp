@@ -33,7 +33,7 @@
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检共用件
+#include "../Shared/ExampleAppBase.h"
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -93,16 +93,24 @@ namespace
                                                                   // 旧常量 0xCA3E781DAE0E3863 是阶段4管线漂移后未重录的陈旧基线）
 }
 
-class GLTFFlightHelmetApp : public WorkObject
+class GLTFFlightHelmetApp : public ulre_example::ExampleAppBase
 {
+public:
+    GLTFFlightHelmetApp()
+    {
+        SetupExampleConfig({
+            "FHF",
+            "fhfdump",
+            "FHFSELF",
+            8,
+            8,
+            { kSelfW, kSelfH, 0, kSelfMinDistinct, kSelfFNV }
+        });
+    }
+
 private:
     hgl::ecs::ECSContext * ecs_context   = nullptr;
     hgl::ecs::Entity *     camera_entity = nullptr;
-
-    bool         selfcheck_enabled = false;
-    uint32_t     frame_seen  = 0;
-    uint32_t     perf_frames = 0;   ///< FHF_FRAMES=N：定帧退出；0 = 未启用
-    std::string  dump_tag;          ///< FHF_DUMP=<tag>：第 8 帧回读落盘后退出
 
     GeometryVertexFormat     geometry_vertex_format;
     SelfContainedModelMaterials scene_materials_;
@@ -322,15 +330,9 @@ private:
     }
 
 public:
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
-
-        selfcheck_enabled = (getenv("FHF_SELFCHECK") != nullptr);
-        if (const char * v = getenv("FHF_FRAMES"))
-            perf_frames = (uint32_t)atoi(v);
-        if (const char * tag = getenv("FHF_DUMP"))
-            dump_tag = tag;
 
         if (!InitMaterial())           return false;
         if (!TryLoadModel()) return false;
@@ -339,78 +341,6 @@ public:
         if (!InitEnvironmentControl()) return false;
         if (!InitCull())               return false;
         return true;
-    }
-
-    void Tick(double delta_time) override
-    {
-        WorkObject::Tick(delta_time);
-        ++frame_seen;
-
-        // 场景静止（无动画）⇒ 任意帧画面都确定；判据帧沿用第 8 帧口径。
-        if (selfcheck_enabled && frame_seen == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                ecs_context ? ecs_context->GetRenderTarget() : nullptr);
-            if (!rt)
-            {
-                GLogError(u8"FHFSELF: 无 swapchain RT");
-                std::exit(2);
-            }
-
-            ulre_example::FrameDigest expect;
-            expect.width                = kSelfW;
-            expect.height               = kSelfH;
-            expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = kSelfFNV;
-
-            ulre_example::InstallFrameDigestHook(rt, expect, "FHFSELF");
-        }
-
-        if (perf_frames > 0 && frame_seen >= perf_frames)
-        {
-            GLogInfo(u8"FHF-PERF: done frames=%u", frame_seen);
-            std::exit(0);
-        }
-
-        // FHF_DUMP=<tag>：第 8 帧帧内回读落原始字节后退出（像素判据用，与 HDH_DUMP 同款）
-        if (!dump_tag.empty() && frame_seen == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                ecs_context ? ecs_context->GetRenderTarget() : nullptr);
-            if (!rt)
-            {
-                GLogError(u8"FHFDUMP: 无 swapchain RT");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    GLogError(u8"FHFDUMP: 回读失败");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "fhfdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    GLogError(u8"FHFDUMP: 打开 %s 失败", AnsiString(name).c_str());
-                    std::exit(2);
-                }
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                GLogInfo(u8"FHFDUMP: 写出 %s（%llu 字节）", AnsiString(name).c_str(), (unsigned long long)pixels.size());
-                std::exit(0);
-            });
-        }
     }
 };
 

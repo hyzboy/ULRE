@@ -1,6 +1,6 @@
 #include <hgl/framework/WorkManager.h>
 
-#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include "../Shared/ExampleAppBase.h"
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VertexDataManager.h>
@@ -134,8 +134,21 @@ namespace
     constexpr uint32_t MATERIAL_DATA_ROW_GROUND = kPBRTextureCount;
 }
 
-class CascadeShadowMapApp final : public WorkObject
+class CascadeShadowMapApp final : public ulre_example::ExampleAppBase
 {
+public:
+    CascadeShadowMapApp()
+    {
+        SetupExampleConfig({
+            "CSM",
+            "csmdump",
+            "CSMSELF",
+            8,
+            8,
+            { 1600, 900, 0, 2, 0xE3F90B49348EE047ull }
+        });
+    }
+
 private:
     ECSContext *ecs_context = nullptr;
 
@@ -1360,43 +1373,12 @@ public:
         SAFE_CLEAR(vdm)
     }
 
-    void Tick(double delta) override
+    void OnTick(double delta) override
     {
-        WorkObject::Tick(delta);
-
-        // CSM_SELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
-        // 判据只建在**冻结动画（从第 0 帧起）+ 定帧**上；常量由实跑记录，改渲染结果必须复核重录。
-        static const bool s_selfcheck = (getenv("CSM_SELFCHECK") != nullptr);
-        {
-            static uint32_t   s_self_frame = 0;
-
-            static constexpr uint32_t kSelfW           = 1600;   // 本例跑 1600×900（非默认 1280×720）
-            static constexpr uint32_t kSelfH           = 900;
-            static constexpr uint32_t kSelfMinDistinct = 2;    // 不空转守卫
-            static constexpr uint64_t kSelfFNV         = 0xE3F90B49348EE047ull;   // 重录：帧守卫修复后（离屏级联世界真正逐帧装配，masked caster 得以收敛进深度图）实测；FRAMEDIGEST_PERFRAME=120 帧全一致
-
-            if (s_selfcheck && ++s_self_frame == 8)
-            {
-                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->GetRenderTarget() : nullptr );
-                if (!rt)
-                {
-                    printf("[CSMSELF] no swapchain RT\n");
-                    std::exit(2);
-                }
-
-                ulre_example::FrameDigest expect;
-                expect.width                = kSelfW;
-                expect.height               = kSelfH;
-                expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = kSelfFNV;
-
-                ulre_example::InstallFrameDigestHook(rt, expect, "CSMSELF");
-            }
-        }
-
         elapsed_time += delta;
         stats_timer += delta;
+
+        const bool s_selfcheck = IsSelfCheckEnabled();
 
         // 对拍期间冻结可移动物体动画：必须**从第 0 帧**就冻结（否则缓存里已存在
         // 动画中的旧内容，A 永远无法与 B 一致）；CSM_CACHE_DIFF_FREEZE=0 可关。
@@ -1513,7 +1495,7 @@ public:
         }
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.12f, 0.12f, 0.14f, 1.0f));
 

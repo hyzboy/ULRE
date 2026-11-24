@@ -36,7 +36,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<hgl/vk/VKRenderTargetSwapchain.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检共用件
+#include "../Shared/ExampleAppBase.h"
 
 #include <cstdlib>
 
@@ -66,15 +66,24 @@ namespace
     constexpr uint64_t kSelfFNV         = 0x2DA9D1F43EF1481Eull;  // Debug 实跑记录（A2BGR10UN 回读，Filament 纠正后）
 }
 
-class PBRAdvancedApp : public WorkObject
+class PBRAdvancedApp : public ulre_example::ExampleAppBase
 {
+public:
+    PBRAdvancedApp()
+    {
+        SetupExampleConfig({
+            "PBRADV",
+            "pbradvdump",
+            "PBRADVSELF",
+            8,
+            8,
+            { kSelfW, kSelfH, 0, kSelfMinDistinct, kSelfFNV }
+        });
+    }
+
 private:
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
-
-    bool         selfcheck_enabled = false;
-    uint32_t     frame_seen  = 0;
-    uint32_t     perf_frames = 0;   ///< PBRADV_FRAMES=N：定帧退出；0 = 未启用
 
     graph::mtl::MaterialRecipe adv_recipe{};
 
@@ -288,13 +297,9 @@ private:
     }
 
 public:
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
-
-        selfcheck_enabled = (getenv("PBRADV_SELFCHECK") != nullptr);
-        if (const char *v = getenv("PBRADV_FRAMES"))
-            perf_frames = (uint32_t)atoi(v);
 
         if (!InitMaterial())  return false;
         if (!InitVDM())       return false;
@@ -302,38 +307,6 @@ public:
         if (!InitECS())       return false;
         if (!InitCamera())    return false;
         return true;
-    }
-
-    void Tick(double delta_time) override
-    {
-        WorkObject::Tick(delta_time);
-        ++frame_seen;
-
-        // 场景静止（无动画）⇒ 任意帧的画面都确定；判据帧沿用第 8 帧口径。
-        if (selfcheck_enabled && frame_seen == 8)
-        {
-            auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                ecs_world ? ecs_world->GetRenderTarget() : nullptr);
-            if (!rt)
-            {
-                GLogError(u8"PBRADVSELF: 无 swapchain RT");
-                std::exit(2);
-            }
-
-            ulre_example::FrameDigest expect;
-            expect.width                = kSelfW;
-            expect.height               = kSelfH;
-            expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = kSelfFNV;
-
-            ulre_example::InstallFrameDigestHook(rt, expect, "PBRADVSELF");
-        }
-
-        if (perf_frames > 0 && frame_seen >= perf_frames)
-        {
-            GLogInfo(u8"PBRADV-PERF: done frames=%u", frame_seen);
-            std::exit(0);
-        }
     }
 };
 

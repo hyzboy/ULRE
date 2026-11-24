@@ -47,14 +47,12 @@
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include "../Shared/ExampleAppBase.h"
 
 #include<glm/glm.hpp>
 #include<memory>
 #include<cstdio>
 #include<cstdlib>
-#include<string>
-#include<vector>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -104,7 +102,7 @@ namespace
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 
-class GPUDrivenCullApp : public WorkObject
+class GPUDrivenCullApp : public ulre_example::ExampleAppBase
 {
 private:
 
@@ -122,13 +120,6 @@ private:
     bool  static_camera = false;
     float orbit_speed   = 18.0f;
 
-    std::string dump_tag;
-    uint32_t    dump_frame  = 0;
-    uint32_t    run_frames  = 0;
-    uint32_t    frame_seen  = 0;
-    bool        selfcheck       = false;
-    uint32_t    selfcheck_frame = 0;
-
     // 帧摘要常量（A6-d 判据重建试点，计划档 §10 §三.3）：**冻结相机 + 定帧**下的实跑记录。
     // 它是「删 CPU 账后画面没变」的判据：少画一批 / 错画 / 全清屏都会让摘要变。
     static constexpr uint32_t kSelfW           = 1280;
@@ -137,7 +128,19 @@ private:
     static constexpr uint64_t kSelfFNV         = 0x90E0745C2C7B8599ull;  // 冻结相机 + 接管下实跑记录
                                                         // （改渲染结果必须同步复核并重录）
 
-private:
+public:
+
+    GPUDrivenCullApp()
+    {
+        SetupExampleConfig({
+            "GC",
+            "gcdump",
+            "GCSELF",
+            8,
+            8,
+            { kSelfW, kSelfH, 0, kSelfMinDistinct, kSelfFNV }
+        });
+    }
 
     bool InitMaterial()
     {
@@ -284,18 +287,18 @@ public:
         // cube_geometry 由 GeometryAssetRegistry 持有，此处不再 delete，也不交给 GeometryManager。
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.06f, 0.07f, 0.10f, 1.0f));
 
         ecs_context = GetECSContext();
         if (!ecs_context)
         {
-            printf("[ERROR] Init: no ECSContext\n");
+            GLogError(u8"Init: no ECSContext");
             return false;
         }
 
-        static_camera = getenv("GC_STATIC")        != nullptr;
+        static_camera = getenv("GC_STATIC") != nullptr;
 
         if (const char * v = getenv("GC_ORBIT_SPEED")) orbit_speed = (float)atof(v);
 
@@ -305,27 +308,22 @@ public:
         if (!InitCamera())         return false;
         if (!InitCull())           return false;
 
-        if (const char * tag = getenv("GC_DUMP")) dump_tag = tag;
-        if (const char * v   = getenv("GC_FRAMES")) run_frames = (uint32_t)atoi(v);
-        if (getenv("GC_SELFCHECK"))
+        if (IsSelfCheckEnabled())
         {
-            selfcheck = true;
-
             // 加固（2026-10-14）：只有 `GC_SELFCHECK=1` 而没有 `GC_STATIC=1` 时相机在动 ⇒ 摘要**逐次不同**
             // （曾据此误判成「门 flaky」，实为入参没给全）⇒ 这里**自动冻结**并显式提示，与 PBR 的自动冻结同口径。
             if (!static_camera)
             {
                 static_camera = true;
-                printf("[GCSELF] 加固：GC_SELFCHECK=1 但未给 GC_STATIC=1 ⇒ 已**自动冻结相机**"
-                       "（摘要判据需确定取景）；要动相机请只跑不带自检的模式。\n");
-                fflush(stdout);
+                GLogInfo(u8"[GCSELF] 加固：GC_SELFCHECK=1 但未给 GC_STATIC=1 ⇒ 已**自动冻结相机**"
+                         u8"（摘要判据需确定取景）；要动相机请只跑不带自检的模式。");
             }
         }
 
         return true;
     }
 
-    void Tick(double delta_time) override
+    void OnTick(double delta_time) override
     {
         // 轨道相机：让立方体随视锥进出，肉眼可见剔除在动。
         // GC_STATIC=1 冻结 ⇒ 取景确定，供像素判据使用。
@@ -338,79 +336,6 @@ public:
                 camera->yaw         += orbit_speed * float(delta_time);
                 camera->matrix_dirty = true;
             }
-        }
-
-        WorkObject::Tick(delta_time);
-
-        // GC_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（钩子在本帧提交后、present 前执行
-        // ⇒ 读到本帧画面），落原始 packed 字节后退出（同 CoverageVariants/AlphaModes 先例）。
-        if (!dump_tag.empty() && ++dump_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-            if (!rt)
-            {
-                printf("[GCDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[GCDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "gcdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[GCDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[GCDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        // GC_SELFCHECK=1：**帧摘要自检**（A6-d 判据重建，计划档 §10 §三.3；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
-        // PASS 退出 0 / FAIL 退出 1。判据必须建在**冻结相机 + 定帧**上（GC_STATIC=1）。
-        if (selfcheck && ++selfcheck_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-            if (!rt)
-            {
-                printf("[GCSELF] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            ulre_example::FrameDigest expect;
-            expect.width                = kSelfW;
-            expect.height               = kSelfH;
-            expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = kSelfFNV;
-
-            ulre_example::InstallFrameDigestHook(rt, expect, "GCSELF");
-        }
-
-        // GC_FRAMES=N：定帧退出（CI / 像素对照）
-        if (run_frames > 0 && ++frame_seen >= run_frames)
-        {
-            printf("[GC] done frames=%u\n", frame_seen);
-            fflush(stdout);
-            std::exit(0);
         }
     }
 };

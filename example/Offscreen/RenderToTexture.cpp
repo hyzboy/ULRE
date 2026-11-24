@@ -46,7 +46,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
 #include<hgl/vk/VKRenderTargetSwapchain.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include "../Shared/ExampleAppBase.h"
 
 #include <memory>
 #include <cstring>
@@ -105,10 +105,6 @@ namespace
     {
         GLogInfo("[RenderToTexture][%s] %s", stage, message);
     }
-
-    // env 开关：Tick 的旋转冻结与摘要/落盘计数共用
-    const char *s_dump_tag   = getenv("RTT_DUMP");
-    const bool  s_selfcheck  = (getenv("RTT_SELFCHECK") != nullptr);
 }
 
 class OffscreenPass
@@ -338,8 +334,21 @@ public:
     }
 };
 
-class RenderToTextureApp final: public WorkObject
+class RenderToTextureApp final: public ulre_example::ExampleAppBase
 {
+public:
+    RenderToTextureApp()
+    {
+        SetupExampleConfig({
+            "RTT",
+            "rttdump",
+            "RTTSELF",
+            8,
+            8,
+            { 1280, 720, 0, 50, 0x2D730BDC6D96FD49ull }
+        });
+    }
+
 private:
     OffscreenPass *offscreen = nullptr;
 
@@ -478,7 +487,7 @@ public:
         SAFE_CLEAR(offscreen)
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         LogStage("RenderToTextureApp::Init", "begin");
         ecs_context = GetECSContext();
@@ -511,18 +520,9 @@ public:
         return true;
     }
 
-    void Tick(double delta_time) override
+    void OnPreTick(double delta_time) override
     {
-        // RTT_SELFCHECK=1：**帧摘要自检**（§6.5；共用件 example/Shared/FrameDigest.h）——
-        // 就绪后第 8 帧帧内回读主场景颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：
-        // PASS 退出 0 / FAIL 退出 1 / 读回失败退出 2。
-        // 判据意义 = **离屏世界回归床**：主场景立方体贴的是离屏球画出的 rt: 附件，
-        // 离屏世界若再"永不绘制"（五层缺陷族任一回潮），贴图退化为纯清屏色或压根不渲染 ⇒ 摘要立变。
-        // 摘要必须冻结（自旋停走 + 定帧），否则两次运行几何不同 ⇒ 假红。
-
-        // 逻辑更新写在 Tick（渲染前）——TransformSystem 在渲染帧内提交变换，
-        // Tick 里改与本回调内改同帧等价，且不占用命令缓冲录制时间
-        if (!s_selfcheck && cube_transform.IsValid())
+        if (!IsSelfCheckEnabled() && cube_transform.IsValid())
         {
             cube_theta += static_cast<float>(delta_time) * 0.8f;
             cube_theta = fmodf(cube_theta, 2.0f * std::numbers::pi_v<float>);
@@ -531,132 +531,59 @@ public:
             const glm::quat rot_x = glm::angleAxis(cube_theta * 0.5f, glm::vec3(1.0f, 0.0f, 0.0f));
             cube_transform.SetLocalRotation(rot_z * rot_x);
         }
+    }
 
-        WorkObject::Tick(delta_time);
-
+    void OnTick(double delta_time) override
+    {
         // 离屏内容静态：驱动到内容就绪即可，之后停止（避免同一纹理跨 pass 每帧写/读抖动）。
         // 就绪前每帧都要驱动 —— 离屏世界内部的异步读盘由它自己的 TextureStreamingSystem
         // 推进，不调 Render() 就没有帧，资源也就永远不会到齐。
-        //
-        // 帧预算**不能固定**：异步读盘完成在第几帧取决于磁盘与解码速度（实测 2~10 帧浮动），
-        // 写死帧数会让"贴图刚好没赶上"伪装成"离屏永不渲染"。判据就是内容就绪本身。
         if (offscreen && !offscreen->IsContentReady())
         {
             offscreen->RenderOffscreenFrame();
+            example_frame_seen = 0;
+            return;
         }
 
-        // 自检与落盘都只从「离屏内容已就绪」之后开始计数 —— 否则第 8 帧可能仍落在
-        // 异步读盘尚未完成的窗口里，摘要就会把"还没加载完"当成"离屏没画"。
-        if (offscreen && !offscreen->IsContentReady())
-            return;
-
+        if (IsSelfCheckEnabled() && example_frame_seen == example_config.selfcheck_frame)
         {
-            static int s_dump_frame = s_dump_tag ? 0 : -1;
-            static uint32_t s_self_frame = 0;
+            static constexpr uint64_t kOffFNV = 0xE4DE179225AD6E74ull;
 
-            static constexpr uint32_t kSelfW           = 1280;
-            static constexpr uint32_t kSelfH           = 720;
-            static constexpr uint32_t kSelfMinDistinct = 50;  // 不空转守卫：实测 distinct=256；纯清屏帧只有个位数
-            static constexpr uint64_t kSelfFNV         = 0x2D730BDC6D96FD49ull;  // 冻结自旋 + 就绪后第 8 帧实测（三次连跑一致）
-            // 生产端（离屏附件本体）摘要：主场景摘要是"经材质采样后的二手证据"，
-            // 这里钉一手证据 —— 离屏世界若"永不绘制"，附件退化为纯清屏色 ⇒ 本值必变。
-            static constexpr uint64_t kOffFNV          = 0xE4DE179225AD6E74ull;
-
-            if (s_dump_tag && ++s_dump_frame == 8)
+            // 生产端摘要：离屏附件本身（不经主场景采样）。主场景摘要红而这里绿 ⇒
+            // 缺陷在"关联/采样"侧；两侧同时绿才算离屏管线整体成立。
+            if (auto *ort = offscreen ? offscreen->GetRenderTarget() : nullptr)
             {
-                auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                    ecs_context ? ecs_context->GetRenderTarget() : nullptr);
-                if (!rt)
+                hgl::ValueArray<uint8_t> px;
+                graph::TextureReadbackInfo oinfo;
+                if (graph::ReadbackColorTarget(ort, px, 0, &oinfo))
                 {
-                    printf("[RTTDUMP] no swapchain RT\n");
+                    uint32_t d = 0;
+                    {
+                        uint8_t seen[256] = {};
+                        for (uint8_t b : px) seen[b] = 1;
+                        for (uint32_t i = 0; i < 256; ++i) d += seen[i];
+                    }
+
+                    hgl::hash::FNV1aHasher64 hasher;
+                    hasher.AppendBytes(px.GetData(), px.size());
+                    const uint64_t ofnv = hasher;
+
+                    printf("[RTTORT] offscreen %ux%u %s bytes=%zu distinct=%u fnv=0x%016llX\n",
+                           oinfo.width, oinfo.height,
+                           GetVulkanFormatName(oinfo.format),
+                           px.size(), d, (unsigned long long)ofnv);
+
+                    if (ofnv != kOffFNV)
+                    {
+                        printf("[RTTORT] FAIL（期望 fnv=0x%016llX）\n", (unsigned long long)kOffFNV);
+                        std::exit(1);
+                    }
+                }
+                else
+                {
+                    printf("[RTTORT] offscreen readback failed\n");
                     std::exit(2);
                 }
-
-                const char *tag = s_dump_tag;
-                graph::IRenderTarget *rt_ptr = rt;
-                rt->SetInFrameReadbackHook([tag, rt_ptr]()
-                {
-                    hgl::ValueArray<uint8_t> pixels;
-                    graph::TextureReadbackInfo info;
-                    if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                    {
-                        printf("[RTTDUMP] readback failed\n");
-                        std::exit(2);
-                    }
-
-                    char name[256];
-                    snprintf(name, sizeof(name), "rttdump_%s_%ux%u_%s.raw",
-                             tag, info.width, info.height,
-                             GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-
-                    FILE *fp = fopen(name, "wb");
-                    if (!fp)
-                    {
-                        printf("[RTTDUMP] open %s failed\n", name);
-                        std::exit(2);
-                    }
-
-                    fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                    fclose(fp);
-                    printf("[RTTDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                    std::exit(0);
-                });
-            }
-
-            if (s_selfcheck && ++s_self_frame == 8)
-            {
-                auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                    ecs_context ? ecs_context->GetRenderTarget() : nullptr);
-                if (!rt)
-                {
-                    printf("[RTTSELF] no swapchain RT\n");
-                    std::exit(2);
-                }
-
-                // 生产端摘要：离屏附件本身（不经主场景采样）。主场景摘要红而这里绿 ⇒
-                // 缺陷在"关联/采样"侧；两侧同时绿才算离屏管线整体成立。
-                if (auto *ort = offscreen ? offscreen->GetRenderTarget() : nullptr)
-                {
-                    hgl::ValueArray<uint8_t> px;
-                    graph::TextureReadbackInfo oinfo;
-                    if (graph::ReadbackColorTarget(ort, px, 0, &oinfo))
-                    {
-                        uint32_t d = 0;
-                        {
-                            uint8_t seen[256] = {};
-                            for (uint8_t b : px) seen[b] = 1;
-                            for (uint32_t i = 0; i < 256; ++i) d += seen[i];
-                        }
-
-                        hgl::hash::FNV1aHasher64 hasher;
-                        hasher.AppendBytes(px.GetData(), px.size());
-                        const uint64_t ofnv = hasher;
-
-                        printf("[RTTORT] offscreen %ux%u %s bytes=%zu distinct=%u fnv=0x%016llX\n",
-                               oinfo.width, oinfo.height,
-                               GetVulkanFormatName(oinfo.format),
-                               px.size(), d, (unsigned long long)ofnv);
-
-                        if (ofnv != kOffFNV)
-                        {
-                            printf("[RTTORT] FAIL（期望 fnv=0x%016llX）\n", (unsigned long long)kOffFNV);
-                            std::exit(1);
-                        }
-                    }
-                    else
-                    {
-                        printf("[RTTORT] offscreen readback failed\n");
-                        std::exit(2);
-                    }
-                }
-
-                ulre_example::FrameDigest expect;
-                expect.width                = kSelfW;
-                expect.height               = kSelfH;
-                expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = kSelfFNV;
-
-                ulre_example::InstallFrameDigestHook(rt, expect, "RTTSELF");
             }
         }
     }

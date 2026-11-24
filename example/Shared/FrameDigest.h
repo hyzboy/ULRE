@@ -27,11 +27,13 @@
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/util/hash/FNV1a.h>
+#include<hgl/type/String.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/log/Log.h>
 
 #include<cstdio>
 #include<cstdlib>
 #include<cstdint>
-#include<vector>
 
 namespace ulre_example
 {
@@ -278,5 +280,132 @@ namespace ulre_example
             fflush(stdout);
             std::exit(ok ? 0 : 1);
         });
+    }
+
+    /// 安装 Raw RenderTarget 回读落盘钩子并在写盘后退出
+    inline void InstallRawDumpHook(hgl::graph::IRenderTarget * rt,
+                                   const char * prefix,
+                                   const char * tag)
+    {
+        if (!rt)
+        {
+            GLogError(u8"[%sDUMP] no render target", prefix ? prefix : "");
+            std::exit(2);
+        }
+
+        auto * srt = dynamic_cast<hgl::graph::SwapchainRenderTarget *>(rt);
+        if (!srt)
+        {
+            GLogError(u8"[%sDUMP] not a swapchain RT", prefix ? prefix : "");
+            std::exit(2);
+        }
+
+        const hgl::AnsiString safe_tag = tag ? tag : "";
+        const hgl::AnsiString safe_prefix = prefix ? prefix : "dump";
+
+        srt->SetInFrameReadbackHook([srt, safe_prefix, safe_tag]()
+        {
+            hgl::ValueArray<uint8_t> pixels;
+            hgl::graph::TextureReadbackInfo info;
+            if (!hgl::graph::ReadbackColorTarget(srt, pixels, 0, &info) || pixels.empty())
+            {
+                GLogError(u8"[%sDUMP] readback failed", safe_prefix.c_str());
+                std::exit(2);
+            }
+
+            const hgl::AnsiString filename = safe_prefix + "_" + safe_tag + "_"
+                + hgl::AnsiString::numberOf(info.width) + "x" + hgl::AnsiString::numberOf(info.height) + "_"
+                + hgl::graph::GetVulkanFormatName(info.format) + ".raw";
+
+            if (hgl::filesystem::SaveMemoryToFile(hgl::ToOSString(filename), pixels.GetData(), pixels.size()) != static_cast<hgl::int64>(pixels.size()))
+            {
+                GLogError(u8"[%sDUMP] open %s failed", safe_prefix.c_str(), filename.c_str());
+                std::exit(2);
+            }
+
+            GLogInfo(u8"[%sDUMP] wrote %s (%llu bytes)", safe_prefix.c_str(), filename.c_str(), static_cast<unsigned long long>(pixels.size()));
+            std::exit(0);
+        });
+    }
+
+    /// 判定并在到达目标帧时安装 Raw Dump 钩子（引用自增 dump_frame）
+    inline bool CheckAndInstallDumpHook(hgl::graph::IRenderTarget * rt,
+                                        const char * dump_tag,
+                                        uint32_t & dump_frame,
+                                        const char * prefix,
+                                        uint32_t target_frame = 8)
+    {
+        if (dump_tag && dump_tag[0] != '\0' && ++dump_frame == target_frame)
+        {
+            InstallRawDumpHook(rt, prefix, dump_tag);
+            return true;
+        }
+        return false;
+    }
+
+    inline bool CheckAndInstallDumpHook(hgl::graph::IRenderTarget * rt,
+                                        const hgl::AnsiString & dump_tag,
+                                        uint32_t & dump_frame,
+                                        const char * prefix,
+                                        uint32_t target_frame = 8)
+    {
+        return CheckAndInstallDumpHook(rt, dump_tag.IsEmpty() ? nullptr : dump_tag.c_str(), dump_frame, prefix, target_frame);
+    }
+
+    /// 判定并在到达目标帧时安装 Raw Dump 钩子（按指定当前帧判断）
+    inline bool CheckAndInstallDumpHookAtFrame(hgl::graph::IRenderTarget * rt,
+                                               const hgl::AnsiString & dump_tag,
+                                               uint32_t current_frame,
+                                               const char * prefix,
+                                               uint32_t target_frame = 8)
+    {
+        if (!dump_tag.IsEmpty() && current_frame == target_frame)
+        {
+            InstallRawDumpHook(rt, prefix, dump_tag.c_str());
+            return true;
+        }
+        return false;
+    }
+
+    /// 判定并在到达目标帧时安装 SelfCheck 帧摘要钩子（引用自增 selfcheck_frame）
+    inline bool CheckAndInstallSelfCheckHook(hgl::graph::IRenderTarget * rt,
+                                             bool selfcheck_enabled,
+                                             uint32_t & selfcheck_frame,
+                                             const FrameDigest & expected,
+                                             const char * tag,
+                                             uint32_t target_frame = 8)
+    {
+        if (selfcheck_enabled && ++selfcheck_frame == target_frame)
+        {
+            auto * srt = dynamic_cast<hgl::graph::SwapchainRenderTarget *>(rt);
+            if (!srt)
+            {
+                GLogError(u8"[%s] no swapchain RT", tag ? tag : "SELF");
+                std::exit(2);
+            }
+            InstallFrameDigestHook(srt, expected, tag);
+            return true;
+        }
+        return false;
+    }
+
+    /// 判定并在到达目标帧时安装 SelfCheck 帧摘要钩子（直接给定布尔触发条件）
+    inline bool CheckAndInstallSelfCheckHook(hgl::graph::IRenderTarget * rt,
+                                             bool should_install,
+                                             const FrameDigest & expected,
+                                             const char * tag)
+    {
+        if (should_install)
+        {
+            auto * srt = dynamic_cast<hgl::graph::SwapchainRenderTarget *>(rt);
+            if (!srt)
+            {
+                GLogError(u8"[%s] no swapchain RT", tag ? tag : "SELF");
+                std::exit(2);
+            }
+            InstallFrameDigestHook(srt, expected, tag);
+            return true;
+        }
+        return false;
     }
 }

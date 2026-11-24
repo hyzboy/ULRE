@@ -52,7 +52,7 @@
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 
-#include"../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include"../Shared/ExampleAppBase.h"
 
 #include<glm/glm.hpp>
 #include<cmath>
@@ -116,8 +116,22 @@ namespace
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 
-class GPUModelChessboardApp : public WorkObject
+class GPUModelChessboardApp : public ulre_example::ExampleAppBase
 {
+public:
+
+    GPUModelChessboardApp()
+    {
+        SetupExampleConfig({
+            "CB",
+            "cbdump",
+            "CBSELF",
+            8,
+            8,
+            { kSelfW, kSelfH, 0, kSelfMinDistinct, kSelfFNV }
+        });
+    }
+
 private:
 
     ECSContext * ecs_context   = nullptr;
@@ -145,13 +159,6 @@ private:
 
     bool  static_scene  = false;
     float orbit_speed   = 14.0f;
-
-    std::string dump_tag;
-    uint32_t    dump_frame  = 0;
-    uint32_t    run_frames  = 0;
-    uint32_t    frame_seen  = 0;
-    bool        selfcheck       = false;
-    uint32_t    selfcheck_frame = 0;
 
     // 帧摘要常量：**冻结场景 + 定帧 8** 下 Debug 实跑记录（CB_STATIC 口径，
     // 相机与浮动同时冻结）。改渲染结果必须同步复核并重录。
@@ -391,7 +398,7 @@ public:
         // cube_geometry 由 GeometryAssetRegistry 持有，此处不再 delete。
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.06f, 0.07f, 0.10f, 1.0f));
 
@@ -402,7 +409,7 @@ public:
             return false;
         }
 
-        static_scene = getenv("CB_STATIC") != nullptr;
+        static_scene = (getenv("CB_STATIC") != nullptr) || example_selfcheck_enabled;
 
         if (const char * v = getenv("CB_ORBIT_SPEED")) orbit_speed = (float)atof(v);
 
@@ -413,26 +420,10 @@ public:
         if (!InitCamera())          return false;
         if (!InitCull())            return false;
 
-        if (const char * tag = getenv("CB_DUMP")) dump_tag = tag;
-        if (const char * v   = getenv("CB_FRAMES")) run_frames = (uint32_t)atoi(v);
-        if (getenv("CB_SELFCHECK"))
-        {
-            selfcheck = true;
-
-            // 摘要判据必须建在**冻结场景**上（相机 + 浮动一起冻）；缺 CB_STATIC 时自动补。
-            if (!static_scene)
-            {
-                static_scene = true;
-                printf("[CBSELF] 加固：CB_SELFCHECK=1 但未给 CB_STATIC=1 ⇒ 已**自动冻结相机与浮动**"
-                       "（摘要判据需确定取景）。\n");
-                fflush(stdout);
-            }
-        }
-
         return true;
     }
 
-    void Tick(double delta_time) override
+    void OnTick(double delta_time) override
     {
         // 冻结模式：相机与浮动都定住（帧 8 的画面 = Init 姿态）⇒ 摘要判据可钉像素。
         if (!static_scene)
@@ -456,76 +447,6 @@ public:
                                                      m.base_z + MOVER_AMP *
                                                          float(std::sin(time * MOVER_SPEED + m.phase))));
             }
-        }
-
-        WorkObject::Tick(delta_time);
-
-        // CB_DUMP=<tag>：第 8 帧帧内回读落原始字节后退出（同 GPUDrivenCull 先例）。
-        if (!dump_tag.empty() && ++dump_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-            if (!rt)
-            {
-                printf("[CBDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[CBDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "cbdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[CBDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[CBDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        // CB_SELFCHECK=1：帧摘要自检（第 8 帧）；PASS 退 0 / FAIL 退 1。
-        if (selfcheck && ++selfcheck_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-            if (!rt)
-            {
-                printf("[CBSELF] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            ulre_example::FrameDigest expect;
-            expect.width                = kSelfW;
-            expect.height               = kSelfH;
-            expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = kSelfFNV;
-
-            ulre_example::InstallFrameDigestHook(rt, expect, "CBSELF");
-        }
-
-        // CB_FRAMES=N：定帧退出（CI / 像素对照）
-        if (run_frames > 0 && ++frame_seen >= run_frames)
-        {
-            printf("[CB] done frames=%u\n", frame_seen);
-            fflush(stdout);
-            std::exit(0);
         }
     }
 };

@@ -62,7 +62,7 @@
 #include<hgl/ecs/support/cull/GPUCullSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKTextureReadback.h>
-#include "../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include "../Shared/ExampleAppBase.h"
 #include<hgl/time/Time.h>
 
 #include<glm/glm.hpp>
@@ -70,8 +70,6 @@
 #include<cstdio>
 #include<cstdlib>
 #include<cstring>
-#include<string>
-#include<vector>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -122,8 +120,22 @@ namespace
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 
-class AlphaModesApp : public WorkObject
+class AlphaModesApp : public ulre_example::ExampleAppBase
 {
+public:
+
+    AlphaModesApp()
+    {
+        SetupExampleConfig({
+            "AM",
+            "amdump",
+            "AMSELF",
+            8,
+            8,
+            { 1280, 720, 0, 2, 0x2fe87b15ee8b8a16ull }
+        });
+    }
+
 private:
 
     ECSContext *  ecs_world     = nullptr;
@@ -147,12 +159,6 @@ private:
     graph::GlobalSSBOBinding surface_rows[MODE_ROWS][ALPHA_STEPS]{};
 
     hgl::ecs::TransformAccessor item_transforms[MODE_ROWS][ALPHA_STEPS]{};
-
-    std::string dump_tag;
-    uint32_t    dump_frame      = 0;
-    uint32_t    perf_frames     = 0;
-    uint32_t    perf_frame_seen = 0;
-    double      perf_total_us   = 0.0;
 
 private:
 
@@ -361,7 +367,7 @@ public:
         // cube_geometry 由 GeometryAssetRegistry 持有，此处不再 delete，也不交给 GeometryManager。
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         // 背景用中灰蓝：AlphaBlend 的透色与 Dither 的镂空都能从背景反衬出来
         //（纯黑背景上"混合=变暗"，差异远不如透出色差明显）
@@ -380,109 +386,7 @@ public:
         if (!InitCamera())        return false;
         if (!InitCull())          return false;
 
-        if (const char * tag = getenv("AM_DUMP"))
-            dump_tag = tag;
-
-        if (const char * v = getenv("AM_FRAMES"))
-            perf_frames = (uint32_t)atoi(v);
-
         return true;
-    }
-
-    void Tick(double delta_time) override
-    {
-        const bool perf_on = perf_frames > 0;
-        const uint64 perf_t0 = hgl::GetUptimeUs();
-
-        // 静态场景：相机与几何逐帧确定 ⇒ 像素判据不被时序干扰。
-
-        WorkObject::Tick(delta_time);
-
-        // AM_DUMP=<tag>：第 8 帧装一次性帧内回读钩子（钩子在本帧提交后、present 前执行
-        // ⇒ 读到本帧画面），落原始 packed 字节后退出。
-        // AMSELFCHECK=1：**帧摘要自检**（A6-d 判据重建；共用件 example/Shared/FrameDigest.h）——
-        // 第 8 帧帧内回读颜色靶 ⇒ {不同字节取值数, FNV-1a 64} 比对下方内联常量：PASS 退出 0 / FAIL 退出 1。
-        // 判据只建在**冻结相机 + 定帧**上；常量由实跑记录，改渲染结果（少画/错画/挪相机）必须复核重录。
-        {
-            static const bool s_selfcheck = (getenv("AM_SELFCHECK") != nullptr);
-            static uint32_t   s_self_frame = 0;
-
-            static constexpr uint32_t kSelfW           = 1280;
-            static constexpr uint32_t kSelfH           = 720;
-            static constexpr uint32_t kSelfMinDistinct = 2;   // 不空转守卫（恒定图会 FAIL）
-            static constexpr uint64_t kSelfFNV         = 0x2fe87b15ee8b8a16ull;  // 冻结相机 + 接管下实跑记录
-                                                        // （改渲染结果必须复核并重录）
-
-            if (s_selfcheck && ++s_self_frame == 8)
-            {
-                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_world ? ecs_world->GetRenderTarget() : nullptr);
-                if (!rt)
-                {
-                    printf("[AMSELF] no swapchain RT\n");
-                    std::exit(2);
-                }
-
-                ulre_example::FrameDigest expect;
-                expect.width                = kSelfW;
-                expect.height               = kSelfH;
-                expect.distinct_byte_values = kSelfMinDistinct;
-                expect.fnv1a64              = kSelfFNV;
-
-                ulre_example::InstallFrameDigestHook(rt, expect, "AMSELF");
-            }
-        }
-
-        if (!dump_tag.empty() && ++dump_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                ecs_world ? ecs_world->GetRenderTarget() : nullptr);
-            if (!rt)
-            {
-                printf("[AMDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[AMDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "amdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[AMDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[AMDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        if (perf_on)
-        {
-            perf_total_us += double(hgl::GetUptimeUs() - perf_t0);
-            ++perf_frame_seen;
-
-            if (perf_frame_seen >= perf_frames)
-            {
-                printf("[AlphaModes] done frames=%u\n", perf_frame_seen);
-                fflush(stdout);
-                std::exit(0);
-            }
-        }
     }
 };
 

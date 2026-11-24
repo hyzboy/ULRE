@@ -119,7 +119,7 @@
 
 #include<hgl/time/Time.h>
 
-#include"../Shared/FrameDigest.h"   // 帧摘要自检（A6-d 判据重建共用件）
+#include"../Shared/ExampleAppBase.h"
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -215,8 +215,22 @@ namespace
     constexpr uint32_t MATERIAL_DATA_ROW = 0;
 }
 
-class ChessboardStressApp : public WorkObject
+class ChessboardStressApp : public ulre_example::ExampleAppBase
 {
+public:
+
+    ChessboardStressApp()
+    {
+        SetupExampleConfig({
+            "CSTRESS",
+            "cstress",
+            "CSTRESSSELF",
+            8,
+            8,
+            { kSelfW, kSelfH, 0, kSelfMinDistinct, kSelfFNV }
+        });
+    }
+
 private:
 
     ECSContext * ecs_context   = nullptr;
@@ -256,13 +270,6 @@ private:
     int      collect_cache_env = -1;     ///< CSTRESS_COLLECT_CACHE 三态同上
     bool     topo_snapshot     = false;  ///< P2：主帧拓扑快照（解析后的最终状态）
     bool     collect_cache     = false;  ///< P3：主帧收集快路径（依赖 P2 快照）
-
-    std::string dump_tag;
-    uint32_t    dump_frame  = 0;
-    uint32_t    run_frames  = 0;
-    uint32_t    frame_seen  = 0;
-    bool        selfcheck       = false;
-    uint32_t    selfcheck_frame = 0;
 
     uint64_t last_frame_us = 0;
     uint32_t sample_frame  = 0;
@@ -1091,7 +1098,7 @@ private:
 
         printf("[CSTRESS] f=%u  帧=%.2fms(%.1f fps)  ECS+Jolt=%.2fms  渲染≈%.2fms"
                "｜可见实体=%u 可见部件=%u ICB=%u 溢出槽=%u\n",
-               frame_seen, avg_frame, fps, avg_tick,
+               example_frame_seen, avg_frame, fps, avg_tick,
                (avg_frame > avg_tick) ? (avg_frame - avg_tick) : 0.0,
                entities, parts, batch_count, overflow);
 
@@ -1199,7 +1206,7 @@ public:
     {
     }
 
-    bool Init() override
+    bool OnInit() override
     {
         SetClearColor(Color4f(0.06f, 0.07f, 0.10f, 1.0f));
 
@@ -1210,7 +1217,7 @@ public:
             return false;
         }
 
-        static_scene = getenv("CSTRESS_STATIC") != nullptr;
+        static_scene = (getenv("CSTRESS_STATIC") != nullptr) || example_selfcheck_enabled;
         no_physics   = getenv("CSTRESS_NO_PHYSICS") != nullptr;
 
         if (const char * v = getenv("CSTRESS_ORBIT"))   orbit_speed       = (float)atof(v);
@@ -1222,20 +1229,8 @@ public:
         if (const char * v = getenv("CSTRESS_BOARDS")) board_count = (uint32_t)atoi(v);
         if (const char * v = getenv("CSTRESS_DICE"))   dice_count  = (uint32_t)atoi(v);
 
-        if (const char * tag = getenv("CSTRESS_DUMP")) dump_tag = tag;
-        if (const char * v   = getenv("CSTRESS_FRAMES")) run_frames = (uint32_t)atoi(v);
-
-        if (getenv("CSTRESS_SELFCHECK"))
+        if (example_selfcheck_enabled)
         {
-            selfcheck = true;
-
-            // 摘要判据必须建在**冻结 + 定档**的场景上；缺省项自动补齐。
-            if (!static_scene)
-            {
-                static_scene = true;
-                printf("[CSTRESS] 加固：CSTRESS_SELFCHECK=1 但未给 CSTRESS_STATIC=1"
-                       " ⇒ 已**自动冻结相机与落体**（摘要判据需确定取景）。\n");
-            }
             if (board_count != kDefaultBoards || dice_count != kDefaultDice)
             {
                 printf("[CSTRESS] 加固：自检模式强制回默认档 %u×%zu + %u。\n",
@@ -1291,7 +1286,7 @@ public:
         // 屏显 PROF 覆盖层（ULRE_DEBUG.toml 的 channels.profui=true 启动即显示）会把
         // "每帧都在变"的耗时文字画进回缓存 ⇒ 第 8 帧像素摘要逐次漂移，快/慢路径对拍
         // 失去意义。自检模式强制停用覆盖层，保证摘要只由冻结场景本身决定。
-        if (selfcheck)
+        if (example_selfcheck_enabled)
         {
             if (auto overlay = ecs_context->GetSystem<ecs::ProfOverlaySystem>())
                 overlay->Disable();
@@ -1313,7 +1308,7 @@ public:
         return true;
     }
 
-    void Tick(double delta_time) override
+    void OnPreTick(double delta_time) override
     {
         // 冻结模式：相机与落体都定住（帧 8 的画面 = Init 姿态）⇒ 摘要判据可钉像素。
         if (!static_scene)
@@ -1344,15 +1339,10 @@ public:
         }
 
         last_frame_us = now_us;
+    }
 
-        {
-            FrameProfileSpan tick_span(FrameProfileSlot::AppTick);
-
-            WorkObject::Tick(delta_time);
-        }
-
-        ++frame_seen;
-
+    void OnTick(double delta_time) override
+    {
         auto gpu_cull = ecs_context ? ecs_context->GetSystem<GPUCullSystem>() : nullptr;
 
         if (gpu_cull && gpu_cull->IsDispatchSettled())
@@ -1360,76 +1350,8 @@ public:
             if (!batch_verified)
                 VerifyBatching(gpu_cull.get());
 
-            if (sample_interval > 0 && (frame_seen % sample_interval) == 0)
+            if (sample_interval > 0 && (example_frame_seen % sample_interval) == 0)
                 SampleGPU(gpu_cull.get());
-        }
-
-        // CSTRESS_DUMP=<tag>：第 8 帧帧内回读落原始字节后退出（同 GPUDrivenCull 先例）。
-        if (!dump_tag.empty() && ++dump_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-            if (!rt)
-            {
-                printf("[CSTRESSDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[CSTRESSDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "cstress_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[CSTRESSDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[CSTRESSDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        // CSTRESS_SELFCHECK=1：帧摘要自检（第 8 帧）；PASS 退 0 / FAIL 退 1。
-        if (selfcheck && ++selfcheck_frame == 8)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
-            if (!rt)
-            {
-                printf("[CSTRESSSELF] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            ulre_example::FrameDigest expect;
-            expect.width                = kSelfW;
-            expect.height               = kSelfH;
-            expect.distinct_byte_values = kSelfMinDistinct;
-            expect.fnv1a64              = kSelfFNV;
-
-            ulre_example::InstallFrameDigestHook(rt, expect, "CSTRESSSELF");
-        }
-
-        // CSTRESS_FRAMES=N：定帧退出（CI / 像素对照）
-        if (run_frames > 0 && frame_seen >= run_frames)
-        {
-            printf("[CSTRESS] done frames=%u\n", frame_seen);
-            fflush(stdout);
-            std::exit(0);
         }
     }
 };

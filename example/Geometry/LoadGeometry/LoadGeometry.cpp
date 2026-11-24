@@ -36,8 +36,7 @@
 #include<glm/gtx/quaternion.hpp>
 
 #include<memory>
-#include<string>
-#include<vector>
+#include "../../Shared/ExampleAppBase.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -110,8 +109,22 @@ namespace
     constexpr os_char kSky34URI[] = OS_TEXT("env:@Sky34");
 }
 
-class LoadGeometryApp:public WorkObject
+class LoadGeometryApp : public ulre_example::ExampleAppBase
 {
+public:
+
+    LoadGeometryApp()
+    {
+        SetupExampleConfig({
+            "LG",
+            "lgdump",
+            "LGSELF",
+            8,
+            8,
+            {}
+        });
+    }
+
 private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
@@ -136,11 +149,6 @@ private:
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::ecs::LightSystem>       light_system;
-
-    std::string dump_tag;
-    uint32_t    lg_frames     = 0;
-    uint32_t    lg_frame_seen = 0;
-    uint32_t    dump_frame    = 0;
 
     struct MeshEntry
     {
@@ -535,7 +543,7 @@ private:
     }
 
 public:
-    bool Init() override
+    bool OnInit() override
     {
         pack_mode_ = (getenv("LG_LEGACY") == nullptr);
 
@@ -563,71 +571,7 @@ public:
         if (pack_mode_ && !InitEnvironmentControl())
             return false;
 
-        if (const char * tag = getenv("LG_DUMP"))
-            dump_tag = tag;
-
-        if (const char * v = getenv("LG_FRAMES"))
-            lg_frames = (uint32_t)atoi(v);
-
         return(true);
-    }
-
-    void Tick(double delta_time) override
-    {
-        WorkObject::Tick(delta_time);
-
-        // LG_DUMP=<tag>：第 8 帧（LG_DUMP_FRAME 可覆盖）帧内回读颜色靶，落原始字节后退出
-        static const uint32_t s_target_dump_frame = []() {
-            if (const char *f = getenv("LG_DUMP_FRAME"))
-                return (uint32_t)atoi(f);
-            return 8u;
-        }();
-
-        if (!dump_tag.empty() && ++dump_frame == s_target_dump_frame)
-        {
-            auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-                ecs_context ? ecs_context->GetRenderTarget() : nullptr);
-            if (!rt)
-            {
-                printf("[LGDUMP] no swapchain RT\n");
-                std::exit(2);
-            }
-
-            std::string tag = dump_tag;
-            graph::IRenderTarget * rt_ptr = rt;
-            rt->SetInFrameReadbackHook([tag, rt_ptr]()
-            {
-                hgl::ValueArray<uint8_t> pixels;
-                graph::TextureReadbackInfo info;
-                if (!graph::ReadbackColorTarget(rt_ptr, pixels, 0, &info) || pixels.empty())
-                {
-                    printf("[LGDUMP] readback failed\n");
-                    std::exit(2);
-                }
-
-                char name[256];
-                snprintf(name, sizeof(name), "lgdump_%s_%ux%u_%s.raw",
-                         tag.c_str(), info.width, info.height,
-                         GetVulkanFormat(info.format) ? GetVulkanFormat(info.format)->name : "unknown");
-                FILE * fp = fopen(name, "wb");
-                if (!fp)
-                {
-                    printf("[LGDUMP] open %s failed\n", name);
-                    std::exit(2);
-                }
-                fwrite(pixels.GetData(), 1, pixels.size(), fp);
-                fclose(fp);
-                printf("[LGDUMP] wrote %s (%zu bytes)\n", name, pixels.size());
-                std::exit(0);
-            });
-        }
-
-        if (lg_frames > 0 && ++lg_frame_seen >= lg_frames)
-        {
-            printf("[LoadGeometry] done frames=%u\n", lg_frame_seen);
-            fflush(stdout);
-            std::exit(0);
-        }
     }
 };//class LoadGeometryApp
 
