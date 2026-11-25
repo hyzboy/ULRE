@@ -743,24 +743,19 @@ namespace hgl::ecs
             // 这正是快照需要知道的「上一帧改过行」。
             main_frame_topology.BeginFrame(GetGraphicsContext() ? GetGraphicsContext()->GetGlobalSSBOBufferRegistry() : nullptr);
 
-            // 只在场景结构变化（scene_structure_dirty）时重新 gather，
-            // 避免每帧全量遍历所有 entity/component（结构稳定时零开销）。
-            if (scene_structure_dirty)
+            // 只在场景结构变化时重新 gather，避免每帧全量遍历所有 entity/component（结构稳定时零开销）。
+            if (adaptive_graph_cache.IsDirty())
             {
                 SceneStats stats = GatherSceneStats(this);
-                uint64_t current_hash = stats.GetHash();
+                const uint64_t current_hash = stats.GetHash();
 
-                if (current_hash != cached_adaptive_scene_hash)
-                {
-//                        LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",cached_adaptive_scene_hash, current_hash);
-                    cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this, stats);
-                    cached_adaptive_scene_hash = current_hash;
-                }
+                if (adaptive_graph_cache.NeedsRebuild(current_hash))
+                    adaptive_graph_cache.Store(current_hash, CreateAdaptiveRenderGraph(this, stats));
 
-                scene_structure_dirty = false;
+                adaptive_graph_cache.MarkClean();
             }
 
-            Render(deltaTime, cached_adaptive_render_graph, pre_render);
+            Render(deltaTime, adaptive_graph_cache.Graph(), pre_render);
         }
 
         void ECSContext::RenderPreBeginFrame(float deltaTime)

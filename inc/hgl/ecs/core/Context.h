@@ -9,6 +9,7 @@
 #include<hgl/ecs/core/FrameLaneWaitSet.h>
 #include<hgl/ecs/core/RenderPassScopeState.h>
 #include<hgl/ecs/core/MainFrameTopologyState.h>
+#include<hgl/ecs/core/AdaptiveRenderGraphCache.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/RenderPassRequest.h>
@@ -288,10 +289,8 @@ namespace hgl
 
             std::unique_ptr<RenderSystemCore> render_core;
 
-            /// Cached adaptive render graph (auto-culls based on scene content)
-            mutable RenderGraph cached_adaptive_render_graph;
-            mutable uint64_t cached_adaptive_scene_hash = ~0ULL;  // sentinel: "not computed yet"
-            mutable bool scene_structure_dirty = true;  // 场景结构（entity/component 增删）变化标记，下次 Render 重 gather
+            /// 自适应渲染图缓存（重 gather 脏标记 + 场景哈希 + 图对象）
+            mutable AdaptiveRenderGraphCache adaptive_graph_cache;
 
             /// Graphics context adapter (Phase 2) - now raw pointer
             hgl::graph::GraphicsContext* graphics_context = nullptr;
@@ -393,7 +392,7 @@ namespace hgl
             /// Mark scene structure (entity/component add/remove) as changed.
             /// Called automatically by component attach/detach; next Render re-gathers
             /// stats only when dirty, avoiding a per-frame full entity scan.
-            void MarkSceneStructureDirty() const { scene_structure_dirty = true; }
+            void MarkSceneStructureDirty() const { adaptive_graph_cache.MarkDirty(); }
 
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
