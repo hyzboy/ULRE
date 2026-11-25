@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
+﻿#include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -8,6 +8,7 @@
 #include<hgl/graph/asset/MaterialAsyncLoadLane.h>
 #include<hgl/graph/asset/ModelLoadPlan.h>
 #include<hgl/ecs/components/ModelRefComponent.h>   // A.1：定义先行接线在 A.2 消费
+#include<hgl/ecs/support/assembly/ModelAssemblyStage.h>
 #include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/filesystem/Path.h>
 #include<hgl/asset/LoadedFileManager.h>
@@ -635,142 +636,32 @@ namespace hgl::ecs
         // （与 PruneStreams 对 streams 的防悬垂同一口径）。
         graph::ModelAssetRegistry *registry = graph::GetDefaultModelAssetRegistry();
 
-        // 失败落定：先置终态标志再回调，防止回调侧重入本段时重复触发。
-        auto fail = [this](ModelRefComponent *ref, const char *reason)
+        // 装配规则本身在 `assembly::AdvanceModelAssembly`（纯状态机）；
+        // 这里只提供「材质行绑定从哪来」——车道内部结构不外泄给装配驱动。
+        assembly::MaterialRowsProvider provider;
+        provider.user = this;
+        provider.resolve = [](void *user,
+                              graph::ModelAsset *asset,
+                              const graph::GlobalSSBOBinding *&out_rows,
+                              uint32_t &out_row_count) -> bool
         {
-            LogError(u8"ModelRef 装配失败：%s", reason);
-            ref->failed_reported = true;
-            ref->asset = nullptr;   ///< 句柄归 registry；组件不再观察它
-            if (ref->policy)
-                ref->policy->OnModelFailed(*ref, reason);
+            auto *self = static_cast<ModelStreamingSystem *>(user);
+            AssetStream *st = self ? self->FindStream(asset) : nullptr;
+
+            if (!st || st->mats.bindings.empty())
+                return false;
+
+            out_rows      = st->mats.bindings.data();
+            out_row_count = static_cast<uint32_t>(st->mats.bindings.size());
+            return true;
         };
 
         for (ModelRefComponent *ref : refs)
         {
-            if (!ref || ref->IsSettled())
+            if (!ref)
                 continue;
 
-            graph::ModelAsset *asset = ref->asset;
-
-            if (asset && (!registry || !registry->GetAssets().Contains(asset)))
-            {
-                fail(ref, "句柄已被 registry 回收（Clear?）");
-                continue;
-            }
-
-            // ── 请求段：先问策略，再投句柄表 ────────────────────────────────
-            if (!asset)
-            {
-                if (ref->request_started || ref->uri.IsEmpty())
-                    continue;       ///< 请求曾失败，或调用方自己管句柄：停在原地
-
-                const int priority = ref->policy
-                                   ? ref->policy->OnBeforeRequest(*ref, ref->uri)
-                                   : 0;
-                if (priority < 0)
-                    continue;       ///< 策略压下了：下帧再问（宿主自己控制节奏）
-
-                ref->request_started = true;
-                asset = ref->asset = graph::RequestModelAsset(ref->uri);
-                if (!asset)
-                {
-                    fail(ref, "句柄表未受理请求（默认表未登记？）");
-                    continue;
-                }
-            }
-
-            // ── 句柄失败 ⇒ 终态（registry 不自动重试，这里同样不重试）──────
-            if (asset->HasFailed())
-            {
-                fail(ref, asset->GetFailReason().c_str());
-                continue;
-            }
-
-            const graph::ModelAssetContent &content = asset->GetContent();
-
-            // ── 段一：骨架（节点树到位即建，一次）──────────────────────────
-            if (!ref->skeleton_done)
-            {
-                if (content.GetNodeCount() <= 0)
-                    continue;       ///< 解析产物还没出来
-
-                if (!ref->instance.InstantiateSkeleton(context, content.nodes,
-                                                       content.root_nodes,
-                                                       ref->skeleton_options))
-                {
-                    fail(ref, "InstantiateSkeleton 失败");
-                    continue;
-                }
-
-                ref->skeleton_done = true;
-                if (!ref->skeleton_reported)
-                {
-                    ref->skeleton_reported = true;
-                    if (ref->policy)
-                        ref->policy->OnSkeletonReady(*ref);
-                }
-                continue;           ///< 每帧至多推进一段（与示例原行为一致）
-            }
-
-            // ── 段二：几何（增量挂接，句柄 Ready 时收口）───────────────────
-            if (!ref->geometry_done)
-            {
-                if (content.GetAssetCount() > 0 &&
-                    ref->instance.AttachGeometries(content.assets, content.nodes) &&
-                    !ref->geometry_reported)
-                {
-                    ref->geometry_reported = true;
-                    if (ref->policy)
-                        ref->policy->OnGeometryAttached(*ref);
-                }
-
-                if (!asset->IsReady())
-                    continue;       ///< 子项仍在途：下帧接着挂
-
-                ref->geometry_done = true;
-            }
-
-            // ── 段三：材质（几何收口后一次）────────────────────────────────
-            if (!ref->material_done)
-            {
-                // 调用方没给行绑定 ⇒ 取系统自装配的结果（B-2 阶段解析好的
-                // `stream->mats`）。绑定只在 attach 时被读值，无需长期持有。
-                if (!ref->options.material_rows)
-                {
-                    if (AssetStream *st = FindStream(asset))
-                    {
-                        if (!st->mats.bindings.empty())
-                        {
-                            ref->options.material_rows           = st->mats.bindings.data();
-                            ref->options.material_row_count      =
-                                static_cast<uint32_t>(st->mats.bindings.size());
-                            ref->options.rows_by_material_index  = true;
-                        }
-                    }
-                }
-
-                if (!ref->instance.AttachMaterials(ref->options))
-                {
-                    fail(ref, "AttachMaterials 失败（无已挂几何可补材质？）");
-                    continue;
-                }
-
-                ref->material_done = true;
-                if (!ref->material_reported)
-                {
-                    ref->material_reported = true;
-                    if (ref->policy)
-                        ref->policy->OnMaterialAttached(*ref);
-                }
-            }
-
-            // ── 就绪上报：句柄 Ready 且三段落定（只报一次）─────────────────
-            if (!ref->ready_reported && asset->IsReady())
-            {
-                ref->ready_reported = true;
-                if (ref->policy)
-                    ref->policy->OnModelReady(*ref);
-            }
+            assembly::AdvanceModelAssembly(*context, *ref, registry, provider);
         }
     }
 
