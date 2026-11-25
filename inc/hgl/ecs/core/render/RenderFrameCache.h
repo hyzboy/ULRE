@@ -72,7 +72,7 @@ namespace hgl::ecs
         struct EntityTraceRecord
         {
             uint32_t entity_id = UINT32_MAX;
-            uint16_t generation = 0;
+            uint32_t generation = 0;
             bool pending_geometry = false;
             bool pending_material = false;
             uint32_t batch_index = UINT32_MAX;
@@ -87,7 +87,7 @@ namespace hgl::ecs
         EntityTraceRecord trace_samples[kMaxTraceSamples];
 
         void RecordDrop(const char *name, uint32_t id, const char *stage, const char *reason, const char *detail);
-        EntityTraceRecord *GetOrCreateTrace(const char *name,uint32_t id,uint16_t generation);
+        EntityTraceRecord *GetOrCreateTrace(const char *name,uint32_t id,uint32_t generation);
 
         RenderFrameCache() = default;
         ~RenderFrameCache();

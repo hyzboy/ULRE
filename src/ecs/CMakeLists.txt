@@ -267,6 +267,9 @@ endif()
 
 add_ecs_test(TestComponentRows tests/TestComponentRows.cpp)
 
+# EntityID 世代宽度判据：同槽位跨 2^16 复用后旧句柄必须失效（uint32 世代，结构体仍 8 字节）
+add_ecs_test(TestEntityHandleGeneration tests/TestEntityHandleGeneration.cpp)
+
 add_ecs_test(TestVisibilityStorage tests/TestVisibilityStorage.cpp)
 
 add_ecs_test(TestBoundingVolumeCull tests/TestBoundingVolumeCull.cpp)
@@ -588,6 +591,13 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestComponentRows
         PROPERTIES LABELS "ecs;component_rows")
+
+    add_test(
+        NAME TestEntityHandleGeneration
+        COMMAND TestEntityHandleGeneration)
+    set_tests_properties(
+        TestEntityHandleGeneration
+        PROPERTIES LABELS "ecs;entity" TIMEOUT 120)
 
     add_test(
         NAME TestVisibilityStorage

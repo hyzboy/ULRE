@@ -51,7 +51,17 @@ namespace hgl::ecs
             slot.entity->~Entity();      // 块池显式析构（~Entity 内部统一执行 DetachAllComponents 与行表注销）
             slot.entity = nullptr;
         }
-        slot.generation++;
+
+        // 世代推进。uint32 满值后不再回绕：该槽位永久退役，不还回空闲表 ⇒
+        // 任何旧 EntityID 都不可能再命中（32 位下实际不可达，属于兜底而非路径）。
+        if (slot.generation == UINT32_MAX)
+        {
+            LogWarning("[EntityManager] slot %u exhausted its 32-bit generation; retiring the slot",
+                       id.index);
+            return;
+        }
+
+        ++slot.generation;
 
         AddFreeIndex(id.index);
     }

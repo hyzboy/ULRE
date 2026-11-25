@@ -128,7 +128,7 @@ public:
         struct TraceSample
         {
             uint32_t entity_id = UINT32_MAX;
-            uint16_t generation = 0;
+            uint32_t generation = 0;
             bool pending_geometry = false;
             bool pending_material = false;
             uint32_t batch_index = UINT32_MAX;

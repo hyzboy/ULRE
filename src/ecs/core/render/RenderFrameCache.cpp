@@ -25,7 +25,7 @@ namespace hgl::ecs
     }
 
     RenderFrameCache::EntityTraceRecord *RenderFrameCache::GetOrCreateTrace(
-        const char *name,const uint32_t id,const uint16_t generation)
+        const char *name,const uint32_t id,const uint32_t generation)
     {
         for(uint32_t i=0;i<trace_sample_count;++i)
         {

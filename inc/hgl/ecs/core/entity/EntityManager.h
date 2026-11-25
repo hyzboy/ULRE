@@ -30,7 +30,7 @@ namespace hgl::ecs
         struct EntitySlot
         {
             Entity  *entity = nullptr;   ///< 指向块内对象（**不拥有**；析构由本类显式调用）
-            uint16_t generation = 0;
+            uint32_t generation = 0;
             // 2026-10-10（审计 §2.2）：`bool alive` 已删除 —— 它与 `entity != nullptr` **是同一事实**
             // （创建/销毁/清空三处都成对写），而每个读取点都在重复判 `slot.alive && slot.entity`。
             // 现在"有实体指针"就是"活着"的唯一来源。
@@ -55,7 +55,7 @@ namespace hgl::ecs
                           "EntityManager 的块池按 Entity 定尺寸（T2-a）：出现子类须先重新设计池");
 
             uint32_t index;
-            uint16_t generation = 0;
+            uint32_t generation = 0;
 
             if (!free_indices.empty())
             {
