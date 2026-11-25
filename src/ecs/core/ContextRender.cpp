@@ -515,9 +515,9 @@ namespace hgl::ecs
                         if (use_override && cs)
                             cs->RestoreMainCamera();
 
-                        ctx->active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
-                        ctx->active_mobility_filter = -1;
-                        ctx->pass_shadow.End();
+                        ctx->pass_scope.SetCameraSlot(CameraInfoStorage::kDefaultCameraSlot);
+                        ctx->pass_scope.SetMobilityFilter(-1);
+                        ctx->pass_scope.ClearShadow();
                     }
                 }
             } state_guard{
@@ -545,17 +545,17 @@ namespace hgl::ecs
                 const uint32_t override_camera_slot = camera_in_this_world
                                                         ? GetCameraSlot(req.camera)
                                                         : CameraInfoStorage::INVALID_SLOT;
-                active_camera_id = CameraInfoStorage::IsValidSlot(override_camera_slot)
+                pass_scope.SetCameraSlot(CameraInfoStorage::IsValidSlot(override_camera_slot)
                                      ? override_camera_slot
-                                     : CameraInfoStorage::kDefaultCameraSlot;
+                                     : CameraInfoStorage::kDefaultCameraSlot);
             }
             else
             {
                 // 无覆盖相机：本 pass 用"本世界默认相机"（0 号槽；三级解析已保证有）
-                active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
+                pass_scope.SetCameraSlot(CameraInfoStorage::kDefaultCameraSlot);
             }
 
-            active_mobility_filter = req.mobility_filter;
+            pass_scope.SetMobilityFilter(req.mobility_filter);
             // pass 身份**由目标相对本世界主渲染目标推导**，不再只依赖调用方声明。
             // 判据不是"离屏与否"，而是"**是否本世界的主目标**"：
             //   · `req.target == render_target` ⇒ 这就是本世界的正常 forward pass——
@@ -573,19 +573,19 @@ namespace hgl::ecs
             const bool foreign_target =
                 req.target && (req.target != saved_target);
 
-            pass_shadow.Begin(req.is_shadow_pass || foreign_target);
+            pass_scope.BeginShadow(req.is_shadow_pass || foreign_target);
 
             if (req.is_shadow_pass)
             {
                 if (req.shadow_reference_camera)
                 {
-                    pass_shadow.SetOrigin(glm::vec3(req.shadow_reference_camera->position));
+                    pass_scope.SetShadowOrigin(glm::vec3(req.shadow_reference_camera->position));
                 }
                 else
                 {
                     const graph::CameraInfo *cam = GetActiveCameraInfo();
                     if (cam)
-                        pass_shadow.SetOrigin(glm::vec3(cam->pos.x, cam->pos.y, cam->pos.z));
+                        pass_scope.SetShadowOrigin(glm::vec3(cam->pos.x, cam->pos.y, cam->pos.z));
                 }
             }
 
@@ -644,8 +644,8 @@ namespace hgl::ecs
                     probe_submit_ns = PrepassTimingNow() - probe_submit_start;
             }
 
-            active_mobility_filter = -1;
-            pass_shadow.End();
+            pass_scope.SetMobilityFilter(-1);
+            pass_scope.ClearShadow();
 
             // 关键同步（下沿保护）：本帧离屏提交完成后立即等该 RT 自己的 queue fence！
             // 必须在恢复主相机共享数据前等，因为 GPU 仍在异步读取本 pass 提交的光源

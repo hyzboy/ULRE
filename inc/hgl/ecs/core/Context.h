@@ -7,7 +7,7 @@
 #include<hgl/ecs/core/SystemGroupActivity.h>
 #include<hgl/ecs/core/SystemRegistry.h>
 #include<hgl/ecs/core/FrameLaneWaitSet.h>
-#include<hgl/ecs/core/RenderPassShadowState.h>
+#include<hgl/ecs/core/RenderPassScopeState.h>
 #include<hgl/ecs/core/MainFrameTopologyState.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
@@ -250,9 +250,6 @@ namespace hgl
             /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
-            /// 当前渲染 Pass 的活跃相机**槽号**（世界内；用于 pc_root.camera_row 的行号算术）
-            uint32_t active_camera_id = CameraComponent::kDefaultSlot;
-
             /// 本世界的环境 profile（**Env 随世界**，C2）：显式覆盖（`SetEnvProfileID` /
             /// `CreateEnvProfile`）优先；未显式设置时**按需解析本世界 RT 的 env_profile**
             /// （作者侧在 `SetEnvironmentProfile`，可能发生在世界创建之后 ⇒ 不能只在 Initialize 取一次）。
@@ -272,9 +269,6 @@ namespace hgl
             /// 帧提交等待列表：纯状态机，无世界/设备依赖
             FrameLaneWaitSet lane_waits;
 
-            /// 当前渲染 Pass 的物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
-            int active_mobility_filter = -1;
-
             /// 静态场景 revision：任何 Static transform 被检出变更时递增（A3）。
             /// 消费方（如 EnvironmentSystem 的静态级联阴影缓存）记录上次消费值，
             /// 与当前值不等即知"静态场景已变"，做对应的缓存失效。只增不减。
@@ -285,8 +279,9 @@ namespace hgl
             /// Static transform（A3 阴影缓存），而台帐覆盖**全部**会改变拓扑的输入。
             MainFrameTopologyState main_frame_topology;
 
-            /// 当前 Pass 的阴影上下文（是否阴影 pass + 有效参考原点）
-            RenderPassShadowState pass_shadow;
+            /// 当前渲染 Pass 的作用域状态（相机槽 / 移动性过滤 / 阴影上下文）。
+            /// 三者由 RenderTo 的 state_guard 统一保存恢复 ⇒ 合成一个对象。
+            RenderPassScopeState pass_scope;
 
             /// 场景渲染工作流模式（默认 StandardLitCSM：标准 3D 陆地主光级联阴影）
             ScenePipelineMode scene_pipeline_mode = ScenePipelineMode::StandardLitCSM;
@@ -437,7 +432,7 @@ namespace hgl
             uint32_t GetFrameIndex() const { return frame_index; }
             uint64_t GetRenderDiagnosticWorldID() const { return render_diagnostic_world_id; }
 
-            int GetActiveMobilityFilter() const { return active_mobility_filter; }
+            int GetActiveMobilityFilter() const { return pass_scope.GetMobilityFilter(); }
 
             /// Static transform 变更检出时递增（由 TransformSystem 调用；A3 静态缓存失效链）
             void BumpStaticSceneRevision() { ++static_scene_revision; }
@@ -469,7 +464,7 @@ namespace hgl
             /// `RenderFrameCache`，成员集合天然不同 ⇒ 不得互相覆盖快照。
             bool IsMainFrameTopologyPass() const
             {
-                return !IsCurrentPassShadow() && active_mobility_filter < 0;
+                return !IsCurrentPassShadow() && pass_scope.GetMobilityFilter() < 0;
             }
 
             /// 声明拓扑变更（写入方调用；见 `TopologyChange` 各类别的注释）
@@ -485,9 +480,9 @@ namespace hgl
                 main_frame_topology.MarkDynamicFact(kind, count);
             }
 
-            bool IsCurrentPassShadow() const { return pass_shadow.IsShadowPass(); }
-            bool HasShadowOrigin() const { return pass_shadow.HasOrigin(); }
-            const glm::vec3 &GetShadowOrigin() const { return pass_shadow.Origin(); }
+            bool IsCurrentPassShadow() const { return pass_scope.IsShadowPass(); }
+            bool HasShadowOrigin() const { return pass_scope.HasShadowOrigin(); }
+            const glm::vec3 &GetShadowOrigin() const { return pass_scope.ShadowOrigin(); }
 
             void SetScenePipelineMode(ScenePipelineMode mode)
             {
@@ -537,7 +532,8 @@ namespace hgl
 
             /// 本 pass 活跃相机的**槽号**（世界内；PushConstants 的 `camera_row` 由它算出行号）。
             /// 只由本世界的 pass 设置路径（`RenderTo`）写 —— 不做公开 setter，避免出现第二个写者。
-            // 2026-10-10（审计 §1.1）：零调用者的 `GetActiveCameraID()` 已删除（成员 `active_camera_id` 照旧）。
+            // 2026-10-10（审计 §1.1）：零调用者的 `GetActiveCameraID()` 已删除（活跃相机槽仍存在，
+            // 但只经 `RenderPassScopeState` 读写，不再对外暴露裸成员）。
 
             /// 当前相机的 CameraInfo 行号 = 槽号 * HGL_FRAME_SLOT_TOTAL + 本帧数据槽。
             /// 着色器端 `pc_root.camera_row` 收到的就是这个行号（scene_ubo.glsl 的 cameras[] 下标），

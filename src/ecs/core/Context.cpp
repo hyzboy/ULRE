@@ -480,8 +480,8 @@ namespace hgl
         {
             // 槽号非法（本帧尚未解析出相机认领的槽 / 槽耗尽）⇒ 退回 **0 号槽**（默认相机 / 常驻 fallback）：
             // 着色器拿到的永远是一个合法行，而不是按 INVALID_SLOT 算出的越界行（会读到别的世界的存储）。
-            const uint32_t slot = CameraInfoStorage::IsValidSlot(active_camera_id)
-                                    ? active_camera_id
+            const uint32_t slot = CameraInfoStorage::IsValidSlot(pass_scope.GetCameraSlot())
+                                    ? pass_scope.GetCameraSlot()
                                     : CameraInfoStorage::kDefaultCameraSlot;
 
             // 行号 = 相机槽 × 帧槽总数 + 帧槽（世界内算术，见 CameraInfoStorage::CameraRow）
