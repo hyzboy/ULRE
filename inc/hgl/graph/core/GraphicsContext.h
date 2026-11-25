@@ -21,6 +21,7 @@
 #include <hgl/vk/VKDevice.h>
 #include <hgl/mtl/MaterialRecipeRegistry.h>
 #include <hgl/type/UnorderedMap.h>
+#include <hgl/type/ValueArray.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/asset/LevelAssetRegistry.h>
@@ -82,6 +83,7 @@ namespace hgl::graph
     {
     private:
         VulkanDevice *device = nullptr;
+        ValueArray<void (*)()> shutdown_callbacks_;
 
         GraphModuleManager *module_manager = nullptr;
 
@@ -163,6 +165,11 @@ namespace hgl::graph
         bool async_producers_stopped_ = false;
 
     public:
+        void AddShutdownCallback(void (*callback)())
+        {
+            if (callback && !shutdown_callbacks_.Contains(callback))
+                shutdown_callbacks_.Add(callback);
+        }
         explicit GraphicsContext(VulkanDevice *dev);
         ~GraphicsContext();
 

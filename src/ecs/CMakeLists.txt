@@ -161,6 +161,7 @@ target_link_libraries(TestDebugBridgeLifecycle PRIVATE nlohmann_json::nlohmann_j
 add_ecs_test(TestDebugViewLifecycle tests/TestDebugViewLifecycle.cpp)
 
 add_ecs_test(TestCSMIncrementalPass tests/TestCSMIncrementalPass.cpp)
+add_ecs_test(TestGraphicsContextShutdownCallbacks tests/TestGraphicsContextShutdownCallbacks.cpp)
 
 # 包围盒 SoA 存储 + 值类型句柄（组件 → BoundingBoxDataStorage/BoundingBoxAccessor 改造）
 add_ecs_test(TestBoundingBoxStorage tests/TestBoundingBoxStorage.cpp)
@@ -383,6 +384,13 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestCSMIncrementalPass
         PROPERTIES LABELS "csm;pass")
+
+    add_test(
+        NAME TestGraphicsContextShutdownCallbacks
+        COMMAND TestGraphicsContextShutdownCallbacks)
+    set_tests_properties(
+        TestGraphicsContextShutdownCallbacks
+        PROPERTIES LABELS "ecs;graphics")
 
     add_test(
         NAME TestBoundingVolumeCull

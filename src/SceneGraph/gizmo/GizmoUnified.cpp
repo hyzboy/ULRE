@@ -456,6 +456,7 @@ bool EnsureGizmoSystemResources(hgl::ecs::ECSContext *world)
     if (!InitGizmoResource(graphics))
         return false;
 
+    graphics->AddShutdownCallback(&ForceReleaseGizmoSystemResources);
     g_gizmo_resident_state.resources_ready = true;
     g_gizmo_resident_state.standby = false;
     return true;

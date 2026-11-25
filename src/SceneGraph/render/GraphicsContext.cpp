@@ -28,8 +28,6 @@
 #include <hgl/type/StdString.h>
 #include <hgl/log/Log.h>
 
-#include "../gizmo/GizmoInternal.h"
-
 namespace hgl::graph
 {
     GraphicsContext::GraphicsContext(VulkanDevice *dev)
@@ -626,10 +624,9 @@ namespace hgl::graph
     {
         StopAsyncProducers();
 
-        // Gizmo 驻留资源(VDM/GeometryCreater/颜色行租约)挂在文件级 static 上,
-        // 无人释放会在 static 析构(晚于本函数)时把行还回已销毁的
-        // GlobalSSBOBufferRegistry 行池 —— 必须趁设备与模块还活着时释放。
-        ForceReleaseGizmoSystemResources();
+        for (auto callback : shutdown_callbacks_)
+            callback();
+        shutdown_callbacks_.Clear();
 
         level_asset_registry_.Clear();
 
