@@ -45,7 +45,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
 #include<hgl/vk/buffer/IndirectCommandBuffer.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/type/Constants.h>
 #include<hgl/time/Time.h>
 #include<hgl/log/Log.h>

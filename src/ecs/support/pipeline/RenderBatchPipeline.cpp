@@ -24,7 +24,7 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>

@@ -237,17 +237,14 @@ SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 
 SET(GEOMETRY_VERTEX_DATA_FILES  ${VK_INCLUDE_PATH}/VertexAttribDataAccess.h
-                                ${VK_INCLUDE_PATH}/VertexDataManager.h
                                 ${VK_INCLUDE_PATH}/VertexBufferAllocator.h
                                 ${COMMON_INCLUDE_PATH}/VertexAttribDef.h
-                                VertexAttrib.cpp
-                                VertexDataManager.cpp)
+                                VertexAttrib.cpp)
 
 SOURCE_GROUP("VertexData" FILES ${GEOMETRY_VERTEX_DATA_FILES})
 
 # --- 14. High-level Headers (SceneGraph/ECS 仍使用，但头文件在 vk 目录) ---
-SET(VK_HIGH_LEVEL_HEADERS       ${VK_INCLUDE_PATH}/VKShaderProgram.h
-                                ${VK_INCLUDE_PATH}/VKTextureLoader.h)
+SET(VK_HIGH_LEVEL_HEADERS       ${VK_INCLUDE_PATH}/VKShaderProgram.h)
 
 SOURCE_GROUP("HighLevelHeaders" FILES ${VK_HIGH_LEVEL_HEADERS})
 

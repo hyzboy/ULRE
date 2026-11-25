@@ -1,4 +1,4 @@
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VertexBufferAllocator.h>

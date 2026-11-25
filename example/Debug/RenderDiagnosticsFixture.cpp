@@ -10,7 +10,7 @@
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/graph/ssbo/InstanceCustomData.h>
 #include<hgl/graph/render/shadow/CascadedShadowController.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>

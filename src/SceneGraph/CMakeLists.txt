@@ -190,6 +190,7 @@ set(SG_RENDER_FILES ${SG_RENDER_CORE_FILES}
 # ============================================================================
 
 set(SG_GEO_CORE_FILES   ${SG_INCLUDE_PATH}/geo/VKGeometry.h
+${SG_INCLUDE_PATH}/geo/VertexDataManager.h
                         ${SG_INCLUDE_PATH}/geo/VKGeometryData.h
                         ${SG_INCLUDE_PATH}/geo/GeometryVertexFormat.h
                         ${SG_INCLUDE_PATH}/geo/AttributeCompatibility.h
@@ -201,6 +202,7 @@ set(SG_GEO_CORE_FILES   ${SG_INCLUDE_PATH}/geo/VKGeometry.h
                         ${SG_INCLUDE_PATH}/geo/Extruded.h
                         ${SG_INCLUDE_PATH}/geo/Wall.h
                         geo/VKGeometry.cpp
+                        geo/VertexDataManager.cpp
                         geo/VKGeometryData.cpp
                         geo/AttributeCompatibilityRegistry.cpp
                         geo/GeometryLoader.cpp
@@ -341,8 +343,7 @@ set(SG_TEXTURE_LOADER_FILES ${SG_INCLUDE_PATH}/texture/TextureLoader.h
 
 source_group("08.Texture\\Loader" FILES ${SG_TEXTURE_LOADER_FILES})
 
-set(SG_TEXTURE_VK_FILES ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
-                        texture/VKTextureLoader.h
+set(SG_TEXTURE_VK_FILES texture/VKTextureLoader.h
                         texture/VKTexture2DLoader.cpp
                         texture/VKTexture2DArrayLoader.cpp
                         texture/VKTextureCubeLoader.cpp)

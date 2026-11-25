@@ -8,7 +8,7 @@
 // 3) Application/demo code should not manually own final material LOD decision logic.
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/asset/GeometryPreset.h>
 #include<hgl/graph/asset/GeometryAssetRegistry.h>

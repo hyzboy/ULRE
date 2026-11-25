@@ -3,7 +3,7 @@
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/graph/geo/VKGeometry.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/module/BufferManager.h>

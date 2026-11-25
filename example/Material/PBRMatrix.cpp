@@ -12,7 +12,7 @@
 //   PBRM_PITCH / PBRM_YAW / PBRM_DIST / PBRM_TX / PBRM_Z  相机覆盖（敏感性对照）。
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>

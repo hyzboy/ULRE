@@ -10,6 +10,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
+#include<hgl/math/Matrix.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<limits>

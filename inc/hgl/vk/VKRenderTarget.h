@@ -6,8 +6,8 @@
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/graphics/contracts/EnvironmentProfile.h>   // EnvProfileID：后端无关契约
 #include<hgl/graph/ubo/ViewportInfo.h>
-#include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>

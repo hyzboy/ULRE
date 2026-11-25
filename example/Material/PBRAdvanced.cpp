@@ -14,7 +14,7 @@
 //   PBRADV_PITCH / PBRADV_YAW / PBRADV_DIST / PBRADV_TX / PBRADV_TZ  相机覆盖（敏感性对照）。
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>

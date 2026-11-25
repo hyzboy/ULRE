@@ -6,7 +6,7 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/type/Smart.h>
-#include <hgl/vk/VertexDataManager.h>
+#include <hgl/graph/geo/VertexDataManager.h>
 #include <hgl/ecs/core/Context.h>
 
 using namespace hgl;

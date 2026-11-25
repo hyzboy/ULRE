@@ -8,7 +8,6 @@
 #include<hgl/vk/VKFormat.h>
 #include<hgl/common/PrimitiveType.h>
 #include<hgl/vk/VKStruct.h>
-#include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/vk/VKRenderbufferInfo.h>
 #include<cstring>
 
@@ -253,7 +252,6 @@ using VIF=VertexInputFormat;
 
 class GeometryData;
 class Geometry;
-class Primitive;
 
 class VertexDataManager;
 using VDM=VertexDataManager;

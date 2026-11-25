@@ -15,7 +15,7 @@
 //   HDH_DIST / HDH_YAW / HDH_PITCH  相机覆盖（敏感性对照）。
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>

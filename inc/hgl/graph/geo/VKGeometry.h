@@ -8,6 +8,10 @@
 
 namespace hgl::graph{
 
+// 本头直接使用 CMMath 的 BoundingVolumes / 矩阵类型；此前靠 ViewportInfo.h 的
+// `using namespace hgl::math` 传递可见性（契约层移走后该路径不再成立）。
+using namespace hgl::math;
+
 // forward declare GeometryData to avoid including heavy headers
 class GeometryData;
 class DeviceBuffer;

@@ -14,7 +14,7 @@
 // 任何「按物理半长摆放」的视觉都必须 scale = 2 * half。
 
 #include <hgl/framework/WorkObject.h>
-#include <hgl/vk/VertexDataManager.h>
+#include <hgl/graph/geo/VertexDataManager.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/geo/GeometryCreater.h>

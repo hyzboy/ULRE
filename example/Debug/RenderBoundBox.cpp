@@ -9,7 +9,7 @@
 // 5. CameraSystem配置为ViewModel控制模式
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/log/Log.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>

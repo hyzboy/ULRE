@@ -4,14 +4,11 @@
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
 #include<hgl/type/RectScope.h>
-#include<hgl/graph/data/ImageRegion.h>
 #include<hgl/platform/Window.h>
-#include<hgl/graph/data/BitmapData.h>
-#include<hgl/graph/font/Font.h>
 #include<hgl/vk/VK.h>
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
-#include<hgl/graph/ShaderBufferSource.h>   // ShaderBufferDesc：LogCreateBufferBegin 的参数类型
+#include<hgl/graphics/contracts/ShaderBufferContract.h>   // ShaderBufferDesc：LogCreateBufferBegin 的参数类型
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKShaderModuleMap.h>
@@ -29,9 +26,6 @@
 #include<vector>
 
 namespace hgl::graph{
-class TileData;
-class TileFont;
-class FontDataSource;
 class IndirectDispatchBuffer;
 class IndirectMeshTaskBuffer;
 class StagedBuffer;
@@ -479,10 +473,5 @@ public: // Compute Pipeline相关
      */
     ComputePipeline *CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout, const bool owns_pipeline_layout=false);
 
-public:
-
-    TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
-
-    TileFont *CreateTileFont(FontDataSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class VulkanDevice
 }//namespace hgl::graph

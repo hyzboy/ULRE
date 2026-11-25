@@ -4,14 +4,11 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/VKImageView.h>
-#include<hgl/graph/data/BitmapData.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKTextureCreateInfo.h>
 #include<hgl/sync/Atomic.h>
 #include<hgl/vk/VKTextureOwner.h>
 namespace hgl::graph{
-
-BitmapData *LoadBitmapFromFile(const OSString &filename);
 
 using TextureID=int;
 class Texture

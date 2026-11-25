@@ -16,6 +16,10 @@
 
 namespace hgl::graph{
 
+// 公开签名里的 RectScope2ui 来自 CMMath；不要再依赖 ViewportInfo.h 的
+// `using namespace hgl::math` 传递可见性（契约层移走后该路径不再成立）。
+using namespace hgl::math;
+
 class BindlessTextureManager;
 
 GRAPH_MODULE_CLASS(TextureManager), public TextureOwner, public UploadLaneProvider

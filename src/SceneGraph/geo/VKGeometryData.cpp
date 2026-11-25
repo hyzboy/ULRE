@@ -2,7 +2,7 @@
 #include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/VertexDataManager.h>
 #include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::graph{

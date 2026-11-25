@@ -3,12 +3,14 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
-#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/common/ShaderStageDef.h>   // kMeshFragment：push constant 的 stage 位
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/mtl/PipelineConfig.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
+class IRenderTarget;
+
 class VulkanCmdBuffer
 {
 public:

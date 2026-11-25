@@ -2,7 +2,7 @@
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/vk/VKTexture.h>
-#include <hgl/vk/VertexDataManager.h>
+#include <hgl/graph/geo/VertexDataManager.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/asset/GeometryPreset.h>
 #include <hgl/graph/render/RenderTargetDesc.h>
