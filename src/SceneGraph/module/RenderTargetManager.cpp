@@ -453,7 +453,28 @@ bool RenderTargetManager::RebuildOffscreenRT(OffscreenRenderTarget *rt,const Ren
     if(!ResolveFramebufferInfo(desc, fbi))
         return(false);
 
-    // ---- 2. 销毁旧 framebuffer，再销毁其附件纹理 ----
+    // ---- 2. 排空本 RT 在途提交 ----
+    // 附件纹理和 framebuffer 可能在上一帧的离屏提交里仍被 GPU 读写（阴影 pass、后处理）。
+    // Destroy() 走的是 device->WaitIdle()，此处却直接释放 ⇒ 驱动层 Use-After-Free /
+    // 校验层报 FBO 与 image view 被销毁时仍在使用。这里按本 RT 自己的帧槽 fence 精确等待，
+    // 不引入全局 WaitIdle（那是全设备停顿）。
+    if(data->queues)
+    {
+        for(uint32_t i = 0; i < data->slot_count; ++i)
+        {
+            if(!data->queues[i])
+                continue;
+
+            if(!data->queues[i]->WaitLastSubmitFence() && !data->queues[i]->WaitQueue())
+            {
+                GLogError("[RenderTargetManager] Cannot rebuild target %s: offscreen slot %u is still in flight",
+                          desc.name.IsEmpty() ? "RT" : desc.name.c_str(), i);
+                return(false);
+            }
+        }
+    }
+
+    // ---- 3. 销毁旧 framebuffer，再销毁其附件纹理 ----
     // Vulkan framebuffer 依赖 image views，必须先销毁 framebuffer。
     AnsiString name = desc.name;
     if(name.IsEmpty())
