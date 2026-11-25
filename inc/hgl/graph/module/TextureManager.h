@@ -10,6 +10,7 @@
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/GpuUploadTask.h>
 #include<hgl/graph/module/GpuUploadQueue.h>
+#include<hgl/vk/UploadLaneProvider.h>
 #include<hgl/graph/module/TextureAssetTable.h>
 #include<hgl/type/ValueArray.h>
 
@@ -17,7 +18,7 @@ namespace hgl::graph{
 
 class BindlessTextureManager;
 
-GRAPH_MODULE_CLASS(TextureManager), public TextureOwner
+GRAPH_MODULE_CLASS(TextureManager), public TextureOwner, public UploadLaneProvider
 {
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
@@ -64,6 +65,9 @@ public:
 
     /// 纹理析构前：通知 bindless 经理 + 从本管理器的三张登记表注销
     void OnTextureDestroying(Texture *texture) override;
+
+    /// 上传车道信号（下层契约；交换链提交期用它串起所有在飞 DMA 拷贝）
+    UploadLaneSignal GetUploadLaneSignal() const override;
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;
 

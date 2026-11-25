@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/UploadLaneProvider.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/log/Log.h>
@@ -8,7 +9,6 @@
 
 namespace hgl::graph{
 
-class TextureManager;
 
 struct CameraInfo;
 /**
@@ -78,12 +78,13 @@ class SwapchainRenderTarget : public IRenderTarget
                           uint32_t slot_cnt);
 
     /// 上传车道来源（由 `SwapchainModule` 注入）：本 RT 不再持有 ECS 世界句柄，
-    /// 提交期需要等待的「纹理上传车道」由纹理管理器提供（无则跳过等待）。
-    graph::TextureManager *texture_manager = nullptr;
+    /// 提交期需要等待的「纹理上传车道」经**下层契约**取一个纯值（无则跳过等待）。
+    /// 注入方是纹理管理器（它实现该契约）⇒ 本层不认识任何上层具体类型。
+    graph::UploadLaneProvider *upload_lane_provider = nullptr;
 
 public:
 
-    void SetTextureManager(graph::TextureManager *tm) { texture_manager = tm; }
+    void SetUploadLaneProvider(graph::UploadLaneProvider *provider) { upload_lane_provider = provider; }
 
     ~SwapchainRenderTarget() override;
 

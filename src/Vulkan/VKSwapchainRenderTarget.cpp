@@ -1,11 +1,8 @@
-﻿#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKSwapchain.h>
-#include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/module/GpuUploadQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/common/DebugChannel.h>
@@ -249,18 +246,15 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
 
     waits[wait_count++] = SemaphoreSubmit::WaitImage(slot.image_available);
 
-    if (auto *tm = texture_manager)
+    if (upload_lane_provider)
     {
-        if (auto *uq = tm->GetUploadQueue())
-        {
-            // 上传车道 timeline：**单个等待项覆盖全部在飞 DMA 拷贝**
-            //（旧逐任务二进制 sem 收集：溢出丢弃 = 裸用未同步纹理；且提交后未消费即被
-            //  任务析构删除 = VUID-vkDestroySemaphore-semaphore-05149）
-            Semaphore *lane = uq->GetUploadLane();
-            const uint64_t lane_value = uq->GetUploadLaneValue();
-            if (lane && lane_value != 0 && wait_count < MAX_WAITS)
-                waits[wait_count++] = SemaphoreSubmit::Wait(lane, lane_value);
-        }
+        const UploadLaneSignal lane = upload_lane_provider->GetUploadLaneSignal();
+
+        // 上传车道 timeline：**单个等待项覆盖全部在飞 DMA 拷贝**
+        //（旧逐任务二进制 sem 收集：溢出丢弃 = 裸用未同步纹理；且提交后未消费即被
+        //  任务析构删除 = VUID-vkDestroySemaphore-semaphore-05149）
+        if (lane.IsValid() && wait_count < MAX_WAITS)
+            waits[wait_count++] = SemaphoreSubmit::Wait(lane.semaphore, lane.value);
     }
 
     for (uint32_t i = 0; i < extra_wait_count && wait_count < MAX_WAITS; i++)

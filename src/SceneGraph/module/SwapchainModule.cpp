@@ -277,7 +277,7 @@ bool SwapchainModule::CreateSwapchainRenderTarget(const VkExtent2D &extent, Swap
 
     sc_render_target=new SwapchainRenderTarget(device,swapchain,sync_slots,count);
     if(sc_render_target)
-        sc_render_target->SetTextureManager(tex_manager);
+        sc_render_target->SetUploadLaneProvider(tex_manager);
 
     // resize 重建时从旧 RT 继承用户声明（clear_color / env_profile 唯一权威在 RT 上，
     // 不继承的话窗口一缩放清屏色就会回到默认黑）

@@ -116,6 +116,18 @@ void TextureManager::OnTextureDestroying(Texture *tex)
     Release(tex);
 }
 
+UploadLaneSignal TextureManager::GetUploadLaneSignal() const
+{
+    UploadLaneSignal lane;
+
+    if(!upload_queue)
+        return lane;
+
+    lane.semaphore = upload_queue->GetUploadLane();
+    lane.value     = upload_queue->GetUploadLaneValue();
+    return lane;
+}
+
 const TextureID TextureManager::Add(Texture *tex)
 {
     if(!tex)
