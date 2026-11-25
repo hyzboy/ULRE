@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/support/debug/DebugViewController.h>
 #include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
+#include<hgl/vk/DebugViewState.h>
 #include<hgl/mtl/MaterialDomain.h>
 #include<hgl/mtl/MaterialResolver.h>
 
@@ -16,6 +17,22 @@ int main()
     using hgl::graph::mtl::ResolveMaterialFromRecipe;
     using hgl::graph::mtl::ResolveMaterialRenderState;
     using hgl::graph::mtl::BuildDebugViewRecipe;
+
+    int owner=0,other_owner=0;
+    hgl::graph::DebugViewState::RequestMode(DebugViewMode::WorldPosition);
+    hgl::graph::DebugViewState::SetStatus(&owner,DebugViewMode::WorldNormal,42,3,"test_error",5);
+    hgl::graph::DebugViewState::ClearStatus(&other_owner,true);
+    if(hgl::graph::DebugViewState::GetRequestedMode()!=DebugViewMode::WorldPosition
+       || hgl::graph::DebugViewState::GetAppliedMode()!=DebugViewMode::WorldNormal
+       || hgl::graph::DebugViewState::GetTargetID()!=42
+       || hgl::graph::DebugViewState::GetTrackedCount()!=5)
+        return 13;
+    hgl::graph::DebugViewState::ClearStatus(&owner,true);
+    if(hgl::graph::DebugViewState::GetRequestedMode()!=DebugViewMode::Off
+       || hgl::graph::DebugViewState::GetAppliedMode()!=DebugViewMode::Off
+       || hgl::graph::DebugViewState::GetTargetID()!=0
+       || hgl::graph::DebugViewState::GetTrackedCount()!=0)
+        return 14;
 
     MaterialRecipe coverage;
     coverage.domain=MaterialDomain::StandardOpaque;

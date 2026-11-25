@@ -23,12 +23,17 @@ flowchart LR
     end
     subgraph Engine["ULRE 引擎进程（LoadGeometry 等示例）"]
         D[DebugBridgeServer<br/>命名管道 JSON-RPC]
-        E[FrameDebugger / DebugCaptureQueue<br/>GpuQueryProfiler / RenderHealthLedger<br/>DebugViewPass]
+        E[FrameDebugger / DebugCaptureQueue<br/>GpuQueryProfiler / RenderHealthLedger]
+        F[DebugViewState]
+        G[ECS DebugViewPass]
     end
     A -- "MCP tools/call" --> B
     B -- "管道 RPC（仅 Windows 本机）" --> D
     B --> C
     D --> E
+    D --> F
+    G --> F
+    G --> E
     E -- ".ulre-captures/*.raw + *.json 清单" --> C
 ```
 
@@ -39,6 +44,10 @@ flowchart LR
 | 引擎桥接 | `src/Vulkan/DebugBridgeServer.cpp` | 在引擎进程内开命名管道 `\\.\pipe\ulre_render_debug`，把 RPC 分发到各诊断子系统 |
 | MCP Server | `tools/ulre-mcp-server/mcp_server.py` | 以 stdio 子进程运行，向 MCP 客户端暴露工具；引擎类工具透传管道 RPC，图像类工具在本地分析抓帧文件 |
 | MCP 客户端 | Copilot 等 | 启动并管理 MCP Server 子进程，把工具交给 AI Agent 调用 |
+
+调试视图的请求和状态保存在 Vulkan 的 `DebugViewState`，管道可在 ECS 世界创建前设置模式。
+ECS 的 `DebugViewPass` 负责绘制和更新状态，并在交换链提交或失败时通过帧通知完成抓取；
+Vulkan 不直接引用 ECS。
 
 关键事实：
 

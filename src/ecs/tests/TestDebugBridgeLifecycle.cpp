@@ -1,4 +1,5 @@
 #include<hgl/vk/DebugBridgeServer.h>
+#include<hgl/ecs/support/debug/DebugViewController.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/time/Time.h>
 #include<hgl/log/Log.h>
@@ -113,6 +114,36 @@ int main()
        || !::strstr(response,"missing_target_id"))
         return 4;
     CloseHandle(pipe);
+    pipe=Connect(name);
+    if(pipe==INVALID_HANDLE_VALUE)
+        return 20;
+    const char set_view[]="{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"set_debug_view\","
+                          "\"params\":{\"mode\":\"world_normal\"}}";
+    if(!WriteFile(pipe,set_view,sizeof(set_view)-1,&written,nullptr)
+       || written!=sizeof(set_view)-1)
+        return 21;
+    ::memset(response,0,sizeof(response));
+    if(!ReadFile(pipe,response,sizeof(response)-1,&received,nullptr)
+       || !::strstr(response,"\"requested_mode\":\"world_normal\"")
+       || hgl::ecs::DebugViewController::GetRequestedMode()!=hgl::graph::mtl::DebugViewMode::WorldNormal)
+        return 22;
+    CloseHandle(pipe);
+    pipe=Connect(name);
+    if(pipe==INVALID_HANDLE_VALUE)
+        return 23;
+    const char invalid_view[]="{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"set_offscreen_debug_view\","
+                              "\"params\":{\"mode\":\"unknown\"}}";
+    if(!WriteFile(pipe,invalid_view,sizeof(invalid_view)-1,&written,nullptr)
+       || written!=sizeof(invalid_view)-1)
+        return 24;
+    ::memset(response,0,sizeof(response));
+    if(!ReadFile(pipe,response,sizeof(response)-1,&received,nullptr)
+       || !::strstr(response,"unknown_debug_view_mode")
+       || hgl::ecs::DebugViewController::GetRequestedMode()!=hgl::graph::mtl::DebugViewMode::WorldNormal)
+        return 25;
+    CloseHandle(pipe);
+    if(!hgl::ecs::DebugViewController::RequestMode(hgl::graph::mtl::DebugViewMode::Off))
+        return 26;
     pipe=Connect(name);
     if(pipe==INVALID_HANDLE_VALUE)
         return 12;

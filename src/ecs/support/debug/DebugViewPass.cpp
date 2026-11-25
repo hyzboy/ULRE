@@ -12,6 +12,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/vk/DebugCaptureQueue.h>
+#include<hgl/vk/DebugViewState.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/vk/VKRenderbufferInfo.h>
@@ -22,7 +23,6 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/log/Log.h>
-#include<stdlib.h>
 
 namespace hgl::ecs
 {
@@ -44,35 +44,6 @@ namespace hgl::ecs
             VkFormat color_format=VK_FORMAT_UNDEFINED;
         };
 
-        struct Status
-        {
-            hgl::Mutex lock;
-            DebugViewMode requested=DebugViewMode::Off;
-            DebugViewMode applied=DebugViewMode::Off;
-            ECSContext *owner=nullptr;
-            uint64_t target_id=0;
-            uint32_t batches=0;
-            uint32_t entities=0;
-            const char *error=nullptr;
-        };
-
-        Status &SharedStatus()
-        {
-            static Status status;
-            static const bool initialized=[]()
-            {
-                const char *name=::getenv("ULRE_DEBUG_VIEW");
-                if(name && name[0])
-                {
-                    if(!ParseDebugViewMode(name,status.requested))
-                        GLogWarning(u8"[DebugView] Invalid ULRE_DEBUG_VIEW: %s",name);
-                }
-                return true;
-            }();
-            (void)initialized;
-            return status;
-        }
-
         hgl::Mutex &WorldLock()
         {
             static hgl::Mutex lock;
@@ -88,14 +59,7 @@ namespace hgl::ecs
         void SetStatus(ECSContext *world,DebugViewMode mode,uint64_t target_id,
                        uint32_t batches,const char *error,uint32_t entities=0)
         {
-            Status &status=SharedStatus();
-            hgl::MutexLock lock(&status.lock);
-            status.owner=world;
-            status.applied=mode;
-            status.target_id=target_id;
-            status.batches=batches;
-            status.entities=entities;
-            status.error=error;
+            DebugViewState::SetStatus(world,mode,target_id,batches,error,entities);
         }
 
         bool DropWorld(ECSContext *world,bool shutdown=false)
@@ -115,16 +79,7 @@ namespace hgl::ecs
 
         void ClearStatus(ECSContext *world,bool shutdown)
         {
-            Status &status=SharedStatus();
-            hgl::MutexLock lock(&status.lock);
-            if(status.owner!=world) return;
-            if(shutdown && Worlds().IsEmpty()) status.requested=DebugViewMode::Off;
-            status.applied=DebugViewMode::Off;
-            status.owner=nullptr;
-            status.target_id=0;
-            status.batches=0;
-            status.entities=0;
-            status.error=nullptr;
+            DebugViewState::ClearStatus(world,shutdown && Worlds().IsEmpty());
         }
 
         bool CreateTarget(ECSContext *world,IRenderTarget *main,DebugViewMode mode,
@@ -293,63 +248,32 @@ namespace hgl::ecs
 
     bool DebugViewPass::RequestMode(DebugViewMode mode)
     {
-        if(static_cast<uint32_t>(mode)>=DebugViewModeCount) return false;
-        Status &status=SharedStatus();
-        hgl::MutexLock lock(&status.lock);
-        status.requested=mode;
-        return true;
+        return DebugViewState::RequestMode(mode);
     }
 
     DebugViewMode DebugViewPass::GetRequestedMode()
     {
-        Status &status=SharedStatus();
-        hgl::MutexLock lock(&status.lock);
-        return status.requested;
+        return DebugViewState::GetRequestedMode();
     }
 
     DebugViewMode DebugViewPass::GetAppliedMode()
     {
-        Status &status=SharedStatus();
-        hgl::MutexLock lock(&status.lock);
-        return status.applied;
+        return DebugViewState::GetAppliedMode();
     }
 
     uint64_t DebugViewPass::GetTargetID()
     {
-        Status &status=SharedStatus();
-        hgl::MutexLock lock(&status.lock);
-        return status.target_id;
+        return DebugViewState::GetTargetID();
     }
 
     uint32_t DebugViewPass::GetTrackedCount()
     {
-        Status &status=SharedStatus();
-        hgl::MutexLock lock(&status.lock);
-        return status.entities;
+        return DebugViewState::GetTrackedCount();
     }
 
     AnsiString DebugViewPass::GetStatusJSON()
     {
-        Status &status=SharedStatus();
-        hgl::MutexLock lock(&status.lock);
-        AnsiString json="{\"valid\":true,\"mode\":\"";
-        json+=GetDebugViewModeName(status.applied);
-        json+="\",\"requested_mode\":\"";
-        json+=GetDebugViewModeName(status.requested);
-        json+="\",\"target_id\":";
-        json+=AnsiString::numberOf(status.target_id);
-        json+=",\"batches\":";
-        json+=AnsiString::numberOf(status.batches);
-        json+=",\"tracked_entities\":";
-        json+=AnsiString::numberOf(status.entities);
-        if(status.error)
-        {
-            json+=",\"error\":\"";
-            json+=status.error;
-            json+="\"";
-        }
-        json+="}";
-        return json;
+        return DebugViewState::GetStatusJSON();
     }
 
     void DebugViewPass::Record(ECSContext *world,RenderCmdBuffer *cmd,IRenderTarget *main)
@@ -358,12 +282,7 @@ namespace hgl::ecs
         auto *swapchain=dynamic_cast<SwapchainRenderTarget *>(main);
         if(!swapchain) return;
         hgl::MutexLock world_lock(&WorldLock());
-        DebugViewMode mode;
-        {
-            Status &status=SharedStatus();
-            hgl::MutexLock lock(&status.lock);
-            mode=status.requested;
-        }
+        const DebugViewMode mode=DebugViewState::GetRequestedMode();
         if(mode==DebugViewMode::Off)
         {
             if(!DropWorld(world))

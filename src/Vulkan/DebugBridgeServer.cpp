@@ -3,8 +3,7 @@
 #include<hgl/vk/FrameDebugger.h>
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
-#include<hgl/ecs/support/debug/DebugViewController.h>
-#include<hgl/ecs/support/debug/DebugViewPass.h>
+#include<hgl/vk/DebugViewState.h>
 #include<hgl/mtl/DebugViewMode.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/time/Time.h>
@@ -38,7 +37,7 @@ static nlohmann::json MakeMetricsJSON()
 
 static nlohmann::json MakeDebugViewJSON()
 {
-    return debug_bridge::DebugJsonFromText(hgl::ecs::DebugViewPass::GetStatusJSON());
+    return debug_bridge::DebugJsonFromText(DebugViewState::GetStatusJSON());
 }
 
 static nlohmann::json MakeCameraViewportJSON()
@@ -56,7 +55,7 @@ static nlohmann::json SetDebugViewFromRequest(const char *mode_name)
     if(!hgl::graph::mtl::ParseDebugViewMode(mode_name,mode))
         return nlohmann::json{{"valid",false},{"error","unknown_debug_view_mode"}};
 
-    hgl::ecs::DebugViewController::RequestMode(mode);
+    DebugViewState::RequestMode(mode);
     return MakeDebugViewJSON();
 }
 
@@ -355,12 +354,12 @@ bool DebugBridgeServer::Execute()
                 result=nlohmann::json{{"valid",false},{"error","unknown_debug_view_mode"}};
             else
             {
-                hgl::ecs::DebugViewPass::RequestMode(view_mode);
-                result=debug_bridge::DebugJsonFromText(hgl::ecs::DebugViewPass::GetStatusJSON());
+                DebugViewState::RequestMode(view_mode);
+                result=MakeDebugViewJSON();
             }
         }
         else if(method=="get_offscreen_debug_view")
-            result=debug_bridge::DebugJsonFromText(hgl::ecs::DebugViewPass::GetStatusJSON());
+            result=MakeDebugViewJSON();
         else if(method=="list_capture_targets")
             result=debug_bridge::DebugJsonFromText(DebugCaptureQueue::GetTargetsJSON());
         else if(method=="list_capture_buffers")
