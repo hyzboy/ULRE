@@ -15,7 +15,7 @@
 
 #include <hgl/ecs/core/entity/ComponentRow.h>
 #include <hgl/ecs/systems/render/streaming/ModelLoadPolicy.h>
-#include <hgl/graph/asset/StaticMeshModelInstance.h>
+#include <hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph
@@ -36,9 +36,9 @@ namespace hgl::ecs
         ModelLoadPolicy *policy  = nullptr;   ///< 拦截/优先级策略（可空，不拥有）
 
         // ── 装配产物与设定快照 ────────────────────────────────────────────
-        graph::StaticMeshModelInstance instance;                  ///< 自持实例
-        graph::StaticMeshModelInstance::Options options;          ///< 材质段设定快照
-        graph::StaticMeshModelInstance::SkeletonOptions skeleton_options; ///< 骨架段设定快照
+        StaticMeshModelInstance instance;                  ///< 自持实例
+        StaticMeshModelInstance::Options options;          ///< 材质段设定快照
+        StaticMeshModelInstance::SkeletonOptions skeleton_options; ///< 骨架段设定快照
 
         // ── 三段推进标志（系统写；reported 保证每段回调至多一次）──────────
         bool request_started     = false;     ///< 已向句柄表发起请求（防重复投递）

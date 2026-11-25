@@ -1,4 +1,4 @@
-#include <hgl/graph/asset/LevelLoader.h>
+﻿#include <hgl/graph/asset/LevelLoader.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/mesh/LoadStaticMesh.h>
@@ -379,7 +379,7 @@ namespace hgl::graph
                     return false;
                 }
 
-                StaticMeshModelInstance::Options options;
+                ecs::StaticMeshModelInstance::Options options;
                 options.mobility = trs.mobility;
                 if (material_bound)
                 {

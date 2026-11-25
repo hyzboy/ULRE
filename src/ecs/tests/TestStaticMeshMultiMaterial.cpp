@@ -1,16 +1,17 @@
-// 阶段二轻量验证：多材质场景的资产级材质下标透传 + 实例化行选择逻辑。
+﻿// 阶段二轻量验证：多材质场景的资产级材质下标透传 + 实例化行选择逻辑。
 // 纯数据用例，不需要设备/窗口：
 //   1) PrimitiveAsset 的 material_index 构造/复制/移动/缺省语义；
 //   2) StaticMeshModelInstance::ResolveMaterialRowIndex 的
 //      「按材质下标」与「挂载顺序轮转回退」两种模式。
 
 #include <hgl/graph/asset/PrimitiveAsset.h>
-#include <hgl/graph/asset/StaticMeshModelInstance.h>
+#include <hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::ecs;
 
 namespace
 {

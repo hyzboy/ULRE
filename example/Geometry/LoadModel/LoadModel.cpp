@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/mtl/MaterialResolver.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -7,7 +7,7 @@
 #include<hgl/graph/ssbo/MaterialDataRows.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
-#include<hgl/graph/asset/StaticMeshModelInstance.h>
+#include<hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
 #include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
@@ -56,6 +56,7 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::ecs;
 
 namespace
 {

@@ -1,4 +1,4 @@
-#include<hgl/graph/asset/StaticMeshModelInstance.h>
+﻿#include<hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/log/Log.h>
@@ -34,7 +34,7 @@ namespace
     using namespace hgl::ecs;
     using namespace hgl::math;
     using hgl::graph::StaticMeshNode;
-    using hgl::graph::StaticMeshModelInstance;
+    using hgl::ecs::StaticMeshModelInstance;
 
     constexpr float kEps = 1e-5f;
 

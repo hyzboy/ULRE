@@ -1,9 +1,9 @@
-// StaticMeshModelInstance.cpp —— .model 场景 → ECS 实例化
+﻿// StaticMeshModelInstance.cpp —— .model 场景 → ECS 实例化
 //
 // 数据流约定（见头文件说明）：节点局部 TRS 与 parentIndex 层级是唯一真源，
 // 全程不做矩阵反分解；资产复制进实例自持的 ManagedArray 以保证指针稳定。
 
-#include <hgl/graph/asset/StaticMeshModelInstance.h>
+#include <hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/MaterialData.h>
@@ -14,7 +14,7 @@
 DEFINE_LOGGER_MODULE(StaticMeshModel)
 USE_MODULE_LOGGER(StaticMeshModel)
 
-namespace hgl::graph
+namespace hgl::ecs
 {
     namespace
     {
@@ -54,7 +54,7 @@ namespace hgl::graph
     }
 
     bool StaticMeshModelInstance::InstantiateSkeleton(ecs::ECSContext                  *ctx,
-                                                      const std::vector<StaticMeshNode> &nodes,
+                                                      const std::vector<graph::StaticMeshNode> &nodes,
                                                       const std::vector<int32_t>        &root_nodes,
                                                       const SkeletonOptions             &options)
     {
@@ -80,7 +80,7 @@ namespace hgl::graph
         //    「渲染消费后再写」的 D4 一次性告警路径。
         for (size_t i = 0; i < nodes.size(); ++i)
         {
-            const StaticMeshNode &node = nodes[i];
+            const graph::StaticMeshNode &node = nodes[i];
 
             ecs::Entity *entity = world->CreateEntity<ecs::Entity>(
                 node.name.empty() ? "SceneNode" : node.name.c_str());
@@ -142,10 +142,10 @@ namespace hgl::graph
 
         // 3) 骨架包围盒：节点包围盒是 pack 里的真源，与几何是否上传无关，
         //    所以空壳阶段就能给出正确对焦范围（不然要等第一个图元落地才敢定位相机）。
-        AABB merged_box;
+        math::AABB merged_box;
         merged_box.Clear();
         bool any_box = false;
-        for (const StaticMeshNode &node : nodes)
+        for (const graph::StaticMeshNode &node : nodes)
         {
             if (!node.boundsValid || node.nodeBounds.aabb.IsEmpty())
                 continue;
@@ -164,8 +164,8 @@ namespace hgl::graph
         return true;
     }
 
-    bool StaticMeshModelInstance::AttachGeometries(const std::vector<PrimitiveAsset> &assets,
-                                                    const std::vector<StaticMeshNode> &nodes)
+    bool StaticMeshModelInstance::AttachGeometries(const std::vector<graph::PrimitiveAsset> &assets,
+                                                    const std::vector<graph::StaticMeshNode> &nodes)
     {
         if (!world)
         {
@@ -195,7 +195,7 @@ namespace hgl::graph
 
         for (size_t i = 0; i < nodes.size(); ++i)
         {
-            const StaticMeshNode &node = nodes[i];
+            const graph::StaticMeshNode &node = nodes[i];
             const int pi_count = static_cast<int>(node.primitiveIndices.size());
 
             for (int pos = attached_per_node[i]; pos < pi_count; ++pos)
@@ -209,7 +209,7 @@ namespace hgl::graph
                     break;
                 }
 
-                PrimitiveAsset *asset = owned_assets.At(primitive_index);
+                graph::PrimitiveAsset *asset = owned_assets.At(primitive_index);
                 if (!asset || !asset->IsValid())
                     break;
 
@@ -315,7 +315,7 @@ namespace hgl::graph
                 if (existing->HasDataResource())
                     continue;
 
-            const PrimitiveAsset *asset = owned_assets.At(record.asset_index);
+            const graph::PrimitiveAsset *asset = owned_assets.At(record.asset_index);
             if (!asset)
             {
                 all_bound = false;
@@ -346,8 +346,8 @@ namespace hgl::graph
     }
 
     bool StaticMeshModelInstance::Instantiate(ecs::ECSContext                  *ctx,
-                                              const std::vector<PrimitiveAsset> &assets,
-                                              const std::vector<StaticMeshNode> &nodes,
+                                              const std::vector<graph::PrimitiveAsset> &assets,
+                                              const std::vector<graph::StaticMeshNode> &nodes,
                                               const std::vector<int32_t>        &root_nodes,
                                               const Options                     &options)
     {
@@ -385,7 +385,7 @@ namespace hgl::graph
         return true;
     }
 
-    uint32_t StaticMeshModelInstance::ResolveMaterialRowIndex(const PrimitiveAsset &asset,
+    uint32_t StaticMeshModelInstance::ResolveMaterialRowIndex(const graph::PrimitiveAsset &asset,
                                                               const Options &options,
                                                               uint32_t mount_order)
     {
@@ -403,4 +403,4 @@ namespace hgl::graph
         return mount_order % options.material_row_count;
     }
 
-}//namespace hgl::graph
+}//namespace hgl::ecs

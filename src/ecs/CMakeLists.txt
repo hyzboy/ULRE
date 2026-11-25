@@ -44,6 +44,7 @@ set(ECS_GROUP_DIRS
     "systems/render/streaming:Systems\\Render\\Streaming"
     "support/cull:Support\\Culling"
     "support/transform:Support\\Transform"
+    "support/assembly:Support\\Assembly"
     "support/storage:Support\\Storage"
     "support/material:Support\\Material"
     "support/pipeline:Support\\Pipeline"

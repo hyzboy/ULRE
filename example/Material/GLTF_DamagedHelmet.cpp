@@ -1,4 +1,4 @@
-// GLTF_DamagedHelmet —— khronos glTF-Sample-Models 的 DamagedHelmet 单材质 PBR 演示。
+﻿// GLTF_DamagedHelmet —— khronos glTF-Sample-Models 的 DamagedHelmet 单材质 PBR 演示。
 //
 // 资产管线：res/model/DamagedHelmet/glTF → GLTFConvert → res/DamagedHelmet.StaticMesh。
 // glTF 的 SPLIT 贴图（metalRoughness: G=rough/B=metal + 独立 occlusion）已离线
@@ -24,7 +24,7 @@
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
-#include<hgl/graph/asset/StaticMeshModelInstance.h>
+#include<hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
@@ -52,6 +52,7 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::ecs;
 
 namespace
 {

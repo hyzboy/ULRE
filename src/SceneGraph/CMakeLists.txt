@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # ULRE.SceneGraph
 #
 # 目录约定：
@@ -326,7 +326,6 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             ${SG_INCLUDE_PATH}/asset/ModelAsset.h
                             ${SG_INCLUDE_PATH}/asset/LevelAssetRegistry.h
                             ${SG_INCLUDE_PATH}/asset/LevelLoader.h
-                            ${SG_INCLUDE_PATH}/asset/StaticMeshModelInstance.h
                             ${SG_INCLUDE_PATH}/asset/ModelTemplateManager.h
                             asset/AssetSourceMount.cpp
                             asset/AssetLoadGraph.cpp
@@ -336,7 +335,6 @@ set(SG_ASSET_SCENE_FILES    ${SG_INCLUDE_PATH}/asset/AssetSourceMount.h
                             asset/ModelAsset.cpp
                             asset/LevelAssetRegistry.cpp
                             asset/LevelLoader.cpp
-                            asset/StaticMeshModelInstance.cpp
                             asset/ModelTemplateManager.cpp)
 
 source_group("07.Asset\\Scene" FILES ${SG_ASSET_SCENE_FILES})

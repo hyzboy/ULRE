@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/core/entity/EntityHandle.h>
 #include <hgl/ecs/support/transform/TransformID.h>
@@ -12,13 +12,16 @@
 
 namespace hgl
 {
+    namespace graph
+    {
+        class PrimitiveAsset;
+        struct StaticMeshNode;
+    }
+
     namespace ecs
     {
         class ECSContext;
-    }
 
-    namespace graph
-    {
         /**
          * @brief 把 `LoadModelAsPrimitiveAssets` /
          * `LoadModelFromMemory` 的场景产物实例化进 ECS 世界。
@@ -59,7 +62,7 @@ namespace hgl
                 /// 变换行的最终移动性（默认 Static：`.model` 场景节点通常不动）
                 ecs::Mobility mobility = ecs::Mobility::Static;
                 /// 材质数据 SSBO 行（可空；非空时按图元挂载顺序轮转绑定）
-                const GlobalSSBOBinding *material_rows = nullptr;
+                const graph::GlobalSSBOBinding *material_rows = nullptr;
                 uint32_t                 material_row_count = 0;
                 /**
                  * @brief 多材质模式：`material_rows` 按**材质下标**索引
@@ -92,13 +95,13 @@ namespace hgl
             };
 
             ecs::ECSContext *world = nullptr;
-            ManagedArray<PrimitiveAsset> owned_assets;   ///< 稳定指针的资产副本（逐项 new）
+            ManagedArray<graph::PrimitiveAsset> owned_assets;   ///< 稳定指针的资产副本（逐项 new）
             std::vector<NodeRecord> node_records;        ///< 与入参 nodes 下标一一对应
             std::vector<ecs::EntityID> extra_entities;   ///< 多图元节点派生的子实体
             std::vector<PrimitiveRecord> primitive_records; ///< 已挂几何的图元（挂载顺序）
             std::vector<int32_t> attached_per_node;      ///< 每个节点已处理到的 primitiveIndices 位置
 
-            BoundingVolumes skeleton_bounds;             ///< 骨架阶段算出的整体包围盒
+            math::BoundingVolumes skeleton_bounds;             ///< 骨架阶段算出的整体包围盒
             bool            skeleton_bounds_valid = false;
             ecs::Mobility   skeleton_mobility = ecs::Mobility::Static; ///< 派生图元子实体沿用
 
@@ -115,8 +118,8 @@ namespace hgl
              *       但节点必须至少有 Transform；世界池耗尽视为失败。
              */
             bool Instantiate(ecs::ECSContext               *world,
-                             const std::vector<PrimitiveAsset> &assets,
-                             const std::vector<StaticMeshNode> &nodes,
+                             const std::vector<graph::PrimitiveAsset> &assets,
+                             const std::vector<graph::StaticMeshNode> &nodes,
                              const std::vector<int32_t>        &root_nodes,
                              const Options                     &options = {});
 
@@ -131,7 +134,7 @@ namespace hgl
              * @note 成功后 `IsInstantiated()` 为真但 `GetAttachedPrimitiveCount()` 为 0。
              */
             bool InstantiateSkeleton(ecs::ECSContext                  *world,
-                                     const std::vector<StaticMeshNode> &nodes,
+                                     const std::vector<graph::StaticMeshNode> &nodes,
                                      const std::vector<int32_t>        &root_nodes,
                                      const SkeletonOptions             &options = {});
 
@@ -143,8 +146,8 @@ namespace hgl
              * 下次调用再接着推进 —— 因此 `assets` 可以是逐步变长的快照。
              * @return 任一新挂上即 true；全部无可挂（或世界未就绪）返回 false。
              */
-            bool AttachGeometries(const std::vector<PrimitiveAsset> &assets,
-                                  const std::vector<StaticMeshNode> &nodes);
+            bool AttachGeometries(const std::vector<graph::PrimitiveAsset> &assets,
+                                  const std::vector<graph::StaticMeshNode> &nodes);
 
             /**
              * @brief 渐进激活第三段：为已挂几何的图元补 `MaterialData`。
@@ -169,7 +172,7 @@ namespace hgl
              * 空壳阶段就能给出正确的对焦范围。
              * @return 无任何有效节点包围盒时返回 false（`out` 被清空）
              */
-            bool GetSkeletonBounds(BoundingVolumes &out) const
+            bool GetSkeletonBounds(math::BoundingVolumes &out) const
             {
                 if (!skeleton_bounds_valid)
                 {
@@ -195,7 +198,7 @@ namespace hgl
             }
 
             /// 实例持有的资产副本（`GeometryData` 引用的即这些指针）
-            const PrimitiveAsset *GetOwnedAsset(int asset_index) const
+            const graph::PrimitiveAsset *GetOwnedAsset(int asset_index) const
             {
                 return asset_index >= 0 && asset_index < owned_assets.GetCount()
                      ? owned_assets.At(asset_index) : nullptr;
@@ -210,9 +213,9 @@ namespace hgl
              *   即既有单材质行为。
              * @note `material_row_count == 0` 时返回 0（调用方应先判空跳过绑定）。
              */
-            static uint32_t ResolveMaterialRowIndex(const PrimitiveAsset &asset,
+            static uint32_t ResolveMaterialRowIndex(const graph::PrimitiveAsset &asset,
                                                     const Options &options,
                                                     uint32_t mount_order);
         };
-    }//namespace graph
+    }//namespace ecs
 }//namespace hgl

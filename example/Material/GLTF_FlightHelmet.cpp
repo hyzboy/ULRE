@@ -1,4 +1,4 @@
-// GLTF_FlightHelmet —— khronos glTF-Sample-Models 的 FlightHelmet 多材质 PBR 演示。
+﻿// GLTF_FlightHelmet —— khronos glTF-Sample-Models 的 FlightHelmet 多材质 PBR 演示。
 //
 // 资产管线：res/model/FlightHelmet/glTF → GLTFConvert --no-meshlet → res/FlightHelmet.StaticMesh。
 // 自包含目录：scene / geometry / recipe / material_data / tex2d 全部住在模型目录内，
@@ -26,7 +26,7 @@
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/graph/asset/AssetSourceMount.h>
-#include<hgl/graph/asset/StaticMeshModelInstance.h>
+#include<hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
@@ -54,6 +54,7 @@
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::ecs;
 
 namespace
 {
