@@ -24,9 +24,6 @@ namespace hgl::ecs
         struct InternalGroupInfo
         {
             MaterialRuntimeRowID runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-            uint32_t material_id = 0;
-#endif
             ValueArray<uint32_t> slot_geometries;
             ValueArray<uint32_t> slot_counts;
             bool casts_shadow = false;
@@ -47,9 +44,6 @@ namespace hgl::ecs
             hgl::math::Vector3f part_center{0.0f, 0.0f, 0.0f};
             hgl::math::Vector3f part_extent{0.0f, 0.0f, 0.0f};
             float part_radius = 0.0f;
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-            bool bounds_ok = false;
-#endif
         };
     }
 
@@ -218,25 +212,12 @@ namespace hgl::ecs
                             break;
                         }
                     }
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-                    else
-                    {
-                        if (grp.material_id == mat_id && grp.runtime_row == INVALID_MATERIAL_RUNTIME_ROW_ID)
-                        {
-                            group_idx = static_cast<uint32_t>(g);
-                            break;
-                        }
-                    }
-#endif
                 }
 
                 if (group_idx == static_cast<uint32_t>(groups.GetCount()))
                 {
                     InternalGroupInfo new_grp;
                     new_grp.runtime_row = part_input.runtime_row;
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-                    new_grp.material_id = mat_id;
-#endif
                     new_grp.casts_shadow = part_input.can_cast_shadow;
                     new_grp.vertex_format = &geo->GetGeometryVertexFormat();
                     new_grp.primitive_type = input.primitive_type;
@@ -281,9 +262,6 @@ namespace hgl::ecs
                 pinfo.part_center = part_center;
                 pinfo.part_extent = part_extent;
                 pinfo.part_radius = part_radius;
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-                pinfo.bounds_ok = bounds_ok;
-#endif
 
                 part_infos.Add(pinfo);
             }

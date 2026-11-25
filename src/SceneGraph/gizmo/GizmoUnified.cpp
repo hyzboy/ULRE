@@ -160,10 +160,6 @@ static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
     if (!gizmo || !gizmo->root_transform.IsValid())
         return;
 
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-    bool updated = false;
-#endif
-
     if (gizmo->target_entity)
     {
         auto target_transform = gizmo->world->GetTransformByEntity(gizmo->target_entity->GetEntityID());
@@ -176,9 +172,6 @@ static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
             if (glm::length(scale - original_scale) > 1e-6f)
             {
                 target_transform.SetLocalScale(scale);
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-                updated = true;
-#endif
             }
         }
     }
@@ -191,9 +184,6 @@ static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
         if (glm::length(scale - original_scale) > 1e-6f)
         {
             gizmo->root_transform.SetLocalScale(scale);
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-            updated = true;
-#endif
         }
     }
 }

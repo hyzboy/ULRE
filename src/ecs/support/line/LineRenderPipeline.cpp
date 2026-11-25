@@ -731,11 +731,6 @@ namespace hgl::ecs
         line_buffer_.Reset(); // seek back to 0
 
         // Second pass: write segments
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-        uint32_t write_fail_count = 0;
-        uint32_t transform_owner_components = 0;
-        uint32_t resolved_transform_components = 0;
-#endif
         for (const auto& comp : collected_)
         {
             uint32_t transform_id = 0;
@@ -746,10 +741,6 @@ namespace hgl::ecs
                                                           : TransformAccessor{};
                 if (transform.IsValid())
                 {
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-                    ++transform_owner_components;
-#endif
-
                     const TransformDataStorage::HandleID handle = transform.GetID();
                     uint32_t slot = 0;
                     if (handle != TransformDataStorage::INVALID_HANDLE
@@ -763,11 +754,6 @@ namespace hgl::ecs
                         // 批 1.3 C3：删掉恒真守卫——`resolved` 本身就是 uint32_t，
                         // `resolved > UINT32_MAX` 在 C++ 里恒为 false，只会给出「这里有边界保护」的假信心。
                         transform_id = resolved;
-
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-                        if (transform_id != 0)
-                            ++resolved_transform_components;
-#endif
                     }
                 }
             }
@@ -775,59 +761,15 @@ namespace hgl::ecs
             for (const auto& seg : comp->lines)
             {
                 // P2：width 入 SSBO（删 slot 分组）——单 buffer 顺序写入
-                if (!line_buffer_.AddSegment(seg.from, seg.to, seg.color_index,
-                                             static_cast<float>(comp->width),
-                                             seg.min_width,
-                                             transform_id))
-                {
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-                    ++write_fail_count;
-#endif
-                }
+                (void)line_buffer_.AddSegment(seg.from, seg.to, seg.color_index,
+                                              static_cast<float>(comp->width),
+                                              seg.min_width,
+                                              transform_id);
             }
         }
 
         // Tally total
         total_line_count_ = line_buffer_.line_count;
-
-#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
-        //if (write_fail_count > 0 || total_line_count_ != expected_total)
-        //{
-        //    GLogWarning("[LineRenderPipeline] Build mismatch: expected=%u built=%u write_fail=%u collected_components=%zu",
-        //                expected_total,
-        //                total_line_count_,
-        //                write_fail_count,
-        //                collected_.size());
-
-        //    GLogWarning("[LineRenderPipeline]   line_buffer: built=%u capacity=%u pos_valid=%d color_valid=%d",
-        //                line_buffer_.line_count,
-        //                line_buffer_.gpu_capacity,
-        //                line_buffer_.va_pos.IsValid() ? 1 : 0,
-        //                line_buffer_.va_color.IsValid() ? 1 : 0);
-        //}
-
-        //if (transform_owner_components > 0)
-        //{
-        //    static uint32_t s_diag_frame = 0;
-        //    ++s_diag_frame;
-
-        //    if ((s_diag_frame % 120u) == 1u || resolved_transform_components == 0)
-        //    {
-        //        LinePeriodicLog(s_line_log_ticks[4], "[LineRenderPipeline] TransformID resolve: owners=%u resolved_nonzero=%u static=%u dynamic=%u dynamic_base=%u",
-        //                 transform_owner_components,
-        //                 resolved_transform_components,
-        //                 static_count,
-        //                 dynamic_count,
-        //                 dynamic_base);
-        //    }
-        //}
-
-        //LinePeriodicLog(s_line_log_ticks[5], "[LineRenderPipeline] Build summary: collected=%zu expected_lines=%u built_lines=%u write_fail=%u",
-        //         collected_.size(),
-        //         expected_total,
-        //         total_line_count_,
-        //         write_fail_count);
-#endif
 
         // IndirectMeshDraw：写 mesh per-draw 参数（Line 单 draw 非实例化——
         // 绘制时 gl_DrawID=0；shader 经 MeshDrawCommand -> geometry_id 查全局池）
