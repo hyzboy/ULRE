@@ -104,9 +104,7 @@ namespace hgl::ecs
         SAFE_CLEAR(mesh_draw_params);
         line_count   = 0;
         gpu_capacity = 0;
-        failed_capacity = 0;
-        retry_delay_frames = 0;
-        last_failure_frame = 0;
+        backoff.Reset();
     }
 
     bool LineRenderPipeline::LineBuffer::EnsureCapacity(
@@ -148,30 +146,15 @@ namespace hgl::ecs
 
         // Build replacement resources before touching the live buffer. Geometric growth avoids
         // repeated reallocations when the visible line count increases gradually.
-        const uint64_t granule = LineRenderPipeline::LINES_GRANULE;
-        // CreateVAB currently computes stride * vertex_count as uint32_t.
-        const uint64_t max_capacity = 0xFFFFFFFFu / (2u * 3u * sizeof(float));
-        const uint64_t required_capacity = needed;
-        const uint64_t rounded_required =
-            ((required_capacity + granule - 1u) / granule) * granule;
-        uint64_t target_capacity = rounded_required;
-
-        if (gpu_capacity)
-        {
-            const uint64_t doubled_capacity = static_cast<uint64_t>(gpu_capacity) * 2u;
-            if (target_capacity < doubled_capacity)
-                target_capacity = doubled_capacity;
-        }
-
-        target_capacity = ((target_capacity + granule - 1u) / granule) * granule;
-        if (target_capacity > max_capacity)
-            target_capacity = rounded_required;
-
-        if (target_capacity > max_capacity)
+        uint32_t new_cap = 0;
+        if (!detail::ComputeLineBufferTargetCapacity(needed,
+                                                     LINES_GRANULE,
+                                                     gpu_capacity,
+                                                     new_cap))
         {
             GLogError("[LineRenderPipeline] LineBuffer capacity overflow: need=%u max=%llu",
                       needed,
-                      static_cast<unsigned long long>(max_capacity));
+                      static_cast<unsigned long long>(detail::kLineBufferMaxCapacity));
             return false;
         }
 
@@ -181,78 +164,26 @@ namespace hgl::ecs
             return false;
         }
 
-        const uint32_t new_cap = static_cast<uint32_t>(target_capacity);
-        if (failed_capacity == new_cap
-         && retry_delay_frames > 0
-         && static_cast<uint32_t>(frame_serial - last_failure_frame) < retry_delay_frames)
+        if (backoff.ShouldSkip(new_cap, frame_serial))
             return false;
 
         auto record_failure = [&]()
         {
-            if (failed_capacity != new_cap)
-            {
-                failed_capacity = new_cap;
-                retry_delay_frames = 1;
-            }
-            else if (retry_delay_frames < 60)
-            {
-                retry_delay_frames = retry_delay_frames > 30
-                    ? 60
-                    : retry_delay_frames * 2;
-            }
-            last_failure_frame = frame_serial;
+            backoff.RecordFailure(new_cap, frame_serial);
             return false;
         };
 
-        graph::Geometry* candidate_geometry = graph::CreateGeometry(
-            dev,
-            CreateLineGeometryVertexFormat(),
-            AnsiString("LineBuffer:Slot") + AnsiString::numberOf(frame_slot),
-            new_cap * 2u,
-            0,
-            graph::IndexType::AUTO,
-            nullptr,
-            graph::BufferAllocPolicy::StagedUpload);
-        graph::GeometryDataBuffer* candidate_data_buffer = nullptr;
-        graph::GeometryDrawRange* candidate_draw_range = nullptr;
-
-        auto discard_candidate = [&]()
+        detail::LineBufferCandidate candidate;
+        if (!candidate.Create(dev,
+                              CreateLineGeometryVertexFormat(),
+                              AnsiString("LineBuffer:Slot") + AnsiString::numberOf(frame_slot),
+                              new_cap,
+                              "[LineRenderPipeline]"))
         {
-            SAFE_CLEAR(candidate_data_buffer);
-            SAFE_CLEAR(candidate_draw_range);
-            SAFE_CLEAR(candidate_geometry);
-        };
-
-        if (!candidate_geometry)
-        {
-            GLogError("[LineRenderPipeline] Failed to create replacement LineBuffer geometry (capacity=%u)",
-                      new_cap);
             return record_failure();
         }
 
-        // 顶点输入统一为 SSBO：GeometryDataBuffer 槽位数 = Geometry 语义数
-        const uint32_t semantic_count = candidate_geometry->GetGeometryVertexFormat().GetCount();
-
-        candidate_data_buffer = new graph::GeometryDataBuffer(
-            semantic_count,
-            candidate_geometry->GetIBO(),
-            candidate_geometry->GetVDM());
-        if (!candidate_data_buffer || !candidate_data_buffer->Update(candidate_geometry))
-        {
-            GLogError("[LineRenderPipeline] GeometryDataBuffer::Update failed");
-            discard_candidate();
-            return record_failure();
-        }
-
-        candidate_draw_range = new graph::GeometryDrawRange();
-        if (!candidate_draw_range)
-        {
-            GLogError("[LineRenderPipeline] Failed to create replacement LineBuffer draw range");
-            discard_candidate();
-            return record_failure();
-        }
-        candidate_draw_range->Set(candidate_geometry);
-        candidate_draw_range->vertex_count = 0;
+        graph::Geometry *candidate_geometry = candidate.geometry;
 
         const int pos_idx = candidate_geometry->GetVABIndex(graph::VertexSemantic::Position);
         const int color_idx = candidate_geometry->GetVABIndex(graph::VertexSemantic::Color);
@@ -262,7 +193,7 @@ namespace hgl::ecs
         if (pos_idx < 0 || color_idx < 0 || transform_idx < 0 || size_idx < 0)
         {
             GLogError("[LineRenderPipeline] Replacement LineBuffer is missing a required vertex semantic");
-            discard_candidate();
+            candidate.Discard();
             return record_failure();
         }
 
@@ -299,19 +230,14 @@ namespace hgl::ecs
                 SAFE_CLEAR(draw_range);
                 SAFE_CLEAR(geometry);
 
-                geometry = candidate_geometry;
-                candidate_geometry = nullptr;
-                data_buffer = candidate_data_buffer;
-                candidate_data_buffer = nullptr;
-                draw_range = candidate_draw_range;
-                candidate_draw_range = nullptr;
+                candidate.Install(geometry, data_buffer, draw_range);
                 replacement_installed = true;
             }
         }
 
         if (!replacement_installed)
         {
-            discard_candidate();
+            candidate.Discard();
             return record_failure();
         }
 
@@ -328,9 +254,7 @@ namespace hgl::ecs
 
         line_count = 0;
         gpu_capacity = new_cap;
-        failed_capacity = 0;
-        retry_delay_frames = 0;
-        last_failure_frame = 0;
+        backoff.Reset();
         return true;
     }
 
@@ -380,10 +304,8 @@ namespace hgl::ecs
 
         if (!wrote_ok)
         {
-            const bool rolled_back = va_pos.Seek(rollback_cursor)
-                                   & va_color.Seek(rollback_cursor)
-                                   & va_transform.Seek(rollback_cursor)
-                                   & va_width.Seek(rollback_cursor);
+            const bool rolled_back = detail::SeekAllViews(rollback_cursor,
+                                                          va_pos, va_color, va_transform, va_width);
 
             LinePeriodicLog(s_line_log_ticks[4],
                             "[LineRenderPipeline] AddSegment 写入失败：本次线段整体丢弃"

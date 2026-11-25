@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/ecs/support/pipeline/RenderPipelineBase.h>
+#include <hgl/ecs/support/line/LineBufferCommon.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/vk/buffer/TypedArrayView.h>
 #include <hgl/mtl/PipelineConfig.h>
@@ -84,9 +85,7 @@ namespace hgl::ecs
 
             uint32_t line_count   = 0;
             uint32_t gpu_capacity = 0;   ///< current VAB capacity in line-count
-            uint32_t failed_capacity = 0;
-            uint32_t retry_delay_frames = 0;
-            uint32_t last_failure_frame = 0;
+            detail::LineBufferBackoff backoff;  ///< 扩容失败退避（与 Line 共用同一策略）
 
             graph::Geometry*  geometry  = nullptr;
             graph::GeometryDataBuffer* data_buffer = nullptr;
