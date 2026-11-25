@@ -1918,28 +1918,77 @@ int main(int argc, char** argv)
         bool        forbidden = false;   // true：该 needle 必须**不存在**（禁复活）
     };
 
-    auto verify_source_contracts = [](const int test_no, const SourceContract *list,
-                                      const uint count) -> int
+    /// 收集系统实现按职责拆到多个 TU。契约若只认 `RenderCollectSystem.cpp` 单文件，
+    /// 拆分本身就会让门禁假红、也会让「禁复活」漏掉拆出去的单元。这里把整组收集
+    /// 源文件拼成一份文本，判据语义（整组内存在 / 整组内不存在）保持不变。
+    auto read_collect_group_sources = [](AnsiString &out_text) -> bool
+    {
+        static const OSString kCollectSources[] =
+        {
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_PrimitiveNormalize.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_CacheReplay.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollectInternal.cpp"),
+        };
+
+        out_text = "";
+
+        bool any = false;
+        for (const OSString &path : kCollectSources)
+        {
+            hgl::io::OpenFileInputStream fis(path);
+            if (!fis || fis->GetSize() <= 0)
+                continue;
+
+            char chunk[4096];
+            int64 got;
+            while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)
+                out_text.Strcat(chunk, static_cast<int>(got));
+
+            out_text += "\n";
+            any = true;
+        }
+
+        return any;
+    };
+
+    auto verify_source_contracts = [read_collect_group_sources](const int test_no,
+                                                                const SourceContract *list,
+                                                                const uint count) -> int
     {
         for (uint i = 0; i < count; ++i)
         {
             const SourceContract &k = list[i];
 
-            hgl::io::OpenFileInputStream fis(k.path);
-            if (!fis)
-            {
-                GLogError(u8"Test %d Failed: cannot open %s (run from repo root)", test_no, k.file);
-                return test_no;
-            }
-
-            if (fis->GetSize() <= 0)
-            {
-                GLogError(u8"Test %d Failed: %s is empty", test_no, k.file);
-                return test_no;
-            }
-
             AnsiString src;
+
+            const bool is_collect_group =
+                strcmp(k.path.c_str(), "src/ecs/systems/render/collect/RenderCollectSystem.cpp") == 0;
+
+            if (is_collect_group)
             {
+                if (!read_collect_group_sources(src))
+                {
+                    GLogError(u8"Test %d Failed: cannot read collect group sources (run from repo root)",
+                              test_no);
+                    return test_no;
+                }
+            }
+            else
+            {
+                hgl::io::OpenFileInputStream fis(k.path);
+                if (!fis)
+                {
+                    GLogError(u8"Test %d Failed: cannot open %s (run from repo root)", test_no, k.file);
+                    return test_no;
+                }
+
+                if (fis->GetSize() <= 0)
+                {
+                    GLogError(u8"Test %d Failed: %s is empty", test_no, k.file);
+                    return test_no;
+                }
+
                 char chunk[4096];
                 int64 got;
                 while ((got = fis->Read(chunk, static_cast<int64>(sizeof(chunk)))) > 0)

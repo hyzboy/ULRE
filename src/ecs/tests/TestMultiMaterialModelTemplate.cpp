@@ -51,6 +51,35 @@ namespace
         return true;
     }
 
+    /// 收集系统实现已按职责拆到多个 TU（材质计划 / 图元模板规范化 / 主帧缓存重放）。
+    /// 契约扫描必须覆盖**整组**源文件，否则拆分本身会让门禁假红。
+    bool ReadCollectSources(AnsiString &out_text)
+    {
+        static const OSString kCollectSources[] =
+        {
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_PrimitiveNormalize.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_CacheReplay.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollectInternal.cpp"),
+        };
+
+        out_text = "";
+
+        bool any = false;
+        for (const OSString &path : kCollectSources)
+        {
+            AnsiString part;
+            if (!ReadSource(path, part))
+                continue;
+
+            out_text += part;
+            out_text += "\n";
+            any = true;
+        }
+
+        return any;
+    }
+
     bool ContainsToken(const AnsiString &src, const char *needle)
     {
         return strstr(src.c_str(), needle) != nullptr;
@@ -454,7 +483,7 @@ namespace
     {
         AnsiString collect_src, batch_src;
 
-        if (!ReadSource(OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"), collect_src)
+        if (!ReadCollectSources(collect_src)
          || !ReadSource(OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"), batch_src))
         {
             GLogError(u8"TestMultiMaterialModelTemplate: 无法读取源文件");
