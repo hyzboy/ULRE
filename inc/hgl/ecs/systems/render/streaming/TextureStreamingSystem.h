@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/graph/module/TextureLoadCommitter.h>
 #include<hgl/type/String.h>
 

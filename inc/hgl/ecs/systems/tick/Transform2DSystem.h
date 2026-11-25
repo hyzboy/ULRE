@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/type/RectScope.h>
 
 namespace hgl::ecs

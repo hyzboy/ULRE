@@ -1,5 +1,5 @@
 #include<hgl/ecs/core/render/RenderGraph.h>
-#include<hgl/ecs/core/SystemGroup.h>
+#include<hgl/ecs/core/system/SystemGroup.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/systems/render/frame/RenderSystemCore.h>

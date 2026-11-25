@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/world/assembly/gizmo/GizmoTypes.h>
 #include<hgl/vk/VK.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<memory>
 
 namespace hgl

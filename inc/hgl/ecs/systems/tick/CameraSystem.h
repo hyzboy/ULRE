@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraInputMapping.h>
 #include<hgl/math/Vector.h>

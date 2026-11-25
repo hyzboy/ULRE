@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
-#include <hgl/ecs/core/System.h>
-#include <hgl/ecs/core/SystemGroup.h>
+#include <hgl/ecs/core/system/System.h>
+#include <hgl/ecs/core/system/SystemGroup.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <hgl/type/String.h>
 #include <vector>

@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/ecs/support/storage/CameraSlotGuard.h>
 #include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/graph/render/RenderTargetDesc.h>

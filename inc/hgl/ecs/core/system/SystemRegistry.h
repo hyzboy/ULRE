@@ -1,7 +1,7 @@
 #pragma once
 
-#include<hgl/ecs/core/System.h>
-#include<hgl/ecs/core/SystemScheduleState.h>
+#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/core/system/SystemScheduleState.h>
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<hgl/type/PtrArray.h>
 #include<hgl/type/String.h>

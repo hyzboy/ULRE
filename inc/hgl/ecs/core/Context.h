@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/ecs/core/entity/Object.h>
 #include<hgl/ecs/core/entity/Entity.h>
-#include<hgl/ecs/core/System.h>
-#include<hgl/ecs/core/SystemGroupActivity.h>
-#include<hgl/ecs/core/SystemRegistry.h>
+#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/core/system/SystemGroupActivity.h>
+#include<hgl/ecs/core/system/SystemRegistry.h>
 #include<hgl/ecs/core/FrameLaneWaitSet.h>
 #include<hgl/ecs/core/RenderPassScopeState.h>
 #include<hgl/ecs/core/MainFrameTopologyState.h>

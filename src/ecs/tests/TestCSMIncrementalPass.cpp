@@ -4657,7 +4657,7 @@ int main(int argc, char** argv)
             { "ComponentRow.h", OS_TEXT("inc/hgl/ecs/core/entity/ComponentRow.h"),
               "SystemGroupID GetSystemGroup()",
               "组件侧又声明系统组（T2-c 已把组归属搬去类型表：组件对象不得再背 vtable）", true },
-            { "SystemGroupActivity.h", OS_TEXT("inc/hgl/ecs/core/SystemGroupActivity.h"),
+            { "SystemGroupActivity.h", OS_TEXT("inc/hgl/ecs/core/system/SystemGroupActivity.h"),
               "uint32_t component_counts[kSystemGroupCount]",
               "组计数退回按字符串键控的容器（O(1) 数组缺失）" },
             { "ContextSystems.cpp", OS_TEXT("src/ecs/core/ContextSystems.cpp"),

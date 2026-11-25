@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include <hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include <hgl/ecs/support/material/MaterializationEpochState.h>
 #include <hgl/ecs/support/storage/CollectCacheState.h>

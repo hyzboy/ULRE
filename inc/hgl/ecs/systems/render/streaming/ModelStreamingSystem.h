@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>

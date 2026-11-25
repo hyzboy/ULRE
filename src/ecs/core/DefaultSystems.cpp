@@ -2,7 +2,7 @@
 #include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include <memory>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/SystemGroup.h>
+#include <hgl/ecs/core/system/SystemGroup.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>

@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/system/System.h>
 #include <string>
 #include <vector>
 #include <map>

@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VKDevice.h>
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/transform/TransformID.h>
 #include<vector>

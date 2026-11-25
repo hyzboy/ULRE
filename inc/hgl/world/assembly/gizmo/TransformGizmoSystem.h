@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include <hgl/world/assembly/gizmo/GizmoTypes.h>
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<memory>
 

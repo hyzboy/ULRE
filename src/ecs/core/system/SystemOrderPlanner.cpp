@@ -1,4 +1,4 @@
-#include <hgl/ecs/core/SystemOrderPlanner.h>
+#include <hgl/ecs/core/system/SystemOrderPlanner.h>
 
 namespace hgl::ecs
 {

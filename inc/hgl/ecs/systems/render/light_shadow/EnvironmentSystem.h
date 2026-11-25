@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/ecs/core/entity/EntityHandle.h>
 #include<hgl/ecs/systems/render/light_shadow/SkyEnvironmentConfig.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>

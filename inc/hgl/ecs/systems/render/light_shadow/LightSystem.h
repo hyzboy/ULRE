@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/graph/ubo/LightRow.h>
 #include<hgl/math/Vector.h>
 #include<hgl/color/Color4f.h>

@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/vk/buffer/StructView.h>
 #include<hgl/graph/ubo/ColorPalette.h>
 #include<hgl/color/Color4f.h>

@@ -1,5 +1,5 @@
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/system/System.h>
 #include <algorithm>
 
 namespace hgl::ecs

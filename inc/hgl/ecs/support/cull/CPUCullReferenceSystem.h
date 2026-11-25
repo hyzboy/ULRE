@@ -1,5 +1,5 @@
 #pragma once
-#include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/system/System.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/math/Matrix.h>

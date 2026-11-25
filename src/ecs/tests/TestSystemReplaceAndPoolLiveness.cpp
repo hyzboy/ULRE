@@ -1,4 +1,4 @@
-﻿// TestSystemReplaceAndPoolLiveness.cpp —— §1 无争议补充项 S1 / S2 的判据用例
+// TestSystemReplaceAndPoolLiveness.cpp —— §1 无争议补充项 S1 / S2 的判据用例
 //
 // S1：系统替换必须按**键（类型）**摘旧实例 —— 同类型注册两次后，`systems_by_element_type`
 //     里只应留新实例；组开关（`SetSystemGroupEnabled`）不得再碰被替换掉的旧实例。
@@ -9,8 +9,8 @@
 //                  S2 红 = 「DestroyRow 后 Row() 仍返回非空（悬垂指针）」；
 //                  S2-b 红 = DestroyRowAt 里 SetOwner 出现在 ~T() 之后。
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/System.h>
-#include <hgl/ecs/core/SystemOrderPlanner.h>
+#include <hgl/ecs/core/system/System.h>
+#include <hgl/ecs/core/system/SystemOrderPlanner.h>
 #include <hgl/ecs/support/storage/ComponentPool.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>

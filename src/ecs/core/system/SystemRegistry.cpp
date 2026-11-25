@@ -1,6 +1,6 @@
-#include <hgl/ecs/core/SystemRegistry.h>
+#include <hgl/ecs/core/system/SystemRegistry.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/core/SystemOrderPlanner.h>
+#include <hgl/ecs/core/system/SystemOrderPlanner.h>
 #include <hgl/log/Log.h>
 #include <typeinfo>
 

@@ -33,6 +33,7 @@ file(GLOB_RECURSE ECS_TEST_FILES CONFIGURE_DEPENDS
 set(ECS_GROUP_DIRS
     "components:Components"
     "core:Core"
+    "core/system:Core\\System"
     "core/entity:Core\\Entity"
     "core/render:Core\\Render"
     "systems/tick:Systems\\Tick"

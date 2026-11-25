@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/ecs/support/pipeline/RenderPassSlot.h>   // 跨模块单源：pass 槽位/遍数（T4c3a）
-#include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/system/System.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKQueue.h>
 #include <hgl/vk/VKCommandBuffer.h>

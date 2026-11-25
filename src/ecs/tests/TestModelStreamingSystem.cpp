@@ -1,5 +1,5 @@
 #include<hgl/ecs/systems/render/streaming/ModelStreamingSystem.h>
-#include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/system/System.h>
 #include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/MaterialRecipe.h>

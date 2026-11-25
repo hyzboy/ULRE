@@ -13,7 +13,7 @@
 //      - 模拟后（Jolt -> ECS）：Dynamic 刚体的模拟结果写回 TransformAccessor；
 //   5. 物理场景查询：射线检测（Raycast）、重叠体查询（OverlapSphere、OverlapBox）。
 
-#include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/system/System.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/RigidBodyComponent.h>
 #include <hgl/ecs/components/ModelCollisionProxyComponent.h>
