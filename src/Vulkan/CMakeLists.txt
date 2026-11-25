@@ -196,7 +196,7 @@ SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
 # --- 9. Render Target Base ---
 SET(VK_RENDER_TARGET_FILES      ${VK_INCLUDE_PATH}/VKRenderTarget.h
                                 ${VK_INCLUDE_PATH}/VKRenderTargetData.h
-                                ${VK_INCLUDE_PATH}/VKRenderTargetSingle.h
+                                ${VK_INCLUDE_PATH}/VKOffscreenRenderTarget.h
                                 ${VK_INCLUDE_PATH}/VKRenderTargetSwapchain.h
                                 ${VK_INCLUDE_PATH}/VKRenderbufferInfo.h
                                 VKRenderTarget.cpp
@@ -236,7 +236,7 @@ SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 
 SET(GEOMETRY_VERTEX_DATA_FILES  ${VK_INCLUDE_PATH}/VertexAttribDataAccess.h
                                 ${VK_INCLUDE_PATH}/VertexDataManager.h
-                                ${VK_INCLUDE_PATH}/VertexAttrib.h
+                                ${COMMON_INCLUDE_PATH}/VertexAttribDef.h
                                 VertexAttrib.cpp
                                 VertexDataManager.cpp)
 

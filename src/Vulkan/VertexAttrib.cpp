@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VertexAttrib.h>
+#include<hgl/common/VertexAttribDef.h>
 #include<hgl/vk/VKFormat.h>
 
 namespace hgl

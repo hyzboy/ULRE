@@ -13,7 +13,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<hgl/vk/VKRenderTargetSingle.h>
+#include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/vk/DebugCaptureQueue.h>
 #include<hgl/vk/VKDevice.h>

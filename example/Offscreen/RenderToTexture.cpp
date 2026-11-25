@@ -12,7 +12,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<hgl/vk/VKRenderTargetSingle.h>
+#include<hgl/vk/VKOffscreenRenderTarget.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/world/assembly/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>

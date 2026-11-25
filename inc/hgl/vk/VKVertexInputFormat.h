@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<vulkan/vulkan.h>
-#include<hgl/vk/VertexAttrib.h>
+#include<hgl/common/VertexAttribDef.h>
 
 namespace hgl::graph
 {
