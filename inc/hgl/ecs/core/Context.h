@@ -7,6 +7,7 @@
 #include<hgl/ecs/core/SystemGroupActivity.h>
 #include<hgl/ecs/core/SystemRegistry.h>
 #include<hgl/ecs/core/FrameLaneWaitSet.h>
+#include<hgl/ecs/core/RenderPassShadowState.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/RenderPassRequest.h>
@@ -302,10 +303,8 @@ namespace hgl
             /// 的四组对拍。快路径**要求**快照开启，反之不成立。
             bool main_frame_collect_cache_enabled = false;
 
-            /// 当前 Pass 是否为阴影贴图生成 Pass
-            bool is_current_pass_shadow = false;
-            glm::vec3 current_pass_shadow_origin{0.0f};
-            bool has_shadow_origin = false;
+            /// 当前 Pass 的阴影上下文（是否阴影 pass + 有效参考原点）
+            RenderPassShadowState pass_shadow;
 
             /// 场景渲染工作流模式（默认 StandardLitCSM：标准 3D 陆地主光级联阴影）
             ScenePipelineMode scene_pipeline_mode = ScenePipelineMode::StandardLitCSM;
@@ -519,9 +518,9 @@ namespace hgl
                 primitive_topology_ledger.MarkDynamicFact(kind, count);
             }
 
-            bool IsCurrentPassShadow() const { return is_current_pass_shadow; }
-            bool HasShadowOrigin() const { return has_shadow_origin; }
-            const glm::vec3 &GetShadowOrigin() const { return current_pass_shadow_origin; }
+            bool IsCurrentPassShadow() const { return pass_shadow.IsShadowPass(); }
+            bool HasShadowOrigin() const { return pass_shadow.HasOrigin(); }
+            const glm::vec3 &GetShadowOrigin() const { return pass_shadow.Origin(); }
 
             void SetScenePipelineMode(ScenePipelineMode mode)
             {

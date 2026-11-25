@@ -517,8 +517,7 @@ namespace hgl::ecs
 
                         ctx->active_camera_id = CameraInfoStorage::kDefaultCameraSlot;
                         ctx->active_mobility_filter = -1;
-                        ctx->is_current_pass_shadow = false;
-                        ctx->has_shadow_origin = false;
+                        ctx->pass_shadow.End();
                     }
                 }
             } state_guard{
@@ -574,24 +573,19 @@ namespace hgl::ecs
             const bool foreign_target =
                 req.target && (req.target != saved_target);
 
-            is_current_pass_shadow = req.is_shadow_pass || foreign_target;
-            has_shadow_origin = false;
+            pass_shadow.Begin(req.is_shadow_pass || foreign_target);
 
             if (req.is_shadow_pass)
             {
                 if (req.shadow_reference_camera)
                 {
-                    current_pass_shadow_origin = glm::vec3(req.shadow_reference_camera->position);
-                    has_shadow_origin = true;
+                    pass_shadow.SetOrigin(glm::vec3(req.shadow_reference_camera->position));
                 }
                 else
                 {
                     const graph::CameraInfo *cam = GetActiveCameraInfo();
                     if (cam)
-                    {
-                        current_pass_shadow_origin = glm::vec3(cam->pos.x, cam->pos.y, cam->pos.z);
-                        has_shadow_origin = true;
-                    }
+                        pass_shadow.SetOrigin(glm::vec3(cam->pos.x, cam->pos.y, cam->pos.z));
                 }
             }
 
@@ -651,8 +645,7 @@ namespace hgl::ecs
             }
 
             active_mobility_filter = -1;
-            is_current_pass_shadow = false;
-            has_shadow_origin = false;
+            pass_shadow.End();
 
             // 关键同步（下沿保护）：本帧离屏提交完成后立即等该 RT 自己的 queue fence！
             // 必须在恢复主相机共享数据前等，因为 GPU 仍在异步读取本 pass 提交的光源
