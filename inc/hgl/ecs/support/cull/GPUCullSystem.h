@@ -34,6 +34,8 @@ namespace hgl::ecs
      */
     class GPUCullSystem : public System
     {
+        friend struct GPUCullBatchLayoutTestAccess;
+
     public:
         GPUCullSystem();
         ~GPUCullSystem();
@@ -86,7 +88,7 @@ namespace hgl::ecs
         /// 与台架 `counters[bucket]`（本桶幸存数）配成一对，逐桶走查仍然成立。
         bool GetBatchLayout(uint32_t pass_index, uint32_t index, uint32_t &row_base, uint32_t &capacity) const
         {
-            if (index >= batch_count_[pass_index] || index >= kMaxBatches || pass_index >= kArenaPasses)
+            if (pass_index >= kArenaPasses || index >= kMaxBatches || index >= batch_count_[pass_index])
                 return false;
 
             const BatchInfoRow &row = batch_info_staging_[BatchBlockBase(pass_index) + index];

@@ -9,7 +9,14 @@
 //                  帧号推进后 != 2；null 入参被计数。
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/pipeline/RenderBatchPipeline.h>
+// Keep the invalid-pass regression observable even when MSVC optimizes away the invalid read.
+#ifdef _MSC_VER
+#pragma optimize("", off)
+#endif
 #include <hgl/ecs/support/cull/GPUCullSystem.h>
+#ifdef _MSC_VER
+#pragma optimize("", on)
+#endif
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -27,6 +34,14 @@ namespace hgl::ecs
             context.active = true;
             context.PrepareRenderPassSetup(slot);
             context.active = was_active;
+        }
+    };
+
+    struct GPUCullBatchLayoutTestAccess
+    {
+        static void SetCount(GPUCullSystem &system, uint32_t pass, uint32_t count)
+        {
+            system.batch_count_[pass] = count;
         }
     };
 }
@@ -88,6 +103,32 @@ int main()
     }
 
     GPUCullSystem gpu_cull;
+    for (uint32_t pass = 0; pass < GPUCullSystem::kArenaPasses; ++pass)
+    {
+        gpu_cull.SetBatchLayout(pass, GPUCullSystem::kMaxBatches - 1, 16u + pass * 4u, 32u + pass, 0, 0);
+        GPUCullBatchLayoutTestAccess::SetCount(gpu_cull, pass, GPUCullSystem::kMaxBatches);
+        uint32_t row = 0;
+        uint32_t capacity = 0;
+        if (!gpu_cull.GetBatchLayout(pass, GPUCullSystem::kMaxBatches - 1, row, capacity)
+            || row != 16u + pass * 4u || capacity != 32u + pass
+            || gpu_cull.GetBatchLayout(pass, GPUCullSystem::kMaxBatches, row, capacity))
+        {
+            GLogError(u8"Test Failed: batch layout must respect each pass and batch limit");
+            return 1;
+        }
+        GPUCullBatchLayoutTestAccess::SetCount(gpu_cull, pass, 0);
+    }
+
+    uint32_t row = 17;
+    uint32_t capacity = 19;
+    if (gpu_cull.GetBatchLayout(GPUCullSystem::kArenaPasses, 0, row, capacity)
+        || gpu_cull.GetBatchLayout(UINT32_MAX, 0, row, capacity)
+        || row != 17 || capacity != 19)
+    {
+        GLogError(u8"Test Failed: invalid pass must be rejected without changing outputs");
+        return 1;
+    }
+
     if (!gpu_cull.Initialize(&ctx)
         || gpu_cull.EndBatchLayout(0, 1)
         || gpu_cull.GetBatchCount() != 0)
