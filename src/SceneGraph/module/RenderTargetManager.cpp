@@ -1,6 +1,7 @@
 ﻿#include <cstdint>
 #include <vulkan/vulkan.h>
 #include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include <hgl/graph/GraphTypes.h>
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/graph/core/GraphicsContext.h>
@@ -47,6 +48,27 @@ RenderTargetManager::~RenderTargetManager()
 {
     Release();
 }
+
+    namespace
+    {
+        /// RT 尺寸变化后同步系统级视口 UBO（原在 `IRenderTarget::OnResize` 里做，
+        /// 用 `ecs_context` 直连 ECS；改为由持有世界句柄的 SceneGraph 侧收口，
+        /// `IRenderTarget` 只持设备、不再认识 ECS 世界）。
+        void SyncViewportExtentForActiveRT(hgl::ecs::ECSContext *ctx,
+                                           const IRenderTarget *rt,
+                                           const VkExtent2D &ext)
+        {
+            if(!ctx || !rt)
+                return;
+
+            if(ctx->GetRenderTarget() != rt)
+                return;     ///< 只同步**当前活动**渲染目标
+
+            auto sys = ctx->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
+            if(sys)
+                sys->SetViewportExtent(ext.width,ext.height);
+        }
+    }//anonymous namespace
 
 OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
                                                                         const FramebufferInfo *fbi, const uint32_t slot_count)
@@ -314,7 +336,7 @@ OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSConte
     {
         const AnsiString rt_name = name + ":RT";
 
-        OffscreenRenderTarget *rt = new OffscreenRenderTarget(ecs_ctx, rtd);
+        OffscreenRenderTarget *rt = new OffscreenRenderTarget(rtd);
         if(register_debug_capture && ULRE_DEBUG_ON(DebugBridge))
             rt->RegisterDebugCapture(name.c_str());
 
@@ -536,6 +558,7 @@ bool RenderTargetManager::Resize(IRenderTarget *rt,const uint32_t width,const ui
         ext.width  = width;
         ext.height = height;
         rt->OnResize(ext);
+        SyncViewportExtentForActiveRT(ecs_context, rt, ext);
 
         return(true);
     }
@@ -650,6 +673,7 @@ void RenderTargetManager::OnResize(const VkExtent2D &extent)
 
         entry.desc = desc;
         entry.rt->OnResize(extent);
+        SyncViewportExtentForActiveRT(ecs_context, entry.rt, extent);
     }
 }
 

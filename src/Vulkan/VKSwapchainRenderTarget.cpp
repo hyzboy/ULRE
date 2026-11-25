@@ -17,11 +17,11 @@
 namespace hgl::graph{
 
 SwapchainRenderTarget::SwapchainRenderTarget(
-    hgl::ecs::ECSContext* ctx,
+    VulkanDevice* dev,
     Swapchain* sc,
     SwapchainFrameSync* slots,
     uint32_t slot_cnt)
-    : IRenderTarget(ctx, sc->extent)
+    : IRenderTarget(dev, sc->extent)
     , swapchain(sc)
     , sync_slots(slots)
     , slot_count(slot_cnt)
@@ -248,23 +248,17 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
 
     waits[wait_count++] = SemaphoreSubmit::WaitImage(slot.image_available);
 
-    if (ecs_context)
+    if (auto *tm = texture_manager)
     {
-        if (auto *gc = ecs_context->GetGraphicsContext())
+        if (auto *uq = tm->GetUploadQueue())
         {
-            if (auto *tm = gc->GetTextureManager())
-            {
-                if (auto *uq = tm->GetUploadQueue())
-                {
-                    // 上传车道 timeline：**单个等待项覆盖全部在飞 DMA 拷贝**
-                    //（旧逐任务二进制 sem 收集：溢出丢弃 = 裸用未同步纹理；且提交后未消费即被
-                    //  任务析构删除 = VUID-vkDestroySemaphore-semaphore-05149）
-                    Semaphore *lane = uq->GetUploadLane();
-                    const uint64_t lane_value = uq->GetUploadLaneValue();
-                    if (lane && lane_value != 0 && wait_count < MAX_WAITS)
-                        waits[wait_count++] = SemaphoreSubmit::Wait(lane, lane_value);
-                }
-            }
+            // 上传车道 timeline：**单个等待项覆盖全部在飞 DMA 拷贝**
+            //（旧逐任务二进制 sem 收集：溢出丢弃 = 裸用未同步纹理；且提交后未消费即被
+            //  任务析构删除 = VUID-vkDestroySemaphore-semaphore-05149）
+            Semaphore *lane = uq->GetUploadLane();
+            const uint64_t lane_value = uq->GetUploadLaneValue();
+            if (lane && lane_value != 0 && wait_count < MAX_WAITS)
+                waits[wait_count++] = SemaphoreSubmit::Wait(lane, lane_value);
         }
     }
 

@@ -14,11 +14,6 @@
 #include<hgl/vk/VKCommandBuffer.h>
 //#include<iostream>
 
-namespace hgl::ecs
-{
-    class ECSContext;
-}
-
 namespace hgl::graph{
 
 class VulkanDevice; // Forward declaration
@@ -39,7 +34,7 @@ class IRenderTarget
 {
 protected:
 
-    hgl::ecs::ECSContext *ecs_context;
+    VulkanDevice *      device = nullptr;   ///< 只持设备：RT 不需要知道 ECS 世界的存在
 
     VkExtent2D extent;
     ViewportInfo viewport_info;
@@ -74,7 +69,7 @@ public:
 
 public:
 
-    IRenderTarget(hgl::ecs::ECSContext *,const VkExtent2D &);
+    IRenderTarget(VulkanDevice *,const VkExtent2D &);
     virtual ~IRenderTarget();
 
     virtual Framebuffer *       GetFramebuffer  ()=0;

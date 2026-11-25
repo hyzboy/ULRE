@@ -1,16 +1,11 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 
 namespace hgl::graph{
 
 VulkanDevice *IRenderTarget::GetDevice  ()const
 {
-    if(ecs_context)
-        return ecs_context->GetGPUDevice();
-
-    return nullptr;
+    return device;
 }
 
 VkDevice IRenderTarget::GetVkDevice()const
@@ -29,9 +24,9 @@ const ViewportInfo *IRenderTarget::GetViewportInfo() const
     return &viewport_info;
 }
 
-IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext)
+IRenderTarget::IRenderTarget(VulkanDevice *dev,const VkExtent2D &ext)
 {
-    ecs_context=ctx;
+    device=dev;
     OnResize(ext);
 }
 
@@ -42,16 +37,9 @@ void IRenderTarget::OnResize(const VkExtent2D &ext)
     extent=ext;
     viewport_info.Set(ext.width, ext.height);
 
-    if (ecs_context)
-    {
-        // 仅在当前 RT 为活动渲染目标时同步系统级 UBO
-        if (ecs_context->GetRenderTarget() == this)
-        {
-            auto sys = ecs_context->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
-            if (sys)
-                sys->SetViewportExtent(ext.width, ext.height);
-        }
-    }
+    // 系统级视口 UBO 的同步不在这里做：RT 只持设备、不认识 ECS 世界。
+    // 活动 RT 的 UBO 更新由持有世界句柄的 `RenderTargetManager` 收口
+    //（见 `SyncViewportExtentForActiveRT`）。
 }
 
 }//namespace hgl::graph

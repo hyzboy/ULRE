@@ -33,7 +33,7 @@ protected:
     friend class SwapchainModule;
     friend class RenderTargetManager;
 
-    OffscreenRenderTarget(hgl::ecs::ECSContext *ctx,RenderTargetData *rtd):IRenderTarget(ctx,rtd->fbo->GetExtent())
+    OffscreenRenderTarget(RenderTargetData *rtd):IRenderTarget(rtd->device,rtd->fbo->GetExtent())
     {
         data=rtd;
     }

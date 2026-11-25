@@ -8,6 +8,8 @@
 
 namespace hgl::graph{
 
+class TextureManager;
+
 struct CameraInfo;
 /**
  * Per-slot (in-flight frame) synchronization objects.
@@ -67,12 +69,18 @@ class SwapchainRenderTarget : public IRenderTarget
 
     friend class SwapchainModule;
 
-    SwapchainRenderTarget(hgl::ecs::ECSContext* ctx,
+    SwapchainRenderTarget(VulkanDevice* dev,
                           Swapchain* sc,
                           SwapchainFrameSync* slots,
                           uint32_t slot_cnt);
 
+    /// 上传车道来源（由 `SwapchainModule` 注入）：本 RT 不再持有 ECS 世界句柄，
+    /// 提交期需要等待的「纹理上传车道」由纹理管理器提供（无则跳过等待）。
+    graph::TextureManager *texture_manager = nullptr;
+
 public:
+
+    void SetTextureManager(graph::TextureManager *tm) { texture_manager = tm; }
 
     ~SwapchainRenderTarget() override;
 
