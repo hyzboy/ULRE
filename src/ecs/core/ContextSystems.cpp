@@ -157,6 +157,48 @@ namespace hgl::ecs
         auto& dirty_flag = is_render ? render_order_dirty : tick_order_dirty;
         auto& deps = is_render ? render_dependencies : tick_dependencies;
 
+        // ── 同键替换：旧实例必须先 Shutdown ──
+        // RegisterSystem<T>() 重复注册（或外部替换实现）会覆盖 sys_map[key]；旧实例随后
+        // 已不在世界容器里，Shutdown 再也不会被调用 ⇒ 它持有的 GPU 缓冲/纹理/监听器永不
+        // 释放。旧实例还可能因执行相位变化落在另一张表（tick ↔ render），两张都要摘。
+        auto retire_replaced_system = [this, key, &system](
+            hgl::UnorderedMap<size_t, std::shared_ptr<System>> &map,
+            std::vector<OrderedSystem> &order,
+            bool &dirty)
+        {
+            std::shared_ptr<System> old_system;
+            if (auto *slot = map.GetValuePointer(key))
+            {
+                old_system = *slot;
+                map.DeleteByKey(key);
+            }
+
+            // 调度列表里的同键条目一并摘除：否则旧实例仍会每帧被调度。
+            for (size_t i = 0; i < order.size();)
+            {
+                if (order[i].key == key)
+                {
+                    order.erase(order.begin() + i);
+                    dirty = true;
+                    continue;
+                }
+                ++i;
+            }
+
+            if (!old_system || old_system == system)
+                return;
+
+            LogDebug("[ECSContext] replacing system key=%zu: shutting down previous instance %s",
+                     key, typeid(*old_system).name());
+
+            // 旧实例在本调用返回后可能只剩调用方的 shared_ptr，这里先放掉它持有的
+            // 世界资源（与 Shutdown 时对在册系统的处理一致）。
+            old_system->Shutdown();
+        };
+
+        retire_replaced_system(tick_systems, tick_system_order, tick_order_dirty);
+        retire_replaced_system(render_systems, render_system_order, render_order_dirty);
+
         sys_map[key] = system;
 
         const AnsiString& element_type = system->GetRenderElementType();

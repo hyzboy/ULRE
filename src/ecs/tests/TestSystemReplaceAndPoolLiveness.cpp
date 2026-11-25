@@ -36,6 +36,25 @@ namespace
         out.assign(std::istreambuf_iterator<char>(fis), std::istreambuf_iterator<char>());
         return true;
     }
+
+    /// S1-b 探针系统：替换时旧实例必须收到一次 Shutdown（否则它持有的
+    /// GPU 缓冲/纹理/监听器在 sys_map 覆盖后永远没人释放）。
+    class ReplaceProbeSystem final : public System
+    {
+    public:
+
+        int shutdown_count = 0;
+
+        ReplaceProbeSystem() : System("ReplaceProbeSystem")
+        {
+            SetExecutionPhase(ExecutionPhase::TickTransform);
+        }
+
+        void Shutdown() override
+        {
+            ++shutdown_count;
+        }
+    };
 }//namespace
 
 int main()
@@ -120,6 +139,43 @@ int main()
         }
 
         GLogInfo(u8"S1 Passed: 系统替换按类型摘旧实例成立（列表只留新实例 / 组开关不再碰到旧实例）。");
+    }
+
+    // ── S1-b：替换同类型系统时旧实例必须收到 Shutdown ──────────────────────
+    {
+        ECSContext ctx;
+
+        auto first = ctx.RegisterSystem<ReplaceProbeSystem>();
+
+        if (!first || first->shutdown_count != 0)
+        {
+            GLogError(u8"S1-b Failed: 首注册异常（shutdown=%d）", first ? first->shutdown_count : -1);
+            return 1;
+        }
+
+        // 注册**同类型**的第二个实例 ⇒ 旧实例被摘出世界。
+        auto second = ctx.RegisterSystem<ReplaceProbeSystem>();
+
+        if (!second || second.get() == first.get())
+        {
+            GLogError(u8"S1-b Failed: 同类型替换没有产生新实例");
+            return 1;
+        }
+
+        if (first->shutdown_count != 1)
+        {
+            GLogError(u8"S1-b Failed: 被替换的旧实例收到 %d 次 Shutdown（应为 1 —— 覆盖 sys_map "
+                      u8"后它已不在世界里，资源永不释放）", first->shutdown_count);
+            return 1;
+        }
+
+        if (second->shutdown_count != 0)
+        {
+            GLogError(u8"S1-b Failed: 新实例在注册期就被 Shutdown 了（%d 次）", second->shutdown_count);
+            return 1;
+        }
+
+        GLogInfo(u8"S1-b Passed: 同类型替换会先 Shutdown 旧实例，新实例不受影响。");
     }
 
     // ── S2-a：两个池的 Row() 对已释放行都必须返回 nullptr ────────────────────
