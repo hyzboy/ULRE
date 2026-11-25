@@ -3,8 +3,10 @@
 #include <hgl/vk/VKDevice.h>
 #include <hgl/log/Log.h>
 #include <hgl/type/Smart.h>
+#include <hgl/type/ValueArray.h>
 
 #include <climits>
+#include <cstdlib>
 #include <cstring>
 
 namespace hgl::graph
@@ -247,7 +249,48 @@ ActiveRowPool::RowID ActiveRowPool::AcquireRun(const uint32_t count)
         return InvalidRowID;
     }
 
-    // 连续性只能来自「水位之后全新编号」。Idle 复用得到的是零散行号 ⇒ 本接口永不复用。
+    const int idle_count = ids.GetIdleCount();
+    if (idle_count >= static_cast<int>(count))
+    {
+        ValueArray<int> idle;
+        idle.Resize(idle_count);
+        if (!ids.Get(idle.GetData(), idle_count))
+        {
+            GLogError("[ActiveRowPool] AcquireRun could not acquire idle rows: ssbo_id=%u", ssbo_id);
+            return InvalidRowID;
+        }
+        qsort(idle.GetData(), size_t(idle_count), sizeof(int),
+              [](const void *a, const void *b) -> int
+              {
+                  const int lhs = *static_cast<const int *>(a);
+                  const int rhs = *static_cast<const int *>(b);
+                  return (lhs > rhs) - (lhs < rhs);
+              });
+        int first = -1;
+        uint32_t length = 0;
+        for (int i = 0; i < idle_count; ++i)
+        {
+            length = i && idle[i] == idle[i - 1] + 1 ? length + 1u : 1u;
+            if (length == count)
+            {
+                first = i + 1 - int(count);
+                break;
+            }
+        }
+        const int before = first < 0 ? idle_count : first;
+        const int after = first < 0 ? idle_count : first + int(count);
+        if (before)
+            ids.Release(idle.GetData(), before);
+        if (after < idle_count)
+            ids.Release(idle.GetData() + after, idle_count - after);
+        if (first >= 0)
+        {
+            ++layout_version;
+            return static_cast<RowID>(idle[first]);
+        }
+    }
+
+    // No sufficiently large free run: allocate a fresh contiguous range.
     const int64_t watermark = static_cast<int64_t>(ids.GetHistoryMaxId());
     if (watermark + static_cast<int64_t>(count) > static_cast<int64_t>(row_capacity))
     {
@@ -380,7 +423,7 @@ bool ActiveRowPool::CommitRow(const RowID id)
     return true;
 }
 
-bool ActiveRowPool::ReleaseDeferred(const RowID id, const uint64_t ready_epoch)
+bool ActiveRowPool::ReleaseDeferred(const RowID id, const uint64_t ready_epoch, const void *owner)
 {
     if (!IsActive(id))
     {
@@ -399,19 +442,19 @@ bool ActiveRowPool::ReleaseDeferred(const RowID id, const uint64_t ready_epoch)
         }
     }
 
-    pending_releases.push_back(PendingRelease{id, ready_epoch});
+    pending_releases.push_back(PendingRelease{id, ready_epoch, owner});
     return true;
 }
 
 uint32_t ActiveRowPool::CollectRecyclable(const uint64_t completed_epoch,
-                                          std::vector<RowID> *out_recycled)
+                                          std::vector<RowID> *out_recycled, const void *owner)
 {
     uint32_t collected = 0;
 
     for (size_t i = 0; i < pending_releases.size();)
     {
         const PendingRelease pending = pending_releases[i];
-        if (pending.ready_epoch > completed_epoch)
+        if (pending.owner != owner || pending.ready_epoch > completed_epoch)
         {
             ++i;
             continue;

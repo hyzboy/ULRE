@@ -56,9 +56,9 @@ namespace hgl::graph
         uint64_t custom_data_addr = 0;          ///< 实例自定义数据表基址（`InstanceCustomData`，16 B/行，
                                                 ///<   行号 = 剔除实例行号 `inst_row`，容量同 `l2w_row_capacity`）；
                                                 ///<   0 = 未启用 ⇒ 展开侧不写本表
-        uint64_t group_bucket_base_addr = 0;    ///< 二级组基址表（u32 一行）：下标 =
+        uint64_t group_bucket_base_addr = 0;    ///< 二级组路由表（uvec4 一行）：下标 =
                                                 ///<   `pass * kModelExpansionGroupBucketSlotsPerPass + 组表偏移`，
-                                                ///<   值 = 该 shading_group 的**绝对桶号**；
+                                                ///<   值 = (桶基址, 有效材质ID, 有效纹理ID, 材质有效位)；
                                                 ///<   0 = 未启用 ⇒ 展开侧退回一级表 `bucket_base_addr`（单组兼容）
     };
 
@@ -84,11 +84,11 @@ namespace hgl::graph
     /// 实体未分配模板素材桶组时的哨兵值（表初值 / CPU 允许显式写入）
     inline constexpr uint32_t kModelExpansionInvalidBucketBase = 0xFFFFFFFFu;
 
-    /// 单 pass 的**二级组基址表**容量（u32 槽数）。
+    /// 单 pass 的二级组路由表容量（uvec4 槽数）。
     ///
-    /// 容量口径 = CPU 装批期每帧按 (pass, 模板, shading_group) 分配一段连续槽，与可见实体数
+    /// 容量口径 = CPU 装批期每帧按 (pass, 模板, 有效绑定) 分配组槽，与可见实体数
     /// 无关（组数由"本 pass 有多少个模板、各自几个 shading_group"决定）⇒ 固定常量即可，
-    /// 4096 槽 = 8 KB/pass = 16 KB/帧槽。CPU 侧越界 = 装配 bug，一律 fail-fast（整批不接管），
+    /// 4096 槽 = 64 KB/pass。CPU 侧越界 = 装配 bug，一律 fail-fast（整批不接管），
     /// 不做静默截断。
     inline constexpr uint32_t kModelExpansionGroupBucketSlotsPerPass = 4096;
 

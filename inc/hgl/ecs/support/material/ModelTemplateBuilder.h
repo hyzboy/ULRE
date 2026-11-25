@@ -37,6 +37,7 @@ namespace hgl::ecs
         MultiMaterialPartInput material_input{};
         bool can_cast_shadow = true;
         bool is_opaque = true;
+        graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
     };
 
     /**
@@ -47,6 +48,29 @@ namespace hgl::ecs
         ValueArray<MultiMaterialPartInput> material_inputs;
         bool by_material_index = true; ///< true: 按 PrimitiveAsset::GetMaterialIndex() 索引；false: 按部件展开顺序索引
     };
+
+    enum class ModelTemplateBuildStatus : uint8_t
+    {
+        Ready,
+        Pending,
+        Failed
+    };
+
+    struct ModelTemplatePartInput
+    {
+        graph::Geometry *geometry = nullptr;
+        hgl::math::Matrix4f local_matrix{1.0f};
+        hgl::math::AABB local_bounds;
+        MultiMaterialPartInput material;
+        graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
+    };
+
+    /// Publishes nothing until all required geometry and runtime rows are ready.
+    uint32_t BuildMultiMaterialModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                            ECSContext *context,
+                                            const ModelTemplatePartInput *parts,
+                                            uint32_t part_count,
+                                            ModelTemplateBuildStatus *status = nullptr);
 
     /**
      * @brief 构建并注册一个包含多材质绑定的 GPU 模型模板。
@@ -68,7 +92,7 @@ namespace hgl::ecs
 
     /**
      * @brief 构建并注册一个单图元极简 GPU 模型模板 (part_count=1, group_count=1)。
-     * 具备按 (geometry_id, runtime_row, can_cast_shadow, is_opaque) 的全局去重缓存机制。
+     * 具备按 (geometry_id, runtime_row, can_cast_shadow, is_opaque, primitive_type) 的全局去重缓存机制。
      *
      * @return 模板池行号 (template_id != 0)，失败返回 0
      */

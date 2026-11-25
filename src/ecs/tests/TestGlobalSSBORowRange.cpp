@@ -325,7 +325,7 @@ namespace
             return false;
         }
 
-        // 「块内第 i 行 == first + i」的前提：连续性只能来自水位之后的全新编号。
+        // 连续性来自经过验证的 Idle 区间，或水位之后的新编号。
         const bool has_watermark = ContainsToken(pool_src, "ids.GetHistoryMaxId()");
         const bool has_rollback_partial = ContainsToken(pool_src, "ReleaseRun(first, done);");
         const bool has_rollback_batch = ContainsToken(pool_src, "ReleaseRun(first, done + batch);");
@@ -333,8 +333,8 @@ namespace
             "created[i] != static_cast<int>(first + done + i)");
         const bool has_single_markdirty = ContainsToken(pool_src,
             "MarkDirty(VkDeviceSize(first) * row_bytes, VkDeviceSize(count) * row_bytes)");
-        const bool reuses_idle = SegmentContains(pool_src,
-            "ActiveRowPool::AcquireRun", "ActiveRowPool::ReleaseRun", "GetIdle()");
+        const bool checks_idle_run = SegmentContains(pool_src,
+            "ActiveRowPool::AcquireRun", "ActiveRowPool::ReleaseRun", "idle[i] == idle[i - 1] + 1");
 
         const bool registry_row_check = ContainsToken(registry_src,
             "view.row_bytes != pool->GetRowBytes()");
@@ -346,7 +346,8 @@ namespace
             const char *why;
         } kChecks[] =
         {
-            { has_watermark, "AcquireRun 的连续性必须来自水位（GetHistoryMaxId）" },
+            { has_watermark, "AcquireRun 缺少连续 Idle 段时必须保留水位分配路径" },
+            { checks_idle_run, "复用 Idle 时必须逐行验证连续，不能拼接零散编号" },
             { has_rollback_partial, "CreateActive 失败必须整段回滚已拿到的行" },
             { has_rollback_batch, "编号漂移必须回滚包含本批在内的整段区间" },
             { has_order_check, "逐批校验编号连续：块内第 i 行必须恒为 first + i" },
@@ -365,13 +366,6 @@ namespace
                 ok = false;
                 GLogError(u8"TestGlobalSSBORowRange 失败: %s", kChecks[i].why);
             }
-        }
-
-        if (reuses_idle)
-        {
-            ok = false;
-            GLogError(u8"TestGlobalSSBORowRange 失败: AcquireRun 里重新出现 GetIdle()"
-                       "（Idle 复用给出零散行号 ⇒ 块内下标映射不再成立）");
         }
 
         return ok;

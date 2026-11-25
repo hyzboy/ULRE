@@ -1,9 +1,13 @@
 #include <hgl/ecs/support/material/ModelTemplateBuilder.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/graph/asset/ModelTemplateManager.h>
+#include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/geo/VKGeometry.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/math/geometry/AABB.h>
 #include <hgl/math/geometry/BoundingVolumes.h>
@@ -23,12 +27,13 @@ namespace hgl::ecs
             ValueArray<uint32_t> slot_geometries;
             ValueArray<uint32_t> slot_counts;
             bool casts_shadow = false;
+            const graph::GeometryVertexFormat *vertex_format = nullptr;
+            graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
         };
 
         struct PartBuildInfo
         {
-            const graph::StaticMeshNode *node = nullptr;
-            const graph::PrimitiveAsset *asset = nullptr;
+            hgl::math::Matrix4f local_matrix{1.0f};
             uint32_t geometry_id = 0;
             uint32_t material_id = 0;
             uint32_t texture_id = 0;
@@ -48,38 +53,100 @@ namespace hgl::ecs
                                             const graph::ModelAssetContent &content,
                                             const MultiMaterialModelTemplateDesc &desc)
     {
+        ValueArray<ModelTemplatePartInput> parts;
+        for (const auto &node : content.nodes)
+        {
+            for (const int32_t pi : node.primitiveIndices)
+            {
+                if (pi < 0 || static_cast<size_t>(pi) >= content.assets.size())
+                {
+                    GLogError(u8"[BuildMultiMaterialModelTemplate] Invalid primitive index: %d", pi);
+                    return 0;
+                }
+                const auto &asset = content.assets[static_cast<size_t>(pi)];
+                const int material_index = desc.by_material_index
+                    ? asset.GetMaterialIndex() : parts.GetCount();
+                if (material_index < 0 || material_index >= desc.material_inputs.GetCount())
+                {
+                    GLogError(u8"[BuildMultiMaterialModelTemplate] Missing material input: %d", material_index);
+                    return 0;
+                }
+                ModelTemplatePartInput part;
+                part.geometry = asset.GetGeometry();
+                part.primitive_type = asset.GetPrimitiveType();
+                part.local_matrix = node.worldMatrix;
+                part.local_bounds.Clear();
+                if (node.boundsValid)
+                    part.local_bounds = node.nodeBounds.aabb;
+                part.material = desc.material_inputs[material_index];
+                parts.Add(part);
+            }
+        }
+        return BuildMultiMaterialModelTemplate(registry, context, parts.GetData(),
+                                                static_cast<uint32_t>(parts.GetCount()));
+    }
+
+    uint32_t BuildMultiMaterialModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
+                                            ECSContext *context,
+                                            const ModelTemplatePartInput *parts,
+                                            const uint32_t part_count,
+                                            ModelTemplateBuildStatus *status)
+    {
         using graph::ssbo::ModelTemplateRow;
         using graph::ssbo::ModelPartRow;
         using graph::ssbo::kInvalidModelTemplateID;
 
-        if (!registry || !context)
+        if (status)
+            *status = ModelTemplateBuildStatus::Failed;
+
+        if (!registry || !context || !parts || part_count == 0u)
         {
             GLogError(u8"[BuildMultiMaterialModelTemplate] registry 或 context 为空");
             return kInvalidModelTemplateID;
         }
 
-        const size_t node_count = content.nodes.size();
-        const size_t asset_count = content.assets.size();
-
-        // 1. 统计有效部件数并收集基础信息
-        uint32_t part_count = 0;
-        for (size_t n = 0; n < node_count; ++n)
+        MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
+        ModelTemplateMaterialTable *mat_table = context->GetModelTemplateMaterialTable();
+        if (!runtime_table || !mat_table)
         {
-            const graph::StaticMeshNode &node = content.nodes[n];
-            for (int32_t pi : node.primitiveIndices)
-            {
-                if (pi >= 0 && static_cast<size_t>(pi) < asset_count)
-                    ++part_count;
-            }
+            GLogError(u8"[BuildMultiMaterialModelTemplate] Material tables unavailable");
+            return kInvalidModelTemplateID;
         }
-
-        if (part_count == 0)
+        auto *graphics = context->GetGraphicsContext();
+        const auto *part_pool = registry->GetPool(GlobalSSBOType::ModelPartPool);
+        if (!graphics || graphics->GetGlobalSSBOBufferRegistry() != registry
+         || !part_pool || part_count >= part_pool->GetRowCapacity()
+         || part_count > uint32_t(INT32_MAX))
         {
-            GLogWarning(u8"[BuildMultiMaterialModelTemplate] 无有效部件可打包");
+            GLogError(u8"[BuildMultiMaterialModelTemplate] Invalid resource domain or part capacity=%u", part_count);
             return kInvalidModelTemplateID;
         }
 
-        MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
+        // Validate the entire input before allocating any GPU rows.
+        for (uint32_t p = 0; p < part_count; ++p)
+        {
+            const auto &input = parts[p];
+            const auto *row = runtime_table->Get(input.material.runtime_row);
+            if (input.material.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID && !row)
+            {
+                GLogError(u8"[BuildMultiMaterialModelTemplate] Dead material row: part=%u row=%u",
+                          p, input.material.runtime_row);
+                return kInvalidModelTemplateID;
+            }
+            if (!input.geometry || input.geometry->GetGeometryID() == 0u
+             || !row || row->data_index_row == uint32_t(-1))
+            {
+                if (status)
+                    *status = ModelTemplateBuildStatus::Pending;
+                return kInvalidModelTemplateID;
+            }
+            if (input.geometry->GetMeshDrawParamsRegistry() != registry
+             || !registry->IsActive(GlobalSSBOType::MeshDrawParams, input.geometry->GetGeometryID()))
+            {
+                GLogError(u8"[BuildMultiMaterialModelTemplate] Geometry belongs to an unavailable domain: part=%u", p);
+                return kInvalidModelTemplateID;
+            }
+        }
 
         PtrArray<InternalGroupInfo> groups;
         ValueArray<PartBuildInfo> part_infos;
@@ -89,46 +156,27 @@ namespace hgl::ecs
         merged_box.Clear();
         bool any_bounds = false;
 
-        uint32_t current_part_flat_idx = 0;
-
-        for (size_t n = 0; n < node_count; ++n)
+        for (uint32_t p = 0; p < part_count; ++p)
         {
-            const graph::StaticMeshNode &node = content.nodes[n];
+            const ModelTemplatePartInput &input = parts[p];
 
-            const bool bounds_ok = node.boundsValid && !node.nodeBounds.aabb.IsEmpty();
-            const hgl::math::Vector3f part_center = bounds_ok ? node.nodeBounds.aabb.GetCenter()
+            const bool bounds_ok = !input.local_bounds.IsEmpty();
+            const hgl::math::Vector3f part_center = bounds_ok ? input.local_bounds.GetCenter()
                                                               : hgl::math::Vector3f(0.0f, 0.0f, 0.0f);
-            const hgl::math::Vector3f part_extent = bounds_ok ? node.nodeBounds.aabb.GetExtent()
+            const hgl::math::Vector3f part_extent = bounds_ok ? input.local_bounds.GetExtent()
                                                               : hgl::math::Vector3f(0.0f, 0.0f, 0.0f);
-            const float part_radius = bounds_ok ? node.nodeBounds.aabb.GetDiagonal() * 0.5f
+            const float part_radius = bounds_ok ? input.local_bounds.GetDiagonal() * 0.5f
                                                 : graph::GlobalSSBOBufferRegistry::kAlwaysVisibleRadius;
 
             if (bounds_ok)
             {
-                merged_box.Merge(node.nodeBounds.aabb.Transformed(node.worldMatrix));
+                merged_box.Merge(input.local_bounds.Transformed(input.local_matrix));
                 any_bounds = true;
             }
 
-            for (int32_t pi : node.primitiveIndices)
             {
-                if (pi < 0 || static_cast<size_t>(pi) >= asset_count)
-                    continue;
-
-                const graph::PrimitiveAsset &asset = content.assets[static_cast<size_t>(pi)];
-                graph::Geometry *geo = asset.GetGeometry();
-
-                MultiMaterialPartInput part_input{};
-                if (desc.by_material_index)
-                {
-                    const int32_t mat_idx = asset.GetMaterialIndex();
-                    if (mat_idx >= 0 && mat_idx < desc.material_inputs.GetCount())
-                        part_input = desc.material_inputs[mat_idx];
-                }
-                else
-                {
-                    if (static_cast<int>(current_part_flat_idx) < desc.material_inputs.GetCount())
-                        part_input = desc.material_inputs[static_cast<int>(current_part_flat_idx)];
-                }
+                graph::Geometry *geo = input.geometry;
+                const MultiMaterialPartInput &part_input = input.material;
 
                 uint32_t mat_id = part_input.material_id;
                 uint32_t tex_id = part_input.texture_id;
@@ -140,7 +188,7 @@ namespace hgl::ecs
                     {
                         if (r_row->data_index_row != uint32_t(-1))
                             mat_id = r_row->data_index_row;
-                        if (r_row->material_texture_configuration.row_index != 0)
+                        if (r_row->material_texture_configuration.IsValid())
                             tex_id = r_row->material_texture_configuration.row_index;
                     }
                 }
@@ -152,6 +200,11 @@ namespace hgl::ecs
                 for (int g = 0; g < groups.GetCount(); ++g)
                 {
                     const InternalGroupInfo &grp = groups[g];
+                    if (grp.primitive_type != input.primitive_type)
+                        continue;
+                    if (grp.vertex_format->GetVertexInputHash()
+                        != geo->GetGeometryVertexFormat().GetVertexInputHash())
+                        continue;
                     if (part_input.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
                     {
                         if (grp.runtime_row == part_input.runtime_row)
@@ -176,6 +229,8 @@ namespace hgl::ecs
                     new_grp.runtime_row = part_input.runtime_row;
                     new_grp.material_id = mat_id;
                     new_grp.casts_shadow = part_input.can_cast_shadow;
+                    new_grp.vertex_format = &geo->GetGeometryVertexFormat();
+                    new_grp.primitive_type = input.primitive_type;
                     groups.Add(new_grp);
                 }
 
@@ -206,8 +261,7 @@ namespace hgl::ecs
                 }
 
                 PartBuildInfo pinfo;
-                pinfo.node = &node;
-                pinfo.asset = &asset;
+                pinfo.local_matrix = input.local_matrix;
                 pinfo.geometry_id = geo_id;
                 pinfo.material_id = mat_id;
                 pinfo.texture_id = tex_id;
@@ -221,7 +275,6 @@ namespace hgl::ecs
                 pinfo.bounds_ok = bounds_ok;
 
                 part_infos.Add(pinfo);
-                ++current_part_flat_idx;
             }
         }
 
@@ -256,7 +309,7 @@ namespace hgl::ecs
         {
             const PartBuildInfo &info = part_infos[i];
             ModelPartRow row;
-            row.local_matrix = info.node->worldMatrix;
+            row.local_matrix = info.local_matrix;
             row.aabb_center_radius = hgl::math::Vector4f(info.part_center.x, info.part_center.y, info.part_center.z, info.part_radius);
             row.aabb_extents = hgl::math::Vector4f(info.part_extent.x, info.part_extent.y, info.part_extent.z, 0.0f);
             row.geometry_id = info.geometry_id;
@@ -309,6 +362,7 @@ namespace hgl::ecs
         // 9. 登记 TemplateRenderBinding 到 ModelTemplateMaterialTable
         TemplateRenderBinding binding;
         binding.template_id = template_id;
+        binding.owns_gpu_rows = true;
 
         for (int g = 0; g < groups.GetCount(); ++g)
         {
@@ -318,6 +372,8 @@ namespace hgl::ecs
             gdesc.slot_geometry = grp.slot_geometries;
             gdesc.slot_count = grp.slot_counts;
             gdesc.casts_shadow = grp.casts_shadow;
+            gdesc.vertex_format = grp.vertex_format;
+            gdesc.primitive_type = grp.primitive_type;
 
             binding.groups.Add(gdesc);
 
@@ -328,12 +384,16 @@ namespace hgl::ecs
             }
         }
 
-        ModelTemplateMaterialTable *mat_table = context->GetModelTemplateMaterialTable();
-        if (mat_table)
+        if (!mat_table->RegisterBinding(binding))
         {
-            mat_table->RegisterBinding(binding);
+            GLogError(u8"[BuildMultiMaterialModelTemplate] Binding publication failed: template=%u", template_id);
+            registry->ReleaseRowRange(GlobalSSBOType::ModelPartPool, part_first, part_count);
+            registry->ReleaseID(GlobalSSBOType::ModelTemplatePool, template_id);
+            return kInvalidModelTemplateID;
         }
 
+        if (status)
+            *status = ModelTemplateBuildStatus::Ready;
         return template_id;
     }
 
@@ -370,6 +430,7 @@ namespace hgl::ecs
         cache_key.runtime_row = desc.material_input.runtime_row;
         cache_key.can_cast_shadow = desc.can_cast_shadow;
         cache_key.is_opaque = desc.is_opaque;
+        cache_key.primitive_type = desc.primitive_type;
 
         const uint32_t existing_template_id = mat_table->FindSinglePrimitiveTemplate(cache_key);
         if (existing_template_id != kInvalidModelTemplateID)
@@ -465,10 +526,12 @@ namespace hgl::ecs
         binding.template_id = template_id;
         if (desc.material_input.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
             binding.owned_part_rows.Add(desc.material_input.runtime_row);
+        binding.owns_gpu_rows = true;
 
         TemplateShadingGroupDesc grp;
         grp.runtime_row = desc.material_input.runtime_row;
         grp.casts_shadow = desc.can_cast_shadow;
+        grp.primitive_type = desc.primitive_type;
         grp.slot_geometry.Add(geometry_id);
         grp.slot_count.Add(1);
         binding.groups.Add(grp);
@@ -511,7 +574,9 @@ namespace hgl::ecs
         if (!asset)
             return graph::ssbo::kInvalidModelTemplateID;
 
-        return BuildSinglePrimitiveModelTemplate(registry, context, asset->GetGeometry(), desc);
+        auto asset_desc = desc;
+        asset_desc.primitive_type = asset->GetPrimitiveType();
+        return BuildSinglePrimitiveModelTemplate(registry, context, asset->GetGeometry(), asset_desc);
     }
 
     bool DestroyMultiMaterialModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
@@ -521,20 +586,29 @@ namespace hgl::ecs
         if (template_id == 0)
             return false;
 
-        if (context)
+        if (!registry || !context)
         {
-            ModelTemplateMaterialTable *mat_table = context->GetModelTemplateMaterialTable();
-            if (mat_table)
-            {
-                mat_table->UnregisterBinding(template_id);
-            }
+            GLogError(u8"[DestroyMultiMaterialModelTemplate] Missing registry/context");
+            return false;
         }
-
-        if (registry)
+        bool referenced = false;
+        context->ForEachAliveEntity([&](const Entity *entity)
         {
-            return graph::ModelTemplateManager::UnregisterModelTemplate(registry, template_id);
+            const auto *ref = entity->GetComponent<GPUModelRefComponent>();
+            referenced |= ref && ref->template_id == template_id;
+        });
+        if (referenced)
+        {
+            GLogError(u8"[DestroyMultiMaterialModelTemplate] Template still has live instances: %u", template_id);
+            return false;
         }
-
+        if (!graph::ModelTemplateManager::RetireModelTemplate(
+                registry, template_id, context->GetRenderSubmissionSerial()
+                                       + graph::MaterialTextureConfigurationRetireEpochDelay, context))
+            return false;
+        auto *table = context->GetModelTemplateMaterialTable();
+        if (table && table->HasBinding(template_id))
+            return table->UnregisterBinding(template_id);
         return true;
     }
 }

@@ -20,13 +20,14 @@ namespace hgl::ecs
     /**
      * @brief 单实体模型引用组件（CPU-only：无 GPU 行，gpu_row_bytes = 0）。
      *
-     * 全 POD 行：字段即数据，无堆持握、无虚表。可见性掩码按部件位压缩，
+     * 无虚表；覆盖材质持有一个世界级运行期行引用。可见性掩码按部件位压缩，
      * 超过 64 个部件的模板只掩码前 64 个（其余恒可见）。
      */
     struct GPUModelRefComponent : public ComponentRow
     {
         // ── 核心 ──────────────────────────────────────────────────────────
         uint32_t template_id = 0;   ///< 模板池行 ID（0 = 无效/未绑定，见 kInvalidModelTemplateID）
+        bool automatically_normalized = false; ///< Collector owns the primitive-to-template binding.
 
         // ── 可见性 ────────────────────────────────────────────────────────
         uint64_t part_visibility_mask = 0xFFFFFFFFFFFFFFFFull;  ///< 部件可见位（1 = 渲染；默认全 1）
@@ -34,8 +35,10 @@ namespace hgl::ecs
         // ── 材质覆盖（Instance Material Override）────────────────────────
         /// 若有效（!= INVALID_MATERIAL_RUNTIME_ROW_ID），收集系统生成载体项时
         /// 优先使用此材质行代替模板默认绑定的材质行。
+    private:
         MaterialRuntimeRowID override_material_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
 
+    public:
         // ── 预留插槽（空壳，字段即 ABI，后续阶段接消费者）─────────────────
         /// 实例自定义数据行（逐实例颜色/材质微调）。
         /// 消费者：`hgl::graph::ssbo::InstanceCustomData`（见 `InstanceCustomData.h`），
@@ -45,13 +48,17 @@ namespace hgl::ecs
         uint32_t prev_transform_id  = 0;  ///< TAA motion vector 前帧变换行（T4 接）
 
         GPUModelRefComponent() = default;
+        GPUModelRefComponent(const GPUModelRefComponent &) = delete;
+        GPUModelRefComponent &operator=(const GPUModelRefComponent &) = delete;
 
         /// 非虚（T2-c：组件行里没有 vptr）；析构由池显式调用
         ~GPUModelRefComponent() = default;
+        void OnDetach();
 
         // ── 材质覆盖便捷操作 ─────────────────────────────────────────────
-        void SetOverrideMaterialRow(MaterialRuntimeRowID row) { override_material_row = row; }
-        void ClearOverrideMaterialRow() { override_material_row = INVALID_MATERIAL_RUNTIME_ROW_ID; }
+        bool SetOverrideMaterialRow(MaterialRuntimeRowID row);
+        void ClearOverrideMaterialRow();
+        MaterialRuntimeRowID GetOverrideMaterialRow() const { return override_material_row; }
         bool HasMaterialOverride() const { return override_material_row != INVALID_MATERIAL_RUNTIME_ROW_ID; }
 
         // ── 掩码操作 ──────────────────────────────────────────────────────

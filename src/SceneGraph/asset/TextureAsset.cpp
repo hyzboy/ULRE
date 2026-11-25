@@ -244,7 +244,7 @@ namespace hgl::graph
         async_requested =false;
         async_request_id=0;
 
-        if(payload_state==PayloadState::Loading)
+        if(payload_state==PayloadState::Loading || payload_state==PayloadState::LoadFailed)
             payload_state=PayloadState::MetaOnly;
     }
 

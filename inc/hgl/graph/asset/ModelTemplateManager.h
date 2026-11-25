@@ -64,6 +64,10 @@ namespace hgl::graph
         static bool UnregisterModelTemplate(GlobalSSBOBufferRegistry *registry,
                                             uint32_t template_id);
 
+        static bool RetireModelTemplate(GlobalSSBOBufferRegistry *registry,
+                                        uint32_t template_id, uint64_t ready_epoch,
+                                        const void *owner = nullptr);
+
         /**
          * @brief 回填一个模板的 LOD / 阴影代理（T4.1 + T4.2）。
          *

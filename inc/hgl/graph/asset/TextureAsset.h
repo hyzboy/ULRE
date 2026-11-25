@@ -144,7 +144,7 @@ namespace hgl::graph
         /// 标记已提交异步读取；`MetaOnly`/`LoadFailed` ⇒ `Loading`
         void MarkAsyncRequested(uint64 request_id);
 
-        /// 撤销「已提交」标记（失败或取消）；`Loading` ⇒ `MetaOnly`
+        /// 撤销「已提交」标记（失败或取消）；`Loading` / `LoadFailed` ⇒ `MetaOnly`
         void ClearAsyncRequest();
 
         /// 上传完成：句柄转入 `Resident`

@@ -86,6 +86,7 @@ public:
     void                RefreshGeometryAABBRow();
 
     uint32_t            GetGeometryID() const { return geometry_id; }
+    const GlobalSSBOBufferRegistry *GetMeshDrawParamsRegistry() const { return mesh_draw_params_pool; }
     void                SetGeometryID(uint32_t id) { geometry_id = id; }
 
     bool                RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevice *dev);

@@ -584,7 +584,7 @@ namespace
         const bool part_material = ContainsToken(cull_src,
             "has_part_mtl ? part.material_id : ids_blk.material_id");
         const bool part_texture = ContainsToken(cull_src,
-            "has_part_mtl ? part.texture_id  : ids_blk.texture_id");
+            "has_part_mtl ? part.texture_id : ids_blk.texture_id");
         const bool mask_guard = ContainsToken(cull_src, "if (p < 64u && ((entity.model_part_mask");
         const bool slot_sentinel = ContainsToken(cull_src, "part.bucket_slot == 0xFFFFFFFFu");
 

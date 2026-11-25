@@ -246,6 +246,37 @@ bool ModelTemplateManager::UnregisterModelTemplate(GlobalSSBOBufferRegistry *reg
     return parts_ok && self_ok;
 }
 
+bool ModelTemplateManager::RetireModelTemplate(GlobalSSBOBufferRegistry *registry,
+                                               const uint32_t template_id,
+                                               const uint64_t ready_epoch, const void *owner)
+{
+    auto *templates = registry ? registry->GetPool(GlobalSSBOType::ModelTemplatePool) : nullptr;
+    auto *parts = registry ? registry->GetPool(GlobalSSBOType::ModelPartPool) : nullptr;
+    const auto *row = registry ? registry->GetTypedRow<ssbo::ModelTemplateRow>(
+        GlobalSSBOType::ModelTemplatePool, template_id) : nullptr;
+    if (!templates || !parts || template_id == 0u || !templates->IsActive(template_id)
+     || templates->IsPendingRelease(template_id) || !row || row->part_count == 0u
+     || row->part_offset == 0u
+     || uint64_t(row->part_offset) + row->part_count > parts->GetRowCapacity())
+    {
+        GLogError(u8"[ModelTemplateManager] Retirement rejected: invalid template=%u", template_id);
+        return false;
+    }
+    const uint32_t first = row->part_offset;
+    const uint32_t count = row->part_count;
+    for (uint32_t p = 0; p < count; ++p)
+    {
+        if (parts->IsActive(first + p) && !parts->IsPendingRelease(first + p))
+            continue;
+        GLogError(u8"[ModelTemplateManager] Retirement rejected: invalid part=%u", first + p);
+        return false;
+    }
+    for (uint32_t p = 0; p < count; ++p)
+        if (!parts->ReleaseDeferred(first + p, ready_epoch, owner))
+            return false;
+    return templates->ReleaseDeferred(template_id, ready_epoch, owner);
+}
+
 bool ModelTemplateManager::SetModelTemplateProxies(GlobalSSBOBufferRegistry *registry,
                                                    const uint32_t template_id,
                                                    const ProxyConfig &cfg)

@@ -70,6 +70,7 @@ protected:
     {
         RowID    row_id = InvalidRowID;
         uint64_t ready_epoch = 0;           ///< completed_epoch >= ready_epoch 后放回可分配
+        const void *owner = nullptr;       ///< Completion domains must not collect each other's rows.
     };
 
     std::vector<PendingRelease> pending_releases;   ///< 延迟回收队列（retire 语义）
@@ -118,8 +119,8 @@ public:
     /**
      * 连续行批量申请：成功返回首行号，区间 `[first, first+count)` **保证连续**。
      *
-     * 只走「水位之后全新分配」（`CreateActive`），**永不复用 Idle** —— 复用会破坏
-     * 连续性。因此典型用途是「启动/加载期一次性拿一整块」，而不是逐行流式申请。
+     * 优先复用已经回收的连续 Idle 区间；不存在足够大的空闲段时才推进水位。
+     * PendingRelease 行仍 Active，不能在 GPU 使用结束前复用。
      *
      * 全有或全无：容量不足或编号偏移时整段回滚，绝不留下半截区间。
      */
@@ -159,12 +160,13 @@ public:
      * 延迟回收（retire 语义）：该行保持占用，直到 CollectRecyclable(completed_epoch)
      * 且 completed_epoch >= ready_epoch 才清零并放回可分配。
      */
-    bool ReleaseDeferred(RowID id, uint64_t ready_epoch);
+    bool ReleaseDeferred(RowID id, uint64_t ready_epoch, const void *owner = nullptr);
 
     /** 回收所有到期的延迟释放行（帧边界调用）；返回回收数。
      *  @param out_recycled 非空时收集被回收的行号（持有者据此清自己的生成号/计数） */
     uint32_t CollectRecyclable(uint64_t completed_epoch,
-                               std::vector<RowID> *out_recycled = nullptr);
+                               std::vector<RowID> *out_recycled = nullptr,
+                               const void *owner = nullptr);
 
     /** 该行是否已在延迟回收队列中（仍占用，但即将失效）。 */
     bool IsPendingRelease(RowID id) const
