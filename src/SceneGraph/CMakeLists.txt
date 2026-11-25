@@ -72,7 +72,9 @@ set(SG_FOUNDATION_FILES ${SG_DATA_FILES}
 # ============================================================================
 
 set(SG_GRAPHICS_CONTEXT_FILES   ${SG_INCLUDE_PATH}/core/GraphicsContext.h
-                                render/GraphicsContext.cpp)
+                                ${SG_INCLUDE_PATH}/core/MaterialRecipeResolver.h
+                                render/GraphicsContext.cpp
+                                render/MaterialRecipeResolver.cpp)
 
 source_group("01.Core\\GraphicsContext" FILES ${SG_GRAPHICS_CONTEXT_FILES})
 
