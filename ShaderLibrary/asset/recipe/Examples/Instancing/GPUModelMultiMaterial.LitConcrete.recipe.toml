@@ -1,0 +1,9 @@
+schema = 1
+name = "GPUModelMultiMaterial.LitConcrete"
+domain = "StandardOpaque"
+
+[[textures]]
+name = "base_color"
+asset = "tex2d:pack(res):image/pbr/Concrete_Plain/baseColor"
+auto_mipmaps = true
+required = false

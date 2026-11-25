@@ -1,0 +1,6 @@
+schema = 1
+name = "GPUModelMultiMaterial.DoubleSided"
+domain = "UnlitSolid"
+
+[render_state.pipeline]
+cull_mode = "None"

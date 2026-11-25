@@ -115,3 +115,46 @@ l2w[inst_row] / mtl[inst_row] = 逐实例数据
    （需要材质/纹理行表按实例解析，属更大改动）；
 3. **`kMaxBatches` 与竞技场行数的联动**：`kArenaRowsPerPass`（4096）现在是"每 pass
    可见项数上限"，实例化不再放大它；若要做更大规模仍需分块 dispatch。
+
+## 6. 多材质整模型回归：GPUModelMultiMaterial
+
+`example\Instancing\GPUModelMultiMaterial.cpp` 使用三个共享实例，每个实例为一个真正的
+三部件、两 Shading Group 模板，不挂代表性 `GeometryData`。另有普通图元用于验证
+自动归一化后的几何、材质变更。Unlit 部件不投影，StandardOpaque 替换模板负责阴影验收。
+
+正式多材质入口 `BuildMultiMaterialModelTemplate` 先检查当前资源域、必需几何与材质运行期行，
+全部 Ready 后才分配并发布；Pending 不分配、不替换旧模板，Failed 回滚已取得的行。
+低层占位模板接口保持兼容。纹理仍遵守已有策略：流送中等待，加载失败走既有 fallback，
+显式 `ClearAsyncRequest()` 后可以重试；就绪更新使用当前有效纹理配置，不改共享部件的初始 ID。
+
+整实例覆盖通过 `GPUModelRefComponent::SetOverrideMaterialRow` / `ClearOverrideMaterialRow`
+获取及释放引用，并触发失效。动态二级路由按 `(pass, template_id, override row)` 区分，
+每槽为 `uvec4(桶基址, 有效材质 ID, 有效纹理 ID, 有效位)`，CPU 选批与 GPU 展开使用同一来源。
+模板销毁拒绝活跃实例引用；解除引用后延迟到所属世界的 GPU 提交完成再回收部件和材质引用。
+主帧与阴影分别缓存每组程序及管线，不能互相覆盖。
+
+从仓库根目录运行（路径按实际构建目录替换）：
+
+```powershell
+cmake --build build --config Debug --target GPUModelMultiMaterial
+cmake -DEXAMPLE=E:\ULRE\build\out\Windows_64_Debug\GPUModelMultiMaterial.exe -DRUNTIME_DIR=E:\ULRE -P example\Instancing\GPUModelMultiMaterialValidate.cmake
+```
+
+驱动执行三遍：缓存关、缓存开、缓存开且实例反向创建；逐阶段比较 51 份像素摘要，同时检查
+GPU 部件材质/纹理/桶路由、provider 热切换、阴影深度开关及四轮退休复用。
+负例还包括必需资源 Pending、活引用销毁拒绝、部件池耗尽回滚，以及两张纹理的确定性失败后重试。
+预期错误逐条限定次数并过滤，其余渲染错误仍使验证失败。每遍最多 240 帧、120 秒；
+日志及失败回读写入运行驱动时的当前目录，不应加入版本控制。
+
+`GMM_SELFCHECK=1` 开启自检，`GMM_CASE=all` 为完整序列，`core` 仅验证 Unlit 核心流程及生命周期。
+`GMM_FRAMES` 设置帧预算，`GMM_REVERSE_CREATE=1` 反向创建共享实例，`GMM_DUMP` 指定失败回读路径。
+普通模式不注入失败，默认同样有有限帧预算。
+
+CTest 使用独立开关 `-DULRE_ENABLE_GPU_MODEL_MULTI_MATERIAL_TEST=ON`，测试名为
+`GPUModelMultiMaterialIntegration`，要求真实 Vulkan 设备和可创建窗口的会话，不将无设备跳过算作通过。
+
+模板组保留部件的 `PrimitiveType`；不同拓扑不能合并为同一组，单图元模板去重键同样包含拓扑。
+材质程序的变体键及构建请求必须使用组内拓扑，不能固定为 `Triangles`，否则线段包围盒会按三角形解释。
+`RBB_SELFCHECK=1` 为 RenderBoundBox 的限帧检查：核对实际包围盒程序为 `Lines`，并回读三帧。
+`example\Debug\RenderBoundBoxValidate.cmake` 通过 `EXAMPLE` / `RUNTIME_DIR` 参数运行缓存关/开对拍；
+可用 `-DULRE_ENABLE_RENDER_BOUND_BOX_TEST=ON` 注册 `RenderBoundBoxIntegration`。

@@ -1,0 +1,9 @@
+schema = 1
+name = "GPUModelMultiMaterial.LitBrick"
+domain = "StandardOpaque"
+
+[[textures]]
+name = "base_color"
+asset = "tex2d:pack(res):image/Brickwall/Albedo"
+auto_mipmaps = true
+required = false

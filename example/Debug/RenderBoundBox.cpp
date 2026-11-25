@@ -34,12 +34,19 @@
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
+#include<hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
+#include<hgl/ecs/support/debug/ProfOverlaySystem.h>
+#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKTextureReadback.h>
+#include<hgl/util/hash/FNV1a.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
 
 #include<cstring>
+#include<cstdlib>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -125,8 +132,42 @@ private:
     PrimitiveAsset bbox_asset;
 
     Entity *camera_entity = nullptr;
+    bool selfcheck = false;
+    uint32_t selfcheck_frame = 0;
+    uint32_t selfcheck_samples = 0;
 
 private:
+
+    void CheckWireframe()
+    {
+        auto *target = ecs_context->GetRenderTarget();
+        auto &pipelines = ecs_context->GetMaterialRuntimePipelineTable();
+        for (const auto &box : bounding_boxes)
+        {
+            auto *program = pipelines.GetProgram(box->entity->GetEntityID(), target->GetRenderPass());
+            if (!program || program->GetPrimitiveType() != PrimitiveType::Lines)
+            {
+                GLogError(u8"[RBB] FAIL: bounding-box program topology=%s, expected lines",
+                          program ? GetPrimitiveTypeName(program->GetPrimitiveType()) : "missing");
+                exit(1);
+            }
+        }
+        ValueArray<uint8_t> pixels;
+        if (bounding_boxes.empty() || !ReadbackColorTarget(target, pixels) || pixels.IsEmpty())
+        {
+            GLogError(u8"[RBB] FAIL: wireframe frame readback unavailable");
+            exit(1);
+        }
+        hash::FNV1aHasher64 digest;
+        digest.AppendBytes(pixels.GetData(), pixels.GetCount());
+        GLogInfo(u8"[RBB] FRAME sample=%u hash=%016llx", selfcheck_samples,
+                 static_cast<unsigned long long>(digest.Result()));
+        if (++selfcheck_samples == 3u)
+        {
+            GLogInfo(u8"[RBB] PASS: bounding-box programs use lines across three rendered frames");
+            exit(0);
+        }
+    }
 
     bool InitMaterialForDBS(MaterialData *md)
     {
@@ -472,6 +513,7 @@ public:
 
     bool Init() override
     {
+        selfcheck = getenv("RBB_SELFCHECK") != nullptr;
         SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
         if (!InitMaterialRecipes())
             return false;
@@ -490,8 +532,33 @@ public:
 
         if(!InitCamera())
             return false;
+        if (selfcheck)
+            if (auto overlay = ecs_context->GetSystem<ProfOverlaySystem>())
+                overlay->Disable();
 
         return true;
+    }
+
+    void Tick(double delta_time) override
+    {
+        WorkObject::Tick(delta_time);
+        if (!selfcheck)
+            return;
+        if (++selfcheck_frame >= 60u)
+        {
+            GLogError(u8"[RBB] FAIL: wireframe self-check frame budget exhausted");
+            exit(1);
+        }
+        if (selfcheck_frame >= 8u)
+        {
+            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            if (!target)
+            {
+                GLogError(u8"[RBB] FAIL: wireframe self-check requires a swapchain");
+                exit(1);
+            }
+            target->SetInFrameReadbackHook([this]() { CheckWireframe(); });
+        }
     }
 };
 

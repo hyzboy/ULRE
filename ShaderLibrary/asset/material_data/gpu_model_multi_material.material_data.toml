@@ -1,0 +1,12 @@
+schema = 1
+name = "gpu_model_multi_material"
+target = "EmissiveSurface"
+
+[[rows]]
+color = [1.0, 0.02, 0.02, 1.0]
+
+[[rows]]
+color = [0.02, 1.0, 0.02, 1.0]
+
+[[rows]]
+color = [0.02, 0.02, 1.0, 1.0]
