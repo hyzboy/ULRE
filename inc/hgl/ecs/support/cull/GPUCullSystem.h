@@ -12,6 +12,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/cull/ModelGroupRoutingTables.h>
+#include <hgl/ecs/support/cull/BatchLayoutStaging.h>
 #include <hgl/graph/ubo/ModelExpansionArena.h>
 #include <hgl/type/ValueArray.h>
 
@@ -82,19 +83,20 @@ namespace hgl::ecs
         // 本帧接管批数（0 = 无接管批 ⇒ cull 只为对拍出计数）。分区在 guard 装配、
         // 本帧消费（同帧同源）；台架在 cull 之后读，两处都在本帧内。
         /// 批数（**主帧 pass** 那份）。参考实现与绘制侧读的都是主帧口径。
-        uint32_t GetBatchCount() const { return batch_count_[0]; }
+        uint32_t GetBatchCount() const { return batch_layout.BatchCount(0); }
 
         /// 本帧第 index 批的竞技场切片。越界 ⇒ false（调用方不得假定容量）。
         /// T5：参数语义 = **实例空间**（`row_base` = 该桶的实例行起点，`capacity` = 桶容量），
         /// 与台架 `counters[bucket]`（本桶幸存数）配成一对，逐桶走查仍然成立。
         bool GetBatchLayout(uint32_t pass_index, uint32_t index, uint32_t &row_base, uint32_t &capacity) const
         {
-            if (pass_index >= kArenaPasses || index >= kMaxBatches || index >= batch_count_[pass_index])
+            const BatchLayoutStaging::Row *row = batch_layout.RowAt(pass_index, index);
+
+            if (!row)
                 return false;
 
-            const BatchInfoRow &row = batch_info_staging_[BatchBlockBase(pass_index) + index];
-            row_base = row.row_base;
-            capacity = row.capacity;
+            row_base = row->row_base;
+            capacity = row->capacity;
             return true;
         }
 
@@ -111,8 +113,8 @@ namespace hgl::ecs
         /// 不再是 MaterialBatch 数 —— 每个（材质批 × 几何体）组合占一行布局。同材质批里
         /// N 种几何 ⇒ N 个桶 ⇒ N 条实例化 draw（此前是 N 个 item 拉 N 条单实例 draw）。
         /// ⇒ 上限必须覆盖"整场景的几何种类数"，故由 256 提到 1024。
-        static constexpr uint32_t kMaxBatches      = 1024;
-        static constexpr uint32_t kInvalidBatchTag = 0xFFFFFFFFu;   ///< 不属任何批 ⇒ cull 跳过
+        static constexpr uint32_t kMaxBatches      = BatchLayoutStaging::kMaxBatches;
+        static constexpr uint32_t kInvalidBatchTag = BatchLayoutStaging::kInvalidTag;   ///< 不属任何批 ⇒ cull 跳过
 
         // ── 容量与按 pass 的块/扇区常量 ──────────────────────────────────────
         // ⚠ 必须声明在**成员之前**：`batch_info_staging_` 等成员数组要用它们
@@ -152,14 +154,13 @@ namespace hgl::ecs
         /// 1 个溢出槽 ⇒ 两块共 `kArenaPasses * kBatchBlockStride` 行（块 0 = 主帧 pass、
         /// 块 1 = 阴影 pass）。块的**行空间**与竞技场扇区（`ArenaSectorBase`）是两回事：
         /// 前者是"每批的切片起点表"，后者是切片所在的行区。
-        static constexpr uint32_t kBatchBlockStride = kMaxBatches + 1;
-        static constexpr uint32_t BatchBlockBase(uint32_t pass_index)
-        { return (pass_index < kArenaPasses ? pass_index : 0u) * kBatchBlockStride; }
+        static constexpr uint32_t kBatchBlockStride = BatchLayoutStaging::kBlockStride;
+        static constexpr uint32_t BatchBlockBase(uint32_t pass_index) { return BatchLayoutStaging::BlockBase(pass_index); }
 
         /// 批的 dispatch 档（随 `BatchInfoRow.topology` 下发；**与 `entity_gpu_cull.glsl`
         /// 的 `TOPOLOGY_*` 同步**）：决定 gather 的 X 公式（线按段数，组大小也不同）。
-        static constexpr uint32_t kBatchTopologyTriangles = 0;  ///< 顶点组→三角形（VertexPassthrough）
-        static constexpr uint32_t kBatchTopologyLines     = 1;  ///< 段→quad（LineQuad；每线程 1 段）
+        static constexpr uint32_t kBatchTopologyTriangles = BatchLayoutStaging::kTopologyTriangles;  ///< 顶点组→三角形（VertexPassthrough）
+        static constexpr uint32_t kBatchTopologyLines     = BatchLayoutStaging::kTopologyLines;  ///< 段→quad（LineQuad；每线程 1 段）
 
         /// 批装配期写标签：返回**当前帧槽**标签数组的 CPU 映射（进入时整表清成
         /// `kInvalidBatchTag`）。用法：`tag = BeginBatchTagWrite(pass); tag[entity_index] = b;`
@@ -388,23 +389,10 @@ namespace hgl::ecs
         /// 下标/偏移规则**只**在 `ModelGroupRoutingTables` 内存在（分区唯一权威来源）。
         ModelGroupRoutingTables model_group_routes;
 
-        /// 批信息行（**与 `entity_gpu_cull.glsl` 的 `BatchInfoRow` 逐字段同序同型**；
-        /// 16 B/行）。后两字段 = **dispatch 档**：gather 的 X 公式按它选（线按段数、组大小不同）。
-        struct BatchInfoRow
-        {
-            uint32_t row_base;    // 本批切片在共享竞技场里的起始行
-            uint32_t capacity;    // 切片容量（= 本批 item 数；绘制侧 maxDrawCount）
-            uint32_t topology;    // kBatchTopology*（与 GLSL 的 TOPOLOGY_* 同步）
-            uint32_t group_size;  // MeshDispatchGroupSize(is_lines)（CPU 单源下发，GLSL 不硬编码）
-        };
+        /// 批分区装配的 CPU 暂存（每 pass 一块批行表 + 本帧批数 + 校验）。
+        /// 分区/偏移/块基址规则的**唯一权威**；设备 Map/Unmap 与队列等待仍在本系统。
+        BatchLayoutStaging batch_layout;
 
-        /// CPU 暂存：两块（每块 kBatchBlockStride 行）。未写的那块保持零 ⇒ 该 pass 的
-        /// `capacity == 0` ⇒ shader 跳过该 pass（T4c3 起阴影 pass 才会写自己的块）。
-        BatchInfoRow batch_info_staging_[kArenaPasses * kBatchBlockStride] = {};
-        /// 本帧批数，**按 pass 分开**（0 = 无批）。此前是单份共享值 ⇒ 一帧内后一次
-        /// `EndBatchLayout` 的批数会作用到两个 pass（实测：主帧派发拿到阴影的批数 ⇒
-        /// 主帧批 1 被整批丢弃）。着色器 `pc.batch_count` 取主帧那份。
-        uint32_t batch_count_[kArenaPasses] = {0, 0};
         uint32_t *batch_tag_cpu_ = nullptr;           ///< 当前帧槽标签数组的映射
         uint32_t  batch_tag_cpu_slot_ = UINT32_MAX;   ///< 映射对应的帧槽（换槽重映射）
         uint32_t  batch_tag_cpu_pass_ = UINT32_MAX;
@@ -450,11 +438,6 @@ namespace hgl::ecs
         /// 的同类配置错误被永久静默，排查时看不见。
         bool reported_misaligned_rows_ = false;
         bool reported_unsynced_map_    = false;
-
-        /// 各帧槽的批布局**是否已被写过**（T4c-ini-2）。
-        /// 用途：布局只在"轮到该槽的那一帧"写，而剔除派发在**同一帧**读它 ⇒ 首次写入的那一帧，
-        /// 派发必然看到初值（`capacity == 0`）⇒ 那一帧若仍让批接管，主帧 count 就是 0（物体不画）。
-        /// 所以：接管前查"该槽此前是否已写过"，未写过 ⇒ 本帧只写布局、不接管（回落 CPU 账）。
 
         // 设备地址（BDA）
         uint64_t visible_indices_addr_ = 0;

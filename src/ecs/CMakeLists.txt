@@ -306,6 +306,9 @@ add_ecs_test(TestFrameLaneWaitSet tests/TestFrameLaneWaitSet.cpp)
 # 步骤7 判据：模型展开路由表（一级/二级索引规则、pass 分区隔离、容量边界、越界丢弃）
 add_ecs_test(TestModelGroupRoutingTables tests/TestModelGroupRoutingTables.cpp)
 
+# 步骤7 判据：批分区暂存（pass 隔离、行字段、容量边界、批号越界丢弃）
+add_ecs_test(TestBatchLayoutStaging tests/TestBatchLayoutStaging.cpp)
+
 # §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
 add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 
@@ -659,6 +662,13 @@ if(BUILD_TESTING)
         COMMAND TestModelGroupRoutingTables)
     set_tests_properties(
         TestModelGroupRoutingTables
+        PROPERTIES LABELS "ecs;render;cull" TIMEOUT 60)
+
+    add_test(
+        NAME TestBatchLayoutStaging
+        COMMAND TestBatchLayoutStaging)
+    set_tests_properties(
+        TestBatchLayoutStaging
         PROPERTIES LABELS "ecs;render;cull" TIMEOUT 60)
 
     add_test(

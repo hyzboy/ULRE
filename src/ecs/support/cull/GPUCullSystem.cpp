@@ -358,7 +358,7 @@ namespace hgl::ecs
         // 挤进批 0（其 capacity=1）=> 切片溢出、该行被丢
         //（实测 AlphaTestShadow/CascadeShadowMap 每图一帧地面消失；见计划 §11.9）。
         const VkDeviceSize tag_slot_bytes     = VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
-        const VkDeviceSize info_slot_bytes    = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
+        const VkDeviceSize info_slot_bytes    = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchLayoutStaging::Row);
         const VkDeviceSize counter_slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
         const VkDeviceSize batch_slots        = VkDeviceSize(HGL_FRAME_SLOT_TOTAL);
 
@@ -537,7 +537,7 @@ namespace hgl::ecs
         if (batch_tag_cpu_ && batch_tag_buffer_)
             batch_tag_buffer_->Unmap();
         if (batch_tag_cpu_pass_ < kArenaPasses)
-            batch_count_[batch_tag_cpu_pass_] = 0;
+            batch_layout.Abort(batch_tag_cpu_pass_);
         batch_tag_cpu_ = nullptr;
         batch_tag_cpu_slot_ = UINT32_MAX;
         batch_tag_cpu_pass_ = UINT32_MAX;
@@ -557,14 +557,13 @@ namespace hgl::ecs
         const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
         if (!WaitForCullSlot(slot))
         {
-            batch_count_[pass_index] = 0;
+            batch_layout.Abort(pass_index);
             return nullptr;
         }
 
         // T4c2：本 pass 那一块批分区清零——**必须每帧清**，否则上一帧写过、本帧没写的批
         // 会留下残留行（capacity 非零），被本帧仍有效的标签引用 ⇒ 凭空写行。
-        for (uint32_t i = 0; i < kBatchBlockStride; ++i)
-            batch_info_staging_[BatchBlockBase(pass_index) + i] = BatchInfoRow{};
+        batch_layout.ResetPass(pass_index);
 
         const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
         const VkDeviceSize block_bytes = VkDeviceSize(kMaxVisibleEntities) * sizeof(uint32_t);
@@ -576,7 +575,7 @@ namespace hgl::ecs
                                    block_bytes));
         if (!p)
         {
-            batch_count_[pass_index] = 0;
+            batch_layout.Abort(pass_index);
             GLogError(u8"[GPUCullSystem] cannot map batch tags slot=%u pass=%u", slot, pass_index);
             return nullptr;
         }
@@ -595,39 +594,8 @@ namespace hgl::ecs
     void GPUCullSystem::SetBatchLayout(uint32_t pass_index, uint32_t batch_index, uint32_t row_base,
                                        uint32_t capacity, uint32_t topology, uint32_t group_size)
     {
-        if (pass_index >= kArenaPasses)
-        {
-            GLogError(u8"[GPUCullSystem] pass 号越界：%u ≥ kArenaPasses(%u)（fail-fast）",
-                      pass_index, kArenaPasses);
-            return;
-        }
-
-        const uint32_t stage_index = BatchBlockBase(pass_index) + batch_index;
-
-        if (batch_index >= kMaxBatches)
-        {
-            GLogError(u8"[GPUCullSystem] 批号越界：%u ≥ kMaxBatches(%u)（超限 = 项目 bug，fail-fast）",
-                      batch_index, kMaxBatches);
-            return;
-        }
-
-        // 契约（§9 M4）：切片起点必须 **4 行对齐**——绘制侧把三表 push 地址加 `row_base × 行字节`
-        // （cmds 8B / l2w 4B / mtl 16B），而引用声明是 16B 对齐 ⇒ `row_base % 4 == 0` 是同时满足
-        // 三者的唯一条件（§8.6 T3i-4）。违反 = 装配侧 bug（推进式 `(cursor + capacity + 3) & ~3`），
-        // 响亮报一次（不静默写出违对齐的切片）。
-        {
-            if (!reported_misaligned_rows_ && (row_base % 4u) != 0u)
-            {
-                reported_misaligned_rows_ = true;
-                GLogError(u8"[GPUCullSystem] 切片起点未 4 行对齐：row_base=%u（契约 §9 M4）"
-                          u8"⇒ 三表 push 地址会违 16B 对齐", row_base);
-            }
-        }
-
-        batch_info_staging_[stage_index].row_base   = row_base;
-        batch_info_staging_[stage_index].capacity   = capacity;
-        batch_info_staging_[stage_index].topology   = topology;
-        batch_info_staging_[stage_index].group_size = group_size;
+        // 越界 fail-fast、切片 4 行对齐契约、行字段写法全部在 BatchLayoutStaging（分区唯一权威）
+        batch_layout.SetLayout(pass_index, batch_index, row_base, capacity, topology, group_size);
     }
 
     bool GPUCullSystem::EndBatchLayout(uint32_t pass_index, uint32_t batch_count)
@@ -646,16 +614,16 @@ namespace hgl::ecs
             GLogError(u8"[GPUCullSystem] cannot finish batch layout slot=%u pass=%u mapped_slot=%u mapped_pass=%u",
                       slot, pass_index, batch_tag_cpu_slot_, batch_tag_cpu_pass_);
             AbortBatchTagWrite();
-            batch_count_[pass_index] = 0;
+            batch_layout.Abort(pass_index);
             return false;
         }
 
-        if (batch_count > kMaxBatches)
+        if (!BatchLayoutStaging::IsValidBatchCount(batch_count))
         {
             GLogError(u8"[GPUCullSystem] 批数越界：%u > kMaxBatches(%u) ⇒ 拒绝写入",
                       batch_count, kMaxBatches);
             AbortBatchTagWrite();
-            batch_count_[pass_index] = 0;
+            batch_layout.Abort(pass_index);
             return false;
         }
 
@@ -669,20 +637,20 @@ namespace hgl::ecs
         //    shader 据 `capacity == 0` 跳过该 pass）
         if (batch_count > 0)
         {
-            const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
+            const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchLayoutStaging::Row);
 
             void *dst = batch_info_buffer_ ? batch_info_buffer_->Map(VkDeviceSize(slot) * slot_bytes, slot_bytes) : nullptr;
             if (!dst)
             {
-                batch_count_[pass_index] = 0;
+                batch_layout.Abort(pass_index);
                 GLogError(u8"[GPUCullSystem] cannot map batch layout slot=%u pass=%u", slot, pass_index);
                 return false;
             }
-            std::memcpy(dst, batch_info_staging_,
-                        size_t(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow));
+            std::memcpy(dst, batch_layout.Data(),
+                        size_t(kArenaPasses * kBatchBlockStride) * sizeof(BatchLayoutStaging::Row));
             batch_info_buffer_->Unmap();
         }
-        batch_count_[pass_index] = batch_count;
+        batch_layout.Commit(pass_index, batch_count);
         return true;
     }
 
@@ -700,7 +668,7 @@ namespace hgl::ecs
         // 块内溢出槽 = 块内第 `batch_count` 行（与 GLSL 口径一致）
         // 与着色器同口径：GLSL 溢出槽 = `block_base + pc.batch_count`，而 pc 下发的是**主帧**
         // 那份批数 ⇒ 读侧也用主帧那份（pass 1 的该槽仅为信息量，不作判据）。
-        return GetBatchCounterByteOffset(pass_index, batch_count_[0]);
+        return GetBatchCounterByteOffset(pass_index, batch_layout.BatchCount(0));
     }
 
     uint32_t *GPUCullSystem::MapCurrentBatchCounters(uint32_t pass_index)
@@ -890,18 +858,18 @@ namespace hgl::ecs
         pc.batch_tag_addr     = batch_tag_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kMaxVisibleEntities) * sizeof(uint32_t);
         pc.batch_info_addr    = batch_info_addr_ + VkDeviceSize(batch_slot)
-                                * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
+                                * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchLayoutStaging::Row);
         pc.batch_counter_addr = batch_counter_addr_ + VkDeviceSize(batch_slot)
                                 * VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
-        pc.batch_count        = batch_count_[0];
+        pc.batch_count        = batch_layout.BatchCount(0);
         pc.batch_block_stride = kBatchBlockStride;
-        pc.batch_count_shadow = batch_count_[1];
+        pc.batch_count_shadow = batch_layout.BatchCount(1);
 
         // 诊断接线（`ULRE_DEBUG.toml` 的 `channels.batch/cull = true`）：派发当帧用的槽 —— 与接管侧（绘制读的槽）对照，
         // 定位"派发写的槽 ≠ 绘制读的槽"（帧内切 RT 时槽会变，而派发每帧只跑一次）。
         if (ULRE_DEBUG_ON(Batch))
             GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=[main:%u, shadow:%u] 相机行=%u",
-                     context_->GetFrameIndex(), batch_slot, batch_count_[0], batch_count_[1], context_->GetActiveCameraRow());
+                     context_->GetFrameIndex(), batch_slot, batch_layout.BatchCount(0), batch_layout.BatchCount(1), context_->GetActiveCameraRow());
 
         // ── T3.1：写本帧槽的展开竞技场（CPU 侧，Q 之前完成）──
         WriteModelExpansionArena(batch_slot);
@@ -1063,12 +1031,12 @@ namespace hgl::ecs
          || !cmds_out_buffer_ || !mtl_out_buffer_ || !batch_counter_buffer_)
             return false;
 
-        if (pass_index >= kArenaPasses || batch_count_[pass_index] == 0)
+        if (pass_index >= kArenaPasses || batch_layout.BatchCount(pass_index) == 0)
             return false;
 
         // 桶区间必须整段落在本 pass 的批块内（越界 = 守卫装配 bug，不许静默写出）
         if (bucket_count == 0
-         || bucket_first + bucket_count > batch_count_[pass_index]
+         || bucket_first + bucket_count > batch_layout.BatchCount(pass_index)
          || bucket_first + bucket_count > kMaxBatches)
             return false;
 
@@ -1168,20 +1136,20 @@ namespace hgl::ecs
                     const uint32_t slot_u32_base = s * (kArenaPasses * kBatchBlockStride);
 
                     // 主帧 pass
-                    for (uint32_t b = 0; b < batch_count_[0] && b < 10; ++b)
+                    for (uint32_t b = 0; b < batch_layout.BatchCount(0) && b < 10; ++b)
                     {
                         main_info += "b" + AnsiString::numberOf(b) + "=" + AnsiString::numberOf(counters[slot_u32_base + b]) + " ";
                     }
-                    const uint32_t main_ovf = counters[slot_u32_base + batch_count_[0]];
+                    const uint32_t main_ovf = counters[slot_u32_base + batch_layout.BatchCount(0)];
                     main_info += "ovf=" + AnsiString::numberOf(main_ovf) + "]";
 
                     // 阴影 pass
                     const uint32_t shadow_u32_base = slot_u32_base + kBatchBlockStride;
-                    for (uint32_t b = 0; b < batch_count_[1] && b < 10; ++b)
+                    for (uint32_t b = 0; b < batch_layout.BatchCount(1) && b < 10; ++b)
                     {
                         shadow_info += "b" + AnsiString::numberOf(b) + "=" + AnsiString::numberOf(counters[shadow_u32_base + b]) + " ";
                     }
-                    const uint32_t shadow_ovf = counters[shadow_u32_base + batch_count_[1]];
+                    const uint32_t shadow_ovf = counters[shadow_u32_base + batch_layout.BatchCount(1)];
                     shadow_info += "ovf=" + AnsiString::numberOf(shadow_ovf) + "]";
 
                     const char *slot_mark = (s == current_slot) ? " <= CURRENT" : "";
@@ -1195,10 +1163,10 @@ namespace hgl::ecs
         // 3. 当前槽的批信息 batch_info_buffer_
         if (batch_info_buffer_)
         {
-            const VkDeviceSize slot_info_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchInfoRow);
+            const VkDeviceSize slot_info_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(BatchLayoutStaging::Row);
             // 裸 vector：ValueArray<T> 实例化 Find() 隐式要求 operator==，
-            // 而 BatchInfoRow 必须与 GLSL 逐字段同序同型（字段数受门对拍）⇒ 不加成员函数
-            std::vector<BatchInfoRow> infos(size_t(kArenaPasses) * kBatchBlockStride);
+            // 而 BatchLayoutStaging::Row 必须与 GLSL 逐字段同序同型（字段数受门对拍）⇒ 不加成员函数
+            std::vector<BatchLayoutStaging::Row> infos(size_t(kArenaPasses) * kBatchBlockStride);
 
             if (graph::ReadbackBuffer(batch_info_buffer_, VkDeviceSize(current_slot) * slot_info_bytes,
                                       slot_info_bytes, infos.data()))
@@ -1206,7 +1174,7 @@ namespace hgl::ecs
                 for (uint32_t p = 0; p < kArenaPasses; ++p)
                 {
                     const uint32_t blk_base = BatchBlockBase(p);
-                    for (uint32_t b = 0; b < batch_count_[p]; ++b)
+                    for (uint32_t b = 0; b < batch_layout.BatchCount(p); ++b)
                     {
                         const auto &row = infos[blk_base + b];
                         GLogInfo(u8"  [BatchInfo] Slot %u Pass %u Batch %u: row_base=%u, capacity=%u, topology=%u, group_size=%u",
@@ -1244,7 +1212,7 @@ namespace hgl::ecs
                     }
 
                     AnsiString hist_str;
-                    for (uint32_t b = 0; b < 16 && b < batch_count_[p]; ++b)
+                    for (uint32_t b = 0; b < 16 && b < batch_layout.BatchCount(p); ++b)
                     {
                         hist_str += "b" + AnsiString::numberOf(b) + ":" + AnsiString::numberOf(batch_histogram[b]) + " ";
                     }

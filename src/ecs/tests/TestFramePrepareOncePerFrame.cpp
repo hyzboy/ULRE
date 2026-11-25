@@ -41,7 +41,8 @@ namespace hgl::ecs
     {
         static void SetCount(GPUCullSystem &system, uint32_t pass, uint32_t count)
         {
-            system.batch_count_[pass] = count;
+            // 分区暂存已抽到 BatchLayoutStaging（分区唯一权威）⇒ 经其提交入口写批数
+            system.batch_layout.Commit(pass, count);
         }
     };
 }
