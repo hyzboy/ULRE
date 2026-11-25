@@ -174,8 +174,10 @@ endif()
 # **ULRE::Runtime 是发行版的唯一入口**：与 ULRE::Engine 完全相同，只是**永不含**
 # ULRE.ShaderProgramBuild。开发机上的工具/示例仍可继续用 ULRE::Engine。
 #
-# 这里只做「等价聚合」，不拆 Vulkan / Work / ECS / SceneGraph 之间的既有模块依赖。
-# WorldAssembly 是新增的高层组合目标，单向依赖 ECS、SceneGraph 与 Vulkan，不反向参与它们。
+# 这里只做「等价聚合」：模块之间的依赖由各自的 CMakeLists 声明（Vulkan → GraphicsContracts、
+# SceneGraph → Vulkan、ECS.Render → ECS.Core/SceneGraph/Vulkan、WorldAssembly → 三者），
+# 聚合目标不再承担「把缺失的模块边平铺补齐」的职责。
+# WorldAssembly 是高层组合目标，单向依赖 ECS、SceneGraph 与 Vulkan，不反向参与它们。
 add_library(ULRE_Runtime INTERFACE)
 target_link_libraries(ULRE_Runtime INTERFACE ${ULRE_RUNTIME})
 add_library(ULRE::Runtime ALIAS ULRE_Runtime)

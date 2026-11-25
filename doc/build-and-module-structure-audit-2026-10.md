@@ -1,4 +1,4 @@
-# 构建系统与模块结构审计（2026-10）
+﻿# 构建系统与模块结构审计（2026-10）
 
 > 状态：**提案**（尚未实施）
 > 范围：CMake 模块化、include 边界、构建工作链、测试与文档组织
@@ -188,6 +188,23 @@ target_link_libraries(ULRE.SceneGraph PUBLIC ULRE.Vulkan ULRE.ShaderGen CMMath C
 所以 §2 的「方案 A/B：给每个模块显式声明依赖」**在当前架构下无法落地**——同时写 `target_link_libraries(ULRE.Vulkan PUBLIC ULRE.SceneGraph)` 和反向那条会直接构成循环。这不是构建系统能修的问题，必须先做架构级解环（把 `hgl/graph/` 里 Vulkan 需要的类型下沉，或把 Vulkan 中引用 ECS/graph 的那几个文件上移）。
 
 **`${ULRE}` 平铺列表因此不是「懒」，而是循环模块图的正确表达。** 本轮范围内只做等价收敛：
+
+> **更新（2026-11-26，`refactor/module-layering`）：上述强连通结论已失效，不要再据此拒绝声明模块边。**
+>
+> 本轮按 include 逐文件复测并解环，结果见文末《2026-11 模块分层复核》。核心变化：
+>
+> - `ULRE.Vulkan` 不再 include `hgl/graph/`、`hgl/ecs/`（`VKSwapchainRenderTarget.cpp` 的
+>   `GraphicsContext.h` 与 `VKRenderTarget.cpp` 的 `Context.h` 两处已在更早的分支改造中移除；
+>   本轮又清掉了 `VK.h`/`VKDevice.h`/`VKCommandBuffer.h`/`VKRenderTarget.h` 上残留的
+>   `ViewportInfo`(已下沉契约层)、`BitmapData`/`Font`/`Primitive`/`ShaderBufferSources` 依赖）。
+> - `ULRE.SceneGraph` 早已不 include `hgl/ecs/`（本分支之前的 WorldAssembly 抽取完成）。
+> - `ULRE.ECS` 按「include 闭包是否含图形头」拆成 `ULRE.ECS.Core`（零图形依赖）与
+>   `ULRE.ECS.Render`，`ULRE.ECS` 保留为 umbrella。
+> - `ULRE.SceneGraph → ULRE.Vulkan → ULRE.GraphicsContracts` 与
+>   `ULRE.ECS.Render → ULRE.ECS.Core` 已是**可声明**的有向边，且已在各自 CMake 中声明。
+>
+> 也就是说：现在写 `target_link_libraries(ULRE.Vulkan PUBLIC ULRE.GraphicsContracts)`
+> 与 `target_link_libraries(ULRE.SceneGraph PUBLIC ULRE.Vulkan)` 不再构成循环。
 
 - 根 `CMakeLists.txt` 新增 `ULRE_Engine` INTERFACE 目标 + `ULRE::Engine` 别名，`INTERFACE` 链接 `${ULRE}`；
 - 16 处消费点（`example/CMakeLists.txt` 的 `CreateProject` 宏 1 处 + `src/ecs` 的 14 个 test/probe target）由 `${ULRE}` 改为 `ULRE::Engine`；
@@ -716,3 +733,53 @@ node 也在跑同一批工程。⇒ 全部是**并发假象**，不是上游缺�
 ### 截图资产
 
 `doc/screenshot/`（24 MB）与根 `screenshot/`（10.24 MB）全仓零引用。它们不是构建残留而是**内容资产**（引擎演示/对比图），删除属内容决策，本轮**保留**。后续二选一：接入 Git LFS；或迁到独立资产仓库 / 发布页。
+
+---
+
+## 2026-11 模块分层复核（`refactor/module-layering`）
+
+### 解环后的声明依赖图
+
+```text
+ULRE.GraphicsContracts (header-only)
+        |
+        v
+ULRE.Vulkan  ---> (Vulkan SDK, ULRE.Debug, ULRE.ShaderMaterialData)
+        ^
+        |
+ULRE.SceneGraph ---> (CMAssetsManage, toml11)
+
+ULRE.ECS.Core  ---> (CMCore, CMMath, Jolt)
+        ^
+        |
+ULRE.ECS.Render ---> (ULRE.ECS.Core, ULRE.SceneGraph, ULRE.Vulkan, ULRE.ShaderMaterialData)
+
+ULRE.ECS (INTERFACE umbrella) ---> ULRE.ECS.Core + ULRE.ECS.Render
+ULRE.WorldAssembly ---> ULRE.ECS, ULRE.SceneGraph, ULRE.Vulkan   (PUBLIC，公开头暴露这些类型)
+
+ULRE::Engine / ULRE::Runtime (INTERFACE 聚合，保持对外名字不变)
+```
+
+### 判定口径
+
+- **契约层**：只放「两层都要、但任一方都不该独占」的后端无关数据/接口
+  （`EnvProfileID`、`ShaderBufferDesc`、`ViewportInfo`、GPU 缓冲注解宏）。
+  UBO/SSBO 结构仍以 C++ 定义为唯一真源，`buffer_gen.py` 的扫描目录已同步，
+  `check-buffer-gen.ps1` 通过。
+- **Core**：文件的 include 闭包内不出现 `hgl/graph/`、`hgl/vk/`、`vulkan/`
+  （`hgl/graph/CameraInfo.h` 属 CMMath，例外）。清单显式写在 `src/ecs/CMakeLists.txt`，
+  未登记者 configure 直接失败。
+- **边界闸门**：`TestECSCoreBoundary` 只链接 `ULRE.ECS.Core`，是「Core 无图形依赖」
+  的构建期证明；任何回潮都会让它编不过或链不上。
+
+### 仍未完成（下一阶段）
+
+1. `ECSContext` 仍是单体：`inc/hgl/ecs/core/Context.h` 直接持有 `VulkanDevice`、
+   `IRenderTarget`、`GraphicsContext`、`RenderContext`、相机 GPU 行与环境 Profile。
+   `Entity.cpp`/`EntityManager.cpp`/`SystemRegistry.cpp` 仍 include 它，因此
+   `EntityManager` 等实现暂时留在 Render，Core 还不是「完整可运行的 ECS 世界」。
+   下一步：抽出 `ECSCoreContext`（实体/组件池/系统调度）作为基类，`ECSContext`
+   继承它并保留渲染面；`RenderTargetObserver` 改为契约层的 target-id 事件。
+2. `SceneGraph` 内部仍可继续细分（资产 / 资源管理 / 设备适配），本阶段未动。
+3. `inc/hgl/vk/VKShaderProgram.h` 这类「头在 vk 目录、实现归 SceneGraph」的历史文件
+   未迁移，只保证 Vulkan 侧不再 include 它们。
