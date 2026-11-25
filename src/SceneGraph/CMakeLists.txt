@@ -85,6 +85,7 @@ set(SG_MODULE_FILES ${SG_INCLUDE_PATH}/module/GraphModule.h
                     ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                     ${SG_INCLUDE_PATH}/module/SwapchainModule.h
                     ${SG_INCLUDE_PATH}/module/TextureManager.h
+                    ${SG_INCLUDE_PATH}/module/TextureAssetTable.h
                     ${SG_INCLUDE_PATH}/module/GpuUploadTask.h
                     ${SG_INCLUDE_PATH}/module/UploadTaskScheduler.h
                     ${SG_INCLUDE_PATH}/module/GpuUploadQueue.h
@@ -115,6 +116,7 @@ set(SG_MODULE_FILES ${SG_INCLUDE_PATH}/module/GraphModule.h
                     module/texture/BufferImageCopy2D.h
                     module/texture/CopyBufferToImage.h
                     module/GpuUploadQueue.cpp
+                    module/TextureAssetTable.cpp
                     module/TextureLoadCommitter.cpp
                     module/SamplerManager.cpp
                     module/ShaderProgramManager.cpp

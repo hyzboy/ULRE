@@ -10,6 +10,7 @@
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/GpuUploadTask.h>
 #include<hgl/graph/module/GpuUploadQueue.h>
+#include<hgl/graph/module/TextureAssetTable.h>
 #include<hgl/type/ValueArray.h>
 
 namespace hgl::graph{
@@ -36,9 +37,9 @@ private:
     BidirectionalMap<TextureID,Texture *> texture_by_id;          ///< ID <-> Texture* 双向映射
     BidirectionalMap<OSString,Texture *> texture_by_filename;     ///< Filename <-> Texture* 双向映射
 
-    /// 纹理句柄表（材质侧唯一入口）。**按文件名去重**：同一个文件只创建一个句柄，
-    /// 多个材质共享同一份加载状态与同一张纹理。线性扫描即可 —— 只在材质装配期写入。
-    ValueArray<TextureAsset *> texture_assets;
+    /// 纹理句柄表（**资产查找与 RenderTarget 绑定**域；不含纹理创建/上传）。
+    /// 按文件名 / 数组 URI / (target,attachment) 三种口径去重，明细见该类。
+    TextureAssetTable texture_asset_table{this};
 
     struct PendingTextureDelete
     {
@@ -228,7 +229,7 @@ public: // TextureAsset
     int MarkRenderTargetContentReady(const OSString &target);
 
     /// 句柄表只读视图（流式系统逐帧扫描 `MetaOnly` 句柄用）
-    const ValueArray<TextureAsset *> &GetTextureAssets()const{return texture_assets;}
+    const ValueArray<TextureAsset *> &GetTextureAssets()const{return texture_asset_table.GetAssets();}
 
     /**
      * 按文件名查**已就绪**的纹理（`LoadTexture2D`/`LoadTextureCube` 用过的同一张）。
