@@ -242,7 +242,7 @@ namespace hgl
                 dirty.MarkDirty(id.index, rows.size());
             }
 
-            /// 按实体的**按类型行号表**刷新 `type[]/row[]`（组件挂卸后的唯一同步点）
+            /// 按实体的按类型行号表刷新组件槽；Transform 槽由变换上传路径维护。
             void Refresh(const Entity *entity)
             {
                 if (!entity)
@@ -253,9 +253,12 @@ namespace hgl
                 if (!row)
                     return;
 
-                // 全槽同步只覆盖**进镜像的类型**（上界 = 镜像容量；CPU-only 越界类型不写槽）
+                // 只同步进镜像的组件类型；CPU-only 越界类型不写槽。
                 for (uint32_t t = 1; t < kEntityGPUMirroredTypeCount; ++t)
                 {
+                    if (t == uint32_t(ComponentType::Transform))
+                        continue;
+
                     const uint32_t handle = entity->GetComponentRow(static_cast<ComponentType>(t));
 
                     row->type[t] = handle ? uint8_t(t) : 0;

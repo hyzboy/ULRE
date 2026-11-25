@@ -1,5 +1,6 @@
 #include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/ecs/components/GPUInstancedModelBatchComponent.h>
+#include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/ecs/support/storage/EntityGPUTable.h>
@@ -247,6 +248,34 @@ namespace
         table.SetModelFacts(id, 42u, 0xFFFFFFFFull, 5u, 999u);
         EXPECT(row->prev_transform_id == 999u);
     }
+
+    void TestComponentRefreshPreservesTransformRow()
+    {
+        ECSContext ctx;
+        Entity *entity = ctx.CreateEntity<Entity>("TransformRefresh");
+        EXPECT(entity != nullptr);
+        if (!entity)
+            return;
+
+        EntityGPUTable &table = ctx.GetEntityGPUTable();
+        const EntityID id = entity->GetEntityID();
+        table.SetTransformRow(id, 512u, 256u);
+
+        EXPECT(entity->AddComponent<GeometryData>() != nullptr);
+        const EntityGPU *row = table.Row(id);
+        EXPECT(row->row[uint32_t(ComponentType::Transform)] == 512u);
+        EXPECT(row->type[uint32_t(ComponentType::Transform)] == uint8_t(ComponentType::Transform));
+        EXPECT(row->prev_transform_id == 256u);
+        EXPECT(row->row[uint32_t(ComponentType::Geometry)] == entity->GetComponentRow(ComponentType::Geometry));
+        EXPECT(row->type[uint32_t(ComponentType::Geometry)] == uint8_t(ComponentType::Geometry));
+
+        entity->DetachAllComponents();
+        EXPECT(row->row[uint32_t(ComponentType::Transform)] == 512u);
+        EXPECT(row->type[uint32_t(ComponentType::Transform)] == uint8_t(ComponentType::Transform));
+        EXPECT(row->prev_transform_id == 256u);
+        EXPECT(row->row[uint32_t(ComponentType::Geometry)] == 0u);
+        EXPECT(row->type[uint32_t(ComponentType::Geometry)] == 0u);
+    }
 }//namespace
 
 int main(int argc, char **argv)
@@ -262,6 +291,7 @@ int main(int argc, char **argv)
     TestStaticDynamicTransformConvention();
     TestRingLayoutPrevBase();
     TestEntityGPUTablePrevTransform();
+    TestComponentRefreshPreservesTransformRow();
 
     if (g_fail > 0)
     {
