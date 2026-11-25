@@ -17,9 +17,7 @@
 
 `LevelAssetRegistry` 只负责资产加载；ECS 实例化使用
 `<hgl/world/assembly/LevelLoader.h>` 和 `ULRE.WorldAssembly`。
-原 `LevelAsset::Instantiate(...)` 调用应迁移为
-`LevelLoader::Instantiate(*level, ...)`；旧的 `hgl/graph/asset/LevelLoader.h`
-路径保留为转发头。
+实例化调用使用 `LevelLoader::Instantiate(*level, ...)`。
 
 ### 当前落地范围
 
