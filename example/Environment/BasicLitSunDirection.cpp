@@ -21,7 +21,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
 
-#include<hgl/graph/gizmo/SunDirectionControlSystem.h>
+#include<hgl/world/assembly/gizmo/SunDirectionControlSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>

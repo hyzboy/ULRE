@@ -156,7 +156,7 @@ CreateEntity<T>(args...)                       inc/hgl/ecs/core/Context.h:369-38
 GetAllEntities(out)                            inc/hgl/ecs/core/Context.h:410
 ```
 
-`Context::CreateChildEntity(parent, desc)` 这类 API **不存在**（全仓 0 命中；只有 `src/SceneGraph/gizmo/GizmoUnified.AssetVisual.inl` 里的局部助手 `CreateChildEntityWithTransform`，非 ECSContext API）。层级**没有组件承载**（见 §2.1 表格：`TransformComponent` 已删）：父链在 `TransformDataStorage`（`inc/hgl/ecs/support/transform/TransformDataStorage.h`）里，入口 `SetParent` / `GetParent` / `AddChild` / `RemoveChild` / `GetChildCount` / `GetChild`，句柄侧走 `TransformAccessor::GetParent()`。
+`Context::CreateChildEntity(parent, desc)` 这类 API **不存在**（全仓 0 命中；只有 `src/WorldAssembly/gizmo/GizmoUnified.AssetVisual.inl` 里的局部助手 `CreateChildEntityWithTransform`，非 ECSContext API）。层级**没有组件承载**（见 §2.1 表格：`TransformComponent` 已删）：父链在 `TransformDataStorage`（`inc/hgl/ecs/support/transform/TransformDataStorage.h`）里，入口 `SetParent` / `GetParent` / `AddChild` / `RemoveChild` / `GetChildCount` / `GetChild`，句柄侧走 `TransformAccessor::GetParent()`。
 
 `Transform` 的**旁路索引**是 `ECSContext` 自己的槽位名单 `static_transforms` / `movable_transforms`（`inc/hgl/ecs/core/Context.h:165-166`，`std::vector<TransformID>`，**槽位表、含空洞** `INVALID_TRANSFORM_ID`）：写入点是变换槽的申请 / 迁移（`(isMovable ? movable_transforms : static_transforms)[slot] = id`，`src/ecs/core/Context.cpp` 的 `AcquireTransformSlot` 路径与 `MigrateTransform`）——Tick 系统靠它们做到「只遍历 movable」，**遍历必须走 `ForEachMovableTransform` / `ForEachStaticTransform`**（内部跳洞）。旧的 `RegisterTransformComponent` / `MigrateTransformComponent` / `UnregisterTransformComponent` **全仓 0 命中**（按组件登记的旁路索引已随组件化退场）。
 
@@ -361,7 +361,7 @@ BeginManagedRenderFrame(dt, /*need_swapchain_acquire=*/false, options)   ← 离
 
 `RenderPassRequest` 字段（`inc/hgl/ecs/core/render/RenderPassRequest.h:31-64`）：`target` / `clear` / `use_target_clear` / `delta_time` / `camera` / `load_depth` / `use_scissor` + `scissor` / `clear_scissor_depth` / `mobility_filter`。
 `RenderPassOptions`（`inc/hgl/vk/VKCommandBuffer.h:116-125`）：`load_color` / `load_depth` / `depth_old_layout` / `use_scissor` + `scissor` / `clear_scissor_depth` / `clear_depth_value`（Reversed-Z 默认 0.0f）。
-实际调用者：`example/Shadow/ShadowMap.cpp:1097`、`example/Shadow/CascadeShadowMap.cpp:683,704`（`RenderTo(const RenderPassRequest&)`）；`src/SceneGraph/module/OffscreenWorld.cpp:149` 走的是三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`）。
+实际调用者：`example/Shadow/ShadowMap.cpp:1097`、`example/Shadow/CascadeShadowMap.cpp:683,704`（`RenderTo(const RenderPassRequest&)`）；`src/WorldAssembly/module/OffscreenWorld.cpp` 走的是三参重载 `RenderTo(graph::IRenderTarget*, Color4f, float)`（`src/ecs/core/Context.cpp:549`）。
 
 `RenderDrawOnly`（`src/ecs/core/Context.cpp:425-443`）本身不含相位逻辑，它只是 `RecordPreparedRenderPhaseRange(RenderCollect, RenderStat, dt, true, ...)`。
 

@@ -117,6 +117,7 @@ SET(ULRE_RUNTIME
             ULRE.ShaderMaterialData
             ULRE.ShaderCompiler
             ULRE.SceneGraph
+            ULRE.WorldAssembly
             ULRE.InlineGeometry
             # HGL_MATH_LIB(glm::glm) 与 RENDER_LIBRARY(xcb, 仅 UNIX) 看似"与 ULRE 无关"，
             # 实为消费者获取 glm 头文件 / xcb 链接的唯一途径：add_cm_library 以 PRIVATE
@@ -172,10 +173,8 @@ endif()
 # **ULRE::Runtime 是发行版的唯一入口**：与 ULRE::Engine 完全相同，只是**永不含**
 # ULRE.ShaderProgramBuild。开发机上的工具/示例仍可继续用 ULRE::Engine。
 #
-# 这里只做「等价聚合」，不拆逐模块依赖。原因：ULRE.Vulkan / ULRE.ShaderProgramBuild /
-# ULRE.SceneGraph / ULRE.ECS 四者两两互相 include 对方头文件，构成一个强连通分量，
-# 不存在可声明的有向依赖图；要拆必须先做架构级解环，不属于构建系统改造范围。
-# 证据见 doc/build-and-module-structure-audit-2026-10.md「ULRE 模块依赖是强连通分量」。
+# 这里只做「等价聚合」，不拆 Vulkan / Work / ECS / SceneGraph 之间的既有模块依赖。
+# WorldAssembly 是新增的高层组合目标，单向依赖 ECS、SceneGraph 与 Vulkan，不反向参与它们。
 add_library(ULRE_Runtime INTERFACE)
 target_link_libraries(ULRE_Runtime INTERFACE ${ULRE_RUNTIME})
 add_library(ULRE::Runtime ALIAS ULRE_Runtime)
@@ -224,6 +223,7 @@ target_link_libraries(ULRE.Vulkan PRIVATE nlohmann_json::nlohmann_json)
 # 消费 inc/hgl/asset/generated/*.gen.h 的核心库必须在代码生成之后编译；
 # 其它 target（示例、工具、测试）通过链接这些库获得同样的顺序保证。
 ulre_codegen_bind(ULRE.SceneGraph ULRE.ECS ULRE.Work ULRE.Vulkan ULRE.InlineGeometry
+                  ULRE.WorldAssembly
                   ULRE.ShaderMaterialData ULRE.ShaderRuntimeContract)
 
 # example/ 示例需要材质程序构建能力（MaterialResolver / 模板解析等），

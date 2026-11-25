@@ -4693,7 +4693,7 @@ int main(int argc, char** argv)
             { "VisibilityDataStorage.h", OS_TEXT("inc/hgl/ecs/support/cull/VisibilityDataStorage.h"),
               "VisibilityComponent",
               "已删的可见性组件名又出现在可见性存储头（残留 / 复活）", true },
-            { "GizmoUnified.cpp", OS_TEXT("src/SceneGraph/gizmo/GizmoUnified.cpp"),
+            { "GizmoUnified.cpp", OS_TEXT("src/WorldAssembly/gizmo/GizmoUnified.cpp"),
               "VisibilityComponent",
               "已删的可见性组件名又出现在 gizmo（残留 / 复活）", true },
             { "ecs/CMakeLists.txt", OS_TEXT("src/ecs/CMakeLists.txt"),

@@ -80,7 +80,6 @@ set(SG_MODULE_FILES ${SG_INCLUDE_PATH}/module/GraphModule.h
                     ${SG_INCLUDE_PATH}/module/GraphModuleManager.h
                     ${SG_INCLUDE_PATH}/module/RenderPassManager.h
                     ${SG_INCLUDE_PATH}/module/OffscreenSlotBands.h
-                    ${SG_INCLUDE_PATH}/module/OffscreenWorld.h
                     ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                     ${SG_INCLUDE_PATH}/module/SwapchainModule.h
                     ${SG_INCLUDE_PATH}/module/TextureManager.h
@@ -101,7 +100,6 @@ set(SG_MODULE_FILES ${SG_INCLUDE_PATH}/module/GraphModule.h
                     module/GraphModule.cpp
                     module/GraphModuleManager.cpp
                     module/RenderPassManager.cpp
-                    module/OffscreenWorld.cpp
                     module/RenderTargetManager.cpp
                     module/SwapChainModule.cpp
                     module/TextureManager.cpp
@@ -156,6 +154,7 @@ source_group("03.Camera" FILES ${SG_CAMERA_FILES})
 # ============================================================================
 
 set(SG_RENDER_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderContext.h
+                            ${SG_INCLUDE_PATH}/render/RenderTargetObserver.h
                             ${SG_INCLUDE_PATH}/render/RenderItemDescriptor.h
                             ${SG_INCLUDE_PATH}/render/RenderTargetDesc.h
                             ${ROOT_INCLUDE_PATH}/hgl/vk/VKShaderProgram.h
@@ -177,37 +176,11 @@ set(SG_RENDER_FILES ${SG_RENDER_CORE_FILES}
 # 05.Gizmo
 # ============================================================================
 
-set(SG_GIZMO_FILES  ${SG_INCLUDE_PATH}/gizmo/GizmoTypes.h
-                    ${SG_INCLUDE_PATH}/gizmo/TransformGizmoSystem.h
-                    ${SG_INCLUDE_PATH}/gizmo/SunDirectionControlSystem.h
-                    gizmo/Gizmo.h
-                    gizmo/GizmoInternal.h
-                    gizmo/GizmoResource.h
-                    gizmo/GizmoUnified.AssetCore.inl
-                    gizmo/GizmoUnified.AssetVisual.inl
-                    gizmo/GizmoUnified.AssetUpdate.inl
-                    gizmo/GizmoResource.cpp
-                    gizmo/GizmoUnified.cpp
-                    gizmo/TransformGizmoSystem.cpp
-                    gizmo/SunDirectionControlSystem.cpp)
+set(SG_GIZMO_FILES  ${SG_INCLUDE_PATH}/gizmo/GizmoTypes.h)
 
 source_group("05.Gizmo\\Core" FILES ${SG_GIZMO_FILES})
 
-set(SG_GIZMO_MODE_FILES gizmo/modes/GizmoModeRuntime.h
-                        gizmo/modes/MoveGizmoMode.h
-                        gizmo/modes/MoveGizmoMode.Visual.inl
-                        gizmo/modes/MoveGizmoMode.Input.inl
-                        gizmo/modes/RotateGizmoMode.h
-                        gizmo/modes/RotateGizmoMode.Visual.inl
-                        gizmo/modes/RotateGizmoMode.Input.inl
-                        gizmo/modes/ScaleGizmoMode.h
-                        gizmo/modes/ScaleGizmoMode.Visual.inl
-                        gizmo/modes/ScaleGizmoMode.Input.inl)
-
-source_group("05.Gizmo\\Modes" FILES ${SG_GIZMO_MODE_FILES})
-
-set(SG_GIZMO_ALL_FILES  ${SG_GIZMO_FILES}
-                        ${SG_GIZMO_MODE_FILES})
+set(SG_GIZMO_ALL_FILES ${SG_GIZMO_FILES})
 
 # ============================================================================
 # 06.Geometry

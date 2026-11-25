@@ -19,7 +19,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/type/Smart.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/module/OffscreenWorld.h>
+#include<hgl/world/assembly/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>

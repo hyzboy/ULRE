@@ -14,7 +14,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/module/OffscreenWorld.h>
+#include<hgl/world/assembly/OffscreenWorld.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/asset/TextureAsset.h>
 #include<hgl/graph/module/TextureManager.h>

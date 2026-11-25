@@ -166,7 +166,7 @@ void SetShadowInfo(const ShadowInfo &info, bool immediate = true);
 void MarkShadowDirty();
 ```
 
-profile 解析:`ResolveProfileID()` → `context->GetRenderTarget()->GetEnvironmentProfile()`(无效即 `kEnvProfileDefault`,`EnvironmentSystem.cpp:17-26`)。对外 API 与旧版兼容,因此既有调用方无需修改:示例 `example/Environment/AtmosphereSkyMinimal.cpp`、`AtmosphereSkyAmbient.cpp`、`AtmosphereSkySunGizmo.cpp`,以及 `inc/hgl/graph/gizmo/SunDirectionControlSystem.h`/`src/SceneGraph/gizmo/SunDirectionControlSystem.cpp`。
+profile 解析:`ResolveProfileID()` → `context->GetRenderTarget()->GetEnvironmentProfile()`(无效即 `kEnvProfileDefault`,`EnvironmentSystem.cpp:17-26`)。对外 API 与旧版兼容,因此既有调用方无需修改:示例 `example/Environment/AtmosphereSkyMinimal.cpp`、`AtmosphereSkyAmbient.cpp`、`AtmosphereSkySunGizmo.cpp`,以及 `inc/hgl/world/assembly/gizmo/SunDirectionControlSystem.h`/`src/WorldAssembly/gizmo/SunDirectionControlSystem.cpp`。
 
 典型用法(示例内):
 

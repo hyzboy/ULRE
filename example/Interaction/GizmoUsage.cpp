@@ -7,7 +7,7 @@
 */
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/gizmo/TransformGizmoSystem.h>
+#include<hgl/world/assembly/gizmo/TransformGizmoSystem.h>
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>

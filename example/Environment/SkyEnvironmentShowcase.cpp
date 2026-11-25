@@ -31,7 +31,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include<hgl/graph/ssbo/MaterialDataRows.h>
-#include<hgl/graph/gizmo/SunDirectionControlSystem.h>
+#include<hgl/world/assembly/gizmo/SunDirectionControlSystem.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/ecs/core/Context.h>
