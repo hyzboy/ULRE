@@ -173,16 +173,6 @@ set(SG_RENDER_FILES ${SG_RENDER_CORE_FILES}
                     ${SG_RENDER_SHADOW_FILES})
 
 # ============================================================================
-# 05.Gizmo
-# ============================================================================
-
-set(SG_GIZMO_FILES  ${SG_INCLUDE_PATH}/gizmo/GizmoTypes.h)
-
-source_group("05.Gizmo\\Core" FILES ${SG_GIZMO_FILES})
-
-set(SG_GIZMO_ALL_FILES ${SG_GIZMO_FILES})
-
-# ============================================================================
 # 06.Geometry
 # ============================================================================
 
@@ -426,7 +416,6 @@ add_cm_library(ULRE.SceneGraph "ULRE" ${SG_INCLUDE_PATH}
     ${SG_SCENE_FILES}
     ${SG_CAMERA_FILES}
     ${SG_RENDER_FILES}
-    ${SG_GIZMO_ALL_FILES}
     ${SG_GEOMETRY_FILES}
     ${SG_ASSET_FILES}
     ${SG_TEXTURE_FILES}

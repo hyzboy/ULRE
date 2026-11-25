@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <hgl/graph/gizmo/GizmoTypes.h>
+#include <hgl/world/assembly/gizmo/GizmoTypes.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<memory>

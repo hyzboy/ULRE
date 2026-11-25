@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/gizmo/GizmoTypes.h>
+#include<hgl/world/assembly/gizmo/GizmoTypes.h>
 #include<hgl/vk/VK.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/CameraInfo.h>
