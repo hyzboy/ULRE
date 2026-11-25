@@ -300,6 +300,9 @@ add_ecs_test(TestSystemReplaceAndPoolLiveness tests/TestSystemReplaceAndPoolLive
 # §2 #11 判据：PrepareFrame 必须是每帧一次的真守卫（同帧三次调用只做一次准备）
 add_ecs_test(TestFramePrepareOncePerFrame tests/TestFramePrepareOncePerFrame.cpp)
 
+# 步骤4 判据：帧提交等待列表（车道累积/提升/取走清空/主帧收尾/超限截断）
+add_ecs_test(TestFrameLaneWaitSet tests/TestFrameLaneWaitSet.cpp)
+
 # §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
 add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 
@@ -639,6 +642,13 @@ if(BUILD_TESTING)
         COMMAND TestFramePrepareOncePerFrame)
     set_tests_properties(
         TestFramePrepareOncePerFrame
+        PROPERTIES LABELS "ecs;render" TIMEOUT 60)
+
+    add_test(
+        NAME TestFrameLaneWaitSet
+        COMMAND TestFrameLaneWaitSet)
+    set_tests_properties(
+        TestFrameLaneWaitSet
         PROPERTIES LABELS "ecs;render" TIMEOUT 60)
 
     add_test(

@@ -6,6 +6,7 @@
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/SystemGroupActivity.h>
 #include<hgl/ecs/core/SystemRegistry.h>
+#include<hgl/ecs/core/FrameLaneWaitSet.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/RenderPassRequest.h>
@@ -266,13 +267,8 @@ namespace hgl
 
             // ---- A1 车道等待列表（per-frame，见 RenderOptions.h 的车道说明）----
 
-            static constexpr uint32_t MAX_LANE_WAITS = 16;
-
-            graph::SemaphoreSubmit frame_lane_waits[MAX_LANE_WAITS];   ///<本帧已提交的各离屏 RT 车道值
-            uint32_t frame_lane_wait_count = 0;
-
-            graph::SemaphoreSubmit submit_waits[MAX_LANE_WAITS];       ///<下一次提交的额外等待列表
-            uint32_t submit_wait_count = 0;
+            /// 帧提交等待列表：纯状态机，无世界/设备依赖
+            FrameLaneWaitSet lane_waits;
 
             /// 当前渲染 Pass 的物体移动性过滤（-1 = 全部，0 = 仅静态 Static，1 = 仅动态 Movable）
             int active_mobility_filter = -1;
@@ -681,13 +677,13 @@ namespace hgl
             // ---- A1 车道等待列表 ----
 
             /// 设定下一次提交的等待列表（RenderTo / 主帧收尾用）
-            void SetSubmitWaits(const graph::SemaphoreSubmit *waits,uint32_t count);
+            void SetSubmitWaits(const graph::SemaphoreSubmit *waits,uint32_t count) { lane_waits.SetSubmitWaits(waits,count); }
             /// 累积本帧离屏 RT 的车道值（主帧提交 await 它们）
-            void AddFrameLaneWait(graph::Semaphore *lane,uint64_t value);
+            void AddFrameLaneWait(graph::Semaphore *lane,uint64_t value) { lane_waits.AddFrameLaneWait(lane,value); }
             /// 把当前累积复制为下一次提交的等待列表
-            void SetSubmitWaitsFromFrameLanes();
+            void SetSubmitWaitsFromFrameLanes() { lane_waits.SetSubmitWaitsFromFrameLanes(); }
             /// 提交系统取用等待列表；is_main_frame=true 时同时收尾清空本帧累积
-            const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count,bool is_main_frame);
+            const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count,bool is_main_frame) { return lane_waits.TakeSubmitWaits(count,is_main_frame); }
 
             /// Graphics context adapter (Phase 2)
             void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { graphics_context = ctx; }
