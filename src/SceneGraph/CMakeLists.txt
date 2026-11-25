@@ -445,3 +445,11 @@ target_include_directories(ULRE.SceneGraph PUBLIC ${ROOT_INCLUDE_PATH})
 # inline 函数，必须真链一次；PRIVATE 是因为 `hgl::serialize` 的类型全部来自
 # 公开头，消费方不需要经由我们二次传播。
 target_link_libraries(ULRE.SceneGraph PRIVATE CMAssetsManage)
+
+# 分层的显式边：SceneGraph 的公开头直接 include hgl/vk 与契约层类型，
+# 因此这两条是 PUBLIC（消费方必须拿到同一批头与目标），不再靠根目标的
+# 平铺链接列表兜底。
+target_link_libraries(ULRE.SceneGraph
+    PUBLIC
+        ULRE.Vulkan
+        ULRE.GraphicsContracts)

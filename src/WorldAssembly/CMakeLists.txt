@@ -1,4 +1,4 @@
-set(WORLD_ASSEMBLY_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/world/assembly)
+﻿set(WORLD_ASSEMBLY_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/world/assembly)
 
 file(GLOB_RECURSE WORLD_ASSEMBLY_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
@@ -21,8 +21,10 @@ add_cm_library(ULRE.WorldAssembly "ULRE" ${WORLD_ASSEMBLY_INCLUDE_PATH}
     ${WORLD_ASSEMBLY_PUBLIC_HEADERS})
 
 target_include_directories(ULRE.WorldAssembly PUBLIC ${ROOT_INCLUDE_PATH})
+# 公开头（OffscreenWorld/LevelLoader/Gizmo）直接暴露 ECS、SceneGraph、Vulkan
+# 类型 ⇒ 三条边都必须是 PUBLIC：消费方需要同样的头与目标，而不是靠根聚合。
 target_link_libraries(ULRE.WorldAssembly
-    PRIVATE
+    PUBLIC
         ULRE.ECS
         ULRE.SceneGraph
         ULRE.Vulkan)

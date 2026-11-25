@@ -1,4 +1,4 @@
-set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
+﻿set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
 set(COMMON_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/common)
 # ============================================================================
 # Vulkan Backend - 纯 Vulkan API 层实现
@@ -326,7 +326,11 @@ add_cm_library(ULRE.Vulkan "ULRE"   ${VK_INCLUDE_PATH}
 )
 
 if(TARGET Vulkan::Vulkan)
-    target_link_libraries(ULRE.Vulkan PUBLIC Vulkan::Vulkan ULRE.Debug)
+    target_link_libraries(ULRE.Vulkan PUBLIC Vulkan::Vulkan ULRE.Debug ULRE.GraphicsContracts)
 elseif(WIN32)
-    target_link_libraries(ULRE.Vulkan PUBLIC vulkan-1 ULRE.Debug)
+    target_link_libraries(ULRE.Vulkan PUBLIC vulkan-1 ULRE.Debug ULRE.GraphicsContracts)
 endif()
+
+# hgl/mtl/DebugViewMode.h（ULRE.ShaderMaterialData 拥有）：Vulkan 的调试视图桥
+# 与 DescriporSetType 等数据面类型来自该目标，显式声明这条边。
+target_link_libraries(ULRE.Vulkan PUBLIC ULRE.ShaderMaterialData)
