@@ -1049,9 +1049,9 @@ namespace hgl::ecs
 
         void ECSContext::RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime)
         {
-            SortRenderSystems();
+            system_registry.SortRender();
 
-            for (auto& entry : render_system_order)
+            for (auto& entry : system_registry.RenderOrder())
             {
                 if (!entry.system)
                     continue;
@@ -1065,12 +1065,12 @@ namespace hgl::ecs
 
         void ECSContext::RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
         {
-            SortRenderSystems();
+            system_registry.SortRender();
 
             const int min_phase = static_cast<int>(minPhase);
             const int max_phase = static_cast<int>(maxPhase);
 
-            for (auto& entry : render_system_order)
+            for (auto& entry : system_registry.RenderOrder())
             {
                 if (!entry.system)
                     continue;
@@ -1115,7 +1115,7 @@ namespace hgl::ecs
 
         void ECSContext::RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
         {
-            SortRenderSystems();
+            system_registry.SortRender();
 
             if (gpu_device)
                 gpu_device->SetDrawPhaseActive(true);
@@ -1123,7 +1123,7 @@ namespace hgl::ecs
             const int min_phase = static_cast<int>(minPhase);
             const int max_phase = static_cast<int>(maxPhase);
 
-            for (auto& entry : render_system_order)
+            for (auto& entry : system_registry.RenderOrder())
             {
                 if (!entry.system || !entry.system->IsEnabled())
                     continue;

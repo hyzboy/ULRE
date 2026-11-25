@@ -5,7 +5,7 @@
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/SystemGroupActivity.h>
-#include<hgl/ecs/core/SystemScheduleState.h>
+#include<hgl/ecs/core/SystemRegistry.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/RenderPassRequest.h>
@@ -121,31 +121,13 @@ namespace hgl
 
             std::unique_ptr<EntityManager> entity_manager;
 
-            // 分类存储：更新系统与渲染系统分开
-            hgl::UnorderedMap<size_t, std::shared_ptr<System>> tick_systems;
-            hgl::UnorderedMap<size_t, std::shared_ptr<System>> render_systems;
-
-            // 按 render element type 存储系统（**一次性注册路径**仍按名键控：组定义/安装器/管线）
-            std::map<std::string, std::vector<std::shared_ptr<System>>> systems_by_element_type;
+            // 系统注册与执行顺序注册表（分类映射/元素索引/组快照/执行列表/调度状态）。
+            // **必须声明在 entity_manager 之后、component_pool_registry 之前**：
+            // 成员按声明逆序析构 ⇒ 池先死、系统次之、实体管理器最后（与旧成员布局一致）。
+            SystemRegistry system_registry;
 
             // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
             SystemGroupActivity system_group_activity;
-
-            /// 每组的系统快照（供启用/禁用走 O(1) 数组；系统注册时置空、下次启用重建）
-            std::vector<std::shared_ptr<System>> group_systems[kSystemGroupCount];
-
-            struct OrderedSystem
-            {
-                size_t key = 0;
-                int phase = 0;          // ExecutionPhase as int
-                int group_id = 0;       // SystemGroupID as int（同相位内按组分层排序）
-                uint64_t insertion_order = 0;  // For stable sorting
-                std::shared_ptr<System> system;
-            };
-
-            std::vector<OrderedSystem> tick_system_order;
-            std::vector<OrderedSystem> render_system_order;
-            SystemScheduleState system_schedule;
 
             // ── T2-c：组件存储 = 世界私有的**类型化对象池**（按 ComponentType 索引）──
             //
@@ -352,16 +334,6 @@ namespace hgl
 
         private:
 
-            void SortTickSystems();
-            void SortRenderSystems();
-            void SortSystemList(std::vector<OrderedSystem>& order_list,
-                                const SystemScheduleState::DependencyMap& dependencies,
-                                bool& dirty_flag,
-                                const char* label);
-            OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);
-            void AddOrUpdateSystem(size_t key, const std::shared_ptr<System>& system);
-            /// `is_render` 是**相位推导出的路由位**（不是调用方声明）：决定写 tick 还是 render 依赖图。
-            void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
@@ -1119,7 +1091,7 @@ namespace hgl
             {
                 auto system = std::make_shared<T>(std::forward<Args>(args)...);
                 const size_t key = typeid(T).hash_code();
-                AddOrUpdateSystem(key, system);
+                system_registry.AddOrUpdate(key, system);
                 return system;
             }
 
@@ -1128,13 +1100,7 @@ namespace hgl
              std::shared_ptr<T> GetSystem() const
              {
                 const size_t key = typeid(T).hash_code();
-
-                if (auto *system = tick_systems.GetValuePointer(key))
-                    return std::static_pointer_cast<T>(*system);
-
-                if (auto *system = render_systems.GetValuePointer(key))
-                    return std::static_pointer_cast<T>(*system);
-                 return nullptr;
+                return std::static_pointer_cast<T>(system_registry.Find(key));
              }
 
             /// Get systems by render element type name (e.g., "Primitive", "Text", "SkySphere")
@@ -1149,7 +1115,7 @@ namespace hgl
             /// 该组的安装器是否已在本世界跑过（A2：枚举）
             bool IsSystemGroupInstalled(SystemGroupID group) const;
 
-            /// 标记该组已安装（幂等）；**同时快照该组的系统**（供上面的 O(1) 启用路径）
+            /// 标记该组已安装（幂等）；组快照不在此建立，由 SetSystemGroupEnabled 首次启用时惰性重建
             void MarkSystemGroupInstalled(SystemGroupID group);
 
             /// 重置组件驱动的组状态（计数 / 已安装 / 快照）—— 世界 Shutdown 用

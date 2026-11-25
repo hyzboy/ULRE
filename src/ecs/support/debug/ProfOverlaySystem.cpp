@@ -55,7 +55,7 @@ namespace hgl::ecs
     ProfOverlaySystem::ProfOverlaySystem()
         : System("ProfOverlay")
     {
-        // 必须用 tick 相位：普通 System 的 Update 只由 Tick(tick_system_order) 或
+        // 必须用 tick 相位：普通 System 的 Update 只由 Tick(tick 执行列表) 或
         // RenderGraph pass 范围派发；渲染相位 RenderDebug 不在任何 pass 范围内 ⇒ 永不执行。
         SetExecutionPhase(ExecutionPhase::TickPostCamera);
     }
@@ -74,7 +74,7 @@ namespace hgl::ecs
             return false;
         }
 
-        // 绝不在此注册系统（会动正被迭代的 render_system_order）⇒ 只依赖宿主已装好的 Text 组。
+        // 绝不在此注册系统（会动正被迭代的渲染执行列表）⇒ 只依赖宿主已装好的 Text 组。
         if (!context->IsSystemGroupInstalled(SystemGroupID::Text))
         {
             static bool s_warned = false;

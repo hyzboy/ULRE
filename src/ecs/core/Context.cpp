@@ -67,6 +67,7 @@ namespace hgl
         ECSContext::ECSContext(const AnsiString& name)
             : Object(name)
             , entity_manager(std::make_unique<EntityManager>(1000))
+            , system_registry(this)
             , transform_storage(std::make_unique<TransformDataStorage>())
             , bounding_box_storage(std::make_unique<BoundingBoxDataStorage>())
             , visibility_storage(std::make_unique<VisibilityDataStorage>())
@@ -176,11 +177,11 @@ namespace hgl
                 }
             }
 
-                SortTickSystems();
-                SortRenderSystems();
+                system_registry.SortTick();
+                system_registry.SortRender();
 
             // Initialize all systems
-                for (auto& entry : tick_system_order)
+                for (auto& entry : system_registry.TickOrder())
                 {
                     if (entry.system)
                     {
@@ -188,7 +189,7 @@ namespace hgl
                     }
                 }
 
-                for (auto& entry : render_system_order)
+                for (auto& entry : system_registry.RenderOrder())
                 {
                     if (entry.system)
                     {
@@ -293,13 +294,10 @@ namespace hgl
                     entity_manager->Clear();
                 }
 
-                tick_systems.Clear();
-                render_systems.Clear();
-                tick_system_order.clear();
-                render_system_order.clear();
+                system_registry.ClearRegistrations();
                 ClearComponentPools();
-                systems_by_element_type.clear();
-                system_schedule.ClearDependencies();
+                system_registry.ClearElementIndex();
+                system_registry.ClearDependencies();
                 ResetComponentDrivenGroups();
                 transform_slots.Clear();
 
@@ -321,25 +319,7 @@ namespace hgl
             active = false;
 
             // Destroy all systems FIRST(before clearing materialBatches)
-            SortTickSystems();
-            SortRenderSystems();
-
-            for (auto& entry : tick_system_order)
-            {
-                if (entry.system)
-                    entry.system->Shutdown();
-            }
-            tick_system_order.clear();
-
-            for (auto& entry : render_system_order)
-            {
-                if (entry.system)
-                    entry.system->Shutdown();
-            }
-            render_system_order.clear();
-
-            tick_systems.Clear();
-            render_systems.Clear();
+            system_registry.ShutdownSystems();
 
             // Destroy all entities
             if (entity_manager)
@@ -445,10 +425,10 @@ namespace hgl
             if (!active)
                 return;
 
-            SortTickSystems();
+            system_registry.SortTick();
 
             // Update non-render systems
-            for (auto& entry : tick_system_order)
+            for (auto& entry : system_registry.TickOrder())
             {
                 if (entry.system)
                     RunSystemUpdate(entry.system.get(), deltaTime);

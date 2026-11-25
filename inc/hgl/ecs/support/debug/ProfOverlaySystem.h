@@ -25,7 +25,7 @@ namespace hgl
          * 工作方式：
          * - phase = TickPostCamera，走 `ECSContext::Tick` 的 tick 系统列。
          *   （不能用渲染相位：普通 System 的 Update 只有两个派发口 —— Tick 的
-         *   tick_system_order（仅非渲染相位）与 RenderGraph pass 循环的
+         *   tick 执行列表（SystemRegistry::TickOrder，仅非渲染相位）与 RenderGraph pass 循环的
          *   RunRenderPhaseUpdates（仅各 pass 的 [startPhase,endPhase] 范围，而
          *   pass 按渲染元素类型分组建）。RenderDebug(13) 不属于任何 pass 的
          *   范围 ⇒ Update 永不执行；PrimitiveOverlayRenderSystem 能跑是因为它是
@@ -42,7 +42,7 @@ namespace hgl
          *
          * 约束（重要）：
          * - **不安装 Text 系统组**：在 Update/Initialize 里注册系统会向
-         *   `render_system_order` 追加元素，而该表正被渲染循环迭代 ⇒ 悬垂迭代器。
+         *   渲染执行列表（SystemRegistry::RenderOrder）追加元素，而该表正被渲染循环迭代 ⇒ 悬垂迭代器。
          *   因此要求宿主应用已装好 Text 组，否则每帧重试并记一次警告。
          * - 窗口帧数按 **Tick 中的 Update 调用次数**计 = 真实帧数
          *   （一次 Tick 对应一次渲染帧）。
