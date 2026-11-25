@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/MaterialBatch.h>
 #include<hgl/ecs/core/render/PrimitiveRenderItem.h>
+#include<hgl/ecs/core/render/ModelTemplateRenderItem.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<algorithm>
 #include<cstdlib>
@@ -167,6 +168,11 @@ namespace hgl::ecs
                     item_record.entity_generation = entity_id.generation;
                     item_record.material_row      = prim->GetMaterialRuntimeRowID();
                     item_record.member_kind       = 0u;
+
+                    if (const auto *tpl_item = dynamic_cast<const ModelTemplateRenderItem *>(prim))
+                    {
+                        item_record.member_kind = static_cast<uint16_t>(1u + tpl_item->GetShadingGroup());
+                    }
 
                     // 绘制键：完整路径刚刚在 `PublishPrimitiveFacts` 里算好 ⇒ 搬进快照是
                     // **零额外成本**，却让快路径（P3）无需再读映射 GPU 缓冲里的 params 行。

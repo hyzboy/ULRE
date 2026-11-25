@@ -226,15 +226,15 @@ namespace hgl::ecs
         /// 无 asset / 无几何 ⇒ true（没有几何要渲染，与旧实现同语义）；行缺失则就地补一次再复读。
         bool EnsureGeometryRowReady(ECSContext *world,Entity *owner)
         {
-            GeometryData *geometry = FindGeometryOf(owner);
-            if (!geometry)
+            GeometryData *geometry_comp = FindGeometryOf(owner);
+            if (!geometry_comp)
                 return true;
 
-            const auto *asset = geometry->GetPrimitiveAsset();
+            const auto *asset = geometry_comp->GetPrimitiveAsset();
             if (!asset || !asset->GetGeometry())
                 return true;
 
-            if (geometry->GetGeometryID() != 0)
+            if (geometry_comp->GetGeometryID() != 0)
                 return true;
 
             auto *gc = world ? world->GetGraphicsContext() : nullptr;
@@ -246,7 +246,7 @@ namespace hgl::ecs
 
             const_cast<graph::Geometry *>(asset->GetGeometry())->EnsureMeshDrawParams(pool,dev);
 
-            if (geometry->GetGeometryID() == 0)
+            if (geometry_comp->GetGeometryID() == 0)
             {
                 GLogError("[RenderPrimitiveCollectSystem] 几何行未就位：owner=%s",
                           GetOwnerName(owner));
@@ -1697,6 +1697,9 @@ namespace hgl::ecs
             return false;
         }
 
+        if (!PrepareActivePlanResources(world, primitive_comp, material_program, effective_recipe))
+            return false;
+
         if(!material_binding_recipe.material_ssbo_binding.IsValid())
         {
             if (ULRE_DEBUG_ON(Binding))
@@ -2087,18 +2090,94 @@ namespace hgl::ecs
             return false;
 
         auto *ref = entity->GetComponent<GPUModelRefComponent>();
-        const auto *mat_table = world->GetModelTemplateMaterialTable();
+        auto *mat_table = world->GetModelTemplateMaterialTable();
+        auto *gc = world->GetGraphicsContext();
+        auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
+
+        // 分支 1：实体本身已经拥有合法的模型模板 ID（例如通过 RegisterModelTemplate 注册的多部件模板）
         if (ref && ref->template_id != graph::ssbo::kInvalidModelTemplateID)
         {
             if (mat_table && mat_table->FindBinding(ref->template_id))
                 return true;
+
+            // 模板已在 GPU SSBO 中注册，但尚未在 ModelTemplateMaterialTable 中注册渲染绑定（如 GPUModelChessboard 示例）。
+            // 绝不能改写其实体模板 ID，而应就地为该已有模板自动补齐 Shading Group 渲染绑定。
+            if (!registry || !mat_table)
+                return false;
+
+            const auto *tpl_row = registry->GetTypedRow<graph::ssbo::ModelTemplateRow>(
+                graph::GlobalSSBOType::ModelTemplatePool, ref->template_id);
+            if (!tpl_row || tpl_row->part_count == 0 || tpl_row->part_offset == 0)
+                return false;
+
+            MaterialRuntimeSlot &material_slot = world->GetOrCreateMaterialRuntimeSlot(entity);
+            if (!EnsureForwardProgram(entity, material_slot))
+                return false;
+
+            MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
+            const MaterialRuntimeRow *material_for_item = runtime_table ? runtime_table->Get(material_slot.row) : nullptr;
+            if (!material_for_item)
+                return false;
+
+            if (material_slot.runtime_dirty || !material_slot.valid)
+            {
+                if (!MaterializeRecipeRowsForPrimitive(entity, material_slot))
+                    return false;
+                material_slot.valid = true;
+            }
+
+            TemplateRenderBinding binding;
+            binding.template_id = ref->template_id;
+            if (material_slot.row != INVALID_MATERIAL_RUNTIME_ROW_ID)
+                binding.owned_part_rows.Add(material_slot.row);
+
+            const uint32_t shading_group_count = (tpl_row->shading_group_count != 0) ? tpl_row->shading_group_count : 1u;
+            const uint32_t b_count = tpl_row->part_bucket_count;
+
+            for (uint32_t g = 0; g < shading_group_count; ++g)
+            {
+                TemplateShadingGroupDesc grp;
+                grp.runtime_row = material_slot.row;
+                grp.casts_shadow = CanCastShadow(entity);
+
+                ValueArray<uint32_t> slot_geo;
+                ValueArray<uint32_t> slot_cnt;
+                if (b_count > 0)
+                {
+                    slot_geo.Resize(static_cast<int>(b_count));
+                    slot_cnt.Resize(static_cast<int>(b_count));
+                    for (uint32_t b = 0; b < b_count; ++b)
+                    {
+                        slot_geo[b] = 0u;
+                        slot_cnt[b] = 0u;
+                    }
+
+                    for (uint32_t p = 0; p < tpl_row->part_count; ++p)
+                    {
+                        const auto *part = registry->GetTypedRow<graph::ssbo::ModelPartRow>(
+                            graph::GlobalSSBOType::ModelPartPool, tpl_row->part_offset + p);
+                        if (!part || part->geometry_id == 0 || part->bucket_slot >= b_count)
+                            continue;
+                        if (shading_group_count > 1 && part->shading_group != g)
+                            continue;
+
+                        slot_geo[part->bucket_slot] = part->geometry_id;
+                        slot_cnt[part->bucket_slot]++;
+                    }
+                }
+
+                grp.slot_geometry = slot_geo;
+                grp.slot_count = slot_cnt;
+                binding.groups.Add(grp);
+            }
+
+            return mat_table->RegisterBinding(binding);
         }
 
+        // 分支 2：实体未分配模板 ID（纯单图元实体），自动为其物化/注册单图元模板并挂载 GPUModelRefComponent
         GeometryData *geom_comp = FindGeometryOf(entity);
         const graph::PrimitiveAsset *prim_asset = geom_comp ? geom_comp->GetPrimitiveAsset() : nullptr;
         graph::Geometry *geo = prim_asset ? prim_asset->GetGeometry() : nullptr;
-        auto *gc = world->GetGraphicsContext();
-        auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
         if (!geo || !registry)
             return false;
 
@@ -2145,6 +2224,7 @@ namespace hgl::ecs
     }
 
     // D9：阴影 pass 跳过/失败路径的统一收敛入口（见头文件注释）。
+    // reason 包含: "masked caster runtime rows not ready" 等
     bool RenderPrimitiveCollectSystem::AdvanceShadowRetry(
         MaterialRuntimeSlot &slot,
         const char *reason,
@@ -2489,13 +2569,50 @@ namespace hgl::ecs
                 const uint32_t texture_id   = material_row->material_texture_configuration.IsValid()
                     ? material_row->material_texture_configuration.row_index : 0u;
 
-                // A4：item 只持**行号**；`GetShaderProgram/GetPipeline` 都按实体现查世界表
-                // ⇒ 只要 `material_runtime_row` 仍然有效，程序/管线/渲染状态自动正确，
-                // 无需重做材质链（这是快路径成立的根据）。
+                auto *render_target = world->GetRenderTarget();
+                auto *current_render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+                auto *cached_pipeline = current_render_pass
+                    ? world->GetMaterialRuntimePipelineTable().Get(entity_id, current_render_pass)
+                    : nullptr;
 
-                std::unique_ptr<PrimitiveRenderItem> item =
-                    std::make_unique<PrimitiveRenderItem>(
+                // 若该实体在当前 pass 下未解析过管线，则快路径不成立，主动回退完整路径重新解析
+                if (!cached_pipeline)
+                {
+                    ok = false;
+                    break;
+                }
+
+                const auto cached_pipeline_config = current_render_pass
+                    ? world->GetMaterialRuntimePipelineTable().GetConfig(entity_id, current_render_pass)
+                    : graph::mtl::MaterialPipelineConfig{};
+
+                const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
+                const bool is_tpl = (record.member_kind > 0)
+                                 || (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID);
+
+                // A4：item 持行号与解析管线；模型模板项保持其 Shading Group 载体类型
+                std::unique_ptr<PrimitiveRenderItem> item;
+                if (is_tpl)
+                {
+                    const uint32_t group_idx = (record.member_kind > 0) ? (record.member_kind - 1u) : 0u;
+                    const uint32_t tpl_id = model_ref ? model_ref->template_id : 0u;
+
+                    item = std::make_unique<ModelTemplateRenderItem>(
+                        entity_id,
+                        transform,
+                        record.material_row,
+                        group_idx,
+                        tpl_id,
+                        current_render_pass,
+                        cached_pipeline,
+                        cached_pipeline_config,
+                        world);
+                }
+                else
+                {
+                    item = std::make_unique<PrimitiveRenderItem>(
                         entity_id, transform, record.material_row, world);
+                }
 
                 item->UpdateWorldMatrix();
 
@@ -3095,6 +3212,12 @@ namespace hgl::ecs
 
                     if (!resolved_pipeline)
                         continue;
+
+                    Entity *primitive_comp = entity;
+                    world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),
+                                                                 render_pass,
+                                                                 resolved_pipeline,
+                                                                 resolved_pipeline_config);
 
                     auto item = std::make_unique<ModelTemplateRenderItem>(
                         entity_id,

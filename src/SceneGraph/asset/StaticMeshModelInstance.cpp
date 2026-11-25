@@ -397,7 +397,7 @@ namespace hgl::graph
                  extra_entities.size(), owned_assets.GetCount());
 
         // 尝试自动构建并绑定 GPU 模型模板（如果 GPU SSBO 资源池与材质表就绪）
-        BuildAndBindGPUTemplate(nodes, options);
+        // BuildAndBindGPUTemplate(nodes, options);
 
         return true;
     }
