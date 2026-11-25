@@ -8,6 +8,7 @@
 #include<hgl/ecs/core/SystemRegistry.h>
 #include<hgl/ecs/core/FrameLaneWaitSet.h>
 #include<hgl/ecs/core/RenderPassShadowState.h>
+#include<hgl/ecs/core/MainFrameTopologyState.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/RenderPassRequest.h>
@@ -279,29 +280,10 @@ namespace hgl
             /// 与当前值不等即知"静态场景已变"，做对应的缓存失效。只增不减。
             uint64_t static_scene_revision = 0;
 
-            /// 主帧图元收集/合批缓存的失效台帐（计划 P1）。
-            /// 与 `static_scene_revision` 的区别：那个只关心 Static transform（A3 阴影缓存），
-            /// 而本台帐覆盖**全部**会改变拓扑的输入（实体/组件增删、几何绑定、模板池、
-            /// 材质绑定、pass/target）以及必须重新发布的动态事实。
-            /// ⚠ P1 阶段它只被观测与统计，**不驱动任何跳过**。
-            mutable PrimitiveTopologyLedger primitive_topology_ledger;
-
-            /// 主帧拓扑快照（计划 P2）。**单世界一份**（世界隔离由此天然成立）。
-            /// P2 阶段只构建 + 对拍 + 统计，不驱动任何跳过；是否构建由
-            /// `main_frame_topology_snapshot_enabled` 决定（默认开启）。
-            MainFrameTopologySnapshot main_frame_topology_snapshot;
-
-            /// 主帧拓扑快照开关（默认开启；环境变量 `ULRE_MAINFRAME_TOPO_CACHE=0` 可关，
-            /// opt-out 语义：未设置 / `1` / `true` / `yes` 均为开，`0` / `f` / `n` 为关）。
-            bool main_frame_topology_snapshot_enabled = false;
-
-            /// 主帧**收集快路径**开关（计划 P3，默认开启；环境变量
-            /// `ULRE_MAINFRAME_COLLECT_CACHE=0` 可关，opt-out 语义同上）。
-            /// 与 `main_frame_topology_snapshot_enabled` 分开的原因：快照本身只是
-            /// 观测（P2 已证明零行为变化），而"让快照接管收集"是真正改变执行路径的
-            /// 决定 ⇒ 两个开关必须能独立打开，才能做出「快照开/关」与「快路径开/关」
-            /// 的四组对拍。快路径**要求**快照开启，反之不成立。
-            bool main_frame_collect_cache_enabled = false;
+            /// 主帧拓扑记账（计划 P1 台帐 + P2 快照 + P2/P3 两个开关）。**单世界一份**
+            /// （世界隔离由此天然成立）。与 `static_scene_revision` 的区别：那个只关心
+            /// Static transform（A3 阴影缓存），而台帐覆盖**全部**会改变拓扑的输入。
+            MainFrameTopologyState main_frame_topology;
 
             /// 当前 Pass 的阴影上下文（是否阴影 pass + 有效参考原点）
             RenderPassShadowState pass_shadow;
@@ -462,40 +444,25 @@ namespace hgl
             uint64_t GetStaticSceneRevision() const { return static_scene_revision; }
 
             /// 拓扑失效台帐（只读访问；写入统一走 `MarkTopologyChanged/MarkDynamicFactChanged`）
-            const PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() const { return primitive_topology_ledger; }
+            const PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() const { return main_frame_topology.Ledger(); }
 
             /// 可写访问：**只**给统计累加（`RecordEligibility`）与设备轮询用；
             /// 拓扑/事实的标记仍应走下面的两个具名入口，以免绕过 `MarkSceneStructureDirty`。
-            PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() { return primitive_topology_ledger; }
+            PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() { return main_frame_topology.Ledger(); }
 
             /// 主帧拓扑快照（P2）。可写访问：构建方（批阶段尾部）与统计读取方共用。
-            MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() { return main_frame_topology_snapshot; }
-            const MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() const { return main_frame_topology_snapshot; }
+            MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() { return main_frame_topology.Snapshot(); }
+            const MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() const { return main_frame_topology.Snapshot(); }
 
             /// 开/关主帧拓扑快照。**关闭时必须完全不构建**（P2 的零开销保证）。
-            void SetMainFrameTopologySnapshotEnabled(bool enabled)
-            {
-                if (main_frame_topology_snapshot_enabled == enabled)
-                    return;
-
-                main_frame_topology_snapshot_enabled = enabled;
-
-                // 开关切换后的第一份快照没有可信基线 ⇒ 丢掉旧的比较基线与内容。
-                main_frame_topology_snapshot.Reset();
-            }
-            bool IsMainFrameTopologySnapshotEnabled() const { return main_frame_topology_snapshot_enabled; }
+            void SetMainFrameTopologySnapshotEnabled(bool enabled) { main_frame_topology.SetSnapshotEnabled(enabled); }
+            bool IsMainFrameTopologySnapshotEnabled() const { return main_frame_topology.IsSnapshotEnabled(); }
 
             /// 开/关主帧**收集快路径**（P3）。开启后主帧在满足全部资格条件时直接从
             /// 上一份主帧拓扑快照重建收集结果；条件不满足（任一帧）就退回完整收集，
             /// 不做任何"部分复用"。关闭时整条快路径不存在（零开销）。
-            void SetMainFrameCollectCacheEnabled(bool enabled)
-            {
-                main_frame_collect_cache_enabled = enabled;
-            }
-            bool IsMainFrameCollectCacheEnabled() const
-            {
-                return main_frame_collect_cache_enabled && main_frame_topology_snapshot_enabled;
-            }
+            void SetMainFrameCollectCacheEnabled(bool enabled) { main_frame_topology.SetCollectCacheEnabled(enabled); }
+            bool IsMainFrameCollectCacheEnabled() const { return main_frame_topology.IsCollectCacheEnabled(); }
 
             /// 本 pass 是否有资格充当「主帧」（与 P1 资格判定的谓词完全一致）：
             /// 非阴影 pass 且无移动性过滤。阴影/过滤 pass 与主帧共用同一份
@@ -508,14 +475,14 @@ namespace hgl
             /// 声明拓扑变更（写入方调用；见 `TopologyChange` 各类别的注释）
             void MarkTopologyChanged(TopologyChange kind, uint32_t count = 1) const
             {
-                primitive_topology_ledger.MarkTopology(kind, count);
+                main_frame_topology.MarkTopology(kind, count);
                 MarkSceneStructureDirty();
             }
 
             /// 声明动态事实变更（不改拓扑，只需重新发布到 GPU 行）
             void MarkDynamicFactChanged(DynamicFactChange kind, uint32_t count = 1) const
             {
-                primitive_topology_ledger.MarkDynamicFact(kind, count);
+                main_frame_topology.MarkDynamicFact(kind, count);
             }
 
             bool IsCurrentPassShadow() const { return pass_shadow.IsShadowPass(); }
@@ -533,7 +500,7 @@ namespace hgl
                 MarkTopologyChanged(TopologyChange::PassAndTarget);
 
                 // P2：pass/target 集合变了，已提交快照的批序/批块前提不再成立 ⇒ 显式失效。
-                main_frame_topology_snapshot.Invalidate();
+                main_frame_topology.InvalidateSnapshot();
             }
             ScenePipelineMode GetScenePipelineMode() const { return scene_pipeline_mode; }
 

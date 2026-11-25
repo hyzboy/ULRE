@@ -96,11 +96,11 @@ namespace hgl
             model_template_material_table->SetContext(this);
 
             // P2：主帧拓扑快照默认开启；宿主可用环境变量（opt-out，`=0` 关闭）或显式 setter 调整。
-            main_frame_topology_snapshot_enabled = GetMainFrameTopologySnapshotEnvDefault();
+            main_frame_topology.SetSnapshotEnabled(GetMainFrameTopologySnapshotEnvDefault());
 
             // P3：主帧收集快路径默认开启（独立开关；`IsMainFrameCollectCacheEnabled()`
             // 会额外要求快照本身也开启，所以「P2 关 + P3 开」只会退回完整路径，不会失配）。
-            main_frame_collect_cache_enabled = GetMainFrameCollectCacheEnvDefault();
+            main_frame_topology.SetCollectCacheEnabled(GetMainFrameCollectCacheEnvDefault());
         }
 
         ECSContext::~ECSContext()

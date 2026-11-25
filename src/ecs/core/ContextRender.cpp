@@ -703,7 +703,7 @@ namespace hgl::ecs
             MarkTopologyChanged(TopologyChange::PassAndTarget);
 
             // P2：RT/附件格式重算会换管线对象与 pass 尺寸 ⇒ 已提交主帧快照作废。
-            main_frame_topology_snapshot.Invalidate();
+            main_frame_topology.InvalidateSnapshot();
 
             // Ensure render target viewport/UBO are updated immediately for this extent.
             if (render_target)
@@ -741,9 +741,7 @@ namespace hgl::ecs
             // （模板池/部件池/材质行/自定义数据行…）的占用与内容变化折进失效台帐。
             // 放在最前面：本帧后续所有 collect/batch 产生的行写入，都会在**下一帧**被看到，
             // 这正是快照需要知道的「上一帧改过行」。
-            primitive_topology_ledger.BeginFrame();
-            if (auto *gc = GetGraphicsContext())
-                primitive_topology_ledger.PollDeviceRowPools(gc->GetGlobalSSBOBufferRegistry());
+            main_frame_topology.BeginFrame(GetGraphicsContext() ? GetGraphicsContext()->GetGlobalSSBOBufferRegistry() : nullptr);
 
             // 只在场景结构变化（scene_structure_dirty）时重新 gather，
             // 避免每帧全量遍历所有 entity/component（结构稳定时零开销）。
