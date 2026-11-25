@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include<hgl/ecs/support/pipeline/RenderStrategyParity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/pipeline/RenderResource.h>
@@ -248,7 +248,7 @@ namespace hgl::ecs
 
             if (geometry_comp->GetGeometryID() == 0)
             {
-                GLogError("[RenderPrimitiveCollectSystem] 几何行未就位：owner=%s",
+                GLogError("[RenderCollectSystem] 几何行未就位：owner=%s",
                           GetOwnerName(owner));
                 return false;
             }
@@ -1122,7 +1122,7 @@ namespace hgl::ecs
         }
     }
 
-    RenderPrimitiveCollectSystem::RenderPrimitiveCollectSystem(const std::string& name)
+    RenderCollectSystem::RenderCollectSystem(const std::string& name)
         : System(name)
     {
         // Set system type and properties
@@ -1141,7 +1141,7 @@ namespace hgl::ecs
     // recipe；物化行、纹理配置等 forward 槽状态一概不动——否则 purpose 每帧
     // Forward↔Shadow 乒乓会让 InvalidateRecipeRuntime 反复 retire 纹理配置，
     // 并禁用 P1-1 全干净帧快路径。
-    bool RenderPrimitiveCollectSystem::EnsureShadowCasterProgram(Entity *primitive_comp,
+    bool RenderCollectSystem::EnsureShadowCasterProgram(Entity *primitive_comp,
                                                                   MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1158,7 +1158,7 @@ namespace hgl::ecs
         graph::ShaderProgramManager *material_manager = nullptr;
         if (!ResolveGraphicsAndMaterialManager(world, graphics, material_manager))
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster resolve failed: graphics/material manager null for %s",
+            GLogWarning("[RenderCollectSystem] ShadowCaster resolve failed: graphics/material manager null for %s",
                         GetOwnerName(primitive_comp));
             return false;
         }
@@ -1207,7 +1207,7 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildResolvedRecipe(primitive_comp, nullptr, effective_recipe))
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster BuildResolvedRecipe failed for %s",
+            GLogWarning("[RenderCollectSystem] ShadowCaster BuildResolvedRecipe failed for %s",
                         GetOwnerName(primitive_comp));
             return false;
         }
@@ -1245,7 +1245,7 @@ namespace hgl::ecs
 
         if (shadow_variant == INVALID_MATERIAL_VARIANT_ID)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] ShadowCaster variant unavailable/full for %s build_context=%llu recipe=%llu",
+            GLogWarning("[RenderCollectSystem] ShadowCaster variant unavailable/full for %s build_context=%llu recipe=%llu",
                         GetOwnerName(primitive_comp),
                         (unsigned long long)build_context_hash,
                         (unsigned long long)recipe_hash);
@@ -1277,7 +1277,7 @@ namespace hgl::ecs
         if (!ResolveResolvedMaterial(effective_recipe, template_definition))
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] ShadowCaster cannot select template for material=%s",
+                "[RenderCollectSystem] ShadowCaster cannot select template for material=%s",
                 effective_recipe.recipe_name.c_str());
             return false;
         }
@@ -1286,7 +1286,7 @@ namespace hgl::ecs
                 mtl_request.render_template_request))
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] ShadowCaster template selection failed for material=%s",
+                "[RenderCollectSystem] ShadowCaster template selection failed for material=%s",
                 effective_recipe.recipe_name.c_str());
             return false;
         }
@@ -1296,7 +1296,7 @@ namespace hgl::ecs
         if (!resolved_program)
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] ShadowCaster AcquireShaderProgram failed for %s recipe=%s",
+                "[RenderCollectSystem] ShadowCaster AcquireShaderProgram failed for %s recipe=%s",
                 GetOwnerName(primitive_comp),
                 effective_recipe.recipe_name.c_str());
             return false;
@@ -1314,7 +1314,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::EnsureMaterialProgramForPrimitive(Entity *primitive_comp,
+    bool RenderCollectSystem::EnsureMaterialProgramForPrimitive(Entity *primitive_comp,
                                                                           MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1331,7 +1331,7 @@ namespace hgl::ecs
     // Forward 槽解析（主帧着色程序）。阴影 pass 中 masked caster 的行物化
     // 也会借道此处（见主循环 A1-4 分支）——纹理行是 per-primitive 共享
     // 状态，与 program 无关。
-    bool RenderPrimitiveCollectSystem::EnsureForwardProgram(Entity *primitive_comp,
+    bool RenderCollectSystem::EnsureForwardProgram(Entity *primitive_comp,
                                                              MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1360,7 +1360,7 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildResolvedRecipe(primitive_comp, nullptr, effective_recipe))
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] BuildResolvedRecipe failed for %s",
+            GLogWarning("[RenderCollectSystem] BuildResolvedRecipe failed for %s",
                         GetOwnerName(primitive_comp));
             return false;
         }
@@ -1370,7 +1370,7 @@ namespace hgl::ecs
         graph::ShaderProgramManager *material_manager = nullptr;
         if (!ResolveGraphicsAndMaterialManager(world, graphics, material_manager))
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: graphics/material manager null for %s",
+            GLogWarning("[RenderCollectSystem] ResolveMaterialProgram failed: graphics/material manager null for %s",
                         GetOwnerName(primitive_comp));
             return false;
         }
@@ -1454,7 +1454,7 @@ namespace hgl::ecs
         if (!ResolveResolvedMaterial(effective_recipe, template_definition))
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] Cannot select template for material=%s",
+                "[RenderCollectSystem] Cannot select template for material=%s",
                 effective_recipe.recipe_name.c_str());
             return false;
         }
@@ -1463,7 +1463,7 @@ namespace hgl::ecs
                 mtl_request.render_template_request))
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] Template selection failed for material=%s",
+                "[RenderCollectSystem] Template selection failed for material=%s",
                 effective_recipe.recipe_name.c_str());
             return false;
         }
@@ -1472,7 +1472,7 @@ namespace hgl::ecs
 
         if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireShaderProgram failed for %s recipe=%s",
+            GLogWarning("[RenderCollectSystem] AcquireShaderProgram failed for %s recipe=%s",
                         GetOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str());
             return false;
@@ -1490,7 +1490,7 @@ namespace hgl::ecs
                 GetOwnerName(primitive_comp)))
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] Direct material recipe validation failed for %s",
+                "[RenderCollectSystem] Direct material recipe validation failed for %s",
                 GetOwnerName(primitive_comp));
             return false;
         }
@@ -1526,7 +1526,7 @@ namespace hgl::ecs
             variant_table->Intern(VariantKeyOf(runtime_key));
         if (forward_variant == INVALID_MATERIAL_VARIANT_ID)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] forward variant unavailable/full for %s build_context=%llu recipe=%llu",
+            GLogWarning("[RenderCollectSystem] forward variant unavailable/full for %s build_context=%llu recipe=%llu",
                         GetOwnerName(primitive_comp),
                         (unsigned long long)build_context_hash,
                         (unsigned long long)recipe_hash);
@@ -1540,7 +1540,7 @@ namespace hgl::ecs
         const MaterialRuntimeRowID row_id = AssignSlotRow(runtime_table, slot, runtime_key);
         if (row_id == INVALID_MATERIAL_RUNTIME_ROW_ID)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] runtime row unavailable/full for %s build_context=%llu recipe=%llu data_index=%u",
+            GLogWarning("[RenderCollectSystem] runtime row unavailable/full for %s build_context=%llu recipe=%llu data_index=%u",
                         GetOwnerName(primitive_comp),
                         (unsigned long long)runtime_key.program_build_context,
                         (unsigned long long)runtime_key.recipe_hash,
@@ -1574,7 +1574,7 @@ namespace hgl::ecs
         slot.valid = false;                     // 等价于原 MarkProgramResolved()
         row->recipe_hash = recipe_hash;
         // 问题 8(b)：共享行的行字段必须与身份键同值（自有行 key 为空 ⇒ 不检查）。台帐宏门住。
-        MaterialRuntimeTable::VerifyWrittenRecipeHash(*row, recipe_hash, "RenderPrimitiveCollectSystem: 解析后写 recipe_hash");
+        MaterialRuntimeTable::VerifyWrittenRecipeHash(*row, recipe_hash, "RenderCollectSystem: 解析后写 recipe_hash");
 
         // effective_recipe 出自 MaterialData::BuildResolvedRecipe（数据层边界
         // 已 NormalizeRecipe），直接缓存供 CreatePipeline 使用，无需再规范化。
@@ -1591,7 +1591,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive(Entity *primitive_comp,
+    bool RenderCollectSystem::ResolveRuntimePipelineForPrimitive(Entity *primitive_comp,
                                                                           MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1642,7 +1642,7 @@ namespace hgl::ecs
                                                                          &resolved_pipeline_config);
         if (!resolved_pipeline)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",
+            GLogWarning("[RenderCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",
                         GetOwnerName(primitive_comp),
                         program->GetName().c_str());
             return false;
@@ -1658,7 +1658,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
+    bool RenderCollectSystem::MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
                                                                          MaterialRuntimeSlot &slot)
     {
         if (!world || !primitive_comp)
@@ -1692,7 +1692,7 @@ namespace hgl::ecs
         if (row->cached_effective_recipe_hash == 0)
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] Materialize failed: effective material recipe is not cached for %s",
+                "[RenderCollectSystem] Materialize failed: effective material recipe is not cached for %s",
                 GetOwnerName(primitive_comp));
             return false;
         }
@@ -1709,7 +1709,7 @@ namespace hgl::ecs
         auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
         if (!rdbs)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: RenderSceneUBOSystem missing for %s",
+            GLogWarning("[RenderCollectSystem] Materialize failed: RenderSceneUBOSystem missing for %s",
                         GetOwnerName(primitive_comp));
             return false;
         }
@@ -1740,7 +1740,7 @@ namespace hgl::ecs
                         material_buffer))
                 {
                     GLogError(
-                        "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer missing for %s type=%s ssbo_id=%u",
+                        "[RenderCollectSystem] Materialize failed: material row buffer missing for %s type=%s ssbo_id=%u",
                         GetOwnerName(primitive_comp),
                         hgl::serialize::EnumNameOf(
                             asset_binding.ssbo_type),
@@ -1752,7 +1752,7 @@ namespace hgl::ecs
                         asset_binding.data_index))
                 {
                     GLogError(
-                        "[RenderPrimitiveCollectSystem] Materialize failed: inactive material row ID for %s type=%s ssbo_id=%u data_index=%u",
+                        "[RenderCollectSystem] Materialize failed: inactive material row ID for %s type=%s ssbo_id=%u data_index=%u",
                         GetOwnerName(primitive_comp),
                         hgl::serialize::EnumNameOf(
                             asset_binding.ssbo_type),
@@ -1768,7 +1768,7 @@ namespace hgl::ecs
                  || asset_binding.data_index >= material_buffer.row_capacity)
                 {
                     GLogError(
-                        "[RenderPrimitiveCollectSystem] Materialize failed: material row buffer invalid for %s type=%s buffer_type=%s ssbo_id=%u data_index=%u capacity=%u row_bytes=%u",
+                        "[RenderCollectSystem] Materialize failed: material row buffer invalid for %s type=%s buffer_type=%s ssbo_id=%u data_index=%u capacity=%u row_bytes=%u",
                         GetOwnerName(primitive_comp),
                         hgl::serialize::EnumNameOf(
                             asset_binding.ssbo_type),
@@ -1791,7 +1791,7 @@ namespace hgl::ecs
         row->data_index_row =
             entity_data_index != uint32_t(-1) ? entity_data_index : 0u;
         // 问题 8(b)：已物化的共享行，发布行号必须等于身份键的授权行号（未物化哨兵/自有行跳过）。
-        MaterialRuntimeTable::VerifyWrittenDataIndexRow(*row, "RenderPrimitiveCollectSystem: 物化发布 data_index_row");
+        MaterialRuntimeTable::VerifyWrittenDataIndexRow(*row, "RenderCollectSystem: 物化发布 data_index_row");
 
         auto *texture_graphics_context = world->GetGraphicsContext();
         auto *texture_registry = texture_graphics_context
@@ -1809,7 +1809,7 @@ namespace hgl::ecs
                 texture_layout))
         {
             GLogWarning(
-                "[RenderPrimitiveCollectSystem] Materialize failed: texture definition lookup/layout failed for %s definition=%s",
+                "[RenderCollectSystem] Materialize failed: texture definition lookup/layout failed for %s definition=%s",
                 GetOwnerName(primitive_comp),
                 effective_recipe.recipe_name.c_str());
             return false;
@@ -1851,7 +1851,7 @@ namespace hgl::ecs
                     if (declaration.required)
                     {
                         GLogError(
-                            "[RenderPrimitiveCollectSystem] Required texture binding missing: owner=%s texture=%s",
+                            "[RenderCollectSystem] Required texture binding missing: owner=%s texture=%s",
                             GetOwnerName(primitive_comp),
                             declaration.name.c_str());
                         return false;
@@ -1864,7 +1864,7 @@ namespace hgl::ecs
                         declaration.sampler_type))
                 {
                     GLogError(
-                        "[RenderPrimitiveCollectSystem] Non-array texture received array layer: owner=%s texture=%s layer=%u",
+                        "[RenderCollectSystem] Non-array texture received array layer: owner=%s texture=%s layer=%u",
                         GetOwnerName(primitive_comp),
                         declaration.name.c_str(),
                         recipe_binding->array_layer);
@@ -1920,7 +1920,7 @@ namespace hgl::ecs
                      || slot_asset->GetPayloadState() != hgl::PayloadState::LoadFailed)
                     {
                         GLogError(
-                            "[RenderPrimitiveCollectSystem] Required texture handle missing: owner=%s texture=%s resource=%s",
+                            "[RenderCollectSystem] Required texture handle missing: owner=%s texture=%s resource=%s",
                             GetOwnerName(primitive_comp),
                             declaration.name.c_str(),
                             recipe_binding->resource_id.empty()
@@ -1930,7 +1930,7 @@ namespace hgl::ecs
                     }
 
                     GLogWarning(
-                        "[RenderPrimitiveCollectSystem] Required texture load failed, slot falls back to handle 0: owner=%s texture=%s",
+                        "[RenderCollectSystem] Required texture load failed, slot falls back to handle 0: owner=%s texture=%s",
                         GetOwnerName(primitive_comp),
                         declaration.name.c_str());
                 }
@@ -1954,7 +1954,7 @@ namespace hgl::ecs
             if (!texture_registry)
             {
                 GLogError(
-                    "[RenderPrimitiveCollectSystem] Materialize failed: SSBO registry missing for texture references owner=%s",
+                    "[RenderCollectSystem] Materialize failed: SSBO registry missing for texture references owner=%s",
                     GetOwnerName(primitive_comp));
                 return false;
             }
@@ -1988,7 +1988,7 @@ namespace hgl::ecs
                         new_allocation))
                 {
                     GLogError(
-                        "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration capacity exhausted owner=%s definition=%s",
+                        "[RenderCollectSystem] Materialize failed: texture configuration capacity exhausted owner=%s definition=%s",
                         GetOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str());
                     return false;
@@ -2006,7 +2006,7 @@ namespace hgl::ecs
                         new_allocation,
                         retire_epoch);
                 GLogError(
-                    "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration write failed owner=%s",
+                    "[RenderCollectSystem] Materialize failed: texture configuration write failed owner=%s",
                     GetOwnerName(primitive_comp));
                 return false;
             }
@@ -2027,7 +2027,7 @@ namespace hgl::ecs
             if (row->material_texture_zero_row_gpu == 0)
             {
                 GLogError(
-                    "[RenderPrimitiveCollectSystem] Materialize failed: texture configuration zero row unavailable owner=%s",
+                    "[RenderCollectSystem] Materialize failed: texture configuration zero row unavailable owner=%s",
                     GetOwnerName(primitive_comp));
                 return false;
             }
@@ -2084,7 +2084,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderPrimitiveCollectSystem::EnsurePrimitiveModelTemplate(Entity *entity)
+    bool RenderCollectSystem::EnsurePrimitiveModelTemplate(Entity *entity)
     {
         if (!world || !entity)
             return false;
@@ -2225,7 +2225,7 @@ namespace hgl::ecs
 
     // D9：阴影 pass 跳过/失败路径的统一收敛入口（见头文件注释）。
     // reason 包含: "masked caster runtime rows not ready" 等
-    bool RenderPrimitiveCollectSystem::AdvanceShadowRetry(
+    bool RenderCollectSystem::AdvanceShadowRetry(
         MaterialRuntimeSlot &slot,
         const char *reason,
         Entity *primitive_comp)
@@ -2248,14 +2248,14 @@ namespace hgl::ecs
 
         if (retries == 1)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] shadow pass skip for '%s': %s -- "
+            GLogWarning("[RenderCollectSystem] shadow pass skip for '%s': %s -- "
                         "caster excluded from this frame's depth map; static cascade revision is bumped "
                         "every frame for the first %u frames to converge",
                         name, reason, kShadowRetryFullBumpFrames);
         }
         else if (retries == kShadowRetryFullBumpFrames + 1)
         {
-            GLogError("[RenderPrimitiveCollectSystem] shadow pass skip for '%s' persisted %u frames (%s) -- "
+            GLogError("[RenderCollectSystem] shadow pass skip for '%s' persisted %u frames (%s) -- "
                       "throttling static cascade redraw to once every %u frames; this caster's shadow stays "
                       "missing meanwhile (check the forward materialization chain)",
                       name, kShadowRetryFullBumpFrames, reason, kShadowRetryBumpPeriod);
@@ -2266,7 +2266,7 @@ namespace hgl::ecs
     }
 
 
-    bool RenderPrimitiveCollectSystem::PublishPrimitiveFacts(const EntityID entity_id,
+    bool RenderCollectSystem::PublishPrimitiveFacts(const EntityID entity_id,
                                                             const uint32_t transform_id,
                                                             const uint32_t geometry_id,
                                                             const uint32_t material_id,
@@ -2377,7 +2377,7 @@ namespace hgl::ecs
                 ParityCheckShadowReceiver(
                     HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver),
                     CanReceiveShadow(shadow_owner),
-                    "RenderPrimitiveCollectSystem#shadow-facts");
+                    "RenderCollectSystem#shadow-facts");
 #endif
 
                 world->GetEntityGPUTable().SetShadowFacts(
@@ -2420,7 +2420,7 @@ namespace hgl::ecs
                 // 行缺失/溢出/有第二写者。取数：EntityGPUTable::GetVisibleMirrorCount()（应恒 0）。
                 world->GetEntityGPUTable().VerifyVisibleMirror(
                     shadow_owner, world->IsEntityVisible(entity_id),
-                    "RenderPrimitiveCollectSystem#publish");
+                    "RenderCollectSystem#publish");
 #endif//ULRE_ECS_DEBUG_API
             }
         }
@@ -2448,7 +2448,7 @@ namespace hgl::ecs
         return ids_published;
     }
 
-    bool RenderPrimitiveCollectSystem::TryCachedMainFrameCollect(const bool ambient_provider_changed)
+    bool RenderCollectSystem::TryCachedMainFrameCollect(const bool ambient_provider_changed)
     {
         if (!world)
             return false;
@@ -2521,8 +2521,8 @@ namespace hgl::ecs
             {
                 const SnapshotItemRecord &record = records[i];
 
-                // 非 `PrimitiveRenderItem` 成员（当前不存在）：不猜测语义，整体回退
-                if (record.entity_index == 0xFFFFFFFFu)
+                // 非模板成员不能重放为旧图元项，必须回退完整收集。
+                if (record.entity_index == 0xFFFFFFFFu || record.member_kind == 0)
                 {
                     ok = false;
                     break;
@@ -2569,10 +2569,22 @@ namespace hgl::ecs
                 const uint32_t texture_id   = material_row->material_texture_configuration.IsValid()
                     ? material_row->material_texture_configuration.row_index : 0u;
 
+                const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
+                const uint32_t group_idx = record.member_kind - 1u;
+                const ModelTemplateMaterialTable *template_table = world->GetModelTemplateMaterialTable();
+                const TemplateRenderBinding *binding = model_ref && template_table
+                    ? template_table->FindBinding(model_ref->template_id) : nullptr;
+                if (!model_ref || model_ref->template_id == graph::ssbo::kInvalidModelTemplateID
+                    || !binding || group_idx >= static_cast<uint32_t>(binding->groups.GetCount()))
+                {
+                    ok = false;
+                    break;
+                }
+
                 auto *render_target = world->GetRenderTarget();
                 auto *current_render_pass = render_target ? render_target->GetRenderPass() : nullptr;
                 auto *cached_pipeline = current_render_pass
-                    ? world->GetMaterialRuntimePipelineTable().Get(entity_id, current_render_pass)
+                    ? world->GetMaterialRuntimePipelineTable().Get(entity_id, current_render_pass, group_idx)
                     : nullptr;
 
                 // 若该实体在当前 pass 下未解析过管线，则快路径不成立，主动回退完整路径重新解析
@@ -2583,36 +2595,19 @@ namespace hgl::ecs
                 }
 
                 const auto cached_pipeline_config = current_render_pass
-                    ? world->GetMaterialRuntimePipelineTable().GetConfig(entity_id, current_render_pass)
+                    ? world->GetMaterialRuntimePipelineTable().GetConfig(entity_id, current_render_pass, group_idx)
                     : graph::mtl::MaterialPipelineConfig{};
 
-                const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
-                const bool is_tpl = (record.member_kind > 0)
-                                 || (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID);
-
-                // A4：item 持行号与解析管线；模型模板项保持其 Shading Group 载体类型
-                std::unique_ptr<PrimitiveRenderItem> item;
-                if (is_tpl)
-                {
-                    const uint32_t group_idx = (record.member_kind > 0) ? (record.member_kind - 1u) : 0u;
-                    const uint32_t tpl_id = model_ref ? model_ref->template_id : 0u;
-
-                    item = std::make_unique<ModelTemplateRenderItem>(
-                        entity_id,
-                        transform,
-                        record.material_row,
-                        group_idx,
-                        tpl_id,
-                        current_render_pass,
-                        cached_pipeline,
-                        cached_pipeline_config,
-                        world);
-                }
-                else
-                {
-                    item = std::make_unique<PrimitiveRenderItem>(
-                        entity_id, transform, record.material_row, world);
-                }
+                auto item = std::make_unique<ModelTemplateRenderItem>(
+                    entity_id,
+                    transform,
+                    record.material_row,
+                    group_idx,
+                    model_ref->template_id,
+                    current_render_pass,
+                    cached_pipeline,
+                    cached_pipeline_config,
+                    world);
 
                 item->UpdateWorldMatrix();
 
@@ -2658,7 +2653,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void RenderPrimitiveCollectSystem::ObserveCollectCacheEligibility()
+    void RenderCollectSystem::ObserveCollectCacheEligibility()
     {
         if (!world)
             return;
@@ -2700,7 +2695,7 @@ namespace hgl::ecs
         }
     }
 
-    void RenderPrimitiveCollectSystem::Update(float /*deltaTime*/)
+    void RenderCollectSystem::Update(float /*deltaTime*/)
     {
         if (!world)
             return;
@@ -2871,16 +2866,16 @@ namespace hgl::ecs
 
                 ParityCheckCollect(HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass),
                                    legacy_collect,
-                                   "RenderPrimitiveCollectSystem#prescan");
+                                   "RenderCollectSystem#prescan");
 
                 ParityCheckShadowCaster(HasRenderNeed(strategy.needs,RenderNeed::ShadowCaster),
                                         CanCastShadow(entity),
-                                        "RenderPrimitiveCollectSystem#prescan");
+                                        "RenderCollectSystem#prescan");
 
                 // A7b 新语义守卫：表说“材质缺失 ⇒ 回退材质” ⟺ 事实“无任何材质来源”。
                 ParityCheckFallbackMaterial(HasRenderNeed(strategy.needs,RenderNeed::FallbackMaterial),
                                             (!HasAnyMaterialSource(entity) && !IsModelTemplateCarrier(entity)),
-                                            "RenderPrimitiveCollectSystem#prescan");
+                                            "RenderCollectSystem#prescan");
             }
 #endif
 
@@ -3011,16 +3006,16 @@ namespace hgl::ecs
 
                 ParityCheckCollect(HasRenderNeed(strategy.needs,RenderNeed::CollectForCurrentPass),
                                    legacy_collect,
-                                   "RenderPrimitiveCollectSystem#collect");
+                                   "RenderCollectSystem#collect");
 
                 ParityCheckShadowCaster(HasRenderNeed(strategy.needs,RenderNeed::ShadowCaster),
                                         CanCastShadow(entity),
-                                        "RenderPrimitiveCollectSystem#collect");
+                                        "RenderCollectSystem#collect");
 
                 // A7b 新语义守卫：表说“材质缺失 ⇒ 回退材质” ⟺ 事实“无任何材质来源”。
                 ParityCheckFallbackMaterial(HasRenderNeed(strategy.needs,RenderNeed::FallbackMaterial),
                                             (!HasAnyMaterialSource(entity) && !IsModelTemplateCarrier(entity)),
-                                            "RenderPrimitiveCollectSystem#collect");
+                                            "RenderCollectSystem#collect");
             }
 #endif
 
@@ -3129,19 +3124,14 @@ namespace hgl::ecs
             const TemplateRenderBinding *binding = (pure_model_ref && template_mat_table)
                 ? template_mat_table->FindBinding(pure_model_ref->template_id) : nullptr;
 
-            const bool is_pure_template = (pure_model_ref != nullptr && pure_model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
-                                       && (binding != nullptr || entity->GetComponent<GeometryData>() == nullptr);
+            const bool is_model_template = pure_model_ref
+                && pure_model_ref->template_id != graph::ssbo::kInvalidModelTemplateID;
 
-            if (is_pure_template)
+            if (is_model_template)
             {
-                if (pure_model_ref->template_id == graph::ssbo::kInvalidModelTemplateID)
-                {
-                    cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", "InvalidTemplate", "Model template ID is invalid");
-                    continue;
-                }
-
                 if (!binding || binding->groups.IsEmpty())
                 {
+                    any_material_work = true;
                     cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", "NoTemplateBinding", "Model template has no render binding");
                     continue;
                 }
@@ -3177,6 +3167,20 @@ namespace hgl::ecs
                 // 发布模板实体的权威事实（template_id, part_visibility_mask, etc.）
                 PublishPrimitiveFacts(entity_id, transform_id, 0u, fact_material_id, fact_texture_id, pass_index, nullptr);
 
+                uint32_t collected_groups = 0;
+                bool group_failed = false;
+                auto drop_group = [&](uint32_t group, const char *reason, const char *message)
+                {
+                    group_failed = true;
+                    any_material_work = true;
+                    ++cache.dropped_other;
+                    cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", reason, message);
+                    LogWarning(u8"Model template group skipped: owner=%s template=%u group=%u reason=%s",
+                               entity_name, pure_model_ref->template_id, group, reason);
+                    if (trace)
+                        ::strncpy(trace->collect_reason, reason, sizeof(trace->collect_reason) - 1);
+                };
+
                 for (uint32_t g = 0; g < static_cast<uint32_t>(binding->groups.GetCount()); ++g)
                 {
                     const TemplateShadingGroupDesc &grp_desc = binding->groups[g];
@@ -3192,12 +3196,18 @@ namespace hgl::ecs
 
                     const MaterialRuntimeRow *row = current_runtime_table ? current_runtime_table->Get(row_id) : nullptr;
                     if (!row)
+                    {
+                        drop_group(g, "MissingMaterialRuntimeRow", "Template group material runtime row is unavailable");
                         continue;
+                    }
 
                     graph::ShaderProgram *program = EnsureTemplateGroupProgram(
                         world, variant_table, current_runtime_table, row_id, shadow_pass);
                     if (!program || !render_pass)
+                    {
+                        drop_group(g, "TemplateProgramUnavailable", "Template group program or render pass is unavailable");
                         continue;
+                    }
 
                     graph::mtl::MaterialRecipe effective_recipe = shadow_pass
                         ? row->shadow_cached_normalized_recipe
@@ -3211,13 +3221,17 @@ namespace hgl::ecs
                         program, effective_recipe, &resolved_pipeline_config);
 
                     if (!resolved_pipeline)
+                    {
+                        drop_group(g, "TemplatePipelineUnavailable", "Template group pipeline could not be resolved");
                         continue;
+                    }
 
                     Entity *primitive_comp = entity;
                     world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),
                                                                  render_pass,
                                                                  resolved_pipeline,
-                                                                 resolved_pipeline_config);
+                                                                 resolved_pipeline_config,
+                                                                 g);
 
                     auto item = std::make_unique<ModelTemplateRenderItem>(
                         entity_id,
@@ -3236,16 +3250,20 @@ namespace hgl::ecs
                     cache.renderableCount++;
                     ++added;
                     ++cache.collected_items;
+                    ++collected_groups;
                 }
 
                 if (trace)
-                    ::strncpy(trace->collect_status, "collected", sizeof(trace->collect_status) - 1);
+                    ::strncpy(trace->collect_status,
+                              group_failed ? (collected_groups ? "partial" : "dropped")
+                                           : (collected_groups ? "collected" : "filtered"),
+                              sizeof(trace->collect_status) - 1);
                 shadow_pass_idsum += (static_cast<uint64_t>(entity_id.index) << 16) | entity_id.generation;
 
                 continue;
             }
 
-            // 阶段 2：收集系统旧单图元分支彻底清理
+            // 未就绪实体等待后续帧重新归一化，不回退旧单图元收集路线。
             // 经过预扫描 EnsurePrimitiveModelTemplate，所有合法图元实体均已完成单图元模型模板晋升。
             // 若仍有非模板实体进入此处，记录 Drop 并跳过，不再保留旧单图元物化与收集分支。
             if (trace)
@@ -3254,6 +3272,7 @@ namespace hgl::ecs
                 ::strncpy(trace->collect_reason, "no_valid_model_template", sizeof(trace->collect_reason) - 1);
             }
             cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", "NoModelTemplate", "Entity has no valid model template or binding");
+            any_material_work = true;
             continue;
         }
 

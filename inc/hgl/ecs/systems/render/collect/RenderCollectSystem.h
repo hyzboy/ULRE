@@ -21,9 +21,9 @@ namespace hgl::ecs
     class PrimitiveRenderItem;
 
     /**
-     * RenderPrimitiveCollectSystem
+     * RenderCollectSystem
      *
-     * Collects primitive render items for the current frame.
+     * Normalizes geometry entities to model templates and collects one item per Shading Group.
      *
      * A4：材质运行期状态有两处载体（再无"每实体一个材质运行期组件"）：
      *   · **共享行**（`MaterialRuntimeTable::MaterialRuntimeRow`，世界私有、interned）：
@@ -42,7 +42,7 @@ namespace hgl::ecs
     //   · **2 处 = 诊断**：日志/计数里的 pass 归属。
     // 分工口径：**能力与意图**由策略表唯一裁决；上面 9 处只是"在本 pass 内怎么执行"的局部机制。
     // 若后续要收敛，必须先证明局部机制可由策略表驱动（会改动 pass 分流与 D9 重试链，风险 > 收益）。
-    class RenderPrimitiveCollectSystem : public System
+    class RenderCollectSystem : public System
     {
     private:
 
@@ -160,8 +160,8 @@ namespace hgl::ecs
 
     public:
 
-        RenderPrimitiveCollectSystem(const std::string& name = "RenderPrimitiveCollectSystem");
-        ~RenderPrimitiveCollectSystem() override = default;
+        RenderCollectSystem(const std::string& name = "RenderCollectSystem");
+        ~RenderCollectSystem() override = default;
 
     public:
 

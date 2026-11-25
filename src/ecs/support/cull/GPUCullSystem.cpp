@@ -1200,7 +1200,7 @@ namespace hgl::ecs
                                                  uint32_t inst_base, uint32_t inst_rows,
                                                  uint32_t pass_index)
     {
-        // 调用前提（guard 已在 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 核完）：
+        // 调用前提（guard 已在 `RenderBatchPipeline::TryApplyGPUCullOverride` 核完）：
         // gather 输出与桶行表**同容量契约** / 全 mesh / … /
         // 本函数的入参全部由 guard 装配时算好（桶区间 + 实例区间），这里只做"指向 + 置标志"。
         if (!batch || !indirect_commands_buffer_ || !l2w_out_buffer_

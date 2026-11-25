@@ -8,7 +8,7 @@ namespace hgl::ecs
     PrimitiveRenderPipeline::PrimitiveRenderPipeline(ECSContext* context)
         : context_(context)
     {
-        impl_ = std::make_unique<PrimitiveBatchPipeline>();
+        impl_ = std::make_unique<RenderBatchPipeline>();
     }
 
     const AnsiString& PrimitiveRenderPipeline::GetName() const

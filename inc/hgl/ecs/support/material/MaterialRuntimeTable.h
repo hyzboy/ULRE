@@ -16,7 +16,7 @@
  *
  *           ⚠ **现状（2026-10-10 审计 §1.1 复核）：生产路径当前不调用 `DetachOwned`** ——
  *           所有差异都压进了键（见下「键的规矩」），且对共享行的写入被约束为**键的纯函数**
- *           （幂等：见 `RenderPrimitiveCollectSystem` 里刷新 `cached_effective_recipe*` 处的注释）
+ *           （幂等：见 `RenderCollectSystem` 里刷新 `cached_effective_recipe*` 处的注释）
  *           ⇒ 共享在语义上安全、无需分裂。它**保留**为该模型的第二条路径（安全阀），
  *           **使用条件** = 要写一个「不入键、且只属于该实例」的行内绑定字段时（直接 `GetMutable`
  *           写共享行会让同键的其它实例一起变 = 串味）；也可用于「先分裂、后续帧原地改」的
@@ -121,18 +121,18 @@ namespace hgl::ecs
     //   | ① `MaterialVariantKey`（本报告的前缀） | build_context + recipe_hash | collect 解析 program 时 | program 记录（变体表；program 本体归 ShaderProgramManager） |
     //   | ② `MaterialRuntimeKey`（= ① + `data_index_row`） | ① + 自有 SSBO 行 | collect 物化材质行之后（`Intern`） | 共享行（绑定状态：变体 ID / SSBO 行与地址 / 纹理配置 / 配方缓存） |
     //   | ③ `MaterialAuthoringSideTable`（**行 id 空间**） | 材质 SSBO 行号 | 作者流程写行 | `data_index_row` 的来源（② 的第 3 维与它同源） |
-    //   | ④ `MaterialRuntimePipelineTable`（**每实例每 pass**） | EntityID + pass | 绘制前解析管线 | 复用已解析管线（**不是身份**，不该进 ①②） |
+    //   | ④ `MaterialRuntimePipelineTable`（**每实例每组，校验 pass**） | EntityID + ShadingGroup | 绘制前解析管线 | 复用已解析管线（**不是身份**，不该进 ①②） |
     //
     //   先后：③（授权行）⇒ ①（program 身份）⇒ ②（共享行身份，含 ③ 的行号）⇒ ④（每实例解析产物）。
     //   ⚠ **只有 forward 变体键是运行期键的前缀**：阴影变体键用 **ShadowDepth** 的 build context
     //     （与 forward 行的键同 recipe、不同 purpose）⇒ 它是**兄弟键**，不是前缀（见
-    //     `RenderPrimitiveCollectSystem` 阴影侧的注释）。
+    //     `RenderCollectSystem` 阴影侧的注释）。
 
     /// 变体键 = 运行期键去掉「授权 SSBO 行」维 —— **前缀关系的唯一实现**（放本文件是因为
     /// 只有这里能同时看到两个键；`MaterialVariantKey` 的定义在
     /// `MaterialVariantTable.h`，其哈希经 `HashMaterialProgramIdentity()` 共用同一份折字段）。
     /// 规矩：加「配方身份」维度**先改 `MaterialRuntimeKey`**，本函数自动跟随；不决定 program
-    /// 身份的维度不得进前缀。生产接线见 `RenderPrimitiveCollectSystem` 的 forward 路径
+    /// 身份的维度不得进前缀。生产接线见 `RenderCollectSystem` 的 forward 路径
     /// （变体键由本函数从运行期键派生 ⇒ 前缀关系**由构造保证**，不靠约定）。
     inline MaterialVariantKey VariantKeyOf(const MaterialRuntimeKey &k) noexcept
     {

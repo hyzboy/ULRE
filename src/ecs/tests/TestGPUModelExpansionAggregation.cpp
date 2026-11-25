@@ -10,7 +10,7 @@
  *     `groupCountX = ceil(元素数 / 组大小)`、`groupCountZ = 1`、`groupCountY = 桶内实例数`
  *     ⇒ 50 个实例落在**同一条**命令的 Y 轴上（这才是"实例化"而非"每实例一条命令"）。
  *   C 容量/行/溢出：容量算少了 → `slot >= capacity` → 丢实例并计入溢出槽（硬判据）；
- *     桶间实例行起点必须 4 行对齐（`row_base % 4 == 0`，见 PrimitiveBatchPipeline 注释）。
+ *     桶间实例行起点必须 4 行对齐（`row_base % 4 == 0`，见 RenderBatchPipeline 注释）。
  *   D 源码契约：把 A/B/C 的口径钉在着色器与 CPU 装配的文本上。
  *
  * `src/ecs/tests` 下没有图形设备（见 TestGPUModelTemplate 文件头），故为
@@ -71,7 +71,7 @@ namespace
         return agg;
     }
 
-    /// 本批桶组的装配结果（对应 PrimitiveBatchPipeline 的 bucket_capacity / row_cursor 循环）
+    /// 本批桶组的装配结果（对应 RenderBatchPipeline 的 bucket_capacity / row_cursor 循环）
     struct BucketGroupPlan
     {
         uint32_t                bucket_first    = 0;    ///< 桶号空间起点（SetModelBucketBase 用）
@@ -407,7 +407,7 @@ namespace
         AnsiString cull_src, batch_src;
 
         if (!ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"), cull_src)
-            || !ReadSource(OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"), batch_src))
+            || !ReadSource(OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"), batch_src))
         {
             GLogError(u8"TestGPUModelExpansionAggregation: 无法读取源文件（需在仓库根目录运行）");
             return false;

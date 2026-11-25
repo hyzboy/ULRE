@@ -56,6 +56,9 @@ namespace hgl::ecs
      * 3. 统计各 shading group 与素材桶总数，在 GlobalSSBOBufferRegistry 分配并写入 GPU 模板行与部件区间；
      * 4. 组装 TemplateRenderBinding 并在 ECSContext::GetModelTemplateMaterialTable() 中注册并增加材质行引用。
      *
+     * @note material_inputs 必须提供已物化的 MaterialRuntimeRowID；资产实例化阶段的
+     * 原始材质 SSBO 行不能代替运行期行。该接口保留用于显式多组模板构建。
+     *
      * @return 模板池行号 (template_id != 0)，失败返回 0
      */
     uint32_t BuildMultiMaterialModelTemplate(graph::GlobalSSBOBufferRegistry *registry,

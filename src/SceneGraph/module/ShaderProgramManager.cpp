@@ -572,7 +572,7 @@ void ShaderProgramManager::RecordVariantProgramKey(
 //
 // 命名口径：**不叫 ...BuildPipeline** —— 本函数不创建 VkPipeline。VkPipeline 由渲染侧
 // 按 pass 创建（RenderPass::CreatePipeline(ShaderProgram*, const MaterialRecipe&)，
-// 见 RenderPrimitiveCollectSystem 的取用点）。这里只做：ShaderModule 装配 → stage 列表
+// 见 RenderCollectSystem 的取用点）。这里只做：ShaderModule 装配 → stage 列表
 // → 全材质共享 pipeline layout。
 bool ShaderProgramManager::BuildRuntimeShaderProgram(ShaderProgram *mtl,
                                                      const AnsiString &mtl_name,

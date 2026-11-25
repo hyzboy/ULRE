@@ -322,7 +322,7 @@ private:
                 movers.push_back({ transform.GetID(), x, y, 0.0f, float(i) * 0.7f });
 
             // 代表图元：模板实体**仍要被收集** —— 注意阶段 1 起它**不再**占竞技场桶容量
-            //（`PrimitiveBatchPipeline` 按 `GPUModelRefComponent` 跳过载体项的基础聚类）；
+            //（`RenderBatchPipeline` 按 `GPUModelRefComponent` 跳过载体项的基础聚类）；
             // 这里保留挂载只因宿主材质配方仍走"几何资产默认配方"来源（模板自带材质绑定
             // 在 Step 1.4 落地后才可完全去掉）。
             auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);

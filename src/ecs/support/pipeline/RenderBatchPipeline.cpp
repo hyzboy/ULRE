@@ -1,4 +1,4 @@
-#include<hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h>
+#include<hgl/ecs/support/pipeline/RenderBatchPipeline.h>
 #include<hgl/ecs/support/pipeline/RenderStrategyParity.h>
 #include<hgl/ecs/support/cull/BoundingVolumeCull.h>
 #include<hgl/ecs/support/storage/PerfTimer.h>
@@ -103,7 +103,7 @@ namespace hgl::ecs
         // 地址与 pc_root），合批 key 只按 shader+pipeline 区分——同 shader 即同批。
     }
 
-    bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
+    bool RenderBatchPipeline::PrepareFrame(ECSContext* ctx)
     {
         if (!ctx)
             return false;
@@ -131,7 +131,7 @@ namespace hgl::ecs
         return prepared_frame_ok_;
     }
 
-    bool PrimitiveBatchPipeline::PrepareFrameInternal(ECSContext* ctx)
+    bool RenderBatchPipeline::PrepareFrameInternal(ECSContext* ctx)
     {
         if (!ctx)
             return false;
@@ -155,7 +155,7 @@ namespace hgl::ecs
     //   cull  = PerformFrustumCulling 的 CPU 时间（形态 B 接管帧 = 0）
     //   batch = RunBatching 的 CPU 时间（形态 B guard+接管帧仍要建批，含差异）
     // 计时器/RAII 段本体见 `support/PerfTimer.h`（与 `GPUCullSystem` 的派发计时共用一份实现）。
-    void PrimitiveBatchPipeline::RunCulling()
+    void RenderBatchPipeline::RunCulling()
     {
         static PerfTimer s_cull_timer("cpu_cull");
 
@@ -176,7 +176,7 @@ namespace hgl::ecs
             s_cull_timer.Add(DeltaUs(t0));
     }
 
-    void PrimitiveBatchPipeline::RunBatching()
+    void RenderBatchPipeline::RunBatching()
     {
         static PerfTimer s_batch_timer("batching");
 
@@ -193,7 +193,7 @@ namespace hgl::ecs
             s_batch_timer.Add(DeltaUs(t0));
     }
 
-    void PrimitiveBatchPipeline::PerformFrustumCulling()
+    void RenderBatchPipeline::PerformFrustumCulling()
     {
         if (!world || !camera_info)
             return;
@@ -228,13 +228,13 @@ namespace hgl::ecs
         }
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithWorldAABB(RenderItem* item, const math::AABB& world_aabb)
+    bool RenderBatchPipeline::TestFrustumWithWorldAABB(RenderItem* item, const math::AABB& world_aabb)
     {
         //worldAABB 已包含实体缩放，可直接用 P/N 顶点法做精确判定
         return frustum.BoxIn(world_aabb) != math::Frustum::Scope::OUTSIDE;
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithLocalAABB(RenderItem* item, const glm::vec3& local_center, const glm::vec3& local_extents)
+    bool RenderBatchPipeline::TestFrustumWithLocalAABB(RenderItem* item, const glm::vec3& local_center, const glm::vec3& local_extents)
     {
         const glm::mat4 worldMat = item->GetWorldMatrix();
         const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
@@ -245,7 +245,7 @@ namespace hgl::ecs
         return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithBoundingSphere(RenderItem* item)
+    bool RenderBatchPipeline::TestFrustumWithBoundingSphere(RenderItem* item)
     {
         auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
         if (!prim_item)
@@ -277,14 +277,14 @@ namespace hgl::ecs
     }
 
 
-    graph::BufferManager* PrimitiveBatchPipeline::GetBufferManager() const
+    graph::BufferManager* RenderBatchPipeline::GetBufferManager() const
     {
         // W7：GetGraphicsContext() 已内置 render_ctx fallback
         auto *gc = world ? world->GetGraphicsContext() : nullptr;
         return gc ? gc->GetBufferManager() : nullptr;
     }
 
-    void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
+    void RenderBatchPipeline::FinalizeBatch(MaterialBatch& batch)
     {
         // 本批次的**世界表**（WorldAddresses）本帧槽地址：表内各列（相机行 / 实体 4-ID 表 / 光源行 …）
         // 都是世界私有地址 —— 多世界渲染只换这一个指针。表地址随世界、随帧槽 ⇒ 每批重取。
@@ -329,7 +329,7 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveBatchPipeline::ResetMaterialBatchPlan()
+    void RenderBatchPipeline::ResetMaterialBatchPlan()
     {
         for (BatchPlanSlot &slot : batch_plans_)
         {
@@ -341,7 +341,7 @@ namespace hgl::ecs
         }
     }
 
-    PrimitiveBatchPipeline::BatchPlanSlot *PrimitiveBatchPipeline::FindBatchPlanSlot(const void *render_pass)
+    RenderBatchPipeline::BatchPlanSlot *RenderBatchPipeline::FindBatchPlanSlot(const void *render_pass)
     {
         for (BatchPlanSlot &slot : batch_plans_)
         {
@@ -352,7 +352,7 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    PrimitiveBatchPipeline::BatchPlanSlot *PrimitiveBatchPipeline::AcquireBatchPlanSlot(const void *render_pass)
+    RenderBatchPipeline::BatchPlanSlot *RenderBatchPipeline::AcquireBatchPlanSlot(const void *render_pass)
     {
         if (BatchPlanSlot *slot = FindBatchPlanSlot(render_pass))
             return slot;
@@ -377,7 +377,7 @@ namespace hgl::ecs
      * 指纹变了 ⇒ 批计划作废。材质行/管线变化不需要进指纹 —— 由
      * `MaterialBinding`/`PassAndTarget` 拓扑代数与 `MaterialContent` 事实代数覆盖。
      */
-    uint64_t PrimitiveBatchPipeline::ComputeRenderItemSignature(const RenderFrameCache &cache,
+    uint64_t RenderBatchPipeline::ComputeRenderItemSignature(const RenderFrameCache &cache,
                                                                uint32_t &visible_count) const
     {
         uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
@@ -419,7 +419,7 @@ namespace hgl::ecs
      * 且 `GetPipelineConfig()` 按值拷贝配置）。批对象本身仍要逐帧重建，
      * 因为 `RenderFrameCache::BeginFrame()` 每帧清空批表。
      */
-    bool PrimitiveBatchPipeline::TryReplayMaterialBatchPlan(RenderFrameCache &cache,
+    bool RenderBatchPipeline::TryReplayMaterialBatchPlan(RenderFrameCache &cache,
                                                             BatchPlanSlot &slot,
                                                             TransformAssignmentBuffer *shared_transform_buffer,
                                                             graph::BufferManager *buffer_manager)
@@ -507,7 +507,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void PrimitiveBatchPipeline::BuildMaterialBatches()
+    void RenderBatchPipeline::BuildMaterialBatches()
     {
         if (!world)
             return;
@@ -558,7 +558,7 @@ namespace hgl::ecs
                 {
                     new_item_batch.push_back(kNoPlanBatch);
 
-                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved recipe rows. shader_prog=%s",
+                    LogWarning("[RenderBatchPipeline] Skip primitive item: unresolved recipe rows. shader_prog=%s",
                                shader_prog ? shader_prog->GetName().c_str() : "<null>");
                     continue;
                 }
@@ -571,7 +571,7 @@ namespace hgl::ecs
                 // 它“本来没有材质”就无声跳过（这正是被用户拍板取消的那条旧语义）。
                 new_item_batch.push_back(kNoPlanBatch);
 
-                LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
+                LogWarning("[RenderBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
                            shader_prog ? shader_prog->GetName().c_str() : "<null>",
                            current_render_pass);
                 continue;
@@ -645,7 +645,7 @@ namespace hgl::ecs
 
     }
 
-    void PrimitiveBatchPipeline::RefreshTemplateFactCache()
+    void RenderBatchPipeline::RefreshTemplateFactCache()
     {
         if (!world)
             return;
@@ -666,8 +666,8 @@ namespace hgl::ecs
         ++template_fact_builds_;
     }
 
-    const PrimitiveBatchPipeline::TemplatePartFacts *
-    PrimitiveBatchPipeline::ResolveTemplatePartFacts(graph::GlobalSSBOBufferRegistry *pool,
+    const RenderBatchPipeline::TemplatePartFacts *
+    RenderBatchPipeline::ResolveTemplatePartFacts(graph::GlobalSSBOBufferRegistry *pool,
                                                     const uint32_t template_id,
                                                     TemplateFactResult &result)
     {
@@ -733,7 +733,7 @@ namespace hgl::ecs
         return &slot;
     }
 
-    void PrimitiveBatchPipeline::TryApplyGPUCullOverride()
+    void RenderBatchPipeline::TryApplyGPUCullOverride()
     {
         static PerfTimer s_guard_timer("guard_hook");
         const PerfSpan guard_span(s_guard_timer);   // RAII：多点 return 出口统一累计
@@ -782,7 +782,6 @@ namespace hgl::ecs
         // 一批不满足前提不牵连其余批）——单次派发 + 标签设计白拿的粒度。
         auto *gc = world->GetGraphicsContext();
         auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-        const EntityRenderIDTable &rid_table = world->GetEntityRenderIDTable();
 
         // A6-d T4b：拒 = **fail-fast**（不再回 CPU 账兜底）。依据 `GPUCullSystem::kMaxBatches`
         // 的拍板政策：容量是冻结值，超限 = 项目 bug ⇒ 不扩容、不静默丢批；也不许"退回 CPU 账"
@@ -831,11 +830,9 @@ namespace hgl::ecs
         uint32_t geometry_batches = 0;
         uint32_t *tags = nullptr;
 
-        // T5 素材桶草稿（**跨批复用**，避免每批每帧堆分配）：桶表 + 项→桶映射。
-        // 桶数 = 本批出现过的几何种类数（典型个位数）；线性查表省掉 map 的分配。
+        // 模板部件桶草稿，跨批复用。
         std::vector<uint32_t> bucket_geometry;    // 桶 → geometry_id
         std::vector<uint32_t> bucket_capacity;    // 桶 → 容量（= 该几何体的项数）
-        std::vector<uint32_t> item_bucket;        // 项 → 桶下标（打标签用）
 
         // T3.1 模板实体：本批的**模板部件桶组**草稿。
         // 一个模板在一批里占 `part_bucket_count` 个**连续**桶（桶组），槽 i 对应
@@ -861,10 +858,6 @@ namespace hgl::ecs
         // P4：模板事实缓存的失效检查（每帧 O(1)：两个代数比对）
         RefreshTemplateFactCache();
 
-        // A/B 诊断开关（临时）：`ULRE_NO_INSTANCING=1` ⇒ 每项独立成桶（capacity=1），
-        // 等价于改造前的"每项一条单实例命令"。用于与实例化路径做逐像素对拍。
-        static const bool s_no_instancing = (getenv("ULRE_NO_INSTANCING") != nullptr);
-
         for (auto& pair : cache.materialBatches)
         {
             MaterialBatch *b = pair.second.get();
@@ -887,15 +880,6 @@ namespace hgl::ecs
             //  本类里同名的那套 mesh per-draw 参数表构建 —— 两者都已不在。）
             const char *why = nullptr;
 
-            // ── T5（实例化渲染）：批内按 `geometry_id` 聚类成**素材桶** ─────────────
-            // 同批内同 `geometry_id` 的项共享**一条实例化 draw**（`groupCountY` = 该桶
-            // 幸存数）。布局行的最小单位由此变成"桶"而不是"整批" ⇒ 一个 MaterialBatch
-            // 占若干连续布局行；绘制侧按 `gpu_slice[pass].cmd_base/cmd_count` 发
-            // `cmd_count` 条命令。
-            //
-            // 聚类是 CPU 端**确定性**的（不依赖 GPU 剔除结果）：桶集合 = 本批出现过的
-            // 几何体种类，帧间稳定（同一 `materialBatches` 键序 + 同一批项集）⇒ 桶号
-            // 稳定、标签稳定、命令表稳定。
             bucket_geometry.clear();
             bucket_capacity.clear();
 
@@ -905,81 +889,7 @@ namespace hgl::ecs
             {
                 const size_t item_count = b->items.size();
 
-                item_bucket.resize(item_count);
-
-                for (size_t i = 0; i < item_count; ++i)
-                {
-                    RenderItem *item = b->items[i];
-
-                    if (!item)
-                    {
-                        why = "批内含空项";
-                        break;
-                    }
-
-                    // A6-c：原「含无 owner 实体项」拒绝条件已删——现管线只产带**有效
-                    // EntityID** 的 `PrimitiveRenderItem`（无 owner 项属已退役的外部注入面）
-                    // ⇒ 无生产者（全家族台架零命中）。真出现无 owner 项，下面的解引用会当场
-                    // 崩（响亮），好过静默丢项。
-                    Entity *owner = item->GetEntity();
-
-                    // 阶段 1：模板载体项**不进基础聚类**（不占代表几何体的桶/实例行）。
-                    // 它的部件由 expand 侧落进模板桶组；纯模板实体（无 GeometryData）的
-                    // 4-ID geometry_id 本就是 0，也必须在这里放行（旧代码会按"行缺失"拒批）。
-                    const GPUModelRefComponent *owner_ref =
-                        owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
-
-                    if (owner_ref && owner_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
-                    {
-                        item_bucket[i] = UINT32_MAX;
-                        continue;
-                    }
-
-                    const graph::RenderItemDescriptor *ids =
-                        rid_table.Row(pass_index, owner->GetEntityID().index);
-
-                    if (!ids || ids->geometry_id == 0)
-                    {
-                        why = "实体 4-ID 行缺失";
-                        break;
-                    }
-
-                    const auto *params =
-                        pool ? pool->GetMeshDrawParamsRow(ids->geometry_id) : nullptr;
-
-                    if (!params)
-                    {
-                        why = "MeshDrawParams 池行缺失";
-                        break;
-                    }
-
-                    // 线性扫已建桶：桶数 = 本批几何种类数（典型个位数）⇒ 比对次数
-                    // 远小于每次建 map 的开销，且**无额外分配**。
-                    uint32_t bucket = UINT32_MAX;
-
-                    if (!s_no_instancing)
-                        for (uint32_t k = 0; k < uint32_t(bucket_geometry.size()); ++k)
-                            if (bucket_geometry[k] == ids->geometry_id)
-                            {
-                                bucket = k;
-                                break;
-                            }
-
-                    if (bucket == UINT32_MAX)
-                    {
-                        bucket = uint32_t(bucket_geometry.size());
-                        bucket_geometry.push_back(ids->geometry_id);
-                        bucket_capacity.push_back(0u);
-                    }
-
-                    ++bucket_capacity[bucket];
-                    item_bucket[i] = bucket;
-                }
-
-                // ── T3.1：模板实体的**部件桶组**分配（紧接基础聚类之后）─────────
-                // 模板实体在基础聚类里只贡献"代表几何体"那一个桶（正常实体仍要用它）；
-                // 其部件实例**不**落到该桶，而是落到本模板自己的桶组里 ⇒ 这里按模板
-                // 去重后追加 `part_bucket_count` 个连续桶。
+                // 按模板和 Shading Group 去重分配连续部件桶。
                 //
                 // 桶组容量取**精确值**：槽 s 的桶容量 = 该槽的部件数 × 本批该模板的
                 // 实体数（每个部件每实例最多落一行）。Σ 全部槽 = part_count × 实体数
@@ -991,12 +901,17 @@ namespace hgl::ecs
 
                     for (size_t i = 0; i < item_count && !why; ++i)
                     {
-                        Entity *owner = b->items[i]->GetEntity();
+                        const auto *tpl_item = dynamic_cast<const ModelTemplateRenderItem *>(b->items[i]);
+                        Entity *owner = tpl_item ? tpl_item->GetEntity() : nullptr;
                         const GPUModelRefComponent *ref =
                             owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
 
-                        if (!ref || ref->template_id == graph::ssbo::kInvalidModelTemplateID)
-                            continue;
+                        if (!ref || ref->template_id == graph::ssbo::kInvalidModelTemplateID
+                            || ref->template_id != tpl_item->GetTemplateID())
+                        {
+                            why = "批内项缺少有效模型模板";
+                            break;
+                        }
 
                         // P4：模板事实从 CPU 侧缓存取 —— 槽计数/槽几何体只需按
                         // `template_id` 建一次，稳定帧不再读映射缓冲里的模板行。
@@ -1012,11 +927,7 @@ namespace hgl::ecs
                             break;
                         }
 
-                        // Step 1.4：支持多 shading_group 模板部件分流到不同批。
-                        // 确定当前项所属的 shading_group（如果是 ModelTemplateRenderItem 则取其属性，否则默认组 0）。
-                        uint32_t target_group = 0;
-                        if (const auto *tpl_item = dynamic_cast<const ModelTemplateRenderItem *>(b->items[i]))
-                            target_group = tpl_item->GetShadingGroup();
+                        const uint32_t target_group = tpl_item->GetShadingGroup();
 
                         if (target_group >= facts->shading_group_count)
                         {
@@ -1190,15 +1101,7 @@ namespace hgl::ecs
             for (size_t i = 0; i < b->items.size(); ++i)
             {
                 Entity *owner = b->items[i]->GetEntity();
-                // 结构类值：本帧装配、本帧消费。标签 = **桶号**（该实体所属几何桶）。
-                // 模板载体项没有代表性桶（`UINT32_MAX`）⇒ 不打标签；其接管判据是
-                // 组表偏移（见 `entity_gpu_cull.glsl` 的 expansion 分支）。
-                if (item_bucket[i] != UINT32_MAX)
-                    tags[owner->GetEntityID().index] = bucket_first + item_bucket[i];
-
-                // T3.1：模板实体另写**部件桶组基址**（本 pass 块内桶号）。
-                // 标签仍指向"代表几何体"那个桶，但只用于"是否属接管批"的判定；
-                // 部件展开的落点由本表决定（组基址 + `part.bucket_slot`）。
+                // 接管判据与展开落点均由组表提供，不再写代表几何体标签。
                 const uint32_t gi = template_entity_group.empty()
                     ? UINT32_MAX : template_entity_group[i];
 
@@ -1319,7 +1222,7 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveBatchPipeline::FinalizeBatches()
+    void RenderBatchPipeline::FinalizeBatches()
     {
 
         if (!world)

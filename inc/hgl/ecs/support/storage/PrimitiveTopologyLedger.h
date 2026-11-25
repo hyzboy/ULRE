@@ -145,7 +145,7 @@ namespace hgl::ecs
         bool     polled_valid = false;
 
         /// 上一帧合批阶段观测到的「GPU 剔除是否真的接管了绘制」。
-        /// 由 `PrimitiveBatchPipeline` 回填；collect 在**下一帧**读它 —— 因为本帧的
+        /// 由 `RenderBatchPipeline` 回填；collect 在**下一帧**读它 —— 因为本帧的
         /// 合批还没发生，而 GPU 接管是**逐帧稳定性**条件（接管失败即 fail-fast 清空批，
         /// 那种帧根本不能复用上一帧的批布局）。
         bool     last_gpu_cull_engaged = false;

@@ -12,6 +12,7 @@
 #include <hgl/ecs/core/render/ModelTemplateRenderItem.h>
 #include <hgl/ecs/support/material/ModelTemplateMaterialTable.h>
 #include <hgl/ecs/support/material/MaterialRuntimeTable.h>
+#include <hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
 #include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/io/FileInputStream.h>
@@ -237,6 +238,62 @@ namespace
         return true;
     }
 
+    bool TestGroupPipelineCache()
+    {
+        ECSContext context("TestGroupPipelineContext");
+        Entity *entity = context.CreateEntity();
+        Entity *other = context.CreateEntity();
+        if (!entity || !other)
+            return false;
+
+        auto &table = context.GetMaterialRuntimePipelineTable();
+        const EntityID id = entity->GetEntityID();
+        const EntityID other_id = other->GetEntityID();
+
+        // Opaque identity tokens only; no Vulkan objects are created or dereferenced.
+        int tokens[5]{};
+        auto *pass_a = reinterpret_cast<graph::RenderPass *>(&tokens[0]);
+        auto *pass_b = reinterpret_cast<graph::RenderPass *>(&tokens[1]);
+        auto *pipeline_a = reinterpret_cast<graph::Pipeline *>(&tokens[2]);
+        auto *pipeline_b = reinterpret_cast<graph::Pipeline *>(&tokens[3]);
+        auto *pipeline_c = reinterpret_cast<graph::Pipeline *>(&tokens[4]);
+        graph::mtl::MaterialPipelineConfig config_a{};
+        graph::mtl::MaterialPipelineConfig config_b{};
+        config_b.cull_mode = VK_CULL_MODE_NONE;
+        config_b.alpha_blend = true;
+
+        table.Set(id, pass_a, pipeline_a, config_a);
+        table.Set(id, pass_a, pipeline_b, config_b, 1);
+        table.Set(other_id, pass_a, pipeline_c, config_a, 1);
+        if (table.Get(id, pass_a, 0) != pipeline_a
+            || table.Get(id, pass_a, 1) != pipeline_b
+            || table.GetConfig(id, pass_a, 0) != config_a
+            || table.GetConfig(id, pass_a, 1) != config_b
+            || table.Get(id, pass_a, 2) != nullptr
+            || table.Get(id, pass_b, 1) != nullptr)
+            return false;
+
+        TransformAccessor transform;
+        ModelTemplateRenderItem item(id, transform, INVALID_MATERIAL_RUNTIME_ROW_ID,
+                                     1, 42, nullptr, nullptr, config_a, &context);
+        if (item.GetPipeline(pass_a) != pipeline_b
+            || item.GetPipelineConfig(pass_a) != config_b)
+            return false;
+
+        table.Set(id, pass_b, pipeline_c, config_a, 1);
+        if (table.Get(id, pass_a, 1) != nullptr
+            || item.GetPipeline(pass_a) != nullptr
+            || item.GetPipeline(pass_b) != pipeline_c
+            || item.GetPipelineConfig(pass_b) != config_a
+            || table.Get(id, pass_a, 0) != pipeline_a)
+            return false;
+
+        table.Clear(id);
+        return table.Get(id, pass_a, 0) == nullptr
+            && table.Get(id, pass_b, 1) == nullptr
+            && table.Get(other_id, pass_a, 1) == pipeline_c;
+    }
+
     // ── 2b. 实例级材质覆盖测试 ──────────────────────────────────────
 
     bool TestInstanceMaterialOverride()
@@ -284,8 +341,8 @@ namespace
     {
         AnsiString collect_src, batch_src;
 
-        if (!ReadSource(OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"), collect_src)
-         || !ReadSource(OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"), batch_src))
+        if (!ReadSource(OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"), collect_src)
+         || !ReadSource(OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"), batch_src))
         {
             GLogError(u8"TestMultiMaterialModelTemplate: 无法读取源文件");
             return false;
@@ -360,6 +417,7 @@ int main()
     Check(TestMaterialTableLifecycle(), "1. ModelTemplateMaterialTable 生命周期与引用计数");
     Check(TestSinglePrimitiveModelTemplateCache(), "1b. 单图元模板缓存与注销级联清理");
     Check(TestTemplateRenderItemCarrier(), "2. ModelTemplateRenderItem 载体项属性");
+    Check(TestGroupPipelineCache(), "2c. Group pipeline isolation, pass mismatch and entity invalidation");
     Check(TestInstanceMaterialOverride(), "2b. 实例级材质覆盖属性与重置");
     Check(TestSourceContracts(), "3. 收集快线与批处理多组源码契约");
 

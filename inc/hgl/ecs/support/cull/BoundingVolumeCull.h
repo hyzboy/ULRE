@@ -32,7 +32,7 @@ namespace hgl::ecs
 
     /**
      * 最大轴向缩放 + **退化保护**（退化矩阵返回 1.0）：CPU 侧包围体判定的既有语义
-     * （`PrimitiveBatchPipeline` 的局部 AABB / 包围半径两条路；`TestBoundingVolumeCull` 钉住它）。
+     * （`RenderBatchPipeline` 的局部 AABB / 包围半径两条路；`TestBoundingVolumeCull` 钉住它）。
      *
      * 注意：CPU 剔除**参考**（`CPUCullReferenceSystem`，用于与 GPU 对拍）该用 `Raw`——
      * 用这一条会在 scale == 0 时让 CPU 判「可见」而 GPU 判「不可见」，正是在这对系统要检的

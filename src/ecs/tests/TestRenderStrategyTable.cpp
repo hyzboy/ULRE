@@ -46,8 +46,8 @@ static_assert(ComponentTypeBit(ComponentType::MaterialRuntime) == ComponentTypeB
  * A1 策略判定表（v2 §9.2 P2）
  *
  *   · 表是**声明式**的：输入 = 组件槽位掩码 + 事实；输出 = 需求位；
- *   · 逐条镜像收集 / 阴影能力判据（`RenderPrimitiveCollectSystem.cpp` 的两个收集循环、
- *     `PrimitiveBatchPipeline.cpp` 的接收侧）——A7a 起这些判据由本表驱动，旧链降为
+ *   · 逐条镜像收集 / 阴影能力判据（`RenderCollectSystem.cpp` 的两个收集循环、
+ *     `RenderBatchPipeline.cpp` 的接收侧）——A7a 起这些判据由本表驱动，旧链降为
  *     对拍参考实现（见 `RenderStrategyParity.h` 的反向守卫）；
  *   · 规则表的自洽性由头文件里的 static_assert 保证（新增需求/事实自动纳入）。
  */

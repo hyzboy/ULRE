@@ -52,7 +52,7 @@ namespace hgl::ecs
 
         /// **接管已强制**（A6-d T2）：opt-in 面（两开关 `SetEnabled`/`SetDrawOverrideEnabled`
         /// + `enable_gather` dispatch 参数）**整体删除** ⇒ dispatch 与 gather 接管恒开。
-        /// 实际是否接管某批仍由 `PrimitiveBatchPipeline::TryApplyGPUCullOverride` 逐批 guard
+        /// 实际是否接管某批仍由 `RenderBatchPipeline::TryApplyGPUCullOverride` 逐批 guard
         /// 判定（前提清单见该函数注释）。历史：T3f-1 形态 A 回灌随 T3g 退役（见 §8.2f）。
 
         /// **接管护栏的"派发已定帧"判据**（T3g）：dispatch 至少完成过 **2 帧** ⇒
@@ -191,7 +191,7 @@ namespace hgl::ecs
         void SetModelExpansionEnabled(bool enabled) { model_expansion_enabled_ = enabled; }
         bool IsModelExpansionEnabled() const { return model_expansion_enabled_; }
 
-        /// T3.1 + 阶段 1：登记「实体 → 模板组表偏移」（写者 = 批装配期，`PrimitiveBatchPipeline`）。
+        /// T3.1 + 阶段 1：登记「实体 → 模板组表偏移」（写者 = 批装配期，`RenderBatchPipeline`）。
         /// `pass_index` ∈ [0, kArenaPasses)，`entity_index` ∈ [0, kMaxVisibleEntities)。
         /// 写入值 = `AllocateModelGroupBucketSlots` 返回的**组表偏移**（不是桶号）：
         /// 展开侧先取 `group_table[偏移 + part.shading_group]` 得到该组的块内首桶号，
@@ -261,7 +261,7 @@ namespace hgl::ecs
         /// **SSBO DUMP 诊断**：同步读回并向日志 Dump 所有帧槽的计数缓冲、布局缓冲、标签分布与全局幸存数
         void DumpCullSSBOs(const char *stage_tag = "CULL_DUMP");
 
-        /// **形态 B（T3f-2）接管 hook**：本帧 build 之前由 `PrimitiveBatchPipeline::
+        /// **形态 B（T3f-2）接管 hook**：本帧 build 之前由 `RenderBatchPipeline::
         /// RunBatching()` 调用（批对象已被 `MaterialBatch::Clear()` 复位成"无表 +
         /// override=false"状态）。前提校验全部通过 ⇒ 四张 gather 表 + icb + count 指向
         /// 剔除输出、置 `gpu_driven_override`（既有契约：跳 sort/ensure/write、每项自成

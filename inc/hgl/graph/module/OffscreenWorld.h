@@ -26,7 +26,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/render/frame/RenderTargetSystem.h>
-#include<hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
@@ -181,7 +181,7 @@ namespace hgl::graph
         std::unique_ptr<ecs::ECSContext> world_;
 
         std::shared_ptr<ecs::RenderTargetSystem>            rt_system_;
-        std::shared_ptr<ecs::RenderPrimitiveCollectSystem>  collect_system_;
+        std::shared_ptr<ecs::RenderCollectSystem>  collect_system_;
         std::shared_ptr<ecs::RenderSceneUBOSystem>          ubo_system_;
         std::shared_ptr<ecs::CameraSystem>                  camera_system_;
     };//class OffscreenWorld

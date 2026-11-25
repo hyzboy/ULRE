@@ -114,7 +114,7 @@ namespace hgl::graph
             world_->SetRenderContext(render_context_);
 
         rt_system_      = world_->RegisterSystem<ecs::RenderTargetSystem>();
-        collect_system_ = world_->RegisterSystem<ecs::RenderPrimitiveCollectSystem>();
+        collect_system_ = world_->RegisterSystem<ecs::RenderCollectSystem>();
         ubo_system_     = world_->RegisterSystem<ecs::RenderSceneUBOSystem>();
 
         if(!ubo_system_)

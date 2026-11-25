@@ -46,7 +46,7 @@
 //     实测桶数 = 2（代表几何体桶 = 棋盘数 + 骰子数，部件桶组 = 4 × 棋盘数；
 //     4 个部件同几何 ⇒ 同一个 `bucket_slot`，容量按 `部件数 × 实例数` 计），
 //     对齐只吃 1 行。
-//     越界的后果不是掉帧，是 `PrimitiveBatchPipeline` 的 fail-fast：
+//     越界的后果不是掉帧，是 `RenderBatchPipeline` 的 fail-fast：
 //     打一行「竞技场实例行超容量（kArenaRowsPerPass）」并把该批 items 清空
 //     ⇒ **整批当帧不绘制**（黑屏），所以下面的运行期钳制不是可选项。
 //
@@ -114,7 +114,7 @@
 #include<hgl/ecs/support/storage/PrimitiveTopologyLedger.h>
 #include<hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include<hgl/ecs/support/storage/MainFrameTopologySnapshot.h>
-#include<hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 
 #include<hgl/time/Time.h>
@@ -964,7 +964,7 @@ private:
         if (!rp)
             return;
 
-        PrimitiveBatchPipeline *bp = rp->GetImplementation();
+        RenderBatchPipeline *bp = rp->GetImplementation();
 
         if (!bp)
             return;
@@ -1016,7 +1016,7 @@ private:
         if (!ecs_context || !collect_cache)
             return;
 
-        auto system = ecs_context->GetSystem<RenderPrimitiveCollectSystem>();
+        auto system = ecs_context->GetSystem<RenderCollectSystem>();
 
         if (!system)
             return;

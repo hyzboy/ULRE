@@ -89,7 +89,7 @@ namespace hgl::ecs
         // 旧实现是 `RenderItem::Compare`：按 `*GeometryDataBuffer <=>`（geometry_id / vdm / VAB 列表 / ibo）
         // + `*GeometryDrawRange <=>` 逐字段内容比较 —— 那两份每实体 CPU 副本已删除：行就是它们的真相，
         // 且同 asset 必然同键 ⇒ `Compare` 零调用者，随本批删除（排序由 `draw_key` 承担）。
-        MeshDrawKey draw_key;   ///< 采集期由 RenderPrimitiveCollectSystem 从行填入（每帧刷新）
+        MeshDrawKey draw_key;   ///< 采集期由 RenderCollectSystem 从行填入（每帧刷新）
     };
 
 }//namespace hgl::ecs

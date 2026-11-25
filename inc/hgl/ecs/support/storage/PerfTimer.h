@@ -13,7 +13,7 @@ namespace hgl::ecs
      * 开关统一走仓库根 `ULRE_DEBUG.toml` 的 `channels.perf = true`
      * （唯一读取点 `src/Debug/DebugChannel.cpp`，接口在 `hgl/common/DebugChannel.h`）。
      *
-     * `CullPerfTimer`（`GPUCullSystem.cpp`）与 `PerfTimer`（`PrimitiveBatchPipeline.cpp`）此前是
+     * `CullPerfTimer`（`GPUCullSystem.cpp`）与 `PerfTimer`（`RenderBatchPipeline.cpp`）此前是
      * **两份逐字同构**的实现（各自现读环境变量探测开关 + `total_us` / `frames` +
      * `frames % 240` 窗口 + 归零），差别只有：名字在构造时给还是 `Add` 时给、以及是否追加一个
      * 可选诊断值（`gpu_dispatch` 的泄漏判据）⇒ 收成这一份。

@@ -31,7 +31,7 @@
 #include <hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h>
 #include <hgl/ecs/systems/render/light_shadow/ColorPaletteSystem.h>
 #include <hgl/ecs/systems/render/frame/RenderTargetSystem.h>
-#include <hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include <hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/support/primitive/PrimitiveCullSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveSortSystem.h>
@@ -76,8 +76,8 @@ namespace
 
         auto *device = ctx->GetGPUDevice();
 
-        // Collect system stays: gathers primitive entities (GeometryData) into RenderFrameCache
-        auto render_collect_system = EnsureSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);
+        // Normalize geometry entities and collect model template Shading Groups.
+        auto render_collect_system = EnsureSystem<hgl::ecs::RenderCollectSystem>(ctx);
         if (render_collect_system)
         {
             render_collect_system->SetWorld(ctx);
@@ -125,7 +125,7 @@ namespace
         {
             gpu_cull_system->Initialize(ctx);
             // A6-d T2：接管已强制（opt-in 面整体删除）——dispatch 与 gather 接管恒开；
-            // 实际是否接管某批仍由 PrimitiveBatchPipeline 的逐批 guard 判定。
+            // 实际是否接管某批仍由 RenderBatchPipeline 的逐批 guard 判定。
         }
 
 #if ULRE_ENABLE_CPU_CULL_PARITY_TEST
@@ -137,7 +137,7 @@ namespace
         }
 #endif
 
-        // T3f-2：GPU 剔除结果接管绘制改由 `PrimitiveBatchPipeline::TryApplyGPUCullOverride`
+        // T3f-2：GPU 剔除结果接管绘制改由 `RenderBatchPipeline::TryApplyGPUCullOverride`
         // （FinalizeBatches 开头、批建成之后逐帧 guard）+ `GPUCullSystem::ApplyGPUCullOverrideHook`
         // 承担——原 `GPUCullResultHookSystem`（RenderFrameSync 阶段"挂第一个批、清其余批"）
         // 的接线方式与批生命周期不匹配（跨帧批对象、items 清零丢绘制），随本批删除。

@@ -32,7 +32,7 @@
 //
 //   这两类与 #1~#6 的区别：**领域契约与配方都合法**，错在**几何顶点格式与材质需求对不上**
 //   （网格做错了 / 顶点格式选错了），数据层拿不到 `geometry_vertex_format`，所以判在
-//   ECS 渲染层（`RenderPrimitiveCollectSystem::ApplyGeometryErrorFallback`），判据本身是
+//   ECS 渲染层（`RenderCollectSystem::ApplyGeometryErrorFallback`），判据本身是
 //   `MaterialRecipe.h::ClassifyMaterialGeometryError`（纯函数，可被契约测试覆盖）。
 //   ShaderGen 的面法线降级（`MaterialProgramAssembler::PrepareResolvedDefinition`）因此只剩
 //   两种合法用途：① `normal_mode = OptionalFaceFallback` 的棋盘格自身；
@@ -42,7 +42,7 @@
 //   · `kFallbackMaterialRules`      —— 错误种类 → 保底**领域** + 标记色 + 稳定名
 //   · `kMarkerlessFallbackMaterialDomain` —— 标记色行拿不到时的零依赖降级领域
 // 运行期把标记色挂到配方上的唯一入口是
-// `RenderPrimitiveCollectSystem::AttachFallbackMarkerColor`（走与保底纯色配方
+// `RenderCollectSystem::AttachFallbackMarkerColor`（走与保底纯色配方
 // 完全相同的 `EmissiveSurface.color` → `recipe.material_ssbo_binding` 路径）。
 //
 // 期望日志（每个错误实体一条）：

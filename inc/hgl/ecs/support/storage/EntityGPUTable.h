@@ -427,7 +427,7 @@ namespace hgl
             ///
             /// **生产零开销**：开关 = 台帐 `hgl/common/RenderOptions.h` §2 的 `ULRE_ECS_DEBUG_API`
             /// （默认 AUTO：Debug 开 / Release 关）⇒ 关掉时函数体为空 inline，且**调用点也不求值**
-            ///   （门加在触发点，见 `RenderPrimitiveCollectSystem` 的接线处）。
+            ///   （门加在触发点，见 `RenderCollectSystem` 的接线处）。
             /// 取数：`GetVisibleMirrorCount()`（累计**失步条目**数；探针前后取差 = 本段/本帧条数）。
             void VerifyVisibleMirror(const Entity *entity, bool authority_visible, const char *what)
             {

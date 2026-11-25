@@ -8,7 +8,7 @@
 // 判据（红的样子）：同帧 3 次调用后 `GetPrepareFrameCount()` != 1；
 //                  帧号推进后 != 2；null 入参被计数。
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h>
+#include <hgl/ecs/support/pipeline/RenderBatchPipeline.h>
 #include <hgl/ecs/support/cull/GPUCullSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/log/Log.h>
@@ -36,7 +36,7 @@ int main()
     hgl::logger::InitLogger(OS_TEXT("TestFramePrepareOncePerFrame"));
 
     ECSContext ctx;
-    PrimitiveBatchPipeline pipeline;
+    RenderBatchPipeline pipeline;
 
     // 同帧三次（模拟 Cull / Sort / Build 三口各自调用）
     pipeline.PrepareFrame(&ctx);

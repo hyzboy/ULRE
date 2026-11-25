@@ -1029,7 +1029,7 @@ namespace hgl::graph::mtl
             //   · 缺顶点法线**必须看得见** —— 面法线平面着色看起来「像正常的低模」，
             //     问题会被这层伪装掩掉 ⇒ ECS 渲染层把「材质要顶点法线、几何没有」判为
             //     `MissingVertexNormal` 几何错配，**整条配方换成错误棋盘格（黄）**，本函数
-            //     根本不会被调用到（见 `RenderPrimitiveCollectSystem::BuildResolvedRecipe`）；
+            //     根本不会被调用到（见 `RenderCollectSystem::BuildResolvedRecipe`）；
             //   · 这里的降级因此只剩两类合法/兜底场景：
             //       ① `normal_mode = OptionalFaceFallback` 的材质（棋盘格自身）——
             //          面法线就是它声明的行为，静默降级；

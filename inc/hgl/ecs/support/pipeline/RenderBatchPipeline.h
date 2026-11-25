@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 #include <limits>
@@ -29,7 +29,7 @@ namespace hgl::ecs
     class RenderItem;
     class PrimitiveRenderItem;
 
-    class PrimitiveBatchPipeline
+    class RenderBatchPipeline
     {
         OBJECT_LOGGER
 
@@ -145,8 +145,7 @@ namespace hgl::ecs
         ///
         /// 为什么需要：`BuildMaterialBatches()` 逐项解析「程序 → 管线 → 动态渲染状态 →
         /// 材质行」，其中 `GetPipeline` / `GetPipelineConfig` 各是一次
-        /// `MaterialRuntimePipelineTable::entries.find(entity)`（`std::unordered_map`，
-        /// 每实例一个散列节点）——1000 项实测 2.9ms，占 BatchPhase 的 95%。
+        /// 世界侧运行期管线表查询（按实体和 Shading Group，校验当前 pass）。
         /// 这些解析结果在**拓扑不变**的帧里逐位相同，重复解析纯属浪费。
         ///
         /// 重放契约（命中时）：

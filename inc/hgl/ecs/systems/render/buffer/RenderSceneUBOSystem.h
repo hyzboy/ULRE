@@ -37,7 +37,7 @@ namespace hgl::ecs
      *   1. 持有 viewport UBO（跨 swapchain resize 稳定）；camera / sky / viewport / shadow
      *      一律经 global_addresses（BDA）寻址，RenderFrameSync 阶段只同步表内地址（无绑定可推）；
      *   2. 材质化注册：纹理 bindless handle 登记（RegisterTextureResource，被
-     *      RenderPrimitiveCollectSystem 消费）。
+     *      RenderCollectSystem 消费）。
      */
     class RenderSceneUBOSystem : public System
     {
@@ -49,7 +49,7 @@ namespace hgl::ecs
         uint32_t pending_viewport_height = 0;
         // resource_id → bindless descriptor index (1-based, 0 = not found).
         // Filled by RegisterTexture2D(Array)Resource; consumed by
-        // RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive to
+        // RenderCollectSystem::MaterializeRecipeRowsForPrimitive to
         // build per-primitive texture layer rows without a shared spec/cache.
         hgl::UnorderedMap<AnsiString, uint32_t> materialization_resource_handles;
 

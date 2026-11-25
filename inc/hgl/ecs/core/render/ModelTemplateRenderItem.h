@@ -1,6 +1,8 @@
 #pragma once
 
 #include <hgl/ecs/core/render/PrimitiveRenderItem.h>
+#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
 #include <hgl/mtl/PipelineConfig.h>
 
 namespace hgl::graph
@@ -14,8 +16,8 @@ namespace hgl::ecs
     /**
      * ModelTemplateRenderItem
      *
-     * 专门用于承载多材质 GPU 模型模板中特定 Shading Group 的轻量渲染载体项。
-     * 其几何体和材质常驻在 GPU SSBO 池中（CPU 无实体级 GeometryData/MaterialData），
+     * 承载 GPU 模型模板中特定 Shading Group，包括归一化后的单图元模板。
+     * 部件几何与材质由模板池提供，实体可以保留 GeometryData 用于资产和包围盒查询。
      * 本项持有模板 ID、组索引以及该组针对当前 pass 解析好的 Pipeline 与 PipelineConfig。
      */
     class ModelTemplateRenderItem : public PrimitiveRenderItem
@@ -57,7 +59,9 @@ namespace hgl::ecs
             if (pipeline && (!render_pass || render_pass == cached_pass))
                 return pipeline;
 
-            return PrimitiveRenderItem::GetPipeline(render_pass);
+            return context
+                ? context->GetMaterialRuntimePipelineTable().Get(entity_id, render_pass, shading_group)
+                : nullptr;
         }
 
         graph::mtl::MaterialPipelineConfig GetPipelineConfig(
@@ -66,7 +70,9 @@ namespace hgl::ecs
             if (pipeline && (!render_pass || render_pass == cached_pass))
                 return pipeline_config;
 
-            return PrimitiveRenderItem::GetPipelineConfig(render_pass);
+            return context
+                ? context->GetMaterialRuntimePipelineTable().GetConfig(entity_id, render_pass, shading_group)
+                : graph::mtl::MaterialPipelineConfig{};
         }
     };
 }

@@ -2010,8 +2010,8 @@ int main(int argc, char** argv)
               OS_TEXT("ShaderLibrary/domain/standard_opaque/forward_lit.frag"),
               "HGLApplyAlpha(",
               "forward 本体的 discard 调用丢失（PBR 输出 alpha 恒 1，alpha test 永不触发）" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "RequiresRecipeRuntimeRows",
               "阴影 pass 不再判定 masked caster 的行需求——行未就绪时仍采深度会写出实心影子" },
             // ── 禁复活（S1 收敛，2026-10-11：描述符契约层 + 三处恒空消费者）──
@@ -2033,7 +2033,7 @@ int main(int argc, char** argv)
               "该「布局校验」拿同一张 stride 表的取值与自己比（恒通过）+ 唯一调用点遍历恒空表"
               "⇒ S1 删除；真校验必须落在行写入侧（那里才有实际写入字节数）",
               true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "MaterialRequiresRecipeRuntimeRows",
               "自由函数包装已按 S1 删除：运行期行需求改读 program->RequiresRecipeRuntimeRows()",
               true },
@@ -2233,16 +2233,16 @@ int main(int argc, char** argv)
     {
         const SourceContract kShadowRetryContracts[] =
         {
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "AdvanceShadowRetry(",
               "阴影跳过/失败路径不再走统一收敛入口（告警与 bump 降频都失效）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "masked caster runtime rows not ready",
               "masked 行未就绪路径又不报原因了（退回静默跳过 = 持续失败全程无日志）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "kShadowRetryFullBumpFrames + 1",
               "收敛上限判定没了（持续失败会一直每帧 bump → 每帧全量重画）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "kShadowRetryBumpPeriod) == 0",
               "bump 降频公式没了（超上限后仍每帧 bump）" },
             // A4：重试/降频计数归**每实例 slot**（MaterialRuntimeTable.h 的
@@ -2254,15 +2254,15 @@ int main(int argc, char** argv)
             { "MaterialVariantTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialVariantTable.h"),
               "retry_frames",
               "每实例重试计数又回到共享变体记录上（同键健康兄弟会清零失败者的计数）", true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "retry_record",
               "重试计数又写回共享变体记录（应写每实例 slot）", true },
             // ── 禁复活：逐帧刷屏的旧告警 ──
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "Shadow pass geometry failed for ",
               "阴影几何失败又逐帧刷告警（应由统一收敛入口每 episode 一次）",
               true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "Shadow pass pipeline failed for ",
               "阴影管线失败又逐帧刷告警（应由统一收敛入口每 episode 一次）",
               true },
@@ -2334,14 +2334,14 @@ int main(int argc, char** argv)
               "接收标志位不再取自生成物（ShaderConstGen 契约头 → GLSL 宏），又回到硬编码数值" },
 
             // ③ 逐图元写入（真值 = 组件自由函数 → EntityGPU 事实行 → per-draw 行）
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "CanReceiveShadow(", "实体事实端不再读接收开关（receive_shadow 又成死旋钮）" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "GetShadowBiasMultiplier(", "实体事实端不再读局部偏差倍率（bias_multiplier 又成死旋钮）" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "SetShadowFacts(", "阴影事实不上 EntityGPU 行 ⇒ 后两跳全断（旋钮无声失效）" },
             { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
               "entity.shadow_receive == 0u ? 1u : 0u",
@@ -3909,11 +3909,11 @@ int main(int argc, char** argv)
               "GetRenderItemHandle",
               "RenderItem 不许再暴露 4-ID 句柄口（4-ID 由 collect 每帧现算并发布）",
               true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "GetRenderItemStorage",
               "批行取数不许再走池（唯一真源 = 实体 4-ID 表本 pass 那一半）",
               true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "SetRenderItem4ID",
               "采集侧不许再写 4-ID 池（世界唯一发布点 = 实体 4-ID 表）",
               true },
@@ -4469,10 +4469,10 @@ int main(int argc, char** argv)
             { "ComponentTypeTable.h", OS_TEXT("inc/hgl/ecs/support/storage/ComponentTypeTable.h"),
               "SystemGroupID::Primitive },",
               "图元组不再由类型表声明（渲染图不会启用图元 pass）——T2-c：组归属是类型属性" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "GetComponents<GeometryData>",
               "图元枚举不再按 GeometryData（渲染组件删除后无枚举源）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "->IsVisible()",
               "收集链又读组件级可见性（应改走 world->IsEntityVisible）",
               true },
@@ -4522,45 +4522,45 @@ int main(int argc, char** argv)
         const SourceContract kA7aContracts[] =
         {
             // ① 表在驱动
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "EvaluateCollectStrategy(",
               "收集判定不再经策略表求值器（表不是唯一判据）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "RenderNeed::CollectForCurrentPass",
               "收集判定不再查 CollectForCurrentPass 需求位" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "ParityCheckCollect(",
               "对拍装置不再被收集循环调用（反向守卫空转）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "legacy_collect",
               "旧 if 链参考实现不见了（对拍变成同义反复，报 0 不一致也毫无意义）" },
             // 2026-10-14（批 D）：接收判定的载体从 CPU 批行写入端迁到「实体事实上行点」
             //（collect）⇒ 针随载体走（同一语义：策略表判据 + 反向守卫）。
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "RenderNeed::ShadowReceiver",
               "接收判定不再查 ShadowReceiver 需求位（抄组件开关 = 表不再是判据）" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "ParityCheckShadowReceiver(",
               "接收侧对拍装置不再被调用（反向守卫空转）" },
             { "RenderStrategyParity.h", OS_TEXT("inc/hgl/ecs/support/pipeline/RenderStrategyParity.h"),
               "ULRE_STRATEGY_PARITY_ENABLED",
               "对拍装置的 Debug 开关缺失（反向守卫在 Debug 下也不会编译进去）" },
             // ② 禁复活：驱动侧手写判据
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "if (!CanRender(",
               "驱动侧又出现手写可渲染判据（表不再是唯一判据）", true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "if (!world->IsEntityVisible(",
               "驱动侧又出现手写可见性判据（表不再是唯一判据）", true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "if (!CanCastShadow(",
               "驱动侧又出现手写阴影 caster 判据（表不再是唯一判据）", true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "if (!HasAnyMaterialSource(",
               "驱动侧又出现手写材质来源判据（表不再是唯一判据）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "if (!CanReceiveShadow(",
               "接收侧又出现手写判据（表不再是唯一判据）", true },
             // ③ 系统组归属 = **类型属性**（T2-c：组件虚表已拆掉，组归属搬进类型表）
@@ -4671,8 +4671,8 @@ int main(int argc, char** argv)
             // 取数口取**声明形态**：只写标识符名会被 `GetVisibleMirrorCount2` 这类改名绕过（子串别名）。
             { "EntityGPUTable.h", OS_TEXT("inc/hgl/ecs/support/storage/EntityGPUTable.h"),
               "uint32_t GetVisibleMirrorCount() const", "对拍器的取数口丢失（台架/探针无法量化失步条数）" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "VerifyVisibleMirror(", "可见性对拍不再被发布点调用（反向守卫空转）" },
             // ⑥ A1(b)（2026-10-14）：掩码缓存字段整删（同一事实不存两份）⇒ 禁复活；
             //    零消费者 API 也一并删（用 `HasComponent<T>()` / `GetComponentRow()` 表达）。
@@ -4695,23 +4695,23 @@ int main(int argc, char** argv)
             { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/render/RenderItem.h"),
               "GetTransformPolicySpec",
               "朝向策略虚接口复活（同上）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "PositionSourceSpec",
               "位置来源枚举的消费者复活（该枚举已删；需要时用每实例事实）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "FacingPolicy",
               "朝向策略枚举的消费者复活（同上）", true },
             // ⑧ A5 同族死面（2026-10-14）：只写不读的行号副本 + 其赋值函数 + 空壳步。
             { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/render/RenderItem.h"),
               "transform_index",
               "渲染项上的 L2W 行号副本复活（与变换侧算式重复，且只写不读）", true },
-            { "PrimitiveBatchPipeline.h", OS_TEXT("inc/hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h"),
+            { "RenderBatchPipeline.h", OS_TEXT("inc/hgl/ecs/support/pipeline/RenderBatchPipeline.h"),
               "AssignTransformIndices",
               "行号副本的赋值函数复活（该副本已删）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "RunSorting",
               "空壳排序步复活（排序早已不在这一步）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "EnsureTransformBuffer",
               "变换缓冲就绪的重复副本复活（唯一执行者 = TransformSystem::SubmitTransformUpdates）", true },
             // ⑨ P2 §4.2（2026-10-14）：0/1 号约定的**具名权威**。
@@ -4769,7 +4769,7 @@ int main(int argc, char** argv)
             { "MaterialResolver.cpp", OS_TEXT("src/ShaderMaterialData/MaterialResolver.cpp"),
               "u8\"[MaterialFallback] %s: \\\"%s\\\" => 回退错误材质 %s\"",
               "未知材质定义 ID 的唯一报错点丢失（该路径曾静默：mtl 侧替换 + ECS 侧当成功）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "if (out_recipe.fallback_error_kind != graph::mtl::MaterialErrorKind::None)",
               "ECS 侧未统计「构建成功但配方已被换成错误材质」这条（回退取数口丢失）" },
             // ⑫ B2（2026-10-14，2026-11 改判）：材质配方解析失败的诊断必须带**全路径**
@@ -4866,44 +4866,44 @@ int main(int argc, char** argv)
               "配方不再承载回退根颜色（错误种类颜色无处下发）" },
 
             // ② 收集侧：按表结论走回退材质（判据 = 表，不是手写 if）
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "ResolveFallbackMaterialErrorKind(",
               "回退路由不再经策略表求值器（回退判定脱离唯一判据）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "RenderNeed::FallbackMaterial",
               "收集侧不再查 FallbackMaterial 需求位（表不再是唯一判据）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "BuildFallbackMaterialRecipe(",
               "回退（错误）材质配方合成入口缺失（无材质来源图元拿不到回退材质）" },
 
             // ③ 根颜色经**已有机制**下发（材质数据行），不是并行机制
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "AcquireFallbackMarkerRow(",
               "根颜色行宿主缺失（根颜色无法按错误种类下发）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "AttachFallbackMarkerColor(",
               "根颜色不再挂到回退配方上（颜色标注错误种类断链）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "EmissiveSurfaceRow",
               "根颜色不再经材质数据行（EmissiveSurface）下发（改走未验证的新机制）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "material_ssbo_binding = binding",
               "回退配方没有材质 SSBO 绑定（着色器读不到根颜色）" },
 
             // ③-b 材质私有数据行校验：程序要行就必须有行，且类型必须与定义声明一致
             //     （原本缺校验：绑定位无效时 material_row_gpu 留在 0，BDA 地址 0 直接
             //      发给 shader —— 不报错、不崩，只是读到第一行别人的材质数据）
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "Program requires runtime rows but material SSBO binding is invalid",
               "缺「程序要运行时行但绑定位无效」的拒绝（图元会带着 BDA 地址 0 渲染）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "Material SSBO type mismatch",
               "缺「材质 SSBO 类型与定义声明不符」的拒绝（shader 按 A 结构读 B 结构的字节）" },
             // ③-c 判据必须是「程序读 payload 行」，不是合并信号「需要运行时行」：
             //     `RequiresRecipeRuntimeRows()` 还包含纯纹理引用行需求（MTL_TEX），
             //     那一类不需要 material_ssbo_binding。混用会把 UnlitTexture 一类
             //     纯纹理材质误判为缺绑定（图元被整批跳过）。
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "RequiresRecipePayloadRow()",
               "SSBO 绑定校验改回了合并信号 RequiresRecipeRuntimeRows（纯纹理材质被误杀）" },
 
@@ -4911,13 +4911,13 @@ int main(int argc, char** argv)
             { "RenderStrategyParity.h", OS_TEXT("inc/hgl/ecs/support/pipeline/RenderStrategyParity.h"),
               "ParityCheckFallbackMaterial(",
               "回退材质对拍函数缺失（新语义无人对拍）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "ParityCheckFallbackMaterial(",
               "回退材质对拍不再被收集循环调用（反向守卫空转）" },
             { "RenderStrategyParity.cpp", OS_TEXT("src/ecs/support/pipeline/RenderStrategyParity.cpp"),
               "fallback_mismatch",
               "回退对拍不计不一致数（‘不一致 0 行’变成无意义的常量）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "(!HasAnyMaterialSource(entity) && !IsModelTemplateCarrier(entity)),",
               "回退守卫的参考实现不再是“事实求反”（对拍可能退化成恒真）" },
 
@@ -4930,10 +4930,10 @@ int main(int argc, char** argv)
               "领域不可解析不再被分类（该类错误丢失种类与颜色）" },
 
             // ⑥ 禁复活：无材质来源又变回“跳过 + 告警”，或材质来源又成收集判据
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "Skip primitive without recipe",
               "无材质来源又变回“跳过 + 告警”（用户语义：必须走回退材质渲染出来）", true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "&& HasAnyMaterialSource(",
               "材质来源又成了收集链上的手写判据（应只作回退判定/诊断的事实输入）", true },
         };
@@ -5417,20 +5417,20 @@ int main(int argc, char** argv)
             { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/render/RenderItem.h"),
               "virtual int Compare(const RenderItem& other) const;",
               "RenderItem::Compare 禁复活（CPU 绘制链已删；行派生键的唯一真源是 `draw_key`）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "next_item->draw_key == draw_key",
               "聚簇不得回到按行键相等断簇（T4c4-3 已删 CPU 绘制批构建链）", true },
             // T4c4：CPU 绘制链已删 ⇒ 原「正向 needle = `db.draw_key.DrawElementCount()`」失去载体。
             // 契约**意图不变**（ICB 组数不得回到取自 draw 行键 / 每实体 CPU draw range），改成两条更强证据：
             //   (a) 该旧表达式整体**禁出现**（禁复活）；
             //   (b) 组数只在 gather（着色器）内由分派式算出（正向，见下条）。
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "db.draw_key.DrawElementCount()",
               "ICB 组数不得回到取自 draw 行键（T4c4 起 CPU 绘制链已整体删除）", true },
             { "entity_gpu_cull.glsl", OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"),
               "(element_count + binfo.group_size - 1u) / binfo.group_size",
               "ICB 组数只在 gather 内按元素数/组大小算出（GPU 侧唯一出处）" },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "cmds[i].geometry_id = db.draw_key.geometry_id;",
               "命令几何行号不得回到直取行键（T4c4 起 CPU 绘制链已整体删除 ⇒ 旧表达式禁复活）", true },
             // T4c4-3：CPU 绘制批 `DrawBatch` 已整体删除 ⇒ 原正向 needle 失载体。
@@ -5438,18 +5438,18 @@ int main(int argc, char** argv)
             { "PipelineMaterialRenderer.h", OS_TEXT("inc/hgl/ecs/support/pipeline/PipelineMaterialRenderer.h"),
               "struct DrawBatch",
               "CPU 绘制批类型不得复活（T4c4-3 已删：批的绘制一律走 GPU 切片）", true },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "key.geometry_id  = geometry_id;",
               "行派生键只在采集期填（GPU 侧唯一来源）" },
 
             // ② 采集期填键 + 行号直读 + 行读取口
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "GetMeshDrawParamsRow(geometry_id)",
               "采集期不再从行填键（键恒 0 ⇒ 什么都不进批）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "EnsureGeometryRowReady(",
               "几何就绪判据不再是「行就位」（回到每帧武装 CPU 副本）" },
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "geometry_comp->GetGeometryID()",
               "4ID 的 geometry_id 不再直读几何行号（回到镜像字段 + 三级回退）" },
             { "GlobalSSBOBufferRegistry.h", OS_TEXT("inc/hgl/graph/module/GlobalSSBOBufferRegistry.h"),
@@ -5465,9 +5465,9 @@ int main(int argc, char** argv)
               "GetGeometryDataBuffer", "RenderItem 又暴露每实体 CPU 几何副本", true },
             { "RenderItem.h", OS_TEXT("inc/hgl/ecs/core/render/RenderItem.h"),
               "GetGeometryDrawRange", "RenderItem 又暴露每实体 CPU draw range", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "geom_data_buffer", "DrawBatch 又持每实体 CPU 几何副本", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "geom_draw_range", "DrawBatch 又持每实体 CPU draw range", true },
 
             // ④ GPU-Driven 批次的**逐项成簇**判据（禁复发）
@@ -5475,28 +5475,28 @@ int main(int argc, char** argv)
             // L2W 索引槽/mesh 命令行都由表逐项给出）被合并成多实例簇 ⇒ 整簇共用一个首实例 ⇒
             // 屏幕上 64 个立方体只剩 1 个（对数（visible 计数）仍全绿，只有像素能看出）。
             // 该行（16 空格缩进）在文件中唯一。
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "                if (batch.gpu_driven_override)",
               "GPU-Driven 批的逐项成簇判据丢失（多实例簇会让整簇共用首实例，只剩 1 个实例可见）（T4c4-3 起 CPU 绘制批构建链已整体删除 ⇒ 禁复活）", true },
             // ⑤ 2026-10-14（#3 结案）：几何行不成立（时点 2）⇒ 本 pass 那一半**显式清零**
             //    留旧值 = 剔除按上一帧的几何 AABB 记账（画面不变、剔除账会偏）；零 = 未上行，
             //    与 Clear()（实体销毁清两半）及剔除侧 geometry_id == 0 ⇒ 跳过本帧 同一约定。
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});",
               "时点 2（几何行不成立）必须显式清零本 pass 那一半（删掉 = 退回留旧值 ⇒ 剔除按旧几何记账）" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "几何行不成立但本 pass 行未清零",
               "清零后的 debug 自检丢失（清零若被绕过 ⇒ 无任何声音）" },
             // ⑥ 2026-10-14（批 D）：CPU 侧 per-batch 表构建整族删除 ⇒ **禁复活**（构建者 / 自有标志 / 死字段）
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "EnsureMeshDrawParams", "CPU 侧 mesh per-draw 参数表构建复活（接管后该表由剔除输出提供）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "EnsureBatchIndexRows", "CPU 侧批行表分配复活（非接管批不画）", true },
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "WriteBatchIndexRows", "CPU 侧批行写入复活（同上）", true },
-            { "PrimitiveBatchPipeline.h", OS_TEXT("inc/hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h"),
+            { "RenderBatchPipeline.h", OS_TEXT("inc/hgl/ecs/support/pipeline/RenderBatchPipeline.h"),
               "WriteBatchIndexRows", "同上（声明复活）", true },
             { "MaterialBatch.h", OS_TEXT("inc/hgl/ecs/core/render/MaterialBatch.h"),
               "own_icb_mesh_tasks", "per-batch 表自有标志复活（本批已删该机制）", true },
@@ -5781,13 +5781,13 @@ int main(int argc, char** argv)
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "uint32_t GetAuthoredGeneration() const;",
               "授权记录缺「读旁表代数」口" },
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "material_data->GetAuthoredGeneration()",
               "变更检测未走代数读数口" },
             // ⑤ 禁复活：旧行内 revision 读数口
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "material_data->GetAuthoredRowRevision()",
               "变更检测退回读设备级组件行（B4-ii 旧形态复活）", true },
         };
@@ -5906,7 +5906,7 @@ int main(int argc, char** argv)
               "运行期管线旁表缺失（每 pass 解析产物无处安放）" },
             { "MaterialRuntimePipelineTable.h",
               OS_TEXT("inc/hgl/ecs/support/material/MaterialRuntimePipelineTable.h"),
-              "if (it == entries.end() || it->second.pass != pass)",
+              "entry && entry->pass == pass",
               "旁表丢了「pass 不匹配即未命中」语义（管线会跨 pass 串味）" },
             // ② 世界级持有 + 取用口
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
@@ -5926,8 +5926,8 @@ int main(int argc, char** argv)
               "static_assert(sizeof(MaterialRuntimeSlot) == 32,",
               "slot 行宽冻结断言缺失或数字与现口径不符（2026-10-14 删 4-ID 句柄后 = 32 B；行宽可被无意改掉 ⇒ 所有按行索引的表都会错位）" },
             // ④ 写：collect 解析后落旁表
-            { "RenderPrimitiveCollectSystem.cpp",
-              OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp",
+              OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),",
               "管线解析结果未落旁表（读侧会永远未命中）" },
             // ⑤ 读：查旁表（按 pass）
@@ -6167,7 +6167,7 @@ int main(int argc, char** argv)
               "const uint32_t frames = HGL_L2W_RING_FRAMES",
               "§9 M1：RingLayout 的默认深度必须取单源常量，不许另写数字" },
 
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "row_cursor = (row_cursor + capacity + 3u) & ~3u;",
               "§9 M4：切片起点必须 4 行对齐推进（三表 push 地址 16B 对齐的唯一解）" },
 
@@ -6220,18 +6220,18 @@ int main(int argc, char** argv)
               "只挂绘制录制段（RecordPreparedRenderPhaseRange）⇒ 派发恒读上一帧写入 ⇒ 单帧世界 row[Transform]=0 "
               "⇒ cull 着色器视锥测试前 return ⇒ DrawCount=0（RTT 两例第五层根因）" },
 
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "if (!gpu_cull->EnsureInitialized())",
               "§9 M9：guard 入口必须 EnsureInitialized——guard 在 RenderBatch 相位，GPUCullSystem 延迟初始化在 "
               "RenderFrameSync 的 Update ⇒ 新世界首帧 BeginBatchTagWrite 拿空缓冲静默 return、布局永不落"
               "（离屏单帧世界第二层根因）" },
 
-            { "PrimitiveBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp"),
+            { "RenderBatchPipeline.cpp", OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"),
               "gpu_cull->IsDispatchSettled()",
               "§9 M9 禁复活：「派发攒满 2 帧才接管」护栏是 T3g 相位序时代遗迹（T3i 已同帧闭环）；"
               "A6-d 删净 CPU 账后它把 RenderOnce 世界永久锁死在 undsettled。"
               "IsDispatchSettled 本体保留（CPUCullReferenceSystem 的采样同步门在用），但接管路径不得再调用"
-              "（needle 取调用形态，避免误伤 PrimitiveBatchPipeline 里解释护栏删除的注释）",
+              "（needle 取调用形态，避免误伤 RenderBatchPipeline 里解释护栏删除的注释）",
               true },
 
             { "GPUCullSystem.h", OS_TEXT("inc/hgl/ecs/support/cull/GPUCullSystem.h"),
@@ -7266,7 +7266,7 @@ int main(int argc, char** argv)
               "键空间权威链",
               "问题 5(b)：四条键空间的权威/产生步/消费者必须写在一处（防被当「四套重复键」合并掉）" },
 
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "variant_table->Intern(VariantKeyOf(runtime_key))",
               "问题 5(c)：生产接线 —— forward 变体键必须由运行期键**派生**（前缀由构造保证，不靠约定）" },
 
@@ -7320,11 +7320,11 @@ int main(int argc, char** argv)
               "#if ULRE_ECS_DEBUG_API",
               "问题 8(b)：对拍必须门在台帐开关下（生产零开销；开关见 hgl/common/RenderOptions.h §2）" },
 
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "MaterialRuntimeTable::VerifyWrittenRecipeHash(*row,",
               "问题 8(b)：解析后写 recipe_hash 的调用点必须接上对拍" },
 
-            { "RenderPrimitiveCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp"),
+            { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "MaterialRuntimeTable::VerifyWrittenDataIndexRow(*row,",
               "问题 8(b)：物化发布 data_index_row 的调用点必须接上对拍（未物化哨兵在助手里跳过）" },
 

@@ -11,7 +11,7 @@
 #include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/log/Logger.h>
 #include <hgl/io/event/MouseEvent.h>
-#include <hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include <hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include <hgl/ecs/systems/render/frame/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/frame/SwapchainNextImageSystem.h>

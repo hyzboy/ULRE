@@ -1,6 +1,6 @@
 ﻿#include <hgl/ecs/support/text/TextCollectSystem.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/systems/render/collect/RenderPrimitiveCollectSystem.h>
+#include <hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 
 namespace hgl::ecs
 {
@@ -9,7 +9,7 @@ namespace hgl::ecs
     {
         SetExecutionPhase(ExecutionPhase::RenderCollect);
         SetRenderElementType("Text");
-        AddDependency<RenderPrimitiveCollectSystem>();
+        AddDependency<RenderCollectSystem>();
     }
 
     RenderPipelineBase* TextCollectSystem::GetPipeline(ECSContext* context)

@@ -843,7 +843,7 @@ namespace hgl::graph::mtl
     // 这些谓词被三处共用，口径必须只有一份：
     //   · 程序构建侧（`MaterialProgramAssembler::PrepareResolvedDefinition`）—— 决定发射
     //     顶点法线还是面法线降级；
-    //   · ECS 渲染层（`RenderPrimitiveCollectSystem`）—— 判定几何顶点格式错配（回退棋盘格）；
+    //   · ECS 渲染层（`RenderCollectSystem`）—— 判定几何顶点格式错配（回退棋盘格）；
     //   · 契约测试（`TestRenderStrategyTable`）—— 钉住语义边界。
     // ─────────────────────────────────────────────────────────────
 
@@ -950,7 +950,7 @@ namespace hgl::graph::mtl
     // 几何级材质错误判据（A7d）：**合法**定义 + **合法**配方，但几何顶点格式对不上需求。
     //
     // 事实由调用方从 `GeometryVertexFormat` 采集（本文件不认识 Vulkan 顶点格式）：
-    // ECS 渲染层在 `RenderPrimitiveCollectSystem::BuildResolvedRecipe` 采集。
+    // ECS 渲染层在 `RenderCollectSystem::BuildResolvedRecipe` 采集。
     // ─────────────────────────────────────────────────────────────
     struct MaterialGeometryFacts
     {

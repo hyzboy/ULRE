@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/ecs/support/pipeline/RenderPipelineBase.h>
-#include <hgl/ecs/support/pipeline/PrimitiveBatchPipeline.h>
+#include <hgl/ecs/support/pipeline/RenderBatchPipeline.h>
 #include <memory>
 
 namespace hgl::ecs
@@ -9,12 +9,12 @@ namespace hgl::ecs
     class ECSContext;
 
     /**
-     * PrimitiveRenderPipeline - RenderPipelineBase adapter for PrimitiveBatchPipeline
+     * PrimitiveRenderPipeline - RenderPipelineBase adapter for RenderBatchPipeline
      *
-     * This class wraps the existing PrimitiveBatchPipeline to conform to RenderPipelineBase interface.
-     * It delegates all pipeline operations to the underlying PrimitiveBatchPipeline instance.
+     * This class wraps the existing RenderBatchPipeline to conform to RenderPipelineBase interface.
+     * It delegates all pipeline operations to the underlying RenderBatchPipeline instance.
      *
-     * All rendering logic remains in PrimitiveBatchPipeline - this class just provides
+     * All rendering logic remains in RenderBatchPipeline - this class just provides
      * the unified interface that the ECS framework expects.
      */
     class PrimitiveRenderPipeline : public RenderPipelineBase
@@ -22,7 +22,7 @@ namespace hgl::ecs
     private:
         // W7 统一：类静态成员 kName（Line/Text/Primitive 三管线同模式）
         static const AnsiString kName;
-        std::unique_ptr<PrimitiveBatchPipeline> impl_;
+        std::unique_ptr<RenderBatchPipeline> impl_;
         ECSContext* context_ = nullptr;
 
     public:
@@ -42,7 +42,7 @@ namespace hgl::ecs
         void Shutdown() override;
 
         // Access to underlying pipeline for system integration
-        PrimitiveBatchPipeline* GetImplementation() const { return impl_.get(); }
+        RenderBatchPipeline* GetImplementation() const { return impl_.get(); }
     };
 
 }  // namespace hgl::ecs

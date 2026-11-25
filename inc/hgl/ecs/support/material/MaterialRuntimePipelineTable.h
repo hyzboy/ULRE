@@ -4,8 +4,6 @@
 #include<hgl/ecs/core/entity/EntityHandle.h>
 #include<hgl/mtl/PipelineConfig.h>
 #include<hgl/type/UnorderedMap.h>
-#include<cstdint>
-#include<unordered_map>
 
 namespace hgl::graph
 {
@@ -16,15 +14,15 @@ namespace hgl::graph
 namespace hgl::ecs
 {
     /**
-     * 每实例 × 每 pass 的**运行期管线缓存**（B5-b）。
+     * 每实例 × 每 Shading Group 的当前 pass 管线缓存。
      *
      * 为什么存在：collect 阶段按当前 pass 解析出管线，紧随其后的 batch 消费同一 pass 的结果。
      * 这份缓存原先是 `MaterialRuntimeSlot` 上的两个指针（`runtime_pipeline_pass` / `runtime_pipeline`）——
      * 按「**每 pass 解析产物不入行，落世界侧旁表**（键 = 该实例）」的既定规则移到这里，
      * slot 才能变成全 POD、行宽才能冻结（B5 标题里的「行宽定稿」）。
      *
-     * 语义与旧字段**逐字一致**：读时比对 pass，不匹配 ⇒ 未命中（返回 nullptr）——
-     * 「管线按 RenderPass 维度键控、不同 RT 格式各自匹配」（A5b/D2）。
+     * 每组保存最近解析的 pass；读时比对 pass，不匹配则未命中。
+     * 同一实体的不同组互不覆盖，Clear 一次摘除该实体的全部组。
      * 不存 program 指针身份（D2：地址复用会误判）。
      *
      * 归属：**世界级**（`ECSContext` 持有）。清理：`InvalidateEntityRuntimePipeline` /
@@ -46,41 +44,43 @@ namespace hgl::ecs
             graph::mtl::MaterialPipelineConfig config;
         };
 
-        /// 登记本实例在 `pass` 下解析出的管线与配套渲染状态（覆盖旧值）
+        /// 登记本实例的指定组在 `pass` 下解析出的管线与配套渲染状态
         void Set(EntityID id, graph::RenderPass *pass, graph::Pipeline *pipeline,
-                 const graph::mtl::MaterialPipelineConfig &config)
+                 const graph::mtl::MaterialPipelineConfig &config, uint32_t shading_group = 0)
         {
-            entries[id] = Entry{ pass, pipeline, config };
+            entries[id][shading_group] = Entry{ pass, pipeline, config };
         }
 
         /// 取本实例在 `pass` 下的管线；未登记 / pass 不匹配 ⇒ nullptr
-        graph::Pipeline *Get(EntityID id, graph::RenderPass *pass) const
+        graph::Pipeline *Get(EntityID id, graph::RenderPass *pass, uint32_t shading_group = 0) const
         {
-            const auto it = entries.find(id);
+            const Entry *entry = FindEntry(id, pass, shading_group);
 
-            if (it == entries.end() || it->second.pass != pass)
-                return nullptr;
-
-            return it->second.pipeline;
+            return entry ? entry->pipeline : nullptr;
         }
 
         /// 取本实例在 `pass` 下的动态渲染状态；未登记 / pass 不匹配 ⇒ 默认配置
         ///（此时 `Get` 也必然返回 nullptr，该图元根本不会进批）。
-        graph::mtl::MaterialPipelineConfig GetConfig(EntityID id, graph::RenderPass *pass) const
+        graph::mtl::MaterialPipelineConfig GetConfig(EntityID id, graph::RenderPass *pass,
+                                                     uint32_t shading_group = 0) const
         {
-            const auto it = entries.find(id);
+            const Entry *entry = FindEntry(id, pass, shading_group);
 
-            if (it == entries.end() || it->second.pass != pass)
-                return graph::mtl::MaterialPipelineConfig{};
-
-            return it->second.config;
+            return entry ? entry->config : graph::mtl::MaterialPipelineConfig{};
         }
 
         /// 摘除（实体销毁 / 管线失效时调用；未登记则忽略）
-        void Clear(EntityID id) { entries.erase(id); }
+        void Clear(EntityID id) { entries.DeleteByKey(id); }
 
     private:
 
-        std::unordered_map<EntityID, Entry> entries;
+        UnorderedMap<EntityID, UnorderedMap<uint32_t, Entry>> entries;
+
+        const Entry *FindEntry(EntityID id, graph::RenderPass *pass, uint32_t shading_group) const
+        {
+            const auto *groups = entries.GetValuePointer(id);
+            const Entry *entry = groups ? groups->GetValuePointer(shading_group) : nullptr;
+            return entry && entry->pass == pass ? entry : nullptr;
+        }
     };
 }//namespace hgl::ecs

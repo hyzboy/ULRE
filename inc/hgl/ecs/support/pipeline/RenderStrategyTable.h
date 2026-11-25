@@ -16,7 +16,7 @@
  *   · 表说的不是"用哪个具体 PassType"——那由材质 recipe / 变体键决定（见 v2 §9.3）。
  *
  * 语义镜像（A1 定下、A7a 保持；按语义命名而非行号引用，行号会漂）：
- *   · `CollectForCurrentPass` ⇔ `RenderPrimitiveCollectSystem.cpp` 收集循环的
+ *   · `CollectForCurrentPass` ⇔ `RenderCollectSystem.cpp` 收集循环的
  *     实体可见 / 可渲染 / owner（+ 阴影 pass 下的 `CanCastShadow` 与距离裁剪，
  *     作为 `ShadowPass` 触发时的条件要求）。**A7b：材质来源不是收集判据** ——
  *     「有几何但无材质来源」是**材质错误**，由 `FallbackMaterial` 需求位表达
@@ -24,7 +24,7 @@
  *   · `FallbackMaterial` ⇔「有几何、无材质来源 ⇒ 取保底（错误）材质」
  *   · `ShadowCaster`   ⇔ 同一处的 `CanCastShadow`（能力位）
  *   · `ShadowReceiver` ⇔ `CanReceiveShadow`（能力位；事实由实体级自由函数提供，
- *     **判定端 = `RenderPrimitiveCollectSystem` 的阴影事实上行点** —— 2026-10-14 批 D 起）
+ *     **判定端 = `RenderCollectSystem` 的阴影事实上行点** —— 2026-10-14 批 D 起）
  */
 #pragma once
 
@@ -149,7 +149,7 @@ namespace hgl
         {
             // 进当前 pass 的收集：可见（**实体级唯一真值**）、有 owner、有可渲染资源；
             // **若当前是阴影 pass**，再要求允许投射且在距离裁剪内
-            // （逐条镜像 `RenderPrimitiveCollectSystem.cpp` 的两个收集循环）
+            // （逐条镜像 `RenderCollectSystem.cpp` 的两个收集循环）
             //
             // A7b：**材质来源不再是收集判据**（用户定稿）——「有几何但无材质来源」是
             // 材质错误而非剔除条件，由紧随其后的 FallbackMaterial 规则表达。
