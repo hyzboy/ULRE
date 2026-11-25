@@ -1167,12 +1167,16 @@ int main(int argc, char** argv)
 
         auto e3 = ctx_shutdown.CreateEntity<Entity>("ShutdownOwner");
 
-        if (!IsValidTransformID(ctx_shutdown.CreateTransform(e3->GetEntityID(), Mobility::Movable)))
+        const TransformID shutdown_id = ctx_shutdown.CreateTransform(e3->GetEntityID(), Mobility::Movable);
+        const TransformID shutdown_static = ctx_shutdown.CreateTransform(e3->GetEntityID(), Mobility::Static);
+        if (!IsValidTransformID(shutdown_id) || !IsValidTransformID(shutdown_static))
         {
             GLogError(u8"Test 19 Failed: Shutdown 前置创建失败");
             return 21;
         }
 
+        ctx_shutdown.DestroyTransform(shutdown_id);
+        ctx_shutdown.DestroyTransform(shutdown_static);
         ctx_shutdown.Shutdown();
 
         if (auto *st_after = ctx_shutdown.GetTransformStorage())
@@ -1187,6 +1191,21 @@ int main(int argc, char** argv)
         else
         {
             GLogInfo(u8"Test 19: Shutdown 已整体释放变换存储（等价于复位）");
+        }
+
+        auto e4 = ctx_shutdown.CreateEntity<Entity>("AfterShutdown");
+        const TransformID after_shutdown = ctx_shutdown.CreateTransform(e4->GetEntityID(), Mobility::Movable);
+        const TransformID after_static = ctx_shutdown.CreateTransform(e4->GetEntityID(), Mobility::Static);
+        uint32_t after_slot = INVALID_TRANSFORM_SLOT;
+        uint32_t static_slot = INVALID_TRANSFORM_SLOT;
+        if (!IsValidTransformID(after_shutdown)
+            || !IsValidTransformID(after_static)
+            || !ctx_shutdown.TryGetTransformSlot(after_shutdown, true, after_slot)
+            || !ctx_shutdown.TryGetTransformSlot(after_static, false, static_slot)
+            || after_slot != 0 || static_slot != 0)
+        {
+            GLogError(u8"Test 19 Failed: Shutdown must clear freed transform slots before reuse");
+            return 21;
         }
 
         GLogInfo(u8"Test 19 Passed: 世界复位契约成立（世代不复位 ⇒ 旧句柄不复活；Shutdown 复位行存储）。");

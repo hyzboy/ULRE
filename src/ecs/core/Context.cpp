@@ -303,6 +303,8 @@ namespace hgl
                 ResetComponentDrivenGroups();
                 static_transforms.clear();
                 movable_transforms.clear();
+                static_free_slots.clear();
+                movable_free_slots.clear();
 
                 if (auto *transform_storage = GetTransformStorage())
                     transform_storage->Clear();     // §2 #9：行存储随世界复位（世代不复位 ⇒ 旧句柄不复活）
@@ -352,6 +354,8 @@ namespace hgl
             ResetComponentDrivenGroups();
             static_transforms.clear();
             movable_transforms.clear();
+            static_free_slots.clear();
+            movable_free_slots.clear();
 
             if (auto *transform_storage = GetTransformStorage())
                 transform_storage->Clear();         // §2 #9：同上（active 路径）
