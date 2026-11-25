@@ -84,6 +84,14 @@
 #define ULRE_MAX_VISIBLE_ENTITIES 40960
 #endif
 
+/**
+ * 疑似无用代码：默认不参与编译，保留源码以便核查。
+ * 需要恢复编译时使用编译器选项 `-DULRE_INCLUDE_SUSPECTED_UNUSED_CODE=1`。
+ */
+#ifndef ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
+#define ULRE_INCLUDE_SUSPECTED_UNUSED_CODE 0
+#endif
+
 /* ══════════════════════════════════════════════════════════════════════════════
  * §2 校验面开关（对拍器 / 诊断打印）
  *

@@ -31,6 +31,7 @@
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
 #include <hgl/common/DebugChannel.h>
+#include <hgl/common/RenderOptions.h>
 #include <glm/glm.hpp>
 
 namespace hgl::ecs
@@ -730,9 +731,11 @@ namespace hgl::ecs
         line_buffer_.Reset(); // seek back to 0
 
         // Second pass: write segments
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
         uint32_t write_fail_count = 0;
         uint32_t transform_owner_components = 0;
         uint32_t resolved_transform_components = 0;
+#endif
         for (const auto& comp : collected_)
         {
             uint32_t transform_id = 0;
@@ -743,7 +746,9 @@ namespace hgl::ecs
                                                           : TransformAccessor{};
                 if (transform.IsValid())
                 {
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
                     ++transform_owner_components;
+#endif
 
                     const TransformDataStorage::HandleID handle = transform.GetID();
                     uint32_t slot = 0;
@@ -759,8 +764,10 @@ namespace hgl::ecs
                         // `resolved > UINT32_MAX` 在 C++ 里恒为 false，只会给出「这里有边界保护」的假信心。
                         transform_id = resolved;
 
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
                         if (transform_id != 0)
                             ++resolved_transform_components;
+#endif
                     }
                 }
             }
@@ -773,7 +780,9 @@ namespace hgl::ecs
                                              seg.min_width,
                                              transform_id))
                 {
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
                     ++write_fail_count;
+#endif
                 }
             }
         }
@@ -781,6 +790,7 @@ namespace hgl::ecs
         // Tally total
         total_line_count_ = line_buffer_.line_count;
 
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
         //if (write_fail_count > 0 || total_line_count_ != expected_total)
         //{
         //    GLogWarning("[LineRenderPipeline] Build mismatch: expected=%u built=%u write_fail=%u collected_components=%zu",
@@ -817,6 +827,7 @@ namespace hgl::ecs
         //         expected_total,
         //         total_line_count_,
         //         write_fail_count);
+#endif
 
         // IndirectMeshDraw：写 mesh per-draw 参数（Line 单 draw 非实例化——
         // 绘制时 gl_DrawID=0；shader 经 MeshDrawCommand -> geometry_id 查全局池）

@@ -31,6 +31,7 @@
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
 #include <hgl/common/DebugChannel.h>
+#include <hgl/common/RenderOptions.h>
 #include <glm/glm.hpp>
 
 namespace hgl::ecs
@@ -681,8 +682,10 @@ namespace hgl::ecs
         line_buffer_.Reset(); // seek back to 0
 
         // Second pass: write segments
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
         uint32_t write_fail_count = 0;
         uint32_t resolved_transform_components = 0;
+#endif
         for (const auto& comp : collected_)
         {
             uint32_t transform_id = 0;
@@ -703,8 +706,10 @@ namespace hgl::ecs
                         transform_id = transform.IsMovable() ? (dynamic_base + slot)
                                                              : (kFirstObjectL2WSlot + slot);
 
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
                         if (transform_id != 0)
                             ++resolved_transform_components;
+#endif
                     }
                 }
             }
@@ -713,15 +718,19 @@ namespace hgl::ecs
             {
                 if (!line_buffer_.AddSegment(seg.from, seg.to, seg.color_index, transform_id))
                 {
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
                     ++write_fail_count;
+#endif
                 }
             }
         }
 
         // Tally total
         total_line_count_ = line_buffer_.line_count;
+#if ULRE_INCLUDE_SUSPECTED_UNUSED_CODE
         (void)write_fail_count;
         (void)resolved_transform_components;
+#endif
 
         // IndirectMeshDraw：写 mesh per-draw 参数（单 draw 非实例化——
         // 绘制时 gl_DrawID=0；shader 经 MeshDrawCommand -> geometry_id 查全局池）
