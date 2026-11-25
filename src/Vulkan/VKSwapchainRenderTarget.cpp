@@ -3,13 +3,11 @@
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKSwapchain.h>
-#include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GpuUploadQueue.h>
 #include<hgl/vk/VKQueryProfiler.h>
 #include<hgl/vk/DebugCaptureQueue.h>
-#include<hgl/ecs/support/debug/DebugViewPass.h>
 #include<hgl/common/DebugChannel.h>
 #include<hgl/Macro.h>
 #include<hgl/log/Log.h>
@@ -106,7 +104,8 @@ bool SwapchainRenderTarget::NextFrame()
     {
         if(debug_capture_target)
             DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
-        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
+        if(frame_submission_failed)
+            frame_submission_failed(this,debug_capture_frame);
         return false;
     }
 
@@ -224,7 +223,8 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
                  acquire_window_open?1:0);
         if(debug_capture_target)
             DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
-        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
+        if(frame_submission_failed)
+            frame_submission_failed(this,debug_capture_frame);
         return false;
     }
     if(extra_wait_count>0&&!extra_waits)
@@ -233,7 +233,8 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
                  extra_wait_count,current_slot,acquired_image);
         if(debug_capture_target)
             DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
-        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
+        if(frame_submission_failed)
+            frame_submission_failed(this,debug_capture_frame);
         return false;
     }
 
@@ -289,7 +290,8 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
         acquire_window_open = false;
         if(debug_capture_target)
             DebugCaptureQueue::FailQueued(debug_capture_target,"submission_failed");
-        ecs::DebugViewPass::SubmissionFailed(this,debug_capture_frame);
+        if(frame_submission_failed)
+            frame_submission_failed(this,debug_capture_frame);
         return false;
     }
 
@@ -300,7 +302,8 @@ bool SwapchainRenderTarget::Submit(const SemaphoreSubmit *extra_waits,const uint
 
     if(debug_capture_target)
         DebugCaptureQueue::Process(this,debug_capture_target,debug_capture_frame);
-    ecs::DebugViewPass::ProcessSubmitted(this,debug_capture_frame);
+    if(frame_submitted)
+        frame_submitted(this,debug_capture_frame);
 
     // ── 帧内回读窗口：本帧已提交、尚未 present ───────────────────────────────
     // 此刻交换链 image 仍是「已 acquire、未 present」，是唯一能对它做布局转换/拷贝的时点。

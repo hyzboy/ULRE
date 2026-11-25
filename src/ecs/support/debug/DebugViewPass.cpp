@@ -479,6 +479,8 @@ namespace hgl::ecs
         state->recorded_entities=0;
         for(const PreparedBatch &entry:prepared)
             state->recorded_entities+=static_cast<uint32_t>(entry.batch->items.size());
+        swapchain->SetFrameNotifications(&DebugViewPass::ProcessSubmitted,
+                                         &DebugViewPass::SubmissionFailed);
     }
 
     void DebugViewPass::ProcessSubmitted(IRenderTarget *main,uint64_t frame_id)

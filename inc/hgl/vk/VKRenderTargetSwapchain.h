@@ -50,6 +50,9 @@ class SwapchainRenderTarget : public IRenderTarget
     bool                resize_required     = false;
     uint64_t            debug_capture_target = 0;
     uint64_t            debug_capture_frame = 0;
+    using FrameNotification = void (*)(IRenderTarget *, uint64_t);
+    FrameNotification   frame_submitted = nullptr;
+    FrameNotification   frame_submission_failed = nullptr;
 
     /// 主帧车道（A1）：timeline 信号量，主帧提交 signal、离屏 prepass await 其上一次值。
     /// **延迟创建**：构造期 `ecs_context` 尚未绑定 GPU 设备（`ECSContext::Initialize`
@@ -95,6 +98,11 @@ public:
     void RecordCaptureCamera(const CameraInfo *camera);
     uint64_t GetDebugCaptureTargetID() const { return debug_capture_target; }
     uint64_t GetDebugCaptureFrameID() const { return debug_capture_frame; }
+    void SetFrameNotifications(FrameNotification submitted, FrameNotification failed)
+    {
+        frame_submitted = submitted;
+        frame_submission_failed = failed;
+    }
 
     /// 帧内回读钩子：在「本帧队列提交之后、vkQueuePresentKHR 之前」执行一次。
     ///
