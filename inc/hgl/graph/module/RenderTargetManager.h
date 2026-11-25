@@ -7,13 +7,9 @@
 #include<memory>
 #include<vector>
 
-namespace hgl::ecs
-{
-    class ECSContext;
-}
-
 namespace hgl::graph{
 
+class RenderTargetObserver;
 class TextureManager;
 class RenderPassManager;
 class GraphicsContext;
@@ -52,7 +48,7 @@ GRAPH_MODULE_CLASS(RenderTargetManager)
 {
     TextureManager *tex_manager;
     RenderPassManager *rp_manager;
-    hgl::ecs::ECSContext *ecs_context=nullptr;
+    RenderTargetObserver *target_observer=nullptr;
 
 public:
 
@@ -92,7 +88,7 @@ private:
 
 public:
 
-    RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm);
+    RenderTargetManager(GraphicsContext *gc,RenderTargetObserver *observer,TextureManager *tm,RenderPassManager *rpm);
 
     /// 析构时兜底回收（等价于 Release()，防止无人调用 Release 时泄漏）
     virtual ~RenderTargetManager();
@@ -130,16 +126,16 @@ public: // 创建
 
     /// 内部实现：按已解析好的 FramebufferInfo 创建并登记
     /// @note 供 Create() 与旧的静态便捷入口使用，新代码请用 Create()
-    OffscreenRenderTarget *CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
+    OffscreenRenderTarget *CreateOffscreenRT(RenderTargetObserver *observer,
                                              const AnsiString &name,
                                              const FramebufferInfo *fbi,
                                              const uint32_t slot_count=1,
                                              const bool register_debug_capture=true);
 
     /// [Deprecated] 便捷静态入口，保留以兼容旧调用；新代码请用 Create(desc)
-    static OffscreenRenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+    static OffscreenRenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, RenderTargetObserver *observer,
                                                               const FramebufferInfo *fbi, const uint32_t slot_count=1);
-    static OffscreenRenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+    static OffscreenRenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, RenderTargetObserver *observer,
                                                               const AnsiString &name, const FramebufferInfo *fbi, const uint32_t slot_count=1);
 
 public: // 生命周期

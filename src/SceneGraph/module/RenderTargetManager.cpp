@@ -1,12 +1,11 @@
 ﻿#include <cstdint>
 #include <vulkan/vulkan.h>
-#include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include <hgl/graph/GraphTypes.h>
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/render/RenderTargetObserver.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/asset/RenderTargetAsset.h>
 #include<hgl/graph/asset/TextureURI.h>
@@ -28,17 +27,17 @@
 
 namespace hgl::graph{
 
-RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm)
+RenderTargetManager::RenderTargetManager(GraphicsContext *gc,RenderTargetObserver *observer,TextureManager *tm,RenderPassManager *rpm)
     :GraphModuleInherit<RenderTargetManager,GraphModule>(gc,"RenderTargetManager")
 {
     tex_manager=tm;
     rp_manager=rpm;
-    ecs_context=ecs_ctx;
+    target_observer=observer;
 
     // 离屏 RT 的 per-frame 数据槽带由 slot_bands 分配（带空间 = [HGL_FRAME_SLOT_MAIN,
     // HGL_FRAME_SLOT_TOTAL)，见 OffscreenSlotBands.h）；Destroy 归还 ⇒ 带随 RT 生命周期回收。
     // 回设到 GraphicsContext：其余 manager 由 module_manager->GetOrCreate 创建并
-    // 赋给 GraphicsContext 成员，而 RTM 构造需要 ECSContext，只能外部创建。
+    // 赋给 GraphicsContext 成员；RTM 从外部接收目标观察者。
     // 若此处不回设，gc->GetRenderTargetManager() 恒为 nullptr。
     if(gc)
         gc->SetRenderTargetManager(this);
@@ -49,28 +48,7 @@ RenderTargetManager::~RenderTargetManager()
     Release();
 }
 
-    namespace
-    {
-        /// RT 尺寸变化后同步系统级视口 UBO（原在 `IRenderTarget::OnResize` 里做，
-        /// 用 `ecs_context` 直连 ECS；改为由持有世界句柄的 SceneGraph 侧收口，
-        /// `IRenderTarget` 只持设备、不再认识 ECS 世界）。
-        void SyncViewportExtentForActiveRT(hgl::ecs::ECSContext *ctx,
-                                           const IRenderTarget *rt,
-                                           const VkExtent2D &ext)
-        {
-            if(!ctx || !rt)
-                return;
-
-            if(ctx->GetRenderTarget() != rt)
-                return;     ///< 只同步**当前活动**渲染目标
-
-            auto sys = ctx->GetSystem<hgl::ecs::RenderSceneUBOSystem>();
-            if(sys)
-                sys->SetViewportExtent(ext.width,ext.height);
-        }
-    }//anonymous namespace
-
-OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, RenderTargetObserver *observer,
                                                                         const FramebufferInfo *fbi, const uint32_t slot_count)
 {
     // Generate a default name from the extent
@@ -80,20 +58,20 @@ OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(Graphics
     const VkExtent2D extent = fbi->GetExtent();
     const AnsiString auto_name = "RT_" + AnsiString::numberOf(extent.width) + "x" + AnsiString::numberOf(extent.height);
 
-    return CreateRTFromGraphicsContext(gc, ecs_ctx, auto_name, fbi, slot_count);
+    return CreateRTFromGraphicsContext(gc, observer, auto_name, fbi, slot_count);
 }
 
-OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+OffscreenRenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, RenderTargetObserver *observer,
                                                                         const AnsiString &name, const FramebufferInfo *fbi, const uint32_t slot_count)
 {
-    if(!gc || !ecs_ctx || !fbi)
+    if(!gc || !observer || !fbi)
         return(nullptr);
 
     RenderTargetManager *rtm = gc->GetRenderTargetManager();
     if(!rtm)
         return(nullptr);
 
-    return rtm->CreateOffscreenRT(ecs_ctx, name, fbi, slot_count);
+    return rtm->CreateOffscreenRT(observer, name, fbi, slot_count);
 }
 
 void RenderTargetDeleter::operator()(IRenderTarget *rt)const
@@ -154,7 +132,7 @@ RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
     if(desc.kind != RenderTargetKind::Offscreen)
         return(empty_handle);
 
-    if(!ecs_context)
+    if(!target_observer)
         return(empty_handle);
 
     FramebufferInfo fbi;
@@ -167,7 +145,7 @@ RenderTargetHandle RenderTargetManager::Create(const RenderTargetDesc &desc)
     if(name.IsEmpty())
         name = "RT_" + AnsiString::numberOf(desc.width) + "x" + AnsiString::numberOf(desc.height);
 
-    OffscreenRenderTarget *rt = CreateOffscreenRT(ecs_context, name, &fbi, desc.slot_count);
+    OffscreenRenderTarget *rt = CreateOffscreenRT(target_observer, name, &fbi, desc.slot_count);
 
     if(!rt)
         return(empty_handle);
@@ -226,13 +204,13 @@ RenderTargetHandle RenderTargetManager::CreateFromSpecFile(const OSString &filen
     return CreateFromSpec(spec, window_width, window_height);
 }
 
-OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(hgl::ecs::ECSContext *ecs_ctx,
+OffscreenRenderTarget *RenderTargetManager::CreateOffscreenRT(RenderTargetObserver *observer,
                                                               const AnsiString &name,
                                                               const FramebufferInfo *fbi,
                                                               const uint32_t slot_count,
                                                               const bool register_debug_capture)
 {
-    if(!fbi || !ecs_ctx)
+    if(!fbi || !observer)
         return(nullptr);
 
     VulkanDevice *device = GetDevice();
@@ -558,7 +536,8 @@ bool RenderTargetManager::Resize(IRenderTarget *rt,const uint32_t width,const ui
         ext.width  = width;
         ext.height = height;
         rt->OnResize(ext);
-        SyncViewportExtentForActiveRT(ecs_context, rt, ext);
+        if(target_observer)
+            target_observer->OnRenderTargetResized(rt, ext.width, ext.height);
 
         return(true);
     }
@@ -673,7 +652,8 @@ void RenderTargetManager::OnResize(const VkExtent2D &extent)
 
         entry.desc = desc;
         entry.rt->OnResize(extent);
-        SyncViewportExtentForActiveRT(ecs_context, entry.rt, extent);
+        if(target_observer)
+            target_observer->OnRenderTargetResized(entry.rt, extent.width, extent.height);
     }
 }
 

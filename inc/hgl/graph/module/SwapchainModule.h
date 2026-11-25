@@ -3,12 +3,9 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/log/Log.h>
 
-namespace hgl::ecs
-{
-    class ECSContext;
-}
-
 namespace hgl::graph{
+
+class RenderTargetObserver;
 
 GRAPH_MODULE_CLASS(SwapchainModule)
 {
@@ -17,7 +14,7 @@ GRAPH_MODULE_CLASS(SwapchainModule)
     TextureManager *        tex_manager         =nullptr;
     RenderTargetManager *   rt_manager          =nullptr;
     RenderPassManager *     rp_manager          =nullptr;
-    hgl::ecs::ECSContext *  ecs_context         =nullptr;
+    RenderTargetObserver * target_observer      =nullptr;
 
     RenderPass *            sc_render_pass      =nullptr;
     SwapchainRenderTarget * sc_render_target    =nullptr;
@@ -34,7 +31,7 @@ public:
 
 public:
 
-    SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
+    SwapchainModule(GraphicsContext *gc,RenderTargetObserver *observer,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
     virtual ~SwapchainModule();
 
     void Release() override;

@@ -29,6 +29,7 @@
 #include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/core/entity/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
+#include<hgl/graph/render/RenderTargetObserver.h>
 #include<hgl/log/Log.h>
 #include<memory>
 #include<functional>
@@ -81,7 +82,7 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public Object
+        class ECSContext : public Object, public graph::RenderTargetObserver
         {
         public:
 
@@ -595,6 +596,8 @@ namespace hgl
 
             /// 设置渲染目标（用于窗口 resize 等场景重建 render target）
             void SetRenderTarget(hgl::graph::IRenderTarget* target) { render_target = target; }
+            void OnSwapchainTargetChanged(hgl::graph::IRenderTarget *target) override;
+            void OnRenderTargetResized(hgl::graph::IRenderTarget *target, uint32 width, uint32 height) override;
 
             /// [唯一权威 getter] 获取本世界绑定的渲染目标。
             ///

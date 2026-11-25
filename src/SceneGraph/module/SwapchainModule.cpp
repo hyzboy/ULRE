@@ -1,6 +1,6 @@
 ﻿#include<vulkan/vulkan.h>
 #include<hgl/graph/module/SwapchainModule.h>
-#include<hgl/ecs/core/Context.h>
+#include<hgl/graph/render/RenderTargetObserver.h>
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -240,7 +240,7 @@ Swapchain *SwapchainModule::CreateSwapchain(const VkExtent2D &extent, VkSwapchai
 
 bool SwapchainModule::CreateSwapchainRenderTarget(const VkExtent2D &extent, SwapchainRenderTarget *inherit_from)
 {
-    if(!ecs_context)
+    if(!target_observer)
         return(false);
 
     VkSwapchainKHR old_sc = (inherit_from && inherit_from->GetSwapchain()) ? inherit_from->GetSwapchain()->swap_chain : VK_NULL_HANDLE;
@@ -287,19 +287,19 @@ bool SwapchainModule::CreateSwapchainRenderTarget(const VkExtent2D &extent, Swap
         sc_render_target->SetEnvironmentProfile(inherit_from->GetEnvironmentProfile());
     }
 
-    if(ecs_context)
-        ecs_context->SetRenderTarget(sc_render_target);
+    if(target_observer)
+        target_observer->OnSwapchainTargetChanged(sc_render_target);
 
     return true;
 }
 
-SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
+SwapchainModule::SwapchainModule(GraphicsContext *gc,RenderTargetObserver *observer,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
     :GraphModuleInherit<SwapchainModule,GraphModule>(gc,"SwapchainModule")
 {
     tex_manager=tm;
     rt_manager=rtm;
     rp_manager=rpm;
-    ecs_context=ecs_ctx;
+    target_observer=observer;
 
     auto *dev_attr=GetDevAttr();
 
@@ -343,8 +343,8 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     if(extent.width == 0 || extent.height == 0)
         return;
 
-    if(ecs_context)
-        ecs_context->SetRenderTarget(nullptr);
+    if(target_observer)
+        target_observer->OnSwapchainTargetChanged(nullptr);
 
     if(auto *device=GetDevice())
         device->WaitIdle();
@@ -357,8 +357,8 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     if(!surface)
     {
         sc_render_target=old_rt;
-        if(ecs_context)
-            ecs_context->SetRenderTarget(sc_render_target);
+        if(target_observer)
+            target_observer->OnSwapchainTargetChanged(sc_render_target);
         LogError("SwapchainModule::OnResize: surface is null");
         return;
     }
@@ -376,8 +376,8 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     if(target_extent.width == 0 || target_extent.height == 0)
     {
         sc_render_target=old_rt;
-        if(ecs_context)
-            ecs_context->SetRenderTarget(sc_render_target);
+        if(target_observer)
+            target_observer->OnSwapchainTargetChanged(sc_render_target);
         LogWarning("SwapchainModule::OnResize: target extent is 0, skipping recreation");
         return;
     }
@@ -387,8 +387,8 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
         // Keep the previous render target usable if the transient resize
         // state does not allow a new Vulkan swapchain to be created yet.
         sc_render_target=old_rt;
-        if(ecs_context)
-            ecs_context->SetRenderTarget(sc_render_target);
+        if(target_observer)
+            target_observer->OnSwapchainTargetChanged(sc_render_target);
         LogError("SwapchainModule::OnResize: CreateSwapchainRenderTarget failed");
         return;
     }

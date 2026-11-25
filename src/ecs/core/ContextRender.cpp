@@ -1,6 +1,7 @@
 ﻿#include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/systems/render/frame/RenderSystemCore.h>
 #include <hgl/ecs/systems/render/frame/RenderTargetSystem.h>
+#include <hgl/ecs/systems/render/buffer/RenderSceneUBOSystem.h>
 #include <hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h>
 #include <hgl/ecs/systems/render/frame/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/frame/SwapchainSubmitSystem.h>
@@ -31,6 +32,18 @@
 
 namespace hgl::ecs
 {
+        void ECSContext::OnSwapchainTargetChanged(graph::IRenderTarget *target)
+        {
+            SetRenderTarget(target);
+        }
+
+        void ECSContext::OnRenderTargetResized(graph::IRenderTarget *target, uint32 width, uint32 height)
+        {
+            if (target && GetRenderTarget() == target)
+                if (auto system = GetSystem<RenderSceneUBOSystem>())
+                    system->SetViewportExtent(width, height);
+        }
+
         bool ECSContext::EnsureRenderCoreInitialized()
         {
             if (render_core)
