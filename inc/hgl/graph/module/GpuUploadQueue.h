@@ -71,12 +71,33 @@ namespace hgl::graph
 
         Mutex         mutex_;
 
+        /// 关机标记：析构开始后拒绝新入队，避免 on_complete 回调里重建任务后无人回收。
+        bool          shutting_down_    = false;
+
     private:
+        /**
+         * 派发结论。三态而不是 bool 的原因：`false` 过去同时表示
+         * 「队列暂时忙，下帧再试」与「任务参数/资源致命错误」，
+         * 而调用方把两者都当成"丢掉"，任务既不在队列也不在在飞表里，
+         * 上层（几何/纹理流送）永远收不到 on_complete ⇒ 状态永久停在 Loading。
+         */
+        enum class DispatchOutcome : uint8_t
+        {
+            Submitted,  ///< 已提交（或已同步完成）⇒ 任务归在飞/完成表，不得再动
+            Deferred,   ///< 队列暂时不可派发（前次提交未完成）⇒ 放回队列下轮重试
+            Failed      ///< 致命错误 ⇒ 必须走终态失败清理并回调 on_complete
+        };
+
         void EnsureResources();
-        bool DispatchTask(GpuUploadTask *task);
-        bool DispatchGpuTransferDma(GpuUploadTask *task);
-        bool DispatchGpuGraphicsDma(GpuUploadTask *task);
-        bool DispatchBufferToBuffer(GpuUploadTask *task);
+        DispatchOutcome DispatchTask(GpuUploadTask *task);
+        DispatchOutcome DispatchGpuTransferDma(GpuUploadTask *task);
+        DispatchOutcome DispatchGpuGraphicsDma(GpuUploadTask *task);
+        DispatchOutcome DispatchBufferToBuffer(GpuUploadTask *task);
+
+        /** 致命失败终态：退还 staging 记账、回调 on_complete、摘出任务表并销毁 */
+        void FailTask(GpuUploadTask *task, const char8_t *reason);
+        /** 暂时不可派发：放回对应优先级队列头部，下一轮 Update 重试 */
+        void DeferTask(GpuUploadTask *task);
 
     public:
         GpuUploadQueue(VulkanDevice *device);

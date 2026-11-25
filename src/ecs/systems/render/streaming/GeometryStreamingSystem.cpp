@@ -326,9 +326,10 @@ namespace hgl::ecs
 
     void GeometryStreamingSystem::Shutdown()
     {
-        // Direct-to-Staging 在途作业要先排空：GpuUploadQueue 析构只释放任务而不派发
-        // on_complete，若关机时仍有挂着的几何上传，作业里的 staging/几何会泄漏、
-        // handler 引用也永不归零。借助仍存活的设备把队列跑到空（上限兜底防死循环）。
+        // Direct-to-Staging 在途作业要先排空：借助仍存活的设备把队列跑到空
+        // （上限兜底防死循环）。超时残留的作业不会丢 —— GpuUploadQueue 析构时
+        // 会以 Cancelled 状态对每个未终态任务派发一次 on_complete，
+        // 由 OnGeometryUploadDone 收回 staging/几何并释放 handler 引用。
         if (upload_queue && handler)
         {
             for (int spin = 0; spin < 3000 && handler->GetInFlightUploadJobs() > 0; ++spin)
@@ -338,8 +339,9 @@ namespace hgl::ecs
             }
 
             if (handler->GetInFlightUploadJobs() > 0)
-                GLogError(u8"[GeometryStreaming] %d upload job(s) still in flight at shutdown",
-                          handler->GetInFlightUploadJobs());
+                GLogWarning(u8"[GeometryStreaming] %d upload job(s) still in flight at shutdown; "
+                            u8"upload queue teardown will report them as cancelled",
+                            handler->GetInFlightUploadJobs());
         }
 
         if (handler)

@@ -9,6 +9,7 @@
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/type/Smart.h>
+#include <hgl/time/Time.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::graph
@@ -236,9 +237,41 @@ namespace hgl::graph
 
     GpuUploadQueue::~GpuUploadQueue()
     {
+        shutting_down_ = true;
+
         if (device_)
             device_->WaitIdle();
 
+        // ① 先上报取消。析构路径原本直接 delete 任务而不走完成分支 ⇒ 上层的在途作业
+        //    （几何 staging 缓冲、handler 引用、流送计数）永远收不到终态：既泄漏又让
+        //    调用方状态永久停在 Loading。这里统一以 Cancelled 通知一次。
+        //    completed_tasks_ 不再通知 —— 它们的 on_complete 在完成时已调用过。
+        for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
+        {
+            for (int i = 0; i < queued_tasks_[p].GetCount(); ++i)
+            {
+                GpuUploadTask *task = queued_tasks_[p][i];
+                if (!task)
+                    continue;
+
+                task->state = UploadTaskState::Cancelled;
+                if (task->on_complete)
+                    task->on_complete(task, task->user_data);
+            }
+        }
+
+        for (int i = 0; i < in_flight_tasks_.GetCount(); ++i)
+        {
+            GpuUploadTask *task = in_flight_tasks_[i];
+            if (!task)
+                continue;
+
+            task->state = UploadTaskState::Cancelled;
+            if (task->on_complete)
+                task->on_complete(task, task->user_data);
+        }
+
+        // ② 释放设备侧辅助对象（WaitIdle 已保证无批次还引用它们）
         SAFE_CLEAR(transfer_ring_);
         SAFE_CLEAR(graphics_ring_);
         SAFE_CLEAR(transfer_cmd_buf_);
@@ -247,6 +280,7 @@ namespace hgl::graph
         SAFE_CLEAR(graphics_queue_);
         SAFE_CLEAR(upload_lane_);   // device_->WaitIdle() 已执行 ⇒ 无任何批次还引用它
 
+        // ③ 释放在册任务（环形 staging 已随手销毁，任务只持有自己的缓冲）
         for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
         {
             for (int i = 0; i < queued_tasks_[p].GetCount(); ++i)
@@ -316,6 +350,18 @@ namespace hgl::graph
 
         MutexLock lock(&mutex_);
 
+        // 关机中：拒绝新任务，但仍以 Cancelled 回调通知调用方（否则上层拿不到终态）。
+        if (shutting_down_)
+        {
+            if (task->on_complete)
+            {
+                task->state = UploadTaskState::Cancelled;
+                task->on_complete(task, task->user_data);
+            }
+            LogWarning(u8"[GpuUploadQueue] Enqueue rejected during shutdown");
+            return 0;
+        }
+
         const uint64_t task_id = next_task_id_++;
         task->task_id = task_id;
         task->state = UploadTaskState::Queued;
@@ -345,7 +391,19 @@ namespace hgl::graph
         // Immediate 任务直接同步派发并等待完成
         if (task->priority == UploadPriority::Immediate)
         {
-            DispatchTask(task);
+            // 派发结论必须处理：旧实现忽略返回值，失败时任务既不在队列也不在在飞表，
+            // 调用方的 on_complete 永不到达 ⇒ 永久停在 Loading。
+            switch (DispatchTask(task))
+            {
+                case DispatchOutcome::Submitted:
+                    break;
+                case DispatchOutcome::Deferred:
+                    DeferTask(task);
+                    break;
+                case DispatchOutcome::Failed:
+                    FailTask(task, u8"immediate dispatch failed");
+                    break;
+            }
             return task_id;
         }
 
@@ -414,7 +472,36 @@ namespace hgl::graph
                     break;
                 }
             }
-            DispatchTask(task);
+
+            // 同步派发：队列暂时忙时自旋等待（有界），致命错误走终态失败回调。
+            // 旧实现忽略返回值 ⇒ 失败后任务既不在队列也不在在飞表，调用方永久等待。
+            bool submitted = false;
+            for (int spin = 0; spin < 5000; ++spin)
+            {
+                const DispatchOutcome outcome = DispatchTask(task);
+
+                if (outcome == DispatchOutcome::Submitted)
+                {
+                    submitted = true;
+                    break;
+                }
+                if (outcome == DispatchOutcome::Failed)
+                {
+                    FailTask(task, u8"sync dispatch failed");
+                    return;
+                }
+
+                hgl::SleepSecond(0.001);
+            }
+
+            if (!submitted)
+            {
+                // 自旋超限仍未派出：放回队列，交给下一轮 Update 继续，绝不丢任务。
+                LogWarning(u8"[GpuUploadQueue] WaitTask could not dispatch task=%llu synchronously; deferring",
+                           static_cast<unsigned long long>(task->task_id));
+                DeferTask(task);
+                return;
+            }
         }
 
         if (task->state == UploadTaskState::InFlight)
@@ -472,10 +559,10 @@ namespace hgl::graph
         }
     }
 
-    bool GpuUploadQueue::DispatchTask(GpuUploadTask *task)
+    GpuUploadQueue::DispatchOutcome GpuUploadQueue::DispatchTask(GpuUploadTask *task)
     {
         if (!task)
-            return false;
+            return DispatchOutcome::Failed;
 
         // 缓冲支路（几何/SSBO 等原始字节）与载荷无关，统一走 CopyBuffer 派发
         if (task->kind == GpuUploadKind::BufferToBuffer)
@@ -491,35 +578,86 @@ namespace hgl::graph
         }
     }
 
-    bool GpuUploadQueue::DispatchGpuTransferDma(GpuUploadTask *task)
+    void GpuUploadQueue::FailTask(GpuUploadTask *task, const char8_t *reason)
+    {
+        if (!task)
+            return;
+
+        LogError(u8"[GpuUploadQueue] task %llu failed permanently: %s",
+                 static_cast<unsigned long long>(task->task_id),
+                 reason ? reason : u8"unknown");
+
+        // 退还 staging 记账。只有真正挂上了 staging 缓冲的任务才被记过账
+        // （各派发路径都在 staging 就位之后才 += staging_bytes）。
+        if (task->staging_buffer)
+        {
+            current_staging_bytes_ -= task->staging_bytes;
+            if (task->is_ring_staging)
+            {
+                if (task->backend == UploadBackendType::GpuTransferDma && transfer_ring_)
+                    transfer_ring_->Free(task->task_id);
+                else if (graphics_ring_)
+                    graphics_ring_->Free(task->task_id);
+            }
+            else if (task->owns_staging)
+            {
+                delete task->staging_buffer;
+            }
+            task->staging_buffer = nullptr;
+        }
+
+        task->state = UploadTaskState::Cancelled;
+        if (task->on_complete)
+            task->on_complete(task, task->user_data);
+
+        all_tasks_.DeleteByKey(task->task_id);
+        delete task;
+    }
+
+    void GpuUploadQueue::DeferTask(GpuUploadTask *task)
+    {
+        if (!task)
+            return;
+
+        const size_t priority = static_cast<size_t>(task->priority);
+        const size_t bucket = priority < static_cast<size_t>(UploadPriority::Count)
+                            ? priority : static_cast<size_t>(UploadPriority::Normal);
+
+        // 放回队首：保持同优先级内的原始先后次序，并保证下一轮 Update 必定重试。
+        queued_tasks_[bucket].Insert(0, task);
+    }
+
+    GpuUploadQueue::DispatchOutcome GpuUploadQueue::DispatchGpuTransferDma(GpuUploadTask *task)
     {
         if (!task || !task->tci || !task->target_texture || !device_)
-            return false;
+            return DispatchOutcome::Failed;
 
         EnsureResources();
 
         if(!transfer_queue_||!transfer_cmd_buf_)
         {
             LogError(u8"[GpuUploadQueue] GpuTransferDma missing queue or command buffer");
-            return false;
+            return DispatchOutcome::Failed;
         }
         if(!transfer_queue_->WaitLastSubmitFence())
         {
-            LogError(u8"[GpuUploadQueue] GpuTransferDma prior submission is still in flight");
-            return false;
+            // 上一批 DMA 仍在执行 ⇒ 只是"暂时不可派发"，任务必须留在队列里下轮重试，
+            // 不能当作失败丢弃（否则上层回调永不到达）。
+            LogDebug(u8"[GpuUploadQueue] GpuTransferDma prior submission still in flight; retry next update");
+            return DispatchOutcome::Deferred;
         }
 
         TextureCreateInfo *tci = task->tci;
         Texture *tex = task->target_texture;
         VkImage image = tex->GetImage();
         if (image == VK_NULL_HANDLE)
-            return false;
+            return DispatchOutcome::Failed;
 
         const VkDeviceSize total_bytes = tci->total_bytes > 0 ? tci->total_bytes : (tci->buffer ? tci->buffer->GetSize() : 0);
         if (total_bytes == 0)
         {
             LogError(u8"[GpuUploadQueue] GpuTransferDma failed: zero total bytes");
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         task->staging_bytes = total_bytes;
@@ -547,7 +685,7 @@ namespace hgl::graph
             {
                 task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
                 if (!task->staging_buffer)
-                    return false;
+                    return DispatchOutcome::Failed;
 
                 task->is_ring_staging = false;
                 task->ring_offset = 0;
@@ -563,7 +701,7 @@ namespace hgl::graph
         else
         {
             LogError(u8"[GpuUploadQueue] GpuTransferDma failed: no pixel data or buffer");
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         current_staging_bytes_ += task->staging_bytes;
@@ -574,7 +712,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] GpuTransferDma command buffer begin failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         VkImageSubresourceRange subresource_range{};
@@ -656,7 +794,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] GpuTransferDma command buffer end failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -669,7 +807,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] GpuTransferDma submit failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
         if(lane_signal!=0)
             upload_lane_value_=lane_signal;
@@ -681,9 +819,12 @@ namespace hgl::graph
         {
             if(!transfer_queue_->WaitLastSubmitFence()&&!transfer_queue_->WaitQueue())
             {
-                LogError(u8"[GpuUploadQueue] Immediate transfer completion wait failed task=%llu",
-                         static_cast<unsigned long long>(task->task_id));
-                return false;
+                // 同步等待失败不是派发失败：任务已在在飞表，Update() 会按完成状态收尾。
+                // 绝不能在这里丢弃任务（旧实现直接 return false ⇒ 任务永久滞留在在飞表
+                // 且调用方以为失败）。
+                LogWarning(u8"[GpuUploadQueue] Immediate transfer completion wait failed task=%llu; leaving it in flight",
+                           static_cast<unsigned long long>(task->task_id));
+                return DispatchOutcome::Submitted;
             }
             current_staging_bytes_ -= task->staging_bytes;
             if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
@@ -705,38 +846,38 @@ namespace hgl::graph
             completed_tasks_.Add(task);
         }
 
-        return true;
+        return DispatchOutcome::Submitted;
     }
 
-    bool GpuUploadQueue::DispatchGpuGraphicsDma(GpuUploadTask *task)
+    GpuUploadQueue::DispatchOutcome GpuUploadQueue::DispatchGpuGraphicsDma(GpuUploadTask *task)
     {
         if (!task || !task->tci || !task->target_texture || !device_)
-            return false;
+            return DispatchOutcome::Failed;
 
         EnsureResources();
 
         if(!graphics_queue_||!graphics_cmd_buf_)
         {
             LogError(u8"[GpuUploadQueue] GpuGraphicsDma missing queue or command buffer");
-            return false;
+            return DispatchOutcome::Failed;
         }
         if(!graphics_queue_->WaitLastSubmitFence())
         {
-            LogError(u8"[GpuUploadQueue] GpuGraphicsDma prior submission is still in flight");
-            return false;
+            LogDebug(u8"[GpuUploadQueue] GpuGraphicsDma prior submission still in flight; retry next update");
+            return DispatchOutcome::Deferred;
         }
 
         TextureCreateInfo *tci = task->tci;
         Texture *tex = task->target_texture;
         VkImage image = tex->GetImage();
         if (image == VK_NULL_HANDLE)
-            return false;
+            return DispatchOutcome::Failed;
 
         const VkDeviceSize total_bytes = tci->total_bytes > 0 ? tci->total_bytes : (tci->buffer ? tci->buffer->GetSize() : 0);
         if (total_bytes == 0)
         {
             LogError(u8"[GpuUploadQueue] GpuGraphicsDma failed: zero total bytes");
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         task->staging_bytes = total_bytes;
@@ -764,7 +905,7 @@ namespace hgl::graph
             {
                 task->staging_buffer = device_->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, total_bytes);
                 if (!task->staging_buffer)
-                    return false;
+                    return DispatchOutcome::Failed;
 
                 task->is_ring_staging = false;
                 task->ring_offset = 0;
@@ -780,7 +921,7 @@ namespace hgl::graph
         else
         {
             LogError(u8"[GpuUploadQueue] GpuGraphicsDma failed: no pixel data or buffer");
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         current_staging_bytes_ += task->staging_bytes;
@@ -791,7 +932,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] GpuGraphicsDma command buffer begin failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         VkImageSubresourceRange subresource_range{};
@@ -899,7 +1040,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] GpuGraphicsDma command buffer end failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         tex->SetImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -908,7 +1049,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] GpuGraphicsDma submit failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         task->state = UploadTaskState::InFlight;
@@ -918,9 +1059,9 @@ namespace hgl::graph
         {
             if(!graphics_queue_->WaitLastSubmitFence()&&!graphics_queue_->WaitQueue())
             {
-                LogError(u8"[GpuUploadQueue] Immediate graphics completion wait failed task=%llu",
-                         static_cast<unsigned long long>(task->task_id));
-                return false;
+                LogWarning(u8"[GpuUploadQueue] Immediate graphics completion wait failed task=%llu; leaving it in flight",
+                           static_cast<unsigned long long>(task->task_id));
+                return DispatchOutcome::Submitted;
             }
             current_staging_bytes_ -= task->staging_bytes;
             if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
@@ -942,7 +1083,7 @@ namespace hgl::graph
             completed_tasks_.Add(task);
         }
 
-        return true;
+        return DispatchOutcome::Submitted;
     }
 
     uint64_t GpuUploadQueue::EnqueueBufferCopyRegions(DeviceBuffer *staging, BufferOwner *target,
@@ -988,14 +1129,14 @@ namespace hgl::graph
         return EnqueueBufferCopyRegions(staging, target, regions, priority, on_complete, user_data, owns_staging);
     }
 
-    bool GpuUploadQueue::DispatchBufferToBuffer(GpuUploadTask *task)
+    GpuUploadQueue::DispatchOutcome GpuUploadQueue::DispatchBufferToBuffer(GpuUploadTask *task)
     {
         if (!task || !task->staging_buffer || !task->target_buffer || !device_)
         {
             LogError(u8"[GpuUploadQueue] BufferToBuffer dispatch: missing staging(%p) or target(%p)",
                      task ? (void *)task->staging_buffer : nullptr,
                      task ? (void *)task->target_buffer : nullptr);
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         EnsureResources();
@@ -1007,18 +1148,18 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] BufferToBuffer missing %s queue or command buffer",
                      via_transfer ? u8"transfer" : u8"graphics");
-            return false;
+            return DispatchOutcome::Failed;
         }
         if (!queue->WaitLastSubmitFence())
         {
-            LogError(u8"[GpuUploadQueue] BufferToBuffer prior submission is still in flight");
-            return false;
+            LogDebug(u8"[GpuUploadQueue] BufferToBuffer prior submission still in flight; retry next update");
+            return DispatchOutcome::Deferred;
         }
 
         const VkBuffer src = task->staging_buffer->GetBuffer();
         const VkBuffer dst = task->target_buffer->GetBuffer();
         if (src == VK_NULL_HANDLE || dst == VK_NULL_HANDLE)
-            return false;
+            return DispatchOutcome::Failed;
 
         const ValueArray<BufferCopyRegion> &regions = task->ResolveCopyRegions();
         const VkDeviceSize src_cap = task->staging_buffer->GetSize();
@@ -1033,7 +1174,7 @@ namespace hgl::graph
                          i,
                          (unsigned long long)r.src_offset, (unsigned long long)r.size, (unsigned long long)src_cap,
                          (unsigned long long)r.dst_offset, (unsigned long long)r.size, (unsigned long long)dst_cap);
-                return false;
+                return DispatchOutcome::Failed;
             }
             region_total += r.size;
         }
@@ -1046,7 +1187,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] BufferToBuffer command buffer begin failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         // 目标缓冲可见性屏障。与纹理支路的 ImageMemoryBarrier2 同一套约定：
@@ -1079,7 +1220,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] BufferToBuffer command buffer end failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
 
         // 与纹DMA支路一致：signal upload lane，主帧使用目标缓冲前等待最新值
@@ -1089,7 +1230,7 @@ namespace hgl::graph
         {
             LogError(u8"[GpuUploadQueue] BufferToBuffer submit failed task=%llu",
                      static_cast<unsigned long long>(task->task_id));
-            return false;
+            return DispatchOutcome::Failed;
         }
         if (lane_signal != 0)
             upload_lane_value_ = lane_signal;
@@ -1101,9 +1242,9 @@ namespace hgl::graph
         {
             if (!queue->WaitLastSubmitFence() && !queue->WaitQueue())
             {
-                LogError(u8"[GpuUploadQueue] BufferToBuffer immediate wait failed task=%llu",
-                         static_cast<unsigned long long>(task->task_id));
-                return false;
+                LogWarning(u8"[GpuUploadQueue] BufferToBuffer immediate wait failed task=%llu; leaving it in flight",
+                           static_cast<unsigned long long>(task->task_id));
+                return DispatchOutcome::Submitted;
             }
             current_staging_bytes_ -= task->staging_bytes;
             if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
@@ -1118,7 +1259,7 @@ namespace hgl::graph
             completed_tasks_.Add(task);
         }
 
-        return true;
+        return DispatchOutcome::Submitted;
     }
 
     void GpuUploadQueue::Update()
@@ -1173,6 +1314,8 @@ namespace hgl::graph
         // 2. 按优先级由高到低调度就绪任务
         for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
         {
+            bool stop_priority = false;
+
             while (queued_tasks_[p].GetCount() > 0)
             {
                 GpuUploadTask *task = queued_tasks_[p][0];
@@ -1192,7 +1335,27 @@ namespace hgl::graph
                 }
 
                 queued_tasks_[p].Delete(0);
-                DispatchTask(task);
+
+                switch (DispatchTask(task))
+                {
+                    case DispatchOutcome::Submitted:
+                        break;
+
+                    case DispatchOutcome::Failed:
+                        // 终态失败：退还 staging 记账、回调 on_complete、注销并销毁任务。
+                        // 旧实现直接丢弃 ⇒ 上层永不知情且任务句柄悬空。
+                        FailTask(task, u8"dispatch failed");
+                        break;
+
+                    case DispatchOutcome::Deferred:
+                        // 队列暂时忙：放回队首，结束本优先级本轮调度（下轮 Update 再试）。
+                        DeferTask(task);
+                        stop_priority = true;
+                        break;
+                }
+
+                if (stop_priority)
+                    break;
             }
         }
     }
