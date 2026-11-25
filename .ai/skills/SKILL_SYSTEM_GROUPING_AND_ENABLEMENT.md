@@ -154,14 +154,14 @@ void FrameRateProfiling(ECSContext* context) {
 
 ### Primitive系统组（当前架构：PipelineGroup）
 ```
-RenderPrimitiveCollectSystem ─┐
+RenderCollectSystem ─┐
                               ├─ [PrimitiveRenderPipelineGroup内部] ─┐
                                                                       ├─ Batch构建 ─┐
                                                                                    ├─ 绘制提交
 ```
 
 **新架构模式（统一 Pipeline Group）：**
-- **RenderCollect阶段：** RenderPrimitiveCollectSystem 收集可见Component
+- **RenderCollect阶段：** RenderCollectSystem 收集可见Component
 - **RenderBatch阶段：** PrimitiveRenderPipelineGroup 内部自动处理 Cull/Sort/Batch
 - **RenderDrawSubmit阶段：** 同一 PipelineGroup 提交GPU绘制命令
 - **核心改进：** 不再需要手动注册 6 个独立系统，由 `InstallPrimitiveGroup()` 自动初始化

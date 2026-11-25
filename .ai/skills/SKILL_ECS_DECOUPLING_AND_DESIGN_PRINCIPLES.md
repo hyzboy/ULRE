@@ -63,7 +63,7 @@
   * 应用层为了防止地面自阴影，在每帧阴影渲染前后手动调用 `ground->SetVisible(false)` 与 `SetVisible(true)`。
 * ✅ **正确模式（管线内聚托管）**：
   * 由 ECS 内部注册的系统（如 `ShadowSystem`）在主 Pass 渲染前自动调度离屏阴影 Pass；
-  * 收集系统 `RenderPrimitiveCollectSystem` 自动识别 `is_shadow_pass` 并依据组件的 `CanCastShadow()` 自动剔除；
+  * 收集系统 `RenderCollectSystem` 自动识别 `is_shadow_pass` 并依据组件的 `CanCastShadow()` 自动剔除；
   * 自动化完成，外部完全无感知。
 
 ---

@@ -30,7 +30,7 @@
 ### 渲染主流程（14-17）
 ```
 📊 收集阶段 (14)
-14: RenderCollect_RenderPrimitiveCollectSystem
+14: RenderCollect_RenderCollectSystem
 
 📊 批处理阶段 (15-16)
 // 注：Batch/Cull/Finalize 系统已整合进 PipelineGroup
@@ -191,18 +191,18 @@ class B : public System {
 
 ```cpp
 // RenderCollect阶段可能有多个系统：
-RenderPrimitiveCollectSystem   // phase: RenderCollect
+RenderCollectSystem   // phase: RenderCollect
 MyParticleCollectSystem        // phase: RenderCollect
 
 // ❌ 错误做法：依赖两者的默认执行顺序
-// ✅ 正确做法：需要顺序则明确 AddDependency<RenderPrimitiveCollectSystem>()
+// ✅ 正确做法：需要顺序则明确 AddDependency<RenderCollectSystem>()
 ```
 
 ### 原则3：阶段区间的含义
 
 - **TickInput-TickPostCamera (Tick阶段)** ：逻辑更新，组件状态变化
 - **RenderBeginFrame** ：帧开始，交换链获取
-- **RenderCollect** ：扫描可见Component（如RenderPrimitiveCollectSystem）
+- **RenderCollect** ：扫描可见Component（如RenderCollectSystem）
 - **RenderBatch** ：PipelineGroup内部处理（Cull/Sort/Build/Finalize）
 - **RenderBufferUpload** ：GPU上传（RenderBufferUploadSystem）
 - **RenderFrameSync** ：帧UBO/描述符同步

@@ -547,12 +547,12 @@ else
 恒不变）。可靠口径只有 `RenderFrameCache::frame_serial`（`BeginFrame()` 自增）：
 
 ```cpp
-// src/ecs/support/pipeline/PrimitiveBatchPipeline.cpp
+// src/ecs/support/pipeline/RenderBatchPipeline.cpp
 if (cache.last_prepared_serial == cache.frame_serial) return true;
 cache.last_prepared_serial = cache.frame_serial;
 ```
 
-已修正三处同类守卫：`PrimitiveBatchPipeline::PrepareFrame`、
+已修正三处同类守卫：`RenderBatchPipeline::PrepareFrame`、
 `TextRenderPipeline::PrepareFrame`、`LineRenderPipeline::PrepareFrame`。
 
 ### 10.7 验证手法

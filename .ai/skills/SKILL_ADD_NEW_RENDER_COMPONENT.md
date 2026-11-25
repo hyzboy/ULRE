@@ -344,6 +344,6 @@ A:
 ## 参考资源
 
 - `inc/hgl/ecs/components/GeometryData.h` - Component示例
-- `src/ecs/systems/render/collect/RenderPrimitiveCollectSystem.cpp` - 多系统示例
+- `src/ecs/systems/render/collect/RenderCollectSystem.cpp` - 多系统示例
 - `src/ecs/core/render/RenderGraph.cpp` - 自适应图实现
 - `inc/hgl/ecs/core/System.h` - ExecutionPhase定义

@@ -362,8 +362,8 @@ masked caster 的镂空阴影横跨 collect/batch/pipeline 三层，改其中任
    链会互踢纹理配置行；行未就绪（`valid==false`，首帧 prepass 早于主帧物化）
    时跳过本帧该 caster，并 bump `static_scene_revision` 触发下帧重画。跳过/失败
    路径（行未就绪 / 程序解析 / 几何 / 管线）统一走
-   `RenderPrimitiveCollectSystem::AdvanceShadowRetry`（D9）：首次跳过告警一次
-   （日志 `[RenderPrimitiveCollectSystem] shadow pass skip for '<名字>': <原因>`），
+   `RenderCollectSystem::AdvanceShadowRetry`（D9）：首次跳过告警一次
+   （日志 `[RenderCollectSystem] shadow pass skip for '<名字>': <原因>`），
    连续 120 帧仍失败则报错一次并把 bump 降频为每 60 帧一次（限速自愈）；
    caster 成功画出后计数清零。
 2. **两级寻址**（片元 `MTL_TEX(i)`）：`pc_root.addr_mtl_data_addrs` 指向
@@ -511,7 +511,7 @@ C1: fullC=<整级重建> stripC=<条带> hitC=<命中> | C2: ... | C3: ...
 [S6-COLLECT] shadow pass mobility=0 items=84 idsum=0x14820000 skipped(invisible=0 no_owner=0 no_transform=0)
 ```
 
-`items`/`idsum` 是 `RenderPrimitiveCollectSystem` 收集末端统计的"产出图元数 + Σ(entity_index<<16|gen)"
+`items`/`idsum` 是 `RenderCollectSystem` 收集末端统计的"产出图元数 + Σ(entity_index<<16|gen)"
 ⇒ **判断两帧是否收到同一批 caster**：相同 ⇒ 差异在光栅化侧；不同 ⇒ 差异在收集/剔除侧。
 
 **读法要点**：
@@ -718,7 +718,7 @@ acne，再把 `|bias_world|` 往回收（bias 越大越漏光、越小越贴合�
 |----|-----------|
 | 载体 | `MaterialInstanceAddresses`（per-draw 行，`inc/hgl/graph/ShaderBufferSources.h`）：**8B → 16B**，新增 `shadow_flags`（bit0 = 不接收）与 `shadow_bias_multiplier` |
 | 唯一真源 | `HGL_MATERIAL_INSTANCE_ADDRESSES_FIELD_LIST`（X 列表）：CPU struct 与 GLSL struct 发射**同源遍历**，新增/改名/调序字段只改一处，没有手写漂移面 |
-| 写入端 | `PrimitiveBatchPipeline` 逐图元读 `CanReceiveShadow()` / `GetBiasMultiplier()` 写行 |
+| 写入端 | `RenderBatchPipeline` 逐图元读 `CanReceiveShadow()` / `GetBiasMultiplier()` 写行 |
 | 读取端 | `pcf_shadow.glsl` 的 `GetShadowReceiveParams(data_index)` → `GetShadowFactor(surface, data_index)` |
 | 零值语义 | 行内倍率 `0` = "不调节"（回落 1.0）；未挂载 `ShadowComponent` 的行全零 = 接收 + 倍率 1.0，与接线**前逐字节一致** |
 | 不接收 | `shadow_flags` bit0 → `GetShadowFactor` 直接返回 `1.0`（**不采样**，零成本早退） |
