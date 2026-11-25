@@ -177,9 +177,10 @@ protected:
 public:
 
     GeometryCreater(VulkanDevice *,const GeometryVertexFormat &,BufferManager *bm=nullptr);
-    /// 共享 VDM 的创建器。`bm` 是**调用方自己的**缓冲管理器（VDM 不再回吐它 ——
-    /// 顶点数据池只依赖 `VertexBufferAllocator` 契约，不持有上层管理器指针）。
-    GeometryCreater(VertexDataManager *,BufferManager *bm);
+    /// 共享 VDM 的创建器。顶点数据池只持有 `VertexBufferAllocator` 契约，不再回吐
+    /// `BufferManager`；本层把它转回具体类型（VDM 由 BufferManager 构造时必然成功），
+    /// 以便沿用既有的「有 GraphicsContext 就登记全局 SSBO」行为。
+    GeometryCreater(VertexDataManager *);
     virtual ~GeometryCreater();
 
             /**

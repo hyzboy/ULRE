@@ -24,8 +24,9 @@ GeometryCreater::GeometryCreater(VulkanDevice *dev,const GeometryVertexFormat &g
     Clear();
 }
 
-GeometryCreater::GeometryCreater(VertexDataManager *_vdm,BufferManager *bm)
-    :GeometryCreater(_vdm->GetDevice(),_vdm->GetGeometryVertexFormat(),bm)
+GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
+    :GeometryCreater(_vdm->GetDevice(),_vdm->GetGeometryVertexFormat(),
+                     dynamic_cast<BufferManager *>(_vdm->GetAllocator()))
 {
     vdm=_vdm;
 

@@ -539,7 +539,7 @@ public:
         using namespace inline_geometry;
 
         // 共享顶点池：两个几何写进同一个 VertexDataManager
-        GeometryCreater pc(vdm, GetManager<BufferManager>());
+        GeometryCreater pc(vdm);
         SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
 
         cube_geometry = GetGeometry("geo:builtin:cube");

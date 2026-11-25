@@ -166,7 +166,7 @@ namespace hgl::graph
             }
 
             {
-                gizmo_triangle.prim_creater=new GeometryCreater(gizmo_triangle.vdm,buffer_manager);
+                gizmo_triangle.prim_creater=new GeometryCreater(gizmo_triangle.vdm);
 
                 if(!gizmo_triangle.prim_creater)
                     return(false);
