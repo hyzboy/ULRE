@@ -309,6 +309,9 @@ add_ecs_test(TestModelGroupRoutingTables tests/TestModelGroupRoutingTables.cpp)
 # 步骤7 判据：批分区暂存（pass 隔离、行字段、容量边界、批号越界丢弃）
 add_ecs_test(TestBatchLayoutStaging tests/TestBatchLayoutStaging.cpp)
 
+# 步骤9 判据：上传任务调度（id 分配、撤销三态、完成提取、staging 背压、队列/在飞/注销）
+add_ecs_test(TestUploadTaskScheduler tests/TestUploadTaskScheduler.cpp)
+
 # §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
 add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 
@@ -670,6 +673,13 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestBatchLayoutStaging
         PROPERTIES LABELS "ecs;render;cull" TIMEOUT 60)
+
+    add_test(
+        NAME TestUploadTaskScheduler
+        COMMAND TestUploadTaskScheduler)
+    set_tests_properties(
+        TestUploadTaskScheduler
+        PROPERTIES LABELS "graphics;upload" TIMEOUT 60)
 
     add_test(
         NAME TestCameraResolveAndClaim

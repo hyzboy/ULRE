@@ -237,7 +237,7 @@ namespace hgl::graph
 
     GpuUploadQueue::~GpuUploadQueue()
     {
-        shutting_down_ = true;
+        task_scheduler.BeginShutdown();
 
         if (device_)
             device_->WaitIdle();
@@ -245,12 +245,12 @@ namespace hgl::graph
         // ① 先上报取消。析构路径原本直接 delete 任务而不走完成分支 ⇒ 上层的在途作业
         //    （几何 staging 缓冲、handler 引用、流送计数）永远收不到终态：既泄漏又让
         //    调用方状态永久停在 Loading。这里统一以 Cancelled 通知一次。
-        //    completed_tasks_ 不再通知 —— 它们的 on_complete 在完成时已调用过。
+        //    完成表不再通知 —— 它们的 on_complete 在完成时已调用过。
         for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
         {
-            for (int i = 0; i < queued_tasks_[p].GetCount(); ++i)
+            for (int i = 0; i < task_scheduler.QueuedTasks(size_t(p)).GetCount(); ++i)
             {
-                GpuUploadTask *task = queued_tasks_[p][i];
+                GpuUploadTask *task = task_scheduler.QueuedTasks(size_t(p))[i];
                 if (!task)
                     continue;
 
@@ -260,9 +260,9 @@ namespace hgl::graph
             }
         }
 
-        for (int i = 0; i < in_flight_tasks_.GetCount(); ++i)
+        for (int i = 0; i < task_scheduler.InFlightTasks().GetCount(); ++i)
         {
-            GpuUploadTask *task = in_flight_tasks_[i];
+            GpuUploadTask *task = task_scheduler.InFlightTasks()[i];
             if (!task)
                 continue;
 
@@ -283,26 +283,26 @@ namespace hgl::graph
         // ③ 释放在册任务（环形 staging 已随手销毁，任务只持有自己的缓冲）
         for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
         {
-            for (int i = 0; i < queued_tasks_[p].GetCount(); ++i)
+            for (int i = 0; i < task_scheduler.QueuedTasks(size_t(p)).GetCount(); ++i)
             {
-                delete queued_tasks_[p][i];
+                delete task_scheduler.QueuedTasks(size_t(p))[i];
             }
-            queued_tasks_[p].Clear();
+            task_scheduler.QueuedTasks(size_t(p)).Clear();
         }
 
-        for (int i = 0; i < in_flight_tasks_.GetCount(); ++i)
+        for (int i = 0; i < task_scheduler.InFlightTasks().GetCount(); ++i)
         {
-            delete in_flight_tasks_[i];
+            delete task_scheduler.InFlightTasks()[i];
         }
-        in_flight_tasks_.Clear();
+        task_scheduler.InFlightTasks().Clear();
 
-        for (int i = 0; i < completed_tasks_.GetCount(); ++i)
+        for (int i = 0; i < task_scheduler.CompletedTasks().GetCount(); ++i)
         {
-            delete completed_tasks_[i];
+            delete task_scheduler.CompletedTasks()[i];
         }
-        completed_tasks_.Clear();
+        task_scheduler.CompletedTasks().Clear();
 
-        all_tasks_.Clear();
+        task_scheduler.ClearTaskTable();
     }
 
     void GpuUploadQueue::EnsureResources()
@@ -351,7 +351,7 @@ namespace hgl::graph
         MutexLock lock(&mutex_);
 
         // 关机中：拒绝新任务，但仍以 Cancelled 回调通知调用方（否则上层拿不到终态）。
-        if (shutting_down_)
+        if (task_scheduler.IsShuttingDown())
         {
             if (task->on_complete)
             {
@@ -362,7 +362,7 @@ namespace hgl::graph
             return 0;
         }
 
-        const uint64_t task_id = next_task_id_++;
+        const uint64_t task_id = task_scheduler.NextTaskID();
         task->task_id = task_id;
         task->state = UploadTaskState::Queued;
 
@@ -386,7 +386,7 @@ namespace hgl::graph
             }
         }
 
-        all_tasks_.Add(task_id, task);
+        task_scheduler.Register(task);
 
         // Immediate 任务直接同步派发并等待完成
         if (task->priority == UploadPriority::Immediate)
@@ -407,51 +407,26 @@ namespace hgl::graph
             return task_id;
         }
 
-        queued_tasks_[static_cast<size_t>(task->priority)].Add(task);
+        task_scheduler.PushQueued(task);
         return task_id;
     }
 
     bool GpuUploadQueue::CancelUpload(uint64_t task_id)
     {
         MutexLock lock(&mutex_);
-
-        GpuUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
-        if (!task_ptr || !*task_ptr)
-            return false;
-
-        GpuUploadTask *task = *task_ptr;
-        if (task->state == UploadTaskState::Queued)
-        {
-            task->state = UploadTaskState::Cancelled;
-            return true;
-        }
-        else if (task->state == UploadTaskState::InFlight)
-        {
-            task->state = UploadTaskState::Discarded;
-            return true;
-        }
-
-        return false;
+        return task_scheduler.Cancel(task_id);
     }
 
     UploadTaskState GpuUploadQueue::GetTaskState(uint64_t task_id)
     {
         MutexLock lock(&mutex_);
-        GpuUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
-        if (task_ptr && *task_ptr)
-            return (*task_ptr)->state;
-
-        if (completed_task_ids_.Contains(task_id))
-            return UploadTaskState::Completed;
-
-        return UploadTaskState::Cancelled;
+        return task_scheduler.State(task_id);
     }
 
     GpuUploadTask *GpuUploadQueue::FindTask(uint64_t task_id)
     {
         MutexLock lock(&mutex_);
-        GpuUploadTask **task_ptr = all_tasks_.GetValuePointer(task_id);
-        return task_ptr ? *task_ptr : nullptr;
+        return task_scheduler.Find(task_id);
     }
 
     void GpuUploadQueue::WaitTask(uint64_t task_id)
@@ -463,15 +438,7 @@ namespace hgl::graph
         if (task->state == UploadTaskState::Queued)
         {
             MutexLock lock(&mutex_);
-            for (int p = 0; p < static_cast<int>(UploadPriority::Count); ++p)
-            {
-                int idx = queued_tasks_[p].Find(task);
-                if (idx != -1)
-                {
-                    queued_tasks_[p].Delete(idx);
-                    break;
-                }
-            }
+            task_scheduler.RemoveFromQueues(task);
 
             // 同步派发：队列暂时忙时自旋等待（有界），致命错误走终态失败回调。
             // 旧实现忽略返回值 ⇒ 失败后任务既不在队列也不在在飞表，调用方永久等待。
@@ -539,7 +506,7 @@ namespace hgl::graph
 
             if (task->staging_buffer)
             {
-                current_staging_bytes_ -= task->staging_bytes;
+                task_scheduler.ReleaseStagingBytes(task->staging_bytes);
                 if (!task->is_ring_staging && task->owns_staging)
                     delete task->staging_buffer;
                 task->staging_buffer = nullptr;
@@ -591,7 +558,7 @@ namespace hgl::graph
         // （各派发路径都在 staging 就位之后才 += staging_bytes）。
         if (task->staging_buffer)
         {
-            current_staging_bytes_ -= task->staging_bytes;
+            task_scheduler.ReleaseStagingBytes(task->staging_bytes);
             if (task->is_ring_staging)
             {
                 if (task->backend == UploadBackendType::GpuTransferDma && transfer_ring_)
@@ -610,7 +577,7 @@ namespace hgl::graph
         if (task->on_complete)
             task->on_complete(task, task->user_data);
 
-        all_tasks_.DeleteByKey(task->task_id);
+        task_scheduler.Unregister(task);
         delete task;
     }
 
@@ -624,7 +591,7 @@ namespace hgl::graph
                             ? priority : static_cast<size_t>(UploadPriority::Normal);
 
         // 放回队首：保持同优先级内的原始先后次序，并保证下一轮 Update 必定重试。
-        queued_tasks_[bucket].Insert(0, task);
+        task_scheduler.DeferToHead(task);
     }
 
     GpuUploadQueue::DispatchOutcome GpuUploadQueue::DispatchGpuTransferDma(GpuUploadTask *task)
@@ -704,7 +671,7 @@ namespace hgl::graph
             return DispatchOutcome::Failed;
         }
 
-        current_staging_bytes_ += task->staging_bytes;
+        task_scheduler.AddStagingBytes(task->staging_bytes);
 
         const uint32_t mip_levels = tci->target_mipmaps > 0 ? tci->target_mipmaps : 1;
 
@@ -813,7 +780,7 @@ namespace hgl::graph
             upload_lane_value_=lane_signal;
 
         task->state = UploadTaskState::InFlight;
-        in_flight_tasks_.Add(task);
+        task_scheduler.MarkInFlight(task);
 
         if (task->priority == UploadPriority::Immediate)
         {
@@ -826,7 +793,7 @@ namespace hgl::graph
                            static_cast<unsigned long long>(task->task_id));
                 return DispatchOutcome::Submitted;
             }
-            current_staging_bytes_ -= task->staging_bytes;
+            task_scheduler.ReleaseStagingBytes(task->staging_bytes);
             if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
             {
                 delete task->staging_buffer;
@@ -842,8 +809,8 @@ namespace hgl::graph
             if (task->on_complete)
                 task->on_complete(task, task->user_data);
 
-            in_flight_tasks_.Remove(task);
-            completed_tasks_.Add(task);
+            task_scheduler.RemoveFromInFlight(task);
+            task_scheduler.PushCompleted(task);
         }
 
         return DispatchOutcome::Submitted;
@@ -924,7 +891,7 @@ namespace hgl::graph
             return DispatchOutcome::Failed;
         }
 
-        current_staging_bytes_ += task->staging_bytes;
+        task_scheduler.AddStagingBytes(task->staging_bytes);
 
         const uint32_t mip_levels = tci->target_mipmaps > 0 ? tci->target_mipmaps : 1;
 
@@ -1053,7 +1020,7 @@ namespace hgl::graph
         }
 
         task->state = UploadTaskState::InFlight;
-        in_flight_tasks_.Add(task);
+        task_scheduler.MarkInFlight(task);
 
         if (task->priority == UploadPriority::Immediate)
         {
@@ -1063,7 +1030,7 @@ namespace hgl::graph
                            static_cast<unsigned long long>(task->task_id));
                 return DispatchOutcome::Submitted;
             }
-            current_staging_bytes_ -= task->staging_bytes;
+            task_scheduler.ReleaseStagingBytes(task->staging_bytes);
             if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
             {
                 delete task->staging_buffer;
@@ -1079,8 +1046,8 @@ namespace hgl::graph
             if (task->on_complete)
                 task->on_complete(task, task->user_data);
 
-            in_flight_tasks_.Remove(task);
-            completed_tasks_.Add(task);
+            task_scheduler.RemoveFromInFlight(task);
+            task_scheduler.PushCompleted(task);
         }
 
         return DispatchOutcome::Submitted;
@@ -1181,7 +1148,7 @@ namespace hgl::graph
         if (task->staging_bytes == 0)
             task->staging_bytes = region_total;
 
-        current_staging_bytes_ += task->staging_bytes;
+        task_scheduler.AddStagingBytes(task->staging_bytes);
 
         if (!cmd_buf->Begin())
         {
@@ -1236,7 +1203,7 @@ namespace hgl::graph
             upload_lane_value_ = lane_signal;
 
         task->state = UploadTaskState::InFlight;
-        in_flight_tasks_.Add(task);
+        task_scheduler.MarkInFlight(task);
 
         if (task->priority == UploadPriority::Immediate)
         {
@@ -1246,7 +1213,7 @@ namespace hgl::graph
                            static_cast<unsigned long long>(task->task_id));
                 return DispatchOutcome::Submitted;
             }
-            current_staging_bytes_ -= task->staging_bytes;
+            task_scheduler.ReleaseStagingBytes(task->staging_bytes);
             if (!task->is_ring_staging && task->owns_staging && task->staging_buffer)
                 delete task->staging_buffer;
             task->staging_buffer = nullptr;
@@ -1255,8 +1222,8 @@ namespace hgl::graph
             if (task->on_complete)
                 task->on_complete(task, task->user_data);
 
-            in_flight_tasks_.Remove(task);
-            completed_tasks_.Add(task);
+            task_scheduler.RemoveFromInFlight(task);
+            task_scheduler.PushCompleted(task);
         }
 
         return DispatchOutcome::Submitted;
@@ -1267,20 +1234,20 @@ namespace hgl::graph
         MutexLock lock(&mutex_);
 
         // 1. 检查已在飞任务的完成状态
-        if (in_flight_tasks_.GetCount() > 0)
+        if (task_scheduler.InFlightTasks().GetCount() > 0)
         {
             bool transfer_done = (!transfer_queue_ || transfer_queue_->IsLastSubmitComplete());
             bool graphics_done = (!graphics_queue_ || graphics_queue_->IsLastSubmitComplete());
 
-            for (int i = in_flight_tasks_.GetCount() - 1; i >= 0; --i)
+            for (int i = task_scheduler.InFlightTasks().GetCount() - 1; i >= 0; --i)
             {
-                GpuUploadTask *task = in_flight_tasks_[i];
+                GpuUploadTask *task = task_scheduler.InFlightTasks()[i];
                 bool done = (task->backend == UploadBackendType::GpuTransferDma) ? transfer_done : graphics_done;
                 if (done)
                 {
                     if (task->staging_buffer)
                     {
-                        current_staging_bytes_ -= task->staging_bytes;
+                        task_scheduler.ReleaseStagingBytes(task->staging_bytes);
                         if (!task->is_ring_staging && task->owns_staging)
                             delete task->staging_buffer;
                         task->staging_buffer = nullptr;
@@ -1299,14 +1266,14 @@ namespace hgl::graph
                         task->state = UploadTaskState::Completed;
                         if (task->on_complete)
                             task->on_complete(task, task->user_data);
-                        completed_tasks_.Add(task);
+                        task_scheduler.PushCompleted(task);
                     }
                     else if (task->state == UploadTaskState::Discarded)
                     {
-                        completed_tasks_.Add(task);
+                        task_scheduler.PushCompleted(task);
                     }
 
-                    in_flight_tasks_.Delete(i);
+                    task_scheduler.RemoveInFlight(i);
                 }
             }
         }
@@ -1316,25 +1283,25 @@ namespace hgl::graph
         {
             bool stop_priority = false;
 
-            while (queued_tasks_[p].GetCount() > 0)
+            while (task_scheduler.QueuedCount(size_t(p)) > 0)
             {
-                GpuUploadTask *task = queued_tasks_[p][0];
+                GpuUploadTask *task = task_scheduler.QueuedHead(size_t(p));
                 if (task->state == UploadTaskState::Cancelled)
                 {
-                    all_tasks_.DeleteByKey(task->task_id);
+                    task_scheduler.Unregister(task);
                     delete task;
-                    queued_tasks_[p].Delete(0);
+                    task_scheduler.PopQueued(size_t(p));
                     continue;
                 }
 
                 // Staging 显存背压控制
-                if (current_staging_bytes_ + task->staging_bytes > max_staging_bytes_ && current_staging_bytes_ > 0)
+                if (task_scheduler.WouldExceedBudget(task))
                 {
                     // 显存预算达上限，暂缓派发本批 DMA 任务
                     break;
                 }
 
-                queued_tasks_[p].Delete(0);
+                task_scheduler.PopQueued(size_t(p));
 
                 switch (DispatchTask(task))
                 {
@@ -1363,14 +1330,6 @@ namespace hgl::graph
     void GpuUploadQueue::ExtractCompletedTasks(ValueArray<GpuUploadTask *> &out_completed)
     {
         MutexLock lock(&mutex_);
-        out_completed.Clear();
-        for (int i = 0; i < completed_tasks_.GetCount(); ++i)
-        {
-            GpuUploadTask *task = completed_tasks_[i];
-            out_completed.Add(task);
-            completed_task_ids_.Add(task->task_id);
-            all_tasks_.DeleteByKey(task->task_id);
-        }
-        completed_tasks_.Clear();
+        task_scheduler.ExtractCompleted(out_completed);
     }
 }

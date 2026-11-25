@@ -7,6 +7,7 @@
 #include <hgl/sync/Mutex.h>
 #include <hgl/log/Log.h>
 #include <hgl/graph/module/GpuUploadTask.h>
+#include <hgl/graph/module/UploadTaskScheduler.h>
 
 namespace hgl::graph
 {
@@ -41,25 +42,10 @@ namespace hgl::graph
         StagingRingBuffer * transfer_ring_       = nullptr;
         StagingRingBuffer * graphics_ring_       = nullptr;
 
-        VkDeviceSize        max_staging_bytes_   = 128ULL * 1024 * 1024; // 默认 128 MB 预算
-        VkDeviceSize        current_staging_bytes_ = 0;
-
-        uint64_t            next_task_id_        = 1;
-
-        // 四级就绪队列
-        ValueArray<GpuUploadTask *> queued_tasks_[static_cast<size_t>(UploadPriority::Count)];
-
-        // 在飞任务列表
-        ValueArray<GpuUploadTask *> in_flight_tasks_;
-
-        // 已完成任务列表（等待提取进行 Bindless 更新）
-        ValueArray<GpuUploadTask *> completed_tasks_;
-
-        // 任务 ID 映射（用于快速查找和撤销）
-        UnorderedMap<uint64_t, GpuUploadTask *> all_tasks_;
-
-        // 已经完成并提取的历史任务集合
-        OrderedSet<uint64_t> completed_task_ids_;
+        /// 任务调度与状态机（就绪/在飞/完成三表 + 任务表 + staging 预算账）。
+        /// 不含任何 Vulkan 调用；任务对象的销毁仍由本队列负责（它带着 GPU 资源）。
+        /// 预算与 id 也归它 ⇒ 本队列不再另存一份（避免双份真值）。
+        UploadTaskScheduler task_scheduler;
 
         // 跨队列同步 = **单条 upload lane**（timeline）：每次 transfer 派发 signal 一个递增值，
         // 主帧渲染提交前 wait 最新值 ⇒ 覆盖全部在飞 DMA 拷贝，且等待项恒为 1 个。
@@ -71,8 +57,8 @@ namespace hgl::graph
 
         Mutex         mutex_;
 
-        /// 关机标记：析构开始后拒绝新入队，避免 on_complete 回调里重建任务后无人回收。
-        bool          shutting_down_    = false;
+        /// 关机标记镜像：析构开始后拒绝新入队，避免 on_complete 回调里重建任务后无人回收。
+        /// 真值在 `task_scheduler`（调度侧判据），这里保留名字以免调用点大面积改名。
 
     private:
         /**
@@ -104,9 +90,9 @@ namespace hgl::graph
         ~GpuUploadQueue();
 
         /** 设置 Staging 显存上限预算（字节） */
-        void SetMaxStagingMemory(VkDeviceSize max_bytes) { max_staging_bytes_ = max_bytes; }
-        VkDeviceSize GetMaxStagingMemory() const { return max_staging_bytes_; }
-        VkDeviceSize GetCurrentStagingMemory() const { return current_staging_bytes_; }
+        void SetMaxStagingMemory(VkDeviceSize max_bytes) { task_scheduler.SetMaxStagingBytes(max_bytes); }
+        VkDeviceSize GetMaxStagingMemory() const { return task_scheduler.GetMaxStagingBytes(); }
+        VkDeviceSize GetCurrentStagingMemory() const { return task_scheduler.GetCurrentStagingBytes(); }
 
         /** 入队一个新上传任务，返回唯一任务ID */
         uint64_t Enqueue(GpuUploadTask *task);
