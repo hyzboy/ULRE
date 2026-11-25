@@ -12,7 +12,7 @@
 #   02.Scene       场景级数据（环境、变换）
 #   03.Camera      相机与投影
 #   04.Render      渲染上下文、着色器程序、阴影
-#   05.Gizmo       交互手柄
+#   05             保留
 #   06.Geometry    几何体生成与网格
 #   07.Asset       资产（URI/工厂/各类资产对象与注册表）
 #   08.Texture     纹理加载（平台无关 + Vulkan 后端）
@@ -101,6 +101,7 @@ set(SG_MODULE_FILES ${SG_INCLUDE_PATH}/module/GraphModule.h
                     module/GraphModuleManager.cpp
                     module/RenderPassManager.cpp
                     module/RenderTargetManager.cpp
+                    module/RenderTargetFramebuffer.cpp
                     module/SwapChainModule.cpp
                     module/TextureManager.cpp
                     module/GpuUploadQueue.cpp

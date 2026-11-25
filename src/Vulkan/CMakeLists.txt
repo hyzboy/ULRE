@@ -238,7 +238,6 @@ SOURCE_GROUP("Synchronization" FILES ${VK_SYNC_FILES})
 SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
                                 VKDeviceImage.cpp
                                 VKDeviceSampler.cpp
-                                VKDeviceFramebuffer.cpp
                                 VKBindlessTextureManager.cpp)
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 
