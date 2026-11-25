@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/render/collect/RenderCollectSystem.h>
+#include<hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include "RenderCollectInternal.h"
 #include<hgl/ecs/support/pipeline/RenderStrategyParity.h>
 #include<hgl/ecs/core/Context.h>
@@ -2036,7 +2036,7 @@ namespace hgl::ecs
 
         slot.runtime_dirty = false;
         slot.valid = false;
-        slot.last_materialize_epoch = materialize_epoch;
+        slot.last_materialize_epoch = materialization.Epoch();
         return true;
     }
 
@@ -2046,7 +2046,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        refreshed_template_textures.Clear();
+        materialization.BeginFrame();
         if (auto *templates = world->GetModelTemplateMaterialTable())
             templates->CollectRetiredTemplates();
 
@@ -2122,15 +2122,7 @@ namespace hgl::ecs
             const uint64_t ambient_provider_hash =
                 HashAmbientProviderModule(ambient_provider_now);
 
-            ambient_provider_changed =
-                !ambient_provider_snapshot_valid
-                || ambient_provider_snapshot_hash != ambient_provider_hash;
-
-            if (ambient_provider_changed)
-            {
-                ambient_provider_snapshot_hash = ambient_provider_hash;
-                ambient_provider_snapshot_valid = true;
-            }
+            ambient_provider_changed = materialization.UpdateAmbientProvider(ambient_provider_hash);
         }
 
         // P1-1: Global frame-level materialize gating.
@@ -2306,7 +2298,7 @@ namespace hgl::ecs
 
             const bool epoch_stale =
                 runtime_rows
-             && material_slot.last_materialize_epoch != materialize_epoch;
+             && material_slot.last_materialize_epoch != materialization.Epoch();
 
             // valid==true only survives a fully successful resolve+prepare+
             // materialize+geometry+pipeline chain, so a Failed material keeps
@@ -2329,7 +2321,7 @@ namespace hgl::ecs
         }// CollectPreScan 子槽
 
         if (any_material_work && any_possible_runtime_rows_visible)
-            ++materialize_epoch;
+            materialization.BumpEpoch();
 
         size_t skipped_invisible = 0;
         size_t skipped_no_owner = 0;

@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include <hgl/ecs/support/material/MaterialRuntimeTable.h>
+#include <hgl/ecs/support/material/MaterializationEpochState.h>
 #include <hgl/type/ValueArray.h>
 
 namespace hgl
@@ -49,20 +50,8 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
 
-        // Bumped whenever a frame rebuilds the global materialization tables
-        // (i.e. a dirty frame that materializes at least one runtime-rows
-        // primitive). Primitives whose last_materialize_epoch differs must be
-        // re-materialized — their rows were rebuilt while they were skipped.
-        uint64_t materialize_epoch = 0;
-        ValueArray<MaterialRuntimeRowID> refreshed_template_textures;
-
-        /// 环境层 ambient provider（天光算法模块）的逐帧快照。
-        /// provider 由**世界**决定，不属材质授权态（不进 `MaterialAuthoredGeneration`），
-        /// 所以天光算法热切后 `EnsureForwardProgram`/`EnsureShadowCasterProgram` 的 A3 快路径
-        /// 仍会命中，全部材质继续用旧 program。这里用"名字变了 ⇒ 全体 program 置脏"兜底：
-        /// 每帧只多一次哈希比较，快路径本身不变。
-        uint64_t ambient_provider_snapshot_hash = 0;
-        bool     ambient_provider_snapshot_valid = false;
+        /// 物化世代 + 本帧已刷新的模板纹理行 + ambient provider 快照（三者必须同步推进）
+        MaterializationEpochState materialization;
 
         /// P1 干跑（dry-run）快照代数：模拟"上一帧已发布过一次拓扑快照"。
         /// 用它回答**真正有用的问题** —— 「假如 P2 已经落地，本帧能不能复用上一帧的收集结果」。

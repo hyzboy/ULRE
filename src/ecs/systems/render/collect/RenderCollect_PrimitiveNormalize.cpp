@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/systems/render/collect/RenderCollectSystem.h>
+#include <hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include "RenderCollectInternal.h"
 
 #include <hgl/ecs/core/Context.h>
@@ -52,14 +52,14 @@ namespace hgl::ecs
                         ? ref->GetOverrideMaterialRow() : binding->groups[g].runtime_row;
                     auto *row = runtime ? runtime->GetMutable(id) : nullptr;
                     if (!row || row->cached_effective_recipe.textures.empty()
-                     || refreshed_template_textures.Contains(id))
+                     || materialization.IsTemplateTextureRefreshed(id))
                         continue;
                     const auto old_hash = row->material_texture_configuration_hash;
                     MaterialRuntimeSlot slot;
                     slot.row = id;
                     if (!MaterializeRecipeRowsForPrimitive(entity, slot))
                         return false;
-                    refreshed_template_textures.Add(id);
+                    materialization.MarkTemplateTextureRefreshed(id);
                     if (old_hash != row->material_texture_configuration_hash)
                         world->MarkTopologyChanged(TopologyChange::MaterialBinding);
                 }
@@ -86,7 +86,7 @@ namespace hgl::ecs
                 return false;
 
             if (material_slot.runtime_dirty || !material_slot.valid
-             || material_slot.last_materialize_epoch != materialize_epoch)
+             || material_slot.last_materialize_epoch != materialization.Epoch())
             {
                 if (!MaterializeRecipeRowsForPrimitive(entity, material_slot))
                     return false;
@@ -163,7 +163,7 @@ namespace hgl::ecs
             return false;
 
         if (material_slot.runtime_dirty || !material_slot.valid
-         || material_slot.last_materialize_epoch != materialize_epoch)
+         || material_slot.last_materialize_epoch != materialization.Epoch())
         {
             if (!MaterializeRecipeRowsForPrimitive(entity, material_slot))
                 return false;
