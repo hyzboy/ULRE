@@ -98,6 +98,31 @@ int main()
     hgl::logger::InitLogger(OS_TEXT("TestSystemReplaceAndPoolLiveness"));
 
     {
+        SystemScheduleState schedule;
+        schedule.AddDependency(false, 1, 2);
+        schedule.AddDependency(false, 1, 2);
+        schedule.AddDependency(false, 1, 1);
+        schedule.AddDependency(true, 1, 3);
+        const auto *tick = schedule.Dependencies(false).GetValuePointer(1);
+        const auto *render = schedule.Dependencies(true).GetValuePointer(1);
+        if (!tick || tick->GetCount() != 1 || (*tick)[0] != 2
+            || !render || render->GetCount() != 1 || (*render)[0] != 3
+            || !schedule.Dirty(false) || !schedule.Dirty(true)
+            || schedule.NextInsertionOrder() != 1 || schedule.NextInsertionOrder() != 2)
+        {
+            GLogError(u8"System schedule dependency or insertion state is incorrect");
+            return 1;
+        }
+        schedule.RemoveDependencies(false, 1);
+        if (schedule.Dependencies(false).GetValuePointer(1)
+            || !schedule.Dependencies(true).GetValuePointer(1))
+        {
+            GLogError(u8"System schedule removed dependencies from the wrong phase");
+            return 1;
+        }
+    }
+
+    {
         SystemOrderPlanner planner;
         planner.AddSystem(1, 0, 0, 1);
         planner.AddSystem(2, 0, 0, 2);

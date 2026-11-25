@@ -5,6 +5,7 @@
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/SystemGroupActivity.h>
+#include<hgl/ecs/core/SystemScheduleState.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/RenderPassRequest.h>
@@ -140,16 +141,9 @@ namespace hgl
                 std::shared_ptr<System> system;
             };
 
-            using DependencyMap = hgl::UnorderedMap<size_t, std::vector<size_t>>;
-
             std::vector<OrderedSystem> tick_system_order;
             std::vector<OrderedSystem> render_system_order;
-            bool tick_order_dirty = false;
-            bool render_order_dirty = false;
-            uint64_t next_system_order = 1;
-
-            DependencyMap tick_dependencies;
-            DependencyMap render_dependencies;
+            SystemScheduleState system_schedule;
 
             // ── T2-c：组件存储 = 世界私有的**类型化对象池**（按 ComponentType 索引）──
             //
@@ -365,7 +359,7 @@ namespace hgl
             void SortTickSystems();
             void SortRenderSystems();
             void SortSystemList(std::vector<OrderedSystem>& order_list,
-                                const DependencyMap& dependencies,
+                                const SystemScheduleState::DependencyMap& dependencies,
                                 bool& dirty_flag,
                                 const char* label);
             OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);

@@ -10,16 +10,18 @@ namespace hgl::ecs
 {
     void ECSContext::SortTickSystems()
     {
-        SortSystemList(tick_system_order, tick_dependencies, tick_order_dirty, "Tick");
+        SortSystemList(tick_system_order, system_schedule.Dependencies(false),
+                       system_schedule.Dirty(false), "Tick");
     }
 
     void ECSContext::SortRenderSystems()
     {
-        SortSystemList(render_system_order, render_dependencies, render_order_dirty, "Render");
+        SortSystemList(render_system_order, system_schedule.Dependencies(true),
+                       system_schedule.Dirty(true), "Render");
     }
 
     void ECSContext::SortSystemList(std::vector<OrderedSystem>& order_list,
-                                     const DependencyMap& dependencies,
+                                     const SystemScheduleState::DependencyMap& dependencies,
                                      bool& dirty_flag,
                                      const char* label)
     {
@@ -90,8 +92,7 @@ namespace hgl::ecs
 
         auto& sys_map = is_render ? render_systems : tick_systems;
         auto& order_list = is_render ? render_system_order : tick_system_order;
-        auto& dirty_flag = is_render ? render_order_dirty : tick_order_dirty;
-        auto& deps = is_render ? render_dependencies : tick_dependencies;
+        auto& dirty_flag = system_schedule.Dirty(is_render);
 
         // ── 同键替换：旧实例必须先 Shutdown ──
         // RegisterSystem<T>() 重复注册（或外部替换实现）会覆盖 sys_map[key]；旧实例随后
@@ -132,8 +133,8 @@ namespace hgl::ecs
             old_system->Shutdown();
         };
 
-        retire_replaced_system(tick_systems, tick_system_order, tick_order_dirty);
-        retire_replaced_system(render_systems, render_system_order, render_order_dirty);
+        retire_replaced_system(tick_systems, tick_system_order, system_schedule.Dirty(false));
+        retire_replaced_system(render_systems, render_system_order, system_schedule.Dirty(true));
 
         sys_map[key] = system;
 
@@ -181,13 +182,13 @@ namespace hgl::ecs
             new_entry.key = key;
             new_entry.phase = effective_phase;
             new_entry.group_id = group_id;
-            new_entry.insertion_order = next_system_order++;
+            new_entry.insertion_order = system_schedule.NextInsertionOrder();
             new_entry.system = system;
             order_list.push_back(std::move(new_entry));
             dirty_flag = true;
         }
 
-        deps.DeleteByKey(key);
+        system_schedule.RemoveDependencies(is_render, key);
 
         const auto& deps_decl = system->GetDependencies();
         for (const auto& dep_type : deps_decl)
@@ -203,25 +204,7 @@ namespace hgl::ecs
 
     void ECSContext::AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key)
     {
-        if (dependent_key == dependency_key)
-            return;
-
-        auto& deps = is_render ? render_dependencies : tick_dependencies;
-        auto& order_dirty = is_render ? render_order_dirty : tick_order_dirty;
-
-        auto* list = deps.GetValuePointer(dependent_key);
-        if (!list)
-        {
-            deps.Add(dependent_key, std::vector<size_t>{});
-            list = deps.GetValuePointer(dependent_key);
-        }
-
-        const auto it = std::find(list->begin(), list->end(), dependency_key);
-        if (it == list->end())
-        {
-            list->push_back(dependency_key);
-            order_dirty = true;
-        }
+        system_schedule.AddDependency(is_render, dependent_key, dependency_key);
     }
 
     void ECSContext::GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const

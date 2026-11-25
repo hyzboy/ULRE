@@ -299,8 +299,7 @@ namespace hgl
                 render_system_order.clear();
                 ClearComponentPools();
                 systems_by_element_type.clear();
-                tick_dependencies.Clear();
-                render_dependencies.Clear();
+                system_schedule.ClearDependencies();
                 ResetComponentDrivenGroups();
                 static_transforms.clear();
                 movable_transforms.clear();
