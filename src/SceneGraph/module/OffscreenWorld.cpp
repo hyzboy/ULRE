@@ -141,7 +141,13 @@ namespace hgl::graph
             collect_system_->SetWorld(world_.get());
 
         // W3 合并后单一入口：GPU 绑定 + 系统初始化
-        world_->Initialize(device, rt);
+        // 失败（相机行存储 / WorldAddresses 创建失败）⇒ 世界处于半初始化状态，
+        // 后续每帧渲染会访问空地址表。必须上抛而不是继续跑。
+        if(!world_->Initialize(device, rt))
+        {
+            GLogError("[OffscreenWorld] ECSContext::Initialize failed for '%s'", desc.name.c_str());
+            return false;
+        }
 
         if(camera_system_)
         {

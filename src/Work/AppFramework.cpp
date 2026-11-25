@@ -296,7 +296,15 @@ namespace hgl
                 AddChildDispatcher(systems.input_system->GetEventDispatcher());
 
             default_ecs_context->SetRenderContext(render_context.get());
-            default_ecs_context->Initialize(device, GetSwapchainRenderTarget());
+
+            // 初始化失败（世界相机行存储 / WorldAddresses 创建失败）会让世界处于
+            // 半初始化状态：地址表与相机槽是空的，继续跑每帧必踩空指针。
+            // 必须把失败上抛，不能像过去那样忽略返回值后当作正常启动。
+            if (!default_ecs_context->Initialize(device, GetSwapchainRenderTarget()))
+            {
+                GLogError("[AppFramework] ECSContext::Initialize failed; aborting startup");
+                return false;
+            }
         }
 
         return true;
