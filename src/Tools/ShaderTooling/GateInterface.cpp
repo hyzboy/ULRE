@@ -1177,8 +1177,11 @@ namespace gate
         GateResult result;
         result.name = "B.batch-info-struct-parity";
 
+        // 步骤7 起 `BatchInfoRow` 的**唯一权威**随分区暂存迁入 BatchLayoutStaging.h
+        // （GPUCullSystem 只以别名再导出）⇒ 门禁必须跟着单一真源走，否则拆分本身会让
+        // 门禁假红。GLSL 侧的 `BatchInfoRow` 名字不变（着色器契约未变）。
         const std::string cpp_text =
-            ReadFileText(RepoRootPath("inc/hgl/ecs/support/cull/GPUCullSystem.h"));
+            ReadFileText(RepoRootPath("inc/hgl/ecs/support/cull/BatchLayoutStaging.h"));
         const std::string glsl_text =
             ReadFileText(RepoRootPath("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"));
         // 派发档 / 遍数的 GLSL 侧数值已收敛为 ShaderConstGen 生成物
@@ -1189,7 +1192,7 @@ namespace gate
         if (cpp_text.empty() || glsl_text.empty() || glsl_const_text.empty())
         {
             result.diagnostics.emplace_back(
-                "无法读取 GPUCullSystem.h / entity_gpu_cull.glsl / engine_constants.glsl"
+                "无法读取 BatchLayoutStaging.h / entity_gpu_cull.glsl / engine_constants.glsl"
                 "（结构对表的两端）");
             result.passed = result.diagnostics.empty();
             return result;
@@ -1197,7 +1200,7 @@ namespace gate
 
         // ── ① 行形状：逐字段同序同型（类型/长度已归一） ──
         const std::vector<StructFieldEntry> cpp_fields =
-            ExtractStructFieldsLineWise(cpp_text, "BatchInfoRow");
+            ExtractStructFieldsLineWise(cpp_text, "Row");
         const std::vector<StructFieldEntry> glsl_fields =
             ExtractStructFieldsLineWise(glsl_text, "BatchInfoRow");
 
@@ -1246,17 +1249,28 @@ namespace gate
 
         const TierPair tiers[] =
         {
-            { "kBatchTopologyTriangles", "#define TOPOLOGY_TRIANGLES" },
-            { "kBatchTopologyLines",     "#define TOPOLOGY_LINES"     },
+            { "kTopologyTriangles", "#define TOPOLOGY_TRIANGLES" },
+            { "kTopologyLines",     "#define TOPOLOGY_LINES"     },
             // T4c2：批行/计数按 pass 分块 ⇒ 遍数两端各写一遍（漂移 = 阴影块永不被写或被越界写）
             // ⚠ C++ 端令牌必须带类型+声明符：`kArenaPasses` 的**首次出现**是
             //   GetBatchLayout 的越界判断（同一行无数字）⇒ 只用标识符会提取失败误报。
+            // ⚠ 步骤7 起 `kArenaPasses` 仍留在 GPUCullSystem.h（本门禁的 cpp_text 已改为
+            //   BatchLayoutStaging.h）⇒ 该档单独从 cull 头取。
             { "static constexpr uint32_t kArenaPasses", "#define ULRE_ARENA_PASSES" },
         };
 
+        /// 派发档的 C++ 端分两处：拓扑档在 BatchLayoutStaging.h（partition 单一真源），
+        /// 遍数在 GPUCullSystem.h（与 `GetBatchLayout` 的越界判断同处）。
+        const std::string cull_header_text =
+            ReadFileText(RepoRootPath("inc/hgl/ecs/support/cull/GPUCullSystem.h"));
+
         for (const TierPair &tier : tiers)
         {
-            const int cpp_value  = ExtractFirstIntAfter(cpp_text,  tier.cpp_token);
+            const std::string &cpp_source =
+                std::string(tier.cpp_token).find("kArenaPasses") != std::string::npos
+                    ? cull_header_text : cpp_text;
+
+            const int cpp_value  = ExtractFirstIntAfter(cpp_source, tier.cpp_token);
             const int glsl_value = ExtractFirstIntAfter(glsl_const_text, tier.glsl_token);
 
             if (cpp_value < 0 || glsl_value < 0)
