@@ -301,10 +301,7 @@ namespace hgl
                 systems_by_element_type.clear();
                 system_schedule.ClearDependencies();
                 ResetComponentDrivenGroups();
-                static_transforms.clear();
-                movable_transforms.clear();
-                static_free_slots.clear();
-                movable_free_slots.clear();
+                transform_slots.Clear();
 
                 if (auto *transform_storage = GetTransformStorage())
                     transform_storage->Clear();     // §2 #9：行存储随世界复位（世代不复位 ⇒ 旧句柄不复活）
@@ -352,10 +349,7 @@ namespace hgl
 
             ClearComponentPools();
             ResetComponentDrivenGroups();
-            static_transforms.clear();
-            movable_transforms.clear();
-            static_free_slots.clear();
-            movable_free_slots.clear();
+            transform_slots.Clear();
 
             if (auto *transform_storage = GetTransformStorage())
                 transform_storage->Clear();         // §2 #9：同上（active 路径）
@@ -816,71 +810,22 @@ namespace hgl
         // 注销只把该格置空洞并入空闲表 ⇒ **别的物体行号不受影响**（改前是 erase 整体平移）。
         uint32_t ECSContext::AcquireTransformSlot(const bool movable)
         {
-            auto &free_slots = movable ? movable_free_slots : static_free_slots;
-            auto &list       = movable ? movable_transforms  : static_transforms;
-
-            if (!free_slots.empty())
-            {
-                const uint32_t slot = free_slots.back();
-                free_slots.pop_back();
-                return slot;                            // 复用空洞：新物体拿回被释放的行号
-            }
-
-            const uint32_t budget = GetTransformSegmentBudget(movable);
-
-            if (budget != 0 && static_cast<uint32_t>(list.size()) >= budget)
-                return INVALID_TRANSFORM_SLOT;          // 段预算用尽：拒绝，不扩容
-
-            list.push_back(INVALID_TRANSFORM_ID);
-            return static_cast<uint32_t>(list.size() - 1);
+            return transform_slots.Acquire(movable, GetTransformSegmentBudget(movable));
         }
 
         void ECSContext::ReleaseTransformSlot(const bool movable,const uint32_t slot)
         {
-            auto &list       = movable ? movable_transforms : static_transforms;
-            auto &free_slots = movable ? movable_free_slots  : static_free_slots;
-
-            if (slot >= static_cast<uint32_t>(list.size()))
-                return;
-
-            if (!IsValidTransformID(list[slot]))        // 已是空洞 ⇒ 不重复入表
-                return;
-
-            list[slot] = INVALID_TRANSFORM_ID;
-            free_slots.push_back(slot);
+            transform_slots.Release(movable, slot);
         }
 
         bool ECSContext::TryGetTransformSlot(TransformID id,bool movable,uint32_t &out_slot) const
         {
-            if (!IsValidTransformID(id))
-                return false;
-
-            const auto &list = movable ? movable_transforms : static_transforms;
-
-            for (uint32_t slot = 0; slot < static_cast<uint32_t>(list.size()); ++slot)
-            {
-                if (list[slot] == id)
-                {
-                    out_slot = slot;
-                    return true;
-                }
-            }
-
-            return false;
+            return transform_slots.Find(id, movable, out_slot);
         }
 
         uint32_t ECSContext::GetLiveTransformCount(const bool movable) const
         {
-            const auto &list = movable ? movable_transforms : static_transforms;
-            uint32_t live = 0;
-
-            for (const TransformID id : list)
-            {
-                if (IsValidTransformID(id))
-                    ++live;
-            }
-
-            return live;
+            return transform_slots.LiveCount(movable);
         }
 
         bool ECSContext::RegisterTransform(TransformID id,bool isMovable)
@@ -927,10 +872,10 @@ namespace hgl
                 return false;                               // 旧段槽未动（若先前在另一段），调用方负责回收行
             }
 
+            if (!transform_slots.Assign(isMovable, slot, id))
+                return false;
             if (has_other_slot)
                 ReleaseTransformSlot(!isMovable,other_slot);
-
-            (isMovable ? movable_transforms : static_transforms)[slot] = id;
 
             return true;
         }
@@ -965,9 +910,9 @@ namespace hgl
                 return false;                               // 旧段槽与段名单保持原状
             }
 
+            if (!transform_slots.Assign(toMovable, slot, id))
+                return false;
             ReleaseTransformSlot(!toMovable,old_slot);       // 目标槽到手，才交还旧槽
-
-            (toMovable ? movable_transforms : static_transforms)[slot] = id;
 
             ++transform_row_move_count;
 

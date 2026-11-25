@@ -192,7 +192,7 @@ namespace hgl::ecs
     void TransformAssignmentBuffer::WriteDirtyIndicesInternal(const char* label,
                                                               uint32_t base_index,
                                                               const TransformDataStorage& storage,
-                                                              const std::vector<TransformDataStorage::HandleID>& handles,
+                                                              const ValueArray<TransformDataStorage::HandleID>& handles,
                                                               const std::vector<uint32_t>& dirty_indices)
     {
         if (!transform_buffer || handles.empty() || dirty_indices.empty())
@@ -281,14 +281,14 @@ namespace hgl::ecs
     }
 
     void TransformAssignmentBuffer::WriteStaticDirtyIndices(const TransformDataStorage& storage,
-                                                            const std::vector<TransformDataStorage::HandleID>& handles,
+                                                            const ValueArray<TransformDataStorage::HandleID>& handles,
                                                             const std::vector<uint32_t>& dirty_indices)
     {
         WriteDirtyIndicesInternal("Static", kFirstObjectL2WSlot, storage, handles, dirty_indices);
     }
 
     void TransformAssignmentBuffer::WriteDynamicDirtyIndices(const TransformDataStorage& storage,
-                                                             const std::vector<TransformDataStorage::HandleID>& handles,
+                                                             const ValueArray<TransformDataStorage::HandleID>& handles,
                                                              const std::vector<uint32_t>& dirty_indices)
     {
         WriteDirtyIndicesInternal("Dynamic", GetDynamicBaseIndex(), storage, handles, dirty_indices);

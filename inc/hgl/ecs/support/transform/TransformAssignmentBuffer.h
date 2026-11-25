@@ -12,6 +12,7 @@
 #include<hgl/vk/buffer/RingLayout.h>
 #include<hgl/ecs/core/render/RenderItem.h>
 #include<hgl/ecs/support/transform/TransformDataStorage.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/math/Vector.h>
 #include<vector>
 
@@ -89,7 +90,7 @@ namespace hgl::ecs
         void WriteDirtyIndicesInternal(const char* label,
                                        uint32_t base_index,
                                        const TransformDataStorage& storage,
-                                       const std::vector<TransformDataStorage::HandleID>& handles,
+                                       const ValueArray<TransformDataStorage::HandleID>& handles,
                                        const std::vector<uint32_t>& dirty_indices);
 
     public:
@@ -128,11 +129,11 @@ namespace hgl::ecs
                       "展开段行数与帧槽必须同深（HGL_L2W_RING_FRAMES != HGL_FRAME_SLOT_TOTAL）");
 
         void WriteStaticDirtyIndices(const TransformDataStorage& storage,
-                         const std::vector<TransformDataStorage::HandleID>& handles,
+                         const ValueArray<TransformDataStorage::HandleID>& handles,
                          const std::vector<uint32_t>& dirty_indices);
         /// `handles` = 该段的**槽位表**（下标即槽位，含空洞）⇒ `dirty_indices` 里是槽位
         void WriteDynamicDirtyIndices(const TransformDataStorage& storage,
-                          const std::vector<TransformDataStorage::HandleID>& handles,
+                          const ValueArray<TransformDataStorage::HandleID>& handles,
                           const std::vector<uint32_t>& dirty_indices);
 
         /// 推进 ring 帧索引。世界私有：由本世界的 ECSContext::SetFrameIndex

@@ -197,7 +197,7 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        const auto contains = [](const std::vector<TransformID> &list, const TransformID id)
+        const auto contains = [](const ValueArray<TransformID> &list, const TransformID id)
         {
             for (const TransformID t : list)
                 if (t == id)

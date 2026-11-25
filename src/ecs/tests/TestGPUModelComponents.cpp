@@ -162,7 +162,7 @@ namespace
         EXPECT(dtf.IsMovable());
 
         // 段名单归属
-        auto inList = [](const std::vector<TransformID> &list, TransformID id)
+        auto inList = [](const ValueArray<TransformID> &list, TransformID id)
         {
             for (const TransformID t : list) if (t == id) return true;
             return false;

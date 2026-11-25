@@ -21,6 +21,7 @@
 #include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/ecs/support/transform/TransformID.h>
+#include<hgl/ecs/support/transform/TransformSlotTable.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/support/cull/BoundingBoxAccessor.h>
 #include<hgl/ecs/support/cull/VisibilityDataStorage.h>
@@ -163,10 +164,7 @@ namespace hgl
             // （`静态: 1 + slot` / `动态: 1 + 预算static + frame × 预算dynamic + slot`），
             // **不再随名单顺序漂移**；空洞记 `INVALID_TRANSFORM_ID`，注册优先复用空洞。
             // 段容量 = 变换存储声明的预算（超限 = 一次性明确告警 + 拒绝，不扩容）。
-            std::vector<TransformID> static_transforms;
-            std::vector<TransformID> movable_transforms;
-            std::vector<uint32_t>    static_free_slots;     ///< 空闲静态槽（后进先出；复用即得回稳定行号）
-            std::vector<uint32_t>    movable_free_slots;    ///< 空闲动态槽
+            TransformSlotTable transform_slots;
             bool                     transform_slot_overflow_warned = false;    ///< 段预算用尽：一次性告警闩
             bool                     transform_row_move_warned      = false;    ///< Mobility 换边（行号移动）：一次性告警闩
             uint32_t                 transform_row_move_count       = 0;        ///< 换边次数（可观测）
@@ -904,7 +902,7 @@ namespace hgl
 
             // ── 变换名单的**结构性遍历**（唯一正确方式）─────────────────────────
             //   名单里存在**空洞**：销毁 / Mobility 换边会留下 `INVALID_TRANSFORM_ID`
-            //   （见下方 movable_transforms 注释：「空洞记 INVALID_TRANSFORM_ID，注册优先复用空洞」）。
+            //   （空洞记 INVALID_TRANSFORM_ID，注册优先复用空洞）。
             //   裸遍历 `GetMovableTransforms()/GetStaticTransforms()` 会把空洞当成有效 id 传下去，
             //   以 (uint32)-1 索引行存储的平行数组 ⇒ 越界崩溃（2026-10-02 实测）。因此：
             //   **新增消费者一律用这两个入口**（内部自动跳洞，调用方不可能漏）。
@@ -922,7 +920,7 @@ namespace hgl
             template<typename Fn>
             void ForEachMovableTransform(Fn &&fn) const
             {
-                for (const TransformID id : movable_transforms)
+                for (const TransformID id : transform_slots.Slots(true))
                     if (IsValidTransformID(id))
                         fn(id);
             }
@@ -930,7 +928,7 @@ namespace hgl
             template<typename Fn>
             void ForEachStaticTransform(Fn &&fn) const
             {
-                for (const TransformID id : static_transforms)
+                for (const TransformID id : transform_slots.Slots(false))
                     if (IsValidTransformID(id))
                         fn(id);
             }
@@ -941,8 +939,8 @@ namespace hgl
             /// 变换访问器（薄句柄；读写直落本世界的存储）
             TransformAccessor GetTransform(TransformID id);
 
-            const std::vector<TransformID>& GetStaticTransforms() const { return static_transforms; }
-            const std::vector<TransformID>& GetMovableTransforms() const { return movable_transforms; }
+            const ValueArray<TransformID>& GetStaticTransforms() const { return transform_slots.Slots(false); }
+            const ValueArray<TransformID>& GetMovableTransforms() const { return transform_slots.Slots(true); }
 
             /// 变换的**稳定槽位**（B1b）：命中返回 true 并写 `out_slot`。
             /// 槽位是 L2W 行号的唯一来源（静态 `1+slot`、动态 `1+预算static + frame×预算dynamic + slot`），
