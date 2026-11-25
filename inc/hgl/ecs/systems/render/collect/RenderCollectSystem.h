@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/System.h>
 #include <hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include <hgl/ecs/support/material/MaterializationEpochState.h>
+#include <hgl/ecs/support/storage/CollectCacheState.h>
 #include <hgl/type/ValueArray.h>
 
 namespace hgl
@@ -53,33 +54,11 @@ namespace hgl::ecs
         /// 物化世代 + 本帧已刷新的模板纹理行 + ambient provider 快照（三者必须同步推进）
         MaterializationEpochState materialization;
 
-        /// P1 干跑（dry-run）快照代数：模拟"上一帧已发布过一次拓扑快照"。
-        /// 用它回答**真正有用的问题** —— 「假如 P2 已经落地，本帧能不能复用上一帧的收集结果」。
-        /// 若沿用真实状态（`has_snapshot = false`），报表会 100% 落在 `NoSnapshot`，
-        /// 那就等于什么都没测。
-        uint64_t dryrun_snapshot_topology_rev = 0;
-        bool     dryrun_snapshot_valid = false;
+        /// P1 干跑代数 + P3 稳态判据与命中统计（只由本系统内部推进）
+        CollectCacheState collect_cache;
 
         /// P1：每帧一次的资格判定与统计（只观测，**不跳过任何逻辑**）。
         void ObserveCollectCacheEligibility();
-
-        /// P3：上一帧**主帧 pass** 的收集是否为"稳态"。
-        ///
-        /// 定义：该次收集的预扫描判定 `any_material_work == false` —— 即**没有任何**
-        /// 图元需要完整材质链（`fast_path_holds` 成立、slot 有效、物化世代已覆盖、
-        /// 无 `runtime_dirty`）。只有稳态才允许快路径接管：否则说明有实例正在等流式
-        /// 资源或在重试失败，必须让完整路径继续逐帧重试，不能把"启动时未就绪"
-        /// 永久缓存成空/缺项。
-        ///
-        /// 只在主帧 pass 结束时更新（阴影 pass 的结论会污染这份判断）。
-        bool last_main_collect_steady = false;
-
-        /// P3 统计（快路径关闭时恒为 0）：
-        /// `hits` = 快路径完整接管的主帧数；`fallbacks` = 尝试后回退到完整收集的次数；
-        /// `last_items` = 最近一次快路径重建出的成员数。
-        uint64_t collect_cache_hits      = 0;
-        uint64_t collect_cache_fallbacks = 0;
-        uint64_t collect_cache_last_items = 0;
 
         /// P3：主帧收集快路径。
         ///
@@ -159,13 +138,13 @@ namespace hgl::ecs
         // ── P3 收集快路径统计（报表用；快路径关闭时恒为 0）───────────────────
 
         /// 快路径完整接管的主帧数
-        uint64_t GetCollectCacheHits()      const { return collect_cache_hits; }
+        uint64_t GetCollectCacheHits()      const { return collect_cache.Hits(); }
         /// 尝试后被判据拒绝 / 中途发现不一致而回退的次数
-        uint64_t GetCollectCacheFallbacks() const { return collect_cache_fallbacks; }
+        uint64_t GetCollectCacheFallbacks() const { return collect_cache.Fallbacks(); }
         /// 最近一次快路径重建出的成员数
-        uint64_t GetCollectCacheLastItems() const { return collect_cache_last_items; }
+        uint64_t GetCollectCacheLastItems() const { return collect_cache.LastItems(); }
         /// 上一帧主帧收集是否为稳态（快路径的前提之一）
-        bool     IsLastMainCollectSteady()  const { return last_main_collect_steady; }
+        bool     IsLastMainCollectSteady()  const { return collect_cache.IsLastMainCollectSteady(); }
 
         void SetWorld(ECSContext* w) { world = w; }
 

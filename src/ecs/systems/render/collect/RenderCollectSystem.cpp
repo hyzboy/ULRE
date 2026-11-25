@@ -2677,8 +2677,8 @@ namespace hgl::ecs
         // 只在主帧 pass 更新：阴影/过滤 pass 的结论会污染这份判断。
         if (world->IsMainFrameTopologyPass())
         {
-            last_main_collect_steady    = !any_material_work && !any_pending_resources;
-            cache.is_collect_steady     = last_main_collect_steady;
+            collect_cache.SetLastMainCollectSteady(!any_material_work && !any_pending_resources);
+            cache.is_collect_steady     = collect_cache.IsLastMainCollectSteady();
             cache.has_pending_resources = any_pending_resources;
         }
     }

@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/systems/render/collect/RenderCollectSystem.h>
+#include <hgl/ecs/systems/render/collect/RenderCollectSystem.h>
 #include "RenderCollectInternal.h"
 
 #include <hgl/ecs/core/Context.h>
@@ -38,7 +38,7 @@ namespace hgl::ecs
 
         // ── 前提③：上一帧主帧收集是稳态（无任何实例在等流式资源 / 重试失败）──
         // 否则完整路径必须继续逐帧重试，不能把"启动时未就绪"永久缓存下来。
-        if (!last_main_collect_steady)
+        if (!collect_cache.IsLastMainCollectSteady())
             return false;
 
         const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
@@ -221,13 +221,12 @@ namespace hgl::ecs
             cache.renderItems.resize(base_items);
             cache.renderableCount = base_renderable;
 
-            ++collect_cache_fallbacks;
+            collect_cache.RecordFallback();
 
             return false;
         }
 
-        ++collect_cache_hits;
-        collect_cache_last_items = static_cast<uint64_t>(record_count);
+        collect_cache.RecordHit(static_cast<uint64_t>(record_count));
 
         FrameProfiler::Count(FrameProfileCount::CollectItems, static_cast<uint32_t>(record_count));
 
@@ -257,11 +256,7 @@ namespace hgl::ecs
 
         // 干跑：首次把当前代数当作「刚发布过快照」，之后只在判定为「拓扑脏」时刷新，
         // 因为那时真实实现会重建并发布一份新快照。
-        if (!dryrun_snapshot_valid)
-        {
-            dryrun_snapshot_topology_rev = topology_now;
-            dryrun_snapshot_valid        = true;
-        }
+        collect_cache.EnsureDryRunInitialized(topology_now);
 
         CollectCacheInputs in;
 
@@ -269,7 +264,7 @@ namespace hgl::ecs
         in.gpu_cull_engaged        = ledger.GetLastGPUCullEngaged();
         in.has_snapshot            = true;              // 干跑：假装已有快照
         in.snapshot_ready          = true;              // 干跑：假装快照就绪
-        in.snapshot_topology_rev   = dryrun_snapshot_topology_rev;
+        in.snapshot_topology_rev   = collect_cache.DryRunTopologyRevision();
 
         const CacheRejectReason reason = ledger.Evaluate(in);
 
@@ -279,7 +274,7 @@ namespace hgl::ecs
             world->GetPrimitiveTopologyLedger().RecordEligibility(reason);
 
             if (reason != CacheRejectReason::Eligible)
-                dryrun_snapshot_topology_rev = topology_now;
+                collect_cache.AdvanceDryRun(topology_now);
         }
     }
 }//namespace hgl::ecs
