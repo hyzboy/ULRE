@@ -1,5 +1,6 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/SystemOrderPlanner.h>
 #include <hgl/log/Log.h>
 #include <algorithm>
 #include <typeinfo>
@@ -31,99 +32,34 @@ namespace hgl::ecs
             return;
         }
 
-        hgl::UnorderedMap<size_t, size_t> index_map;
-        index_map.Reserve(order_list.size());
-
-        for (size_t i = 0; i < order_list.size(); ++i)
-        {
-            index_map[order_list[i].key] = i;
-        }
-
-        std::vector<size_t> indegree(order_list.size(), 0);
-        std::vector<std::vector<size_t>> adj(order_list.size());
+        SystemOrderPlanner planner;
+        for (const auto &entry : order_list)
+            planner.AddSystem(entry.key, entry.phase, entry.group_id, entry.insertion_order);
 
         for (const auto& pair : dependencies)
         {
-            const size_t dependent_key = pair.first;
-            const size_t* dependent_index = index_map.GetValuePointer(dependent_key);
-            if (!dependent_index)
-                continue;
-
             for (const size_t dependency_key : pair.second)
             {
-                const size_t* dependency_index = index_map.GetValuePointer(dependency_key);
-                if (!dependency_index)
-                {
+                const auto result = planner.AddDependency(pair.first, dependency_key);
                 #ifdef _DEBUG
+                if (result == SystemOrderPlanner::DependencyResult::MissingDependency)
                     LogWarning("[ECSContext::SortSystemList] %s dependency missing for key %zu -> %zu",
-                               label,
-                               dependent_key,
-                               dependency_key);
+                               label, pair.first, dependency_key);
+                #else
+                (void)result;
                 #endif
-                    continue;
-                }
-
-                adj[*dependency_index].push_back(*dependent_index);
-                ++indegree[*dependent_index];
             }
         }
 
-        auto order_compare = [&order_list](size_t a, size_t b)
-        {
-            const auto& lhs = order_list[a];
-            const auto& rhs = order_list[b];
-            if (lhs.phase != rhs.phase)
-                return lhs.phase < rhs.phase;
-            if (lhs.group_id != rhs.group_id)
-                return lhs.group_id < rhs.group_id;
-            return lhs.insertion_order < rhs.insertion_order;
-        };
-
-        std::vector<size_t> available;
-        available.reserve(order_list.size());
-
-        for (size_t i = 0; i < order_list.size(); ++i)
-        {
-            if (indegree[i] == 0)
-                available.push_back(i);
-        }
-
+        ValueArray<int> indices;
+        const bool acyclic = planner.Build(indices);
         std::vector<OrderedSystem> sorted;
         sorted.reserve(order_list.size());
-
-        while (!available.empty())
-        {
-            std::sort(available.begin(), available.end(), order_compare);
-            const size_t current = available.front();
-            available.erase(available.begin());
-
-            sorted.push_back(order_list[current]);
-
-            for (const size_t next : adj[current])
-            {
-                if (--indegree[next] == 0)
-                    available.push_back(next);
-            }
-        }
-
-        if (sorted.size() != order_list.size())
-        {
-            std::stable_sort(order_list.begin(), order_list.end(),
-                [](const OrderedSystem& a, const OrderedSystem& b)
-                {
-                    if (a.phase != b.phase)
-                        return a.phase < b.phase;
-                    if (a.group_id != b.group_id)
-                        return a.group_id < b.group_id;
-                    return a.insertion_order < b.insertion_order;
-                });
-
+        for (const int index : indices)
+            sorted.push_back(order_list[index]);
+        order_list.swap(sorted);
+        if (!acyclic)
             LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/group/insertion order.",label);
-        }
-        else
-        {
-            order_list.swap(sorted);
-        }
 
         dirty_flag = false;
     }

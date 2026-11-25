@@ -10,6 +10,7 @@
 //                  S2-b 红 = DestroyRowAt 里 SetOwner 出现在 ~T() 之后。
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/SystemOrderPlanner.h>
 #include <hgl/ecs/support/storage/ComponentPool.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
@@ -24,8 +25,43 @@
 using namespace hgl;
 using namespace hgl::ecs;
 
+namespace hgl::ecs
+{
+    struct RenderPassSetupTestAccess
+    {
+        static void Activate(ECSContext &context) { context.active = true; }
+    };
+}
+
 namespace
 {
+    ValueArray<int> scheduled_updates;
+
+    class LateProbeSystem final : public System
+    {
+    public:
+        LateProbeSystem() : System("LateProbeSystem") { SetExecutionPhase(ExecutionPhase::TickTransform); }
+        void Update(float) override { scheduled_updates.Add(3); }
+    };
+
+    class DependentProbeSystem final : public System
+    {
+    public:
+        DependentProbeSystem() : System("DependentProbeSystem")
+        {
+            SetExecutionPhase(ExecutionPhase::TickInput);
+            AddDependency<LateProbeSystem>();
+        }
+        void Update(float) override { scheduled_updates.Add(1); }
+    };
+
+    class MiddleProbeSystem final : public System
+    {
+    public:
+        MiddleProbeSystem() : System("MiddleProbeSystem") { SetExecutionPhase(ExecutionPhase::TickPhysics); }
+        void Update(float) override { scheduled_updates.Add(2); }
+    };
+
     bool read_text_file(const char *path, std::string &out)
     {
         std::ifstream fis(path, std::ios::binary);
@@ -60,6 +96,50 @@ namespace
 int main()
 {
     hgl::logger::InitLogger(OS_TEXT("TestSystemReplaceAndPoolLiveness"));
+
+    {
+        SystemOrderPlanner planner;
+        planner.AddSystem(1, 0, 0, 1);
+        planner.AddSystem(2, 0, 0, 2);
+        planner.AddSystem(3, 1, 0, 3);
+        if (planner.AddDependency(1, 3) != SystemOrderPlanner::DependencyResult::Added
+            || planner.AddDependency(1, 99) != SystemOrderPlanner::DependencyResult::MissingDependency
+            || planner.AddDependency(99, 1) != SystemOrderPlanner::DependencyResult::MissingDependent)
+        {
+            GLogError(u8"System ordering dependency resolution failed");
+            return 1;
+        }
+        ValueArray<int> order;
+        if (!planner.Build(order) || order.GetCount() != 3
+            || order[0] != 1 || order[1] != 2 || order[2] != 0)
+        {
+            GLogError(u8"System ordering did not honor dependencies and phase ordering");
+            return 1;
+        }
+        planner.AddDependency(3, 1);
+        if (planner.Build(order) || order.GetCount() != 3
+            || order[0] != 0 || order[1] != 1 || order[2] != 2)
+        {
+            GLogError(u8"System ordering did not fall back on a dependency cycle");
+            return 1;
+        }
+    }
+
+    {
+        ECSContext context;
+        context.RegisterSystem<DependentProbeSystem>();
+        context.RegisterSystem<MiddleProbeSystem>();
+        context.RegisterSystem<LateProbeSystem>();
+        RenderPassSetupTestAccess::Activate(context);
+        scheduled_updates.Clear();
+        context.Tick(0);
+        if (scheduled_updates.GetCount() != 3 || scheduled_updates[0] != 2
+            || scheduled_updates[1] != 3 || scheduled_updates[2] != 1)
+        {
+            GLogError(u8"ECS tick did not execute systems in planned dependency order");
+            return 1;
+        }
+    }
 
     {
         SystemGroupActivity activity;
