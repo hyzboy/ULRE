@@ -120,6 +120,13 @@ namespace hgl::graph
                 ? *format_override
                 : GetStandardGeometryVertexFormat(spec.NormalFormat()));
 
+        // 共享顶点池接管布局时 `format_override` 不生效 ⇒ 身份也不该带格式后缀，
+        // 否则同一布局会被拆成多份几何。
+        format_override_hash = creater ? 0 : (
+            (format_override && format_override->GetCount()>0)
+                ? format_override->GetVertexInputHash()
+                : 0);
+
         if(vertex_format.GetCount()==0)
         {
             GLogError(u8"[GeometryAsset] SetupFromSpec 得到空的顶点布局");
@@ -227,31 +234,50 @@ namespace hgl::graph
         payload_state   =PayloadState::LoadFailed;
     }
 
+    U8String GeometryAsset::MakeFormatOverrideSuffix(const GeometryVertexFormat *format_override)
+    {
+        if(!format_override || format_override->GetCount()==0)
+            return U8String();
+
+        U8String suffix(u8":fmt=");
+
+        suffix+=ToU8String(AnsiString::numberOf(format_override->GetVertexInputHash()));
+        return suffix;
+    }
+
     U8String GeometryAsset::GetResourceId()const
     {
+        U8String id;
+
         if(spec.kind==GeometryAssetKind::File)
         {
             if(spec.file_path.IsEmpty())
                 return U8String();
 
-            U8String id(u8"geofile:");
-
+            id=u8"geofile:";
             id+=ToU8String(spec.file_path);
-            return id;
         }
-
-        U8String id(u8"geo:");
-
-        if(!spec.name.IsEmpty())
+        else
         {
-            id+=U8String(u8"@");
-            id+=ToU8String(AnsiString(spec.name));
-            return id;
+            id=u8"geo:";
+
+            if(!spec.name.IsEmpty())
+            {
+                id+=U8String(u8"@");
+                id+=ToU8String(AnsiString(spec.name));
+            }
+            else
+            {
+                // 无名内置几何体：退回形状名兜底。同一份 `GeometryAssetSpec` 的两次请求
+                // 本来就该各自独立建几何，因此这里只要求「同一个句柄内稳定」。
+                id+=ToU8String(AnsiString(hgl::serialize::EnumNameOf(spec.shape)));
+            }
         }
 
-        // 无名内置几何体：退回形状名兜底。同一份 `GeometryAssetSpec` 的两次请求
-        // 本来就该各自独立建几何，因此这里只要求「同一个句柄内稳定」。
-        id+=ToU8String(AnsiString(hgl::serialize::EnumNameOf(spec.shape)));
+        // 顶点布局参与身份：不同 `format_override` 的同一 source 不能共用一个句柄。
+        if(format_override_hash!=0)
+            id+=(u8":fmt=")+ToU8String(AnsiString::numberOf(format_override_hash));
+
         return id;
     }
 }//namespace hgl::graph

@@ -48,6 +48,11 @@ namespace hgl::graph
         GeometryAssetSpec       spec;                       ///<资产规约(内置参数 / 文件路径 / 顶点格式)
         GeometryVertexFormat    vertex_format;              ///<创建期确定的顶点布局
 
+        /// 创建期实际生效的**外部**顶点格式覆盖摘要（0 = 无覆盖 / 覆盖不生效）。
+        /// 只参与资源身份：同一 source 用不同覆盖格式请求时必须各自成一份几何，
+        /// 否则后者会命中前者，顶点布局与 shader 期望不符。
+        uint64                  format_override_hash = 0;
+
         Geometry *              geometry        = nullptr;  ///<Resident 状态下的实际几何体
 
         bool                    async_requested = false;    ///<异步读取已提交(防重复提交)
@@ -125,7 +130,14 @@ namespace hgl::graph
          * |------|------|--------|
          * | 内置 | `geo:@<name>` ，无名则用 `geo:<shape>:<参数摘要>` | 参数相同的内置请求自然归并 |
          * | 文件 | `geofile:<path>` | 就绪前后同一值 ⇒ 加载完成无需改写引用 |
+         *
+         * 创建期使用了外部顶点格式覆盖（且共享顶点池未接管布局）时追加
+         * `:fmt=<hash>` —— 同一 source 的不同顶点布局必须是不同资产。
          */
         U8String GetResourceId()const;
+
+        /// 外部顶点格式覆盖的身份后缀（`format_override == nullptr` 时为空）。
+        /// 注册器建键与 `GetResourceId()` 必须用同一份实现，避免两处规则漂移。
+        static U8String MakeFormatOverrideSuffix(const GeometryVertexFormat *format_override);
     };//class GeometryAsset
 }//namespace hgl::graph

@@ -73,11 +73,19 @@ namespace hgl::graph
     {
         // builtin 的身份由名字/形状决定，可在创建前算出；file 的身份是路径。
         // 用一次性句柄算身份太重：直接按 path 或 name/shape 内联比较。
+        //
+        // 顶点格式参与身份：共享顶点池接管布局时 `format_override` 不生效（与
+        // `GeometryAsset::SetupFromSpec` 同一判据），此时后缀为空 ⇒ 仍按 source 归并。
+        const U8String format_suffix = GetSharedCreater()
+            ? U8String()
+            : GeometryAsset::MakeFormatOverrideSuffix(format_override);
+
         if(spec.kind==GeometryAssetKind::File && !spec.file_path.IsEmpty())
         {
             U8String uri(u8"geofile:");
 
             uri+=ToU8String(spec.file_path);
+            uri+=format_suffix;
 
             if(GeometryAsset *found=FindByResourceId(uri))
                 return found;
@@ -87,6 +95,7 @@ namespace hgl::graph
             U8String uri(u8"geo:@");
 
             uri+=ToU8String(AnsiString(spec.name));
+            uri+=format_suffix;
 
             if(GeometryAsset *found=FindByResourceId(uri))
                 return found;
