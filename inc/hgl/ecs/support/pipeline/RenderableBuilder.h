@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/components/MaterialData.h>
+#include <hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include <hgl/ecs/support/transform/TransformAccessor.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>

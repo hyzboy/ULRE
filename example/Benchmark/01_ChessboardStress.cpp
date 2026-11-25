@@ -102,7 +102,7 @@
 #include<hgl/ecs/support/pipeline/RenderPassSlot.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/components/GPUModelRefComponent.h>
-#include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/components/ModelCollisionProxyComponent.h>
 #include<hgl/ecs/components/RigidBodyComponent.h>

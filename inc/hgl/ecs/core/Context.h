@@ -26,7 +26,7 @@
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
 #include<hgl/ecs/components/CameraComponent.h>
-#include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/core/entity/EntityManager.h>
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/graph/render/RenderTargetObserver.h>

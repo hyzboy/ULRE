@@ -1,4 +1,4 @@
-#include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/support/pipeline/RenderResource.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>

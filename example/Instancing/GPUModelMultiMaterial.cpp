@@ -1,7 +1,7 @@
 #include <hgl/framework/WorkManager.h>
 #include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/ecs/components/GeometryData.h>
-#include <hgl/ecs/components/MaterialData.h>
+#include <hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include <hgl/ecs/components/CameraControlMode.h>
 #include <hgl/ecs/components/ShadowProxy.h>
 #include <hgl/ecs/core/render/ModelTemplateRenderItem.h>

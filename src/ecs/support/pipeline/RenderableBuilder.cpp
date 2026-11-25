@@ -1,6 +1,6 @@
 #include <hgl/ecs/support/pipeline/RenderableBuilder.h>
 #include <hgl/ecs/components/GeometryData.h>
-#include <hgl/ecs/components/MaterialData.h>
+#include <hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>

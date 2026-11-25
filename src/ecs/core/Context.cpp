@@ -10,7 +10,6 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/ecs/components/ShadowProxy.h>
-#include<hgl/ecs/components/MaterialData.h>
 #include<hgl/ecs/components/GeometryData.h>
 #include<hgl/ecs/support/pipeline/PrimitiveState.h>
 #include<hgl/ecs/core/render/MaterialBatch.h>

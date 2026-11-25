@@ -4,7 +4,7 @@
 #include<hgl/ecs/components/Sprite2DComponent.h>
 #include<hgl/ecs/components/Transform2DComponent.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/systems/tick/Transform2DSystem.h>
 #include<hgl/graph/core/GraphicsContext.h>

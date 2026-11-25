@@ -1,5 +1,5 @@
 ﻿#include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<vector>

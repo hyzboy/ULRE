@@ -35,7 +35,7 @@
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/components/GeometryData.h>
-#include<hgl/ecs/components/MaterialData.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>

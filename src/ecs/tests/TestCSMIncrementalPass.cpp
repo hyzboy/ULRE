@@ -24,6 +24,7 @@ static_assert(hgl::graph::kMainLightRowIndex == 0, "主方向光恒为 0 号行�
 #include <hgl/graph/module/OffscreenSlotBands.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/io/FileInputStream.h>
+#include <hgl/filesystem/FileSystem.h>
 #include <hgl/type/String.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -2118,9 +2119,9 @@ int main(int argc, char** argv)
               "GetNormalizedGlslModuleDependency",
               "GetNormalizedGlslModuleDependency{Count,} 已于 2026-10-11 F-2 删除（0 调用）：依赖表直接读 definition.dependencies/dependency_count",
               true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "GetMaterialRowID",
-              "MaterialData::GetMaterialRowID 已于 2026-10-11 F-2 删除（0 调用）：组件行号即 material_row_id 字段（内部使用）",
+              "MaterialData::GetMaterialRowID 已删除，授权记录不再持有组件行号",
               true },
             { "ShaderArtifactStore.cpp", OS_TEXT("src/ShaderMaterialData/ShaderArtifactStore.cpp"),
               "ToOSString(ShaderArtifactSPVExtension)",
@@ -5885,24 +5886,7 @@ int main(int argc, char** argv)
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "MaterialAuthoringSideTable* GetMaterialAuthoringTable()",
               "世界缺旁表取用口" },
-            // ③ 记录不再披回组件外衣：重类型成员与行号一律禁复活**回壳层**
-            //    （2026-11：成员本体住旁表头里的记录类——壳（components/MaterialData.h）
-            //    转发后若又长出字段/基类，即为组件化回潮。）
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "uint32_t material_row_id = 0;",
-              "组件壳又长出材质行号字段（转发壳被回退）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "bool has_recipe_override = false;",
-              "组件壳又长出配方覆盖布尔（记录定义搬回壳层）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "hgl::graph::mtl::MaterialRecipe recipe_override;",
-              "组件壳又持重类型成员（记录定义必须只在旁表头）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "hgl::UnorderedMap<hgl::AnsiString, MaterialTextureAuthoringResource>",
-              "组件壳又持具名纹理映射（记录定义必须只在旁表头）", true },
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
-              "enum class MaterialTextureResourceKind",
-              "选择器枚举又回到壳层（应与其他重类型同域在旁表头）", true },
+            // ③ 记录不再披回组件外衣，旁表持有唯一的授权数据定义。
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "enum class MaterialTextureResourceKind : uint8_t",
               "选择器枚举未随重类型移到 hgl::ecs 域" },
@@ -5925,13 +5909,33 @@ int main(int argc, char** argv)
               "分离摘除又按行号删（键已改为 EntityID）", true },
         };
 
+        const OSString retired_headers[] =
+        {
+            OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+            OS_TEXT("inc/hgl/graph/asset/LevelLoader.h"),
+            OS_TEXT("inc/hgl/graph/gizmo/GizmoTypes.h"),
+            OS_TEXT("inc/hgl/graph/gizmo/SunDirectionControlSystem.h"),
+            OS_TEXT("inc/hgl/graph/gizmo/TransformGizmoSystem.h"),
+            OS_TEXT("inc/hgl/graph/module/OffscreenWorld.h"),
+            OS_TEXT("inc/hgl/vk/VKRenderTargetSingle.h"),
+            OS_TEXT("inc/hgl/vk/VertexAttrib.h")
+        };
+        for(const OSString &path:retired_headers)
+        {
+            if(hgl::filesystem::FileExist(path))
+            {
+                GLogError(OS_TEXT("Test 36 Failed: retired forwarding header exists: ")+path);
+                return 36;
+            }
+        }
+
         if (const int failed = verify_source_contracts(36, kB4iiibContracts,
                                                        static_cast<uint>(sizeof(kB4iiibContracts) /
                                                                          sizeof(kB4iiibContracts[0]))))
             return failed;
 
-        GLogInfo(u8"Test 36 Passed: B4-iii-b 契约成立（重类型落世界级旁表、键 = 材质行行号、"
-                 u8"组件只持行号（三个重类型成员 + 嵌套枚举禁复活）、分离摘除旁表条目；共 %d 条契约）。",
+        GLogInfo(u8"Test 36 Passed: B4-iii-b 契约成立（授权记录落世界级旁表、键 = EntityID，"
+                 u8"旧转发头和组件行禁复活；共 %d 条契约）。",
                  static_cast<int>(sizeof(kB4iiibContracts) / sizeof(kB4iiibContracts[0])));
     }
 
@@ -6046,7 +6050,7 @@ int main(int argc, char** argv)
               "static_assert(detail::CheckComponentTypeTable()",
               "组件类型表与枚举的同序完整性断言缺失" },
             // ④ B6 的判据：**没有组件声明 Texture 槽**（Texture 无载体 ⇒ 无消费者）
-            { "MaterialData.h", OS_TEXT("inc/hgl/ecs/components/MaterialData.h"),
+            { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
               "ComponentType::Texture",
               "MaterialData 抢占了 Texture 槽（纹理授权应留在具名纹理资源里，Texture 类型仅登记）", true },
             { "TextComponent.h", OS_TEXT("inc/hgl/ecs/components/TextComponent.h"),

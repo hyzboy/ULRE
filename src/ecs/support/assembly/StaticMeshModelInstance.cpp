@@ -6,7 +6,7 @@
 #include <hgl/ecs/support/assembly/StaticMeshModelInstance.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/GeometryData.h>
-#include <hgl/ecs/components/MaterialData.h>
+#include <hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include <hgl/ecs/support/transform/TransformAccessor.h>
 #include <hgl/log/Log.h>
 #include <glm/gtc/quaternion.hpp>
