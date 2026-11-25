@@ -2,15 +2,11 @@
 
 #include<hgl/graph/BufferAnnotation.h>
 #include<hgl/graph/ubo/AmbientEnvInfo.h>
+#include<hgl/graphics/contracts/EnvironmentProfile.h>   // EnvProfileID：后端无关契约
 #include<cstdint>
 
 namespace hgl::graph
 {
-    // 环境 Profile 句柄。0=无效，1=内置 default（EnvironmentManager 创建时生成）。
-    using EnvProfileID = uint32_t;
-
-    constexpr EnvProfileID kEnvProfileInvalid = 0;
-    constexpr EnvProfileID kEnvProfileDefault = 1;
 
     /**
      * 环境综合信息（纯数据，一个 Profile 的全部环境状态）。

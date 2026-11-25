@@ -110,6 +110,7 @@ SET(ULRE_RUNTIME
             ${ULRE_QT_MODULE}
 #            CMGUI
             ULRE.Debug
+            ULRE.GraphicsContracts
             ULRE.Work
             ULRE.ECS
             ULRE.Vulkan

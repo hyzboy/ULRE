@@ -1,4 +1,6 @@
 add_subdirectory(Debug)
+# GraphicsContracts 必须先于 Vulkan：后端只允许依赖契约层，不允许反向依赖 SceneGraph。
+add_subdirectory(GraphicsContracts)
 add_subdirectory(Vulkan)
 # ShaderRuntimeContract 必须先于 ShaderProgramBuild：后者依赖它，反向不成立。
 add_subdirectory(ShaderRuntimeContract)
