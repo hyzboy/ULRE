@@ -1,4 +1,4 @@
-﻿set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
+set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
 set(COMMON_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/common)
 # ============================================================================
 # Vulkan Backend - 纯 Vulkan API 层实现
@@ -170,6 +170,7 @@ SOURCE_GROUP("Shader" FILES ${VK_SHADER_FILES})
 SET(VK_IMAGE_FILES              ${VK_INCLUDE_PATH}/VKImageCreateInfo.h
                                 ${VK_INCLUDE_PATH}/VKImageView.h
                                 ${VK_INCLUDE_PATH}/VKTexture.h
+                                ${VK_INCLUDE_PATH}/VKTextureOwner.h
                                 ${VK_INCLUDE_PATH}/VKTextureCreateInfo.h
                                 ${VK_INCLUDE_PATH}/VKSampler.h
                                 VKImageView.cpp
@@ -198,6 +199,7 @@ SET(VK_RENDER_TARGET_FILES      ${VK_INCLUDE_PATH}/VKRenderTarget.h
                                 ${VK_INCLUDE_PATH}/VKRenderTargetData.h
                                 ${VK_INCLUDE_PATH}/VKOffscreenRenderTarget.h
                                 ${VK_INCLUDE_PATH}/VKRenderTargetSwapchain.h
+                                ${VK_INCLUDE_PATH}/UploadLaneProvider.h
                                 ${VK_INCLUDE_PATH}/VKRenderbufferInfo.h
                                 VKRenderTarget.cpp
                                 VKRenderTargetData.cpp
@@ -236,6 +238,7 @@ SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 
 SET(GEOMETRY_VERTEX_DATA_FILES  ${VK_INCLUDE_PATH}/VertexAttribDataAccess.h
                                 ${VK_INCLUDE_PATH}/VertexDataManager.h
+                                ${VK_INCLUDE_PATH}/VertexBufferAllocator.h
                                 ${COMMON_INCLUDE_PATH}/VertexAttribDef.h
                                 VertexAttrib.cpp
                                 VertexDataManager.cpp)
