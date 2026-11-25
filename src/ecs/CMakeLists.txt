@@ -97,23 +97,365 @@ endif()
 
 source_group("ECS\\Tests" FILES ${ECS_TEST_FILES})
 
-add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
-${ECS_SOURCES} ${ECS_HEADERS})
+# ============================================================================
+# ── 分层：ULRE.ECS.Core / ULRE.ECS.Render / ULRE.ECS（umbrella）───────────────
+#
+# 判定口径（可机械复核）：**文件的 include 闭包内是否出现 hgl/graph/、hgl/vk/
+# 或 vulkan/ 头**（hgl/graph/CameraInfo.h 除外——它由 CMMath 提供，是基础库类型）。
+#   · 闭包干净 ⇒ Core：ECS 内核（实体/组件池/系统调度/存储/基础 tick），
+#     不允许任何图形后端或场景图语义渗入。
+#   · 其余 ⇒ Render：需要 SceneGraph/Vulkan 的收集、批处理、管线、GPU 表。
+#
+# 为什么是显式清单而不是 glob 分流：新增文件若两边都没登记，configure 直接报错
+# （见下方 fail-fast），逼迫作者做出分层判断；glob 会把新文件静默吞进 Render，
+# 分层就会随时间腐化。
+# ============================================================================
+set(ECS_CORE_SOURCES
+    "components/Layer2DComponent.cpp"
+    "components/Transform2DComponent.cpp"
+    "core/entity/ComponentRow.cpp"
+    "core/entity/Object.cpp"
+    "core/system/System.cpp"
+    "core/system/SystemGroup.cpp"
+    "core/system/SystemOrderPlanner.cpp"
+    "support/cull/BatchLayoutStaging.cpp"
+    "support/material/MaterialVariantTable.cpp"
+    "support/pipeline/RenderStrategyParity.cpp"
+    "support/storage/FrameProfiler.cpp"
+    "systems/tick/CameraInputMapping.cpp"
+    "systems/tick/InputSystem.cpp"
+)
+
+set(ECS_CORE_HEADERS
+    "components/CameraControlMode.h"
+    "components/GPUInstancedModelBatchComponent.h"
+    "components/Layer2DComponent.h"
+    "components/LinesComponent.h"
+    "components/ModelCollisionProxyComponent.h"
+    "components/RigidBodyComponent.h"
+    "components/ShadowProxy.h"
+    "components/SimpleLinesComponent.h"
+    "components/Sprite2DComponent.h"
+    "components/Transform2DComponent.h"
+    "core/AdaptiveRenderGraphCache.h"
+    "core/DefaultSystems.h"
+    "core/MainFrameTopologyState.h"
+    "core/RenderPassScopeState.h"
+    "core/entity/ComponentRow.h"
+    "core/entity/Entity.h"
+    "core/entity/EntityGPU.h"
+    "core/entity/EntityHandle.h"
+    "core/entity/EntityManager.h"
+    "core/entity/Object.h"
+    "core/render/RenderGraph.h"
+    "core/render/ScenePipelineMode.h"
+    "core/system/System.h"
+    "core/system/SystemGroup.h"
+    "core/system/SystemGroupActivity.h"
+    "core/system/SystemOrderPlanner.h"
+    "core/system/SystemRegistry.h"
+    "core/system/SystemScheduleState.h"
+    "support/cull/BatchLayoutStaging.h"
+    "support/cull/BoundingBoxAccessor.h"
+    "support/cull/BoundingBoxDataStorage.h"
+    "support/cull/BoundingVolumeCull.h"
+    "support/cull/VisibilityDataStorage.h"
+    "support/debug/ProfOverlaySystem.h"
+    "support/hierarchy2d/CullAndSort2DSystem.h"
+    "support/line/LineBufferCommon.h"
+    "support/line/LineBuildSystem.h"
+    "support/line/LineCollectSystem.h"
+    "support/line/LineRenderSystem.h"
+    "support/line/SimpleLineBuildSystem.h"
+    "support/line/SimpleLineCollectSystem.h"
+    "support/line/SimpleLineRenderSystem.h"
+    "support/material/MaterialVariantTable.h"
+    "support/pipeline/RenderPassSlot.h"
+    "support/pipeline/RenderPipelineBase.h"
+    "support/pipeline/RenderPipelineSystem.h"
+    "support/pipeline/RenderResource.h"
+    "support/pipeline/RenderStrategyParity.h"
+    "support/pipeline/RenderStrategyTable.h"
+    "support/pipeline/TemplateFactCache.h"
+    "support/primitive/PrimitiveBuildSystem.h"
+    "support/primitive/PrimitiveCullSystem.h"
+    "support/primitive/PrimitiveOverlayRenderSystem.h"
+    "support/primitive/PrimitiveRenderSystem.h"
+    "support/primitive/PrimitiveSortSystem.h"
+    "support/primitive/PrimitiveUI2DRenderSystem.h"
+    "support/storage/CollectCacheState.h"
+    "support/storage/ComponentPool.h"
+    "support/storage/ComponentPoolRegistry.h"
+    "support/storage/ComponentTypeTable.h"
+    "support/storage/DirtyRowSet.h"
+    "support/storage/EntityGPUTable.h"
+    "support/storage/FrameProfiler.h"
+    "support/storage/MainFrameTopologySnapshot.h"
+    "support/storage/PerfTimer.h"
+    "support/storage/PrimitiveTopologyLedger.h"
+    "support/text/TextBuildSystem.h"
+    "support/text/TextCollectSystem.h"
+    "support/text/TextOverlayRenderSystem.h"
+    "support/text/TextRenderSystem.h"
+    "support/text/TextSyncSystem.h"
+    "support/transform/TransformAccessor.h"
+    "support/transform/TransformDataStorage.h"
+    "support/transform/TransformID.h"
+    "support/transform/TransformSlotTable.h"
+    "systems/render/buffer/RenderBufferUploadSystem.h"
+    "systems/render/buffer/RenderSceneUBOSystem.h"
+    "systems/render/buffer/ViewUBOCommitSystem.h"
+    "systems/render/collect/LineStatsSystem.h"
+    "systems/render/collect/SimpleLineStatsSystem.h"
+    "systems/render/frame/RenderTargetSystem.h"
+    "systems/render/frame/SwapchainNextImageSystem.h"
+    "systems/render/frame/SwapchainSubmitSystem.h"
+    "systems/render/streaming/GeometryStreamingSystem.h"
+    "systems/render/streaming/ModelLoadPolicy.h"
+    "systems/tick/CameraInputMapping.h"
+    "systems/tick/InputSystem.h"
+    "systems/tick/LineBoundsUpdateSystem.h"
+    "systems/tick/SimpleLineBoundsUpdateSystem.h"
+    "systems/tick/Transform2DSystem.h"
+)
+
+set(ECS_RENDER_SOURCES
+    "components/CameraComponent.cpp"
+    "components/GPUModelRefComponent.cpp"
+    "components/GeometryData.cpp"
+    "components/MaterialData.cpp"
+    "components/ModelCollisionProxyComponent.cpp"
+    "components/RigidBodyComponent.cpp"
+    "components/ShadowProxy.cpp"
+    "core/Context.cpp"
+    "core/ContextGPU.cpp"
+    "core/ContextRender.cpp"
+    "core/ContextSystems.cpp"
+    "core/DefaultSystems.cpp"
+    "core/FrameLaneWaitSet.cpp"
+    "core/entity/Entity.cpp"
+    "core/entity/EntityManager.cpp"
+    "core/render/MaterialBatch.cpp"
+    "core/render/PrimitiveRenderItem.cpp"
+    "core/render/RenderFrameCache.cpp"
+    "core/render/RenderGraph.cpp"
+    "core/system/SystemRegistry.cpp"
+    "support/assembly/ModelAssemblyStage.cpp"
+    "support/assembly/StaticMeshModelInstance.cpp"
+    "support/cull/CPUCullReferenceSystem.cpp"
+    "support/cull/GPUCullSystem.cpp"
+    "support/cull/ModelGroupRoutingTables.cpp"
+    "support/cull/VisibilityDataStorage.cpp"
+    "support/debug/DebugViewController.cpp"
+    "support/debug/DebugViewPass.cpp"
+    "support/debug/ProfOverlaySystem.cpp"
+    "support/hierarchy2d/CullAndSort2DSystem.cpp"
+    "support/hierarchy2d/Sprite2DSyncSystem.cpp"
+    "support/line/LineBufferCommon.cpp"
+    "support/line/LineBuildSystem.cpp"
+    "support/line/LineCollectSystem.cpp"
+    "support/line/LineRenderPipeline.cpp"
+    "support/line/LineRenderSystem.cpp"
+    "support/line/SimpleLineBuildSystem.cpp"
+    "support/line/SimpleLineCollectSystem.cpp"
+    "support/line/SimpleLineRenderPipeline.cpp"
+    "support/line/SimpleLineRenderSystem.cpp"
+    "support/material/MaterialRuntimeTable.cpp"
+    "support/material/ModelTemplateBuilder.cpp"
+    "support/material/ModelTemplateMaterialTable.cpp"
+    "support/pipeline/MaterialBatchPlanCache.cpp"
+    "support/pipeline/PipelineMaterialRenderer.cpp"
+    "support/pipeline/PrimitiveState.cpp"
+    "support/pipeline/RenderBatchPipeline.cpp"
+    "support/pipeline/RenderPipelineSystem.cpp"
+    "support/pipeline/RenderResource.cpp"
+    "support/pipeline/RenderableBuilder.cpp"
+    "support/pipeline/TemplateFactCache.cpp"
+    "support/primitive/PrimitiveBuildSystem.cpp"
+    "support/primitive/PrimitiveCullSystem.cpp"
+    "support/primitive/PrimitiveOverlayRenderSystem.cpp"
+    "support/primitive/PrimitiveRenderPipeline.cpp"
+    "support/primitive/PrimitiveRenderSystem.cpp"
+    "support/primitive/PrimitiveSortSystem.cpp"
+    "support/primitive/PrimitiveUI2DRenderSystem.cpp"
+    "support/storage/CameraInfoStorage.cpp"
+    "support/storage/CameraSlotGuard.cpp"
+    "support/storage/MainFrameTopologySnapshot.cpp"
+    "support/storage/PrimitiveTopologyLedger.cpp"
+    "support/text/TextBuildSystem.cpp"
+    "support/text/TextCollectSystem.cpp"
+    "support/text/TextOverlayRenderSystem.cpp"
+    "support/text/TextRenderPipeline.cpp"
+    "support/text/TextRenderSystem.cpp"
+    "support/text/TextSyncSystem.cpp"
+    "support/transform/TransformAccessor.cpp"
+    "support/transform/TransformAssignmentBuffer.cpp"
+    "systems/render/buffer/RenderBufferUploadSystem.cpp"
+    "systems/render/buffer/RenderSceneUBOSystem.cpp"
+    "systems/render/buffer/ViewUBOCommitSystem.cpp"
+    "systems/render/collect/LineStatsSystem.cpp"
+    "systems/render/collect/RenderCollectInternal.cpp"
+    "systems/render/collect/RenderCollectSystem.cpp"
+    "systems/render/collect/RenderCollect_CacheReplay.cpp"
+    "systems/render/collect/RenderCollect_PrimitiveNormalize.cpp"
+    "systems/render/collect/SimpleLineStatsSystem.cpp"
+    "systems/render/frame/RenderSystemCore.cpp"
+    "systems/render/frame/RenderTargetSystem.cpp"
+    "systems/render/frame/SwapchainNextImageSystem.cpp"
+    "systems/render/frame/SwapchainSubmitSystem.cpp"
+    "systems/render/light_shadow/ColorPaletteSystem.cpp"
+    "systems/render/light_shadow/EnvironmentSystem.cpp"
+    "systems/render/light_shadow/LightSystem.cpp"
+    "systems/render/light_shadow/MainLightShadowSystem.cpp"
+    "systems/render/light_shadow/SkyEnvironmentConfig.cpp"
+    "systems/render/streaming/GeometryStreamingSystem.cpp"
+    "systems/render/streaming/ModelStreamingSystem.cpp"
+    "systems/render/streaming/TextureStreamingSystem.cpp"
+    "systems/tick/CameraSystem.cpp"
+    "systems/tick/JoltPhysicsSystem.cpp"
+    "systems/tick/LineBoundsUpdateSystem.cpp"
+    "systems/tick/SimpleLineBoundsUpdateSystem.cpp"
+    "systems/tick/Transform2DSystem.cpp"
+    "systems/tick/TransformSystem.cpp"
+)
+
+set(ECS_RENDER_HEADERS
+    "components/CameraComponent.h"
+    "components/GPUModelRefComponent.h"
+    "components/GeometryData.h"
+    "components/ModelRefComponent.h"
+    "components/TextComponent.h"
+    "core/Context.h"
+    "core/FrameLaneWaitSet.h"
+    "core/render/MaterialBatch.h"
+    "core/render/ModelTemplateRenderItem.h"
+    "core/render/PrimitiveRenderItem.h"
+    "core/render/RenderFrameCache.h"
+    "core/render/RenderItem.h"
+    "core/render/RenderPassRequest.h"
+    "core/render/ShaderProgramPipelineKey.h"
+    "support/assembly/ModelAssemblyStage.h"
+    "support/assembly/StaticMeshModelInstance.h"
+    "support/cull/CPUCullReferenceSystem.h"
+    "support/cull/GPUCullSystem.h"
+    "support/cull/ModelGroupRoutingTables.h"
+    "support/debug/DebugViewController.h"
+    "support/debug/DebugViewPass.h"
+    "support/hierarchy2d/Sprite2DSyncSystem.h"
+    "support/line/LineRenderPipeline.h"
+    "support/line/SimpleLineRenderPipeline.h"
+    "support/material/MaterialAuthoringSideTable.h"
+    "support/material/MaterialRuntimePipelineTable.h"
+    "support/material/MaterialRuntimeTable.h"
+    "support/material/MaterializationEpochState.h"
+    "support/material/ModelTemplateBuilder.h"
+    "support/material/ModelTemplateMaterialTable.h"
+    "support/pipeline/MaterialBatchPlanCache.h"
+    "support/pipeline/PipelineMaterialRenderer.h"
+    "support/pipeline/PrimitiveState.h"
+    "support/pipeline/RenderBatchPipeline.h"
+    "support/pipeline/RenderableBuilder.h"
+    "support/primitive/PrimitiveRenderPipeline.h"
+    "support/storage/CameraInfoStorage.h"
+    "support/storage/CameraSlotGuard.h"
+    "support/storage/EntityRenderIDTable.h"
+    "support/storage/LightRowTable.h"
+    "support/text/TextRenderPipeline.h"
+    "support/transform/TransformAssignmentBuffer.h"
+    "systems/render/collect/RenderCollectSystem.h"
+    "systems/render/frame/RenderSystemCore.h"
+    "systems/render/light_shadow/ColorPaletteSystem.h"
+    "systems/render/light_shadow/EnvironmentSystem.h"
+    "systems/render/light_shadow/LightSystem.h"
+    "systems/render/light_shadow/MainLightShadowSystem.h"
+    "systems/render/light_shadow/SkyEnvironmentConfig.h"
+    "systems/render/streaming/ModelStreamingSystem.h"
+    "systems/render/streaming/TextureStreamingSystem.h"
+    "systems/tick/CameraSystem.h"
+    "systems/tick/JoltPhysicsSystem.h"
+    "systems/tick/TransformSystem.h"
+)
+
+# ── 按清单把 glob 结果分流（保持既有 IDE 分组/测试收集逻辑不变）──
+set(ECS_CORE_SOURCES_ABS)
+set(ECS_RENDER_SOURCES_ABS)
+foreach(_f IN LISTS ECS_SOURCES)
+    file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_f}")
+    if(_rel IN_LIST ECS_CORE_SOURCES)
+        list(APPEND ECS_CORE_SOURCES_ABS "${_f}")
+    else()
+        list(APPEND ECS_RENDER_SOURCES_ABS "${_f}")
+    endif()
+endforeach()
+
+set(ECS_CORE_HEADERS_ABS)
+set(ECS_RENDER_HEADERS_ABS)
+foreach(_f IN LISTS ECS_HEADERS)
+    file(RELATIVE_PATH _rel "${ECS_INCLUDE_PATH}" "${_f}")
+    if(_rel IN_LIST ECS_CORE_HEADERS)
+        list(APPEND ECS_CORE_HEADERS_ABS "${_f}")
+    else()
+        list(APPEND ECS_RENDER_HEADERS_ABS "${_f}")
+    endif()
+endforeach()
+
+# fail-fast：清单里登记了但磁盘上不存在的条目（改名/删除后忘记同步）直接报错。
+foreach(_rel IN LISTS ECS_CORE_SOURCES)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_rel}")
+        message(FATAL_ERROR "ULRE.ECS: ECS_CORE_SOURCES 登记的源文件不存在：${_rel}（改名后请同步清单）")
+    endif()
+endforeach()
+foreach(_rel IN LISTS ECS_CORE_HEADERS)
+    if(NOT EXISTS "${ECS_INCLUDE_PATH}/${_rel}")
+        message(FATAL_ERROR "ULRE.ECS: ECS_CORE_HEADERS 登记的头文件不存在：${_rel}（改名后请同步清单）")
+    endif()
+endforeach()
+
+list(LENGTH ECS_CORE_SOURCES _core_src_count)
+list(LENGTH ECS_CORE_SOURCES_ABS _core_src_found)
+if(NOT _core_src_count EQUAL _core_src_found)
+    message(FATAL_ERROR
+        "ULRE.ECS: ECS_CORE_SOURCES 有 ${_core_src_count} 项登记，但只分流到 ${_core_src_found} 个文件"
+        "（清单路径必须相对于 src/ecs 且与实际文件一致）")
+endif()
+
+# Core：零图形依赖的内核。
+add_cm_library(ULRE.ECS.Core "ULRE" ${ECS_INCLUDE_PATH}
+    ${ECS_CORE_SOURCES_ABS} ${ECS_CORE_HEADERS_ABS})
+
+# Render：ECS 的图形集成侧（收集/批处理/管线/GPU 表/相机 GPU 行）。
+add_cm_library(ULRE.ECS.Render "ULRE" ${ECS_INCLUDE_PATH}
+    ${ECS_RENDER_SOURCES_ABS} ${ECS_RENDER_HEADERS_ABS})
+
+# Umbrella：既有消费方（WorldAssembly、根聚合、测试）继续链接 ULRE.ECS。
+add_library(ULRE.ECS INTERFACE)
+target_link_libraries(ULRE.ECS INTERFACE ULRE.ECS.Core ULRE.ECS.Render)
 
 find_package(Jolt CONFIG REQUIRED)
-target_link_libraries(ULRE.ECS PUBLIC Jolt::Jolt)
+# CMCore 是 PUBLIC：Core 的公开头直接用 AnsiString/ValueArray，且实现用 hgl::logger。
+# 独立链接 ULRE.ECS.Core 的消费方（如 TestECSCoreBoundary）不应再自己猜这些依赖。
+target_link_libraries(ULRE.ECS.Core PUBLIC Jolt::Jolt CMCore CMMath)
+# Render 的图形集成依赖显式声明：ECS 不再是「靠根目标平铺链接才编得过」的库。
+target_link_libraries(ULRE.ECS.Render
+    PUBLIC
+        ULRE.ECS.Core
+        ULRE.SceneGraph
+        ULRE.Vulkan
+        ULRE.ShaderMaterialData)
 
 # 只在「强制打开」时下发；不下发时由 `inc/hgl/common/RenderOptions.h` §2 按 NDEBUG 决定（Debug 1 / Release 0）。
 # ⚠ 不要在这里下发 `=0`：那会压过台帐的 Debug 默认值，让 Debug 也丢掉校验面（2026-10-13 统一时删掉的分支）。
 if(ULRE_ECS_DEBUG_API)
-    target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=1)
+    target_compile_definitions(ULRE.ECS.Core   PUBLIC ULRE_ECS_DEBUG_API=1)
+    target_compile_definitions(ULRE.ECS.Render PUBLIC ULRE_ECS_DEBUG_API=1)
 endif()
 
 # CPU 剔除参考台架（每 60 帧 GPU 读回对拍；读回 stall ⇒ 默认关，生产不付这笔钱）。
 # 台帐默认值见 `inc/hgl/common/RenderOptions.h` §2（`ULRE_ENABLE_CPU_CULL_PARITY_TEST`，默认 0）。
 # 判定一律写 `#if ULRE_ENABLE_CPU_CULL_PARITY_TEST` —— 禁 `defined()`（值为 0 时它同样为真）。
 if(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
-    target_compile_definitions(ULRE.ECS PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
+    target_compile_definitions(ULRE.ECS.Core   PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
+    target_compile_definitions(ULRE.ECS.Render PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
 endif()
 
 # ── ECS 测试可执行目标开关 ────────────────────────────────────────────────────
@@ -151,6 +493,13 @@ endfunction()
 
 if(BUILD_TESTING AND ULRE_BUILD_ECS_TEST_TARGETS)
 add_ulre_unit_test(TestBindlessSlotAllocator tests/TestBindlessSlotAllocator.cpp)
+
+# Core 层边界闸门：**只**链接 ULRE.ECS.Core（不链接 ULRE::Engine）。
+# Core 头一旦重新引入 hgl/graph、hgl/vk 或 vulkan 头，本目标编不过；
+# Core 实现若把符号落在 Render 侧，本目标链接失败。
+add_executable(TestECSCoreBoundary tests/TestECSCoreBoundary.cpp)
+target_link_libraries(TestECSCoreBoundary PRIVATE ULRE.ECS.Core)
+set_target_properties(TestECSCoreBoundary PROPERTIES FOLDER "ULRE/Tests/ECS")
 
 add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 

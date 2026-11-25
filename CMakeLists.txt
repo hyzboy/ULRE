@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+﻿cmake_minimum_required(VERSION 3.28)
 cmake_policy(VERSION 3.28)
 
 PROJECT(ULRE)
@@ -223,7 +223,7 @@ target_link_libraries(ULRE.Vulkan PRIVATE nlohmann_json::nlohmann_json)
 
 # 消费 inc/hgl/asset/generated/*.gen.h 的核心库必须在代码生成之后编译；
 # 其它 target（示例、工具、测试）通过链接这些库获得同样的顺序保证。
-ulre_codegen_bind(ULRE.SceneGraph ULRE.ECS ULRE.Work ULRE.Vulkan ULRE.InlineGeometry
+ulre_codegen_bind(ULRE.SceneGraph ULRE.ECS.Core ULRE.ECS.Render ULRE.Work ULRE.Vulkan ULRE.InlineGeometry
                   ULRE.WorldAssembly
                   ULRE.ShaderMaterialData ULRE.ShaderRuntimeContract)
 
