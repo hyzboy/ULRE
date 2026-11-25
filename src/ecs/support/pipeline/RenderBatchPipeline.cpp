@@ -645,94 +645,6 @@ namespace hgl::ecs
 
     }
 
-    void RenderBatchPipeline::RefreshTemplateFactCache()
-    {
-        if (!world)
-            return;
-
-        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
-        const uint64_t topo_rev = ledger.GetTopologyRevision();
-        const uint64_t pool_rev = ledger.GetStatPoolContentChanges();
-
-        if (template_fact_valid_
-         && topo_rev == template_fact_topology_rev_
-         && pool_rev == template_fact_pool_content_rev_)
-            return;
-
-        template_facts_.clear();
-        template_fact_valid_            = true;
-        template_fact_topology_rev_     = topo_rev;
-        template_fact_pool_content_rev_ = pool_rev;
-        ++template_fact_builds_;
-    }
-
-    const RenderBatchPipeline::TemplatePartFacts *
-    RenderBatchPipeline::ResolveTemplatePartFacts(graph::GlobalSSBOBufferRegistry *pool,
-                                                    const uint32_t template_id,
-                                                    TemplateFactResult &result)
-    {
-        result = TemplateFactResult::Ok;
-
-        if (!pool || template_id == graph::ssbo::kInvalidModelTemplateID)
-        {
-            result = TemplateFactResult::RowMissing;
-            return nullptr;
-        }
-
-        auto it = template_facts_.find(template_id);
-
-        if (it != template_facts_.end())
-        {
-            ++template_fact_hits_;
-            return &it->second;
-        }
-
-        ++template_fact_misses_;
-
-        const graph::ssbo::ModelTemplateRow *tpl = pool->GetTypedRow<graph::ssbo::ModelTemplateRow>(
-            graph::GlobalSSBOType::ModelTemplatePool, template_id);
-
-        if (!tpl || tpl->part_offset == 0u || tpl->part_count == 0u
-                || tpl->part_bucket_count == 0u)
-        {
-            // 无效模板行**不入缓存**：行被写成有效后下一帧自然会重建事实
-            result = TemplateFactResult::RowMissing;
-            return nullptr;
-        }
-
-        TemplatePartFacts facts;
-        facts.part_offset       = tpl->part_offset;
-        facts.part_count        = tpl->part_count;
-        facts.part_bucket_count = tpl->part_bucket_count;
-        facts.shading_group_count = (tpl->shading_group_count != 0u) ? tpl->shading_group_count : 1u;
-        facts.slot_count.assign(facts.part_bucket_count, 0u);
-        facts.slot_geometry.assign(facts.part_bucket_count, 0u);
-
-        for (uint32_t k = 0; k < facts.part_count; ++k)
-        {
-            const graph::ssbo::ModelPartRow *part = pool->GetTypedRow<graph::ssbo::ModelPartRow>(
-                graph::GlobalSSBOType::ModelPartPool, facts.part_offset + k);
-
-            if (!part)
-            {
-                // 半成品事实绝不出厂：越界模板每次都按原路径拒批
-                result = TemplateFactResult::PartMissing;
-                return nullptr;
-            }
-
-            if (part->geometry_id == 0u || part->bucket_slot >= facts.part_bucket_count)
-                continue;
-
-            ++facts.slot_count[part->bucket_slot];
-            facts.slot_geometry[part->bucket_slot] = part->geometry_id;
-        }
-
-        TemplatePartFacts &slot = template_facts_[template_id];
-        slot = std::move(facts);
-
-        return &slot;
-    }
-
     void RenderBatchPipeline::TryApplyGPUCullOverride()
     {
         static PerfTimer s_guard_timer("guard_hook");
@@ -857,7 +769,7 @@ namespace hgl::ecs
         hgl::UnorderedMap<uint64_t, uint32_t> pass_template_group_offsets;
 
         // P4：模板事实缓存的失效检查（每帧 O(1)：两个代数比对）
-        RefreshTemplateFactCache();
+        template_facts.Refresh(world->GetPrimitiveTopologyLedger());
 
         for (auto& pair : cache.materialBatches)
         {
@@ -916,13 +828,13 @@ namespace hgl::ecs
 
                         // P4：模板事实从 CPU 侧缓存取 —— 槽计数/槽几何体只需按
                         // `template_id` 建一次，稳定帧不再读映射缓冲里的模板行。
-                        TemplateFactResult fact_result = TemplateFactResult::Ok;
-                        const TemplatePartFacts *facts =
-                            ResolveTemplatePartFacts(pool, ref->template_id, fact_result);
+                        TemplateFactCache::Result fact_result = TemplateFactCache::Result::Ok;
+                        const TemplateFactCache::Facts *facts =
+                            template_facts.Resolve(pool, ref->template_id, fact_result);
 
                         if (!facts)
                         {
-                            why = (fact_result == TemplateFactResult::PartMissing)
+                            why = (fact_result == TemplateFactCache::Result::PartMissing)
                                 ? "模型部件行缺失（模板 part 区间越界）"
                                 : "模型模板行缺失/无部件桶（GPUModelRef 指向无效模板）";
                             break;
@@ -974,8 +886,8 @@ namespace hgl::ecs
                         else if (facts->shading_group_count == 1u)
                         {
                             grp_bucket_count = facts->part_bucket_count;
-                            slot_geo_data = facts->slot_geometry.data();
-                            slot_cnt_data = facts->slot_count.data();
+                            slot_geo_data = facts->slot_geometry.GetData();
+                            slot_cnt_data = facts->slot_count.GetData();
                         }
                         else
                         {

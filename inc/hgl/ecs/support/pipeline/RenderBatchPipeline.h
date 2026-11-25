@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include<hgl/math/geometry/Frustum.h>
+#include<hgl/ecs/support/pipeline/TemplateFactCache.h>
 #include<hgl/ecs/core/render/MaterialBatch.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
@@ -91,53 +92,15 @@ namespace hgl::ecs
         uint64_t gpu_cull_full_frame_ = 0;
 
         /// P4：**模板部件事实缓存**（`ModelTemplatePool` / `ModelPartPool` 行内容的 CPU 侧镜像）。
-        ///
-        /// 为什么需要：guard 的模板展开归组循环逐项读 `ModelTemplateRow` 的
-        /// `part_offset` / `part_count` / `part_bucket_count` —— 这些行落在**映射的 GPU 缓冲**
-        /// （host-visible、非缓存内存）上，单字段读约 2.3µs；1000 项棋盘实测该循环占
-        /// guard 的 58%（≈1.65ms）。模板数 ≪ 实例数 ⇒ 按 `template_id` 记忆化即可，
-        /// 每帧成本从「项数 × 3 次映射读」降为「模板数 × 一次建表 + 项数 × 哈希查」。
-        ///
-        /// 失效：`(拓扑总代数, 池内容变更计数)` 二元组变化 ⇒ 整表清空。两者合起来覆盖
-        /// 「模板行被改写」「部件行被改写」「池行被回收复用」的全部形态；重建只涉及本帧
-        /// 实际出现的模板（典型 1~个位数）。
-        struct TemplatePartFacts
-        {
-            uint32_t part_offset         = 0;
-            uint32_t part_count          = 0;
-            uint32_t part_bucket_count   = 0;
-            uint32_t shading_group_count = 1;
-            std::vector<uint32_t> slot_count;      ///< 槽 → 该槽部件数
-            std::vector<uint32_t> slot_geometry;   ///< 槽 → geometry_id（该槽桶的几何体）
-        };
-
-        /// `ResolveTemplatePartFacts` 的失败形态（用于保持与原实现**逐字相同**的拒批原因）
-        enum class TemplateFactResult : uint8_t
-        {
-            Ok = 0,
-            RowMissing,    ///< 模板行缺失 / 无部件桶
-            PartMissing,   ///< 模板 part 区间越界（部件行缺失）
-        };
-
-        bool     template_fact_valid_            = false;
-        uint64_t template_fact_topology_rev_     = 0;
-        uint64_t template_fact_pool_content_rev_ = 0;
-        uint64_t template_fact_hits_             = 0;
-        uint64_t template_fact_misses_           = 0;
-        uint64_t template_fact_builds_           = 0;
-
-        std::unordered_map<uint32_t, TemplatePartFacts> template_facts_;
-
-        void RefreshTemplateFactCache();
-        const TemplatePartFacts *ResolveTemplatePartFacts(graph::GlobalSSBOBufferRegistry *pool,
-                                                          uint32_t template_id,
-                                                          TemplateFactResult &result);
+        /// 逐项读映射行太贵（单字段 ≈2.3µs）⇒ 按 `template_id` 记忆化；
+        /// 失效与统计细节见 `TemplateFactCache`。
+        TemplateFactCache template_facts;
 
     public:
         /// P4：模板事实缓存统计（命中 = 免读映射行；未命中 = 本帧首次遇到该模板）
-        uint64_t GetTemplateFactHits()     const { return template_fact_hits_; }
-        uint64_t GetTemplateFactMisses()   const { return template_fact_misses_; }
-        uint64_t GetTemplateFactBuilds()   const { return template_fact_builds_; }
+        uint64_t GetTemplateFactHits()     const { return template_facts.Hits(); }
+        uint64_t GetTemplateFactMisses()   const { return template_facts.Misses(); }
+        uint64_t GetTemplateFactBuilds()   const { return template_facts.Builds(); }
 
     private:
 
