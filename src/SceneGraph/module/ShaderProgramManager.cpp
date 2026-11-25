@@ -15,6 +15,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
+#include<hgl/graph/ShaderBufferSources.h>   // RootAddresses：本层声明 push constant 契约
 #include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
@@ -621,7 +622,18 @@ VkPipelineLayout ShaderProgramManager::GetOrCreateGlobalPipelineLayout()
     if(!device)
         return VK_NULL_HANDLE;
 
-    shared_pipeline_layout_ = device->CreateGlobalPipelineLayout(bindless_layout_);
+    // RootAddresses 是 SceneGraph/ECS 的 push constant 契约（全局地址表基址 + 本批表地址）。
+    // 布局由本层声明并传入：Vulkan 只按给定范围创建 layout，不反向包含上层布局头。
+    // stage=Mesh|Fragment|Compute——mesh 读 MeshDrawParams/L2W/L2WIndex/文本表，
+    // FS 读 mtl_data_addrs，compute 管线复用同一全局 layout 时按需读全局表地址。
+    const VkPushConstantRange root_address_range =
+    {
+        VkShaderStageFlags(hgl::graph::kMeshFragment | VK_SHADER_STAGE_COMPUTE_BIT),
+        0,
+        uint32_t(sizeof(hgl::graph::mtl::RootAddresses))
+    };
+
+    shared_pipeline_layout_ = device->CreateGlobalPipelineLayout(bindless_layout_,&root_address_range,1);
 
     #ifdef _DEBUG
         if(shared_pipeline_layout_)

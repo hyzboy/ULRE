@@ -18,8 +18,8 @@
 #include <hgl/graph/ubo/LightRow.h>
 #include <hgl/graph/ubo/ModelExpansionArena.h>
 #include <hgl/graph/ubo/ShadowInfo.h>
-#include <hgl/graph/ubo/ViewportInfo.h>
 #include <hgl/graph/ubo/WorldAddresses.h>
+#include <hgl/graphics/contracts/ViewportInfo.h>
 
 namespace hgl::graph::generated
 {

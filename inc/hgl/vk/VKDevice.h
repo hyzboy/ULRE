@@ -435,7 +435,9 @@ public: //shader & material
 
     ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const uint32_t *,const size_t);
 
-    VkPipelineLayout CreateGlobalPipelineLayout(VkDescriptorSetLayout bindless_layout = VK_NULL_HANDLE);
+    VkPipelineLayout CreateGlobalPipelineLayout(VkDescriptorSetLayout bindless_layout = VK_NULL_HANDLE,
+                                                const VkPushConstantRange *push_constants = nullptr,
+                                                uint32_t push_constant_count = 0);
 
 public: //Command Buffer 相关
 

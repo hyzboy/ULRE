@@ -84,7 +84,7 @@ table AmbientEnvInfo
   sh: Float4Array9;
 }
 
-// inc/hgl/graph/ubo/ViewportInfo.h → ViewportInfo
+// inc/hgl/graphics/contracts/ViewportInfo.h → ViewportInfo
 table ViewportInfo
 {
   ortho_matrix: Float16;

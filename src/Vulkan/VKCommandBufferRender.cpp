@@ -1,7 +1,6 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKFramebuffer.h>
-#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/buffer/IndexBuffer.h>

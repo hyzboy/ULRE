@@ -40,7 +40,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - py<3.11
     import tomli as tomllib  # type: ignore
 
-SCAN_DIRS = ("inc/hgl/graph/ubo", "inc/hgl/graph/ssbo")
+SCAN_DIRS = ("inc/hgl/graph/ubo", "inc/hgl/graph/ssbo", "inc/hgl/graphics/contracts")
 DEFAULT_INCLUDE_DIRS = ("inc", "CMCoreType/inc", "CMMath/inc")
 
 ANNOT_RE = re.compile(
