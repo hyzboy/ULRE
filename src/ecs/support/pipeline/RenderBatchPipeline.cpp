@@ -51,9 +51,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        /// P4：材质批计划里「本帧跳过该项」的哨兵（该项解析不出管线/配方行 ⇒ 不进行）
-        constexpr uint32_t kNoPlanBatch = 0xFFFFFFFFu;
-
         // 材质来源判据已收敛为实体级自由函数 HasAnyMaterialSource(Entity*)（support/PrimitiveState.h）。
 
         // 材质是否含 mesh stage（ShaderGen 材质恒是——mesh 为唯一顶点路径）
@@ -329,184 +326,6 @@ namespace hgl::ecs
         }
     }
 
-    void RenderBatchPipeline::ResetMaterialBatchPlan()
-    {
-        for (BatchPlanSlot &slot : batch_plans_)
-        {
-            slot.valid = false;
-            slot.batches.clear();
-            slot.item_batch.clear();
-            slot.visible = 0;
-            slot.item_sig = 0;
-        }
-    }
-
-    RenderBatchPipeline::BatchPlanSlot *RenderBatchPipeline::FindBatchPlanSlot(const void *render_pass)
-    {
-        for (BatchPlanSlot &slot : batch_plans_)
-        {
-            if (slot.render_pass == render_pass)
-                return &slot;
-        }
-
-        return nullptr;
-    }
-
-    RenderBatchPipeline::BatchPlanSlot *RenderBatchPipeline::AcquireBatchPlanSlot(const void *render_pass)
-    {
-        if (BatchPlanSlot *slot = FindBatchPlanSlot(render_pass))
-            return slot;
-
-        // 现实中只有 Main / Shadow 两槽；超过上限说明 pass 身份不稳定（例如每帧新建
-        // 离屏目标），此时整体作废重来，绝不无限增长。
-        if (batch_plans_.size() >= 8)
-            batch_plans_.clear();
-
-        BatchPlanSlot slot;
-        slot.render_pass = render_pass;
-
-        batch_plans_.push_back(slot);
-
-        return &batch_plans_.back();
-    }
-
-    /**
-     * 项序列指纹：只读 `RenderItem` 的内联字段（实体 index/generation + 可见性），
-     * **不触碰任何 SSBO 池**（那些行在映射的 GPU 缓冲里，单字段 ≈2.3µs）。
-     *
-     * 指纹变了 ⇒ 批计划作废。材质行/管线变化不需要进指纹 —— 由
-     * `MaterialBinding`/`PassAndTarget` 拓扑代数与 `MaterialContent` 事实代数覆盖。
-     */
-    uint64_t RenderBatchPipeline::ComputeRenderItemSignature(const RenderFrameCache &cache,
-                                                               uint32_t &visible_count) const
-    {
-        uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-
-        visible_count = 0;
-
-        for (const auto &itemPtr : cache.renderItems)
-        {
-            const RenderItem *item = itemPtr.get();
-
-            if (!item)
-                continue;
-
-            const EntityID id = item->GetEntityID();
-
-            hash = hgl::hash::FNV1aAppendBytes(hash,
-                                              reinterpret_cast<const uint8_t *>(&id.index),
-                                              sizeof(id.index));
-            hash = hgl::hash::FNV1aAppendBytes(hash,
-                                              reinterpret_cast<const uint8_t *>(&id.generation),
-                                              sizeof(id.generation));
-
-            const uint8_t visible = item->isVisible ? 1u : 0u;
-
-            hash = hgl::hash::FNV1aAppendBytes(hash, &visible, 1);
-
-            if (item->isVisible)
-                ++visible_count;
-        }
-
-        return hash;
-    }
-
-    /**
-     * P4：材质批计划重放（命中路径）。
-     *
-     * 命中时**完全不解析** shader 程序 / 管线 / 动态渲染状态 / 材质行 —— 这正是
-     * `BuildMaterialBatches()` 2.9ms 的来源（每实例一次 `unordered_map` 查找，
-     * 且 `GetPipelineConfig()` 按值拷贝配置）。批对象本身仍要逐帧重建，
-     * 因为 `RenderFrameCache::BeginFrame()` 每帧清空批表。
-     */
-    bool RenderBatchPipeline::TryReplayMaterialBatchPlan(RenderFrameCache &cache,
-                                                            BatchPlanSlot &slot,
-                                                            TransformAssignmentBuffer *shared_transform_buffer,
-                                                            graph::BufferManager *buffer_manager)
-    {
-        if (!slot.valid || slot.batches.empty())
-        {
-            ++batch_plan_misses_;
-            return false;
-        }
-
-        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
-
-        if (ledger.GetTopologyRevision() != slot.topology_rev
-         || ledger.GetDynamicFactRevision(DynamicFactChange::MaterialContent) != slot.fact_rev)
-        {
-            ++batch_plan_misses_;
-            return false;
-        }
-
-        uint32_t visible_count = 0;
-        const uint64_t sig = ComputeRenderItemSignature(cache, visible_count);
-
-        if (sig != slot.item_sig || visible_count != slot.visible)
-        {
-            ++batch_plan_misses_;
-            return false;
-        }
-
-        // 计划自洽性预校验（缺陷防线，非常态分支）：项→批下标必须全部有效。
-        // 任何一条不成立就整份计划作废 —— 绝不在**已部分构建**的批表上留半成品。
-        for (const uint32_t bi : slot.item_batch)
-        {
-            if (bi != kNoPlanBatch && bi >= slot.batches.size())
-            {
-                ResetMaterialBatchPlan();
-                ++batch_plan_misses_;
-                return false;
-            }
-        }
-
-        // ── 重放 ────────────────────────────────────────────────────────────────
-        std::vector<MaterialBatch *> created(slot.batches.size(), nullptr);
-
-        uint32_t vi = 0;
-
-        for (const auto &itemPtr : cache.renderItems)
-        {
-            RenderItem *item = itemPtr.get();
-
-            if (!item || !item->isVisible)
-                continue;
-
-            const uint32_t bi = slot.item_batch[vi];
-
-            if (bi == kNoPlanBatch)
-            {
-                // 建计划那一帧就没进任何批（管线/配方行未解析）⇒ 本帧同样跳过，
-                // 与慢路径逐位一致。
-                ++vi;
-                continue;
-            }
-
-            MaterialBatch *batch = created[bi];
-
-            if (!batch)
-            {
-                const ShaderProgramPipelineKey &key = slot.batches[bi].key;
-
-                auto batch_owner = std::make_unique<MaterialBatch>(key, device, buffer_manager);
-                batch_owner->transform_buffer = shared_transform_buffer;
-                batch = batch_owner.get();
-
-                cache.materialBatches[key] = std::move(batch_owner);
-                created[bi] = batch;
-            }
-
-            batch->AddItem(item);
-            ++vi;
-        }
-
-        ++batch_plan_hits_;
-
-        FrameProfiler::Count(FrameProfileCount::Batches, cache.materialBatches.GetCount());
-
-        return true;
-    }
-
     void RenderBatchPipeline::BuildMaterialBatches()
     {
         if (!world)
@@ -526,15 +345,17 @@ namespace hgl::ecs
         auto* current_render_pass = rt ? rt->GetRenderPass() : nullptr;
 
         // ── P4：稳态重放（拓扑/材质/项序列都未变 ⇒ 一个字都不解析管线）─────────
-        BatchPlanSlot *plan_slot = AcquireBatchPlanSlot(static_cast<const void *>(current_render_pass));
+        MaterialBatchPlanCache::Slot *plan_slot = batch_plan_cache.Acquire(static_cast<const void *>(current_render_pass));
 
-        if (plan_slot && TryReplayMaterialBatchPlan(cache, *plan_slot, shared_transform_buffer, buffer_manager))
+        if (plan_slot && batch_plan_cache.TryReplay(cache, *plan_slot,
+                                                    world->GetPrimitiveTopologyLedger(),
+                                                    shared_transform_buffer, buffer_manager, device))
         {
             return;
         }
 
-        std::vector<CachedBatchPlan> new_plan;
-        std::vector<uint32_t>        new_item_batch;
+        ValueArray<MaterialBatchPlanCache::CachedBatchPlan> new_plan;
+        ValueArray<uint32_t>                       new_item_batch;
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -556,7 +377,7 @@ namespace hgl::ecs
                                         || material_row->data_index_row == uint32_t(-1));
                 if (missing_rows)
                 {
-                    new_item_batch.push_back(kNoPlanBatch);
+                    new_item_batch.Add(MaterialBatchPlanCache::kNoPlanBatch);
 
                     LogWarning("[RenderBatchPipeline] Skip primitive item: unresolved recipe rows. shader_prog=%s",
                                shader_prog ? shader_prog->GetName().c_str() : "<null>");
@@ -569,7 +390,7 @@ namespace hgl::ecs
                 // A7b：「有无材质来源」不再用于**静默**这条失败告警 —— 无材质来源的图元
                 // 现在会走回退（错误）材质进入批次，其管线解析失败同样必须留痕，不能因为
                 // 它“本来没有材质”就无声跳过（这正是被用户拍板取消的那条旧语义）。
-                new_item_batch.push_back(kNoPlanBatch);
+                new_item_batch.Add(MaterialBatchPlanCache::kNoPlanBatch);
 
                 LogWarning("[RenderBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
                            shader_prog ? shader_prog->GetName().c_str() : "<null>",
@@ -588,9 +409,9 @@ namespace hgl::ecs
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             // 计划批下标（线性查找：批数极少，实测 1~2；仅慢路径执行）
-            uint32_t plan_batch = kNoPlanBatch;
+            uint32_t plan_batch = MaterialBatchPlanCache::kNoPlanBatch;
 
-            for (uint32_t pi = 0; pi < static_cast<uint32_t>(new_plan.size()); ++pi)
+            for (uint32_t pi = 0; pi < static_cast<uint32_t>(new_plan.GetCount()); ++pi)
             {
                 if (new_plan[pi].key == key)
                 {
@@ -599,17 +420,17 @@ namespace hgl::ecs
                 }
             }
 
-            if (plan_batch == kNoPlanBatch)
+            if (plan_batch == MaterialBatchPlanCache::kNoPlanBatch)
             {
-                plan_batch = static_cast<uint32_t>(new_plan.size());
+                plan_batch = static_cast<uint32_t>(new_plan.GetCount());
 
-                CachedBatchPlan entry;
+                MaterialBatchPlanCache::CachedBatchPlan entry;
                 entry.key = key;
-                new_plan.push_back(entry);
+                new_plan.Add(entry);
             }
 
             ++new_plan[plan_batch].item_count;
-            new_item_batch.push_back(plan_batch);
+            new_item_batch.Add(plan_batch);
 
             if (!batch_ptr)
             {
@@ -631,14 +452,16 @@ namespace hgl::ecs
         {
             const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
 
-            plan_slot->topology_rev = ledger.GetTopologyRevision();
-            plan_slot->fact_rev     = ledger.GetDynamicFactRevision(DynamicFactChange::MaterialContent);
-            plan_slot->item_sig     = ComputeRenderItemSignature(cache, plan_slot->visible);
-            plan_slot->batches.swap(new_plan);
-            plan_slot->item_batch.swap(new_item_batch);
-            plan_slot->valid = !plan_slot->batches.empty();
+            uint32_t visible_count = 0;
+            const uint64_t item_sig = batch_plan_cache.ComputeSignature(cache, visible_count);
 
-            ++batch_plan_builds_;
+            batch_plan_cache.Store(*plan_slot,
+                                   ledger.GetTopologyRevision(),
+                                   ledger.GetDynamicFactRevision(DynamicFactChange::MaterialContent),
+                                   item_sig,
+                                   visible_count,
+                                   std::move(new_plan),
+                                   std::move(new_item_batch));
         }
 
         FrameProfiler::Count(FrameProfileCount::Batches, cache.materialBatches.GetCount());
