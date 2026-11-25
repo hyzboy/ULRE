@@ -178,13 +178,7 @@ SET(VK_IMAGE_FILES              ${VK_INCLUDE_PATH}/VKImageCreateInfo.h
 
 SOURCE_GROUP("Image" FILES ${VK_IMAGE_FILES})
 
-SET(VK_TEXTURE_DEVICE_FILES     Texture/BufferImageCopy2D.h
-                                Texture/CopyBufferToImage.h
-                                Texture/GenMipmaps.cpp
-                                Texture/VKDeviceTexture.cpp
-                                Texture/VKDeviceTexture2D.cpp
-                                Texture/VKDeviceTexture2DArray.cpp
-                                Texture/VKDeviceTextureCube.cpp)
+SET(VK_TEXTURE_DEVICE_FILES     Texture/GenMipmaps.cpp)
 
 SOURCE_GROUP("Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
 
@@ -236,7 +230,6 @@ SOURCE_GROUP("Synchronization" FILES ${VK_SYNC_FILES})
 
 # --- 13. Buffer Operations (Device Level) ---
 SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
-                                VKDeviceImage.cpp
                                 VKDeviceSampler.cpp
                                 VKBindlessTextureManager.cpp)
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})

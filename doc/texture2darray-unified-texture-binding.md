@@ -163,7 +163,7 @@ struct ShaderProgramKey { mesh_stage_digest; fragment_stage_digest; resource_lay
 |---|---|---|
 | 共享块压缩 helper | `inc/hgl/vk/VKFormat.h`（`IsBlockCompressedFormat` / `GetBlockCompressedLevelBytes`） | 原实现是 `VKDeviceTexture2D.cpp` 里的匿名 namespace 副本，现上收为唯一真源 |
 | API 语义修正 | `inc/hgl/graph/module/TextureManager.h:97,132` | `bool auto_mipmaps` → **`uint32 mip_levels = 1`**（零兼容：不保留无效 bool 形参）；级数真源 = 源资产（示例用探针的 `GetMipLevel()`） |
-| 级数真正落进 tci + 多级图像可 blit | `src/Vulkan/Texture/VKDeviceTexture2DArray.cpp` | `origin_mipmaps = target_mipmaps = mipi_levels`；`mips > 1` 时补 `VK_IMAGE_USAGE_TRANSFER_SRC_BIT` |
+| 级数真正落进 tci + 多级图像可 blit | `src/SceneGraph/module/texture/TextureManager2DArray.cpp` | `origin_mipmaps = target_mipmaps = mipi_levels`；`mips > 1` 时补 `VK_IMAGE_USAGE_TRANSFER_SRC_BIT` |
 | **整链逐层拷入**（新函数） | `TextureManager::ChangeTexture2DArrayMipmaps` 同上文件 | 按级构建 `VkBufferImageCopy`：`mipLevel=i`、`baseArrayLayer=layer`、`layerCount=1`、偏移按 BC 级别字节/非 BC `rolling_level_bytes` 推进 —— 与 2D 路径 `CommitTexture2DMipmaps` 同构 |
 | 逐层装载分派 + 校验 | `src/SceneGraph/texture/VKTexture2DArrayLoader.cpp` | 尺寸/格式必须与数组一致（否则**静默错位**）→ fail-fast；级数策略见下 |
 | 压缩格式拒绝生成 | 同上 + `GenerateTexture2DArrayMipmaps` | 块压缩格式无链 → **显式报错**，不静默降级；顺带修掉该函数入口屏障的 `oldLayout`（原写 `SHADER_READ_ONLY`，与本路径实际的 `TRANSFER_DST` 不符） |

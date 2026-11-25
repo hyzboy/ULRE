@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include<hgl/vk/VKTexture.h>
 #include<hgl/type/RectScope.h>
 namespace hgl::graph{

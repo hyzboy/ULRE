@@ -104,6 +104,13 @@ set(SG_MODULE_FILES ${SG_INCLUDE_PATH}/module/GraphModule.h
                     module/RenderTargetFramebuffer.cpp
                     module/SwapChainModule.cpp
                     module/TextureManager.cpp
+                    module/texture/TextureManagerImage.cpp
+                    module/texture/TextureManagerTransfer.cpp
+                    module/texture/TextureManager2D.cpp
+                    module/texture/TextureManager2DArray.cpp
+                    module/texture/TextureManagerCube.cpp
+                    module/texture/BufferImageCopy2D.h
+                    module/texture/CopyBufferToImage.h
                     module/GpuUploadQueue.cpp
                     module/TextureLoadCommitter.cpp
                     module/SamplerManager.cpp
